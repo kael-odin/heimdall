@@ -1,0 +1,17 @@
+/* 深空观测站 · 全局底色与字体（视觉系统 v1） */
+:root {
+  --abyss: #05060A;
+  --dust: #1A1F2E;
+  --cyan: #22D3EE;
+  --amber: #F59E0B;
+  --violet: #8B5CF6;
+  --green: #34D399;
+  --red: #F87171;
+  --text: #E6EAF2;
+  --text-dim: #8A93A6;
+  --font-num: 'Orbitron', 'Space Grotesk', 'Segoe UI', monospace;
+  --font-cn: 'HarmonyOS Sans SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #app { height: 100%; background: var(--abyss); color: var(--text); font-family: var(--font-cn); overflow: hidden; }
+::selection { background: rgba(34, 211, 238, .35); }
