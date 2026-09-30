@@ -44,6 +44,19 @@ let pendingEdges = [];
 let es = null;
 
 const nowS = () => (performance.now() - t0) / 1000;
+const REDUCED = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+// ---------- 缩略图图集（星球贴图，LOD：hover/大节点才渲染贴图） ----------
+const thumbCache = new Map();   // id -> ImageBitmap|null
+async function preloadThumbs(hostName, list) {
+  await Promise.all(list.map(n => new Promise(res => {
+    if (thumbCache.has(n.id)) return res();
+    const img = new Image();
+    img.onload = () => { thumbCache.set(n.id, img); res(); };
+    img.onerror = () => { thumbCache.set(n.id, null); res(); };
+    img.src = `/${hostName}/recon/thumbs/${n.id}.png`;
+  })));
+}
 
 function normalizeUrl(v) {
   let s = v.trim();
@@ -68,7 +81,9 @@ function makeNode(ev, ringIdx, i, bornAt) {
 
 function buildStatic(a) {
   atlas.value = a;
+  introUntil = nowS() + 0.1;
   hudOrigin.value = (a.origin ?? '').replace(/^https?:\/\//, '');
+  preloadThumbs(host.value, a.nodes);
   nodes = []; edges = []; urlNode.clear(); pendingEdges = [];
   const byRing = {};
   for (const n of a.nodes) {
@@ -104,6 +119,7 @@ function startRecon() {
   const url = normalizeUrl(host.value);
   if (!url) { errMsg.value = '网址无效'; return; }
   errMsg.value = ''; live.value = true; statusText.value = '光点出发';
+  introUntil = nowS();
   hudOrigin.value = url.replace(/^https?:\/\//, '');
   nodes = []; edges = []; urlNode.clear(); pendingEdges = []; atlas.value = null;
   starDust = makeDust();
@@ -219,10 +235,27 @@ function onCanvasClick() {
 }
 
 // ---------- 渲染 ----------
+let introUntil = 0;   // 入场运镜截止时刻（s）；buildStatic/live 启动时设置
 function frame(now) {
   const t = (now - t0) / 1000;
   const cx = W / 2, cy = H / 2;
-  const R = Math.min(W, H) * 0.36;
+  let R = Math.min(W, H) * 0.36;
+  // 入场运镜：0-2.4s 相机由奇点拉出（zoom 3.2→1，ease-out），伴随一次全屏辉光
+  const intro = REDUCED ? 1 : Math.min(1, Math.max(0, (t - introUntil) < 0 ? 1 : 0));
+  const it = REDUCED ? 1 : Math.min(1, Math.max(0, (t - introUntil + 2.4) / 2.4));
+  if (!REDUCED && t - introUntil < 2.4) {
+    const ease = 1 - Math.pow(1 - it, 3);
+    R *= 3.2 - 2.2 * ease;
+    // 爆发辉光（前 0.8s 白青色全屏渐晕）
+    if (it < 0.35) {
+      const flash = 1 - it / 0.35;
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.7);
+      g.addColorStop(0, `rgba(180, 240, 255, ${0.32 * flash})`);
+      g.addColorStop(1, 'rgba(34, 211, 238, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
   const rot = t * 0.02;
   ctx.clearRect(0, 0, W, H);
 
@@ -234,6 +267,33 @@ function frame(now) {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+
+  // 盘面光照：中心辐射冷光（星系核球）+ 倾斜椭圆银河带
+  const coreR = R * 1.15;
+  if (!REDUCED) {
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
+    core.addColorStop(0, 'rgba(34, 211, 238, 0.055)');
+    core.addColorStop(0.55, 'rgba(34, 211, 238, 0.018)');
+    core.addColorStop(1, 'rgba(34, 211, 238, 0)');
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, coreR, coreR * 0.62, 0, 0, 7);
+    ctx.fill();
+    // 银河带（与盘面同倾角的模糊亮带）
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, 0.35);
+    ctx.rotate(0.12);
+    const band = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 1.5);
+    band.addColorStop(0, 'rgba(148, 163, 216, 0.03)');
+    band.addColorStop(0.7, 'rgba(139, 92, 246, 0.02)');
+    band.addColorStop(1, 'rgba(139, 92, 246, 0)');
+    ctx.fillStyle = band;
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 1.5, 0, 7);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // 位置（含出生飞入）
   hover.value = null;
@@ -270,7 +330,8 @@ function frame(now) {
   // 边
   ctx.lineWidth = 1;
   for (const [f, to, bornAt] of edges) {
-    const a = bornAt ? Math.min(1, Math.max(0, (t - bornAt) / 0.5)) * 0.07 : 0.07;
+    const nearness = 1 - Math.min(1, (Math.max(f.ring, to.ring)) / 3);
+    const a = (bornAt ? Math.min(1, Math.max(0, (t - bornAt) / 0.5)) : 1) * (0.04 + 0.05 * nearness);
     if (a <= 0.005) continue;
     const mx = (f.sx + to.sx) / 2 + (to.sy - f.sy) * 0.08;
     const my = (f.sy + to.sy) / 2 - (to.sx - f.sx) * 0.08;
@@ -281,7 +342,7 @@ function frame(now) {
     ctx.stroke();
   }
 
-  // 节点
+  // 节点（LOD：根节点/hover 恒星贴缩略图球面，普通节点纯辉光点）
   for (const n of nodes) {
     const r = n.r * (n.hover ? 1.7 : 1) * (1 + 0.06 * Math.sin(t * 2 + n.phase)) * n.scale;
     if (r < 0.2) continue;
@@ -294,6 +355,29 @@ function frame(now) {
     ctx.beginPath();
     ctx.arc(n.sx, n.sy, r, 0, 7);
     ctx.fill();
+    ctx.shadowBlur = 0;
+    const wantThumb = (n.hover || n.ring === 0 || n.forgeState === 'done') && r >= 7;
+    const img = thumbCache.get(n.id);
+    if (wantThumb && img) {
+      // 球面贴图：圆形裁剪 + 图片 cover + 中心亮/边缘暗的球面光
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, n.age * 1.4);
+      ctx.beginPath();
+      ctx.arc(n.sx, n.sy, r - 1, 0, 7);
+      ctx.clip();
+      const ir = (r - 1) * 2;
+      ctx.drawImage(img, n.sx - (r - 1), n.sy - (r - 1), ir, ir * 0.625);
+      const shade = ctx.createRadialGradient(n.sx - r * 0.3, n.sy - r * 0.35, r * 0.2, n.sx, n.sy, r);
+      shade.addColorStop(0, 'rgba(255,255,255,0.14)');
+      shade.addColorStop(0.6, 'rgba(0,0,0,0.05)');
+      shade.addColorStop(1, 'rgba(5, 6, 10, 0.72)');
+      ctx.fillStyle = shade;
+      ctx.beginPath();
+      ctx.arc(n.sx, n.sy, r - 1, 0, 7);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = Math.min(1, n.age * 1.4);
     if (n.ring === 0 || n.forgeState === 'done') {   // 根节点 / 锻造完成的恒星环
       ctx.strokeStyle = n.forgeState === 'done' ? 'rgba(245,158,11,0.85)' : 'rgba(255,255,255,0.5)';
       ctx.lineWidth = n.forgeState === 'done' ? 2 : 1;

@@ -89,3 +89,11 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 - Atlas.vue 换血：HEIMDALL 主标题+副标/分节线刻度、输入条 HUD 化、阶段 01-06 编号步进器（running 琥珀脉冲/done 绿点）、FIDELITY VERDICT 判定区（54px 大分数+三维拆解+可修性进度条）、SOURCE/MIRROR 双联标签
 - 坑：Vue v-for 对象遍历第 2 参是 value 第 3 参才是 index——编号 NaN 修复
 - 待续：星图节点贴缩略图、入场运镜、reduced-motion、星系盘面光照层次
+
+## W6 视觉第二轮：星图分镜级渲染（2026-09-30）
+
+- 节点贴缩略图（LOD）：根节点/hover/锻造完成恒星 + r≥7 才渲染贴图（其余纯辉光点保帧率）；球面光（中心亮/边缘暗）模拟行星受光；thumbCache 预载
+- 盘面光照：星系核球（中心辐射冷光椭圆）+ 倾斜银河带（青→紫渐隐）
+- 边深度：向内环渐亮（nearness 权重）
+- 入场运镜：0-2.4s 相机由奇点 zoom 3.2→1 拉出（ease-out cubic）+ 前 0.8s 全屏白青爆发辉光；prefers-reduced-motion 直达终态
+- 实测：无 pageerror；hover 卡、贴图球、核球光、银河带全部呈现
