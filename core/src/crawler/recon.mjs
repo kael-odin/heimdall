@@ -16,13 +16,32 @@ const MAX_PAGES = Number(process.argv[3] ?? 40);
 const MAX_DEPTH = Number(process.argv[4] ?? 2);
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
-const origin = new URL(TARGET).origin;
-const OUT = join('workspace', hostOf(origin), 'recon');
+function hostOf(u) { return new URL(u).hostname; }
+function stripWww(h) { return h.replace(/^www\./, ''); }
+function pathOf(u) { try { return new URL(u).pathname.replace(/\/$/, '') || '/'; } catch { return '/'; } }
+
+// 事件输出：@@EVENT@@ 前缀行，engine-server 解析转发 SSE（人类日志走 console.error）
+const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
+const log = (...a) => console.error(...a);
+
+// ---------- 0. origin 校准（跟随 301/重定向，链接过滤必须用落地 origin） ----------
+log('[0/4] calibrate origin');
+const browser0 = await chromium.launch();
+const p0 = await browser0.newPage({ userAgent: UA });
+let ORIGIN = new URL(TARGET).origin, LANDING = TARGET;
+try {
+  await p0.goto(TARGET, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  LANDING = p0.url();
+  ORIGIN = new URL(LANDING).origin;
+} catch {}
+await browser0.close();
+const HOST_DIR = stripWww(hostOf(ORIGIN));
+log(`  target ${TARGET} -> origin ${ORIGIN} (dir ${HOST_DIR})`);
+emit({ kind: 'calibrated', origin: ORIGIN, host: HOST_DIR });
+
+const OUT = join('workspace', HOST_DIR, 'recon');
 const THUMBS = join(OUT, 'thumbs');
 mkdirSync(THUMBS, { recursive: true });
-
-function hostOf(u) { return new URL(u).hostname; }
-function pathOf(u) { try { return new URL(u).pathname.replace(/\/$/, '') || '/'; } catch { return '/'; } }
 function classify(path) {
   if (/pricing|plans?|billing/i.test(path)) return 'pricing';
   if (/blog|docs?|article|guide|tutorial|university|help/i.test(path)) return 'doc';
@@ -33,10 +52,10 @@ function classify(path) {
 }
 
 // ---------- 1. sitemap 先行 ----------
-console.log('[1/4] sitemap');
+log('[1/4] sitemap');
 const sitemapUrls = [];
 try {
-  for (const smUrl of [origin + '/sitemap.xml', origin + '/sitemap_index.xml']) {
+  for (const smUrl of [ORIGIN + '/sitemap.xml', ORIGIN + '/sitemap_index.xml']) {
     const res = await fetch(smUrl, { headers: { 'User-Agent': UA } });
     if (!res.ok) continue;
     const text = await res.text();
@@ -54,19 +73,20 @@ try {
     if (sitemapUrls.length) break;
   }
 } catch {}
-const sitemapSame = [...new Set(sitemapUrls.filter(u => u.startsWith(origin)))];
-console.log(`  sitemap urls (same-origin): ${sitemapSame.length}`);
+const sitemapSame = [...new Set(sitemapUrls.filter(u => u.startsWith(ORIGIN)))];
+log(`  sitemap urls (same-origin): ${sitemapSame.length}`);
+emit({ kind: 'sitemap', count: sitemapSame.length });
 
 // ---------- 2. BFS ----------
-console.log('[2/4] BFS crawl');
+log('[2/4] BFS crawl');
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 640, height: 400 }, userAgent: UA });
 const nodes = new Map();   // url -> node
 const edges = [];          // {from,to} (url)
 // 双队列：BFS 发现优先（保证结构层页面入图），sitemap 仅作补充
-const bfsQueue = [{ url: TARGET.replace(/\/$/, ''), depth: 0 }];
+const bfsQueue = [{ url: LANDING.replace(/\/$/, ''), depth: 0 }];
 const smQueue = [];
-const bfsSeen = new Set([TARGET.replace(/\/$/, '')]);   // 仅 BFS 自身去重，sitemap 不得预占
+const bfsSeen = new Set([LANDING.replace(/\/$/, '')]);   // 仅 BFS 自身去重，sitemap 不得预占
 for (const u of sitemapSame) smQueue.push({ url: u, depth: 99 });
 
 let idSeq = 0;
@@ -84,6 +104,7 @@ async function visit({ url, depth }) {
     const title = await page.title().catch(() => '');
     addNode(url, depth, title);
     const node = nodes.get(url);
+    emit({ kind: 'page', ...node });
     // 缩略图（供星图 hover）
     await page.screenshot({ path: join(THUMBS, `${node.id}.png`), clip: { x: 0, y: 0, width: 640, height: 400 } }).catch(() => {});
 
@@ -91,11 +112,12 @@ async function visit({ url, depth }) {
     const links = await page.evaluate((o) =>
       [...document.querySelectorAll('a[href]')]
         .map(a => { try { return new URL(a.getAttribute('href'), location.href).href.split('#')[0]; } catch { return null; } })
-        .filter(u => u && u.startsWith(o) && !/\.(pdf|zip|png|jpe?g|svg|mp4|xml|json)$/i.test(u)), origin);
+        .filter(u => u && u.startsWith(o) && !/\.(pdf|zip|png|jpe?g|svg|mp4|xml|json)$/i.test(u)), ORIGIN);
     for (const to of [...new Set(links)]) {
       edges.push({ from: url, to });
       if (!bfsSeen.has(to)) { bfsSeen.add(to); bfsQueue.push({ url: to, depth: depth + 1 }); }
     }
+    emit({ kind: 'edges', from: url, tos: [...new Set(links)].slice(0, 40) });
   } catch (e) {
     // 失败页不进星图
   } finally {
@@ -121,7 +143,7 @@ await new Promise((resolve) => {
 await browser.close();
 
 // ---------- 3. edges 清洗（只保留两端都在星图内的） ----------
-console.log('[3/4] edges');
+log('[3/4] edges');
 const inGraph = (u) => nodes.has(u);
 const cleanEdges = [];
 const edgeSeen = new Set();
@@ -134,9 +156,9 @@ for (const e of edges) {
 }
 
 // ---------- 4. atlas.json ----------
-console.log('[4/4] atlas.json');
+log('[4/4] atlas.json');
 const atlas = {
-  origin,
+  origin: ORIGIN,
   generatedAt: new Date().toISOString(),
   meta: { pages: nodes.size, edges: cleanEdges.length, sitemapUrls: sitemapSame.length, maxPages: MAX_PAGES, maxDepth: MAX_DEPTH },
   nodes: [...nodes.values()],
@@ -145,5 +167,6 @@ const atlas = {
 writeFileSync(join(OUT, 'atlas.json'), JSON.stringify(atlas, null, 2));
 const byType = {};
 for (const n of atlas.nodes) byType[n.type] = (byType[n.type] ?? 0) + 1;
-console.log(`\nDONE ${atlas.meta.pages} pages / ${atlas.meta.edges} edges -> ${OUT}`);
-console.log('  by type:', JSON.stringify(byType));
+log(`\nDONE ${atlas.meta.pages} pages / ${atlas.meta.edges} edges -> ${OUT}`);
+log('  by type:', JSON.stringify(byType));
+emit({ kind: 'done', pages: atlas.meta.pages, edges: atlas.meta.edges, host: HOST_DIR, byType });
