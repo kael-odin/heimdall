@@ -3,46 +3,78 @@ engine-server @ http://127.0.0.1:8900
 ==== [capture] ====
 [f002] 
 ==== [capture] ====
-[f001] 
-==== [build] ====
-[f001] 
-==== [shot] ====
-[f001] 
-==== [diff] ====
-[f001] 
-==== [fixup] ====
-[f001] [fixup] refinable 100% (static 68908px) — worth calibrating
-[f001] 
-[fixup] round 1 (current 97.3%)
-[f001]   style-probe: 25 elements with computed diffs
 [f002] 
 ==== [build] ====
+[f002]   FAIL https://www.thordata.com/iconfont._lxMSBGH.ttf
+[f002]   FAIL https://www.thordata.com/fot-bg.BXfk98cw.png
 [f002] 
 ==== [shot] ====
 [f002] 
 ==== [diff] ====
+[f001] 
+==== [build] ====
+[f001]   FAIL https://www.thordata.com/iconfont._lxMSBGH.ttf
 [f002] 
 ==== [fixup] ====
-[f002] [fixup] refinable 100% (static 46991px) — worth calibrating
+[f001]   FAIL https://www.thordata.com/applogos.BlX5GdMz.png
+[f002] [fixup] refinable 100% (static 87822px) — worth calibrating
 [f002] 
-[fixup] round 1 (current 98.2%)
+[fixup] round 1 (current 96.6%)
+[f001]   FAIL https://www.thordata.com/index-icons.x2.C2wy8D8-.png
+[f001]   FAIL https://www.thordata.com/fot-bg.BXfk98cw.png
+[f001] 
+==== [shot] ====
 [f002]   style-probe: 25 elements with computed diffs
-[f002]   analysis: 截图与量化差异显示：两页的字体度量不一致——克隆页 header 内所有文本元素（Skip to content、Product 及整条 MenuItem 链 p→button→div→li、Submenu 促销文案与 SubmenuCol
-[f002]   98.2% -> 98.2%  ROLLBACK
-[f002] [fixup] best 98.2%
-[f002] 
-==== [harvest] ====
-[f001]   analysis: 对比两张截图与量化数据可见：页面深色主题、整体布局与配色一致，静态差异集中在“文本量度宽度”上——克隆页的字体渲染比原站窄，导致：① 顶部 Skip to content 链接（.skip-link）宽度 137.844px < 146.9
-[f002] 
-PIPELINE DONE -> workspace\apify.com\pages\about
-[f001]   97.3% -> 97.4%  KEEP
 [f001] 
-[fixup] round 2 (current 97.4%)
+==== [diff] ====
+[f001] 
+==== [fixup] ====
+[f001] [fixup] refinable 100% (static 142737px) — worth calibrating
+[f001] 
+[fixup] round 1 (current 94.5%)
 [f001]   style-probe: 25 elements with computed diffs
-[f001]   analysis: 可见静态差异集中在头部：1) .skip-link（Skip to content）左右内边距被压缩成 4.5625px（应为 16px），导致其宽度少 32px；2) 菜单项按钮内的 box__StyledBox 与下拉 Promotio
-[f001]   97.4% -> 97.3%  ROLLBACK
-[f001] [fixup] best 97.4%
+[f002]   analysis: 所有差异都是同一类静态问题：克隆页在页头导航、语言/登录区、面包屑和“Most Popular”标签上的文本渲染宽度比原站大 2%~7%（例如 Products 65.56→67.33、Pricing 面包屑 39.81→42.69、Mos
+[f002]   96.6% -> 96.7%  KEEP
+[f002] 
+[fixup] round 2 (current 96.7%)
+[f002]   style-probe: 25 elements with computed diffs
+[f002]   analysis: 差异全部集中在顶部导航（.navs / .nav-group / .mg-item / .nav-item 及其子 span、img、.svg-icon--inline）上：克隆页给这些元素多加了负字距（-0.24px 与 -0.288px
+[f002]   96.7% -> 96.6%  ROLLBACK
+[f002] [fixup] best 96.7%
+[f002] 
+==== [harvest] ====
+[f001]   analysis: 静态差异集中在两处：(1) 顶部 header-bar__inner 宽度比原站大 34.6px（741.31 vs 706.73），导致左右外边距偏小（349.34 vs 366.63）——原站该元素是内容自适应宽度，克隆端文字整体偏宽把
+[f001]   94.5% -> 94.6%  KEEP
+[f001] 
+[fixup] round 2 (current 94.6%)
+[f001]   style-probe: 25 elements with computed diffs
+[f002] 
+PIPELINE DONE -> workspace\thordata.com\pages\pricing
+[f003] 
+==== [capture] ====
+[f001]   analysis: 静态差异分两类：(1) 顶部公告条与主导航的 letterSpacing 在克隆页被误设为负值（-0.5px / -0.65px / -0.2px），原站为 normal，导致 header-bar__copy、header-bar__cl
+[f001]   94.6% -> 91.8%  ROLLBACK
+[f001] [fixup] best 94.6%
 [f001] 
 ==== [harvest] ====
+[f003] 
+==== [build] ====
+[f003] 
+==== [shot] ====
 [f001] 
-PIPELINE DONE -> workspace\apify.com\pages\pricing
+PIPELINE DONE -> workspace\thordata.com\pages\home
+[f003] 
+==== [diff] ====
+[f003] 
+==== [fixup] ====
+[f003] [fixup] refinable 97% (static 74940px) — worth calibrating
+[f003] 
+[fixup] round 1 (current 97%)
+[f003]   style-probe: 25 elements with computed diffs
+[f003]   analysis: 两张图的差异集中在页头（WebHeader/Submenu）内的文本度量：克隆页文字整体偏窄，属于字距（letter-spacing）缺失导致的静态排版差异，而非布局块位置错误。证据链：1) “Skip to content” 137.84
+[f003]   97% -> 97%  ROLLBACK
+[f003] [fixup] best 97%
+[f003] 
+==== [harvest] ====
+[f003] 
+PIPELINE DONE -> workspace\apify.com\pages\home

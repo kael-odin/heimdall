@@ -132,6 +132,9 @@ for (let i = 1; i <= 3; i++) {
 }
 writeFileSync(join(OUT, 'shot-src.png'), readFileSync(join(OUT, 'frame-3.png')));
 await page.screenshot({ path: join(OUT, 'shot-src.jpg'), type: 'jpeg', quality: 55 });   // 小图供 LLM 视觉调用
+// 全页长图：同步滚动对比页的“原站侧”原料（超长页可能失败，失败不阻塞）
+try { await page.screenshot({ path: join(OUT, 'shot-src-full.png'), fullPage: true, timeout: 90_000 }); }
+catch (e) { console.warn('  fullpage shot skipped:', String(e).slice(0, 80)); }
 
 // 渲染后 DOM（清场后定格版 —— 与克隆页同状态）
 const html = await page.content();

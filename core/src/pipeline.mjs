@@ -67,8 +67,9 @@ try {
   await run('harvest/harvest.mjs', [DIR]);
   emit({ kind: 'forge-stage', stage: 'harvest', status: 'done' });
 
-  // 跨页情报汇总 + 全站克隆索引页（每次 forge 后刷新）
+  // 跨页情报汇总 + 站点级接线（L2 路由/坏链收口）+ 全站克隆索引页
   await run('harvest/xlsx.mjs', [host]);
+  await run('crawler/linker.mjs', [host]);
   await run('crawler/index-page.mjs', [host]);
   log(`\nPIPELINE DONE -> ${DIR}`);
 } catch (e) {
