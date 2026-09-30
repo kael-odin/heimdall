@@ -1,17 +1,62 @@
-/* 深空观测站 · 全局底色与字体（视觉系统 v1） */
+/* 深空观测站 · HUD 视觉系统 v2（ui-ux-pro-max: hud-sci-fi-fui 风格规范）
+   原则：1px 细线仪器框 + 霓虹青点睛 + 等宽数据字 + 克制辉光。
+   全部色彩走 token，禁止组件内裸 hex。 */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
 :root {
-  --abyss: #05060A;
-  --dust: #1A1F2E;
+  /* 底色层 */
+  --abyss: #0B0B10;
+  --dust: #1E1E23;
+  --muted: #232328;
+  /* 语义色 */
   --cyan: #22D3EE;
+  --cyan-dim: rgba(34, 211, 238, .45);
+  --cyan-line: rgba(34, 211, 238, .22);
   --amber: #F59E0B;
-  --violet: #8B5CF6;
+  --violet: #A78BFA;
   --green: #34D399;
-  --red: #F87171;
-  --text: #E6EAF2;
-  --text-dim: #8A93A6;
-  --font-num: 'Orbitron', 'Space Grotesk', 'Segoe UI', monospace;
-  --font-cn: 'HarmonyOS Sans SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+  --red: #EF4444;
+  /* 文字 */
+  --text: #F8FAFC;
+  --text-dim: #94A3B8;
+  --text-faint: #64748B;
+  /* 字体 */
+  --font-num: 'Orbitron', monospace;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-cn: 'Noto Sans SC', 'Microsoft YaHei UI', sans-serif;
+  /* 几何 */
+  --r: 4px;
+  --line: 1px;
+  --pad: 14px;
+  --dur: 180ms;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #app { height: 100%; background: var(--abyss); color: var(--text); font-family: var(--font-cn); overflow: hidden; }
-::selection { background: rgba(34, 211, 238, .35); }
+::selection { background: rgba(34, 211, 238, .3); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--cyan-line); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--cyan-dim); }
+
+/* HUD 仪器面板基类：1px 细线 + 内嵌渐变 + 装饰角 */
+.hud-panel {
+  position: relative;
+  background: linear-gradient(180deg, rgba(30, 30, 35, .92), rgba(20, 20, 26, .94));
+  border: var(--line) solid var(--cyan-line);
+  border-radius: var(--r);
+}
+.hud-panel::before, .hud-panel::after {
+  content: '';
+  position: absolute;
+  width: 10px; height: 10px;
+  border-color: var(--cyan-dim);
+  border-style: solid;
+  pointer-events: none;
+}
+.hud-panel::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+.hud-panel::after { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+/* 标准微动效 */
+.hud-t { transition: all var(--dur) ease; }
+
+/* 状态点 */
+@keyframes hud-pulse { 50% { opacity: .35; } }

@@ -81,3 +81,11 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 ### 工程收口
 - engine forge 并发槽 2（实测 200/200/409），侦察与锻造独立互斥
 - pipeline 每轮自动刷新 host 级 xlsx
+
+## W6：视觉打磨第一轮（2026-09-30，ui-ux-pro-max 设计系统）
+
+- 设计规范：HUD/Sci-Fi FUI 风格（1px 细线仪器框/霓虹青点睛/等宽数据字/装饰括角/克制辉光），dials=variance 7/motion 6/density 7
+- style.css v2：完整 token 体系（色/字/几何/动效时长全走变量）+ .hud-panel 装饰角基类
+- Atlas.vue 换血：HEIMDALL 主标题+副标/分节线刻度、输入条 HUD 化、阶段 01-06 编号步进器（running 琥珀脉冲/done 绿点）、FIDELITY VERDICT 判定区（54px 大分数+三维拆解+可修性进度条）、SOURCE/MIRROR 双联标签
+- 坑：Vue v-for 对象遍历第 2 参是 value 第 3 参才是 index——编号 NaN 修复
+- 待续：星图节点贴缩略图、入场运镜、reduced-motion、星系盘面光照层次
