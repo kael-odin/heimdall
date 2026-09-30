@@ -225,7 +225,7 @@ function startForge(node) {
 
 async function forgeAll() {
   // 并行批量锻造：2 并发槽（engine MAX_FORGE），逐颗点亮
-  const targets = nodes.filter(n => n.ring === 1).slice(0, 6);
+  const targets = nodes.filter(n => n.ring <= 2).slice(0, 10);   // 内环+外环前 10 页（引擎 2 并发槽消化）
   statusText.value = `全境锻造 ${targets.length} 页`;
   let done = 0;
   const queue = [...targets];

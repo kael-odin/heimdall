@@ -24,6 +24,7 @@ const pages = readdirSync(PAGES)
     score: readJson(join(PAGES, n, 'score.json')),
     intel: readJson(join(PAGES, n, 'intel', 'intel.json')),
     semantic: readJson(join(PAGES, n, 'intel', 'semantic.json')),
+    target: readJson(join(PAGES, n, 'manifest.json'))?.target ?? '',
   }))
   .sort((a, b) => (b.score?.total ?? 0) - (a.score?.total ?? 0));
 
@@ -103,8 +104,11 @@ document.addEventListener('click', (e) => {
 writeFileSync(join(BASE, 'index.html'), html);
 console.log(`index -> ${join(BASE, 'index.html')} (${pages.length} pages, avg ${avg}%)`);
 
-// ---------- compare.html：同步滚动对比（左=原站全页长图，右=活体镜像 iframe） ----------
-const pagesJson = JSON.stringify(pages.map(p => ({ name: p.name, path: p.semantic?.pageType ?? '' })));
+// ---------- compare.html：同步滚动对比 v2 ----------
+// 两侧统一 1440px 桌面视口 + transform 等比缩放显示：镜像在窄容器里会触发响应式断点
+// （明明还原却看起来"变移动版"），等比缩放根除此问题。原站侧用捕获全页快照（离线可靠、
+// 不受 X-Frame 限制）；"打开原站"按钮提供在线访问做最终裁决。
+const pagesJson = JSON.stringify(pages.map(p => ({ name: p.name, path: p.semantic?.pageType ?? '', target: p.target })));
 const compare = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -113,31 +117,36 @@ const compare = `<!doctype html>
 :root { --cyan:#22D3EE; --line:rgba(34,211,238,.25); --dim:#94A3B8; }
 * { box-sizing:border-box; margin:0; padding:0; }
 body { background:#0B0B10; color:#F8FAFC; font-family:'Noto Sans SC',sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
-header { display:flex; align-items:center; gap:14px; padding:10px 18px; border-bottom:1px solid var(--line); flex-shrink:0; }
+header { display:flex; align-items:center; gap:12px; padding:10px 18px; border-bottom:1px solid var(--line); flex-shrink:0; flex-wrap:wrap; }
 header h1 { font-family:Orbitron,monospace; font-size:14px; letter-spacing:.24em; }
 header select { background:#1E1E23; color:#F8FAFC; border:1px solid var(--line); padding:6px 10px; border-radius:4px; font-family:monospace; }
-header .back { color:var(--cyan); text-decoration:none; font-size:12px; font-family:monospace; letter-spacing:.1em; }
+header .lnk { color:var(--cyan); text-decoration:none; font-size:12px; font-family:monospace; letter-spacing:.08em; border:1px solid var(--line); padding:5px 10px; border-radius:4px; }
+header .lnk:hover { border-color:var(--cyan); }
 header .hint { margin-left:auto; font-size:11px; color:var(--dim); }
 .panes { flex:1; display:grid; grid-template-columns:1fr 1fr; min-height:0; }
 .pane { position:relative; overflow:auto; border-right:1px solid var(--line); }
 .pane:last-child { border-right:0; }
-.pane .tag { position:sticky; top:0; z-index:3; display:block; padding:6px 14px; font-family:monospace; font-size:11px; letter-spacing:.2em; color:var(--cyan); background:rgba(11,11,16,.85); border-bottom:1px solid var(--line); }
-.pane img { width:100%; display:block; }
-.pane iframe { width:100%; height:100%; border:0; background:#fff; display:block; }
-.pane .miss { padding:40px 24px; color:var(--dim); font-size:13px; line-height:1.8; }
+.pane .tag { position:sticky; top:0; z-index:3; display:block; padding:6px 14px; font-family:monospace; font-size:11px; letter-spacing:.2em; color:var(--cyan); background:rgba(11,11,16,.88); border-bottom:1px solid var(--line); }
+.scaled { width:1440px; transform-origin:0 0; }
+.scaled img { width:1440px; display:block; }
+.scaled iframe { width:1440px; border:0; background:#fff; display:block; }
+.pane .miss { padding:40px 24px; color:var(--dim); font-size:13px; line-height:1.8; width:600px; }
+.zoom { position:sticky; bottom:8px; left:8px; z-index:3; font-family:monospace; font-size:10px; color:var(--dim); background:rgba(11,11,16,.8); padding:2px 8px; border-radius:3px; display:inline-block; }
 </style></head><body>
 <header>
   <h1>SYNC COMPARE</h1>
   <select id="sel"></select>
-  <a class="back" href="index.html">← 档案</a>
-  <span class="hint">任意一侧滚动，另一侧按比例同步 · 原站侧为捕获时全页快照</span>
+  <a class="lnk" href="index.html">← 档案</a>
+  <a class="lnk" id="live" href="#" target="_blank" rel="noopener">打开原站 ↗</a>
+  <span class="hint">两侧统一 1440px 桌面视口 · 等比缩放 · 任意一侧滚动同步</span>
 </header>
 <div class="panes">
-  <div class="pane" id="left"><span class="tag">SOURCE · 原站</span><img id="shot" alt="source full page"/></div>
-  <div class="pane" id="right"><span class="tag">MIRROR · 镜像</span><iframe id="frame"></iframe></div>
+  <div class="pane" id="left"><span class="tag">SOURCE · 原站（捕获快照）</span><div class="scaled" id="lwrap"><img id="shot" alt="source full page"/></div><span class="zoom" id="zl"></span></div>
+  <div class="pane" id="right"><span class="tag">MIRROR · 镜像（可交互）</span><div class="scaled" id="rwrap"><iframe id="frame"></iframe></div><span class="zoom" id="zr"></span></div>
 </div>
 <script>
 const PAGES = __PAGES__;
+const VW = 1440;   // 捕获视口宽度：两侧共同的真实坐标系
 const params = new URLSearchParams(location.search);
 const cur = params.get('p') || PAGES[0]?.name || '';
 const sel = document.getElementById('sel');
@@ -149,15 +158,40 @@ for (const p of PAGES) {
 }
 const shot = document.getElementById('shot');
 const left = document.getElementById('left');
+const right = document.getElementById('right');
+const lwrap = document.getElementById('lwrap');
+const rwrap = document.getElementById('rwrap');
 const frame = document.getElementById('frame');
+const zl = document.getElementById('zl'), zr = document.getElementById('zr');
+let scale = 1;
+
+function fit() {
+  scale = left.clientWidth / VW;
+  lwrap.style.transform = 'scale(' + scale + ')';
+  rwrap.style.transform = 'scale(' + scale + ')';
+  // transform 不改变布局高度：用容器实际高度补齐滚动范围
+  lwrap.style.height = Math.round((shot.naturalHeight || 1000) * scale) + 'px';
+  rwrap.style.height = left.clientHeight + 'px';
+  frame.style.height = Math.round(left.clientHeight / scale) + 'px';
+  zl.textContent = 'zoom ' + Math.round(scale * 100) + '%';
+  zr.textContent = 'zoom ' + Math.round(scale * 100) + '% · ' + VW + 'px viewport';
+}
+window.addEventListener('resize', fit);
+
 function load(name) {
+  const p = PAGES.find(x => x.name === name) ?? {};
+  document.getElementById('live').href = p.target || '#';
+  lwrap.style.height = 'auto';
   shot.src = 'pages/' + name + '/shot-src-full.png';
   shot.onerror = () => { shot.replaceWith(Object.assign(document.createElement('div'), { className: 'miss', textContent: '该页未捕获全页长图（旧版产物）。重新锻造此页即可获得同步对比的原站侧。' })); };
   frame.src = 'pages/' + name + '/clone/index.html';
 }
+shot.addEventListener('load', fit);
 sel.addEventListener('change', () => load(sel.value));
 load(cur);
-let lastSync = 0;   // 程序化滚动时间戳：回声事件在静默窗内被忽略（布尔 lock 挡不住异步回声，曾致滚动被拉回 0）
+new ResizeObserver(fit).observe(left);
+
+let lastSync = 0;   // 程序化滚动静默窗：异步回声事件在窗内被忽略（布尔 lock 挡不住回声）
 const QUIET = 180;
 function ratioOf(el) { return el.scrollTop / Math.max(1, el.scrollHeight - el.clientHeight); }
 function applyRatio(el, r) { el.scrollTop = r * Math.max(0, el.scrollHeight - el.clientHeight); }
@@ -168,6 +202,7 @@ left.addEventListener('scroll', () => {
   if (doc) applyRatio(doc, ratioOf(left));
 });
 frame.addEventListener('load', () => {
+  fit();
   frame.contentDocument.addEventListener('scroll', () => {
     if (performance.now() - lastSync < QUIET) return;
     lastSync = performance.now();
