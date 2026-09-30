@@ -187,7 +187,7 @@ function startForge(node) {
     const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
     forge.value = { taskId: null, pageName, url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' }, score: null, done: false, failed: false, intel: null, rounds: [], skipReason: null };
     node.forgeState = 'running';
-    statusText.value = '开始造物';
+    statusText.value = '锻造中 · ' + pageName;
     (async () => {
       try {
         const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: node.url }) });
@@ -452,6 +452,7 @@ onBeforeUnmount(() => {
       <div class="type" :style="{ color: hover.color }">{{ TYPE_CN[hover.type] ?? hover.type }}</div>
       <div class="path">{{ hover.path }}</div>
       <div class="title">{{ (hover.title || '').slice(0, 60) }}</div>
+      <div class="hint">点击星球 → 锻造此页 · 再点其它星球切换</div>
     </div>
   </div>
 
@@ -542,6 +543,7 @@ canvas { position: fixed; inset: 0; display: block; }
 .card .type { font-size: 10px; letter-spacing: .24em; margin-bottom: 5px; font-family: var(--font-mono); }
 .card .path { font-family: var(--font-mono); font-size: 13px; color: var(--cyan); }
 .card .title { font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+.card .hint { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--cyan-line); font-size: 10px; letter-spacing: .1em; color: var(--amber); font-family: var(--font-mono); }
 .seek { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; z-index: 5; background: rgba(11,11,16,.85); }
 .seek-caret { display: flex; align-items: center; padding: 0 4px 0 12px; color: var(--cyan-dim); font-size: 12px; }
 .seek input { width: 320px; padding: 11px 14px; background: transparent; border: 0; color: var(--text); font-family: var(--font-mono); font-size: 14px; letter-spacing: .04em; outline: none; }
