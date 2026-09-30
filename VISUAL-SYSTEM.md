@@ -122,3 +122,14 @@
 | diff loop round N | 「校准 N」 |
 | page done | 「恒星点亮」 |
 | harvest done | 「三件套入库」 |
+
+
+---
+
+## 实现状态（2026-09-30，v2 视觉已落地）
+
+- 设计系统：ui-ux-pro-max「HUD/Sci-Fi FUI」规范落地（1px 仪器线/装饰括角/等宽数据字/克制辉光）
+- Token：style.css v2 全变量（--abyss #0B0B10 / --cyan #22D3EE / --amber #F59E0B / --violet #A78BFA…，紫=AI 之手规则保留）
+- 字体：Orbitron（数字）/ Share Tech Mono（数据）/ Noto Sans SC（中文）
+- 星图 v3：缩略图行星（球面光+LOD）/ 核球光 / 银河带 / 入场奇点运镜（reduced-motion 安全）
+- 待续：hover 相机推近、剧场模式、盘面视差星尘

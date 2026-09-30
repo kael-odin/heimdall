@@ -224,8 +224,20 @@ function startForge(node) {
 }
 
 async function forgeAll() {
+  // 并行批量锻造：2 并发槽（engine MAX_FORGE），逐颗点亮
   const targets = nodes.filter(n => n.ring === 1).slice(0, 6);
-  for (const n of targets) await startForge(n);
+  statusText.value = `全境锻造 ${targets.length} 页`;
+  let done = 0;
+  const queue = [...targets];
+  const worker = async () => {
+    while (queue.length) {
+      const n = queue.shift();
+      await startForge(n);
+      done++;
+      statusText.value = `全境锻造 ${done}/${targets.length}`;
+    }
+  };
+  await Promise.all([worker(), worker()]);
   statusText.value = '全境锻造完成';
   setTimeout(() => { statusText.value = ''; }, 3000);
 }
@@ -508,6 +520,7 @@ onBeforeUnmount(() => {
     <iframe v-if="forge.done" :key="forge.taskId" class="live-clone" :src="`/${host}/pages/${forge.pageName}/clone/index.html`" title="living clone"></iframe>
   </div>
 
+  <a class="archive-link" v-if="hudPages > 0" :href="`/${host}/index.html`" target="_blank" rel="noopener">克隆档案 · {{ hudPages }} 页</a>
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
 </template>
 
@@ -585,5 +598,7 @@ canvas { position: fixed; inset: 0; display: block; }
 .screens { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
 .pane img { width: 100%; border: 1px solid rgba(148,163,184,.22); border-radius: var(--r); display: block; }
 .pane-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: .22em; color: var(--text-faint); margin-bottom: 6px; }
+.archive-link { position: fixed; right: 24px; bottom: 20px; z-index: 8; padding: 8px 16px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: rgba(11, 11, 16, .82); color: var(--cyan); font-family: var(--font-mono); font-size: 12px; letter-spacing: .16em; text-decoration: none; transition: all var(--dur); }
+.archive-link:hover { border-color: var(--cyan-dim); box-shadow: 0 0 18px rgba(34, 211, 238, .2); }
 .live-clone { width: 100%; height: 44vh; margin-top: 14px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: #fff; }
 </style>

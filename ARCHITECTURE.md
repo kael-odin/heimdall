@@ -126,3 +126,31 @@ heimdall/
 
 Windows 11 · Node 22+ · pnpm · Playwright chromium · Python 3（仅数据后处理可选）·
 LLM：比赛期用现有 ZCode 额度；console 全部产物本地缓存，断网可演。
+
+
+---
+
+## 8. 实现状态标注（2026-09-30，W0-W6 完成）
+
+v1 设计→实现的差异（以上文为准，本节为勘误表）：
+
+| v1 设计 | 实现 | 说明 |
+|---|---|---|
+| Three.js 3D 星图 | Canvas 2D 星系盘面 | 2D 达标线已达标（缩略图行星/核球光/银河带/入场运镜），3D 待决策 |
+| MCP 工具层 | engine-server HTTP API（:8900） | SSE 事件流直连 Web 控制台；MCP 封装后补不阻塞 |
+| ZCode skill 编排 | pipeline.mjs 固化编排 | 流水线是确定性代码，无需 agent 循环 |
+| serve.mjs 临时服务 | engine 常驻 /static/* | 端口冲突根除 |
+| 评分单帧 | 多帧最优匹配 + breakdown | W5 正名，动画噪声可测量 |
+
+**最终组件清单（全部已实现）：**
+```
+core/src/
+  crawler/  capture(多帧+CSSOM) build_clone(CSSOM重写) recon(BFS+sitemap) shot_clone index_page
+  differ/   diff(多帧+三维) domdiff(parse5) fixup(AI校准循环) style-probe(computed差异)
+  harvest/  harvest(规则+LLM语义) xlsx(跨页汇总)
+  adapters/ nextjs/vue-vite/generic（探测自动路由）
+  pipeline.mjs（六阶段编排） engine-server.mjs（API+SSE+静态+并发槽） llm.mjs env.mjs
+console/    Atlas.vue（星图+施工舱 HUD v2/v3）
+```
+
+**关键端口/路径**：engine :8900（/api/recon /api/forge /api/events /static/*）· vite :5173（proxy /api/）· 产物 workspace/<host>/
