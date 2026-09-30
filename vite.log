@@ -1066,11 +1066,52 @@ ducts-serp-api-mcp-server/clone/index.html[22m
 [2m下午4:52:22[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/apify.com/index.html[22m
 [2m下午4:52:22[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/apify.com/compare.html[22m
 [2m下午4:52:49[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Atlas.vue, /src/Atlas.vue?vue&type=style&index=0&scoped=6dfa8c7a&lang.css[22m
-[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/thordata.com/pages/pricing-isp-proxies/clone/index.html[22m
-[2m下午4:42:50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/thordata.com/pages/pricing-mobile-proxies/clone/index.html[22m
-[2m下午4:42:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/thordata.com/index.html[22m
-[2m下午4:42:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/thordata.com/compare.html[22m
-[2m下午4:46:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/thordata.com/pages/pricing-datacenter-proxies/clone/index.html[22m
-[2m下午4:46:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/thordata.com/pages/pricing-isp-proxies/clone/index.html[22m
-[2m下午4:46:03[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/thordata.com/index.html[22m
-[2m下午4:46:03[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mD:/Github-Star/heimdall/core/workspace/thordata.com/compare.html[22m
+[2m下午5:12:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/Atlas.vue, /src/Atlas.vue?vue&type=style&index=0&scoped=6dfa8c7a&lang.css[22m
+[2m下午5:12:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mdependency optimized: [33m3d-force-graph[32m[39m
+[2m下午5:12:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32moptimized dependencies changed. reloading[39m
+[2m下午5:13:01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[2m下午5:14:08[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: [vue/compiler-sfc] Missing semicolon. (36:9)
+
+D:/Github-Star/heimdall/console/src/Graph3D.vue
+34 |    graph.nodeRelSize(5);
+35 |      nodes: props.nodes.map(n => ({ ...n, __id: n.id, color: nodeColor(n) })),
+36 |      links: props.links.map(l => ({ source: l.source ?? l.from ?? l[0]?.id, target: l.target ?? l.to ?? l[1]?.id })),
+   |           ^
+37 |    });
+38 |    try { graph.zoomToFit(700, 70); } catch {}
+  Plugin: [35mvite:vue[39m
+  File: [36mD:/Github-Star/heimdall/console/src/Graph3D.vue[39m:36:9
+[33m  33 |    if (!graph || disposed) return;
+  34 |    graph.nodeRelSize(5);
+  35 |      nodes: props.nodes.map(n => ({ ...n, __id: n.id, color: nodeColor(n) })),
+     |                                                                           ^
+  36 |      links: props.links.map(l => ({ source: l.source ?? l.from ?? l[0]?.id, target: l.target ?? l.to ?? l[1]?.id })),
+  37 |    });[39m
+[2m下午5:14:08[22m [31m[1m[vite][22m[39m [31mInternal server error: [vue/compiler-sfc] Missing semicolon. (36:9)
+
+D:/Github-Star/heimdall/console/src/Graph3D.vue
+34 |    graph.nodeRelSize(5);
+35 |      nodes: props.nodes.map(n => ({ ...n, __id: n.id, color: nodeColor(n) })),
+36 |      links: props.links.map(l => ({ source: l.source ?? l.from ?? l[0]?.id, target: l.target ?? l.to ?? l[1]?.id })),
+   |           ^
+37 |    });
+38 |    try { graph.zoomToFit(700, 70); } catch {}[39m
+  Plugin: [35mvite:vue[39m
+  File: [36mD:/Github-Star/heimdall/console/src/Graph3D.vue[39m:36:9
+[33m  33 |    if (!graph || disposed) return;
+  34 |    graph.nodeRelSize(5);
+  35 |      nodes: props.nodes.map(n => ({ ...n, __id: n.id, color: nodeColor(n) })),
+     |                                                                           ^
+  36 |      links: props.links.map(l => ({ source: l.source ?? l.from ?? l[0]?.id, target: l.target ?? l.to ?? l[1]?.id })),
+  37 |    });[39m
+      at constructor (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:369:19)
+      at Parser.raise (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:6622:19)
+      at Parser.semicolon (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:6918:10)
+      at Parser.parseExpressionStatement (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:13319:10)
+      at Parser.parseStatementContent (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:12933:19)
+      at Parser.parseStatementLike (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:12801:17)
+      at Parser.parseStatement (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:12794:17)
+      at Parser.parseLabeledStatement (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:13312:95)
+      at Parser.parseStatementContent (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:12931:19)
+      at Parser.parseStatementLike (D:\Github-Star\heimdall\console\node_modules\.pnpm\@babel+parser@7.29.9\node_modules\@babel\parser\lib\index.js:12801:17)
+[2m下午5:14:57[22m [31m[1m[vite][22m[39m [31mInternal server err

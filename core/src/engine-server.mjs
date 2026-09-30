@@ -11,13 +11,14 @@
  */
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.argv[2] ?? 8900);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+const UA2 = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif', '.svg': 'image/svg+xml', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf' };
 
 const json = (res, code, obj) => { res.writeHead(code, { ...CORS, 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
@@ -82,7 +83,7 @@ function startForge(url) {
   return { id: spawnTask(t, join('src', 'pipeline.mjs'), [url, name]).id, name };
 }
 
-createServer((req, res) => {
+createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); res.end(); return; }
 
@@ -141,6 +142,45 @@ createServer((req, res) => {
     if (!file.startsWith(join(HERE, '..', 'workspace')) || !existsSync(file)) return json(res, 404, { error: 'nf' });
     res.writeHead(200, { ...CORS, 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
     res.end(readFileSync(file));
+    return;
+  }
+
+  if (req.method === 'GET' && u.pathname === '/api/sites') {
+    // 已侦察站点清单（有 atlas.json 的 host）——控制台切换器数据源
+    const wsDir = join(HERE, '..', 'workspace');
+    const sites = [];
+    try {
+      for (const d of readdirSync(wsDir)) {
+        const ap = join(wsDir, d, 'recon', 'atlas.json');
+        if (!existsSync(ap)) continue;
+        try {
+          const a = JSON.parse(readFileSync(ap, 'utf8'));
+          const pagesDir = join(wsDir, d, 'pages');
+          const forged = existsSync(pagesDir) ? readdirSync(pagesDir).filter(n => existsSync(join(pagesDir, n, 'clone', 'index.html'))).length : 0;
+          sites.push({ host: d, origin: a.origin, pages: a.meta?.pages ?? a.nodes?.length ?? 0, edges: a.meta?.edges ?? 0, forged });
+        } catch {}
+      }
+    } catch {}
+    return json(res, 200, { sites });
+  }
+
+  // 反向代理 /px/<host>/<path> → https://<host>/<path> —— 活镜像基础设施：
+  // 镜像页的 API/资源请求走此通道回原站，"功能数据用原站跑通"
+  if (req.method === 'GET' && u.pathname.startsWith('/px/')) {
+    const m = /^\/px\/([^/]+)(\/.*)?$/.exec(u.pathname);
+    if (!m) return json(res, 400, { error: 'bad proxy path' });
+    const target = 'https://' + m[1] + (m[2] ?? '/') + u.search;
+    try {
+      const upstream = await fetch(target, { headers: { 'User-Agent': UA2, Accept: req.headers.accept ?? '*/*', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' }, redirect: 'follow' });
+      const headers = new Headers();
+      for (const [k, v] of upstream.headers) {
+        if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy'].includes(k.toLowerCase())) continue;
+        headers.set(k, v);
+      }
+      headers.set('Access-Control-Allow-Origin', '*');
+      res.writeHead(upstream.status, headers);
+      res.end(Buffer.from(await upstream.arrayBuffer()));
+    } catch (e) { json(res, 502, { error: String(e).slice(0, 120) }); }
     return;
   }
 
