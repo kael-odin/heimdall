@@ -82,7 +82,22 @@ favicon/图标等全站小件自动补齐（跨页借用 + 坏链修复，余 10
 - 部分页首屏有打字机/轮播动画，镜像页该区域静止（评分已排除此类噪声）
 - 白名单模式：严格反爬的站会侦察失败（明说拒收）
 
-## 8. 命令速查
+## 8. 全站批量锻造与交付包
+
+```cmd
+:: 全站批量（持久化队列，断点续跑：重跑自动跳过已完成页）
+cd /d D:\Github-Star\heimdall\core
+node src\queue.mjs thordata.com --max 30
+
+:: 打交付包（给前端开发的素材包：README 指南 + 镜像站 + 情报 + 原材料）
+node src\deliver.mjs thordata.com
+:: 产出 deliverable	hordata.com-2026-09-30\ —— 整个文件夹转发即可
+```
+
+交付包内 `README-改造指南.md` 是前端开发的第一入口：怎么起服务、目录结构、
+改造建议路径（读 raw/cssom.css 拿设计 token）、已知边界、还原度口径。
+
+## 9. 命令速查
 
 ```cmd
 :: 单页完整锻造（等价于点星）
