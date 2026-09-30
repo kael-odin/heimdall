@@ -20,6 +20,18 @@ if (!URL_) { console.error('usage: node src/pipeline.mjs <url> <pageName>'); pro
 const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error(...a);
 
+// 轻量 .env 读取（fixup 门控阈值等）
+const ENV = (() => {
+  const e = {};
+  try {
+    for (const line of readFileSync(join('src', '..', '.env'), 'utf8').split(/\r?\n/)) {
+      const m = /^([A-Z_]+)=(.*)$/.exec(line.trim());
+      if (m) e[m[1]] = m[2];
+    }
+  } catch {}
+  return e;
+})();
+
 const host = new URL(URL_).hostname.replace(/^www\./, '');
 const DIR = join('workspace', host, 'pages', NAME);
 mkdirSync(DIR, { recursive: true });
@@ -53,6 +65,21 @@ try {
   const score = JSON.parse(readFileSync(join(DIR, 'score.json'), 'utf8'));
   emit({ kind: 'forge-score', score });
   emit({ kind: 'forge-stage', stage: 'diff', status: 'done' });
+
+  // AI 校准只对有修复空间的页面跑（pixel>=97% 的高分页跳过，省 3-5 分钟）
+  const preScore = JSON.parse(readFileSync(join(DIR, 'score.json'), 'utf8'));
+  // 门控阈值可配置（.env FIXUP_PIXEL_GATE）；注意 pixel 受动画噪声影响，"可修性判断"待后续精细化
+  const gate = Number(process.env.FIXUP_PIXEL_GATE ?? ENV.FIXUP_PIXEL_GATE ?? 0.97);
+  emit({ kind: 'forge-stage', stage: 'fixup', status: preScore.pixel < 0.97 ? 'running' : 'skipped' });
+  if (preScore.pixel < gate) {
+    log(`
+==== [fixup] (pixel ${(preScore.pixel * 100).toFixed(1)}% has room) ====`);
+    await run('differ/fixup.mjs', [DIR, '2', String(PORT)]);
+    emit({ kind: 'forge-stage', stage: 'fixup', status: 'done' });
+  } else {
+    log(`
+==== [fixup] skipped (pixel ${(preScore.pixel * 100).toFixed(1)}% already high) ====`);
+  }
 
   emit({ kind: 'forge-stage', stage: 'harvest', status: 'running' });
   log(`\n==== [harvest] ====`);

@@ -21,3 +21,19 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 2. Excel 真格式（exceljs）替代 CSV；情报包跨页汇总视图
 3. 批量 forge 并发加速（现串行 ~1 分钟/页）
 4. 视觉打磨专项（impeccable / ui-ux-pro-max，2D→3D 决策）
+
+# L4.5: LLM 增强层
+- core/llm.mjs：OpenAI 兼容客户端（.env 配置，key 不入库），文本/JSON/视觉全通，网络重试×3 + AbortSignal 超时（中转站偶发半死连接会永久悬挂 fetch）
+- 双模型：glm-5.3-flash 主（质量）/ deepseek-flash fast（速度 10s 级 vs glm 2-4min），fixup 用 fast
+- core/differ/fixup.mjs：L3 AI 校准循环——双截图喂视觉模型 → JSON {analysis, css} → 写 clone/styles/fixes.css → 重截重 diff → 分数提升保留/下降回滚（≤2 轮），fixup-history.json 分数曲线
+- capture/shot 同时出 jpeg 小图（quality 55）供视觉调用（全尺寸 png base64 2.5MB+ 会撞中转限制）
+- pipeline：fixup 阶段 + FIXUP_PIXEL_GATE 门控（.env 可配，默认 0.97；⚠️ pixel 门控是权宜——受动画噪声影响，"可修性判断"待精细化，用户已点名要调）
+- E2E：95.4
+## L4.5 追加：LLM 增强层与 AI 校准循环（2026-09-30）
+
+- core/llm.mjs：OpenAI 兼容客户端（.env 配置，key 不入库），文本/JSON/视觉全通，网络重试×3 + AbortSignal 超时（中转站偶发半死连接会永久悬挂 fetch）
+- 双模型：glm-5.3-flash 主（质量）/ deepseek-flash fast（速度 10s 级 vs glm 2-4min），fixup 用 fast
+- core/differ/fixup.mjs：L3 AI 校准循环——双截图喂视觉模型 → JSON {analysis, css} → 写 clone/styles/fixes.css → 重截重 diff → 分数提升保留/下降回滚（≤2 轮），fixup-history.json 分数曲线
+- capture/shot 同时出 jpeg 小图（quality 55）供视觉调用（全尺寸 png base64 2.5MB+ 会撞中转限制）
+- pipeline：fixup 阶段 + FIXUP_PIXEL_GATE 门控（.env 可配，默认 0.97；⚠️ pixel 门控是权宜——受动画噪声影响，"可修性判断"待精细化，用户已点名要调）
+- E2E：95.4% 页触发校准→回滚正确；99+ 页跳过。校准曲线前端可见

@@ -125,6 +125,7 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(500);
 await page.screenshot({ path: join(OUT, 'shot-src.png') });
+await page.screenshot({ path: join(OUT, 'shot-src.jpg'), type: 'jpeg', quality: 55 });   // 小图供 LLM 视觉调用
 
 // 渲染后 DOM（清场后定格版 —— 与克隆页同状态）
 const html = await page.content();

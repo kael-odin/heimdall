@@ -22,5 +22,6 @@ await page.evaluate(() => document.fonts.ready);
 await page.addStyleTag({ content: FREEZE_CSS });
 await page.waitForTimeout(1500);
 await page.screenshot({ path: OUT });
+await page.screenshot({ path: OUT.replace(/\.png$/, '.jpg'), type: 'jpeg', quality: 55 });
 console.log('clone screenshot ->', OUT);
 await browser.close();

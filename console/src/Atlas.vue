@@ -169,7 +169,7 @@ function startForge(node) {
     if (!node?.url) return resolve();
     selected.value = node;
     const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
-    forge.value = { taskId: null, pageName, url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', harvest: 'idle' }, score: null, done: false, failed: false, intel: null };
+    forge.value = { taskId: null, pageName, url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' }, score: null, done: false, failed: false, intel: null, rounds: [] };
     node.forgeState = 'running';
     statusText.value = '开始造物';
     (async () => {
@@ -185,6 +185,7 @@ function startForge(node) {
           if (!f) return;
           if (ev.kind === 'forge-stage') f.stages[ev.stage] = ev.status;
           else if (ev.kind === 'forge-score') f.score = ev.score;
+          else if (ev.kind === 'fixup-round') f.rounds.push(ev);
           else if (ev.kind === 'forge-error') f.failed = true;
           else if (ev.kind === 'exit') {
             f.done = ev.status === 'done';
@@ -372,7 +373,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="stages">
-      <div class="stage" v-for="(label, key) in { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', diff: '像素定谳', harvest: '情报入库' }" :key="key"
+      <div class="stage" v-for="(label, key) in { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' }" :key="key"
            :class="forge.stages[key]">
         <span class="dot"></span>{{ label }}
       </div>
@@ -389,6 +390,12 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <div class="verdict pending" v-else-if="!forge.done">锻造中 …</div>
+    <div class="fixup-curve" v-if="forge.rounds.length">
+      <div class="curve-title">AI 校准曲线</div>
+      <div class="curve-row" v-for="r in forge.rounds" :key="r.round">
+        校准 {{ r.round }}：{{ r.before }}% → {{ r.after }}% <b :class="r.kept ? 'kept' : 'rolled'">{{ r.kept ? '保留' : '回滚' }}</b>
+      </div>
+    </div>
     <div class="intel-bar" v-if="forge.intel">情报包：标题 {{ forge.intel.headings }} · 价格 {{ forge.intel.prices }} · CTA {{ forge.intel.cta }} · 链接 {{ forge.intel.links }}</div>
 
     <div class="screens" v-if="forge.done">
@@ -440,6 +447,11 @@ canvas { position: fixed; inset: 0; display: block; }
 .dock-headbtns { display: flex; gap: 8px; align-items: center; }
 .dock-all { background: linear-gradient(180deg, rgba(245,158,11,.25), rgba(245,158,11,.08)); border: 1px solid var(--amber); color: var(--amber); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; letter-spacing: .1em; }
 .dock-all:hover { box-shadow: 0 0 14px rgba(245,158,11,.5); }
+.fixup-curve { margin-top: 12px; padding: 10px 12px; border: 1px dashed rgba(139,92,246,.5); border-radius: 8px; }
+.curve-title { font-size: 11px; letter-spacing: .2em; color: #A78BFA; margin-bottom: 6px; }
+.curve-row { font-size: 12px; color: var(--text-dim); font-family: monospace; display: flex; gap: 8px; align-items: center; }
+.curve-row b.kept { color: var(--green); }
+.curve-row b.rolled { color: var(--red); }
 .intel-bar { margin-top: 12px; padding: 10px 12px; border: 1px dashed rgba(139,92,246,.5); border-radius: 8px; color: #A78BFA; font-size: 12px; letter-spacing: .04em; }
 .stages { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
 .stage { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid rgba(138,147,166,.25); border-radius: 8px; font-size: 13px; color: var(--text-dim); }
@@ -448,6 +460,8 @@ canvas { position: fixed; inset: 0; display: block; }
 .stage.running .dot { background: var(--amber); box-shadow: 0 0 10px var(--amber); animation: pulse 1s ease-in-out infinite; }
 .stage.done { border-color: rgba(52,211,153,.5); color: var(--green); }
 .stage.done .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.stage.skipped { opacity: .55; }
+.stage.skipped .dot { background: #3A4356; }
 .verdict { margin-top: 18px; text-align: center; padding: 16px; border: 1px solid rgba(34,211,238,.3); border-radius: 10px; }
 .verdict.pending { color: var(--text-dim); letter-spacing: .3em; }
 .score-num { font-family: var(--font-num); font-size: 46px; }
