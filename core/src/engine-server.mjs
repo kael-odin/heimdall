@@ -184,6 +184,70 @@ createServer(async (req, res) => {
     return;
   }
 
+  // 活镜像 /lm/<host>/<path> —— 融合路由：
+  //   本地 live/<path>/index.html 存在 → 回校准快照（视觉+结构已对齐）
+  //   否则 → 全代理回原站（未锻造页/资源/JS chunks/API 全部原样透传，页面"活"）
+  // 全方法透传 + cookie 透传 + 剥离 Domain/Secure（cookie 落到我们域）+ 剥 X-Frame/CSP
+  if (u.pathname.startsWith('/lm/')) {
+    console.error('[lm] hit', u.pathname);
+    try {
+    const m = /^\/lm\/([^/]+)(\/.*)?$/.exec(u.pathname);
+    if (!m) return json(res, 400, { error: 'bad lm path' });
+    const lmHost = m[1];
+    let rel = decodeURIComponent(m[2] ?? '/');
+    if (rel.endsWith('/')) rel += 'index.html';
+    const noWww = lmHost.replace(/^www\./, '');
+
+    // 本地优先：live/<path>/index.html（build_live 产物）；无扩展名路径补 /index.html
+    // 候选只放"文件"：有扩展名 → 精确路径；无扩展名 → 目录下的 index.html（目录本身绝不入候选，防 EISDIR）
+    const lmCandidates = /\.[a-z0-9]+$/i.test(rel)
+      ? [join(HERE, '..', 'workspace', noWww, 'live', rel)]
+      : [join(HERE, '..', 'workspace', noWww, 'live', rel.replace(/\/$/, '') + '/index.html')];
+    const localFile = lmCandidates.find(f => !f.includes('..') && existsSync(f));
+    console.error('[lm] localFile =', localFile ?? '(none, will proxy)');
+    if (localFile) {
+      res.writeHead(200, { ...CORS, 'Content-Type': MIME[extname(localFile)] ?? 'application/octet-stream', 'Cache-Control': 'no-cache' });
+      res.end(readFileSync(localFile));
+      return;
+    }
+
+    // 反代回原站（全方法）
+    const targetUrl = 'https://' + lmHost + (m[2] ?? '/') + u.search;
+    const fwdHeaders = {};
+    for (const k of ['accept', 'accept-language', 'content-type', 'cookie', 'referer']) {
+      if (req.headers[k]) fwdHeaders[k] = req.headers[k];
+    }
+    fwdHeaders['user-agent'] = UA2;
+    fwdHeaders.referer = 'https://' + lmHost + '/';
+    try {
+      const upstream = await fetch(targetUrl, {
+        method: req.method,
+        headers: fwdHeaders,
+        body: ['GET', 'HEAD'].includes(req.method) ? undefined : req,
+        redirect: 'follow',
+      });
+      const headers = new Headers();
+      let cookieCount = 0;
+      for (const [k, v] of upstream.headers) {
+        const kl = k.toLowerCase();
+        if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy', 'set-cookie'].includes(kl)) continue;
+        if (kl === 'location') { const v2 = v.replace('https://' + lmHost, '/lm/' + lmHost).replace('https://www.' + lmHost, '/lm/' + lmHost); headers.set(k, v2); continue; }
+        headers.set(k, v);
+      }
+      // Set-Cookie：剥 Domain/Secure（落到我们域，登录态/语言偏好等存活）
+      for (const c of upstream.headers.getSetCookie?.() ?? []) {
+        cookieCount++;
+        headers.append('set-cookie', c.replace(/;\s*domain=[^;]+/gi, '').replace(/;\s*secure/gi, ''));
+      }
+      headers.set('Access-Control-Allow-Origin', '*');
+      res.writeHead(upstream.status, headers);
+      res.end(Buffer.from(await upstream.arrayBuffer()));
+    } catch (e) { json(res, 502, { error: String(e).slice(0, 140) }); }
+    return;
+    } catch (e) { try { json(res, 502, { error: String(e).slice(0, 140) }); } catch {} }
+    return;
+  }
+
   if (u.pathname === '/api/status') {
     return json(res, 200, {
       ok: true,

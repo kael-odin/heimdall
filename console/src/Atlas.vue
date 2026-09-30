@@ -235,6 +235,10 @@ async function forgeAll() {
   setTimeout(() => { statusText.value = ''; }, 3000);
 }
 
+function liveUrl(f) {
+  try { const u = new URL(f.url); return `/lm/${u.host}${u.pathname.replace(/\/$/, '')}`; } catch { return '#'; }
+}
+
 function onNodeClick(node) {
   if (node?.url) startForge(node);
 }
@@ -333,6 +337,8 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
     </div>
     <div class="compare-link" v-if="forge.done">
       <a :href="`/${host}/compare.html?p=${forge.pageName}`" target="_blank" rel="noopener">⇔ 同步滚动对比</a>
+      <span class="sep">·</span>
+      <a :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">⚡ 活镜像</a>
     </div>
     <iframe v-if="forge.done" :key="forge.taskId" class="live-clone" :src="`/${host}/pages/${forge.pageName}/clone/index.html`" title="living clone"></iframe>
   </div>
@@ -425,6 +431,7 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
 .compare-link { margin-top: 10px; text-align: center; }
 .compare-link a { color: var(--cyan); font-size: 12px; font-family: var(--font-mono); letter-spacing: .12em; text-decoration: none; border-bottom: 1px dashed var(--cyan-line); }
 .compare-link a:hover { border-color: var(--cyan); }
+.compare-link .sep { color: var(--text-faint); margin: 0 8px; }
 .archive-link { position: fixed; right: 24px; bottom: 20px; z-index: 8; padding: 8px 16px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: rgba(11, 11, 16, .82); color: var(--cyan); font-family: var(--font-mono); font-size: 12px; letter-spacing: .16em; text-decoration: none; transition: all var(--dur); }
 .archive-link:hover { border-color: var(--cyan-dim); box-shadow: 0 0 18px rgba(34, 211, 238, .2); }
 .live-clone { width: 100%; height: 44vh; margin-top: 14px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: #fff; }

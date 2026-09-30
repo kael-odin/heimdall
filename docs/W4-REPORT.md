@@ -132,3 +132,25 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 - 定位阐述：给前端的不是"可上线代码"而是三重素材——像素级视觉参考（还原度背书）/可交互原型/情报底稿；改造建议=以镜像为视觉基准重建组件而非在哈希类上堆样式
 - queue.mjs：全站批量锻造——持久化队列 queue.json（断点续跑：有产物即 done 跳过）+ 双 worker 对接引擎 2 槽 + SSE 等 exit；thordata 全站 30 页队列后台跑中（5 done 起步）
 - 通用性/oneshot 话术定稿：CSSOM 最终态抓取栈无关（React/Vue/jQuery 渲染时规则全捕获）；oneshot 三支柱=L1 确定性搬运天然 97+/多帧评分排除噪声/AI 校准守门不倒退；天花板=JS 交互需 L3 真重写（当前 CSS 级修补）、反爬站白名单拒收
+
+## W13+：活镜像 POC（2026-09-30，用户定位升级"可落地可上线的功能级复刻"）
+
+### 架构：/lm/<host>/* 融合路由（engine）
+- 本地 live/<path>/index.html 存在 → 校准快照（视觉/结构已对齐）；否则全代理回原站（未锻造页/JS/API 全透传）
+- 全方法透传 + cookie 透传（剥 Domain/Secure 落我们域）+ 剥 X-Frame/CSP + location 重写
+- 已锻页=校准视觉+活数据；未锻页=原站原样透传 —— 全站皆活
+
+### build_live.mjs：dom.html → live/<path>/index.html
+- <base href="/lm/<host><dir>/"> + bootstrap（fetch/XHR patch 绝对域+根相对）+ 全文根相对/动态 import/绝对域重写
+- CSS 用本地校准版（死镜像同款）双保险；图片等资源走代理（版本永远匹配）
+- thordata 31 页全量转换（纯本地字符串操作，秒级）
+
+### 验收（Playwright，thordata pricing）
+- 页面渲染 ✓ / 标题正确 / 价格数据可见 ✓ / **导航点击弹出 105 菜单元素 = Vue hydration 成功，交互活了** ✓
+- 残留（如实入档）：4 个懒加载 chunk 404（hydration 链死引用，不影响视觉/数据/主交互）+ CookieConsent/crisp 挂件 2 个第三方错误（镜像环境固有限制）
+
+### 已知架构坑（四次连环）
+1. engine 本地候选含目录 → readFileSync EISDIR → async handler rejection = 连接挂死（非 502）→ 候选只放文件
+2. <base> 管不了 / 开头根相对（直接打当前源根）→ 全文根相对重写 + bootstrap 根相对规则
+3. 动态 import() 是语言级，不走 fetch patch → import(" 形态内联重写
+4. 正则字面量三层转义炼蛊 → 路径匹配改字符串 split 扫描
