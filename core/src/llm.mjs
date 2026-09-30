@@ -6,30 +6,16 @@
  * llmChat(messages, {json})  返回 content 文本；json:true 时解析并容错提取 JSON
  * llmVision(prompt, imagePaths)  图文混合（本地 png/jpg → base64）
  */
-import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { getEnv } from './env.mjs';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
+const ENV = getEnv();
+const BASE = ENV.LLM_BASE_URL ?? '';
+const KEY = ENV.LLM_API_KEY ?? '';
+const MODEL = ENV.LLM_MODEL ?? 'glm-5.3-flash';
+const MODEL_FAST = ENV.LLM_MODEL_FAST ?? MODEL;
 
-function loadEnv() {
-  const env = {};
-  const p = join(HERE, '..', '.env');
-  if (!existsSync(p)) return env;
-  for (const line of readFileSync(p, 'utf8').split(/\r?\n/)) {
-    const m = /^([A-Z_]+)=(.*)$/.exec(line.trim());
-    if (m) env[m[1]] = m[2];
-  }
-  return env;
-}
-const ENV = loadEnv();
-const BASE = process.env.LLM_BASE_URL ?? ENV.LLM_BASE_URL ?? '';
-const KEY = process.env.LLM_API_KEY ?? ENV.LLM_API_KEY ?? '';
-const MODEL = process.env.LLM_MODEL ?? ENV.LLM_MODEL ?? 'glm-5.3-flash';
-const MODEL_FAST = process.env.LLM_MODEL_FAST ?? ENV.LLM_MODEL_FAST ?? MODEL;
-
-export const llmEnabled = () =>
-  (process.env.HEIMDALL_LLM ?? ENV.HEIMDALL_LLM) === '1' && !!BASE && !!KEY;
+export const llmEnabled = () => ENV.HEIMDALL_LLM === '1' && !!BASE && !!KEY;
 
 export async function llmChat(messages, { json = false, maxTokens = 16384, timeout = 180_000, fast = false } = {}) {
   const body = { model: fast ? MODEL_FAST : MODEL, messages, max_tokens: maxTokens };

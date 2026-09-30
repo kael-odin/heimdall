@@ -37,3 +37,25 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 - capture/shot 同时出 jpeg 小图（quality 55）供视觉调用（全尺寸 png base64 2.5MB+ 会撞中转限制）
 - pipeline：fixup 阶段 + FIXUP_PIXEL_GATE 门控（.env 可配，默认 0.97；⚠️ pixel 门控是权宜——受动画噪声影响，"可修性判断"待精细化，用户已点名要调）
 - E2E：95.4% 页触发校准→回滚正确；99+ 页跳过。校准曲线前端可见
+
+## W5：评分与校准机制正名（2026-09-30，用户指令"减少权宜之计"）
+
+### 多帧采样评分（动画噪声根除）
+- capture 产 3 帧（frame-1/2/3，间隔 1.2s，JS 动效不受 CSS 冻结，帧间差即噪声证据）
+- differ：评分取「与克隆差异最小的帧」；帧间差集=动态区域掩码；最好帧差异拆分为 dynamicPx/staticPx
+- score.json 新增 breakdown：{frames, bestFrame, dynamicPx, staticPx, dynamicShare, refinable}
+- home 实测：动态噪声 5%（3531px）被识别排除，refinable 95%，TOTAL 97.2% A
+
+### 可修性门控（pixel 单维门控废弃）
+- fixup 自判：staticShare ≥ 0.002 且 refinable ≥ 0.3 才值得 AI 校准（.env: FIXUP_MIN_STATIC / FIXUP_MIN_REFINABLE）
+- 动画噪声页自动豁免（emit fixup-skip，前端显示豁免原因）；prompt 同步告知"不要修动画"
+
+### 校准循环的守门与状态一致性（实战教训）
+1. **回滚必须重截**：ROLLBACK 清 fixes.css 后 shot-clone.png 残留"带补丁"的截图，污染下一轮基线（曾致 LLM 把 JSON 错误页当克隆页分析）——回滚后重截+重 diff 恢复基线
+2. **补丁卫生检查**：括号平衡/体量上限/禁 body|html|通配符规则（某轮 165 字节补丁造成 -47 分：deepseek 把深色主题当差异修）
+3. **AI 补丁命中率现状**：类名是 styled-components 哈希（sc-a54b2c-0），LLM 猜选择器命中率低——下一步给 LLM 喂差异区域 computed style 对比数据
+4. 跨进程事件链：孙进程(fixup) stdout @@EVENT@@ 经 inherit 管道到 engine ✓ 验证通过
+
+### 结构清理
+- env.mjs 统一（llm/pipeline 各自解析 .env 的碎片化终结）
+- serve.mjs 退役：engine-server 常驻 /static/*（临时 serve 与端口冲突根除），shot/fixup 走 8900 静态路径

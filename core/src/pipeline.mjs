@@ -12,6 +12,8 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { getEnv } from './env.mjs';
+const ENV = getEnv();
 
 const URL_ = process.argv[2];
 const NAME = process.argv[3] ?? 'page';
@@ -19,18 +21,6 @@ if (!URL_) { console.error('usage: node src/pipeline.mjs <url> <pageName>'); pro
 
 const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error(...a);
-
-// 轻量 .env 读取（fixup 门控阈值等）
-const ENV = (() => {
-  const e = {};
-  try {
-    for (const line of readFileSync(join('src', '..', '.env'), 'utf8').split(/\r?\n/)) {
-      const m = /^([A-Z_]+)=(.*)$/.exec(line.trim());
-      if (m) e[m[1]] = m[2];
-    }
-  } catch {}
-  return e;
-})();
 
 const host = new URL(URL_).hostname.replace(/^www\./, '');
 const DIR = join('workspace', host, 'pages', NAME);
@@ -42,13 +32,13 @@ const run = (script, args) => new Promise((resolve, reject) => {
   p.on('error', reject);
 });
 
-const PORT = 8961;
-const serve = spawn(process.execPath, [join('src', 'crawler', 'serve.mjs'), join(DIR, 'clone'), String(PORT)], { stdio: 'ignore', detached: true });
+// 克隆页静态服务由 engine-server 常驻提供（/static/...），无需临时 serve
+const CLONE_URL = `http://127.0.0.1:8900/static/${host}/pages/${NAME}/clone/index.html`;
 
 const STAGES = [
   ['capture', 'crawler/capture.mjs', [URL_, DIR]],
   ['build', 'crawler/build_clone.mjs', [DIR]],
-  ['shot', 'crawler/shot_clone.mjs', [`http://127.0.0.1:${PORT}/index.html`, join(DIR, 'shot-clone.png')]],
+  ['shot', 'crawler/shot_clone.mjs', [CLONE_URL, join(DIR, 'shot-clone.png')]],
 ];
 
 let failed = null;
@@ -66,20 +56,11 @@ try {
   emit({ kind: 'forge-score', score });
   emit({ kind: 'forge-stage', stage: 'diff', status: 'done' });
 
-  // AI 校准只对有修复空间的页面跑（pixel>=97% 的高分页跳过，省 3-5 分钟）
-  const preScore = JSON.parse(readFileSync(join(DIR, 'score.json'), 'utf8'));
-  // 门控阈值可配置（.env FIXUP_PIXEL_GATE）；注意 pixel 受动画噪声影响，"可修性判断"待后续精细化
-  const gate = Number(process.env.FIXUP_PIXEL_GATE ?? ENV.FIXUP_PIXEL_GATE ?? 0.97);
-  emit({ kind: 'forge-stage', stage: 'fixup', status: preScore.pixel < 0.97 ? 'running' : 'skipped' });
-  if (preScore.pixel < gate) {
-    log(`
-==== [fixup] (pixel ${(preScore.pixel * 100).toFixed(1)}% has room) ====`);
-    await run('differ/fixup.mjs', [DIR, '2', String(PORT)]);
-    emit({ kind: 'forge-stage', stage: 'fixup', status: 'done' });
-  } else {
-    log(`
-==== [fixup] skipped (pixel ${(preScore.pixel * 100).toFixed(1)}% already high) ====`);
-  }
+  // AI 校准：fixup 内部按"可修性信号"（静态差异占比）自判是否值得跑（动画噪声页自动豁免）
+  emit({ kind: 'forge-stage', stage: 'fixup', status: 'running' });
+  log(`\n==== [fixup] ====`);
+  await run('differ/fixup.mjs', [DIR, '2']);
+  emit({ kind: 'forge-stage', stage: 'fixup', status: 'done' });
 
   emit({ kind: 'forge-stage', stage: 'harvest', status: 'running' });
   log(`\n==== [harvest] ====`);
@@ -89,7 +70,5 @@ try {
 } catch (e) {
   failed = String(e);
   emit({ kind: 'forge-error', error: failed });
-} finally {
-  try { process.kill(-serve.pid); } catch { try { serve.kill(); } catch {} }
 }
 process.exit(failed ? 1 : 0);

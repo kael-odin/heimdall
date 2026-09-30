@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 import { join } from 'node:path';
 
-const URL_ = process.argv[2] ?? 'http://127.0.0.1:8940/index.html';
+const URL_ = process.argv[2] ?? 'http://127.0.0.1:8900/static/apify.com/pages/home/clone/index.html';
 const OUT = process.argv[3] ?? join('workspace', 'apify.com', 'pages', 'home', 'shot-clone.png');
 
 const FREEZE_CSS = `

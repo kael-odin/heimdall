@@ -12,7 +12,7 @@
  * 用法: node src/crawler/capture.mjs <url> <outdir>
  */
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pickAdapter } from '../adapters/index.mjs';
 
@@ -118,13 +118,19 @@ writeFileSync(join(OUT, 'cssom-refs.json'), JSON.stringify({
 }, null, 2));
 console.log(`    sheets=${cssom.sheets.length} css=${(cssomCss.length / 1024).toFixed(0)}KB refs=${cssom.refs.length}`);
 
-console.log('[7/7] screenshot source');
+console.log('[7/7] multi-frame source screenshots');
 await page.addStyleTag({ content: FREEZE_CSS });
 await page.evaluate(() => {
   document.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
 });
 await page.waitForTimeout(500);
-await page.screenshot({ path: join(OUT, 'shot-src.png') });
+// 三帧采样：JS 驱动的动效（打字机/轮播）不受 CSS 冻结，帧间差即"动态噪声"证据。
+// differ 取与克隆最接近的帧评分，并把差异分为动态噪声 / 可修静态两类。
+for (let i = 1; i <= 3; i++) {
+  await page.screenshot({ path: join(OUT, `frame-${i}.png`) });
+  await page.waitForTimeout(1200);
+}
+writeFileSync(join(OUT, 'shot-src.png'), readFileSync(join(OUT, 'frame-3.png')));
 await page.screenshot({ path: join(OUT, 'shot-src.jpg'), type: 'jpeg', quality: 55 });   // 小图供 LLM 视觉调用
 
 // 渲染后 DOM（清场后定格版 —— 与克隆页同状态）

@@ -1,16 +1,20 @@
 /**
- * differ — 还原度评分（三维公式，data 维度 W4 harvest 接入）
+ * differ — 还原度评分（多帧采样 + 可修性分类）
  *
- *   pixel  pixelmatch 首屏对比            权重 0.5
- *   dom    DOM 结构相似度（domdiff）        权重 0.3
- *   data   结构化抽取覆盖度（W4 接入）       权重 0.2 —— 接入前按其余两维归一化
+ * 像素维度不再只对单帧：原站多帧采样（capture 产出 frame-*.png），
+ *   1) 评分取「与克隆差异最小的帧」—— 打字机/轮播等 JS 动效噪声被吸收；
+ *   2) 帧间差集 = 动态区域掩码；最好帧的差异像素落在掩码内 = 动态噪声差异，
+ *      其余 = 可修静态差异。可修性 refinable = 静态差异占比。
  *
- * total = 0.5*pixel + 0.3*dom (+ 0.2*data)，接入前 total = (0.5*pixel+0.3*dom)/0.8
+ * score.json 增加 breakdown: { frames, bestFrame, dynamicPx, staticPx, dynamicShare, refinable }
+ * —— fixup 的门控依据（有足够"可修静态差异"才值得 AI 校准）。
+ *
+ * total = 0.5*pixel + 0.3*dom + 0.2*data（data 缺失时按 pixel+dom 归一化）
  * grade: A ≥95 / B ≥85 / C <85
  *
  * 用法: node src/differ/diff.mjs <pageDir>
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
@@ -18,46 +22,95 @@ import { domSimilarity } from './domdiff.mjs';
 import { dataScore } from '../harvest/harvest.mjs';
 
 const DIR = process.argv[2] ?? join('workspace', 'apify.com', 'pages', 'home');
-const a = PNG.sync.read(readFileSync(join(DIR, 'shot-src.png')));
-const b = PNG.sync.read(readFileSync(join(DIR, 'shot-clone.png')));
+const CHANNEL_T = 24;   // 任一通道差 > 24 视为不同（约 pixelmatch threshold 0.1）
 
-if (a.width !== b.width || a.height !== b.height) {
-  console.error(`size mismatch: src ${a.width}x${a.height} vs clone ${b.width}x${b.height}`);
+const clone = PNG.sync.read(readFileSync(join(DIR, 'shot-clone.png')));
+
+// ---------- 帧收集 ----------
+const frames = [];
+for (let i = 1; i <= 8; i++) {
+  const p = join(DIR, `frame-${i}.png`);
+  if (existsSync(p)) frames.push(PNG.sync.read(readFileSync(p)));
+}
+if (!frames.length) frames.push(PNG.sync.read(readFileSync(join(DIR, 'shot-src.png'))));   // 旧产物兼容
+const W = clone.width, H = clone.height, total = W * H;
+if (frames[0].width !== W || frames[0].height !== H) {
+  console.error(`size mismatch: frame ${frames[0].width}x${frames[0].height} vs clone ${W}x${H}`);
   process.exit(2);
 }
-const diff = new PNG({ width: a.width, height: a.height });
-const mismatched = pixelmatch(a.data, b.data, diff.data, a.width, a.height, { threshold: 0.1 });
-const totalPx = a.width * a.height;
-const pixel = 1 - mismatched / totalPx;
 
+// ---------- 像素比较（返回差异像素的 buffer 偏移索引） ----------
+function diffIndices(a, b) {
+  const out = [];
+  const da = a.data, db = b.data;
+  for (let i = 0; i < da.length; i += 4) {
+    if (Math.abs(da[i] - db[i]) > CHANNEL_T ||
+        Math.abs(da[i + 1] - db[i + 1]) > CHANNEL_T ||
+        Math.abs(da[i + 2] - db[i + 2]) > CHANNEL_T) out.push(i);
+  }
+  return out;
+}
+
+// ---------- 动态区域掩码：帧间差集并集 ----------
+const dynamic = new Set();
+if (frames.length >= 2) {
+  for (let i = 0; i < frames.length; i++)
+    for (let j = i + 1; j < frames.length; j++)
+      for (const idx of diffIndices(frames[i], frames[j])) dynamic.add(idx);
+}
+
+// ---------- 最优帧评分 + 动/静拆分 ----------
+let best = null, bestIndices = null, bestFrame = 0;
+for (let i = 0; i < frames.length; i++) {
+  const idx = diffIndices(frames[i], clone);
+  if (!best || idx.length < best) { best = idx.length; bestIndices = idx; bestFrame = i + 1; }
+}
+let dynamicPx = 0;
+for (const idx of bestIndices) if (dynamic.has(idx)) dynamicPx++;
+const staticPx = bestIndices.length - dynamicPx;
+
+const pixel = 1 - best / total;
+const refinable = best ? staticPx / best : 1;
+
+// ---------- diff 热图（视觉用，最好帧 vs 克隆） ----------
+const diff = new PNG({ width: W, height: H });
+pixelmatch(frames[bestFrame - 1].data, clone.data, diff.data, W, H, { threshold: 0.1 });
+
+// ---------- 结构 / 数据维度 ----------
 const dom = domSimilarity(
   readFileSync(join(DIR, 'dom.html'), 'utf8'),
   readFileSync(join(DIR, 'clone', 'index.html'), 'utf8'),
 );
-
-// data 维度：src vs clone 结构化字段覆盖率（L1 搬运下应≈1）
 let data;
 try {
   data = dataScore(readFileSync(join(DIR, 'dom.html'), 'utf8'), readFileSync(join(DIR, 'clone', 'index.html'), 'utf8'));
 } catch { data = null; }
 
-const total = data ? 0.5 * pixel + 0.3 * dom.dom + 0.2 * data.data : (0.5 * pixel + 0.3 * dom.dom) / 0.8;
-const grade = total >= 0.95 ? 'A' : total >= 0.85 ? 'B' : 'C';
+const total100 = data ? 0.5 * pixel + 0.3 * dom.dom + 0.2 * data.data : (0.5 * pixel + 0.3 * dom.dom) / 0.8;
+const grade = total100 >= 0.95 ? 'A' : total100 >= 0.85 ? 'B' : 'C';
 
 const score = {
   page: DIR.split(/[\\/]/).pop(),
-  viewport: `${a.width}x${a.height}`,
+  viewport: `${W}x${H}`,
   pixel: +pixel.toFixed(4),
   dom,
   data,
   weights: { pixel: 0.5, dom: 0.3, data: 0.2 },
   dataNote: data ? 'full 3-dim formula' : 'harvest failed; normalized over pixel+dom',
-  total: +(total * 100).toFixed(1),
+  total: +(total100 * 100).toFixed(1),
   grade,
-  mismatched,
-  method: 'pixelmatch 0.1 + parse5 structural',
+  mismatched: best,
+  breakdown: {
+    frames: frames.length,
+    bestFrame,
+    dynamicPx,
+    staticPx,
+    dynamicShare: best ? +(dynamicPx / best).toFixed(3) : 0,
+    refinable: +refinable.toFixed(3),
+  },
+  method: 'multi-frame best-match + parse5 structural + field coverage',
 };
 writeFileSync(join(DIR, 'score.json'), JSON.stringify(score, null, 2));
 writeFileSync(join(DIR, 'diff.png'), PNG.sync.write(diff));
-console.log(`pixel ${(pixel * 100).toFixed(2)}% | dom ${(dom.dom * 100).toFixed(2)}% (node ${dom.nodeRatio} tag ${dom.tagCos} cls ${dom.classJac}) | data ${data ? (data.data * 100).toFixed(2) + '%' : 'n/a'}`);
-console.log(`TOTAL ${(total * 100).toFixed(1)}%  grade ${grade}`);
+console.log(`pixel ${(pixel * 100).toFixed(2)}% (best of ${frames.length} frames, dynamic ${(dynamicPx / (best || 1) * 100).toFixed(0)}%) | dom ${(dom.dom * 100).toFixed(2)}% | data ${data ? (data.data * 100).toFixed(2) + '%' : 'n/a'}`);
+console.log(`refinable ${(refinable * 100).toFixed(0)}% (static ${staticPx}px / dynamic ${dynamicPx}px) | TOTAL ${(total100 * 100).toFixed(1)}%  grade ${grade}`);

@@ -12,12 +12,13 @@
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.argv[2] ?? 8900);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif', '.svg': 'image/svg+xml', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf' };
 
 const json = (res, code, obj) => { res.writeHead(code, { ...CORS, 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
 
@@ -127,6 +128,17 @@ createServer((req, res) => {
     if (!t?.atlasPath || !existsSync(t.atlasPath)) return json(res, 404, { error: 'atlas not ready' });
     res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' });
     res.end(readFileSync(t.atlasPath));
+    return;
+  }
+
+  if (req.method === 'GET' && u.pathname.startsWith('/static/')) {
+    // 常驻静态服务：/static/<host>/pages/<name>/clone/index.html 等（workspace 根）
+    let rel = decodeURIComponent(u.pathname.slice('/static/'.length));
+    if (rel.endsWith('/')) rel += 'index.html';
+    const file = join(HERE, '..', 'workspace', rel);
+    if (!file.startsWith(join(HERE, '..', 'workspace')) || !existsSync(file)) return json(res, 404, { error: 'nf' });
+    res.writeHead(200, { ...CORS, 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
+    res.end(readFileSync(file));
     return;
   }
 

@@ -169,7 +169,7 @@ function startForge(node) {
     if (!node?.url) return resolve();
     selected.value = node;
     const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
-    forge.value = { taskId: null, pageName, url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' }, score: null, done: false, failed: false, intel: null, rounds: [] };
+    forge.value = { taskId: null, pageName, url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' }, score: null, done: false, failed: false, intel: null, rounds: [], skipReason: null };
     node.forgeState = 'running';
     statusText.value = '开始造物';
     (async () => {
@@ -186,6 +186,7 @@ function startForge(node) {
           if (ev.kind === 'forge-stage') f.stages[ev.stage] = ev.status;
           else if (ev.kind === 'forge-score') f.score = ev.score;
           else if (ev.kind === 'fixup-round') f.rounds.push(ev);
+          else if (ev.kind === 'fixup-skip') f.skipReason = `剩余差异 ${(ev.staticShare * 100).toFixed(1)}% 为动画噪声，AI 校准豁免`;
           else if (ev.kind === 'forge-error') f.failed = true;
           else if (ev.kind === 'exit') {
             f.done = ev.status === 'done';
@@ -390,6 +391,10 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <div class="verdict pending" v-else-if="!forge.done">锻造中 …</div>
+    <div class="fixup-curve" v-if="forge.skipReason">
+      <div class="curve-title">AI 校准</div>
+      <div class="curve-row">{{ forge.skipReason }}</div>
+    </div>
     <div class="fixup-curve" v-if="forge.rounds.length">
       <div class="curve-title">AI 校准曲线</div>
       <div class="curve-row" v-for="r in forge.rounds" :key="r.round">
