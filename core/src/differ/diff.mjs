@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { domSimilarity } from './domdiff.mjs';
+import { dataScore } from '../harvest/harvest.mjs';
 
 const DIR = process.argv[2] ?? join('workspace', 'apify.com', 'pages', 'home');
 const a = PNG.sync.read(readFileSync(join(DIR, 'shot-src.png')));
@@ -34,9 +35,13 @@ const dom = domSimilarity(
   readFileSync(join(DIR, 'clone', 'index.html'), 'utf8'),
 );
 
-// data 维度 W4 接入；当前按 pixel+dom 归一化
-const partial = 0.5 * pixel + 0.3 * dom.dom;
-const total = partial / 0.8;
+// data 维度：src vs clone 结构化字段覆盖率（L1 搬运下应≈1）
+let data;
+try {
+  data = dataScore(readFileSync(join(DIR, 'dom.html'), 'utf8'), readFileSync(join(DIR, 'clone', 'index.html'), 'utf8'));
+} catch { data = null; }
+
+const total = data ? 0.5 * pixel + 0.3 * dom.dom + 0.2 * data.data : (0.5 * pixel + 0.3 * dom.dom) / 0.8;
 const grade = total >= 0.95 ? 'A' : total >= 0.85 ? 'B' : 'C';
 
 const score = {
@@ -44,9 +49,9 @@ const score = {
   viewport: `${a.width}x${a.height}`,
   pixel: +pixel.toFixed(4),
   dom,
-  data: null,
+  data,
   weights: { pixel: 0.5, dom: 0.3, data: 0.2 },
-  dataNote: 'data dimension pending W4 harvest; total normalized over pixel+dom',
+  dataNote: data ? 'full 3-dim formula' : 'harvest failed; normalized over pixel+dom',
   total: +(total * 100).toFixed(1),
   grade,
   mismatched,
@@ -54,5 +59,5 @@ const score = {
 };
 writeFileSync(join(DIR, 'score.json'), JSON.stringify(score, null, 2));
 writeFileSync(join(DIR, 'diff.png'), PNG.sync.write(diff));
-console.log(`pixel ${(pixel * 100).toFixed(2)}% | dom ${(dom.dom * 100).toFixed(2)}% (node ${dom.nodeRatio} tag ${dom.tagCos} cls ${dom.classJac})`);
+console.log(`pixel ${(pixel * 100).toFixed(2)}% | dom ${(dom.dom * 100).toFixed(2)}% (node ${dom.nodeRatio} tag ${dom.tagCos} cls ${dom.classJac}) | data ${data ? (data.data * 100).toFixed(2) + '%' : 'n/a'}`);
 console.log(`TOTAL ${(total * 100).toFixed(1)}%  grade ${grade}`);

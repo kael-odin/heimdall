@@ -164,36 +164,52 @@ async function finishRecon(taskId) {
 }
 
 // ---------- forge：点选节点 → 单页还原流水线 ----------
-async function startForge(node) {
-  if (!node?.url) return;
-  selected.value = node;
-  forge.value = { taskId: null, pageName: node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-'), url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle' }, score: null, done: false, failed: false };
-  node.forgeState = 'running';
-  statusText.value = '开始造物';
-  try {
-    const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: node.url }) });
-    const { taskId, error } = await r.json();
-    if (error) { errMsg.value = error === 'busy' ? '造物台忙：有页面在锻造' : error; node.forgeState = 'idle'; return; }
-    forge.value.taskId = taskId;
-    esForge = new EventSource(`${API}/api/events?task=${taskId}`);
-    esForge.onmessage = (m) => {
-      let ev; try { ev = JSON.parse(m.data); } catch { return; }
-      const f = forge.value;
-      if (!f) return;
-      if (ev.kind === 'forge-stage') f.stages[ev.stage] = ev.status;
-      else if (ev.kind === 'forge-score') f.score = ev.score;
-      else if (ev.kind === 'forge-error') f.failed = true;
-      else if (ev.kind === 'exit') {
-        f.done = ev.status === 'done';
-        if (!f.done) { f.failed = true; node.forgeState = 'failed'; }
-        else node.forgeState = 'done';
-        statusText.value = f.done ? '恒星点亮' : '造物失败';
-        esForge?.close(); esForge = null;
-        setTimeout(() => { if (statusText.value !== '光点出发') statusText.value = ''; }, 2500);
-      }
-    };
-    esForge.onerror = () => { esForge?.close(); esForge = null; };
-  } catch (e) { errMsg.value = String(e); node.forgeState = 'idle'; }
+function startForge(node) {
+  return new Promise((resolve) => {
+    if (!node?.url) return resolve();
+    selected.value = node;
+    const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
+    forge.value = { taskId: null, pageName, url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', harvest: 'idle' }, score: null, done: false, failed: false, intel: null };
+    node.forgeState = 'running';
+    statusText.value = '开始造物';
+    (async () => {
+      try {
+        const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: node.url }) });
+        const { taskId, error } = await r.json();
+        if (error) { errMsg.value = error === 'busy' ? '造物台忙：有页面在锻造' : error; node.forgeState = 'idle'; return resolve(); }
+        forge.value.taskId = taskId;
+        esForge = new EventSource(`${API}/api/events?task=${taskId}`);
+        esForge.onmessage = (m) => {
+          let ev; try { ev = JSON.parse(m.data); } catch { return; }
+          const f = forge.value;
+          if (!f) return;
+          if (ev.kind === 'forge-stage') f.stages[ev.stage] = ev.status;
+          else if (ev.kind === 'forge-score') f.score = ev.score;
+          else if (ev.kind === 'forge-error') f.failed = true;
+          else if (ev.kind === 'exit') {
+            f.done = ev.status === 'done';
+            if (!f.done) { f.failed = true; node.forgeState = 'failed'; }
+            else node.forgeState = 'done';
+            statusText.value = f.done ? '恒星点亮' : '造物失败';
+            if (f.done) {
+              fetch(`/${host.value}/pages/${f.pageName}/intel/intel.json`).then(r => r.ok ? r.json() : null).then(j => { if (j) f.intel = { headings: j.headings?.length ?? 0, prices: j.prices?.length ?? 0, cta: j.cta?.length ?? 0, links: j.links?.length ?? 0 }; }).catch(() => {});
+            }
+            esForge?.close(); esForge = null;
+            setTimeout(() => { if (statusText.value !== '光点出发') statusText.value = ''; }, 2500);
+            resolve();
+          }
+        };
+        esForge.onerror = () => { esForge?.close(); esForge = null; resolve(); };
+      } catch (e) { errMsg.value = String(e); node.forgeState = 'idle'; resolve(); }
+    })();
+  });
+}
+
+async function forgeAll() {
+  const targets = nodes.filter(n => n.ring === 1).slice(0, 6);
+  for (const n of targets) await startForge(n);
+  statusText.value = '全境锻造完成';
+  setTimeout(() => { statusText.value = ''; }, 3000);
 }
 
 function onCanvasClick() {
@@ -352,11 +368,11 @@ onBeforeUnmount(() => {
         <div class="dock-title">{{ forge.pageName }}</div>
         <div class="dock-url">{{ forge.url }}</div>
       </div>
-      <button class="dock-close" @click="forge = null">✕</button>
+      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="串行锻造内环 6 页">锻造内环</button><button class="dock-close" @click="forge = null">✕</button></div>
     </div>
 
     <div class="stages">
-      <div class="stage" v-for="(label, key) in { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', diff: '像素定谳' }" :key="key"
+      <div class="stage" v-for="(label, key) in { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', diff: '像素定谳', harvest: '情报入库' }" :key="key"
            :class="forge.stages[key]">
         <span class="dot"></span>{{ label }}
       </div>
@@ -373,6 +389,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <div class="verdict pending" v-else-if="!forge.done">锻造中 …</div>
+    <div class="intel-bar" v-if="forge.intel">情报包：标题 {{ forge.intel.headings }} · 价格 {{ forge.intel.prices }} · CTA {{ forge.intel.cta }} · 链接 {{ forge.intel.links }}</div>
 
     <div class="screens" v-if="forge.done">
       <div class="pane">
@@ -384,7 +401,7 @@ onBeforeUnmount(() => {
         <img :src="`/${host}/pages/${forge.pageName}/shot-clone.png`" alt="clone" />
       </div>
     </div>
-    <iframe v-if="forge.done" class="live-clone" :src="`/${host}/pages/${forge.pageName}/clone/index.html`" title="living clone"></iframe>
+    <iframe v-if="forge.done" :key="forge.taskId" class="live-clone" :src="`/${host}/pages/${forge.pageName}/clone/index.html`" title="living clone"></iframe>
   </div>
 
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
@@ -420,6 +437,10 @@ canvas { position: fixed; inset: 0; display: block; }
 .dock-url { font-family: monospace; font-size: 11px; color: var(--text-dim); margin-top: 4px; word-break: break-all; }
 .dock-close { background: none; border: 1px solid rgba(138,147,166,.4); color: var(--text-dim); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; }
 .dock-close:hover { color: var(--text); border-color: var(--cyan); }
+.dock-headbtns { display: flex; gap: 8px; align-items: center; }
+.dock-all { background: linear-gradient(180deg, rgba(245,158,11,.25), rgba(245,158,11,.08)); border: 1px solid var(--amber); color: var(--amber); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; letter-spacing: .1em; }
+.dock-all:hover { box-shadow: 0 0 14px rgba(245,158,11,.5); }
+.intel-bar { margin-top: 12px; padding: 10px 12px; border: 1px dashed rgba(139,92,246,.5); border-radius: 8px; color: #A78BFA; font-size: 12px; letter-spacing: .04em; }
 .stages { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
 .stage { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid rgba(138,147,166,.25); border-radius: 8px; font-size: 13px; color: var(--text-dim); }
 .stage .dot { width: 9px; height: 9px; border-radius: 50%; background: #3A4356; }

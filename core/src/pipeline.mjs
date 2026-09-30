@@ -53,6 +53,11 @@ try {
   const score = JSON.parse(readFileSync(join(DIR, 'score.json'), 'utf8'));
   emit({ kind: 'forge-score', score });
   emit({ kind: 'forge-stage', stage: 'diff', status: 'done' });
+
+  emit({ kind: 'forge-stage', stage: 'harvest', status: 'running' });
+  log(`\n==== [harvest] ====`);
+  await run('harvest/harvest.mjs', [DIR]);
+  emit({ kind: 'forge-stage', stage: 'harvest', status: 'done' });
   log(`\nPIPELINE DONE -> ${DIR}`);
 } catch (e) {
   failed = String(e);
