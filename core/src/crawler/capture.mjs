@@ -41,7 +41,8 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: VIEWPORT, userAgent: UA });
 
 console.log('[1/7] goto', TARGET);
-await page.goto(TARGET, { waitUntil: 'networkidle', timeout: 60_000 });
+// domcontentloaded 而非 networkidle：持续轮询/长连接的页面 networkidle 永不达成，资源加载由后续扫掠兜底
+await page.goto(TARGET, { waitUntil: 'domcontentloaded', timeout: 45_000 });
 
 console.log('[2/7] cookie banner');
 try {

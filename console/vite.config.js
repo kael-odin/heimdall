@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: '127.0.0.1',
-    proxy: { '/api': 'http://127.0.0.1:8900' },
+    // key 必须带尾斜杠：'/api' 前缀会误劫持 /apify.com/... 等以 /api 开头的静态资源路径
+    proxy: { '/api/': 'http://127.0.0.1:8900' },
   },
 });

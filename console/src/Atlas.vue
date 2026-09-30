@@ -28,6 +28,9 @@ const live = ref(false);
 const statusText = ref('');
 const errMsg = ref('');
 const hover = ref(null);
+const selected = ref(null);          // 施工舱当前页
+const forge = ref(null);             // {taskId,pageName,url,stages:{},score,done,failed}
+let esForge = null;
 const hudPages = ref(0);
 const hudEdges = ref(0);
 const hudOrigin = ref('');
@@ -160,6 +163,43 @@ async function finishRecon(taskId) {
   setTimeout(() => { statusText.value = ''; }, 2500);
 }
 
+// ---------- forge：点选节点 → 单页还原流水线 ----------
+async function startForge(node) {
+  if (!node?.url) return;
+  selected.value = node;
+  forge.value = { taskId: null, pageName: node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-'), url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle' }, score: null, done: false, failed: false };
+  node.forgeState = 'running';
+  statusText.value = '开始造物';
+  try {
+    const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: node.url }) });
+    const { taskId, error } = await r.json();
+    if (error) { errMsg.value = error === 'busy' ? '造物台忙：有页面在锻造' : error; node.forgeState = 'idle'; return; }
+    forge.value.taskId = taskId;
+    esForge = new EventSource(`${API}/api/events?task=${taskId}`);
+    esForge.onmessage = (m) => {
+      let ev; try { ev = JSON.parse(m.data); } catch { return; }
+      const f = forge.value;
+      if (!f) return;
+      if (ev.kind === 'forge-stage') f.stages[ev.stage] = ev.status;
+      else if (ev.kind === 'forge-score') f.score = ev.score;
+      else if (ev.kind === 'forge-error') f.failed = true;
+      else if (ev.kind === 'exit') {
+        f.done = ev.status === 'done';
+        if (!f.done) { f.failed = true; node.forgeState = 'failed'; }
+        else node.forgeState = 'done';
+        statusText.value = f.done ? '恒星点亮' : '造物失败';
+        esForge?.close(); esForge = null;
+        setTimeout(() => { if (statusText.value !== '光点出发') statusText.value = ''; }, 2500);
+      }
+    };
+    esForge.onerror = () => { esForge?.close(); esForge = null; };
+  } catch (e) { errMsg.value = String(e); node.forgeState = 'idle'; }
+}
+
+function onCanvasClick() {
+  if (hover.value) startForge(hover.value);
+}
+
 // ---------- 渲染 ----------
 function frame(now) {
   const t = (now - t0) / 1000;
@@ -228,16 +268,17 @@ function frame(now) {
     const r = n.r * (n.hover ? 1.7 : 1) * (1 + 0.06 * Math.sin(t * 2 + n.phase)) * n.scale;
     if (r < 0.2) continue;
     ctx.save();
-    ctx.shadowColor = n.color;
-    ctx.shadowBlur = (n.hover ? 26 : 12) + (n.age < 1 ? (1 - n.age) * 34 : 0);
-    ctx.fillStyle = n.color;
+    n.color2 = n.forgeState === 'running' ? '#F59E0B' : n.color;
+    ctx.shadowColor = n.color2;
+    ctx.shadowBlur = (n.hover ? 26 : 12) + (n.age < 1 ? (1 - n.age) * 34 : 0) + (n.forgeState === 'running' ? 14 + 8 * Math.sin(t * 5) : 0);
+    ctx.fillStyle = n.color2;
     ctx.globalAlpha = Math.min(1, n.age * 1.4);
     ctx.beginPath();
     ctx.arc(n.sx, n.sy, r, 0, 7);
     ctx.fill();
-    if (n.ring === 0) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 1;
+    if (n.ring === 0 || n.forgeState === 'done') {   // 根节点 / 锻造完成的恒星环
+      ctx.strokeStyle = n.forgeState === 'done' ? 'rgba(245,158,11,0.85)' : 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = n.forgeState === 'done' ? 2 : 1;
       ctx.beginPath();
       ctx.arc(n.sx, n.sy, r + 6 + Math.sin(t * 1.4) * 2, 0, 7);
       ctx.stroke();
@@ -264,13 +305,14 @@ onMounted(() => {
   resize();
   window.addEventListener('resize', resize);
   window.addEventListener('mousemove', onMove);
+  canvasRef.value.addEventListener('click', onCanvasClick);
   // 默认载入上次侦察结果
   fetch('/apify.com/recon/atlas.json').then(r => r.ok ? r.json() : Promise.reject()).then(buildStatic).catch(() => {});
   raf = requestAnimationFrame(frame);
 });
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf);
-  es?.close();
+  es?.close(); esForge?.close();
   window.removeEventListener('resize', resize);
   window.removeEventListener('mousemove', onMove);
 });
@@ -303,6 +345,48 @@ onBeforeUnmount(() => {
     <button @click="startRecon">侦察</button>
   </div>
 
+  <!-- 施工舱 -->
+  <div class="dock" v-if="forge">
+    <div class="dock-head">
+      <div>
+        <div class="dock-title">{{ forge.pageName }}</div>
+        <div class="dock-url">{{ forge.url }}</div>
+      </div>
+      <button class="dock-close" @click="forge = null">✕</button>
+    </div>
+
+    <div class="stages">
+      <div class="stage" v-for="(label, key) in { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', diff: '像素定谳' }" :key="key"
+           :class="forge.stages[key]">
+        <span class="dot"></span>{{ label }}
+      </div>
+    </div>
+
+    <div class="verdict" v-if="forge.score">
+      <div class="score-num" :class="forge.score.grade === 'A' ? 'ok' : forge.score.grade === 'B' ? 'mid' : 'bad'">
+        {{ forge.score.total }}<small>%</small>
+      </div>
+      <div class="score-break">
+        <span>像素 {{ (forge.score.pixel * 100).toFixed(1) }}%</span>
+        <span>结构 {{ (forge.score.dom?.dom * 100).toFixed(1) }}%</span>
+        <span class="grade">评级 {{ forge.score.grade }}</span>
+      </div>
+    </div>
+    <div class="verdict pending" v-else-if="!forge.done">锻造中 …</div>
+
+    <div class="screens" v-if="forge.done">
+      <div class="pane">
+        <div class="pane-label">原站</div>
+        <img :src="`/${host}/pages/${forge.pageName}/shot-src.png`" alt="source" />
+      </div>
+      <div class="pane">
+        <div class="pane-label">镜像</div>
+        <img :src="`/${host}/pages/${forge.pageName}/shot-clone.png`" alt="clone" />
+      </div>
+    </div>
+    <iframe v-if="forge.done" class="live-clone" :src="`/${host}/pages/${forge.pageName}/clone/index.html`" title="living clone"></iframe>
+  </div>
+
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
 </template>
 
@@ -328,4 +412,32 @@ canvas { position: fixed; inset: 0; display: block; }
 .seek button { padding: 10px 22px; background: linear-gradient(180deg, rgba(34,211,238,.25), rgba(34,211,238,.1)); border: 1px solid var(--cyan); color: var(--cyan); cursor: pointer; letter-spacing: .2em; border-radius: 0 8px 8px 0; }
 .seek button:hover { box-shadow: 0 0 18px rgba(34,211,238,.5); }
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); color: var(--red); letter-spacing: .1em; font-size: 13px; }
+
+/* 施工舱 */
+.dock { position: fixed; right: 0; top: 0; bottom: 0; width: 30%; min-width: 380px; background: rgba(26,31,46,.94); border-left: 1px solid rgba(34,211,238,.3); backdrop-filter: blur(10px); padding: 22px; overflow-y: auto; z-index: 10; }
+.dock-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.dock-title { font-family: var(--font-num); font-size: 20px; color: var(--cyan); letter-spacing: .08em; }
+.dock-url { font-family: monospace; font-size: 11px; color: var(--text-dim); margin-top: 4px; word-break: break-all; }
+.dock-close { background: none; border: 1px solid rgba(138,147,166,.4); color: var(--text-dim); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; }
+.dock-close:hover { color: var(--text); border-color: var(--cyan); }
+.stages { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+.stage { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid rgba(138,147,166,.25); border-radius: 8px; font-size: 13px; color: var(--text-dim); }
+.stage .dot { width: 9px; height: 9px; border-radius: 50%; background: #3A4356; }
+.stage.running { border-color: rgba(245,158,11,.6); color: var(--amber); }
+.stage.running .dot { background: var(--amber); box-shadow: 0 0 10px var(--amber); animation: pulse 1s ease-in-out infinite; }
+.stage.done { border-color: rgba(52,211,153,.5); color: var(--green); }
+.stage.done .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.verdict { margin-top: 18px; text-align: center; padding: 16px; border: 1px solid rgba(34,211,238,.3); border-radius: 10px; }
+.verdict.pending { color: var(--text-dim); letter-spacing: .3em; }
+.score-num { font-family: var(--font-num); font-size: 46px; }
+.score-num small { font-size: 20px; color: var(--text-dim); }
+.score-num.ok { color: var(--green); text-shadow: 0 0 24px rgba(52,211,153,.6); }
+.score-num.mid { color: var(--amber); text-shadow: 0 0 24px rgba(245,158,11,.6); }
+.score-num.bad { color: var(--red); }
+.score-break { display: flex; justify-content: center; gap: 16px; margin-top: 8px; font-size: 12px; color: var(--text-dim); }
+.score-break .grade { color: var(--cyan); }
+.screens { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.pane img { width: 100%; border: 1px solid rgba(138,147,166,.3); border-radius: 6px; display: block; }
+.pane-label { font-size: 11px; letter-spacing: .2em; color: var(--text-dim); margin-bottom: 6px; }
+.live-clone { width: 100%; height: 46vh; margin-top: 14px; border: 1px solid rgba(34,211,238,.35); border-radius: 8px; background: #fff; }
 </style>
