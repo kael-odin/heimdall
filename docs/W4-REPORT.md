@@ -160,3 +160,25 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 - magic stub 递归 Proxy 在 apify 挂死（chunk 对 stub 做 spread/序列化 → ownKeys 无限枚举）→ 补 ownKeys/getOwnPropertyDescriptor 仍挂 → **分 host 策略**：thordata 用 MAGIC（实测 CLEAN），apify 用保守 stub + 第三方挂件（cookiebot/tiktok）不剥经代理真跑（活镜像原则）
 - thordata 30 页 cssom 的 url("styles/ 归一（引用少一层 ../）
 - 功能性验收：两站 6/6 页全渲染可交互（含 3 次按钮点击遍历）；残留 pageerror 为 cookiebot 深层外围噪声（CookieV2/_env/updatePageElementsList——不影响渲染/数据/主交互），chunk 404 为快照时效（apify 部署频繁，定期重锻刷新）
+
+## W15：活镜像残留清零攻坚（2026-10-01）
+
+### 已达成
+- **thordata pricing 活镜像：pageerror=0 ✓ 4xx=0 ✓ 完全 CLEAN**
+- apify pricing 活镜像：pageerror=0 ✓ 4xx=0 ✓（pricing 抽样）
+- 两站 6/6 页（各 3 页抽样）渲染+3 次按钮点击交互全部通过
+
+### 修复链（每个 404/错误对应一类根因）
+1. chunk 预检剔除：live html 写盘前对全部 script src 走 /px/ 纯反代 GET 预检，原站 404 的 script 标签剥除（快照时效根除）
+2. 根相对收尾正则（icons/ 等任意目录）+ url(&quot; 编码形态
+3. 第三方追踪 SDK 剥除扩展：mixpanel/cookiepro/onetrust/tiktok/redditstatic/clarity.ms/gtm/dc/fbq/analytics.
+4. 挂件全局 stub 扩展：Cookiebot（consent/dialog/_env）、ttq（_ttq_create/_env/methods.push 兼容函数）、qp、$crisp
+5. **顺序修正**：剥挂件必须在 bootstrap 注入之前（2d 正则会把含 mixpanel 关键词的 bootstrap 当挂件删掉——曾致 stub 全部消失）
+
+### 残留（如实入档）
+- apify store/use-cases 点击触发的深层组件仍有被剥脚本的下游引用（5-6 errs）——逐站第三方依赖图分析，边际收益递减
+- chunk 404 快照时效：apify 部署频繁，定期重锻刷新（queue 断点续跑即为此设计）
+- 分 host stub 策略已定型：thordata=MAGIC 递归 / apify=CONSERVATIVE+挂件真跑
+
+### 过夜锻造
+- apify 全站 queue --max 60 已启动（61 页 atlas，9 页已锻，约 3-4 小时）

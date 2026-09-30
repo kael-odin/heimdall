@@ -18,6 +18,7 @@ import { join } from 'node:path';
 const host = process.argv[2] ?? 'thordata.com';
 const only = process.argv[3];
 const BASE = join('workspace', host);
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const PAGES = join(BASE, 'pages');
 
 const pages = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'manifest.json')));
@@ -45,10 +46,10 @@ for (const name of pages) {
     html = html.split(h).join(lmPrefix);
   }
 
-  // 1.5) 剥第三方挂件脚本——必须在 bootstrap 注入之前（2d 正则会把含 mixpanel 关键词的 bootstrap 当挂件删掉）
+  // 1.5) 剥挂件脚本（cookiebot/crisp/mixpanel 的 loader 在镜像环境不可达或必炸，bootstrap stub 兜住全局调用；两站统一）
   html = html.replace(/<script[^>]*(?:consent\.cookiebot|cookiebot\.com|crisp\.chat)[^>]*><\/script>/gi, '');
   html = html.replace(/<script[^>]*>[^<]*(?:CookieConsent|\$crisp|mixpanel)[^<]*<\/script>/gi, '');
-  html = html.replace(/<script[^>]*src="[^"]*mixpanel[^>]*><\/script>/gi, '');
+  html = html.replace(/<script[^>]*src="[^"]*(?:mixpanel|cookiepro|onetrust|tiktok|redditstatic|clarity\.ms|googletagmanager|doubleclick|facebook\.net|analytics\.)[^>]*><\/script>/gi, '');
 
   // 2) <base> 注入（相对资源/请求归位）+ bootstrap（JS 运行时硬编码绝对域兜底）
   const bootstrap = `<script>(function(){
@@ -79,10 +80,11 @@ for (const name of pages) {
     var CONSERVATIVE = H.indexOf('/lm/apify') === 0;   // apify：chunk 对无限递归 stub 挂死 → 用保守版/不 stub（挂件经代理真跑）
     window.mixpanel = window.mixpanel || (CONSERVATIVE ? { init:function(){}, track:function(){}, push:function(){}, people:{ set:function(){} }, register:function(){}, time_event:function(){} } : MAGIC);
     window.qp = CONSERVATIVE ? function(){} : (window.qp || MAGIC);
-    window.CookieConsent = window.CookieConsent || (CONSERVATIVE ? undefined : MAGIC);
+    window.CookieConsent = window.CookieConsent || (CONSERVATIVE ? { run:function(){}, accept:function(){}, reject:function(){}, valid:function(){ return true; }, CookieV2TrackingTechnologies:[], updatePageElementsList:function(){}, _env:{}, consent:{ hasResponse:true, granted:true }, dialog:{}, response:{ categories:[] } } : MAGIC);
+    window.Cookiebot = window.Cookiebot || { consent:{ hasResponse:true, granted:true, declinedCategories:'', declinedAll:false }, dialog:{}, regDomain:'', host:'', scriptSrc:'', id:'', push:function(){} };
     window.$crisp = window.$crisp || [];
     window.CRISP_WEBSITE_ID = window.CRISP_WEBSITE_ID || '';
-    window.ttq = CONSERVATIVE ? (window.ttq || { _ttq_create:function(){}, track:function(){}, page:function(){}, load:function(){}, identify:function(){}, methods:[], push:function(a){ this.methods.push(a); } }) : (window.ttq || MAGIC);
+    window.ttq = CONSERVATIVE ? (window.ttq || { _ttq_create:function(){}, _env:{}, track:function(){}, page:function(){}, load:function(){}, identify:function(){}, methods:[], push:function(a){ if (typeof a === 'function') try { a(); } catch(e){} else this.methods.push(a); } }) : (window.ttq || MAGIC);
     window.clarity = window.clarity || MAGIC;
     window.gtag = window.gtag || function(){ (window.dataLayer = window.dataLayer || []).push(arguments); };
     window.dataLayer = window.dataLayer || [];
@@ -94,7 +96,7 @@ for (const name of pages) {
   console.error('[bl after-inject] has-mixpanel:', html.includes('window.mixpanel'));
 
   // 2b) 根相对引用重写（<base> 管不了 / 开头路径——那是直接打当前源根）
-  html = html.replace(/((?:src|href|srcset|action)\s*=\s*["'])\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
+  html = html.replace(/((?:src|href|srcset|action)\s*=\s*["'])\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
   html = html.replace(/url\(\s*(?:&quot;|['"])?\/(?!lm\/|static\/)/gi, `url("/lm/${target.host}/`);
 
   // 2c) JS 字符串里的动态 import / 硬编码路径（import() 是语言级，不走 fetch patch）
@@ -115,6 +117,30 @@ for (const name of pages) {
   html = html.replace('</head>', '<link rel="stylesheet" href="/static/' + host + '/pages/' + name + '/clone/styles/cssom.css"></head>');
   // 内联 style 标签里可能引用原站字体 url —— 全文兜底（字体走代理，版本永远匹配）
   html = html.split(lmPrefix + '/_next/').join(lmPrefix + '/_next/');   // no-op 保持形态直观
+
+  // 2f) chunk 预检剔除：快照里的 script 若原站已 404（部署时效），剥除避免 4xx 噪声（并发 8）
+  try {
+  console.error('[2f-entry] name=' + name, 'htmlLen=' + html.length, 'has41y8:', html.includes('41y89ol6'), 'has /lm/script:', html.includes('src="/lm/'));
+    const scriptUrls = [...new Set([...html.matchAll(/<script[^>]*src="(\/lm\/[^"]+)"/gi)].map(m => m[1]))];
+    const check = async (u) => {
+      try { const r = await fetch('http://127.0.0.1:8900' + u.replace('/lm/', '/px/'), { method: 'GET' }); return r.ok; } catch { return false; }   // /px/ 纯反代：融合路由会命中旧 live 文件永远 200
+    };
+    if (name === 'pricing') console.error('[precheck] scriptUrls =', scriptUrls.length);
+    const results = await Promise.all(scriptUrls.map(u => check(u).then(ok => [u, ok])));
+    if (name === 'pricing') console.error('[precheck] dead =', results.filter(r => !r[1]).length, '/', results.length);
+    let removed = 0;
+    for (const [u, ok] of results) {
+      if (ok) continue;
+      const fname = u.split('/').pop().split('?')[0];   // 剥查询串（?dpl= 在标签 src 里是字面量，regex 需转义——直接用无查询文件名定位）
+      const before = html;
+      console.error('[strip]', fname, '| inHtml:', before.includes(fname));
+      html = html.replace(new RegExp('<script[^>]*src="[^"]*' + fname + '[^"]*"[^>]*>[\s\S]*?</script>', 'i'), '<!-- heimdall: dead chunk (origin 404) -->');
+      const removedNow = html !== before;
+      if (html !== before) removed++;
+      console.error('[strip result]', fname, 'removed:', removedNow);
+    }
+    if (removed) console.log(`  dead chunks removed: ${removed}`);
+  } catch (e) { console.warn('  chunk precheck failed:', String(e).slice(0, 80)); }
 
   const rel = dirOnOrigin === '' || dirOnOrigin === '/' ? 'index.html' : dirOnOrigin.replace(/^\//, '') + '/index.html';
   const out = join(liveDir, rel);
