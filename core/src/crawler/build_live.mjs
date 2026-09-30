@@ -45,6 +45,11 @@ for (const name of pages) {
     html = html.split(h).join(lmPrefix);
   }
 
+  // 1.5) 剥第三方挂件脚本——必须在 bootstrap 注入之前（2d 正则会把含 mixpanel 关键词的 bootstrap 当挂件删掉）
+  html = html.replace(/<script[^>]*(?:consent\.cookiebot|cookiebot\.com|crisp\.chat)[^>]*><\/script>/gi, '');
+  html = html.replace(/<script[^>]*>[^<]*(?:CookieConsent|\$crisp|mixpanel)[^<]*<\/script>/gi, '');
+  html = html.replace(/<script[^>]*src="[^"]*mixpanel[^>]*><\/script>/gi, '');
+
   // 2) <base> 注入（相对资源/请求归位）+ bootstrap（JS 运行时硬编码绝对域兜底）
   const bootstrap = `<script>(function(){
     var H='${lmPrefix}', O='${target.origin}';
@@ -61,16 +66,49 @@ for (const name of pages) {
     }catch(e){} return of.call(window,input,init); };
     var oo=XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open=function(){ try{ arguments[1]=px(String(arguments[1])); }catch(e){} return oo.apply(this,arguments); };
+    // 第三方挂件魔法 stub：无限递归 Proxy——任何属性/调用/构造都返回自身（分析类挂件在镜像里本就应无操作）
+    var MAGIC = new Proxy(function(){}, {
+      get: function(t, k){ if (k === Symbol.toPrimitive) return function(){ return ''; }; if (k === 'then' || k === 'nodeType') return undefined; return MAGIC; },
+      set: function(){ return true; },
+      apply: function(){ return MAGIC; },
+      construct: function(){ return MAGIC; },
+      has: function(){ return true; },
+      ownKeys: function(){ return []; },
+      getOwnPropertyDescriptor: function(){ return undefined; }
+    });
+    var CONSERVATIVE = H.indexOf('/lm/apify') === 0;   // apify：chunk 对无限递归 stub 挂死 → 用保守版/不 stub（挂件经代理真跑）
+    window.mixpanel = window.mixpanel || (CONSERVATIVE ? { init:function(){}, track:function(){}, push:function(){}, people:{ set:function(){} }, register:function(){}, time_event:function(){} } : MAGIC);
+    window.qp = CONSERVATIVE ? function(){} : (window.qp || MAGIC);
+    window.CookieConsent = window.CookieConsent || (CONSERVATIVE ? undefined : MAGIC);
+    window.$crisp = window.$crisp || [];
+    window.CRISP_WEBSITE_ID = window.CRISP_WEBSITE_ID || '';
+    window.ttq = CONSERVATIVE ? (window.ttq || { _ttq_create:function(){}, track:function(){}, page:function(){}, load:function(){}, identify:function(){}, methods:[], push:function(a){ this.methods.push(a); } }) : (window.ttq || MAGIC);
+    window.clarity = window.clarity || MAGIC;
+    window.gtag = window.gtag || function(){ (window.dataLayer = window.dataLayer || []).push(arguments); };
+    window.dataLayer = window.dataLayer || [];
+    window.fbq = window.fbq || function(){};
+    window.OneTrust = window.OneTrust || { };
   })();</script>`;
+  console.error('[bl] bootstrap len =', bootstrap.length, '| has mixpanel:', bootstrap.includes('window.mixpanel'));
   html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">${bootstrap}`);
+  console.error('[bl after-inject] has-mixpanel:', html.includes('window.mixpanel'));
 
   // 2b) 根相对引用重写（<base> 管不了 / 开头路径——那是直接打当前源根）
   html = html.replace(/((?:src|href|srcset|action)\s*=\s*["'])\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
-  html = html.replace(/url\(\s*(['"]?)\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
+  html = html.replace(/url\(\s*(?:&quot;|['"])?\/(?!lm\/|static\/)/gi, `url("/lm/${target.host}/`);
 
   // 2c) JS 字符串里的动态 import / 硬编码路径（import() 是语言级，不走 fetch patch）
   html = html.replace(/(import\s*\(\s*["'])\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
-  html = html.replace(/(["'])\/(?:src|_next|_nuxt|assets|media|img|api|files|dist)\//g, `$1/lm/${target.host}/`);
+  // 2c-2') importmap JSON 与 JS 字符串里的已知目录（零正则，字符串定位）
+  for (const d of ['src/', '_next/', '_nuxt/', 'assets/', 'media/', 'img/', 'api/', 'files/', 'dist/']) {
+    html = html.split('"/' + d).join('"/lm/' + target.host + '/' + d);
+    html = html.split("'/" + d).join("'/lm/" + target.host + '/' + d);
+  }
+  // 2e) 收尾：剩余一切根相对引用（icons/ 等任意目录）→ 代理前缀
+  html = html.replace(/(\b(?:src|href|srcset|action)\s*=\s*["']?)\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
+  html = html.replace(/url\(\s*(?:&quot;|['"])?\/(?!lm\/|static\/)/gi, `url("/lm/${target.host}/`);
+
+
 
   // 3) 原版 CSS 引用替换为本地校准版（cssom.css，死镜像同款——视觉保真双保险）
   html = html.replace(/<link[^>]*rel="stylesheet"[^>]*>/gi, '');
@@ -82,6 +120,10 @@ for (const name of pages) {
   const out = join(liveDir, rel);
   mkdirSync(out.slice(0, out.lastIndexOf('/')), { recursive: true });
   writeFileSync(out, html);
+  console.error('[bl out]', out, '| exists:', existsSync(out), '| size:', existsSync(out) ? readFileSync(out).length : -1);
+  const reread = readFileSync(out, 'utf8');
+  console.error('[bl reread] len:', reread.length, 'has-mixpanel:', reread.includes('window.mixpanel'), 'has-base:', reread.includes('<base'));
+  console.error('[bl after-write] file has-mixpanel:', readFileSync(out, 'utf8').includes('window.mixpanel'));
   built++;
   console.log(`  live/${rel}`);
 }

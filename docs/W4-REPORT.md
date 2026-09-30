@@ -154,3 +154,9 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 2. <base> 管不了 / 开头根相对（直接打当前源根）→ 全文根相对重写 + bootstrap 根相对规则
 3. 动态 import() 是语言级，不走 fetch patch → import(" 形态内联重写
 4. 正则字面量三层转义炼蛊 → 路径匹配改字符串 split 扫描
+
+## W14：活镜像打磨（2026-10-01，cookiebot 深层/ttq/分 host stub 策略）
+
+- magic stub 递归 Proxy 在 apify 挂死（chunk 对 stub 做 spread/序列化 → ownKeys 无限枚举）→ 补 ownKeys/getOwnPropertyDescriptor 仍挂 → **分 host 策略**：thordata 用 MAGIC（实测 CLEAN），apify 用保守 stub + 第三方挂件（cookiebot/tiktok）不剥经代理真跑（活镜像原则）
+- thordata 30 页 cssom 的 url("styles/ 归一（引用少一层 ../）
+- 功能性验收：两站 6/6 页全渲染可交互（含 3 次按钮点击遍历）；残留 pageerror 为 cookiebot 深层外围噪声（CookieV2/_env/updatePageElementsList——不影响渲染/数据/主交互），chunk 404 为快照时效（apify 部署频繁，定期重锻刷新）

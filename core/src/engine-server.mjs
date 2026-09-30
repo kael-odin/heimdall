@@ -184,6 +184,29 @@ createServer(async (req, res) => {
     return;
   }
 
+  // Referrer 感知兜底：活镜像页发出的"裸根相对"请求（JS 运行时拼接，patch 漏接形态）
+  // 按 referer 里的 /lm/<host> 溯源转发原站——覆盖 fetch patch 漏掉的 Image src/srcset/动态 import/模块加载
+  if (!['/api/', '/static/', '/lm/', '/px/'].some(pre => u.pathname.startsWith(pre))) {
+    const ref = req.headers.referer ?? '';
+    const lmRef = /\/lm\/([^/]+)\//.exec(ref);
+    if (lmRef && !existsSync(join(HERE, '..', 'workspace', '___never___'))) {
+      const lh = lmRef[1];
+      const target = 'https://' + lh + u.pathname + u.search;
+      try {
+        const upstream = await fetch(target, { method: req.method, headers: { 'User-Agent': UA2, Accept: req.headers.accept ?? '*/*', Referer: 'https://' + lh + '/' }, body: ['GET', 'HEAD'].includes(req.method) ? undefined : req });
+        const headers = new Headers();
+        for (const [k, v] of upstream.headers) {
+          if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy'].includes(k.toLowerCase())) continue;
+          headers.set(k, v);
+        }
+        headers.set('Access-Control-Allow-Origin', '*');
+        res.writeHead(upstream.status, headers);
+        res.end(Buffer.from(await upstream.arrayBuffer()));
+      } catch (e) { json(res, 502, { error: String(e).slice(0, 100) }); }
+      return;
+    }
+  }
+
   // 活镜像 /lm/<host>/<path> —— 融合路由：
   //   本地 live/<path>/index.html 存在 → 回校准快照（视觉+结构已对齐）
   //   否则 → 全代理回原站（未锻造页/资源/JS chunks/API 全部原样透传，页面"活"）
