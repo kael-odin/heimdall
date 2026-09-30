@@ -181,6 +181,7 @@ window.addEventListener('resize', fit);
 function load(name) {
   const p = PAGES.find(x => x.name === name) ?? {};
   document.getElementById('live').href = p.target || '#';
+  history.replaceState(null, '', 'compare.html?p=' + encodeURIComponent(name));   // URL 随切换更新，刷新/分享不丢状态
   lwrap.style.height = 'auto';
   shot.src = 'pages/' + name + '/shot-src-full.png';
   shot.onerror = () => { shot.replaceWith(Object.assign(document.createElement('div'), { className: 'miss', textContent: '该页未捕获全页长图（旧版产物）。重新锻造此页即可获得同步对比的原站侧。' })); };

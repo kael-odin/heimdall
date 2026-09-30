@@ -122,6 +122,34 @@ for (const name of pages) {
     else stats.assetFailed++;
   }
 
+  // 2b) 内联 style url() 本地化：图标 background-image 常写在内联样式（capture 只覆盖 src/href/srcset，这是盲区）
+  const pageManifest = readJson(join(PAGES, name, 'manifest.json'));
+  const pageOrigin = pageManifest?.target ? new URL(pageManifest.target).origin : origin;
+  const imgMap = readJson(join(PAGES, name, 'asset-map.json'))?.imgMap ?? {};
+  const inlineUrls = new Set();
+  for (const m of html.matchAll(/url\(\s*(?:&quot;|'|")?\s*([^)'")&][^)']*)/g)) {
+    let u = m[1].trim().replace(/&amp;/g, '&').replace(/&quot;$/, '').trim();
+    if (!u || u.startsWith('data:') || u.startsWith('#')) continue;
+    inlineUrls.add(u);
+  }
+  for (const u of inlineUrls) {
+    let abs;
+    try { abs = /^https?:\/\//i.test(u) ? u : new URL(u, pageOrigin + '/').href; } catch { continue; }
+    // 优先 capture 期的本地副本；否则下载
+    let local = null;
+    const capRel = imgMap[abs];
+    if (capRel && existsSync(join(PAGES, name, capRel))) {
+      const dest = join(dir, 'assets', capRel.split('/').pop());
+      writeFileSync(dest, readFileSync(join(PAGES, name, capRel)));
+      local = 'assets/' + capRel.split('/').pop();
+    } else {
+      const dl = await fetchAsset(abs, dir);
+      if (dl) local = dl;
+    }
+    if (local) { html = html.split(u).join(local); stats.assetsLocalized++; }
+    else stats.assetFailed++;
+  }
+
   // 3) 本地坏链：basename 在捕获资产里存在的 → 直接修正引用（favicon/图标类根相对引用是 capture 重写盲区）
   const fixes = {};
   const seen = new Set();
@@ -150,6 +178,28 @@ for (const name of pages) {
     if (fix) { fixes[v] = fix; stats.missingFixed++; } else stats.missingLocal.push(rel);
   }
   for (const [bad, good] of Object.entries(fixes)) html = html.split(bad).join(good);
+
+  // 4) CSS 资产收口：双前缀归一 + 缺失 ref 跨页借用
+  const cssPath = join(dir, 'styles', 'cssom.css');
+  if (existsSync(cssPath)) {
+    let css = readFileSync(cssPath, 'utf8');
+    let cssChanged = false;
+    if (css.includes('styles/styles/')) { css = css.split('styles/styles/').join(''); cssChanged = true; }
+    if (css.includes('..../assets/')) { css = css.split('..../assets/').join('../assets/'); cssChanged = true; }   // build 重写半途的四个点残留
+    // 无正则实现：'../assets/' 是固定字面量（正则字面量在本文件的三层转义下不可维护）
+    if (css.includes('../assets/')) {
+      for (const part of css.split('../assets/').slice(1)) {
+        const rel = 'assets/' + part.split(')')[0].split("'")[0].split('"')[0].trim();
+        if (!/\.(png|jpe?g|webp|avif|svg|gif|woff2?|ttf|ico)$/i.test(rel)) continue;
+        if (existsSync(join(dir, rel))) continue;
+        for (const other of pages) {
+          const cand = join(PAGES, other, 'clone', rel);
+          if (other !== name && existsSync(cand)) { writeFileSync(join(dir, rel), readFileSync(cand)); cssChanged = true; break; }
+        }
+      }
+    }
+    if (cssChanged) { writeFileSync(cssPath, css); stats.cssHealed = true; }
+  }
 
   if (html !== html0) writeFileSync(file, html);
   report.push(stats);

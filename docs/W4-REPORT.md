@@ -110,3 +110,18 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 - clone-heimdall.cmd：一键启动（引擎+控制台+自动开浏览器，纯 ASCII）
 - keeprate.mjs：AI 补丁命中率仪表——首份观测 5/17 = 29%（含 style-probe 前 history，目标 >40%，持续观测）
 - forgeAll 扩到内环+外环 10 页（引擎 2 并发槽消化）
+
+## W10：对比页体验收口 + 图标长尾清零（2026-09-30，用户实测反馈驱动）
+
+### 用户实测三反馈全修
+1. **镜像 footer 图标缺失**（Get in touch / Follow us）：三层病灶逐层剥——
+   a) 内联 style 的 background-image（capture 只覆盖 src/href/srcset 的盲区）→ linker 2b 内联 url 本地化（49 处 + &quot; 双编码尾巴剥离）
+   b) `styles/styles/` 双前缀 + `..../assets/` 四点残留（build 重写半途产物）→ css heal 归一
+   c) ref 雪碧图缺失 → css 跨页借用（同站全局 CSS ref 序号一致，借用安全，实测九宫格图标全对）
+   最终 thordata pricing 克隆页 404 → 0，footer 八个社交图标全渲染
+2. **切页快照"未捕获"**：旧产物缺 shot-src-full.png → fullshot.mjs 批量补拍（Playwright 直开原站 fullPage，并发 2，不重跑流水线）；旧 manifest 无 target 的从 atlas.json 反查回填。两站 14 页快照全量齐备
+3. **切页 URL 不更新**：load() 加 history.replaceState，刷新/分享不丢状态
+
+### 方法论沉淀
+- 排查 404 的正确姿势：浏览器 Network 面板的失败 URL + grep 产物双端对照，按形态分类逐个击破（内联盲区/双前缀/四点残留/文件缺失四类）
+- JS 文件里写正则字面量经 bash→python 三层转义极易烂尾（本 ./ 转义漏写导致正则提前终止）——复杂路径匹配改用字符串 split 扫描（'../assets/' 是固定字面量，零转义）
