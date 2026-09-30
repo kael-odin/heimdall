@@ -59,3 +59,25 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 ### 结构清理
 - env.mjs 统一（llm/pipeline 各自解析 .env 的碎片化终结）
 - serve.mjs 退役：engine-server 常驻 /static/*（临时 serve 与端口冲突根除），shot/fixup 走 8900 静态路径
+
+## W4 阶段三：AI 补丁弹药 + 情报包完整度（2026-09-30）
+
+### style-probe（AI 补丁从"猜"到"照抄"）
+- src/differ/style-probe.mjs：原站 vs 克隆逐元素 computed style 配对差异（L1 搬运保证 DOM 同构，按 tag.类:兄弟序号路径配对）
+- 20 个关键属性（字号/字重/行高/颜色/背景/圆角/四向 padding/margin/宽高/display/textAlign）
+- fixup 每轮先跑 probe，把"哪个元素哪个属性差多少"的精确清单喂给 LLM——选择器就在 path 里，弹药即选择器
+- 实测：25 个元素的精确差异（skip-link 宽 146.97→137.84、导航 52.52→48.25 级别的分辨率）
+
+### harvest LLM 语义增强（deepseek fast）
+- 规则抽取拿到"字面"，LLM 抽"含义"：pageType / valueProps / products / plans(名称+价格+计费+权益) / notableClaims
+- 只依据原文不编造（pricing 实测：5 套餐正确识别，无价格字段诚实标注"未标注"）
+- intel/semantic.json 落盘，随 forge 自动生成
+
+### 跨页情报 xlsx（exceljs，真 Excel）
+- 每次 forge 后自动刷新 workspace/<host>/intel/<host>-intel.xlsx
+- 三 sheet：概览（每页三维还原度+评级+可修性+语义类型）/ 语义情报（价值主张/产品/套餐/宣称）/ 定价与CTA 全量
+- 实测 apify：概览 4 页、语义 60 行、定价与CTA 120 行
+
+### 工程收口
+- engine forge 并发槽 2（实测 200/200/409），侦察与锻造独立互斥
+- pipeline 每轮自动刷新 host 级 xlsx

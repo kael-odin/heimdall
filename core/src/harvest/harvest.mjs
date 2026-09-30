@@ -120,6 +120,25 @@ export function dataScore(srcHtml, cloneHtml) {
   return { data: +data.toFixed(4), dims: Object.fromEntries(Object.entries(dims).map(([k, v]) => [k, v === null ? 'n/a' : +(v * 100).toFixed(1) + '%'])) };
 }
 
+// LLM 语义增强：规则抽取拿到"字面"，LLM 抽出"含义"（页面类型/价值主张/产品与套餐结构）
+async function semanticEnhance(profile, dir) {
+  try {
+    const { llmEnabled, llmChat } = await import('../llm.mjs');
+    if (!llmEnabled()) return null;
+    const visibleText = [
+      ...Object.entries(profile.meta).map(([k, v]) => `${k}: ${v}`),
+      ...profile.headings.map(h => h.text),
+      '价格: ' + profile.prices.join(' | '),
+      'CTA: ' + profile.cta.join(' | '),
+    ].join('\n').slice(0, 6000);
+    const out = await llmChat([
+      { role: 'system', content: '你是竞品情报分析师。从网页可见文本抽取结构化语义情报，只依据原文，不要编造。' },
+      { role: 'user', content: `网页文本：\n${visibleText}\n\n输出 JSON：{"pageType":"营销页|定价页|文档|列表页|登录页|其他","valueProps":["价值主张"],"products":[{"name":"产品名","oneLiner":"一句话"}],"plans":[{"name":"套餐名","price":"价格或未标注","billing":"月付|年付|一次性|未标注","features":["权益"]}],"notableClaims":["值得注意的官方宣称"]}` },
+    ], { json: true, timeout: 120_000, fast: true });
+    return out;
+  } catch (e) { console.error('[harvest] semantic enhance failed:', String(e).slice(0, 120)); return null; }
+}
+
 // CLI: node src/harvest/harvest.mjs <pageDir> [htmlFile=dom.html]
 if (process.argv[1]?.endsWith('harvest.mjs')) {
   const DIR = process.argv[2] ?? join('workspace', 'apify.com', 'pages', 'home');
@@ -127,6 +146,10 @@ if (process.argv[1]?.endsWith('harvest.mjs')) {
   const profile = extractProfile(src);
   mkdirSync(join(DIR, 'intel'), { recursive: true });
   writeFileSync(join(DIR, 'intel', 'intel.json'), JSON.stringify(profile, null, 2));
+  // 语义增强（LLM 可用时）
+  const semantic = await semanticEnhance(profile, DIR);
+  if (semantic) writeFileSync(join(DIR, 'intel', 'semantic.json'), JSON.stringify(semantic, null, 2));
+  console.log(semantic ? `semantic: pageType=${semantic.pageType} plans=${semantic.plans?.length ?? 0} products=${semantic.products?.length ?? 0}` : 'semantic: (llm off/failed)');
   // CSV（Excel 直开）
   const rows = [
     ['type', 'value'],

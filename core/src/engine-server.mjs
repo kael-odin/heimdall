@@ -25,7 +25,9 @@ const json = (res, code, obj) => { res.writeHead(code, { ...CORS, 'Content-Type'
 /** task = {id,kind:'recon'|'forge',url,status,events:[],subs:Set,child,atlasPath?,pageName?} */
 const tasks = new Map();
 let seq = 0;
-let runningRecon = null, runningForge = null;
+let runningRecon = null;
+const MAX_FORGE = 2;
+let forgeSlots = 0;
 
 const push = (t, ev) => {
   t.events.push(ev);
@@ -59,7 +61,7 @@ function spawnTask(t, script, args) {
     push(t, { kind: 'exit', code, status: t.status });
     for (const res of t.subs) res.end();
     t.subs.clear();
-    if (t.kind === 'recon') runningRecon = null; else runningForge = null;
+    if (t.kind === 'recon') runningRecon = null; else forgeSlots--;
   });
   return t;
 }
@@ -77,7 +79,6 @@ function startForge(url) {
   const u = new URL(url);
   const name = u.pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[\/?&#]+/g, '-').slice(0, 60) || 'home';
   t.pageName = name;
-  runningForge = t;
   return { id: spawnTask(t, join('src', 'pipeline.mjs'), [url, name]).id, name };
 }
 
@@ -105,8 +106,9 @@ createServer((req, res) => {
       let url;
       try { ({ url } = JSON.parse(body || '{}')); } catch {}
       try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
-      if (runningForge) return json(res, 409, { error: 'busy', taskId: runningForge.id });
+      if (forgeSlots >= MAX_FORGE) return json(res, 409, { error: 'busy' });
       const { id, name } = startForge(url);
+      forgeSlots++;
       json(res, 200, { taskId: id, pageName: name, url });
     });
     return;
@@ -146,7 +148,7 @@ createServer((req, res) => {
     return json(res, 200, {
       ok: true,
       recon: runningRecon ? { id: runningRecon.id, url: runningRecon.url } : null,
-      forge: runningForge ? { id: runningForge.id, url: runningForge.url } : null,
+      forge: { slots: forgeSlots, max: MAX_FORGE },
     });
   }
 

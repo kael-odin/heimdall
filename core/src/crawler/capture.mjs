@@ -88,7 +88,7 @@ const manifest = await page.evaluate(() => {
   const favicon = [...document.querySelectorAll('link[rel*="icon"]')].map(l => abs(l.getAttribute('href'))).filter(Boolean);
   return { css, imgs: [...imgs], favicon };
 });
-writeFileSync(join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2));
+writeFileSync(join(OUT, 'manifest.json'), JSON.stringify({ ...manifest, target: TARGET }, null, 2));
 console.log(`    css=${manifest.css.length} imgs=${manifest.imgs.length} icons=${manifest.favicon.length}`);
 
 // CSSOM 最终状态：styled-components/构造样式表/内联 style 全部逃不出 document.styleSheets

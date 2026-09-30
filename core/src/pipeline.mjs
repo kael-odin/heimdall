@@ -66,6 +66,9 @@ try {
   log(`\n==== [harvest] ====`);
   await run('harvest/harvest.mjs', [DIR]);
   emit({ kind: 'forge-stage', stage: 'harvest', status: 'done' });
+
+  // 跨页情报汇总（每次 forge 后刷新 host 级 xlsx）
+  await run('harvest/xlsx.mjs', [host]);
   log(`\nPIPELINE DONE -> ${DIR}`);
 } catch (e) {
   failed = String(e);

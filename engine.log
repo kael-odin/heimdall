@@ -1,0 +1,48 @@
+engine-server @ http://127.0.0.1:8900
+[f001] 
+==== [capture] ====
+[f002] 
+==== [capture] ====
+[f001] 
+==== [build] ====
+[f001] 
+==== [shot] ====
+[f001] 
+==== [diff] ====
+[f001] 
+==== [fixup] ====
+[f001] [fixup] refinable 100% (static 68908px) — worth calibrating
+[f001] 
+[fixup] round 1 (current 97.3%)
+[f001]   style-probe: 25 elements with computed diffs
+[f002] 
+==== [build] ====
+[f002] 
+==== [shot] ====
+[f002] 
+==== [diff] ====
+[f002] 
+==== [fixup] ====
+[f002] [fixup] refinable 100% (static 46991px) — worth calibrating
+[f002] 
+[fixup] round 1 (current 98.2%)
+[f002]   style-probe: 25 elements with computed diffs
+[f002]   analysis: 截图与量化差异显示：两页的字体度量不一致——克隆页 header 内所有文本元素（Skip to content、Product 及整条 MenuItem 链 p→button→div→li、Submenu 促销文案与 SubmenuCol
+[f002]   98.2% -> 98.2%  ROLLBACK
+[f002] [fixup] best 98.2%
+[f002] 
+==== [harvest] ====
+[f001]   analysis: 对比两张截图与量化数据可见：页面深色主题、整体布局与配色一致，静态差异集中在“文本量度宽度”上——克隆页的字体渲染比原站窄，导致：① 顶部 Skip to content 链接（.skip-link）宽度 137.844px < 146.9
+[f002] 
+PIPELINE DONE -> workspace\apify.com\pages\about
+[f001]   97.3% -> 97.4%  KEEP
+[f001] 
+[fixup] round 2 (current 97.4%)
+[f001]   style-probe: 25 elements with computed diffs
+[f001]   analysis: 可见静态差异集中在头部：1) .skip-link（Skip to content）左右内边距被压缩成 4.5625px（应为 16px），导致其宽度少 32px；2) 菜单项按钮内的 box__StyledBox 与下拉 Promotio
+[f001]   97.4% -> 97.3%  ROLLBACK
+[f001] [fixup] best 97.4%
+[f001] 
+==== [harvest] ====
+[f001] 
+PIPELINE DONE -> workspace\apify.com\pages\pricing

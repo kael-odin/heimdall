@@ -13,6 +13,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { llmEnabled, llmVision } from '../llm.mjs';
+import { probeStyleDiff } from './style-probe.mjs';
 import { getEnv } from '../env.mjs';
 import { parse } from 'parse5';
 
@@ -84,9 +85,22 @@ async function main() {
     const before = readScore();
     log(`\n[fixup] round ${round} (current ${before.total}%)`);
     let css = '';
+    // computed style 精确差异（原站 vs 克隆逐元素 DOM 路径配对）——AI 补丁的弹药，不再猜选择器
+    let styleDiffs = [];
+    try {
+      const manifest = JSON.parse(readFileSync(join(DIR, 'manifest.json'), 'utf8'));
+      if (!manifest.target) throw new Error('manifest has no target (old capture)');
+      styleDiffs = await probeStyleDiff(manifest.target, CLONE_URL, { maxPairs: 25 });
+      log(`  style-probe: ${styleDiffs.length} elements with computed diffs`);
+    } catch (e) { log('  style-probe failed:', String(e).slice(0, 100)); }
+    const styleHint = styleDiffs.length
+      ? `已量化的逐元素样式差异清单（path 中 .token 是可直接使用的类选择器，:N 是兄弟序号不可用于选择器；propDiffs 里 src=原站值 clone=克隆值），补丁必须逐条精确消除这些差异（优先级最高）：\n` +
+        JSON.stringify(styleDiffs).slice(0, 6000) + `\n`
+      : '';
     try {
       const out = await llmVision(
         `你是像素级 CSS 修复专家。两张图依次是：1) 原站目标截图 2) 当前克隆页截图。\n` +
+        (styleHint ? `另有已量化的逐元素样式差异清单，补丁必须逐条精确消除这些差异（优先级最高）：\n${styleHint}` : '') +
         `注意：差异中的动画噪声（打字机/轮播的瞬时帧不同）已被评分体系排除，不要试图修复任何动画；只修静态差异（布局/间距/颜色/字号/圆角/显隐）。\n` +
         `输出一个 JSON：{"analysis":"简述静态差异","css":"追加到克隆页的 CSS 补丁"}。\n` +
         `约束：只输出 CSS 规则，不要 HTML；可用的类名清单（前 100 个）如下，选择器必须从中挑选或使用标签/结构选择器：\n${inventory}\n` +
