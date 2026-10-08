@@ -1280,6 +1280,12 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .audit-btn:disabled { opacity: .45; cursor: not-allowed; }
 .audit-link { position: fixed; right: 24px; bottom: 62px; z-index: 8; padding: 8px 16px; border: 1px solid rgba(52,211,153,.45); border-radius: var(--r); background: rgba(11,11,16,.82); color: var(--green); font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; text-decoration: none; }
 .audit-link:hover { box-shadow: 0 0 18px rgba(52,211,153,.25); }
+[data-theme="light"] .site-btn { background: #ffffff; color: var(--text-dim); }
+[data-theme="light"] .site-btn:hover { color: var(--text); }
+[data-theme="light"] .site-btn.active { color: var(--cyan); background: rgba(8,145,178,.08); }
+[data-theme="light"] .site-btn em { color: var(--green); }
+[data-theme="light"] .archive-link,
+[data-theme="light"] .audit-link { background: #ffffff; }
 /* 工作台视图 + 底部导航（v2 IA） */
 .work-view { position: fixed; left: 24px; right: 24px; top: 96px; bottom: 86px; z-index: 7; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
 .wv-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--cyan-line); flex-wrap: wrap; font-size: 13px; }
