@@ -216,6 +216,7 @@ node core\src\live\export.mjs thordata.com --offline       :: 离线模式（不
 node core\src\live\export.mjs thordata.com --rebuild       :: 先重建 live 页面再打包
 node core\src\live\export.mjs thordata.com --root mirror   :: drop-in：镜像直接挂到站点根路径
 node core\src\live\export.mjs thordata.com --heal --strict   :: 导出期自愈缺失资源；有缺口则以非零码退出（CI）
+node core\src\live\export.mjs thordata.com --materialize-har   :: 把 HAR 可回放响应落盘为实体文件（离线更稳）
 ```
 
 产物（`core/deliverable/<host>-live-<date>/`）：

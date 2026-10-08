@@ -12,7 +12,7 @@
  *
  * 入口：healBundle({ liveDir, host, origin, targets, fetchImpl?, concurrency?, maxBytes? })
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const DYNAMIC_ENDPOINT = /^\/(?:_next\/image|_next\/data|api\/|cdn-cgi\/)/;
@@ -88,4 +88,32 @@ export async function healBundle({
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, queue.length || 1)) }, worker));
   return results;
+}
+
+/**
+ * 把 HAR 中可回放的响应体落盘为 site/live 实体文件（离线更稳，且能覆盖同路径的其它查询变体）。
+ * 只处理：同源 GET 200 有 body、无查询串、非目录路径。带查询的（如 /_next/image?…）继续走 HAR 回放。
+ */
+export function materializeHar({ liveDir, origin, entries = [] } = {}) {
+  const out = { written: 0, skipped: 0, bytes: 0 };
+  const seen = new Set();
+  for (const e of entries) {
+    if (e.method !== 'GET' || !e.body || e.status !== 200) continue;
+    let u;
+    try { u = new URL(e.url); } catch { continue; }
+    if (u.origin !== origin) continue;
+    if (u.search) { out.skipped++; continue; }
+    const path = u.pathname;
+    if (!path || path === '/' || path.endsWith('/')) { out.skipped++; continue; }
+    if (seen.has(path)) continue;
+    seen.add(path);
+    const file = join(liveDir, path.replace(/^\/+/, ''));
+    if (existsSync(file)) { out.skipped++; continue; }
+    const buf = Buffer.from(e.body, 'base64');
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, buf);
+    out.written++;
+    out.bytes += buf.length;
+  }
+  return out;
 }

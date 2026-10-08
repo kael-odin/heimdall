@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveRefPath, extractRefs, scanLiveBundle } from '../src/live/health.mjs';
-import { healBundle } from '../src/live/heal.mjs';
+import { healBundle, materializeHar } from '../src/live/heal.mjs';
 import { indexHar } from '../src/live/har.mjs';
 
 test('live/health: resolver handles /lm prefix, queries, relative paths and externals', () => {
@@ -57,6 +57,23 @@ test('live/health: scan classifies local/har/unresolved/dynamic/external and mis
     assert.equal(report.assets.externalAssets, 1);
     assert.equal(report.links.missing, 1);
     assert.ok(report.unresolvedPaths.includes('/missing.png'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/heal: materializeHar writes same-origin bodies and skips query/external/dir entries', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-mat-'));
+  try {
+    const entries = [
+      { method: 'GET', url: 'https://x.test/a/chunk.js', status: 200, body: Buffer.from('JS').toString('base64') },
+      { method: 'GET', url: 'https://x.test/_next/image?url=/a.png', status: 200, body: Buffer.from('IMG').toString('base64') },
+      { method: 'GET', url: 'https://cdn.other/x.js', status: 200, body: Buffer.from('X').toString('base64') },
+      { method: 'GET', url: 'https://x.test/dir/', status: 200, body: Buffer.from('D').toString('base64') },
+      { method: 'POST', url: 'https://x.test/post.js', status: 200, body: Buffer.from('P').toString('base64') },
+    ];
+    const r = materializeHar({ liveDir: dir, origin: 'https://x.test', entries });
+    assert.equal(r.written, 1);
+    assert.equal(existsSync(join(dir, 'a', 'chunk.js')), true);
+    assert.equal(existsSync(join(dir, '_next')), false);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

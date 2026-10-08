@@ -3,7 +3,7 @@
  * live/export — 生成"可直接部署"的活镜像包（L3）
  *
  * 用法:
- *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--strict]
+ *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict]
  *
  * 产物（默认 DATA_ROOT/deliverable/<host>-live-<date>/）:
  *   serve.mjs / har.mjs        零依赖 Node 服务器
@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { WORKSPACE, DELIVERABLE } from '../paths.mjs';
 import { sanitizeHar, mergeHar, harStats, indexHar } from './har.mjs';
 import { scanLiveBundle } from './health.mjs';
-import { healBundle } from './heal.mjs';
+import { healBundle, materializeHar } from './heal.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -38,7 +38,7 @@ const argOf = (name, def) => {
   return eq ? eq.split('=').slice(1).join('=') : def;
 };
 const has = (n) => argv.includes('--' + n);
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--strict]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict]'); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
 if (!existsSync(BASE)) { console.error('no workspace for host:', host); process.exit(1); }
@@ -47,6 +47,7 @@ const OFFLINE = has('offline');
 const ROOT = argOf('root', 'landing') === 'mirror' ? 'mirror' : 'landing';
 const HEAL = has('heal');
 const STRICT = has('strict');
+const MATERIALIZE = has('materialize-har');
 const OUT_ARG = argOf('out', '');
 const OUT = OUT_ARG
   ? resolve(process.env.HEIMDALL_INVOKE_CWD ?? process.cwd(), OUT_ARG)
@@ -138,6 +139,12 @@ if (HEAL && health.assets.unresolved > 0) {
   console.log('[heal] fetched=' + healed.fetched + ' failed=' + healed.failed + ' skipped=' + healed.skipped + ' bytes~' + (healed.bytes / 1024 / 1024).toFixed(1) + 'MB');
   health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
   health.healed = { attempted: targets.length, fetched: healed.fetched, failed: healed.failed, skipped: healed.skipped, bytes: healed.bytes };
+}
+if (MATERIALIZE) {
+  const mat = materializeHar({ liveDir, origin, entries: har.entries });
+  console.log('[materialize] written=' + mat.written + ' skipped=' + mat.skipped + ' bytes~' + (mat.bytes / 1024 / 1024).toFixed(1) + 'MB');
+  health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
+  health.materialized = mat;
 }
 health.assetsBefore = assetsBefore;
 health.forgedPages = pageNames.length;
