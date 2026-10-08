@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
 import { comparePngBuffers, overallScore, gradeOf } from './compare.mjs';
+import { verifyInteractions, scoreInteractions } from './interactions.mjs';
 
 const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error('[verify]', ...a);
@@ -39,6 +40,8 @@ const VIEWPORTS = (vpIdx > -1 ? argv[vpIdx + 1] : '375x812,768x1024,1440x900')
   .map(s => { const [w, h] = s.split('x').map(Number); return { name: s, width: w, height: h }; });
 const thrIdx = argv.indexOf('--threshold');
 const THRESHOLD = thrIdx > -1 ? Number(argv[thrIdx + 1]) : 0;
+// 交互回放（功能保真）：单页默认开启；--all 需显式 --interactions；--no-interactions 关闭
+const RUN_IX = !argv.includes('--no-interactions') && (!all || argv.includes('--interactions'));
 
 if (!host || (!pageArg && !all)) {
   console.error('usage: node src/verify/verify.mjs <host> <page>|--all [--max 10] [--viewports 375x812,768x1024,1440x900] [--threshold 85]');
@@ -102,11 +105,26 @@ try {
     }
     await srcCtx.close(); await cloneCtx.close();
     const overall = overallScore(viewports) ?? 0;
-    const result = { page: name, target, generatedAt: new Date().toISOString(), overall, grade: gradeOf(overall), viewports };
+
+    // 功能保真：交互回放（按钮/折叠/标签页），状态签名 + 视口像素
+    let interactions = [];
+    if (RUN_IX) {
+      try {
+        interactions = await verifyInteractions(browser, { sourceUrl: target, cloneUrl, max: 3 });
+        interactions.forEach((r, i) => { if (r.diffPng) { try { writeFileSync(join(outDir, 'ix-' + (i + 1) + '.png'), r.diffPng); } catch {} delete r.diffPng; } });
+        emit({ kind: 'verify-interactions', page: name, ...(scoreInteractions(interactions) ?? { total: 0, passed: 0, score: null }) });
+      } catch (e) {
+        interactions = [{ pass: false, error: String(e).slice(0, 160) }];
+        emit({ kind: 'verify-error', page: name, viewport: 'interactions', error: String(e).slice(0, 160) });
+      }
+    }
+    const functional = scoreInteractions(interactions);
+
+    const result = { page: name, target, generatedAt: new Date().toISOString(), overall, grade: gradeOf(overall), viewports, functional, interactions };
     writeFileSync(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
-    results.push({ page: name, overall, grade: result.grade });
-    log(name, 'overall', (overall * 100).toFixed(1) + '%', result.grade);
-    emit({ kind: 'verify-page', page: name, overall, grade: result.grade });
+    results.push({ page: name, overall, grade: result.grade, functional });
+    log(name, 'overall', (overall * 100).toFixed(1) + '%', result.grade, functional ? '| 交互 ' + functional.passed + '/' + functional.total : '| 交互 n/a');
+    emit({ kind: 'verify-page', page: name, overall, grade: result.grade, functional });
   }
 } finally { await browser.close(); }
 

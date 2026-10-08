@@ -185,6 +185,13 @@ node src\verify\verify.mjs apify.com storage --threshold 85  :: CI 门控（综�
 产物：`workspace/<host>/verify/<page>/verify.json` + `diff-<viewport>.png`（差异热图）。
 综合分 = 移动 0.25 / 平板 0.25 / 桌面 0.5。
 
+**交互回放（功能保真）**：单页验证默认开启——在“原站”和“克隆页”上发现同一批按钮/折叠/标签页，用同一条 DOM 路径点击，比较点击后的状态签名（aria-expanded/可见元素数/文本长度）与视口截图像素。
+
+- `--no-interactions`：关闭交互回放
+- `--all` 时默认跳过；加 `--interactions` 开启
+- 结果在 `verify.json.functional`，差异图 `ix-*.png`
+- 实测 apify.com/pricing：视觉 96.0% A（移动 94.0/平板 95.9/桌面 97.1）＋交互 3/3
+
 实测 apify.com/storage：桌面 98.2%（A）/ 平板 89.4%（B）/ 移动 78.4%（C）→ 综合 91.0%（B）。
 这证明"单视口 95.9%"确实高估了真实保真度——移动端字体/换行/高度差是主要来源。
 
