@@ -215,6 +215,7 @@ node core\src\live\export.mjs thordata.com                 :: 生成部署包
 node core\src\live\export.mjs thordata.com --offline       :: 离线模式（不回源）
 node core\src\live\export.mjs thordata.com --rebuild       :: 先重建 live 页面再打包
 node core\src\live\export.mjs thordata.com --root mirror   :: drop-in：镜像直接挂到站点根路径
+node core\src\live\export.mjs thordata.com --heal --strict   :: 导出期自愈缺失资源；有缺口则以非零码退出（CI）
 ```
 
 产物（`core/deliverable/<host>-live-<date>/`）：
@@ -227,6 +228,7 @@ node core\src\live\export.mjs thordata.com --root mirror   :: drop-in：镜像�
 | `site/live/**`、`site/static/**` | 活镜像页面 + 克隆页/CSS/资产/档案/SEO 报告 |
 | `landing.html` | 落地页（镜像/档案/对比/SEO 报告入口） |
 | `Dockerfile`、`docker-compose.yml` | 一键容器部署 |
+| `health.json` | 离线体检：资源 local/har/unresolved/dynamic、未镜像链接、站外资产清单 |
 | `checksums.json` | 全文件 SHA-256 清单 |
 
 部署：
@@ -239,7 +241,16 @@ docker compose up -d                :: 或容器
 
 路由：`/lm/<host>/**`（活镜像）、`/static/<host>/**`（克隆档案）、`/__heimdall/health`（健康检查）。
 `--root mirror`（或配置 `root: "mirror"`）：镜像直接挂在 `/`，等价于用克隆件替换原站域名根路径（drop-in 部署），`/lm/<host>/` 仍作为别名可用。
-离线模式：`--offline` 或配置 `offline: true`，未捕获资源明确 404，不回源。
+离线模式：`--offline` 或配置 `offline: true`，未捕获资源明确 404，不回源；导出时加 `--heal` 可从原站补抓离线缺失资源，`--strict` 有缺口时非零退出。
+
+### 历史 clone 坏链修复
+
+旧版 build_clone 会把字体写成 `url("styles/refNNN.woff2")`（相对 cssom.css 解析成 `styles/styles/…` → 字体 404）：
+
+```cmd
+node core\src\crawler\repair-css-refs.mjs apify.com --dry-run   :: 预览
+node core\src\crawler\repair-css-refs.mjs apify.com             :: 修复（幂等）
+```
 
 ## 16. 变更监控（v2）
 

@@ -43,7 +43,9 @@ for (const ref of cssomMeta.refs) {
   try { abs = new URL(ref, ORIGIN).href; } catch { refIndex++; continue; }
   const name = `ref${String(refIndex++).padStart(3, '0')}.${extOf('', abs)}`;
   const sub = /\.(woff2?|ttf|otf|eot)$/i.test(name) ? 'styles' : 'assets';
-  const rel = (sub === 'styles' ? '' : '../') + sub + '/' + name;
+  // 字体与 cssom.css 同目录 → 直接用文件名；其余资产在 ../assets/。
+  // （旧实现写成 styles/refNNN.*，从 cssom.css 解析会变成 styles/styles/refNNN.* → 字体 404）
+  const rel = sub === 'styles' ? name : '../assets/' + name;
   const dest = join(CLONE, sub, name);
   if (existsSync(dest)) { css = css.split(ref).join(rel); fetched++; continue; }
 

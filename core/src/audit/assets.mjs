@@ -117,6 +117,27 @@ export function scanPage(pageDir, { origin }) {
   let localized = 0;
   for (const r of seen.values()) {
     r.froms = [...r.froms];
+    // 克隆内自校验：clone-css/clone-html 的站内相对引用必须按“文件自身目录”解析到真实文件。
+    // 必须在同名兜底之前执行，否则 styles/styles/refNNN.woff2 会被 styles/refNNN.woff2 掩盖。
+    const fromClone = r.froms.includes('clone-css') || r.froms.includes('clone-html');
+    const rawRef = String(r.url ?? '');
+    const isRelativeRef = !/^(?:data:|blob:|https?:|\/\/|#)/i.test(rawRef);
+    if (fromClone && isRelativeRef) {
+      let inner = null;
+      try {
+        const clean = decodeURIComponent(rawRef.split('#')[0].split('?')[0]);
+        const baseDir = r.froms.includes('clone-css') ? join(cloneDir, 'styles') : cloneDir;
+        const p = clean.startsWith('/') ? join(cloneDir, clean) : join(baseDir, clean);
+        inner = existsSync(p) ? p : null;
+      } catch {}
+      if (!inner) {
+        gaps.push({
+          url: r.abs, kind: r.kind, where: r.where ?? '', froms: r.froms,
+          status: 'clone-broken', category: categorizeRef(r), inClone: true,
+        });
+        continue;
+      }
+    }
     const mapped = resMap[r.abs];
     let localRel = mapped && existsSync(join(cloneDir, mapped)) ? mapped : null;
     if (!localRel) {

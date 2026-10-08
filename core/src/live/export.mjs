@@ -3,7 +3,7 @@
  * live/export — 生成"可直接部署"的活镜像包（L3）
  *
  * 用法:
- *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror]
+ *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--strict]
  *
  * 产物（默认 DATA_ROOT/deliverable/<host>-live-<date>/）:
  *   serve.mjs / har.mjs        零依赖 Node 服务器
@@ -24,7 +24,9 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE, DELIVERABLE } from '../paths.mjs';
-import { sanitizeHar, mergeHar, harStats } from './har.mjs';
+import { sanitizeHar, mergeHar, harStats, indexHar } from './har.mjs';
+import { scanLiveBundle } from './health.mjs';
+import { healBundle } from './heal.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -36,13 +38,15 @@ const argOf = (name, def) => {
   return eq ? eq.split('=').slice(1).join('=') : def;
 };
 const has = (n) => argv.includes('--' + n);
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--strict]'); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
 if (!existsSync(BASE)) { console.error('no workspace for host:', host); process.exit(1); }
 const PORT = Number(argOf('port', 8080));
 const OFFLINE = has('offline');
 const ROOT = argOf('root', 'landing') === 'mirror' ? 'mirror' : 'landing';
+const HEAL = has('heal');
+const STRICT = has('strict');
 const OUT_ARG = argOf('out', '');
 const OUT = OUT_ARG
   ? resolve(process.env.HEIMDALL_INVOKE_CWD ?? process.cwd(), OUT_ARG)
@@ -121,6 +125,28 @@ for (const name of pageNames) {
 const config = { host, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT };
 writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 
+// ---------- 4b. 离线体检（health.json）+ 可选自愈（--heal） ----------
+const liveDir = join(siteDir, 'live');
+const staticDir = join(siteDir, 'static');
+const harIndex = indexHar(har.entries);
+let health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
+const assetsBefore = { ...health.assets };
+if (HEAL && health.assets.unresolved > 0) {
+  const targets = health.unresolvedPaths ?? [...new Set(health.details.flatMap(d => d.unresolved))];
+  console.log('[heal] unresolved=' + health.assets.unresolved + ' unique=' + targets.length + ' -> fetching from ' + origin);
+  const healed = await healBundle({ liveDir, host, origin, targets });
+  console.log('[heal] fetched=' + healed.fetched + ' failed=' + healed.failed + ' skipped=' + healed.skipped + ' bytes~' + (healed.bytes / 1024 / 1024).toFixed(1) + 'MB');
+  health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
+  health.healed = { attempted: targets.length, fetched: healed.fetched, failed: healed.failed, skipped: healed.skipped, bytes: healed.bytes };
+}
+health.assetsBefore = assetsBefore;
+health.forgedPages = pageNames.length;
+health.liveMissing = Math.max(0, pageNames.length - health.pages);
+health.strict = STRICT;
+writeFileSync(join(OUT, 'health.json'), JSON.stringify(health, null, 2));
+console.log('[health] forgedPages=' + pageNames.length + ' livePages=' + health.pages + (health.liveMissing ? ' (missing ' + health.liveMissing + ')' : '') + ' assets=' + health.assets.total + ' local=' + health.assets.local + ' har=' + health.assets.har + ' unresolved=' + health.assets.unresolved + ' externalAssets=' + health.assets.externalAssets + ' | linksMissing=' + health.links.missing);
+for (const d of health.details.slice(0, 5)) console.log('[health]   ' + d.page + ' -> ' + d.unresolvedCount + ' unresolved (e.g. ' + (d.unresolved[0] ?? '-') + ')');
+
 const hasArchive = existsSync(join(siteDir, 'static', host, 'index.html'));
 const hasCompare = existsSync(join(siteDir, 'static', host, 'compare.html'));
 const hasSeo = existsSync(join(siteDir, 'static', host, 'seo', 'seo.html'));
@@ -138,7 +164,7 @@ a.card:hover{border-color:rgba(34,211,238,.6)}a.card b{display:block;color:#22d3
 </style></head><body><div class="wrap">
 <div class="brand">HEIMDALL · LIVE MIRROR</div>
 <h1>${host}</h1>
-<div class="meta">${OFFLINE ? '离线模式（仅本地快照 + HAR 回放）' : '在线模式（本地优先 · 未捕获资源回源）'} · HAR ${stats.entries} 条 · 端口 ${PORT}</div>
+<div class="meta">${OFFLINE ? '离线模式（仅本地快照 + HAR 回放）' : '在线模式（本地优先 · 未捕获资源回源）'} · HAR ${stats.entries} 条 · 离线资源 ${health.assets.unresolved === 0 ? '全量可用' : health.assets.unresolved + ' 条未覆盖'} · 端口 ${PORT}</div>
 <div class="grid">
 <a class="card" href="/lm/${host}/"><b>打开活镜像</b><span>本地快照优先 · 未锻造页回源原站 · 支持 HAR 回放</span></a>
 ${hasArchive ? `<a class="card" href="/static/${host}/index.html"><b>克隆档案</b><span>逐页还原度与卡片墙</span></a>` : ''}
@@ -167,7 +193,7 @@ docker compose up -d                   # Docker 部署
 - 落地页：http://127.0.0.1:${PORT}/（root=mirror 时根路径直接是镜像）
 - 部署模式：root: ${ROOT}（mirror = drop-in 根路径部署；/lm/${host}/ 始终作为别名可用）
 - 健康检查：http://127.0.0.1:${PORT}/__heimdall/health
-- 模式：\`offline: ${OFFLINE}\`（\`heimdall-live.json\`）+ HAR ${stats.entries} 条回放
+- 模式：\`offline: ${OFFLINE}\`（\`heimdall-live.json\`）+ HAR ${stats.entries} 条回放\n- 离线体检：health.json（资源 local/har/unresolved、未镜像链接、站外资产清单${HEAL ? '；本次已执行 --heal 自愈' : ''}）
 
 ## 路由
 
@@ -200,6 +226,10 @@ writeFileSync(join(OUT, 'checksums.json'), JSON.stringify({ host, generatedAt: n
 
 const mb = (n) => (n / 1024 / 1024).toFixed(1) + 'MB';
 console.log(`[export] bundle -> ${OUT}`);
-console.log(`[export] pages=${pageNames.length} liveFiles=${files} (linked=${linked} copied=${copied}) bytes=${mb(bytes)} | bundleFiles=${manifestFiles.length} | root=${ROOT}`);
+console.log(`[export] pages=${pageNames.length} liveFiles=${files} (linked=${linked} copied=${copied}) bytes=${mb(bytes)} | bundleFiles=${manifestFiles.length} | root=${ROOT} | unresolved=${health.assets.unresolved}`);
+if (STRICT && health.assets.unresolved > 0) {
+  console.error('[export] strict: ' + health.assets.unresolved + ' unresolved assets in offline mode (see health.json)');
+  process.exitCode = 1;
+}
 console.log(`[export] run: cd "${OUT}" && node serve.mjs --port ${PORT}${OFFLINE ? ' --offline' : ''}`);
 if (ROOT === 'mirror') console.log(`[export] root=mirror：部署后 / 即镜像（drop-in），/lm/${host}/ 为别名`);

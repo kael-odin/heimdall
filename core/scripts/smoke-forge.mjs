@@ -183,9 +183,13 @@ async function main() {
       encoding: 'utf8',
     });
     assert.equal(exp.status, 0, 'live export failed: ' + String(exp.stderr || exp.stdout).slice(-500));
-    for (const name of ['serve.mjs', 'har.mjs', 'har.json', 'heimdall-live.json', 'landing.html', 'Dockerfile', 'docker-compose.yml', 'checksums.json']) {
+    for (const name of ['serve.mjs', 'har.mjs', 'har.json', 'heimdall-live.json', 'landing.html', 'health.json', 'Dockerfile', 'docker-compose.yml', 'checksums.json']) {
       assert.ok(existsSync(join(bundleDir, name)), 'bundle must contain ' + name);
     }
+    const healthJson = JSON.parse(readFileSync(join(bundleDir, 'health.json'), 'utf8'));
+    assert.ok(healthJson.pages >= 1, 'health.json must cover live pages');
+    assert.equal(typeof healthJson.assets?.unresolved, 'number', 'health asset gap count must be numeric');
+    assert.equal(healthJson.assets.unresolved, 0, 'fixture live bundle must be fully self-contained: ' + JSON.stringify(healthJson.details?.slice(0, 2)));
     const livePort = await freePort();
     const live = spawn(process.execPath, ['serve.mjs', '--port', String(livePort), '--offline'], { cwd: bundleDir, stdio: ['ignore', 'pipe', 'pipe'] });
     let liveLog = '';
@@ -257,7 +261,7 @@ async function main() {
       assert.ok(!jobsAfter.history.some(j => j.status === 'running'), 'no stale running jobs after restart');
     } finally { engine2.kill('SIGTERM'); }
 
-    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%', '| seo =', seoJson.score, '(', seoJson.summary.issues, 'issues )', '| live bundle ok', '| watch ok', '| jobs persistent');
+    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%', '| seo =', seoJson.score, '(', seoJson.summary.issues, 'issues )', '| live bundle ok (health unresolved=' + healthJson.assets.unresolved + ' externalAssets=' + healthJson.assets.externalAssets + ')', '| watch ok', '| jobs persistent');
   } finally {
     engine.kill('SIGTERM');
     fixture.close();
