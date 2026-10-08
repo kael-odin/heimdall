@@ -27,6 +27,9 @@ const hudPages = ref(0);
 const hudEdges = ref(0);
 const hudOrigin = ref('');
 const sites = ref([]);          // 已侦察站点清单（/api/sites）
+const engine = ref({ ok: false, recon: null, forge: null });   // 引擎状态灯
+const autoRotate = ref(true);   // 星图自转开关
+const showPanel = ref(true);    // 左侧仪表面板折叠
 
 // 3D 图数据（Graph3D 消费）
 const gNodes = ref([]);
@@ -166,6 +169,13 @@ async function loadSites() {
     sites.value = (await r.json()).sites ?? [];
   } catch {}
 }
+async function pollEngine() {
+  try {
+    const r = await fetch(`${API}/api/status`);
+    engine.value = await r.json();
+  } catch { engine.value = { ok: false }; }
+}
+setInterval(pollEngine, 15000);
 function pickSite(s) {
   if (!s) return;
   host.value = s.host;
@@ -177,7 +187,7 @@ function startForge(node) {
   return new Promise((resolve) => {
     if (!node?.url) return resolve();
     const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
-    forge.value = { taskId: null, pageName, url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' }, score: null, done: false, failed: false, intel: null, rounds: [], skipReason: null };
+    forge.value = { taskId: null, pageName, url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' }, score: null, done: false, failed: false, intel: null, rounds: [], skipReason: null, error: null };
     node.forgeState = 'running';
     statusText.value = '锻造中 · ' + pageName;
     bump();
@@ -185,7 +195,10 @@ function startForge(node) {
       try {
         const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: node.url }) });
         const { taskId, error } = await r.json();
-        if (error) { errMsg.value = error === 'busy' ? '造物台忙：有页面在锻造' : error; node.forgeState = 'idle'; return resolve(); }
+        if (error) {
+          forge.value.failed = true; forge.value.done = true; forge.value.error = error === 'busy' ? '造物台忙：其它页面正在锻造（稍后再点）' : error;
+          node.forgeState = 'idle'; return resolve();
+        }
         forge.value.taskId = taskId;
         esForge = new EventSource(`${API}/api/events?task=${taskId}`);
         esForge.onmessage = (m) => {
@@ -244,7 +257,7 @@ function onNodeClick(node) {
 }
 
 onMounted(() => {
-  loadSites();
+  loadSites(); pollEngine();
   // 默认载入上次侦察结果
   fetch('/apify.com/recon/atlas.json').then(r => r.ok ? r.json() : Promise.reject()).then(buildStatic).catch(() => {});
 });
@@ -252,7 +265,7 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
 </script>
 
 <template>
-  <Graph3D :nodes="gNodes" :links="gLinks" :tick="gTick" @node-click="onNodeClick" />
+  <Graph3D :nodes="gNodes" :links="gLinks" :tick="gTick" :auto-rotate="autoRotate" @node-click="onNodeClick" />
 
   <div class="hud">
     <div class="brand">HEIMDALL<span class="brand-sub">SITE ATLAS · 深空观测站</span></div>
@@ -264,6 +277,25 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
     </div>
     <div class="status" v-if="statusText" :class="{ live }">{{ statusText }}</div>
   </div>
+
+  <!-- 左侧仪表面板 -->
+  <div class="panel hud-panel" v-show="showPanel">
+    <div class="panel-title">OBSERVATORY · 仪表面板<button class="panel-collapse" @click="showPanel = false" title="收起">—</button></div>
+    <div class="panel-sec">
+      <div class="panel-sec-name">图例 · 页面类型</div>
+      <div class="legend"><span class="lg"><i style="background:#22D3EE"></i>营销页</span><span class="lg"><i style="background:#F59E0B"></i>定价页</span><span class="lg"><i style="background:#8B5CF6"></i>列表页</span><span class="lg"><i style="background:#7B8CA6"></i>文档</span><span class="lg"><i style="background:#F87171"></i>登录</span></div>
+    </div>
+    <div class="panel-sec">
+      <div class="panel-sec-name">显示</div>
+      <label class="sw"><input type="checkbox" v-model="autoRotate" /><span>星图自转</span></label>
+    </div>
+    <div class="panel-sec">
+      <div class="panel-sec-name">引擎</div>
+      <div class="eng" :class="{ on: engine.ok }"><i></i>{{ engine.ok ? '在线 :8900' : '离线' }}</div>
+      <div class="eng-detail" v-if="engine.ok">锻造槽 {{ engine.forge?.slots ?? 0 }}/2 · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
+    </div>
+  </div>
+  <button class="panel-open" v-if="!showPanel" @click="showPanel = true" title="仪表面板">☰</button>
 
   <div class="seek hud-panel">
     <span class="seek-caret">▾</span>
@@ -286,7 +318,7 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
         <div class="dock-title">{{ forge.pageName }}</div>
         <div class="dock-url">{{ forge.url }}</div>
       </div>
-      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="并行锻造内外环 10 页">锻造内环</button><button class="dock-close" @click="forge = null">✕</button></div>
+      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="并行批量锻造内外环前 10 页">批量锻造 10 页</button><button class="dock-close" @click="forge = null">✕</button></div>
     </div>
 
     <div class="stages">
@@ -312,7 +344,8 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
         <span>可修静态差异 {{ (forge.score.breakdown.refinable * 100).toFixed(0) }}% · 动画噪声 {{ (forge.score.breakdown.dynamicShare * 100).toFixed(0) }}%</span>
       </div>
     </div>
-    <div class="verdict pending hud-panel" v-else-if="!forge.done"><span class="scan"></span>锻造中 …</div>
+    <div class="verdict pending hud-panel" v-else-if="!forge.done && !forge.error"><span class="scan"></span>锻造中 …</div>
+    <div class="dock-err hud-panel" v-if="forge.error">{{ forge.error }}</div>
     <div class="fixup-curve" v-if="forge.skipReason">
       <div class="curve-title">AI 校准</div>
       <div class="curve-row">{{ forge.skipReason }}</div>
@@ -344,6 +377,9 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
   </div>
 
   <a class="archive-link" v-if="hudPages > 0" :href="`/${host}/index.html`" target="_blank" rel="noopener">克隆档案 · {{ hudPages }} 页</a>
+  <div class="keys" v-if="!forge">
+    <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 锻造该页</span>
+  </div>
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
 </template>
 
@@ -374,6 +410,31 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
 .site-btn.active { border-color: var(--cyan); color: var(--cyan); }
 
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); color: var(--red); letter-spacing: .08em; font-size: 13px; z-index: 20; }
+
+/* 左侧仪表面板 */
+.panel { position: fixed; left: 28px; bottom: 64px; width: 236px; padding: 14px 16px 16px; z-index: 6; }
+.panel-title { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 10px; letter-spacing: .24em; color: var(--text-faint); margin-bottom: 12px; }
+.panel-collapse { background: none; border: 0; color: var(--text-faint); cursor: pointer; font-size: 13px; }
+.panel-collapse:hover { color: var(--cyan); }
+.panel-sec { margin-bottom: 12px; }
+.panel-sec-name { font-size: 10px; letter-spacing: .18em; color: var(--text-faint); font-family: var(--font-mono); margin-bottom: 7px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.lg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); }
+.lg i { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
+.sw { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
+.sw input { accent-color: var(--cyan); }
+.eng { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); }
+.eng i { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+.eng.on i { background: var(--green); box-shadow: 0 0 8px rgba(52,211,153,.7); }
+.eng-detail { margin-top: 5px; font-size: 10px; color: var(--text-faint); font-family: var(--font-mono); }
+.panel-open { position: fixed; left: 28px; bottom: 64px; z-index: 6; width: 34px; height: 34px; background: rgba(11,11,16,.82); border: 1px solid var(--cyan-line); border-radius: var(--r); color: var(--cyan); cursor: pointer; font-size: 14px; }
+
+/* 快捷键条 */
+.keys { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 5; padding: 7px 18px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: rgba(11,11,16,.72); font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: .08em; }
+.keys .k-amber { color: var(--amber); }
+
+/* dock 内错误 */
+.dock-err { margin-top: 12px; padding: 11px 13px; border: 1px solid rgba(239,68,68,.45); border-radius: var(--r); color: var(--red); font-size: 12.5px; background: rgba(239,68,68,.05); }
 
 /* 施工舱 */
 .dock { position: fixed; right: 0; top: 0; bottom: 0; width: 32%; min-width: 400px; background: linear-gradient(180deg, rgba(20,20,26,.97), rgba(11,11,16,.98)); border-left: 1px solid var(--cyan-line); backdrop-filter: blur(14px); padding: 20px 20px 28px; overflow-y: auto; z-index: 10; }
