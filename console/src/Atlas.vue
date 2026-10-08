@@ -34,6 +34,7 @@ const okMsg = ref('');           // 成功提示（绿色 toast，与错误提�
 const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
 const liveHealth = ref(null);    // 最新活镜像体检（/api/live-health/:host，导出时生成）
+const liveHealthHost = ref('');   // liveHealth 对应的 host（切站后避免串数据）
 const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const matrixPeer = ref('');          // 跨站对标对象
@@ -78,7 +79,7 @@ const detailTab = ref('overview');   // 详情面板 tab
 const detailIntel = ref(null);       // 已锻页 intel.json
 const detailScore = ref(null);       // 已锻页 score.json
 const detailSeo = computed(() => selected.value?.seoLite ?? null);
-const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null });
+const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null, liveGaps: null });
 const assetGapsCache = ref(null);
 const seoChecks = computed(() => {
   const sl = detailSeo.value;
@@ -192,7 +193,7 @@ async function loadQuality() {
   const n = selected.value;
   if (!n) return;
   detailQuality.loading = true;
-  detailQuality.verify = null; detailQuality.fixup = null; detailQuality.gaps = null; detailQuality.history = null;
+  detailQuality.verify = null; detailQuality.fixup = null; detailQuality.gaps = null; detailQuality.history = null; detailQuality.liveGaps = null;
   const name = pageNameOf(n);
   const [v, f, h] = await Promise.all([
     fetch('/' + host.value + '/verify/' + name + '/verify.json').then(r => r.ok ? r.json() : null).catch(() => null),
@@ -205,6 +206,16 @@ async function loadQuality() {
     try { const r = await fetch('/' + host.value + '/audit/asset-gaps.json'); if (r.ok) assetGapsCache.value = await r.json(); } catch {}
   }
   detailQuality.gaps = assetGapsCache.value?.pages?.find(p => p.page === name) ?? null;
+  try {
+    if (!liveHealth.value || liveHealthHost.value !== host.value) {
+      const r = await fetch(API + '/api/live-health/' + encodeURIComponent(host.value), { headers: apiHeaders() });
+      liveHealth.value = r.ok ? await r.json() : null;
+      liveHealthHost.value = host.value;
+    }
+    const p = (n.path || '/').replace(/\/+$/, '') || '/';
+    const key = p === '/' ? '/' : p + '/';
+    detailQuality.liveGaps = liveHealth.value?.details?.find(d => d.page === key) ?? { page: key, unresolvedCount: 0, unresolved: [] };
+  } catch { detailQuality.liveGaps = null; }
   detailQuality.loading = false;
 }
 watch(detailTab, (t) => { if (t === 'quality') loadQuality(); });
@@ -1138,6 +1149,16 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
             </div>
           </div>
           <div v-else class="seo-note">未扫描：报告 → 资产缺口 → 运行扫描</div>
+        </div>
+        <div class="ov-sec">
+          <div class="panel-sec-name">活镜像离线资源</div>
+          <div v-if="detailQuality.liveGaps" class="q-list">
+            <div class="q-row"><span class="q-k">离线缺口</span><span class="q-v" :class="detailQuality.liveGaps.unresolvedCount ? 'bad' : 'ok'">{{ detailQuality.liveGaps.unresolvedCount ?? 0 }}</span></div>
+            <div class="q-row" v-for="(u, i) in (detailQuality.liveGaps.unresolved || []).slice(0, 8)" :key="i">
+              <span class="q-k">缺</span><span class="q-v" :title="u">{{ String(u).slice(0, 60) }}</span>
+            </div>
+          </div>
+          <div v-else class="seo-note">尚无活镜像体检报告（导出时加 --heal --strict 生成 health.json）</div>
         </div>
         <div class="ov-sec" v-if="detailQuality.history?.jobs?.length">
           <div class="panel-sec-name">锻造历史（引擎持久化 · 最近 {{ detailQuality.history.jobs.length }} 次）</div>
