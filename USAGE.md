@@ -136,13 +136,28 @@ CI 门控：`--threshold 70` 时站点分低于阈值退出码为 1。
 
 控制台：站点栏点「SEO 审计」→ 任务中心显示进度 → 完成后右下角打开报告。
 
-## 11. 安全与数据目录（v2）
+## 11. 资产去重（CAS，v2）
+
+站点批量锻造结束后自动执行去重；也可单独运行：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\store\dedupe.mjs apify.com          :: 内容寻址 + 硬链接去重
+node core\src\store\dedupe.mjs apify.com --dry-run :: 只统计不修改
+```
+
+- CAS 目录：`core/assets-cas/<aa>/<bb>/<sha256><ext>`（`HEIMDALL_DATA_DIR` 可迁移）
+- 实测 apify：25,917 个文件 → 3,191 个唯一，节省约 241MB（48%）
+- 账本：`workspace/<host>/asset-ledger.json`
+- 队列支持 `--no-dedupe` 跳过
+
+## 12. 安全与数据目录（v2）
 
 - 引擎默认只监听 `127.0.0.1`；内网共享时设置 `HEIMDALL_HOST=0.0.0.0` + `HEIMDALL_TOKEN=<token>`，控制台可用 localStorage 的 `heimdall-token` 携带。
 - 活镜像/代理只允许 `workspace/<host>` 已存在的域名（防 SSRF/开放代理）；额外域名用 `HEIMDALL_ALLOWED_HOSTS=a.com,b.com`。
 - 把 1.4GB 产物移出仓库：`set HEIMDALL_DATA_DIR=D:\heimdall-data`，workspace/deliverable 都会迁到该目录。
 
-## 12. 质量门（v2）
+## 13. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

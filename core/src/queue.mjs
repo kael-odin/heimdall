@@ -124,5 +124,9 @@ if (d > 0) {
   await runNode(join('src', 'harvest', 'xlsx.mjs'), [host]);
   await runNode(join('src', 'crawler', 'linker.mjs'), [host]);
   await runNode(join('src', 'crawler', 'index-page.mjs'), [host]);
+  if (!process.argv.includes('--no-dedupe')) {
+    console.log('\n[dedupe] content-addressed asset store (hardlinks)');
+    await runNode(join('src', 'store', 'dedupe.mjs'), [host]);
+  }
 }
 console.log(`\nQUEUE COMPLETE ${host}: ${d} done / ${f} failed / ${queue.length} total`);
