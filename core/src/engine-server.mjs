@@ -67,6 +67,13 @@ const isProxyHost = (h) => {
   if (EXTRA_PROXY_HOSTS.has(noWww)) return true;
   return existsSync(join(WORKSPACE, noWww));
 };
+const pageFor = (u) => {
+  try {
+    const x = typeof u === 'string' ? new URL(u) : u;
+    const p = x.pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[/?&#]+/g, '-').slice(0, 60);
+    return p || 'home';
+  } catch { return 'home'; }
+};
 const isInsideWorkspace = (file) => {
   const rel = relative(WORKSPACE, file);
   return !!rel && !rel.startsWith('..') && !isAbsolute(rel);
@@ -395,6 +402,28 @@ createServer(async (req, res) => {
     return json(res, 200, { host, pages: out });
   }
 
+  // 单页锻造历史（持久化 jobs/events）
+  if (req.method === 'GET' && u.pathname.startsWith('/api/history/')) {
+    const parts = u.pathname.split('/').filter(Boolean); // ['api','history',host,page]
+    const host = decodeURIComponent(parts[2] ?? '');
+    const page = decodeURIComponent(parts[3] ?? '');
+    if (!/^[a-z0-9.-]+$/i.test(host) || !page) return json(res, 400, { error: 'bad history path' });
+    const jobs = (jobStore?.list({ limit: 500 }) ?? [])
+      .filter(j => {
+        try { const x = new URL(j.url); return x.hostname.replace(/^www\./, '') === host && (j.pageName === page || (j.kind === 'forge' && pageFor(x) === page)); } catch { return false; }
+      })
+      .slice(0, 30)
+      .map(j => {
+        let score = null;
+        try {
+          const evs = jobStore.events(j.id, { limit: 300 });
+          for (const e of evs) if (e.data?.kind === 'forge-score' && e.data.score) score = e.data.score;
+        } catch {}
+        return { id: j.id, status: j.status, createdAt: j.createdAt, endedAt: j.endedAt, error: j.error, score: score ? { pixel: score.pixel, total: score.total, grade: score.grade } : null };
+      });
+    return json(res, 200, { host, page, jobs });
+  }
+
   if (req.method === 'GET' && u.pathname === '/api/sites') {
     // 已侦察站点清单（有 atlas.json 的 host）——控制台切换器数据源
     const wsDir = WORKSPACE;
@@ -564,9 +593,8 @@ createServer(async (req, res) => {
         if (existsSync(atlasPath)) {
           try {
             const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
-            const pageNameOf = (url) => { try { const p = new URL(url).pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[\/?&#]+/g, '-').slice(0, 60); return p || 'home'; } catch { return 'home'; } };
             const before = atlas.nodes?.length ?? 0;
-            atlas.nodes = (atlas.nodes ?? []).filter(n => pageNameOf(n.url) !== name);
+            atlas.nodes = (atlas.nodes ?? []).filter(n => pageFor(n.url) !== name);
             const ids = new Set(atlas.nodes.map(n => n.id));
             atlas.edges = (atlas.edges ?? []).filter(e => ids.has(e.from) && ids.has(e.to));
             if (atlas.meta) { atlas.meta.pages = atlas.nodes.length; atlas.meta.edges = atlas.edges.length; }

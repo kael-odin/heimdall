@@ -126,6 +126,14 @@ async function main() {
     const forgeExit = await waitExit(base, forge.body.taskId, 240_000);
     assert.equal(forgeExit.status, 'done', 'forge exit status (engine log tail: ' + engineLog.slice(-400) + ')');
 
+    // 2b) 单页锻造历史（持久化）应可查
+    await waitFor(async () => {
+      const r = await fetch(base + '/api/history/127.0.0.1/home');
+      if (!r.ok) return false;
+      const h = await r.json();
+      return h.jobs?.length >= 1;
+    }, { label: 'forge history', timeout: 15_000 });
+
     // 3) 产物断言
     const pageDir = join(dataDir, 'workspace', '127.0.0.1', 'pages', 'home');
     const cloneHtml = join(pageDir, 'clone', 'index.html');

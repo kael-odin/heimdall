@@ -77,7 +77,7 @@ const detailTab = ref('overview');   // 详情面板 tab
 const detailIntel = ref(null);       // 已锻页 intel.json
 const detailScore = ref(null);       // 已锻页 score.json
 const detailSeo = computed(() => selected.value?.seoLite ?? null);
-const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null });
+const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null });
 const assetGapsCache = ref(null);
 const seoChecks = computed(() => {
   const sl = detailSeo.value;
@@ -181,14 +181,15 @@ async function loadQuality() {
   const n = selected.value;
   if (!n) return;
   detailQuality.loading = true;
-  detailQuality.verify = null; detailQuality.fixup = null; detailQuality.gaps = null;
+  detailQuality.verify = null; detailQuality.fixup = null; detailQuality.gaps = null; detailQuality.history = null;
   const name = pageNameOf(n);
-  const [v, f] = await Promise.all([
+  const [v, f, h] = await Promise.all([
     fetch('/' + host.value + '/verify/' + name + '/verify.json').then(r => r.ok ? r.json() : null).catch(() => null),
     fetch('/' + host.value + '/pages/' + name + '/fixup-history.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(API + '/api/history/' + encodeURIComponent(host.value) + '/' + encodeURIComponent(name), { headers: apiHeaders() }).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
   if (selected.value !== n) return;
-  detailQuality.verify = v; detailQuality.fixup = f;
+  detailQuality.verify = v; detailQuality.fixup = f; detailQuality.history = h;
   if (!assetGapsCache.value) {
     try { const r = await fetch('/' + host.value + '/audit/asset-gaps.json'); if (r.ok) assetGapsCache.value = await r.json(); } catch {}
   }
@@ -1111,6 +1112,19 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
             </div>
           </div>
           <div v-else class="seo-note">未扫描：报告 → 资产缺口 → 运行扫描</div>
+        </div>
+        <div class="ov-sec" v-if="detailQuality.history?.jobs?.length">
+          <div class="panel-sec-name">锻造历史（引擎持久化 · 最近 {{ detailQuality.history.jobs.length }} 次）</div>
+          <div class="q-list">
+            <div class="q-row" v-for="j in detailQuality.history.jobs.slice(0, 8)" :key="j.id">
+              <span class="q-k">{{ fmtDate(j.createdAt) }}</span>
+              <span class="q-v" :class="j.status === 'done' ? 'ok' : j.status === 'failed' ? 'bad' : 'mid'">
+                {{ j.status }} · {{ j.endedAt ? Math.round((j.endedAt - j.createdAt) / 1000) + 's' : '—' }}
+                <i v-if="j.score"> · 视觉 {{ (j.score.pixel * 100).toFixed(1) }}%</i>
+                <i v-if="j.error" class="bad"> · {{ String(j.error).slice(0, 40) }}</i>
+              </span>
+            </div>
+          </div>
         </div>
         <div class="ov-sec" v-if="detailQuality.fixup?.rounds?.length">
           <div class="panel-sec-name">AI 校准曲线</div>
