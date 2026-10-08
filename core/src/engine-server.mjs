@@ -20,10 +20,12 @@
  */
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE } from './paths.mjs';
+
+const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 
 const PORT = Number(process.argv[2] ?? 8900);
 const BIND = process.env.HEIMDALL_HOST ?? '127.0.0.1';
@@ -424,6 +426,44 @@ createServer(async (req, res) => {
       bind: BIND,
       auth: !!AUTH_TOKEN,
     });
+  }
+
+  // 单端口部署：workspace 作为公开静态目录（/apify.com/recon/atlas.json 等，等价 Vite publicDir）
+  {
+    const firstSeg = u.pathname.split('/')[1] ?? '';
+    if (firstSeg && !firstSeg.startsWith('.')) {
+      const file = join(WORKSPACE, decodeURIComponent(u.pathname.replace(/^\/+/, '')));
+      if (isInsideWorkspace(file) && existsSync(file)) {
+        try {
+          if (statSync(file).isFile()) {
+            res.writeHead(200, { ...CORS, 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
+            res.end(readFileSync(file));
+            return;
+          }
+        } catch {}
+      }
+    }
+  }
+
+  // 单端口部署：控制台静态资源 + SPA 回退（HEIMDALL_CONSOLE_DIR=console/dist）
+  if (CONSOLE_DIR && existsSync(CONSOLE_DIR) && u.pathname !== '/api') {
+    const rel = decodeURIComponent(u.pathname.replace(/^\/+/, '')) || 'index.html';
+    const candidates = [join(CONSOLE_DIR, rel), join(CONSOLE_DIR, rel, 'index.html')];
+    for (const f of candidates) {
+      try {
+        const r = relative(CONSOLE_DIR, f);
+        if (r.startsWith('..') || isAbsolute(r)) continue;
+        if (existsSync(f) && statSync(f).isFile()) {
+          res.writeHead(200, { ...CORS, 'Content-Type': MIME[extname(f)] ?? 'application/octet-stream' });
+          res.end(readFileSync(f));
+          return;
+        }
+      } catch {}
+    }
+    if (!extname(u.pathname)) {
+      const index = join(CONSOLE_DIR, 'index.html');
+      if (existsSync(index)) { res.writeHead(200, { ...CORS, 'Content-Type': 'text/html; charset=utf-8' }); res.end(readFileSync(index)); return; }
+    }
   }
 
   json(res, 404, { error: 'nf' });

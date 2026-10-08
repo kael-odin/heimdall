@@ -13,7 +13,9 @@ import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
 const PAGE_TYPES = PT;
 const TYPE_COLOR = Object.fromEntries(Object.entries(PAGE_TYPES).map(([k, v]) => [k, v.color]));
 // 引擎 API 直连（vite proxy 会缓冲实时 SSE；引擎侧 CORS 已开放）
-const API = localStorage.getItem('heimdall-api') ?? 'http://127.0.0.1:8900';
+// 单端口部署时与引擎同源；Vite dev（5173/5175）直连引擎 :8900（避免代理缓冲 SSE）
+const DEV_PORTS = ['5173', '5174', '5175'];
+const API = localStorage.getItem('heimdall-api') ?? (DEV_PORTS.includes(location.port) || !/^https?:/.test(location.protocol) ? 'http://127.0.0.1:8900' : location.origin);
 
 const host = ref('apify.com');
 const atlas = ref(null);

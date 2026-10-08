@@ -1,0 +1,21 @@
+services:
+  heimdall:
+    build: .
+    image: heimdall:latest
+    container_name: heimdall
+    ports:
+      - "8900:8900"
+    environment:
+      HEIMDALL_HOST: 0.0.0.0
+      HEIMDALL_DATA_DIR: /data
+      HEIMDALL_CONSOLE_DIR: /app/console/dist
+      HEIMDALL_LLM: "0"
+      # 内网共享时建议开启鉴权（同时把地址填到控制台「设置 → 引擎 Token」）：
+      # HEIMDALL_TOKEN: change-me
+      # HEIMDALL_CORS_ORIGIN: http://your-host:8900
+    volumes:
+      - heimdall-data:/data
+    restart: unless-stopped
+
+volumes:
+  heimdall-data:

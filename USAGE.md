@@ -239,7 +239,29 @@ node core\src\watch\watch.mjs apify.com --fail-on-change :: 有变化退出码 1
 - 产物：`workspace/<host>/watch/{baseline.json,watch.json,watch.html,history/}`（历史保留最近 30 份）
 - 控制台「报告」页可一键运行并打开变更报告
 
-## 17. 质量门（v2）
+## 17. Docker / 单端口部署（v2）
+
+一条命令起完整工作台（引擎 + 控制台 + 报告 + Playwright）：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+docker compose up -d          :: 构建并启动
+:: 打开 http://localhost:8900
+:: 数据持久化在 heimdall-data 卷（对应容器内 /data）
+```
+
+- 引擎同时服务：API/SSE、`/static` 产物、`/lm` 活镜像、控制台 SPA（`HEIMDALL_CONSOLE_DIR`）
+- 内网共享：在 compose 里设置 `HEIMDALL_TOKEN`，并在控制台「设置 → 引擎 Token」填入同一值
+- LLM：设置 `HEIMDALL_LLM=1` + `LLM_BASE_URL/LLM_API_KEY/LLM_MODEL` 后 AI 校准/语义增强生效
+- 不使用 Docker 时也可本机单端口：先构建控制台，再启动引擎
+
+```cmd
+pnpm -C console build
+set HEIMDALL_CONSOLE_DIR=D:\Github-Star\heimdall\console\dist
+node core\src\engine-server.mjs 8900
+```
+
+## 18. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

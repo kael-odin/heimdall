@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/coverage
+core/workspace
+core/deliverable
+core/assets-cas
+*.log
+.git
+.gitignore
+.github
+docs
+*.tmp.mjs
