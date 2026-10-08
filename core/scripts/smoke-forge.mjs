@@ -138,6 +138,11 @@ async function main() {
     const html = readFileSync(cloneHtml, 'utf8');
     assert.ok(html.includes('styles/cssom.css'), 'clone must reference the captured CSSOM');
     assert.ok(!/<script\b/i.test(html), 'static clone must strip scripts');
+    const assetMap = JSON.parse(readFileSync(join(pageDir, 'asset-map.json'), 'utf8'));
+    assert.ok((assetMap.resources ?? []).some(r => (r.kinds ?? []).includes('icon')), 'asset-map must record the icon resource');
+    const iconMatch = /<link[^>]+rel="icon"[^>]*href="(assets\/[^"]+)"/i.exec(html);
+    assert.ok(iconMatch, 'favicon must be localized in the static clone');
+    assert.ok(existsSync(join(pageDir, 'clone', iconMatch[1])), 'localized favicon file must exist: ' + iconMatch[1]);
 
     // 4) 安全断言
     const evil = await fetch(base + '/px/evil.example/x');

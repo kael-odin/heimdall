@@ -87,7 +87,37 @@ const manifest = await page.evaluate(() => {
   document.querySelectorAll('source[srcset]').forEach(s =>
     s.getAttribute('srcset').split(',').forEach(t => { const u = t.trim().split(/\s+/)[0]; if (u) imgs.add(abs(u)); }));
   const favicon = [...document.querySelectorAll('link[rel*="icon"]')].map(l => abs(l.getAttribute('href'))).filter(Boolean);
-  return { css, imgs: [...imgs], favicon };
+  // ---- v2 资源矩阵：图片/图标/媒体/字体预载/sprite/manifest（按 URL 去重，保留 kinds）----
+  const resIndex = new Map();
+  const addRes = (u, kind) => {
+    if (u == null) return;
+    const s = String(u).trim();
+    if (!s || s === 'null' || s === 'undefined' || s === 'about:blank') return;
+    const a = abs(s);
+    if (!a || a.startsWith('data:')) return;
+    const key = a.split('#')[0];
+    if (!resIndex.has(key)) resIndex.set(key, { url: key, kinds: [] });
+    const r = resIndex.get(key);
+    if (!r.kinds.includes(kind)) r.kinds.push(kind);
+  };
+  document.querySelectorAll('img').forEach(i => {
+    if (i.currentSrc || i.src) addRes(i.currentSrc || i.src, 'image');
+    (i.getAttribute('srcset') || '').split(',').forEach(s => { const u = s.trim().split(/\s+/)[0]; if (u) addRes(u, 'image'); });
+  });
+  document.querySelectorAll('source').forEach(s => {
+    if (s.getAttribute('srcset')) s.getAttribute('srcset').split(',').forEach(t => { const u = t.trim().split(/\s+/)[0]; if (u) addRes(u, 'image'); });
+    if (s.getAttribute('src')) addRes(s.getAttribute('src'), 'media');
+  });
+  document.querySelectorAll('video').forEach(v => { if (v.getAttribute('src')) addRes(v.getAttribute('src'), 'media'); if (v.getAttribute('poster')) addRes(v.getAttribute('poster'), 'image'); });
+  document.querySelectorAll('audio[src]').forEach(a2 => addRes(a2.getAttribute('src'), 'media'));
+  document.querySelectorAll('link[rel*="icon"]').forEach(l => addRes(l.getAttribute('href'), 'icon'));
+  document.querySelectorAll('link[rel="manifest"]').forEach(l => addRes(l.getAttribute('href'), 'manifest'));
+  document.querySelectorAll('link[rel="preload"][as]').forEach(l => addRes(l.getAttribute('href'), 'preload-' + (l.getAttribute('as') || 'other')));
+  document.querySelectorAll('svg use').forEach(u => { const h = u.getAttribute('href') || u.getAttribute('xlink:href'); if (h && !h.startsWith('#')) addRes(h, 'svg-sprite'); });
+  document.querySelectorAll('[style*="url("]').forEach(el => { const m = /url\(([^)]+)\)/.exec(el.getAttribute('style') || ''); if (m) addRes(m[1].replace(/['"]/g, ''), 'image'); });
+  document.querySelectorAll('meta[property="og:image"],meta[name="twitter:image"]').forEach(m2 => addRes(m2.getAttribute('content'), 'image'));
+  const resources = [...resIndex.values()];
+  return { css, imgs: [...imgs], favicon, resources };
 });
 writeFileSync(join(OUT, 'manifest.json'), JSON.stringify({ ...manifest, target: TARGET }, null, 2));
 console.log(`    css=${manifest.css.length} imgs=${manifest.imgs.length} icons=${manifest.favicon.length}`);
@@ -144,28 +174,55 @@ console.log(`    dom.html ${(html.length / 1024).toFixed(0)}KB`);
 
 await browser.close();
 
-// 下载 DOM 引用的图片资产（序号命名，防 /_next/image 同名覆盖）
-console.log('    download assets');
-let okImg = 0, failImg = 0;
+// 下载资源矩阵（图片/图标/媒体/sprite/manifest；iframe/embed 保持在线引用）
+console.log('    download resources');
+let okRes = 0, failRes = 0;
 const imgMap = {};
-const extOf = (ct) =>
-  ct.includes('webp') ? 'webp' : ct.includes('avif') ? 'avif' : ct.includes('svg') ? 'svg'
-  : ct.includes('png') ? 'png' : ct.includes('jpeg') ? 'jpg' : ct.includes('gif') ? 'gif'
-  : ct.includes('icon') ? 'ico' : 'bin';
-for (const u of manifest.imgs) {
+const resMap = {};
+const failed = [];
+const SKIP_KINDS = new Set(['iframe', 'embed']);
+const extOfResource = (ct, url) => {
+  const m = /\.(woff2?|ttf|otf|eot|png|jpe?g|webp|avif|svg|gif|ico|mp4|webm|mp3|wav|json|webmanifest)$/i.exec(new URL(url, 'https://x.local').pathname);
+  if (m) return m[1].toLowerCase().replace('jpeg', 'jpg');
+  if (ct.includes('webp')) return 'webp';
+  if (ct.includes('avif')) return 'avif';
+  if (ct.includes('svg')) return 'svg';
+  if (ct.includes('png')) return 'png';
+  if (ct.includes('jpeg')) return 'jpg';
+  if (ct.includes('gif')) return 'gif';
+  if (ct.includes('icon')) return 'ico';
+  if (ct.includes('mp4')) return 'mp4';
+  if (ct.includes('webm')) return 'webm';
+  if (ct.includes('json') || ct.includes('manifest')) return 'json';
+  return 'bin';
+};
+for (const r of manifest.resources ?? []) {
+  const kind = r.kinds[0] ?? 'asset';
+  if (SKIP_KINDS.has(kind)) continue;
   try {
-    const res = await fetch(u, { headers: { 'User-Agent': UA, Referer: TARGET } });
+    const res = await fetch(r.url, { headers: { 'User-Agent': UA, Referer: TARGET } });
     if (!res.ok) throw new Error(res.status);
-    const name = `img${String(okImg).padStart(3, '0')}.${extOf(res.headers.get('content-type') || '')}`;
+    const safeKind = kind.replace(/[^a-z0-9-]/gi, '') || 'asset';
+    const name = safeKind + String(okRes).padStart(3, '0') + '.' + extOfResource(res.headers.get('content-type') || '', r.url);
     writeFileSync(join(OUT, 'assets', name), Buffer.from(await res.arrayBuffer()));
-    imgMap[u] = `assets/${name}`;
-    okImg++;
-  } catch (e) { failImg++; console.warn('    FAIL', u, String(e)); }
+    const rel = 'assets/' + name;
+    resMap[r.url] = rel;
+    if (r.kinds.some(k => k === 'image' || k === 'icon' || k.startsWith('preload'))) imgMap[r.url] = rel;
+    okRes++;
+  } catch (e) {
+    failRes++; failed.push({ url: r.url, kinds: r.kinds, error: String(e).slice(0, 120) });
+    console.warn('    FAIL', kind, r.url, String(e));
+  }
 }
 const cssMap = {};
 for (const u of manifest.css) {
   // link CSS 仅存档参考；克隆页唯一样式源是 cssom.css
   cssMap[u] = 'styles/' + (new URL(u).pathname.split('/').pop() || 'link.css');
 }
-writeFileSync(join(OUT, 'asset-map.json'), JSON.stringify({ cssMap, imgMap, css: manifest.css, imgs: manifest.imgs, favicon: manifest.favicon }, null, 2));
-console.log(`\nDONE imgs ${okImg}/${manifest.imgs.length} (fail ${failImg}) -> ${OUT}`);
+writeFileSync(join(OUT, 'asset-map.json'), JSON.stringify({ cssMap, imgMap, resMap, resources: manifest.resources ?? [], css: manifest.css, imgs: manifest.imgs, favicon: manifest.favicon }, null, 2));
+writeFileSync(join(OUT, 'gaps.json'), JSON.stringify({
+  failed,
+  notCaptured: (manifest.resources ?? []).filter(r => r.kinds.some(k => SKIP_KINDS.has(k))).map(r => ({ url: r.url, kinds: r.kinds })),
+  notes: ['iframe/embed 保持在线引用（未本地化）', 'canvas/WebGL 与 WebSocket 不在静态捕获范围'],
+}, null, 2));
+console.log('DONE resources ok=' + okRes + ' fail=' + failRes + ' -> ' + OUT);

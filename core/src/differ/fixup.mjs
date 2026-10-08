@@ -9,7 +9,7 @@
  *
  * 用法: node src/differ/fixup.mjs <pageDir> [maxRounds=2] [clonePort=8961]
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, copyFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { llmEnabled, llmVision } from '../llm.mjs';
@@ -31,6 +31,11 @@ const CLONE_REL = DIR.replace(/^[\\/]/, '').replace(/^workspace[\\/]/, '');
 const CLONE_URL = `http://127.0.0.1:${CLONE_PORT}/static/${CLONE_REL.split(/[\\/]/).join('/')}/clone/index.html`;
 const FIXES_CSS = join(DIR, 'clone', 'styles', 'fixes.css');
 const FIXES_LINK = '<link rel="stylesheet" href="styles/fixes.css">';
+// 基线备份：回滚时直接还原截图/分数/热图，避免"清补丁→重截"过程中再遇渲染/缓存异常
+const BASE_SHOT = join(DIR, 'shot-clone.png');
+const BASE_SHOT_BAK = join(DIR, 'shot-clone.base.png');
+const BASE_SCORE_BAK = join(DIR, 'score.base.json');
+const BASE_DIFF_BAK = join(DIR, 'diff.base.png');
 
 const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error(...a);
@@ -81,6 +86,12 @@ async function main() {
   let best = readScore();
   let bestCss = '';
   const inventory = classInventory();
+  // 保存基线（初始最佳状态）
+  try {
+    copyFileSync(BASE_SHOT, BASE_SHOT_BAK);
+    copyFileSync(join(DIR, 'score.json'), BASE_SCORE_BAK);
+    if (existsSync(join(DIR, 'diff.png'))) copyFileSync(join(DIR, 'diff.png'), BASE_DIFF_BAK);
+  } catch (e) { log('[fixup] baseline backup failed:', String(e).slice(0, 100)); }
 
   for (let round = 1; round <= MAX_ROUNDS; round++) {
     const before = readScore();
@@ -132,13 +143,21 @@ async function main() {
     history.push({ round, before: before.total, after: after.total, kept, cssBytes: css.length, css });
     emit({ kind: 'fixup-round', round, before: before.total, after: after.total, kept });
 
-    if (kept) { best = after; bestCss = css; }
-    else {
-      writeFileSync(FIXES_CSS, '');
-      // 状态对齐：回滚后 shot-clone.png 残留的是"带补丁"的截图，必须重截恢复基线，否则污染后续轮次
+    if (kept) {
+      best = after; bestCss = css;
+      // 保留状态即新基线：后续轮次回滚时还原到这里
       try {
-        await run('crawler/shot_clone.mjs', [CLONE_URL, join(DIR, 'shot-clone.png')]);
-        await run('differ/diff.mjs', [DIR]);
+        copyFileSync(BASE_SHOT, BASE_SHOT_BAK);
+        copyFileSync(join(DIR, 'score.json'), BASE_SCORE_BAK);
+        if (existsSync(join(DIR, 'diff.png'))) copyFileSync(join(DIR, 'diff.png'), BASE_DIFF_BAK);
+      } catch {}
+    } else {
+      writeFileSync(FIXES_CSS, '');
+      // 直接还原基线产物（截图/分数/热图），比"重截"更确定
+      try {
+        copyFileSync(BASE_SHOT_BAK, BASE_SHOT);
+        copyFileSync(BASE_SCORE_BAK, join(DIR, 'score.json'));
+        if (existsSync(BASE_DIFF_BAK)) copyFileSync(BASE_DIFF_BAK, join(DIR, 'diff.png'));
       } catch {}
       break;
     }   // 回滚并停止
@@ -146,11 +165,19 @@ async function main() {
   }
 
   writeFileSync(join(DIR, 'fixup-history.json'), JSON.stringify({ best, rounds: history }, null, 2));
-  // 最终以最佳状态重截一次（若最后一轮被回滚）
+  // 最终状态必须与 best 一致：优先还原基线产物（确定性），不再重截
   const final = readScore();
-  if (final.total < best.total && bestCss) {
+  if (final.total < best.total) {
     writeFileSync(FIXES_CSS, bestCss);
-    try { await run('crawler/shot_clone.mjs', [CLONE_URL, join(DIR, 'shot-clone.png')]); await run('differ/diff.mjs', [DIR]); } catch {}
+    try {
+      copyFileSync(BASE_SHOT_BAK, BASE_SHOT);
+      copyFileSync(BASE_SCORE_BAK, join(DIR, 'score.json'));
+      if (existsSync(BASE_DIFF_BAK)) copyFileSync(BASE_DIFF_BAK, join(DIR, 'diff.png'));
+    } catch {}
+  }
+  // 清理基线备份（除非显式保留）
+  if (process.env.HEIMDALL_KEEP_BASELINE !== '1') {
+    for (const f of [BASE_SHOT_BAK, BASE_SCORE_BAK, BASE_DIFF_BAK]) { try { if (existsSync(f)) unlinkSync(f); } catch {} }
   }
   log(`[fixup] best ${best.total}%`);
 }

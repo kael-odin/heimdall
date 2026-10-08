@@ -16,6 +16,7 @@
   },
   "scripts": {
     "dev": "node src/engine-server.mjs 8900",
+    "verify": "node src/verify/verify.mjs",
     "test": "node --test",
     "lint": "node scripts/check-syntax.mjs",
     "smoke": "node scripts/smoke-forge.mjs"

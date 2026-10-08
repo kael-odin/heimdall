@@ -157,7 +157,24 @@ node core\src\store\dedupe.mjs apify.com --dry-run :: 只统计不修改
 - 活镜像/代理只允许 `workspace/<host>` 已存在的域名（防 SSRF/开放代理）；额外域名用 `HEIMDALL_ALLOWED_HOSTS=a.com,b.com`。
 - 把 1.4GB 产物移出仓库：`set HEIMDALL_DATA_DIR=D:\heimdall-data`，workspace/deliverable 都会迁到该目录。
 
-## 13. 质量门（v2）
+## 13. 多视口验证（v2）
+
+单页快照的 1440×900 分数会掩盖移动端差距。用 verify 做 375/768/1440 三档全页对比：
+
+```cmd
+cd /d D:\Github-Star\heimdall\core
+node src\verify\verify.mjs apify.com storage            :: 单页三视口
+node src\verify\verify.mjs apify.com --all --max 10      :: 前 10 页，输出站点汇总
+node src\verify\verify.mjs apify.com storage --threshold 85  :: CI 门控（综合分低于阈值退出码 1）
+```
+
+产物：`workspace/<host>/verify/<page>/verify.json` + `diff-<viewport>.png`（差异热图）。
+综合分 = 移动 0.25 / 平板 0.25 / 桌面 0.5。
+
+实测 apify.com/storage：桌面 98.2%（A）/ 平板 89.4%（B）/ 移动 78.4%（C）→ 综合 91.0%（B）。
+这证明"单视口 95.9%"确实高估了真实保真度——移动端字体/换行/高度差是主要来源。
+
+## 14. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

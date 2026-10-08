@@ -68,16 +68,23 @@ console.log(`  refs=${cssomMeta.refs.length} ok=${fetched} fail=${failed} -> sty
 
 // ---------- 2. HTML 重写 ----------
 console.log('[2/3] rewrite DOM');
+const resTable = { ...(map.resMap ?? {}), ...(map.imgMap ?? {}) };
 const lookup = (raw) => {
   const dec = raw.replace(/&amp;/g, '&');
   const abs = (() => { try { return new URL(dec, ORIGIN).href; } catch { return null; } })();
-  return map.imgMap[abs] ?? map.imgMap[dec] ?? null;
+  return resTable[abs] ?? resTable[dec] ?? null;
 };
 
 let html = readFileSync(join(PAGE, 'dom.html'), 'utf8');
-for (const [origUrl, relPath] of Object.entries(map.imgMap)) html = html.split(origUrl).join(relPath);
+for (const [origUrl, relPath] of Object.entries(resTable)) html = html.split(origUrl).join(relPath);
 
-html = html.replace(/\b(src|srcset|href)="([^"]*)"/g, (m, attr, val) => {
+// svg <use href="sprite.svg#id">：只换文件部分，保留片段
+html = html.replace(/(<use\b[^>]*\b(?:href|xlink:href)=")([^"#]+)(#[^"]*)(")/gi, (m, head, file, frag, tail) => {
+  const hit = lookup(file);
+  return hit ? head + hit + frag + tail : m;
+});
+
+html = html.replace(/\b(src|srcset|href|data|poster|content)="([^"]*)"/g, (m, attr, val) => {
   if (!val || /^(#|data:|mailto:|javascript:|tel:)/.test(val)) return m;
   if (attr === 'srcset') {
     const out = val.split(',').map(p => {

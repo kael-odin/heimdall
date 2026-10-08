@@ -20,6 +20,7 @@
 | 全站批量锻造 | ✅ | queue.mjs 持久化队列，断点续跑，thordata 31/31、apify 60/60 |
 | 同步滚动对比 | ✅ | compare.html（1440px 统一视口，根除响应式变形） |
 | 控制台 | ✅ | 3D 星图、详情剖析（概览/SEO/锻造）、页面清单、任务中心（独立进度）、深浅主题 |
+| 多视口验证 | ✅ v1 | `node src/verify/verify.mjs <host> <page>`；375/768/1440 全页 diff（apify storage 实测 91.0% B：桌面 98.2 / 平板 89.4 / 移动 78.4） |
 | SEO 审计 | ✅ v1 | `node src/seo/audit.mjs <host> --max 20` → seo.html/csv/json，40+ 规则、六分类评分 |
 | 质量门 | ✅ | `pnpm lint` / `pnpm test`（12 单测）/ `pnpm smoke`（fixture 离线 E2E，含 SEO 审计）+ GitHub Actions |
 | 安全默认值 | ✅ | 绑定 127.0.0.1、代理 host 白名单、路径越界防护、可选 token、CORS 限定来源 |
