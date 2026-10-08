@@ -142,3 +142,31 @@ node src\crawler\fullshot.mjs <host>
 ### 8.4 本轮质量门
 lint 75 文件 · 单测 61/61 · smoke 全绿（含 live health unresolved=0）· CI 绿（244cead / eb06876）。
 
+
+## 9. 2026-10-09 续二：活镜像离线自包含达成（apify + thordata 双站 unresolved=0）
+
+### 9.1 HAR 补录（每页 network.har）
+- `queue <host> --missing-har`（新增，只重锻缺 HAR 的页，不重做已完成页）。
+- apify：60/60 页补齐（原始 HAR 共 1.17GB）；thordata 原有 31/31 已带 HAR。
+- queue 健壮性：引擎重启/不可达不再崩溃（退避重试）；SSE 断开回退轮询持久化任务；失败页可重试（attempts<2）。
+
+### 9.2 导出管线升级（export.mjs + heal.mjs + serve.mjs）
+- **流式 HAR 合并**：逐页 sanitize → 同源过滤 → URL 去重；apify 合并后 3,019 条/70.7MB（含站外图片条目共 4,508 条/104MB）。
+- `--materialize-har`：无查询同源响应落盘为实体文件；带查询响应保留回放体（覆盖 JS 动态请求）。
+- **动态图片本地化**：`/_next/image?url=…` 与站外 CDN 图片（image/*）落盘 `_ext/<sha1>.<ext>`，HTML 引用改写为 `/lm/<host>/_ext/…`；边界感知替换（避免命中更长 URL 子串）；写时复制（避免硬链接连带改坏 workspace 源文件）。
+- **serve.mjs 回退**：精确变体未录到 → 同源图任意已捕获尺寸回放。
+
+### 9.3 双站最终体检（离线 + strict 通过）
+| 站点 | 页面 | 资源引用 | 本地可用 | 未覆盖 | 站外资产 | 包体积 |
+|---|---|---|---|---|---|---|
+| apify.com | 61 | 22,649 | 13,248 | **0** | 1,419（追踪类） | 383MB |
+| thordata.com | 31 | 4,265 | 4,264 | **0** | 252 | 156MB |
+
+浏览器离线实测（apify 6 页：/、/pricing、/about、/use-cases/market-research、/store、/integrations）：**0 个镜像请求失败、0 pageerror**；仅第三方追踪像素（bat.bing/doubleclick）失败，属预期。字体与动态图片全部本地化。
+
+### 9.4 复现命令
+```cmd
+node core\src\queue.mjs <host> --missing-har
+node core\src\crawler\build_live.mjs <host>
+node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root mirror --heal --materialize-har --strict
+```
