@@ -82,6 +82,8 @@ const safeRead = (p) => { try { return readFileSync(p, 'utf8'); } catch { return
 function categorizeRef(r) {
   if (TRACKING.test(r.abs)) return 'tracking';
   if (/^preload/.test(r.kind) && !r.froms.includes('clone-html') && !r.froms.includes('clone-css')) return 'replaced';
+  // 只出现在原站 DOM/inline style 的 CSS url（字体等），克隆改用 cssom.css，不算视觉缺口
+  if (r.kind === 'css-url' && r.froms.every(f => f.startsWith('source-'))) return 'replaced';
   if (r.kind === 'link' && META_LINK.test(r.where ?? '')) return r.where.includes('stylesheet') ? 'replaced' : 'metadata';
   if (r.kind === 'meta-image') return 'metadata';
   if (VISUAL_KINDS.test(r.kind)) return 'visual';

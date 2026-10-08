@@ -32,6 +32,7 @@ const extOf = (ct, url) => {
 console.log('[1/3] fetch cssom refs (adapter:', adapter.name + ')');
 let css = cssText;
 let fetched = 0, failed = 0;
+let refIndex = 0;   // 与 cssom-refs.json.refs 顺序一一对应（失败也占位，便于 HAR 精确恢复）
 const fetchBin = async (url) => {
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(res.status);
@@ -39,13 +40,12 @@ const fetchBin = async (url) => {
 };
 for (const ref of cssomMeta.refs) {
   let abs;
-  try { abs = new URL(ref, ORIGIN).href; } catch { continue; }
-  const name = `ref${String(fetched).padStart(3, '0')}.${extOf('', abs)}`;
+  try { abs = new URL(ref, ORIGIN).href; } catch { refIndex++; continue; }
+  const name = `ref${String(refIndex++).padStart(3, '0')}.${extOf('', abs)}`;
   const sub = /\.(woff2?|ttf|otf|eot)$/i.test(name) ? 'styles' : 'assets';
   const rel = (sub === 'styles' ? '' : '../') + sub + '/' + name;
-  css = css.split(ref).join(rel);
   const dest = join(CLONE, sub, name);
-  if (existsSync(dest)) { fetched++; continue; }
+  if (existsSync(dest)) { css = css.split(ref).join(rel); fetched++; continue; }
 
   // 来源优先级：本地已捕获副本 → 适配器候选 URL 链逐个尝试
   let got = null;
@@ -59,8 +59,9 @@ for (const ref of cssomMeta.refs) {
       try { got = await fetchBin(u); break; } catch { /* next candidate */ }
     }
   }
-  if (!got) { failed++; console.warn('  FAIL', abs); continue; }
+  if (!got) { failed++; continue; }   // 不重写：保留原始 URL，交给 linker/HAR 兜底
   writeFileSync(dest, got);
+  css = css.split(ref).join(rel);     // 仅成功时改写
   fetched++;
 }
 writeFileSync(join(CLONE, 'styles', 'cssom.css'), css);

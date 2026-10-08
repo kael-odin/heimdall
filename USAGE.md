@@ -367,7 +367,8 @@ node core\src\audit\assets.mjs apify.com --max 61
 
 - **视觉缺口**：img/srcset/picture fallback/lazy data-src、icon、svg-use、video/audio、CSS url()、内联背景 —— 这些才真正影响画面
 - **元数据/追踪/设计替代**：canonical/alternate/og:image/.well-known、追踪像素、被 cssom.css 取代的 stylesheet/preload —— 单独归类，不算视觉缺口
-- 实测：apify 61 页 25,724 条引用，本地化率 95.6%，**视觉缺口 0**；thordata 旧产物 673 个视觉缺口（重新锻造中，主要由旧版 capture 未收 picture fallback/懒加载导致）
+- 实测：apify 61 页 **视觉缺口 0**；thordata 31 页从 **673 → 0**（重新锻造 + 重接线后）
+- 本轮修复的缺口根因：`<picture>` fallback/lazy `data-src` 漏采；跨页资产缓存导致 `linked-*` 悬空引用；CSS `refNNN` 编号与原始引用错位；HAR 未用于回放；Vite `/src/` 资源相对路径无法回源恢复
 
 重新锻造以应用最新采集：`node core\src\queue.mjs <host> --force`
 

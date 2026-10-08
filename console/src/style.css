@@ -53,6 +53,7 @@
 [data-theme="light"] .hud-rule::after { box-shadow: none; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+::placeholder { color: var(--text-faint); opacity: .85; }
 html, body, #app { height: 100%; background: var(--abyss); color: var(--text); font-family: var(--font-cn); overflow: hidden; }
 ::selection { background: rgba(34, 211, 238, .3); }
 ::-webkit-scrollbar { width: 6px; height: 6px; }

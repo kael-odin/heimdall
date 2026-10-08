@@ -140,6 +140,12 @@ const filteredNodes = computed(() => {
   return out;
 });
 const doneCount = computed(() => tableNodes.value.filter(n => n.forgeState === 'done').length);
+const statusCounts = computed(() => ({
+  all: tableNodes.value.length,
+  done: tableNodes.value.filter(n => n.forgeState === 'done').length,
+  todo: tableNodes.value.filter(n => n.forgeState !== 'done' && n.forgeState !== 'running').length,
+  failed: tableNodes.value.filter(n => n.forgeState === 'failed').length,
+}));
 const avgVisual = computed(() => {
   const vals = Object.values(pageScores).filter(s => s && typeof s.pixel === 'number').map(s => s.pixel);
   return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : '—';
@@ -206,6 +212,7 @@ async function deletePage(n) {
     const j = await removePageNode(n);
     okMsg.value = '已删除页面 ' + name + (j.removedNode ? '（星图节点已移除）' : '');
     setTimeout(() => { okMsg.value = ''; }, 2500);
+    loadSites();
   } catch (e) { errMsg.value = '删除失败：' + String(e).slice(0, 160); }
 }
 async function removeChecked() {
@@ -217,6 +224,7 @@ async function removeChecked() {
   plSelected.value = new Set();
   okMsg.value = '已移除 ' + ok + ' 个页面' + (fail ? '（' + fail + ' 失败）' : '');
   setTimeout(() => { okMsg.value = ''; }, 3000);
+  loadSites();
 }
 function saveApiBase() {
   const v = apiBaseInput.value.trim() || 'http://127.0.0.1:8900';
@@ -473,6 +481,8 @@ function startForge(node) {
             }
             closeTask();
             bump();
+            loadSites();
+            setTimeout(loadPageStatus, 600);
             setTimeout(() => { if (statusText.value !== '光点出发') statusText.value = ''; }, 2500);
             resolve();
           }
@@ -727,7 +737,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <span class="wv-stat">{{ doneCount }}/{{ tableNodes.length }} 已克隆 · 平均视觉 {{ avgVisual }}</span>
       <input class="wv-search" v-model="pageQuery" placeholder="搜索 URL / 标题" spellcheck="false" />
       <select v-model="typeFilter"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
-      <select v-model="statusFilter"><option value="">全部状态</option><option value="done">已克隆</option><option value="todo">未完成</option><option value="failed">失败</option></select>
+      <select v-model="statusFilter"><option value="">全部状态 ({{ statusCounts.all }})</option><option value="done">已克隆 ({{ statusCounts.done }})</option><option value="todo">未完成 ({{ statusCounts.todo }})</option><option value="failed">失败 ({{ statusCounts.failed }})</option></select>
       <button @click="plSelectAll" title="全选未克隆页">全选未锻</button>
       <button @click="plSelected = new Set(tableNodes.map(n => n.id))" title="全选当前清单">全选</button>
       <button @click="plSelected = new Set()" title="清空选择">清空</button>
@@ -747,7 +757,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       </div>
       <div class="wv-row" v-for="n in filteredNodes" :key="n.id">
         <label><input type="checkbox" :checked="plSelected.has(n.id)" @change="plToggle(n.id)" /></label>
-        <span class="wv-url" @click="openDetail(n)">{{ n.path }}</span>
+        <span class="wv-url" @click="openDetail(n)" :title="n.url">{{ n.path }}</span>
         <span class="wv-title" :title="n.title">{{ n.title }}</span>
         <span class="wv-type" :style="{ color: typeColor(n.type) }">{{ typeCn(n.type) }}</span>
         <span class="wv-state" :class="n.forgeState">{{ n.forgeState === 'done' ? '已克隆' : n.forgeState === 'running' ? '克隆中' : n.forgeState === 'failed' ? '失败' : '未克隆' }}</span>

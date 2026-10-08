@@ -12,7 +12,8 @@
  * 用法: node src/crawler/linker.mjs <host>
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename, relative, sep } from 'node:path';
+import { sanitizeHar, indexHar, matchHar } from '../live/har.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
 const host = process.argv[2] ?? 'apify.com';
@@ -38,22 +39,49 @@ for (const name of pages) {
 }
 
 // ---------- 资产下载（跨页共享缓存） ----------
-const dlCache = new Map();       // absUrl → local rel path（相对该页 clone/）
+const dlCache = new Map();       // absUrl → { rel, srcFile }（跨页共享内容，但每页都要落一份）
 let dlSeq = 0;
+let currentHar = null;           // 当前页的 HAR 索引（原站重部署后仍可回放字体/图片）
+let currentCssRefs = [];         // cssom-refs.json 的原始引用顺序（refNNN 与之一一对应）
+function loadHarIndex(pageDir) {
+  try { return indexHar(sanitizeHar(JSON.parse(readFileSync(join(pageDir, 'network.har'), 'utf8'))).entries); } catch { return null; }
+}
+const extOfCt = (ct, url = '') => {
+  try { const m = /\.(woff2?|ttf|otf|eot|png|jpe?g|webp|avif|svg|gif|ico|mp4|webm|css|js|json)(\?|$)/i.exec(new URL(url, 'https://x.local').pathname); if (m) return m[1].toLowerCase().replace('jpeg', 'jpg'); } catch {}
+  const c = String(ct || '');
+  return c.includes('woff2') ? 'woff2' : c.includes('font') ? 'woff' : c.includes('svg') ? 'svg' : c.includes('png') ? 'png'
+    : c.includes('jpeg') ? 'jpg' : c.includes('webp') ? 'webp' : c.includes('avif') ? 'avif' : c.includes('gif') ? 'gif'
+    : c.includes('css') ? 'css' : c.includes('javascript') ? 'js' : c.includes('json') ? 'json' : 'bin';
+};
 async function fetchAsset(absUrl, dir) {
-  if (dlCache.has(absUrl)) return dlCache.get(absUrl);
-  dlCache.set(absUrl, null);   // 失败不再重试
-  try {
-    const res = await fetch(absUrl, { headers: { 'User-Agent': UA } });
-    if (!res.ok) throw new Error(res.status);
-    const ct = res.headers.get('content-type') ?? '';
-    const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('avif') ? 'avif'
-      : ct.includes('svg') ? 'svg' : ct.includes('gif') ? 'gif' : ct.includes('jpeg') ? 'jpg'
-      : ct.includes('woff2') ? 'woff2' : ct.includes('font') ? 'woff' : 'bin';
-    const name = `linked-${String(dlSeq++).padStart(3, '0')}.${ext}`;
-    writeFileSync(join(dir, 'assets', name), Buffer.from(await res.arrayBuffer()));
+  const hit = dlCache.get(absUrl);
+  if (hit) {
+    const dest = join(dir, 'assets', basename(hit.rel));
+    if (existsSync(dest)) return hit.rel;
+    if (hit.srcFile && existsSync(hit.srcFile)) {
+      try { mkdirSync(join(dir, 'assets'), { recursive: true }); writeFileSync(dest, readFileSync(hit.srcFile)); return hit.rel; } catch {}
+    }
+    dlCache.delete(absUrl);   // 缓存源已失效 → 重新下载
+  }
+  const harHit = currentHar && matchHar(currentHar, 'GET', absUrl);
+  if (harHit?.body) {
+    const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extOfCt(harHit.mimeType, absUrl)}`;
+    mkdirSync(join(dir, 'assets'), { recursive: true });
+    const dest = join(dir, 'assets', name);
+    writeFileSync(dest, Buffer.from(harHit.body, 'base64'));
     const rel = `assets/${name}`;
-    dlCache.set(absUrl, rel);
+    dlCache.set(absUrl, { rel, srcFile: dest });
+    return rel;
+  }
+  try {
+    const res = await fetch(absUrl, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) throw new Error(res.status);
+    const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extOfCt(res.headers.get('content-type') ?? '', absUrl)}`;
+    mkdirSync(join(dir, 'assets'), { recursive: true });
+    const dest = join(dir, 'assets', name);
+    writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+    const rel = `assets/${name}`;
+    dlCache.set(absUrl, { rel, srcFile: dest });
     return rel;
   } catch { return null; }
 }
@@ -63,10 +91,12 @@ const report = [];
 for (const name of pages) {
   const dir = join(PAGES, name, 'clone');
   const file = join(dir, 'index.html');
+  currentHar = loadHarIndex(join(PAGES, name));
+  try { currentCssRefs = JSON.parse(readFileSync(join(PAGES, name, 'cssom-refs.json'), 'utf8')).refs ?? []; } catch { currentCssRefs = []; }
   const html0 = readFileSync(file, 'utf8');
   let html = html0;
   const origin = origins.get(name) ?? `https://${host}`;
-  const stats = { name, linksRewired: 0, linksToLive: 0, assetsLocalized: 0, assetFailed: 0, missingFixed: 0, missingLocal: [] };
+  const stats = { name, linksRewired: 0, linksToLive: 0, assetsLocalized: 0, assetFailed: 0, missingFixed: 0, missingLocal: [], harRecovered: 0 };
 
   // 1a) 自愈：历史轮次可能产生重复 target/rel 属性 → 去重；镜像内链接一律不得开新标签
   html = html.replace(/<a\b([^>]*)>/gi, (m0, attrs) => {
@@ -151,6 +181,78 @@ for (const name of pages) {
     else stats.assetFailed++;
   }
 
+  // 2c) CSS 兜底：本地存在则改写为相对路径；否则 HAR 回放 → 网络下载
+  const cssFile = join(dir, 'styles', 'cssom.css');
+  if (existsSync(cssFile)) {
+    let css = readFileSync(cssFile, 'utf8');
+    const refs = [...new Set([...css.matchAll(/url\(\s*(?:'|")?([^'")]+)(?:'|")?\s*\)/g)].map(m => m[1].trim()))]
+      .filter(u => u && !/^(data:|#)/i.test(u));
+    let changed = false;
+    for (const ref of refs) {
+      if (existsSync(join(dir, 'styles', ref)) || existsSync(join(dir, 'assets', ref))) continue;
+      if (ref.startsWith('/')) {
+        const target = join(dir, ref.replace(/^\/+/, ''));
+        if (existsSync(target)) {
+          css = css.split(ref).join(relative(join(dir, 'styles'), target).split(sep).join('/'));
+          changed = true; stats.assetsLocalized++;
+          continue;
+        }
+      }
+      // build_clone 把 CSSOM 引用按顺序重命名为 refNNN.*；丢失时用原始引用 + HAR 精确恢复
+      const mRef = /(?:^|\/)(?:styles\/)?(ref(\d+))\.([a-z0-9]+)$/i.exec(ref);
+      if (mRef && currentHar) {
+        const orig = currentCssRefs[Number(mRef[2])];
+        if (orig) {
+          let absOrig = null;
+          try { absOrig = new URL(orig, pageOrigin + '/').href; } catch {}
+          const hitOrig = absOrig && matchHar(currentHar, 'GET', absOrig);
+          if (hitOrig?.body) {
+            const name = mRef[1] + '.' + mRef[3];
+            mkdirSync(join(dir, 'styles'), { recursive: true });
+            writeFileSync(join(dir, 'styles', name), Buffer.from(hitOrig.body, 'base64'));
+            css = css.split(ref).join(name);
+            changed = true; stats.assetsLocalized++; stats.harRecovered++;
+            continue;
+          }
+        }
+      }
+      const absForHar = /^https?:\/\//i.test(ref) ? ref : (ref.startsWith('/') ? pageOrigin + ref : pageOrigin + '/' + ref.replace(/^\.\.?\//, ''));
+      const harHit = currentHar && matchHar(currentHar, 'GET', absForHar);
+      if (harHit?.body) {
+        const sub = /font|woff|ttf|otf/i.test(harHit.mimeType ?? '') || /\.(woff2?|ttf|otf|eot)($|\?)/i.test(ref) ? 'styles' : 'assets';
+        const name = 'har-' + String(dlSeq++).padStart(3, '0') + '.' + extOfCt(harHit.mimeType, ref);
+        mkdirSync(join(dir, sub), { recursive: true });
+        writeFileSync(join(dir, sub, name), Buffer.from(harHit.body, 'base64'));
+        css = css.split(ref).join('../' + sub + '/' + name);
+        changed = true; stats.assetsLocalized++; stats.harRecovered++;
+        continue;
+      }
+      let capRel = null;
+      try { capRel = imgMap[new URL(ref, pageOrigin + '/').href]; } catch {}
+      if (capRel && existsSync(join(PAGES, name, capRel))) { css = css.split(ref).join('../' + capRel); changed = true; stats.assetsLocalized++; continue; }
+      let abs = null;
+      if (/^https?:\/\//i.test(ref)) abs = ref;
+      else if (ref.startsWith('/')) abs = pageOrigin + ref;
+      else {
+        // 相对引用（./x、x）在源站多半位于 /src/ 下（Vite 资源）；按常见目录候选逐个 GET（HAR 优先）
+        const cn = ref.split('/').pop();
+        let done = false;
+        for (const cand of [pageOrigin + '/src/' + cn, pageOrigin + '/assets/' + cn, pageOrigin + '/styles/' + cn, pageOrigin + '/' + cn]) {
+          const dl = await fetchAsset(cand, dir);
+          if (dl) { css = css.split(ref).join('../' + dl); changed = true; stats.assetsLocalized++; done = true; break; }
+        }
+        if (!done) stats.assetFailed++;
+        continue;
+      }
+
+      if (!abs) { stats.assetFailed++; continue; }
+      const dl = await fetchAsset(abs, dir);
+      if (dl) { css = css.split(ref).join('../' + dl); changed = true; stats.assetsLocalized++; }
+      else stats.assetFailed++;
+    }
+    if (changed) writeFileSync(cssFile, css);
+  }
+
   // 3) 本地坏链：basename 在捕获资产里存在的 → 直接修正引用（favicon/图标类根相对引用是 capture 重写盲区）
   const fixes = {};
   const seen = new Set();
@@ -204,7 +306,7 @@ for (const name of pages) {
 
   if (html !== html0) writeFileSync(file, html);
   report.push(stats);
-  console.log(`  ${name}: rewired ${stats.linksRewired}, live-fallback ${stats.linksToLive}, assets +${stats.assetsLocalized} (fail ${stats.assetFailed}), missing ${stats.missingLocal.length}`);
+  console.log(`  ${name}: rewired ${stats.linksRewired}, live-fallback ${stats.linksToLive}, assets +${stats.assetsLocalized} (fail ${stats.assetFailed}, har ${stats.harRecovered}), missing ${stats.missingLocal.length}`);
 }
 
 writeFileSync(join(BASE, 'linker-report.json'), JSON.stringify({ host, pages: report }, null, 2));
