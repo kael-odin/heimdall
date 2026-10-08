@@ -180,13 +180,16 @@ export function rewriteHtmlRefs({ liveDir, map }) {
       else if (/\.html?$/i.test(n)) {
         let text = readFileSync(p, 'utf8');
         let hits = 0;
+        const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         for (const k of keys) {
           const to = map.get(k);
           for (const variant of [k, k.replace(/&/g, '&amp;')]) {
-            if (!text.includes(variant)) continue;
-            const parts = text.split(variant);
-            hits += parts.length - 1;
-            text = parts.join(to);
+            // 边界感知：避免命中更长 URL 的子串（如 /lm/www.host/_next/… 里的 /_next/…）
+            const re = new RegExp('(?<![\\w.-])' + esc(variant), 'g');
+            const n = (text.match(re) || []).length;
+            if (!n) continue;
+            hits += n;
+            text = text.replace(re, to);
           }
         }
         // 写时复制：导出包与 workspace 是硬链接，直接写会连带改坏源文件 → 先写临时文件再改名断链
