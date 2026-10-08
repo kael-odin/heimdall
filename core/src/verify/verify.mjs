@@ -17,7 +17,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlink
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
-import { comparePngBuffers, overallScore, gradeOf } from './compare.mjs';
+import { comparePngBuffers, overallScore, worstViewport, gradeOf } from './compare.mjs';
 import { verifyInteractions, scoreInteractions } from './interactions.mjs';
 
 const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
@@ -105,6 +105,7 @@ try {
     }
     await srcCtx.close(); await cloneCtx.close();
     const overall = overallScore(viewports) ?? 0;
+    const minViewport = worstViewport(viewports);
 
     // 功能保真：交互回放（按钮/折叠/标签页），状态签名 + 视口像素
     let interactions = [];
@@ -120,18 +121,19 @@ try {
     }
     const functional = scoreInteractions(interactions);
 
-    const result = { page: name, target, generatedAt: new Date().toISOString(), overall, grade: gradeOf(overall), viewports, functional, interactions };
+    const result = { page: name, target, generatedAt: new Date().toISOString(), overall, grade: gradeOf(overall), minViewport, viewports, functional, interactions };
     writeFileSync(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
-    results.push({ page: name, overall, grade: result.grade, functional });
-    log(name, 'overall', (overall * 100).toFixed(1) + '%', result.grade, functional ? '| 交互 ' + functional.passed + '/' + functional.total : '| 交互 n/a');
-    emit({ kind: 'verify-page', page: name, overall, grade: result.grade, functional });
+    results.push({ page: name, overall, grade: result.grade, minViewport, functional });
+    log(name, 'overall', (overall * 100).toFixed(1) + '%', result.grade, minViewport ? '| 最低 ' + minViewport.name + ' ' + (minViewport.score * 100).toFixed(1) + '%' : '', functional ? '| 交互 ' + functional.passed + '/' + functional.total : '| 交互 n/a');
+    emit({ kind: 'verify-page', page: name, overall, grade: result.grade, minViewport, functional });
   }
 } finally { await browser.close(); }
 
 if (all) {
   const avg = results.length ? results.reduce((a, r) => a + r.overall, 0) / results.length : 0;
-  writeFileSync(join(BASE, 'verify', 'verify-summary.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), pages: results, average: +avg.toFixed(4) }, null, 2));
-  log('site average', (avg * 100).toFixed(1) + '%');
+  const worst = results.reduce((a, r) => (r.minViewport && (!a || r.minViewport.score < a.score) ? { page: r.page, ...r.minViewport } : a), null);
+  writeFileSync(join(BASE, 'verify', 'verify-summary.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), pages: results, average: +avg.toFixed(4), worst }, null, 2));
+  log('site average', (avg * 100).toFixed(1) + '%', worst ? '| 最差 ' + worst.page + ' ' + worst.name + ' ' + (worst.score * 100).toFixed(1) + '%' : '');
   emit({ kind: 'verify-done', host, pages: results.length, average: +avg.toFixed(4) });
   if (THRESHOLD > 0 && avg * 100 < THRESHOLD) { log('FAIL below threshold', THRESHOLD); process.exit(1); }
 } else {

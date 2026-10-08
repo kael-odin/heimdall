@@ -111,6 +111,7 @@ const extraNodes = ref([]);                       // 已克隆但不在 atlas �
 const sortKey = ref('path');
 const sortDir = ref(1);
 const pageScores = reactive({});                  // nodeId -> score.json（懒加载）
+const pageVerify = reactive({});                  // nodeId -> verify.json（多视口，懒加载）
 const pageMeta = reactive({});                    // nodeId -> { assets, visualGaps, interactions, updatedAt }
 const tokenInput = ref(localStorage.getItem('heimdall-token') ?? '');
 const apiBaseInput = ref(localStorage.getItem('heimdall-api') ?? API);
@@ -157,6 +158,10 @@ const avgVisual = computed(() => {
   const vals = Object.values(pageScores).filter(s => s && typeof s.pixel === 'number').map(s => s.pixel);
   return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : '—';
 });
+const avgWorst = computed(() => {
+  const vals = Object.values(pageVerify).filter(v => v?.minViewport && typeof v.minViewport.score === 'number').map(v => v.minViewport.score);
+  return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : null;
+});
 let scoreLoadTimer = null;
 function scheduleScoreLoad() { clearTimeout(scoreLoadTimer); scoreLoadTimer = setTimeout(loadPageScores, 400); }
 async function loadPageScores() {
@@ -166,8 +171,13 @@ async function loadPageScores() {
     while (i < list.length) {
       const n = list[i++];
       try {
-        const r = await fetch('/' + host.value + '/pages/' + pageNameOf(n) + '/score.json');
-        pageScores[n.id] = r.ok ? await r.json() : null;
+        const name = pageNameOf(n);
+        const [rs, rv] = await Promise.all([
+          fetch('/' + host.value + '/pages/' + name + '/score.json'),
+          fetch('/' + host.value + '/verify/' + name + '/verify.json'),
+        ]);
+        pageScores[n.id] = rs.ok ? await rs.json() : null;
+        pageVerify[n.id] = rv.ok ? await rv.json() : null;
       } catch { pageScores[n.id] = null; }
     }
   };
@@ -844,7 +854,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   <section class="work-view hud-panel" v-if="view === 'pages'">
     <div class="wv-head">
       <b>页面清单 · {{ host }}</b>
-      <span class="wv-stat">{{ doneCount }}/{{ tableNodes.length }} 已克隆 · 平均视觉 {{ avgVisual }}</span>
+      <span class="wv-stat">{{ doneCount }}/{{ tableNodes.length }} 已克隆 · 平均视觉 {{ avgVisual }}<template v-if="avgWorst"> · 最差视口均值 {{ avgWorst }}</template></span>
       <input class="wv-search" v-model="pageQuery" placeholder="搜索 URL / 标题" spellcheck="false" />
       <select v-model="typeFilter"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
       <select v-model="statusFilter"><option value="">全部状态 ({{ statusCounts.all }})</option><option value="done">已克隆 ({{ statusCounts.done }})</option><option value="todo">未完成 ({{ statusCounts.todo }})</option><option value="failed">失败 ({{ statusCounts.failed }})</option></select>
@@ -875,7 +885,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <span class="wv-title c-title" :title="n.title">{{ n.title }}</span>
         <span class="wv-type c-type" :style="{ color: typeColor(n.type) }">{{ typeCn(n.type) }}</span>
         <span class="wv-state c-state" :class="n.forgeState">{{ n.forgeState === 'done' ? '已克隆' : n.forgeState === 'running' ? '克隆中' : n.forgeState === 'failed' ? '失败' : '未克隆' }}</span>
-        <span class="wv-score c-score">{{ pageScores[n.id]?.pixel != null ? (pageScores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}</span>
+        <span class="wv-score c-score" :title="pageVerify[n.id]?.minViewport ? ('多视口最差：' + pageVerify[n.id].minViewport.name + ' ' + (pageVerify[n.id].minViewport.score * 100).toFixed(1) + '%') : '未运行多视口验证'">{{ pageScores[n.id]?.pixel != null ? (pageScores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}<i v-if="pageVerify[n.id]?.minViewport && pageVerify[n.id].minViewport.score < 0.95" :class="pageVerify[n.id].minViewport.score < 0.85 ? 'min-bad' : 'min-mid'"> ↓{{ (pageVerify[n.id].minViewport.score * 100).toFixed(0) }}</i></span>
         <span class="wv-meta c-assets" :title="pageMeta[n.id]?.assets ? (pageMeta[n.id].assets.count + ' 个文件') : ''">{{ pageMeta[n.id]?.assets ? fmtBytes(pageMeta[n.id].assets.bytes) : '—' }}<i v-if="pageMeta[n.id]?.assets"> · {{ pageMeta[n.id].assets.count }}</i></span>
         <span class="wv-meta c-gaps" :class="{ bad: (pageMeta[n.id]?.visualGaps?.visual ?? 0) > 0 }" :title="pageMeta[n.id]?.visualGaps ? ('原站 ' + pageMeta[n.id].visualGaps.origin + ' / 第三方 ' + pageMeta[n.id].visualGaps.third) : ''">{{ pageMeta[n.id]?.visualGaps == null ? '—' : pageMeta[n.id].visualGaps.visual }}</span>
         <span class="wv-meta c-ix">{{ pageMeta[n.id]?.interactions ? (pageMeta[n.id].interactions.passed + '/' + pageMeta[n.id].interactions.total) : '—' }}</span>
@@ -1089,6 +1099,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
               <span class="q-v" :class="v.grade === 'A' ? 'ok' : v.grade === 'B' ? 'mid' : 'bad'">{{ v.score != null ? ((v.score * 100).toFixed(1) + '% ' + v.grade) : (v.skipped || v.error || '—') }}</span>
             </div>
             <div class="q-row"><span class="q-k">综合</span><span class="q-v">{{ (detailQuality.verify.overall * 100).toFixed(1) }}% {{ detailQuality.verify.grade }}</span></div>
+            <div class="q-row" v-if="detailQuality.verify.minViewport"><span class="q-k">最差视口</span><span class="q-v" :class="detailQuality.verify.minViewport.score >= 0.95 ? 'ok' : detailQuality.verify.minViewport.score >= 0.85 ? 'mid' : 'bad'">{{ detailQuality.verify.minViewport.name }} {{ (detailQuality.verify.minViewport.score * 100).toFixed(1) }}% {{ detailQuality.verify.minViewport.grade }}</span></div>
           </div>
           <div v-else class="seo-note">未运行多视口验证：<code>node core/src/verify/verify.mjs {{ host }} {{ pageNameOf(selected) }}</code></div>
         </div>
@@ -1487,6 +1498,9 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .wv-state.failed { color: var(--red); }
 .wv-state.idle { color: var(--text-faint); }
 .wv-score { font-family: var(--font-mono); color: var(--text-dim); }
+.wv-score i { font-style: normal; margin-left: 4px; font-size: 10.5px; }
+.wv-score .min-mid { color: var(--amber); }
+.wv-score .min-bad { color: var(--red); }
 .wv-actions { display: flex; gap: 6px; }
 .wv-actions a, .wv-actions button { color: var(--text-dim); background: none; border: 1px solid rgba(148,163,184,.25); border-radius: 3px; padding: 3px 7px; font-size: 11px; text-decoration: none; cursor: pointer; }
 .wv-actions a:hover, .wv-actions button:hover { color: var(--cyan); border-color: var(--cyan-dim); }

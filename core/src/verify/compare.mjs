@@ -49,4 +49,14 @@ export function overallScore(viewports) {
   return w ? +(sum / w).toFixed(4) : null;
 }
 
+/** 最差视口：交付告警口径（综合分可能被桌面权重掩盖移动端塌陷） */
+export function worstViewport(viewports) {
+  let worst = null;
+  for (const v of viewports ?? []) {
+    if (typeof v?.score !== 'number') continue;
+    if (!worst || v.score < worst.score) worst = { name: v.name ?? '', score: v.score, grade: gradeOf(v.score) };
+  }
+  return worst;
+}
+
 export const gradeOf = (score) => score >= 0.95 ? 'A' : score >= 0.85 ? 'B' : score >= 0.7 ? 'C' : 'D';
