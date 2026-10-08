@@ -10,10 +10,11 @@
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { WORKSPACE } from '../paths.mjs';
 
 const host = process.argv[2] ?? 'thordata.com';
 const only = process.argv[3];
-const BASE = join('workspace', host);
+const BASE = join(WORKSPACE, host);
 const PAGES = join(BASE, 'pages');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 

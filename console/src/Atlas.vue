@@ -6,7 +6,7 @@
  * live 模式：POST /api/recon → SSE 事件流 → 节点逐个弹入生长
  * 点星球 = 锻造该页；「锻造内环」= 批量并行
  */
-import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
+import { onMounted, onBeforeUnmount, ref, reactive, computed } from 'vue';
 import Graph3D from './Graph3D.vue';
 
 import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
@@ -20,10 +20,20 @@ const atlas = ref(null);
 const live = ref(false);
 const statusText = ref('');
 const errMsg = ref('');
-const forge = ref(null);
-let esForge = null;
+// 任务中心：每个 forge 任务独立对象 + 独立 EventSource（修复并发锻造单例覆盖）
+const tasks = reactive([]);
+const activeTaskId = ref(null);
+const forge = computed(() => tasks.find(t => t.localId === activeTaskId.value) ?? null);
+const taskSources = new Map();
+const tasksOpen = ref(true);
+function taskState(t) { return t.failed ? 'failed' : t.done ? 'done' : 'running'; }
+function taskLabel(t) { return { running: '运行中', done: '完成', failed: '失败' }[taskState(t)] ?? '运行中'; }
+const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
+function apiHeaders() { const t = tokenOf(); return { 'Content-Type': 'application/json', ...(t ? { 'x-heimdall-token': t } : {}) }; }
+function sseUrl(taskId) { const t = tokenOf(); return `${API}/api/events?task=${taskId}${t ? '&token=' + encodeURIComponent(t) : ''}`; }
 const hudPages = ref(0);
 const hudEdges = ref(0);
+const hudEdgesRendered = ref(0);
 const hudOrigin = ref('');
 const sites = ref([]);          // 已侦察站点清单（/api/sites）
 const engine = ref({ ok: false, recon: null, forge: null });   // 引擎状态灯
@@ -57,7 +67,7 @@ const detailSeo = computed(() => selected.value?.seoLite ?? null);
 const seoChecks = computed(() => {
   const sl = detailSeo.value;
   if (!sl) return null;
-  const tLen = (sl.title ?? '').length;
+  const tLen = (sl.title ?? selected.value?.title ?? '').length;
   const dLen = (sl.description ?? '').length;
   return {
     title: { ok: tLen >= 10 && tLen <= 65, msg: tLen + ' 字符（建议 10-65）' },
@@ -117,6 +127,8 @@ function buildStatic(a) {
       if (f && t && f !== t) edges.push(makeLink(f, t));
     }
   }
+  hudPages.value = a.nodes.length;
+  hudEdges.value = a.meta?.edges ?? a.edges.length;
   bump();
 }
 
@@ -178,6 +190,8 @@ async function finishRecon(taskId) {
       }
     }
     pendingEdges = [];
+    hudPages.value = nodes.length;
+    hudEdges.value = a.meta?.edges ?? edges.length;
     bump();
   } catch {}
   live.value = false;
@@ -197,7 +211,9 @@ setInterval(() => {
     if (added) pendingEdges.splice(i, 1);
   }
   if (nodes.length !== hudPages.value) hudPages.value = nodes.length;
-  if (edges.length !== hudEdges.value) hudEdges.value = edges.length;
+  const totalEdges = atlas.value?.meta?.edges ?? edges.length;
+  if (totalEdges !== hudEdges.value) hudEdges.value = totalEdges;
+  if (edges.length !== hudEdgesRendered.value) hudEdgesRendered.value = edges.length;
 }, 600);
 
 // ---------- 站点切换器 ----------
@@ -225,51 +241,68 @@ function startForge(node) {
   return new Promise((resolve) => {
     if (!node?.url) return resolve();
     const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
-    forge.value = { taskId: null, pageName, url: node.url, stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' }, score: null, done: false, failed: false, intel: null, rounds: [], skipReason: null, error: null };
+    const task = reactive({
+      localId: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+      taskId: null, pageName, url: node.url, nodeId: node.id,
+      stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' },
+      score: null, done: false, failed: false, intel: null, rounds: [], skipReason: null, error: null,
+      startedAt: Date.now(), endedAt: null,
+    });
+    tasks.push(task);
+    while (tasks.length > 20) tasks.shift();   // 只保留最近 20 条，长会话不膨胀
+    activeTaskId.value = task.localId;
     node.forgeState = 'running';
     statusText.value = '锻造中 · ' + pageName;
     bump();
     (async () => {
       try {
-        const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: node.url }) });
+        const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url: node.url }) });
         const { taskId, error } = await r.json();
         if (error) {
-          forge.value.failed = true; forge.value.done = true; forge.value.error = error === 'busy' ? '造物台忙：其它页面正在锻造（稍后再点）' : error;
+          task.failed = true; task.done = true; task.endedAt = Date.now();
+          task.error = error === 'busy' ? '造物台忙：引擎并发槽已满（稍后重试）' : error;
           node.forgeState = 'idle'; return resolve();
         }
-        forge.value.taskId = taskId;
-        esForge = new EventSource(`${API}/api/events?task=${taskId}`);
-        esForge.onmessage = (m) => {
+        task.taskId = taskId;
+        const es = new EventSource(sseUrl(taskId));
+        taskSources.set(task.localId, es);
+        const closeTask = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+        es.onmessage = (m) => {
           let ev; try { ev = JSON.parse(m.data); } catch { return; }
-          const f = forge.value;
-          if (!f) return;
-          if (ev.kind === 'forge-stage') f.stages[ev.stage] = ev.status;
-          else if (ev.kind === 'forge-score') f.score = ev.score;
-          else if (ev.kind === 'fixup-round') f.rounds.push(ev);
-          else if (ev.kind === 'fixup-skip') f.skipReason = `剩余差异 ${(ev.staticShare * 100).toFixed(1)}% 为动画噪声，AI 校准豁免`;
-          else if (ev.kind === 'forge-error') f.failed = true;
+          if (ev.kind === 'forge-stage') task.stages[ev.stage] = ev.status;
+          else if (ev.kind === 'forge-score') task.score = ev.score;
+          else if (ev.kind === 'fixup-round') task.rounds.push(ev);
+          else if (ev.kind === 'fixup-skip') task.skipReason = `剩余差异 ${(ev.staticShare * 100).toFixed(1)}% 为动画噪声，AI 校准豁免`;
+          else if (ev.kind === 'forge-error') task.failed = true;
           else if (ev.kind === 'exit') {
-            f.done = ev.status === 'done';
-            if (!f.done) { f.failed = true; node.forgeState = 'failed'; }
+            task.done = ev.status === 'done';
+            task.endedAt = Date.now();
+            if (ev.status === 'cancelled') { task.error = '已取消'; node.forgeState = 'idle'; }
+            else if (!task.done) { task.failed = true; node.forgeState = 'failed'; }
             else node.forgeState = 'done';
-            statusText.value = f.done ? '恒星点亮' : '造物失败';
-            if (f.done) {
-              fetch(`/${host.value}/pages/${f.pageName}/intel/intel.json`).then(r => r.ok ? r.json() : null).then(j => { if (j) f.intel = { headings: j.headings?.length ?? 0, prices: j.prices?.length ?? 0, cta: j.cta?.length ?? 0, links: j.links?.length ?? 0 }; }).catch(() => {});
+            statusText.value = task.done ? '恒星点亮' : (ev.status === 'cancelled' ? '任务已取消' : '造物失败');
+            if (task.done) {
+              fetch(`/${host.value}/pages/${task.pageName}/intel/intel.json`).then(r => r.ok ? r.json() : null).then(j => { if (j) task.intel = { headings: j.headings?.length ?? 0, prices: j.prices?.length ?? 0, cta: j.cta?.length ?? 0, links: j.links?.length ?? 0 }; }).catch(() => {});
             }
-            esForge?.close(); esForge = null;
+            closeTask();
             bump();
             setTimeout(() => { if (statusText.value !== '光点出发') statusText.value = ''; }, 2500);
             resolve();
           }
         };
-        esForge.onerror = () => { esForge?.close(); esForge = null; resolve(); };
-      } catch (e) { errMsg.value = String(e); node.forgeState = 'idle'; resolve(); }
+        es.onerror = () => { closeTask(); resolve(); };
+      } catch (e) {
+        errMsg.value = String(e);
+        task.failed = true; task.done = true; task.endedAt = Date.now();
+        node.forgeState = 'idle';
+        resolve();
+      }
     })();
   });
 }
 
 async function forgeAll() {
-  const targets = nodes.filter(n => n.ring <= 2).slice(0, 10);
+  const targets = nodes.filter(n => n.forgeState !== 'done' && n.forgeState !== 'running').slice(0, 10);
   statusText.value = `全境锻造 ${targets.length} 页`;
   let done = 0;
   const queue = [...targets];
@@ -294,7 +327,7 @@ function onNodeClick(node) {
   if (!node?.url) return;
   selected.value = node;                      // 点星 = 选中，打开详情剖析面板
   detailTab.value = 'overview';
-  forge.value = null;                          // 关闭旧锻造视图
+  activeTaskId.value = null;                   // 关闭旧锻造视图（后台任务继续跑）
   detailIntel.value = null; detailScore.value = null;
   const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
   fetch(`/${host.value}/pages/${pageName}/intel/intel.json`).then(r => r.ok ? r.json() : null).then(j => { if (j && selected.value === node) detailIntel.value = j; }).catch(() => {});
@@ -307,7 +340,7 @@ onMounted(() => {
   // 默认载入上次侦察结果
   fetch('/apify.com/recon/atlas.json').then(r => r.ok ? r.json() : Promise.reject()).then(buildStatic).catch(() => {});
 });
-onBeforeUnmount(() => { es?.close(); esForge?.close(); });
+onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try { s.close(); } catch {} } });
 </script>
 
 <template>
@@ -318,7 +351,7 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
     <div class="hud-rule"></div>
     <div class="stats">
       <div class="stat"><b>{{ hudPages }}</b><i>pages</i></div>
-      <div class="stat"><b>{{ hudEdges }}</b><i>edges</i></div>
+      <div class="stat"><b>{{ hudEdges }}</b><i :title="`已渲染 ${hudEdgesRendered} / 全图 ${hudEdges} 条边`">edges</i></div>
       <div class="stat"><b>{{ hudOrigin }}</b><i>origin</i></div>
     </div>
     <div class="status" v-if="statusText" :class="{ live }">{{ statusText }}</div>
@@ -352,10 +385,26 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
   <!-- 已侦察站点切换 -->
   <div class="sites" v-if="sites.length">
     <span class="sites-label">已侦察：</span>
-    <button v-for="s in sites" :key="s.host" class="site-btn" :class="{ active: s.host === host }" @click="pickSite(s); pagesListOpen = true" :title="`${s.forged}/${s.pages} 页已锻造`">
-      {{ s.host }}<em>{{ s.forged }}F</em>
+    <button v-for="s in sites" :key="s.host" class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s); pagesListOpen = true" :title="s.pages ? `${s.forged}/${s.pages} 页已锻造` : '侦察结果为空（失败或无可用页面）'">
+      {{ s.host }}<em>{{ s.pages ? s.forged + 'F' : '空' }}</em>
     </button>
     <button class="site-btn list-toggle" :class="{ active: pagesListOpen }" @click="pagesListOpen = !pagesListOpen">页面清单</button>
+  </div>
+
+  <!-- 任务中心：每个任务的独立进度（不再被后一个任务覆盖） -->
+  <div class="task-center hud-panel" v-if="tasks.length">
+    <div class="tc-head">
+      <span>TASKS · 任务中心</span>
+      <span class="tc-meta">{{ tasks.filter(t => !t.done && !t.failed).length }} 运行中 / {{ tasks.length }}</span>
+      <button class="tc-toggle" @click="tasksOpen = !tasksOpen">{{ tasksOpen ? '—' : '＋' }}</button>
+    </div>
+    <div class="tc-rows" v-show="tasksOpen">
+      <div class="tc-row" v-for="t in [...tasks].reverse()" :key="t.localId" :class="taskState(t)" @click="activeTaskId = t.localId" :title="t.error || t.url">
+        <span class="tc-name">{{ t.pageName }}</span>
+        <span class="tc-state">{{ taskLabel(t) }}</span>
+        <span class="tc-score" v-if="t.score">{{ (t.score.pixel * 100).toFixed(1) }}%</span>
+      </div>
+    </div>
   </div>
 
   <!-- 页面清单（列表式查看 + 勾选锻造） -->
@@ -385,7 +434,7 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
         <div class="dock-title">{{ selected.path === '/' ? 'home' : selected.path.slice(1) }}</div>
         <div class="dock-url">{{ selected.url }}</div>
       </div>
-      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="并行批量锻造内外环前 10 页">批量锻造 10 页</button><button class="dock-close" @click="selected = null">✕</button></div>
+      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="批量锻造尚未完成的页面（每次最多 10 页，引擎 2 并发）">批量锻造 10 页</button><button class="dock-close" @click="selected = null">✕</button></div>
     </div>
 
     <div class="tabs">
@@ -425,7 +474,7 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
 
     <!-- SEO tab -->
     <div v-show="detailTab === 'seo'">
-      <div class="seo-note">基础项来自侦察快照；og/canonical 等深度项在锻造捕获后解锁。</div>
+      <div class="seo-note">这是侦察期轻量检查（title/description/H1/alt/OG/lang）；完整 40+ 项审计在「SEO 审计」报告中产出。</div>
       <div class="seo-list" v-if="selected.seoLite">
         <div class="seo-row" :class="seoChecks.title.ok ? 'ok' : 'warn'"><span class="seo-k">Title</span><span>{{ seoChecks.title.msg }}</span></div>
         <div class="seo-row" :class="seoChecks.desc.ok ? 'ok' : 'warn'"><span class="seo-k">Description</span><span>{{ seoChecks.desc.msg }}</span></div>
@@ -456,16 +505,16 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
         </div>
 
         <div class="verdict hud-panel" v-if="forge.score">
-          <div class="verdict-label">FIDELITY VERDICT · 还原度判定</div>
-          <div class="score-num" :class="forge.score.grade === 'A' ? 'ok' : forge.score.grade === 'B' ? 'mid' : 'bad'">
-            {{ forge.score.total }}<small>%</small>
+          <div class="verdict-label">VISUAL FIDELITY · 视觉还原度（可核验口径）</div>
+          <div class="score-num" :class="(forge.score.pixel * 100) >= 95 ? 'ok' : (forge.score.pixel * 100) >= 85 ? 'mid' : 'bad'">
+            {{ (forge.score.pixel * 100).toFixed(1) }}<small>%</small>
           </div>
           <div class="score-break">
-            <span>像素 {{ (forge.score.pixel * 100).toFixed(1) }}%</span>
-            <span>结构 {{ (forge.score.dom?.dom * 100).toFixed(1) }}%</span>
+            <span>结构 {{ ((forge.score.dom?.dom ?? 0) * 100).toFixed(1) }}%</span>
             <span v-if="forge.score.data">数据 {{ (forge.score.data.data * 100).toFixed(1) }}%</span>
-            <span class="grade">评级 {{ forge.score.grade }}</span>
+            <span class="grade">综合 {{ forge.score.total }} · {{ forge.score.grade }}</span>
           </div>
+          <div class="score-note">结构/数据与捕获 DOM 同源比对（自证辅助项）；视觉分才是对外可核验口径。</div>
           <div class="refine" v-if="forge.score.breakdown">
             <div class="refine-bar"><i :style="{ width: (forge.score.breakdown.refinable * 100) + '%' }"></i></div>
             <span>可修静态差异 {{ (forge.score.breakdown.refinable * 100).toFixed(0) }}% · 动画噪声 {{ (forge.score.breakdown.dynamicShare * 100).toFixed(0) }}%</span>
@@ -677,4 +726,21 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
 .archive-link { position: fixed; right: 24px; bottom: 20px; z-index: 8; padding: 8px 16px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: rgba(11, 11, 16, .82); color: var(--cyan); font-family: var(--font-mono); font-size: 12px; letter-spacing: .16em; text-decoration: none; transition: all var(--dur); }
 .archive-link:hover { border-color: var(--cyan-dim); box-shadow: 0 0 18px rgba(34, 211, 238, .2); }
 .live-clone { width: 100%; height: 44vh; margin-top: 14px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: #fff; }
+/* 任务中心 + 口径说明 */
+.task-center { position: fixed; left: 20px; bottom: 58px; z-index: 9; width: 280px; padding: 10px 12px; }
+.tc-head { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .22em; color: var(--text-faint); }
+.tc-meta { margin-left: auto; color: var(--text-dim); letter-spacing: .05em; }
+.tc-toggle { background: none; border: 0; color: var(--cyan); cursor: pointer; font-size: 12px; }
+.tc-rows { margin-top: 8px; max-height: 180px; overflow: auto; }
+.tc-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 3px; cursor: pointer; font-size: 11.5px; color: var(--text-dim); }
+.tc-row:hover { background: rgba(34,211,238,.08); }
+.tc-row.running .tc-state { color: var(--amber); }
+.tc-row.done .tc-state { color: var(--green); }
+.tc-row.failed .tc-state { color: var(--red); }
+.tc-name { font-family: var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tc-state { margin-left: auto; font-size: 10px; }
+.tc-score { font-family: var(--font-mono); color: var(--green); font-size: 10px; }
+.site-btn.empty { opacity: .55; border-color: rgba(239,68,68,.35); }
+.site-btn.empty em { color: var(--red); }
+.score-note { margin-top: 8px; font-size: 10px; color: var(--text-faint); font-family: var(--font-mono); letter-spacing: .04em; }
 </style>

@@ -16,14 +16,15 @@ import { llmEnabled, llmVision } from '../llm.mjs';
 import { probeStyleDiff } from './style-probe.mjs';
 import { getEnv } from '../env.mjs';
 import { parse } from 'parse5';
+import { WORKSPACE } from '../paths.mjs';
 
 const ENV = getEnv();
 const MIN_STATIC = Number(ENV.FIXUP_MIN_STATIC ?? 0.002);      // 静态差异像素占视口比低于此 = 没有可修内容
 const MIN_REFINABLE = Number(ENV.FIXUP_MIN_REFINABLE ?? 0.3);  // 静态差异占全部差异比低于此 = 主要是动画噪声
 
-const DIR = process.argv[2] ?? join('workspace', 'apify.com', 'pages', 'home');
+const DIR = process.argv[2] ?? join(WORKSPACE, 'apify.com', 'pages', 'home');
 const MAX_ROUNDS = Number(process.argv[3] ?? 2);
-const CLONE_PORT = process.argv[4] ?? 8900;
+const CLONE_PORT = Number(process.argv[4] ?? process.env.HEIMDALL_PORT ?? 8900);
 const CLONE_HTML = join(DIR, 'clone', 'index.html');
 // clone 页由 engine-server 常驻静态服务提供（/static/<workspace 相对路径>）
 const CLONE_REL = DIR.replace(/^[\\/]/, '').replace(/^workspace[\\/]/, '');

@@ -15,9 +15,10 @@ import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pickAdapter } from '../adapters/index.mjs';
+import { WORKSPACE } from '../paths.mjs';
 
 const TARGET = process.argv[2] ?? 'https://apify.com';
-const OUT = process.argv[3] ?? join('workspace', 'apify.com', 'pages', 'home');
+const OUT = process.argv[3] ?? join(WORKSPACE, 'apify.com', 'pages', 'home');
 const VIEWPORT = { width: 1440, height: 900 };
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 

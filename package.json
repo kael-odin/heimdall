@@ -12,6 +12,7 @@
     "lint": "pnpm -C core lint",
     "build": "pnpm -C console build",
     "dev:core": "pnpm -C core dev",
-    "dev:console": "pnpm -C console dev"
+    "dev:console": "pnpm -C console dev",
+    "smoke": "pnpm -C core smoke"
   }
 }

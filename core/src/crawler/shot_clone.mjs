@@ -1,9 +1,10 @@
 /** W0 克隆页截图 — 与 capture.mjs 同视口同冻结策略，保证 diff 公平 */
 import { chromium } from 'playwright';
 import { join } from 'node:path';
+import { WORKSPACE } from '../paths.mjs';
 
 const URL_ = process.argv[2] ?? 'http://127.0.0.1:8900/static/apify.com/pages/home/clone/index.html';
-const OUT = process.argv[3] ?? join('workspace', 'apify.com', 'pages', 'home', 'shot-clone.png');
+const OUT = process.argv[3] ?? join(WORKSPACE, 'apify.com', 'pages', 'home', 'shot-clone.png');
 
 const FREEZE_CSS = `
   *, *::before, *::after {

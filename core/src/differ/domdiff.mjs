@@ -11,6 +11,7 @@
 import { parse } from 'parse5';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { WORKSPACE } from '../paths.mjs';
 
 const SKIP = new Set(['script', 'style', 'noscript', 'template', 'head']);
 
@@ -77,7 +78,7 @@ export function domSimilarity(htmlA, htmlB) {
 
 // CLI: node src/differ/domdiff.mjs <pageDir>
 if (process.argv[1]?.endsWith('domdiff.mjs')) {
-  const DIR = process.argv[2] ?? join('workspace', 'apify.com', 'pages', 'home');
+  const DIR = process.argv[2] ?? join(WORKSPACE, 'apify.com', 'pages', 'home');
   const r = domSimilarity(
     readFileSync(join(DIR, 'dom.html'), 'utf8'),
     readFileSync(join(DIR, 'clone', 'index.html'), 'utf8'),

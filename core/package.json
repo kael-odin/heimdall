@@ -17,7 +17,8 @@
   "scripts": {
     "dev": "node src/engine-server.mjs 8900",
     "test": "node --test",
-    "lint": "node scripts/check-syntax.mjs"
+    "lint": "node scripts/check-syntax.mjs",
+    "smoke": "node scripts/smoke-forge.mjs"
   },
   "keywords": [],
   "author": "",

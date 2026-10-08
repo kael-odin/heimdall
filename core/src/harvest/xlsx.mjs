@@ -11,11 +11,12 @@
  */
 import { readFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { WORKSPACE } from '../paths.mjs';
 import ExcelJS from 'exceljs';
 
 const host = process.argv[2] ?? 'apify.com';
 const hostDir = (process.argv[4] ?? process.argv[3] ?? host).replace(/^--hostDir\s*/, '');
-const BASE = join('workspace', hostDir);
+const BASE = join(WORKSPACE, hostDir);
 const PAGES = join(BASE, 'pages');
 
 const pages = existsSync(PAGES) ? readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'intel', 'intel.json'))) : [];

@@ -9,15 +9,16 @@
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { WORKSPACE } from '../paths.mjs';
 
 const hostFilter = process.argv[2];
-const hosts = existsSync('workspace') ? readdirSync('workspace').filter(n => existsSync(join('workspace', n, 'pages'))) : [];
+const hosts = existsSync(WORKSPACE) ? readdirSync(WORKSPACE).filter(n => existsSync(join(WORKSPACE, n, 'pages'))) : [];
 
 let rounds = 0, kept = 0, deltas = [], worst = null;
 for (const host of hosts) {
   if (hostFilter && host !== hostFilter) continue;
-  for (const page of readdirSync(join('workspace', host, 'pages'))) {
-    const p = join('workspace', host, 'pages', page, 'fixup-history.json');
+  for (const page of readdirSync(join(WORKSPACE, host, 'pages'))) {
+    const p = join(WORKSPACE, host, 'pages', page, 'fixup-history.json');
     if (!existsSync(p)) continue;
     const h = JSON.parse(readFileSync(p, 'utf8'));
     for (const r of h.rounds ?? []) {

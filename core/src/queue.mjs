@@ -9,12 +9,16 @@
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { spawn } from 'node:child_process';
+import { WORKSPACE } from './paths.mjs';
 
 const host = process.argv[2] ?? 'thordata.com';
 const maxIdx = process.argv.indexOf('--max');
 const MAX = maxIdx > -1 ? Number(process.argv[maxIdx + 1] ?? 20) : 20;
-const API = 'http://127.0.0.1:8900';
-const BASE = join('workspace', host);
+const API = process.env.HEIMDALL_API ?? 'http://127.0.0.1:8900';
+const TOKEN = process.env.HEIMDALL_TOKEN ?? '';
+const HEADERS = { 'Content-Type': 'application/json', ...(TOKEN ? { 'x-heimdall-token': TOKEN } : {}) };
+const BASE = join(WORKSPACE, host);
 const queuePath = join(BASE, 'queue.json');
 
 const atlas = JSON.parse(readFileSync(join(BASE, 'recon', 'atlas.json'), 'utf8'));
@@ -56,7 +60,7 @@ function awaitExit(taskId, timeoutMs = 15 * 60_000) {
   return new Promise(async (resolve) => {
     const timer = setTimeout(() => resolve('timeout'), timeoutMs);
     try {
-      const res = await fetch(`${API}/api/events?task=${taskId}`);
+      const res = await fetch(`${API}/api/events?task=${taskId}`, { headers: TOKEN ? { 'x-heimdall-token': TOKEN } : {} });
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = '';
@@ -89,7 +93,7 @@ async function worker(id) {
     // 入队（槽满则等待）
     let taskId = null;
     for (let attempt = 0; !taskId; attempt++) {
-      const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: job.url }) });
+      const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: job.url, hostPost: false }) });
       if (r.status === 200) { taskId = (await r.json()).taskId; break; }
       if (attempt % 4 === 0) console.log(`[w${id}] slot busy, waiting... (${job.name})`);
       await new Promise(res => setTimeout(res, 15000));
@@ -106,5 +110,19 @@ async function worker(id) {
 }
 await Promise.all([worker(1), worker(2)]);
 
+// ---------- host 级后处理：整批只跑一次 ----------
+function runNode(script, args) {
+  return new Promise((resolve) => {
+    const p = spawn(process.execPath, [script, ...args], { stdio: 'inherit' });
+    p.on('exit', (code) => resolve(code === 0));
+    p.on('error', () => resolve(false));
+  });
+}
 const d = queue.filter(q => q.status === 'done').length, f = queue.filter(q => q.status === 'failed').length;
+if (d > 0) {
+  console.log('\n[host-post] xlsx / linker / index-page (once for the whole batch)');
+  await runNode(join('src', 'harvest', 'xlsx.mjs'), [host]);
+  await runNode(join('src', 'crawler', 'linker.mjs'), [host]);
+  await runNode(join('src', 'crawler', 'index-page.mjs'), [host]);
+}
 console.log(`\nQUEUE COMPLETE ${host}: ${d} done / ${f} failed / ${queue.length} total`);

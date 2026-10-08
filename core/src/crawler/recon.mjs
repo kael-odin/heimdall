@@ -10,6 +10,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { WORKSPACE } from '../paths.mjs';
 
 const TARGET = process.argv[2] ?? 'https://apify.com';
 const MAX_PAGES = Number(process.argv[3] ?? 40);
@@ -39,7 +40,7 @@ const HOST_DIR = stripWww(hostOf(ORIGIN));
 log(`  target ${TARGET} -> origin ${ORIGIN} (dir ${HOST_DIR})`);
 emit({ kind: 'calibrated', origin: ORIGIN, host: HOST_DIR });
 
-const OUT = join('workspace', HOST_DIR, 'recon');
+const OUT = join(WORKSPACE, HOST_DIR, 'recon');
 const THUMBS = join(OUT, 'thumbs');
 mkdirSync(THUMBS, { recursive: true });
 function classify(path) {
@@ -90,6 +91,7 @@ log('[2/4] BFS crawl');
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 640, height: 400 }, userAgent: UA });
 const nodes = new Map();   // url -> node
+const failures = [];       // 失败页清单（诚实记录，不静默丢弃）
 const edges = [];          // {from,to} (url)
 // 双队列：BFS 发现优先（保证结构层页面入图），sitemap 仅作补充
 const bfsQueue = [{ url: LANDING.replace(/\/$/, ''), depth: 0 }];
@@ -112,6 +114,7 @@ async function visit({ url, depth }) {
     const title = await page.title().catch(() => '');
     // SEO 轻量画像（无额外请求，纯 DOM 查询）
     const seoLite = await page.evaluate(() => ({
+      title: document.title.slice(0, 200),
       description: document.querySelector('meta[name="description"]')?.content?.slice(0, 200) ?? '',
       h1Count: document.querySelectorAll('h1').length,
       imgCount: document.querySelectorAll('img').length,
@@ -137,6 +140,8 @@ async function visit({ url, depth }) {
     }
     emit({ kind: 'edges', from: url, tos: [...new Set(links)].slice(0, 40) });
   } catch (e) {
+    log('[visit-fail]', url.slice(0, 60), String(e).slice(0, 100));
+    failures.push({ url, reason: String(e).slice(0, 200) });
   } finally {
     await page.close();
   }
@@ -176,6 +181,8 @@ for (const e of edges) {
 log('[4/4] atlas.json');
 const atlas = {
   origin: ORIGIN,
+  status: nodes.size ? 'ok' : 'failed',
+  failures,
   generatedAt: new Date().toISOString(),
   meta: { pages: nodes.size, edges: cleanEdges.length, sitemapUrls: sitemapSame.length, maxPages: MAX_PAGES, maxDepth: MAX_DEPTH },
   nodes: [...nodes.values()],
@@ -187,3 +194,5 @@ for (const n of atlas.nodes) byType[n.type] = (byType[n.type] ?? 0) + 1;
 log(`\nDONE ${atlas.meta.pages} pages / ${atlas.meta.edges} edges -> ${OUT}`);
 log('  by type:', JSON.stringify(byType));
 emit({ kind: 'done', pages: atlas.meta.pages, edges: atlas.meta.edges, host: HOST_DIR, byType });
+
+

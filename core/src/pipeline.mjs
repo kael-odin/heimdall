@@ -13,6 +13,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { getEnv } from './env.mjs';
+import { WORKSPACE } from './paths.mjs';
 const ENV = getEnv();
 
 const URL_ = process.argv[2];
@@ -23,7 +24,7 @@ const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '
 const log = (...a) => console.error(...a);
 
 const host = new URL(URL_).hostname.replace(/^www\./, '');
-const DIR = join('workspace', host, 'pages', NAME);
+const DIR = join(WORKSPACE, host, 'pages', NAME);
 mkdirSync(DIR, { recursive: true });
 
 const run = (script, args) => new Promise((resolve, reject) => {
@@ -32,8 +33,10 @@ const run = (script, args) => new Promise((resolve, reject) => {
   p.on('error', reject);
 });
 
-// 克隆页静态服务由 engine-server 常驻提供（/static/...），无需临时 serve
-const CLONE_URL = `http://127.0.0.1:8900/static/${host}/pages/${NAME}/clone/index.html`;
+// 克隆页静态服务由 engine-server 常驻提供（/static/...），无需临时 serve。
+// 端口/地址从引擎继承（HEIMDALL_PORT / HEIMDALL_SELF_URL），smoke/E2E 可用随机端口。
+const SELF_URL = process.env.HEIMDALL_SELF_URL ?? `http://127.0.0.1:${process.env.HEIMDALL_PORT ?? 8900}`;
+const CLONE_URL = `${SELF_URL}/static/${host}/pages/${NAME}/clone/index.html`;
 
 const STAGES = [
   ['capture', 'crawler/capture.mjs', [URL_, DIR]],
@@ -62,15 +65,26 @@ try {
   await run('differ/fixup.mjs', [DIR, '2']);
   emit({ kind: 'forge-stage', stage: 'fixup', status: 'done' });
 
+  // fixup 可能提升分数：以最终 score.json 为准再发一次（UI 必须显示最终值）
+  try {
+    const finalScore = JSON.parse(readFileSync(join(DIR, 'score.json'), 'utf8'));
+    emit({ kind: 'forge-score', score: finalScore, final: true });
+  } catch {}
+
   emit({ kind: 'forge-stage', stage: 'harvest', status: 'running' });
   log(`\n==== [harvest] ====`);
   await run('harvest/harvest.mjs', [DIR]);
   emit({ kind: 'forge-stage', stage: 'harvest', status: 'done' });
 
-  // 跨页情报汇总 + 站点级接线（L2 路由/坏链收口）+ 全站克隆索引页
-  await run('harvest/xlsx.mjs', [host]);
-  await run('crawler/linker.mjs', [host]);
-  await run('crawler/index-page.mjs', [host]);
+  // 跨页情报汇总 + 站点级接线 + 全站克隆索引页。
+  // 批量队列传入 HEIMDALL_SKIP_HOST_POST=1：整批只在最后跑一次，避免 60 页做 60 次全站汇总。
+  if (ENV.HEIMDALL_SKIP_HOST_POST === '1') {
+    log('\n[host-post] skipped (batch queue runs it once at the end)');
+  } else {
+    await run('harvest/xlsx.mjs', [host]);
+    await run('crawler/linker.mjs', [host]);
+    await run('crawler/index-page.mjs', [host]);
+  }
   log(`\nPIPELINE DONE -> ${DIR}`);
 } catch (e) {
   failed = String(e);

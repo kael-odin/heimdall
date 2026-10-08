@@ -9,10 +9,11 @@
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { WORKSPACE } from '../paths.mjs';
 
 const host = process.argv[2] ?? 'apify.com';
 const hostDir = process.argv[3] ?? host;
-const BASE = join('workspace', hostDir);
+const BASE = join(WORKSPACE, hostDir);
 const PAGES = join(BASE, 'pages');
 if (!existsSync(PAGES)) { console.error('no pages dir:', PAGES); process.exit(1); }
 
