@@ -128,6 +128,12 @@ node src\harvest\xlsx.mjs apify.com
 
 同事只需：打开控制台 → 输入域名 → 侦察 → 页面表勾选 → 批量克隆 → 报告中心看结果。
 
+小技巧：
+- 「页面清单」可再次点击收起（或按 Esc / 点右上「✕ 返回星图」）
+- 站点右侧 ✕ = 删除整站产物；页面行「删除」= 删除该页克隆并从星图移除节点
+- 「重锻」可对已克隆页面重新跑流水线（覆盖旧产物，保留 CAS 资产）
+- 站点/页面删除只影响 workspace 产物，CAS 资产库保留（可被其它页面复用）
+
 ## 11. SEO 审计（v2 新增）
 
 一条命令对任意站点做 40+ 项 SEO 体检：
@@ -384,7 +390,49 @@ node core\src\sandbox\serve.mjs apify.com pricing --port 8090
 - 「与原始对比」→ Playwright 全页截图 + pixelmatch，输出相似度/差异像素/高度差 + diff.png
 - `--reset` 可从克隆页重置沙盒 HTML
 
-## 25. 质量门（v2）
+## 25. LLM 与引擎 Token 配置（v2）
+
+### 两个“Token”别混淆
+
+| 名称 | 环境变量 | 作用 |
+|---|---|---|
+| 引擎 Token | `HEIMDALL_TOKEN` | 保护你的 Heimdall 引擎 API（`/api/*`、`/px/*`）。内网共享/公网暴露时才需要；控制台「设置」里填入同一值。留空 = 不鉴权（默认仅本机可用） |
+| 模型 Key | `LLM_API_KEY` | 调用模型服务的凭证（如 `sk-...`）。只放在 `core/.env`，不要填到控制台、不要提交 git |
+
+### 三要素配置（示例）
+
+```ini
+# core/.env
+HEIMDALL_LLM=1
+LLM_BASE_URL=https://xc.lifesecretary.com:8000/v1
+LLM_API_KEY=sk-你的key
+LLM_MODEL=deepseek-v4-pro
+LLM_MODEL_FAST=deepseek-flash
+LLM_PROTOCOL=chat
+```
+
+- 改完 `core/.env` 需要**重启引擎**生效
+- 控制台「设置 → 模型服务」会显示协议/模型/端点（只显示域名，不显示 Key），点「测试连接」会发起一次最小真实请求
+- 验证模型列表：`GET {LLM_BASE_URL}/models`（当前中转可用：`deepseek-flash / deepseek-v4-flash / deepseek-v4-pro`）
+
+### 协议支持
+
+| LLM_PROTOCOL | 请求端点 | 说明 |
+|---|---|---|
+| `chat`（默认） | `{base}/chat/completions` | OpenAI 兼容；支持 `response_format: json_object`（不支持时自动去掉约束重试） |
+| `responses` | `{base}/responses` | OpenAI Responses API（`input/output_text`） |
+| `anthropic` | `{base}/messages` | Anthropic Messages（`x-api-key` + `content blocks`，图片转 base64） |
+
+- 视觉（fixup 看图改 CSS）：三种协议都会自动转换图片格式；如果当前模型不支持图片，会**自动降级为纯文本补丁**（依赖 style-probe 的逐元素差异清单），不会阻塞流水线
+- 没有视觉模型时，建议：`LLM_MODEL` 用推理/质量更强的模型（如 `deepseek-v4-pro`），`LLM_MODEL_FAST` 用 `deepseek-flash`
+
+### 安全建议
+
+- Key 只写入 `core/.env`（已被 gitignore）；`.env.example` 只有占位符
+- 不要把 Key 粘贴到聊天/工单/截图里；如已泄露请立即在服务商处轮换
+- 引擎默认只监听 `127.0.0.1`；内网共享请同时设置 `HEIMDALL_HOST=0.0.0.0` + `HEIMDALL_TOKEN`
+
+## 26. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

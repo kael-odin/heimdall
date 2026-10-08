@@ -20,11 +20,12 @@
  */
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname, extname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE, DATA_ROOT } from './paths.mjs';
 import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
+import { llmInfo, llmChat, llmEnabled } from './llm.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 
@@ -44,7 +45,7 @@ const ALLOWED_ORIGINS = (process.env.HEIMDALL_CORS_ORIGIN ?? 'http://127.0.0.1:5
   .split(',').map(s => s.trim()).filter(Boolean);
 const EXTRA_PROXY_HOSTS = new Set((process.env.HEIMDALL_ALLOWED_HOSTS ?? '')
   .split(',').map(s => s.trim().replace(/^www\./, '')).filter(Boolean));
-const CORS = { 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,x-heimdall-token' };
+const CORS = { 'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,x-heimdall-token' };
 const UA2 = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif', '.svg': 'image/svg+xml', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf' };
 
@@ -168,6 +169,22 @@ createServer(async (req, res) => {
 
   if (!authorized(req, u) && (u.pathname.startsWith('/api/') || u.pathname.startsWith('/px/'))) {
     return json(res, 401, { error: 'unauthorized' });
+  }
+
+  if (req.method === 'GET' && u.pathname === '/api/llm/status') {
+    return json(res, 200, llmInfo());
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/llm/test') {
+    if (!llmEnabled()) return json(res, 200, { ok: false, error: 'LLM 未启用（HEIMDALL_LLM!=1 或缺少 LLM_BASE_URL / LLM_API_KEY）' });
+    const started = Date.now();
+    try {
+      const info = llmInfo();
+      const reply = await llmChat([{ role: 'user', content: '只回复四个字符：连接正常' }], { maxTokens: 512, timeout: 60_000, fast: true });
+      return json(res, 200, { ok: true, latencyMs: Date.now() - started, model: info.fastModel, protocol: info.protocol, reply: String(reply).slice(0, 80) });
+    } catch (e) {
+      return json(res, 200, { ok: false, latencyMs: Date.now() - started, error: String(e).slice(0, 240) });
+    }
   }
 
   if (req.method === 'GET' && u.pathname === '/api/jobs') {
@@ -443,6 +460,46 @@ createServer(async (req, res) => {
       bind: BIND,
       auth: !!AUTH_TOKEN,
     });
+  }
+
+  // 删除：整站（workspace/<host>）或单页（页面产物 + atlas 节点）
+  if (req.method === 'DELETE' && u.pathname.startsWith('/api/sites/')) {
+    const parts = u.pathname.split('/').filter(Boolean); // ['api','sites',host?...]
+    const host = decodeURIComponent(parts[2] ?? '');
+    if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    const base = join(WORKSPACE, host);
+    if (!isInsideWorkspace(base) || !existsSync(base)) return json(res, 404, { error: 'site not found' });
+    try {
+      if (parts.length === 3) {
+        rmSync(base, { recursive: true, force: true });
+        return json(res, 200, { ok: true, removed: 'site', host });
+      }
+      if (parts.length === 5 && parts[3] === 'pages') {
+        const name = decodeURIComponent(parts[4]);
+        if (!/^[a-z0-9._-]+$/i.test(name)) return json(res, 400, { error: 'bad page name' });
+        const pageDir = join(base, 'pages', name);
+        let removedArtifacts = false;
+        if (isInsideWorkspace(pageDir) && existsSync(pageDir)) { rmSync(pageDir, { recursive: true, force: true }); removedArtifacts = true; }
+        // 从 atlas 中移除对应节点与边（按 manifest.target 或页面名匹配）
+        let removedNode = false;
+        const atlasPath = join(base, 'recon', 'atlas.json');
+        if (existsSync(atlasPath)) {
+          try {
+            const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
+            const pageNameOf = (url) => { try { const p = new URL(url).pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[\/?&#]+/g, '-').slice(0, 60); return p || 'home'; } catch { return 'home'; } };
+            const before = atlas.nodes?.length ?? 0;
+            atlas.nodes = (atlas.nodes ?? []).filter(n => pageNameOf(n.url) !== name);
+            const ids = new Set(atlas.nodes.map(n => n.id));
+            atlas.edges = (atlas.edges ?? []).filter(e => ids.has(e.from) && ids.has(e.to));
+            if (atlas.meta) { atlas.meta.pages = atlas.nodes.length; atlas.meta.edges = atlas.edges.length; }
+            removedNode = atlas.nodes.length !== before;
+            writeFileSync(atlasPath, JSON.stringify(atlas, null, 2));
+          } catch {}
+        }
+        return json(res, 200, { ok: true, removed: 'page', host, name, removedArtifacts, removedNode });
+      }
+    } catch (e) { return json(res, 500, { error: String(e).slice(0, 200) }); }
+    return json(res, 400, { error: 'bad delete path' });
   }
 
   // 报告索引：控制台「报告」页动态展示可用产物

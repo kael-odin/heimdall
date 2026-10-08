@@ -30,9 +30,13 @@ const taskSources = new Map();
 const tasksOpen = ref(true);
 const auditReport = ref(null);   // 最近一次 SEO 审计结果（报告入口）
 const watchReport = ref(null);   // 最近一次变更监控结果（报告入口）
+const okMsg = ref('');           // 成功提示（绿色 toast，与错误提示区分）
 const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
 const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
+const llmStatus = ref(null);     // LLM 配置状态（/api/llm/status，不含 key）
+const llmTest = ref(null);       // 最近一次连接测试结果
+const llmTesting = ref(false);
 function taskState(t) { return t.failed ? 'failed' : t.done ? 'done' : 'running'; }
 function taskLabel(t) { return { running: '运行中', done: '完成', failed: '失败' }[taskState(t)] ?? '运行中'; }
 const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
@@ -97,14 +101,22 @@ const VIEWS = [
 const pageQuery = ref('');
 const typeFilter = ref('');
 const statusFilter = ref('');
-const tableNodes = ref([]);                       // 页面表格的响应式快照
+const tableNodes = ref([]);                       // 页面表格的响应式快照（含孤儿已克隆页）
+const extraNodes = ref([]);                       // 已克隆但不在 atlas 中的页面（补全清单）
+const sortKey = ref('path');
+const sortDir = ref(1);
 const pageScores = reactive({});                  // nodeId -> score.json（懒加载）
 const tokenInput = ref(localStorage.getItem('heimdall-token') ?? '');
 const apiBaseInput = ref(localStorage.getItem('heimdall-api') ?? API);
-const pageNameOf = (n) => (n.path === '/' ? 'home' : n.path.replace(/^\//, '').replace(/\//g, '-'));
+const pageNameOf = (n) => {
+  try { const p = new URL(n.url).pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[/?&#]+/g, '-').slice(0, 60); return p || 'home'; }
+  catch { return n.path === '/' ? 'home' : String(n.path || '').replace(/^\//, '').replace(/[/?&#]+/g, '-') || 'home'; }
+};
+const STATE_RANK = { done: 0, running: 1, failed: 2, idle: 3 };
+function toggleSort(k) { if (sortKey.value === k) sortDir.value = -sortDir.value; else { sortKey.value = k; sortDir.value = 1; } }
 const filteredNodes = computed(() => {
   const q = pageQuery.value.trim().toLowerCase();
-  return tableNodes.value.filter(n => {
+  const out = tableNodes.value.filter(n => {
     if (typeFilter.value && n.type !== typeFilter.value) return false;
     if (statusFilter.value === 'done' && n.forgeState !== 'done') return false;
     if (statusFilter.value === 'todo' && (n.forgeState === 'done' || n.forgeState === 'running')) return false;
@@ -112,6 +124,20 @@ const filteredNodes = computed(() => {
     const hay = ((n.url || '') + ' ' + (n.title || '') + ' ' + (n.path || '')).toLowerCase();
     return !q || hay.includes(q);
   });
+  const dir = sortDir.value;
+  out.sort((a, b) => {
+    if (sortKey.value === 'state') return (STATE_RANK[a.forgeState] - STATE_RANK[b.forgeState]) * dir;
+    if (sortKey.value === 'score') {
+      const av = pageScores[a.id]?.pixel, bv = pageScores[b.id]?.pixel;
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return (av - bv) * dir;
+    }
+    if (sortKey.value === 'title') return String(a.title || '').localeCompare(String(b.title || '')) * dir;
+    return String(a.path || '').localeCompare(String(b.path || '')) * dir;
+  });
+  return out;
 });
 const doneCount = computed(() => tableNodes.value.filter(n => n.forgeState === 'done').length);
 const avgVisual = computed(() => {
@@ -137,6 +163,61 @@ async function loadPageScores() {
 const fmtTime = (t) => (t ? new Date(t).toLocaleTimeString('zh-CN', { hour12: false }) : '');
 const fmtDuration = (t) => (t.endedAt && t.startedAt ? Math.round((t.endedAt - t.startedAt) / 1000) + 's' : (t.startedAt ? '进行中' : ''));
 function openDetail(n) { view.value = 'pages'; onNodeClick(n); }
+function selectView(id) {
+  if (id === 'pages' && view.value === 'pages') { view.value = 'atlas'; return; }   // 再次点击 = 收起
+  view.value = id;
+  if (id === 'jobs') loadJobHistory();
+  if (id === 'reports') { loadReports(); loadAssets(); }
+  if (id === 'settings') loadLlm();
+}
+function togglePages() { if (view.value === 'pages') view.value = 'atlas'; else { view.value = 'pages'; loadPageStatus(); } }
+async function deleteSite(s) {
+  if (!s?.host) return;
+  if (!confirm('删除站点 ' + s.host + '？\n将移除 workspace/' + s.host + ' 下的侦察、克隆与报告（CAS 资产保留）。')) return;
+  try {
+    const r = await fetch(API + '/api/sites/' + encodeURIComponent(s.host), { method: 'DELETE', headers: apiHeaders() });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    sites.value = sites.value.filter(x => x.host !== s.host);
+    if (host.value === s.host) {
+      if (sites.value[0]) pickSite(sites.value[0]);
+      else { host.value = ''; nodes = []; edges = []; tableNodes.value = []; bump(); }
+    }
+    okMsg.value = '已删除站点 ' + s.host;
+    setTimeout(() => { okMsg.value = ''; }, 2500);
+  } catch (e) { errMsg.value = '删除失败：' + String(e).slice(0, 160); }
+}
+async function removePageNode(n) {
+  const name = n.pageName ?? pageNameOf(n);
+  const r = await fetch(API + '/api/sites/' + encodeURIComponent(host.value) + '/pages/' + encodeURIComponent(name), { method: 'DELETE', headers: apiHeaders() });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  delete pageScores[n.id];
+  nodes = nodes.filter(x => x.id !== n.id);
+  extraNodes.value = extraNodes.value.filter(x => x.id !== n.id);
+  if (selected.value === n) selected.value = null;
+  bump();
+  return j;
+}
+async function deletePage(n) {
+  const name = n.pageName ?? pageNameOf(n);
+  if (!confirm('删除页面 ' + (n.path || name) + ' 的克隆产物，并从星图移除该节点？')) return;
+  try {
+    const j = await removePageNode(n);
+    okMsg.value = '已删除页面 ' + name + (j.removedNode ? '（星图节点已移除）' : '');
+    setTimeout(() => { okMsg.value = ''; }, 2500);
+  } catch (e) { errMsg.value = '删除失败：' + String(e).slice(0, 160); }
+}
+async function removeChecked() {
+  const targets = tableNodes.value.filter(n => plSelected.value.has(n.id) && n.forgeState !== 'running');
+  if (!targets.length) return;
+  if (!confirm('移除选中 ' + targets.length + ' 个页面？\n将删除克隆产物并从星图移除节点（CAS 资产保留）。')) return;
+  let ok = 0, fail = 0;
+  for (const n of targets) { try { await removePageNode(n); ok++; } catch { fail++; } }
+  plSelected.value = new Set();
+  okMsg.value = '已移除 ' + ok + ' 个页面' + (fail ? '（' + fail + ' 失败）' : '');
+  setTimeout(() => { okMsg.value = ''; }, 3000);
+}
 function saveApiBase() {
   const v = apiBaseInput.value.trim() || 'http://127.0.0.1:8900';
   localStorage.setItem('heimdall-api', v);
@@ -148,27 +229,39 @@ async function loadPageStatus() {
     if (!r.ok) return;
     const { pages } = await r.json();
     const byPath = new Map();
-    for (const p of pages) { try { byPath.set(new URL(p.target).pathname.replace(/\/$/, '') || '/', p); } catch {} }
+    const byName = new Map();
+    for (const p of pages) {
+      try { byPath.set(new URL(p.target).pathname.replace(/\/$/, '') || '/', p); } catch {}
+      byName.set(p.name, p);
+    }
+    const matchedNames = new Set();
     for (const n of nodes) {
       const key = (n.path || '/').replace(/\/$/, '') || '/';
-      const hit = byPath.get(key);
-      if (hit) { n.forgeState = 'done'; pageScores[n.id] = hit.score ?? null; }
+      const hit = byPath.get(key) ?? byName.get(pageNameOf(n));
+      if (hit) { n.forgeState = 'done'; pageScores[n.id] = hit.score ?? null; matchedNames.add(hit.name); }
     }
-    tableNodes.value = [...nodes];
+    // 补全：已克隆但不在 atlas 中的页面（例如 recon 截断、删过节点），保证清单是"完全体"
+    extraNodes.value = pages.filter(p => !matchedNames.has(p.name)).map(p => {
+      let path = p.target;
+      try { path = new URL(p.target).pathname || '/'; } catch {}
+      return { id: 'forged:' + p.name, url: p.target, path, title: p.target, type: 'generic', depth: 99, ring: 3, color: '#64748B', forgeState: 'done', synthetic: true, pageName: p.name };
+    });
+    for (const n of extraNodes.value) pageScores[n.id] = pages.find(p => p.name === n.pageName)?.score ?? null;
+    tableNodes.value = [...nodes, ...extraNodes.value];
   } catch {}
 }
 function saveToken() {
   const v = tokenInput.value.trim();
   if (v) localStorage.setItem('heimdall-token', v); else localStorage.removeItem('heimdall-token');
-  errMsg.value = v ? 'Token 已保存（后续请求生效）' : 'Token 已清除';
-  setTimeout(() => { errMsg.value = ''; }, 2500);
+  okMsg.value = v ? 'Token 已保存（后续请求生效）' : 'Token 已清除';
+  setTimeout(() => { okMsg.value = ''; }, 2500);
 }
 
 // 3D 图数据（Graph3D 消费）
 const gNodes = ref([]);
 const gLinks = ref([]);
 const gTick = ref(0);
-const bump = () => { gNodes.value = [...nodes]; gLinks.value = [...edges]; gTick.value++; tableNodes.value = [...nodes]; scheduleScoreLoad(); };
+const bump = () => { gNodes.value = [...nodes]; gLinks.value = [...edges]; gTick.value++; tableNodes.value = [...nodes, ...extraNodes.value]; scheduleScoreLoad(); };
 
 let nodes = [], edges = [];
 const urlNode = new Map();
@@ -324,7 +417,11 @@ setInterval(pollEngine, 15000);
 function pickSite(s) {
   if (!s) return;
   host.value = s.host;
-  fetch(`/${s.host}/recon/atlas.json`).then(r => r.ok ? r.json() : Promise.reject()).then(buildStatic).catch(e => { errMsg.value = String(e); });
+  plSelected.value = new Set();
+  selected.value = null;
+  detailIntel.value = null; detailScore.value = null;
+  view.value = 'pages';
+  fetch(`/${s.host}/recon/atlas.json`).then(r => r.ok ? r.json() : Promise.reject()).then(a => { buildStatic(a); loadPageStatus(); }).catch(e => { errMsg.value = String(e); });
 }
 
 // ---------- forge：点选节点 → 单页还原流水线 ----------
@@ -390,6 +487,19 @@ function startForge(node) {
       }
     })();
   });
+}
+
+/** LLM 状态与连接测试（设置页使用） */
+async function loadLlm() {
+  try { const r = await fetch(API + '/api/llm/status'); if (r.ok) llmStatus.value = await r.json(); } catch {}
+}
+async function testLlm() {
+  llmTesting.value = true; llmTest.value = null;
+  try {
+    const r = await fetch(API + '/api/llm/test', { method: 'POST', headers: apiHeaders() });
+    llmTest.value = await r.json();
+  } catch (e) { llmTest.value = { ok: false, error: String(e).slice(0, 200) }; }
+  finally { llmTesting.value = false; }
 }
 
 /** 报告索引 + 资产清单（报告页使用） */
@@ -527,13 +637,19 @@ function onNodeClick(node) {
   fetch(`/${host.value}/pages/${pageName}/score.json`).then(r => r.ok ? r.json() : null).then(j => { if (j && selected.value === node) detailScore.value = j; }).catch(() => {});
 }
 
+function onKeydown(e) {
+  if (e.key !== 'Escape') return;
+  if (selected.value) { selected.value = null; return; }
+  if (view.value !== 'atlas') { view.value = 'atlas'; }
+}
 onMounted(() => {
+  document.addEventListener('keydown', onKeydown);
   applyTheme(theme.value);
   loadSites(); pollEngine();
   // 默认载入上次侦察结果
   fetch('/apify.com/recon/atlas.json').then(r => r.ok ? r.json() : Promise.reject()).then(buildStatic).catch(() => {});
 });
-onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try { s.close(); } catch {} } });
+onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.close(); for (const s of taskSources.values()) { try { s.close(); } catch {} } });
 </script>
 
 <template>
@@ -578,11 +694,14 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
   <!-- 已侦察站点切换 -->
   <div class="sites" v-if="sites.length">
     <span class="sites-label">已侦察：</span>
-    <button v-for="s in sites" :key="s.host" class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s); view = 'pages'" :title="s.pages ? `${s.forged}/${s.pages} 页已锻造` : '侦察结果为空（失败或无可用页面）'">
-      {{ s.host }}<em>{{ s.pages ? s.forged + 'F' : '空' }}</em>
-    </button>
+    <span class="site-item" v-for="s in sites" :key="s.host">
+      <button class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s)" :title="s.pages ? `${s.forged}/${s.pages} 页已锻造` : '侦察结果为空（失败或无可用页面）'">
+        {{ s.host }}<em>{{ s.pages ? s.forged + 'F' : '空' }}</em>
+      </button>
+      <button class="site-del" title="删除该站点（侦察/克隆/报告；CAS 资产保留）" @click.stop="deleteSite(s)">✕</button>
+    </span>
     <button class="site-btn audit-btn" :disabled="!!engine.audit" @click="runAudit" :title="engine.audit ? '已有审计任务在运行' : '全站 SEO 审计（40+ 规则，输出 HTML/CSV/JSON 报告）'">SEO 审计</button>
-    <button class="site-btn list-toggle" :class="{ active: view === 'pages' }" @click="view = 'pages'">页面清单</button>
+    <button class="site-btn list-toggle" :class="{ active: view === 'pages' }" @click="togglePages()" :title="view === 'pages' ? '收起清单返回星图' : '打开页面清单'">{{ view === 'pages' ? '收起清单' : '页面清单' }}</button>
   </div>
 
   <!-- 任务中心：每个任务的独立进度（不再被后一个任务覆盖） -->
@@ -611,10 +730,22 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
       <select v-model="typeFilter"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
       <select v-model="statusFilter"><option value="">全部状态</option><option value="done">已克隆</option><option value="todo">未完成</option><option value="failed">失败</option></select>
       <button @click="plSelectAll" title="全选未克隆页">全选未锻</button>
+      <button @click="plSelected = new Set(tableNodes.map(n => n.id))" title="全选当前清单">全选</button>
+      <button @click="plSelected = new Set()" title="清空选择">清空</button>
       <button class="wv-primary" :disabled="!plSelected.size" @click="forgeChecked">克隆选中 ({{ plSelected.size }})</button>
+      <button class="danger" :disabled="!plSelected.size" @click="removeChecked">移除选中 ({{ plSelected.size }})</button>
+      <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）">✕ 返回星图</button>
     </div>
     <div class="wv-rows">
-      <div class="wv-row wv-th"><span></span><span>路径</span><span>标题</span><span>类型</span><span>状态</span><span>视觉</span><span>操作</span></div>
+      <div class="wv-row wv-th">
+        <span></span>
+        <span class="sortable" @click="toggleSort('path')">路径 {{ sortKey === 'path' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="sortable" @click="toggleSort('title')">标题 {{ sortKey === 'title' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span>类型</span>
+        <span class="sortable" @click="toggleSort('state')">状态 {{ sortKey === 'state' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="sortable" @click="toggleSort('score')">视觉 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span>操作</span>
+      </div>
       <div class="wv-row" v-for="n in filteredNodes" :key="n.id">
         <label><input type="checkbox" :checked="plSelected.has(n.id)" @change="plToggle(n.id)" /></label>
         <span class="wv-url" @click="openDetail(n)">{{ n.path }}</span>
@@ -625,7 +756,8 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
         <span class="wv-actions">
           <a :href="n.url" target="_blank" rel="noopener" title="打开原站">原站</a>
           <button @click="openDetail(n)">详情</button>
-          <button :disabled="n.forgeState === 'running' || n.forgeState === 'done'" @click="startForge(n)">克隆</button>
+          <button :disabled="n.forgeState === 'running'" @click="startForge(n)">{{ n.forgeState === 'done' ? '重锻' : '克隆' }}</button>
+          <button v-if="n.forgeState === 'done' || n.forgeState === 'failed'" class="danger" @click="deletePage(n)" title="删除该页克隆产物并从星图移除">删除</button>
         </span>
       </div>
       <div class="wv-empty" v-if="!filteredNodes.length">没有匹配的页面。</div>
@@ -718,7 +850,16 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
       <div class="set-row"><span>主题</span><button @click="toggleTheme">{{ theme === 'dark' ? '深色 → 浅色' : '浅色 → 深色' }}</button></div>
       <div class="set-row"><span>星图自转</span><input type="checkbox" v-model="autoRotate" /></div>
       <div class="set-row"><span>引擎地址</span><input v-model="apiBaseInput" placeholder="http://127.0.0.1:8900" spellcheck="false" /><button @click="saveApiBase">保存并刷新</button></div>
-      <div class="set-row"><span>引擎 Token</span><input v-model="tokenInput" placeholder="HEIMDALL_TOKEN（可留空）" spellcheck="false" /><button @click="saveToken">保存</button></div>
+      <div class="set-row"><span>引擎 Token</span><input v-model="tokenInput" placeholder="HEIMDALL_TOKEN（保护引擎 API，可留空）" spellcheck="false" /><button @click="saveToken">保存</button></div>
+      <div class="set-note" style="border-top:0;padding-top:0">「引擎 Token」= 访问本机引擎 API 的口令（环境变量 HEIMDALL_TOKEN），与下面模型服务的 LLM Key 不是一回事：前者保护你的引擎，后者用于调用模型。</div>
+      <div class="set-row" v-if="llmStatus">
+        <span>模型服务</span>
+        <b :style="{ color: llmStatus.enabled ? 'var(--green)' : 'var(--red)' }">{{ llmStatus.enabled ? '已启用' : '未启用' }}</b>
+        <span class="wv-stat">协议 {{ llmStatus.protocol }} · 主模型 {{ llmStatus.model }} · 快速 {{ llmStatus.fastModel }} · 端点 {{ llmStatus.baseHost || '—' }} · Key {{ llmStatus.hasKey ? '已配置' : '缺失' }}</span>
+        <button :disabled="llmTesting || !llmStatus.enabled" @click="testLlm">{{ llmTesting ? '测试中…' : '测试连接' }}</button>
+      </div>
+      <div class="set-note" v-if="llmTest">{{ llmTest.ok ? ('✓ 连接成功 · ' + llmTest.latencyMs + 'ms · ' + (llmTest.reply || '').slice(0, 40)) : ('✗ 失败：' + (llmTest.error || 'unknown')) }}</div>
+      <div class="set-note">模型配置：编辑 <code>core/.env</code> 的 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / LLM_MODEL_FAST / LLM_PROTOCOL（chat|responses|anthropic），改完重启引擎生效。</div>
       <div class="set-note">引擎：{{ engine.ok ? '在线' : '离线' }} · 绑定 {{ engine.bind ?? '127.0.0.1' }} · 鉴权 {{ engine.auth ? '开启' : '关闭' }}<br/>数据目录 / 并发 / 代理白名单通过环境变量配置（HEIMDALL_DATA_DIR / HEIMDALL_TOKEN / HEIMDALL_ALLOWED_HOSTS）。</div>
     </div>
   </section>
@@ -858,8 +999,9 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
     <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 打开页面详情</span>
   </div>
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
+  <div class="toast ok" v-if="okMsg">{{ okMsg }}</div>
   <div class="view-nav hud-panel">
-    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" @click="view = v.id; if (v.id === 'jobs') loadJobHistory(); if (v.id === 'reports') { loadReports(); loadAssets(); }">
+    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" @click="selectView(v.id)">
       <b>{{ v.icon }}</b><span>{{ v.label }}</span>
     </button>
   </div>
@@ -894,6 +1036,9 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
 .site-btn.active { border-color: var(--cyan); color: var(--cyan); }
 
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); color: var(--red); letter-spacing: .08em; font-size: 13px; z-index: 20; }
+.toast.ok { color: var(--green); }
+.wv-row { grid-template-columns: 34px minmax(150px,1.1fr) minmax(180px,1.6fr) 90px 80px 70px 230px; }
+.wv-actions { flex-wrap: wrap; }
 
 /* 左侧仪表面板 */
 .panel { position: fixed; left: 28px; bottom: 64px; width: 236px; padding: 14px 16px 16px; z-index: 6; }
@@ -1042,6 +1187,11 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
 .tc-name { font-family: var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tc-state { margin-left: auto; font-size: 10px; }
 .tc-score { font-family: var(--font-mono); color: var(--green); font-size: 10px; }
+.site-item { display: inline-flex; align-items: center; gap: 2px; }
+.site-del { background: none; border: 1px solid transparent; color: var(--text-faint); cursor: pointer; border-radius: 3px; padding: 2px 5px; font-size: 11px; }
+.site-del:hover { color: var(--red); border-color: rgba(239,68,68,.4); }
+.wv-close { margin-left: auto; }
+.wv-actions button.danger:hover { color: var(--red); border-color: rgba(239,68,68,.5); }
 .site-btn.empty { opacity: .55; border-color: rgba(239,68,68,.35); }
 .site-btn.empty em { color: var(--red); }
 .score-note { margin-top: 8px; font-size: 10px; color: var(--text-faint); font-family: var(--font-mono); letter-spacing: .04em; }
@@ -1055,6 +1205,14 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
 .wv-head b { font-family: var(--font-mono); letter-spacing: .08em; }
 .wv-stat { color: var(--text-dim); font-size: 11.5px; font-family: var(--font-mono); }
 .wv-head input, .wv-head select, .wv-head button { background: rgba(255,255,255,.04); border: 1px solid var(--cyan-line); color: var(--text); border-radius: 3px; padding: 6px 9px; font-size: 12px; }
+.wv-head select { color-scheme: dark; }
+.wv-head select option { background: #14141a; color: #e2e8f0; }
+[data-theme="light"] .wv-head select { color-scheme: light; }
+[data-theme="light"] .wv-head select option { background: #ffffff; color: #0f172a; }
+.sortable { cursor: pointer; user-select: none; }
+.sortable:hover { color: var(--cyan); }
+.wv-head button.danger, .wv-actions button.danger { color: var(--red); border-color: rgba(239,68,68,.35); }
+.wv-head button.danger:disabled { opacity: .35; }
 .wv-search { min-width: 180px; }
 .wv-head button { cursor: pointer; }
 .wv-head button:disabled { opacity: .4; cursor: not-allowed; }

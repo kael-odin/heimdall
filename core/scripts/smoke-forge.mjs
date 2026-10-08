@@ -211,7 +211,22 @@ async function main() {
     assert.ok(existsSync(join(watchDir, 'watch.html')), 'watch.html must exist');
     assert.ok(existsSync(join(watchDir, 'baseline.json')), 'watch baseline must exist');
 
-    // 9) 任务持久化：jobs.db + 引擎重启后历史仍在
+    // 9) 删除能力：单页（产物+atlas 节点）与整站；坏请求返回 4xx
+    const badDel = await fetch(base + '/api/sites/%2e%2e', { method: 'DELETE' });
+    assert.ok([400, 404].includes(badDel.status), 'bad host delete must be rejected, got ' + badDel.status);
+    const delPage = await fetch(base + '/api/sites/127.0.0.1/pages/home', { method: 'DELETE' });
+    assert.equal(delPage.status, 200, 'delete page status');
+    const delPageBody = await delPage.json();
+    assert.equal(delPageBody.removedArtifacts, true, 'page artifacts removed');
+    assert.equal(existsSync(join(dataDir, 'workspace', '127.0.0.1', 'pages', 'home')), false, 'page dir must be gone');
+    const atlasAfter = JSON.parse(readFileSync(join(dataDir, 'workspace', '127.0.0.1', 'recon', 'atlas.json'), 'utf8'));
+    assert.ok(!atlasAfter.nodes.some(n => { try { return new URL(n.url).pathname === '/'; } catch { return false; } }), 'atlas node must be removed');
+    const delSite = await fetch(base + '/api/sites/127.0.0.1', { method: 'DELETE' });
+    assert.equal(delSite.status, 200, 'delete site status');
+    assert.equal(existsSync(join(dataDir, 'workspace', '127.0.0.1')), false, 'site dir must be gone');
+    assert.ok([400, 404].includes((await fetch(base + '/api/sites/127.0.0.1', { method: 'DELETE' })).status), 'second delete must 404');
+
+    // 10) 任务持久化：jobs.db + 引擎重启后历史仍在
     const jobsBefore = await (await fetch(base + '/api/jobs')).json();
     assert.ok(jobsBefore.store, 'job store should be active');
     assert.ok(jobsBefore.history.length >= 3, 'job history should cover recon/forge/audit/watch, got ' + jobsBefore.history.length);

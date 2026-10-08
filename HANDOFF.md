@@ -36,6 +36,19 @@
 | 质量门 | ✅ | `pnpm lint` / `pnpm test`（12 单测）/ `pnpm smoke`（fixture 离线 E2E，含 SEO 审计）+ GitHub Actions |
 | 安全默认值 | ✅ | 绑定 127.0.0.1、代理 host 白名单、路径越界防护、可选 token、CORS 限定来源 |
 
+## 3. 配置速查（v2）
+
+| 变量 | 作用 | 备注 |
+|---|---|---|
+| `HEIMDALL_TOKEN` | 引擎 API 口令（/api、/px） | 与模型 Key 无关；默认不启用 |
+| `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` / `LLM_MODEL_FAST` | 模型服务三要素 | Key 只进 core/.env（gitignore） |
+| `LLM_PROTOCOL` | `chat`（默认）/ `responses` / `anthropic` | 请求构造与响应解析已适配 |
+| `LLM_TIMEOUT_MS` / `LLM_MAX_RETRIES` | 超时/网络重试 | 默认 180s / 3 |
+| `HEIMDALL_DATA_DIR` | 产物目录 | 默认 core/，可迁仓库外 |
+| `HEIMDALL_CONSOLE_DIR` | 单端口部署的控制台 dist | Docker/本机单端口用 |
+
+当前中转实测：支持 `/chat/completions` 与 `response_format`；可用模型 `deepseek-flash / deepseek-v4-flash / deepseek-v4-pro`；无视觉模型（fixup 自动走文本模式）。
+
 ## 3. 架构三层（谁依赖谁）
 
 ```

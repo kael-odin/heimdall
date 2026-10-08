@@ -1,72 +1,168 @@
 /**
- * llm — Heimdall 的 LLM 客户端（OpenAI 兼容 /chat/completions）
+ * llm — Heimdall 的 LLM 客户端（多协议，零依赖）
  *
- * 配置来自 core/.env：LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HEIMDALL_LLM
- * llmEnabled()  是否开启 AI 增强（.env 缺失/HEIMDALL_LLM!=1 → false，流水线自动降级为纯确定性）
- * llmChat(messages, {json})  返回 content 文本；json:true 时解析并容错提取 JSON
- * llmVision(prompt, imagePaths)  图文混合（本地 png/jpg → base64）
+ * 支持协议（LLM_PROTOCOL）：
+ *   chat       OpenAI 兼容 /chat/completions（默认）
+ *   responses  OpenAI /responses（Responses API）
+ *   anthropic  Anthropic /messages（Claude 兼容中转）
+ *
+ * 配置（core/.env 或环境变量）：
+ *   HEIMDALL_LLM=1
+ *   LLM_BASE_URL=https://host/v1
+ *   LLM_API_KEY=sk-...
+ *   LLM_MODEL=glm-5.3-flash          # 主模型（fixup/语义增强）
+ *   LLM_MODEL_FAST=deepseek-flash    # 快速模型（可选，默认=主模型）
+ *   LLM_PROTOCOL=chat|responses|anthropic
+ *   LLM_TIMEOUT_MS=180000            # 可选
+ *   LLM_MAX_RETRIES=3                # 可选（仅网络层错误重试）
+ *
+ * 导出：llmEnabled / llmInfo / llmChat / llmVision / buildRequest / parseResponse / llmChatWith
  */
 import { readFileSync } from 'node:fs';
 import { getEnv } from './env.mjs';
 
 const ENV = getEnv();
-const BASE = ENV.LLM_BASE_URL ?? '';
-const KEY = ENV.LLM_API_KEY ?? '';
-const MODEL = ENV.LLM_MODEL ?? 'glm-5.3-flash';
-const MODEL_FAST = ENV.LLM_MODEL_FAST ?? MODEL;
 
-export const llmEnabled = () => ENV.HEIMDALL_LLM === '1' && !!BASE && !!KEY;
+export function llmConfig() {
+  const base = (ENV.LLM_BASE_URL ?? '').replace(/\/+$/, '');
+  return {
+    protocol: String(ENV.LLM_PROTOCOL ?? 'chat').toLowerCase(),
+    base,
+    key: ENV.LLM_API_KEY ?? '',
+    model: ENV.LLM_MODEL ?? 'glm-5.3-flash',
+    fastModel: ENV.LLM_MODEL_FAST ?? ENV.LLM_MODEL ?? 'glm-5.3-flash',
+    timeout: Number(ENV.LLM_TIMEOUT_MS ?? 180_000),
+    retries: Math.max(1, Number(ENV.LLM_MAX_RETRIES ?? 3)),
+  };
+}
 
-export async function llmChat(messages, { json = false, maxTokens = 16384, timeout = 180_000, fast = false } = {}) {
-  const body = { model: fast ? MODEL_FAST : MODEL, messages, max_tokens: maxTokens };
-  if (json) body.response_format = { type: 'json_object' };
-  // 中转链路偶发断连：网络层失败重试 3 次（2s/5s/10s 退避），HTTP 错误不重试
-  let r;
-  for (let attempt = 1; ; attempt++) {
-    try {
-      r = await fetch(BASE + '/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(timeout),   // 中转站偶发半死连接会永久悬挂，必须带超时
-      });
-      break;
-    } catch (e) {
-      if (attempt >= 3) throw e;
-      const wait = [2000, 5000, 10000][attempt - 1];
-      console.error(`[llm] network error (attempt ${attempt}), retry in ${wait}ms:`, String(e.cause ?? e).slice(0, 120));
-      await new Promise(res => setTimeout(res, wait));
+export const llmEnabled = () => ENV.HEIMDALL_LLM === '1' && !!ENV.LLM_BASE_URL && !!ENV.LLM_API_KEY;
+
+/** 供引擎/控制台展示的安全状态（不含 key） */
+export function llmInfo() {
+  const c = llmConfig();
+  let baseHost = '';
+  try { baseHost = new URL(c.base).host; } catch {}
+  return { enabled: llmEnabled(), protocol: c.protocol, model: c.model, fastModel: c.fastModel, baseHost, hasKey: !!c.key, timeoutMs: c.timeout };
+}
+
+const textOf = (content) => (typeof content === 'string' ? content : (content ?? []).filter(p => p.type === 'text').map(p => p.text).join('\n'));
+
+function toResponsesContent(content) {
+  if (typeof content === 'string') return [{ type: 'input_text', text: content }];
+  return (content ?? []).map(p => p.type === 'image_url'
+    ? { type: 'input_image', image_url: p.image_url?.url ?? '' }
+    : { type: 'input_text', text: p.text ?? '' });
+}
+function toAnthropicContent(content) {
+  if (typeof content === 'string') return [{ type: 'text', text: content }];
+  return (content ?? []).map(p => {
+    if (p.type === 'image_url') {
+      const url = p.image_url?.url ?? '';
+      const m = /^data:([^;]+);base64,(.*)$/.exec(url);
+      return m ? { type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } } : { type: 'text', text: '[image omitted]' };
     }
+    return { type: 'text', text: p.text ?? '' };
+  });
+}
+
+/** 构造协议请求（纯函数，便于测试） */
+export function buildRequest({ protocol = 'chat', base = '', key = '', model = '', messages = [], json = false, maxTokens = 16384 } = {}) {
+  const commonHeaders = { 'Content-Type': 'application/json' };
+  if (protocol === 'responses') {
+    const input = messages.map(m => ({ role: m.role === 'system' ? 'developer' : m.role, content: toResponsesContent(m.content) }));
+    const body = { model, input, max_output_tokens: maxTokens };
+    if (json) body.text = { format: { type: 'json_object' } };
+    return { url: base + '/responses', headers: { ...commonHeaders, Authorization: 'Bearer ' + key }, body };
   }
-  if (!r.ok) throw new Error(`LLM ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const j = await r.json();
-  let content = j.choices?.[0]?.message?.content ?? '';
-  // 推理模型 reasoning 可能吃掉输出：content 为空时去掉 response_format 重试一次
-  if (!content && json) {
-    delete body.response_format;
-    const r2 = await fetch(BASE + '/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
-      body: JSON.stringify(body),
-    });
-    if (r2.ok) content = (await r2.json()).choices?.[0]?.message?.content ?? '';
+  if (protocol === 'anthropic') {
+    const system = messages.filter(m => m.role === 'system').map(m => textOf(m.content)).filter(Boolean).join('\n');
+    const msgs = messages.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: toAnthropicContent(m.content) }));
+    const body = { model, max_tokens: maxTokens, messages: msgs };
+    if (system) body.system = system;
+    return { url: base + '/messages', headers: { ...commonHeaders, 'x-api-key': key, 'anthropic-version': '2023-06-01' }, body };
   }
-  if (!json) return content;
-  // 容错提取 JSON（模型可能包 markdown fence）
+  const body = { model, messages, max_tokens: maxTokens };
+  if (json) body.response_format = { type: 'json_object' };
+  return { url: base + '/chat/completions', headers: { ...commonHeaders, Authorization: 'Bearer ' + key }, body };
+}
+
+/** 解析协议响应为文本（纯函数） */
+export function parseResponse({ protocol = 'chat', data = {} } = {}) {
+  if (protocol === 'responses') {
+    if (typeof data.output_text === 'string' && data.output_text) return data.output_text;
+    const chunks = [];
+    for (const item of data.output ?? []) for (const c of item.content ?? []) if (typeof c.text === 'string') chunks.push(c.text);
+    return chunks.join('\n');
+  }
+  if (protocol === 'anthropic') return (data.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('\n');
+  return data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '';
+}
+
+function parseJsonLoose(content) {
   const fence = /```(?:json)?\s*([\s\S]*?)```/.exec(content);
   const raw = fence ? fence[1] : content;
   const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
   try { return JSON.parse(start >= 0 ? raw.slice(start, end + 1) : raw); }
-  catch { throw new Error('LLM JSON parse failed: ' + content.slice(0, 200)); }
+  catch { throw new Error('LLM JSON parse failed: ' + String(content).slice(0, 200)); }
 }
 
-/** 图文混合：imagePaths 为本地 png/jpg，自动 base64 */
-export async function llmVision(prompt, imagePaths, { json = false, timeout = 180_000, fast = false } = {}) {
+async function rawChat(config, messages, { json = false, maxTokens = 16384, timeout, retries } = {}) {
+  const t = timeout ?? config.timeout ?? 180_000;
+  const tries = retries ?? config.retries ?? 3;
+  let body = buildRequest({ protocol: config.protocol, base: config.base, key: config.key, model: config.model, messages, json, maxTokens });
+  let r;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      r = await fetch(body.url, { method: 'POST', headers: body.headers, body: JSON.stringify(body.body), signal: AbortSignal.timeout(t) });
+      break;
+    } catch (e) {
+      if (attempt >= tries) throw e;
+      const wait = [2000, 5000, 10000][Math.min(attempt - 1, 2)];
+      console.error(`[llm] network error (attempt ${attempt}), retry in ${wait}ms:`, String(e.cause ?? e).slice(0, 120));
+      await new Promise(res => setTimeout(res, wait));
+    }
+  }
+  if (!r.ok && json && [400, 404, 415, 422].includes(r.status)) {
+    // 部分中转不支持 response_format：去掉 JSON 约束重试一次（仍按 JSON 文本解析）
+    body = buildRequest({ protocol: config.protocol, base: config.base, key: config.key, model: config.model, messages, json: false, maxTokens });
+    r = await fetch(body.url, { method: 'POST', headers: body.headers, body: JSON.stringify(body.body), signal: AbortSignal.timeout(t) });
+  }
+  if (!r.ok) throw new Error(`LLM ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  let data = await r.json();
+  let text = parseResponse({ protocol: config.protocol, data });
+  // 推理模型 reasoning 可能吃掉输出：content 为空时去掉 json 约束重试一次
+  if (!text && json) {
+    body = buildRequest({ protocol: config.protocol, base: config.base, key: config.key, model: config.model, messages, json: false, maxTokens });
+    const r2 = await fetch(body.url, { method: 'POST', headers: body.headers, body: JSON.stringify(body.body), signal: AbortSignal.timeout(t) });
+    if (r2.ok) text = parseResponse({ protocol: config.protocol, data: await r2.json() });
+  }
+  return text;
+}
+
+/** 使用显式配置调用（测试/多实例用），不做 env 读取 */
+export async function llmChatWith(config, messages, opts = {}) {
+  const text = await rawChat(config, messages, opts);
+  return opts.json ? parseJsonLoose(text) : text;
+}
+
+export async function llmChat(messages, { json = false, maxTokens = 16384, timeout, fast = false } = {}) {
+  const c = llmConfig();
+  return llmChatWith({ ...c, model: fast ? c.fastModel : c.model }, messages, { json, maxTokens, timeout });
+}
+
+/** 图文混合：imagePaths 为本地 png/jpg，自动 base64；模型不支持视觉时自动降级为纯文本 */
+export async function llmVision(prompt, imagePaths, { json = false, timeout, fast = false } = {}) {
   const parts = [{ type: 'text', text: prompt }];
   for (const p of imagePaths) {
     const b64 = readFileSync(p).toString('base64');
     const mime = p.endsWith('.jpg') || p.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
     parts.push({ type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } });
   }
-  return llmChat([{ role: 'user', content: parts }], { json, timeout, fast });
+  try {
+    return await llmChat([{ role: 'user', content: parts }], { json, timeout, fast });
+  } catch (e) {
+    console.error('[llm] vision call failed, falling back to text-only:', String(e).slice(0, 160));
+    return llmChat([{ role: 'user', content: prompt + '\n（图片不可用：请仅依据文字与差异清单给出克制、精确的补丁）' }], { json, timeout, fast });
+  }
 }
