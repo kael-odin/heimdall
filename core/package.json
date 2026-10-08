@@ -1,14 +1,12 @@
 {
-  "name": "core",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "name": "@heimdall/core",
+  "version": "2.0.0-dev",
+  "description": "Heimdall deterministic core: capture, build, diff, harvest, audit",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20.19.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
@@ -16,7 +14,14 @@
       "onFail": "download"
     }
   },
-  "type": "module",
+  "scripts": {
+    "dev": "node src/engine-server.mjs 8900",
+    "test": "node --test",
+    "lint": "node scripts/check-syntax.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
   "dependencies": {
     "exceljs": "^4.4.0",
     "parse5": "^8.0.1",

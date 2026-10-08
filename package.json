@@ -1,0 +1,17 @@
+{
+  "name": "heimdall",
+  "version": "2.0.0-dev",
+  "private": true,
+  "description": "Heimdall — site cloning, fidelity verification and SEO audit workbench",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "test": "pnpm -C core test",
+    "lint": "pnpm -C core lint",
+    "build": "pnpm -C console build",
+    "dev:core": "pnpm -C core dev",
+    "dev:console": "pnpm -C console dev"
+  }
+}

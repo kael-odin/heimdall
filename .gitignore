@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# runtime data (never commit site artifacts)
+core/workspace/
+core/deliverable/
+data/
+logs/
+*.log
+
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# playwright
+playwright-report/
+test-results/

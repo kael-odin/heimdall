@@ -1,14 +1,12 @@
 {
-  "name": "console",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "name": "@heimdall/console",
+  "version": "2.0.0-dev",
+  "description": "Heimdall workbench console",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
@@ -16,7 +14,14 @@
       "onFail": "download"
     }
   },
-  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173 --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --port 5173 --host 127.0.0.1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
   "dependencies": {
     "3d-force-graph": "^1.80.0",
     "three": "^0.186.1",
