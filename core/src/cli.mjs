@@ -25,7 +25,7 @@ const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const COMMANDS = {
   recon:   { script: 'src/crawler/recon.mjs', usage: 'recon <url> [maxPages] [maxDepth]', desc: '全站侦察 → atlas.json + 缩略图' },
   forge:   { script: 'src/pipeline.mjs', usage: 'forge <url> [pageName]', desc: '单页完整克隆流水线（capture→build→diff→fixup→harvest）' },
-  queue:   { script: 'src/queue.mjs', usage: 'queue <host> [--max N] [--no-dedupe]', desc: '全站批量克隆（持久化队列/断点续跑/末尾去重）' },
+  queue:   { script: 'src/queue.mjs', usage: 'queue <host> [--max N] [--force] [--missing-har] [--no-dedupe]', desc: '全站批量克隆（持久化队列/断点续跑/末尾去重）' },
   audit:   { script: 'src/seo/audit.mjs', usage: 'audit <host> [--max N] [--threshold N]', desc: 'SEO 审计（40+ 规则，HTML/CSV/JSON）' },
   repair:  { script: 'src/crawler/repair-css-refs.mjs', usage: 'repair <host> [--dry-run]', desc: '修复历史 clone 的 CSS 相对路径坏链（字体 styles/styles/… 等）' },
   assets:  { script: 'src/audit/assets.mjs', usage: 'assets <host> [--max N]', desc: '资产缺口扫描（视觉缺口 vs 元数据/追踪/设计替代）' },
