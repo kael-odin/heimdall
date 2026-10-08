@@ -3,7 +3,7 @@
  * live/export — 生成"可直接部署"的活镜像包（L3）
  *
  * 用法:
- *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild]
+ *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror]
  *
  * 产物（默认 DATA_ROOT/deliverable/<host>-live-<date>/）:
  *   serve.mjs / har.mjs        零依赖 Node 服务器
@@ -19,7 +19,7 @@
  *   docker compose up -d
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, linkSync, rmSync } from 'node:fs';
-import { join, dirname, extname } from 'node:path';
+import { join, dirname, extname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -36,13 +36,17 @@ const argOf = (name, def) => {
   return eq ? eq.split('=').slice(1).join('=') : def;
 };
 const has = (n) => argv.includes('--' + n);
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror]'); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
 if (!existsSync(BASE)) { console.error('no workspace for host:', host); process.exit(1); }
 const PORT = Number(argOf('port', 8080));
 const OFFLINE = has('offline');
-const OUT = argOf('out', join(DELIVERABLE, host + '-live-' + new Date().toISOString().slice(0, 10)));
+const ROOT = argOf('root', 'landing') === 'mirror' ? 'mirror' : 'landing';
+const OUT_ARG = argOf('out', '');
+const OUT = OUT_ARG
+  ? resolve(process.env.HEIMDALL_INVOKE_CWD ?? process.cwd(), OUT_ARG)
+  : join(DELIVERABLE, host + '-live-' + new Date().toISOString().slice(0, 10));
 
 // ---------- 1. 确保 live/ 已生成 ----------
 if (has('rebuild') || !existsSync(join(BASE, 'live'))) {
@@ -114,7 +118,7 @@ let origin = 'https://' + host.replace(/^www\./, '');
 for (const name of pageNames) {
   try { const t = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target; if (t) { origin = new URL(t).origin; break; } } catch {}
 }
-const config = { host, origin, port: PORT, offline: OFFLINE, replayApi: true };
+const config = { host, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT };
 writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 
 const hasArchive = existsSync(join(siteDir, 'static', host, 'index.html'));
@@ -141,7 +145,7 @@ ${hasArchive ? `<a class="card" href="/static/${host}/index.html"><b>克隆档�
 ${hasCompare ? `<a class="card" href="/static/${host}/compare.html"><b>同步滚动对比</b><span>原站快照 vs 镜像</span></a>` : ''}
 ${hasSeo ? `<a class="card" href="/static/${host}/seo/seo.html"><b>SEO 审计报告</b><span>六分类评分与逐页问题</span></a>` : ''}
 </div>
-<div class="note">本产物仅供内部分析使用，请勿公开部署或商用。启动方式：<code>node serve.mjs --port ${PORT}</code> 或 <code>docker compose up -d</code>。<br/>健康检查：<code>/__heimdall/health</code></div>
+<div class="note">本产物仅供内部分析使用，请勿公开部署或商用。启动方式：<code>node serve.mjs --port ${PORT}</code> 或 <code>docker compose up -d</code>。<br/>drop-in 部署（镜像直接占据站点根路径）：export 时加 <code>--root mirror</code>，或部署后 <code>node serve.mjs --root mirror</code>。<br/>健康检查：<code>/__heimdall/health</code></div>
 </div></body></html>`;
 writeFileSync(join(OUT, 'landing.html'), landing);
 
@@ -154,12 +158,14 @@ writeFileSync(join(OUT, 'README.md'), `# Heimdall Live Mirror · ${host}
 ## 运行
 
 \`\`\`bash
-node serve.mjs --port ${PORT}          # 或：node serve.mjs --port ${PORT} --offline
+node serve.mjs --port ${PORT}                 # 落地页 + /lm/${host}/ 镜像（默认）
+node serve.mjs --port ${PORT} --root mirror   # drop-in：镜像直接挂到 /
 docker compose up -d                   # Docker 部署
 \`\`\`
 
 - 镜像入口：http://127.0.0.1:${PORT}/lm/${host}/
-- 落地页：http://127.0.0.1:${PORT}/
+- 落地页：http://127.0.0.1:${PORT}/（root=mirror 时根路径直接是镜像）
+- 部署模式：root: ${ROOT}（mirror = drop-in 根路径部署；/lm/${host}/ 始终作为别名可用）
 - 健康检查：http://127.0.0.1:${PORT}/__heimdall/health
 - 模式：\`offline: ${OFFLINE}\`（\`heimdall-live.json\`）+ HAR ${stats.entries} 条回放
 
@@ -194,5 +200,6 @@ writeFileSync(join(OUT, 'checksums.json'), JSON.stringify({ host, generatedAt: n
 
 const mb = (n) => (n / 1024 / 1024).toFixed(1) + 'MB';
 console.log(`[export] bundle -> ${OUT}`);
-console.log(`[export] pages=${pageNames.length} liveFiles=${files} (linked=${linked} copied=${copied}) bytes=${mb(bytes)} | bundleFiles=${manifestFiles.length}`);
+console.log(`[export] pages=${pageNames.length} liveFiles=${files} (linked=${linked} copied=${copied}) bytes=${mb(bytes)} | bundleFiles=${manifestFiles.length} | root=${ROOT}`);
 console.log(`[export] run: cd "${OUT}" && node serve.mjs --port ${PORT}${OFFLINE ? ' --offline' : ''}`);
+if (ROOT === 'mirror') console.log(`[export] root=mirror：部署后 / 即镜像（drop-in），/lm/${host}/ 为别名`);

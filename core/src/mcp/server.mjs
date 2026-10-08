@@ -41,7 +41,7 @@ export const TOOLS = [
   { name: 'heimdall_components', description: '组件抽取（header/hero/pricing/faq/footer/cta）', inputSchema: { type: 'object', properties: { host: str('站点 host'), pages: num('来源页数，默认 2'), max: num('最多组件数') }, required: ['host'] } },
   { name: 'heimdall_matrix', description: '竞品 SEO 对标矩阵', inputSchema: { type: 'object', properties: { sites: { type: 'array', items: { type: 'string' }, description: '2 个以上站点' }, max: num('每站页数上限') }, required: ['sites'] } },
   { name: 'heimdall_assets', description: '资产缺口扫描（视觉缺口 vs 元数据/追踪）', inputSchema: { type: 'object', properties: { host: str('站点 host'), max: num('最多页数，默认 60') }, required: ['host'] } },
-  { name: 'heimdall_live_export', description: '导出可部署活镜像包', inputSchema: { type: 'object', properties: { host: str('站点 host'), offline: { type: 'boolean', description: '离线模式' }, rebuild: { type: 'boolean', description: '重建 live 页面' } }, required: ['host'] } },
+  { name: 'heimdall_live_export', description: '导出可部署活镜像包', inputSchema: { type: 'object', properties: { host: str('站点 host'), offline: { type: 'boolean', description: '离线模式' }, rebuild: { type: 'boolean', description: '重建 live 页面' }, root: { type: 'string', enum: ['landing', 'mirror'], description: 'mirror=镜像直接挂到站点根路径（drop-in 部署）' } }, required: ['host'] } },
   { name: 'heimdall_dedupe', description: '资产 CAS 去重', inputSchema: { type: 'object', properties: { host: str('站点 host'), dryRun: { type: 'boolean', description: '只统计不修改' } }, required: ['host'] } },
 ];
 
@@ -103,6 +103,7 @@ export async function callTool(name, args = {}) {
       const cliArgs = ['live', args.host];
       if (args.offline) cliArgs.push('--offline');
       if (args.rebuild) cliArgs.push('--rebuild');
+      if (args.root) cliArgs.push('--root', String(args.root));
       const r = await runCli(cliArgs);
       return text('exit=' + r.code + '\n' + r.out);
     }

@@ -177,7 +177,7 @@ async function main() {
 
     // 7) 活镜像 L3：导出可部署包 + 离线启动验证（不碰外网）
     const bundleDir = join(dataDir, 'bundle');
-    const exp = spawnSync(process.execPath, ['src/live/export.mjs', '127.0.0.1', '--out', bundleDir, '--offline'], {
+    const exp = spawnSync(process.execPath, ['src/live/export.mjs', '127.0.0.1', '--out', bundleDir, '--offline', '--root', 'mirror'], {
       cwd: CORE,
       env: { ...process.env, HEIMDALL_DATA_DIR: dataDir, HEIMDALL_LLM: '0' },
       encoding: 'utf8',
@@ -195,6 +195,10 @@ async function main() {
       await waitFor(async () => (await fetch('http://127.0.0.1:' + livePort + '/__heimdall/health')).ok, { label: 'live bundle boot', timeout: 20_000 });
       const health = await (await fetch('http://127.0.0.1:' + livePort + '/__heimdall/health')).json();
       assert.equal(health.offline, true, 'offline mode flag');
+      assert.equal(health.root, 'mirror', 'export --root mirror must persist into bundle config');
+      const rootHome = await fetch('http://127.0.0.1:' + livePort + '/');
+      assert.equal(rootHome.status, 200, 'root=mirror status (log: ' + liveLog.slice(-300) + ')');
+      assert.ok((await rootHome.text()).includes('Fixture Site'), 'root=mirror must serve the fixture page at /');
       const home = await fetch('http://127.0.0.1:' + livePort + '/lm/127.0.0.1/');
       assert.equal(home.status, 200, 'live home status (log: ' + liveLog.slice(-300) + ')');
       assert.ok((await home.text()).includes('Fixture Site'), 'live home must be the fixture page');

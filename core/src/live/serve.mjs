@@ -3,16 +3,17 @@
  * live/serve — 独立可部署的活镜像服务器（零依赖 Node）
  *
  * 路由：
- *   /                         落地页（landing.html）
+ *   /                         默认落地页（landing.html）；--root mirror 时直接就是活镜像
  *   /lm/<host>/<path>         本地 live 快照优先 → HAR 回放 → 原站代理（offline 时 404）
  *   /static/<host>/<path>     本地静态产物（克隆页 / CSS / 资产）
  *   /__heimdall/health        健康检查
  *
  * 用法：
- *   node serve.mjs [--port 8080] [--offline] [--no-replay] [--config heimdall-live.json]
+ *   node serve.mjs [--port 8080] [--offline] [--no-replay] [--root landing|mirror] [--config heimdall-live.json]
  *
  * 配置（heimdall-live.json）：
- *   { "host": "apify.com", "origin": "https://apify.com", "port": 8080, "offline": false, "replayApi": true }
+ *   { "host": "apify.com", "origin": "https://apify.com", "port": 8080, "offline": false, "replayApi": true, "root": "landing" }
+ *   root=mirror：镜像直接挂在 /（drop-in 替代部署），/lm/<host>/ 仍作为别名可用。
  */
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
@@ -38,6 +39,7 @@ const ORIGIN = cfg.origin.replace(/\/$/, '');
 const PORT = Number(argOf('port', process.env.PORT ?? cfg.port ?? 8080));
 const OFFLINE = has('offline') || !!cfg.offline;
 const REPLAY = !has('no-replay') && cfg.replayApi !== false;
+const ROOT_MODE = (argOf('root', cfg.root ?? 'landing') === 'mirror');
 
 const SITE = join(HERE, 'site');
 const LIVE = join(SITE, 'live');
@@ -128,16 +130,43 @@ async function proxy(req, res, pathAndQuery) {
   return send(res, upstream.status, buf, type || 'application/octet-stream', outHeaders);
 }
 
+async function serveLive(req, res, rel, search) {
+  if (rel.endsWith('/')) rel += 'index.html';
+  // 1) local snapshot：无扩展名路径按目录 index.html 解析，且只接受文件
+  const stripped = rel.replace(/^\/+/, '') || 'index.html';
+  const candidates = /\.[a-z0-9]+$/i.test(stripped) ? [stripped] : [stripped.replace(/\/$/, '') + '/index.html', stripped];
+  for (const cand of candidates) {
+    const local = safeJoin(LIVE, cand);
+    if (sendFile(res, local, { 'Cache-Control': 'no-cache' })) return;
+  }
+  // 2) HAR replay（原站重新部署后旧 chunk 仍可用）
+  if (REPLAY && req.method === 'GET') {
+    const hit = matchHar(HAR_INDEX, req.method, ORIGIN + rel + search);
+    if (hit && hit.body) {
+      const body = Buffer.from(hit.body, 'base64');
+      const replayHeaders = { ...hit.headers };
+      delete replayHeaders['content-type'];
+      res.writeHead(hit.status, { 'Content-Type': hit.mimeType || 'application/octet-stream', 'Content-Length': body.length, ...replayHeaders, 'X-Heimdall-Replay': '1' });
+      return res.end(body);
+    }
+  }
+  // 3) proxy
+  if (OFFLINE) return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
+  try { return await proxy(req, res, rel + search); }
+  catch { return send(res, 502, NOT_FOUND, 'text/html; charset=utf-8'); }
+}
+
 createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost');
   const pathname = decodeURIComponent(u.pathname);
 
   if (pathname === '/__heimdall/health') {
     return send(res, 200, JSON.stringify({
-      ok: true, host: HOST, origin: ORIGIN, offline: OFFLINE, replay: REPLAY, harEntries: HAR_ENTRIES, uptime: Math.round(process.uptime()),
+      ok: true, host: HOST, origin: ORIGIN, offline: OFFLINE, replay: REPLAY, root: ROOT_MODE ? 'mirror' : 'landing', harEntries: HAR_ENTRIES, uptime: Math.round(process.uptime()),
     }), 'application/json; charset=utf-8');
   }
   if (pathname === '/') {
+    if (ROOT_MODE) return serveLive(req, res, '/', u.search);
     if (sendFile(res, LANDING, { 'Cache-Control': 'no-cache' })) return;
     return res.writeHead(302, { Location: '/lm/' + HOST + '/' }).end();
   }
@@ -145,42 +174,24 @@ createServer(async (req, res) => {
   if (pathname.startsWith('/static/')) {
     const rel = pathname.slice('/static/'.length);
     const first = rel.split('/')[0];
-    if (first !== HOST && first !== 'www.' + HOST) return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
-    const file = safeJoin(STATIC, rel);
-    if (sendFile(res, file)) return;
-    return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
+    if (first === HOST || first === 'www.' + HOST) {
+      const file = safeJoin(STATIC, rel);
+      if (sendFile(res, file)) return;
+      return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
+    }
+    if (!ROOT_MODE) return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
+    // root=mirror：真实站点的 /static/** 仍按镜像资源解析（落到末尾 serveLive）
   }
-  // 活镜像
+  // 活镜像：/lm/<host>/** 始终保持可用
   if (pathname.startsWith('/lm/')) {
     const m = /^\/lm\/([^/]+)(\/.*)?$/.exec(pathname);
     if (!m) return send(res, 400, 'bad lm path');
     const reqHost = m[1];
     if (reqHost !== HOST && reqHost !== 'www.' + HOST) return send(res, 403, 'host not allowed');
-    let rel = m[2] ?? '/';
-    if (rel.endsWith('/')) rel += 'index.html';
-    // 1) local snapshot：无扩展名路径按目录 index.html 解析，且只接受文件
-    const stripped = rel.replace(/^\/+/, '');
-    const candidates = /\.[a-z0-9]+$/i.test(stripped) ? [stripped] : [stripped.replace(/\/$/, '') + '/index.html', stripped];
-    for (const cand of candidates) {
-      const local = safeJoin(LIVE, cand);
-      if (sendFile(res, local, { 'Cache-Control': 'no-cache' })) return;
-    }
-    // 2) HAR replay（原站重新部署后旧 chunk 仍可用）
-    if (REPLAY && req.method === 'GET') {
-      const hit = matchHar(HAR_INDEX, req.method, ORIGIN + rel + u.search);
-      if (hit && hit.body) {
-        const body = Buffer.from(hit.body, 'base64');
-        const replayHeaders = { ...hit.headers };
-        delete replayHeaders['content-type'];
-        res.writeHead(hit.status, { 'Content-Type': hit.mimeType || 'application/octet-stream', 'Content-Length': body.length, ...replayHeaders, 'X-Heimdall-Replay': '1' });
-        return res.end(body);
-      }
-    }
-    // 3) proxy
-    if (OFFLINE) return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
-    try { return await proxy(req, res, rel + u.search); }
-    catch (e) { return send(res, 502, NOT_FOUND, 'text/html; charset=utf-8'); }
+    return serveLive(req, res, m[2] ?? '/', u.search);
   }
+  // root=mirror：其余路径（含真实站点的 /static/**）全部按镜像解析
+  if (ROOT_MODE) return serveLive(req, res, pathname, u.search);
   return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
 }).listen(PORT, () => {
   console.log(`[heimdall-live] http://127.0.0.1:${PORT}  host=${HOST}  offline=${OFFLINE}  replay=${REPLAY}  har=${HAR_ENTRIES} entries`);

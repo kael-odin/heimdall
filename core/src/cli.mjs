@@ -36,7 +36,7 @@ export const COMMANDS = {
   mcp:     { script: 'src/mcp/server.mjs', usage: 'mcp', desc: 'MCP stdio 服务器（把 Heimdall 能力暴露给 agent 客户端）' },
   browser: { script: 'src/browser/bookmarklet.mjs', usage: 'browser [--api URL] [--token T]', desc: '生成浏览器书签入口安装页（在任意页面一键送入 Heimdall）' },
   sandbox: { script: 'src/sandbox/serve.mjs', usage: 'sandbox <host> <page> [--port 8090] [--reset]', desc: '沙盒改造台（改 HTML/CSS + 与原版实时对比）' },
-  live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <dir>] [--rebuild]', desc: '导出可部署活镜像包（HAR 回放 + Docker）' },
+  live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <dir>] [--rebuild] [--root mirror]', desc: '导出可部署活镜像包（HAR 回放 + Docker + drop-in 根路径）' },
   dedupe:  { script: 'src/store/dedupe.mjs', usage: 'dedupe <host> [--dry-run] [--dir <path>]', desc: '内容寻址资产去重（硬链接）' },
   deliver: { script: 'src/deliver.mjs', usage: 'deliver <host> [hostDir]', desc: '打包交付物（site + intel + raw + README）' },
   serve:   { script: 'src/engine-server.mjs', usage: 'serve [port]', desc: '启动引擎/控制台（默认 8900）' },
@@ -61,7 +61,13 @@ if (isMain) {
   const cmd = resolveCommand(argv);
   if (!cmd) { console.error(`unknown command: ${argv[0]}\n`); help(); process.exit(2); }
 
-  const child = spawn(process.execPath, [join(CORE, cmd.script), ...cmd.args], { cwd: CORE, stdio: 'inherit' });
+  // 子进程 cwd 固定为 core（脚本内部靠相对路径找自己），同时把调用方 cwd 传下去，
+  // 让 --out 这类用户路径相对“用户敲命令的目录”解析，而不是 core/。
+  const child = spawn(process.execPath, [join(CORE, cmd.script), ...cmd.args], {
+    cwd: CORE,
+    stdio: 'inherit',
+    env: { ...process.env, HEIMDALL_INVOKE_CWD: process.cwd() },
+  });
   child.on('exit', (code) => process.exit(code ?? 1));
   child.on('error', (e) => { console.error('[cli] failed to spawn:', e.message); process.exit(1); });
 }

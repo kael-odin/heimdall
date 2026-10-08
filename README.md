@@ -36,7 +36,7 @@
 - **设计 Token 提取**：`node core/src/extract/extract-tokens.mjs <host>` → colors/字体/字号/间距/圆角/阴影/断点/CSS 变量（含频次）→ tokens.css + 可视化预览
 - **单端口 / Docker 部署**：`docker compose up -d` → http://localhost:8900 打开控制台（引擎同时服务 API/SSE/静态产物/控制台 SPA + Playwright Chromium）
 - **变更监控**：`node core/src/watch/watch.mjs <host>` → 基线快照 + 两次采样排除动态噪声 → 标题/描述/canonical/robots/正文变化报告（HTML/JSON），支持 `--fail-on-change` 接入定时任务
-- **活镜像 L3（可部署）**：`node core/src/live/export.mjs <host>` → 自包含部署包（零依赖 Node 服务器 + HAR 回放 + Dockerfile/compose + 校验和），本地快照优先 → HAR 回放 → 原站代理
+- **活镜像 L3（可部署）**：`node core/src/live/export.mjs <host>` → 自包含部署包（零依赖 Node 服务器 + HAR 回放 + Dockerfile/compose + 校验和），本地快照优先 → HAR 回放 → 原站代理；`--root mirror` 让镜像直接占据站点根路径（drop-in 替代部署）
 - **工作台 IA（v2）**：底部导航切换 星图/页面/任务/报告/设置；页面表格支持搜索、类型/状态筛选、批量克隆、逐页视觉分与状态；报告中心聚合档案/SEO/对比/情报
 - **多协议 LLM + 配置自检**：`LLM_PROTOCOL=chat|responses|anthropic`；控制台「设置 → 模型服务」显示协议/模型/端点（不含 Key）并提供真实连接测试；「引擎 Token」= 保护引擎 API，与模型 Key 分离
 - **多视口 + 交互回放验证**：视觉（375/768/1440 全页 diff）＋功能（按钮/折叠/标签页点击状态比对）→ 四维成绩单；实测 apify pricing：视觉 96.0% A、交互 3/3
