@@ -20,6 +20,9 @@
     "test": "node --test",
     "lint": "node scripts/check-syntax.mjs",
     "smoke": "node scripts/smoke-forge.mjs",
+    "queue": "node src/queue.mjs",
+    "audit": "node src/seo/audit.mjs",
+    "assets": "node src/audit/assets.mjs",
     "watch": "node src/watch/watch.mjs",
     "tokens": "node src/extract/extract-tokens.mjs",
     "components": "node src/extract/extract-components.mjs",
@@ -29,6 +32,7 @@
     "sandbox": "node src/sandbox/serve.mjs",
     "live:export": "node src/live/export.mjs",
     "live:serve": "node src/live/serve.mjs",
+    "dedupe": "node src/store/dedupe.mjs",
     "cli": "node src/cli.mjs"
   },
   "keywords": [],

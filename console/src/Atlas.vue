@@ -420,7 +420,6 @@ function pickSite(s) {
   plSelected.value = new Set();
   selected.value = null;
   detailIntel.value = null; detailScore.value = null;
-  view.value = 'pages';
   fetch(`/${s.host}/recon/atlas.json`).then(r => r.ok ? r.json() : Promise.reject()).then(a => { buildStatic(a); loadPageStatus(); }).catch(e => { errMsg.value = String(e); });
 }
 

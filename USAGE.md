@@ -354,7 +354,24 @@ node core\src\seo\matrix.mjs apify.com thordata.com --refresh   :: 强制重新�
 - 对比维度：站点分 / 页面数 / title 长度 / description·H1·结构化数据覆盖率 / 平均 LCP / 平均字数 / 每页问题数 / 页面类型分布 / 各站高频问题
 - 报告中绿色 = 该指标最优
 
-## 23. MCP 与浏览器入口（v2）
+## 23. 资产缺口扫描（v2）
+
+检查克隆页有没有丢失 logo / 图标 / tab 图标 / 背景图 / 字体等细节：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\audit\assets.mjs apify.com --max 61
+```
+
+产物：`workspace/<host>/audit/{asset-gaps.json,asset-gaps.html}`
+
+- **视觉缺口**：img/srcset/picture fallback/lazy data-src、icon、svg-use、video/audio、CSS url()、内联背景 —— 这些才真正影响画面
+- **元数据/追踪/设计替代**：canonical/alternate/og:image/.well-known、追踪像素、被 cssom.css 取代的 stylesheet/preload —— 单独归类，不算视觉缺口
+- 实测：apify 61 页 25,724 条引用，本地化率 95.6%，**视觉缺口 0**；thordata 旧产物 673 个视觉缺口（重新锻造中，主要由旧版 capture 未收 picture fallback/懒加载导致）
+
+重新锻造以应用最新采集：`node core\src\queue.mjs <host> --force`
+
+## 24. MCP 与浏览器入口（v2）
 
 **MCP（给 agent 用）**：把 Heimdall 能力暴露成 MCP 工具，任何支持 MCP 的客户端都能调用。
 

@@ -93,8 +93,12 @@ const manifest = await page.evaluate(() => {
   const css = [...document.querySelectorAll('link[rel="stylesheet"]')].map(l => abs(l.getAttribute('href'))).filter(Boolean);
   const imgs = new Set();
   document.querySelectorAll('img').forEach(i => {
-    if (i.src) imgs.add(abs(i.currentSrc || i.src));
-    i.srcset?.split(',').forEach(s => { const u = s.trim().split(/\s+/)[0]; if (u) imgs.add(abs(u)); });
+    // currentSrc 只反映当前断点命中项；<picture> 的 fallback src / srcset / data-* 也要收
+    if (i.currentSrc) imgs.add(abs(i.currentSrc));
+    if (i.getAttribute('src')) imgs.add(abs(i.getAttribute('src')));
+    for (const s of (i.getAttribute('srcset') || '').split(',')) { const u = s.trim().split(/\s+/)[0]; if (u) imgs.add(abs(u)); }
+    for (const s of (i.getAttribute('data-srcset') || '').split(',')) { const u = s.trim().split(/\s+/)[0]; if (u) imgs.add(abs(u)); }
+    if (i.getAttribute('data-src')) imgs.add(abs(i.getAttribute('data-src')));
   });
   document.querySelectorAll('source[srcset]').forEach(s =>
     s.getAttribute('srcset').split(',').forEach(t => { const u = t.trim().split(/\s+/)[0]; if (u) imgs.add(abs(u)); }));
@@ -113,8 +117,11 @@ const manifest = await page.evaluate(() => {
     if (!r.kinds.includes(kind)) r.kinds.push(kind);
   };
   document.querySelectorAll('img').forEach(i => {
-    if (i.currentSrc || i.src) addRes(i.currentSrc || i.src, 'image');
+    if (i.currentSrc) addRes(i.currentSrc, 'image');
+    if (i.getAttribute('src')) addRes(i.getAttribute('src'), 'image');
     (i.getAttribute('srcset') || '').split(',').forEach(s => { const u = s.trim().split(/\s+/)[0]; if (u) addRes(u, 'image'); });
+    (i.getAttribute('data-srcset') || '').split(',').forEach(s => { const u = s.trim().split(/\s+/)[0]; if (u) addRes(u, 'image'); });
+    if (i.getAttribute('data-src')) addRes(i.getAttribute('data-src'), 'image');
   });
   document.querySelectorAll('source').forEach(s => {
     if (s.getAttribute('srcset')) s.getAttribute('srcset').split(',').forEach(t => { const u = t.trim().split(/\s+/)[0]; if (u) addRes(u, 'image'); });
@@ -183,6 +190,67 @@ catch (e) { console.warn('  fullpage shot skipped:', String(e).slice(0, 80)); }
 const html = await page.content();
 writeFileSync(join(OUT, 'dom.html'), html);
 console.log(`    dom.html ${(html.length / 1024).toFixed(0)}KB`);
+
+// 最终补采：截图/全页滚动后 DOM 可能新增懒加载图片、Vue 内联背景等（首采在 [5/7]）
+console.log('    collect asset manifest (final pass)');
+try {
+  const extra = await page.evaluate(() => {
+    const abs = (u) => { try { return new URL(u, location.href).href; } catch { return null; } };
+    const idx = new Map();
+    const add = (u, kind) => {
+      if (u == null) return;
+      const s = String(u).trim();
+      if (!s || s === 'null' || s === 'undefined' || s.startsWith('data:')) return;
+      const a = abs(s); if (!a) return;
+      const key = a.split('#')[0];
+      if (!idx.has(key)) idx.set(key, { url: key, kinds: [] });
+      const r = idx.get(key);
+      if (!r.kinds.includes(kind)) r.kinds.push(kind);
+    };
+    const srcsets = (v) => String(v || '').split(',').map(s => s.trim().split(/\s+/)[0]).filter(Boolean);
+    document.querySelectorAll('img').forEach(i => {
+      add(i.currentSrc, 'image');
+      add(i.getAttribute('src'), 'image');
+      for (const u of srcsets(i.getAttribute('srcset'))) add(u, 'image');
+      for (const u of srcsets(i.getAttribute('data-srcset'))) add(u, 'image');
+      add(i.getAttribute('data-src'), 'image');
+    });
+    document.querySelectorAll('source').forEach(s => {
+      for (const u of srcsets(s.getAttribute('srcset'))) add(u, 'image');
+      for (const u of srcsets(s.getAttribute('data-srcset'))) add(u, 'image');
+      add(s.getAttribute('src'), 'media');
+    });
+    document.querySelectorAll('[data-src],[data-srcset],[data-bg],[data-background]').forEach(el => {
+      add(el.getAttribute('data-src'), 'image');
+      for (const u of srcsets(el.getAttribute('data-srcset'))) add(u, 'image');
+      add(el.getAttribute('data-bg'), 'image');
+      add(el.getAttribute('data-background'), 'image');
+    });
+    document.querySelectorAll('video').forEach(v => { add(v.getAttribute('src'), 'media'); add(v.getAttribute('poster'), 'image'); });
+    document.querySelectorAll('audio[src]').forEach(a => add(a.getAttribute('src'), 'media'));
+    document.querySelectorAll('link[rel*="icon"]').forEach(l => add(l.getAttribute('href'), 'icon'));
+    document.querySelectorAll('link[rel="manifest"]').forEach(l => add(l.getAttribute('href'), 'manifest'));
+    document.querySelectorAll('link[rel="preload"][as]').forEach(l => add(l.getAttribute('href'), 'preload-' + (l.getAttribute('as') || 'other')));
+    document.querySelectorAll('svg use').forEach(u => { const h = u.getAttribute('href') || u.getAttribute('xlink:href'); if (h && !h.startsWith('#')) add(h, 'svg-sprite'); });
+    document.querySelectorAll('[style*="url("]').forEach(el => {
+      for (const m of String(el.getAttribute('style') || '').matchAll(/url\(\s*(?:'|")?([^'")]+)(?:'|")?\s*\)/g)) add(m[1], 'image');
+    });
+    document.querySelectorAll('meta[property="og:image"],meta[name="twitter:image"]').forEach(m => add(m.getAttribute('content'), 'image'));
+    return { resources: [...idx.values()] };
+  });
+  if (extra?.resources?.length) {
+    const merged = new Map((manifest.resources ?? []).map(r => [r.url, { url: r.url, kinds: [...(r.kinds ?? [])] }]));
+    for (const r of extra.resources) {
+      if (!merged.has(r.url)) merged.set(r.url, { url: r.url, kinds: [] });
+      const t = merged.get(r.url);
+      for (const k of r.kinds) if (!t.kinds.includes(k)) t.kinds.push(k);
+    }
+    manifest.resources = [...merged.values()];
+    manifest.imgs = [...new Set([...manifest.imgs, ...manifest.resources.filter(r => r.kinds.some(k => k === 'image' || k === 'icon' || k.startsWith('preload'))).map(r => r.url)])];
+    writeFileSync(join(OUT, 'manifest.json'), JSON.stringify({ ...manifest, target: TARGET }, null, 2));
+    console.log('    final pass: +' + extra.resources.length + ' refs, total resources ' + manifest.resources.length);
+  }
+} catch (e) { console.warn('    final manifest pass skipped:', String(e).slice(0, 100)); }
 
 await context.close().catch(() => {});
 await browser.close();

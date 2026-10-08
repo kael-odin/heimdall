@@ -27,6 +27,7 @@ export const COMMANDS = {
   forge:   { script: 'src/pipeline.mjs', usage: 'forge <url> [pageName]', desc: '单页完整克隆流水线（capture→build→diff→fixup→harvest）' },
   queue:   { script: 'src/queue.mjs', usage: 'queue <host> [--max N] [--no-dedupe]', desc: '全站批量克隆（持久化队列/断点续跑/末尾去重）' },
   audit:   { script: 'src/seo/audit.mjs', usage: 'audit <host> [--max N] [--threshold N]', desc: 'SEO 审计（40+ 规则，HTML/CSV/JSON）' },
+  assets:  { script: 'src/audit/assets.mjs', usage: 'assets <host> [--max N]', desc: '资产缺口扫描（视觉缺口 vs 元数据/追踪/设计替代）' },
   watch:   { script: 'src/watch/watch.mjs', usage: 'watch <host> [--max N] [--accept] [--fail-on-change]', desc: '站点变更监控（两次采样去噪 + 变更报告）' },
   verify:  { script: 'src/verify/verify.mjs', usage: 'verify <host> <page>|--all [--max N] [--threshold N]', desc: '多视口（375/768/1440）全页保真验证' },
   tokens:  { script: 'src/extract/extract-tokens.mjs', usage: 'tokens <host> [--pages N] [--page name]', desc: '设计 token 提取（色板/字阶/间距/圆角/阴影）' },
