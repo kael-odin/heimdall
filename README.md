@@ -23,6 +23,7 @@
 ## v2 新增（2026-10-08 起）
 
 - **SEO 审计**：`node core/src/seo/audit.mjs <host> --max 20` → `workspace/<host>/seo/{seo.html,seo.csv,seo.json}`，40+ 规则覆盖索引/内容/结构化数据/性能/链接/安全
+- **设计 Token 提取**：`node core/src/extract/extract-tokens.mjs <host>` → colors/字体/字号/间距/圆角/阴影/断点/CSS 变量（含频次）→ tokens.css + 可视化预览
 - **单端口 / Docker 部署**：`docker compose up -d` → http://localhost:8900 打开控制台（引擎同时服务 API/SSE/静态产物/控制台 SPA + Playwright Chromium）
 - **变更监控**：`node core/src/watch/watch.mjs <host>` → 基线快照 + 两次采样排除动态噪声 → 标题/描述/canonical/robots/正文变化报告（HTML/JSON），支持 `--fail-on-change` 接入定时任务
 - **活镜像 L3（可部署）**：`node core/src/live/export.mjs <host>` → 自包含部署包（零依赖 Node 服务器 + HAR 回放 + Dockerfile/compose + 校验和），本地快照优先 → HAR 回放 → 原站代理

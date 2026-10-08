@@ -261,7 +261,26 @@ set HEIMDALL_CONSOLE_DIR=D:\Github-Star\heimdall\console\dist
 node core\src\engine-server.mjs 8900
 ```
 
-## 18. 质量门（v2）
+## 18. 设计 Token 提取（v2）
+
+从已克隆页面的 CSSOM 提取设计系统资产：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\extract\extract-tokens.mjs apify.com --pages 5
+```
+
+产物（`workspace/<host>/design/`）：
+
+| 文件 | 说明 |
+|---|---|
+| `tokens.json` | 颜色/字体/字号/字重/间距/圆角/阴影/断点/CSS 变量 + 使用频次 |
+| `tokens.css` | 可直接引用的 CSS 变量（`--hmd-color-*/--hmd-space-*...`，保留原站变量为 `--src-*`） |
+| `tokens.html` | 可视化预览（色板 / 字阶 / 间距 / 圆角 / 阴影 / 断点 / 原生变量） |
+
+实测 apify（home+pricing+3 页）：77 色 / 13 字体族 / 58 字号 / 92 间距值。
+
+## 19. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）
