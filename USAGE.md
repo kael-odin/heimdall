@@ -280,7 +280,28 @@ node core\src\extract\extract-tokens.mjs apify.com --pages 5
 
 实测 apify（home+pricing+3 页）：77 色 / 13 字体族 / 58 字号 / 92 间距值。
 
-## 19. 质量门（v2）
+## 19. 统一 CLI（v2）
+
+所有能力一个入口（等价于各脚本，便于同事记忆与自动化）：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\cli.mjs help
+node core\src\cli.mjs recon  apify.com 30
+node core\src\cli.mjs forge  https://apify.com/pricing pricing
+node core\src\cli.mjs queue  apify.com --max 60
+node core\src\cli.mjs audit  apify.com --max 20
+node core\src\cli.mjs watch  apify.com --max 20
+node core\src\cli.mjs verify apify.com pricing
+node core\src\cli.mjs tokens apify.com --pages 5
+node core\src\cli.mjs live   apify.com --offline
+node core\src\cli.mjs dedupe apify.com
+node core\src\cli.mjs serve  8900
+```
+
+也可以 `pnpm -C core cli <command> ...`。
+
+## 20. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

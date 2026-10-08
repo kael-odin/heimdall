@@ -1,0 +1,61 @@
+#!/usr/bin/env node
+/**
+ * Heimdall CLI — 统一命令入口（所有能力一个入口）
+ *
+ *   heimdall recon <url> [maxPages]            全站侦察
+ *   heimdall forge <url> [pageName]            单页完整克隆
+ *   heimdall queue <host> [--max N]            全站批量克隆
+ *   heimdall audit <host> [--max N]            SEO 审计
+ *   heimdall watch <host> [--max N]            站点变更监控
+ *   heimdall verify <host> <page>|--all        多视口保真验证
+ *   heimdall tokens <host> [--pages N]         设计 token 提取
+ *   heimdall live <host> [--offline]           导出可部署活镜像包
+ *   heimdall dedupe <host> [--dry-run]         资产 CAS 去重
+ *   heimdall deliver <host>                    打包交付物
+ *   heimdall serve [port]                      启动引擎/控制台服务
+ *
+ * 用法: node src/cli.mjs <command> [...args]   或   pnpm -C core cli <command> ...
+ */
+import { spawn } from 'node:child_process';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+export const COMMANDS = {
+  recon:   { script: 'src/crawler/recon.mjs', usage: 'recon <url> [maxPages] [maxDepth]', desc: '全站侦察 → atlas.json + 缩略图' },
+  forge:   { script: 'src/pipeline.mjs', usage: 'forge <url> [pageName]', desc: '单页完整克隆流水线（capture→build→diff→fixup→harvest）' },
+  queue:   { script: 'src/queue.mjs', usage: 'queue <host> [--max N] [--no-dedupe]', desc: '全站批量克隆（持久化队列/断点续跑/末尾去重）' },
+  audit:   { script: 'src/seo/audit.mjs', usage: 'audit <host> [--max N] [--threshold N]', desc: 'SEO 审计（40+ 规则，HTML/CSV/JSON）' },
+  watch:   { script: 'src/watch/watch.mjs', usage: 'watch <host> [--max N] [--accept] [--fail-on-change]', desc: '站点变更监控（两次采样去噪 + 变更报告）' },
+  verify:  { script: 'src/verify/verify.mjs', usage: 'verify <host> <page>|--all [--max N] [--threshold N]', desc: '多视口（375/768/1440）全页保真验证' },
+  tokens:  { script: 'src/extract/extract-tokens.mjs', usage: 'tokens <host> [--pages N] [--page name]', desc: '设计 token 提取（色板/字阶/间距/圆角/阴影）' },
+  live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <dir>] [--rebuild]', desc: '导出可部署活镜像包（HAR 回放 + Docker）' },
+  dedupe:  { script: 'src/store/dedupe.mjs', usage: 'dedupe <host> [--dry-run] [--dir <path>]', desc: '内容寻址资产去重（硬链接）' },
+  deliver: { script: 'src/deliver.mjs', usage: 'deliver <host> [hostDir]', desc: '打包交付物（site + intel + raw + README）' },
+  serve:   { script: 'src/engine-server.mjs', usage: 'serve [port]', desc: '启动引擎/控制台（默认 8900）' },
+};
+
+export function resolveCommand(argv) {
+  const name = argv?.[0];
+  if (!name || !COMMANDS[name]) return null;
+  return { name, ...COMMANDS[name], args: argv.slice(1) };
+}
+
+function help() {
+  const rows = Object.entries(COMMANDS).map(([name, c]) => `  ${c.usage.padEnd(58)} ${c.desc}`);
+  console.log(`Heimdall CLI\n\n${rows.join('\n')}\n\n示例:\n  heimdall recon apify.com 30\n  heimdall audit apify.com --max 20\n  heimdall live apify.com --offline\n  heimdall serve 8900\n`);
+}
+
+// 仅在直接执行时运行（被 import 时只导出命令表，便于单测）
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  const argv = process.argv.slice(2);
+  if (!argv.length || argv[0] === 'help' || argv[0] === '--help' || argv[0] === '-h') { help(); process.exit(argv.length ? 0 : 1); }
+  const cmd = resolveCommand(argv);
+  if (!cmd) { console.error(`unknown command: ${argv[0]}\n`); help(); process.exit(2); }
+
+  const child = spawn(process.execPath, [join(CORE, cmd.script), ...cmd.args], { cwd: CORE, stdio: 'inherit' });
+  child.on('exit', (code) => process.exit(code ?? 1));
+  child.on('error', (e) => { console.error('[cli] failed to spawn:', e.message); process.exit(1); });
+}
