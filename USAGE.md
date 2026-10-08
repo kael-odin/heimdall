@@ -251,6 +251,7 @@ docker compose up -d                :: 或容器
 ```cmd
 node core\src\crawler\repair-css-refs.mjs apify.com --dry-run   :: 预览
 node core\src\crawler\repair-css-refs.mjs apify.com             :: 修复（幂等）
+node core\src\crawler\repair-empty-assets.mjs apify.com       :: 修复 0 字节资产引用（追踪信标→透明像素）
 ```
 
 ## 16. 变更监控（v2）
