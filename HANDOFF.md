@@ -178,3 +178,18 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
 - 详情「质检」tab 新增 **运行本页体检** 按钮（未跑过多视口时显示）。
 - 任务中心统一展示这两类任务（verify=v 前缀 / live=l 前缀），状态持久化。
 - 实测：单页体检 v001 done、活镜像导出 l002 done（thordata 缺口 0）、UI 两个按钮全链路通过。
+
+## 11. 2026-10-09 续四：全站多视口体检结果（apify 61 页）
+
+- 结论：**平均 99.0%，59A / 2B**（verify-summary.json；375/768/1440 三视口）。
+- 最差页面（minViewport 口径）：
+  | 页面 | overall | 最差视口 | 得分 |
+  |---|---|---|---|
+  | store | 95.3% | 768 | **81.9%** |
+  | api | 96.3% | 768 | 87.8% |
+  | doing-good | 94.4% | 768 | 88.4% |
+  | resources-startups | 95.9% | 375 | 90.2% |
+  | agents.md | 93.9% | 375 | 91.1% |
+  | storage | 96.1% | 768 | 91.5% |
+- 根因（store 实测）：LogoWrapper 的 .desktop 变体带桌面内联尺寸（--unicorn-width:420px），.mobile 变体是客户端渲染、静态 DOM 里不存在 → 后半页均一 +128px 偏移。属"死镜像（L1 静态移植）无法覆盖客户端响应式变体"这一类问题；**活镜像（脚本完整）不受影响**。
+- 后续升级方向：响应式采集（多视口 DOM 合并 / 保留变体节点 + 媒体规则），或对 minViewport<0.9 的页默认引导使用活镜像（控制台质检 tab 已加提示）。
