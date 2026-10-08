@@ -6,7 +6,7 @@
  * live 模式：POST /api/recon → SSE 事件流 → 节点逐个弹入生长
  * 点星球 = 锻造该页；「锻造内环」= 批量并行
  */
-import { onMounted, onBeforeUnmount, ref, reactive, computed } from 'vue';
+import { onMounted, onBeforeUnmount, ref, reactive, computed, watch } from 'vue';
 import Graph3D from './Graph3D.vue';
 
 import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
@@ -35,6 +35,8 @@ const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.h
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
 const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
+const matrixPeer = ref('');          // 跨站对标对象
+const matrixReport = ref(null);      // 最近一次对标矩阵报告
 const llmStatus = ref(null);     // LLM 配置状态（/api/llm/status，不含 key）
 const llmTest = ref(null);       // 最近一次连接测试结果
 const llmTesting = ref(false);
@@ -75,6 +77,8 @@ const detailTab = ref('overview');   // 详情面板 tab
 const detailIntel = ref(null);       // 已锻页 intel.json
 const detailScore = ref(null);       // 已锻页 score.json
 const detailSeo = computed(() => selected.value?.seoLite ?? null);
+const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null });
+const assetGapsCache = ref(null);
 const seoChecks = computed(() => {
   const sl = detailSeo.value;
   if (!sl) return null;
@@ -173,6 +177,26 @@ const fmtTime = (t) => (t ? new Date(t).toLocaleTimeString('zh-CN', { hour12: fa
 const fmtDate = (t) => (t ? new Date(t).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '—');
 const fmtBytes = (n) => (n == null ? '—' : n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : n >= 1024 ? (n / 1024).toFixed(0) + 'KB' : n + 'B');
 const fmtDuration = (t) => (t.endedAt && t.startedAt ? Math.round((t.endedAt - t.startedAt) / 1000) + 's' : (t.startedAt ? '进行中' : ''));
+async function loadQuality() {
+  const n = selected.value;
+  if (!n) return;
+  detailQuality.loading = true;
+  detailQuality.verify = null; detailQuality.fixup = null; detailQuality.gaps = null;
+  const name = pageNameOf(n);
+  const [v, f] = await Promise.all([
+    fetch('/' + host.value + '/verify/' + name + '/verify.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/' + host.value + '/pages/' + name + '/fixup-history.json').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  if (selected.value !== n) return;
+  detailQuality.verify = v; detailQuality.fixup = f;
+  if (!assetGapsCache.value) {
+    try { const r = await fetch('/' + host.value + '/audit/asset-gaps.json'); if (r.ok) assetGapsCache.value = await r.json(); } catch {}
+  }
+  detailQuality.gaps = assetGapsCache.value?.pages?.find(p => p.page === name) ?? null;
+  detailQuality.loading = false;
+}
+watch(detailTab, (t) => { if (t === 'quality') loadQuality(); });
+
 function openDetail(n) { view.value = 'pages'; onNodeClick(n); }
 function selectView(id) {
   if (id === 'pages' && view.value === 'pages') { view.value = 'atlas'; return; }   // 再次点击 = 收起
@@ -541,6 +565,43 @@ async function loadJobHistory() {
   } catch {}
 }
 
+/** 跨站对标矩阵：引擎 matrix 任务 */
+function runMatrix() {
+  if (!matrixPeer.value) return;
+  const task = reactive({
+    localId: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    kind: 'matrix', label: '对标 · ' + host.value + ' vs ' + matrixPeer.value, url: 'https://' + matrixPeer.value,
+    done: false, failed: false, error: null,
+    startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = '对标矩阵 · 生成中';
+  (async () => {
+    try {
+      const r = await fetch(API + '/api/matrix', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ sites: [host.value, matrixPeer.value], maxPages: 15 }) });
+      const { taskId, error } = await r.json();
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '对标失败：' + error; return; }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind === 'matrix-done') {
+          task.done = true; task.endedAt = Date.now();
+          const rel = String(ev.path || '').split(/[\\/]workspace[\\/]/).pop() || '';
+          matrixReport.value = { url: '/static/' + rel.split('\\').join('/'), sites: [host.value, matrixPeer.value] };
+          statusText.value = '对标矩阵完成';
+          close(); setTimeout(() => { statusText.value = ''; }, 4000);
+        } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
+          task.failed = true; task.done = true; task.error = '任务中断'; close();
+        }
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+  })();
+}
+
 /** 资产缺口扫描：引擎 assets 任务（SSE → 报告入口） */
 function runAssetsAudit() {
   const task = reactive({
@@ -795,30 +856,30 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     </div>
     <div class="wv-rows">
       <div class="wv-row wv-th">
-        <span></span>
-        <span class="sortable" @click="toggleSort('path')">路径 {{ sortKey === 'path' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="sortable" @click="toggleSort('title')">标题 {{ sortKey === 'title' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span>类型</span>
-        <span class="sortable" @click="toggleSort('state')">状态 {{ sortKey === 'state' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="sortable" @click="toggleSort('score')">视觉 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="sortable" @click="toggleSort('assets')">资产 {{ sortKey === 'assets' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span>缺口</span>
-        <span>交互</span>
-        <span>更新</span>
-        <span>操作</span>
+        <span class="c-check"></span>
+        <span class="c-path sortable" @click="toggleSort('path')">路径 {{ sortKey === 'path' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-title sortable" @click="toggleSort('title')">标题 {{ sortKey === 'title' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-type">类型</span>
+        <span class="c-state sortable" @click="toggleSort('state')">状态 {{ sortKey === 'state' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-score sortable" @click="toggleSort('score')">视觉 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-assets sortable" @click="toggleSort('assets')">资产 {{ sortKey === 'assets' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-gaps">缺口</span>
+        <span class="c-ix">交互</span>
+        <span class="c-updated">更新</span>
+        <span class="c-actions">操作</span>
       </div>
       <div class="wv-row" v-for="n in filteredNodes" :key="n.id">
-        <label><input type="checkbox" :checked="plSelected.has(n.id)" @change="plToggle(n.id)" /></label>
-        <span class="wv-url" @click="openDetail(n)" :title="n.url">{{ n.path }}</span>
-        <span class="wv-title" :title="n.title">{{ n.title }}</span>
-        <span class="wv-type" :style="{ color: typeColor(n.type) }">{{ typeCn(n.type) }}</span>
-        <span class="wv-state" :class="n.forgeState">{{ n.forgeState === 'done' ? '已克隆' : n.forgeState === 'running' ? '克隆中' : n.forgeState === 'failed' ? '失败' : '未克隆' }}</span>
-        <span class="wv-score">{{ pageScores[n.id]?.pixel != null ? (pageScores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}</span>
-        <span class="wv-meta" :title="pageMeta[n.id]?.assets ? (pageMeta[n.id].assets.count + ' 个文件') : ''">{{ pageMeta[n.id]?.assets ? fmtBytes(pageMeta[n.id].assets.bytes) : '—' }}<i v-if="pageMeta[n.id]?.assets"> · {{ pageMeta[n.id].assets.count }}</i></span>
-        <span class="wv-meta" :class="{ bad: (pageMeta[n.id]?.visualGaps?.visual ?? 0) > 0 }" :title="pageMeta[n.id]?.visualGaps ? ('原站 ' + pageMeta[n.id].visualGaps.origin + ' / 第三方 ' + pageMeta[n.id].visualGaps.third) : ''">{{ pageMeta[n.id]?.visualGaps == null ? '—' : pageMeta[n.id].visualGaps.visual }}</span>
-        <span class="wv-meta">{{ pageMeta[n.id]?.interactions ? (pageMeta[n.id].interactions.passed + '/' + pageMeta[n.id].interactions.total) : '—' }}</span>
-        <span class="wv-meta">{{ fmtDate(pageMeta[n.id]?.updatedAt) }}</span>
-        <span class="wv-actions">
+        <label class="c-check"><input type="checkbox" :checked="plSelected.has(n.id)" @change="plToggle(n.id)" /></label>
+        <span class="wv-url c-path" @click="openDetail(n)" :title="n.url">{{ n.path }}</span>
+        <span class="wv-title c-title" :title="n.title">{{ n.title }}</span>
+        <span class="wv-type c-type" :style="{ color: typeColor(n.type) }">{{ typeCn(n.type) }}</span>
+        <span class="wv-state c-state" :class="n.forgeState">{{ n.forgeState === 'done' ? '已克隆' : n.forgeState === 'running' ? '克隆中' : n.forgeState === 'failed' ? '失败' : '未克隆' }}</span>
+        <span class="wv-score c-score">{{ pageScores[n.id]?.pixel != null ? (pageScores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}</span>
+        <span class="wv-meta c-assets" :title="pageMeta[n.id]?.assets ? (pageMeta[n.id].assets.count + ' 个文件') : ''">{{ pageMeta[n.id]?.assets ? fmtBytes(pageMeta[n.id].assets.bytes) : '—' }}<i v-if="pageMeta[n.id]?.assets"> · {{ pageMeta[n.id].assets.count }}</i></span>
+        <span class="wv-meta c-gaps" :class="{ bad: (pageMeta[n.id]?.visualGaps?.visual ?? 0) > 0 }" :title="pageMeta[n.id]?.visualGaps ? ('原站 ' + pageMeta[n.id].visualGaps.origin + ' / 第三方 ' + pageMeta[n.id].visualGaps.third) : ''">{{ pageMeta[n.id]?.visualGaps == null ? '—' : pageMeta[n.id].visualGaps.visual }}</span>
+        <span class="wv-meta c-ix">{{ pageMeta[n.id]?.interactions ? (pageMeta[n.id].interactions.passed + '/' + pageMeta[n.id].interactions.total) : '—' }}</span>
+        <span class="wv-meta c-updated">{{ fmtDate(pageMeta[n.id]?.updatedAt) }}</span>
+        <span class="wv-actions c-actions">
           <a :href="n.url" target="_blank" rel="noopener" title="打开原站">原站</a>
           <button @click="openDetail(n)">详情</button>
           <button :disabled="n.forgeState === 'running'" @click="startForge(n)">{{ n.forgeState === 'done' ? '重锻' : '克隆' }}</button>
@@ -837,7 +898,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="wv-rows">
       <div class="wv-row job-row" v-for="t in [...tasks].reverse()" :key="t.localId">
         <span class="job-name">{{ t.label ?? t.pageName }}</span>
-        <span class="job-kind">{{ t.kind === 'audit' ? 'SEO 审计' : t.kind === 'watch' ? '变更监控' : t.kind === 'assets' ? '资产扫描' : '克隆' }}</span>
+        <span class="job-kind">{{ t.kind === 'audit' ? 'SEO 审计' : t.kind === 'watch' ? '变更监控' : t.kind === 'assets' ? '资产扫描' : t.kind === 'matrix' ? '跨站对标' : '克隆' }}</span>
         <span class="wv-state" :class="taskState(t)">{{ taskLabel(t) }}</span>
         <span class="wv-score">{{ t.kind === 'audit' ? (t.auditScore != null ? t.auditScore + ' 分' : '—') : t.kind === 'watch' ? (t.watchChanges != null ? t.watchChanges + ' 处变化' : '—') : t.kind === 'assets' ? (t.assetGaps != null ? t.assetGaps + ' 缺口' : '—') : (t.score ? (t.score.pixel * 100).toFixed(1) + '%' : '—') }}</span>
         <span class="job-time">{{ fmtTime(t.startedAt) }} · {{ fmtDuration(t) }}</span>
@@ -887,6 +948,16 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <a :href="`/${host}/intel/${host}-intel.xlsx`" download>下载 Excel</a>
     </div>
 
+    <div class="report-card hud-panel">
+      <h3>跨站对标矩阵</h3>
+      <p v-if="matrixReport">与 {{ matrixReport.sites[1] }} 的 SEO 对标已生成</p>
+      <p v-else>选择另一站点，生成站点分/覆盖率/LCP/页面类型对比</p>
+      <div v-if="matrixReport"><a :href="matrixReport.url" target="_blank" rel="noopener">打开矩阵报告</a></div>
+      <div v-else class="matrix-run">
+        <select v-model="matrixPeer"><option value="">选择对标站点</option><option v-for="s in sites.filter(x => x.host !== host)" :key="s.host" :value="s.host">{{ s.host }}</option></select>
+        <button class="wv-primary" :disabled="!matrixPeer" @click="runMatrix">生成对标</button>
+      </div>
+    </div>
     <div class="report-card hud-panel">
       <h3>资产缺口</h3>
       <p v-if="assetAuditReport">{{ assetAuditReport.visualGaps }} 个视觉缺口（原站 {{ assetAuditReport.visualOrigin }} / 第三方 {{ assetAuditReport.visualThird }}）</p>
@@ -949,6 +1020,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="tabs">
       <button class="tab" :class="{ on: detailTab === 'overview' }" @click="detailTab = 'overview'">概览</button>
       <button class="tab" :class="{ on: detailTab === 'seo' }" @click="detailTab = 'seo'">SEO 剖析</button>
+      <button class="tab" :class="{ on: detailTab === 'quality' }" @click="detailTab = 'quality'">质检</button>
       <button class="tab" :class="{ on: detailTab === 'forge' }" @click="detailTab = 'forge'">锻造克隆</button>
     </div>
 
@@ -1002,6 +1074,51 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <div class="seo-row" :class="seoChecks.lang.ok ? 'ok' : 'warn'"><span class="seo-k">lang 属性</span><span>{{ seoChecks.lang.msg }}</span></div>
       </div>
       <div class="seo-note" v-else>该页侦察于旧版引擎（无 SEO 画像）。重新侦察本站即可获得全部页面的 SEO 剖析。</div>
+    </div>
+
+    <!-- 质检 tab -->
+    <div v-show="detailTab === 'quality'">
+      <div class="seo-note" v-if="detailQuality.loading">加载质检数据…</div>
+      <template v-else>
+        <div class="ov-sec">
+          <div class="panel-sec-name">视觉保真（多视口）</div>
+          <div v-if="detailQuality.verify" class="q-list">
+            <div class="q-row" v-for="v in detailQuality.verify.viewports" :key="v.name">
+              <span class="q-k">{{ v.name }}</span>
+              <span class="q-v" :class="v.grade === 'A' ? 'ok' : v.grade === 'B' ? 'mid' : 'bad'">{{ v.score != null ? ((v.score * 100).toFixed(1) + '% ' + v.grade) : (v.skipped || v.error || '—') }}</span>
+            </div>
+            <div class="q-row"><span class="q-k">综合</span><span class="q-v">{{ (detailQuality.verify.overall * 100).toFixed(1) }}% {{ detailQuality.verify.grade }}</span></div>
+          </div>
+          <div v-else class="seo-note">未运行多视口验证：<code>node core/src/verify/verify.mjs {{ host }} {{ pageNameOf(selected) }}</code></div>
+        </div>
+        <div class="ov-sec">
+          <div class="panel-sec-name">交互回放（功能保真）</div>
+          <div v-if="detailQuality.verify?.functional" class="q-list">
+            <div class="q-row"><span class="q-k">通过</span><span class="q-v" :class="detailQuality.verify.functional.passed === detailQuality.verify.functional.total ? 'ok' : 'bad'">{{ detailQuality.verify.functional.passed }}/{{ detailQuality.verify.functional.total }}</span></div>
+            <div class="q-row" v-for="(ix, i) in (detailQuality.verify.interactions || [])" :key="i">
+              <span class="q-k">{{ ix.label || ('交互 ' + (i + 1)) }}</span>
+              <span class="q-v" :class="ix.pass ? 'ok' : 'bad'">{{ ix.pass ? '通过' : '失败' }}<i v-if="ix.visualScore != null"> · 像素 {{ (ix.visualScore * 100).toFixed(1) }}%</i></span>
+            </div>
+          </div>
+          <div v-else class="seo-note">未运行交互回放（单页 verify 默认开启，可用 --no-interactions 关闭）</div>
+        </div>
+        <div class="ov-sec">
+          <div class="panel-sec-name">资产缺口</div>
+          <div v-if="detailQuality.gaps" class="q-list">
+            <div class="q-row"><span class="q-k">视觉缺口</span><span class="q-v" :class="(detailQuality.gaps.visualGaps ?? 0) ? 'bad' : 'ok'">{{ detailQuality.gaps.visualGaps ?? 0 }}</span></div>
+            <div class="q-row" v-for="(g, i) in (detailQuality.gaps.gaps || []).filter(x => x.category === 'visual').slice(0, 8)" :key="i">
+              <span class="q-k">{{ g.kind }}</span><span class="q-v" :title="g.url">{{ String(g.url).slice(0, 52) }}</span>
+            </div>
+          </div>
+          <div v-else class="seo-note">未扫描：报告 → 资产缺口 → 运行扫描</div>
+        </div>
+        <div class="ov-sec" v-if="detailQuality.fixup?.rounds?.length">
+          <div class="panel-sec-name">AI 校准曲线</div>
+          <div class="q-list">
+            <div class="q-row" v-for="r in detailQuality.fixup.rounds" :key="r.round"><span class="q-k">第 {{ r.round }} 轮</span><span class="q-v">{{ r.before }}% → {{ r.after }}% <b :class="r.kept ? 'ok' : 'bad'">{{ r.kept ? '保留' : '回滚' }}</b></span></div>
+          </div>
+        </div>
+      </template>
     </div>
 
     <!-- 锻造 tab -->
@@ -1308,9 +1425,37 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .wv-row { display: grid; grid-template-columns: 34px minmax(140px,1.1fr) minmax(160px,1.5fr) 78px 70px 62px 84px 50px 54px 90px 220px; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid rgba(148,163,184,.10); font-size: 12px; min-width: 1180px; }
 .wv-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); white-space: nowrap; }
 .wv-meta.bad { color: var(--red); }
+@media (max-width: 1560px) {
+  .wv-row { grid-template-columns: 34px minmax(130px,1.1fr) minmax(150px,1.5fr) 74px 66px 58px 80px 46px 50px 200px; min-width: 1040px; }
+  .c-updated { display: none; }
+}
+@media (max-width: 1360px) {
+  .wv-row { grid-template-columns: 34px minmax(120px,1.1fr) minmax(140px,1.5fr) 70px 64px 56px 76px 46px 190px; min-width: 960px; }
+  .c-ix { display: none; }
+}
+@media (max-width: 1180px) {
+  .wv-row { grid-template-columns: 34px minmax(110px,1.1fr) minmax(130px,1.5fr) 64px 60px 52px 70px 180px; min-width: 860px; }
+  .c-assets { display: none; }
+}
+@media (max-width: 1024px) {
+  .wv-row { grid-template-columns: 30px minmax(100px,1.1fr) minmax(120px,1.4fr) 58px 54px 48px 160px; min-width: 760px; }
+  .c-type { display: none; }
+}
 .dock-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .dock-quick a { color: var(--cyan); border: 1px solid var(--cyan-line); border-radius: 3px; padding: 5px 10px; font-size: 12px; text-decoration: none; }
 .dock-quick a:hover { background: rgba(34, 211, 238, .08); }
+.matrix-run { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.report-card select { background: rgba(255,255,255,.04); border: 1px solid var(--cyan-line); color: var(--text); border-radius: 3px; padding: 6px 9px; font-size: 12px; color-scheme: dark; }
+.report-card select option { background: #14141a; color: #e2e8f0; }
+[data-theme="light"] .report-card select { background: #fff; color-scheme: light; }
+[data-theme="light"] .report-card select option { background: #fff; color: #0f172a; }
+.q-list { margin-top: 8px; }
+.q-row { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px dashed rgba(148,163,184,.14); font-size: 12px; }
+.q-k { width: 120px; color: var(--text-faint); font-family: var(--font-mono); font-size: 11px; flex-shrink: 0; }
+.q-v { color: var(--text-dim); word-break: break-all; }
+.q-v.ok { color: var(--green); }
+.q-v.mid { color: var(--amber); }
+.q-v.bad { color: var(--red); }
 [data-theme="light"] .wv-th,
 [data-theme="light"] .asset-th { background: rgba(255, 255, 255, .96); color: var(--text-dim); }
 [data-theme="light"] .wv-head input,

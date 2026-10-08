@@ -28,6 +28,7 @@
 - **报告中心 / 资产清单**：控制台「报告」页动态列出所有可用报告（档案/SEO/监控/Token/组件/验证/情报），并按体积展示 Top 资产
 - **MCP / 浏览器入口**：`node core/src/mcp/server.mjs`（stdio MCP，12 个工具）；`node core/src/browser/bookmarklet.mjs`（在任意页面一键送入 Heimdall）
 - **资产缺口扫描**：CLI `node core/src/audit/assets.mjs <host>` 或控制台「报告 → 资产缺口 → 运行扫描」；视觉缺口与元数据/追踪/设计替代分开统计（apify 与 thordata 实测视觉缺口均为 0）；页面清单直接显示每页资产体积/缺口/交互/更新时间
+- **逐页质检**：详情面板「质检」tab 汇总多视口分数、交互回放、资产缺口与 AI 校准曲线；报告页可一键生成跨站对标矩阵
 - **逐页快捷入口**：详情面板可直达 打开克隆 / 活镜像 / 同步对比 / 分数 JSON
 - **竞品 SEO 对标矩阵**：`node core/src/seo/matrix.mjs <本站> <竞品1> <竞品2>` → 站点分/覆盖率/LCP/页面类型/高频问题对比（HTML+CSV+JSON）
 - **组件抽取**：`node core/src/extract/extract-components.mjs <host>` → header/hero/pricing/faq/footer/cta 独立预览（outerHTML + 命中 CSS + 素材路径回指）

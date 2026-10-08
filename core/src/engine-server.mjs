@@ -79,6 +79,7 @@ let runningRecon = null;
 let runningAudit = null;
 let runningWatch = null;
 let runningAssets = null;
+let runningMatrix = null;
 const pageMetaCache = new Map();
 const MAX_FORGE = 2;
 let forgeSlots = 0;
@@ -126,6 +127,7 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'audit') runningAudit = null;
     else if (t.kind === 'watch') runningWatch = null;
     else if (t.kind === 'assets') runningAssets = null;
+    else if (t.kind === 'matrix') runningMatrix = null;
     else forgeSlots--;
     jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
   });
@@ -161,6 +163,13 @@ function startAssets(host, maxPages = 60) {
   t.host = host;
   runningAssets = t;
   return spawnTask(t, join('src', 'audit', 'assets.mjs'), [host, '--max', String(maxPages)]).id;
+}
+
+function startMatrix(sites, maxPages = 15) {
+  const t = makeTask('matrix', sites.join(','));
+  t.host = sites[0];
+  runningMatrix = t;
+  return spawnTask(t, join('src', 'seo', 'matrix.mjs'), [...sites, '--max', String(maxPages)]).id;
 }
 
 function startForge(url, { hostPost = true } = {}) {
@@ -264,6 +273,21 @@ createServer(async (req, res) => {
       if (runningAudit) return json(res, 409, { error: 'busy', taskId: runningAudit.id });
       const id = startAudit(url, Math.min(Math.max(maxPages ?? 30, 1), 200));
       json(res, 200, { taskId: id, url });
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/matrix') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let sites = [], maxPages = 15;
+      try { ({ sites, maxPages } = JSON.parse(body || '{}')); } catch {}
+      sites = (Array.isArray(sites) ? sites : []).map(s => String(s).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')).filter(s => /^[a-z0-9.-]+$/i.test(s));
+      if (sites.length < 2 || sites.length > 6) return json(res, 400, { error: 'need 2-6 valid hosts' });
+      if (runningMatrix) return json(res, 409, { error: 'busy', taskId: runningMatrix.id });
+      const id = startMatrix([...new Set(sites)], Math.min(Math.max(maxPages ?? 15, 1), 100));
+      json(res, 200, { taskId: id, sites });
     });
     return;
   }
@@ -507,6 +531,7 @@ createServer(async (req, res) => {
       audit: runningAudit ? { id: runningAudit.id, url: runningAudit.url } : null,
       watch: runningWatch ? { id: runningWatch.id, url: runningWatch.url } : null,
       assets: runningAssets ? { id: runningAssets.id, url: runningAssets.url } : null,
+      matrix: runningMatrix ? { id: runningMatrix.id, url: runningMatrix.url } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },
       jobs: tasks.size,
       jobsStore: jobStore?.kind ?? null,
