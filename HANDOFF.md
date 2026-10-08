@@ -117,3 +117,28 @@ node src\crawler\fullshot.mjs <host>
 
 - 登录后区域禁区；产物不公开部署；竞品资产不商用；严格反爬站白名单拒收并明说
 - 分数口径诚实：不吹 100%，动效缺失用 dynamicShare 量化展示
+
+## 8. 2026-10-09 续：新一轮彻查与修复（均有实测）
+
+### 8.1 关键缺陷：clone 字体路径全站 404（已修复）
+- 现象：`clone/styles/cssom.css` 里字体写成 `url("styles/refNNN.woff2")`，从 cssom.css 自身目录解析 = `styles/styles/refNNN.woff2` → 404，全站回退系统字体（肉眼难察觉的保真损失）。
+- 根因：`build_clone.mjs` 字体相对路径多了一层 `styles/`。
+- 修复：`build_clone.mjs` 改为同目录文件名；新增 `core/src/crawler/repair-css-refs.mjs`（幂等）修复历史产物，CLI 命令 `repair <host>`。
+- 实测：apify 61 页/454 处、thordata 31 页/1040 处修复；Playwright 复检 `font failed requests: 0`、`document.fonts.check('16px Inter') === true`；apify pricing 多视口 verify 由 96.0% 升至 **99.85/99.93/99.96%**。
+- 扫描器同步加固：`audit/assets.mjs` 新增“clone 内相对引用必须按文件自身目录可解析”的检查（此前同名兜底会掩盖坏链）；新增单测 `core/test/assets.test.mjs`。
+
+### 8.2 活镜像体检 + 自愈（新）
+- `core/src/live/health.mjs`：静态体检（无浏览器/无网络）→ bundle `health.json`：assets(local/har/unresolved/dynamic/external) + links(missing) + externalAssetsTop。
+- `core/src/live/heal.mjs`：`--heal` 导出期从原站补抓离线缺失资源（按路径去重、多 `?dpl=` 变体重试、动态端点跳过、MIME/体积校验）。
+- `export.mjs` 接线：默认写 health.json；`--strict` 有缺口非零退出（CI 用）；landing/README 显示离线资源覆盖；smoke 对 fixture 断言 `unresolved === 0`。
+- 实测 apify：heal 补 154 文件/5.8MB → local 5124 / har 773 / unresolved 590 refs（唯一 489，主要是旧部署 404 的 `_next/static/chunks/*` 与 `_next/image` 动态端点）。
+- 结论：**要 100% 离线自包含，必须每页都留下 network.har** —— 老页面需 `queue --force` 重锻补录（下一步）。
+
+### 8.3 还原度口径 v2（minViewport）
+- `verify/compare.mjs#worstViewport`；verify.json / verify-summary.json 输出 minViewport 与站级 worst。
+- 控制台：页面表“视觉”列显示最差视口（<0.95 出现 ↓NN，琥珀/红）；表头“最差视口均值”；质检 tab 新增“最差视口”行。
+- 实测：storage 页面 1440x900 96.0%（综合 97.8%）正常展示，截图见会话记录。
+
+### 8.4 本轮质量门
+lint 75 文件 · 单测 61/61 · smoke 全绿（含 live health unresolved=0）· CI 绿（244cead / eb06876）。
+
