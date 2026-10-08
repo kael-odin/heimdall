@@ -23,6 +23,7 @@
 ## v2 新增（2026-10-08 起）
 
 - **SEO 审计**：`node core/src/seo/audit.mjs <host> --max 20` → `workspace/<host>/seo/{seo.html,seo.csv,seo.json}`，40+ 规则覆盖索引/内容/结构化数据/性能/链接/安全
+- **工作台 IA（v2）**：底部导航切换 星图/页面/任务/报告/设置；页面表格支持搜索、类型/状态筛选、批量克隆、逐页视觉分与状态；报告中心聚合档案/SEO/对比/情报
 - **多视口验证**：`node core/src/verify/verify.mjs <host> <page>` → 375/768/1440 全页 diff（实测 apify storage：桌面 98.2% / 平板 89.4% / 移动 78.4%，暴露单视口口径看不到的移动端差距）
 - **任务中心**：控制台内每次克隆与审计独立进度，不再互相覆盖；引擎新增 `/api/jobs` 与任务取消
 - **安全默认值**：引擎默认只监听 `127.0.0.1`，代理只允许 workspace 已知 host；可用 `HEIMDALL_TOKEN` 开启鉴权

@@ -114,7 +114,21 @@ node src\crawler\index-page.mjs apify.com
 node src\harvest\xlsx.mjs apify.com
 ```
 
-## 10. SEO 审计（v2 新增）
+## 10. 控制台工作台（v2）
+
+控制台底部导航：**星图 / 页面 / 任务 / 报告 / 设置**
+
+| 视图 | 用途 |
+|---|---|
+| 星图 | 3D 探索 + 点选页面 + 详情剖析（原有能力） |
+| 页面 | 全宽表格：搜索、类型/状态筛选、批量选择与克隆、逐页视觉分、原站/详情/克隆操作 |
+| 任务 | 本会话全部克隆与 SEO 审计任务：状态、分数、耗时、错误 |
+| 报告 | 一键打开克隆档案 / SEO 报告 / 同步对比 / 情报 Excel |
+| 设置 | 主题、星图自转、引擎地址（支持远程/共享引擎）、引擎 Token |
+
+同事只需：打开控制台 → 输入域名 → 侦察 → 页面表勾选 → 批量克隆 → 报告中心看结果。
+
+## 11. SEO 审计（v2 新增）
 
 一条命令对任意站点做 40+ 项 SEO 体检：
 
@@ -136,7 +150,7 @@ CI 门控：`--threshold 70` 时站点分低于阈值退出码为 1。
 
 控制台：站点栏点「SEO 审计」→ 任务中心显示进度 → 完成后右下角打开报告。
 
-## 11. 资产去重（CAS，v2）
+## 12. 资产去重（CAS，v2）
 
 站点批量锻造结束后自动执行去重；也可单独运行：
 
@@ -151,13 +165,13 @@ node core\src\store\dedupe.mjs apify.com --dry-run :: 只统计不修改
 - 账本：`workspace/<host>/asset-ledger.json`
 - 队列支持 `--no-dedupe` 跳过
 
-## 12. 安全与数据目录（v2）
+## 13. 安全与数据目录（v2）
 
 - 引擎默认只监听 `127.0.0.1`；内网共享时设置 `HEIMDALL_HOST=0.0.0.0` + `HEIMDALL_TOKEN=<token>`，控制台可用 localStorage 的 `heimdall-token` 携带。
 - 活镜像/代理只允许 `workspace/<host>` 已存在的域名（防 SSRF/开放代理）；额外域名用 `HEIMDALL_ALLOWED_HOSTS=a.com,b.com`。
 - 把 1.4GB 产物移出仓库：`set HEIMDALL_DATA_DIR=D:\heimdall-data`，workspace/deliverable 都会迁到该目录。
 
-## 13. 多视口验证（v2）
+## 14. 多视口验证（v2）
 
 单页快照的 1440×900 分数会掩盖移动端差距。用 verify 做 375/768/1440 三档全页对比：
 
@@ -174,7 +188,7 @@ node src\verify\verify.mjs apify.com storage --threshold 85  :: CI 门控（综�
 实测 apify.com/storage：桌面 98.2%（A）/ 平板 89.4%（B）/ 移动 78.4%（C）→ 综合 91.0%（B）。
 这证明"单视口 95.9%"确实高估了真实保真度——移动端字体/换行/高度差是主要来源。
 
-## 14. 质量门（v2）
+## 15. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

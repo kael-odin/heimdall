@@ -13,7 +13,7 @@ import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
 const PAGE_TYPES = PT;
 const TYPE_COLOR = Object.fromEntries(Object.entries(PAGE_TYPES).map(([k, v]) => [k, v.color]));
 // 引擎 API 直连（vite proxy 会缓冲实时 SSE；引擎侧 CORS 已开放）
-const API = 'http://127.0.0.1:8900';
+const API = localStorage.getItem('heimdall-api') ?? 'http://127.0.0.1:8900';
 
 const host = ref('apify.com');
 const atlas = ref(null);
@@ -40,10 +40,9 @@ const sites = ref([]);          // 已侦察站点清单（/api/sites）
 const engine = ref({ ok: false, recon: null, forge: null });   // 引擎状态灯
 const autoRotate = ref(true);   // 星图自转开关
 const showPanel = ref(true);    // 左侧仪表面板折叠
-const pagesListOpen = ref(false);
 const plSelected = ref(new Set());
 function plToggle(id) { const s = new Set(plSelected.value); s.has(id) ? s.delete(id) : s.add(id); plSelected.value = s; }
-function plSelectAll() { const s = new Set(plSelected.value); nodes.filter(n => n.forgeState !== 'done').forEach(n => s.add(n.id)); plSelected.value = s; }
+function plSelectAll() { const s = new Set(plSelected.value); tableNodes.value.filter(n => n.forgeState !== 'done').forEach(n => s.add(n.id)); plSelected.value = s; }
 async function forgeChecked() {
   const targets = nodes.filter(n => plSelected.value.has(n.id) && n.forgeState !== 'done');
   statusText.value = `清单锻造 ${targets.length} 页`;
@@ -80,11 +79,90 @@ const seoChecks = computed(() => {
   };
 });
 
+// ---------- 工作台视图（v2）：星图 / 页面 / 任务 / 报告 / 设置 ----------
+const view = ref('atlas');
+const VIEWS = [
+  { id: 'atlas', icon: '✦', label: '星图' },
+  { id: 'pages', icon: '▤', label: '页面' },
+  { id: 'jobs', icon: '◷', label: '任务' },
+  { id: 'reports', icon: '▦', label: '报告' },
+  { id: 'settings', icon: '⚙', label: '设置' },
+];
+const pageQuery = ref('');
+const typeFilter = ref('');
+const statusFilter = ref('');
+const tableNodes = ref([]);                       // 页面表格的响应式快照
+const pageScores = reactive({});                  // nodeId -> score.json（懒加载）
+const tokenInput = ref(localStorage.getItem('heimdall-token') ?? '');
+const apiBaseInput = ref(localStorage.getItem('heimdall-api') ?? API);
+const pageNameOf = (n) => (n.path === '/' ? 'home' : n.path.replace(/^\//, '').replace(/\//g, '-'));
+const filteredNodes = computed(() => {
+  const q = pageQuery.value.trim().toLowerCase();
+  return tableNodes.value.filter(n => {
+    if (typeFilter.value && n.type !== typeFilter.value) return false;
+    if (statusFilter.value === 'done' && n.forgeState !== 'done') return false;
+    if (statusFilter.value === 'todo' && (n.forgeState === 'done' || n.forgeState === 'running')) return false;
+    if (statusFilter.value === 'failed' && n.forgeState !== 'failed') return false;
+    const hay = ((n.url || '') + ' ' + (n.title || '') + ' ' + (n.path || '')).toLowerCase();
+    return !q || hay.includes(q);
+  });
+});
+const doneCount = computed(() => tableNodes.value.filter(n => n.forgeState === 'done').length);
+const avgVisual = computed(() => {
+  const vals = Object.values(pageScores).filter(s => s && typeof s.pixel === 'number').map(s => s.pixel);
+  return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : '—';
+});
+let scoreLoadTimer = null;
+function scheduleScoreLoad() { clearTimeout(scoreLoadTimer); scoreLoadTimer = setTimeout(loadPageScores, 400); }
+async function loadPageScores() {
+  const list = tableNodes.value.filter(n => n.forgeState === 'done').slice(0, 80);
+  let i = 0;
+  const worker = async () => {
+    while (i < list.length) {
+      const n = list[i++];
+      try {
+        const r = await fetch('/' + host.value + '/pages/' + pageNameOf(n) + '/score.json');
+        pageScores[n.id] = r.ok ? await r.json() : null;
+      } catch { pageScores[n.id] = null; }
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+}
+const fmtTime = (t) => (t ? new Date(t).toLocaleTimeString('zh-CN', { hour12: false }) : '');
+const fmtDuration = (t) => (t.endedAt && t.startedAt ? Math.round((t.endedAt - t.startedAt) / 1000) + 's' : (t.startedAt ? '进行中' : ''));
+function openDetail(n) { view.value = 'pages'; onNodeClick(n); }
+function saveApiBase() {
+  const v = apiBaseInput.value.trim() || 'http://127.0.0.1:8900';
+  localStorage.setItem('heimdall-api', v);
+  location.reload();
+}
+async function loadPageStatus() {
+  try {
+    const r = await fetch(API + '/api/pages/' + host.value);
+    if (!r.ok) return;
+    const { pages } = await r.json();
+    const byPath = new Map();
+    for (const p of pages) { try { byPath.set(new URL(p.target).pathname.replace(/\/$/, '') || '/', p); } catch {} }
+    for (const n of nodes) {
+      const key = (n.path || '/').replace(/\/$/, '') || '/';
+      const hit = byPath.get(key);
+      if (hit) { n.forgeState = 'done'; pageScores[n.id] = hit.score ?? null; }
+    }
+    tableNodes.value = [...nodes];
+  } catch {}
+}
+function saveToken() {
+  const v = tokenInput.value.trim();
+  if (v) localStorage.setItem('heimdall-token', v); else localStorage.removeItem('heimdall-token');
+  errMsg.value = v ? 'Token 已保存（后续请求生效）' : 'Token 已清除';
+  setTimeout(() => { errMsg.value = ''; }, 2500);
+}
+
 // 3D 图数据（Graph3D 消费）
 const gNodes = ref([]);
 const gLinks = ref([]);
 const gTick = ref(0);
-const bump = () => { gNodes.value = [...nodes]; gLinks.value = [...edges]; gTick.value++; };
+const bump = () => { gNodes.value = [...nodes]; gLinks.value = [...edges]; gTick.value++; tableNodes.value = [...nodes]; scheduleScoreLoad(); };
 
 let nodes = [], edges = [];
 const urlNode = new Map();
@@ -115,7 +193,11 @@ function buildStatic(a) {
   atlas.value = a;
   hudOrigin.value = (a.origin ?? '').replace(/^https?:\/\//, '');
   nodes = []; edges = []; urlNode.clear(); pendingEdges = [];
+  const seenUrls = new Set();
   for (const n of a.nodes) {
+    const key = (n.url || '').replace(/\/$/, '');
+    if (seenUrls.has(key)) continue;   // 去重：https://x 与 https://x/ 视为同一页
+    seenUrls.add(key);
     const ringIdx = n.depth === 0 ? 0 : n.depth === 1 ? 1 : 2;
     nodes.push(makeNode(n, ringIdx));
   }
@@ -131,6 +213,7 @@ function buildStatic(a) {
   hudPages.value = a.nodes.length;
   hudEdges.value = a.meta?.edges ?? a.edges.length;
   bump();
+  loadPageStatus();
 }
 
 // ---------- live 侦察 ----------
@@ -194,6 +277,7 @@ async function finishRecon(taskId) {
     hudPages.value = nodes.length;
     hudEdges.value = a.meta?.edges ?? edges.length;
     bump();
+    loadPageStatus();
   } catch {}
   live.value = false;
   setTimeout(() => { statusText.value = ''; }, 2500);
@@ -328,7 +412,7 @@ function runAudit() {
         else if (ev.kind === 'audit-page') statusText.value = `SEO 审计 · ${ev.index}/${ev.total}`;
         else if (ev.kind === 'audit-done') {
           task.auditScore = ev.score; task.done = true; task.endedAt = Date.now();
-          auditReport.value = { host: host.value, score: ev.score };
+          auditReport.value = { host: host.value, score: ev.score, pages: ev.pages, issues: ev.issues };
           statusText.value = `SEO 审计完成 · ${ev.score} 分`;
           close(); setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'audit-error') {
@@ -389,7 +473,7 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
 </script>
 
 <template>
-  <Graph3D :nodes="gNodes" :links="gLinks" :tick="gTick" :auto-rotate="autoRotate" @node-click="onNodeClick" />
+  <Graph3D v-show="view === 'atlas'" :nodes="gNodes" :links="gLinks" :tick="gTick" :auto-rotate="autoRotate" @node-click="onNodeClick" />
 
   <div class="hud">
     <div class="brand">HEIMDALL<span class="brand-sub">SITE ATLAS · 深空观测站</span></div>
@@ -403,7 +487,7 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
   </div>
 
   <!-- 左侧仪表面板 -->
-  <div class="panel hud-panel" v-show="showPanel">
+  <div class="panel hud-panel" v-if="view === 'atlas' && showPanel">
     <div class="panel-title">OBSERVATORY · 仪表面板<button class="panel-collapse" @click="showPanel = false" title="收起">—</button></div>
     <div class="panel-sec">
       <div class="panel-sec-name">图例 · 页面类型</div>
@@ -419,7 +503,7 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
       <div class="eng-detail" v-if="engine.ok">锻造槽 {{ engine.forge?.slots ?? 0 }}/2 · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
     </div>
   </div>
-  <button class="panel-open" v-if="!showPanel" @click="showPanel = true" title="仪表面板">☰</button>
+  <button class="panel-open" v-if="view === 'atlas' && !showPanel" @click="showPanel = true" title="仪表面板">☰</button>
 
   <div class="seek hud-panel">
     <button class="theme-btn" @click="toggleTheme" :title="theme === 'dark' ? '切浅色' : '切深色'">{{ theme === 'dark' ? '☾' : '☀' }}</button>
@@ -430,11 +514,11 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
   <!-- 已侦察站点切换 -->
   <div class="sites" v-if="sites.length">
     <span class="sites-label">已侦察：</span>
-    <button v-for="s in sites" :key="s.host" class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s); pagesListOpen = true" :title="s.pages ? `${s.forged}/${s.pages} 页已锻造` : '侦察结果为空（失败或无可用页面）'">
+    <button v-for="s in sites" :key="s.host" class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s); view = 'pages'" :title="s.pages ? `${s.forged}/${s.pages} 页已锻造` : '侦察结果为空（失败或无可用页面）'">
       {{ s.host }}<em>{{ s.pages ? s.forged + 'F' : '空' }}</em>
     </button>
     <button class="site-btn audit-btn" :disabled="!!engine.audit" @click="runAudit" :title="engine.audit ? '已有审计任务在运行' : '全站 SEO 审计（40+ 规则，输出 HTML/CSV/JSON 报告）'">SEO 审计</button>
-    <button class="site-btn list-toggle" :class="{ active: pagesListOpen }" @click="pagesListOpen = !pagesListOpen">页面清单</button>
+    <button class="site-btn list-toggle" :class="{ active: view === 'pages' }" @click="view = 'pages'">页面清单</button>
   </div>
 
   <!-- 任务中心：每个任务的独立进度（不再被后一个任务覆盖） -->
@@ -454,28 +538,92 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
     </div>
   </div>
 
-  <!-- 页面清单（列表式查看 + 勾选锻造） -->
-  <div class="pages-list hud-panel" v-if="pagesListOpen">
-    <div class="pl-head">
-      <span>页面清单 · {{ host }}</span>
-      <span class="pl-actions">
-        <button @click="plSelectAll" title="全选未锻页">全选未锻</button>
-        <button @click="plSelected.clear(); syncPlSel()" title="清空选择">清空</button>
-        <button class="pl-forge" :disabled="!plSelected.size" @click="forgeChecked">锻造选中 ({{ plSelected.size }})</button>
-      </span>
+    <!-- 工作台视图：页面 / 任务 / 报告 / 设置 -->
+  <section class="work-view hud-panel" v-if="view === 'pages'">
+    <div class="wv-head">
+      <b>页面清单 · {{ host }}</b>
+      <span class="wv-stat">{{ doneCount }}/{{ tableNodes.length }} 已克隆 · 平均视觉 {{ avgVisual }}</span>
+      <input class="wv-search" v-model="pageQuery" placeholder="搜索 URL / 标题" spellcheck="false" />
+      <select v-model="typeFilter"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
+      <select v-model="statusFilter"><option value="">全部状态</option><option value="done">已克隆</option><option value="todo">未完成</option><option value="failed">失败</option></select>
+      <button @click="plSelectAll" title="全选未克隆页">全选未锻</button>
+      <button class="wv-primary" :disabled="!plSelected.size" @click="forgeChecked">克隆选中 ({{ plSelected.size }})</button>
     </div>
-    <div class="pl-rows">
-      <div class="pl-row" v-for="n in nodes" :key="n.id">
-        <label class="pl-check"><input type="checkbox" :checked="plSelected.has(n.id)" @change="plToggle(n.id)" /></label>
-        <span class="pl-type" :style="{ color: typeColor(n.type) }">{{ typeCn(n.type) }}</span>
-        <span class="pl-path" @click="onNodeClick(n)">{{ n.path }}</span>
-        <span class="pl-state">{{ n.forgeState === 'done' ? '✓ 已锻' : n.forgeState === 'running' ? '锻造中' : n.forgeState === 'failed' ? '失败' : '' }}</span>
+    <div class="wv-rows">
+      <div class="wv-row wv-th"><span></span><span>路径</span><span>标题</span><span>类型</span><span>状态</span><span>视觉</span><span>操作</span></div>
+      <div class="wv-row" v-for="n in filteredNodes" :key="n.id">
+        <label><input type="checkbox" :checked="plSelected.has(n.id)" @change="plToggle(n.id)" /></label>
+        <span class="wv-url" @click="openDetail(n)">{{ n.path }}</span>
+        <span class="wv-title" :title="n.title">{{ n.title }}</span>
+        <span class="wv-type" :style="{ color: typeColor(n.type) }">{{ typeCn(n.type) }}</span>
+        <span class="wv-state" :class="n.forgeState">{{ n.forgeState === 'done' ? '已克隆' : n.forgeState === 'running' ? '克隆中' : n.forgeState === 'failed' ? '失败' : '未克隆' }}</span>
+        <span class="wv-score">{{ pageScores[n.id]?.pixel != null ? (pageScores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}</span>
+        <span class="wv-actions">
+          <a :href="n.url" target="_blank" rel="noopener" title="打开原站">原站</a>
+          <button @click="openDetail(n)">详情</button>
+          <button :disabled="n.forgeState === 'running' || n.forgeState === 'done'" @click="startForge(n)">克隆</button>
+        </span>
       </div>
+      <div class="wv-empty" v-if="!filteredNodes.length">没有匹配的页面。</div>
     </div>
-  </div>
+  </section>
+
+  <section class="work-view hud-panel" v-if="view === 'jobs'">
+    <div class="wv-head">
+      <b>任务中心</b>
+      <span class="wv-stat">引擎 {{ engine.ok ? '在线' : '离线' }} · 克隆槽 {{ engine.forge?.slots ?? 0 }}/{{ engine.forge?.max ?? 2 }} · 本会话 {{ tasks.length }} 个任务</span>
+    </div>
+    <div class="wv-rows">
+      <div class="wv-row job-row" v-for="t in [...tasks].reverse()" :key="t.localId">
+        <span class="job-name">{{ t.label ?? t.pageName }}</span>
+        <span class="job-kind">{{ t.kind === 'audit' ? 'SEO 审计' : '克隆' }}</span>
+        <span class="wv-state" :class="taskState(t)">{{ taskLabel(t) }}</span>
+        <span class="wv-score">{{ t.kind === 'audit' ? (t.auditScore != null ? t.auditScore + ' 分' : '—') : (t.score ? (t.score.pixel * 100).toFixed(1) + '%' : '—') }}</span>
+        <span class="job-time">{{ fmtTime(t.startedAt) }} · {{ fmtDuration(t) }}</span>
+        <span class="job-error" :title="t.error">{{ t.error || '' }}</span>
+      </div>
+      <div class="wv-empty" v-if="!tasks.length">本次会话还没有任务：在「星图」点击页面，或在「页面」批量克隆 / 运行 SEO 审计。</div>
+    </div>
+  </section>
+
+  <section class="reports-grid" v-if="view === 'reports'">
+    <div class="report-card hud-panel">
+      <h3>克隆档案</h3>
+      <p>{{ doneCount }} 页已克隆 · 平均视觉 {{ avgVisual }}</p>
+      <a :href="`/${host}/index.html`" target="_blank" rel="noopener">打开档案</a>
+    </div>
+    <div class="report-card hud-panel">
+      <h3>SEO 审计报告</h3>
+      <p v-if="auditReport">{{ auditReport.score }} 分 · {{ auditReport.pages }} 页 · {{ auditReport.issues }} 条问题</p>
+      <p v-else>尚未运行（40+ 规则 / 六分类评分）</p>
+      <a v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">打开报告</a>
+      <button v-else class="wv-primary" @click="runAudit">运行审计</button>
+    </div>
+    <div class="report-card hud-panel">
+      <h3>同步滚动对比</h3>
+      <p>原站快照 vs 镜像，逐屏目检</p>
+      <a :href="`/${host}/compare.html`" target="_blank" rel="noopener">打开对比</a>
+    </div>
+    <div class="report-card hud-panel">
+      <h3>竞品情报包</h3>
+      <p>概览 / 语义情报 / 定价与 CTA</p>
+      <a :href="`/${host}/intel/${host}-intel.xlsx`" download>下载 Excel</a>
+    </div>
+  </section>
+
+  <section class="work-view hud-panel" v-if="view === 'settings'">
+    <div class="wv-head"><b>设置</b><span class="wv-stat">本地控制台偏好（浏览器存储）</span></div>
+    <div class="settings-grid">
+      <div class="set-row"><span>主题</span><button @click="toggleTheme">{{ theme === 'dark' ? '深色 → 浅色' : '浅色 → 深色' }}</button></div>
+      <div class="set-row"><span>星图自转</span><input type="checkbox" v-model="autoRotate" /></div>
+      <div class="set-row"><span>引擎地址</span><input v-model="apiBaseInput" placeholder="http://127.0.0.1:8900" spellcheck="false" /><button @click="saveApiBase">保存并刷新</button></div>
+      <div class="set-row"><span>引擎 Token</span><input v-model="tokenInput" placeholder="HEIMDALL_TOKEN（可留空）" spellcheck="false" /><button @click="saveToken">保存</button></div>
+      <div class="set-note">引擎：{{ engine.ok ? '在线' : '离线' }} · 绑定 {{ engine.bind ?? '127.0.0.1' }} · 鉴权 {{ engine.auth ? '开启' : '关闭' }}<br/>数据目录 / 并发 / 代理白名单通过环境变量配置（HEIMDALL_DATA_DIR / HEIMDALL_TOKEN / HEIMDALL_ALLOWED_HOSTS）。</div>
+    </div>
+  </section>
 
   <!-- 页面详情剖析面板（点星 = 选中；锻造是其中一项功能） -->
-  <div class="dock" v-if="selected">
+  <div class="dock" v-if="selected && (view === 'atlas' || view === 'pages')">
     <div class="dock-head">
       <div>
         <div class="dock-title">{{ selected.path === '/' ? 'home' : selected.path.slice(1) }}</div>
@@ -599,16 +747,21 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
           <a :href="`/${host}/pages/${forge.pageName}/clone/index.html`" target="_blank" rel="noopener">死镜像</a>
         </div>
         <iframe v-if="forge.done" :key="forge.taskId" class="live-clone" :src="`/${host}/pages/${forge.pageName}/clone/index.html`" title="living clone"></iframe>
-      </template>
+</template>
     </div>
   </div>
 
   <a class="audit-link" v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">SEO 报告 · {{ auditReport.score }} 分</a>
   <a class="archive-link" v-if="hudPages > 0" :href="`/${host}/index.html`" target="_blank" rel="noopener">克隆档案 · {{ hudPages }} 页</a>
-  <div class="keys" v-if="!forge">
+  <div class="keys" v-if="view === 'atlas' && !forge">
     <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 打开页面详情</span>
   </div>
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
+  <div class="view-nav hud-panel">
+    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" @click="view = v.id">
+      <b>{{ v.icon }}</b><span>{{ v.label }}</span>
+    </button>
+  </div>
 </template>
 
 <style scoped>
@@ -795,4 +948,55 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
 .audit-btn:disabled { opacity: .45; cursor: not-allowed; }
 .audit-link { position: fixed; right: 24px; bottom: 62px; z-index: 8; padding: 8px 16px; border: 1px solid rgba(52,211,153,.45); border-radius: var(--r); background: rgba(11,11,16,.82); color: var(--green); font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; text-decoration: none; }
 .audit-link:hover { box-shadow: 0 0 18px rgba(52,211,153,.25); }
+/* 工作台视图 + 底部导航（v2 IA） */
+.work-view { position: fixed; left: 24px; right: 24px; top: 96px; bottom: 86px; z-index: 7; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.wv-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--cyan-line); flex-wrap: wrap; font-size: 13px; }
+.wv-head b { font-family: var(--font-mono); letter-spacing: .08em; }
+.wv-stat { color: var(--text-dim); font-size: 11.5px; font-family: var(--font-mono); }
+.wv-head input, .wv-head select, .wv-head button { background: rgba(255,255,255,.04); border: 1px solid var(--cyan-line); color: var(--text); border-radius: 3px; padding: 6px 9px; font-size: 12px; }
+.wv-search { min-width: 180px; }
+.wv-head button { cursor: pointer; }
+.wv-head button:disabled { opacity: .4; cursor: not-allowed; }
+.wv-primary { background: rgba(34,211,238,.12) !important; color: var(--cyan) !important; border-color: rgba(34,211,238,.5) !important; }
+.wv-rows { flex: 1; overflow: auto; }
+.wv-row { display: grid; grid-template-columns: 34px minmax(150px,1.1fr) minmax(180px,1.6fr) 90px 80px 70px 170px; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid rgba(148,163,184,.10); font-size: 12px; }
+.wv-row:hover { background: rgba(34,211,238,.05); }
+.wv-th { position: sticky; top: 0; background: rgba(11,11,16,.95); color: var(--text-faint); font-size: 10.5px; letter-spacing: .12em; z-index: 1; }
+.wv-url { color: var(--cyan); font-family: var(--font-mono); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-title { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-type { font-size: 11px; }
+.wv-state { font-size: 11px; }
+.wv-state.done { color: var(--green); }
+.wv-state.running { color: var(--amber); }
+.wv-state.failed { color: var(--red); }
+.wv-state.idle { color: var(--text-faint); }
+.wv-score { font-family: var(--font-mono); color: var(--text-dim); }
+.wv-actions { display: flex; gap: 6px; }
+.wv-actions a, .wv-actions button { color: var(--text-dim); background: none; border: 1px solid rgba(148,163,184,.25); border-radius: 3px; padding: 3px 7px; font-size: 11px; text-decoration: none; cursor: pointer; }
+.wv-actions a:hover, .wv-actions button:hover { color: var(--cyan); border-color: var(--cyan-dim); }
+.wv-actions button:disabled { opacity: .35; cursor: not-allowed; }
+.wv-empty { padding: 40px; text-align: center; color: var(--text-faint); font-size: 13px; }
+.job-row { grid-template-columns: minmax(160px,1.2fr) 90px 80px 80px 130px 1fr; }
+.job-name { color: var(--text); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-kind { color: var(--violet); font-size: 11px; }
+.job-time { color: var(--text-faint); font-family: var(--font-mono); font-size: 11px; }
+.job-error { color: var(--red); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reports-grid { position: fixed; left: 24px; right: 24px; top: 96px; bottom: 86px; z-index: 7; display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 14px; align-content: start; }
+.report-card { padding: 16px; }
+.report-card h3 { margin: 0 0 8px; font-size: 15px; }
+.report-card p { color: var(--text-dim); font-size: 12px; min-height: 34px; margin: 0 0 12px; }
+.report-card a, .report-card button { display: inline-block; color: var(--cyan); border: 1px solid var(--cyan-line); background: rgba(34,211,238,.06); border-radius: 3px; padding: 6px 12px; font-size: 12px; text-decoration: none; cursor: pointer; }
+.settings-grid { padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.set-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-dim); }
+.set-row > span { width: 110px; }
+.set-row input:not([type=checkbox]) { background: rgba(255,255,255,.04); border: 1px solid var(--cyan-line); color: var(--text); border-radius: 3px; padding: 6px 9px; min-width: 280px; }
+.set-row button { background: rgba(34,211,238,.10); border: 1px solid var(--cyan-line); color: var(--cyan); border-radius: 3px; padding: 6px 12px; cursor: pointer; }
+.set-note { color: var(--text-faint); font-size: 11.5px; line-height: 1.8; border-top: 1px dashed var(--cyan-line); padding-top: 12px; }
+.view-nav { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 12; display: flex; padding: 4px; gap: 2px; }
+.view-nav button { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 62px; padding: 5px 8px; background: none; border: 0; color: var(--text-faint); cursor: pointer; border-radius: 3px; }
+.view-nav button b { font-size: 13px; }
+.view-nav button span { font-size: 10px; letter-spacing: .1em; }
+.view-nav button.on { color: var(--cyan); background: rgba(34,211,238,.10); }
+.view-nav button:hover { color: var(--text); }
+.keys { bottom: 76px !important; }
 </style>

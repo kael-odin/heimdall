@@ -242,6 +242,23 @@ createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && u.pathname.startsWith('/api/pages/')) {
+    const host = decodeURIComponent(u.pathname.slice('/api/pages/'.length));
+    if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    const pagesDir = join(WORKSPACE, host, 'pages');
+    const out = [];
+    if (existsSync(pagesDir)) {
+      for (const name of readdirSync(pagesDir)) {
+        if (!existsSync(join(pagesDir, name, 'clone', 'index.html'))) continue;
+        let target = '', score = null;
+        try { target = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target ?? ''; } catch {}
+        try { score = JSON.parse(readFileSync(join(pagesDir, name, 'score.json'), 'utf8')); } catch {}
+        out.push({ name, target, forged: true, score: score ? { total: score.total, pixel: score.pixel, grade: score.grade } : null });
+      }
+    }
+    return json(res, 200, { host, pages: out });
+  }
+
   if (req.method === 'GET' && u.pathname === '/api/sites') {
     // 已侦察站点清单（有 atlas.json 的 host）——控制台切换器数据源
     const wsDir = WORKSPACE;
