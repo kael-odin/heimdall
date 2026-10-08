@@ -35,6 +35,7 @@ const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.h
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
 const liveHealth = ref(null);    // 最新活镜像体检（/api/live-health/:host，导出时生成）
 const lastVerify = ref(null);    // 最近一次全站体检结果（/api/verify）
+const liveRebuild = ref(false);  // 导出活镜像前先重建 live 页面
 const liveHealthHost = ref('');   // liveHealth 对应的 host（切站后避免串数据）
 const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
@@ -765,7 +766,7 @@ function runLiveExport() {
   statusText.value = '活镜像导出中 · 约 2-5 分钟（HAR 合并 + 图片本地化 + 体检）';
   (async () => {
     try {
-      const r = await fetch(API + '/api/live-export', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, root: 'mirror' }) });
+      const r = await fetch(API + '/api/live-export', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, root: 'mirror', rebuild: liveRebuild.value }) });
       const { taskId, error } = await r.json();
       if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '活镜像导出失败：' + error; return; }
       const es = new EventSource(sseUrl(taskId));
@@ -1083,6 +1084,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <h3>活镜像导出</h3>
       <p v-if="liveHealth">最近：{{ liveHealth.bundle }} · 缺口 {{ liveHealth.assets?.unresolved ?? 0 }}</p>
       <p v-else>离线完整包：图片本地化 + HAR 回放 + drop-in 根路径</p>
+      <label class="sw" style="margin-bottom:8px;display:flex"><input type="checkbox" v-model="liveRebuild" /><span>先重建 live 页面（站点改版后勾选）</span></label>
       <button class="wv-primary" @click="runLiveExport">导出完整离线包</button>
     </div>
     <div class="report-card hud-panel">
