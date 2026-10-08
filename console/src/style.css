@@ -30,6 +30,28 @@
   --pad: 14px;
   --dur: 180ms;
 }
+/* 浅色主题（data-theme="light"）：观测站日间模式 */
+[data-theme="light"] {
+  --abyss: #F4F6FA;
+  --dust: #FFFFFF;
+  --muted: #E8ECF2;
+  --cyan: #0891B2;
+  --cyan-dim: rgba(8, 145, 178, .5);
+  --cyan-line: rgba(8, 145, 178, .25);
+  --amber: #B45309;
+  --violet: #7C3AED;
+  --green: #059669;
+  --red: #DC2626;
+  --text: #0F172A;
+  --text-dim: #475569;
+  --text-faint: #94A3B8;
+}
+[data-theme="light"] .hud-panel,
+[data-theme="light"] .dock { background: #FFFFFF; }
+[data-theme="light"] .brand { text-shadow: none; }
+[data-theme="light"] .stat b { text-shadow: none; }
+[data-theme="light"] .hud-rule::after { box-shadow: none; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #app { height: 100%; background: var(--abyss); color: var(--text); font-family: var(--font-cn); overflow: hidden; }
 ::selection { background: rgba(34, 211, 238, .3); }

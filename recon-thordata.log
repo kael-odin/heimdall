@@ -1,0 +1,13 @@
+[0/4] calibrate origin
+  target https://www.thordata.com -> origin https://www.thordata.com (dir thordata.com)
+@@EVENT@@{"kind":"calibrated","origin":"https://www.thordata.com","host":"thordata.com"}
+[1/4] sitemap
+  sitemap urls (same-origin): 500
+@@EVENT@@{"kind":"sitemap","count":500}
+[2/4] BFS crawl
+[3/4] edges
+[4/4] atlas.json
+
+DONE 0 pages / 0 edges -> workspace\thordata.com\recon
+  by type: {}
+@@EVENT@@{"kind":"done","pages":0,"edges":0,"host":"thordata.com","byType":{}}

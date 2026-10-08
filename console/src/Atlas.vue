@@ -6,13 +6,12 @@
  * live 模式：POST /api/recon → SSE 事件流 → 节点逐个弹入生长
  * 点星球 = 锻造该页；「锻造内环」= 批量并行
  */
-import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
 import Graph3D from './Graph3D.vue';
 
-const TYPE_COLOR = {
-  marketing: '#22D3EE', pricing: '#F59E0B', doc: '#7B8CA6',
-  listing: '#8B5CF6', auth: '#F87171', legal: '#4B5563',
-};
+import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
+const PAGE_TYPES = PT;
+const TYPE_COLOR = Object.fromEntries(Object.entries(PAGE_TYPES).map(([k, v]) => [k, v.color]));
 // 引擎 API 直连（vite proxy 会缓冲实时 SSE；引擎侧 CORS 已开放）
 const API = 'http://127.0.0.1:8900';
 
@@ -30,6 +29,45 @@ const sites = ref([]);          // 已侦察站点清单（/api/sites）
 const engine = ref({ ok: false, recon: null, forge: null });   // 引擎状态灯
 const autoRotate = ref(true);   // 星图自转开关
 const showPanel = ref(true);    // 左侧仪表面板折叠
+const pagesListOpen = ref(false);
+const plSelected = ref(new Set());
+function plToggle(id) { const s = new Set(plSelected.value); s.has(id) ? s.delete(id) : s.add(id); plSelected.value = s; }
+function plSelectAll() { const s = new Set(plSelected.value); nodes.filter(n => n.forgeState !== 'done').forEach(n => s.add(n.id)); plSelected.value = s; }
+async function forgeChecked() {
+  const targets = nodes.filter(n => plSelected.value.has(n.id) && n.forgeState !== 'done');
+  statusText.value = `清单锻造 ${targets.length} 页`;
+  const q = [...targets]; let done = 0;
+  const worker = async () => { while (q.length) { const n = q.shift(); await startForge(n); done++; statusText.value = `清单锻造 ${done}/${targets.length}`; } };
+  await Promise.all([worker(), worker()]);
+  statusText.value = '清单锻造完成'; plSelected.value = new Set();
+  setTimeout(() => { statusText.value = ''; }, 3000);
+}
+const theme = ref(localStorage.getItem('heimdall-theme') ?? 'dark');   // 深色/浅色
+function applyTheme(t) {
+  theme.value = t;
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('heimdall-theme', t);
+}
+function toggleTheme() { applyTheme(theme.value === 'dark' ? 'light' : 'dark'); }
+const selected = ref(null);          // 当前选中星球（点星=选中）
+const detailTab = ref('overview');   // 详情面板 tab
+const detailIntel = ref(null);       // 已锻页 intel.json
+const detailScore = ref(null);       // 已锻页 score.json
+const detailSeo = computed(() => selected.value?.seoLite ?? null);
+const seoChecks = computed(() => {
+  const sl = detailSeo.value;
+  if (!sl) return null;
+  const tLen = (sl.title ?? '').length;
+  const dLen = (sl.description ?? '').length;
+  return {
+    title: { ok: tLen >= 10 && tLen <= 65, msg: tLen + ' 字符（建议 10-65）' },
+    desc: { ok: dLen >= 50 && dLen <= 165, msg: dLen ? dLen + ' 字符（建议 50-165）' : '缺失' },
+    h1: { ok: sl.h1Count === 1, msg: sl.h1Count + ' 个（建议恰好 1 个）' },
+    alt: { ok: (sl.imgNoAlt ?? 0) === 0, msg: sl.imgCount ? sl.imgNoAlt + '/' + sl.imgCount + ' 缺失' : '无图片' },
+    og: { ok: !!sl.ogTitle, msg: sl.ogTitle ? 'og:title 存在' : '缺失' },
+    lang: { ok: !!sl.lang, msg: sl.lang || '缺失' },
+  };
+});
 
 // 3D 图数据（Graph3D 消费）
 const gNodes = ref([]);
@@ -253,10 +291,18 @@ function liveUrl(f) {
 }
 
 function onNodeClick(node) {
-  if (node?.url) startForge(node);
+  if (!node?.url) return;
+  selected.value = node;                      // 点星 = 选中，打开详情剖析面板
+  detailTab.value = 'overview';
+  forge.value = null;                          // 关闭旧锻造视图
+  detailIntel.value = null; detailScore.value = null;
+  const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
+  fetch(`/${host.value}/pages/${pageName}/intel/intel.json`).then(r => r.ok ? r.json() : null).then(j => { if (j && selected.value === node) detailIntel.value = j; }).catch(() => {});
+  fetch(`/${host.value}/pages/${pageName}/score.json`).then(r => r.ok ? r.json() : null).then(j => { if (j && selected.value === node) detailScore.value = j; }).catch(() => {});
 }
 
 onMounted(() => {
+  applyTheme(theme.value);
   loadSites(); pollEngine();
   // 默认载入上次侦察结果
   fetch('/apify.com/recon/atlas.json').then(r => r.ok ? r.json() : Promise.reject()).then(buildStatic).catch(() => {});
@@ -283,7 +329,7 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
     <div class="panel-title">OBSERVATORY · 仪表面板<button class="panel-collapse" @click="showPanel = false" title="收起">—</button></div>
     <div class="panel-sec">
       <div class="panel-sec-name">图例 · 页面类型</div>
-      <div class="legend"><span class="lg"><i style="background:#22D3EE"></i>营销页</span><span class="lg"><i style="background:#F59E0B"></i>定价页</span><span class="lg"><i style="background:#8B5CF6"></i>列表页</span><span class="lg"><i style="background:#7B8CA6"></i>文档</span><span class="lg"><i style="background:#F87171"></i>登录</span></div>
+      <div class="legend"><span class="lg" v-for="(t, k) in PAGE_TYPES" :key="k"><i :style="{ background: t.color }"></i>{{ t.cn }}</span></div>
     </div>
     <div class="panel-sec">
       <div class="panel-sec-name">显示</div>
@@ -298,7 +344,7 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
   <button class="panel-open" v-if="!showPanel" @click="showPanel = true" title="仪表面板">☰</button>
 
   <div class="seek hud-panel">
-    <span class="seek-caret">▾</span>
+    <button class="theme-btn" @click="toggleTheme" :title="theme === 'dark' ? '切浅色' : '切深色'">{{ theme === 'dark' ? '☾' : '☀' }}</button>
     <input v-model="host" placeholder="输入目标域名 · apify.com" spellcheck="false" @keyup.enter="startRecon" />
     <button @click="startRecon">侦察</button>
   </div>
@@ -306,74 +352,159 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
   <!-- 已侦察站点切换 -->
   <div class="sites" v-if="sites.length">
     <span class="sites-label">已侦察：</span>
-    <button v-for="s in sites" :key="s.host" class="site-btn" :class="{ active: s.host === host }" @click="pickSite(s)" :title="`${s.forged}/${s.pages} 页已锻造`">
+    <button v-for="s in sites" :key="s.host" class="site-btn" :class="{ active: s.host === host }" @click="pickSite(s); pagesListOpen = true" :title="`${s.forged}/${s.pages} 页已锻造`">
       {{ s.host }}<em>{{ s.forged }}F</em>
     </button>
+    <button class="site-btn list-toggle" :class="{ active: pagesListOpen }" @click="pagesListOpen = !pagesListOpen">页面清单</button>
   </div>
 
-  <!-- 施工舱 -->
-  <div class="dock" v-if="forge">
+  <!-- 页面清单（列表式查看 + 勾选锻造） -->
+  <div class="pages-list hud-panel" v-if="pagesListOpen">
+    <div class="pl-head">
+      <span>页面清单 · {{ host }}</span>
+      <span class="pl-actions">
+        <button @click="plSelectAll" title="全选未锻页">全选未锻</button>
+        <button @click="plSelected.clear(); syncPlSel()" title="清空选择">清空</button>
+        <button class="pl-forge" :disabled="!plSelected.size" @click="forgeChecked">锻造选中 ({{ plSelected.size }})</button>
+      </span>
+    </div>
+    <div class="pl-rows">
+      <div class="pl-row" v-for="n in nodes" :key="n.id">
+        <label class="pl-check"><input type="checkbox" :checked="plSelected.has(n.id)" @change="plToggle(n.id)" /></label>
+        <span class="pl-type" :style="{ color: typeColor(n.type) }">{{ typeCn(n.type) }}</span>
+        <span class="pl-path" @click="onNodeClick(n)">{{ n.path }}</span>
+        <span class="pl-state">{{ n.forgeState === 'done' ? '✓ 已锻' : n.forgeState === 'running' ? '锻造中' : n.forgeState === 'failed' ? '失败' : '' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 页面详情剖析面板（点星 = 选中；锻造是其中一项功能） -->
+  <div class="dock" v-if="selected">
     <div class="dock-head">
       <div>
-        <div class="dock-title">{{ forge.pageName }}</div>
-        <div class="dock-url">{{ forge.url }}</div>
+        <div class="dock-title">{{ selected.path === '/' ? 'home' : selected.path.slice(1) }}</div>
+        <div class="dock-url">{{ selected.url }}</div>
       </div>
-      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="并行批量锻造内外环前 10 页">批量锻造 10 页</button><button class="dock-close" @click="forge = null">✕</button></div>
+      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="并行批量锻造内外环前 10 页">批量锻造 10 页</button><button class="dock-close" @click="selected = null">✕</button></div>
     </div>
 
-    <div class="stages">
-      <div class="stage" v-for="(label, key, i) in { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' }" :key="key"
-           :class="forge.stages[key]">
-        <span class="idx">{{ String(i + 1).padStart(2, '0') }}</span>{{ label }}<span class="dot"></span>
+    <div class="tabs">
+      <button class="tab" :class="{ on: detailTab === 'overview' }" @click="detailTab = 'overview'">概览</button>
+      <button class="tab" :class="{ on: detailTab === 'seo' }" @click="detailTab = 'seo'">SEO 剖析</button>
+      <button class="tab" :class="{ on: detailTab === 'forge' }" @click="detailTab = 'forge'">锻造克隆</button>
+    </div>
+
+    <!-- 概览 tab -->
+    <div v-show="detailTab === 'overview'">
+      <div class="ov-grid">
+        <div class="ov-item"><span class="ov-k">类型</span><span class="ov-v" :style="{ color: typeColor(selected.type) }">{{ typeCn(selected.type) }}</span></div>
+        <div class="ov-item"><span class="ov-k">层级深度</span><span class="ov-v">{{ selected.depth ?? '-' }}</span></div>
+        <div class="ov-item"><span class="ov-k">锻造状态</span><span class="ov-v">{{ selected.forgeState === 'done' ? '已锻造' : selected.forgeState === 'running' ? '锻造中' : selected.forgeState === 'failed' ? '失败' : '未锻造' }}</span></div>
+        <div class="ov-item" v-if="detailScore"><span class="ov-k">还原度</span><span class="ov-v" :style="{ color: detailScore.grade === 'A' ? 'var(--green)' : 'var(--amber)' }">{{ detailScore.total }}% {{ detailScore.grade }}</span></div>
+      </div>
+      <div class="ov-sec" v-if="selected.seoLite || selected.title">
+        <div class="panel-sec-name">页面标题</div>
+        <div class="ov-text">{{ selected.title || selected.seoLite?.title || '-' }}</div>
+      </div>
+      <div class="ov-sec" v-if="selected.seoLite?.description || detailIntel?.meta?.description">
+        <div class="panel-sec-name">Meta Description</div>
+        <div class="ov-text">{{ selected.seoLite?.description || detailIntel?.meta?.description }}</div>
+      </div>
+      <div class="ov-sec" v-if="detailIntel">
+        <div class="panel-sec-name">情报摘要（已入库）</div>
+        <div class="ov-text">标题 {{ detailIntel.headings?.length ?? 0 }} · 价格 {{ detailIntel.prices?.length ?? 0 }} · CTA {{ detailIntel.cta?.length ?? 0 }} · 链接 {{ detailIntel.links?.length ?? 0 }}</div>
+      </div>
+      <div class="forge-cta" v-if="selected.forgeState !== 'done' && selected.forgeState !== 'running'">
+        <button class="forge-btn" @click="openForge">⚡ 开始锻造此页</button>
+        <div class="forge-note">捕获 → 校准 → 评分，全程约 2-3 分钟；也可点「批量锻造 10 页」</div>
+      </div>
+      <div class="forge-cta" v-else-if="selected.forgeState === 'done'">
+        <button class="forge-btn alt" @click="detailTab = 'forge'">查看锻造详情 →</button>
       </div>
     </div>
 
-    <div class="verdict hud-panel" v-if="forge.score">
-      <div class="verdict-label">FIDELITY VERDICT · 还原度判定</div>
-      <div class="score-num" :class="forge.score.grade === 'A' ? 'ok' : forge.score.grade === 'B' ? 'mid' : 'bad'">
-        {{ forge.score.total }}<small>%</small>
+    <!-- SEO tab -->
+    <div v-show="detailTab === 'seo'">
+      <div class="seo-note">基础项来自侦察快照；og/canonical 等深度项在锻造捕获后解锁。</div>
+      <div class="seo-list" v-if="selected.seoLite">
+        <div class="seo-row" :class="seoChecks.title.ok ? 'ok' : 'warn'"><span class="seo-k">Title</span><span>{{ seoChecks.title.msg }}</span></div>
+        <div class="seo-row" :class="seoChecks.desc.ok ? 'ok' : 'warn'"><span class="seo-k">Description</span><span>{{ seoChecks.desc.msg }}</span></div>
+        <div class="seo-row" :class="seoChecks.h1.ok ? 'ok' : 'warn'"><span class="seo-k">H1 数量</span><span>{{ seoChecks.h1.msg }}</span></div>
+        <div class="seo-row" :class="seoChecks.alt.ok ? 'ok' : 'warn'"><span class="seo-k">图片 Alt</span><span>{{ seoChecks.alt.msg }}</span></div>
+        <div class="seo-row" :class="seoChecks.og.ok ? 'ok' : 'warn'"><span class="seo-k">OG 标签</span><span>{{ seoChecks.og.msg }}</span></div>
+        <div class="seo-row" :class="seoChecks.lang.ok ? 'ok' : 'warn'"><span class="seo-k">lang 属性</span><span>{{ seoChecks.lang.msg }}</span></div>
       </div>
-      <div class="score-break">
-        <span>像素 {{ (forge.score.pixel * 100).toFixed(1) }}%</span>
-        <span>结构 {{ (forge.score.dom?.dom * 100).toFixed(1) }}%</span>
-        <span v-if="forge.score.data">数据 {{ (forge.score.data.data * 100).toFixed(1) }}%</span>
-        <span class="grade">评级 {{ forge.score.grade }}</span>
-      </div>
-      <div class="refine" v-if="forge.score.breakdown">
-        <div class="refine-bar"><i :style="{ width: (forge.score.breakdown.refinable * 100) + '%' }"></i></div>
-        <span>可修静态差异 {{ (forge.score.breakdown.refinable * 100).toFixed(0) }}% · 动画噪声 {{ (forge.score.breakdown.dynamicShare * 100).toFixed(0) }}%</span>
-      </div>
+      <div class="seo-note" v-else>该页侦察于旧版引擎（无 SEO 画像）。重新侦察本站即可获得全部页面的 SEO 剖析。</div>
     </div>
-    <div class="verdict pending hud-panel" v-else-if="!forge.done && !forge.error"><span class="scan"></span>锻造中 …</div>
-    <div class="dock-err hud-panel" v-if="forge.error">{{ forge.error }}</div>
-    <div class="fixup-curve" v-if="forge.skipReason">
-      <div class="curve-title">AI 校准</div>
-      <div class="curve-row">{{ forge.skipReason }}</div>
-    </div>
-    <div class="fixup-curve" v-if="forge.rounds.length">
-      <div class="curve-title">AI 校准曲线</div>
-      <div class="curve-row" v-for="r in forge.rounds" :key="r.round">
-        校准 {{ r.round }}：{{ r.before }}% → {{ r.after }}% <b :class="r.kept ? 'kept' : 'rolled'">{{ r.kept ? '保留' : '回滚' }}</b>
-      </div>
-    </div>
-    <div class="intel-bar" v-if="forge.intel">情报包：标题 {{ forge.intel.headings }} · 价格 {{ forge.intel.prices }} · CTA {{ forge.intel.cta }} · 链接 {{ forge.intel.links }}</div>
 
-    <div class="screens" v-if="forge.done">
-      <div class="pane">
-        <div class="pane-label">SOURCE · 原站</div>
-        <img :src="`/${host}/pages/${forge.pageName}/shot-src.png`" alt="source" />
+    <!-- 锻造 tab -->
+    <div v-show="detailTab === 'forge'">
+      <div class="forge-cta" v-if="!forge && selected.forgeState !== 'done' && selected.forgeState !== 'running'">
+        <button class="forge-btn" @click="openForge">⚡ 开始锻造此页</button>
+        <div class="forge-note">六阶段：捕获骨架 → 注入皮肤 → 渲染校准 → AI 校准 → 像素定谳 → 情报入库</div>
       </div>
-      <div class="pane">
-        <div class="pane-label">MIRROR · 镜像</div>
-        <img :src="`/${host}/pages/${forge.pageName}/shot-clone.png`" alt="clone" />
+      <div class="forge-cta" v-if="!forge && selected.forgeState === 'done'">
+        <button class="forge-btn alt" @click="openForge">↻ 重新锻造此页</button>
       </div>
+
+      <template v-if="forge">
+        <div class="stages">
+          <div class="stage" v-for="(label, key, i) in { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' }" :key="key"
+               :class="forge.stages[key]">
+            <span class="idx">{{ String(i + 1).padStart(2, '0') }}</span>{{ label }}<span class="dot"></span>
+          </div>
+        </div>
+
+        <div class="verdict hud-panel" v-if="forge.score">
+          <div class="verdict-label">FIDELITY VERDICT · 还原度判定</div>
+          <div class="score-num" :class="forge.score.grade === 'A' ? 'ok' : forge.score.grade === 'B' ? 'mid' : 'bad'">
+            {{ forge.score.total }}<small>%</small>
+          </div>
+          <div class="score-break">
+            <span>像素 {{ (forge.score.pixel * 100).toFixed(1) }}%</span>
+            <span>结构 {{ (forge.score.dom?.dom * 100).toFixed(1) }}%</span>
+            <span v-if="forge.score.data">数据 {{ (forge.score.data.data * 100).toFixed(1) }}%</span>
+            <span class="grade">评级 {{ forge.score.grade }}</span>
+          </div>
+          <div class="refine" v-if="forge.score.breakdown">
+            <div class="refine-bar"><i :style="{ width: (forge.score.breakdown.refinable * 100) + '%' }"></i></div>
+            <span>可修静态差异 {{ (forge.score.breakdown.refinable * 100).toFixed(0) }}% · 动画噪声 {{ (forge.score.breakdown.dynamicShare * 100).toFixed(0) }}%</span>
+          </div>
+        </div>
+        <div class="verdict pending hud-panel" v-else-if="!forge.done && !forge.error"><span class="scan"></span>锻造中 …</div>
+        <div class="dock-err hud-panel" v-if="forge.error">{{ forge.error }}</div>
+        <div class="fixup-curve" v-if="forge.skipReason">
+          <div class="curve-title">AI 校准</div>
+          <div class="curve-row">{{ forge.skipReason }}</div>
+        </div>
+        <div class="fixup-curve" v-if="forge.rounds.length">
+          <div class="curve-title">AI 校准曲线</div>
+          <div class="curve-row" v-for="r in forge.rounds" :key="r.round">
+            校准 {{ r.round }}：{{ r.before }}% → {{ r.after }}% <b :class="r.kept ? 'kept' : 'rolled'">{{ r.kept ? '保留' : '回滚' }}</b>
+          </div>
+        </div>
+        <div class="intel-bar" v-if="forge.intel">情报包：标题 {{ forge.intel.headings }} · 价格 {{ forge.intel.prices }} · CTA {{ forge.intel.cta }} · 链接 {{ forge.intel.links }}</div>
+
+        <div class="screens" v-if="forge.done">
+          <div class="pane">
+            <div class="pane-label">SOURCE · 原站</div>
+            <img :src="`/${host}/pages/${forge.pageName}/shot-src.png`" alt="source" />
+          </div>
+          <div class="pane">
+            <div class="pane-label">MIRROR · 镜像</div>
+            <img :src="`/${host}/pages/${forge.pageName}/shot-clone.png`" alt="clone" />
+          </div>
+        </div>
+        <div class="compare-link" v-if="forge.done">
+          <a :href="`/${host}/compare.html?p=${forge.pageName}`" target="_blank" rel="noopener">⇔ 同步滚动对比</a>
+          <span class="sep">·</span>
+          <a :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">⚡ 活镜像</a>
+          <span class="sep">·</span>
+          <a :href="`/${host}/pages/${forge.pageName}/clone/index.html`" target="_blank" rel="noopener">死镜像</a>
+        </div>
+        <iframe v-if="forge.done" :key="forge.taskId" class="live-clone" :src="`/${host}/pages/${forge.pageName}/clone/index.html`" title="living clone"></iframe>
+      </template>
     </div>
-    <div class="compare-link" v-if="forge.done">
-      <a :href="`/${host}/compare.html?p=${forge.pageName}`" target="_blank" rel="noopener">⇔ 同步滚动对比</a>
-      <span class="sep">·</span>
-      <a :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">⚡ 活镜像</a>
-    </div>
-    <iframe v-if="forge.done" :key="forge.taskId" class="live-clone" :src="`/${host}/pages/${forge.pageName}/clone/index.html`" title="living clone"></iframe>
   </div>
 
   <a class="archive-link" v-if="hudPages > 0" :href="`/${host}/index.html`" target="_blank" rel="noopener">克隆档案 · {{ hudPages }} 页</a>
@@ -396,6 +527,8 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
 .status.live { color: var(--amber); border-color: rgba(245,158,11,.4); animation: hud-pulse 1.2s ease-in-out infinite; }
 
 .seek { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; z-index: 5; background: rgba(11,11,16,.85); }
+.theme-btn { background: transparent; border: 0; color: var(--text-dim); font-size: 15px; padding: 0 6px 0 12px; cursor: pointer; }
+.theme-btn:hover { color: var(--cyan); }
 .seek-caret { display: flex; align-items: center; padding: 0 4px 0 12px; color: var(--cyan-dim); font-size: 12px; }
 .seek input { width: 320px; padding: 11px 14px; background: transparent; border: 0; color: var(--text); font-family: var(--font-mono); font-size: 14px; letter-spacing: .04em; outline: none; }
 .seek input::placeholder { color: var(--text-faint); }
@@ -430,6 +563,24 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
 .panel-open { position: fixed; left: 28px; bottom: 64px; z-index: 6; width: 34px; height: 34px; background: rgba(11,11,16,.82); border: 1px solid var(--cyan-line); border-radius: var(--r); color: var(--cyan); cursor: pointer; font-size: 14px; }
 
 /* 快捷键条 */
+/* 页面清单 */
+.pages-list { position: fixed; top: 116px; left: 50%; transform: translateX(-50%); width: 560px; max-height: 60vh; z-index: 7; padding: 12px 14px; display: flex; flex-direction: column; }
+.pl-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: .12em; margin-bottom: 9px; }
+.pl-actions { display: flex; gap: 6px; }
+.pl-actions button { background: rgba(148,163,184,.1); border: 1px solid var(--cyan-line); color: var(--text-dim); padding: 3px 9px; border-radius: var(--r); cursor: pointer; font-size: 11px; }
+.pl-actions button:hover { color: var(--cyan); border-color: var(--cyan-dim); }
+.pl-actions .pl-forge { border-color: rgba(245,158,11,.5); color: var(--amber); }
+.pl-actions .pl-forge:disabled { opacity: .4; cursor: not-allowed; }
+.pl-rows { overflow-y: auto; max-height: 48vh; }
+.pl-row { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: var(--r); font-size: 12px; }
+.pl-row:hover { background: rgba(34,211,238,.05); }
+.pl-check input { accent-color: var(--cyan); }
+.pl-type { width: 64px; font-size: 11px; flex-shrink: 0; }
+.pl-path { font-family: var(--font-mono); color: var(--text); cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-path:hover { color: var(--cyan); }
+.pl-state { font-size: 10px; color: var(--green); width: 52px; text-align: right; flex-shrink: 0; }
+.list-toggle.active { border-color: var(--cyan); color: var(--cyan); }
+
 .keys { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 5; padding: 7px 18px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: rgba(11,11,16,.72); font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: .08em; }
 .keys .k-amber { color: var(--amber); }
 
@@ -437,6 +588,36 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
 .dock-err { margin-top: 12px; padding: 11px 13px; border: 1px solid rgba(239,68,68,.45); border-radius: var(--r); color: var(--red); font-size: 12.5px; background: rgba(239,68,68,.05); }
 
 /* 施工舱 */
+/* 详情 tabs */
+.tabs { display: flex; gap: 6px; margin-top: 16px; }
+.tab { flex: 1; padding: 8px 0; background: rgba(30,30,35,.5); border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); color: var(--text-faint); font-size: 12.5px; cursor: pointer; transition: all var(--dur); }
+.tab:hover { color: var(--text); }
+.tab.on { border-color: var(--cyan); color: var(--cyan); background: rgba(34,211,238,.06); }
+
+/* 概览 */
+.ov-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.ov-item { padding: 9px 11px; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(30,30,35,.5); }
+.ov-k { display: block; font-size: 10px; color: var(--text-faint); letter-spacing: .14em; margin-bottom: 3px; font-family: var(--font-mono); }
+.ov-v { font-size: 13px; color: var(--text); }
+.ov-sec { margin-top: 13px; }
+.ov-sec .panel-sec-name { margin-bottom: 5px; }
+.ov-text { font-size: 12px; color: var(--text-dim); line-height: 1.7; }
+.forge-cta { margin-top: 16px; text-align: center; }
+.forge-btn { width: 100%; padding: 13px 0; background: linear-gradient(180deg, rgba(34,211,238,.22), rgba(34,211,238,.06)); border: 1px solid var(--cyan); border-radius: var(--r); color: var(--cyan); font-size: 14.5px; letter-spacing: .2em; cursor: pointer; transition: all var(--dur); }
+.forge-btn:hover { box-shadow: 0 0 26px rgba(34,211,238,.35); }
+.forge-btn.alt { background: rgba(148,163,184,.08); border-color: rgba(148,163,184,.4); color: var(--text-dim); }
+.forge-note { margin-top: 8px; font-size: 11px; color: var(--text-faint); line-height: 1.6; }
+
+/* SEO 检查清单 */
+.seo-note { margin-top: 14px; padding: 9px 12px; border: 1px dashed var(--cyan-line); border-radius: var(--r); color: var(--text-faint); font-size: 11.5px; line-height: 1.6; }
+.seo-list { margin-top: 14px; }
+.seo-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 11px; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); margin-bottom: 7px; font-size: 12px; }
+.seo-row .seo-k { font-family: var(--font-mono); color: var(--text-dim); }
+.seo-row.ok { border-color: rgba(52,211,153,.35); }
+.seo-row.ok .seo-k { color: var(--green); }
+.seo-row.warn { border-color: rgba(245,158,11,.4); }
+.seo-row.warn .seo-k { color: var(--amber); }
+
 .dock { position: fixed; right: 0; top: 0; bottom: 0; width: 32%; min-width: 400px; background: linear-gradient(180deg, rgba(20,20,26,.97), rgba(11,11,16,.98)); border-left: 1px solid var(--cyan-line); backdrop-filter: blur(14px); padding: 20px 20px 28px; overflow-y: auto; z-index: 10; }
 .dock::before { content: ''; position: sticky; top: 0; display: block; height: 2px; margin: -20px -20px 18px; background: linear-gradient(90deg, var(--cyan), rgba(34,211,238,.05)); opacity: .7; }
 .dock-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }

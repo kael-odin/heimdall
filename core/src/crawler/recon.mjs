@@ -44,11 +44,19 @@ const THUMBS = join(OUT, 'thumbs');
 mkdirSync(THUMBS, { recursive: true });
 function classify(path) {
   if (/pricing|plans?|billing/i.test(path)) return 'pricing';
-  if (/blog|docs?|article|guide|tutorial|university|help/i.test(path)) return 'doc';
-  if (/store|marketplace|actors?|templates|integrations/i.test(path)) return 'listing';
+  if (/blog|news|article|post|press/i.test(path)) return 'blog';
+  if (/case-stud|customer|success-stor/i.test(path)) return 'case_study';
+  if (/career|jobs?|hiring|recruit/i.test(path)) return 'career';
+  if (/help|faq|support|tutorial|university|academy/i.test(path)) return 'help';
+  if (/docs?|guide|manual|reference/i.test(path)) return 'doc';
+  if (/tools?|free-|checker|generator|calculator/i.test(path)) return 'tools';
+  if (/product|feature|solution/i.test(path)) return 'product';
+  if (/store|marketplace|actors?|templates|integrations|apps/i.test(path)) return 'listing';
   if (/login|signup|sign-up|register|account|console|dashboard/i.test(path)) return 'auth';
-  if (/legal|terms|privacy|cookie|imprint/i.test(path)) return 'legal';
-  return 'marketing';
+  if (/legal|terms|privacy|cookie|imprint|acceptable-use/i.test(path)) return 'legal';
+  if (/about|company|team|contact|partners?/i.test(path)) return 'company';
+  if (/\.\w{2,4}$|^\/$|^\/?$/.test(path)) return 'marketing';
+  return 'generic';
 }
 
 // ---------- 1. sitemap 先行 ----------
@@ -56,7 +64,7 @@ log('[1/4] sitemap');
 const sitemapUrls = [];
 try {
   for (const smUrl of [ORIGIN + '/sitemap.xml', ORIGIN + '/sitemap_index.xml']) {
-    const res = await fetch(smUrl, { headers: { 'User-Agent': UA } });
+    const res = await fetch(smUrl, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
     if (!res.ok) continue;
     const text = await res.text();
     const locs = [...text.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1].trim());
@@ -64,7 +72,7 @@ try {
     if (/sitemapindex/i.test(text)) {
       for (const child of locs.slice(0, 5)) {
         try {
-          const r2 = await fetch(child, { headers: { 'User-Agent': UA } });
+          const r2 = await fetch(child, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
           const t2 = await r2.text();
           for (const m of t2.matchAll(/<loc>([^<]+)<\/loc>/g)) sitemapUrls.push(m[1].trim());
         } catch {}
@@ -73,7 +81,7 @@ try {
     if (sitemapUrls.length) break;
   }
 } catch {}
-const sitemapSame = [...new Set(sitemapUrls.filter(u => u.startsWith(ORIGIN)))];
+const sitemapSame = [...new Set(sitemapUrls.filter(u => u.startsWith(ORIGIN)))].slice(0, 500);
 log(`  sitemap urls (same-origin): ${sitemapSame.length}`);
 emit({ kind: 'sitemap', count: sitemapSame.length });
 
@@ -92,7 +100,7 @@ for (const u of sitemapSame) smQueue.push({ url: u, depth: 99 });
 let idSeq = 0;
 const addNode = (url, depth, title) => {
   if (nodes.has(url)) return;
-  nodes.set(url, { id: `n${String(idSeq++).padStart(3, '0')}`, url, path: pathOf(url), title: title || pathOf(url), type: classify(pathOf(url)), depth });
+  nodes.set(url, { id: `n${String(idSeq++).padStart(3, '0')}`, url, path: pathOf(url), title: title || pathOf(url), type: classify(pathOf(url)), depth, seoLite });
 };
 
 async function visit({ url, depth }) {
@@ -102,6 +110,16 @@ async function visit({ url, depth }) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 });
     await page.waitForTimeout(400);
     const title = await page.title().catch(() => '');
+    // SEO 轻量画像（无额外请求，纯 DOM 查询）
+    const seoLite = await page.evaluate(() => ({
+      description: document.querySelector('meta[name="description"]')?.content?.slice(0, 200) ?? '',
+      h1Count: document.querySelectorAll('h1').length,
+      imgCount: document.querySelectorAll('img').length,
+      imgNoAlt: document.querySelectorAll('img:not([alt])').length,
+      ogTitle: document.querySelector('meta[property="og:title"]')?.content?.slice(0, 120) ?? '',
+      canonical: !!document.querySelector('link[rel="canonical"]'),
+      lang: document.documentElement.lang || '',
+    })).catch(() => null);
     addNode(url, depth, title);
     const node = nodes.get(url);
     emit({ kind: 'page', ...node });
