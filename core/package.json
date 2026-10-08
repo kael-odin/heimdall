@@ -19,7 +19,9 @@
     "verify": "node src/verify/verify.mjs",
     "test": "node --test",
     "lint": "node scripts/check-syntax.mjs",
-    "smoke": "node scripts/smoke-forge.mjs"
+    "smoke": "node scripts/smoke-forge.mjs",
+    "live:export": "node src/live/export.mjs",
+    "live:serve": "node src/live/serve.mjs"
   },
   "keywords": [],
   "author": "",

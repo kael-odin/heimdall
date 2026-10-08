@@ -20,6 +20,7 @@
 | 全站批量锻造 | ✅ | queue.mjs 持久化队列，断点续跑，thordata 31/31、apify 60/60 |
 | 同步滚动对比 | ✅ | compare.html（1440px 统一视口，根除响应式变形） |
 | 控制台 | ✅ v2 | 工作台 IA：底部导航 星图/页面/任务/报告/设置；页面表格（搜索/筛选/批量克隆/逐页视觉分）；任务中心；报告中心；引擎地址与 Token 可配 |
+| 活镜像 L3 | ✅ v1 | `node src/live/export.mjs <host>` → 自包含部署包：零依赖 serve.mjs + HAR 回放 + Dockerfile/compose + checksums；离线模式可断原站运行（smoke 覆盖导出/离线启动/本地页面/CSS/404） |
 | 多视口验证 | ✅ v1 | `node src/verify/verify.mjs <host> <page>`；375/768/1440 全页 diff（apify storage 实测 91.0% B：桌面 98.2 / 平板 89.4 / 移动 78.4） |
 | SEO 审计 | ✅ v1 | `node src/seo/audit.mjs <host> --max 20` → seo.html/csv/json，40+ 规则、六分类评分 |
 | 质量门 | ✅ | `pnpm lint` / `pnpm test`（12 单测）/ `pnpm smoke`（fixture 离线 E2E，含 SEO 审计）+ GitHub Actions |
@@ -77,7 +78,7 @@ node src\crawler\fullshot.mjs <host>
 
 ## 6. 待办路线（按优先级）
 
-1. **活镜像 v2（L3 可部署）**：HAR 全网络录制 + Service Worker 拦截 + 导出 Docker/Edge 包（当前 /lm 仍是 POC）
+1. **活镜像 v2 增量**：Edge Worker 导出、SW 客户端拦截（可选）、API 回放策略细分（当前 L3 已具备 Docker/Node 部署 + HAR 回放）
 2. ~~资产 CAS 去重~~ ✅（2026-10-08：apify 节省 241MB / 48%，thordata 同步处理，队列自动执行）
 3. **多视口验证**：375/768/1440 全页 diff + 交互回放，替代单帧自评
 4. **活镜像深层交互**：apify store/use-cases 点击触发的被剥脚本下游引用（5-6 errs/页）——逐站第三方依赖白名单

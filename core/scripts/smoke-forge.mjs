@@ -10,7 +10,7 @@
  * 用法: node scripts/smoke-forge.mjs
  */
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -167,7 +167,39 @@ async function main() {
     assert.ok(seoJson.pages.length >= 2, 'audit should cover >=2 pages, got ' + seoJson.pages.length);
     assert.ok(seoJson.score > 0, 'audit score should be > 0');
 
-    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%', '| seo =', seoJson.score, '(', seoJson.summary.issues, 'issues )');
+    // 7) 活镜像 L3：导出可部署包 + 离线启动验证（不碰外网）
+    const bundleDir = join(dataDir, 'bundle');
+    const exp = spawnSync(process.execPath, ['src/live/export.mjs', '127.0.0.1', '--out', bundleDir, '--offline'], {
+      cwd: CORE,
+      env: { ...process.env, HEIMDALL_DATA_DIR: dataDir, HEIMDALL_LLM: '0' },
+      encoding: 'utf8',
+    });
+    assert.equal(exp.status, 0, 'live export failed: ' + String(exp.stderr || exp.stdout).slice(-500));
+    for (const name of ['serve.mjs', 'har.mjs', 'har.json', 'heimdall-live.json', 'landing.html', 'Dockerfile', 'docker-compose.yml', 'checksums.json']) {
+      assert.ok(existsSync(join(bundleDir, name)), 'bundle must contain ' + name);
+    }
+    const livePort = await freePort();
+    const live = spawn(process.execPath, ['serve.mjs', '--port', String(livePort), '--offline'], { cwd: bundleDir, stdio: ['ignore', 'pipe', 'pipe'] });
+    let liveLog = '';
+    live.stdout.on('data', d => { liveLog += d; });
+    live.stderr.on('data', d => { liveLog += d; });
+    try {
+      await waitFor(async () => (await fetch('http://127.0.0.1:' + livePort + '/__heimdall/health')).ok, { label: 'live bundle boot', timeout: 20_000 });
+      const health = await (await fetch('http://127.0.0.1:' + livePort + '/__heimdall/health')).json();
+      assert.equal(health.offline, true, 'offline mode flag');
+      const home = await fetch('http://127.0.0.1:' + livePort + '/lm/127.0.0.1/');
+      assert.equal(home.status, 200, 'live home status (log: ' + liveLog.slice(-300) + ')');
+      assert.ok((await home.text()).includes('Fixture Site'), 'live home must be the fixture page');
+      const cssRes = await fetch('http://127.0.0.1:' + livePort + '/static/127.0.0.1/pages/home/clone/styles/cssom.css');
+      assert.equal(cssRes.status, 200, 'live bundle must serve clone CSS');
+      const miss = await fetch('http://127.0.0.1:' + livePort + '/lm/127.0.0.1/never-captured');
+      assert.ok([404, 502].includes(miss.status), 'offline miss status: ' + miss.status);
+    } finally {
+      live.kill('SIGTERM');
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%', '| seo =', seoJson.score, '(', seoJson.summary.issues, 'issues )', '| live bundle ok');
   } finally {
     engine.kill('SIGTERM');
     fixture.close();

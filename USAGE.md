@@ -188,7 +188,41 @@ node src\verify\verify.mjs apify.com storage --threshold 85  :: CI 门控（综�
 实测 apify.com/storage：桌面 98.2%（A）/ 平板 89.4%（B）/ 移动 78.4%（C）→ 综合 91.0%（B）。
 这证明"单视口 95.9%"确实高估了真实保真度——移动端字体/换行/高度差是主要来源。
 
-## 15. 质量门（v2）
+## 15. 活镜像部署包（L3，v2）
+
+把站点导出成"可以直接部署"的活镜像包：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\live\export.mjs thordata.com                 :: 生成部署包
+node core\src\live\export.mjs thordata.com --offline       :: 离线模式（不回源）
+node core\src\live\export.mjs thordata.com --rebuild       :: 先重建 live 页面再打包
+```
+
+产物（`core/deliverable/<host>-live-<date>/`）：
+
+| 文件 | 说明 |
+|---|---|
+| `serve.mjs` + `har.mjs` | 零依赖 Node 服务器（本地快照 → HAR 回放 → 原站代理） |
+| `har.json` | 清洗后的 HAR（不含 cookie/authorization），原站重新部署后旧 chunk 仍可回放 |
+| `heimdall-live.json` | host/origin/port/offline/replayApi 配置 |
+| `site/live/**`、`site/static/**` | 活镜像页面 + 克隆页/CSS/资产/档案/SEO 报告 |
+| `landing.html` | 落地页（镜像/档案/对比/SEO 报告入口） |
+| `Dockerfile`、`docker-compose.yml` | 一键容器部署 |
+| `checksums.json` | 全文件 SHA-256 清单 |
+
+部署：
+
+```cmd
+cd core\deliverable\thordata.com-live-2026-10-08
+node serve.mjs --port 8080          :: 直接跑
+docker compose up -d                :: 或容器
+```
+
+路由：`/lm/<host>/**`（活镜像）、`/static/<host>/**`（克隆档案）、`/__heimdall/health`（健康检查）。
+离线模式：`--offline` 或配置 `offline: true`，未捕获资源明确 404，不回源。
+
+## 16. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

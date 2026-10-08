@@ -10,7 +10,7 @@
  * 用法: node src/differ/fixup.mjs <pageDir> [maxRounds=2] [clonePort=8961]
  */
 import { readFileSync, writeFileSync, existsSync, copyFileSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { spawn } from 'node:child_process';
 import { llmEnabled, llmVision } from '../llm.mjs';
 import { probeStyleDiff } from './style-probe.mjs';
@@ -27,8 +27,9 @@ const MAX_ROUNDS = Number(process.argv[3] ?? 2);
 const CLONE_PORT = Number(process.argv[4] ?? process.env.HEIMDALL_PORT ?? 8900);
 const CLONE_HTML = join(DIR, 'clone', 'index.html');
 // clone 页由 engine-server 常驻静态服务提供（/static/<workspace 相对路径>）
-const CLONE_REL = DIR.replace(/^[\\/]/, '').replace(/^workspace[\\/]/, '');
-const CLONE_URL = `http://127.0.0.1:${CLONE_PORT}/static/${CLONE_REL.split(/[\\/]/).join('/')}/clone/index.html`;
+// 兼容绝对/相对 DIR：CLONE_REL 始终相对 workspace（HEIMDALL_DATA_DIR 迁移后 DIR 变为绝对路径）
+const CLONE_REL = relative(WORKSPACE, resolve(DIR)).split(sep).join('/');
+const CLONE_URL = `http://127.0.0.1:${CLONE_PORT}/static/${CLONE_REL}/clone/index.html`;
 const FIXES_CSS = join(DIR, 'clone', 'styles', 'fixes.css');
 const FIXES_LINK = '<link rel="stylesheet" href="styles/fixes.css">';
 // 基线备份：回滚时直接还原截图/分数/热图，避免"清补丁→重截"过程中再遇渲染/缓存异常

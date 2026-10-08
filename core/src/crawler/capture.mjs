@@ -39,7 +39,19 @@ mkdirSync(join(OUT, 'styles'), { recursive: true });
 mkdirSync(join(OUT, 'assets'), { recursive: true });
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: VIEWPORT, userAgent: UA });
+// 全网络录制：HAR 供活镜像 v2 做本地资源回放（原站重新部署后旧 chunk 仍可用）
+let context;
+try {
+  context = await browser.newContext({
+    viewport: VIEWPORT,
+    userAgent: UA,
+    recordHar: { path: join(OUT, 'network.har'), content: 'embed' },
+  });
+} catch (e) {
+  console.warn('  HAR recording unavailable:', String(e).slice(0, 100));
+  context = await browser.newContext({ viewport: VIEWPORT, userAgent: UA });
+}
+const page = await context.newPage();
 
 console.log('[1/7] goto', TARGET);
 // domcontentloaded 而非 networkidle：持续轮询/长连接的页面 networkidle 永不达成，资源加载由后续扫掠兜底
@@ -172,6 +184,7 @@ const html = await page.content();
 writeFileSync(join(OUT, 'dom.html'), html);
 console.log(`    dom.html ${(html.length / 1024).toFixed(0)}KB`);
 
+await context.close().catch(() => {});
 await browser.close();
 
 // 下载资源矩阵（图片/图标/媒体/sprite/manifest；iframe/embed 保持在线引用）
