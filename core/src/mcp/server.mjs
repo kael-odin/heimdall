@@ -40,6 +40,7 @@ export const TOOLS = [
   { name: 'heimdall_tokens', description: '设计 token 提取', inputSchema: { type: 'object', properties: { host: str('站点 host'), pages: num('采样页数，默认 5') }, required: ['host'] } },
   { name: 'heimdall_components', description: '组件抽取（header/hero/pricing/faq/footer/cta）', inputSchema: { type: 'object', properties: { host: str('站点 host'), pages: num('来源页数，默认 2'), max: num('最多组件数') }, required: ['host'] } },
   { name: 'heimdall_matrix', description: '竞品 SEO 对标矩阵', inputSchema: { type: 'object', properties: { sites: { type: 'array', items: { type: 'string' }, description: '2 个以上站点' }, max: num('每站页数上限') }, required: ['sites'] } },
+  { name: 'heimdall_assets', description: '资产缺口扫描（视觉缺口 vs 元数据/追踪）', inputSchema: { type: 'object', properties: { host: str('站点 host'), max: num('最多页数，默认 60') }, required: ['host'] } },
   { name: 'heimdall_live_export', description: '导出可部署活镜像包', inputSchema: { type: 'object', properties: { host: str('站点 host'), offline: { type: 'boolean', description: '离线模式' }, rebuild: { type: 'boolean', description: '重建 live 页面' } }, required: ['host'] } },
   { name: 'heimdall_dedupe', description: '资产 CAS 去重', inputSchema: { type: 'object', properties: { host: str('站点 host'), dryRun: { type: 'boolean', description: '只统计不修改' } }, required: ['host'] } },
 ];
@@ -73,6 +74,7 @@ export async function callTool(name, args = {}) {
     case 'heimdall_forge': return text(await apiPost('/api/forge', { url: args.url, hostPost: args.hostPost !== false }));
     case 'heimdall_audit': return text(await apiPost('/api/audit', { url: args.url, maxPages: args.maxPages ?? 30 }));
     case 'heimdall_watch': return text(await apiPost('/api/watch', { url: args.url, maxPages: args.maxPages ?? 20, accept: !!args.accept }));
+    case 'heimdall_assets': return text(await apiPost('/api/assets-audit', { host: args.host, maxPages: args.max ?? 60 }));
     case 'heimdall_verify': {
       const cliArgs = ['verify', args.host, args.page || '--all'];
       if (args.max) cliArgs.push('--max', String(args.max));

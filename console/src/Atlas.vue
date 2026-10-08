@@ -34,6 +34,7 @@ const okMsg = ref('');           // 成功提示（绿色 toast，与错误提�
 const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
 const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
+const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const llmStatus = ref(null);     // LLM 配置状态（/api/llm/status，不含 key）
 const llmTest = ref(null);       // 最近一次连接测试结果
 const llmTesting = ref(false);
@@ -106,6 +107,7 @@ const extraNodes = ref([]);                       // 已克隆但不在 atlas �
 const sortKey = ref('path');
 const sortDir = ref(1);
 const pageScores = reactive({});                  // nodeId -> score.json（懒加载）
+const pageMeta = reactive({});                    // nodeId -> { assets, visualGaps, interactions, updatedAt }
 const tokenInput = ref(localStorage.getItem('heimdall-token') ?? '');
 const apiBaseInput = ref(localStorage.getItem('heimdall-api') ?? API);
 const pageNameOf = (n) => {
@@ -134,6 +136,7 @@ const filteredNodes = computed(() => {
       if (bv == null) return -1;
       return (av - bv) * dir;
     }
+    if (sortKey.value === 'assets') return ((pageMeta[a.id]?.assets?.bytes ?? 0) - (pageMeta[b.id]?.assets?.bytes ?? 0)) * dir;
     if (sortKey.value === 'title') return String(a.title || '').localeCompare(String(b.title || '')) * dir;
     return String(a.path || '').localeCompare(String(b.path || '')) * dir;
   });
@@ -167,6 +170,8 @@ async function loadPageScores() {
   await Promise.all([worker(), worker(), worker(), worker()]);
 }
 const fmtTime = (t) => (t ? new Date(t).toLocaleTimeString('zh-CN', { hour12: false }) : '');
+const fmtDate = (t) => (t ? new Date(t).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '—');
+const fmtBytes = (n) => (n == null ? '—' : n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : n >= 1024 ? (n / 1024).toFixed(0) + 'KB' : n + 'B');
 const fmtDuration = (t) => (t.endedAt && t.startedAt ? Math.round((t.endedAt - t.startedAt) / 1000) + 's' : (t.startedAt ? '进行中' : ''));
 function openDetail(n) { view.value = 'pages'; onNodeClick(n); }
 function selectView(id) {
@@ -246,7 +251,10 @@ async function loadPageStatus() {
     for (const n of nodes) {
       const key = (n.path || '/').replace(/\/$/, '') || '/';
       const hit = byPath.get(key) ?? byName.get(pageNameOf(n));
-      if (hit) { n.forgeState = 'done'; pageScores[n.id] = hit.score ?? null; matchedNames.add(hit.name); }
+      if (hit) {
+        n.forgeState = 'done'; pageScores[n.id] = hit.score ?? null; matchedNames.add(hit.name);
+        pageMeta[n.id] = { assets: hit.assets ?? null, visualGaps: hit.visualGaps ?? null, interactions: hit.interactions ?? null, updatedAt: hit.updatedAt ?? null };
+      }
     }
     // 补全：已克隆但不在 atlas 中的页面（例如 recon 截断、删过节点），保证清单是"完全体"
     extraNodes.value = pages.filter(p => !matchedNames.has(p.name)).map(p => {
@@ -254,7 +262,11 @@ async function loadPageStatus() {
       try { path = new URL(p.target).pathname || '/'; } catch {}
       return { id: 'forged:' + p.name, url: p.target, path, title: p.target, type: 'generic', depth: 99, ring: 3, color: '#64748B', forgeState: 'done', synthetic: true, pageName: p.name };
     });
-    for (const n of extraNodes.value) pageScores[n.id] = pages.find(p => p.name === n.pageName)?.score ?? null;
+    for (const n of extraNodes.value) {
+      const hit = pages.find(p => p.name === n.pageName);
+      pageScores[n.id] = hit?.score ?? null;
+      pageMeta[n.id] = { assets: hit?.assets ?? null, visualGaps: hit?.visualGaps ?? null, interactions: hit?.interactions ?? null, updatedAt: hit?.updatedAt ?? null };
+    }
     tableNodes.value = [...nodes, ...extraNodes.value];
   } catch {}
 }
@@ -529,6 +541,42 @@ async function loadJobHistory() {
   } catch {}
 }
 
+/** 资产缺口扫描：引擎 assets 任务（SSE → 报告入口） */
+function runAssetsAudit() {
+  const task = reactive({
+    localId: 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    kind: 'assets', label: '资产扫描 · ' + host.value, url: 'https://' + host.value,
+    done: false, failed: false, error: null, assetGaps: null,
+    startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = '资产扫描 · 采集中';
+  (async () => {
+    try {
+      const r = await fetch(API + '/api/assets-audit', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, maxPages: 100 }) });
+      const { taskId, error } = await r.json();
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '资产扫描失败：' + error; return; }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind === 'assets-gaps-done') {
+          task.assetGaps = ev.visualGaps; task.done = true; task.endedAt = Date.now();
+          assetAuditReport.value = { host: host.value, visualGaps: ev.visualGaps, visualOrigin: ev.visualOrigin, visualThird: ev.visualThird, pages: ev.pages };
+          statusText.value = ev.visualGaps ? ('资产扫描完成 · ' + ev.visualGaps + ' 个视觉缺口') : '资产扫描完成 · 无视觉缺口';
+          close(); loadReports(); loadAssets();
+          setTimeout(() => { statusText.value = ''; }, 4000);
+        } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
+          task.failed = true; task.done = true; task.error = '任务中断'; close();
+        }
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+  })();
+}
+
 /** 站点变更监控：引擎 watch 任务（SSE 进度 → 变更报告入口） */
 function runWatch() {
   const origin = atlas.value?.origin ?? 'https://' + host.value;
@@ -753,6 +801,10 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <span>类型</span>
         <span class="sortable" @click="toggleSort('state')">状态 {{ sortKey === 'state' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
         <span class="sortable" @click="toggleSort('score')">视觉 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="sortable" @click="toggleSort('assets')">资产 {{ sortKey === 'assets' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span>缺口</span>
+        <span>交互</span>
+        <span>更新</span>
         <span>操作</span>
       </div>
       <div class="wv-row" v-for="n in filteredNodes" :key="n.id">
@@ -762,6 +814,10 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <span class="wv-type" :style="{ color: typeColor(n.type) }">{{ typeCn(n.type) }}</span>
         <span class="wv-state" :class="n.forgeState">{{ n.forgeState === 'done' ? '已克隆' : n.forgeState === 'running' ? '克隆中' : n.forgeState === 'failed' ? '失败' : '未克隆' }}</span>
         <span class="wv-score">{{ pageScores[n.id]?.pixel != null ? (pageScores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}</span>
+        <span class="wv-meta" :title="pageMeta[n.id]?.assets ? (pageMeta[n.id].assets.count + ' 个文件') : ''">{{ pageMeta[n.id]?.assets ? fmtBytes(pageMeta[n.id].assets.bytes) : '—' }}<i v-if="pageMeta[n.id]?.assets"> · {{ pageMeta[n.id].assets.count }}</i></span>
+        <span class="wv-meta" :class="{ bad: (pageMeta[n.id]?.visualGaps?.visual ?? 0) > 0 }" :title="pageMeta[n.id]?.visualGaps ? ('原站 ' + pageMeta[n.id].visualGaps.origin + ' / 第三方 ' + pageMeta[n.id].visualGaps.third) : ''">{{ pageMeta[n.id]?.visualGaps == null ? '—' : pageMeta[n.id].visualGaps.visual }}</span>
+        <span class="wv-meta">{{ pageMeta[n.id]?.interactions ? (pageMeta[n.id].interactions.passed + '/' + pageMeta[n.id].interactions.total) : '—' }}</span>
+        <span class="wv-meta">{{ fmtDate(pageMeta[n.id]?.updatedAt) }}</span>
         <span class="wv-actions">
           <a :href="n.url" target="_blank" rel="noopener" title="打开原站">原站</a>
           <button @click="openDetail(n)">详情</button>
@@ -781,9 +837,9 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="wv-rows">
       <div class="wv-row job-row" v-for="t in [...tasks].reverse()" :key="t.localId">
         <span class="job-name">{{ t.label ?? t.pageName }}</span>
-        <span class="job-kind">{{ t.kind === 'audit' ? 'SEO 审计' : t.kind === 'watch' ? '变更监控' : '克隆' }}</span>
+        <span class="job-kind">{{ t.kind === 'audit' ? 'SEO 审计' : t.kind === 'watch' ? '变更监控' : t.kind === 'assets' ? '资产扫描' : '克隆' }}</span>
         <span class="wv-state" :class="taskState(t)">{{ taskLabel(t) }}</span>
-        <span class="wv-score">{{ t.kind === 'audit' ? (t.auditScore != null ? t.auditScore + ' 分' : '—') : t.kind === 'watch' ? (t.watchChanges != null ? t.watchChanges + ' 处变化' : '—') : (t.score ? (t.score.pixel * 100).toFixed(1) + '%' : '—') }}</span>
+        <span class="wv-score">{{ t.kind === 'audit' ? (t.auditScore != null ? t.auditScore + ' 分' : '—') : t.kind === 'watch' ? (t.watchChanges != null ? t.watchChanges + ' 处变化' : '—') : t.kind === 'assets' ? (t.assetGaps != null ? t.assetGaps + ' 缺口' : '—') : (t.score ? (t.score.pixel * 100).toFixed(1) + '%' : '—') }}</span>
         <span class="job-time">{{ fmtTime(t.startedAt) }} · {{ fmtDuration(t) }}</span>
         <span class="job-error" :title="t.error">{{ t.error || '' }}</span>
       </div>
@@ -831,6 +887,13 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <a :href="`/${host}/intel/${host}-intel.xlsx`" download>下载 Excel</a>
     </div>
 
+    <div class="report-card hud-panel">
+      <h3>资产缺口</h3>
+      <p v-if="assetAuditReport">{{ assetAuditReport.visualGaps }} 个视觉缺口（原站 {{ assetAuditReport.visualOrigin }} / 第三方 {{ assetAuditReport.visualThird }}）</p>
+      <p v-else>扫描图片/图标/SVG/CSS 引用，区分视觉缺口与元数据噪声</p>
+      <a v-if="assetAuditReport" :href="`/static/${host}/audit/asset-gaps.html`" target="_blank" rel="noopener">打开缺口报告</a>
+      <button v-else class="wv-primary" @click="runAssetsAudit">运行扫描</button>
+    </div>
     <div class="report-card report-wide hud-panel">
       <h3>更多报告</h3>
       <div class="report-list" v-if="reportIndex.filter(r => r.available).length">
@@ -896,6 +959,9 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <div class="ov-item"><span class="ov-k">层级深度</span><span class="ov-v">{{ selected.depth ?? '-' }}</span></div>
         <div class="ov-item"><span class="ov-k">锻造状态</span><span class="ov-v">{{ selected.forgeState === 'done' ? '已锻造' : selected.forgeState === 'running' ? '锻造中' : selected.forgeState === 'failed' ? '失败' : '未锻造' }}</span></div>
         <div class="ov-item" v-if="detailScore"><span class="ov-k">还原度</span><span class="ov-v" :style="{ color: detailScore.grade === 'A' ? 'var(--green)' : 'var(--amber)' }">{{ detailScore.total }}% {{ detailScore.grade }}</span></div>
+        <div class="ov-item" v-if="pageMeta[selected.id]?.assets"><span class="ov-k">资产</span><span class="ov-v">{{ fmtBytes(pageMeta[selected.id].assets.bytes) }} · {{ pageMeta[selected.id].assets.count }} 个</span></div>
+        <div class="ov-item" v-if="pageMeta[selected.id]?.visualGaps != null"><span class="ov-k">视觉缺口</span><span class="ov-v" :style="{ color: pageMeta[selected.id].visualGaps.visual ? 'var(--red)' : 'var(--green)' }">{{ pageMeta[selected.id].visualGaps.visual }}</span></div>
+        <div class="ov-item" v-if="pageMeta[selected.id]?.interactions"><span class="ov-k">交互回放</span><span class="ov-v">{{ pageMeta[selected.id].interactions.passed }}/{{ pageMeta[selected.id].interactions.total }}</span></div>
       </div>
       <div class="ov-sec" v-if="selected.seoLite || selected.title">
         <div class="panel-sec-name">页面标题</div>
@@ -908,6 +974,12 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <div class="ov-sec" v-if="detailIntel">
         <div class="panel-sec-name">情报摘要（已入库）</div>
         <div class="ov-text">标题 {{ detailIntel.headings?.length ?? 0 }} · 价格 {{ detailIntel.prices?.length ?? 0 }} · CTA {{ detailIntel.cta?.length ?? 0 }} · 链接 {{ detailIntel.links?.length ?? 0 }}</div>
+      </div>
+      <div class="dock-quick" v-if="selected.forgeState === 'done'">
+        <a :href="`/${host}/pages/${pageNameOf(selected)}/clone/index.html`" target="_blank" rel="noopener">打开克隆</a>
+        <a :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener">活镜像</a>
+        <a :href="`/${host}/compare.html?p=${pageNameOf(selected)}`" target="_blank" rel="noopener">同步对比</a>
+        <a :href="`/${host}/pages/${pageNameOf(selected)}/score.json`" target="_blank" rel="noopener">分数 JSON</a>
       </div>
       <div class="forge-cta" v-if="selected.forgeState !== 'done' && selected.forgeState !== 'running'">
         <button class="forge-btn" @click="openForge">⚡ 开始锻造此页</button>
@@ -1227,7 +1299,18 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .wv-head button:disabled { opacity: .4; cursor: not-allowed; }
 .wv-primary { background: rgba(34,211,238,.12) !important; color: var(--cyan) !important; border-color: rgba(34,211,238,.5) !important; }
 .wv-rows { flex: 1; overflow: auto; }
-.wv-row { display: grid; grid-template-columns: 34px minmax(150px,1.1fr) minmax(180px,1.6fr) 90px 80px 70px 170px; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid rgba(148,163,184,.10); font-size: 12px; }
+.wv-row { display: grid; grid-template-columns: 34px minmax(140px,1.1fr) minmax(160px,1.5fr) 78px 70px 62px 84px 50px 54px 90px 220px; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid rgba(148,163,184,.10); font-size: 12px; min-width: 1180px; }
+.wv-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.wv-meta.bad { color: var(--red); }
+.dock-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.dock-quick a { color: var(--cyan); border: 1px solid var(--cyan-line); border-radius: 3px; padding: 5px 10px; font-size: 12px; text-decoration: none; }
+.dock-quick a:hover { background: rgba(34, 211, 238, .08); }
+[data-theme="light"] .wv-th,
+[data-theme="light"] .asset-th { background: rgba(255, 255, 255, .96); color: var(--text-dim); }
+[data-theme="light"] .wv-head input,
+[data-theme="light"] .wv-head select,
+[data-theme="light"] .wv-head button { background: #ffffff; }
+[data-theme="light"] .view-nav.hud-panel { background: #ffffff; }
 .wv-row:hover { background: rgba(34,211,238,.05); }
 .wv-th { position: sticky; top: 0; background: rgba(11,11,16,.95); color: var(--text-faint); font-size: 10.5px; letter-spacing: .12em; z-index: 1; }
 .wv-url { color: var(--cyan); font-family: var(--font-mono); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -21,7 +21,7 @@
 | 同步滚动对比 | ✅ | compare.html（1440px 统一视口，根除响应式变形） |
 | 控制台 | ✅ v2 | 工作台 IA：底部导航 星图/页面/任务/报告/设置；页面表格（搜索/筛选/批量克隆/逐页视觉分）；任务中心；报告中心；引擎地址与 Token 可配 |
 | 任务持久化 | ✅ | node:sqlite（JSON 降级）存 jobs/events；重启恢复 + interrupted 标记；`GET /api/jobs.history`；控制台任务页历史 |
-| 资产缺口扫描 | ✅ | `node src/audit/assets.mjs <host>` → 视觉缺口/元数据/追踪/设计替代分类；apify 与 thordata 视觉缺口均 0（thordata 修复前 673） |
+| 资产缺口扫描 | ✅ | CLI + 控制台一键（引擎 assets 任务）；apify/thordata 视觉缺口均 0（thordata 修复前 673）；页面清单新增 资产/缺口/交互/更新 列与排序，详情面板含克隆/活镜像/对比快捷入口 |
 | 统一 CLI | ✅ | `node src/cli.mjs <command>` 覆盖 recon/forge/queue/audit/watch/verify/tokens/live/dedupe/deliver/serve |
 | 沙盒改造台 | ✅ v1 | `node src/sandbox/serve.mjs <host> <page>`：HTML/CSS 在线编辑 + 实时预览 + 与原版全页 pixelmatch（实测 24.7% → 100%） |
 | 报告中心 / 资产清单 | ✅ | 控制台报告页动态报告索引（/api/reports）＋ Top 资产表（/api/assets） |

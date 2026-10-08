@@ -38,7 +38,7 @@ test('mcp: initialize, tools/list and tools/call respond over stdio', async () =
 
     const tools = await request('tools/list');
     assert.ok(tools.result.tools.length >= 10, 'tool count: ' + tools.result.tools.length);
-    for (const name of ['heimdall_recon', 'heimdall_forge', 'heimdall_audit', 'heimdall_watch', 'heimdall_verify', 'heimdall_tokens', 'heimdall_matrix', 'heimdall_live_export']) {
+    for (const name of ['heimdall_recon', 'heimdall_forge', 'heimdall_audit', 'heimdall_watch', 'heimdall_assets', 'heimdall_verify', 'heimdall_tokens', 'heimdall_matrix', 'heimdall_live_export']) {
       assert.ok(tools.result.tools.some(t => t.name === name), 'missing tool: ' + name);
     }
 

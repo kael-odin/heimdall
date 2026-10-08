@@ -78,6 +78,8 @@ let seq = 0;
 let runningRecon = null;
 let runningAudit = null;
 let runningWatch = null;
+let runningAssets = null;
+const pageMetaCache = new Map();
 const MAX_FORGE = 2;
 let forgeSlots = 0;
 
@@ -123,6 +125,7 @@ function spawnTask(t, script, args, opts = {}) {
     if (t.kind === 'recon') runningRecon = null;
     else if (t.kind === 'audit') runningAudit = null;
     else if (t.kind === 'watch') runningWatch = null;
+    else if (t.kind === 'assets') runningAssets = null;
     else forgeSlots--;
     jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
   });
@@ -151,6 +154,13 @@ function startWatch(url, maxPages = 20, accept = false) {
   const args = [url, '--max', String(maxPages)];
   if (accept) args.push('--accept');
   return spawnTask(t, join('src', 'watch', 'watch.mjs'), args).id;
+}
+
+function startAssets(host, maxPages = 60) {
+  const t = makeTask('assets', 'https://' + host);
+  t.host = host;
+  runningAssets = t;
+  return spawnTask(t, join('src', 'audit', 'assets.mjs'), [host, '--max', String(maxPages)]).id;
 }
 
 function startForge(url, { hostPost = true } = {}) {
@@ -258,6 +268,21 @@ createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'POST' && u.pathname === '/api/assets-audit') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let host, maxPages = 60;
+      try { ({ host, maxPages } = JSON.parse(body || '{}')); } catch {}
+      host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+      if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
+      if (runningAssets) return json(res, 409, { error: 'busy', taskId: runningAssets.id });
+      const id = startAssets(host, Math.min(Math.max(maxPages ?? 60, 1), 500));
+      json(res, 200, { taskId: id, host });
+    });
+    return;
+  }
+
   if (req.method === 'POST' && u.pathname === '/api/watch') {
     let body = '';
     req.on('data', c => body += c);
@@ -307,13 +332,40 @@ createServer(async (req, res) => {
     if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
     const pagesDir = join(WORKSPACE, host, 'pages');
     const out = [];
+    // 资产缺口（若已跑过扫描）
+    const gapMap = {};
+    try {
+      const gaps = JSON.parse(readFileSync(join(WORKSPACE, host, 'audit', 'asset-gaps.json'), 'utf8'));
+      for (const p of gaps.pages ?? []) gapMap[p.page] = { visual: p.visualGaps ?? 0, origin: p.visualOrigin ?? 0, third: p.visualThird ?? 0 };
+    } catch {}
     if (existsSync(pagesDir)) {
       for (const name of readdirSync(pagesDir)) {
-        if (!existsSync(join(pagesDir, name, 'clone', 'index.html'))) continue;
+        const cloneHtml = join(pagesDir, name, 'clone', 'index.html');
+        if (!existsSync(cloneHtml)) continue;
         let target = '', score = null;
         try { target = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target ?? ''; } catch {}
         try { score = JSON.parse(readFileSync(join(pagesDir, name, 'score.json'), 'utf8')); } catch {}
-        out.push({ name, target, forged: true, score: score ? { total: score.total, pixel: score.pixel, grade: score.grade } : null });
+        // 资产统计（按 clone/index.html mtime 缓存）
+        let mtime = 0; try { mtime = statSync(cloneHtml).mtimeMs; } catch {}
+        let meta = pageMetaCache.get(name);
+        if (!meta || meta.mtime !== mtime) {
+          let count = 0, bytes = 0;
+          const walk = (d) => { if (!existsSync(d)) return; for (const n of readdirSync(d)) { const fp = join(d, n); let st; try { st = statSync(fp); } catch { continue; } if (st.isDirectory()) walk(fp); else { count++; bytes += st.size; } } };
+          walk(join(pagesDir, name, 'clone', 'assets'));
+          meta = { mtime, meta: { count, bytes } };
+          pageMetaCache.set(name, meta);
+        }
+        // 交互回放结果（若已跑过 verify）
+        let interactions = null;
+        try { interactions = JSON.parse(readFileSync(join(WORKSPACE, host, 'verify', name, 'verify.json'), 'utf8')).functional ?? null; } catch {}
+        out.push({
+          name, target, forged: true,
+          score: score ? { total: score.total, pixel: score.pixel, grade: score.grade } : null,
+          assets: meta.meta,
+          visualGaps: gapMap[name] ?? null,
+          interactions,
+          updatedAt: mtime,
+        });
       }
     }
     return json(res, 200, { host, pages: out });
@@ -454,6 +506,7 @@ createServer(async (req, res) => {
       recon: runningRecon ? { id: runningRecon.id, url: runningRecon.url } : null,
       audit: runningAudit ? { id: runningAudit.id, url: runningAudit.url } : null,
       watch: runningWatch ? { id: runningWatch.id, url: runningWatch.url } : null,
+      assets: runningAssets ? { id: runningAssets.id, url: runningAssets.url } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },
       jobs: tasks.size,
       jobsStore: jobStore?.kind ?? null,
@@ -515,6 +568,7 @@ createServer(async (req, res) => {
       { id: 'tokens', name: '设计 Token 预览', file: join(base, 'design', 'tokens.html'), url: '/static/' + host + '/design/tokens.html' },
       { id: 'components', name: '组件画廊', file: join(base, 'design', 'components', 'components.html'), url: '/static/' + host + '/design/components/components.html' },
       { id: 'verify', name: '多视口验证汇总', file: join(base, 'verify', 'verify-summary.json'), url: '/static/' + host + '/verify/verify-summary.json' },
+      { id: 'assets', name: '资产缺口报告', file: join(base, 'audit', 'asset-gaps.html'), url: '/static/' + host + '/audit/asset-gaps.html' },
       { id: 'intel', name: '竞品情报 Excel', file: join(base, 'intel', host + '-intel.xlsx'), url: '/static/' + host + '/intel/' + host + '-intel.xlsx' },
     ];
     return json(res, 200, { host, reports: defs.map(r => ({ id: r.id, name: r.name, url: r.url, available: existsSync(r.file), updatedAt: existsSync(r.file) ? statSync(r.file).mtimeMs : null })) });

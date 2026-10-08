@@ -27,7 +27,8 @@
 - **沙盒改造台**：`node core/src/sandbox/serve.mjs <host> <page>` → 在线改 HTML/CSS、实时预览、与原版逐像素对比（实测：改背景色相似度 24.7%，还原后 100%/0 像素差）
 - **报告中心 / 资产清单**：控制台「报告」页动态列出所有可用报告（档案/SEO/监控/Token/组件/验证/情报），并按体积展示 Top 资产
 - **MCP / 浏览器入口**：`node core/src/mcp/server.mjs`（stdio MCP，12 个工具）；`node core/src/browser/bookmarklet.mjs`（在任意页面一键送入 Heimdall）
-- **资产缺口扫描**：`node core/src/audit/assets.mjs <host>` → 视觉缺口（图标/图片/媒体/CSS）与元数据/追踪/设计替代分开统计（apify 61 页实测视觉缺口 0）
+- **资产缺口扫描**：CLI `node core/src/audit/assets.mjs <host>` 或控制台「报告 → 资产缺口 → 运行扫描」；视觉缺口与元数据/追踪/设计替代分开统计（apify 与 thordata 实测视觉缺口均为 0）；页面清单直接显示每页资产体积/缺口/交互/更新时间
+- **逐页快捷入口**：详情面板可直达 打开克隆 / 活镜像 / 同步对比 / 分数 JSON
 - **竞品 SEO 对标矩阵**：`node core/src/seo/matrix.mjs <本站> <竞品1> <竞品2>` → 站点分/覆盖率/LCP/页面类型/高频问题对比（HTML+CSV+JSON）
 - **组件抽取**：`node core/src/extract/extract-components.mjs <host>` → header/hero/pricing/faq/footer/cta 独立预览（outerHTML + 命中 CSS + 素材路径回指）
 - **统一 CLI**：`node core/src/cli.mjs`（或 `pnpm -C core cli`）覆盖 recon/forge/queue/audit/watch/verify/tokens/live/dedupe/deliver/serve
