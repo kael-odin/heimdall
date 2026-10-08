@@ -182,3 +182,11 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 
 ### 过夜锻造
 - apify 全站 queue --max 60 已启动（61 页 atlas，9 页已锻，约 3-4 小时）
+
+## W16：apify 全站收官 + 重启恢复（2026-10-08）
+
+- **apify 全站：60 页锻造完成，平均还原度 96.8%（55A/4B/1C）**，2 个失败页（jobs/integrations-n8n，均为截图超时偶发）重锻成功至 98.3% A
+- 双站全站实证：apify（Next.js）60 页 96.8% + thordata（Vue）31 页 96.1%（22A/9B/0C）——**"常见项目站点群稳定复刻"达成**
+- 活镜像全站转换：apify 60 页 + thordata 31 页 live/ 全量；抽样 6 页（各站 3 页）全部渲染+可交互
+- 交付包重打：deliverable/apify.com-2026-10-08（60 页）
+- 重启恢复 SOP 验证：engine/vite 拉起 + queue resume 对账 + 单页重试——全部按设计工作
