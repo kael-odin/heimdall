@@ -23,9 +23,18 @@ import { spawn } from 'node:child_process';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WORKSPACE } from './paths.mjs';
+import { WORKSPACE, DATA_ROOT } from './paths.mjs';
+import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
+
+// 任务持久化（node:sqlite；不可用时自动降级 JSON）——重启后历史/事件不丢
+let jobStore = null;
+try {
+  jobStore = openJobStore(process.env.HEIMDALL_JOBS_DB ?? join(DATA_ROOT, 'jobs.db'));
+  const recovered = recoverInterrupted(jobStore);
+  if (recovered) console.log('[jobs] recovered ' + recovered + ' interrupted job(s) from previous run');
+} catch (e) { console.warn('[jobs] store unavailable:', String(e).slice(0, 120)); }
 
 const PORT = Number(process.argv[2] ?? 8900);
 const BIND = process.env.HEIMDALL_HOST ?? '127.0.0.1';
@@ -73,6 +82,8 @@ let forgeSlots = 0;
 
 const push = (t, ev) => {
   t.events.push(ev);
+  if (typeof ev?.kind === 'string' && ev.kind.endsWith('-error')) t.error = ev.error ?? 'error';
+  jobStore?.appendEvent(t.id, ev);
   for (const res of t.subs) res.write(`data: ${JSON.stringify(ev)}\n\n`);
 };
 
@@ -80,6 +91,7 @@ function makeTask(kind, url) {
   const id = `${kind[0]}${String(++seq).padStart(3, '0')}`;
   const t = { id, kind, url, status: 'running', events: [], subs: new Set(), child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false };
   tasks.set(id, t);
+  jobStore?.upsert({ id, kind, url, status: 'running', createdAt: t.createdAt });
   return t;
 }
 
@@ -111,6 +123,7 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'audit') runningAudit = null;
     else if (t.kind === 'watch') runningWatch = null;
     else forgeSlots--;
+    jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
   });
   return t;
 }
@@ -159,10 +172,12 @@ createServer(async (req, res) => {
 
   if (req.method === 'GET' && u.pathname === '/api/jobs') {
     return json(res, 200, {
+      store: jobStore?.kind ?? null,
       jobs: [...tasks.values()].map(t => ({
         id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null,
         createdAt: t.createdAt, endedAt: t.endedAt ?? null, events: t.events.length,
       })),
+      history: jobStore?.list({ limit: 50 }) ?? [],
     });
   }
 
@@ -173,6 +188,7 @@ createServer(async (req, res) => {
     if (t.status === 'running') {
       t.cancelRequested = true;
       try { t.child?.kill('SIGTERM'); } catch {}
+      jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: 'cancelled', pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: Date.now() });
       push(t, { kind: 'cancel-requested' });
     }
     return json(res, 200, { id, status: t.status });
@@ -423,6 +439,7 @@ createServer(async (req, res) => {
       watch: runningWatch ? { id: runningWatch.id, url: runningWatch.url } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },
       jobs: tasks.size,
+      jobsStore: jobStore?.kind ?? null,
       bind: BIND,
       auth: !!AUTH_TOKEN,
     });
@@ -468,3 +485,8 @@ createServer(async (req, res) => {
 
   json(res, 404, { error: 'nf' });
 }).listen(PORT, BIND, () => console.log(`engine-server @ http://${BIND}:${PORT}`));
+
+// 优雅退出：关闭持久化存储（Docker stop / Ctrl-C）
+const shutdown = () => { try { jobStore?.close(); } catch {} process.exit(0); };
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

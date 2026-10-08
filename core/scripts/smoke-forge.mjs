@@ -211,7 +211,26 @@ async function main() {
     assert.ok(existsSync(join(watchDir, 'watch.html')), 'watch.html must exist');
     assert.ok(existsSync(join(watchDir, 'baseline.json')), 'watch baseline must exist');
 
-    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%', '| seo =', seoJson.score, '(', seoJson.summary.issues, 'issues )', '| live bundle ok', '| watch ok');
+    // 9) 任务持久化：jobs.db + 引擎重启后历史仍在
+    const jobsBefore = await (await fetch(base + '/api/jobs')).json();
+    assert.ok(jobsBefore.store, 'job store should be active');
+    assert.ok(jobsBefore.history.length >= 3, 'job history should cover recon/forge/audit/watch, got ' + jobsBefore.history.length);
+    assert.ok(existsSync(join(dataDir, 'jobs.db')), 'jobs.db must exist');
+    engine.kill('SIGTERM');
+    await new Promise(r => setTimeout(r, 900));
+    const engine2 = spawn(process.execPath, ['src/engine-server.mjs', String(port)], {
+      cwd: CORE,
+      env: { ...process.env, HEIMDALL_DATA_DIR: dataDir, HEIMDALL_HOST: '127.0.0.1', HEIMDALL_LLM: '0' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    try {
+      await waitFor(async () => (await fetch(base + '/api/status')).ok, { label: 'engine restart', timeout: 20_000 });
+      const jobsAfter = await (await fetch(base + '/api/jobs')).json();
+      assert.ok(jobsAfter.history.length >= jobsBefore.history.length, 'history must persist across restart');
+      assert.ok(!jobsAfter.history.some(j => j.status === 'running'), 'no stale running jobs after restart');
+    } finally { engine2.kill('SIGTERM'); }
+
+    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%', '| seo =', seoJson.score, '(', seoJson.summary.issues, 'issues )', '| live bundle ok', '| watch ok', '| jobs persistent');
   } finally {
     engine.kill('SIGTERM');
     fixture.close();

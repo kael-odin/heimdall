@@ -1,5 +1,5 @@
 # ---- stage 1: build console ----
-FROM node:22-bookworm-slim AS console-build
+FROM node:24-bookworm-slim AS console-build
 WORKDIR /app
 RUN corepack enable
 COPY console/package.json console/pnpm-lock.yaml ./console/
@@ -8,7 +8,7 @@ COPY console ./console
 RUN cd console && HEIMDALL_SKIP_WORKSPACE=1 pnpm build
 
 # ---- stage 2: runtime (engine + console + playwright) ----
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 ENV NODE_ENV=production \
     HEIMDALL_HOST=0.0.0.0 \
     HEIMDALL_DATA_DIR=/data \

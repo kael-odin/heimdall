@@ -30,6 +30,7 @@ const taskSources = new Map();
 const tasksOpen = ref(true);
 const auditReport = ref(null);   // 最近一次 SEO 审计结果（报告入口）
 const watchReport = ref(null);   // 最近一次变更监控结果（报告入口）
+const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
 function taskState(t) { return t.failed ? 'failed' : t.done ? 'done' : 'running'; }
 function taskLabel(t) { return { running: '运行中', done: '完成', failed: '失败' }[taskState(t)] ?? '运行中'; }
 const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
@@ -389,6 +390,16 @@ function startForge(node) {
   });
 }
 
+/** 引擎持久化任务历史（重启后仍可查） */
+async function loadJobHistory() {
+  try {
+    const r = await fetch(API + '/api/jobs');
+    if (!r.ok) return;
+    const j = await r.json();
+    jobHistory.value = j.history ?? [];
+  } catch {}
+}
+
 /** 站点变更监控：引擎 watch 任务（SSE 进度 → 变更报告入口） */
 function runWatch() {
   const origin = atlas.value?.origin ?? 'https://' + host.value;
@@ -625,7 +636,16 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
         <span class="job-time">{{ fmtTime(t.startedAt) }} · {{ fmtDuration(t) }}</span>
         <span class="job-error" :title="t.error">{{ t.error || '' }}</span>
       </div>
-      <div class="wv-empty" v-if="!tasks.length">本次会话还没有任务：在「星图」点击页面，或在「页面」批量克隆 / 运行 SEO 审计。</div>
+      <div class="wv-empty" v-if="!tasks.length && !jobHistory.length">本次会话还没有任务：在「星图」点击页面，或在「页面」批量克隆 / 运行 SEO 审计。</div>
+      <div class="wv-sub" v-if="jobHistory.length">引擎持久化历史（最近 {{ jobHistory.length }} 条，重启后仍可查）</div>
+      <div class="wv-row job-row history" v-for="h in jobHistory" :key="'h-' + h.id">
+        <span class="job-name">{{ h.pageName || h.url }}</span>
+        <span class="job-kind">{{ h.kind }}</span>
+        <span class="wv-state" :class="h.status === 'done' ? 'done' : h.status === 'failed' ? 'failed' : h.status === 'running' ? 'running' : 'idle'">{{ h.status }}</span>
+        <span class="wv-score">—</span>
+        <span class="job-time">{{ fmtTime(h.createdAt) }} · {{ h.endedAt ? Math.round((h.endedAt - h.createdAt) / 1000) + 's' : '' }}</span>
+        <span class="job-error">{{ h.error || '' }}</span>
+      </div>
     </div>
   </section>
 
@@ -808,7 +828,7 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
   </div>
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
   <div class="view-nav hud-panel">
-    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" @click="view = v.id">
+    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" @click="view = v.id; if (v.id === 'jobs') loadJobHistory()">
       <b>{{ v.icon }}</b><span>{{ v.label }}</span>
     </button>
   </div>
@@ -1031,6 +1051,8 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
 .job-kind { color: var(--violet); font-size: 11px; }
 .job-time { color: var(--text-faint); font-family: var(--font-mono); font-size: 11px; }
 .job-error { color: var(--red); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-row.history { opacity: .82; }
+.wv-sub { padding: 10px 14px 6px; color: var(--text-faint); font-size: 10.5px; letter-spacing: .14em; font-family: var(--font-mono); border-top: 1px solid rgba(148,163,184,.15); }
 .reports-grid { position: fixed; left: 24px; right: 24px; top: 96px; bottom: 86px; z-index: 7; display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 14px; align-content: start; }
 .report-card { padding: 16px; }
 .report-card h3 { margin: 0 0 8px; font-size: 15px; }

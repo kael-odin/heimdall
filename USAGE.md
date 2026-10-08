@@ -301,7 +301,14 @@ node core\src\cli.mjs serve  8900
 
 也可以 `pnpm -C core cli <command> ...`。
 
-## 20. 质量门（v2）
+## 20. 任务持久化（v2）
+
+- 引擎把任务与事件写入 `HEIMDALL_DATA_DIR/jobs.db`（Node 内置 `node:sqlite`，零依赖；旧版 Node 自动降级为原子写 JSON）
+- 引擎重启后：`GET /api/jobs` 的 `history` 仍可查询；上次崩溃遗留的 running 任务自动标记为 `interrupted`
+- 控制台「任务」页底部展示持久化历史（最近 50 条）
+- 可用 `HEIMDALL_JOBS_DB` 自定义数据库路径；`HEIMDALL_JOBS_FORCE_JSON=1` 强制 JSON 存储
+
+## 21. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

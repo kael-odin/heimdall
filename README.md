@@ -23,6 +23,7 @@
 ## v2 新增（2026-10-08 起）
 
 - **SEO 审计**：`node core/src/seo/audit.mjs <host> --max 20` → `workspace/<host>/seo/{seo.html,seo.csv,seo.json}`，40+ 规则覆盖索引/内容/结构化数据/性能/链接/安全
+- **任务持久化**：`node:sqlite`（旧版 Node 自动降级 JSON）存储任务/事件；引擎重启后历史可查，崩溃遗留的 running 标记为 interrupted
 - **统一 CLI**：`node core/src/cli.mjs`（或 `pnpm -C core cli`）覆盖 recon/forge/queue/audit/watch/verify/tokens/live/dedupe/deliver/serve
 - **设计 Token 提取**：`node core/src/extract/extract-tokens.mjs <host>` → colors/字体/字号/间距/圆角/阴影/断点/CSS 变量（含频次）→ tokens.css + 可视化预览
 - **单端口 / Docker 部署**：`docker compose up -d` → http://localhost:8900 打开控制台（引擎同时服务 API/SSE/静态产物/控制台 SPA + Playwright Chromium）
