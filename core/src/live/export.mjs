@@ -24,9 +24,9 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE, DELIVERABLE } from '../paths.mjs';
-import { sanitizeHar, mergeHar, harStats, indexHar } from './har.mjs';
+import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { scanLiveBundle } from './health.mjs';
-import { healBundle, materializeHar } from './heal.mjs';
+import { healBundle, materializeHar, localizeQueryEntries, rewriteHtmlRefs } from './heal.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -102,27 +102,37 @@ for (const name of pageNames) {
   }
 }
 
-// ---------- 3. HAR 清洗与合并 ----------
-const hars = [];
+let origin = 'https://' + host.replace(/^www\./, '');
+for (const name of pageNames) {
+  try { const t = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target; if (t) { origin = new URL(t).origin; break; } } catch {}
+}
+
+// ---------- 3. HAR 清洗与合并（流式：仅同源 + 去重，避免多页 GB 级峰值） ----------
+const harMap = new Map();
+let harPages = 0;
 for (const name of pageNames) {
   const p = join(pagesDir, name, 'network.har');
   if (!existsSync(p)) continue;
-  try { hars.push(sanitizeHar(JSON.parse(readFileSync(p, 'utf8')))); } catch (e) { console.warn('[export] HAR parse failed:', name, String(e).slice(0, 80)); }
+  harPages++;
+  try {
+    const sanitized = sanitizeHar(JSON.parse(readFileSync(p, 'utf8')));
+    for (const e of sanitized.entries) {
+      let x; try { x = new URL(e.url); } catch { continue; }
+      if (x.origin !== origin && !/^image\//i.test(e.mimeType || '')) continue;   // 站外图片也收：导出时本地化
+      const k = harKey(e.method, e.url);
+      if (!harMap.has(k)) harMap.set(k, e);
+    }
+  } catch (e) { console.warn('[export] HAR parse failed:', name, String(e).slice(0, 80)); }
 }
-const har = mergeHar(hars);
-writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));
+const har = { version: 1, generatedAt: new Date().toISOString(), entries: [...harMap.values()] };
 const stats = harStats(har.entries);
-console.log(`[export] HAR pages=${hars.length} entries=${stats.entries} bytes~${(stats.bytes / 1024 / 1024).toFixed(1)}MB`);
+console.log('[export] HAR pages=' + harPages + ' entries=' + stats.entries + ' bytes~' + (stats.bytes / 1024 / 1024).toFixed(1) + 'MB (same-origin deduped)');
 
 // ---------- 4. 服务器与配置 ----------
 const liveSrc = fileURLToPath(new URL('.', import.meta.url));
 copyFileSync(join(liveSrc, 'serve.mjs'), join(OUT, 'serve.mjs'));
 copyFileSync(join(liveSrc, 'har.mjs'), join(OUT, 'har.mjs'));
 
-let origin = 'https://' + host.replace(/^www\./, '');
-for (const name of pageNames) {
-  try { const t = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target; if (t) { origin = new URL(t).origin; break; } } catch {}
-}
 const config = { host, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT };
 writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 
@@ -142,10 +152,20 @@ if (HEAL && health.assets.unresolved > 0) {
 }
 if (MATERIALIZE) {
   const mat = materializeHar({ liveDir, origin, entries: har.entries });
-  console.log('[materialize] written=' + mat.written + ' skipped=' + mat.skipped + ' bytes~' + (mat.bytes / 1024 / 1024).toFixed(1) + 'MB');
+  const loc = localizeQueryEntries({ entries: har.entries, liveDir, host, origin });
+  const rw = rewriteHtmlRefs({ liveDir, map: loc.map });
+  let trimmed = 0;
+  for (const e of har.entries) {
+    if (!e.body) continue;
+    let x; try { x = new URL(e.url); } catch { e.body = null; trimmed++; continue; }
+    if (!x.search) { e.body = null; trimmed++; }   // 无查询条目已 materialize 落盘；带查询的保留回放体（覆盖 JS 动态请求）
+  }
+  console.log('[materialize] files=' + mat.written + ' (' + (mat.bytes / 1024 / 1024).toFixed(1) + 'MB) localized=' + loc.written + ' (' + (loc.bytes / 1024 / 1024).toFixed(1) + 'MB) html=' + rw.files + ' files/' + rw.rewrites + ' refs');
   health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
-  health.materialized = mat;
+  health.materialized = { ...mat, localized: loc.written, localizedBytes: loc.bytes, htmlRewrites: rw.rewrites, htmlFiles: rw.files, harTrimmed: trimmed };
 }
+writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR（materialize 时仅剩必要回放体）
+
 health.assetsBefore = assetsBefore;
 health.forgedPages = pageNames.length;
 health.liveMissing = Math.max(0, pageNames.length - health.pages);

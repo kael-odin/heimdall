@@ -12,7 +12,8 @@
  *
  * 入口：healBundle({ liveDir, host, origin, targets, fetchImpl?, concurrency?, maxBytes? })
  */
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, readFileSync, renameSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
 const DYNAMIC_ENDPOINT = /^\/(?:_next\/image|_next\/data|api\/|cdn-cgi\/)/;
@@ -115,5 +116,84 @@ export function materializeHar({ liveDir, origin, entries = [] } = {}) {
     out.written++;
     out.bytes += buf.length;
   }
+  return out;
+}
+
+const MIME_EXT = [
+  [/^image\/webp/i, 'webp'], [/^image\/png/i, 'png'], [/^image\/jpe?g/i, 'jpg'], [/^image\/avif/i, 'avif'],
+  [/^image\/gif/i, 'gif'], [/^image\/svg/i, 'svg'], [/^image\/x-icon|vnd\.microsoft\.icon/i, 'ico'],
+  [/^font\/woff2/i, 'woff2'], [/^font\/woff/i, 'woff'], [/^text\/css/i, 'css'], [/^text\/html/i, 'html'],
+];
+export const mimeExt = (mime) => {
+  const m = String(mime || '');
+  for (const [re, ext] of MIME_EXT) if (re.test(m)) return ext;
+  return 'bin';
+};
+
+/**
+ * 把 HAR 中带查询的同源响应（典型：/_next/image?url=…&w=…&q=…）落盘为 _ext/<sha1>.<ext>，
+ * 返回 url → 相对路径 的改写表（同时覆盖绝对/根相对//lm/<host> 三种写法）。
+ * 页面里用相对路径（_ext/…）替换，配合 <base href="/lm/<host>/"> 在 landing/mirror 两种模式都能命中。
+ */
+export function localizeQueryEntries({ entries = [], liveDir, host, origin } = {}) {
+  const map = new Map();
+  const out = { written: 0, skipped: 0, bytes: 0 };
+  for (const e of entries) {
+    if (e.method !== 'GET' || !e.body || e.status !== 200) continue;
+    let u;
+    try { u = new URL(e.url); } catch { continue; }
+    const sameOrigin = u.origin === origin;
+    const isImage = /^image\//i.test(e.mimeType || '');
+    if (sameOrigin && !u.search) continue;      // 同源无查询：materializeHar 已落盘
+    if (!sameOrigin && !isImage) continue;      // 站外只本地化图片（追踪脚本等留在外网）
+    const rel = '_ext/' + createHash('sha1').update(e.url).digest('hex').slice(0, 16) + '.' + mimeExt(e.mimeType);
+    // 页面 <base> 是页面级作用域（/lm/<host>/<page>/），相对路径会指错目录 → 用 /lm/<host>/_ext/... 绝对路径
+    const publicPath = '/lm/' + host + '/' + rel;
+    const file = join(liveDir, rel);
+    if (!existsSync(file)) {
+      const buf = Buffer.from(e.body, 'base64');
+      mkdirSync(join(liveDir, '_ext'), { recursive: true });
+      writeFileSync(file, buf);
+      out.written++;
+      out.bytes += buf.length;
+    } else out.skipped++;
+    map.set(e.url, publicPath);
+    if (sameOrigin) {
+      map.set(u.pathname + u.search, publicPath);
+      if (host) map.set('/lm/' + host + u.pathname + u.search, publicPath);
+    }
+  }
+  return { map, ...out };
+}
+
+/** 在 site/live 的所有 HTML 中把改写表里的 URL 换成相对本地路径（兼容 &amp; 转义） */
+export function rewriteHtmlRefs({ liveDir, map }) {
+  const out = { files: 0, rewrites: 0 };
+  if (!map?.size) return out;
+  const keys = [...map.keys()].sort((a, b) => b.length - a.length);
+  const walk = (dir) => {
+    for (const n of readdirSync(dir)) {
+      const p = join(dir, n);
+      let st;
+      try { st = statSync(p); } catch { continue; }
+      if (st.isDirectory()) walk(p);
+      else if (/\.html?$/i.test(n)) {
+        let text = readFileSync(p, 'utf8');
+        let hits = 0;
+        for (const k of keys) {
+          const to = map.get(k);
+          for (const variant of [k, k.replace(/&/g, '&amp;')]) {
+            if (!text.includes(variant)) continue;
+            const parts = text.split(variant);
+            hits += parts.length - 1;
+            text = parts.join(to);
+          }
+        }
+        // 写时复制：导出包与 workspace 是硬链接，直接写会连带改坏源文件 → 先写临时文件再改名断链
+        if (hits) { writeFileSync(p + '.heimdall-tmp', text); renameSync(p + '.heimdall-tmp', p); out.files++; out.rewrites += hits; }
+      }
+    }
+  };
+  walk(liveDir);
   return out;
 }

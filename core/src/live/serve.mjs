@@ -48,10 +48,18 @@ const LANDING = join(HERE, 'landing.html');
 
 let HAR_INDEX = new Map();
 let HAR_ENTRIES = 0;
+const HAR_BY_QUERY = new Map();   // pathname|url参数 → 任意已捕获尺寸（图片优化端点回退）
 try {
   const har = JSON.parse(readFileSync(join(HERE, 'har.json'), 'utf8'));
   HAR_INDEX = indexHar(har.entries);
   HAR_ENTRIES = har.entries?.length ?? 0;
+  for (const e of har.entries ?? []) {
+    try {
+      const x = new URL(e.url);
+      const target = x.searchParams.get('url');
+      if (target) HAR_BY_QUERY.set(x.pathname + '|' + target, e);
+    } catch {}
+  }
 } catch {}
 
 const MIME = {
@@ -141,7 +149,14 @@ async function serveLive(req, res, rel, search) {
   }
   // 2) HAR replay（原站重新部署后旧 chunk 仍可用）
   if (REPLAY && req.method === 'GET') {
-    const hit = matchHar(HAR_INDEX, req.method, ORIGIN + rel + search);
+    let hit = matchHar(HAR_INDEX, req.method, ORIGIN + rel + search);
+    if (!hit && search) {
+      // /_next/image?url=…&w=…：精确变体没录到就回退到同一源图的任意已捕获尺寸
+      try {
+        const target = new URLSearchParams(search).get('url');
+        if (target) hit = HAR_BY_QUERY.get(rel + '|' + target) ?? null;
+      } catch {}
+    }
     if (hit && hit.body) {
       const body = Buffer.from(hit.body, 'base64');
       const replayHeaders = { ...hit.headers };

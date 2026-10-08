@@ -3,11 +3,11 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveRefPath, extractRefs, scanLiveBundle } from '../src/live/health.mjs';
-import { healBundle, materializeHar } from '../src/live/heal.mjs';
+import { healBundle, materializeHar, localizeQueryEntries, rewriteHtmlRefs } from '../src/live/heal.mjs';
 import { indexHar } from '../src/live/har.mjs';
 
 test('live/health: resolver handles /lm prefix, queries, relative paths and externals', () => {
@@ -74,6 +74,26 @@ test('live/heal: materializeHar writes same-origin bodies and skips query/extern
     assert.equal(r.written, 1);
     assert.equal(existsSync(join(dir, 'a', 'chunk.js')), true);
     assert.equal(existsSync(join(dir, '_next')), false);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/heal: localizeQueryEntries + rewriteHtmlRefs localizes dynamic image endpoints', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-loc-'));
+  try {
+    mkdirSync(join(dir, 'live', 'pricing'), { recursive: true });
+    writeFileSync(join(dir, 'live', 'pricing', 'index.html'),
+      '<img src="/lm/x.test/_next/image?url=%2Fa.png&amp;w=64"><img src="/lm/x.test/_next/image?url=%2Fa.png&w=64">');
+    const entries = [{ method: 'GET', url: 'https://x.test/_next/image?url=%2Fa.png&w=64', status: 200, mimeType: 'image/webp', body: Buffer.from('IMG').toString('base64') }];
+    const loc = localizeQueryEntries({ entries, liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test' });
+    assert.equal(loc.written, 1);
+    assert.equal(loc.bytes, 3);
+    const rw = rewriteHtmlRefs({ liveDir: join(dir, 'live'), map: loc.map });
+    assert.ok(rw.rewrites >= 2, 'both escaped and raw refs rewritten, got ' + rw.rewrites);
+    const html = readFileSync(join(dir, 'live', 'pricing', 'index.html'), 'utf8');
+    assert.ok(!html.includes('_next/image'), 'all dynamic refs rewritten');
+    assert.ok(html.includes('/lm/x.test/_ext/'), 'points at local _ext file');
+    const rel = [...loc.map.values()][0].replace('/lm/x.test/', '');
+    assert.equal(existsSync(join(dir, 'live', rel)), true);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
