@@ -227,7 +227,7 @@ function selectView(id) {
   if (id === 'pages' && view.value === 'pages') { view.value = 'atlas'; return; }   // 再次点击 = 收起
   view.value = id;
   if (id === 'jobs') loadJobHistory();
-  if (id === 'reports') { loadReports(); loadAssets(); loadLiveHealth(); }
+  if (id === 'reports') { loadReports(); loadAssets(); loadLiveHealth(); loadVerifySummary(); }
   if (id === 'settings') loadLlm();
 }
 function togglePages() { if (view.value === 'pages') view.value = 'atlas'; else { view.value = 'pages'; loadPageStatus(); } }
@@ -579,6 +579,14 @@ async function loadLiveHealth() {
     liveHealth.value = r.ok ? await r.json() : null;
   } catch { liveHealth.value = null; }
 }
+async function loadVerifySummary() {
+  try {
+    const r = await fetch('/static/' + host.value + '/verify/verify-summary.json');
+    if (!r.ok) { lastVerify.value = null; return; }
+    const j = await r.json();
+    lastVerify.value = { host: host.value, pages: j.pages?.length ?? 0, average: ((j.average ?? 0) * 100).toFixed(1), worst: j.worst ?? null };
+  } catch { lastVerify.value = null; }
+}
 async function loadReports() {
   try { const r = await fetch(API + '/api/reports/' + host.value); if (r.ok) reportIndex.value = (await r.json()).reports ?? []; } catch {}
 }
@@ -737,6 +745,7 @@ function runVerify(page) {
         } else if (ev.kind === 'verify-done') {
           task.done = true; task.endedAt = Date.now(); task.verifyAverage = ev.average;
           lastVerify.value = { host: host.value, pages: ev.pages, average: (ev.average * 100).toFixed(1) };
+          loadVerifySummary();
           statusText.value = '体检完成 · ' + ev.pages + ' 页 · 平均 ' + (ev.average * 100).toFixed(1) + '%';
           close(); scheduleScoreLoad(); loadReports();
           setTimeout(() => { statusText.value = ''; }, 5000);
@@ -1075,7 +1084,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     </div>
     <div class="report-card hud-panel">
       <h3>全站体检</h3>
-      <p v-if="lastVerify">{{ lastVerify.pages }} 页 · 平均 {{ lastVerify.average }}%</p>
+      <p v-if="lastVerify">{{ lastVerify.pages }} 页 · 平均 {{ lastVerify.average }}%<template v-if="lastVerify.worst"><br /><span class="score-note">最差 {{ lastVerify.worst.page }} · {{ lastVerify.worst.name }} {{ (lastVerify.worst.score * 100).toFixed(1) }}%</span></template></p>
       <p v-else>多视口（375/768/1440）逐页像素 diff，输出最差视口</p>
       <div class="report-list" v-if="lastVerify"><a :href="'/static/' + host + '/verify/verify-summary.json'" target="_blank" rel="noopener">体检 JSON</a></div>
       <button class="wv-primary" @click="runVerifyAll">{{ lastVerify ? '重新体检' : '运行全站体检' }}</button>
