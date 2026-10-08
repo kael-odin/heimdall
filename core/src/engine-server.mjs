@@ -87,6 +87,8 @@ let runningAudit = null;
 let runningWatch = null;
 let runningAssets = null;
 let runningMatrix = null;
+let runningVerify = null;
+let runningLive = null;
 const pageMetaCache = new Map();
 const MAX_FORGE = 2;
 let forgeSlots = 0;
@@ -108,7 +110,7 @@ function makeTask(kind, url) {
 
 /** spawn 引擎脚本并解析 @@EVENT@@ 行 → task 事件流 */
 function spawnTask(t, script, args, opts = {}) {
-  const child = spawn(process.execPath, [script, ...args], {
+  const child = spawn(process.execPath, [...(opts.nodeArgs ?? []), script, ...args], {
     cwd: join(HERE, '..'),
     env: { ...process.env, HEIMDALL_PORT: String(PORT), ...(opts.env ?? {}) },
   });
@@ -135,6 +137,8 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'watch') runningWatch = null;
     else if (t.kind === 'assets') runningAssets = null;
     else if (t.kind === 'matrix') runningMatrix = null;
+    else if (t.kind === 'verify') runningVerify = null;
+    else if (t.kind === 'live') runningLive = null;
     else forgeSlots--;
     jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
   });
@@ -177,6 +181,25 @@ function startMatrix(sites, maxPages = 15) {
   t.host = sites[0];
   runningMatrix = t;
   return spawnTask(t, join('src', 'seo', 'matrix.mjs'), [...sites, '--max', String(maxPages)]).id;
+}
+
+function startVerify(host, { page, maxPages = 20 } = {}) {
+  const t = makeTask('verify', 'https://' + host);
+  t.host = host;
+  t.label = page ? '多视口体检 ' + page : '全站体检';
+  runningVerify = t;
+  const args = page ? [host, page, '--no-interactions'] : [host, '--all', '--max', String(maxPages)];
+  return spawnTask(t, join('src', 'verify', 'verify.mjs'), args).id;
+}
+
+function startLiveExport(host, { root = 'mirror', rebuild = false } = {}) {
+  const t = makeTask('live', 'https://' + host);
+  t.host = host;
+  t.label = '活镜像导出 ' + host;
+  runningLive = t;
+  const args = [host, '--offline', '--root', root === 'landing' ? 'landing' : 'mirror', '--heal', '--materialize-har'];
+  if (rebuild) args.push('--rebuild');
+  return spawnTask(t, join('src', 'live', 'export.mjs'), args, { nodeArgs: ['--max-old-space-size=4096'] }).id;
 }
 
 function startForge(url, { hostPost = true } = {}) {
@@ -295,6 +318,37 @@ createServer(async (req, res) => {
       if (runningMatrix) return json(res, 409, { error: 'busy', taskId: runningMatrix.id });
       const id = startMatrix([...new Set(sites)], Math.min(Math.max(maxPages ?? 15, 1), 100));
       json(res, 200, { taskId: id, sites });
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/verify') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let host, page = null, maxPages = 20;
+      try { ({ host, page, maxPages } = JSON.parse(body || '{}')); } catch {}
+      host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+      if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
+      if (page != null && !/^[a-z0-9._-]+$/i.test(String(page))) return json(res, 400, { error: 'bad page' });
+      if (runningVerify) return json(res, 409, { error: 'busy', taskId: runningVerify.id });
+      const id = startVerify(host, { page: page ? String(page) : null, maxPages: Math.min(Math.max(maxPages ?? 20, 1), 200) });
+      json(res, 200, { taskId: id, host, page: page ?? null });
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/live-export') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let host, root = 'mirror', rebuild = false;
+      try { ({ host, root, rebuild } = JSON.parse(body || '{}')); } catch {}
+      host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+      if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
+      if (runningLive) return json(res, 409, { error: 'busy', taskId: runningLive.id });
+      const id = startLiveExport(host, { root, rebuild: !!rebuild });
+      json(res, 200, { taskId: id, host, root });
     });
     return;
   }
@@ -578,6 +632,8 @@ createServer(async (req, res) => {
       watch: runningWatch ? { id: runningWatch.id, url: runningWatch.url } : null,
       assets: runningAssets ? { id: runningAssets.id, url: runningAssets.url } : null,
       matrix: runningMatrix ? { id: runningMatrix.id, url: runningMatrix.url } : null,
+      verify: runningVerify ? { id: runningVerify.id, host: runningVerify.host } : null,
+      live: runningLive ? { id: runningLive.id, host: runningLive.host } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },
       jobs: tasks.size,
       jobsStore: jobStore?.kind ?? null,

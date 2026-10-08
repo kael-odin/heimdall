@@ -34,6 +34,7 @@ const okMsg = ref('');           // 成功提示（绿色 toast，与错误提�
 const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
 const liveHealth = ref(null);    // 最新活镜像体检（/api/live-health/:host，导出时生成）
+const lastVerify = ref(null);    // 最近一次全站体检结果（/api/verify）
 const liveHealthHost = ref('');   // liveHealth 对应的 host（切站后避免串数据）
 const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
@@ -707,6 +708,83 @@ function runWatch() {
   })();
 }
 
+/** 多视口体检：引擎 verify 任务（--all 或单页；minViewport 告警口径） */
+function runVerify(page) {
+  const task = reactive({
+    localId: 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    kind: 'verify', label: page ? ('多视口体检 · ' + page) : ('全站体检 · ' + host.value), url: atlas.value?.origin ?? ('https://' + host.value),
+    done: false, failed: false, error: null, verifyAverage: null,
+    startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = page ? ('体检 ' + page + ' · 截图中') : '全站体检 · 准备中';
+  (async () => {
+    try {
+      const r = await fetch(API + '/api/verify', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, page: page || undefined, maxPages: 30 }) });
+      const { taskId, error } = await r.json();
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '体检失败：' + error; return; }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind === 'verify-page') {
+          const pct = (ev.overall * 100).toFixed(1);
+          const min = ev.minViewport ? (' · 最低 ' + ev.minViewport.name + ' ' + (ev.minViewport.score * 100).toFixed(1) + '%') : '';
+          statusText.value = '体检 ' + ev.page + ' · ' + pct + '%' + min;
+        } else if (ev.kind === 'verify-done') {
+          task.done = true; task.endedAt = Date.now(); task.verifyAverage = ev.average;
+          lastVerify.value = { host: host.value, pages: ev.pages, average: (ev.average * 100).toFixed(1) };
+          statusText.value = '体检完成 · ' + ev.pages + ' 页 · 平均 ' + (ev.average * 100).toFixed(1) + '%';
+          close(); scheduleScoreLoad(); loadReports();
+          setTimeout(() => { statusText.value = ''; }, 5000);
+        } else if (ev.kind === 'verify-error') {
+          statusText.value = '体检告警 · ' + ev.page + ' ' + (ev.error || '');
+        } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
+          task.failed = true; task.done = true; task.error = '任务中断'; close();
+        }
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+  })();
+}
+function runVerifyAll() { runVerify(null); }
+function runVerifyPage() { const n = selected.value; if (n) runVerify(pageNameOf(n)); }
+
+/** 活镜像导出：引擎 live 任务（离线 + mirror + heal + materialize） */
+function runLiveExport() {
+  const task = reactive({
+    localId: 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    kind: 'live', label: '活镜像导出 · ' + host.value, url: atlas.value?.origin ?? ('https://' + host.value),
+    done: false, failed: false, error: null,
+    startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = '活镜像导出中 · 约 2-5 分钟（HAR 合并 + 图片本地化 + 体检）';
+  (async () => {
+    try {
+      const r = await fetch(API + '/api/live-export', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, root: 'mirror' }) });
+      const { taskId, error } = await r.json();
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '活镜像导出失败：' + error; return; }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind === 'exit') {
+          task.done = true; task.endedAt = Date.now();
+          if (ev.status === 'done') { statusText.value = '活镜像导出完成 · 已生成离线完整包'; loadLiveHealth(); loadReports(); }
+          else { task.failed = true; task.error = '导出失败（见 health.json / 任务日志）'; errMsg.value = '活镜像导出失败，查看任务日志'; }
+          close(); setTimeout(() => { statusText.value = ''; }, 5000);
+        }
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+  })();
+}
+
 /** 全站 SEO 审计：复用引擎 audit 任务（SSE 进度 → 报告入口） */
 function runAudit() {
   const origin = atlas.value?.origin ?? `https://${host.value}`;
@@ -995,6 +1073,19 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <button v-else class="wv-primary" @click="runAssetsAudit">运行扫描</button>
     </div>
     <div class="report-card hud-panel">
+      <h3>全站体检</h3>
+      <p v-if="lastVerify">{{ lastVerify.pages }} 页 · 平均 {{ lastVerify.average }}%</p>
+      <p v-else>多视口（375/768/1440）逐页像素 diff，输出最差视口</p>
+      <div class="report-list" v-if="lastVerify"><a :href="'/static/' + host + '/verify/verify-summary.json'" target="_blank" rel="noopener">体检 JSON</a></div>
+      <button class="wv-primary" @click="runVerifyAll">{{ lastVerify ? '重新体检' : '运行全站体检' }}</button>
+    </div>
+    <div class="report-card hud-panel">
+      <h3>活镜像导出</h3>
+      <p v-if="liveHealth">最近：{{ liveHealth.bundle }} · 缺口 {{ liveHealth.assets?.unresolved ?? 0 }}</p>
+      <p v-else>离线完整包：图片本地化 + HAR 回放 + drop-in 根路径</p>
+      <button class="wv-primary" @click="runLiveExport">导出完整离线包</button>
+    </div>
+    <div class="report-card hud-panel">
       <h3>活镜像体检</h3>
       <template v-if="liveHealth">
         <p>离线资源 {{ liveHealth.assets?.local ?? 0 }} 本地 / {{ liveHealth.assets?.har ?? 0 }} HAR 回放 · <b :style="{ color: (liveHealth.assets?.unresolved ?? 0) ? 'var(--amber)' : 'var(--green)' }">缺口 {{ liveHealth.assets?.unresolved ?? 0 }}</b></p>
@@ -1127,7 +1218,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
             <div class="q-row"><span class="q-k">综合</span><span class="q-v">{{ (detailQuality.verify.overall * 100).toFixed(1) }}% {{ detailQuality.verify.grade }}</span></div>
             <div class="q-row" v-if="detailQuality.verify.minViewport"><span class="q-k">最差视口</span><span class="q-v" :class="detailQuality.verify.minViewport.score >= 0.95 ? 'ok' : detailQuality.verify.minViewport.score >= 0.85 ? 'mid' : 'bad'">{{ detailQuality.verify.minViewport.name }} {{ (detailQuality.verify.minViewport.score * 100).toFixed(1) }}% {{ detailQuality.verify.minViewport.grade }}</span></div>
           </div>
-          <div v-else class="seo-note">未运行多视口验证：<code>node core/src/verify/verify.mjs {{ host }} {{ pageNameOf(selected) }}</code></div>
+          <div v-else class="seo-note">未运行多视口验证 <button class="wv-primary" style="margin-left:8px" @click="runVerifyPage">运行本页体检</button>（等价命令：<code>verify {{ host }} {{ pageNameOf(selected) }}</code>）</div>
         </div>
         <div class="ov-sec">
           <div class="panel-sec-name">交互回放（功能保真）</div>
