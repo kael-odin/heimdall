@@ -98,9 +98,9 @@ const bfsSeen = new Set([LANDING.replace(/\/$/, '')]);   // 仅 BFS 自身去重
 for (const u of sitemapSame) smQueue.push({ url: u, depth: 99 });
 
 let idSeq = 0;
-const addNode = (url, depth, title) => {
+const addNode = (url, depth, title, seoLite) => {
   if (nodes.has(url)) return;
-  nodes.set(url, { id: `n${String(idSeq++).padStart(3, '0')}`, url, path: pathOf(url), title: title || pathOf(url), type: classify(pathOf(url)), depth, seoLite });
+  nodes.set(url, { id: `n${String(idSeq++).padStart(3, '0')}`, url, path: pathOf(url), title: title || pathOf(url), type: classify(pathOf(url)), depth, seoLite });   // seoLite 由调用方传入
 };
 
 async function visit({ url, depth }) {
@@ -120,7 +120,7 @@ async function visit({ url, depth }) {
       canonical: !!document.querySelector('link[rel="canonical"]'),
       lang: document.documentElement.lang || '',
     })).catch(() => null);
-    addNode(url, depth, title);
+    addNode(url, depth, title, seoLite);
     const node = nodes.get(url);
     emit({ kind: 'page', ...node });
     // 缩略图（供星图 hover）
@@ -137,7 +137,6 @@ async function visit({ url, depth }) {
     }
     emit({ kind: 'edges', from: url, tos: [...new Set(links)].slice(0, 40) });
   } catch (e) {
-    // 失败页不进星图
   } finally {
     await page.close();
   }

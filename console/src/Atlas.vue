@@ -509,7 +509,7 @@ onBeforeUnmount(() => { es?.close(); esForge?.close(); });
 
   <a class="archive-link" v-if="hudPages > 0" :href="`/${host}/index.html`" target="_blank" rel="noopener">克隆档案 · {{ hudPages }} 页</a>
   <div class="keys" v-if="!forge">
-    <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 锻造该页</span>
+    <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 打开页面详情</span>
   </div>
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
 </template>
