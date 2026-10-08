@@ -22,6 +22,7 @@
     "smoke": "node scripts/smoke-forge.mjs",
     "watch": "node src/watch/watch.mjs",
     "tokens": "node src/extract/extract-tokens.mjs",
+    "components": "node src/extract/extract-components.mjs",
     "live:export": "node src/live/export.mjs",
     "live:serve": "node src/live/serve.mjs",
     "cli": "node src/cli.mjs"

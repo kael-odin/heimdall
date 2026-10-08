@@ -308,7 +308,27 @@ node core\src\cli.mjs serve  8900
 - 控制台「任务」页底部展示持久化历史（最近 50 条）
 - 可用 `HEIMDALL_JOBS_DB` 自定义数据库路径；`HEIMDALL_JOBS_FORCE_JSON=1` 强制 JSON 存储
 
-## 21. 质量门（v2）
+## 21. 组件抽取（v2）
+
+把已克隆页面的常见组件抽成可复用素材：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\extract\extract-components.mjs apify.com --pages 2 --max 12
+```
+
+产物（`workspace/<host>/design/components/`）：
+
+| 文件 | 说明 |
+|---|---|
+| `<page>-<key>.html` | 独立预览（组件 outerHTML + 命中 CSS + :root 变量；素材路径自动回指 clone 目录） |
+| `components.json` | 清单（tag/classes/选择器/规则数/字节/来源页） |
+| `components.html` | 画廊（16 个 iframe 预览，可逐个打开） |
+
+覆盖类型：header/nav、hero、pricing、faq、footer、cta。
+实测 apify（home+pricing）：16 个组件（header 45KB / hero 114KB / pricing 140KB / faq / footer / 4×CTA）。
+
+## 22. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

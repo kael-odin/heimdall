@@ -30,6 +30,7 @@ export const COMMANDS = {
   watch:   { script: 'src/watch/watch.mjs', usage: 'watch <host> [--max N] [--accept] [--fail-on-change]', desc: '站点变更监控（两次采样去噪 + 变更报告）' },
   verify:  { script: 'src/verify/verify.mjs', usage: 'verify <host> <page>|--all [--max N] [--threshold N]', desc: '多视口（375/768/1440）全页保真验证' },
   tokens:  { script: 'src/extract/extract-tokens.mjs', usage: 'tokens <host> [--pages N] [--page name]', desc: '设计 token 提取（色板/字阶/间距/圆角/阴影）' },
+  components: { script: 'src/extract/extract-components.mjs', usage: 'components <host> [--pages N] [--max N]', desc: '组件抽取（header/hero/pricing/faq/footer/cta → 独立预览）' },
   live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <dir>] [--rebuild]', desc: '导出可部署活镜像包（HAR 回放 + Docker）' },
   dedupe:  { script: 'src/store/dedupe.mjs', usage: 'dedupe <host> [--dry-run] [--dir <path>]', desc: '内容寻址资产去重（硬链接）' },
   deliver: { script: 'src/deliver.mjs', usage: 'deliver <host> [hostDir]', desc: '打包交付物（site + intel + raw + README）' },
