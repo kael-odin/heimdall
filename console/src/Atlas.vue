@@ -52,7 +52,7 @@ const hudOrigin = ref('');
 const sites = ref([]);          // 已侦察站点清单（/api/sites）
 const engine = ref({ ok: false, recon: null, forge: null });   // 引擎状态灯
 const autoRotate = ref(true);   // 星图自转开关
-const showPanel = ref(true);    // 左侧仪表面板折叠
+const showPanel = ref(typeof window === 'undefined' || window.innerWidth > 768);    // 左侧仪表面板折叠（小屏默认收起）
 const plSelected = ref(new Set());
 function plToggle(id) { const s = new Set(plSelected.value); s.has(id) ? s.delete(id) : s.add(id); plSelected.value = s; }
 function plSelectAll() { const s = new Set(plSelected.value); tableNodes.value.filter(n => n.forgeState !== 'done').forEach(n => s.add(n.id)); plSelected.value = s; }
@@ -1240,7 +1240,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .seek button { padding: 0 24px; background: linear-gradient(180deg, rgba(34,211,238,.18), rgba(34,211,238,.05)); border: 0; border-left: 1px solid var(--cyan-line); color: var(--cyan); cursor: pointer; letter-spacing: .34em; font-size: 13px; font-family: var(--font-cn); transition: background var(--dur), box-shadow var(--dur); }
 .seek button:hover { background: rgba(34,211,238,.14); box-shadow: 0 0 20px rgba(34,211,238,.25) inset; }
 
-.sites { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 5; align-items: center; }
+.sites { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; z-index: 5; align-items: center; max-width: min(92vw, 980px); }
 .sites-label { font-size: 11px; color: var(--text-faint); font-family: var(--font-mono); letter-spacing: .1em; }
 .site-btn { background: rgba(11,11,16,.8); border: 1px solid var(--cyan-line); color: var(--text-dim); padding: 5px 12px; border-radius: var(--r); cursor: pointer; font-family: var(--font-mono); font-size: 12px; transition: all var(--dur); }
 .site-btn em { font-style: normal; color: var(--green); margin-left: 6px; font-size: 10px; }
@@ -1525,4 +1525,59 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .view-nav button.on { color: var(--cyan); background: rgba(34,211,238,.10); }
 .view-nav button:hover { color: var(--text); }
 .keys { bottom: 76px !important; }
+
+/* 移动端（≤768px）：单列卡片 + 底部抽屉，保证每台设备都能用 */
+@media (max-width: 768px) {
+  .hud { left: 12px; right: 12px; top: 10px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+  .brand { font-size: 15px; letter-spacing: .22em; }
+  .brand-sub, .hud-rule { display: none; }
+  .stats { gap: 14px; }
+  .stat b { font-size: 16px; }
+  .stat i { font-size: 8.5px; letter-spacing: .14em; }
+  .status { position: fixed; left: 12px; right: 12px; bottom: 74px; margin: 0; text-align: center; font-size: 10.5px; letter-spacing: .12em; z-index: 13; }
+  .seek { top: 54px; left: 12px; right: 12px; transform: none; }
+  .seek input { width: auto; flex: 1; min-width: 0; font-size: 13px; padding: 10px; }
+  .seek button { padding: 0 14px; letter-spacing: .12em; }
+  .theme-btn { padding: 0 4px 0 8px; }
+  .sites { top: 102px; left: 12px; right: 12px; transform: none; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; padding-bottom: 2px; max-width: none; scrollbar-width: none; }
+  .sites::-webkit-scrollbar { display: none; }
+  .sites-label { display: none; }
+  .site-btn, .site-del { flex: 0 0 auto; }
+  .panel { left: 12px; right: 12px; bottom: 66px; width: auto; max-height: 42vh; overflow-y: auto; }
+  .panel-open { left: 12px; bottom: 70px; }
+  .keys, .archive-link, .audit-link { display: none; }
+  .task-center { left: 12px; right: 12px; bottom: 66px; width: auto; }
+  .toast { bottom: 74px; left: 12px; right: 12px; transform: none; text-align: center; font-size: 12px; z-index: 14; }
+  .dock { left: 0; right: 0; width: auto; min-width: 0; padding: 16px 14px 92px; }
+  .work-view { left: 0; right: 0; top: 144px; bottom: 64px; }
+  .wv-head { gap: 8px; padding: 10px 12px; }
+  .wv-head b { flex: 1 1 100%; }
+  .wv-stat { flex: 1 1 100%; }
+  .wv-search { flex: 1 1 100%; min-width: 0; }
+  .wv-close { margin-left: 0; }
+  .wv-rows { padding-bottom: 8px; }
+  .wv-row { display: flex; flex-wrap: wrap; gap: 6px 12px; min-width: 0; padding: 10px 12px; }
+  .wv-row.wv-th { display: none; }
+  .wv-row .c-check { order: 1; }
+  .wv-row .c-path { order: 2; flex: 1 1 calc(100% - 34px); }
+  .wv-row .c-title { order: 3; flex: 1 1 100%; white-space: normal; }
+  .wv-row .c-state { order: 4; }
+  .wv-row .c-score { order: 5; }
+  .wv-row .c-gaps { order: 6; display: block; }
+  .wv-row .c-type { order: 7; display: block; }
+  .wv-row .c-assets { order: 8; display: block; }
+  .wv-row .c-actions { order: 9; flex: 1 1 100%; margin-top: 2px; }
+  .wv-row .c-score::before { content: '视觉 '; color: var(--text-faint); }
+  .wv-row .c-gaps::before { content: '缺口 '; color: var(--text-faint); }
+  .wv-row .c-assets::before { content: '资产 '; color: var(--text-faint); }
+  .wv-row .c-type::before { content: '类型 '; color: var(--text-faint); }
+  .job-row { display: flex; }
+  .job-row .job-name { flex: 1 1 100%; }
+  .reports-grid { left: 12px; right: 12px; top: 144px; bottom: 64px; grid-template-columns: 1fr; }
+  .settings-grid { padding: 12px; }
+  .set-row { flex-wrap: wrap; }
+  .set-row > span { width: 100%; }
+  .set-row input:not([type=checkbox]) { min-width: 0; flex: 1 1 100%; }
+  .view-nav button { min-width: 56px; padding: 5px 4px; }
+}
 </style>
