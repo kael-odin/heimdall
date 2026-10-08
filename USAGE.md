@@ -328,7 +328,20 @@ node core\src\extract\extract-components.mjs apify.com --pages 2 --max 12
 覆盖类型：header/nav、hero、pricing、faq、footer、cta。
 实测 apify（home+pricing）：16 个组件（header 45KB / hero 114KB / pricing 140KB / faq / footer / 4×CTA）。
 
-## 22. 质量门（v2）
+## 22. 竞品 SEO 对标矩阵（v2）
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\seo\matrix.mjs apify.com thordata.com --max 15
+node core\src\seo\matrix.mjs apify.com thordata.com --refresh   :: 强制重新审计
+```
+
+- 数据源：各站 `workspace/<host>/seo/seo.json`（缺失时自动先审计）
+- 产物：`workspace/_matrix/<sites>-<date>/{matrix.html,matrix.csv,matrix.json}`
+- 对比维度：站点分 / 页面数 / title 长度 / description·H1·结构化数据覆盖率 / 平均 LCP / 平均字数 / 每页问题数 / 页面类型分布 / 各站高频问题
+- 报告中绿色 = 该指标最优
+
+## 23. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

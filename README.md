@@ -24,6 +24,7 @@
 
 - **SEO 审计**：`node core/src/seo/audit.mjs <host> --max 20` → `workspace/<host>/seo/{seo.html,seo.csv,seo.json}`，40+ 规则覆盖索引/内容/结构化数据/性能/链接/安全
 - **任务持久化**：`node:sqlite`（旧版 Node 自动降级 JSON）存储任务/事件；引擎重启后历史可查，崩溃遗留的 running 标记为 interrupted
+- **竞品 SEO 对标矩阵**：`node core/src/seo/matrix.mjs <本站> <竞品1> <竞品2>` → 站点分/覆盖率/LCP/页面类型/高频问题对比（HTML+CSV+JSON）
 - **组件抽取**：`node core/src/extract/extract-components.mjs <host>` → header/hero/pricing/faq/footer/cta 独立预览（outerHTML + 命中 CSS + 素材路径回指）
 - **统一 CLI**：`node core/src/cli.mjs`（或 `pnpm -C core cli`）覆盖 recon/forge/queue/audit/watch/verify/tokens/live/dedupe/deliver/serve
 - **设计 Token 提取**：`node core/src/extract/extract-tokens.mjs <host>` → colors/字体/字号/间距/圆角/阴影/断点/CSS 变量（含频次）→ tokens.css + 可视化预览
