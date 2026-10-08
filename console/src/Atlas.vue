@@ -1219,6 +1219,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
             </div>
             <div class="q-row"><span class="q-k">综合</span><span class="q-v">{{ (detailQuality.verify.overall * 100).toFixed(1) }}% {{ detailQuality.verify.grade }}</span></div>
             <div class="q-row" v-if="detailQuality.verify.minViewport"><span class="q-k">最差视口</span><span class="q-v" :class="detailQuality.verify.minViewport.score >= 0.95 ? 'ok' : detailQuality.verify.minViewport.score >= 0.85 ? 'mid' : 'bad'">{{ detailQuality.verify.minViewport.name }} {{ (detailQuality.verify.minViewport.score * 100).toFixed(1) }}% {{ detailQuality.verify.minViewport.grade }}</span></div>
+            <div class="q-row" v-if="detailQuality.verify.minViewport && detailQuality.verify.minViewport.score < 0.9"><span class="q-k">建议</span><span class="q-v mid">该视口差异较大（多为客户端响应式变体/JS 渲染），优先使用活镜像</span></div>
           </div>
           <div v-else class="seo-note">未运行多视口验证 <button class="wv-primary" style="margin-left:8px" @click="runVerifyPage">运行本页体检</button>（等价命令：<code>verify {{ host }} {{ pageNameOf(selected) }}</code>）</div>
         </div>
