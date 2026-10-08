@@ -23,6 +23,7 @@
 ## v2 新增（2026-10-08 起）
 
 - **SEO 审计**：`node core/src/seo/audit.mjs <host> --max 20` → `workspace/<host>/seo/{seo.html,seo.csv,seo.json}`，40+ 规则覆盖索引/内容/结构化数据/性能/链接/安全
+- **变更监控**：`node core/src/watch/watch.mjs <host>` → 基线快照 + 两次采样排除动态噪声 → 标题/描述/canonical/robots/正文变化报告（HTML/JSON），支持 `--fail-on-change` 接入定时任务
 - **活镜像 L3（可部署）**：`node core/src/live/export.mjs <host>` → 自包含部署包（零依赖 Node 服务器 + HAR 回放 + Dockerfile/compose + 校验和），本地快照优先 → HAR 回放 → 原站代理
 - **工作台 IA（v2）**：底部导航切换 星图/页面/任务/报告/设置；页面表格支持搜索、类型/状态筛选、批量克隆、逐页视觉分与状态；报告中心聚合档案/SEO/对比/情报
 - **多视口验证**：`node core/src/verify/verify.mjs <host> <page>` → 375/768/1440 全页 diff（实测 apify storage：桌面 98.2% / 平板 89.4% / 移动 78.4%，暴露单视口口径看不到的移动端差距）

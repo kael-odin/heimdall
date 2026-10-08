@@ -199,7 +199,19 @@ async function main() {
       await new Promise(r => setTimeout(r, 300));
     }
 
-    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%', '| seo =', seoJson.score, '(', seoJson.summary.issues, 'issues )', '| live bundle ok');
+    // 8) 变更监控：引擎 watch 任务（首次建立基线）
+    const watch = await postJson(base, '/api/watch', { url: 'http://127.0.0.1:' + fixturePort + '/', maxPages: 5 });
+    assert.equal(watch.status, 200, 'watch must start: ' + JSON.stringify(watch.body));
+    const watchExit = await waitExit(base, watch.body.taskId, 240_000);
+    assert.equal(watchExit.status, 'done', 'watch exit status (log: ' + engineLog.slice(-400) + ')');
+    const watchDir = join(dataDir, 'workspace', '127.0.0.1', 'watch');
+    const watchJson = JSON.parse(readFileSync(join(watchDir, 'watch.json'), 'utf8'));
+    assert.ok(watchJson.summary.total >= 2, 'watch should cover >=2 pages');
+    assert.equal(watchJson.summary.firstRun, true, 'first watch run creates baseline');
+    assert.ok(existsSync(join(watchDir, 'watch.html')), 'watch.html must exist');
+    assert.ok(existsSync(join(watchDir, 'baseline.json')), 'watch baseline must exist');
+
+    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%', '| seo =', seoJson.score, '(', seoJson.summary.issues, 'issues )', '| live bundle ok', '| watch ok');
   } finally {
     engine.kill('SIGTERM');
     fixture.close();

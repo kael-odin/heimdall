@@ -222,7 +222,24 @@ docker compose up -d                :: 或容器
 路由：`/lm/<host>/**`（活镜像）、`/static/<host>/**`（克隆档案）、`/__heimdall/health`（健康检查）。
 离线模式：`--offline` 或配置 `offline: true`，未捕获资源明确 404，不回源。
 
-## 16. 质量门（v2）
+## 16. 变更监控（v2）
+
+监控目标站点是否发生变化（标题/描述/canonical/robots/H1/结构化数据/字数/正文指纹）：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\watch\watch.mjs apify.com --max 20        :: 首次运行建立基线
+node core\src\watch\watch.mjs apify.com --max 20        :: 之后运行输出变更报告
+node core\src\watch\watch.mjs apify.com --accept        :: 确认变化并更新基线
+node core\src\watch\watch.mjs apify.com --fail-on-change :: 有变化退出码 1（定时任务/CI 用）
+```
+
+- 每次采集默认**两次采样**：两次不一致的字段判为动态噪声（计数/轮播/推荐位），不计入变化
+- 字数波动 <5% 视为动态；正文小幅变化降级为 info
+- 产物：`workspace/<host>/watch/{baseline.json,watch.json,watch.html,history/}`（历史保留最近 30 份）
+- 控制台「报告」页可一键运行并打开变更报告
+
+## 17. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

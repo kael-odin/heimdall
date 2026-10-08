@@ -179,7 +179,13 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       const renderBlocking = [...document.querySelectorAll('head link[rel="stylesheet"]')].length
         + [...document.querySelectorAll('head script[src]')].filter(s => !s.async && !s.defer).length;
       const robotsMeta = meta('meta[name="robots"]').toLowerCase();
+      // 内容指纹（FNV-1a）：用于变更监控判断"正文是否变化"
+      const normText = text.toLowerCase().slice(0, 200000);
+      let th = 0x811c9dc5;
+      for (let i = 0; i < normText.length; i++) { th ^= normText.charCodeAt(i); th = (th * 0x01000193) >>> 0; }
       return {
+        textHash: th.toString(16).padStart(8, '0'),
+        textSample: normText.slice(0, 200),
         title: (document.title || '').trim(),
         description: meta('meta[name="description"]').trim(),
         canonical: abs(meta('link[rel="canonical"]', 'href')),
@@ -230,7 +236,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       robotsMeta: dom.robotsMeta,
       xRobots: headers['x-robots-tag'] ?? '',
       meta: { noindex, nofollow: /nofollow/.test(dom.robotsMeta) || /nofollow/i.test(headers['x-robots-tag'] ?? '') },
-      lang: dom.lang, viewport: dom.viewport,
+      lang: dom.lang, viewport: dom.viewport, textHash: dom.textHash, textSample: dom.textSample,
       h1: dom.h1, headings: dom.headings, headingLevels: dom.headingLevels, headingSkips: dom.headingSkips,
       wordCount: dom.wordCount, textRatio: dom.htmlBytes ? Math.min(1, dom.textLength / dom.htmlBytes) : 0, htmlBytes: dom.htmlBytes,
       imgTotal: dom.imgTotal, imgMissingAlt: dom.imgMissingAlt, imgEmptyAlt: dom.imgEmptyAlt, imgBroken: dom.imgBroken, imgLegacy: dom.imgLegacy, imgLazy: dom.imgLazy,
@@ -244,7 +250,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
     return {
       url, finalUrl: url, status: 0, ok: false, error: String(e).slice(0, 200), redirectCount: 0, responseTimeMs: Date.now() - started,
       title: '', titleLength: 0, description: '', descriptionLength: 0, canonical: '', robotsMeta: '', xRobots: '', meta: { noindex: false, nofollow: false },
-      lang: '', viewport: '', h1: [], headings: [], headingLevels: [], headingSkips: 0, wordCount: 0, textRatio: 0, htmlBytes: 0,
+      lang: '', viewport: '', h1: [], headings: [], headingLevels: [], headingSkips: 0, wordCount: 0, textRatio: 0, htmlBytes: 0, textHash: '', textSample: '',
       imgTotal: 0, imgMissingAlt: 0, imgEmptyAlt: 0, imgBroken: 0, imgLegacy: 0, imgLazy: 0,
       links: { total: 0, internal: 0, external: 0, emptyAnchor: 0, hashOnly: 0, nofollowExternal: 0 }, internalHrefs: [], externalSample: [],
       jsonld: [], microdataCount: 0, og: {}, twitter: {}, hreflang: [], resources: { requests: 0, transferBytes: 0, jsBytes: 0, cssBytes: 0, imgBytes: 0, fontBytes: 0, renderBlocking: 0 },

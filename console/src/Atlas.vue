@@ -27,6 +27,7 @@ const forge = computed(() => tasks.find(t => t.localId === activeTaskId.value) ?
 const taskSources = new Map();
 const tasksOpen = ref(true);
 const auditReport = ref(null);   // 最近一次 SEO 审计结果（报告入口）
+const watchReport = ref(null);   // 最近一次变更监控结果（报告入口）
 function taskState(t) { return t.failed ? 'failed' : t.done ? 'done' : 'running'; }
 function taskLabel(t) { return { running: '运行中', done: '完成', failed: '失败' }[taskState(t)] ?? '运行中'; }
 const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
@@ -386,6 +387,46 @@ function startForge(node) {
   });
 }
 
+/** 站点变更监控：引擎 watch 任务（SSE 进度 → 变更报告入口） */
+function runWatch() {
+  const origin = atlas.value?.origin ?? 'https://' + host.value;
+  const task = reactive({
+    localId: 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    kind: 'watch', label: '变更监控 · ' + host.value, url: origin,
+    done: false, failed: false, error: null, watchChanges: null,
+    startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = '变更监控 · 采集中';
+  (async () => {
+    try {
+      const r = await fetch(API + '/api/watch', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url: origin, maxPages: 30 }) });
+      const { taskId, error } = await r.json();
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '变更监控失败：' + error; return; }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind === 'watch-page') statusText.value = '变更监控 · ' + ev.index + '/' + ev.total;
+        else if (ev.kind === 'watch-done') {
+          task.watchChanges = ev.changes; task.done = true; task.endedAt = Date.now();
+          watchReport.value = { host: host.value, changes: ev.changes, bySeverity: ev.bySeverity };
+          statusText.value = ev.changes ? '变更监控完成 · ' + ev.changes + ' 处变化' : '变更监控完成 · 无变化';
+          close(); setTimeout(() => { statusText.value = ''; }, 4000);
+        } else if (ev.kind === 'watch-error') {
+          task.failed = true; task.done = true; task.error = ev.error;
+          errMsg.value = '变更监控失败：' + ev.error; close();
+        } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
+          task.failed = true; task.done = true; task.error = '任务中断'; close();
+        }
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+  })();
+}
+
 /** 全站 SEO 审计：复用引擎 audit 任务（SSE 进度 → 报告入口） */
 function runAudit() {
   const origin = atlas.value?.origin ?? `https://${host.value}`;
@@ -576,9 +617,9 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
     <div class="wv-rows">
       <div class="wv-row job-row" v-for="t in [...tasks].reverse()" :key="t.localId">
         <span class="job-name">{{ t.label ?? t.pageName }}</span>
-        <span class="job-kind">{{ t.kind === 'audit' ? 'SEO 审计' : '克隆' }}</span>
+        <span class="job-kind">{{ t.kind === 'audit' ? 'SEO 审计' : t.kind === 'watch' ? '变更监控' : '克隆' }}</span>
         <span class="wv-state" :class="taskState(t)">{{ taskLabel(t) }}</span>
-        <span class="wv-score">{{ t.kind === 'audit' ? (t.auditScore != null ? t.auditScore + ' 分' : '—') : (t.score ? (t.score.pixel * 100).toFixed(1) + '%' : '—') }}</span>
+        <span class="wv-score">{{ t.kind === 'audit' ? (t.auditScore != null ? t.auditScore + ' 分' : '—') : t.kind === 'watch' ? (t.watchChanges != null ? t.watchChanges + ' 处变化' : '—') : (t.score ? (t.score.pixel * 100).toFixed(1) + '%' : '—') }}</span>
         <span class="job-time">{{ fmtTime(t.startedAt) }} · {{ fmtDuration(t) }}</span>
         <span class="job-error" :title="t.error">{{ t.error || '' }}</span>
       </div>
@@ -598,6 +639,13 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
       <p v-else>尚未运行（40+ 规则 / 六分类评分）</p>
       <a v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">打开报告</a>
       <button v-else class="wv-primary" @click="runAudit">运行审计</button>
+    </div>
+    <div class="report-card hud-panel">
+      <h3>变更监控</h3>
+      <p v-if="watchReport">{{ watchReport.changes }} 处变化（高 {{ watchReport.bySeverity?.high ?? 0 }}）</p>
+      <p v-else>对比基线快照，发现标题/描述/canonical/正文变化</p>
+      <a v-if="watchReport" :href="`/static/${host}/watch/watch.html`" target="_blank" rel="noopener">打开变更报告</a>
+      <button v-else class="wv-primary" @click="runWatch">运行监控</button>
     </div>
     <div class="report-card hud-panel">
       <h3>同步滚动对比</h3>

@@ -65,6 +65,7 @@ const tasks = new Map();
 let seq = 0;
 let runningRecon = null;
 let runningAudit = null;
+let runningWatch = null;
 const MAX_FORGE = 2;
 let forgeSlots = 0;
 
@@ -106,6 +107,7 @@ function spawnTask(t, script, args, opts = {}) {
     t.subs.clear();
     if (t.kind === 'recon') runningRecon = null;
     else if (t.kind === 'audit') runningAudit = null;
+    else if (t.kind === 'watch') runningWatch = null;
     else forgeSlots--;
   });
   return t;
@@ -124,6 +126,15 @@ function startAudit(url, maxPages = 30) {
   t.host = new URL(url).hostname.replace(/^www\./, '');
   runningAudit = t;
   return spawnTask(t, join('src', 'seo', 'audit.mjs'), [url, '--max', String(maxPages)]).id;
+}
+
+function startWatch(url, maxPages = 20, accept = false) {
+  const t = makeTask('watch', url);
+  t.host = new URL(url).hostname.replace(/^www\./, '');
+  runningWatch = t;
+  const args = [url, '--max', String(maxPages)];
+  if (accept) args.push('--accept');
+  return spawnTask(t, join('src', 'watch', 'watch.mjs'), args).id;
 }
 
 function startForge(url, { hostPost = true } = {}) {
@@ -207,6 +218,20 @@ createServer(async (req, res) => {
       try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
       if (runningAudit) return json(res, 409, { error: 'busy', taskId: runningAudit.id });
       const id = startAudit(url, Math.min(Math.max(maxPages ?? 30, 1), 200));
+      json(res, 200, { taskId: id, url });
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/watch') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let url, maxPages = 20, accept = false;
+      try { ({ url, maxPages, accept } = JSON.parse(body || '{}')); } catch {}
+      try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
+      if (runningWatch) return json(res, 409, { error: 'busy', taskId: runningWatch.id });
+      const id = startWatch(url, Math.min(Math.max(maxPages ?? 20, 1), 200), !!accept);
       json(res, 200, { taskId: id, url });
     });
     return;
@@ -393,6 +418,7 @@ createServer(async (req, res) => {
       ok: true,
       recon: runningRecon ? { id: runningRecon.id, url: runningRecon.url } : null,
       audit: runningAudit ? { id: runningAudit.id, url: runningAudit.url } : null,
+      watch: runningWatch ? { id: runningWatch.id, url: runningWatch.url } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },
       jobs: tasks.size,
       bind: BIND,
