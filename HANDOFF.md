@@ -193,3 +193,10 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
   | storage | 96.1% | 768 | 91.5% |
 - 根因（store 实测）：LogoWrapper 的 .desktop 变体带桌面内联尺寸（--unicorn-width:420px），.mobile 变体是客户端渲染、静态 DOM 里不存在 → 后半页均一 +128px 偏移。属"死镜像（L1 静态移植）无法覆盖客户端响应式变体"这一类问题；**活镜像（脚本完整）不受影响**。
 - 后续升级方向：响应式采集（多视口 DOM 合并 / 保留变体节点 + 媒体规则），或对 minViewport<0.9 的页默认引导使用活镜像（控制台质检 tab 已加提示）。
+
+## 12. 2026-10-09 续五：0 字节资产修复（追踪信标）
+
+- 发现：每页 1-2 张"裂图"实为 bat.bing 追踪信标（以 img 形式请求，抓取阶段被落盘成 0 字节 .bin）。
+- 新增 `repair-empty`（CLI）：追踪域名 → 1×1 透明 GIF data URI；其它 0 字节 → 回退原始 URL；删除空文件、同步改写 HTML/CSS 引用；幂等。
+- 实测：apify 61 页 / 306 个空文件 / 122 处引用改写；thordata 20 页 / 20 个空文件；修复后 doing-good 与 store 的裂图 2 → 0，资产扫描仍 0 视觉缺口。
+- 结论：剩余最差页（store 81.9% 等）的根因是客户端响应式变体（见第 11 节），与资产缺失无关。
