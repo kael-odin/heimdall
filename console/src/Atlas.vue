@@ -31,6 +31,8 @@ const tasksOpen = ref(true);
 const auditReport = ref(null);   // 最近一次 SEO 审计结果（报告入口）
 const watchReport = ref(null);   // 最近一次变更监控结果（报告入口）
 const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
+const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
+const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
 function taskState(t) { return t.failed ? 'failed' : t.done ? 'done' : 'running'; }
 function taskLabel(t) { return { running: '运行中', done: '完成', failed: '失败' }[taskState(t)] ?? '运行中'; }
 const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
@@ -390,6 +392,14 @@ function startForge(node) {
   });
 }
 
+/** 报告索引 + 资产清单（报告页使用） */
+async function loadReports() {
+  try { const r = await fetch(API + '/api/reports/' + host.value); if (r.ok) reportIndex.value = (await r.json()).reports ?? []; } catch {}
+}
+async function loadAssets() {
+  try { const r = await fetch(API + '/api/assets/' + host.value); if (r.ok) assetInfo.value = await r.json(); } catch {}
+}
+
 /** 引擎持久化任务历史（重启后仍可查） */
 async function loadJobHistory() {
   try {
@@ -679,6 +689,27 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
       <p>概览 / 语义情报 / 定价与 CTA</p>
       <a :href="`/${host}/intel/${host}-intel.xlsx`" download>下载 Excel</a>
     </div>
+
+    <div class="report-card report-wide hud-panel">
+      <h3>更多报告</h3>
+      <div class="report-list" v-if="reportIndex.filter(r => r.available).length">
+        <a v-for="r in reportIndex.filter(x => x.available)" :key="r.id" :href="r.url" target="_blank" rel="noopener">{{ r.name }}</a>
+      </div>
+      <p v-else>暂无（运行 verify / tokens / components / matrix 后自动出现）</p>
+    </div>
+
+    <div class="report-card report-wide hud-panel">
+      <h3>资产清单 <span class="wv-stat" v-if="assetInfo">共 {{ assetInfo.count }} 个文件 · {{ (assetInfo.totalBytes / 1024 / 1024).toFixed(1) }}MB · 去重后可查看 asset-ledger</span></h3>
+      <div class="asset-table" v-if="assetInfo?.items?.length">
+        <div class="asset-row asset-th"><span>页面</span><span>类型</span><span>大小</span><span>路径</span><span></span></div>
+        <div class="asset-row" v-for="a in assetInfo.items.slice(0, 120)" :key="a.path">
+          <span>{{ a.page }}</span><span>{{ a.ext || '—' }}</span><span>{{ (a.size / 1024).toFixed(0) }}KB</span>
+          <span class="asset-path" :title="a.path">{{ a.path }}</span>
+          <a :href="a.url" target="_blank" rel="noopener">打开</a>
+        </div>
+      </div>
+      <p v-else>暂无资产数据（先克隆页面）</p>
+    </div>
   </section>
 
   <section class="work-view hud-panel" v-if="view === 'settings'">
@@ -828,7 +859,7 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
   </div>
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
   <div class="view-nav hud-panel">
-    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" @click="view = v.id; if (v.id === 'jobs') loadJobHistory()">
+    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" @click="view = v.id; if (v.id === 'jobs') loadJobHistory(); if (v.id === 'reports') { loadReports(); loadAssets(); }">
       <b>{{ v.icon }}</b><span>{{ v.label }}</span>
     </button>
   </div>
@@ -1058,6 +1089,14 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
 .report-card h3 { margin: 0 0 8px; font-size: 15px; }
 .report-card p { color: var(--text-dim); font-size: 12px; min-height: 34px; margin: 0 0 12px; }
 .report-card a, .report-card button { display: inline-block; color: var(--cyan); border: 1px solid var(--cyan-line); background: rgba(34,211,238,.06); border-radius: 3px; padding: 6px 12px; font-size: 12px; text-decoration: none; cursor: pointer; }
+.reports-grid { overflow: auto; grid-auto-rows: min-content; align-content: start; }
+.report-wide { grid-column: 1 / -1; }
+.report-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-list a { margin: 0; }
+.asset-table { display: flex; flex-direction: column; max-height: 320px; overflow: auto; }
+.asset-row { display: grid; grid-template-columns: 110px 70px 80px 1fr 60px; gap: 8px; padding: 5px 6px; border-bottom: 1px solid rgba(148,163,184,.10); font-size: 11.5px; align-items: center; }
+.asset-th { color: var(--text-faint); font-family: var(--font-mono); letter-spacing: .08em; position: sticky; top: 0; background: rgba(11,11,16,.95); }
+.asset-path { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); }
 .settings-grid { padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
 .set-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-dim); }
 .set-row > span { width: 110px; }

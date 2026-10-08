@@ -341,7 +341,43 @@ node core\src\seo\matrix.mjs apify.com thordata.com --refresh   :: 强制重新�
 - 对比维度：站点分 / 页面数 / title 长度 / description·H1·结构化数据覆盖率 / 平均 LCP / 平均字数 / 每页问题数 / 页面类型分布 / 各站高频问题
 - 报告中绿色 = 该指标最优
 
-## 23. 质量门（v2）
+## 23. MCP 与浏览器入口（v2）
+
+**MCP（给 agent 用）**：把 Heimdall 能力暴露成 MCP 工具，任何支持 MCP 的客户端都能调用。
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\mcp\server.mjs        :: stdio MCP 服务器（12 个工具）
+```
+
+工具：`heimdall_status/jobs/recon/forge/audit/watch/verify/tokens/components/matrix/live_export/dedupe`。
+环境变量 `HEIMDALL_API`（默认 http://127.0.0.1:8900）与 `HEIMDALL_TOKEN`。
+
+**浏览器书签入口（给同事用）**：
+
+```cmd
+node core\src\browser\bookmarklet.mjs --api http://<引擎地址>:8900 --token <token>
+:: 产物：workspace/_browser/heimdall-bookmarklet.html（把按钮拖到书签栏）
+```
+
+在任意页面点书签 → 当前 URL 直接送入 Heimdall（侦察/克隆/审计/监控），到控制台「任务」页查看。
+
+## 24. 沙盒改造台（v2）
+
+在克隆页上直接改样式/文案，并与原版做逐像素对比：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\sandbox\serve.mjs apify.com pricing --port 8090
+:: 打开 http://127.0.0.1:8090
+```
+
+- 左侧：HTML（沙盒副本）+ CSS 覆盖（sandbox.css）；右侧：实时预览
+- 「保存 (Ctrl+S)」写入 `workspace/<host>/sandbox/<page>/`
+- 「与原始对比」→ Playwright 全页截图 + pixelmatch，输出相似度/差异像素/高度差 + diff.png
+- `--reset` 可从克隆页重置沙盒 HTML
+
+## 25. 质量门（v2）
 
 ```cmd
 pnpm lint    :: 零依赖语法门（core）

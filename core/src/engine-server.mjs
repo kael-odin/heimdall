@@ -445,6 +445,58 @@ createServer(async (req, res) => {
     });
   }
 
+  // 报告索引：控制台「报告」页动态展示可用产物
+  if (req.method === 'GET' && u.pathname.startsWith('/api/reports/')) {
+    const host = decodeURIComponent(u.pathname.slice('/api/reports/'.length));
+    if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    const base = join(WORKSPACE, host);
+    const defs = [
+      { id: 'archive', name: '克隆档案', file: join(base, 'index.html'), url: '/static/' + host + '/index.html' },
+      { id: 'compare', name: '同步滚动对比', file: join(base, 'compare.html'), url: '/static/' + host + '/compare.html' },
+      { id: 'seo', name: 'SEO 审计报告', file: join(base, 'seo', 'seo.html'), url: '/static/' + host + '/seo/seo.html' },
+      { id: 'watch', name: '变更监控报告', file: join(base, 'watch', 'watch.html'), url: '/static/' + host + '/watch/watch.html' },
+      { id: 'tokens', name: '设计 Token 预览', file: join(base, 'design', 'tokens.html'), url: '/static/' + host + '/design/tokens.html' },
+      { id: 'components', name: '组件画廊', file: join(base, 'design', 'components', 'components.html'), url: '/static/' + host + '/design/components/components.html' },
+      { id: 'verify', name: '多视口验证汇总', file: join(base, 'verify', 'verify-summary.json'), url: '/static/' + host + '/verify/verify-summary.json' },
+      { id: 'intel', name: '竞品情报 Excel', file: join(base, 'intel', host + '-intel.xlsx'), url: '/static/' + host + '/intel/' + host + '-intel.xlsx' },
+    ];
+    return json(res, 200, { host, reports: defs.map(r => ({ id: r.id, name: r.name, url: r.url, available: existsSync(r.file), updatedAt: existsSync(r.file) ? statSync(r.file).mtimeMs : null })) });
+  }
+
+  // 资产清单：按页聚合 clone 资产（Top N 按体积排序）
+  if (req.method === 'GET' && u.pathname.startsWith('/api/assets/')) {
+    const host = decodeURIComponent(u.pathname.slice('/api/assets/'.length));
+    if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    const base = join(WORKSPACE, host);
+    const pagesDir = join(base, 'pages');
+    const items = [];
+    let totalBytes = 0;
+    const walk = (dir, page, group) => {
+      if (!existsSync(dir) || items.length > 5000) return;
+      for (const name of readdirSync(dir)) {
+        const f = join(dir, name);
+        let st; try { st = statSync(f); } catch { continue; }
+        if (st.isDirectory()) walk(f, page, group);
+        else if (st.isFile()) {
+          totalBytes += st.size;
+          items.push({ path: relative(WORKSPACE, f).split('\\').join('/'), page, group, ext: extname(name).toLowerCase(), size: st.size, url: '/static/' + relative(WORKSPACE, f).split('\\').join('/') });
+        }
+      }
+    };
+    if (existsSync(pagesDir)) {
+      for (const page of readdirSync(pagesDir)) {
+        walk(join(pagesDir, page, 'clone', 'assets'), page, 'asset');
+        walk(join(pagesDir, page, 'clone', 'styles'), page, 'style');
+      }
+    }
+    items.sort((a, b) => b.size - a.size);
+    const byExt = {};
+    for (const it of items) { const k = it.ext || '(none)'; byExt[k] = (byExt[k] ?? 0) + 1; }
+    const ledgerPath = join(base, 'asset-ledger.json');
+    let ledger = null; try { ledger = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch {}
+    return json(res, 200, { host, count: items.length, totalBytes, byExt, ledger, items: items.slice(0, 300) });
+  }
+
   // 单端口部署：workspace 作为公开静态目录（/apify.com/recon/atlas.json 等，等价 Vite publicDir）
   {
     const firstSeg = u.pathname.split('/')[1] ?? '';

@@ -22,6 +22,9 @@
 | 控制台 | ✅ v2 | 工作台 IA：底部导航 星图/页面/任务/报告/设置；页面表格（搜索/筛选/批量克隆/逐页视觉分）；任务中心；报告中心；引擎地址与 Token 可配 |
 | 任务持久化 | ✅ | node:sqlite（JSON 降级）存 jobs/events；重启恢复 + interrupted 标记；`GET /api/jobs.history`；控制台任务页历史 |
 | 统一 CLI | ✅ | `node src/cli.mjs <command>` 覆盖 recon/forge/queue/audit/watch/verify/tokens/live/dedupe/deliver/serve |
+| 沙盒改造台 | ✅ v1 | `node src/sandbox/serve.mjs <host> <page>`：HTML/CSS 在线编辑 + 实时预览 + 与原版全页 pixelmatch（实测 24.7% → 100%） |
+| 报告中心 / 资产清单 | ✅ | 控制台报告页动态报告索引（/api/reports）＋ Top 资产表（/api/assets） |
+| MCP / 浏览器入口 | ✅ v1 | `src/mcp/server.mjs`（stdio MCP，12 工具，测试覆盖 initialize/tools/list/call）；`src/browser/bookmarklet.mjs` 生成书签安装页（no-cors 简单请求，token 走 query） |
 | SEO 对标矩阵 | ✅ v1 | `node src/seo/matrix.mjs <本站> <竞品...>` → 站点分/覆盖率/LCP/页面类型/高频问题对比（HTML+CSV+JSON） |
 | 组件抽取 | ✅ v1 | `node src/extract/extract-components.mjs <host>` → header/hero/pricing/faq/footer/cta 独立预览 + components.json/html 画廊 |
 | 设计 Token | ✅ v1 | `node src/extract/extract-tokens.mjs <host>` → tokens.json/css/html（色板/字阶/间距/圆角/阴影/断点/变量 + 频次） |

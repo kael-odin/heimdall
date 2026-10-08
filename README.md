@@ -24,6 +24,9 @@
 
 - **SEO 审计**：`node core/src/seo/audit.mjs <host> --max 20` → `workspace/<host>/seo/{seo.html,seo.csv,seo.json}`，40+ 规则覆盖索引/内容/结构化数据/性能/链接/安全
 - **任务持久化**：`node:sqlite`（旧版 Node 自动降级 JSON）存储任务/事件；引擎重启后历史可查，崩溃遗留的 running 标记为 interrupted
+- **沙盒改造台**：`node core/src/sandbox/serve.mjs <host> <page>` → 在线改 HTML/CSS、实时预览、与原版逐像素对比（实测：改背景色相似度 24.7%，还原后 100%/0 像素差）
+- **报告中心 / 资产清单**：控制台「报告」页动态列出所有可用报告（档案/SEO/监控/Token/组件/验证/情报），并按体积展示 Top 资产
+- **MCP / 浏览器入口**：`node core/src/mcp/server.mjs`（stdio MCP，12 个工具）；`node core/src/browser/bookmarklet.mjs`（在任意页面一键送入 Heimdall）
 - **竞品 SEO 对标矩阵**：`node core/src/seo/matrix.mjs <本站> <竞品1> <竞品2>` → 站点分/覆盖率/LCP/页面类型/高频问题对比（HTML+CSV+JSON）
 - **组件抽取**：`node core/src/extract/extract-components.mjs <host>` → header/hero/pricing/faq/footer/cta 独立预览（outerHTML + 命中 CSS + 素材路径回指）
 - **统一 CLI**：`node core/src/cli.mjs`（或 `pnpm -C core cli`）覆盖 recon/forge/queue/audit/watch/verify/tokens/live/dedupe/deliver/serve
