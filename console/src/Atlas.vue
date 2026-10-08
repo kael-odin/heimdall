@@ -33,6 +33,7 @@ const watchReport = ref(null);   // 最近一次变更监控结果（报告入�
 const okMsg = ref('');           // 成功提示（绿色 toast，与错误提示区分）
 const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
+const liveHealth = ref(null);    // 最新活镜像体检（/api/live-health/:host，导出时生成）
 const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const matrixPeer = ref('');          // 跨站对标对象
@@ -213,7 +214,7 @@ function selectView(id) {
   if (id === 'pages' && view.value === 'pages') { view.value = 'atlas'; return; }   // 再次点击 = 收起
   view.value = id;
   if (id === 'jobs') loadJobHistory();
-  if (id === 'reports') { loadReports(); loadAssets(); }
+  if (id === 'reports') { loadReports(); loadAssets(); loadLiveHealth(); }
   if (id === 'settings') loadLlm();
 }
 function togglePages() { if (view.value === 'pages') view.value = 'atlas'; else { view.value = 'pages'; loadPageStatus(); } }
@@ -559,6 +560,12 @@ async function testLlm() {
 }
 
 /** 报告索引 + 资产清单（报告页使用） */
+async function loadLiveHealth() {
+  try {
+    const r = await fetch(API + '/api/live-health/' + encodeURIComponent(host.value), { headers: apiHeaders() });
+    liveHealth.value = r.ok ? await r.json() : null;
+  } catch { liveHealth.value = null; }
+}
 async function loadReports() {
   try { const r = await fetch(API + '/api/reports/' + host.value); if (r.ok) reportIndex.value = (await r.json()).reports ?? []; } catch {}
 }
@@ -975,6 +982,14 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <p v-else>扫描图片/图标/SVG/CSS 引用，区分视觉缺口与元数据噪声</p>
       <a v-if="assetAuditReport" :href="`/static/${host}/audit/asset-gaps.html`" target="_blank" rel="noopener">打开缺口报告</a>
       <button v-else class="wv-primary" @click="runAssetsAudit">运行扫描</button>
+    </div>
+    <div class="report-card hud-panel">
+      <h3>活镜像体检</h3>
+      <template v-if="liveHealth">
+        <p>离线资源 {{ liveHealth.assets?.local ?? 0 }} 本地 / {{ liveHealth.assets?.har ?? 0 }} HAR 回放 · <b :style="{ color: (liveHealth.assets?.unresolved ?? 0) ? 'var(--amber)' : 'var(--green)' }">缺口 {{ liveHealth.assets?.unresolved ?? 0 }}</b></p>
+        <p class="score-note">页面 {{ liveHealth.pages ?? 0 }}<template v-if="liveHealth.liveMissing">（少 {{ liveHealth.liveMissing }} 页）</template> · 动态图 {{ liveHealth.assets?.dynamic ?? 0 }} · 站外资产 {{ liveHealth.assets?.externalAssets ?? 0 }} · 未镜像链接 {{ liveHealth.links?.missing ?? 0 }}</p>
+      </template>
+      <p v-else>尚无体检报告：导出时加 <code>--heal --strict</code> 自动生成 health.json</p>
     </div>
     <div class="report-card report-wide hud-panel">
       <h3>更多报告</h3>

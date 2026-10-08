@@ -5,7 +5,7 @@
  * 逐页向 engine POST /api/forge（槽满自动等待），SSE 监听每页 exit 更新状态落盘。
  * 重跑自动跳过已完成页（clone/index.html + score.json 齐备即视为 done）。
  *
- * 用法: node src/queue.mjs <host> [--max 20] [--force] [--no-dedupe]
+ * 用法: node src/queue.mjs <host> [--max 20] [--force] [--missing-har] [--no-dedupe]
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -15,7 +15,8 @@ import { WORKSPACE } from './paths.mjs';
 const host = process.argv[2] ?? 'thordata.com';
 const maxIdx = process.argv.indexOf('--max');
 const MAX = maxIdx > -1 ? Number(process.argv[maxIdx + 1] ?? 20) : 20;
-const FORCE = process.argv.includes('--force');   // 忽略已有产物，强制重锻
+const FORCE = process.argv.includes('--force');       // 忽略已有产物，强制重锻
+const MISSING_HAR = process.argv.includes('--missing-har');   // 只重锻缺 network.har 的页（活镜像离线补录）
 const API = process.env.HEIMDALL_API ?? 'http://127.0.0.1:8900';
 const TOKEN = process.env.HEIMDALL_TOKEN ?? '';
 const HEADERS = { 'Content-Type': 'application/json', ...(TOKEN ? { 'x-heimdall-token': TOKEN } : {}) };
@@ -46,7 +47,16 @@ if (existsSync(queuePath)) {
 
 const hasProduct = (name) => existsSync(join(BASE, 'pages', name, 'clone', 'index.html')) && existsSync(join(BASE, 'pages', name, 'score.json'));
 if (FORCE) for (const q of queue) q.status = 'pending';   // 强制重锻：全部重新排队
-else for (const q of queue) if (q.status !== 'done' && hasProduct(q.name)) q.status = 'done';   // 有产物即认完成
+else if (MISSING_HAR) {
+  for (const q of queue) {
+    const har = join(BASE, 'pages', q.name, 'network.har');
+    if (!existsSync(har)) q.status = 'pending';                                       // 缺 HAR → 补录
+    else if (q.status !== 'done' && hasProduct(q.name)) q.status = 'done';
+  }
+} else for (const q of queue) {
+  if (q.status !== 'done' && hasProduct(q.name)) { q.status = 'done'; continue; }   // 有产物即认完成
+  if (q.status === 'failed' && (q.attempts ?? 0) < 2) q.status = 'pending';         // 失败页给第二次机会
+}
 writeFileSync(queuePath, JSON.stringify(queue, null, 2));
 
 const pending = queue.filter(q => q.status === 'pending' || q.status === 'queued');
@@ -80,7 +90,23 @@ function awaitExit(taskId, timeoutMs = 15 * 60_000) {
           } catch {}
         }
       }
-    } catch (e) { clearTimeout(timer); resolve('sse-error'); }
+    } catch (e) {
+      console.log('[queue] SSE disconnected, fallback to job polling');
+      const poll = async () => {
+        for (;;) {
+          await new Promise(r => setTimeout(r, 5000));
+          try {
+            const r = await fetch(API + '/api/jobs', { headers: TOKEN ? { 'x-heimdall-token': TOKEN } : {} });
+            if (!r.ok) continue;
+            const body = await r.json();
+            const all = [...(body.jobs ?? []), ...(body.history ?? [])];
+            const j = all.find(x => x.id === taskId);
+            if (j && ['done', 'failed', 'cancelled', 'interrupted'].includes(j.status)) { clearTimeout(timer); resolve(j.status); return; }
+          } catch {}
+        }
+      };
+      poll();
+    }
   });
 }
 
@@ -95,12 +121,17 @@ async function worker(id) {
     // 入队（槽满则等待）
     let taskId = null;
     for (let attempt = 0; !taskId; attempt++) {
-      const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: job.url, hostPost: false }) });
-      if (r.status === 200) { taskId = (await r.json()).taskId; break; }
-      if (attempt % 4 === 0) console.log(`[w${id}] slot busy, waiting... (${job.name})`);
+      try {
+        const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: job.url, hostPost: false }) });
+        if (r.status === 200) { taskId = (await r.json()).taskId; break; }
+        if (attempt % 4 === 0) console.log(`[w${id}] slot busy, waiting... (${job.name})`);
+      } catch (e) {
+        if (attempt % 4 === 0) console.log(`[w${id}] engine unreachable, retrying... (${job.name}: ${String(e).slice(0, 60)})`);
+      }
       await new Promise(res => setTimeout(res, 15000));
     }
     job.status = 'queued';
+    job.attempts = (job.attempts ?? 0) + 1;
     save();
     console.log(`[w${id}] forge ${job.name} (${job.url})`);
     const status = await awaitExit(taskId);

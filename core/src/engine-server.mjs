@@ -23,7 +23,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync, existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname, extname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WORKSPACE, DATA_ROOT } from './paths.mjs';
+import { WORKSPACE, DATA_ROOT, DELIVERABLE } from './paths.mjs';
 import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
 import { llmInfo, llmChat, llmEnabled } from './llm.mjs';
 
@@ -422,6 +422,23 @@ createServer(async (req, res) => {
         return { id: j.id, status: j.status, createdAt: j.createdAt, endedAt: j.endedAt, error: j.error, score: score ? { pixel: score.pixel, total: score.total, grade: score.grade } : null };
       });
     return json(res, 200, { host, page, jobs });
+  }
+
+  // 活镜像体检：读取最新 <host>-live-*/health.json（导出时生成）
+  if (req.method === 'GET' && u.pathname.startsWith('/api/live-health/')) {
+    const host = decodeURIComponent(u.pathname.slice('/api/live-health/'.length));
+    if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    let dirs = [];
+    try { dirs = readdirSync(DELIVERABLE).filter(n => n.startsWith(host + '-live-')).sort().reverse(); } catch {}
+    for (const d of dirs) {
+      const p = join(DELIVERABLE, d, 'health.json');
+      if (!existsSync(p)) continue;
+      try {
+        const health = JSON.parse(readFileSync(p, 'utf8'));
+        return json(res, 200, { ...health, bundle: d });
+      } catch {}
+    }
+    return json(res, 404, { error: 'no live health report', host });
   }
 
   if (req.method === 'GET' && u.pathname === '/api/sites') {
