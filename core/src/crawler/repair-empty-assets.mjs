@@ -79,9 +79,12 @@ for (const name of readdirSync(PAGES).sort()) {
       if (n !== text) { if (!DRY) writeFileSync(rf, n); hits += 1; }
     }
     rewrites += hits;
-    files++;
-    if (!DRY) { try { unlinkSync(f); } catch {} }
-    console.log('  ', name, rel, '->', replacement ? (replacement.startsWith('data:') ? 'transparent-pixel' : String(replacement).slice(0, 80)) : '(removed reference)', hits ? 'refs:' + hits : 'refs:0');
+    // 只在确实改写了引用时才删文件；未被引用的空文件保留（可能被 live 页/其它文件引用，如 agents.md 的空 cssom.css）
+    if (hits > 0) {
+      files++;
+      if (!DRY) { try { unlinkSync(f); } catch {} }
+    }
+    console.log('  ', name, rel, hits ? ('refs:' + hits) : 'kept (no refs)', replacement && replacement.startsWith('data:') ? '-> transparent-pixel' : '');
   }
 }
 console.log(`[repair-empty-assets] host=${host} pages=${pages} files=${files} rewrites=${rewrites}${DRY ? ' (dry-run)' : ''}`);
