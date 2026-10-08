@@ -170,3 +170,11 @@ node core\src\queue.mjs <host> --missing-har
 node core\src\crawler\build_live.mjs <host>
 node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root mirror --heal --materialize-har --strict
 ```
+
+## 10. 2026-10-09 续三：控制台一键闭环（体检 + 活镜像导出）
+
+- 引擎新增任务：`POST /api/verify {host,page?,maxPages?}`（多视口体检，全站/单页）与 `POST /api/live-export {host,root?,rebuild?}`（离线完整包：--offline --root mirror --heal --materialize-har，node 4GB 堆）。
+- 控制台「报告」页新增 **全站体检** 卡（运行/重跑 + verify-summary.json 入口）与 **活镜像导出** 卡（可选"先重建 live 页面"，完成后自动刷新体检卡）。
+- 详情「质检」tab 新增 **运行本页体检** 按钮（未跑过多视口时显示）。
+- 任务中心统一展示这两类任务（verify=v 前缀 / live=l 前缀），状态持久化。
+- 实测：单页体检 v001 done、活镜像导出 l002 done（thordata 缺口 0）、UI 两个按钮全链路通过。
