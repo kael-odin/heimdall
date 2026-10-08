@@ -64,6 +64,7 @@ const isInsideWorkspace = (file) => {
 const tasks = new Map();
 let seq = 0;
 let runningRecon = null;
+let runningAudit = null;
 const MAX_FORGE = 2;
 let forgeSlots = 0;
 
@@ -103,7 +104,9 @@ function spawnTask(t, script, args, opts = {}) {
     push(t, { kind: 'exit', code, status: t.status });
     for (const res of t.subs) res.end();
     t.subs.clear();
-    if (t.kind === 'recon') runningRecon = null; else forgeSlots--;
+    if (t.kind === 'recon') runningRecon = null;
+    else if (t.kind === 'audit') runningAudit = null;
+    else forgeSlots--;
   });
   return t;
 }
@@ -114,6 +117,13 @@ function startRecon(url, maxPages) {
   t.atlasPath = join(WORKSPACE, host, 'recon', 'atlas.json');
   runningRecon = t;
   return spawnTask(t, join('src', 'crawler', 'recon.mjs'), [url, String(maxPages), '2']).id;
+}
+
+function startAudit(url, maxPages = 30) {
+  const t = makeTask('audit', url);
+  t.host = new URL(url).hostname.replace(/^www\./, '');
+  runningAudit = t;
+  return spawnTask(t, join('src', 'seo', 'audit.mjs'), [url, '--max', String(maxPages)]).id;
 }
 
 function startForge(url, { hostPost = true } = {}) {
@@ -184,6 +194,20 @@ createServer(async (req, res) => {
         forgeSlots--;
         json(res, 500, { error: String(e).slice(0, 140) });
       }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/audit') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let url, maxPages = 30;
+      try { ({ url, maxPages } = JSON.parse(body || '{}')); } catch {}
+      try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
+      if (runningAudit) return json(res, 409, { error: 'busy', taskId: runningAudit.id });
+      const id = startAudit(url, Math.min(Math.max(maxPages ?? 30, 1), 200));
+      json(res, 200, { taskId: id, url });
     });
     return;
   }
@@ -351,6 +375,7 @@ createServer(async (req, res) => {
     return json(res, 200, {
       ok: true,
       recon: runningRecon ? { id: runningRecon.id, url: runningRecon.url } : null,
+      audit: runningAudit ? { id: runningAudit.id, url: runningAudit.url } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },
       jobs: tasks.size,
       bind: BIND,

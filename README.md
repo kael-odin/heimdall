@@ -20,6 +20,15 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 三层架构、栈适配器、还原度公式、里程碑 | 开工前 |
 | [RISKS.md](RISKS.md) | 合规红线、技术风险预案、演示日 checklist | 每周对一遍 |
 
+## v2 新增（2026-10-08 起）
+
+- **SEO 审计**：`node core/src/seo/audit.mjs <host> --max 20` → `workspace/<host>/seo/{seo.html,seo.csv,seo.json}`，40+ 规则覆盖索引/内容/结构化数据/性能/链接/安全
+- **任务中心**：控制台内每次克隆与审计独立进度，不再互相覆盖；引擎新增 `/api/jobs` 与任务取消
+- **安全默认值**：引擎默认只监听 `127.0.0.1`，代理只允许 workspace 已知 host；可用 `HEIMDALL_TOKEN` 开启鉴权
+- **数据目录可迁移**：`HEIMDALL_DATA_DIR` 把 workspace/deliverable 移出仓库
+- **质量门**：`pnpm lint` / `pnpm test` / `pnpm smoke`（本地 fixture 离线 E2E）+ GitHub Actions
+- 完整审查与路线图：[docs/REVIEW-2026-10-08.md](docs/REVIEW-2026-10-08.md)
+
 ## 一图看懂
 
 ```

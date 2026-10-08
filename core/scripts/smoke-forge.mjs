@@ -152,7 +152,17 @@ async function main() {
     assert.ok(jobs.jobs.length >= 2, 'jobs endpoint should list recon + forge');
     assert.ok(jobs.jobs.every(j => ['done', 'failed', 'cancelled', 'running'].includes(j.status)));
 
-    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%');
+    // 6) SEO 审计（复用同一 fixture + 临时数据目录）
+    const audit = await postJson(base, '/api/audit', { url: `http://127.0.0.1:${fixturePort}/`, maxPages: 5 });
+    assert.equal(audit.status, 200, 'audit must start: ' + JSON.stringify(audit.body));
+    const auditExit = await waitExit(base, audit.body.taskId, 240_000);
+    assert.equal(auditExit.status, 'done', 'audit exit status (engine log tail: ' + engineLog.slice(-500) + ')');
+    const seoJson = JSON.parse(readFileSync(join(dataDir, 'workspace', '127.0.0.1', 'seo', 'seo.json'), 'utf8'));
+    assert.ok(existsSync(join(dataDir, 'workspace', '127.0.0.1', 'seo', 'seo.html')), 'seo.html must exist');
+    assert.ok(seoJson.pages.length >= 2, 'audit should cover >=2 pages, got ' + seoJson.pages.length);
+    assert.ok(seoJson.score > 0, 'audit score should be > 0');
+
+    log('PASS — recon pages =', atlas.nodes.length, '| visual =', (score.pixel * 100).toFixed(1) + '%', '| dom =', (score.dom.dom * 100).toFixed(1) + '%', '| seo =', seoJson.score, '(', seoJson.summary.issues, 'issues )');
   } finally {
     engine.kill('SIGTERM');
     fixture.close();

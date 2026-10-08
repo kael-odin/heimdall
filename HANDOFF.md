@@ -19,7 +19,10 @@
 | 情报包 | ✅ | 规则抽取+LLM 语义（定价/套餐/价值主张）→ xlsx；跨页 fidelity.csv |
 | 全站批量锻造 | ✅ | queue.mjs 持久化队列，断点续跑，thordata 31/31、apify 60/60 |
 | 同步滚动对比 | ✅ | compare.html（1440px 统一视口，根除响应式变形） |
-| 控制台 | ✅ | 3D 星图（graphify 同款）、详情剖析面板（概览/SEO/锻造三 tab）、页面清单勾选锻造、仪表面板、深浅主题 |
+| 控制台 | ✅ | 3D 星图、详情剖析（概览/SEO/锻造）、页面清单、任务中心（独立进度）、深浅主题 |
+| SEO 审计 | ✅ v1 | `node src/seo/audit.mjs <host> --max 20` → seo.html/csv/json，40+ 规则、六分类评分 |
+| 质量门 | ✅ | `pnpm lint` / `pnpm test`（12 单测）/ `pnpm smoke`（fixture 离线 E2E，含 SEO 审计）+ GitHub Actions |
+| 安全默认值 | ✅ | 绑定 127.0.0.1、代理 host 白名单、路径越界防护、可选 token、CORS 限定来源 |
 
 ## 3. 架构三层（谁依赖谁）
 
@@ -73,7 +76,9 @@ node src\crawler\fullshot.mjs <host>
 
 ## 6. 待办路线（按优先级）
 
-1. **活镜像深层交互**：apify store/use-cases 点击触发的被剥脚本下游引用（5-6 errs/页）——逐站第三方依赖白名单
+1. **活镜像 v2（L3 可部署）**：HAR 全网络录制 + Service Worker 拦截 + 导出 Docker/Edge 包（当前 /lm 仍是 POC）
+2. **资产 CAS 去重**：实测 76% 重复字节，迁移到内容寻址存储
+3. **活镜像深层交互**：apify store/use-cases 点击触发的被剥脚本下游引用（5-6 errs/页）——逐站第三方依赖白名单
 2. **chunk 快照时效**：原站重部署后旧哈希 chunk 失效——已可定期重锻刷新；可升级为增量 chunk 补抓
 3. **素材映射层（L4）**：harvest 数据 → 素材映射表（logo/主色/文案→文件路径/DOM 位置），前端"查表换牌"
 4. **组件抽取**：高频组件（定价卡/导航/FAQ）独立 HTML+CSS 片段导出

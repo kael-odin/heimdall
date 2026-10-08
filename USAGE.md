@@ -113,3 +113,39 @@ node src\crawler\index-page.mjs apify.com
 :: 刷新情报 xlsx
 node src\harvest\xlsx.mjs apify.com
 ```
+
+## 10. SEO 审计（v2 新增）
+
+一条命令对任意站点做 40+ 项 SEO 体检：
+
+```cmd
+cd /d D:\Github-Star\heimdall
+node core\src\seo\audit.mjs apify.com --max 20
+```
+
+产物（`core/workspace/<host>/seo/`）：
+
+| 文件 | 用途 |
+|---|---|
+| `seo.html` | 自包含报告，双击即看（站点分 / 分类分 / 逐页问题 + 证据 + 建议） |
+| `seo.csv` | 逐条问题清单，Excel 直接打开 |
+| `seo.json` | 结构化结果，供 CI / 接口消费 |
+
+规则分类：抓取与索引 / 内容与语义 / 结构化数据与社交 / 性能与体验（LCP·CLS）/ 链接与架构 / 安全与合规。
+CI 门控：`--threshold 70` 时站点分低于阈值退出码为 1。
+
+控制台：站点栏点「SEO 审计」→ 任务中心显示进度 → 完成后右下角打开报告。
+
+## 11. 安全与数据目录（v2）
+
+- 引擎默认只监听 `127.0.0.1`；内网共享时设置 `HEIMDALL_HOST=0.0.0.0` + `HEIMDALL_TOKEN=<token>`，控制台可用 localStorage 的 `heimdall-token` 携带。
+- 活镜像/代理只允许 `workspace/<host>` 已存在的域名（防 SSRF/开放代理）；额外域名用 `HEIMDALL_ALLOWED_HOSTS=a.com,b.com`。
+- 把 1.4GB 产物移出仓库：`set HEIMDALL_DATA_DIR=D:\heimdall-data`，workspace/deliverable 都会迁到该目录。
+
+## 12. 质量门（v2）
+
+```cmd
+pnpm lint    :: 零依赖语法门（core）
+pnpm test    :: node:test 单测（评分/抽取/适配器/SEO 规则）
+pnpm smoke   :: 离线 E2E：本地 fixture → recon → forge → 产物断言 → SEO 审计（不碰外网、不写真实 workspace）
+```

@@ -26,6 +26,7 @@ const activeTaskId = ref(null);
 const forge = computed(() => tasks.find(t => t.localId === activeTaskId.value) ?? null);
 const taskSources = new Map();
 const tasksOpen = ref(true);
+const auditReport = ref(null);   // 最近一次 SEO 审计结果（报告入口）
 function taskState(t) { return t.failed ? 'failed' : t.done ? 'done' : 'running'; }
 function taskLabel(t) { return { running: '运行中', done: '完成', failed: '失败' }[taskState(t)] ?? '运行中'; }
 const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
@@ -301,6 +302,50 @@ function startForge(node) {
   });
 }
 
+/** 全站 SEO 审计：复用引擎 audit 任务（SSE 进度 → 报告入口） */
+function runAudit() {
+  const origin = atlas.value?.origin ?? `https://${host.value}`;
+  const task = reactive({
+    localId: `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    kind: 'audit', label: 'SEO 审计 · ' + host.value, url: origin,
+    done: false, failed: false, error: null, auditScore: null,
+    startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = 'SEO 审计 · 准备中';
+  (async () => {
+    try {
+      const r = await fetch(`${API}/api/audit`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url: origin, maxPages: 30 }) });
+      const { taskId, error } = await r.json();
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = 'SEO 审计失败：' + error; return; }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind === 'audit-start') statusText.value = `SEO 审计 · 0/${ev.targets}`;
+        else if (ev.kind === 'audit-page') statusText.value = `SEO 审计 · ${ev.index}/${ev.total}`;
+        else if (ev.kind === 'audit-done') {
+          task.auditScore = ev.score; task.done = true; task.endedAt = Date.now();
+          auditReport.value = { host: host.value, score: ev.score };
+          statusText.value = `SEO 审计完成 · ${ev.score} 分`;
+          close(); setTimeout(() => { statusText.value = ''; }, 4000);
+        } else if (ev.kind === 'audit-error') {
+          task.failed = true; task.done = true; task.error = ev.error;
+          errMsg.value = 'SEO 审计失败：' + ev.error; close();
+        } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
+          task.failed = true; task.done = true; task.error = '任务中断'; close();
+        }
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) {
+      task.failed = true; task.done = true; task.error = String(e);
+      errMsg.value = String(e);
+    }
+  })();
+}
+
 async function forgeAll() {
   const targets = nodes.filter(n => n.forgeState !== 'done' && n.forgeState !== 'running').slice(0, 10);
   statusText.value = `全境锻造 ${targets.length} 页`;
@@ -388,6 +433,7 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
     <button v-for="s in sites" :key="s.host" class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s); pagesListOpen = true" :title="s.pages ? `${s.forged}/${s.pages} 页已锻造` : '侦察结果为空（失败或无可用页面）'">
       {{ s.host }}<em>{{ s.pages ? s.forged + 'F' : '空' }}</em>
     </button>
+    <button class="site-btn audit-btn" :disabled="!!engine.audit" @click="runAudit" :title="engine.audit ? '已有审计任务在运行' : '全站 SEO 审计（40+ 规则，输出 HTML/CSV/JSON 报告）'">SEO 审计</button>
     <button class="site-btn list-toggle" :class="{ active: pagesListOpen }" @click="pagesListOpen = !pagesListOpen">页面清单</button>
   </div>
 
@@ -400,9 +446,10 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
     </div>
     <div class="tc-rows" v-show="tasksOpen">
       <div class="tc-row" v-for="t in [...tasks].reverse()" :key="t.localId" :class="taskState(t)" @click="activeTaskId = t.localId" :title="t.error || t.url">
-        <span class="tc-name">{{ t.pageName }}</span>
+        <span class="tc-name">{{ t.label ?? t.pageName }}</span>
         <span class="tc-state">{{ taskLabel(t) }}</span>
-        <span class="tc-score" v-if="t.score">{{ (t.score.pixel * 100).toFixed(1) }}%</span>
+        <span class="tc-score" v-if="t.kind === 'audit' && t.auditScore != null">{{ t.auditScore }} 分</span>
+        <span class="tc-score" v-else-if="t.score">{{ (t.score.pixel * 100).toFixed(1) }}%</span>
       </div>
     </div>
   </div>
@@ -556,6 +603,7 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
     </div>
   </div>
 
+  <a class="audit-link" v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">SEO 报告 · {{ auditReport.score }} 分</a>
   <a class="archive-link" v-if="hudPages > 0" :href="`/${host}/index.html`" target="_blank" rel="noopener">克隆档案 · {{ hudPages }} 页</a>
   <div class="keys" v-if="!forge">
     <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 打开页面详情</span>
@@ -743,4 +791,8 @@ onBeforeUnmount(() => { es?.close(); for (const s of taskSources.values()) { try
 .site-btn.empty { opacity: .55; border-color: rgba(239,68,68,.35); }
 .site-btn.empty em { color: var(--red); }
 .score-note { margin-top: 8px; font-size: 10px; color: var(--text-faint); font-family: var(--font-mono); letter-spacing: .04em; }
+.audit-btn { border-color: rgba(52,211,153,.4); color: var(--green); }
+.audit-btn:disabled { opacity: .45; cursor: not-allowed; }
+.audit-link { position: fixed; right: 24px; bottom: 62px; z-index: 8; padding: 8px 16px; border: 1px solid rgba(52,211,153,.45); border-radius: var(--r); background: rgba(11,11,16,.82); color: var(--green); font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; text-decoration: none; }
+.audit-link:hover { box-shadow: 0 0 18px rgba(52,211,153,.25); }
 </style>
