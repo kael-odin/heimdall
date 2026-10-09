@@ -276,3 +276,8 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
 - **平均 99.6%，61/61 全 A**（此前 99.0%、59A/2B）。
 - 最差页：storage 98.3/93.3(375)、agents.md 97.8/95.6、about 98.6/96.0、jobs 98.5/97.0、templates 97.2/97.0。
 - 说明：storage 的 375 视口仍有 93.3%（疑似交互态抖动）；其余页面均 ≥95.6%。
+
+### 17.3 一键响应式升级（引擎任务 + 控制台按钮）
+- 引擎 `POST /api/responsive-upgrade {host,threshold,max,force}`（kind=upgrade，SSE 事件 upgrade-page）；控制台「全站体检」卡新增「响应式升级」按钮。
+- 实测：任务 u001 正常创建/完成；UI 按钮显示正常。
+- 第二批 --force（threshold 0.98）结果：KEEP storage(93.3→96.6)/jobs(97.0→**100.0**)/contact(97.1→99.7)/use-cases-lead-generation(97.3→99.9)/ideas(97.3→99.1)；REVERT agents.md/about/templates（无提升）。

@@ -792,6 +792,38 @@ function runVerify(page) {
     } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
   })();
 }
+function runResponsiveUpgrade() {
+  const task = reactive({
+    localId: 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    kind: 'upgrade', label: '响应式升级 · ' + host.value, url: atlas.value?.origin ?? ('https://' + host.value),
+    done: false, failed: false, error: null,
+    startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = '响应式升级 · 低分页批量处理（快照→构建→verify，提升才保留）';
+  (async () => {
+    try {
+      const r = await fetch(API + '/api/responsive-upgrade', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, threshold: 0.97, max: 8 }) });
+      const { taskId, error } = await r.json();
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '响应式升级失败：' + error; return; }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind === 'upgrade-page') statusText.value = '响应式升级 · ' + ev.page + ' · ' + (ev.kept ? '保留' : '回退');
+        else if (ev.kind === 'exit') {
+          task.done = true; task.endedAt = Date.now();
+          if (ev.status === 'done') { statusText.value = '响应式升级完成'; loadVerifySummary(); scheduleScoreLoad(); }
+          else { task.failed = true; task.error = '升级任务失败'; errMsg.value = '响应式升级失败，见任务日志'; }
+          close(); setTimeout(() => { statusText.value = ''; }, 5000);
+        }
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+  })();
+}
 function runVerifyAll() { runVerify(null); }
 function runVerifyPage() { const n = selected.value; if (n) runVerify(pageNameOf(n)); }
 
@@ -1121,6 +1153,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <p v-else>多视口（375/768/1440）逐页像素 diff，输出最差视口</p>
       <div class="report-list" v-if="lastVerify"><a :href="'/static/' + host + '/verify/verify-summary.json'" target="_blank" rel="noopener">体检 JSON</a></div>
       <button class="wv-primary" @click="runVerifyAll">{{ lastVerify ? '重新体检' : '运行全站体检' }}</button>
+      <button @click="runResponsiveUpgrade" title="对 minViewport<0.97 的页面做多视口快照，verify 提升才保留">响应式升级</button>
     </div>
     <div class="report-card hud-panel">
       <h3>活镜像导出</h3>

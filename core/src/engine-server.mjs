@@ -90,6 +90,7 @@ let runningMatrix = null;
 let runningVerify = null;
 let runningLive = null;
 let runningReclaim = null;
+let runningUpgrade = null;
 const pageMetaCache = new Map();
 const MAX_FORGE = 2;
 let forgeSlots = 0;
@@ -140,6 +141,7 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'matrix') runningMatrix = null;
     else if (t.kind === 'verify') runningVerify = null;
     else if (t.kind === 'live') runningLive = null;
+    else if (t.kind === 'upgrade') runningUpgrade = null;
     else forgeSlots--;
     jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
   });
@@ -182,6 +184,16 @@ function startMatrix(sites, maxPages = 15) {
   t.host = sites[0];
   runningMatrix = t;
   return spawnTask(t, join('src', 'seo', 'matrix.mjs'), [...sites, '--max', String(maxPages)]).id;
+}
+
+function startResponsiveUpgrade(host, { threshold = 0.97, max = 8, force = false } = {}) {
+  const t = makeTask('upgrade', 'https://' + host);
+  t.host = host;
+  t.label = '响应式升级 ' + host;
+  runningUpgrade = t;
+  const args = [host, '--threshold', String(threshold), '--max', String(max)];
+  if (force) args.push('--force');
+  return spawnTask(t, join('src', 'crawler', 'responsive-upgrade.mjs'), args).id;
 }
 
 function startVerify(host, { page, maxPages = 20 } = {}) {
@@ -347,6 +359,21 @@ createServer(async (req, res) => {
         try { byPage = JSON.parse(readFileSync(join(WORKSPACE, host, 'audit', 'reclaim-plan.json'), 'utf8')).byPage ?? null; } catch {}
         return json(res, out.code === 0 ? 200 : 500, { host, apply: !!apply, exit: out.code, summary, byPage });
       } finally { runningReclaim = null; }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/responsive-upgrade') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let host, threshold = 0.97, max = 8, force = false;
+      try { ({ host, threshold, max, force } = JSON.parse(body || '{}')); } catch {}
+      host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+      if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
+      if (runningUpgrade) return json(res, 409, { error: 'busy', taskId: runningUpgrade.id });
+      const id = startResponsiveUpgrade(host, { threshold: Math.min(Math.max(Number(threshold) || 0.97, 0.5), 1), max: Math.min(Math.max(Number(max) || 8, 1), 61), force: !!force });
+      json(res, 200, { taskId: id, host });
     });
     return;
   }
@@ -663,6 +690,7 @@ createServer(async (req, res) => {
       matrix: runningMatrix ? { id: runningMatrix.id, url: runningMatrix.url } : null,
       verify: runningVerify ? { id: runningVerify.id, host: runningVerify.host } : null,
       live: runningLive ? { id: runningLive.id, host: runningLive.host } : null,
+      upgrade: runningUpgrade ? { id: runningUpgrade.id, host: runningUpgrade.host } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },
       jobs: tasks.size,
       jobsStore: jobStore?.kind ?? null,
