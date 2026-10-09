@@ -241,3 +241,18 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
 - 保守候选 10,781 个 / 125.5MB → 全部隔离（gaps 0→0，无回滚），剩余孤儿 904 / 42.4MB。
 - 交付包重导出：**26,292 文件 / 383.0MB → 15,206 文件 / 257.5MB（−125.5MB）**，unresolved 仍为 0；离线实测 /、/pricing、/store 均 0 镜像失败。
 - 新增 `reclaim-orphans <host> --purge`：确认无副作用后可回收隔离区磁盘（默认保留隔离区作安全网）。
+
+## 16. 2026-10-09 续九：死镜像响应式升级（多视口快照）
+
+- 新增 `multi-snapshot <host> <page> | <host> --all [--max N] [--pages a,b]`：按 375/768 重新渲染，保存 dom/cssom-<w>；build_clone 自动生成 index-375/768/1440 + index.html 视口选择器（≤600→375，≤1100→768，否则 1440）。
+- 实测（apify，veriify 三视口 overall/最差视口）：
+  | 页面 | 升级前 | 升级后 |
+  |---|---|---|
+  | store | 95.3% / 81.9% | **99.7% / 99.95%** |
+  | doing-good | 94.4% / 88.4% | **99.8% / 99.7%** |
+  | resources-startups | 95.9% / 90.2% | **99.9% / 99.8%** |
+  | storage | 96.1% / 91.5% | **99.7% / 99.0%** |
+  | agents.md | 93.9% / 91.1% | **97.8% / 95.6%** |
+  | api（反例） | 96.3% / 87.8% | 94.5% / 87.9% → 已回退 |
+- 结论：多快照解决“客户端响应式变体”类漂移（4/5 页显著提升）；代码块等非响应式差异不受益。
+- 工作流：`multi-snapshot` → `build_clone` → `verify`；**只有分数提升才保留**，否则删除 dom/cssom-<w> 并重建（api 即按此回退，变体备份在 pages/api/_variants-backup）。

@@ -1,7 +1,11 @@
+#!/usr/bin/env node
 /**
  * build_clone — 资产本地化重写，产出离线可渲染的镜像页
  *
- * 样式源 = cssom.css（CSSOM 最终状态），HTML = dom.html 骨架本地化
+ * 样式源 = cssom.css（CSSOM 最终状态），HTML = dom.html 骨架本地化。
+ * 若存在 dom-375/768.html（由 multi-snapshot.mjs 生成），则额外构建
+ * index-375.html / index-768.html / index-1440.html，并以 index.html 作视口选择器。
+ *
  * 用法: node src/crawler/build_clone.mjs <pageDir>
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -28,11 +32,6 @@ const extOf = (ct, url) => {
     : ct.includes('png') ? 'png' : ct.includes('jpeg') ? 'jpg' : ct.includes('webp') ? 'webp' : 'bin';
 };
 
-// ---------- 1. CSSOM: 补抓引用(字体/背景图) + 重写为相对路径 ----------
-console.log('[1/3] fetch cssom refs (adapter:', adapter.name + ')');
-let css = cssText;
-let fetched = 0, failed = 0;
-let refIndex = 0;   // 与 cssom-refs.json.refs 顺序一一对应（失败也占位，便于 HAR 精确恢复）
 const fetchBin = async (url) => {
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(res.status);
@@ -40,99 +39,120 @@ const fetchBin = async (url) => {
   if (!buf.length) throw new Error('empty body');
   return buf;
 };
-for (const ref of cssomMeta.refs) {
-  let abs;
-  try { abs = new URL(ref, ORIGIN).href; } catch { refIndex++; continue; }
-  const name = `ref${String(refIndex++).padStart(3, '0')}.${extOf('', abs)}`;
-  const sub = /\.(woff2?|ttf|otf|eot)$/i.test(name) ? 'styles' : 'assets';
-  // 字体与 cssom.css 同目录 → 直接用文件名；其余资产在 ../assets/。
-  // （旧实现写成 styles/refNNN.*，从 cssom.css 解析会变成 styles/styles/refNNN.* → 字体 404）
-  const rel = sub === 'styles' ? name : '../assets/' + name;
-  const dest = join(CLONE, sub, name);
-  if (existsSync(dest)) { css = css.split(ref).join(rel); fetched++; continue; }
 
-  // 来源优先级：本地已捕获副本 → 适配器候选 URL 链逐个尝试
-  let got = null;
-  const bn = decodeURIComponent(new URL(abs).pathname).split('/').pop().split('?')[0];
-  for (const dir of [join(PAGE, 'styles'), join(PAGE, 'assets')]) {
-    const cand = join(dir, bn);
-    if (existsSync(cand)) { got = readFileSync(cand); break; }
-  }
-  if (!got) {
-    for (const u of adapter.cssRefCandidates(abs)) {
-      try { got = await fetchBin(u); break; } catch { /* next candidate */ }
+/** CSSOM 引用本地化（字体与 cssom 同目录 → 文件名；其余 ../assets/） */
+async function localizeCss(cssTextIn, refs, cssFileName, origin) {
+  let css = cssTextIn;
+  let fetched = 0, failed = 0, refIndex = 0;
+  for (const ref of refs) {
+    let abs;
+    try { abs = new URL(ref, origin).href; } catch { refIndex++; continue; }
+    const name = 'ref' + String(refIndex++).padStart(3, '0') + '.' + extOf('', abs);
+    const sub = /\.(woff2?|ttf|otf|eot)$/i.test(name) ? 'styles' : 'assets';
+    const rel = sub === 'styles' ? name : '../assets/' + name;
+    const dest = join(CLONE, sub, name);
+    if (existsSync(dest)) { css = css.split(ref).join(rel); fetched++; continue; }
+    let got = null;
+    const bn = decodeURIComponent(new URL(abs).pathname).split('/').pop().split('?')[0];
+    for (const dir of [join(PAGE, 'styles'), join(PAGE, 'assets')]) {
+      const cand = join(dir, bn);
+      if (existsSync(cand)) { got = readFileSync(cand); break; }
     }
+    if (!got) {
+      for (const u of adapter.cssRefCandidates(abs)) {
+        try { got = await fetchBin(u); break; } catch { /* next candidate */ }
+      }
+    }
+    if (!got || !got.length) { failed++; continue; }
+    writeFileSync(dest, got);
+    css = css.split(ref).join(rel);
+    fetched++;
   }
-  if (!got || !got.length) { failed++; continue; }   // 空体视为失败：保留原始 URL，交给 linker/HAR 兜底
-  writeFileSync(dest, got);
-  css = css.split(ref).join(rel);     // 仅成功时改写
-  fetched++;
+  writeFileSync(join(CLONE, 'styles', cssFileName), css);
+  return { fetched, failed, size: css.length };
 }
-writeFileSync(join(CLONE, 'styles', 'cssom.css'), css);
-console.log(`  refs=${cssomMeta.refs.length} ok=${fetched} fail=${failed} -> styles/cssom.css ${(css.length / 1024).toFixed(0)}KB`);
 
-// ---------- 2. HTML 重写 ----------
-console.log('[2/3] rewrite DOM');
+/** HTML 本地化重写（资产表替换 + 引用属性 + 样式让位 + 去脚本） */
 const resTable = { ...(map.resMap ?? {}), ...(map.imgMap ?? {}) };
 const lookup = (raw) => {
   const dec = raw.replace(/&amp;/g, '&');
   const abs = (() => { try { return new URL(dec, ORIGIN).href; } catch { return null; } })();
   return resTable[abs] ?? resTable[dec] ?? null;
 };
+function rewriteHtml(domText, cssFileName) {
+  let html = domText;
+  for (const [origUrl, relPath] of Object.entries(resTable)) html = html.split(origUrl).join(relPath);
+  html = html.replace(/(<use\b[^>]*\b(?:href|xlink:href)=")([^"#]+)(#[^"]*)(")/gi, (m, head, file, frag, tail) => {
+    const hit = lookup(file);
+    return hit ? head + hit + frag + tail : m;
+  });
+  html = html.replace(/\b(src|srcset|href|data|poster|content)="([^"]*)"/g, (m, attr, val) => {
+    if (!val || /^(#|data:|mailto:|javascript:|tel:)/.test(val)) return m;
+    if (attr === 'srcset') {
+      const out = val.split(',').map(p => {
+        const seg = p.trim().split(/\s+/);
+        const hit = lookup(seg[0]);
+        if (hit) seg[0] = hit;
+        return seg.join(' ');
+      }).join(', ');
+      return attr + '="' + out + '"';
+    }
+    const hit = lookup(val);
+    return hit ? attr + '="' + hit + '"' : m;
+  });
+  html = html
+    .replace(/<link[^>]*rel="stylesheet"[^>]*>/gi, '')
+    .replace(/<link[^>]*rel="(preload|preconnect|dns-prefetch|modulepreload)"[^>]*>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace('</head>', '<link rel="stylesheet" href="styles/' + cssFileName + '"></head>');
+  return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<script\b[^>]*\/>/gi, '');
+}
 
-let html = readFileSync(join(PAGE, 'dom.html'), 'utf8');
-for (const [origUrl, relPath] of Object.entries(resTable)) html = html.split(origUrl).join(relPath);
+// ---------- 1. 主（桌面）CSSOM 本地化 ----------
+console.log('[1/4] localize cssom (desktop, adapter:', adapter.name + ')');
+const mainCss = await localizeCss(cssText, cssomMeta.refs, 'cssom.css', ORIGIN);
+console.log('  refs=' + cssomMeta.refs.length + ' ok=' + mainCss.fetched + ' fail=' + mainCss.failed + ' -> styles/cssom.css ' + (mainCss.size / 1024).toFixed(0) + 'KB');
 
-// svg <use href="sprite.svg#id">：只换文件部分，保留片段
-html = html.replace(/(<use\b[^>]*\b(?:href|xlink:href)=")([^"#]+)(#[^"]*)(")/gi, (m, head, file, frag, tail) => {
-  const hit = lookup(file);
-  return hit ? head + hit + frag + tail : m;
-});
+// ---------- 2. 桌面 HTML ----------
+console.log('[2/4] rewrite desktop DOM');
+const header = '<!-- heimdall clone: static L1 transplant (CSSOM final state), scripts stripped, adapter=' + adapter.name + ' -->\n';
+const desktopHtml = rewriteHtml(readFileSync(join(PAGE, 'dom.html'), 'utf8'), 'cssom.css');
 
-html = html.replace(/\b(src|srcset|href|data|poster|content)="([^"]*)"/g, (m, attr, val) => {
-  if (!val || /^(#|data:|mailto:|javascript:|tel:)/.test(val)) return m;
-  if (attr === 'srcset') {
-    const out = val.split(',').map(p => {
-      const seg = p.trim().split(/\s+/);
-      const hit = lookup(seg[0]);
-      if (hit) seg[0] = hit;
-      return seg.join(' ');
-    }).join(', ');
-    return `${attr}="${out}"`;
-  }
-  const hit = lookup(val);
-  return hit ? `${attr}="${hit}"` : m;
-});
+// ---------- 3. 多视口快照（可选） ----------
+const VARIANTS = [375, 768].filter(w => existsSync(join(PAGE, 'dom-' + w + '.html')) && existsSync(join(PAGE, 'cssom-' + w + '.css')));
+for (const w of VARIANTS) {
+  console.log('[3/4] build viewport snapshot @' + w);
+  const meta = JSON.parse(readFileSync(join(PAGE, 'cssom-refs-' + w + '.json'), 'utf8'));
+  const cssOut = 'cssom-' + w + '.css';
+  const r = await localizeCss(readFileSync(join(PAGE, 'cssom-' + w + '.css'), 'utf8'), meta.refs ?? [], cssOut, meta.origin ?? ORIGIN);
+  const html = rewriteHtml(readFileSync(join(PAGE, 'dom-' + w + '.html'), 'utf8'), cssOut);
+  writeFileSync(join(CLONE, 'index-' + w + '.html'), header + html);
+  console.log('  ' + cssOut + ' refs=' + (meta.refs ?? []).length + ' ok=' + r.fetched + ' fail=' + r.failed);
+}
+if (VARIANTS.length) {
+  writeFileSync(join(CLONE, 'index-1440.html'), header + desktopHtml);
+  const chooser = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>Heimdall clone</title><script>location.replace(innerWidth<=600?"index-375.html":innerWidth<=1100?"index-768.html":"index-1440.html");</script>'
+    + '<noscript><meta http-equiv="refresh" content="0;url=index-1440.html"></noscript></head><body></body></html>';
+  writeFileSync(join(CLONE, 'index.html'), chooser);
+  console.log('  viewport chooser -> index.html (375/768/1440)');
+} else {
+  writeFileSync(join(CLONE, 'index.html'), header + desktopHtml);
+}
+const leftover = (desktopHtml.match(/\/_next\/[^\s"'())]+/g) ?? []).length;
+console.log('  desktop index ' + (desktopHtml.length / 1024).toFixed(0) + 'KB, leftover /_next refs: ' + leftover);
 
-// 原样式引用让位给 cssom.css；preload 离线无意义
-html = html
-  .replace(/<link[^>]*rel="stylesheet"[^>]*>/gi, '')
-  .replace(/<link[^>]*rel="(preload|preconnect|dns-prefetch|modulepreload)"[^>]*>/gi, '')
-  .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
-  .replace('</head>', '<link rel="stylesheet" href="styles/cssom.css"></head>');
-
-// W0 地基假设 = 纯静态保真：移除全部 <script>
-html = html
-  .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-  .replace(/<script\b[^>]*\/>/gi, '');
-
-const leftover = (html.match(/\/_next\/[^\s"'())]+/g) ?? []).length;
-html = `<!-- heimdall clone: static L1 transplant (CSSOM final state), scripts stripped, adapter=${adapter.name} -->\n` + html;
-writeFileSync(join(CLONE, 'index.html'), html);
-console.log(`  clone/index.html ${(html.length / 1024).toFixed(0)}KB, leftover /_next refs: ${leftover}`);
-
-// ---------- 3. 复制捕获期已下载的图片/图标到 clone ----------
-console.log('[3/3] copy captured assets');
+// ---------- 4. 复制捕获期已下载的图片/图标 ----------
+console.log('[4/4] copy captured assets');
 let copied = 0;
 for (const [origUrl, relPath] of Object.entries(map.imgMap)) {
   const src = join(PAGE, relPath);
-  if (existsSync(src)) {
-    const dest = join(CLONE, relPath);
-    const buf = readFileSync(src);
-    if (!buf.length) continue;   // 跳过 0 字节捕获文件
-    mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, buf);
-    copied++;
-  }
+  if (!existsSync(src)) continue;
+  const dest = join(CLONE, relPath);
+  const buf = readFileSync(src);
+  if (!buf.length) continue;
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, buf);
+  copied++;
 }
-console.log(`\nDONE clone -> ${relative(process.cwd(), CLONE)} (assets copied: ${copied})`);
+console.log('\nDONE clone -> ' + relative(process.cwd(), CLONE) + ' (assets copied: ' + copied + ', variants: ' + VARIANTS.length + ')');
