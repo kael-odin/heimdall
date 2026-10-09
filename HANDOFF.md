@@ -221,3 +221,18 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
   - 实测：apify 25,555 资产 → 12,229 孤儿 / 189.9MB；thordata 3,062 → 1,520 / 20.0MB。
 - 引擎 /api/assets 支持 `orphan=1`，返回 orphan 标记与汇总；收集上限从 5,000 提升到 200,000（此前 5,150 的“总数”其实是截断）。
 - 控制台资产浏览器：新增「仅孤儿」筛选；标题显示 孤儿 N（X MB） 与 去重节省 X MB（重复 N）（读取 asset-ledger.json）。
+
+## 15. 2026-10-09 续八：单模型 LLM 配置 + 孤儿回收安全化（含一次事故与回滚）
+
+### 15.1 LLM 配置（本地 core/.env，gitignored）
+- 仅用 deepseek-flash（带视觉）：LLM_MODEL=deepseek-flash、LLM_MODEL_FAST=deepseek-flash、LLM_PROTOCOL=chat、base=https://xc.lifesecretary.com:8000/v1。
+- 实测：/api/llm/test → ok 2012ms「连接正常」；llmChat 文本/JSON、llmVision（截图→About Apify）全部通过。
+
+### 15.2 孤儿回收安全化（一次事故 + 三道防线）
+- 事故：首版回收直接删除 1,520 个 thordata “孤儿”，资产扫描随即报 310 处坏链（启发式漏掉转义引用形式）。已通过 queue --force 全量重锻恢复（visualGaps 回到 0）。
+- 三道防线（已实测）：
+  1. 保守判定：候选 basename 必须不出现在全站任何文本（含转义 assets\/imgNNN 形式）；
+  2. 隔离而非删除：移动到 audit/quarantine/<ts>/；
+  3. 自校验回滚：回收前后各跑一次资产缺口扫描，若 visualGaps 上升则自动全部回滚。
+- 实测：thordata 86 孤儿 → 保守候选 24 个 → 隔离 24（1.9MB）→ gaps 0→0，无回滚；剩余孤儿 62。
+- apify 保守候选 10,781 个 / 125.5MB（待确认后可在控制台执行）。
