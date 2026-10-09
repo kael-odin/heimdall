@@ -708,6 +708,18 @@ createServer(async (req, res) => {
     const pagesDir = join(base, 'pages');
     const items = [];
     let totalBytes = 0;
+    const reverse = new Map();   // page -> (clone 内相对路径 -> 原始 URL)
+    if (existsSync(pagesDir)) {
+      for (const page of readdirSync(pagesDir)) {
+        try {
+          const m = JSON.parse(readFileSync(join(pagesDir, page, 'asset-map.json'), 'utf8'));
+          const r = new Map();
+          for (const k of Object.keys(m.imgMap ?? {})) r.set(String(m.imgMap[k]), k);
+          for (const k of Object.keys(m.resMap ?? {})) r.set(String(m.resMap[k]), k);
+          reverse.set(page, r);
+        } catch {}
+      }
+    }
     const walk = (dir, page, group) => {
       if (!existsSync(dir) || items.length > 5000) return;
       for (const name of readdirSync(dir)) {
@@ -716,7 +728,9 @@ createServer(async (req, res) => {
         if (st.isDirectory()) walk(f, page, group);
         else if (st.isFile()) {
           totalBytes += st.size;
-          items.push({ path: relative(WORKSPACE, f).split('\\').join('/'), page, group, ext: extname(name).toLowerCase(), size: st.size, url: '/static/' + relative(WORKSPACE, f).split('\\').join('/') });
+          const relWs = relative(WORKSPACE, f).split('\\').join('/');
+          const relClone = relative(join(pagesDir, page, 'clone'), f).split('\\').join('/');
+          items.push({ path: relWs, page, group, ext: extname(name).toLowerCase(), size: st.size, url: '/static/' + relWs, src: reverse.get(page)?.get(relClone) ?? '' });
         }
       }
     };
@@ -726,12 +740,35 @@ createServer(async (req, res) => {
         walk(join(pagesDir, page, 'clone', 'styles'), page, 'style');
       }
     }
-    items.sort((a, b) => b.size - a.size);
     const byExt = {};
-    for (const it of items) { const k = it.ext || '(none)'; byExt[k] = (byExt[k] ?? 0) + 1; }
+    const byPage = {};
+    for (const it of items) {
+      const k = it.ext || '(none)';
+      byExt[k] = (byExt[k] ?? 0) + 1;
+      const p = byPage[it.page] ?? (byPage[it.page] = { count: 0, bytes: 0 });
+      p.count++; p.bytes += it.size;
+    }
+    // 查询参数：q / ext / page / minSize / sort / limit / offset
+    const q = (u.searchParams.get('q') ?? '').trim().toLowerCase();
+    const extSel = (u.searchParams.get('ext') ?? '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+    const pageSel = u.searchParams.get('page') ?? '';
+    const minSize = Number(u.searchParams.get('minSize') ?? 0) || 0;
+    const sort = u.searchParams.get('sort') ?? 'size';
+    const limit = Math.min(Math.max(Number(u.searchParams.get('limit') ?? 300) || 300, 1), 2000);
+    const offset = Math.max(Number(u.searchParams.get('offset') ?? 0) || 0, 0);
+    let filtered = items;
+    if (q) filtered = filtered.filter(it => it.path.toLowerCase().includes(q) || String(it.src ?? '').toLowerCase().includes(q));
+    if (extSel.length) filtered = filtered.filter(it => extSel.includes(it.ext || '(none)'));
+    if (pageSel) filtered = filtered.filter(it => it.page === pageSel);
+    if (minSize > 0) filtered = filtered.filter(it => it.size >= minSize);
+    filtered = [...filtered];
+    if (sort === 'name') filtered.sort((x, y) => x.path.localeCompare(y.path));
+    else if (sort === 'page') filtered.sort((x, y) => x.page.localeCompare(y.page) || y.size - x.size);
+    else filtered.sort((x, y) => y.size - x.size);
+    const filteredBytes = filtered.reduce((n, it) => n + it.size, 0);
     const ledgerPath = join(base, 'asset-ledger.json');
     let ledger = null; try { ledger = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch {}
-    return json(res, 200, { host, count: items.length, totalBytes, byExt, ledger, items: items.slice(0, 300) });
+    return json(res, 200, { host, count: items.length, totalBytes, filtered: filtered.length, filteredBytes, byExt, byPage, ledger, items: filtered.slice(offset, offset + limit) });
   }
 
   // 单端口部署：workspace 作为公开静态目录（/apify.com/recon/atlas.json 等，等价 Vite publicDir）

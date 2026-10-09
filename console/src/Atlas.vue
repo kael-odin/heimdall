@@ -166,6 +166,12 @@ const avgWorst = computed(() => {
   const vals = Object.values(pageVerify).filter(v => v?.minViewport && typeof v.minViewport.score === 'number').map(v => v.minViewport.score);
   return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : null;
 });
+const assetFilter = reactive({ q: '', ext: '', page: '', minSize: false, sort: 'size' });
+const assetExts = computed(() => Object.entries(assetInfo.value?.byExt ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 14));
+const assetPages = computed(() => Object.entries(assetInfo.value?.byPage ?? {}).sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 60));
+const IMG_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.avif', '.gif', '.svg', '.ico', '.bmp']);
+const isImg = (ext) => IMG_EXT.has(ext);
+const assetFiltered = computed(() => assetInfo.value?.items ?? []);   // 服务端已过滤排序
 let scoreLoadTimer = null;
 function scheduleScoreLoad() { clearTimeout(scoreLoadTimer); scoreLoadTimer = setTimeout(loadPageScores, 400); }
 async function loadPageScores() {
@@ -590,9 +596,19 @@ async function loadVerifySummary() {
 async function loadReports() {
   try { const r = await fetch(API + '/api/reports/' + host.value); if (r.ok) reportIndex.value = (await r.json()).reports ?? []; } catch {}
 }
+let assetTimer = null;
 async function loadAssets() {
-  try { const r = await fetch(API + '/api/assets/' + host.value); if (r.ok) assetInfo.value = await r.json(); } catch {}
+  try {
+    const p = new URLSearchParams({ limit: '200', sort: assetFilter.sort });
+    if (assetFilter.q.trim()) p.set('q', assetFilter.q.trim());
+    if (assetFilter.ext) p.set('ext', assetFilter.ext);
+    if (assetFilter.page) p.set('page', assetFilter.page);
+    if (assetFilter.minSize) p.set('minSize', String(100 * 1024));
+    const r = await fetch(API + '/api/assets/' + host.value + '?' + p.toString());
+    if (r.ok) assetInfo.value = await r.json();
+  } catch {}
 }
+watch(assetFilter, () => { clearTimeout(assetTimer); assetTimer = setTimeout(loadAssets, 250); }, { deep: true });
 
 /** 引擎持久化任务历史（重启后仍可查） */
 async function loadJobHistory() {
@@ -1113,15 +1129,23 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     </div>
 
     <div class="report-card report-wide hud-panel">
-      <h3>资产清单 <span class="wv-stat" v-if="assetInfo">共 {{ assetInfo.count }} 个文件 · {{ (assetInfo.totalBytes / 1024 / 1024).toFixed(1) }}MB · 去重后可查看 asset-ledger</span></h3>
-      <div class="asset-table" v-if="assetInfo?.items?.length">
-        <div class="asset-row asset-th"><span>页面</span><span>类型</span><span>大小</span><span>路径</span><span></span></div>
-        <div class="asset-row" v-for="a in assetInfo.items.slice(0, 120)" :key="a.path">
+      <h3>资产清单 <span class="wv-stat" v-if="assetInfo">共 {{ assetInfo.count }} 个文件 · {{ (assetInfo.totalBytes / 1024 / 1024).toFixed(1) }}MB · 匹配 {{ assetInfo.filtered ?? assetInfo.count }} · 显示 {{ assetFiltered.length }}</span></h3>
+      <div class="asset-controls" v-if="assetInfo?.items?.length">
+        <input v-model="assetFilter.q" placeholder="搜索路径…" spellcheck="false" />
+        <select v-model="assetFilter.ext"><option value="">全部类型</option><option v-for="e in assetExts" :key="e[0]" :value="e[0]">{{ e[0] || '(none)' }} ({{ e[1] }})</option></select>
+        <select v-model="assetFilter.page"><option value="">全部页面</option><option v-for="p in assetPages" :key="p[0]" :value="p[0]">{{ p[0] }} ({{ p[1].count }})</option></select>
+        <select v-model="assetFilter.sort"><option value="size">按体积</option><option value="name">按路径</option><option value="page">按页面</option></select>
+        <label class="sw"><input type="checkbox" v-model="assetFilter.minSize" /><span>≥100KB</span></label>
+      </div>
+      <div class="asset-table" v-if="assetFiltered.length">
+        <div class="asset-row asset-th"><span>页面</span><span>类型</span><span>大小</span><span>路径</span><span>预览</span></div>
+        <div class="asset-row" v-for="a in assetFiltered.slice(0, 200)" :key="a.path">
           <span>{{ a.page }}</span><span>{{ a.ext || '—' }}</span><span>{{ (a.size / 1024).toFixed(0) }}KB</span>
-          <span class="asset-path" :title="a.path">{{ a.path }}</span>
-          <a :href="a.url" target="_blank" rel="noopener">打开</a>
+          <span class="asset-path" :title="a.src ? (a.src + '  ←  ' + a.path) : a.path">{{ a.path }}</span>
+          <span class="asset-actions"><a :href="a.url" target="_blank" rel="noopener"><img v-if="isImg(a.ext)" class="asset-thumb" :src="a.url" loading="lazy" alt="" /><template v-else>打开</template></a><a v-if="a.src" :href="a.src" target="_blank" rel="noopener" class="asset-src">原站</a></span>
         </div>
       </div>
+      <p v-else-if="assetInfo?.items?.length">无匹配资产</p>
       <p v-else>暂无资产数据（先克隆页面）</p>
     </div>
   </section>
@@ -1662,9 +1686,17 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .report-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .report-list a { margin: 0; }
 .asset-table { display: flex; flex-direction: column; max-height: 320px; overflow: auto; }
-.asset-row { display: grid; grid-template-columns: 110px 70px 80px 1fr 60px; gap: 8px; padding: 5px 6px; border-bottom: 1px solid rgba(148,163,184,.10); font-size: 11.5px; align-items: center; }
+.asset-row { display: grid; grid-template-columns: 110px 70px 80px 1fr 120px; gap: 8px; padding: 5px 6px; border-bottom: 1px solid rgba(148,163,184,.10); font-size: 11.5px; align-items: center; }
 .asset-th { color: var(--text-faint); font-family: var(--font-mono); letter-spacing: .08em; position: sticky; top: 0; background: rgba(11,11,16,.95); }
 .asset-path { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); }
+.asset-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; align-items: center; }
+.asset-controls input, .asset-controls select { background: rgba(255,255,255,.04); border: 1px solid var(--cyan-line); color: var(--text); border-radius: 3px; padding: 6px 9px; font-size: 12px; color-scheme: dark; }
+.asset-controls select option { background: #14141a; color: #e2e8f0; }
+[data-theme="light"] .asset-controls input, [data-theme="light"] .asset-controls select { background: #fff; color-scheme: light; }
+[data-theme="light"] .asset-controls select option { background: #fff; color: #0f172a; }
+.asset-actions { display: flex; align-items: center; gap: 6px; }
+.asset-src { font-size: 11px; color: var(--text-faint); margin-left: 6px; white-space: nowrap; }
+.asset-thumb { width: 26px; height: 26px; object-fit: contain; border-radius: 3px; background: repeating-conic-gradient(#1f2937 0% 25%, #111827 0% 50%) 50% / 10px 10px; vertical-align: middle; }
 .settings-grid { padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
 .set-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-dim); }
 .set-row > span { width: 110px; }
