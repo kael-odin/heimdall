@@ -200,3 +200,16 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
 - 新增 `repair-empty`（CLI）：追踪域名 → 1×1 透明 GIF data URI；其它 0 字节 → 回退原始 URL；删除空文件、同步改写 HTML/CSS 引用；幂等。
 - 实测：apify 61 页 / 306 个空文件 / 122 处引用改写；thordata 20 页 / 20 个空文件；修复后 doing-good 与 store 的裂图 2 → 0，资产扫描仍 0 视觉缺口。
 - 结论：剩余最差页（store 81.9% 等）的根因是客户端响应式变体（见第 11 节），与资产缺失无关。
+
+## 13. 2026-10-09 续六：抓取防复发 + 资产浏览器
+
+### 13.1 抓取阶段不再产生 0 字节资产（防复发）
+- `capture.mjs`：资源下载后空体直接判失败（进 gaps.json），不落盘。
+- `build_clone.mjs`：fetchBin 空体抛错；cssom ref 与捕获资产复制均跳过空文件。
+- `queue.mjs` host-post 自动追加 `repair-empty-assets`（批量重锻后自动清历史空文件）。
+
+### 13.2 控制台资产浏览器（报告页）
+- 引擎 /api/assets/:host 支持 `q / ext / page / minSize / sort / limit / offset`，返回 byExt/byPage 分面 + **原始 URL（src，来自 asset-map 反查）**。
+- 控制台：搜索（同时匹配本地路径与原始 URL）、类型/页面筛选、排序、≥100KB、**图片缩略图预览**、原站链接；服务端过滤（防抖 250ms），暗色下拉已按 color-scheme 修正。
+- 实测：apify 5,150 个资产 / 76.2MB；搜 "logo" → 26 条（全部带缩略图与原站链接）。
+
