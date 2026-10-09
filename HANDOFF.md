@@ -213,3 +213,11 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
 - 控制台：搜索（同时匹配本地路径与原始 URL）、类型/页面筛选、排序、≥100KB、**图片缩略图预览**、原站链接；服务端过滤（防抖 250ms），暗色下拉已按 color-scheme 修正。
 - 实测：apify 5,150 个资产 / 76.2MB；搜 "logo" → 26 条（全部带缩略图与原站链接）。
 
+
+## 14. 2026-10-09 续七：孤儿资产扫描 + 去重账本可视化
+
+- 新增 `orphans <host>`（CLI，队列 host-post 自动执行）：扫描 clone 内无任何引用的资产，产出 `audit/orphans.json`（全量 orphanPaths + 逐页 Top60 明细）。
+  - 判定：全站引用 token 精确匹配相对路径，或同页 token 包含 basename；线性复杂度（apify 2.8s）。
+  - 实测：apify 25,555 资产 → 12,229 孤儿 / 189.9MB；thordata 3,062 → 1,520 / 20.0MB。
+- 引擎 /api/assets 支持 `orphan=1`，返回 orphan 标记与汇总；收集上限从 5,000 提升到 200,000（此前 5,150 的“总数”其实是截断）。
+- 控制台资产浏览器：新增「仅孤儿」筛选；标题显示 孤儿 N（X MB） 与 去重节省 X MB（重复 N）（读取 asset-ledger.json）。
