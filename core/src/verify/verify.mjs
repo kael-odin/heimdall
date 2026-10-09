@@ -63,6 +63,13 @@ async function shoot(page, url, viewport, file) {
   await page.evaluate(() => document.fonts?.ready).catch(() => {});
   await page.addStyleTag({ content: FREEZE_CSS });
   await page.evaluate(() => { document.querySelectorAll('input, textarea').forEach(el => { el.value = ''; }); });
+  // 先滚全页触发懒加载，再回到顶部（两侧一致，避免整页截图期间才加载造成的抖动）
+  await page.evaluate(async () => {
+    const h = Math.max(document.body?.scrollHeight ?? 0, document.documentElement?.scrollHeight ?? 0);
+    for (let y = 0; y < h; y += 800) { window.scrollTo(0, y); await new Promise(r => setTimeout(r, 60)); }
+    window.scrollTo(0, 0);
+  }).catch(() => {});
+  await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(1200);
   const height = await page.evaluate(() => Math.max(document.body?.scrollHeight ?? 0, document.documentElement?.scrollHeight ?? 0));
   if (height > MAX_PAGE_HEIGHT) return { skipped: 'page too tall: ' + height + 'px' };

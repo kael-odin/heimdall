@@ -281,3 +281,8 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
 - 引擎 `POST /api/responsive-upgrade {host,threshold,max,force}`（kind=upgrade，SSE 事件 upgrade-page）；控制台「全站体检」卡新增「响应式升级」按钮。
 - 实测：任务 u001 正常创建/完成；UI 按钮显示正常。
 - 第二批 --force（threshold 0.98）结果：KEEP storage(93.3→96.6)/jobs(97.0→**100.0**)/contact(97.1→99.7)/use-cases-lead-generation(97.3→99.9)/ideas(97.3→99.1)；REVERT agents.md/about/templates（无提升）。
+
+### 17.4 整页截图前的懒加载滚动（消除第二类抖动）
+- 现象：storage 复测 92.4%(768)、change-log 90.0%(375) 波动大——整页截图期间下方懒加载内容才加载，两侧时序不一致。
+- 修复：verify.mjs 在截图前先滚全页触发懒加载 → 回顶部 → networkidle → 再等待。
+- 复测：storage **100.0%/100.0%**（原 92.4）；change-log 97.1%（原 96.3）；agents.md 93.9/91.1 不变（其差异非懒加载）。
