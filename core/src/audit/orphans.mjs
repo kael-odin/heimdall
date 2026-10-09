@@ -23,12 +23,32 @@ const MAX_TEXT = 3 * 1024 * 1024;
 const toks = (t) => [...t.matchAll(REF_RE)].map(m => m[0]);
 
 const globalRefs = new Set();
+// live 页/档案页也可能引用 clone 资产（如 agents.md 引用 clone/styles/cssom.css）→ 计入全站引用
+for (const extraDir of [join(base, 'live'), join(base, 'design')]) {   // 注意：audit/ 里是扫描报告自身，不能计入引用
+  if (!existsSync(extraDir)) continue;
+  const walkExtra = (d) => {
+    for (const n of readdirSync(d)) {
+      const p = join(d, n);
+      let st; try { st = statSync(p); } catch { continue; }
+      if (st.isDirectory()) { walkExtra(p); continue; }
+      if (TEXT_RE.test(n) && st.size <= MAX_TEXT) {
+        try { for (const t of toks(readFileSync(p, 'utf8'))) globalRefs.add(t); } catch {}
+      }
+    }
+  };
+  walkExtra(extraDir);
+}
+for (const extra of ['index.html', 'compare.html']) {
+  const p = join(base, extra);
+  if (existsSync(p)) { try { for (const t of toks(readFileSync(p, 'utf8'))) globalRefs.add(t); } catch {} }
+}
 const pageAssets = new Map();
 for (const page of readdirSync(pagesDir).sort()) {
   const cloneDir = join(pagesDir, page, 'clone');
   if (!existsSync(cloneDir)) continue;
   const refs = new Set();
   const bases = new Set();
+  const texts = [];
   const assets = [];
   const walk = (d) => {
     for (const n of readdirSync(d)) {
@@ -38,25 +58,28 @@ for (const page of readdirSync(pagesDir).sort()) {
       const rel = relative(cloneDir, p).split('\\').join('/');
       if (TEXT_RE.test(n) && st.size <= MAX_TEXT) {
         try {
-          for (const t of toks(readFileSync(p, 'utf8'))) { refs.add(t); globalRefs.add(t); bases.add(t.split('/').pop()); }
+          const txt = readFileSync(p, 'utf8');
+          texts.push(txt);
+          for (const t of toks(txt)) { refs.add(t); globalRefs.add(t); bases.add(t.split('/').pop()); }
         } catch {}
       }
       if (rel.startsWith('assets/') || rel.startsWith('styles/')) assets.push({ p, rel, size: st.size });
     }
   };
   walk(cloneDir);
-  pageAssets.set(page, { refs, bases, assets });
+  pageAssets.set(page, { refs, bases, texts, assets });
 }
 
 let total = 0, orphanCount = 0, orphanBytes = 0, referencedBytes = 0;
 const pages = [];
 const allOrphanPaths = [];
-for (const [page, { refs, bases, assets }] of pageAssets) {
+for (const [page, { refs, bases, texts, assets }] of pageAssets) {
+  const pageText = texts.join('\n');
   const orphans = [];
   for (const a of assets) {
     total++;
     const b = a.rel.split('/').pop();
-    const used = globalRefs.has(a.rel) || refs.has(a.rel) || bases.has(b);
+    const used = globalRefs.has(a.rel) || refs.has(a.rel) || bases.has(b) || pageText.includes(b);   // 含转义/拼接形式（assets\/imgNNN）
     if (used) { referencedBytes += a.size; continue; }
     orphanCount++; orphanBytes += a.size;
     const op = relative(WORKSPACE, a.p).split('\\').join('/');

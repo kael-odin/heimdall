@@ -89,6 +89,7 @@ let runningAssets = null;
 let runningMatrix = null;
 let runningVerify = null;
 let runningLive = null;
+let runningReclaim = null;
 const pageMetaCache = new Map();
 const MAX_FORGE = 2;
 let forgeSlots = 0;
@@ -318,6 +319,34 @@ createServer(async (req, res) => {
       if (runningMatrix) return json(res, 409, { error: 'busy', taskId: runningMatrix.id });
       const id = startMatrix([...new Set(sites)], Math.min(Math.max(maxPages ?? 15, 1), 100));
       json(res, 200, { taskId: id, sites });
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/reclaim') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', async () => {
+      let host, apply = false;
+      try { ({ host, apply } = JSON.parse(body || '{}')); } catch {}
+      host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+      if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
+      if (runningReclaim) return json(res, 409, { error: 'busy', host: runningReclaim });
+      runningReclaim = host;
+      try {
+        const out = await new Promise((resolve) => {
+          const child = spawn(process.execPath, [join(HERE, '..', 'src', 'audit', 'reclaim-orphans.mjs'), host, ...(apply ? ['--apply'] : [])], { cwd: join(HERE, '..'), env: process.env });
+          let buf = '';
+          child.stdout.on('data', (d) => { buf += d.toString(); });
+          child.on('exit', (code) => resolve({ code, buf }));
+          child.on('error', () => resolve({ code: -1, buf: '' }));
+        });
+        const line = out.buf.split('\n').find(l => l.startsWith('@@RAWS@@') || l.startsWith('@@EVENT@@'));
+        const summary = line ? JSON.parse(line.slice(line.startsWith('@@RAWS@@') ? 8 : 9)) : null;
+        let byPage = null;
+        try { byPage = JSON.parse(readFileSync(join(WORKSPACE, host, 'audit', 'reclaim-plan.json'), 'utf8')).byPage ?? null; } catch {}
+        return json(res, out.code === 0 ? 200 : 500, { host, apply: !!apply, exit: out.code, summary, byPage });
+      } finally { runningReclaim = null; }
     });
     return;
   }

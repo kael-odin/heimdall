@@ -596,6 +596,22 @@ async function loadVerifySummary() {
 async function loadReports() {
   try { const r = await fetch(API + '/api/reports/' + host.value); if (r.ok) reportIndex.value = (await r.json()).reports ?? []; } catch {}
 }
+const reclaimResult = ref('');
+async function runReclaim(apply) {
+  const n = assetInfo.value?.orphans?.count ?? 0;
+  if (apply && !window.confirm('确认回收 ' + n + ' 个孤儿资产？此操作会删除文件（仅限 clone/assets|styles）。')) return;
+  reclaimResult.value = apply ? '回收执行中…' : '回收预览中…';
+  try {
+    const r = await fetch(API + '/api/reclaim', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, apply: !!apply }) });
+    const j = await r.json();
+    if (j.error) { reclaimResult.value = '失败：' + j.error; return; }
+    const s = j.summary;
+    if (!s) { reclaimResult.value = '无结果'; return; }
+    const mb = (n2) => (n2 / 1048576).toFixed(1) + 'MB';
+    reclaimResult.value = (apply ? '已回收 ' + (s.removed ?? 0) + ' 个 / ' + mb(s.bytes) : '可回收 ' + s.count + ' 个 / ' + mb(s.bytes)) + (s.after ? '；剩余孤儿 ' + s.after.orphans + ' / ' + mb(s.after.orphanBytes) : '');
+    if (apply) { assetFilter.orphan = false; loadAssets(); }
+  } catch (e) { reclaimResult.value = '失败：' + String(e).slice(0, 80); }
+}
 let assetTimer = null;
 async function loadAssets() {
   try {
@@ -1136,7 +1152,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <select v-model="assetFilter.ext"><option value="">全部类型</option><option v-for="e in assetExts" :key="e[0]" :value="e[0]">{{ e[0] || '(none)' }} ({{ e[1] }})</option></select>
         <select v-model="assetFilter.page"><option value="">全部页面</option><option v-for="p in assetPages" :key="p[0]" :value="p[0]">{{ p[0] }} ({{ p[1].count }})</option></select>
         <select v-model="assetFilter.sort"><option value="size">按体积</option><option value="name">按路径</option><option value="page">按页面</option></select>
-        <label class="sw"><input type="checkbox" v-model="assetFilter.minSize" /><span>≥100KB</span></label><label class="sw"><input type="checkbox" v-model="assetFilter.orphan" /><span>仅孤儿</span></label>
+        <label class="sw"><input type="checkbox" v-model="assetFilter.minSize" /><span>≥100KB</span></label><label class="sw"><input type="checkbox" v-model="assetFilter.orphan" /><span>仅孤儿</span></label><button v-if="assetInfo?.orphans?.count" class="wv-primary" @click="runReclaim(false)">回收预览</button><button v-if="assetInfo?.orphans?.count" class="danger" @click="runReclaim(true)">执行回收</button>
       </div>
       <div class="asset-table" v-if="assetFiltered.length">
         <div class="asset-row asset-th"><span>页面</span><span>类型</span><span>大小</span><span>路径</span><span>预览</span></div>
@@ -1146,6 +1162,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
           <span class="asset-actions"><a :href="a.url" target="_blank" rel="noopener"><img v-if="isImg(a.ext)" class="asset-thumb" :src="a.url" loading="lazy" alt="" /><template v-else>打开</template></a><a v-if="a.src" :href="a.src" target="_blank" rel="noopener" class="asset-src">原站</a></span>
         </div>
       </div>
+      <p class="score-note" v-if="reclaimResult" style="margin:6px 0">{{ reclaimResult }}</p>
       <p v-else-if="assetInfo?.items?.length">无匹配资产</p>
       <p v-else>暂无资产数据（先克隆页面）</p>
     </div>
