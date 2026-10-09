@@ -22,7 +22,6 @@ const pagesIdx = argv.indexOf('--pages');
 const PAGES = pagesIdx > -1 ? String(argv[pagesIdx + 1] || '').split(',').filter(Boolean) : [];
 const widthsIdx = argv.indexOf('--widths');
 const WIDTHS = (widthsIdx > -1 ? argv[widthsIdx + 1] : '375,768').split(',').map(Number).filter(Boolean);
-if (!host || (!pageArg && !ALL)) { console.error('usage: node src/crawler/multi-snapshot.mjs <host> <page> | <host> --all [--max N] [--pages a,b]'); process.exit(2); }
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const FREEZE = '*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;caret-color:transparent!important}';
@@ -68,6 +67,7 @@ export async function snapPage(browser, host, page, widths = WIDTHS) {
 
 const isMain = process.argv[1] && process.argv[1].endsWith('multi-snapshot.mjs');
 if (isMain) {
+  if (!host || (!pageArg && !ALL)) { console.error('usage: node src/crawler/multi-snapshot.mjs <host> <page> | <host> --all [--max N] [--pages a,b]'); process.exit(2); }
   const browser = await chromium.launch();
   try {
     let pages = [];

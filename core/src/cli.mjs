@@ -28,6 +28,7 @@ export const COMMANDS = {
   queue:   { script: 'src/queue.mjs', usage: 'queue <host> [--max N] [--force] [--missing-har] [--no-dedupe]', desc: '全站批量克隆（持久化队列/断点续跑/末尾去重）' },
   audit:   { script: 'src/seo/audit.mjs', usage: 'audit <host> [--max N] [--threshold N]', desc: 'SEO 审计（40+ 规则，HTML/CSV/JSON）' },
   'reclaim-orphans': { script: 'src/audit/reclaim-orphans.mjs', usage: 'reclaim-orphans <host> [--apply]', desc: '孤儿资产回收（默认 dry-run，--apply 删除）' },
+  'responsive-upgrade': { script: 'src/crawler/responsive-upgrade.mjs', usage: 'responsive-upgrade <host> [--threshold 0.97] [--max N]', desc: '低分页自动响应式升级（多视口快照，verify 提升才保留）' },
   'multi-snapshot': { script: 'src/crawler/multi-snapshot.mjs', usage: 'multi-snapshot <host> <page> | <host> --all [--max N] [--pages a,b]', desc: '多视口快照（375/768）+ 多快照克隆（响应式变体还原；建议 verify 提升才保留）' },
   orphans: { script: 'src/audit/orphans.mjs', usage: 'orphans <host>', desc: '孤儿资产扫描（clone 内无引用，疑似可回收）' },
   'repair-empty': { script: 'src/crawler/repair-empty-assets.mjs', usage: 'repair-empty <host> [--dry-run]', desc: '修复 0 字节资产（追踪信标→透明像素；其它→原始 URL）' },

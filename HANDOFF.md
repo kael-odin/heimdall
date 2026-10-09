@@ -256,3 +256,18 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
   | api（反例） | 96.3% / 87.8% | 94.5% / 87.9% → 已回退 |
 - 结论：多快照解决“客户端响应式变体”类漂移（4/5 页显著提升）；代码块等非响应式差异不受益。
 - 工作流：`multi-snapshot` → `build_clone` → `verify`；**只有分数提升才保留**，否则删除 dom/cssom-<w> 并重建（api 即按此回退，变体备份在 pages/api/_variants-backup）。
+
+## 17. 2026-10-09 续十：响应式升级自动化（低分页批量，verify 门槛）
+
+- 新增 `responsive-upgrade <host> [--threshold 0.97] [--max N]`：读取 verify-summary → 对 minViewport < 阈值且未升级的页执行 multi-snapshot → build_clone → verify；**最差视口提升 >0.5% 且综合分不降 >0.5% 才保留**，否则自动回退变体并重建。
+- apify 实测：candidates=6 → **KEEP 4 / REVERT 2 / FAIL 0**：
+  | 页面 | 升级前 | 升级后 | 处置 |
+  |---|---|---|---|
+  | api | 96.3/87.8 | **99.4/97.7** | 保留 |
+  | integrations-zapier | 98.0/92.6 | **99.8/99.5** | 保留 |
+  | scrapers | 96.9/93.4 | **99.9/99.9** | 保留 |
+  | home | 95.4/94.0 | **99.3/99.1** | 保留 |
+  | templates | 97.0/96.9 | 97.1/96.9 | 回退 |
+  | jobs | 98.4/97.0 | 97.6/96.5 | 回退 |
+- 累计（含此前手工 5 页）：apify 共 9 页完成多快照升级；原最差 6 页全部 ≥95.6%（store 81.9→99.95、api 87.8→97.7、doing-good 88.4→99.7、resources-startups 90.2→99.8、agents.md 91.1→95.6、storage 91.5→99.0）。
+- 产物：audit/responsive-upgrade.json（逐页 before/after/保留或回退）。
