@@ -271,3 +271,8 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
   | jobs | 98.4/97.0 | 97.6/96.5 | 回退 |
 - 累计（含此前手工 5 页）：apify 共 9 页完成多快照升级；原最差 6 页全部 ≥95.6%（store 81.9→99.95、api 87.8→97.7、doing-good 88.4→99.7、resources-startups 90.2→99.8、agents.md 91.1→95.6、storage 91.5→99.0）。
 - 产物：audit/responsive-upgrade.json（逐页 before/after/保留或回退）。
+
+### 17.2 最终全站体检（consent 修复 + 响应式升级后）
+- **平均 99.6%，61/61 全 A**（此前 99.0%、59A/2B）。
+- 最差页：storage 98.3/93.3(375)、agents.md 97.8/95.6、about 98.6/96.0、jobs 98.5/97.0、templates 97.2/97.0。
+- 说明：storage 的 375 视口仍有 93.3%（疑似交互态抖动）；其余页面均 ≥95.6%。

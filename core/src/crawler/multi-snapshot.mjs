@@ -24,7 +24,7 @@ const widthsIdx = argv.indexOf('--widths');
 const WIDTHS = (widthsIdx > -1 ? argv[widthsIdx + 1] : '375,768').split(',').map(Number).filter(Boolean);
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-const FREEZE = '*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;caret-color:transparent!important}';
+const FREEZE = '*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;caret-color:transparent!important}[class*="cookie" i],[id*="cookie" i],[class*="consent" i],[id*="consent" i],[class*="gdpr" i],[id*="gdpr" i]{display:none!important}';
 
 export async function snapPage(browser, host, page, widths = WIDTHS) {
   const dir = join(WORKSPACE, host, 'pages', page);

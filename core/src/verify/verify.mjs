@@ -26,6 +26,8 @@ const MAX_PAGE_HEIGHT = 25_000;
 const FREEZE_CSS = `
   *, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; transition-delay: 0s !important; caret-color: transparent !important; }
   .swiper-wrapper { transform: none !important; transition: none !important; }
+  /* 同意弹层随访问状态变化，会造成评分抖动：两侧统一隐藏 */
+  [class*="cookie" i], [id*="cookie" i], [class*="consent" i], [id*="consent" i], [class*="gdpr" i], [id*="gdpr" i] { display: none !important; }
 `;
 
 const argv = process.argv.slice(2);
