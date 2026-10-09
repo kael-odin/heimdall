@@ -9,7 +9,7 @@
  *
  * 用法: node src/audit/reclaim-orphans.mjs <host> [--apply]
  */
-import { readFileSync, writeFileSync, existsSync, statSync, mkdirSync, renameSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync, mkdirSync, renameSync, readdirSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -83,6 +83,24 @@ export function planReclaim(host) {
   return { host, generatedAt: new Date().toISOString(), scanGeneratedAt: report.generatedAt, count: list.length, bytes, files: list, byPage };
 }
 
+export function purgeQuarantine(host) {
+  const qroot = join(WORKSPACE, host, 'audit', 'quarantine');
+  if (!existsSync(qroot)) return { host, purged: 0, bytes: 0 };
+  let purged = 0, bytes = 0;
+  for (const stamp of readdirSync(qroot)) {
+    const dir = join(qroot, stamp);
+    const walk = (d) => {
+      for (const n of readdirSync(d)) {
+        const p = join(d, n);
+        let st; try { st = statSync(p); } catch { continue; }
+        if (st.isDirectory()) walk(p); else { bytes += st.size; purged++; }
+      }
+    };
+    try { walk(dir); rmSync(dir, { recursive: true, force: true }); } catch {}
+  }
+  return { host, purged, bytes };
+}
+
 export function applyReclaim(host) {
   const plan = planReclaim(host);
   const outDir = join(WORKSPACE, host, 'audit');
@@ -117,6 +135,12 @@ if (isMain) {
   const host = argv.find(a => !a.startsWith('--'));
   const apply = argv.includes('--apply');
   if (!host) { console.error('usage: node src/audit/reclaim-orphans.mjs <host> [--apply]'); process.exit(2); }
+  if (argv.includes('--purge')) {
+    const p = purgeQuarantine(host);
+    console.log('[reclaim] PURGE host=' + host + ' files=' + p.purged + ' bytes=' + (p.bytes / 1048576).toFixed(1) + 'MB');
+    process.stdout.write('@@RAWS@@' + JSON.stringify({ kind: 'reclaim-purge', host, purged: p.purged, bytes: p.bytes }) + '\n');
+    process.exit(0);
+  }
   const result = apply ? applyReclaim(host) : planReclaim(host);
   if (!apply) {
     const dir = join(WORKSPACE, host, 'audit');

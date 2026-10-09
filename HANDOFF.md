@@ -236,3 +236,8 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
   3. 自校验回滚：回收前后各跑一次资产缺口扫描，若 visualGaps 上升则自动全部回滚。
 - 实测：thordata 86 孤儿 → 保守候选 24 个 → 隔离 24（1.9MB）→ gaps 0→0，无回滚；剩余孤儿 62。
 - apify 保守候选 10,781 个 / 125.5MB（待确认后可在控制台执行）。
+
+### 15.3 apify 孤儿回收执行结果
+- 保守候选 10,781 个 / 125.5MB → 全部隔离（gaps 0→0，无回滚），剩余孤儿 904 / 42.4MB。
+- 交付包重导出：**26,292 文件 / 383.0MB → 15,206 文件 / 257.5MB（−125.5MB）**，unresolved 仍为 0；离线实测 /、/pricing、/store 均 0 镜像失败。
+- 新增 `reclaim-orphans <host> --purge`：确认无副作用后可回收隔离区磁盘（默认保留隔离区作安全网）。
