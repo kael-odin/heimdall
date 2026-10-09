@@ -36,7 +36,9 @@ let refIndex = 0;   // 与 cssom-refs.json.refs 顺序一一对应（失败也�
 const fetchBin = async (url) => {
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(res.status);
-  return Buffer.from(await res.arrayBuffer());
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (!buf.length) throw new Error('empty body');
+  return buf;
 };
 for (const ref of cssomMeta.refs) {
   let abs;
@@ -61,7 +63,7 @@ for (const ref of cssomMeta.refs) {
       try { got = await fetchBin(u); break; } catch { /* next candidate */ }
     }
   }
-  if (!got) { failed++; continue; }   // 不重写：保留原始 URL，交给 linker/HAR 兜底
+  if (!got || !got.length) { failed++; continue; }   // 空体视为失败：保留原始 URL，交给 linker/HAR 兜底
   writeFileSync(dest, got);
   css = css.split(ref).join(rel);     // 仅成功时改写
   fetched++;
@@ -126,8 +128,10 @@ for (const [origUrl, relPath] of Object.entries(map.imgMap)) {
   const src = join(PAGE, relPath);
   if (existsSync(src)) {
     const dest = join(CLONE, relPath);
+    const buf = readFileSync(src);
+    if (!buf.length) continue;   // 跳过 0 字节捕获文件
     mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, readFileSync(src));
+    writeFileSync(dest, buf);
     copied++;
   }
 }

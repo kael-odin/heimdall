@@ -285,7 +285,9 @@ for (const r of manifest.resources ?? []) {
     if (!res.ok) throw new Error(res.status);
     const safeKind = kind.replace(/[^a-z0-9-]/gi, '') || 'asset';
     const name = safeKind + String(okRes).padStart(3, '0') + '.' + extOfResource(res.headers.get('content-type') || '', r.url);
-    writeFileSync(join(OUT, 'assets', name), Buffer.from(await res.arrayBuffer()));
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (!buf.length) throw new Error('empty body');   // 0 字节响应（追踪信标等）不落盘，交给 gaps.json
+    writeFileSync(join(OUT, 'assets', name), buf);
     const rel = 'assets/' + name;
     resMap[r.url] = rel;
     if (r.kinds.some(k => k === 'image' || k === 'icon' || k.startsWith('preload'))) imgMap[r.url] = rel;

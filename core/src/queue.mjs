@@ -153,10 +153,11 @@ function runNode(script, args) {
 }
 const d = queue.filter(q => q.status === 'done').length, f = queue.filter(q => q.status === 'failed').length;
 if (d > 0) {
-  console.log('\n[host-post] xlsx / linker / index-page (once for the whole batch)');
+  console.log('\n[host-post] xlsx / linker / index-page / repair-empty (once for the whole batch)');
   await runNode(join('src', 'harvest', 'xlsx.mjs'), [host]);
   await runNode(join('src', 'crawler', 'linker.mjs'), [host]);
   await runNode(join('src', 'crawler', 'index-page.mjs'), [host]);
+  await runNode(join('src', 'crawler', 'repair-empty-assets.mjs'), [host]);   // 0 字节资产（追踪信标）自动清理
   if (!process.argv.includes('--no-dedupe')) {
     console.log('\n[dedupe] content-addressed asset store (hardlinks)');
     await runNode(join('src', 'store', 'dedupe.mjs'), [host]);
