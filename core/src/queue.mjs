@@ -158,6 +158,7 @@ if (d > 0) {
   await runNode(join('src', 'crawler', 'linker.mjs'), [host]);
   await runNode(join('src', 'crawler', 'index-page.mjs'), [host]);
   await runNode(join('src', 'crawler', 'repair-empty-assets.mjs'), [host]);   // 0 字节资产（追踪信标）自动清理
+  await runNode(join('src', 'audit', 'orphans.mjs'), [host]);                 // 孤儿资产报告（可回收清单）
   if (!process.argv.includes('--no-dedupe')) {
     console.log('\n[dedupe] content-addressed asset store (hardlinks)');
     await runNode(join('src', 'store', 'dedupe.mjs'), [host]);

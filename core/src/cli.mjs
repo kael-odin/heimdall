@@ -27,6 +27,7 @@ export const COMMANDS = {
   forge:   { script: 'src/pipeline.mjs', usage: 'forge <url> [pageName]', desc: '单页完整克隆流水线（capture→build→diff→fixup→harvest）' },
   queue:   { script: 'src/queue.mjs', usage: 'queue <host> [--max N] [--force] [--missing-har] [--no-dedupe]', desc: '全站批量克隆（持久化队列/断点续跑/末尾去重）' },
   audit:   { script: 'src/seo/audit.mjs', usage: 'audit <host> [--max N] [--threshold N]', desc: 'SEO 审计（40+ 规则，HTML/CSV/JSON）' },
+  orphans: { script: 'src/audit/orphans.mjs', usage: 'orphans <host>', desc: '孤儿资产扫描（clone 内无引用，疑似可回收）' },
   'repair-empty': { script: 'src/crawler/repair-empty-assets.mjs', usage: 'repair-empty <host> [--dry-run]', desc: '修复 0 字节资产（追踪信标→透明像素；其它→原始 URL）' },
   repair:  { script: 'src/crawler/repair-css-refs.mjs', usage: 'repair <host> [--dry-run]', desc: '修复历史 clone 的 CSS 相对路径坏链（字体 styles/styles/… 等）' },
   assets:  { script: 'src/audit/assets.mjs', usage: 'assets <host> [--max N]', desc: '资产缺口扫描（视觉缺口 vs 元数据/追踪/设计替代）' },

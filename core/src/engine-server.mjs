@@ -708,6 +708,12 @@ createServer(async (req, res) => {
     const pagesDir = join(base, 'pages');
     const items = [];
     let totalBytes = 0;
+    let orphanReport = null;
+    try {
+      const op = join(base, 'audit', 'orphans.json');
+      if (existsSync(op)) orphanReport = JSON.parse(readFileSync(op, 'utf8'));
+    } catch {}
+    const orphanSet = new Set(orphanReport?.orphanPaths ?? []);
     const reverse = new Map();   // page -> (clone 内相对路径 -> 原始 URL)
     if (existsSync(pagesDir)) {
       for (const page of readdirSync(pagesDir)) {
@@ -721,7 +727,7 @@ createServer(async (req, res) => {
       }
     }
     const walk = (dir, page, group) => {
-      if (!existsSync(dir) || items.length > 5000) return;
+      if (!existsSync(dir) || items.length > 200000) return;   // 收集上限（防极端目录；不再截断正常站点）
       for (const name of readdirSync(dir)) {
         const f = join(dir, name);
         let st; try { st = statSync(f); } catch { continue; }
@@ -730,7 +736,7 @@ createServer(async (req, res) => {
           totalBytes += st.size;
           const relWs = relative(WORKSPACE, f).split('\\').join('/');
           const relClone = relative(join(pagesDir, page, 'clone'), f).split('\\').join('/');
-          items.push({ path: relWs, page, group, ext: extname(name).toLowerCase(), size: st.size, url: '/static/' + relWs, src: reverse.get(page)?.get(relClone) ?? '' });
+          items.push({ path: relWs, page, group, ext: extname(name).toLowerCase(), size: st.size, url: '/static/' + relWs, src: reverse.get(page)?.get(relClone) ?? '', orphan: orphanSet.has(relWs) });
         }
       }
     };
@@ -761,6 +767,7 @@ createServer(async (req, res) => {
     if (extSel.length) filtered = filtered.filter(it => extSel.includes(it.ext || '(none)'));
     if (pageSel) filtered = filtered.filter(it => it.page === pageSel);
     if (minSize > 0) filtered = filtered.filter(it => it.size >= minSize);
+    if (u.searchParams.get('orphan') === '1') filtered = filtered.filter(it => it.orphan);
     filtered = [...filtered];
     if (sort === 'name') filtered.sort((x, y) => x.path.localeCompare(y.path));
     else if (sort === 'page') filtered.sort((x, y) => x.page.localeCompare(y.page) || y.size - x.size);
@@ -768,7 +775,8 @@ createServer(async (req, res) => {
     const filteredBytes = filtered.reduce((n, it) => n + it.size, 0);
     const ledgerPath = join(base, 'asset-ledger.json');
     let ledger = null; try { ledger = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch {}
-    return json(res, 200, { host, count: items.length, totalBytes, filtered: filtered.length, filteredBytes, byExt, byPage, ledger, items: filtered.slice(offset, offset + limit) });
+    const orphans = orphanReport ? { count: orphanReport.orphans, bytes: orphanReport.orphanBytes, generatedAt: orphanReport.generatedAt } : null;
+    return json(res, 200, { host, count: items.length, totalBytes, filtered: filtered.length, filteredBytes, byExt, byPage, ledger, orphans, items: filtered.slice(offset, offset + limit) });
   }
 
   // 单端口部署：workspace 作为公开静态目录（/apify.com/recon/atlas.json 等，等价 Vite publicDir）

@@ -166,7 +166,7 @@ const avgWorst = computed(() => {
   const vals = Object.values(pageVerify).filter(v => v?.minViewport && typeof v.minViewport.score === 'number').map(v => v.minViewport.score);
   return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : null;
 });
-const assetFilter = reactive({ q: '', ext: '', page: '', minSize: false, sort: 'size' });
+const assetFilter = reactive({ q: '', ext: '', page: '', minSize: false, orphan: false, sort: 'size' });
 const assetExts = computed(() => Object.entries(assetInfo.value?.byExt ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 14));
 const assetPages = computed(() => Object.entries(assetInfo.value?.byPage ?? {}).sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 60));
 const IMG_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.avif', '.gif', '.svg', '.ico', '.bmp']);
@@ -604,6 +604,7 @@ async function loadAssets() {
     if (assetFilter.ext) p.set('ext', assetFilter.ext);
     if (assetFilter.page) p.set('page', assetFilter.page);
     if (assetFilter.minSize) p.set('minSize', String(100 * 1024));
+    if (assetFilter.orphan) p.set('orphan', '1');
     const r = await fetch(API + '/api/assets/' + host.value + '?' + p.toString());
     if (r.ok) assetInfo.value = await r.json();
   } catch {}
@@ -1129,13 +1130,13 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     </div>
 
     <div class="report-card report-wide hud-panel">
-      <h3>资产清单 <span class="wv-stat" v-if="assetInfo">共 {{ assetInfo.count }} 个文件 · {{ (assetInfo.totalBytes / 1024 / 1024).toFixed(1) }}MB · 匹配 {{ assetInfo.filtered ?? assetInfo.count }} · 显示 {{ assetFiltered.length }}</span></h3>
+      <h3>资产清单 <span class="wv-stat" v-if="assetInfo">共 {{ assetInfo.count }} 个文件 · {{ (assetInfo.totalBytes / 1024 / 1024).toFixed(1) }}MB · 匹配 {{ assetInfo.filtered ?? assetInfo.count }} · 显示 {{ assetFiltered.length }}<template v-if="assetInfo.orphans"> · 孤儿 {{ assetInfo.orphans.count }}（{{ (assetInfo.orphans.bytes / 1048576).toFixed(1) }}MB）</template><template v-if="assetInfo.ledger"> · 去重节省 {{ (assetInfo.ledger.bytesSaved / 1048576).toFixed(0) }}MB（重复 {{ assetInfo.ledger.duplicates }}）</template></span></h3>
       <div class="asset-controls" v-if="assetInfo?.items?.length">
         <input v-model="assetFilter.q" placeholder="搜索路径…" spellcheck="false" />
         <select v-model="assetFilter.ext"><option value="">全部类型</option><option v-for="e in assetExts" :key="e[0]" :value="e[0]">{{ e[0] || '(none)' }} ({{ e[1] }})</option></select>
         <select v-model="assetFilter.page"><option value="">全部页面</option><option v-for="p in assetPages" :key="p[0]" :value="p[0]">{{ p[0] }} ({{ p[1].count }})</option></select>
         <select v-model="assetFilter.sort"><option value="size">按体积</option><option value="name">按路径</option><option value="page">按页面</option></select>
-        <label class="sw"><input type="checkbox" v-model="assetFilter.minSize" /><span>≥100KB</span></label>
+        <label class="sw"><input type="checkbox" v-model="assetFilter.minSize" /><span>≥100KB</span></label><label class="sw"><input type="checkbox" v-model="assetFilter.orphan" /><span>仅孤儿</span></label>
       </div>
       <div class="asset-table" v-if="assetFiltered.length">
         <div class="asset-row asset-th"><span>页面</span><span>类型</span><span>大小</span><span>路径</span><span>预览</span></div>
