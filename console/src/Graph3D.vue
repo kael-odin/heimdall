@@ -2,7 +2,7 @@
 /**
  * Graph3D — 3d-force-graph 星图渲染层（graphify 同款形态）
  *
- * 交互：拖拽=旋转 · 滚轮=缩放 · Ctrl+拖拽=平移画布 · 点星球=锻造
+ * 交互：拖拽=旋转 · 滚轮=缩放 · Ctrl+拖拽=平移画布 · 点星球=克隆
  *
  * 数据由父组件喂：nodes（含 color/ring/path/type/url/forgeState）
  * links = [{ source: nodeId, target: nodeId }]

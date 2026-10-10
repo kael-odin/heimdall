@@ -4,7 +4,7 @@
  *
  * 静态模式：读已有 /<host>/recon/atlas.json（或从站点切换器载入任意已侦察站）
  * live 模式：POST /api/recon → SSE 事件流 → 节点逐个弹入生长
- * 点星球 = 锻造该页；「锻造内环」= 批量并行
+ * 点星球 = 克隆该页；「克隆内环」= 批量并行
  */
 import { onMounted, onBeforeUnmount, ref, reactive, computed, watch } from 'vue';
 import Graph3D from './Graph3D.vue';
@@ -35,7 +35,7 @@ const atlas = ref(null);
 const live = ref(false);
 const statusText = ref('');
 const errMsg = ref('');
-// 任务中心：每个 forge 任务独立对象 + 独立 EventSource（修复并发锻造单例覆盖）
+// 任务中心：每个 forge 任务独立对象 + 独立 EventSource（修复并发克隆单例覆盖）
 const tasks = reactive([]);
 const activeTaskId = ref(null);
 const forge = computed(() => tasks.find(t => t.localId === activeTaskId.value) ?? null);
@@ -94,11 +94,11 @@ function plToggle(id) { const s = new Set(plSelected.value); s.has(id) ? s.delet
 function plSelectAll() { const s = new Set(plSelected.value); tableNodes.value.filter(n => n.forgeState !== 'done').forEach(n => s.add(n.id)); plSelected.value = s; }
 async function forgeChecked() {
   const targets = nodes.filter(n => plSelected.value.has(n.id) && n.forgeState !== 'done');
-  statusText.value = `清单锻造 ${targets.length} 页`;
+  statusText.value = `清单克隆 ${targets.length} 页`;
   const q = [...targets]; let done = 0;
-  const worker = async () => { while (q.length) { const n = q.shift(); await startForge(n); done++; statusText.value = `清单锻造 ${done}/${targets.length}`; } };
+  const worker = async () => { while (q.length) { const n = q.shift(); await startForge(n); done++; statusText.value = `清单克隆 ${done}/${targets.length}`; } };
   await Promise.all([worker(), worker()]);
-  statusText.value = '清单锻造完成'; plSelected.value = new Set();
+  statusText.value = '清单克隆完成'; plSelected.value = new Set();
   setTimeout(() => { statusText.value = ''; }, 3000);
 }
 const theme = ref(localStorage.getItem('heimdall-theme') ?? 'dark');   // 深色/浅色
@@ -561,7 +561,7 @@ function startForge(node) {
     while (tasks.length > 20) tasks.shift();   // 只保留最近 20 条，长会话不膨胀
     activeTaskId.value = task.localId;
     node.forgeState = 'running';
-    statusText.value = '锻造中 · ' + pageName;
+    statusText.value = '克隆中 · ' + pageName;
     bump();
     (async () => {
       try {
@@ -1059,7 +1059,7 @@ function runAudit() {
 
 async function forgeAll() {
   const targets = nodes.filter(n => n.forgeState !== 'done' && n.forgeState !== 'running').slice(0, 10);
-  statusText.value = `全境锻造 ${targets.length} 页`;
+  statusText.value = `全境克隆 ${targets.length} 页`;
   let done = 0;
   const queue = [...targets];
   const worker = async () => {
@@ -1067,11 +1067,11 @@ async function forgeAll() {
       const n = queue.shift();
       await startForge(n);
       done++;
-      statusText.value = `全境锻造 ${done}/${targets.length}`;
+      statusText.value = `全境克隆 ${done}/${targets.length}`;
     }
   };
   await Promise.all([worker(), worker()]);
-  statusText.value = '全境锻造完成';
+  statusText.value = '全境克隆完成';
   setTimeout(() => { statusText.value = ''; }, 3000);
 }
 
@@ -1083,7 +1083,7 @@ function onNodeClick(node) {
   if (!node?.url) return;
   selected.value = node;                      // 点星 = 选中，打开详情剖析面板
   detailTab.value = 'overview';
-  activeTaskId.value = null;                   // 关闭旧锻造视图（后台任务继续跑）
+  activeTaskId.value = null;                   // 关闭旧克隆视图（后台任务继续跑）
   detailIntel.value = null; detailScore.value = null;
   const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
   wsJson(host.value, 'pages/' + pageName + '/intel/intel.json').then(j => { if (j && selected.value === node) detailIntel.value = j; });
@@ -1113,7 +1113,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   <Graph3D v-show="view === 'atlas'" :nodes="gNodes" :links="gLinks" :tick="gTick" :auto-rotate="autoRotate" :palette="graphPalette" @node-click="onNodeClick" />
 
   <div class="hud" v-if="view === 'atlas'">
-    <div class="brand">HEIMDALL<span class="brand-sub">SITE ATLAS · 深空观测站</span></div>
+    <div class="brand">HEIMDALL<span class="brand-sub">SITE ATLAS · 站点克隆工作台</span></div>
     <div class="brand-rule"></div>
     <div class="stats">
       <div class="stat"><b>{{ hudPages }}</b><i>pages</i></div>
@@ -1125,7 +1125,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 
   <!-- 左侧仪表面板 -->
   <div class="panel surface" v-if="view === 'atlas' && showPanel">
-    <div class="panel-title">OBSERVATORY · 仪表面板<button class="panel-collapse" @click="showPanel = false" title="收起">—</button></div>
+    <div class="panel-title">仪表面板<button class="panel-collapse" @click="showPanel = false" title="收起">—</button></div>
     <div class="panel-sec">
       <div class="panel-sec-name">图例 · 页面类型</div>
       <div class="legend"><span class="lg" v-for="(t, k) in PAGE_TYPES" :key="k"><i :style="{ background: typeColorThemed(k) }"></i>{{ t.cn }}</span></div>
@@ -1137,7 +1137,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="panel-sec">
       <div class="panel-sec-name">引擎</div>
       <div class="eng" :class="{ on: engine.ok }"><i></i>{{ engine.ok ? '在线 :8900' : '离线' }}</div>
-      <div class="eng-detail" v-if="engine.ok">锻造槽 {{ engine.forge?.slots ?? 0 }}/2 · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
+      <div class="eng-detail" v-if="engine.ok">克隆槽 {{ engine.forge?.slots ?? 0 }}/2 · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
     </div>
   </div>
   <button class="panel-open" v-if="view === 'atlas' && !showPanel" @click="showPanel = true" aria-label="展开仪表面板" title="仪表面板"><Icon name="menu" decorative /></button>
@@ -1152,7 +1152,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   <div class="sites" v-if="view === 'atlas' && sites.length">
     <span class="sites-label">已侦察：</span>
     <span class="site-item" v-for="s in sites" :key="s.host">
-      <button class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s)" :title="s.pages ? `${s.forged}/${s.pages} 页已锻造` : '侦察结果为空（失败或无可用页面）'">
+      <button class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s)" :title="s.pages ? `${s.forged}/${s.pages} 页已克隆` : '侦察结果为空（失败或无可用页面）'">
         {{ s.host }}<em>{{ s.pages ? s.forged + 'F' : '空' }}</em>
       </button>
       <button class="site-del" :aria-label="'删除站点 ' + s.host" title="删除该站点（侦察/克隆/报告；CAS 资产保留）" @click.stop="deleteSite(s)"><Icon name="close" decorative /></button>
@@ -1222,7 +1222,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <span class="wv-actions c-actions">
           <a :href="n.url" target="_blank" rel="noopener" title="打开原站">原站</a>
           <button @click="openDetail(n)">详情</button>
-          <button :disabled="n.forgeState === 'running'" @click="startForge(n)">{{ n.forgeState === 'done' ? '重锻' : '克隆' }}</button>
+          <button :disabled="n.forgeState === 'running'" @click="startForge(n)">{{ n.forgeState === 'done' ? '重新克隆' : '克隆' }}</button>
           <button v-if="n.forgeState === 'done' || n.forgeState === 'failed'" class="danger" @click="deletePage(n)" title="删除该页克隆产物并从星图移除">删除</button>
         </span>
       </div>
@@ -1515,21 +1515,21 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     </div>
   </section>
 
-  <!-- 页面详情剖析面板（点星 = 选中；锻造是其中一项功能） -->
+  <!-- 页面详情剖析面板（点星 = 选中；克隆是其中一项功能） -->
   <div class="dock" v-if="dockOpen">
     <div class="dock-head">
       <div>
         <div class="dock-title">{{ selected.path === '/' ? 'home' : selected.path.slice(1) }}</div>
         <div class="dock-url">{{ selected.url }}</div>
       </div>
-      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="批量锻造尚未完成的页面（每次最多 10 页，引擎 2 并发）">批量锻造 10 页</button><button class="dock-close" aria-label="关闭页面详情" title="关闭" @click="selected = null"><Icon name="close" decorative /></button></div>
+      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="批量克隆尚未完成的页面（每次最多 10 页，引擎 2 并发）">批量克隆 10 页</button><button class="dock-close" aria-label="关闭页面详情" title="关闭" @click="selected = null"><Icon name="close" decorative /></button></div>
     </div>
 
     <div class="tabs">
       <button class="tab" :class="{ on: detailTab === 'overview' }" @click="detailTab = 'overview'">概览</button>
       <button class="tab" :class="{ on: detailTab === 'seo' }" @click="detailTab = 'seo'">SEO 剖析</button>
       <button class="tab" :class="{ on: detailTab === 'quality' }" @click="detailTab = 'quality'">质检</button>
-      <button class="tab" :class="{ on: detailTab === 'forge' }" @click="detailTab = 'forge'">锻造克隆</button>
+      <button class="tab" :class="{ on: detailTab === 'forge' }" @click="detailTab = 'forge'">克隆克隆</button>
     </div>
 
     <!-- 概览 tab -->
@@ -1537,7 +1537,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <div class="ov-grid">
         <div class="ov-item"><span class="ov-k">类型</span><span class="ov-v" :style="{ color: typeColorThemed(selected.type) }">{{ typeCn(selected.type) }}</span></div>
         <div class="ov-item"><span class="ov-k">层级深度</span><span class="ov-v">{{ selected.depth ?? '-' }}</span></div>
-        <div class="ov-item"><span class="ov-k">锻造状态</span><span class="ov-v">{{ selected.forgeState === 'done' ? '已锻造' : selected.forgeState === 'running' ? '锻造中' : selected.forgeState === 'failed' ? '失败' : '未锻造' }}</span></div>
+        <div class="ov-item"><span class="ov-k">克隆状态</span><span class="ov-v">{{ selected.forgeState === 'done' ? '已克隆' : selected.forgeState === 'running' ? '克隆中' : selected.forgeState === 'failed' ? '失败' : '未克隆' }}</span></div>
         <div class="ov-item" v-if="detailScore"><span class="ov-k">还原度</span><span class="ov-v" :style="{ color: detailScore.grade === 'A' ? 'var(--ok)' : 'var(--warn)' }">{{ detailScore.total }}% {{ detailScore.grade }}</span></div>
         <div class="ov-item" v-if="pageMeta[selected.id]?.assets"><span class="ov-k">资产</span><span class="ov-v">{{ fmtBytes(pageMeta[selected.id].assets.bytes) }} · {{ pageMeta[selected.id].assets.count }} 个</span></div>
         <div class="ov-item" v-if="pageMeta[selected.id]?.visualGaps != null"><span class="ov-k">视觉缺口</span><span class="ov-v" :style="{ color: pageMeta[selected.id].visualGaps.visual ? 'var(--bad)' : 'var(--ok)' }">{{ pageMeta[selected.id].visualGaps.visual }}</span></div>
@@ -1562,11 +1562,11 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <a :href="`/${host}/pages/${pageNameOf(selected)}/score.json`" target="_blank" rel="noopener">分数 JSON</a>
       </div>
       <div class="forge-cta" v-if="selected.forgeState !== 'done' && selected.forgeState !== 'running'">
-        <button class="forge-btn" @click="openForge"><Icon name="bolt" decorative /> 开始锻造此页</button>
-        <div class="forge-note">捕获 → 校准 → 评分，全程约 2-3 分钟；也可点「批量锻造 10 页」</div>
+        <button class="forge-btn" @click="openForge"><Icon name="bolt" decorative /> 开始克隆此页</button>
+        <div class="forge-note">捕获 → 校准 → 评分，全程约 2-3 分钟；也可点「批量克隆 10 页」</div>
       </div>
       <div class="forge-cta" v-else-if="selected.forgeState === 'done'">
-        <button class="forge-btn alt" @click="detailTab = 'forge'">查看锻造详情 →</button>
+        <button class="forge-btn alt" @click="detailTab = 'forge'">查看克隆详情 →</button>
       </div>
     </div>
 
@@ -1658,7 +1658,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
           <div v-else class="seo-note">本页无缺口报告（该页克隆于缺口落盘功能之前，重新克隆即可生成）</div>
         </div>
         <div class="ov-sec" v-if="detailQuality.history?.jobs?.length">
-          <div class="panel-sec-name">锻造历史（引擎持久化 · 最近 {{ detailQuality.history.jobs.length }} 次）</div>
+          <div class="panel-sec-name">克隆历史（引擎持久化 · 最近 {{ detailQuality.history.jobs.length }} 次）</div>
           <div class="q-list">
             <div class="q-row" v-for="j in detailQuality.history.jobs.slice(0, 8)" :key="j.id">
               <span class="q-k">{{ fmtDate(j.createdAt) }}</span>
@@ -1679,14 +1679,14 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       </template>
     </div>
 
-    <!-- 锻造 tab -->
+    <!-- 克隆 tab -->
     <div v-show="detailTab === 'forge'">
       <div class="forge-cta" v-if="!forge && selected.forgeState !== 'done' && selected.forgeState !== 'running'">
-        <button class="forge-btn" @click="openForge">⚡ 开始锻造此页</button>
+        <button class="forge-btn" @click="openForge">⚡ 开始克隆此页</button>
         <div class="forge-note">六阶段：捕获骨架 → 注入皮肤 → 渲染校准 → AI 校准 → 像素定谳 → 情报入库</div>
       </div>
       <div class="forge-cta" v-if="!forge && selected.forgeState === 'done'">
-        <button class="forge-btn alt" @click="openForge"><Icon name="refresh" decorative /> 重新锻造此页</button>
+        <button class="forge-btn alt" @click="openForge"><Icon name="refresh" decorative /> 重新克隆此页</button>
       </div>
 
       <template v-if="forge">
@@ -1713,7 +1713,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
             <span>可修静态差异 {{ (forge.score.breakdown.refinable * 100).toFixed(0) }}% · 动画噪声 {{ (forge.score.breakdown.dynamicShare * 100).toFixed(0) }}%</span>
           </div>
         </div>
-        <div class="verdict pending surface" v-else-if="!forge.done && !forge.error"><span class="scan"></span>锻造中 …</div>
+        <div class="verdict pending surface" v-else-if="!forge.done && !forge.error"><span class="scan"></span>克隆中 …</div>
         <div class="dock-err surface" v-if="forge.error">{{ forge.error }}</div>
         <div class="fixup-curve" v-if="forge.skipReason">
           <div class="curve-title">AI 校准</div>
@@ -1844,7 +1844,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 /* dock 内错误 */
 .dock-err { margin-top: 12px; padding: 11px 13px; border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent); border-radius: var(--r); color: var(--bad); font-size: 12.5px; background: color-mix(in srgb, var(--bad) 5%, transparent); }
 
-/* 施工舱 */
+/* 克隆进度 */
 /* 详情 tabs */
 .tabs { display: flex; gap: 6px; margin-top: 16px; }
 .tab { flex: 1; padding: 8px 0; background: var(--surface-2); border: 1px solid color-mix(in srgb, var(--text-dim) 18%, transparent); border-radius: var(--r); color: var(--text-faint); font-size: 12.5px; cursor: pointer; transition: all var(--dur); }
