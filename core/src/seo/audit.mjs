@@ -4,25 +4,37 @@
  *
  * 用法:
  *   node src/seo/audit.mjs <url|host> [--max 25] [--threshold 70]
+ *                          [--baseline <file>] [--update-baseline]
+ *                          [--fail-on-regression] [--tolerance N]
  *
  * 产物（workspace/<host>/seo/）:
- *   seo.json   结构化结果（CI/接口消费）
- *   seo.csv    逐条问题（Excel 直开）
- *   seo.html   自包含报告（双击即看）
+ *   seo.json      结构化结果（CI/接口消费）
+ *   seo.csv       逐条问题（Excel 直开）
+ *   seo.html      自包含报告（双击即看）
+ *   baseline.json 回归基线（--update-baseline 时写入，进 git）
+ *   diff.md       回归对比（PR 评论可直接贴）
+ *
+ * 基线门禁（--fail-on-regression）：与 baseline.json 比对，出现阻断级回归则 exit 1。
+ *   --tolerance N（默认 0）额外启用「总分跌幅」门禁；默认 0 表示只看具名问题。
+ *   波动规则（LCP/CLS/FCP）不计入判定。
+ *   --fail-on-regression / --require-baseline 都要求基线**必须存在** ——
+ *   基线丢了当成首次运行直接绿灯，是门禁最隐蔽的失效方式。
  *
  * 事件（@@EVENT@@ 行，engine-server 转发 SSE）:
  *   {kind:'audit-start', host, targets}
  *   {kind:'audit-page', url, index, total, score}
  *   {kind:'audit-done', host, score, pages, issues, reportPath}
+ *   {kind:'audit-regression', ok, blocking, regressions, score, markdownPath}
  *   {kind:'audit-error', error}
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, isAbsolute, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
 import { fetchRobotsAndSitemaps, discoverTargets, collectSite } from './collect.mjs';
 import { evaluatePage, evaluateSite, scoreIssues, countBySeverity, CATEGORIES, SEVERITY_PENALTY } from './rules.mjs';
 import { renderHtml, renderCsv } from './report.mjs';
+import { buildBaseline, snapshotOf, diffBaseline, renderDiffText, renderDiffMarkdown, BASELINE_VERSION } from './baseline.mjs';
 
 const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error('[seo]', ...a);
@@ -39,7 +51,21 @@ const getNum = (name, def) => {
 };
 const MAX = Math.max(1, Math.min(getNum('max', 25), 200));
 const THRESHOLD = getNum('threshold', 0);
-if (!target) { console.error('usage: node src/seo/audit.mjs <url|host> [--max 25] [--threshold 70]'); process.exit(2); }
+const TOLERANCE = getNum('tolerance', 0);
+const has = (name) => argv.includes('--' + name);
+const getStr = (name) => {
+  const i = argv.indexOf('--' + name);
+  if (i > -1 && argv[i + 1] && !argv[i + 1].startsWith('--')) return argv[i + 1];
+  const eq = argv.find(a => a.startsWith('--' + name + '='));
+  return eq ? eq.split('=').slice(1).join('=') : null;
+};
+const UPDATE_BASELINE = has('update-baseline');
+const FAIL_ON_REGRESSION = has('fail-on-regression');
+const REQUIRE_BASELINE = has('require-baseline');
+const BASELINE_ARG = getStr('baseline');
+// 基线必须进 git 才有意义（否则 CI 每次都是首次运行，门禁形同虚设）。
+// 默认放在 workspace 下，由 --baseline 指定仓库内路径覆盖。
+if (!target) { console.error('usage: node src/seo/audit.mjs <url|host> [--max 25] [--threshold 70]\n       [--baseline <file>] [--update-baseline] [--fail-on-regression] [--tolerance N] [--require-baseline]'); process.exit(2); }
 
 const targetUrl = /^https?:\/\//i.test(target) ? target : `https://${target}`;
 let origin; try { origin = new URL(targetUrl).origin; } catch { console.error('invalid target:', target); process.exit(2); }
@@ -49,6 +75,18 @@ try {
   const base = join(WORKSPACE, host);
   const outDir = join(base, 'seo');
   mkdirSync(outDir, { recursive: true });
+
+  // 前置条件在抓取**之前**检查：基线路径写错不该先白抓一遍全站（CI 里就是白等几十秒）。
+  // 同时「文件没了 → 当成首次运行 → 绿灯」是门禁最隐蔽的失效方式 ——
+  // 它看起来和正常通过一模一样，没人会发现。所以要求比对时必须硬失败。
+  const baselinePath = resolveUserPath(BASELINE_ARG ?? join(outDir, 'baseline.json'));
+  if ((REQUIRE_BASELINE || FAIL_ON_REGRESSION) && !existsSync(baselinePath)) {
+    log(`FATAL 找不到基线：${baselinePath}`);
+    log('      先跑一次 `audit <host> --baseline <file> --update-baseline`，把生成的基线提交进仓库。');
+    log('      （要求 --fail-on-regression 就必须有基线可比，否则「通过」不代表任何事。）');
+    emit({ kind: 'audit-error', error: `baseline not found: ${baselinePath}` });
+    process.exit(1);
+  }
 
   // ---------- 目标页面：优先复用 atlas，否则 sitemap/BFS ----------
   const atlasPath = join(base, 'recon', 'atlas.json');
@@ -170,8 +208,52 @@ try {
   log(`report -> ${htmlPath}`);
   emit({ kind: 'audit-done', host, score: siteScore, pages: pages.length, issues: allIssues.length, bySeverity, reportPath: htmlPath });
 
+  // ---------- 回归基线 ----------
+  const current = snapshotOf(report);
+
+  let baseline = null;
+  let baselineErr = null;
+  if (existsSync(baselinePath)) {
+    try { baseline = JSON.parse(readFileSync(baselinePath, 'utf8')); }
+    catch (e) { baselineErr = `基线文件无法解析：${e.message}`; }
+  }
+  // 版本不符时 diffBaseline 会抛错。**不静默降级成「首次运行」** ——
+  // 那样门禁会假装通过，等于把回归放行。宁可报错让人重新生成基线。
+  if (baselineErr) { log(`WARN ${baselineErr}`); baseline = null; }
+
+  let diff = null;
+  try {
+    diff = diffBaseline(baseline, current, { tolerance: TOLERANCE });
+  } catch (e) {
+    log(`FATAL 基线比对失败：${e.message}`);
+    emit({ kind: 'audit-error', error: String(e).slice(0, 300) });
+    process.exit(1);
+  }
+
+  if (!diff.firstRun) {
+    const text = renderDiffText(diff);
+    log('\n' + text);
+    const mdPath = join(outDir, 'diff.md');
+    writeFileSync(mdPath, renderDiffMarkdown(diff));
+    emit({
+      kind: 'audit-regression', ok: diff.ok, blocking: diff.counts.blocking,
+      regressions: diff.regressions.length, score: diff.score,
+      markdownPath: mdPath, reportPath: htmlPath,
+    });
+  }
+
+  if (UPDATE_BASELINE || diff.firstRun) {
+    writeFileSync(baselinePath, JSON.stringify(current, null, 2) + '\n');
+    log(`${diff.firstRun ? '首次运行，已建立' : '已更新'}基线 -> ${baselinePath}`);
+    emit({ kind: 'audit-baseline', path: baselinePath, created: diff.firstRun, version: BASELINE_VERSION });
+  }
+
   if (THRESHOLD > 0 && siteScore < THRESHOLD) {
     log(`FAIL: score ${siteScore} < threshold ${THRESHOLD}`);
+    process.exit(1);
+  }
+  if (FAIL_ON_REGRESSION && diff && !diff.ok) {
+    log(`FAIL: ${diff.counts.blocking} 项阻断级回归`);
     process.exit(1);
   }
 } catch (e) {
@@ -179,4 +261,11 @@ try {
   log('FATAL', msg);
   emit({ kind: 'audit-error', error: String(e).slice(0, 300) });
   process.exit(1);
+}
+
+/** 用户给的相对路径按「敲命令的目录」解析（CLI 会把 cwd 塞进 HEIMDALL_INVOKE_CWD），
+ *  否则会落到 core/ 下 —— 那是脚本自己的目录，不是用户的。 */
+function resolveUserPath(p) {
+  if (!p) return p;
+  return isAbsolute(p) ? p : resolve(process.env.HEIMDALL_INVOKE_CWD ?? process.cwd(), p);
 }

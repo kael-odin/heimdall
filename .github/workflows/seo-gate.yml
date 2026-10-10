@@ -1,0 +1,122 @@
+name: SEO Regression Gate
+
+# 与 ci.yml 的分工：
+#   ci.yml     —— 确定性检查（lint/单测/build/smoke），每次 push 和 PR 都跑，不联网
+#   seo-gate   —— 联网抓真实站点并与基线比对，跑得慢且结果受外网影响，
+#                 所以只在手动触发和每日定时跑，不阻塞 PR。
+#
+# 门禁口径见 core/src/seo/baseline.mjs 顶部注释：只认具名问题差异，
+# LCP/CLS/FCP 属波动规则，不计入判定。
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: '只审计这个站点（host 或 URL）。留空 = 跑 config/seo-targets.txt 全部'
+        required: false
+        default: ''
+      update_baseline:
+        description: '重建基线（会改文件，需自己开 PR 提交）'
+        type: boolean
+        required: false
+        default: false
+  schedule:
+    # 每天 03:17 UTC。刻意避开整点 —— GitHub 的 cron 在 :00 排队最挤，常延迟十几分钟。
+    - cron: '17 3 * * *'
+
+concurrency:
+  group: seo-gate-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: SEO 基线门禁
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: core/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+
+      - name: 解析目标站点
+        id: targets
+        env:
+          ONE: ${{ inputs.site }}
+        run: |
+          set -euo pipefail
+          if [ -n "${ONE:-}" ]; then
+            printf '%s\n' "$ONE" > "$RUNNER_TEMP/targets.txt"
+          elif [ -f ../config/seo-targets.txt ]; then
+            grep -vE '^[[:space:]]*(#|$)' ../config/seo-targets.txt > "$RUNNER_TEMP/targets.txt"
+          else
+            : > "$RUNNER_TEMP/targets.txt"
+          fi
+          echo "targets:"; cat "$RUNNER_TEMP/targets.txt"
+          if [ ! -s "$RUNNER_TEMP/targets.txt" ]; then
+            echo "::notice::没有配置目标站点（config/seo-targets.txt 为空），门禁无事可做。"
+          fi
+
+      # 逐站点跑，全部跑完再汇总结论 ——
+      # 中途 fail-fast 会让人修一个跑一次，把 5 分钟的事拖成 5 轮。
+      - name: 逐站点跑门禁
+        env:
+          SEO_MAX: ${{ vars.SEO_MAX || '25' }}
+          UPDATE_BASELINE: ${{ inputs.update_baseline }}
+        run: |
+          set -uo pipefail
+          failed=0
+          while read -r host; do
+            [ -z "$host" ] && continue
+            key=$(printf '%s' "$host" | sed -E 's#^https?://##; s#/.*$##; s#^www\.##')
+            echo "::group::SEO — $host"
+            extra=""
+            if [ "${UPDATE_BASELINE:-false}" = "true" ]; then extra="--update-baseline"; fi
+            node src/seo/audit.mjs "$host" \
+              --max "$SEO_MAX" \
+              --baseline "../config/seo-baseline/$key.json" \
+              --require-baseline \
+              --fail-on-regression \
+              $extra || failed=1
+            echo "::endgroup::"
+          done < "$RUNNER_TEMP/targets.txt"
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::存在阻断级 SEO 回归，详见上方分组与产物中的 diff.md"
+          fi
+          exit "$failed"
+
+      - name: 汇总到 Step Summary
+        if: always()
+        run: |
+          shopt -s nullglob
+          for md in workspace/*/seo/diff.md; do
+            echo "## $(dirname "$(dirname "$md")")" >> "$GITHUB_STEP_SUMMARY"
+            cat "$md" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: 上传报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-reports
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            core/workspace/*/seo/seo.html
+            core/workspace/*/seo/seo.json
+            core/workspace/*/seo/diff.md
+            config/seo-baseline/*.json
