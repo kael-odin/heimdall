@@ -10,7 +10,12 @@ import { onMounted, onBeforeUnmount, ref, reactive, computed, watch } from 'vue'
 import Graph3D from './Graph3D.vue';
 import SitePicker from './SitePicker.vue';
 import Icon from './Icon.vue';
+import JobsView from './JobsView.vue';
+import PagesView from './PagesView.vue';
+import StorageCard from './StorageCard.vue';
+import AssetTable from './AssetTable.vue';
 import { API, apiHeaders, apiJson, wsUrl, wsJson } from './api.js';
+import { taskState, taskLabel, fmtTime, fmtDate, fmtBytes, fmtDuration } from './format.js';
 
 import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
 const PAGE_TYPES = PT;
@@ -44,19 +49,17 @@ const tasksOpen = ref(true);
 const auditReport = ref(null);   // 最近一次 SEO 审计结果（报告入口）
 const watchReport = ref(null);   // 最近一次变更监控结果（报告入口）
 const okMsg = ref('');           // 成功提示（绿色 toast，与错误提示区分）
+/** 子组件上报"做完了"，统一走这里出提示（组件不直接碰父组件的 toast 状态） */
+function toast(msg, ms = 4000) {
+  okMsg.value = msg;
+  setTimeout(() => { if (okMsg.value === msg) okMsg.value = ''; }, ms);
+}
 const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
 const liveHealth = ref(null);    // 最新活镜像体检（/api/live-health/:host，导出时生成）
 const lastVerify = ref(null);    // 最近一次全站体检结果（/api/verify）
 const liveRebuild = ref(false);  // 导出活镜像前先重建 live 页面
 const liveHealthHost = ref('');   // liveHealth 对应的 host（切站后避免串数据）
-const storageInfo = ref(null);
-const storageLoading = ref(false);
-const storageError = ref('');
-const storageGcing = ref(false);
-const storageGcResult = ref(null);
-const storageGcConfirm = ref(false);
-const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const matrixPeer = ref('');          // 跨站对标对象
 const matrixReport = ref(null);      // 最近一次对标矩阵报告
@@ -77,8 +80,6 @@ const LLM_PRESETS = [
   { name: '本地 Ollama', protocol: 'chat', baseUrl: 'http://127.0.0.1:11434/v1', model: '', fastModel: '' },
   { name: '自建中转', protocol: 'chat', baseUrl: '', model: '', fastModel: '' },
 ];
-function taskState(t) { return t.failed ? 'failed' : t.done ? 'done' : 'running'; }
-function taskLabel(t) { return { running: '运行中', done: '完成', failed: '失败' }[taskState(t)] ?? '运行中'; }
 const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
 function sseUrl(taskId) { const t = tokenOf(); return `${API}/api/events?task=${taskId}${t ? '&token=' + encodeURIComponent(t) : ''}`; }
 const hudPages = ref(0);
@@ -89,16 +90,14 @@ const sites = ref([]);          // 已侦察站点清单（/api/sites）
 const engine = ref({ ok: false, recon: null, forge: null });   // 引擎状态灯
 const autoRotate = ref(true);   // 星图自转开关
 const showPanel = ref(typeof window === 'undefined' || window.innerWidth > 768);    // 左侧仪表面板折叠（小屏默认收起）
-const plSelected = ref(new Set());
-function plToggle(id) { const s = new Set(plSelected.value); s.has(id) ? s.delete(id) : s.add(id); plSelected.value = s; }
-function plSelectAll() { const s = new Set(plSelected.value); tableNodes.value.filter(n => n.forgeState !== 'done').forEach(n => s.add(n.id)); plSelected.value = s; }
-async function forgeChecked() {
-  const targets = nodes.filter(n => plSelected.value.has(n.id) && n.forgeState !== 'done');
+/** 批量克隆：ids 由 PagesView 的勾选状态提供（勾选状态现在归它自己管） */
+async function forgeChecked(ids) {
+  const targets = nodes.filter(n => ids.includes(n.id) && n.forgeState !== 'done');
   statusText.value = `清单克隆 ${targets.length} 页`;
   const q = [...targets]; let done = 0;
   const worker = async () => { while (q.length) { const n = q.shift(); await startForge(n); done++; statusText.value = `清单克隆 ${done}/${targets.length}`; } };
   await Promise.all([worker(), worker()]);
-  statusText.value = '清单克隆完成'; plSelected.value = new Set();
+  statusText.value = '清单克隆完成';
   setTimeout(() => { statusText.value = ''; }, 3000);
 }
 const theme = ref(localStorage.getItem('heimdall-theme') ?? 'dark');   // 深色/浅色
@@ -144,13 +143,8 @@ const VIEWS = [
   { id: 'reports', icon: '▦', label: '报告' },
   { id: 'settings', icon: '⚙', label: '设置' },
 ];
-const pageQuery = ref('');
-const typeFilter = ref('');
-const statusFilter = ref('');
 const tableNodes = ref([]);                       // 页面表格的响应式快照（含孤儿已克隆页）
 const extraNodes = ref([]);                       // 已克隆但不在 atlas 中的页面（补全清单）
-const sortKey = ref('path');
-const sortDir = ref(1);
 const pageScores = reactive({});                  // nodeId -> score.json（懒加载）
 const pageVerify = reactive({});                  // nodeId -> verify.json（多视口，懒加载）
 const pageMeta = reactive({});                    // nodeId -> { assets, visualGaps, interactions, updatedAt }
@@ -160,55 +154,13 @@ const pageNameOf = (n) => {
   try { const p = new URL(n.url).pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[/?&#]+/g, '-').slice(0, 60); return p || 'home'; }
   catch { return n.path === '/' ? 'home' : String(n.path || '').replace(/^\//, '').replace(/[/?&#]+/g, '-') || 'home'; }
 };
-const STATE_RANK = { done: 0, running: 1, failed: 2, idle: 3 };
-function toggleSort(k) { if (sortKey.value === k) sortDir.value = -sortDir.value; else { sortKey.value = k; sortDir.value = 1; } }
-const filteredNodes = computed(() => {
-  const q = pageQuery.value.trim().toLowerCase();
-  const out = tableNodes.value.filter(n => {
-    if (typeFilter.value && n.type !== typeFilter.value) return false;
-    if (statusFilter.value === 'done' && n.forgeState !== 'done') return false;
-    if (statusFilter.value === 'todo' && (n.forgeState === 'done' || n.forgeState === 'running')) return false;
-    if (statusFilter.value === 'failed' && n.forgeState !== 'failed') return false;
-    const hay = ((n.url || '') + ' ' + (n.title || '') + ' ' + (n.path || '')).toLowerCase();
-    return !q || hay.includes(q);
-  });
-  const dir = sortDir.value;
-  out.sort((a, b) => {
-    if (sortKey.value === 'state') return (STATE_RANK[a.forgeState] - STATE_RANK[b.forgeState]) * dir;
-    if (sortKey.value === 'score') {
-      const av = pageScores[a.id]?.pixel, bv = pageScores[b.id]?.pixel;
-      if (av == null && bv == null) return 0;
-      if (av == null) return 1;
-      if (bv == null) return -1;
-      return (av - bv) * dir;
-    }
-    if (sortKey.value === 'assets') return ((pageMeta[a.id]?.assets?.bytes ?? 0) - (pageMeta[b.id]?.assets?.bytes ?? 0)) * dir;
-    if (sortKey.value === 'title') return String(a.title || '').localeCompare(String(b.title || '')) * dir;
-    return String(a.path || '').localeCompare(String(b.path || '')) * dir;
-  });
-  return out;
-});
+// 「克隆档案」卡片用（报告页）。PagesView 里那份是它自己的，两者数据源相同但各自持有 ——
+// 卡片只需要两个数字，为它把 PagesView 的 props 反向暴露出去并不划算。
 const doneCount = computed(() => tableNodes.value.filter(n => n.forgeState === 'done').length);
-const statusCounts = computed(() => ({
-  all: tableNodes.value.length,
-  done: tableNodes.value.filter(n => n.forgeState === 'done').length,
-  todo: tableNodes.value.filter(n => n.forgeState !== 'done' && n.forgeState !== 'running').length,
-  failed: tableNodes.value.filter(n => n.forgeState === 'failed').length,
-}));
 const avgVisual = computed(() => {
   const vals = Object.values(pageScores).filter(s => s && typeof s.pixel === 'number').map(s => s.pixel);
   return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : '—';
 });
-const avgWorst = computed(() => {
-  const vals = Object.values(pageVerify).filter(v => v?.minViewport && typeof v.minViewport.score === 'number').map(v => v.minViewport.score);
-  return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : null;
-});
-const assetFilter = reactive({ q: '', ext: '', page: '', minSize: false, orphan: false, sort: 'size' });
-const assetExts = computed(() => Object.entries(assetInfo.value?.byExt ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 14));
-const assetPages = computed(() => Object.entries(assetInfo.value?.byPage ?? {}).sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 60));
-const IMG_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.avif', '.gif', '.svg', '.ico', '.bmp']);
-const isImg = (ext) => IMG_EXT.has(ext);
-const assetFiltered = computed(() => assetInfo.value?.items ?? []);   // 服务端已过滤排序
 let scoreLoadTimer = null;
 function scheduleScoreLoad() { clearTimeout(scoreLoadTimer); scoreLoadTimer = setTimeout(loadPageScores, 400); }
 async function loadPageScores() {
@@ -230,10 +182,6 @@ async function loadPageScores() {
   };
   await Promise.all([worker(), worker(), worker(), worker()]);
 }
-const fmtTime = (t) => (t ? new Date(t).toLocaleTimeString('zh-CN', { hour12: false }) : '');
-const fmtDate = (t) => (t ? new Date(t).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '—');
-const fmtBytes = (n) => (n == null ? '—' : n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : n >= 1024 ? (n / 1024).toFixed(0) + 'KB' : n + 'B');
-const fmtDuration = (t) => (t.endedAt && t.startedAt ? Math.round((t.endedAt - t.startedAt) / 1000) + 's' : (t.startedAt ? '进行中' : ''));
 async function loadQuality() {
   const n = selected.value;
   if (!n) return;
@@ -275,7 +223,7 @@ function selectView(id) {
   if (id === 'pages' && view.value === 'pages') { view.value = 'atlas'; return; }   // 再次点击 = 收起
   view.value = id;
   if (id === 'jobs') loadJobHistory();
-  if (id === 'reports') { loadReports(); loadAssets(); loadLiveHealth(); loadVerifySummary(); loadStorage(); }
+  if (id === 'reports') { loadReports(); loadLiveHealth(); loadVerifySummary(); }   // 存储/资产卡片挂在报告页，v-if 挂载时自己拉数据
   if (id === 'settings') loadLlm();
 }
 function togglePages() { if (view.value === 'pages') view.value = 'atlas'; else { view.value = 'pages'; loadPageStatus(); } }
@@ -323,13 +271,12 @@ async function deletePage(n) {
     loadSites();
   } catch (e) { errMsg.value = '删除失败：' + String(e).slice(0, 160); }
 }
-async function removeChecked() {
-  const targets = tableNodes.value.filter(n => plSelected.value.has(n.id) && n.forgeState !== 'running');
+async function removeChecked(ids) {
+  const targets = tableNodes.value.filter(n => ids.includes(n.id) && n.forgeState !== 'running');
   if (!targets.length) return;
   if (!confirm('移除选中 ' + targets.length + ' 个页面？\n将删除克隆产物并从星图移除节点（CAS 资产保留）。')) return;
   let ok = 0, fail = 0;
   for (const n of targets) { try { await removePageNode(n); ok++; } catch { fail++; } }
-  plSelected.value = new Set();
   okMsg.value = '已移除 ' + ok + ' 个页面' + (fail ? '（' + fail + ' 失败）' : '');
   setTimeout(() => { okMsg.value = ''; }, 3000);
   loadSites();
@@ -539,7 +486,6 @@ setInterval(pollEngine, 15000);
 function pickSite(s) {
   if (!s) return;
   host.value = s.host;
-  plSelected.value = new Set();
   selected.value = null;
   detailIntel.value = null; detailScore.value = null;
   fetch(wsUrl(s.host, 'recon/atlas.json')).then(r => r.ok ? r.json() : Promise.reject(new Error('该站点尚无 atlas.json'))).then(a => { buildStatic(a); loadPageStatus(); }).catch(e => { errMsg.value = String(e); });
@@ -693,92 +639,6 @@ async function loadVerifySummary() {
 async function loadReports() {
   try { const r = await fetch(API + '/api/reports/' + host.value); if (r.ok) reportIndex.value = (await r.json()).reports ?? []; } catch {}
 }
-const reclaimResult = ref('');
-/**
- * 盘点在引擎侧走子进程（同步遍历会冻住事件循环 12 秒），所以前端只读结果、必要时轮询。
- * GET /api/storage 可能返回 { pending:true }（还没盘点过）或 { scanning:true }（正在盘点）。
- */
-let storagePoll = null;
-function stopStoragePoll() { if (storagePoll) { clearTimeout(storagePoll); storagePoll = null; } }
-async function fetchStorageOnce() {
-  const r = await fetch(API + '/api/storage', { headers: apiHeaders() });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-  return j;
-}
-async function loadStorage(force = false) {
-  storageLoading.value = true; storageError.value = ''; stopStoragePoll();
-  const poll = (deadline) => {
-    storagePoll = setTimeout(async () => {
-      try {
-        const n = await fetchStorageOnce();
-        if (!n.pending) { storageInfo.value = n; storageLoading.value = false; stopStoragePoll(); return; }
-      } catch { /* 下一轮再试 */ }
-      if (Date.now() > deadline) { storageError.value = '盘点超时（30 秒内未完成）'; storageLoading.value = false; stopStoragePoll(); return; }
-      poll(deadline);
-    }, 1500);
-  };
-  try {
-    if (force) {
-      const r = await fetch(API + '/api/storage/scan', { method: 'POST', headers: apiHeaders() });
-      const j = await r.json().catch(() => ({}));
-      if (r.status !== 202 && !r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-      poll(Date.now() + 40_000);
-      return;
-    }
-    const s = await fetchStorageOnce();
-    storageInfo.value = s.pending ? null : s;
-    if (s.pending || s.scanning) { poll(Date.now() + 40_000); return; }
-  } catch (e) { storageError.value = String(e).replace(/^Error:\s*/, ''); }
-  storageLoading.value = false;
-}
-async function runStorageGc(apply = false) {
-  if (storageGcing.value) return;
-  if (apply && !storageGcConfirm.value) { storageGcConfirm.value = true; return; }
-  storageGcing.value = true; storageError.value = '';
-  try {
-    const body = apply ? { apply: true, confirm: 'HEIMDALL_CAS_GC' } : { apply: false };
-    const r = await fetch(API + '/api/storage/gc', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(body) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-    storageGcResult.value = j;
-    if (j.storage) storageInfo.value = j.storage;
-    storageGcConfirm.value = false;
-    loadStorage(false);   // 引擎已后台重新盘点，稍后自动刷新数字
-    okMsg.value = apply ? `已回收 ${fmtBytes(j.freed ?? 0)} CAS 孤儿` : `可回收 ${fmtBytes(j.orphanBytes ?? 0)} CAS 孤儿`;
-    setTimeout(() => { okMsg.value = ''; }, 4000);
-  } catch (e) { storageError.value = String(e).replace(/^Error:\s*/, ''); }
-  finally { storageGcing.value = false; }
-}
-async function runReclaim(apply) {
-  const n = assetInfo.value?.orphans?.count ?? 0;
-  if (apply && !window.confirm('确认回收 ' + n + ' 个孤儿资产？此操作会删除文件（仅限 clone/assets|styles）。')) return;
-  reclaimResult.value = apply ? '回收执行中…' : '回收预览中…';
-  try {
-    const r = await fetch(API + '/api/reclaim', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, apply: !!apply }) });
-    const j = await r.json();
-    if (j.error) { reclaimResult.value = '失败：' + j.error; return; }
-    const s = j.summary;
-    if (!s) { reclaimResult.value = '无结果'; return; }
-    const mb = (n2) => (n2 / 1048576).toFixed(1) + 'MB';
-    reclaimResult.value = (apply ? '已回收 ' + (s.removed ?? 0) + ' 个 / ' + mb(s.bytes) : '可回收 ' + s.count + ' 个 / ' + mb(s.bytes)) + (s.after ? '；剩余孤儿 ' + s.after.orphans + ' / ' + mb(s.after.orphanBytes) : '');
-    if (apply) { assetFilter.orphan = false; loadAssets(); }
-  } catch (e) { reclaimResult.value = '失败：' + String(e).slice(0, 80); }
-}
-let assetTimer = null;
-async function loadAssets() {
-  try {
-    const p = new URLSearchParams({ limit: '200', sort: assetFilter.sort });
-    if (assetFilter.q.trim()) p.set('q', assetFilter.q.trim());
-    if (assetFilter.ext) p.set('ext', assetFilter.ext);
-    if (assetFilter.page) p.set('page', assetFilter.page);
-    if (assetFilter.minSize) p.set('minSize', String(100 * 1024));
-    if (assetFilter.orphan) p.set('orphan', '1');
-    const r = await fetch(API + '/api/assets/' + host.value + '?' + p.toString());
-    if (r.ok) assetInfo.value = await r.json();
-  } catch {}
-}
-watch(assetFilter, () => { clearTimeout(assetTimer); assetTimer = setTimeout(loadAssets, 250); }, { deep: true });
 
 /** 引擎持久化任务历史（重启后仍可查） */
 async function loadJobHistory() {
@@ -852,7 +712,7 @@ function runAssetsAudit() {
           task.assetGaps = ev.visualGaps; task.done = true; task.endedAt = Date.now();
           assetAuditReport.value = { host: host.value, visualGaps: ev.visualGaps, visualOrigin: ev.visualOrigin, visualThird: ev.visualThird, pages: ev.pages };
           statusText.value = ev.visualGaps ? ('资产扫描完成 · ' + ev.visualGaps + ' 个视觉缺口') : '资产扫描完成 · 无视觉缺口';
-          close(); loadReports(); loadAssets();
+          close(); loadReports();
           setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
           task.failed = true; task.done = true; task.error = '任务中断'; close();
@@ -1179,85 +1039,20 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   </div>
 
     <!-- 工作台视图：页面 / 任务 / 报告 / 设置 -->
-  <section class="work-view surface" v-if="view === 'pages'">
-    <div class="wv-head">
-      <b>页面清单 · {{ host || '未选择站点' }}</b>
-      <span class="wv-stat">{{ doneCount }}/{{ tableNodes.length }} 已克隆 · 平均视觉 {{ avgVisual }}<template v-if="avgWorst"> · 最差视口均值 {{ avgWorst }}</template></span>
-      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="pickSiteByHost" @audit="runAudit" />
-      <input class="wv-search" v-model="pageQuery" aria-label="搜索页面 URL 或标题" placeholder="搜索 URL / 标题" spellcheck="false" />
-      <select v-model="typeFilter"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
-      <select v-model="statusFilter"><option value="">全部状态 ({{ statusCounts.all }})</option><option value="done">已克隆 ({{ statusCounts.done }})</option><option value="todo">未完成 ({{ statusCounts.todo }})</option><option value="failed">失败 ({{ statusCounts.failed }})</option></select>
-      <button @click="plSelectAll" title="全选未克隆页">全选未锻</button>
-      <button @click="plSelected = new Set(tableNodes.map(n => n.id))" title="全选当前清单">全选</button>
-      <button @click="plSelected = new Set()" title="清空选择">清空</button>
-      <button class="wv-primary" :disabled="!plSelected.size" @click="forgeChecked">克隆选中 ({{ plSelected.size }})</button>
-      <button class="danger" :disabled="!plSelected.size" @click="removeChecked">移除选中 ({{ plSelected.size }})</button>
-      <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
-    </div>
-    <div class="wv-rows">
-      <div class="wv-row wv-th">
-        <span class="c-check"></span>
-        <span class="c-path sortable" @click="toggleSort('path')">路径 {{ sortKey === 'path' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-title sortable" @click="toggleSort('title')">标题 {{ sortKey === 'title' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-type">类型</span>
-        <span class="c-state sortable" @click="toggleSort('state')">状态 {{ sortKey === 'state' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-score sortable" @click="toggleSort('score')">视觉 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-assets sortable" @click="toggleSort('assets')">资产 {{ sortKey === 'assets' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-gaps">缺口</span>
-        <span class="c-ix">交互</span>
-        <span class="c-updated">更新</span>
-        <span class="c-actions">操作</span>
-      </div>
-      <div class="wv-row" v-for="n in filteredNodes" :key="n.id">
-        <label class="c-check"><input type="checkbox" :checked="plSelected.has(n.id)" :aria-label="'选择页面 ' + (n.path || n.url)" @change="plToggle(n.id)" /></label>
-        <span class="wv-url c-path" @click="openDetail(n)" :title="n.url">{{ n.path }}</span>
-        <span class="wv-title c-title" :title="n.title">{{ n.title }}</span>
-        <span class="wv-type c-type" :style="{ color: typeColorThemed(n.type) }">{{ typeCn(n.type) }}</span>
-        <span class="wv-state c-state" :class="n.forgeState">{{ n.forgeState === 'done' ? '已克隆' : n.forgeState === 'running' ? '克隆中' : n.forgeState === 'failed' ? '失败' : '未克隆' }}</span>
-        <span class="wv-score c-score" :title="pageVerify[n.id]?.minViewport ? ('多视口最差：' + pageVerify[n.id].minViewport.name + ' ' + (pageVerify[n.id].minViewport.score * 100).toFixed(1) + '%') : '未运行多视口验证'">{{ pageScores[n.id]?.pixel != null ? (pageScores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}<i v-if="pageVerify[n.id]?.minViewport && pageVerify[n.id].minViewport.score < 0.95" :class="pageVerify[n.id].minViewport.score < 0.85 ? 'min-bad' : 'min-mid'"> ↓{{ (pageVerify[n.id].minViewport.score * 100).toFixed(0) }}</i></span>
-        <span class="wv-meta c-assets" :title="pageMeta[n.id]?.assets ? (pageMeta[n.id].assets.count + ' 个文件') : ''">{{ pageMeta[n.id]?.assets ? fmtBytes(pageMeta[n.id].assets.bytes) : '—' }}<i v-if="pageMeta[n.id]?.assets"> · {{ pageMeta[n.id].assets.count }}</i></span>
-        <span class="wv-meta c-gaps" :class="{ bad: (pageMeta[n.id]?.visualGaps?.visual ?? 0) > 0 }" :title="pageMeta[n.id]?.visualGaps ? ('原站 ' + pageMeta[n.id].visualGaps.origin + ' / 第三方 ' + pageMeta[n.id].visualGaps.third) : ''">{{ pageMeta[n.id]?.visualGaps == null ? '—' : pageMeta[n.id].visualGaps.visual }}</span>
-        <span class="wv-meta c-ix">{{ pageMeta[n.id]?.interactions ? (pageMeta[n.id].interactions.passed + '/' + pageMeta[n.id].interactions.total) : '—' }}</span>
-        <span class="wv-meta c-updated">{{ fmtDate(pageMeta[n.id]?.updatedAt) }}</span>
-        <span class="wv-actions c-actions">
-          <a :href="n.url" target="_blank" rel="noopener" title="打开原站">原站</a>
-          <button @click="openDetail(n)">详情</button>
-          <button :disabled="n.forgeState === 'running'" @click="startForge(n)">{{ n.forgeState === 'done' ? '重新克隆' : '克隆' }}</button>
-          <button v-if="n.forgeState === 'done' || n.forgeState === 'failed'" class="danger" @click="deletePage(n)" title="删除该页克隆产物并从星图移除">删除</button>
-        </span>
-      </div>
-      <div class="wv-empty" v-if="!filteredNodes.length">没有匹配的页面。</div>
-    </div>
-  </section>
-
-  <section class="work-view surface" v-if="view === 'jobs'">
-    <div class="wv-head">
-      <b>任务中心</b>
-      <span class="wv-stat">引擎 {{ engine.ok ? '在线' : '离线' }} · 克隆槽 {{ engine.forge?.slots ?? 0 }}/{{ engine.forge?.max ?? 2 }} · 本会话 {{ tasks.length }} 个任务</span>
-      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="pickSiteByHost" @audit="runAudit" />
-      <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
-    </div>
-    <div class="wv-rows">
-      <div class="wv-row job-row" v-for="t in [...tasks].reverse()" :key="t.localId">
-        <span class="job-name">{{ t.label ?? t.pageName }}</span>
-        <span class="job-kind">{{ t.kind === 'audit' ? 'SEO 审计' : t.kind === 'watch' ? '变更监控' : t.kind === 'assets' ? '资产扫描' : t.kind === 'matrix' ? '跨站对标' : '克隆' }}</span>
-        <span class="wv-state" :class="taskState(t)">{{ taskLabel(t) }}</span>
-        <span class="wv-score">{{ t.kind === 'audit' ? (t.auditScore != null ? t.auditScore + ' 分' : '—') : t.kind === 'watch' ? (t.watchChanges != null ? t.watchChanges + ' 处变化' : '—') : t.kind === 'assets' ? (t.assetGaps != null ? t.assetGaps + ' 缺口' : '—') : (t.score ? (t.score.pixel * 100).toFixed(1) + '%' : '—') }}</span>
-        <span class="job-time">{{ fmtTime(t.startedAt) }} · {{ fmtDuration(t) }}</span>
-        <span class="job-error" :title="t.error">{{ t.error || '' }}</span>
-      </div>
-      <div class="wv-empty" v-if="!tasks.length && !jobHistory.length">本次会话还没有任务：在「星图」点击页面，或在「页面」批量克隆 / 运行 SEO 审计。</div>
-      <div class="wv-sub" v-if="jobHistory.length">引擎持久化历史（最近 {{ jobHistory.length }} 条，重启后仍可查）</div>
-      <div class="wv-row job-row history" v-for="h in jobHistory" :key="'h-' + h.id">
-        <span class="job-name">{{ h.pageName || h.url }}</span>
-        <span class="job-kind">{{ h.kind }}</span>
-        <span class="wv-state" :class="h.status === 'done' ? 'done' : h.status === 'failed' ? 'failed' : h.status === 'running' ? 'running' : 'idle'">{{ h.status }}</span>
-        <span class="wv-score">—</span>
-        <span class="job-time">{{ fmtTime(h.createdAt) }} · {{ h.endedAt ? Math.round((h.endedAt - h.createdAt) / 1000) + 's' : '' }}</span>
-        <span class="job-error">{{ h.error || '' }}</span>
-      </div>
-    </div>
-  </section>
+  <PagesView
+    v-if="view === 'pages'"
+    :key="'pages-' + host"
+    :host="host" :sites="sites" :engine="engine" :theme="theme"
+    :nodes="tableNodes" :scores="pageScores" :verify="pageVerify" :meta="pageMeta"
+    @pick="pickSiteByHost" @audit="runAudit" @close="view = 'atlas'"
+    @detail="onNodeClick" @forge="startForge" @delete="deletePage"
+    @forge-checked="forgeChecked" @remove-checked="removeChecked"
+  />
+  <JobsView
+    v-if="view === 'jobs'"
+    :tasks="tasks" :jobs="jobHistory" :sites="sites" :host="host" :engine="engine"
+    @pick="pickSiteByHost" @audit="runAudit" @close="view = 'atlas'"
+  />
 
   <section class="work-view surface" v-if="view === 'reports'">
     <div class="wv-head">
@@ -1345,67 +1140,10 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <p v-else>暂无（运行 verify / tokens / components / matrix 后自动出现）</p>
     </div>
 
-    <div class="report-card report-wide storage-card surface">
-      <div class="storage-head">
-        <div><h3>存储治理</h3><p>站点、CAS 与交付包的实际磁盘占用；删除站点后可安全回收无引用 CAS。</p></div>
-        <button @click="loadStorage(true)" :disabled="storageLoading">{{ storageLoading ? '扫描中…' : '重新扫描' }}</button>
-      </div>
-      <div v-if="storageLoading && !storageInfo" class="storage-empty">正在后台盘点磁盘（引擎侧子进程遍历，约 10 秒；期间其他操作不受影响）…</div>
-      <div v-else-if="storageError" class="storage-error">{{ storageError }} <button @click="loadStorage(true)">重试</button></div>
-      <template v-else-if="storageInfo">
-        <div class="storage-kpis">
-          <div><b>{{ fmtBytes(storageInfo.totals?.uniqueBytes ?? 0) }}</b><span>实际占用</span></div>
-          <div><b>{{ fmtBytes(storageInfo.totals?.logicalBytes ?? 0) }}</b><span>逻辑体积</span></div>
-          <div><b>{{ fmtBytes(storageInfo.cas?.orphanBytes ?? 0) }}</b><span>可回收 CAS</span></div>
-          <div><b>{{ storageInfo.sites?.length ?? 0 }}</b><span>站点</span></div>
-        </div>
-        <div class="storage-body">
-          <div class="storage-sites">
-            <div class="storage-subhead">站点占用</div>
-            <div class="storage-site-row" v-for="s in (storageInfo.sites || []).slice(0, 8)" :key="s.host">
-              <span>{{ s.host }}</span><i><em :style="{ width: Math.min(100, (s.logicalBytes / Math.max(1, storageInfo.sites?.[0]?.logicalBytes || 1)) * 100) + '%' }"></em></i><b>{{ fmtBytes(s.logicalBytes) }}</b><small>{{ s.files }} 文件</small>
-            </div>
-            <div class="storage-empty" v-if="!storageInfo.sites?.length">暂无站点产物</div>
-          </div>
-          <div class="storage-actions">
-            <div class="storage-subhead">CAS 回收</div>
-            <p v-if="storageInfo.cas?.orphanFiles">检测到 <b class="warn-text">{{ storageInfo.cas.orphanFiles }} 个</b> 无引用文件，可释放 <b class="warn-text">{{ fmtBytes(storageInfo.cas.orphanBytes) }}</b>。</p>
-            <p v-else>CAS 没有检测到可回收孤儿。</p>
-            <div class="storage-buttons">
-              <button @click="runStorageGc(false)" :disabled="storageGcing">预览回收</button>
-              <button class="danger" @click="runStorageGc(true)" :disabled="storageGcing || !storageInfo.cas?.orphanFiles">{{ storageGcConfirm ? '再次点击确认回收' : '执行回收' }}</button>
-              <button v-if="storageGcConfirm" @click="storageGcConfirm = false">取消</button>
-            </div>
-            <p class="storage-note" v-if="storageGcResult">{{ storageGcResult.applied ? `已回收 ${fmtBytes(storageGcResult.freed || 0)}，跳过 ${storageGcResult.skipped || 0}` : `预览：可回收 ${fmtBytes(storageGcResult.orphanBytes || 0)}` }}</p>
-            <p class="storage-note">安全判据：CAS 文件只有自身链接（nlink=1）时才会进入候选；仍被站点使用的硬链接不会删除。</p>
-          </div>
-        </div>
-      </template>
-      <div v-else class="storage-empty">尚未盘点。点击“重新扫描”获取当前占用。</div>
-    </div>
+    <StorageCard @ok="toast" />
 
 
-    <div class="report-card report-wide surface">
-      <h3>资产清单 <span class="wv-stat" v-if="assetInfo">共 {{ assetInfo.count }} 个文件 · {{ (assetInfo.totalBytes / 1024 / 1024).toFixed(1) }}MB · 匹配 {{ assetInfo.filtered ?? assetInfo.count }} · 显示 {{ assetFiltered.length }}<template v-if="assetInfo.orphans"> · 孤儿 {{ assetInfo.orphans.count }}（{{ (assetInfo.orphans.bytes / 1048576).toFixed(1) }}MB）</template><template v-if="assetInfo.ledger"> · 去重节省 {{ (assetInfo.ledger.bytesSaved / 1048576).toFixed(0) }}MB（重复 {{ assetInfo.ledger.duplicates }}）</template></span></h3>
-      <div class="asset-controls" v-if="assetInfo?.items?.length">
-        <input v-model="assetFilter.q" aria-label="搜索资产路径或原始 URL" placeholder="搜索路径…" spellcheck="false" />
-        <select v-model="assetFilter.ext"><option value="">全部类型</option><option v-for="e in assetExts" :key="e[0]" :value="e[0]">{{ e[0] || '(none)' }} ({{ e[1] }})</option></select>
-        <select v-model="assetFilter.page"><option value="">全部页面</option><option v-for="p in assetPages" :key="p[0]" :value="p[0]">{{ p[0] }} ({{ p[1].count }})</option></select>
-        <select v-model="assetFilter.sort"><option value="size">按体积</option><option value="name">按路径</option><option value="page">按页面</option></select>
-        <label class="sw"><input type="checkbox" v-model="assetFilter.minSize" /><span>≥100KB</span></label><label class="sw"><input type="checkbox" v-model="assetFilter.orphan" /><span>仅孤儿</span></label><button v-if="assetInfo?.orphans?.count" class="wv-primary" @click="runReclaim(false)">回收预览</button><button v-if="assetInfo?.orphans?.count" class="danger" @click="runReclaim(true)">执行回收</button>
-      </div>
-      <div class="asset-table" v-if="assetFiltered.length">
-        <div class="asset-row asset-th"><span>页面</span><span>类型</span><span>大小</span><span>路径</span><span>预览</span></div>
-        <div class="asset-row" v-for="a in assetFiltered.slice(0, 200)" :key="a.path">
-          <span>{{ a.page }}</span><span>{{ a.ext || '—' }}</span><span>{{ (a.size / 1024).toFixed(0) }}KB</span>
-          <span class="asset-path" :title="a.src ? (a.src + '  ←  ' + a.path) : a.path">{{ a.path }}</span>
-          <span class="asset-actions"><a :href="a.url" target="_blank" rel="noopener" :aria-label="'在新标签打开资产 ' + a.path"><img v-if="isImg(a.ext)" class="asset-thumb" :src="a.url" loading="lazy" alt="" /><template v-else>打开</template></a><a v-if="a.src" :href="a.src" target="_blank" rel="noopener" class="asset-src">原站</a></span>
-        </div>
-      </div>
-      <p class="score-note" v-if="reclaimResult" style="margin:6px 0">{{ reclaimResult }}</p>
-      <p v-else-if="assetInfo?.items?.length">无匹配资产</p>
-      <p v-else>暂无资产数据（先克隆页面）</p>
-    </div>
+    <AssetTable :host="host" />
     </div>
   </section>
 
@@ -1529,7 +1267,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <button class="tab" :class="{ on: detailTab === 'overview' }" @click="detailTab = 'overview'">概览</button>
       <button class="tab" :class="{ on: detailTab === 'seo' }" @click="detailTab = 'seo'">SEO 剖析</button>
       <button class="tab" :class="{ on: detailTab === 'quality' }" @click="detailTab = 'quality'">质检</button>
-      <button class="tab" :class="{ on: detailTab === 'forge' }" @click="detailTab = 'forge'">克隆克隆</button>
+      <button class="tab" :class="{ on: detailTab === 'forge' }" @click="detailTab = 'forge'">克隆</button>
     </div>
 
     <!-- 概览 tab -->
@@ -1762,435 +1500,3 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     </button>
   </div>
 </template>
-
-<style scoped>
-.hud { position: fixed; left: 28px; top: 24px; pointer-events: none; z-index: 4; }
-.brand { font-family: var(--font-display); font-size: 21px; font-weight: 600; letter-spacing: .01em; color: var(--text); }
-.brand-sub { display: block; font-size: 10px; letter-spacing: .14em; color: var(--text-faint); margin-top: 6px; font-family: var(--font-mono); text-shadow: none; }
-.brand-rule { width: 210px; height: 1px; margin: 12px 0 14px; background: linear-gradient(90deg, var(--accent-dim), transparent); position: relative; }
-.brand-rule::after { content: ''; position: absolute; left: 0; top: -2px; width: 5px; height: 5px; background: var(--accent); }
-.stats { display: flex; gap: 30px; }
-.stat b { display: block; font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
-.stat i { font-style: normal; font-size: 10px; color: var(--text-faint); letter-spacing: .22em; font-family: var(--font-mono); }
-.status { margin-top: 16px; display: inline-block; padding: 5px 12px; border: 1px solid var(--border); font-size: 12px; letter-spacing: .1em; color: var(--text-dim); font-family: var(--font-mono); background: var(--surface); }
-.status.live { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); animation: pulse-soft 1.2s ease-in-out infinite; }
-
-.seek { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; z-index: 5; background: var(--surface); }
-.theme-btn { background: transparent; border: 0; color: var(--text-dim); font-size: 15px; padding: 0 6px 0 12px; cursor: pointer; }
-.theme-btn:hover { color: var(--accent); }
-.seek-caret { display: flex; align-items: center; padding: 0 4px 0 12px; color: var(--accent-dim); font-size: 12px; }
-.seek input { width: 320px; padding: 11px 14px; background: transparent; border: 0; color: var(--text); font-family: var(--font-mono); font-size: 14px; letter-spacing: .04em; outline: none; }
-/* 输入框自身无边框，焦点必须由外层药丸表达（此前 outline:none 且无替代 = 焦点完全不可见） */
-.seek:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
-.seek input::placeholder { color: var(--text-faint); }
-.seek button { padding: 0 24px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 5%, transparent)); border: 0; border-left: 1px solid var(--border); color: var(--accent); cursor: pointer; letter-spacing: .14em; font-size: 13px; font-family: var(--font-ui); transition: background var(--dur), box-shadow var(--dur); }
-.seek button:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-
-.sites { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; z-index: 5; align-items: center; max-width: min(92vw, 980px); }
-.sites-label { font-size: 11px; color: var(--text-faint); font-family: var(--font-mono); letter-spacing: .1em; }
-.site-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); padding: 5px 12px; border-radius: var(--r); cursor: pointer; font-family: var(--font-mono); font-size: 12px; transition: all var(--dur); }
-.site-btn em { font-style: normal; color: var(--ok); margin-left: 6px; font-size: 10px; }
-.site-btn:hover { border-color: var(--accent-dim); color: var(--text); }
-.site-btn.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-
-.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); color: var(--bad); letter-spacing: .08em; font-size: 13px; z-index: 20; }
-.toast.ok { color: var(--ok); }
-.wv-actions { flex-wrap: wrap; }
-
-/* 左侧仪表面板 */
-.panel { position: fixed; left: 28px; bottom: 64px; width: 236px; padding: 14px 16px 16px; z-index: 6; }
-.panel-title { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 10px; letter-spacing: .24em; color: var(--text-faint); margin-bottom: 12px; }
-.panel-collapse { background: none; border: 0; color: var(--text-faint); cursor: pointer; font-size: 13px; }
-.panel-collapse:hover { color: var(--accent); }
-.panel-sec { margin-bottom: 12px; }
-.panel-sec-name { font-size: 10px; letter-spacing: .18em; color: var(--text-faint); font-family: var(--font-mono); margin-bottom: 7px; }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; }
-.lg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); }
-.lg i { width: 8px; height: 8px; border-radius: 50%; }
-.sw { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
-.sw input { accent-color: var(--accent); }
-.eng { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); }
-.eng i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
-.eng.on i { background: var(--ok); }
-.eng-detail { margin-top: 5px; font-size: 10px; color: var(--text-faint); font-family: var(--font-mono); }
-.panel-open { position: fixed; left: 28px; bottom: 64px; z-index: 6; width: 34px; height: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); color: var(--accent); cursor: pointer; font-size: 14px; }
-
-/* 快捷键条 */
-/* 页面清单 */
-.pages-list { position: fixed; top: 116px; left: 50%; transform: translateX(-50%); width: 560px; max-height: 60vh; z-index: 7; padding: 12px 14px; display: flex; flex-direction: column; }
-.pl-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: .12em; margin-bottom: 9px; }
-.pl-actions { display: flex; gap: 6px; }
-.pl-actions button { background: color-mix(in srgb, var(--text-dim) 10%, transparent); border: 1px solid var(--border); color: var(--text-dim); padding: 3px 9px; border-radius: var(--r); cursor: pointer; font-size: 11px; }
-.pl-actions button:hover { color: var(--accent); border-color: var(--accent-dim); }
-.pl-actions .pl-forge { border-color: color-mix(in srgb, var(--warn) 50%, transparent); color: var(--warn); }
-.pl-actions .pl-forge:disabled { opacity: .4; cursor: not-allowed; }
-.pl-rows { overflow-y: auto; max-height: 48vh; }
-.pl-row { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: var(--r); font-size: 12px; }
-.pl-row:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
-.pl-check input { accent-color: var(--accent); }
-.pl-type { width: 64px; font-size: 11px; flex-shrink: 0; }
-.pl-path { font-family: var(--font-mono); color: var(--text); cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-path:hover { color: var(--accent); }
-.pl-state { font-size: 10px; color: var(--ok); width: 52px; text-align: right; flex-shrink: 0; }
-.list-toggle.active { border-color: var(--accent); color: var(--accent); }
-
-/* 底部唯一排布约定：.view-nav（导航 dock）锚在 bottom:12px，高约 55px。
-   任何其它固定在底部居中的元素都必须让出这一段，否则会被 dock 盖住
-   （dock 的 z-index:12 高于此处）。实测过：这里原来写 bottom:20px，
-   与 dock 水平重叠 328px、垂直完全重叠，操作提示被压掉大半。 */
-.keys { position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 5; padding: 7px 18px; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: .08em; }
-.keys .k-amber { color: var(--warn); }
-
-/* dock 内错误 */
-.dock-err { margin-top: 12px; padding: 11px 13px; border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent); border-radius: var(--r); color: var(--bad); font-size: 12.5px; background: color-mix(in srgb, var(--bad) 5%, transparent); }
-
-/* 克隆进度 */
-/* 详情 tabs */
-.tabs { display: flex; gap: 6px; margin-top: 16px; }
-.tab { flex: 1; padding: 8px 0; background: var(--surface-2); border: 1px solid color-mix(in srgb, var(--text-dim) 18%, transparent); border-radius: var(--r); color: var(--text-faint); font-size: 12.5px; cursor: pointer; transition: all var(--dur); }
-.tab:hover { color: var(--text); }
-.tab.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
-
-/* 概览 */
-.ov-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
-.ov-item { padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--text-dim) 16%, transparent); border-radius: var(--r); background: var(--surface-2); }
-.ov-k { display: block; font-size: 10px; color: var(--text-faint); letter-spacing: .14em; margin-bottom: 3px; font-family: var(--font-mono); }
-.ov-v { font-size: 13px; color: var(--text); }
-.ov-sec { margin-top: 13px; }
-.ov-sec .panel-sec-name { margin-bottom: 5px; }
-.ov-text { font-size: 12px; color: var(--text-dim); line-height: 1.7; }
-.forge-cta { margin-top: 16px; text-align: center; }
-.forge-btn { width: 100%; padding: 13px 0; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 6%, transparent)); border: 1px solid var(--accent); border-radius: var(--r); color: var(--accent); font-size: 14.5px; letter-spacing: .2em; cursor: pointer; transition: all var(--dur); }
-.forge-btn:hover { }
-.forge-btn.alt { background: color-mix(in srgb, var(--text-dim) 8%, transparent); border-color: color-mix(in srgb, var(--text-dim) 40%, transparent); color: var(--text-dim); }
-.forge-note { margin-top: 8px; font-size: 11px; color: var(--text-faint); line-height: 1.6; }
-
-/* SEO 检查清单 */
-.seo-note { margin-top: 14px; padding: 9px 12px; border: 1px dashed var(--border); border-radius: var(--r); color: var(--text-faint); font-size: 11.5px; line-height: 1.6; }
-.seo-list { margin-top: 14px; }
-.seo-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 11px; border: 1px solid color-mix(in srgb, var(--text-dim) 16%, transparent); border-radius: var(--r); margin-bottom: 7px; font-size: 12px; }
-.seo-row .seo-k { font-family: var(--font-mono); color: var(--text-dim); }
-.seo-row.ok { border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
-.seo-row.ok .seo-k { color: var(--ok); }
-.seo-row.warn { border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
-.seo-row.warn .seo-k { color: var(--warn); }
-
-/* 底部留白 92px = 底部固定导航 dock（bottom:12px，高约 55px）的让位。
-   dock 是 fixed 且 z-index 更高，桌面端在视口 < 1128px 时它的左边缘会伸进
-   本面板，压住最后一屏内容（实测 1024px 下重叠 52×55px）。
-   移动端分支一直是这么写的（padding: 16px 14px 92px），桌面端漏了。 */
-.dock { position: fixed; right: 0; top: 0; bottom: 0; width: 32%; min-width: 400px; background: var(--surface); border-left: 1px solid var(--border); backdrop-filter: blur(14px); padding: 20px 20px 92px; overflow-y: auto; z-index: 10; }
-.dock::before { content: ''; position: sticky; top: 0; display: block; height: 2px; margin: -20px -20px 18px; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 5%, transparent)); opacity: .7; }
-.dock-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.dock-title { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--text); letter-spacing: .06em; }
-.dock-url { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 5px; word-break: break-all; }
-.dock-headbtns { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-.dock-all { background: color-mix(in srgb, var(--warn) 8%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); color: var(--warn); padding: 7px 14px; border-radius: var(--r); cursor: pointer; font-size: 12px; letter-spacing: .14em; transition: all var(--dur); }
-.dock-all:hover { background: color-mix(in srgb, var(--warn) 16%, transparent); }
-.dock-close { background: none; border: 1px solid color-mix(in srgb, var(--text-dim) 30%, transparent); color: var(--text-dim); width: 30px; height: 30px; border-radius: var(--r); cursor: pointer; transition: all var(--dur); }
-.dock-close:hover { color: var(--text); border-color: var(--accent-dim); }
-
-/* 阶段步进器 */
-.stages { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
-.stage { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--text-dim) 16%, transparent); border-radius: var(--r); font-size: 12.5px; color: var(--text-faint); background: var(--surface-2); transition: all var(--dur); }
-.stage .idx { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); letter-spacing: .08em; }
-.stage .dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); transition: all var(--dur); }
-.stage.running { border-color: color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn); background: color-mix(in srgb, var(--warn) 5%, transparent); }
-.stage.running .dot { background: var(--warn); animation: pulse-soft .9s ease-in-out infinite; }
-.stage.done { border-color: color-mix(in srgb, var(--ok) 35%, transparent); color: var(--text-dim); }
-.stage.done .dot { background: var(--ok); }
-.stage.done .idx { color: var(--ok); }
-.stage.skipped { opacity: .5; }
-
-/* 判定区 */
-.verdict { margin-top: 16px; padding: 16px 16px 14px; text-align: center; }
-.verdict-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; color: var(--text-faint); margin-bottom: 10px; }
-.verdict.pending { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--text-dim); letter-spacing: .1em; font-size: 13px; padding: 22px; }
-.scan { width: 8px; height: 8px; border: 1px solid var(--warn); border-radius: 50%; animation: pulse-soft 1s ease-in-out infinite; }
-.score-num { font-family: var(--font-display); font-size: 54px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
-.score-num small { font-size: 22px; color: var(--text-faint); font-weight: 500; }
-.score-num.ok { color: var(--ok); }
-.score-num.mid { color: var(--warn); }
-.score-num.bad { color: var(--bad); }
-.score-break { display: flex; justify-content: center; gap: 18px; margin-top: 12px; font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); flex-wrap: wrap; }
-.score-break .grade { color: var(--accent); }
-.refine { margin-top: 12px; }
-.refine-bar { height: 3px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
-.refine-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--ok), var(--accent)); transform-origin: left center; transition: transform .6s ease; }
-.refine span { display: block; margin-top: 6px; font-size: 10px; letter-spacing: .12em; color: var(--text-faint); font-family: var(--font-mono); }
-
-/* AI 校准 & 情报 */
-.fixup-curve { margin-top: 12px; padding: 11px 13px; border: 1px solid color-mix(in srgb, var(--accent-2) 35%, transparent); border-radius: var(--r); background: color-mix(in srgb, var(--accent-2) 4%, transparent); }
-.curve-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: .26em; color: var(--accent-2); margin-bottom: 7px; }
-.curve-row { font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); display: flex; gap: 8px; align-items: center; line-height: 1.8; }
-.curve-row b.kept { color: var(--ok); }
-.curve-row b.rolled { color: var(--bad); }
-.intel-bar { margin-top: 12px; padding: 10px 13px; border: 1px dashed color-mix(in srgb, var(--accent-2) 45%, transparent); border-radius: var(--r); color: var(--accent-2); font-size: 12px; letter-spacing: .03em; background: color-mix(in srgb, var(--accent-2) 4%, transparent); }
-
-/* 双联与活体 */
-.screens { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
-.pane img { width: 100%; border: 1px solid color-mix(in srgb, var(--text-dim) 22%, transparent); border-radius: var(--r); display: block; }
-.pane-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: .22em; color: var(--text-faint); margin-bottom: 6px; }
-.compare-link { margin-top: 10px; text-align: center; }
-.compare-link a { color: var(--accent); font-size: 12px; font-family: var(--font-mono); letter-spacing: .12em; text-decoration: none; border-bottom: 1px dashed var(--border); }
-.compare-link a:hover { border-color: var(--accent); }
-.compare-link .sep { color: var(--text-faint); margin: 0 8px; }
-.archive-link { position: fixed; right: 24px; bottom: 20px; z-index: 8; padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); color: var(--accent); font-family: var(--font-mono); font-size: 12px; letter-spacing: .16em; text-decoration: none; transition: all var(--dur); }
-.archive-link:hover { border-color: var(--accent-dim); }
-.live-clone { width: 100%; height: 44vh; margin-top: 14px; border: 1px solid var(--border); border-radius: var(--r); background: #fff; }
-/* 任务中心 + 口径说明 */
-.task-center { position: fixed; left: 20px; bottom: 58px; z-index: 9; width: 280px; padding: 10px 12px; }
-.tc-head { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .22em; color: var(--text-faint); }
-.tc-meta { margin-left: auto; color: var(--text-dim); letter-spacing: .05em; }
-.tc-toggle { background: none; border: 0; color: var(--accent); cursor: pointer; font-size: 12px; }
-.tc-rows { margin-top: 8px; max-height: 180px; overflow: auto; }
-.tc-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: var(--r-sm); cursor: pointer; font-size: 11.5px; color: var(--text-dim); }
-.tc-row:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.tc-row.running .tc-state { color: var(--warn); }
-.tc-row.done .tc-state { color: var(--ok); }
-.tc-row.failed .tc-state { color: var(--bad); }
-.tc-name { font-family: var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tc-state { margin-left: auto; font-size: 10px; }
-.tc-score { font-family: var(--font-mono); color: var(--ok); font-size: 10px; }
-.site-item { display: inline-flex; align-items: center; gap: 2px; }
-.site-del { background: none; border: 1px solid transparent; color: var(--text-faint); cursor: pointer; border-radius: var(--r-sm); padding: 2px 5px; font-size: 11px; }
-.site-del:hover { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
-.wv-close { margin-left: auto; }
-.wv-actions button.danger:hover { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, transparent); }
-.site-btn.empty { opacity: .55; border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
-.site-btn.empty em { color: var(--bad); }
-.score-note { margin-top: 8px; font-size: 10px; color: var(--text-faint); font-family: var(--font-mono); letter-spacing: .04em; }
-.audit-btn { border-color: color-mix(in srgb, var(--ok) 40%, transparent); color: var(--ok); }
-.audit-btn:disabled { opacity: .45; cursor: not-allowed; }
-.audit-link { position: fixed; right: 24px; bottom: 62px; z-index: 8; padding: 8px 16px; border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); border-radius: var(--r); background: var(--surface); color: var(--ok); font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; text-decoration: none; }
-/* 工作台视图 + 底部导航（v2 IA） */
-/* 工作视图：星图浮层（品牌/统计/站点条）在工作视图里不渲染，故顶部只需让开搜索栏 */
-.work-view { position: fixed; left: 24px; right: 24px; top: 78px; bottom: 86px; z-index: 7; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
-.wv-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; font-size: 13px; }
-.wv-head b { font-family: var(--font-mono); letter-spacing: .08em; }
-.wv-stat { color: var(--text-dim); font-size: 11.5px; font-family: var(--font-mono); }
-.wv-head input, .wv-head select, .wv-head button { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 6px 9px; font-size: 12px; }
-.wv-head select { color-scheme: dark; }
-.wv-head select option { background: var(--surface-2); color: var(--text); }
-[data-theme="light"] .wv-head select { color-scheme: light; }
-.sortable { cursor: pointer; user-select: none; }
-.sortable:hover { color: var(--accent); }
-.wv-head button.danger, .wv-actions button.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
-.wv-head button.danger:disabled { opacity: .35; }
-.wv-search { min-width: 180px; }
-.wv-head button { cursor: pointer; }
-.wv-head button:disabled { opacity: .4; cursor: not-allowed; }
-.wv-primary { background: color-mix(in srgb, var(--accent) 12%, transparent) !important; color: var(--accent) !important; border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important; }
-.wv-rows { flex: 1; overflow: auto; }
-.wv-row { display: grid; grid-template-columns: 34px minmax(140px,1.1fr) minmax(160px,1.5fr) 78px 70px 62px 84px 50px 54px 90px 220px; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid color-mix(in srgb, var(--text-dim) 10%, transparent); font-size: 12px; min-width: 1180px; }
-.wv-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); white-space: nowrap; }
-.wv-meta.bad { color: var(--bad); }
-@media (max-width: 1560px) {
-  .wv-row { grid-template-columns: 34px minmax(130px,1.1fr) minmax(150px,1.5fr) 74px 66px 58px 80px 46px 50px 200px; min-width: 1040px; }
-  .c-updated { display: none; }
-}
-@media (max-width: 1360px) {
-  .wv-row { grid-template-columns: 34px minmax(120px,1.1fr) minmax(140px,1.5fr) 70px 64px 56px 76px 46px 190px; min-width: 960px; }
-  .c-ix { display: none; }
-}
-@media (max-width: 1180px) {
-  .wv-row { grid-template-columns: 34px minmax(110px,1.1fr) minmax(130px,1.5fr) 64px 60px 52px 70px 180px; min-width: 860px; }
-  .c-assets { display: none; }
-}
-@media (max-width: 1024px) {
-  .wv-row { grid-template-columns: 30px minmax(100px,1.1fr) minmax(120px,1.4fr) 58px 54px 48px 160px; min-width: 760px; }
-  .c-type { display: none; }
-}
-.dock-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.dock-quick a { color: var(--accent); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 10px; font-size: 12px; text-decoration: none; }
-.dock-quick a:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.matrix-run { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.report-card select { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 6px 9px; font-size: 12px; color-scheme: dark; }
-.report-card select option { background: var(--surface-2); color: var(--text); }
-[data-theme="light"] .report-card select { color-scheme: light; }
-.q-list { margin-top: 8px; }
-.q-row { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px dashed color-mix(in srgb, var(--text-dim) 14%, transparent); font-size: 12px; }
-.q-k { width: 120px; color: var(--text-faint); font-family: var(--font-mono); font-size: 11px; flex-shrink: 0; }
-.q-v { color: var(--text-dim); word-break: break-all; }
-.q-v.ok { color: var(--ok); }
-.q-v.mid { color: var(--warn); }
-.q-v.bad { color: var(--bad); }
-.q-file { display: block; font-style: normal; opacity: .75; }
-.wv-row:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
-.wv-th { position: sticky; top: 0; background: var(--surface); color: var(--text-faint); font-size: 10.5px; letter-spacing: .12em; z-index: 1; }
-.wv-url { color: var(--accent); font-family: var(--font-mono); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wv-title { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wv-type { font-size: 11px; }
-.wv-state { font-size: 11px; }
-.wv-state.done { color: var(--ok); }
-.wv-state.running { color: var(--warn); }
-.wv-state.failed { color: var(--bad); }
-.wv-state.idle { color: var(--text-faint); }
-.wv-score { font-family: var(--font-mono); color: var(--text-dim); }
-.wv-score i { font-style: normal; margin-left: 4px; font-size: 10.5px; }
-.wv-score .min-mid { color: var(--warn); }
-.wv-score .min-bad { color: var(--bad); }
-.wv-actions { display: flex; gap: 6px; }
-.wv-actions a, .wv-actions button { color: var(--text-dim); background: none; border: 1px solid color-mix(in srgb, var(--text-dim) 25%, transparent); border-radius: var(--r-sm); padding: 3px 7px; font-size: 11px; text-decoration: none; cursor: pointer; }
-.wv-actions a:hover, .wv-actions button:hover { color: var(--accent); border-color: var(--accent-dim); }
-.wv-actions button:disabled { opacity: .35; cursor: not-allowed; }
-.wv-empty { padding: 40px; text-align: center; color: var(--text-faint); font-size: 13px; }
-.job-row { grid-template-columns: minmax(160px,1.2fr) 90px 80px 80px 130px 1fr; }
-.job-name { color: var(--text); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.job-kind { color: var(--accent-2); font-size: 11px; }
-.job-time { color: var(--text-faint); font-family: var(--font-mono); font-size: 11px; }
-.job-error { color: var(--bad); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.job-row.history { opacity: .82; }
-.wv-sub { padding: 10px 14px 6px; color: var(--text-faint); font-size: 10.5px; letter-spacing: .14em; font-family: var(--font-mono); border-top: 1px solid color-mix(in srgb, var(--text-dim) 15%, transparent); }
-/* 报告中心：工作视图外壳（表头 + 可滚动卡片网格），不再用浮层压住内容 */
-.reports-scroll { flex: 1; overflow: auto; padding: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; align-content: start; grid-auto-rows: min-content; }
-.storage-card { padding: 16px; }
-.storage-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.storage-head h3 { margin-bottom: 5px; }
-.storage-head p { margin: 0; min-height: 0; max-width: 70ch; }
-.storage-head > button, .storage-buttons button { color: var(--accent); border: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 6%, transparent); border-radius: var(--r-sm); padding: 6px 12px; font-size: 12px; cursor: pointer; white-space: nowrap; }
-.storage-head > button:disabled, .storage-buttons button:disabled { opacity: .5; cursor: default; }
-.storage-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 15px 0; }
-.storage-kpis > div { padding: 10px; border: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 3.5%, transparent); border-radius: var(--r-sm); }
-.storage-kpis b { display: block; color: var(--text); font-family: var(--font-display); font-size: 18px; font-variant-numeric: tabular-nums; }
-.storage-kpis span { display: block; margin-top: 5px; color: var(--text-faint); font-size: 11px; }
-.storage-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr); gap: 18px; }
-.storage-subhead { color: var(--text-dim); font-size: 11px; letter-spacing: .14em; margin-bottom: 8px; }
-.storage-site-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(80px, 1.4fr) 75px 70px; gap: 8px; align-items: center; min-height: 30px; color: var(--text-dim); font-size: 12px; }
-.storage-site-row i { display: block; height: 5px; background: var(--bg-2); border-radius: var(--r-sm); overflow: hidden; }
-.storage-site-row i em { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
-.storage-site-row b { color: var(--text); font-family: var(--font-mono); font-size: 11px; text-align: right; }
-.storage-site-row small { color: var(--text-faint); text-align: right; }
-.storage-actions { border-left: 1px dashed var(--border); padding-left: 16px; }
-.storage-actions p { min-height: 0; margin-bottom: 10px; }
-.warn-text { color: var(--warn); }
-.storage-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-.storage-buttons .danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 42%, transparent); background: color-mix(in srgb, var(--bad) 6%, transparent); }
-.storage-note { color: var(--text-faint); font-size: 11px !important; line-height: 1.6; }
-.storage-error { color: var(--bad); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); padding: 10px; font-size: 12px; }
-.storage-empty { color: var(--text-faint); font-size: 12px; padding: 12px 0; }
-@media (max-width: 760px) {
-  .storage-head { flex-direction: column; }
-  .storage-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .storage-body { grid-template-columns: 1fr; }
-  .storage-actions { border-left: 0; border-top: 1px dashed var(--border); padding: 14px 0 0; }
-  .storage-site-row { grid-template-columns: minmax(90px, 1fr) minmax(60px, 1fr) 72px; }
-  .storage-site-row small { display: none; }
-}
-.report-card { padding: 16px; }
-.report-card h3 { margin: 0 0 8px; font-size: 15px; }
-.report-card p { color: var(--text-dim); font-size: 12px; min-height: 34px; margin: 0 0 12px; }
-.report-card a, .report-card button { display: inline-block; color: var(--accent); border: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 6%, transparent); border-radius: var(--r-sm); padding: 6px 12px; font-size: 12px; text-decoration: none; cursor: pointer; }
-.report-wide { grid-column: 1 / -1; }
-.report-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.report-list a { margin: 0; }
-.asset-table { display: flex; flex-direction: column; max-height: 320px; overflow: auto; }
-.asset-row { display: grid; grid-template-columns: 110px 70px 80px 1fr 120px; gap: 8px; padding: 5px 6px; border-bottom: 1px solid color-mix(in srgb, var(--text-dim) 10%, transparent); font-size: 11.5px; align-items: center; }
-.asset-th { color: var(--text-faint); font-family: var(--font-mono); letter-spacing: .08em; position: sticky; top: 0; background: var(--surface); }
-.asset-path { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); }
-.asset-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; align-items: center; }
-.asset-controls input, .asset-controls select { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 6px 9px; font-size: 12px; color-scheme: dark; }
-.asset-controls select option { background: var(--surface-2); color: var(--text); }
-[data-theme="light"] .asset-controls input, [data-theme="light"] .asset-controls select { color-scheme: light; }
-.asset-actions { display: flex; align-items: center; gap: 6px; }
-.asset-src { font-size: 11px; color: var(--text-faint); margin-left: 6px; white-space: nowrap; }
-.asset-thumb { width: 26px; height: 26px; object-fit: contain; border-radius: var(--r-sm); background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--bg) 0% 50%) 50% / 10px 10px; vertical-align: middle; }
-.settings-grid { padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 860px; }
-.set-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.set-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; }
-.set-card-head b { font-size: 14px; letter-spacing: .02em; }
-.set-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
-.set-badge.ok { color: var(--ok); }
-.set-badge.bad { color: var(--warn); }
-.set-desc { font-size: 12px; line-height: 1.8; color: var(--text-faint); }
-.set-form { display: grid; grid-template-columns: 96px 1fr; gap: 10px 12px; align-items: center; font-size: 13px; }
-.set-form > label { color: var(--text-dim); }
-.set-form select, .set-form input:not([type=checkbox]) {
-  background: var(--bg-2); border: 1px solid var(--border); color: var(--text);
-  border-radius: var(--r-sm); padding: 7px 9px; width: 100%; font-family: inherit; font-size: 13px;
-}
-.set-form select:focus-visible, .set-form input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent); }
-.set-inline { display: flex; align-items: center; gap: 8px; }
-.set-inline input { max-width: 130px; }
-.hint { font-size: 11.5px; color: var(--text-faint); }
-.set-presets { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
-.set-presets button, .set-actions button {
-  background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid var(--border); color: var(--accent);
-  border-radius: var(--r-sm); padding: 6px 12px; cursor: pointer; font-family: inherit; font-size: 12.5px;
-}
-.set-presets button:hover, .set-actions button:hover { border-color: var(--accent-dim); }
-.set-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.set-actions button:disabled { opacity: .5; cursor: default; }
-.set-actions .wv-primary { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: var(--accent-dim); }
-.set-msg { font-size: 12.5px; line-height: 1.7; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid; }
-.set-msg.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); background: color-mix(in srgb, var(--ok) 7%, transparent); }
-.set-msg.bad { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, transparent); background: color-mix(in srgb, var(--bad) 7%, transparent); }
-.set-warn { font-size: 12px; line-height: 1.75; color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); background: color-mix(in srgb, var(--warn) 7%, transparent); padding: 8px 10px; border-radius: var(--r-sm); }
-.set-foot { font-size: 11.5px; line-height: 1.85; color: var(--text-faint); border-top: 1px dashed var(--border); padding-top: 10px; }
-.set-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-dim); }
-.set-row > span { width: 110px; }
-.set-row input:not([type=checkbox]) { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 6px 9px; min-width: 280px; }
-.set-row button { background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid var(--border); color: var(--accent); border-radius: var(--r-sm); padding: 6px 12px; cursor: pointer; }
-.set-note { color: var(--text-faint); font-size: 11.5px; line-height: 1.8; border-top: 1px dashed var(--border); padding-top: 12px; }
-.view-nav { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 12; display: flex; padding: 4px; gap: 2px; }
-.view-nav button { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 62px; padding: 5px 8px; background: none; border: 0; color: var(--text-faint); cursor: pointer; border-radius: var(--r-sm); }
-.view-nav button b { font-size: 13px; }
-.view-nav button span { font-size: 10px; letter-spacing: .1em; }
-.view-nav button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-.view-nav button:hover { color: var(--text); }
-
-/* 移动端（≤768px）：单列卡片 + 底部抽屉，保证每台设备都能用 */
-@media (max-width: 768px) {
-  .hud { left: 12px; right: 12px; top: 10px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-  .brand { font-size: 15px; letter-spacing: .22em; }
-  .brand-sub, .brand-rule { display: none; }
-  .stats { gap: 14px; }
-  .stat b { font-size: 16px; }
-  .stat i { font-size: 8.5px; letter-spacing: .14em; }
-  .status { position: fixed; left: 12px; right: 12px; bottom: 74px; margin: 0; text-align: center; font-size: 10.5px; letter-spacing: .12em; z-index: 13; }
-  .seek { top: 54px; left: 12px; right: 12px; transform: none; }
-  .seek input { width: auto; flex: 1; min-width: 0; font-size: 13px; padding: 10px; }
-  .seek button { padding: 0 14px; letter-spacing: .12em; }
-  .theme-btn { padding: 0 4px 0 8px; }
-  .sites { top: 102px; left: 12px; right: 12px; transform: none; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; padding-bottom: 2px; max-width: none; scrollbar-width: none; }
-  .sites::-webkit-scrollbar { display: none; }
-  .sites-label { display: none; }
-  .site-btn, .site-del { flex: 0 0 auto; }
-  .panel { left: 12px; right: 12px; bottom: 66px; width: auto; max-height: 42vh; overflow-y: auto; }
-  .panel-open { left: 12px; bottom: 70px; }
-  .keys, .archive-link, .audit-link { display: none; }
-  .task-center { left: 12px; right: 12px; bottom: 66px; width: auto; }
-  .toast { bottom: 74px; left: 12px; right: 12px; transform: none; text-align: center; font-size: 12px; z-index: 14; }
-  .dock { left: 0; right: 0; width: auto; min-width: 0; padding: 16px 14px 92px; }
-  .work-view { left: 0; right: 0; top: 118px; bottom: 64px; }
-  .wv-head { gap: 8px; padding: 10px 12px; }
-  .wv-head b { flex: 1 1 100%; }
-  .wv-stat { flex: 1 1 100%; }
-  .wv-search { flex: 1 1 100%; min-width: 0; }
-  .wv-close { margin-left: 0; }
-  .wv-rows { padding-bottom: 8px; }
-  .wv-row { display: flex; flex-wrap: wrap; gap: 6px 12px; min-width: 0; padding: 10px 12px; }
-  .wv-row.wv-th { display: none; }
-  .wv-row .c-check { order: 1; }
-  .wv-row .c-path { order: 2; flex: 1 1 calc(100% - 34px); }
-  .wv-row .c-title { order: 3; flex: 1 1 100%; white-space: normal; }
-  .wv-row .c-state { order: 4; }
-  .wv-row .c-score { order: 5; }
-  .wv-row .c-gaps { order: 6; display: block; }
-  .wv-row .c-type { order: 7; display: block; }
-  .wv-row .c-assets { order: 8; display: block; }
-  .wv-row .c-actions { order: 9; flex: 1 1 100%; margin-top: 2px; }
-  .wv-row .c-score::before { content: '视觉 '; color: var(--text-faint); }
-  .wv-row .c-gaps::before { content: '缺口 '; color: var(--text-faint); }
-  .wv-row .c-assets::before { content: '资产 '; color: var(--text-faint); }
-  .wv-row .c-type::before { content: '类型 '; color: var(--text-faint); }
-  .job-row { display: flex; }
-  .job-row .job-name { flex: 1 1 100%; }
-    .reports-scroll { padding: 12px; }
-  .settings-grid { padding: 12px; }
-  .set-row { flex-wrap: wrap; }
-  .set-row > span { width: 100%; }
-  .set-row input:not([type=checkbox]) { min-width: 0; flex: 1 1 100%; }
-  .view-nav button { min-width: 56px; padding: 5px 4px; }
-}
-</style>

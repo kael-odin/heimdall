@@ -1,0 +1,45 @@
+/**
+ * format — 展示层格式化助手
+ *
+ * 抽出来的理由不是"文件太长"，而是这几个函数被多个视图用：
+ * 分页表、任务中心、报告页的历史/资产表都要用同一套格式。
+ * 复制一份的话，"视觉 99.1%" 与 "视觉 99.10%" 这种不一致迟早出现。
+ *
+ * 全部是纯函数，不做 IO、不碰响应式 —— 所以可以直接被组件 import，
+ * 也可以被未来的单元测试直接喂值。
+ */
+
+/** 任务状态：failed > done > running */
+export const taskState = (t) => (t?.failed ? 'failed' : t?.done ? 'done' : 'running');
+
+const TASK_LABEL = { running: '运行中', done: '完成', failed: '失败' };
+export const taskLabel = (t) => TASK_LABEL[taskState(t)] ?? '运行中';
+
+export const fmtTime = (t) => (t ? new Date(t).toLocaleTimeString('zh-CN', { hour12: false }) : '');
+
+export const fmtDate = (t) => (t
+  ? new Date(t).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+  : '—');
+
+export const fmtBytes = (n) => (n == null ? '—'
+  : n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB'
+  : n >= 1024 ? (n / 1024).toFixed(0) + 'KB'
+  : n + 'B');
+
+/** 耗时。进行中返回"进行中"而不是空串 —— 空串会让人以为任务卡住了。 */
+export const fmtDuration = (t) => (t?.endedAt && t?.startedAt
+  ? Math.round((t.endedAt - t.startedAt) / 1000) + 's'
+  : (t?.startedAt ? '进行中' : ''));
+
+/** 任务类型的中文名（任务中心与报告页共用） */
+export const KIND_CN = {
+  audit: 'SEO 审计',
+  watch: '变更监控',
+  assets: '资产扫描',
+  matrix: '跨站对标',
+  live: '活镜像导出',
+  verify: '保真验证',
+  recon: '侦察',
+  forge: '克隆',
+};
+export const kindCn = (k) => KIND_CN[k] ?? '克隆';
