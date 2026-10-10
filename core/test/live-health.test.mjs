@@ -21,6 +21,39 @@ test('live/health: resolver handles /lm prefix, queries, relative paths and exte
   assert.equal(resolveRefPath('#top', { host: 'x.test' }), null);
 });
 
+test('live/health: data URI 内嵌的 url() 不得被当成外部引用（实测真实缺陷）', () => {
+  // vitest.dev 的 cssom.css 里有 data:image/svg+xml 的内联 SVG，
+  // 其中含 filter='url(%23SVGJNgLYdgK)'（= url(#SVGJNgLYdgK)，指向同文档的 filter）。
+  // 朴素全局正则 /url\(([^"')]+)\)/g 会把**内嵌那一条**单独匹配出来，
+  // 得到 %23SVGJNgLYdgK → 被当成相对路径 → 解析成
+  // /static/<host>/pages/<page>/clone/styles/%23SVGJNgLYdgK → 记为"未解析"。
+  // 后果：健康报告写 unresolved=91，而真实缺口只有 4 个 —— 报告完全失去指向性。
+  const css = `a{background:url("data:image/svg+xml,%3Csvg%3E%3Cg filter='url(%23SVGJNgLYdgK)'%3E%3C/g%3E%3C/svg%3E")}
+b{background:url(/real/bg.png)}`;
+  const refs = extractRefs(css, 'css');
+
+  // ① 整个 data URI 算**一条**引用（它的内容里当然含 %23SVG，这是对的）
+  assert.equal(refs.filter(r => r.url.startsWith('data:image/svg+xml')).length, 1);
+  // ② 但绝不能出现一条**以 %23 开头**的独立引用 —— 那才是缺陷的形态
+  assert.ok(!refs.some(r => r.url.startsWith('%23')), `不应有以 %23 开头的独立引用，实际: ${JSON.stringify(refs.map(r => r.url))}`);
+  // ③ 走到解析：data URI 与片段都该被跳过，只留真正的外部引用
+  const resolved = refs
+    .map(r => resolveRefPath(r.url, { host: 'x.test', basePath: '/static/x.test/pages/home/clone/styles/' }))
+    .filter(Boolean);
+  assert.deepEqual(resolved, [{ path: '/real/bg.png', search: '' }]);
+  // ④ 解析结果里不得出现指向 %23 的路径（这正是修复前健康报告里的假缺口）
+  assert.ok(!resolved.some(r => String(r.path).includes('%23')));
+});
+
+test('live/health: URL 编码的片段标识 %23 按片段处理，不当作路径', () => {
+  // 字面 # 已被 SKIP_REF 覆盖，但 %23 会绕过它 —— 生成一个永远不存在的目标
+  assert.equal(resolveRefPath('%23SVGJNgLYdgK', { host: 'x.test' }), null);
+  assert.equal(resolveRefPath('#frag', { host: 'x.test' }), null);
+  assert.equal(resolveRefPath('%23a/b.css', { host: 'x.test' }), null);
+  // 但普通百分号编码的路径不受影响
+  assert.deepEqual(resolveRefPath('/a%20b.png', { host: 'x.test' }), { path: '/a%20b.png', search: '' });
+});
+
 test('live/health: extractRefs separates assets from links', () => {
   const html = '<link rel="stylesheet" href="/a.css"><link rel="canonical" href="/canon"><script src="/s.js"></script><img src="/i.png" srcset="/i2.png 2x"><a href="/page/">go</a>';
   const refs = extractRefs(html, 'html');

@@ -15,6 +15,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix, extname } from 'node:path';
 import { matchHar } from './har.mjs';
+import { scanCssRefs } from '../css-refs.mjs';
 
 const SKIP_REF = /^(?:data:|blob:|about:|javascript:|mailto:|tel:|#)/i;
 const ASSET_EXT = /\.(?:png|jpe?g|gif|webp|avif|svg|ico|bmp|woff2?|ttf|otf|eot|css|js|mjs|mp4|webm|mp3|pdf)(?:$|[?#])/i;
@@ -29,6 +30,10 @@ const decodeEntities = (u) => String(u).replace(/&amp;/gi, '&');
 export function resolveRefPath(raw, { host, basePath = '/' } = {}) {
   const clean = decodeEntities(stripHash(raw));
   if (!clean || SKIP_REF.test(clean)) return null;
+  // URL 编码的片段标识符（%23 = #）：它会绕过上面的 SKIP_REF（那里只认字面 #），
+  // 然后被当成相对路径，生成一个永远不存在的目标。
+  // 实测来源：CSS 里 data URI 内嵌 SVG 的 url(%23someFilter)。
+  if (/^%23/i.test(clean)) return null;
   let u = clean;
   if (u.startsWith('//')) u = 'https:' + u;
   if (/^[a-z][a-z0-9+.-]*:/i.test(u)) {
@@ -90,7 +95,16 @@ function attr(tag, name) {
 export function extractRefs(text, kind) {
   const out = [];
   if (kind === 'css') {
-    for (const m of text.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/gi)) out.push({ url: m[1], kind: 'asset' });
+    // 必须用 scanCssRefs 而不是朴素全局正则。
+    //
+    // 实测：vitest.dev 的 cssom.css 里有 data:image/svg+xml 的内联 SVG，
+    // 其中含 `filter='url(%23SVGJNgLYdgK)'`（= url(#SVGJNgLYdgK)，指向同文档的 filter）。
+    // 用 /url\(([^"')]+)\)/g 扫会把**内嵌的那一条**当成顶层引用，
+    // 得到 `%23SVGJNgLYdgK` → 被当成相对路径 → 解析成
+    // /static/<host>/pages/<page>/clone/styles/%23SVGJNgLYdgK → 记为"未解析"。
+    // 于是健康报告写着 unresolved=91，而真实缺口只有 4 个 —— 报告因此完全失去指向性
+    // （用户要么无视它，要么去追 87 个不存在的洞）。
+    for (const r of scanCssRefs(text)) out.push({ url: r.raw, kind: 'asset' });
     for (const m of text.matchAll(/@import\s+(?:url\(\s*)?["']([^"']+)["']/gi)) out.push({ url: m[1], kind: 'asset' });
     return out;
   }
