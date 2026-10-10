@@ -171,7 +171,7 @@ health.forgedPages = pageNames.length;
 health.liveMissing = Math.max(0, pageNames.length - health.pages);
 health.strict = STRICT;
 writeFileSync(join(OUT, 'health.json'), JSON.stringify(health, null, 2));
-console.log('[health] forgedPages=' + pageNames.length + ' livePages=' + health.pages + (health.liveMissing ? ' (missing ' + health.liveMissing + ')' : '') + ' assets=' + health.assets.total + ' local=' + health.assets.local + ' har=' + health.assets.har + ' unresolved=' + health.assets.unresolved + ' externalAssets=' + health.assets.externalAssets + ' | linksMissing=' + health.links.missing);
+console.log('[health] forgedPages=' + pageNames.length + ' livePages=' + health.pages + (health.liveMissing ? ' (missing ' + health.liveMissing + ')' : '') + ' assets=' + health.assets.total + ' local=' + health.assets.local + ' har=' + health.assets.har + ' unresolved=' + health.assets.unresolved + ' externalRefs=' + health.assets.external + '(静态资源 ' + health.assets.externalAssets + ') | linksMissing=' + health.links.missing);
 for (const d of health.details.slice(0, 5)) console.log('[health]   ' + d.page + ' -> ' + d.unresolvedCount + ' unresolved (e.g. ' + (d.unresolved[0] ?? '-') + ')');
 
 const hasArchive = existsSync(join(siteDir, 'static', host, 'index.html'));
@@ -221,6 +221,20 @@ docker compose up -d                   # Docker 部署
 - 部署模式：root: ${ROOT}（mirror = drop-in 根路径部署；/lm/${host}/ 始终作为别名可用）
 - 健康检查：http://127.0.0.1:${PORT}/__heimdall/health
 - 模式：\`offline: ${OFFLINE}\`（\`heimdall-live.json\`）+ HAR ${stats.entries} 条回放\n- 离线体检：health.json（资源 local/har/unresolved、未镜像链接、站外资产清单${HEAL ? '；本次已执行 --heal 自愈' : ''}）
+
+### 离线时会缺什么（读 health.json）
+
+\`\`\`
+assets.unresolved        同源但没抓到本地副本 → 离线 404。**这是真正需要处理的缺口**
+assets.externalAssets    站外静态资源（图片/CSS/脚本）→ 离线也裂，需本地化才能进离线包
+assets.external          站外引用总数（含 YouTube 嵌入、地图、统计脚本）
+                         external − externalAssets 的差额 = 嵌入类内容，**无法本地化，属固有边界**
+links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
+\`\`\`
+
+**放在任何公网服务器上时，站外引用都能正常加载** —— 只有完全离线才需要考虑它们。
+如果你要的是"断网也能跑"的包，优先处理 \`assets.unresolved\`，
+再看 \`externalAssets\` 里有没有值得本地化的（字体、图标这类小文件通常值得）。
 
 ## 路由
 

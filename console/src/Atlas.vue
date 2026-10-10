@@ -1112,7 +1112,15 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <template v-if="liveHealth">
         <p>最近导出：<b>{{ liveHealth.bundle }}</b></p>
         <p>离线资源 {{ liveHealth.assets?.local ?? 0 }} 本地 / {{ liveHealth.assets?.har ?? 0 }} HAR 回放 · <b :style="{ color: (liveHealth.assets?.unresolved ?? 0) ? 'var(--warn)' : 'var(--ok)' }">缺口 {{ liveHealth.assets?.unresolved ?? 0 }}</b></p>
-        <p class="score-note">页面 {{ liveHealth.pages ?? 0 }}<template v-if="liveHealth.liveMissing">（少 {{ liveHealth.liveMissing }} 页）</template> · 动态图 {{ liveHealth.assets?.dynamic ?? 0 }} · 站外资产 {{ liveHealth.assets?.externalAssets ?? 0 }} · 未镜像链接 {{ liveHealth.links?.missing ?? 0 }}</p>
+        <p class="score-note">页面 {{ liveHealth.pages ?? 0 }}<template v-if="liveHealth.liveMissing">（少 {{ liveHealth.liveMissing }} 页）</template> · 未镜像链接 {{ liveHealth.links?.missing ?? 0 }}</p>
+        <!-- 站外引用分两个口径显示。此前只显示 externalAssets，于是
+             YouTube 嵌入这类"没有资源扩展名的外链"在界面上完全看不到 ——
+             实测 apify 站外引用 1826 条，其中静态资源 1419 条，差额 407 条被隐藏。 -->
+        <p class="score-note">
+          站外静态资源 <b :title="'图片/CSS/脚本等带扩展名的站外资源。离线时一定会裂，需要本地化。'">{{ liveHealth.assets?.externalAssets ?? 0 }}</b>
+          · 站外引用共 <b :title="'含 YouTube 嵌入、地图、统计脚本等无扩展名的外链。在线可用，离线为空 —— 这类无法本地化，属固有边界。'">{{ liveHealth.assets?.external ?? 0 }}</b>
+          · 动态图 {{ liveHealth.assets?.dynamic ?? 0 }}
+        </p>
       </template>
       <p v-else>可部署的离线完整包：本地快照 → HAR 回放 → 原站代理。导出后这里显示离线缺口。</p>
       <label class="sw" style="margin-bottom:8px;display:flex"><input type="checkbox" v-model="liveRebuild" /><span>先重建 live 页面（站点改版后勾选）</span></label>
