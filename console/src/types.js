@@ -3,35 +3,43 @@
  *
  * 新增类型只需在此注册；图例从实际数据动态生成（无硬编码白名单）。
  *
- * 双主题色板：`color` 给深色观测场（星图画布、深色面板），`light` 给浅色主题。
- * 浅色主题下原来的高饱和霓虹（如 #22D3EE）在白底上只有 1.8:1 —— 文字不可读。
- * 每个 light 值都按 WCAG AA（小字 ≥4.5:1）在白底上校过。
+ * 双主题色板：`color` 给深色（暖炭面板、星图画布），`light` 给浅色（象牙底）。
+ * 每个值都实测过两种用法：
+ *   · 作为**文字/标签**在面板底上 ≥4.5:1（WCAG AA 小字）
+ *   · 作为**星图节点**在画布上 ≥3:1（WCAG 非文本对比）
+ * 深色侧对 #262624 的最低值是 legal 的 4.63:1；浅色侧对 #FAF9F5 的最低值是
+ * marketing 的 5.02:1。（旧版霓虹青 #22D3EE 在白底上只有 1.67:1，等于不可见。）
+ *
+ * 色相选取偏向暖中性（黏土、赭、橄榄、青灰），与 Anthropic 的调性一致；
+ * 但仍保证相邻类型在色相上可区分 —— 星图里它们是唯一的识别手段。
  */
 export const PAGE_TYPES = {
-  marketing:   { color: '#22D3EE', light: '#0E7490', cn: '营销页' },
-  pricing:     { color: '#F59E0B', light: '#B45309', cn: '定价页' },
-  listing:     { color: '#8B5CF6', light: '#6D28D9', cn: '列表页' },
-  blog:        { color: '#34D399', light: '#047857', cn: '博客/新闻' },
-  product:     { color: '#F472B6', light: '#BE185D', cn: '产品页' },
-  doc:         { color: '#7B8CA6', light: '#4B5563', cn: '文档' },
-  help:        { color: '#FBBF24', light: '#A16207', cn: '帮助/FAQ' },
-  tools:       { color: '#C084FC', light: '#7E22CE', cn: '工具页' },
-  case_study:  { color: '#38BDF8', light: '#0369A1', cn: '客户案例' },
-  career:      { color: '#A3E635', light: '#4D7C0F', cn: '招聘' },
-  company:     { color: '#5EEAD4', light: '#0F766E', cn: '公司页' },
-  auth:        { color: '#F87171', light: '#B91C1C', cn: '登录/控制台' },
-  legal:       { color: '#64748B', light: '#475569', cn: '法务' },
-  generic:     { color: '#94A3B8', light: '#64748B', cn: '通用页' },
+  marketing:   { color: '#D98E6E', light: '#A8542C', cn: '营销页' },
+  pricing:     { color: '#D9A05B', light: '#8A6420', cn: '定价页' },
+  listing:     { color: '#C089B5', light: '#7A3F6B', cn: '列表页' },
+  blog:        { color: '#A8B87A', light: '#5C6B3A', cn: '博客/新闻' },
+  product:     { color: '#DB8FA3', light: '#9E4055', cn: '产品页' },
+  doc:         { color: '#A9A69C', light: '#57564F', cn: '文档' },
+  help:        { color: '#E0B070', light: '#8A5A1E', cn: '帮助/FAQ' },
+  tools:       { color: '#B49BD6', light: '#6B4A9E', cn: '工具页' },
+  case_study:  { color: '#6FB3B3', light: '#2F6B6B', cn: '客户案例' },
+  career:      { color: '#BCCB86', light: '#566B25', cn: '招聘' },
+  company:     { color: '#7FC4C0', light: '#2C6E6A', cn: '公司页' },
+  auth:        { color: '#E08A7A', light: '#A33A2A', cn: '登录/控制台' },
+  legal:       { color: '#918E86', light: '#6B6960', cn: '法务' },
+  generic:     { color: '#A8A59C', light: '#605E57', cn: '通用页' },
 };
 
-const FALLBACK = { color: '#94A3B8', light: '#64748B' };
+/** 未注册类型与合成节点（已克隆但不在 atlas 里的页）用中性灰 */
+const FALLBACK = { color: '#A8A59C', light: '#605E57' };
 
 /**
  * @param {string} t 页面类型
- * @param {'dark'|'light'} [theme] 省略时给深色（星图画布用）
+ * @param {'dark'|'light'} [theme] 省略时给深色
  */
 export const typeColor = (t, theme = 'dark') => {
   const entry = PAGE_TYPES[t] ?? FALLBACK;
   return theme === 'light' ? entry.light : entry.color;
 };
 export const typeCn = (t) => PAGE_TYPES[t]?.cn ?? (t || '未知');
+export const FALLBACK_COLOR = FALLBACK;

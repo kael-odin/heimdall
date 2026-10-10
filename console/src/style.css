@@ -1,93 +1,134 @@
-/* 深空观测站 · HUD 视觉系统 v2（ui-ux-pro-max: hud-sci-fi-fui 风格规范）
-   原则：1px 细线仪器框 + 霓虹青点睛 + 等宽数据字 + 克制辉光。
-   全部色彩走 token，禁止组件内裸 hex。 */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+/* Heimdall 控制台视觉系统 v3 —— Anthropic / Claude Code 语言
+ *
+ * 与 v2（深空观测站 HUD）的关键差别，逐条说明为什么换：
+ *   · 底色从冷调深渊（#0B0B10）换成暖炭（#1F1E1D）。冷蓝黑是"科幻仪表盘"的语汇，
+ *     而 Anthropic 的一整套色彩建立在暖中性上（象牙、云灰、暖炭）。
+ *   · 主色从霓虹青（#22D3EE）换成黏土橙（#CC785C，Anthropic "Book Cloth"）。
+ *     霓虹青在暖底上会显脏，且它天然依赖辉光才成立 —— 而辉光是 v2 最重的一层装饰。
+ *   · 去掉辉光与装饰角：v2 的 .surface 用 ::before/::after 画仪器角，
+ *     再配 text-shadow 的霓虹晕。这套语汇在 Anthropic 的克制风格里没有位置，
+ *     信息层级改用「1px 描边 + 底色深浅」表达。
+ *   · 圆角 4px → 10px：直角 + 装饰角是仪器面板；圆角 + 细描边是文档/产品界面。
+ *   · 字体不再从 Google Fonts 拉 Orbitron / Share Tech Mono。
+ *     那两个是科幻显示字，且 @import 阻塞首屏渲染（每次加载多一次外网往返）。
+ *     改用系统字体栈 —— Anthropic 的产品界面本身就是系统 sans + 等宽数字。
+ *
+ * 所有取值都实测过对比度（不是估色），注释里的比值是对 **面板底色** 的。
+ * 组件内禁止裸 hex / 裸 rgba：一律走下面的 token，否则主题切换必漏。 */
 
 :root {
-  /* 底色层 */
-  --abyss: #0B0B10;
-  --muted: #232328;
-  /* 语义色 */
-  --cyan: #22D3EE;
-  --cyan-dim: rgba(34, 211, 238, .45);
-  --cyan-line: rgba(34, 211, 238, .22);
-  --amber: #F59E0B;
-  --violet: #A78BFA;
-  --green: #34D399;
-  --red: #EF4444;
+  color-scheme: dark;
+
+  /* 底色层（暖炭） */
+  --bg: #1F1E1D;          /* 页面底 */
+  --bg-2: #2A2927;        /* 次级面：输入框、内嵌块 */
+  --surface: #262624;     /* 面板面 */
+  --surface-2: #2D2C2A;   /* 面板内的次级面 */
+
+  /* 语义色（深色画布） */
+  --accent: #CC785C;                    /* 黏土橙。面底 4.63:1 */
+  --accent-dim: rgba(204, 120, 92, .5);
+  --accent-2: #C089B5;                  /* 备用强调（李子），面底 5.93:1 */
+  --ok: #7FB08A;                        /* 面底 6.12:1 */
+  --warn: #D9A05B;                      /* 面底 6.59:1 */
+  --bad: #E08A7A;                       /* 面底 5.84:1 */
+
+  /* 描边：统一一个色，不再分"线色/框色"两个名字 */
+  --border: rgba(245, 244, 239, .12);
+  --border-strong: rgba(245, 244, 239, .22);
+
   /* 文字 */
-  --text: #F8FAFC;
-  --text-dim: #94A3B8;
-  --text-faint: #7E8CA0;   /* 实测 4.8:1 on 面板底（AA 需 ≥4.5）；原 #64748B 只有 4.13:1 */
-  /* 字体 */
-  --font-num: 'Orbitron', monospace;
-  --font-mono: 'Share Tech Mono', monospace;
-  --font-cn: 'Noto Sans SC', 'Microsoft YaHei UI', sans-serif;
+  --text: #F5F4EF;                      /* 面底 13.77:1 */
+  --text-dim: #B3B0A6;                  /* 面底 6.99:1 */
+  --text-faint: #94918A;                /* 面底 4.82:1（AA 需 ≥4.5） */
+
+  /* 字体：系统栈。--font-mono 用于一切数字/ID/路径 —— Anthropic 的产品界面
+     大量使用等宽数字，这也是 Claude Code 最直接的视觉语汇。 */
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei UI', Roboto, sans-serif;
+  --font-display: var(--font-ui);
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;
+
   /* 几何 */
-  --r: 4px;
-  --line: 1px;
-  --dur: 180ms;
+  --r: 10px;
+  --r-sm: 6px;
+  --bw: 1px;               /* 边框宽度（与 --border 颜色分开命名 —— v2 里两者同名过，会互相覆盖） */
+  --dur: 160ms;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .24);
 }
-/* 浅色主题（data-theme="light"）：观测站日间模式 */
+
+/* 浅色主题：Anthropic 象牙底 */
 [data-theme="light"] {
-  --abyss: #F4F6FA;
-  --muted: #E8ECF2;
-  --cyan: #0E7490;                    /* 白底 5.4:1；原 #0891B2 只有 3.68:1 */
-  --cyan-dim: rgba(14, 116, 144, .5);
-  --cyan-line: rgba(14, 116, 144, .28);
-  --amber: #B45309;
-  --violet: #7C3AED;
-  --green: #047857;                   /* 白底 5.6:1；原 #059669 只有 3.6:1 */
-  --red: #B91C1C;                     /* 白底 6.6:1；原 #DC2626 在淡红底上只有 4.47:1 */
-  --text: #0F172A;
-  --text-dim: #475569;
-  --text-faint: #5B6675;   /* 白底 5.8:1 / 浅灰底(#F4F6FA) 5.2:1；原 #94A3B8 只有 2.4:1 */
+  color-scheme: light;
+
+  --bg: #FAF9F5;
+  --bg-2: #F0EEE6;
+  --surface: #FFFFFF;
+  --surface-2: #F7F6F1;
+
+  --accent: #B05730;                    /* 白底 4.94:1；#CC785C 在白底只有 3.28:1 */
+  --accent-dim: rgba(176, 87, 48, .5);
+  --accent-2: #7A3F6B;                  /* 白底 7.25:1 */
+  --ok: #3D7A52;                        /* 白底 5.12:1 */
+  --warn: #8A6420;                      /* 白底 5.35:1 */
+  --bad: #A33A2A;                       /* 白底 6.57:1 */
+
+  --border: rgba(25, 25, 25, .12);
+  --border-strong: rgba(25, 25, 25, .24);
+
+  --text: #191919;                      /* 白底 17.58:1 */
+  --text-dim: #57564F;                  /* 白底 7.37:1 */
+  --text-faint: #6E6C64;                /* 白底 5.26:1 */
+
+  --shadow: 0 1px 2px rgba(25, 25, 25, .06), 0 8px 24px rgba(25, 25, 25, .06);
 }
-[data-theme="light"] .hud-panel,
-[data-theme="light"] .dock { background: #FFFFFF; }
-[data-theme="light"] .brand { text-shadow: none; }
-[data-theme="light"] .stat b { text-shadow: none; }
-[data-theme="light"] .hud-rule::after { box-shadow: none; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-button, a, input, select, textarea { font: inherit; }
-button:disabled, input:disabled, select:disabled { cursor: not-allowed; }
-:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
-/* 只对读屏可见：用于给无可见标签的控件补 name/label */
+button, a, input, select, textarea { font: inherit; color: inherit; }
+button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: .55; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
+::placeholder { color: var(--text-faint); opacity: 1; }
+::selection { background: rgba(204, 120, 92, .28); }
+[data-theme="light"] ::selection { background: rgba(176, 87, 48, .22); }
+
+/* 只对读屏可见：给无可见标签的控件补 name/label */
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .001ms !important;
+  }
 }
-::placeholder { color: var(--text-faint); opacity: .85; }
-html, body, #app { height: 100%; background: var(--abyss); color: var(--text); font-family: var(--font-cn); overflow: hidden; }
-::selection { background: rgba(34, 211, 238, .3); }
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: var(--cyan-line); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--cyan-dim); }
 
-/* HUD 仪器面板基类：1px 细线 + 内嵌渐变 + 装饰角 */
-.hud-panel {
+html, body, #app {
+  height: 100%; background: var(--bg); color: var(--text);
+  font-family: var(--font-ui); font-size: 14px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); background-clip: content-box; }
+
+/* 面板基类（原 .hud-panel）。v2 在这里画仪器装饰角 + 内嵌渐变；
+   v3 换成「实底 + 1px 描边 + 柔和投影」，层级靠底色而不是装饰。 */
+.surface {
   position: relative;
-  background: linear-gradient(180deg, rgba(30, 30, 35, .92), rgba(20, 20, 26, .94));
-  border: var(--line) solid var(--cyan-line);
+  background: var(--surface);
+  border: var(--bw) solid var(--border);
   border-radius: var(--r);
+  box-shadow: var(--shadow);
 }
-.hud-panel::before, .hud-panel::after {
-  content: '';
-  position: absolute;
-  width: 10px; height: 10px;
-  border-color: var(--cyan-dim);
-  border-style: solid;
-  pointer-events: none;
-}
-.hud-panel::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
-.hud-panel::after { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
 
-/* 标准微动效 */
-.hud-t { transition: all var(--dur) ease; }
+/* 有限的动效：只用于"正在发生"的状态，不做装饰性呼吸 */
+@keyframes pulse-soft { 50% { opacity: .45; } }
 
-/* 状态点 */
-@keyframes hud-pulse { 50% { opacity: .35; } }
+/* 数字一律等宽 + 等宽数字位，避免读数跳动 */
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }

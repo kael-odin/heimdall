@@ -18,6 +18,12 @@ const props = defineProps({
   links: { type: Array, default: () => [] },
   tick: { type: Number, default: 0 },
   autoRotate: { type: Boolean, default: true },
+  /**
+   * 节点色板，由父组件按当前主题给出：{ types, running, fallback, synthetic }。
+   * 颜色不烤进节点对象，是为了让主题切换只重喂一次 graphData，
+   * 而不需要重建整份节点列表（重建会丢失力模拟的位置，星图会跳）。
+   */
+  palette: { type: Object, default: () => ({}) },
 });
 const emit = defineEmits(['node-click', 'node-hover']);
 
@@ -57,21 +63,26 @@ function fit() {
 }
 
 function nodeColor(n) {
-  if (n.forgeState === 'running') return '#F59E0B';
-  return n.color ?? '#22D3EE';
+  if (n.forgeState === 'running') return props.palette.running ?? '#D9A05B';
+  if (n.synthetic) return props.palette.synthetic ?? '#94918A';
+  return props.palette.types?.[n.type] ?? props.palette.fallback ?? n.color ?? '#A8A59C';
 }
 function nodeVal(n) {
   return n.ring === 0 ? 14 : Math.max(3.5, 7 - n.ring * 1.6) + (n.type === 'listing' ? 1 : 0);
 }
 
-function update() {
+/**
+ * @param {{fit?: boolean}} opts fit=false 时不重新取景。
+ *   主题切换会走到这里，若每次都 zoomToFit 会把用户转好的视角重置掉。
+ */
+function update({ fit = true } = {}) {
   if (!graph || disposed) return;
   graph.nodeRelSize(5);
   graph.graphData({
     nodes: props.nodes.map(n => ({ ...n, __id: n.id, color: nodeColor(n) })),
     links: props.links.map(l => ({ source: l.source ?? l.from ?? l[0]?.id, target: l.target ?? l.to ?? l[1]?.id })),
   });
-  try { graph.zoomToFit(700, 70); } catch {}
+  if (fit) { try { graph.zoomToFit(700, 70); } catch {} }
 }
 
 // ---------- Ctrl+拖拽平移（沿相机平面位移，捕获阶段拦截旋转） ----------
@@ -117,7 +128,7 @@ onMounted(() => {
     .nodeVal(nodeVal)
     .nodeLabel(n => `${n.path ?? ''}  [${n.type ?? ''}]`)
     .nodeOpacity(0.95)
-    .linkColor(() => 'rgba(34,211,238,0.35)')
+    .linkColor(() => props.palette.link ?? 'rgba(204,120,92,0.35)')
     .linkOpacity(0.35)
     .linkWidth(0.4)
     .onNodeClick(n => { if (!panning) emit('node-click', n); })
@@ -152,7 +163,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerup', onPointerUp);
   graph?._destructor?.();
 });
-watch(() => props.tick, update);
+watch(() => props.tick, () => update());
+// 主题切换：重喂一次 graphData 即可换色（update 里会重新解析 nodeColor），
+// 但不重新取景 —— 否则切主题会把用户转好的视角重置。
+watch(() => props.palette, () => update({ fit: false }));
 </script>
 
 <template>
