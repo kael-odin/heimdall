@@ -26,6 +26,35 @@ let graph = null;
 let disposed = false;
 let panning = false;
 let lastX = 0, lastY = 0;
+let ro = null;
+let rafId = 0;
+let lastW = 0, lastH = 0;
+
+/**
+ * 把画布尺寸同步到容器。
+ *
+ * 必须手动做：3d-force-graph 在挂载时按当时的容器尺寸建 renderer，
+ * **不监听窗口变化**。实测（视口从 1280 拖到 1024）canvas 与 .scene-container
+ * 都停留在 1280 宽，documentElement.scrollWidth 也是 1280 ——
+ * 于是多出一条 256px 的横向滚动条，画布右侧被裁掉。
+ * 用 ResizeObserver 而不是 window.resize：容器后续被布局改动时也能跟上。
+ *
+ * 用 rAF 合并连续变化（拖拽窗口时 ResizeObserver 会高频回调，
+ * 每次都重建 renderer 尺寸会把主线程占满）。
+ */
+function fit() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(() => {
+    rafId = 0;
+    if (!graph || disposed || !el.value) return;
+    const r = el.value.getBoundingClientRect();
+    const w = Math.max(1, Math.round(r.width));
+    const h = Math.max(1, Math.round(r.height));
+    if (w === lastW && h === lastH) return;
+    lastW = w; lastH = h;
+    try { graph.width(w).height(h); } catch {}
+  });
+}
 
 function nodeColor(n) {
   if (n.forgeState === 'running') return '#F59E0B';
@@ -100,6 +129,10 @@ onMounted(() => {
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
   update();
+  // 尺寸跟随容器（见 fit() 注释：库自身不处理 resize）
+  ro = new ResizeObserver(fit);
+  ro.observe(el.value);
+  fit();
   // 冷却后自动取景 + 缓慢自转
   let stopped = false;
   graph.onEngineStop(() => {
@@ -112,6 +145,8 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   disposed = true;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+  ro?.disconnect(); ro = null;
   el.value?.removeEventListener('pointerdown', onPointerDown, true);
   window.removeEventListener('pointermove', onPointerMove);
   window.removeEventListener('pointerup', onPointerUp);

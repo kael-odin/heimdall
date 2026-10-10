@@ -10,16 +10,13 @@ import { onMounted, onBeforeUnmount, ref, reactive, computed, watch } from 'vue'
 import Graph3D from './Graph3D.vue';
 import SitePicker from './SitePicker.vue';
 import Icon from './Icon.vue';
+import { API, apiHeaders, apiJson, wsUrl, wsJson } from './api.js';
 
 import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
 const PAGE_TYPES = PT;
 const TYPE_COLOR = Object.fromEntries(Object.entries(PAGE_TYPES).map(([k, v]) => [k, v.color]));
 // 星图画布恒定深色，所以图例/节点用深色色板；文字类标签按当前主题取值
 const typeColorThemed = (t) => typeColor(t, theme.value);
-// 引擎 API 直连（vite proxy 会缓冲实时 SSE；引擎侧 CORS 已开放）
-// 单端口部署时与引擎同源；Vite dev（5173/5175）直连引擎 :8900（避免代理缓冲 SSE）
-const DEV_PORTS = ['5173', '5174', '5175'];
-const API = localStorage.getItem('heimdall-api') ?? (DEV_PORTS.includes(location.port) || !/^https?:/.test(location.protocol) ? 'http://127.0.0.1:8900' : location.origin);
 
 const host = ref('');   // 当前站点：由「已侦察站点」列表决定，不再写死默认站点
 const atlas = ref(null);
@@ -71,7 +68,6 @@ const LLM_PRESETS = [
 function taskState(t) { return t.failed ? 'failed' : t.done ? 'done' : 'running'; }
 function taskLabel(t) { return { running: '运行中', done: '完成', failed: '失败' }[taskState(t)] ?? '运行中'; }
 const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
-function apiHeaders() { const t = tokenOf(); return { 'Content-Type': 'application/json', ...(t ? { 'x-heimdall-token': t } : {}) }; }
 function sseUrl(taskId) { const t = tokenOf(); return `${API}/api/events?task=${taskId}${t ? '&token=' + encodeURIComponent(t) : ''}`; }
 const hudPages = ref(0);
 const hudEdges = ref(0);
@@ -105,8 +101,9 @@ const detailTab = ref('overview');   // 详情面板 tab
 const detailIntel = ref(null);       // 已锻页 intel.json
 const detailScore = ref(null);       // 已锻页 score.json
 const detailSeo = computed(() => selected.value?.seoLite ?? null);
-const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null, liveGaps: null });
+const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null });
 const assetGapsCache = ref(null);
+const assetGapsHost = ref(null);
 const seoChecks = computed(() => {
   const sl = detailSeo.value;
   if (!sl) return null;
@@ -207,11 +204,11 @@ async function loadPageScores() {
       try {
         const name = pageNameOf(n);
         const [rs, rv] = await Promise.all([
-          fetch('/' + host.value + '/pages/' + name + '/score.json'),
-          fetch('/' + host.value + '/verify/' + name + '/verify.json'),
+          wsJson(host.value, 'pages/' + name + '/score.json'),
+          wsJson(host.value, 'verify/' + name + '/verify.json'),
         ]);
-        pageScores[n.id] = rs.ok ? await rs.json() : null;
-        pageVerify[n.id] = rv.ok ? await rv.json() : null;
+        pageScores[n.id] = rs;
+        pageVerify[n.id] = rv;
       } catch { pageScores[n.id] = null; }
     }
   };
@@ -225,17 +222,22 @@ async function loadQuality() {
   const n = selected.value;
   if (!n) return;
   detailQuality.loading = true;
-  detailQuality.verify = null; detailQuality.fixup = null; detailQuality.gaps = null; detailQuality.history = null; detailQuality.liveGaps = null;
+  detailQuality.verify = null; detailQuality.fixup = null; detailQuality.gaps = null; detailQuality.history = null; detailQuality.liveGaps = null; detailQuality.cloneGaps = null;
   const name = pageNameOf(n);
-  const [v, f, h] = await Promise.all([
-    fetch('/' + host.value + '/verify/' + name + '/verify.json').then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch('/' + host.value + '/pages/' + name + '/fixup-history.json').then(r => r.ok ? r.json() : null).catch(() => null),
+  // 取 workspace 文件统一走 wsJson（理由见 api.js 顶部）。
+  const [v, f, h, cg] = await Promise.all([
+    fetch('/static/' + host.value + '/verify/' + name + '/verify.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/static/' + host.value + '/pages/' + name + '/fixup-history.json').then(r => r.ok ? r.json() : null).catch(() => null),
     fetch(API + '/api/history/' + encodeURIComponent(host.value) + '/' + encodeURIComponent(name), { headers: apiHeaders() }).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/static/' + host.value + '/pages/' + name + '/clone-gaps.json').then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
   if (selected.value !== n) return;
-  detailQuality.verify = v; detailQuality.fixup = f; detailQuality.history = h;
-  if (!assetGapsCache.value) {
-    try { const r = await fetch('/' + host.value + '/audit/asset-gaps.json'); if (r.ok) assetGapsCache.value = await r.json(); } catch {}
+  detailQuality.verify = v; detailQuality.fixup = f; detailQuality.history = h; detailQuality.cloneGaps = cg;
+  // 按站点缓存：asset-gaps.json 动辄几百 KB，逐页切换时不该重复下载，
+  // 但也不能终身不过期 —— 否则换站点后展示的还是上一个站的缺口数据。
+  if (!assetGapsCache.value || assetGapsHost.value !== host.value) {
+    assetGapsCache.value = null;
+    try { const r = await fetch('/static/' + host.value + '/audit/asset-gaps.json'); if (r.ok) { assetGapsCache.value = await r.json(); assetGapsHost.value = host.value; } } catch {}
   }
   detailQuality.gaps = assetGapsCache.value?.pages?.find(p => p.page === name) ?? null;
   try {
@@ -525,7 +527,7 @@ function pickSite(s) {
   plSelected.value = new Set();
   selected.value = null;
   detailIntel.value = null; detailScore.value = null;
-  fetch(`/${s.host}/recon/atlas.json`).then(r => r.ok ? r.json() : Promise.reject()).then(a => { buildStatic(a); loadPageStatus(); }).catch(e => { errMsg.value = String(e); });
+  fetch(wsUrl(s.host, 'recon/atlas.json')).then(r => r.ok ? r.json() : Promise.reject(new Error('该站点尚无 atlas.json'))).then(a => { buildStatic(a); loadPageStatus(); }).catch(e => { errMsg.value = String(e); });
 }
 
 // ---------- forge：点选节点 → 单页还原流水线 ----------
@@ -574,7 +576,7 @@ function startForge(node) {
             else node.forgeState = 'done';
             statusText.value = task.done ? '恒星点亮' : (ev.status === 'cancelled' ? '任务已取消' : '造物失败');
             if (task.done) {
-              fetch(`/${host.value}/pages/${task.pageName}/intel/intel.json`).then(r => r.ok ? r.json() : null).then(j => { if (j) task.intel = { headings: j.headings?.length ?? 0, prices: j.prices?.length ?? 0, cta: j.cta?.length ?? 0, links: j.links?.length ?? 0 }; }).catch(() => {});
+              wsJson(host.value, 'pages/' + task.pageName + '/intel/intel.json').then(j => { if (j) task.intel = { headings: j.headings?.length ?? 0, prices: j.prices?.length ?? 0, cta: j.cta?.length ?? 0, links: j.links?.length ?? 0 }; });
             }
             closeTask();
             bump();
@@ -1069,8 +1071,8 @@ function onNodeClick(node) {
   activeTaskId.value = null;                   // 关闭旧锻造视图（后台任务继续跑）
   detailIntel.value = null; detailScore.value = null;
   const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
-  fetch(`/${host.value}/pages/${pageName}/intel/intel.json`).then(r => r.ok ? r.json() : null).then(j => { if (j && selected.value === node) detailIntel.value = j; }).catch(() => {});
-  fetch(`/${host.value}/pages/${pageName}/score.json`).then(r => r.ok ? r.json() : null).then(j => { if (j && selected.value === node) detailScore.value = j; }).catch(() => {});
+  wsJson(host.value, 'pages/' + pageName + '/intel/intel.json').then(j => { if (j && selected.value === node) detailIntel.value = j; });
+  wsJson(host.value, 'pages/' + pageName + '/score.json').then(j => { if (j && selected.value === node) detailScore.value = j; });
 }
 
 function onKeydown(e) {
@@ -1615,6 +1617,31 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
           </div>
           <div v-else class="seo-note">尚无活镜像体检报告（导出时加 --heal --strict 生成 health.json）</div>
         </div>
+        <div class="ov-sec">
+          <div class="panel-sec-name">克隆期 CSS 缺口</div>
+          <div v-if="detailQuality.cloneGaps" class="q-list">
+            <div class="q-row">
+              <span class="q-k">本地化失败引用</span>
+              <span class="q-v" :class="(detailQuality.cloneGaps.cssRefsFailed ?? 0) ? 'mid' : 'ok'">{{ detailQuality.cloneGaps.cssRefsFailed ?? 0 }}</span>
+            </div>
+            <div class="q-row">
+              <span class="q-k">残留同源引用</span>
+              <span class="q-v" :class="(detailQuality.cloneGaps.leftoverSameOriginRefs ?? 0) ? 'bad' : 'ok'">{{ detailQuality.cloneGaps.leftoverSameOriginRefs ?? 0 }}</span>
+            </div>
+            <div class="q-row" v-for="(g, i) in (detailQuality.cloneGaps.gaps || []).slice(0, 8)" :key="i">
+              <span class="q-k">{{ g.reason === 'unreachable' ? '抓取失败' : '无法解析' }}<i class="q-file"> · {{ g.file }}</i></span>
+              <span class="q-v" :title="g.ref">{{ String(g.ref).slice(0, 56) }}</span>
+            </div>
+            <div class="q-row" v-if="(detailQuality.cloneGaps.gaps || []).length > 8">
+              <span class="q-k">…</span><span class="q-v">另有 {{ detailQuality.cloneGaps.gaps.length - 8 }} 处，见 clone-gaps.json</span>
+            </div>
+            <div class="q-row" v-if="detailQuality.cloneGaps.cssRefsFailed">
+              <span class="q-k">说明</span>
+              <span class="q-v">多为<b>原站自身</b>已失效的引用（原站上也是 404）。判定是否影响还原度请看上方「视觉保真」——像素比对才是结论。</span>
+            </div>
+          </div>
+          <div v-else class="seo-note">本页无缺口报告（该页克隆于缺口落盘功能之前，重新克隆即可生成）</div>
+        </div>
         <div class="ov-sec" v-if="detailQuality.history?.jobs?.length">
           <div class="panel-sec-name">锻造历史（引擎持久化 · 最近 {{ detailQuality.history.jobs.length }} 次）</div>
           <div class="q-list">
@@ -1792,7 +1819,11 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .pl-state { font-size: 10px; color: var(--green); width: 52px; text-align: right; flex-shrink: 0; }
 .list-toggle.active { border-color: var(--cyan); color: var(--cyan); }
 
-.keys { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 5; padding: 7px 18px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: rgba(11,11,16,.72); font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: .08em; }
+/* 底部唯一排布约定：.view-nav（导航 dock）锚在 bottom:12px，高约 55px。
+   任何其它固定在底部居中的元素都必须让出这一段，否则会被 dock 盖住
+   （dock 的 z-index:12 高于此处）。实测过：这里原来写 bottom:20px，
+   与 dock 水平重叠 328px、垂直完全重叠，操作提示被压掉大半。 */
+.keys { position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 5; padding: 7px 18px; border: 1px solid var(--cyan-line); border-radius: var(--r); background: rgba(11,11,16,.72); font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: .08em; }
 .keys .k-amber { color: var(--amber); }
 
 /* dock 内错误 */
@@ -1980,6 +2011,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .q-v.ok { color: var(--green); }
 .q-v.mid { color: var(--amber); }
 .q-v.bad { color: var(--red); }
+.q-file { display: block; font-style: normal; opacity: .75; }
 [data-theme="light"] .wv-th,
 [data-theme="light"] .asset-th { background: rgba(255, 255, 255, .96); color: var(--text-dim); }
 [data-theme="light"] .wv-head input,
