@@ -1086,7 +1086,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <p v-else>选择另一站点，生成站点分/覆盖率/LCP/页面类型对比</p>
       <div v-if="matrixReport"><a :href="matrixReport.url" target="_blank" rel="noopener">打开矩阵报告</a></div>
       <div v-else class="matrix-run">
-        <select v-model="matrixPeer"><option value="">选择对标站点</option><option v-for="s in sites.filter(x => x.host !== host)" :key="s.host" :value="s.host">{{ s.host }}</option></select>
+        <select v-model="matrixPeer" aria-label="选择要对标的站点"><option value="">选择对标站点</option><option v-for="s in sites.filter(x => x.host !== host)" :key="s.host" :value="s.host">{{ s.host }}</option></select>
         <button class="wv-primary" :disabled="!matrixPeer" @click="runMatrix">生成对标</button>
       </div>
     </div>

@@ -70,9 +70,11 @@
 
 ## 已在做但未完成
 
-- [ ] 更多站点的实跑验证：目前在 apify.com / thordata.com / vitest.dev 上验证过。
-      需要更多不同技术栈的样本（Vue/React/Angular/静态生成/纯 CSR）
-      来暴露适配器覆盖不到的地方
+- [ ] 更多站点的实跑验证。已有样本（全部 A 级）：
+      cn.vuejs.org 100.00%（VitePress/中文）· vitest.dev 99.96%（VitePress）·
+      crawlee.dev 99.50%（Docusaurus）· ant.design 95.96%（React + CSS-in-JS，差异弥散）·
+      apify.com 61 页 ~99.1% · thordata.com 31 页 ~96.1%。
+      仍缺：Angular / SvelteKit / 纯 CSR 应用（后者预期会低分，因为内容本身就靠 JS）
 
 ---
 

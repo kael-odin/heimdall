@@ -88,6 +88,19 @@ grade: A ≥95 / B ≥85 / C <85
 
 ---
 
+### 诊断脚本（`core/scripts/`）
+
+排查"克隆结果不对"时用的工具。都不是主流程的一部分，但每次排查都要用：
+
+| 命令 | 回答什么问题 |
+| --- | --- |
+| `pnpm -C core probe:render <url...>` | 这个站的内容依赖 JS 吗？（服务端 HTML vs 渲染后的词数/资源对比） |
+| `pnpm -C core probe:diff <原站图> <镜像图>` | 差异是集中在某几块（内容缺失）还是碎成几千点（渲染差异）？ |
+| `pnpm -C core probe:shift <原站图> <镜像图>` | 差异是不是整体位移造成的？（平移后差异是否显著下降） |
+
+**排查顺序建议**：先 `probe:diff` 定形态 → 集中就去定位那几块对应什么元素；
+弥散就 `probe:shift` 排除位移、再查字体与渲染环境。
+
 ## 5. 仓库结构
 
 ```
@@ -146,7 +159,8 @@ v1 设计→实现的差异（以上文为准，本节为勘误表）：
 ```
 core/src/
   crawler/  capture(多帧+CSSOM) build_clone(CSSOM重写) recon(BFS+sitemap) shot_clone index_page
-  differ/   diff(多帧+三维) domdiff(parse5) fixup(AI校准循环) style-probe(computed差异)
+  differ/   diff(多帧+三维+差异形态) domdiff(parse5) shape(连通块形态判定)
+            fixup(AI校准循环) style-probe(computed差异)
   harvest/  harvest(规则+LLM语义) xlsx(跨页汇总)
   adapters/ nextjs/vue-vite/generic（探测自动路由）
   pipeline.mjs（六阶段编排） engine-server.mjs（API+SSE+静态+并发槽） llm.mjs env.mjs
