@@ -14,6 +14,7 @@ import { pickAdapter, refRewriteCandidates } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isNonAssetRef, isSoftHtml } from '../asset-ext.mjs';
 import { scanCssRefs, rewriteCssRefs } from '../css-refs.mjs';
+import { relTokens, stripAssetLinkTags, findStrayRefs } from '../dom-refs.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
@@ -208,9 +209,7 @@ function rewriteHtml(domText, cssFileName) {
     const hit = lookup(val);
     return hit ? attr + '="' + hit + '"' : m;
   });
-  html = html
-    .replace(/<link[^>]*rel="stylesheet"[^>]*>/gi, '')
-    .replace(/<link[^>]*rel="(preload|preconnect|dns-prefetch|modulepreload)"[^>]*>/gi, '')
+  html = stripAssetLinkTags(html)
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace('</head>', '<link rel="stylesheet" href="styles/' + cssFileName + '"></head>');
   return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<script\b[^>]*\/>/gi, '');
@@ -223,8 +222,7 @@ const mainCss = await localizeCss(cssText, 'cssom.css', ORIGIN, cssomMeta.refMap
 console.log('  refs=' + cssomMeta.refs.length + ' ok=' + mainCss.fetched + ' fail=' + mainCss.failed + ' -> styles/cssom.css ' + (mainCss.size / 1024).toFixed(0) + 'KB');
 
 // ---------- 2. 桌面 HTML ----------
-console.log('[2/4] rewrite desktop DOM');
-const header = '<!-- heimdall clone: static L1 transplant (CSSOM final state), scripts stripped, adapter=' + adapter.name + ' -->\n';
+console.log('[2/4] rewrite desktop DOM');const header = '<!-- heimdall clone: static L1 transplant (CSSOM final state), scripts stripped, adapter=' + adapter.name + ' -->\n';
 const desktopHtml = rewriteHtml(readFileSync(join(PAGE, 'dom.html'), 'utf8'), 'cssom.css');
 
 // ---------- 3. 多视口快照（可选） ----------
@@ -248,21 +246,15 @@ if (VARIANTS.length) {
 } else {
   writeFileSync(join(CLONE, 'index.html'), header + desktopHtml);
 }
-// 未本地化的站内**资产**引用——口径只算真正的资产：
-//   ① src/srcset/poster 上的绝对站内地址
-//   ② <link> 里属于资产类的 rel（icon/preload/manifest…），**不含 canonical/alternate**
-//      —— canonical 指向原站是正确的 SEO 归属，不该算残留
-// 也不含 <a href>：指向未克隆页的链接本来就该指回原站（由 linker 负责跨页接线）。
-const ORIGIN_RE = ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const assetRefRe = new RegExp('(?:src|srcset|poster)="' + ORIGIN_RE + '[^"]*"', 'g');
-const assetRels = new Set(['stylesheet', 'icon', 'shortcut icon', 'apple-touch-icon', 'mask-icon', 'manifest', 'preload', 'modulepreload', 'prefetch', 'preconnect', 'dns-prefetch']);
-const leftover = (desktopHtml.match(assetRefRe) ?? []).length
-  + [...desktopHtml.matchAll(/<link\b[^>]*>/gi)].filter(tag => {
-    const rel = (/\brel="([^"]*)"/i.exec(tag[0])?.[1] ?? '').toLowerCase().trim();
-    const href = /\bhref="([^"]*)"/i.exec(tag[0])?.[1] ?? '';
-    return assetRels.has(rel) && href.startsWith(ORIGIN);
-  }).length;
-console.log('  desktop index ' + (desktopHtml.length / 1024).toFixed(0) + 'KB, leftover same-origin asset refs: ' + leftover);
+// 未本地化的站内**资产**引用（口径与两个坑见 src/dom-refs.mjs 顶部注释）。
+// 这里只负责调用与打印 —— 判断逻辑在 dom-refs.mjs，那里有单测覆盖
+// "rel 是 token 列表" 与 "根相对路径也算残留" 两条。
+const leftoverRefs = findStrayRefs(desktopHtml, ORIGIN);
+const leftover = leftoverRefs.length;
+console.log('  desktop index ' + (desktopHtml.length / 1024).toFixed(0) + 'KB, stray same-origin asset refs: ' + leftover);
+if (leftover) {
+  console.log('    ⚠ 这些路径在本地服务下会 404：' + leftoverRefs.slice(0, 5).map(r => r.ref).join(', '));
+}
 
 // ---------- 4. 复制捕获期已下载的图片/图标 ----------
 console.log('[4/4] copy captured assets');

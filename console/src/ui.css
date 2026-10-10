@@ -457,3 +457,7 @@
 .dg-remove { color: var(--text-faint); }
 .dg-remove.bad { color: var(--warn); }
 @media (max-width: 768px) { .deliver-group { grid-template-columns: 1fr auto; row-gap: 2px; } }
+
+/* 「只克隆过、未全站侦察」的站点：用虚线描边区分，不要看起来像坏掉了 */
+.site-btn.partial { border-style: dashed; }
+.site-btn.partial em { color: var(--text-faint); }

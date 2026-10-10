@@ -768,25 +768,48 @@ createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && u.pathname === '/api/sites') {
-    // 已侦察站点清单（有 atlas.json 的 host）——控制台切换器数据源
+    // 站点清单 —— 控制台切换器数据源。
+    //
+    // 判据是"这个 host 有可用产物"，**不只是"有 atlas.json"**：
+    // 用户完全可能只跑 `forge <url>` 克隆单页（这正是"一次性便利"的主路径），
+    // 那样只有 pages/ 没有 recon/。此前这类站点在控制台里完全看不见 ——
+    // 克隆成功了，但界面上找不到它。实测：vitest.dev 就被这样漏掉。
     const wsDir = WORKSPACE;
     const sites = [];
     try {
       for (const d of readdirSync(wsDir)) {
+        if (d.startsWith('.') || d.startsWith('_')) continue;   // _matrix / _shots 等内部目录不是站点
+        const pagesDir = join(wsDir, d, 'pages');
+        const forged = existsSync(pagesDir)
+          ? readdirSync(pagesDir).filter(n => existsSync(join(pagesDir, n, 'clone', 'index.html'))).length
+          : 0;
         const ap = join(wsDir, d, 'recon', 'atlas.json');
-        if (!existsSync(ap)) continue;
-        try {
-          const a = JSON.parse(readFileSync(ap, 'utf8'));
-          const pagesDir = join(wsDir, d, 'pages');
-          const forged = existsSync(pagesDir) ? readdirSync(pagesDir).filter(n => existsSync(join(pagesDir, n, 'clone', 'index.html'))).length : 0;
-          sites.push({
-            host: d, origin: a.origin,
-            pages: a.meta?.pages ?? a.nodes?.length ?? 0,
-            edges: a.meta?.edges ?? 0, forged,
-            status: a.status ?? (a.nodes?.length ? 'ok' : 'failed'),
-            failures: a.failures?.length ?? 0,
-          });
-        } catch {}
+        const hasAtlas = existsSync(ap);
+        if (!hasAtlas && !forged) continue;                     // 既没侦察也没克隆过 → 不算站点
+
+        let atlas = null;
+        if (hasAtlas) { try { atlas = JSON.parse(readFileSync(ap, 'utf8')); } catch {} }
+
+        // 没有 atlas 时从页面 manifest 推 origin（manifest.target 是原站 URL）
+        let origin = atlas?.origin ?? '';
+        if (!origin && forged) {
+          for (const n of readdirSync(pagesDir)) {
+            try {
+              const t = JSON.parse(readFileSync(join(pagesDir, n, 'manifest.json'), 'utf8')).target;
+              if (t) { origin = new URL(t).origin; break; }
+            } catch {}
+          }
+        }
+        sites.push({
+          host: d,
+          origin: origin || ('https://' + d),
+          pages: atlas?.meta?.pages ?? atlas?.nodes?.length ?? forged,
+          edges: atlas?.meta?.edges ?? 0,
+          forged,
+          // 'partial' = 只克隆了页面、没做过全站侦察。控制台据此提示"可侦察补全"。
+          status: atlas ? (atlas.status ?? (atlas.nodes?.length ? 'ok' : 'failed')) : 'partial',
+          failures: atlas?.failures?.length ?? 0,
+        });
       }
     } catch {}
     return json(res, 200, { sites });

@@ -31,7 +31,7 @@ const emit = defineEmits(['close', 'open-forge', 'forge-all', 'verify']);
 const STAGES = { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' };
 
 const detailTab = ref('overview');
-const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null });
+const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
 const assetGapsCache = ref(null);
 const assetGapsHost = ref(null);
 let liveHealth = null, liveHealthHost = '';
@@ -58,17 +58,19 @@ async function loadQuality() {
   const n = props.selected;
   if (!n) return;
   detailQuality.loading = true;
-  Object.assign(detailQuality, { verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null });
+  Object.assign(detailQuality, { verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
   const name = pageNameOf(n);
   const h = props.host;
-  const [v, fu, hist, cg] = await Promise.all([
+  const [v, fu, hist, cg, lk] = await Promise.all([
     wsJson(h, 'verify/' + name + '/verify.json'),
     wsJson(h, 'pages/' + name + '/fixup-history.json'),
     fetch(API + '/api/history/' + encodeURIComponent(h) + '/' + encodeURIComponent(name), { headers: apiHeaders() }).then(r => r.ok ? r.json() : null).catch(() => null),
     wsJson(h, 'pages/' + name + '/clone-gaps.json'),
+    wsJson(h, 'linker-report.json'),
   ]);
   if (props.selected !== n) return;
-  Object.assign(detailQuality, { verify: v, fixup: fu, history: hist, cloneGaps: cg });
+  detailQuality.verify = v; detailQuality.fixup = fu; detailQuality.history = hist; detailQuality.cloneGaps = cg;
+  detailQuality.linker = lk?.pages?.find(p => p.name === name) ?? null;
 
   // asset-gaps.json 可达数百 KB，按站点缓存；换站点才失效
   if (!assetGapsCache.value || assetGapsHost.value !== h) {
@@ -238,6 +240,31 @@ function switchTab(t) {
           </div>
         </div>
         <div v-else class="seo-note">本页无缺口报告（该页克隆于缺口落盘功能之前，重新克隆即可生成）</div>
+      </div>
+      <div class="ov-sec">
+        <div class="panel-sec-name">交付物引用完整性</div>
+        <!-- 与上一块的分别：clone-gaps 是 CSS 里的引用，这里是 HTML 里的。
+             未本地化的 HTML 引用在本地服务下会 404 —— 而像素分可能仍然很高
+             （最终样式已在 cssom.css 里），所以肉眼看不出来，必须显式报。
+             实测来源：vitest.dev 的 rel="preload stylesheet" 曾漏掉两条。 -->
+        <div v-if="detailQuality.linker" class="q-list">
+          <div class="q-row">
+            <span class="q-k">未本地化引用</span>
+            <span class="q-v" :class="(detailQuality.linker.missingLocal || []).length ? 'bad' : 'ok'">{{ (detailQuality.linker.missingLocal || []).length }}</span>
+          </div>
+          <div class="q-row" v-for="(m, i) in (detailQuality.linker.missingLocal || []).slice(0, 8)" :key="i">
+            <span class="q-k">缺失</span><span class="q-v" :title="m">{{ String(m).slice(0, 56) }}</span>
+          </div>
+          <div class="q-row">
+            <span class="q-k">资源本地化</span>
+            <span class="q-v">成功 {{ detailQuality.linker.assetsLocalized ?? 0 }} · 失败 {{ detailQuality.linker.assetFailed ?? 0 }} · HAR 补回 {{ detailQuality.linker.harRecovered ?? 0 }}</span>
+          </div>
+          <div class="q-row">
+            <span class="q-k">跨页接线</span>
+            <span class="q-v">站内改写 {{ detailQuality.linker.linksRewired ?? 0 }} · 回原站 {{ detailQuality.linker.linksToLive ?? 0 }}<i class="q-file">未克隆的页指回原站是预期行为</i></span>
+          </div>
+        </div>
+        <div v-else class="seo-note">本页无接线报告（该页克隆于 linker-report 落盘之前，重新克隆即可生成）</div>
       </div>
       <div class="ov-sec" v-if="detailQuality.history?.jobs?.length">
         <div class="panel-sec-name">克隆历史（引擎持久化 · 最近 {{ detailQuality.history.jobs.length }} 次）</div>

@@ -441,7 +441,21 @@ function pickSite(s) {
   host.value = s.host;
   selected.value = null;
   detailIntel.value = null; detailScore.value = null;
-  fetch(wsUrl(s.host, 'recon/atlas.json')).then(r => r.ok ? r.json() : Promise.reject(new Error('该站点尚无 atlas.json'))).then(a => { buildStatic(a); loadPageStatus(); }).catch(e => { errMsg.value = String(e); });
+  // 站点可能只有克隆、没有全站侦察（用户直接 `forge <url>` 克隆单页 ——
+  // 这正是"一次性便利"的主路径）。那种情况下没有 atlas.json 可读，
+  // 但 /api/pages/<host> 仍然能列出已克隆的页面，所以退到"只有清单"而不是报错：
+  // 站点出现在列表里却点不动，比不出现更让人困惑。
+  fetch(wsUrl(s.host, 'recon/atlas.json'))
+    .then(r => (r.ok ? r.json() : null))
+    .then(async (a) => {
+      if (a) { buildStatic(a); loadPageStatus(); return; }
+      buildStatic({ origin: s.origin ?? ('https://' + s.host), nodes: [], edges: [], meta: { pages: 0, edges: 0 } });
+      await loadPageStatus();
+      view.value = 'pages';    // 没有星图可看，直接把清单摆出来
+      okMsg.value = '该站点只有克隆页面、尚未全站侦察；已显示页面清单。侦察后可获得星图与全站视图。';
+      setTimeout(() => { okMsg.value = ''; }, 6000);
+    })
+    .catch(e => { errMsg.value = String(e); });
 }
 
 // ---------- forge：点选节点 → 单页还原流水线 ----------
@@ -960,8 +974,8 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   <div class="sites" v-if="view === 'atlas' && sites.length">
     <span class="sites-label">已侦察：</span>
     <span class="site-item" v-for="s in sites" :key="s.host">
-      <button class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s)" :title="s.pages ? `${s.forged}/${s.pages} 页已克隆` : '侦察结果为空（失败或无可用页面）'">
-        {{ s.host }}<em>{{ s.pages ? s.forged + 'F' : '空' }}</em>
+      <button class="site-btn" :class="{ active: s.host === host, empty: !s.forged && !s.pages, partial: s.status === 'partial' }" @click="pickSite(s)" :title="s.status === 'partial' ? `${s.forged} 页已克隆 · 未做全站侦察（点开可看清单，侦察后可得星图）` : (s.pages ? `${s.forged}/${s.pages} 页已克隆` : '侦察结果为空（失败或无可用页面）')">
+        {{ s.host }}<em>{{ s.status === 'partial' ? s.forged + 'F · 未侦察' : (s.pages ? s.forged + 'F' : '空') }}</em>
       </button>
       <button class="site-del" :aria-label="'删除站点 ' + s.host" title="删除该站点（侦察/克隆/报告；CAS 资产保留）" @click.stop="deleteSite(s)"><Icon name="close" decorative /></button>
     </span>
