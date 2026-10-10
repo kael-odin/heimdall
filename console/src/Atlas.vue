@@ -155,6 +155,12 @@ const tokenInput = ref(localStorage.getItem('heimdall-token') ?? '');
 const apiBaseInput = ref(localStorage.getItem('heimdall-api') ?? API);
 // 「克隆档案」卡片用（报告页）。PagesView 里那份是它自己的，两者数据源相同但各自持有 ——
 // 卡片只需要两个数字，为它把 PagesView 的 props 反向暴露出去并不划算。
+// 报告页已有专属卡片的报告 id —— 不能让它们在"设计资产"里再出现一遍
+const CARDED_REPORTS = new Set(['archive', 'compare', 'seo', 'watch', 'assets', 'intel', 'verify']);
+const designReports = computed(() => reportIndex.value.filter(r => r.available && !CARDED_REPORTS.has(r.id)));
+
+// 「克隆档案」卡片用（报告页）。PagesView 里那份是它自己的，两者数据源相同但各自持有 ——
+// 卡片只需要两个数字，为它把 PagesView 的 props 反向暴露出去并不划算。
 const doneCount = computed(() => tableNodes.value.filter(n => n.forgeState === 'done').length);
 const avgVisual = computed(() => {
   const vals = Object.values(pageScores).filter(s => s && typeof s.pixel === 'number').map(s => s.pixel);
@@ -436,6 +442,23 @@ async function pollEngine() {
   } catch { engine.value = { ok: false }; }
 }
 setInterval(pollEngine, 15000);
+/**
+ * 站点 chip 上的角标。此前是 `61F` —— F 指 forged（克隆），
+ * 但没人能从界面上知道这一点。改成"已克隆/已发现"的分数形式。
+ * 只克隆过、没做全站侦察的站点单列（那是另一条路径，不是没做完）。
+ */
+function siteBadge(s) {
+  if (s.status === 'partial') return s.forged + ' 页';
+  if (!s.pages) return '空';
+  return s.forged + '/' + s.pages;
+}
+function siteTitle(s) {
+  if (s.status === 'partial') return `${s.forged} 页已克隆 · 未做全站侦察（点开看页面清单；侦察后才有星图）`;
+  if (!s.pages) return '侦察结果为空（失败或没有可用页面）';
+  const behind = s.pages - s.forged;
+  return `${s.forged}/${s.pages} 页已克隆${behind > 0 ? `，还差 ${behind} 页` : '，全部完成'}`;
+}
+
 function pickSite(s) {
   if (!s) return;
   host.value = s.host;
@@ -938,9 +961,9 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="brand">HEIMDALL<span class="brand-sub">SITE ATLAS · 站点克隆工作台</span></div>
     <div class="brand-rule"></div>
     <div class="stats">
-      <div class="stat"><b>{{ hudPages }}</b><i>pages</i></div>
-      <div class="stat"><b>{{ hudEdges }}</b><i :title="`已渲染 ${hudEdgesRendered} / 全图 ${hudEdges} 条边`">edges</i></div>
-      <div class="stat"><b>{{ hudOrigin }}</b><i>origin</i></div>
+      <div class="stat"><b>{{ hudPages }}</b><i title="本次侦察抓取到的页面数。站点实际页面数通常更多 —— 侦察有页数上限（见站点配方的 maxPages）。">页面</i></div>
+      <div class="stat"><b>{{ hudEdges }}</b><i :title="`这 ${hudPages} 个页面之间的站内链接数（不是页面数）。星图上当前已渲染 ${hudEdgesRendered} 条。`">站内链接</i></div>
+      <div class="stat"><b>{{ hudOrigin }}</b><i title="被克隆的原始站点。镜像与原站的对比都以它为准。">原站</i></div>
     </div>
     <div class="status" v-if="statusText" :class="{ live }">{{ statusText }}</div>
   </div>
@@ -972,10 +995,10 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 
   <!-- 已侦察站点切换（仅星图；工作视图在各自表头里放站点选择器，避免浮层压住内容） -->
   <div class="sites" v-if="view === 'atlas' && sites.length">
-    <span class="sites-label">已侦察：</span>
+    <span class="sites-label">站点：</span>
     <span class="site-item" v-for="s in sites" :key="s.host">
-      <button class="site-btn" :class="{ active: s.host === host, empty: !s.forged && !s.pages, partial: s.status === 'partial' }" @click="pickSite(s)" :title="s.status === 'partial' ? `${s.forged} 页已克隆 · 未做全站侦察（点开可看清单，侦察后可得星图）` : (s.pages ? `${s.forged}/${s.pages} 页已克隆` : '侦察结果为空（失败或无可用页面）')">
-        {{ s.host }}<em>{{ s.status === 'partial' ? s.forged + 'F · 未侦察' : (s.pages ? s.forged + 'F' : '空') }}</em>
+      <button class="site-btn" :class="{ active: s.host === host, empty: !s.forged && !s.pages, partial: s.status === 'partial' }" @click="pickSite(s)" :title="siteTitle(s)">
+        {{ s.host }}<em>{{ siteBadge(s) }}</em>
       </button>
       <button class="site-del" :aria-label="'删除站点 ' + s.host" title="删除该站点（侦察/克隆/报告；CAS 资产保留）" @click.stop="deleteSite(s)"><Icon name="close" decorative /></button>
     </span>
@@ -984,9 +1007,12 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   </div>
 
   <!-- 任务中心：每个任务的独立进度（不再被后一个任务覆盖） -->
-  <div class="task-center surface" v-if="tasks.length">
+  <!-- 任务浮层：只在不专门看任务的时候出现。
+       此前没有视图守卫，于是「任务」视图里同一份任务列表会显示两遍
+       （浮层 + 视图各一份）—— 这正是"重复赘余"的典型。 -->
+  <div class="task-center surface" v-if="tasks.length && view !== 'jobs'">
     <div class="tc-head">
-      <span>TASKS · 任务中心</span>
+      <span>任务中心</span>
       <span class="tc-meta">{{ tasks.filter(t => !t.done && !t.failed).length }} 运行中 / {{ tasks.length }}</span>
       <button class="tc-toggle" @click="tasksOpen = !tasksOpen">{{ tasksOpen ? '—' : '＋' }}</button>
     </div>
@@ -1080,26 +1106,28 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <button @click="runResponsiveUpgrade" title="对 minViewport<0.97 的页面做多视口快照，verify 提升才保留">响应式升级</button>
     </div>
     <div class="report-card surface">
-      <h3>活镜像导出</h3>
-      <p v-if="liveHealth">最近：{{ liveHealth.bundle }} · 缺口 {{ liveHealth.assets?.unresolved ?? 0 }}</p>
-      <p v-else>离线完整包：图片本地化 + HAR 回放 + drop-in 根路径</p>
-      <label class="sw" style="margin-bottom:8px;display:flex"><input type="checkbox" v-model="liveRebuild" /><span>先重建 live 页面（站点改版后勾选）</span></label>
-      <button class="wv-primary" @click="runLiveExport">导出完整离线包</button>
-    </div>
-    <div class="report-card surface">
-      <h3>活镜像体检</h3>
+      <h3>活镜像</h3>
+      <!-- 导出与体检此前是两张卡片，但它们说的是同一件产物（离线包 + 它的健康报告）——
+           放在一起才知道"导出什么、导出来怎么样"。 -->
       <template v-if="liveHealth">
+        <p>最近导出：<b>{{ liveHealth.bundle }}</b></p>
         <p>离线资源 {{ liveHealth.assets?.local ?? 0 }} 本地 / {{ liveHealth.assets?.har ?? 0 }} HAR 回放 · <b :style="{ color: (liveHealth.assets?.unresolved ?? 0) ? 'var(--warn)' : 'var(--ok)' }">缺口 {{ liveHealth.assets?.unresolved ?? 0 }}</b></p>
         <p class="score-note">页面 {{ liveHealth.pages ?? 0 }}<template v-if="liveHealth.liveMissing">（少 {{ liveHealth.liveMissing }} 页）</template> · 动态图 {{ liveHealth.assets?.dynamic ?? 0 }} · 站外资产 {{ liveHealth.assets?.externalAssets ?? 0 }} · 未镜像链接 {{ liveHealth.links?.missing ?? 0 }}</p>
       </template>
-      <p v-else>尚无体检报告：导出时加 <code>--heal --strict</code> 自动生成 health.json</p>
+      <p v-else>可部署的离线完整包：本地快照 → HAR 回放 → 原站代理。导出后这里显示离线缺口。</p>
+      <label class="sw" style="margin-bottom:8px;display:flex"><input type="checkbox" v-model="liveRebuild" /><span>先重建 live 页面（站点改版后勾选）</span></label>
+      <button class="wv-primary" @click="runLiveExport">{{ liveHealth ? '重新导出' : '导出完整离线包' }}</button>
     </div>
     <div class="report-card report-wide surface">
-      <h3>更多报告</h3>
-      <div class="report-list" v-if="reportIndex.filter(r => r.available).length">
-        <a v-for="r in reportIndex.filter(x => x.available)" :key="r.id" :href="r.url" target="_blank" rel="noopener">{{ r.name }}</a>
+      <h3>设计资产</h3>
+      <!-- 只列**没有专属卡片**的报告。此前这块叫"更多报告"，
+           把上面已有卡片的 7 项又列了一遍 —— 同一个链接在同一页出现两次。
+           真正只在这里出现的只有设计令牌与组件画廊。 -->
+      <div class="report-list" v-if="designReports.length">
+        <a v-for="r in designReports" :key="r.id" :href="r.url" target="_blank" rel="noopener">{{ r.name }}</a>
       </div>
-      <p v-else>暂无（运行 verify / tokens / components / matrix 后自动出现）</p>
+      <p v-else>暂无（运行 <code>tokens</code> / <code>components</code> 后自动出现）</p>
+      <p class="score-note" v-if="designReports.length">从站点 CSSOM 归纳出的色板、字阶、间距，以及可复用组件的独立预览。</p>
     </div>
 
     <StorageCard @ok="toast" />
