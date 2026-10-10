@@ -27,7 +27,6 @@ import { WORKSPACE, DATA_ROOT, DELIVERABLE } from './paths.mjs';
 import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
 import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
 import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
-import { computeStorage } from './audit/storage.mjs';
 import { gcCas } from './store/cas.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
@@ -163,8 +162,6 @@ let runningVerify = null;
 let runningLive = null;
 let runningReclaim = null;
 let runningUpgrade = null;
-let storageCache = null;            // { value, at }，存储盘点较慢，短时间内复用
-const STORAGE_CACHE_MS = 30_000;
 const pageMetaCache = new Map();
 const MAX_FORGE = 2;
 let forgeSlots = 0;
@@ -216,6 +213,7 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'verify') runningVerify = null;
     else if (t.kind === 'live') runningLive = null;
     else if (t.kind === 'upgrade') runningUpgrade = null;
+    else if (t.kind === 'storage') storageScanTask = null;   // 盘点任务不占锻造槽
     else forgeSlots--;
     jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
   });
@@ -287,6 +285,33 @@ function startLiveExport(host, { root = 'mirror', rebuild = false } = {}) {
   const args = [host, '--offline', '--root', root === 'landing' ? 'landing' : 'mirror', '--heal', '--materialize-har'];
   if (rebuild) args.push('--rebuild');
   return spawnTask(t, join('src', 'live', 'export.mjs'), args, { nodeArgs: ['--max-old-space-size=4096'] }).id;
+}
+
+/**
+ * 磁盘盘点必须走子进程。
+ *
+ * 实测：同步遍历 5.4 万文件要 ~12 秒，期间 **Node 事件循环完全冻结** ——
+ * 连 500ms 的定时器都不会触发，所有 API 请求（含 SSE、活镜像代理）全部排队。
+ * 所以引擎只把结果当成"一份会被刷新的文件"读，真正的遍历交给子进程。
+ */
+const STORAGE_JSON = join(DATA_ROOT, 'storage.json');
+const STORAGE_TTL_MS = 5 * 60_000;
+let storageScanTask = null;
+
+function readStorageFile() {
+  try {
+    const s = JSON.parse(readFileSync(STORAGE_JSON, 'utf8'));
+    return { ...s, stale: Date.now() - Date.parse(s.generatedAt ?? 0) > STORAGE_TTL_MS };
+  } catch { return null; }
+}
+
+/** 后台盘点（不阻塞事件循环）；已在跑则复用同一个任务 */
+function startStorageScan() {
+  if (storageScanTask && storageScanTask.status === 'running') return storageScanTask.id;
+  const t = makeTask('storage', 'local://storage');
+  t.label = '磁盘盘点';
+  storageScanTask = t;
+  return spawnTask(t, join('src', 'audit', 'storage.mjs'), []).id;
 }
 
 function startForge(url, { hostPost = true } = {}) {
@@ -665,16 +690,17 @@ createServer(async (req, res) => {
     return json(res, 404, { error: 'no live health report', host });
   }
 
-  // 存储治理：盘点只读；CAS 回收默认 dry-run，真回收必须带确认短语
+  // 存储治理。**遍历一律在子进程里做**（见 startStorageScan 的注释）：
+  // 这里只读一份会被刷新的 storage.json，并顺手在过期时后台补一次。
   if (u.pathname === '/api/storage' && req.method === 'GET') {
-    if (!storageCache || Date.now() - storageCache.at > STORAGE_CACHE_MS) {
-      storageCache = { value: computeStorage(), at: Date.now() };
-    }
-    return json(res, 200, { ...storageCache.value, cachedAt: storageCache.at });
+    const s = readStorageFile();
+    if (!s || s.stale) startStorageScan();            // 不 await：立刻把已有结果给出去
+    if (!s) return json(res, 200, { pending: true, scanning: !!storageScanTask, sites: [], totals: null });
+    return json(res, 200, { ...s, scanning: !!(storageScanTask && storageScanTask.status === 'running') });
   }
   if (u.pathname === '/api/storage/scan' && req.method === 'POST') {
-    storageCache = { value: computeStorage(), at: Date.now() };
-    return json(res, 200, { ok: true, ...storageCache.value, cachedAt: storageCache.at });
+    const taskId = startStorageScan();
+    return json(res, 202, { ok: true, taskId, status: 'running' });
   }
   if (u.pathname === '/api/storage/gc' && req.method === 'POST') {
     let body = {};
@@ -686,11 +712,9 @@ createServer(async (req, res) => {
     if (apply && body.confirm !== 'HEIMDALL_CAS_GC') {
       return json(res, 400, { error: '真回收需要 confirm=HEIMDALL_CAS_GC' });
     }
-    const result = gcCas(join(DATA_ROOT, 'assets-cas'), { apply });
-    storageCache = null;
-    const storage = computeStorage();
-    storageCache = { value: storage, at: Date.now() };
-    return json(res, 200, { ok: true, ...result, storage });
+    const result = gcCas(join(DATA_ROOT, 'assets-cas'), { apply });   // ~0.5s，可接受
+    startStorageScan();                                               // 重新盘点交给子进程
+    return json(res, 200, { ok: true, ...result, storage: readStorageFile() });
   }
 
   if (req.method === 'GET' && u.pathname === '/api/sites') {
@@ -849,8 +873,8 @@ createServer(async (req, res) => {
     try {
       if (parts.length === 3) {
         rmSync(base, { recursive: true, force: true });
-        const casGc = gcCas(join(DATA_ROOT, 'assets-cas'), { apply: true });
-        storageCache = null;
+        const casGc = gcCas(join(DATA_ROOT, 'assets-cas'), { apply: true });   // 6k 文件约 0.5s，可接受
+        startStorageScan();                                                     // 12s 的盘点交给子进程
         return json(res, 200, { ok: true, removed: 'site', host, casGc: { freed: casGc.freed, orphanFiles: casGc.orphanFiles, failed: casGc.failed, skipped: casGc.skipped } });
       }
       if (parts.length === 5 && parts[3] === 'pages') {
@@ -875,7 +899,7 @@ createServer(async (req, res) => {
           } catch {}
         }
         const pageGc = removedArtifacts ? gcCas(join(DATA_ROOT, 'assets-cas'), { apply: true }) : null;
-        storageCache = null;
+        if (removedArtifacts) startStorageScan();
         return json(res, 200, { ok: true, removed: 'page', host, name, removedArtifacts, removedNode, casGc: pageGc ? { freed: pageGc.freed, orphanFiles: pageGc.orphanFiles, failed: pageGc.failed, skipped: pageGc.skipped } : null });
       }
     } catch (e) { return json(res, 500, { error: String(e).slice(0, 200) }); }

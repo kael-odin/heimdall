@@ -677,16 +677,43 @@ async function loadReports() {
   try { const r = await fetch(API + '/api/reports/' + host.value); if (r.ok) reportIndex.value = (await r.json()).reports ?? []; } catch {}
 }
 const reclaimResult = ref('');
+/**
+ * 盘点在引擎侧走子进程（同步遍历会冻住事件循环 12 秒），所以前端只读结果、必要时轮询。
+ * GET /api/storage 可能返回 { pending:true }（还没盘点过）或 { scanning:true }（正在盘点）。
+ */
+let storagePoll = null;
+function stopStoragePoll() { if (storagePoll) { clearTimeout(storagePoll); storagePoll = null; } }
+async function fetchStorageOnce() {
+  const r = await fetch(API + '/api/storage', { headers: apiHeaders() });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
 async function loadStorage(force = false) {
-  storageLoading.value = true; storageError.value = '';
+  storageLoading.value = true; storageError.value = ''; stopStoragePoll();
+  const poll = (deadline) => {
+    storagePoll = setTimeout(async () => {
+      try {
+        const n = await fetchStorageOnce();
+        if (!n.pending) { storageInfo.value = n; storageLoading.value = false; stopStoragePoll(); return; }
+      } catch { /* 下一轮再试 */ }
+      if (Date.now() > deadline) { storageError.value = '盘点超时（30 秒内未完成）'; storageLoading.value = false; stopStoragePoll(); return; }
+      poll(deadline);
+    }, 1500);
+  };
   try {
-    const url = force ? API + '/api/storage/scan' : API + '/api/storage';
-    const r = await fetch(url, { method: force ? 'POST' : 'GET', headers: apiHeaders() });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-    storageInfo.value = j;
+    if (force) {
+      const r = await fetch(API + '/api/storage/scan', { method: 'POST', headers: apiHeaders() });
+      const j = await r.json().catch(() => ({}));
+      if (r.status !== 202 && !r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      poll(Date.now() + 40_000);
+      return;
+    }
+    const s = await fetchStorageOnce();
+    storageInfo.value = s.pending ? null : s;
+    if (s.pending || s.scanning) { poll(Date.now() + 40_000); return; }
   } catch (e) { storageError.value = String(e).replace(/^Error:\s*/, ''); }
-  finally { storageLoading.value = false; }
+  storageLoading.value = false;
 }
 async function runStorageGc(apply = false) {
   if (storageGcing.value) return;
@@ -698,8 +725,9 @@ async function runStorageGc(apply = false) {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
     storageGcResult.value = j;
-    storageInfo.value = j.storage ?? storageInfo.value;
+    if (j.storage) storageInfo.value = j.storage;
     storageGcConfirm.value = false;
+    loadStorage(false);   // 引擎已后台重新盘点，稍后自动刷新数字
     okMsg.value = apply ? `已回收 ${fmtBytes(j.freed ?? 0)} CAS 孤儿` : `可回收 ${fmtBytes(j.orphanBytes ?? 0)} CAS 孤儿`;
     setTimeout(() => { okMsg.value = ''; }, 4000);
   } catch (e) { storageError.value = String(e).replace(/^Error:\s*/, ''); }
@@ -1305,7 +1333,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <div><h3>存储治理</h3><p>站点、CAS 与交付包的实际磁盘占用；删除站点后可安全回收无引用 CAS。</p></div>
         <button @click="loadStorage(true)" :disabled="storageLoading">{{ storageLoading ? '扫描中…' : '重新扫描' }}</button>
       </div>
-      <div v-if="storageLoading && !storageInfo" class="storage-empty">正在盘点磁盘（首次约 10 秒，之后 30 秒内走缓存）…</div>
+      <div v-if="storageLoading && !storageInfo" class="storage-empty">正在后台盘点磁盘（引擎侧子进程遍历，约 10 秒；期间其他操作不受影响）…</div>
       <div v-else-if="storageError" class="storage-error">{{ storageError }} <button @click="loadStorage(true)">重试</button></div>
       <template v-else-if="storageInfo">
         <div class="storage-kpis">
