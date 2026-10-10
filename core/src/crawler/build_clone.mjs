@@ -14,7 +14,7 @@ import { pickAdapter, refRewriteCandidates } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isNonAssetRef, isSoftHtml } from '../asset-ext.mjs';
 import { scanCssRefs, rewriteCssRefs } from '../css-refs.mjs';
-import { relTokens, stripAssetLinkTags, findStrayRefs } from '../dom-refs.mjs';
+import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases } from '../dom-refs.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
@@ -223,7 +223,10 @@ console.log('  refs=' + cssomMeta.refs.length + ' ok=' + mainCss.fetched + ' fai
 
 // ---------- 2. 桌面 HTML ----------
 console.log('[2/4] rewrite desktop DOM');const header = '<!-- heimdall clone: static L1 transplant (CSSOM final state), scripts stripped, adapter=' + adapter.name + ' -->\n';
-const desktopHtml = rewriteHtml(readFileSync(join(PAGE, 'dom.html'), 'utf8'), 'cssom.css');
+const rawDesktopHtml = rewriteHtml(readFileSync(join(PAGE, 'dom.html'), 'utf8'), 'cssom.css');
+// 画布替换放在引用改写**之后**：这样新插入的 src="assets/canvas-N.png" 不会被
+// 当成待解析的站内引用（它本来就是本地文件）。
+const { html: desktopHtml, count: rasterizedCanvases } = rasterizeCanvases(rawDesktopHtml);
 
 // ---------- 3. 多视口快照（可选） ----------
 const VARIANTS = [375, 768].filter(w => existsSync(join(PAGE, 'dom-' + w + '.html')) && existsSync(join(PAGE, 'cssom-' + w + '.css')));
@@ -269,6 +272,20 @@ for (const [origUrl, relPath] of Object.entries(map.imgMap)) {
   writeFileSync(dest, buf);
   copied++;
 }
+// 画布光栅图（capture 阶段落的）：不在 imgMap 里，要单独拷
+let copiedCanvases = 0;
+{
+  const srcDir = join(PAGE, 'assets');
+  if (existsSync(srcDir)) {
+    for (const n of readdirSync(srcDir)) {
+      if (!/^canvas-\d+\.png$/.test(n)) continue;
+      const dest = join(CLONE, 'assets', n);
+      mkdirSync(dirname(dest), { recursive: true });
+      writeFileSync(dest, readFileSync(join(srcDir, n)));
+      copiedCanvases++;
+    }
+  }
+}
 // 幂等索引：下次重建按「引用原文」复用，编号位移也不会串资产
 writeFileSync(REF_INDEX, JSON.stringify(refIndex, null, 2));
 
@@ -278,6 +295,10 @@ const gapReport = {
   generatedAt: new Date().toISOString(),
   cssRefsFailed: cssGaps.length,
   leftoverSameOriginRefs: leftover,
+  // 画布：脚本被剥离后画布上什么都不剩，所以捕获阶段会把它光栅化成静态图。
+  // 这里如实记录抓到几个 —— 没抓到的（从未绘制 / 跨域污染）保持原样，
+  // 不伪装成"已处理"，否则"缺失"就变成肉眼之外看不见的东西。
+  canvasRasterized: rasterizedCanvases,
   gaps: cssGaps,
 };
 writeFileSync(join(PAGE, 'clone-gaps.json'), JSON.stringify(gapReport, null, 2));
@@ -286,4 +307,4 @@ if (cssGaps.length) {
   for (const g of cssGaps.slice(0, 3)) console.log('     · ' + g.ref.slice(0, 80));
 }
 
-console.log('\nDONE clone -> ' + relative(process.cwd(), CLONE) + ' (assets copied: ' + copied + ', variants: ' + VARIANTS.length + ', css gaps: ' + cssGaps.length + ')');
+console.log('\nDONE clone -> ' + relative(process.cwd(), CLONE) + ' (assets copied: ' + copied + ', canvas rasters: ' + copiedCanvases + ', variants: ' + VARIANTS.length + ', css gaps: ' + cssGaps.length + ')');

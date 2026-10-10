@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, DROP_RELS, ASSET_RELS } =
+const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, rasterizeCanvases, DROP_RELS, ASSET_RELS } =
   await import('../src/dom-refs.mjs');
 
 const ORIGIN = 'https://vitest.dev';
@@ -134,4 +134,56 @@ test('集合内容自洽', () => {
   assert.ok(!DROP_RELS.has('canonical'));
   assert.ok(ASSET_RELS.has('icon') && ASSET_RELS.has('manifest'));
   assert.ok(!ASSET_RELS.has('canonical') && !ASSET_RELS.has('alternate'));
+});
+
+// ---------- 画布光栅化替换 ----------
+test('rasterizeCanvases: 已光栅化的 canvas 换成 img，保留尺寸与类名', () => {
+  const html = '<div class="wrap"><canvas width="718" height="331" class="w-full" data-heimdall-canvas="0"></canvas></div>';
+  const { html: out, count } = rasterizeCanvases(html);
+  assert.equal(count, 1);
+  assert.match(out, /<img src="assets\/canvas-0\.png"/);
+  assert.match(out, /class="w-full"/);
+  assert.match(out, /width="718"/);
+  assert.match(out, /height="331"/);
+  assert.match(out, /alt=""/);
+  assert.doesNotMatch(out, /<canvas/);
+});
+
+test('rasterizeCanvases: **没抓到的保持原样**，不伪装成已处理', () => {
+  // 空白画布（从未绘制）或跨域污染（读不到像素）不该被换成一张空图 ——
+  // 那样只是把"缺失"藏起来。
+  const html = '<canvas width="10" height="10"></canvas>';
+  const { html: out, count } = rasterizeCanvases(html);
+  assert.equal(count, 0);
+  assert.equal(out, html);
+});
+
+test('rasterizeCanvases: 混合场景只替换抓到的那些', () => {
+  const html = '<canvas data-heimdall-canvas="0" width="1" height="1"></canvas><canvas width="2" height="2"></canvas>';
+  const { html: out, count } = rasterizeCanvases(html);
+  assert.equal(count, 1);
+  assert.equal((out.match(/<canvas/g) ?? []).length, 1, '未抓到的那个要留着');
+  assert.equal((out.match(/<img/g) ?? []).length, 1);
+});
+
+test('rasterizeCanvases: 自闭合写法也能处理', () => {
+  const { count } = rasterizeCanvases('<canvas width="4" height="4" data-heimdall-canvas="2" />');
+  assert.equal(count, 1);
+});
+
+test('rasterizeCanvases: 不影响其它元素与既有 img', () => {
+  const html = '<img src="assets/a.png"><canvas data-heimdall-canvas="1"></canvas><div>x</div>';
+  const { html: out } = rasterizeCanvases(html);
+  assert.ok(out.startsWith('<img src="assets/a.png">'));
+  assert.ok(out.endsWith('<div>x</div>'));
+});
+
+test('rasterizeCanvases: 可自定义资产目录', () => {
+  const { html: out } = rasterizeCanvases('<canvas data-heimdall-canvas="3"></canvas>', { assetDir: 'media' });
+  assert.match(out, /src="media\/canvas-3\.png"/);
+});
+
+test('rasterizeCanvases: 空输入 / 无画布不炸', () => {
+  assert.deepEqual(rasterizeCanvases('').count, 0);
+  assert.equal(rasterizeCanvases('<div>hi</div>').html, '<div>hi</div>');
 });

@@ -73,15 +73,109 @@ try {
 } catch { /* 无 banner，跳过 */ }
 
 console.log('[3/7] lazy-load sweep');
+/**
+ * 滚动扫描，**同时**把 <canvas> 光栅化。
+ *
+ * 为什么必须在滚动过程中抓，而不是扫完再抓：
+ *  · 画布内容常由滚动触发（IntersectionObserver 之类）——不滚就永远空白；
+ *  · 画布还可能是**动画**，内容会自己清空。实测 vitest.dev 首页两个画布：
+ *    滚到位后立刻有 3.8 万个不透明像素，3 秒后其中一个归零。
+ *
+ * 这是静态镜像的一整类盲区：脚本被剥离后，画布上什么都没了。
+ * 而像素分可能仍然很高（画布只占页面一小块），所以肉眼才看得见、报告看不见。
+ * 抓到之后由 build_clone 换成 <img>，内容就成了普通的静态资源。
+ */
+// ① 先滚动（单独一次 evaluate），触发滚动相关的懒加载与画布绘制
 if (CAP.scrollSweep) await page.evaluate(async ({ step, delay }) => {
   for (let y = 0; y < document.body.scrollHeight; y += step) {
     window.scrollTo(0, y);
     await new Promise(r => setTimeout(r, delay));
   }
-  window.scrollTo(0, 0);
 }, { step: CAP.scrollStep, delay: CAP.scrollDelayMs });
+
 await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
 await page.waitForTimeout(CAP.settleMs);
+
+/**
+ * ② 再从 **Node 侧**循环采样画布。
+ *
+ * 为什么不能把"滚动 + 采样"塞进同一个 evaluate：
+ * 实测过 —— 同一次 evaluate 内采样，两个画布全程都是 0 个不透明像素；
+ * 而把它拆成"Node 侧循环、每轮一次 evaluate"，立刻拿到 3.8 万个。
+ * 一次性跑完的长 evaluate 会占住渲染机会，画布根本没被真正绘制过。
+ *
+ * 画布还需要多轮采样：内容常是动画，单次采样容易正好撞在空帧上
+ * （实测其中一个画布 3 秒后自行清空）。
+ */
+const canvasInfo = { total: 0, best: [], found: [] };
+if (CAP.scrollSweep) {
+  // 记**内容最全的那一帧**，不是第一帧有内容的。
+  // 画布多是动画：实测 vitest.dev 的 Vite Powered 画布在不同帧里画 1~2 个六边形，
+  // 抓第一帧就少一个图形 —— 肉眼一看就知道不对。
+  const bestUrl = new Map();    // i -> dataUrl（该画布见过的最满帧）
+  const bestPx = new Map();     // i -> 该帧的不透明像素数
+  // 再滚一遍：画布动画多由 IntersectionObserver 触发，而上面那次滚动
+  // 发生在页面水合之前（waitUntil 默认 domcontentloaded），可能什么都没触发到。
+  await page.evaluate(async ({ step, delay }) => {
+    for (let y = 0; y < document.body.scrollHeight; y += step) {
+      window.scrollTo(0, y);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }, { step: CAP.scrollStep, delay: CAP.scrollDelayMs });
+  let allCaptured = false;
+  for (let round = 0; round < 20 && !allCaptured; round++) {
+    const snap = await page.evaluate(() => {
+      const out = [];
+      [...document.querySelectorAll('canvas')].forEach((c, i) => {
+        let opaque = 0, dim = 0, err = '';
+        try {
+          const t = document.createElement('canvas');
+          t.width = c.width; t.height = c.height;
+          dim = t.width * t.height;
+          if (dim) {
+            const g = t.getContext('2d');
+            g.drawImage(c, 0, 0);
+            const d = g.getImageData(0, 0, t.width, t.height).data;
+            for (let k = 3; k < d.length; k += 4) if (d[k] > 8) opaque++;
+          }
+        } catch (e) { err = String(e).slice(0, 60); }
+        out.push({ i, opaque, dim, err, dataUrl: opaque > 300 ? c.toDataURL('image/png') : '' });
+      });
+      return out;
+    });
+    canvasInfo.total = snap.length;
+    for (const c of snap) {
+      if (c.err) { canvasInfo.best[c.i] = -2; continue; }
+      if ((canvasInfo.best[c.i] ?? -1) < c.opaque) canvasInfo.best[c.i] = c.opaque;
+      if (c.dataUrl && c.opaque > (bestPx.get(c.i) ?? 0)) { bestPx.set(c.i, c.opaque); bestUrl.set(c.i, c.dataUrl); }
+    }
+    allCaptured = snap.length > 0 && bestUrl.size >= snap.length;   // 全抓到就停
+    await page.waitForTimeout(220);
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  canvasInfo.found = [...bestUrl.entries()].map(([i, dataUrl]) => ({ i, dataUrl }));
+}
+const canvases = canvasInfo;
+console.log(`    canvas diag: total=${canvases.total} bestOpaque=${JSON.stringify(canvases.best)}`);
+
+// 把光栅化结果落盘，并在 DOM 上打标记 —— build_clone 据此把 <canvas> 换成 <img>
+if (canvases.found.length) {
+  mkdirSync(join(OUT, 'assets'), { recursive: true });
+  let kept = 0, bytes = 0;
+  for (const c of canvases.found) {
+    const b64 = String(c.dataUrl).split(',')[1] ?? '';
+    if (!b64) continue;
+    const buf = Buffer.from(b64, 'base64');
+    if (!buf.length) continue;
+    writeFileSync(join(OUT, 'assets', `canvas-${c.i}.png`), buf);
+    kept++; bytes += buf.length;
+  }
+  await page.evaluate((idxs) => {
+    const list = [...document.querySelectorAll('canvas')];
+    for (const i of idxs) if (list[i]) list[i].setAttribute('data-heimdall-canvas', String(i));
+  }, canvases.found.map(c => c.i));
+  console.log(`    canvases rasterized: ${kept}/${canvases.found.length} (${(bytes / 1024).toFixed(0)}KB)`);
+}
 
 // DOM 探测栈 → 适配器（配方可用 adapter 字段强制指定）
 const domProbe = await page.content();

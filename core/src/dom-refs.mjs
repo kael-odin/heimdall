@@ -47,6 +47,41 @@ export function stripAssetLinkTags(html, dropRels = DROP_RELS) {
 }
 
 /**
+ * 把已光栅化的 <canvas> 换成 <img>。
+ *
+ * 静态镜像会剥离全部 <script>，所以画布上什么都不剩 —— 那是一整类盲区。
+ * capture 阶段负责在滚动扫描时把画布像素存成 assets/canvas-<i>.png，
+ * 并在元素上打 data-heimdall-canvas="<i>"；这里据此替换。
+ *
+ * **没抓到的保持原样**：空白画布（从未绘制）或跨域污染（读不到像素）不该
+ * 被换成一张空图 —— 那样只是把"缺失"伪装成"已处理"。
+ *
+ * @returns {{ html: string, count: number }}
+ */
+export function rasterizeCanvases(html, { assetDir = 'assets' } = {}) {
+  let count = 0;
+  const out = String(html ?? '').replace(/<canvas\b([^>]*?)(?:\/>|>([\s\S]*?)<\/canvas>)/gi, (tag, attrs) => {
+    const m = /data-heimdall-canvas\s*=\s*"(\d+)"/i.exec(attrs);
+    if (!m) return tag;
+    count++;
+    const w = /\bwidth\s*=\s*"?(\d+)"?/i.exec(attrs)?.[1];
+    const h = /\bheight\s*=\s*"?(\d+)"?/i.exec(attrs)?.[1];
+    const cls = /\bclass\s*=\s*"([^"]*)"/i.exec(attrs)?.[1];
+    const kept = [
+      `src="${assetDir}/canvas-${m[1]}.png"`,
+      cls ? `class="${cls}"` : '',
+      w ? `width="${w}"` : '',
+      h ? `height="${h}"` : '',
+      // 记录来源：这是画面快照，不是原元素。排查"这图哪来的"时省事。
+      'data-heimdall-raster="1"',
+      'alt=""',   // 原画布无 alt；这些是装饰性插图，显式标装饰
+    ].filter(Boolean).join(' ');
+    return `<img ${kept}>`;
+  });
+  return { html: out, count };
+}
+
+/**
  * 这个引用在本地服务下会不会 404？
  * @param {string} value 引用原文
  * @param {string} origin 原站 origin（如 https://vitest.dev）
