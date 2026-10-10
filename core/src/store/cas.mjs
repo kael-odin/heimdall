@@ -8,7 +8,7 @@
  * 产物：DATA_ROOT/assets-cas/<aa>/<bb>/<sha256><ext>
  */
 import { createHash } from 'node:crypto';
-import { readFileSync, mkdirSync, existsSync, linkSync, copyFileSync, statSync, readdirSync, renameSync, unlinkSync } from 'node:fs';
+import { readFileSync, mkdirSync, existsSync, linkSync, copyFileSync, statSync, readdirSync, renameSync, unlinkSync, rmdirSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 
 export function sha256File(file) {
@@ -46,6 +46,80 @@ function linkOver(casFile, target) {
   } catch {
     return false;
   }
+}
+
+/**
+ * 扫描 CAS，按硬链接数分类。
+ *
+ * 为什么 nlink===1 就等于"可回收"：去重后 CAS 与 workspace 里的每个副本**共用同一个 inode**
+ * （linkOver 把原文件 rename 走、再 link CAS 过去）。所以：
+ *   nlink === 1  → 只剩 CAS 这一个链接，没有任何站点文件在用它 → 孤儿，可回收
+ *   nlink >= 2   → 至少还有一个 workspace 副本在用 → 保留
+ * CAS 从不被直接读取（纯去重源），因此删掉孤儿不会破坏任何产物。
+ *
+ * @returns {{files:number, bytes:number, linkedFiles:number, linkedBytes:number,
+ *            orphanFiles:number, orphanBytes:number, orphans:string[], ms:number, empty:number}}
+ */
+export function scanCas(storeDir) {
+  const started = Date.now();
+  const out = { files: 0, bytes: 0, linkedFiles: 0, linkedBytes: 0, orphanFiles: 0, orphanBytes: 0, orphans: [], empty: 0, ms: 0 };
+  if (!existsSync(storeDir)) { out.ms = Date.now() - started; return out; }
+
+  const walk = (dir) => {
+    let entries;
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!e.isFile()) continue;
+      let st;
+      try { st = statSync(p); } catch { continue; }
+      out.files++;
+      out.bytes += st.size;
+      if (st.size === 0) { out.empty++; out.orphans.push(p); out.orphanFiles++; continue; }   // 0 字节：绝无价值，直接算孤儿
+      if (st.nlink > 1) { out.linkedFiles++; out.linkedBytes += st.size; }
+      else { out.orphanFiles++; out.orphanBytes += st.size; out.orphans.push(p); }
+    }
+  };
+  walk(storeDir);
+  out.ms = Date.now() - started;
+  return out;
+}
+
+/**
+ * 回收 CAS 孤儿。
+ * @param {string} storeDir
+ * @param {{apply?:boolean, limit?:number}} [opts] apply=false 时只统计
+ */
+export function gcCas(storeDir, { apply = false } = {}) {
+  const scan = scanCas(storeDir);
+  if (!apply) return { ...scan, applied: false, freed: 0, failed: 0, skipped: 0 };
+
+  let freed = 0, failed = 0, skipped = 0;
+  for (const p of scan.orphans) {
+    try {
+      // 删除前**再看一次** nlink：扫描与删除之间可能有并发去重刚把它链上（窗口极小，但代价也很小）
+      const st = statSync(p);
+      if (st.nlink > 1) { skipped++; continue; }
+      unlinkSync(p);
+      freed += st.size;
+    } catch { failed++; }
+  }
+  // 清掉空目录（aa/bb），避免 CAS 里堆积成千上万个空文件夹
+  try {
+    for (const aa of readdirSync(storeDir, { withFileTypes: true })) {
+      if (!aa.isDirectory()) continue;
+      const aaDir = join(storeDir, aa.name);
+      for (const bb of readdirSync(aaDir, { withFileTypes: true })) {
+        if (!bb.isDirectory()) continue;
+        const bbDir = join(aaDir, bb.name);
+        try { if (readdirSync(bbDir).length === 0) rmdirSync(bbDir); } catch { /* 非空或占用 */ }
+      }
+      try { if (readdirSync(aaDir).length === 0) rmdirSync(aaDir); } catch { /* 非空 */ }
+    }
+  } catch { /* 清理失败不影响主流程 */ }
+
+  return { ...scan, applied: true, freed, failed, skipped, orphans: undefined };
 }
 
 function walkFiles(dir, out = []) {

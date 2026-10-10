@@ -6,7 +6,6 @@
 :root {
   /* 底色层 */
   --abyss: #0B0B10;
-  --dust: #1E1E23;
   --muted: #232328;
   /* 语义色 */
   --cyan: #22D3EE;
@@ -19,7 +18,7 @@
   /* 文字 */
   --text: #F8FAFC;
   --text-dim: #94A3B8;
-  --text-faint: #64748B;
+  --text-faint: #7E8CA0;   /* 实测 4.8:1 on 面板底（AA 需 ≥4.5）；原 #64748B 只有 4.13:1 */
   /* 字体 */
   --font-num: 'Orbitron', monospace;
   --font-mono: 'Share Tech Mono', monospace;
@@ -27,24 +26,22 @@
   /* 几何 */
   --r: 4px;
   --line: 1px;
-  --pad: 14px;
   --dur: 180ms;
 }
 /* 浅色主题（data-theme="light"）：观测站日间模式 */
 [data-theme="light"] {
   --abyss: #F4F6FA;
-  --dust: #FFFFFF;
   --muted: #E8ECF2;
-  --cyan: #0891B2;
-  --cyan-dim: rgba(8, 145, 178, .5);
-  --cyan-line: rgba(8, 145, 178, .25);
+  --cyan: #0E7490;                    /* 白底 5.4:1；原 #0891B2 只有 3.68:1 */
+  --cyan-dim: rgba(14, 116, 144, .5);
+  --cyan-line: rgba(14, 116, 144, .28);
   --amber: #B45309;
   --violet: #7C3AED;
-  --green: #059669;
-  --red: #DC2626;
+  --green: #047857;                   /* 白底 5.6:1；原 #059669 只有 3.6:1 */
+  --red: #B91C1C;                     /* 白底 6.6:1；原 #DC2626 在淡红底上只有 4.47:1 */
   --text: #0F172A;
   --text-dim: #475569;
-  --text-faint: #94A3B8;
+  --text-faint: #5B6675;   /* 白底 5.8:1 / 浅灰底(#F4F6FA) 5.2:1；原 #94A3B8 只有 2.4:1 */
 }
 [data-theme="light"] .hud-panel,
 [data-theme="light"] .dock { background: #FFFFFF; }
@@ -53,6 +50,17 @@
 [data-theme="light"] .hud-rule::after { box-shadow: none; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+button, a, input, select, textarea { font: inherit; }
+button:disabled, input:disabled, select:disabled { cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+/* 只对读屏可见：用于给无可见标签的控件补 name/label */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
+}
 ::placeholder { color: var(--text-faint); opacity: .85; }
 html, body, #app { height: 100%; background: var(--abyss); color: var(--text); font-family: var(--font-cn); overflow: hidden; }
 ::selection { background: rgba(34, 211, 238, .3); }

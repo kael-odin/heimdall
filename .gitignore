@@ -37,3 +37,12 @@ Thumbs.db
 # playwright
 playwright-report/
 test-results/
+
+# 运行期盘点产物（引擎会在内存里现算；CLI storage 默认写这里）
+core/storage.json
+
+# Impeccable 设计流程产物：surface brief 与 design.json 入库，评审截图/草稿不入库
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/build/
+.impeccable/config.local.json

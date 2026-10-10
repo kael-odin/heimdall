@@ -8,10 +8,14 @@
  */
 import { onMounted, onBeforeUnmount, ref, reactive, computed, watch } from 'vue';
 import Graph3D from './Graph3D.vue';
+import SitePicker from './SitePicker.vue';
+import Icon from './Icon.vue';
 
 import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
 const PAGE_TYPES = PT;
 const TYPE_COLOR = Object.fromEntries(Object.entries(PAGE_TYPES).map(([k, v]) => [k, v.color]));
+// 星图画布恒定深色，所以图例/节点用深色色板；文字类标签按当前主题取值
+const typeColorThemed = (t) => typeColor(t, theme.value);
 // 引擎 API 直连（vite proxy 会缓冲实时 SSE；引擎侧 CORS 已开放）
 // 单端口部署时与引擎同源；Vite dev（5173/5175）直连引擎 :8900（避免代理缓冲 SSE）
 const DEV_PORTS = ['5173', '5174', '5175'];
@@ -37,6 +41,12 @@ const liveHealth = ref(null);    // 最新活镜像体检（/api/live-health/:ho
 const lastVerify = ref(null);    // 最近一次全站体检结果（/api/verify）
 const liveRebuild = ref(false);  // 导出活镜像前先重建 live 页面
 const liveHealthHost = ref('');   // liveHealth 对应的 host（切站后避免串数据）
+const storageInfo = ref(null);
+const storageLoading = ref(false);
+const storageError = ref('');
+const storageGcing = ref(false);
+const storageGcResult = ref(null);
+const storageGcConfirm = ref(false);
 const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const matrixPeer = ref('');          // 跨站对标对象
@@ -247,10 +257,16 @@ function selectView(id) {
   if (id === 'pages' && view.value === 'pages') { view.value = 'atlas'; return; }   // 再次点击 = 收起
   view.value = id;
   if (id === 'jobs') loadJobHistory();
-  if (id === 'reports') { loadReports(); loadAssets(); loadLiveHealth(); loadVerifySummary(); }
+  if (id === 'reports') { loadReports(); loadAssets(); loadLiveHealth(); loadVerifySummary(); loadStorage(); }
   if (id === 'settings') loadLlm();
 }
 function togglePages() { if (view.value === 'pages') view.value = 'atlas'; else { view.value = 'pages'; loadPageStatus(); } }
+/** 工作视图表头的站点切换（SitePicker emit） */
+function pickSiteByHost(h) {
+  const s = sites.value.find(x => x.host === h);
+  if (s) pickSite(s);
+  else { host.value = h; }
+}
 async function deleteSite(s) {
   if (!s?.host) return;
   if (!confirm('删除站点 ' + s.host + '？\n将移除 workspace/' + s.host + ' 下的侦察、克隆与报告（CAS 资产保留）。')) return;
@@ -661,6 +677,34 @@ async function loadReports() {
   try { const r = await fetch(API + '/api/reports/' + host.value); if (r.ok) reportIndex.value = (await r.json()).reports ?? []; } catch {}
 }
 const reclaimResult = ref('');
+async function loadStorage(force = false) {
+  storageLoading.value = true; storageError.value = '';
+  try {
+    const url = force ? API + '/api/storage/scan' : API + '/api/storage';
+    const r = await fetch(url, { method: force ? 'POST' : 'GET', headers: apiHeaders() });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    storageInfo.value = j;
+  } catch (e) { storageError.value = String(e).replace(/^Error:\s*/, ''); }
+  finally { storageLoading.value = false; }
+}
+async function runStorageGc(apply = false) {
+  if (storageGcing.value) return;
+  if (apply && !storageGcConfirm.value) { storageGcConfirm.value = true; return; }
+  storageGcing.value = true; storageError.value = '';
+  try {
+    const body = apply ? { apply: true, confirm: 'HEIMDALL_CAS_GC' } : { apply: false };
+    const r = await fetch(API + '/api/storage/gc', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    storageGcResult.value = j;
+    storageInfo.value = j.storage ?? storageInfo.value;
+    storageGcConfirm.value = false;
+    okMsg.value = apply ? `已回收 ${fmtBytes(j.freed ?? 0)} CAS 孤儿` : `可回收 ${fmtBytes(j.orphanBytes ?? 0)} CAS 孤儿`;
+    setTimeout(() => { okMsg.value = ''; }, 4000);
+  } catch (e) { storageError.value = String(e).replace(/^Error:\s*/, ''); }
+  finally { storageGcing.value = false; }
+}
 async function runReclaim(apply) {
   const n = assetInfo.value?.orphans?.count ?? 0;
   if (apply && !window.confirm('确认回收 ' + n + ' 个孤儿资产？此操作会删除文件（仅限 clone/assets|styles）。')) return;
@@ -1023,7 +1067,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 <template>
   <Graph3D v-show="view === 'atlas'" :nodes="gNodes" :links="gLinks" :tick="gTick" :auto-rotate="autoRotate" @node-click="onNodeClick" />
 
-  <div class="hud">
+  <div class="hud" v-if="view === 'atlas'">
     <div class="brand">HEIMDALL<span class="brand-sub">SITE ATLAS · 深空观测站</span></div>
     <div class="hud-rule"></div>
     <div class="stats">
@@ -1039,7 +1083,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="panel-title">OBSERVATORY · 仪表面板<button class="panel-collapse" @click="showPanel = false" title="收起">—</button></div>
     <div class="panel-sec">
       <div class="panel-sec-name">图例 · 页面类型</div>
-      <div class="legend"><span class="lg" v-for="(t, k) in PAGE_TYPES" :key="k"><i :style="{ background: t.color }"></i>{{ t.cn }}</span></div>
+      <div class="legend"><span class="lg" v-for="(t, k) in PAGE_TYPES" :key="k"><i :style="{ background: typeColorThemed(k) }"></i>{{ t.cn }}</span></div>
     </div>
     <div class="panel-sec">
       <div class="panel-sec-name">显示</div>
@@ -1051,22 +1095,22 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <div class="eng-detail" v-if="engine.ok">锻造槽 {{ engine.forge?.slots ?? 0 }}/2 · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
     </div>
   </div>
-  <button class="panel-open" v-if="view === 'atlas' && !showPanel" @click="showPanel = true" title="仪表面板">☰</button>
+  <button class="panel-open" v-if="view === 'atlas' && !showPanel" @click="showPanel = true" aria-label="展开仪表面板" title="仪表面板"><Icon name="menu" decorative /></button>
 
   <div class="seek hud-panel">
-    <button class="theme-btn" @click="toggleTheme" :title="theme === 'dark' ? '切浅色' : '切深色'">{{ theme === 'dark' ? '☾' : '☀' }}</button>
-    <input v-model="host" placeholder="输入目标域名 · apify.com" spellcheck="false" @keyup.enter="startRecon" />
+    <button class="theme-btn" @click="toggleTheme" :aria-label="theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'" :title="theme === 'dark' ? '切换浅色' : '切换深色'"><Icon :name="theme === 'dark' ? 'moon' : 'sun'" decorative /></button>
+    <input v-model="host" aria-label="目标站点域名" placeholder="输入目标域名 · apify.com" spellcheck="false" @keyup.enter="startRecon" />
     <button @click="startRecon">侦察</button>
   </div>
 
-  <!-- 已侦察站点切换 -->
-  <div class="sites" v-if="sites.length">
+  <!-- 已侦察站点切换（仅星图；工作视图在各自表头里放站点选择器，避免浮层压住内容） -->
+  <div class="sites" v-if="view === 'atlas' && sites.length">
     <span class="sites-label">已侦察：</span>
     <span class="site-item" v-for="s in sites" :key="s.host">
       <button class="site-btn" :class="{ active: s.host === host, empty: !s.pages }" @click="pickSite(s)" :title="s.pages ? `${s.forged}/${s.pages} 页已锻造` : '侦察结果为空（失败或无可用页面）'">
         {{ s.host }}<em>{{ s.pages ? s.forged + 'F' : '空' }}</em>
       </button>
-      <button class="site-del" title="删除该站点（侦察/克隆/报告；CAS 资产保留）" @click.stop="deleteSite(s)">✕</button>
+      <button class="site-del" :aria-label="'删除站点 ' + s.host" title="删除该站点（侦察/克隆/报告；CAS 资产保留）" @click.stop="deleteSite(s)"><Icon name="close" decorative /></button>
     </span>
     <button class="site-btn audit-btn" :disabled="!!engine.audit" @click="runAudit" :title="engine.audit ? '已有审计任务在运行' : '全站 SEO 审计（40+ 规则，输出 HTML/CSV/JSON 报告）'">SEO 审计</button>
     <button class="site-btn list-toggle" :class="{ active: view === 'pages' }" @click="togglePages()" :title="view === 'pages' ? '收起清单返回星图' : '打开页面清单'">{{ view === 'pages' ? '收起清单' : '页面清单' }}</button>
@@ -1092,9 +1136,10 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <!-- 工作台视图：页面 / 任务 / 报告 / 设置 -->
   <section class="work-view hud-panel" v-if="view === 'pages'">
     <div class="wv-head">
-      <b>页面清单 · {{ host }}</b>
+      <b>页面清单 · {{ host || '未选择站点' }}</b>
       <span class="wv-stat">{{ doneCount }}/{{ tableNodes.length }} 已克隆 · 平均视觉 {{ avgVisual }}<template v-if="avgWorst"> · 最差视口均值 {{ avgWorst }}</template></span>
-      <input class="wv-search" v-model="pageQuery" placeholder="搜索 URL / 标题" spellcheck="false" />
+      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="pickSiteByHost" @audit="runAudit" />
+      <input class="wv-search" v-model="pageQuery" aria-label="搜索页面 URL 或标题" placeholder="搜索 URL / 标题" spellcheck="false" />
       <select v-model="typeFilter"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
       <select v-model="statusFilter"><option value="">全部状态 ({{ statusCounts.all }})</option><option value="done">已克隆 ({{ statusCounts.done }})</option><option value="todo">未完成 ({{ statusCounts.todo }})</option><option value="failed">失败 ({{ statusCounts.failed }})</option></select>
       <button @click="plSelectAll" title="全选未克隆页">全选未锻</button>
@@ -1102,7 +1147,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <button @click="plSelected = new Set()" title="清空选择">清空</button>
       <button class="wv-primary" :disabled="!plSelected.size" @click="forgeChecked">克隆选中 ({{ plSelected.size }})</button>
       <button class="danger" :disabled="!plSelected.size" @click="removeChecked">移除选中 ({{ plSelected.size }})</button>
-      <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）">✕ 返回星图</button>
+      <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
     </div>
     <div class="wv-rows">
       <div class="wv-row wv-th">
@@ -1119,10 +1164,10 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <span class="c-actions">操作</span>
       </div>
       <div class="wv-row" v-for="n in filteredNodes" :key="n.id">
-        <label class="c-check"><input type="checkbox" :checked="plSelected.has(n.id)" @change="plToggle(n.id)" /></label>
+        <label class="c-check"><input type="checkbox" :checked="plSelected.has(n.id)" :aria-label="'选择页面 ' + (n.path || n.url)" @change="plToggle(n.id)" /></label>
         <span class="wv-url c-path" @click="openDetail(n)" :title="n.url">{{ n.path }}</span>
         <span class="wv-title c-title" :title="n.title">{{ n.title }}</span>
-        <span class="wv-type c-type" :style="{ color: typeColor(n.type) }">{{ typeCn(n.type) }}</span>
+        <span class="wv-type c-type" :style="{ color: typeColorThemed(n.type) }">{{ typeCn(n.type) }}</span>
         <span class="wv-state c-state" :class="n.forgeState">{{ n.forgeState === 'done' ? '已克隆' : n.forgeState === 'running' ? '克隆中' : n.forgeState === 'failed' ? '失败' : '未克隆' }}</span>
         <span class="wv-score c-score" :title="pageVerify[n.id]?.minViewport ? ('多视口最差：' + pageVerify[n.id].minViewport.name + ' ' + (pageVerify[n.id].minViewport.score * 100).toFixed(1) + '%') : '未运行多视口验证'">{{ pageScores[n.id]?.pixel != null ? (pageScores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}<i v-if="pageVerify[n.id]?.minViewport && pageVerify[n.id].minViewport.score < 0.95" :class="pageVerify[n.id].minViewport.score < 0.85 ? 'min-bad' : 'min-mid'"> ↓{{ (pageVerify[n.id].minViewport.score * 100).toFixed(0) }}</i></span>
         <span class="wv-meta c-assets" :title="pageMeta[n.id]?.assets ? (pageMeta[n.id].assets.count + ' 个文件') : ''">{{ pageMeta[n.id]?.assets ? fmtBytes(pageMeta[n.id].assets.bytes) : '—' }}<i v-if="pageMeta[n.id]?.assets"> · {{ pageMeta[n.id].assets.count }}</i></span>
@@ -1144,6 +1189,8 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="wv-head">
       <b>任务中心</b>
       <span class="wv-stat">引擎 {{ engine.ok ? '在线' : '离线' }} · 克隆槽 {{ engine.forge?.slots ?? 0 }}/{{ engine.forge?.max ?? 2 }} · 本会话 {{ tasks.length }} 个任务</span>
+      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="pickSiteByHost" @audit="runAudit" />
+      <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
     </div>
     <div class="wv-rows">
       <div class="wv-row job-row" v-for="t in [...tasks].reverse()" :key="t.localId">
@@ -1167,7 +1214,14 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     </div>
   </section>
 
-  <section class="reports-grid" v-if="view === 'reports'">
+  <section class="work-view hud-panel" v-if="view === 'reports'">
+    <div class="wv-head">
+      <b>报告中心 · {{ host || '未选择站点' }}</b>
+      <span class="wv-stat">克隆档案 / SEO / 体检 / 活镜像 / 对标 / 情报</span>
+      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="pickSiteByHost" @audit="runAudit" />
+      <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
+    </div>
+    <div class="reports-scroll">
     <div class="report-card hud-panel">
       <h3>克隆档案</h3>
       <p>{{ doneCount }} 页已克隆 · 平均视觉 {{ avgVisual }}</p>
@@ -1246,10 +1300,50 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <p v-else>暂无（运行 verify / tokens / components / matrix 后自动出现）</p>
     </div>
 
+    <div class="report-card report-wide storage-card hud-panel">
+      <div class="storage-head">
+        <div><h3>存储治理</h3><p>站点、CAS 与交付包的实际磁盘占用；删除站点后可安全回收无引用 CAS。</p></div>
+        <button @click="loadStorage(true)" :disabled="storageLoading">{{ storageLoading ? '扫描中…' : '重新扫描' }}</button>
+      </div>
+      <div v-if="storageLoading && !storageInfo" class="storage-empty">正在盘点磁盘（首次约 10 秒，之后 30 秒内走缓存）…</div>
+      <div v-else-if="storageError" class="storage-error">{{ storageError }} <button @click="loadStorage(true)">重试</button></div>
+      <template v-else-if="storageInfo">
+        <div class="storage-kpis">
+          <div><b>{{ fmtBytes(storageInfo.totals?.uniqueBytes ?? 0) }}</b><span>实际占用</span></div>
+          <div><b>{{ fmtBytes(storageInfo.totals?.logicalBytes ?? 0) }}</b><span>逻辑体积</span></div>
+          <div><b>{{ fmtBytes(storageInfo.cas?.orphanBytes ?? 0) }}</b><span>可回收 CAS</span></div>
+          <div><b>{{ storageInfo.sites?.length ?? 0 }}</b><span>站点</span></div>
+        </div>
+        <div class="storage-body">
+          <div class="storage-sites">
+            <div class="storage-subhead">站点占用</div>
+            <div class="storage-site-row" v-for="s in (storageInfo.sites || []).slice(0, 8)" :key="s.host">
+              <span>{{ s.host }}</span><i><em :style="{ width: Math.min(100, (s.logicalBytes / Math.max(1, storageInfo.sites?.[0]?.logicalBytes || 1)) * 100) + '%' }"></em></i><b>{{ fmtBytes(s.logicalBytes) }}</b><small>{{ s.files }} 文件</small>
+            </div>
+            <div class="storage-empty" v-if="!storageInfo.sites?.length">暂无站点产物</div>
+          </div>
+          <div class="storage-actions">
+            <div class="storage-subhead">CAS 回收</div>
+            <p v-if="storageInfo.cas?.orphanFiles">检测到 <b class="warn-text">{{ storageInfo.cas.orphanFiles }} 个</b> 无引用文件，可释放 <b class="warn-text">{{ fmtBytes(storageInfo.cas.orphanBytes) }}</b>。</p>
+            <p v-else>CAS 没有检测到可回收孤儿。</p>
+            <div class="storage-buttons">
+              <button @click="runStorageGc(false)" :disabled="storageGcing">预览回收</button>
+              <button class="danger" @click="runStorageGc(true)" :disabled="storageGcing || !storageInfo.cas?.orphanFiles">{{ storageGcConfirm ? '再次点击确认回收' : '执行回收' }}</button>
+              <button v-if="storageGcConfirm" @click="storageGcConfirm = false">取消</button>
+            </div>
+            <p class="storage-note" v-if="storageGcResult">{{ storageGcResult.applied ? `已回收 ${fmtBytes(storageGcResult.freed || 0)}，跳过 ${storageGcResult.skipped || 0}` : `预览：可回收 ${fmtBytes(storageGcResult.orphanBytes || 0)}` }}</p>
+            <p class="storage-note">安全判据：CAS 文件只有自身链接（nlink=1）时才会进入候选；仍被站点使用的硬链接不会删除。</p>
+          </div>
+        </div>
+      </template>
+      <div v-else class="storage-empty">尚未盘点。点击“重新扫描”获取当前占用。</div>
+    </div>
+
+
     <div class="report-card report-wide hud-panel">
       <h3>资产清单 <span class="wv-stat" v-if="assetInfo">共 {{ assetInfo.count }} 个文件 · {{ (assetInfo.totalBytes / 1024 / 1024).toFixed(1) }}MB · 匹配 {{ assetInfo.filtered ?? assetInfo.count }} · 显示 {{ assetFiltered.length }}<template v-if="assetInfo.orphans"> · 孤儿 {{ assetInfo.orphans.count }}（{{ (assetInfo.orphans.bytes / 1048576).toFixed(1) }}MB）</template><template v-if="assetInfo.ledger"> · 去重节省 {{ (assetInfo.ledger.bytesSaved / 1048576).toFixed(0) }}MB（重复 {{ assetInfo.ledger.duplicates }}）</template></span></h3>
       <div class="asset-controls" v-if="assetInfo?.items?.length">
-        <input v-model="assetFilter.q" placeholder="搜索路径…" spellcheck="false" />
+        <input v-model="assetFilter.q" aria-label="搜索资产路径或原始 URL" placeholder="搜索路径…" spellcheck="false" />
         <select v-model="assetFilter.ext"><option value="">全部类型</option><option v-for="e in assetExts" :key="e[0]" :value="e[0]">{{ e[0] || '(none)' }} ({{ e[1] }})</option></select>
         <select v-model="assetFilter.page"><option value="">全部页面</option><option v-for="p in assetPages" :key="p[0]" :value="p[0]">{{ p[0] }} ({{ p[1].count }})</option></select>
         <select v-model="assetFilter.sort"><option value="size">按体积</option><option value="name">按路径</option><option value="page">按页面</option></select>
@@ -1260,17 +1354,23 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <div class="asset-row" v-for="a in assetFiltered.slice(0, 200)" :key="a.path">
           <span>{{ a.page }}</span><span>{{ a.ext || '—' }}</span><span>{{ (a.size / 1024).toFixed(0) }}KB</span>
           <span class="asset-path" :title="a.src ? (a.src + '  ←  ' + a.path) : a.path">{{ a.path }}</span>
-          <span class="asset-actions"><a :href="a.url" target="_blank" rel="noopener"><img v-if="isImg(a.ext)" class="asset-thumb" :src="a.url" loading="lazy" alt="" /><template v-else>打开</template></a><a v-if="a.src" :href="a.src" target="_blank" rel="noopener" class="asset-src">原站</a></span>
+          <span class="asset-actions"><a :href="a.url" target="_blank" rel="noopener" :aria-label="'在新标签打开资产 ' + a.path"><img v-if="isImg(a.ext)" class="asset-thumb" :src="a.url" loading="lazy" alt="" /><template v-else>打开</template></a><a v-if="a.src" :href="a.src" target="_blank" rel="noopener" class="asset-src">原站</a></span>
         </div>
       </div>
       <p class="score-note" v-if="reclaimResult" style="margin:6px 0">{{ reclaimResult }}</p>
       <p v-else-if="assetInfo?.items?.length">无匹配资产</p>
       <p v-else>暂无资产数据（先克隆页面）</p>
     </div>
+    </div>
   </section>
 
   <section class="work-view hud-panel" v-if="view === 'settings'">
-    <div class="wv-head"><b>设置</b><span class="wv-stat">模型服务写引擎配置（保存即生效）；其余为本地浏览器偏好</span></div>
+    <div class="wv-head">
+      <b>设置</b>
+      <span class="wv-stat">模型服务写引擎配置（保存即生效）；其余为本地浏览器偏好</span>
+      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="pickSiteByHost" @audit="runAudit" />
+      <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
+    </div>
     <div class="settings-grid">
 
       <!-- 模型服务：控制台直接配置第三方大模型 -->
@@ -1286,37 +1386,37 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         </p>
 
         <div class="set-form">
-          <label>启用</label>
-          <div><input type="checkbox" v-model="llmForm.enabled" /><span class="hint">关闭后 AI 校准与语义抽取会自动跳过</span></div>
+          <label for="set-llm-enabled">启用</label>
+          <div><input id="set-llm-enabled" type="checkbox" v-model="llmForm.enabled" /><span class="hint">关闭后 AI 校准与语义抽取会自动跳过</span></div>
 
-          <label>协议</label>
+          <label for="set-llm-protocol">协议</label>
           <div>
-            <select v-model="llmForm.protocol">
+            <select id="set-llm-protocol" v-model="llmForm.protocol">
               <option value="chat">chat · OpenAI 兼容 /chat/completions（绝大多数中转与厂商）</option>
               <option value="responses">responses · OpenAI /responses</option>
               <option value="anthropic">anthropic · Anthropic /messages</option>
             </select>
           </div>
 
-          <label>Base URL</label>
-          <div><input v-model="llmForm.baseUrl" placeholder="https://api.openai.com/v1" spellcheck="false" /></div>
+          <label for="set-llm-baseurl">Base URL</label>
+          <div><input id="set-llm-baseurl" v-model="llmForm.baseUrl" placeholder="https://api.openai.com/v1" spellcheck="false" /></div>
 
-          <label>API Key</label>
+          <label for="set-llm-apikey">API Key</label>
           <div>
-            <input type="password" v-model="llmForm.apiKey" spellcheck="false"
+            <input id="set-llm-apikey" type="password" v-model="llmForm.apiKey" spellcheck="false"
                    :placeholder="llmStatus?.hasKey ? ('已保存（' + llmStatus.keyHint + '）— 留空表示不修改') : 'sk-...'" />
           </div>
 
-          <label>主模型</label>
-          <div><input v-model="llmForm.model" placeholder="用于 AI 校准与语义抽取" spellcheck="false" /></div>
+          <label for="set-llm-model">主模型</label>
+          <div><input id="set-llm-model" v-model="llmForm.model" placeholder="用于 AI 校准与语义抽取" spellcheck="false" /></div>
 
-          <label>快速模型</label>
-          <div><input v-model="llmForm.fastModel" placeholder="留空 = 与主模型相同" spellcheck="false" /></div>
+          <label for="set-llm-fastmodel">快速模型</label>
+          <div><input id="set-llm-fastmodel" v-model="llmForm.fastModel" placeholder="留空 = 与主模型相同" spellcheck="false" /></div>
 
-          <label>超时 / 重试</label>
+          <label for="set-llm-timeout">超时 / 重试</label>
           <div class="set-inline">
-            <input type="number" v-model.number="llmForm.timeoutMs" min="1000" max="900000" step="1000" /><span class="hint">ms</span>
-            <input type="number" v-model.number="llmForm.retries" min="1" max="10" /><span class="hint">次</span>
+            <input id="set-llm-timeout" type="number" v-model.number="llmForm.timeoutMs" min="1000" max="900000" step="1000" aria-label="请求超时毫秒数" /><span class="hint">ms</span>
+            <input type="number" v-model.number="llmForm.retries" min="1" max="10" aria-label="网络错误重试次数" /><span class="hint">次</span>
           </div>
         </div>
 
@@ -1352,9 +1452,9 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <div class="set-card hud-panel">
         <div class="set-card-head"><b>引擎与数据</b></div>
         <div class="set-row"><span>主题</span><button @click="toggleTheme">{{ theme === 'dark' ? '深色 → 浅色' : '浅色 → 深色' }}</button></div>
-        <div class="set-row"><span>星图自转</span><input type="checkbox" v-model="autoRotate" /></div>
-        <div class="set-row"><span>引擎地址</span><input v-model="apiBaseInput" placeholder="http://127.0.0.1:8900" spellcheck="false" /><button @click="saveApiBase">保存并刷新</button></div>
-        <div class="set-row"><span>引擎 Token</span><input v-model="tokenInput" placeholder="HEIMDALL_TOKEN（保护引擎 API，可留空）" spellcheck="false" /><button @click="saveToken">保存</button></div>
+        <div class="set-row"><span>星图自转</span><input type="checkbox" v-model="autoRotate" aria-label="星图自动旋转" /></div>
+        <div class="set-row"><span>引擎地址</span><input v-model="apiBaseInput" aria-label="引擎 API 地址" placeholder="http://127.0.0.1:8900" spellcheck="false" /><button @click="saveApiBase">保存并刷新</button></div>
+        <div class="set-row"><span>引擎 Token</span><input v-model="tokenInput" aria-label="引擎 API 口令" placeholder="HEIMDALL_TOKEN（保护引擎 API，可留空）" spellcheck="false" /><button @click="saveToken">保存</button></div>
         <div class="set-foot">
           「引擎 Token」是访问本机引擎 API 的口令（环境变量 HEIMDALL_TOKEN），与模型服务的 API Key 不是一回事：前者保护你的引擎，后者用于调用模型。
         </div>
@@ -1377,7 +1477,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <div class="dock-title">{{ selected.path === '/' ? 'home' : selected.path.slice(1) }}</div>
         <div class="dock-url">{{ selected.url }}</div>
       </div>
-      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="批量锻造尚未完成的页面（每次最多 10 页，引擎 2 并发）">批量锻造 10 页</button><button class="dock-close" @click="selected = null">✕</button></div>
+      <div class="dock-headbtns"><button class="dock-all" @click="forgeAll" title="批量锻造尚未完成的页面（每次最多 10 页，引擎 2 并发）">批量锻造 10 页</button><button class="dock-close" aria-label="关闭页面详情" title="关闭" @click="selected = null"><Icon name="close" decorative /></button></div>
     </div>
 
     <div class="tabs">
@@ -1390,7 +1490,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <!-- 概览 tab -->
     <div v-show="detailTab === 'overview'">
       <div class="ov-grid">
-        <div class="ov-item"><span class="ov-k">类型</span><span class="ov-v" :style="{ color: typeColor(selected.type) }">{{ typeCn(selected.type) }}</span></div>
+        <div class="ov-item"><span class="ov-k">类型</span><span class="ov-v" :style="{ color: typeColorThemed(selected.type) }">{{ typeCn(selected.type) }}</span></div>
         <div class="ov-item"><span class="ov-k">层级深度</span><span class="ov-v">{{ selected.depth ?? '-' }}</span></div>
         <div class="ov-item"><span class="ov-k">锻造状态</span><span class="ov-v">{{ selected.forgeState === 'done' ? '已锻造' : selected.forgeState === 'running' ? '锻造中' : selected.forgeState === 'failed' ? '失败' : '未锻造' }}</span></div>
         <div class="ov-item" v-if="detailScore"><span class="ov-k">还原度</span><span class="ov-v" :style="{ color: detailScore.grade === 'A' ? 'var(--green)' : 'var(--amber)' }">{{ detailScore.total }}% {{ detailScore.grade }}</span></div>
@@ -1417,7 +1517,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <a :href="`/${host}/pages/${pageNameOf(selected)}/score.json`" target="_blank" rel="noopener">分数 JSON</a>
       </div>
       <div class="forge-cta" v-if="selected.forgeState !== 'done' && selected.forgeState !== 'running'">
-        <button class="forge-btn" @click="openForge">⚡ 开始锻造此页</button>
+        <button class="forge-btn" @click="openForge"><Icon name="bolt" decorative /> 开始锻造此页</button>
         <div class="forge-note">捕获 → 校准 → 评分，全程约 2-3 分钟；也可点「批量锻造 10 页」</div>
       </div>
       <div class="forge-cta" v-else-if="selected.forgeState === 'done'">
@@ -1516,7 +1616,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <div class="forge-note">六阶段：捕获骨架 → 注入皮肤 → 渲染校准 → AI 校准 → 像素定谳 → 情报入库</div>
       </div>
       <div class="forge-cta" v-if="!forge && selected.forgeState === 'done'">
-        <button class="forge-btn alt" @click="openForge">↻ 重新锻造此页</button>
+        <button class="forge-btn alt" @click="openForge"><Icon name="refresh" decorative /> 重新锻造此页</button>
       </div>
 
       <template v-if="forge">
@@ -1539,7 +1639,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
           </div>
           <div class="score-note">结构/数据与捕获 DOM 同源比对（自证辅助项）；视觉分才是对外可核验口径。</div>
           <div class="refine" v-if="forge.score.breakdown">
-            <div class="refine-bar"><i :style="{ width: (forge.score.breakdown.refinable * 100) + '%' }"></i></div>
+            <div class="refine-bar"><i :style="{ transform: 'scaleX(' + forge.score.breakdown.refinable + ')' }"></i></div>
             <span>可修静态差异 {{ (forge.score.breakdown.refinable * 100).toFixed(0) }}% · 动画噪声 {{ (forge.score.breakdown.dynamicShare * 100).toFixed(0) }}%</span>
           </div>
         </div>
@@ -1568,7 +1668,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
           </div>
         </div>
         <div class="compare-link" v-if="forge.done">
-          <a :href="`/${host}/compare.html?p=${forge.pageName}`" target="_blank" rel="noopener">⇔ 同步滚动对比</a>
+          <a :href="`/${host}/compare.html?p=${forge.pageName}`" target="_blank" rel="noopener"><Icon name="swap" decorative /> 同步滚动对比</a>
           <span class="sep">·</span>
           <a :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">⚡ 活镜像</a>
           <span class="sep">·</span>
@@ -1587,8 +1687,8 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
   <div class="toast ok" v-if="okMsg">{{ okMsg }}</div>
   <div class="view-nav hud-panel">
-    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" @click="selectView(v.id)">
-      <b>{{ v.icon }}</b><span>{{ v.label }}</span>
+    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" :aria-current="view === v.id ? 'page' : undefined" @click="selectView(v.id)">
+      <b aria-hidden="true">{{ v.icon }}</b><span>{{ v.label }}</span>
     </button>
   </div>
 </template>
@@ -1610,6 +1710,8 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .theme-btn:hover { color: var(--cyan); }
 .seek-caret { display: flex; align-items: center; padding: 0 4px 0 12px; color: var(--cyan-dim); font-size: 12px; }
 .seek input { width: 320px; padding: 11px 14px; background: transparent; border: 0; color: var(--text); font-family: var(--font-mono); font-size: 14px; letter-spacing: .04em; outline: none; }
+/* 输入框自身无边框，焦点必须由外层药丸表达（此前 outline:none 且无替代 = 焦点完全不可见） */
+.seek:focus-within { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan-dim); }
 .seek input::placeholder { color: var(--text-faint); }
 .seek button { padding: 0 24px; background: linear-gradient(180deg, rgba(34,211,238,.18), rgba(34,211,238,.05)); border: 0; border-left: 1px solid var(--cyan-line); color: var(--cyan); cursor: pointer; letter-spacing: .34em; font-size: 13px; font-family: var(--font-cn); transition: background var(--dur), box-shadow var(--dur); }
 .seek button:hover { background: rgba(34,211,238,.14); box-shadow: 0 0 20px rgba(34,211,238,.25) inset; }
@@ -1623,7 +1725,6 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); color: var(--red); letter-spacing: .08em; font-size: 13px; z-index: 20; }
 .toast.ok { color: var(--green); }
-.wv-row { grid-template-columns: 34px minmax(150px,1.1fr) minmax(180px,1.6fr) 90px 80px 70px 230px; }
 .wv-actions { flex-wrap: wrap; }
 
 /* 左侧仪表面板 */
@@ -1737,7 +1838,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .score-break .grade { color: var(--cyan); }
 .refine { margin-top: 12px; }
 .refine-bar { height: 3px; background: #26262c; border-radius: 2px; overflow: hidden; }
-.refine-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--green), var(--cyan)); box-shadow: 0 0 8px rgba(34,211,238,.5); transition: width .6s ease; }
+.refine-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--green), var(--cyan)); box-shadow: 0 0 8px rgba(34,211,238,.5); transform-origin: left center; transition: transform .6s ease; }
 .refine span { display: block; margin-top: 6px; font-size: 10px; letter-spacing: .12em; color: var(--text-faint); font-family: var(--font-mono); }
 
 /* AI 校准 & 情报 */
@@ -1791,8 +1892,15 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 [data-theme="light"] .site-btn em { color: var(--green); }
 [data-theme="light"] .archive-link,
 [data-theme="light"] .audit-link { background: #ffffff; }
+/* 星图浮层底色原本写死深色；浅色主题下必须一起翻面，否则深字压深底（实测 1.45:1） */
+[data-theme="light"] .keys,
+[data-theme="light"] .panel-open,
+[data-theme="light"] .status,
+[data-theme="light"] .seek,
+[data-theme="light"] .task-center { background: rgba(255,255,255,.94); }
 /* 工作台视图 + 底部导航（v2 IA） */
-.work-view { position: fixed; left: 24px; right: 24px; top: 96px; bottom: 86px; z-index: 7; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+/* 工作视图：星图浮层（品牌/统计/站点条）在工作视图里不渲染，故顶部只需让开搜索栏 */
+.work-view { position: fixed; left: 24px; right: 24px; top: 78px; bottom: 86px; z-index: 7; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
 .wv-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--cyan-line); flex-wrap: wrap; font-size: 13px; }
 .wv-head b { font-family: var(--font-mono); letter-spacing: .08em; }
 .wv-stat { color: var(--text-dim); font-size: 11.5px; font-family: var(--font-mono); }
@@ -1876,12 +1984,45 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .job-error { color: var(--red); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-row.history { opacity: .82; }
 .wv-sub { padding: 10px 14px 6px; color: var(--text-faint); font-size: 10.5px; letter-spacing: .14em; font-family: var(--font-mono); border-top: 1px solid rgba(148,163,184,.15); }
-.reports-grid { position: fixed; left: 24px; right: 24px; top: 96px; bottom: 86px; z-index: 7; display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 14px; align-content: start; }
+/* 报告中心：工作视图外壳（表头 + 可滚动卡片网格），不再用浮层压住内容 */
+.reports-scroll { flex: 1; overflow: auto; padding: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; align-content: start; grid-auto-rows: min-content; }
+.storage-card { padding: 16px; }
+.storage-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.storage-head h3 { margin-bottom: 5px; }
+.storage-head p { margin: 0; min-height: 0; max-width: 70ch; }
+.storage-head > button, .storage-buttons button { color: var(--cyan); border: 1px solid var(--cyan-line); background: rgba(34,211,238,.06); border-radius: 3px; padding: 6px 12px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.storage-head > button:disabled, .storage-buttons button:disabled { opacity: .5; cursor: default; }
+.storage-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 15px 0; }
+.storage-kpis > div { padding: 10px; border: 1px solid var(--cyan-line); background: rgba(34,211,238,.035); border-radius: 3px; }
+.storage-kpis b { display: block; color: var(--text); font-family: var(--font-num); font-size: 18px; font-variant-numeric: tabular-nums; }
+.storage-kpis span { display: block; margin-top: 5px; color: var(--text-faint); font-size: 11px; }
+.storage-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr); gap: 18px; }
+.storage-subhead { color: var(--text-dim); font-size: 11px; letter-spacing: .14em; margin-bottom: 8px; }
+.storage-site-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(80px, 1.4fr) 75px 70px; gap: 8px; align-items: center; min-height: 30px; color: var(--text-dim); font-size: 12px; }
+.storage-site-row i { display: block; height: 5px; background: var(--muted); border-radius: 3px; overflow: hidden; }
+.storage-site-row i em { display: block; height: 100%; background: var(--cyan); border-radius: inherit; }
+.storage-site-row b { color: var(--text); font-family: var(--font-mono); font-size: 11px; text-align: right; }
+.storage-site-row small { color: var(--text-faint); text-align: right; }
+.storage-actions { border-left: 1px dashed var(--cyan-line); padding-left: 16px; }
+.storage-actions p { min-height: 0; margin-bottom: 10px; }
+.warn-text { color: var(--amber); }
+.storage-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.storage-buttons .danger { color: var(--red); border-color: rgba(239,68,68,.42); background: rgba(239,68,68,.06); }
+.storage-note { color: var(--text-faint); font-size: 11px !important; line-height: 1.6; }
+.storage-error { color: var(--red); border: 1px solid rgba(239,68,68,.35); padding: 10px; font-size: 12px; }
+.storage-empty { color: var(--text-faint); font-size: 12px; padding: 12px 0; }
+@media (max-width: 760px) {
+  .storage-head { flex-direction: column; }
+  .storage-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .storage-body { grid-template-columns: 1fr; }
+  .storage-actions { border-left: 0; border-top: 1px dashed var(--cyan-line); padding: 14px 0 0; }
+  .storage-site-row { grid-template-columns: minmax(90px, 1fr) minmax(60px, 1fr) 72px; }
+  .storage-site-row small { display: none; }
+}
 .report-card { padding: 16px; }
 .report-card h3 { margin: 0 0 8px; font-size: 15px; }
 .report-card p { color: var(--text-dim); font-size: 12px; min-height: 34px; margin: 0 0 12px; }
 .report-card a, .report-card button { display: inline-block; color: var(--cyan); border: 1px solid var(--cyan-line); background: rgba(34,211,238,.06); border-radius: 3px; padding: 6px 12px; font-size: 12px; text-decoration: none; cursor: pointer; }
-.reports-grid { overflow: auto; grid-auto-rows: min-content; align-content: start; }
 .report-wide { grid-column: 1 / -1; }
 .report-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .report-list a { margin: 0; }
@@ -1911,7 +2052,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   background: rgba(255,255,255,.04); border: 1px solid var(--cyan-line); color: var(--text);
   border-radius: 3px; padding: 7px 9px; width: 100%; font-family: inherit; font-size: 13px;
 }
-.set-form select:focus, .set-form input:focus { outline: none; border-color: var(--cyan-dim); }
+.set-form select:focus-visible, .set-form input:focus-visible { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(34,211,238,.28); }
 .set-inline { display: flex; align-items: center; gap: 8px; }
 .set-inline input { max-width: 130px; }
 .hint { font-size: 11.5px; color: var(--text-faint); }
@@ -1940,7 +2081,6 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .view-nav button span { font-size: 10px; letter-spacing: .1em; }
 .view-nav button.on { color: var(--cyan); background: rgba(34,211,238,.10); }
 .view-nav button:hover { color: var(--text); }
-.keys { bottom: 76px !important; }
 
 /* 移动端（≤768px）：单列卡片 + 底部抽屉，保证每台设备都能用 */
 @media (max-width: 768px) {
@@ -1965,7 +2105,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   .task-center { left: 12px; right: 12px; bottom: 66px; width: auto; }
   .toast { bottom: 74px; left: 12px; right: 12px; transform: none; text-align: center; font-size: 12px; z-index: 14; }
   .dock { left: 0; right: 0; width: auto; min-width: 0; padding: 16px 14px 92px; }
-  .work-view { left: 0; right: 0; top: 144px; bottom: 64px; }
+  .work-view { left: 0; right: 0; top: 118px; bottom: 64px; }
   .wv-head { gap: 8px; padding: 10px 12px; }
   .wv-head b { flex: 1 1 100%; }
   .wv-stat { flex: 1 1 100%; }
@@ -1989,7 +2129,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   .wv-row .c-type::before { content: '类型 '; color: var(--text-faint); }
   .job-row { display: flex; }
   .job-row .job-name { flex: 1 1 100%; }
-  .reports-grid { left: 12px; right: 12px; top: 144px; bottom: 64px; grid-template-columns: 1fr; }
+    .reports-scroll { padding: 12px; }
   .settings-grid { padding: 12px; }
   .set-row { flex-wrap: wrap; }
   .set-row > span { width: 100%; }

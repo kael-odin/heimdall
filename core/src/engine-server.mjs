@@ -27,6 +27,8 @@ import { WORKSPACE, DATA_ROOT, DELIVERABLE } from './paths.mjs';
 import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
 import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
 import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
+import { computeStorage } from './audit/storage.mjs';
+import { gcCas } from './store/cas.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 
@@ -161,6 +163,8 @@ let runningVerify = null;
 let runningLive = null;
 let runningReclaim = null;
 let runningUpgrade = null;
+let storageCache = null;            // { value, at }，存储盘点较慢，短时间内复用
+const STORAGE_CACHE_MS = 30_000;
 const pageMetaCache = new Map();
 const MAX_FORGE = 2;
 let forgeSlots = 0;
@@ -661,6 +665,34 @@ createServer(async (req, res) => {
     return json(res, 404, { error: 'no live health report', host });
   }
 
+  // 存储治理：盘点只读；CAS 回收默认 dry-run，真回收必须带确认短语
+  if (u.pathname === '/api/storage' && req.method === 'GET') {
+    if (!storageCache || Date.now() - storageCache.at > STORAGE_CACHE_MS) {
+      storageCache = { value: computeStorage(), at: Date.now() };
+    }
+    return json(res, 200, { ...storageCache.value, cachedAt: storageCache.at });
+  }
+  if (u.pathname === '/api/storage/scan' && req.method === 'POST') {
+    storageCache = { value: computeStorage(), at: Date.now() };
+    return json(res, 200, { ok: true, ...storageCache.value, cachedAt: storageCache.at });
+  }
+  if (u.pathname === '/api/storage/gc' && req.method === 'POST') {
+    let body = {};
+    try { body = JSON.parse((await readBody(req)) || '{}'); } catch { return json(res, 400, { error: 'invalid json' }); }
+    const apply = body.apply === true;
+    if (apply && !AUTH_TOKEN && !isLoopback(req)) {
+      return json(res, 403, { error: '真回收需要 HEIMDALL_TOKEN；未设置时仅允许本机回环访问' });
+    }
+    if (apply && body.confirm !== 'HEIMDALL_CAS_GC') {
+      return json(res, 400, { error: '真回收需要 confirm=HEIMDALL_CAS_GC' });
+    }
+    const result = gcCas(join(DATA_ROOT, 'assets-cas'), { apply });
+    storageCache = null;
+    const storage = computeStorage();
+    storageCache = { value: storage, at: Date.now() };
+    return json(res, 200, { ok: true, ...result, storage });
+  }
+
   if (req.method === 'GET' && u.pathname === '/api/sites') {
     // 已侦察站点清单（有 atlas.json 的 host）——控制台切换器数据源
     const wsDir = WORKSPACE;
@@ -817,7 +849,9 @@ createServer(async (req, res) => {
     try {
       if (parts.length === 3) {
         rmSync(base, { recursive: true, force: true });
-        return json(res, 200, { ok: true, removed: 'site', host });
+        const casGc = gcCas(join(DATA_ROOT, 'assets-cas'), { apply: true });
+        storageCache = null;
+        return json(res, 200, { ok: true, removed: 'site', host, casGc: { freed: casGc.freed, orphanFiles: casGc.orphanFiles, failed: casGc.failed, skipped: casGc.skipped } });
       }
       if (parts.length === 5 && parts[3] === 'pages') {
         const name = decodeURIComponent(parts[4]);
@@ -840,7 +874,9 @@ createServer(async (req, res) => {
             writeFileSync(atlasPath, JSON.stringify(atlas, null, 2));
           } catch {}
         }
-        return json(res, 200, { ok: true, removed: 'page', host, name, removedArtifacts, removedNode });
+        const pageGc = removedArtifacts ? gcCas(join(DATA_ROOT, 'assets-cas'), { apply: true }) : null;
+        storageCache = null;
+        return json(res, 200, { ok: true, removed: 'page', host, name, removedArtifacts, removedNode, casGc: pageGc ? { freed: pageGc.freed, orphanFiles: pageGc.orphanFiles, failed: pageGc.failed, skipped: pageGc.skipped } : null });
       }
     } catch (e) { return json(res, 500, { error: String(e).slice(0, 200) }); }
     return json(res, 400, { error: 'bad delete path' });

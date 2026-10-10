@@ -1,0 +1,1356 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-10T00:00:00.000Z",
+  "title": "Design System: Heimdall Console",
+  "extensions": {
+    "colorMeta": {
+      "abyss": {
+        "role": "neutral",
+        "displayName": "Abyss Ground",
+        "canonical": "#0B0B10",
+        "tonalRamp": [
+          "#0B0B10",
+          "#26262C",
+          "#424248",
+          "#626269",
+          "#85858C",
+          "#A4A4AB",
+          "#C6C6CE",
+          "#EDEEF6"
+        ]
+      },
+      "abyss-light": {
+        "role": "neutral",
+        "displayName": "Abyss Ground (Day)",
+        "canonical": "#F4F6FA",
+        "tonalRamp": [
+          "#0A0B0E",
+          "#252629",
+          "#414245",
+          "#616367",
+          "#84868A",
+          "#A3A5A8",
+          "#C5C7CB",
+          "#ECEEF2"
+        ]
+      },
+      "dust": {
+        "role": "neutral",
+        "displayName": "Panel Dust",
+        "canonical": "#1E1E23",
+        "tonalRamp": [
+          "#0B0B0F",
+          "#26262B",
+          "#424247",
+          "#626369",
+          "#85858C",
+          "#A4A4AA",
+          "#C6C6CD",
+          "#EEEEF5"
+        ]
+      },
+      "dust-light": {
+        "role": "neutral",
+        "displayName": "Panel Dust (Day)",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#262626",
+          "#424242",
+          "#636363",
+          "#868686",
+          "#A4A4A4",
+          "#C7C7C7",
+          "#EEEEEE"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Track Muted",
+        "canonical": "#232328",
+        "tonalRamp": [
+          "#0B0B0F",
+          "#26262B",
+          "#424247",
+          "#626368",
+          "#85858C",
+          "#A4A4AA",
+          "#C6C6CD",
+          "#EEEEF5"
+        ]
+      },
+      "muted-light": {
+        "role": "neutral",
+        "displayName": "Track Muted (Day)",
+        "canonical": "#E8ECF2",
+        "tonalRamp": [
+          "#090B0F",
+          "#24272B",
+          "#3F4347",
+          "#606369",
+          "#83868C",
+          "#A1A5AA",
+          "#C4C8CD",
+          "#EBEFF5"
+        ]
+      },
+      "cyan": {
+        "role": "primary",
+        "displayName": "Reconnaissance Cyan",
+        "canonical": "#22D3EE",
+        "tonalRamp": [
+          "#000E12",
+          "#002C34",
+          "#004B57",
+          "#007080",
+          "#0097AB",
+          "#00B9D1",
+          "#37DEF9",
+          "#CEF7FF"
+        ]
+      },
+      "cyan-light": {
+        "role": "primary",
+        "displayName": "Reconnaissance Cyan (Day)",
+        "canonical": "#0E7490",
+        "tonalRamp": [
+          "#000E14",
+          "#002B38",
+          "#004A5E",
+          "#006E8A",
+          "#3A92AF",
+          "#5BB2CF",
+          "#7FD5F4",
+          "#D7F4FF"
+        ]
+      },
+      "cyan-dim": {
+        "role": "primary",
+        "displayName": "Cyan Veil - Dim",
+        "canonical": "rgba(34, 211, 238, 0.45)",
+        "tonalRamp": [
+          "#000E12",
+          "#002C34",
+          "#004B57",
+          "#007080",
+          "#0097AB",
+          "#00B9D1",
+          "#37DEF9",
+          "#CEF7FF"
+        ]
+      },
+      "cyan-line": {
+        "role": "primary",
+        "displayName": "Cyan Veil - Line",
+        "canonical": "rgba(34, 211, 238, 0.22)",
+        "tonalRamp": [
+          "#000E12",
+          "#002C34",
+          "#004B57",
+          "#007080",
+          "#0097AB",
+          "#00B9D1",
+          "#37DEF9",
+          "#CEF7FF"
+        ]
+      },
+      "cyan-wash": {
+        "role": "primary",
+        "displayName": "Cyan Veil - Wash",
+        "canonical": "rgba(34, 211, 238, 0.12)",
+        "tonalRamp": [
+          "#000E12",
+          "#002C34",
+          "#004B57",
+          "#007080",
+          "#0097AB",
+          "#00B9D1",
+          "#37DEF9",
+          "#CEF7FF"
+        ]
+      },
+      "cyan-selected": {
+        "role": "primary",
+        "displayName": "Cyan Veil - Selected",
+        "canonical": "rgba(34, 211, 238, 0.10)",
+        "tonalRamp": [
+          "#000E12",
+          "#002C34",
+          "#004B57",
+          "#007080",
+          "#0097AB",
+          "#00B9D1",
+          "#37DEF9",
+          "#CEF7FF"
+        ]
+      },
+      "cyan-tint": {
+        "role": "primary",
+        "displayName": "Cyan Veil - Tint",
+        "canonical": "rgba(34, 211, 238, 0.035)",
+        "tonalRamp": [
+          "#000E12",
+          "#002C34",
+          "#004B57",
+          "#007080",
+          "#0097AB",
+          "#00B9D1",
+          "#37DEF9",
+          "#CEF7FF"
+        ]
+      },
+      "cyan-dim-light": {
+        "role": "primary",
+        "displayName": "Cyan Veil - Dim (Day)",
+        "canonical": "rgba(14, 116, 144, 0.5)",
+        "tonalRamp": [
+          "#000E14",
+          "#002B38",
+          "#004A5E",
+          "#006E8A",
+          "#3A92AF",
+          "#5BB2CF",
+          "#7FD5F4",
+          "#D7F4FF"
+        ]
+      },
+      "cyan-line-light": {
+        "role": "primary",
+        "displayName": "Cyan Veil - Line (Day)",
+        "canonical": "rgba(14, 116, 144, 0.28)",
+        "tonalRamp": [
+          "#000E14",
+          "#002B38",
+          "#004A5E",
+          "#006E8A",
+          "#3A92AF",
+          "#5BB2CF",
+          "#7FD5F4",
+          "#D7F4FF"
+        ]
+      },
+      "amber": {
+        "role": "secondary",
+        "displayName": "Signal Amber",
+        "canonical": "#F59E0B",
+        "tonalRamp": [
+          "#140800",
+          "#382000",
+          "#5E3900",
+          "#8A5600",
+          "#B97500",
+          "#E19000",
+          "#FFB75C",
+          "#FFEBD4"
+        ]
+      },
+      "amber-light": {
+        "role": "secondary",
+        "displayName": "Signal Amber (Day)",
+        "canonical": "#B45309",
+        "tonalRamp": [
+          "#180500",
+          "#411900",
+          "#6C2E00",
+          "#9D4600",
+          "#CA6728",
+          "#EC864A",
+          "#FFB38A",
+          "#FFE9DE"
+        ]
+      },
+      "violet": {
+        "role": "secondary",
+        "displayName": "Calibration Violet",
+        "canonical": "#A78BFA",
+        "tonalRamp": [
+          "#0F002A",
+          "#2F0066",
+          "#4A268D",
+          "#6A4BB4",
+          "#8C6FDC",
+          "#AA8EFE",
+          "#CABCFF",
+          "#EFECFF"
+        ]
+      },
+      "violet-light": {
+        "role": "secondary",
+        "displayName": "Calibration Violet (Day)",
+        "canonical": "#7C3AED",
+        "tonalRamp": [
+          "#0F002A",
+          "#2E0067",
+          "#4E00A5",
+          "#7128DE",
+          "#905EFF",
+          "#AA8EFF",
+          "#C9BCFF",
+          "#EFECFF"
+        ]
+      },
+      "green": {
+        "role": "tertiary",
+        "displayName": "Verdict Green",
+        "canonical": "#34D399",
+        "tonalRamp": [
+          "#000F07",
+          "#002F1E",
+          "#005036",
+          "#007651",
+          "#009E6F",
+          "#0CC289",
+          "#4FE6AB",
+          "#C0FFE0"
+        ]
+      },
+      "green-light": {
+        "role": "tertiary",
+        "displayName": "Verdict Green (Day)",
+        "canonical": "#047857",
+        "tonalRamp": [
+          "#000F08",
+          "#002F20",
+          "#004F38",
+          "#007555",
+          "#3A9A77",
+          "#5CBA95",
+          "#81DDB7",
+          "#BFFFE3"
+        ]
+      },
+      "red": {
+        "role": "tertiary",
+        "displayName": "Fault Red",
+        "canonical": "#EF4444",
+        "tonalRamp": [
+          "#1F0001",
+          "#4F0006",
+          "#81000F",
+          "#BC001B",
+          "#E93E3F",
+          "#FF716A",
+          "#FFB0A8",
+          "#FFE8E6"
+        ]
+      },
+      "red-light": {
+        "role": "tertiary",
+        "displayName": "Fault Red (Day)",
+        "canonical": "#B91C1C",
+        "tonalRamp": [
+          "#1F0000",
+          "#500002",
+          "#810007",
+          "#B7191A",
+          "#E24940",
+          "#FF7265",
+          "#FFB0A5",
+          "#FFE9E5"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Signal White",
+        "canonical": "#F8FAFC",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#252728",
+          "#414244",
+          "#626365",
+          "#848688",
+          "#A3A5A7",
+          "#C5C7C9",
+          "#EDEFF1"
+        ]
+      },
+      "text-light": {
+        "role": "neutral",
+        "displayName": "Signal White (Day)",
+        "canonical": "#0F172A",
+        "tonalRamp": [
+          "#040A1C",
+          "#1D263A",
+          "#384258",
+          "#58637B",
+          "#7B869F",
+          "#99A5BE",
+          "#BBC7E2",
+          "#E7EFFF"
+        ]
+      },
+      "text-dim": {
+        "role": "neutral",
+        "displayName": "Dim Slate",
+        "canonical": "#94A3B8",
+        "tonalRamp": [
+          "#030B1A",
+          "#1B2738",
+          "#364355",
+          "#576478",
+          "#79879C",
+          "#97A6BB",
+          "#B9C9DF",
+          "#E4F0FF"
+        ]
+      },
+      "text-dim-light": {
+        "role": "neutral",
+        "displayName": "Dim Slate (Day)",
+        "canonical": "#475569",
+        "tonalRamp": [
+          "#030B1B",
+          "#1B2739",
+          "#364356",
+          "#566479",
+          "#78879D",
+          "#96A6BC",
+          "#B8C9E0",
+          "#E4EFFF"
+        ]
+      },
+      "text-faint": {
+        "role": "neutral",
+        "displayName": "Faint Steel",
+        "canonical": "#7E8CA0",
+        "tonalRamp": [
+          "#030B19",
+          "#1C2737",
+          "#374355",
+          "#576477",
+          "#79879B",
+          "#97A6BA",
+          "#BAC9DE",
+          "#E4EFFF"
+        ]
+      },
+      "text-faint-light": {
+        "role": "neutral",
+        "displayName": "Faint Steel (Day)",
+        "canonical": "#5B6675",
+        "tonalRamp": [
+          "#040B17",
+          "#1E2734",
+          "#394351",
+          "#596473",
+          "#7C8797",
+          "#9AA6B6",
+          "#BCC8D9",
+          "#E4F0FF"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Row Hairline",
+        "canonical": "rgba(148, 163, 184, 0.10)",
+        "tonalRamp": [
+          "#030B1A",
+          "#1B2738",
+          "#364355",
+          "#576478",
+          "#79879C",
+          "#97A6BB",
+          "#B9C9DF",
+          "#E4F0FF"
+        ]
+      },
+      "line-neutral": {
+        "role": "neutral",
+        "displayName": "Neutral Line",
+        "canonical": "rgba(148, 163, 184, 0.16)",
+        "tonalRamp": [
+          "#030B1A",
+          "#1B2738",
+          "#364355",
+          "#576478",
+          "#79879C",
+          "#97A6BB",
+          "#B9C9DF",
+          "#E4F0FF"
+        ]
+      },
+      "surface-inset": {
+        "role": "neutral",
+        "displayName": "Surface Inset",
+        "canonical": "rgba(255, 255, 255, 0.04)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#262626",
+          "#424242",
+          "#636363",
+          "#868686",
+          "#A4A4A4",
+          "#C7C7C7",
+          "#EEEEEE"
+        ]
+      },
+      "surface-soft": {
+        "role": "neutral",
+        "displayName": "Surface Soft",
+        "canonical": "rgba(30, 30, 35, 0.5)",
+        "tonalRamp": [
+          "#0B0B0F",
+          "#26262B",
+          "#424247",
+          "#626369",
+          "#85858C",
+          "#A4A4AA",
+          "#C6C6CD",
+          "#EEEEF5"
+        ]
+      },
+      "page-marketing": {
+        "role": "neutral",
+        "displayName": "Marketing",
+        "canonical": "#22D3EE",
+        "tonalRamp": [
+          "#000E12",
+          "#002C34",
+          "#004B57",
+          "#007080",
+          "#0097AB",
+          "#00B9D1",
+          "#37DEF9",
+          "#CEF7FF"
+        ]
+      },
+      "page-marketing-light": {
+        "role": "neutral",
+        "displayName": "Marketing (Day)",
+        "canonical": "#0E7490",
+        "tonalRamp": [
+          "#000E14",
+          "#002B38",
+          "#004A5E",
+          "#006E8A",
+          "#3A92AF",
+          "#5BB2CF",
+          "#7FD5F4",
+          "#D7F4FF"
+        ]
+      },
+      "page-pricing": {
+        "role": "neutral",
+        "displayName": "Pricing",
+        "canonical": "#F59E0B",
+        "tonalRamp": [
+          "#140800",
+          "#382000",
+          "#5E3900",
+          "#8A5600",
+          "#B97500",
+          "#E19000",
+          "#FFB75C",
+          "#FFEBD4"
+        ]
+      },
+      "page-pricing-light": {
+        "role": "neutral",
+        "displayName": "Pricing (Day)",
+        "canonical": "#B45309",
+        "tonalRamp": [
+          "#180500",
+          "#411900",
+          "#6C2E00",
+          "#9D4600",
+          "#CA6728",
+          "#EC864A",
+          "#FFB38A",
+          "#FFE9DE"
+        ]
+      },
+      "page-listing": {
+        "role": "neutral",
+        "displayName": "Listing",
+        "canonical": "#8B5CF6",
+        "tonalRamp": [
+          "#0F002A",
+          "#2E0067",
+          "#4E00A5",
+          "#6E38D1",
+          "#8F61FB",
+          "#A98FFF",
+          "#C9BCFF",
+          "#EFECFF"
+        ]
+      },
+      "page-listing-light": {
+        "role": "neutral",
+        "displayName": "Listing (Day)",
+        "canonical": "#6D28D9",
+        "tonalRamp": [
+          "#0F002A",
+          "#2E0067",
+          "#4E00A5",
+          "#6F2CDC",
+          "#8F5EFF",
+          "#A98FFF",
+          "#C9BDFF",
+          "#EEECFF"
+        ]
+      },
+      "page-blog": {
+        "role": "neutral",
+        "displayName": "Blog / News",
+        "canonical": "#34D399",
+        "tonalRamp": [
+          "#000F07",
+          "#002F1E",
+          "#005036",
+          "#007651",
+          "#009E6F",
+          "#0CC289",
+          "#4FE6AB",
+          "#C0FFE0"
+        ]
+      },
+      "page-blog-light": {
+        "role": "neutral",
+        "displayName": "Blog / News (Day)",
+        "canonical": "#047857",
+        "tonalRamp": [
+          "#000F08",
+          "#002F20",
+          "#004F38",
+          "#007555",
+          "#3A9A77",
+          "#5CBA95",
+          "#81DDB7",
+          "#BFFFE3"
+        ]
+      },
+      "page-product": {
+        "role": "neutral",
+        "displayName": "Product",
+        "canonical": "#F472B6",
+        "tonalRamp": [
+          "#1D000F",
+          "#4A002E",
+          "#79004E",
+          "#A62871",
+          "#CF5195",
+          "#F270B4",
+          "#FFA9D2",
+          "#FFE7F1"
+        ]
+      },
+      "page-product-light": {
+        "role": "neutral",
+        "displayName": "Product (Day)",
+        "canonical": "#BE185D",
+        "tonalRamp": [
+          "#1E0008",
+          "#4D0020",
+          "#7D0039",
+          "#B50556",
+          "#E04178",
+          "#FF6997",
+          "#FFACC0",
+          "#FFE8EC"
+        ]
+      },
+      "page-doc": {
+        "role": "neutral",
+        "displayName": "Documentation",
+        "canonical": "#7B8CA6",
+        "tonalRamp": [
+          "#020A1D",
+          "#19273C",
+          "#34435A",
+          "#54647D",
+          "#7687A1",
+          "#94A6C1",
+          "#B6C9E4",
+          "#E5EFFF"
+        ]
+      },
+      "page-doc-light": {
+        "role": "neutral",
+        "displayName": "Documentation (Day)",
+        "canonical": "#4B5563",
+        "tonalRamp": [
+          "#050B16",
+          "#1E2733",
+          "#394351",
+          "#5A6472",
+          "#7C8796",
+          "#9AA6B5",
+          "#BDC8D9",
+          "#E4F0FF"
+        ]
+      },
+      "page-help": {
+        "role": "neutral",
+        "displayName": "Help / FAQ",
+        "canonical": "#FBBF24",
+        "tonalRamp": [
+          "#110A00",
+          "#332400",
+          "#563E00",
+          "#7E5D00",
+          "#AA7E00",
+          "#CF9B00",
+          "#F9BD1F",
+          "#FFECC7"
+        ]
+      },
+      "page-help-light": {
+        "role": "neutral",
+        "displayName": "Help / FAQ (Day)",
+        "canonical": "#A16207",
+        "tonalRamp": [
+          "#150800",
+          "#3A1F00",
+          "#603800",
+          "#8D5400",
+          "#B67628",
+          "#D7944B",
+          "#FCB76E",
+          "#FFEBD6"
+        ]
+      },
+      "page-tools": {
+        "role": "neutral",
+        "displayName": "Tools",
+        "canonical": "#C084FC",
+        "tonalRamp": [
+          "#130025",
+          "#38005B",
+          "#5A158A",
+          "#7C3FB1",
+          "#A064D9",
+          "#BF83FB",
+          "#D8B6FF",
+          "#F3EAFF"
+        ]
+      },
+      "page-tools-light": {
+        "role": "neutral",
+        "displayName": "Tools (Day)",
+        "canonical": "#7E22CE",
+        "tonalRamp": [
+          "#120026",
+          "#35005E",
+          "#590098",
+          "#7F24D0",
+          "#A353F9",
+          "#BA86FF",
+          "#D3B8FF",
+          "#F2EAFF"
+        ]
+      },
+      "page-case_study": {
+        "role": "neutral",
+        "displayName": "Case Study",
+        "canonical": "#38BDF8",
+        "tonalRamp": [
+          "#000D16",
+          "#002B3D",
+          "#004965",
+          "#006C94",
+          "#0092C6",
+          "#27B2ED",
+          "#7FD3FF",
+          "#DCF2FF"
+        ]
+      },
+      "page-case_study-light": {
+        "role": "neutral",
+        "displayName": "Case Study (Day)",
+        "canonical": "#0369A1",
+        "tonalRamp": [
+          "#000C19",
+          "#002943",
+          "#00466F",
+          "#0369A1",
+          "#3A8DC8",
+          "#5BADE9",
+          "#91CFFF",
+          "#E0F1FF"
+        ]
+      },
+      "page-career": {
+        "role": "neutral",
+        "displayName": "Careers",
+        "canonical": "#A3E635",
+        "tonalRamp": [
+          "#060E00",
+          "#1B2D00",
+          "#314C00",
+          "#4B7100",
+          "#679800",
+          "#7FBA00",
+          "#9DE02B",
+          "#D5FFA4"
+        ]
+      },
+      "page-career-light": {
+        "role": "neutral",
+        "displayName": "Careers (Day)",
+        "canonical": "#4D7C0F",
+        "tonalRamp": [
+          "#050F00",
+          "#182D00",
+          "#2D4D00",
+          "#457200",
+          "#669733",
+          "#84B654",
+          "#A6DA77",
+          "#D2FFAD"
+        ]
+      },
+      "page-company": {
+        "role": "neutral",
+        "displayName": "Company",
+        "canonical": "#5EEAD4",
+        "tonalRamp": [
+          "#000F0C",
+          "#002E28",
+          "#004E44",
+          "#007466",
+          "#009C8A",
+          "#1DBEA9",
+          "#54E2CC",
+          "#B8FFF1"
+        ]
+      },
+      "page-company-light": {
+        "role": "neutral",
+        "displayName": "Company (Day)",
+        "canonical": "#0F766E",
+        "tonalRamp": [
+          "#000F0D",
+          "#002E2A",
+          "#004E48",
+          "#07736B",
+          "#3D978E",
+          "#5FB6AD",
+          "#82DAD0",
+          "#B6FFF6"
+        ]
+      },
+      "page-auth": {
+        "role": "neutral",
+        "displayName": "Auth / Console",
+        "canonical": "#F87171",
+        "tonalRamp": [
+          "#1F0002",
+          "#4F000B",
+          "#810018",
+          "#AE2C35",
+          "#D85456",
+          "#FB7474",
+          "#FFAFAB",
+          "#FFE8E7"
+        ]
+      },
+      "page-auth-light": {
+        "role": "neutral",
+        "displayName": "Auth / Console (Day)",
+        "canonical": "#B91C1C",
+        "tonalRamp": [
+          "#1F0000",
+          "#500002",
+          "#810007",
+          "#B7191A",
+          "#E24940",
+          "#FF7265",
+          "#FFB0A5",
+          "#FFE9E5"
+        ]
+      },
+      "page-legal": {
+        "role": "neutral",
+        "displayName": "Legal",
+        "canonical": "#64748B",
+        "tonalRamp": [
+          "#020B1C",
+          "#19273A",
+          "#354358",
+          "#55647B",
+          "#77879F",
+          "#95A6BF",
+          "#B7C9E2",
+          "#E5EFFF"
+        ]
+      },
+      "page-legal-light": {
+        "role": "neutral",
+        "displayName": "Legal (Day)",
+        "canonical": "#475569",
+        "tonalRamp": [
+          "#030B1B",
+          "#1B2739",
+          "#364356",
+          "#566479",
+          "#78879D",
+          "#96A6BC",
+          "#B8C9E0",
+          "#E4EFFF"
+        ]
+      },
+      "page-generic": {
+        "role": "neutral",
+        "displayName": "Generic",
+        "canonical": "#94A3B8",
+        "tonalRamp": [
+          "#030B1A",
+          "#1B2738",
+          "#364355",
+          "#576478",
+          "#79879C",
+          "#97A6BB",
+          "#B9C9DF",
+          "#E4F0FF"
+        ]
+      },
+      "page-generic-light": {
+        "role": "neutral",
+        "displayName": "Generic (Day)",
+        "canonical": "#64748B",
+        "tonalRamp": [
+          "#020B1C",
+          "#19273A",
+          "#354358",
+          "#55647B",
+          "#77879F",
+          "#95A6BF",
+          "#B7C9E2",
+          "#E5EFFF"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "仅一处：锻造判定区的 54px 还原度百分比，带 0 0 32px 文字辉光。"
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "品牌字 HEIMDALL（24px / 0.3em 字距 / 青色辉光）；详情坞标题 19px。"
+      },
+      "stat": {
+        "displayName": "Stat",
+        "purpose": "星图 HUD 读数与存储 KPI 数值，tabular-nums 防跳动。"
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "报告卡 15px / 设置卡 14px 标题。"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "说明段落、表单、报告卡描述；最长 70ch。"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "字段与分组刻印，10px + 0.12–0.34em 字距。"
+      },
+      "mono": {
+        "displayName": "Mono data",
+        "purpose": "URL、路径、时间戳、读数与站点名。"
+      }
+    },
+    "pageTypes": [
+      {
+        "id": "marketing",
+        "displayName": "Marketing",
+        "label": "营销页",
+        "dark": "#22D3EE",
+        "light": "#0E7490"
+      },
+      {
+        "id": "pricing",
+        "displayName": "Pricing",
+        "label": "定价页",
+        "dark": "#F59E0B",
+        "light": "#B45309"
+      },
+      {
+        "id": "listing",
+        "displayName": "Listing",
+        "label": "列表页",
+        "dark": "#8B5CF6",
+        "light": "#6D28D9"
+      },
+      {
+        "id": "blog",
+        "displayName": "Blog / News",
+        "label": "博客/新闻",
+        "dark": "#34D399",
+        "light": "#047857"
+      },
+      {
+        "id": "product",
+        "displayName": "Product",
+        "label": "产品页",
+        "dark": "#F472B6",
+        "light": "#BE185D"
+      },
+      {
+        "id": "doc",
+        "displayName": "Documentation",
+        "label": "文档",
+        "dark": "#7B8CA6",
+        "light": "#4B5563"
+      },
+      {
+        "id": "help",
+        "displayName": "Help / FAQ",
+        "label": "帮助/FAQ",
+        "dark": "#FBBF24",
+        "light": "#A16207"
+      },
+      {
+        "id": "tools",
+        "displayName": "Tools",
+        "label": "工具页",
+        "dark": "#C084FC",
+        "light": "#7E22CE"
+      },
+      {
+        "id": "case_study",
+        "displayName": "Case Study",
+        "label": "客户案例",
+        "dark": "#38BDF8",
+        "light": "#0369A1"
+      },
+      {
+        "id": "career",
+        "displayName": "Careers",
+        "label": "招聘",
+        "dark": "#A3E635",
+        "light": "#4D7C0F"
+      },
+      {
+        "id": "company",
+        "displayName": "Company",
+        "label": "公司页",
+        "dark": "#5EEAD4",
+        "light": "#0F766E"
+      },
+      {
+        "id": "auth",
+        "displayName": "Auth / Console",
+        "label": "登录/控制台",
+        "dark": "#F87171",
+        "light": "#B91C1C"
+      },
+      {
+        "id": "legal",
+        "displayName": "Legal",
+        "label": "法务",
+        "dark": "#64748B",
+        "light": "#475569"
+      },
+      {
+        "id": "generic",
+        "displayName": "Generic",
+        "label": "通用页",
+        "dark": "#94A3B8",
+        "light": "#64748B"
+      }
+    ],
+    "shadows": [
+      {
+        "name": "brand-halo",
+        "value": "text-shadow: 0 0 24px rgba(34,211,238,.55)",
+        "purpose": "品牌字。浅色主题显式置 none。"
+      },
+      {
+        "name": "stat-halo",
+        "value": "text-shadow: 0 0 14px rgba(34,211,238,.5)",
+        "purpose": "星图统计数字。浅色主题置 none。"
+      },
+      {
+        "name": "tick-glow",
+        "value": "box-shadow: 0 0 8px var(--cyan)",
+        "purpose": ".hud-rule 上的 5px 刻度方块。"
+      },
+      {
+        "name": "verdict-halo-ok",
+        "value": "text-shadow: 0 0 32px rgba(52,211,153,.5)",
+        "purpose": "还原度 ≥95% 的大数字。"
+      },
+      {
+        "name": "verdict-halo-mid",
+        "value": "text-shadow: 0 0 32px rgba(245,158,11,.45)",
+        "purpose": "还原度 85–95% 的大数字。"
+      },
+      {
+        "name": "verdict-halo-bad",
+        "value": "text-shadow: 0 0 32px rgba(239,68,68,.4)",
+        "purpose": "还原度 <85% 的大数字。"
+      },
+      {
+        "name": "status-dot",
+        "value": "box-shadow: 0 0 8px rgba(52,211,153,.7)",
+        "purpose": "活跃引擎指示灯与已完成阶段圆点。"
+      },
+      {
+        "name": "legend-dot",
+        "value": "box-shadow: 0 0 6px currentColor",
+        "purpose": "图例色点。"
+      },
+      {
+        "name": "control-hover-cyan",
+        "value": "box-shadow: 0 0 26px rgba(34,211,238,.35)",
+        "purpose": "锻造按钮悬停。"
+      },
+      {
+        "name": "control-hover-amber",
+        "value": "box-shadow: 0 0 16px rgba(245,158,11,.3)",
+        "purpose": "批量锻造按钮悬停。"
+      },
+      {
+        "name": "control-hover-link",
+        "value": "box-shadow: 0 0 18px rgba(34,211,238,.2)",
+        "purpose": "档案/审计浮链悬停。"
+      },
+      {
+        "name": "inset-glow",
+        "value": "box-shadow: 0 0 20px rgba(34,211,238,.25) inset",
+        "purpose": "搜索栏「侦察」按钮悬停。"
+      },
+      {
+        "name": "dock-separation",
+        "value": "backdrop-filter: blur(14px)",
+        "purpose": "详情坞 —— 全站唯一的模糊面。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "ease",
+        "purpose": "默认缓动（.hud-t 与各类控件过渡）。"
+      },
+      {
+        "name": "dur-base",
+        "value": "180ms",
+        "purpose": "--dur：所有状态过渡的时长。"
+      },
+      {
+        "name": "dur-refine",
+        "value": "600ms ease",
+        "purpose": "可修差异进度条的填充动画。"
+      },
+      {
+        "name": "hud-pulse",
+        "value": "1.2s ease-in-out infinite",
+        "purpose": "状态灯呼吸（50% { opacity: .35 }）。"
+      },
+      {
+        "name": "scan-pulse",
+        "value": ".9s–1s ease-in-out infinite",
+        "purpose": "运行中阶段圆点与扫描中圆环。"
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation-duration/transition-duration: .001ms !important",
+        "purpose": "prefers-reduced-motion 全局兜底，并关闭 smooth scroll。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "chrome-mobile",
+        "value": "768px",
+        "purpose": "工作视图撑满、表格转卡片、星图浮层与快捷键条隐藏。"
+      },
+      {
+        "name": "storage-mobile",
+        "value": "760px",
+        "purpose": "存储卡塌成单列、KPI 2 列。"
+      },
+      {
+        "name": "table-4",
+        "value": "1024px",
+        "purpose": "表格丢弃「类型」列，min-width 760px。"
+      },
+      {
+        "name": "table-3",
+        "value": "1180px",
+        "purpose": "表格丢弃「资产」列，min-width 860px。"
+      },
+      {
+        "name": "table-2",
+        "value": "1360px",
+        "purpose": "表格丢弃「交互」列，min-width 960px。"
+      },
+      {
+        "name": "table-1",
+        "value": "1560px",
+        "purpose": "表格丢弃「更新」列，min-width 1040px。"
+      }
+    ],
+    "surfaces": {
+      "panelBase": "linear-gradient(180deg, rgba(30,30,35,.92), rgba(20,20,26,.94))",
+      "panelBaseLight": "#FFFFFF",
+      "cornerTicks": "10px × 10px，2px 实边，色 var(--cyan-dim)，挂 .hud-panel::before / ::after",
+      "focusRing": ":focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px }",
+      "scrollbar": "6px 宽/高，滑块 var(--cyan-line)，悬停 var(--cyan-dim)，3px 圆角",
+      "selection": "rgba(34, 211, 238, .3)",
+      "workViewGeometry": "fixed; left/right 24px; top 78px; bottom 86px（≤768px: left/right 0, top 118px, bottom 64px）",
+      "reportsGrid": "repeat(auto-fit, minmax(240px, 1fr))，gap 14px，跨列用 grid-column: 1 / -1",
+      "tableGrid": "34px / minmax(140px,1.1fr) / minmax(160px,1.5fr) / 78px / 70px / 62px / 84px / 50px / 54px / 90px / 220px，min-width 1180px",
+      "dock": "right 0, top/bottom 0, width 32%（min 400px），border-left 1px var(--cyan-line)，backdrop-filter blur(14px)"
+    }
+  },
+  "components": [
+    {
+      "name": "Instrument Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "全系统的唯一表面基元：1px 青色细线 + 4px 圆角 + 四角 L 形刻度 + 暗色渐变地。任何新容器都应该是它。",
+      "html": "<div class=\"ds-panel\" style=\"width:280px\">\n  <div class=\"ds-panel-label\">OBSERVATORY · 仪表面板</div>\n  <div class=\"ds-panel-body\">引擎在线 :8900 · 锻造槽 0/2</div>\n</div>",
+      "css": ".ds-panel{position:relative;background:linear-gradient(180deg,rgba(30,30,35,.92),rgba(20,20,26,.94));border:1px solid var(--cyan-line,rgba(34,211,238,.22));border-radius:4px;padding:14px 16px;color:var(--text,#F8FAFC);font-family:var(--font-cn,sans-serif);}\n.ds-panel::before,.ds-panel::after{content:\"\";position:absolute;width:10px;height:10px;border-color:var(--cyan-dim,rgba(34,211,238,.45));border-style:solid;pointer-events:none;}\n.ds-panel::before{top:-1px;left:-1px;border-width:2px 0 0 2px;}\n.ds-panel::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;}\n.ds-panel-label{font-family:var(--font-mono,monospace);font-size:10px;letter-spacing:.24em;color:var(--text-faint,#7E8CA0);margin-bottom:10px;}\n.ds-panel-body{font-size:12.5px;color:var(--text-dim,#94A3B8);}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "主操作：侦察、克隆选中、保存并生效、运行审计。青色底纹 + 青色文字 + 青色描边。放大版为锻造按钮：linear-gradient(180deg, rgba(34,211,238,.22), rgba(34,211,238,.06)) 底、实心青色描边、全宽、13px 0 内边距、14.5px 字与 .2em 字距。",
+      "html": "<button class=\"ds-btn-primary\">克隆选中 (3)</button>",
+      "css": ".ds-btn-primary{background:rgba(34,211,238,.12);color:var(--cyan,#22D3EE);border:1px solid rgba(34,211,238,.5);border-radius:3px;padding:6px 12px;font-size:12px;font-family:var(--font-cn,sans-serif);cursor:pointer;transition:background 180ms ease,border-color 180ms ease,box-shadow 180ms ease;}\n.ds-btn-primary:hover{background:rgba(34,211,238,.18);border-color:var(--cyan-dim,rgba(34,211,238,.45));box-shadow:0 0 20px rgba(34,211,238,.25);}\n.ds-btn-primary:focus-visible{outline:2px solid var(--cyan,#22D3EE);outline-offset:2px;}\n.ds-btn-primary:active{background:rgba(34,211,238,.24);}\n.ds-btn-primary:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}"
+    },
+    {
+      "name": "Ghost Row Action",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "表格行与面板上的次级动作：详情 / 重锻 / 原站 / 返回星图。无底色，悬停转青。",
+      "html": "<span class=\"ds-row-actions\"><a href=\"#\" class=\"ds-btn-ghost\">原站</a><button class=\"ds-btn-ghost\">详情</button><button class=\"ds-btn-ghost\">克隆</button></span>",
+      "css": ".ds-row-actions{display:flex;gap:6px;}\n.ds-btn-ghost{background:none;border:1px solid rgba(148,163,184,.25);border-radius:3px;padding:3px 7px;font-size:11px;color:var(--text-dim,#94A3B8);cursor:pointer;font-family:inherit;transition:color 180ms ease,border-color 180ms ease;}\n.ds-btn-ghost:hover{color:var(--cyan,#22D3EE);border-color:var(--cyan-dim,rgba(34,211,238,.45));}\n.ds-btn-ghost:focus-visible{outline:2px solid var(--cyan,#22D3EE);outline-offset:2px;}\n.ds-btn-ghost:disabled{opacity:.35;cursor:not-allowed;}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "销毁性动作：删除页面 / 移除选中 / 执行回收。红字红边，禁用时淡出。",
+      "html": "<button class=\"ds-btn-danger\" disabled>移除选中 (0)</button>",
+      "css": ".ds-btn-danger{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.42);border-radius:3px;padding:6px 12px;color:var(--red,#EF4444);font-size:12px;font-family:var(--font-cn,sans-serif);cursor:pointer;transition:border-color 180ms ease,box-shadow 180ms ease;}\n.ds-btn-danger:hover:enabled{border-color:rgba(239,68,68,.7);box-shadow:0 0 16px rgba(239,68,68,.22);}\n.ds-btn-danger:focus-visible{outline:2px solid var(--cyan,#22D3EE);outline-offset:2px;}\n.ds-btn-danger:disabled{opacity:.35;cursor:not-allowed;}"
+    },
+    {
+      "name": "Text Field & Select",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "工作视图表头与设置表单里的输入/选单。内嵌底 + 青色细线；原生选单必须声明 color-scheme。",
+      "html": "<div class=\"ds-field-row\">\n  <input class=\"ds-field\" placeholder=\"搜索 URL / 标题\" />\n  <select class=\"ds-field\"><option>全部类型</option></select>\n</div>",
+      "css": ".ds-field-row{display:flex;gap:8px;align-items:center;}\n.ds-field{background:rgba(255,255,255,.04);border:1px solid var(--cyan-line,rgba(34,211,238,.22));border-radius:3px;padding:6px 9px;color:var(--text,#F8FAFC);font-size:12px;font-family:var(--font-cn,sans-serif);color-scheme:dark;transition:border-color 180ms ease;}\n.ds-field::placeholder{color:var(--text-faint,#7E8CA0);opacity:.85;}\n.ds-field:hover{border-color:var(--cyan-dim,rgba(34,211,238,.45));}\n.ds-field:focus-visible{outline:2px solid var(--cyan,#22D3EE);outline-offset:2px;}\n.ds-field option{background:#14141a;color:#e2e8f0;}\n.ds-field:disabled{opacity:.5;cursor:not-allowed;}"
+    },
+    {
+      "name": "Data Table Row",
+      "kind": "custom",
+      "refersTo": "table-row",
+      "description": "工作视图的 11 列数据行：粘顶表头、行悬停青色、状态列用文字色表达语义、操作列是 ghost 按钮组。",
+      "html": "<div class=\"ds-table\">\n  <div class=\"ds-row ds-th\"><span>路径</span><span>类型</span><span>状态</span><span>视觉</span><span>操作</span></div>\n  <div class=\"ds-row\"><span class=\"ds-url\">/pricing</span><span style=\"color:#B45309\">定价页</span><span class=\"ds-done\">已克隆</span><span class=\"ds-score\">99.1%</span><span class=\"ds-acts\"><button class=\"ds-btn-ghost\">详情</button></span></div>\n  <div class=\"ds-row\"><span class=\"ds-url\">/blog/post</span><span style=\"color:#047857\">博客/新闻</span><span class=\"ds-run\">克隆中</span><span class=\"ds-score\">—</span><span class=\"ds-acts\"><button class=\"ds-btn-ghost\">详情</button></span></div>\n</div>",
+      "css": ".ds-table{display:flex;flex-direction:column;min-width:520px;font-family:var(--font-cn,sans-serif);}\n.ds-row{display:grid;grid-template-columns:minmax(120px,1.2fr) 80px 70px 70px 80px;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid rgba(148,163,184,.10);font-size:12px;color:var(--text-dim,#94A3B8);transition:background 180ms ease;}\n.ds-row:hover{background:rgba(34,211,238,.05);}\n.ds-th{position:sticky;top:0;background:rgba(11,11,16,.95);color:var(--text-faint,#7E8CA0);font-size:10.5px;letter-spacing:.12em;font-family:var(--font-mono,monospace);}\n.ds-url{color:var(--cyan,#22D3EE);font-family:var(--font-mono,monospace);cursor:pointer;}\n.ds-done{color:var(--green,#34D399);font-size:11px;}\n.ds-run{color:var(--amber,#F59E0B);font-size:11px;}\n.ds-score{font-family:var(--font-mono,monospace);}\n.ds-acts{display:flex;gap:6px;}\n.ds-btn-ghost{background:none;border:1px solid rgba(148,163,184,.25);border-radius:3px;padding:3px 7px;font-size:11px;color:var(--text-dim,#94A3B8);cursor:pointer;font-family:inherit;transition:color 180ms ease,border-color 180ms ease;}\n.ds-btn-ghost:hover{color:var(--cyan,#22D3EE);border-color:var(--cyan-dim,rgba(34,211,238,.45));}"
+    },
+    {
+      "name": "Report Card",
+      "kind": "card",
+      "refersTo": "report-card",
+      "description": "报告中心网格里的一张观测记录卡：标题、一行状态、一个动作。",
+      "html": "<div class=\"ds-report-card\" style=\"max-width:260px\">\n  <h3>克隆档案</h3>\n  <p>61 页已克隆 · 平均视觉 99.1%</p>\n  <a href=\"#\">打开档案</a>\n</div>",
+      "css": ".ds-report-card{position:relative;background:linear-gradient(180deg,rgba(30,30,35,.92),rgba(20,20,26,.94));border:1px solid var(--cyan-line,rgba(34,211,238,.22));border-radius:4px;padding:16px;color:var(--text,#F8FAFC);font-family:var(--font-cn,sans-serif);}\n.ds-panel::before,.ds-panel::after{content:\"\";position:absolute;width:10px;height:10px;border-color:var(--cyan-dim,rgba(34,211,238,.45));border-style:solid;pointer-events:none;}\n.ds-panel::before{top:-1px;left:-1px;border-width:2px 0 0 2px;}\n.ds-panel::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;}\n.ds-report-card h3{margin:0 0 8px;font-size:15px;font-weight:500;}\n.ds-report-card p{color:var(--text-dim,#94A3B8);font-size:12px;min-height:34px;margin:0 0 12px;line-height:1.6;}\n.ds-report-card a,.ds-report-card button{display:inline-block;color:var(--cyan,#22D3EE);border:1px solid var(--cyan-line,rgba(34,211,238,.22));background:rgba(34,211,238,.06);border-radius:3px;padding:6px 12px;font-size:12px;text-decoration:none;cursor:pointer;font-family:inherit;transition:background 180ms ease,border-color 180ms ease;}\n.ds-report-card a:hover,.ds-report-card button:hover{background:rgba(34,211,238,.14);border-color:var(--cyan-dim,rgba(34,211,238,.45));}"
+    },
+    {
+      "name": "Storage KPI Tile",
+      "kind": "custom",
+      "refersTo": "kpi-tile",
+      "description": "存储治理卡的读数瓦片：数值用 Orbitron tabular-nums，标签 11px 弱文字。",
+      "html": "<div class=\"ds-kpis\" style=\"max-width:320px\">\n  <div><b>2.1GB</b><span>实际占用</span></div>\n  <div><b>42.4MB</b><span>可回收 CAS</span></div>\n</div>",
+      "css": ".ds-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;font-family:var(--font-cn,sans-serif);}\n.ds-kpis>div{padding:10px;border:1px solid var(--cyan-line,rgba(34,211,238,.22));background:rgba(34,211,238,.035);border-radius:3px;}\n.ds-kpis b{display:block;color:var(--text,#F8FAFC);font-family:var(--font-num,monospace);font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;}\n.ds-kpis span{display:block;margin-top:5px;color:var(--text-faint,#7E8CA0);font-size:11px;}"
+    },
+    {
+      "name": "View Nav",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "底部仪器坞：图标在上标签在下，激活项青色。图标来自 Icon.vue 的 24 网格 / 1.6 描边 SVG。",
+      "html": "<nav class=\"ds-nav\">\n  <button class=\"ds-nav-item\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h16M4 12h16M4 17h16\"/></svg><span>页面</span></button>\n  <button class=\"ds-nav-item is-on\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 6l6 6-6 6\"/></svg><span>报告</span></button>\n</nav>",
+      "css": ".ds-nav{position:relative;display:inline-flex;gap:2px;padding:4px;background:linear-gradient(180deg,rgba(30,30,35,.92),rgba(20,20,26,.94));border:1px solid var(--cyan-line,rgba(34,211,238,.22));border-radius:4px;font-family:var(--font-cn,sans-serif);}\n.ds-panel::before,.ds-panel::after{content:\"\";position:absolute;width:10px;height:10px;border-color:var(--cyan-dim,rgba(34,211,238,.45));border-style:solid;pointer-events:none;}\n.ds-panel::before{top:-1px;left:-1px;border-width:2px 0 0 2px;}\n.ds-panel::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;}\n.ds-nav-item{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:62px;padding:5px 8px;background:none;border:0;border-radius:3px;color:var(--text-faint,#7E8CA0);cursor:pointer;transition:color 180ms ease,background 180ms ease;}\n.ds-nav-item svg{width:13px;height:13px;display:block;}\n.ds-nav-item span{font-size:10px;letter-spacing:.1em;}\n.ds-nav-item:hover{color:var(--text,#F8FAFC);}\n.ds-nav-item.is-on{color:var(--cyan,#22D3EE);background:rgba(34,211,238,.10);}\n.ds-nav-item:focus-visible{outline:2px solid var(--cyan,#22D3EE);outline-offset:2px;}"
+    },
+    {
+      "name": "Stage Row",
+      "kind": "custom",
+      "refersTo": "panel-inset",
+      "description": "锻造流程的六阶段仪表格：编号 + 名称 + 状态圆点，运行态琥珀呼吸，完成态绿。",
+      "html": "<div class=\"ds-stages\" style=\"max-width:420px\">\n  <div class=\"ds-stage\"><span class=\"ds-idx\">01</span>捕获骨架<span class=\"ds-dot\"></span></div>\n  <div class=\"ds-stage is-running\"><span class=\"ds-idx\">02</span>注入皮肤<span class=\"ds-dot\"></span></div>\n  <div class=\"ds-stage is-done\"><span class=\"ds-idx\">03</span>渲染校准<span class=\"ds-dot\"></span></div>\n  <div class=\"ds-stage is-skipped\"><span class=\"ds-idx\">04</span>AI 校准<span class=\"ds-dot\"></span></div>\n</div>",
+      "css": ".ds-stages{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-family:var(--font-cn,sans-serif);}\n.ds-stage{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid rgba(148,163,184,.16);border-radius:4px;font-size:12.5px;color:var(--text-faint,#7E8CA0);background:rgba(30,30,35,.5);transition:all 180ms ease;}\n.ds-idx{font-family:var(--font-mono,monospace);font-size:10px;letter-spacing:.08em;}\n.ds-dot{margin-left:auto;width:6px;height:6px;border-radius:50%;background:#3A4356;transition:all 180ms ease;}\n.ds-stage.is-running{border-color:rgba(245,158,11,.55);color:var(--amber,#F59E0B);background:rgba(245,158,11,.05);}\n.ds-stage.is-running .ds-dot{background:var(--amber,#F59E0B);box-shadow:0 0 10px var(--amber,#F59E0B);animation:ds-pulse .9s ease-in-out infinite;}\n.ds-stage.is-done{border-color:rgba(52,211,153,.35);}\n.ds-stage.is-done .ds-idx{color:var(--green,#34D399);}\n.ds-stage.is-done .ds-dot{background:var(--green,#34D399);box-shadow:0 0 8px rgba(52,211,153,.7);}\n.ds-stage.is-skipped{opacity:.5;}\n@keyframes ds-pulse{50%{opacity:.35}}\n@media (prefers-reduced-motion:reduce){.ds-stage.is-running .ds-dot{animation-duration:.001ms;animation-iteration-count:1;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Deep-Space Observatory",
+    "overview": [
+      "控制台不是仪表盘，而是一台仪器。整个界面建立在同一个表面基元上——深色观测场上一块 1px 青色细线的面板，四角带 L 形装饰刻度，内部是自上而下的暗色渐变。所有内容都「读」出来：页面是星图上的星球，任务是仪器上的读数，报告是观测记录，存储治理是仓库盘点。中文业务术语与英文仪器标签混排，这是观测站里「仪表刻印」的语感，不是装饰性的标题排版。",
+      "密度是刻意的：表格行 12px、元数据 10.5–11.5px、标签 10px 且带 0.12–0.34em 字距；信息优先于留白。颜色按职责分配且互不替代：青色永远是侦察与主操作，琥珀永远是警告与进行中，紫色永远是 AI 校准，绿色是完成，红色是失败。发光被严格收敛——只有状态和选择会发光，正文和框线从不发光，因此「某处亮起来」本身就携带语义。深度不靠阴影，靠 1px 细线的分层、面板内的暗色渐变，以及唯一的模糊面：右侧详情坞。",
+      "第二版把浮层式界面改造成真正的工作台：pages / jobs / reports / settings 变成整高可滚动的 .work-view 面板并各自拥有表头（.wv-head），星图专属的浮层只在星图视图渲染。同一个视觉世界，但从「悬浮仪表堆叠」走到了「可工作的观测站」。"
+    ],
+    "keyCharacteristics": [
+      "单一表面基元：1px 细线仪器面板 + 四角刻度 + 暗色渐变地。",
+      "五色语义分工，青色为唯一主色，发光仅标记状态与选择。",
+      "三字体分工：Orbitron 数字/标识、Share Tech Mono 标签与数据、Noto Sans SC 正文。",
+      "汉字正文以可读字号为准（正文 ≥12px，标签 10px 起），不再用 8–9px 装饰字。",
+      "双主题（data-theme=\"dark\" 默认 / light 日间模式），全部主题色在 token 层翻转。",
+      "深度 = 细线 + 色阶 + 辉光；没有任何投影。"
+    ],
+    "rules": [
+      {
+        "name": "The Glow-Is-Evidence Rule",
+        "section": "colors",
+        "body": "发光只标记状态与选择，不用于装饰。允许发光的位置是：品牌字与统计数字的文字辉光、.hud-rule 上的 5px 方块刻度、.status.live、运行的阶段圆点、还原度评分数字、主按钮/锻造按钮的悬停、活跃引擎指示灯、图例圆点。其余任何新增表面不得自带辉光——屏幕某处亮起来，就必须意味着有东西在运行或被选中。"
+      },
+      {
+        "name": "The Three-Light Rule",
+        "section": "colors",
+        "body": "青 = 侦察/主操作，琥珀 = 警告/进行中，紫 = AI。三者不可互换，也不可扩展出第四种语义色；需要新语义时优先复用绿/红。"
+      },
+      {
+        "name": "The AA-First Rule",
+        "section": "colors",
+        "body": "任何承担文字的新颜色，必须在其所落的底色上（白底、面板底、淡色提示底）实测 ≥4.5:1 才算通过。本批次的对比度修正（--text-faint 两主题、浅色 cyan/green/red）就是这条规则的结果。"
+      },
+      {
+        "name": "The Three-Voice Rule",
+        "section": "typography",
+        "body": "全文只有三套字：Orbitron（数字与标识）、Share Tech Mono（标签与数据）、Noto Sans SC（正文）。新增界面不得引入第四套字族，也不得把 Orbitron 用在句子级文本上。"
+      },
+      {
+        "name": "The Readable-Floor Rule",
+        "section": "typography",
+        "body": "10px 是字号的绝对下限，且只有字距 ≥0.12em 的全大写拉丁标签可以用。承担阅读的正文不得低于 12px；窄屏（≤768px）不缩小正文字号，只改变布局。"
+      },
+      {
+        "name": "The No-Drop-Shadow Rule",
+        "section": "elevation",
+        "body": "不使用任何带偏移的投影。需要「更高一层」时，用更亮的 1px 边框、更暗的渐变地或 z-index 分层来表达；需要「醒目」时用辉光，且仅限于状态与选择。"
+      },
+      {
+        "name": "The Glow-Follows-State Rule",
+        "section": "elevation",
+        "body": "辉光永远是状态变化的结果，不是静态装饰：静默元素悬停时才亮，运行时才呼吸，选中时才滞留。默认态的控件没有辉光。"
+      }
+    ],
+    "dos": [
+      "Do 让每一个新容器都成为 .hud-panel：1px solid var(--cyan-line)、4px 圆角、四角 L 形刻度、暗色渐变地。这是系统的单一表面基元。",
+      "Do 用 var(--cyan-line) / var(--cyan-dim) 组织边框和分隔，并在浅色主题显式翻转；浅色主题的面板与详情坞写纯白 #FFFFFF。",
+      "Do 按 The Three-Light Rule 分配语义色：青 = 侦察/主操作，琥珀 = 警告/进行中，紫 = AI（仅 AI 校准与情报），绿 = 完成，红 = 失败/危险。",
+      "Do 按 The Glow-Is-Evidence Rule 收束辉光：只有状态与选择发光，且只在悬停、运行、选中时出现。",
+      "Do 用 Icon.vue 的 <Icon name=\"...\" /> 提供 chrome 图标（24 网格 / 1.6 描边 / 圆头 / 1em / currentColor）；仅图标按钮传 label，与可见文字同用传 decorative。",
+      "Do 用三套字按 The Three-Voice Rule 分工，并守住 The Readable-Floor Rule：正文 ≥12px，10px 只给带 ≥0.12em 字距的全大写拉丁标签。",
+      "Do 在 types.js 里为每个页面类型注册 color + light 两值，浅色值必须在白底上 ≥4.5:1，并只用 typeColor(type, theme) 取值。",
+      "Do 给原生 <select> 声明 color-scheme 并显式写 option 背景（暗 #14141a / 浅 #fff），否则深色主题下选单会闪白。",
+      "Do 让销毁性动作走预览 → 二次确认 → 执行（存储回收、CAS 回收、删除站点），并始终显示影响范围与释放量。",
+      "Do 复用既有的中性细线字面值 rgba(148,163,184,.10)（行分隔）与 rgba(148,163,184,.16)（中性描边），不要发明新的灰阶。",
+      "Do 在工作视图里用 .wv-head 承载站点选择器与筛选，让正文区独立滚动；表格可以横向滚动，但控件不得不可达。"
+    ],
+    "donts": [
+      "Don't 使用任何带偏移的投影（The No-Drop-Shadow Rule）；深度用细线 + 色阶表达。backdrop-filter: blur(14px) 只属于详情坞。",
+      "Don't 引入玻璃卡片墙、渐变文字或装饰性霓虹——世界本身靠细线与克制辉光说话，这三点是已确认的视觉拒绝项。",
+      "Don't 在非 neobrutalist 的世界里引入硬偏移阴影；本世界没有，也不要加。",
+      "Don't 把 Orbitron 用到句子级文本上，也不要引入第四套字族。",
+      "Don't 把星图浮层（.hud、.sites、.keys、.panel、.task-center）渲染进工作视图——它们会压住任务内容，这正是本批次把它们限定在 view === 'atlas' 的原因。",
+      "Don't 在组件里写死深色背景而不提供浅色主题覆盖；星图浮层的五处写死底色曾导致浅色主题下出现 1.45:1 的不可读组合。",
+      "Don't 把 8–9px 当正文用；密集不等于微小。",
+      "Don't 让同一语义有两种颜色，或让同一颜色承担两种语义（The Three-Light Rule）。",
+      "Don't 把 KPI、评分或体积填成虚构数据——指标必须能下钻到产物或请求。"
+    ]
+  }
+}
