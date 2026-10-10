@@ -160,27 +160,11 @@ const avgVisual = computed(() => {
   const vals = Object.values(pageScores).filter(s => s && typeof s.pixel === 'number').map(s => s.pixel);
   return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : '—';
 });
+/** 清单数据刷新：一次 /api/pages 请求拿全（分数/资产/缺口/交互/最差视口）。
+ *  此前这里还有一条逐页拉 score.json + verify.json 的路径（80 页 = 160 请求），
+ *  而分数本就包含在 /api/pages 的响应里 —— 已删除。 */
+function scheduleScoreLoad() { clearTimeout(scoreLoadTimer); scoreLoadTimer = setTimeout(loadPageStatus, 400); }
 let scoreLoadTimer = null;
-function scheduleScoreLoad() { clearTimeout(scoreLoadTimer); scoreLoadTimer = setTimeout(loadPageScores, 400); }
-async function loadPageScores() {
-  const list = tableNodes.value.filter(n => n.forgeState === 'done').slice(0, 80);
-  let i = 0;
-  const worker = async () => {
-    while (i < list.length) {
-      const n = list[i++];
-      try {
-        const name = pageNameOf(n);
-        const [rs, rv] = await Promise.all([
-          wsJson(host.value, 'pages/' + name + '/score.json'),
-          wsJson(host.value, 'verify/' + name + '/verify.json'),
-        ]);
-        pageScores[n.id] = rs;
-        pageVerify[n.id] = rv;
-      } catch { pageScores[n.id] = null; }
-    }
-  };
-  await Promise.all([worker(), worker(), worker(), worker()]);
-}
 
 function openDetail(n) { view.value = 'pages'; onNodeClick(n); }
 function selectView(id) {
@@ -267,6 +251,10 @@ async function loadPageStatus() {
       const hit = byPath.get(key) ?? byName.get(pageNameOf(n));
       if (hit) {
         n.forgeState = 'done'; pageScores[n.id] = hit.score ?? null; matchedNames.add(hit.name);
+        // 视觉列的最差视口也来自这一条响应（引擎已把 verify.json 的两项一起给出）。
+        // 此前是逐页再发 score.json + verify.json 两个请求 —— 80 页就是 160 个，
+        // 而分数本来就包含在这条响应里，等于白拉了一遍。
+        pageVerify[n.id] = hit.minViewport ? { minViewport: hit.minViewport } : null;
         pageMeta[n.id] = { assets: hit.assets ?? null, visualGaps: hit.visualGaps ?? null, interactions: hit.interactions ?? null, updatedAt: hit.updatedAt ?? null };
       }
     }
@@ -279,6 +267,7 @@ async function loadPageStatus() {
     for (const n of extraNodes.value) {
       const hit = pages.find(p => p.name === n.pageName);
       pageScores[n.id] = hit?.score ?? null;
+      pageVerify[n.id] = hit?.minViewport ? { minViewport: hit.minViewport } : null;
       pageMeta[n.id] = { assets: hit?.assets ?? null, visualGaps: hit?.visualGaps ?? null, interactions: hit?.interactions ?? null, updatedAt: hit?.updatedAt ?? null };
     }
     tableNodes.value = [...nodes, ...extraNodes.value];

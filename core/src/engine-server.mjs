@@ -635,15 +635,24 @@ createServer(async (req, res) => {
           meta = { mtime, meta: { count, bytes } };
           pageMetaCache.set(name, meta);
         }
-        // 交互回放结果（若已跑过 verify）
-        let interactions = null;
-        try { interactions = JSON.parse(readFileSync(join(WORKSPACE, host, 'verify', name, 'verify.json'), 'utf8')).functional ?? null; } catch {}
+        // verify 结果：interactions（交互列）与 minViewport（视觉列的最差值）同源，
+        // 一次读文件一起给。控制台此前为这两列逐页发 2 个请求（80 页 = 160 个），
+        // 而这里本来就已经在读同一个文件了。
+        let interactions = null, minViewport = null;
+        try {
+          const v = JSON.parse(readFileSync(join(WORKSPACE, host, 'verify', name, 'verify.json'), 'utf8'));
+          interactions = v.functional ?? null;
+          minViewport = v.minViewport
+            ? { name: v.minViewport.name, score: v.minViewport.score, grade: v.minViewport.grade }
+            : null;
+        } catch {}
         out.push({
           name, target, forged: true,
           score: score ? { total: score.total, pixel: score.pixel, grade: score.grade } : null,
           assets: meta.meta,
           visualGaps: gapMap[name] ?? null,
           interactions,
+          minViewport,
           updatedAt: mtime,
         });
       }
