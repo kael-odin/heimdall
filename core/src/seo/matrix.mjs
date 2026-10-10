@@ -12,7 +12,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { WORKSPACE } from '../paths.mjs';
+import { WORKSPACE, localDateStamp } from '../paths.mjs';
 import { buildMatrix, renderMatrixHtml, renderMatrixCsv } from './matrix-core.mjs';
 
 const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
@@ -47,7 +47,7 @@ for (const host of sites) {
 if (audits.length < 2) { console.error('need at least 2 audits, got', audits.length); process.exit(1); }
 
 const matrix = buildMatrix(audits);
-const slug = sites.join('_vs_').replace(/[^a-z0-9_.-]+/gi, '-') + '-' + new Date().toISOString().slice(0, 10);
+const slug = sites.join('_vs_').replace(/[^a-z0-9_.-]+/gi, '-') + '-' + localDateStamp();
 const outDir = join(WORKSPACE, '_matrix', slug);
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'matrix.json'), JSON.stringify(matrix, null, 2));

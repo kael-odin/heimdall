@@ -188,3 +188,20 @@ test('fs: applyPrune 真的删除，且只删 remove 里列出的', () => {
 });
 
 test.after(() => rmSync(root, { recursive: true, force: true }));
+
+// ---------- 日期戳 ----------
+test('localDateStamp: 用本地日历，不是 UTC', async () => {
+  const { localDateStamp } = await import('../src/paths.mjs');
+  // 构造一个"本地 10-11 凌晨 1 点"的时刻：此时 UTC 可能还是 10-10
+  const d = new Date(2026, 9, 11, 1, 0, 0);   // 月份从 0 起 → 10 月
+  assert.equal(localDateStamp(d), '2026-10-11');
+  // 断言它与 toISOString 在这类时刻**确实可能不同** —— 这正是要修的问题
+  const utc = d.toISOString().slice(0, 10);
+  const localTzOffsetMin = d.getTimezoneOffset();
+  if (localTzOffsetMin < 0) assert.notEqual(localDateStamp(d), utc, '东时区凌晨应与 UTC 日期不同');
+});
+
+test('localDateStamp: 月/日补零', async () => {
+  const { localDateStamp } = await import('../src/paths.mjs');
+  assert.equal(localDateStamp(new Date(2026, 0, 5)), '2026-01-05');
+});

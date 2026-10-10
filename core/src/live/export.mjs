@@ -23,7 +23,7 @@ import { join, dirname, extname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { WORKSPACE, DELIVERABLE } from '../paths.mjs';
+import { WORKSPACE, DELIVERABLE, localDateStamp } from '../paths.mjs';
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { scanLiveBundle } from './health.mjs';
 import { healBundle, materializeHar, localizeQueryEntries, rewriteHtmlRefs } from './heal.mjs';
@@ -51,7 +51,7 @@ const MATERIALIZE = has('materialize-har');
 const OUT_ARG = argOf('out', '');
 const OUT = OUT_ARG
   ? resolve(process.env.HEIMDALL_INVOKE_CWD ?? process.cwd(), OUT_ARG)
-  : join(DELIVERABLE, host + '-live-' + new Date().toISOString().slice(0, 10));
+  : join(DELIVERABLE, host + '-live-' + localDateStamp());
 
 // ---------- 1. 确保 live/ 已生成 ----------
 if (has('rebuild') || !existsSync(join(BASE, 'live'))) {
