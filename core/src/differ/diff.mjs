@@ -18,6 +18,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
+import { analyzeDiffShape, shapeNote } from './shape.mjs';
 import { domSimilarity } from './domdiff.mjs';
 import { dataScore } from '../harvest/harvest.mjs';
 import { requireArg } from '../args.mjs';
@@ -78,6 +79,10 @@ const refinable = best ? staticPx / best : 1;
 const diff = new PNG({ width: W, height: H });
 pixelmatch(frames[bestFrame - 1].data, clone.data, diff.data, W, H, { threshold: 0.1 });
 
+// 差异的**形态**：同样 96% 的相似度，可能是"一处图片没抓到"（集中），
+// 也可能是"全页文字抗锯齿略不同"（弥散）—— 含义完全不同，用户得能分辨。
+const shape = analyzeDiffShape(diff.data, W, H);
+
 // ---------- 结构 / 数据维度 ----------
 const dom = domSimilarity(
   readFileSync(join(DIR, 'dom.html'), 'utf8'),
@@ -110,9 +115,14 @@ const score = {
     dynamicShare: best ? +(dynamicPx / best).toFixed(3) : 0,
     refinable: +refinable.toFixed(3),
   },
+  // 差异形态：concentrated（去查那几块）/ mixed / diffuse（多为渲染差异）
+  diffShape: { ...shape, note: shapeNote(shape.shape) },
   method: 'multi-frame best-match + parse5 structural + field coverage',
 };
 writeFileSync(join(DIR, 'score.json'), JSON.stringify(score, null, 2));
 writeFileSync(join(DIR, 'diff.png'), PNG.sync.write(diff));
 console.log(`pixel ${(pixel * 100).toFixed(2)}% (best of ${frames.length} frames, dynamic ${(dynamicPx / (best || 1) * 100).toFixed(0)}%) | dom ${(dom.dom * 100).toFixed(2)}% | data ${data ? (data.data * 100).toFixed(2) + '%' : 'n/a'}`);
 console.log(`refinable ${(refinable * 100).toFixed(0)}% (static ${staticPx}px / dynamic ${dynamicPx}px) | TOTAL ${(total100 * 100).toFixed(1)}%  grade ${grade}`);
+if (shape.shape !== 'identical') {
+  console.log(`diff shape ${shape.shape}: ${shape.blobs} 块, 最大 ${shape.largest}px, 前5占 ${(shape.top5Share * 100).toFixed(0)}% — ${shapeNote(shape.shape)}`);
+}

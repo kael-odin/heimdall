@@ -39,6 +39,11 @@ let liveHealth = null, liveHealthHost = '';
 const typeColorThemed = (t) => typeColor(t, props.theme);
 const pageName = computed(() => (props.selected ? pageNameOf(props.selected) : ''));
 
+/** 差异形态的中文标签与配色：集中 = 要去看，弥散 = 多为渲染差异 */
+const SHAPE_CN = { concentrated: '集中', mixed: '混合', diffuse: '弥散', identical: '一致' };
+const shapeLabel = (s) => SHAPE_CN[s] ?? s ?? '—';
+const shapeClass = (s) => (s === 'concentrated' ? 'bad' : s === 'mixed' ? 'mid' : 'ok');
+
 const seoChecks = computed(() => {
   const sl = props.selected?.seoLite;
   if (!sl) return null;
@@ -184,6 +189,20 @@ function switchTab(t) {
           <div class="q-row" v-if="detailQuality.verify.minViewport && detailQuality.verify.minViewport.score < 0.9"><span class="q-k">建议</span><span class="q-v mid">该视口差异较大（多为客户端响应式变体/JS 渲染），优先使用活镜像</span></div>
         </div>
         <div v-else class="seo-note">未运行多视口验证 <button class="wv-primary" style="margin-left:8px" @click="$emit('verify')">运行本页体检</button>（等价命令：<code>verify {{ host }} {{ pageNameOf(selected) }}</code>）</div>
+        <!-- 差异**形态**：只给百分比的话，用户分不清"少了一张图"（集中）和"文字抗锯齿略不同"（弥散） -->
+        <div v-if="detailScore?.diffShape" class="q-list" style="margin-top:8px">
+          <div class="q-row">
+            <span class="q-k">差异形态</span>
+            <span class="q-v" :class="shapeClass(detailScore.diffShape.shape)">
+              {{ shapeLabel(detailScore.diffShape.shape) }}
+              <i v-if="detailScore.diffShape.blobs" class="q-file">共 {{ detailScore.diffShape.blobs }} 块 · 最大 {{ detailScore.diffShape.largest }}px · 前 5 块占 {{ Math.round((detailScore.diffShape.top5Share || 0) * 100) }}%</i>
+            </span>
+          </div>
+          <div class="q-row">
+            <span class="q-k">说明</span>
+            <span class="q-v">{{ detailScore.diffShape.note }}</span>
+          </div>
+        </div>
       </div>
       <div class="ov-sec">
         <div class="panel-sec-name">交互回放（功能保真）</div>
