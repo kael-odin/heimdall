@@ -1002,7 +1002,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       </button>
       <button class="site-del" :aria-label="'删除站点 ' + s.host" title="删除该站点（侦察/克隆/报告；CAS 资产保留）" @click.stop="deleteSite(s)"><Icon name="close" decorative /></button>
     </span>
-    <button class="site-btn audit-btn" :disabled="!!engine.audit" @click="runAudit" :title="engine.audit ? '已有审计任务在运行' : '全站 SEO 审计（40+ 规则，输出 HTML/CSV/JSON 报告）'">SEO 审计</button>
+    <button class="site-btn audit-btn" :disabled="!!engine.audit" @click="runAudit" :title="engine.audit ? '已有审计任务在运行' : '全站 SEO 审计（56 条规则，输出 HTML/CSV/JSON 报告）'">SEO 审计</button>
     <button class="site-btn list-toggle" :class="{ active: view === 'pages' }" @click="togglePages()" :title="view === 'pages' ? '收起清单返回星图' : '打开页面清单'">{{ view === 'pages' ? '收起清单' : '页面清单' }}</button>
   </div>
 
@@ -1058,7 +1058,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="report-card surface">
       <h3>SEO 审计报告</h3>
       <p v-if="auditReport">{{ auditReport.score }} 分 · {{ auditReport.pages }} 页 · {{ auditReport.issues }} 条问题</p>
-      <p v-else>尚未运行（40+ 规则 / 六分类评分）</p>
+      <p v-else>尚未运行（56 条规则 / 六分类评分）</p>
       <a v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">打开报告</a>
       <button v-else class="wv-primary" @click="runAudit">运行审计</button>
     </div>

@@ -1,83 +1,151 @@
-# Heimdall · 千面镜像引擎
+# Heimdall · 站点复刻与审计工作台
 
-> **一个网址，一个宇宙。**
-> 输入 URL，输出：一张全站星图 · 一座活体克隆 · 一份情报包。
+> 给它一个网址，交回三样东西：**一张全站星图 · 一份像素级可核验的复刻 · 一份竞品情报**。
 
-参赛项目 —— 灵匠第二届极客 AI 创新活动「AI 工作流改造局」：
-把"竞品分析"这件每个产品、市场、测试同事都在重复做的事，
-从「开 DevTools 抄一周」变成「贴个网址等十分钟」。
+参赛项目 —— 江苏灵匠「第二届灵匠极客 AI 创新赛」· 主题「AI 工作流改造」。
+把"竞品分析"这件产品、市场、测试都在重复做的事，从「开 DevTools 抄一周」变成「贴个网址等十分钟」。
 
-命名出自北欧神话的全视之神海姆达尔：能看穿九界、听见草生长的声音。
-他是这座网站宇宙的侦察之眼 —— 延续 kael-odin 系列的神话命名体系。
+命名出自北欧神话的全视之神海姆达尔 —— 能看穿九界、听见草生长的声音。
+
+---
+
+## 快速开始
+
+```bash
+git clone <repo> && cd heimdall
+pnpm install && pnpm -C core exec playwright install chromium
+
+# 克隆任意站点的一页（不需要先启动引擎）
+node core/src/cli.mjs forge https://example.com home
+
+# 或：启动控制台（引擎 + 界面同一个地址）
+pnpm -C console build
+cd core && HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
+# 打开 http://127.0.0.1:8900
+```
+
+完整流程：
+
+```bash
+cd core
+node src/cli.mjs recon example.com 60     # 侦察全站 → 星图
+node src/cli.mjs queue example.com        # 批量克隆（断点续跑）
+node src/cli.mjs verify example.com --all # 多视口保真验证
+node src/cli.mjs live example.com         # 导出可部署的活镜像
+node src/cli.mjs deliver example.com      # 打包成前端可接手的交付包
+```
+
+`node src/cli.mjs`（无参数）列出全部命令。
+
+---
+
+## 它产出什么
+
+| 产物 | 形态 | 给谁 |
+| --- | --- | --- |
+| **静态镜像** | `deliverable/<host>-<date>/`：镜像页 + 原站 CSSOM + 渲染后 DOM + 差异热图 + 还原度 CSV + 接手 README | 前端：照着写自己的第一版 |
+| **活镜像** | `deliverable/<host>-live-<date>/`：Dockerfile + `serve.mjs` + HAR 回放 + 健康报告 | 运维/前端：`docker compose up -d` 直接对着它写代码 |
+| **SEO 审计** | `workspace/<host>/seo/`：HTML 报告 + CSV + JSON，56 条规则六分类 | SEO/增长 |
+| **竞品情报** | `intel/<host>-intel.xlsx`：概览 / 语义情报 / 定价与 CTA | 产品/市场 |
+| **全站星图** | `workspace/<host>/recon/atlas.json` + 控制台 3D 视图 | 所有人：先看清这个站的结构 |
+
+---
+
+## 核心机制
+
+```
+捕获渲染态 → CSSOM/资产归档 → 镜像构建 → 多视口验证 → 审计/情报 → 部署交付
+```
+
+与"让 AI 照着截图重写一遍"的根本区别：**我们测量，不生成。**
+
+- **资产是真的**：原站的字体文件、图片、图标原件直接搬，不是近似的
+- **保真度是数字**：像素 / DOM 结构 / 字段覆盖三维评分，可复现、可对质
+- **缺口可枚举**：每份包都带自己的缺口清单（CSS 引用、HTML 引用、离线资源），不藏
+- **确定性**：同一条命令跑两次结果一致，可以直接 diff 两个日期的包看站点改了什么
+
+AI 用在三处判断上（像素差异的 CSS 校准、语义情报抽取、页面分类），
+**不用在搬运上** —— 确定性搬运才能保证可复现、可验证。
+
+---
 
 ## 文档导航
 
 | 文件 | 内容 | 什么时候读 |
-|---|---|---|
-| [PRD.md](PRD.md) | 第一性原理推导、产品定义、三件套、还原度体系 | **先读这个** |
-| [DEMO-SCRIPT.md](DEMO-SCRIPT.md) | 90 秒灵魂 Demo 逐秒分镜剧本 | 做控制台/答辩前 |
-| [VISUAL-SYSTEM.md](VISUAL-SYSTEM.md) | 深空观测站视觉系统：色彩/字体/3D 星图/动效守则 | 做任何 UI 前 |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 三层架构、栈适配器、还原度公式、里程碑 | 开工前 |
+| --- | --- | --- |
+| [PRD.md](PRD.md) | 产品定义：用户、定位、三件套、产品原则 | 先读这个 |
+| [USAGE.md](USAGE.md) | 完整使用指南（启动、克隆、查看、部署） | 上手时 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 三层架构、栈适配器、还原度公式、产物规范 | 改代码前 |
+| [DEMO-SCRIPT.md](DEMO-SCRIPT.md) | 演示脚本 + 评委问答预案 | 答辩前 |
+| [VISUAL-SYSTEM.md](VISUAL-SYSTEM.md) | 控制台设计系统（令牌、字体、3D 星图规范） | 改界面前 |
 | [RISKS.md](RISKS.md) | 合规红线、技术风险预案、演示日 checklist | 每周对一遍 |
+| [HANDOFF.md](HANDOFF.md) | 开发记录：每批改了什么、为什么、实测数据 | 想知道"为什么这样写" |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 
-## v2.2 新增（2026-10-10 起）
+`docs/archive/` 存放阶段性的验收报告与审查记录（历史证据，不再更新）。
 
-- **存储治理**：报告页新增看板 —— 逻辑体积 / 实际占用 / 可回收 CAS / 每站占用条；一键预览并回收无引用 CAS 资产
-- **删站真的会释放磁盘**：CAS 与站点副本共用 inode，`nlink===1` 即为孤儿；删除站点/页面后自动回收，响应里给出释放量。
-  CLI：`node core/src/cli.mjs cas-gc [--apply]`（默认只预览）· `storage`（盘点）
-- **控制台可用性**：工作视图改成真正可滚动的工作台外壳（站点切换器在各自表头，不再被浮层压住、窄屏不再裁掉控件）
-- **WCAG AA 基线**：深浅两套主题的对比度、可访问名、键盘焦点环、reduced-motion 全部达标；
-  修掉浅色主题下**页面类型标签只有 1.81:1**（几乎不可读）等硬伤
-- **图标改自绘 SVG**（24 网格 / 1.6 描边），不再用 `☰ ☾ ☀ ✕` 这类 Unicode 字符当图标
+---
 
-## v2.1 新增（2026-10-10 起）
+## 能力清单
 
-- **控制台配置第三方大模型**：设置页直接填协议 / Base URL / Key / 模型（含 OpenAI·Anthropic·DeepSeek·OpenRouter·Ollama 预设），
-  「测试连接（不保存）」先验证再落盘，**保存即生效、无需重启**。Key 只落本地 `core/.env` 且永不回显
-- **站点配方**：站点特化从代码分支迁进数据 —— `core/sites/<host>.json`（人工整理）+ `workspace/<host>/site.json`（运行时学到）。
-  换站不用改代码；`node core/src/cli.mjs profile <host>` 查看生效配方与来源。见 [core/sites/README.md](core/sites/README.md)
-- **一条命令克隆任意站**：`node core/src/cli.mjs forge https://<任意站>/ home` —— **无需先启动引擎**
-  （克隆页资产已全部本地化，引擎不在时走 `file://`）。实测 astro.build 首屏 **100.00%**、vitest.dev **99.96%**、tailwindcss.com **99.92%**
-- **中文站友好**：页面分类补中/日常见词 + DOM 特征兜底（旧版中文路径会整站退化成 generic）
-- **缺口可见**：CSS 引用本地化失败、软 404（要图片回 HTML）不再静默 —— 写进 `clone-gaps.json`
+**克隆**
+- 单页 / 全站队列（持久化、断点续跑、末尾 CAS 去重）
+- 响应式变体还原（多视口快照 + 低分页自动升级）
+- 画布内容光栅化（JS 绘制的 `<canvas>` 转静态图，否则脚本一剥就是空白）
+- 站点配方三层合并（内置默认 → 运行时学到 → 人工整理），换站不用改代码
 
-## v2 新增（2026-10-08 起）
+**验证**
+- 多视口（375/768/1440）像素 diff + 交互回放（按钮/折叠/标签页状态比对）
+- 原站↔镜像同步滚动对比工具
+- 资产缺口扫描（视觉缺口 vs 元数据噪声分开统计）
 
-- **SEO 审计**：`node core/src/seo/audit.mjs <host> --max 20` → `workspace/<host>/seo/{seo.html,seo.csv,seo.json}`，40+ 规则覆盖索引/内容/结构化数据/性能/链接/安全
-- **任务持久化**：`node:sqlite`（旧版 Node 自动降级 JSON）存储任务/事件；引擎重启后历史可查，崩溃遗留的 running 标记为 interrupted
-- **沙盒改造台**：`node core/src/sandbox/serve.mjs <host> <page>` → 在线改 HTML/CSS、实时预览、与原版逐像素对比（实测：改背景色相似度 24.7%，还原后 100%/0 像素差）
-- **报告中心 / 资产清单**：控制台「报告」页动态列出所有可用报告（档案/SEO/监控/Token/组件/验证/情报），并按体积展示 Top 资产
-- **MCP / 浏览器入口**：`node core/src/mcp/server.mjs`（stdio MCP，12 个工具）；`node core/src/browser/bookmarklet.mjs`（在任意页面一键送入 Heimdall）
-- **资产缺口扫描**：CLI `node core/src/audit/assets.mjs <host>` 或控制台「报告 → 资产缺口 → 运行扫描」；视觉缺口与元数据/追踪/设计替代分开统计（apify 与 thordata 实测视觉缺口均为 0）；页面清单直接显示每页资产体积/缺口/交互/更新时间
-- **逐页质检**：详情面板「质检」tab 汇总多视口分数、交互回放、资产缺口与 AI 校准曲线；报告页可一键生成跨站对标矩阵
-- **逐页快捷入口**：详情面板可直达 打开克隆 / 活镜像 / 同步对比 / 分数 JSON
-- **竞品 SEO 对标矩阵**：`node core/src/seo/matrix.mjs <本站> <竞品1> <竞品2>` → 站点分/覆盖率/LCP/页面类型/高频问题对比（HTML+CSV+JSON）
-- **组件抽取**：`node core/src/extract/extract-components.mjs <host>` → header/hero/pricing/faq/footer/cta 独立预览（outerHTML + 命中 CSS + 素材路径回指）
-- **统一 CLI**：`node core/src/cli.mjs`（或 `pnpm -C core cli`）覆盖 recon/forge/queue/audit/watch/verify/tokens/live/dedupe/deliver/serve
-- **设计 Token 提取**：`node core/src/extract/extract-tokens.mjs <host>` → colors/字体/字号/间距/圆角/阴影/断点/CSS 变量（含频次）→ tokens.css + 可视化预览
-- **单端口 / Docker 部署**：`docker compose up -d` → http://localhost:8900 打开控制台（引擎同时服务 API/SSE/静态产物/控制台 SPA + Playwright Chromium）
-- **变更监控**：`node core/src/watch/watch.mjs <host>` → 基线快照 + 两次采样排除动态噪声 → 标题/描述/canonical/robots/正文变化报告（HTML/JSON），支持 `--fail-on-change` 接入定时任务
-- **活镜像 L3（可部署）**：`node core/src/live/export.mjs <host>` → 自包含部署包（零依赖 Node 服务器 + HAR 回放 + Dockerfile/compose + 校验和），本地快照优先 → HAR 回放 → 原站代理；`--root mirror` 让镜像直接占据站点根路径（drop-in 替代部署）；`--heal` 导出期从原站补抓离线缺失资源、`--materialize-har` 把 HAR 回放体落盘为实体文件并产出 `health.json` 体检报告，`--strict` 可接入 CI
-- **工作台 IA（v2）**：底部导航切换 星图/页面/任务/报告/设置；页面表格支持搜索、类型/状态筛选、批量克隆、逐页视觉分与状态；报告中心聚合档案/SEO/对比/情报
-- **多协议 LLM + 配置自检**：`LLM_PROTOCOL=chat|responses|anthropic`；控制台「设置 → 模型服务」显示协议/模型/端点（不含 Key）并提供真实连接测试；「引擎 Token」= 保护引擎 API，与模型 Key 分离
-- **多视口 + 交互回放验证**：视觉（375/768/1440 全页 diff）＋功能（按钮/折叠/标签页点击状态比对）→ 四维成绩单；实测 apify pricing：视觉 96.0% A、交互 3/3
-- **多视口验证**：`node core/src/verify/verify.mjs <host> <page>` → 375/768/1440 全页 diff（实测 apify storage：桌面 98.2% / 平板 89.4% / 移动 78.4%，暴露单视口口径看不到的移动端差距）
-- **任务中心**：控制台内每次克隆与审计独立进度，不再互相覆盖；引擎新增 `/api/jobs` 与任务取消
-- **安全默认值**：引擎默认只监听 `127.0.0.1`，代理只允许 workspace 已知 host；可用 `HEIMDALL_TOKEN` 开启鉴权
-- **数据目录可迁移**：`HEIMDALL_DATA_DIR` 把 workspace/deliverable 移出仓库
-- **质量门**：`pnpm lint` / `pnpm test` / `pnpm smoke`（本地 fixture 离线 E2E）+ GitHub Actions
-- 完整审查与路线图：[docs/REVIEW-2026-10-08.md](docs/REVIEW-2026-10-08.md)
+**审计**
+- SEO 56 条规则 / 六分类：抓取索引、内容语义、结构化数据、性能体验、链接架构、安全合规
+- 服务端 HTML vs 渲染后对比（识别 JS 渲染依赖，含 hreflang 校验）
+- 变更监控（基线快照 + 去噪）+ **SEO 回归门禁**（可接 CI，回归自动红）
+- 跨站对标矩阵（站点分 / 覆盖率 / LCP / 页面类型）
 
-## 一图看懂
+**交付**
+- 静态镜像包（前端改造素材 + 接手 README）
+- 活镜像包（Docker + HAR 回放 + 健康报告 + 三级回退）
+- 交付包保留策略（按站点与类型保留最近 N 份，认不出的命名绝不自动删）
+
+**运维**
+- 内容寻址存储（CAS）+ 硬链接去重，删站真的释放磁盘（`nlink===1` 判据）
+- 磁盘占用看板 + 孤儿回收（安全预览 → 二次确认）
+- 控制台配置第三方大模型（Key 只落本地、永不回显）
+
+---
+
+## 仓库结构
 
 ```
-  你贴一个网址
-       │
-       ▼
- ┌──────────┐   ┌──────────┐   ┌──────────┐
- │  侦察     │──▶│  造物     │──▶│  收割     │
- │  Recon    │   │  Forge    │   │  Harvest  │
- │  全站星图  │   │  活体克隆  │   │  情报包    │
- └──────────┘   └──────────┘   └──────────┘
-   看见整站        拥有整站        榨干整站
+core/            确定性引擎（零外部服务依赖）
+  src/crawler/     捕获、构建、链接接线、站点配方
+  src/seo/         SEO 规则引擎、采集、报告、回归基线
+  src/live/        活镜像导出、健康检查、自愈
+  src/differ/      像素与 DOM 差异
+  src/verify/      多视口验证、交互回放
+  src/audit/       资产、存储、交付包治理
+  sites/           人工整理的站点配方（进 git）
+console/         Vue 3 控制台（8 个组件 + 全局 UI 样式表）
+config/          SEO 门禁的目标站点与基线（进 git）
+docs/            路线图 + archive/ 历史记录
 ```
+
+数据目录：`core/workspace/`（产物）与 `core/deliverable/`（交付包），
+可用 `HEIMDALL_DATA_DIR` 移出仓库。两者都不进 git。
+
+---
+
+## 质量门
+
+```bash
+pnpm lint          # 语法检查（全部 core 模块）
+pnpm test          # 单元测试
+pnpm smoke         # 离线 E2E（本地 fixture，不联网）
+pnpm -C console build
+```
+
+CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查；
+`seo-gate.yml` 每日定时跑 SEO 回归门禁（手动触发可指定单站）。

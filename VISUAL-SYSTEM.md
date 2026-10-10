@@ -136,7 +136,89 @@ v2 曾从 Google Fonts `@import` Orbitron + Share Tech Mono ——
 
 ---
 
-## 6. 无障碍基线
+## 6. 组件约定
+
+以下是**实际实现**的组件，以及它们为什么存在。明细取值以 `ui.css` / `style.css` 为准。
+
+### Surface（`.surface`）
+
+全系统唯一的表面基元：实底 `var(--surface)` + `1px solid var(--border)` +
+`var(--r)`(10px) 圆角 + `var(--shadow)`。任何新容器都应该是它，而不是新发明一种卡片。
+
+v2 的对应物是 `.hud-panel`（1px 青线 + 四角 L 形刻度 + 暗色渐变）。那些装饰已废弃。
+
+### 按钮
+
+| 类型 | 取值 | 用在哪 |
+| --- | --- | --- |
+| 主操作 | `.wv-primary`：`color-mix(in srgb, var(--accent) 12%, transparent)` 底 + `var(--accent)` 字 + 50% 描边 | 运行审计、导出、批量克隆 |
+| 危险 | `.danger`：`var(--bad)` 字 + 35% 描边，悬停加深到 50% | 删除、回收 |
+| 幽灵 / 行内 | 无底色、`color-mix(... var(--text-dim) 25% ...)` 描边、`var(--text-dim)` 字 | 表格行操作、折叠、关闭 |
+
+禁用态一律 `opacity: .35–.5` + `cursor: not-allowed`（不是 `default`）。
+
+### 输入 / 下拉
+
+底色 `var(--bg-2)`、`1px solid var(--border)`、`var(--r-sm)` 圆角。
+
+**下拉必须声明 `color-scheme`**（深色 `dark` / 浅色 `light`），
+否则原生选单会在深色主题里闪白 —— 这是实测过的，不是理论问题。
+
+焦点：全局 `:focus-visible` 是 2px `var(--accent)` 外描边 + 2px offset。
+两处例外（`.seek input` 无边输入框、`.set-form` 的表单控件）各有等价替代表达，
+**不得退回 `outline: none` 且无替代**。
+
+### 工作视图（`.work-view` + `.wv-head`）
+
+整高固定面板，表头一行承载站点选择器、统计、筛选与动作，正文区独立滚动。
+**星图浮层严禁出现在工作视图内**（它们会压住内容 —— 见 §5 的底部排布约定）。
+表头控件在 ≤768px 每个独占一行，保证窄屏下没有一个按钮被挤出可达范围。
+
+### 数据表（`.wv-row`）
+
+11 列 Grid，粘顶表头，行悬停用极淡的语义色底，`var(--dur)` 全局过渡。
+
+状态列用**文字色**表达语义（已克隆 `--ok` / 克隆中 `--warn` / 失败 `--bad` / 未克隆 `--text-faint`），
+不靠背景块。URL 列是等宽可点项，操作列是幽灵按钮组。
+
+### 站点切换器（`SitePicker.vue`）
+
+工作视图表头里的站点选择 + SEO 审计入口。
+
+**为什么存在**：站点切换原本是星图浮层，在工作视图里会压住内容、窄屏下按钮被裁掉。
+放进表头后，四个工作视图各自持有站点上下文，浮层只留给星图。
+
+### 图标（`Icon.vue`）
+
+自绘 SVG，统一 24 网格、1.6 描边、圆头圆角、`width/height: 1em`、`stroke: currentColor`。
+
+**为什么不用 Unicode 字形**（☰ ☾ ☀ ✕）：跨平台字形不一致、基线不可控、描边无法统一，
+而且读屏会把符号当正文念出来。仅图标按钮必须传 `label`，与可见文字同用时传 `decorative`。
+
+### 存储治理卡（`.storage-card`）
+
+跨列证据卡，内部三段：KPI 瓦片（实际占用 / 逻辑体积 / 可回收 CAS / 站点数，等宽数字）、
+站点占用条（按最大站点归一化）、回收区。
+
+**回收是预览 → 二次点击确认 → 执行的三段式**，并附「`nlink=1` 才进候选」的安全判据说明。
+删除类操作绝不一键完成 —— 这条适用于所有破坏性动作。
+
+### 阶段步进器与判定区（`.stages` / `.verdict`）
+
+六阶段仪表格（编号 + 名称 + 状态圆点），四态：静默 / `running`（`--warn` 边 + 呼吸圆点）/
+`done`（`--ok`）/ `skipped`（`opacity: .5`）。
+
+判定区是页面里唯一的大字号数字（还原度百分比）+ 分项拆解 + 可修差异进度条。
+**它是唯一允许用大字号强调的地方** —— 强调太多就没有强调了。
+
+### 详情面板（`.dock` + `DetailDock.vue`）
+
+右侧 32%（最小 400px）全高面板，四个标签页（概览 / SEO 剖析 / 质检 / 克隆）。
+`ov-grid` 是 2 列键值瓦片，`q-list` 是「键 + 值」的虚线分隔行。
+
+底部留白 `92px` 给导航 dock 让位（见 §5）。窄屏下变成全宽底部抽屉。
+
+## 7. 无障碍基线
 
 - `:focus-visible` 全局 2px `--accent` 外描边，offset 2px。**不要写 `outline: none`**。
 - `@media (prefers-reduced-motion: reduce)` 把动画与过渡时长压到 .001ms。
@@ -147,7 +229,7 @@ v2 曾从 Google Fonts `@import` Orbitron + Share Tech Mono ——
 
 ---
 
-## 7. 文案风格
+## 8. 文案风格
 
 沿用 v2，未随美术风格变更：
 
@@ -158,7 +240,7 @@ v2 曾从 Google Fonts `@import` Orbitron + Share Tech Mono ——
 
 ---
 
-## 实现状态（2026-10-10，v3 已落地）
+## 实现状态（2026-10-11）
 
 - 色彩/字体/圆角/描边/投影全部 token 化；组件内裸 hex 已清零
   （`graphPalette` 里给 WebGL 的十六进制除外）。

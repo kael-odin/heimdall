@@ -24,7 +24,7 @@ const onPick = (e) => emit('pick', e.target.value);
         {{ s.host }} · {{ s.pages ? s.forged + '/' + s.pages + ' 页' : '侦察结果为空' }}
       </option>
     </select>
-    <button class="sp-btn" :disabled="busy || !host" :title="busy ? '已有审计任务在运行' : '全站 SEO 审计（40+ 规则，输出 HTML/CSV/JSON）'" @click="emit('audit')">
+    <button class="sp-btn" :disabled="busy || !host" :title="busy ? '已有审计任务在运行' : '全站 SEO 审计（56 条规则，输出 HTML/CSV/JSON）'" @click="emit('audit')">
       SEO 审计
     </button>
   </div>

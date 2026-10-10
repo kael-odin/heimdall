@@ -293,7 +293,7 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
 
 ## 18. 2026-10-09/10 续十一：批次 0「通用克隆」止血（全部有实测）
 
-方向已定：**先做"任何人在任何机器上一条命令跑通"**，再重设计控制台。详见 [docs/PLAN-2026-10-09.md](docs/PLAN-2026-10-09.md)。
+方向已定：**先做"任何人在任何机器上一条命令跑通"**，再重设计控制台。详见 [docs/archive/PLAN-2026-10-09.md](docs/archive/PLAN-2026-10-09.md)（历史记录）；当前待办见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
 ### 18.1 无引擎也能 `forge`（P0-1）
 `pipeline.mjs` 在 shot 阶段先探测 `<引擎>/api/status`：可达走 `/static/`，否则回退

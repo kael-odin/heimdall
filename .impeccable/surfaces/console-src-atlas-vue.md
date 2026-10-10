@@ -76,8 +76,9 @@ SEO/增长从报告页进审计结果与基线回归；
 unreviewed and undocumented is unfinished。本批次的验收全部是**实测**：
 逐文本节点按真实合成背景量对比度、`scrollWidth === innerWidth`、
 底部固定元素矩形重叠检查、逐功能点击验证（搜索/排序/勾选/标签页/回收/筛选）。
-`DESIGN.md` 与 `VISUAL-SYSTEM.md` 已同步；`.impeccable/design.json`
-改为从 `style.css` / `types.js` 生成（`pnpm -C console design`），不再手工维护。
+`VISUAL-SYSTEM.md` 是唯一权威的设计文档（含组件约定）；
+`.impeccable/design.json` 从 `style.css` / `types.js` 生成（`pnpm -C console design`），不再手工维护。
+原 `DESIGN.md` 的组件规范已并入 `VISUAL-SYSTEM.md` §6 —— 两份文档描述同一件事必然漂移。
 
 ## Quality bar
 
