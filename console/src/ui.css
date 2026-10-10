@@ -440,3 +440,7 @@
   .view-nav button { min-width: 56px; padding: 5px 4px; }
 }
 
+
+/* 星图异步 chunk 的加载占位（见 Atlas.vue 的 defineAsyncComponent） */
+.g3d-loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; pointer-events: none; }

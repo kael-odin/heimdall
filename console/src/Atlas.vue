@@ -6,8 +6,27 @@
  * live 模式：POST /api/recon → SSE 事件流 → 节点逐个弹入生长
  * 点星球 = 克隆该页；「克隆内环」= 批量并行
  */
-import { onMounted, onBeforeUnmount, ref, reactive, computed, watch } from 'vue';
-import Graph3D from './Graph3D.vue';
+import { onMounted, onBeforeUnmount, ref, reactive, computed, watch, defineAsyncComponent, h } from 'vue';
+/**
+ * 星图渲染层异步加载。
+ *
+ * 3d-force-graph + three 占了整包的绝大部分（实测未拆分时 1553KB / gzip 422KB，
+ * 而其余全部代码加起来不到 90KB）。静态 import 会让**整个控制台**等它下载完才能交互。
+ *
+ * 两个实际收益：
+ *  ① 应用外壳（站点条、导航、报告/设置页）先可用，星图后到；
+ *  ② three 那部分被拆成独立 chunk，改控制台代码重建时不会连带重下 1.2MB
+ *     —— 对一个天天重建的开发工具，这是每天都省的时间。
+ */
+const Graph3D = defineAsyncComponent({
+  loader: () => import('./Graph3D.vue'),
+  // 慢网络下 1.4MB 的 chunk 要几秒才到；没有占位就是一段纯黑，看起来像坏了。
+  // 用 h() 而不是内联 template —— Vue 的 runtime-only 构建不含模板编译器，
+  // 内联 template 在这里会静默失效。
+  loadingComponent: { render: () => h('div', { class: 'g3d-loading' }, '星图渲染层加载中（three.js 按需加载，约 1.4MB）…') },
+  delay: 120,     // 120ms 内到货就不闪占位
+  timeout: 30000,
+});
 import SitePicker from './SitePicker.vue';
 import Icon from './Icon.vue';
 import JobsView from './JobsView.vue';
