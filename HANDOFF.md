@@ -498,9 +498,28 @@ CAS 从不被直接读取（纯去重源，全仓库只有 `store/dedupe.mjs` �
 
 ### 20.6 检测器与质量门
 `impeccable detect` **空结果**（此前报 1 条 `layout-transition`：`.refine-bar` 动画 `width` → 改 `transform: scaleX()`）。
-lint 97 文件 · 单测 **111/111**（106 → 111，新增 cas-gc 5 条）· smoke 全绿。
+lint 98 文件 · 单测 **116/116**（106 → 116：cas-gc 5 条 + storage 5 条）· smoke 全绿。
 
-### 20.7 仍未做（批次 2 剩余 / 批次 3）
+### 20.7 自引入缺陷与修复：盘点冻结事件循环（务必记住这条）
+第一版把 `computeStorage()` 直接放在请求处理里同步跑。实测：
+
+| | 盘点耗时 | 盘点期间 `/api/status` |
+|---|---|---|
+| 修复前 | 12036ms | **采样 0 次** —— 连 500ms 的 `setInterval` 都一次不触发 |
+| 修复后 | ~11s（子进程） | **1–2ms**（22 次采样全部有响应） |
+
+即同步遍历 5.4 万文件会把 Node 事件循环整个冻住，期间所有 API / SSE / 活镜像代理全部排队。
+**修法回到引擎既有的模式：重活一律 spawn 子进程。**
+- `startStorageScan()` 起 `storage` 任务（不占锻造槽；已在跑则复用）
+- `GET /api/storage` 只读 `DATA_ROOT/storage.json`，过期/缺失时后台补一次并立刻返回已有结果（无结果返回 `{pending:true}`）
+- `POST /api/storage/scan` → 202 + taskId；前端轮询到结果出现（40s 超时）
+- `POST /api/storage/gc` 只跑轻量 CAS 回收（6k 文件 ~0.5s），随后触发后台重扫
+- 删站/删页同理
+
+**教训**：这个引擎里任何"遍历几万个文件"或"跑几十秒"的事，都必须走 `spawnTask`；
+放进请求处理 = 整个引擎停摆。`/api/storage` 是唯一一处曾违反此规则的地方，现已修正。
+
+### 20.8 仍未做（批次 2 剩余 / 批次 3）
 - 控制台仍是单体 `Atlas.vue`（已抽出 `SitePicker.vue` / `Icon.vue` 两个组件，拆分为 ≤8 组件的目标未完成，
   也没有引入 Router/Pinia/TS —— 按 FORM 决策"先不引入无必要的状态库迁移风险"）。
 - `clone-gaps.json` 还没接进质检 tab（批次 0 产出的缺口报告目前只能直接开文件看）。
