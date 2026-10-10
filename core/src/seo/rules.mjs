@@ -44,6 +44,70 @@ export function evaluatePage(page, site = {}) {
   if (!page.security.https) A('index-not-https', 'index', 'high', '页面未使用 HTTPS', page.finalUrl, '', '全站启用 HTTPS 并跳转');
   if (page.security.mixedContent.length) A('index-mixed-content', 'index', 'medium', 'HTTPS 页面加载了 HTTP 资源', `${page.security.mixedContent.length} 个混合内容资源`, page.security.mixedContent.slice(0, 5).join('\n'), '将资源切换为 HTTPS');
 
+  // ---------- 国际定向（hreflang） ----------
+  // 采集层一直在收 link[rel=alternate][hreflang]，但此前没有任何规则用它。
+  // 多语言站点最常见的三类错误都在这里。
+  const hl = page.hreflang ?? [];
+  if (hl.length) {
+    const selfPaths = new Set([normPath(page.finalUrl), normPath(page.url), normPath(page.canonical)]);
+    const hasSelf = hl.some(h => selfPaths.has(normPath(h.href)));
+    if (!hasSelf) {
+      A('index-hreflang-no-self', 'index', 'medium', 'hreflang 缺少自指条目',
+        `${hl.length} 条 hreflang，没有一条指回本页`,
+        hl.slice(0, 3).map(h => `${h.lang} → ${h.href}`).join('\n'),
+        'hreflang 集合必须包含指向自身的条目，否则整组会被忽略');
+    }
+    const rel = hl.filter(h => h.href && !/^https?:\/\//i.test(h.href));
+    if (rel.length) {
+      A('index-hreflang-relative', 'index', 'medium', 'hreflang 使用了相对地址',
+        `${rel.length} 条不是绝对 URL`,
+        rel.slice(0, 3).map(h => `${h.lang} → ${h.href}`).join('\n'),
+        'hreflang 的 href 必须是完整的绝对 URL（含协议与域名）');
+    }
+    const bad = hl.filter(h => !isValidHreflang(h.lang));
+    if (bad.length) {
+      A('index-hreflang-invalid-code', 'index', 'low', 'hreflang 语言代码不合法',
+        `${bad.length} 条无法解析为语言或语言-地区`,
+        bad.slice(0, 5).map(h => h.lang).join(', '),
+        '用 ISO 639-1 语言码，可选叠加 ISO 3166-1 alpha-2 地区（如 zh-CN、en），或多语言用 x-default');
+    }
+    if (hl.length > 1 && !hl.some(h => String(h.lang).toLowerCase() === 'x-default')) {
+      A('index-hreflang-xdefault-missing', 'index', 'low', 'hreflang 缺少 x-default',
+        `${hl.length} 条 hreflang 未提供默认版本`,
+        '',
+        'x-default 用于"语言都没匹配上"的访客，通常是语言选择页或英文版');
+    }
+  }
+
+  // ---------- 内容是否依赖 JS 渲染 ----------
+  // 依据是采集层额外取的**服务端原始 HTML**（未经脚本执行）。
+  // 这一组规则回答的是一个此前完全没被检查的问题：
+  // 用浏览器看到的页面很完整，但爬虫第一遍看到的是什么？
+  // 渲染后审计对 SPA 一律给满分，因为它量的是浏览器里的样子。
+  const raw = page.raw;
+  if (raw?.ok) {
+    if (page.title && !raw.title) {
+      A('index-raw-title-missing', 'index', 'high', 'title 只存在于渲染后',
+        '服务端 HTML 无 <title>，执行脚本后才出现',
+        `原始 HTML ${Math.round(raw.bytes / 1024)}KB`,
+        'title 应由服务端直出；依赖 JS 会让不执行脚本的抓取者读到空标题');
+    }
+    if (page.description && !raw.description) {
+      A('index-raw-description-missing', 'index', 'medium', 'meta description 只存在于渲染后',
+        '服务端 HTML 无 description',
+        '',
+        'description 应由服务端直出，否则社交预览与部分抓取者拿不到摘要');
+    }
+    // 正文体量对比：只有在"渲染后确实有内容"时才判，避免把空页也算进来
+    if (page.wordCount >= 100 && raw.wordCount < page.wordCount * 0.3) {
+      const pct = Math.round((raw.wordCount / Math.max(1, page.wordCount)) * 100);
+      A('content-js-dependent', 'content', 'high', '正文依赖 JS 渲染',
+        `服务端 HTML 约 ${raw.wordCount} 词，渲染后 ${page.wordCount} 词（${pct}%）`,
+        `原始 HTML ${Math.round(raw.bytes / 1024)}KB，脚本 ${page.resources.requests} 个请求`,
+        '正文应服务端直出（SSR/SSG）。只靠客户端渲染时，AI 爬虫与不执行脚本的抓取者读不到内容');
+    }
+  }
+
   // ---------- 内容与语义 ----------
   if (!page.title) A('content-title-missing', 'content', 'critical', '缺少 title', '未找到 <title>', '', '为每页设置唯一、包含核心关键词的 title');
   else if (page.titleLength < 10) A('content-title-short', 'content', 'medium', 'title 过短', `${page.titleLength} 字符`, page.title, '建议 10-60 字符，覆盖核心主题');
@@ -123,3 +187,32 @@ export function countBySeverity(issues) {
 
 function safeHost(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } }
 function samePath(a, b) { try { const A = new URL(a, b), B = new URL(b); return A.hostname.replace(/^www\./, '') === B.hostname.replace(/^www\./, '') && A.pathname.replace(/\/$/, '') === B.pathname.replace(/\/$/, ''); } catch { return false; } }
+
+/** 归一化成可比较的 "host/path"（去 www、去尾斜杠），用于 hreflang 自指判定 */
+function normPath(u) {
+  if (!u) return '';
+  try {
+    const x = new URL(u);
+    return x.hostname.replace(/^www\./, '') + x.pathname.replace(/\/+$/, '');
+  } catch { return ''; }
+}
+
+/**
+ * hreflang 取值是否合法。
+ * 允许：x-default；ISO 639-1/2/3 语言码，可选叠加地区或文字系统
+ * （en、zh-CN、pt-BR、sr-Latn、zh-Hant-HK）。
+ * 不接受：空值、下划线分隔（zh_CN 是常见笔误）、单字母、地区在前。
+ */
+function isValidHreflang(code) {
+  const s = String(code ?? '').trim();
+  if (!s) return false;
+  if (s.toLowerCase() === 'x-default') return true;
+  if (s.includes('_')) return false;                 // 必须是连字符
+  const parts = s.split('-');
+  if (!/^[a-z]{2,3}$/i.test(parts[0])) return false; // 语言码
+  for (const p of parts.slice(1)) {
+    // 地区（两位字母 / 三位数字）或文字系统（四位字母，首字母大写）
+    if (!/^([a-z]{2}|[0-9]{3}|[a-z]{4})$/i.test(p)) return false;
+  }
+  return parts.length <= 3;
+}

@@ -33,7 +33,8 @@
     "live:export": "node src/live/export.mjs",
     "live:serve": "node src/live/serve.mjs",
     "dedupe": "node src/store/dedupe.mjs",
-    "cli": "node src/cli.mjs"
+    "cli": "node src/cli.mjs",
+    "probe:render": "node scripts/probe-render-mode.mjs"
   },
   "keywords": [],
   "author": "",

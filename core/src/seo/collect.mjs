@@ -7,6 +7,7 @@
  * 与 clone 捕获不同：这里只读信号，不写资产，不修改页面。
  */
 import { chromium } from 'playwright';
+import { analyzeRawHtml } from './raw-html.mjs';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
@@ -120,6 +121,24 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
     const status = response ? response.status() : 0;
     let redirectCount = 0;
     try { let req = response?.request(); while (req?.redirectedFrom?.()) { redirectCount++; req = req.redirectedFrom(); } } catch {}
+
+    // 服务端原始 HTML（未执行 JS）。用页内 fetch 取同一 URL：
+    // 走浏览器网络栈（带 cookie/UA），但不执行脚本 —— 拿到的是
+    // "爬虫第一遍看到的"那份。用来和渲染后的 DOM 对照，
+    // 判断这个站的内容到底依赖不依赖 JS。
+    let raw = null;
+    try {
+      const r = await page.evaluate(async (u) => {
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), 20_000);
+        try {
+          const res = await fetch(u, { signal: ac.signal, credentials: 'same-origin', cache: 'no-store' });
+          return { status: res.status, html: await res.text() };
+        } catch (e) { return { status: 0, html: '', error: String(e).slice(0, 120) }; }
+        finally { clearTimeout(timer); }
+      }, finalUrl).catch(() => null);
+      if (r?.html) raw = analyzeRawHtml(r.html);
+    } catch { /* 取不到就不做对照，不算失败 */ }
 
     const dom = await page.evaluate(() => {
       const abs = (u) => { try { return new URL(u, location.href).href; } catch { return u; } };
@@ -243,6 +262,9 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       links: dom.links, internalHrefs: dom.internalHrefs, externalSample: dom.externalSample,
       jsonld: dom.jsonld, microdataCount: dom.microdataCount,
       og: dom.og, twitter: dom.twitter, hreflang: dom.hreflang,
+      // 服务端原始 HTML 的同名信号（未经 JS）。两者并排才能回答
+      // "这个站的内容依赖不依赖 JS"。取不到时为 null，规则里要判空。
+      raw,
       resources: dom.resources, vitals: dom.vitals,
       security: { https: finalUrl.startsWith('https://'), mixedContent: dom.mixedContent, headers: { hsts: headers['strict-transport-security'] ?? '', xcto: headers['x-content-type-options'] ?? '' } },
     };
@@ -253,7 +275,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       lang: '', viewport: '', h1: [], headings: [], headingLevels: [], headingSkips: 0, wordCount: 0, textRatio: 0, htmlBytes: 0, textHash: '', textSample: '',
       imgTotal: 0, imgMissingAlt: 0, imgEmptyAlt: 0, imgBroken: 0, imgLegacy: 0, imgLazy: 0,
       links: { total: 0, internal: 0, external: 0, emptyAnchor: 0, hashOnly: 0, nofollowExternal: 0 }, internalHrefs: [], externalSample: [],
-      jsonld: [], microdataCount: 0, og: {}, twitter: {}, hreflang: [], resources: { requests: 0, transferBytes: 0, jsBytes: 0, cssBytes: 0, imgBytes: 0, fontBytes: 0, renderBlocking: 0 },
+      jsonld: [], microdataCount: 0, og: {}, twitter: {}, hreflang: [], raw: null, resources: { requests: 0, transferBytes: 0, jsBytes: 0, cssBytes: 0, imgBytes: 0, fontBytes: 0, renderBlocking: 0 },
       vitals: { lcp: null, cls: 0, fcp: null }, security: { https: url.startsWith('https://'), mixedContent: [], headers: {} },
     };
   } finally {
