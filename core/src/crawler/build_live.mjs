@@ -7,24 +7,48 @@
  *   3) bootstrap patch 注入：JS 运行时硬编码的绝对域 → 代理路径（fetch/XHR 兜底）
  *   4) CSS 用本地校准版（cssom.css，死镜像同款）替换原版引用 —— 视觉保真双保险
  *
+ * 站点差异（stub 策略、挂件黑名单）来自 **站点配方** core/sites/<host>.json，
+ * 不再写成 `if (host === 'apify')` 这类分支。
+ *
  * 部署位置与 engine /lm/ 融合路由约定一致：/lm/<host>/<path> → live/<path>/index.html
  *
  * 用法: node src/crawler/build_live.mjs <host>          （全部已锻页）
  *       node src/crawler/build_live.mjs <host> <page>   （单页）
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { requireArg } from '../args.mjs';
+import { loadProfile } from '../site-profile.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
-const host = process.argv[2] ?? 'thordata.com';
+const host = requireArg(process.argv[2], 'node src/crawler/build_live.mjs <host> [page]', '站点 host');
 const only = process.argv[3];
 const BASE = join(WORKSPACE, host);
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const PAGES = join(BASE, 'pages');
+const SELF_URL = process.env.HEIMDALL_SELF_URL ?? `http://127.0.0.1:${process.env.HEIMDALL_PORT ?? 8900}`;
+
+const profile = loadProfile(host);
+const LIVE = profile.live ?? {};
+// 站点级目录（相对 URL 在镜像里必须归位到代理前缀）——通用兜底之后仍可能漏网的一层
+const ROOT_DIRS = ['src/', '_next/', '_nuxt/', 'assets/', 'media/', 'img/', 'api/', 'files/', 'dist/'];
+
+/** 挂件脚本剥除规则：站点配方可追加片段；默认值在 site-profile.mjs 的 DEFAULTS.live */
+const stripRe = new RegExp('<script[^>]*(?:' + (LIVE.stripScriptPatterns ?? []).join('|') + ')[^>]*></script>', 'gi');
+const inlineStripRe = new RegExp('<script[^>]*>[^<]*(?:' + (LIVE.inlineStripPatterns ?? []).join('|') + ')[^<]*</script>', 'gi');
 
 const pages = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'manifest.json')));
 const liveDir = join(BASE, 'live');
 mkdirSync(liveDir, { recursive: true });
+
+/** 引擎可达性：chunk 预检必须走真实反代，否则会把"引擎没开"误判成"脚本全 404"而剥光脚本 */
+async function engineReachable() {
+  try {
+    const r = await fetch(`${SELF_URL}/api/status`, { signal: AbortSignal.timeout(1500) });
+    return r.ok;
+  } catch { return false; }
+}
+const engineUp = await engineReachable();
+if (!engineUp) console.warn(`  [warn] 引擎不可达（${SELF_URL}）→ 跳过 chunk 预检，不剥任何脚本`);
 
 let built = 0;
 for (const name of pages) {
@@ -47,10 +71,10 @@ for (const name of pages) {
     html = html.split(h).join(lmPrefix);
   }
 
-  // 1.5) 剥挂件脚本（cookiebot/crisp/mixpanel 的 loader 在镜像环境不可达或必炸，bootstrap stub 兜住全局调用；两站统一）
-  html = html.replace(/<script[^>]*(?:consent\.cookiebot|cookiebot\.com|crisp\.chat)[^>]*><\/script>/gi, '');
-  html = html.replace(/<script[^>]*>[^<]*(?:CookieConsent|\$crisp|mixpanel)[^<]*<\/script>/gi, '');
-  html = html.replace(/<script[^>]*src="[^"]*(?:mixpanel|cookiepro|onetrust|tiktok|redditstatic|clarity\.ms|googletagmanager|doubleclick|facebook\.net|analytics\.)[^>]*><\/script>/gi, '');
+  // 1.5) 剥挂件脚本 —— **必须在 bootstrap 注入之前**：bootstrap 自身含 mixpanel/CookieConsent 等
+  //      关键词，后剥会把 bootstrap 一起删掉。挂件在镜像环境不可达或必炸，由 bootstrap stub 兜住全局调用。
+  html = html.replace(stripRe, '<!-- heimdall: widget script stripped -->');
+  html = html.replace(inlineStripRe, '<!-- heimdall: widget inline stripped -->');
 
   // 2) <base> 注入（相对资源/请求归位）+ bootstrap（JS 运行时硬编码绝对域兜底）
   const bootstrap = `<script>(function(){
@@ -68,7 +92,7 @@ for (const name of pages) {
     }catch(e){} return of.call(window,input,init); };
     var oo=XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open=function(){ try{ arguments[1]=px(String(arguments[1])); }catch(e){} return oo.apply(this,arguments); };
-    // 第三方挂件魔法 stub：无限递归 Proxy——任何属性/调用/构造都返回自身（分析类挂件在镜像里本就应无操作）
+    // 第三方挂件魔法 stub：无限递归 Proxy——任何属性/调用/构造都返回自身
     var MAGIC = new Proxy(function(){}, {
       get: function(t, k){ if (k === Symbol.toPrimitive) return function(){ return ''; }; if (k === 'then' || k === 'nodeType') return undefined; return MAGIC; },
       set: function(){ return true; },
@@ -78,7 +102,9 @@ for (const name of pages) {
       ownKeys: function(){ return []; },
       getOwnPropertyDescriptor: function(){ return undefined; }
     });
-    var CONSERVATIVE = H.indexOf('/lm/apify') === 0;   // apify：chunk 对无限递归 stub 挂死 → 用保守版/不 stub（挂件经代理真跑）
+    // magic 与部分 chunk 会互相纠缠而挂死（站点配方 live.stubStrategy=conservative 时改用保守 stub：
+    // 挂件经代理真跑，而不是被 stub 成空对象）
+    var CONSERVATIVE = ${LIVE.stubStrategy === 'conservative'};
     window.mixpanel = window.mixpanel || (CONSERVATIVE ? { init:function(){}, track:function(){}, push:function(){}, people:{ set:function(){} }, register:function(){}, time_event:function(){} } : MAGIC);
     window.qp = CONSERVATIVE ? function(){} : (window.qp || MAGIC);
     window.CookieConsent = window.CookieConsent || (CONSERVATIVE ? { run:function(){}, accept:function(){}, reject:function(){}, valid:function(){ return true; }, CookieV2TrackingTechnologies:[], updatePageElementsList:function(){}, _env:{}, consent:{ hasResponse:true, granted:true }, dialog:{}, response:{ categories:[] } } : MAGIC);
@@ -92,9 +118,7 @@ for (const name of pages) {
     window.fbq = window.fbq || function(){};
     window.OneTrust = window.OneTrust || { };
   })();</script>`;
-  console.error('[bl] bootstrap len =', bootstrap.length, '| has mixpanel:', bootstrap.includes('window.mixpanel'));
   html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">${bootstrap}`);
-  console.error('[bl after-inject] has-mixpanel:', html.includes('window.mixpanel'));
 
   // 2b) 根相对引用重写（<base> 管不了 / 开头路径——那是直接打当前源根）
   html = html.replace(/((?:src|href|srcset|action)\s*=\s*["'])\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
@@ -103,7 +127,7 @@ for (const name of pages) {
   // 2c) JS 字符串里的动态 import / 硬编码路径（import() 是语言级，不走 fetch patch）
   html = html.replace(/(import\s*\(\s*["'])\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
   // 2c-2') importmap JSON 与 JS 字符串里的已知目录（零正则，字符串定位）
-  for (const d of ['src/', '_next/', '_nuxt/', 'assets/', 'media/', 'img/', 'api/', 'files/', 'dist/']) {
+  for (const d of ROOT_DIRS) {
     html = html.split('"/' + d).join('"/lm/' + target.host + '/' + d);
     html = html.split("'/" + d).join("'/lm/" + target.host + '/' + d);
   }
@@ -111,46 +135,39 @@ for (const name of pages) {
   html = html.replace(/(\b(?:src|href|srcset|action)\s*=\s*["']?)\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
   html = html.replace(/url\(\s*(?:&quot;|['"])?\/(?!lm\/|static\/)/gi, `url("/lm/${target.host}/`);
 
-
-
   // 3) 原版 CSS 引用替换为本地校准版（cssom.css，死镜像同款——视觉保真双保险）
   html = html.replace(/<link[^>]*rel="stylesheet"[^>]*>/gi, '');
   html = html.replace('</head>', '<link rel="stylesheet" href="/static/' + host + '/pages/' + name + '/clone/styles/cssom.css"></head>');
-  // 内联 style 标签里可能引用原站字体 url —— 全文兜底（字体走代理，版本永远匹配）
-  html = html.split(lmPrefix + '/_next/').join(lmPrefix + '/_next/');   // no-op 保持形态直观
 
-  // 2f) chunk 预检剔除：快照里的 script 若原站已 404（部署时效），剥除避免 4xx 噪声（并发 8）
-  try {
-  console.error('[2f-entry] name=' + name, 'htmlLen=' + html.length, 'has41y8:', html.includes('41y89ol6'), 'has /lm/script:', html.includes('src="/lm/'));
-    const scriptUrls = [...new Set([...html.matchAll(/<script[^>]*src="(\/lm\/[^"]+)"/gi)].map(m => m[1]))];
-    const check = async (u) => {
-      try { const r = await fetch('http://127.0.0.1:8900' + u.replace('/lm/', '/px/'), { method: 'GET' }); return r.ok; } catch { return false; }   // /px/ 纯反代：融合路由会命中旧 live 文件永远 200
-    };
-    if (name === 'pricing') console.error('[precheck] scriptUrls =', scriptUrls.length);
-    const results = await Promise.all(scriptUrls.map(u => check(u).then(ok => [u, ok])));
-    if (name === 'pricing') console.error('[precheck] dead =', results.filter(r => !r[1]).length, '/', results.length);
-    let removed = 0;
-    for (const [u, ok] of results) {
-      if (ok) continue;
-      const fname = u.split('/').pop().split('?')[0];   // 剥查询串（?dpl= 在标签 src 里是字面量，regex 需转义——直接用无查询文件名定位）
-      const before = html;
-      console.error('[strip]', fname, '| inHtml:', before.includes(fname));
-      html = html.replace(new RegExp('<script[^>]*src="[^"]*' + fname + '[^"]*"[^>]*>[\s\S]*?</script>', 'i'), '<!-- heimdall: dead chunk (origin 404) -->');
-      const removedNow = html !== before;
-      if (html !== before) removed++;
-      console.error('[strip result]', fname, 'removed:', removedNow);
-    }
-    if (removed) console.log(`  dead chunks removed: ${removed}`);
-  } catch (e) { console.warn('  chunk precheck failed:', String(e).slice(0, 80)); }
+  // 4) chunk 预检剔除：快照里的 script 若原站已 404（部署时效），剥除避免 4xx 噪声。
+  //    引擎不可达时**整段跳过** —— 否则会把"探不通"误判成"全死"，把脚本剥光。
+  if (engineUp) {
+    try {
+      const scriptUrls = [...new Set([...html.matchAll(/<script[^>]*src="(\/lm\/[^"]+)"/gi)].map(m => m[1]))];
+      const check = async (u) => {
+        try {
+          // /px/ 是纯反代：走 /lm/ 融合路由会命中旧 live 文件而永远 200
+          const r = await fetch(SELF_URL + u.replace('/lm/', '/px/'), { signal: AbortSignal.timeout(10_000) });
+          return r.ok;
+        } catch { return true; }   // 探不通 ≠ 已死：保持脚本，宁可留噪声也不要剥掉能跑的 chunk
+      };
+      const results = await Promise.all(scriptUrls.map(u => check(u).then(ok => [u, ok])));
+      let removed = 0;
+      for (const [u, ok] of results) {
+        if (ok) continue;
+        const fname = u.split('/').pop().split('?')[0];   // ?dpl= 在标签里是字面量，用无查询文件名定位
+        const before = html;
+        html = html.replace(new RegExp('<script[^>]*src="[^"]*' + fname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^"]*"[^>]*>[\\s\\S]*?</script>', 'i'), '<!-- heimdall: dead chunk (origin 404) -->');
+        if (html !== before) removed++;
+      }
+      if (removed) console.log(`  dead chunks removed: ${removed}`);
+    } catch (e) { console.warn('  chunk precheck failed:', String(e).slice(0, 80)); }
+  }
 
   const rel = dirOnOrigin === '' || dirOnOrigin === '/' ? 'index.html' : dirOnOrigin.replace(/^\//, '') + '/index.html';
   const out = join(liveDir, rel);
-  mkdirSync(out.slice(0, out.lastIndexOf('/')), { recursive: true });
+  mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, html);
-  console.error('[bl out]', out, '| exists:', existsSync(out), '| size:', existsSync(out) ? readFileSync(out).length : -1);
-  const reread = readFileSync(out, 'utf8');
-  console.error('[bl reread] len:', reread.length, 'has-mixpanel:', reread.includes('window.mixpanel'), 'has-base:', reread.includes('<base'));
-  console.error('[bl after-write] file has-mixpanel:', readFileSync(out, 'utf8').includes('window.mixpanel'));
   built++;
   console.log(`  live/${rel}`);
 }

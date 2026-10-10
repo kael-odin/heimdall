@@ -20,12 +20,13 @@
  */
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { readFileSync, existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, rmSync, createReadStream } from 'node:fs';
 import { join, dirname, extname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE, DATA_ROOT, DELIVERABLE } from './paths.mjs';
 import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
-import { llmInfo, llmChat, llmEnabled } from './llm.mjs';
+import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
+import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 
@@ -47,9 +48,78 @@ const EXTRA_PROXY_HOSTS = new Set((process.env.HEIMDALL_ALLOWED_HOSTS ?? '')
   .split(',').map(s => s.trim().replace(/^www\./, '')).filter(Boolean));
 const CORS = { 'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,x-heimdall-token' };
 const UA2 = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif', '.svg': 'image/svg+xml', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf' };
+const MIME = {
+  '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
+  '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.map': 'application/json',
+  '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif',
+  '.svg': 'image/svg+xml', '.gif': 'image/gif', '.ico': 'image/x-icon', '.bmp': 'image/bmp',
+  '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.otf': 'font/otf', '.eot': 'application/vnd.ms-fontobject',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
+  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
+  '.pdf': 'application/pdf', '.zip': 'application/zip', '.har': 'application/json',
+  '.bin': 'application/octet-stream',
+};
+const mimeOf = (file) => MIME[extname(file).toLowerCase()] ?? 'application/octet-stream';
 
 const json = (res, code, obj) => { res.writeHead(code, { ...CORS, 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
+
+/** 读请求体（带大小上限，避免被一个超大 body 撑爆内存） */
+const readBody = (req, limit = 64 * 1024) => new Promise((resolve, reject) => {
+  let body = '', n = 0;
+  req.on('data', (c) => {
+    n += c.length;
+    if (n > limit) { reject(new Error('body too large')); req.destroy(); return; }
+    body += c;
+  });
+  req.on('end', () => resolve(body));
+  req.on('error', reject);
+});
+
+const isLoopback = (req) => {
+  const a = req.socket?.remoteAddress ?? '';
+  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+};
+
+/**
+ * 流式下发文件：Content-Length + Range 支持 + 正确 MIME。
+ * 此前四处用 readFileSync 全量入内存 —— 面对几百 MB 的镜像包/合并 HAR 会顶爆堆，
+ * 且不支持 Range（视频无法拖动/续传）。这里统一替换为流式。
+ */
+function sendFile(req, res, file, extraHeaders = {}) {
+  let st;
+  try { st = statSync(file); } catch { return json(res, 404, { error: 'nf' }); }
+  if (!st.isFile()) return json(res, 404, { error: 'nf' });
+  const headers = {
+    ...CORS,
+    'Content-Type': mimeOf(file),
+    'Content-Length': String(st.size),
+    'Accept-Ranges': 'bytes',
+    'Last-Modified': st.mtime.toUTCString(),
+    ...extraHeaders,
+  };
+  const range = req?.headers?.range;
+  const m = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+  if (m) {
+    let start = m[1] === '' ? undefined : Number(m[1]);
+    let end = m[2] === '' ? undefined : Number(m[2]);
+    if (start === undefined && end !== undefined) { start = Math.max(0, st.size - end); end = st.size - 1; }   // 后缀范围
+    else { if (start === undefined) start = 0; if (end === undefined || end >= st.size) end = st.size - 1; }
+    if (start > end || start >= st.size) {
+      res.writeHead(416, { ...CORS, 'Content-Range': `bytes */${st.size}` });
+      return res.end();
+    }
+    headers['Content-Length'] = String(end - start + 1);
+    headers['Content-Range'] = `bytes ${start}-${end}/${st.size}`;
+    res.writeHead(206, headers);
+    createReadStream(file, { start, end }).pipe(res);
+    return;
+  }
+  res.writeHead(200, headers);
+  if (req?.method === 'HEAD') return res.end();
+  createReadStream(file).pipe(res);
+}
 
 /** 只对白名单来源回 CORS 头（默认本机控制台）；无 Origin 的 curl/服务调用不受影响 */
 function applyCors(req, res) {
@@ -237,15 +307,57 @@ createServer(async (req, res) => {
     return json(res, 200, llmInfo());
   }
 
+  // ---- 模型服务配置（控制台可直接改，保存即生效——env.mjs 不缓存、llm 每次重读）----
+  if (u.pathname === '/api/settings/llm') {
+    if (req.method === 'GET') return json(res, 200, llmSettings());
+
+    if (req.method === 'PUT') {
+      // 安全：未设 HEIMDALL_TOKEN 时只允许本机回环改写。
+      // 否则把引擎绑到 0.0.0.0 共享出去后，任何内网同事都能替换你的模型端点与 Key。
+      if (!AUTH_TOKEN && !isLoopback(req)) {
+        return json(res, 403, { error: '写配置需要 HEIMDALL_TOKEN；未设置时仅允许本机回环访问' });
+      }
+      let body;
+      try { body = JSON.parse((await readBody(req)) || '{}'); }
+      catch { return json(res, 400, { error: 'invalid json' }); }
+      try {
+        const patch = normalizePatch(body);
+        const written = writeEnvKeys(patch);
+        console.log('[settings] llm updated:', Object.keys(patch).map(k => k === 'LLM_API_KEY' ? 'LLM_API_KEY=****' : k).join(', '));
+        return json(res, 200, { ok: true, ...written, settings: llmSettings() });
+      } catch (e) {
+        return json(res, 400, { error: String(e?.message ?? e) });
+      }
+    }
+    return json(res, 405, { error: 'method not allowed' });
+  }
+
   if (req.method === 'POST' && u.pathname === '/api/llm/test') {
-    if (!llmEnabled()) return json(res, 200, { ok: false, error: 'LLM 未启用（HEIMDALL_LLM!=1 或缺少 LLM_BASE_URL / LLM_API_KEY）' });
+    // 支持「草稿配置」：传 baseUrl/apiKey/model/protocol 就按草稿测，不落盘 —— 先测通再保存
+    let draft = null;
+    try { draft = JSON.parse((await readBody(req)) || '{}'); } catch { draft = {}; }
+    const cur = llmConfig();
+    const cfg = {
+      ...cur,
+      // Key 留空 = 沿用已保存的（控制台不会回显 Key，因此不能把空值当成"要清空"）
+      protocol: draft?.protocol ? String(draft.protocol).toLowerCase() : cur.protocol,
+      base: draft?.baseUrl !== undefined ? String(draft.baseUrl).trim().replace(/\/+$/, '') : cur.base,
+      key: draft?.apiKey ? String(draft.apiKey).trim() : cur.key,
+      model: draft?.model ? String(draft.model).trim() : cur.model,
+      fastModel: draft?.model ? String(draft.model).trim() : cur.fastModel,
+    };
+    if (!cfg.base || !cfg.key) {
+      return json(res, 200, { ok: false, error: '缺少 Base URL 或 API Key' });
+    }
     const started = Date.now();
     try {
-      const info = llmInfo();
-      const reply = await llmChat([{ role: 'user', content: '只回复四个字符：连接正常' }], { maxTokens: 512, timeout: 60_000, fast: true });
-      return json(res, 200, { ok: true, latencyMs: Date.now() - started, model: info.fastModel, protocol: info.protocol, reply: String(reply).slice(0, 80) });
+      const reply = await llmChatWith(cfg, [{ role: 'user', content: '只回复四个字符：连接正常' }], { maxTokens: 512, timeout: 60_000 });
+      return json(res, 200, {
+        ok: true, latencyMs: Date.now() - started, model: cfg.model, protocol: cfg.protocol,
+        draft: !!(draft && Object.keys(draft).length), reply: String(reply).trim().slice(0, 80),
+      });
     } catch (e) {
-      return json(res, 200, { ok: false, latencyMs: Date.now() - started, error: String(e).slice(0, 240) });
+      return json(res, 200, { ok: false, latencyMs: Date.now() - started, error: String(e).slice(0, 300) });
     }
   }
 
@@ -463,9 +575,7 @@ createServer(async (req, res) => {
     if (rel.endsWith('/')) rel += 'index.html';
     const file = join(WORKSPACE, rel);
     if (!isInsideWorkspace(file) || !existsSync(file)) return json(res, 404, { error: 'nf' });
-    res.writeHead(200, { ...CORS, 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
-    res.end(readFileSync(file));
-    return;
+    return sendFile(req, res, file);
   }
 
   if (req.method === 'GET' && u.pathname.startsWith('/api/pages/')) {
@@ -639,9 +749,7 @@ createServer(async (req, res) => {
       : [join(WORKSPACE, noWww, 'live', rel.replace(/\/$/, '') + '/index.html')];
     const localFile = lmCandidates.find(f => isInsideWorkspace(f) && existsSync(f));
     if (localFile) {
-      res.writeHead(200, { ...CORS, 'Content-Type': MIME[extname(localFile)] ?? 'application/octet-stream', 'Cache-Control': 'no-cache' });
-      res.end(readFileSync(localFile));
-      return;
+      return sendFile(req, res, localFile, { 'Cache-Control': 'no-cache' });
     }
 
     // 反代回原站（全方法）
@@ -843,11 +951,7 @@ createServer(async (req, res) => {
       const file = join(WORKSPACE, decodeURIComponent(u.pathname.replace(/^\/+/, '')));
       if (isInsideWorkspace(file) && existsSync(file)) {
         try {
-          if (statSync(file).isFile()) {
-            res.writeHead(200, { ...CORS, 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
-            res.end(readFileSync(file));
-            return;
-          }
+          if (statSync(file).isFile()) return sendFile(req, res, file);
         } catch {}
       }
     }
@@ -861,11 +965,7 @@ createServer(async (req, res) => {
       try {
         const r = relative(CONSOLE_DIR, f);
         if (r.startsWith('..') || isAbsolute(r)) continue;
-        if (existsSync(f) && statSync(f).isFile()) {
-          res.writeHead(200, { ...CORS, 'Content-Type': MIME[extname(f)] ?? 'application/octet-stream' });
-          res.end(readFileSync(f));
-          return;
-        }
+        if (existsSync(f) && statSync(f).isFile()) return sendFile(req, res, f);
       } catch {}
     }
     if (!extname(u.pathname)) {

@@ -17,7 +17,7 @@ const TYPE_COLOR = Object.fromEntries(Object.entries(PAGE_TYPES).map(([k, v]) =>
 const DEV_PORTS = ['5173', '5174', '5175'];
 const API = localStorage.getItem('heimdall-api') ?? (DEV_PORTS.includes(location.port) || !/^https?:/.test(location.protocol) ? 'http://127.0.0.1:8900' : location.origin);
 
-const host = ref('apify.com');
+const host = ref('');   // 当前站点：由「已侦察站点」列表决定，不再写死默认站点
 const atlas = ref(null);
 const live = ref(false);
 const statusText = ref('');
@@ -41,9 +41,23 @@ const assetInfo = ref(null);     // 资产清单（/api/assets/:host）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const matrixPeer = ref('');          // 跨站对标对象
 const matrixReport = ref(null);      // 最近一次对标矩阵报告
-const llmStatus = ref(null);     // LLM 配置状态（/api/llm/status，不含 key）
+const llmStatus = ref(null);     // 模型服务状态（/api/settings/llm，不含 Key）
 const llmTest = ref(null);       // 最近一次连接测试结果
 const llmTesting = ref(false);
+const llmSaving = ref(false);
+const llmSaveMsg = ref('');
+// 表单草稿：保存前可先「测试连接」验证；apiKey 留空 = 不修改已保存的 Key
+const llmForm = ref({ enabled: true, protocol: 'chat', baseUrl: '', apiKey: '', model: '', fastModel: '', timeoutMs: 180000, retries: 3 });
+
+// 预设只是「起点」：一键填好协议与端点，模型名以服务商当前文档为准，填完请先点「测试连接」
+const LLM_PRESETS = [
+  { name: 'OpenAI', protocol: 'chat', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', fastModel: 'gpt-4o-mini' },
+  { name: 'Anthropic', protocol: 'anthropic', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-opus-5-5', fastModel: 'claude-haiku-5-5' },
+  { name: 'DeepSeek', protocol: 'chat', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', fastModel: 'deepseek-chat' },
+  { name: 'OpenRouter', protocol: 'chat', baseUrl: 'https://openrouter.ai/api/v1', model: '', fastModel: '' },
+  { name: '本地 Ollama', protocol: 'chat', baseUrl: 'http://127.0.0.1:11434/v1', model: '', fastModel: '' },
+  { name: '自建中转', protocol: 'chat', baseUrl: '', model: '', fastModel: '' },
+];
 function taskState(t) { return t.failed ? 'failed' : t.done ? 'done' : 'running'; }
 function taskLabel(t) { return { running: '运行中', done: '完成', failed: '失败' }[taskState(t)] ?? '运行中'; }
 const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
@@ -565,17 +579,67 @@ function startForge(node) {
   });
 }
 
-/** LLM 状态与连接测试（设置页使用） */
+/** 模型服务：读取 / 测试（草稿，不落盘）/ 保存（写 core/.env，保存即生效） */
 async function loadLlm() {
-  try { const r = await fetch(API + '/api/llm/status'); if (r.ok) llmStatus.value = await r.json(); } catch {}
+  try {
+    const r = await fetch(API + '/api/settings/llm', { headers: apiHeaders() });
+    if (!r.ok) return;
+    llmStatus.value = await r.json();
+    syncLlmForm();
+  } catch { /* 引擎离线时静默 */ }
+}
+function syncLlmForm() {
+  const s = llmStatus.value;
+  if (!s) return;
+  llmForm.value = {
+    enabled: !!s.enabled, protocol: s.protocol || 'chat', baseUrl: s.baseUrl || '',
+    apiKey: '',                       // 永不回显 Key
+    model: s.model || '', fastModel: s.fastModel || '',
+    timeoutMs: s.timeoutMs || 180000, retries: s.retries || 3,
+  };
+}
+function applyLlmPreset(p) {
+  llmForm.value = {
+    ...llmForm.value,
+    protocol: p.protocol,
+    baseUrl: p.baseUrl,
+    model: p.model || llmForm.value.model,
+    fastModel: p.fastModel || '',
+  };
+  llmTest.value = null; llmSaveMsg.value = '';
 }
 async function testLlm() {
-  llmTesting.value = true; llmTest.value = null;
+  llmTesting.value = true; llmTest.value = null; llmSaveMsg.value = '';
   try {
-    const r = await fetch(API + '/api/llm/test', { method: 'POST', headers: apiHeaders() });
+    const f = llmForm.value;
+    const body = { protocol: f.protocol, baseUrl: f.baseUrl, model: f.model };
+    if (f.apiKey) body.apiKey = f.apiKey;    // 留空 = 用已保存的 Key 测
+    const r = await fetch(API + '/api/llm/test', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(body) });
     llmTest.value = await r.json();
   } catch (e) { llmTest.value = { ok: false, error: String(e).slice(0, 200) }; }
   finally { llmTesting.value = false; }
+}
+async function saveLlm() {
+  llmSaving.value = true; llmSaveMsg.value = '';
+  try {
+    const f = llmForm.value;
+    const body = {
+      enabled: f.enabled, protocol: f.protocol, baseUrl: f.baseUrl, model: f.model,
+      fastModel: f.fastModel, timeoutMs: Number(f.timeoutMs), retries: Number(f.retries),
+    };
+    if (f.apiKey) body.apiKey = f.apiKey;
+    const r = await fetch(API + '/api/settings/llm', { method: 'PUT', headers: apiHeaders(), body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) {
+      llmStatus.value = j.settings ?? llmStatus.value;
+      syncLlmForm();
+      llmSaveMsg.value = '✓ 已保存并生效（无需重启引擎）';
+      okMsg.value = '模型服务已保存';
+    } else {
+      llmSaveMsg.value = '✗ 保存失败：' + (j.error || ('HTTP ' + r.status));
+    }
+  } catch (e) { llmSaveMsg.value = '✗ 保存失败：' + String(e).slice(0, 160); }
+  finally { llmSaving.value = false; }
 }
 
 /** 报告索引 + 资产清单（报告页使用） */
@@ -945,9 +1009,13 @@ function onKeydown(e) {
 onMounted(() => {
   document.addEventListener('keydown', onKeydown);
   applyTheme(theme.value);
-  loadSites(); pollEngine();
-  // 默认载入上次侦察结果
-  fetch('/apify.com/recon/atlas.json').then(r => r.ok ? r.json() : Promise.reject()).then(buildStatic).catch(() => {});
+  loadSites().then(() => {
+    // 默认载入第一个「有侦察结果」的站点；没有则保持空态（引导用户输入域名侦察）
+    const first = sites.value.find(s => s.pages) ?? sites.value[0];
+    if (first) pickSite(first);
+    else host.value = '';
+  });
+  pollEngine();
 });
 onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.close(); for (const s of taskSources.values()) { try { s.close(); } catch {} } });
 </script>
@@ -1202,22 +1270,103 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   </section>
 
   <section class="work-view hud-panel" v-if="view === 'settings'">
-    <div class="wv-head"><b>设置</b><span class="wv-stat">本地控制台偏好（浏览器存储）</span></div>
+    <div class="wv-head"><b>设置</b><span class="wv-stat">模型服务写引擎配置（保存即生效）；其余为本地浏览器偏好</span></div>
     <div class="settings-grid">
-      <div class="set-row"><span>主题</span><button @click="toggleTheme">{{ theme === 'dark' ? '深色 → 浅色' : '浅色 → 深色' }}</button></div>
-      <div class="set-row"><span>星图自转</span><input type="checkbox" v-model="autoRotate" /></div>
-      <div class="set-row"><span>引擎地址</span><input v-model="apiBaseInput" placeholder="http://127.0.0.1:8900" spellcheck="false" /><button @click="saveApiBase">保存并刷新</button></div>
-      <div class="set-row"><span>引擎 Token</span><input v-model="tokenInput" placeholder="HEIMDALL_TOKEN（保护引擎 API，可留空）" spellcheck="false" /><button @click="saveToken">保存</button></div>
-      <div class="set-note" style="border-top:0;padding-top:0">「引擎 Token」= 访问本机引擎 API 的口令（环境变量 HEIMDALL_TOKEN），与下面模型服务的 LLM Key 不是一回事：前者保护你的引擎，后者用于调用模型。</div>
-      <div class="set-row" v-if="llmStatus">
-        <span>模型服务</span>
-        <b :style="{ color: llmStatus.enabled ? 'var(--green)' : 'var(--red)' }">{{ llmStatus.enabled ? '已启用' : '未启用' }}</b>
-        <span class="wv-stat">协议 {{ llmStatus.protocol }} · 主模型 {{ llmStatus.model }} · 快速 {{ llmStatus.fastModel }} · 端点 {{ llmStatus.baseHost || '—' }} · Key {{ llmStatus.hasKey ? '已配置' : '缺失' }}</span>
-        <button :disabled="llmTesting || !llmStatus.enabled" @click="testLlm">{{ llmTesting ? '测试中…' : '测试连接' }}</button>
+
+      <!-- 模型服务：控制台直接配置第三方大模型 -->
+      <div class="set-card hud-panel">
+        <div class="set-card-head">
+          <b>模型服务</b>
+          <span class="set-badge" :class="llmStatus?.ready ? 'ok' : 'bad'">{{ llmStatus?.ready ? '已就绪' : (llmStatus?.enabled ? '配置不完整' : '未启用') }}</span>
+          <span class="wv-stat" v-if="llmStatus?.baseHost">端点 {{ llmStatus.baseHost }} · Key {{ llmStatus.hasKey ? llmStatus.keyHint : '缺失' }}</span>
+        </div>
+        <p class="set-desc">
+          用于「AI 校准」（把 diff 差异交给模型修）与「情报语义抽取」。留空/关闭时，克隆与审计仍照常跑，
+          只是少了这两个 AI 增强环节（确定性流程不依赖模型）。
+        </p>
+
+        <div class="set-form">
+          <label>启用</label>
+          <div><input type="checkbox" v-model="llmForm.enabled" /><span class="hint">关闭后 AI 校准与语义抽取会自动跳过</span></div>
+
+          <label>协议</label>
+          <div>
+            <select v-model="llmForm.protocol">
+              <option value="chat">chat · OpenAI 兼容 /chat/completions（绝大多数中转与厂商）</option>
+              <option value="responses">responses · OpenAI /responses</option>
+              <option value="anthropic">anthropic · Anthropic /messages</option>
+            </select>
+          </div>
+
+          <label>Base URL</label>
+          <div><input v-model="llmForm.baseUrl" placeholder="https://api.openai.com/v1" spellcheck="false" /></div>
+
+          <label>API Key</label>
+          <div>
+            <input type="password" v-model="llmForm.apiKey" spellcheck="false"
+                   :placeholder="llmStatus?.hasKey ? ('已保存（' + llmStatus.keyHint + '）— 留空表示不修改') : 'sk-...'" />
+          </div>
+
+          <label>主模型</label>
+          <div><input v-model="llmForm.model" placeholder="用于 AI 校准与语义抽取" spellcheck="false" /></div>
+
+          <label>快速模型</label>
+          <div><input v-model="llmForm.fastModel" placeholder="留空 = 与主模型相同" spellcheck="false" /></div>
+
+          <label>超时 / 重试</label>
+          <div class="set-inline">
+            <input type="number" v-model.number="llmForm.timeoutMs" min="1000" max="900000" step="1000" /><span class="hint">ms</span>
+            <input type="number" v-model.number="llmForm.retries" min="1" max="10" /><span class="hint">次</span>
+          </div>
+        </div>
+
+        <div class="set-presets">
+          <span class="hint">快速填充：</span>
+          <button v-for="p in LLM_PRESETS" :key="p.name" @click="applyLlmPreset(p)">{{ p.name }}</button>
+          <span class="hint">（预设只填协议与端点；模型名以服务商当前文档为准）</span>
+        </div>
+
+        <div class="set-actions">
+          <button :disabled="llmTesting" @click="testLlm">{{ llmTesting ? '测试中…' : '测试连接（不保存）' }}</button>
+          <button class="wv-primary" :disabled="llmSaving" @click="saveLlm">{{ llmSaving ? '保存中…' : '保存并生效' }}</button>
+        </div>
+
+        <div class="set-msg" :class="llmTest?.ok ? 'ok' : 'bad'" v-if="llmTest">
+          {{ llmTest.ok
+            ? ('✓ 连接成功 · ' + llmTest.latencyMs + 'ms · ' + (llmTest.model || '') + ' · ' + (llmTest.reply || '').slice(0, 40) + (llmTest.draft ? '（草稿配置）' : ''))
+            : ('✗ 失败：' + (llmTest.error || 'unknown')) }}
+        </div>
+        <div class="set-msg" :class="llmSaveMsg.startsWith('✓') ? 'ok' : 'bad'" v-if="llmSaveMsg">{{ llmSaveMsg }}</div>
+
+        <div class="set-warn" v-if="llmStatus?.shadowed?.length">
+          注意：环境变量正在覆盖以下配置，控制台里改了也不生效 —— {{ llmStatus.shadowed.join('、') }}。请在启动引擎的环境中去掉它们。
+        </div>
+
+        <div class="set-foot">
+          写入 <code>{{ llmStatus?.envFile || 'core/.env' }}</code>：改动立即生效（引擎每次调用重读配置，无需重启）。
+          Key 只落本地文件、永不回显。
+        </div>
       </div>
-      <div class="set-note" v-if="llmTest">{{ llmTest.ok ? ('✓ 连接成功 · ' + llmTest.latencyMs + 'ms · ' + (llmTest.reply || '').slice(0, 40)) : ('✗ 失败：' + (llmTest.error || 'unknown')) }}</div>
-      <div class="set-note">模型配置：编辑 <code>core/.env</code> 的 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / LLM_MODEL_FAST / LLM_PROTOCOL（chat|responses|anthropic），改完重启引擎生效。</div>
-      <div class="set-note">引擎：{{ engine.ok ? '在线' : '离线' }} · 绑定 {{ engine.bind ?? '127.0.0.1' }} · 鉴权 {{ engine.auth ? '开启' : '关闭' }}<br/>数据目录 / 并发 / 代理白名单通过环境变量配置（HEIMDALL_DATA_DIR / HEIMDALL_TOKEN / HEIMDALL_ALLOWED_HOSTS）。</div>
+
+      <!-- 引擎与数据 -->
+      <div class="set-card hud-panel">
+        <div class="set-card-head"><b>引擎与数据</b></div>
+        <div class="set-row"><span>主题</span><button @click="toggleTheme">{{ theme === 'dark' ? '深色 → 浅色' : '浅色 → 深色' }}</button></div>
+        <div class="set-row"><span>星图自转</span><input type="checkbox" v-model="autoRotate" /></div>
+        <div class="set-row"><span>引擎地址</span><input v-model="apiBaseInput" placeholder="http://127.0.0.1:8900" spellcheck="false" /><button @click="saveApiBase">保存并刷新</button></div>
+        <div class="set-row"><span>引擎 Token</span><input v-model="tokenInput" placeholder="HEIMDALL_TOKEN（保护引擎 API，可留空）" spellcheck="false" /><button @click="saveToken">保存</button></div>
+        <div class="set-foot">
+          「引擎 Token」是访问本机引擎 API 的口令（环境变量 HEIMDALL_TOKEN），与模型服务的 API Key 不是一回事：前者保护你的引擎，后者用于调用模型。
+        </div>
+        <div class="set-foot">
+          引擎：{{ engine.ok ? '在线' : '离线' }} · 绑定 {{ engine.bind ?? '127.0.0.1' }} · 鉴权 {{ engine.auth ? '开启' : '关闭' }}<br />
+          数据目录 / 并发 / 代理白名单走环境变量：HEIMDALL_DATA_DIR / HEIMDALL_ALLOWED_HOSTS。
+        </div>
+        <div class="set-foot" v-if="llmStatus?.readonly?.length">
+          只读配置：<template v-for="(r, i) in llmStatus.readonly.filter(x => x.value)" :key="r.key"><code v-if="i">{{ ' ' }}</code><code>{{ r.key }}={{ r.value }}</code> </template>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -1748,7 +1897,38 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 .asset-actions { display: flex; align-items: center; gap: 6px; }
 .asset-src { font-size: 11px; color: var(--text-faint); margin-left: 6px; white-space: nowrap; }
 .asset-thumb { width: 26px; height: 26px; object-fit: contain; border-radius: 3px; background: repeating-conic-gradient(#1f2937 0% 25%, #111827 0% 50%) 50% / 10px 10px; vertical-align: middle; }
-.settings-grid { padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.settings-grid { padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 860px; }
+.set-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.set-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; }
+.set-card-head b { font-size: 14px; letter-spacing: .02em; }
+.set-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.set-badge.ok { color: var(--green); }
+.set-badge.bad { color: var(--amber); }
+.set-desc { font-size: 12px; line-height: 1.8; color: var(--text-faint); }
+.set-form { display: grid; grid-template-columns: 96px 1fr; gap: 10px 12px; align-items: center; font-size: 13px; }
+.set-form > label { color: var(--text-dim); }
+.set-form select, .set-form input:not([type=checkbox]) {
+  background: rgba(255,255,255,.04); border: 1px solid var(--cyan-line); color: var(--text);
+  border-radius: 3px; padding: 7px 9px; width: 100%; font-family: inherit; font-size: 13px;
+}
+.set-form select:focus, .set-form input:focus { outline: none; border-color: var(--cyan-dim); }
+.set-inline { display: flex; align-items: center; gap: 8px; }
+.set-inline input { max-width: 130px; }
+.hint { font-size: 11.5px; color: var(--text-faint); }
+.set-presets { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.set-presets button, .set-actions button {
+  background: rgba(34,211,238,.10); border: 1px solid var(--cyan-line); color: var(--cyan);
+  border-radius: 3px; padding: 6px 12px; cursor: pointer; font-family: inherit; font-size: 12.5px;
+}
+.set-presets button:hover, .set-actions button:hover { border-color: var(--cyan-dim); }
+.set-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.set-actions button:disabled { opacity: .5; cursor: default; }
+.set-actions .wv-primary { background: rgba(34,211,238,.18); border-color: var(--cyan-dim); }
+.set-msg { font-size: 12.5px; line-height: 1.7; padding: 8px 10px; border-radius: 3px; border: 1px solid; }
+.set-msg.ok { color: var(--green); border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.07); }
+.set-msg.bad { color: var(--red); border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.07); }
+.set-warn { font-size: 12px; line-height: 1.75; color: var(--amber); border: 1px solid rgba(245,158,11,.35); background: rgba(245,158,11,.07); padding: 8px 10px; border-radius: 3px; }
+.set-foot { font-size: 11.5px; line-height: 1.85; color: var(--text-faint); border-top: 1px dashed var(--cyan-line); padding-top: 10px; }
 .set-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-dim); }
 .set-row > span { width: 110px; }
 .set-row input:not([type=checkbox]) { background: rgba(255,255,255,.04); border: 1px solid var(--cyan-line); color: var(--text); border-radius: 3px; padding: 6px 9px; min-width: 280px; }

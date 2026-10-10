@@ -12,13 +12,15 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { getEnv } from './env.mjs';
+import { requireArg } from './args.mjs';
 import { WORKSPACE } from './paths.mjs';
 const ENV = getEnv();
 
-const URL_ = process.argv[2];
+const USAGE = 'node src/pipeline.mjs <url> [pageName]';
+const URL_ = requireArg(process.argv[2], USAGE, '目标 URL');
 const NAME = process.argv[3] ?? 'page';
-if (!URL_) { console.error('usage: node src/pipeline.mjs <url> <pageName>'); process.exit(1); }
 
 const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error(...a);
@@ -33,15 +35,22 @@ const run = (script, args) => new Promise((resolve, reject) => {
   p.on('error', reject);
 });
 
-// 克隆页静态服务由 engine-server 常驻提供（/static/...），无需临时 serve。
-// 端口/地址从引擎继承（HEIMDALL_PORT / HEIMDALL_SELF_URL），smoke/E2E 可用随机端口。
+// 克隆页静态服务由 engine-server 常驻提供（/static/...）。
+// 引擎不在时回退 file:// —— 克隆页资产已全部本地化（相对路径），实测 0 失败请求。
+// 这条回退是「工具能独立跑」的关键：`heimdall forge` 不该要求用户先起引擎。
 const SELF_URL = process.env.HEIMDALL_SELF_URL ?? `http://127.0.0.1:${process.env.HEIMDALL_PORT ?? 8900}`;
-const CLONE_URL = `${SELF_URL}/static/${host}/pages/${NAME}/clone/index.html`;
+
+async function resolveCloneUrl() {
+  try {
+    const r = await fetch(`${SELF_URL}/api/status`, { signal: AbortSignal.timeout(1500) });
+    if (r.ok) return { url: `${SELF_URL}/static/${host}/pages/${NAME}/clone/index.html`, via: 'engine' };
+  } catch { /* 引擎未启动 */ }
+  return { url: pathToFileURL(join(DIR, 'clone', 'index.html')).href, via: 'file' };
+}
 
 const STAGES = [
   ['capture', 'crawler/capture.mjs', [URL_, DIR]],
   ['build', 'crawler/build_clone.mjs', [DIR]],
-  ['shot', 'crawler/shot_clone.mjs', [CLONE_URL, join(DIR, 'shot-clone.png')]],
 ];
 
 let failed = null;
@@ -52,6 +61,15 @@ try {
     await run(script, args);
     emit({ kind: 'forge-stage', stage, status: 'done' });
   }
+
+  // shot 阶段——引擎可达走 /static，否则 file://（两者截图口径相同）
+  const clone = await resolveCloneUrl();
+  log(`\n==== [shot] (via ${clone.via}) ====`);
+  emit({ kind: 'forge-stage', stage: 'shot', status: 'running', via: clone.via });
+  emit({ kind: 'forge-note', note: clone.via === 'file' ? '引擎未运行，克隆截图走 file://' : '引擎在线，克隆截图走 /static' });
+  await run('crawler/shot_clone.mjs', [clone.url, join(DIR, 'shot-clone.png')]);
+  emit({ kind: 'forge-stage', stage: 'shot', status: 'done', via: clone.via });
+
   emit({ kind: 'forge-stage', stage: 'diff', status: 'running' });
   log(`\n==== [diff] ====`);
   await run('differ/diff.mjs', [DIR]);

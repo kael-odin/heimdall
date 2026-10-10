@@ -48,6 +48,10 @@
 | `LLM_TIMEOUT_MS` / `LLM_MAX_RETRIES` | 超时/网络重试 | 默认 180s / 3 |
 | `HEIMDALL_DATA_DIR` | 产物目录 | 默认 core/，可迁仓库外 |
 | `HEIMDALL_CONSOLE_DIR` | 单端口部署的控制台 dist | Docker/本机单端口用 |
+| `HEIMDALL_ENV_FILE` | 配置文件路径 | 默认 `core/.env`；容器挂载 / 单测隔离用 |
+
+> `LLM_*` 这些键现在**可直接在控制台「设置 → 模型服务」改**，保存即生效（无需重启）。
+> 手动编辑 `core/.env` 同样有效。被 shell 环境变量遮蔽的键会在控制台里明确提示。
 
 当前中转实测：支持 `/chat/completions` 与 `response_format`；可用模型 `deepseek-flash / deepseek-v4-flash / deepseek-v4-pro`；无视觉模型（fixup 自动走文本模式）。
 
@@ -286,3 +290,135 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
 - 现象：storage 复测 92.4%(768)、change-log 90.0%(375) 波动大——整页截图期间下方懒加载内容才加载，两侧时序不一致。
 - 修复：verify.mjs 在截图前先滚全页触发懒加载 → 回顶部 → networkidle → 再等待。
 - 复测：storage **100.0%/100.0%**（原 92.4）；change-log 97.1%（原 96.3）；agents.md 93.9/91.1 不变（其差异非懒加载）。
+
+## 18. 2026-10-09/10 续十一：批次 0「通用克隆」止血（全部有实测）
+
+方向已定：**先做"任何人在任何机器上一条命令跑通"**，再重设计控制台。详见 [docs/PLAN-2026-10-09.md](docs/PLAN-2026-10-09.md)。
+
+### 18.1 无引擎也能 `forge`（P0-1）
+`pipeline.mjs` 在 shot 阶段先探测 `<引擎>/api/status`：可达走 `/static/`，否则回退
+`file://<pageDir>/clone/index.html`（克隆页资产本就全部本地化，实测 0 失败请求）。
+新增事件 `forge-note` 告知来源；`shot_clone.mjs` 的写死默认 URL 一并移除。
+
+### 18.2 不再"猜默认站点"（P0-3）
+新增 `core/src/args.mjs`（`requireArg` / `parseTarget`）。**12 个 core 脚本**的
+`process.argv[n] ?? 'apify.com'` 全部改为缺参数即报用法退出；控制台 host 默认值同步移除。
+新增单测 `test/args.test.mjs`：逐个脚本跑空参必须非 0 退出，并扫描源码禁止"写死默认站点"复发。
+
+### 18.3 CSS `url()` 解析（P1-1 + 本轮最大发现）
+新增 `core/src/css-refs.mjs`（`scanCssRefs` / `collectCssRefs` / `rewriteCssRefs`）：
+
+1. **基准修正**：`url()` 必须按**样式表自身 URL** 解析（CSS 规范），不是页面 origin。
+   实测 tailwindcss.com：`…/media/InterVariable-*.woff2` → **404**；`…/_next/static/media/…` → **200**。
+   今天能跑通靠的是 nextjs 适配器的特例重写 + DOM preload 的 basename 兜底（两层运气）。
+   `cssom-refs.json` 现在记录 `refMap`（每个引用的基准解析候选）。
+2. **data URI 内嵌 `url()` 被误判**（新发现，最严重）：
+   `url("data:image/svg+xml,…<g mask='url(%23f)'/>…")` 里的 `%23f` 被当成外部引用 →
+   抓 `https://host/%23f`（SPA 兜底 200 HTML）→ 落盘 `refNNN.html` → **再把内嵌 mask 引用改写掉**，
+   静默破坏内联 SVG 图标。**vitest.dev 实测 34 处中招**；修好后 refs 53→26，假资产 27→0。
+   扫描器改为逐字符识别：遇到 `url(` 后若紧跟引号就整段跳到配对引号之后，内嵌内容不再被二次扫描。
+3. **失败可见**：本地化缺口写入 `clone-gaps.json`（不再只打日志）。
+
+### 18.4 资产类型与软 404（P1-2 + 新增）
+新增 `core/src/asset-ext.mjs`：扩展名判定 **magic bytes > Content-Type > URL 后缀 > bin**。
+- 旧实现只靠 URL 后缀猜 → 带查询串的 CDN 图（`?w=1000&q=80`）一律落成 `.bin`；
+  实测 `ref003.bin` 前 4 字节 `ffd8ffe0` = JPEG。**诚实说明**：Chrome 下用两个探针实测
+  （`<img>` 与 CSS `background-image` 绘制路径截图像素）**都能嗅探正常渲染**，不是保真事故；
+  但跨浏览器未验证、导出包里语义脏，故按真实类型落盘。
+- 新增 `isSoftHtml()`：请求图片却返回 `text/html`（SPA 兜底 / 软 404）→ 判为失败并记入缺口，
+  不再落盘成"看着有、其实全错"的假资产。`linker.mjs` 同样接入（此前产生 27 个 HTML `.bin`）。
+
+### 18.5 `ref-index.json`：幂等重建不再串资产
+`refNNN` 编号来自引用在 CSS 中的出现顺序；扫描口径一变编号就整体位移，按"序号"复用旧产物会**把 A 图接到 B 的位置**。
+`clone/ref-index.json` 改为按**引用原文**建索引（`{ cssFile: { rawRef: { rel, candidates } } }`）。
+无索引的老产物用「已构建 CSS 的 token 顺序 ↔ 源 CSS token 顺序」一一对应反推迁移。
+实测：apify/about 重建后 `clone/styles/cssom.css` **字节级一致**；`linker.mjs` 改用 ref-index 反查原站 URL。
+
+### 18.6 其他
+- `engine-server.mjs`：MIME 表 15 → 40+ 项；4 处 `readFileSync` 改为 `sendFile()`
+  （流式 + `Content-Length` + **Range**，几百 MB 的包不再顶爆堆，视频可拖动）。
+- 控制台/CLI 无破坏性变更；`clone-gaps.json` 暂未接到 UI（批次 2 接入质检 tab）。
+
+### 18.7 本轮质量门与真实站点验收
+lint 87 文件 · 单测 **80/80**（63 → 80）· smoke 全绿。**全部无引擎、全新站点、一条命令**：
+
+| 站点 | 自动识别的栈 | 首屏保真 | CSS 缺口 | 未本地化资产引用 |
+|---|---|---|---|---|
+| vitest.dev | `vue-vite` | **99.96%** | 0 | 0 |
+| astro.build | `generic`（未知栈） | **100.00%** | 0 | 0 |
+| tailwindcss.com | `nextjs` | **99.92%** | 0（9 处为原站真 404） | 0 |
+
+复现：
+```cmd
+node core\src\cli.mjs forge https://<任意站>/ home
+node core\src\cli.mjs queue <host> --max 20
+```
+
+### 18.8 下一批（批次 1，未开工）
+控制台配置第三方大模型（引擎 `GET/PUT /api/settings/llm` + 热重载 + 草稿测试）·
+站点配方 `core/sites/<host>.json`（把 `adapters` 特例与 `build_live.mjs:81` 的 apify 分支迁进数据）·
+robots.txt 遵守 + crawl-delay · 分类规则补中文 + DOM 特征推断。
+
+## 19. 2026-10-10 续十二：批次 1「通用克隆能力」（全部有实测）
+
+### 19.1 控制台配置第三方大模型（P0-2）
+**改完即生效，无需重启引擎** —— `env.mjs` 不再缓存、`llm.mjs` 每次调用重读配置。
+
+- `core/src/settings.mjs`：直接读写 `core/.env`（单一真相源，已 gitignore）。
+  **原位改值**：注释/空行/未知键逐字节保留；新键追加末尾。Key 永不回显（只给 `hasKey` + 末 4 位）。
+  白名单只允许写 8 个 `LLM_*` / `HEIMDALL_LLM` 键，其余一律拒绝。
+- 引擎：`GET /api/settings/llm`、`PUT /api/settings/llm`、`POST /api/llm/test`（**支持草稿**：传
+  `baseUrl/apiKey/model/protocol` 按草稿测，不落盘 —— 先测通再保存）。
+  安全：未设 `HEIMDALL_TOKEN` 时只允许**本机回环**改写（否则引擎绑 0.0.0.0 后任何内网同事都能换你的模型端点）。
+  省略 `apiKey` = 保持不变（控制台不回显 Key，不能让空值把它覆盖掉）。
+  被 shell 环境变量遮蔽的键会列进 `shadowed`，控制台明确指出"改了为什么不生效"。
+- 控制台「设置 → 模型服务」：启用/协议/Base URL/Key/主模型/快速模型/超时/重试 + 6 个预设
+  （OpenAI / Anthropic / DeepSeek / OpenRouter / 本地 Ollama / 自建中转）+ 「测试连接（不保存）」+「保存并生效」。
+- 实测：保存改模型 → `.env` 仅目标行变化（8 行 → 8 行，diff 仅 1 行）；Key 保留；
+  草稿测试用**真实 Anthropic 端点**打回 `401 invalid x-api-key`（证明 anthropic 协议路径与
+  `x-api-key` 头正确）；坏协议/坏 URL/空模型/越界超时/未知字段全部给出可读错误。
+- 错误信息人性化：`无法连接模型服务 <url>（ENOTFOUND）…`、`模型服务返回 404（端点不存在——Base URL 是否漏了 /v1？）`。
+
+### 19.2 站点配方（P0-4）—— 把站点特化从代码挤进数据
+```
+core/sites/_default.json     内置默认（代码里的 DEFAULTS）
+core/sites/<host>.json       人工整理（随仓库提交，优先级最高）
+workspace/<host>/site.json   运行时学到的事实（产物，gitignore）
+```
+合并顺序：DEFAULTS → workspace → **core/sites（人工压过自动）**。职责边界：
+**框架知识留在 `adapters/`**（由指纹推导），**站点知识放配方**。
+
+- `build_live.mjs` 里那行 `var CONSERVATIVE = H.indexOf('/lm/apify') === 0;` 已删除 →
+  现在是 `profile.live.stubStrategy`（apify.com.json 里写 `conservative`，默认 `magic` 与 thordata 行为一致）。
+  挂件脚本黑名单同样改为配方驱动。
+- `adapters/index.mjs` 重写为**数据形态**（`cssRefRewrites` / `removeSelectors` 取代函数），
+  并支持 `profile.adapter` 强制指定跳过探测。
+- `queue.mjs` 的排除项、`capture.mjs` 的等待策略/静置时间/弹窗选择器全部来自配方。
+- 运行时学习：`capture` 写 `profile-observed.json`，`linker`（每次批量末尾）汇总进
+  `workspace/<host>/site.json`。**只记观察事实，不写策略** —— 自动写策略会让一次跑歪盖掉人工修正。
+- 新命令：`node src/cli.mjs profile <host>` 查看生效配方与来源；`profile --list` 列已有站点。
+  配方说明见 `core/sites/README.md`。
+- 实测：apify 活镜像重建后 `var CONSERVATIVE = true`（此前来自 host 字符串判断）；
+  用配方重建的 HTML 与旧版仅差注释文案。
+
+### 19.3 页面分类补中文 + DOM 特征兜底（P1-5）
+抽成 `core/src/crawler/classify.mjs`（纯函数、可单测 —— recon.mjs 是顶层 await 脚本，导不出东西）。
+- 12 条规则全部补上中/日常见词：`/价格 /定价 /套餐 /关于我们 /帮助中心 /隐私政策 /招聘 /登录 …`
+- 路径判不出时用 **DOM 特征**兜底（密码框→auth、代码块→doc、FAQ→help、价格+表格→pricing…），
+  只在路径给出 generic/marketing 且**非首页**时介入。
+- 站点可用 `classify.extraRules` 追加路径约定。
+- 实测 aliyun.com（中文站）14 页：`{marketing:2, generic:8, blog:1, doc:1, product:2}`，无异常。
+
+### 19.4 robots.txt：**不内置限制**（决策）
+按 2026-10-10 的决定（个人研究用途），**不实现 robots 解析与 crawl-delay 强制**。
+并发/节流保持现状，作为可配参数存在，默认不引入新限制。后续不要把这条限制加回来。
+
+### 19.5 本轮质量门
+lint 93 文件 · 单测 **106/106**（80 → 106）· smoke 全绿（含活镜像导出与离线体检）。
+新增测试：`settings`（8）· `site-profile`（9）· `classify`（7）。
+
+### 19.6 下一批（批次 2，未开工）
+控制台组件化（1819 行 `Atlas.vue` → ≤8 组件 + Router/Pinia/TS）· 视觉按路线 A 降噪提对比 ·
+CAS 引用计数回收（删站真释放磁盘）· 站点 `site.json` 磁盘看板 · `clone-gaps.json` 接进质检 tab。
+
+

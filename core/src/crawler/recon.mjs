@@ -10,9 +10,12 @@
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { requireArg } from '../args.mjs';
+import { loadProfile } from '../site-profile.mjs';
+import { classifyPath, compileExtraRules } from './classify.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
-const TARGET = process.argv[2] ?? 'https://apify.com';
+const TARGET = requireArg(process.argv[2], 'node src/crawler/recon.mjs <url> [maxPages] [maxDepth]', '目标 URL');
 const MAX_PAGES = Number(process.argv[3] ?? 40);
 const MAX_DEPTH = Number(process.argv[4] ?? 2);
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
@@ -43,22 +46,26 @@ emit({ kind: 'calibrated', origin: ORIGIN, host: HOST_DIR });
 const OUT = join(WORKSPACE, HOST_DIR, 'recon');
 const THUMBS = join(OUT, 'thumbs');
 mkdirSync(THUMBS, { recursive: true });
-function classify(path) {
-  if (/pricing|plans?|billing/i.test(path)) return 'pricing';
-  if (/blog|news|article|post|press/i.test(path)) return 'blog';
-  if (/case-stud|customer|success-stor/i.test(path)) return 'case_study';
-  if (/career|jobs?|hiring|recruit/i.test(path)) return 'career';
-  if (/help|faq|support|tutorial|university|academy/i.test(path)) return 'help';
-  if (/docs?|guide|manual|reference/i.test(path)) return 'doc';
-  if (/tools?|free-|checker|generator|calculator/i.test(path)) return 'tools';
-  if (/product|feature|solution/i.test(path)) return 'product';
-  if (/store|marketplace|actors?|templates|integrations|apps/i.test(path)) return 'listing';
-  if (/login|signup|sign-up|register|account|console|dashboard/i.test(path)) return 'auth';
-  if (/legal|terms|privacy|cookie|imprint|acceptable-use/i.test(path)) return 'legal';
-  if (/about|company|team|contact|partners?/i.test(path)) return 'company';
-  if (/\.\w{2,4}$|^\/$|^\/?$/.test(path)) return 'marketing';
-  return 'generic';
-}
+
+// 站点配方：classify.extraRules 可追加/覆盖分类规则（站点特有的路径约定）
+const profile = loadProfile(HOST_DIR);
+const EXTRA_RULES = compileExtraRules(profile.classify?.extraRules);
+
+/** 页面结构特征（一次 evaluate，供分类兜底；失败不阻塞） */
+const readFeatures = (page) => page.evaluate(() => {
+  const text = (document.body?.innerText ?? '').slice(0, 6000);
+  return {
+    passwordField: !!document.querySelector('input[type=password]'),
+    priceHits: (text.match(/(?:[$¥€£₩]|￥)\s?\d|\d+\s?(?:元|美元|円)\b|\d+\s?\/\s?(?:mo|mo\.|month|yr|year)\b/gi) ?? []).length,
+    tableCount: document.querySelectorAll('table').length,
+    form: document.querySelectorAll('form').length,
+    codeBlocks: document.querySelectorAll('pre code, pre > code, .highlight, [class*="code-block" i], [class*="hljs" i]').length,
+    faq: !!document.querySelector('details, [class*="faq" i], [id*="faq" i], [class*="accordion" i]'),
+    jobPosting: /apply now|投递简历|立即申请|申请职位|job description/i.test(text) || !!document.querySelector('[class*="job-" i],[id*="job-" i]'),
+    headings: document.querySelectorAll('h1,h2,h3').length,
+    article: document.querySelectorAll('article, [class*="article" i], [class*="post-" i]').length > 0,
+  };
+}).catch(() => null);
 
 // ---------- 1. sitemap 先行 ----------
 log('[1/4] sitemap');
@@ -100,9 +107,15 @@ const bfsSeen = new Set([LANDING.replace(/\/$/, '')]);   // 仅 BFS 自身去重
 for (const u of sitemapSame) smQueue.push({ url: u, depth: 99 });
 
 let idSeq = 0;
-const addNode = (url, depth, title, seoLite) => {
+const addNode = (url, depth, title, seoLite, features) => {
   if (nodes.has(url)) return;
-  nodes.set(url, { id: `n${String(idSeq++).padStart(3, '0')}`, url, path: pathOf(url), title: title || pathOf(url), type: classify(pathOf(url)), depth, seoLite });   // seoLite 由调用方传入
+  const path = pathOf(url);
+  nodes.set(url, {
+    id: `n${String(idSeq++).padStart(3, '0')}`, url, path,
+    title: title || path,
+    type: classifyPath(path, features, EXTRA_RULES),
+    depth, seoLite,
+  });
 };
 
 async function visit({ url, depth }) {
@@ -123,7 +136,8 @@ async function visit({ url, depth }) {
       canonical: !!document.querySelector('link[rel="canonical"]'),
       lang: document.documentElement.lang || '',
     })).catch(() => null);
-    addNode(url, depth, title, seoLite);
+    const features = await readFeatures(page);
+    addNode(url, depth, title, seoLite, features);
     const node = nodes.get(url);
     emit({ kind: 'page', ...node });
     // 缩略图（供星图 hover）

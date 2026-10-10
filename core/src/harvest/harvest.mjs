@@ -18,6 +18,7 @@
 import { parse } from 'parse5';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
 const SKIP = new Set(['script', 'style', 'noscript', 'template']);
@@ -142,7 +143,7 @@ async function semanticEnhance(profile, dir) {
 
 // CLI: node src/harvest/harvest.mjs <pageDir> [htmlFile=dom.html]
 if (process.argv[1]?.endsWith('harvest.mjs')) {
-  const DIR = process.argv[2] ?? join(WORKSPACE, 'apify.com', 'pages', 'home');
+  const DIR = requireArg(process.argv[2], 'node src/harvest/harvest.mjs <pageDir>', '页面目录');
   const src = readFileSync(join(DIR, 'dom.html'), 'utf8');
   const profile = extractProfile(src);
   mkdirSync(join(DIR, 'intel'), { recursive: true });

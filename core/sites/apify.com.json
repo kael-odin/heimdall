@@ -1,0 +1,7 @@
+{
+  "host": "apify.com",
+  "live": {
+    "stubStrategy": "conservative"
+  },
+  "notes": "apify 的 chunk 会与「无限递归 Proxy stub」互相纠缠而挂死（实测），因此活镜像改用保守 stub：挂件本身经 /lm 代理真跑，而不是被 stub 成空对象。视觉/功能不受影响。"
+}

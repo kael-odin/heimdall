@@ -7,17 +7,30 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { pickAdapter, nextjs, vueVite, generic } from '../src/adapters/index.mjs';
+import { pickAdapter, refRewriteCandidates, nextjs, vueVite, generic } from '../src/adapters/index.mjs';
 import { extractProfile, dataScore } from '../src/harvest/harvest.mjs';
 import { domSimilarity } from '../src/differ/domdiff.mjs';
 
 test('adapter: nextjs detection + media path healing', () => {
   const html = '<html><body><script id="__NEXT_DATA__" type="application/json">{}</script><div class="x">hi</div></body></html>';
   assert.equal(pickAdapter(html), nextjs);
-  assert.deepEqual(
-    nextjs.cssRefCandidates('https://a.com/media/font.woff2'),
-    ['https://a.com/media/font.woff2', 'https://a.com/_next/static/media/font.woff2'],
-  );
+  // 前缀重写现在是**数据**（cssRefRewrites），由 refRewriteCandidates 编译成候选链
+  const cands = refRewriteCandidates(nextjs, null);
+  assert.deepEqual(cands('https://a.com/media/font.woff2'), ['https://a.com/_next/static/media/font.woff2']);
+  assert.deepEqual(cands('https://a.com/other/x.png'), [], '不匹配的地址不产生候选');
+});
+
+test('adapter: 站点配方的 css.refRewrites 与适配器规则合并', () => {
+  const profile = { adapter: 'generic', css: { refRewrites: [{ from: '^https://cdn\\.x/', to: 'https://x/' }] } };
+  const cands = refRewriteCandidates(generic, profile);
+  assert.deepEqual(cands('https://cdn.x/a.png'), ['https://x/a.png']);
+});
+
+test('adapter: 配方可强制指定适配器，跳过探测', () => {
+  const plain = '<html><body><h1>plain</h1></body></html>';
+  assert.equal(pickAdapter(plain, { adapter: 'auto' }), generic);
+  assert.equal(pickAdapter(plain, { adapter: 'vue-vite' }), vueVite, '强制指定应生效');
+  assert.equal(pickAdapter(plain, { adapter: '不存在的' }), generic, '未知名字回落到探测');
 });
 
 test('adapter: vue-vite detection', () => {

@@ -10,9 +10,10 @@
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
-const host = process.argv[2] ?? 'thordata.com';
+const host = requireArg(process.argv[2], 'node src/crawler/fullshot.mjs <host>', '站点 host');
 const only = process.argv[3];
 const BASE = join(WORKSPACE, host);
 const PAGES = join(BASE, 'pages');

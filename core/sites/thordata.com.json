@@ -1,0 +1,4 @@
+{
+  "host": "thordata.com",
+  "notes": "Vue3 + Vite scoped CSS 路线。默认配方即可跑通（live.stubStrategy 保持默认 magic），此文件仅作占位与说明——它演示了「站点配方为空也应存在」：一旦这个站需要调参，直接往这里加，不必改代码。"
+}

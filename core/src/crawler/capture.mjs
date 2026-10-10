@@ -15,12 +15,19 @@ import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pickAdapter } from '../adapters/index.mjs';
-import { WORKSPACE } from '../paths.mjs';
+import { loadProfile, sanitizeHost } from '../site-profile.mjs';
+import { extFrom, isSoftHtml } from '../asset-ext.mjs';
+import { collectCssRefs } from '../css-refs.mjs';
+import { requireArg } from '../args.mjs';
 
-const TARGET = process.argv[2] ?? 'https://apify.com';
-const OUT = process.argv[3] ?? join(WORKSPACE, 'apify.com', 'pages', 'home');
+const TARGET = requireArg(process.argv[2], 'node src/crawler/capture.mjs <url> <outdir>', '目标 URL');
+const OUT = requireArg(process.argv[3], 'node src/crawler/capture.mjs <url> <outdir>', '输出目录');
 const VIEWPORT = { width: 1440, height: 900 };
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
+// 站点配方：捕获策略（等待策略/静置时间/弹窗选择器）全部来自这里，不再写死在代码里
+const profile = loadProfile(sanitizeHost(new URL(TARGET).hostname));
+const CAP = profile.capture;
 
 // 冻结策略：两侧截图同条件。CSS 动画全冻 + 轮播回初始位 + 输入框清空（打字机 JS 动画两边归零）
 const FREEZE_CSS = `
@@ -54,34 +61,40 @@ try {
 const page = await context.newPage();
 
 console.log('[1/7] goto', TARGET);
-// domcontentloaded 而非 networkidle：持续轮询/长连接的页面 networkidle 永不达成，资源加载由后续扫掠兜底
-await page.goto(TARGET, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+// 默认 domcontentloaded 而非 networkidle：持续轮询/长连接的页面 networkidle 永不达成，
+// 资源加载由后续扫掠兜底。站点可用配方 capture.waitUntil 覆盖。
+await page.goto(TARGET, { waitUntil: CAP.waitUntil, timeout: CAP.timeoutMs });
 
 console.log('[2/7] cookie banner');
 try {
-  await page.getByRole('button', { name: /accept|agree|allow all|consent|dismiss/i }).first().click({ timeout: 5000 });
+  const consent = CAP.consentButton ? new RegExp(CAP.consentButton, 'i') : /accept|agree|allow all|consent|dismiss|接受|同意/i;
+  await page.getByRole('button', { name: consent }).first().click({ timeout: 5000 });
   await page.waitForTimeout(1000);
 } catch { /* 无 banner，跳过 */ }
 
 console.log('[3/7] lazy-load sweep');
-await page.evaluate(async () => {
-  const step = 800;
+if (CAP.scrollSweep) await page.evaluate(async ({ step, delay }) => {
   for (let y = 0; y < document.body.scrollHeight; y += step) {
     window.scrollTo(0, y);
-    await new Promise(r => setTimeout(r, 120));
+    await new Promise(r => setTimeout(r, delay));
   }
   window.scrollTo(0, 0);
-});
+}, { step: CAP.scrollStep, delay: CAP.scrollDelayMs });
 await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
-await page.waitForTimeout(3000);
+await page.waitForTimeout(CAP.settleMs);
 
-// DOM 探测栈 → 适配器
+// DOM 探测栈 → 适配器（配方可用 adapter 字段强制指定）
 const domProbe = await page.content();
-const adapter = pickAdapter(domProbe);
-console.log('    adapter =', adapter.name);
+const adapter = pickAdapter(domProbe, profile);
+console.log('    adapter =', adapter.name, profile.adapter !== 'auto' ? '(配方强制)' : '(自动探测)');
 
 console.log('[4/7] page cleanup (adapter:', adapter.name + ')');
-await adapter.pageCleanup(page);
+const removeSelectors = [...(adapter.removeSelectors ?? []), ...(CAP.removeSelectors ?? [])];
+if (removeSelectors.length) {
+  await page.evaluate((sels) => {
+    for (const s of sels) { try { document.querySelectorAll(s).forEach(e => e.remove()); } catch { /* 无效选择器 */ } }
+  }, removeSelectors);
+}
 // 通用清场：输入框值清零（打字机/搜索预填两边归零，同帧公平）
 await page.evaluate(() => {
   document.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
@@ -105,10 +118,13 @@ const manifest = await page.evaluate(() => {
   const favicon = [...document.querySelectorAll('link[rel*="icon"]')].map(l => abs(l.getAttribute('href'))).filter(Boolean);
   // ---- v2 资源矩阵：图片/图标/媒体/字体预载/sprite/manifest（按 URL 去重，保留 kinds）----
   const resIndex = new Map();
+  // 页内锚点（#id / %23id，SVG filter/mask 常用）与伪协议不是外部资产，不能进清单
+  const skipRef = (u) => { const s = String(u ?? '').trim(); return !s || s[0] === '#' || /^%23/i.test(s) || /^(data|about|blob|javascript|mailto|tel):/i.test(s); };
   const addRes = (u, kind) => {
     if (u == null) return;
     const s = String(u).trim();
     if (!s || s === 'null' || s === 'undefined' || s === 'about:blank') return;
+    if (skipRef(s)) return;
     const a = abs(s);
     if (!a || a.startsWith('data:')) return;
     const key = a.split('#')[0];
@@ -143,6 +159,7 @@ console.log(`    css=${manifest.css.length} imgs=${manifest.imgs.length} icons=$
 
 // CSSOM 最终状态：styled-components/构造样式表/内联 style 全部逃不出 document.styleSheets
 console.log('[6/7] capture CSSOM final state');
+// 引用扫描放在 Node 侧：唯一实现、且能正确跳过 data URI 内嵌的 url(...)
 const cssom = await page.evaluate(() => {
   const sheets = [];
   const collect = (list) => {
@@ -155,18 +172,15 @@ const cssom = await page.evaluate(() => {
   };
   collect(document.styleSheets);
   if (document.adoptedStyleSheets) collect(document.adoptedStyleSheets);
-  const refs = new Set();
-  for (const s of sheets)
-    for (const m of (s.css ?? '').matchAll(/url\((['"]?)([^'")]+)\1\)/g))
-      if (!m[2].startsWith('data:')) refs.add(m[2]);
-  return { sheets, refs: [...refs] };
+  return { sheets, base: document.baseURI };
 });
 const cssomCss = cssom.sheets.filter(s => s.css).map(s => s.css).join('\n');
+const { refs: cssRefs, refMap } = collectCssRefs(cssom.sheets, cssom.base);
 writeFileSync(join(OUT, 'cssom.css'), cssomCss);
 writeFileSync(join(OUT, 'cssom-refs.json'), JSON.stringify({
-  origin: new URL(TARGET).origin, adapter: adapter.name, refs: cssom.refs, sheets: cssom.sheets,
+  origin: new URL(TARGET).origin, adapter: adapter.name, refs: cssRefs, refMap, sheets: cssom.sheets,
 }, null, 2));
-console.log(`    sheets=${cssom.sheets.length} css=${(cssomCss.length / 1024).toFixed(0)}KB refs=${cssom.refs.length}`);
+console.log(`    sheets=${cssom.sheets.length} css=${(cssomCss.length / 1024).toFixed(0)}KB refs=${cssRefs.length}`);
 
 console.log('[7/7] multi-frame source screenshots');
 await page.addStyleTag({ content: FREEZE_CSS });
@@ -197,10 +211,12 @@ try {
   const extra = await page.evaluate(() => {
     const abs = (u) => { try { return new URL(u, location.href).href; } catch { return null; } };
     const idx = new Map();
+    const skipRef = (u) => { const s = String(u ?? '').trim(); return !s || s[0] === '#' || /^%23/i.test(s) || /^(data|about|blob|javascript|mailto|tel):/i.test(s); };
     const add = (u, kind) => {
       if (u == null) return;
       const s = String(u).trim();
       if (!s || s === 'null' || s === 'undefined' || s.startsWith('data:')) return;
+      if (skipRef(s)) return;
       const a = abs(s); if (!a) return;
       const key = a.split('#')[0];
       if (!idx.has(key)) idx.set(key, { url: key, kinds: [] });
@@ -262,31 +278,19 @@ const imgMap = {};
 const resMap = {};
 const failed = [];
 const SKIP_KINDS = new Set(['iframe', 'embed']);
-const extOfResource = (ct, url) => {
-  const m = /\.(woff2?|ttf|otf|eot|png|jpe?g|webp|avif|svg|gif|ico|mp4|webm|mp3|wav|json|webmanifest)$/i.exec(new URL(url, 'https://x.local').pathname);
-  if (m) return m[1].toLowerCase().replace('jpeg', 'jpg');
-  if (ct.includes('webp')) return 'webp';
-  if (ct.includes('avif')) return 'avif';
-  if (ct.includes('svg')) return 'svg';
-  if (ct.includes('png')) return 'png';
-  if (ct.includes('jpeg')) return 'jpg';
-  if (ct.includes('gif')) return 'gif';
-  if (ct.includes('icon')) return 'ico';
-  if (ct.includes('mp4')) return 'mp4';
-  if (ct.includes('webm')) return 'webm';
-  if (ct.includes('json') || ct.includes('manifest')) return 'json';
-  return 'bin';
-};
 for (const r of manifest.resources ?? []) {
   const kind = r.kinds[0] ?? 'asset';
   if (SKIP_KINDS.has(kind)) continue;
   try {
     const res = await fetch(r.url, { headers: { 'User-Agent': UA, Referer: TARGET } });
     if (!res.ok) throw new Error(res.status);
+    const ct = res.headers.get('content-type') || '';
+    // 软 404 / SPA 兜底：请求图片却返回 HTML —— 落盘会变成"看起来有、其实全错"的假资产
+    if (isSoftHtml(ct, r.url)) throw new Error('soft-404 (text/html for asset)');
     const safeKind = kind.replace(/[^a-z0-9-]/gi, '') || 'asset';
-    const name = safeKind + String(okRes).padStart(3, '0') + '.' + extOfResource(res.headers.get('content-type') || '', r.url);
     const buf = Buffer.from(await res.arrayBuffer());
     if (!buf.length) throw new Error('empty body');   // 0 字节响应（追踪信标等）不落盘，交给 gaps.json
+    const name = safeKind + String(okRes).padStart(3, '0') + '.' + extFrom(r.url, ct, buf);
     writeFileSync(join(OUT, 'assets', name), buf);
     const rel = 'assets/' + name;
     resMap[r.url] = rel;
@@ -307,5 +311,19 @@ writeFileSync(join(OUT, 'gaps.json'), JSON.stringify({
   failed,
   notCaptured: (manifest.resources ?? []).filter(r => r.kinds.some(k => SKIP_KINDS.has(k))).map(r => ({ url: r.url, kinds: r.kinds })),
   notes: ['iframe/embed 保持在线引用（未本地化）', 'canvas/WebGL 与 WebSocket 不在静态捕获范围'],
+}, null, 2));
+
+// 本次实跑观察到的参数（供 linker 汇总进 workspace/<host>/site.json 形成"学到的配方"）
+writeFileSync(join(OUT, 'profile-observed.json'), JSON.stringify({
+  host: sanitizeHost(new URL(TARGET).hostname),
+  adapter: adapter.name,
+  adapterForced: profile.adapter !== 'auto',
+  waitUntil: CAP.waitUntil,
+  settleMs: CAP.settleMs,
+  scrollSweep: CAP.scrollSweep,
+  removeSelectors,
+  resources: { total: (manifest.resources ?? []).length, ok: okRes, fail: failRes },
+  cssRefs: { total: cssRefs.length },
+  observedAt: new Date().toISOString(),
 }, null, 2));
 console.log('DONE resources ok=' + okRes + ' fail=' + failRes + ' -> ' + OUT);

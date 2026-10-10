@@ -1,10 +1,15 @@
-/** W0 克隆页截图 — 与 capture.mjs 同视口同冻结策略，保证 diff 公平 */
+/**
+ * shot_clone — 克隆页截图（与 capture.mjs 同视口同冻结策略，保证 diff 公平）
+ *
+ * URL 可以是 http(s)://（引擎 /static）或 file://（引擎未运行时 pipeline 的回退路径）。
+ *
+ * 用法: node src/crawler/shot_clone.mjs <cloneUrl> <outPng>
+ */
 import { chromium } from 'playwright';
-import { join } from 'node:path';
-import { WORKSPACE } from '../paths.mjs';
+import { requireArg } from '../args.mjs';
 
-const URL_ = process.argv[2] ?? 'http://127.0.0.1:8900/static/apify.com/pages/home/clone/index.html';
-const OUT = process.argv[3] ?? join(WORKSPACE, 'apify.com', 'pages', 'home', 'shot-clone.png');
+const URL_ = requireArg(process.argv[2], 'node src/crawler/shot_clone.mjs <cloneUrl> <outPng>', '克隆页 URL');
+const OUT = requireArg(process.argv[3], 'node src/crawler/shot_clone.mjs <cloneUrl> <outPng>', '输出图片路径');
 
 const FREEZE_CSS = `
   *, *::before, *::after {
@@ -18,6 +23,7 @@ const FREEZE_CSS = `
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+// file:// 下没有网络活动，networkidle 立即达成；http 下用它等资源就绪
 await page.goto(URL_, { waitUntil: 'networkidle', timeout: 30_000 });
 await page.evaluate(() => document.fonts.ready);
 await page.addStyleTag({ content: FREEZE_CSS });

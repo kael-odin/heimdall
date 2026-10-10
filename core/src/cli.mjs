@@ -46,6 +46,7 @@ export const COMMANDS = {
   dedupe:  { script: 'src/store/dedupe.mjs', usage: 'dedupe <host> [--dry-run] [--dir <path>]', desc: '内容寻址资产去重（硬链接）' },
   deliver: { script: 'src/deliver.mjs', usage: 'deliver <host> [hostDir]', desc: '打包交付物（site + intel + raw + README）' },
   serve:   { script: 'src/engine-server.mjs', usage: 'serve [port]', desc: '启动引擎/控制台（默认 8900）' },
+  profile: { script: 'src/profile.mjs', usage: 'profile <host> [--json|--learned] | --list', desc: '查看站点配方（三层合并结果与来源）' },
 };
 
 export function resolveCommand(argv) {

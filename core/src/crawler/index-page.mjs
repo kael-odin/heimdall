@@ -9,9 +9,10 @@
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
-const host = process.argv[2] ?? 'apify.com';
+const host = requireArg(process.argv[2], 'node src/crawler/index-page.mjs <host>', '站点 host');
 const hostDir = process.argv[3] ?? host;
 const BASE = join(WORKSPACE, hostDir);
 const PAGES = join(BASE, 'pages');

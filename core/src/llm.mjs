@@ -21,22 +21,26 @@
 import { readFileSync } from 'node:fs';
 import { getEnv } from './env.mjs';
 
-const ENV = getEnv();
-
+// 每次读配置（不缓存）——控制台保存后立即生效，无需重启引擎。
+// 代价是每次 LLM 调用多读一个几 KB 的文件，相对于一次网络往返可以忽略。
 export function llmConfig() {
+  const ENV = getEnv();
   const base = (ENV.LLM_BASE_URL ?? '').replace(/\/+$/, '');
   return {
     protocol: String(ENV.LLM_PROTOCOL ?? 'chat').toLowerCase(),
     base,
     key: ENV.LLM_API_KEY ?? '',
     model: ENV.LLM_MODEL ?? 'glm-5.3-flash',
-    fastModel: ENV.LLM_MODEL_FAST ?? ENV.LLM_MODEL ?? 'glm-5.3-flash',
+    fastModel: ENV.LLM_MODEL_FAST || ENV.LLM_MODEL || 'glm-5.3-flash',
     timeout: Number(ENV.LLM_TIMEOUT_MS ?? 180_000),
     retries: Math.max(1, Number(ENV.LLM_MAX_RETRIES ?? 3)),
   };
 }
 
-export const llmEnabled = () => ENV.HEIMDALL_LLM === '1' && !!ENV.LLM_BASE_URL && !!ENV.LLM_API_KEY;
+export function llmEnabled() {
+  const ENV = getEnv();
+  return ENV.HEIMDALL_LLM === '1' && !!ENV.LLM_BASE_URL && !!ENV.LLM_API_KEY;
+}
 
 /** 供引擎/控制台展示的安全状态（不含 key） */
 export function llmInfo() {
@@ -117,7 +121,11 @@ async function rawChat(config, messages, { json = false, maxTokens = 16384, time
       r = await fetch(body.url, { method: 'POST', headers: body.headers, body: JSON.stringify(body.body), signal: AbortSignal.timeout(t) });
       break;
     } catch (e) {
-      if (attempt >= tries) throw e;
+      if (attempt >= tries) {
+        // 把裸的 "fetch failed" 翻译成人能读的原因 —— 控制台的「测试连接」直接展示这条
+        const detail = e?.cause?.code ?? e?.cause?.message ?? e?.name ?? String(e);
+        throw new Error(`无法连接模型服务 ${body.url}（${detail}）；请检查 Base URL 是否可达、协议是否为 ${config.protocol}`);
+      }
       const wait = [2000, 5000, 10000][Math.min(attempt - 1, 2)];
       console.error(`[llm] network error (attempt ${attempt}), retry in ${wait}ms:`, String(e.cause ?? e).slice(0, 120));
       await new Promise(res => setTimeout(res, wait));
@@ -128,7 +136,15 @@ async function rawChat(config, messages, { json = false, maxTokens = 16384, time
     body = buildRequest({ protocol: config.protocol, base: config.base, key: config.key, model: config.model, messages, json: false, maxTokens });
     r = await fetch(body.url, { method: 'POST', headers: body.headers, body: JSON.stringify(body.body), signal: AbortSignal.timeout(t) });
   }
-  if (!r.ok) throw new Error(`LLM ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  if (!r.ok) {
+    const text = await r.text().catch(() => '');
+    const hint = r.status === 401 ? '（Key 无效或未授权）'
+      : r.status === 403 ? '（无权限或被 WAF 拦截）'
+        : r.status === 404 ? '（端点不存在——Base URL 是否漏了 /v1 或协议选错？）'
+          : r.status === 429 ? '（触发限流）'
+            : r.status >= 500 ? '（服务端错误）' : '';
+    throw new Error(`模型服务返回 ${r.status}${hint}：${String(text).replace(/\s+/g, ' ').slice(0, 200)}`);
+  }
   let data = await r.json();
   let text = parseResponse({ protocol: config.protocol, data });
   // 推理模型 reasoning 可能吃掉输出：content 为空时去掉 json 约束重试一次

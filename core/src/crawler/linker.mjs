@@ -14,13 +14,18 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, basename, relative, sep } from 'node:path';
 import { sanitizeHar, indexHar, matchHar } from '../live/har.mjs';
+import { extFrom, isNonAssetRef, isSoftHtml } from '../asset-ext.mjs';
+import { scanCssRefs, rewriteCssRefs } from '../css-refs.mjs';
+import { recordLearned } from '../site-profile.mjs';
+import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
-const host = process.argv[2] ?? 'apify.com';
+const host = requireArg(process.argv[2], 'node src/crawler/linker.mjs <host>', '站点 host');
 const BASE = join(WORKSPACE, host);
 const PAGES = join(BASE, 'pages');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const readJson = (p) => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
+const FONT_EXT_SET = new Set(['woff2', 'woff', 'ttf', 'otf', 'eot']);
 
 const pages = existsSync(PAGES) ? readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'clone', 'index.html'))) : [];
 if (!pages.length) { console.error('no cloned pages under', PAGES); process.exit(1); }
@@ -42,17 +47,28 @@ for (const name of pages) {
 const dlCache = new Map();       // absUrl → { rel, srcFile }（跨页共享内容，但每页都要落一份）
 let dlSeq = 0;
 let currentHar = null;           // 当前页的 HAR 索引（原站重部署后仍可回放字体/图片）
-let currentCssRefs = [];         // cssom-refs.json 的原始引用顺序（refNNN 与之一一对应）
+let currentRefIndex = {};        // clone/ref-index.json：{ cssFile: { rawRef: { rel, candidates } } }
 function loadHarIndex(pageDir) {
   try { return indexHar(sanitizeHar(JSON.parse(readFileSync(join(pageDir, 'network.har'), 'utf8'))).entries); } catch { return null; }
 }
-const extOfCt = (ct, url = '') => {
-  try { const m = /\.(woff2?|ttf|otf|eot|png|jpe?g|webp|avif|svg|gif|ico|mp4|webm|css|js|json)(\?|$)/i.exec(new URL(url, 'https://x.local').pathname); if (m) return m[1].toLowerCase().replace('jpeg', 'jpg'); } catch {}
-  const c = String(ct || '');
-  return c.includes('woff2') ? 'woff2' : c.includes('font') ? 'woff' : c.includes('svg') ? 'svg' : c.includes('png') ? 'png'
-    : c.includes('jpeg') ? 'jpg' : c.includes('webp') ? 'webp' : c.includes('avif') ? 'avif' : c.includes('gif') ? 'gif'
-    : c.includes('css') ? 'css' : c.includes('javascript') ? 'js' : c.includes('json') ? 'json' : 'bin';
-};
+
+/**
+ * refNNN.* → 它原本对应的原站 URL。
+ * 走 ref-index.json 的**反向查**（按文件名匹配），不再依赖 cssom-refs.json 的数组顺序 ——
+ * 扫描口径一变，序号就会整体位移，按序号查会取到另一个资产。
+ */
+function originalForRef(refName, pageOrigin) {
+  const want = String(refName).split('/').pop();
+  for (const table of Object.values(currentRefIndex ?? {})) {
+    for (const [raw, v] of Object.entries(table ?? {})) {
+      if ((v?.rel ?? '').split('/').pop() !== want) continue;
+      if (v?.candidates?.length) return v.candidates[0];
+      try { return new URL(raw, pageOrigin + '/').href; } catch { return null; }
+    }
+  }
+  return null;
+}
+const extOfCt = (ct, url = '', body = null) => extFrom(url, ct, body);
 async function fetchAsset(absUrl, dir) {
   const hit = dlCache.get(absUrl);
   if (hit) {
@@ -65,21 +81,29 @@ async function fetchAsset(absUrl, dir) {
   }
   const harHit = currentHar && matchHar(currentHar, 'GET', absUrl);
   if (harHit?.body) {
-    const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extOfCt(harHit.mimeType, absUrl)}`;
-    mkdirSync(join(dir, 'assets'), { recursive: true });
-    const dest = join(dir, 'assets', name);
-    writeFileSync(dest, Buffer.from(harHit.body, 'base64'));
-    const rel = `assets/${name}`;
-    dlCache.set(absUrl, { rel, srcFile: dest });
-    return rel;
+    const body = Buffer.from(harHit.body, 'base64');
+    if (body.length && !isSoftHtml(harHit.mimeType, absUrl)) {
+      const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extFrom(absUrl, harHit.mimeType, body)}`;
+      mkdirSync(join(dir, 'assets'), { recursive: true });
+      const dest = join(dir, 'assets', name);
+      writeFileSync(dest, body);
+      const rel = `assets/${name}`;
+      dlCache.set(absUrl, { rel, srcFile: dest });
+      return rel;
+    }
   }
   try {
     const res = await fetch(absUrl, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
     if (!res.ok) throw new Error(res.status);
-    const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extOfCt(res.headers.get('content-type') ?? '', absUrl)}`;
+    const ct = res.headers.get('content-type') ?? '';
+    // 软 404 / SPA 兜底：要图片却回 HTML —— 落盘会变成"看着有、其实全错"的假资产
+    if (isSoftHtml(ct, absUrl)) throw new Error('soft-404 (text/html)');
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (!buf.length) throw new Error('empty body');
+    const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extFrom(absUrl, ct, buf)}`;
     mkdirSync(join(dir, 'assets'), { recursive: true });
     const dest = join(dir, 'assets', name);
-    writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+    writeFileSync(dest, buf);
     const rel = `assets/${name}`;
     dlCache.set(absUrl, { rel, srcFile: dest });
     return rel;
@@ -92,7 +116,7 @@ for (const name of pages) {
   const dir = join(PAGES, name, 'clone');
   const file = join(dir, 'index.html');
   currentHar = loadHarIndex(join(PAGES, name));
-  try { currentCssRefs = JSON.parse(readFileSync(join(PAGES, name, 'cssom-refs.json'), 'utf8')).refs ?? []; } catch { currentCssRefs = []; }
+  try { currentRefIndex = readJson(join(PAGES, name, 'clone', 'ref-index.json')) ?? {}; } catch { currentRefIndex = {}; }
   const html0 = readFileSync(file, 'utf8');
   let html = html0;
   const origin = origins.get(name) ?? `https://${host}`;
@@ -157,13 +181,11 @@ for (const name of pages) {
   const pageManifest = readJson(join(PAGES, name, 'manifest.json'));
   const pageOrigin = pageManifest?.target ? new URL(pageManifest.target).origin : origin;
   const imgMap = readJson(join(PAGES, name, 'asset-map.json'))?.imgMap ?? {};
-  const inlineUrls = new Set();
-  for (const m of html.matchAll(/url\(\s*(?:&quot;|'|")?\s*([^)'")&][^)']*)/g)) {
-    let u = m[1].trim().replace(/&amp;/g, '&').replace(/&quot;$/, '').trim();
-    if (!u || u.startsWith('data:') || u.startsWith('#')) continue;
-    inlineUrls.add(u);
-  }
-  for (const u of inlineUrls) {
+  const inlineResolved = new Map();
+  for (const t of scanCssRefs(html)) {
+    const raw = t.raw;
+    const u = raw.replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim();
+    if (isNonAssetRef(u) || inlineResolved.has(raw)) continue;
     let abs;
     try { abs = /^https?:\/\//i.test(u) ? u : new URL(u, pageOrigin + '/').href; } catch { continue; }
     // 优先 capture 期的本地副本；否则下载
@@ -177,41 +199,42 @@ for (const name of pages) {
       const dl = await fetchAsset(abs, dir);
       if (dl) local = dl;
     }
-    if (local) { html = html.split(u).join(local); stats.assetsLocalized++; }
+    if (local) { inlineResolved.set(raw, local); stats.assetsLocalized++; }
     else stats.assetFailed++;
   }
+  // 单遍重建：只替换顶层 url() 的 URL 片段，data URI 内嵌的 url(...) 原样保留
+  if (inlineResolved.size) html = rewriteCssRefs(html, inlineResolved);
 
   // 2c) CSS 兜底：本地存在则改写为相对路径；否则 HAR 回放 → 网络下载
   const cssFile = join(dir, 'styles', 'cssom.css');
   if (existsSync(cssFile)) {
     let css = readFileSync(cssFile, 'utf8');
-    const refs = [...new Set([...css.matchAll(/url\(\s*(?:'|")?([^'")]+)(?:'|")?\s*\)/g)].map(m => m[1].trim()))]
-      .filter(u => u && !/^(data:|#)/i.test(u));
-    let changed = false;
+    // 用扫描器取引用（正确跳过 data URI 内嵌 url()），全部解析完再单遍重建
+    const refs = [...new Set(scanCssRefs(css).map(t => t.raw.trim()))].filter(u => u && !isNonAssetRef(u));
+    const resolved = new Map();
     for (const ref of refs) {
       if (existsSync(join(dir, 'styles', ref)) || existsSync(join(dir, 'assets', ref))) continue;
       if (ref.startsWith('/')) {
         const target = join(dir, ref.replace(/^\/+/, ''));
         if (existsSync(target)) {
-          css = css.split(ref).join(relative(join(dir, 'styles'), target).split(sep).join('/'));
-          changed = true; stats.assetsLocalized++;
+          resolved.set(ref, relative(join(dir, 'styles'), target).split(sep).join('/'));
+          stats.assetsLocalized++;
           continue;
         }
       }
-      // build_clone 把 CSSOM 引用按顺序重命名为 refNNN.*；丢失时用原始引用 + HAR 精确恢复
-      const mRef = /(?:^|\/)(?:styles\/)?(ref(\d+))\.([a-z0-9]+)$/i.exec(ref);
+      // build_clone 把 CSSOM 引用重命名为 refNNN.*；丢失时用 ref-index 反查原始 URL + HAR 精确恢复
+      const mRef = /(?:^|\/)(?:styles\/)?(ref\d+)\.([a-z0-9]+)$/i.exec(ref);
       if (mRef && currentHar) {
-        const orig = currentCssRefs[Number(mRef[2])];
+        const orig = originalForRef(ref, pageOrigin);
         if (orig) {
-          let absOrig = null;
-          try { absOrig = new URL(orig, pageOrigin + '/').href; } catch {}
-          const hitOrig = absOrig && matchHar(currentHar, 'GET', absOrig);
+          const hitOrig = matchHar(currentHar, 'GET', orig);
           if (hitOrig?.body) {
-            const name = mRef[1] + '.' + mRef[3];
-            mkdirSync(join(dir, 'styles'), { recursive: true });
-            writeFileSync(join(dir, 'styles', name), Buffer.from(hitOrig.body, 'base64'));
-            css = css.split(ref).join(name);
-            changed = true; stats.assetsLocalized++; stats.harRecovered++;
+            const name = mRef[1] + '.' + mRef[2];
+            const sub = FONT_EXT_SET.has(mRef[2].toLowerCase()) ? 'styles' : 'assets';
+            mkdirSync(join(dir, sub), { recursive: true });
+            writeFileSync(join(dir, sub, name), Buffer.from(hitOrig.body, 'base64'));
+            resolved.set(ref, sub === 'styles' ? name : '../assets/' + name);
+            stats.assetsLocalized++; stats.harRecovered++;
             continue;
           }
         }
@@ -220,16 +243,16 @@ for (const name of pages) {
       const harHit = currentHar && matchHar(currentHar, 'GET', absForHar);
       if (harHit?.body) {
         const sub = /font|woff|ttf|otf/i.test(harHit.mimeType ?? '') || /\.(woff2?|ttf|otf|eot)($|\?)/i.test(ref) ? 'styles' : 'assets';
-        const name = 'har-' + String(dlSeq++).padStart(3, '0') + '.' + extOfCt(harHit.mimeType, ref);
+        const name = 'har-' + String(dlSeq++).padStart(3, '0') + '.' + extOfCt(harHit.mimeType, ref, Buffer.from(harHit.body, 'base64'));
         mkdirSync(join(dir, sub), { recursive: true });
         writeFileSync(join(dir, sub, name), Buffer.from(harHit.body, 'base64'));
-        css = css.split(ref).join('../' + sub + '/' + name);
-        changed = true; stats.assetsLocalized++; stats.harRecovered++;
+        resolved.set(ref, '../' + sub + '/' + name);
+        stats.assetsLocalized++; stats.harRecovered++;
         continue;
       }
       let capRel = null;
       try { capRel = imgMap[new URL(ref, pageOrigin + '/').href]; } catch {}
-      if (capRel && existsSync(join(PAGES, name, capRel))) { css = css.split(ref).join('../' + capRel); changed = true; stats.assetsLocalized++; continue; }
+      if (capRel && existsSync(join(PAGES, name, capRel))) { resolved.set(ref, '../' + capRel); stats.assetsLocalized++; continue; }
       let abs = null;
       if (/^https?:\/\//i.test(ref)) abs = ref;
       else if (ref.startsWith('/')) abs = pageOrigin + ref;
@@ -239,7 +262,7 @@ for (const name of pages) {
         let done = false;
         for (const cand of [pageOrigin + '/src/' + cn, pageOrigin + '/assets/' + cn, pageOrigin + '/styles/' + cn, pageOrigin + '/' + cn]) {
           const dl = await fetchAsset(cand, dir);
-          if (dl) { css = css.split(ref).join('../' + dl); changed = true; stats.assetsLocalized++; done = true; break; }
+          if (dl) { resolved.set(ref, '../' + dl); stats.assetsLocalized++; done = true; break; }
         }
         if (!done) stats.assetFailed++;
         continue;
@@ -247,10 +270,10 @@ for (const name of pages) {
 
       if (!abs) { stats.assetFailed++; continue; }
       const dl = await fetchAsset(abs, dir);
-      if (dl) { css = css.split(ref).join('../' + dl); changed = true; stats.assetsLocalized++; }
+      if (dl) { resolved.set(ref, '../' + dl); stats.assetsLocalized++; }
       else stats.assetFailed++;
     }
-    if (changed) writeFileSync(cssFile, css);
+    if (resolved.size) writeFileSync(cssFile, rewriteCssRefs(css, resolved));
   }
 
   // 3) 本地坏链：basename 在捕获资产里存在的 → 直接修正引用（favicon/图标类根相对引用是 capture 重写盲区）
@@ -307,6 +330,30 @@ for (const name of pages) {
   if (html !== html0) writeFileSync(file, html);
   report.push(stats);
   console.log(`  ${name}: rewired ${stats.linksRewired}, live-fallback ${stats.linksToLive}, assets +${stats.assetsLocalized} (fail ${stats.assetFailed}, har ${stats.harRecovered}), missing ${stats.missingLocal.length}`);
+}
+
+// ---------- 站点配方：汇总各页实跑观察到的参数 → workspace/<host>/site.json ----------
+// 只写"观察事实"，不写策略：策略字段（stubStrategy / excludeTypes / refRewrites）由人决定，
+// 自动写策略会导致一次跑歪就把人工修正盖掉。
+{
+  const observed = pages.map(n => readJson(join(PAGES, n, 'profile-observed.json'))).filter(Boolean);
+  if (observed.length) {
+    const last = observed[observed.length - 1];
+    const sum = (k) => observed.reduce((a, o) => a + (o.resources?.[k] ?? 0), 0);
+    recordLearned(host, {
+      learned: {
+        adapterDetected: [...new Set(observed.map(o => o.adapter))],
+        adapterForced: observed.some(o => o.adapterForced),
+        pagesObserved: observed.length,
+        resources: { total: sum('total'), ok: sum('ok'), fail: sum('fail') },
+        cssRefs: observed.reduce((a, o) => a + (o.cssRefs?.total ?? 0), 0),
+        removeSelectors: [...new Set(observed.flatMap(o => o.removeSelectors ?? []))],
+        waitUntil: last.waitUntil,
+        settleMs: last.settleMs,
+        scrollSweep: last.scrollSweep,
+      },
+    });
+  }
 }
 
 writeFileSync(join(BASE, 'linker-report.json'), JSON.stringify({ host, pages: report }, null, 2));

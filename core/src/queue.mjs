@@ -10,9 +10,11 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
+import { requireArg } from './args.mjs';
+import { loadProfile } from './site-profile.mjs';
 import { WORKSPACE } from './paths.mjs';
 
-const host = process.argv[2] ?? 'thordata.com';
+const host = requireArg(process.argv[2], 'node src/queue.mjs <host> [--max N] [--force] [--missing-har] [--no-dedupe]', '站点 host');
 const maxIdx = process.argv.indexOf('--max');
 const MAX = maxIdx > -1 ? Number(process.argv[maxIdx + 1] ?? 20) : 20;
 const FORCE = process.argv.includes('--force');       // 忽略已有产物，强制重锻
@@ -20,6 +22,7 @@ const MISSING_HAR = process.argv.includes('--missing-har');   // 只重锻缺 ne
 const API = process.env.HEIMDALL_API ?? 'http://127.0.0.1:8900';
 const TOKEN = process.env.HEIMDALL_TOKEN ?? '';
 const HEADERS = { 'Content-Type': 'application/json', ...(TOKEN ? { 'x-heimdall-token': TOKEN } : {}) };
+const profile = loadProfile(host);   // 站点配方：队列排除项等
 const BASE = join(WORKSPACE, host);
 const queuePath = join(BASE, 'queue.json');
 
@@ -37,7 +40,7 @@ if (existsSync(queuePath)) {
 } else {
   const seen = new Set();
   queue = atlas.nodes
-    .filter(n => !['auth', 'legal'].includes(n.type))
+    .filter(n => !profile.queue.excludeTypes.includes(n.type))
     .map(n => ({ url: n.url, name: engineName(n.url), type: n.type, status: 'pending' }))
     .filter(q => { const k = q.name; if (seen.has(k)) return false; seen.add(k); return true; })
     .slice(0, MAX);

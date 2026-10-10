@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
+import { collectCssRefs } from '../css-refs.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
 const argv = process.argv.slice(2);
@@ -46,20 +47,20 @@ export async function snapPage(browser, host, page, widths = WIDTHS) {
         for (const sheet of list) {
           let css = '';
           try { for (const rule of sheet.cssRules) css += rule.cssText + '\n'; } catch {}
-          if (css) sheets.push(css);
+          if (css) sheets.push({ href: sheet.href ?? null, css });
         }
       };
       collect(document.styleSheets);
       if (document.adoptedStyleSheets) collect(document.adoptedStyleSheets);
-      const css = sheets.join('\n');
-      const refs = new Set();
-      for (const m of css.matchAll(/url\((['"]?)([^'")]+)\1\)/g)) if (!m[2].startsWith('data:')) refs.add(m[2]);
-      return { html: '<!doctype html>\n' + document.documentElement.outerHTML, css, refs: [...refs] };
+      return { html: '<!doctype html>\n' + document.documentElement.outerHTML, sheets, base: document.baseURI };
     });
+    // 引用扫描在 Node 侧（css-refs）——与 capture.mjs 同一实现，且正确跳过 data URI 内嵌的 url()
+    const { refs, refMap } = collectCssRefs(snap.sheets, snap.base);
     writeFileSync(join(dir, 'dom-' + width + '.html'), snap.html);
-    writeFileSync(join(dir, 'cssom-' + width + '.css'), snap.css);
-    writeFileSync(join(dir, 'cssom-refs-' + width + '.json'), JSON.stringify({ origin: new URL(target).origin, width, refs: snap.refs }, null, 2));
-    out.push({ width, html: snap.html.length, css: snap.css.length, refs: snap.refs.length });
+    writeFileSync(join(dir, 'cssom-' + width + '.css'), snap.sheets.map(s => s.css).join('\n'));
+    writeFileSync(join(dir, 'cssom-refs-' + width + '.json'), JSON.stringify({ origin: new URL(target).origin, width, refs, refMap }, null, 2));
+    const out2 = { width, html: snap.html.length, css: snap.sheets.reduce((n, s) => n + s.css.length, 0), refs: refs.length };
+    out.push(out2);
     await ctx.close();
   }
   return out;

@@ -11,10 +11,11 @@
  * 用法: node src/deliver.mjs <host> [hostDir]
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, cpSync } from 'node:fs';
+import { requireArg } from './args.mjs';
 import { WORKSPACE, DELIVERABLE } from './paths.mjs';
 import { join, basename } from 'node:path';
 
-const host = process.argv[2] ?? 'thordata.com';
+const host = requireArg(process.argv[2], 'node src/deliver.mjs <host> [hostDir]', '站点 host');
 const hostDir = process.argv[3] ?? host;
 const BASE = join(WORKSPACE, hostDir);
 const PAGES = join(BASE, 'pages');

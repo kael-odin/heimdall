@@ -20,6 +20,17 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 三层架构、栈适配器、还原度公式、里程碑 | 开工前 |
 | [RISKS.md](RISKS.md) | 合规红线、技术风险预案、演示日 checklist | 每周对一遍 |
 
+## v2.1 新增（2026-10-10 起）
+
+- **控制台配置第三方大模型**：设置页直接填协议 / Base URL / Key / 模型（含 OpenAI·Anthropic·DeepSeek·OpenRouter·Ollama 预设），
+  「测试连接（不保存）」先验证再落盘，**保存即生效、无需重启**。Key 只落本地 `core/.env` 且永不回显
+- **站点配方**：站点特化从代码分支迁进数据 —— `core/sites/<host>.json`（人工整理）+ `workspace/<host>/site.json`（运行时学到）。
+  换站不用改代码；`node core/src/cli.mjs profile <host>` 查看生效配方与来源。见 [core/sites/README.md](core/sites/README.md)
+- **一条命令克隆任意站**：`node core/src/cli.mjs forge https://<任意站>/ home` —— **无需先启动引擎**
+  （克隆页资产已全部本地化，引擎不在时走 `file://`）。实测 astro.build 首屏 **100.00%**、vitest.dev **99.96%**、tailwindcss.com **99.92%**
+- **中文站友好**：页面分类补中/日常见词 + DOM 特征兜底（旧版中文路径会整站退化成 generic）
+- **缺口可见**：CSS 引用本地化失败、软 404（要图片回 HTML）不再静默 —— 写进 `clone-gaps.json`
+
 ## v2 新增（2026-10-08 起）
 
 - **SEO 审计**：`node core/src/seo/audit.mjs <host> --max 20` → `workspace/<host>/seo/{seo.html,seo.csv,seo.json}`，40+ 规则覆盖索引/内容/结构化数据/性能/链接/安全

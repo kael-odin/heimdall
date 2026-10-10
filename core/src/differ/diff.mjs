@@ -20,9 +20,10 @@ import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { domSimilarity } from './domdiff.mjs';
 import { dataScore } from '../harvest/harvest.mjs';
+import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
-const DIR = process.argv[2] ?? join(WORKSPACE, 'apify.com', 'pages', 'home');
+const DIR = requireArg(process.argv[2], 'node src/differ/diff.mjs <pageDir>', '页面目录');
 const CHANNEL_T = 24;   // 任一通道差 > 24 视为不同（约 pixelmatch threshold 0.1）
 
 const clone = PNG.sync.read(readFileSync(join(DIR, 'shot-clone.png')));
