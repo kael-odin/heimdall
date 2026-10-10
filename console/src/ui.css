@@ -444,3 +444,16 @@
 /* 星图异步 chunk 的加载占位（见 Atlas.vue 的 defineAsyncComponent） */
 .g3d-loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
   color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; pointer-events: none; }
+
+/* 交付包保留策略（StorageCard.vue） */
+.storage-deliver { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.deliver-groups { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.deliver-group { display: grid; grid-template-columns: minmax(140px, 1fr) 56px 72px 90px; align-items: center;
+  gap: 10px; padding: 5px 8px; border-radius: var(--r-sm); background: var(--surface-2); font-size: 11.5px;
+  font-family: var(--font-mono); }
+.dg-key { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-n { color: var(--text-faint); }
+.dg-keep { color: var(--ok); }
+.dg-remove { color: var(--text-faint); }
+.dg-remove.bad { color: var(--warn); }
+@media (max-width: 768px) { .deliver-group { grid-template-columns: 1fr auto; row-gap: 2px; } }

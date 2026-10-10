@@ -46,6 +46,7 @@ export const COMMANDS = {
   dedupe:  { script: 'src/store/dedupe.mjs', usage: 'dedupe <host> [--dry-run] [--dir <path>]', desc: '内容寻址资产去重（硬链接）' },
   storage: { script: 'src/audit/storage.mjs', usage: 'storage [--out <file>]', desc: '磁盘占用盘点（站点/CAS/交付包）' },
   'cas-gc': { script: 'src/audit/cas-gc.mjs', usage: 'cas-gc [--apply] [--json]', desc: '回收 CAS 孤儿（默认仅预览，--apply 真回收）' },
+  'deliver-prune': { script: 'src/audit/deliver-prune.mjs', usage: 'deliver-prune [--keep N] [--apply] [--json]', desc: '交付包保留策略（每站点每类型留最近 N 个；默认预览）' },
   deliver: { script: 'src/deliver.mjs', usage: 'deliver <host> [hostDir]', desc: '打包交付物（site + intel + raw + README）' },
   serve:   { script: 'src/engine-server.mjs', usage: 'serve [port]', desc: '启动引擎/控制台（默认 8900）' },
   profile: { script: 'src/profile.mjs', usage: 'profile <host> [--json|--learned] | --list', desc: '查看站点配方（三层合并结果与来源）' },

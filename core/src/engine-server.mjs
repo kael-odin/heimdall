@@ -214,6 +214,7 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'live') runningLive = null;
     else if (t.kind === 'upgrade') runningUpgrade = null;
     else if (t.kind === 'storage') storageScanTask = null;   // 盘点任务不占锻造槽
+    else if (t.kind === 'deliver') deliverTask = null;       // 同理
     else forgeSlots--;
     jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
   });
@@ -312,6 +313,26 @@ function startStorageScan() {
   t.label = '磁盘盘点';
   storageScanTask = t;
   return spawnTask(t, join('src', 'audit', 'storage.mjs'), []).id;
+}
+
+/**
+ * 交付包清理。**同样走子进程**：deliverable/ 实测有 8 个包 / 1.88GB / 上万个文件，
+ * 扫描要 stat 每一个文件、删除要 unlink 每一个 —— 与磁盘盘点同一量级，
+ * 放在请求处理里会冻住事件循环（见上面 startStorageScan 的注释）。
+ */
+const DELIVER_PLAN_JSON = join(DATA_ROOT, 'deliver-plan.json');
+let deliverTask = null;
+
+function readDeliverPlan() {
+  try { return JSON.parse(readFileSync(DELIVER_PLAN_JSON, 'utf8')); } catch { return null; }
+}
+
+function startDeliverPrune(apply) {
+  if (deliverTask && deliverTask.status === 'running') return deliverTask.id;
+  const t = makeTask('deliver', 'local://deliver');
+  t.label = apply ? '交付包清理' : '交付包盘点';
+  deliverTask = t;
+  return spawnTask(t, join('src', 'audit', 'deliver-prune.mjs'), apply ? ['--apply'] : []).id;
 }
 
 function startForge(url, { hostPost = true } = {}) {
@@ -710,6 +731,26 @@ createServer(async (req, res) => {
   if (u.pathname === '/api/storage/scan' && req.method === 'POST') {
     const taskId = startStorageScan();
     return json(res, 202, { ok: true, taskId, status: 'running' });
+  }
+  // 交付包保留策略。扫描与删除都在子进程里做（上万个文件），这里只读结果文件。
+  if (u.pathname === '/api/deliver/plan' && req.method === 'GET') {
+    const p = readDeliverPlan();
+    if (!p) startDeliverPrune(false);      // 第一次访问时后台算一次
+    return json(res, 200, p ?? { pending: true, scanning: !!(deliverTask && deliverTask.status === 'running') });
+  }
+  if (u.pathname === '/api/deliver/prune' && req.method === 'POST') {
+    let body = {};
+    try { body = JSON.parse((await readBody(req)) || '{}'); } catch { return json(res, 400, { error: 'invalid json' }); }
+    const apply = body.apply === true;
+    // 与 CAS 回收同一道闸：删除不可逆，未设 token 时只允许本机回环
+    if (apply && !AUTH_TOKEN && !isLoopback(req)) {
+      return json(res, 403, { error: '真删除需要 HEIMDALL_TOKEN；未设置时仅允许本机回环访问' });
+    }
+    if (apply && body.confirm !== 'HEIMDALL_DELIVER_PRUNE') {
+      return json(res, 400, { error: '真删除需要 confirm=HEIMDALL_DELIVER_PRUNE' });
+    }
+    const taskId = startDeliverPrune(apply);
+    return json(res, 202, { ok: true, taskId, apply, status: 'running' });
   }
   if (u.pathname === '/api/storage/gc' && req.method === 'POST') {
     let body = {};

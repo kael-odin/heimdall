@@ -85,7 +85,63 @@ async function runGc(apply = false) {
   finally { gcing.value = false; }
 }
 
-onMounted(() => load(false));
+// ---------- 交付包保留策略 ----------
+const plan = ref(null);
+const planLoading = ref(false);
+const planGcing = ref(false);
+const planConfirm = ref(false);
+const planError = ref('');
+
+async function fetchPlanOnce() {
+  const r = await fetch(API + '/api/deliver/plan', { headers: apiHeaders() });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+
+async function loadPlan(force = false) {
+  planLoading.value = true; planError.value = ''; stopPoll();
+  const deadline = Date.now() + 60_000;
+  const loop = () => {
+    poll = setTimeout(async () => {
+      try {
+        const n = await fetchPlanOnce();
+        if (!n.pending) { plan.value = n; planLoading.value = false; stopPoll(); return; }
+      } catch { /* 下一轮再试 */ }
+      if (Date.now() > deadline) { planError.value = '盘点超时（60 秒内未完成）'; planLoading.value = false; stopPoll(); return; }
+      loop();
+    }, 1500);
+  };
+  try {
+    const s = force
+      ? await fetch(API + '/api/deliver/prune', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ apply: false }) }).then(r => r.json().catch(() => ({})))
+      : await fetchPlanOnce();
+    if (force) { loop(); return; }
+    plan.value = s.pending ? null : s;
+    if (s.pending || s.scanning) { loop(); return; }
+  } catch (e) { planError.value = String(e).replace(/^Error:\s*/, ''); }
+  planLoading.value = false;
+}
+
+async function runPrune() {
+  if (planGcing.value) return;
+  if (!planConfirm.value) { planConfirm.value = true; return; }
+  planGcing.value = true; planError.value = '';
+  try {
+    const r = await fetch(API + '/api/deliver/prune', {
+      method: 'POST', headers: apiHeaders(),
+      body: JSON.stringify({ apply: true, confirm: 'HEIMDALL_DELIVER_PRUNE' }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    planConfirm.value = false;
+    emit('ok', `交付包清理已启动（后台执行，完成后数字自动刷新）`);
+    setTimeout(() => loadPlan(false), 2500);
+  } catch (e) { planError.value = String(e).replace(/^Error:\s*/, ''); }
+  finally { planGcing.value = false; }
+}
+
+onMounted(() => { load(false); loadPlan(false); });
 onBeforeUnmount(stopPoll);
 </script>
 
@@ -127,5 +183,43 @@ onBeforeUnmount(stopPoll);
       </div>
     </template>
     <div v-else class="storage-empty">尚未盘点。点击“重新扫描”获取当前占用。</div>
+
+    <!-- 交付包保留策略：deliverable/ 每次导出留一个目录，此前没有任何清理机制 -->
+    <div class="storage-deliver">
+      <div class="storage-subhead">交付包保留</div>
+      <div v-if="planLoading && !plan" class="storage-empty">正在盘点交付包（后台子进程遍历）…</div>
+      <div v-else-if="planError" class="storage-error">{{ planError }} <button @click="loadPlan(true)">重试</button></div>
+      <template v-else-if="plan">
+        <p>
+          共 {{ plan.total?.bundles ?? 0 }} 个包 · {{ fmtBytes(plan.total?.bytes ?? 0) }}。
+          策略：每个「站点 + 类型」保留最近 {{ plan.keep }} 个。
+        </p>
+        <div class="deliver-groups">
+          <div class="deliver-group" v-for="g in plan.groups" :key="g.key">
+            <span class="dg-key">{{ g.key }}</span>
+            <span class="dg-n">{{ g.count }} 个</span>
+            <span class="dg-keep" :title="g.keep.join('\n')">保留 {{ g.keep.length }}</span>
+            <span class="dg-remove" :class="{ bad: g.remove.length }" :title="g.remove.join('\n')">{{ g.remove.length ? '待删 ' + g.remove.length : '无需清理' }}</span>
+          </div>
+        </div>
+        <p class="storage-note" v-if="plan.unclassified?.length">
+          <b class="warn-text">{{ plan.unclassified.length }} 个无法归类的包不会自动删除</b>
+          （命名不含日期，可能是手工产物）：
+          <span v-for="(u, i) in plan.unclassified" :key="u.name">{{ i ? ' · ' : '' }}{{ u.name }}（{{ fmtBytes(u.bytes) }}）</span>
+        </p>
+        <div class="storage-buttons">
+          <button @click="loadPlan(true)" :disabled="planLoading">{{ planLoading ? '盘点中…' : '重新盘点' }}</button>
+          <button class="danger" @click="runPrune" :disabled="planGcing || !plan.total?.reclaimable">
+            {{ planConfirm ? '再次点击确认删除' : (plan.total?.reclaimable ? `执行清理（释放约 ${fmtBytes(plan.total.reclaimable)}）` : '无可清理') }}
+          </button>
+          <button v-if="planConfirm" @click="planConfirm = false">取消</button>
+        </div>
+        <p class="storage-note">
+          释放量按硬链接算（nlink=1 才真的省）：交付包里的文件与 workspace 克隆共享 inode，删掉一个链接并不释放空间。
+          无法归类的包永不自动删除。
+        </p>
+      </template>
+      <div v-else class="storage-empty">尚未盘点交付包。</div>
+    </div>
   </div>
 </template>
