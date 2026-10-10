@@ -17,7 +17,8 @@
   "scripts": {
     "dev": "vite --port 5173 --host 127.0.0.1",
     "build": "vite build",
-    "preview": "vite preview --port 5173 --host 127.0.0.1"
+    "preview": "vite preview --port 5173 --host 127.0.0.1",
+    "design": "node scripts/gen-design-json.mjs"
   },
   "keywords": [],
   "author": "",
