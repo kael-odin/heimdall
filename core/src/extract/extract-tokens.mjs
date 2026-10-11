@@ -15,18 +15,19 @@ import { join } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
 import { extractTokens, buildTokensCss, renderTokensHtml, topEntries } from './tokens.mjs';
 import { emit } from '../emit.mjs';
+import { makeArgs } from '../args.mjs';
 
 const log = (...a) => console.error('[tokens]', ...a);
 
 const argv = process.argv.slice(2);
+const { num } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-const getNum = (n, d) => { const i = argv.indexOf('--' + n); if (i > -1 && argv[i + 1]) return Number(argv[i + 1]); const eq = argv.find(a => a.startsWith('--' + n + '=')); return eq ? Number(eq.split('=')[1]) : d; };
 const onlyPage = (() => { const i = argv.indexOf('--page'); return i > -1 ? argv[i + 1] : null; })();
 if (!host) { console.error('usage: node src/extract/extract-tokens.mjs <host> [--pages 5] [--page <name>]'); process.exit(2); }
 
 const PAGES = join(WORKSPACE, host, 'pages');
 if (!existsSync(PAGES)) { console.error('no pages for host:', host); process.exit(1); }
-const N = Math.max(1, Math.min(getNum('pages', 5), 30));
+const N = Math.max(1, Math.min(num('pages', 5), 30));
 
 const candidates = readdirSync(PAGES)
   .filter(n => existsSync(join(PAGES, n, 'cssom.css')))

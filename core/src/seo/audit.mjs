@@ -38,23 +38,17 @@ import { fetchFieldData, compareLabToField } from './field-data.mjs';
 import { renderHtml, renderCsv } from './report.mjs';
 import { buildBaseline, snapshotOf, diffBaseline, renderDiffText, renderDiffMarkdown, BASELINE_VERSION } from './baseline.mjs';
 import { emit } from '../emit.mjs';
+import { makeArgs } from '../args.mjs';
 
 const log = (...a) => console.error('[seo]', ...a);
 
 // ---------- 参数 ----------
 const argv = process.argv.slice(2);
+const { has, num } = makeArgs(argv);
 const target = argv.find(a => !a.startsWith('--')) ?? '';
-const getNum = (name, def) => {
-  const i = argv.indexOf('--' + name);
-  if (i > -1 && argv[i + 1]) return Number(argv[i + 1]);
-  const eq = argv.find(a => a.startsWith('--' + name + '='));
-  if (eq) return Number(eq.split('=')[1]);
-  return def;
-};
-const MAX = Math.max(1, Math.min(getNum('max', 25), 200));
-const THRESHOLD = getNum('threshold', 0);
-const TOLERANCE = getNum('tolerance', 0);
-const has = (name) => argv.includes('--' + name);
+const MAX = Math.max(1, Math.min(num('max', 25), 200));
+const THRESHOLD = num('threshold', 0);
+const TOLERANCE = num('tolerance', 0);
 const getStr = (name) => {
   const i = argv.indexOf('--' + name);
   if (i > -1 && argv[i + 1] && !argv[i + 1].startsWith('--')) return argv[i + 1];

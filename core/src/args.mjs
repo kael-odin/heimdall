@@ -25,3 +25,34 @@ export function parseTarget(input, usage) {
   catch { console.error(`无法解析目标: ${raw}\n用法: ${usage}`); process.exit(1); }
   return { origin: u.origin, host: u.hostname.replace(/^www\./, '') };
 }
+
+/**
+ * CLI 参数读取 —— **唯一实现**。
+ *
+ * 此前 `argOf` / `getNum` / `has` 在 12 个脚本里各写了一遍，而且已经**分叉**：
+ * 有的版本会把下一个参数当成值（`--api --token x` 得到值 `--token`），有的不会；
+ * 有的支持 `--name=value`，有的不支持。同一个 "读一个 CLI 参数" 有五六种行为，
+ * 迟早会在某个脚本里读出一个没人预料的值。这里取**最保守也最完整**的一版。
+ *
+ * 默认读 process.argv.slice(2)；传 argv 便于测试。
+ */
+export function makeArgs(argv = process.argv.slice(2)) {
+  /** 取字符串参数：支持 `--name value` 与 `--name=value`；下一个参数以 `--` 开头时视为没给值 */
+  const argOf = (name, def) => {
+    const i = argv.indexOf('--' + name);
+    if (i > -1 && argv[i + 1] !== undefined && !argv[i + 1].startsWith('--')) return argv[i + 1];
+    const eq = argv.find(a => a.startsWith('--' + name + '='));
+    return eq ? eq.slice(name.length + 3) : def;
+  };
+  const has = (name) => argv.includes('--' + name);
+  /** 取数字参数；没给或给的不是数就用默认值 */
+  const num = (name, def) => {
+    const raw = argOf(name, undefined);
+    if (raw === undefined) return def;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : def;
+  };
+  /** 非 `--` 开头的裸参数 */
+  const positional = () => argv.filter(a => !a.startsWith('--'));
+  return { argv, argOf, has, num, positional };
+}

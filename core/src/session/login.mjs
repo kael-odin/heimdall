@@ -14,9 +14,10 @@
  */
 import { chromium } from 'playwright';
 import { saveSession, sessionPath } from './store.mjs';
+import { makeArgs } from '../args.mjs';
 
 const argv = process.argv.slice(2);
-const argOf = (n, d) => { const i = argv.indexOf('--' + n); return i > -1 && argv[i + 1] ? argv[i + 1] : d; };
+const { argOf } = makeArgs(argv);
 const raw = argv.find(a => !a.startsWith('--'));
 if (!raw) { console.error('usage: node src/session/login.mjs <host|url> [--timeout 15]'); process.exit(2); }
 

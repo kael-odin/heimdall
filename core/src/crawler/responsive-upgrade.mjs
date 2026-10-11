@@ -16,10 +16,11 @@ import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
 import { emit } from '../emit.mjs';
 import { snapPage } from './multi-snapshot.mjs';
+import { makeArgs } from '../args.mjs';
 
 const argv = process.argv.slice(2);
+const { argOf } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-const argOf = (n, d) => { const i = argv.indexOf('--' + n); return i > -1 ? argv[i + 1] : d; };
 const THRESHOLD = Number(argOf('threshold', 0.97));
 const MAX = Number(argOf('max', 99));
 const FORCE = argv.includes('--force');

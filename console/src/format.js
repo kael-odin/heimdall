@@ -53,6 +53,7 @@ export const KIND_CN = {
   deliver: '交付包整理',
   editmanifest: '改站清单',
   'replace-domain': '域名替换',
+  'cas-gc': 'CAS 资产回收',
 };
 export const kindCn = (k) => KIND_CN[k] ?? '克隆';
 

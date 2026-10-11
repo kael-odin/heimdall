@@ -15,16 +15,16 @@ import { fileURLToPath } from 'node:url';
 import { WORKSPACE, localDateStamp } from '../paths.mjs';
 import { emit } from '../emit.mjs';
 import { buildMatrix, renderMatrixHtml, renderMatrixCsv } from './matrix-core.mjs';
+import { makeArgs } from '../args.mjs';
 
 const log = (...a) => console.error('[matrix]', ...a);
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 
 const argv = process.argv.slice(2);
-const has = (n) => argv.includes('--' + n);
-const getNum = (n, d) => { const i = argv.indexOf('--' + n); if (i > -1 && argv[i + 1]) return Number(argv[i + 1]); const eq = argv.find(a => a.startsWith('--' + n + '=')); return eq ? Number(eq.split('=')[1]) : d; };
+const { has, num } = makeArgs(argv);
 const sites = argv.filter(a => !a.startsWith('--') && !/^\d+$/.test(a)).flatMap(s => s.split(',')).map(s => s.trim().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')).filter(Boolean);
 if (sites.length < 2) { console.error('usage: node src/seo/matrix.mjs <site1> <site2> [site3 ...] [--max 15] [--refresh]'); process.exit(2); }
-const MAX = Math.max(1, Math.min(getNum('max', 15), 100));
+const MAX = Math.max(1, Math.min(num('max', 15), 100));
 const REFRESH = has('refresh');
 
 const runAudit = (host) => new Promise((resolve) => {

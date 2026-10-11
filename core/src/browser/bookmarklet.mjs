@@ -15,6 +15,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_ROOT } from '../paths.mjs';
+import { makeArgs } from '../args.mjs';
 
 export const MODES = {
   recon: { path: '/api/recon', label: 'Heimdall 侦察', body: (url) => ({ url, maxPages: 40 }) },
@@ -62,7 +63,7 @@ ol{color:#cbd5e1;font-size:14px}code{background:rgba(34,211,238,.1);color:#67e8f
 const isMain = !!process.argv[1] && process.argv[1].endsWith('bookmarklet.mjs');
 if (isMain) {
   const argv = process.argv.slice(2);
-  const argOf = (n, d) => { const i = argv.indexOf('--' + n); return i > -1 && argv[i + 1] ? argv[i + 1] : d; };
+const { argOf } = makeArgs(argv);
   const api = argOf('api', process.env.HEIMDALL_API ?? 'http://127.0.0.1:8900');
   const token = argOf('token', process.env.HEIMDALL_TOKEN ?? '');
   const outDir = join(DATA_ROOT, 'workspace', '_browser');

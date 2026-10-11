@@ -23,11 +23,19 @@ import { indexHar, matchHar } from './har.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
+
+/**
+ * 参数解析**故意在本文件里自带一份，不从 ../args.mjs 导入**。
+ *
+ * 这个文件会被 export.mjs 原样拷进交付包，而包里只有 serve.mjs 与 har.mjs ——
+ * 任何指向包外的 import 都会让部署出去的服务直接起不来
+ * （`Cannot find module .../args.mjs`，实测踩到过）。交付包里的文件必须零外部依赖。
+ */
 const argOf = (name, def) => {
   const i = argv.indexOf('--' + name);
-  if (i > -1 && argv[i + 1] && !argv[i + 1].startsWith('--')) return argv[i + 1];
+  if (i > -1 && argv[i + 1] !== undefined && !argv[i + 1].startsWith('--')) return argv[i + 1];
   const eq = argv.find(a => a.startsWith('--' + name + '='));
-  return eq ? eq.split('=').slice(1).join('=') : def;
+  return eq ? eq.slice(name.length + 3) : def;
 };
 const has = (name) => argv.includes('--' + name);
 
@@ -40,6 +48,14 @@ const PORT = Number(argOf('port', process.env.PORT ?? cfg.port ?? 8080));
 const OFFLINE = has('offline') || !!cfg.offline;
 const REPLAY = !has('no-replay') && cfg.replayApi !== false;
 const ROOT_MODE = (argOf('root', cfg.root ?? 'landing') === 'mirror');
+/**
+ * 监听地址。**默认 0.0.0.0，和引擎相反（引擎显式绑回环）——这是有意的**：
+ * 这个脚本的产物是**交付包**，用户的用法是 `docker compose up` 或丢到内网服务器，
+ * 绑回环等于部署完外面访问不到。但也正因为它默认对外，日志必须把实际地址**说清楚**，
+ * 不能像以前那样永远打印 127.0.0.1（实际却 listen 在所有网卡上）—— 那是会误导人的。
+ * 只在本机看就用 `--host 127.0.0.1`。
+ */
+const BIND = argOf('host', process.env.HEIMDALL_LIVE_HOST ?? cfg.bind ?? '0.0.0.0');
 
 const SITE = join(HERE, 'site');
 const LIVE = join(SITE, 'live');
@@ -208,6 +224,7 @@ createServer(async (req, res) => {
   // root=mirror：其余路径（含真实站点的 /static/**）全部按镜像解析
   if (ROOT_MODE) return serveLive(req, res, pathname, u.search);
   return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
-}).listen(PORT, () => {
-  console.log(`[heimdall-live] http://127.0.0.1:${PORT}  host=${HOST}  offline=${OFFLINE}  replay=${REPLAY}  har=${HAR_ENTRIES} entries`);
+}).listen(PORT, BIND, () => {
+  const where = BIND === '0.0.0.0' ? '0.0.0.0（所有网卡；只在本机看请加 --host 127.0.0.1）' : BIND;
+  console.log(`[heimdall-live] 监听 ${where}:${PORT}  host=${HOST}  offline=${OFFLINE}  replay=${REPLAY}  har=${HAR_ENTRIES} entries`);
 });

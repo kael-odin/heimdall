@@ -112,6 +112,7 @@ const hudEdges = ref(0);
 const hudEdgesRendered = ref(0);
 const hudOrigin = ref('');
 const sites = ref([]);          // 已侦察站点清单（/api/sites）
+const sitesLoaded = ref(false); // 站点清单是否已经问过一次（首启向导据此判断"确实没有站点"）
 const engine = ref({ ok: false, recon: null, forge: null });   // 引擎状态灯
 const autoRotate = ref(true);   // 星图自转开关
 const showPanel = ref(typeof window === 'undefined' || window.innerWidth > 768);    // 左侧仪表面板折叠（小屏默认收起）
@@ -582,6 +583,7 @@ async function loadSites() {
     const r = await fetch(`${API}/api/sites`);
     sites.value = (await r.json()).sites ?? [];
   } catch {}
+  sitesLoaded.value = true;   // 首启向导只在**确认过**没有站点时才出现，避免加载中闪一下
 }
 async function pollEngine() {
   try {
@@ -1428,6 +1430,18 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <div class="stat"><b>{{ hudOrigin }}</b><i title="被克隆的原始站点。镜像与原站的对比都以它为准。">原站</i></div>
     </div>
     <div class="status" v-if="statusText" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
+  </div>
+
+  <!-- 首启向导：一个站点都没有时，星图是空的，用户不知道该做什么。
+       把"侦察 → 克隆 → 拿走"三步写在空态里，比让他对着空白星空猜要强。 -->
+  <div class="first-run surface" v-if="!sites.length && sitesLoaded && view === 'atlas'">
+    <div class="fr-title">还没有任何站点</div>
+    <ol class="fr-steps">
+      <li><b>侦察</b>：在上面输入框填一个域名并回车 —— 先看清全站有哪些页面（几十页通常 1–3 分钟）</li>
+      <li><b>克隆</b>：侦察完成后在星图或「页面」清单里勾选页面克隆；只想先试一页就点「只克隆此页」</li>
+      <li><b>拿走</b>：「报告」页导出可独立部署的交付包；「改站起点」列出换成你的域名 / 图片 / 文案各要动哪些文件</li>
+    </ol>
+    <p class="fr-note">需要登录的站点：先「本站操作 → 登录并保存会话」，之后的侦察 / 克隆 / 审计会自动带上这份登录态。</p>
   </div>
 
   <!-- 左侧仪表面板 -->

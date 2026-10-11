@@ -15,7 +15,7 @@
  * 存储是**全局**的，不按站点 —— 所以本组件不接收 host。
  */
 import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { API, apiHeaders } from './api.js';
+import { API, apiHeaders, tokenOf } from './api.js';
 import { fmtBytes } from './format.js';
 
 const emit = defineEmits(['ok']);
@@ -76,13 +76,25 @@ async function runGc(apply = false) {
     const r = await fetch(API + '/api/storage/gc', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-    gcResult.value = j;
-    if (j.storage) info.value = j.storage;
-    gcConfirm.value = false;
-    emit('ok', apply ? `已回收 ${fmtBytes(j.freed ?? 0)} CAS 孤儿` : `可回收 ${fmtBytes(j.orphanBytes ?? 0)} CAS 孤儿`);
-    load(false);   // 引擎已在后台重新盘点，这里的数字会随后刷新
-  } catch (e) { error.value = String(e).replace(/^Error:\s*/, ''); }
-  finally { gcing.value = false; }
+    // 回收在引擎侧的子进程里跑（遍历整个 CAS，不能占请求线程），结果通过 cas-gc 事件回来
+    const q = tokenOf();
+    const es = new EventSource(`${API}/api/events?task=${j.taskId}${q ? '&token=' + encodeURIComponent(q) : ''}`);
+    const finish = () => { try { es.close(); } catch {} gcing.value = false; };
+    es.onmessage = (m) => {
+      let ev; try { ev = JSON.parse(m.data); } catch { return; }
+      if (ev.kind === 'cas-gc') {
+        gcResult.value = ev;
+        gcConfirm.value = false;
+        emit('ok', ev.apply ? `已回收 ${fmtBytes(ev.freed ?? 0)} CAS 孤儿` : `可回收 ${fmtBytes(ev.orphanBytes ?? 0)} CAS 孤儿`);
+        finish();
+        load(false);   // 引擎已在后台重新盘点，这里的数字会随后刷新
+      } else if (ev.kind === 'exit') {
+        if (ev.status !== 'done' && !gcResult.value) error.value = '回收任务中断';
+        finish();
+      }
+    };
+    es.onerror = () => { finish(); };
+  } catch (e) { error.value = String(e).replace(/^Error:\s*/, ''); gcing.value = false; }
 }
 
 // ---------- 交付包保留策略 ----------

@@ -28,6 +28,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DELIVERABLE, DATA_ROOT } from '../paths.mjs';
 import { emit } from '../emit.mjs';
+import { makeArgs } from '../args.mjs';
 
 /** 上次运行的结果落盘，供控制台读取（与 storage.json 同样的模式：
  *  遍历/删除都在子进程里做，主进程只读结果，避免冻住事件循环） */
@@ -36,14 +37,10 @@ export const PLAN_FILE = join(DATA_ROOT, 'deliver-plan.json');
 const log = (...a) => console.error('[deliver-prune]', ...a);
 
 const argv = process.argv.slice(2);
-const has = (n) => argv.includes('--' + n);
-const getNum = (name, def) => {
-  const i = argv.indexOf('--' + name);
-  return i > -1 && argv[i + 1] ? Number(argv[i + 1]) : def;
-};
+const { has, num } = makeArgs(argv);
 const APPLY = has('apply');
 const JSON_OUT = has('json');
-const KEEP = Math.max(0, getNum('keep', 2));
+const KEEP = Math.max(0, num('keep', 2));
 
 /** 目录名 → { host, kind, dated, date }。认不出返回 null。 */
 export function parseBundleName(name) {

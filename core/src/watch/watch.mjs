@@ -21,19 +21,19 @@ import { fetchRobotsAndSitemaps, discoverTargets, collectSite } from '../seo/col
 import { snapshotFromPages, diffSnapshots } from './diff.mjs';
 import { renderWatchHtml } from './report.mjs';
 import { emit } from '../emit.mjs';
+import { makeArgs } from '../args.mjs';
 
 const log = (...a) => console.error('[watch]', ...a);
 
 const argv = process.argv.slice(2);
+const { has, num } = makeArgs(argv);
 const target = argv.find(a => !a.startsWith('--'));
-const getNum = (n, d) => { const i = argv.indexOf('--' + n); if (i > -1 && argv[i + 1]) return Number(argv[i + 1]); const eq = argv.find(a => a.startsWith('--' + n + '=')); return eq ? Number(eq.split('=')[1]) : d; };
-const has = (n) => argv.includes('--' + n);
 if (!target) { console.error('usage: node src/watch/watch.mjs <host|url> [--max 20] [--accept] [--fail-on-change]'); process.exit(2); }
 
 const targetUrl = /^https?:\/\//i.test(target) ? target : `https://${target}`;
 let origin; try { origin = new URL(targetUrl).origin; } catch { console.error('invalid target'); process.exit(2); }
 const host = new URL(origin).hostname.replace(/^www\./, '');
-const MAX = Math.max(1, Math.min(getNum('max', 20), 200));
+const MAX = Math.max(1, Math.min(num('max', 20), 200));
 const BASE = join(WORKSPACE, host);
 const OUT = join(BASE, 'watch');
 mkdirSync(join(OUT, 'history'), { recursive: true });

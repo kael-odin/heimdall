@@ -28,7 +28,6 @@ import { WORKSPACE, DATA_ROOT, DELIVERABLE, isInside, isSecretFile } from './pat
 import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
 import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
 import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
-import { gcCas } from './store/cas.mjs';
 import { createWatchdog } from './task-watchdog.mjs';
 import { writeProxyHead, mirrorHostOf } from './proxy-headers.mjs';
 import { sessionInfo, clearSession } from './session/store.mjs';
@@ -256,7 +255,6 @@ let runningSession = null;
 let runningReclaim = null;
 let runningUpgrade = null;
 let runningClone = null;
-const pageMetaCache = new Map();
 
 /**
  * 请求期读盘缓存 —— 只服务"读多写少"的三处清单接口。
@@ -526,6 +524,17 @@ function startDeliverPrune(apply) {
 }
 
 /**
+ * CAS 资产回收/盘点。**同样走子进程**：它要遍历整个内容寻址库（实测 0.5s 起，
+ * 站点多时更久），同步跑就是在这段时间冻住所有别的请求。脚本本来就有
+ * （audit/cas-gc.mjs），结果以 `cas-gc` 事件回来，控制台据此更新读数。
+ */
+function startCasGc(apply = false) {
+  const t = makeTask('cas-gc', 'local://cas');
+  t.label = apply ? 'CAS 资产回收' : 'CAS 资产盘点';
+  return spawnTask(t, join('src', 'audit', 'cas-gc.mjs'), apply ? ['--apply'] : []).id;
+}
+
+/**
  * 「改站起点」清单：把已抓取的产物按"要改什么"重排（域名 / 资源 / 文案）。
  * **为什么走子进程**：它要读每一页的 asset-map 与 intel，大站（apify 61 页）实测
  * 约 5 秒 —— 放在请求处理里就是 5 秒的事件循环冻结，与 /api/assets 是同一个教训。
@@ -567,6 +576,77 @@ function startCloneSite(host, { max = null, incremental = false, force = false }
   if (incremental) args.push('--incremental');
   if (force) args.push('--force');
   return spawnTask(t, join('src', 'queue.mjs'), args, { env: { HEIMDALL_QUEUE_WORKERS: String(plan.workers) } }).id;
+}
+
+/**
+ * 资产索引 —— 一次遍历，两处共用。
+ *
+ * 全引擎最重的请求期同步 IO：走完每一页的 clone/assets 与 clone/styles，
+ * 外加每页的 asset-map 反查表。/api/assets 要它做清单，/api/pages 的「资产」列
+ * 也只是同一批文件的一个分组统计 —— 此前两边各走一遍，纯属重复劳动。
+ *
+ * 进 listCaches：8s TTL + 任务结束/删站删页即失效（见 cached 的注释）。
+ */
+function assetIndex(host) {
+  return cached('assets:' + host, () => {
+    const base = join(WORKSPACE, host);
+    const pagesDir = join(base, 'pages');
+
+      const items = [];
+      let totalBytes = 0;
+      let orphanReport = null;
+      try {
+        const op = join(base, 'audit', 'orphans.json');
+        if (existsSync(op)) orphanReport = JSON.parse(readFileSync(op, 'utf8'));
+      } catch {}
+      const orphanSet = new Set(orphanReport?.orphanPaths ?? []);
+      const reverse = new Map();   // page -> (clone 内相对路径 -> 原始 URL)
+      if (existsSync(pagesDir)) {
+        for (const page of readdirSync(pagesDir)) {
+          try {
+            const m = JSON.parse(readFileSync(join(pagesDir, page, 'asset-map.json'), 'utf8'));
+            const r = new Map();
+            for (const k of Object.keys(m.imgMap ?? {})) r.set(String(m.imgMap[k]), k);
+            for (const k of Object.keys(m.resMap ?? {})) r.set(String(m.resMap[k]), k);
+            reverse.set(page, r);
+          } catch {}
+        }
+      }
+      const walk = (dir, page, group) => {
+        if (!existsSync(dir) || items.length > 200000) return;   // 收集上限（防极端目录；不再截断正常站点）
+        for (const name of readdirSync(dir)) {
+          const f = join(dir, name);
+          let st; try { st = statSync(f); } catch { continue; }
+          if (st.isDirectory()) walk(f, page, group);
+          else if (st.isFile()) {
+            totalBytes += st.size;
+            const relWs = relative(WORKSPACE, f).split('\\').join('/');
+            const relClone = relative(join(pagesDir, page, 'clone'), f).split('\\').join('/');
+            items.push({ path: relWs, page, group, ext: extname(name).toLowerCase(), size: st.size, url: '/static/' + relWs, src: reverse.get(page)?.get(relClone) ?? '', orphan: orphanSet.has(relWs) });
+          }
+        }
+      };
+      if (existsSync(pagesDir)) {
+        for (const page of readdirSync(pagesDir)) {
+          walk(join(pagesDir, page, 'clone', 'assets'), page, 'asset');
+        walk(join(pagesDir, page, 'clone', 'styles'), page, 'style');
+      }
+    }
+      const byExt = {};
+      const byPage = {};
+      const byPageAssets = {};   // 只看 clone/assets（/api/pages 的「资产」列口径；byPage 还含 styles）
+      for (const it of items) {
+        const k = it.ext || '(none)';
+        byExt[k] = (byExt[k] ?? 0) + 1;
+        const p = byPage[it.page] ?? (byPage[it.page] = { count: 0, bytes: 0 });
+        p.count++; p.bytes += it.size;
+        if (it.group === 'asset') {
+          const q = byPageAssets[it.page] ?? (byPageAssets[it.page] = { count: 0, bytes: 0 });
+          q.count++; q.bytes += it.size;
+        }
+      }
+      return { items, totalBytes, orphanSet, orphanSummary: orphanReport, byExt, byPage, byPageAssets };
+  });
 }
 
 const handleRequest = async (req, res) => {
@@ -947,22 +1027,19 @@ const handleRequest = async (req, res) => {
       for (const p of gaps.pages ?? []) gapMap[p.page] = { visual: p.visualGaps ?? 0, origin: p.visualOrigin ?? 0, third: p.visualThird ?? 0 };
     } catch {}
     if (existsSync(pagesDir)) {
+      // 资产统计复用 /api/assets 的那份索引（同一批文件、同一趟遍历）——
+      // 此前这里对每页各自走一遍 clone/assets，和 /api/assets 的整树遍历是重复劳动。
+      const pageAssets = assetIndex(host).byPageAssets ?? {};
       for (const name of readdirSync(pagesDir)) {
         const cloneHtml = join(pagesDir, name, 'clone', 'index.html');
         if (!existsSync(cloneHtml)) continue;
         let target = '', score = null;
         try { target = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target ?? ''; } catch {}
         try { score = JSON.parse(readFileSync(join(pagesDir, name, 'score.json'), 'utf8')); } catch {}
-        // 资产统计（按 clone/index.html mtime 缓存）
+        const assets = pageAssets[name] ?? { count: 0, bytes: 0 };
+        // updatedAt = 这一页克隆产物的构建时间。控制台拿它当截图的 cache-buster
+        // （重新克隆后两张图必须刷新）。只需要**一次 stat**，不走资产树遍历。
         let mtime = 0; try { mtime = statSync(cloneHtml).mtimeMs; } catch {}
-        let meta = pageMetaCache.get(name);
-        if (!meta || meta.mtime !== mtime) {
-          let count = 0, bytes = 0;
-          const walk = (d) => { if (!existsSync(d)) return; for (const n of readdirSync(d)) { const fp = join(d, n); let st; try { st = statSync(fp); } catch { continue; } if (st.isDirectory()) walk(fp); else { count++; bytes += st.size; } } };
-          walk(join(pagesDir, name, 'clone', 'assets'));
-          meta = { mtime, meta: { count, bytes } };
-          pageMetaCache.set(name, meta);
-        }
         // verify 结果：interactions（交互列）与 minViewport（视觉列的最差值）同源，
         // 一次读文件一起给。控制台此前为这两列逐页发 2 个请求（80 页 = 160 个），
         // 而这里本来就已经在读同一个文件了。
@@ -980,7 +1057,7 @@ const handleRequest = async (req, res) => {
         out.push({
           name, target, forged: true,
           score: score ? { total: score.total, pixel: score.pixel, grade: score.grade } : null,
-          assets: meta.meta,
+          assets,
           visualGaps: gapMap[name] ?? null,
           interactions,
           minViewport,
@@ -1104,9 +1181,11 @@ const handleRequest = async (req, res) => {
     if (apply && body.confirm !== 'HEIMDALL_CAS_GC') {
       return json(res, 400, { error: '真回收需要 confirm=HEIMDALL_CAS_GC' });
     }
-    const result = gcCas(join(DATA_ROOT, 'assets-cas'), { apply });   // ~0.5s，可接受
-    startStorageScan();                                               // 重新盘点交给子进程
-    return json(res, 200, { ok: true, ...result, storage: readStorageFile() });
+    // 走子进程：gcCas 要遍历整个 CAS（实测 0.5s 起），在请求线程里同步跑会冻住所有别的请求。
+    // 脚本本来就存在（audit/cas-gc.mjs），结果作为 cas-gc 事件回来。
+    const taskId = startCasGc(apply);
+    startStorageScan();                                               // 重新盘点交给另一个子进程
+    return json(res, 202, { ok: true, taskId, apply, status: 'running' });
   }
 
   if (req.method === 'GET' && u.pathname === '/api/sites') {
@@ -1323,9 +1402,9 @@ const handleRequest = async (req, res) => {
       if (parts.length === 3) {
         rmSync(base, { recursive: true, force: true });
         bustCaches();                                                          // 站点没了，清单与代理白名单都得重算
-        const casGc = gcCas(join(DATA_ROOT, 'assets-cas'), { apply: true });   // 6k 文件约 0.5s，可接受
-        startStorageScan();                                                     // 12s 的盘点交给子进程
-        return json(res, 200, { ok: true, removed: 'site', host, casGc: { freed: casGc.freed, orphanFiles: casGc.orphanFiles, failed: casGc.failed, skipped: casGc.skipped } });
+        const casGcTask = startCasGc(true);                                    // 回收改子进程，不占请求线程
+        startStorageScan();                                                    // 12s 的盘点交给子进程
+        return json(res, 200, { ok: true, removed: 'site', host, casGcTask });
       }
       if (parts.length === 5 && parts[3] === 'pages') {
         const name = decodeURIComponent(parts[4]);
@@ -1348,10 +1427,10 @@ const handleRequest = async (req, res) => {
             writeFileSync(atlasPath, JSON.stringify(atlas, null, 2));
           } catch {}
         }
-        const pageGc = removedArtifacts ? gcCas(join(DATA_ROOT, 'assets-cas'), { apply: true }) : null;
+        const casGcTask = removedArtifacts ? startCasGc(true) : null;          // 回收改子进程
         if (removedArtifacts) startStorageScan();
         bustCaches();                                                          // 删了一页，资产清单/站点重合数随即变化
-        return json(res, 200, { ok: true, removed: 'page', host, name, removedArtifacts, removedNode, casGc: pageGc ? { freed: pageGc.freed, orphanFiles: pageGc.orphanFiles, failed: pageGc.failed, skipped: pageGc.skipped } : null });
+        return json(res, 200, { ok: true, removed: 'page', host, name, removedArtifacts, removedNode, casGcTask });
       }
     } catch (e) { return json(res, 500, { error: String(e).slice(0, 200) }); }
     return json(res, 400, { error: 'bad delete path' });
@@ -1381,60 +1460,7 @@ const handleRequest = async (req, res) => {
     const host = decodeURIComponent(u.pathname.slice('/api/assets/'.length));
     if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
     const base = join(WORKSPACE, host);
-    const pagesDir = join(base, 'pages');
-    // 整个遍历（每页的资产树 + asset-map）进缓存：这是全引擎最重的请求期同步 IO，
-    // 此前每个请求都重走一遍。筛选/排序/分页仍在缓存之外，参数变化即时生效。
-    const { items, totalBytes, orphanSet, orphanSummary, byExt, byPage } = cached('assets:' + host, () => {
-      const items = [];
-      let totalBytes = 0;
-      let orphanReport = null;
-      try {
-        const op = join(base, 'audit', 'orphans.json');
-        if (existsSync(op)) orphanReport = JSON.parse(readFileSync(op, 'utf8'));
-      } catch {}
-      const orphanSet = new Set(orphanReport?.orphanPaths ?? []);
-      const reverse = new Map();   // page -> (clone 内相对路径 -> 原始 URL)
-      if (existsSync(pagesDir)) {
-        for (const page of readdirSync(pagesDir)) {
-          try {
-            const m = JSON.parse(readFileSync(join(pagesDir, page, 'asset-map.json'), 'utf8'));
-            const r = new Map();
-            for (const k of Object.keys(m.imgMap ?? {})) r.set(String(m.imgMap[k]), k);
-            for (const k of Object.keys(m.resMap ?? {})) r.set(String(m.resMap[k]), k);
-            reverse.set(page, r);
-          } catch {}
-        }
-      }
-      const walk = (dir, page, group) => {
-        if (!existsSync(dir) || items.length > 200000) return;   // 收集上限（防极端目录；不再截断正常站点）
-        for (const name of readdirSync(dir)) {
-          const f = join(dir, name);
-          let st; try { st = statSync(f); } catch { continue; }
-          if (st.isDirectory()) walk(f, page, group);
-          else if (st.isFile()) {
-            totalBytes += st.size;
-            const relWs = relative(WORKSPACE, f).split('\\').join('/');
-            const relClone = relative(join(pagesDir, page, 'clone'), f).split('\\').join('/');
-            items.push({ path: relWs, page, group, ext: extname(name).toLowerCase(), size: st.size, url: '/static/' + relWs, src: reverse.get(page)?.get(relClone) ?? '', orphan: orphanSet.has(relWs) });
-          }
-        }
-      };
-      if (existsSync(pagesDir)) {
-        for (const page of readdirSync(pagesDir)) {
-          walk(join(pagesDir, page, 'clone', 'assets'), page, 'asset');
-        walk(join(pagesDir, page, 'clone', 'styles'), page, 'style');
-      }
-    }
-      const byExt = {};
-      const byPage = {};
-      for (const it of items) {
-        const k = it.ext || '(none)';
-        byExt[k] = (byExt[k] ?? 0) + 1;
-        const p = byPage[it.page] ?? (byPage[it.page] = { count: 0, bytes: 0 });
-        p.count++; p.bytes += it.size;
-      }
-      return { items, totalBytes, orphanSet, orphanSummary: orphanReport, byExt, byPage };
-    });
+    const { items, totalBytes, orphanSet, orphanSummary, byExt, byPage } = assetIndex(host);
     // 查询参数：q / ext / page / minSize / sort / limit / offset
     const q = (u.searchParams.get('q') ?? '').trim().toLowerCase();
     const extSel = (u.searchParams.get('ext') ?? '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);

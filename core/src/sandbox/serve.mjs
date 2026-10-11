@@ -19,11 +19,12 @@ import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
 import { sandboxPaths, injectSandboxEdits, renderEditorPage } from './core.mjs';
 import { comparePngBuffers } from '../verify/compare.mjs';
+import { makeArgs } from '../args.mjs';
 
 const argv = process.argv.slice(2);
+const { argOf } = makeArgs(argv);
 const host = argv[0];
 const page = argv[1];
-const argOf = (n, d) => { const i = argv.indexOf('--' + n); return i > -1 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
 const PORT = Number(argOf('port', 8090));
 const RESET = argv.includes('--reset');
 if (!host || !page) { console.error('usage: node src/sandbox/serve.mjs <host> <page> [--port 8090] [--reset]'); process.exit(2); }

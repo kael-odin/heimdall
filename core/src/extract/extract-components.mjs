@@ -15,18 +15,19 @@ import { join } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
 import { componentCandidates, matchingCssRules, renderComponentPreview, renderGallery } from './components.mjs';
 import { emit } from '../emit.mjs';
+import { makeArgs } from '../args.mjs';
 
 const log = (...a) => console.error('[components]', ...a);
 
 const argv = process.argv.slice(2);
+const { num } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-const getNum = (n, d) => { const i = argv.indexOf('--' + n); if (i > -1 && argv[i + 1]) return Number(argv[i + 1]); const eq = argv.find(a => a.startsWith('--' + n + '=')); return eq ? Number(eq.split('=')[1]) : d; };
 if (!host) { console.error('usage: node src/extract/extract-components.mjs <host> [--pages 2] [--max 12]'); process.exit(2); }
 
 const PAGES = join(WORKSPACE, host, 'pages');
 if (!existsSync(PAGES)) { console.error('no pages for host:', host); process.exit(1); }
-const PAGE_LIMIT = Math.max(1, Math.min(getNum('pages', 2), 10));
-const MAX = Math.max(1, Math.min(getNum('max', 12), 40));
+const PAGE_LIMIT = Math.max(1, Math.min(num('pages', 2), 10));
+const MAX = Math.max(1, Math.min(num('max', 12), 40));
 
 const candidates = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'dom.html')) && existsSync(join(PAGES, n, 'cssom.css')));
 const ordered = ['home', 'pricing', ...candidates.filter(n => !['home', 'pricing'].includes(n))].filter(n => candidates.includes(n)).slice(0, PAGE_LIMIT);

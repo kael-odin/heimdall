@@ -41,6 +41,13 @@
 .toast.ok { color: var(--ok); }
 .wv-actions { flex-wrap: wrap; }
 
+/* 首启向导：没有站点时的空态。放在画面中心，不挡顶部输入框。 */
+.first-run { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92vw, 640px); padding: 22px 26px; z-index: 4; }
+.fr-title { font-size: 16px; color: var(--text); margin-bottom: 12px; letter-spacing: .04em; }
+.fr-steps { margin: 0 0 14px; padding-left: 20px; color: var(--text-dim); font-size: 13px; line-height: 2; }
+.fr-steps b { color: var(--accent); margin-right: 4px; }
+.fr-note { margin: 0; font-size: 12px; color: var(--text-faint); border-top: 1px dashed var(--border); padding-top: 12px; }
+
 /* 左侧仪表面板 */
 .panel { position: fixed; left: 28px; bottom: 64px; width: 236px; padding: 14px 16px 16px; z-index: 6; }
 .panel-title { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 10px; letter-spacing: .24em; color: var(--text-faint); margin-bottom: 12px; }

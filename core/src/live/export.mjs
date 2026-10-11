@@ -31,17 +31,12 @@ import { scanLiveBundle } from './health.mjs';
 import { healBundle, materializeHar, localizeQueryEntries, rewriteHtmlRefs } from './heal.mjs';
 import { diffChecksums, changesLine } from './changes.mjs';
 import { mb } from '../fsutil.mjs';
+import { makeArgs } from '../args.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
+const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-const argOf = (name, def) => {
-  const i = argv.indexOf('--' + name);
-  if (i > -1 && argv[i + 1] && !argv[i + 1].startsWith('--')) return argv[i + 1];
-  const eq = argv.find(a => a.startsWith('--' + name + '='));
-  return eq ? eq.split('=').slice(1).join('=') : def;
-};
-const has = (n) => argv.includes('--' + n);
 if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict]'); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -153,7 +148,7 @@ const liveSrc = fileURLToPath(new URL('.', import.meta.url));
 copyFileSync(join(liveSrc, 'serve.mjs'), join(OUT, 'serve.mjs'));
 copyFileSync(join(liveSrc, 'har.mjs'), join(OUT, 'har.mjs'));
 
-const config = { host, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT };
+const config = { host, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT, bind: '0.0.0.0' };
 writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 
 // ---------- 4b. 离线体检（health.json）+ 可选自愈（--heal） ----------
@@ -239,8 +234,12 @@ writeFileSync(join(OUT, 'README.md'), `# Heimdall Live Mirror · ${host}
 \`\`\`bash
 node serve.mjs --port ${PORT}                 # 落地页 + /lm/${host}/ 镜像（默认）
 node serve.mjs --port ${PORT} --root mirror   # drop-in：镜像直接挂到 /
+node serve.mjs --port ${PORT} --host 127.0.0.1  # 只监听本机（默认监听所有网卡，为了容器/内网部署）
 docker compose up -d                   # Docker 部署
 \`\`\`
+
+- **监听地址默认 0.0.0.0**（所有网卡）—— 交付包是拿去部署的，绑回环外面就访问不到。
+  只在本机预览请加 \`--host 127.0.0.1\`。引擎本身默认绑回环，两者不同是有意的
 
 - 镜像入口：http://127.0.0.1:${PORT}/lm/${host}/
 - 落地页：http://127.0.0.1:${PORT}/（root=mirror 时根路径直接是镜像）
