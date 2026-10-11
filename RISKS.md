@@ -15,7 +15,7 @@
 4. **不内置 robots / crawl-delay 强制**。这是明确的设计决定：工具的定位是
    对公司自有站点与授权范围做复刻，节流是**可配项**而非硬约束。
    使用范围由操作者界定 —— 这条在 README 里没有含糊。
-5. **活镜像代理有 host 白名单**（`HEIMDALL_ALLOWED_HOSTS`）。这不是合规限制，
+5. **交互镜像代理有 host 白名单**（`HEIMDALL_ALLOWED_HOSTS`）。这不是合规限制，
    是防 SSRF：代理只允许转发到 workspace 已知的站点，否则一个 `/px/<任意host>/`
    就能拿它当开放代理用。
 6. **引擎默认只监听 127.0.0.1**。需要对外时显式设 `HEIMDALL_TOKEN`。
@@ -45,7 +45,7 @@
 - [ ] 控制台能开：`http://127.0.0.1:8900`
 - [ ] 三个站点产物在位：`apify.com`(61页) / `thordata.com`(31页) / `vitest.dev`(1页)
 - [ ] 留一个未克隆的页面用于现场实时克隆（**提前确认它能在 2 分钟内跑完**）
-- [ ] 活镜像包已生成，Docker 可用：`node src/cli.mjs live vitest.dev --offline`
+- [ ] 交互镜像包已生成，Docker 可用：`node src/cli.mjs live vitest.dev --offline`
 - [ ] 同步对比页提前打开好（现场点击有加载延迟）
 - [ ] 完整录屏备份已就位（U 盘 + 本机各一份）
 - [ ] **关掉所有通知**（系统、微信、钉钉）—— 投影时弹窗是最大的事故源

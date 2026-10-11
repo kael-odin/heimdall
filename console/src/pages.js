@@ -17,7 +17,20 @@ export function pageNameOf(n) {
   }
 }
 
-/** 活镜像地址（/lm/<host>/<path>）：功能与数据实时回原站的代理通道 */
+/**
+ * 交互镜像地址（/lm/<host>/<path>）：保留脚本、资源实时回原站的代理通道。
+ *
+ * **目录型路径必须带尾斜杠**。URL 的"基目录"是最后一个 `/` 之前的部分：
+ * `/lm/ant.design` 的基目录是 `/lm/`，页内相对引用（`chunk-x.js`）会解析到
+ * `/lm/chunk-x.js` —— 靠引擎的 referer 兜底才凑巧能活。补成 `/lm/ant.design/`
+ * 之后基目录就是页面自身所在目录，相对引用归位，不再依赖兜底。
+ * 带扩展名的路径（.html 等）是文件，不加。
+ */
 export function liveUrl(f) {
-  try { const u = new URL(f.url); return `/lm/${u.host}${u.pathname.replace(/\/$/, '')}`; } catch { return '#'; }
+  try {
+    const u = new URL(f.url);
+    let p = u.pathname.replace(/\/+$/, '');
+    if (!/\.[a-z0-9]+$/i.test(p)) p += '/';
+    return `/lm/${u.host}${p}`;
+  } catch { return '#'; }
 }

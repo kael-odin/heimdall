@@ -322,7 +322,7 @@ function startVerify(host, { page, maxPages = 20 } = {}) {
 function startLiveExport(host, { root = 'mirror', rebuild = false } = {}) {
   const t = makeTask('live', 'https://' + host);
   t.host = host;
-  t.label = '活镜像导出 ' + host;
+  t.label = '交互镜像导出 ' + host;
   runningLive = t;
   const args = [host, '--offline', '--root', root === 'landing' ? 'landing' : 'mirror', '--heal', '--materialize-har'];
   if (rebuild) args.push('--rebuild');
@@ -333,7 +333,7 @@ function startLiveExport(host, { root = 'mirror', rebuild = false } = {}) {
  * 磁盘盘点必须走子进程。
  *
  * 实测：同步遍历 5.4 万文件要 ~12 秒，期间 **Node 事件循环完全冻结** ——
- * 连 500ms 的定时器都不会触发，所有 API 请求（含 SSE、活镜像代理）全部排队。
+ * 连 500ms 的定时器都不会触发，所有 API 请求（含 SSE、交互镜像代理）全部排队。
  * 所以引擎只把结果当成"一份会被刷新的文件"读，真正的遍历交给子进程。
  */
 const STORAGE_JSON = join(DATA_ROOT, 'storage.json');
@@ -782,7 +782,7 @@ createServer(async (req, res) => {
     return json(res, 200, { host, page, jobs });
   }
 
-  // 活镜像体检：读取最新 <host>-live-*/health.json（导出时生成）
+  // 交互镜像体检：读取最新 <host>-live-*/health.json（导出时生成）
   if (req.method === 'GET' && u.pathname.startsWith('/api/live-health/')) {
     const host = decodeURIComponent(u.pathname.slice('/api/live-health/'.length));
     if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
@@ -869,6 +869,29 @@ createServer(async (req, res) => {
         let atlas = null;
         if (hasAtlas) { try { atlas = JSON.parse(readFileSync(ap, 'utf8')); } catch {} }
 
+        // 克隆产物与侦察集合**不是同一批页面**，混在一起做分子分母就是错的。
+        // 实测：apify 侦察发现 62 页、磁盘上有 61 页克隆产物，但真正落在侦察集合里的
+        // 只有 48 页 —— 界面上一度写「61/62 已克隆」，那个分数是假的。
+        // 所以四个数分开给，界面各取所需。
+        const discovered = atlas?.nodes?.length ?? 0;
+        const clonedUrls = new Set();
+        if (forged) {
+          for (const n of readdirSync(pagesDir)) {
+            try {
+              const t = JSON.parse(readFileSync(join(pagesDir, n, 'manifest.json'), 'utf8')).target;
+              if (t) clonedUrls.add(new URL(t).pathname.replace(/\/$/, '') || '/');
+            } catch { /* 缺 manifest 的产物不参与重合统计 */ }
+          }
+        }
+        // 从**克隆产物**这一侧数重合：atlas 里可能有两个节点指向同一路径
+        // （`https://x` 与 `https://x/`），从 atlas 侧数就会得出比克隆页还多的重合数。
+        const atlasPaths = new Set();
+        for (const n of atlas?.nodes ?? []) {
+          try { atlasPaths.add(new URL(n.url).pathname.replace(/\/$/, '') || '/'); } catch {}
+        }
+        let clonedInAtlas = 0;
+        for (const p of clonedUrls) if (atlasPaths.has(p)) clonedInAtlas++;
+
         // 没有 atlas 时从页面 manifest 推 origin（manifest.target 是原站 URL）
         let origin = atlas?.origin ?? '';
         if (!origin && forged) {
@@ -882,9 +905,13 @@ createServer(async (req, res) => {
         sites.push({
           host: d,
           origin: origin || ('https://' + d),
-          pages: atlas?.meta?.pages ?? atlas?.nodes?.length ?? forged,
+          pages: discovered,          // 兼容旧字段名 = 侦察发现的页数
+          discovered,                 // 侦察发现
+          forged,                     // 磁盘上的克隆产物
+          cloned: forged,
+          clonedInAtlas,              // 既被侦察发现、也已克隆（唯一诚实的"完成度"分子）
+          extra: Math.max(0, forged - clonedInAtlas),   // 已克隆但侦察没覆盖到（早先手工克隆等）
           edges: atlas?.meta?.edges ?? 0,
-          forged,
           // 'partial' = 只克隆了页面、没做过全站侦察。控制台据此提示"可侦察补全"。
           status: atlas ? (atlas.status ?? (atlas.nodes?.length ? 'ok' : 'failed')) : 'partial',
           failures: atlas?.failures?.length ?? 0,
@@ -894,7 +921,7 @@ createServer(async (req, res) => {
     return json(res, 200, { sites });
   }
 
-  // 反向代理 /px/<host>/<path> → https://<host>/<path> —— 活镜像基础设施：
+  // 反向代理 /px/<host>/<path> → https://<host>/<path> —— 交互镜像基础设施：
   // 镜像页的 API/资源请求走此通道回原站，"功能数据用原站跑通"
   if (req.method === 'GET' && u.pathname.startsWith('/px/')) {
     const m = /^\/px\/([^/]+)(\/.*)?$/.exec(u.pathname);
@@ -914,11 +941,15 @@ createServer(async (req, res) => {
     return;
   }
 
-  // Referrer 感知兜底：活镜像页发出的"裸根相对"请求（JS 运行时拼接，patch 漏接形态）
+  // Referrer 感知兜底：交互镜像页发出的"裸根相对"请求（JS 运行时拼接，patch 漏接形态）
   // 按 referer 里的 /lm/<host> 溯源转发原站——覆盖 fetch patch 漏掉的 Image src/srcset/动态 import/模块加载
+  //
+  // host 后面**不能要求必须有斜杠**：`/lm/ant.design`（首页无尾斜杠，正是控制台「交互镜像」
+  // 链接的形态）此前匹配不上，于是页面的根相对 chunk 全部落到 SPA 兜底 → 404 → 白屏。
+  // 实测 ant.design 交互镜像整页空白就是这个原因。
   if (!['/api/', '/static/', '/lm/', '/px/'].some(pre => u.pathname.startsWith(pre))) {
     const ref = req.headers.referer ?? '';
-    const lmRef = /\/lm\/([^/]+)\//.exec(ref);
+    const lmRef = /\/lm\/([^/?#]+)(?:\/|$|\?|#)/.exec(ref);
     if (lmRef && isProxyHost(lmRef[1])) {
       const lh = lmRef[1];
       const target = 'https://' + lh + u.pathname + u.search;
@@ -936,7 +967,7 @@ createServer(async (req, res) => {
     }
   }
 
-  // 活镜像 /lm/<host>/<path> —— 融合路由：
+  // 交互镜像 /lm/<host>/<path> —— 融合路由：
   //   本地 live/<path>/index.html 存在 → 回校准快照（视觉+结构已对齐）
   //   否则 → 全代理回原站（未锻造页/资源/JS chunks/API 全部原样透传，页面"活"）
   // 全方法透传 + cookie 透传 + 剥离 Domain/Secure（cookie 落到我们域）+ 剥 X-Frame/CSP

@@ -12,7 +12,7 @@
  * 详情面板也要用同一份数据，放在这里会导致切换视图就重新拉一遍。
  */
 import { ref, computed } from 'vue';
-import SitePicker from './SitePicker.vue';
+import SiteBar from './SiteBar.vue';
 import Icon from './Icon.vue';
 import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
 import { fmtDate, fmtBytes } from './format.js';
@@ -24,6 +24,7 @@ const props = defineProps({
   sites: { type: Array, default: () => [] },
   engine: { type: Object, default: () => ({}) },
   nodes: { type: Array, default: () => [] },       // 全量清单（含孤儿已克隆页）
+  actions: { type: Array, default: () => [] },
   scores: { type: Object, default: () => ({}) },   // nodeId -> score.json
   verify: { type: Object, default: () => ({}) },   // nodeId -> verify.json
   meta: { type: Object, default: () => ({}) },     // nodeId -> { assets, visualGaps, interactions, updatedAt }
@@ -118,7 +119,7 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
     <div class="wv-head">
       <b>页面清单 · {{ host || '未选择站点' }}</b>
       <span class="wv-stat">{{ doneCount }}/{{ nodes.length }} 已克隆 · 平均视觉 {{ avgVisual }}<template v-if="avgWorst"> · 最差视口均值 {{ avgWorst }}</template></span>
-      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="$emit('pick', $event)" @audit="$emit('audit')" />
+      <SiteBar :sites="sites" :host="host" :actions="actions" @pick="$emit('pick', $event)" @action="$emit('action', $event)" />
       <input class="wv-search" v-model="pageQuery" aria-label="搜索页面 URL 或标题" placeholder="搜索 URL / 标题" spellcheck="false" />
       <select v-model="typeFilter" aria-label="按页面类型筛选"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
       <select v-model="statusFilter" aria-label="按克隆状态筛选"><option value="">全部状态 ({{ statusCounts.all }})</option><option value="done">已克隆 ({{ statusCounts.done }})</option><option value="todo">未完成 ({{ statusCounts.todo }})</option><option value="failed">失败 ({{ statusCounts.failed }})</option></select>

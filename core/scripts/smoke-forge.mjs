@@ -175,7 +175,7 @@ async function main() {
     assert.ok(seoJson.pages.length >= 2, 'audit should cover >=2 pages, got ' + seoJson.pages.length);
     assert.ok(seoJson.score > 0, 'audit score should be > 0');
 
-    // 7) 活镜像 L3：导出可部署包 + 离线启动验证（不碰外网）
+    // 7) 交互镜像 L3：导出可部署包 + 离线启动验证（不碰外网）
     const bundleDir = join(dataDir, 'bundle');
     const exp = spawnSync(process.execPath, ['src/live/export.mjs', '127.0.0.1', '--out', bundleDir, '--offline', '--root', 'mirror'], {
       cwd: CORE,

@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+const bad = [];
+p.on('response', r => { if (r.status() >= 400) bad.push(r.status() + ' ' + r.url().slice(0, 90)); });
+let errs = [];
+p.on('pageerror', e => errs.push(String(e).slice(0, 90)));
+await p.goto(process.argv[2], { waitUntil: 'load', timeout: 40000 }).catch(e => errs.push('goto:' + String(e).slice(0, 80)));
+await p.waitForTimeout(5000);
+const info = await p.evaluate(() => ({ bg: getComputedStyle(document.body).backgroundColor, h1: document.querySelector('h1') ? getComputedStyle(document.querySelector('h1')).fontSize : null, sheets: document.styleSheets.length }));
+console.log(JSON.stringify({ url: process.argv[2], bad: bad.length, errs: errs.slice(0, 3), info }));
+await b.close();

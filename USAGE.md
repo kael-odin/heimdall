@@ -196,7 +196,7 @@ node core\src\store\dedupe.mjs apify.com --dry-run :: 只统计不修改
 ## 13. 安全与数据目录（v2）
 
 - 引擎默认只监听 `127.0.0.1`；内网共享时设置 `HEIMDALL_HOST=0.0.0.0` + `HEIMDALL_TOKEN=<token>`，控制台可用 localStorage 的 `heimdall-token` 携带。
-- 活镜像/代理只允许 `workspace/<host>` 已存在的域名（防 SSRF/开放代理）；额外域名用 `HEIMDALL_ALLOWED_HOSTS=a.com,b.com`。
+- 交互镜像/代理只允许 `workspace/<host>` 已存在的域名（防 SSRF/开放代理）；额外域名用 `HEIMDALL_ALLOWED_HOSTS=a.com,b.com`。
 - 把 1.4GB 产物移出仓库：`set HEIMDALL_DATA_DIR=D:\heimdall-data`，workspace/deliverable 都会迁到该目录。
 
 ## 14. 多视口验证（v2）
@@ -223,9 +223,9 @@ node src\verify\verify.mjs apify.com storage --threshold 85  :: CI 门控（综�
 实测 apify.com/storage：桌面 98.2%（A）/ 平板 89.4%（B）/ 移动 78.4%（C）→ 综合 91.0%（B）。
 这证明"单视口 95.9%"确实高估了真实保真度——移动端字体/换行/高度差是主要来源。
 
-## 15. 活镜像部署包（L3，v2）
+## 15. 交互镜像部署包（L3，v2）
 
-把站点导出成"可以直接部署"的活镜像包：
+把站点导出成"可以直接部署"的交互镜像包：
 
 ```cmd
 cd /d D:\Github-Star\heimdall
@@ -244,7 +244,7 @@ node core\src\live\export.mjs thordata.com --materialize-har   :: 把 HAR 可回
 | `serve.mjs` + `har.mjs` | 零依赖 Node 服务器（本地快照 → HAR 回放 → 原站代理） |
 | `har.json` | 清洗后的 HAR（不含 cookie/authorization），原站重新部署后旧 chunk 仍可回放 |
 | `heimdall-live.json` | host/origin/port/offline/replayApi/root 配置 |
-| `site/live/**`、`site/static/**` | 活镜像页面 + 克隆页/CSS/资产/档案/SEO 报告 |
+| `site/live/**`、`site/static/**` | 交互镜像页面 + 克隆页/CSS/资产/档案/SEO 报告 |
 | `landing.html` | 落地页（镜像/档案/对比/SEO 报告入口） |
 | `Dockerfile`、`docker-compose.yml` | 一键容器部署 |
 | `health.json` | 离线体检：资源 local/har/unresolved/dynamic、未镜像链接、站外资产清单 |
@@ -258,7 +258,7 @@ node serve.mjs --port 8080          :: 直接跑
 docker compose up -d                :: 或容器
 ```
 
-路由：`/lm/<host>/**`（活镜像）、`/static/<host>/**`（克隆档案）、`/__heimdall/health`（健康检查）。
+路由：`/lm/<host>/**`（交互镜像）、`/static/<host>/**`（克隆档案）、`/__heimdall/health`（健康检查）。
 `--root mirror`（或配置 `root: "mirror"`）：镜像直接挂在 `/`，等价于用克隆件替换原站域名根路径（drop-in 部署），`/lm/<host>/` 仍作为别名可用。
 离线模式：`--offline` 或配置 `offline: true`，未捕获资源明确 404，不回源；导出时加 `--heal` 可从原站补抓离线缺失资源，`--strict` 有缺口时非零退出。
 
@@ -300,7 +300,7 @@ docker compose up -d          :: 构建并启动
 :: 数据持久化在 heimdall-data 卷（对应容器内 /data）
 ```
 
-- 引擎同时服务：API/SSE、`/static` 产物、`/lm` 活镜像、控制台 SPA（`HEIMDALL_CONSOLE_DIR`）
+- 引擎同时服务：API/SSE、`/static` 产物、`/lm` 交互镜像、控制台 SPA（`HEIMDALL_CONSOLE_DIR`）
 - 内网共享：在 compose 里设置 `HEIMDALL_TOKEN`，并在控制台「设置 → 引擎 Token」填入同一值
 - LLM：设置 `HEIMDALL_LLM=1` + `LLM_BASE_URL/LLM_API_KEY/LLM_MODEL` 后 AI 校准/语义增强生效
 - 不使用 Docker 时也可本机单端口：先构建控制台，再启动引擎
@@ -409,7 +409,7 @@ node core\src\audit\assets.mjs apify.com --max 61
 - 本轮修复的缺口根因：`<picture>` fallback/lazy `data-src` 漏采；跨页资产缓存导致 `linked-*` 悬空引用；CSS `refNNN` 编号与原始引用错位；HAR 未用于回放；Vite `/src/` 资源相对路径无法回源恢复
 
 - 控制台一键：**报告 → 资产缺口 → 运行扫描**（完成后出现报告入口；任务中心显示缺口数）
-- 页面清单新增列：**资产（体积/数量）· 视觉缺口 · 交互回放 · 更新时间**，均可排序；点击某行 → 详情面板顶部有「打开克隆 / 活镜像 / 同步对比 / 分数 JSON」快捷入口
+- 页面清单新增列：**资产（体积/数量）· 视觉缺口 · 交互回放 · 更新时间**，均可排序；点击某行 → 详情面板顶部有「打开克隆 / 交互镜像 / 同步对比 / 分数 JSON」快捷入口
 - 重新锻造以应用最新采集：`node core\src\queue.mjs <host> --force`
 
 ## 24. MCP 与浏览器入口（v2）

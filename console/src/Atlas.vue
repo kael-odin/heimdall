@@ -27,7 +27,7 @@ const Graph3D = defineAsyncComponent({
   delay: 120,     // 120ms 内到货就不闪占位
   timeout: 30000,
 });
-import SitePicker from './SitePicker.vue';
+import SiteBar from './SiteBar.vue';
 import Icon from './Icon.vue';
 import JobsView from './JobsView.vue';
 import PagesView from './PagesView.vue';
@@ -77,9 +77,9 @@ function toast(msg, ms = 4000) {
 }
 const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
-const liveHealth = ref(null);    // 最新活镜像体检（/api/live-health/:host，导出时生成）
+const liveHealth = ref(null);    // 最新交互镜像体检（/api/live-health/:host，导出时生成）
 const lastVerify = ref(null);    // 最近一次全站体检结果（/api/verify）
-const liveRebuild = ref(false);  // 导出活镜像前先重建 live 页面
+const liveRebuild = ref(false);  // 导出交互镜像前先重建 live 页面
 const liveHealthHost = ref('');   // liveHealth 对应的 host（切站后避免串数据）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const matrixPeer = ref('');          // 跨站对标对象
@@ -140,11 +140,11 @@ const detailSeo = computed(() => selected.value?.seoLite ?? null);
 // ---------- 工作台视图（v2）：星图 / 页面 / 任务 / 报告 / 设置 ----------
 const view = ref('atlas');
 const VIEWS = [
-  { id: 'atlas', icon: '✦', label: '星图' },
-  { id: 'pages', icon: '▤', label: '页面' },
-  { id: 'jobs', icon: '◷', label: '任务' },
-  { id: 'reports', icon: '▦', label: '报告' },
-  { id: 'settings', icon: '⚙', label: '设置' },
+  { id: 'atlas', icon: '✦', label: '星图', hint: '全站力导向图：每个行星是一页，连线是站内链接' },
+  { id: 'pages', icon: '▤', label: '页面', hint: '逐页清单：克隆状态 / 还原度 / 资产 / 缺口，可搜索筛选批量克隆' },
+  { id: 'jobs', icon: '◷', label: '任务', hint: '本次会话的任务与持久化历史（引擎重启也在）' },
+  { id: 'reports', icon: '▦', label: '报告', hint: '克隆档案 / SEO 审计 / 体检 / 交互镜像 / 对标 / 情报' },
+  { id: 'settings', icon: '⚙', label: '设置', hint: '模型服务、引擎地址与 Token、界面偏好' },
 ];
 const tableNodes = ref([]);                       // 页面表格的响应式快照（含孤儿已克隆页）
 const extraNodes = ref([]);                       // 已克隆但不在 atlas 中的页面（补全清单）
@@ -181,7 +181,7 @@ function selectView(id) {
   if (id === 'settings') loadLlm();
 }
 function togglePages() { if (view.value === 'pages') view.value = 'atlas'; else { view.value = 'pages'; loadPageStatus(); } }
-/** 工作视图表头的站点切换（SitePicker emit） */
+/** 工作视图表头的站点切换（SiteBar emit） */
 function pickSiteByHost(h) {
   const s = sites.value.find(x => x.host === h);
   if (s) pickSite(s);
@@ -443,20 +443,37 @@ async function pollEngine() {
 }
 setInterval(pollEngine, 15000);
 /**
- * 站点 chip 上的角标。此前是 `61F` —— F 指 forged（克隆），
- * 但没人能从界面上知道这一点。改成"已克隆/已发现"的分数形式。
- * 只克隆过、没做全站侦察的站点单列（那是另一条路径，不是没做完）。
+ * 本站能做的事。费时（全量重跑）与破坏性（删除本站）的项标红并二次确认 ——
+ * 它们要么占满引擎并发槽跑上小时，要么删掉整站产物，误点的代价不对称。
  */
-function siteBadge(s) {
-  if (s.status === 'partial') return s.forged + ' 页';
-  if (!s.pages) return '空';
-  return s.forged + '/' + s.pages;
-}
-function siteTitle(s) {
-  if (s.status === 'partial') return `${s.forged} 页已克隆 · 未做全站侦察（点开看页面清单；侦察后才有星图）`;
-  if (!s.pages) return '侦察结果为空（失败或没有可用页面）';
-  const behind = s.pages - s.forged;
-  return `${s.forged}/${s.pages} 页已克隆${behind > 0 ? `，还差 ${behind} 页` : '，全部完成'}`;
+const siteActions = computed(() => {
+  const has = !!host.value;
+  const cloned = doneCount.value;
+  return [
+    { id: 'audit', label: 'SEO 审计', hint: '56 条规则 · 六分类评分 · 输出 HTML/CSV/JSON 报告', disabled: !has || !!engine.value.audit },
+    {
+      id: 'clone-incremental',
+      label: cloned ? '增量克隆' : '整站克隆',
+      hint: cloned ? '只重跑源站变了的页（按服务端 HTML 指纹判断，不起浏览器）' : '把侦察到的页面逐页克隆；由引擎执行，关掉本页也会继续',
+      disabled: !has || !!engine.value.clone,
+    },
+    { id: 'clone-full', label: '全量重跑', hint: '忽略「源站是否变过」，整站重跑一遍 —— 页面多时按小时计', danger: true, disabled: !has || !cloned || !!engine.value.clone },
+    { id: 'pages', label: view.value === 'pages' ? '收起清单' : '页面清单', hint: '逐页状态 / 还原度 / 资产 / 缺口', disabled: !has },
+    { id: 'delete', label: '删除本站', hint: '移除该站的侦察、克隆与报告（CAS 资产保留）', danger: true, disabled: !has },
+  ];
+});
+/** 工作视图自己就是清单，不需要「页面清单」那一项；其余动作与星图一致 */
+const workViewActions = computed(() => siteActions.value.filter(a => a.id !== 'pages'));
+
+function onSiteAction(id) {
+  if (id === 'audit') return runAudit();
+  if (id === 'clone-incremental') return startCloneSite({ incremental: doneCount.value > 0 });
+  if (id === 'clone-full') {
+    if (!confirm(`全量重跑 ${host.value}？\n\n忽略「源站是否变过」，把本站全部页面重新克隆一遍。\n页面多时按小时计，期间引擎的并发槽会被占满。`)) return;
+    return startCloneSite({ incremental: false });
+  }
+  if (id === 'pages') return togglePages();
+  if (id === 'delete') { const s = sites.value.find(x => x.host === host.value); if (s) deleteSite(s); }
 }
 
 function pickSite(s) {
@@ -830,22 +847,22 @@ function runResponsiveUpgrade() {
 function runVerifyAll() { runVerify(null); }
 function runVerifyPage() { const n = selected.value; if (n) runVerify(pageNameOf(n)); }
 
-/** 活镜像导出：引擎 live 任务（离线 + mirror + heal + materialize） */
+/** 交互镜像导出：引擎 live 任务（离线 + mirror + heal + materialize） */
 function runLiveExport() {
   const task = reactive({
     localId: 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    kind: 'live', label: '活镜像导出 · ' + host.value, url: atlas.value?.origin ?? ('https://' + host.value),
+    kind: 'live', label: '交互镜像导出 · ' + host.value, url: atlas.value?.origin ?? ('https://' + host.value),
     done: false, failed: false, error: null,
     startedAt: Date.now(), endedAt: null,
   });
   tasks.push(task);
   while (tasks.length > 20) tasks.shift();
-  statusText.value = '活镜像导出中 · 约 2-5 分钟（HAR 合并 + 图片本地化 + 体检）';
+  statusText.value = '交互镜像导出中 · 约 2-5 分钟（HAR 合并 + 图片本地化 + 体检）';
   (async () => {
     try {
       const r = await fetch(API + '/api/live-export', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, root: 'mirror', rebuild: liveRebuild.value }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '活镜像导出失败：' + error; return; }
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '交互镜像导出失败：' + error; return; }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
@@ -853,8 +870,8 @@ function runLiveExport() {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'exit') {
           task.done = true; task.endedAt = Date.now();
-          if (ev.status === 'done') { statusText.value = '活镜像导出完成 · 已生成离线完整包'; loadLiveHealth(); loadReports(); }
-          else { task.failed = true; task.error = '导出失败（见 health.json / 任务日志）'; errMsg.value = '活镜像导出失败，查看任务日志'; }
+          if (ev.status === 'done') { statusText.value = '交互镜像导出完成 · 已生成离线完整包'; loadLiveHealth(); loadReports(); }
+          else { task.failed = true; task.error = '导出失败（见 health.json / 任务日志）'; errMsg.value = '交互镜像导出失败，查看任务日志'; }
           close(); setTimeout(() => { statusText.value = ''; }, 5000);
         }
       };
@@ -1049,27 +1066,15 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 
   <div class="seek surface">
     <button class="theme-btn" @click="toggleTheme" :aria-label="theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'" :title="theme === 'dark' ? '切换浅色' : '切换深色'"><Icon :name="theme === 'dark' ? 'moon' : 'sun'" decorative /></button>
-    <input v-model="host" aria-label="目标站点域名" placeholder="输入目标域名 · apify.com" spellcheck="false" @keyup.enter="startRecon" />
-    <button @click="startRecon">侦察</button>
+    <input v-model="host" aria-label="目标站点域名" placeholder="输入目标域名 · apify.com" spellcheck="false" @keyup.enter="startRecon"
+      title="要分析的站点域名（可带 https://）。回车或点「侦察」开始" />
+    <button @click="startRecon"
+      title="全站侦察：从 sitemap 与站内链接找出页面，逐页抓标题/类型/缩略图，产出星图与全站视图。页数上限由站点配方的 maxPages 决定，几十页通常 1-3 分钟">侦察</button>
   </div>
 
-  <!-- 已侦察站点切换（仅星图；工作视图在各自表头里放站点选择器，避免浮层压住内容） -->
-  <div class="sites" v-if="view === 'atlas' && sites.length">
-    <span class="sites-label">站点：</span>
-    <span class="site-item" v-for="s in sites" :key="s.host">
-      <button class="site-btn" :class="{ active: s.host === host, empty: !s.forged && !s.pages, partial: s.status === 'partial' }" @click="pickSite(s)" :title="siteTitle(s)">
-        {{ s.host }}<em>{{ siteBadge(s) }}</em>
-      </button>
-      <button class="site-del" :aria-label="'删除站点 ' + s.host" title="删除该站点（侦察/克隆/报告；CAS 资产保留）" @click.stop="deleteSite(s)"><Icon name="close" decorative /></button>
-    </span>
-    <button class="site-btn audit-btn" :disabled="!!engine.audit" @click="runAudit" :title="engine.audit ? '已有审计任务在运行' : '全站 SEO 审计（56 条规则，输出 HTML/CSV/JSON 报告）'">SEO 审计</button>
-    <button class="site-btn clone-btn" :disabled="!!engine.clone" @click="startCloneSite({ incremental: doneCount > 0 })"
-      :title="engine.clone ? '已有整站克隆在运行' : (doneCount > 0 ? `站点已有 ${doneCount} 页克隆，默认增量：只重跑源站变了的页（改版检测基于服务端 HTML）` : '整站批量克隆，由引擎侧执行 —— 关掉这个页面任务也会继续')">
-      {{ doneCount > 0 ? '增量克隆' : '整站克隆' }}
-    </button>
-    <button v-if="doneCount > 0" class="site-btn" :disabled="!!engine.clone" @click="startCloneSite({ incremental: false })" title="忽略「源站是否变过」，全部重跑一遍（慢，但最完整）">全量重跑</button>
-    <button class="site-btn list-toggle" :class="{ active: view === 'pages' }" @click="togglePages()" :title="view === 'pages' ? '收起清单返回星图' : '打开页面清单'">{{ view === 'pages' ? '收起清单' : '页面清单' }}</button>
-  </div>
+  <!-- 站点切换 + 本站操作（星图与工作视图现在共用 SiteBar；原先星图这里是把每个站点
+       一个按钮加一个 ×、再并上四个功能按钮平铺，站点到八个就折成三行） -->
+  <SiteBar v-if="view === 'atlas'" class="sites" :sites="sites" :host="host" :actions="siteActions" :busy="!!engine.audit || !!engine.clone" @pick="pickSiteByHost" @action="onSiteAction" />
 
   <!-- 任务中心：每个任务的独立进度（不再被后一个任务覆盖） -->
   <!-- 任务浮层：只在不专门看任务的时候出现。
@@ -1097,21 +1102,23 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     :key="'pages-' + host"
     :host="host" :sites="sites" :engine="engine" :theme="theme"
     :nodes="tableNodes" :scores="pageScores" :verify="pageVerify" :meta="pageMeta"
-    @pick="pickSiteByHost" @audit="runAudit" @close="view = 'atlas'"
+    :actions="workViewActions"
+    @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'"
     @detail="onNodeClick" @forge="startForge" @delete="deletePage"
     @forge-checked="forgeChecked" @remove-checked="removeChecked"
   />
   <JobsView
     v-if="view === 'jobs'"
     :tasks="tasks" :jobs="jobHistory" :sites="sites" :host="host" :engine="engine"
-    @pick="pickSiteByHost" @audit="runAudit" @close="view = 'atlas'"
+    :actions="workViewActions"
+    @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'"
   />
 
   <section class="work-view surface" v-if="view === 'reports'">
     <div class="wv-head">
       <b>报告中心 · {{ host || '未选择站点' }}</b>
-      <span class="wv-stat">克隆档案 / SEO / 体检 / 活镜像 / 对标 / 情报</span>
-      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="pickSiteByHost" @audit="runAudit" />
+      <span class="wv-stat">克隆档案 / SEO / 体检 / 交互镜像 / 对标 / 情报</span>
+      <SiteBar :sites="sites" :host="host" :actions="workViewActions" @pick="pickSiteByHost" @action="onSiteAction" />
       <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
     </div>
     <div class="reports-scroll">
@@ -1171,7 +1178,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <button @click="runResponsiveUpgrade" title="对 minViewport<0.97 的页面做多视口快照，verify 提升才保留">响应式升级</button>
     </div>
     <div class="report-card surface">
-      <h3>活镜像</h3>
+      <h3>交互镜像</h3>
       <!-- 导出与体检此前是两张卡片，但它们说的是同一件产物（离线包 + 它的健康报告）——
            放在一起才知道"导出什么、导出来怎么样"。 -->
       <template v-if="liveHealth">
@@ -1214,7 +1221,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="wv-head">
       <b>设置</b>
       <span class="wv-stat">模型服务写引擎配置（保存即生效）；其余为本地浏览器偏好</span>
-      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="pickSiteByHost" @audit="runAudit" />
+      <SiteBar :sites="sites" :host="host" :actions="workViewActions" @pick="pickSiteByHost" @action="onSiteAction" />
       <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
     </div>
     <div class="settings-grid">
@@ -1333,7 +1340,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   <div class="toast" v-if="errMsg">{{ errMsg }}</div>
   <div class="toast ok" v-if="okMsg">{{ okMsg }}</div>
   <div class="view-nav surface">
-    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" :aria-current="view === v.id ? 'page' : undefined" @click="selectView(v.id)">
+    <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" :aria-current="view === v.id ? 'page' : undefined" :title="v.hint" @click="selectView(v.id)">
       <b aria-hidden="true">{{ v.icon }}</b><span>{{ v.label }}</span>
     </button>
   </div>

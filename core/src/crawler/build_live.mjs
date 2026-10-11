@@ -1,11 +1,11 @@
 /**
- * build_live — 快照 → 活镜像页转换器
+ * build_live — 快照 → 交互镜像页转换器
  *
  * dom.html（渲染后完整 DOM，含 script 引用）→ live/<path>/index.html
  *   1) <base href="/lm/<host><dir>/">  —— 全部相对资源/请求自动归位到代理
  *   2) 全文绝对 URL 归一：https://<host> → /lm/<host>（属性/RSC payload/内联脚本一把梭）
  *   3) bootstrap patch 注入：JS 运行时硬编码的绝对域 → 代理路径（fetch/XHR 兜底）
- *   4) CSS 用本地校准版（cssom.css，死镜像同款）替换原版引用 —— 视觉保真双保险
+ *   4) CSS 用本地校准版（cssom.css，静态镜像同款）替换原版引用 —— 视觉保真双保险
  *
  * 站点差异（stub 策略、挂件黑名单）来自 **站点配方** core/sites/<host>.json，
  * 不再写成 `if (host === 'apify')` 这类分支。
@@ -135,7 +135,7 @@ for (const name of pages) {
   html = html.replace(/(\b(?:src|href|srcset|action)\s*=\s*["']?)\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
   html = html.replace(/url\(\s*(?:&quot;|['"])?\/(?!lm\/|static\/)/gi, `url("/lm/${target.host}/`);
 
-  // 3) 原版 CSS 引用替换为本地校准版（cssom.css，死镜像同款——视觉保真双保险）
+  // 3) 原版 CSS 引用替换为本地校准版（cssom.css，静态镜像同款——视觉保真双保险）
   html = html.replace(/<link[^>]*rel="stylesheet"[^>]*>/gi, '');
   html = html.replace('</head>', '<link rel="stylesheet" href="/static/' + host + '/pages/' + name + '/clone/styles/cssom.css"></head>');
 

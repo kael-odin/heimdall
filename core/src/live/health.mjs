@@ -1,5 +1,5 @@
 /**
- * live/health — 活镜像离线体检（纯静态：无浏览器、无网络）
+ * live/health — 交互镜像离线体检（纯静态：无浏览器、无网络）
  *
  * 从 site/live 的 HTML/CSS 出发，按 serve.mjs 的同一套解析规则
  * （本地快照 → HAR 回放）逐条检查引用，输出 health.json：
@@ -198,7 +198,7 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir }) {
   return out;
 }
 
-/** 扫描整个活镜像目录，返回可写入 health.json 的报告对象 */
+/** 扫描整个交互镜像目录，返回可写入 health.json 的报告对象 */
 export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = null }) {
   const pages = pageFiles(liveDir);
   const details = [];

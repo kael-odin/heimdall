@@ -14,14 +14,14 @@
 | 能力 | 状态 | 实证 |
 |---|---|---|
 | 全站侦察 → 3D 星图 | ✅ | apify 61 节点/1498 边、thordata 32 节点，sitemap+双队列 BFS，每节点 SEO 轻量画像 |
-| 死镜像（视觉/结构 100% 级） | ✅ | apify 60 页均 96.8%（55A/4B/1C）、thordata 31 页 96.1%（22A/9B/0C） |
-| 活镜像（交互/数据回原站） | ✅ | /lm/ 融合路由，两站 pricing pageerror=0/4xx=0，hydration 交互实测 |
+| 静态镜像（视觉/结构 100% 级） | ✅ | apify 60 页均 96.8%（55A/4B/1C）、thordata 31 页 96.1%（22A/9B/0C） |
+| 交互镜像（交互/数据回原站） | ✅ | /lm/ 融合路由，两站 pricing pageerror=0/4xx=0，hydration 交互实测 |
 | 情报包 | ✅ | 规则抽取+LLM 语义（定价/套餐/价值主张）→ xlsx；跨页 fidelity.csv |
 | 全站批量锻造 | ✅ | queue.mjs 持久化队列：断点续跑 + **增量重跑**（按源站 HTML 指纹）+ **单页熔断**（硬超时 & 无进展）；并发按配方；thordata 31/31、apify 60/60 |
 | 同步滚动对比 | ✅ | compare.html（1440px 统一视口，根除响应式变形） |
 | 控制台 | ✅ v2 | 工作台 IA：底部导航 星图/页面/任务/报告/设置；页面表格（搜索/筛选/批量克隆/逐页视觉分）；任务中心；报告中心；引擎地址与 Token 可配 |
 | 任务持久化 | ✅ | node:sqlite（JSON 降级）存 jobs/events；重启恢复 + interrupted 标记；`GET /api/jobs.history`；控制台任务页历史 |
-| 资产缺口扫描 | ✅ | CLI + 控制台一键（引擎 assets 任务）；apify/thordata 视觉缺口均 0（thordata 修复前 673）；页面清单新增 资产/缺口/交互/更新 列与排序，详情面板含克隆/活镜像/对比快捷入口 |
+| 资产缺口扫描 | ✅ | CLI + 控制台一键（引擎 assets 任务）；apify/thordata 视觉缺口均 0（thordata 修复前 673）；页面清单新增 资产/缺口/交互/更新 列与排序，详情面板含克隆/交互镜像/对比快捷入口 |
 | 逐页质检 / 跨站对标 | ✅ | 详情「质检」tab（多视口+交互+缺口+校准曲线）；报告页一键矩阵（引擎 matrix 任务，实测报告 200） |
 | 统一 CLI | ✅ | `node src/cli.mjs <command>` 覆盖 recon/forge/queue/audit/watch/verify/tokens/live/dedupe/deliver/serve |
 | 沙盒改造台 | ✅ v1 | `node src/sandbox/serve.mjs <host> <page>`：HTML/CSS 在线编辑 + 实时预览 + 与原版全页 pixelmatch（实测 24.7% → 100%） |
@@ -32,7 +32,7 @@
 | 设计 Token | ✅ v1 | `node src/extract/extract-tokens.mjs <host>` → tokens.json/css/html（色板/字阶/间距/圆角/阴影/断点/变量 + 频次） |
 | 部署 | ✅ v2 | Dockerfile + docker-compose（引擎+控制台+Playwright 单端口 8900，数据卷 /data）；本机单端口用 HEIMDALL_CONSOLE_DIR |
 | 变更监控 | ✅ v1 | `node src/watch/watch.mjs <host>`；两次采样排除动态噪声；字段级变化报告 + `--fail-on-change` 门控 + 历史快照 |
-| 活镜像 L3 | ✅ v1 | `node src/live/export.mjs <host>` → 自包含部署包：零依赖 serve.mjs + HAR 回放 + Dockerfile/compose + checksums；离线模式可断原站运行（smoke 覆盖导出/离线启动/本地页面/CSS/404） |
+| 交互镜像 L3 | ✅ v1 | `node src/live/export.mjs <host>` → 自包含部署包：零依赖 serve.mjs + HAR 回放 + Dockerfile/compose + checksums；离线模式可断原站运行（smoke 覆盖导出/离线启动/本地页面/CSS/404） |
 | 多视口 + 交互回放 | ✅ v1 | 视觉 375/768/1440 全页 diff + 功能交互回放（状态签名 & 视口像素，`--no-interactions` 可关）；实测 apify pricing 视觉 96.0% A、交互 3/3 | `node src/verify/verify.mjs <host> <page>`；375/768/1440 全页 diff（apify storage 实测 91.0% B：桌面 98.2 / 平板 89.4 / 移动 78.4） |
 | SEO 审计 | ✅ v1 | `node src/seo/audit.mjs <host> --max 20` → seo.html/csv/json，**56 条规则**、六分类评分 |
 | 质量门 | ✅ | `pnpm lint` / `pnpm test`（**240 单测**）/ `pnpm smoke`（fixture 离线 E2E，含 SEO 审计）+ GitHub Actions |
@@ -107,10 +107,10 @@ node src\crawler\fullshot.mjs <host>
 
 ## 6. 待办路线（按优先级）
 
-1. **活镜像 v2 增量**：Edge Worker 导出、SW 客户端拦截（可选）、API 回放策略细分（当前 L3 已具备 Docker/Node 部署 + HAR 回放）
+1. **交互镜像 v2 增量**：Edge Worker 导出、SW 客户端拦截（可选）、API 回放策略细分（当前 L3 已具备 Docker/Node 部署 + HAR 回放）
 2. ~~资产 CAS 去重~~ ✅（2026-10-08：apify 节省 241MB / 48%，thordata 同步处理，队列自动执行）
 3. **多视口验证**：375/768/1440 全页 diff + 交互回放，替代单帧自评
-4. **活镜像深层交互**：apify store/use-cases 点击触发的被剥脚本下游引用（5-6 errs/页）——逐站第三方依赖白名单
+4. **交互镜像深层交互**：apify store/use-cases 点击触发的被剥脚本下游引用（5-6 errs/页）——逐站第三方依赖白名单
 2. **chunk 快照时效**：原站重部署后旧哈希 chunk 失效——已可定期重锻刷新；可升级为增量 chunk 补抓
 3. **素材映射层（L4）**：harvest 数据 → 素材映射表（logo/主色/文案→文件路径/DOM 位置），前端"查表换牌"
 4. **组件抽取**：高频组件（定价卡/导航/FAQ）独立 HTML+CSS 片段导出
@@ -131,7 +131,7 @@ node src\crawler\fullshot.mjs <host>
 - 实测：apify 61 页/454 处、thordata 31 页/1040 处修复；Playwright 复检 `font failed requests: 0`、`document.fonts.check('16px Inter') === true`；apify pricing 多视口 verify 由 96.0% 升至 **99.85/99.93/99.96%**。
 - 扫描器同步加固：`audit/assets.mjs` 新增“clone 内相对引用必须按文件自身目录可解析”的检查（此前同名兜底会掩盖坏链）；新增单测 `core/test/assets.test.mjs`。
 
-### 8.2 活镜像体检 + 自愈（新）
+### 8.2 交互镜像体检 + 自愈（新）
 - `core/src/live/health.mjs`：静态体检（无浏览器/无网络）→ bundle `health.json`：assets(local/har/unresolved/dynamic/external) + links(missing) + externalAssetsTop。
 - `core/src/live/heal.mjs`：`--heal` 导出期从原站补抓离线缺失资源（按路径去重、多 `?dpl=` 变体重试、动态端点跳过、MIME/体积校验）。
 - `export.mjs` 接线：默认写 health.json；`--strict` 有缺口非零退出（CI 用）；landing/README 显示离线资源覆盖；smoke 对 fixture 断言 `unresolved === 0`。
@@ -147,7 +147,7 @@ node src\crawler\fullshot.mjs <host>
 lint 75 文件 · 单测 61/61 · smoke 全绿（含 live health unresolved=0）· CI 绿（244cead / eb06876）。
 
 
-## 9. 2026-10-09 续二：活镜像离线自包含达成（apify + thordata 双站 unresolved=0）
+## 9. 2026-10-09 续二：交互镜像离线自包含达成（apify + thordata 双站 unresolved=0）
 
 ### 9.1 HAR 补录（每页 network.har）
 - `queue <host> --missing-har`（新增，只重锻缺 HAR 的页，不重做已完成页）。
@@ -175,13 +175,13 @@ node core\src\crawler\build_live.mjs <host>
 node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root mirror --heal --materialize-har --strict
 ```
 
-## 10. 2026-10-09 续三：控制台一键闭环（体检 + 活镜像导出）
+## 10. 2026-10-09 续三：控制台一键闭环（体检 + 交互镜像导出）
 
 - 引擎新增任务：`POST /api/verify {host,page?,maxPages?}`（多视口体检，全站/单页）与 `POST /api/live-export {host,root?,rebuild?}`（离线完整包：--offline --root mirror --heal --materialize-har，node 4GB 堆）。
-- 控制台「报告」页新增 **全站体检** 卡（运行/重跑 + verify-summary.json 入口）与 **活镜像导出** 卡（可选"先重建 live 页面"，完成后自动刷新体检卡）。
+- 控制台「报告」页新增 **全站体检** 卡（运行/重跑 + verify-summary.json 入口）与 **交互镜像导出** 卡（可选"先重建 live 页面"，完成后自动刷新体检卡）。
 - 详情「质检」tab 新增 **运行本页体检** 按钮（未跑过多视口时显示）。
 - 任务中心统一展示这两类任务（verify=v 前缀 / live=l 前缀），状态持久化。
-- 实测：单页体检 v001 done、活镜像导出 l002 done（thordata 缺口 0）、UI 两个按钮全链路通过。
+- 实测：单页体检 v001 done、交互镜像导出 l002 done（thordata 缺口 0）、UI 两个按钮全链路通过。
 
 ## 11. 2026-10-09 续四：全站多视口体检结果（apify 61 页）
 
@@ -195,8 +195,8 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
   | resources-startups | 95.9% | 375 | 90.2% |
   | agents.md | 93.9% | 375 | 91.1% |
   | storage | 96.1% | 768 | 91.5% |
-- 根因（store 实测）：LogoWrapper 的 .desktop 变体带桌面内联尺寸（--unicorn-width:420px），.mobile 变体是客户端渲染、静态 DOM 里不存在 → 后半页均一 +128px 偏移。属"死镜像（L1 静态移植）无法覆盖客户端响应式变体"这一类问题；**活镜像（脚本完整）不受影响**。
-- 后续升级方向：响应式采集（多视口 DOM 合并 / 保留变体节点 + 媒体规则），或对 minViewport<0.9 的页默认引导使用活镜像（控制台质检 tab 已加提示）。
+- 根因（store 实测）：LogoWrapper 的 .desktop 变体带桌面内联尺寸（--unicorn-width:420px），.mobile 变体是客户端渲染、静态 DOM 里不存在 → 后半页均一 +128px 偏移。属"静态镜像（L1 静态移植）无法覆盖客户端响应式变体"这一类问题；**交互镜像（脚本完整）不受影响**。
+- 后续升级方向：响应式采集（多视口 DOM 合并 / 保留变体节点 + 媒体规则），或对 minViewport<0.9 的页默认引导使用交互镜像（控制台质检 tab 已加提示）。
 
 ## 12. 2026-10-09 续五：0 字节资产修复（追踪信标）
 
@@ -246,7 +246,7 @@ node --max-old-space-size=4096 core\src\live\export.mjs <host> --offline --root 
 - 交付包重导出：**26,292 文件 / 383.0MB → 15,206 文件 / 257.5MB（−125.5MB）**，unresolved 仍为 0；离线实测 /、/pricing、/store 均 0 镜像失败。
 - 新增 `reclaim-orphans <host> --purge`：确认无副作用后可回收隔离区磁盘（默认保留隔离区作安全网）。
 
-## 16. 2026-10-09 续九：死镜像响应式升级（多视口快照）
+## 16. 2026-10-09 续九：静态镜像响应式升级（多视口快照）
 
 - 新增 `multi-snapshot <host> <page> | <host> --all [--max N] [--pages a,b]`：按 375/768 重新渲染，保存 dom/cssom-<w>；build_clone 自动生成 index-375/768/1440 + index.html 视口选择器（≤600→375，≤1100→768，否则 1440）。
 - 实测（apify，veriify 三视口 overall/最差视口）：
@@ -398,7 +398,7 @@ workspace/<host>/site.json   运行时学到的事实（产物，gitignore）
   `workspace/<host>/site.json`。**只记观察事实，不写策略** —— 自动写策略会让一次跑歪盖掉人工修正。
 - 新命令：`node src/cli.mjs profile <host>` 查看生效配方与来源；`profile --list` 列已有站点。
   配方说明见 `core/sites/README.md`。
-- 实测：apify 活镜像重建后 `var CONSERVATIVE = true`（此前来自 host 字符串判断）；
+- 实测：apify 交互镜像重建后 `var CONSERVATIVE = true`（此前来自 host 字符串判断）；
   用配方重建的 HTML 与旧版仅差注释文案。
 
 ### 19.3 页面分类补中文 + DOM 特征兜底（P1-5）
@@ -414,7 +414,7 @@ workspace/<host>/site.json   运行时学到的事实（产物，gitignore）
 并发/节流保持现状，作为可配参数存在，默认不引入新限制。后续不要把这条限制加回来。
 
 ### 19.5 本轮质量门
-lint 93 文件 · 单测 **106/106**（80 → 106）· smoke 全绿（含活镜像导出与离线体检）。
+lint 93 文件 · 单测 **106/106**（80 → 106）· smoke 全绿（含交互镜像导出与离线体检）。
 新增测试：`settings`（8）· `site-profile`（9）· `classify`（7）。
 
 ### 19.6 下一批（批次 2，未开工）
@@ -508,7 +508,7 @@ lint 98 文件 · 单测 **116/116**（106 → 116：cas-gc 5 条 + storage 5 �
 | 修复前 | 12036ms | **采样 0 次** —— 连 500ms 的 `setInterval` 都一次不触发 |
 | 修复后 | ~11s（子进程） | **1–2ms**（22 次采样全部有响应） |
 
-即同步遍历 5.4 万文件会把 Node 事件循环整个冻住，期间所有 API / SSE / 活镜像代理全部排队。
+即同步遍历 5.4 万文件会把 Node 事件循环整个冻住，期间所有 API / SSE / 交互镜像代理全部排队。
 **修法回到引擎既有的模式：重活一律 spawn 子进程。**
 - `startStorageScan()` 起 `storage` 任务（不占锻造槽；已在跑则复用）
 - `GET /api/storage` 只读 `DATA_ROOT/storage.json`，过期/缺失时后台补一次并立刻返回已有结果（无结果返回 `{pending:true}`）
@@ -596,7 +596,7 @@ lint 98 文件 · 单测 **116/116**（106 → 116：cas-gc 5 条 + storage 5 �
 - 底部操作提示与导航 dock 水平重叠 328px、垂直完全重叠，被压掉大半；
   详情面板在 <1128px 时盖住最后一屏内容；「克隆档案」链接被详情面板整块覆盖（154×32）。
 
-术语统一：锻造→克隆、深空观测站→站点克隆工作台、死镜像→静态镜像。
+术语统一：锻造→克隆、深空观测站→站点克隆工作台、静态镜像→静态镜像。
 保留「星球」（3D 力导向图里这个比喻仍然准确）。
 
 ### 21.4 结构整治
@@ -682,9 +682,9 @@ deliver / live 导出 / SEO 矩阵三处统一改用它。
 
 三处重复：任务浮层缺视图守卫（在「任务」视图里同一份列表显示两遍）；
 「更多报告」把上面已有卡片的 7 项又列一遍（改成「设计资产」，只列没有专属卡片的）；
-「活镜像导出」+「活镜像体检」是同一件产物的两张卡（合并）。
+「交互镜像导出」+「交互镜像体检」是同一件产物的两张卡（合并）。
 
-### 22.5 活镜像：站外引用只显示了一半
+### 22.5 交互镜像：站外引用只显示了一半
 
 一直只显示 `externalAssets`（带扩展名的站外静态资源），
 而 `external`（总数）从没露面。差额是 YouTube 嵌入、地图、统计脚本这类

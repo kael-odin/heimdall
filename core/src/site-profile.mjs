@@ -47,7 +47,7 @@ export const DEFAULTS = {
   },
   live: {
     stubStrategy: 'magic',        // magic（默认）| conservative（chunk 会挂死时用）
-    stripScriptPatterns: [        // 脚本 URL 片段，命中即从活镜像 HTML 中剥除
+    stripScriptPatterns: [        // 脚本 URL 片段，命中即从交互镜像 HTML 中剥除
       'consent.cookiebot', 'cookiebot\\.com', 'crisp\\.chat', 'mixpanel',
       'cookiepro', 'onetrust', 'tiktok', 'redditstatic', 'clarity\\.ms',
       'googletagmanager', 'doubleclick', 'facebook\\.net', 'analytics\\.',

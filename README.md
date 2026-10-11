@@ -32,7 +32,7 @@ node src/cli.mjs recon example.com 60     # 侦察全站 → 星图
 node src/cli.mjs queue example.com        # 批量克隆（断点续跑 + 单页熔断）
 node src/cli.mjs queue example.com --incremental   # 站点改版后：只重跑源站变了的页
 node src/cli.mjs verify example.com --all # 多视口保真验证
-node src/cli.mjs live example.com         # 导出可部署的活镜像
+node src/cli.mjs live example.com         # 导出可部署的交互镜像
 node src/cli.mjs deliver example.com      # 打包成前端可接手的交付包
 ```
 
@@ -45,7 +45,7 @@ node src/cli.mjs deliver example.com      # 打包成前端可接手的交付包
 | 产物 | 形态 | 给谁 |
 | --- | --- | --- |
 | **静态镜像** | `deliverable/<host>-<date>/`：镜像页 + 原站 CSSOM + 渲染后 DOM + 差异热图 + 还原度 CSV + 接手 README | 前端：照着写自己的第一版 |
-| **活镜像** | `deliverable/<host>-live-<date>/`：Dockerfile + `serve.mjs` + HAR 回放 + 健康报告 | 运维/前端：`docker compose up -d` 直接对着它写代码 |
+| **交互镜像** | `deliverable/<host>-live-<date>/`：Dockerfile + `serve.mjs` + HAR 回放 + 健康报告 | 运维/前端：`docker compose up -d` 直接对着它写代码 |
 | **SEO 审计** | `workspace/<host>/seo/`：HTML 报告 + CSV + JSON，56 条规则六分类 | SEO/增长 |
 | **竞品情报** | `intel/<host>-intel.xlsx`：概览 / 语义情报 / 定价与 CTA | 产品/市场 |
 | **全站星图** | `workspace/<host>/recon/atlas.json` + 控制台 3D 视图 | 所有人：先看清这个站的结构 |
@@ -110,7 +110,7 @@ AI 用在三处判断上（像素差异的 CSS 校准、语义情报抽取、页
 
 **交付**
 - 静态镜像包（前端改造素材 + 接手 README）
-- 活镜像包（Docker + HAR 回放 + 健康报告 + 三级回退）
+- 交互镜像包（Docker + HAR 回放 + 健康报告 + 三级回退）
 - 交付包保留策略（按站点与类型保留最近 N 份，认不出的命名绝不自动删）
 
 **运维**
@@ -126,7 +126,7 @@ AI 用在三处判断上（像素差异的 CSS 校准、语义情报抽取、页
 core/            确定性引擎（零外部服务依赖）
   src/crawler/     捕获、构建、链接接线、站点配方
   src/seo/         SEO 规则引擎、采集、报告、回归基线
-  src/live/        活镜像导出、健康检查、自愈
+  src/live/        交互镜像导出、健康检查、自愈
   src/differ/      像素与 DOM 差异
   src/verify/      多视口验证、交互回放
   src/audit/       资产、存储、交付包治理

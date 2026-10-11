@@ -20,7 +20,7 @@ test('parseBundleName: 识别静态镜像包', () => {
   assert.deepEqual(parseBundleName('thordata.com-2026-09-30'), { host: 'thordata.com', kind: 'static', dated: true, date: '2026-09-30' });
 });
 
-test('parseBundleName: 识别活镜像包（-live- 优先于日期）', () => {
+test('parseBundleName: 识别交互镜像包（-live- 优先于日期）', () => {
   assert.deepEqual(parseBundleName('apify.com-live-2026-10-09'), { host: 'apify.com', kind: 'live', dated: true, date: '2026-10-09' });
   assert.deepEqual(parseBundleName('thordata.com-live-2026-10-08'), { host: 'thordata.com', kind: 'live', dated: true, date: '2026-10-08' });
 });
@@ -57,7 +57,7 @@ test('planPrune: 每个 (站点,类型) 各自保留 N 个，互不挤占', () =
   assert.ok(plan.keep.some(b => b.name === 'thordata.com-2026-09-01'));
 });
 
-test('planPrune: 静态包与活镜像包分开计数', () => {
+test('planPrune: 静态包与交互镜像包分开计数', () => {
   const bundles = [
     B('s.com-2026-10-01', 1), B('s.com-2026-10-02', 2),
     B('s.com-live-2026-10-01', 3), B('s.com-live-2026-10-02', 4),

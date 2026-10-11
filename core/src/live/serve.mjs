@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * live/serve — 独立可部署的活镜像服务器（零依赖 Node）
+ * live/serve — 独立可部署的交互镜像服务器（零依赖 Node）
  *
  * 路由：
- *   /                         默认落地页（landing.html）；--root mirror 时直接就是活镜像
+ *   /                         默认落地页（landing.html）；--root mirror 时直接就是交互镜像
  *   /lm/<host>/<path>         本地 live 快照优先 → HAR 回放 → 原站代理（offline 时 404）
  *   /static/<host>/<path>     本地静态产物（克隆页 / CSS / 资产）
  *   /__heimdall/health        健康检查
@@ -197,7 +197,7 @@ createServer(async (req, res) => {
     if (!ROOT_MODE) return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
     // root=mirror：真实站点的 /static/** 仍按镜像资源解析（落到末尾 serveLive）
   }
-  // 活镜像：/lm/<host>/** 始终保持可用
+  // 交互镜像：/lm/<host>/** 始终保持可用
   if (pathname.startsWith('/lm/')) {
     const m = /^\/lm\/([^/]+)(\/.*)?$/.exec(pathname);
     if (!m) return send(res, 400, 'bad lm path');

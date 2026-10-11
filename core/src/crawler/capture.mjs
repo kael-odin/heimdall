@@ -46,7 +46,7 @@ mkdirSync(join(OUT, 'styles'), { recursive: true });
 mkdirSync(join(OUT, 'assets'), { recursive: true });
 
 const browser = await chromium.launch();
-// 全网络录制：HAR 供活镜像 v2 做本地资源回放（原站重新部署后旧 chunk 仍可用）
+// 全网络录制：HAR 供交互镜像 v2 做本地资源回放（原站重新部署后旧 chunk 仍可用）
 let context;
 try {
   context = await browser.newContext({

@@ -133,7 +133,7 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 - queue.mjs：全站批量锻造——持久化队列 queue.json（断点续跑：有产物即 done 跳过）+ 双 worker 对接引擎 2 槽 + SSE 等 exit；thordata 全站 30 页队列后台跑中（5 done 起步）
 - 通用性/oneshot 话术定稿：CSSOM 最终态抓取栈无关（React/Vue/jQuery 渲染时规则全捕获）；oneshot 三支柱=L1 确定性搬运天然 97+/多帧评分排除噪声/AI 校准守门不倒退；天花板=JS 交互需 L3 真重写（当前 CSS 级修补）、反爬站白名单拒收
 
-## W13+：活镜像 POC（2026-09-30，用户定位升级"可落地可上线的功能级复刻"）
+## W13+：交互镜像 POC（2026-09-30，用户定位升级"可落地可上线的功能级复刻"）
 
 ### 架构：/lm/<host>/* 融合路由（engine）
 - 本地 live/<path>/index.html 存在 → 校准快照（视觉/结构已对齐）；否则全代理回原站（未锻造页/JS/API 全透传）
@@ -142,7 +142,7 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 
 ### build_live.mjs：dom.html → live/<path>/index.html
 - <base href="/lm/<host><dir>/"> + bootstrap（fetch/XHR patch 绝对域+根相对）+ 全文根相对/动态 import/绝对域重写
-- CSS 用本地校准版（死镜像同款）双保险；图片等资源走代理（版本永远匹配）
+- CSS 用本地校准版（静态镜像同款）双保险；图片等资源走代理（版本永远匹配）
 - thordata 31 页全量转换（纯本地字符串操作，秒级）
 
 ### 验收（Playwright，thordata pricing）
@@ -155,17 +155,17 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 3. 动态 import() 是语言级，不走 fetch patch → import(" 形态内联重写
 4. 正则字面量三层转义炼蛊 → 路径匹配改字符串 split 扫描
 
-## W14：活镜像打磨（2026-10-01，cookiebot 深层/ttq/分 host stub 策略）
+## W14：交互镜像打磨（2026-10-01，cookiebot 深层/ttq/分 host stub 策略）
 
-- magic stub 递归 Proxy 在 apify 挂死（chunk 对 stub 做 spread/序列化 → ownKeys 无限枚举）→ 补 ownKeys/getOwnPropertyDescriptor 仍挂 → **分 host 策略**：thordata 用 MAGIC（实测 CLEAN），apify 用保守 stub + 第三方挂件（cookiebot/tiktok）不剥经代理真跑（活镜像原则）
+- magic stub 递归 Proxy 在 apify 挂死（chunk 对 stub 做 spread/序列化 → ownKeys 无限枚举）→ 补 ownKeys/getOwnPropertyDescriptor 仍挂 → **分 host 策略**：thordata 用 MAGIC（实测 CLEAN），apify 用保守 stub + 第三方挂件（cookiebot/tiktok）不剥经代理真跑（交互镜像原则）
 - thordata 30 页 cssom 的 url("styles/ 归一（引用少一层 ../）
 - 功能性验收：两站 6/6 页全渲染可交互（含 3 次按钮点击遍历）；残留 pageerror 为 cookiebot 深层外围噪声（CookieV2/_env/updatePageElementsList——不影响渲染/数据/主交互），chunk 404 为快照时效（apify 部署频繁，定期重锻刷新）
 
-## W15：活镜像残留清零攻坚（2026-10-01）
+## W15：交互镜像残留清零攻坚（2026-10-01）
 
 ### 已达成
-- **thordata pricing 活镜像：pageerror=0 ✓ 4xx=0 ✓ 完全 CLEAN**
-- apify pricing 活镜像：pageerror=0 ✓ 4xx=0 ✓（pricing 抽样）
+- **thordata pricing 交互镜像：pageerror=0 ✓ 4xx=0 ✓ 完全 CLEAN**
+- apify pricing 交互镜像：pageerror=0 ✓ 4xx=0 ✓（pricing 抽样）
 - 两站 6/6 页（各 3 页抽样）渲染+3 次按钮点击交互全部通过
 
 ### 修复链（每个 404/错误对应一类根因）
@@ -187,7 +187,7 @@ data 首测 87.5%，prices 维度仅 37.5%。追查发现 `$5`/`$14` 这些根�
 
 - **apify 全站：60 页锻造完成，平均还原度 96.8%（55A/4B/1C）**，2 个失败页（jobs/integrations-n8n，均为截图超时偶发）重锻成功至 98.3% A
 - 双站全站实证：apify（Next.js）60 页 96.8% + thordata（Vue）31 页 96.1%（22A/9B/0C）——**"常见项目站点群稳定复刻"达成**
-- 活镜像全站转换：apify 60 页 + thordata 31 页 live/ 全量；抽样 6 页（各站 3 页）全部渲染+可交互
+- 交互镜像全站转换：apify 60 页 + thordata 31 页 live/ 全量；抽样 6 页（各站 3 页）全部渲染+可交互
 - 交付包重打：deliverable/apify.com-2026-10-08（60 页）
 - 重启恢复 SOP 验证：engine/vite 拉起 + queue resume 对账 + 单页重试——全部按设计工作
 

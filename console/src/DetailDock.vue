@@ -43,6 +43,8 @@ const pageName = computed(() => (props.selected ? pageNameOf(props.selected) : '
 const SHAPE_CN = { concentrated: '集中', mixed: '混合', diffuse: '弥散', identical: '一致', negligible: '极小' };
 const shapeLabel = (s) => SHAPE_CN[s] ?? s ?? '—';
 const shapeClass = (s) => (s === 'concentrated' ? 'bad' : s === 'mixed' ? 'mid' : 'ok');
+/** A≥95 / B≥85 / C<85 —— 与 score.json 的 grade 同一条线 */
+const gradeCls = (r) => (r >= 0.95 ? 'ok' : r >= 0.85 ? 'mid' : 'bad');
 
 const seoChecks = computed(() => {
   const sl = props.selected?.seoLite;
@@ -127,7 +129,6 @@ function switchTab(t) {
       <div class="ov-item"><span class="ov-k">类型</span><span class="ov-v" :style="{ color: typeColorThemed(selected.type) }">{{ typeCn(selected.type) }}</span></div>
       <div class="ov-item"><span class="ov-k">层级深度</span><span class="ov-v">{{ selected.depth ?? '-' }}</span></div>
       <div class="ov-item"><span class="ov-k">克隆状态</span><span class="ov-v">{{ selected.forgeState === 'done' ? '已克隆' : selected.forgeState === 'running' ? '克隆中' : selected.forgeState === 'failed' ? '失败' : '未克隆' }}</span></div>
-      <div class="ov-item" v-if="detailScore"><span class="ov-k">还原度</span><span class="ov-v" :style="{ color: detailScore.grade === 'A' ? 'var(--ok)' : 'var(--warn)' }">{{ detailScore.total }}% {{ detailScore.grade }}</span></div>
       <div class="ov-item" v-if="pageMeta[selected.id]?.assets"><span class="ov-k">资产</span><span class="ov-v">{{ fmtBytes(pageMeta[selected.id].assets.bytes) }} · {{ pageMeta[selected.id].assets.count }} 个</span></div>
       <div class="ov-item" v-if="pageMeta[selected.id]?.visualGaps != null"><span class="ov-k">视觉缺口</span><span class="ov-v" :style="{ color: pageMeta[selected.id].visualGaps.visual ? 'var(--bad)' : 'var(--ok)' }">{{ pageMeta[selected.id].visualGaps.visual }}</span></div>
       <div class="ov-item" v-if="pageMeta[selected.id]?.interactions"><span class="ov-k">交互回放</span><span class="ov-v">{{ pageMeta[selected.id].interactions.passed }}/{{ pageMeta[selected.id].interactions.total }}</span></div>
@@ -144,11 +145,45 @@ function switchTab(t) {
       <div class="panel-sec-name">情报摘要（已入库）</div>
       <div class="ov-text">标题 {{ detailIntel.headings?.length ?? 0 }} · 价格 {{ detailIntel.prices?.length ?? 0 }} · CTA {{ detailIntel.cta?.length ?? 0 }} · 链接 {{ detailIntel.links?.length ?? 0 }}</div>
     </div>
+
+    <!-- 还原度就摆在详情里。此前这里只有一个「分数 JSON」下载链接 —— 想知道自己
+         这一页到底差在哪，得先把文件下下来自己看，那不是一个界面的做法。 -->
+    <div class="ov-sec" v-if="detailScore">
+      <div class="panel-sec-name">还原度（可核验口径）</div>
+      <div class="q-list">
+        <div class="q-row">
+          <span class="q-k">视觉</span>
+          <span class="q-v" :class="gradeCls(detailScore.pixel)">
+            {{ (detailScore.pixel * 100).toFixed(2) }}%
+            <i class="q-file">原站与镜像同视口截图逐像素比对 —— 对外唯一可核验的分数</i>
+          </span>
+        </div>
+        <div class="q-row" v-if="detailScore.dom">
+          <span class="q-k">结构</span>
+          <span class="q-v">{{ ((detailScore.dom.dom ?? 0) * 100).toFixed(1) }}%<i class="q-file">与捕获的 DOM 自比，辅助项</i></span>
+        </div>
+        <div class="q-row" v-if="detailScore.data">
+          <span class="q-k">数据</span>
+          <span class="q-v">{{ ((detailScore.data.data ?? 0) * 100).toFixed(1) }}%<i class="q-file">抽取字段覆盖率，辅助项</i></span>
+        </div>
+        <div class="q-row">
+          <span class="q-k">综合</span>
+          <span class="q-v" :class="gradeCls(detailScore.total / 100)">{{ detailScore.total }} · {{ detailScore.grade }}</span>
+        </div>
+      </div>
+      <div class="score-note">
+        口径 0.5×视觉 + 0.3×结构 + 0.2×数据；等级 A≥95 / B≥85 / C&lt;85。
+        <a :href="`/${host}/pages/${pageNameOf(selected)}/score.json`" target="_blank" rel="noopener">原始数据 JSON</a>
+      </div>
+      <div class="refine" v-if="detailScore.breakdown">
+        <div class="refine-bar"><i :style="{ transform: 'scaleX(' + (detailScore.breakdown.refinable || 0) + ')' }"></i></div>
+        <span>剩余差异里可修的静态部分 {{ ((detailScore.breakdown.refinable || 0) * 100).toFixed(0) }}% · 动画噪声 {{ ((detailScore.breakdown.dynamicShare || 0) * 100).toFixed(0) }}%</span>
+      </div>
+    </div>
     <div class="dock-quick" v-if="selected.forgeState === 'done'">
-      <a :href="`/${host}/pages/${pageNameOf(selected)}/clone/index.html`" target="_blank" rel="noopener">打开克隆</a>
-      <a :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener">活镜像</a>
-      <a :href="`/${host}/compare.html?p=${pageNameOf(selected)}`" target="_blank" rel="noopener">同步对比</a>
-      <a :href="`/${host}/pages/${pageNameOf(selected)}/score.json`" target="_blank" rel="noopener">分数 JSON</a>
+      <a :href="`/${host}/pages/${pageNameOf(selected)}/clone/index.html`" target="_blank" rel="noopener" title="静态镜像：剥离脚本、资产本地化，离线可开">静态镜像</a>
+      <a :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener" title="交互镜像：保留脚本、资源实时回原站。注意纯前端渲染站的客户端路由会把 /lm 前缀当成真实路径，可能落到它自己的 404">交互镜像</a>
+      <a :href="`/${host}/compare.html?p=${pageNameOf(selected)}`" target="_blank" rel="noopener" title="左右同步滚动，原站与静态镜像逐段对照">同步对比</a>
     </div>
     <div class="forge-cta" v-if="selected.forgeState !== 'done' && selected.forgeState !== 'running'">
       <button class="forge-btn" @click="$emit('open-forge')"><Icon name="bolt" decorative /> 开始克隆此页</button>
@@ -161,7 +196,11 @@ function switchTab(t) {
 
   <!-- SEO tab -->
   <div v-show="detailTab === 'seo'">
-    <div class="seo-note">这是侦察期轻量检查（title/description/H1/alt/OG/lang）；完整 40+ 项审计在「SEO 审计」报告中产出。</div>
+    <div class="seo-note">
+      <b>侦察时的轻量体检</b>（6 项：title / description / H1 / 图片 alt / OG / lang）。
+      侦察一次就把全站每页都过一遍，用来快速找出问题页。
+      完整的 <b>56 条规则、六分类评分</b>在站点级的「SEO 审计」报告里出 —— 那是另一件事。
+    </div>
     <div class="seo-list" v-if="selected.seoLite">
       <div class="seo-row" :class="seoChecks.title.ok ? 'ok' : 'warn'"><span class="seo-k">Title</span><span>{{ seoChecks.title.msg }}</span></div>
       <div class="seo-row" :class="seoChecks.desc.ok ? 'ok' : 'warn'"><span class="seo-k">Description</span><span>{{ seoChecks.desc.msg }}</span></div>
@@ -170,11 +209,26 @@ function switchTab(t) {
       <div class="seo-row" :class="seoChecks.og.ok ? 'ok' : 'warn'"><span class="seo-k">OG 标签</span><span>{{ seoChecks.og.msg }}</span></div>
       <div class="seo-row" :class="seoChecks.lang.ok ? 'ok' : 'warn'"><span class="seo-k">lang 属性</span><span>{{ seoChecks.lang.msg }}</span></div>
     </div>
-    <div class="seo-note" v-else>该页侦察于旧版引擎（无 SEO 画像）。重新侦察本站即可获得全部页面的 SEO 剖析。</div>
+    <div class="seo-note" v-else>
+      这一页没有 SEO 画像。两种可能：<b>该站是旧版引擎侦察的</b>（那时还不采集 SEO 信号），
+      或者<b>这页是单独克隆的、不在侦察清单里</b>。
+      对该站重新跑一次侦察（星图顶部输入域名 → 侦察），全部页面都会有这份画像。
+    </div>
   </div>
 
   <!-- 质检 tab -->
   <div v-show="detailTab === 'quality'">
+    <div class="seo-note">
+      <b>质检</b>把这一页「还原度之外」的几项质量证据汇总在一起。
+      它们来自<b>不同的检查、在不同的时机产生</b>，跑过的才有数据：
+      <table class="q-when">
+        <tr><td>差异形态</td><td>每次克隆自动算（像素定谳阶段）</td></tr>
+        <tr><td>AI 校准曲线</td><td>每次克隆自动（校准阶段，无静态差异时自动豁免）</td></tr>
+        <tr><td>多视口视觉 / 交互回放</td><td><b>按需</b>跑到才跑 —— 点下面的「运行本页体检」或星图的「全站体检」</td></tr>
+        <tr><td>资产缺口</td><td><b>按需</b> —— 报告 → 资产缺口 → 运行扫描</td></tr>
+        <tr><td>交互镜像离线资源</td><td><b>按需</b> —— 导出交互镜像时加 <code>--heal --strict</code></td></tr>
+      </table>
+    </div>
     <div class="seo-note" v-if="detailQuality.loading">加载质检数据…</div>
     <template v-else>
       <div class="ov-sec">
@@ -186,7 +240,7 @@ function switchTab(t) {
           </div>
           <div class="q-row"><span class="q-k">综合</span><span class="q-v">{{ (detailQuality.verify.overall * 100).toFixed(1) }}% {{ detailQuality.verify.grade }}</span></div>
           <div class="q-row" v-if="detailQuality.verify.minViewport"><span class="q-k">最差视口</span><span class="q-v" :class="detailQuality.verify.minViewport.score >= 0.95 ? 'ok' : detailQuality.verify.minViewport.score >= 0.85 ? 'mid' : 'bad'">{{ detailQuality.verify.minViewport.name }} {{ (detailQuality.verify.minViewport.score * 100).toFixed(1) }}% {{ detailQuality.verify.minViewport.grade }}</span></div>
-          <div class="q-row" v-if="detailQuality.verify.minViewport && detailQuality.verify.minViewport.score < 0.9"><span class="q-k">建议</span><span class="q-v mid">该视口差异较大（多为客户端响应式变体/JS 渲染），优先使用活镜像</span></div>
+          <div class="q-row" v-if="detailQuality.verify.minViewport && detailQuality.verify.minViewport.score < 0.9"><span class="q-k">建议</span><span class="q-v mid">该视口差异较大（多为客户端响应式变体/JS 渲染），优先使用交互镜像</span></div>
         </div>
         <div v-else class="seo-note">未运行多视口验证 <button class="wv-primary" style="margin-left:8px" @click="$emit('verify')">运行本页体检</button>（等价命令：<code>verify {{ host }} {{ pageNameOf(selected) }}</code>）</div>
         <!-- 差异**形态**：只给百分比的话，用户分不清"少了一张图"（集中）和"文字抗锯齿略不同"（弥散） -->
@@ -226,14 +280,14 @@ function switchTab(t) {
         <div v-else class="seo-note">未扫描：报告 → 资产缺口 → 运行扫描</div>
       </div>
       <div class="ov-sec">
-        <div class="panel-sec-name">活镜像离线资源</div>
+        <div class="panel-sec-name">交互镜像离线资源</div>
         <div v-if="detailQuality.liveGaps" class="q-list">
           <div class="q-row"><span class="q-k">离线缺口</span><span class="q-v" :class="detailQuality.liveGaps.unresolvedCount ? 'bad' : 'ok'">{{ detailQuality.liveGaps.unresolvedCount ?? 0 }}</span></div>
           <div class="q-row" v-for="(u, i) in (detailQuality.liveGaps.unresolved || []).slice(0, 8)" :key="i">
             <span class="q-k">缺</span><span class="q-v" :title="u">{{ String(u).slice(0, 60) }}</span>
           </div>
         </div>
-        <div v-else class="seo-note">尚无活镜像体检报告（导出时加 --heal --strict 生成 health.json）</div>
+        <div v-else class="seo-note">尚无交互镜像体检报告（导出时加 --heal --strict 生成 health.json）</div>
       </div>
       <div class="ov-sec">
         <div class="panel-sec-name">克隆期 CSS 缺口</div>
@@ -368,7 +422,7 @@ function switchTab(t) {
       <div class="compare-link" v-if="forge.done">
         <a :href="`/${host}/compare.html?p=${forge.pageName}`" target="_blank" rel="noopener"><Icon name="swap" decorative /> 同步滚动对比</a>
         <span class="sep">·</span>
-        <a :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">⚡ 活镜像</a>
+        <a :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">⚡ 交互镜像</a>
         <span class="sep">·</span>
         <a :href="`/${host}/pages/${forge.pageName}/clone/index.html`" target="_blank" rel="noopener">静态镜像</a>
       </div>

@@ -42,7 +42,7 @@ export const KIND_CN = {
   watch: '变更监控',
   assets: '资产扫描',
   matrix: '跨站对标',
-  live: '活镜像导出',
+  live: '交互镜像导出',
   verify: '保真验证',
   recon: '侦察',
   forge: '克隆',

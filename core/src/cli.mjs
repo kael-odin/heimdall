@@ -9,7 +9,7 @@
  *   heimdall watch <host> [--max N]            站点变更监控
  *   heimdall verify <host> <page>|--all        多视口保真验证
  *   heimdall tokens <host> [--pages N]         设计 token 提取
- *   heimdall live <host> [--offline]           导出可部署活镜像包
+ *   heimdall live <host> [--offline]           导出可部署交互镜像包
  *   heimdall dedupe <host> [--dry-run]         资产 CAS 去重
  *   heimdall deliver <host>                    打包交付物
  *   heimdall serve [port]                      启动引擎/控制台服务
@@ -42,7 +42,7 @@ export const COMMANDS = {
   mcp:     { script: 'src/mcp/server.mjs', usage: 'mcp', desc: 'MCP stdio 服务器（把 Heimdall 能力暴露给 agent 客户端）' },
   browser: { script: 'src/browser/bookmarklet.mjs', usage: 'browser [--api URL] [--token T]', desc: '生成浏览器书签入口安装页（在任意页面一键送入 Heimdall）' },
   sandbox: { script: 'src/sandbox/serve.mjs', usage: 'sandbox <host> <page> [--port 8090] [--reset]', desc: '沙盒改造台（改 HTML/CSS + 与原版实时对比）' },
-  live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <dir>] [--rebuild] [--root mirror] [--heal] [--materialize-har] [--strict]', desc: '导出可部署活镜像包（HAR 回放 + Docker + drop-in 根路径）' },
+  live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <dir>] [--rebuild] [--root mirror] [--heal] [--materialize-har] [--strict]', desc: '导出可部署交互镜像包（HAR 回放 + Docker + drop-in 根路径）' },
   dedupe:  { script: 'src/store/dedupe.mjs', usage: 'dedupe <host> [--dry-run] [--dir <path>]', desc: '内容寻址资产去重（硬链接）' },
   storage: { script: 'src/audit/storage.mjs', usage: 'storage [--out <file>]', desc: '磁盘占用盘点（站点/CAS/交付包）' },
   'cas-gc': { script: 'src/audit/cas-gc.mjs', usage: 'cas-gc [--apply] [--json]', desc: '回收 CAS 孤儿（默认仅预览，--apply 真回收）' },

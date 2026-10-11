@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * live/export — 生成"可直接部署"的活镜像包（L3）
+ * live/export — 生成"可直接部署"的交互镜像包（L3）
  *
  * 用法:
  *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict]
@@ -9,7 +9,7 @@
  *   serve.mjs / har.mjs        零依赖 Node 服务器
  *   heimdall-live.json         配置（host/origin/port/offline/replayApi）
  *   har.json                   清洗后的 HAR（本地资源与 API 回放）
- *   site/live/**               build_live 的活镜像页面
+ *   site/live/**               build_live 的交互镜像页面
  *   site/static/<host>/**      克隆页 / CSS / 资产 / 档案 / 对比
  *   landing.html               落地页（镜像/档案/报告入口）
  *   Dockerfile / docker-compose.yml / README.md / checksums.json
@@ -193,7 +193,7 @@ a.card:hover{border-color:rgba(34,211,238,.6)}a.card b{display:block;color:#22d3
 <h1>${host}</h1>
 <div class="meta">${OFFLINE ? '离线模式（仅本地快照 + HAR 回放）' : '在线模式（本地优先 · 未捕获资源回源）'} · HAR ${stats.entries} 条 · 离线资源 ${health.assets.unresolved === 0 ? '全量可用' : health.assets.unresolved + ' 条未覆盖'} · 端口 ${PORT}</div>
 <div class="grid">
-<a class="card" href="/lm/${host}/"><b>打开活镜像</b><span>本地快照优先 · 未锻造页回源原站 · 支持 HAR 回放</span></a>
+<a class="card" href="/lm/${host}/"><b>打开交互镜像</b><span>本地快照优先 · 未锻造页回源原站 · 支持 HAR 回放</span></a>
 ${hasArchive ? `<a class="card" href="/static/${host}/index.html"><b>克隆档案</b><span>逐页还原度与卡片墙</span></a>` : ''}
 ${hasCompare ? `<a class="card" href="/static/${host}/compare.html"><b>同步滚动对比</b><span>原站快照 vs 镜像</span></a>` : ''}
 ${hasSeo ? `<a class="card" href="/static/${host}/seo/seo.html"><b>SEO 审计报告</b><span>六分类评分与逐页问题</span></a>` : ''}
@@ -206,7 +206,7 @@ writeFileSync(join(OUT, 'Dockerfile'), `FROM node:22-alpine\nWORKDIR /app\nCOPY 
 writeFileSync(join(OUT, 'docker-compose.yml'), `services:\n  heimdall-live:\n    build: .\n    ports:\n      - "${PORT}:${PORT}"\n    restart: unless-stopped\n`);
 writeFileSync(join(OUT, 'README.md'), `# Heimdall Live Mirror · ${host}
 
-可直接部署的活镜像包（L3）：本地快照优先 → HAR 回放 → 原站代理。
+可直接部署的交互镜像包（L3）：本地快照优先 → HAR 回放 → 原站代理。
 
 ## 运行
 

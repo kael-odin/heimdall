@@ -7,7 +7,7 @@
  *   jobs    —— 引擎持久化的历史（重启后仍可查，见 /api/history）
  * 混在一起会让人以为历史任务也能点开看进度，所以历史行标了 .history 且不可点。
  */
-import SitePicker from './SitePicker.vue';
+import SiteBar from './SiteBar.vue';
 import Icon from './Icon.vue';
 import { taskState, taskLabel, fmtTime, fmtDuration, kindCn } from './format.js';
 
@@ -17,8 +17,9 @@ defineProps({
   sites: { type: Array, default: () => [] },
   host: { type: String, default: '' },
   engine: { type: Object, default: () => ({}) },
+  actions: { type: Array, default: () => [] },
 });
-defineEmits(['pick', 'audit', 'close']);
+defineEmits(['pick', 'action', 'close']);
 
 /** 单行右侧的读数：不同任务类型看的东西不一样 */
 function readingOf(t) {
@@ -34,7 +35,7 @@ function readingOf(t) {
     <div class="wv-head">
       <b>任务中心</b>
       <span class="wv-stat">引擎 {{ engine.ok ? '在线' : '离线' }} · 克隆槽 {{ engine.forge?.slots ?? 0 }}/{{ engine.forge?.max ?? 2 }} · 本会话 {{ tasks.length }} 个任务</span>
-      <SitePicker :sites="sites" :host="host" :busy="!!engine.audit" @pick="$emit('pick', $event)" @audit="$emit('audit')" />
+      <SiteBar :sites="sites" :host="host" :actions="actions" @pick="$emit('pick', $event)" @action="$emit('action', $event)" />
       <button class="wv-close" @click="$emit('close')" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
     </div>
     <div class="wv-rows">
