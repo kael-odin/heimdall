@@ -15,6 +15,7 @@ import { loadProfile } from '../site-profile.mjs';
 import { classifyPath, compileExtraRules } from './classify.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { sessionContext } from '../session/store.mjs';
+import { canonUrl } from '../url-canon.mjs';
 
 const TARGET = requireArg(process.argv[2], 'node src/crawler/recon.mjs <url> [maxPages] [maxDepth]', '目标 URL');
 const MAX_PAGES = Number(process.argv[3] ?? 40);
@@ -24,6 +25,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 function hostOf(u) { return new URL(u).hostname; }
 function stripWww(h) { return h.replace(/^www\./, ''); }
 function pathOf(u) { try { return new URL(u).pathname.replace(/\/$/, '') || '/'; } catch { return '/'; } }
+
 
 // 事件输出：@@EVENT@@ 前缀行，engine-server 解析转发 SSE（人类日志走 console.error）
 const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
@@ -90,7 +92,7 @@ try {
     if (sitemapUrls.length) break;
   }
 } catch {}
-const sitemapSame = [...new Set(sitemapUrls.filter(u => u.startsWith(ORIGIN)))].slice(0, 500);
+const sitemapSame = [...new Set(sitemapUrls.map(canonUrl).filter(u => u && u.startsWith(ORIGIN)))].slice(0, 500);
 log(`  sitemap urls (same-origin): ${sitemapSame.length}`);
 emit({ kind: 'sitemap', count: sitemapSame.length });
 
@@ -102,9 +104,9 @@ const nodes = new Map();   // url -> node
 const failures = [];       // 失败页清单（诚实记录，不静默丢弃）
 const edges = [];          // {from,to} (url)
 // 双队列：BFS 发现优先（保证结构层页面入图），sitemap 仅作补充
-const bfsQueue = [{ url: LANDING.replace(/\/$/, ''), depth: 0 }];
+const bfsQueue = [{ url: canonUrl(LANDING), depth: 0 }];
 const smQueue = [];
-const bfsSeen = new Set([LANDING.replace(/\/$/, '')]);   // 仅 BFS 自身去重，sitemap 不得预占
+const bfsSeen = new Set([canonUrl(LANDING)]);   // 仅 BFS 自身去重，sitemap 不得预占
 for (const u of sitemapSame) smQueue.push({ url: u, depth: 99 });
 
 let idSeq = 0;
@@ -149,11 +151,12 @@ async function visit({ url, depth }) {
       [...document.querySelectorAll('a[href]')]
         .map(a => { try { return new URL(a.getAttribute('href'), location.href).href.split('#')[0]; } catch { return null; } })
         .filter(u => u && u.startsWith(o) && !/\.(pdf|zip|png|jpe?g|svg|mp4|xml|json)$/i.test(u)), ORIGIN);
-    for (const to of [...new Set(links)]) {
+    const canon = [...new Set(links.map(canonUrl).filter(Boolean))];
+    for (const to of canon) {
       edges.push({ from: url, to });
       if (!bfsSeen.has(to)) { bfsSeen.add(to); bfsQueue.push({ url: to, depth: depth + 1 }); }
     }
-    emit({ kind: 'edges', from: url, tos: [...new Set(links)].slice(0, 40) });
+    emit({ kind: 'edges', from: url, tos: canon.slice(0, 40) });
   } catch (e) {
     log('[visit-fail]', url.slice(0, 60), String(e).slice(0, 100));
     failures.push({ url, reason: String(e).slice(0, 200) });

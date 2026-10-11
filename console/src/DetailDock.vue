@@ -10,7 +10,7 @@
  * 面板打开时父组件会隐藏右下角的「克隆档案」链接 —— 本面板是全高右侧浮层，
  * 会把它整块盖住（实测 154×32），留着就等于点不到。
  */
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import Icon from './Icon.vue';
 import { API, apiHeaders, wsJson } from './api.js';
 import { typeColor, typeCn } from './types.js';
@@ -36,6 +36,24 @@ const STAGES = { capture: '捕获骨架', build: '注入皮肤', shot: '渲染�
  */
 const motion = computed(() => props.pageMeta[props.selected?.id]?.motion ?? null);
 const motionRows = computed(() => Object.values(motion.value?.drivers ?? {}).filter(d => d.count > 0));
+
+/** 运行计时：只在真的跑着的时候每秒 tick —— 空闲的会话不该养一个空转的定时器 */
+const nowTick = ref(Date.now());
+let tickTimer = null;
+onMounted(() => {
+  tickTimer = setInterval(() => { if (props.forge && !props.forge.done) nowTick.value = Date.now(); }, 1000);
+});
+onBeforeUnmount(() => { if (tickTimer) clearInterval(tickTimer); });
+
+const elapsedText = computed(() => {
+  const f = props.forge;
+  if (!f) return '0 秒';
+  const s = Math.max(0, Math.round(((f.endedAt ?? nowTick.value) - f.startedAt) / 1000));
+  return s < 60 ? `${s} 秒` : `${Math.floor(s / 60)} 分 ${String(s % 60).padStart(2, '0')} 秒`;
+});
+
+/** 截图的 cache-buster：重新克隆之后两张图必须刷新，不能吃浏览器缓存 */
+const shotStamp = computed(() => props.forge?.endedAt ?? props.pageMeta[props.selected?.id]?.updatedAt ?? '');
 
 const detailTab = ref('overview');
 const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
@@ -389,6 +407,20 @@ function switchTab(t) {
       <button class="forge-btn" @click="$emit('open-forge')">⚡ 开始克隆此页</button>
       <div class="forge-note">六阶段：捕获骨架 → 注入皮肤 → 渲染校准 → AI 校准 → 像素定谳 → 情报入库</div>
     </div>
+
+    <!-- 已有产物：把证据摆出来。
+         此前这个 tab 在"任务结束 / 刷新过页面"之后只剩一个「重新克隆」按钮 —— 用户点进来
+         看到的是空面板，而磁盘上其实躺着两张可直接对比的截图与一份评分。 -->
+    <div v-if="selected.forgeState === 'done' && !forge" class="shot-pair">
+      <figure class="shot">
+        <figcaption>原站</figcaption>
+        <img :key="'s' + shotStamp" :src="`/static/${host}/pages/${pageNameOf(selected)}/shot-src.png`" alt="原站首屏截图" />
+      </figure>
+      <figure class="shot">
+        <figcaption>静态镜像</figcaption>
+        <img :key="'c' + shotStamp" :src="`/static/${host}/pages/${pageNameOf(selected)}/shot-clone.png`" alt="静态镜像首屏截图" />
+      </figure>
+    </div>
     <div class="forge-cta" v-if="!forge && selected.forgeState === 'done'">
       <button class="forge-btn alt" @click="$emit('open-forge')"><Icon name="refresh" decorative /> 重新克隆此页</button>
     </div>
@@ -399,6 +431,17 @@ function switchTab(t) {
              :class="forge.stages[key]">
           <span class="idx">{{ String(i + 1).padStart(2, '0') }}</span>{{ label }}<span class="dot"></span>
         </div>
+      </div>
+
+      <!-- 实时窗口：子进程正在打印什么。整站克隆一页要几分钟，此前界面上唯一的变化
+           就是阶段条上一个圆点变色 —— 用户看不出它到底在动还是卡住了。 -->
+      <div class="live surface">
+        <div class="live-head">
+          <span class="live-dot" :class="{ on: !forge.done }"></span>
+          <span>{{ forge.done ? (forge.failed ? '已结束（失败）' : '已完成') : '正在运行' }} · 已用 {{ elapsedText }}</span>
+        </div>
+        <pre class="live-log" v-if="forge.logs.length">{{ forge.logs.slice(-14).join('\n') }}</pre>
+        <div class="live-log pending" v-else>等待子进程输出…</div>
       </div>
 
       <div class="verdict surface" v-if="forge.score">

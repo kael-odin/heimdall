@@ -261,6 +261,26 @@ const push = (t, ev) => {
   t.watchdog?.touch();
 };
 
+/** 日志环缓冲的容量：够看"现在在干什么"，又不至于把内存当日志仓库 */
+const LOG_KEEP = 200;
+
+/**
+ * 子进程的普通输出（非 @@EVENT@@ 行）转成**日志事件**，只给"正在跑"的界面看。
+ *
+ * 为什么与 push 分开：push 会把每个事件写进 sqlite（jobs.db），而捕获阶段每下一张图
+ * 就打印一行 —— 一次整站克隆能刷出上万行，进数据库纯属糟蹋。
+ * 这里只留在内存环形缓冲里（最近 200 行），SSE 实时推给订阅者，任务结束后随对象消失。
+ */
+const emitLog = (t, raw) => {
+  const line = String(raw).replace(/\s+$/, '');
+  if (!line) return;
+  t.logs.push(line);
+  if (t.logs.length > LOG_KEEP) t.logs.splice(0, t.logs.length - LOG_KEEP);
+  const ev = { kind: 'log', line };
+  for (const res of t.subs) res.write(`data: ${JSON.stringify(ev)}\n\n`);
+  t.watchdog?.touch();
+};
+
 /** 杀掉子进程树。win32 上普通 kill 不带走孙进程（Chromium），必须 taskkill /T。 */
 function killTree(child, signal = 'SIGKILL') {
   if (!child || child.exitCode !== null) return;
@@ -281,7 +301,7 @@ function killTask(t, reason) {
 
 function makeTask(kind, url) {
   const id = `${kind[0]}${String(++seq).padStart(3, '0')}`;
-  const t = { id, kind, url, status: 'running', events: [], subs: new Set(), child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false, killed: null, timeoutMs: 0, stallMs: 0 };
+  const t = { id, kind, url, status: 'running', events: [], logs: [], subs: new Set(), child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false, killed: null, timeoutMs: 0, stallMs: 0 };
   tasks.set(id, t);
   jobStore?.upsert({ id, kind, url, status: 'running', createdAt: t.createdAt });
   return t;
@@ -311,11 +331,14 @@ function spawnTask(t, script, args, opts = {}) {
     let i;
     while ((i = buf.indexOf('\n')) >= 0) {
       const line = buf.slice(0, i); buf = buf.slice(i + 1);
-      if (!line.startsWith('@@EVENT@@')) continue;
+      if (!line.startsWith('@@EVENT@@')) { emitLog(t, line); continue; }
       try { push(t, JSON.parse(line.slice(9))); } catch {}
     }
   });
-  child.stderr.on('data', (d) => { t.watchdog?.touch(); process.stderr.write(`[${t.id}] ` + d.toString()); });
+  child.stderr.on('data', (d) => {
+    for (const line of String(d).split('\n')) emitLog(t, line);
+    process.stderr.write(`[${t.id}] ` + d.toString());   // 引擎自己的终端也照旧显示，便于排查
+  });
   child.on('exit', (code) => {
     t.watchdog?.stop();
     t.status = t.cancelRequested ? 'cancelled' : code === 0 ? 'done' : 'failed';
@@ -812,6 +835,9 @@ createServer(async (req, res) => {
     const t = tasks.get(u.searchParams.get('task') ?? '');
     if (!t) return json(res, 404, { error: 'no such task' });
     res.writeHead(200, { ...CORS, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+    // 重放：先日志（它描述"过程"），再事件（它描述"状态"）。
+    // 日志不进 sqlite（见 emitLog），所以只在这里的内存缓冲里重放。
+    if (t.logs?.length) for (const line of t.logs) res.write(`data: ${JSON.stringify({ kind: 'log', line })}\n\n`);
     for (const ev of t.events) res.write(`data: ${JSON.stringify(ev)}\n\n`);   // 重放
     if (t.status !== 'running') { res.end(); return; }
     t.subs.add(res);
@@ -926,7 +952,10 @@ createServer(async (req, res) => {
       if (!existsSync(p)) continue;
       try {
         const health = JSON.parse(readFileSync(p, 'utf8'));
-        return json(res, 200, { ...health, bundle: d, bundlePath: join(DELIVERABLE, d) });
+        // 与上一次导出的差异（live/changes.mjs 产出）——"这次多了什么"要能读出来
+        let changes = null;
+        try { changes = JSON.parse(readFileSync(join(DELIVERABLE, d, 'changes.json'), 'utf8')); } catch {}
+        return json(res, 200, { ...health, bundle: d, bundlePath: join(DELIVERABLE, d), changes });
       } catch {}
     }
     return json(res, 404, { error: 'no live health report', host });

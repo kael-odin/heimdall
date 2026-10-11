@@ -12,7 +12,7 @@
  *   site/live/**               build_live 的交互镜像页面
  *   site/static/<host>/**      克隆页 / CSS / 资产 / 档案 / 对比
  *   landing.html               落地页（镜像/档案/报告入口）
- *   Dockerfile / docker-compose.yml / README.md / checksums.json
+ *   Dockerfile / docker-compose.yml / README.md / checksums.json / changes.json
  *
  * 部署:
  *   node serve.mjs --port 8080
@@ -27,6 +27,7 @@ import { WORKSPACE, DELIVERABLE, localDateStamp } from '../paths.mjs';
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { scanLiveBundle } from './health.mjs';
 import { healBundle, materializeHar, localizeQueryEntries, rewriteHtmlRefs } from './heal.mjs';
+import { diffChecksums, changesLine } from './changes.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -62,6 +63,10 @@ if (has('rebuild') || !existsSync(join(BASE, 'live'))) {
 
 // ---------- 2. 目录准备 ----------
 const siteDir = join(OUT, 'site');
+// 上一次导出的校验和**必须在这里读**：下面 rmSync 会把整个目录清掉，
+// 而同一天重复导出落的又是同一个目录 —— 清完再读就只能和自己比（表现为永远"首次导出"）。
+let prevChecksums = null;
+try { prevChecksums = JSON.parse(readFileSync(join(OUT, 'checksums.json'), 'utf8')); } catch { /* 首次导出 */ }
 if (existsSync(OUT)) {
   const resolved = OUT.toLowerCase();
   if (!resolved.startsWith(DELIVERABLE.toLowerCase())) { console.error('[export] refusing to clean outside deliverable:', OUT); process.exit(1); }
@@ -257,18 +262,24 @@ links.missing            指向未镜像页面的站内链接 → 点了会跳�
 - 仅供内部分析，禁止公开部署或商用。
 `);
 
-// ---------- 5. 校验和清单 ----------
+// ---------- 5. 校验和清单 + 与上一次导出的差异 ----------
+// prevChecksums 在"目录准备"那一步就已经读好了（那里会把旧目录清掉）
 const manifestFiles = [];
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     const st = statSync(p);
     if (st.isDirectory()) walk(p);
-    else if (st.isFile() && !p.endsWith('checksums.json')) manifestFiles.push({ p: p.slice(OUT.length + 1).split('\\').join('/'), s: st.size, h: createHash('sha256').update(readFileSync(p)).digest('hex') });
+    // 两个文件自身不入清单：它们是**关于这份清单**的元数据，
+    // 算了会让每次重导都报"changes.json 变了"这种无意义的噪声
+    else if (st.isFile() && !p.endsWith('checksums.json') && !p.endsWith('changes.json')) manifestFiles.push({ p: p.slice(OUT.length + 1).split('\\').join('/'), s: st.size, h: createHash('sha256').update(readFileSync(p)).digest('hex') });
   }
 };
 walk(OUT);
 writeFileSync(join(OUT, 'checksums.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), files: manifestFiles }, null, 0));
+const changes = diffChecksums(prevChecksums, manifestFiles);
+writeFileSync(join(OUT, 'changes.json'), JSON.stringify(changes, null, 2));
+console.log(`[export] ${changesLine(changes)}`);
 
 const mb = (n) => (n / 1024 / 1024).toFixed(1) + 'MB';
 console.log(`[export] bundle -> ${OUT}`);

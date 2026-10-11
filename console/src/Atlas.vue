@@ -296,6 +296,17 @@ const bump = () => { gNodes.value = [...nodes]; gLinks.value = [...edges]; gTick
 
 let nodes = [], edges = [];
 const urlNode = new Map();
+/**
+ * 星图/清单里识别"同一个页面"的键：**去掉尾斜杠**（与引擎侧 src/url-canon.mjs 同一口径）。
+ *
+ * 不加这个，`https://x` 与 `https://x/` 就是两个节点 —— 星图上长出两颗重叠的星球，
+ * 页面清单里两行一模一样的路径；而产物目录名是按去尾斜杠的 path 算的，
+ * 于是克隆其中一条会让另一条也显示"已克隆"。
+ *
+ * 引擎侧（recon.mjs）已经做了归一，但**实时侦察的 SSE 路径当时漏了**：
+ * 页面在侦察过程中就重复长出来，直到侦察结束重读 atlas（buildStatic 会去重）才恢复。
+ */
+const urlKey = (u) => String(u ?? '').replace(/\/+$/, '');
 let pendingEdges = [];
 let es = null;
 
@@ -324,11 +335,13 @@ function buildStatic(a) {
   nodes = []; edges = []; urlNode.clear(); pendingEdges = [];
   const seenUrls = new Set();
   for (const n of a.nodes) {
-    const key = (n.url || '').replace(/\/$/, '');
+    const key = urlKey(n.url);
     if (seenUrls.has(key)) continue;   // 去重：https://x 与 https://x/ 视为同一页
     seenUrls.add(key);
     const ringIdx = n.depth === 0 ? 0 : n.depth === 1 ? 1 : 2;
-    nodes.push(makeNode(n, ringIdx));
+    const node = makeNode(n, ringIdx);
+    nodes.push(node);
+    urlNode.set(key, node);   // 供后续 edges 事件按归一化键查找
   }
   const idx = Object.fromEntries(nodes.map(n => [n.id, n]));
   const byFrom = {};
@@ -369,10 +382,12 @@ function listen(taskId) {
   es.onmessage = (m) => {
     let ev; try { ev = JSON.parse(m.data); } catch { return; }
     if (ev.kind === 'page') {
+      const k = urlKey(ev.url);
+      if (urlNode.has(k)) return;   // 同一页的另一种写法（尾斜杠）—— 不再长第二颗星球
       const ringIdx = ev.depth === 0 ? 0 : ev.depth === 1 ? 1 : 2;
       const node = makeNode(ev, ringIdx);
       nodes.push(node);
-      urlNode.set(ev.url, node);
+      urlNode.set(k, node);
       statusText.value = '新星点亮';
       bump();
     } else if (ev.kind === 'edges') {
@@ -423,10 +438,10 @@ async function finishRecon(taskId) {
 setInterval(() => {
   for (let i = pendingEdges.length - 1; i >= 0; i--) {
     const pe = pendingEdges[i];
-    const f = urlNode.get(pe.from);
+    const f = urlNode.get(urlKey(pe.from));
     let added = false;
     for (const to of pe.tos) {
-      const t2 = urlNode.get(to);
+      const t2 = urlNode.get(urlKey(to));
       if (f && t2 && f !== t2) { edges.push(makeLink(f, t2)); added = true; }
     }
     if (added) pendingEdges.splice(i, 1);
@@ -662,6 +677,7 @@ function startForge(node, opts = {}) {
       taskId: null, pageName, url, nodeId: node?.id ?? null,
       stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' },
       score: null, done: false, failed: false, intel: null, rounds: [], skipReason: null, error: null,
+      logs: [],   // 子进程的实时输出（引擎以 {kind:'log'} 推进来）——只保留尾部，见下面的裁剪
       startedAt: Date.now(), endedAt: null,
     });
     tasks.push(task);
@@ -687,6 +703,11 @@ function startForge(node, opts = {}) {
           let ev; try { ev = JSON.parse(m.data); } catch { return; }
           if (ev.kind === 'forge-stage') task.stages[ev.stage] = ev.status;
           else if (ev.kind === 'forge-score') task.score = ev.score;
+          else if (ev.kind === 'log') {
+            // 只留尾部 60 行：日志窗显示的就是"现在在干什么"，不需要翻历史
+            task.logs.push(ev.line);
+            if (task.logs.length > 60) task.logs.splice(0, task.logs.length - 60);
+          }
           else if (ev.kind === 'fixup-round') task.rounds.push(ev);
           else if (ev.kind === 'fixup-skip') task.skipReason = `剩余差异 ${(ev.staticShare * 100).toFixed(1)}% 为动画噪声，AI 校准豁免`;
           else if (ev.kind === 'forge-error') task.failed = true;
@@ -1381,6 +1402,12 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <p>最近导出：<b>{{ liveHealth.bundle }}</b></p>
         <p>离线资源 {{ liveHealth.assets?.local ?? 0 }} 本地 / {{ liveHealth.assets?.har ?? 0 }} HAR 回放 · <b :style="{ color: (liveHealth.assets?.unresolved ?? 0) ? 'var(--warn)' : 'var(--ok)' }">缺口 {{ liveHealth.assets?.unresolved ?? 0 }}</b></p>
         <p class="score-note">页面 {{ liveHealth.pages ?? 0 }}<template v-if="liveHealth.liveMissing">（少 {{ liveHealth.liveMissing }} 页）</template> · 未镜像链接 {{ liveHealth.links?.missing ?? 0 }}</p>
+        <!-- 与上一次导出的差异：增量是"读出来的"，不是靠人回忆上次导了什么 -->
+        <p class="score-note" v-if="liveHealth.changes">
+          与上次导出相比：新增 <b>{{ liveHealth.changes.counts.added }}</b> · 变化 <b>{{ liveHealth.changes.counts.changed }}</b> · 删除 <b>{{ liveHealth.changes.counts.removed }}</b> · 不变 {{ liveHealth.changes.counts.same }}
+          <template v-if="liveHealth.changes.prev">（对比 {{ (liveHealth.changes.prev.at ?? '').slice(0, 16).replace('T', ' ') }} 那一版）</template>
+          <template v-else>（首次导出）</template>
+        </p>
         <!-- 站外引用分两个口径显示。此前只显示 externalAssets，于是
              YouTube 嵌入这类"没有资源扩展名的外链"在界面上完全看不到 ——
              实测 apify 站外引用 1826 条，其中静态资源 1419 条，差额 407 条被隐藏。 -->
@@ -1539,7 +1566,11 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   />
 
   <a class="audit-link" v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">SEO 报告 · {{ auditReport.score }} 分</a>
-  <a class="archive-link" v-if="hudPages > 0 && !dockOpen" :href="`/${host}/index.html`" target="_blank" rel="noopener">克隆档案 · {{ hudPages }} 页</a>
+  <!-- 这个链接指向**克隆档案**（静态镜像的索引页），所以数字必须是"已克隆页数"。
+       此前显示的是 hudPages（侦察抓到的页面数）—— 于是刚克隆完一页，这个数字纹丝不动，
+       看起来像"没算进去"。两个数属于不同的集合，从一个跳到另一个会骗人。 -->
+  <a class="archive-link" v-if="doneCount && !dockOpen" :href="`/${host}/index.html`" target="_blank" rel="noopener"
+     :title="`克隆档案：本站 ${doneCount} 个已克隆页面的索引${hudPages > doneCount ? `（侦察共发现 ${hudPages} 页）` : ''}`">克隆档案 · {{ doneCount }} 页</a>
   <div class="keys" v-if="view === 'atlas' && !forge">
     <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 打开页面详情</span>
   </div>

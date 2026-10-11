@@ -10,6 +10,7 @@ import { chromium } from 'playwright';
 import { analyzeRawHtml } from './raw-html.mjs';
 import { isStructuralUrl } from './pagination.mjs';
 import { sessionContext } from '../session/store.mjs';
+import { canonUrl } from '../url-canon.mjs';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
@@ -72,8 +73,8 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
   const targets = [];
   const seen = new Set();
   const push = (url, depth = 99) => {
-    const clean = url.split('#')[0];
-    if (!clean.startsWith(origin) || seen.has(clean)) return;
+    const clean = canonUrl(url);
+    if (!clean || !clean.startsWith(origin) || seen.has(clean)) return;
     if (/\.(pdf|zip|png|jpe?g|svg|webp|avif|mp4|mp3|xml|json|txt|ico|woff2?)$/i.test(new URL(clean).pathname)) return;
     seen.add(clean);
     targets.push({ url: clean, depth });
