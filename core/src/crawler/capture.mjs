@@ -194,6 +194,42 @@ if (canvases.found.length) {
   console.log(`    canvases rasterized: ${kept}/${canvases.found.length} (${(bytes / 1024).toFixed(0)}KB)`);
 }
 
+// 视频 poster：`<video preload="metadata">` 没有 poster 时浏览器**什么都不画**（纯黑），
+// 而原站那一帧是脚本 play() 之后才有的 —— 镜像里没有脚本，于是整块黑。
+// 实测 linear.app/customers-ramp：客户故事视频独占 386,303 像素的差异，像素分被压到 64.7%。
+//
+// 归零到第 0 帧再截：海报要是**可复现的那一帧**，不是随便撞上的某一帧。
+// 顺带让原站主截图也停在第 0 帧 —— 两边同为第 0 帧，比"各截各的正在播的某一帧"更确定。
+const posterIdx = [];
+{
+  const videoCount = await page.evaluate(() => document.querySelectorAll('video').length);
+  for (let i = 0; i < Math.min(videoCount, 8); i++) {
+    try {
+      await page.evaluate((idx) => {
+        const v = document.querySelectorAll('video')[idx];
+        if (!v) return;
+        try { v.pause(); v.currentTime = 0; } catch { /* 直播流 / 无 src 的视频会抛，跳过 */ }
+      }, i);
+      await page.waitForTimeout(300);
+      const buf = await page.locator('video').nth(i).screenshot({ timeout: 15_000 });
+      if (!buf?.length) continue;
+      mkdirSync(join(OUT, 'assets'), { recursive: true });
+      writeFileSync(join(OUT, 'assets', `video-${i}.png`), buf);
+      posterIdx.push(i);
+    } catch (e) {
+      console.warn(`    video ${i} poster skipped:`, String(e).slice(0, 80));
+    }
+  }
+  if (videoCount) {
+    await page.evaluate((idxs) => {
+      const list = document.querySelectorAll('video');
+      for (const i of idxs) if (list[i]) list[i].setAttribute('data-heimdall-poster', String(i));
+    }, posterIdx);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    console.log(`    video posters: ${posterIdx.length}/${videoCount}`);
+  }
+}
+
 // DOM 探测栈 → 适配器（配方可用 adapter 字段强制指定）
 const domProbe = await page.content();
 const adapter = pickAdapter(domProbe, profile);

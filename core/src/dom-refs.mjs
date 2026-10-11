@@ -104,6 +104,35 @@ export function rasterizeCanvases(html, { assetDir = 'assets' } = {}) {
 }
 
 /**
+ * 给 `<video>` 补上 poster。
+ *
+ * 为什么必须补：`<video preload="metadata">` 且没有 poster 时，浏览器**什么都不画** ——
+ * 不是画第一帧，是纯黑。而原站那一帧是脚本调 `.play()` 之后才有的，镜像里没有脚本。
+ * 结果就是整块黑：实测 linear.app/customers-ramp 的客户故事视频占 386,303 个像素的差异，
+ * 占满整个"最大差异块"，像素分被压到 64.7% —— 而它跟"复刻得像不像"毫无关系，
+ * 纯粹是"我们没给它一张静态图"。
+ *
+ * poster 在 capture 阶段截（见 capture.mjs 的 video poster 步骤）：把视频归零到第 0 帧，
+ * 截图存成 `assets/video-<n>.png`。两边都是第 0 帧，所以**还更确定**了。
+ *
+ * 已经有 poster 的不动（原站自己的 poster 更权威），只把标记清掉。
+ */
+export function applyVideoPosters(html, { assetDir = 'assets' } = {}) {
+  let count = 0;
+  const out = String(html ?? '').replace(/<video\b([^>]*?)(\/?)>/gi, (tag, attrs, slash) => {
+    const m = /data-heimdall-poster\s*=\s*"(\d+)"/i.exec(attrs);
+    if (!m) return tag;
+    const cleaned = attrs.replace(/\s*data-heimdall-poster\s*=\s*"\d+"/i, '');
+    // 必须用 `(^|\s)poster=` 而不是 `\bposter=`：后者会被 `data-heimdall-poster` 自己命中，
+    // 于是"原站已有 poster"永远为真，海报一张也补不上（这个 bug 一写出来就被单测逮住了）
+    if (/(?:^|\s)poster\s*=/i.test(attrs)) return `<video${cleaned}${slash}>`;   // 原站有自己的 poster
+    count++;
+    return `<video${cleaned} poster="${assetDir}/video-${m[1]}.png"${slash}>`;
+  });
+  return { html: out, count };
+}
+
+/**
  * 这个引用在本地服务下会不会 404？
  * @param {string} value 引用原文
  * @param {string} origin 原站 origin（如 https://vitest.dev）

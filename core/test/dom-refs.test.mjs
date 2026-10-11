@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, rasterizeCanvases, neutralizeBaseTag, DROP_RELS, ASSET_RELS } =
+const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, rasterizeCanvases, applyVideoPosters, neutralizeBaseTag, DROP_RELS, ASSET_RELS } =
   await import('../src/dom-refs.mjs');
 
 const ORIGIN = 'https://vitest.dev';
@@ -212,4 +212,38 @@ test('base: 大小写与自闭合都认', () => {
 test('base: 没有 base 标签的 HTML 不变', () => {
   const html = '<html><head><link rel="stylesheet" href="styles/cssom.css"></head></html>';
   assert.equal(neutralizeBaseTag(html), html);
+});
+
+/**
+ * applyVideoPosters —— 给没有 poster 的视频补一张静态图
+ *
+ * 回归背景：`<video preload="metadata">` 且无 poster 时浏览器**什么都不画**（纯黑），
+ * 而原站那一帧是脚本 play() 之后才有的，镜像里没有脚本。
+ * 实测 linear.app/customers-ramp 的视频独占 386,303 像素差异，像素分被压到 64.7%。
+ */
+test('applyVideoPosters: 带标记的 <video> 补上 poster，标记本身清掉', () => {
+  const html = '<video preload="metadata" src="assets/media002.mp4" data-heimdall-poster="2" class="v"></video>';
+  const { html: out, count } = applyVideoPosters(html);
+  assert.equal(count, 1);
+  assert.match(out, /poster="assets\/video-2\.png"/);
+  assert.doesNotMatch(out, /data-heimdall-poster/, '标记只是交接用的，不该留在产物里');
+  assert.match(out, /src="assets\/media002\.mp4"/, '原来的属性一个都不能丢');
+  assert.match(out, /class="v"/);
+});
+
+test('applyVideoPosters: 原站自带 poster 的以原站为准，不覆盖', () => {
+  const html = '<video poster="assets/poster.jpg" src="a.mp4" data-heimdall-poster="0"></video>';
+  const { html: out, count } = applyVideoPosters(html);
+  assert.equal(count, 0);
+  assert.match(out, /poster="assets\/poster\.jpg"/);
+  assert.doesNotMatch(out, /video-0\.png/);
+  assert.doesNotMatch(out, /data-heimdall-poster/);
+});
+
+test('applyVideoPosters: 没标记的视频不动（没截到海报就保持原样，不假装处理过）', () => {
+  const html = '<video src="a.mp4"></video>';
+  const { html: out, count } = applyVideoPosters(html);
+  assert.equal(count, 0);
+  assert.equal(out, html);
+  assert.deepEqual(applyVideoPosters(''), { html: '', count: 0 });
 });

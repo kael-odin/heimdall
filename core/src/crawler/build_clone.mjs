@@ -14,7 +14,7 @@ import { pickAdapter, refRewriteCandidates } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isNonAssetRef, isSoftHtml } from '../asset-ext.mjs';
 import { scanCssRefs, rewriteCssRefs, extractFontRules } from '../css-refs.mjs';
-import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, neutralizeBaseTag } from '../dom-refs.mjs';
+import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, applyVideoPosters, neutralizeBaseTag } from '../dom-refs.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { UA } from '../ua.mjs';
@@ -273,7 +273,9 @@ console.log('[2/4] rewrite desktop DOM');const header = '<!-- heimdall clone: st
 const rawDesktopHtml = rewriteHtml(readFileSync(join(PAGE, 'dom.html'), 'utf8'), 'cssom.css');
 // 画布替换放在引用改写**之后**：这样新插入的 src="assets/canvas-N.png" 不会被
 // 当成待解析的站内引用（它本来就是本地文件）。
-const { html: desktopHtml, count: rasterizedCanvases } = rasterizeCanvases(rawDesktopHtml);
+const { html: desktopHtmlBeforeVideo, count: rasterizedCanvases } = rasterizeCanvases(rawDesktopHtml);
+// 视频 poster 同理，也放在引用改写之后（见 dom-refs.mjs 里 applyVideoPosters 的注释）
+const { html: desktopHtml, count: videoPosters } = applyVideoPosters(desktopHtmlBeforeVideo);
 
 // ---------- 3. 多视口快照（可选） ----------
 const VARIANTS = [375, 768].filter(w => existsSync(join(PAGE, 'dom-' + w + '.html')) && existsSync(join(PAGE, 'cssom-' + w + '.css')));
@@ -346,6 +348,7 @@ const gapReport = {
   // 这里如实记录抓到几个 —— 没抓到的（从未绘制 / 跨域污染）保持原样，
   // 不伪装成"已处理"，否则"缺失"就变成肉眼之外看不见的东西。
   canvasRasterized: rasterizedCanvases,
+  videoPosterized: videoPosters,
   gaps: cssGaps,
 };
 writeFileSync(join(PAGE, 'clone-gaps.json'), JSON.stringify(gapReport, null, 2));
