@@ -54,17 +54,34 @@ function freePort() {
   });
 }
 
-function startFixtureServer() {
+/**
+ * fixture 站点跑在**两个端口**上，这不是手滑。
+ *
+ * 附件样式表故意放到另一个 origin 上，复现真实故障：现代站点爱把 CSS 放独立域名
+ * （`static.linear.app` 之类），而同源策略下 `sheet.cssRules` 对跨域样式表直接抛异常 ——
+ * 于是这些表被静默跳过。实测 linear.app 因此丢掉 **58 份**样式表（reset / 设计变量 / 布局），
+ * 克隆页渲染成默认样式的竖排链接，而 DOM 分依然是 100%，只有像素分掉到 59% 才露馅。
+ *
+ * 所以：CSS 走 :cssPort（跨域），页面走 :sitePort。捕获侧必须把跨域表按 URL 取回来，
+ * 否则下面"关键帧必须进镜像"的断言会立刻变红。
+ */
+function startFixtureServer({ cssOrigin = null, port = 0 } = {}) {
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
       const url = new URL(req.url, 'http://x');
       const rel = url.pathname === '/' ? '/index.html' : url.pathname;
       const file = join(FIXTURE_DIR, rel.replace(/^\/+/, ''));
       if (!file.startsWith(FIXTURE_DIR) || !existsSync(file)) { res.writeHead(404); res.end('not found'); return; }
-      res.writeHead(200, { 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
-      res.end(readFileSync(file));
+      const type = MIME[extname(file)] ?? 'application/octet-stream';
+      let body = readFileSync(file);
+      // 页面上的样式表引用改指向另一个 origin，制造"跨域样式表"
+      if (cssOrigin && /^\.html?$/.test(extname(file))) {
+        body = Buffer.from(String(body).replaceAll('href="/styles.css"', `href="${cssOrigin}/styles.css"`));
+      }
+      res.writeHead(200, { 'Content-Type': type });
+      res.end(body);
     });
-    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port }));
+    server.listen(port, '127.0.0.1', () => resolve({ server, port: server.address().port }));
   });
 }
 
@@ -108,11 +125,13 @@ async function waitExit(base, taskId, timeoutMs = 240_000) {
 }
 
 async function main() {
-  const { server: fixture, port: fixturePort } = await startFixtureServer();
+  const cssPort = await freePort();
+  const { server: fixture, port: fixturePort } = await startFixtureServer({ cssOrigin: `http://127.0.0.1:${cssPort}` });
+  const { server: cssFixture } = await startFixtureServer({ port: cssPort });   // 跨域样式表另起一个 origin
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
   const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-smoke-'));
-  log('fixture :' + fixturePort, '| engine :' + port, '| data', dataDir);
+  log('fixture :' + fixturePort, '(页面) /', cssPort, '(样式表，另一个 origin)', '| engine :' + port, '| data', dataDir);
 
   const engine = spawn(process.execPath, ['src/engine-server.mjs', String(port)], {
     cwd: CORE,
@@ -301,6 +320,7 @@ async function main() {
   } finally {
     engine.kill('SIGTERM');
     fixture.close();
+    cssFixture.close();
     await new Promise(r => setTimeout(r, 500));
     try { rmSync(dataDir, { recursive: true, force: true }); } catch {}
   }
