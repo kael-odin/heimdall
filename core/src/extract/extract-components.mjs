@@ -14,8 +14,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
 import { componentCandidates, matchingCssRules, renderComponentPreview, renderGallery } from './components.mjs';
+import { emit } from '../emit.mjs';
 
-const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error('[components]', ...a);
 
 const argv = process.argv.slice(2);

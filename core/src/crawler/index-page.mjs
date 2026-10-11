@@ -7,10 +7,11 @@
  *
  * 用法: node src/crawler/index-page.mjs <host>
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
+import { writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { readJson } from '../fsutil.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/index-page.mjs <host>', '站点 host');
 const hostDir = process.argv[3] ?? host;
@@ -18,7 +19,6 @@ const BASE = join(WORKSPACE, hostDir);
 const PAGES = join(BASE, 'pages');
 if (!existsSync(PAGES)) { console.error('no pages dir:', PAGES); process.exit(1); }
 
-const readJson = (p) => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
 const pages = readdirSync(PAGES)
   .filter(n => existsSync(join(PAGES, n, 'clone', 'index.html')))
   .map(n => ({

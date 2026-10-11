@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 import { snapPage } from './multi-snapshot.mjs';
 
 const argv = process.argv.slice(2);
@@ -79,7 +80,7 @@ try {
         results.push({ page, before, after: { overall: after.overall, min: after.minViewport?.score ?? null, minVp: after.minViewport?.name ?? null }, kept: false, backup: '_variants-backup-' + stamp });
         console.log('[upgrade] REVERT ' + page + ' ' + (before.overall * 100).toFixed(1) + '/' + (before.min * 100).toFixed(1) + ' -> ' + (after.overall * 100).toFixed(1) + '/' + ((after.minViewport?.score ?? 0) * 100).toFixed(1));
       }
-      process.stdout.write('@@EVENT@@' + JSON.stringify({ kind: 'upgrade-page', page, kept: keep }) + '\n');
+      emit({ kind: 'upgrade-page', page, kept: keep });
     } catch (e) {
       results.push({ page, before, error: String(e).slice(0, 160), kept: false });
       console.error('[upgrade] FAIL ' + page + ': ' + String(e).slice(0, 160));

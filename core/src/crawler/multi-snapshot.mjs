@@ -12,6 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { collectCssRefs } from '../css-refs.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 import { sessionContext } from '../session/store.mjs';
 
 const argv = process.argv.slice(2);
@@ -87,10 +88,10 @@ if (isMain) {
         const r = await snapPage(browser, host, page, WIDTHS);
         done.push(page);
         console.log('[multi-snapshot] ' + page + ' ' + r.map(x => x.width + ':' + (x.html / 1024).toFixed(0) + 'KB').join(' '));
-        process.stdout.write('@@EVENT@@' + JSON.stringify({ kind: 'snapshot-page', page, widths: r.map(x => x.width) }) + '\n');
+        emit({ kind: 'snapshot-page', page, widths: r.map(x => x.width) });
       } catch (e) {
         console.error('[multi-snapshot] FAIL ' + page + ': ' + String(e).slice(0, 120));
-        process.stdout.write('@@EVENT@@' + JSON.stringify({ kind: 'snapshot-error', page, error: String(e).slice(0, 120) }) + '\n');
+        emit({ kind: 'snapshot-error', page, error: String(e).slice(0, 120) });
       }
     }
     if (ALL && done.length) {

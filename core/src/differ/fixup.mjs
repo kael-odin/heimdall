@@ -18,6 +18,7 @@ import { getEnv } from '../env.mjs';
 import { parse } from 'parse5';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 
 const ENV = getEnv();
 const MIN_STATIC = Number(ENV.FIXUP_MIN_STATIC ?? 0.002);      // 静态差异像素占视口比低于此 = 没有可修内容
@@ -39,7 +40,6 @@ const BASE_SHOT_BAK = join(DIR, 'shot-clone.base.png');
 const BASE_SCORE_BAK = join(DIR, 'score.base.json');
 const BASE_DIFF_BAK = join(DIR, 'diff.base.png');
 
-const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error(...a);
 
 const readScore = () => {

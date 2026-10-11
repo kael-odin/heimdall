@@ -212,11 +212,16 @@ function applyCors(req, res) {
 }
 /** token 可走 header；SSE/EventSource 不支持自定义 header，允许 ?token= 兜底 */
 const authorized = (req, u) => !AUTH_TOKEN || req.headers['x-heimdall-token'] === AUTH_TOKEN || u?.searchParams?.get('token') === AUTH_TOKEN;
-/** 代理白名单：默认只允许 workspace 下已存在的 host（已侦察/已捕获站点） */
+/** 代理白名单：默认只允许 workspace 下已存在的 host（已侦察/已捕获站点）
+ *  用"列一次目录得到集合"代替"每个请求 stat 一次"：清单请求最热的一条路，
+ *  而集合走 listCaches（8s TTL + 任务结束即失效）。顺带更安全 ——
+ *  只有目录里真实存在的名字能命中，`..` 之类的构造永远匹配不上。 */
 const isProxyHost = (h) => {
   const noWww = String(h).replace(/^www\./, '');
   if (EXTRA_PROXY_HOSTS.has(noWww)) return true;
-  return existsSync(join(WORKSPACE, noWww));
+  return cached('proxyhosts', () => {
+    try { return new Set(readdirSync(WORKSPACE)); } catch { return new Set(); }
+  }).has(noWww);
 };
 const pageFor = (u) => {
   try {
@@ -252,6 +257,29 @@ let runningReclaim = null;
 let runningUpgrade = null;
 let runningClone = null;
 const pageMetaCache = new Map();
+
+/**
+ * 请求期读盘缓存 —— 只服务"读多写少"的三处清单接口。
+ *
+ * 为什么需要：/api/assets、/api/sites、isProxyHost 都在请求里同步遍历磁盘
+ * （前者递归走完每页的资产树，后两者是站点×页面）。事件循环是单线程的，
+ * 一次几百毫秒的遍历期间，所有其它请求（含 SSE 心跳）都被卡住。
+ *
+ * 失效策略两条一起用，缺一不可：
+ *   · 短 TTL（清单视图容忍几秒陈旧，不值得每帧重算）
+ *   · 任何任务结束就 bust（克隆/删除/导出刚落盘，用户马上就会去看 —— 这一刻不能陈旧）
+ * bust 是"正确性"那一半：光靠 TTL 会让"刚克隆完打开资产页还是旧的"变成新 bug。
+ */
+const CACHE_TTL_MS = 8000;
+const listCaches = new Map();   // key -> { at, val }
+function cached(key, compute) {
+  const hit = listCaches.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.val;
+  const val = compute();
+  listCaches.set(key, { at: Date.now(), val });
+  return val;
+}
+function bustCaches() { listCaches.clear(); }
 // 每个锻造槽 = 一个 Chromium 实例。默认 2（笔记本上稳），大机子/演示可调 HEIMDALL_FORGE_SLOTS。
 const MAX_FORGE = (() => {
   const n = Math.floor(Number(process.env.HEIMDALL_FORGE_SLOTS));
@@ -360,6 +388,9 @@ function spawnTask(t, script, args, opts = {}) {
     t.status = t.cancelRequested ? 'cancelled' : code === 0 ? 'done' : 'failed';
     t.endedAt = Date.now();
     push(t, { kind: 'exit', code, status: t.status, killed: t.killed ?? undefined });
+    // 任务刚落盘新产物，缓存的清单即刻变陈旧 —— 这一刻必须失效，不能等 TTL。
+    // "刚克隆完打开资产页还是旧的"会是比卡顿难查得多的 bug。
+    bustCaches();
     for (const res of t.subs) res.end();
     t.subs.clear();
     if (t.kind === 'recon') runningRecon = null;
@@ -523,7 +554,7 @@ function startCloneSite(host, { max = null, incremental = false, force = false }
   return spawnTask(t, join('src', 'queue.mjs'), args, { env: { HEIMDALL_QUEUE_WORKERS: String(plan.workers) } }).id;
 }
 
-createServer(async (req, res) => {
+const handleRequest = async (req, res) => {
   const u = new URL(req.url, 'http://x');
   applyCors(req, res);
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); res.end(); return; }
@@ -872,8 +903,10 @@ createServer(async (req, res) => {
   if (req.method === 'GET' && u.pathname.startsWith('/api/atlas/')) {
     const t = tasks.get(u.pathname.split('/').pop());
     if (!t?.atlasPath || !existsSync(t.atlasPath)) return json(res, 404, { error: 'atlas not ready' });
+    // 流式发送：atlas.json 可能上百 KB~MB，readFileSync 会先整个读进内存再写，
+    // 期间阻塞事件循环。createReadStream 边读边写，不占事件循环。
     res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' });
-    res.end(readFileSync(t.atlasPath));
+    createReadStream(t.atlasPath).pipe(res);
     return;
   }
 
@@ -1041,8 +1074,12 @@ createServer(async (req, res) => {
     // 那样只有 pages/ 没有 recon/。此前这类站点在控制台里完全看不见 ——
     // 克隆成功了，但界面上找不到它。实测：vitest.dev 就被这样漏掉。
     const wsDir = WORKSPACE;
-    const sites = [];
+    let sites;
     try {
+      // 整段进缓存：它是 O(站点 × 页面) 的同步遍历，控制台切站/刷新都会打它。
+      // 缓存键是常量 'sites'，靠 listCaches 的 TTL + 任务结束 bust 保鲜。
+      sites = cached('sites', () => {
+      const sites = [];
       for (const d of readdirSync(wsDir)) {
         if (d.startsWith('.') || d.startsWith('_')) continue;   // _matrix / _shots 等内部目录不是站点
         const pagesDir = join(wsDir, d, 'pages');
@@ -1065,14 +1102,20 @@ createServer(async (req, res) => {
         // 只有 48 页 —— 界面上一度写「61/62 已克隆」，那个分数是假的。
         // 所以四个数分开给，界面各取所需。
         const discovered = atlas?.nodes?.length ?? 0;
-        const clonedUrls = new Set();
+        // manifest.json 只读一次：下面"重合页数"和"origin 兜底"都要它，
+        // 之前拆成两个循环读两遍 —— 每页一次多余的 IO。
+        const clonedTargets = [];
         if (forged) {
           for (const n of readdirSync(pagesDir)) {
             try {
               const t = JSON.parse(readFileSync(join(pagesDir, n, 'manifest.json'), 'utf8')).target;
-              if (t) clonedUrls.add(new URL(t).pathname.replace(/\/$/, '') || '/');
+              if (t) clonedTargets.push(t);
             } catch { /* 缺 manifest 的产物不参与重合统计 */ }
           }
+        }
+        const clonedUrls = new Set();
+        for (const t of clonedTargets) {
+          try { clonedUrls.add(new URL(t).pathname.replace(/\/$/, '') || '/'); } catch {}
         }
         // 从**克隆产物**这一侧数重合：atlas 里可能有两个节点指向同一路径
         // （`https://x` 与 `https://x/`），从 atlas 侧数就会得出比克隆页还多的重合数。
@@ -1085,13 +1128,8 @@ createServer(async (req, res) => {
 
         // 没有 atlas 时从页面 manifest 推 origin（manifest.target 是原站 URL）
         let origin = atlas?.origin ?? '';
-        if (!origin && forged) {
-          for (const n of readdirSync(pagesDir)) {
-            try {
-              const t = JSON.parse(readFileSync(join(pagesDir, n, 'manifest.json'), 'utf8')).target;
-              if (t) { origin = new URL(t).origin; break; }
-            } catch {}
-          }
+        if (!origin) {
+          for (const t of clonedTargets) { try { origin = new URL(t).origin; break; } catch {} }
         }
         // 只审计过的站点：分数从 seo.json 里取，列表上直接能看见结果
         let audit = null;
@@ -1118,12 +1156,32 @@ createServer(async (req, res) => {
           failures: atlas?.failures?.length ?? 0,
         });
       }
+      return sites;
+      });
     } catch (e) {
       // 静默返回空清单是最坏的失败方式：控制台的站点下拉会**变空**，看起来像"站点全没了"，
       // 而真正的原因（某个产物文件读不动、权限、磁盘）一个字都看不到。
-      return json(res, 500, { error: 'scan failed', detail: String(e).slice(0, 200), sites });
+      return json(res, 500, { error: 'scan failed', detail: String(e).slice(0, 200), sites: [] });
     }
     return json(res, 200, { sites });
+  }
+
+  // 整站克隆的断点状态：读 workspace/<host>/queue.json。
+  // 存在的意义：queue.mjs 本来就支持"跳过已完成页续跑"，但控制台看不到这件事 ——
+  // 一批 60 页的站中断后，用户唯一能做的判断是"再点一次整站克隆"，而不知道它会不会重头再来。
+  // 这个接口把那句"还剩 N 页"变成可显示的读数，再配一个"继续"按钮。
+  if (req.method === 'GET' && u.pathname.startsWith('/api/queue/')) {
+    const host = decodeURIComponent(u.pathname.slice('/api/queue/'.length));
+    if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    const qp = join(WORKSPACE, host, 'queue.json');
+    if (!existsSync(qp)) return json(res, 200, { host, exists: false });
+    let q;
+    try { q = JSON.parse(readFileSync(qp, 'utf8')); } catch { return json(res, 200, { host, exists: true, unreadable: true }); }
+    if (!Array.isArray(q)) return json(res, 200, { host, exists: true, unreadable: true });
+    const count = (s) => q.filter(x => x.status === s).length;
+    const done = count('done'), failed = count('failed'), pending = count('pending'), queued = count('queued');
+    const active = !!(runningClone && runningClone.host === host && runningClone.status === 'running');
+    return json(res, 200, { host, exists: true, total: q.length, done, failed, pending, queued, unfinished: failed + pending + queued, active, taskId: active ? runningClone.id : null });
   }
 
   // 反向代理 /px/<host>/<path> → https://<host>/<path> —— 交互镜像基础设施：
@@ -1220,6 +1278,7 @@ createServer(async (req, res) => {
     try {
       if (parts.length === 3) {
         rmSync(base, { recursive: true, force: true });
+        bustCaches();                                                          // 站点没了，清单与代理白名单都得重算
         const casGc = gcCas(join(DATA_ROOT, 'assets-cas'), { apply: true });   // 6k 文件约 0.5s，可接受
         startStorageScan();                                                     // 12s 的盘点交给子进程
         return json(res, 200, { ok: true, removed: 'site', host, casGc: { freed: casGc.freed, orphanFiles: casGc.orphanFiles, failed: casGc.failed, skipped: casGc.skipped } });
@@ -1247,6 +1306,7 @@ createServer(async (req, res) => {
         }
         const pageGc = removedArtifacts ? gcCas(join(DATA_ROOT, 'assets-cas'), { apply: true }) : null;
         if (removedArtifacts) startStorageScan();
+        bustCaches();                                                          // 删了一页，资产清单/站点重合数随即变化
         return json(res, 200, { ok: true, removed: 'page', host, name, removedArtifacts, removedNode, casGc: pageGc ? { freed: pageGc.freed, orphanFiles: pageGc.orphanFiles, failed: pageGc.failed, skipped: pageGc.skipped } : null });
       }
     } catch (e) { return json(res, 500, { error: String(e).slice(0, 200) }); }
@@ -1278,54 +1338,59 @@ createServer(async (req, res) => {
     if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
     const base = join(WORKSPACE, host);
     const pagesDir = join(base, 'pages');
-    const items = [];
-    let totalBytes = 0;
-    let orphanReport = null;
-    try {
-      const op = join(base, 'audit', 'orphans.json');
-      if (existsSync(op)) orphanReport = JSON.parse(readFileSync(op, 'utf8'));
-    } catch {}
-    const orphanSet = new Set(orphanReport?.orphanPaths ?? []);
-    const reverse = new Map();   // page -> (clone 内相对路径 -> 原始 URL)
-    if (existsSync(pagesDir)) {
-      for (const page of readdirSync(pagesDir)) {
-        try {
-          const m = JSON.parse(readFileSync(join(pagesDir, page, 'asset-map.json'), 'utf8'));
-          const r = new Map();
-          for (const k of Object.keys(m.imgMap ?? {})) r.set(String(m.imgMap[k]), k);
-          for (const k of Object.keys(m.resMap ?? {})) r.set(String(m.resMap[k]), k);
-          reverse.set(page, r);
-        } catch {}
-      }
-    }
-    const walk = (dir, page, group) => {
-      if (!existsSync(dir) || items.length > 200000) return;   // 收集上限（防极端目录；不再截断正常站点）
-      for (const name of readdirSync(dir)) {
-        const f = join(dir, name);
-        let st; try { st = statSync(f); } catch { continue; }
-        if (st.isDirectory()) walk(f, page, group);
-        else if (st.isFile()) {
-          totalBytes += st.size;
-          const relWs = relative(WORKSPACE, f).split('\\').join('/');
-          const relClone = relative(join(pagesDir, page, 'clone'), f).split('\\').join('/');
-          items.push({ path: relWs, page, group, ext: extname(name).toLowerCase(), size: st.size, url: '/static/' + relWs, src: reverse.get(page)?.get(relClone) ?? '', orphan: orphanSet.has(relWs) });
+    // 整个遍历（每页的资产树 + asset-map）进缓存：这是全引擎最重的请求期同步 IO，
+    // 此前每个请求都重走一遍。筛选/排序/分页仍在缓存之外，参数变化即时生效。
+    const { items, totalBytes, orphanSet, orphanSummary, byExt, byPage } = cached('assets:' + host, () => {
+      const items = [];
+      let totalBytes = 0;
+      let orphanReport = null;
+      try {
+        const op = join(base, 'audit', 'orphans.json');
+        if (existsSync(op)) orphanReport = JSON.parse(readFileSync(op, 'utf8'));
+      } catch {}
+      const orphanSet = new Set(orphanReport?.orphanPaths ?? []);
+      const reverse = new Map();   // page -> (clone 内相对路径 -> 原始 URL)
+      if (existsSync(pagesDir)) {
+        for (const page of readdirSync(pagesDir)) {
+          try {
+            const m = JSON.parse(readFileSync(join(pagesDir, page, 'asset-map.json'), 'utf8'));
+            const r = new Map();
+            for (const k of Object.keys(m.imgMap ?? {})) r.set(String(m.imgMap[k]), k);
+            for (const k of Object.keys(m.resMap ?? {})) r.set(String(m.resMap[k]), k);
+            reverse.set(page, r);
+          } catch {}
         }
       }
-    };
-    if (existsSync(pagesDir)) {
-      for (const page of readdirSync(pagesDir)) {
-        walk(join(pagesDir, page, 'clone', 'assets'), page, 'asset');
+      const walk = (dir, page, group) => {
+        if (!existsSync(dir) || items.length > 200000) return;   // 收集上限（防极端目录；不再截断正常站点）
+        for (const name of readdirSync(dir)) {
+          const f = join(dir, name);
+          let st; try { st = statSync(f); } catch { continue; }
+          if (st.isDirectory()) walk(f, page, group);
+          else if (st.isFile()) {
+            totalBytes += st.size;
+            const relWs = relative(WORKSPACE, f).split('\\').join('/');
+            const relClone = relative(join(pagesDir, page, 'clone'), f).split('\\').join('/');
+            items.push({ path: relWs, page, group, ext: extname(name).toLowerCase(), size: st.size, url: '/static/' + relWs, src: reverse.get(page)?.get(relClone) ?? '', orphan: orphanSet.has(relWs) });
+          }
+        }
+      };
+      if (existsSync(pagesDir)) {
+        for (const page of readdirSync(pagesDir)) {
+          walk(join(pagesDir, page, 'clone', 'assets'), page, 'asset');
         walk(join(pagesDir, page, 'clone', 'styles'), page, 'style');
       }
     }
-    const byExt = {};
-    const byPage = {};
-    for (const it of items) {
-      const k = it.ext || '(none)';
-      byExt[k] = (byExt[k] ?? 0) + 1;
-      const p = byPage[it.page] ?? (byPage[it.page] = { count: 0, bytes: 0 });
-      p.count++; p.bytes += it.size;
-    }
+      const byExt = {};
+      const byPage = {};
+      for (const it of items) {
+        const k = it.ext || '(none)';
+        byExt[k] = (byExt[k] ?? 0) + 1;
+        const p = byPage[it.page] ?? (byPage[it.page] = { count: 0, bytes: 0 });
+        p.count++; p.bytes += it.size;
+      }
+      return { items, totalBytes, orphanSet, orphanSummary: orphanReport, byExt, byPage };
+    });
     // 查询参数：q / ext / page / minSize / sort / limit / offset
     const q = (u.searchParams.get('q') ?? '').trim().toLowerCase();
     const extSel = (u.searchParams.get('ext') ?? '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
@@ -1347,7 +1412,7 @@ createServer(async (req, res) => {
     const filteredBytes = filtered.reduce((n, it) => n + it.size, 0);
     const ledgerPath = join(base, 'asset-ledger.json');
     let ledger = null; try { ledger = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch {}
-    const orphans = orphanReport ? { count: orphanReport.orphans, bytes: orphanReport.orphanBytes, generatedAt: orphanReport.generatedAt } : null;
+    const orphans = orphanSummary ? { count: orphanSummary.orphans, bytes: orphanSummary.orphanBytes, generatedAt: orphanSummary.generatedAt } : null;
     return json(res, 200, { host, count: items.length, totalBytes, filtered: filtered.length, filteredBytes, byExt, byPage, ledger, orphans, items: filtered.slice(offset, offset + limit) });
   }
 
@@ -1382,7 +1447,21 @@ createServer(async (req, res) => {
   }
 
   json(res, 404, { error: 'nf' });
-}).listen(PORT, BIND, () => console.log(`engine-server @ http://${BIND}:${PORT}`));
+};
+
+// 兜底：任何路由里抛出的异常只让这一个请求变 500，**不带崩进程**。
+// 这不是假想的防御 —— 本文件里一次改动漏掉一个变量作用域就让整个引擎
+// 在收到一个 /api/assets 请求时直接退出（所有其它接口一起没），排查成本极高。
+const server = createServer((req, res) => {
+  Promise.resolve(handleRequest(req, res)).catch((err) => {
+    console.error('[engine] request handler failed:', err);
+    try {
+      if (!res.headersSent) json(res, 500, { error: 'internal', detail: String(err?.message ?? err).slice(0, 200) });
+      else res.end();
+    } catch { /* 响应已经废了，只能吞掉 */ }
+  });
+});
+server.listen(PORT, BIND, () => console.log(`engine-server @ http://${BIND}:${PORT}`));
 
 // 优雅退出：关闭持久化存储（Docker stop / Ctrl-C）
 const shutdown = () => { try { jobStore?.close(); } catch {} process.exit(0); };

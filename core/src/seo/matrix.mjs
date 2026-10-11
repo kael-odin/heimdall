@@ -13,9 +13,9 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE, localDateStamp } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 import { buildMatrix, renderMatrixHtml, renderMatrixCsv } from './matrix-core.mjs';
 
-const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error('[matrix]', ...a);
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -34,15 +34,18 @@ const runAudit = (host) => new Promise((resolve) => {
 });
 
 const audits = [];
-for (const host of sites) {
+emit({ kind: 'matrix-start', sites, total: sites.length });
+for (let i = 0; i < sites.length; i++) {
+  const host = sites[i];
+  emit({ kind: 'matrix-site', host, index: i + 1, total: sites.length, phase: 'start' });
   const seoPath = join(WORKSPACE, host, 'seo', 'seo.json');
   if (REFRESH || !existsSync(seoPath)) {
     log(`auditing ${host} (max ${MAX})...`);
     const ok = await runAudit(host);
-    if (!ok || !existsSync(seoPath)) { log(`skip ${host}: audit failed`); continue; }
+    if (!ok || !existsSync(seoPath)) { log(`skip ${host}: audit failed`); emit({ kind: 'matrix-site', host, index: i + 1, total: sites.length, phase: 'failed' }); continue; }
   }
-  try { audits.push(JSON.parse(readFileSync(seoPath, 'utf8'))); log(`loaded ${host}: ${JSON.parse(readFileSync(seoPath, 'utf8')).pages.length} pages`); }
-  catch (e) { log(`skip ${host}: ${String(e).slice(0, 80)}`); }
+  try { audits.push(JSON.parse(readFileSync(seoPath, 'utf8'))); log(`loaded ${host}: ${JSON.parse(readFileSync(seoPath, 'utf8')).pages.length} pages`); emit({ kind: 'matrix-site', host, index: i + 1, total: sites.length, phase: 'done' }); }
+  catch (e) { log(`skip ${host}: ${String(e).slice(0, 80)}`); emit({ kind: 'matrix-site', host, index: i + 1, total: sites.length, phase: 'failed' }); }
 }
 if (audits.length < 2) { console.error('need at least 2 audits, got', audits.length); process.exit(1); }
 

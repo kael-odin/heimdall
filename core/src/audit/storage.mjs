@@ -15,6 +15,7 @@
 import { readdirSync, statSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_ROOT, WORKSPACE, DELIVERABLE } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 import { scanCas } from '../store/cas.mjs';
 
 const CAS_DIR = join(DATA_ROOT, 'assets-cas');
@@ -135,5 +136,5 @@ if (isMain) {
   console.log(`  ${'(交付包)'.padEnd(24)} ${String(summary.deliverable.files).padStart(7)} 文件  ${mb(summary.deliverable.uniqueBytes).padStart(9)}`);
   console.log('-> ' + outFile);
   // 让引擎/控制台能直接看到本次结果
-  process.stdout.write('@@EVENT@@' + JSON.stringify({ kind: 'storage', sites: summary.sites.length, uniqueBytes: summary.totals.uniqueBytes, orphanBytes: summary.cas.orphanBytes }) + '\n');
+  emit({ kind: 'storage', sites: summary.sites.length, uniqueBytes: summary.totals.uniqueBytes, orphanBytes: summary.cas.orphanBytes });
 }

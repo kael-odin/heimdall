@@ -90,12 +90,6 @@ button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity:
 ::selection { background: rgba(204, 120, 92, .28); }
 [data-theme="light"] ::selection { background: rgba(176, 87, 48, .22); }
 
-/* 只对读屏可见：给无可见标签的控件补 name/label */
-.sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .001ms !important;
@@ -129,6 +123,3 @@ html, body, #app {
 
 /* 有限的动效：只用于"正在发生"的状态，不做装饰性呼吸 */
 @keyframes pulse-soft { 50% { opacity: .45; } }
-
-/* 数字一律等宽 + 等宽数字位，避免读数跳动 */
-.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }

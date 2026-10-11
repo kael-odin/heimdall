@@ -8,8 +8,8 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, mkdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 
-const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const argv = process.argv.slice(2);
 const host = argv.find(a => !a.startsWith('--'));
 if (!host) { console.error('usage: node src/audit/orphans.mjs <host>'); process.exit(2); }

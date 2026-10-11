@@ -151,7 +151,7 @@ onBeforeUnmount(stopPoll);
       <div><h3>存储治理</h3><p>站点、CAS 与交付包的实际磁盘占用；删除站点后可安全回收无引用 CAS。</p></div>
       <button @click="load(true)" :disabled="loading">{{ loading ? '扫描中…' : '重新扫描' }}</button>
     </div>
-    <div v-if="loading && !info" class="storage-empty">正在后台盘点磁盘（引擎侧子进程遍历，约 10 秒；期间其他操作不受影响）…</div>
+    <div v-if="loading && !info" class="storage-empty" role="status" aria-live="polite">正在后台盘点磁盘（引擎侧子进程遍历，约 10 秒；期间其他操作不受影响）…</div>
     <div v-else-if="error" class="storage-error">{{ error }} <button @click="load(true)">重试</button></div>
     <template v-else-if="info">
       <div class="storage-kpis">
@@ -177,7 +177,7 @@ onBeforeUnmount(stopPoll);
             <button class="danger" @click="runGc(true)" :disabled="gcing || !info.cas?.orphanFiles">{{ gcConfirm ? '再次点击确认回收' : '执行回收' }}</button>
             <button v-if="gcConfirm" @click="gcConfirm = false">取消</button>
           </div>
-          <p class="storage-note" v-if="gcResult">{{ gcResult.applied ? `已回收 ${fmtBytes(gcResult.freed || 0)}，跳过 ${gcResult.skipped || 0}` : `预览：可回收 ${fmtBytes(gcResult.orphanBytes || 0)}` }}</p>
+          <p class="storage-note" v-if="gcResult" role="status" aria-live="polite">{{ gcResult.applied ? `已回收 ${fmtBytes(gcResult.freed || 0)}，跳过 ${gcResult.skipped || 0}` : `预览：可回收 ${fmtBytes(gcResult.orphanBytes || 0)}` }}</p>
           <p class="storage-note">安全判据：CAS 文件只有自身链接（nlink=1）时才会进入候选；仍被站点使用的硬链接不会删除。</p>
         </div>
       </div>
@@ -187,7 +187,7 @@ onBeforeUnmount(stopPoll);
     <!-- 交付包保留策略：deliverable/ 每次导出留一个目录，此前没有任何清理机制 -->
     <div class="storage-deliver">
       <div class="storage-subhead">交付包保留</div>
-      <div v-if="planLoading && !plan" class="storage-empty">正在盘点交付包（后台子进程遍历）…</div>
+      <div v-if="planLoading && !plan" class="storage-empty" role="status" aria-live="polite">正在盘点交付包（后台子进程遍历）…</div>
       <div v-else-if="planError" class="storage-error">{{ planError }} <button @click="loadPlan(true)">重试</button></div>
       <template v-else-if="plan">
         <p>

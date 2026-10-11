@@ -12,10 +12,11 @@
  * 职责边界：**框架知识留在 adapters/**（nextjs 的 _next/_media 前缀偏移等由框架指纹推导），
  * **站点知识放这里**（这个站的弹窗选择器、挂件黑名单、stub 策略、队列排除项）。
  */
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE } from './paths.mjs';
+import { readJson } from './fsutil.mjs';
 
 const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const BUILTIN_DIR = join(CORE, 'sites');
@@ -82,7 +83,6 @@ export function deepMerge(...sources) {
   return out;
 }
 
-const readJson = (p) => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
 
 /** 配方文件路径（供控制台/CLI 展示与编辑） */
 export const profilePaths = (host) => ({

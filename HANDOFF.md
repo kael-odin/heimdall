@@ -1262,3 +1262,114 @@ JS 一旦真的跑起来，vitest.dev（VitePress）整页变成 **"404 | Vitest
 
 测试 **367/367**（+6：handler 守卫 2、路径守卫 6 —— 含一条"前缀判断确实会放行 `..`"的前提断言）
 · lint 141 文件 · 四项安全修复逐条 curl 实测
+
+---
+
+## 29. 2026-10-11 续廿二：⊕ 六项体验/工程优先级（全部落地）
+
+用户要求"按上一轮列的优先级直接开始做"。本轮把 §28.4 的六条 + 一次全面核查做完了。
+**过程中自己制造并修好了一个崩溃**（见 §29.3），那条反而成了本轮最有价值的收获。
+
+### 29.1 长任务的可恢复性（原优先级 1）
+
+`queue.mjs` 本来就能续跑（`queue.json` 跳过已完成页），缺的是**让用户知道这件事**。
+
+- 新端点 `GET /api/queue/:host` → `{total, done, failed, pending, queued, unfinished, active}`
+- 控制台「本站操作」在 `unfinished > 0` 时多出一项
+  **「继续整站克隆（剩 N 页）」**，点击即 `clone-site {incremental:true}`（续跑不重头）
+- 任务中心的历史行：`interrupted`/`failed` 且 kind 为 `clone`/`forge` 的，
+  多一个 **「继续克隆 / 重新克隆」** 按钮 —— 引擎重启把 running 标成 interrupted 之后，
+  这就是用户唯一需要的出口
+- **实测**：用 `page.route` 伪造一条 interrupted 的 clone 历史，界面上确实出现
+  「继续克隆」，且只有它一条（`canRetry` 不误伤 done/cancelled）
+
+### 29.2 进度与预计时间（原优先级 2）
+
+三个长任务此前只在**结束时**发一个事件，过程中只有静态文案"约 2-5 分钟"。
+
+- `audit/assets.mjs`：`asset-gaps-start` + 每页 `asset-gaps-page {index,total}`
+- `seo/matrix.mjs`：`matrix-start` + 每站 `matrix-site {index,total,phase}`
+- `live/export.mjs`：`live-stage {stage,status,index,total}`，覆盖
+  生成镜像页 → 拷贝资产 → 合并 HAR → 补齐缺口 → 本地化资源 → 离线体检 → 打包校验
+- 控制台把这三个事件接成 `task.progress`，任务中心直接显示 `n/total` 或阶段名
+- 验证/监控/审计/响应式升级**本来就有**进度事件，不在缺口内（对照后确认）
+
+### 29.3 引擎同步 IO（原优先级 5）—— 顺带撞出一个崩溃
+
+- `/api/assets`：整个遍历（每页资产树 + asset-map）进缓存。
+  **实测 cold 2.03s → warm 0.008s（约 267×）**
+- `/api/sites`：整段进缓存；**顺带修掉"每页 manifest.json 被读两遍"**
+  （重合统计与 origin 兜底各一个循环，合并成一次读）
+- 代理白名单 `isProxyHost`：从"每请求 stat"改成"列一次目录得到集合"（同样的缓存），
+  顺带更安全 —— 只有目录里真实存在的名字能命中，`..` 类构造永远匹配不上
+- `/api/atlas/:task`：`readFileSync` 改成 `createReadStream().pipe(res)`
+- 缓存策略：8s TTL **+ 任何任务结束即 bust + 删站/删页即 bust**。
+  光靠 TTL 会让"刚克隆完打开资产页还是旧的"变成新 bug
+- **崩溃**：改 `/api/assets` 时把 `orphanReport` 圈进了缓存回调的作用域，而它在回调外
+  仍被引用 → `ReferenceError` 在请求处理函数里抛出 → **整个引擎进程退出**，
+  所有接口一起没。修掉之后加了兜底（见 §29.3b）
+- **29.3b 兜底**：`createServer` 的回调改名 `handleRequest`，外层包一层
+  `Promise.resolve(handleRequest(...)).catch(...)` —— 任何路由抛异常只让**这一个请求**
+  变 500，不再带崩进程。这不是假想的防御：本轮就是被它咬到的
+
+### 29.4 无障碍（原优先级 4）
+
+- **live region**：主状态行 `role=status`（占位 `/api/...` 进度都走它）、
+  错误 toast `role=alert`、成功 toast `role=status`、"统计中…"、
+  克隆实时日志 `role=log`（计时器 `aria-hidden`，否则读屏每秒念一次）
+- **对话框**：详情面板补 `role=dialog aria-modal` + 打开时聚焦关闭按钮 +
+  Tab 在面板内循环 + 关闭时把焦点还给打开它的元素（**实测通过**）
+- **标签页**：`role=tablist/tab/tabpanel` + `aria-selected` + 方向键/Home/End
+  （**实测：ArrowRight 让 `overview → seo`**）
+- **排序表头 / 菜单**：`.sortable` 与 `.wv-url` 补 `role=button tabindex=0` + 回车/Space
+  （**实测：回车让 `aria-label` 从"当前升序"变"当前降序"**）；本站操作菜单打开即聚焦首项、
+  上下键移动、Esc 把焦点还给按钮（**实测通过**）
+- 星图 canvas 补 `role=img` + 说明（并指明"逐页清单见「页面」视图"是键盘路径），
+  不做伪造的键盘导航
+- 图标按钮补 `aria-label`（收起仪表面板、展开/收起任务中心 + `aria-expanded`）
+
+### 29.5 死代码与重复实现（原优先级 3）
+
+- **`emit` 12 → 1**：新建 `src/emit.mjs`，用 codemod 把 12 个脚本的复制件换成 import
+  （queue.mjs 那份"仅 --json-events 时输出"的分叉也收进同一处）
+- **`readJson` 5 → 1、`mb` 5 → 1**：新建 `src/fsutil.mjs`；`mb` 此前已开始分叉
+  （`n/1048576` 与 `n/1024/1024`）
+- **`tokenOf` 2 → 1**（Atlas.vue 改从 api.js 导入）、
+  **`STAGES` 2 → 1**（DetailDock 模板改用已有的常量）
+- 死导入 7 个（Atlas.vue：apiJson/fmtTime/fmtDate/fmtBytes/fmtDuration/liveUrl/typeCn）、
+  死变量 3 个（liveHealthHost / detailSeo / openDetail / DetailDock 的 pageName）、
+  死 CSS 6 组（`.sr-only` `.num` 整个 `.pages-list` 家族 `.seek-caret` `.set-note` `.stage.skipped`）
+- **`pageNameOf` 的"两份实现"是误报**：console 与 core 各一份，跨运行时，属既有约定
+  （pages.js 顶部已注明），不动
+
+### 29.6 确定性（原优先级 6）
+
+- 侦察节点 id 此前是 `n${idSeq++}`，而 visit 是 **3 路并发** —— 谁先加载完谁拿小号。
+  同一个没变的站点侦察两次，得到两张 id↔url 对不上的 atlas
+- 改为 `stableNodeId(url)` = `n` + sha1(url) 前 8 位（实现与理由落在 `src/url-canon.mjs`，
+  **可单测**）；落盘前对 nodes 按 url、edges 按 (from,to) 排序
+- 顺带清掉星图 thumbs 里不属于本次星图的孤儿 png（id 换算法后旧文件会留下）
+
+### 29.7 新增守卫
+
+- `core/test/emit-protocol.test.mjs`：**只有 `src/emit.mjs` 能直接写 `@@EVENT@@`**。
+  已验证会红（临时放一个内联写的文件 → 测试报出它 → 删掉即绿）
+- `core/test/url-canon.test.mjs` +2：stableNodeId 的顺序无关性与格式稳定性
+
+### 29.8 质量门
+
+测试 **371/371**（+4）· lint 144 文件（+2：emit.mjs / fsutil.mjs）·
+控制台 `vite build` 通过 · 浏览器逐条实测（对话框焦点、标签页方向键、排序表头回车、
+菜单键盘、伪造历史行的续跑按钮）· 引擎冷/热缓存耗时对照（2.03s → 0.008s）
+
+### 29.9 还没做的（更新后）
+
+1. **`POST /api/storage/gc` 与 `DELETE /api/sites/:host` 仍同步扫 CAS**（约 0.5s）——
+   同一教训的漏网，应照 `startStorageScan` 挪进子进程
+2. **`/api/pages/:host` 的首次遍历**仍在请求线程（有 mtime 缓存，只在新克隆后触发）
+3. **交付包的"可改"程度**：资源清单 / 文案清单 / 域名替换 —— 数据都算过，
+   缺的是组织成用户视角的入口（详见 `docs/DELIVERY.md` §7）
+4. **控制台 E2E 测试**：改界面现在只能手工点验
+5. **首启向导**：新用户第一次打开不知道该做什么
+6. **部署包 `serve.mjs` 默认监听全网卡**（引擎侧显式绑回环，两处不一致）
+7. `argOf` / `getNum` 的重复（2 处 + 4 处 + 若干变体）尚未合并

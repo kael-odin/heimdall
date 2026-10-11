@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join, basename } from 'node:path';
 import { parse } from 'parse5';
 import { WORKSPACE } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 import { renderAssetGapsHtml } from './assets-report.mjs';
 
 const IGNORE = /^(data:|#|mailto:|javascript:|tel:|about:blank)/i;
@@ -176,7 +177,14 @@ if (isMain) {
   const PAGES = join(BASE, 'pages');
   if (!existsSync(PAGES)) { console.error('no pages for host:', host); process.exit(1); }
   const pages = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'clone', 'index.html'))).slice(0, MAX);
-  const results = pages.map(p => scanPage(join(PAGES, p), { origin: 'https://' + host }));
+  // 逐页上报进度：大站（上百页 × 上千引用）慢在"扫到哪一页"，不是慢在最后一步，
+  // 所以进度必须**每页都发**，而不是只在结束时发一个总数。控制台据此显示 n/total。
+  emit({ kind: 'asset-gaps-start', host, total: pages.length });
+  const results = [];
+  for (let i = 0; i < pages.length; i++) {
+    results.push(scanPage(join(PAGES, pages[i]), { origin: 'https://' + host }));
+    emit({ kind: 'asset-gaps-page', host, index: i + 1, total: pages.length, page: pages[i] });
+  }
   const totals = results.reduce((a, r) => ({
     refs: a.refs + r.refs, localized: a.localized + r.localized, gaps: a.gaps + r.gaps.length,
     origin: a.origin + (r.byStatus['remote-origin'] ?? 0), third: a.third + (r.byStatus['remote-third-party'] ?? 0),
@@ -196,5 +204,5 @@ if (isMain) {
   for (const w of [...results].sort((a, b) => b.visualGaps - a.visualGaps || b.gaps.length - a.gaps.length).slice(0, 10)) {
     console.log('  ' + w.page.padEnd(34), 'visual=' + String(w.visualGaps).padStart(3), 'origin=' + String(w.visualOrigin).padStart(3), 'third=' + String(w.visualThird).padStart(3), 'all=' + w.gaps.length);
   }
-  process.stdout.write('@@EVENT@@' + JSON.stringify({ kind: 'asset-gaps-done', host, pages: results.length, localizationRate: report.summary.localizationRate, visualGaps: totals.visual, visualOrigin: totals.visualOrigin, visualThird: totals.visualThird }) + '\n');
+  emit({ kind: 'asset-gaps-done', host, pages: results.length, localizationRate: report.summary.localizationRate, visualGaps: totals.visual, visualOrigin: totals.visualOrigin, visualThird: totals.visualThird });
 }

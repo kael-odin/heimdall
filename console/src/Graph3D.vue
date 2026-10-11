@@ -170,7 +170,10 @@ watch(() => props.palette, () => update({ fit: false }));
 </script>
 
 <template>
-  <div ref="el" class="g3d"></div>
+  <!-- 星图是 canvas，键盘/读屏进不去。它**不是**唯一入口：同一批页面在「页面」视图
+       是一张可排序、可键盘操作的表格，所以这里给一个 role=img + 说明即可，
+       不做伪造的键盘导航（那只会做出一个半残的替身）。 -->
+  <div ref="el" class="g3d" role="img" :aria-label="`站点星图：${(nodes || []).length} 个页面节点、${(links || []).length} 条站内链接。逐页清单与键盘操作见「页面」视图。`"></div>
 </template>
 
 <style scoped>

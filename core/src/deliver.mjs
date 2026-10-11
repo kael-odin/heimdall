@@ -10,10 +10,11 @@
  *
  * 用法: node src/deliver.mjs <host> [hostDir]
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, cpSync } from 'node:fs';
+import { writeFileSync, existsSync, readdirSync, mkdirSync, cpSync } from 'node:fs';
 import { requireArg } from './args.mjs';
 import { WORKSPACE, DELIVERABLE, localDateStamp } from './paths.mjs';
 import { join, basename } from 'node:path';
+import { readJson } from './fsutil.mjs';
 
 const host = requireArg(process.argv[2], 'node src/deliver.mjs <host> [hostDir]', '站点 host');
 const hostDir = process.argv[3] ?? host;
@@ -23,7 +24,6 @@ const OUT = join(DELIVERABLE, `${hostDir}-${localDateStamp()}`);
 
 if (!existsSync(PAGES)) { console.error('no pages:', PAGES); process.exit(1); }
 
-const readJson = (p) => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
 const pages = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'clone', 'index.html')));
 
 // ---------- 1. site/：镜像站 + 档案 + 对比工具（整目录拷贝，剔除 raw 材料放 raw/） ----------

@@ -9,11 +9,12 @@
  *
  * 用法: node src/harvest/xlsx.mjs <host>
  */
-import { readFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
+import { existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import ExcelJS from 'exceljs';
+import { readJson } from '../fsutil.mjs';
 
 const host = requireArg(process.argv[2], 'node src/harvest/xlsx.mjs <host>', '站点 host');
 const hostDir = (process.argv[4] ?? process.argv[3] ?? host).replace(/^--hostDir\s*/, '');
@@ -23,7 +24,6 @@ const PAGES = join(BASE, 'pages');
 const pages = existsSync(PAGES) ? readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'intel', 'intel.json'))) : [];
 if (!pages.length) { console.error('no intel found under', PAGES); process.exit(1); }
 
-const readJson = (p) => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
 
 const wb = new ExcelJS.Workbook();
 wb.creator = 'Heimdall';

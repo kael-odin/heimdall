@@ -20,8 +20,8 @@ import { WORKSPACE } from '../paths.mjs';
 import { sessionContext } from '../session/store.mjs';
 import { comparePngBuffers, overallScore, worstViewport, gradeOf } from './compare.mjs';
 import { verifyInteractions, scoreInteractions } from './interactions.mjs';
+import { emit } from '../emit.mjs';
 
-const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error('[verify]', ...a);
 const MAX_PAGE_HEIGHT = 25_000;
 const FREEZE_CSS = `

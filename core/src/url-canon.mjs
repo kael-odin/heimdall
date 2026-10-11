@@ -14,6 +14,8 @@
  * 规则：去 hash；尾斜杠去掉（**根路径除外**）；其余原样（查询参数保留 ——
  * `?page=2` 是另一个页面，不能合并）。
  */
+import { createHash } from 'node:crypto';
+
 export function canonUrl(u) {
   try {
     const x = new URL(u);
@@ -27,4 +29,15 @@ export function canonUrl(u) {
 export function sameCanonUrl(a, b) {
   const x = canonUrl(a), y = canonUrl(b);
   return !!x && x === y;
+}
+
+/**
+ * 星图节点的稳定 id —— **url 的纯函数**，与访问顺序无关。
+ *
+ * 为什么不能用自增序号：侦察是 3 路并发的，`n${i++}` 会把"谁先加载完"写进 id。
+ * 同一个没变的站点侦察两次 → id↔url 对不上、缩略图与边全变、任何按 id 的 diff 都报"变了"。
+ * 短哈希保证同一 url 永远同一个 id（跨次、跨机一致），可复现性这才成立。
+ */
+export function stableNodeId(url) {
+  return 'n' + createHash('sha1').update(String(url)).digest('hex').slice(0, 8);
 }

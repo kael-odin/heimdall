@@ -8,14 +8,15 @@
  * 用法: node src/crawler/recon.mjs <url> [maxPages=40] [maxDepth=2]
  */
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { classifyPath, compileExtraRules } from './classify.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { sessionContext } from '../session/store.mjs';
-import { canonUrl } from '../url-canon.mjs';
+import { canonUrl, stableNodeId } from '../url-canon.mjs';
+import { emit } from '../emit.mjs';
 
 const TARGET = requireArg(process.argv[2], 'node src/crawler/recon.mjs <url> [maxPages] [maxDepth]', '目标 URL');
 const MAX_PAGES = Number(process.argv[3] ?? 40);
@@ -27,8 +28,7 @@ function stripWww(h) { return h.replace(/^www\./, ''); }
 function pathOf(u) { try { return new URL(u).pathname.replace(/\/$/, '') || '/'; } catch { return '/'; } }
 
 
-// 事件输出：@@EVENT@@ 前缀行，engine-server 解析转发 SSE（人类日志走 console.error）
-const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
+// 人类日志走 stderr —— 引擎只把 stdout 当事件流解析（见 ../emit.mjs）
 const log = (...a) => console.error(...a);
 
 // ---------- 0. origin 校准（跟随 301/重定向，链接过滤必须用落地 origin） ----------
@@ -109,12 +109,13 @@ const smQueue = [];
 const bfsSeen = new Set([canonUrl(LANDING)]);   // 仅 BFS 自身去重，sitemap 不得预占
 for (const u of sitemapSame) smQueue.push({ url: u, depth: 99 });
 
-let idSeq = 0;
+// 节点 id 用 url 的稳定哈希（实现与理由见 ../url-canon.mjs 的 stableNodeId）：
+// 此前是自增序号，并发下 id 跟着"谁先加载完"漂移，同一个站点两次侦察结果对不上。
 const addNode = (url, depth, title, seoLite, features) => {
   if (nodes.has(url)) return;
   const path = pathOf(url);
   nodes.set(url, {
-    id: `n${String(idSeq++).padStart(3, '0')}`, url, path,
+    id: stableNodeId(url), url, path,
     title: title || path,
     type: classifyPath(path, features, EXTRA_RULES),
     depth, seoLite,
@@ -197,16 +198,26 @@ for (const e of edges) {
 
 // ---------- 4. atlas.json ----------
 log('[4/4] atlas.json');
+// 落盘前排序：id 已经稳定了，但 Map 的插入序仍是"访问完成序"（并发下不确定）。
+// nodes 按 url、edges 按 (from,to) 排好，两次侦察的 atlas.json 才逐字节可比。
+const sortedNodes = [...nodes.values()].sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0));
+const sortedEdges = [...cleanEdges].sort((a, b) => (a.from + '|' + a.to < b.from + '|' + b.to ? -1 : 1));
 const atlas = {
   origin: ORIGIN,
   status: nodes.size ? 'ok' : 'failed',
   failures,
   generatedAt: new Date().toISOString(),
-  meta: { pages: nodes.size, edges: cleanEdges.length, sitemapUrls: sitemapSame.length, maxPages: MAX_PAGES, maxDepth: MAX_DEPTH },
-  nodes: [...nodes.values()],
-  edges: cleanEdges,
+  meta: { pages: nodes.size, edges: sortedEdges.length, sitemapUrls: sitemapSame.length, maxPages: MAX_PAGES, maxDepth: MAX_DEPTH },
+  nodes: sortedNodes,
+  edges: sortedEdges,
 };
 writeFileSync(join(OUT, 'atlas.json'), JSON.stringify(atlas, null, 2));
+
+// 清掉不属于本次星图的旧缩略图：id 改成 url 哈希后，页面消失/改址都会留下孤儿 png
+try {
+  const live = new Set(sortedNodes.map(n => `${n.id}.png`));
+  for (const f of readdirSync(THUMBS)) if (f.endsWith('.png') && !live.has(f)) unlinkSync(join(THUMBS, f));
+} catch { /* thumbs 清理失败不影响侦察结果 */ }
 const byType = {};
 for (const n of atlas.nodes) byType[n.type] = (byType[n.type] ?? 0) + 1;
 log(`\nDONE ${atlas.meta.pages} pages / ${atlas.meta.edges} edges -> ${OUT}`);

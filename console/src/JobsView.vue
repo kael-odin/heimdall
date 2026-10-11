@@ -19,7 +19,7 @@ defineProps({
   engine: { type: Object, default: () => ({}) },
   actions: { type: Array, default: () => [] },
 });
-defineEmits(['pick', 'action', 'close']);
+defineEmits(['pick', 'action', 'close', 'retry']);
 
 /** 单行右侧的读数：不同任务类型看的东西不一样 */
 function readingOf(t) {
@@ -28,6 +28,13 @@ function readingOf(t) {
   if (t.kind === 'assets') return t.assetGaps != null ? t.assetGaps + ' 缺口' : '—';
   return t.score ? (t.score.pixel * 100).toFixed(1) + '%' : '—';
 }
+
+/** 历史行能不能续跑：中断/失败，且有可重发的 kind 与 url。
+ *  引擎重启会把 running 的旧任务标成 interrupted —— 那就该能一键续上，而不是让用户猜怎么重来。 */
+function canRetry(h) {
+  return ['interrupted', 'failed'].includes(h.status) && ['clone', 'forge'].includes(h.kind) && !!h.url;
+}
+const RETRY_CN = { clone: '继续克隆', forge: '重新克隆' };
 </script>
 
 <template>
@@ -56,6 +63,7 @@ function readingOf(t) {
         <span class="wv-score">—</span>
         <span class="job-time">{{ fmtTime(h.createdAt) }} · {{ h.endedAt ? Math.round((h.endedAt - h.createdAt) / 1000) + 's' : '' }}</span>
         <span class="job-error">{{ h.error || '' }}</span>
+        <span class="job-retry"><button v-if="canRetry(h)" @click="$emit('retry', h)" :title="'重新发起这个任务'">{{ RETRY_CN[h.kind] }}</button></span>
       </div>
     </div>
   </section>

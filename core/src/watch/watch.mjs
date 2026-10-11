@@ -20,8 +20,8 @@ import { WORKSPACE } from '../paths.mjs';
 import { fetchRobotsAndSitemaps, discoverTargets, collectSite } from '../seo/collect.mjs';
 import { snapshotFromPages, diffSnapshots } from './diff.mjs';
 import { renderWatchHtml } from './report.mjs';
+import { emit } from '../emit.mjs';
 
-const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error('[watch]', ...a);
 
 const argv = process.argv.slice(2);

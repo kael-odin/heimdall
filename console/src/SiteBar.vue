@@ -14,7 +14,7 @@
  * 站点状态（发现/已克隆/重合）单列一行小字 —— 这三个数来自**不同的集合**，
  * 挤进一个 61/62 的分数里会骗人（详见 engine 的 /api/sites 注释）。
  */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 
 const props = defineProps({
   sites: { type: Array, default: () => [] },
@@ -63,6 +63,33 @@ function onDocClick(e) { if (menuOpen.value && root.value && !root.value.contain
 function onKey(e) { if (e.key === 'Escape') menuOpen.value = false; }
 onMounted(() => { document.addEventListener('click', onDocClick); document.addEventListener('keydown', onKey); });
 onBeforeUnmount(() => { document.removeEventListener('click', onDocClick); document.removeEventListener('keydown', onKey); });
+
+/**
+ * role="menu" 的 ARIA 键盘模式：菜单一打开就把焦点落到第一项，上下键在项间移动，
+ * 关闭时把焦点还回触发按钮。少了这一套，菜单对键盘用户等于"打开了但进不去"。
+ */
+const menuEl = ref(null);
+let menuReturnFocus = null;
+const menuItems = () => [...(menuEl.value?.querySelectorAll('.sb-item:not([disabled])') ?? [])];
+function onMenuKey(e) {
+  const list = menuItems();
+  if (!list.length) return;
+  const i = list.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length].focus(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+  else if (e.key === 'Home') { e.preventDefault(); list[0].focus(); }
+  else if (e.key === 'End') { e.preventDefault(); list[list.length - 1].focus(); }
+}
+watch(menuOpen, async (open) => {
+  if (open) {
+    menuReturnFocus = document.activeElement;
+    await nextTick();
+    menuItems()[0]?.focus();
+  } else if (menuReturnFocus && typeof menuReturnFocus.focus === 'function') {
+    menuReturnFocus.focus();
+    menuReturnFocus = null;
+  }
+});
 </script>
 
 <template>
@@ -78,7 +105,7 @@ onBeforeUnmount(() => { document.removeEventListener('click', onDocClick); docum
         :title="busy ? '已有任务在运行' : '本站可以做的事'" @click="menuOpen = !menuOpen">
         本站操作 <span class="sb-caret" aria-hidden="true">▾</span>
       </button>
-      <div class="sb-menu surface" v-if="menuOpen" role="menu">
+      <div class="sb-menu surface" v-if="menuOpen" role="menu" ref="menuEl" @keydown="onMenuKey">
         <button v-for="a in actions" :key="a.id" role="menuitem" class="sb-item"
           :class="{ danger: a.danger }" :disabled="a.disabled" :title="a.hint" @click="runAction(a)">
           <b>{{ a.label }}</b>

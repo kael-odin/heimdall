@@ -13,6 +13,7 @@ import { writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_ROOT, WORKSPACE } from '../paths.mjs';
 import { dedupeTree } from './cas.mjs';
+import { mb } from '../fsutil.mjs';
 
 const host = process.argv[2] ?? '';
 const dryRun = process.argv.includes('--dry-run');
@@ -26,7 +27,6 @@ const started = Date.now();
 const ledger = dedupeTree(rootDir, storeDir, { dryRun, skip: ['node_modules'] });
 ledger.ms = Date.now() - started;
 ledger.generatedAt = new Date().toISOString();
-const mb = (n) => (n / 1024 / 1024).toFixed(1) + 'MB';
 console.log(`dedupe${dryRun ? ' (dry-run)' : ''}: ${ledger.files} files | unique ${ledger.unique} | duplicates ${ledger.duplicates}`);
 console.log(`  bytes: total ${mb(ledger.bytesTotal)} | saved ~${mb(ledger.bytesSaved)} | skipped ${ledger.skipped} | linked ${ledger.linked} | ${ledger.ms}ms`);
 if (!dryRun) writeFileSync(join(rootDir, 'asset-ledger.json'), JSON.stringify(ledger, null, 2));

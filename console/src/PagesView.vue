@@ -47,6 +47,10 @@ const STATE_RANK = { done: 0, running: 1, failed: 2, idle: 3 };
 function toggleSort(k) {
   if (sortKey.value === k) sortDir.value = -sortDir.value; else { sortKey.value = k; sortDir.value = 1; }
 }
+/** 排序表头的无障碍名：把当前排序状态也读出来（读屏用户看不到 ▲/▼ 那两个箭头） */
+const sortAria = (k, label) => sortKey.value === k
+  ? `${label}，当前${sortDir.value > 0 ? '升序' : '降序'}，回车切换`
+  : `${label}，回车排序`;
 function toggleOne(id) {
   const s = new Set(selectedIds.value);
   s.has(id) ? s.delete(id) : s.add(id);
@@ -133,12 +137,12 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
     <div class="wv-rows">
       <div class="wv-row wv-th">
         <span class="c-check"></span>
-        <span class="c-path sortable" @click="toggleSort('path')">路径 {{ sortKey === 'path' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-title sortable" @click="toggleSort('title')">标题 {{ sortKey === 'title' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-path sortable" role="button" tabindex="0" :aria-label="sortAria('path', '路径')" @click="toggleSort('path')" @keydown.enter.prevent="toggleSort('path')" @keydown.space.prevent="toggleSort('path')">路径 {{ sortKey === 'path' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-title sortable" role="button" tabindex="0" :aria-label="sortAria('title', '标题')" @click="toggleSort('title')" @keydown.enter.prevent="toggleSort('title')" @keydown.space.prevent="toggleSort('title')">标题 {{ sortKey === 'title' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
         <span class="c-type">类型</span>
-        <span class="c-state sortable" @click="toggleSort('state')">状态 {{ sortKey === 'state' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-score sortable" @click="toggleSort('score')">视觉 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-assets sortable" @click="toggleSort('assets')">资产 {{ sortKey === 'assets' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-state sortable" role="button" tabindex="0" :aria-label="sortAria('state', '状态')" @click="toggleSort('state')" @keydown.enter.prevent="toggleSort('state')" @keydown.space.prevent="toggleSort('state')">状态 {{ sortKey === 'state' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-score sortable" role="button" tabindex="0" :aria-label="sortAria('score', '视觉还原度')" @click="toggleSort('score')" @keydown.enter.prevent="toggleSort('score')" @keydown.space.prevent="toggleSort('score')">视觉 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-assets sortable" role="button" tabindex="0" :aria-label="sortAria('assets', '资产体积')" @click="toggleSort('assets')" @keydown.enter.prevent="toggleSort('assets')" @keydown.space.prevent="toggleSort('assets')">资产 {{ sortKey === 'assets' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
         <span class="c-gaps">缺口</span>
         <span class="c-ix">交互</span>
         <span class="c-updated">更新</span>
@@ -146,7 +150,7 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
       </div>
       <div class="wv-row" v-for="n in filteredNodes" :key="n.id">
         <label class="c-check"><input type="checkbox" :checked="selectedIds.has(n.id)" :aria-label="'选择页面 ' + (n.path || n.url)" @change="toggleOne(n.id)" /></label>
-        <span class="wv-url c-path" @click="$emit('detail', n)" :title="n.url">{{ n.path }}</span>
+        <span class="wv-url c-path" role="button" tabindex="0" :aria-label="'打开详情：' + (n.path || n.url)" @click="$emit('detail', n)" @keydown.enter.prevent="$emit('detail', n)" @keydown.space.prevent="$emit('detail', n)" :title="n.url">{{ n.path }}</span>
         <span class="wv-title c-title" :title="n.title">{{ n.title }}</span>
         <span class="wv-type c-type" :style="{ color: typeColorThemed(n.type) }">{{ typeCn(n.type) }}</span>
         <span class="wv-state c-state" :class="n.forgeState">{{ stateLabel(n.forgeState) }}</span>

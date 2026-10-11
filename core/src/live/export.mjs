@@ -24,10 +24,12 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE, DELIVERABLE, localDateStamp } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { scanLiveBundle } from './health.mjs';
 import { healBundle, materializeHar, localizeQueryEntries, rewriteHtmlRefs } from './heal.mjs';
 import { diffChecksums, changesLine } from './changes.mjs';
+import { mb } from '../fsutil.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -56,9 +58,11 @@ const OUT = OUT_ARG
 
 // ---------- 1. 确保 live/ 已生成 ----------
 if (has('rebuild') || !existsSync(join(BASE, 'live'))) {
+  emit({ kind: 'live-stage', stage: 'build', status: 'running' });
   console.log('[export] building live pages (build_live)...');
   const r = spawnSync(process.execPath, [join('src', 'crawler', 'build_live.mjs'), host], { cwd: CORE, stdio: 'inherit' });
   if (r.status !== 0) { console.error('[export] build_live failed'); process.exit(1); }
+  emit({ kind: 'live-stage', stage: 'build', status: 'done' });
 }
 
 // ---------- 2. 目录准备 ----------
@@ -92,10 +96,13 @@ function copyTree(src, dst) {
 // 2a) live 页面
 copyTree(join(BASE, 'live'), join(siteDir, 'live'));
 // 2b) 克隆页 / CSS / 资产（build_live 的 HTML 引用 /static/<host>/pages/<name>/clone/**）
+// 这是导出里最重的一步（整站资产拷贝），进度必须按页报，否则用户只看到"约 2-5 分钟"。
 const pagesDir = join(BASE, 'pages');
 const pageNames = existsSync(pagesDir) ? readdirSync(pagesDir).filter(n => existsSync(join(pagesDir, n, 'clone', 'index.html'))) : [];
-for (const name of pageNames) {
-  copyTree(join(pagesDir, name, 'clone'), join(siteDir, 'static', host, 'pages', name, 'clone'));
+emit({ kind: 'live-stage', stage: 'copy', status: 'running', total: pageNames.length });
+for (let i = 0; i < pageNames.length; i++) {
+  copyTree(join(pagesDir, pageNames[i], 'clone'), join(siteDir, 'static', host, 'pages', pageNames[i], 'clone'));
+  emit({ kind: 'live-stage', stage: 'copy', index: i + 1, total: pageNames.length });
 }
 // 2c) 站点级报告（档案 / 对比 / 情报 / SEO）
 // **白名单式拷贝，故意的**：`session.json`（登录态）与 `network.har` 的原始件都不在这份
@@ -108,6 +115,7 @@ for (const name of pageNames) {
     if (existsSync(join(pagesDir, name, item))) copyTree(join(pagesDir, name, item), join(siteDir, 'static', host, 'pages', name, item));
   }
 }
+emit({ kind: 'live-stage', stage: 'copy', status: 'done', total: pageNames.length });
 
 let origin = 'https://' + host.replace(/^www\./, '');
 for (const name of pageNames) {
@@ -115,9 +123,11 @@ for (const name of pageNames) {
 }
 
 // ---------- 3. HAR 清洗与合并（流式：仅同源 + 去重，避免多页 GB 级峰值） ----------
+emit({ kind: 'live-stage', stage: 'har', status: 'running', total: pageNames.length });
 const harMap = new Map();
 let harPages = 0;
-for (const name of pageNames) {
+for (let i = 0; i < pageNames.length; i++) {
+  const name = pageNames[i];
   const p = join(pagesDir, name, 'network.har');
   if (!existsSync(p)) continue;
   harPages++;
@@ -130,10 +140,12 @@ for (const name of pageNames) {
       if (!harMap.has(k)) harMap.set(k, e);
     }
   } catch (e) { console.warn('[export] HAR parse failed:', name, String(e).slice(0, 80)); }
+  emit({ kind: 'live-stage', stage: 'har', index: i + 1, total: pageNames.length });
 }
 const har = { version: 1, generatedAt: new Date().toISOString(), entries: [...harMap.values()] };
 const stats = harStats(har.entries);
 console.log('[export] HAR pages=' + harPages + ' entries=' + stats.entries + ' bytes~' + (stats.bytes / 1024 / 1024).toFixed(1) + 'MB (same-origin deduped)');
+emit({ kind: 'live-stage', stage: 'har', status: 'done', entries: stats.entries, mb: +(stats.bytes / 1048576).toFixed(1) });
 
 // ---------- 4. 服务器与配置 ----------
 const liveSrc = fileURLToPath(new URL('.', import.meta.url));
@@ -147,17 +159,21 @@ writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 const liveDir = join(siteDir, 'live');
 const staticDir = join(siteDir, 'static');
 const harIndex = indexHar(har.entries);
+emit({ kind: 'live-stage', stage: 'health', status: 'running' });
 let health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
 const assetsBefore = { ...health.assets };
 if (HEAL && health.assets.unresolved > 0) {
   const targets = health.unresolvedPaths ?? [...new Set(health.details.flatMap(d => d.unresolved))];
   console.log('[heal] unresolved=' + health.assets.unresolved + ' unique=' + targets.length + ' -> fetching from ' + origin);
+  emit({ kind: 'live-stage', stage: 'heal', status: 'running', targets: targets.length });
   const healed = await healBundle({ liveDir, host, origin, targets });
   console.log('[heal] fetched=' + healed.fetched + ' failed=' + healed.failed + ' skipped=' + healed.skipped + ' bytes~' + (healed.bytes / 1024 / 1024).toFixed(1) + 'MB');
+  emit({ kind: 'live-stage', stage: 'heal', status: 'done', fetched: healed.fetched, failed: healed.failed });
   health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
   health.healed = { attempted: targets.length, fetched: healed.fetched, failed: healed.failed, skipped: healed.skipped, bytes: healed.bytes };
 }
 if (MATERIALIZE) {
+  emit({ kind: 'live-stage', stage: 'materialize', status: 'running' });
   const mat = materializeHar({ liveDir, origin, entries: har.entries });
   const loc = localizeQueryEntries({ entries: har.entries, liveDir, host, origin });
   const rw = rewriteHtmlRefs({ liveDir, map: loc.map });
@@ -170,6 +186,7 @@ if (MATERIALIZE) {
   console.log('[materialize] files=' + mat.written + ' (' + (mat.bytes / 1024 / 1024).toFixed(1) + 'MB) localized=' + loc.written + ' (' + (loc.bytes / 1024 / 1024).toFixed(1) + 'MB) html=' + rw.files + ' files/' + rw.rewrites + ' refs');
   health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
   health.materialized = { ...mat, localized: loc.written, localizedBytes: loc.bytes, htmlRewrites: rw.rewrites, htmlFiles: rw.files, harTrimmed: trimmed };
+  emit({ kind: 'live-stage', stage: 'materialize', status: 'done' });
 }
 writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR（materialize 时仅剩必要回放体）
 
@@ -178,6 +195,7 @@ health.forgedPages = pageNames.length;
 health.liveMissing = Math.max(0, pageNames.length - health.pages);
 health.strict = STRICT;
 writeFileSync(join(OUT, 'health.json'), JSON.stringify(health, null, 2));
+emit({ kind: 'live-stage', stage: 'health', status: 'done', livePages: health.pages, unresolved: health.assets.unresolved });
 console.log('[health] forgedPages=' + pageNames.length + ' livePages=' + health.pages + (health.liveMissing ? ' (missing ' + health.liveMissing + ')' : '') + ' assets=' + health.assets.total + ' local=' + health.assets.local + ' har=' + health.assets.har + ' unresolved=' + health.assets.unresolved + ' externalRefs=' + health.assets.external + '(静态资源 ' + health.assets.externalAssets + ') | linksMissing=' + health.links.missing);
 for (const d of health.details.slice(0, 5)) console.log('[health]   ' + d.page + ' -> ' + d.unresolvedCount + ' unresolved (e.g. ' + (d.unresolved[0] ?? '-') + ')');
 
@@ -264,6 +282,7 @@ links.missing            指向未镜像页面的站内链接 → 点了会跳�
 
 // ---------- 5. 校验和清单 + 与上一次导出的差异 ----------
 // prevChecksums 在"目录准备"那一步就已经读好了（那里会把旧目录清掉）
+emit({ kind: 'live-stage', stage: 'package', status: 'running' });
 const manifestFiles = [];
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
@@ -280,9 +299,8 @@ writeFileSync(join(OUT, 'checksums.json'), JSON.stringify({ host, generatedAt: n
 const changes = diffChecksums(prevChecksums, manifestFiles);
 writeFileSync(join(OUT, 'changes.json'), JSON.stringify(changes, null, 2));
 console.log(`[export] ${changesLine(changes)}`);
-
-const mb = (n) => (n / 1024 / 1024).toFixed(1) + 'MB';
 console.log(`[export] bundle -> ${OUT}`);
+emit({ kind: 'live-stage', stage: 'package', status: 'done', files: manifestFiles.length, bytes });
 console.log(`[export] pages=${pageNames.length} liveFiles=${files} (linked=${linked} copied=${copied}) bytes=${mb(bytes)} | bundleFiles=${manifestFiles.length} | root=${ROOT} | unresolved=${health.assets.unresolved}`);
 if (STRICT && health.assets.unresolved > 0) {
   console.error('[export] strict: ' + health.assets.unresolved + ' unresolved assets in offline mode (see health.json)');

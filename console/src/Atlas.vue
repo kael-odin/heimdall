@@ -35,11 +35,11 @@ import PagesView from './PagesView.vue';
 import StorageCard from './StorageCard.vue';
 import AssetTable from './AssetTable.vue';
 import DetailDock from './DetailDock.vue';
-import { API, apiHeaders, apiJson, wsUrl, wsJson } from './api.js';
-import { taskState, taskLabel, fmtTime, fmtDate, fmtBytes, fmtDuration } from './format.js';
-import { pageNameOf, liveUrl } from './pages.js';
+import { API, apiHeaders, wsUrl, wsJson, tokenOf } from './api.js';
+import { taskState, taskLabel, liveStageCn } from './format.js';
+import { pageNameOf } from './pages.js';
 
-import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
+import { PAGE_TYPES as PT, typeColor } from './types.js';
 const PAGE_TYPES = PT;
 const typeColorThemed = (t) => typeColor(t, theme.value);
 
@@ -82,7 +82,7 @@ const liveHealth = ref(null);    // 最新交互镜像体检（/api/live-health/
 const lastVerify = ref(null);    // 最近一次全站体检结果（/api/verify）
 const liveRebuild = ref(false);  // 导出交互镜像前先重建 live 页面
 const sessionState = ref(null);  // 本站登录态（/api/session/:host）：需要登录的站点靠它
-const liveHealthHost = ref('');   // liveHealth 对应的 host（切站后避免串数据）
+const queueState = ref(null);    // 本站整站克隆的断点状态（/api/queue/:host）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const matrixPeer = ref('');          // 跨站对标对象
 const matrixReport = ref(null);      // 最近一次对标矩阵报告
@@ -103,7 +103,6 @@ const LLM_PRESETS = [
   { name: '本地 Ollama', protocol: 'chat', baseUrl: 'http://127.0.0.1:11434/v1', model: '', fastModel: '' },
   { name: '自建中转', protocol: 'chat', baseUrl: '', model: '', fastModel: '' },
 ];
-const tokenOf = () => localStorage.getItem('heimdall-token') ?? '';
 function sseUrl(taskId) { const t = tokenOf(); return `${API}/api/events?task=${taskId}${t ? '&token=' + encodeURIComponent(t) : ''}`; }
 const hudPages = ref(0);
 const hudEdges = ref(0);
@@ -137,7 +136,6 @@ const selected = ref(null);          // 当前选中星球（点星=选中）
 const dockOpen = computed(() => !!selected.value && (view.value === 'atlas' || view.value === 'pages'));
 const detailIntel = ref(null);       // 已锻页 intel.json
 const detailScore = ref(null);       // 已锻页 score.json
-const detailSeo = computed(() => selected.value?.seoLite ?? null);
 
 // ---------- 工作台视图（v2）：星图 / 页面 / 任务 / 报告 / 设置 ----------
 const view = ref('atlas');
@@ -189,7 +187,6 @@ const avgVisual = computed(() => {
 function scheduleScoreLoad() { clearTimeout(scoreLoadTimer); scoreLoadTimer = setTimeout(loadPageStatus, 400); }
 let scoreLoadTimer = null;
 
-function openDetail(n) { view.value = 'pages'; onNodeClick(n); }
 function selectView(id) {
   if (id === 'pages' && view.value === 'pages') { view.value = 'atlas'; return; }   // 再次点击 = 收起
   view.value = id;
@@ -299,8 +296,20 @@ async function loadPageStatus() {
       pageMeta[n.id] = { assets: hit?.assets ?? null, visualGaps: hit?.visualGaps ?? null, interactions: hit?.interactions ?? null, updatedAt: hit?.updatedAt ?? null, motion: hit?.motion ?? null };
     }
     tableNodes.value = [...nodes, ...extraNodes.value];
+    loadQueue(forHost);
   } catch { /* 引擎离线时保持上一次的快照，不把界面清空 */ }
   finally { if (host.value === forHost) pagesLoading.value = false; }
+}
+
+/** 整站克隆的断点状态（/api/queue/<host>）：让"还剩 N 页、可以直接续跑"成为可显示的读数。
+ *  此前一批 60 页的站中断后，用户能做的唯一判断是"再点一次整站克隆"，而不知道它会不会重头再来。 */
+async function loadQueue(h) {
+  try {
+    const r = await fetch(API + '/api/queue/' + encodeURIComponent(h));
+    if (!r.ok || host.value !== h) return;
+    const j = await r.json();
+    queueState.value = j.exists ? j : null;
+  } catch { /* 引擎离线：保持上一次读数 */ }
 }
 function saveToken() {
   const v = tokenInput.value.trim();
@@ -608,6 +617,14 @@ const siteActions = computed(() => {
       hint: cloned ? '只重跑源站变了的页（按服务端 HTML 指纹判断，不起浏览器）' : '把侦察到的页面逐页克隆；由引擎执行，关掉本页也会继续',
       disabled: !has || !!engine.value.clone,
     },
+    // 断点续跑：上一批没跑完才出现。续跑本质就是增量克隆（queue.json 会跳过已完成页），
+    // 但把它单独列出来、并写明"剩 N 页"，用户才敢点第二次。
+    ...(queueState.value && queueState.value.unfinished > 0 ? [{
+      id: 'clone-resume',
+      label: `继续整站克隆（剩 ${queueState.value.unfinished} 页）`,
+      hint: `上次整站克隆完成 ${queueState.value.done}/${queueState.value.total}，还有 ${queueState.value.unfinished} 页未完成。续跑会跳过已完成页，不会重头再来。`,
+      disabled: !!engine.value.clone,
+    }] : []),
     { id: 'clone-full', label: '全量重跑', hint: '忽略「源站是否变过」，整站重跑一遍 —— 页面多时按小时计', danger: true, disabled: !has || !cloned || !!engine.value.clone },
     { id: 'pages', label: view.value === 'pages' ? '收起清单' : '页面清单', hint: '逐页状态 / 还原度 / 资产 / 缺口', disabled: !has },
     {
@@ -627,6 +644,7 @@ const workViewActions = computed(() => siteActions.value.filter(a => a.id !== 'p
 function onSiteAction(id) {
   if (id === 'audit') return runAudit();
   if (id === 'clone-incremental') return startCloneSite({ incremental: doneCount.value > 0 });
+  if (id === 'clone-resume') return startCloneSite({ incremental: true });
   if (id === 'clone-full') {
     if (!confirm(`全量重跑 ${host.value}？\n\n忽略「源站是否变过」，把本站全部页面重新克隆一遍。\n页面多时按小时计，期间引擎的并发槽会被占满。`)) return;
     return startCloneSite({ incremental: false });
@@ -879,7 +897,9 @@ function runMatrix() {
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
       es.onmessage = (m) => {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
-        if (ev.kind === 'matrix-done') {
+        if (ev.kind === 'matrix-start') { task.progress = '0/' + ev.total; statusText.value = '对标矩阵 · 0/' + ev.total; }
+        else if (ev.kind === 'matrix-site') { task.progress = ev.index + '/' + ev.total; statusText.value = '对标矩阵 · ' + ev.host + ' · ' + ev.index + '/' + ev.total; }
+        else if (ev.kind === 'matrix-done') {
           task.done = true; task.endedAt = Date.now();
           const rel = String(ev.path || '').split(/[\\/]workspace[\\/]/).pop() || '';
           matrixReport.value = { url: '/static/' + rel.split('\\').join('/'), sites: [host.value, matrixPeer.value] };
@@ -915,7 +935,9 @@ function runAssetsAudit() {
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
       es.onmessage = (m) => {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
-        if (ev.kind === 'assets-gaps-done') {
+        if (ev.kind === 'asset-gaps-start') { task.progress = '0/' + ev.total; statusText.value = '资产扫描 · 0/' + ev.total; }
+        else if (ev.kind === 'asset-gaps-page') { task.progress = ev.index + '/' + ev.total; statusText.value = '资产扫描 · ' + ev.index + '/' + ev.total; }
+        else if (ev.kind === 'assets-gaps-done') {
           task.assetGaps = ev.visualGaps; task.done = true; task.endedAt = Date.now();
           assetAuditReport.value = { host: host.value, visualGaps: ev.visualGaps, visualOrigin: ev.visualOrigin, visualThird: ev.visualThird, pages: ev.pages };
           statusText.value = ev.visualGaps ? ('资产扫描完成 · ' + ev.visualGaps + ' 个视觉缺口') : '资产扫描完成 · 无视觉缺口';
@@ -1087,7 +1109,14 @@ function runLiveExport() {
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
       es.onmessage = (m) => {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
-        if (ev.kind === 'exit') {
+        if (ev.kind === 'live-stage') {
+          const label = liveStageCn(ev.stage);
+          if (ev.index != null) task.progress = label + ' ' + ev.index + '/' + ev.total;
+          else if (ev.status === 'running') task.progress = label + '…';
+          else if (ev.status === 'done') task.progress = label;
+          statusText.value = '交互镜像导出 · ' + task.progress;
+        }
+        else if (ev.kind === 'exit') {
           task.done = true; task.endedAt = Date.now();
           if (ev.status === 'done') { statusText.value = '交互镜像导出完成 · 已生成离线完整包'; loadLiveHealth(); loadReports(); }
           else { task.failed = true; task.error = '导出失败（见 health.json / 任务日志）'; errMsg.value = '交互镜像导出失败，查看任务日志'; }
@@ -1181,8 +1210,29 @@ async function forgeAll() {
 
 /** 整站克隆 —— 交给引擎跑批量队列，而不是用浏览器标签页驱动。
  * 关掉控制台页面任务照跑；并发与单页熔断按站点配方走；控制台只订阅进度。 */
-function startCloneSite({ incremental = false } = {}) {
-  return new Promise((resolve) => {
+/**
+ * 历史任务的一键续跑。只处理两类有明确 target 的任务：
+ *   · clone（整站）—— url 是 origin，续跑即增量克隆（queue.json 跳过已完成页）
+ *   · forge（单页）—— url 是页面 URL，直接重新克隆这一页
+ * 引擎重启会把当时 running 的任务标成 interrupted；这一步就是为它准备的出口。
+ */
+function retryJob(h) {
+  if (h.kind === 'clone') {
+    let target = '';
+    try { target = new URL(h.url).hostname.replace(/^www\./, ''); } catch { target = ''; }
+    if (!target) { errMsg.value = '这条历史记录没有可用的站点地址，无法续跑'; return; }
+    pickSiteByHost(target);
+    startCloneSite({ incremental: true });
+    return;
+  }
+  if (h.kind === 'forge' && h.url) {
+    startForge(null, { url: h.url });
+    return;
+  }
+  errMsg.value = '这类历史任务不支持一键续跑，请在站点里重新发起';
+}
+
+function startCloneSite({ incremental = false } = {}) {  return new Promise((resolve) => {
     const h = host.value;
     const task = reactive({
       localId: `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
@@ -1225,6 +1275,7 @@ function startCloneSite({ incremental = false } = {}) {
             closeTask();
             statusText.value = task.done ? `整站克隆完成${task.progress ? ' · ' + task.progress : ''}` : (ev.status === 'cancelled' ? '整站克隆已取消' : '整站克隆中断');
             loadPageStatus();                                  // 刷新页面清单上的铸造状态
+            loadQueue(h);                                      // 断点续跑的"还剩 N 页"也随之更新
             loadSites();                                       // 也要刷新站点列表：SiteBar 的"克隆 N 页"取的是它，
                                                                // 此前不刷新，于是它和"克隆档案 · N 页"当场打架
             loadHistory(h);                                    // 走势多一个点
@@ -1282,12 +1333,12 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <div class="stat"><b>{{ hudEdges }}</b><i :title="`这 ${hudPages} 个页面之间的站内链接数（不是页面数）。星图上当前已渲染 ${hudEdgesRendered} 条。`">站内链接</i></div>
       <div class="stat"><b>{{ hudOrigin }}</b><i title="被克隆的原始站点。镜像与原站的对比都以它为准。">原站</i></div>
     </div>
-    <div class="status" v-if="statusText" :class="{ live }">{{ statusText }}</div>
+    <div class="status" v-if="statusText" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
   </div>
 
   <!-- 左侧仪表面板 -->
   <div class="panel surface" v-if="view === 'atlas' && showPanel">
-    <div class="panel-title">仪表面板<button class="panel-collapse" @click="showPanel = false" title="收起">—</button></div>
+    <div class="panel-title">仪表面板<button class="panel-collapse" @click="showPanel = false" title="收起" aria-label="收起仪表面板">—</button></div>
     <div class="panel-sec">
       <div class="panel-sec-name">图例 · 页面类型</div>
       <div class="legend"><span class="lg" v-for="(t, k) in PAGE_TYPES" :key="k"><i :style="{ background: typeColorThemed(k) }"></i>{{ t.cn }}</span></div>
@@ -1326,10 +1377,17 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="tc-head">
       <span>任务中心</span>
       <span class="tc-meta">{{ tasks.filter(t => !t.done && !t.failed).length }} 运行中 / {{ tasks.length }}</span>
-      <button class="tc-toggle" @click="tasksOpen = !tasksOpen">{{ tasksOpen ? '—' : '＋' }}</button>
+      <button class="tc-toggle" @click="tasksOpen = !tasksOpen" :aria-expanded="tasksOpen" aria-label="展开或收起任务中心">{{ tasksOpen ? '—' : '＋' }}</button>
     </div>
     <div class="tc-rows" v-show="tasksOpen">
-      <div class="tc-row" v-for="t in [...tasks].reverse()" :key="t.localId" :class="taskState(t)" @click="t.kind !== 'clone' && (activeTaskId = t.localId)" :title="t.error || t.url">
+      <!-- 非「整站克隆」的行可点开详情。裸 div + @click 对键盘/读屏不可达，
+           所以补 role/tabindex/键事件 —— 判据与 @click 完全一致（同一个条件）。 -->
+      <div class="tc-row" v-for="t in [...tasks].reverse()" :key="t.localId" :class="taskState(t)"
+           :role="t.kind !== 'clone' ? 'button' : undefined" :tabindex="t.kind !== 'clone' ? 0 : undefined"
+           @click="t.kind !== 'clone' && (activeTaskId = t.localId)"
+           @keydown.enter.prevent="t.kind !== 'clone' && (activeTaskId = t.localId)"
+           @keydown.space.prevent="t.kind !== 'clone' && (activeTaskId = t.localId)"
+           :title="t.error || t.url">
         <span class="tc-name">{{ t.label ?? t.pageName }}</span>
         <span class="tc-state">{{ taskLabel(t) }}</span>
         <span class="tc-score" v-if="t.kind === 'audit' && t.auditScore != null">{{ t.auditScore }} 分</span>
@@ -1353,7 +1411,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     v-if="view === 'jobs'"
     :tasks="tasks" :jobs="jobHistory" :sites="sites" :host="host" :engine="engine"
     :actions="workViewActions"
-    @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'"
+    @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'" @retry="retryJob"
   />
 
   <section class="work-view surface" v-if="view === 'reports'">
@@ -1366,7 +1424,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="reports-scroll">
     <div class="report-card surface">
       <h3>克隆档案</h3>
-      <p v-if="pagesLoading">逐页状态统计中…</p>
+      <p v-if="pagesLoading" role="status" aria-live="polite">逐页状态统计中…</p>
       <p v-else>{{ doneCount }} 页已克隆 · 平均视觉 {{ avgVisual }}</p>
       <a v-if="hasReport('archive')" :href="reportUrl('archive')" target="_blank" rel="noopener">打开档案</a>
       <p v-else class="trend-hint">还没有档案可开 —— 克隆任意一页之后这里就会出现</p>
@@ -1621,8 +1679,8 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   <div class="keys" v-if="view === 'atlas' && !forge">
     <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 打开页面详情</span>
   </div>
-  <div class="toast" v-if="errMsg">{{ errMsg }}</div>
-  <div class="toast ok" v-if="okMsg">{{ okMsg }}</div>
+  <div class="toast" v-if="errMsg" role="alert" aria-live="assertive">{{ errMsg }}</div>
+  <div class="toast ok" v-if="okMsg" role="status" aria-live="polite">{{ okMsg }}</div>
   <div class="view-nav surface">
     <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" :aria-current="view === v.id ? 'page' : undefined" :title="v.hint" @click="selectView(v.id)">
       <b aria-hidden="true">{{ v.icon }}</b><span>{{ v.label }}</span>

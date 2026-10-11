@@ -12,12 +12,13 @@
  */
 import { join } from 'node:path';
 import { DATA_ROOT } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 import { gcCas } from '../store/cas.mjs';
+import { mb } from '../fsutil.mjs';
 
 const apply = process.argv.includes('--apply');
 const asJson = process.argv.includes('--json');
 const storeDir = join(DATA_ROOT, 'assets-cas');
-const mb = (n) => (n / 1048576).toFixed(1) + 'MB';
 
 const r = gcCas(storeDir, { apply });
 
@@ -32,6 +33,6 @@ if (asJson) {
   else if (r.orphanFiles) console.log('  → 加 --apply 回收');
   console.log(`  ${r.ms}ms`);
 }
-process.stdout.write('@@EVENT@@' + JSON.stringify({
+emit({
   kind: 'cas-gc', apply, orphanFiles: r.orphanFiles, orphanBytes: r.orphanBytes, freed: r.freed ?? 0, failed: r.failed ?? 0,
-}) + '\n');
+});

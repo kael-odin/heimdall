@@ -27,12 +27,12 @@ import { readdirSync, statSync, existsSync, rmSync, writeFileSync } from 'node:f
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DELIVERABLE, DATA_ROOT } from '../paths.mjs';
+import { emit } from '../emit.mjs';
 
 /** 上次运行的结果落盘，供控制台读取（与 storage.json 同样的模式：
  *  遍历/删除都在子进程里做，主进程只读结果，避免冻住事件循环） */
 export const PLAN_FILE = join(DATA_ROOT, 'deliver-plan.json');
 
-const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error('[deliver-prune]', ...a);
 
 const argv = process.argv.slice(2);

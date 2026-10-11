@@ -53,3 +53,19 @@ export const KIND_CN = {
   deliver: '交付包整理',
 };
 export const kindCn = (k) => KIND_CN[k] ?? '克隆';
+
+/**
+ * 交互镜像导出的阶段名（引擎 live/export.mjs 的 live-stage 事件）。
+ * 导出是唯一一个"跑很久但中途没有任何读数"的任务，所以阶段名要覆盖
+ * 它真正耗时的每一步，用户才分得清"在拷贝"和"卡住了"。
+ */
+export const LIVE_STAGE_CN = {
+  build: '生成镜像页',
+  copy: '拷贝资产',
+  har: '合并 HAR',
+  heal: '补齐缺口',
+  materialize: '本地化资源',
+  health: '离线体检',
+  package: '打包校验',
+};
+export const liveStageCn = (s) => LIVE_STAGE_CN[s] ?? s;

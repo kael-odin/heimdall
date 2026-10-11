@@ -18,6 +18,7 @@ import { loadProfile, queuePlan, sanitizeHost } from './site-profile.mjs';
 import { sourceFingerprint, incrementalDecision, decisionNote } from './fingerprint.mjs';
 import { appendHistory } from './seo/history.mjs';
 import { WORKSPACE } from './paths.mjs';
+import { emit as emitRaw } from './emit.mjs';
 
 const host = sanitizeHost(requireArg(process.argv[2], 'node src/queue.mjs <host> [--max N] [--force] [--incremental] [--missing-har] [--no-dedupe]', '站点 host'));
 const maxIdx = process.argv.indexOf('--max');
@@ -36,7 +37,7 @@ const BASE = join(WORKSPACE, host);
 const queuePath = join(BASE, 'queue.json');
 
 /** 机器可读进度（引擎 SSE 用）；普通 CLI 跑时只是多几行带前缀的日志 */
-const emit = (obj) => { if (JSON_EVENTS) process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n'); };
+const emit = JSON_EVENTS ? emitRaw : () => {};
 
 const atlas = JSON.parse(readFileSync(join(BASE, 'recon', 'atlas.json'), 'utf8'));
 const engineName = (u) => {

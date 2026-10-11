@@ -37,8 +37,8 @@ import { appendHistory } from './history.mjs';
 import { fetchFieldData, compareLabToField } from './field-data.mjs';
 import { renderHtml, renderCsv } from './report.mjs';
 import { buildBaseline, snapshotOf, diffBaseline, renderDiffText, renderDiffMarkdown, BASELINE_VERSION } from './baseline.mjs';
+import { emit } from '../emit.mjs';
 
-const emit = (obj) => process.stdout.write('@@EVENT@@' + JSON.stringify(obj) + '\n');
 const log = (...a) => console.error('[seo]', ...a);
 
 // ---------- 参数 ----------

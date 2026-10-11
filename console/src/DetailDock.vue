@@ -10,7 +10,7 @@
  * 面板打开时父组件会隐藏右下角的「克隆档案」链接 —— 本面板是全高右侧浮层，
  * 会把它整块盖住（实测 154×32），留着就等于点不到。
  */
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import Icon from './Icon.vue';
 import { API, apiHeaders, wsJson } from './api.js';
 import { typeColor, typeCn } from './types.js';
@@ -26,8 +26,9 @@ const props = defineProps({
   detailScore: { type: Object, default: null },
   theme: { type: String, default: 'dark' },
 });
-const emit = defineEmits(['close', 'open-forge', 'forge-all', 'verify']);
+defineEmits(['close', 'open-forge', 'forge-all', 'verify']);
 
+/** 阶段条：键必须与 pipeline.mjs 的 stage 名一致；顺序即显示顺序 */
 const STAGES = { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' };
 
 /**
@@ -44,6 +45,28 @@ const skipReasonCn = (k) => FIXUP_SKIP_CN[k] ?? String(k ?? '');
 
 const motion = computed(() => props.pageMeta[props.selected?.id]?.motion ?? null);
 const motionRows = computed(() => Object.values(motion.value?.drivers ?? {}).filter(d => d.count > 0));
+
+/**
+ * 本面板是一个模态式浮层（盖住右侧 32%），所以它必须像对话框一样对待焦点：
+ * 打开时把焦点移进来（否则键盘用户还在身后的星图上）、Tab 在面板内循环、
+ * 关闭时把焦点还给打开它的元素（否则焦点落回 body，读屏用户丢失位置）。
+ * 父组件已负责 Esc 关闭；这里只管焦点。
+ */
+const dockEl = ref(null);
+let lastFocus = null;
+onMounted(() => {
+  lastFocus = document.activeElement;
+  nextTick(() => dockEl.value?.querySelector('.dock-close')?.focus());
+});
+onBeforeUnmount(() => { if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus(); });
+function onDockKeydown(e) {
+  if (e.key !== 'Tab') return;
+  const items = dockEl.value?.querySelectorAll('button:not([disabled]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (!items || !items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
 
 /** 运行计时：只在真的跑着的时候每秒 tick —— 空闲的会话不该养一个空转的定时器 */
 const nowTick = ref(Date.now());
@@ -70,7 +93,6 @@ const assetGapsHost = ref(null);
 let liveHealth = null, liveHealthHost = '';
 
 const typeColorThemed = (t) => typeColor(t, props.theme);
-const pageName = computed(() => (props.selected ? pageNameOf(props.selected) : ''));
 
 /** 差异形态的中文标签与配色：集中 = 要去看，弥散 = 多为渲染差异 */
 const SHAPE_CN = { concentrated: '集中', mixed: '混合', diffuse: '弥散', identical: '一致', negligible: '极小' };
@@ -137,10 +159,25 @@ function switchTab(t) {
   detailTab.value = t;
   if (t === 'quality') loadQuality();
 }
+
+/** 标签页的 ARIA 键盘模式：左右箭头在标签间移动并选中，Home/End 跳首尾 */
+const TAB_ORDER = ['overview', 'seo', 'quality', 'forge'];
+function onTablistKey(e) {
+  const i = TAB_ORDER.indexOf(detailTab.value);
+  let next = null;
+  if (e.key === 'ArrowRight') next = (i + 1) % TAB_ORDER.length;
+  else if (e.key === 'ArrowLeft') next = (i + TAB_ORDER.length - 1) % TAB_ORDER.length;
+  else if (e.key === 'Home') next = 0;
+  else if (e.key === 'End') next = TAB_ORDER.length - 1;
+  if (next == null) return;
+  e.preventDefault();
+  switchTab(TAB_ORDER[next]);
+  nextTick(() => dockEl.value?.querySelector('#tab-' + TAB_ORDER[next])?.focus());
+}
 </script>
 
 <template>
-<div class="dock">
+<div class="dock" ref="dockEl" role="dialog" aria-modal="true" :aria-label="'页面详情：' + selected.url" @keydown="onDockKeydown">
   <div class="dock-head">
     <div>
       <div class="dock-title">{{ selected.path === '/' ? 'home' : selected.path.slice(1) }}</div>
@@ -149,15 +186,15 @@ function switchTab(t) {
     <div class="dock-headbtns"><button class="dock-all" @click="$emit('forge-all')" title="批量克隆尚未完成的页面（每次最多 10 页；站点级整站克隆见星图顶部按钮）">批量克隆 10 页</button><button class="dock-close" aria-label="关闭页面详情" title="关闭" @click="$emit('close')"><Icon name="close" decorative /></button></div>
   </div>
 
-  <div class="tabs">
-    <button class="tab" :class="{ on: detailTab === 'overview' }" @click="switchTab('overview')">概览</button>
-    <button class="tab" :class="{ on: detailTab === 'seo' }" @click="switchTab('seo')">SEO 剖析</button>
-    <button class="tab" :class="{ on: detailTab === 'quality' }" @click="switchTab('quality')">质检</button>
-    <button class="tab" :class="{ on: detailTab === 'forge' }" @click="switchTab('forge')">克隆</button>
+  <div class="tabs" role="tablist" aria-label="页面详情分区" @keydown="onTablistKey">
+    <button class="tab" role="tab" id="tab-overview" :aria-selected="detailTab === 'overview'" :tabindex="detailTab === 'overview' ? 0 : -1" aria-controls="panel-overview" :class="{ on: detailTab === 'overview' }" @click="switchTab('overview')">概览</button>
+    <button class="tab" role="tab" id="tab-seo" :aria-selected="detailTab === 'seo'" :tabindex="detailTab === 'seo' ? 0 : -1" aria-controls="panel-seo" :class="{ on: detailTab === 'seo' }" @click="switchTab('seo')">SEO 剖析</button>
+    <button class="tab" role="tab" id="tab-quality" :aria-selected="detailTab === 'quality'" :tabindex="detailTab === 'quality' ? 0 : -1" aria-controls="panel-quality" :class="{ on: detailTab === 'quality' }" @click="switchTab('quality')">质检</button>
+    <button class="tab" role="tab" id="tab-forge" :aria-selected="detailTab === 'forge'" :tabindex="detailTab === 'forge' ? 0 : -1" aria-controls="panel-forge" :class="{ on: detailTab === 'forge' }" @click="switchTab('forge')">克隆</button>
   </div>
 
   <!-- 概览 tab -->
-  <div v-show="detailTab === 'overview'">
+  <div v-show="detailTab === 'overview'" role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" tabindex="0">
     <div class="ov-grid">
       <div class="ov-item"><span class="ov-k">类型</span><span class="ov-v" :style="{ color: typeColorThemed(selected.type) }">{{ typeCn(selected.type) }}</span></div>
       <div class="ov-item"><span class="ov-k">层级深度</span><span class="ov-v">{{ selected.depth ?? '-' }}</span></div>
@@ -229,7 +266,7 @@ function switchTab(t) {
   </div>
 
   <!-- SEO tab -->
-  <div v-show="detailTab === 'seo'">
+  <div v-show="detailTab === 'seo'" role="tabpanel" id="panel-seo" aria-labelledby="tab-seo" tabindex="0">
     <div class="seo-note">
       <b>侦察时的轻量体检</b>（6 项：title / description / H1 / 图片 alt / OG / lang）。
       侦察一次就把全站每页都过一遍，用来快速找出问题页。
@@ -251,7 +288,7 @@ function switchTab(t) {
   </div>
 
   <!-- 质检 tab -->
-  <div v-show="detailTab === 'quality'">
+  <div v-show="detailTab === 'quality'" role="tabpanel" id="panel-quality" aria-labelledby="tab-quality" tabindex="0">
     <div class="seo-note">
       <b>质检</b>把这一页「还原度之外」的几项质量证据汇总在一起。
       它们来自<b>不同的检查、在不同的时机产生</b>，跑过的才有数据：
@@ -264,7 +301,7 @@ function switchTab(t) {
         <tr><td>动效驱动画像</td><td>每次克隆自动（捕获阶段，滚动扫掠之后采样）</td></tr>
       </table>
     </div>
-    <div class="seo-note" v-if="detailQuality.loading">加载质检数据…</div>
+    <div class="seo-note" v-if="detailQuality.loading" role="status" aria-live="polite">加载质检数据…</div>
     <template v-else>
       <div class="ov-sec">
         <div class="panel-sec-name">视觉保真（多视口）</div>
@@ -421,7 +458,7 @@ function switchTab(t) {
   </div>
 
   <!-- 克隆 tab -->
-  <div v-show="detailTab === 'forge'">
+  <div v-show="detailTab === 'forge'" role="tabpanel" id="panel-forge" aria-labelledby="tab-forge" tabindex="0">
     <div class="forge-cta" v-if="!forge && selected.forgeState !== 'done' && selected.forgeState !== 'running'">
       <button class="forge-btn" @click="$emit('open-forge')">⚡ 开始克隆此页</button>
       <div class="forge-note">六阶段：捕获骨架 → 注入皮肤 → 渲染校准 → AI 校准 → 像素定谳 → 情报入库</div>
@@ -471,7 +508,7 @@ function switchTab(t) {
 
     <template v-if="forge">
       <div class="stages">
-        <div class="stage" v-for="(label, key, i) in { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' }" :key="key"
+        <div class="stage" v-for="(label, key, i) in STAGES" :key="key"
              :class="forge.stages[key]">
           <span class="idx">{{ String(i + 1).padStart(2, '0') }}</span>{{ label }}<span class="dot"></span>
         </div>
@@ -481,10 +518,12 @@ function switchTab(t) {
            就是阶段条上一个圆点变色 —— 用户看不出它到底在动还是卡住了。 -->
       <div class="live surface">
         <div class="live-head">
-          <span class="live-dot" :class="{ on: !forge.done }"></span>
-          <span>{{ forge.done ? (forge.failed ? '已结束（失败）' : '已完成') : '正在运行' }} · 已用 {{ elapsedText }}</span>
+          <span class="live-dot" :class="{ on: !forge.done }" aria-hidden="true"></span>
+          <!-- 状态词进 live region；计时每秒都在变，读屏会念个不停 —— 所以对它 aria-hidden -->
+          <span role="status" aria-live="polite">{{ forge.done ? (forge.failed ? '已结束（失败）' : '已完成') : '正在运行' }}</span>
+          <span aria-hidden="true"> · 已用 {{ elapsedText }}</span>
         </div>
-        <pre class="live-log" v-if="forge.logs.length">{{ forge.logs.slice(-14).join('\n') }}</pre>
+        <pre class="live-log" v-if="forge.logs.length" role="log" aria-live="polite" aria-label="克隆实时输出">{{ forge.logs.slice(-14).join('\n') }}</pre>
         <div class="live-log pending" v-else>等待子进程输出…</div>
       </div>
 
@@ -521,11 +560,11 @@ function switchTab(t) {
       <div class="screens" v-if="forge.done">
         <div class="pane">
           <div class="pane-label">SOURCE · 原站</div>
-          <img :src="`/${host}/pages/${forge.pageName}/shot-src.png`" alt="source" />
+          <img :src="`/${host}/pages/${forge.pageName}/shot-src.png`" alt="原站首屏截图" />
         </div>
         <div class="pane">
           <div class="pane-label">MIRROR · 镜像</div>
-          <img :src="`/${host}/pages/${forge.pageName}/shot-clone.png`" alt="clone" />
+          <img :src="`/${host}/pages/${forge.pageName}/shot-clone.png`" alt="静态镜像首屏截图" />
         </div>
       </div>
       <div class="compare-link" v-if="forge.done">
