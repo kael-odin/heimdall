@@ -1604,3 +1604,43 @@ https://www.framer.com/%22data:image/svg+xml,&lt;svg%20xmlns=%22...
 
 **实测 framer.com：assets 失败 233 → 0**（本地化成功数不变 —— 说明从来没有真资源被误抓过，
 这些计数从头到尾都是假的）。
+
+### 31.9 视频没有 poster 时，浏览器画的是**纯黑**，不是第一帧
+
+linear.app 重跑后还剩一个 C：`customers-ramp`，像素 64.7%。
+它的 `dynamicShare` 是 **0**、`refinable` 是 **1.0** —— 我们自己的工具在说
+"这块差异不是动画、应该能修"。打开看：原站一整块客户故事视频，镜像那里是纯黑。
+
+根因：`<video preload="metadata">` 且没有 poster 时，浏览器**什么都不画**。
+原站那一帧来自脚本 `play()`，镜像里没有脚本。这一块独占 386,303 个像素的差异，
+撑满了"最大差异块"——而它跟"复刻得像不像"毫无关系，纯粹是"没给它一张静态图"。
+营销站的视频 hero 是常见结构，所以这个盲区影响面不小。
+
+修法照抄 canvas 光栅化那套现成模式：
+
+- **capture**：每个 `<video>` 先 `pause()` + `currentTime = 0`，再截元素图存
+  `assets/video-<n>.png`，元素上打 `data-heimdall-poster="n"` 交接给构建阶段。
+  归零是为了让海报是**可复现的那一帧**，不是随便撞上的某一帧；顺带让原站主截图
+  也停在第 0 帧，两边同为第 0 帧，比"各截各的正在播的某一帧"更确定。
+- **build_clone**：`applyVideoPosters()` 换成 `poster="assets/video-n.png"`；
+  原站自带 poster 的不覆盖。
+
+**实测 linear.app/customers-ramp：像素 64.7% → 100%，总分 82.4(C) → 100(A)。**
+linear 40 页至此 39 A / 1 B。
+
+写这段时自己踩了一个：判"原站有没有 poster"用了 `\bposter=`，
+而它会被 `data-heimdall-poster` 自己命中 → 条件恒真 → 一张海报也补不上。
+单测当场逮住（这是先写测试再跑的价值），改成 `(^|\s)poster=`。
+
+### 31.10 本轮把新站点当试验田的结果
+
+| 站点 | 页数 | 结果 |
+|---|---|---|
+| linear.app | 40 | 39 A / 1 B，平均 99.1（修跨域 CSS 前有 4 页 C） |
+| framer.com | 16 | 2 页非 A；`design` 的余下差异是 Framer 的 SSR 变体块，已记为已知限制 |
+| vercel.com | 16 | 全 A |
+| tailwindcss.com / supabase.com / stripe.com | 各 16 | 跑批中 |
+
+**结论：新站点本身就是测试手段。** 这一轮的两条大 bug —— 跨域样式表整批丢失、
+视频整块纯黑 —— 都不是旧样本暴露的；旧样本（apify/thordata/vue/vitest/svelte/angular）
+全都 ≥95 分，看起来"没问题"。是 linear 和 framer 把它们逼出来的。

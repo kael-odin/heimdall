@@ -31,6 +31,7 @@
 | 补抓缺失抓包 | `queue <host> --missing-har` | 只重锻缺 `network.har` 的页 |
 | 响应式变体还原 | `multi-snapshot` / `responsive-upgrade` | 多视口快照；低分页自动升级，**分数提升才保留** |
 | 画布内容光栅化 | 捕获阶段自动 | JS 画的 `<canvas>` 转成静态图，否则脚本一剥就是空白 |
+| 视频封面截取 | 捕获阶段自动 | 没有 poster 的 `<video>` 浏览器画的是**纯黑**（不是第一帧）；归零到第 0 帧截一张当封面 |
 | 去重 | `dedupe <host>` | 内容寻址 + 硬链接，同一文件只占一份磁盘 |
 
 **断点续跑怎么工作**：`workspace/<host>/queue.json` 逐页记状态。中断后再跑，
