@@ -80,3 +80,53 @@ export function rewriteCssRefs(css, resolved) {
   }
   return out + css.slice(last);
 }
+
+/**
+ * 从一份**跨域**样式表原文里抽出"让字体能用"所需的最小规则集。
+ *
+ * 为什么需要：同源策略下浏览器读不到跨域样式表的 cssRules，所以 Google Fonts
+ * 这类样式表从来进不了我们序列化的 CSSOM —— 图标字体的连字名被当文字渲染，
+ * 页面上直接印着 `chevron_right` / `more_horiz`（实测 angular.dev）。
+ *
+ * 抽什么、为什么是这些：
+ *   1. 全部 `@font-face`（字体本身）
+ *   2. **把 font-family 指到这些字体族上的规则** —— Google Fonts 会连一个
+ *      `.material-symbols-outlined { font-family: 'Material Symbols Outlined' }`
+ *      一起发过来；只搬 @font-face 而不搬它，图标依然不显示（第一次就是这么漏的）
+ *
+ * 不抽整份 CSS 是刻意的克制：第三方样式表常带自己的 reset 与工具类，
+ * 倒进镜像足以把版面搞乱。
+ *
+ * @param {string} css 样式表原文
+ * @param {string} base 该样式表自身的 URL（相对 url() 相对它解析）
+ * @returns {string} 可直接本地化的 CSS 片段（无可用规则时为空串）
+ */
+export function extractFontRules(css, base) {
+  const text = String(css ?? '');
+  const faces = [...text.matchAll(/@font-face\s*\{([^}]*)\}/gi)];
+  if (!faces.length) return '';
+
+  const absolutize = (body) => body.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (m, q, u) => {
+    if (/^(data:|https?:)/i.test(u)) return m;
+    try { return `url("${new URL(u, base).href}")`; } catch { return m; }
+  });
+
+  const families = new Set();
+  const parts = [];
+  for (const m of faces) {
+    const fam = /font-family\s*:\s*(['"]?)([^;'"}\n]+)\1/i.exec(m[1])?.[2]?.trim().toLowerCase();
+    if (fam) families.add(fam);
+    parts.push('@font-face {' + absolutize(m[1]) + '}');
+  }
+
+  // 顶层规则里凡是把 font(-family) 指到上述字体族的，一并带上
+  for (const m of text.matchAll(/(?:^|[}\s])([^{}@][^{}]*?)\s*\{([^{}]*)\}/g)) {
+    const sel = m[1].trim();
+    const body = m[2].trim();
+    if (!sel || !body) continue;
+    const hit = body.split(';').some(d => /^\s*font(-family)?\s*:/i.test(d)
+      && [...families].some(f => d.toLowerCase().includes(f)));
+    if (hit) parts.push(`${sel} { ${body} }`);
+  }
+  return parts.join('\n') + '\n';
+}

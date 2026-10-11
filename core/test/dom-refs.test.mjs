@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, rasterizeCanvases, DROP_RELS, ASSET_RELS } =
+const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, rasterizeCanvases, neutralizeBaseTag, DROP_RELS, ASSET_RELS } =
   await import('../src/dom-refs.mjs');
 
 const ORIGIN = 'https://vitest.dev';
@@ -186,4 +186,30 @@ test('rasterizeCanvases: 可自定义资产目录', () => {
 test('rasterizeCanvases: 空输入 / 无画布不炸', () => {
   assert.deepEqual(rasterizeCanvases('').count, 0);
   assert.equal(rasterizeCanvases('<div>hi</div>').html, '<div>hi</div>');
+});
+
+// ---------- <base href> 归一（Angular 类应用会把全站相对引用改基到根）----------
+
+test('base: <base href="/"> 改成文档相对 —— 否则 styles/ 与 assets/ 全部 404', () => {
+  assert.equal(neutralizeBaseTag('<head><base href="/"><title>x</title></head>'),
+    '<head><base href="./"><title>x</title></head>');
+});
+
+test('base: 单引号与无引号写法都归一', () => {
+  assert.equal(neutralizeBaseTag(`<base href='/sub/'>`), `<base href="./">`);
+  assert.equal(neutralizeBaseTag('<base href=/>'), '<base href="./">');
+});
+
+test('base: 没有 href 的 <base target> 原样保留', () => {
+  const t = '<base target="_blank">';
+  assert.equal(neutralizeBaseTag(t), t);
+});
+
+test('base: 大小写与自闭合都认', () => {
+  assert.equal(neutralizeBaseTag('<BASE HREF="/" />'), '<BASE href="./" />');
+});
+
+test('base: 没有 base 标签的 HTML 不变', () => {
+  const html = '<html><head><link rel="stylesheet" href="styles/cssom.css"></head></html>';
+  assert.equal(neutralizeBaseTag(html), html);
 });

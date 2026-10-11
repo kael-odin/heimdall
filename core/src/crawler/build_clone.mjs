@@ -13,8 +13,8 @@ import { join, dirname, relative, sep } from 'node:path';
 import { pickAdapter, refRewriteCandidates } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isNonAssetRef, isSoftHtml } from '../asset-ext.mjs';
-import { scanCssRefs, rewriteCssRefs } from '../css-refs.mjs';
-import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases } from '../dom-refs.mjs';
+import { scanCssRefs, rewriteCssRefs, extractFontRules } from '../css-refs.mjs';
+import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, neutralizeBaseTag } from '../dom-refs.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 
@@ -38,15 +38,35 @@ mkdirSync(join(CLONE, 'assets'), { recursive: true });
 const FONT_EXT = new Set(['woff2', 'woff', 'ttf', 'otf', 'eot']);
 
 /** 取回响应体 + Content-Type（扩展名判定需要真实类型，不能只靠 URL 后缀猜） */
-const fetchBin = async (url) => {
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
-  if (!res.ok) throw new Error(res.status);
-  const ct = res.headers.get('content-type') || '';
-  // 软 404 / SPA 兜底：要图片却回 HTML。落盘会变成"看着有、其实全错"的假资产
-  if (isSoftHtml(ct, url)) throw new Error('soft-404 (text/html)');
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (!buf.length) throw new Error('empty body');
-  return { buf, ct };
+/**
+ * 取回一份资产。
+ *
+ * **只对网络层失败重试**（连接重置 / 超时 / DNS 抖动），HTTP 状态码与内容问题不重试 ——
+ * 404 再问三次还是 404，只是白等。实测：一次瞬时失败会让 19 个字体引用里凭空多出
+ * 一个"不可达"缺口（重跑即消失），在几十页的批量里这种噪声需要人逐个甄别。
+ */
+const ASSET_TIMEOUT = Number(process.env.HEIMDALL_ASSET_TIMEOUT_MS ?? 60_000);
+const fetchBin = async (url, attempts = 3) => {
+  let lastErr;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(ASSET_TIMEOUT) });
+      if (!res.ok) throw new Error(String(res.status));      // HTTP 状态：重试无意义
+      const ct = res.headers.get('content-type') || '';
+      // 软 404 / SPA 兜底：要图片却回 HTML。落盘会变成"看着有、其实全错"的假资产
+      if (isSoftHtml(ct, url)) throw new Error('soft-404 (text/html)');
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (!buf.length) throw new Error('empty body');
+      return { buf, ct };
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e?.message ?? e);
+      const permanent = /^\d+$/.test(msg) || /soft-404|empty body/.test(msg);
+      if (permanent || i === attempts) break;
+      await new Promise(r => setTimeout(r, 300 * i));
+    }
+  }
+  throw lastErr;
 };
 
 /**
@@ -136,14 +156,15 @@ async function resolveRef(ref, idx, refMap, origin, gaps, cssFileName, priorMap)
     }
     if (got) break;
   }
-  // 联网补抓
+  // 联网补抓（fetchBin 内部对网络抖动已重试）
+  let lastErr = null;
   if (!got) {
     for (const c of cands) {
-      try { const r = await fetchBin(c); got = r.buf; gotExt = extFrom(c, r.ct, r.buf); break; } catch { /* 下一个候选 */ }
+      try { const r = await fetchBin(c); got = r.buf; gotExt = extFrom(c, r.ct, r.buf); break; } catch (e) { lastErr = e; }
     }
   }
   if (!got || !got.length) {
-    gaps.push({ ref, candidates: cands, file: cssFileName, reason: 'unreachable' });
+    gaps.push({ ref, candidates: cands, file: cssFileName, reason: 'unreachable', error: lastErr ? String(lastErr.message ?? lastErr).slice(0, 80) : null });
     return null;
   }
   const ext = gotExt || 'bin';
@@ -211,7 +232,10 @@ function rewriteHtml(domText, cssFileName) {
   });
   html = stripAssetLinkTags(html)
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace('</head>', '<link rel="stylesheet" href="styles/' + cssFileName + '"></head>');
+    .replace('</head>', '<link rel="stylesheet" href="styles/' + cssFileName + '">'
+      + (fontCss ? '<link rel="stylesheet" href="styles/fonts.css">' : '') + '</head>');
+  // <base href="/"> 会把上面这些相对路径全部改基到站点根（Angular 应用默认带它）
+  html = neutralizeBaseTag(html);
   return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<script\b[^>]*\/>/gi, '');
 }
 
@@ -220,6 +244,29 @@ const cssGaps = [];   // 本地化失败的 CSS 引用（落盘可见，不再�
 console.log('[1/4] localize cssom (desktop, adapter:', adapter.name + ')');
 const mainCss = await localizeCss(cssText, 'cssom.css', ORIGIN, cssomMeta.refMap ?? {}, cssGaps);
 console.log('  refs=' + cssomMeta.refs.length + ' ok=' + mainCss.fetched + ' fail=' + mainCss.failed + ' -> styles/cssom.css ' + (mainCss.size / 1024).toFixed(0) + 'KB');
+
+// ---------- 1b. 跨域样式表里的 @font-face ----------
+// 浏览器读不到跨域样式表的 cssRules（同源策略），所以 Google Fonts 这类
+// @font-face 从来进不了我们的 CSSOM —— 结果是图标字体的连字名当文字渲染出来
+// （实测 angular.dev：页面上直接印着 chevron_right / more_horiz）。
+// 只能服务端取原文再抽，**只抽 @font-face**：把整份第三方 CSS 倒进来会连它的
+// reset 与工具类一起带进来，足以把版面搞乱。
+const crossSheets = (cssomMeta.sheets ?? []).filter(s => s.href && s.error);
+console.log('[1b] cross-origin @font-face (' + crossSheets.length + ' sheet)');
+let fontCss = '';
+for (const s of crossSheets) {
+  try {
+    const res = await fetch(s.href, { headers: { 'User-Agent': UA } });
+    if (!res.ok) continue;
+    fontCss += extractFontRules(await res.text(), s.href);
+  } catch { /* 取不到就跳过 —— 不为一个图标字体让整页构建失败 */ }
+}
+if (fontCss) {
+  const r = await localizeCss(fontCss, 'fonts.css', ORIGIN, {}, cssGaps);
+  console.log('  @font-face 本地化 refs=' + r.fetched + ' fail=' + r.failed + ' -> styles/fonts.css ' + (r.size / 1024).toFixed(0) + 'KB');
+} else {
+  console.log('  （无跨域 @font-face）');
+}
 
 // ---------- 2. 桌面 HTML ----------
 console.log('[2/4] rewrite desktop DOM');const header = '<!-- heimdall clone: static L1 transplant (CSSOM final state), scripts stripped, adapter=' + adapter.name + ' -->\n';

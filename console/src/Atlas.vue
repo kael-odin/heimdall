@@ -64,7 +64,7 @@ const errMsg = ref('');
 // 任务中心：每个 forge 任务独立对象 + 独立 EventSource（修复并发克隆单例覆盖）
 const tasks = reactive([]);
 const activeTaskId = ref(null);
-const forge = computed(() => tasks.find(t => t.localId === activeTaskId.value) ?? null);
+const forge = computed(() => tasks.find(t => t.localId === activeTaskId.value && t.kind !== 'clone') ?? null);
 const taskSources = new Map();
 const tasksOpen = ref(true);
 const auditReport = ref(null);   // 最近一次 SEO 审计结果（报告入口）
@@ -925,6 +925,66 @@ async function forgeAll() {
   setTimeout(() => { statusText.value = ''; }, 3000);
 }
 
+/** 整站克隆 —— 交给引擎跑批量队列，而不是用浏览器标签页驱动。
+ * 关掉控制台页面任务照跑；并发与单页熔断按站点配方走；控制台只订阅进度。 */
+function startCloneSite({ incremental = false } = {}) {
+  return new Promise((resolve) => {
+    const h = host.value;
+    const task = reactive({
+      localId: `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+      kind: 'clone', taskId: null, host: h,
+      label: (incremental ? '增量克隆 · ' : '整站克隆 · ') + h,
+      progress: '', done: false, failed: false, killed: null, error: null,
+      startedAt: Date.now(), endedAt: null,
+    });
+    tasks.push(task);
+    while (tasks.length > 20) tasks.shift();
+    activeTaskId.value = task.localId;
+    statusText.value = task.label + ' · 准备中';
+    (async () => {
+      try {
+        const r = await fetch(`${API}/api/clone-site`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h, incremental }) });
+        const body = await r.json();
+        if (body.error) {
+          task.failed = true; task.done = true; task.endedAt = Date.now();
+          task.error = body.error === 'busy' ? '已有整站克隆在运行' : body.error;
+          statusText.value = '整站克隆：' + task.error;
+          setTimeout(() => { statusText.value = ''; }, 4000);
+          return resolve();
+        }
+        task.taskId = body.taskId;
+        const es = new EventSource(sseUrl(body.taskId));
+        taskSources.set(task.localId, es);
+        const closeTask = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+        es.onmessage = (m) => {
+          let ev; try { ev = JSON.parse(m.data); } catch { return; }
+          if (ev.kind === 'queue-start') task.progress = `0/${ev.pending}`;
+          else if (ev.kind === 'queue-progress' && ev.phase === 'check') task.progress = `校验 ${ev.done}/${ev.total}`;
+          else if (ev.kind === 'queue-progress' && ev.phase === 'check-done') task.progress = `变了 ${ev.changed} · 未变 ${ev.same}`;
+          else if (ev.kind === 'queue-page' && ev.status !== 'running') task.progress = `${ev.done}/${ev.total}`;
+          else if (ev.kind === 'queue-complete') task.progress = `${ev.done}/${ev.total}`;
+          else if (ev.kind === 'exit') {
+            task.done = ev.status === 'done';
+            task.killed = ev.killed ?? null;
+            task.failed = ev.status !== 'done' && ev.status !== 'cancelled';
+            task.endedAt = Date.now();
+            closeTask();
+            statusText.value = task.done ? `整站克隆完成${task.progress ? ' · ' + task.progress : ''}` : (ev.status === 'cancelled' ? '整站克隆已取消' : '整站克隆中断');
+            loadPageStatus();                                  // 刷新页面清单上的铸造状态
+            setTimeout(() => { statusText.value = ''; }, 4000);
+            resolve();
+          }
+        };
+        es.onerror = () => { closeTask(); if (!task.done) { task.failed = true; task.done = true; task.error = '事件流中断'; resolve(); } };
+      } catch (e) {
+        task.failed = true; task.done = true; task.error = String(e);
+        statusText.value = String(e);
+        resolve();
+      }
+    })();
+  });
+}
+
 function onNodeClick(node) {
   if (!node?.url) return;
   selected.value = node;                      // 点星 = 选中，打开详情剖析面板
@@ -982,7 +1042,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="panel-sec">
       <div class="panel-sec-name">引擎</div>
       <div class="eng" :class="{ on: engine.ok }"><i></i>{{ engine.ok ? '在线 :8900' : '离线' }}</div>
-      <div class="eng-detail" v-if="engine.ok">克隆槽 {{ engine.forge?.slots ?? 0 }}/2 · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
+      <div class="eng-detail" v-if="engine.ok">克隆槽 {{ engine.forge?.slots ?? 0 }}/{{ engine.forge?.max ?? 2 }} · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
     </div>
   </div>
   <button class="panel-open" v-if="view === 'atlas' && !showPanel" @click="showPanel = true" aria-label="展开仪表面板" title="仪表面板"><Icon name="menu" decorative /></button>
@@ -1003,6 +1063,11 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <button class="site-del" :aria-label="'删除站点 ' + s.host" title="删除该站点（侦察/克隆/报告；CAS 资产保留）" @click.stop="deleteSite(s)"><Icon name="close" decorative /></button>
     </span>
     <button class="site-btn audit-btn" :disabled="!!engine.audit" @click="runAudit" :title="engine.audit ? '已有审计任务在运行' : '全站 SEO 审计（56 条规则，输出 HTML/CSV/JSON 报告）'">SEO 审计</button>
+    <button class="site-btn clone-btn" :disabled="!!engine.clone" @click="startCloneSite({ incremental: doneCount > 0 })"
+      :title="engine.clone ? '已有整站克隆在运行' : (doneCount > 0 ? `站点已有 ${doneCount} 页克隆，默认增量：只重跑源站变了的页（改版检测基于服务端 HTML）` : '整站批量克隆，由引擎侧执行 —— 关掉这个页面任务也会继续')">
+      {{ doneCount > 0 ? '增量克隆' : '整站克隆' }}
+    </button>
+    <button v-if="doneCount > 0" class="site-btn" :disabled="!!engine.clone" @click="startCloneSite({ incremental: false })" title="忽略「源站是否变过」，全部重跑一遍（慢，但最完整）">全量重跑</button>
     <button class="site-btn list-toggle" :class="{ active: view === 'pages' }" @click="togglePages()" :title="view === 'pages' ? '收起清单返回星图' : '打开页面清单'">{{ view === 'pages' ? '收起清单' : '页面清单' }}</button>
   </div>
 
@@ -1017,7 +1082,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <button class="tc-toggle" @click="tasksOpen = !tasksOpen">{{ tasksOpen ? '—' : '＋' }}</button>
     </div>
     <div class="tc-rows" v-show="tasksOpen">
-      <div class="tc-row" v-for="t in [...tasks].reverse()" :key="t.localId" :class="taskState(t)" @click="activeTaskId = t.localId" :title="t.error || t.url">
+      <div class="tc-row" v-for="t in [...tasks].reverse()" :key="t.localId" :class="taskState(t)" @click="t.kind !== 'clone' && (activeTaskId = t.localId)" :title="t.error || t.url">
         <span class="tc-name">{{ t.label ?? t.pageName }}</span>
         <span class="tc-state">{{ taskLabel(t) }}</span>
         <span class="tc-score" v-if="t.kind === 'audit' && t.auditScore != null">{{ t.auditScore }} 分</span>

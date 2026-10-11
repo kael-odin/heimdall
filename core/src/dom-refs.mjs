@@ -47,6 +47,28 @@ export function stripAssetLinkTags(html, dropRels = DROP_RELS) {
 }
 
 /**
+ * 把 <base href> 改成文档相对（`./`）。
+ *
+ * 克隆页位于 `/static/<host>/pages/<page>/clone/`，但 Angular 之类的应用会带
+ * `<base href="/">` —— 浏览器据此把**所有相对引用**改基到站点根，于是
+ * `styles/cssom.css` 被解析成 `/styles/cssom.css` 而 404，
+ * `assets/image000.svg` 同理。整页样式与图片一起失效（实测 angular.dev 首页
+ * 裸奔成无样式 HTML，像素掉到 89.7%）。
+ *
+ * 保留元素本身（有些脚本会检测它存在），只把 href 改成 `./` —— 相对文档解析，
+ * 无论通过 /static 还是 file:// 打开都成立。没有 href 的 `<base target="...">` 原样保留。
+ *
+ * 为什么之前没暴露：VitePress / Docusaurus / 多数营销站不带 <base>，
+ * 换到 Angular 才第一次踩到。
+ */
+export function neutralizeBaseTag(html) {
+  return String(html ?? '').replace(/<base\b[^>]*>/gi, (tag) => {
+    if (!/\bhref\s*=/i.test(tag)) return tag;
+    return tag.replace(/\bhref\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/i, 'href="./"');
+  });
+}
+
+/**
  * 把已光栅化的 <canvas> 换成 <img>。
  *
  * 静态镜像会剥离全部 <script>，所以画布上什么都不剩 —— 那是一整类盲区。

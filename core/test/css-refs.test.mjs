@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scanCssRefs, collectCssRefs, rewriteCssRefs } from '../src/css-refs.mjs';
+import { scanCssRefs, collectCssRefs, rewriteCssRefs, extractFontRules } from '../src/css-refs.mjs';
 
 test('scanCssRefs: 基本形态（带/不带引号、空白）', () => {
   assert.deepEqual(scanCssRefs('a{background:url(/a.png)}').map(t => t.raw), ['/a.png']);
@@ -76,4 +76,40 @@ test('rewriteCssRefs: 值为 null/未命中时原样保留', () => {
   const css = 'a{background:url(/keep.png)}';
   assert.equal(rewriteCssRefs(css, new Map()), css);
   assert.equal(rewriteCssRefs(css, new Map([['/keep.png', null]])), css);
+});
+
+// ---------- 跨域样式表的最小规则抽取（同源策略下读不到 cssRules，只能服务端取回再抽）----------
+
+const GF = `@font-face { font-family: 'Material Symbols Outlined'; src: url(./v1/ms.woff2) format('woff2'); }
+.material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; }
+body { margin: 0; color: red; }
+.btn { font-family: 'Other Font'; }`;
+
+test('font-rules: 抽 @font-face，并把相对 url() 解析成绝对地址', () => {
+  const out = extractFontRules(GF, 'https://fonts.gstatic.com/s/ms/css2');
+  assert.match(out, /https:\/\/fonts\.gstatic\.com\/s\/ms\/v1\/ms\.woff2/);
+});
+
+test('font-rules: 必须带上指向该字体族的辅助类（只搬 @font-face 图标不显示）', () => {
+  const out = extractFontRules(GF, 'https://fonts.gstatic.com/s/ms/css2');
+  assert.match(out, /\.material-symbols-outlined\s*\{[^}]*Material Symbols Outlined/, '这是第一次漏掉的那条');
+});
+
+test('font-rules: 不相关规则不带进来（第三方 reset / 别的字体）', () => {
+  const out = extractFontRules(GF, 'https://fonts.gstatic.com/s/ms/css2');
+  assert.ok(!/margin:\s*0/.test(out), 'body{margin:0} 属于第三方 reset，不该进镜像');
+  assert.ok(!/Other Font/.test(out), '指向别的字体族的规则不该带');
+  assert.ok(!/\bbody\b/.test(out));
+});
+
+test('font-rules: 已绝对化的 url() 原样保留；data: 保留', () => {
+  const css = `@font-face{font-family:I;src:url("https://cdn.test/a.woff2")}@font-face{font-family:J;src:url(data:font/woff2;base64,AAA)}`;
+  const out = extractFontRules(css, 'https://x.test/css/');
+  assert.match(out, /url\("https:\/\/cdn\.test\/a\.woff2"\)/);
+  assert.match(out, /data:font\/woff2;base64,AAA/);
+});
+
+test('font-rules: 没有 @font-face 就整段不返回（别把普通 CSS 当字体搬运）', () => {
+  assert.equal(extractFontRules('body{color:red}', 'https://x.test/'), '');
+  assert.equal(extractFontRules('', 'https://x.test/'), '');
 });

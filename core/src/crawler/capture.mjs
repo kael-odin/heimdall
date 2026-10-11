@@ -366,17 +366,23 @@ await context.close().catch(() => {});
 await browser.close();
 
 // 下载资源矩阵（图片/图标/媒体/sprite/manifest；iframe/embed 保持在线引用）
-console.log('    download resources');
+// 逐条打印进度：一是让人看得见为什么这一步要几分钟（首页常有 5-10MB 的大图），
+// 二是给引擎的单页熔断当心跳 —— 只在**开下之前**报一次，所以"沉默"就等于这一次
+// 下载卡住了。单条给超时兜底：一个下不动的资源不该拖住整页。
+const SKIP_KINDS = new Set(['iframe', 'embed']);
+const RES_TIMEOUT = Number(process.env.HEIMDALL_ASSET_TIMEOUT_MS ?? 120_000);
+const toDownload = (manifest.resources ?? []).filter(r => !SKIP_KINDS.has(r.kinds[0] ?? 'asset'));
+console.log(`    download resources (${toDownload.length}, 单条超时 ${RES_TIMEOUT / 1000}s)`);
 let okRes = 0, failRes = 0;
 const imgMap = {};
 const resMap = {};
 const failed = [];
-const SKIP_KINDS = new Set(['iframe', 'embed']);
-for (const r of manifest.resources ?? []) {
+for (const [i, r] of toDownload.entries()) {
   const kind = r.kinds[0] ?? 'asset';
-  if (SKIP_KINDS.has(kind)) continue;
+  const t0 = Date.now();
+  process.stdout.write(`    [${i + 1}/${toDownload.length}] ${kind} `);
   try {
-    const res = await fetch(r.url, { headers: { 'User-Agent': UA, Referer: TARGET } });
+    const res = await fetch(r.url, { headers: { 'User-Agent': UA, Referer: TARGET }, signal: AbortSignal.timeout(RES_TIMEOUT) });
     if (!res.ok) throw new Error(res.status);
     const ct = res.headers.get('content-type') || '';
     // 软 404 / SPA 兜底：请求图片却返回 HTML —— 落盘会变成"看起来有、其实全错"的假资产
@@ -390,9 +396,10 @@ for (const r of manifest.resources ?? []) {
     resMap[r.url] = rel;
     if (r.kinds.some(k => k === 'image' || k === 'icon' || k.startsWith('preload'))) imgMap[r.url] = rel;
     okRes++;
+    console.log(`${(buf.length / 1048576).toFixed(1)}MB ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   } catch (e) {
     failRes++; failed.push({ url: r.url, kinds: r.kinds, error: String(e).slice(0, 120) });
-    console.warn('    FAIL', kind, r.url, String(e));
+    console.log(`失败 ${String(e).slice(0, 70)}`);
   }
 }
 const cssMap = {};

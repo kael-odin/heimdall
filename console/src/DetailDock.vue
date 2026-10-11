@@ -111,7 +111,7 @@ function switchTab(t) {
       <div class="dock-title">{{ selected.path === '/' ? 'home' : selected.path.slice(1) }}</div>
       <div class="dock-url">{{ selected.url }}</div>
     </div>
-    <div class="dock-headbtns"><button class="dock-all" @click="$emit('forge-all')" title="批量克隆尚未完成的页面（每次最多 10 页，引擎 2 并发）">批量克隆 10 页</button><button class="dock-close" aria-label="关闭页面详情" title="关闭" @click="$emit('close')"><Icon name="close" decorative /></button></div>
+    <div class="dock-headbtns"><button class="dock-all" @click="$emit('forge-all')" title="批量克隆尚未完成的页面（每次最多 10 页；站点级整站克隆见星图顶部按钮）">批量克隆 10 页</button><button class="dock-close" aria-label="关闭页面详情" title="关闭" @click="$emit('close')"><Icon name="close" decorative /></button></div>
   </div>
 
   <div class="tabs">

@@ -13,7 +13,12 @@
 export const taskState = (t) => (t?.failed ? 'failed' : t?.done ? 'done' : 'running');
 
 const TASK_LABEL = { running: '运行中', done: '完成', failed: '失败' };
-export const taskLabel = (t) => TASK_LABEL[taskState(t)] ?? '运行中';
+export const taskLabel = (t) => {
+  if (t?.killed) return t.killed === 'stalled' ? '熔断 · 无进展' : '熔断 · 超时';
+  const s = taskState(t);
+  if (s === 'running' && t?.progress) return t.progress;   // 整站克隆这类有分子分母的，直接显示进度
+  return TASK_LABEL[s] ?? '运行中';
+};
 
 export const fmtTime = (t) => (t ? new Date(t).toLocaleTimeString('zh-CN', { hour12: false }) : '');
 
@@ -41,5 +46,6 @@ export const KIND_CN = {
   verify: '保真验证',
   recon: '侦察',
   forge: '克隆',
+  clone: '整站克隆',
 };
 export const kindCn = (k) => KIND_CN[k] ?? '克隆';
