@@ -25,6 +25,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE, DELIVERABLE, localDateStamp } from '../paths.mjs';
 import { emit } from '../emit.mjs';
+import { buildEditManifest, renderEditManifestMd } from '../deliver/edit-manifest.mjs';
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { scanLiveBundle } from './health.mjs';
 import { healBundle, materializeHar, localizeQueryEntries, rewriteHtmlRefs } from './heal.mjs';
@@ -272,6 +273,12 @@ links.missing            指向未镜像页面的站内链接 → 点了会跳�
 | \`/static/${host}/**\` | 克隆页 / CSS / 资产 / 档案 / SEO 报告 |
 | \`/__heimdall/health\` | 健康检查 |
 
+## 换成自己的站
+
+这份包里有一份 \`edit-manifest.md\`：它列清了"换域名 / 换图片 / 换文案"各要动哪些文件
+（同名 \`.json\` 是机器可读版）。多数改动集中在 \`site/static/${host}/pages/*/clone/\` 下。
+换域名建议用 Heimdall 控制台的「改站起点」做（预览不改文件、替换前逐文件备份）。
+
 ## 说明
 
 - 资产与克隆页在打包时优先使用硬链接（同卷）；把整个目录复制走即为独立副本。
@@ -283,6 +290,15 @@ links.missing            指向未镜像页面的站内链接 → 点了会跳�
 // ---------- 5. 校验和清单 + 与上一次导出的差异 ----------
 // prevChecksums 在"目录准备"那一步就已经读好了（那里会把旧目录清掉）
 emit({ kind: 'live-stage', stage: 'package', status: 'running' });
+
+// ---------- 4c. 改站起点清单（换域名 / 图片 / 文案的第一入口） ----------
+// 放在校验和之前算，这两份文件才会被一起纳入 manifest 与 changes.json。
+try {
+  const manifest = buildEditManifest(host);
+  writeFileSync(join(OUT, 'edit-manifest.json'), JSON.stringify(manifest, null, 2));
+  writeFileSync(join(OUT, 'edit-manifest.md'), renderEditManifestMd(manifest));
+  console.log(`[edit-manifest] assets=${manifest.counts.assets} remoteVisual=${manifest.counts.remoteVisual} domainFiles=${manifest.counts.domainFiles}`);
+} catch (e) { console.warn('[edit-manifest] skipped:', String(e).slice(0, 120)); }
 const manifestFiles = [];
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {

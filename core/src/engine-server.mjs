@@ -525,8 +525,23 @@ function startDeliverPrune(apply) {
   return spawnTask(t, join('src', 'audit', 'deliver-prune.mjs'), apply ? ['--apply'] : []).id;
 }
 
-function startForge(url, { hostPost = true } = {}) {
-  const t = makeTask('forge', url);
+/**
+ * 「改站起点」清单：把已抓取的产物按"要改什么"重排（域名 / 资源 / 文案）。
+ * **为什么走子进程**：它要读每一页的 asset-map 与 intel，大站（apify 61 页）实测
+ * 约 5 秒 —— 放在请求处理里就是 5 秒的事件循环冻结，与 /api/assets 是同一个教训。
+ */
+let editManifestTask = null;
+
+function startEditManifest(host) {
+  if (editManifestTask && editManifestTask.status === 'running' && editManifestTask.host === host) return editManifestTask.id;
+  const t = makeTask('editmanifest', 'https://' + host);
+  t.host = host;
+  t.label = '改站清单 · ' + host;
+  editManifestTask = t;
+  return spawnTask(t, join('src', 'deliver', 'edit-manifest.mjs'), [host]).id;
+}
+
+function startForge(url, { hostPost = true } = {}) {  const t = makeTask('forge', url);
   const u = new URL(url);
   const name = u.pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[\/?&#]+/g, '-').slice(0, 60) || 'home';
   t.pageName = name;
@@ -1031,6 +1046,34 @@ const handleRequest = async (req, res) => {
     const taskId = startStorageScan();
     return json(res, 202, { ok: true, taskId, status: 'running' });
   }
+  // 「改站起点」清单：读每页的 asset-map/intel 并重排（大站约 5s），所以走子进程 + 任务。
+  // 产物落在 workspace/<host>/deliver/edit-manifest.{json,md}，控制台与交付包都读它。
+  if (u.pathname === '/api/edit-manifest' && req.method === 'POST') {
+    let body = {};
+    try { body = JSON.parse((await readBody(req)) || '{}'); } catch { return json(res, 400, { error: 'invalid json' }); }
+    const host = String(body.host ?? '');
+    if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    const taskId = startEditManifest(host);
+    return json(res, 202, { ok: true, taskId, status: 'running' });
+  }
+  // 域名替换：预览（apply=false，默认）或真改（apply=true，子进程里先备份再改）。
+  // 真改会写用户的产物 —— 所以默认必须是预览，且改前备份（见 deliver/replace-domain.mjs 文件头）。
+  if (u.pathname === '/api/replace-domain' && req.method === 'POST') {
+    let body = {};
+    try { body = JSON.parse((await readBody(req)) || '{}'); } catch { return json(res, 400, { error: 'invalid json' }); }
+    const host = String(body.host ?? '');
+    const from = String(body.from ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const to = String(body.to ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const apply = body.apply === true;
+    if (!/^[a-z0-9.-]+$/i.test(host) || !/^[a-z0-9.-]+$/.test(from) || !/^[a-z0-9.-]+$/.test(to)) return json(res, 400, { error: 'bad host/from/to' });
+    if (from === to) return json(res, 400, { error: 'same' });
+    if (apply && !isLoopback(req) && AUTH_TOKEN && req.headers['x-heimdall-token'] !== AUTH_TOKEN) return json(res, 403, { error: 'forbidden' });
+    const t = makeTask('replace-domain', 'https://' + host);
+    t.host = host;
+    t.label = (apply ? '替换域名 · ' : '预览替换 · ') + from + ' → ' + to;
+    const args = [host, '--from', from, '--to', to, ...(apply ? ['--apply'] : []), ...(body.js === true ? ['--js'] : [])];
+    return json(res, 202, { ok: true, taskId: spawnTask(t, join('src', 'deliver', 'replace-domain.mjs'), args).id, status: 'running' });
+  }
   // 交付包保留策略。扫描与删除都在子进程里做（上万个文件），这里只读结果文件。
   if (u.pathname === '/api/deliver/plan' && req.method === 'GET') {
     const p = readDeliverPlan();
@@ -1260,6 +1303,7 @@ const handleRequest = async (req, res) => {
       session: runningSession ? { id: runningSession.id, host: runningSession.host } : null,
       upgrade: runningUpgrade ? { id: runningUpgrade.id, host: runningUpgrade.host } : null,
       clone: runningClone ? { id: runningClone.id, host: runningClone.host, plan: runningClone.plan } : null,
+      editManifest: editManifestTask && editManifestTask.status === 'running' ? { id: editManifestTask.id, host: editManifestTask.host } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },
       jobs: tasks.size,
       jobsStore: jobStore?.kind ?? null,

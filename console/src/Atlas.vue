@@ -83,6 +83,9 @@ const lastVerify = ref(null);    // 最近一次全站体检结果（/api/verify
 const liveRebuild = ref(false);  // 导出交互镜像前先重建 live 页面
 const sessionState = ref(null);  // 本站登录态（/api/session/:host）：需要登录的站点靠它
 const queueState = ref(null);    // 本站整站克隆的断点状态（/api/queue/:host）
+const editManifest = ref(null);  // 改站起点清单（workspace/<host>/deliver/edit-manifest.json）
+const newDomain = ref('');       // 域名替换：目标域名（输入）
+const domainResult = ref(null);  // 域名替换：最近一次预览/替换的结果
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const matrixPeer = ref('');          // 跨站对标对象
 const matrixReport = ref(null);      // 最近一次对标矩阵报告
@@ -297,6 +300,7 @@ async function loadPageStatus() {
     }
     tableNodes.value = [...nodes, ...extraNodes.value];
     loadQueue(forHost);
+    loadEditManifest(forHost);
   } catch { /* 引擎离线时保持上一次的快照，不把界面清空 */ }
   finally { if (host.value === forHost) pagesLoading.value = false; }
 }
@@ -310,6 +314,96 @@ async function loadQueue(h) {
     const j = await r.json();
     queueState.value = j.exists ? j : null;
   } catch { /* 引擎离线：保持上一次读数 */ }
+}
+
+/** 改站起点清单（引擎生成的 workspace 产物）。取不到就当"还没生成"。 */
+async function loadEditManifest(h) {
+  const j = await wsJson(h, 'deliver/edit-manifest.json');
+  if (host.value !== h) return;
+  editManifest.value = j;
+  domainResult.value = null;   // 换站了，上一次的替换读数不再适用
+}
+
+/** 本站的原站域名 —— 域名替换的默认"从" */
+function originHostOf() {
+  try { return new URL(atlas.value?.origin ?? ('https://' + host.value)).hostname; } catch { return host.value; }
+}
+
+/** 生成/刷新「改站起点」清单：引擎侧子进程（大站约 5s），完成后读回产物 */
+function runEditManifest() {
+  const h = host.value;
+  const task = reactive({
+    localId: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    kind: 'editmanifest', label: '改站清单 · ' + h, url: 'https://' + h,
+    progress: '', done: false, failed: false, error: null, startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = '改站清单 · 统计中';
+  (async () => {
+    try {
+      const r = await fetch(API + '/api/edit-manifest', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h }) });
+      const { taskId, error } = await r.json();
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '改站清单失败：' + error; return; }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind === 'edit-manifest') {
+          task.progress = `${ev.assets} 资源 · ${ev.remoteVisual} 外链视觉`;
+          task.done = true; task.endedAt = Date.now();
+          statusText.value = `改站清单完成 · ${ev.assets} 个资源 / ${ev.remoteVisual} 个仍是外链的视觉资产`;
+          close(); loadEditManifest(h);
+          setTimeout(() => { statusText.value = ''; }, 4000);
+        } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
+          task.failed = true; task.done = true; task.error = '任务中断'; close();
+        }
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+  })();
+}
+
+/** 域名替换：apply=false 只预览（默认），true 才真改（引擎侧先备份再改） */
+function runReplaceDomain(apply) {
+  const h = host.value;
+  const to = newDomain.value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  if (!to) { errMsg.value = '先填要换成的新域名'; return; }
+  const task = reactive({
+    localId: 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    kind: 'replace-domain', label: (apply ? '替换域名 · ' : '预览替换 · ') + originHostOf() + ' → ' + to,
+    url: 'https://' + h, progress: '', done: false, failed: false, error: null, startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = apply ? '替换域名 · 写入中（改前会先备份）' : '替换域名 · 预览中';
+  (async () => {
+    try {
+      const r = await fetch(API + '/api/replace-domain', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h, from: originHostOf(), to, apply }) });
+      const { taskId, error } = await r.json();
+      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '域名替换失败：' + error; return; }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind === 'replace-domain') {
+          domainResult.value = ev;
+          task.progress = `${ev.files} 文件 / ${ev.occurrences} 处`;
+          task.done = true; task.endedAt = Date.now();
+          statusText.value = ev.mode === 'apply'
+            ? `已替换 ${ev.changed} 个文件（备份已生成）`
+            : `预览：命中 ${ev.files} 个文件 / ${ev.occurrences} 处`;
+          close(); if (ev.mode === 'apply') loadEditManifest(h);
+          setTimeout(() => { statusText.value = ''; }, 5000);
+        } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
+          task.failed = true; task.done = true; task.error = '任务中断'; close();
+        }
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+  })();
 }
 function saveToken() {
   const v = tokenInput.value.trim();
@@ -1429,6 +1523,43 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <a v-if="hasReport('archive')" :href="reportUrl('archive')" target="_blank" rel="noopener">打开档案</a>
       <p v-else class="trend-hint">还没有档案可开 —— 克隆任意一页之后这里就会出现</p>
     </div>
+    <div class="report-card surface">
+      <h3>改站起点</h3>
+      <p v-if="editManifest">
+        共 {{ editManifest.counts.pages }} 页 · {{ editManifest.counts.assets }} 个资源 ·
+        <span :class="{ 'edit-warn': editManifest.counts.remoteVisual > 0 }">{{ editManifest.counts.remoteVisual }} 个仍是外链的视觉资产</span> ·
+        域名出现在 {{ editManifest.counts.domainFiles }} 个文件里（{{ editManifest.counts.domainTotal }} 处）
+      </p>
+      <p v-else class="trend-hint">
+        还没生成 —— 生成后会列出「换成你的域名 / 图片 / 文案」各要动哪些地方（只有已克隆的页会进清单）
+      </p>
+      <div class="edit-row">
+        <button @click="runEditManifest()" :disabled="!host || !!engine.editManifest">生成 / 刷新清单</button>
+        <a v-if="editManifest" :href="'/static/' + host + '/deliver/edit-manifest.md'" target="_blank" rel="noopener">打开清单（Markdown）</a>
+      </div>
+      <div class="edit-row domain-row">
+        <label :for="'domain-to-' + host">把 <code>{{ originHostOf() }}</code> 换成</label>
+        <input :id="'domain-to-' + host" v-model="newDomain" placeholder="mysite.com" autocomplete="off" />
+        <button @click="runReplaceDomain(false)" :disabled="!host || !newDomain.trim()">预览</button>
+        <button
+          v-if="domainResult && domainResult.mode === 'preview' && domainResult.occurrences > 0"
+          class="danger" @click="runReplaceDomain(true)">
+          确认替换 {{ domainResult.occurrences }} 处
+        </button>
+      </div>
+      <p class="trend-hint" v-if="domainResult">
+        <template v-if="domainResult.mode === 'apply'">
+          已替换 {{ domainResult.changed }} 个文件；原文件备份在 <code>workspace/{{ host }}/{{ domainResult.backup }}</code>（按相同路径复制回去即可还原）
+        </template>
+        <template v-else-if="domainResult.occurrences">
+          命中 {{ domainResult.files }} 个文件 / {{ domainResult.occurrences }} 处，含主机名
+          {{ domainResult.subdomains.slice(0, 4).map(s => s.name).join('、') }}<template v-if="domainResult.subdomains.length > 4"> 等 {{ domainResult.subdomains.length }} 个</template>。
+          <b>预览不会改任何文件</b>，确认无误再点「确认替换」（替换前会逐文件备份）
+        </template>
+        <template v-else>没找到原站域名 —— 这个站点可能本来就没写死域名</template>
+      </p>
+    </div>
+
     <div class="report-card surface">
       <h3>分数走势</h3>
       <div class="trend-grid">

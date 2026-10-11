@@ -15,6 +15,7 @@ import { requireArg } from './args.mjs';
 import { WORKSPACE, DELIVERABLE, localDateStamp } from './paths.mjs';
 import { join, basename } from 'node:path';
 import { readJson } from './fsutil.mjs';
+import { buildEditManifest, renderEditManifestMd } from './deliver/edit-manifest.mjs';
 
 const host = requireArg(process.argv[2], 'node src/deliver.mjs <host> [hostDir]', '站点 host');
 const hostDir = process.argv[3] ?? host;
@@ -70,6 +71,13 @@ for (const name of pages) {
 writeFileSync(join(OUT, 'fidelity.csv'), csvRows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n'));
 const avg = graded ? (sum / graded).toFixed(1) : '-';
 
+// ---------- 2b. 改站起点清单 ----------
+// 用户在包里的第一个真实动作是"把这些内容换成我自己的" —— 域名、图片、文案。
+// 这三件事要动哪些文件，本来就散在 asset-map / intel / clone HTML 里，这里汇总成一份。
+const manifest = buildEditManifest(hostDir);
+writeFileSync(join(OUT, 'edit-manifest.json'), JSON.stringify(manifest, null, 2));
+writeFileSync(join(OUT, 'edit-manifest.md'), renderEditManifestMd(manifest));
+
 // ---------- 3. README-改造指南 ----------
 // 这份文件的目标读者是**接到包的前端**，不是产出包的人。
 // 所以它必须回答三个问题：这是什么、从哪看起、怎么变成我自己的代码。
@@ -104,6 +112,20 @@ cd site && npx serve .        # 起静态服务（双击 index.html 也能看，
 
 打开后看到的是**克隆档案卡片墙**：每页一张卡，带还原度分与页面类型。
 点卡片进镜像页，点卡片上的「⇔ 同步对比」进左右对照工具。
+
+## 要换成自己的站？从 \`edit-manifest.md\` 开始
+
+包里那份 [edit-manifest.md](edit-manifest.md) 就是为这件事准备的 —— 它把
+"换域名 / 换图片 / 换文案"各要动哪些文件列成了三张表（同名 \`.json\` 是机器可读版）：
+
+- **换域名**：原站域名出现在 ${manifest.counts.domainFiles} 个文件里（${manifest.counts.domainTotal} 处），
+  多数是 canonical / og:url / 绝对资源链接。用 Heimdall 控制台的「改站起点 → 预览/替换」
+  可以一并换掉（预览不改文件，替换前逐文件备份）
+- **换图片 / 图标 / 字体**：${manifest.counts.assets} 个资源，按"被多少页用到"排序
+  ${manifest.counts.remoteVisual > 0 ? `；其中 **${manifest.counts.remoteVisual} 个视觉资产仍是外链**，那几个必须处理` : '（没有仍是外链的视觉资产）'}
+- **换文案**：${manifest.counts.copyPages} 页的标题 / H1 / CTA / 价格
+
+**换完之后**，这些产物是"原站的快照"这一点不会改变 —— 要商用请自行确认授权。
 
 ## 三种用法
 
@@ -187,6 +209,8 @@ site/
   pages/<page>/intel/         该页结构化抽取 + 语义情报
   recon/atlas.json            全站路由结构（哪些页面、怎么互链）
 intel/                        跨页情报 Excel
+edit-manifest.md              改站起点：换域名 / 图片 / 文案各要动什么
+edit-manifest.json            同上，机器可读
 fidelity.csv                  逐页还原度明细
 raw/<page>/                   原始材料：dom.html / cssom.css / 帧截图
 README.md                     本文件
@@ -219,4 +243,4 @@ writeFileSync(join(OUT, 'README.md'), readMe);
 // ---------- 4. xlsx 也拷进来（若已在 site/intel 则无需重复） ----------
 console.log(`\nDELIVERABLE -> ${OUT}`);
 console.log(`  pages: ${pages.length}, avg fidelity: ${avg}%`);
-console.log(`  site/ + intel/ + fidelity.csv + raw/ + README.md`);
+console.log(`  site/ + intel/ + fidelity.csv + raw/ + README.md + edit-manifest.md`);

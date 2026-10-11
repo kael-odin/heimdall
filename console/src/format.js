@@ -51,6 +51,8 @@ export const KIND_CN = {
   upgrade: '响应式升级',
   storage: '磁盘盘点',
   deliver: '交付包整理',
+  editmanifest: '改站清单',
+  'replace-domain': '域名替换',
 };
 export const kindCn = (k) => KIND_CN[k] ?? '克隆';
 
