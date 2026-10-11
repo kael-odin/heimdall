@@ -120,7 +120,16 @@ for (const name of pages) {
   const html0 = readFileSync(file, 'utf8');
   let html = html0;
   const origin = origins.get(name) ?? `https://${host}`;
-  const stats = { name, linksRewired: 0, linksToLive: 0, assetsLocalized: 0, assetFailed: 0, missingFixed: 0, missingLocal: [], harRecovered: 0 };
+  const stats = { name, linksRewired: 0, linksToLive: 0, assetsLocalized: 0, assetFailed: 0, assetFailures: [], missingFixed: 0, missingLocal: [], harRecovered: 0 };
+  /**
+   * 记一笔"这个资源没本地化成功"。**连 URL 一起记** —— 只报一个数字的话，
+   * `fail 187` 这种读数没法行动（哪个资源？是不是同一类？原站早就 404 了还是我们抓不到？）。
+   * 上限 25 条：足够看出模式，又不会把 report 撑爆。
+   */
+  const failAsset = (u, why = '') => {
+    stats.assetFailed++;
+    if (stats.assetFailures.length < 25) stats.assetFailures.push({ url: String(u ?? '').slice(0, 220), why });
+  };
 
   // 1a) 自愈：历史轮次可能产生重复 target/rel 属性 → 去重；镜像内链接一律不得开新标签
   html = html.replace(/<a\b([^>]*)>/gi, (m0, attrs) => {
@@ -174,7 +183,7 @@ for (const name of pages) {
   for (const u of absUrls) {
     const rel = await fetchAsset(u, dir);
     if (rel) { html = html.split(u).join(rel); stats.assetsLocalized++; }
-    else stats.assetFailed++;
+    else failAsset(u, "img/source 绝对地址");
   }
 
   // 2b) 内联 style url() 本地化：图标 background-image 常写在内联样式（capture 只覆盖 src/href/srcset，这是盲区）
@@ -184,7 +193,12 @@ for (const name of pages) {
   const inlineResolved = new Map();
   for (const t of scanCssRefs(html)) {
     const raw = t.raw;
-    const u = raw.replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim();
+    // 实体解码 + 去引号：序列化后的 HTML 里，CSS 的那层引号是 `&quot;`、内联 SVG 是 `&lt;`。
+    // 不去掉的话 `url(&quot;https://cdn/x.png&quot;)` 会被拼成 `https://站点/"https://cdn/x.png`
+    // 这种必然 404 的地址（详见 asset-ext.mjs 里 isNonAssetRef 的注释）。
+    const u = raw.replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+      .replace(/&#0*39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .trim().replace(/^["']+|["']+$/g, '').trim();
     if (isNonAssetRef(u) || inlineResolved.has(raw)) continue;
     let abs;
     try { abs = /^https?:\/\//i.test(u) ? u : new URL(u, pageOrigin + '/').href; } catch { continue; }
@@ -200,7 +214,7 @@ for (const name of pages) {
       if (dl) local = dl;
     }
     if (local) { inlineResolved.set(raw, local); stats.assetsLocalized++; }
-    else stats.assetFailed++;
+    else failAsset(abs, "inline style url()");
   }
   // 单遍重建：只替换顶层 url() 的 URL 片段，data URI 内嵌的 url(...) 原样保留
   if (inlineResolved.size) html = rewriteCssRefs(html, inlineResolved);
@@ -264,14 +278,14 @@ for (const name of pages) {
           const dl = await fetchAsset(cand, dir);
           if (dl) { resolved.set(ref, '../' + dl); stats.assetsLocalized++; done = true; break; }
         }
-        if (!done) stats.assetFailed++;
+        if (!done) failAsset(ref, "CSS 相对引用候选不中");
         continue;
       }
 
-      if (!abs) { stats.assetFailed++; continue; }
+      if (!abs) { failAsset(ref, "CSS 引用无法解析"); continue; }
       const dl = await fetchAsset(abs, dir);
       if (dl) { resolved.set(ref, '../' + dl); stats.assetsLocalized++; }
-      else stats.assetFailed++;
+      else failAsset(abs, "CSS url()");
     }
     if (resolved.size) writeFileSync(cssFile, rewriteCssRefs(css, resolved));
   }

@@ -53,3 +53,35 @@ test('extFrom: text bodies are only sniffed when the type is not image/font', ()
   // 声明是图片、magic 又不认识时，不能因为正文以 '<' 开头就误判成 svg
   assert.equal(extFrom('https://x/i?id=9', 'image/avif', Buffer.from('<not-image>')), 'avif');
 });
+
+/**
+ * isNonAssetRef —— "这不是要去抓的外部资产"
+ *
+ * 回归背景：链接器处理的是**序列化后的 HTML 文本**，属性里的引号是 `&quot;`、
+ * 内联 SVG 的尖括号是 `&lt;`。于是 `url(&quot;data:image/svg+xml,&lt;svg…&gt;&quot;)`
+ * 解码后以 `"` 开头 → `data:` 不在开头 → 被判成外部资产 →
+ * 去抓 `https://站点/%22data:…` → 必然 404。
+ * 实测 framer.com 一页 55 处、整站 233 处，全部记成"资源本地化失败"，
+ * 而它们本来就是内联 data URI，一个字节都不用抓。
+ */
+test('isNonAssetRef: 实体编码 + 引号包裹的 data URI 必须认出来', async () => {
+  const { isNonAssetRef } = await import('../src/asset-ext.mjs');
+  assert.equal(isNonAssetRef('&quot;data:image/svg+xml,&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot;&gt;&lt;/svg&gt;&quot;'), true);
+  assert.equal(isNonAssetRef('"data:image/png;base64,AAA"'), true);
+  assert.equal(isNonAssetRef("'data:image/gif;base64,AAA'"), true);
+  assert.equal(isNonAssetRef('data:image/svg+xml,<svg/>'), true);
+});
+
+test('isNonAssetRef: 页内锚点与伪协议仍然照旧；普通地址不受影响', async () => {
+  const { isNonAssetRef } = await import('../src/asset-ext.mjs');
+  assert.equal(isNonAssetRef('#gradient'), true);
+  assert.equal(isNonAssetRef('%23gradient'), true);
+  assert.equal(isNonAssetRef('javascript:void(0)'), true);
+  assert.equal(isNonAssetRef('&quot;#gradient&quot;'), true);
+  assert.equal(isNonAssetRef(''), true);
+  assert.equal(isNonAssetRef(null), true);
+  // 真的外部资产不能被误判
+  assert.equal(isNonAssetRef('https://cdn.example.com/a.png'), false);
+  assert.equal(isNonAssetRef('&quot;https://cdn.example.com/a.png&quot;'), false);
+  assert.equal(isNonAssetRef('/assets/a.png'), false);
+});

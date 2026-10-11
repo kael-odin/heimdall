@@ -76,9 +76,21 @@ const asciiAt = (buf, at, s) => {
  *
  * `#id` 可以是 SVG filter/mask/clipPath 的文档内引用，也可以是百分号编码形式 `%23id`
  * （某些压缩器会这么写）——两者都不能当文件去抓，否则会把内联 SVG 的 mask 引用改坏。
+ *
+ * 判之前先做**实体解码 + 去引号**，这一步是必须的：
+ * 链接器处理的是序列化后的 HTML 文本，属性里的引号是 `&quot;`、
+ * 内联 SVG 的尖括号是 `&lt;`。实测 framer.com 的 `url(&quot;data:image/svg+xml,&lt;svg…&gt;&quot;)`
+ * 解码后以 `"` 开头，于是 `data:` **不在开头**，被判成"外部资产"——
+ * 一页 55 处、整站 233 处全去抓 `https://www.framer.com/%22data:…`，必然 404，
+ * 记成 233 条资源本地化失败。真相是这些本来就是内联 data URI，一个字节都不用抓。
  */
 export function isNonAssetRef(raw) {
-  const s = String(raw ?? '').trim();
+  const s = String(raw ?? '')
+    .replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+    .replace(/&#0*39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .trim()
+    .replace(/^["']+|["']+$/g, '')      // CSS 里那层引号可能被实体编码过，去除后才是真值
+    .trim();
   if (!s) return true;
   if (s.startsWith('#')) return true;
   if (/^%23/i.test(s)) return true;
