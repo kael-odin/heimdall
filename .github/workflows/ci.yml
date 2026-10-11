@@ -1,5 +1,15 @@
 name: CI
 
+# 与 seo-gate.yml 的分工：
+#   ci.yml     —— 确定性检查（lint / 测试 / build / smoke），每次 push 与 PR 都跑，不联网
+#   seo-gate   —— 联网抓真实站点并与基线比对；慢且受外网影响，只在手动触发与每日定时跑
+#
+# 本文件里的测试**需要真浏览器**：core 的测试集里有几条跑的是 capture → build_clone
+# 的真实流水线（CSS url() 解析基准、资产按真实类型落盘……），必须能起 Chromium。
+# 此前 core job 没装 Chromium，那几条直接抛 "Executable doesn't exist"，
+# 于是整个 job 长期变红 —— 而本地（有浏览器）永远是绿的，所以一直没被发现。
+# 结论：装了浏览器再跑测试，别让"跑不过"和"环境没装"看起来一样。
+
 on:
   push:
     branches: [main]
@@ -9,25 +19,30 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   core:
-    name: core (lint + unit)
+    name: core (lint + test)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: core
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.7.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: core/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      # 见文件头：测试集里有真浏览器用例，不装就会红
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test
 
   console:
@@ -37,18 +52,17 @@ jobs:
       run:
         working-directory: console
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.7.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: console/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-
 
   smoke:
     name: core (e2e smoke, local fixture)
@@ -57,11 +71,11 @@ jobs:
       run:
         working-directory: core
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.7.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
