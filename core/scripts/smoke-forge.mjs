@@ -11,7 +11,7 @@
  */
 import { createServer } from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
-import { readFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, existsSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +22,29 @@ const CORE = fileURLToPath(new URL('..', import.meta.url));
 const FIXTURE_DIR = join(CORE, 'test', 'fixtures', 'site');
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 const log = (...a) => console.log('[smoke]', ...a);
+
+/**
+ * 扫一棵目录树，找出所有含截图冻结样式的 HTML。
+ * 冻结样式是 `page.addStyleTag()` 注入的、只为让截图可复现的东西 —— 它出现在任何产物里都是 bug：
+ * 静态镜像与交互镜像都靠"样式表还在"来播 CSS 动画，冻住就自相矛盾了。
+ * （真实故障：它曾跟着 dom.html 进了交互镜像，apify 61/61 页的 hover 过渡全变成瞬移。）
+ */
+function scanForFreeze(root) {
+  const hits = [];
+  const walk = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.html?$/i.test(e.name)) {
+        let s = '';
+        try { s = readFileSync(p, 'utf8'); } catch { continue; }
+        if (/animation-duration:\s*0s\s*!important/i.test(s) && /caret-color:\s*transparent/i.test(s)) hits.push(p);
+      }
+    }
+  };
+  walk(root);
+  return hits;
+}
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -152,6 +175,16 @@ async function main() {
     assert.ok(iconMatch, 'favicon must be localized in the static clone');
     assert.ok(existsSync(join(pageDir, 'clone', iconMatch[1])), 'localized favicon file must exist: ' + iconMatch[1]);
 
+    // 3b) 动效与冻结样式 —— 两条方向相反的断言，缺一条都会让上面那个故障再回来：
+    //     · CSS 关键帧**必须**活着进镜像（样式表原样保留，这是"CSS 动效已复刻"的依据）
+    //     · 截图冻结样式**必须**不进任何产物（它只是让截图可复现；混进去就把动画全冻住了）
+    const cloneCss = readFileSync(join(pageDir, 'clone', 'styles', 'cssom.css'), 'utf8');
+    assert.match(cloneCss, /@keyframes\s+heimdall-pulse/, 'CSS 关键帧必须保留在镜像样式表里');
+    // 注意 CSSOM 序列化会把简写规范化，动画名挪到最后：
+    // `animation: 1.6s ease-in-out 0s infinite normal none running heimdall-pulse`
+    assert.match(cloneCss, /animation:[^;}]*heimdall-pulse/, '动画的引用也必须保留');
+    assert.deepEqual(scanForFreeze(pageDir), [], '截图冻结样式不得进入原站产物（dom.html / clone）');
+
     // 4) 安全断言
     const evil = await fetch(base + '/px/evil.example/x');
     assert.equal(evil.status, 403, 'proxy must reject non-workspace hosts');
@@ -187,6 +220,9 @@ async function main() {
       assert.ok(existsSync(join(bundleDir, name)), 'bundle must contain ' + name);
     }
     const healthJson = JSON.parse(readFileSync(join(bundleDir, 'health.json'), 'utf8'));
+    // 交互镜像卖的就是"能跑起来看动效" —— 冻结样式混进来就把它的卖点冻没了
+    assert.deepEqual(scanForFreeze(bundleDir), [], '截图冻结样式不得进入交互镜像包');
+
     assert.ok(healthJson.pages >= 1, 'health.json must cover live pages');
     assert.equal(typeof healthJson.assets?.unresolved, 'number', 'health asset gap count must be numeric');
     assert.equal(healthJson.assets.unresolved, 0, 'fixture live bundle must be fully self-contained: ' + JSON.stringify(healthJson.details?.slice(0, 2)));

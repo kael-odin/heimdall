@@ -14,3 +14,15 @@ h1 { font-size:44px; line-height:1.1; margin:0 0 12px; }
 table { width:100%; border-collapse:collapse; margin-top:28px; }
 th, td { text-align:left; padding:12px; border-bottom:1px solid var(--line); }
 footer { padding:28px 40px; border-top:1px solid var(--line); color:var(--muted); }
+
+/* 这一组动效是给守卫测试用的，别删：
+ * 静态镜像只剥脚本，样式表原样保留 —— 所以 CSS 动画在镜像里**应该是活的**。
+ * smoke-forge 会断言 "heimdall-pulse" 这组关键帧确实出现在克隆页的样式表里，
+ * 以及截图用的冻结样式**没有**混进产物（曾经混进去过，把所有动画都冻住了）。 */
+@keyframes heimdall-pulse {
+  0% { opacity: 1; }
+  50% { opacity: .45; }
+  100% { opacity: 1; }
+}
+.pulse { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent); animation: heimdall-pulse 1.6s ease-in-out infinite; }
+

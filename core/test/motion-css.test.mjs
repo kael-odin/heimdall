@@ -81,6 +81,20 @@ test('简写解析：两个时间值分别是时长与延迟，顺序无关', ()
   assert.equal(t.timing, 'linear');
 });
 
+test('CSSOM 规范化后的简写也要认 —— 我们抽的就是 cssom.css，它永远是这种形态', () => {
+  // 原站写的是 `animation: heimdall-pulse 1.6s ease-in-out infinite`，
+  // 经 CSSOM 序列化后动画名被挪到最后，且补上了缺省位。
+  const t = parseShorthand('1.6s ease-in-out 0s infinite normal none running heimdall-pulse');
+  assert.equal(t.name, 'heimdall-pulse');
+  assert.equal(t.duration, '1.6s');
+  assert.equal(t.delay, '0s');
+  assert.equal(t.timing, 'ease-in-out');
+  assert.equal(t.iterations, 'infinite');
+  assert.equal(t.direction, 'normal');
+  assert.equal(t.fill, 'none');
+  assert.equal(t.playState, 'running');
+});
+
 test('确定性：同一条命令跑两次结果一致（顺序不能取决于扫描顺序之外的东西）', () => {
   const a = JSON.stringify(collectCssMotion(CSS));
   const b = JSON.stringify(collectCssMotion(CSS));
