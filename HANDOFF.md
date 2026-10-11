@@ -1673,3 +1673,17 @@ vercel.com/customers 是 16 页里唯一一个 C（像素 46.0%），`dynamicSha
 见 `docs/ROADMAP.md` 的表格：**252 页 / 14 站**，除 framer（Framer 自家 SSR 变体，
 已知限制）外基本全 A。thordata 35/35、apify 65/74（9 页是瞬时超时，单跑已成功）、
 linear 40、framer 39、tailwindcss 16、supabase 16、vercel 16、stripe 15。
+
+### 31.13 收尾：261 页 / 14 站，以及一个操作上的坑
+
+**apify 从 65/74 补到 74/74** —— 那 9 页本来就是瞬时超时（单跑任一个都成功），
+队列的"失败页给第二次机会"规则接住了它们。
+
+最终样本：**14 个站 / 261 页**，除 framer（Framer 自家 SSR 变体，已知限制）
+与 vercel/customers（mux-player，已知限制）外全部 A 级。数字表在 `docs/ROADMAP.md`。
+
+**顺手撞到一个操作上的坑**：`deliver` 与别的任务**并行跑会随机失败** ——
+`cpSync` 报 `ENOENT ... clone\assets`。原因不是 deliver 的 bug，
+而是同时跑的 `queue` 末尾那步 `dedupe` 正在把 clone 里的资源换成硬链接，
+文件在拷贝过程中被换了名字。**结论：打包时别同时跑别的任务。**
+重跑（独占）即成功，包内 74 页 + 动效档案 73 份 `motion-css.css`（462 组关键帧 / 584 处引用）。
