@@ -6,6 +6,9 @@
  *
  * 规则命名：<category>-<slug>，便于报告筛选与 CI 基线对比。
  */
+import { validateStructuredData } from './structured.mjs';
+import { paginationPageIssues, paginationSiteIssues } from './pagination.mjs';
+
 export const CATEGORIES = {
   index: '抓取与索引',
   content: '内容与语义',
@@ -126,10 +129,17 @@ export function evaluatePage(page, site = {}) {
   if (page.links.emptyAnchor > 0) A('content-empty-anchor', 'content', 'low', '空锚文本链接', `${page.links.emptyAnchor} 个`, '', '为链接补充可读锚文本（图标链接加 aria-label）');
 
   // ---------- 结构化数据与社交 ----------
+  // 分页 / 分面：天生跨页的一类问题，单看一页看不出来
+  for (const s of paginationPageIssues(page)) A(s.id, 'links', s.severity, s.title, s.message, s.evidence, s.suggestion);
+
   const badJsonLd = (page.jsonld || []).filter(j => !j.ok);
   if (badJsonLd.length) A('structured-jsonld-error', 'structured', 'medium', 'JSON-LD 解析失败', `${badJsonLd.length} 段`, badJsonLd[0].error, '修复 JSON 语法并重新校验');
   const types = [...new Set((page.jsonld || []).flatMap(j => j.types || []))];
   if (!types.length && !page.microdataCount) A('structured-none', 'structured', 'info', '未发现结构化数据', '', '', '按页面类型补充 Organization / Product / FAQ / Breadcrumb 等 Schema');
+  // 字段级校验：能解析、有 @type 只说明"写了"，不说明"能用"
+  for (const s of validateStructuredData((page.jsonld || []).flatMap(j => j.items ?? []))) {
+    A(s.id, 'structured', s.severity, s.title, s.message, s.evidence, s.suggestion);
+  }
   if (!page.og.title) A('structured-og-title', 'structured', 'low', '缺少 og:title', '', '', '补充 Open Graph 标签，提升分享卡片质量');
   if (!page.og.image) A('structured-og-image', 'structured', 'low', '缺少 og:image', '', '', '提供 1200×630 社交分享图');
   if (!page.twitter.card) A('structured-twitter-card', 'structured', 'info', '缺少 twitter:card', '', '', '补充 Twitter Card 元数据');
@@ -171,6 +181,9 @@ export function evaluateSite(site = {}) {
   if (site.sitemapChecked && site.sitemapUrls?.size === 0) S('index-sitemap-missing', 'index', 'medium', '未发现 sitemap', '已请求 sitemap 地址但未得到有效 XML', '', '提供 XML sitemap 并在 robots.txt 中声明');
 
   for (const url of site.orphans ?? []) S('links-orphan', 'links', 'low', '孤儿页（无站内入链）', url, '', '从导航/相关页添加内链，提升发现与权重传递');
+
+  // 分页 / 分面（站点级）：把整站 URL 连起来看才知道问题有多大
+  for (const s of paginationSiteIssues(site)) S(s.id, 'links', s.severity, s.title, s.message, s.evidence, s.suggestion);
   return out;
 }
 

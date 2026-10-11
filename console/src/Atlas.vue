@@ -28,6 +28,7 @@ const Graph3D = defineAsyncComponent({
   timeout: 30000,
 });
 import SiteBar from './SiteBar.vue';
+import Sparkline from './Sparkline.vue';
 import Icon from './Icon.vue';
 import JobsView from './JobsView.vue';
 import PagesView from './PagesView.vue';
@@ -443,6 +444,40 @@ async function pollEngine() {
 }
 setInterval(pollEngine, 15000);
 /**
+ * 最近一次 SEO 审计（从磁盘读，不只在"本次会话跑过"时才有）。
+ * 此前只由 SSE 事件写入 —— 刷新页面后报告卡就显示"尚未运行"，明明报告就在盘上。
+ */
+function loadAuditReport(h) {
+  auditReport.value = null;
+  if (!h) return;
+  wsJson(h, 'seo/seo.json').then(j => {
+    if (!j || host.value !== h) return;
+    auditReport.value = {
+      host: h, score: j.score,
+      pages: j.summary?.pages ?? j.pages?.length ?? 0,
+      issues: j.summary?.issues ?? 0,
+      generatedAt: j.generatedAt, field: j.field ?? null,
+    };
+  });
+}
+
+/** 分数走势：workspace/<host>/history.json（审计与整站克隆各记一笔，见 core/src/seo/history.mjs） */
+const siteHistory = ref([]);
+function loadHistory(h) {
+  siteHistory.value = [];
+  if (!h) return;
+  wsJson(h, 'history.json').then(j => { if (Array.isArray(j) && host.value === h) siteHistory.value = j; });
+}
+/** 按 kind/字段取序列 —— 画的就是记录本身，不做聚合 */
+const trendOf = (kind, field) => siteHistory.value
+  .filter(x => x?.kind === kind && typeof x[field] === 'number')
+  .map(x => ({ at: x.at, v: x[field] }));
+const auditTrend = computed(() => trendOf('audit', 'score'));
+/** 最近一次审计覆盖的页数 —— 页数不同的两次分数不可直接比，图上要点出来 */
+const lastAuditPages = computed(() => [...siteHistory.value].reverse().find(x => x.kind === 'audit' && x.pages)?.pages ?? null);
+const cloneTrend = computed(() => trendOf('clone', 'avgPixel'));
+
+/**
  * 本站能做的事。费时（全量重跑）与破坏性（删除本站）的项标红并二次确认 ——
  * 它们要么占满引擎并发槽跑上小时，要么删掉整站产物，误点的代价不对称。
  */
@@ -450,7 +485,7 @@ const siteActions = computed(() => {
   const has = !!host.value;
   const cloned = doneCount.value;
   return [
-    { id: 'audit', label: 'SEO 审计', hint: '56 条规则 · 六分类评分 · 输出 HTML/CSV/JSON 报告', disabled: !has || !!engine.value.audit },
+    { id: 'audit', label: 'SEO 审计', hint: '66 条规则 · 六分类评分 · 输出 HTML/CSV/JSON 报告', disabled: !has || !!engine.value.audit },
     {
       id: 'clone-incremental',
       label: cloned ? '增量克隆' : '整站克隆',
@@ -479,6 +514,8 @@ function onSiteAction(id) {
 function pickSite(s) {
   if (!s) return;
   host.value = s.host;
+  loadHistory(s.host);
+  loadAuditReport(s.host);
   selected.value = null;
   detailIntel.value = null; detailScore.value = null;
   // 站点可能只有克隆、没有全站侦察（用户直接 `forge <url>` 克隆单页 ——
@@ -491,8 +528,14 @@ function pickSite(s) {
       if (a) { buildStatic(a); loadPageStatus(); return; }
       buildStatic({ origin: s.origin ?? ('https://' + s.host), nodes: [], edges: [], meta: { pages: 0, edges: 0 } });
       await loadPageStatus();
-      view.value = 'pages';    // 没有星图可看，直接把清单摆出来
-      okMsg.value = '该站点只有克隆页面、尚未全站侦察；已显示页面清单。侦察后可获得星图与全站视图。';
+      // 只有审计产物、没有克隆页：直接进「报告」——报告就在那里，摆一个空清单没有意义
+      if (!s.forged && s.audit) {
+        view.value = 'reports';
+        okMsg.value = '该站点只做过 SEO 审计（无侦察/克隆产物），已打开报告中心。';
+      } else {
+        view.value = 'pages';    // 没有星图可看，直接把清单摆出来
+        okMsg.value = '该站点只有克隆页面、尚未全站侦察；已显示页面清单。侦察后可获得星图与全站视图。';
+      }
       setTimeout(() => { okMsg.value = ''; }, 6000);
     })
     .catch(e => { errMsg.value = String(e); });
@@ -906,6 +949,8 @@ function runAudit() {
         else if (ev.kind === 'audit-page') statusText.value = `SEO 审计 · ${ev.index}/${ev.total}`;
         else if (ev.kind === 'audit-done') {
           task.auditScore = ev.score; task.done = true; task.endedAt = Date.now();
+          loadHistory(host.value);                          // 审计刚落一条，走势图跟上
+          loadAuditReport(host.value);                      // 报告卡切到最新一份（含真实用户指标）
           auditReport.value = { host: host.value, score: ev.score, pages: ev.pages, issues: ev.issues };
           statusText.value = `SEO 审计完成 · ${ev.score} 分`;
           close(); setTimeout(() => { statusText.value = ''; }, 4000);
@@ -988,6 +1033,7 @@ function startCloneSite({ incremental = false } = {}) {
             closeTask();
             statusText.value = task.done ? `整站克隆完成${task.progress ? ' · ' + task.progress : ''}` : (ev.status === 'cancelled' ? '整站克隆已取消' : '整站克隆中断');
             loadPageStatus();                                  // 刷新页面清单上的铸造状态
+            loadHistory(h);                                    // 走势多一个点
             setTimeout(() => { statusText.value = ''; }, 4000);
             resolve();
           }
@@ -1128,9 +1174,27 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <a :href="`/${host}/index.html`" target="_blank" rel="noopener">打开档案</a>
     </div>
     <div class="report-card surface">
+      <h3>分数走势</h3>
+      <div class="trend-grid">
+        <Sparkline label="SEO 审计分" :points="auditTrend" />
+        <Sparkline label="平均视觉还原度" :points="cloneTrend" unit="%" />
+      </div>
+      <p class="trend-hint" v-if="!auditTrend.length && !cloneTrend.length">
+        还没有记录 —— 跑一次「SEO 审计」或整站克隆，这里就会出现第一个点
+      </p>
+      <p class="trend-hint" v-else>
+        数据来自本站历史（每次审计与每批整站克隆各记一笔）
+        <template v-if="lastAuditPages">；最近一次审计覆盖 {{ lastAuditPages }} 页 —— 页数不同的两次分数不能直接比</template>
+      </p>
+    </div>
+    <div class="report-card surface">
       <h3>SEO 审计报告</h3>
       <p v-if="auditReport">{{ auditReport.score }} 分 · {{ auditReport.pages }} 页 · {{ auditReport.issues }} 条问题</p>
-      <p v-else>尚未运行（56 条规则 / 六分类评分）</p>
+      <p v-else>尚未运行（66 条规则 / 六分类评分）</p>
+      <p class="trend-hint" v-if="auditReport?.field?.compare">{{ auditReport.field.compare.note }}</p>
+      <p class="trend-hint" v-else-if="auditReport?.field && !auditReport.field.available">
+        只有实验室数据（本机 Playwright 实测）：{{ auditReport.field.reason }}
+      </p>
       <a v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">打开报告</a>
       <button v-else class="wv-primary" @click="runAudit">运行审计</button>
     </div>

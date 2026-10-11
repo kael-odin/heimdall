@@ -864,7 +864,11 @@ createServer(async (req, res) => {
           : 0;
         const ap = join(wsDir, d, 'recon', 'atlas.json');
         const hasAtlas = existsSync(ap);
-        if (!hasAtlas && !forged) continue;                     // 既没侦察也没克隆过 → 不算站点
+        // 只做过 SEO 审计（没有侦察也没有克隆）的站点也要出现 ——
+        // 否则"审计完一个竞品站，回控制台找不到它"就成了死角。实测踩到。
+        const seoJson = join(wsDir, d, 'seo', 'seo.json');
+        const hasAudit = existsSync(seoJson);
+        if (!hasAtlas && !forged && !hasAudit) continue;        // 什么产物都没有 → 不算站点
 
         let atlas = null;
         if (hasAtlas) { try { atlas = JSON.parse(readFileSync(ap, 'utf8')); } catch {} }
@@ -902,6 +906,15 @@ createServer(async (req, res) => {
             } catch {}
           }
         }
+        // 只审计过的站点：分数从 seo.json 里取，列表上直接能看见结果
+        let audit = null;
+        if (hasAudit) {
+          try {
+            const j = JSON.parse(readFileSync(seoJson, 'utf8'));
+            audit = { score: j.score ?? null, pages: j.summary?.pages ?? j.pages?.length ?? 0, at: j.generatedAt ?? null };
+            if (!origin && j.origin) origin = j.origin;
+          } catch { /* 报告坏了不影响站点出现 */ }
+        }
         sites.push({
           host: d,
           origin: origin || ('https://' + d),
@@ -911,8 +924,9 @@ createServer(async (req, res) => {
           cloned: forged,
           clonedInAtlas,              // 既被侦察发现、也已克隆（唯一诚实的"完成度"分子）
           extra: Math.max(0, forged - clonedInAtlas),   // 已克隆但侦察没覆盖到（早先手工克隆等）
+          audit,
           edges: atlas?.meta?.edges ?? 0,
-          // 'partial' = 只克隆了页面、没做过全站侦察。控制台据此提示"可侦察补全"。
+          // partial = 缺全站侦察（只克隆过，或只审计过）；控制台据此给不同的引导
           status: atlas ? (atlas.status ?? (atlas.nodes?.length ? 'ok' : 'failed')) : 'partial',
           failures: atlas?.failures?.length ?? 0,
         });

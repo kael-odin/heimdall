@@ -32,7 +32,11 @@ const current = computed(() => props.sites.find(s => s.host === props.host) ?? n
 
 /** 下拉里的每站一行：只给"我手上有多少页"，覆盖度在下面那行细说 */
 function optionText(s) {
-  if (s.status === 'partial') return `${s.host} · 克隆 ${s.forged} 页（未侦察）`;
+  if (s.status === 'partial') {
+    // 只做过 SEO 审计的站点（没有侦察也没有克隆）也要能选到，否则审计完就找不到它了
+    if (!s.forged && s.audit) return `${s.host} · 仅审计 ${s.audit.score ?? '—'} 分`;
+    return `${s.host} · 克隆 ${s.forged} 页（未侦察）`;
+  }
   if (!s.discovered) return `${s.host} · 侦察结果为空`;
   return `${s.host} · 克隆 ${s.forged} 页`;
 }
@@ -41,6 +45,7 @@ function optionText(s) {
 const statusText = computed(() => {
   const s = current.value;
   if (!s) return '';
+  if (!s.forged && s.audit) return `只做过 SEO 审计（${s.audit.score ?? '—'} 分 · ${s.audit.pages ?? 0} 页）· 没有侦察与克隆产物`;
   if (s.status === 'partial') return `克隆 ${s.forged} 页 · 未做全站侦察（侦察后才有星图与全站视图）`;
   const parts = [`侦察发现 ${s.discovered} 页`, `已克隆 ${s.cloned} 页`];
   if (s.clonedInAtlas) parts.push(`其中 ${s.clonedInAtlas} 页在侦察集合内`);

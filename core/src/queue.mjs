@@ -16,6 +16,7 @@ import { spawn } from 'node:child_process';
 import { requireArg } from './args.mjs';
 import { loadProfile, queuePlan, sanitizeHost } from './site-profile.mjs';
 import { sourceFingerprint, incrementalDecision, decisionNote } from './fingerprint.mjs';
+import { appendHistory } from './seo/history.mjs';
 import { WORKSPACE } from './paths.mjs';
 
 const host = sanitizeHost(requireArg(process.argv[2], 'node src/queue.mjs <host> [--max N] [--force] [--incremental] [--missing-har] [--no-dedupe]', '站点 host'));
@@ -212,5 +213,19 @@ if (d > 0) {
     await runNode(join('src', 'store', 'dedupe.mjs'), [host]);
   }
 }
+
+// 分数走势：整批的平均视觉还原度记一笔（单页 forge 不记，太碎）
+{
+  let sum = 0, n = 0;
+  for (const q of queue) {
+    if (q.status !== 'done') continue;
+    try {
+      const s = JSON.parse(readFileSync(join(BASE, 'pages', q.name, 'score.json'), 'utf8'));
+      if (typeof s.pixel === 'number') { sum += s.pixel; n++; }
+    } catch { /* 缺 score 的页不参与均值 */ }
+  }
+  if (n) appendHistory(host, { kind: 'clone', pages: n, avgPixel: +((sum / n) * 100).toFixed(2) });
+}
+
 console.log(`\nQUEUE COMPLETE ${host}: ${d} done / ${f} failed / ${queue.length} total`);
 emit({ kind: 'queue-complete', done: d, failed: f, total: queue.length });

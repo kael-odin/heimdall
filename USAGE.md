@@ -158,7 +158,7 @@ node src\harvest\xlsx.mjs apify.com
 
 ## 11. SEO 审计（v2 新增）
 
-一条命令对任意站点做 40+ 项 SEO 体检：
+一条命令对任意站点做 66 条规则的 SEO 体检：
 
 ```cmd
 cd /d D:\Github-Star\heimdall

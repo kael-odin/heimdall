@@ -33,6 +33,8 @@ import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
 import { fetchRobotsAndSitemaps, discoverTargets, collectSite } from './collect.mjs';
 import { evaluatePage, evaluateSite, scoreIssues, countBySeverity, CATEGORIES, SEVERITY_PENALTY } from './rules.mjs';
+import { appendHistory } from './history.mjs';
+import { fetchFieldData, compareLabToField } from './field-data.mjs';
 import { renderHtml, renderCsv } from './report.mjs';
 import { buildBaseline, snapshotOf, diffBaseline, renderDiffText, renderDiffMarkdown, BASELINE_VERSION } from './baseline.mjs';
 
@@ -186,6 +188,14 @@ try {
     categories[key] = { score: Math.max(0, Math.round((100 - penalty / Math.max(pages.length, 1)) * 10) / 10), issues: allIssues.filter(i => i.category === key).length };
   }
 
+  // 分数走势：追加一条（原子写）。历史是增强项，失败不影响本次审计。
+  appendHistory(host, {
+    kind: 'audit', score: siteScore,
+    grade: siteScore >= 90 ? 'A' : siteScore >= 75 ? 'B' : 'C',
+    pages: pages.length, issues: allIssues.length,
+    critical: bySeverity.critical ?? 0, high: bySeverity.high ?? 0,
+  });
+
   const report = {
     host, origin,
     generatedAt: new Date().toISOString(),
@@ -196,6 +206,19 @@ try {
     siteIssues: allSiteIssues,
     pages: pagesScored,
   };
+
+  // 真实用户指标（可选）：需自备 HEIMDALL_PSI_KEY。没配就如实记下"只有实验室数据"，
+  // 不假装有实时数据 —— 报告里宁可写清楚缺什么，也不要让人误以为那是真实用户体验。
+  {
+    const field = await fetchFieldData(origin);
+    const lcps = pages.map(p => p.vitals?.lcp).filter(v => typeof v === 'number').sort((a, b) => a - b);
+    const clss = pages.map(p => p.vitals?.cls).filter(v => typeof v === 'number');
+    const lab = {
+      lcp: lcps.length ? lcps[Math.floor(lcps.length / 2)] : null,          // 中位数，抗离群
+      cls: clss.length ? +(clss.reduce((a, b) => a + b, 0) / clss.length).toFixed(3) : null,
+    };
+    report.field = { ...field, lab, compare: compareLabToField(lab, field) };
+  }
 
   const jsonPath = join(outDir, 'seo.json');
   const csvPath = join(outDir, 'seo.csv');

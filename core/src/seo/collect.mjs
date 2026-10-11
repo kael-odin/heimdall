@@ -8,6 +8,7 @@
  */
 import { chromium } from 'playwright';
 import { analyzeRawHtml } from './raw-html.mjs';
+import { isStructuralUrl } from './pagination.mjs';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
@@ -96,7 +97,10 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
           [...document.querySelectorAll('a[href]')]
             .map(a => { try { return new URL(a.getAttribute('href'), location.href).href.split('#')[0]; } catch { return null; } })
             .filter(u => u && u.startsWith(o)), origin);
-        for (const u of [...new Set(links)]) queue.push({ url: u, depth: job.depth + 1 });
+        // 结构性 URL（分页/分面）优先入队：它们通常排在页尾，按 DOM 顺序会被配额挤掉，
+        // 而这类页面正是审计最该覆盖的
+        const uniq = [...new Set(links)].sort((a, b) => (isStructuralUrl(b) ? 1 : 0) - (isStructuralUrl(a) ? 1 : 0));
+        for (const u of uniq) queue.push({ url: u, depth: job.depth + 1 });
       } catch {}
     }
     await ctx.close();
@@ -183,14 +187,42 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
           }
         } catch {}
       }
+      // 结构化数据：除了 @type，还要把**实体本身**带回去做字段级校验
+      // （只判断「有没有 Product 这个词」是不够的 —— 决定能否出富结果的是 name/image/offers）。
+      // 对象可能很大（商品目录），所以按白名单裁剪并限制深度与条数。
+      const LD_KEYS = new Set(['@context', '@type', '@id', '@graph', 'name', 'headline', 'description', 'title',
+        'image', 'logo', 'url', 'datePublished', 'dateModified', 'datePosted', 'uploadDate', 'startDate', 'endDate',
+        'author', 'publisher', 'provider', 'offers', 'aggregateRating', 'review', 'reviewRating', 'itemReviewed',
+        'itemListElement', 'mainEntity', 'acceptedAnswer', 'address', 'telephone', 'priceRange', 'location',
+        'thumbnailUrl', 'contentUrl', 'price', 'priceCurrency', 'availability', 'brand', 'sku', 'position', 'item',
+        'mainEntityOfPage', 'sameAs', 'hiringOrganization', 'ratingValue', 'ratingCount', 'reviewCount', 'step']);
+      const pickLd = (v, depth = 0) => {
+        if (depth > 3 || v == null) return v == null ? v : undefined;
+        if (Array.isArray(v)) return v.slice(0, 20).map(x => pickLd(x, depth + 1)).filter(x => x !== undefined);
+        if (typeof v === 'object') {
+          const o = {};
+          for (const k of Object.keys(v)) if (LD_KEYS.has(k)) { const p = pickLd(v[k], depth + 1); if (p !== undefined) o[k] = p; }
+          return o;
+        }
+        return typeof v === 'string' ? v.slice(0, 200) : v;
+      };
       const jsonld = [...document.querySelectorAll('script[type="application/ld+json"]')].map(s => {
         try {
           const data = JSON.parse(s.textContent);
           const arr = Array.isArray(data) ? data : [data];
           const types = arr.flatMap(x => [].concat(x?.['@type'] ?? [])).filter(Boolean);
-          return { ok: true, types };
-        } catch (e) { return { ok: false, types: [], error: String(e).slice(0, 120) }; }
+          return { ok: true, types, items: arr.slice(0, 12).map(x => pickLd(x)).filter(Boolean) };
+        } catch (e) { return { ok: false, types: [], items: [], error: String(e).slice(0, 120) }; }
       });
+      // 「加载更多 / 下一页」这类按钮：分页如果用 JS 做，爬虫拿不到下一页的 URL ——
+      // 这是列表页最常见也最容易被忽略的问题，而它在 HTML 里只留下一个可点的按钮。
+      // 只认强特征文案（"更多" 单独出现太容易误判成导航菜单，不收）。
+      const JS_PAGE_LABEL = /^(older\s*posts?|newer\s*posts?|next\s*(page|posts?)?|prev(ious)?(\s*(page|posts?))?|load\s*more|show\s*more|下一页|上一页|加载更多|显示更多)$/i;
+      const jsPagination = [...document.querySelectorAll('button,[role="button"],a[role="button"]')]
+        .filter(el => !(el.tagName === 'A' && el.hasAttribute('href')))
+        .map(el => (el.innerText || el.getAttribute('aria-label') || '').trim())
+        .filter(t => JS_PAGE_LABEL.test(t))
+        .slice(0, 5);
       const hreflang = [...document.querySelectorAll('link[rel="alternate"][hreflang]')].map(l => ({ lang: l.getAttribute('hreflang'), href: abs(l.getAttribute('href')) }));
       const res = performance.getEntriesByType('resource').map(r => ({ name: r.name, initiator: r.initiatorType, transfer: r.transferSize || 0, encoded: r.encodedBodySize || 0 }));
       const nav = performance.getEntriesByType('navigation')[0];
@@ -227,6 +259,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         og: { title: meta('meta[property="og:title"]'), description: meta('meta[property="og:description"]'), image: abs(meta('meta[property="og:image"]', 'content')), type: meta('meta[property="og:type"]') },
         twitter: { card: meta('meta[name="twitter:card"]'), title: meta('meta[name="twitter:title"]'), image: abs(meta('meta[name="twitter:image"]', 'content')) },
         hreflang,
+        jsPagination,
         resources: {
           requests: res.length,
           transferBytes: res.reduce((a, r) => a + Math.max(r.transfer, r.encoded), 0),
@@ -261,7 +294,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       imgTotal: dom.imgTotal, imgMissingAlt: dom.imgMissingAlt, imgEmptyAlt: dom.imgEmptyAlt, imgBroken: dom.imgBroken, imgLegacy: dom.imgLegacy, imgLazy: dom.imgLazy,
       links: dom.links, internalHrefs: dom.internalHrefs, externalSample: dom.externalSample,
       jsonld: dom.jsonld, microdataCount: dom.microdataCount,
-      og: dom.og, twitter: dom.twitter, hreflang: dom.hreflang,
+      og: dom.og, twitter: dom.twitter, hreflang: dom.hreflang, jsPagination: dom.jsPagination,
       // 服务端原始 HTML 的同名信号（未经 JS）。两者并排才能回答
       // "这个站的内容依赖不依赖 JS"。取不到时为 null，规则里要判空。
       raw,
@@ -275,7 +308,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       lang: '', viewport: '', h1: [], headings: [], headingLevels: [], headingSkips: 0, wordCount: 0, textRatio: 0, htmlBytes: 0, textHash: '', textSample: '',
       imgTotal: 0, imgMissingAlt: 0, imgEmptyAlt: 0, imgBroken: 0, imgLegacy: 0, imgLazy: 0,
       links: { total: 0, internal: 0, external: 0, emptyAnchor: 0, hashOnly: 0, nofollowExternal: 0 }, internalHrefs: [], externalSample: [],
-      jsonld: [], microdataCount: 0, og: {}, twitter: {}, hreflang: [], raw: null, resources: { requests: 0, transferBytes: 0, jsBytes: 0, cssBytes: 0, imgBytes: 0, fontBytes: 0, renderBlocking: 0 },
+      jsonld: [], microdataCount: 0, og: {}, twitter: {}, hreflang: [], jsPagination: [], raw: null, resources: { requests: 0, transferBytes: 0, jsBytes: 0, cssBytes: 0, imgBytes: 0, fontBytes: 0, renderBlocking: 0 },
       vitals: { lcp: null, cls: 0, fcp: null }, security: { https: url.startsWith('https://'), mixedContent: [], headers: {} },
     };
   } finally {

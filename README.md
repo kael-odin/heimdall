@@ -46,7 +46,7 @@ node src/cli.mjs deliver example.com      # 打包成前端可接手的交付包
 | --- | --- | --- |
 | **静态镜像** | `deliverable/<host>-<date>/`：镜像页 + 原站 CSSOM + 渲染后 DOM + 差异热图 + 还原度 CSV + 接手 README | 前端：照着写自己的第一版 |
 | **交互镜像** | `deliverable/<host>-live-<date>/`：Dockerfile + `serve.mjs` + HAR 回放 + 健康报告 | 运维/前端：`docker compose up -d` 直接对着它写代码 |
-| **SEO 审计** | `workspace/<host>/seo/`：HTML 报告 + CSV + JSON，56 条规则六分类 | SEO/增长 |
+| **SEO 审计** | `workspace/<host>/seo/`：HTML 报告 + CSV + JSON，66 条规则六分类 | SEO/增长 |
 | **竞品情报** | `intel/<host>-intel.xlsx`：概览 / 语义情报 / 定价与 CTA | 产品/市场 |
 | **全站星图** | `workspace/<host>/recon/atlas.json` + 控制台 3D 视图 | 所有人：先看清这个站的结构 |
 
@@ -103,7 +103,7 @@ AI 用在三处判断上（像素差异的 CSS 校准、语义情报抽取、页
 - 资产缺口扫描（视觉缺口 vs 元数据噪声分开统计）
 
 **审计**
-- SEO 56 条规则 / 六分类：抓取索引、内容语义、结构化数据、性能体验、链接架构、安全合规
+- SEO 66 条规则 / 六分类：抓取索引、内容语义、结构化数据、性能体验、链接架构、安全合规
 - 服务端 HTML vs 渲染后对比（识别 JS 渲染依赖，含 hreflang 校验）
 - 变更监控（基线快照 + 去噪）+ **SEO 回归门禁**（可接 CI，回归自动红）
 - 跨站对标矩阵（站点分 / 覆盖率 / LCP / 页面类型）

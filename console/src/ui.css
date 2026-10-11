@@ -448,3 +448,7 @@
 .dg-remove { color: var(--text-faint); }
 .dg-remove.bad { color: var(--warn); }
 @media (max-width: 768px) { .deliver-group { grid-template-columns: 1fr auto; row-gap: 2px; } }
+
+/* 报告页：分数走势两联小图 */
+.trend-grid { display: flex; gap: 18px; flex-wrap: wrap; margin: 6px 0 4px; }
+.trend-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
