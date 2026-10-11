@@ -863,3 +863,21 @@ reset、指向别的字体的规则）一律不带进来 —— 后者会打乱�
 
 侦察各 42 页（svelte.dev 164 边、angular.dev 284 边）。
 质量门：core lint 116 文件 OK，单测 **251**，控制台 build 通过。
+
+### 23.7 回头看：这两个修复对**已有**克隆同样有效
+
+跨域字体这条不需要重新抓取 —— 重建（build_clone）即可。盘了一遍已有产物：
+
+| 站点 | 含 `<base>` | 含跨域样式表 |
+| --- | --- | --- |
+| thordata.com（31 页） | 0 | 31（都是 `accounts.google.com/gsi/style`，无 @font-face，**不受影响**） |
+| vitest.dev | 0 | 1（`fonts.googleapis.com` Readex Pro，**受影响**） |
+| apify.com / ant.design / crawlee.dev / cn.vuejs.org / svelte.dev | 0 | 0 |
+
+vitest.dev 重建后：静态差异像素降到 **562px**、TOTAL **100.0**。
+
+**顺带修掉形态判据在极小差异下的误报**：562px 只有 6 个连通块，于是
+top5Share 恒为 1 → 必然判成「集中」→ 把用户支使去查几十像素的噪声。
+新增 `negligible`（差异不足画面千分之一）：这个量级上"块少"是必然的，
+判形态没有意义。阈值有单测，另一条单测钉住"跨过千分之一就恢复判定"，
+免得把真缺失也放过去。

@@ -40,6 +40,9 @@
 
 - [ ] **画布之外还有没有同类盲区**：canvas 已修（捕获阶段光栅化）。
       已排查过视频（正常，文件已本地化）与 iframe（外站嵌入，固有边界）。
+      **已修**：`<base href>` 改基（Angular 类站点整页失去样式）、
+      跨域样式表里的字体规则（图标连字名被当文字渲染）—— 两个都是换到 Angular
+      才第一次踩到，见 HANDOFF §23.5。
       尚未系统排查：WebGL 画布（`toDataURL` 需要 `preserveDrawingBuffer`）、
       CSS `@font-face` 可变字体轴、`<video>` 的 poster、
       **闭包在 shadow DOM 里的样式**（现在只处理了 light DOM）

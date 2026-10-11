@@ -97,3 +97,25 @@ test('shapeNote: 四种形态都有话说', () => {
     assert.ok(note && note.length > 6, `${s} 应有解释`);
   }
 });
+
+test('shape: 差异不足画面千分之一 → negligible（此时"集中"没有信息量）', () => {
+  // 562px / 1440×900 是 vitest.dev 修好字体后的真实量级：只有 6 块、最大 164px，
+  // 若照常判就会报"集中"，把人支使去查几十像素的噪声。
+  const w = 1440, h = 900;
+  const buf = Buffer.alloc(w * h * 4, 255);
+  const paint = (x, y) => { const i = (y * w + x) * 4; buf[i] = 255; buf[i + 1] = 0; buf[i + 2] = 0; };
+  let n = 0;
+  for (let y = 100; y < 120 && n < 562; y += 4) for (let x = 100; x < 200 && n < 562; x++) { paint(x, y); n++; }
+  const r = analyzeDiffShape(buf, w, h);
+  assert.equal(r.shape, 'negligible');
+  assert.match(shapeNote('negligible'), /极小|一致/);
+});
+
+test('shape: 差异跨过千分之一就恢复判定（别把真缺失也当成 negligible）', () => {
+  const w = 1440, h = 900;
+  const buf = Buffer.alloc(w * h * 4, 255);
+  for (let y = 100; y < 140; y++) for (let x = 100; x < 160; x++) {   // 2400px ≈ 0.19%
+    const i = (y * w + x) * 4; buf[i] = 255; buf[i + 1] = 0; buf[i + 2] = 0;
+  }
+  assert.equal(analyzeDiffShape(buf, w, h).shape, 'concentrated');
+});

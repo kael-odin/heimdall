@@ -40,7 +40,7 @@ const typeColorThemed = (t) => typeColor(t, props.theme);
 const pageName = computed(() => (props.selected ? pageNameOf(props.selected) : ''));
 
 /** 差异形态的中文标签与配色：集中 = 要去看，弥散 = 多为渲染差异 */
-const SHAPE_CN = { concentrated: '集中', mixed: '混合', diffuse: '弥散', identical: '一致' };
+const SHAPE_CN = { concentrated: '集中', mixed: '混合', diffuse: '弥散', identical: '一致', negligible: '极小' };
 const shapeLabel = (s) => SHAPE_CN[s] ?? s ?? '—';
 const shapeClass = (s) => (s === 'concentrated' ? 'bad' : s === 'mixed' ? 'mid' : 'ok');
 

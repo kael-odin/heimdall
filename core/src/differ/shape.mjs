@@ -15,6 +15,9 @@
  *   集中（≥40%）→ 少数区域出问题，去查那些区域
  *   混合         → 两者都有
  *   弥散（≤12%）→ 碎在边缘上，多为抗锯齿/亚像素差异
+ *
+ * 差异小到不足画面千分之一时不下判断（negligible）—— 那个量级上"连通块只有几个"
+ * 是必然的，判成"集中"只会把用户支使去查几十像素的噪声。
  */
 
 const SEEN = 1, DIFF = 2;
@@ -66,13 +69,23 @@ export function analyzeDiffShape(rgba, width, height, opts = {}) {
   sizes.sort((a, b) => b - a);
   const top5 = sizes.slice(0, 5).reduce((s, v) => s + v, 0);
   const top5Share = +(top5 / pixels).toFixed(4);
+
+  // 差异太小就先别下判断。像素少到一定程度时，"连通块只有几个"是必然的，
+  // 于是 top5Share 恒为 1 → 必然判成"集中" → 让用户去查几块其实只有几十像素的区域。
+  // 实测 vitest.dev 修好字体后只剩 562px（6 块，最大 164px），就是这样被误报的。
+  const share = pixels / (W * H);
+  if (share < (opts.negligibleShare ?? 0.001)) {
+    return { pixels, blobs: sizes.length, largest: sizes[0] ?? 0, top5Share, share: +share.toFixed(5), shape: 'negligible' };
+  }
+
   const shape = top5Share >= 0.4 ? 'concentrated' : (top5Share <= 0.12 ? 'diffuse' : 'mixed');
-  return { pixels, blobs: sizes.length, largest: sizes[0] ?? 0, top5Share, shape };
+  return { pixels, blobs: sizes.length, largest: sizes[0] ?? 0, top5Share, share: +share.toFixed(5), shape };
 }
 
 /** 给报告用的一句话解释 */
 export function shapeNote(shape) {
   if (shape === 'identical') return '两图逐像素一致。';
+  if (shape === 'negligible') return '差异极小（不足画面千分之一），可视为一致。';
   if (shape === 'concentrated') return '差异集中在少数区域 —— 大概率是内容缺失或错位，去查 diff 热图里的那几块。';
   if (shape === 'diffuse') return '差异碎成大量小点，集中在文字/图形边缘 —— 多为抗锯齿与亚像素渲染差异，通常不是内容缺失。';
   return '差异既有成片区域也有碎点 —— 两者都看一下。';
