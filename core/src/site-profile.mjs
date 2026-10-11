@@ -57,6 +57,10 @@ export const DEFAULTS = {
   },
   queue: {
     excludeTypes: ['auth', 'legal'],
+    concurrency: 2,               // 本批并行锻造页数（引擎槽位不足时自动下调）
+    maxPages: 20,                 // 默认整批上线（CLI --max 可覆盖）
+    pageTimeoutMs: 15 * 60_000,   // 单页硬超时：到点熔断，别让一页拖垮整批
+    stallMs: 6 * 60_000,          // 单页无进展熔断：多久没有任何输出就判死
   },
   classify: {
     extraRules: [],               // [{ type: 'pricing', pattern: '价格|定价' }]
@@ -145,3 +149,35 @@ export function compileRefRewrites(rules) {
 }
 
 export const isConservative = (profile) => profile?.live?.stubStrategy === 'conservative';
+
+/** 有界整数：非法值退回默认，再夹到 [lo, hi] */
+const clampInt = (v, lo, hi, dflt) => {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) ? Math.min(Math.max(n, lo), hi) : dflt;
+};
+
+/** 引擎槽位上限的硬边界 —— 每个锻造槽 = 一个 Chromium 实例，放开要有上限 */
+export const MAX_SLOT_CEILING = 8;
+
+/**
+ * 把配方 + 引擎实际槽位算成一份"这批怎么跑"的计划。
+ *
+ * 为什么要夹：配方说并发 6 而引擎只有 2 个槽，多出的 worker 只会反复撞 409、
+ * 空转重试 —— 看着并行、实际串行，还刷一堆日志。所以取 min。
+ *
+ * @param {object} profile loadProfile(host) 的结果
+ * @param {number} engineMax 引擎 /api/status 报的 forge.max
+ */
+export function queuePlan(profile, engineMax = 2) {
+  const q = profile?.queue ?? {};
+  const engineSlots = clampInt(engineMax, 1, MAX_SLOT_CEILING, 2);
+  const want = clampInt(q.concurrency, 1, MAX_SLOT_CEILING, 2);
+  return {
+    workers: Math.max(1, Math.min(want, engineSlots)),   // worker 数 = min(配方, 引擎槽)
+    want,
+    engineMax: engineSlots,
+    maxPages: clampInt(q.maxPages, 1, 2000, 20),
+    pageTimeoutMs: clampInt(q.pageTimeoutMs, 10_000, 60 * 60_000, 8 * 60_000),
+    stallMs: clampInt(q.stallMs, 15_000, 60 * 60_000, 4 * 60_000),
+  };
+}

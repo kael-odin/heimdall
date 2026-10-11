@@ -10,11 +10,12 @@
  * 产物: workspace/<host>/pages/<pageName>/
  */
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { getEnv } from './env.mjs';
 import { requireArg } from './args.mjs';
+import { sourceFingerprint } from './fingerprint.mjs';
 import { WORKSPACE } from './paths.mjs';
 const ENV = getEnv();
 
@@ -61,6 +62,13 @@ try {
     await run(script, args);
     emit({ kind: 'forge-stage', stage, status: 'done' });
   }
+
+  // 记录源站指纹：一次普通 fetch，供后续 `queue --incremental` 判断该页是否变过。
+  // 失败不影响本次锻造（拿不到指纹只意味着下次会重跑这一页）。
+  try {
+    const fp = await sourceFingerprint(URL_);
+    writeFileSync(join(DIR, 'fingerprint.json'), JSON.stringify(fp, null, 2));
+  } catch { /* 指纹只是优化，缺了不影响产物 */ }
 
   // shot 阶段——引擎可达走 /static，否则 file://（两者截图口径相同）
   const clone = await resolveCloneUrl();

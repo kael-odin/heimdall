@@ -34,7 +34,10 @@
     "live:serve": "node src/live/serve.mjs",
     "dedupe": "node src/store/dedupe.mjs",
     "cli": "node src/cli.mjs",
-    "probe:render": "node scripts/probe-render-mode.mjs"
+    "probe:render": "node scripts/probe-render-mode.mjs",
+    "probe:fingerprint": "node scripts/probe-fingerprint.mjs",
+    "probe:regions": "node scripts/diff-regions.mjs",
+    "probe:shift": "node scripts/diff-shift.mjs"
   },
   "keywords": [],
   "author": "",

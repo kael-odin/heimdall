@@ -17,7 +17,7 @@ process.env.HEIMDALL_DATA_DIR = dataDir;
 
 const {
   DEFAULTS, deepMerge, loadProfile, recordLearned, invalidateProfileCache,
-  compileRefRewrites, sanitizeHost, profilePaths,
+  compileRefRewrites, sanitizeHost, profilePaths, queuePlan,
 } = await import('../src/site-profile.mjs');
 
 const workspace = join(dataDir, 'workspace');
@@ -107,6 +107,34 @@ test('profile: compileRefRewrites 编译 { from, to } 并跳过坏正则', () =>
   assert.equal(rules.length, 2);
   assert.equal('https://h/media/f.woff2'.replace(rules[0].re, rules[0].to), 'https://h/_next/static/media/f.woff2');
   assert.equal('/a/x.png'.replace(rules[1].re, rules[1].to), '/b/x.png');
+});
+
+test('profile: 默认配方给出并发/超时基线', () => {
+  assert.equal(DEFAULTS.queue.concurrency, 2);
+  assert.ok(DEFAULTS.queue.pageTimeoutMs >= 60_000);
+  assert.ok(DEFAULTS.queue.stallMs >= 30_000);
+});
+
+test('queuePlan: worker 数取 min(配方, 引擎槽) —— 多排的 worker 只会空转', () => {
+  const p = { queue: { concurrency: 6 } };
+  assert.equal(queuePlan(p, 8).workers, 6);
+  assert.equal(queuePlan(p, 2).workers, 2, '引擎只有 2 槽时不该排 6 个 worker');
+  assert.equal(queuePlan(p, 8).engineMax, 8);
+});
+
+test('queuePlan: 非法值退回默认并夹到边界', () => {
+  assert.equal(queuePlan({ queue: { concurrency: 0 } }, 4).workers, 1);
+  assert.equal(queuePlan({ queue: { concurrency: 999 } }, 4).workers, 4);
+  assert.equal(queuePlan({ queue: { concurrency: 'x' } }, 4).workers, 2, '非法值退回默认 2');
+  assert.equal(queuePlan({}, 99).engineMax, 8, '引擎槽位有硬上限');
+  assert.equal(queuePlan({ queue: { pageTimeoutMs: 1 } }, 2).pageTimeoutMs, 10_000, '超时不能被配成 1ms');
+});
+
+test('queuePlan: 默认值下无进展线必须先于硬超时到达（否则那条线是死代码）', () => {
+  const p = queuePlan({}, 2);
+  assert.ok(p.stallMs < p.pageTimeoutMs, `stall(${p.stallMs}) 应小于 timeout(${p.pageTimeoutMs})`);
+  // 留足余量：慢页面靠"持续输出"活着，无进展线不该贴着硬超时
+  assert.ok(p.pageTimeoutMs - p.stallMs >= 60_000, '两条线之间至少留 1 分钟');
 });
 
 test.after(() => { rmSync(dataDir, { recursive: true, force: true }); });

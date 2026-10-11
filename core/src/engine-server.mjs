@@ -3,6 +3,7 @@
  *
  *   POST /api/recon        {url, maxPages?}  → {taskId}（全站侦察）
  *   POST /api/forge        {url, hostPost?}  → {taskId, pageName}（单页还原流水线）
+ *   POST /api/clone-site   {host, max?, incremental?, force?} → {taskId}（整站批量克隆，引擎侧跑）
  *   GET  /api/events?task=  SSE 事件流（重放已发生事件 + 实时）
  *   GET  /api/atlas/:task   recon 任务完成后返回 atlas.json
  *   GET  /api/jobs          任务清单（本进程内存态）
@@ -28,6 +29,8 @@ import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
 import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
 import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
 import { gcCas } from './store/cas.mjs';
+import { createWatchdog } from './task-watchdog.mjs';
+import { loadProfile, sanitizeHost, queuePlan, MAX_SLOT_CEILING } from './site-profile.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 
@@ -162,8 +165,13 @@ let runningVerify = null;
 let runningLive = null;
 let runningReclaim = null;
 let runningUpgrade = null;
+let runningClone = null;
 const pageMetaCache = new Map();
-const MAX_FORGE = 2;
+// 每个锻造槽 = 一个 Chromium 实例。默认 2（笔记本上稳），大机子/演示可调 HEIMDALL_FORGE_SLOTS。
+const MAX_FORGE = (() => {
+  const n = Math.floor(Number(process.env.HEIMDALL_FORGE_SLOTS));
+  return Number.isFinite(n) ? Math.min(Math.max(n, 1), MAX_SLOT_CEILING) : 2;
+})();
 let forgeSlots = 0;
 
 const push = (t, ev) => {
@@ -171,11 +179,31 @@ const push = (t, ev) => {
   if (typeof ev?.kind === 'string' && ev.kind.endsWith('-error')) t.error = ev.error ?? 'error';
   jobStore?.appendEvent(t.id, ev);
   for (const res of t.subs) res.write(`data: ${JSON.stringify(ev)}\n\n`);
+  // 有进展就重置"无进展熔断"计时 —— 熔断判的是卡死，不是总耗时
+  t.watchdog?.touch();
 };
+
+/** 杀掉子进程树。win32 上普通 kill 不带走孙进程（Chromium），必须 taskkill /T。 */
+function killTree(child, signal = 'SIGKILL') {
+  if (!child || child.exitCode !== null) return;
+  if (process.platform === 'win32' && child.pid) {
+    try { spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); return; } catch {}
+  }
+  try { child.kill(signal); } catch {}
+}
+
+/** 熔断：超时或无进展时杀掉任务子进程，并把它记成失败原因 */
+function killTask(t, reason) {
+  if (t.status !== 'running' || t.killed) return;
+  t.killed = reason;
+  t.error = reason === 'stalled' ? '单页长时间无进展，已熔断' : '单页超出时间上限，已熔断';
+  push(t, { kind: 'forge-timeout', reason, message: t.error });
+  killTree(t.child);
+}
 
 function makeTask(kind, url) {
   const id = `${kind[0]}${String(++seq).padStart(3, '0')}`;
-  const t = { id, kind, url, status: 'running', events: [], subs: new Set(), child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false };
+  const t = { id, kind, url, status: 'running', events: [], subs: new Set(), child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false, killed: null, timeoutMs: 0, stallMs: 0 };
   tasks.set(id, t);
   jobStore?.upsert({ id, kind, url, status: 'running', createdAt: t.createdAt });
   return t;
@@ -188,8 +216,19 @@ function spawnTask(t, script, args, opts = {}) {
     env: { ...process.env, HEIMDALL_PORT: String(PORT), ...(opts.env ?? {}) },
   });
   t.child = child;
+  // 熔断：硬超时（这页跑太久）+ 无进展（这页卡死了）。判据与计时见 task-watchdog.mjs。
+  if (opts.timeoutMs > 0 || opts.stallMs > 0) {
+    t.timeoutMs = opts.timeoutMs ?? 0;
+    t.stallMs = opts.stallMs ?? 0;
+    t.watchdog = createWatchdog({
+      timeoutMs: opts.timeoutMs ?? 0,
+      stallMs: opts.stallMs ?? 0,
+      onKill: (reason) => killTask(t, reason),
+    });
+  }
   let buf = '';
   child.stdout.on('data', (d) => {
+    t.watchdog?.touch();   // 子进程还在说话 = 还活着（捕获下载大图时可能几分钟没有阶段事件）
     buf += d.toString();
     let i;
     while ((i = buf.indexOf('\n')) >= 0) {
@@ -198,11 +237,12 @@ function spawnTask(t, script, args, opts = {}) {
       try { push(t, JSON.parse(line.slice(9))); } catch {}
     }
   });
-  child.stderr.on('data', (d) => process.stderr.write(`[${t.id}] ` + d.toString()));
+  child.stderr.on('data', (d) => { t.watchdog?.touch(); process.stderr.write(`[${t.id}] ` + d.toString()); });
   child.on('exit', (code) => {
+    t.watchdog?.stop();
     t.status = t.cancelRequested ? 'cancelled' : code === 0 ? 'done' : 'failed';
     t.endedAt = Date.now();
-    push(t, { kind: 'exit', code, status: t.status });
+    push(t, { kind: 'exit', code, status: t.status, killed: t.killed ?? undefined });
     for (const res of t.subs) res.end();
     t.subs.clear();
     if (t.kind === 'recon') runningRecon = null;
@@ -213,6 +253,7 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'verify') runningVerify = null;
     else if (t.kind === 'live') runningLive = null;
     else if (t.kind === 'upgrade') runningUpgrade = null;
+    else if (t.kind === 'clone') runningClone = null;        // 整站克隆是编排任务，不占锻造槽
     else if (t.kind === 'storage') storageScanTask = null;   // 盘点任务不占锻造槽
     else if (t.kind === 'deliver') deliverTask = null;       // 同理
     else forgeSlots--;
@@ -341,7 +382,27 @@ function startForge(url, { hostPost = true } = {}) {
   const name = u.pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[\/?&#]+/g, '-').slice(0, 60) || 'home';
   t.pageName = name;
   const env = hostPost ? {} : { HEIMDALL_SKIP_HOST_POST: '1' };
-  return { id: spawnTask(t, join('src', 'pipeline.mjs'), [url, name], { env }).id, name };
+  // 单页熔断参数来自站点配方（大站可以给更长的上限，挂死页统一在 8 分钟内判死）
+  const plan = queuePlan(loadProfile(u.hostname.replace(/^www\./, '')));
+  return { id: spawnTask(t, join('src', 'pipeline.mjs'), [url, name], { env, timeoutMs: plan.pageTimeoutMs, stallMs: plan.stallMs }).id, name };
+}
+
+/**
+ * 整站批量克隆 —— 由引擎跑 queue.mjs，而不是让浏览器标签页来驱动。
+ * 好处：关掉控制台页面任务照跑、并发与超时按配方走、只占一个"编排"名额不占锻造槽。
+ */
+function startCloneSite(host, { max = null, incremental = false, force = false } = {}) {
+  const t = makeTask('clone', 'https://' + host);
+  t.host = host;
+  t.label = '整站克隆 ' + host;
+  runningClone = t;
+  const profile = loadProfile(host);
+  const plan = queuePlan(profile, MAX_FORGE);
+  t.plan = { workers: plan.workers, maxPages: max ?? plan.maxPages, incremental, force };
+  const args = [host, '--max', String(max ?? plan.maxPages), '--json-events'];
+  if (incremental) args.push('--incremental');
+  if (force) args.push('--force');
+  return spawnTask(t, join('src', 'queue.mjs'), args, { env: { HEIMDALL_QUEUE_WORKERS: String(plan.workers) } }).id;
 }
 
 createServer(async (req, res) => {
@@ -428,7 +489,7 @@ createServer(async (req, res) => {
     if (!t) return json(res, 404, { error: 'no such task' });
     if (t.status === 'running') {
       t.cancelRequested = true;
-      try { t.child?.kill('SIGTERM'); } catch {}
+      killTree(t.child, 'SIGTERM');      // 取消时先给个优雅退出的机会（win32 上仍是整树杀）
       jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: 'cancelled', pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: Date.now() });
       push(t, { kind: 'cancel-requested' });
     }
@@ -464,6 +525,24 @@ createServer(async (req, res) => {
         forgeSlots--;
         json(res, 500, { error: String(e).slice(0, 140) });
       }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/clone-site') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let host, max = null, incremental = false, force = false;
+      try { ({ host, max, incremental, force } = JSON.parse(body || '{}')); } catch {}
+      host = sanitizeHost(host);
+      if (!/^[a-z0-9.-]+$/.test(host)) return json(res, 400, { error: 'bad host' });
+      if (runningClone) return json(res, 409, { error: 'busy', taskId: runningClone.id });
+      const id = startCloneSite(host, {
+        max: max == null ? null : Math.min(Math.max(Number(max) || 20, 1), 2000),
+        incremental: !!incremental, force: !!force,
+      });
+      json(res, 200, { taskId: id, host });
     });
     return;
   }
@@ -928,6 +1007,7 @@ createServer(async (req, res) => {
       verify: runningVerify ? { id: runningVerify.id, host: runningVerify.host } : null,
       live: runningLive ? { id: runningLive.id, host: runningLive.host } : null,
       upgrade: runningUpgrade ? { id: runningUpgrade.id, host: runningUpgrade.host } : null,
+      clone: runningClone ? { id: runningClone.id, host: runningClone.host, plan: runningClone.plan } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },
       jobs: tasks.size,
       jobsStore: jobStore?.kind ?? null,
