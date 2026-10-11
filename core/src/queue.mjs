@@ -47,16 +47,17 @@ const engineName = (u) => {
 
 // ---------- 构造/载入队列 ----------
 let queue;
+let fresh = false;                      // 这次是新建的队列（--max 仍然生效）
 if (existsSync(queuePath)) {
   queue = JSON.parse(readFileSync(queuePath, 'utf8'));
   console.log(`resume queue: ${queue.filter(q => q.status === 'done').length} done / ${queue.length} total`);
 } else {
+  fresh = true;
   const seen = new Set();
   queue = atlas.nodes
     .filter(n => !profile.queue.excludeTypes.includes(n.type))
     .map(n => ({ url: n.url, name: engineName(n.url), type: n.type, status: 'pending' }))
-    .filter(q => { const k = q.name; if (seen.has(k)) return false; seen.add(k); return true; })
-    .slice(0, MAX);
+    .filter(q => { const k = q.name; if (seen.has(k)) return false; seen.add(k); return true; });
   writeFileSync(queuePath, JSON.stringify(queue, null, 2));
   console.log(`new queue: ${queue.length} pages (max ${MAX})`);
 }
@@ -65,6 +66,8 @@ if (existsSync(queuePath)) {
 // 队列一旦落盘就再也没看过 atlas，于是"重新侦察发现了新页"这件事永远进不了队列 ——
 // 全站克隆会一直停在第一次侦察的那批页上，而且**看起来像已经跑完了**。
 // 这里把 atlas 里有、队列里没有的页补进来（按 url 排序，保证同样输入得到同样队列）。
+// 注意 --max 只约束**新建**队列：已存在的队列代表"这就是我要的全部页面"，
+// 补进来的页不该因为它而再被砍掉（那正是这个 bug 要修的东西）。
 {
   const known = new Set(queue.map(q => q.name));
   const added = atlas.nodes
@@ -77,6 +80,11 @@ if (existsSync(queuePath)) {
     console.log(`recon-sync: 侦察到 ${added.length} 个队列里没有的页 → 补入队列（共 ${queue.length}）`);
     for (const q of added) console.log(`  + ${q.name}`);
   }
+}
+// --max 在新队列上仍然生效：先与 atlas 对齐、再截断，顺序反了就等于没限制
+if (fresh && queue.length > MAX) {
+  console.log(`--max ${MAX}: 队列从 ${queue.length} 截到 ${MAX}`);
+  queue = queue.slice(0, MAX);
 }
 
 const hasProduct = (name) => existsSync(join(BASE, 'pages', name, 'clone', 'index.html')) && existsSync(join(BASE, 'pages', name, 'score.json'));

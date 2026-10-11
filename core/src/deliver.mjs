@@ -10,12 +10,13 @@
  *
  * 用法: node src/deliver.mjs <host> [hostDir]
  */
-import { writeFileSync, existsSync, readdirSync, mkdirSync, cpSync } from 'node:fs';
+import { writeFileSync, existsSync, readdirSync, mkdirSync, cpSync, readFileSync } from 'node:fs';
 import { requireArg } from './args.mjs';
 import { WORKSPACE, DELIVERABLE, localDateStamp } from './paths.mjs';
 import { join, basename } from 'node:path';
 import { readJson } from './fsutil.mjs';
 import { buildEditManifest, renderEditManifestMd } from './deliver/edit-manifest.mjs';
+import { collectCssMotion, renderMotionCss } from './crawler/motion-css.mjs';
 
 const host = requireArg(process.argv[2], 'node src/deliver.mjs <host> [hostDir]', '站点 host');
 const hostDir = process.argv[3] ?? host;
@@ -46,7 +47,7 @@ for (const name of pages) {
   }
   const rawDst = join(OUT, 'raw', name);
   mkdirSync(rawDst, { recursive: true });
-  for (const item of ['dom.html', 'cssom.css', 'cssom-refs.json', 'frame-1.png']) {
+  for (const item of ['dom.html', 'cssom.css', 'cssom-refs.json', 'frame-1.png', 'motion.json']) {
     const s = join(src, item);
     if (existsSync(s)) cpSync(s, join(rawDst, item));
   }
@@ -77,6 +78,97 @@ const avg = graded ? (sum / graded).toFixed(1) : '-';
 const manifest = buildEditManifest(hostDir);
 writeFileSync(join(OUT, 'edit-manifest.json'), JSON.stringify(manifest, null, 2));
 writeFileSync(join(OUT, 'edit-manifest.md'), renderEditManifestMd(manifest));
+
+// ---------- 2c. 动效档案 ----------
+// 交付包对动效原本只有一句"JS 动画不逐帧复刻"—— 说了没做什么，没说**能做什么**。
+// 实际上 CSS 关键帧就在已经存下来的 cssom.css 里，离线就能抽出来直接给人用；
+// 而"哪些页在动、谁在驱动"决定了他要不要另外写 JS。两件事都落成文件。
+const motionPages = [];
+for (const name of pages) {
+  const cssPath = join(PAGES, name, 'cssom.css');
+  if (!existsSync(cssPath)) continue;
+  const domPath = join(PAGES, name, 'dom.html');
+  const motion = collectCssMotion(readFileSync(cssPath, 'utf8'), {
+    dom: existsSync(domPath) ? readFileSync(domPath, 'utf8') : '',
+  });
+  const probe = readJson(join(PAGES, name, 'motion.json'));   // 真浏览器采的驱动分类（有才写）
+  motionPages.push({ name, motion, probe });
+  const rawDst = join(OUT, 'raw', name);
+  if (motion.keyframes.length) {
+    mkdirSync(rawDst, { recursive: true });
+    writeFileSync(join(rawDst, 'motion-css.css'), renderMotionCss(motion, { host: hostDir, page: name }));
+    writeFileSync(join(rawDst, 'motion-css.json'), JSON.stringify({
+      stats: motion.stats, animations: motion.animations,
+    }, null, 2));
+  }
+}
+const motionTotal = motionPages.reduce((acc, p) => {
+  acc.rules += p.motion.stats.rules;
+  acc.looping += p.motion.stats.looping;
+  acc.inline += p.motion.stats.inline;
+  acc.keyframes += p.motion.stats.definedKeyframes;
+  acc.unused += p.motion.stats.unusedKeyframes.length;
+  if (p.motion.stats.rules) acc.pagesWithCss++;
+  if (p.probe?.total) acc.pagesWithJs++;
+  return acc;
+}, { rules: 0, looping: 0, inline: 0, keyframes: 0, unused: 0, pagesWithCss: 0, pagesWithJs: 0 });
+writeFileSync(join(OUT, 'motion.json'), JSON.stringify({
+  host: hostDir, generated: localDateStamp(), totals: motionTotal,
+  pages: motionPages.map(p => ({ page: p.name, css: p.motion.stats, probe: p.probe?.summary ?? null })),
+}, null, 2));
+const motionRows = motionPages
+  .filter(p => p.motion.stats.rules || p.motion.stats.definedKeyframes)
+  .sort((a, b) => b.motion.stats.rules - a.motion.stats.rules)
+  .slice(0, 20)
+  .map(p => `| \`${p.name}\` | ${p.motion.stats.rules} | ${p.motion.stats.looping || '—'} | ${p.motion.stats.inline || '—'} | ${p.motion.stats.definedKeyframes} | ${p.probe?.summary ?? '未采'} |`);
+writeFileSync(join(OUT, 'motion.md'), `# ${hostDir} · 动效档案
+
+> 从**已捕获的产物**离线抽出来的，没有再访问一次原站。共 ${motionTotal.keyframes} 组关键帧，
+> ${motionTotal.rules} 处引用（其中 ${motionTotal.looping} 处无限循环，${motionTotal.inline} 处靠内联样式挂载），
+> 涉及 ${motionTotal.pagesWithCss} 页。
+
+## 先说清楚"动效复刻"到底做到哪一步
+
+| 类型 | 静态镜像（\`site/pages/<page>/clone/\`） | 交互镜像（\`live\`） |
+| --- | --- | --- |
+| **CSS 动效**（\`@keyframes\` + \`animation\`） | ✅ **是活的** —— 镜像只剥脚本，样式表原样保留，打开就播 | ✅ 活的 |
+| **CSS 过渡**（\`:hover\`、\`transition\`） | ✅ 活的 | ✅ 活的 |
+| **JS 动效**（打字机 / GSAP / Framer / 轮播） | ❌ 停在捕获的那一帧 | ✅ 活的 —— 原脚本保留、URL 重指到代理 |
+| **滚动揭示**（IntersectionObserver 类） | ⚠️ 定格在捕获时的状态 | ✅ 活的 |
+
+所以这份包**不是"动效没做"**，而是：CSS 部分本来就复刻了，JS 部分在镜像里也复刻了，
+静态页看不到的那部分，用交互镜像看。
+
+## 逐页账（按引用数排序，最多列 20 行）
+
+| 页面 | CSS 动效 | 循环 | 内联挂载 | 关键帧 | 浏览器采到的驱动 |
+| --- | --- | --- | --- | --- | --- |
+${motionRows.join('\n') || '| — | — | — | — | — | 未检出 CSS 动效 |'}
+
+\`内联挂载\` 指的是关键帧不在样式表里被引用，而是靠 DOM 上的 \`style="animation:…"\` 挂上去的
+（Vue / React 常见做法）。这类动效**不查内联样式就会漏判**，所以单独列一列。
+
+## 直接拿去用
+
+每页的 \`raw/<page>/motion-css.css\` 是**原样抽出的关键帧**，粘到自己样式表里就能用，
+分两段：
+
+- **A 段 · 在用的** —— 打开镜像就在播的，照抄即可。
+- **B 段 · 定义了但捕获时没被引用的** —— 这一段往往才是重点。入场 / 滚动揭示类动效几乎都长这样：
+  关键帧常驻样式表，而引用它的那条规则（\`.fadeInDown-enter-active{animation:…}\`）只在过渡的
+  那几百毫秒里存在，静止采样时已经没了。**我们抓不到引用，但代码本身已经在手上。**
+
+\`\`\`css
+/* ── A · 在用的 ── */
+@keyframes fade-in { 0% { opacity: 0 } 100% { opacity: 1 } }
+
+/* ── B · 定义了但捕获时没被引用（入场 / 揭示类动效） ── */
+@keyframes fadeInDown { 0% { opacity: 0; transform: translateY(-8px) } 100% { opacity: 1; transform: none } }
+\`\`\`
+
+配套的 \`motion-css.json\` 记着 A 段每条动画**是谁在什么条件下用**（选择器、时长、延迟、缓动、
+是否循环），照着重写触发条件即可。完整清单见根目录 \`motion.json\`。
+`);
 
 // ---------- 3. README-改造指南 ----------
 // 这份文件的目标读者是**接到包的前端**，不是产出包的人。
@@ -211,17 +303,24 @@ site/
 intel/                        跨页情报 Excel
 edit-manifest.md              改站起点：换域名 / 图片 / 文案各要动什么
 edit-manifest.json            同上，机器可读
+motion.md                     动效档案：哪些页在动、CSS 还是 JS、怎么复用
+motion.json                   同上，机器可读（逐页动效账）
 fidelity.csv                  逐页还原度明细
 raw/<page>/                   原始材料：dom.html / cssom.css / 帧截图
+raw/<page>/motion-css.css     该页原样抽出的 @keyframes，可直接粘进自己的样式表
 README.md                     本文件
 \`\`\`
 
 ## 诚实边界
 
 - **静态复刻**：无登录、无后端交互、无搜索。表单能看出结构但不会真的提交。
-- **动效**：JS 驱动的动画（打字机、自动轮播、滚动触发）不逐帧复刻。
-  \`canvas\` 绘制的内容**已光栅化为静态图**（保留尺寸与位置），但它是某一帧的快照，
-  不是活的。每页 \`score.json\` 的 \`breakdown.dynamicShare\` 是这个缺口的量化。
+- **动效**：分三层，别一概而论 —— 见 [motion.md](motion.md)。
+  **CSS 动画与过渡在镜像里是活的**（只剥脚本，样式表原样保留）；
+  **JS 动效（打字机 / 轮播 / GSAP）在交互镜像里是活的**（原脚本保留、URL 重指到代理）；
+  只有**静态页**看不到 JS 动效，它停在被捕获的那一帧。
+  每页可复用的关键帧已抽成 \`raw/<page>/motion-css.css\`。
+  \`canvas\` 绘制的内容**已光栅化为静态图**（保留尺寸与位置），同样是某一帧的快照。
+  每页 \`score.json\` 的 \`breakdown.dynamicShare\` 是这个缺口的量化。
 - **跨页链接**：已克隆页之间互相跳转；未克隆的链接会新标签打开原站。
 - **公开页面**：登录后区域不在范围内。
 - 原站改版后这份包就过期了 —— 重新跑一次会生成带新日期的包，旧的可以删
