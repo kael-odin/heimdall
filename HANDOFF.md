@@ -1582,3 +1582,25 @@ thordata 35/35 页克隆完成；apify 74 页（65 done / 9 失败，均为瞬�
 
 **受影响但尚未重跑的**：thordata 36 页 / angular.dev 2 页 / vitest.dev 1 页 / framer.com 5 页
 （丢的都是 Google Fonts 或 GSI 的一行小表）；linear.app 15 页已用 `queue linear.app --force` 重跑。
+
+### 31.8 233 处"资源本地化失败"，其实一个字节都不用抓
+
+接着上一条查 framer.com 的 `fail 187 / fail 55`。为了能查，先把**失败变成可行动的**：
+`linker-report.json` 现在记 `assetFailures: [{url, why}]`（每页上限 25 条），
+而不是只报一个数字 —— 就是它一眼指出了根因。
+
+全部 233 条都是同一类，而且网址长得都一样：
+
+```
+https://www.framer.com/%22data:image/svg+xml,&lt;svg%20xmlns=%22...
+```
+
+链接器处理的是**序列化后的 HTML 文本**，属性里的引号是 `&quot;`、内联 SVG 的尖括号是 `&lt;`。
+于是 `url(&quot;data:image/svg+xml,&lt;svg…&gt;&quot;)` 解码后以 `"` 开头 →
+`data:` **不在开头** → 被判成"外部资产" → 去抓一个必然 404 的地址。
+
+它们是内联 data URI，本来就该原样留在 HTML 里。改在 `isNonAssetRef` 里做实体解码 + 去引号 ——
+所有调用点共用这个判定（build_clone 也用它），修一处全好。
+
+**实测 framer.com：assets 失败 233 → 0**（本地化成功数不变 —— 说明从来没有真资源被误抓过，
+这些计数从头到尾都是假的）。
