@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlink
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
+import { sessionContext } from '../session/store.mjs';
 import { comparePngBuffers, overallScore, worstViewport, gradeOf } from './compare.mjs';
 import { verifyInteractions, scoreInteractions } from './interactions.mjs';
 
@@ -86,7 +87,7 @@ try {
     const outDir = join(BASE, 'verify', name);
     mkdirSync(outDir, { recursive: true });
     log('page', name, '->', target);
-    const srcCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' });
+    const srcCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36', ...sessionContext(new URL(target).hostname) });
     const cloneCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' });
     const srcPage = await srcCtx.newPage();
     const clonePage = await cloneCtx.newPage();

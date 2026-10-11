@@ -93,6 +93,8 @@ for (const name of pageNames) {
   copyTree(join(pagesDir, name, 'clone'), join(siteDir, 'static', host, 'pages', name, 'clone'));
 }
 // 2c) 站点级报告（档案 / 对比 / 情报 / SEO）
+// **白名单式拷贝，故意的**：`session.json`（登录态）与 `network.har` 的原始件都不在这份
+// 清单里 —— 交付包是要交给别人的，绝不能夹带本机的登录凭据。
 for (const item of ['index.html', 'compare.html', 'intel', 'recon', 'seo']) {
   if (existsSync(join(BASE, item))) copyTree(join(BASE, item), join(siteDir, 'static', host, item));
 }

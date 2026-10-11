@@ -18,6 +18,8 @@ import { pickAdapter } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isSoftHtml } from '../asset-ext.mjs';
 import { collectCssRefs } from '../css-refs.mjs';
+import { MOTION_PROBE, MOTION_INIT, classifyMotion } from './motion.mjs';
+import { sessionContext } from '../session/store.mjs';
 import { requireArg } from '../args.mjs';
 
 const TARGET = requireArg(process.argv[2], 'node src/crawler/capture.mjs <url> <outdir>', '目标 URL');
@@ -46,6 +48,10 @@ mkdirSync(join(OUT, 'styles'), { recursive: true });
 mkdirSync(join(OUT, 'assets'), { recursive: true });
 
 const browser = await chromium.launch();
+// 登录态：需要登录的站点先在控制台/CLI 里人工登一次（session/login.mjs），
+// 之后这里自动带上 —— 没有会话时 sessionContext() 返回空对象，不影响公开站点
+const session = sessionContext(new URL(TARGET).hostname);
+if (session.storageState) console.log('    session: 已带登录态（workspace/<host>/session.json）');
 // 全网络录制：HAR 供交互镜像 v2 做本地资源回放（原站重新部署后旧 chunk 仍可用）
 let context;
 try {
@@ -53,12 +59,16 @@ try {
     viewport: VIEWPORT,
     userAgent: UA,
     recordHar: { path: join(OUT, 'network.har'), content: 'embed' },
+    ...session,
   });
 } catch (e) {
   console.warn('  HAR recording unavailable:', String(e).slice(0, 100));
-  context = await browser.newContext({ viewport: VIEWPORT, userAgent: UA });
+  context = await browser.newContext({ viewport: VIEWPORT, userAgent: UA, ...session });
 }
 const page = await context.newPage();
+// 动效累计观测器要在页面脚本之前装：它靠 animationstart/transitionrun 事件累计
+// "这页上曾经跑过什么动画"，而不是靠运气在某一帧撞见（时间线见 crawler/motion.mjs）
+await page.addInitScript(MOTION_INIT).catch(() => {});
 
 console.log('[1/7] goto', TARGET);
 // 默认 domcontentloaded 而非 networkidle：持续轮询/长连接的页面 networkidle 永不达成，
@@ -95,6 +105,17 @@ if (CAP.scrollSweep) await page.evaluate(async ({ step, delay }) => {
 
 await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
 await page.waitForTimeout(CAP.settleMs);
+
+// 动效驱动采集。时机是刻意的：**在滚动扫掠之后**（滚动揭示类此时才创建，
+// 见 framer-and-motion 那条"滚动后再点击"的纪律）、**在 FREEZE_CSS 注入之前**
+// （[7/7] 才冻结，早采才看得到正在跑的动画）。
+// 分类与判据见 crawler/motion.mjs；结果落 motion.json，控制台质检页直接引用。
+console.log('[3.5/7] motion probe');
+try {
+  const motion = classifyMotion(await page.evaluate(MOTION_PROBE));
+  writeFileSync(join(OUT, 'motion.json'), JSON.stringify(motion, null, 2));
+  console.log(`    动效：${motion.summary}`);
+} catch (e) { console.warn('    motion probe failed:', String(e).slice(0, 120)); }
 
 /**
  * ② 再从 **Node 侧**循环采样画布。

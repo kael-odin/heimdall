@@ -9,6 +9,7 @@
 import { chromium } from 'playwright';
 import { analyzeRawHtml } from './raw-html.mjs';
 import { isStructuralUrl } from './pagination.mjs';
+import { sessionContext } from '../session/store.mjs';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
@@ -80,7 +81,7 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
   for (const u of sitemapUrls) { if (targets.length >= max) break; push(u); }
 
   if (targets.length === 0) {
-    const ctx = await browser.newContext({ viewport: DEFAULT_VIEWPORT, userAgent: UA });
+    const ctx = await browser.newContext({ viewport: DEFAULT_VIEWPORT, userAgent: UA, ...sessionContext(new URL(origin).hostname) });
     const page = await ctx.newPage();
     const queue = [{ url: origin + '/', depth: 0 }];
     const visited = new Set();
@@ -110,7 +111,7 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
 
 /** 单页采集 */
 export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1500 } = {}) {
-  const ctx = await browser.newContext({ viewport: DEFAULT_VIEWPORT, userAgent: UA, ignoreHTTPSErrors: true });
+  const ctx = await browser.newContext({ viewport: DEFAULT_VIEWPORT, userAgent: UA, ignoreHTTPSErrors: true, ...sessionContext(new URL(url).hostname) });
   const page = await ctx.newPage();
   await page.addInitScript(VITALS_INIT);
   const started = Date.now();

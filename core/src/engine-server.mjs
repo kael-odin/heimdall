@@ -31,6 +31,7 @@ import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
 import { gcCas } from './store/cas.mjs';
 import { createWatchdog } from './task-watchdog.mjs';
 import { writeProxyHead, mirrorHostOf } from './proxy-headers.mjs';
+import { sessionInfo, clearSession } from './session/store.mjs';
 import { loadProfile, sanitizeHost, queuePlan, MAX_SLOT_CEILING } from './site-profile.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
@@ -239,6 +240,7 @@ let runningAssets = null;
 let runningMatrix = null;
 let runningVerify = null;
 let runningLive = null;
+let runningSession = null;
 let runningReclaim = null;
 let runningUpgrade = null;
 let runningClone = null;
@@ -330,6 +332,7 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'live') runningLive = null;
     else if (t.kind === 'upgrade') runningUpgrade = null;
     else if (t.kind === 'clone') runningClone = null;        // 整站克隆是编排任务，不占锻造槽
+    else if (t.kind === 'session') runningSession = null;    // 登录会话不占锻造槽（漏这条会走到末尾的 forgeSlots--）
     else if (t.kind === 'storage') storageScanTask = null;   // 盘点任务不占锻造槽
     else if (t.kind === 'deliver') deliverTask = null;       // 同理
     else forgeSlots--;
@@ -711,6 +714,56 @@ createServer(async (req, res) => {
     return;
   }
 
+  // 在系统文件管理器里显示一个产物目录（导出交付包之后要"拿去发给同事"）。
+  // 只允许 DATA_ROOT 以内的路径：这是个"打开资源管理器"的口子，不能变成任意路径探针。
+  if (req.method === 'POST' && u.pathname === '/api/reveal') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let target = '';
+      try { ({ path: target } = JSON.parse(body || '{}')); } catch {}
+      const abs = isAbsolute(String(target)) ? String(target) : join(DATA_ROOT, String(target));
+      if (!isInsideWorkspace(abs) && !abs.startsWith(DATA_ROOT)) return json(res, 403, { error: 'path outside data root' });
+      if (!existsSync(abs)) return json(res, 404, { error: 'not found', path: abs });
+      const cmd = process.platform === 'win32' ? ['explorer.exe', ['/select,' + abs]]
+        : process.platform === 'darwin' ? ['open', ['-R', abs]]
+          : ['xdg-open', [dirname(abs)]];
+      try { spawn(cmd[0], cmd[1], { detached: true, stdio: 'ignore' }).unref(); return json(res, 200, { ok: true, path: abs }); }
+      catch (e) { return json(res, 500, { error: String(e).slice(0, 120) }); }
+    });
+    return;
+  }
+
+  // 登录态：开一个可见浏览器让人手动登录一次，之后所有抓取复用（见 src/session/）
+  if (req.method === 'POST' && u.pathname === '/api/session/login') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      let host = '';
+      try { ({ host } = JSON.parse(body || '{}')); } catch {}
+      host = String(host ?? '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/.*$/, '').toLowerCase();
+      if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) return json(res, 400, { error: 'invalid host' });
+      if (runningSession) return json(res, 409, { error: 'busy', taskId: runningSession.id });
+      const task = makeTask('session', 'https://' + host);
+      task.host = host;
+      task.label = '登录会话 ' + host;
+      runningSession = task;
+      const id = spawnTask(task, join('src', 'session', 'login.mjs'), [host, '--timeout', '15']);
+      json(res, 200, { taskId: id, host, hint: '浏览器窗口已打开：登录完成后关掉那个标签页即可' });
+    });
+    return;
+  }
+  if (req.method === 'GET' && u.pathname.startsWith('/api/session/')) {
+    const host = decodeURIComponent(u.pathname.slice('/api/session/'.length));
+    if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    return json(res, 200, sessionInfo(host));
+  }
+  if (req.method === 'DELETE' && u.pathname.startsWith('/api/session/')) {
+    const host = decodeURIComponent(u.pathname.slice('/api/session/'.length));
+    if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    return json(res, 200, clearSession(host));
+  }
+
   if (req.method === 'POST' && u.pathname === '/api/live-export') {
     let body = '';
     req.on('data', c => body += c);
@@ -822,6 +875,9 @@ createServer(async (req, res) => {
             ? { name: v.minViewport.name, score: v.minViewport.score, grade: v.minViewport.grade }
             : null;
         } catch {}
+        // 动效驱动画像（capture 阶段采，见 crawler/motion.mjs）——旧产物没有这个文件
+        let motion = null;
+        try { motion = JSON.parse(readFileSync(join(pagesDir, name, 'motion.json'), 'utf8')); } catch {}
         out.push({
           name, target, forged: true,
           score: score ? { total: score.total, pixel: score.pixel, grade: score.grade } : null,
@@ -829,6 +885,7 @@ createServer(async (req, res) => {
           visualGaps: gapMap[name] ?? null,
           interactions,
           minViewport,
+          motion,
           updatedAt: mtime,
         });
       }
@@ -869,7 +926,7 @@ createServer(async (req, res) => {
       if (!existsSync(p)) continue;
       try {
         const health = JSON.parse(readFileSync(p, 'utf8'));
-        return json(res, 200, { ...health, bundle: d });
+        return json(res, 200, { ...health, bundle: d, bundlePath: join(DELIVERABLE, d) });
       } catch {}
     }
     return json(res, 404, { error: 'no live health report', host });
@@ -1084,6 +1141,7 @@ createServer(async (req, res) => {
       matrix: runningMatrix ? { id: runningMatrix.id, url: runningMatrix.url } : null,
       verify: runningVerify ? { id: runningVerify.id, host: runningVerify.host } : null,
       live: runningLive ? { id: runningLive.id, host: runningLive.host } : null,
+      session: runningSession ? { id: runningSession.id, host: runningSession.host } : null,
       upgrade: runningUpgrade ? { id: runningUpgrade.id, host: runningUpgrade.host } : null,
       clone: runningClone ? { id: runningClone.id, host: runningClone.host, plan: runningClone.plan } : null,
       forge: { slots: forgeSlots, max: MAX_FORGE },

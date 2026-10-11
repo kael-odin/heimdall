@@ -14,6 +14,7 @@ import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { classifyPath, compileExtraRules } from './classify.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { sessionContext } from '../session/store.mjs';
 
 const TARGET = requireArg(process.argv[2], 'node src/crawler/recon.mjs <url> [maxPages] [maxDepth]', '目标 URL');
 const MAX_PAGES = Number(process.argv[3] ?? 40);
@@ -96,7 +97,7 @@ emit({ kind: 'sitemap', count: sitemapSame.length });
 // ---------- 2. BFS ----------
 log('[2/4] BFS crawl');
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 640, height: 400 }, userAgent: UA });
+const ctx = await browser.newContext({ viewport: { width: 640, height: 400 }, userAgent: UA, ...sessionContext(HOST_DIR) });
 const nodes = new Map();   // url -> node
 const failures = [];       // 失败页清单（诚实记录，不静默丢弃）
 const edges = [];          // {from,to} (url)

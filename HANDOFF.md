@@ -1083,3 +1083,59 @@ JS 一旦真的跑起来，vitest.dev（VitePress）整页变成 **"404 | Vitest
   3. **后缀≠实际类型**告警（CDN 拿 AVIF 冒充 PNG）——我们已按真实类型落盘，可补进缺口清单
   4. **Framer 站按 `data-framer-name` 分段**，且只读可视变体而非全部节点
   5. **"先滚动到揭示段再截图/交互"**的纪律（我们把 canvas 做了，可推广到所有揭示内容）
+
+---
+
+## 26. 2026-10-11 续十九：0 代码闭环（登录 / 交付）+ 动效驱动画像
+
+### 26.1 需要登录的站点：人工登录一次，机器复用
+
+`src/session/store.mjs` + `src/session/login.mjs`。第一性原理写在 `docs/DELIVERY.md` §6：
+身份只存在于浏览器里（cookie / localStorage），而短信码、2FA、扫码、SSO、人机验证
+既自动化不了也不该去绕 —— 所以路线是**开一个真浏览器让人自己登**，我们把
+`storageState` 存到 `workspace/<host>/session.json`，之后侦察 / 克隆 / SEO 审计 /
+多视口验证全部自动带上（`sessionContext()` 直接展开进 `newContext()`，调用点不写 if）。
+
+- **每 2 秒存一次**，不是为了频繁写盘，而是为了"用户直接关掉整个浏览器窗口"时
+  最后一份仍然可用（进程一起没了，来不及在退出前保存）
+- 落盘用同目录 rename（原子）：读者要么看到旧的、要么看到新的
+- **安全**：`session.json` 等同凭据 —— 只在本地 workspace（`.gitignore` 覆盖，不进 git）、
+  **不进交付包**（`live/export.mjs` 是白名单式拷贝，已加注释钉住）、
+  HAR 里的 cookie/authorization 早已被清洗
+- **诚实边界**：storageState 不含 sessionStorage / IndexedDB / Service Worker，
+  HTTP Basic/Bearer 也不在覆盖范围。**未在真实凭据站点上验证过**（我们手上没有账号）
+  —— 机制有单测（9 条），端到端要等有真实登录场景时再跑
+- 控制台：本站操作 →「登录并保存会话」（菜单文字会带会话年龄）；侦察只抓到 ≤1 页时
+  直接提示"若该站需要登录，先登录再侦察"
+
+### 26.2 交付：路径、复制、打开文件夹
+
+- `/api/live-health/:host` 增加 `bundlePath`（绝对路径）
+- 新增 `POST /api/reveal {path}`：在资源管理器里定位产物。**只接受 DATA_ROOT 以内的路径**
+  （实测 `{"path":"C:/Windows"}` 被拒）
+- 控制台「交互镜像」卡片显示交付包绝对路径 + 「复制路径」「打开文件夹」，
+  并写明交给同事要跑哪两条命令（`node serve.mjs --port 8080` / `docker compose up -d`）
+- 交付本身该怎么做（重新导出 vs 打补丁、增量的三层做法）见 **`docs/DELIVERY.md`**，
+  结论是**不做补丁协议**，把增量压到传输层：稳定输出目录 +（未做）差异清单 + 校验和
+
+### 26.3 动效驱动画像（吸收 framer-and-motion 的分类学）
+
+新增 `src/crawler/motion.mjs`，capture 阶段（滚动扫掠之后、冻结之前）采一次，
+落 `motion.json`，引擎的 `/api/pages` 带出来，控制台质检页显示。
+五类驱动：时间 / 滚动揭示 / 连续滚动 / 状态变化 / 指针画布，每类都带**我们的处置方式**
+（冻结 / 滚动后采集 / 光栅化 / 计入噪声），因为分类不落到处置上就没有意义。
+
+**踩到的坑值得记下来**：第一版只用 `document.getAnimations()` 采瞬时快照，
+实测 svelte.dev 采出来是**零动效** —— 而我们的采集时机（扫掠 + 静置之后）恰好是
+入场动画都播完、什么都没在跑的那一刻。是**采样方法错了**，不是页面没有动效。
+改成在页面脚本之前装累计观测器（`animationstart` / `animationiteration` /
+`transitionrun` 事件 + WAAPI 的 `Element.animate` 打点），同一页面立刻采到
+`fade-in ×1` 与 `[waapi] div.banner ×2`。
+
+**仍采不到的**：只在悬停时才存在的过渡（不交互就不触发），已在报告口径里写明。
+
+### 26.4 本轮实测与质量门
+
+- 真实 capture 端到端跑通（svelte.dev），motion.json 有真数据
+- 交付包路径 / 会话状态 / reveal 边界三个接口实测；控制台 UI 实测（菜单项 + 卡片 + 两个按钮）
+- 测试 **346/346**（新增 motion 11 条、session 9 条）· lint 135 文件

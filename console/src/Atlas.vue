@@ -81,6 +81,7 @@ const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
 const liveHealth = ref(null);    // 最新交互镜像体检（/api/live-health/:host，导出时生成）
 const lastVerify = ref(null);    // 最近一次全站体检结果（/api/verify）
 const liveRebuild = ref(false);  // 导出交互镜像前先重建 live 页面
+const sessionState = ref(null);  // 本站登录态（/api/session/:host）：需要登录的站点靠它
 const liveHealthHost = ref('');   // liveHealth 对应的 host（切站后避免串数据）
 const assetAuditReport = ref(null); // 最近一次资产缺口扫描结果
 const matrixPeer = ref('');          // 跨站对标对象
@@ -262,7 +263,7 @@ async function loadPageStatus() {
         // 此前是逐页再发 score.json + verify.json 两个请求 —— 80 页就是 160 个，
         // 而分数本来就包含在这条响应里，等于白拉了一遍。
         pageVerify[n.id] = hit.minViewport ? { minViewport: hit.minViewport } : null;
-        pageMeta[n.id] = { assets: hit.assets ?? null, visualGaps: hit.visualGaps ?? null, interactions: hit.interactions ?? null, updatedAt: hit.updatedAt ?? null };
+        pageMeta[n.id] = { assets: hit.assets ?? null, visualGaps: hit.visualGaps ?? null, interactions: hit.interactions ?? null, updatedAt: hit.updatedAt ?? null, motion: hit.motion ?? null };
       }
     }
     // 补全：已克隆但不在 atlas 中的页面（例如 recon 截断、删过节点），保证清单是"完全体"
@@ -391,6 +392,13 @@ async function finishRecon(taskId) {
     const a = await (await fetch(`${API}/api/atlas/${taskId}`)).json();
     atlas.value = a;
     hudOrigin.value = (a.origin ?? '').replace(/^https?:\/\//, '');
+    // 侦察只抓到 0-1 页：最常见的两种原因是登录墙与纯客户端渲染。
+    // 不去猜是哪种，直接把"下一步能做什么"摆出来 —— 否则用户只会看到一个空星图。
+    // （登录这一步以前只有命令行走得通，见 core/src/session/）
+    if ((a.meta?.pages ?? 0) <= 1) {
+      okMsg.value = `侦察只找到 ${a.meta?.pages ?? 0} 页。若该站需要登录，先「本站操作 → 登录并保存会话」，登录后再重新侦察`;
+      setTimeout(() => { okMsg.value = ''; }, 20000);
+    }
     const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
     edges = [];
     const byFrom = {};
@@ -481,6 +489,78 @@ const cloneTrend = computed(() => trendOf('clone', 'avgPixel'));
  * 本站能做的事。费时（全量重跑）与破坏性（删除本站）的项标红并二次确认 ——
  * 它们要么占满引擎并发槽跑上小时，要么删掉整站产物，误点的代价不对称。
  */
+// ---------- 登录态（需要登录/鉴权的站点） ----------
+
+/** 读本站登录态；没有就是公开站点，一切照旧 */
+async function loadSession() {
+  sessionState.value = null;
+  if (!host.value) return;
+  try {
+    const r = await fetch(API + '/api/session/' + host.value);
+    if (r.ok) sessionState.value = await r.json();
+  } catch { /* 引擎离线时静默 */ }
+}
+
+const sessionAge = computed(() => {
+  const s = sessionState.value;
+  if (!s?.exists || s.ageHours == null) return '';
+  if (s.ageHours < 1) return `${Math.max(1, Math.round(s.ageHours * 60))} 分钟前`;
+  if (s.ageHours < 48) return `${s.ageHours.toFixed(1)} 小时前`;
+  return `${Math.round(s.ageHours / 24)} 天前`;
+});
+
+/**
+ * 登录并保存会话：打开的是**真浏览器窗口**，登录这件事整个交给人。
+ *
+ * 为什么不自动化：验证码、短信码、扫码、SSO 跳转、人机验证 —— 既自动化不了，
+ * 也不该去绕。我们只做一件事：把登录后的 `storageState` 存到 `workspace/<host>/session.json`，
+ * 之后侦察 / 克隆 / SEO 审计 / 多视口验证都自动带上它（见 core/src/session/store.mjs）。
+ */
+function runLogin() {
+  if (!confirm(`会打开一个浏览器窗口访问 https://${host.value}/。\n\n`
+    + '请在里面完成登录（验证码 / 短信码 / 扫码 / 第三方 SSO 都行），'
+    + '登录完成后**关掉那个标签页**即可。\n\n'
+    + '登录态会存到本站目录（不会进交付包、不会提交到 git），'
+    + '之后的侦察、克隆、SEO 审计、多视口验证都会自动带上它。')) return;
+  const task = reactive({
+    localId: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    kind: 'session', label: '登录会话 · ' + host.value, url: 'https://' + host.value,
+    done: false, failed: false, error: null, startedAt: Date.now(), endedAt: null,
+  });
+  tasks.push(task);
+  while (tasks.length > 20) tasks.shift();
+  statusText.value = '等待登录 · 在刚打开的浏览器窗口里登录，完成后关掉那个标签页';
+  (async () => {
+    try {
+      const r = await fetch(API + '/api/session/login', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value }) });
+      const { taskId, error } = await r.json();
+      if (error) {
+        task.failed = true; task.done = true;
+        task.error = error === 'busy' ? '已有一个登录窗口在等待中' : error;
+        errMsg.value = '无法开始登录：' + task.error;
+        return;
+      }
+      const es = new EventSource(sseUrl(taskId));
+      taskSources.set(task.localId, es);
+      const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      es.onmessage = (m) => {
+        let ev; try { ev = JSON.parse(m.data); } catch { return; }
+        if (ev.kind !== 'exit') return;
+        task.done = true; task.endedAt = Date.now();
+        if (ev.status !== 'done') task.failed = true;
+        close();
+        loadSession();
+        statusText.value = '';
+        okMsg.value = ev.status === 'done' ? '登录态已保存 —— 之后的抓取会自动带上它' : '登录窗口已结束，但可能没存下会话';
+        setTimeout(() => { okMsg.value = ''; }, 6000);
+      };
+      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
+    } catch (e) {
+      task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e);
+    }
+  })();
+}
+
 const siteActions = computed(() => {
   const has = !!host.value;
   const cloned = doneCount.value;
@@ -494,6 +574,14 @@ const siteActions = computed(() => {
     },
     { id: 'clone-full', label: '全量重跑', hint: '忽略「源站是否变过」，整站重跑一遍 —— 页面多时按小时计', danger: true, disabled: !has || !cloned || !!engine.value.clone },
     { id: 'pages', label: view.value === 'pages' ? '收起清单' : '页面清单', hint: '逐页状态 / 还原度 / 资产 / 缺口', disabled: !has },
+    {
+      id: 'login',
+      label: sessionState.value?.exists ? `重新登录（会话 ${sessionAge.value}）` : '登录并保存会话',
+      hint: sessionState.value?.exists
+        ? `已有登录态：${sessionState.value.cookies} 个 cookie · 本站域名下 ${sessionState.value.sameSite} 个。过期了就再登一次`
+        : '需要登录/鉴权的站点：开一个浏览器窗口人工登一次，之后侦察/克隆/审计都自动带上这份登录态',
+      disabled: !has,
+    },
     { id: 'delete', label: '删除本站', hint: '移除该站的侦察、克隆与报告（CAS 资产保留）', danger: true, disabled: !has },
   ];
 });
@@ -508,6 +596,7 @@ function onSiteAction(id) {
     return startCloneSite({ incremental: false });
   }
   if (id === 'pages') return togglePages();
+  if (id === 'login') return runLogin();
   if (id === 'delete') { const s = sites.value.find(x => x.host === host.value); if (s) deleteSite(s); }
 }
 
@@ -516,6 +605,7 @@ function pickSite(s) {
   host.value = s.host;
   loadHistory(s.host);
   loadAuditReport(s.host);
+  loadSession();
   selected.value = null;
   detailIntel.value = null; detailScore.value = null;
   // 站点可能只有克隆、没有全站侦察（用户直接 `forge <url>` 克隆单页 ——
@@ -911,6 +1001,25 @@ function runResponsiveUpgrade() {
 function runVerifyAll() { runVerify(null); }
 function runVerifyPage() { const n = selected.value; if (n) runVerify(pageNameOf(n)); }
 
+/** 复制交付包路径：交给同事最常用的一步，就是把这一整行发过去 */
+async function copyBundlePath() {
+  const p = liveHealth.value?.bundlePath;
+  if (!p) return;
+  try { await navigator.clipboard.writeText(p); okMsg.value = '已复制交付包路径'; }
+  catch { errMsg.value = '浏览器拒绝了剪贴板，请手动选中那行路径'; }
+  setTimeout(() => { okMsg.value = ''; }, 4000);
+}
+
+/** 在资源管理器里定位交付包（引擎只接受 DATA_ROOT 以内的路径） */
+async function revealBundle() {
+  const p = liveHealth.value?.bundlePath;
+  if (!p) return;
+  try {
+    const r = await fetch(API + '/api/reveal', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ path: p }) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); errMsg.value = '打开失败：' + (j.error ?? r.status); }
+  } catch (e) { errMsg.value = String(e); }
+}
+
 /** 交互镜像导出：引擎 live 任务（离线 + mirror + heal + materialize） */
 function runLiveExport() {
   const task = reactive({
@@ -1282,6 +1391,16 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         </p>
       </template>
       <p v-else>可部署的离线完整包：本地快照 → HAR 回放 → 原站代理。导出后这里显示离线缺口。</p>
+      <!-- 交付：这个目录就是要交给同事的东西。路径、复制、打开文件夹三个动作都在这里，
+           因为"导出成功了"和"我拿到了"之间还差一步 —— 找到它在哪。 -->
+      <div class="bundle" v-if="liveHealth?.bundlePath">
+        <code class="bundle-path" :title="liveHealth.bundlePath">{{ liveHealth.bundlePath }}</code>
+        <div class="bundle-btns">
+          <button @click="copyBundlePath" :title="'复制这一整行路径'">复制路径</button>
+          <button @click="revealBundle" title="在资源管理器里定位这个目录">打开文件夹</button>
+        </div>
+        <p class="score-note">交给同事：整个目录拷走即可，对方跑 <code>node serve.mjs --port 8080</code>（零依赖）或 <code>docker compose up -d</code>。纯前端站已按 <code>--root mirror</code> 导出，不会再落到它自己的 404。</p>
+      </div>
       <label class="sw" style="margin-bottom:8px;display:flex"><input type="checkbox" v-model="liveRebuild" /><span>先重建 live 页面（站点改版后勾选）</span></label>
       <button class="wv-primary" @click="runLiveExport">{{ liveHealth ? '重新导出' : '导出完整离线包' }}</button>
     </div>

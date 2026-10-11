@@ -12,6 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { collectCssRefs } from '../css-refs.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { sessionContext } from '../session/store.mjs';
 
 const argv = process.argv.slice(2);
 const host = argv[0];
@@ -34,7 +35,7 @@ export async function snapPage(browser, host, page, widths = WIDTHS) {
   const target = JSON.parse(readFileSync(mf, 'utf8')).target;
   const out = [];
   for (const width of widths) {
-    const ctx = await browser.newContext({ viewport: { width, height: 900 }, userAgent: UA });
+    const ctx = await browser.newContext({ viewport: { width, height: 900 }, userAgent: UA, ...sessionContext(host) });
     const p = await ctx.newPage();
     await p.goto(target, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await p.waitForLoadState('load', { timeout: 25000 }).catch(() => {});

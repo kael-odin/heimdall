@@ -30,6 +30,13 @@ const emit = defineEmits(['close', 'open-forge', 'forge-all', 'verify']);
 
 const STAGES = { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' };
 
+/**
+ * 动效驱动画像（捕获阶段采，见 core/src/crawler/motion.mjs）。
+ * 只列非零项：一张全是 0 的表比一句话"未检出动效"更难读。
+ */
+const motion = computed(() => props.pageMeta[props.selected?.id]?.motion ?? null);
+const motionRows = computed(() => Object.values(motion.value?.drivers ?? {}).filter(d => d.count > 0));
+
 const detailTab = ref('overview');
 const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
 const assetGapsCache = ref(null);
@@ -228,6 +235,7 @@ function switchTab(t) {
         <tr><td>多视口视觉 / 交互回放</td><td><b>按需</b>跑到才跑 —— 点下面的「运行本页体检」或星图的「全站体检」</td></tr>
         <tr><td>资产缺口</td><td><b>按需</b> —— 报告 → 资产缺口 → 运行扫描</td></tr>
         <tr><td>交互镜像离线资源</td><td><b>按需</b> —— 导出交互镜像时加 <code>--heal --strict</code></td></tr>
+        <tr><td>动效驱动画像</td><td>每次克隆自动（捕获阶段，滚动扫掠之后采样）</td></tr>
       </table>
     </div>
     <div class="seo-note" v-if="detailQuality.loading">加载质检数据…</div>
@@ -257,6 +265,19 @@ function switchTab(t) {
             <span class="q-k">说明</span>
             <span class="q-v">{{ detailScore.diffShape.note }}</span>
           </div>
+        </div>
+        <!-- 动效驱动：吸收自 framer-and-motion 的五分类。此前只有一句 dynamicShare 百分比 ——
+             那是对"我们抓不到的东西"的总结，不是"它在动什么、怎么动"的描述 -->
+        <div v-if="motion" class="q-list" style="margin-top:8px">
+          <div class="q-row">
+            <span class="q-k">动效驱动</span>
+            <span class="q-v">{{ motion.summary }}</span>
+          </div>
+          <div class="q-row" v-for="d in motionRows" :key="d.cn">
+            <span class="q-k">{{ d.cn }}</span>
+            <span class="q-v">{{ d.count }} <i class="q-file">{{ d.handling }}</i></span>
+          </div>
+          <div class="q-row" v-if="motion.why"><span class="q-k">口径</span><span class="q-v">{{ motion.why }}</span></div>
         </div>
       </div>
       <div class="ov-sec">
