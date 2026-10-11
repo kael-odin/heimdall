@@ -36,7 +36,7 @@ import StorageCard from './StorageCard.vue';
 import AssetTable from './AssetTable.vue';
 import DetailDock from './DetailDock.vue';
 import { API, apiHeaders, wsUrl, wsJson, tokenOf } from './api.js';
-import { taskState, taskLabel, liveStageCn } from './format.js';
+import { taskState, taskLabel, liveStageCn, fmtBytes } from './format.js';
 import { pageNameOf } from './pages.js';
 
 import { PAGE_TYPES as PT, typeColor } from './types.js';
@@ -364,6 +364,16 @@ function runEditManifest() {
       es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
     } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
   })();
+}
+
+/** 在资源管理器里定位清单里的某个资源（换图时最常用的下一步） */
+async function revealManifestAsset(a) {
+  const page = a.pages?.[0];
+  if (!page || !a.local) { errMsg.value = '这个资源没有本地副本（仍是外链），先处理缺口'; return; }
+  try {
+    const r = await fetch(API + '/api/reveal', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ path: `workspace/${host.value}/pages/${page}/clone/${a.local}` }) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); errMsg.value = '定位失败：' + (j.error ?? r.status); }
+  } catch (e) { errMsg.value = String(e); }
 }
 
 /** 域名替换：apply=false 只预览（默认），true 才真改（引擎侧先备份再改） */
@@ -1551,6 +1561,16 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <button @click="runEditManifest()" :disabled="!host || !!engine.editManifest">生成 / 刷新清单</button>
         <a v-if="editManifest" :href="'/static/' + host + '/deliver/edit-manifest.md'" target="_blank" rel="noopener">打开清单（Markdown）</a>
       </div>
+      <!-- 最该先换的那几个（按被引页数排序）：换 logo 时从这里直接定位到文件，
+           不用自己去 clone/assets/** 里翻 -->
+      <ul class="edit-list" v-if="editManifest && editManifest.assets && editManifest.assets.length">
+        <li v-for="a in editManifest.assets.slice(0, 6)" :key="a.url">
+          <span class="edit-kind">{{ a.kind }}</span>
+          <code :title="a.url">{{ a.local || '（仍是外链）' }}</code>
+          <span class="edit-meta">{{ a.pageCount }} 页 · {{ a.size ? fmtBytes(a.size) : '—' }}</span>
+          <button v-if="a.local" @click="revealManifestAsset(a)" title="在资源管理器里定位这个文件">定位</button>
+        </li>
+      </ul>
       <div class="edit-row domain-row">
         <label :for="'domain-to-' + host">把 <code>{{ originHostOf() }}</code> 换成</label>
         <input :id="'domain-to-' + host" v-model="newDomain" placeholder="mysite.com" autocomplete="off" />
@@ -1563,7 +1583,8 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       </div>
       <p class="trend-hint" v-if="domainResult">
         <template v-if="domainResult.mode === 'apply'">
-          已替换 {{ domainResult.changed }} 个文件；原文件备份在 <code>workspace/{{ host }}/{{ domainResult.backup }}</code>（按相同路径复制回去即可还原）
+          已替换 {{ domainResult.changed }} 个文件；原文件备份在 <code>workspace/{{ host }}/{{ domainResult.backup }}</code>（按相同路径复制回去即可还原）。
+          <b>建议接着跑一次「多视口体检」</b>确认没有改坏。
         </template>
         <template v-else-if="domainResult.occurrences">
           命中 {{ domainResult.files }} 个文件 / {{ domainResult.occurrences }} 处，含主机名

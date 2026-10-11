@@ -127,6 +127,10 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', { timeo
     const card = page.locator('.report-card', { hasText: '改站起点' });
     await card.waitFor({ timeout: 10_000 });
     assert.match(await card.innerText(), /个资源/, '改站起点卡片应显示清单统计');
+    // 品牌资产列表：换 logo 时的入口，必须能直接从清单定位到文件
+    const assetRows = card.locator('.edit-list li');
+    assert.ok(await assetRows.count() > 0, '改站起点应列出最该先换的品牌资产');
+    assert.ok(await card.getByRole('button', { name: '定位' }).count() > 0, '本地化的资源应带「定位」按钮');
 
     // ⑥ 全程不应有未捕获的页面异常
     assert.deepEqual(pageErrors, [], '控制台不应抛未捕获异常，实际：\n' + pageErrors.join('\n'));
