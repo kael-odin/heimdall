@@ -1033,3 +1033,33 @@ JS 一旦真的跑起来，vitest.dev（VitePress）整页变成 **"404 | Vitest
   那种环境用前缀入口，CSR 站仍会落到它自己的 404 —— 这是本轮的已知边界
 - 测试 **320/320**（新增 `test/proxy-headers.test.mjs` 6 条，含一条"Node 若支持 Headers
   就变红"的前提断言）· lint 128 文件
+
+### 25.7 顺手挖出的第二个通用缺陷：协议相对 URL 被当成根相对
+
+导出 ant.design 交付包时，体检报 8 个 unresolved，形态是
+`/at.alicdn.com/t/webfont_….woff2` —— 少了一个协议、多了个 `/lm/ant.design` 前缀。
+原始 HTML 里是 **`//at.alicdn.com/…`**（协议相对，浏览器会补成 https://）。
+
+`build_live.mjs` 的根相对改写（`"/` → `"/lm/<host>/`）没排除第二个斜杠，
+于是把它改成了 `/lm/ant.design//at.alicdn.com/…` —— 指向本机根目录、永远 404。
+静态镜像那侧一直是 `startsWith('/') && !startsWith('//')`（dom-refs.mjs:117），
+只有 live 这条路径漏了；bootstrap 里运行时那份 `px()` 也漏了，一并补上。
+
+改写逻辑抽成 `src/live/live-html.mjs`（build_live 是顶层就执行的脚本，import 即跑，
+抽出来才可测），新增 `test/live-html.test.mjs` 6 条钉住"协议相对必须原样保留"。
+
+实测：ant.design 重建 live 后 webfont 引用恢复成 `//at.alicdn.com/…`；
+交付包 unresolved **8 → 0**。
+
+### 25.8 交付包实测（回答"能不能丢给同事单独部署"）
+
+`node src/live/export.mjs ant.design` → `deliverable/ant.design-live-2026-10-11/`
+（75 文件 / 3.2MB：serve.mjs + har.json + site/ + landing.html + Dockerfile/compose + checksums）。
+即使该站**只有 1 个克隆页、没有侦察**也能导出。起 `node serve.mjs --port 8080` 实测：
+落地页 200、`/lm/ant.design/` 返回原站标题、`/__heimdall/health` 可用。
+
+- **给纯前端站部署时必须 `--root mirror`**（镜像挂在根路径）。默认的 `--root landing`
+  会把页面放在 `/lm/<host>/` 前缀下，CSR 路由同样会渲染成该站自己的 404 ——
+  这条已写进导出包 README
+- 增量：再克隆几页后**重新导出**即全量；包是重新生成的，不做"往已部署实例里打补丁"。
+  当前每次导出生成一个日期目录（`deliverable/` 的保留策略见 StorageCard）

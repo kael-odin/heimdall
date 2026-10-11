@@ -20,6 +20,7 @@ import { join, dirname } from 'node:path';
 import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { prefixRootRelative } from '../live/live-html.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/build_live.mjs <host> [page]', '站点 host');
 const only = process.argv[3];
@@ -83,7 +84,7 @@ for (const name of pages) {
       if(typeof u!=='string') return u;
       if(u.indexOf(H)===0||u.indexOf('/lm/')===0) return u;
       if(u.indexOf(O)===0) return H+u.slice(O.length);
-      if(u.charAt(0)==='/' && u.indexOf('/static/')!==0) return H+u;   // 根相对：base 管不了根路径（/ 开头直接打源根）
+      if(u.charAt(0)==='/' && u.charAt(1)!=='/' && u.indexOf('/static/')!==0) return H+u;   // 根相对：base 管不了根路径（/ 开头直接打源根）；//cdn… 是协议相对，原样保留
     }catch(e){} return u; }
     var of=window.fetch;
     window.fetch=function(input,init){ try{
@@ -120,20 +121,9 @@ for (const name of pages) {
   })();</script>`;
   html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">${bootstrap}`);
 
-  // 2b) 根相对引用重写（<base> 管不了 / 开头路径——那是直接打当前源根）
-  html = html.replace(/((?:src|href|srcset|action)\s*=\s*["'])\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
-  html = html.replace(/url\(\s*(?:&quot;|['"])?\/(?!lm\/|static\/)/gi, `url("/lm/${target.host}/`);
-
-  // 2c) JS 字符串里的动态 import / 硬编码路径（import() 是语言级，不走 fetch patch）
-  html = html.replace(/(import\s*\(\s*["'])\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
-  // 2c-2') importmap JSON 与 JS 字符串里的已知目录（零正则，字符串定位）
-  for (const d of ROOT_DIRS) {
-    html = html.split('"/' + d).join('"/lm/' + target.host + '/' + d);
-    html = html.split("'/" + d).join("'/lm/" + target.host + '/' + d);
-  }
-  // 2e) 收尾：剩余一切根相对引用（icons/ 等任意目录）→ 代理前缀
-  html = html.replace(/(\b(?:src|href|srcset|action)\s*=\s*["']?)\/(?!lm\/|static\/)/gi, `$1/lm/${target.host}/`);
-  html = html.replace(/url\(\s*(?:&quot;|['"])?\/(?!lm\/|static\/)/gi, `url("/lm/${target.host}/`);
+  // 2b/c/e) 根相对引用 → 代理前缀。规则与其中的坑都在 live-html.mjs（有单测：
+  //   协议相对 URL `//cdn…` 不能当成根相对，否则会被改成一个永远 404 的本机路径）
+  html = prefixRootRelative(html, lmPrefix, ROOT_DIRS);
 
   // 3) 原版 CSS 引用替换为本地校准版（cssom.css，静态镜像同款——视觉保真双保险）
   html = html.replace(/<link[^>]*rel="stylesheet"[^>]*>/gi, '');

@@ -219,6 +219,9 @@ docker compose up -d                   # Docker 部署
 - 镜像入口：http://127.0.0.1:${PORT}/lm/${host}/
 - 落地页：http://127.0.0.1:${PORT}/（root=mirror 时根路径直接是镜像）
 - 部署模式：root: ${ROOT}（mirror = drop-in 根路径部署；/lm/${host}/ 始终作为别名可用）
+- **选哪种**：被镜像的站如果是**纯前端渲染**（Vue/React/VitePress/Docusaurus 等，
+  路由读 location.pathname），部署时用 \`--root mirror\`。前缀入口 \`/lm/${host}/\`
+  会被它自己的路由当成真实路径，页面会渲染成该站自己的 404。静态站/多页站两种都行。
 - 健康检查：http://127.0.0.1:${PORT}/__heimdall/health
 - 模式：\`offline: ${OFFLINE}\`（\`heimdall-live.json\`）+ HAR ${stats.entries} 条回放\n- 离线体检：health.json（资源 local/har/unresolved、未镜像链接、站外资产清单${HEAL ? '；本次已执行 --heal 自愈' : ''}）
 
