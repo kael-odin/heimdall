@@ -124,6 +124,17 @@
 
 ## 已在做但未完成
 
+- [ ] **JS 渲染的媒体组件（`<mux-player>` 之类）在静态镜像里是空壳**（2026-10-12，vercel.com/customers）。
+      自定义元素的画面是脚本建的 shadow DOM：剥了脚本，元素、class、渐变遮罩、文案全都还在，
+      **只有画面没了** —— 肉眼一看就是"图裂了"，而 DOM 分依然是 100%。
+      该页一个 412,755 像素的差异块独占 99.8% 的差异，像素分掉到 46.0%。
+      试过照 `<canvas>` 那套光栅化，**代码写得出来但量不准框**：
+      Playwright 对带 shadow DOM 的自定义元素测出的包围盒不可靠，
+      同一页三次跑出 46% / 73% / 58% 三个分数（滚动过去会把轮播本身挪走，
+      用 `captureBeyondViewport` 又会截到从页面顶端开始的一块）。
+      **时好时坏比空白更糟，所以撤了。** 重新捡起来的前提是先有个可靠测框的办法
+      （比如按元素自身的 `getBoundingClientRect` 在页面坐标系里二次校验）。
+
 - [ ] **Framer 的 SSR 变体块在静态镜像里不绘制**（2026-10-12，framer.com/design 一页）。
       现象：整块作品轮播是黑的，但 DOM 里 58 张图**全部本地化到位**、`complete`、
       `naturalWidth` 正常、`drawImage` 到 canvas 取到的像素也是对的 —— 只是合不成图。
@@ -134,12 +145,28 @@
       页面分数是诚实的（像素 69%、`dynamicShare` 0.61 → 判为动态噪声为主），
       所以不急；但值得看一眼能不能靠"把命中的那份变体显式化"解决。
 
-- [ ] 更多站点的实跑验证。已有样本（全部 A 级）：
-      cn.vuejs.org 100.00%（VitePress/中文）· vitest.dev 99.96%（VitePress）·
-      svelte.dev 100.00% / 99.91%（SvelteKit）· angular.dev 100.00% / 99.76%（Angular）·
-      crawlee.dev 99.50%（Docusaurus）· ant.design 95.96%（React + CSS-in-JS，差异弥散）·
-      apify.com 61 页 ~99.1% · thordata.com 31 页 ~96.1%。
-      Angular 那一轮翻出两个通用缺陷（`<base>` 改基、跨域 @font-face 缺失），已修 —— 见 HANDOFF §23.5
+- [ ] 更多站点的实跑验证。**14 个站 / 252 页**，几乎全 A：
+
+      | 站点 | 页数 | 平均 | 栈 |
+      | --- | --- | --- | --- |
+      | supabase.com | 16 | 100.0 | Next.js |
+      | cn.vuejs.org / svelte.dev / crawlee.dev / vitest.dev | 1–2 | 100.0 | VitePress / SvelteKit / Docusaurus |
+      | tailwindcss.com | 16 | 99.9 | Next.js |
+      | thordata.com | 36 | 99.7 | Vue + Vite |
+      | linear.app | 40 | 99.6 | Next.js（React + CSS Modules） |
+      | apify.com | 66 | 99.4 | React + styled-components |
+      | vercel.com | 16 | 99.0 | Next.js |
+      | stripe.com | 15 | 97.8 | Astro 系 |
+      | framer.com | 39 | 97.4 | Framer（SSR 变体，见上） |
+      | ant.design | 2 | 97.3 | React + CSS-in-JS（差异弥散） |
+
+      **每一轮新站点都会翻出旧样本看不见的东西** —— 这是这个项目里最有效的测试手段：
+      Angular 那轮翻出 `<base>` 改基与跨域 `@font-face` 缺失（HANDOFF §23.5）；
+      linear 这轮翻出**跨域样式表整批丢失**（§31.7，单页 59% → 97.8%）
+      与**没有 poster 的视频整块纯黑**（§31.9，单页 64.7% → 100%）；
+      framer 这轮翻出 233 处"资源本地化失败"其实全是内联 data URI（§31.8）。
+      旧样本（apify / thordata / vue / vitest / svelte / angular）当时全都 ≥95 分，
+      看起来"没问题"。
 
 - [ ] **跨域样式表的补取只覆盖顶层表**。`@import` 嵌进来的表不会单独出现在
       `document.styleSheets` 里，也就不会走补取；实测 linear/framer/vercel 都没有命中，

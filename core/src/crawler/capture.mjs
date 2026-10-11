@@ -230,6 +230,12 @@ const posterIdx = [];
   }
 }
 
+// 注：还试过把 JS 渲染的媒体组件（`<mux-player>` 之类，靠脚本建 shadow DOM，
+// 脚本一剥就什么都不画）也光栅化成静态图。代码写得出来，但**量不准框** ——
+// Playwright 对带 shadow DOM 的自定义元素测出的包围盒不可靠，同一页三次跑出
+// 46% / 73% / 58% 三个不同分数。宁可留着空白，也不要一个时好时坏的结果。
+// 详见 docs/ROADMAP.md 的已知限制。
+
 // DOM 探测栈 → 适配器（配方可用 adapter 字段强制指定）
 const domProbe = await page.content();
 const adapter = pickAdapter(domProbe, profile);

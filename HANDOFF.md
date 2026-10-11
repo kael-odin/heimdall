@@ -1644,3 +1644,32 @@ linear 40 页至此 39 A / 1 B。
 **结论：新站点本身就是测试手段。** 这一轮的两条大 bug —— 跨域样式表整批丢失、
 视频整块纯黑 —— 都不是旧样本暴露的；旧样本（apify/thordata/vue/vitest/svelte/angular）
 全都 ≥95 分，看起来"没问题"。是 linear 和 framer 把它们逼出来的。
+
+### 31.11 试过但**撤掉**的：把 JS 渲染的媒体组件也光栅化
+
+vercel.com/customers 是 16 页里唯一一个 C（像素 46.0%），`dynamicShare` 0、`refinable` 1
+—— 又是"我们自己的工具说这块该能修"。打开看：客户故事轮播四张卡全是空的。
+根因是 `<mux-player>`：自定义元素的画面由**脚本建的 shadow DOM** 提供，
+剥了脚本，元素、class、渐变遮罩、文案全都在，只有画面没了。
+
+照 `<canvas>` 那套写了个光栅化（capture 截元素图 + 标记 → build_clone 换成 `<img>`），
+代码是能跑的、单测也过了三条。**但量不准框**：
+
+| 做法 | 结果 |
+|---|---|
+| `locator.screenshot()` | 截出来的是"从页面顶端开始的一块"，镜头对不准 |
+| 页面坐标 + `captureBeyondViewport` | 抓到 2/5，分数 73.0 |
+| `scrollIntoView` + 视口坐标 | 抓到 5/5，但滚动把轮播本身挪走了，分数掉到 58.1 |
+
+同一个页面三次跑出 46 / 73 / 58 —— **时好时坏比空白更糟**，所以整套撤掉，
+只在 capture.mjs 留了一段注释说明为什么不做，并把判据与证据写进 `docs/ROADMAP.md`。
+这条判断的依据：一个会**随机拉低**保真度的特性，比一个诚实的空白更有害。
+
+（同一天做的**视频 poster** 是另一回事：那条路径可复现且可验证 ——
+`linear.app/customers-ramp` 像素 64.7% → **100%**，所以留下了。）
+
+### 31.12 本轮跑完的 14 个站
+
+见 `docs/ROADMAP.md` 的表格：**252 页 / 14 站**，除 framer（Framer 自家 SSR 变体，
+已知限制）外基本全 A。thordata 35/35、apify 65/74（9 页是瞬时超时，单跑已成功）、
+linear 40、framer 39、tailwindcss 16、supabase 16、vercel 16、stripe 15。
