@@ -541,14 +541,35 @@ function pickSite(s) {
     .catch(e => { errMsg.value = String(e); });
 }
 
-// ---------- forge：点选节点 → 单页还原流水线 ----------
-function startForge(node) {
+/**
+ * 首屏「只克隆此页」：不侦察整站，只跑输入框里这一个 URL 的克隆流水线。
+ *
+ * 存在理由：克隆与侦察本来是两条独立能力（引擎侧 /api/forge 与 /api/recon 互不依赖），
+ * 但界面上只有「侦察」一个入口，于是"我只是想要这一页"的人被迫先侦察整站。
+ * 单页克隆出来的站点没有星图，只有页面清单 —— 控制台会直接把清单摆出来。
+ */
+function forgeSingle() {
+  const url = normalizeUrl(host.value);
+  if (!url) { errMsg.value = '网址无效'; return; }
+  errMsg.value = '';
+  host.value = url.replace(/^https?:\/\//, '');
+  startForge(null, { url });
+}
+
+// ---------- forge：单页还原流水线 ----------
+// node 可空：星图上点节点会传节点；首屏「只克隆此页」直接从输入框的 URL 起跑 ——
+// 那条路径根本没有星图，也就没有节点。区别只有 pageName 的来源与 forgeState 往哪写。
+function startForge(node, opts = {}) {
   return new Promise((resolve) => {
-    if (!node?.url) return resolve();
-    const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
+    const url = node?.url ?? opts.url;
+    if (!url) return resolve();
+    const pageName = node
+      ? (node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-'))
+      : pageNameOf({ url });
+    const setState = (s) => { if (node) node.forgeState = s; };
     const task = reactive({
       localId: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-      taskId: null, pageName, url: node.url, nodeId: node.id,
+      taskId: null, pageName, url, nodeId: node?.id ?? null,
       stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' },
       score: null, done: false, failed: false, intel: null, rounds: [], skipReason: null, error: null,
       startedAt: Date.now(), endedAt: null,
@@ -556,7 +577,7 @@ function startForge(node) {
     tasks.push(task);
     while (tasks.length > 20) tasks.shift();   // 只保留最近 20 条，长会话不膨胀
     activeTaskId.value = task.localId;
-    node.forgeState = 'running';
+    setState('running');
     statusText.value = '克隆中 · ' + pageName;
     bump();
     (async () => {
@@ -566,7 +587,7 @@ function startForge(node) {
         if (error) {
           task.failed = true; task.done = true; task.endedAt = Date.now();
           task.error = error === 'busy' ? '造物台忙：引擎并发槽已满（稍后重试）' : error;
-          node.forgeState = 'idle'; return resolve();
+          setState('idle'); return resolve();
         }
         task.taskId = taskId;
         const es = new EventSource(sseUrl(taskId));
@@ -582,9 +603,9 @@ function startForge(node) {
           else if (ev.kind === 'exit') {
             task.done = ev.status === 'done';
             task.endedAt = Date.now();
-            if (ev.status === 'cancelled') { task.error = '已取消'; node.forgeState = 'idle'; }
-            else if (!task.done) { task.failed = true; node.forgeState = 'failed'; }
-            else node.forgeState = 'done';
+            if (ev.status === 'cancelled') { task.error = '已取消'; setState('idle'); }
+            else if (!task.done) { task.failed = true; setState('failed'); }
+            else setState('done');
             statusText.value = task.done ? '恒星点亮' : (ev.status === 'cancelled' ? '任务已取消' : '造物失败');
             if (task.done) {
               wsJson(host.value, 'pages/' + task.pageName + '/intel/intel.json').then(j => { if (j) task.intel = { headings: j.headings?.length ?? 0, prices: j.prices?.length ?? 0, cta: j.cta?.length ?? 0, links: j.links?.length ?? 0 }; });
@@ -601,7 +622,7 @@ function startForge(node) {
       } catch (e) {
         errMsg.value = String(e);
         task.failed = true; task.done = true; task.endedAt = Date.now();
-        node.forgeState = 'idle';
+        setState('idle');
         resolve();
       }
     })();
@@ -1116,6 +1137,8 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       title="要分析的站点域名（可带 https://）。回车或点「侦察」开始" />
     <button @click="startRecon"
       title="全站侦察：从 sitemap 与站内链接找出页面，逐页抓标题/类型/缩略图，产出星图与全站视图。页数上限由站点配方的 maxPages 决定，几十页通常 1-3 分钟">侦察</button>
+    <button class="seek-alt" @click="forgeSingle"
+      title="不侦察整站，只克隆输入框里这一个页面：捕获 → 校准 → 评分，约 2-3 分钟。克隆产物照样能导出成可部署的离线包">只克隆此页</button>
   </div>
 
   <!-- 站点切换 + 本站操作（星图与工作视图现在共用 SiteBar；原先星图这里是把每个站点

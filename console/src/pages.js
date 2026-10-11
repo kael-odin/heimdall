@@ -18,7 +18,17 @@ export function pageNameOf(n) {
 }
 
 /**
- * 交互镜像地址（/lm/<host>/<path>）：保留脚本、资源实时回原站的代理通道。
+ * 交互镜像地址：保留脚本、资源实时回原站的代理通道。**两种入口**：
+ *
+ *   · 独立域名  http://<host>.localhost:<port>/<path>   ← liveUrl，优先
+ *   · 路径前缀  /lm/<host>/<path>                        ← liveAltUrl，备用
+ *
+ * 为什么优先独立域名：纯前端渲染（SPA）站点的路由库读 location.pathname 决定渲染什么。
+ * 前缀入口下它看到的是 /lm/vitest.dev/，匹配不到任何路由，于是渲染**它自己的 404 页** ——
+ * 实测 vitest.dev（VitePress）整页变成 "404 | Vitest"，脚本越正常页面越不对。
+ * 独立域名下这个前缀根本不存在，路由、cookie、localStorage 都按站点隔离，与原站一致。
+ * 代价是依赖 *.localhost 解析到本机（Chrome/Firefox 原生支持；本机 DNS 被代理接管时
+ * 可能失败）—— 失败就用 liveAltUrl 那个入口，两者服务的是同一份产物。
  *
  * **目录型路径必须带尾斜杠**。URL 的"基目录"是最后一个 `/` 之前的部分：
  * `/lm/ant.design` 的基目录是 `/lm/`，页内相对引用（`chunk-x.js`）会解析到
@@ -28,9 +38,23 @@ export function pageNameOf(n) {
  */
 export function liveUrl(f) {
   try {
-    const u = new URL(f.url);
-    let p = u.pathname.replace(/\/+$/, '');
-    if (!/\.[a-z0-9]+$/i.test(p)) p += '/';
-    return `/lm/${u.host}${p}`;
+    const { hostname, pathname } = new URL(f.url);
+    const port = typeof location !== 'undefined' && location.port ? ':' + location.port : '';
+    const proto = typeof location !== 'undefined' ? location.protocol : 'http:';
+    return `${proto}//${hostname}.localhost${port}${dirPath(pathname)}`;
   } catch { return '#'; }
+}
+
+/** 备用入口：不依赖 *.localhost 解析，但前缀会进 location.pathname（SPA 站点会落到它自己的 404） */
+export function liveAltUrl(f) {
+  try {
+    return `/lm/${new URL(f.url).host}${dirPath(new URL(f.url).pathname)}`;
+  } catch { return '#'; }
+}
+
+/** 目录型路径补尾斜杠；文件型路径（带扩展名）原样 */
+function dirPath(pathname) {
+  let p = pathname.replace(/\/+$/, '');
+  if (!/\.[a-z0-9]+$/i.test(p)) p += '/';
+  return p || '/';
 }

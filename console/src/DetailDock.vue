@@ -15,7 +15,7 @@ import Icon from './Icon.vue';
 import { API, apiHeaders, wsJson } from './api.js';
 import { typeColor, typeCn } from './types.js';
 import { fmtBytes, fmtDate } from './format.js';
-import { pageNameOf, liveUrl } from './pages.js';
+import { pageNameOf, liveUrl, liveAltUrl } from './pages.js';
 
 const props = defineProps({
   host: { type: String, default: '' },
@@ -182,7 +182,8 @@ function switchTab(t) {
     </div>
     <div class="dock-quick" v-if="selected.forgeState === 'done'">
       <a :href="`/${host}/pages/${pageNameOf(selected)}/clone/index.html`" target="_blank" rel="noopener" title="静态镜像：剥离脚本、资产本地化，离线可开">静态镜像</a>
-      <a :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener" title="交互镜像：保留脚本、资源实时回原站。注意纯前端渲染站的客户端路由会把 /lm 前缀当成真实路径，可能落到它自己的 404">交互镜像</a>
+      <a :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener" title="交互镜像：保留脚本、资源实时回原站。用 <域名>.localhost 作独立域名，站点的路由/登录态/本地存储都与原站一致">交互镜像</a>
+      <a class="quick-alt" :href="liveAltUrl({ url: selected.url })" target="_blank" rel="noopener" title="备用入口：/lm 前缀。不依赖 *.localhost 解析，但纯前端渲染站的客户端路由会把前缀当成真实路径，可能落到它自己的 404">/lm 备用</a>
       <a :href="`/${host}/compare.html?p=${pageNameOf(selected)}`" target="_blank" rel="noopener" title="左右同步滚动，原站与静态镜像逐段对照">同步对比</a>
     </div>
     <div class="forge-cta" v-if="selected.forgeState !== 'done' && selected.forgeState !== 'running'">
@@ -423,6 +424,8 @@ function switchTab(t) {
         <a :href="`/${host}/compare.html?p=${forge.pageName}`" target="_blank" rel="noopener"><Icon name="swap" decorative /> 同步滚动对比</a>
         <span class="sep">·</span>
         <a :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">⚡ 交互镜像</a>
+        <span class="sep">·</span>
+        <a :href="liveAltUrl(forge)" target="_blank" rel="noopener" title="备用入口 /lm（不依赖 *.localhost 解析）">/lm 备用</a>
         <span class="sep">·</span>
         <a :href="`/${host}/pages/${forge.pageName}/clone/index.html`" target="_blank" rel="noopener">静态镜像</a>
       </div>

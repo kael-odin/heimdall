@@ -90,11 +90,30 @@ workspace/apify.com/
 
 **一句话记法**：静态镜像是**照片**（冻结、离线、像素准），交互镜像是**直播**（在跑、联网、会变）。
 
-**已知边界**：交互镜像挂在 `/lm/<host>/<path>` 这类**路径前缀**下，而纯客户端渲染
-（SPA/CSR）站点的路由会把这段前缀当成真实路径 —— 实测 crawlee.dev / ant.design
-会落到它们自己的 404 页。有本地快照的站（apify / thordata）不受影响。
-根本解法是给每个镜像站一个独立子域（pathname 才是站点自己的路径），
-但 `*.localhost` 在部分环境不可靠，暂不做，见 [docs/ROADMAP.md](docs/ROADMAP.md)。
+**两种都只是单页产物，"交给同事"的是第三种东西**：`node src/live/export.mjs <host>`
+产出的**交付包（Deliverable Bundle）** —— 自包含目录（零依赖 serve.mjs + 静态镜像页
++ 交互镜像页 + HAR 回放 + Dockerfile/compose + checksums），
+`DATA_ROOT/deliverable/<host>-live-<date>/`。**再克隆几页后重新导出即可**，
+包里就是全量；它不依赖本机引擎，也不需要 `*.localhost`。
+
+**两个入口**：交互镜像可以用两种地址打开，服务的是同一份产物。
+
+| 入口 | 形如 | 何时用 |
+| --- | --- | --- |
+| 独立域名 | `http://<host>.localhost:<port>/<path>` | **首选**。pathname 就是站点自己的路径，CSR 路由、cookie、localStorage 全按站点隔离 |
+| 路径前缀 | `/lm/<host>/<path>` | 备用。不依赖 `*.localhost` 解析，但前缀会进 `location.pathname` |
+
+**为什么要两个**：纯客户端渲染（SPA/CSR）站点的路由库读 `location.pathname` 决定渲染什么。
+前缀入口下它看到 `/lm/vitest.dev/`，匹配不到路由，于是渲染**它自己的 404 页**（实测
+vitest.dev / crawlee.dev / ant.design 均如此）。独立域名入口没有这个前缀，问题不存在。
+它依赖 `*.localhost` 解析到本机 —— Chrome/Firefox 原生支持，但本机 DNS 被代理接管时
+可能失败，那时用前缀入口。
+
+**代理层的硬约束**：转发上游响应头必须落到**普通对象**再 `writeHead`
+（`src/proxy-headers.mjs`）。Node 的 `writeHead` 收 WHATWG `Headers` 不报错、
+状态码也对，但头会被**全部丢掉** —— 曾经因此让交互镜像的模块脚本以
+`MIME type of ""` 被浏览器拒绝执行，也就是"交互镜像的 JS 从来没跑起来过"。
+测试见 `test/proxy-headers.test.mjs`（含一条断言 Node 该行为的前提测试）。
 
 ---
 

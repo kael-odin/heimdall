@@ -30,6 +30,7 @@ import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
 import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
 import { gcCas } from './store/cas.mjs';
 import { createWatchdog } from './task-watchdog.mjs';
+import { writeProxyHead, mirrorHostOf } from './proxy-headers.mjs';
 import { loadProfile, sanitizeHost, queuePlan, MAX_SLOT_CEILING } from './site-profile.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
@@ -123,6 +124,81 @@ function sendFile(req, res, file, extraHeaders = {}) {
   res.writeHead(200, headers);
   if (req?.method === 'HEAD') return res.end();
   createReadStream(file).pipe(res);
+}
+
+
+/**
+ * 镜像站统一服务逻辑 —— 路径前缀入口与独立域名入口共用
+ *
+ *   · 路径前缀 /lm/<host>/<path>            —— 任何机器、任何浏览器都能用
+ *   · 独立域名 <host>.localhost:<port>/<path> —— pathname 就是站点自己的路径
+ *
+ * 为什么必须有独立域名入口：纯前端渲染（SPA）站点的路由库靠读 location.pathname
+ * 决定渲染什么。前缀入口下它看到 /lm/vitest.dev/，匹配不到任何路由，于是渲染
+ * **它自己的 404 页** —— 脚本越正常，页面越"错"（实测 vitest.dev 修好响应头后
+ * 整页变成 "404 | Vitest"）。独立域名下这个前缀根本不存在，路由、cookie、
+ * localStorage 天然按站点隔离，与原站行为一致。
+ *
+ * 融合路由：本地 live/<path>/index.html 存在 → 回校准快照；否则全代理回原站
+ * （未锻造页 / 资源 / JS chunk / API 全部原样透传，页面"活"）。
+ */
+async function serveMirror(req, res, u, lmHost, prefix) {
+  try {
+    const rest = prefix ? (decodeURIComponent(u.pathname.slice(prefix.length)) || '/') : u.pathname;
+    const noWww = lmHost.replace(/^www\./, '');
+
+    // 本地优先：无扩展名路径 → 该目录下的 index.html；有扩展名 → 精确路径。
+    // 候选只放"文件"，目录本身绝不入候选（防 EISDIR）。
+    const rel = rest.endsWith('/') ? rest + 'index.html' : rest;
+    const candidates = /\.[a-z0-9]+$/i.test(rel)
+      ? [join(WORKSPACE, noWww, 'live', rel)]
+      : [join(WORKSPACE, noWww, 'live', rel.replace(/\/$/, '') + '/index.html')];
+    const localFile = candidates.find(f => isInsideWorkspace(f) && existsSync(f));
+    // 只对 GET/HEAD 回本地快照：快照是静态文件，吞掉 POST 会让页面的表单直接失效
+    // （实测 apify.com 的 contact-sales 表单就是 POST 到当前路径）。
+    if (localFile && (req.method === 'GET' || req.method === 'HEAD')) {
+      // 独立域名模式下，快照里烘焙的 /lm/<host>/ 前缀要摘掉：那条路径在这个域名下不存在
+      if (!prefix && /\.html?$/i.test(localFile)) {
+        const html = readFileSync(localFile, 'utf8')
+          .split('/lm/' + lmHost + '/').join('/')
+          .split('/lm/' + lmHost).join('');
+        res.writeHead(200, { ...CORS, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+        return req.method === 'HEAD' ? res.end() : res.end(html);
+      }
+      return sendFile(req, res, localFile, { 'Cache-Control': 'no-cache' });
+    }
+
+    // 反代回原站（全方法透传；cookie 透传并剥 Domain/Secure，登录态落到我们域名下）
+    const targetUrl = 'https://' + lmHost + rest + u.search;
+    const fwdHeaders = {};
+    for (const k of ['accept', 'accept-language', 'content-type', 'cookie']) {
+      if (req.headers[k]) fwdHeaders[k] = req.headers[k];
+    }
+    fwdHeaders['user-agent'] = UA2;
+    fwdHeaders.referer = 'https://' + lmHost + '/';
+    const upstream = await fetch(targetUrl, {
+      method: req.method,
+      headers: fwdHeaders,
+      body: ['GET', 'HEAD'].includes(req.method) ? undefined : req,
+      redirect: 'follow',
+    });
+    const headers = new Headers();
+    const to = prefix || '/';
+    for (const [k, v] of upstream.headers) {
+      const kl = k.toLowerCase();
+      if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy', 'set-cookie'].includes(kl)) continue;
+      // 跳转目标要落回"我们这边的同一个站点"，不能把浏览器直接甩去原站
+      if (kl === 'location') { headers.set(k, v.replace('https://' + lmHost, to).replace('https://www.' + lmHost, to)); continue; }
+      headers.set(k, v);
+    }
+    for (const c of upstream.headers.getSetCookie?.() ?? []) {
+      headers.append('set-cookie', c.replace(/;\s*domain=[^;]+/gi, '').replace(/;\s*secure/gi, ''));
+    }
+    writeProxyHead(res, upstream.status, headers);
+    res.end(Buffer.from(await upstream.arrayBuffer()));
+  } catch (e) {
+    try { json(res, 502, { error: String(e).slice(0, 140) }); } catch {}
+  }
 }
 
 /** 只对白名单来源回 CORS 头（默认本机控制台）；无 Origin 的 curl/服务调用不受影响 */
@@ -949,7 +1025,7 @@ createServer(async (req, res) => {
         if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy'].includes(k.toLowerCase())) continue;
         headers.set(k, v);
       }
-      res.writeHead(upstream.status, headers);
+      writeProxyHead(res, upstream.status, headers);
       res.end(Buffer.from(await upstream.arrayBuffer()));
     } catch (e) { json(res, 502, { error: String(e).slice(0, 120) }); }
     return;
@@ -974,71 +1050,28 @@ createServer(async (req, res) => {
           if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy'].includes(k.toLowerCase())) continue;
           headers.set(k, v);
         }
-        res.writeHead(upstream.status, headers);
+        writeProxyHead(res, upstream.status, headers);
         res.end(Buffer.from(await upstream.arrayBuffer()));
       } catch (e) { json(res, 502, { error: String(e).slice(0, 100) }); }
       return;
     }
   }
 
-  // 交互镜像 /lm/<host>/<path> —— 融合路由：
-  //   本地 live/<path>/index.html 存在 → 回校准快照（视觉+结构已对齐）
-  //   否则 → 全代理回原站（未锻造页/资源/JS chunks/API 全部原样透传，页面"活"）
-  // 全方法透传 + cookie 透传 + 剥离 Domain/Secure（cookie 落到我们域）+ 剥 X-Frame/CSP
+  // 独立域名入口：<host>.localhost:<port>/ —— 该站镜像的根（理由见 serveMirror 注释）
+  // 放在 /static/ 之后：本地快照引用的 /static/<host>/… 仍由引擎自己的静态分支提供，
+  // 其余一切（含被镜像站自己的 /api/）都属于那个站，原样透传。
+  const subHost = mirrorHostOf(req.headers.host);
+  if (subHost) {
+    if (!isProxyHost(subHost)) return json(res, 403, { error: 'host not allowed', host: subHost });
+    return serveMirror(req, res, u, subHost, '');
+  }
+
+  // 路径前缀入口：/lm/<host>/<path> —— 通用（不依赖 *.localhost 解析），但前缀会进 location.pathname
   if (u.pathname.startsWith('/lm/')) {
-    try {
     const m = /^\/lm\/([^/]+)(\/.*)?$/.exec(u.pathname);
     if (!m) return json(res, 400, { error: 'bad lm path' });
-    const lmHost = m[1];
-    if (!isProxyHost(lmHost)) return json(res, 403, { error: 'host not allowed' });
-    let rel = decodeURIComponent(m[2] ?? '/');
-    if (rel.endsWith('/')) rel += 'index.html';
-    const noWww = lmHost.replace(/^www\./, '');
-
-    // 本地优先：live/<path>/index.html（build_live 产物）；无扩展名路径补 /index.html
-    // 候选只放"文件"：有扩展名 → 精确路径；无扩展名 → 目录下的 index.html（目录本身绝不入候选，防 EISDIR）
-    const lmCandidates = /\.[a-z0-9]+$/i.test(rel)
-      ? [join(WORKSPACE, noWww, 'live', rel)]
-      : [join(WORKSPACE, noWww, 'live', rel.replace(/\/$/, '') + '/index.html')];
-    const localFile = lmCandidates.find(f => isInsideWorkspace(f) && existsSync(f));
-    if (localFile) {
-      return sendFile(req, res, localFile, { 'Cache-Control': 'no-cache' });
-    }
-
-    // 反代回原站（全方法）
-    const targetUrl = 'https://' + lmHost + (m[2] ?? '/') + u.search;
-    const fwdHeaders = {};
-    for (const k of ['accept', 'accept-language', 'content-type', 'cookie', 'referer']) {
-      if (req.headers[k]) fwdHeaders[k] = req.headers[k];
-    }
-    fwdHeaders['user-agent'] = UA2;
-    fwdHeaders.referer = 'https://' + lmHost + '/';
-    try {
-      const upstream = await fetch(targetUrl, {
-        method: req.method,
-        headers: fwdHeaders,
-        body: ['GET', 'HEAD'].includes(req.method) ? undefined : req,
-        redirect: 'follow',
-      });
-      const headers = new Headers();
-      let cookieCount = 0;
-      for (const [k, v] of upstream.headers) {
-        const kl = k.toLowerCase();
-        if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy', 'set-cookie'].includes(kl)) continue;
-        if (kl === 'location') { const v2 = v.replace('https://' + lmHost, '/lm/' + lmHost).replace('https://www.' + lmHost, '/lm/' + lmHost); headers.set(k, v2); continue; }
-        headers.set(k, v);
-      }
-      // Set-Cookie：剥 Domain/Secure（落到我们域，登录态/语言偏好等存活）
-      for (const c of upstream.headers.getSetCookie?.() ?? []) {
-        cookieCount++;
-        headers.append('set-cookie', c.replace(/;\s*domain=[^;]+/gi, '').replace(/;\s*secure/gi, ''));
-      }
-      res.writeHead(upstream.status, headers);
-      res.end(Buffer.from(await upstream.arrayBuffer()));
-    } catch (e) { json(res, 502, { error: String(e).slice(0, 140) }); }
-    return;
-    } catch (e) { try { json(res, 502, { error: String(e).slice(0, 140) }); } catch {} }
-    return;
+    if (!isProxyHost(m[1])) return json(res, 403, { error: 'host not allowed' });
+    return serveMirror(req, res, u, m[1], '/lm/' + m[1]);
   }
 
   if (u.pathname === '/api/status') {

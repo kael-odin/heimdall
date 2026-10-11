@@ -951,10 +951,85 @@ top5Share 恒为 1 → 必然判成「集中」→ 把用户支使去查几十�
 
 ### 24.7 本轮实测与诚实边界
 
-- 交互镜像：ant.design 由白屏恢复正常；apify / thordata / cn.vuejs.org / vitest.dev /
-  svelte.dev / angular.dev 的交互镜像渲染正常
+- 交互镜像：apify / thordata / cn.vuejs.org / svelte.dev / angular.dev / vitest.dev 都能返回
+  正确页面。**但"渲染正常"这句当时是看 HTML 得出的，不足为凭** —— 见 §25：
+  这些页面的 JS 其实一个都没跑起来，纯 CSR 站（vitest.dev / crawlee.dev / ant.design）
+  当时落到的是它们自己的 404 页
 - 分页规则在真实站点上是**干净的负例**：HN 的 `/?p=2` 被采到了，它自带自指 canonical、
   也不 noindex，所以不该报 —— 规则确实没报
 - **尚未在真实站点上取到分页/分面的正例**（我们的样本站没有这些反模式；试过的
   blog.jetbrains.com 分页是纯 JS 驱动）。规则的接线由 `seo-rules-integration.test.mjs`
   从 `evaluatePage`/`evaluateSite` 两个真实入口钉住（6 条），而不是只测子模块
+
+---
+
+## 25. 2026-10-11 续十八：交互镜像其实一直没"活"过 —— 响应头静默丢失 + 独立域名入口
+
+起点是用户的一处观感：vitest.dev 的交互镜像里，赞助商 logo 与两张卡片的配图是空的。
+
+### 25.1 真因：`writeHead` 不认 WHATWG `Headers`，且不报错
+
+三处代理（`/px/`、referer 兜底、镜像）都是这么写的：
+
+```js
+const headers = new Headers();
+for (const [k, v] of upstream.headers) { ...; headers.set(k, v); }
+res.writeHead(upstream.status, headers);        // ← 全部头被静默丢掉
+```
+
+Node 的 `writeHead` 只认普通对象或扁平数组。传 `Headers` 进去**不抛错、状态码照样正确**，
+只是所有头消失。实测对照：
+
+```
+WITH Headers  -> ct: null      x-test: null
+plain object  -> ct: "text/plain"  x-test: "1"
+```
+
+### 25.2 后果比"图片缺失"严重得多
+
+Content-Type 为空后：浏览器以 `MIME type of ""` 拒绝执行模块脚本 —— vitest.dev 的
+**7 个 module script 全部被拒**，也就是说**交互镜像的 JS 从头到尾就没跑起来过**。
+
+之所以长期没被发现：PNG/JPG 靠魔数嗅探仍能渲染，页面的静态 HTML 又是对的，
+于是症状只表现为"个别图挂了"（而丢的正好是 SVG —— SVG 必须有正确 MIME）。
+§24.7 里"渲染正常"的结论就是这么得出来的，已在原处更正。
+
+### 25.3 修好之后立刻暴露第二层：前缀进了 SPA 的路由
+
+JS 一旦真的跑起来，vitest.dev（VitePress）整页变成 **"404 | Vitest"** ——
+路由库读 `location.pathname`，看到的是 `/lm/vitest.dev/`，匹配不到任何路由。
+这与 ROADMAP 里早就记下的"路径前缀边界"是同一件事，当时判断"暂不做"。
+
+### 25.4 于是把独立域名入口做了
+
+- `mirrorHostOf(host)`：`<host>.localhost` → `<host>`（用完整域名当子域，可无损还原）
+- `serveMirror(req, res, u, host, prefix)`：两个入口共用同一份逻辑
+  - 独立域名：`prefix=''`，pathname 即站点路径 → CSR 路由、cookie、localStorage 全对
+  - 前缀入口：`prefix='/lm/<host>'`，字符串切片得到同样的 rest
+  - 独立域名下服务本地快照时，把烘焙进去的 `/lm/<host>/` 前缀摘掉
+  - 两处仍走引擎自己的分支：`/static/`（本地快照引用的 CSS/资产），其余全透传
+- 修 ROADMAP 里那个"暂不做"的理由：当初怕 `*.localhost` 被代理接走（解析到 198.18.x.x），
+  实测这台机器上 fake-IP 代理会把 `vitest.dev.localhost:8900` 转回 127.0.0.1 且 **Host 原样保留**。
+  两个入口并存：控制台「交互镜像」走独立域名，旁边一个「/lm 备用」。
+
+### 25.5 顺带修掉的
+
+- **POST 不再被本地快照吞掉**：此前只要该路径有 live 快照就直接回文件，表单 POST
+  会拿到 HTML、什么也不发生。现在只有 GET/HEAD 回快照，其余回源
+- **首屏新增「只克隆此页」**：克隆与侦察在引擎侧本就互不依赖（`/api/forge` vs `/api/recon`），
+  但界面只有「侦察」一个入口，"我只要这一页"的人被迫先侦察整站
+- **交付包正名**：`node src/live/export.mjs <host>` 产出的是**交付包（Deliverable Bundle）**，
+  与"静态镜像/交互镜像"（单页产物）是两个层次；再克隆几页后重新导出即全量。
+  舍入 ARCHITECTURE.md §3
+
+### 25.6 实测与诚实边界
+
+- 修好后逐站核对（走独立域名入口的 `<title>`）：ant.design / vitest.dev / svelte.dev /
+  apify.com / thordata.com / cn.vuejs.org / angular.dev / blog.jetbrains.com 全部返回原站标题；
+  crawlee.dev 无本地快照（纯代理）返回 53589B，与原站直连字节数一致
+- vitest.dev 交互镜像：`img` 坏图 **0**，`/vercel.svg` 带 `image/svg+xml`，脚本执行（截图见
+  `workspace/_shots/live-subdomain-sponsors.png`）
+- **未验证**：没有代理且系统不认 `*.localhost` 的环境下独立域名入口是否可达（本机测不了）。
+  那种环境用前缀入口，CSR 站仍会落到它自己的 404 —— 这是本轮的已知边界
+- 测试 **320/320**（新增 `test/proxy-headers.test.mjs` 6 条，含一条"Node 若支持 Headers
+  就变红"的前提断言）· lint 128 文件
