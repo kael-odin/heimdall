@@ -10,7 +10,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,6 +33,28 @@ test('规则数：与源码一致（不一致就说明文档里的数字又过�
   const ids = listRuleIds();
   assert.equal(ids.length, RULE_COUNT,
     `源码里有 ${ids.length} 条规则，常量写的是 ${RULE_COUNT} —— 请同步更新 RULE_COUNT 与文档/界面里的同一句话`);
+});
+
+/** 用户可见处提到规则数的地方 —— 这些地方必须与源码一致（历史文档里的旧数字不算，
+ *  它们是按日期的存档，改了反而失真）。cli/mcp 就漏过一次：守卫只数了 seo/ 目录，
+ *  而 "56 条规则" 还挂在 CLI 与 MCP 的工具描述里。 */
+const MENTION_FILES = [
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli.mjs'),
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'mcp', 'server.mjs'),
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'console', 'src', 'Atlas.vue'),
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'console', 'src', 'DetailDock.vue'),
+];
+
+test('规则数：CLI / MCP / 控制台里写的数字也必须与源码一致', () => {
+  const stale = [];
+  for (const f of MENTION_FILES) {
+    if (!existsSync(f)) continue;   // console 未构建/未检出时跳过，不误报
+    const text = readFileSync(f, 'utf8');
+    for (const m of text.matchAll(/(\d+)\s*条规则/g)) {
+      if (Number(m[1]) !== RULE_COUNT) stale.push(`${f.split(/[\\/]/).slice(-2).join('/')}: ${m[0]}`);
+    }
+  }
+  assert.deepEqual(stale, [], `这些地方还在写旧数字：\n${stale.join('\n')}`);
 });
 
 test('规则数：id 不重复（重复的 id 会让报告筛选与基线对比串台）', () => {
