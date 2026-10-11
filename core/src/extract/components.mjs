@@ -5,6 +5,7 @@
  * 每个组件输出：outerHTML 片段 + 命中该元素的 CSS 规则（含媒体查询与 :root 变量）。
  */
 import { parse, serializeOuter } from 'parse5';
+import { esc } from '../html.mjs';
 
 const attr = (node, name) => node.attrs?.find(a => a.name === name)?.value ?? '';
 const classList = (node) => attr(node, 'class').split(/\s+/).filter(Boolean);
@@ -148,7 +149,6 @@ export function matchingCssRules(css, { classes = [], id = '', tag = '' }, { max
 }
 
 export function renderComponentPreview(component, cssText, { host = '' } = {}) {
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><title>${esc(component.key)} · ${esc(host)} component</title>
 <style>
@@ -164,7 +164,6 @@ ${component.html}
 }
 
 export function renderGallery(host, components) {
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const cards = components.map(c => `
     <div class="card">
       <div class="card-head"><b>${esc(c.key)}</b><span>&lt;${esc(c.tag)}&gt; · ${c.matchedRules} 条规则 · ${(c.bytes / 1024).toFixed(0)}KB</span></div>

@@ -1,7 +1,8 @@
 /**
  * audit/assets-report — 资产缺口报告（视觉缺口优先，自包含 HTML）
  */
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+import { esc } from '../html.mjs';
+
 const trunc = (s, n = 120) => { const t = String(s ?? ''); return t.length > n ? t.slice(0, n) + '…' : t; };
 const catLabel = { visual: '视觉', metadata: '元数据', tracking: '追踪', replaced: '设计替代' };
 

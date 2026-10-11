@@ -8,6 +8,7 @@
  * 用法: await probeStyleDiff(srcUrl, cloneUrl, {maxPairs})
  */
 import { chromium } from 'playwright';
+import { UA } from '../ua.mjs';
 
 const PROPS = [
   'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing',
@@ -17,8 +18,6 @@ const PROPS = [
   'width', 'height', 'display', 'textAlign',
 ];
 const SKIP_TAGS = new Set(['script', 'style', 'noscript', 'svg', 'path', 'link', 'meta', 'br']);
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-
 async function collectPage(browser, url) {
   const p = await browser.newPage({ viewport: { width: 1440, height: 900 }, userAgent: UA });
   try {

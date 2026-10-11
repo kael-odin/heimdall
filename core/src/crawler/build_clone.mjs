@@ -17,9 +17,9 @@ import { scanCssRefs, rewriteCssRefs, extractFontRules } from '../css-refs.mjs';
 import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, neutralizeBaseTag } from '../dom-refs.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { UA } from '../ua.mjs';
 
 const PAGE = requireArg(process.argv[2], 'node src/crawler/build_clone.mjs <pageDir>', '页面目录');
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const CLONE = join(PAGE, 'clone');
 // 站点从产物路径反推：workspace/<host>/pages/<name>
 const HOST = sanitizeHost(relative(WORKSPACE, PAGE).split(sep)[0]);

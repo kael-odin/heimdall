@@ -4,6 +4,8 @@
  * 输出：CSS 变量、颜色、字体/字号/字重/行高、间距、圆角、阴影、媒体断点，
  * 每项带出现次数，可直接生成可用的 tokens.css 与可视化预览。
  */
+import { esc } from '../html.mjs';
+
 const norm = (s) => String(s).replace(/\s+/g, ' ').trim();
 const add = (map, value, n = 1) => {
   const v = norm(value);
@@ -84,7 +86,6 @@ export function buildTokensCss(tokens, { host = 'site' } = {}) {
 }
 
 export function renderTokensHtml(host, tokens) {
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const luminance = (hex) => {
     const m = /^#([0-9a-f]{6})$/i.exec(hex); if (!m) return 1;
     const v = parseInt(m[1], 16); const r = (v >> 16) & 255, g = (v >> 8) & 255, b = v & 255;

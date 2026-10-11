@@ -1,7 +1,8 @@
 /**
  * watch/report — 变更报告（自包含 HTML）
  */
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+import { esc } from '../html.mjs';
+
 const trunc = (s, n = 160) => { const t = String(s ?? '').replace(/\s+/g, ' '); return t.length > n ? t.slice(0, n) + '…' : t; };
 const sevColor = { high: '#dc2626', medium: '#ca8a04', low: '#0284c7', info: '#64748b' };
 

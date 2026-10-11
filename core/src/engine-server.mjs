@@ -32,6 +32,7 @@ import { createWatchdog } from './task-watchdog.mjs';
 import { writeProxyHead, mirrorHostOf } from './proxy-headers.mjs';
 import { sessionInfo, clearSession } from './session/store.mjs';
 import { loadProfile, sanitizeHost, queuePlan, MAX_SLOT_CEILING } from './site-profile.mjs';
+import { UA } from './ua.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 
@@ -52,7 +53,6 @@ const ALLOWED_ORIGINS = (process.env.HEIMDALL_CORS_ORIGIN ?? 'http://127.0.0.1:5
 const EXTRA_PROXY_HOSTS = new Set((process.env.HEIMDALL_ALLOWED_HOSTS ?? '')
   .split(',').map(s => s.trim().replace(/^www\./, '')).filter(Boolean));
 const CORS = { 'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,x-heimdall-token' };
-const UA2 = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -174,7 +174,7 @@ async function serveMirror(req, res, u, lmHost, prefix) {
     for (const k of ['accept', 'accept-language', 'content-type', 'cookie']) {
       if (req.headers[k]) fwdHeaders[k] = req.headers[k];
     }
-    fwdHeaders['user-agent'] = UA2;
+    fwdHeaders['user-agent'] = UA;
     fwdHeaders.referer = 'https://' + lmHost + '/';
     const upstream = await fetch(targetUrl, {
       method: req.method,
@@ -1314,7 +1314,7 @@ const handleRequest = async (req, res) => {
     if (!isProxyHost(m[1])) return json(res, 403, { error: 'host not allowed (recon it first or set HEIMDALL_ALLOWED_HOSTS)' });
     const target = 'https://' + m[1] + (m[2] ?? '/') + u.search;
     try {
-      const upstream = await fetch(target, { headers: { 'User-Agent': UA2, Accept: req.headers.accept ?? '*/*', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' }, redirect: 'follow' });
+      const upstream = await fetch(target, { headers: { 'User-Agent': UA, Accept: req.headers.accept ?? '*/*', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' }, redirect: 'follow' });
       const headers = new Headers();
       for (const [k, v] of upstream.headers) {
         if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy'].includes(k.toLowerCase())) continue;
@@ -1339,7 +1339,7 @@ const handleRequest = async (req, res) => {
       const lh = lmRef[1];
       const target = 'https://' + lh + u.pathname + u.search;
       try {
-        const upstream = await fetch(target, { method: req.method, headers: { 'User-Agent': UA2, Accept: req.headers.accept ?? '*/*', Referer: 'https://' + lh + '/' }, body: ['GET', 'HEAD'].includes(req.method) ? undefined : req });
+        const upstream = await fetch(target, { method: req.method, headers: { 'User-Agent': UA, Accept: req.headers.accept ?? '*/*', Referer: 'https://' + lh + '/' }, body: ['GET', 'HEAD'].includes(req.method) ? undefined : req });
         const headers = new Headers();
         for (const [k, v] of upstream.headers) {
           if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy'].includes(k.toLowerCase())) continue;

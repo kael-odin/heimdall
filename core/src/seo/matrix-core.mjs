@@ -1,6 +1,8 @@
 /**
  * seo/matrix-core — 竞品对标矩阵（纯函数）
  */
+import { esc } from '../html.mjs';
+
 export function categorize(url) {
   const p = (() => { try { return new URL(url).pathname.toLowerCase(); } catch { return String(url).toLowerCase(); } })();
   if (p === '/' || p === '') return 'home';
@@ -62,7 +64,6 @@ export function buildMatrix(audits) {
   return { generatedAt: new Date().toISOString(), sites, rows, topIssues };
 }
 
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 const fmt = (v, suffix = '') => (v == null ? '—' : String(v) + suffix);
 
 export function renderMatrixCsv(matrix) {

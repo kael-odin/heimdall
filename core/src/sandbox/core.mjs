@@ -3,6 +3,7 @@
  */
 import { join } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
+import { esc } from '../html.mjs';
 
 export function sandboxPaths(host, page) {
   const dir = join(WORKSPACE, host, 'sandbox', page);
@@ -29,7 +30,6 @@ export function injectSandboxEdits(html, css = '') {
 }
 
 export function renderEditorPage({ host, page, port = 0 }) {
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><title>Heimdall 沙盒 · ${esc(host)}/${esc(page)}</title>
 <style>

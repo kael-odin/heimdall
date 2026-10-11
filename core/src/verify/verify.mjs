@@ -22,6 +22,7 @@ import { comparePngBuffers, overallScore, worstViewport, gradeOf } from './compa
 import { verifyInteractions, scoreInteractions } from './interactions.mjs';
 import { emit } from '../emit.mjs';
 import { freezeCss } from '../freeze.mjs';
+import { UA } from '../ua.mjs';
 
 const log = (...a) => console.error('[verify]', ...a);
 const MAX_PAGE_HEIGHT = 25_000;
@@ -83,8 +84,8 @@ try {
     const outDir = join(BASE, 'verify', name);
     mkdirSync(outDir, { recursive: true });
     log('page', name, '->', target);
-    const srcCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36', ...sessionContext(new URL(target).hostname) });
-    const cloneCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' });
+    const srcCtx = await browser.newContext({ userAgent: UA, ...sessionContext(new URL(target).hostname) });
+    const cloneCtx = await browser.newContext({ userAgent: UA });
     const srcPage = await srcCtx.newPage();
     const clonePage = await cloneCtx.newPage();
     const cloneUrl = 'http://127.0.0.1:' + (process.env.HEIMDALL_PORT ?? 8900) + '/static/' + host + '/pages/' + name + '/clone/index.html';

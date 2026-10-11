@@ -16,6 +16,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_ROOT } from '../paths.mjs';
 import { makeArgs } from '../args.mjs';
+import { esc } from '../html.mjs';
 
 export const MODES = {
   recon: { path: '/api/recon', label: 'Heimdall 侦察', body: (url) => ({ url, maxPages: 40 }) },
@@ -34,7 +35,6 @@ export function buildBookmarklet(mode = 'recon', { api = 'http://127.0.0.1:8900'
 }
 
 export function renderInstallPage({ api, token } = {}) {
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const links = Object.entries(MODES).map(([mode, def]) => `<a class="bm" href="${esc(buildBookmarklet(mode, { api, token }))}" onclick="return false" draggable="true"><b>${esc(def.label)}</b><span>拖到书签栏</span></a>`).join('');
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><title>Heimdall 书签入口</title>

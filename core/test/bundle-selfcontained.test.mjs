@@ -54,3 +54,14 @@ test('守卫自身：认得出"指向包外"的 import，也放过 node: 与同�
   const bad = specs.filter(s => !s.startsWith('node:') && !/^\.\/[^/]+$/.test(s));
   assert.deepEqual(bad, ['../args.mjs']);
 });
+
+/**
+ * 同一份常量、两种存法：`src/ua.mjs` 是唯一来源，`live/serve.mjs` 因为要自包含而留了本地副本。
+ * 这类"复制出来的一份"迟早会漂移，而这一份漂移的后果最隐蔽：交付包里回放请求用一个 UA、
+ * 我们截图用另一个 —— 反爬站点返回不同内容，"复刻得像不像"就再也说不清了，且不会报错。
+ */
+test('交付包里那份 UA 副本必须与 src/ua.mjs 一致', async () => {
+  const { UA } = await import('../src/ua.mjs');
+  const serve = readFileSync(join(LIVE, 'serve.mjs'), 'utf8');
+  assert.ok(serve.includes(UA), 'live/serve.mjs 里的 UA 与 src/ua.mjs 不一致 —— 两处必须同步改');
+});

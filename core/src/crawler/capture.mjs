@@ -23,14 +23,13 @@ import { sessionContext } from '../session/store.mjs';
 import { requireArg } from '../args.mjs';
 import { asUrl } from '../url-canon.mjs';
 import { freezeCss, stripFreeze } from '../freeze.mjs';
+import { UA } from '../ua.mjs';
 
 const RAW_TARGET = requireArg(process.argv[2], 'node src/crawler/capture.mjs <url> <outdir>', '目标 URL');
 const TARGET = asUrl(RAW_TARGET);   // 直接跑这个脚本时也允许省略协议
 if (!TARGET) { console.error(`不是有效的网址：${RAW_TARGET}`); process.exit(2); }
 const OUT = requireArg(process.argv[3], 'node src/crawler/capture.mjs <url> <outdir>', '输出目录');
 const VIEWPORT = { width: 1440, height: 900 };
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-
 // 站点配方：捕获策略（等待策略/静置时间/弹窗选择器）全部来自这里，不再写死在代码里
 const profile = loadProfile(sanitizeHost(new URL(TARGET).hostname));
 const CAP = profile.capture;

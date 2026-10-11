@@ -15,6 +15,7 @@
 import { chromium } from 'playwright';
 import { saveSession, sessionPath } from './store.mjs';
 import { makeArgs } from '../args.mjs';
+import { UA } from '../ua.mjs';
 
 const argv = process.argv.slice(2);
 const { argOf } = makeArgs(argv);
@@ -24,8 +25,6 @@ if (!raw) { console.error('usage: node src/session/login.mjs <host|url> [--timeo
 const host = raw.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/.*$/, '').toLowerCase();
 const url = /^https?:\/\//i.test(raw) ? raw : 'https://' + host + '/';
 const timeoutMs = Math.max(1, Number(argOf('timeout', 15))) * 60_000;
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-
 console.log(`[login] 打开浏览器：${url}`);
 console.log('[login] 请在窗口里完成登录（含验证码/2FA/扫码均可），完成后**关掉那个标签页**即可。');
 

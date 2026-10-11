@@ -15,6 +15,7 @@ import { WORKSPACE } from '../paths.mjs';
 import { emit } from '../emit.mjs';
 import { sessionContext } from '../session/store.mjs';
 import { freezeCss } from '../freeze.mjs';
+import { UA } from '../ua.mjs';
 
 const argv = process.argv.slice(2);
 const host = argv[0];
@@ -27,7 +28,6 @@ const PAGES = pagesIdx > -1 ? String(argv[pagesIdx + 1] || '').split(',').filter
 const widthsIdx = argv.indexOf('--widths');
 const WIDTHS = (widthsIdx > -1 ? argv[widthsIdx + 1] : '375,768').split(',').map(Number).filter(Boolean);
 
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const FREEZE = freezeCss({ consent: true });
 
 export async function snapPage(browser, host, page, widths = WIDTHS) {

@@ -20,11 +20,11 @@ import { recordLearned } from '../site-profile.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { readJson } from '../fsutil.mjs';
+import { UA } from '../ua.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/linker.mjs <host>', '站点 host');
 const BASE = join(WORKSPACE, host);
 const PAGES = join(BASE, 'pages');
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const FONT_EXT_SET = new Set(['woff2', 'woff', 'ttf', 'otf', 'eot']);
 
 const pages = existsSync(PAGES) ? readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'clone', 'index.html'))) : [];

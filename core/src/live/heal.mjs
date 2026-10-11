@@ -15,6 +15,7 @@
 import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, readFileSync, renameSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
+import { UA } from '../ua.mjs';
 
 const DYNAMIC_ENDPOINT = /^\/(?:_next\/image|_next\/data|api\/|cdn-cgi\/)/;
 
@@ -60,7 +61,7 @@ export async function healBundle({
         try {
           const res = await fetchImpl(origin + target, {
             headers: {
-              'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+              'user-agent': UA,
               accept: '*/*',
               referer: origin + '/',
             },

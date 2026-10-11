@@ -2,8 +2,8 @@
  * seo/report — 报告渲染（自包含 HTML + CSV），无外部依赖
  */
 import { CATEGORIES, SEVERITY_LABEL, SEVERITY_PENALTY } from './rules.mjs';
+import { esc } from '../html.mjs';
 
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 const scoreColor = (n) => n >= 90 ? '#059669' : n >= 75 ? '#b45309' : '#dc2626';
 

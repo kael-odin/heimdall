@@ -11,8 +11,8 @@ import { analyzeRawHtml } from './raw-html.mjs';
 import { isStructuralUrl } from './pagination.mjs';
 import { sessionContext } from '../session/store.mjs';
 import { canonUrl } from '../url-canon.mjs';
+import { UA } from '../ua.mjs';
 
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
 
 const VITALS_INIT = `

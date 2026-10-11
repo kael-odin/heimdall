@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { readJson } from '../fsutil.mjs';
+import { esc } from '../html.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/index-page.mjs <host>', '站点 host');
 const hostDir = process.argv[3] ?? host;
@@ -30,7 +31,6 @@ const pages = readdirSync(PAGES)
   }))
   .sort((a, b) => (b.score?.total ?? 0) - (a.score?.total ?? 0));
 
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 const gradeColor = (g) => g === 'A' ? '#34D399' : g === 'B' ? '#F59E0B' : '#EF4444';
 
 const cards = pages.map(p => {

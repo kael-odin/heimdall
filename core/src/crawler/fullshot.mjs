@@ -12,13 +12,12 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { UA } from '../ua.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/fullshot.mjs <host>', '站点 host');
 const only = process.argv[3];
 const BASE = join(WORKSPACE, host);
 const PAGES = join(BASE, 'pages');
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-
 const targets = [];
 for (const name of existsSync(PAGES) ? readdirSync(PAGES) : []) {
   if (only && name !== only) continue;

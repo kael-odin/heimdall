@@ -18,8 +18,9 @@
  * capture 走的是浏览器（带 Cookie、执行 JS），不能拿来和这里比。
  */
 import { createHash } from 'node:crypto';
+import { UA } from './ua.mjs';
 
-export const DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+export const DEFAULT_UA = UA;
 
 export function hashContent(text) {
   return createHash('sha256').update(text).digest('hex').slice(0, 32);

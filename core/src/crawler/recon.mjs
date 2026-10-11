@@ -17,6 +17,7 @@ import { WORKSPACE } from '../paths.mjs';
 import { sessionContext } from '../session/store.mjs';
 import { canonUrl, stableNodeId, asUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
+import { UA } from '../ua.mjs';
 
 const RAW_TARGET = requireArg(process.argv[2], 'node src/crawler/recon.mjs <url> [maxPages] [maxDepth]', '目标 URL');
 // 补协议：帮助文本里的例子就是 `recon apify.com 30`，不补的话下一行就崩
@@ -24,8 +25,6 @@ const TARGET = asUrl(RAW_TARGET);
 if (!TARGET) { console.error(`不是有效的网址：${RAW_TARGET}`); process.exit(2); }
 const MAX_PAGES = Number(process.argv[3] ?? 40);
 const MAX_DEPTH = Number(process.argv[4] ?? 2);
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-
 function hostOf(u) { return new URL(u).hostname; }
 function stripWww(h) { return h.replace(/^www\./, ''); }
 function pathOf(u) { try { return new URL(u).pathname.replace(/\/$/, '') || '/'; } catch { return '/'; } }
