@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="268" viewBox="0 0 1200 268" role="img" aria-labelledby="pipeTitle pipeDesc">
+  <title id="pipeTitle">确定性流水线：六段搬运，三处 AI 判断</title>
+  <desc id="pipeDesc">捕获渲染态 → 归档 CSSOM 与资产 → 构建镜像 → 多视口验证 → 审计与情报 → 部署交付。AI 只在三处介入判断：页面分类、像素差异的 CSS 校准、语义情报抽取；其余全部是确定性搬运。</desc>
+
+  <rect width="1200" height="268" rx="14" fill="#1F1E1D"/>
+  <rect x="0.5" y="0.5" width="1199" height="267" rx="13.5" fill="none" stroke="rgba(245,244,239,.10)"/>
+
+  <!-- 六段搬运：每段都是可单独重跑的命令 -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+    <g transform="translate(60 40)">
+      <rect x="0" y="0" width="160" height="98" rx="10" fill="#262624" stroke="rgba(245,244,239,.12)"/>
+      <text x="16" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">01</text>
+      <text x="16" y="60" font-size="20" fill="#F5F4EF">捕获</text>
+      <text x="16" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">capture</text>
+    </g>
+
+    <g transform="translate(244 40)">
+      <rect x="0" y="0" width="160" height="98" rx="10" fill="#262624" stroke="rgba(245,244,239,.12)"/>
+      <text x="16" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">02</text>
+      <text x="16" y="60" font-size="20" fill="#F5F4EF">归档</text>
+      <text x="16" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">archive</text>
+    </g>
+
+    <g transform="translate(428 40)">
+      <rect x="0" y="0" width="160" height="98" rx="10" fill="#262624" stroke="rgba(245,244,239,.12)"/>
+      <text x="16" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">03</text>
+      <text x="16" y="60" font-size="20" fill="#F5F4EF">构建</text>
+      <text x="16" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">clone</text>
+    </g>
+
+    <g transform="translate(612 40)">
+      <rect x="0" y="0" width="160" height="98" rx="10" fill="#262624" stroke="rgba(245,244,239,.12)"/>
+      <text x="16" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">04</text>
+      <text x="16" y="60" font-size="20" fill="#F5F4EF">验证</text>
+      <text x="16" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">verify</text>
+    </g>
+
+    <g transform="translate(796 40)">
+      <rect x="0" y="0" width="160" height="98" rx="10" fill="#262624" stroke="rgba(245,244,239,.12)"/>
+      <text x="16" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">05</text>
+      <text x="16" y="60" font-size="20" fill="#F5F4EF">审计</text>
+      <text x="16" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">audit</text>
+    </g>
+
+    <g transform="translate(980 40)">
+      <rect x="0" y="0" width="160" height="98" rx="10" fill="#262624" stroke="rgba(245,244,239,.12)"/>
+      <text x="16" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">06</text>
+      <text x="16" y="60" font-size="20" fill="#F5F4EF">交付</text>
+      <text x="16" y="84" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#94918A">deliver</text>
+    </g>
+  </g>
+
+  <!-- 连接：箭头用「细线 + 折角」，不用装饰性光效 -->
+  <g stroke="#F5F4EF" stroke-opacity="0.28" stroke-width="1.5" fill="none">
+    <path d="M220 89 h16"/><path d="M232 84 l5 5 -5 5"/>
+    <path d="M404 89 h16"/><path d="M416 84 l5 5 -5 5"/>
+    <path d="M588 89 h16"/><path d="M600 84 l5 5 -5 5"/>
+    <path d="M772 89 h16"/><path d="M784 84 l5 5 -5 5"/>
+    <path d="M956 89 h16"/><path d="M968 84 l5 5 -5 5"/>
+  </g>
+
+  <!-- AI 只用在这三处判断上 —— 这是项目最核心的一条主张，所以要写清楚、不能挤在一起 -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+    <circle cx="66" cy="176" r="5.5" fill="#CC785C"/>
+    <text x="86" y="183" font-size="19" fill="#F5F4EF">AI 只用在这三处判断上：</text>
+    <text x="300" y="183" font-size="19" fill="#B3B0A6">页面分类 · 像素差异的 CSS 校准 · 语义情报抽取</text>
+
+    <text x="60" y="228" font-size="18" fill="#94918A">搬运本身一步都不交给模型 —— 所以同一条命令跑两次结果一致，两个日期的包可以直接 diff。</text>
+  </g>
+</svg>

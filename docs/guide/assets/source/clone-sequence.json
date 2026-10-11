@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "点一次「整站克隆」，控制台与引擎之间发生了什么",
+    "locale": "zh-CN",
+    "output": ".archify/sequence-clone-20261012-121000/heimdall-clone-sequence.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/kael-odin/heimdall.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "a6951c68eb863deeefeeb4178cb1e17ae4fc9e71"
+    }
+  },
+  "participants": [
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "操作者",
+      "sublabel": "浏览器标签页"
+    },
+    {
+      "id": "console",
+      "type": "frontend",
+      "label": "控制台",
+      "sublabel": "Vue 3 SPA",
+      "sources": [
+        {
+          "path": "console/src/api.js",
+          "line": 48,
+          "label": "apiFetch：控制台唯一的出站通道"
+        }
+      ]
+    },
+    {
+      "id": "engine",
+      "type": "backend",
+      "label": "引擎",
+      "sublabel": "engine-server.mjs",
+      "sources": [
+        {
+          "path": "core/src/engine-server.mjs",
+          "line": 353,
+          "label": "spawnTask 拉子进程并解析 @@EVENT@@ 行"
+        }
+      ]
+    },
+    {
+      "id": "child",
+      "type": "backend",
+      "label": "queue.mjs",
+      "sublabel": "批量克隆子进程",
+      "sources": [
+        {
+          "path": "core/src/queue.mjs",
+          "line": 60,
+          "end_line": 78,
+          "label": "queue.json 记录每页状态，续跑跳过已完成页"
+        }
+      ]
+    },
+    {
+      "id": "origin",
+      "type": "external",
+      "label": "目标站点",
+      "sublabel": "原站公开页面"
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "任务与事件",
+      "sublabel": "sqlite WAL",
+      "sources": [
+        {
+          "path": "core/src/jobs/store.mjs",
+          "line": 92,
+          "end_line": 107,
+          "label": "引擎重启后把 running 标成 interrupted"
+        }
+      ]
+    }
+  ],
+  "segments": [
+    {
+      "from": 186,
+      "to": 408,
+      "label": "第一次整站克隆"
+    },
+    {
+      "from": 422,
+      "to": 564,
+      "label": "引擎重启之后：从断点续跑"
+    }
+  ],
+  "messages": [
+    {
+      "id": "click",
+      "from": "operator",
+      "to": "console",
+      "y": 198,
+      "label": "点「整站克隆」"
+    },
+    {
+      "id": "post",
+      "from": "console",
+      "to": "engine",
+      "y": 226,
+      "label": "POST /api/clone-site",
+      "variant": "emphasis"
+    },
+    {
+      "id": "spawn",
+      "from": "engine",
+      "to": "child",
+      "y": 254,
+      "label": "spawn queue.mjs",
+      "variant": "emphasis"
+    },
+    {
+      "id": "crawl",
+      "from": "child",
+      "to": "origin",
+      "y": 282,
+      "label": "逐页抓取渲染态"
+    },
+    {
+      "id": "event",
+      "from": "child",
+      "to": "engine",
+      "y": 310,
+      "label": "@@EVENT@@ 行（stdout）",
+      "variant": "return"
+    },
+    {
+      "id": "persist",
+      "from": "engine",
+      "to": "store",
+      "y": 338,
+      "label": "任务与事件落盘",
+      "variant": "dashed"
+    },
+    {
+      "id": "sse",
+      "from": "engine",
+      "to": "console",
+      "y": 366,
+      "label": "SSE：{done, total}",
+      "variant": "return"
+    },
+    {
+      "id": "render",
+      "from": "console",
+      "to": "operator",
+      "y": 394,
+      "label": "任务中心显示 n/total",
+      "variant": "return"
+    },
+    {
+      "id": "restart",
+      "from": "engine",
+      "to": "store",
+      "y": 438,
+      "label": "重启：读回未完成任务",
+      "variant": "dashed"
+    },
+    {
+      "id": "list",
+      "from": "console",
+      "to": "engine",
+      "y": 466,
+      "label": "GET /api/jobs → interrupted"
+    },
+    {
+      "id": "click2",
+      "from": "operator",
+      "to": "console",
+      "y": 494,
+      "label": "点「继续克隆」"
+    },
+    {
+      "id": "resume",
+      "from": "console",
+      "to": "engine",
+      "y": 522,
+      "label": "POST /api/clone-site {incremental:true}",
+      "variant": "emphasis"
+    },
+    {
+      "id": "skip",
+      "from": "engine",
+      "to": "child",
+      "y": 550,
+      "label": "spawn queue.mjs --incremental",
+      "variant": "emphasis"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "console",
+      "from": 212,
+      "to": 564,
+      "type": "frontend"
+    },
+    {
+      "participant": "engine",
+      "from": 222,
+      "to": 564,
+      "type": "backend"
+    },
+    {
+      "participant": "child",
+      "from": 248,
+      "to": 324,
+      "type": "backend"
+    },
+    {
+      "participant": "origin",
+      "from": 276,
+      "to": 288,
+      "type": "external"
+    },
+    {
+      "participant": "store",
+      "from": 332,
+      "to": 346,
+      "type": "database"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "关掉浏览器，任务照跑",
+      "items": [
+        "克隆的子进程由引擎持有，不依赖标签页",
+        "标签页只是订阅了 SSE 事件流"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "重启之后还能续",
+      "items": [
+        "任务与事件落 sqlite，重启后仍可查",
+        "queue.json 逐页记状态，续跑跳过已完成页"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "为什么不用轮询",
+      "items": [
+        "一条 SSE 连接推完所有阶段与日志",
+        "前端不必反复打接口，进度也不丢帧"
+      ]
+    }
+  ]
+}

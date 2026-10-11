@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="heroTitle heroDesc">
+  <title id="heroTitle">Heimdall · 站点复刻与审计工作台</title>
+  <desc id="heroDesc">给它一个网址，交回一张全站星图、一份像素级可核验的复刻，和一份竞品情报。右侧是它的核心视图：把站点画成星图，每个节点是一页，连线是站内链接，并给出实测还原度。</desc>
+
+  <!-- 配色取自控制台自身的令牌（console/src/style.css）：暖炭底 + 黏土橙强调，
+       所以这张图和产品界面是同一套语言，而不是另贴一张"科技感"海报。 -->
+  <defs>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2A2927"/>
+      <stop offset="1" stop-color="#1F1E1D"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="300" rx="14" fill="#1F1E1D"/>
+  <rect x="0.5" y="0.5" width="1199" height="299" rx="13.5" fill="none" stroke="rgba(245,244,239,.10)"/>
+
+  <!-- 左侧：身份与承诺 -->
+  <g transform="translate(64 62)">
+    <text x="0" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18"
+          fill="#94918A" letter-spacing="2.6">SITE ATLAS · 站点复刻与审计工作台</text>
+
+    <text x="0" y="62" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
+          font-size="58" font-weight="700" fill="#F5F4EF" letter-spacing="1.5">HEIMDALL</text>
+
+    <text x="0" y="112" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
+          font-size="21" fill="#B3B0A6">给它一个网址，交回三样东西：</text>
+    <text x="0" y="146" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
+          font-size="21" fill="#F5F4EF">全站星图 · 可核验的像素级复刻 · 竞品情报</text>
+
+    <text x="0" y="192" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18"
+          fill="#94918A" letter-spacing="0.6">66 条 SEO 规则 · 确定性流水线 · 零外部服务依赖</text>
+  </g>
+
+  <!-- 右侧：核心视图的缩影 —— 站点即星图，读数即证据 -->
+  <g transform="translate(660 40)">
+    <rect x="0" y="0" width="476" height="196" rx="10" fill="url(#fade)" stroke="rgba(245,244,239,.10)"/>
+
+    <!-- 连线：站内链接 -->
+    <g stroke="#F5F4EF" stroke-opacity="0.16" stroke-width="1">
+      <line x1="132" y1="86" x2="238" y2="52"/>
+      <line x1="132" y1="86" x2="300" y2="98"/>
+      <line x1="132" y1="86" x2="212" y2="150"/>
+      <line x1="132" y1="86" x2="72" y2="150"/>
+      <line x1="132" y1="86" x2="60" y2="62"/>
+      <line x1="238" y1="52" x2="332" y2="46"/>
+      <line x1="300" y1="98" x2="392" y2="74"/>
+      <line x1="300" y1="98" x2="352" y2="144"/>
+      <line x1="212" y1="150" x2="300" y2="98"/>
+      <line x1="212" y1="150" x2="128" y2="168"/>
+      <line x1="72" y1="150" x2="128" y2="168"/>
+      <line x1="60" y1="62" x2="238" y2="52"/>
+      <line x1="392" y1="74" x2="352" y2="144"/>
+    </g>
+
+    <!-- 节点：每页一个星球，大小 = 被链接的次数 -->
+    <g fill="#B3B0A6">
+      <circle cx="238" cy="52" r="8"/>
+      <circle cx="332" cy="46" r="4.5"/>
+      <circle cx="60" cy="62" r="6"/>
+      <circle cx="392" cy="74" r="5"/>
+      <circle cx="300" cy="98" r="7"/>
+      <circle cx="212" cy="150" r="6"/>
+      <circle cx="352" cy="144" r="4.5"/>
+      <circle cx="128" cy="168" r="5"/>
+      <circle cx="72" cy="150" r="4.5"/>
+    </g>
+    <!-- 首页：唯一的强调色节点（与控制台里同一处理） -->
+    <circle cx="132" cy="86" r="15" fill="#CC785C"/>
+    <circle cx="132" cy="86" r="15" fill="none" stroke="#CC785C" stroke-opacity="0.35" stroke-width="6"/>
+
+    <text x="24" y="178" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17"
+          fill="#94918A">拖动 = 旋转 · 滚轮 = 缩放 · 点击星球 = 打开该页</text>
+  </g>
+
+  <!-- 读数：和界面里一样，所有数字走等宽 -->
+  <g transform="translate(660 254)">
+    <text x="0" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#7FB08A">61 页已克隆</text>
+    <text x="132" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#94918A">·</text>
+    <text x="150" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#F5F4EF">1544 条站内链接</text>
+    <text x="330" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#94918A">·</text>
+    <text x="348" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#CC785C">平均视觉 99.1%</text>
+  </g>
+</svg>

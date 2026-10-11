@@ -43,6 +43,11 @@ const MENTION_FILES = [
   join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'mcp', 'server.mjs'),
   join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'console', 'src', 'Atlas.vue'),
   join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'console', 'src', 'DetailDock.vue'),
+  // 仓库首页与上手导览也是"用户可见处"。此前守卫只覆盖代码与界面，
+  // README 里的同一个数字没有任何东西看着 —— 而首页恰恰是最显眼、也最容易过期的地方。
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'README.md'),
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'guide', 'README.md'),
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'guide', '03-features.md'),
 ];
 
 test('规则数：CLI / MCP / 控制台里写的数字也必须与源码一致', () => {

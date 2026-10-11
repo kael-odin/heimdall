@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Heimdall 三层架构",
+    "locale": "zh-CN",
+    "subtitle": "控制台下达指令，引擎调度子进程，子进程按确定性流程搬运原站",
+    "output": ".archify/architecture-heimdall-20261012-120000/heimdall-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/kael-odin/heimdall.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "a6951c68eb863deeefeeb4178cb1e17ae4fc9e71"
+    },
+    "views": [
+      {
+        "id": "one-page",
+        "label": "只克隆一页",
+        "focus": [
+          "operator",
+          "console",
+          "engine",
+          "child",
+          "origin"
+        ],
+        "note": "不侦察整站，只跑这一个 URL 的完整流水线"
+      },
+      {
+        "id": "batch",
+        "label": "整站批处理",
+        "focus": [
+          "engine",
+          "child",
+          "jobs",
+          "cas",
+          "origin"
+        ],
+        "note": "队列持久化，中断后可从断点续跑"
+      },
+      {
+        "id": "deliver",
+        "label": "产出交付包",
+        "focus": [
+          "child",
+          "cas",
+          "deliverable"
+        ],
+        "note": "产物自包含、可离线部署、可 diff"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "操作者",
+      "sublabel": "浏览器",
+      "pos": [
+        40,
+        296
+      ],
+      "size": [
+        130,
+        62
+      ]
+    },
+    {
+      "id": "console",
+      "type": "frontend",
+      "label": "控制台",
+      "sublabel": "Vue 3 SPA · console/dist",
+      "pos": [
+        262,
+        296
+      ],
+      "size": [
+        168,
+        62
+      ],
+      "sources": [
+        {
+          "path": "console/src/api.js",
+          "line": 25,
+          "end_line": 56,
+          "label": "控制台与引擎之间的唯一通道"
+        }
+      ]
+    },
+    {
+      "id": "engine",
+      "type": "backend",
+      "label": "引擎",
+      "sublabel": "engine-server.mjs :8900",
+      "pos": [
+        522,
+        292
+      ],
+      "size": [
+        176,
+        70
+      ],
+      "sources": [
+        {
+          "path": "core/src/engine-server.mjs",
+          "line": 1525,
+          "end_line": 1539,
+          "label": "HTTP 入口与请求兜底"
+        },
+        {
+          "path": "core/src/engine-server.mjs",
+          "line": 353,
+          "label": "spawnTask：一切重活交给子进程"
+        }
+      ]
+    },
+    {
+      "id": "child",
+      "type": "backend",
+      "label": "任务子进程",
+      "sublabel": "pipeline · queue · export",
+      "pos": [
+        790,
+        292
+      ],
+      "size": [
+        172,
+        70
+      ],
+      "sources": [
+        {
+          "path": "core/src/pipeline.mjs",
+          "line": 1,
+          "end_line": 40,
+          "label": "单页流水线六段"
+        }
+      ]
+    },
+    {
+      "id": "origin",
+      "type": "external",
+      "label": "目标站点",
+      "sublabel": "原站公开页面",
+      "pos": [
+        1054,
+        296
+      ],
+      "size": [
+        146,
+        62
+      ],
+      "sources": [
+        {
+          "path": "core/src/crawler/capture.mjs",
+          "line": 50,
+          "label": "用真实浏览器抓渲染后的页面"
+        }
+      ]
+    },
+    {
+      "id": "jobs",
+      "type": "database",
+      "label": "任务与事件",
+      "sublabel": "sqlite WAL",
+      "pos": [
+        522,
+        130
+      ],
+      "size": [
+        176,
+        62
+      ],
+      "sources": [
+        {
+          "path": "core/src/jobs/store.mjs",
+          "line": 92,
+          "end_line": 100,
+          "label": "重启后任务历史不丢"
+        }
+      ]
+    },
+    {
+      "id": "cas",
+      "type": "database",
+      "label": "CAS 资产库",
+      "sublabel": "内容寻址 · 硬链接去重",
+      "pos": [
+        788,
+        130
+      ],
+      "size": [
+        176,
+        62
+      ],
+      "sources": [
+        {
+          "path": "core/src/store/cas.mjs",
+          "line": 23,
+          "label": "同一文件只存一份"
+        },
+        {
+          "path": "core/src/store/cas.mjs",
+          "line": 94,
+          "label": "nlink=1 才算孤儿"
+        }
+      ]
+    },
+    {
+      "id": "llm",
+      "type": "external",
+      "label": "大模型服务",
+      "sublabel": "可选 · 自备 Key",
+      "pos": [
+        522,
+        452
+      ],
+      "size": [
+        176,
+        58
+      ],
+      "sources": [
+        {
+          "path": "core/src/llm.mjs",
+          "line": 46,
+          "label": "未配置时流水线照跑，只是不做 AI 校准"
+        }
+      ]
+    },
+    {
+      "id": "deliverable",
+      "type": "cloud",
+      "label": "交付产物",
+      "sublabel": "deliverable/ 可离线部署",
+      "pos": [
+        788,
+        452
+      ],
+      "size": [
+        176,
+        58
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "open-page",
+      "from": "operator",
+      "to": "console",
+      "label": "打开页面",
+      "variant": "emphasis"
+    },
+    {
+      "id": "rest-sse",
+      "from": "console",
+      "to": "engine",
+      "label": "REST + SSE"
+    },
+    {
+      "id": "spawn",
+      "from": "engine",
+      "to": "child",
+      "label": "spawn 子进程"
+    },
+    {
+      "id": "crawl",
+      "from": "child",
+      "to": "origin",
+      "label": "抓取渲染态"
+    },
+    {
+      "id": "persist",
+      "from": "engine",
+      "to": "jobs",
+      "label": "任务事件落盘",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "cas-put",
+      "from": "child",
+      "to": "cas",
+      "label": "资产入库去重",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "ai",
+      "from": "engine",
+      "to": "llm",
+      "label": "AI 校准（可选）",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "bundle",
+      "from": "child",
+      "to": "deliverable",
+      "label": "产出交付包",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "三层怎么分",
+      "items": [
+        "core/ 是仪器：确定性搬运，零外部服务依赖",
+        "engine-server.mjs 是调度台：排队、记工、拉子进程，并同源托管控制台",
+        "console/ 是控制室：只通过 REST + SSE 与引擎对话"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "产物与存储",
+      "items": [
+        "workspace/ 放逐页产物，deliverable/ 放可部署包",
+        "CAS 内容寻址 + 硬链接：同一文件只占一份磁盘",
+        "两者都不进 git，可用 HEIMDALL_DATA_DIR 移出仓库"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "边界",
+      "items": [
+        "默认只监听 127.0.0.1，HEIMDALL_HOST 可改",
+        "登录态与原始抓包绝不走 /static 静态通道",
+        "大模型可选；Key 只落本地、永不回显"
+      ]
+    }
+  ]
+}

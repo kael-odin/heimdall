@@ -49,3 +49,6 @@ core/storage.json
 
 # Playwright MCP 工具的截图/快照（调试产物，不入库）
 .playwright-mcp/
+
+# archify 的工作目录：图源另存到 docs/guide/assets/source/ 并入库，其余是可重建的产物与证据
+.archify/
