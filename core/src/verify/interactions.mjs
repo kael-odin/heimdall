@@ -6,8 +6,9 @@
  *   通过 = 两侧都点击成功且（状态一致 或 视觉相似度 ≥ 0.98）
  */
 import { comparePngBuffers } from './compare.mjs';
+import { freezeCss } from '../freeze.mjs';
 
-export const FREEZE = `*,*::before,*::after{animation-duration:0s !important;animation-delay:0s !important;transition-duration:0s !important;transition-delay:0s !important;caret-color:transparent !important}`;
+export const FREEZE = freezeCss();
 
 export function discoverFn() {
   const visible = (el) => {

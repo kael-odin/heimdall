@@ -25,6 +25,26 @@ export function canonUrl(u) {
   } catch { return null; }
 }
 
+/**
+ * 用户手写的地址 → 可解析的 URL 字符串（补协议）。
+ *
+ * 为什么需要：CLI 的帮助文本写的就是 `heimdall recon apify.com 30` —— 不带协议。
+ * 而 recon 内部第一件事是 `new URL(TARGET).origin`，于是**照着自己的文档敲命令会崩**：
+ *   TypeError: Invalid URL  input: 'apify.com'
+ * 引擎那条路径没暴露这个问题，是因为请求体先过 `new URL(url).href`，不合法就直接
+ * 返回 400，用户看到的是"invalid url"。只有 CLI 这条路会真的抛栈。
+ *
+ * 规则：已有协议的原样保留（`http://localhost:3000` 不能被改成 https）；
+ * `//host/...` 补 `https:`；其余一律当主机名，补 `https://`。
+ * 返回 null 表示补完仍解析不了 —— 由调用方决定报错文案。
+ */
+export function asUrl(input) {
+  const s = String(input ?? '').trim();
+  if (!s) return null;
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : s.startsWith('//') ? 'https:' + s : 'https://' + s;
+  try { return new URL(candidate).href; } catch { return null; }
+}
+
 /** 归一化并判等（用于"这两条是不是同一页"这类判断） */
 export function sameCanonUrl(a, b) {
   const x = canonUrl(a), y = canonUrl(b);

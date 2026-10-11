@@ -7,19 +7,13 @@
  */
 import { chromium } from 'playwright';
 import { requireArg } from '../args.mjs';
+import { freezeCss } from '../freeze.mjs';
 
 const URL_ = requireArg(process.argv[2], 'node src/crawler/shot_clone.mjs <cloneUrl> <outPng>', '克隆页 URL');
 const OUT = requireArg(process.argv[3], 'node src/crawler/shot_clone.mjs <cloneUrl> <outPng>', '输出图片路径');
 
-const FREEZE_CSS = `
-  *, *::before, *::after {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-    transition-duration: 0s !important;
-    transition-delay: 0s !important;
-    caret-color: transparent !important;
-  }
-`;
+// 与原站截图同条件：镜像侧也要冻结，否则两边截在动画的不同帧上，比出来的是时序差
+const FREEZE_CSS = freezeCss();
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });

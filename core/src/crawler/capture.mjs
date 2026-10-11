@@ -21,8 +21,12 @@ import { collectCssRefs } from '../css-refs.mjs';
 import { MOTION_PROBE, MOTION_INIT, classifyMotion } from './motion.mjs';
 import { sessionContext } from '../session/store.mjs';
 import { requireArg } from '../args.mjs';
+import { asUrl } from '../url-canon.mjs';
+import { freezeCss, stripFreeze } from '../freeze.mjs';
 
-const TARGET = requireArg(process.argv[2], 'node src/crawler/capture.mjs <url> <outdir>', '目标 URL');
+const RAW_TARGET = requireArg(process.argv[2], 'node src/crawler/capture.mjs <url> <outdir>', '目标 URL');
+const TARGET = asUrl(RAW_TARGET);   // 直接跑这个脚本时也允许省略协议
+if (!TARGET) { console.error(`不是有效的网址：${RAW_TARGET}`); process.exit(2); }
 const OUT = requireArg(process.argv[3], 'node src/crawler/capture.mjs <url> <outdir>', '输出目录');
 const VIEWPORT = { width: 1440, height: 900 };
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
@@ -32,16 +36,9 @@ const profile = loadProfile(sanitizeHost(new URL(TARGET).hostname));
 const CAP = profile.capture;
 
 // 冻结策略：两侧截图同条件。CSS 动画全冻 + 轮播回初始位 + 输入框清空（打字机 JS 动画两边归零）
-const FREEZE_CSS = `
-  *, *::before, *::after {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-    transition-duration: 0s !important;
-    transition-delay: 0s !important;
-    caret-color: transparent !important;
-  }
-  .swiper-wrapper { transform: none !important; transition: none !important; }
-`;
+// ⚠ 它是**截图装置**，不是产物内容：dom.html 落盘时会把这份注入样式剥掉（见下面 stripFreeze），
+//   否则它会跟着 dom.html 进到交互镜像里，把"能看动效"的产物冻成静止的（见 freeze.mjs 顶部注释）
+const FREEZE_CSS = freezeCss({ swiper: true });
 
 mkdirSync(OUT, { recursive: true });
 mkdirSync(join(OUT, 'styles'), { recursive: true });
@@ -315,8 +312,10 @@ await page.screenshot({ path: join(OUT, 'shot-src.jpg'), type: 'jpeg', quality: 
 try { await page.screenshot({ path: join(OUT, 'shot-src-full.png'), fullPage: true, timeout: 90_000 }); }
 catch (e) { console.warn('  fullpage shot skipped:', String(e).slice(0, 80)); }
 
-// 渲染后 DOM（清场后定格版 —— 与克隆页同状态）
-const html = await page.content();
+// 渲染后 DOM（清场后定格版 —— 与克隆页同状态）。
+// 这里剥掉上面注入的冻结样式：它只是为了让截图可复现，写进 dom.html 就会被
+// build_live 原样带进交互镜像，把镜像里的动画与过渡全部冻死。
+const html = stripFreeze(await page.content());
 writeFileSync(join(OUT, 'dom.html'), html);
 console.log(`    dom.html ${(html.length / 1024).toFixed(0)}KB`);
 

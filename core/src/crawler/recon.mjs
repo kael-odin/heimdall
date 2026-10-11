@@ -15,10 +15,13 @@ import { loadProfile } from '../site-profile.mjs';
 import { classifyPath, compileExtraRules } from './classify.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { sessionContext } from '../session/store.mjs';
-import { canonUrl, stableNodeId } from '../url-canon.mjs';
+import { canonUrl, stableNodeId, asUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
 
-const TARGET = requireArg(process.argv[2], 'node src/crawler/recon.mjs <url> [maxPages] [maxDepth]', '目标 URL');
+const RAW_TARGET = requireArg(process.argv[2], 'node src/crawler/recon.mjs <url> [maxPages] [maxDepth]', '目标 URL');
+// 补协议：帮助文本里的例子就是 `recon apify.com 30`，不补的话下一行就崩
+const TARGET = asUrl(RAW_TARGET);
+if (!TARGET) { console.error(`不是有效的网址：${RAW_TARGET}`); process.exit(2); }
 const MAX_PAGES = Number(process.argv[3] ?? 40);
 const MAX_DEPTH = Number(process.argv[4] ?? 2);
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';

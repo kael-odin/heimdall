@@ -8,7 +8,31 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canonUrl, sameCanonUrl, stableNodeId } from '../src/url-canon.mjs';
+import { canonUrl, sameCanonUrl, stableNodeId, asUrl } from '../src/url-canon.mjs';
+
+/**
+ * 补协议这条来自一个真实的崩溃：CLI 帮助文本写的例子就是 `heimdall recon apify.com 30`，
+ * 而 recon 第一件事是 `new URL(TARGET).origin` —— 照着自己的文档敲命令会抛
+ * `TypeError: Invalid URL  input: 'apify.com'`。引擎那条路没暴露，是因为它先 `new URL(url).href`
+ * 把非法输入变成 400，只有 CLI 会真的崩栈。
+ */
+test('asUrl：裸主机名补 https', () => {
+  assert.equal(asUrl('apify.com'), 'https://apify.com/');
+  assert.equal(asUrl('apify.com/actors'), 'https://apify.com/actors');
+  assert.equal(asUrl('  example.com  '), 'https://example.com/', '两侧空白要去掉');
+});
+
+test('asUrl：已有协议的原样保留（local http 不能被升级成 https）', () => {
+  assert.equal(asUrl('http://localhost:3000'), 'http://localhost:3000/');
+  assert.equal(asUrl('https://example.com/x'), 'https://example.com/x');
+  assert.equal(asUrl('//example.com/x'), 'https://example.com/x', '协议相对补 https');
+});
+
+test('asUrl：补完仍不可解析时返回 null，由调用方决定文案', () => {
+  assert.equal(asUrl(''), null);
+  assert.equal(asUrl(null), null);
+  assert.equal(asUrl('http://'), null);
+});
 
 test('尾斜杠：去掉，但根路径保留', () => {
   assert.equal(canonUrl('https://a.test/x/'), 'https://a.test/x');

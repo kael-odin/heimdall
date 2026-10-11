@@ -17,11 +17,14 @@ import { getEnv } from './env.mjs';
 import { requireArg } from './args.mjs';
 import { sourceFingerprint } from './fingerprint.mjs';
 import { WORKSPACE } from './paths.mjs';
+import { asUrl } from './url-canon.mjs';
 import { emit } from './emit.mjs';
 const ENV = getEnv();
 
 const USAGE = 'node src/pipeline.mjs <url> [pageName]';
-const URL_ = requireArg(process.argv[2], USAGE, '目标 URL');
+const RAW_URL = requireArg(process.argv[2], USAGE, '目标 URL');
+const URL_ = asUrl(RAW_URL);   // `forge example.com home` 这种不带协议的写法同样可用
+if (!URL_) { console.error(`不是有效的网址：${RAW_URL}`); process.exit(2); }
 const NAME = process.argv[3] ?? 'page';
 
 const log = (...a) => console.error(...a);

@@ -61,6 +61,24 @@ if (existsSync(queuePath)) {
   console.log(`new queue: ${queue.length} pages (max ${MAX})`);
 }
 
+// ---------- 与 atlas 对齐 ----------
+// 队列一旦落盘就再也没看过 atlas，于是"重新侦察发现了新页"这件事永远进不了队列 ——
+// 全站克隆会一直停在第一次侦察的那批页上，而且**看起来像已经跑完了**。
+// 这里把 atlas 里有、队列里没有的页补进来（按 url 排序，保证同样输入得到同样队列）。
+{
+  const known = new Set(queue.map(q => q.name));
+  const added = atlas.nodes
+    .filter(n => !profile.queue.excludeTypes.includes(n.type))
+    .map(n => ({ url: n.url, name: engineName(n.url), type: n.type, status: 'pending', addedBy: 'recon-sync' }))
+    .filter(q => !known.has(q.name) && (known.add(q.name), true))
+    .sort((a, b) => a.url.localeCompare(b.url));
+  if (added.length) {
+    queue.push(...added);
+    console.log(`recon-sync: 侦察到 ${added.length} 个队列里没有的页 → 补入队列（共 ${queue.length}）`);
+    for (const q of added) console.log(`  + ${q.name}`);
+  }
+}
+
 const hasProduct = (name) => existsSync(join(BASE, 'pages', name, 'clone', 'index.html')) && existsSync(join(BASE, 'pages', name, 'score.json'));
 if (FORCE) for (const q of queue) q.status = 'pending';   // 强制重锻：全部重新排队
 else if (MISSING_HAR) {

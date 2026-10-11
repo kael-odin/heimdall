@@ -21,6 +21,7 @@ import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { prefixRootRelative } from '../live/live-html.mjs';
+import { stripFreeze } from '../freeze.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/build_live.mjs <host> [page]', '站点 host');
 const only = process.argv[3];
@@ -71,6 +72,11 @@ for (const name of pages) {
     html = html.split(h + '/').join(lmPrefix + '/');
     html = html.split(h).join(lmPrefix);
   }
+
+  // 1.4) 剥掉截图冻结样式 —— **这里是"能看动效"的产物，冻住就自相矛盾了**。
+  //      新产物在 capture 阶段已经不写它了（见 freeze.mjs）；这一步是给**已产出的**旧产物兜底，
+  //      让 `live <host> --rebuild` 就能把历史上被冻住的那批镜像修好，不必重爬整站。
+  html = stripFreeze(html);
 
   // 1.5) 剥挂件脚本 —— **必须在 bootstrap 注入之前**：bootstrap 自身含 mixpanel/CookieConsent 等
   //      关键词，后剥会把 bootstrap 一起删掉。挂件在镜像环境不可达或必炸，由 bootstrap stub 兜住全局调用。

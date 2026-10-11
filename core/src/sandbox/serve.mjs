@@ -20,6 +20,7 @@ import { WORKSPACE } from '../paths.mjs';
 import { sandboxPaths, injectSandboxEdits, renderEditorPage } from './core.mjs';
 import { comparePngBuffers } from '../verify/compare.mjs';
 import { makeArgs } from '../args.mjs';
+import { freezeCss } from '../freeze.mjs';
 
 const argv = process.argv.slice(2);
 const { argOf } = makeArgs(argv);
@@ -43,7 +44,7 @@ const mimeOf = (f) => MIME[extname(f).toLowerCase()] ?? 'application/octet-strea
 const send = (res, code, body, type = 'text/plain; charset=utf-8') => { const buf = Buffer.isBuffer(body) ? body : Buffer.from(String(body)); res.writeHead(code, { 'Content-Type': type, 'Content-Length': buf.length, 'Cache-Control': 'no-cache' }); res.end(buf); };
 const sendFile = (res, file) => { if (!file || !existsSync(file)) return false; try { if (!statSync(file).isFile()) return false; } catch { return false; } send(res, 200, readFileSync(file), mimeOf(file)); return true; };
 const safeJoin = (root, rel) => { const f = normalize(join(root, rel)); const r = relative(root, f); return r && !r.startsWith('..') && !isAbsolute(r) ? f : null; };
-const FREEZE = `*,*::before,*::after{animation-duration:0s !important;animation-delay:0s !important;transition-duration:0s !important;transition-delay:0s !important;caret-color:transparent !important}`;
+const FREEZE = freezeCss();
 
 async function shoot(browser, url) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
