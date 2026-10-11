@@ -124,12 +124,30 @@
 
 ## 已在做但未完成
 
+- [ ] **Framer 的 SSR 变体块在静态镜像里不绘制**（2026-10-12，framer.com/design 一页）。
+      现象：整块作品轮播是黑的，但 DOM 里 58 张图**全部本地化到位**、`complete`、
+      `naturalWidth` 正常、`drawImage` 到 canvas 取到的像素也是对的 —— 只是合不成图。
+      结构线索：链路上有 Framer 自己的一套
+      `div.ssr-variant.hidden-<hash>`（`display:contents`，高度 0），
+      按视口选哪一份变体是**脚本加类**决定的，镜像里没有脚本。
+      `img.checkVisibility()` 返回 false 而 `visibility/opacity` 都是可见值 —— 仍是 JS 依赖。
+      页面分数是诚实的（像素 69%、`dynamicShare` 0.61 → 判为动态噪声为主），
+      所以不急；但值得看一眼能不能靠"把命中的那份变体显式化"解决。
+
 - [ ] 更多站点的实跑验证。已有样本（全部 A 级）：
       cn.vuejs.org 100.00%（VitePress/中文）· vitest.dev 99.96%（VitePress）·
       svelte.dev 100.00% / 99.91%（SvelteKit）· angular.dev 100.00% / 99.76%（Angular）·
       crawlee.dev 99.50%（Docusaurus）· ant.design 95.96%（React + CSS-in-JS，差异弥散）·
       apify.com 61 页 ~99.1% · thordata.com 31 页 ~96.1%。
       Angular 那一轮翻出两个通用缺陷（`<base>` 改基、跨域 @font-face 缺失），已修 —— 见 HANDOFF §23.5
+
+- [ ] **跨域样式表的补取只覆盖顶层表**。`@import` 嵌进来的表不会单独出现在
+      `document.styleSheets` 里，也就不会走补取；实测 linear/framer/vercel 都没有命中，
+      但换个站可能会。判据现成：补取回来的原文里如果还有 `@import`，就该接着抓。
+
+- [ ] 受跨域 CSS 缺失影响但**尚未重跑**的页面（丢了 Google Fonts / GSI 的一行小表，
+      观感影响很小）：thordata 36 页 · angular.dev 2 页 · vitest.dev 1 页 · framer.com 5 页。
+      重跑即可修好（`queue <host> --force`）；linear.app 15 页已重跑。
 
 ---
 
