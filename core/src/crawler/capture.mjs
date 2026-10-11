@@ -460,9 +460,18 @@ for (const u of manifest.css) {
   cssMap[u] = 'styles/' + (new URL(u).pathname.split('/').pop() || 'link.css');
 }
 writeFileSync(join(OUT, 'asset-map.json'), JSON.stringify({ cssMap, imgMap, resMap, resources: manifest.resources ?? [], css: manifest.css, imgs: manifest.imgs, favicon: manifest.favicon }, null, 2));
+// 补取之后仍然读不到的跨域样式表。
+// 这一项必须写进缺口清单：它以前只躺在 cssom-refs.json 的 sheets[].error 里，没有任何人看，
+// 而丢掉的可能是整站的地基（reset / 设计变量 / 布局）—— 克隆页会静默退化成默认样式。
+const unreadableSheets = cssom.sheets.filter(s => s.error).map(s => s.href ?? '(inline)');
+if (unreadableSheets.length) {
+  console.warn(`    ⚠ 仍有 ${unreadableSheets.length} 份样式表读不到（跨域且补取失败）—— 这几页的样式可能不完整`);
+  for (const u of unreadableSheets.slice(0, 5)) console.warn(`      ${u}`);
+}
 writeFileSync(join(OUT, 'gaps.json'), JSON.stringify({
   failed,
   notCaptured: (manifest.resources ?? []).filter(r => r.kinds.some(k => SKIP_KINDS.has(k))).map(r => ({ url: r.url, kinds: r.kinds })),
+  cssSheetsUnreadable: unreadableSheets,
   notes: ['iframe/embed 保持在线引用（未本地化）', 'canvas/WebGL 与 WebSocket 不在静态捕获范围'],
 }, null, 2));
 

@@ -1550,3 +1550,35 @@ thordata 35/35 页克隆完成；apify 74 页（65 done / 9 失败，均为瞬�
 单独重跑已成功）；新侦察并克隆 linear / framer / vercel / tailwindcss / supabase / stripe。
 
 测试 410/410；smoke 通过（fixture 加了动效后仍是 visual 100.0% / dom 100.0%）。
+
+### 31.7 跨域样式表被静默丢掉 —— 丢掉的恰恰是站点的地基
+
+服务端土办法：拿新加的 linear.app 当试验田，第一眼就看到 4 页 C 级、
+像素 59% 而 **DOM 100%**、动态噪声还只有 0–9%。也就是说差的不是动画，是别的东西。
+把原站截图和镜像截图摆在一起看：镜像是一个**默认样式的竖排链接列表**。
+
+根因：`sheet.cssRules` 对**跨域样式表**直接抛异常，原来的处理是跳过这个表、
+在 cssom-refs.json 里记一条 error。而 linear.app 把 CSS 放在 `static.linear.app`，
+**58 份样式表全被跳过**（reset / 设计变量 / 布局 / Header / Grid 全在里面）。
+它不报任何错：DOM 分 100%（DOM 确实没错）、缺口清单为空 —— 只有像素分掉到 59%，
+而那还会被读成"这个站动画多"。
+
+修法：跨域表用 Playwright 的 request 上下文按 URL 取**原文**补回来（不受 CORS 限制，
+带同一份 cookie）；相对 `url()` 的基准天然正确，因为 collectCssRefs 用的是 `sheet.href`。
+
+**实测 linear.app/build**：像素 59.0% → **97.8%**，总分 79.5(C) → **98.9(A)**；
+错位像素 531,490 → 29,052（少 18 倍）；最大差异块 384,980px → 2,904px；
+4 个字体本地化到位、缺口清单为空。
+
+守卫做在离线冒烟里：fixture 站点改成**两个 origin**（页面一个端口、样式表另一个端口），
+逼出这条代码路径。已验证会红：摘掉补取 → `[smoke] FAIL — CSS 关键帧必须保留在镜像样式表里`。
+
+**为什么以前没撞上**：之前碰到跨域表都是 `accounts.google.com` / `fonts.googleapis.com`
+这种一行的小表，丢了不影响观感。这个 bug 是"新站点暴露老问题"的典型 ——
+所以"多克隆一些不同的站点"本身就是一种测试手段，不只是攒素材。
+
+顺带把这类失败**摆到明面上**：补取之后仍读不到的样式表，进 `gaps.json`
+的 `cssSheetsUnreadable` 并打警告 —— 它以前只躺在 cssom-refs.json 的一个字段里，没人看。
+
+**受影响但尚未重跑的**：thordata 36 页 / angular.dev 2 页 / vitest.dev 1 页 / framer.com 5 页
+（丢的都是 Google Fonts 或 GSI 的一行小表）；linear.app 15 页已用 `queue linear.app --force` 重跑。
