@@ -1,4 +1,4 @@
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
@@ -27,4 +27,28 @@ export const DELIVERABLE = join(DATA_ROOT, 'deliverable');
 export function localDateStamp(d = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * 是否在某个根目录之内。**必须用 `relative` 判，不能用字符串前缀** ——
+ * `'D:\\data' + '\\..\\..\\Windows'` 也是以 `'D:\\data'` 开头的，
+ * 于是"前缀检查"会被 `..` 绕过成任意路径（`/api/reveal` 曾经就是这么写的）。
+ */
+export function isInside(root, file) {
+  const rel = relative(resolve(root), resolve(file));
+  return !!rel && !rel.startsWith('..') && !isAbsolute(rel);
+}
+
+/**
+ * 静态服务**永不外发**的文件名。
+ *
+ *   · `session.json` —— 登录凭据（Playwright storageState，等同账号）
+ *   · `network.har`  —— 未脱敏的原始抓包，带 cookie 与 authorization 头
+ *     （交付包里的 HAR 是清洗过的，工作区里这份不是）
+ *
+ * `/static/**` 与 workspace 兜底都是"把目录原样发出去"的通道，
+ * 只凭"在 workspace 内"这一条拦不住它们。
+ */
+export function isSecretFile(file) {
+  return /(^|[/\\])(session\.json|network\.har)$/i.test(String(file));
 }

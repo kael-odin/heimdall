@@ -24,7 +24,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, rmSync, createReadStream } from 'node:fs';
 import { join, dirname, extname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WORKSPACE, DATA_ROOT, DELIVERABLE } from './paths.mjs';
+import { WORKSPACE, DATA_ROOT, DELIVERABLE, isInside, isSecretFile } from './paths.mjs';
 import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
 import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
 import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
@@ -225,12 +225,19 @@ const pageFor = (u) => {
     return p || 'home';
   } catch { return 'home'; }
 };
-const isInsideWorkspace = (file) => {
-  const rel = relative(WORKSPACE, file);
-  return !!rel && !rel.startsWith('..') && !isAbsolute(rel);
-};
+// 路径归属判断统一走 paths.mjs 的 isInside（用 relative 判，前缀判断会被 `..` 绕过）
+const isInsideWorkspace = (file) => isInside(WORKSPACE, file);
+const isInsideDataRoot = (file) => isInside(DATA_ROOT, file);
 
-/** task = {id,kind:'recon'|'forge',url,status,events:[],subs:Set,child,atlasPath?,pageName?} */
+/** 请求体上限（8MB）：本工具的 API 都是小 JSON，唯一的大体量走的是文件而不是请求体 */
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
+
+/** 保留多少个任务对象。终态任务超量后按创建时间淘汰 —— 事件数组会一直涨，不清就是内存泄漏 */
+const MAX_TASKS = 300;
+
+/**
+ * task = {id,kind:'recon'|'forge',url,status,events:[],subs:Set,child,atlasPath?,pageName?}
+ */
 const tasks = new Map();
 let seq = 0;
 let runningRecon = null;
@@ -304,6 +311,15 @@ function makeTask(kind, url) {
   const t = { id, kind, url, status: 'running', events: [], logs: [], subs: new Set(), child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false, killed: null, timeoutMs: 0, stallMs: 0 };
   tasks.set(id, t);
   jobStore?.upsert({ id, kind, url, status: 'running', createdAt: t.createdAt });
+  // 淘汰：终态任务超过上限就按创建时间丢掉最老的。每个任务的 events/logs 只涨不消，
+  // 长跑（或长时间不重启引擎）必然涨内存 —— 而任务列表本来就是"最近发生过什么"。
+  if (tasks.size > MAX_TASKS) {
+    const finished = [...tasks.values()].filter(x => x.status !== 'running').sort((a, b) => a.createdAt - b.createdAt);
+    for (const old of finished.slice(0, tasks.size - MAX_TASKS)) {
+      try { old.subs.clear(); } catch { /* 订阅者已经断了 */ }
+      tasks.delete(old.id);
+    }
+  }
   return t;
 }
 
@@ -511,6 +527,14 @@ createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   applyCors(req, res);
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); res.end(); return; }
+
+  // 请求体上限。十来个 POST 处理器各自 `req.on('data')` 累加 body，谁都没有上限 ——
+  // 一个声明了 2GB 的请求就够把引擎撑爆。这里用 Content-Length 提前拦掉这种请求
+  // （分块传输没有长度头，本地工具场景下不追；真要堵就得所有处理器共用一个 readBody）。
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    const declared = Number(req.headers['content-length'] ?? 0);
+    if (declared > MAX_BODY_BYTES) return json(res, 413, { error: 'body too large', limit: MAX_BODY_BYTES });
+  }
 
   if (!authorized(req, u) && (u.pathname.startsWith('/api/') || u.pathname.startsWith('/px/'))) {
     return json(res, 401, { error: 'unauthorized' });
@@ -746,7 +770,7 @@ createServer(async (req, res) => {
       let target = '';
       try { ({ path: target } = JSON.parse(body || '{}')); } catch {}
       const abs = isAbsolute(String(target)) ? String(target) : join(DATA_ROOT, String(target));
-      if (!isInsideWorkspace(abs) && !abs.startsWith(DATA_ROOT)) return json(res, 403, { error: 'path outside data root' });
+      if (!isInsideDataRoot(abs)) return json(res, 403, { error: 'path outside data root' });
       if (!existsSync(abs)) return json(res, 404, { error: 'not found', path: abs });
       const cmd = process.platform === 'win32' ? ['explorer.exe', ['/select,' + abs]]
         : process.platform === 'darwin' ? ['open', ['-R', abs]]
@@ -859,6 +883,7 @@ createServer(async (req, res) => {
     if (rel.endsWith('/')) rel += 'index.html';
     const file = join(WORKSPACE, rel);
     if (!isInsideWorkspace(file) || !existsSync(file)) return json(res, 404, { error: 'nf' });
+    if (isSecretFile(file)) return json(res, 403, { error: 'not served', hint: '登录凭据与原始抓包不通过静态通道外发' });
     return sendFile(req, res, file);
   }
 
@@ -1093,7 +1118,11 @@ createServer(async (req, res) => {
           failures: atlas?.failures?.length ?? 0,
         });
       }
-    } catch {}
+    } catch (e) {
+      // 静默返回空清单是最坏的失败方式：控制台的站点下拉会**变空**，看起来像"站点全没了"，
+      // 而真正的原因（某个产物文件读不动、权限、磁盘）一个字都看不到。
+      return json(res, 500, { error: 'scan failed', detail: String(e).slice(0, 200), sites });
+    }
     return json(res, 200, { sites });
   }
 
@@ -1327,7 +1356,7 @@ createServer(async (req, res) => {
     const firstSeg = u.pathname.split('/')[1] ?? '';
     if (firstSeg && !firstSeg.startsWith('.')) {
       const file = join(WORKSPACE, decodeURIComponent(u.pathname.replace(/^\/+/, '')));
-      if (isInsideWorkspace(file) && existsSync(file)) {
+      if (isInsideWorkspace(file) && existsSync(file) && !isSecretFile(file)) {
         try {
           if (statSync(file).isFile()) return sendFile(req, res, file);
         } catch {}

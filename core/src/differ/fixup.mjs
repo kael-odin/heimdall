@@ -68,9 +68,20 @@ function injectFixLink() {
   writeFileSync(CLONE_HTML, html);
 }
 
+/**
+ * 落盘"这次没做 AI 校准、以及为什么"。
+ *
+ * 此前三条提前返回（模型没启用 / 缺产物 / 可修性门控）**什么都不写** ——
+ * 于是任务结束、页面刷新之后，界面上只剩一个空的"AI 校准"格子，
+ * 用户没法区分"校准跑了但没改动"和"压根没跑"。日志里那句原因随进程一起没了。
+ */
+const writeSkip = (skipped, extra = {}) => {
+  try { writeFileSync(join(DIR, 'fixup-history.json'), JSON.stringify({ skipped, at: new Date().toISOString(), rounds: [], ...extra }, null, 2)); } catch { /* 写不进去不影响克隆本身 */ }
+};
+
 async function main() {
-  if (!llmEnabled()) { log('[fixup] LLM disabled (.env / HEIMDALL_LLM!=1) — skip'); return; }
-  if (!existsSync(CLONE_HTML) || !existsSync(join(DIR, 'shot-clone.png'))) { log('[fixup] missing clone artifacts — skip'); return; }
+  if (!llmEnabled()) { log('[fixup] LLM disabled (.env / HEIMDALL_LLM!=1) — skip'); writeSkip('llm-disabled', { detail: '没有启用模型服务（core/.env 的 HEIMDALL_LLM）' }); return; }
+  if (!existsSync(CLONE_HTML) || !existsSync(join(DIR, 'shot-clone.png'))) { log('[fixup] missing clone artifacts — skip'); writeSkip('no-artifacts', { detail: '缺少克隆产物（clone/index.html 或 shot-clone.png）' }); return; }
 
   // 可修性门控（替代废弃的 pixel 单维门控）：静态差异太少 = 分数损失主要是动画噪声，AI 改 CSS 救不了
   const sc0 = readScore();
@@ -80,6 +91,11 @@ async function main() {
   if (staticShare < MIN_STATIC || refinable0 < MIN_REFINABLE) {
     log(`[fixup] skip: static ${(staticShare * 100).toFixed(2)}% of viewport (min ${(MIN_STATIC * 100).toFixed(2)}%), refinable ${(refinable0 * 100).toFixed(0)}% (min ${(MIN_REFINABLE * 100).toFixed(0)}%) — remaining diff is animation noise`);
     emit({ kind: 'fixup-skip', reason: 'noise', staticShare, refinable: refinable0 });
+    writeSkip('noise', {
+      staticShare: +(+staticShare).toFixed(4),
+      refinable: +(+refinable0).toFixed(4),
+      detail: `剩余差异里可修的静态部分只有 ${(staticShare * 100).toFixed(1)}%，其余是动画/时序噪声 —— 改 CSS 救不了`,
+    });
     return;
   }
   log(`[fixup] refinable ${(refinable0 * 100).toFixed(0)}% (static ${b0.staticPx}px) — worth calibrating`);

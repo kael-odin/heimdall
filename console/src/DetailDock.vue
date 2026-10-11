@@ -34,6 +34,14 @@ const STAGES = { capture: '捕获骨架', build: '注入皮肤', shot: '渲染�
  * 动效驱动画像（捕获阶段采，见 core/src/crawler/motion.mjs）。
  * 只列非零项：一张全是 0 的表比一句话"未检出动效"更难读。
  */
+/** fixup 提前返回的原因（core/src/differ/fixup.mjs 的 writeSkip 写进 fixup-history.json 的 skipped） */
+const FIXUP_SKIP_CN = {
+  'llm-disabled': '模型服务未启用（core/.env 的 HEIMDALL_LLM）',
+  'no-artifacts': '缺少克隆产物，没有可比对的两张截图',
+  noise: '剩余差异主要是动画/时序噪声，改 CSS 救不了',
+};
+const skipReasonCn = (k) => FIXUP_SKIP_CN[k] ?? String(k ?? '');
+
 const motion = computed(() => props.pageMeta[props.selected?.id]?.motion ?? null);
 const motionRows = computed(() => Object.values(motion.value?.drivers ?? {}).filter(d => d.count > 0));
 
@@ -398,6 +406,17 @@ function switchTab(t) {
           <div class="q-row" v-for="r in detailQuality.fixup.rounds" :key="r.round"><span class="q-k">第 {{ r.round }} 轮</span><span class="q-v">{{ r.before }}% → {{ r.after }}% <b :class="r.kept ? 'ok' : 'bad'">{{ r.kept ? '保留' : '回滚' }}</b></span></div>
         </div>
       </div>
+      <!-- 没跑校准也是结论，要说出来：此前三条提前返回什么都不写，界面上只剩一个空格子，
+           用户分不清"校准跑了但没改动"和"压根没跑" -->
+      <div class="ov-sec" v-else-if="detailQuality.fixup">
+        <div class="panel-sec-name">AI 校准</div>
+        <div class="q-list">
+          <div class="q-row">
+            <span class="q-k">未运行</span>
+            <span class="q-v">{{ detailQuality.fixup.detail || skipReasonCn(detailQuality.fixup.skipped) || '这次克隆没留下校准记录（旧版本引擎）' }}</span>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 
@@ -406,6 +425,31 @@ function switchTab(t) {
     <div class="forge-cta" v-if="!forge && selected.forgeState !== 'done' && selected.forgeState !== 'running'">
       <button class="forge-btn" @click="$emit('open-forge')">⚡ 开始克隆此页</button>
       <div class="forge-note">六阶段：捕获骨架 → 注入皮肤 → 渲染校准 → AI 校准 → 像素定谳 → 情报入库</div>
+    </div>
+
+    <!-- 任务在跑、但我们手上没有它的任务对象（点开的是"克隆中"的页，或刷新过页面）。
+         此前这块什么都不渲染 —— 用户点进"克隆中"的页面看到的是空面板。 -->
+    <div class="forge-cta" v-if="!forge && selected.forgeState === 'running'">
+      <div class="forge-note">这一页正在克隆中。实时进度与日志在右下角的<b>任务中心</b>（点一下即可打开）。</div>
+    </div>
+
+    <!-- 校准结论：任务结束后这里要能回答"AI 校准做了什么 / 为什么没做"。
+         曲线此前只在任务进行中的面板里，一结束就"消失"了（其实是被写进了 fixup-history.json，
+         只是没人读）—— 用户看到的是一次性动画。 -->
+    <div class="ov-sec" v-if="selected.forgeState === 'done' && !forge && detailQuality.fixup">
+      <div class="panel-sec-name">AI 校准</div>
+      <div class="q-list">
+        <template v-if="detailQuality.fixup.rounds?.length">
+          <div class="q-row" v-for="r in detailQuality.fixup.rounds" :key="r.round">
+            <span class="q-k">第 {{ r.round }} 轮</span>
+            <span class="q-v">{{ r.before }}% → {{ r.after }}% <b :class="r.kept ? 'ok' : 'bad'">{{ r.kept ? '保留' : '回滚' }}</b></span>
+          </div>
+        </template>
+        <div class="q-row" v-else>
+          <span class="q-k">未运行</span>
+          <span class="q-v">{{ detailQuality.fixup.detail || skipReasonCn(detailQuality.fixup.skipped) || '这次克隆没留下校准记录（旧版本引擎）' }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- 已有产物：把证据摆出来。

@@ -48,5 +48,8 @@ export const KIND_CN = {
   forge: '克隆',
   clone: '整站克隆',
   session: '登录会话',
+  upgrade: '响应式升级',
+  storage: '磁盘盘点',
+  deliver: '交付包整理',
 };
 export const kindCn = (k) => KIND_CN[k] ?? '克隆';

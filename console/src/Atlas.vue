@@ -149,6 +149,12 @@ const VIEWS = [
   { id: 'settings', icon: '⚙', label: '设置', hint: '模型服务、引擎地址与 Token、界面偏好' },
 ];
 const tableNodes = ref([]);                       // 页面表格的响应式快照（含孤儿已克隆页）
+/**
+ * 逐页状态是否还在加载。
+ * 数字没到之前**不能显示 0** ——"这站一页都没克隆"和"还没算完"是两件事，
+ * 而用户会把前者当真（实测：61 页的站点第一眼显示"0 页已克隆 · 平均视觉 —"）。
+ */
+const pagesLoading = ref(false);
 const extraNodes = ref([]);                       // 已克隆但不在 atlas 中的页面（补全清单）
 const pageScores = reactive({});                  // nodeId -> score.json（懒加载）
 const pageVerify = reactive({});                  // nodeId -> verify.json（多视口，懒加载）
@@ -160,6 +166,15 @@ const apiBaseInput = ref(localStorage.getItem('heimdall-api') ?? API);
 // 报告页已有专属卡片的报告 id —— 不能让它们在"设计资产"里再出现一遍
 const CARDED_REPORTS = new Set(['archive', 'compare', 'seo', 'watch', 'assets', 'intel', 'verify']);
 const designReports = computed(() => reportIndex.value.filter(r => r.available && !CARDED_REPORTS.has(r.id)));
+
+/**
+ * 按 id 查报告索引。引擎已经算好了 `available` 与它的真实 URL（`/static/<host>/…`），
+ * 卡片**不要自己拼路径** —— 拼出来的那一份既可能 404，又是同一件事的第二份实现
+ * （这个仓库里 pageNameOf / liveUrl 都吃过这个亏）。
+ */
+const reportById = computed(() => Object.fromEntries(reportIndex.value.map(r => [r.id, r])));
+const reportUrl = (id) => reportById.value[id]?.url ?? null;
+const hasReport = (id) => !!reportById.value[id]?.available;
 
 // 「克隆档案」卡片用（报告页）。PagesView 里那份是它自己的，两者数据源相同但各自持有 ——
 // 卡片只需要两个数字，为它把 PagesView 的 props 反向暴露出去并不划算。
@@ -243,9 +258,14 @@ function saveApiBase() {
   location.reload();
 }
 async function loadPageStatus() {
+  // 记住这次请求是替哪个站点发的。切站之后回来的响应属于上一个站 ——
+  // 不丢掉的话，它会把上一个站的分数写进本页的 pageScores（按 nodeId 存，两边同号就串），
+  // 于是新站的"平均视觉"显示出旧站的数字（实测：切到没有克隆页的站，表头却显示 99.1%）。
+  const forHost = host.value;
+  pagesLoading.value = true;
   try {
-    const r = await fetch(API + '/api/pages/' + host.value);
-    if (!r.ok) return;
+    const r = await fetch(API + '/api/pages/' + forHost);
+    if (!r.ok || host.value !== forHost) return;
     const { pages } = await r.json();
     const byPath = new Map();
     const byName = new Map();
@@ -276,10 +296,11 @@ async function loadPageStatus() {
       const hit = pages.find(p => p.name === n.pageName);
       pageScores[n.id] = hit?.score ?? null;
       pageVerify[n.id] = hit?.minViewport ? { minViewport: hit.minViewport } : null;
-      pageMeta[n.id] = { assets: hit?.assets ?? null, visualGaps: hit?.visualGaps ?? null, interactions: hit?.interactions ?? null, updatedAt: hit?.updatedAt ?? null };
+      pageMeta[n.id] = { assets: hit?.assets ?? null, visualGaps: hit?.visualGaps ?? null, interactions: hit?.interactions ?? null, updatedAt: hit?.updatedAt ?? null, motion: hit?.motion ?? null };
     }
     tableNodes.value = [...nodes, ...extraNodes.value];
-  } catch {}
+  } catch { /* 引擎离线时保持上一次的快照，不把界面清空 */ }
+  finally { if (host.value === forHost) pagesLoading.value = false; }
 }
 function saveToken() {
   const v = tokenInput.value.trim();
@@ -621,6 +642,10 @@ function pickSite(s) {
   loadHistory(s.host);
   loadAuditReport(s.host);
   loadSession();
+  // 逐页缓存必须跟着站点一起换：pageScores / pageMeta / pageVerify 都是按 nodeId 存的，
+  // 而 nodeId 是站点内序号 —— 不清空的话，切站后表头的"平均视觉"会混进上一个站的分数。
+  // 三者都是 reactive 对象，只能逐键删（Object.assign 一个空对象是清不掉的）。
+  for (const bag of [pageScores, pageMeta, pageVerify]) for (const k of Object.keys(bag)) delete bag[k];
   selected.value = null;
   detailIntel.value = null; detailScore.value = null;
   // 站点可能只有克隆、没有全站侦察（用户直接 `forge <url>` 克隆单页 ——
@@ -1120,6 +1145,22 @@ function runAudit() {
   })();
 }
 
+/**
+ * 详情面板里的「开始克隆此页 / 重新克隆此页」。
+ *
+ * ⚠️ 这个函数此前**根本不存在** —— 模板里绑了 `@open-forge="openForge"`，但没有任何定义，
+ * 于是详情面板上那三个克隆按钮（概览页的 ⚡、克隆 tab 的开始/重新克隆）点了没反应，
+ * 控制台只留一条 TypeError。这是"模板绑了个不存在的 handler"这类静默故障的典型：
+ * 编译器不会报错，因为模板里的一切都只是运行时的属性查找。
+ * 已加 `test/console-handlers.test.mjs` 守住这一类。
+ */
+function openForge() {
+  const n = selected.value;
+  if (!n) return;
+  if (n.forgeState === 'running') { statusText.value = '这一页正在克隆中'; return; }
+  startForge(n);
+}
+
 async function forgeAll() {
   const targets = nodes.filter(n => n.forgeState !== 'done' && n.forgeState !== 'running').slice(0, 10);
   statusText.value = `全境克隆 ${targets.length} 页`;
@@ -1184,6 +1225,8 @@ function startCloneSite({ incremental = false } = {}) {
             closeTask();
             statusText.value = task.done ? `整站克隆完成${task.progress ? ' · ' + task.progress : ''}` : (ev.status === 'cancelled' ? '整站克隆已取消' : '整站克隆中断');
             loadPageStatus();                                  // 刷新页面清单上的铸造状态
+            loadSites();                                       // 也要刷新站点列表：SiteBar 的"克隆 N 页"取的是它，
+                                                               // 此前不刷新，于是它和"克隆档案 · N 页"当场打架
             loadHistory(h);                                    // 走势多一个点
             setTimeout(() => { statusText.value = ''; }, 4000);
             resolve();
@@ -1323,8 +1366,10 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="reports-scroll">
     <div class="report-card surface">
       <h3>克隆档案</h3>
-      <p>{{ doneCount }} 页已克隆 · 平均视觉 {{ avgVisual }}</p>
-      <a :href="`/${host}/index.html`" target="_blank" rel="noopener">打开档案</a>
+      <p v-if="pagesLoading">逐页状态统计中…</p>
+      <p v-else>{{ doneCount }} 页已克隆 · 平均视觉 {{ avgVisual }}</p>
+      <a v-if="hasReport('archive')" :href="reportUrl('archive')" target="_blank" rel="noopener">打开档案</a>
+      <p v-else class="trend-hint">还没有档案可开 —— 克隆任意一页之后这里就会出现</p>
     </div>
     <div class="report-card surface">
       <h3>分数走势</h3>
@@ -1361,12 +1406,14 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="report-card surface">
       <h3>同步滚动对比</h3>
       <p>原站快照 vs 镜像，逐屏目检</p>
-      <a :href="`/${host}/compare.html`" target="_blank" rel="noopener">打开对比</a>
+      <a v-if="hasReport('compare')" :href="reportUrl('compare')" target="_blank" rel="noopener">打开对比</a>
+      <p v-else class="trend-hint">克隆任意一页后自动生成</p>
     </div>
     <div class="report-card surface">
       <h3>竞品情报包</h3>
       <p>概览 / 语义情报 / 定价与 CTA</p>
-      <a :href="`/${host}/intel/${host}-intel.xlsx`" download>下载 Excel</a>
+      <a v-if="hasReport('intel')" :href="reportUrl('intel')" download>下载 Excel</a>
+      <p v-else class="trend-hint">情报在克隆阶段入库 —— 克隆一页后即可下载</p>
     </div>
 
     <div class="report-card surface">
