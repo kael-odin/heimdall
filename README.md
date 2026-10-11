@@ -29,7 +29,8 @@ cd core && HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
 ```bash
 cd core
 node src/cli.mjs recon example.com 60     # 侦察全站 → 星图
-node src/cli.mjs queue example.com        # 批量克隆（断点续跑）
+node src/cli.mjs queue example.com        # 批量克隆（断点续跑 + 单页熔断）
+node src/cli.mjs queue example.com --incremental   # 站点改版后：只重跑源站变了的页
 node src/cli.mjs verify example.com --all # 多视口保真验证
 node src/cli.mjs live example.com         # 导出可部署的活镜像
 node src/cli.mjs deliver example.com      # 打包成前端可接手的交付包

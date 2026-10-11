@@ -80,7 +80,7 @@ favicon/图标等全站小件自动补齐（跨页借用 + 坏链修复，余 10
 
 - 克隆页是**静态镜像**：无登录、无搜索交互、无后端请求（这些属于 L3 AI 重写范畴，比赛未承诺）
 - 部分页首屏有打字机/轮播动画，镜像页该区域静止（评分已排除此类噪声）
-- 白名单模式：严格反爬的站会侦察失败（明说拒收）
+- 并发与节流可配，但**不内置 robots / crawl-delay 限制**（按设计决定，见 RISKS.md §4）
 
 ## 8. 全站批量锻造与交付包
 
@@ -89,10 +89,28 @@ favicon/图标等全站小件自动补齐（跨页借用 + 坏链修复，余 10
 cd /d D:\Github-Star\heimdall\core
 node src\queue.mjs thordata.com --max 30
 
+:: 站点改版后：只重跑源站变了的页（问一句"服务端 HTML 变了没有"，不起浏览器）
+node src\queue.mjs thordata.com --incremental
+
 :: 打交付包（给前端开发的素材包：README 指南 + 镜像站 + 情报 + 原材料）
 node src\deliver.mjs thordata.com
 :: 产出 deliverable	hordata.com-2026-09-30\ —— 整个文件夹转发即可
 ```
+
+**并发与熔断**都由站点配方 `queue.*` 决定，不用改命令行：
+
+| 配方键 | 默认 | 作用 |
+| --- | --- | --- |
+| `queue.concurrency` | 2 | 本批并行页数；实际 worker 数取 min(配方, 引擎槽) |
+| `queue.pageTimeoutMs` | 15 分钟 | 单页硬超时，到点杀掉进程树 |
+| `queue.stallMs` | 6 分钟 | 单页多久**没有任何输出**就算卡死（有输出 = 还活着） |
+
+> 熔断判的是"卡死"不是"慢"。捕获首页时下 5-10MB 的大图可能要几分钟，
+> 期间每一张都会打一行进度，所以这种"慢"不会被误杀。
+
+引擎槽位上限用 `HEIMDALL_FORGE_SLOTS` 调（默认 2，上限 8；每个槽 = 一个 Chromium 实例）。
+控制台里「增量克隆 / 全量重跑」按钮走引擎侧 `POST /api/clone-site` —— 任务在引擎里跑，
+关掉浏览器页面也继续。
 
 交付包内 `README-改造指南.md` 是前端开发的第一入口：怎么起服务、目录结构、
 改造建议路径（读 raw/cssom.css 拿设计 token）、已知边界、还原度口径。
@@ -322,6 +340,7 @@ node core\src\cli.mjs help
 node core\src\cli.mjs recon  apify.com 30
 node core\src\cli.mjs forge  https://apify.com/pricing pricing
 node core\src\cli.mjs queue  apify.com --max 60
+node core\src\cli.mjs queue  apify.com --incremental
 node core\src\cli.mjs audit  apify.com --max 20
 node core\src\cli.mjs watch  apify.com --max 20
 node core\src\cli.mjs verify apify.com pricing

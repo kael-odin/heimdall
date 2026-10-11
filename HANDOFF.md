@@ -17,7 +17,7 @@
 | 死镜像（视觉/结构 100% 级） | ✅ | apify 60 页均 96.8%（55A/4B/1C）、thordata 31 页 96.1%（22A/9B/0C） |
 | 活镜像（交互/数据回原站） | ✅ | /lm/ 融合路由，两站 pricing pageerror=0/4xx=0，hydration 交互实测 |
 | 情报包 | ✅ | 规则抽取+LLM 语义（定价/套餐/价值主张）→ xlsx；跨页 fidelity.csv |
-| 全站批量锻造 | ✅ | queue.mjs 持久化队列，断点续跑，thordata 31/31、apify 60/60 |
+| 全站批量锻造 | ✅ | queue.mjs 持久化队列：断点续跑 + **增量重跑**（按源站 HTML 指纹）+ **单页熔断**（硬超时 & 无进展）；并发按配方；thordata 31/31、apify 60/60 |
 | 同步滚动对比 | ✅ | compare.html（1440px 统一视口，根除响应式变形） |
 | 控制台 | ✅ v2 | 工作台 IA：底部导航 星图/页面/任务/报告/设置；页面表格（搜索/筛选/批量克隆/逐页视觉分）；任务中心；报告中心；引擎地址与 Token 可配 |
 | 任务持久化 | ✅ | node:sqlite（JSON 降级）存 jobs/events；重启恢复 + interrupted 标记；`GET /api/jobs.history`；控制台任务页历史 |
@@ -34,8 +34,8 @@
 | 变更监控 | ✅ v1 | `node src/watch/watch.mjs <host>`；两次采样排除动态噪声；字段级变化报告 + `--fail-on-change` 门控 + 历史快照 |
 | 活镜像 L3 | ✅ v1 | `node src/live/export.mjs <host>` → 自包含部署包：零依赖 serve.mjs + HAR 回放 + Dockerfile/compose + checksums；离线模式可断原站运行（smoke 覆盖导出/离线启动/本地页面/CSS/404） |
 | 多视口 + 交互回放 | ✅ v1 | 视觉 375/768/1440 全页 diff + 功能交互回放（状态签名 & 视口像素，`--no-interactions` 可关）；实测 apify pricing 视觉 96.0% A、交互 3/3 | `node src/verify/verify.mjs <host> <page>`；375/768/1440 全页 diff（apify storage 实测 91.0% B：桌面 98.2 / 平板 89.4 / 移动 78.4） |
-| SEO 审计 | ✅ v1 | `node src/seo/audit.mjs <host> --max 20` → seo.html/csv/json，40+ 规则、六分类评分 |
-| 质量门 | ✅ | `pnpm lint` / `pnpm test`（12 单测）/ `pnpm smoke`（fixture 离线 E2E，含 SEO 审计）+ GitHub Actions |
+| SEO 审计 | ✅ v1 | `node src/seo/audit.mjs <host> --max 20` → seo.html/csv/json，**56 条规则**、六分类评分 |
+| 质量门 | ✅ | `pnpm lint` / `pnpm test`（**240 单测**）/ `pnpm smoke`（fixture 离线 E2E，含 SEO 审计）+ GitHub Actions |
 | 安全默认值 | ✅ | 绑定 127.0.0.1、代理 host 白名单、路径越界防护、可选 token、CORS 限定来源 |
 
 ## 3. 配置速查（v2）
@@ -119,7 +119,7 @@ node src\crawler\fullshot.mjs <host>
 
 ## 7. 红线（不可越）
 
-- 登录后区域禁区；产物不公开部署；竞品资产不商用；严格反爬站白名单拒收并明说
+- 登录后区域禁区；产物不公开部署；竞品资产不商用；抓取并发/节流按需可配，但**不内置 robots / crawl-delay 限制**（见 §19.4）
 - 分数口径诚实：不吹 100%，动效缺失用 dynamicShare 量化展示
 
 ## 8. 2026-10-09 续：新一轮彻查与修复（均有实测）
@@ -357,7 +357,7 @@ node core\src\cli.mjs queue <host> --max 20
 ### 18.8 下一批（批次 1，未开工）
 控制台配置第三方大模型（引擎 `GET/PUT /api/settings/llm` + 热重载 + 草稿测试）·
 站点配方 `core/sites/<host>.json`（把 `adapters` 特例与 `build_live.mjs:81` 的 apify 分支迁进数据）·
-robots.txt 遵守 + crawl-delay · 分类规则补中文 + DOM 特征推断。
+分类规则补中文 + DOM 特征推断。（原列的 "robots.txt 遵守 + crawl-delay" 已按 §19.4 的决定取消。）
 
 ## 19. 2026-10-10 续十二：批次 1「通用克隆能力」（全部有实测）
 
@@ -752,3 +752,114 @@ docs/ 的周报与带日期的评审/计划移入 `docs/archive/` 并加索引�
 | thordata.com | 全站 31 页 | ~96.1% | A | — |
 
 适配器自动识别生效：cn.vuejs.org 判为 `vue-vite`，crawlee.dev / ant.design 判为 `generic`。
+
+## 23. 2026-10-11 续十六：规模三件套（并发可配 / 增量重克隆 / 单页熔断）
+
+ROADMAP 里排第一的那块。三项都落地并实测，另加一条此前没被问到的东西：
+**整站克隆搬到引擎侧**（`POST /api/clone-site`）—— 原先只能靠控制台标签页里的
+两个 worker 驱动，关掉页面任务就断。
+
+### 23.1 并发可配
+
+并发从代码常量搬进站点配方：`queue.concurrency`（默认 2）、`queue.maxPages`。
+实际 worker 数取 **min(配方, 引擎槽)** —— 配方说 6 而引擎只有 2 个槽时，
+多出的 worker 只会反复撞 409、空转重试，看着并行实际串行，还刷满日志。
+引擎槽位上限 `HEIMDALL_FORGE_SLOTS`（默认 2，硬上限 8：每个槽 = 一个 Chromium）。
+
+### 23.2 增量重克隆
+
+新增 `core/src/fingerprint.mjs`：用**普通 Node fetch**（不起浏览器）取服务端 HTML 的
+sha256 + ETag/Last-Modified，在 `pages/<name>/fingerprint.json` 留档。
+`queue --incremental` 对已完成页逐个比对，只重排变了的。
+
+边界写清楚了，不装作没有：**纯 CSR 站的服务端 HTML 是空壳**，空壳不变就检测不到改版。
+所以指纹里带 `shell` 标记（去标签后正文 < 500 字），这类页在增量模式下一律重跑 ——
+宁可多跑，不误判。诊断工具 `pnpm -C core probe:fingerprint <url...>`：
+实测 excalidraw.com 判为空壳（6.8KB），thordata.com / cn.vuejs.org / ant.design 判为有正文。
+
+### 23.3 单页熔断（含一次误杀与修复）
+
+两条线（`core/src/task-watchdog.mjs`，注入时钟所以可单测）：
+**硬超时**（`queue.pageTimeoutMs`，默认 15 分钟）与**无进展**（`queue.stallMs`，默认 6 分钟）。
+到点 `taskkill /T /F` 杀**进程树** —— win32 上普通 kill 带不走 Chromium 孙进程（取消任务同理，一并修了）。
+
+**误杀事故**：第一版的"无进展"只按 pipeline 的阶段事件计时。实测克隆 svelte.dev 首页时，
+捕获阶段在下载大图（6.5MB / 3.3MB）几分钟内没有任何阶段事件 —— 它明明在干活，却被判死。
+**判据错了：熔断该判"卡死"，不是"慢"。** 三步修复：
+
+1. 引擎侧：子进程**任何 stdout/stderr 输出**都算进展（还在说话 = 还活着）
+2. capture 下载循环**逐条打印**，且进度行打在**开下之前** —— 于是"沉默"就等于这一次下载卡住了
+3. 单条资源加 `AbortSignal.timeout`（默认 120s，`HEIMDALL_ASSET_TIMEOUT_MS` 可调）：
+   一个下不动的资源不该拖住整页
+
+复测 svelte.dev 首页：**99.91% A**。缺的那个资源是跨域 mp4（GitHub Pages，实测 20s 才 1.1MB），
+如实记进 `gaps.json`。有意思的是**差异形态正好判成「集中」** —— 形态分析把那块缺失指了出来，
+而不是笼统报个百分比。两个能力互相印证。
+
+### 23.4 仓库整治
+
+- `console/package.json` 里 `probe:render` / `probe:diff` / `probe:shift` 三条命令
+  **指向 `console/scripts/`，但脚本一直在 `core/scripts/`** —— 三条都是坏命令。
+  删掉，改在 `core/package.json` 注册真实存在的（`probe:regions` / `probe:shift` / `probe:fingerprint`）。
+- 删 `scripts/diff-blobs.mjs`：连通块分析已进 `differ/shape.mjs` 并在流水线里自动跑，
+  留一个只做子集的 CLI 就是重复。
+- **清掉四份文档里与设计决定相反的说法**：HANDOFF §7 红线、§18.8、PRD §9、USAGE §7
+  还写着"严格反爬站白名单拒收" —— 与 §19.4「不内置 robots 限制」直接冲突。
+  文档写了代码不做的事就是假文档。
+
+### 23.5 新样本：Angular 翻出两个通用缺陷（都修了）
+
+Angular 站点第一次进来就暴露两个此前所有样本都没踩到的缺陷 ——
+VitePress / Docusaurus / 营销站都不带 `<base>`、也不依赖跨域图标字体。
+
+**缺陷一：`<base href="/">` 让全部相对引用改基到站点根。**
+Angular 应用在 `<head>` 里带 `<base href="/">`，浏览器据此把 `styles/cssom.css`
+解析成 `/styles/cssom.css` —— 镜像页挂在 `/static/<host>/pages/<page>/clone/` 下，直接 404。
+CSS 与图片**一起失效**，克隆页裸奔成无样式 HTML（实测首页像素 89.68%）。
+修复：`dom-refs.mjs` 新增 `neutralizeBaseTag()`，把 href 改成 `./`（保留元素本身，
+有些脚本会检测它存在），在 `build_clone` 的引用改写之后调用。
+
+**缺陷二：跨域样式表里的字体从来进不了镜像。**
+同源策略下浏览器读不到跨域样式表的 `cssRules`，所以 Google Fonts 的规则
+压根没进我们序列化的 CSSOM —— Material Symbols 图标的连字名被当文字渲染出来，
+页面上直接印着 `chevron_right` / `more_horiz`。
+修复：`capture` 早就把"读不到"的跨域样式表记在 `cssom-refs.json` 的 `sheets[].error` 里，
+`build_clone` 现在按这份清单服务端取回原文再抽（`css-refs.mjs` 新增 `extractFontRules()`）。
+
+**这里踩了第二次坑**：第一版只抽 `@font-face`，图标**依然不显示** ——
+Google Fonts 是连同辅助类一起发的：
+
+```css
+@font-face { font-family: 'Material Symbols Outlined'; src: url(...) }
+.material-symbols-outlined { font-family: 'Material Symbols Outlined' }   /* ← 这条才是生效的关键 */
+```
+
+只搬字体不搬那条规则，元素的计算字体仍是 `Inter`，连字自然不成图标。
+所以判据改成「`@font-face` + **凡把 font-family 指到这些族的规则**」，其余（第三方
+reset、指向别的字体的规则）一律不带进来 —— 后者会打乱版面。这条判据有单测钉住。
+
+**效果（angular.dev 两页，修前修后同页对比）**：
+
+| 页面 | 修复前 | 修复后 |
+| --- | --- | --- |
+| / | 89.68% B（形态：集中） | **100.00% 像素**（TOTAL 99.7 A，静态差异 0px） |
+| /ai | 86.90% B | **99.76% A**（TOTAL 99.7） |
+
+**差异形态的判读在这两处都是对的**：修复前报「集中」（真的缺东西），修复后转「一致/混合」
+——判据经此一轮反向验证。
+
+**顺带修的**：`fetchBin` 原先只试一次，一次网络抖动就在 19 个字体引用里凭空多出一个
+"不可达"缺口（实测重跑即消失）。现在**只对网络层失败重试 3 次**，HTTP 状态码与
+内容问题不重试（404 再问还是 404，白等），并给单次抓取加 60s 超时。
+
+### 23.6 本轮样本汇总
+
+| 站点 | 技术栈 | 页面 | 像素 | 总分 | 备注 |
+| --- | --- | --- | --- | --- | --- |
+| svelte.dev | SvelteKit | /docs | **100.00%** | A | 一致 |
+| svelte.dev | SvelteKit | / | 99.91% | A | 缺 1 个跨域 mp4（已记入 gaps） |
+| angular.dev | Angular（`<base>` + 图标字体） | / | **100.00%** | A | 修复前 89.68% B |
+| angular.dev | Angular | /ai | 99.76% | A | 修复前 86.90% B |
+
+侦察各 42 页（svelte.dev 164 边、angular.dev 284 边）。
+质量门：core lint 116 文件 OK，单测 **251**，控制台 build 通过。

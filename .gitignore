@@ -46,3 +46,6 @@ core/storage.json
 .impeccable/mocks/
 .impeccable/build/
 .impeccable/config.local.json
+
+# Playwright MCP 工具的截图/快照（调试产物，不入库）
+.playwright-mcp/
