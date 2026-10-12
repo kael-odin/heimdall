@@ -34,7 +34,44 @@ let panning = false;
 let lastX = 0, lastY = 0;
 let ro = null;
 let rafId = 0;
+/** 自转循环的帧句柄（和 fit() 的那个分开：一个是一次性的尺寸同步，一个是常驻循环） */
+let spinId = 0;
+let lastSpinT = 0;
 let lastW = 0, lastH = 0;
+
+/**
+ * 星图自转。
+ *
+ * 为什么不是"打开库的 autoRotate 就行"——**因为库冷却后根本不重绘**。
+ * 实测：把 WebGL 的 drawElements/drawArrays 打点，模拟退火停下来之后
+ * 5 秒内 **0 次绘制调用**（`requestAnimationFrame` 也基本停了）。
+ * 所以 autoRotate 转的是相机对象，屏幕上是上一帧的静止画面 —— 勾不勾一模一样。
+ * （3d-force-graph 默认还是 trackball 控制器，那上面连 autoRotate 属性都没有，
+ *   等于两层都没生效。）
+ *
+ * 既然渲染是按需的，自转就得**自己供帧**：每帧把相机绕 target 转一点，
+ * 再自己调一次 renderer.render()。这样与库的渲染策略无关，
+ * 也顺带把 dz 带来的"每帧角度固定"变成"按经过时间算"——掉帧时转速不会变慢。
+ * 关掉开关时这个循环什么都不做，不占 CPU。
+ */
+const SPIN_DEG_PER_SEC = 6;   // 60 秒一圈：看得见，又不至于让人分心
+function spin(t) {
+  spinId = requestAnimationFrame(spin);
+  if (disposed || !graph) return;
+  if (!props.autoRotate) { lastSpinT = 0; return; }
+  const dt = lastSpinT ? Math.min(t - lastSpinT, 120) : 0;
+  lastSpinT = t;
+  if (dt <= 0) return;
+  const ctr = graph.controls();
+  const cam = graph.camera();
+  if (!ctr?.target || !cam) return;
+  const v = new THREE.Vector3().subVectors(cam.position, ctr.target);
+  v.applyAxisAngle(new THREE.Vector3(0, 1, 0), (dt / 1000) * SPIN_DEG_PER_SEC * Math.PI / 180);
+  cam.position.copy(ctr.target).add(v);
+  cam.lookAt(ctr.target);
+  try { ctr.update?.(); } catch { /* fly 控制器没有 update，忽略 */ }
+  try { graph.renderer().render(graph.scene(), cam); } catch { /* 库正在自己渲染时可能瞬时不稳，忽略 */ }
+}
 
 /**
  * 把画布尺寸同步到容器。
@@ -117,7 +154,10 @@ function onPointerUp() {
 }
 
 watch(() => props.autoRotate, (v) => {
-  if (graph?.controls()) { graph.controls().autoRotate = v; }
+  // 不碰 controls.autoRotate：库默认的 trackball 控制器没有这个属性，
+  // 而且库冷却后不重绘，转相机也看不见（原因见 spin() 的注释）。
+  // 自转完全由我们自己的 spin 循环负责。
+  if (v) lastSpinT = 0;      // 重新起转时不要拿"上次停下前的时间差"补一个大角度
 });
 
 onMounted(() => {
@@ -144,19 +184,19 @@ onMounted(() => {
   ro = new ResizeObserver(fit);
   ro.observe(el.value);
   fit();
-  // 冷却后自动取景 + 缓慢自转
+  // 冷却后自动取景（自转由 spin() 常驻循环负责，不在这里挂）
   let stopped = false;
   graph.onEngineStop(() => {
     if (disposed || stopped) return;
     stopped = true;
     try { graph.zoomToFit(900, 70); } catch {}
-    graph.controls().autoRotate = props.autoRotate;
-    graph.controls().autoRotateSpeed = 0.5;
   });
+  spinId = requestAnimationFrame(spin);
 });
 onBeforeUnmount(() => {
   disposed = true;
   if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+  if (spinId) { cancelAnimationFrame(spinId); spinId = 0; }
   ro?.disconnect(); ro = null;
   el.value?.removeEventListener('pointerdown', onPointerDown, true);
   window.removeEventListener('pointermove', onPointerMove);

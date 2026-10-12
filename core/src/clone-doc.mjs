@@ -16,6 +16,7 @@
  */
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /** 桌面视口那份的固定文件名（与 crawler/build_clone.mjs 的产出约定一致） */
 export const DESKTOP_VARIANT = 'index-1440.html';
@@ -36,4 +37,26 @@ export function cloneDocFile(cloneDir, { variant = DESKTOP_VARIANT } = {}) {
 export function readCloneDoc(cloneDir, opts) {
   const file = cloneDocFile(cloneDir, opts);
   return { file, html: readFileSync(file, 'utf8'), variant: file.endsWith(DESKTOP_VARIANT) };
+}
+
+/**
+ * 克隆页的**可访问 URL**：引擎在线就走 `/static`（http），否则回退 `file://`。
+ *
+ * 为什么必须有这个判断而不能一律 file://：本地资产里若还留着 `crossorigin`
+ * （构建已摘干净，但历史产物可能没有），file:// 下会以 CORS 模式取本地文件而全部失败，
+ * 截图里是一排裂图。两条路的口径**只在构建正确时才相同**（见 dom-refs.mjs）。
+ * 引擎在的时候没有理由不走近路。
+ *
+ * 这个判断以前只写在 pipeline.mjs 里，多视口升级那边要重算分数时又得抄一遍 ——
+ * 抄出来的那份迟早会漂移成"两条路口径不一样但没人发现"。
+ *
+ * @returns {Promise<{url: string, via: 'engine'|'file'}>}
+ */
+export async function resolveCloneUrl(host, name, dir) {
+  const self = process.env.HEIMDALL_SELF_URL ?? `http://127.0.0.1:${process.env.HEIMDALL_PORT ?? 8900}`;
+  try {
+    const r = await fetch(`${self}/api/status`, { signal: AbortSignal.timeout(1500) });
+    if (r.ok) return { url: `${self}/static/${host}/pages/${name}/clone/index.html`, via: 'engine' };
+  } catch { /* 引擎没起：这不是错误，forge 本来就该能独立跑 */ }
+  return { url: pathToFileURL(join(dir, 'clone', 'index.html')).href, via: 'file' };
 }

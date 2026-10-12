@@ -12,7 +12,6 @@
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { spawn } from 'node:child_process';
 import { requireArg } from './args.mjs';
 import { loadProfile, queuePlan, sanitizeHost } from './site-profile.mjs';
 import { sourceFingerprint, incrementalDecision, decisionNote } from './fingerprint.mjs';
@@ -20,6 +19,7 @@ import { appendHistory } from './seo/history.mjs';
 import { WORKSPACE } from './paths.mjs';
 import { emit as emitRaw } from './emit.mjs';
 import { pageNameOfUrl } from './url-canon.mjs';
+import { runScript } from './child-run.mjs';
 
 const host = sanitizeHost(requireArg(process.argv[2], 'node src/queue.mjs <host> [--max N] [--force] [--incremental] [--missing-har] [--no-dedupe]', '站点 host'));
 const maxIdx = process.argv.indexOf('--max');
@@ -219,25 +219,36 @@ async function worker(id) {
 await Promise.all(Array.from({ length: PLAN.workers }, (_, i) => worker(i + 1)));
 
 // ---------- host 级后处理：整批只跑一次 ----------
-function runNode(script, args) {
-  return new Promise((resolve) => {
-    const p = spawn(process.execPath, [script, ...args], { stdio: 'inherit' });
-    p.on('exit', (code) => resolve(code === 0));
-    p.on('error', () => resolve(false));
-  });
+/**
+ * 后处理步骤。
+ *
+ * 以前失败是**完全静默**的（只 resolve 一个 false，谁也不看）：linker 挂了 →
+ * 站内链接一条没接上；dedupe 挂了 → 资产没去重 —— 而队列照样报"整批成功"。
+ * 现在失败会把原因打出来，并记一条事件（控制台的任务日志里能看到）。
+ */
+async function runStep(script, args, label) {
+  try {
+    await runScript(script, args);
+    return true;
+  } catch (e) {
+    const msg = String(e?.message ?? e).slice(0, 200);
+    console.warn(`  ⚠ ${label} 失败（已克隆的页面不受影响，但这一步的产物缺失）：${msg}`);
+    emit({ kind: 'queue-warn', phase: 'finish', step: label, error: msg });
+    return false;
+  }
 }
 const d = queue.filter(q => q.status === 'done').length, f = queue.filter(q => q.status === 'failed').length;
 if (d > 0) {
   console.log('\n[host-post] xlsx / linker / index-page / repair-empty (once for the whole batch)');
   emit({ kind: 'queue-progress', phase: 'finish', total: queue.length, done: d });
-  await runNode(join('src', 'harvest', 'xlsx.mjs'), [host]);
-  await runNode(join('src', 'crawler', 'linker.mjs'), [host]);
-  await runNode(join('src', 'crawler', 'index-page.mjs'), [host]);
-  await runNode(join('src', 'crawler', 'repair-empty-assets.mjs'), [host]);   // 0 字节资产（追踪信标）自动清理
-  await runNode(join('src', 'audit', 'orphans.mjs'), [host]);                 // 孤儿资产报告（可回收清单）
+  await runStep('harvest/xlsx.mjs', [host], '情报表');
+  await runStep('crawler/linker.mjs', [host], '站内接线');
+  await runStep('crawler/index-page.mjs', [host], '索引与对比页');
+  await runStep('crawler/repair-empty-assets.mjs', [host], '0 字节资产清理');   // 追踪信标之类
+  await runStep('audit/orphans.mjs', [host], '孤儿资产报告');                   // 可回收清单
   if (!process.argv.includes('--no-dedupe')) {
     console.log('\n[dedupe] content-addressed asset store (hardlinks)');
-    await runNode(join('src', 'store', 'dedupe.mjs'), [host]);
+    await runStep('store/dedupe.mjs', [host], '资产去重');
   }
 }
 

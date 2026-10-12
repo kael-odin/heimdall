@@ -1472,7 +1472,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <div class="panel-sec">
       <div class="panel-sec-name">引擎</div>
       <div class="eng" :class="{ on: engine.ok }"><i></i>{{ engine.ok ? '在线 :8900' : '离线' }}</div>
-      <div class="eng-detail" v-if="engine.ok">克隆槽 {{ engine.forge?.slots ?? 0 }}/{{ engine.forge?.max ?? 2 }} · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
+      <div class="eng-detail" v-if="engine.ok" title="克隆槽 = 正在跑的整页克隆（一个槽一个浏览器）。0/2 表示空闲。">克隆槽 {{ engine.forge?.slots ?? 0 }}/{{ engine.forge?.max ?? 2 }}{{ (engine.forge?.slots ?? 0) === 0 ? '（空闲）' : '' }} · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
     </div>
   </div>
   <button class="panel-open" v-if="view === 'atlas' && !showPanel" @click="showPanel = true" aria-label="展开仪表面板" title="仪表面板"><Icon name="menu" decorative /></button>

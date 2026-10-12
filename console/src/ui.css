@@ -367,7 +367,10 @@
 .asset-actions { display: flex; align-items: center; gap: 6px; }
 .asset-src { font-size: 11px; color: var(--text-faint); margin-left: 6px; white-space: nowrap; }
 .asset-thumb { width: 26px; height: 26px; object-fit: contain; border-radius: var(--r-sm); background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--bg) 0% 50%) 50% / 10px 10px; vertical-align: middle; }
-.settings-grid { padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 860px; }
+/* flex:1 + overflow:auto 是**必须**的：父级 .work-view 是 overflow:hidden 的定高 flex 容器，
+   少了这两行，设置页会比容器高却被裁掉，而且滚不动 —— 「引擎与数据」整张卡片在屏幕外，
+   连滚动条都不出现，看起来像"设置里没有这一项"。 */
+.settings-grid { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 860px; }
 .set-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .set-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; }
 .set-card-head b { font-size: 14px; letter-spacing: .02em; }

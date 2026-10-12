@@ -35,6 +35,7 @@ import { sessionInfo, clearSession } from './session/store.mjs';
 import { loadProfile, sanitizeHost, queuePlan, MAX_SLOT_CEILING } from './site-profile.mjs';
 import { UA } from './ua.mjs';
 import { pageNameOfUrl } from './url-canon.mjs';
+import { makeSlotBox } from './forge-slots.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 
@@ -321,7 +322,12 @@ const MAX_FORGE = (() => {
   const n = Math.floor(Number(process.env.HEIMDALL_FORGE_SLOTS));
   return Number.isFinite(n) ? Math.min(Math.max(n, 1), MAX_SLOT_CEILING) : 2;
 })();
-let forgeSlots = 0;
+// 槽位计数收进一个会"大声失败"的小对象：归还一个没占过的槽会被拒绝并留痕。
+// 此前这里是一串 if/else + 兜底的 else forgeSlots--，于是**没占过槽的任务类型**
+// （cas-gc / editmanifest / replace-domain）退出时也会减一 —— 计数变负，
+// 而 `used >= max` 这道闸门从此永不触发，并发上限静默失效。
+// 症状只是控制台上那句「克隆槽 -1/2」。
+const forgeSlots = makeSlotBox(MAX_FORGE);
 
 const push = (t, ev) => {
   t.events.push(ev);
@@ -438,10 +444,14 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'live') runningLive = null;
     else if (t.kind === 'upgrade') runningUpgrade = null;
     else if (t.kind === 'clone') runningClone = null;        // 整站克隆是编排任务，不占锻造槽
-    else if (t.kind === 'session') runningSession = null;    // 登录会话不占锻造槽（漏这条会走到末尾的 forgeSlots--）
+    else if (t.kind === 'session') runningSession = null;    // 登录会话不占锻造槽
     else if (t.kind === 'storage') storageScanTask = null;   // 盘点任务不占锻造槽
     else if (t.kind === 'deliver') deliverTask = null;       // 同理
-    else forgeSlots--;
+    // 槽位归还跟着"谁占过"走（t.tookForgeSlot 在 startForge 里置位），
+    // 不再用兜底分支去猜 —— 兜底正是当初把计数减成负数的原因
+    if (t.tookForgeSlot && !forgeSlots.release()) {
+      console.warn('[slots] 归还了一个没占过的锻造槽（记账漏了一笔），已忽略');
+    }
     jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
   });
   return t;
@@ -588,7 +598,14 @@ function startEditManifest(host) {
   return spawnTask(t, join('src', 'deliver', 'edit-manifest.mjs'), [host]).id;
 }
 
-function startForge(url, { hostPost = true } = {}) {  const t = makeTask('forge', url);
+function startForge(url, { hostPost = true } = {}) {
+  // 占槽的动作和"这个任务占着槽"的标记放在一起 —— 分开放就会有人漏掉一处
+  if (!forgeSlots.acquire()) { const e = new Error('busy'); e.code = 'busy'; throw e; }
+  let t;
+  try {
+    t = makeTask('forge', url);
+  } catch (e) { forgeSlots.release(); throw e; }
+  t.tookForgeSlot = true;
   const u = new URL(url);
   const name = pageNameOfUrl(u);
   t.pageName = name;
@@ -806,14 +823,12 @@ const handleRequest = async (req, res) => {
       let url, hostPost = true;
       try { ({ url, hostPost } = JSON.parse(body || '{}')); } catch {}
       try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
-      if (forgeSlots >= MAX_FORGE) return json(res, 409, { error: 'busy' });
-      forgeSlots++;
       try {
         const { id, name } = startForge(url, { hostPost: hostPost !== false });
         json(res, 200, { taskId: id, pageName: name, url });
       } catch (e) {
-        forgeSlots--;
-        json(res, 500, { error: String(e).slice(0, 140) });
+        // 满槽由 startForge 抛 busy —— 那是 409（可以等会儿再来），不是 500
+        json(res, e?.code === 'busy' ? 409 : 500, { error: e?.code === 'busy' ? 'busy' : String(e).slice(0, 140) });
       }
     });
     return;
@@ -1423,7 +1438,7 @@ const handleRequest = async (req, res) => {
       upgrade: runningUpgrade ? { id: runningUpgrade.id, host: runningUpgrade.host } : null,
       clone: runningClone ? { id: runningClone.id, host: runningClone.host, plan: runningClone.plan } : null,
       editManifest: editManifestTask && editManifestTask.status === 'running' ? { id: editManifestTask.id, host: editManifestTask.host } : null,
-      forge: { slots: forgeSlots, max: MAX_FORGE },
+      forge: { slots: forgeSlots.used, max: forgeSlots.max },
       jobs: tasks.size,
       jobsStore: jobStore?.kind ?? null,
       bind: BIND,

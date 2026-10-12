@@ -50,12 +50,19 @@
       **已修**：`<base href>` 改基（Angular 类站点整页失去样式）、
       跨域样式表里的字体规则（图标连字名被当文字渲染）—— 两个都是换到 Angular
       才第一次踩到，见 HANDOFF §23.5。
-      尚未系统排查：WebGL 画布（`toDataURL` 需要 `preserveDrawingBuffer`）、
-      CSS `@font-face` 可变字体轴、`<video>` 的 poster、
+      **WebGL 画布已修**（2026-10-12，moonshot.cn 首页）：读绘制缓冲区拿不到像素的
+      （没开 `preserveDrawingBuffer`）改用元素截图兜底，并用 `countOpaquePng` 自证
+      截到的不是空图。见 HANDOFF §33.2。
+      尚未系统排查：CSS `@font-face` 可变字体轴、
       **闭包在 shadow DOM 里的样式**（现在只处理了 light DOM）
 - [ ] **动效的可复刻度**：现在动效要么抓一帧、要么丢失。能否对常见类型
       （轮播、打字机、滚动触发）做"初始态 + 终态"双帧捕获？
-      这会让 `dynamicShare` 那个缺口变小
+      这会让 `dynamicShare` 那个缺口变小。
+      **一个实测到的上限**：moonshot.cn 首页那条横向滚动的字标是 JS 驱动的
+      WebGL 场景，两边都冻不住（`animation-duration:0s` 只管 CSS 动画）——
+      抓到了、画对了，但永远停在不同相位，`dynamicShare` 0.78。
+      所以这里的诚实读数是"静态部分没问题，剩余的都是动效相位"，
+      而不是"复刻得差"
 
 ---
 
@@ -98,6 +105,23 @@
 - [x] 首启向导（星图空态三步引导）
 - [x] 交付包监听地址写清楚（默认 0.0.0.0 是有意的，`--host 127.0.0.1` 只开本机）
 - [x] 控制台 E2E（真引擎 + 真 Chromium，见 §4）
+
+**2026-10-12 修的三处"明明有、却像没有"**（都是用户用出来的）：
+
+- [x] **设置页滚不动**：`.settings-grid` 缺 `flex:1 + overflow:auto`，而父级
+      `.work-view` 是 `overflow:hidden` 的定高 flex 容器 —— 超出的部分被裁掉且滚不动，
+      「引擎与数据」整张卡片在屏幕外，看起来像"设置里没有这一项"。浏览器里实测：
+      改前 `scrollable:false`，改后 `canScroll:true` 且两张卡片都够得着。
+- [x] **「星图自转」勾不勾一模一样**：两层都没生效 —— ① 3d-force-graph 默认是
+      trackball 控制器，它**没有** `autoRotate` 属性，赋值是静默空操作；
+      ② 更要命的是库**冷却后根本不重绘**（给 WebGL 的 draw* 打点实测：模拟停下后
+      5 秒内 0 次绘制调用），所以转的是相机对象、屏幕上是上一帧的静止画面。
+      现在自转由我们自己的 rAF 循环负责：转相机 + 显式 `renderer.render()`。
+      A/B 实测：开 5 秒画面变化 0.43%，关 5 秒 0.00%。
+- [x] **任务历史只显示时分秒、没有日期**：三天前的一条和今天的一条长得一模一样，
+      而这条列表**本来就是持久化的**、刷新当然不变 —— 于是"我刷新了怎么没变"
+      这个问题根本没法自己回答。现在跨天的条目带上日期，标题里补上这批历史覆盖的
+      起止日期。
 
 **仍缺**：
 
@@ -144,7 +168,7 @@
       页面分数是诚实的（像素 69%、`dynamicShare` 0.61 → 判为动态噪声为主），
       所以不急；但值得看一眼能不能靠"把命中的那份变体显式化"解决。
 
-- [ ] 更多站点的实跑验证。**14 个站 / 261 页**，几乎全 A：
+- [ ] 更多站点的实跑验证。**15 个站 / 263 页**，几乎全 A：
 
       | 站点 | 页数 | 平均 | 栈 |
       | --- | --- | --- | --- |
@@ -156,6 +180,7 @@
       | thordata.com | 36 | 99.7 | Vue + Vite |
       | linear.app | 40 | 99.6 | Next.js（React + CSS Modules） |
       | apify.com | 74 | 99.5 | React + styled-components |
+      | moonshot.cn | 2 | 97.8 | Vue + Unicorn Studio（WebGL hero，见 §3） |
       | ant.design | 2 | 97.8 | React + CSS-in-JS（差异弥散） |
       | stripe.com | 15 | 97.7 | Astro 系 |
       | framer.com | 39 | 97.4 | Framer（SSR 变体，见上） |
@@ -183,18 +208,27 @@
 
 ## 读数口径（"报告说的话与产物是不是一回事"）
 
+- [x] **控制台的「克隆槽」显示成 -1/2**（2026-10-12 关闭）。引擎用一串 if/else 归还槽位，
+      末尾是兜底的 `else slots--`，于是**没占过槽的任务类型**（cas-gc / editmanifest /
+      replace-domain）退出时也减一。难看只是表象：`used >= max` 那道闸门从此永不触发，
+      **并发上限（默认 2 个 Chromium）静默失效**。现在槽位收进 `src/forge-slots.mjs`，
+      归还一个没占过的槽会被拒绝并留痕，计数永远不会变负。
+- [x] **任务失败时看不到原因**（2026-10-12 关闭）。任务历史里只有
+      `Error: crawler/build_clone.mjs exited 1` —— 子进程的 stderr 只流去了引擎控制台，
+      没有任何地方留存（事后翻 jobs.db 也只翻到同一句）。现在统一走
+      `src/child-run.mjs`：stderr 既实时转发、又留一份尾巴并进错误信息。
+      当天就用上了：它把一句 `exited 1` 变成了具体的 `ReferenceError: …`。
 - [x] **多视口页的分数测错了文档**（2026-10-12 关闭）。多视口克隆后 `clone/index.html`
       是 372 字节的视口选择器，而 `diff.mjs` 直接读它 → parse5 拿到空文档 →
       DOM 分与数据分双双 0，总分从 A 掉到 C。实测 apify.com/store 被算成 41.8%
       （真值 99.2%）。判据统一到 `src/clone-doc.mjs`（有 `index-1440.html` 就用它）。
       12 个 apify 页已重测。
-- [ ] **`multi-snapshot` / `responsive-upgrade` 之后没人重算分数**。它们重建 clone
-      并重新接线，但 `score.json` 还是升级前测的那一份 —— 于是报告描述的是一个
-      不再存在的产物。这次全靠手工重测把所有产物对齐（**当前语料是一致的**），
-      但下次再跑 `--all` 就会重新腐坏。做法已经清楚：在 `multi-snapshot.mjs`
-      的 `--all` 收尾处（`build_clone` + `linker` 之后）对每页补一次
-      `shot_clone` + `differ/diff.mjs`，与 pipeline 的 stage 顺序一致。
-      没有直接改的原因：这条路径要真跑一次多视口快照才验证得了，不想在没验证的情况下改。
+- [x] **`multi-snapshot` / `responsive-upgrade` 之后没人重算分数**（2026-10-12 关闭）。
+      它们重建 clone 并重新接线，但 `score.json` 还是升级前测的那一份 —— 升级后
+      `index.html` 变成 372 字节的视口选择器，旧分数描述的是一个不再存在的产物。
+      现在 `--all` 收尾按 pipeline 的 stage 顺序补齐：重建 → 截图+评分 → 接线，
+      实测跑通（apify.com/store 重算到 99.2 A）。重算失败只打日志、不中断整批 ——
+      分数重算不该让一次成功的高清快照前功尽弃。
 - [ ] **`data.links` 一项必须在 linker 之前测**（顺序由 pipeline 的 stage 顺序保证）。
       linker 会把站内 `<a href>` 改写成档案内相对路径 —— 那是它的职责，
       也正是这一维度只能测未接线版本的原因。手工重跑 `differ/diff.mjs` 而没先重建 clone 时，

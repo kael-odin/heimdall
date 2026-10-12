@@ -12,7 +12,7 @@
  * 用法: node src/crawler/capture.mjs <url> <outdir>
  */
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { pickAdapter } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
@@ -24,6 +24,7 @@ import { requireArg } from '../args.mjs';
 import { asUrl } from '../url-canon.mjs';
 import { freezeCss, stripFreeze } from '../freeze.mjs';
 import { UA } from '../ua.mjs';
+import { countOpaquePng } from '../png-stat.mjs';
 
 const RAW_TARGET = requireArg(process.argv[2], 'node src/crawler/capture.mjs <url> <outdir>', '目标 URL');
 const TARGET = asUrl(RAW_TARGET);   // 直接跑这个脚本时也允许省略协议
@@ -172,6 +173,67 @@ if (CAP.scrollSweep) {
   await page.evaluate(() => window.scrollTo(0, 0));
   canvasInfo.found = [...bestUrl.entries()].map(([i, dataUrl]) => ({ i, dataUrl }));
 }
+
+/**
+ * 读不出像素的画布 → 退一步**截屏**。
+ *
+ * 为什么非做不可：`drawImage`/`toDataURL` 读的是**绘制缓冲区**，而 WebGL 上下文
+ * 只要没开 `preserveDrawingBuffer`，合成之后缓冲区就是空的 —— 读回来全透明、
+ * `opaque = 0`，被上面那道 `opaque > 300` 的闸门挡掉，**而且一声不响**。
+ * 实测 moonshot.cn 首页：整条 hero 动画带（Unicorn Studio 的 WebGL2 场景，
+ * 含那个横向滚动的 "Moonshot AI" 字标）就是这么没的 —— 首屏 7.8% 的像素，
+ * 缺口清单里一个字都没写（它甚至不属于"资源失败"，资源一个都没少）。
+ *
+ * Playwright 的元素截图走**合成器**，看到的就是屏幕上真正画出来的东西，
+ * 与绘制缓冲区无关。所以这条路能救回 WebGL 画布，也能救回被跨域污染的 2D 画布
+ * （那种连 drawImage 都会抛 SecurityError）。
+ *
+ * 上一轮撤掉"媒体组件光栅化"的教训这里必须守住：**量不准框就别做**。
+ * 所以先量两次框，动了就不做（轮播/滚动驱动的元素正是上一轮翻车的地方）；
+ * 尺寸塌陷、不可见的也不做。最后还要用 countOpaquePng 自证截到的不是一张空图 ——
+ * 拿空白冒充内容比缺了更糟。
+ */
+const SHOT_FALLBACK_MAX = 6;
+if (CAP.scrollSweep) {
+  const missed = [];
+  for (let i = 0; i < canvasInfo.total; i++) if (!canvasInfo.found.some(f => f.i === i)) missed.push(i);
+  if (missed.length) {
+    mkdirSync(join(OUT, 'assets'), { recursive: true });
+    let recovered = 0;
+    for (const i of missed.slice(0, SHOT_FALLBACK_MAX)) {
+      try {
+        const boxOf = () => page.evaluate((idx) => {
+          const c = document.querySelectorAll('canvas')[idx];
+          if (!c) return null;
+          const st = getComputedStyle(c);
+          const r = c.getBoundingClientRect();
+          return {
+            w: Math.round(r.width), h: Math.round(r.height),
+            x: Math.round(r.x), y: Math.round(r.y),
+            hidden: st.display === 'none' || st.visibility === 'hidden' || Number(st.opacity) === 0,
+          };
+        }, i);
+        const a = await boxOf();
+        if (!a || a.hidden || a.w < 8 || a.h < 8) continue;
+        await page.waitForTimeout(120);
+        const b = await boxOf();
+        // 两次量到的框必须一模一样：会动的元素截出来是"某一瞬间的错位图"
+        if (!b || a.w !== b.w || a.h !== b.h || a.x !== b.x || a.y !== b.y) continue;
+        const buf = await page.locator('canvas').nth(i).screenshot({ timeout: 15_000 });
+        const opaque = countOpaquePng(buf);
+        if (opaque <= 300) continue;      // -1（读不懂）与 0（全透明）都**不要**：不拿空白冒充内容
+        writeFileSync(join(OUT, 'assets', `canvas-${i}.png`), buf);
+        canvasInfo.found.push({ i, dataUrl: '', shot: true });
+        recovered++;
+      } catch (e) {
+        console.warn(`    canvas ${i} 截图兜底跳过:`, String(e).slice(0, 80));
+      }
+    }
+    await page.evaluate(() => window.scrollTo(0, 0));
+    if (recovered) console.log(`    canvas 截图兜底：补回 ${recovered}/${missed.length} 张（读不出绘制缓冲区的，多为 WebGL）`);
+    if (missed.length > SHOT_FALLBACK_MAX) console.log(`    （还有 ${missed.length - SHOT_FALLBACK_MAX} 张未尝试，超出单页上限）`);
+  }
+}
 const canvases = canvasInfo;
 console.log(`    canvas diag: total=${canvases.total} bestOpaque=${JSON.stringify(canvases.best)}`);
 
@@ -180,6 +242,7 @@ if (canvases.found.length) {
   mkdirSync(join(OUT, 'assets'), { recursive: true });
   let kept = 0, bytes = 0;
   for (const c of canvases.found) {
+    if (c.shot) { kept++; try { bytes += statSync(join(OUT, 'assets', `canvas-${c.i}.png`)).size; } catch { /* 刚写的，读不到就只不计字节 */ } continue; }
     const b64 = String(c.dataUrl).split(',')[1] ?? '';
     if (!b64) continue;
     const buf = Buffer.from(b64, 'base64');

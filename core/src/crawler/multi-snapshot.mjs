@@ -8,7 +8,7 @@
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { collectCssRefs } from '../css-refs.mjs';
 import { WORKSPACE } from '../paths.mjs';
@@ -16,6 +16,8 @@ import { emit } from '../emit.mjs';
 import { sessionContext } from '../session/store.mjs';
 import { freezeCss } from '../freeze.mjs';
 import { UA } from '../ua.mjs';
+import { runScript } from '../child-run.mjs';
+import { resolveCloneUrl } from '../clone-doc.mjs';
 
 const argv = process.argv.slice(2);
 const host = argv[0];
@@ -96,8 +98,43 @@ if (isMain) {
       }
     }
     if (ALL && done.length) {
-      for (const page of done) spawnSync(process.execPath, [join('src', 'crawler', 'build_clone.mjs'), join(WORKSPACE, host, 'pages', page)], { cwd: new URL('../../', import.meta.url).pathname.replace(/^\//, ''), stdio: 'ignore' });
-      spawnSync(process.execPath, [join('src', 'crawler', 'linker.mjs'), host], { cwd: new URL('../../', import.meta.url).pathname.replace(/^\//, ''), stdio: 'inherit' });
+      // 顺序与 pipeline 的 stage 顺序**必须一致**：重建 → 截图+评分 → 接线。
+      // linker 会把站内 <a href> 改写成档案内相对路径，而分数里的 data.links
+      // 量的是"原站的数据字段有没有搬过来" —— 接线之后再测那一项就没有意义了。
+      const CORE = fileURLToPath(new URL('../../', import.meta.url));
+      const rebuilt = [];
+      for (const page of done) {
+        const dir = join(WORKSPACE, host, 'pages', page);
+        try {
+          await runScript('crawler/build_clone.mjs', [dir], { cwd: CORE });
+          rebuilt.push(page);
+        } catch (e) {
+          console.error('[multi-snapshot] 重建失败 ' + page + '：' + String(e?.message ?? e).slice(0, 200));
+          emit({ kind: 'snapshot-error', page, error: 'rebuild: ' + String(e?.message ?? e).slice(0, 160) });
+        }
+      }
+      // **重建之后必须重算分数**。不重算的话，score.json 里那一份描述的是一个
+      // 已经不存在的产物 —— 多视口升级前测的，而升级后 index.html 变成了 372 字节的
+      // 视口选择器（diff 若直接读它会得到 DOM 0 / 数据 0）。实测 apify 12 页的分数
+      // 全都停留在升级之前，apify/store 一度被算成 41.8%（真值 99.2%）。
+      for (const page of rebuilt) {
+        const dir = join(WORKSPACE, host, 'pages', page);
+        try {
+          const { url, via } = await resolveCloneUrl(host, page, dir);
+          await runScript('crawler/shot_clone.mjs', [url, join(dir, 'shot-clone.png')], { cwd: CORE, quiet: true });
+          await runScript('differ/diff.mjs', [dir], { cwd: CORE, quiet: true });
+          const s = JSON.parse(readFileSync(join(dir, 'score.json'), 'utf8'));
+          console.log('[multi-snapshot] 重算 ' + page + ' → ' + s.total + ' ' + s.grade + ' (via ' + via + ')');
+          emit({ kind: 'snapshot-rescore', page, total: s.total, grade: s.grade });
+        } catch (e) {
+          console.error('[multi-snapshot] 重算失败 ' + page + '：' + String(e?.message ?? e).slice(0, 200));
+        }
+      }
+      try {
+        await runScript('crawler/linker.mjs', [host], { cwd: CORE });
+      } catch (e) {
+        console.error('[multi-snapshot] 接线失败：' + String(e?.message ?? e).slice(0, 200));
+      }
     }
     console.log('[multi-snapshot] done pages=' + done.length + '/' + pages.length);
   } finally { await browser.close(); }

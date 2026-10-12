@@ -9,9 +9,10 @@
  */
 import SiteBar from './SiteBar.vue';
 import Icon from './Icon.vue';
-import { taskState, taskLabel, fmtTime, fmtDuration, kindCn } from './format.js';
+import { computed } from 'vue';
+import { taskState, taskLabel, fmtTime, fmtStamp, fmtDuration, kindCn } from './format.js';
 
-defineProps({
+const props = defineProps({
   tasks: { type: Array, default: () => [] },
   jobs: { type: Array, default: () => [] },
   sites: { type: Array, default: () => [] },
@@ -20,6 +21,19 @@ defineProps({
   actions: { type: Array, default: () => [] },
 });
 defineEmits(['pick', 'action', 'close', 'retry']);
+
+/**
+ * 这批历史覆盖的时间跨度。
+ * "最新 50 条"答不了"我看的是什么时候的历史" —— 而这条列表看起来**永远不变**
+ * （它就是持久化历史，刷新当然不变），所以跨度必须写在标题上，否则只能靠猜。
+ */
+const historySpan = computed(() => {
+  const ts = props.jobs.map(h => h.createdAt).filter(t => Number.isFinite(t));
+  if (!ts.length) return '';
+  const lo = new Date(Math.min(...ts)), hi = new Date(Math.max(...ts));
+  const d = (x) => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  return d(lo) === d(hi) ? d(hi) : d(lo) + ' ~ ' + d(hi);
+});
 
 /** 单行右侧的读数：不同任务类型看的东西不一样 */
 function readingOf(t) {
@@ -55,14 +69,14 @@ const RETRY_CN = { clone: '继续克隆', forge: '重新克隆' };
         <span class="job-error" :title="t.error">{{ t.error || '' }}</span>
       </div>
       <div class="wv-empty" v-if="!tasks.length && !jobs.length">本次会话还没有任务：在「星图」点击页面，或在「页面」批量克隆 / 运行 SEO 审计。</div>
-      <div class="wv-sub" v-if="jobs.length">引擎持久化历史（最近 {{ jobs.length }} 条，重启后仍可查）</div>
+      <div class="wv-sub" v-if="jobs.length">引擎持久化历史（最新 {{ jobs.length }} 条 · {{ historySpan }} · 重启后仍可查）</div>
       <div class="wv-row job-row history" v-for="h in jobs" :key="'h-' + h.id">
         <span class="job-name">{{ h.pageName || h.url }}</span>
         <span class="job-kind">{{ h.kind }}</span>
         <span class="wv-state" :class="h.status === 'done' ? 'done' : h.status === 'failed' ? 'failed' : h.status === 'running' ? 'running' : 'idle'">{{ h.status }}</span>
         <span class="wv-score">—</span>
-        <span class="job-time">{{ fmtTime(h.createdAt) }} · {{ h.endedAt ? Math.round((h.endedAt - h.createdAt) / 1000) + 's' : '' }}</span>
-        <span class="job-error">{{ h.error || '' }}</span>
+        <span class="job-time">{{ fmtStamp(h.createdAt) }} · {{ h.endedAt ? Math.round((h.endedAt - h.createdAt) / 1000) + 's' : '' }}</span>
+        <span class="job-error" :title="h.error || ''">{{ h.error || '' }}</span>
         <span class="job-retry"><button v-if="canRetry(h)" @click="$emit('retry', h)" :title="'重新发起这个任务'">{{ RETRY_CN[h.kind] }}</button></span>
       </div>
     </div>

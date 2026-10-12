@@ -12,12 +12,13 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { getEnv } from './env.mjs';
 import { requireArg } from './args.mjs';
 import { sourceFingerprint } from './fingerprint.mjs';
 import { WORKSPACE } from './paths.mjs';
 import { asUrl, pageNameOfUrl } from './url-canon.mjs';
+import { runScript } from './child-run.mjs';
+import { resolveCloneUrl } from './clone-doc.mjs';
 import { emit } from './emit.mjs';
 const ENV = getEnv();
 
@@ -33,29 +34,12 @@ const host = new URL(URL_).hostname.replace(/^www\./, '');
 const DIR = join(WORKSPACE, host, 'pages', NAME);
 mkdirSync(DIR, { recursive: true });
 
-const run = (script, args) => new Promise((resolve, reject) => {
-  const p = spawn(process.execPath, [join('src', script), ...args], { stdio: ['ignore', 'inherit', 'inherit'] });
-  p.on('exit', code => code === 0 ? resolve() : reject(new Error(`${script} exited ${code}`)));
-  p.on('error', reject);
-});
+// 阶段脚本统一走 child-run：失败时会带上子进程 stderr 的尾巴（理由见那个模块）
+const run = (script, args) => runScript(script, args);
 
-// 克隆页静态服务由 engine-server 常驻提供（/static/...）。
-// 引擎不在时回退 file:// —— 克隆页资产已全部本地化（相对路径），实测 0 失败请求。
-// 这条回退是「工具能独立跑」的关键：`heimdall forge` 不该要求用户先起引擎。
-//
-// **回退成立的前提是构建阶段把本地引用上的 `crossorigin` 摘干净了。**
-// 留着的话 file:// 下会以 CORS 模式取本地文件而全部失败（裂图占位框），
-// 而 http 下完全正常 —— 于是"两条路口径相同"这句话就只在构建正确时才成立。
-// 实测 apify.com/home：file:// 截图 84.8%、/static 截图 100%（见 dom-refs.mjs）。
-const SELF_URL = process.env.HEIMDALL_SELF_URL ?? `http://127.0.0.1:${process.env.HEIMDALL_PORT ?? 8900}`;
-
-async function resolveCloneUrl() {
-  try {
-    const r = await fetch(`${SELF_URL}/api/status`, { signal: AbortSignal.timeout(1500) });
-    if (r.ok) return { url: `${SELF_URL}/static/${host}/pages/${NAME}/clone/index.html`, via: 'engine' };
-  } catch { /* 引擎未启动 */ }
-  return { url: pathToFileURL(join(DIR, 'clone', 'index.html')).href, via: 'file' };
-}
+// 克隆页的可访问 URL（引擎在线走 /static，否则 file://）—— 判据在 clone-doc.mjs，
+// 多视口升级那边重算分数时要用同一份，不能各写一遍
+const cloneUrlFor = () => resolveCloneUrl(host, NAME, DIR);
 
 const STAGES = [
   ['capture', 'crawler/capture.mjs', [URL_, DIR]],
@@ -79,7 +63,7 @@ try {
   } catch { /* 指纹只是优化，缺了不影响产物 */ }
 
   // shot 阶段——引擎可达走 /static，否则 file://（两者截图口径相同）
-  const clone = await resolveCloneUrl();
+  const clone = await cloneUrlFor();
   log(`\n==== [shot] (via ${clone.via}) ====`);
   emit({ kind: 'forge-stage', stage: 'shot', status: 'running', via: clone.via });
   emit({ kind: 'forge-note', note: clone.via === 'file' ? '引擎未运行，克隆截图走 file://' : '引擎在线，克隆截图走 /static' });

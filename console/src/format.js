@@ -22,6 +22,24 @@ export const taskLabel = (t) => {
 
 export const fmtTime = (t) => (t ? new Date(t).toLocaleTimeString('zh-CN', { hour12: false }) : '');
 
+/**
+ * 历史时刻：**今天只给时分秒，更早的必须带上日期**。
+ *
+ * 只给时分秒的话，三天前的一条会和今天的一条长得一模一样 ——
+ * 用户看着"刷新了也没变"的历史列表，其实分不清哪条是刚发生的
+ * （这正是一次真实困惑的来源：任务中心那行 `03:37:43 · 31s` 究竟是今天的还是前天的？）。
+ */
+export const fmtStamp = (t) => {
+  if (!t) return '';
+  const d = new Date(t);
+  const today = new Date();
+  const sameDay = d.getFullYear() === today.getFullYear()
+    && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+  return sameDay
+    ? d.toLocaleTimeString('zh-CN', { hour12: false })
+    : d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
 export const fmtDate = (t) => (t
   ? new Date(t).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
   : '—');
