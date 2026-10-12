@@ -62,7 +62,11 @@ jobs:
           if [ -n "${ONE:-}" ]; then
             printf '%s\n' "$ONE" > "$RUNNER_TEMP/targets.txt"
           elif [ -f ../config/seo-targets.txt ]; then
-            grep -vE '^[[:space:]]*(#|$)' ../config/seo-targets.txt > "$RUNNER_TEMP/targets.txt"
+            # `|| true` 不是敷衍：grep 在"一行都没选中"时返回 1，而那个返回值在这里**不是错误** ——
+            # 目标文件全是注释（本仓库的默认状态）就是这种情况。少了它，`set -e` 会当场掐掉这一步，
+            # 于是下面那段"门禁无事可做"的优雅分支永远走不到，定时任务天天红着
+            # （实测 2026-10-12 的定时运行就是这么失败的）。
+            grep -vE '^[[:space:]]*(#|$)' ../config/seo-targets.txt > "$RUNNER_TEMP/targets.txt" || true
           else
             : > "$RUNNER_TEMP/targets.txt"
           fi
