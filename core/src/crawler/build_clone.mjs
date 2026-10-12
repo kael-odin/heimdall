@@ -14,7 +14,7 @@ import { pickAdapter, refRewriteCandidates } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isNonAssetRef, isSoftHtml } from '../asset-ext.mjs';
 import { scanCssRefs, rewriteCssRefs, extractFontRules } from '../css-refs.mjs';
-import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, applyVideoPosters, neutralizeBaseTag } from '../dom-refs.mjs';
+import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag } from '../dom-refs.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { UA } from '../ua.mjs';
@@ -36,6 +36,9 @@ mkdirSync(join(CLONE, 'styles'), { recursive: true });
 mkdirSync(join(CLONE, 'assets'), { recursive: true });
 
 const FONT_EXT = new Set(['woff2', 'woff', 'ttf', 'otf', 'eot']);
+
+/** 累计：本地引用上被摘掉的 crossorigin 个数（进 clone-gaps，别做成一件事没人知道） */
+let crossOriginDropped = 0;
 
 /** 取回响应体 + Content-Type（扩展名判定需要真实类型，不能只靠 URL 后缀猜） */
 /**
@@ -230,6 +233,12 @@ function rewriteHtml(domText, cssFileName) {
     const hit = lookup(val);
     return hit ? attr + '="' + hit + '"' : m;
   });
+  // 引用都改成本地路径了，`crossorigin` 就只剩副作用：**用 file:// 打开克隆页时
+  // 图片会被 CORS 拦掉**，变成一排裂图占位框（"双击即看"是我们承诺过的用法）。
+  // 详见 dom-refs.mjs。放在引用改写**之后**：判断依据是改写后的值。
+  const cx = dropCrossoriginOnLocalRefs(html);
+  crossOriginDropped += cx.count;
+  html = cx.html;
   html = stripAssetLinkTags(html)
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace('</head>', '<link rel="stylesheet" href="styles/' + cssFileName + '">'
@@ -275,7 +284,11 @@ const rawDesktopHtml = rewriteHtml(readFileSync(join(PAGE, 'dom.html'), 'utf8'),
 // 当成待解析的站内引用（它本来就是本地文件）。
 const { html: desktopHtmlBeforeVideo, count: rasterizedCanvases } = rasterizeCanvases(rawDesktopHtml);
 // 视频 poster 同理，也放在引用改写之后（见 dom-refs.mjs 里 applyVideoPosters 的注释）
-const { html: desktopHtml, count: videoPosters } = applyVideoPosters(desktopHtmlBeforeVideo);
+const { html: desktopHtmlBeforeMedia, count: videoPosters } = applyVideoPosters(desktopHtmlBeforeVideo);
+// 自定义媒体组件（`<mux-player poster="…">`）换成那张 poster 的 <img>：
+// 它们的画面是脚本建的 shadow DOM，剥了脚本就只剩空壳（理由见 dom-refs.mjs）。
+// 同样放在引用改写之后 —— 此时 poster 已经是本地路径，直接当 src 用。
+const { html: desktopHtml, count: mediaPosters, remote: mediaPostersRemote } = materializeMediaPosters(desktopHtmlBeforeMedia);
 
 // ---------- 3. 多视口快照（可选） ----------
 const VARIANTS = [375, 768].filter(w => existsSync(join(PAGE, 'dom-' + w + '.html')) && existsSync(join(PAGE, 'cssom-' + w + '.css')));
@@ -347,8 +360,13 @@ const gapReport = {
   // 画布：脚本被剥离后画布上什么都不剩，所以捕获阶段会把它光栅化成静态图。
   // 这里如实记录抓到几个 —— 没抓到的（从未绘制 / 跨域污染）保持原样，
   // 不伪装成"已处理"，否则"缺失"就变成肉眼之外看不见的东西。
+  crossOriginDropped,
   canvasRasterized: rasterizedCanvases,
   videoPosterized: videoPosters,
+  // 自定义媒体组件换成 poster 静态图的个数；remote 那几个是 poster 没能本地化的
+  // （镜像里会联网取原站图），离线不干净要看得见
+  mediaPosterized: mediaPosters,
+  mediaPosterRemote: mediaPostersRemote,
   gaps: cssGaps,
 };
 writeFileSync(join(PAGE, 'clone-gaps.json'), JSON.stringify(gapReport, null, 2));
@@ -357,4 +375,4 @@ if (cssGaps.length) {
   for (const g of cssGaps.slice(0, 3)) console.log('     · ' + g.ref.slice(0, 80));
 }
 
-console.log('\nDONE clone -> ' + relative(process.cwd(), CLONE) + ' (assets copied: ' + copied + ', canvas rasters: ' + copiedCanvases + ', variants: ' + VARIANTS.length + ', css gaps: ' + cssGaps.length + ')');
+console.log('\nDONE clone -> ' + relative(process.cwd(), CLONE) + ' (assets copied: ' + copied + ', canvas rasters: ' + copiedCanvases + ', crossorigin dropped: ' + crossOriginDropped + ', media posters: ' + mediaPosters + (mediaPostersRemote ? ' (' + mediaPostersRemote + ' 张仍是远程)' : '') + ', variants: ' + VARIANTS.length + ', css gaps: ' + cssGaps.length + ')');

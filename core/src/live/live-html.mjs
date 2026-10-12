@@ -15,6 +15,8 @@
  * 所以每条规则的 `/` 后面都要跟一个 `(?!/)`。静态镜像那侧（dom-refs.mjs:117）
  * 一直是 `startsWith('/') && !startsWith('//')`，这里对齐。
  */
+import { esc } from '../html.mjs';
+
 export function prefixRootRelative(html, lmPrefix, rootDirs = []) {
   const p = lmPrefix.replace(/\/$/, '');
   let out = html;
@@ -33,4 +35,38 @@ export function prefixRootRelative(html, lmPrefix, rootDirs = []) {
   out = out.replace(/(\b(?:src|href|srcset|action)\s*=\s*["']?)\/(?!\/|lm\/|static\/)/gi, `$1${p}/`);
   out = out.replace(/url\(\s*(?:&quot;|['"])?\/(?!\/|lm\/|static\/)/gi, `url("${p}/`);
   return out;
+}
+
+/** 未镜像提示条上的标记属性（幂等：已有就不再插） */
+export const UNMIRRORED_MARK = 'data-heimdall-unmirrored';
+
+/**
+ * 给"没有本地快照、只能反代回原站"的页面插一条提示。
+ *
+ * 镜像路由是**融合**的：本地 `live/<path>/index.html` 存在就回快照，否则反代回原站 ——
+ * 这让未锻造的页与所有 JS chunk / API 都"活着"。但代价是：一个**根本没导出过**
+ * 交互镜像的站点，`<host>.localhost:8900` 打开的就是原站本身。用户看到的界面写着
+ * 「交互镜像」，实际显示的是官方页，界面上没有一个字说明这件事
+ * （实测就是这个原因：vercel.com 没有 live/ 产物，点「交互镜像」= 打开 vercel.com）。
+ *
+ * 所以只在**顶层文档导航**上补这一条（资源请求、RSC/fetch 都不插）：
+ * 让人一眼知道"这一段是原站实时内容，不是我们复刻的"。
+ * 一个会撒谎的界面比没有界面更糟 —— 这条提示就是为了不撒谎。
+ *
+ * @param {string} html  上游返回的 HTML
+ * @param {string} host  正在被代理的站点
+ * @param {{to?: string}} [opts] to = 镜像首页地址（前缀入口下是 /lm/<host>）
+ */
+export function unmirroredBanner(html, host, { to = '/' } = {}) {
+  const src = String(html ?? '');
+  if (src.includes(UNMIRRORED_MARK)) return src;
+  const box = '<div ' + UNMIRRORED_MARK + '="" role="status" style="position:fixed;left:12px;bottom:12px;z-index:2147483647;'
+    + 'max-width:min(440px,calc(100vw - 24px));padding:9px 13px;border-radius:9px;'
+    + "font:12px/1.6 system-ui,-apple-system,'Segoe UI','Noto Sans SC',sans-serif;"
+    + 'background:rgba(17,17,22,.93);color:#E5E7EB;box-shadow:0 8px 28px rgba(0,0,0,.4)">'
+    + '<b style="color:#FBBF24">此页未镜像</b> · 以下是 <b>' + esc(host) + '</b> 的原站实时内容（经本地代理）。'
+    + ' <a href="' + esc(to) + '" style="color:#22D3EE;text-decoration:none">← 回镜像首页</a></div>';
+  // 插在 </body> 前；没有 </body>（片段/畸形 HTML）就追加到末尾 —— 都不能让提示消失
+  const i = src.toLowerCase().lastIndexOf('</body>');
+  return i < 0 ? src + box : src.slice(0, i) + box + src.slice(i);
 }

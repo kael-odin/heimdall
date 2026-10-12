@@ -14,6 +14,10 @@
 <body>
   <header class="nav">
     <img src="/logo.svg" alt="Fixture logo" width="28" height="28">
+    <!-- 带 crossorigin 的本地资产：本地化之后这个属性只剩副作用 —— 用 file:// 打开时
+         浏览器以 CORS 模式取一个没有 CORS 头的本地文件，图片直接被拦成裂图
+         （实测 apify.com/home 的头像卡就是这个）。构建必须把它摘掉，smoke 有断言盯着。 -->
+    <img src="/logo.svg" crossorigin="anonymous" alt="Fixture logo with crossorigin" width="28" height="28">
     <a href="/">Home</a>
     <a href="/pricing.html">Pricing</a>
   </header>

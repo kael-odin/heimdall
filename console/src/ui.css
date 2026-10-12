@@ -249,6 +249,10 @@
 .dock-quick a { color: var(--accent); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 10px; font-size: 12px; text-decoration: none; }
 .dock-quick a:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .dock-quick a.quick-alt { color: var(--text-dim); font-size: 11px; }
+/* 尚未导出交互镜像时的那个入口：虚线边框 = "点得动，但它现在不是镜像" */
+.dock-quick a.quick-off { color: var(--text-dim); border-style: dashed; }
+.dock-quick-note { margin-top: 8px; font-size: 11px; line-height: 1.7; color: var(--text-dim); }
+.dock-quick-note b { color: var(--warn); }
 /* 交付包路径：一行等宽字 + 两个动作。路径很长，所以允许换行但不能撑破卡片 */
 .bundle { margin-top: 10px; }
 .bundle-path { display: block; font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: var(--text-dim); background: rgba(255,255,255,.03); border: 1px dashed var(--border); border-radius: var(--r-sm); padding: 7px 9px; word-break: break-all; }

@@ -297,6 +297,9 @@ const manifest = await page.evaluate(() => {
     if (s.getAttribute('src')) addRes(s.getAttribute('src'), 'media');
   });
   document.querySelectorAll('video').forEach(v => { if (v.getAttribute('src')) addRes(v.getAttribute('src'), 'media'); if (v.getAttribute('poster')) addRes(v.getAttribute('poster'), 'image'); });
+  // 任何元素上的 poster 都收，不只是 <video>：`<mux-player poster="…">` 这类自定义媒体组件
+  // 的画面就是这张图，漏收它 = 静态镜像里整块空白（实测 vercel.com/customers，41 万像素的差异）
+  document.querySelectorAll('[poster]').forEach(e => { const p = e.getAttribute('poster'); if (p) addRes(p, 'image'); });
   document.querySelectorAll('audio[src]').forEach(a2 => addRes(a2.getAttribute('src'), 'media'));
   document.querySelectorAll('link[rel*="icon"]').forEach(l => addRes(l.getAttribute('href'), 'icon'));
   document.querySelectorAll('link[rel="manifest"]').forEach(l => addRes(l.getAttribute('href'), 'manifest'));

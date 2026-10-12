@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { prefixRootRelative } from '../src/live/live-html.mjs';
+import { prefixRootRelative, unmirroredBanner, UNMIRRORED_MARK } from '../src/live/live-html.mjs';
 
 const HOST = 'site.test';
 const P = `/lm/${HOST}`;
@@ -50,4 +50,39 @@ test('无引号的属性写法与 srcset 也覆盖到', () => {
 test('绝对地址不受影响（不是以 / 开头）', () => {
   const html = '<a href="https://other.test/x">x</a>';
   assert.equal(f(html), html);
+});
+
+// ---------- 未镜像页的提示条 ----------
+// 镜像路由是融合的：本地没快照就反代回原站。于是一个**从没导出过**交互镜像的站点，
+// <host>.localhost:8900 打开的就是原站本身，而界面上写着「交互镜像」——
+// 实测 vercel.com 就是这样（没有 live/ 产物），用户以为镜像坏了/跳回官网了。
+test('unmirroredBanner: 插在 </body> 前，并写明这是原站实时内容', () => {
+  const out = unmirroredBanner('<html><body><h1>hi</h1></body></html>', 'vercel.com', { to: '/' });
+  assert.ok(out.indexOf(UNMIRRORED_MARK) < out.lastIndexOf('</body>'), '要在 </body> 之前');
+  assert.match(out, /此页未镜像/);
+  assert.match(out, /vercel\.com/);
+  assert.match(out, /<h1>hi<\/h1>/, '原内容不能动');
+});
+
+test('unmirroredBanner: 没有 </body> 时追加到末尾（片段/畸形 HTML 也不能让提示消失）', () => {
+  const out = unmirroredBanner('<div>fragment</div>', 'x.test');
+  assert.match(out, /^<div>fragment<\/div>/);
+  assert.match(out, /data-heimdall-unmirrored/);
+});
+
+test('unmirroredBanner: 幂等 —— 已经有标记就不再插一条', () => {
+  const once = unmirroredBanner('<body></body>', 'x.test');
+  assert.equal(unmirroredBanner(once, 'x.test'), once);
+});
+
+test('unmirroredBanner: host 与首页地址都做转义（它们在 URL 里，是外部输入）', () => {
+  const out = unmirroredBanner('<body></body>', '"><script>alert(1)</script>', { to: '/lm/a"b/' });
+  assert.doesNotMatch(out, /<script>alert/);
+  assert.match(out, /&quot;&gt;&lt;script&gt;/);
+  assert.match(out, /href="\/lm\/a&quot;b\/"/);
+});
+
+test('unmirroredBanner: 前缀入口下的"回镜像首页"指向该站前缀', () => {
+  const out = unmirroredBanner('<body></body>', 'x.test', { to: '/lm/x.test' });
+  assert.match(out, /href="\/lm\/x\.test"/);
 });

@@ -17,6 +17,9 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createServer as createNetServer } from 'node:net';
 import assert from 'node:assert/strict';
+// 这条断言复用生产实现本身，而不是再写一个正则：属性名也会出现在
+// `alt="…with crossorigin"` 这种文字里，手写正则会先把自己骗过去（第一版就是这么红的）
+import { dropCrossoriginOnLocalRefs } from '../src/dom-refs.mjs';
 
 const CORE = fileURLToPath(new URL('..', import.meta.url));
 const FIXTURE_DIR = join(CORE, 'test', 'fixtures', 'site');
@@ -203,6 +206,13 @@ async function main() {
     // `animation: 1.6s ease-in-out 0s infinite normal none running heimdall-pulse`
     assert.match(cloneCss, /animation:[^;}]*heimdall-pulse/, '动画的引用也必须保留');
     assert.deepEqual(scanForFreeze(pageDir), [], '截图冻结样式不得进入原站产物（dom.html / clone）');
+
+    // 3c) 本地化引用上不得留 crossorigin：留着的话，用 file:// 打开克隆页（"双击即看"）
+    //     会以 CORS 模式去取本地文件，图片一律被拦成裂图 —— 而经 http 打开完全正常，
+    //     所以只有这条离线断言看得见它（实测 apify.com/home，像素分 100% → 84.8%）。
+    const cloneForCors = readFileSync(join(pageDir, 'clone', 'index.html'), 'utf8');
+    assert.equal(dropCrossoriginOnLocalRefs(cloneForCors).count, 0,
+      '克隆页里还有本地引用挂着 crossorigin —— file:// 打开会变成裂图');
 
     // 4) 安全断言
     const evil = await fetch(base + '/px/evil.example/x');

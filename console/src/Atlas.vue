@@ -113,6 +113,10 @@ const hudEdgesRendered = ref(0);
 const hudOrigin = ref('');
 const sites = ref([]);          // 已侦察站点清单（/api/sites）
 const sitesLoaded = ref(false); // 站点清单是否已经问过一次（首启向导据此判断"确实没有站点"）
+/** 当前站点的交互镜像产量。0 = 从没导出过 —— 镜像路由"本地无快照就反代回原站"，
+ *  此时「交互镜像」入口打开的是原站本身，详情面板要如实说明（见 DetailDock 的 liveTitle）。
+ *  null = 站点清单还没到，先不下结论。 */
+const curSiteMirrored = computed(() => sites.value.find(s => s.host === host.value)?.mirrored ?? null);
 const engine = ref({ ok: false, recon: null, forge: null });   // 引擎状态灯
 const autoRotate = ref(true);   // 星图自转开关
 const showPanel = ref(typeof window === 'undefined' || window.innerWidth > 768);    // 左侧仪表面板折叠（小屏默认收起）
@@ -1688,7 +1692,12 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
           · 动态图 {{ liveHealth.assets?.dynamic ?? 0 }}
         </p>
       </template>
-      <p v-else>可部署的离线完整包：本地快照 → HAR 回放 → 原站代理。导出后这里显示离线缺口。</p>
+      <p v-else>可部署的离线完整包：本地快照 → HAR 回放 → 原站代理。导出后这里显示离线缺口。
+        <template v-if="curSiteMirrored === 0"><br />
+          <b style="color:var(--warn)">本站还没有本地镜像</b> —— 在导出之前，
+          <code>{{ host }}.localhost</code> 打开的是<b>原站本身</b>（镜像路由：本地无快照就反代回原站）。
+          点下面的按钮导出一次，它才会变成真镜像。</template>
+      </p>
       <!-- 交付：这个目录就是要交给同事的东西。路径、复制、打开文件夹三个动作都在这里，
            因为"导出成功了"和"我拿到了"之间还差一步 —— 找到它在哪。 -->
       <div class="bundle" v-if="liveHealth?.bundlePath">
@@ -1832,6 +1841,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     v-if="dockOpen"
     :key="'dock-' + selected?.id"
     :host="host" :selected="selected" :forge="forge" :theme="theme"
+    :mirrored="curSiteMirrored"
     :page-meta="pageMeta" :detail-intel="detailIntel" :detail-score="detailScore"
     @close="selected = null" @open-forge="openForge" @forge-all="forgeAll" @verify="runVerifyPage"
   />

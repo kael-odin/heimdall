@@ -17,7 +17,7 @@ import { getEnv } from './env.mjs';
 import { requireArg } from './args.mjs';
 import { sourceFingerprint } from './fingerprint.mjs';
 import { WORKSPACE } from './paths.mjs';
-import { asUrl } from './url-canon.mjs';
+import { asUrl, pageNameOfUrl } from './url-canon.mjs';
 import { emit } from './emit.mjs';
 const ENV = getEnv();
 
@@ -25,7 +25,7 @@ const USAGE = 'node src/pipeline.mjs <url> [pageName]';
 const RAW_URL = requireArg(process.argv[2], USAGE, '目标 URL');
 const URL_ = asUrl(RAW_URL);   // `forge example.com home` 这种不带协议的写法同样可用
 if (!URL_) { console.error(`不是有效的网址：${RAW_URL}`); process.exit(2); }
-const NAME = process.argv[3] ?? 'page';
+const NAME = process.argv[3] ?? pageNameOfUrl(URL_);
 
 const log = (...a) => console.error(...a);
 
@@ -42,6 +42,11 @@ const run = (script, args) => new Promise((resolve, reject) => {
 // 克隆页静态服务由 engine-server 常驻提供（/static/...）。
 // 引擎不在时回退 file:// —— 克隆页资产已全部本地化（相对路径），实测 0 失败请求。
 // 这条回退是「工具能独立跑」的关键：`heimdall forge` 不该要求用户先起引擎。
+//
+// **回退成立的前提是构建阶段把本地引用上的 `crossorigin` 摘干净了。**
+// 留着的话 file:// 下会以 CORS 模式取本地文件而全部失败（裂图占位框），
+// 而 http 下完全正常 —— 于是"两条路口径相同"这句话就只在构建正确时才成立。
+// 实测 apify.com/home：file:// 截图 84.8%、/static 截图 100%（见 dom-refs.mjs）。
 const SELF_URL = process.env.HEIMDALL_SELF_URL ?? `http://127.0.0.1:${process.env.HEIMDALL_PORT ?? 8900}`;
 
 async function resolveCloneUrl() {

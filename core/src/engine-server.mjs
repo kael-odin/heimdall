@@ -30,9 +30,11 @@ import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
 import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
 import { createWatchdog } from './task-watchdog.mjs';
 import { writeProxyHead, mirrorHostOf } from './proxy-headers.mjs';
+import { unmirroredBanner } from './live/live-html.mjs';
 import { sessionInfo, clearSession } from './session/store.mjs';
 import { loadProfile, sanitizeHost, queuePlan, MAX_SLOT_CEILING } from './site-profile.mjs';
 import { UA } from './ua.mjs';
+import { pageNameOfUrl } from './url-canon.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 
@@ -195,10 +197,30 @@ async function serveMirror(req, res, u, lmHost, prefix) {
       headers.append('set-cookie', c.replace(/;\s*domain=[^;]+/gi, '').replace(/;\s*secure/gi, ''));
     }
     writeProxyHead(res, upstream.status, headers);
-    res.end(Buffer.from(await upstream.arrayBuffer()));
+    const body = Buffer.from(await upstream.arrayBuffer());
+    // 顶层文档导航 + 上游就是 HTML → 这是"用户在浏览一个没镜像的页"。
+    // 只在这条路径补提示条：资源请求、RSC/fetch 载荷（sec-fetch-dest: empty）都不插，
+    // 否则会把框架的数据流弄脏。理由见 live-html.mjs 的 unmirroredBanner。
+    if (frameDocNavigation(req) && /text\/html/i.test(upstream.headers.get('content-type') ?? '')) {
+      return res.end(unmirroredBanner(body.toString('utf8'), lmHost, { to }));
+    }
+    res.end(body);
   } catch (e) {
     try { json(res, 502, { error: String(e).slice(0, 140) }); } catch {}
   }
+}
+
+/**
+ * 这是否是一次"用户在地址栏里进了这个页"的顶层文档导航？
+ *
+ * 优先信 `Sec-Fetch-Dest`（Fetch Metadata，Chrome/Firefox/Safari 都发）；
+ * 只有它缺失时才退回看 Accept。**有 dest 但不是 document 就一律不算** ——
+ * 反过来写会把 Next.js 用 `Accept: text/html` 拉的 RSC 载荷也当成导航。
+ */
+function frameDocNavigation(req) {
+  const dest = req.headers['sec-fetch-dest'];
+  if (dest) return dest === 'document';
+  return String(req.headers.accept ?? '').includes('text/html');
 }
 
 /** 只对白名单来源回 CORS 头（默认本机控制台）；无 Origin 的 curl/服务调用不受影响 */
@@ -215,6 +237,28 @@ const authorized = (req, u) => !AUTH_TOKEN || req.headers['x-heimdall-token'] ==
  *  用"列一次目录得到集合"代替"每个请求 stat 一次"：清单请求最热的一条路，
  *  而集合走 listCaches（8s TTL + 任务结束即失效）。顺带更安全 ——
  *  只有目录里真实存在的名字能命中，`..` 之类的构造永远匹配不上。 */
+/**
+ * workspace/<host>/live 下已生成的镜像页数 —— 交互镜像的**真实产量**。
+ *
+ * 为什么控制台需要这个数：镜像路由是"融合"的（本地有快照就回快照，否则反代回原站），
+ * 所以一个**从没导出过**交互镜像的站点，`<host>.localhost:8900` 打开就是原站本身
+ * （经本地代理）。按钮上写着「交互镜像」、点开却是官方页 —— 实测就是这个原因
+ * （vercel.com 没有 live/ 产物）。有了这个数，控制台才能如实说明点下去会发生什么。
+ */
+function countLivePages(host) {
+  let n = 0;
+  const walk = (dir) => {
+    let ents;
+    try { ents = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      if (e.isDirectory()) walk(join(dir, e.name));
+      else if (e.name === 'index.html') n++;
+    }
+  };
+  walk(join(WORKSPACE, host, 'live'));
+  return n;
+}
+
 const isProxyHost = (h) => {
   const noWww = String(h).replace(/^www\./, '');
   if (EXTRA_PROXY_HOSTS.has(noWww)) return true;
@@ -222,13 +266,7 @@ const isProxyHost = (h) => {
     try { return new Set(readdirSync(WORKSPACE)); } catch { return new Set(); }
   }).has(noWww);
 };
-const pageFor = (u) => {
-  try {
-    const x = typeof u === 'string' ? new URL(u) : u;
-    const p = x.pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[/?&#]+/g, '-').slice(0, 60);
-    return p || 'home';
-  } catch { return 'home'; }
-};
+const pageFor = (u) => pageNameOfUrl(u);
 // 路径归属判断统一走 paths.mjs 的 isInside（用 relative 判，前缀判断会被 `..` 绕过）
 const isInsideWorkspace = (file) => isInside(WORKSPACE, file);
 const isInsideDataRoot = (file) => isInside(DATA_ROOT, file);
@@ -552,7 +590,7 @@ function startEditManifest(host) {
 
 function startForge(url, { hostPost = true } = {}) {  const t = makeTask('forge', url);
   const u = new URL(url);
-  const name = u.pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[\/?&#]+/g, '-').slice(0, 60) || 'home';
+  const name = pageNameOfUrl(u);
   t.pageName = name;
   const env = hostPost ? {} : { HEIMDALL_SKIP_HOST_POST: '1' };
   // 单页熔断参数来自站点配方（大站可以给更长的上限，挂死页统一在 8 分钟内判死）
@@ -1271,6 +1309,8 @@ const handleRequest = async (req, res) => {
           cloned: forged,
           clonedInAtlas,              // 既被侦察发现、也已克隆（唯一诚实的"完成度"分子）
           extra: Math.max(0, forged - clonedInAtlas),   // 已克隆但侦察没覆盖到（早先手工克隆等）
+          // 交互镜像的实际产量：0 表示没导出过，此时「交互镜像」入口打开的是原站本身
+          mirrored: countLivePages(d),
           audit,
           edges: atlas?.meta?.edges ?? 0,
           // partial = 缺全站侦察（只克隆过，或只审计过）；控制台据此给不同的引导

@@ -19,6 +19,8 @@ const hostDir = process.argv[3] ?? host;
 const BASE = join(WORKSPACE, hostDir);
 const PAGES = join(BASE, 'pages');
 if (!existsSync(PAGES)) { console.error('no pages dir:', PAGES); process.exit(1); }
+/** 交互镜像入口用的端口：与引擎的 SELF_URL 约定同一份来源，避免两处各猜一个 */
+const LIVE_PORT = process.env.HEIMDALL_PORT ?? '8900';
 
 const pages = readdirSync(PAGES)
   .filter(n => existsSync(join(PAGES, n, 'clone', 'index.html')))
@@ -140,14 +142,16 @@ header .hint { margin-left:auto; font-size:11px; color:var(--dim); }
   <select id="sel"></select>
   <a class="lnk" href="index.html">← 档案</a>
   <a class="lnk" id="live" href="#" target="_blank" rel="noopener">打开原站 ↗</a>
+  <a class="lnk" id="inter" href="#" target="_blank" rel="noopener" title="交互镜像：保留脚本、资源实时回原站。用 <域名>.localhost 作独立域名，站点的路由/登录态/本地存储都与原站一致">交互镜像 ↗</a>
   <span class="hint">两侧统一 1440px 桌面视口 · 等比缩放 · 任意一侧滚动同步</span>
 </header>
 <div class="panes">
   <div class="pane" id="left"><span class="tag">SOURCE · 原站（捕获快照）</span><div class="scaled" id="lwrap"><img id="shot" alt="source full page"/></div><span class="zoom" id="zl"></span></div>
-  <div class="pane" id="right"><span class="tag">MIRROR · 镜像（可交互）</span><div class="scaled" id="rwrap"><iframe id="frame"></iframe></div><span class="zoom" id="zr"></span></div>
+  <div class="pane" id="right"><span class="tag">MIRROR · 静态镜像（剥离脚本 · 资产本地化）</span><div class="scaled" id="rwrap"><iframe id="frame"></iframe></div><span class="zoom" id="zr"></span></div>
 </div>
 <script>
 const PAGES = __PAGES__;
+const PORT = '__LIVE_PORT__';   // 引擎端口（生成时烤进来，见 LIVE_PORT）
 const VW = 1440;   // 捕获视口宽度：两侧共同的真实坐标系
 const params = new URLSearchParams(location.search);
 const cur = params.get('p') || PAGES[0]?.name || '';
@@ -183,6 +187,12 @@ window.addEventListener('resize', fit);
 function load(name) {
   const p = PAGES.find(x => x.name === name) ?? {};
   document.getElementById('live').href = p.target || '#';
+  // 交互镜像入口：<域名>.localhost:<引擎端口><原路径>。端口在这里烤成常量 ——
+  // 这个页面是静态文件，没有别的地方能问出引擎开在哪个端口。
+  try {
+    const t = new URL(p.target);
+    document.getElementById('inter').href = 'http://' + t.hostname.replace(/^www\./, '') + '.localhost:' + PORT + t.pathname;
+  } catch { document.getElementById('inter').href = '#'; }
   history.replaceState(null, '', 'compare.html?p=' + encodeURIComponent(name));   // URL 随切换更新，刷新/分享不丢状态
   lwrap.style.height = 'auto';
   shot.src = 'pages/' + name + '/shot-src-full.png';
@@ -213,6 +223,6 @@ frame.addEventListener('load', () => {
   });
 });
 </script>
-</body></html>`.replace('__PAGES__', pagesJson);
+</body></html>`.replace('__PAGES__', pagesJson).replace('__LIVE_PORT__', String(LIVE_PORT));
 writeFileSync(join(BASE, 'compare.html'), compare);
 console.log(`compare -> ${join(BASE, 'compare.html')}`);

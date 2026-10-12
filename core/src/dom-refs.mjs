@@ -78,6 +78,14 @@ export function neutralizeBaseTag(html) {
  * **没抓到的保持原样**：空白画布（从未绘制）或跨域污染（读不到像素）不该
  * 被换成一张空图 —— 那样只是把"缺失"伪装成"已处理"。
  *
+ * **原有属性除标记外一律保留**（实测教训，见下）。光栅图是"这个元素在那一刻长什么样"
+ * 的替身，凡是决定它长什么样的东西都得跟着走：
+ *   · inline style —— vercel.com 首页的三角画布类名是 `opacity-0`（设计上由脚本淡入），
+ *     真正让它可见的是脚本写上去的 `style="opacity: 1;"`。旧实现只搬 class/width/height，
+ *     style 一丢，类名里的 opacity-0 就赢了：图抓得好好的，镜像里却是一块空白。
+ *   · id —— `#hero-canvas{…}` 这种选择器真实存在
+ *   · aria-*  —— 决定它作为无障碍节点读出来是什么
+ *
  * @returns {{ html: string, count: number }}
  */
 export function rasterizeCanvases(html, { assetDir = 'assets' } = {}) {
@@ -86,21 +94,142 @@ export function rasterizeCanvases(html, { assetDir = 'assets' } = {}) {
     const m = /data-heimdall-canvas\s*=\s*"(\d+)"/i.exec(attrs);
     if (!m) return tag;
     count++;
-    const w = /\bwidth\s*=\s*"?(\d+)"?/i.exec(attrs)?.[1];
-    const h = /\bheight\s*=\s*"?(\d+)"?/i.exec(attrs)?.[1];
-    const cls = /\bclass\s*=\s*"([^"]*)"/i.exec(attrs)?.[1];
-    const kept = [
-      `src="${assetDir}/canvas-${m[1]}.png"`,
-      cls ? `class="${cls}"` : '',
-      w ? `width="${w}"` : '',
-      h ? `height="${h}"` : '',
-      // 记录来源：这是画面快照，不是原元素。排查"这图哪来的"时省事。
-      'data-heimdall-raster="1"',
-      'alt=""',   // 原画布无 alt；这些是装饰性插图，显式标装饰
-    ].filter(Boolean).join(' ');
-    return `<img ${kept}>`;
+    const kept = attrs.replace(/\s*data-heimdall-canvas\s*=\s*"\d+"/i, '').trim();
+    // 有 aria-label / aria-labelledby 的元素已经有名字了，再塞 alt="" 会把名字抹掉
+    const named = /\balt\s*=/i.test(kept) || /\baria-label(?:ledby)?\s*=/i.test(kept);
+    // 记录来源：这是画面快照，不是原元素。排查"这图哪来的"时省事。
+    return `<img src="${assetDir}/canvas-${m[1]}.png"${kept ? ' ' + kept : ''}`
+      + `${named ? '' : ' alt=""'} data-heimdall-raster="1">`;
   });
   return { html: out, count };
+}
+
+/** 自定义元素（标签名带连字符）—— HTML 规范里只有它们需要脚本才能建出画面 */
+const CUSTOM_EL = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+$/i;
+
+/**
+ * 换掉元素时要丢掉的那些属性：它们的含义**由被换掉的那个媒体元素定义**，
+ * 挂到 <img> 上没有任何意义（`<img muted loop playsinline preload="none">` 读起来像 bug）。
+ * 保留的是一切与"它长什么样/它是什么"有关的：class / style / id / aria-* / data-*。
+ * poster 不在此列 —— 它已经被消费成 src 了，由调用处的 replace 单独摘掉。
+ */
+const MEDIA_ONLY_ATTRS = [
+  'preload', 'loop', 'muted', 'autoplay', 'playsinline', 'controls', 'crossorigin',
+  'playback-id', 'default-hidden-captions', 'player-software-name', 'player-software-version',
+  'player-init-time', 'stream-type', 'env-key',
+];
+
+/**
+ * 把属性串拆成 token（名字 + 原样的值片段）。
+ *
+ * 为什么不能拿正则直接在整串上删：`muted` / `loop` 这类布尔属性名的正则会在
+ * **别的属性的值里**命中 —— `class="a muted b"` 被删一下就成了 `class="a  b"`（还是好的），
+ * 更糟的是删成 `class="a"`。按 token 走，引号内的内容整体是一个值，动不到。
+ */
+function splitAttrs(s) {
+  const out = [];
+  const re = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(\s*=\s*("[^"]*"|'[^']*'|[^\s"'>]+))?/g;
+  let m;
+  while ((m = re.exec(s))) out.push({ name: m[1], value: m[3] ?? null, raw: m[0] });
+  return out;
+}
+
+/**
+ * 摘掉「引用已经本地化」的 `<img>` 上的 `crossorigin`。
+ *
+ * `crossorigin="anonymous"` 的意思是"以 CORS 模式取这个资源"。资产本地化之后，
+ * 引用已经指向同目录的本地文件，没有跨域可言 —— 这个属性只剩副作用：
+ *
+ *   **用 `file://` 打开克隆页时（就是我们承诺的"双击即看"）图片会被拦掉。**
+ *   浏览器对 file:// 文档给出 opaque origin，本地文件也没有 CORS 响应头，
+ *   于是请求失败、img 变成裂图占位框。而占位框还是有布局尺寸的 ——
+ *   它会把标题挤到第二列、把文案截断。
+ *   实测 apify.com/home：一排 Actor 头像卡全裂，像素分从 100% 掉到 84.8%。
+ *   同一份产物经 http（引擎的 /static）打开则完全正常 —— 所以这个坑
+ *   只在"离线打开"时显形，一条在线自检永远看不见它。
+ *
+ * 仍是外链的（http(s):// 或协议相对 `//`）**不动**：那边的 CORS 是真的要谈的。
+ * 只处理 `<img>` —— video/script 的 crossorigin 影响的是别的东西（画布污染、
+ * 错误栈、SRI），语义不同，不该顺手改。
+ *
+ * @returns {{ html: string, count: number }}
+ */
+export function dropCrossoriginOnLocalRefs(html) {
+  let count = 0;
+  const out = String(html ?? '').replace(/<img\b([^>]*?)\/?>/gi, (tag, attrs) => {
+    const tokens = splitAttrs(attrs);
+    const ref = tokens.find(t => /^(src|srcset)$/i.test(t.name))?.value;
+    if (!ref) return tag;
+    const first = ref.replace(/^["']|["']$/g, '').split(',')[0].trim().split(/\s+/)[0];
+    if (!first) return tag;
+    if (/^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(first) || /^data:/i.test(first)) return tag;   // 仍是外链 / 内联
+    if (!tokens.some(t => t.name.toLowerCase() === 'crossorigin')) return tag;
+    count++;
+    return '<img ' + tokens.filter(t => t.name.toLowerCase() !== 'crossorigin').map(t => t.raw).join(' ') + '>';
+  });
+  return { html: out, count };
+}
+
+/**
+ * 把"带 poster 的自定义媒体元素"换成 <img>。
+ *
+ * 为什么需要：`<mux-player>` / `<video-player>` 这类组件的画面是**脚本建的 shadow DOM**。
+ * 静态镜像剥了脚本，元素、类名、渐变遮罩、文案全都还在，**只有画面没了** ——
+ * 肉眼一看就是"图裂了"，而 DOM 分依然是 100%。实测 vercel.com/customers：
+ * 首屏五张客户故事卡都是 `<mux-player poster="…">`，一个 412,755 像素的差异块
+ * 独占该页 99.8% 的差异，像素分掉到 46%。
+ *
+ * 为什么这次能做而"媒体组件光栅化"那次不能：那次要**量框**（Playwright 对 shadow DOM
+ * 自定义元素测出的包围盒不可靠，同一页三次跑出 46%/73%/58%），而 poster 是
+ * **声明在属性里的**，不用量框、不用截图、结果逐次一致。
+ *
+ * 与 canvas 的规矩一致：**没有可用的替身就不动它**。所以只处理
+ * 「标签是自定义元素 + 带 poster + 没有真实子内容（纯壳）」这一种情况；
+ * 标准元素的 poster 归 applyVideoPosters 管。
+ *
+ * @returns {{ html: string, count: number, remote: number }}
+ *   remote = poster 仍是原站绝对地址的个数（离线不干净，得让 clone-gaps 看得见）
+ */
+export function materializeMediaPosters(html) {
+  let count = 0, remote = 0;
+  // 属性段允许引号里出现 `>`（class="a>b" 这种），否则会在标签中间断句。
+  // 分两遍：自闭合写法与成对写法。HTML 里自定义元素不会自闭合，但序列化结果里见过。
+  const ATTRS = '(?:[^>"\']|"[^"]*"|\'[^\']*\')*?';
+  const toImg = (name, attrs) => {
+    if (!CUSTOM_EL.test(name)) return null;
+    const tokens = splitAttrs(attrs);
+    const poster = tokens.find(t => t.name.toLowerCase() === 'poster')?.value;
+    if (!poster) return null;
+    const posterValue = poster.replace(/^["']|["']$/g, '');
+    if (!posterValue) return null;
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(posterValue)) remote++;
+    // 换掉元素时，被换掉那个元素的**行为属性**没有意义（`<img muted loop playsinline>` 读起来像 bug）；
+    // 一切与"长什么样 / 是什么"有关的都留着（见 MEDIA_ONLY_ATTRS 的注释）
+    const kept = tokens
+      .filter(t => t.name.toLowerCase() !== 'poster' && !MEDIA_ONLY_ATTRS.includes(t.name.toLowerCase()))
+      .map(t => t.raw);
+    // 原站就是用这两个自定义属性声明"这张图该怎么铺"的，照搬是最忠实的做法：
+    // 自适应到 <img> 的 object-fit / object-position，不然 size-full 会把图画拉变形
+    const style = tokens.find(t => t.name.toLowerCase() === 'style')?.value ?? '';
+    const fit = /--media-object-fit\s*:\s*([a-z-]+)/i.exec(style)?.[1];
+    const pos = /--media-object-position\s*:\s*([a-z -]+?)\s*(?:;|$)/i.exec(style)?.[1];
+    const extra = [fit && `object-fit:${fit}`, pos && `object-position:${pos}`].filter(Boolean).join(';');
+    if (extra) {
+      const i = kept.findIndex(t => /^style\s*=/i.test(t));
+      if (i < 0) kept.push(`style="${extra}"`);
+      else kept[i] = kept[i].replace(/"\s*$/, '').replace(/[;\s]*$/, '') + ';' + extra + '"';
+    }
+    count++;
+    return `<img src="${posterValue}"${kept.length ? ' ' + kept.join(' ') : ''} alt="" data-heimdall-media="1">`;
+  };
+  let out = String(html ?? '');
+  // ① 成对写法 —— 有真实子内容的不动（可能只是恰好带了个 poster，替身会丢东西）
+  out = out.replace(new RegExp(`<([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\\b(${ATTRS})>([\\s\\S]*?)<\\/\\1\\s*>`, 'gi'),
+    (tag, name, attrs, inner) => (inner.trim() ? tag : (toImg(name, attrs) ?? tag)));
+  // ② 自闭合写法
+  out = out.replace(new RegExp(`<([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\\b(${ATTRS})\\/>`, 'gi'),
+    (tag, name, attrs) => (toImg(name, attrs) ?? tag));
+  return { html: out, count, remote };
 }
 
 /**

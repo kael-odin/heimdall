@@ -8,7 +8,8 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canonUrl, sameCanonUrl, stableNodeId, asUrl } from '../src/url-canon.mjs';
+import { readFileSync } from 'node:fs';
+import { pageNameOfUrl, canonUrl, sameCanonUrl, stableNodeId, asUrl } from '../src/url-canon.mjs';
 
 /**
  * 补协议这条来自一个真实的崩溃：CLI 帮助文本写的例子就是 `heimdall recon apify.com 30`，
@@ -93,4 +94,50 @@ test('stableNodeId：不同 url 不同 id，且格式稳定（n + 8 位）', () 
   for (const id of ids) assert.match(id, /^n[0-9a-f]{8}$/);
   // 固定向量：若实现被改动（换算法/换长度）这里会红，提醒这会破坏所有历史 atlas
   assert.equal(stableNodeId('https://a.test/'), stableNodeId('https://a.test/'));
+});
+
+// ---------- 页目录名 ----------
+test('pageNameOfUrl: 根路径 → home，普通路径去掉首斜杠', () => {
+  assert.equal(pageNameOfUrl('https://x.test/'), 'home');
+  assert.equal(pageNameOfUrl('https://x.test'), 'home');
+  assert.equal(pageNameOfUrl('https://x.test/customers'), 'customers');
+  assert.equal(pageNameOfUrl('https://x.test/customers/'), 'customers');
+});
+
+test('pageNameOfUrl: 多级路径折成 - ，查询与锚点不进名字', () => {
+  assert.equal(pageNameOfUrl('https://x.test/a/b'), 'a-b');
+  assert.equal(pageNameOfUrl('https://x.test/pricing?plan=pro#faq'), 'pricing');
+});
+
+test('pageNameOfUrl: 解析不了用 fallback，不抛', () => {
+  assert.equal(pageNameOfUrl('not a url'), 'home');
+  assert.equal(pageNameOfUrl(undefined), 'home');
+  assert.equal(pageNameOfUrl(null, 'page'), 'page');
+});
+
+test('pageNameOfUrl: 超长路径截断到 60 字符（Windows 路径长度)', () => {
+  assert.equal(pageNameOfUrl('https://x.test/' + 'a'.repeat(200)).length, 60);
+});
+
+test('pageNameOfUrl: 接受 URL 对象', () => {
+  assert.equal(pageNameOfUrl(new URL('https://x.test/docs/intro')), 'docs-intro');
+});
+
+/**
+ * 控制台不能 import core 的模块（浏览器侧，另一套构建），所以 src/pages.js 里
+ * 必然存在一份**同规则的副本** —— 这正是会漂移的地方，而且漂移不报错：
+ * 规则不一致时链接指向不存在的产物目录，打开只是 404。
+ * 所以不靠人记，直接把两边的规则表达式抽出来比。
+ */
+test('控制台的 pageNameOf 规则与 pageNameOfUrl 一字不差', () => {
+  const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const core = read('../src/url-canon.mjs');
+  const console_ = read('../../console/src/pages.js');
+  const ruleOf = (src) => {
+    const m = /\.pathname((?:\.replace\([^)]*\))+\.slice\(0,\s*60\))/.exec(src);
+    return m ? m[1].replace(/\s+/g, '') : null;
+  };
+  const a = ruleOf(core), b = ruleOf(console_);
+  assert.ok(a, '在 url-canon.mjs 里找不到页名规则 —— 抽取正则过期了，别直接放过');
+  assert.equal(b, a, '控制台那份页名规则已经漂移，链接会指向不存在的目录');
 });

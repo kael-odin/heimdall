@@ -25,8 +25,16 @@ const props = defineProps({
   detailIntel: { type: Object, default: null },
   detailScore: { type: Object, default: null },
   theme: { type: String, default: 'dark' },
+  /** 交互镜像已导出的页数（/api/sites 的 mirrored）。0 = 没导出过 —— 此时那个入口
+   *  打开的是原站本身（镜像路由"本地无快照就反代回原站"），界面必须说出来。null = 还不知道。 */
+  mirrored: { type: Number, default: null },
 });
 defineEmits(['close', 'open-forge', 'forge-all', 'verify']);
+
+/** 交互镜像入口的悬停说明：没导出过时说清"点下去看到的是什么" */
+const liveTitle = computed(() => props.mirrored === 0
+  ? '本站尚未导出交互镜像 —— 打开等于直接访问原站（经本地代理），不是复刻结果。先导出一次再来看'
+  : '交互镜像：保留脚本、资源实时回原站。用 <域名>.localhost 作独立域名，站点的路由/登录态/本地存储都与原站一致');
 
 /** 阶段条：键必须与 pipeline.mjs 的 stage 名一致；顺序即显示顺序 */
 const STAGES = { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' };
@@ -252,9 +260,14 @@ function onTablistKey(e) {
     </div>
     <div class="dock-quick" v-if="selected.forgeState === 'done'">
       <a :href="`/${host}/pages/${pageNameOf(selected)}/clone/index.html`" target="_blank" rel="noopener" title="静态镜像：剥离脚本、资产本地化，离线可开">静态镜像</a>
-      <a :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener" title="交互镜像：保留脚本、资源实时回原站。用 <域名>.localhost 作独立域名，站点的路由/登录态/本地存储都与原站一致">交互镜像</a>
+      <a :class="{ 'quick-off': mirrored === 0 }" :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener" :title="liveTitle">交互镜像{{ mirrored === 0 ? ' · 未导出' : '' }}</a>
       <a class="quick-alt" :href="liveAltUrl({ url: selected.url })" target="_blank" rel="noopener" title="备用入口：/lm 前缀。不依赖 *.localhost 解析，但纯前端渲染站的客户端路由会把前缀当成真实路径，可能落到它自己的 404">/lm 备用</a>
       <a :href="`/${host}/compare.html?p=${pageNameOf(selected)}`" target="_blank" rel="noopener" title="左右同步滚动，原站与静态镜像逐段对照">同步对比</a>
+    </div>
+    <div class="dock-quick-note" v-if="selected.forgeState === 'done' && mirrored === 0">
+      <b>本站还没导出过交互镜像</b> —— 镜像路由是"本地有快照就回快照、否则反代回原站"，
+      所以现在点「交互镜像」打开的是 <b>{{ host }}</b> 原站本身（经本地代理），不是复刻结果。
+      想让它变成真镜像：到站点级「报告 → 交互镜像」导出一次。
     </div>
     <div class="forge-cta" v-if="selected.forgeState !== 'done' && selected.forgeState !== 'running'">
       <button class="forge-btn" @click="$emit('open-forge')"><Icon name="bolt" decorative /> 开始克隆此页</button>

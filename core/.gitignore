@@ -3,3 +3,6 @@ workspace/
 *.log
 .env
 deliverable/
+
+# 临时排查脚本（不该进仓库；历史上进过 8 个）
+_tmp_*

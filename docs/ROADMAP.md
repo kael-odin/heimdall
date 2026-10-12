@@ -124,16 +124,15 @@
 
 ## 已在做但未完成
 
-- [ ] **JS 渲染的媒体组件（`<mux-player>` 之类）在静态镜像里是空壳**（2026-10-12，vercel.com/customers）。
-      自定义元素的画面是脚本建的 shadow DOM：剥了脚本，元素、class、渐变遮罩、文案全都还在，
-      **只有画面没了** —— 肉眼一看就是"图裂了"，而 DOM 分依然是 100%。
-      该页一个 412,755 像素的差异块独占 99.8% 的差异，像素分掉到 46.0%。
-      试过照 `<canvas>` 那套光栅化，**代码写得出来但量不准框**：
-      Playwright 对带 shadow DOM 的自定义元素测出的包围盒不可靠，
-      同一页三次跑出 46% / 73% / 58% 三个分数（滚动过去会把轮播本身挪走，
-      用 `captureBeyondViewport` 又会截到从页面顶端开始的一块）。
-      **时好时坏比空白更糟，所以撤了。** 重新捡起来的前提是先有个可靠测框的办法
-      （比如按元素自身的 `getBoundingClientRect` 在页面坐标系里二次校验）。
+- [x] **JS 渲染的媒体组件（`<mux-player>` 之类）在静态镜像里是空壳**（2026-10-12 关闭，
+      vercel.com/customers）。自定义元素的画面是脚本建的 shadow DOM，剥了脚本就只剩空壳 ——
+      元素、类名、渐变遮罩、文案全在，**只有画面没了**，而 DOM 分依然是 100%。
+      这一页一个 412,755 像素的差异块独占 99.8% 的差异，像素分 46%。
+      **先试的"照 `<canvas>` 那套光栅化"是错的**：要量框，而 Playwright 对带 shadow DOM
+      的自定义元素测出的包围盒不可靠，同一页三次跑出 46%/73%/58%（时好时坏比空白更糟，撤了）。
+      正解是**别量框**：组件把该显示哪张图**声明在 `poster` 属性里**了，读属性、
+      下载、换成 `<img>`（`--media-object-fit` → `object-fit` 一并搬过去）即可，逐次一致。
+      详见 `src/dom-refs.mjs` 的 `materializeMediaPosters`。
 
 - [ ] **Framer 的 SSR 变体块在静态镜像里不绘制**（2026-10-12，framer.com/design 一页）。
       现象：整块作品轮播是黑的，但 DOM 里 58 张图**全部本地化到位**、`complete`、
@@ -145,28 +144,32 @@
       页面分数是诚实的（像素 69%、`dynamicShare` 0.61 → 判为动态噪声为主），
       所以不急；但值得看一眼能不能靠"把命中的那份变体显式化"解决。
 
-- [ ] 更多站点的实跑验证。**14 个站 / 252 页**，几乎全 A：
+- [ ] 更多站点的实跑验证。**14 个站 / 261 页**，几乎全 A：
 
       | 站点 | 页数 | 平均 | 栈 |
       | --- | --- | --- | --- |
       | supabase.com | 16 | 100.0 | Next.js |
       | cn.vuejs.org / svelte.dev / crawlee.dev / vitest.dev | 1–2 | 100.0 | VitePress / SvelteKit / Docusaurus |
       | tailwindcss.com | 16 | 99.9 | Next.js |
+      | vercel.com | 16 | 99.9 | Next.js |
+      | angular.dev | 2 | 99.7 | Angular |
       | thordata.com | 36 | 99.7 | Vue + Vite |
       | linear.app | 40 | 99.6 | Next.js（React + CSS Modules） |
-      | apify.com | 66 | 99.4 | React + styled-components |
-      | vercel.com | 16 | 99.0 | Next.js |
-      | stripe.com | 15 | 97.8 | Astro 系 |
+      | apify.com | 74 | 99.5 | React + styled-components |
+      | ant.design | 2 | 97.8 | React + CSS-in-JS（差异弥散） |
+      | stripe.com | 15 | 97.7 | Astro 系 |
       | framer.com | 39 | 97.4 | Framer（SSR 变体，见上） |
-      | ant.design | 2 | 97.3 | React + CSS-in-JS（差异弥散） |
 
       **每一轮新站点都会翻出旧样本看不见的东西** —— 这是这个项目里最有效的测试手段：
       Angular 那轮翻出 `<base>` 改基与跨域 `@font-face` 缺失（HANDOFF §23.5）；
       linear 这轮翻出**跨域样式表整批丢失**（§31.7，单页 59% → 97.8%）
       与**没有 poster 的视频整块纯黑**（§31.9，单页 64.7% → 100%）；
       framer 这轮翻出 233 处"资源本地化失败"其实全是内联 data URI（§31.8）。
+      vercel 那轮（§32）最特别：**三个问题都不是"复刻得不像"，而是产物本身的缺陷** ——
+      画布光栅图因为丢了 inline style 而不可见、`<mux-player>` 的 poster 没被下载、
+      本地引用上的 `crossorigin` 让 file:// 打开时图片整排裂掉。
       旧样本（apify / thordata / vue / vitest / svelte / angular）当时全都 ≥95 分，
-      看起来"没问题"。
+      看起来"没问题"—— 而 apify 那批 crossorigin 后来一直躺在 31 个页面上。
 
 - [ ] **跨域样式表的补取只覆盖顶层表**。`@import` 嵌进来的表不会单独出现在
       `document.styleSheets` 里，也就不会走补取；实测 linear/framer/vercel 都没有命中，
@@ -175,6 +178,27 @@
 - [ ] 受跨域 CSS 缺失影响但**尚未重跑**的页面（丢了 Google Fonts / GSI 的一行小表，
       观感影响很小）：thordata 36 页 · angular.dev 2 页 · vitest.dev 1 页 · framer.com 5 页。
       重跑即可修好（`queue <host> --force`）；linear.app 15 页已重跑。
+
+---
+
+## 读数口径（"报告说的话与产物是不是一回事"）
+
+- [x] **多视口页的分数测错了文档**（2026-10-12 关闭）。多视口克隆后 `clone/index.html`
+      是 372 字节的视口选择器，而 `diff.mjs` 直接读它 → parse5 拿到空文档 →
+      DOM 分与数据分双双 0，总分从 A 掉到 C。实测 apify.com/store 被算成 41.8%
+      （真值 99.2%）。判据统一到 `src/clone-doc.mjs`（有 `index-1440.html` 就用它）。
+      12 个 apify 页已重测。
+- [ ] **`multi-snapshot` / `responsive-upgrade` 之后没人重算分数**。它们重建 clone
+      并重新接线，但 `score.json` 还是升级前测的那一份 —— 于是报告描述的是一个
+      不再存在的产物。这次全靠手工重测把所有产物对齐（**当前语料是一致的**），
+      但下次再跑 `--all` 就会重新腐坏。做法已经清楚：在 `multi-snapshot.mjs`
+      的 `--all` 收尾处（`build_clone` + `linker` 之后）对每页补一次
+      `shot_clone` + `differ/diff.mjs`，与 pipeline 的 stage 顺序一致。
+      没有直接改的原因：这条路径要真跑一次多视口快照才验证得了，不想在没验证的情况下改。
+- [ ] **`data.links` 一项必须在 linker 之前测**（顺序由 pipeline 的 stage 顺序保证）。
+      linker 会把站内 `<a href>` 改写成档案内相对路径 —— 那是它的职责，
+      也正是这一维度只能测未接线版本的原因。手工重跑 `differ/diff.mjs` 而没先重建 clone 时，
+      这一项会掉到 ~15%，那是个没有意义的读数。已在 `harvest.mjs` 的 `dataScore` 上写明。
 
 ---
 

@@ -61,3 +61,26 @@ export function sameCanonUrl(a, b) {
 export function stableNodeId(url) {
   return 'n' + createHash('sha1').update(String(url)).digest('hex').slice(0, 8);
 }
+
+/**
+ * URL → 页面目录名。**这是唯一实现** —— 它此前散着四份（engine 两份、queue、pipeline），
+ * 而 pipeline 那份干脆把"没给页名"的默认值写成了常量 `'page'`：
+ *
+ *     heimdall forge https://vercel.com/customers     → 产物落进 pages/page/
+ *
+ * 页名不对还只是小事，**两个不同的 URL 会先后写进同一个目录、互相覆盖**（实测踩到：
+ * 重新锻造 customers 时，它把自己放进了 page/，与上一次同样用法的锻造产物撞在一起）。
+ *
+ * 规则：去掉首尾斜杠，路径分隔符与残留的查询/锚点字符统一折成 `-`，截断 60 字符；
+ * 根路径落成 `home`。返回 undefined/null 或解析不了时用 fallback。
+ *
+ * @param {string|URL} input
+ * @param {string} [fallback='home']
+ */
+export function pageNameOfUrl(input, fallback = 'home') {
+  try {
+    const x = input instanceof URL ? input : new URL(String(input));
+    const p = x.pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[/?&#]+/g, '-').slice(0, 60);
+    return p || fallback;
+  } catch { return fallback; }
+}

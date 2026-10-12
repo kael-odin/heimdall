@@ -19,6 +19,7 @@ import { sourceFingerprint, incrementalDecision, decisionNote } from './fingerpr
 import { appendHistory } from './seo/history.mjs';
 import { WORKSPACE } from './paths.mjs';
 import { emit as emitRaw } from './emit.mjs';
+import { pageNameOfUrl } from './url-canon.mjs';
 
 const host = sanitizeHost(requireArg(process.argv[2], 'node src/queue.mjs <host> [--max N] [--force] [--incremental] [--missing-har] [--no-dedupe]', '站点 host'));
 const maxIdx = process.argv.indexOf('--max');
@@ -40,10 +41,9 @@ const queuePath = join(BASE, 'queue.json');
 const emit = JSON_EVENTS ? emitRaw : () => {};
 
 const atlas = JSON.parse(readFileSync(join(BASE, 'recon', 'atlas.json'), 'utf8'));
-const engineName = (u) => {
-  const p = new URL(u).pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[/?&#]+/g, '-').slice(0, 60);
-  return p || 'home';
-};
+// 页名规则与 forge / 引擎 / 控制台**同一份实现**（src/url-canon.mjs）。
+// 以前这里有第四份副本，四处各改各的迟早会漂移 —— 而漂移的后果是产物落错目录。
+const engineName = (u) => pageNameOfUrl(u);
 
 // ---------- 构造/载入队列 ----------
 let queue;

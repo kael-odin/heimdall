@@ -1687,3 +1687,165 @@ linear 40、framer 39、tailwindcss 16、supabase 16、vercel 16、stripe 15。
 而是同时跑的 `queue` 末尾那步 `dedupe` 正在把 clone 里的资源换成硬链接，
 文件在拷贝过程中被换了名字。**结论：打包时别同时跑别的任务。**
 重跑（独占）即成功，包内 74 页 + 动效档案 73 份 `motion-css.css`（462 组关键帧 / 584 处引用）。
+
+---
+
+## 32. 2026-10-12 续廿五：用户眼睛比分数准 —— 复刻"像不像"之外，产物本身有三个缺陷
+
+起点是三条用户反馈，全部来自 vercel.com：
+
+> vercel 的一个页面我看到我们的克隆镜像并没有克隆那个黑色三角形
+> vercel.com/customers 静态镜像的首屏图片加载不出来
+> 为什么点交互镜像也会瞬间回到官方页
+
+三条都不是"复刻得不像"，而是**产物本身坏了**。分数也很配合地什么都没说
+（home 98.1%、customers 里 DOM 分 100%）—— 这是个值得记住的教训：
+**保真度公式量的是"像不像"，量不出"这块地方根本没有东西"**。
+
+### 32.1 画布光栅图抓到了，却因为丢了 inline style 而不可见
+
+vercel 首页那个大三角形是一块 `<canvas>`。光栅化**本来是成功的** ——
+`assets/canvas-0.png` 里就是那个三角形，肉眼可见。但静态镜像里它不显示：
+
+```
+<canvas class="... opacity-0 transition-opacity ..." style="opacity: 1;">   ← 原站
+<img class="... opacity-0 transition-opacity ...">                          ← 我们生成的
+```
+
+设计上的淡入是脚本把 `opacity` 写成 inline style 完成的，类名里那个 `opacity-0` 是初始态。
+旧的 `rasterizeCanvases` 只搬 `class` / `width` / `height`，**`style` 一丢，
+类名里的 `opacity-0` 就赢了** —— 图抓得再好也看不见。
+
+修法不是"补上 style"，而是把规矩改对：**光栅图是"这个元素那一刻长什么样"的替身，
+凡是决定它长什么样的属性都得跟着走**（style / id / aria-* / data-* 全部保留，
+只摘掉我们自己的标记）。`id` 也有实际意义 —— `#hero-canvas{…}` 这种选择器真实存在。
+
+已验证：vercel 首页像素 98.09% → 99.69%，最大差异块 19,992px → 94px，
+`diffShape` 从 `concentrated` 变 `mixed`。
+
+### 32.2 `<mux-player>` 的 poster 从来没被下载过，而它就在属性里
+
+customers 首屏五张客户故事卡是 `<mux-player poster="https://assets.vercel.com/…">`。
+两个独立的缺陷叠在一起：
+
+1. **资源采集只查了 `video[poster]`**，自定义元素上的 poster 一个都没收 ——
+   所以那张图从来没下载过，`leftoverSameOriginRefs` 也报 0（它是 assets.vercel.com，
+   另一个 origin，压根不在自检口径里）。
+2. **就算下载了也不会显示**：自定义元素的画面是脚本建的 shadow DOM，剥了脚本就只剩空壳。
+
+第 2 点上一轮被判成"做不到"（§31.11）：那时想的是**光栅化**，而光栅化要量框，
+Playwright 对带 shadow DOM 的自定义元素测出的包围盒不可靠（同一页三次 46%/73%/58%）。
+**这次的正解是别量框** —— 组件把"该显示哪张图"**声明在 `poster` 属性里**了。
+读属性、下载、换成 `<img>`，顺带把原站自己声明的 `--media-object-fit` / `-position`
+映射到 `object-fit` / `object-position`（不然 `size-full` 会把图画拉变形）。逐次一致。
+
+规矩与 canvas 一致：**没有可用的替身就不动它** —— 只处理
+「标签是自定义元素 + 带 poster + 没有真实子内容」这一种；标准元素的 poster 归 `applyVideoPosters`。
+
+verified：customers 像素 46.0% → **100%**，5 张 poster 全部本地化，`mediaPosters: 5 / remote: 0`。
+
+### 32.3 本地引用上的 `crossorigin` 让 file:// 打开时整排裂图
+
+第三个问题最隐蔽，而且是**在验证前两个的过程中自己撞出来的**。
+
+apify 的 Actor 头像卡是 `<img crossorigin="anonymous" src="assets/image005.webp">`。
+资产明明本地化了，`crossorigin` 却留着 —— 于是**用 `file://` 打开克隆页时
+（就是我们承诺的"双击即看"）浏览器以 CORS 模式去取一个没有 CORS 头的本地文件，
+图片一律被拦掉**：一排裂图占位框，还把标题挤到第二列、截断文案。
+经 http（引擎的 `/static`）打开则完全正常 —— 所以**一条在线自检永远看不见它**。
+
+发现过程值得记：重测 apify/home 时它从 100% 掉到 84.8%，我先怀疑是测量噪声，
+连拍两次克隆截图判定**逐像素完全一致**（0 / 1,296,000），排除了随机性；
+再把两张图的差异按行列聚簇，定位到 rows 492–867 一整片；最后把那一块并排贴出来一看，
+裂图就在眼前。
+
+**全语料扫了一遍：32 个页面中招，其中 31 个是 apify.com**（旗舰交付包）。
+修法放在构建期：引用已经本地化，`crossorigin` 只剩副作用，摘掉；
+仍是外链的（`http(s)://` / 协议相对 `//` / `data:`）**不动** —— 那边的 CORS 是真的要谈的。
+只碰 `<img>`（video/script 的 crossorigin 影响的是别的东西，语义不同）。
+修完 apify/store 的 file:// 截图与原站一致度 41.8% → 98.3%。
+
+顺带把 pipeline 里那句"file:// 与 /static 截图口径相同"补上了前提 ——
+**这句话只在构建把 crossorigin 摘干净时才成立**。
+
+### 32.4 "点交互镜像瞬间回到官方页"：不是跳转，是我们真的把原站代理过来了
+
+镜像路由是**融合**的：本地 `live/<path>/index.html` 存在就回快照，否则反代回原站。
+而 vercel.com **从来没有 live/ 产物**（`mirrored: 0`）—— 于是
+`vercel.com.localhost:8900` 打开的就是原站本身。界面上写着「交互镜像」，
+点开是官方页，**没有一个字说明这件事**。
+
+三处一起改：
+
+- 引擎 `/api/sites` 增加 `mirrored`（`workspace/<host>/live` 下的实际页数）——
+  控制台这才有可能说真话；
+- 详情面板的「交互镜像」在未导出时改成虚线边框 + 「· 未导出」，
+  下面一行小字说清"点下去看到的是原站本身"；报告页的导出卡片同步提示；
+- 引擎在**顶层文档导航**（`Sec-Fetch-Dest: document`）且本地无快照时，
+  往代理回来的 HTML 里插一条角标：「此页未镜像 · 以下是原站实时内容（经本地代理）」。
+  资源请求与 RSC/fetch 载荷（`dest: empty`）一律不插，免得把框架的数据流弄脏。
+
+另外顺手把 vercel.com 的本地镜像建了出来（16 页）——
+现在点「交互镜像」看到的是真镜像；没镜像的路径才会出现那条角标。
+
+### 32.5 `forge <url>` 不写页名时，产物落进 `pages/page/`
+
+`pipeline.mjs` 里 `const NAME = process.argv[3] ?? 'page'` —— 字面量 `'page'`。
+于是 `forge https://vercel.com/customers` 把整页产物写进 `pages/page/`。
+页名不对还只是小事，**两个不同的 URL 会先后写进同一个目录、互相覆盖**（这次就撞上了：
+重锻 customers 时它把自己放进了 `page/`）。
+
+页名规则此前散着**四份**（engine 两份、queue、pipeline），其中一份写错了。
+收进 `src/url-canon.mjs` 的 `pageNameOfUrl`，四处共用。
+
+控制台那份（`console/src/pages.js`，浏览器侧不能 import core）**必然还是副本** ——
+所以加了一条防漂移断言：把两个文件里的规则表达式抽出来比。
+它自己的注释早就写着"复制一份出来两边不一致，链接就会指向不存在的目录，而且不报错"。
+（已验证会红：把 console 那侧的 `slice(0, 60)` 改成 40，测试立刻失败。）
+
+### 32.6 多视口页的分数一直测的是**选择器**，不是页面
+
+apify/store 重测后是 41.8%（C 级）—— 而页面上一切正常。
+
+多视口克隆之后 `clone/` 下是 `index-375/768/1440.html` 三份真文档，
+`index.html` 只是 **372 字节的视口选择器**（一行 `location.replace`）。
+浏览器打开没问题，但 `diff.mjs` 是**直接读文件**的：parse5 拿到一个空文档，
+DOM 分 0、数据分 0。41.8% 是这么来的。
+
+判据统一到新的 `src/clone-doc.mjs`：**有 `index-1440.html` 就用它**
+（build_clone 只会把变体与选择器一起写出来，它的存在就等价于"桌面文档在这里"）。
+12 个 apify 多视口页全部重测，apify/store 41.8% → **99.2%**。
+
+这条也解释了一个更早的疑问：那些页此前的分数（100）是**多视口升级之前**测的，
+升级之后再没人重算 —— 报告描述的是一个不再存在的产物。这次手工把所有产物对齐了，
+但 `multi-snapshot --all` 仍然不会自动重算，已记进 `docs/ROADMAP.md` 的"读数口径"一节
+（没有直接改：那条路径要真跑一次多视口快照才验证得了）。
+
+### 32.7 清掉仓库里 8 个被提交进去的临时排查脚本
+
+`_tmp_host.mjs` / `_tmp_lm{2..6}.mjs` / `_tmp_shot.mjs` —— 上一轮调试留下的，
+真的提交进了仓库。删掉，并在 `.gitignore` 里加 `_tmp_*`（我自己这一轮又造了 4 个，
+说明这不是一次性失误）。
+
+### 32.8 本轮验收
+
+- 单测 **446/446**（新增 dom-refs 12 条 / url-canon 6 条 / clone-doc 4 条 / live-html 5 条）
+- `check-syntax` 159 文件 OK；控制台构建通过；控制台 E2E 通过；离线 smoke 通过
+- **新守卫都先证明会红再声明可用**：`materializeMediaPosters`（先写测试）、
+  `dropCrossoriginOnLocalRefs`（改坏 build_clone 的接线 → smoke 失败 → 改回即绿）、
+  页名防漂移（改 console 的 60 → 40）、`unmirroredBanner`（把插入位置改坏）、
+  `clone-doc`（把变体优先改成 index.html 优先）
+- 语料：**14 站 / 261 页**；vercel.com 99.9（16 页）、apify.com 99.5（74 页）
+- apify 交付包重新生成：74 页，平均保真 99.5%
+
+### 32.9 这一轮真正学到的一件事
+
+上一轮我已经"多克隆了一批站点当试验田"，但**这一轮的问题全是用户肉眼发现的**，
+不是新站点翻出来的。区别在于：新站点能翻出**渲染差异**（配色、布局、字体），
+翻不出**"这块地方是空的"** —— 保真度公式对这种缺陷天然失明
+（vercel home 的 canvas 缺失只占 1.9% 差异，95 分以上完全看不出来；
+apify 那 31 个页面的裂图更是只有用 file:// 打开才现形）。
+
+所以补一句判断依据：**"分数"和"打开看看"是两种测试**，缺一不可。
+以后遇到"某类元素在产物里可能整个是空的"，先问一句"有没有一条断言专门盯着它没了"，
+而不是"分数掉了没有"。

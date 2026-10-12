@@ -7,7 +7,7 @@
  * 只是打开是 404。
  */
 
-/** 页面 URL → 页面名（= 产出目录名）。与引擎侧 src/engine-server.mjs 的 pageFor 同规则。 */
+/** 页面 URL → 页面名（= 产出目录名）。规则与 core/src/url-canon.mjs 的 pageNameOfUrl **同一份**。 */
 export function pageNameOf(n) {
   try {
     const p = new URL(n.url).pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[/?&#]+/g, '-').slice(0, 60);

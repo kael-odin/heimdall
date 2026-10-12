@@ -100,7 +100,15 @@ export function extractProfile(html) {
   return { meta, headings: headings.slice(0, 60), prices: [...new Set(prices)].slice(0, 40), cta: [...new Set(cta)].slice(0, 30), tables, links: [...new Set(links)].slice(0, 100) };
 }
 
-/** data 维度：src 字段画像 vs clone 画像的覆盖率（L1 搬运下应≈1） */
+/**
+ * data 维度：src 字段画像 vs clone 画像的覆盖率（L1 搬运下应≈1）
+ *
+ * **必须在 linker 之前测**（pipeline 的 stage 顺序已经保证）。linker 会把站内
+ * `<a href>` 改写成档案内的相对路径 —— 那是它的职责，也正是这个维度只能测未接线版本的原因：
+ * 它问的是"原站的数据字段有没有搬过来"，不是"接线之后路径长什么样"。
+ * 手工重跑 `differ/diff.mjs` 时若不先重建 clone，links 一项会掉到 ~15%，
+ * 那是个没有意义的读数（实测 vercel.com/home 就这么被骗过一次）。
+ */
 export function dataScore(srcHtml, cloneHtml) {
   const a = extractProfile(srcHtml), b = extractProfile(cloneHtml);
   const cover = (xs, ys) => {

@@ -15,7 +15,7 @@
  * 用法: node src/differ/diff.mjs <pageDir>
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { analyzeDiffShape, shapeNote } from './shape.mjs';
@@ -23,6 +23,7 @@ import { domSimilarity } from './domdiff.mjs';
 import { dataScore } from '../harvest/harvest.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { readCloneDoc } from '../clone-doc.mjs';
 
 const DIR = requireArg(process.argv[2], 'node src/differ/diff.mjs <pageDir>', '页面目录');
 const CHANNEL_T = 24;   // 任一通道差 > 24 视为不同（约 pixelmatch threshold 0.1）
@@ -84,13 +85,15 @@ pixelmatch(frames[bestFrame - 1].data, clone.data, diff.data, W, H, { threshold:
 const shape = analyzeDiffShape(diff.data, W, H);
 
 // ---------- 结构 / 数据维度 ----------
-const dom = domSimilarity(
-  readFileSync(join(DIR, 'dom.html'), 'utf8'),
-  readFileSync(join(DIR, 'clone', 'index.html'), 'utf8'),
-);
+// 克隆文档不一定是 clone/index.html：多视口页那里只是 372 字节的视口选择器，
+// 直接读它 = 拿一个空文档去比，DOM/数据两维全归零（详见 src/clone-doc.mjs）
+const srcHtml = readFileSync(join(DIR, 'dom.html'), 'utf8');
+const cloneDoc = readCloneDoc(join(DIR, 'clone'));
+if (cloneDoc.variant) console.log('  clone doc: ' + basename(cloneDoc.file) + '（多视口克隆，index.html 是选择器）');
+const dom = domSimilarity(srcHtml, cloneDoc.html);
 let data;
 try {
-  data = dataScore(readFileSync(join(DIR, 'dom.html'), 'utf8'), readFileSync(join(DIR, 'clone', 'index.html'), 'utf8'));
+  data = dataScore(srcHtml, cloneDoc.html);
 } catch { data = null; }
 
 const total100 = data ? 0.5 * pixel + 0.3 * dom.dom + 0.2 * data.data : (0.5 * pixel + 0.3 * dom.dom) / 0.8;
