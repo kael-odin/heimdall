@@ -72,7 +72,7 @@ table.gaps{margin-top:10px}
 footer{margin-top:34px;color:#64748b;font-size:12px}
 </style></head><body><div class="wrap">
 <div class="brand">HEIMDALL · ASSET GAPS</div><h1>${esc(host)} 资产缺口扫描</h1>
-<div class="meta">${esc(generatedAt)} · ${summary.pages} 页 · 引用 ${summary.refs} · 本地化率 <b>${rate}%</b> · 视觉缺口 <b>${summary.visual ?? 0}</b></div>
+<div class="meta">${esc(generatedAt)} · ${summary.pages} 页${summary.truncated ? ` <b style="color:#D9A05B">（只扫了 ${summary.pages} / ${summary.clonedPages} 页 —— --max 上限截断，下面的数字都只覆盖前 ${summary.pages} 页）</b>` : ''} · 引用 ${summary.refs} · 本地化率 <b>${rate}%</b> · 视觉缺口 <b>${summary.visual ?? 0}</b></div>
 <div class="kpis">
   <div class="kpi"><b>${summary.refs}</b><span>引用总数（HTML/CSS/SVG/媒体）</span></div>
   <div class="kpi"><b class="ok">${summary.localized}</b><span>已本地化</span></div>

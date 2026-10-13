@@ -47,6 +47,24 @@ function assetGaps(host) {
   try { return JSON.parse(line.slice(9)).visualGaps; } catch { return null; }
 }
 
+/**
+ * 该不该回滚？—— 纯函数，单独拎出来是为了能单测（这条判断本身出过一次事）。
+ *
+ * 原来的写法是 `baselineGaps != null && afterGaps != null && afterGaps > baselineGaps`，
+ * 于是**"量不出来"和"量了没变差"落进同一个分支**：一个安全自检在它自己坏掉的时候
+ * （assets 扫描崩了、事件行没了、stdout 被截断）恰好放行，还会把这次操作记成成功。
+ *
+ * 反过来才对：拿不到两次测量就回滚。quarantine 是可逆的（文件只是改名搬走），
+ * 而**丢掉的资产不是**。
+ *
+ * @returns {{rollback: boolean, reason: 'unmeasured'|'gaps-worse'|null}}
+ */
+export function rollbackDecision(baselineGaps, afterGaps) {
+  if (baselineGaps == null || afterGaps == null) return { rollback: true, reason: 'unmeasured' };
+  if (afterGaps > baselineGaps) return { rollback: true, reason: 'gaps-worse' };
+  return { rollback: false, reason: null };
+}
+
 function globalBasenames(host) {
   const seen = new Set();
   for (const root of [join(WORKSPACE, host, 'pages'), join(WORKSPACE, host, 'live')]) {
@@ -115,16 +133,18 @@ export function applyReclaim(host) {
     try { mkdirSync(join(dst, '..'), { recursive: true }); renameSync(abs, dst); moved.push({ src: abs, dst, size: f.size }); } catch {}
   }
   const afterGaps = assetGaps(host);
-  const worse = baselineGaps != null && afterGaps != null && afterGaps > baselineGaps;
+  // 判断在 rollbackDecision 里（可单测）：**量不出来也要回滚**，见那里的注释
+  const decision = rollbackDecision(baselineGaps, afterGaps);
   let rolledBack = false;
-  if (worse) {
+  if (decision.rollback) {
     for (const m of moved) { try { mkdirSync(join(m.src, '..'), { recursive: true }); renameSync(m.dst, m.src); } catch {} }
     rolledBack = true;
+    if (decision.reason === 'unmeasured') console.warn('[reclaim] 资产缺口量不出来（assets 扫描没给出结果）→ 已回滚，不冒险');
   } else {
     const after = scanOrphans(host);
     plan.after = { orphans: after.orphans, orphanBytes: after.orphanBytes };
   }
-  const result = { ...plan, baselineGaps, afterGaps, moved: moved.length, movedBytes: moved.reduce((n, m) => n + m.size, 0), quarantine: relative(WORKSPACE, qdir).split('\\').join('/'), rolledBack };
+  const result = { ...plan, baselineGaps, afterGaps, verified: !decision.rollback, rollbackReason: decision.reason, moved: moved.length, movedBytes: moved.reduce((n, m) => n + m.size, 0), quarantine: relative(WORKSPACE, qdir).split('\\').join('/'), rolledBack };
   writeFileSync(join(outDir, 'reclaim-plan.json'), JSON.stringify(result, null, 2));
   return result;
 }
@@ -150,5 +170,5 @@ if (isMain) {
   const mb = (n) => (n / 1048576).toFixed(1) + 'MB';
   console.log('[reclaim] host=' + host + (apply ? ' APPLY' : ' dry-run') + ' candidates=' + result.count + ' bytes=' + mb(result.bytes)
     + (apply ? ' moved=' + result.moved + ' gaps ' + result.baselineGaps + '→' + result.afterGaps + (result.rolledBack ? ' ROLLED-BACK' : ' quarantine=' + result.quarantine) : ''));
-  process.stdout.write('@@RAWS@@' + JSON.stringify({ kind: 'reclaim-done', host, apply, count: result.count, bytes: result.bytes, moved: result.moved ?? 0, movedBytes: result.movedBytes ?? 0, baselineGaps: result.baselineGaps ?? null, afterGaps: result.afterGaps ?? null, rolledBack: !!result.rolledBack, quarantine: result.quarantine ?? null, after: result.after ?? null }) + '\n');
+  process.stdout.write('@@RAWS@@' + JSON.stringify({ kind: 'reclaim-done', host, apply, count: result.count, bytes: result.bytes, moved: result.moved ?? 0, movedBytes: result.movedBytes ?? 0, baselineGaps: result.baselineGaps ?? null, afterGaps: result.afterGaps ?? null, rolledBack: !!result.rolledBack, rollbackReason: result.rollbackReason ?? null, verified: result.verified !== false, quarantine: result.quarantine ?? null, after: result.after ?? null }) + '\n');
 }

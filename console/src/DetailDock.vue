@@ -10,7 +10,7 @@
  * 面板打开时父组件会隐藏右下角的「克隆档案」链接 —— 本面板是全高右侧浮层，
  * 会把它整块盖住（实测 154×32），留着就等于点不到。
  */
-import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import Icon from './Icon.vue';
 import { API, apiHeaders, wsJson } from './api.js';
 import { typeColor, typeCn } from './types.js';
@@ -75,6 +75,23 @@ function onDockKeydown(e) {
   if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
+
+/**
+ * fixup-history.json —— 克隆 tab 的「AI 校准」块要读它。
+ *
+ * 它**此前只在 loadQuality() 里取**，而 loadQuality 只有切到「质检」标签才会跑；
+ * 那个块的条件又写着 `!forge`（任务是结束时看的）。于是最常见的那条路径
+ * ——打开详情 → 克隆 tab——永远看不到它，而注释里写的正是"任务结束后这里要能回答
+ * AI 校准做了什么"。曲线于是成了"只在任务进行中的面板里闪过一次"的东西。
+ * 这个文件很小，进面板顺手取一次即可；换页要重置，否则会显示上一页的曲线。
+ */
+const dockFixup = ref(null);
+watch(() => props.selected, async (n) => {
+  dockFixup.value = null;
+  if (!n) return;
+  const j = await wsJson(props.host, 'pages/' + pageNameOf(n) + '/fixup-history.json');
+  if (props.selected === n) dockFixup.value = j;
+}, { immediate: true });
 
 /** 运行计时：只在真的跑着的时候每秒 tick —— 空闲的会话不该养一个空转的定时器 */
 const nowTick = ref(Date.now());
@@ -463,7 +480,7 @@ function onTablistKey(e) {
         <div class="q-list">
           <div class="q-row">
             <span class="q-k">未运行</span>
-            <span class="q-v">{{ detailQuality.fixup.detail || skipReasonCn(detailQuality.fixup.skipped) || '这次克隆没留下校准记录（旧版本引擎）' }}</span>
+            <span class="q-v">{{ dockFixup.detail || skipReasonCn(dockFixup.skipped) || '这次克隆没留下校准记录（旧版本引擎）' }}</span>
           </div>
         </div>
       </div>
@@ -486,11 +503,11 @@ function onTablistKey(e) {
     <!-- 校准结论：任务结束后这里要能回答"AI 校准做了什么 / 为什么没做"。
          曲线此前只在任务进行中的面板里，一结束就"消失"了（其实是被写进了 fixup-history.json，
          只是没人读）—— 用户看到的是一次性动画。 -->
-    <div class="ov-sec" v-if="selected.forgeState === 'done' && !forge && detailQuality.fixup">
+    <div class="ov-sec" v-if="selected.forgeState === 'done' && !forge && dockFixup">
       <div class="panel-sec-name">AI 校准</div>
       <div class="q-list">
-        <template v-if="detailQuality.fixup.rounds?.length">
-          <div class="q-row" v-for="r in detailQuality.fixup.rounds" :key="r.round">
+        <template v-if="dockFixup.rounds?.length">
+          <div class="q-row" v-for="r in dockFixup.rounds" :key="r.round">
             <span class="q-k">第 {{ r.round }} 轮</span>
             <span class="q-v">{{ r.before }}% → {{ r.after }}% <b :class="r.kept ? 'ok' : 'bad'">{{ r.kept ? '保留' : '回滚' }}</b></span>
           </div>

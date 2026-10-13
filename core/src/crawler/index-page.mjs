@@ -56,7 +56,13 @@ const cards = pages.map(p => {
 </a>`;
 }).join('\n');
 
-const avg = pages.length ? (pages.reduce((s, p) => s + (p.score?.total ?? 0), 0) / pages.length).toFixed(1) : '-';
+// 缺 score.json 的页（重算失败、diff 因尺寸不符提前退出）**不能按 0 分进分母** ——
+// 那是把"没测"报成"测得差"，而且越缺越离谱（缺一页就掉 100/N 分）。
+// queue.mjs 记历史用的 avgPixel 一直是"只算有分的页"，这里跟它对齐；
+// 两个数字说的是同一批产物，口径不该有两套。
+const scored = pages.filter(p => typeof p.score?.total === 'number');
+const avg = scored.length ? (scored.reduce((s, p) => s + p.score.total, 0) / scored.length).toFixed(1) : '-';
+const avgNote = scored.length && scored.length !== pages.length ? `（${scored.length} 页有评分）` : '';
 const aCount = pages.filter(p => p.score?.grade === 'A').length;
 
 const html = `<!doctype html>
@@ -92,7 +98,7 @@ h1 span { font-size:11px; letter-spacing:.3em; color:var(--faint); }
 .foot a { color:var(--cyan); text-decoration:none; }
 </style></head><body>
 <div class="head"><h1>HEIMDALL <span>· ${esc(host).toUpperCase()} 克隆档案</span></h1></div>
-<div class="sub">镜像 <b>${pages.length}</b> 页 · 平均还原度 <b>${avg}%</b> · A 级 <b>${aCount}</b> 页 · 情报包见 <a href="intel/${esc(host)}-intel.xlsx">intel/${esc(host)}-intel.xlsx</a></div>
+<div class="sub">镜像 <b>${pages.length}</b> 页 · 平均还原度 <b>${avg}%</b>${avgNote} · A 级 <b>${aCount}</b> 页 · 情报包见 <a href="intel/${esc(host)}-intel.xlsx">intel/${esc(host)}-intel.xlsx</a></div>
 <div class="grid">${cards}</div>
 <div class="foot">HEIMDALL site replication engine · <a href="../">返回星图控制台</a></div>
 <script>
@@ -106,7 +112,7 @@ document.addEventListener('click', (e) => {
 </body></html>`;
 
 writeFileSync(join(BASE, 'index.html'), html);
-console.log(`index -> ${join(BASE, 'index.html')} (${pages.length} pages, avg ${avg}%)`);
+console.log(`index -> ${join(BASE, 'index.html')} (${pages.length} pages, ${scored.length} scored, avg ${avg}%)`);
 
 // ---------- compare.html：同步滚动对比 v2 ----------
 // 两侧统一 1440px 桌面视口 + transform 等比缩放显示：镜像在窄容器里会触发响应式断点

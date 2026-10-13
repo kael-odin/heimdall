@@ -92,7 +92,18 @@ export function buildEditManifest(host) {
   }).sort((x, y) => y.pageCount - x.pageCount || y.size - x.size);
 
   // ---------- 2. 仍是外链的视觉资产（必须处理的那一批） ----------
+  // 这份名单直接进交付包（README + edit-manifest），是"接手的人必须处理"的清单，
+  // 所以它的**覆盖面必须交代清楚**：资产扫描默认只扫前 60 页（--max 是运行时长上限），
+  // 74 页的站会有 14 页的必改项根本不在这张表里，而报告只写"60 页"。
+  // 宁可写明"这份表只覆盖 N/M 页"，也不要让人以为"表里没有就是没有"。
   const gapReport = readJson(join(base, 'audit', 'asset-gaps.json'));
+  const gapCoverage = gapReport?.summary
+    ? {
+        scanned: gapReport.summary.pages ?? null,
+        cloned: gapReport.summary.clonedPages ?? gapReport.summary.pages ?? null,
+        truncated: !!gapReport.summary.truncated,
+      }
+    : null;
   const remote = [];
   for (const p of gapReport?.pages ?? []) {
     for (const g of p.gaps ?? []) {
@@ -153,6 +164,8 @@ export function buildEditManifest(host) {
       domainFiles: domainFiles.length,
       domainTotal,
     },
+    // 资产缺口的覆盖面：truncated=true 表示 remote 这张表只覆盖前面那些页
+    gapCoverage,
     domain: { hostname, total: domainTotal, files: domainFiles },
     assets,
     remote,

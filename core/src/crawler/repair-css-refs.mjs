@@ -9,9 +9,10 @@
  *
  * 用法: node src/crawler/repair-css-refs.mjs <host> [--dry-run]
  */
-import { readdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
+import { writeFileAtomic } from '../fsutil.mjs';
 
 const argv = process.argv.slice(2);
 const host = argv.find(a => !a.startsWith('--'));
@@ -47,7 +48,7 @@ function repairFile(file) {
     const rel = fixUrl(raw.trim());
     return rel ? `@import ${q}${rel}${q}` : m;
   });
-  if (fixed && !DRY) writeFileSync(file, text);
+  if (fixed && !DRY) writeFileAtomic(file, text);
   return fixed;
 }
 

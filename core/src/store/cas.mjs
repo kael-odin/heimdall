@@ -136,8 +136,20 @@ function walkFiles(dir, out = []) {
  * 对一棵目录树做去重。返回 ledger：
  * { files, unique, duplicates, bytesTotal, bytesSaved, linked, skipped, storeDir, dryRun }
  */
-export function dedupeTree(rootDir, storeDir, { dryRun = false, skip = [] } = {}) {
-  const files = walkFiles(rootDir).filter(f => !skip.some(s => relative(rootDir, f.path).split(/[\\/]/).includes(s)));
+export function dedupeTree(rootDir, storeDir, { dryRun = false, skip = [], onlyUnder = [] } = {}) {
+  const segsOf = (p) => relative(rootDir, p).split(/[\\/]/);
+  const files = walkFiles(rootDir)
+    .filter(f => !skip.some(s => segsOf(f.path).includes(s)))
+    // onlyUnder：只对"写一次就不再改"的**产物资产树**去重（clone/ 与 live/）。
+    // 捕获输入（cssom*.css / dom*.html / network.har）和各种清单、评分文件会被后续步骤
+    // 反复重写，硬链接它们等于让一次写入改到别处去 —— 实测就是这么把源站的 cssom.css
+    // 覆盖成构建产物的（linear.app 三页，详见 fsutil.mjs 的 writeFileAtomic）。
+    // 去重的收益本来也全在这两棵树里（图片、字体被几十页共用），缩范围几乎不损失什么。
+    .filter(f => {
+      if (!onlyUnder.length) return true;
+      const parents = segsOf(f.path).slice(0, -1);
+      return onlyUnder.some(d => parents.includes(d));
+    });
   const byHash = new Map();
   let bytesTotal = 0, bytesSaved = 0, duplicates = 0, linked = 0, skipped = 0;
 

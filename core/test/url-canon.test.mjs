@@ -8,7 +8,9 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { pageNameOfUrl, canonUrl, sameCanonUrl, stableNodeId, asUrl } from '../src/url-canon.mjs';
 
 /**
@@ -140,4 +142,31 @@ test('控制台的 pageNameOf 规则与 pageNameOfUrl 一字不差', () => {
   const a = ruleOf(core), b = ruleOf(console_);
   assert.ok(a, '在 url-canon.mjs 里找不到页名规则 —— 抽取正则过期了，别直接放过');
   assert.equal(b, a, '控制台那份页名规则已经漂移，链接会指向不存在的目录');
+});
+
+/**
+ * 光有"唯一实现"这个说法不够 —— 实测控制台里**又内联了两份**：
+ *
+ *   const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
+ *
+ * 它少了 60 字符截断（也少了 ?&# 折叠），而产物目录名是截断过的。于是路径 ≥60 字符的页
+ * 在控制台里指向一个不存在的目录：详情面板的「还原度」「情报摘要」永远不出现，
+ * 404 又被 wsJson 吞成 null，看起来只是"这页还没跑过"（stripe 的
+ * guides/best-practices-… 就有 62 字符，是真实命中）。
+ *
+ * 所以这条守卫扫**整个控制台源码**，不准再有第二份这种内联写法。
+ */
+test('控制台里不许再有内联的页名规则（只认 pages.js 那份）', () => {
+  // 用 fileURLToPath + join 取路径：`new URL(f, root)` 在 root 不带尾斜杠时
+  // 会把相对路径解析到上一层，扫出来的是一堆不存在的位置（第一版就是这么写错的）
+  const root = fileURLToPath(new URL('../../console/src', import.meta.url));
+  const files = readdirSync(root, { recursive: true })
+    .map(String)
+    .filter(f => /\.(js|vue)$/.test(f) && !f.includes('node_modules'));
+  assert.ok(files.length > 5, '扫到的控制台源文件太少，路径八成写错了');
+  // 特征：把斜杠折成连字符的临时写法。canonical 那份用的是 [/?&#]+ 字符类，不会被误伤。
+  // 用普通字符串比对而不是正则字面量 —— 后者要转义四层斜杠，写错过一次。
+  const AD_HOC = ".replace(/\\//g, '-')";
+  const offenders = files.filter(f => readFileSync(join(root, f), 'utf8').includes(AD_HOC));
+  assert.deepEqual(offenders, [], '这些文件里内联了页名规则，应该改用 pages.js 的 pageNameOf');
 });

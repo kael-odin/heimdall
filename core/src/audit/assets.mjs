@@ -176,7 +176,13 @@ if (isMain) {
   const BASE = join(WORKSPACE, host);
   const PAGES = join(BASE, 'pages');
   if (!existsSync(PAGES)) { console.error('no pages for host:', host); process.exit(1); }
-  const pages = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'clone', 'index.html'))).slice(0, MAX);
+  // `--max` 是运行时长上限，不是"这个站只有这么多页"。
+  // 截断过的名单必须**在报告里写明**：下游 deliver/edit-manifest 会把
+  // "仍是外链的视觉资产（必须处理）"这张表直接摆在交付包里的，
+  // 而它读的正是这份报告 —— 74 页的站只扫 60 页，剩下 14 页的必改项就凭空消失了，
+  // 报告里却只写"60 页"（实测 apify.com：summary.pages=60，实际 74 页克隆）。
+  const clonedPages = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'clone', 'index.html')));
+  const pages = clonedPages.slice(0, MAX);
   // 逐页上报进度：大站（上百页 × 上千引用）慢在"扫到哪一页"，不是慢在最后一步，
   // 所以进度必须**每页都发**，而不是只在结束时发一个总数。控制台据此显示 n/total。
   emit({ kind: 'asset-gaps-start', host, total: pages.length });
@@ -192,17 +198,23 @@ if (isMain) {
   }), { refs: 0, localized: 0, gaps: 0, origin: 0, third: 0, visual: 0, visualOrigin: 0, visualThird: 0 });
   const report = {
     host, generatedAt: new Date().toISOString(),
-    summary: { pages: results.length, ...totals, localizationRate: totals.refs ? +(totals.localized / totals.refs).toFixed(4) : null },
+    summary: {
+      pages: results.length,
+      clonedPages: clonedPages.length,      // 磁盘上实际克隆了多少页
+      truncated: results.length < clonedPages.length,   // true = 下面所有数字都只覆盖前 --max 页
+      ...totals,
+      localizationRate: totals.refs ? +(totals.localized / totals.refs).toFixed(4) : null,
+    },
     pages: results,
   };
   const outDir = join(BASE, 'audit');
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, 'asset-gaps.json'), JSON.stringify(report, null, 2));
   writeFileSync(join(outDir, 'asset-gaps.html'), renderAssetGapsHtml(report));
-  console.log(`[assets] pages=${results.length} refs=${totals.refs} localized=${totals.localized} (${((report.summary.localizationRate ?? 0) * 100).toFixed(1)}%) | 视觉缺口 ${totals.visual}（原站 ${totals.visualOrigin} / 第三方 ${totals.visualThird}）| 元数据/追踪/设计替代 ${totals.gaps - totals.visual}`);
+  console.log(`[assets] pages=${results.length}${report.summary.truncated ? '/' + clonedPages.length + '（截断，只扫了 --max 这么多页）' : ''} refs=${totals.refs} localized=${totals.localized} (${((report.summary.localizationRate ?? 0) * 100).toFixed(1)}%) | 视觉缺口 ${totals.visual}（原站 ${totals.visualOrigin} / 第三方 ${totals.visualThird}）| 元数据/追踪/设计替代 ${totals.gaps - totals.visual}`);
   console.log('[assets] report ->', join(outDir, 'asset-gaps.html'));
   for (const w of [...results].sort((a, b) => b.visualGaps - a.visualGaps || b.gaps.length - a.gaps.length).slice(0, 10)) {
     console.log('  ' + w.page.padEnd(34), 'visual=' + String(w.visualGaps).padStart(3), 'origin=' + String(w.visualOrigin).padStart(3), 'third=' + String(w.visualThird).padStart(3), 'all=' + w.gaps.length);
   }
-  emit({ kind: 'asset-gaps-done', host, pages: results.length, localizationRate: report.summary.localizationRate, visualGaps: totals.visual, visualOrigin: totals.visualOrigin, visualThird: totals.visualThird });
+  emit({ kind: 'asset-gaps-done', host, pages: results.length, clonedPages: clonedPages.length, truncated: report.summary.truncated, localizationRate: report.summary.localizationRate, visualGaps: totals.visual, visualOrigin: totals.visualOrigin, visualThird: totals.visualThird });
 }

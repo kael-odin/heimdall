@@ -80,7 +80,9 @@ test('live/health: scan classifies local/har/unresolved/dynamic/external and mis
       '<a href="/other/">other</a>',
       '<img src="/_next/image?url=/a.png&w=64">',
     ].join(''));
-    const harIndex = indexHar([{ method: 'GET', url: 'https://x.test/styles.css?dpl=1' }]);
+    // HAR 条目要**真能回放**才算已覆盖：serve.mjs 要求有 body（`if (hit && hit.body)`）
+    // 并且会把录到的状态码原样返回。所以这里给的是完整条目（status + body）。
+    const harIndex = indexHar([{ method: 'GET', url: 'https://x.test/styles.css?dpl=1', status: 200, body: 'Y3Nz' }]);
     const report = scanLiveBundle({ liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test', harIndex });
     assert.equal(report.pages, 1);
     assert.equal(report.assets.local, 1);
@@ -149,5 +151,33 @@ test('live/heal: retries path variants, writes fetched file, skips dynamic endpo
     assert.ok(r.skipped >= 1, 'dynamic endpoint must be skipped');
     assert.equal(existsSync(join(dir, 'a', 'good.js')), true);
     assert.ok(calls.some(u => u.includes('/a/good.js')));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+/**
+ * HAR 覆盖数只该算**真能放出来的**条目。
+ *
+ * 原来的判据只看 method+URL 命中，于是"捕获时这条就是 404"或"没有 body"也被算成
+ * 已覆盖 —— 而部署出去的 serve.mjs 要求 `hit.body`，还会把录到的状态码原样返回：
+ * health 说"离线可用"，浏览器收到的是 404。交付包的 landing 页与 README 照着
+ * health.json 说话，所以这个数错了整包就都在说错话。
+ */
+test('live/health: 没有 body 或状态是 4xx 的 HAR 条目**不算**已覆盖', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-health2-'));
+  try {
+    mkdirSync(join(dir, 'live', 'page'), { recursive: true });
+    writeFileSync(join(dir, 'live', 'page', 'index.html'), [
+      '<script src="/lm/x.test/no-body.js"></script>',
+      '<script src="/lm/x.test/was-404.js"></script>',
+      '<script src="/lm/x.test/good.js"></script>',
+    ].join(''));
+    const harIndex = indexHar([
+      { method: 'GET', url: 'https://x.test/no-body.js', status: 200 },              // 录到了但没有 body
+      { method: 'GET', url: 'https://x.test/was-404.js', status: 404, body: 'eA==' }, // 录下来就是个 404
+      { method: 'GET', url: 'https://x.test/good.js', status: 200, body: 'eA==' },    // 真的能回放
+    ]);
+    const report = scanLiveBundle({ liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test', harIndex });
+    assert.equal(report.assets.har, 1, '只有 good.js 算已覆盖');
+    assert.equal(report.assets.unresolved, 2, '另外两条要如实落进缺口，而不是被算成已覆盖');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

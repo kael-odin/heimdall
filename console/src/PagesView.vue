@@ -22,7 +22,6 @@ const PAGE_TYPES = PT;
 const props = defineProps({
   host: { type: String, default: '' },
   sites: { type: Array, default: () => [] },
-  engine: { type: Object, default: () => ({}) },
   nodes: { type: Array, default: () => [] },       // 全量清单（含孤儿已克隆页）
   actions: { type: Array, default: () => [] },
   scores: { type: Object, default: () => ({}) },   // nodeId -> score.json

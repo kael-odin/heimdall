@@ -43,6 +43,12 @@ jobs:
       - run: pnpm lint
       # 见文件头：测试集里有真浏览器用例，不装就会红
       - run: pnpm exec playwright install --with-deps chromium
+      # core 与 console 是**两个独立 job，产物不互通** —— 而 core 的测试集里有一条
+      # 控制台 E2E，它需要 console/dist。不在这里构建的话，那条用例每次都走"跳过"分支，
+      # 等于在 CI 里根本不存在（本地有 dist，所以本地永远是绿的，看不出来）。
+      # 与其把两个 job 串起来，不如在这儿就地构建一次：多花一分钟，换一条真的会跑的守卫。
+      - run: pnpm --dir ../console install --frozen-lockfile
+      - run: pnpm --dir ../console build
       - run: pnpm test
 
   console:

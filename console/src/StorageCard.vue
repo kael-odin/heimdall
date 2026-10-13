@@ -189,7 +189,10 @@ onBeforeUnmount(stopPoll);
             <button class="danger" @click="runGc(true)" :disabled="gcing || !info.cas?.orphanFiles">{{ gcConfirm ? '再次点击确认回收' : '执行回收' }}</button>
             <button v-if="gcConfirm" @click="gcConfirm = false">取消</button>
           </div>
-          <p class="storage-note" v-if="gcResult" role="status" aria-live="polite">{{ gcResult.applied ? `已回收 ${fmtBytes(gcResult.freed || 0)}，跳过 ${gcResult.skipped || 0}` : `预览：可回收 ${fmtBytes(gcResult.orphanBytes || 0)}` }}</p>
+          <!-- 字段名与 cas-gc.mjs 的 emit 一致：是 `apply`（不是 `applied`）、失败数是 `failed`（没有 `skipped`）。
+               写错字段名的后果很有迷惑性：条件永远为假，于是**真回收完了仍显示"预览：可回收 …"**，
+               看起来像按钮没生效。本文件第 88 行的 toast 一直用的是 `ev.apply`，两处曾经不一致。 -->
+          <p class="storage-note" v-if="gcResult" role="status" aria-live="polite">{{ gcResult.apply ? `已回收 ${fmtBytes(gcResult.freed || 0)}，失败 ${gcResult.failed || 0}` : `预览：可回收 ${fmtBytes(gcResult.orphanBytes || 0)}` }}</p>
           <p class="storage-note">安全判据：CAS 文件只有自身链接（nlink=1）时才会进入候选；仍被站点使用的硬链接不会删除。</p>
         </div>
       </div>

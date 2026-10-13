@@ -19,6 +19,10 @@
 .stat b { display: block; font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .stat i { font-style: normal; font-size: 10px; color: var(--text-faint); letter-spacing: .22em; font-family: var(--font-mono); }
 .status { margin-top: 16px; display: inline-block; padding: 5px 12px; border: 1px solid var(--border); font-size: 12px; letter-spacing: .1em; color: var(--text-dim); font-family: var(--font-mono); background: var(--surface); }
+/* 星图之外的视图（页面 / 任务 / 报告 / 设置）里也要看得见进度。
+   改站清单、替换域名、批量克隆都会写 statusText，而它此前只渲染在星图 HUD 里 ——
+   在「报告」里点完"替换域名"，那句"写入中…"写进去就没人看得见。 */
+.status-global { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; margin: 0; z-index: 8; }
 .status.live { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); animation: pulse-soft 1.2s ease-in-out infinite; }
 
 .seek { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; z-index: 5; background: var(--surface); }

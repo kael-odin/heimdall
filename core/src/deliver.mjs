@@ -215,6 +215,7 @@ cd site && npx serve .        # 起静态服务（双击 index.html 也能看，
   可以一并换掉（预览不改文件，替换前逐文件备份）
 - **换图片 / 图标 / 字体**：${manifest.counts.assets} 个资源，按"被多少页用到"排序
   ${manifest.counts.remoteVisual > 0 ? `；其中 **${manifest.counts.remoteVisual} 个视觉资产仍是外链**，那几个必须处理` : '（没有仍是外链的视觉资产）'}
+  ${manifest.gapCoverage?.truncated ? `\n  ⚠ 这张表**只覆盖 ${manifest.gapCoverage.scanned} / ${manifest.gapCoverage.cloned} 页**（资产扫描有 --max 上限，默认 60 页）。\n  剩下的页里可能还有外链视觉资产没被列出来 —— 要完整名单就重跑：\`node core/src/audit/assets.mjs ${manifest.host} --max ${manifest.gapCoverage.cloned}\`` : ''}
 - **换文案**：${manifest.counts.copyPages} 页的标题 / H1 / CTA / 价格
 
 **换完之后**，这些产物是"原站的快照"这一点不会改变 —— 要商用请自行确认授权。

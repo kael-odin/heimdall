@@ -142,6 +142,12 @@ const selected = ref(null);          // 当前选中星球（点星=选中）
 // 会盖住右下角 z-index 更低的 .archive-link（实测 154×32 完全覆盖），
 // 所以那个链接在面板打开时必须让位 —— 否则它在用户浏览页面期间完全点不到。
 const dockOpen = computed(() => !!selected.value && (view.value === 'atlas' || view.value === 'pages'));
+/**
+ * 任务行能不能点开详情 —— 判据必须与"详情面板真的会渲染"完全一致。
+ * 以前只判 `t.kind !== 'clone'`，于是「报告」「设置」里（以及星图没选中节点时）
+ * 那些行**看着可点、点了什么也不发生**（写进 activeTaskId 的东西没人渲染）。
+ */
+const taskRowClickable = (t) => t.kind !== 'clone' && dockOpen.value;
 const detailIntel = ref(null);       // 已锻页 intel.json
 const detailScore = ref(null);       // 已锻页 score.json
 
@@ -821,9 +827,13 @@ function startForge(node, opts = {}) {
   return new Promise((resolve) => {
     const url = node?.url ?? opts.url;
     if (!url) return resolve();
-    const pageName = node
-      ? (node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-'))
-      : pageNameOf({ url });
+    // 页名只有一条规则（pages.js 的 pageNameOf，与 core 侧 url-canon 同源）。
+    // 这里曾经内联了第二份：`node.path.replace(/^\//,'').replace(/\//g,'-')` ——
+    // 它**不截断到 60 字符**。产物目录名是截断过的，所以凡是路径 ≥60 字符的页
+    // （stripe 的 guides/best-practices-… 就有 62 字符）在控制台里都指向一个不存在的目录：
+    // 详情面板的「还原度」「情报摘要」两块永远不出现，而 404 被 wsJson 吞成 null，
+    // 看起来只是"这页没跑过"。
+    const pageName = pageNameOf(node ?? { url });
     const setState = (s) => { if (node) node.forgeState = s; };
     const task = reactive({
       localId: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
@@ -841,7 +851,7 @@ function startForge(node, opts = {}) {
     bump();
     (async () => {
       try {
-        const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url: node.url }) });
+        const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url }) });
         const { taskId, error } = await r.json();
         if (error) {
           task.failed = true; task.done = true; task.endedAt = Date.now();
@@ -1408,7 +1418,8 @@ function onNodeClick(node) {
   selected.value = node;                      // 点星 = 选中，打开详情剖析面板
   activeTaskId.value = null;                   // 关闭旧克隆视图（后台任务继续跑）
   detailIntel.value = null; detailScore.value = null;
-  const pageName = node.path === '/' ? 'home' : node.path.replace(/^\//, '').replace(/\//g, '-');
+  // 与产物目录名同一条规则（pages.js）—— 内联第二份会漏掉 60 字符截断，见 startForge 的注释
+  const pageName = pageNameOf(node);
   wsJson(host.value, 'pages/' + pageName + '/intel/intel.json').then(j => { if (j && selected.value === node) detailIntel.value = j; });
   wsJson(host.value, 'pages/' + pageName + '/score.json').then(j => { if (j && selected.value === node) detailScore.value = j; });
 }
@@ -1445,6 +1456,9 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     </div>
     <div class="status" v-if="statusText" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
   </div>
+
+  <!-- 星图之外的视图也要能看到进度（同一个 statusText，见 .status-global 的注释） -->
+  <div class="status status-global" v-if="statusText && view !== 'atlas'" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
 
   <!-- 首启向导：一个站点都没有时，星图是空的，用户不知道该做什么。
        把"侦察 → 克隆 → 拿走"三步写在空态里，比让他对着空白星空猜要强。 -->
@@ -1502,14 +1516,14 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <button class="tc-toggle" @click="tasksOpen = !tasksOpen" :aria-expanded="tasksOpen" aria-label="展开或收起任务中心">{{ tasksOpen ? '—' : '＋' }}</button>
     </div>
     <div class="tc-rows" v-show="tasksOpen">
-      <!-- 非「整站克隆」的行可点开详情。裸 div + @click 对键盘/读屏不可达，
-           所以补 role/tabindex/键事件 —— 判据与 @click 完全一致（同一个条件）。 -->
+      <!-- 能点开详情的行才有 role/tabindex —— 判据统一走 taskRowClickable，
+           免得"看着可点、点了没反应"（见它的注释）。 -->
       <div class="tc-row" v-for="t in [...tasks].reverse()" :key="t.localId" :class="taskState(t)"
-           :role="t.kind !== 'clone' ? 'button' : undefined" :tabindex="t.kind !== 'clone' ? 0 : undefined"
-           @click="t.kind !== 'clone' && (activeTaskId = t.localId)"
-           @keydown.enter.prevent="t.kind !== 'clone' && (activeTaskId = t.localId)"
-           @keydown.space.prevent="t.kind !== 'clone' && (activeTaskId = t.localId)"
-           :title="t.error || t.url">
+           :role="taskRowClickable(t) ? 'button' : undefined" :tabindex="taskRowClickable(t) ? 0 : undefined"
+           @click="taskRowClickable(t) && (activeTaskId = t.localId)"
+           @keydown.enter.prevent="taskRowClickable(t) && (activeTaskId = t.localId)"
+           @keydown.space.prevent="taskRowClickable(t) && (activeTaskId = t.localId)"
+           :title="t.error || t.url || (taskRowClickable(t) ? '点击查看这个任务的详情' : (t.kind === 'clone' ? '整站克隆的进度在上面一行' : '在星图里选中一个页面后，任务行才能点开详情'))">
         <span class="tc-name">{{ t.label ?? t.pageName }}</span>
         <span class="tc-state">{{ taskLabel(t) }}</span>
         <span class="tc-score" v-if="t.kind === 'audit' && t.auditScore != null">{{ t.auditScore }} 分</span>
@@ -1522,7 +1536,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
   <PagesView
     v-if="view === 'pages'"
     :key="'pages-' + host"
-    :host="host" :sites="sites" :engine="engine" :theme="theme"
+    :host="host" :sites="sites" :theme="theme"
     :nodes="tableNodes" :scores="pageScores" :verify="pageVerify" :meta="pageMeta"
     :actions="workViewActions"
     @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'"

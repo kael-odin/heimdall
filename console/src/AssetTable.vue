@@ -56,8 +56,18 @@ async function runReclaim(apply) {
     const s = j.summary;
     if (!s) { reclaimResult.value = '无结果'; return; }
     const mb = (v) => (v / 1048576).toFixed(1) + 'MB';
-    reclaimResult.value = (apply ? `已回收 ${s.removed ?? 0} 个 / ${mb(s.bytes)}` : `可回收 ${s.count} 个 / ${mb(s.bytes)}`)
-      + (s.after ? `；剩余孤儿 ${s.after.orphans} / ${mb(s.after.orphanBytes)}` : '');
+    // 字段名必须和 reclaim-orphans.mjs 的 @@RAWS@@ 一致：真正搬走的数量是 `moved` / `movedBytes`，
+    // 载荷里**没有 `removed`** —— 以前写的是 `s.removed ?? 0`，于是无论回收了多少个，
+    // 结果永远显示"已回收 0 个"（`?? 0` 把字段名写错这件事伪装成了"这次没回收到东西"）。
+    // 另外：回滚过就不能说"已回收" —— 那是把失败报成成功。
+    if (!apply) {
+      reclaimResult.value = `可回收 ${s.count} 个 / ${mb(s.bytes)}`;
+    } else if (s.rolledBack) {
+      reclaimResult.value = `已回滚（回收 ${s.moved ?? 0} 个后资产缺口反而变大，文件已放回）`;
+    } else {
+      reclaimResult.value = `已回收 ${s.moved ?? 0} 个 / ${mb(s.movedBytes ?? s.bytes)}`;
+    }
+    reclaimResult.value += (s.after ? `；剩余孤儿 ${s.after.orphans} / ${mb(s.after.orphanBytes)}` : '');
     if (apply) { filter.orphan = false; load(); }
   } catch (e) { reclaimResult.value = '失败：' + String(e).slice(0, 80); }
 }

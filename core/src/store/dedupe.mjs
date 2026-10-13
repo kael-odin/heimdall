@@ -24,7 +24,11 @@ if (!existsSync(rootDir)) { console.error('no such dir:', rootDir); process.exit
 
 const storeDir = join(DATA_ROOT, 'assets-cas');
 const started = Date.now();
-const ledger = dedupeTree(rootDir, storeDir, { dryRun, skip: ['node_modules'] });
+// 范围 = **产物资产树 + 捕获下来的资产目录**。它们都是"写一次就不再改"的文件，
+// 硬链接它们是安全的，而且去重的收益几乎全在这里（实测 apify：608MB / 全量 642MB）。
+// 排除的是捕获**输入**（cssom*.css / dom*.html / network.har）与各种清单、报告、评分 ——
+// 那些文件会被后续步骤反复重写，硬链接它们等于让一次写入改到别处去。
+const ledger = dedupeTree(rootDir, storeDir, { dryRun, skip: ['node_modules'], onlyUnder: ['clone', 'live', 'assets', 'styles'] });
 ledger.ms = Date.now() - started;
 ledger.generatedAt = new Date().toISOString();
 console.log(`dedupe${dryRun ? ' (dry-run)' : ''}: ${ledger.files} files | unique ${ledger.unique} | duplicates ${ledger.duplicates}`);

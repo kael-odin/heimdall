@@ -19,7 +19,7 @@ import { scanCssRefs, rewriteCssRefs } from '../css-refs.mjs';
 import { recordLearned } from '../site-profile.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
-import { readJson } from '../fsutil.mjs';
+import { readJson, writeFileAtomic } from '../fsutil.mjs';
 import { UA } from '../ua.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/linker.mjs <host>', '站点 host');
@@ -75,7 +75,7 @@ async function fetchAsset(absUrl, dir) {
     const dest = join(dir, 'assets', basename(hit.rel));
     if (existsSync(dest)) return hit.rel;
     if (hit.srcFile && existsSync(hit.srcFile)) {
-      try { mkdirSync(join(dir, 'assets'), { recursive: true }); writeFileSync(dest, readFileSync(hit.srcFile)); return hit.rel; } catch {}
+      try { mkdirSync(join(dir, 'assets'), { recursive: true }); writeFileAtomic(dest, readFileSync(hit.srcFile)); return hit.rel; } catch {}
     }
     dlCache.delete(absUrl);   // 缓存源已失效 → 重新下载
   }
@@ -86,7 +86,7 @@ async function fetchAsset(absUrl, dir) {
       const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extFrom(absUrl, harHit.mimeType, body)}`;
       mkdirSync(join(dir, 'assets'), { recursive: true });
       const dest = join(dir, 'assets', name);
-      writeFileSync(dest, body);
+      writeFileAtomic(dest, body);
       const rel = `assets/${name}`;
       dlCache.set(absUrl, { rel, srcFile: dest });
       return rel;
@@ -103,7 +103,7 @@ async function fetchAsset(absUrl, dir) {
     const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extFrom(absUrl, ct, buf)}`;
     mkdirSync(join(dir, 'assets'), { recursive: true });
     const dest = join(dir, 'assets', name);
-    writeFileSync(dest, buf);
+    writeFileAtomic(dest, buf);
     const rel = `assets/${name}`;
     dlCache.set(absUrl, { rel, srcFile: dest });
     return rel;
@@ -207,7 +207,7 @@ for (const name of pages) {
     const capRel = imgMap[abs];
     if (capRel && existsSync(join(PAGES, name, capRel))) {
       const dest = join(dir, 'assets', capRel.split('/').pop());
-      writeFileSync(dest, readFileSync(join(PAGES, name, capRel)));
+      writeFileAtomic(dest, readFileSync(join(PAGES, name, capRel)));
       local = 'assets/' + capRel.split('/').pop();
     } else {
       const dl = await fetchAsset(abs, dir);
@@ -246,7 +246,7 @@ for (const name of pages) {
             const name = mRef[1] + '.' + mRef[2];
             const sub = FONT_EXT_SET.has(mRef[2].toLowerCase()) ? 'styles' : 'assets';
             mkdirSync(join(dir, sub), { recursive: true });
-            writeFileSync(join(dir, sub, name), Buffer.from(hitOrig.body, 'base64'));
+            writeFileAtomic(join(dir, sub, name), Buffer.from(hitOrig.body, 'base64'));
             resolved.set(ref, sub === 'styles' ? name : '../assets/' + name);
             stats.assetsLocalized++; stats.harRecovered++;
             continue;
@@ -259,7 +259,7 @@ for (const name of pages) {
         const sub = /font|woff|ttf|otf/i.test(harHit.mimeType ?? '') || /\.(woff2?|ttf|otf|eot)($|\?)/i.test(ref) ? 'styles' : 'assets';
         const name = 'har-' + String(dlSeq++).padStart(3, '0') + '.' + extOfCt(harHit.mimeType, ref, Buffer.from(harHit.body, 'base64'));
         mkdirSync(join(dir, sub), { recursive: true });
-        writeFileSync(join(dir, sub, name), Buffer.from(harHit.body, 'base64'));
+        writeFileAtomic(join(dir, sub, name), Buffer.from(harHit.body, 'base64'));
         resolved.set(ref, '../' + sub + '/' + name);
         stats.assetsLocalized++; stats.harRecovered++;
         continue;
@@ -287,7 +287,7 @@ for (const name of pages) {
       if (dl) { resolved.set(ref, '../' + dl); stats.assetsLocalized++; }
       else failAsset(abs, "CSS url()");
     }
-    if (resolved.size) writeFileSync(cssFile, rewriteCssRefs(css, resolved));
+    if (resolved.size) writeFileAtomic(cssFile, rewriteCssRefs(css, resolved));
   }
 
   // 3) 本地坏链：basename 在捕获资产里存在的 → 直接修正引用（favicon/图标类根相对引用是 capture 重写盲区）
@@ -306,12 +306,12 @@ for (const name of pages) {
     if (existsSync(join(dir, 'assets', base))) fix = `assets/${base}`;
     else {
       const capSrc = join(PAGES, name, 'assets', base);
-      if (existsSync(capSrc)) { writeFileSync(join(dir, 'assets', base), readFileSync(capSrc)); fix = `assets/${base}`; }
+      if (existsSync(capSrc)) { writeFileAtomic(join(dir, 'assets', base), readFileSync(capSrc)); fix = `assets/${base}`; }
       else {
         // 跨页借用：favicon/站点图标是全站共享资产，任意同站页面有就用它的
         for (const other of pages) {
           const cand = join(PAGES, other, 'clone', 'assets', base);
-          if (other !== name && existsSync(cand)) { writeFileSync(join(dir, 'assets', base), readFileSync(cand)); fix = `assets/${base}`; break; }
+          if (other !== name && existsSync(cand)) { writeFileAtomic(join(dir, 'assets', base), readFileSync(cand)); fix = `assets/${base}`; break; }
         }
       }
     }
@@ -334,14 +334,14 @@ for (const name of pages) {
         if (existsSync(join(dir, rel))) continue;
         for (const other of pages) {
           const cand = join(PAGES, other, 'clone', rel);
-          if (other !== name && existsSync(cand)) { writeFileSync(join(dir, rel), readFileSync(cand)); cssChanged = true; break; }
+          if (other !== name && existsSync(cand)) { writeFileAtomic(join(dir, rel), readFileSync(cand)); cssChanged = true; break; }
         }
       }
     }
-    if (cssChanged) { writeFileSync(cssPath, css); stats.cssHealed = true; }
+    if (cssChanged) { writeFileAtomic(cssPath, css); stats.cssHealed = true; }
   }
 
-  if (html !== html0) writeFileSync(file, html);
+  if (html !== html0) writeFileAtomic(file, html);
   report.push(stats);
   console.log(`  ${name}: rewired ${stats.linksRewired}, live-fallback ${stats.linksToLive}, assets +${stats.assetsLocalized} (fail ${stats.assetFailed}, har ${stats.harRecovered}), missing ${stats.missingLocal.length}`);
 }

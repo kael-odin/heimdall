@@ -74,3 +74,27 @@ test('接线：干净的页面不产生分页/结构化问题（不误报）', (
   const ids = idsOf(clean);
   assert.ok(!ids.some(id => /pagination|faceted|structured-required|structured-context/.test(id)), `不该报：${ids.join(',')}`);
 });
+
+/**
+ * 进度流与报告必须共用同一份页面级上下文。
+ *
+ * 这条来自一次真实的"同一个页面两个分数"：audit.mjs 的 onProgress 多传了一个
+ * `noindexIntent: true`，而报告那遍传的是站点对象（没有这个字段）——
+ * 于是 noindex 页在进度里比报告里高最多 12 分（那条是 high 级规则）。
+ * 而 CI 基线取的是报告那个更严的数，两边对不上还没有任何地方会报错。
+ *
+ * 断言方式：audit.mjs 里 `evaluatePage` 只允许有两个调用点，且都传变量
+ * （共用的 pageCtx / site），不得各自现拼一个字面量上下文。
+ */
+test('audit 的两遍页面评测不得各拼一份上下文', async () => {
+  const { readFileSync } = await import('node:fs');
+  const raw = readFileSync(new URL('../src/seo/audit.mjs', import.meta.url), 'utf8');
+  // **先去掉注释再断言**：解释这件事的注释里就写着 noindexIntent，
+  // 不剥掉的话这条守卫会被自己那段说明文字判红（第一次就是这么红的）
+  const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  assert.equal((src.match(/evaluatePage\(/g) ?? []).length, 2, '预期恰好两个调用点（进度流 + 报告）');
+  assert.doesNotMatch(src, /evaluatePage\(page,\s*\{/,
+    '进度流不得自己拼上下文对象 —— 那正是 noindexIntent 那次的写法');
+  assert.doesNotMatch(src, /noindexIntent/,
+    'noindexIntent 是补丁式豁免；两遍口径必须一致，不能再单边加上');
+});

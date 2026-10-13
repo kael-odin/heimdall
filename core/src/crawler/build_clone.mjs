@@ -17,7 +17,9 @@ import { scanCssRefs, rewriteCssRefs, extractFontRules } from '../css-refs.mjs';
 import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag } from '../dom-refs.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { writeFileAtomic } from '../fsutil.mjs';
 import { UA } from '../ua.mjs';
+
 
 const PAGE = requireArg(process.argv[2], 'node src/crawler/build_clone.mjs <pageDir>', '页面目录');
 const CLONE = join(PAGE, 'clone');
@@ -86,6 +88,32 @@ let refIndex = {};
 try { refIndex = JSON.parse(readFileSync(REF_INDEX, 'utf8')); } catch { refIndex = {}; }
 
 /**
+ * 被**多个不同引用**认领的文件名。
+ *
+ * 这种映射本身是坏的：文件名在同一个目录里是唯一的，两个引用指向它，
+ * 内容只可能属于其中一个（旧版本的分配逻辑会撞名覆盖，见 writeAssetUnique）。
+ * 而复用路径只检查"文件在不在"，不检查内容对不对 —— 于是坏映射一旦落进
+ * ref-index.json 就**永久**保留，每次重建都照抄（实测 linear.app 的三个页）。
+ * 所以这类映射一律不复用，让它们重新走一遍分配。
+ */
+function ambiguousRels(index) {
+  const owners = new Map();
+  for (const map of Object.values(index ?? {})) {
+    for (const [raw, v] of Object.entries(map ?? {})) {
+      const rel = v?.rel;
+      if (!rel) continue;
+      if (!owners.has(rel)) owners.set(rel, new Set());
+      owners.get(rel).add(raw);
+    }
+  }
+  const bad = new Set();
+  for (const [rel, set] of owners) if (set.size > 1) bad.add(rel);
+  return bad;
+}
+const AMBIGUOUS_RELS = ambiguousRels(refIndex);
+if (AMBIGUOUS_RELS.size) console.warn('  [ref-index] ' + AMBIGUOUS_RELS.size + ' 个文件名被多个引用认领（旧版分配撞名留下的）→ 不复用，重新分配');
+
+/**
  * 老产物迁移：没有 ref-index.json 时，用「已构建 CSS 的 token 顺序 ↔ 源 CSS token 顺序」
  * 一一对应反推出映射（构建只换 URL 文本、不增删 token，所以顺序严格对应）。
  * 对不上（长度不等）就放弃复用，重新解析 —— 宁可慢，不可错。
@@ -135,7 +163,8 @@ async function resolveRef(ref, idx, refMap, origin, gaps, cssFileName, priorMap)
 
   // 幂等：按“引用原文”复用上一次的产物（绝不用序号——编号会随扫描口径位移）
   const reuse = priorMap?.[ref]?.rel;
-  if (reuse) {
+  // 坏映射不复用（见 AMBIGUOUS_RELS）：文件在 ≠ 文件对
+  if (reuse && !AMBIGUOUS_RELS.has(reuse)) {
     try {
       if (existsSync(join(CLONE, reuse.replace(/^\.\.\//, ''))) && statSync(join(CLONE, reuse.replace(/^\.\.\//, ''))).isFile()) return reuse;
     } catch { /* 损坏的复用目标 → 重新解析 */ }
@@ -172,9 +201,38 @@ async function resolveRef(ref, idx, refMap, origin, gaps, cssFileName, priorMap)
   }
   const ext = gotExt || 'bin';
   const sub = FONT_EXT.has(ext) ? 'styles' : 'assets';
-  const name = 'ref' + String(idx).padStart(3, '0') + '.' + ext;
-  writeFileSync(join(CLONE, sub, name), got);
-  return sub === 'styles' ? name : '../assets/' + name;
+  return writeAssetUnique(sub, idx, ext, got);
+}
+
+/**
+ * 把取回的字节写进 `clone/<sub>/refNNN.ext`，**保证不会覆盖别人的同名文件**。
+ *
+ * 为什么需要这一步：`idx` 是**每个 CSS 文件各自从 0 数**的引用序号，
+ * 而 cssom.css / fonts.css / cssom-375.css / cssom-768.css 全都往同一个
+ * `clone/styles/` 与 `clone/assets/` 里写。两份样式表的同一个序号指向不同资产时，
+ * 后写的那个就把先写的**覆盖掉**，而且一声不响 —— 实测 linear.app：
+ * `ref002.woff2` 同时被 cssom 的 InterVariable-Italic 与 fonts.css 的 Berkeley Mono 认领，
+ * 最后落盘的是 Berkeley（两者 sha256 与 ref003 完全相同）。
+ *
+ * 后果是永久性的：ref-index.json 记的是**文件名**，复用路径只检查文件在不在、
+ * 不检查内容对不对，于是错配一次就一直是错的，每次重建都照抄。
+ *
+ * 撞名且内容不同 → 往后找一个空位（编号只是内部标识，**唯一性才是硬要求**）。
+ * 内容相同（同一份字体被两份样式表各按自己的顺序编号）→ 直接复用，不重写。
+ */
+function writeAssetUnique(sub, idx, ext, buf) {
+  for (let i = idx; ; i++) {
+    const name = 'ref' + String(i).padStart(3, '0') + '.' + ext;
+    const file = join(CLONE, sub, name);
+    if (existsSync(file)) {
+      let same = false;
+      try { same = readFileSync(file).equals(buf); } catch { same = false; }
+      if (!same) continue;         // 同名不同内容 → 这个位置是别人的，往后找
+    } else {
+      writeFileSync(file, buf);
+    }
+    return sub === 'styles' ? name : '../assets/' + name;
+  }
 }
 
 /**
@@ -200,7 +258,7 @@ async function localizeCss(cssTextIn, cssFileName, origin, refMap = {}, gaps = [
     if (rel) { resolved.set(ref, rel); nextIndex[ref] = { rel, candidates: cands }; fetched++; } else failed++;
   }
   const css = rewriteCssRefs(cssTextIn, resolved);
-  writeFileSync(join(CLONE, 'styles', cssFileName), css);
+  writeFileAtomic(join(CLONE, 'styles', cssFileName), css);
   refIndex[cssFileName] = nextIndex;
   return { fetched, failed, size: css.length };
 }
@@ -298,18 +356,18 @@ for (const w of VARIANTS) {
   const cssOut = 'cssom-' + w + '.css';
   const r = await localizeCss(readFileSync(join(PAGE, 'cssom-' + w + '.css'), 'utf8'), cssOut, meta.origin ?? ORIGIN, meta.refMap ?? {}, cssGaps);
   const html = rewriteHtml(readFileSync(join(PAGE, 'dom-' + w + '.html'), 'utf8'), cssOut);
-  writeFileSync(join(CLONE, 'index-' + w + '.html'), header + html);
+  writeFileAtomic(join(CLONE, 'index-' + w + '.html'), header + html);
   console.log('  ' + cssOut + ' refs=' + (meta.refs ?? []).length + ' ok=' + r.fetched + ' fail=' + r.failed);
 }
 if (VARIANTS.length) {
-  writeFileSync(join(CLONE, 'index-1440.html'), header + desktopHtml);
+  writeFileAtomic(join(CLONE, 'index-1440.html'), header + desktopHtml);
   const chooser = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
     + '<title>Heimdall clone</title><script>location.replace(innerWidth<=600?"index-375.html":innerWidth<=1100?"index-768.html":"index-1440.html");</script>'
     + '<noscript><meta http-equiv="refresh" content="0;url=index-1440.html"></noscript></head><body></body></html>';
-  writeFileSync(join(CLONE, 'index.html'), chooser);
+  writeFileAtomic(join(CLONE, 'index.html'), chooser);
   console.log('  viewport chooser -> index.html (375/768/1440)');
 } else {
-  writeFileSync(join(CLONE, 'index.html'), header + desktopHtml);
+  writeFileAtomic(join(CLONE, 'index.html'), header + desktopHtml);
 }
 // 未本地化的站内**资产**引用（口径与两个坑见 src/dom-refs.mjs 顶部注释）。
 // 这里只负责调用与打印 —— 判断逻辑在 dom-refs.mjs，那里有单测覆盖
@@ -331,7 +389,7 @@ for (const [origUrl, relPath] of Object.entries(map.imgMap)) {
   const buf = readFileSync(src);
   if (!buf.length) continue;
   mkdirSync(dirname(dest), { recursive: true });
-  writeFileSync(dest, buf);
+  writeFileAtomic(dest, buf);
   copied++;
 }
 // 画布光栅图（capture 阶段落的）：不在 imgMap 里，要单独拷
@@ -343,7 +401,7 @@ let copiedCanvases = 0;
       if (!/^canvas-\d+\.png$/.test(n)) continue;
       const dest = join(CLONE, 'assets', n);
       mkdirSync(dirname(dest), { recursive: true });
-      writeFileSync(dest, readFileSync(join(srcDir, n)));
+      writeFileAtomic(dest, readFileSync(join(srcDir, n)));
       copiedCanvases++;
     }
   }

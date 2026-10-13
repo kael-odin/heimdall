@@ -12,9 +12,10 @@
  *
  * 用法: node src/crawler/repair-empty-assets.mjs <host> [--dry-run]
  */
-import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, unlinkSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync, statSync, unlinkSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
+import { writeFileAtomic } from '../fsutil.mjs';
 
 const argv = process.argv.slice(2);
 const host = argv.find(a => !a.startsWith('--'));
@@ -76,7 +77,7 @@ for (const name of readdirSync(PAGES).sort()) {
       if (!needle) continue;
       const to = replacement ?? PIXEL;   // 未知来源用透明像素兜底，避免留下空引用
       const n = text.split(needle).join(to);
-      if (n !== text) { if (!DRY) writeFileSync(rf, n); hits += 1; }
+      if (n !== text) { if (!DRY) writeFileAtomic(rf, n); hits += 1; }
     }
     rewrites += hits;
     // 只在确实改写了引用时才删文件；未被引用的空文件保留（可能被 live 页/其它文件引用，如 agents.md 的空 cssom.css）

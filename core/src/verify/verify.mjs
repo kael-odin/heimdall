@@ -111,7 +111,12 @@ try {
       }
     }
     await srcCtx.close(); await cloneCtx.close();
-    const overall = overallScore(viewports) ?? 0;
+    // `overallScore` 在**没有任何视口测出分数**时返回 null（三个视口全失败、或全被判"页面太高"跳过）。
+    // 以前这里写的是 `?? 0` —— 于是"没测到"被记成"测出来是 0 分 / D 级"，
+    // 在 verify-summary.json 与 verify-done 事件里与真的 0 分完全无法区分，
+    // 还把站点均值按 100/N 拉下去。**没测到就说没测到**，不进均值。
+    const overall = overallScore(viewports);
+    const measured = overall != null;
     const minViewport = worstViewport(viewports);
 
     // 功能保真：交互回放（按钮/折叠/标签页），状态签名 + 视口像素
@@ -128,21 +133,24 @@ try {
     }
     const functional = scoreInteractions(interactions);
 
-    const result = { page: name, target, generatedAt: new Date().toISOString(), overall, grade: gradeOf(overall), minViewport, viewports, functional, interactions };
+    const result = { page: name, target, generatedAt: new Date().toISOString(), overall, measured, grade: measured ? gradeOf(overall) : null, minViewport, viewports, functional, interactions };
     writeFileSync(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
-    results.push({ page: name, overall, grade: result.grade, minViewport, functional });
-    log(name, 'overall', (overall * 100).toFixed(1) + '%', result.grade, minViewport ? '| 最低 ' + minViewport.name + ' ' + (minViewport.score * 100).toFixed(1) + '%' : '', functional ? '| 交互 ' + functional.passed + '/' + functional.total : '| 交互 n/a');
-    emit({ kind: 'verify-page', page: name, overall, grade: result.grade, minViewport, functional });
+    results.push({ page: name, overall, measured, grade: result.grade, minViewport, functional });
+    log(name, 'overall', measured ? (overall * 100).toFixed(1) + '%' : '未测到（视口全失败）', result.grade ?? '', minViewport ? '| 最低 ' + minViewport.name + ' ' + (minViewport.score * 100).toFixed(1) + '%' : '', functional ? '| 交互 ' + functional.passed + '/' + functional.total : '| 交互 n/a');
+    emit({ kind: 'verify-page', page: name, overall, measured, grade: result.grade, minViewport, functional });
   }
 } finally { await browser.close(); }
 
 if (all) {
-  const avg = results.length ? results.reduce((a, r) => a + r.overall, 0) / results.length : 0;
+  // 均值只按**真的测到的页**算；测不到的页单独计数并在摘要里写明 ——
+  // 混进分母就是把"没测"报成"测得差"（和 index-page 的档案均值同一个口径问题）
+  const scored = results.filter(r => typeof r.overall === 'number');
+  const avg = scored.length ? scored.reduce((a, r) => a + r.overall, 0) / scored.length : 0;
   const worst = results.reduce((a, r) => (r.minViewport && (!a || r.minViewport.score < a.score) ? { page: r.page, ...r.minViewport } : a), null);
-  writeFileSync(join(BASE, 'verify', 'verify-summary.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), pages: results, average: +avg.toFixed(4), worst }, null, 2));
-  log('site average', (avg * 100).toFixed(1) + '%', worst ? '| 最差 ' + worst.page + ' ' + worst.name + ' ' + (worst.score * 100).toFixed(1) + '%' : '');
-  emit({ kind: 'verify-done', host, pages: results.length, average: +avg.toFixed(4) });
+  writeFileSync(join(BASE, 'verify', 'verify-summary.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), pages: results, measured: scored.length, unmeasured: results.length - scored.length, average: +avg.toFixed(4), worst }, null, 2));
+  log('site average', (avg * 100).toFixed(1) + '%（' + scored.length + '/' + results.length + ' 页测到）', worst ? '| 最差 ' + worst.page + ' ' + worst.name + ' ' + (worst.score * 100).toFixed(1) + '%' : '');
+  emit({ kind: 'verify-done', host, pages: results.length, measured: scored.length, average: +avg.toFixed(4) });
   if (THRESHOLD > 0 && avg * 100 < THRESHOLD) { log('FAIL below threshold', THRESHOLD); process.exit(1); }
 } else {
-  emit({ kind: 'verify-done', host, pages: results.length, average: results[0]?.overall ?? 0 });
+  emit({ kind: 'verify-done', host, pages: results.length, measured: results[0]?.measured ? 1 : 0, average: results[0]?.overall ?? null });
 }

@@ -98,6 +98,12 @@ try {
       log(`reuse atlas: ${targets.length} pages`);
     } catch {}
   }
+  // **必须在回退之前记下来**：下面那句 `if (targets.length < 2)` 会把 targets 整个换成
+  // sitemap/BFS 发现的结果，之后再去看 `targets.length >= 2` 就永远为真 ——
+  // 于是"atlas 里只有 1 个节点、实际靠 BFS 抓的"这种运行也会被标成 source: 'atlas'，
+  // 而这个字段是写进 seo.json 交付出去的（报告口径不能靠猜）。
+  const discoverySource = existsSync(atlasPath) && targets.length >= 2 ? 'atlas' : 'sitemap/bfs';
+
   log('fetching robots/sitemap...');
   sitemap = await fetchRobotsAndSitemaps(origin);
 
@@ -122,13 +128,24 @@ try {
 
   // ---------- 采集 ----------
   const browser = await chromium.launch();
+  // 页面级评测上下文：进度流与报告**共用这一份**。
+  // 分头写就会漂移 —— 以前进度流多传了 `noindexIntent: true`，于是 noindex 页
+  // 在进度里比报告里高最多 12 分（那是条 high 级规则），同一个页面两个分数。
+  // 下面 site 用 `...pageCtx` 展开，两处因此不可能不一致。
+  const pageCtx = { host, sitemapUrls: sitemap.sitemapUrls };
+
   let pages;
   try {
     pages = await collectSite(origin, targets, {
       concurrency: 2,
       browser,
       onProgress: (page, i, total) => {
-        const issues = evaluatePage(page, { host, sitemapUrls: sitemap.sitemapUrls, noindexIntent: true });
+        // **与报告那一遍同一套判据**。这里以前多传了一个 `noindexIntent: true`，
+        // 而报告用的是站点对象（没有这个字段）—— 于是 noindex 页在进度流里比报告里
+        // 高最多 12 分（那条规则是 high 级），同一个页面两个分数对不上，
+        // 而 CI 基线取的是报告那个更严的数。差异只在 `noindexIntent` 与 `host`，
+        // 两个在爬取期都拿得到，没有理由两套。
+        const issues = evaluatePage(page, pageCtx);
         emit({ kind: 'audit-page', url: page.url, index: i, total, status: page.status, score: scoreIssues(issues) });
       },
     });
@@ -152,9 +169,9 @@ try {
   };
 
   const site = {
-    host, origin,
+    ...pageCtx,          // host / sitemapUrls 与进度流同源，见 pageCtx 的注释
+    origin,
     pages,
-    sitemapUrls: sitemap.sitemapUrls,
     sitemapChecked: sitemap.checked,
     robots: sitemap.robots,
     duplicates: { title: group(p => p.title), description: group(p => p.description), h1: group(p => (p.h1 ?? []).join('|')) },
@@ -193,7 +210,7 @@ try {
   const report = {
     host, origin,
     generatedAt: new Date().toISOString(),
-    config: { max: MAX, viewport: '1440x900', concurrency: 2, source: existsSync(atlasPath) && targets.length >= 2 ? 'atlas' : 'sitemap/bfs' },
+    config: { max: MAX, viewport: '1440x900', concurrency: 2, source: discoverySource },
     score: siteScore,
     summary: { pages: pages.length, issues: allIssues.length, bySeverity, pagesScored: pages.length },
     categories,

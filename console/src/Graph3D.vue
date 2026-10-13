@@ -25,7 +25,8 @@ const props = defineProps({
    */
   palette: { type: Object, default: () => ({}) },
 });
-const emit = defineEmits(['node-click', 'node-hover']);
+// 只有 node-click 有监听者。以前还 emit 了 node-hover，但父组件没接 —— 死事件，去掉。
+const emit = defineEmits(['node-click']);
 
 const el = ref(null);
 let graph = null;
@@ -172,7 +173,7 @@ onMounted(() => {
     .linkOpacity(0.35)
     .linkWidth(0.4)
     .onNodeClick(n => { if (!panning) emit('node-click', n); })
-    .onNodeHover(n => { emit('node-hover', n); if (!panning) el.value.style.cursor = n ? 'pointer' : ''; });
+    .onNodeHover(n => { if (!panning) el.value.style.cursor = n ? 'pointer' : ''; });
   graph.d3Force('charge')?.strength(-260);
   graph.d3Force('link')?.distance(110);
   // Ctrl+拖拽平移（捕获阶段：先于内部旋转控制器）

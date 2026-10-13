@@ -189,7 +189,13 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir }) {
         if (extname(r.path).toLowerCase() === '.css') queue.push({ path: r.path, kind: 'css', base: posix.dirname(r.path) + '/' });
         continue;
       }
-      if (harIndex && (matchHar(harIndex, 'GET', origin + target) || matchHar(harIndex, 'GET', origin + r.path))) { out.assets.har++; continue; }
+      // 只有**真能放出来的** HAR 条目才算已覆盖。
+      // serve.mjs 回放的两个前提：条目有 body（`if (hit && hit.body)`），且它会把录到的
+      // 状态码原样返回。所以 **404 / 无 body 的条目不算数** —— 它们以前被计进 assets.har，
+      // 于是交付包的 landing 页和 README 说"离线可用"，而部署出去的 serve.mjs
+      // 递给浏览器的是一个 404（或落到代理/离线 404）。判据必须与实际回放一致。
+      const harHit = harIndex && (matchHar(harIndex, 'GET', origin + target) || matchHar(harIndex, 'GET', origin + r.path));
+      if (harHit?.body && harHit.status < 400) { out.assets.har++; continue; }
       if (/^\/(?:_next\/image|_next\/data)\b/.test(target)) { out.assets.dynamic++; continue; }
       out.assets.unresolvedCount++;
       if (out.assets.unresolved.length < MAX_UNRESOLVED) out.assets.unresolved.push(target);
