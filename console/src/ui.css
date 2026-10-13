@@ -25,6 +25,52 @@
 .status-global { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; margin: 0; z-index: 8; }
 .status.live { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); animation: pulse-soft 1.2s ease-in-out infinite; }
 
+/* ── 「进行中」轨道 ───────────────────────────────────────────────────────
+   底部居中、固定，只在有任务在跑时出现。它取代了"星图 HUD 里一句状态文案 +
+   另一处 floating pill"两套机制 —— 同一个事实不该有两套呈现（任务在跑时
+   那两个状态条会一起让位，见 Atlas 里的 v-if）。
+
+   动效只有一处持续信号：**进行中那一段上扫过的光带**。其余两个动作
+   （阶段完成时的填充、日志行的淡入）都是同一节拍里的短动作，用 --ease。 */
+.rail { position: fixed; left: 50%; transform: translateX(-50%); bottom: 92px; z-index: 8;
+  min-width: 380px; max-width: min(760px, calc(100vw - 48px)); padding: 10px 14px 11px; }
+.rail.stalled { border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.rail-top { display: flex; align-items: center; gap: 10px; }
+.rail-pip { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none;
+  animation: rail-breathe 2.4s ease-in-out infinite; }
+.rail.stalled .rail-pip { background: var(--bad); animation: none; }
+@keyframes rail-breathe { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.7); } }
+.rail-target { font-family: var(--font-mono); font-size: 12.5px; color: var(--text); background: none; border: 0;
+  padding: 0; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+button.rail-target { cursor: pointer; }
+button.rail-target:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+/* 当前阶段的小标签。**底色必须配 --text 而不是 --accent**：实测 10% 的强调色底
+   会把强调色的对比度从 4.62 压到 4.05（浅色主题 4.94 → 4.38），两级都跌破正文的 4.5 底线。
+   「颜色 + 文字」双通道在这里的分工是：底色＝颜色通道，字面＝内容通道。 */
+.rail-stage { font-family: var(--font-mono); font-size: 11.5px; color: var(--text); flex: none;
+  background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: var(--r-sm); padding: 2px 8px; }
+.rail-clock { margin-left: auto; display: flex; align-items: baseline; gap: 8px; font-family: var(--font-mono); flex: none; }
+.rail-clock b { font-size: 12.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+.rail-clock i { font-style: normal; font-size: 10.5px; color: var(--text-faint); }
+.rail-track { display: flex; gap: 5px; height: 5px; margin-top: 10px; }
+.rail-track .seg { position: relative; flex: 1; background: var(--border); border-radius: 3px; overflow: hidden; }
+.rail-track .seg-fill { position: absolute; inset: 0; transform-origin: left center; transform: scaleX(0);
+  background: var(--accent); transition: transform 320ms var(--ease); }
+.rail-track .seg-fill.on { transform: scaleX(1); }
+.rail-track .seg.done .seg-fill { transform: scaleX(1); background: var(--ok); }
+.rail-track .seg.running .seg-fill { transform: scaleX(1); background: color-mix(in srgb, var(--accent) 72%, transparent); }
+/* 进行中那一段：一条扫过去的光带 —— 唯一的持续动效。
+   宽度和亮度都调过一轮：5px 的细条上，弱扫光在 1440 宽的屏幕上等于没有（实测相邻两帧
+   只差 0.15% 像素，等于没动）。现在光带占段宽的一半、走 1.3s 一轮，一眼能看出"在跑"。 */
+.rail-track .seg.running::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 55%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 85%, transparent), transparent);
+  animation: rail-sweep 1.3s var(--ease) infinite; }
+@keyframes rail-sweep { from { transform: translateX(-100%); } to { transform: translateX(182%); } }
+@keyframes rail-sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.rail-log { margin: 8px 0 0; font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; color: var(--text-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: rail-log-in 200ms var(--ease); }
+@keyframes rail-log-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
 .seek { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; z-index: 5; background: var(--surface); }
 .theme-btn { background: transparent; border: 0; color: var(--text-dim); font-size: 15px; padding: 0 6px 0 12px; cursor: pointer; }
 .theme-btn:hover { color: var(--accent); }

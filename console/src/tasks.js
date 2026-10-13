@@ -46,4 +46,28 @@ export function canRetry(t) {
   return ['interrupted', 'failed'].includes(t?.status) && CLONE_KINDS.includes(t.kind) && !!t.url;
 }
 
+/**
+ * 同类页面的中位克隆耗时 —— 用来回答"还要等多久"。
+ *
+ * 返回 `{ sec, scope }`，`scope` 是 `'host'` 或 `'all'`。
+ * **两档要分开标出来**：实测在 example.com 上跑时本站样本只有 2 条，于是走了跨站兜底，
+ * 屏幕上写着"同类中位 1:18"—— 而那一页其实 30 秒就完了。1:18 是 46 个 apify 页面的中位数
+ * （它们重得多）。同一句文案下藏着两个不同的口径，正是这个项目里反复要修的那种读数问题：
+ * 所以 'host' 时写「同类中位」，'all' 时写「跨站中位」，别让兜底冒充同类。
+ *
+ * **样本不够就返回 null**：宁可不显示，也不给一个编出来的预计时间。
+ * 优先本站（≥3 条），不够才放宽到全部站点（≥5 条）；只统计真正跑完的。
+ */
+export function medianForgeSec(rows, host) {
+  const secs = (list) => list.map(j => (j.endedAt - j.createdAt) / 1000)
+    .filter(s => Number.isFinite(s) && s > 1)
+    .sort((a, b) => a - b);
+  const done = (rows ?? []).filter(j => j.kind === 'forge' && j.status === 'done' && j.endedAt > j.createdAt);
+  const same = host ? secs(done.filter(j => hostOfTask(j) === host)) : [];
+  const pick = (list) => Math.round(list[Math.floor(list.length / 2)]);
+  if (same.length >= 3) return { sec: pick(same), scope: 'host' };
+  const all = secs(done);
+  return all.length >= 5 ? { sec: pick(all), scope: 'all' } : null;
+}
+
 export const RETRY_CN = { clone: '继续克隆', forge: '重新克隆' };

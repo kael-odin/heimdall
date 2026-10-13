@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 globalThis.localStorage = { getItem: () => null };
 globalThis.location = { port: '5173', protocol: 'http:', origin: 'http://127.0.0.1:5173', hostname: '127.0.0.1' };
 
-const { liveUrl, liveAltUrl, pageNameOf } = await import('../../console/src/pages.js');
+const { liveUrl, liveAltUrl, pageNameOf, normalizeSiteUrl, normalizePageUrl } = await import('../../console/src/pages.js');
 
 test('liveUrl 指向引擎端口，不是控制台端口', () => {
   const u = liveUrl({ url: 'https://apify.com/store' });
@@ -45,4 +45,33 @@ test('非法 URL 返回 #，不抛', () => {
 test('页名规则仍在（这条规则被 core 侧的防漂移断言盯着，别动它的写法）', () => {
   assert.equal(pageNameOf({ url: 'https://x.test/customers/anthropic' }), 'customers-anthropic');
   assert.equal(pageNameOf({ url: 'https://x.test/' }), 'home');
+});
+
+/**
+ * 站点级 vs 页面级的地址归一 —— 这两件事必须分开，它们曾经是同一个函数。
+ *
+ * 实测的事故：`normalizeUrl` 返回 `new URL(s).origin`，而「只克隆此页」也复用了它。
+ * 于是输入框里填 `apify.com/store`，点下去克隆的是 `apify.com/`（首页）——
+ * 标签写着"这一个页面"，代码却拿走整站根，而且不报错：直到你在「进行中」轨道上
+ * 看到目标写着 `apify.com/home` 才发现。侦察该用站点级（路径无意义），克隆该用页面级。
+ */
+test('normalizeSiteUrl：只留 origin（侦察按站点跑）', () => {
+  assert.equal(normalizeSiteUrl('apify.com/store'), 'https://apify.com');
+  assert.equal(normalizeSiteUrl('https://www.apify.com/a/b?c=1#d'), 'https://www.apify.com');
+  assert.equal(normalizeSiteUrl('  apify.com  '), 'https://apify.com');
+  assert.equal(normalizeSiteUrl(''), '');
+  assert.equal(normalizeSiteUrl('http://'), '');
+});
+
+test('normalizePageUrl：保留路径（「只克隆此页」按整条地址走）', () => {
+  assert.equal(normalizePageUrl('apify.com/store'), 'https://apify.com/store');
+  assert.equal(normalizePageUrl('https://linear.app/build/ai'), 'https://linear.app/build/ai');
+  assert.equal(normalizePageUrl('apify.com/#x'), 'https://apify.com/', '只去 hash，保路径');
+  assert.equal(normalizePageUrl(''), '');
+});
+
+test('两个归一器的差别就是"路径留不留" —— 别再合并成一个', () => {
+  assert.equal(normalizeSiteUrl('apify.com/store') + '/store', normalizePageUrl('apify.com/store'));
+  assert.equal(normalizeSiteUrl('https://example.com/a/b'), 'https://example.com');
+  assert.equal(normalizePageUrl('https://example.com/a/b'), 'https://example.com/a/b');
 });

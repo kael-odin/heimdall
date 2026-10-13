@@ -35,9 +35,11 @@ import PagesView from './PagesView.vue';
 import StorageCard from './StorageCard.vue';
 import AssetTable from './AssetTable.vue';
 import DetailDock from './DetailDock.vue';
+import ActivityRail from './ActivityRail.vue';
 import { API, apiHeaders, wsUrl, wsJson, tokenOf } from './api.js';
-import { taskState, taskLabel, liveStageCn, fmtBytes } from './format.js';
-import { pageNameOf } from './pages.js';
+import { taskState, taskLabel, liveStageCn, fmtBytes, forgeStageProgress, stageProgressText } from './format.js';
+import { pageNameOf, normalizeSiteUrl, normalizePageUrl } from './pages.js';
+import { hostOfTask, medianForgeSec } from './tasks.js';
 
 import { PAGE_TYPES as PT, typeColor } from './types.js';
 const PAGE_TYPES = PT;
@@ -472,13 +474,6 @@ const urlKey = (u) => String(u ?? '').replace(/\/+$/, '');
 let pendingEdges = [];
 let es = null;
 
-function normalizeUrl(v) {
-  let s = v.trim();
-  if (!s) return '';
-  if (!/^https?:\/\//.test(s)) s = 'https://' + s;
-  try { return new URL(s).origin; } catch { return ''; }
-}
-
 function makeNode(ev, ringIdx) {
   return {
     ...ev,
@@ -522,7 +517,7 @@ function buildStatic(a) {
 
 // ---------- live 侦察 ----------
 function startRecon() {
-  const url = normalizeUrl(host.value);
+  const url = normalizeSiteUrl(host.value);
   if (!url) { errMsg.value = '网址无效'; return; }
   errMsg.value = ''; live.value = true; statusText.value = '光点出发';
   hudOrigin.value = url.replace(/^https?:\/\//, '');
@@ -830,10 +825,12 @@ function pickSite(s) {
  * 单页克隆出来的站点没有星图，只有页面清单 —— 控制台会直接把清单摆出来。
  */
 function forgeSingle() {
-  const url = normalizeUrl(host.value);
+  // 页面级归一：**保留路径**。站点选择仍然只取 origin（站点栏与产物路径都按站点走），
+  // 两者以前是同一个函数、同一条 origin，于是填 `apify.com/store` 会克隆成首页。
+  const url = normalizePageUrl(host.value);
   if (!url) { errMsg.value = '网址无效'; return; }
   errMsg.value = '';
-  host.value = url.replace(/^https?:\/\//, '');
+  host.value = normalizeSiteUrl(url).replace(/^https?:\/\//, '');
   startForge(null, { url });
 }
 
@@ -881,7 +878,13 @@ function startForge(node, opts = {}) {
         const closeTask = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
         es.onmessage = (m) => {
           let ev; try { ev = JSON.parse(m.data); } catch { return; }
-          if (ev.kind === 'forge-stage') task.stages[ev.stage] = ev.status;
+          // 阶段一变就把"第几步 / 当前阶段"写进 task.progress —— 任务中心、任务视图、
+          // 页面清单和「进行中」轨道都读它。此前 forge 这条路上**从来没赋值过**，
+          // 于是 2-3 分钟里到处只显示一句"运行中"（六个阶段名其实一直在推）。
+          if (ev.kind === 'forge-stage') {
+            task.stages[ev.stage] = ev.status;
+            task.progress = stageProgressText(forgeStageProgress(task.stages));
+          }
           else if (ev.kind === 'forge-score') task.score = ev.score;
           else if (ev.kind === 'log') {
             // 只留尾部 60 行：日志窗显示的就是"现在在干什么"，不需要翻历史
@@ -1035,7 +1038,7 @@ function runMatrix() {
       es.onmessage = (m) => {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'matrix-start') { task.progress = '0/' + ev.total; statusText.value = '对标矩阵 · 0/' + ev.total; }
-        else if (ev.kind === 'matrix-site') { task.progress = ev.index + '/' + ev.total; statusText.value = '对标矩阵 · ' + ev.host + ' · ' + ev.index + '/' + ev.total; }
+        else if (ev.kind === 'matrix-site') { task.progress = ev.index + '/' + ev.total; task.doneCount = ev.index; task.totalCount = ev.total; statusText.value = '对标矩阵 · ' + ev.host + ' · ' + ev.index + '/' + ev.total; }
         else if (ev.kind === 'matrix-done') {
           task.done = true; task.endedAt = Date.now();
           const rel = String(ev.path || '').split(/[\\/]workspace[\\/]/).pop() || '';
@@ -1073,7 +1076,7 @@ function runAssetsAudit() {
       es.onmessage = (m) => {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'asset-gaps-start') { task.progress = '0/' + ev.total; statusText.value = '资产扫描 · 0/' + ev.total; }
-        else if (ev.kind === 'asset-gaps-page') { task.progress = ev.index + '/' + ev.total; statusText.value = '资产扫描 · ' + ev.index + '/' + ev.total; }
+        else if (ev.kind === 'asset-gaps-page') { task.progress = ev.index + '/' + ev.total; task.doneCount = ev.index; task.totalCount = ev.total; statusText.value = '资产扫描 · ' + ev.index + '/' + ev.total; }
         else if (ev.kind === 'assets-gaps-done') {
           task.assetGaps = ev.visualGaps; task.done = true; task.endedAt = Date.now();
           assetAuditReport.value = { host: host.value, visualGaps: ev.visualGaps, visualOrigin: ev.visualOrigin, visualThird: ev.visualThird, pages: ev.pages };
@@ -1219,6 +1222,51 @@ async function copyBundlePath() {
 function revealBundle() { return revealPath(liveHealth.value?.bundlePath, '交付包'); }
 
 /**
+ * 「进行中」轨道显示的那个任务：最近的、还在跑的。
+ *
+ * 只用一条轨道而不是每个任务一条：同时跑 3 个任务时，屏幕上该有一个明确的
+ * "现在最该看的东西"，其余的去任务中心看（那里本来就列了全部）。
+ */
+const runningTask = computed(() => [...tasks].reverse().find(t => !t.done && !t.failed) ?? null);
+
+/**
+ * 参考耗时 `{ sec, scope }` —— 回答"还要等多久"。算法在 tasks.js（纯函数、有单测）：
+ * 优先本站样本，不够才放宽到跨站；两档在界面上的文案不同（别让兜底冒充"同类"）。
+ * 样本不足时返回 null，轨道不显示这一项。
+ */
+const forgeMedianSec = computed(() => medianForgeSec(jobHistory.value, hostOfTask(runningTask.value ?? {})));
+
+/** 跳回正在跑的那一页时，详情面板没在展示同一个任务的阶段条（那是同一事实的详版） */
+const railVisible = computed(() => {
+  const t = runningTask.value;
+  if (!t) return false;
+  const n = selected.value;
+  if (!dockOpen.value || !n) return true;
+  return !(n.forgeState === 'running' && (n.id === t.nodeId || pageNameOf(n) === t.pageName));
+});
+
+/** 点轨道上的目标能不能跳过去：同站的页要有那颗星，别站的要本站点存在 */
+const canFocusTask = computed(() => {
+  const t = runningTask.value;
+  if (!t) return false;
+  const h = hostOfTask(t);
+  if (h && h !== host.value) return sites.value.some(s => s.host === h);
+  const nodes = atlas.value?.nodes ?? [];
+  return nodes.some(n => n.id === t.nodeId) || nodes.some(n => pageNameOf(n) === t.pageName);
+});
+
+/** 跳到正在跑的那一页。跨站时先切站 —— 切完页面才在星图里，这里不替用户点星。 */
+function focusTask() {
+  const t = runningTask.value;
+  if (!t) return;
+  const h = hostOfTask(t);
+  if (h && h !== host.value) { pickSiteByHost(h); return; }
+  const nodes = atlas.value?.nodes ?? [];
+  const node = nodes.find(n => n.id === t.nodeId) ?? nodes.find(n => pageNameOf(n) === t.pageName);
+  if (node) { view.value = 'atlas'; onNodeClick(node); }
+}
+
+/**
  * 产物位置一览：站点工作区 / 静态镜像 / 交互镜像 / 交付包。
  *
  * 存在的意义是补上"导出成功了"和"我拿到了"之间那一步 —— 用户能在控制台里看到分数、
@@ -1269,7 +1317,7 @@ function runLiveExport(hostArg) {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'live-stage') {
           const label = liveStageCn(ev.stage);
-          if (ev.index != null) task.progress = label + ' ' + ev.index + '/' + ev.total;
+          if (ev.index != null) { task.progress = label + ' ' + ev.index + '/' + ev.total; task.doneCount = ev.index; task.totalCount = ev.total; }
           else if (ev.status === 'running') task.progress = label + '…';
           else if (ev.status === 'done') task.progress = label;
           statusText.value = '交互镜像导出 · ' + task.progress;
@@ -1420,11 +1468,13 @@ function startCloneSite({ incremental = false } = {}) {  return new Promise((res
         const closeTask = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
         es.onmessage = (m) => {
           let ev; try { ev = JSON.parse(m.data); } catch { return; }
-          if (ev.kind === 'queue-start') task.progress = `0/${ev.pending}`;
-          else if (ev.kind === 'queue-progress' && ev.phase === 'check') task.progress = `校验 ${ev.done}/${ev.total}`;
+          // 带分子分母的任务同时记一份**数值**进度：轨道按真实计数画条，
+          // 不去解析给用户看的那句文案（那是拿显示串当数据用）。
+          if (ev.kind === 'queue-start') { task.progress = `0/${ev.pending}`; task.doneCount = 0; task.totalCount = ev.pending; }
+          else if (ev.kind === 'queue-progress' && ev.phase === 'check') { task.progress = `校验 ${ev.done}/${ev.total}`; task.doneCount = ev.done; task.totalCount = ev.total; }
           else if (ev.kind === 'queue-progress' && ev.phase === 'check-done') task.progress = `变了 ${ev.changed} · 未变 ${ev.same}`;
-          else if (ev.kind === 'queue-page' && ev.status !== 'running') task.progress = `${ev.done}/${ev.total}`;
-          else if (ev.kind === 'queue-complete') task.progress = `${ev.done}/${ev.total}`;
+          else if (ev.kind === 'queue-page' && ev.status !== 'running') { task.progress = `${ev.done}/${ev.total}`; task.doneCount = ev.done; task.totalCount = ev.total; }
+          else if (ev.kind === 'queue-complete') { task.progress = `${ev.done}/${ev.total}`; task.doneCount = ev.done; task.totalCount = ev.total; }
           else if (ev.kind === 'exit') {
             task.done = ev.status === 'done';
             task.killed = ev.killed ?? null;
@@ -1470,6 +1520,10 @@ function onKeydown(e) {
 onMounted(() => {
   document.addEventListener('keydown', onKeydown);
   applyTheme(theme.value);
+  // 任务历史一开始就取一次：它此前只在切到「任务」视图时才拉，于是「进行中」轨道上的
+  // "同类中位 0:38"在星图上永远是空的（实测：克隆 apify 页面时中位数不显示，
+  // 而那站的历史里有 46 条样本）。顺手也让任务视图打开即是满的。
+  loadJobHistory();
   loadSites().then(() => {
     // 默认载入第一个「有侦察结果」的站点；没有则保持空态（引导用户输入域名侦察）
     const first = sites.value.find(s => s.pages) ?? sites.value[0];
@@ -1492,11 +1546,16 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <div class="stat"><b>{{ hudEdges }}</b><i :title="`这 ${hudPages} 个页面之间的站内链接数（不是页面数）。星图上当前已渲染 ${hudEdgesRendered} 条。`">站内链接</i></div>
       <div class="stat"><b>{{ hudOrigin }}</b><i title="被克隆的原始站点。镜像与原站的对比都以它为准。">原站</i></div>
     </div>
-    <div class="status" v-if="statusText" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
+    <div class="status" v-if="statusText && !runningTask" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
   </div>
 
-  <!-- 星图之外的视图也要能看到进度（同一个 statusText，见 .status-global 的注释） -->
-  <div class="status status-global" v-if="statusText && view !== 'atlas'" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
+  <!-- 星图之外的视图也要能看到进度（同一个 statusText，见 .status-global 的注释）。
+       任务在跑的时候两个状态条都让位给下面的「进行中」轨道 —— 同一个事实不该有两套呈现
+       （那时 statusText 就是"克隆中 · xx"，比轨道少了阶段、时长和日志）。 -->
+  <div class="status status-global" v-if="statusText && view !== 'atlas' && !runningTask" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
+
+  <ActivityRail v-if="railVisible" :task="runningTask" :median="forgeMedianSec"
+                :can-focus="canFocusTask" @focus="focusTask" />
 
   <!-- 首启向导：一个站点都没有时，星图是空的，用户不知道该做什么。
        把"侦察 → 克隆 → 拿走"三步写在空态里，比让他对着空白星空猜要强。 -->
@@ -1531,12 +1590,12 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
 
   <div class="seek surface">
     <button class="theme-btn" @click="toggleTheme" :aria-label="theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'" :title="theme === 'dark' ? '切换浅色' : '切换深色'"><Icon :name="theme === 'dark' ? 'moon' : 'sun'" decorative /></button>
-    <input v-model="host" aria-label="目标站点域名" placeholder="输入目标域名 · apify.com" spellcheck="false" @keyup.enter="startRecon"
-      title="要分析的站点域名（可带 https://）。回车或点「侦察」开始" />
+    <input v-model="host" aria-label="目标站点域名" placeholder="输入目标域名或页面地址 · apify.com 或 apify.com/store" spellcheck="false" @keyup.enter="startRecon"
+      title="要分析的站点域名（可带 https://）。带路径时：侦察只认域名，克隆按整条地址走。回车或点「侦察」开始" />
     <button @click="startRecon"
       title="全站侦察：从 sitemap 与站内链接找出页面，逐页抓标题/类型/缩略图，产出星图与全站视图。页数上限由站点配方的 maxPages 决定，几十页通常 1-3 分钟">侦察</button>
     <button class="seek-alt" @click="forgeSingle"
-      title="不侦察整站，只克隆输入框里这一个页面：捕获 → 校准 → 评分，约 2-3 分钟。克隆产物照样能导出成可部署的离线包">只克隆此页</button>
+      title="不侦察整站，只克隆输入框里这一个页面（带路径就按路径克隆，如 apify.com/store）：捕获 → 校准 → 评分，约 2-3 分钟。克隆产物照样能导出成可部署的离线包">只克隆此页</button>
   </div>
 
   <!-- 站点切换 + 本站操作（星图与工作视图现在共用 SiteBar；原先星图这里是把每个站点

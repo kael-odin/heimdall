@@ -9,6 +9,31 @@
 
 import { API } from './api.js';
 
+/**
+ * 输入框里的地址 → 站点级 URL（**只留 origin**）。侦察是按站点跑的，路径无意义。
+ * 补协议、去路径、去查询。空串表示输入无效。
+ */
+export function normalizeSiteUrl(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return '';
+  try { return new URL(/^https?:\/\//.test(s) ? s : 'https://' + s).origin; } catch { return ''; }
+}
+
+/**
+ * 输入框里的地址 → **页面级** URL（保留路径）。「只克隆此页」用这个。
+ *
+ * 为什么必须有两个：这两个函数此前是一个（返回 `new URL(s).origin`），
+ * 而「只克隆此页」也复用了它 —— 于是填 `apify.com/store` 会**悄悄克隆成首页**。
+ * 实测证据就是「进行中」轨道上的目标写着 `apify.com/home`，
+ * 而用户点的是那个按钮、输入框里明明带着 `/store`。
+ * 标签写着"这一个页面"，代码却拿走整站根，是那种不报错、只是做错事的错。
+ */
+export function normalizePageUrl(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return '';
+  try { const u = new URL(/^https?:\/\//.test(s) ? s : 'https://' + s); u.hash = ''; return u.href; } catch { return ''; }
+}
+
 /** 页面 URL → 页面名（= 产出目录名）。规则与 core/src/url-canon.mjs 的 pageNameOfUrl **同一份**。 */
 export function pageNameOf(n) {
   try {

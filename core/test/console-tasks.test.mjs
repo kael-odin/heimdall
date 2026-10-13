@@ -14,7 +14,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { hostOfTask, canExportLive, canRetry, RETRY_CN } = await import('../../console/src/tasks.js');
+const { hostOfTask, canExportLive, canRetry, RETRY_CN, medianForgeSec } = await import('../../console/src/tasks.js');
 
 test('hostOfTask 与引擎侧同一条归一规则：去协议、去 www.、去路径', () => {
   assert.equal(hostOfTask({ url: 'https://www.moonshot.cn/' }), 'moonshot.cn');
@@ -69,4 +69,40 @@ test('canRetry：只有中断/失败、且是可重发的 kind 才有"继续克�
   assert.equal(canRetry({ status: 'failed', kind: 'clone', url: '' }), false);
   assert.equal(canRetry(null), false);
   assert.deepEqual(RETRY_CN, { clone: '继续克隆', forge: '重新克隆' });
+});
+
+/**
+ * 「还要等多久」的中位耗时 —— 界面上那句"同类中位 0:38"的依据。
+ * 它是**有主张的**（会让人据此决定要不要离开），所以规则要钉死：
+ * 样本不够就不说，只算真正跑完的，优先信本站。
+ */
+test('medianForgeSec：样本不够就不说 —— 宁可没有，也不给编出来的预计时间', () => {
+  const rows = [1, 2].map(i => ({ kind: 'forge', status: 'done', url: 'https://a.test/', createdAt: 0, endedAt: i * 30000 }));
+  assert.equal(medianForgeSec(rows, 'a.test'), null, '本站只有 2 条，全站也不足 5 条 → 不显示');
+  assert.equal(medianForgeSec([], 'a.test'), null);
+  assert.equal(medianForgeSec(null, 'a.test'), null);
+});
+
+test('medianForgeSec：本站满 3 条就只信本站', () => {
+  const j = (host, sec) => ({ kind: 'forge', status: 'done', url: 'https://' + host + '/', createdAt: 0, endedAt: sec * 1000 });
+  const rows = [j('a.test', 30), j('a.test', 40), j('a.test', 50), j('big.test', 900)];
+  assert.deepEqual(medianForgeSec(rows, 'a.test'), { sec: 40, scope: 'host' }, '不能把 big.test 那一页的 900s 混进来');
+});
+
+test('medianForgeSec：本站不足 3 条时放宽到跨站，但要够 5 条 —— 而且口径要标出来', () => {
+  const j = (host, sec, status = 'done') => ({ kind: 'forge', status, url: 'https://' + host + '/', createdAt: 0, endedAt: sec * 1000 });
+  assert.equal(medianForgeSec([j('a.test', 10), j('a.test', 20), j('b.test', 60), j('c.test', 80)], 'a.test'), null, '全站 4 条还不够');
+  // scope:'all' 是给界面用的：这时文案必须是「跨站中位」，不能写成"同类"。
+  // 实测踩过：example.com 一页 30 秒跑完，轨道上却写着"同类中位 1:18"（46 个 apify 页面的中位数）。
+  assert.deepEqual(medianForgeSec([j('a.test', 10), j('a.test', 20), j('b.test', 40), j('c.test', 60), j('d.test', 80)], 'a.test'), { sec: 40, scope: 'all' });
+});
+
+test('medianForgeSec：只算真正跑完的，且 www. 归一后算同一个站', () => {
+  const j = (host, sec, status) => ({ kind: 'forge', status, url: 'https://' + host + '/', createdAt: 0, endedAt: sec * 1000 });
+  const rows = [
+    j('www.a.test', 30, 'done'), j('a.test', 40, 'done'), j('a.test', 50, 'done'),
+    j('a.test', 9999, 'failed'), j('a.test', 8888, 'running'),
+    { kind: 'forge', status: 'done', url: 'https://a.test/', createdAt: 0, endedAt: 0 },  // 时长为 0 的脏数据
+  ];
+  assert.deepEqual(medianForgeSec(rows, 'a.test'), { sec: 40, scope: 'host' }, '失败/在跑/零时长都不进样本；www. 与裸域是同一个站');
 });

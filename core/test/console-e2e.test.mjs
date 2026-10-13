@@ -24,12 +24,30 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:net';
 import { chromium } from 'playwright';
 
 const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(CORE, '..', 'console', 'dist');
 
-const PORT = 8960 + Math.floor(Math.random() * 20);
+/**
+ * 先问操作系统要一个真的空闲端口，再起引擎。
+ *
+ * 原来是在 8960–8980 里随机取 —— 串行跑两次 E2E 时（先单跑一遍、再跑全量），
+ * 上一次的引擎可能还没放开端口，撞上就整个测试挂掉。**偶发失败是一种会撒谎的自检**：
+ * 它既不指向真实缺陷，又教人习惯性重试。端口冲突是这条测试唯一一类"与本功能无关"
+ * 的失败，那就把它从源头去掉。
+ */
+const freePort = () => new Promise((resolve) => {
+  const srv = createServer();
+  srv.on('error', () => resolve(null));
+  srv.listen(0, '127.0.0.1', () => {
+    const p = srv.address().port;
+    srv.close(() => resolve(p));
+  });
+});
+
+const PORT = (await freePort()) ?? 8960 + Math.floor(Math.random() * 20);
 const BASE = `http://127.0.0.1:${PORT}`;
 
 /**
@@ -103,20 +121,23 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
   engine.stderr.on('data', (d) => { engineLog += d.toString(); });
 
   let browser;
+  let page;
+  const pageErrors = [];
   try {
-    // 等引擎就绪（最多 20s）
+    // 等引擎就绪（最多 30s）。预算放长一点：这条测试同时要起 sqlite、一个 HTTP 服务
+    // 和一个 Chromium，机器上另有别的浏览器/引擎在跑时 20s 会不够 —— 而它报出来的
+    // 只是"引擎未就绪"，看起来像产品坏了。
     const ready = await new Promise((resolve) => {
       const t0 = Date.now();
       const tick = setInterval(() => {
         if (engineLog.includes('engine-server @')) { clearInterval(tick); resolve(true); }
-        else if (Date.now() - t0 > 20_000) { clearInterval(tick); resolve(false); }
+        else if (Date.now() - t0 > 30_000) { clearInterval(tick); resolve(false); }
       }, 200);
     });
-    assert.ok(ready, '引擎未在 20s 内就绪。日志：\n' + engineLog.slice(-800));
+    assert.ok(ready, '引擎未在 30s 内就绪。日志：\n' + engineLog.slice(-800));
 
     browser = await chromium.launch();
-    const page = await browser.newPage();
-    const pageErrors = [];
+    page = await browser.newPage();
     page.on('pageerror', (e) => pageErrors.push(String(e)));
 
     await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
@@ -186,15 +207,38 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ taskId: 'e2e-stub', pageName: 'home' }) });
     });
     await page.getByRole('button', { name: '星图', exact: true }).click();
-    await page.fill('input[aria-label="目标站点域名"]', 'e2e-target.test');
+    // 故意带路径：这条守卫同时盯着两件事 —— 按钮真的发请求，以及**路径不被丢掉**。
+    // 曾经的事故：归一器返回 origin，于是 `host/store` 被克隆成首页，不报错、只是做错事。
+    await page.fill('input[aria-label="目标站点域名"]', 'e2e-target.test/guides/start');
     await page.getByRole('button', { name: '只克隆此页' }).click();
     await page.waitForTimeout(800);
     assert.ok(forgeBody, '「只克隆此页」必须发出 POST /api/forge —— 没发出就是按钮哑了');
-    assert.equal(forgeBody.url, 'https://e2e-target.test', '请求体里要带上目标 URL');
+    assert.equal(forgeBody.url, 'https://e2e-target.test/guides/start', '请求体里要带上完整的目标 URL（含路径）');
     await page.unroute('**/api/forge');
 
     // ⑥ 全程不应有未捕获的页面异常
     assert.deepEqual(pageErrors, [], '控制台不应抛未捕获异常，实际：\n' + pageErrors.join('\n'));
+  } catch (err) {
+    /**
+     * 偶发失败要留下现场。
+     *
+     * 这条测试在机器忙时会偶发挂掉（实测 6-10 次里一次），而它给出的只有一句断言或超时 ——
+     * 没有现场就只能靠重跑猜，那等于把"会撒谎的自检"换成"会飘的自检"。
+     * 这里把断言、页面未捕获异常、引擎日志和一张截图一起落盘
+     * （截图写在 gitignore 过的 workspace 下，不污染仓库）。
+     */
+    try {
+      if (page) {
+        const dir = join(CORE, 'workspace');
+        mkdirSync(dir, { recursive: true });
+        await page.screenshot({ path: join(dir, '_e2e-failure.png') }).catch(() => {});
+        writeFileSync(join(dir, '_e2e-failure.txt'),
+          '=== 断言 ===\n' + (err?.message ?? String(err))
+          + '\n\n=== 页面未捕获异常 ===\n' + pageErrors.join('\n')
+          + '\n\n=== 引擎日志（尾部 4000 字）===\n' + engineLog.slice(-4000) + '\n');
+      }
+    } catch { /* 留现场本身不该再抛，别盖掉真正的失败 */ }
+    throw err;
   } finally {
     try { await browser?.close(); } catch { /* 浏览器可能没起来 */ }
     try { engine.kill(); } catch { /* 已退出 */ }

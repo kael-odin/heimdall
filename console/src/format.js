@@ -55,6 +55,41 @@ export const fmtDuration = (t) => (t?.endedAt && t?.startedAt
   : (t?.startedAt ? '进行中' : ''));
 
 /** 任务类型的中文名（任务中心与报告页共用） */
+/**
+ * 克隆的六个阶段。**键必须与 core 的 pipeline stage 名一致，顺序即显示顺序。**
+ *
+ * 放在这里而不是组件里：详情面板的阶段条、任务中心的进度串、新加的「进行中」轨道
+ * 都要用它 —— 这份词表此前只存在于 DetailDock.vue，第二份实现必然与引擎分叉。
+ */
+export const FORGE_STAGES = { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' };
+export const FORGE_STAGE_KEYS = Object.keys(FORGE_STAGES);
+
+/**
+ * 从 `task.stages`（`{capture:'done', build:'running', …}`）推出进度：第几步 / 共几步 / 当前阶段。
+ *
+ * 这一步以前**根本没有做**，于是 forge 任务的 `task.progress` 永远是空的 ——
+ * 任务中心、任务视图、页面行在整个 2-3 分钟里只显示一句常量「运行中」，
+ * 而六个阶段名其实一直在 SSE 里推过来（整站克隆/审计/导出都赋了 progress，只有它没有）。
+ *
+ * 返回 null = 一个阶段都还没开始（不显示阶段轨，避免"0/6"这种空读数）。
+ */
+export function forgeStageProgress(stages) {
+  if (!stages) return null;
+  let done = 0, running = null, seen = 0;
+  for (const k of FORGE_STAGE_KEYS) {
+    const s = stages[k];
+    if (s === 'done') done++;
+    else if (s === 'running' && !running) { running = k; seen = done + 1; }
+  }
+  if (!done && !running) return null;
+  const index = running ? seen : Math.min(done + 1, FORGE_STAGE_KEYS.length);
+  const key = running ?? FORGE_STAGE_KEYS[index - 1];
+  return { done, index, total: FORGE_STAGE_KEYS.length, key, label: FORGE_STAGES[key], finished: done === FORGE_STAGE_KEYS.length };
+}
+
+/** 阶段轨的一行文案：`3/6 · 渲染校准`。任务行窄，不用"第…步"这种完整句式。 */
+export const stageProgressText = (p) => (p ? `${p.index}/${p.total} · ${p.label}` : '');
+
 export const KIND_CN = {
   audit: 'SEO 审计',
   watch: '变更监控',

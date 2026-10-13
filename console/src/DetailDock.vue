@@ -14,7 +14,7 @@ import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } 
 import Icon from './Icon.vue';
 import { API, apiHeaders, wsJson } from './api.js';
 import { typeColor, typeCn } from './types.js';
-import { fmtBytes, fmtDate } from './format.js';
+import { fmtBytes, fmtDate, FORGE_STAGES } from './format.js';
 import { pageNameOf, liveUrl, liveAltUrl } from './pages.js';
 
 const props = defineProps({
@@ -36,8 +36,8 @@ const liveTitle = computed(() => props.mirrored === 0
   ? '本站尚未导出交互镜像 —— 打开等于直接访问原站（经本地代理），不是复刻结果。先导出一次再来看'
   : '交互镜像：保留脚本、资源实时回原站。用 <域名>.localhost 作独立域名，站点的路由/登录态/本地存储都与原站一致');
 
-/** 阶段条：键必须与 pipeline.mjs 的 stage 名一致；顺序即显示顺序 */
-const STAGES = { capture: '捕获骨架', build: '注入皮肤', shot: '渲染校准', fixup: 'AI 校准', diff: '像素定谳', harvest: '情报入库' };
+/** 阶段条：词表在 format.js —— 任务中心与「进行中」轨道用的是同一份，别在这里再写一遍 */
+const STAGES = FORGE_STAGES;
 
 /**
  * 动效驱动画像（捕获阶段采，见 core/src/crawler/motion.mjs）。
