@@ -142,7 +142,10 @@ emit({ kind: 'queue-start', total: queue.length, pending: pending.length, worker
 // ---------- SSE 等待任务结束 ----------
 function awaitExit(taskId, timeoutMs = 15 * 60_000) {
   return new Promise(async (resolve) => {
-    const timer = setTimeout(() => resolve('timeout'), timeoutMs);
+    const timer = setTimeout(() => resolve({
+      status: 'timeout',
+      error: `等不到任务结束（${Math.round(timeoutMs / 1000)}s 超时）—— 引擎可能还在跑这一页，重跑本页即可`,
+    }), timeoutMs);
     try {
       const res = await fetch(`${API}/api/events?task=${taskId}`, { headers: TOKEN ? { 'x-heimdall-token': TOKEN } : {} });
       const reader = res.body.getReader();
@@ -158,7 +161,7 @@ function awaitExit(taskId, timeoutMs = 15 * 60_000) {
           if (!chunk.startsWith('data: ')) continue;
           try {
             const ev = JSON.parse(chunk.slice(6));
-            if (ev.kind === 'exit') { clearTimeout(timer); resolve(ev.status); return; }
+            if (ev.kind === 'exit') { clearTimeout(timer); resolve({ status: ev.status, code: ev.code, killed: ev.killed, error: ev.error }); return; }
           } catch {}
         }
       }
@@ -173,7 +176,7 @@ function awaitExit(taskId, timeoutMs = 15 * 60_000) {
             const body = await r.json();
             const all = [...(body.jobs ?? []), ...(body.history ?? [])];
             const j = all.find(x => x.id === taskId);
-            if (j && ['done', 'failed', 'cancelled', 'interrupted'].includes(j.status)) { clearTimeout(timer); resolve(j.status); return; }
+            if (j && ['done', 'failed', 'cancelled', 'interrupted'].includes(j.status)) { clearTimeout(timer); resolve({ status: j.status, error: j.error }); return; }
           } catch {}
         }
       };
@@ -208,11 +211,34 @@ async function worker(id) {
     console.log(`[w${id}] forge ${job.name} (${job.url})`);
     emit({ kind: 'queue-page', name: job.name, url: job.url, status: 'running', worker: id });
     // 客户端等待上限要比引擎熔断略长，否则会先把还活着的页判死
-    const status = await awaitExit(taskId, PLAN.pageTimeoutMs + 120_000);
-    job.status = status === 'done' ? 'done' : 'failed';
-    if (job.status === 'done') doneCount++;
+    const res = await awaitExit(taskId, PLAN.pageTimeoutMs + 120_000);
+    job.status = res.status === 'done' ? 'done' : 'failed';
+    if (job.status === 'done') {
+      doneCount++;
+      delete job.error;
+    } else {
+      /**
+       * 失败必须**留下原因**。
+       *
+       * 原先这里只写一个 `'failed'` —— 于是失败页的 `error` 永远是空串，
+       * 事后完全查不出发生过什么。本轮实测就撞上了：thordata 一口气 39 页被标失败、
+       * `error` 全是空的，只能靠"单独重跑一页看看"来猜（重跑是成功的，说明是瞬时故障）。
+       * 现在三路取原因：SSE 的 exit 事件 → 引擎里那条 job 的 error（子进程 stderr 的尾巴）→
+       * 实在没有就写明"以 exit N 结束且没留下信息"，绝不空着。
+       */
+      job.exitCode = res.code ?? null;
+      job.error = String(res.error || '').slice(0, 300)
+        || `任务以 exit ${res.code ?? '?'} 结束，且没有留下错误信息`;
+      if (!res.error) {
+        try {
+          const body = await (await fetch(API + '/api/jobs', { headers: TOKEN ? { 'x-heimdall-token': TOKEN } : {} })).json();
+          const row = [...(body.jobs ?? []), ...(body.history ?? [])].find(x => x.id === taskId);
+          if (row?.error) job.error = String(row.error).slice(0, 300);
+        } catch { /* 查不到就保留上面那句兜底的说明，不空着 */ }
+      }
+    }
     save();
-    console.log(`[w${id}] ${job.name}: ${job.status}  [${doneCount}/${queue.length}]`);
+    console.log(`[w${id}] ${job.name}: ${job.status}  [${doneCount}/${queue.length}]${job.status === 'failed' ? '  — ' + job.error : ''}`);
     emit({ kind: 'queue-page', name: job.name, url: job.url, status: job.status, done: doneCount, total: queue.length });
   }
 }
