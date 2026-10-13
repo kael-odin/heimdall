@@ -203,6 +203,11 @@ SPA/边缘节点对不存在的资源返回 `application/json` 或 `text/plain` 
 这些在 `gaps.json` / `health.json` / landing 页里都写清楚了。
 **它们的价值在于"说清楚"，不在于"变没"** —— 别把预算花在这里。
 
+> ⚠️ 这一条原先还把"**动效**"整个算了进来，那是错的。2026-10-13 已经证明：
+> 揭示类与脚本用 `Element.animate()` 创建的动画**可以**改写回 CSS 复刻（见 §C12）。
+> 真正做不了的只有"只在运行时才存在"的那部分 —— 等双帧捕获做出来再说。
+> **别把"没做"和"做不到"混成一句话**，这是这份文件里最容易犯的错。
+
 ---
 
 ## C. 2026-10-13 这一轮改了什么
@@ -222,6 +227,7 @@ SPA/边缘节点对不存在的资源返回 `application/json` 或 `text/plain` 
 | C9 | 星图**自转默认值跟随 `prefers-reduced-motion`**；切到别的视图时**不再空转渲染** | `Atlas.vue`、`Graph3D.vue`（新增 `active` prop） | Graph3D 用 `v-show` 挂载、`spin()` 是常驻 rAF 且每帧自己 `renderer.render()` —— 页面/任务/报告/设置四屏背后一直有个看不见的 WebGL 场景满帧重绘。实测 reduced-motion 下勾选框默认不勾 |
 | C10 | 清掉两个从不 `clearInterval` 的常驻定时器 + `Graph3D` 两个 prop 的注释 | `Atlas.vue` `onBeforeUnmount` | 零成本 |
 | C11 | `replace-regex` 的四份重复收成 `html.regexEscape`（与 `esc` 分开命名：一个 HTML 语义、一个正则语义） | `html.mjs`；`heal.mjs`、`replace-domain.mjs`、`dom-refs.mjs` | 原来两处**同名 `esc`** 做的是正则转义 |
+| C12 | **JS 动效能在静态镜像里复刻**（这是本轮能力提升最大的一条，详见 `ROADMAP.md` §3）：新增 `crawler/motion-replay.mjs`；`motion.mjs` 的 `MOTION_INIT` 扩展成记录 `Element.animate()` 的**关键帧** | `motion-replay.mjs`（新）、`motion.mjs`、`pipeline.mjs`、`cli.mjs`、`deliver.mjs` | 浏览器实测：Framer 登场 72 个元素不透明度 0.00 → 0.735 → 0.972 → 1.000；linear.app/agents 的脚本入场动效 21 条动画在跑、标题 0.00 → 0.07 → 0.80 → 1.00。**分数不受影响**（同页注入前后 total/pixel/data 完全一致） |
 
 **文档**：`ARCHITECTURE.md` §5 整段重写（上一版描述的 `core/` TypeScript、`core/adapters/*.ts`、
 `console/src/views/*.vue`、`engine/SKILL.md`、顶层 `mcp/` **五个路径一个都不存在**），
