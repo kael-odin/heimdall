@@ -250,8 +250,8 @@
   .c-type { display: none; }
 }
 .dock-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.dock-quick a { color: var(--accent); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 10px; font-size: 12px; text-decoration: none; }
-.dock-quick a:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.dock-quick a, .dock-quick button { color: var(--accent); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 10px; font-size: 12px; text-decoration: none; background: none; font-family: inherit; cursor: pointer; }
+.dock-quick a:hover, .dock-quick button:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .dock-quick a.quick-alt { color: var(--text-dim); font-size: 11px; }
 /* 尚未导出交互镜像时的那个入口：虚线边框 = "点得动，但它现在不是镜像" */
 .dock-quick a.quick-off { color: var(--text-dim); border-style: dashed; }
@@ -263,6 +263,17 @@
 .bundle-btns { display: flex; gap: 6px; margin-top: 6px; }
 .bundle-btns button { background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 4px 9px; font-size: 11px; cursor: pointer; }
 .bundle-btns button:hover { border-color: var(--accent); color: var(--accent); }
+/* 产物位置：名称 + 按钮一行，路径独占一行。
+   卡片在报告网格里只有 ~240px 宽，三列并排会把路径挤成一两个字符 —— 实测过。 */
+.artifact-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+.artifact-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+.artifact-name { grid-column: 1; grid-row: 1; min-width: 0; }
+.artifact-name b { display: block; font-size: 12.5px; }
+.artifact-name .score-note { display: block; margin: 0; font-size: 10.5px; }
+.artifact-row button { grid-column: 2; grid-row: 1; background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 4px 9px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+.artifact-row button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.artifact-row button:disabled { opacity: .45; cursor: not-allowed; }
+.artifact-path { grid-column: 1 / -1; grid-row: 2; font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: var(--text-dim); background: rgba(255,255,255,.03); border: 1px dashed var(--border); border-radius: var(--r-sm); padding: 4px 8px; word-break: break-all; user-select: all; }
 .matrix-run { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .report-card select { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 6px 9px; font-size: 12px; color-scheme: dark; }
 .report-card select option { background: var(--surface-2); color: var(--text); }
@@ -294,13 +305,14 @@
 .wv-actions a:hover, .wv-actions button:hover { color: var(--accent); border-color: var(--accent-dim); }
 .wv-actions button:disabled { opacity: .35; cursor: not-allowed; }
 .wv-empty { padding: 40px; text-align: center; color: var(--text-faint); font-size: 13px; }
-.job-row { grid-template-columns: minmax(160px,1.2fr) 90px 80px 80px 130px 1fr auto; }
+/* 最后一列 auto 是行内动作位：会话行放「导出交互镜像」，历史行放「继续克隆」+ 同一个按钮 */
+.job-row { grid-template-columns: minmax(160px,1.2fr) 90px 80px 80px 130px 1fr auto auto; }
 .job-name { color: var(--text); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-kind { color: var(--accent-2); font-size: 11px; }
 .job-time { color: var(--text-faint); font-family: var(--font-mono); font-size: 11px; }
 .job-error { color: var(--bad); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.job-retry button { background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid var(--border); color: var(--accent); border-radius: var(--r-sm); padding: 2px 10px; cursor: pointer; font-size: 11px; }
-.job-retry button:hover { border-color: var(--accent-dim); }
+.job-retry button, .job-live button { background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid var(--border); color: var(--accent); border-radius: var(--r-sm); padding: 2px 10px; cursor: pointer; font-size: 11px; white-space: nowrap; }
+.job-retry button:hover, .job-live button:hover { border-color: var(--accent-dim); }
 .job-row.history { opacity: .82; }
 .wv-sub { padding: 10px 14px 6px; color: var(--text-faint); font-size: 10.5px; letter-spacing: .14em; font-family: var(--font-mono); border-top: 1px solid color-mix(in srgb, var(--text-dim) 15%, transparent); }
 /* 报告中心：工作视图外壳（表头 + 可滚动卡片网格），不再用浮层压住内容 */

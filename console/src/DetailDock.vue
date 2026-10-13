@@ -29,7 +29,7 @@ const props = defineProps({
    *  打开的是原站本身（镜像路由"本地无快照就反代回原站"），界面必须说出来。null = 还不知道。 */
   mirrored: { type: Number, default: null },
 });
-defineEmits(['close', 'open-forge', 'forge-all', 'verify']);
+defineEmits(['close', 'open-forge', 'forge-all', 'verify', 'reveal']);
 
 /** 交互镜像入口的悬停说明：没导出过时说清"点下去看到的是什么" */
 const liveTitle = computed(() => props.mirrored === 0
@@ -280,6 +280,11 @@ function onTablistKey(e) {
       <a :class="{ 'quick-off': mirrored === 0 }" :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener" :title="liveTitle">交互镜像{{ mirrored === 0 ? ' · 未导出' : '' }}</a>
       <a class="quick-alt" :href="liveAltUrl({ url: selected.url })" target="_blank" rel="noopener" title="备用入口：/lm 前缀。不依赖 *.localhost 解析，但纯前端渲染站的客户端路由会把前缀当成真实路径，可能落到它自己的 404">/lm 备用</a>
       <a :href="`/${host}/compare.html?p=${pageNameOf(selected)}`" target="_blank" rel="noopener" title="左右同步滚动，原站与静态镜像逐段对照">同步对比</a>
+      <!-- 能在浏览器里打开一份产物，不等于知道它在磁盘的哪个角落。
+           这一页的静态镜像目录（换图、替换文案都要进去改）就在这里给个直达。
+           交互镜像与交付包是站点级的，它们的入口在「报告 → 产物位置」。 -->
+      <button class="quick-dir" @click="$emit('reveal', `workspace/${host}/pages/${pageNameOf(selected)}/clone`, '静态镜像')"
+              title="在资源管理器里打开这一页的静态镜像目录（assets / styles / index.html 都在里面）">打开镜像文件夹</button>
     </div>
     <div class="dock-quick-note" v-if="selected.forgeState === 'done' && mirrored === 0">
       <b>本站还没导出过交互镜像</b> —— 镜像路由是"本地有快照就回快照、否则反代回原站"，
@@ -474,13 +479,15 @@ function onTablistKey(e) {
         </div>
       </div>
       <!-- 没跑校准也是结论，要说出来：此前三条提前返回什么都不写，界面上只剩一个空格子，
-           用户分不清"校准跑了但没改动"和"压根没跑" -->
+           用户分不清"校准跑了但没改动"和"压根没跑"。
+           数据源必须与上面那句 v-else-if 一致 —— 这一块和克隆 tab 那一块是一对镜像的坑，
+           写法见下方克隆 tab 的注释。 -->
       <div class="ov-sec" v-else-if="detailQuality.fixup">
         <div class="panel-sec-name">AI 校准</div>
         <div class="q-list">
           <div class="q-row">
             <span class="q-k">未运行</span>
-            <span class="q-v">{{ dockFixup.detail || skipReasonCn(dockFixup.skipped) || '这次克隆没留下校准记录（旧版本引擎）' }}</span>
+            <span class="q-v">{{ detailQuality.fixup.detail || skipReasonCn(detailQuality.fixup.skipped) || '这次克隆没留下校准记录（旧版本引擎）' }}</span>
           </div>
         </div>
       </div>
@@ -512,9 +519,15 @@ function onTablistKey(e) {
             <span class="q-v">{{ r.before }}% → {{ r.after }}% <b :class="r.kept ? 'ok' : 'bad'">{{ r.kept ? '保留' : '回滚' }}</b></span>
           </div>
         </template>
+        <!-- 这一块的数据源必须是 dockFixup（它的 v-if 里就有 dockFixup），
+             不能顺手读 detailQuality.fixup —— 那份只有切到「质检」标签才会加载，
+             而本块在四个 tab 都是 v-show 的情况下**一进面板就会渲染**。
+             写成 detailQuality.fixup.detail 时，285 个带 fixup-history 的页面
+             每点开一次详情就抛一次 `Cannot read properties of null (reading 'detail')`，
+             而且抛在 patch 阶段：画面留着上一帧、看着正常，实际那次更新整个被中止。 -->
         <div class="q-row" v-else>
           <span class="q-k">未运行</span>
-          <span class="q-v">{{ detailQuality.fixup.detail || skipReasonCn(detailQuality.fixup.skipped) || '这次克隆没留下校准记录（旧版本引擎）' }}</span>
+          <span class="q-v">{{ dockFixup.detail || skipReasonCn(dockFixup.skipped) || '这次克隆没留下校准记录（旧版本引擎）' }}</span>
         </div>
       </div>
     </div>

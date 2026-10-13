@@ -32,6 +32,18 @@ const DIST = join(CORE, '..', 'console', 'dist');
 const PORT = 8960 + Math.floor(Math.random() * 20);
 const BASE = `http://127.0.0.1:${PORT}`;
 
+/**
+ * 夹具里必须有 fixup-history.json，而且 `rounds` 要是空的 —— 这不是随手加的装饰。
+ *
+ * 克隆 tab 的「AI 校准」块是 `v-if rounds?.length ... v-else 未运行`，而详情面板
+ * 四个标签页是 v-show（全都在渲染），所以**点开任意一个已克隆页面**都会走到那个 v-else。
+ * 它一度读的是 `detailQuality.fixup.detail`，而那份数据只有切到「质检」标签才会加载
+ * → `null.detail` 抛在 patch 阶段（画面留着上一帧、看着正常，实际那次更新整个被中止）。
+ * 语料里 290 页有 285 页带这个文件，所以这是一条"人人会踩、但只会看到面板不动"的坑。
+ * 夹具没有这个文件时整块 `v-if` 直接不成立，测试全绿 —— 骗过了上一轮。
+ */
+const FIXUP_DETAIL = '夹具校准结论：这一行必须出现在克隆 tab';
+
 /** 一个最小站点：2 页克隆 + atlas + 一份改站清单所需的产物 */
 function writeFixture(dataRoot) {
   const ws = join(dataRoot, 'workspace', 'fixture.test');
@@ -42,6 +54,8 @@ function writeFixture(dataRoot) {
     put(`pages/${name}/clone/assets/image000.png`, 'PNG');
     put(`pages/${name}/manifest.json`, JSON.stringify({ target: `https://fixture.test${path}` }));
     put(`pages/${name}/score.json`, JSON.stringify({ total: 98, pixel: 0.98, grade: 'A' }));
+    // rounds 故意留空：这就是把「AI 校准」块推进 v-else 分支的真实形状（见 FIXUP_DETAIL 注释）
+    put(`pages/${name}/fixup-history.json`, JSON.stringify({ at: '2026-10-13T00:00:00.000Z', rounds: [], skipped: 'noise', detail: FIXUP_DETAIL }));
     put(`pages/${name}/intel/intel.json`, JSON.stringify({ meta: { title: name + ' 标题' }, headings: [{ level: 'h1', text: name }], cta: ['开始'], prices: [] }));
   }
   put('pages/home/asset-map.json', JSON.stringify({ imgMap: { 'https://cdns.fixture.test/logo.png': 'assets/image000.png' } }));
@@ -129,10 +143,24 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
 
     // ④ 详情面板：对话框语义 + 打开即聚焦关闭按钮 + Esc 关闭
     await page.locator('.wv-rows .wv-row:not(.wv-th) .c-path[role="button"]').first().click();
-    await page.waitForSelector('.dock', { timeout: 10_000 });
+    // 面板打不开时给出指向，别让下一个人从 "waiting for locator('.dock')" 猜起：
+    // 实测过的失败形状就是渲染抛异常 → 组件挂载失败 → .dock 永远不出现（见 ④b）
+    await page.waitForSelector('.dock', { timeout: 10_000 }).catch(() => {
+      assert.fail('详情面板没能打开 —— 先看控制台有没有渲染期异常（历史事故：克隆 tab 的「AI 校准」块读错数据源，抛 null.detail，整块渲染被中止）');
+    });
     assert.equal(await page.locator('.dock').getAttribute('role'), 'dialog');
     assert.equal(await page.locator('.dock').getAttribute('aria-modal'), 'true');
     assert.equal(await page.locator('.dock [role="tablist"]').count(), 1, '标签页应有 tablist 语义');
+
+    // ④b 「克隆」tab 的校准结论必须真的渲染出来 —— 不能只断言"没抛异常"。
+    //     那个块一度读错了数据源（detailQuality.fixup 只有切到「质检」标签才加载），
+    //     于是点开任意已克隆页面都会在 patch 阶段抛 null.detail：画面留着上一帧、
+    //     看着正常，那次更新却被整个中止（面板此后不再响应任何状态变化）。
+    await page.locator('#tab-forge').click();
+    await page.waitForTimeout(400);
+    assert.ok((await page.locator('.dock').innerText()).includes(FIXUP_DETAIL),
+      '克隆 tab 应渲染出 AI 校准结论 —— 缺了就是又读到了没加载的那份数据');
+
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
     assert.equal(await page.locator('.dock').count(), 0, 'Esc 应关闭详情面板');

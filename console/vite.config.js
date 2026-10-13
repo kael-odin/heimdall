@@ -3,13 +3,19 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
-// 引擎产物目录（local dev 时直接作为静态资源；CI/无产物或显式跳过时禁用 publicDir）
+// 引擎产物目录：**只给 dev 用**，而且只是方便手工核对（`/<host>/pages/...` 直接可访问）。
+// 控制台取 workspace 文件统一走 `/static/`，由引擎显式路由服务（见 src/api.js 顶部）。
+//
+// build 时必须关掉：vite 会把 publicDir **整个目录拷进 dist**，而这里指的是整个
+// workspace（实测 10GB）—— 于是每次 `pnpm build` 都复制一份工作区，
+// 本地 dist 一度肿到 18GB、构建从几秒变成几分钟。Dockerfile 早就用
+// HEIMDALL_SKIP_WORKSPACE=1 绕开了（生产构建不需要它），本地没有这个变量。
 const workspaceDir = fileURLToPath(new URL('../core/workspace', import.meta.url));
-const publicDir = process.env.HEIMDALL_SKIP_WORKSPACE === '1' || !existsSync(workspaceDir) ? false : workspaceDir;
+const useWorkspaceDir = existsSync(workspaceDir) && process.env.HEIMDALL_SKIP_WORKSPACE !== '1';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [vue()],
-  publicDir,
+  publicDir: command === 'build' ? false : (useWorkspaceDir ? workspaceDir : false),
   server: {
     port: 5173,
     host: '127.0.0.1',
@@ -23,4 +29,4 @@ export default defineConfig({
       '/static/': 'http://127.0.0.1:8900',
     },
   },
-});
+}));

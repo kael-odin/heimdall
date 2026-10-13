@@ -86,8 +86,15 @@ function fileFor(liveDir, p, staticDir = null, host = '') {
   return null;
 }
 
+/**
+ * 取标签上的某个属性值。**前面不能是 `-` 或单词字符** —— 否则 `poster` 会命中
+ * `data-heimdall-poster="0"`：那是我们自己给视频打的标记（值是个帧序号），
+ * 被当成真 poster 之后，health 会报出 3 个**根本不存在的**缺口，
+ * heal 再老老实实去抓 3 次、往交付包里写 3 个垃圾文件（SPA 的 fallback 页），
+ * 报告上却写着"已补齐 3 个"。自检撒谎比没有自检更糟，所以这里按属性名的边界取。
+ */
 function attr(tag, name) {
-  const m = new RegExp(name + '\\s*=\\s*["\']([^"\']+)["\']', 'i').exec(tag);
+  const m = new RegExp('(?<![\\w-])' + name + '\\s*=\\s*["\']([^"\']+)["\']', 'i').exec(tag);
   return m ? m[1] : null;
 }
 

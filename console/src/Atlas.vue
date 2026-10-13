@@ -376,14 +376,31 @@ function runEditManifest() {
   })();
 }
 
+/**
+ * 在资源管理器里定位一个产物路径（引擎只接受 DATA_ROOT 以内的路径）。
+ *
+ * 以前三处调用各写一份 fetch —— 合到一处，因为"产物到底落在哪"这个问题只会越来越多
+ * （静态镜像 / 交互镜像 / 交付包 / 清单里的单个资源）。`what` 只影响报错文案：
+ * 产物还不存在时**必须说清"先去跑一次"**，否则用户会以为按钮坏了 —— 引擎对缺失路径
+ * 回的是 404 `not found`，和"路径非法""引擎没开"混在一起就分不出来。
+ */
+async function revealPath(rel, what = '产物') {
+  if (!rel) { errMsg.value = `还不知道${what}在哪 —— 先跑一次`; return; }
+  try {
+    const r = await fetch(API + '/api/reveal', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ path: rel }) });
+    if (r.ok) return;
+    const j = await r.json().catch(() => ({}));
+    errMsg.value = j.error === 'not found'
+      ? `还没有这个${what}：${rel} —— 先跑一次再定位`
+      : '定位失败：' + (j.error ?? r.status);
+  } catch (e) { errMsg.value = String(e); }
+}
+
 /** 在资源管理器里定位清单里的某个资源（换图时最常用的下一步） */
 async function revealManifestAsset(a) {
   const page = a.pages?.[0];
   if (!page || !a.local) { errMsg.value = '这个资源没有本地副本（仍是外链），先处理缺口'; return; }
-  try {
-    const r = await fetch(API + '/api/reveal', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ path: `workspace/${host.value}/pages/${page}/clone/${a.local}` }) });
-    if (!r.ok) { const j = await r.json().catch(() => ({})); errMsg.value = '定位失败：' + (j.error ?? r.status); }
-  } catch (e) { errMsg.value = String(e); }
+  return revealPath(`workspace/${host.value}/pages/${page}/clone/${a.local}`, '本地资源');
 }
 
 /** 域名替换：apply=false 只预览（默认），true 才真改（引擎侧先备份再改） */
@@ -1199,20 +1216,41 @@ async function copyBundlePath() {
 }
 
 /** 在资源管理器里定位交付包（引擎只接受 DATA_ROOT 以内的路径） */
-async function revealBundle() {
-  const p = liveHealth.value?.bundlePath;
-  if (!p) return;
-  try {
-    const r = await fetch(API + '/api/reveal', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ path: p }) });
-    if (!r.ok) { const j = await r.json().catch(() => ({})); errMsg.value = '打开失败：' + (j.error ?? r.status); }
-  } catch (e) { errMsg.value = String(e); }
-}
+function revealBundle() { return revealPath(liveHealth.value?.bundlePath, '交付包'); }
 
-/** 交互镜像导出：引擎 live 任务（离线 + mirror + heal + materialize） */
-function runLiveExport() {
+/**
+ * 产物位置一览：站点工作区 / 静态镜像 / 交互镜像 / 交付包。
+ *
+ * 存在的意义是补上"导出成功了"和"我拿到了"之间那一步 —— 用户能在控制台里看到分数、
+ * 打开镜像，却找不到磁盘上那个目录。每条都给**相对路径**（可读、可复制）与「打开文件夹」；
+ * 不存在的产物按钮置灰并写明原因，而不是点了没反应。
+ */
+const artifactDirs = computed(() => {
+  const h = host.value;
+  const live = liveHealth.value;
+  return [
+    { what: '站点工作区', path: `workspace/${h}`, ok: true, note: '本站所有产物的根目录' },
+    { what: '静态镜像', path: `workspace/${h}/pages`, ok: true, note: '每页一个目录，clone/ 里就是静态镜像本体' },
+    { what: '交互镜像', path: `workspace/${h}/live`, ok: (curSiteMirrored.value ?? 0) > 0, note: '保留脚本的那一份；没导出过就没有这个目录' },
+    { what: '交付包', path: live?.bundlePath ?? '', ok: !!live?.bundlePath, note: '可直接部署的那个目录（整个拷走即可）' },
+  ];
+});
+
+/**
+ * 交互镜像导出：引擎 live 任务（离线 + mirror + heal + materialize）
+ *
+ * `hostArg` 是**任务中心那一行**点进来时传的站点 —— 它未必等于当前选中的站点
+ * （比如刚克隆完 A 站，随后切到 B 站看东西，再回头点 A 站那行的按钮）。
+ * 所以：对外一律按 h 走，只有"刷新界面上的读数"这一件事才认 isCurrent。
+ * 同理 `rebuild` 那个勾选是报告页针对当前站点的，跨站触发时不带过去。
+ */
+function runLiveExport(hostArg) {
+  const h = hostArg || host.value;
+  if (!h) return;
+  const isCurrent = h === host.value;
   const task = reactive({
     localId: 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    kind: 'live', label: '交互镜像导出 · ' + host.value, url: atlas.value?.origin ?? ('https://' + host.value),
+    kind: 'live', label: '交互镜像导出 · ' + h, url: 'https://' + h,
     done: false, failed: false, error: null,
     startedAt: Date.now(), endedAt: null,
   });
@@ -1221,7 +1259,7 @@ function runLiveExport() {
   statusText.value = '交互镜像导出中 · 约 2-5 分钟（HAR 合并 + 图片本地化 + 体检）';
   (async () => {
     try {
-      const r = await fetch(API + '/api/live-export', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, root: 'mirror', rebuild: liveRebuild.value }) });
+      const r = await fetch(API + '/api/live-export', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h, root: 'mirror', rebuild: isCurrent && liveRebuild.value }) });
       const { taskId, error } = await r.json();
       if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '交互镜像导出失败：' + error; return; }
       const es = new EventSource(sseUrl(taskId));
@@ -1238,7 +1276,7 @@ function runLiveExport() {
         }
         else if (ev.kind === 'exit') {
           task.done = true; task.endedAt = Date.now();
-          if (ev.status === 'done') { statusText.value = '交互镜像导出完成 · 已生成离线完整包'; loadLiveHealth(); loadReports(); }
+          if (ev.status === 'done') { statusText.value = '交互镜像导出完成 · 已生成离线完整包'; if (isCurrent) { loadLiveHealth(); loadReports(); } }
           else { task.failed = true; task.error = '导出失败（见 health.json / 任务日志）'; errMsg.value = '交互镜像导出失败，查看任务日志'; }
           close(); setTimeout(() => { statusText.value = ''; }, 5000);
         }
@@ -1547,7 +1585,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     v-if="view === 'jobs'"
     :tasks="tasks" :jobs="jobHistory" :sites="sites" :host="host" :engine="engine"
     :actions="workViewActions"
-    @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'" @retry="retryJob"
+    @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'" @retry="retryJob" @export-live="runLiveExport"
   />
 
   <section class="work-view surface" v-if="view === 'reports'">
@@ -1723,7 +1761,26 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
         <p class="score-note">交给同事：整个目录拷走即可，对方跑 <code>node serve.mjs --port 8080</code>（零依赖）或 <code>docker compose up -d</code>。纯前端站已按 <code>--root mirror</code> 导出，不会再落到它自己的 404。</p>
       </div>
       <label class="sw" style="margin-bottom:8px;display:flex"><input type="checkbox" v-model="liveRebuild" /><span>先重建 live 页面（站点改版后勾选）</span></label>
-      <button class="wv-primary" @click="runLiveExport">{{ liveHealth ? '重新导出' : '导出完整离线包' }}</button>
+      <!-- 必须写成 runLiveExport()：直接写函数名时 Vue 会把 MouseEvent 当第一个参数传进来，
+           而第一个参数现在是 host —— 于是导出目标会变成 "[object MouseEvent]" -->
+      <button class="wv-primary" @click="runLiveExport()">{{ liveHealth ? '重新导出' : '导出完整离线包' }}</button>
+    </div>
+    <!-- 产物到底落在磁盘的哪里 —— 控制台里能看到分数、能打开镜像，但"那个目录在哪"
+         此前只能靠人翻。不存在的产物按钮置灰并写明原因，不做"点了没反应"。 -->
+    <div class="report-card report-wide surface">
+      <h3>产物位置</h3>
+      <div class="artifact-list">
+        <div class="artifact-row" v-for="a in artifactDirs" :key="a.what">
+          <div class="artifact-name">
+            <b>{{ a.what }}</b>
+            <span class="score-note">{{ a.note }}</span>
+          </div>
+          <button :disabled="!a.ok || !a.path" @click="revealPath(a.path, a.what)"
+                  :title="a.ok && a.path ? '在资源管理器里定位这个目录' : '还没有这个产物 —— 先跑一次再定位'">打开文件夹</button>
+          <code class="artifact-path" :title="a.path || '还没有这个产物'">{{ a.path || '——' }}</code>
+        </div>
+      </div>
+      <p class="score-note">路径相对数据目录（默认 <code>core/</code>，可用 <code>HEIMDALL_DATA_DIR</code> 改）。点击路径可整行选中复制。</p>
     </div>
     <div class="report-card report-wide surface">
       <h3>设计资产</h3>
@@ -1858,6 +1915,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     :mirrored="curSiteMirrored"
     :page-meta="pageMeta" :detail-intel="detailIntel" :detail-score="detailScore"
     @close="selected = null" @open-forge="openForge" @forge-all="forgeAll" @verify="runVerifyPage"
+    @reveal="(p, what) => revealPath(p, what)"
   />
 
   <a class="audit-link" v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">SEO 报告 · {{ auditReport.score }} 分</a>

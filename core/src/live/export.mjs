@@ -28,7 +28,7 @@ import { emit } from '../emit.mjs';
 import { buildEditManifest, renderEditManifestMd } from '../deliver/edit-manifest.mjs';
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { scanLiveBundle } from './health.mjs';
-import { healBundle, materializeHar, localizeQueryEntries, rewriteHtmlRefs } from './heal.mjs';
+import { healBundle, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset } from './heal.mjs';
 import { diffChecksums, changesLine } from './changes.mjs';
 import { mb } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
@@ -131,7 +131,11 @@ for (let i = 0; i < pageNames.length; i++) {
     const sanitized = sanitizeHar(JSON.parse(readFileSync(p, 'utf8')));
     for (const e of sanitized.entries) {
       let x; try { x = new URL(e.url); } catch { continue; }
-      if (x.origin !== origin && !/^image\//i.test(e.mimeType || '')) continue;   // 站外图片也收：导出时本地化
+      // 站外**静态资源**也收：导出时会被本地化（判据见 heal.isStaticAsset）。
+      // 以前这里只收站外图片（`!/^image\//`），于是把应用自己的 JS/字体/WebGL 驱动
+      // 全丢在 CDN 上 —— 交付包断网时动效直接没了（实测 0.00% 像素变化）。
+      // 站外的 XHR/JSON 仍然不收：它们离线时本质上无法伪造，收了也只是体积。
+      if (x.origin !== origin && !isStaticAsset(e)) continue;
       const k = harKey(e.method, e.url);
       if (!harMap.has(k)) harMap.set(k, e);
     }
@@ -171,17 +175,19 @@ if (HEAL && health.assets.unresolved > 0) {
 if (MATERIALIZE) {
   emit({ kind: 'live-stage', stage: 'materialize', status: 'running' });
   const mat = materializeHar({ liveDir, origin, entries: har.entries });
-  const loc = localizeQueryEntries({ entries: har.entries, liveDir, host, origin });
-  const rw = rewriteHtmlRefs({ liveDir, map: loc.map });
+  // hostPrefixes: 离线包把站外 CDN 的整站前缀也接进本地镜像树（运行时拼出来的地址抓不到，
+  // 详见 heal.localizeQueryEntries 里那段注释）。在线镜像不接 —— 它的承诺是"未捕获的实时回源"。
+  const loc = localizeQueryEntries({ entries: har.entries, liveDir, host, origin, hostPrefixes: OFFLINE });
+  const rw = rewriteLocalRefs({ liveDir, map: loc.map });
   let trimmed = 0;
   for (const e of har.entries) {
     if (!e.body) continue;
     let x; try { x = new URL(e.url); } catch { e.body = null; trimmed++; continue; }
     if (!x.search) { e.body = null; trimmed++; }   // 无查询条目已 materialize 落盘；带查询的保留回放体（覆盖 JS 动态请求）
   }
-  console.log('[materialize] files=' + mat.written + ' (' + (mat.bytes / 1024 / 1024).toFixed(1) + 'MB) localized=' + loc.written + ' (' + (loc.bytes / 1024 / 1024).toFixed(1) + 'MB) html=' + rw.files + ' files/' + rw.rewrites + ' refs');
+  console.log('[materialize] files=' + mat.written + ' (' + (mat.bytes / 1024 / 1024).toFixed(1) + 'MB) localized=' + loc.written + ' (' + (loc.bytes / 1024 / 1024).toFixed(1) + 'MB) rewrote=' + rw.files + ' files/' + rw.rewrites + ' refs');
   health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
-  health.materialized = { ...mat, localized: loc.written, localizedBytes: loc.bytes, htmlRewrites: rw.rewrites, htmlFiles: rw.files, harTrimmed: trimmed };
+  health.materialized = { ...mat, localized: loc.written, localizedBytes: loc.bytes, refRewrites: rw.rewrites, refFiles: rw.files, harTrimmed: trimmed };
   emit({ kind: 'live-stage', stage: 'materialize', status: 'done' });
 }
 writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR（materialize 时仅剩必要回放体）

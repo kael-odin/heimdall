@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveRefPath, extractRefs, scanLiveBundle } from '../src/live/health.mjs';
-import { healBundle, materializeHar, localizeQueryEntries, rewriteHtmlRefs } from '../src/live/heal.mjs';
+import { healBundle, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset, mimeExt } from '../src/live/heal.mjs';
 import { indexHar } from '../src/live/har.mjs';
 
 test('live/health: resolver handles /lm prefix, queries, relative paths and externals', () => {
@@ -112,7 +112,7 @@ test('live/heal: materializeHar writes same-origin bodies and skips query/extern
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('live/heal: localizeQueryEntries + rewriteHtmlRefs localizes dynamic image endpoints', () => {
+test('live/heal: localizeQueryEntries + rewriteLocalRefs localizes dynamic image endpoints', () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-loc-'));
   try {
     mkdirSync(join(dir, 'live', 'pricing'), { recursive: true });
@@ -122,7 +122,7 @@ test('live/heal: localizeQueryEntries + rewriteHtmlRefs localizes dynamic image 
     const loc = localizeQueryEntries({ entries, liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test' });
     assert.equal(loc.written, 1);
     assert.equal(loc.bytes, 3);
-    const rw = rewriteHtmlRefs({ liveDir: join(dir, 'live'), map: loc.map });
+    const rw = rewriteLocalRefs({ liveDir: join(dir, 'live'), map: loc.map });
     assert.ok(rw.rewrites >= 2, 'both escaped and raw refs rewritten, got ' + rw.rewrites);
     const html = readFileSync(join(dir, 'live', 'pricing', 'index.html'), 'utf8');
     assert.ok(!html.includes('_next/image'), 'all dynamic refs rewritten');
@@ -180,4 +180,149 @@ test('live/health: 没有 body 或状态是 4xx 的 HAR 条目**不算**已覆�
     assert.equal(report.assets.har, 1, '只有 good.js 算已覆盖');
     assert.equal(report.assets.unresolved, 2, '另外两条要如实落进缺口，而不是被算成已覆盖');
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+/**
+ * ---- 站外静态资源的本地化（2026-10-13） ----
+ *
+ * 这组守卫来自一次实测：交付包断网时 1.5 秒内像素变化 **0.00%**（联网同一测量 6.13%）。
+ * 原因不是资源没抓到 —— 原始 network.har 里 36/38 条都带着响应体 —— 而是**判据**：
+ * `!sameOrigin && !isImage → continue`，注释写的是"站外只本地化图片（追踪脚本等留在外网）"。
+ * 它把**站外**当成了**第三方**，可 moonshot 把整个应用的 JS、字体、WebGL 驱动
+ * （`unicornStudio-2.1.4.umd.js`）全放在 `statics.kimi.ai` 上 —— 于是整套应用被跳过，
+ * 离线只剩一张不会动的照片。加上导出侧还有第二道同样的闸门（HAR 合并时丢掉站外非图片）。
+ * 新判据：**看类型，不看域名**。
+ */
+
+test('live/heal: isStaticAsset 认静态资源，不认文档与数据接口', () => {
+  const A = (url, mimeType) => isStaticAsset({ url, mimeType });
+  assert.equal(A('https://cdn.x/a.js', 'text/javascript'), true);
+  assert.equal(A('https://cdn.x/a.css', 'text/css'), true);
+  assert.equal(A('https://cdn.x/f.woff2', 'font/woff2'), true);
+  assert.equal(A('https://cdn.x/wasm', 'application/wasm'), true);
+  assert.equal(A('https://cdn.x/i.webp', 'image/webp'), true);
+  assert.equal(A('https://cdn.x/doodle.riv', 'application/octet-stream'), true, 'CDN 上 .riv/.wasm 常被这么发');
+  assert.equal(A('https://cdn.x/chunk.js', ''), true, '没有 content-type 时按 URL 后缀兜底');
+  assert.equal(A('https://x.test/', 'text/html'), false, '页面/iframe 本身不搬');
+  assert.equal(A('https://api.x/collect?v=2', 'application/json'), false, '数据接口离线无法伪造，收了也只是体积');
+  assert.equal(A('https://api.x/g/collect', ''), false, '没有后缀的数据接口也不搬');
+});
+
+test('live/heal: 站外的 JS/字体/CSS 会整份搬进 _ext，并给出协议相对写法的映射', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-ext-'));
+  try {
+    const live = join(dir, 'live');
+    const entries = [
+      { method: 'GET', url: 'https://statics.cdn/app/chunks/a.js', status: 200, mimeType: 'text/javascript', body: Buffer.from('A').toString('base64') },
+      { method: 'GET', url: 'https://statics.cdn/app/f.woff2', status: 200, mimeType: 'font/woff2', body: Buffer.from('F').toString('base64') },
+      { method: 'GET', url: 'https://statics.cdn/app/g.css', status: 200, mimeType: 'text/css', body: Buffer.from('C').toString('base64') },
+      { method: 'GET', url: 'https://api.cdn/collect?v=2', status: 200, mimeType: 'application/json', body: Buffer.from('{}').toString('base64') },
+    ];
+    const loc = localizeQueryEntries({ entries, liveDir: live, host: 'x.test', origin: 'https://x.test' });
+    assert.equal(loc.written, 3, 'JS / 字体 / CSS 都该落盘，JSON 接口不该');
+    // 落盘位置按"域名 + 原路径"保留结构（目录层级所以是嵌套的，见 crossOriginRel）
+    for (const [url, ext] of [['https://statics.cdn/app/chunks/a.js', 'js'], ['https://statics.cdn/app/f.woff2', 'woff2'], ['https://statics.cdn/app/g.css', 'css']]) {
+      const pub = loc.map.get(url);
+      assert.ok(pub.endsWith('.' + ext), url + ' 的落盘名该以 .' + ext + ' 结尾，实际 ' + pub);
+      assert.equal(existsSync(join(live, pub.replace('/lm/x.test/', ''))), true, url + ' 的实体文件必须真的写下去了');
+    }
+    assert.equal(loc.map.get('https://api.cdn/collect?v=2'), undefined, '数据接口不该被本地化');
+    // 页面里极常见的是**协议相对**写法，而 HAR 记的是绝对 URL ——
+    // 少这一条，HTML 里的引用会原样留在外网
+    assert.equal(loc.map.get('https://statics.cdn/app/chunks/a.js'), loc.map.get('//statics.cdn/app/chunks/a.js'));
+    assert.ok(loc.map.get('//statics.cdn/app/f.woff2').startsWith('/lm/x.test/_ext/statics.cdn/'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/heal: rewriteLocalRefs 必须改到 JS 里面（WebGL 驱动是应用自己拉的，HTML 里根本没有那个 URL）', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-jsrw-'));
+  try {
+    const live = join(dir, 'live');
+    mkdirSync(join(live, '_ext'), { recursive: true });
+    writeFileSync(join(live, 'index.html'), '<script src="//statics.cdn/app/chunks/a.js"></script>');
+    writeFileSync(join(live, '_ext', 'abc.js'),
+      'import("https://statics.cdn/app/chunks/b.js");const f="https://statics.cdn/app/f.woff2";');
+    writeFileSync(join(live, '_ext', 'abc.css'), '@font-face{src:url(https://statics.cdn/app/f.woff2)}');
+    const map = new Map([
+      ['https://statics.cdn/app/chunks/a.js', '/lm/x.test/_ext/a.js'],
+      ['//statics.cdn/app/chunks/a.js', '/lm/x.test/_ext/a.js'],
+      ['https://statics.cdn/app/chunks/b.js', '/lm/x.test/_ext/b.js'],
+      ['https://statics.cdn/app/f.woff2', '/lm/x.test/_ext/f.woff2'],
+    ]);
+    const rw = rewriteLocalRefs({ liveDir: live, map });
+    assert.equal(rw.files, 3, 'HTML / JS / CSS 三个文件都该被改到，实际 ' + rw.files);
+    const js = readFileSync(join(live, '_ext', 'abc.js'), 'utf8');
+    assert.ok(js.includes('/lm/x.test/_ext/b.js'), 'JS 内部拼的 URL 必须被改写');
+    assert.ok(!js.includes('statics.cdn'), '一个外域残留都不该有');
+    assert.ok(!readFileSync(join(live, '_ext', 'abc.css'), 'utf8').includes('statics.cdn'));
+    assert.ok(!readFileSync(join(live, 'index.html'), 'utf8').includes('statics.cdn'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/heal: mimeExt 对 .js 不能给出 .bin —— 后缀决定 serve.mjs 发的 Content-Type', () => {
+  assert.equal(mimeExt('application/octet-stream', 'https://cdn.x/a.js'), 'js',
+    '.bin 会让 serve.mjs 用 octet-stream 发出去，浏览器以 MIME 不符拒绝执行模块脚本');
+  assert.equal(mimeExt('', 'https://cdn.x/doodle.riv'), 'riv');
+  assert.equal(mimeExt('application/octet-stream', 'https://cdn.x/noext'), 'bin', '真的没有后缀才认 bin');
+  assert.equal(mimeExt('text/javascript'), 'js');
+  assert.equal(mimeExt('application/wasm'), 'wasm');
+});
+
+test('live/health: data-heimdall-poster 不能被当成真 poster —— 否则报出不存在的缺口，heal 还会去抓', () => {
+  // 实测链条：我们给视频打的标记 `data-heimdall-poster="0"`（值是帧序号）被
+  // 无边界正则读成 poster 属性 → health 报 3 个假缺口 → heal 去
+  // https://www.moonshot.cn/0 抓，SPA 的 fallback 返回首页 → 交付包里多出 3 个
+  // 295KB 的垃圾文件，而报告写着"已补齐 3 个"。
+  const html = '<video src="/media/a.mp4" data-heimdall-poster="0"></video>'
+    + '<video poster="/media/b.jpg"></video>'
+    + '<script data-heimdall-src="9" src="/a.js"></script>';
+  const urls = extractRefs(html, 'html').map(r => r.url);
+  assert.ok(urls.includes('/media/a.mp4'));
+  assert.ok(urls.includes('/media/b.jpg'), '真的 poster 必须认出来');
+  assert.ok(urls.includes('/a.js'));
+  assert.ok(!urls.includes('0'), '帧序号不是资源地址');
+  assert.ok(!urls.includes('9'), 'data-* 前缀的属性名不该命中');
+});
+
+test('live/heal: 站外资源要保留原始目录结构 —— 兄弟相对路径（../chunks/x.js）才不会断', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-ext-'));
+  try {
+    const live = join(dir, 'live');
+    const entries = [
+      { method: 'GET', url: 'https://statics.cdn/app/assets/entries/entry.js', status: 200, mimeType: 'text/javascript', body: Buffer.from('E').toString('base64') },
+      { method: 'GET', url: 'https://statics.cdn/app/assets/chunks/chunk-X.js', status: 200, mimeType: 'text/javascript', body: Buffer.from('C').toString('base64') },
+    ];
+    const loc = localizeQueryEntries({ entries, liveDir: live, host: 'x.test', origin: 'https://x.test' });
+    assert.equal(loc.written, 2);
+    const entryPublic = loc.map.get('https://statics.cdn/app/assets/entries/entry.js');
+    // 从落盘后的入口地址出发，按 Vite 清单里的写法解析依赖 —— 必须落在真正写下的文件上。
+    // 拍平成 _ext/<sha1>.js 时这一步会解析到 /lm/x.test/chunks/chunk-X.js（404），
+    // 于是模块链从中间断掉、WebGL hero 起不来。
+    const dep = new URL('../chunks/chunk-X.js', 'http://x' + entryPublic).pathname;
+    assert.equal(dep, '/lm/x.test/_ext/statics.cdn/app/assets/chunks/chunk-X.js');
+    assert.equal(existsSync(join(live, dep.replace('/lm/x.test/', ''))), true, '相对引用必须能找到实体文件');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/heal: 离线包把站外 CDN 的整站前缀接进本地镜像树（运行时拼出来的地址抓不到）', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-pfx-'));
+  const dir2 = mkdtempSync(join(tmpdir(), 'heimdall-pfx2-'));
+  try {
+    const entries = [{ method: 'GET', url: 'https://statics.cdn/app/assets/chunks/chunk-X.js', status: 200, mimeType: 'text/javascript', body: Buffer.from('C').toString('base64') }];
+    // 实测：断网时这些拼出来的地址以 `http://statics.cdn/...` 的形式被请求出去
+    // （协议相对 + http 页面），文本里根本没有完整 URL 可替换。
+    const off = localizeQueryEntries({ entries, liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test', hostPrefixes: true });
+    assert.equal(off.map.get('//statics.cdn/'), '/lm/x.test/_ext/statics.cdn/', '协议相对前缀要接过去');
+    assert.equal(off.map.get('http://statics.cdn/'), '/lm/x.test/_ext/statics.cdn/');
+    assert.equal(off.map.get('https://statics.cdn/'), '/lm/x.test/_ext/statics.cdn/');
+    // 前缀接过去之后，运行时拼出来的任意路径都落在保结构的镜像树里
+    const built = new URL('assets/chunks/chunk-Y.js', 'http://x' + off.map.get('//statics.cdn/')).pathname;
+    assert.equal(built, '/lm/x.test/_ext/statics.cdn/assets/chunks/chunk-Y.js');
+    // 在线镜像不接前缀：未捕获的资源要留给回源，接过去会变成"本地 404"
+    const on = localizeQueryEntries({ entries, liveDir: join(dir2, 'live'), host: 'x.test', origin: 'https://x.test' });
+    assert.equal(on.map.get('//statics.cdn/'), undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir2, { recursive: true, force: true });
+  }
 });

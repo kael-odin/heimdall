@@ -11,6 +11,7 @@ import SiteBar from './SiteBar.vue';
 import Icon from './Icon.vue';
 import { computed } from 'vue';
 import { taskState, taskLabel, fmtTime, fmtStamp, fmtDuration, kindCn } from './format.js';
+import { canRetry, canExportLive, hostOfTask, RETRY_CN } from './tasks.js';
 
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
@@ -20,7 +21,7 @@ const props = defineProps({
   engine: { type: Object, default: () => ({}) },
   actions: { type: Array, default: () => [] },
 });
-defineEmits(['pick', 'action', 'close', 'retry']);
+defineEmits(['pick', 'action', 'close', 'retry', 'export-live']);
 
 /**
  * 这批历史覆盖的时间跨度。
@@ -43,12 +44,8 @@ function readingOf(t) {
   return t.score ? (t.score.pixel * 100).toFixed(1) + '%' : '—';
 }
 
-/** 历史行能不能续跑：中断/失败，且有可重发的 kind 与 url。
- *  引擎重启会把 running 的旧任务标成 interrupted —— 那就该能一键续上，而不是让用户猜怎么重来。 */
-function canRetry(h) {
-  return ['interrupted', 'failed'].includes(h.status) && ['clone', 'forge'].includes(h.kind) && !!h.url;
-}
-const RETRY_CN = { clone: '继续克隆', forge: '重新克隆' };
+// canRetry / canExportLive / hostOfTask / RETRY_CN 都在 tasks.js —— 抽出去是为了能被单测钉住，
+// 免得"从任务行反推站点身份"出现第二份实现（那类分叉的表现是"点了没反应"）。
 </script>
 
 <template>
@@ -67,6 +64,9 @@ const RETRY_CN = { clone: '继续克隆', forge: '重新克隆' };
         <span class="wv-score">{{ readingOf(t) }}</span>
         <span class="job-time">{{ fmtTime(t.startedAt) }} · {{ fmtDuration(t) }}</span>
         <span class="job-error" :title="t.error">{{ t.error || '' }}</span>
+        <span class="job-live"><button v-if="canExportLive(t)"
+          @click="$emit('export-live', hostOfTask(t))"
+          title="交互镜像：保留脚本、资源实时回源的另一种产物（与「静态镜像」不是一回事），导出后是一个可直接部署的离线包。首次生成 / 导出过则是增量更新">导出交互镜像</button></span>
       </div>
       <div class="wv-empty" v-if="!tasks.length && !jobs.length">本次会话还没有任务：在「星图」点击页面，或在「页面」批量克隆 / 运行 SEO 审计。</div>
       <div class="wv-sub" v-if="jobs.length">引擎持久化历史（最新 {{ jobs.length }} 条 · {{ historySpan }} · 重启后仍可查）</div>
@@ -78,6 +78,9 @@ const RETRY_CN = { clone: '继续克隆', forge: '重新克隆' };
         <span class="job-time">{{ fmtStamp(h.createdAt) }} · {{ h.endedAt ? Math.round((h.endedAt - h.createdAt) / 1000) + 's' : '' }}</span>
         <span class="job-error" :title="h.error || ''">{{ h.error || '' }}</span>
         <span class="job-retry"><button v-if="canRetry(h)" @click="$emit('retry', h)" :title="'重新发起这个任务'">{{ RETRY_CN[h.kind] }}</button></span>
+        <span class="job-live"><button v-if="canExportLive(h)"
+          @click="$emit('export-live', hostOfTask(h))"
+          title="交互镜像：保留脚本、资源实时回源的另一种产物（与「静态镜像」不是一回事），导出后是一个可直接部署的离线包。首次生成 / 导出过则是增量更新">导出交互镜像</button></span>
       </div>
     </div>
   </section>
