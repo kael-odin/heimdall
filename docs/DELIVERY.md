@@ -146,7 +146,7 @@ Dockerfile / docker-compose.yml / README.md
 
 ### 6.2 我们的路线：人工登录一次，机器复用
 
-`heimdall login <host>`（控制台是本站操作里的「登录并保存会话」）会：
+`node core/src/session/login.mjs <host|url>`（控制台是本站操作里的「登录并保存会话」）会：
 
 1. 打开一个**真浏览器窗口**访问该站点；
 2. 人在窗口里完成登录 —— 验证码、短信码、扫码、第三方 SSO 都行；

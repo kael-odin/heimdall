@@ -130,7 +130,7 @@ node src/cli.mjs deliver example.com                   # 打包成前端可接�
 ## 仓库结构
 
 ```
-core/            确定性引擎（零外部服务依赖，91 个模块）
+core/            确定性引擎（零外部服务依赖，99 个模块）
   src/crawler/     捕获、构建、链接接线、站点配方
   src/seo/         SEO 规则引擎、采集、报告、回归基线
   src/live/        交互镜像导出、健康检查、自愈
@@ -139,7 +139,7 @@ core/            确定性引擎（零外部服务依赖，91 个模块）
   src/audit/       资产、存储、交付包治理
   src/deliver/     改站起点清单、域名替换
   sites/           人工整理的站点配方（进 git）
-console/         Vue 3 控制台（10 个组件 + 全局 UI 样式表）
+console/         Vue 3 控制台（11 个组件 + 全局 UI 样式表）
 config/          SEO 门禁的目标站点与基线（进 git）
 docs/            路线图、交付说明、上手导览（docs/guide/）
 ```
@@ -153,11 +153,15 @@ docs/            路线图、交付说明、上手导览（docs/guide/）
 
 ```bash
 pnpm -C core exec playwright install chromium   # 先装浏览器，见下
-pnpm lint          # 语法检查（全部 core 模块 + 控制台模板绑定）
-pnpm test          # 385 条测试，含真浏览器用例与控制台 E2E
+pnpm lint          # 语法检查（core 的 src / scripts / test）
+pnpm test          # 全部单测 + 真浏览器用例 + 控制台 E2E（条数看末行；别在文档里写死）
 pnpm smoke         # 离线 E2E（本地 fixture，不联网）
 pnpm -C console build
 ```
+
+> 文档里写死的数字会烂。这一页曾经写着"91 个模块""385 条测试"、"航线数 66"——
+> 66 那条至今是对的，因为它有测试钉着（`seo-rule-count.test.mjs`）；
+> 前两个没人钉，于是各自漂了。**能跑命令就别抄数字。**
 
 > **装浏览器不是可选项。** 测试集里有几条跑的是 `capture → build_clone` 的真实流水线
 > （CSS `url()` 的解析基准、资产按真实类型落盘…），没有 Chromium 会直接抛

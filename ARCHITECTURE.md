@@ -1,5 +1,11 @@
 # ARCHITECTURE · 技术架构与里程碑
 
+> **这份文件偏历史。** 它记的是 2026-09 立项时的设想，以及 W0–W6 的"设计与实现的偏差"。
+> 想了解**现在**的架构，读 [README.md](README.md) 与 [docs/guide/01-architecture.md](docs/guide/01-architecture.md)
+> —— 那两份是对着代码维护的，冲突时以它们为准。
+> 下面 §2 与 §5 曾经整段描述不存在的文件（TypeScript 版 core、`core/adapters/*.ts`、
+> `console/src/views/`、`engine/SKILL.md`），已按现状改正（2026-10-13）。
+
 ---
 
 ## 1. 三层架构
@@ -7,18 +13,18 @@
 ```
 ┌────────────────────────────────────────────────────────┐
 │ Console 控制台                                          │
-│   Vue 3 + Vite + Tailwind + Three.js + WebSocket        │
+│   Vue 3 + Vite + 3d-force-graph(three) + SSE            │
 │   星图 / 施工舱 / 还原度报告 / 剧场模式                    │  ← 同事看到的全部
 ├────────────────────────────────────────────────────────┤
 │ Engine 引擎层                                           │
-│   任务队列 · 事件总线 · WebSocket 推送 · 产物仓库管理       │
-│   比赛期编排：ZCode + SKILL.md（薄，随时可替换）            │
-│   赛后演进：迁 DSH Control Center 桌面 agent              │
+│   任务队列 · 事件总线 · SSE 推送 · 产物仓库管理            │
+│   （原设想的 ZCode + SKILL.md 编排没有落地：             │
+│     编排是确定性代码 pipeline.mjs，不需要 agent 循环）    │
 ├────────────────────────────────────────────────────────┤
 │ Core 工具链（确定性代码，核心壁垒，无 LLM 依赖）             │
 │   crawler  — sitemap+BFS 路由发现 / Playwright 渲染后     │
 │              DOM+CSS chunk+资产+双截图 归档               │
-│   builder  — DOM+CSS → 可跑镜像页（gen-page.mjs 泛化）    │
+│   builder  — DOM+CSS → 可跑镜像页（build_clone.mjs；没有 gen-page.mjs）
 │              栈适配器：nextjs / vue-vite                  │
 │   differ   — pixelmatch + DOM diff + 三维评分             │
 │   harvest  — LLM 结构化抽取（定价/功能/文案 → Excel+JSON） │
@@ -39,9 +45,10 @@
 ## 2. 栈适配器设计（"apify 成功≠别的成功"的架构解法）
 
 ```
-core/adapters/
-  nextjs.ts     # apify 路线：_next/static/chunks 提取，Turbopack 命名兼容
-  vue-vite.ts   # thordata 路线：data-v 作用域清理 + 按页 chunk 注入（suixiang-clone 原方法）
+core/src/adapters/index.mjs   # 三个适配器放在同一个文件里（都只是字符串规则，不值得拆三个模块）
+  nextjs     # apify 路线：_next/static/chunks 提取，Turbopack 命名兼容
+  vueVite    # thordata 路线：data-v 作用域清理 + 按页 chunk 注入（suixiang-clone 原方法）
+  generic    # 未知栈的降级：渲染后 DOM + 计算样式
 ```
 
 - 侦察时探测框架签名（`__NEXT_DATA__` / `data-v-*` / `/src/*.js`）自动路由适配器
@@ -150,18 +157,38 @@ grade: A ≥95 / B ≥85 / C <85
 
 ## 5. 仓库结构
 
+> 2026-10-13 按现状重写。上一版描述的 `core/`（TypeScript）、`core/adapters/*.ts`、
+> `console/src/views/*.vue`、`engine/SKILL.md`、顶层 `mcp/` **都不存在** —— 那五个路径
+> 是立项时的设想，后来一条都没落地。README 里那份是对的，这里原本不是。
+
 ```
 heimdall/
-  core/                 # TypeScript, pnpm, Playwright
-    src/crawler/ builder/ differ/ harvest/ adapters/
-    workspace/          # 产物仓库（gitignore）
-  console/              # Vue3+Vite+Three.js
-    src/views/{Atlas,Forge,Report,Theater}.vue
-  engine/
-    SKILL.md            # ZCode 编排（比赛期）
-  mcp/                  # core 薄封装（可选：给 ZCode/DSH 当工具）
-  docs/                 # 本 PRD 套件
+  core/                     # 纯 ESM（.mjs），无 TypeScript；pnpm + Playwright
+    src/
+      crawler/              # capture / build_clone / linker / recon / multi-snapshot / repair-*
+      seo/                  # 66 条规则、采集、报告、回归基线、分页、结构化数据
+      live/                 # 交互镜像：export / heal / health / serve / har
+      differ/               # 像素与 DOM 差异、差异形态判定、AI 校准循环
+      verify/               # 多视口验证、交互回放
+      audit/                # 资产、存储、交付包治理、孤儿回收
+      deliver/              # 改站起点清单、域名替换
+      extract/  store/  watch/  sandbox/  mcp/  browser/  session/  jobs/
+      engine-server.mjs     # 唯一的常驻进程（HTTP + SSE + 队列 + 槽位）
+      cli.mjs               # 统一命令入口（`pnpm -C core cli`）
+    sites/                  # 人工整理的站点配方（进 git）
+    workspace/              # 产物仓库（gitignore）
+    test/                   # node --test；含真浏览器与控制台 E2E
+  console/                  # Vue 3 + Vite（不是 Tailwind）；组件平铺在 src/，没有 views/
+    src/{Atlas,DetailDock,PagesView,JobsView,AssetTable,SiteBar,Graph3D,
+         ActivityRail,Sparkline,StorageCard,Icon}.vue
+    src/{api,format,tasks,pages,types,main}.js · ui.css · style.css
+  config/                   # SEO 门禁的目标站点与基线（进 git）
+  docs/                     # ROADMAP / DELIVERY / guide（上手导览）
+  .github/workflows/        # ci.yml（确定性）· seo-gate.yml（联网，定时）
 ```
+
+数据目录：`core/workspace/`（逐页产物）与 `core/deliverable/`（可部署包），
+`HEIMDALL_DATA_DIR` 可整体移出仓库；两者都不进 git。
 
 ---
 
@@ -196,8 +223,8 @@ v1 设计→实现的差异（以上文为准，本节为勘误表）：
 
 | v1 设计 | 实现 | 说明 |
 |---|---|---|
-| Three.js 3D 星图 | Canvas 2D 星系盘面 | 2D 达标线已达标（缩略图行星/核球光/银河带/入场运镜），3D 待决策 |
-| MCP 工具层 | engine-server HTTP API（:8900） | SSE 事件流直连 Web 控制台；MCP 封装后补不阻塞 |
+| Three.js 3D 星图 | **已经做了**，`console/src/Graph3D.vue`（3d-force-graph） | 上一版这里写"Canvas 2D，3D 待决策"——已过时。自转由我们自己的 rAF 循环供帧（库冷却后不重绘，见 HANDOFF §4b） |
+| MCP 工具层 | **已经做了**，`core/src/mcp/server.mjs`（13 个工具，stdio） | 上一版写"MCP 封装后补不阻塞"——已补上。另有 CLI 与浏览器书签两个并列入口 |
 | ZCode skill 编排 | pipeline.mjs 固化编排 | 流水线是确定性代码，无需 agent 循环 |
 | serve.mjs 临时服务 | engine 常驻 /static/* | 端口冲突根除 |
 | 评分单帧 | 多帧最优匹配 + breakdown | W5 正名，动画噪声可测量 |
@@ -205,13 +232,22 @@ v1 设计→实现的差异（以上文为准，本节为勘误表）：
 **最终组件清单（全部已实现）：**
 ```
 core/src/
-  crawler/  capture(多帧+CSSOM) build_clone(CSSOM重写) recon(BFS+sitemap) shot_clone index_page
+  crawler/  capture(多帧+CSSOM+画布光栅化) build_clone(CSSOM重写) linker(接线+HAR)
+            recon(BFS+sitemap) shot_clone index_page multi-snapshot(多视口)
+            repair-css-refs repair-empty-assets responsive-upgrade motion(-css)
   differ/   diff(多帧+三维+差异形态) domdiff(parse5) shape(连通块形态判定)
             fixup(AI校准循环) style-probe(computed差异)
   harvest/  harvest(规则+LLM语义) xlsx(跨页汇总)
-  adapters/ nextjs/vue-vite/generic（探测自动路由）
-  pipeline.mjs（六阶段编排） engine-server.mjs（API+SSE+静态+并发槽） llm.mjs env.mjs
-console/    Atlas.vue（星图+施工舱 HUD v2/v3）
+  seo/      rules(66 条) collect audit pagination structured baseline matrix raw-html
+  live/     export(交付包) heal(离线本地化) health serve har live-html
+  verify/   verify(多视口) interactions(交互回放) compare
+  audit/    assets assets-report storage deliver-prune cas-gc orphans reclaim-orphans
+  deliver/  edit-manifest(改站起点) replace-domain
+  store/    cas(内容寻址去重)   session/   watch/   sandbox/   mcp/   browser/   jobs/
+  adapters/ index.mjs —— generic / nextjs / vueVite 三个适配器同文件（探测自动路由）
+  pipeline.mjs（六阶段编排） engine-server.mjs（HTTP+SSE+队列+槽位） cli.mjs llm.mjs env.mjs
+console/    Atlas.vue（壳）+ DetailDock / PagesView / JobsView / Graph3D…（11 个组件）
 ```
 
-**关键端口/路径**：engine :8900（/api/recon /api/forge /api/events /static/*）· vite :5173（proxy /api/）· 产物 workspace/<host>/
+**关键端口/路径**：engine :8900（/api/* /static/* /lm/* /px/*，见 engine-server.mjs 顶部）·
+vite :5173（proxy `/api/` **与 `/static/`**）· 产物 workspace/<host>/

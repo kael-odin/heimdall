@@ -418,10 +418,10 @@ node core\src\audit\assets.mjs apify.com --max 61
 
 ```cmd
 cd /d D:\Github-Star\heimdall
-node core\src\mcp\server.mjs        :: stdio MCP 服务器（12 个工具）
+node core\src\mcp\server.mjs        :: stdio MCP 服务器（13 个工具）
 ```
 
-工具：`heimdall_status/jobs/recon/forge/audit/watch/verify/tokens/components/matrix/live_export/dedupe`。
+工具：`heimdall_status/jobs/recon/forge/audit/watch/assets/verify/tokens/components/matrix/live_export/dedupe`。
 环境变量 `HEIMDALL_API`（默认 http://127.0.0.1:8900）与 `HEIMDALL_TOKEN`。
 
 **浏览器书签入口（给同事用）**：
