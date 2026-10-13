@@ -120,7 +120,13 @@ const sitesLoaded = ref(false); // 站点清单是否已经问过一次（首启
  *  null = 站点清单还没到，先不下结论。 */
 const curSiteMirrored = computed(() => sites.value.find(s => s.host === host.value)?.mirrored ?? null);
 const engine = ref({ ok: false, recon: null, forge: null });   // 引擎状态灯
-const autoRotate = ref(true);   // 星图自转开关
+/**
+ * 星图自转开关。默认值跟随 prefers-reduced-motion。
+ * 星图是这一屏唯一持续运动的元素，对勾了"减少动效"的用户，默认让它转是错的；
+ * 用户仍可在面板/设置里主动勾上 —— 那是明确的意图，不该被我们覆盖。
+ */
+const prefersReducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const autoRotate = ref(!prefersReducedMotion);   // 星图自转开关
 const showPanel = ref(typeof window === 'undefined' || window.innerWidth > 768);    // 左侧仪表面板折叠（小屏默认收起）
 /** 批量克隆：ids 由 PagesView 的勾选状态提供（勾选状态现在归它自己管） */
 async function forgeChecked(ids) {
@@ -592,7 +598,7 @@ async function finishRecon(taskId) {
 }
 
 // ---------- 每帧消化 pending 边（两端点亮后浮现） ----------
-setInterval(() => {
+const edgeTick = setInterval(() => {
   for (let i = pendingEdges.length - 1; i >= 0; i--) {
     const pe = pendingEdges[i];
     const f = urlNode.get(urlKey(pe.from));
@@ -623,7 +629,7 @@ async function pollEngine() {
     engine.value = await r.json();
   } catch { engine.value = { ok: false }; }
 }
-setInterval(pollEngine, 15000);
+const pollTick = setInterval(pollEngine, 15000);
 /**
  * 最近一次 SEO 审计（从磁盘读，不只在"本次会话跑过"时才有）。
  * 此前只由 SSE 事件写入 —— 刷新页面后报告卡就显示"尚未运行"，明明报告就在盘上。
@@ -1532,11 +1538,19 @@ onMounted(() => {
   });
   pollEngine();
 });
-onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.close(); for (const s of taskSources.values()) { try { s.close(); } catch {} } });
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown);
+  es?.close();
+  for (const s of taskSources.values()) { try { s.close(); } catch {} }
+  // 两个常驻定时器此前没人清理。今天不会观察到泄漏（Atlas 是根组件、不会卸载），
+  // 但"根组件永远不卸载"不是一条能长期成立的假设，清掉是零成本的。
+  clearInterval(edgeTick);
+  clearInterval(pollTick);
+});
 </script>
 
 <template>
-  <Graph3D v-show="view === 'atlas'" :nodes="gNodes" :links="gLinks" :tick="gTick" :auto-rotate="autoRotate" :palette="graphPalette" @node-click="onNodeClick" />
+  <Graph3D v-show="view === 'atlas'" :active="view === 'atlas'" :nodes="gNodes" :links="gLinks" :tick="gTick" :auto-rotate="autoRotate" :palette="graphPalette" @node-click="onNodeClick" />
 
   <div class="hud" v-if="view === 'atlas'">
     <div class="brand">HEIMDALL<span class="brand-sub">SITE ATLAS · 站点克隆工作台</span></div>
@@ -1569,7 +1583,12 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
     <p class="fr-note">需要登录的站点：先「本站操作 → 登录并保存会话」，之后的侦察 / 克隆 / 审计会自动带上这份登录态。</p>
   </div>
 
-  <!-- 左侧仪表面板 -->
+  <!-- 左下角一列：仪表面板 + 任务中心。
+       两者原先各自 position:fixed 锚在同一个角（面板 left:28/bottom:64、任务中心 left:20/bottom:58），
+       而任务中心更宽、z-index 更高 —— 展开时盖住面板的「显示」段，包括「星图自转」那个勾选框。
+       现在共用一层列容器，由 .bottom-left 负责排布（见 ui.css 里那段说明）。 -->
+  <div class="bottom-left" v-if="(view === 'atlas' && showPanel) || (tasks.length && view !== 'jobs')">
+  <!-- 仪表面板 -->
   <div class="panel surface" v-if="view === 'atlas' && showPanel">
     <div class="panel-title">仪表面板<button class="panel-collapse" @click="showPanel = false" title="收起" aria-label="收起仪表面板">—</button></div>
     <div class="panel-sec">
@@ -1586,23 +1605,6 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       <div class="eng-detail" v-if="engine.ok" title="克隆槽 = 正在跑的整页克隆（一个槽一个浏览器）。0/2 表示空闲。">克隆槽 {{ engine.forge?.slots ?? 0 }}/{{ engine.forge?.max ?? 2 }}{{ (engine.forge?.slots ?? 0) === 0 ? '（空闲）' : '' }} · 侦察 {{ engine.recon ? '进行中' : '空闲' }}</div>
     </div>
   </div>
-  <button class="panel-open" v-if="view === 'atlas' && !showPanel" @click="showPanel = true" aria-label="展开仪表面板" title="仪表面板"><Icon name="menu" decorative /></button>
-
-  <div class="seek surface">
-    <button class="theme-btn" @click="toggleTheme" :aria-label="theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'" :title="theme === 'dark' ? '切换浅色' : '切换深色'"><Icon :name="theme === 'dark' ? 'moon' : 'sun'" decorative /></button>
-    <input v-model="host" aria-label="目标站点域名" placeholder="输入目标域名或页面地址 · apify.com 或 apify.com/store" spellcheck="false" @keyup.enter="startRecon"
-      title="要分析的站点域名（可带 https://）。带路径时：侦察只认域名，克隆按整条地址走。回车或点「侦察」开始" />
-    <button @click="startRecon"
-      title="全站侦察：从 sitemap 与站内链接找出页面，逐页抓标题/类型/缩略图，产出星图与全站视图。页数上限由站点配方的 maxPages 决定，几十页通常 1-3 分钟">侦察</button>
-    <button class="seek-alt" @click="forgeSingle"
-      title="不侦察整站，只克隆输入框里这一个页面（带路径就按路径克隆，如 apify.com/store）：捕获 → 校准 → 评分，约 2-3 分钟。克隆产物照样能导出成可部署的离线包">只克隆此页</button>
-  </div>
-
-  <!-- 站点切换 + 本站操作（星图与工作视图现在共用 SiteBar；原先星图这里是把每个站点
-       一个按钮加一个 ×、再并上四个功能按钮平铺，站点到八个就折成三行） -->
-  <SiteBar v-if="view === 'atlas'" class="sites" :sites="sites" :host="host" :actions="siteActions" :busy="!!engine.audit || !!engine.clone" @pick="pickSiteByHost" @action="onSiteAction" />
-
-  <!-- 任务中心：每个任务的独立进度（不再被后一个任务覆盖） -->
   <!-- 任务浮层：只在不专门看任务的时候出现。
        此前没有视图守卫，于是「任务」视图里同一份任务列表会显示两遍
        （浮层 + 视图各一份）—— 这正是"重复赘余"的典型。 -->
@@ -1628,6 +1630,22 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); es?.
       </div>
     </div>
   </div>
+  </div>
+  <button class="panel-open" v-if="view === 'atlas' && !showPanel" @click="showPanel = true" aria-label="展开仪表面板" title="仪表面板"><Icon name="menu" decorative /></button>
+
+  <div class="seek surface">
+    <button class="theme-btn" @click="toggleTheme" :aria-label="theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'" :title="theme === 'dark' ? '切换浅色' : '切换深色'"><Icon :name="theme === 'dark' ? 'moon' : 'sun'" decorative /></button>
+    <input v-model="host" aria-label="目标站点域名" placeholder="输入目标域名或页面地址 · apify.com 或 apify.com/store" spellcheck="false" @keyup.enter="startRecon"
+      title="要分析的站点域名（可带 https://）。带路径时：侦察只认域名，克隆按整条地址走。回车或点「侦察」开始" />
+    <button @click="startRecon"
+      title="全站侦察：从 sitemap 与站内链接找出页面，逐页抓标题/类型/缩略图，产出星图与全站视图。页数上限由站点配方的 maxPages 决定，几十页通常 1-3 分钟">侦察</button>
+    <button class="seek-alt" @click="forgeSingle"
+      title="不侦察整站，只克隆输入框里这一个页面（带路径就按路径克隆，如 apify.com/store）：捕获 → 校准 → 评分，约 2-3 分钟。克隆产物照样能导出成可部署的离线包">只克隆此页</button>
+  </div>
+
+  <!-- 站点切换 + 本站操作（星图与工作视图现在共用 SiteBar；原先星图这里是把每个站点
+       一个按钮加一个 ×、再并上四个功能按钮平铺，站点到八个就折成三行） -->
+  <SiteBar v-if="view === 'atlas'" class="sites" :sites="sites" :host="host" :actions="siteActions" :busy="!!engine.audit || !!engine.clone" @pick="pickSiteByHost" @action="onSiteAction" />
 
     <!-- 工作台视图：页面 / 任务 / 报告 / 设置 -->
   <PagesView

@@ -63,10 +63,10 @@ const fmt = (v) => (Math.round(v * 10) / 10).toFixed(1) + props.unit;
 <style scoped>
 .spark { display: flex; flex-direction: column; gap: 3px; min-width: 150px; }
 .spark-head { display: flex; align-items: baseline; gap: 8px; }
-.spark-label { font-size: 11px; color: var(--muted); }
+.spark-label { font-size: 11px; color: var(--text-dim); }
 .spark-last { margin-left: auto; font-size: 12px; color: var(--text); font-family: var(--font-mono); }
-.spark-last i { font-style: normal; color: var(--muted); font-size: 10px; margin-left: 6px; }
+.spark-last i { font-style: normal; color: var(--text-dim); font-size: 10px; margin-left: 6px; }
 .spark-svg { width: 100%; height: 34px; color: var(--accent); }
-.spark-empty { font-size: 11px; color: var(--muted); padding: 8px 0; }
-.spark-range { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+.spark-empty { font-size: 11px; color: var(--text-dim); padding: 8px 0; }
+.spark-range { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-faint); font-family: var(--font-mono); }
 </style>

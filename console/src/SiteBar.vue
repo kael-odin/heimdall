@@ -120,36 +120,39 @@ watch(menuOpen, async (open) => {
 </template>
 
 <style scoped>
+/* 这一块是 v2「深空观测站」留下的：裸 hex / 裸 rgba 各一处，还引用了两个在 v3 里
+   已经不存在的 token（--muted / --cyan-line）。undefined 的 var() 会整条声明失效 ——
+   颜色退回继承色、边框退回 currentColor —— 于是站点条的标签和边框一直按"未上色"渲染，
+   浅色主题下尤其明显。现已全部换成 v3 token（见 style.css 顶部那张表）。 */
 .sitebar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sb-label { font-size: 11px; color: var(--muted); letter-spacing: .5px; }
+.sb-label { font-size: 11px; color: var(--text-dim); letter-spacing: .5px; }
 .sb-select {
-  background: rgba(255,255,255,.04); border: 1px solid var(--cyan-line); color: var(--text);
-  border-radius: 3px; padding: 5px 8px; font-size: 12px; color-scheme: dark; max-width: 300px;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--r-sm); padding: 5px 8px; font-size: 12px; color-scheme: dark; max-width: 300px;
 }
-.sb-select option { background: #14141a; color: #e2e8f0; }
-:global([data-theme="light"]) .sb-select { background: #fff; color-scheme: light; }
-:global([data-theme="light"]) .sb-select option { background: #fff; color: #0f172a; }
+.sb-select option { background: var(--surface); color: var(--text); }
+:global([data-theme="light"]) .sb-select { color-scheme: light; }
 .sb-menu-wrap { position: relative; }
 .sb-menu-btn {
-  color: var(--text); border: 1px solid var(--cyan-line); background: rgba(255,255,255,.04);
-  border-radius: 3px; padding: 5px 10px; font-size: 12px; cursor: pointer; white-space: nowrap;
+  color: var(--text); border: 1px solid var(--border); background: var(--surface-2);
+  border-radius: var(--r-sm); padding: 5px 10px; font-size: 12px; cursor: pointer; white-space: nowrap;
 }
 .sb-menu-btn:disabled { opacity: .45; cursor: not-allowed; }
 .sb-caret { font-size: 9px; opacity: .7; }
 .sb-menu {
   position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; min-width: 250px; padding: 4px;
-  display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--cyan-line);
+  display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--border); border-radius: var(--r-sm);
 }
 .sb-item {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
-  background: none; border: 0; color: var(--text); padding: 7px 9px; border-radius: 3px;
+  background: none; border: 0; color: var(--text); padding: 7px 9px; border-radius: var(--r-sm);
   font-size: 12px; cursor: pointer; width: 100%;
 }
-.sb-item:hover:enabled { background: rgba(255,255,255,.06); }
+.sb-item:hover:enabled { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .sb-item:disabled { opacity: .4; cursor: not-allowed; }
 .sb-item b { font-weight: 600; }
-.sb-item span { font-size: 11px; color: var(--muted); line-height: 1.35; }
+.sb-item span { font-size: 11px; color: var(--text-dim); line-height: 1.35; }
 .sb-item.danger b { color: var(--bad); }
-.sb-item.empty { color: var(--muted); cursor: default; }
-.sb-status { font-size: 11px; color: var(--muted); max-width: 46ch; line-height: 1.35; }
+.sb-item.empty { color: var(--text-dim); cursor: default; }
+.sb-status { font-size: 11px; color: var(--text-dim); max-width: 46ch; line-height: 1.35; }
 </style>

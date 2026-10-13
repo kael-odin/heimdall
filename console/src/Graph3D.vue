@@ -19,6 +19,13 @@ const props = defineProps({
   tick: { type: Number, default: 0 },
   autoRotate: { type: Boolean, default: true },
   /**
+   * 星图当前是否真的在屏幕上。父组件用 v-show 切视图，所以切到页面/任务/报告/设置时
+   * 这个组件**不会卸载**，而 spin() 是常驻 rAF 循环、每帧都自己调 renderer.render() ——
+   * 于是那几屏背后一直有个看不见的 WebGL 场景在满帧重绘。
+   * 用 prop 而不是读 DOM（`offsetParent`/`checkVisibility()`）：每帧读一次会强制排版。
+   */
+  active: { type: Boolean, default: true },
+  /**
    * 节点色板，由父组件按当前主题给出：{ types, running, fallback, synthetic }。
    * 颜色不烤进节点对象，是为了让主题切换只重喂一次 graphData，
    * 而不需要重建整份节点列表（重建会丢失力模拟的位置，星图会跳）。
@@ -59,7 +66,8 @@ const SPIN_DEG_PER_SEC = 6;   // 60 秒一圈：看得见，又不至于让人�
 function spin(t) {
   spinId = requestAnimationFrame(spin);
   if (disposed || !graph) return;
-  if (!props.autoRotate) { lastSpinT = 0; return; }
+  // 不在星图那一屏就别供帧（见 active prop 的注释）；关掉开关时同样什么都不做。
+  if (!props.autoRotate || !props.active) { lastSpinT = 0; return; }
   const dt = lastSpinT ? Math.min(t - lastSpinT, 120) : 0;
   lastSpinT = t;
   if (dt <= 0) return;

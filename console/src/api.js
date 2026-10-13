@@ -44,19 +44,6 @@ export function wsJson(host, rel) {
     .catch(() => null);
 }
 
-/** 调引擎 API。init.method 省略即 GET。 */
-export function apiFetch(path, init = {}) {
-  return fetch(API + path, { ...init, headers: { ...apiHeaders(), ...(init.headers ?? {}) } });
-}
-
-/** 调引擎 API 并解析 JSON；失败返回 null。 */
-export function apiJson(path, init) {
-  return apiFetch(path, init).then(r => (r.ok ? r.json() : null)).catch(() => null);
-}
-
-/** 按引擎任务约定发一个 POST，返回 { taskId } 或 { error }。 */
-export function apiPost(path, body) {
-  return apiFetch(path, { method: 'POST', body: JSON.stringify(body ?? {}) })
-    .then(async r => ({ ok: r.ok, ...(await r.json().catch(() => ({}))) }))
-    .catch(e => ({ ok: false, error: String(e) }));
-}
+// 这里原本还有 apiFetch / apiJson / apiPost 三个"调引擎 API"的封装，从建库起就没人用过：
+// 所有请求都写在各自的处理器里（要接 SSE、要记任务行、要挑错误文案），封装省不掉那几行，
+// 于是只留下一个并行的第二套写法。删掉 —— 留着一个"看起来该用"的死入口，比没有更误导。

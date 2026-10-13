@@ -29,7 +29,10 @@ const props = defineProps({
   meta: { type: Object, default: () => ({}) },     // nodeId -> { assets, visualGaps, interactions, updatedAt }
   theme: { type: String, default: 'dark' },
 });
-const emit = defineEmits(['pick', 'audit', 'close', 'detail', 'forge', 'delete', 'forge-checked', 'remove-checked']);
+// 'action' 是 SiteBar 的转发（模板里 `@action="$emit('action', $event)"`），
+// 原先漏在声明之外 —— 声明缺一项，Vue 只在 dev 里 warn，功能照跑，所以一直没人发现。
+// 'audit' 则相反：声明了、没有任何地方 emit，父组件也没接 —— 这次一并去掉。
+const emit = defineEmits(['pick', 'action', 'close', 'detail', 'forge', 'delete', 'forge-checked', 'remove-checked']);
 
 const typeColorThemed = (t) => typeColor(t, props.theme);
 

@@ -42,4 +42,3 @@ export const typeColor = (t, theme = 'dark') => {
   return theme === 'light' ? entry.light : entry.color;
 };
 export const typeCn = (t) => PAGE_TYPES[t]?.cn ?? (t || '未知');
-export const FALLBACK_COLOR = FALLBACK;
