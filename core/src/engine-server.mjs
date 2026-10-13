@@ -45,6 +45,8 @@ try {
   jobStore = openJobStore(process.env.HEIMDALL_JOBS_DB ?? join(DATA_ROOT, 'jobs.db'));
   const recovered = recoverInterrupted(jobStore);
   if (recovered) console.log('[jobs] recovered ' + recovered + ' interrupted job(s) from previous run');
+  const pruned = jobStore.prune();
+  if (pruned) console.log('[jobs] pruned ' + pruned + ' old job(s) past the retention cap');
 } catch (e) { console.warn('[jobs] store unavailable:', String(e).slice(0, 120)); }
 
 const PORT = Number(process.argv[2] ?? 8900);
@@ -88,6 +90,33 @@ const readBody = (req, limit = 64 * 1024) => new Promise((resolve, reject) => {
 const isLoopback = (req) => {
   const a = req.socket?.remoteAddress ?? '';
   return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+};
+
+/**
+ * 读 JSON 请求体 → cb(obj)。
+ *
+ * 这些启动路由原先**各自**写一遍 `let body=''; req.on('data', c => body += c)` ——
+ * 13 份，而且都没有上限。上面那道全局 Content-Length 检查挡不住它们：
+ * 分块传输的请求压根没有这个头，于是这条路上的内存是无界的。
+ * 顺带把 13 份 `try { JSON.parse(body || '{}') } catch {}` 收成一处。
+ * 解析失败照旧给 `{}` —— 字段缺省由各路由自己兜（这是原来的行为，不改）。
+ */
+const readJsonBody = (req, res, cb) => {
+  let body = '', n = 0, done = false;
+  req.on('data', (c) => {
+    if (done) return;
+    n += c.length;
+    if (n > 64 * 1024) { done = true; json(res, 413, { error: 'body too large' }); try { req.destroy(); } catch {} return; }
+    body += c;
+  });
+  req.on('end', () => {
+    if (done) return;
+    done = true;
+    let parsed = {};
+    try { parsed = JSON.parse(body || '{}'); } catch {}
+    cb(parsed);
+  });
+  req.on('error', () => { done = true; });
 };
 
 /**
@@ -329,11 +358,26 @@ const MAX_FORGE = (() => {
 // 症状只是控制台上那句「克隆槽 -1/2」。
 const forgeSlots = makeSlotBox(MAX_FORGE);
 
+/**
+ * 把一条事件推给这个任务的所有订阅者。
+ *
+ * **逐个 try** —— 这里原来是三处裸循环 `for (const res of t.subs) res.write(...)`：
+ * 只要有一个订阅者的套接字已经断了，就会当场抛出去。抛在子进程的 'exit' 回调里
+ * 是未捕获异常（可能带走整个引擎进程），抛在被 catch {} 包着的 stdout 回调里
+ * 则是"这条事件剩下的订阅者被静默跳过"。一个关掉的标签页不该有这两种后果。
+ * 写失败的订阅者直接从集合里摘掉（它自己也会在 req 'close' 时被删，这里只是不等那一刻）。
+ */
+const writeSubs = (t, payload) => {
+  for (const res of t.subs) {
+    try { res.write(payload); } catch { t.subs.delete(res); }
+  }
+};
+
 const push = (t, ev) => {
   t.events.push(ev);
   if (typeof ev?.kind === 'string' && ev.kind.endsWith('-error')) t.error = ev.error ?? 'error';
   jobStore?.appendEvent(t.id, ev);
-  for (const res of t.subs) res.write(`data: ${JSON.stringify(ev)}\n\n`);
+  writeSubs(t, `data: ${JSON.stringify(ev)}\n\n`);
   // 有进展就重置"无进展熔断"计时 —— 熔断判的是卡死，不是总耗时
   t.watchdog?.touch();
 };
@@ -354,7 +398,7 @@ const emitLog = (t, raw) => {
   t.logs.push(line);
   if (t.logs.length > LOG_KEEP) t.logs.splice(0, t.logs.length - LOG_KEEP);
   const ev = { kind: 'log', line };
-  for (const res of t.subs) res.write(`data: ${JSON.stringify(ev)}\n\n`);
+  writeSubs(t, `data: ${JSON.stringify(ev)}\n\n`);
   t.watchdog?.touch();
 };
 
@@ -429,11 +473,13 @@ function spawnTask(t, script, args, opts = {}) {
     t.watchdog?.stop();
     t.status = t.cancelRequested ? 'cancelled' : code === 0 ? 'done' : 'failed';
     t.endedAt = Date.now();
+    // 收尾：先记一条"任务结束"再挂断所有订阅者。push 内部已逐订阅者 try（见 writeSubs）。
+    // 这里的 res.end() 同样逐个 try —— 它在子进程 'exit' 回调里，抛出去就是未捕获异常。
     push(t, { kind: 'exit', code, status: t.status, killed: t.killed ?? undefined });
     // 任务刚落盘新产物，缓存的清单即刻变陈旧 —— 这一刻必须失效，不能等 TTL。
     // "刚克隆完打开资产页还是旧的"会是比卡顿难查得多的 bug。
     bustCaches();
-    for (const res of t.subs) res.end();
+    for (const res of t.subs) { try { res.end(); } catch { /* 订阅者已断开 */ } }
     t.subs.clear();
     if (t.kind === 'recon') runningRecon = null;
     else if (t.kind === 'audit') runningAudit = null;
@@ -453,6 +499,9 @@ function spawnTask(t, script, args, opts = {}) {
       console.warn('[slots] 归还了一个没占过的锻造槽（记账漏了一笔），已忽略');
     }
     jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
+    // 保留策略。放在这里而不是只放启动时：演示/长跑时引擎可能连着开好几天不重启，
+    // 只靠启动那一次裁剪就等于不裁。一次 SELECT 的开销，超限才会删。
+    try { jobStore?.prune(); } catch (e) { console.warn('[jobs] prune failed:', String(e).slice(0, 120)); }
   });
   return t;
 }
@@ -709,9 +758,13 @@ const handleRequest = async (req, res) => {
   applyCors(req, res);
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); res.end(); return; }
 
-  // 请求体上限。十来个 POST 处理器各自 `req.on('data')` 累加 body，谁都没有上限 ——
-  // 一个声明了 2GB 的请求就够把引擎撑爆。这里用 Content-Length 提前拦掉这种请求
-  // （分块传输没有长度头，本地工具场景下不追；真要堵就得所有处理器共用一个 readBody）。
+  // 请求体上限。两道：
+  //   ① 这里用 Content-Length 提前拦掉"声明了一个巨大 body"的请求（尤其是 /api/reveal、
+  //      登录这类不解析 body 的路由，它们根本不会走 readJsonBody）；
+  //   ② 真正读 body 的 13 个启动路由统一走 readJsonBody()，它自带 64KB 上限 ——
+  //      这一道才挡得住分块传输（没有长度头的请求，① 看不见）。
+  // 原先只有 ①，而注释末尾那句"真要堵就得所有处理器共用一个 readBody"是当时的自我提醒；
+  // 现在已经共用了（见 readJsonBody）。
   if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     const declared = Number(req.headers['content-length'] ?? 0);
     if (declared > MAX_BODY_BYTES) return json(res, 413, { error: 'body too large', limit: MAX_BODY_BYTES });
@@ -804,11 +857,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/recon') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let url, maxPages = 40;
-      try { ({ url, maxPages } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { url, maxPages = 40 } = b;
       try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
       if (runningRecon) return json(res, 409, { error: 'busy', taskId: runningRecon.id });
       json(res, 200, { taskId: startRecon(url, Math.min(Math.max(maxPages ?? 40, 5), 80)), url });
@@ -817,11 +867,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/forge') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let url, hostPost = true;
-      try { ({ url, hostPost } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { url, hostPost = true } = b;
       try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
       try {
         const { id, name } = startForge(url, { hostPost: hostPost !== false });
@@ -835,11 +882,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/clone-site') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let host, max = null, incremental = false, force = false;
-      try { ({ host, max, incremental, force } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { host, max = null, incremental = false, force = false } = b;
       host = sanitizeHost(host);
       if (!/^[a-z0-9.-]+$/.test(host)) return json(res, 400, { error: 'bad host' });
       if (runningClone) return json(res, 409, { error: 'busy', taskId: runningClone.id });
@@ -853,11 +897,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/audit') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let url, maxPages = 30;
-      try { ({ url, maxPages } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { url, maxPages = 30 } = b;
       try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
       if (runningAudit) return json(res, 409, { error: 'busy', taskId: runningAudit.id });
       const id = startAudit(url, Math.min(Math.max(maxPages ?? 30, 1), 200));
@@ -867,11 +908,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/matrix') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let sites = [], maxPages = 15;
-      try { ({ sites, maxPages } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { sites = [], maxPages = 15 } = b;
       sites = (Array.isArray(sites) ? sites : []).map(s => String(s).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')).filter(s => /^[a-z0-9.-]+$/i.test(s));
       if (sites.length < 2 || sites.length > 6) return json(res, 400, { error: 'need 2-6 valid hosts' });
       if (runningMatrix) return json(res, 409, { error: 'busy', taskId: runningMatrix.id });
@@ -882,11 +920,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/reclaim') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', async () => {
-      let host, apply = false;
-      try { ({ host, apply } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, async (b) => {
+      let { host, apply = false } = b;
       host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
       if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
       if (runningReclaim) return json(res, 409, { error: 'busy', host: runningReclaim });
@@ -910,11 +945,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/responsive-upgrade') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let host, threshold = 0.97, max = 8, force = false;
-      try { ({ host, threshold, max, force } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { host, threshold = 0.97, max = 8, force = false } = b;
       host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
       if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
       if (runningUpgrade) return json(res, 409, { error: 'busy', taskId: runningUpgrade.id });
@@ -925,11 +957,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/verify') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let host, page = null, maxPages = 20;
-      try { ({ host, page, maxPages } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { host, page = null, maxPages = 20 } = b;
       host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
       if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
       if (page != null && !/^[a-z0-9._-]+$/i.test(String(page))) return json(res, 400, { error: 'bad page' });
@@ -943,11 +972,8 @@ const handleRequest = async (req, res) => {
   // 在系统文件管理器里显示一个产物目录（导出交付包之后要"拿去发给同事"）。
   // 只允许 DATA_ROOT 以内的路径：这是个"打开资源管理器"的口子，不能变成任意路径探针。
   if (req.method === 'POST' && u.pathname === '/api/reveal') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let target = '';
-      try { ({ path: target } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      const target = b.path ?? '';
       const abs = isAbsolute(String(target)) ? String(target) : join(DATA_ROOT, String(target));
       if (!isInsideDataRoot(abs)) return json(res, 403, { error: 'path outside data root' });
       if (!existsSync(abs)) return json(res, 404, { error: 'not found', path: abs });
@@ -962,12 +988,8 @@ const handleRequest = async (req, res) => {
 
   // 登录态：开一个可见浏览器让人手动登录一次，之后所有抓取复用（见 src/session/）
   if (req.method === 'POST' && u.pathname === '/api/session/login') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let host = '';
-      try { ({ host } = JSON.parse(body || '{}')); } catch {}
-      host = String(host ?? '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/.*$/, '').toLowerCase();
+    readJsonBody(req, res, (b) => {
+      const host = String(b.host ?? '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/.*$/, '').toLowerCase();
       if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) return json(res, 400, { error: 'invalid host' });
       if (runningSession) return json(res, 409, { error: 'busy', taskId: runningSession.id });
       const task = makeTask('session', 'https://' + host);
@@ -991,11 +1013,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/live-export') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let host, root = 'mirror', rebuild = false;
-      try { ({ host, root, rebuild } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { host, root = 'mirror', rebuild = false } = b;
       host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
       if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
       if (runningLive) return json(res, 409, { error: 'busy', taskId: runningLive.id });
@@ -1006,11 +1025,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/assets-audit') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let host, maxPages = 60;
-      try { ({ host, maxPages } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { host, maxPages = 60 } = b;
       host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
       if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
       if (runningAssets) return json(res, 409, { error: 'busy', taskId: runningAssets.id });
@@ -1021,11 +1037,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/watch') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      let url, maxPages = 20, accept = false;
-      try { ({ url, maxPages, accept } = JSON.parse(body || '{}')); } catch {}
+    readJsonBody(req, res, (b) => {
+      let { url, maxPages = 20, accept = false } = b;
       try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
       if (runningWatch) return json(res, 409, { error: 'busy', taskId: runningWatch.id });
       const id = startWatch(url, Math.min(Math.max(maxPages ?? 20, 1), 200), !!accept);

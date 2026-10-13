@@ -45,4 +45,26 @@ for (const forceJson of [false, true]) {
     store.close();
     rmSync(dir, { recursive: true, force: true });
   });
+
+  /**
+   * 保留策略。两张表原先只增不删，界面上却只看得到最近 50 条 ——
+   * "看不到的那部分"就一直在磁盘上长。这里钉住"有界"这件事本身，
+   * 尤其是**事件要跟着任务一起走**：只删 jobs 不删 events 等于没裁。
+   */
+  test(`jobs(${label}): prune 只留最近 keep 个任务，事件跟着一起删`, () => {
+    const dir = tmp();
+    const path = join(dir, 'jobs' + (forceJson ? '.json' : '.db'));
+    const store = openJobStore(path, { forceJson });
+    for (let i = 1; i <= 7; i++) {
+      store.upsert({ id: 'j' + i, kind: 'forge', url: 'https://x.test/' + i, status: 'done', createdAt: i * 1000, endedAt: i * 1000 + 500 });
+      store.appendEvent('j' + i, { kind: 'exit', status: 'done' });
+    }
+    assert.equal(store.prune({ keep: 3 }), 4, '超出 3 条的 4 个任务应被删掉');
+    assert.deepEqual(store.list({ limit: 50 }).map(j => j.id).sort(), ['j5', 'j6', 'j7'], '留下的必须是最新的三个');
+    assert.equal(store.events('j1').length, 0, '被裁掉的任务，它的事件也要跟着走 —— 否则 events 表照样无限长');
+    assert.equal(store.events('j7').length, 1, '留下的任务事件不能丢');
+    assert.equal(store.prune({ keep: 3 }), 0, '没超限时什么都不删');
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
 }

@@ -13,3 +13,12 @@ export const esc = (s) => String(s ?? '')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
+
+/**
+ * 正则元字符转义 —— **注意这与上面的 esc 是两件事**（一个是 HTML 语义，一个是正则语义）。
+ *
+ * 原先有两处各自内联了一份**同名**的 `esc`，做的却是这件事
+ * （`deliver/replace-domain.mjs`、`live/heal.mjs`）。同名不同义是最容易搬错的那类东西：
+ * 把一处 `esc` 挪到另一处，行为会静默改变。所以这里给一个独立的名字。
+ */
+export const regexEscape = (s) => String(s ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

@@ -16,6 +16,7 @@ import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, readFileSy
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { UA } from '../ua.mjs';
+import { regexEscape } from '../html.mjs';
 
 const DYNAMIC_ENDPOINT = /^\/(?:_next\/image|_next\/data|api\/|cdn-cgi\/)/;
 
@@ -296,12 +297,11 @@ export function rewriteLocalRefs({ liveDir, map }) {
       else if (/\.(?:html?|js|mjs|cjs|css|json)$/i.test(n)) {
         let text = readFileSync(p, 'utf8');
         let hits = 0;
-        const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         for (const k of keys) {
           const to = map.get(k);
           for (const variant of [k, k.replace(/&/g, '&amp;')]) {
             // 边界感知：避免命中更长 URL 的子串（如 /lm/www.host/_next/… 里的 /_next/…）
-            const re = new RegExp('(?<![\\w.-])' + esc(variant), 'g');
+            const re = new RegExp('(?<![\\w.-])' + regexEscape(variant), 'g');
             const n2 = (text.match(re) || []).length;
             if (!n2) continue;
             hits += n2;

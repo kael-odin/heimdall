@@ -14,7 +14,7 @@ import { pickAdapter, refRewriteCandidates } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isNonAssetRef, isSoftHtml } from '../asset-ext.mjs';
 import { scanCssRefs, rewriteCssRefs, extractFontRules } from '../css-refs.mjs';
-import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag } from '../dom-refs.mjs';
+import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag, replaceRefTable } from '../dom-refs.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { writeFileAtomic } from '../fsutil.mjs';
@@ -272,7 +272,8 @@ const lookup = (raw) => {
 };
 function rewriteHtml(domText, cssFileName) {
   let html = domText;
-  for (const [origUrl, relPath] of Object.entries(resTable)) html = html.split(origUrl).join(relPath);
+  // 整表一次替换，而不是逐条 split/join —— 原因（前缀、重扫、速度）见 dom-refs.replaceRefTable
+  html = replaceRefTable(html, resTable);
   html = html.replace(/(<use\b[^>]*\b(?:href|xlink:href)=")([^"#]+)(#[^"]*)(")/gi, (m, head, file, frag, tail) => {
     const hit = lookup(file);
     return hit ? head + hit + frag + tail : m;

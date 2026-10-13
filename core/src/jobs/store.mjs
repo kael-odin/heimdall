@@ -12,6 +12,18 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 
+/**
+ * 任务历史的保留条数。
+ *
+ * jobs / events 两张表原先**只增不删**：每跑一次克隆就多几行 + 十几条事件，
+ * 一台长期开着的引擎会把 jobs.db 一直撑大（实测这台机器上 241 个任务 / 6836 条事件
+ * 已经 1.4MB，而这是从 9 月底到现在断断续续用的量）。界面上又只看得到最近 50 条，
+ * 所以"看不到的那部分"在磁盘上一直长。
+ *
+ * 500 条远大于界面用得上的量，纯粹当上限用 —— 目的是"有界"，不是"省空间"。
+ */
+export const DEFAULT_KEEP_JOBS = 500;
+
 function openSqlite(path) {
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync(path);
@@ -52,6 +64,19 @@ class SqliteJobStore {
     return this.db.prepare('SELECT ts, data FROM events WHERE job_id = ? ORDER BY id ASC LIMIT ?').all(jobId, limit)
       .map(r => ({ ts: r.ts, data: JSON.parse(r.data) }));
   }
+  /** 只留最近 keep 个任务，连同它们的事件一起删。返回删掉的任务数。 */
+  prune({ keep = DEFAULT_KEEP_JOBS } = {}) {
+    const ids = this.db.prepare('SELECT id FROM jobs ORDER BY created_at DESC').all().map(r => r.id).slice(keep);
+    if (!ids.length) return 0;
+    const delEvents = this.db.prepare('DELETE FROM events WHERE job_id = ?');
+    const delJob = this.db.prepare('DELETE FROM jobs WHERE id = ?');
+    this.db.exec('BEGIN');
+    try {
+      for (const id of ids) { delEvents.run(id); delJob.run(id); }
+      this.db.exec('COMMIT');
+    } catch (e) { try { this.db.exec('ROLLBACK'); } catch {} throw e; }
+    return ids.length;
+  }
   close() { try { this.db.close(); } catch {} }
 }
 
@@ -86,6 +111,15 @@ class JsonJobStore {
   get(id) { return this.data.jobs[id] ?? null; }
   list({ limit = 50 } = {}) { return Object.values(this.data.jobs).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, limit); }
   events(jobId, { limit = 500 } = {}) { return (this.data.events[jobId] ?? []).slice(0, limit); }
+  /** 与 SqliteJobStore.prune 同一套语义：只留最近 keep 个任务。 */
+  prune({ keep = DEFAULT_KEEP_JOBS } = {}) {
+    const jobs = Object.values(this.data.jobs).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    const drop = jobs.slice(keep);
+    if (!drop.length) return 0;
+    for (const j of drop) { delete this.data.jobs[j.id]; delete this.data.events[j.id]; }
+    this.persist();
+    return drop.length;
+  }
   close() {}
 }
 

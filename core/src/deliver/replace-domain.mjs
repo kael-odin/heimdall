@@ -21,6 +21,7 @@ import { existsSync, readdirSync, statSync, readFileSync, writeFileSync, mkdirSy
 import { join, extname, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE } from '../paths.mjs';
+import { regexEscape } from '../html.mjs';
 import { emit } from '../emit.mjs';
 
 const MAX_SCAN_BYTES = 8 * 1024 * 1024;
@@ -34,8 +35,8 @@ export const JS_EXT = new Set([...DEFAULT_EXT, '.js', '.mjs']);
  * 抽出来是为了**可测** —— 这条边界规则弄错一个字符，替换就会误伤别的字符串。
  */
 export function domainMatcher(from) {
-  const esc = String(from).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(?<![a-z0-9-])${esc}(?![a-z0-9-])`, 'gi');
+  const from$ = regexEscape(from);
+  return new RegExp(`(?<![a-z0-9-])${from$}(?![a-z0-9-])`, 'gi');
 }
 
 /** 扫出会被改动的文件与命中的主机名（含子域）。纯读，不写盘。 */

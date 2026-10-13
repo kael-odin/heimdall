@@ -10,6 +10,13 @@ import { dirname, join } from 'node:path';
 
 const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+/** 13 个工具，与 src/mcp/server.mjs 的 TOOLS 一一对应。加工具时同步改这里。 */
+const EXPECTED_TOOLS = [
+  'heimdall_status', 'heimdall_recon', 'heimdall_forge', 'heimdall_audit', 'heimdall_watch',
+  'heimdall_assets', 'heimdall_verify', 'heimdall_tokens', 'heimdall_components',
+  'heimdall_matrix', 'heimdall_live_export', 'heimdall_jobs', 'heimdall_dedupe',
+];
+
 function startServer() {
   const p = spawn(process.execPath, ['src/mcp/server.mjs'], { cwd: CORE, stdio: ['pipe', 'pipe', 'pipe'] });
   const rl = createInterface({ input: p.stdout });
@@ -37,8 +44,10 @@ test('mcp: initialize, tools/list and tools/call respond over stdio', async () =
     assert.equal(init.result.protocolVersion, '2025-03-26');
 
     const tools = await request('tools/list');
-    assert.ok(tools.result.tools.length >= 10, 'tool count: ' + tools.result.tools.length);
-    for (const name of ['heimdall_recon', 'heimdall_forge', 'heimdall_audit', 'heimdall_watch', 'heimdall_assets', 'heimdall_verify', 'heimdall_tokens', 'heimdall_matrix', 'heimdall_live_export']) {
+    // 数字钉死：原来是 `>= 10`，而实际是 13 —— 删掉三个工具这条断言照样绿。
+    // 这与本仓库"规则数由测试钉住"的做法一致（见 seo-rule-count.test.mjs）。
+    assert.equal(tools.result.tools.length, EXPECTED_TOOLS.length, '工具数变了就更新这份清单：' + tools.result.tools.map(t => t.name).join(', '));
+    for (const name of EXPECTED_TOOLS) {
       assert.ok(tools.result.tools.some(t => t.name === name), 'missing tool: ' + name);
     }
 

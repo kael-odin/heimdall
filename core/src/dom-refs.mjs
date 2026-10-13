@@ -19,6 +19,7 @@
  *    原自检只统计 `href.startsWith(origin)`，于是对上面那两条报 "0"。
  *    一个会撒谎的自检比没有自检更糟：它让人相信交付物是干净的。
  */
+import { regexEscape } from './html.mjs';
 
 /** <link> 标签的 rel token 列表（小写，已去空） */
 export function relTokens(tag) {
@@ -286,7 +287,7 @@ export function isStrayRef(value, origin, originRegex) {
  */
 export function findStrayRefs(html, origin) {
   const s = String(html ?? '');
-  const re = origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = regexEscape(origin);
   const out = [];
   for (const m of s.matchAll(/\b(src|poster)\s*=\s*"([^"]*)"/gi)) {
     if (isStrayRef(m[2], origin, re)) out.push({ kind: m[1], ref: m[2] });
@@ -303,4 +304,29 @@ export function findStrayRefs(html, origin) {
     if (href && isStrayRef(href, origin, re)) out.push({ kind: 'link:' + relTokens(m[0]).join(' '), ref: href });
   }
   return out;
+}
+
+/**
+ * 把一张「绝对地址 → 本地相对路径」的表整体替换进 HTML。
+ *
+ * 为什么不是 `for (const k in table) html = html.split(k).join(table[k])`：
+ *
+ * ① **前缀**。一个资源地址可能是另一个的前缀（`.../x.png` 与 `.../x.png?v=2`，
+ *    或者一次 A/B 资源变体）。逐条替换时短的先命中，就把长的改成了 `assets/x.png?v=2` ——
+ *    那个文件并不存在，而静态服务会忽略查询串、拿 `assets/x.png` 顶上：
+ *    于是这个变体**静默拿到了另一个资源的字节**，长键那条再也匹配不上自己。
+ *    没有任何下游自检会发现：`findStrayRefs` 只认"还留在绝对地址"，不认"指到了错的本地文件"。
+ * ② **重扫产物**。每一轮的输出会被下一轮再扫一遍：`a.png` → `assets/a.png` 之后，
+ *    若表里另有一条键恰好出现在这段输出里，就会被二次替换成 `assets/assets/a.png`。
+ * ③ **速度**。原来每张资产都要全文扫一遍整页 HTML（资产多的页面上这是构建时间大头）。
+ *
+ * 单次扫描 + 长键优先同时解决这三条：每个位置只被消费一次，替换结果不会被重扫。
+ * 对"键之间互不为前缀、且不出现在彼此的值里"这种常见情形，输出与逐条替换完全一致。
+ */
+export function replaceRefTable(html, table) {
+  const keys = Object.keys(table ?? {}).filter(Boolean);
+  if (!keys.length) return String(html ?? '');
+  keys.sort((a, b) => b.length - a.length);          // 同一位置上长键优先
+  const re = new RegExp(keys.map(regexEscape).join('|'), 'g');
+  return String(html ?? '').replace(re, (m) => table[m] ?? m);
 }

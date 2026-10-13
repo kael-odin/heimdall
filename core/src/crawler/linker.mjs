@@ -20,6 +20,7 @@ import { recordLearned } from '../site-profile.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { readJson, writeFileAtomic } from '../fsutil.mjs';
+import { replaceRefTable } from '../dom-refs.mjs';
 import { UA } from '../ua.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/linker.mjs <host>', '站点 host');
@@ -180,11 +181,15 @@ for (const name of pages) {
     } else if (/^https?:\/\//i.test(val)) absUrls.add(val);
   }
   mkdirSync(join(dir, 'assets'), { recursive: true });
+  // 先把这一页所有绝对地址抓下来，再**整表一次**替换。
+  // 逐条 `html.split(u).join(rel)` 会被前缀与"重扫产物"两条坑到（见 dom-refs.replaceRefTable）。
+  const localAssetMap = {};
   for (const u of absUrls) {
     const rel = await fetchAsset(u, dir);
-    if (rel) { html = html.split(u).join(rel); stats.assetsLocalized++; }
+    if (rel) { localAssetMap[u] = rel; stats.assetsLocalized++; }
     else failAsset(u, "img/source 绝对地址");
   }
+  html = replaceRefTable(html, localAssetMap);
 
   // 2b) 内联 style url() 本地化：图标 background-image 常写在内联样式（capture 只覆盖 src/href/srcset，这是盲区）
   const pageManifest = readJson(join(PAGES, name, 'manifest.json'));

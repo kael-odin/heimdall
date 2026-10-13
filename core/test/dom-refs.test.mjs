@@ -12,8 +12,47 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag, DROP_RELS, ASSET_RELS } =
+const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag, replaceRefTable, DROP_RELS, ASSET_RELS } =
   await import('../src/dom-refs.mjs');
+
+/**
+ * 整表替换。原实现是 `for (k in table) html = html.split(k).join(v)` ——
+ * 一个资源地址是另一个的前缀时（版本参数、A/B 变体），短的先命中就把长的改坏，
+ * 而长的那条随后再也匹配不上自己：**这个变体悄悄指向了另一个文件的字节**。
+ * 下游自检抓不到（findStrayRefs 只认"还留在绝对地址"，不认"指到了错的本地文件"）。
+ */
+test('replaceRefTable: 长键优先 —— 前缀键不会被短的先吃掉', () => {
+  const html = '<img src="https://cdn.test/a.png?v=2"><img src="https://cdn.test/a.png">';
+  const table = { 'https://cdn.test/a.png': 'assets/a.png', 'https://cdn.test/a.png?v=2': 'assets/a-v2.png' };
+  assert.equal(replaceRefTable(html, table), '<img src="assets/a-v2.png"><img src="assets/a.png">');
+
+  // 反例：这正是原来的写法（按插入顺序逐条 split/join）。
+  // 短的 `.../a.png` 是长的前缀，先替换就把 `.../a.png?v=2` 改成了 `assets/a.png?v=2` ——
+  // 那个文件并不存在，而静态服务会忽略查询串、拿 `assets/a.png` 顶上：
+  // 于是这个变体**静默拿到了另一个资源的字节**，长键那条再也匹配不上。
+  let naive = html;
+  for (const [k, v] of Object.entries(table)) naive = naive.split(k).join(v);
+  assert.equal(naive, '<img src="assets/a.png?v=2"><img src="assets/a.png">', '前提：旧写法确实会改错');
+  assert.notEqual(naive, replaceRefTable(html, table));
+});
+
+test('replaceRefTable: 常见情形与逐条替换结果一致（不是"顺手改了行为"）', () => {
+  const html = '<link href="https://cdn.test/x.css"><img src="https://cdn.test/y.png"><img src="/local.png">';
+  const table = { 'https://cdn.test/x.css': 'styles/x.css', 'https://cdn.test/y.png': 'assets/y.png' };
+  let naive = html;
+  for (const [k, v] of Object.entries(table)) naive = naive.split(k).join(v);
+  assert.equal(replaceRefTable(html, table), naive);
+  assert.equal(replaceRefTable(html, table), '<link href="styles/x.css"><img src="assets/y.png"><img src="/local.png">');
+});
+
+test('replaceRefTable: 空表 / 无命中 / 特殊字符都是恒等或安全行为', () => {
+  const html = '<img src="https://cdn.test/a+b(1).png">';
+  assert.equal(replaceRefTable(html, {}), html, '空表原样返回');
+  assert.equal(replaceRefTable(html, { 'https://other.test/z.png': 'assets/z.png' }), html, '没命中的原样返回');
+  // 键里有正则元字符：必须当字面量处理，否则 . ( ) + 会被当成量词/分组
+  assert.equal(replaceRefTable(html, { 'https://cdn.test/a+b(1).png': 'assets/p.png' }), '<img src="assets/p.png">');
+  assert.equal(replaceRefTable('', { 'https://cdn.test/a.png': 'assets/a.png' }), '');
+});
 
 const ORIGIN = 'https://vitest.dev';
 
