@@ -33,6 +33,7 @@ export const COMMANDS = {
   orphans: { script: 'src/audit/orphans.mjs', usage: 'orphans <host>', desc: '孤儿资产扫描（clone 内无引用，疑似可回收）' },
   'repair-empty': { script: 'src/crawler/repair-empty-assets.mjs', usage: 'repair-empty <host> [--dry-run]', desc: '修复 0 字节资产（追踪信标→透明像素；其它→原始 URL）' },
   repair:  { script: 'src/crawler/repair-css-refs.mjs', usage: 'repair <host> [--dry-run]', desc: '修复历史 clone 的 CSS 相对路径坏链（字体 styles/styles/… 等）' },
+  'motion-replay': { script: 'src/crawler/motion-replay.mjs', usage: 'motion-replay <host> --all [--dry]', desc: '把揭示类与脚本关键帧动效改写成纯 CSS 注入静态镜像（离线跑历史产物）' },
   assets:  { script: 'src/audit/assets.mjs', usage: 'assets <host> [--max N]', desc: '资产缺口扫描（视觉缺口 vs 元数据/追踪/设计替代）' },
   watch:   { script: 'src/watch/watch.mjs', usage: 'watch <host> [--max N] [--accept] [--fail-on-change]', desc: '站点变更监控（两次采样去噪 + 变更报告）' },
   verify:  { script: 'src/verify/verify.mjs', usage: 'verify <host> <page>|--all [--max N] [--threshold N]', desc: '多视口（375/768/1440）全页保真验证' },

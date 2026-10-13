@@ -27,7 +27,7 @@
  * 什么动画"就能被累计下来，而不是靠运气撞上某一帧。
  */
 export const MOTION_INIT = () => {
-  const seen = { animations: {}, transitions: {} };
+  const seen = { animations: {}, transitions: {}, waapi: [] };
   const key = (el) => {
     if (!el || el.nodeType !== 1) return '?';
     const c = typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
@@ -39,6 +39,140 @@ export const MOTION_INIT = () => {
     if (extra) cur.looped = true;
     bag[k] = cur;
   };
+
+  /**
+   * 把 `Element.animate()` 的**内容**记下来，而不只是"调用过一次"。
+   *
+   * 为什么值得记：这是**唯一**能拿到 JS 动效"长什么样"的地方 —— 脚本创建的动画
+   * 不在样式表里，cssom.css 里没有它，抓完就永远丢了。而它的关键帧是**以数据形式**
+   * 传进来的（`[{opacity:0},{opacity:1}]`），记下来就能原样改写成 CSS 重演。
+   * （打字机、自动轮播、Framer/GSAP 的一部分都走这条路；走行内样式或 setInterval 的抓不到，
+   *   那属于"双帧采样"该解决的事。）
+   *
+   * 三条自我约束：
+   *   · 只记**安全属性**（opacity / translate / scale / rotate / filter）。`transform`
+   *     刻意不记：它常与元素的行内定位耦合，重演时覆盖它会弄坏版面。
+   *   · 只记**能定位到稳定类名**的目标。没有类名就丢掉 —— 路径选择器在捕获后 DOM 被
+   *     改写过（剥 link、canvas 换 img）之后会指错元素，指错比不做更糟。
+   *   · 条数有上限。整页几百个动画既写不完也没意义。
+   */
+  const SAFE_PROP = { opacity: 1, translate: 1, scale: 1, rotate: 1, filter: 1 };
+  const MAX_SPECS = 24;   // 整页几百个动画既写不完也没意义
+
+  /**
+   * 把 `transform` 的常见写法搬到**独立变换属性**上（translate / scale / rotate）。
+   *
+   * 为什么不干脆记下 transform 原样重演：独立属性与 transform 是**相乘**关系，
+   * 而 transform 会整个覆盖元素的行内定位 —— 一旦我们把 transform 写进 `@keyframes`
+   * 并用 `fill: both` 挂在元素上，动画结束后元素就永久停在那个 transform 上，
+   * 原站用来定位的那份 transform 被顶掉了。拆成独立属性就没有这个问题。
+   * 认不出来的（matrix / skew / perspective / 混合多函数）返回 null —— **宁可不做，不可做错**。
+   * 实测 linear.app/agents 的入场动效就是 `translateY(20%)` + `blur(10px)`，正好落在能认的这一类。
+   */
+  const tfToIndep = (v) => {
+    const s = String(v).trim();
+    if (!s) return null;
+    if (s === 'none') return { translate: 'none', scale: 'none', rotate: 'none' };
+    const out = {};
+    const known = /^(translate3d|translateX|translateY|translate|scale3d|scaleX|scaleY|scale|rotate)$/i;
+    let count = 0;
+    const re = /([a-zA-Z0-9]+)\(\s*([^)]*)\)/g;
+    let m;
+    while ((m = re.exec(s))) {
+      const fn = m[1], args = m[2].trim().replace(/\s*,\s*/g, ' ');
+      if (!known.test(fn)) return null;
+      const f = fn.toLowerCase();
+      if (f === 'translate' || f === 'translated') out.translate = args;
+      else if (f === 'translate3d') { const a = args.split(' '); out.translate = a[0] + ' ' + (a[1] ?? '0'); }
+      else if (f === 'translatex') out.translate = args + ' 0';
+      else if (f === 'translatey') out.translate = '0 ' + args;
+      else if (f === 'scale') out.scale = args;
+      else if (f === 'scale3d') { const a = args.split(' '); out.scale = a[0] + ' ' + (a[1] ?? a[0]); }
+      else if (f === 'scalex') out.scale = args + ' 1';
+      else if (f === 'scaley') out.scale = '1 ' + args;
+      else if (f === 'rotate') out.rotate = args;
+      count++;
+    }
+    // 有没被吃掉的字符 = 有认不出的函数（或 matrix 之类），放弃。
+    // 注意**不能**用 `re.lastIndex` 来判断：exec 匹配失败时会把 lastIndex 归零，
+    // 于是"循环结束"和"一个都没匹配到"看起来一模一样 —— 那会让这个函数永远返回 null。
+    if (!count) return null;
+    if (s.replace(/[a-zA-Z0-9]+\(\s*[^)]*\)/g, '').trim()) return null;
+    return Object.keys(out).length ? out : null;
+  };
+
+  /**
+   * 关键帧有两种形状，都得认：
+   *   · 数组形式 `[{opacity:0, offset:0}, {opacity:1, offset:1}]`
+   *   · **字典形式** `{opacity:[0,1], transform:['translateY(20%)','none'], offset:[0,1]}`
+   * 字典形式是实际最常见的一种（实测 linear.app/agents 20 条全是它）——
+   * 上一版只认数组形式，于是那条路径**一条都没记下来**，而报告上看起来一切正常。
+   */
+  const toFrameArray = (frames) => {
+    if (Array.isArray(frames)) return frames;
+    if (frames && typeof frames === 'object') {
+      const keys = Object.keys(frames);
+      let len = 1;
+      for (const k of keys) if (Array.isArray(frames[k])) len = Math.max(len, frames[k].length);
+      const arr = [];
+      for (let i = 0; i < len; i++) {
+        const o = {};
+        for (const k of keys) {
+          const v = frames[k];
+          o[k] = Array.isArray(v) ? v[Math.min(i, v.length - 1)] : v;
+        }
+        arr.push(o);
+      }
+      return arr;
+    }
+    return null;
+  };
+
+  const normFrames = (frames) => {
+    const arr = toFrameArray(frames);
+    if (!arr) return null;
+    const out = [];
+    for (const f of arr.slice(0, 12)) {
+      if (!f || typeof f !== 'object') continue;
+      const o = {};
+      if (typeof f.offset === 'number') o.offset = f.offset;
+      for (const k of Object.keys(f)) {
+        if (k === 'offset') continue;
+        if (SAFE_PROP[k]) { o[k] = String(f[k]).slice(0, 60); continue; }
+        if (k === 'transform') { const t = tfToIndep(f[k]); if (!t) return null; Object.assign(o, t); }
+      }
+      if (Object.keys(o).filter(k => k !== 'offset').length) out.push(o);
+    }
+    return out.length >= 2 ? out : null;
+  };
+  const selOf = (el) => {
+    try {
+      const cls = (typeof el.className === 'string' ? el.className : '').trim().split(/\s+/)
+        .filter(c => c && c.length <= 40).slice(0, 2);
+      if (!cls.length) return null;
+      const esc = (c) => (typeof self !== 'undefined' && self.CSS && self.CSS.escape ? self.CSS.escape(c) : c.replace(/[^\w-]/g, '\\$&'));
+      return el.tagName.toLowerCase() + '.' + cls.map(esc).join('.');
+    } catch { return null; }
+  };
+  const record = (el, frames, options) => {
+    if (seen.waapi.length >= MAX_SPECS) return;
+    const selector = selOf(el);
+    if (!selector) return;
+    const nf = normFrames(frames);
+    if (!nf) return;
+    const o = typeof options === 'number' ? { duration: options } : (options ?? {});
+    seen.waapi.push({
+      selector,
+      frames: nf,
+      duration: typeof o.duration === 'number' ? o.duration : null,
+      delay: typeof o.delay === 'number' ? o.delay : null,
+      iterations: o.iterations === Infinity ? 'infinite' : (typeof o.iterations === 'number' ? o.iterations : null),
+      easing: typeof o.easing === 'string' ? o.easing.slice(0, 200) : null,
+      direction: typeof o.direction === 'string' ? o.direction : null,
+      fill: typeof o.fill === 'string' ? o.fill : null,
+    });
+  };
+
   document.addEventListener('animationstart', (e) => {
     bump(seen.animations, `${e.animationName || '?'} @ ${key(e.target)}`);
   }, true);
@@ -49,15 +183,16 @@ export const MOTION_INIT = () => {
   document.addEventListener('transitionrun', (e) => {
     bump(seen.transitions, `${e.propertyName || '?'} @ ${key(e.target)}`);
   }, true);
-  // 全局兜底：任何脚本创建的动画（Web Animations API）也记一笔
+  // 全局兜底：任何脚本创建的动画（Web Animations API）也记一笔，并尽量记下它的关键帧
   try {
-    const create = document.createElement.bind(document);
-    void create;
     if (window.Element?.prototype?.animate) {
       const orig = Element.prototype.animate;
-      Element.prototype.animate = function (...a) {
-        try { bump(seen.animations, `[waapi] @ ${key(this)}`); } catch { /* 记不上也不能影响页面 */ }
-        return orig.apply(this, a);
+      Element.prototype.animate = function (frames, options) {
+        try {
+          bump(seen.animations, `[waapi] @ ${key(this)}`);
+          record(this, frames, options);
+        } catch { /* 记不上也绝不能影响页面本身 */ }
+        return orig.apply(this, arguments);
       };
     }
   } catch { /* 环境不支持就只靠事件 */ }
@@ -96,8 +231,11 @@ export const MOTION_PROBE = () => {
   } catch { /* getAnimations 不可用就当没采到 */ }
 
   // 2) 揭示类动效的标记（它们通常滚动时才创建，快照里抓不到"正在跑"）
+  //    **不要再把 `[data-framer-name]` 放进来**：那是 Framer 给几乎每个图层都打的命名属性
+  //    （实测 framer.com/cms 一页 1361 个），当标记用会把 scrollReveal 计数吹大两个数量级 ——
+  //    而报告上那是一个看起来完全正常的错数字。真标记是 `[data-framer-appear-id]`。
   const reveal = {};
-  for (const s of ['[data-aos]', '[data-framer-appear-id]', '[data-framer-name]', '.wow', '[class*="reveal"]', '[class*="animate-in"]', '[data-scroll]', '[data-sal]', '[data-animate]']) {
+  for (const s of ['[data-aos]', '[data-framer-appear-id]', '.wow', '[class*="reveal"]', '[class*="animate-in"]', '[data-scroll]', '[data-sal]', '[data-animate]']) {
     try { const n = document.querySelectorAll(s).length; if (n) reveal[s] = n; } catch { /* 选择器不合法就跳过 */ }
   }
 
@@ -202,6 +340,9 @@ export function classifyMotion(raw = {}) {
     at: new Date().toISOString(),
     url: raw.url ?? null,
     counts,
+    // 脚本创建的动画的**内容**（关键帧 + 时序）。这是唯一能拿到"JS 动效长什么样"的地方 ——
+    // 抓完不记就永远丢了。motion-replay 拿它把这类动效改写成 CSS 重演。
+    waapi: Array.isArray(observed?.waapi) ? observed.waapi : [],
     drivers: Object.fromEntries(DRIVERS.map((d) => [d, {
       cn: DRIVER_CN[d],
       count: counts[d],

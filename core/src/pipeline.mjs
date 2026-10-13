@@ -103,6 +103,18 @@ try {
     await run('crawler/linker.mjs', [host]);
     await run('crawler/index-page.mjs', [host]);
   }
+  // 动效重演：把捕获到的"揭示类"与"脚本关键帧"改写成纯 CSS，让静态镜像里也有动效。
+  // 放在最后 —— 它读 motion.json，且必须在 clone/index.html 定稿之后再注入。
+  // **失败不影响本次锻造**（与源站指纹那一步同一原则）：这是"锦上添花"的一层，
+  // 没有它镜像照样是完整的，没理由因为一次重演失败把一整页的产物判死。
+  // 不单独发 forge-stage：它不是用户视角的一个阶段，而是 build 的收尾。
+  try {
+    log('\n==== [motion-replay] ====');
+    await run('crawler/motion-replay.mjs', [DIR]);
+  } catch (e) {
+    log('[motion-replay] skipped: ' + String(e).slice(0, 160));
+  }
+
   log(`\nPIPELINE DONE -> ${DIR}`);
 } catch (e) {
   failed = String(e);
