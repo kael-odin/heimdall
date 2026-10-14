@@ -101,7 +101,7 @@ node src/cli.mjs deliver example.com                   # 打包成前端可接�
 裸 `live <host>` 导出的是允许未命中请求回源的在线包；`--offline --strict` 会对已发现页面和声明的操作流程执行断网门禁，缺口会保留为候选包而不覆盖旧正式包。操作流程的声明方式见 [USAGE.md](USAGE.md)。
 需要同一流程的源站对照时显式加 `--compare-source`；许可分发的只读 GET 数据可用工作区 `read-data-plan.json` 与 `--include-readonly-data` 精确纳入。两种模式的范围和隐私限制也见 [USAGE.md](USAGE.md)。
 
-已有捕获页面时，可运行 `node core/src/cli.mjs discover-operations <siteId> --max-pages 5`，在源站当前可见页面中寻找菜单、标签、展开控件和同源分页候选。结果存放在私有的 `core/workspace/<siteId>/operation-discovery.json`（或 `HEIMDALL_DATA_DIR` 下对应位置），不进入交付包，也不通过引擎静态地址提供。命令复用本地登录会话，默认最多访问 5 页、每页 150 个请求，并阻断写请求、跨源请求、WebSocket 与 Service Worker。它只打开页面，**不会执行任何候选操作**；未扫描页、iframe 和 Shadow DOM 范围也会标明。候选须经人工审核并补可观察断言，才可写入工作区 `operation-plan.json`。GET 访问仍可能在源站产生业务副作用，运行前应确认授权范围。
+已有捕获页面时，可运行 `node core/src/cli.mjs discover-operations <siteId> --max-pages 5`，在源站当前可见页面中寻找菜单、标签、展开控件和同源分页候选。结果存放在私有的 `core/workspace/<siteId>/operation-discovery.json`（或 `HEIMDALL_DATA_DIR` 下对应位置），不进入交付包，也不通过引擎静态地址提供。默认只打开页面，**不会执行任何候选操作**。人工选定候选并写入私有 `operation-review.json` 后，加 `--execute-reviewed` 才会逐个重新打开页面执行所选操作，记录脱敏状态变化、请求类别和未探索分支。命令复用本地登录会话，默认最多访问 5 页、每页 150 个请求，且阻断写请求、跨源请求、WebSocket 与 Service Worker。点击后观察到变化不证明由点击导致；源站观察不等于离线镜像验收，仍需在 `operation-plan.json` 中加可观察断言并运行严格离线导出。清单格式和边界见 [USAGE.md](USAGE.md)。GET 访问仍可能在源站产生业务副作用，运行前应确认授权范围。
 
 ---
 

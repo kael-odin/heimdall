@@ -35,7 +35,9 @@ async function load() {
   const signal = controller.signal;
   const entries = Object.entries(ACCEPTANCE_SOURCES);
   const results = await Promise.all(entries.map(([key, source]) => fetchJson(
-    key === 'pages' ? `${API}/api/pages/${encodeURIComponent(h)}` : wsUrl(h, source.path), signal,
+    key === 'pages' ? `${API}/api/pages/${encodeURIComponent(h)}`
+      : key === 'scope' ? `${API}/api/queue/${encodeURIComponent(h)}`
+        : wsUrl(h, source.path), signal,
   )));
   if (serial !== current || signal.aborted) return;
   const sources = Object.fromEntries(entries.map(([key], i) => [key, results[i]]));
@@ -52,8 +54,9 @@ const status = (key) => {
   const s = summary.value.states[key];
   return s === 'missing' ? '未生成' : s === 'error' ? '读取失败' : summary.value.stale[key] ? '需重跑' : '已生成';
 };
-const sourceHref = key => key === 'pages'
-  ? tokenOf() && API !== location.origin ? '' : `${API}/api/pages/${encodeURIComponent(props.host)}`
+const sourceHref = key => key === 'pages' || key === 'scope'
+  ? tokenOf() && API !== location.origin ? ''
+    : `${API}/api/${key === 'pages' ? 'pages' : 'queue'}/${encodeURIComponent(props.host)}`
   : ACCEPTANCE_SOURCES[key]?.path ? wsOpenUrl(props.host, ACCEPTANCE_SOURCES[key].path) : '';
 const evidenceHref = path => path && !path.startsWith('GET ') ? wsOpenUrl(props.host, path) : '';
 
@@ -96,6 +99,23 @@ function download() {
         <div><b>{{ number(summary.untested) }}</b><span>未完整验证</span><small>侦察、队列与产物目标并集</small></div>
         <div><b>{{ number(summary.visualGaps) }}</b><span>视觉资源缺口</span><small v-if="summary.stale.assets">资产扫描过期，需重跑</small><small v-else>全部引用缺口 {{ number(summary.resourceRefs) }}</small></div>
       </div>
+      <div class="ac-scope">
+        <h3>队列范围 · 仅当前已发现页面</h3>
+        <p v-if="summary.states.scope !== 'ok'" class="ac-note">范围{{ summary.states.scope === 'missing' ? '未生成' : '无效或读取失败' }}，无法确认已发现页面是否全部入队。{{ summary.sourceErrors.scope || '' }}</p>
+        <template v-else>
+          <dl>
+            <div><dt>有效同源</dt><dd>{{ number(summary.scopeDiscovered) }}</dd></div>
+            <div><dt>新队列默认可入</dt><dd>{{ number(summary.scopeEligible) }}</dd></div>
+            <div><dt>新队列默认排除</dt><dd>{{ number(summary.scopeExcludedByDefault) }}</dd></div>
+            <div><dt>当前已入队</dt><dd>{{ number(summary.scopeInQueue) }}</dd></div>
+            <div><dt>尚未入队</dt><dd>{{ number(summary.scopeNotQueued) }}</dd></div>
+          </dl>
+          <p class="ac-note">新建普通队列时，类型过滤排除 {{ number(summary.scopeExcludedByType) }} 页、页数上限排除 {{ number(summary.scopeExcludedByPageLimit) }} 页。旧队列续跑补页后可能超过默认上限，实际范围以“当前已入队”为准。“克隆全部已发现页面”会纳入登录和法务页。</p>
+          <p v-if="summary.scopeOutsideAtlas" class="ac-note">当前队列另有 {{ number(summary.scopeOutsideAtlas) }} 个同源页面不在本次侦察图中，需单独核对。</p>
+          <p class="ac-note">{{ summary.scopeMaxPages == null ? '侦察页数上限未记录' : `侦察最多 ${number(summary.scopeMaxPages)} 页` }}{{ summary.scopeMaxDepth == null ? '' : `、深度 ${number(summary.scopeMaxDepth)}` }}{{ summary.scopeLimitReached ? '，已达到页数上限' : '' }}。站点实际页面可能更多。</p>
+          <p v-if="summary.scopeInvalidNodes || summary.scopeForeignNodes || summary.scopeReconFailures" class="ac-note">另有无效节点 {{ number(summary.scopeInvalidNodes) }}、站外节点 {{ number(summary.scopeForeignNodes) }}（不计入有效同源分母）；侦察失败 {{ number(summary.scopeReconFailures) }} 项，相关页面可能未被发现。</p>
+        </template>
+      </div>
       <div class="ac-detail">
         <div>
           <h3>证据状态</h3>
@@ -104,7 +124,7 @@ function download() {
               <span>{{ source.label }}</span>
               <strong :class="summary.states[key] === 'ok' && !summary.stale[key] ? 'ok' : 'warn'" :title="summary.sourceErrors[key] || ''">{{ status(key) }}</strong>
               <a v-if="sourceHref(key) && summary.states[key] === 'ok'" :href="sourceHref(key)" target="_blank" rel="noopener">查看 JSON</a>
-              <code v-else-if="key === 'pages'">GET /api/pages/{{ host }}</code>
+              <code v-else-if="key === 'pages' || key === 'scope'">GET /api/{{ key === 'pages' ? 'pages' : 'queue' }}/{{ host }}</code>
               <code v-else>{{ source.path }}</code>
               <em v-if="summary.sourceErrors[key]">{{ summary.sourceErrors[key] }}</em>
             </div>
@@ -167,6 +187,12 @@ function download() {
 .ac-metrics b { display: block; font-size: 21px; line-height: 1.2; color: var(--text); font-variant-numeric: tabular-nums; }
 .ac-metrics span { display: block; margin-top: 5px; font-size: 11px; color: var(--text-dim); }
 .ac-metrics small { display: block; margin-top: 4px; font-size: 10px; line-height: 1.35; color: var(--text-faint); }
+.ac-scope { margin-top: 15px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.ac-scope h3 { margin: 0 0 8px; font-size: 12px; color: var(--text); }
+.ac-scope dl { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.ac-scope dl > div { min-width: 0; }
+.ac-scope dt { font-size: 11px; color: var(--text-dim); }
+.ac-scope dd { margin: 3px 0 0; font-size: 16px; color: var(--text); font-variant-numeric: tabular-nums; }
 .ac-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; margin-top: 17px; }
 .ac-detail h3, .ac-failures h3 { margin: 0 0 8px; font-size: 12px; color: var(--text); }
 .ac-sources { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 15px; }
@@ -191,6 +217,6 @@ function download() {
 .ac-failures details { margin-top: 8px; }
 .ac-failures summary { color: var(--accent); cursor: pointer; font-size: 11px; }
 @media (max-width: 1100px) { .ac-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ac-metrics > div:nth-child(3) { border-right: 0; } .ac-metrics > div:nth-child(-n+3) { border-bottom: 1px solid var(--border); } }
-@media (max-width: 700px) { .acceptance { padding: 14px 12px; } .ac-head { flex-wrap: wrap; } .ac-actions { width: 100%; } .ac-actions button { min-height: 44px; } .ac-sources a, .ac-failures a { display: inline-flex; align-items: center; min-height: 44px; } .ac-detail { grid-template-columns: 1fr; gap: 17px; } .ac-failures li { grid-template-columns: 55px minmax(0, 1fr) auto; } .ac-failures li > span:nth-child(3) { grid-column: 2 / 4; } }
-@media (max-width: 450px) { .ac-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ac-metrics > div:nth-child(3) { border-right: 1px solid var(--border); } .ac-metrics > div:nth-child(even) { border-right: 0; } .ac-metrics > div:nth-child(4) { border-bottom: 1px solid var(--border); } .ac-sources { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .acceptance { padding: 14px 12px; } .ac-head { flex-wrap: wrap; } .ac-actions { width: 100%; } .ac-actions button { min-height: 44px; } .ac-sources a, .ac-failures a { display: inline-flex; align-items: center; min-height: 44px; } .ac-scope dl { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ac-detail { grid-template-columns: 1fr; gap: 17px; } .ac-failures li { grid-template-columns: 55px minmax(0, 1fr) auto; } .ac-failures li > span:nth-child(3) { grid-column: 2 / 4; } }
+@media (max-width: 450px) { .ac-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ac-metrics > div:nth-child(3) { border-right: 1px solid var(--border); } .ac-metrics > div:nth-child(even) { border-right: 0; } .ac-metrics > div:nth-child(4) { border-bottom: 1px solid var(--border); } .ac-scope dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ac-sources { grid-template-columns: 1fr; } }
 </style>

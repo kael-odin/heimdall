@@ -29,9 +29,13 @@ async function timedBody(response, timeoutMs) {
 
 /** Captures only sanitizer-approved response bodies; raw headers and bodies never enter the report. */
 export function sourceReadDataCollector({ origin, urls = [], onEntry,
+  onAccepted,
   captureTimeoutMs = CAPTURE_TIMEOUT_MS } = {}) {
   if (!Array.isArray(urls) || urls.length > MAX_URLS || (urls.length && typeof onEntry !== 'function')) {
     throw new TypeError('invalid source read-only data options');
+  }
+  if (onAccepted != null && typeof onAccepted !== 'function') {
+    throw new TypeError('invalid source read-only data observer');
   }
   if (!Number.isInteger(captureTimeoutMs) || captureTimeoutMs < 1 || captureTimeoutMs > CAPTURE_TIMEOUT_MS) {
     throw new TypeError('invalid source read-only data timeout');
@@ -68,7 +72,7 @@ export function sourceReadDataCollector({ origin, urls = [], onEntry,
     return false;
   }
 
-  async function capture(response, url) {
+  async function capture(response, url, flowIndex) {
     if (deadlineReached()) return;
     try {
       const status = response.status();
@@ -113,6 +117,7 @@ export function sourceReadDataCollector({ origin, urls = [], onEntry,
         .digest('hex');
       if (deadlineReached()) return;
       if (delivered.get(url) === fingerprint) {
+        onAccepted?.(entry, flowIndex);
         counts.accepted++;
         return;
       }
@@ -128,6 +133,7 @@ export function sourceReadDataCollector({ origin, urls = [], onEntry,
           return;
         }
         delivered.set(url, fingerprint);
+        onAccepted?.(entry, flowIndex);
         counts.accepted++;
       } catch {
         acceptedBytes -= body.length;
@@ -138,7 +144,7 @@ export function sourceReadDataCollector({ origin, urls = [], onEntry,
     }
   }
 
-  function observe(response) {
+  function observe(response, flowIndex) {
     if (!approved.size) return;
     const url = response.url();
     if (!approved.has(url) || response.request().method().toUpperCase() !== 'GET') return;
@@ -154,7 +160,7 @@ export function sourceReadDataCollector({ origin, urls = [], onEntry,
     }
     attempts++;
     const previous = inFlight.get(url) ?? Promise.resolve();
-    const task = previous.then(() => capture(response, url));
+    const task = previous.then(() => capture(response, url, flowIndex));
     inFlight.set(url, task);
     pending.add(task);
     void task.finally(() => {
@@ -184,4 +190,60 @@ export function sourceReadDataCollector({ origin, urls = [], onEntry,
   }
 
   return { observe, drain, summary };
+}
+
+/** Exact URLs and fingerprints stay in memory; comparison returns counts only. */
+export function addReadOnlyFlowEvidence(evidence, flowIndex, entry, url = entry.url) {
+  if (!(evidence instanceof Map) || !Number.isInteger(flowIndex) || flowIndex < 0
+    || typeof url !== 'string' || typeof entry?.body !== 'string') {
+    throw new TypeError('invalid read-only flow evidence');
+  }
+  const flow = evidence.get(flowIndex) ?? new Map();
+  const signatures = flow.get(url) ?? new Set();
+  const bodyHash = createHash('sha256').update(Buffer.from(entry.body, 'base64')).digest('hex');
+  signatures.add(JSON.stringify([entry.status, entry.mimeType, bodyHash]));
+  flow.set(url, signatures);
+  evidence.set(flowIndex, flow);
+}
+
+export function compareReadOnlyFlowEvidence(source, offline, flowCount) {
+  if (!(source instanceof Map) || !(offline instanceof Map)
+    || !Number.isInteger(flowCount) || flowCount < 0 || flowCount > 100) {
+    throw new TypeError('invalid read-only flow comparison');
+  }
+  const result = {
+    status: 'checked', checkedFlows: flowCount, matchedFlows: 0, mismatchedFlows: 0,
+    missing: 0, unexpected: 0, responseMismatch: 0,
+    statusMismatch: 0, mimeMismatch: 0, bodyMismatch: 0, variantMismatch: 0,
+    flows: [],
+  };
+  for (let index = 0; index < flowCount; index++) {
+    const expected = source.get(index) ?? new Map();
+    const actual = offline.get(index) ?? new Map();
+    const flow = { index, missing: 0, unexpected: 0, responseMismatch: 0 };
+    for (const [url, signatures] of expected) {
+      const observed = actual.get(url);
+      if (!observed) {
+        flow.missing++;
+      } else if (signatures.size !== observed.size
+        || [...signatures].some(signature => !observed.has(signature))) {
+        flow.responseMismatch++;
+        if (signatures.size === 1 && observed.size === 1) {
+          const [sourceStatus, sourceMime, sourceBody] = JSON.parse([...signatures][0]);
+          const [offlineStatus, offlineMime, offlineBody] = JSON.parse([...observed][0]);
+          if (sourceStatus !== offlineStatus) result.statusMismatch++;
+          if (sourceMime !== offlineMime) result.mimeMismatch++;
+          if (sourceBody !== offlineBody) result.bodyMismatch++;
+        } else result.variantMismatch++;
+      }
+    }
+    for (const url of actual.keys()) if (!expected.has(url)) flow.unexpected++;
+    result.missing += flow.missing;
+    result.unexpected += flow.unexpected;
+    result.responseMismatch += flow.responseMismatch;
+    if (flow.missing || flow.unexpected || flow.responseMismatch) result.mismatchedFlows++;
+    else result.matchedFlows++;
+    result.flows.push(flow);
+  }
+  return result;
 }

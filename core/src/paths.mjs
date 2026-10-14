@@ -47,6 +47,7 @@ export function isInside(root, file) {
  *     （交付包里的 HAR 是清洗过的，工作区里这份不是）
  *   · `operation-plan.json` —— 本地交互脚本，可包含输入值和内部选择器
  *   · `operation-discovery.json` —— 登录态下发现的候选操作与页面身份
+ *   · `operation-review.json` —— 人工批准的源站状态探索清单
  *   · 上述文件的备份/编辑器临时副本，可能保留同样内容
  *
  * `/static/**` 与 workspace 兜底都是"把目录原样发出去"的通道，
@@ -54,5 +55,5 @@ export function isInside(root, file) {
  */
 export function isSecretFile(file) {
   const name = String(file).split(/[/\\]/).at(-1).replace(/^\./, '');
-  return /^(?:session|network|operation-plan|operation-discovery)(?=$|[.\s(_~-])/i.test(name);
+  return /^(?:session|network|operation-plan|operation-discovery|operation-review)(?=$|[.\s(_~-])/i.test(name);
 }

@@ -24,7 +24,7 @@ const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const COMMANDS = {
   recon:   { script: 'src/crawler/recon.mjs', usage: 'recon <url> [maxPages] [maxDepth]', desc: '全站侦察 → atlas.json + 缩略图' },
-  'discover-operations': { script: 'src/crawler/discover-operations.mjs', usage: 'discover-operations <siteId> [--max-pages N] [--max-candidates N]', desc: '已捕获源页的只读操作候选 → 私有工作区报告（不执行候选）' },
+  'discover-operations': { script: 'src/crawler/discover-operations.mjs', usage: 'discover-operations <siteId> [--max-pages N] [--max-candidates N] [--execute-reviewed --max-actions N --max-explore-ms N]', desc: '源站操作候选与显式审核后的状态探索 → 私有工作区报告' },
   forge:   { script: 'src/pipeline.mjs', usage: 'forge <url> [pageName]', desc: '单页完整克隆流水线（capture→build→diff→fixup→harvest）' },
   queue:   { script: 'src/queue.mjs', usage: 'queue <host> [--max N|--all-discovered] [--force] [--incremental] [--missing-har] [--no-dedupe]', desc: '全站批量克隆（--all-discovered 含登录/法务页且无页数上限）' },
   audit:   { script: 'src/seo/audit.mjs', usage: 'audit <host> [--max N] [--threshold N] [--baseline F] [--update-baseline] [--fail-on-regression] [--tolerance N] [--require-baseline]', desc: 'SEO 审计（66 条规则，HTML/CSV/JSON）+ 回归基线门禁' },

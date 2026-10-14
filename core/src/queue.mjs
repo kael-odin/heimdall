@@ -48,23 +48,21 @@ const queuePath = join(BASE, 'queue.json');
 const emit = JSON_EVENTS ? emitRaw : () => {};
 
 const atlas = JSON.parse(readFileSync(join(BASE, 'recon', 'atlas.json'), 'utf8'));
-if (ALL_DISCOVERED) {
-  if (!Array.isArray(atlas.nodes)) {
-    console.error('[queue] --all-discovered 需要有效的 atlas.nodes 数组');
-    process.exit(2);
-  }
-  let atlasOrigin = null;
-  try { if (atlas.origin) atlasOrigin = new URL(atlas.origin).origin; } catch {}
-  if (!workspaceOrigin || (atlas.origin && atlasOrigin !== workspaceOrigin)) {
-    console.error('[queue] --all-discovered 无法确认 atlas 与站点工作区属于同一 origin');
-    process.exit(2);
-  }
+if (!Array.isArray(atlas.nodes)) {
+  console.error('[queue] 需要有效的 atlas.nodes 数组');
+  process.exit(2);
+}
+let atlasOrigin = null;
+try { if (atlas.origin) atlasOrigin = new URL(atlas.origin).origin; } catch {}
+if (!workspaceOrigin || (atlas.origin && atlasOrigin !== workspaceOrigin)) {
+  console.error('[queue] 无法确认 atlas 与站点工作区属于同一 origin');
+  process.exit(2);
 }
 const engineName = createPageNameResolver(BASE);
 const atlasRows = atlas.nodes
-  .filter(n => ALL_DISCOVERED || !PLAN.excludeTypes.includes(n.type))
+  .filter(n => ALL_DISCOVERED || !PLAN.excludeTypes.includes(n?.type))
   .map(n => ({ url: canonUrl(n?.url), type: n?.type }))
-  .filter(n => n.url && (!ALL_DISCOVERED || new URL(n.url).origin === workspaceOrigin));
+  .filter(n => n.url && /^https?:$/.test(new URL(n.url).protocol) && new URL(n.url).origin === workspaceOrigin);
 const discoveredTargets = ALL_DISCOVERED ? new Set(atlasRows.map(n => n.url)) : null;
 if (ALL_DISCOVERED && !discoveredTargets.size) {
   console.error('[queue] --all-discovered 的 atlas 没有有效同源页面');
@@ -76,6 +74,22 @@ let queue;
 let fresh = false;                      // 这次是新建的队列（--max 仍然生效）
 if (existsSync(queuePath)) {
   queue = JSON.parse(readFileSync(queuePath, 'utf8'));
+  if (!Array.isArray(queue)) {
+    console.error('[queue] 现有 queue.json 不是数组，已拒绝覆盖');
+    process.exit(2);
+  }
+  if (queue.some(row => !row || typeof row !== 'object' || !canonUrl(row.url)
+    || !['pending', 'queued', 'done', 'failed'].includes(row.status))) {
+    console.error('[queue] 现有队列包含无效 URL 或状态行，已拒绝续跑和覆盖');
+    process.exit(2);
+  }
+  if (queue.some(row => {
+    const url = new URL(canonUrl(row.url));
+    return !/^https?:$/.test(url.protocol) || url.origin !== workspaceOrigin;
+  })) {
+    console.error('[queue] 现有队列包含站外或非 HTTP URL，已拒绝续跑和覆盖');
+    process.exit(2);
+  }
   const knownUrls = new Set();
   queue = queue.filter(q => {
     const canonical = canonUrl(q.url);

@@ -81,7 +81,7 @@ test('whole-site v2 pass requires every target measured; explicit verification f
       { name: 'docs', assetFailed: 0, missingLocal: [], linksToLive: 0 }] }),
   };
   assert.equal(buildAcceptanceSummary({ sources }).verificationState, 'passed');
-  assert.match(acceptanceMarkdown(buildAcceptanceSummary({ site: { host: 'site.test' }, sources })), /全站多视口状态：多视口验证通过/);
+  assert.match(acceptanceMarkdown(buildAcceptanceSummary({ site: { host: 'site.test' }, sources })), /当前目标多视口状态：多视口验证通过/);
   sources.verify = artifact({ scoreVersion: 2, mode: 'sample', passed: true, pages: [] });
   assert.equal(buildAcceptanceSummary({ sources }).verificationState, 'sample');
   sources.verify = artifact({ scoreVersion: 2, mode: 'all', passed: false, pages: [] });
@@ -102,4 +102,50 @@ test('failed evidence is carried into downloadable Markdown with source path', (
   assert.match(md, /browser closed（queue\.json）/);
   assert.match(md, /评分版本：未生成 \/ 不可统计/);
   assert.match(md, /\| 多视口验证 \| 未生成 \| GET \/static\/site\.test\/verify\/verify-summary\.json \|/);
+});
+
+test('discovered clone scope keeps the denominator and not-queued gap separate from the default plan', () => {
+  const summary = buildAcceptanceSummary({ site: { host: 'site.test' }, sources: {
+    atlas: artifact({ nodes: [
+      { url: 'https://site.test/' }, { url: 'https://site.test/login', type: 'auth' },
+      { url: 'https://site.test/terms', type: 'legal' },
+    ] }),
+    queue: artifact([{ url: 'https://site.test/', status: 'done' }]),
+    scope: artifact({ scope: {
+      status: 'ok', discovered: 3, eligible: 1, excludedByDefault: 2,
+      inQueue: 1, notQueued: 2, limitReached: true, maxPages: 3, maxDepth: 2,
+      excludedByType: 2, excludedByPageLimit: 0,
+      invalidNodes: 1, foreignNodes: 1, reconFailures: 2,
+    } }),
+    pages: artifact({ pages: [] }), verify: missing, assets: missing, linker: missing,
+  } });
+  assert.equal(summary.states.scope, 'ok');
+  assert.equal(summary.scopeDiscovered, 3);
+  assert.equal(summary.scopeEligible, 1);
+  assert.equal(summary.scopeExcludedByDefault, 2);
+  assert.equal(summary.scopeExcludedByType, 2);
+  assert.equal(summary.scopeExcludedByPageLimit, 0);
+  assert.equal(summary.scopeNotQueued, 2);
+  assert.equal(summary.scopeInvalidNodes, 1);
+  assert.equal(summary.scopeForeignNodes, 1);
+  assert.equal(summary.scopeReconFailures, 2);
+  assert.equal(summary.planned, 1);
+  const md = acceptanceMarkdown(summary);
+  assert.match(md, /\| 已发现有效同源 URL（范围分母） \| 3 \|/);
+  assert.match(md, /\| 已发现但未入队 \| 2 \|/);
+  assert.match(md, /\| 侦察达到页数上限 \| 是 \|/);
+  assert.match(md, /\| 站外侦察节点（不计入分母） \| 1 \|/);
+  assert.match(md, /仅统计当前侦察已发现的有效同源 URL，不代表站点全部页面/);
+  assert.match(md, /\| 队列范围 \| 已生成 \| GET \/api\/queue\/site\.test \|/);
+});
+
+test('invalid clone scope is unknown rather than a zero-page success', () => {
+  const summary = buildAcceptanceSummary({ site: { host: 'site.test' }, sources: {
+    scope: artifact({ scope: { status: 'ok', discovered: 4, eligible: 2, inQueue: 1 } }),
+    pages: artifact({ pages: [] }),
+  } });
+  assert.equal(summary.states.scope, 'error');
+  assert.equal(summary.scopeDiscovered, null);
+  assert.equal(summary.scopeNotQueued, null);
+  assert.match(acceptanceMarkdown(summary), /\| 已发现但未入队 \| 未生成 \/ 不可统计 \|/);
 });

@@ -35,6 +35,19 @@ const CASES = {
       expect: [{ type: 'url', path: '/item/42?view=details' }, { type: 'text-includes', selector: 'h1', value: 'Item 42' }],
     },
   },
+  'data-spa': {
+    host: 'data-spa-deployment.invalid',
+    routes: ['/', '/catalog?view=featured'],
+    flow: {
+      path: '/',
+      actions: [{ type: 'click', selector: 'a[href="/catalog?view=featured"]' }],
+      expect: [
+        { type: 'url', path: '/catalog?view=featured' },
+        { type: 'text-includes', selector: 'h1', value: 'Featured catalog' },
+        { type: 'text-includes', selector: '#items', value: 'Beta' },
+      ],
+    },
+  },
 };
 
 const SPA_HTML = '<!doctype html><html><head><link rel="stylesheet" href="/assets/site.css"></head><body><main id="app"></main><script src="/assets/spa.js"></script></body></html>';
@@ -59,6 +72,40 @@ function render() {
 addEventListener('popstate', render);
 render();
 `;
+const DATA_PATH = '/api/catalog?view=featured';
+const DATA_HTML = '<!doctype html><html><head><link rel="stylesheet" href="/assets/site.css"></head><body><main id="app"></main><script type="module" src="/assets/app.mjs"></script></body></html>';
+const DATA_APP_JS = `
+const app = document.querySelector('#app');
+async function render() {
+  if (location.pathname !== '/catalog') {
+    app.innerHTML = '<h1>Data SPA home</h1><a href="/catalog?view=featured">Catalog</a>';
+    return;
+  }
+  app.innerHTML = '<p id="loading">Loading</p>';
+  await new Promise(resolve => setTimeout(resolve, 180));
+  const { loadCatalog } = await import('./catalog.mjs');
+  const data = await loadCatalog();
+  app.innerHTML = '<h1>' + data.heading + '</h1><ul id="items">' +
+    data.items.map(item => '<li>' + item + '</li>').join('') + '</ul>';
+}
+addEventListener('click', event => {
+  const link = event.target.closest('a[href="/catalog?view=featured"]');
+  if (!link) return;
+  event.preventDefault();
+  history.pushState(null, '', link.href);
+  void render();
+});
+addEventListener('popstate', () => { void render(); });
+void render();
+`;
+const DATA_CATALOG_JS = `
+export async function loadCatalog() {
+  const response = await fetch('${DATA_PATH}');
+  if (!response.ok) throw new Error('catalog request failed');
+  return response.json();
+}
+`;
+const DATA_BODY = '{"heading":"Featured catalog","items":["Alpha","Beta"]}';
 
 function writePage(site, name, path, html, origin) {
   const page = join(site, 'pages', name);
@@ -80,20 +127,31 @@ function prepareFixture(kind) {
   const deployed = join(root, 'deployed');
   const origin = `https://${fixture.host}`;
   try {
-    const pages = kind === 'spa'
-      ? fixture.routes.map((path, index) => [`route-${index}`, path, SPA_HTML])
-      : fixture.pages;
+    const pages = kind === 'ssr'
+      ? fixture.pages
+      : fixture.routes.map((path, index) => [`route-${index}`, path, kind === 'spa' ? SPA_HTML : DATA_HTML]);
     for (const [name, path, html] of pages) writePage(site, name, path, html, origin);
     mkdirSync(join(site, 'live', 'assets'), { recursive: true });
     writeFileSync(join(site, 'live', 'assets', 'site.css'), 'body { background-color: rgb(14, 36, 58); }');
     if (kind === 'spa') writeFileSync(join(site, 'live', 'assets', 'spa.js'), SPA_JS);
+    if (kind === 'data-spa') {
+      writeFileSync(join(site, 'live', 'assets', 'app.mjs'), DATA_APP_JS);
+      writeFileSync(join(site, 'live', 'assets', 'catalog.mjs'), DATA_CATALOG_JS);
+      writeFileSync(join(site, 'read-data-plan.json'), JSON.stringify({ version: 1, paths: [DATA_PATH] }));
+      writeFileSync(join(site, 'pages', 'route-0', 'network.har'), JSON.stringify({ log: { entries: [{
+        request: { method: 'GET', url: origin + DATA_PATH, headers: [] },
+        response: { status: 200, headers: [{ name: 'Content-Type', value: 'application/json' }],
+          content: { mimeType: 'application/json', text: DATA_BODY } },
+      }] } }));
+    }
     mkdirSync(join(site, 'recon'), { recursive: true });
     writeFileSync(join(site, 'recon', 'atlas.json'), JSON.stringify({
       origin, status: 'ok', nodes: fixture.routes.map(url => ({ url: origin + url })),
     }));
     writeFileSync(join(site, 'operation-plan.json'), JSON.stringify({ version: 1, flows: [fixture.flow] }));
 
-    const result = spawnSync(process.execPath, [EXPORT, fixture.host, '--offline', '--strict', '--root', 'mirror', '--out', exported], {
+    const result = spawnSync(process.execPath, [EXPORT, fixture.host, '--offline', '--strict', '--root', 'mirror',
+      ...(kind === 'data-spa' ? ['--include-readonly-data'] : []), '--out', exported], {
       cwd: CORE, env: { ...process.env, HEIMDALL_DATA_DIR: source }, encoding: 'utf8', timeout: 90_000,
     });
     assert.equal(result.status, 0, result.stderr + result.stdout);
@@ -105,6 +163,11 @@ function prepareFixture(kind) {
     assert.equal(health.operationProbe.checked, 1);
     assert.equal(health.operationProbe.failed, 0);
     assert.equal(health.operationProbe.untested, 0);
+    if (kind === 'data-spa') {
+      assert.equal(health.readOnlyData.included, 1);
+      assert.ok(health.operationProbe.flows[0].categories['dynamic-data'] >= 1,
+        'the delayed JSON request must be observed during the declared operation');
+    }
 
     cpSync(exported, deployed, { recursive: true });
     rmSync(source, { recursive: true, force: true });
@@ -146,7 +209,7 @@ async function stopBundle(child) {
   }
 }
 
-for (const kind of ['ssr', 'spa']) {
+for (const kind of ['ssr', 'spa', 'data-spa']) {
   test(`${kind.toUpperCase()} strict bundle survives relocation and origin blocking`, { timeout: 120_000 }, async () => {
     const fixture = prepareFixture(kind);
     let child;
@@ -182,7 +245,7 @@ for (const kind of ['ssr', 'spa']) {
         assert.equal(await page.locator('h1').textContent(), 'Revision 2');
         await page.reload();
         assert.equal(await page.locator('h1').textContent(), 'Revision 2');
-      } else {
+      } else if (kind === 'spa') {
         assert.equal(await page.locator('h1').textContent(), 'SPA home');
         await page.getByRole('link', { name: 'Catalog' }).click();
         assert.equal(new URL(page.url()).pathname + new URL(page.url()).search, '/catalog?tag=blue');
@@ -195,6 +258,19 @@ for (const kind of ['ssr', 'spa']) {
         assert.equal(await page.locator('h1').textContent(), 'Catalog: blue');
         await page.goto(base + '/item/42?view=details', { waitUntil: 'networkidle' });
         assert.equal(await page.locator('h1').textContent(), 'Item 42');
+      } else {
+        assert.equal(await page.locator('h1').textContent(), 'Data SPA home');
+        await page.getByRole('link', { name: 'Catalog' }).click();
+        await page.getByRole('heading', { name: 'Featured catalog' }).waitFor();
+        assert.equal(new URL(page.url()).pathname + new URL(page.url()).search, '/catalog?view=featured');
+        assert.deepEqual(await page.locator('#items li').allTextContents(), ['Alpha', 'Beta']);
+        const replay = await fetch(base + DATA_PATH);
+        assert.equal(replay.headers.get('x-heimdall-replay'), '1');
+        assert.equal(await replay.text(), DATA_BODY);
+        await page.reload({ waitUntil: 'networkidle' });
+        assert.equal(await page.locator('h1').textContent(), 'Featured catalog');
+        await page.goBack();
+        assert.equal(await page.locator('h1').textContent(), 'Data SPA home');
       }
       assert.deepEqual(outside, [], 'deployed bundle must not require another origin');
       await context.close();
@@ -212,11 +288,11 @@ function docker(args, timeout = 30_000) {
   return result.stdout.trim();
 }
 
-test('Docker network-none delivery serves SSR and SPA bundles without a source workspace', {
+test('Docker network-none delivery serves SSR, SPA and data-driven SPA bundles without a source workspace', {
   timeout: 600_000, skip: process.env.HEIMDALL_DOCKER_TEST !== '1',
 }, () => {
   docker(['info', '--format', '{{.ServerVersion}}']);
-  for (const kind of ['ssr', 'spa']) {
+  for (const kind of ['ssr', 'spa', 'data-spa']) {
     const fixture = prepareFixture(kind);
     const image = `heimdall-deploy-matrix:${process.pid}-${kind}`;
     const container = `heimdall-deploy-matrix-${process.pid}-${kind}`;
@@ -231,9 +307,12 @@ test('Docker network-none delivery serves SSR and SPA bundles without a source w
       const routes = kind === 'ssr'
         ? { '/': '<h1>Welcome</h1>', '/docs/': '<h1>Documentation</h1>',
           '/docs/next?revision=2': '<h1>Revision 2</h1>', '/assets/site.css': 'rgb(14, 36, 58)' }
-        : { '/': '<main id="app">', '/catalog?tag=blue': '<main id="app">',
+        : kind === 'spa' ? { '/': '<main id="app">', '/catalog?tag=blue': '<main id="app">',
           '/item/42?view=details': '<main id="app">', '/assets/site.css': 'rgb(14, 36, 58)',
-          '/assets/spa.js': "addEventListener('popstate', render)" };
+          '/assets/spa.js': "addEventListener('popstate', render)" }
+          : { '/': '<main id="app">', '/catalog?view=featured': '<main id="app">',
+            '/assets/site.css': 'rgb(14, 36, 58)', '/assets/app.mjs': "import('./catalog.mjs')",
+            '/assets/catalog.mjs': `fetch('${DATA_PATH}')`, [DATA_PATH]: DATA_BODY };
       const script = `
         const routes = JSON.parse(process.argv[1]);
         const { existsSync } = await import('node:fs');

@@ -39,6 +39,7 @@ import { buildCoverageLedger } from './coverage.mjs';
 import { readOperationPlan } from './operation-plan.mjs';
 import { readDataPlan } from './read-data-plan.mjs';
 import { captureSourceOperations } from '../crawler/source-operations.mjs';
+import { addReadOnlyFlowEvidence, compareReadOnlyFlowEvidence } from '../crawler/source-read-data.mjs';
 import { loadSession } from '../session/store.mjs';
 import { auditBundlePrivacy } from './privacy-audit.mjs';
 import { sanitizeStaticHtml, isStaticCloneChooserHtml, staticCloneChooserHtml } from '../static-html-safety.mjs';
@@ -268,6 +269,7 @@ const operationPlan = readOperationPlan(BASE, origin, preflightRoutes);
 let earlySource = null;
 let earlySourceError = null;
 const currentSourceReadOnlyKeys = new Set();
+const sourceFlowReadOnlyEvidence = new Map();
 if (COMPARE_SOURCE && INCLUDE_READONLY_DATA && dataPlan.status === 'ok'
   && operationPlan.status === 'ok' && operationPlan.flows.length) {
   try {
@@ -284,6 +286,9 @@ if (COMPARE_SOURCE && INCLUDE_READONLY_DATA && dataPlan.status === 'ok'
         }
         if (!prior) harMap.set(key, entry);
         currentSourceReadOnlyKeys.add(key);
+      },
+      onReadOnlyObservation: (entry, flowIndex) => {
+        addReadOnlyFlowEvidence(sourceFlowReadOnlyEvidence, flowIndex, entry);
       },
     });
   } catch (error) { earlySourceError = error; }
@@ -375,6 +380,7 @@ health.readOnlyData = {
   ...(COMPARE_SOURCE && INCLUDE_READONLY_DATA ? {
     sourceCurrentAccepted: currentSourceReadOnlyKeys.size,
     sourceCurrentMissing: dataPlan.urls.filter(url => !currentSourceReadOnlyKeys.has(harKey('GET', url))).length,
+    flowParity: { status: 'not-tested', checkedFlows: 0, mismatchedFlows: 0 },
   } : {}),
   ...(dataPlan.issue ? { issue: dataPlan.issue } : {}),
 };
@@ -421,6 +427,9 @@ health.strictBlockers = {
   sourceReadOnlyCurrentMissing: COMPARE_SOURCE && INCLUDE_READONLY_DATA
     ? health.readOnlyData.sourceCurrentMissing : 0,
   offlineReadOnlyRequestMissing: 0,
+  offlineReadOnlyCaptureFailed: 0,
+  readOnlyFlowMismatch: 0,
+  readOnlyFlowUntested: 0,
   sourceReadOnlyCaptureFailed: earlySource
     ? (earlySource.readOnlyData?.rejected ?? 0) + (earlySource.readOnlyData?.oversized ?? 0)
       + (earlySource.readOnlyData?.failed ?? 0)
@@ -457,6 +466,7 @@ if (STRICT) {
   }
   health.strictBlockers.browserUntested = health.browserProbe.untested;
   const offlineReadOnlyKeys = new Set();
+  const offlineFlowReadOnlyEvidence = new Map();
   if (operationPlan.flows.length && !health.strictBlockers.browserFailed
     && !health.strictBlockers.browserUntested
     && !Object.entries(health.strictBlockers).some(([key, value]) =>
@@ -465,6 +475,9 @@ if (STRICT) {
       health.operationProbe = await probeOfflineOperations(OUT, operationPlan.flows, {
         readOnlyGetUrls: COMPARE_SOURCE && INCLUDE_READONLY_DATA ? dataPlan.urls : [],
         onReadOnlyGet: url => offlineReadOnlyKeys.add(harKey('GET', url)),
+        onReadOnlyObservation: (url, entry, flowIndex) => {
+          addReadOnlyFlowEvidence(offlineFlowReadOnlyEvidence, flowIndex, entry, url);
+        },
       });
       health.strictBlockers.operationFailed = health.operationProbe.failed;
     } catch (error) {
@@ -482,6 +495,12 @@ if (STRICT) {
     health.readOnlyData.offlineMissing = dataPlan.urls.filter(url => !offlineReadOnlyKeys.has(harKey('GET', url))).length;
     health.readOnlyData.offlineStatus = health.operationProbe.status === 'checked' ? 'checked' : 'not-tested';
     health.strictBlockers.offlineReadOnlyRequestMissing = health.readOnlyData.offlineMissing;
+    if (health.operationProbe.readOnlyData) {
+      health.readOnlyData.offlineCapture = health.operationProbe.readOnlyData;
+      health.strictBlockers.offlineReadOnlyCaptureFailed =
+        health.operationProbe.readOnlyData.rejected + health.operationProbe.readOnlyData.oversized
+        + health.operationProbe.readOnlyData.failed;
+    }
   }
   if (COMPARE_SOURCE) {
     if (operationPlan.status !== 'ok' || !operationPlan.flows.length) {
@@ -519,6 +538,18 @@ if (STRICT) {
         health.strictBlockers.sourceOperationUntested = operationPlan.flows.length;
       }
     }
+  }
+  if (COMPARE_SOURCE && INCLUDE_READONLY_DATA) {
+    const comparable = earlySource?.status === 'checked' && earlySource.failed === 0
+      && earlySource.untested === 0 && health.operationProbe.status === 'checked'
+      && health.operationProbe.failed === 0 && health.operationProbe.untested === 0
+      && health.operationProbe.readOnlyData;
+    if (comparable) {
+      health.readOnlyData.flowParity = compareReadOnlyFlowEvidence(
+        sourceFlowReadOnlyEvidence, offlineFlowReadOnlyEvidence, operationPlan.flows.length,
+      );
+      health.strictBlockers.readOnlyFlowMismatch = health.readOnlyData.flowParity.mismatchedFlows;
+    } else health.strictBlockers.readOnlyFlowUntested = operationPlan.flows.length || 1;
   }
 }
 // 健康报告只需路径定位问题，查询参数可能含临时凭据。

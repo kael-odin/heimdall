@@ -3,6 +3,7 @@ const numberOrNull = value => Number.isFinite(value) && value >= 0 ? value : nul
 export const ACCEPTANCE_SOURCES = {
   atlas: { label: '侦察', path: 'recon/atlas.json' },
   queue: { label: '计划队列', path: 'queue.json' },
+  scope: { label: '队列范围', path: null },
   pages: { label: '克隆产物', path: null },
   verify: { label: '多视口验证', path: 'verify/verify-summary.json' },
   assets: { label: '资产扫描', path: 'audit/asset-gaps.json' },
@@ -46,10 +47,22 @@ function isStale(source, latestCloneAt) {
 
 const sum = (rows, key) => rows.reduce((total, row) => total + (numberOrNull(row?.[key]) ?? 0), 0);
 const short = value => String(value ?? '').replace(/\s+/g, ' ').slice(0, 180);
+const count = value => Number.isInteger(value) && value >= 0;
+function validScopeResponse(data) {
+  const scope = data?.scope;
+  if (!['ok', 'missing', 'invalid'].includes(scope?.status)) return false;
+  if (scope.status !== 'ok') return true;
+  return ['discovered', 'eligible', 'inQueue', 'notQueued', 'excludedByDefault']
+    .every(key => count(scope[key]))
+    && scope.discovered === scope.eligible + scope.excludedByDefault
+    && scope.discovered === scope.inQueue + scope.notQueued;
+}
 
 export function buildAcceptanceSummary({ site = null, sources = {} } = {}) {
   const atlas = usable(sources.atlas, x => Array.isArray(x?.nodes));
   const queue = usable(sources.queue, Array.isArray);
+  const scopeResponse = usable(sources.scope, validScopeResponse);
+  const scope = scopeResponse?.scope?.status === 'ok' ? scopeResponse.scope : null;
   const pagesData = usable(sources.pages, x => Array.isArray(x?.pages));
   const verify = usable(sources.verify, x => Array.isArray(x?.pages));
   const assets = usable(sources.assets, x => Array.isArray(x?.pages) && !!x.summary);
@@ -68,11 +81,15 @@ export function buildAcceptanceSummary({ site = null, sources = {} } = {}) {
   const states = {
     atlas: sourceState(sources.atlas, x => Array.isArray(x?.nodes)),
     queue: sourceState(sources.queue, Array.isArray),
+    scope: sourceState(sources.scope, validScopeResponse),
     pages: sourceState(sources.pages, x => Array.isArray(x?.pages)),
     verify: sourceState(sources.verify, x => Array.isArray(x?.pages)),
     assets: sourceState(sources.assets, x => Array.isArray(x?.pages) && !!x.summary),
     linker: sourceState(sources.linker, x => Array.isArray(x?.pages)),
   };
+  if (states.scope === 'ok' && scopeResponse.scope.status !== 'ok') {
+    states.scope = scopeResponse.scope.status === 'missing' ? 'missing' : 'error';
+  }
 
   const discoveredKeys = new Set(atlas?.nodes.map((n, i) => pageKey(n?.url, `atlas:${n?.id ?? i}`)) ?? []);
   const plannedKeys = new Set(queue?.map((q, i) => pageKey(q?.url, `queue:${q?.name ?? i}`)) ?? []);
@@ -141,10 +158,28 @@ export function buildAcceptanceSummary({ site = null, sources = {} } = {}) {
     generatedAt: new Date().toISOString(),
     states, stale,
     sourceErrors: Object.fromEntries(Object.entries(states).filter(([, state]) => state === 'error')
-      .map(([key]) => [key, short(sources[key]?.reason || 'JSON 结构不符合预期')])),
+      .map(([key]) => [key, short(sources[key]?.reason || (key === 'scope' && sources.scope?.data?.scope?.issue === 'foreign-queue-url'
+        ? '旧队列含站外或非 HTTP URL，请检查 queue.json'
+        : key === 'scope' && sources.scope?.data?.scope?.status === 'invalid'
+          ? '侦察或队列范围无效，请检查来源文件' : 'JSON 结构不符合预期'))])),
     discovered: atlas ? discoveredKeys.size : null,
     discoveredRaw: atlas?.nodes.length ?? null,
     reconCapped: !!atlas && numberOrNull(atlas.meta?.maxPages) !== null && atlas.nodes.length >= atlas.meta.maxPages,
+    scopeDiscovered: scope?.discovered ?? null,
+    scopeEligible: scope?.eligible ?? null,
+    scopeInQueue: scope?.inQueue ?? null,
+    scopeNotQueued: scope?.notQueued ?? null,
+    scopeOutsideAtlas: scope?.outsideAtlas ?? null,
+    scopeExcludedByDefault: scope?.excludedByDefault ?? null,
+    scopeExcludedByType: numberOrNull(scope?.excludedByType),
+    scopeExcludedByPageLimit: numberOrNull(scope?.excludedByPageLimit),
+    scopeInvalidNodes: numberOrNull(scope?.invalidNodes),
+    scopeForeignNodes: numberOrNull(scope?.foreignNodes),
+    scopeReconFailures: numberOrNull(scope?.reconFailures),
+    scopeLimitReached: scope?.maxPages == null ? null
+      : typeof scope.limitReached === 'boolean' ? scope.limitReached : null,
+    scopeMaxPages: numberOrNull(scope?.maxPages),
+    scopeMaxDepth: numberOrNull(scope?.maxDepth),
     planned: queue ? plannedKeys.size : null,
     plannedRaw: queue?.length ?? null,
     plannedCloned,
@@ -175,11 +210,22 @@ const markdownText = value => short(value).replace(/[\\`*_[\]<>]/g, '\\$&');
 const sourceStatusText = { ok: '已生成', missing: '未生成', error: '读取失败' };
 const sourcePath = (host, key, source) => key === 'pages'
   ? `GET /api/pages/${encodeURIComponent(host)}`
-  : `GET /static/${encodeURIComponent(host)}/${source.path}`;
+  : key === 'scope' ? `GET /api/queue/${encodeURIComponent(host)}`
+    : `GET /static/${encodeURIComponent(host)}/${source.path}`;
 
 export function acceptanceMarkdown(summary) {
   const rows = [
     ['侦察发现（唯一 URL）', summary.discovered], ['计划克隆（唯一 URL）', summary.planned],
+    ['已发现有效同源 URL（范围分母）', summary.scopeDiscovered],
+    ['新建默认队列可入队', summary.scopeEligible], ['新建默认队列排除（类型及页数上限）', summary.scopeExcludedByDefault],
+    ['新队列类型过滤排除', summary.scopeExcludedByType], ['新队列页数上限排除', summary.scopeExcludedByPageLimit],
+    ['已发现且已入队', summary.scopeInQueue], ['已发现但未入队', summary.scopeNotQueued],
+    ['当前队列同源但不在本次侦察', summary.scopeOutsideAtlas],
+    ['无效侦察节点（不计入分母）', summary.scopeInvalidNodes],
+    ['站外侦察节点（不计入分母）', summary.scopeForeignNodes],
+    ['侦察失败记录', summary.scopeReconFailures],
+    ['侦察达到页数上限', summary.scopeLimitReached == null ? null : summary.scopeLimitReached ? '是' : '否'],
+    ['侦察页数上限', summary.scopeMaxPages], ['侦察深度上限', summary.scopeMaxDepth],
     ['计划内已有克隆', summary.plannedCloned], ['实际克隆产物', summary.cloned],
     ['v2 完整验证', summary.verified], ['未完整验证（目标并集）', summary.untested],
     ['历史口径逐页结果', summary.legacy], ['v2 部分测量', summary.partial],
@@ -190,9 +236,10 @@ export function acceptanceMarkdown(summary) {
   ];
   const lines = [
     `# ${summary.host || '未命名站点'} 验收摘要`, '',
-    `生成时间：${summary.generatedAt}`, `全站多视口状态：${VERIFICATION_LABELS[summary.verificationState]}；评分版本：${display(summary.scoreVersion)}`, '',
+    `生成时间：${summary.generatedAt}`, `当前目标多视口状态：${VERIFICATION_LABELS[summary.verificationState]}；评分版本：${display(summary.scoreVersion)}`, '',
     '| 指标 | 数值 |', '| --- | ---: |', ...rows.map(([label, value]) => `| ${label} | ${display(value)} |`), '',
     '未完整验证的目标 = 侦察、队列及当前克隆产物的唯一 URL 并集，减去当前产物对应的 v2 完整验证。',
+    '队列范围仅统计当前侦察已发现的有效同源 URL，不代表站点全部页面。默认排除数按新建普通队列计算；旧队列续跑补页后可能超过默认上限，以当前已入队数为准。显式“克隆全部已发现页面”会纳入登录和法务页。',
     '本摘要不等同离线 strict、认证流程或外部部署验收。', '', '## 证据状态', '',
     '| 来源 | 状态 | 路径 |', '| --- | --- | --- |',
     ...Object.entries(ACCEPTANCE_SOURCES).map(([k, source]) => `| ${source.label} | ${summary.stale[k] ? '需重跑' : sourceStatusText[summary.states[k]] ?? '读取失败'}${summary.sourceErrors[k] ? `：${markdownText(summary.sourceErrors[k])}` : ''} | ${sourcePath(summary.host, k, source)} |`),

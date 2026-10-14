@@ -3,7 +3,7 @@
  *
  *   POST /api/recon        {url, maxPages?}  → {taskId}（全站侦察）
  *   POST /api/forge        {url, hostPost?}  → {taskId, pageName}（单页还原流水线）
- *   POST /api/clone-site   {host, max?, incremental?, force?} → {taskId}（整站批量克隆，引擎侧跑）
+ *   POST /api/clone-site   {host, max?|allDiscovered?, incremental?, force?} → {taskId}（整站批量克隆）
  *   GET  /api/events?task=  SSE 事件流（重放已发生事件 + 实时）
  *   GET  /api/atlas/:task   recon 任务完成后返回 atlas.json
  *   GET  /api/jobs          任务清单（本进程内存态）
@@ -46,6 +46,7 @@ import { UA } from './ua.mjs';
 import { canonUrl, resolvePageNameOfUrl } from './url-canon.mjs';
 import { makeSlotBox } from './forge-slots.mjs';
 import { cloneDocFile } from './clone-doc.mjs';
+import { readCloneScope } from './clone-scope.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 const execFileAsync = promisify(execFile);
@@ -923,7 +924,7 @@ function startForge(url, { hostPost = true } = {}) {
  * 整站批量克隆 —— 由引擎跑 queue.mjs，而不是让浏览器标签页来驱动。
  * 好处：关掉控制台页面任务照跑、并发与超时按配方走、只占一个"编排"名额不占锻造槽。
  */
-function startCloneSite(host, { max = null, incremental = false, force = false } = {}) {
+function startCloneSite(host, { max = null, allDiscovered = false, incremental = false, force = false } = {}) {
   const origin = readSiteOrigin(join(WORKSPACE, host)) ?? 'https://' + host;
   const t = makeTask('clone', origin);
   t.host = host;
@@ -931,8 +932,8 @@ function startCloneSite(host, { max = null, incremental = false, force = false }
   runningClone = t;
   const profile = loadProfile(new URL(origin).hostname.replace(/^www\./, ''));
   const plan = queuePlan(profile, MAX_FORGE);
-  t.plan = { workers: plan.workers, maxPages: max ?? plan.maxPages, incremental, force };
-  const args = [host, '--max', String(max ?? plan.maxPages), '--json-events'];
+  t.plan = { workers: plan.workers, maxPages: allDiscovered ? null : max ?? plan.maxPages, allDiscovered, incremental, force };
+  const args = [host, ...(allDiscovered ? ['--all-discovered'] : ['--max', String(max ?? plan.maxPages)]), '--json-events'];
   if (incremental) args.push('--incremental');
   if (force) args.push('--force');
   return spawnTask(t, join('src', 'queue.mjs'), args, { env: { HEIMDALL_QUEUE_WORKERS: String(plan.workers) } }).id;
@@ -1201,13 +1202,19 @@ const handleRequest = async (req, res) => {
 
   if (req.method === 'POST' && u.pathname === '/api/clone-site') {
     readJsonBody(req, res, (b) => {
-      let { host, max = null, incremental = false, force = false } = b;
+      let { host, max = null, allDiscovered = false, incremental = false, force = false } = b;
       host = sanitizeHost(host);
       if (!/^[a-z0-9.-]+$/.test(host)) return json(res, 400, { error: 'bad host' });
+      if (typeof allDiscovered !== 'boolean') return json(res, 400, { error: 'allDiscovered must be a boolean' });
+      if (allDiscovered && Object.hasOwn(b, 'max')) return json(res, 400, { error: 'allDiscovered and max cannot be combined' });
+      if (allDiscovered) {
+        const scope = readCloneScope(join(WORKSPACE, host));
+        if (scope.status !== 'ok') return json(res, 400, { error: 'allDiscovered requires a valid same-origin atlas and queue', issue: scope.issue });
+      }
       if (runningClone) return json(res, 409, { error: 'busy', taskId: runningClone.id });
       const id = startCloneSite(host, {
         max: max == null ? null : Math.min(Math.max(Number(max) || 20, 1), 2000),
-        incremental: !!incremental, force: !!force,
+        allDiscovered, incremental: !!incremental, force: !!force,
       });
       json(res, 200, { taskId: id, host });
     });
@@ -1767,15 +1774,16 @@ const handleRequest = async (req, res) => {
   if (req.method === 'GET' && u.pathname.startsWith('/api/queue/')) {
     const host = decodeURIComponent(u.pathname.slice('/api/queue/'.length));
     if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
+    const scope = readCloneScope(join(WORKSPACE, host));
     const qp = join(WORKSPACE, host, 'queue.json');
-    if (!existsSync(qp)) return json(res, 200, { host, exists: false });
+    if (!existsSync(qp)) return json(res, 200, { host, exists: false, scope });
     let q;
-    try { q = JSON.parse(readFileSync(qp, 'utf8')); } catch { return json(res, 200, { host, exists: true, unreadable: true }); }
-    if (!Array.isArray(q)) return json(res, 200, { host, exists: true, unreadable: true });
+    try { q = JSON.parse(readFileSync(qp, 'utf8')); } catch { return json(res, 200, { host, exists: true, unreadable: true, scope }); }
+    if (!Array.isArray(q)) return json(res, 200, { host, exists: true, unreadable: true, scope });
     const count = (s) => q.filter(x => x.status === s).length;
     const done = count('done'), failed = count('failed'), pending = count('pending'), queued = count('queued');
     const active = !!(runningClone && runningClone.host === host && runningClone.status === 'running');
-    return json(res, 200, { host, exists: true, total: q.length, done, failed, pending, queued, unfinished: failed + pending + queued, active, taskId: active ? runningClone.id : null });
+    return json(res, 200, { host, exists: true, total: q.length, done, failed, pending, queued, unfinished: failed + pending + queued, active, taskId: active ? runningClone.id : null, scope });
   }
 
   // 反向代理 /px/<host>/<path> → https://<host>/<path> —— 交互镜像基础设施：

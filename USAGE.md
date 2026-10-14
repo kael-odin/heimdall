@@ -67,7 +67,22 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 ```
 
 裸 `live <host>` 是允许回源的在线包。严格离线导出会把 `recon/atlas.json` 中已发现的页面与实际克隆页、包内路由核对，并逐页运行断网 Chromium 首次加载检查；没有侦察数据时，`health.json` 的 `coverage.scope` 为 `captured-only`，只能说明已捕获范围。侦察本身达到页数或深度预算时，也不能据此声称已经覆盖整站。
-需要把侦察图谱里全部有效同源 URL 纳入克隆队列时，用 `node core/src/cli.mjs queue example.org --all-discovered`；普通队列仍按站点配方与页数预算筛选。
+需要把侦察图谱里全部有效同源 URL 纳入克隆队列时，用 `node core/src/cli.mjs queue example.org --all-discovered`；新建普通队列仍按站点配方与页数预算筛选，续跑旧队列可能补入更多同源页面。旧队列若含无效或站外 URL，会拒绝执行并保留原文件，需先核对来源。
+
+对已有捕获页面，可先运行 `node core/src/cli.mjs discover-operations example.org`。私有 `operation-discovery.json` 只列候选，不会点击。审核后把选中的 `pageName`、候选 `index`、`kind`、`action.selector` 原样写入同一站点工作区的 `operation-review.json`：
+
+```json
+{
+  "version": 1,
+  "origin": "https://example.org",
+  "pages": [{
+    "pageName": "home",
+    "candidates": [{ "index": 0, "kind": "menu", "selector": "body > :nth-child(1)" }]
+  }]
+}
+```
+
+`origin` 必须与 `site-origin.json` 完全一致，候选字段以实际报告为准。运行 `node core/src/cli.mjs discover-operations example.org --execute-reviewed --max-actions 8` 才会执行清单中的分支；每次从新页面起步并重新校验候选，默认每页最多 150 个请求、最多执行 8 个审核分支、每页检查与探索至多 45 秒。`source-observed` 只表示点击后 URL、目标控件或其 `aria-controls` 区域的状态发生变化，不能证明变化由点击导致；只有整页 DOM 变化时记为 `page-change-unattributed`，不扣减未探索分支。后续新分支按候选类别数量的净增保守计数，同型控件重建不会算新增。依赖类别只覆盖本次动作的观察窗口，不代表整页依赖全集。页数、动作、请求、时间、iframe 和 Shadow DOM 之外的状态不视为已覆盖。该步骤只观察源站；仍需为离线镜像写操作计划和最终断言。`operation-review.json` 与发现报告一样不对外提供，也不随包分发。
 
 需要验收点击或输入后的状态时，在 `core/workspace/<host>/operation-plan.json` 放置操作计划（使用 `HEIMDALL_DATA_DIR` 时放在相应站点工作区）。例如：
 
@@ -95,7 +110,7 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 { "version": 1, "paths": ["/api/catalog?page=1"] }
 ```
 
-然后显式加 `--include-readonly-data --offline --strict`。导出只接受精确 URL、同源、无认证信息、2xx 的 JSON/纯文本响应；候选包中缺少任何声明响应都会阻断发布，结果见 `health.readOnlyData`。默认从页面已有的 `network.har` 取响应；同时加 `--compare-source` 并提供已审阅的 `operation-plan.json`，可在源站执行声明流程时采集点击后才出现的许可 GET。每个响应限 1 MiB、累计限 10 MiB；认证、超限、缺失或同 URL 内容冲突均阻断严格交付。源站流程仅执行一次，采集结果仅以脱敏计数进入 `health.json`。当前只核对许可 URL 在整组源站和离线流程中均出现，尚不证明逐流程的响应内容或业务结果一致。计划和响应内容仍须人工审核，自动敏感信息规则不能识别所有个人数据或商业机密。宽泛的 `--include-api-har` 不能与 `--strict` 同用。
+然后显式加 `--include-readonly-data --offline --strict`。导出只接受精确 URL、同源、无认证信息、2xx 的 JSON/纯文本响应；候选包中缺少任何声明响应都会阻断发布，结果见 `health.readOnlyData`。默认从页面已有的 `network.har` 取响应；同时加 `--compare-source` 并提供已审阅的 `operation-plan.json`，可在源站执行声明流程时采集点击后才出现的许可 GET。每个响应限 1 MiB、累计限 10 MiB；认证、超限、缺失或同 URL 内容冲突均阻断严格交付。源站流程仅执行一次，`health.readOnlyData.flowParity` 按声明流程对照许可 GET 的精确 URL、状态、MIME 和清洗后正文指纹；报告只保留脱敏计数及问题类别。对照不证明请求时序、重复次数、未声明操作或业务结果一致。计划和响应内容仍须人工审核，自动敏感信息规则不能识别所有个人数据或商业机密。宽泛的 `--include-api-har` 不能与 `--strict` 同用。
 
 导出前核对授权和敏感数据。严格导出会检查候选包中的凭据型 URL、Bearer、Cookie 值；`health.privacyAudit` 记录问题数与扫描是否完整。它不是全面的个人信息识别。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；独立包仍需验收登录、重定向、登出和长期运行。`--strict` 失败时先修缺口，不要把包标成离线完成。
 

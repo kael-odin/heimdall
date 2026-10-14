@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { exploreOperationStates, sanitizeObservedUrl } from '../crawler/state-graph.mjs';
+import { sourceReadDataCollector } from '../crawler/source-read-data.mjs';
 
 const MAX_BROWSER_FAILURES = 100;
 const PRIVATE_PATH_PARENT = /^(?:users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|reset-password|password-reset|verify-email|email-verification|magic-link|invites?|invitations?|tokens?|secrets?)$/i;
@@ -224,6 +225,9 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
   if (options.onReadOnlyGet && typeof options.onReadOnlyGet !== 'function') {
     throw new TypeError('invalid read-only request observer');
   }
+  if (options.onReadOnlyObservation && typeof options.onReadOnlyObservation !== 'function') {
+    throw new TypeError('invalid read-only response observer');
+  }
   const report = {
     status: 'checked', planned: flows.length, checked: 0, failed: 0, untested: flows.length,
     failures: [], omittedFailures: 0, flows: [],
@@ -240,6 +244,14 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
       const sourceUrl = new URL(value);
       return [new URL(sourceUrl.pathname + sourceUrl.search, base).href, value];
     }));
+    const readData = sourceReadDataCollector({
+      origin: base, urls: [...readOnlyRequests.keys()], onEntry() {},
+      onAccepted: (entry, flowIndex) => {
+        const sourceUrl = readOnlyRequests.get(entry.url);
+        if (!sourceUrl) throw new Error('unmapped read-only response');
+        options.onReadOnlyObservation?.(sourceUrl, entry, flowIndex);
+      },
+    });
     browser = await chromium.launch({ headless: true });
     for (const [flowIndex, flow] of flows.entries()) {
       const issues = [];
@@ -268,6 +280,7 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
           if (response.status() >= 400) addIssue({
             kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()),
           });
+          readData.observe(response, flowIndex);
         });
         context.on('page', page => page.on('download', () => addIssue({ kind: 'downloadUnsupported' })));
         const page = await context.newPage();
@@ -315,6 +328,7 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
         addIssue({ kind: 'probeError', error: publicErrorType(error) });
         report.flows.push({ index: flowIndex, passed: false });
       } finally {
+        await readData.drain();
         await context?.close().catch(() => {});
         report.checked++;
         report.untested--;
@@ -324,6 +338,7 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
         }
       }
     }
+    if (readOnlyRequests.size) report.readOnlyData = readData.summary();
     return report;
   } finally {
     try { await browser?.close(); }

@@ -100,6 +100,77 @@ test('all-discovered includes auth, legal and every same-origin atlas URL beyond
   }
 });
 
+test('default queue ignores foreign and invalid atlas nodes', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-queue-origin-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  mkdirSync(join(base, 'recon'), { recursive: true });
+  writeFileSync(join(base, 'recon', 'atlas.json'), JSON.stringify({
+    origin: 'https://x.test', nodes: [
+      { url: 'https://x.test/a', type: 'generic' },
+      { url: 'https://x.test/b', type: 'generic' },
+      { url: 'https://other.test/foreign', type: 'generic' },
+      { url: 'file:///tmp/not-a-page', type: 'generic' },
+      null,
+    ],
+  }));
+  const server = createServer((req, res) => {
+    req.resume();
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end('{"error":"fixture rejection"}');
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const run = await runQueue(dataDir, `http://127.0.0.1:${server.address().port}`, []);
+    assert.equal(run.code, 1, run.output);
+    const queue = JSON.parse(readFileSync(join(base, 'queue.json'), 'utf8'));
+    assert.deepEqual(queue.map(row => row.url), ['https://x.test/a', 'https://x.test/b']);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('queue refuses a foreign URL retained in an old queue without rewriting it', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-queue-foreign-old-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  mkdirSync(join(base, 'recon'), { recursive: true });
+  writeFileSync(join(base, 'recon', 'atlas.json'), JSON.stringify({
+    origin: 'https://x.test', nodes: [{ url: 'https://x.test/a', type: 'generic' }],
+  }));
+  const queuePath = join(base, 'queue.json');
+  const oldQueue = JSON.stringify([{ url: 'https://other.test/foreign', status: 'pending' }]);
+  writeFileSync(queuePath, oldQueue);
+  let forged = 0;
+  const server = createServer((req, res) => {
+    if (req.url === '/api/forge') forged++;
+    req.resume();
+    res.writeHead(400); res.end();
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const run = await runQueue(dataDir, `http://127.0.0.1:${server.address().port}`, ['--all-discovered']);
+    assert.equal(run.code, 2, run.output);
+    assert.match(run.output, /站外或非 HTTP URL/);
+    assert.equal(forged, 0);
+    assert.equal(readFileSync(queuePath, 'utf8'), oldQueue);
+    writeFileSync(queuePath, '[null]');
+    const corrupt = await runQueue(dataDir, `http://127.0.0.1:${server.address().port}`, ['--all-discovered']);
+    assert.equal(corrupt.code, 2, corrupt.output);
+    assert.match(corrupt.output, /无效 URL 或状态行/);
+    assert.equal(forged, 0);
+    assert.equal(readFileSync(queuePath, 'utf8'), '[null]');
+    const missingStatus = JSON.stringify([{ url: 'https://x.test/a' }]);
+    writeFileSync(queuePath, missingStatus);
+    const noStatus = await runQueue(dataDir, `http://127.0.0.1:${server.address().port}`, ['--all-discovered']);
+    assert.equal(noStatus.code, 2, noStatus.output);
+    assert.equal(forged, 0);
+    assert.equal(readFileSync(queuePath, 'utf8'), missingStatus);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('all-discovered fills an existing default queue without dropping prior rows', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-queue-resume-all-'));
   const base = join(dataDir, 'workspace', 'x.test');

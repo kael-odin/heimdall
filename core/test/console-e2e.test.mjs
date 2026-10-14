@@ -355,6 +355,31 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
     const assetRows = card.locator('.edit-list li');
     assert.ok(await assetRows.count() > 0, '改站起点应列出最该先换的品牌资产');
     assert.ok(await card.getByRole('button', { name: '定位' }).count() > 0, '本地化的资源应带「定位」按钮');
+    await page.waitForFunction(() => document.querySelector('.ac-scope')?.textContent?.includes('有效同源'));
+    const scopeText = await page.locator('.ac-scope').innerText();
+    assert.match(scopeText, /有效同源\s*4/);
+    assert.match(scopeText, /尚未入队\s*4/,
+      '没有旧队列时也应展示全部已发现页面尚未入队，而非丢失范围读数');
+    await page.route('**/api/clone-site', route => route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ taskId: 'e2e-all-discovered' }) }));
+    await page.route('**/api/events?task=e2e-all-discovered*', route => route.fulfill({ status: 200,
+      contentType: 'text/event-stream', body: 'data: {"kind":"exit","status":"done"}\n\n' }));
+    await page.locator('.work-view .sb-menu-btn').first().click();
+    const allDiscoveredAction = page.getByRole('menuitem', { name: /克隆全部已发现页面/ });
+    await page.waitForFunction(() => [...document.querySelectorAll('.sb-item')]
+      .some(item => item.textContent?.includes('克隆全部已发现页面') && !item.disabled));
+    assert.match(await allDiscoveredAction.innerText(), /包含登录和法务页/);
+    const allDiscoveredRequest = page.waitForRequest(request => new URL(request.url()).pathname === '/api/clone-site');
+    await allDiscoveredAction.click();
+    const allDiscoveredBody = (await allDiscoveredRequest).postDataJSON();
+    assert.deepEqual(allDiscoveredBody, { host: 'fixture.test', incremental: false, allDiscovered: true },
+      '全发现操作应明确传 allDiscovered，且不附加页数截断');
+    await page.unroute('**/api/clone-site');
+    await page.unroute('**/api/events?task=e2e-all-discovered*');
+    await page.setViewportSize({ width: 390, height: 844 });
+    const scopeOverflow = await page.locator('.ac-scope').evaluate(el => el.scrollWidth > el.clientWidth + 1);
+    assert.equal(scopeOverflow, false, '移动端范围分母和未入队读数不能横向溢出');
+    await page.setViewportSize({ width: 1280, height: 800 });
     const archive = page.locator('.report-shortcuts a', { hasText: '克隆档案' });
     const archiveHref = await archive.getAttribute('href');
     assert.equal(new URL(archiveHref).origin, TEST_TOKEN && STATIC_BRIDGE ? CONSOLE_BASE : API_BASE,

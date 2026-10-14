@@ -228,3 +228,76 @@ test('source-only clicked GET is captured once, guarded, and replayed after relo
     }
   }
 });
+
+test('strict export rejects swapped read-only requests between otherwise passing flows', { timeout: 90_000 }, async t => {
+  const source = createServer((request, response) => {
+    if (request.url?.startsWith('/api/list?')) {
+      response.setHeader('content-type', 'application/json');
+      return response.end(JSON.stringify({ items: ['Public item'] }));
+    }
+    response.setHeader('content-type', 'text/html');
+    response.end(pageHtml(false));
+  });
+  const pageHtml = swapped => `<!doctype html><button id="first">First</button>
+    <button id="second">Second</button><output id="result" hidden></output><script>
+    for (const [id, path] of [['first', '/api/list?page=${swapped ? 2 : 1}'],
+      ['second', '/api/list?page=${swapped ? 1 : 2}']]) {
+      document.querySelector('#' + id).onclick = async () => {
+        await fetch(path).then(response => response.json());
+        const result = document.querySelector('#result');
+        result.textContent = 'Done'; result.hidden = false;
+      };
+    }</script>`;
+  source.listen(0, '127.0.0.1');
+  await once(source, 'listening');
+  t.after(async () => {
+    if (source.listening) {
+      source.close();
+      source.closeAllConnections?.();
+      await once(source, 'close');
+    }
+  });
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-flow-parity-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const dataDir = join(root, 'source');
+  const site = join(dataDir, 'workspace', HOST);
+  const out = join(dataDir, 'deliverable', 'accepted');
+  const origin = `http://127.0.0.1:${source.address().port}`;
+  put(join(site, 'site-origin.json'), JSON.stringify({ origin }));
+  put(join(site, 'pages', 'home', 'manifest.json'), JSON.stringify({ target: origin + '/' }));
+  put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><h1>Clone</h1>');
+  put(join(site, 'live', 'index.html'), pageHtml(false));
+  put(join(site, 'operation-plan.json'), JSON.stringify({ version: 1, flows: [
+    { path: '/', actions: [{ type: 'click', selector: '#first' }],
+      expect: [{ type: 'visible', selector: '#result' }] },
+    { path: '/', actions: [{ type: 'click', selector: '#second' }],
+      expect: [{ type: 'visible', selector: '#result' }] },
+  ] }));
+  put(join(site, 'read-data-plan.json'), JSON.stringify({
+    version: 1, paths: ['/api/list?page=1', '/api/list?page=2'],
+  }));
+
+  const accepted = await runExport(dataDir, out);
+  assert.equal(accepted.status, 0, accepted.output);
+  const priorHealth = readFileSync(join(out, 'health.json'));
+  const priorHar = readFileSync(join(out, 'har.json'));
+  assert.equal(JSON.parse(priorHealth).readOnlyData.flowParity.matchedFlows, 2);
+
+  put(join(site, 'live', 'index.html'), pageHtml(true));
+  const before = new Set(readdirSync(join(dataDir, 'deliverable')));
+  const rejected = await runExport(dataDir, out);
+  assert.equal(rejected.status, 1, rejected.output);
+  assert.deepEqual(readFileSync(join(out, 'health.json')), priorHealth);
+  assert.deepEqual(readFileSync(join(out, 'har.json')), priorHar);
+  const failedHealth = readFileSync(join(candidate(dataDir, before), 'health.json'), 'utf8');
+  const report = JSON.parse(failedHealth);
+  assert.equal(report.readOnlyData.sourceCurrentMissing, 0);
+  assert.equal(report.readOnlyData.offlineMissing, 0);
+  assert.equal(report.operationProbe.failed, 0);
+  assert.equal(report.sourceOperationProbe.failed, 0);
+  assert.equal(report.readOnlyData.flowParity.mismatchedFlows, 2);
+  assert.equal(report.readOnlyData.flowParity.missing, 2);
+  assert.equal(report.readOnlyData.flowParity.unexpected, 2);
+  assert.equal(report.strictBlockers.readOnlyFlowMismatch, 2);
+  assert.doesNotMatch(failedHealth, /\/api\/list\?page=|Public item|"body"/);
+});

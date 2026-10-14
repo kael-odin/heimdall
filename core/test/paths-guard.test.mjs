@@ -41,7 +41,9 @@ test('isSecretFile：登录凭据与原始抓包一律不外发', () => {
   assert.equal(isSecretFile('/static/a.test/operation-plan.json'), true);
   assert.equal(isSecretFile(child('a.test', 'operation-discovery.json')), true);
   assert.equal(isSecretFile('/static/a.test/operation-discovery.json'), true);
-  for (const backup of ['session.json.bak', 'network.har.bak', 'operation-plan.json.bak', '.operation-plan.json.swp', 'operation-plan.json~', 'operation-discovery.json.tmp-123', '.operation-discovery.json.swp', 'operation-discovery.json-old', 'operation-discovery (copy).json']) {
+  assert.equal(isSecretFile(child('a.test', 'operation-review.json')), true);
+  assert.equal(isSecretFile('/static/a.test/operation-review.json'), true);
+  for (const backup of ['session.json.bak', 'network.har.bak', 'operation-plan.json.bak', '.operation-plan.json.swp', 'operation-plan.json~', 'operation-discovery.json.tmp-123', '.operation-discovery.json.swp', 'operation-discovery.json-old', 'operation-discovery (copy).json', 'operation-review.json.bak', '.operation-review.json.swp']) {
     assert.equal(isSecretFile(child('a.test', backup)), true, backup);
   }
 });

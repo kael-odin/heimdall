@@ -376,7 +376,9 @@ async function loadQueue(h) {
     const r = await fetch(API + '/api/queue/' + encodeURIComponent(h), { headers: apiHeaders() });
     if (!r.ok || host.value !== h) return;
     const j = await r.json();
-    queueState.value = j.exists ? j : null;
+    if (host.value !== h || j.host !== h) return;
+    // 即使还没有 queue.json，API 仍会给出侦察范围；操作入口需要这份分母。
+    queueState.value = j;
   } catch { /* 引擎离线：保持上一次读数 */ }
 }
 
@@ -861,6 +863,8 @@ function runLogin() {
 const siteActions = computed(() => {
   const has = !!host.value;
   const cloned = doneCount.value;
+  const scope = queueState.value?.scope;
+  const hasAtlas = Array.isArray(atlas.value?.nodes) && atlas.value.nodes.length > 0;
   return [
     { id: 'audit', label: 'SEO 审计', hint: '66 条规则 · 六分类评分 · 输出 HTML/CSV/JSON 报告', disabled: !has || !!engine.value.audit },
     {
@@ -869,6 +873,14 @@ const siteActions = computed(() => {
       hint: cloned ? '只重跑源站变了的页（按服务端 HTML 指纹判断，不起浏览器）' : '把侦察到的页面逐页克隆；由引擎执行，关掉本页也会继续',
       disabled: !has || !!engine.value.clone,
     },
+    ...(hasAtlas ? [{
+      id: 'clone-all-discovered',
+      label: '克隆全部已发现页面',
+      hint: scope?.status === 'ok'
+        ? `把已发现的 ${scope.discovered} 个有效同源页面全部入队，包含登录和法务页。${scope.maxPages == null ? '侦察页数上限未记录' : `侦察最多 ${scope.maxPages} 页`}${scope.maxDepth == null ? '' : `、深度 ${scope.maxDepth}`}，可能尚未发现整个站点。`
+        : '正在确认侦察范围；范围无效时需先重新侦察。',
+      disabled: !has || !!engine.value.clone || scope?.status !== 'ok',
+    }] : []),
     // 断点续跑：上一批没跑完才出现。续跑本质就是增量克隆（queue.json 会跳过已完成页），
     // 但把它单独列出来、并写明"剩 N 页"，用户才敢点第二次。
     ...(queueState.value && queueState.value.unfinished > 0 ? [{
@@ -896,6 +908,13 @@ const workViewActions = computed(() => siteActions.value.filter(a => a.id !== 'p
 function onSiteAction(id) {
   if (id === 'audit') return runAudit();
   if (id === 'clone-incremental') return startCloneSite({ incremental: doneCount.value > 0 });
+  if (id === 'clone-all-discovered') {
+    if (queueState.value?.scope?.status !== 'ok' || !atlas.value?.nodes?.length) {
+      errMsg.value = '侦察范围未确认，请刷新站点或重新侦察';
+      return;
+    }
+    return startCloneSite({ allDiscovered: true });
+  }
   if (id === 'clone-resume') return startCloneSite({ incremental: true });
   if (id === 'clone-full') {
     if (!confirm(`全量重跑 ${host.value}？\n\n忽略「源站是否变过」，把本站全部页面重新克隆一遍。\n页面多时按小时计，期间引擎的并发槽会被占满。`)) return;
@@ -1617,12 +1636,12 @@ function retryJob(h) {
   errMsg.value = '这类历史任务不支持一键续跑，请在站点里重新发起';
 }
 
-function startCloneSite({ incremental = false } = {}) {  return new Promise((resolve) => {
+function startCloneSite({ incremental = false, allDiscovered = false } = {}) {  return new Promise((resolve) => {
     const h = host.value;
     const task = reactive({
       localId: `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
       kind: 'clone', taskId: null, host: h,
-      label: (incremental ? '增量克隆 · ' : '整站克隆 · ') + h,
+      label: (allDiscovered ? '克隆全部已发现页面 · ' : incremental ? '增量克隆 · ' : '整站克隆 · ') + h,
       progress: '', done: false, failed: false, killed: null, error: null,
       startedAt: Date.now(), endedAt: null,
     });
@@ -1632,7 +1651,9 @@ function startCloneSite({ incremental = false } = {}) {  return new Promise((res
     statusText.value = task.label + ' · 准备中';
     (async () => {
       try {
-        const r = await fetch(`${API}/api/clone-site`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h, incremental }) });
+        const payload = { host: h, incremental };
+        if (allDiscovered) payload.allDiscovered = true;
+        const r = await fetch(`${API}/api/clone-site`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload) });
         const body = await r.json();
         if (body.error) {
           task.failed = true; task.done = true; task.endedAt = Date.now();

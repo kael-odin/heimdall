@@ -124,13 +124,16 @@ async function checkAssertion(page, assertion, origin, timeoutMs) {
  * No workspace files are written. A disposable browser context is used per flow.
  */
 export async function captureSourceOperations({ origin, flows, session = null, browser: suppliedBrowser,
-  readOnlyGetUrls = [], onReadOnlyData,
+  readOnlyGetUrls = [], onReadOnlyData, onReadOnlyObservation,
   settleMs: requestedSettleMs, timeoutMs: requestedTimeoutMs, assertionTimeoutMs: requestedAssertionTimeoutMs } = {}) {
   const base = sourceOrigin(origin);
   if (!Array.isArray(flows) || flows.length > MAX_FLOWS) throw new TypeError('invalid source flows');
   for (const flow of flows) validateFlow(flow, base);
   const { storageState, sessionStorage } = sessionOptions(session, base);
-  const readData = sourceReadDataCollector({ origin: base, urls: readOnlyGetUrls, onEntry: onReadOnlyData });
+  const readData = sourceReadDataCollector({
+    origin: base, urls: readOnlyGetUrls, onEntry: onReadOnlyData,
+    onAccepted: onReadOnlyObservation,
+  });
   const settleMs = boundedInteger(requestedSettleMs, 500, 5_000);
   const timeoutMs = boundedInteger(requestedTimeoutMs, 8_000, 30_000, 1);
   const assertionTimeoutMs = boundedInteger(requestedAssertionTimeoutMs, 2_000, 5_000, 1);
@@ -181,7 +184,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         });
         onResponse = response => {
           if (response.status() >= 400) addIssue({ kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()) });
-          readData.observe(response);
+          readData.observe(response, flowIndex);
         };
         context.on('response', onResponse);
         context.on('requestfailed', request => {

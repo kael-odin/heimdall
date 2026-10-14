@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { captureSourceOperations } from '../src/crawler/source-operations.mjs';
-import { sourceReadDataCollector } from '../src/crawler/source-read-data.mjs';
+import {
+  addReadOnlyFlowEvidence, compareReadOnlyFlowEvidence, sourceReadDataCollector,
+} from '../src/crawler/source-read-data.mjs';
 import { isReplayableReadOnlyDataEntry } from '../src/live/har.mjs';
 
 async function fixture(t) {
@@ -253,6 +255,59 @@ test('source read-only capture emits changed bodies for the same approved URL', 
   assert.deepEqual(entries.map(entry => JSON.parse(Buffer.from(entry.body, 'base64').toString()).version), [1, 2]);
   assert.deepEqual(report.readOnlyData, { observed: 2, accepted: 2, rejected: 0, oversized: 0, failed: 0 });
   assert.equal(report.flows[0].assertions[0].status, 'passed');
+});
+
+test('read-only flow comparison distinguishes per-flow URLs and sanitized response changes', () => {
+  const first = 'https://source.test/api/list?page=1';
+  const second = 'https://source.test/api/list?page=2';
+  const entry = (url, status, mimeType, body) => ({
+    url, status, mimeType, body: Buffer.from(body).toString('base64'),
+  });
+  const source = new Map();
+  addReadOnlyFlowEvidence(source, 0, entry(first, 200, 'application/json; charset=utf-8', '{"items":[1]}'));
+  addReadOnlyFlowEvidence(source, 1, entry(second, 200, 'application/json; charset=utf-8', '{"items":[2]}'));
+  const swapped = new Map();
+  addReadOnlyFlowEvidence(swapped, 0, entry(second, 200, 'application/json; charset=utf-8', '{"items":[2]}'));
+  addReadOnlyFlowEvidence(swapped, 1, entry(first, 200, 'application/json; charset=utf-8', '{"items":[1]}'));
+  const swappedReport = compareReadOnlyFlowEvidence(source, swapped, 2);
+  assert.equal(swappedReport.mismatchedFlows, 2);
+  assert.equal(swappedReport.missing, 2);
+  assert.equal(swappedReport.unexpected, 2);
+  assert.doesNotMatch(JSON.stringify(swappedReport), /\/api\/list|items|[a-f0-9]{64}/);
+
+  const changed = new Map();
+  addReadOnlyFlowEvidence(changed, 0, entry(first, 201, 'text/plain; charset=utf-8', 'changed'));
+  addReadOnlyFlowEvidence(changed, 1, entry(second, 200, 'application/json; charset=utf-8', '{"items":[2]}'));
+  const changedReport = compareReadOnlyFlowEvidence(source, changed, 2);
+  assert.equal(changedReport.responseMismatch, 1);
+  assert.equal(changedReport.statusMismatch, 1);
+  assert.equal(changedReport.mimeMismatch, 1);
+  assert.equal(changedReport.bodyMismatch, 1);
+  assert.equal(changedReport.matchedFlows, 1);
+});
+
+test('deduplicated public GET still records evidence for every flow that observed it', async () => {
+  const origin = 'https://source.test';
+  const url = origin + '/api/public';
+  const delivered = [];
+  const observedFlows = [];
+  const collector = sourceReadDataCollector({
+    origin, urls: [url], onEntry: entry => delivered.push(entry),
+    onAccepted: (_entry, flowIndex) => observedFlows.push(flowIndex),
+  });
+  const response = () => ({
+    url: () => url, status: () => 200,
+    request: () => ({ method: () => 'GET', allHeaders: async () => ({}), postData: () => null }),
+    allHeaders: async () => ({ 'content-type': 'application/json' }),
+    body: async () => Buffer.from('{"items":["public"]}'),
+  });
+  collector.observe(response(), 0);
+  await collector.drain();
+  collector.observe(response(), 1);
+  await collector.drain();
+  assert.equal(delivered.length, 1);
+  assert.deepEqual(observedFlows, [0, 1]);
+  assert.equal(collector.summary().accepted, 2);
 });
 
 test('source read-only capture bounds approved URLs and cumulative delivered bytes', async () => {
