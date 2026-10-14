@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "consoleOrigin": "http://127.0.0.1:56028",
+  "apiOrigin": "http://localhost:56028",
+  "issuedStatus": 200,
+  "finalUrl": "http://localhost:56028/static/fixture.test/index.html",
+  "imageWidth": 2
+}

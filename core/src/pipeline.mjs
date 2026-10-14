@@ -10,13 +10,15 @@
  * 产物: workspace/<host>/pages/<pageName>/
  */
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { getEnv } from './env.mjs';
 import { requireArg } from './args.mjs';
 import { sourceFingerprint } from './fingerprint.mjs';
 import { WORKSPACE } from './paths.mjs';
-import { asUrl, pageNameOfUrl } from './url-canon.mjs';
+import { assertSiteOrigin, siteIdForOrigin } from './site-origin.mjs';
+import { assertPageName } from './page-name.mjs';
+import { asUrl, resolvePageNameOfUrl } from './url-canon.mjs';
 import { runScript } from './child-run.mjs';
 import { resolveCloneUrl } from './clone-doc.mjs';
 import { emit } from './emit.mjs';
@@ -26,13 +28,12 @@ const USAGE = 'node src/pipeline.mjs <url> [pageName]';
 const RAW_URL = requireArg(process.argv[2], USAGE, '目标 URL');
 const URL_ = asUrl(RAW_URL);   // `forge example.com home` 这种不带协议的写法同样可用
 if (!URL_) { console.error(`不是有效的网址：${RAW_URL}`); process.exit(2); }
-const NAME = process.argv[3] ?? pageNameOfUrl(URL_);
-
 const log = (...a) => console.error(...a);
 
-const host = new URL(URL_).hostname.replace(/^www\./, '');
+const host = siteIdForOrigin(WORKSPACE, URL_);
+const NAME = assertPageName(process.argv[3] ?? resolvePageNameOfUrl(URL_, join(WORKSPACE, host)));
 const DIR = join(WORKSPACE, host, 'pages', NAME);
-mkdirSync(DIR, { recursive: true });
+assertSiteOrigin(join(WORKSPACE, host), URL_, { pageName: NAME });
 
 // 阶段脚本统一走 child-run：失败时会带上子进程 stderr 的尾巴（理由见那个模块）
 const run = (script, args) => runScript(script, args);

@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "consoleOrigin": "http://127.0.0.1:49681",
+  "apiOrigin": "http://127.0.0.1:49681",
+  "launchMethod": "GET",
+  "issuedStatus": 302,
+  "targetUrl": "https://fixture.test/docs/",
+  "finalUrl": "http://fixture.test.localhost:49681/docs/",
+  "finalPathname": "/docs/",
+  "spaResult": "fixture live docs",
+  "ticketAbsentFromFinalUrl": true,
+  "tokenAbsentFromFinalUrl": true
+}

@@ -21,6 +21,7 @@ import { sandboxPaths, injectSandboxEdits, renderEditorPage } from './core.mjs';
 import { comparePngBuffers } from '../verify/compare.mjs';
 import { makeArgs } from '../args.mjs';
 import { freezeCss } from '../freeze.mjs';
+import { isSafePageName } from '../page-name.mjs';
 
 const argv = process.argv.slice(2);
 const { argOf } = makeArgs(argv);
@@ -29,6 +30,7 @@ const page = argv[1];
 const PORT = Number(argOf('port', 8090));
 const RESET = argv.includes('--reset');
 if (!host || !page) { console.error('usage: node src/sandbox/serve.mjs <host> <page> [--port 8090] [--reset]'); process.exit(2); }
+if (!isSafePageName(page)) { console.error('页名无效：必须是单个安全目录名'); process.exit(2); }
 
 const CLONE = join(WORKSPACE, host, 'pages', page, 'clone');
 if (!existsSync(join(CLONE, 'index.html'))) { console.error('clone page not found:', CLONE); process.exit(1); }

@@ -101,7 +101,7 @@ export function extractProfile(html) {
 }
 
 /**
- * data 维度：src 字段画像 vs clone 画像的覆盖率（L1 搬运下应≈1）
+ * data 维度：src 字段画像 vs clone 画像的覆盖率；源页无可抽取字段时返回 null
  *
  * **必须在 linker 之前测**（pipeline 的 stage 顺序已经保证）。linker 会把站内
  * `<a href>` 改写成档案内的相对路径 —— 那是它的职责，也正是这个维度只能测未接线版本的原因：
@@ -126,7 +126,8 @@ export function dataScore(srcHtml, cloneHtml) {
     tables: cover(a.tables, b.tables),
   };
   const present = Object.values(dims).filter(v => v !== null);
-  const data = present.length ? present.reduce((s, v) => s + v, 0) / present.length : 1;
+  if (!present.length) return null;
+  const data = present.reduce((s, v) => s + v, 0) / present.length;
   return { data: +data.toFixed(4), dims: Object.fromEntries(Object.entries(dims).map(([k, v]) => [k, v === null ? 'n/a' : +(v * 100).toFixed(1) + '%'])) };
 }
 

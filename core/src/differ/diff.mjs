@@ -38,9 +38,11 @@ for (let i = 1; i <= 8; i++) {
 }
 if (!frames.length) frames.push(PNG.sync.read(readFileSync(join(DIR, 'shot-src.png'))));   // 旧产物兼容
 const W = clone.width, H = clone.height, total = W * H;
-if (frames[0].width !== W || frames[0].height !== H) {
-  console.error(`size mismatch: frame ${frames[0].width}x${frames[0].height} vs clone ${W}x${H}`);
-  process.exit(2);
+for (const [index, frame] of frames.entries()) {
+  if (frame.width !== W || frame.height !== H) {
+    console.error(`size mismatch: frame ${index + 1} ${frame.width}x${frame.height} vs clone ${W}x${H}`);
+    process.exit(2);
+  }
 }
 
 // ---------- 像素比较（返回差异像素的 buffer 偏移索引） ----------
@@ -67,7 +69,7 @@ if (frames.length >= 2) {
 let best = null, bestIndices = null, bestFrame = 0;
 for (let i = 0; i < frames.length; i++) {
   const idx = diffIndices(frames[i], clone);
-  if (!best || idx.length < best) { best = idx.length; bestIndices = idx; bestFrame = i + 1; }
+  if (best === null || idx.length < best) { best = idx.length; bestIndices = idx; bestFrame = i + 1; }
 }
 let dynamicPx = 0;
 for (const idx of bestIndices) if (dynamic.has(idx)) dynamicPx++;
@@ -92,21 +94,25 @@ const cloneDoc = readCloneDoc(join(DIR, 'clone'));
 if (cloneDoc.variant) console.log('  clone doc: ' + basename(cloneDoc.file) + '（多视口克隆，index.html 是选择器）');
 const dom = domSimilarity(srcHtml, cloneDoc.html);
 let data;
+let dataReason = null;
 try {
   data = dataScore(srcHtml, cloneDoc.html);
-} catch { data = null; }
+  if (!data) dataReason = 'no-source-fields';
+} catch { data = null; dataReason = 'harvest-failed'; }
 
 const total100 = data ? 0.5 * pixel + 0.3 * dom.dom + 0.2 * data.data : (0.5 * pixel + 0.3 * dom.dom) / 0.8;
 const grade = total100 >= 0.95 ? 'A' : total100 >= 0.85 ? 'B' : 'C';
 
 const score = {
   page: DIR.split(/[\\/]/).pop(),
+  scoreFormulaVersion: 2,
   viewport: `${W}x${H}`,
   pixel: +pixel.toFixed(4),
   dom,
   data,
+  dataReason,
   weights: { pixel: 0.5, dom: 0.3, data: 0.2 },
-  dataNote: data ? 'full 3-dim formula' : 'harvest failed; normalized over pixel+dom',
+  dataNote: data ? 'full 3-dim formula' : `${dataReason}; normalized over pixel+dom`,
   total: +(total100 * 100).toFixed(1),
   grade,
   mismatched: best,

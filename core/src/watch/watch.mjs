@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlink
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
+import { assertSiteOrigin, siteIdForOrigin } from '../site-origin.mjs';
 import { fetchRobotsAndSitemaps, discoverTargets, collectSite } from '../seo/collect.mjs';
 import { snapshotFromPages, diffSnapshots } from './diff.mjs';
 import { renderWatchHtml } from './report.mjs';
@@ -33,8 +34,10 @@ if (!target) { console.error('usage: node src/watch/watch.mjs <host|url> [--max 
 const targetUrl = /^https?:\/\//i.test(target) ? target : `https://${target}`;
 let origin; try { origin = new URL(targetUrl).origin; } catch { console.error('invalid target'); process.exit(2); }
 const host = new URL(origin).hostname.replace(/^www\./, '');
+const siteId = siteIdForOrigin(WORKSPACE, origin);
 const MAX = Math.max(1, Math.min(num('max', 20), 200));
-const BASE = join(WORKSPACE, host);
+const BASE = join(WORKSPACE, siteId);
+assertSiteOrigin(BASE, origin, { claim: true });
 const OUT = join(BASE, 'watch');
 mkdirSync(join(OUT, 'history'), { recursive: true });
 

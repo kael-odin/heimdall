@@ -1,0 +1,279 @@
+{
+  "page": "apify-instagram-scraper",
+  "target": "https://apify.com/apify/instagram-scraper",
+  "generatedAt": "2026-10-14T16:02:28.044Z",
+  "scoreVersion": 2,
+  "overall": null,
+  "provisionalOverall": 0.8798,
+  "measured": false,
+  "grade": null,
+  "minViewport": {
+    "name": "375x812",
+    "score": 0.8457,
+    "grade": "C",
+    "coverageRatio": 0.9631,
+    "sourceSize": {
+      "width": 375,
+      "height": 33465
+    },
+    "cloneSize": {
+      "width": 375,
+      "height": 32231
+    },
+    "heightDelta": 1234,
+    "missingPixels": 462750
+  },
+  "viewports": [
+    {
+      "name": "375x812",
+      "width": 375,
+      "score": 0.8457,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "tiled",
+      "diffParts": [
+        "diff-375x812-part-001.png",
+        "diff-375x812-part-002.png",
+        "diff-375x812-part-003.png",
+        "diff-375x812-part-004.png",
+        "diff-375x812-part-005.png",
+        "diff-375x812-part-006.png",
+        "diff-375x812-part-007.png",
+        "diff-375x812-part-008.png",
+        "diff-375x812-part-009.png"
+      ],
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T16:01:02.090Z",
+        "finalUrl": "https://apify.com/apify/instagram-scraper",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2513,
+            "pendingRequests": 0,
+            "height": 32836,
+            "textLength": 319404,
+            "imageCount": 41,
+            "incompleteImages": 17,
+            "brokenImages": 0
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2583,
+            "pendingRequests": 0,
+            "height": 33465,
+            "textLength": 322235,
+            "imageCount": 44,
+            "incompleteImages": 5,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T16:01:10.559Z",
+        "finalUrl": "http://127.0.0.1:53212/static/apify.com/pages/apify-instagram-scraper/clone/index.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2536,
+            "pendingRequests": 0,
+            "height": 31602,
+            "textLength": 53258,
+            "imageCount": 51,
+            "incompleteImages": 17,
+            "brokenImages": 2
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2501,
+            "pendingRequests": 0,
+            "height": 32231,
+            "textLength": 53258,
+            "imageCount": 51,
+            "incompleteImages": 5,
+            "brokenImages": 2
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 1936388,
+      "missingPixels": 462750,
+      "coverageRatio": 0.9631,
+      "heightDelta": 1234,
+      "sourceSize": {
+        "width": 375,
+        "height": 33465
+      },
+      "cloneSize": {
+        "width": 375,
+        "height": 32231
+      },
+      "sourceHeight": 33465,
+      "cloneHeight": 32231
+    },
+    {
+      "name": "768x1024",
+      "width": 768,
+      "score": 0.875,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "tiled",
+      "diffParts": [
+        "diff-768x1024-part-001.png",
+        "diff-768x1024-part-002.png",
+        "diff-768x1024-part-003.png",
+        "diff-768x1024-part-004.png",
+        "diff-768x1024-part-005.png",
+        "diff-768x1024-part-006.png",
+        "diff-768x1024-part-007.png"
+      ],
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T16:01:34.596Z",
+        "finalUrl": "https://apify.com/apify/instagram-scraper",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2509,
+            "pendingRequests": 0,
+            "height": 25736,
+            "textLength": 322235,
+            "imageCount": 48,
+            "incompleteImages": 16,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2513,
+            "pendingRequests": 0,
+            "height": 26295,
+            "textLength": 322235,
+            "imageCount": 48,
+            "incompleteImages": 5,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T16:01:43.841Z",
+        "finalUrl": "http://127.0.0.1:53212/static/apify.com/pages/apify-instagram-scraper/clone/index.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2509,
+            "pendingRequests": 0,
+            "height": 24814,
+            "textLength": 53258,
+            "imageCount": 51,
+            "incompleteImages": 16,
+            "brokenImages": 2
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2516,
+            "pendingRequests": 0,
+            "height": 25373,
+            "textLength": 53258,
+            "imageCount": 51,
+            "incompleteImages": 5,
+            "brokenImages": 2
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 2524611,
+      "missingPixels": 708096,
+      "coverageRatio": 0.9649,
+      "heightDelta": 922,
+      "sourceSize": {
+        "width": 768,
+        "height": 26295
+      },
+      "cloneSize": {
+        "width": 768,
+        "height": 25373
+      },
+      "sourceHeight": 26295,
+      "cloneHeight": 25373
+    },
+    {
+      "name": "1440x900",
+      "width": 1440,
+      "score": 0.8993,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T16:02:15.235Z",
+        "finalUrl": "https://apify.com/apify/instagram-scraper",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2525,
+            "pendingRequests": 0,
+            "height": 22463,
+            "textLength": 322235,
+            "imageCount": 48,
+            "incompleteImages": 11,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2524,
+            "pendingRequests": 0,
+            "height": 22966,
+            "textLength": 322235,
+            "imageCount": 48,
+            "incompleteImages": 1,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T16:02:24.032Z",
+        "finalUrl": "http://127.0.0.1:53212/static/apify.com/pages/apify-instagram-scraper/clone/index.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2523,
+            "pendingRequests": 0,
+            "height": 21733,
+            "textLength": 53258,
+            "imageCount": 51,
+            "incompleteImages": 11,
+            "brokenImages": 2
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2521,
+            "pendingRequests": 0,
+            "height": 22236,
+            "textLength": 53258,
+            "imageCount": 51,
+            "incompleteImages": 1,
+            "brokenImages": 2
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 3330043,
+      "missingPixels": 1051200,
+      "coverageRatio": 0.9682,
+      "heightDelta": 730,
+      "sourceSize": {
+        "width": 1440,
+        "height": 22966
+      },
+      "cloneSize": {
+        "width": 1440,
+        "height": 22236
+      },
+      "sourceHeight": 22966,
+      "cloneHeight": 22236
+    }
+  ],
+  "functional": null,
+  "interactions": [],
+  "error": "375x812: render did not settle"
+}

@@ -4,7 +4,7 @@
  *
  * 静态模式：读已有 /<host>/recon/atlas.json（或从站点切换器载入任意已侦察站）
  * live 模式：POST /api/recon → SSE 事件流 → 节点逐个弹入生长
- * 点星球 = 克隆该页；「克隆内环」= 批量并行
+ * 点星球打开详情；克隆由详情或页面清单中的显式操作发起。
  */
 import { onMounted, onBeforeUnmount, ref, reactive, computed, watch, defineAsyncComponent, h } from 'vue';
 /**
@@ -23,7 +23,8 @@ const Graph3D = defineAsyncComponent({
   // 慢网络下 1.4MB 的 chunk 要几秒才到；没有占位就是一段纯黑，看起来像坏了。
   // 用 h() 而不是内联 template —— Vue 的 runtime-only 构建不含模板编译器，
   // 内联 template 在这里会静默失效。
-  loadingComponent: { render: () => h('div', { class: 'g3d-loading' }, '星图渲染层加载中（three.js 按需加载，约 1.4MB）…') },
+  loadingComponent: { render: () => h('div', { class: 'g3d-loading' }, '正在加载星图…') },
+  errorComponent: { render: () => h('div', { class: 'g3d-loading', role: 'alert' }, '星图加载失败，请刷新页面重试。') },
   delay: 120,     // 120ms 内到货就不闪占位
   timeout: 30000,
 });
@@ -34,11 +35,13 @@ import JobsView from './JobsView.vue';
 import PagesView from './PagesView.vue';
 import StorageCard from './StorageCard.vue';
 import AssetTable from './AssetTable.vue';
+import AcceptanceSummary from './AcceptanceSummary.vue';
 import DetailDock from './DetailDock.vue';
 import ActivityRail from './ActivityRail.vue';
-import { API, apiHeaders, wsUrl, wsJson, tokenOf } from './api.js';
-import { taskState, taskLabel, liveStageCn, fmtBytes, forgeStageProgress, stageProgressText } from './format.js';
-import { pageNameOf, normalizeSiteUrl, normalizePageUrl } from './pages.js';
+import TrashDialog from './TrashDialog.vue';
+import { API, apiHeaders, wsUrl, wsOpenUrl, wsJson, tokenOf, staticUrl, artifactOpenUrl, staticBridgeNeeded, normalizeApiBase } from './api.js';
+import { taskState, taskLabel, liveStageCn, fmtBytes, forgeStageProgress, stageProgressText, verifyPageProgress } from './format.js';
+import { pageNameOf, pagePathOf, normalizeSiteUrl, normalizePageUrl, workspaceHostOf, mirrorBridgeNeeded, localEngineSupportsMirror } from './pages.js';
 import { hostOfTask, medianForgeSec } from './tasks.js';
 
 import { PAGE_TYPES as PT, typeColor } from './types.js';
@@ -60,6 +63,7 @@ const graphPalette = computed(() => ({
 }));
 
 const host = ref('');   // 当前站点：由「已侦察站点」列表决定，不再写死默认站点
+const targetInput = ref('');
 const atlas = ref(null);
 const live = ref(false);
 const statusText = ref('');
@@ -73,6 +77,7 @@ const tasksOpen = ref(true);
 const auditReport = ref(null);   // 最近一次 SEO 审计结果（报告入口）
 const watchReport = ref(null);   // 最近一次变更监控结果（报告入口）
 const okMsg = ref('');           // 成功提示（绿色 toast，与错误提示区分）
+const trashOpen = ref(false);
 /** 子组件上报"做完了"，统一走这里出提示（组件不直接碰父组件的 toast 状态） */
 function toast(msg, ms = 4000) {
   okMsg.value = msg;
@@ -81,6 +86,9 @@ function toast(msg, ms = 4000) {
 const jobHistory = ref([]);      // 引擎持久化的历史任务（/api/jobs.history）
 const reportIndex = ref([]);     // 可用报告索引（/api/reports/:host）
 const liveHealth = ref(null);    // 最新交互镜像体检（/api/live-health/:host，导出时生成）
+const liveStrictPassed = computed(() => liveHealth.value?.strict === true
+  && !!liveHealth.value.strictBlockers
+  && Object.values(liveHealth.value.strictBlockers).every(count => count === 0));
 const lastVerify = ref(null);    // 最近一次全站体检结果（/api/verify）
 const liveRebuild = ref(false);  // 导出交互镜像前先重建 live 页面
 const sessionState = ref(null);  // 本站登录态（/api/session/:host）：需要登录的站点靠它
@@ -175,6 +183,8 @@ const tableNodes = ref([]);                       // 页面表格的响应式快
  * 而用户会把前者当真（实测：61 页的站点第一眼显示"0 页已克隆 · 平均视觉 —"）。
  */
 const pagesLoading = ref(false);
+let siteEpoch = 0;
+let pageLoadSerial = 0;
 const extraNodes = ref([]);                       // 已克隆但不在 atlas 中的页面（补全清单）
 const pageScores = reactive({});                  // nodeId -> score.json（懒加载）
 const pageVerify = reactive({});                  // nodeId -> verify.json（多视口，懒加载）
@@ -184,7 +194,7 @@ const apiBaseInput = ref(localStorage.getItem('heimdall-api') ?? API);
 // 「克隆档案」卡片用（报告页）。PagesView 里那份是它自己的，两者数据源相同但各自持有 ——
 // 卡片只需要两个数字，为它把 PagesView 的 props 反向暴露出去并不划算。
 // 报告页已有专属卡片的报告 id —— 不能让它们在"设计资产"里再出现一遍
-const CARDED_REPORTS = new Set(['archive', 'compare', 'seo', 'watch', 'assets', 'intel', 'verify']);
+const CARDED_REPORTS = new Set(['archive', 'compare', 'seo', 'watch', 'assets', 'intel', 'verify', 'edit-manifest']);
 const designReports = computed(() => reportIndex.value.filter(r => r.available && !CARDED_REPORTS.has(r.id)));
 
 /**
@@ -193,7 +203,7 @@ const designReports = computed(() => reportIndex.value.filter(r => r.available &
  * （这个仓库里 pageNameOf / liveUrl 都吃过这个亏）。
  */
 const reportById = computed(() => Object.fromEntries(reportIndex.value.map(r => [r.id, r])));
-const reportUrl = (id) => reportById.value[id]?.url ?? null;
+const reportUrl = (id) => artifactOpenUrl(reportById.value[id]?.url);
 const hasReport = (id) => !!reportById.value[id]?.available;
 
 // 「克隆档案」卡片用（报告页）。PagesView 里那份是它自己的，两者数据源相同但各自持有 ——
@@ -213,7 +223,7 @@ function selectView(id) {
   if (id === 'pages' && view.value === 'pages') { view.value = 'atlas'; return; }   // 再次点击 = 收起
   view.value = id;
   if (id === 'jobs') loadJobHistory();
-  if (id === 'reports') { loadReports(); loadLiveHealth(); loadVerifySummary(); }   // 存储/资产卡片挂在报告页，v-if 挂载时自己拉数据
+  if (id === 'reports') { loadLiveHealth(); loadVerifySummary(); }   // 存储/资产卡片挂在报告页，v-if 挂载时自己拉数据
   if (id === 'settings') loadLlm();
 }
 function togglePages() { if (view.value === 'pages') view.value = 'atlas'; else { view.value = 'pages'; loadPageStatus(); } }
@@ -221,29 +231,35 @@ function togglePages() { if (view.value === 'pages') view.value = 'atlas'; else 
 function pickSiteByHost(h) {
   const s = sites.value.find(x => x.host === h);
   if (s) pickSite(s);
-  else { host.value = h; }
 }
 async function deleteSite(s) {
   if (!s?.host) return;
-  if (!confirm('删除站点 ' + s.host + '？\n将移除 workspace/' + s.host + ' 下的侦察、克隆与报告（CAS 资产保留）。')) return;
+  const typed = prompt('将站点 ' + s.host + ' 移入“最近删除”（持续保留，可在设置中恢复）。\n请输入站点名 ' + s.host + ' 确认：');
+  if (typed !== s.host) {
+    if (typed !== null) errMsg.value = '站点名不一致，已取消删除';
+    return;
+  }
   try {
-    const r = await fetch(API + '/api/sites/' + encodeURIComponent(s.host), { method: 'DELETE', headers: apiHeaders() });
+    const r = await fetch(API + '/api/sites/' + encodeURIComponent(s.host), { method: 'DELETE', headers: apiHeaders(), body: JSON.stringify({ confirmHost: typed }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
     sites.value = sites.value.filter(x => x.host !== s.host);
     if (host.value === s.host) {
       if (sites.value[0]) pickSite(sites.value[0]);
-      else { host.value = ''; nodes = []; edges = []; tableNodes.value = []; bump(); }
+      else resetSiteContext('');
     }
-    okMsg.value = '已删除站点 ' + s.host;
+    okMsg.value = '已移入最近删除：' + s.host + '（可在设置中恢复）';
     setTimeout(() => { okMsg.value = ''; }, 2500);
   } catch (e) { errMsg.value = '删除失败：' + String(e).slice(0, 160); }
 }
 async function removePageNode(n) {
+  const forHost = host.value;
+  if (pagesLoading.value || !forHost || n.siteHost !== forHost) throw new Error('页面不属于当前站点，请重新选择站点');
   const name = n.pageName ?? pageNameOf(n);
-  const r = await fetch(API + '/api/sites/' + encodeURIComponent(host.value) + '/pages/' + encodeURIComponent(name), { method: 'DELETE', headers: apiHeaders() });
+  const r = await fetch(API + '/api/sites/' + encodeURIComponent(forHost) + '/pages/' + encodeURIComponent(name), { method: 'DELETE', headers: apiHeaders() });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  if (host.value !== forHost) return j;
   delete pageScores[n.id];
   nodes = nodes.filter(x => x.id !== n.id);
   extraNodes.value = extraNodes.value.filter(x => x.id !== n.id);
@@ -253,82 +269,111 @@ async function removePageNode(n) {
 }
 async function deletePage(n) {
   const name = n.pageName ?? pageNameOf(n);
-  if (!confirm('删除页面 ' + (n.path || name) + ' 的克隆产物，并从星图移除该节点？')) return;
+  if (!confirm('将页面 ' + (n.path || name) + ' 移入“最近删除”，并从星图移除该节点？可在设置中恢复。')) return;
   try {
     const j = await removePageNode(n);
-    okMsg.value = '已删除页面 ' + name + (j.removedNode ? '（星图节点已移除）' : '');
+    okMsg.value = '已移入最近删除：' + name + '（可在设置中恢复）';
     setTimeout(() => { okMsg.value = ''; }, 2500);
     loadSites();
   } catch (e) { errMsg.value = '删除失败：' + String(e).slice(0, 160); }
 }
+async function onTrashRestored(entry) {
+  await loadSites();
+  const restored = sites.value.find(site => site.host === entry.host);
+  if (restored && (entry.kind === 'site' || host.value === entry.host)) pickSite(restored);
+  toast('已恢复 ' + entry.host + (entry.name ? '/' + entry.name : ''));
+}
 async function removeChecked(ids) {
-  const targets = tableNodes.value.filter(n => ids.includes(n.id) && n.forgeState !== 'running');
+  if (pagesLoading.value) return;
+  const forHost = host.value;
+  const targets = tableNodes.value.filter(n => ids.includes(n.id) && n.siteHost === forHost && n.forgeState !== 'running');
   if (!targets.length) return;
-  if (!confirm('移除选中 ' + targets.length + ' 个页面？\n将删除克隆产物并从星图移除节点（CAS 资产保留）。')) return;
+  if (!confirm('将选中的 ' + targets.length + ' 个页面移入“最近删除”，并从星图移除节点？可在设置中恢复。')) return;
   let ok = 0, fail = 0;
-  for (const n of targets) { try { await removePageNode(n); ok++; } catch { fail++; } }
-  okMsg.value = '已移除 ' + ok + ' 个页面' + (fail ? '（' + fail + ' 失败）' : '');
+  for (const n of targets) {
+    if (host.value !== forHost) break;
+    try { await removePageNode(n); ok++; } catch { fail++; }
+  }
+  okMsg.value = '已移入最近删除 ' + ok + ' 个页面' + (fail ? '（' + fail + ' 失败）' : '');
   setTimeout(() => { okMsg.value = ''; }, 3000);
   loadSites();
 }
 function saveApiBase() {
   const v = apiBaseInput.value.trim() || 'http://127.0.0.1:8900';
-  localStorage.setItem('heimdall-api', v);
+  const base = normalizeApiBase(v);
+  if (!base) { errMsg.value = '引擎地址必须是完整的 http(s) 源地址，不能含路径、账号或查询参数'; return; }
+  if (location.protocol === 'https:' && !base.startsWith('https:')) {
+    errMsg.value = 'HTTPS 控制台需要 HTTPS 引擎地址，否则浏览器会阻止请求';
+    return;
+  }
+  localStorage.setItem('heimdall-api', base);
   location.reload();
 }
+
+function canonicalPageUrl(input) {
+  try {
+    const url = new URL(input);
+    url.hash = '';
+    if (url.pathname !== '/') url.pathname = url.pathname.replace(/\/+$/, '');
+    return url.href;
+  } catch { return String(input ?? ''); }
+}
+
 async function loadPageStatus() {
   // 记住这次请求是替哪个站点发的。切站之后回来的响应属于上一个站 ——
   // 不丢掉的话，它会把上一个站的分数写进本页的 pageScores（按 nodeId 存，两边同号就串），
   // 于是新站的"平均视觉"显示出旧站的数字（实测：切到没有克隆页的站，表头却显示 99.1%）。
   const forHost = host.value;
+  const epoch = siteEpoch;
+  const serial = ++pageLoadSerial;
+  if (!forHost) { pagesLoading.value = false; return; }
   pagesLoading.value = true;
   try {
-    const r = await fetch(API + '/api/pages/' + forHost);
-    if (!r.ok || host.value !== forHost) return;
+    const r = await fetch(API + '/api/pages/' + encodeURIComponent(forHost), { headers: apiHeaders() });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const { pages } = await r.json();
-    const byPath = new Map();
-    const byName = new Map();
+    if (host.value !== forHost || siteEpoch !== epoch || pageLoadSerial !== serial) return;
+    const byUrl = new Map();
     for (const p of pages) {
-      try { byPath.set(new URL(p.target).pathname.replace(/\/$/, '') || '/', p); } catch {}
-      byName.set(p.name, p);
+      byUrl.set(canonicalPageUrl(p.target), p);
     }
     const matchedNames = new Set();
     for (const n of nodes) {
-      const key = (n.path || '/').replace(/\/$/, '') || '/';
-      const hit = byPath.get(key) ?? byName.get(pageNameOf(n));
+      const hit = byUrl.get(canonicalPageUrl(n.url));
       if (hit) {
-        n.forgeState = 'done'; pageScores[n.id] = hit.score ?? null; matchedNames.add(hit.name);
+        n.forgeState = 'done'; n.pageName = hit.name; pageScores[n.id] = hit.score ?? null; matchedNames.add(hit.name);
         // 视觉列的最差视口也来自这一条响应（引擎已把 verify.json 的两项一起给出）。
         // 此前是逐页再发 score.json + verify.json 两个请求 —— 80 页就是 160 个，
         // 而分数本来就包含在这条响应里，等于白拉了一遍。
-        pageVerify[n.id] = hit.minViewport ? { minViewport: hit.minViewport } : null;
-        pageMeta[n.id] = { assets: hit.assets ?? null, visualGaps: hit.visualGaps ?? null, interactions: hit.interactions ?? null, updatedAt: hit.updatedAt ?? null, motion: hit.motion ?? null };
+        pageVerify[n.id] = hit.minViewport ? { minViewport: hit.minViewport, scoreVersion: hit.verifyScoreVersion, measured: hit.verifyMeasured } : null;
+      pageMeta[n.id] = { assets: hit.assets ?? null, visualGaps: hit.visualGaps ?? null, interactions: hit.interactions ?? null, verifyFresh: hit.verifyFresh ?? false, artifacts: hit.artifacts ?? null, updatedAt: hit.updatedAt ?? null, motion: hit.motion ?? null };
       }
     }
     // 补全：已克隆但不在 atlas 中的页面（例如 recon 截断、删过节点），保证清单是"完全体"
     extraNodes.value = pages.filter(p => !matchedNames.has(p.name)).map(p => {
-      let path = p.target;
-      try { path = new URL(p.target).pathname || '/'; } catch {}
-      return { id: 'forged:' + p.name, url: p.target, path, title: p.target, type: 'generic', depth: 99, ring: 3, forgeState: 'done', synthetic: true, pageName: p.name };
+      const path = pagePathOf({ url: p.target }) || p.target;
+      return { id: 'forged:' + p.name, url: p.target, path, title: p.target, type: 'generic', depth: 99, ring: 3, forgeState: 'done', synthetic: true, pageName: p.name, siteHost: forHost };
     });
     for (const n of extraNodes.value) {
       const hit = pages.find(p => p.name === n.pageName);
       pageScores[n.id] = hit?.score ?? null;
-      pageVerify[n.id] = hit?.minViewport ? { minViewport: hit.minViewport } : null;
-      pageMeta[n.id] = { assets: hit?.assets ?? null, visualGaps: hit?.visualGaps ?? null, interactions: hit?.interactions ?? null, updatedAt: hit?.updatedAt ?? null, motion: hit?.motion ?? null };
+      pageVerify[n.id] = hit?.minViewport ? { minViewport: hit.minViewport, scoreVersion: hit.verifyScoreVersion, measured: hit.verifyMeasured } : null;
+      pageMeta[n.id] = { assets: hit?.assets ?? null, visualGaps: hit?.visualGaps ?? null, interactions: hit?.interactions ?? null, verifyFresh: hit?.verifyFresh ?? false, artifacts: hit?.artifacts ?? null, updatedAt: hit?.updatedAt ?? null, motion: hit?.motion ?? null };
     }
     tableNodes.value = [...nodes, ...extraNodes.value];
     loadQueue(forHost);
     loadEditManifest(forHost);
-  } catch { /* 引擎离线时保持上一次的快照，不把界面清空 */ }
-  finally { if (host.value === forHost) pagesLoading.value = false; }
+  } catch (e) {
+    if (host.value === forHost && siteEpoch === epoch && pageLoadSerial === serial) errMsg.value = '页面状态加载失败：' + String(e).slice(0, 120);
+  }
+  finally { if (host.value === forHost && siteEpoch === epoch && pageLoadSerial === serial) pagesLoading.value = false; }
 }
 
 /** 整站克隆的断点状态（/api/queue/<host>）：让"还剩 N 页、可以直接续跑"成为可显示的读数。
  *  此前一批 60 页的站中断后，用户能做的唯一判断是"再点一次整站克隆"，而不知道它会不会重头再来。 */
 async function loadQueue(h) {
   try {
-    const r = await fetch(API + '/api/queue/' + encodeURIComponent(h));
+    const r = await fetch(API + '/api/queue/' + encodeURIComponent(h), { headers: apiHeaders() });
     if (!r.ok || host.value !== h) return;
     const j = await r.json();
     queueState.value = j.exists ? j : null;
@@ -337,7 +382,10 @@ async function loadQueue(h) {
 
 /** 改站起点清单（引擎生成的 workspace 产物）。取不到就当"还没生成"。 */
 async function loadEditManifest(h) {
-  const j = await wsJson(h, 'deliver/edit-manifest.json');
+  const reports = await loadReports();
+  if (host.value !== h) return;
+  const available = reports.some(r => r.id === 'edit-manifest' && r.available);
+  const j = available ? await wsJson(h, 'deliver/edit-manifest.json') : null;
   if (host.value !== h) return;
   editManifest.value = j;
   domainResult.value = null;   // 换站了，上一次的替换读数不再适用
@@ -451,18 +499,53 @@ function runReplaceDomain(apply) {
     } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
   })();
 }
-function saveToken() {
+async function establishBrowserSession() {
+  if (!tokenOf()) return;
+  const r = await fetch(`${API}/api/status`, {
+    headers: apiHeaders(), credentials: mirrorBridgeNeeded() ? 'omit' : 'include',
+  });
+  if (!r.ok) throw new Error('Token 无效或引擎未就绪');
+}
+
+async function saveToken() {
   const v = tokenInput.value.trim();
+  const previous = tokenOf();
+  const crossOrigin = mirrorBridgeNeeded();
   if (v) localStorage.setItem('heimdall-token', v); else localStorage.removeItem('heimdall-token');
-  okMsg.value = v ? 'Token 已保存（后续请求生效）' : 'Token 已清除';
+  try {
+    if (v) await establishBrowserSession();
+    else if (!crossOrigin) {
+      const r = await fetch(`${API}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+      if (!r.ok) throw new Error(`引擎注销失败：${r.status}`);
+    }
+    okMsg.value = v
+      ? mirrorBridgeNeeded()
+        ? localEngineSupportsMirror() ? 'Token 已保存，交互镜像将通过一次性授权打开' : 'Token 已保存；独立子域镜像需要本机引擎'
+        : 'Token 已保存，浏览器产物访问已授权'
+      : crossOrigin ? 'Token 已清除；已打开的镜像会话可能持续到 Cookie 过期' : 'Token 已清除';
+    errMsg.value = '';
+    loadSites();
+    if (host.value) loadPageStatus();
+  } catch (e) {
+    if (v) {
+      if (previous) localStorage.setItem('heimdall-token', previous);
+      else localStorage.removeItem('heimdall-token');
+    }
+    errMsg.value = String(e);
+  }
   setTimeout(() => { okMsg.value = ''; }, 2500);
 }
 
 // 3D 图数据（Graph3D 消费）
 const gNodes = ref([]);
 const gLinks = ref([]);
+// 空态不下载 three；首次有节点后保持挂载，切页时复用 WebGL 实例。
+const graphRequested = ref(false);
+watch([gNodes, view], ([currentNodes, currentView]) => {
+  if (currentView === 'atlas' && currentNodes.length > 0) graphRequested.value = true;
+}, { immediate: true });
 const gTick = ref(0);
-const bump = () => { gNodes.value = [...nodes]; gLinks.value = [...edges]; gTick.value++; tableNodes.value = [...nodes, ...extraNodes.value]; scheduleScoreLoad(); };
+const bump = (loadStatus = true) => { gNodes.value = [...nodes]; gLinks.value = [...edges]; gTick.value++; tableNodes.value = [...nodes, ...extraNodes.value]; if (loadStatus) scheduleScoreLoad(); };
 
 let nodes = [], edges = [];
 const urlNode = new Map();
@@ -476,7 +559,7 @@ const urlNode = new Map();
  * 引擎侧（recon.mjs）已经做了归一，但**实时侦察的 SSE 路径当时漏了**：
  * 页面在侦察过程中就重复长出来，直到侦察结束重读 atlas（buildStatic 会去重）才恢复。
  */
-const urlKey = (u) => String(u ?? '').replace(/\/+$/, '');
+const urlKey = canonicalPageUrl;
 let pendingEdges = [];
 let es = null;
 
@@ -485,6 +568,7 @@ function makeNode(ev, ringIdx) {
     ...ev,
     ring: ringIdx,
     forgeState: 'idle',
+    siteHost: host.value,
   };
 }
 function makeLink(f, t, bornAt = 0) {
@@ -521,30 +605,57 @@ function buildStatic(a) {
   loadPageStatus();
 }
 
-// ---------- live 侦察 ----------
-function startRecon() {
-  const url = normalizeSiteUrl(host.value);
-  if (!url) { errMsg.value = '网址无效'; return; }
-  errMsg.value = ''; live.value = true; statusText.value = '光点出发';
-  hudOrigin.value = url.replace(/^https?:\/\//, '');
-  nodes = []; edges = []; urlNode.clear(); pendingEdges = []; atlas.value = null;
-  host.value = url.replace(/^https?:\/\//, '');
-  bump();
-
-  fetch(`${API}/api/recon`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url, maxPages: 30 }) })
-    .then(r => r.json())
-    .then(({ taskId, error }) => {
-      if (error) { errMsg.value = error === 'busy' ? '引擎忙：有任务在跑' : error; live.value = false; return; }
-      listen(taskId);
-    })
-    .catch(e => { errMsg.value = String(e); live.value = false; });
+function resetSiteContext(nextHost) {
+  siteEpoch++;
+  pageLoadSerial++;
+  clearTimeout(scoreLoadTimer);
+  es?.close(); es = null;
+  host.value = nextHost;
+  targetInput.value = nextHost;
+  nodes = []; edges = []; urlNode.clear(); pendingEdges = [];
+  atlas.value = null;
+  extraNodes.value = [];
+  for (const bag of [pageScores, pageMeta, pageVerify]) for (const key of Object.keys(bag)) delete bag[key];
+  selected.value = null; detailIntel.value = null; detailScore.value = null;
+  reportIndex.value = []; lastVerify.value = null; liveHealth.value = null;
+  queueState.value = null; editManifest.value = null; domainResult.value = null;
+  auditReport.value = null; watchReport.value = null; assetAuditReport.value = null;
+  matrixReport.value = null; sessionState.value = null; siteHistory.value = [];
+  hudPages.value = 0; hudEdges.value = 0; hudEdgesRendered.value = 0; hudOrigin.value = nextHost;
+  pagesLoading.value = !!nextHost;
+  bump(false);
+  return siteEpoch;
 }
 
-function listen(taskId) {
-  es = new EventSource(`${API}/api/events?task=${taskId}`);
+// ---------- live 侦察 ----------
+function startRecon() {
+  const url = normalizeSiteUrl(targetInput.value);
+  if (!url) { errMsg.value = '网址无效'; return; }
+  const epoch = resetSiteContext('');
+  targetInput.value = url;
+  errMsg.value = ''; live.value = true; statusText.value = '光点出发';
+  hudOrigin.value = url.replace(/^https?:\/\//, '');
+
+  fetch(`${API}/api/recon`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url, maxPages: 30 }) })
+    .then(r => r.json())
+    .then(({ taskId, error, siteId }) => {
+      if (siteEpoch !== epoch) return;
+      if (error) { errMsg.value = error === 'busy' ? '引擎忙：有任务在跑' : error; live.value = false; return; }
+      host.value = siteId || workspaceHostOf(url);
+      listen(taskId, epoch);
+    })
+    .catch(e => { if (siteEpoch === epoch) { errMsg.value = String(e); live.value = false; } });
+}
+
+function listen(taskId, epoch) {
+  es = new EventSource(sseUrl(taskId));
   es.onmessage = (m) => {
+    if (siteEpoch !== epoch) { es?.close(); es = null; return; }
     let ev; try { ev = JSON.parse(m.data); } catch { return; }
-    if (ev.kind === 'page') {
+    if (ev.kind === 'calibrated') {
+      if (ev.host) host.value = ev.host;
+      hudOrigin.value = (ev.origin ?? '').replace(/^https?:\/\//, '');
+    } else if (ev.kind === 'page') {
       const k = urlKey(ev.url);
       if (urlNode.has(k)) return;   // 同一页的另一种写法（尾斜杠）—— 不再长第二颗星球
       const ringIdx = ev.depth === 0 ? 0 : ev.depth === 1 ? 1 : 2;
@@ -555,19 +666,24 @@ function listen(taskId) {
       bump();
     } else if (ev.kind === 'edges') {
       pendingEdges.push({ from: ev.from, tos: ev.tos });
+    } else if (ev.kind === 'recon-error') {
+      errMsg.value = ev.error;
     } else if (ev.kind === 'exit') {
       es.close(); es = null;
-      if (ev.status === 'done') finishRecon(taskId);
-      else { errMsg.value = '侦察失败'; live.value = false; statusText.value = ''; }
+      if (ev.status === 'done') finishRecon(taskId, epoch);
+      else { errMsg.value ||= '侦察失败'; live.value = false; statusText.value = ''; }
     }
   };
   es.onerror = () => { es?.close(); es = null; };
 }
 
-async function finishRecon(taskId) {
+async function finishRecon(taskId, epoch) {
   statusText.value = '星图定稿';
   try {
-    const a = await (await fetch(`${API}/api/atlas/${taskId}`)).json();
+    const response = await fetch(`${API}/api/atlas/${taskId}`, { headers: apiHeaders() });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const a = await response.json();
+    if (siteEpoch !== epoch) return;
     atlas.value = a;
     hudOrigin.value = (a.origin ?? '').replace(/^https?:\/\//, '');
     // 侦察只抓到 0-1 页：最常见的两种原因是登录墙与纯客户端渲染。
@@ -592,6 +708,7 @@ async function finishRecon(taskId) {
     hudEdges.value = a.meta?.edges ?? edges.length;
     bump();
     loadPageStatus();
+    loadSites();
   } catch {}
   live.value = false;
   setTimeout(() => { statusText.value = ''; }, 2500);
@@ -618,14 +735,15 @@ const edgeTick = setInterval(() => {
 // ---------- 站点切换器 ----------
 async function loadSites() {
   try {
-    const r = await fetch(`${API}/api/sites`);
+    const r = await fetch(`${API}/api/sites`, { headers: apiHeaders() });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     sites.value = (await r.json()).sites ?? [];
-  } catch {}
+  } catch (e) { errMsg.value = '站点列表加载失败：' + String(e).slice(0, 120); }
   sitesLoaded.value = true;   // 首启向导只在**确认过**没有站点时才出现，避免加载中闪一下
 }
 async function pollEngine() {
   try {
-    const r = await fetch(`${API}/api/status`);
+    const r = await fetch(`${API}/api/status`, { headers: apiHeaders() });
     engine.value = await r.json();
   } catch { engine.value = { ok: false }; }
 }
@@ -675,7 +793,7 @@ async function loadSession() {
   sessionState.value = null;
   if (!host.value) return;
   try {
-    const r = await fetch(API + '/api/session/' + host.value);
+    const r = await fetch(API + '/api/session/' + encodeURIComponent(host.value), { headers: apiHeaders() });
     if (r.ok) sessionState.value = await r.json();
   } catch { /* 引擎离线时静默 */ }
 }
@@ -769,7 +887,7 @@ const siteActions = computed(() => {
         : '需要登录/鉴权的站点：开一个浏览器窗口人工登一次，之后侦察/克隆/审计都自动带上这份登录态',
       disabled: !has,
     },
-    { id: 'delete', label: '删除本站', hint: '移除该站的侦察、克隆与报告（CAS 资产保留）', danger: true, disabled: !has },
+    { id: 'delete', label: '删除本站', hint: '将侦察、克隆与报告移入最近删除，可在设置中恢复', danger: true, disabled: !has },
   ];
 });
 /** 工作视图自己就是清单，不需要「页面清单」那一项；其余动作与星图一致 */
@@ -790,26 +908,20 @@ function onSiteAction(id) {
 
 function pickSite(s) {
   if (!s) return;
-  host.value = s.host;
+  const epoch = resetSiteContext(s.host);
+  targetInput.value = s.origin ?? s.host;
   loadHistory(s.host);
   loadAuditReport(s.host);
   loadSession();
-  // 逐页缓存必须跟着站点一起换：pageScores / pageMeta / pageVerify 都是按 nodeId 存的，
-  // 而 nodeId 是站点内序号 —— 不清空的话，切站后表头的"平均视觉"会混进上一个站的分数。
-  // 三者都是 reactive 对象，只能逐键删（Object.assign 一个空对象是清不掉的）。
-  for (const bag of [pageScores, pageMeta, pageVerify]) for (const k of Object.keys(bag)) delete bag[k];
-  selected.value = null;
-  detailIntel.value = null; detailScore.value = null;
   // 站点可能只有克隆、没有全站侦察（用户直接 `forge <url>` 克隆单页 ——
   // 这正是"一次性便利"的主路径）。那种情况下没有 atlas.json 可读，
   // 但 /api/pages/<host> 仍然能列出已克隆的页面，所以退到"只有清单"而不是报错：
   // 站点出现在列表里却点不动，比不出现更让人困惑。
-  fetch(wsUrl(s.host, 'recon/atlas.json'))
-    .then(r => (r.ok ? r.json() : null))
+  (s.pages ? wsJson(s.host, 'recon/atlas.json') : Promise.resolve(null))
     .then(async (a) => {
-      if (a) { buildStatic(a); loadPageStatus(); return; }
+      if (siteEpoch !== epoch) return;
+      if (a) { buildStatic(a); return; }
       buildStatic({ origin: s.origin ?? ('https://' + s.host), nodes: [], edges: [], meta: { pages: 0, edges: 0 } });
-      await loadPageStatus();
       // 只有审计产物、没有克隆页：直接进「报告」——报告就在那里，摆一个空清单没有意义
       if (!s.forged && s.audit) {
         view.value = 'reports';
@@ -820,7 +932,7 @@ function pickSite(s) {
       }
       setTimeout(() => { okMsg.value = ''; }, 6000);
     })
-    .catch(e => { errMsg.value = String(e); });
+    .catch(e => { if (siteEpoch === epoch) errMsg.value = String(e); });
 }
 
 /**
@@ -833,10 +945,20 @@ function pickSite(s) {
 function forgeSingle() {
   // 页面级归一：**保留路径**。站点选择仍然只取 origin（站点栏与产物路径都按站点走），
   // 两者以前是同一个函数、同一条 origin，于是填 `apify.com/store` 会克隆成首页。
-  const url = normalizePageUrl(host.value);
+  const url = normalizePageUrl(targetInput.value);
   if (!url) { errMsg.value = '网址无效'; return; }
   errMsg.value = '';
-  host.value = normalizeSiteUrl(url).replace(/^https?:\/\//, '');
+  const nextHost = sites.value.find(s => s.origin === new URL(url).origin)?.host ?? workspaceHostOf(url);
+  if (nextHost !== host.value) {
+    const site = sites.value.find(s => s.host === nextHost);
+    if (site) pickSite(site);
+    else {
+      resetSiteContext(nextHost);
+      loadPageStatus();
+    }
+    view.value = 'pages';
+  }
+  targetInput.value = url;
   startForge(null, { url });
 }
 
@@ -845,8 +967,13 @@ function forgeSingle() {
 // 那条路径根本没有星图，也就没有节点。区别只有 pageName 的来源与 forgeState 往哪写。
 function startForge(node, opts = {}) {
   return new Promise((resolve) => {
+    if (node && (pagesLoading.value || node.siteHost !== host.value)) {
+      errMsg.value = '页面不属于当前站点，请等待页面清单刷新';
+      return resolve();
+    }
     const url = node?.url ?? opts.url;
     if (!url) return resolve();
+    const requestEpoch = siteEpoch;
     // 页名只有一条规则（pages.js 的 pageNameOf，与 core 侧 url-canon 同源）。
     // 这里曾经内联了第二份：`node.path.replace(/^\//,'').replace(/\//g,'-')` ——
     // 它**不截断到 60 字符**。产物目录名是截断过的，所以凡是路径 ≥60 字符的页
@@ -872,13 +999,22 @@ function startForge(node, opts = {}) {
     (async () => {
       try {
         const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url }) });
-        const { taskId, error } = await r.json();
+        const { taskId, error, pageName: storedPageName, siteId } = await r.json();
         if (error) {
           task.failed = true; task.done = true; task.endedAt = Date.now();
           task.error = error === 'busy' ? '造物台忙：引擎并发槽已满（稍后重试）' : error;
           setState('idle'); return resolve();
         }
         task.taskId = taskId;
+        if (!node && siteId && host.value !== siteId && siteEpoch === requestEpoch) {
+          resetSiteContext(siteId);
+          targetInput.value = url;
+          loadPageStatus();
+        }
+        if (storedPageName) {
+          task.pageName = storedPageName;
+          if (node) node.pageName = storedPageName;
+        }
         const es = new EventSource(sseUrl(taskId));
         taskSources.set(task.localId, es);
         const closeTask = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
@@ -994,27 +1130,41 @@ async function saveLlm() {
 
 /** 报告索引 + 资产清单（报告页使用） */
 async function loadLiveHealth() {
+  const h = host.value;
   try {
-    const r = await fetch(API + '/api/live-health/' + encodeURIComponent(host.value), { headers: apiHeaders() });
-    liveHealth.value = r.ok ? await r.json() : null;
-  } catch { liveHealth.value = null; }
+    const r = await fetch(API + '/api/live-health/' + encodeURIComponent(h), { headers: apiHeaders() });
+    const result = r.ok ? await r.json() : null;
+    if (host.value === h) liveHealth.value = result;
+  } catch { if (host.value === h) liveHealth.value = null; }
 }
 async function loadVerifySummary() {
+  const h = host.value;
   try {
-    const r = await fetch('/static/' + host.value + '/verify/verify-summary.json');
+    const reports = await loadReports();
+    if (host.value !== h) return;
+    const report = reports.find(x => x.id === 'verify' && x.available);
+    if (!report) { lastVerify.value = null; return; }
+    const r = await fetch(report.url, { headers: apiHeaders() });
     if (!r.ok) { lastVerify.value = null; return; }
     const j = await r.json();
-    lastVerify.value = { host: host.value, pages: j.pages?.length ?? 0, average: ((j.average ?? 0) * 100).toFixed(1), worst: j.worst ?? null };
-  } catch { lastVerify.value = null; }
+    if (host.value === h) lastVerify.value = { host: h, pages: j.pages?.length ?? 0, average: (j.measured > 0 && typeof j.average === 'number') ? (j.average * 100).toFixed(1) : null, worst: j.worst ?? null, mode: j.mode ?? 'sample', measured: j.measured ?? 0, targetTotal: j.targetTotal ?? j.pages?.length ?? 0, untested: j.untested ?? 0 };
+  } catch { if (host.value === h) lastVerify.value = null; }
 }
 async function loadReports() {
-  try { const r = await fetch(API + '/api/reports/' + host.value); if (r.ok) reportIndex.value = (await r.json()).reports ?? []; } catch {}
+  const h = host.value;
+  if (!h) return [];
+  try {
+    const r = await fetch(API + '/api/reports/' + encodeURIComponent(h), { headers: apiHeaders() });
+    const reports = r.ok ? ((await r.json()).reports ?? []).map(report => ({ ...report, url: staticUrl(report.url) })) : [];
+    if (host.value === h) reportIndex.value = reports;
+    return reports;
+  } catch { if (host.value === h) reportIndex.value = []; return []; }
 }
 
 /** 引擎持久化任务历史（重启后仍可查） */
 async function loadJobHistory() {
   try {
-    const r = await fetch(API + '/api/jobs');
+    const r = await fetch(API + '/api/jobs', { headers: apiHeaders() });
     if (!r.ok) return;
     const j = await r.json();
     jobHistory.value = j.history ?? [];
@@ -1048,7 +1198,7 @@ function runMatrix() {
         else if (ev.kind === 'matrix-done') {
           task.done = true; task.endedAt = Date.now();
           const rel = String(ev.path || '').split(/[\\/]workspace[\\/]/).pop() || '';
-          matrixReport.value = { url: '/static/' + rel.split('\\').join('/'), sites: [host.value, matrixPeer.value] };
+          matrixReport.value = { url: staticUrl('/static/' + rel.split('\\').join('/')), sites: [host.value, matrixPeer.value] };
           statusText.value = '对标矩阵完成';
           close(); setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
@@ -1139,10 +1289,25 @@ function runWatch() {
 }
 
 /** 多视口体检：引擎 verify 任务（--all 或单页；minViewport 告警口径） */
+function verifyFailureMessage(ev, page, issues) {
+  const expected = ev.targetTotal ?? ev.pages ?? (page ? 1 : 0);
+  const untested = Number.isFinite(ev.untested) ? ev.untested : Math.max(0, expected - (ev.measured ?? 0));
+  const first = (Array.isArray(ev.failedPages) ? ev.failedPages : []).find(p => p?.page) ?? issues[0];
+  const reason = String(first?.error ?? first?.reason ?? '').slice(0, 120);
+  const detail = first?.page ? `（${first.page}${reason ? `：${reason}` : ''}）` : '';
+  if (untested > 0) return `体检未通过：${page ? '该页' : `${untested} 页`}未完整测量${detail}`;
+  if (typeof ev.average === 'number') {
+    const threshold = Number.isFinite(ev.threshold) && ev.threshold > 0 ? `${ev.threshold}%` : '设定阈值';
+    return `体检未通过：${page ? '该页' : '平均'}还原度 ${(ev.average * 100).toFixed(1)}% 未达到 ${threshold}`;
+  }
+  return `体检未通过${detail || '：请查看逐页验证结果'}`;
+}
+
 function runVerify(page) {
+  const h = host.value;
   const task = reactive({
     localId: 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    kind: 'verify', label: page ? ('多视口体检 · ' + page) : ('全站体检 · ' + host.value), url: atlas.value?.origin ?? ('https://' + host.value),
+    kind: 'verify', label: page ? ('多视口体检 · ' + page) : ('全站体检 · ' + h), url: atlas.value?.origin ?? ('https://' + h),
     done: false, failed: false, error: null, verifyAverage: null,
     startedAt: Date.now(), endedAt: null,
   });
@@ -1151,26 +1316,34 @@ function runVerify(page) {
   statusText.value = page ? ('体检 ' + page + ' · 截图中') : '全站体检 · 准备中';
   (async () => {
     try {
-      const r = await fetch(API + '/api/verify', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, page: page || undefined, maxPages: 30 }) });
+      const r = await fetch(API + '/api/verify', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h, page: page || undefined }) });
       const { taskId, error } = await r.json();
       if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '体检失败：' + error; return; }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
+      const verifyIssues = [];
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
       es.onmessage = (m) => {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'verify-page') {
-          const pct = (ev.overall * 100).toFixed(1);
-          const min = ev.minViewport ? (' · 最低 ' + ev.minViewport.name + ' ' + (ev.minViewport.score * 100).toFixed(1) + '%') : '';
-          statusText.value = '体检 ' + ev.page + ' · ' + pct + '%' + min;
+          if (ev.error) verifyIssues.push({ page: ev.page, error: ev.error });
+          statusText.value = verifyPageProgress(ev);
         } else if (ev.kind === 'verify-done') {
           task.done = true; task.endedAt = Date.now(); task.verifyAverage = ev.average;
-          lastVerify.value = { host: host.value, pages: ev.pages, average: (ev.average * 100).toFixed(1) };
-          loadVerifySummary();
-          statusText.value = '体检完成 · ' + ev.pages + ' 页 · 平均 ' + (ev.average * 100).toFixed(1) + '%';
+          task.failed = !ev.passed;
+          if (task.failed) task.error = verifyFailureMessage(ev, page, verifyIssues);
+          if (host.value === h) {
+            if (!page) lastVerify.value = { host: h, pages: ev.pages,
+              average: (ev.measured > 0 && typeof ev.average === 'number') ? (ev.average * 100).toFixed(1) : null,
+              measured: ev.measured, targetTotal: ev.targetTotal, untested: ev.untested, mode: 'all' };
+            loadVerifySummary();
+            statusText.value = task.failed ? task.error
+              : '体检完成 · ' + (ev.measured ?? 0) + '/' + (ev.targetTotal ?? ev.pages) + ' 页完整测量';
+          }
           close(); scheduleScoreLoad(); loadReports();
           setTimeout(() => { statusText.value = ''; }, 5000);
         } else if (ev.kind === 'verify-error') {
+          verifyIssues.push({ page: ev.page, error: ev.error });
           statusText.value = '体检告警 · ' + ev.page + ' ' + (ev.error || '');
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
           task.failed = true; task.done = true; task.error = '任务中断'; close();
@@ -1200,7 +1373,7 @@ function runResponsiveUpgrade() {
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
       es.onmessage = (m) => {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
-        if (ev.kind === 'upgrade-page') statusText.value = '响应式升级 · ' + ev.page + ' · ' + (ev.kept ? '保留' : '回退');
+        if (ev.kind === 'upgrade-page') statusText.value = '响应式升级 · ' + ev.page + ' · ' + (ev.error ? '失败' : ev.kept ? '保留' : '未采用');
         else if (ev.kind === 'exit') {
           task.done = true; task.endedAt = Date.now();
           if (ev.status === 'done') { statusText.value = '响应式升级完成'; loadVerifySummary(); scheduleScoreLoad(); }
@@ -1291,7 +1464,7 @@ const artifactDirs = computed(() => {
 });
 
 /**
- * 交互镜像导出：引擎 live 任务（离线 + mirror + heal + materialize）
+ * 交互镜像导出：引擎 live 任务（离线 + 严格验收 + mirror + heal + materialize）
  *
  * `hostArg` 是**任务中心那一行**点进来时传的站点 —— 它未必等于当前选中的站点
  * （比如刚克隆完 A 站，随后切到 B 站看东西，再回头点 A 站那行的按钮）。
@@ -1330,8 +1503,8 @@ function runLiveExport(hostArg) {
         }
         else if (ev.kind === 'exit') {
           task.done = true; task.endedAt = Date.now();
-          if (ev.status === 'done') { statusText.value = '交互镜像导出完成 · 已生成离线完整包'; if (isCurrent) { loadLiveHealth(); loadReports(); } }
-          else { task.failed = true; task.error = '导出失败（见 health.json / 任务日志）'; errMsg.value = '交互镜像导出失败，查看任务日志'; }
+          if (ev.status === 'done') { statusText.value = '交互镜像导出完成 · 严格离线验收通过'; if (isCurrent) { loadLiveHealth(); loadReports(); } }
+          else { task.failed = true; task.error = '导出或严格离线验收失败（查看任务日志及候选包 health.json；旧包保留）'; errMsg.value = task.error; }
           close(); setTimeout(() => { statusText.value = ''; }, 5000);
         }
       };
@@ -1508,14 +1681,16 @@ function startCloneSite({ incremental = false } = {}) {  return new Promise((res
 }
 
 function onNodeClick(node) {
-  if (!node?.url) return;
+  if (!node?.url || node.siteHost !== host.value || pagesLoading.value) return;
   selected.value = node;                      // 点星 = 选中，打开详情剖析面板
   activeTaskId.value = null;                   // 关闭旧克隆视图（后台任务继续跑）
   detailIntel.value = null; detailScore.value = null;
   // 与产物目录名同一条规则（pages.js）—— 内联第二份会漏掉 60 字符截断，见 startForge 的注释
   const pageName = pageNameOf(node);
-  wsJson(host.value, 'pages/' + pageName + '/intel/intel.json').then(j => { if (j && selected.value === node) detailIntel.value = j; });
-  wsJson(host.value, 'pages/' + pageName + '/score.json').then(j => { if (j && selected.value === node) detailScore.value = j; });
+  if (node.forgeState === 'done') {
+    wsJson(host.value, 'pages/' + pageName + '/intel/intel.json').then(j => { if (j && selected.value === node) detailIntel.value = j; });
+    wsJson(host.value, 'pages/' + pageName + '/score.json').then(j => { if (j && selected.value === node) detailScore.value = j; });
+  }
 }
 
 function onKeydown(e) {
@@ -1523,18 +1698,19 @@ function onKeydown(e) {
   if (selected.value) { selected.value = null; return; }
   if (view.value !== 'atlas') { view.value = 'atlas'; }
 }
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('keydown', onKeydown);
   applyTheme(theme.value);
   // 任务历史一开始就取一次：它此前只在切到「任务」视图时才拉，于是「进行中」轨道上的
   // "同类中位 0:38"在星图上永远是空的（实测：克隆 apify 页面时中位数不显示，
   // 而那站的历史里有 46 条样本）。顺手也让任务视图打开即是满的。
+  try { await establishBrowserSession(); } catch (e) { errMsg.value = String(e); }
   loadJobHistory();
   loadSites().then(() => {
     // 默认载入第一个「有侦察结果」的站点；没有则保持空态（引导用户输入域名侦察）
     const first = sites.value.find(s => s.pages) ?? sites.value[0];
     if (first) pickSite(first);
-    else host.value = '';
+    else resetSiteContext('');
   });
   pollEngine();
 });
@@ -1550,7 +1726,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Graph3D v-show="view === 'atlas'" :active="view === 'atlas'" :nodes="gNodes" :links="gLinks" :tick="gTick" :auto-rotate="autoRotate" :palette="graphPalette" @node-click="onNodeClick" />
+  <Graph3D v-if="graphRequested" v-show="view === 'atlas'" :active="view === 'atlas'" :nodes="gNodes" :links="gLinks" :tick="gTick" :auto-rotate="autoRotate" :palette="graphPalette" @node-click="onNodeClick" />
 
   <div class="hud" v-if="view === 'atlas'">
     <div class="brand">HEIMDALL<span class="brand-sub">SITE ATLAS · 站点克隆工作台</span></div>
@@ -1635,7 +1811,7 @@ onBeforeUnmount(() => {
 
   <div class="seek surface">
     <button class="theme-btn" @click="toggleTheme" :aria-label="theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'" :title="theme === 'dark' ? '切换浅色' : '切换深色'"><Icon :name="theme === 'dark' ? 'moon' : 'sun'" decorative /></button>
-    <input v-model="host" aria-label="目标站点域名" placeholder="输入目标域名或页面地址 · apify.com 或 apify.com/store" spellcheck="false" @keyup.enter="startRecon"
+    <input v-model="targetInput" aria-label="目标站点域名" placeholder="输入目标域名或页面地址 · apify.com 或 apify.com/store" spellcheck="false" @keyup.enter="startRecon"
       title="要分析的站点域名（可带 https://）。带路径时：侦察只认域名，克隆按整条地址走。回车或点「侦察」开始" />
     <button @click="startRecon"
       title="全站侦察：从 sitemap 与站内链接找出页面，逐页抓标题/类型/缩略图，产出星图与全站视图。页数上限由站点配方的 maxPages 决定，几十页通常 1-3 分钟">侦察</button>
@@ -1652,7 +1828,7 @@ onBeforeUnmount(() => {
     v-if="view === 'pages'"
     :key="'pages-' + host"
     :host="host" :sites="sites" :theme="theme"
-    :nodes="tableNodes" :scores="pageScores" :verify="pageVerify" :meta="pageMeta"
+    :nodes="tableNodes" :scores="pageScores" :verify="pageVerify" :meta="pageMeta" :loading="pagesLoading"
     :actions="workViewActions"
     @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'"
     @detail="onNodeClick" @forge="startForge" @delete="deletePage"
@@ -1672,7 +1848,15 @@ onBeforeUnmount(() => {
       <SiteBar :sites="sites" :host="host" :actions="workViewActions" @pick="pickSiteByHost" @action="onSiteAction" />
       <button class="wv-close" @click="view = 'atlas'" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
     </div>
+    <nav class="report-shortcuts" aria-label="常用报告入口" v-if="['archive', 'compare', 'seo', 'verify', 'intel'].some(hasReport)">
+      <a v-if="hasReport('archive')" :href="reportUrl('archive')" target="_blank" rel="noopener">克隆档案</a>
+      <a v-if="hasReport('compare')" :href="reportUrl('compare')" target="_blank" rel="noopener">同步对比</a>
+      <a v-if="hasReport('seo')" :href="reportUrl('seo')" target="_blank" rel="noopener">SEO 报告</a>
+      <a v-if="hasReport('verify')" :href="reportUrl('verify')" target="_blank" rel="noopener">体检 JSON</a>
+      <a v-if="hasReport('intel')" :href="reportUrl('intel')" :target="staticBridgeNeeded() ? '_blank' : undefined" :download="staticBridgeNeeded() ? null : ''">情报 Excel</a>
+    </nav>
     <div class="reports-scroll">
+    <AcceptanceSummary :host="host" />
     <div class="report-card surface">
       <h3>克隆档案</h3>
       <p v-if="pagesLoading" role="status" aria-live="polite">逐页状态统计中…</p>
@@ -1692,7 +1876,7 @@ onBeforeUnmount(() => {
       </p>
       <div class="edit-row">
         <button @click="runEditManifest()" :disabled="!host || !!engine.editManifest">生成 / 刷新清单</button>
-        <a v-if="editManifest" :href="'/static/' + host + '/deliver/edit-manifest.md'" target="_blank" rel="noopener">打开清单（Markdown）</a>
+        <a v-if="editManifest" :href="wsOpenUrl(host, 'deliver/edit-manifest.md')" target="_blank" rel="noopener">打开清单（Markdown）</a>
       </div>
       <!-- 最该先换的那几个（按被引页数排序）：换 logo 时从这里直接定位到文件，
            不用自己去 clone/assets/** 里翻 -->
@@ -1750,14 +1934,14 @@ onBeforeUnmount(() => {
       <p class="trend-hint" v-else-if="auditReport?.field && !auditReport.field.available">
         只有实验室数据（本机 Playwright 实测）：{{ auditReport.field.reason }}
       </p>
-      <a v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">打开报告</a>
+      <a v-if="auditReport" :href="wsOpenUrl(auditReport.host, 'seo/seo.html')" target="_blank" rel="noopener">打开报告</a>
       <button v-else class="wv-primary" @click="runAudit">运行审计</button>
     </div>
     <div class="report-card surface">
       <h3>变更监控</h3>
       <p v-if="watchReport">{{ watchReport.changes }} 处变化（高 {{ watchReport.bySeverity?.high ?? 0 }}）</p>
       <p v-else>对比基线快照，发现标题/描述/canonical/正文变化</p>
-      <a v-if="watchReport" :href="`/static/${host}/watch/watch.html`" target="_blank" rel="noopener">打开变更报告</a>
+      <a v-if="watchReport" :href="wsOpenUrl(host, 'watch/watch.html')" target="_blank" rel="noopener">打开变更报告</a>
       <button v-else class="wv-primary" @click="runWatch">运行监控</button>
     </div>
     <div class="report-card surface">
@@ -1769,7 +1953,7 @@ onBeforeUnmount(() => {
     <div class="report-card surface">
       <h3>竞品情报包</h3>
       <p>概览 / 语义情报 / 定价与 CTA</p>
-      <a v-if="hasReport('intel')" :href="reportUrl('intel')" download>下载 Excel</a>
+      <a v-if="hasReport('intel')" :href="reportUrl('intel')" :target="staticBridgeNeeded() ? '_blank' : undefined" :download="staticBridgeNeeded() ? null : ''">下载 Excel</a>
       <p v-else class="trend-hint">情报在克隆阶段入库 —— 克隆一页后即可下载</p>
     </div>
 
@@ -1777,7 +1961,7 @@ onBeforeUnmount(() => {
       <h3>跨站对标矩阵</h3>
       <p v-if="matrixReport">与 {{ matrixReport.sites[1] }} 的 SEO 对标已生成</p>
       <p v-else>选择另一站点，生成站点分/覆盖率/LCP/页面类型对比</p>
-      <div v-if="matrixReport"><a :href="matrixReport.url" target="_blank" rel="noopener">打开矩阵报告</a></div>
+      <div v-if="matrixReport"><a :href="artifactOpenUrl(matrixReport.url)" target="_blank" rel="noopener">打开矩阵报告</a></div>
       <div v-else class="matrix-run">
         <select v-model="matrixPeer" aria-label="选择要对标的站点"><option value="">选择对标站点</option><option v-for="s in sites.filter(x => x.host !== host)" :key="s.host" :value="s.host">{{ s.host }}</option></select>
         <button class="wv-primary" :disabled="!matrixPeer" @click="runMatrix">生成对标</button>
@@ -1787,14 +1971,14 @@ onBeforeUnmount(() => {
       <h3>资产缺口</h3>
       <p v-if="assetAuditReport">{{ assetAuditReport.visualGaps }} 个视觉缺口（原站 {{ assetAuditReport.visualOrigin }} / 第三方 {{ assetAuditReport.visualThird }}）</p>
       <p v-else>扫描图片/图标/SVG/CSS 引用，区分视觉缺口与元数据噪声</p>
-      <a v-if="assetAuditReport" :href="`/static/${host}/audit/asset-gaps.html`" target="_blank" rel="noopener">打开缺口报告</a>
+      <a v-if="assetAuditReport" :href="wsOpenUrl(host, 'audit/asset-gaps.html')" target="_blank" rel="noopener">打开缺口报告</a>
       <button v-else class="wv-primary" @click="runAssetsAudit">运行扫描</button>
     </div>
     <div class="report-card surface">
       <h3>全站体检</h3>
-      <p v-if="lastVerify">{{ lastVerify.pages }} 页 · 平均 {{ lastVerify.average }}%<template v-if="lastVerify.worst"><br /><span class="score-note">最差 {{ lastVerify.worst.page }} · {{ lastVerify.worst.name }} {{ (lastVerify.worst.score * 100).toFixed(1) }}%</span></template></p>
+      <p v-if="lastVerify">{{ lastVerify.mode === 'all' ? '全站' : '抽样' }} {{ lastVerify.measured }}/{{ lastVerify.targetTotal }} 页完整测量 · 已测平均 {{ lastVerify.average == null ? '未测到' : lastVerify.average + '%' }}<template v-if="lastVerify.worst"><br /><span class="score-note">最差 {{ lastVerify.worst.page }} · {{ lastVerify.worst.name }} {{ (lastVerify.worst.score * 100).toFixed(1) }}%</span></template></p>
       <p v-else>多视口（375/768/1440）逐页像素 diff，输出最差视口</p>
-      <div class="report-list" v-if="lastVerify"><a :href="'/static/' + host + '/verify/verify-summary.json'" target="_blank" rel="noopener">体检 JSON</a></div>
+      <div class="report-list" v-if="lastVerify"><a :href="wsOpenUrl(host, 'verify/verify-summary.json')" target="_blank" rel="noopener">体检 JSON</a></div>
       <button class="wv-primary" @click="runVerifyAll">{{ lastVerify ? '重新体检' : '运行全站体检' }}</button>
       <button @click="runResponsiveUpgrade" title="对 minViewport<0.97 的页面做多视口快照，verify 提升才保留">响应式升级</button>
     </div>
@@ -1804,6 +1988,7 @@ onBeforeUnmount(() => {
            放在一起才知道"导出什么、导出来怎么样"。 -->
       <template v-if="liveHealth">
         <p>最近导出：<b>{{ liveHealth.bundle }}</b></p>
+        <p class="score-note" :style="{ color: liveStrictPassed ? 'var(--ok)' : 'var(--warn)' }">{{ liveStrictPassed ? '静态资源与已发现路径通过离线检查；动态交互待浏览器验收' : (liveHealth.strict ? '静态资源或已发现路径未通过离线检查' : '历史包未做严格离线检查，动态交互仍待浏览器验收') }}</p>
         <p>离线资源 {{ liveHealth.assets?.local ?? 0 }} 本地 / {{ liveHealth.assets?.har ?? 0 }} HAR 回放 · <b :style="{ color: (liveHealth.assets?.unresolved ?? 0) ? 'var(--warn)' : 'var(--ok)' }">缺口 {{ liveHealth.assets?.unresolved ?? 0 }}</b></p>
         <p class="score-note">页面 {{ liveHealth.pages ?? 0 }}<template v-if="liveHealth.liveMissing">（少 {{ liveHealth.liveMissing }} 页）</template> · 未镜像链接 {{ liveHealth.links?.missing ?? 0 }}</p>
         <!-- 与上一次导出的差异：增量是"读出来的"，不是靠人回忆上次导了什么 -->
@@ -1821,7 +2006,7 @@ onBeforeUnmount(() => {
           · 动态图 {{ liveHealth.assets?.dynamic ?? 0 }}
         </p>
       </template>
-      <p v-else>可部署的离线完整包：本地快照 → HAR 回放 → 原站代理。导出后这里显示离线缺口。
+      <p v-else>导出交互镜像包时会验收本地快照、HAR 回放和离线资源；有缺口则保留旧包，并在任务日志中给出候选包体检结果。
         <template v-if="curSiteMirrored === 0"><br />
           <b style="color:var(--warn)">本站还没有本地镜像</b> —— 在导出之前，
           <code>{{ host }}.localhost</code> 打开的是<b>原站本身</b>（镜像路由：本地无快照就反代回原站）。
@@ -1835,12 +2020,13 @@ onBeforeUnmount(() => {
           <button @click="copyBundlePath" :title="'复制这一整行路径'">复制路径</button>
           <button @click="revealBundle" title="在资源管理器里定位这个目录">打开文件夹</button>
         </div>
-        <p class="score-note">交给同事：整个目录拷走即可，对方跑 <code>node serve.mjs --port 8080</code>（零依赖）或 <code>docker compose up -d</code>。纯前端站已按 <code>--root mirror</code> 导出，不会再落到它自己的 404。</p>
+        <p class="score-note" v-if="liveStrictPassed">交给同事：整个目录拷走即可，对方跑 <code>node serve.mjs --port 8080</code>（零依赖）或 <code>docker compose up -d</code>。纯前端站已按 <code>--root mirror</code> 导出。</p>
+        <p class="score-note" v-else>这是历史已发布目录；重新导出并通过严格离线验收后，才能按完整离线包交付。</p>
       </div>
       <label class="sw" style="margin-bottom:8px;display:flex"><input type="checkbox" v-model="liveRebuild" /><span>先重建 live 页面（站点改版后勾选）</span></label>
       <!-- 必须写成 runLiveExport()：直接写函数名时 Vue 会把 MouseEvent 当第一个参数传进来，
            而第一个参数现在是 host —— 于是导出目标会变成 "[object MouseEvent]" -->
-      <button class="wv-primary" @click="runLiveExport()">{{ liveHealth ? '重新导出' : '导出完整离线包' }}</button>
+      <button class="wv-primary" @click="runLiveExport()">{{ liveHealth ? '重新导出并验收' : '导出并验收离线包' }}</button>
     </div>
     <!-- 产物到底落在磁盘的哪里 —— 控制台里能看到分数、能打开镜像，但"那个目录在哪"
          此前只能靠人翻。不存在的产物按钮置灰并写明原因，不做"点了没反应"。 -->
@@ -1865,7 +2051,7 @@ onBeforeUnmount(() => {
            把上面已有卡片的 7 项又列了一遍 —— 同一个链接在同一页出现两次。
            真正只在这里出现的只有设计令牌与组件画廊。 -->
       <div class="report-list" v-if="designReports.length">
-        <a v-for="r in designReports" :key="r.id" :href="r.url" target="_blank" rel="noopener">{{ r.name }}</a>
+        <a v-for="r in designReports" :key="r.id" :href="artifactOpenUrl(r.url)" target="_blank" rel="noopener">{{ r.name }}</a>
       </div>
       <p v-else>暂无（运行 <code>tokens</code> / <code>components</code> 后自动出现）</p>
       <p class="score-note" v-if="designReports.length">从站点 CSSOM 归纳出的色板、字阶、间距，以及可复用组件的独立预览。</p>
@@ -1965,6 +2151,7 @@ onBeforeUnmount(() => {
       <!-- 引擎与数据 -->
       <div class="set-card surface">
         <div class="set-card-head"><b>引擎与数据</b></div>
+        <div class="set-row"><span>最近删除</span><button @click="trashOpen = true">查看并恢复</button></div>
         <div class="set-row"><span>主题</span><button @click="toggleTheme">{{ theme === 'dark' ? '深色 → 浅色' : '浅色 → 深色' }}</button></div>
         <div class="set-row"><span>星图自转</span><input type="checkbox" v-model="autoRotate" aria-label="星图自动旋转" /></div>
         <div class="set-row"><span>引擎地址</span><input v-model="apiBaseInput" aria-label="引擎 API 地址" placeholder="http://127.0.0.1:8900" spellcheck="false" /><button @click="saveApiBase">保存并刷新</button></div>
@@ -1995,17 +2182,18 @@ onBeforeUnmount(() => {
     @reveal="(p, what) => revealPath(p, what)"
   />
 
-  <a class="audit-link" v-if="auditReport" :href="`/static/${auditReport.host}/seo/seo.html`" target="_blank" rel="noopener">SEO 报告 · {{ auditReport.score }} 分</a>
+  <a class="audit-link" v-if="auditReport" :href="wsOpenUrl(auditReport.host, 'seo/seo.html')" target="_blank" rel="noopener">SEO 报告 · {{ auditReport.score }} 分</a>
   <!-- 这个链接指向**克隆档案**（静态镜像的索引页），所以数字必须是"已克隆页数"。
        此前显示的是 hudPages（侦察抓到的页面数）—— 于是刚克隆完一页，这个数字纹丝不动，
        看起来像"没算进去"。两个数属于不同的集合，从一个跳到另一个会骗人。 -->
-  <a class="archive-link" v-if="doneCount && !dockOpen" :href="`/${host}/index.html`" target="_blank" rel="noopener"
+  <a class="archive-link" v-if="doneCount && !dockOpen" :href="wsOpenUrl(host, 'index.html')" target="_blank" rel="noopener"
      :title="`克隆档案：本站 ${doneCount} 个已克隆页面的索引${hudPages > doneCount ? `（侦察共发现 ${hudPages} 页）` : ''}`">克隆档案 · {{ doneCount }} 页</a>
   <div class="keys" v-if="view === 'atlas' && !forge">
     <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 打开页面详情</span>
   </div>
   <div class="toast" v-if="errMsg" role="alert" aria-live="assertive">{{ errMsg }}</div>
   <div class="toast ok" v-if="okMsg" role="status" aria-live="polite">{{ okMsg }}</div>
+  <TrashDialog v-if="trashOpen" @close="trashOpen = false" @restored="onTrashRestored" />
   <div class="view-nav surface">
     <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" :aria-current="view === v.id ? 'page' : undefined" :title="v.hint" @click="selectView(v.id)">
       <b aria-hidden="true">{{ v.icon }}</b><span>{{ v.label }}</span>

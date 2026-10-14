@@ -66,6 +66,31 @@ test('live/health: extractRefs separates assets from links', () => {
   assert.equal(kind('/canon'), 'link');
 });
 
+test('live/health: inline style blocks and style attributes are strict resources', () => {
+  const refs = extractRefs([
+    '<style>.hero{background-image:url("/hero.webp")} .icon{background:url(data:image/svg+xml,%3Csvg%3E%3C/svg%3E)}</style>',
+    '<div style="background:url(/card.webp)"></div>',
+  ].join(''), 'html');
+  assert.ok(refs.some(r => r.url === '/hero.webp' && r.required));
+  assert.ok(refs.some(r => r.url === '/card.webp' && r.required));
+  assert.equal(resolveRefPath(refs.find(r => r.url.startsWith('data:'))?.url, { host: 'x.test' }), null);
+  assert.ok(!refs.some(r => r.url.startsWith('%23')));
+  assert.ok(!extractRefs('<script>const text = `style="background:url(/not-a-resource.webp)"`;</script>', 'html')
+    .some(r => r.url === '/not-a-resource.webp'));
+});
+
+test('live/health: missing inline CSS assets enter the strict unresolved count', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-inline-'));
+  try {
+    mkdirSync(join(dir, 'live'), { recursive: true });
+    writeFileSync(join(dir, 'live', 'index.html'), '<style>body{background:url(/missing-inline.webp)}</style><div style="background:url(/missing-attr.webp)"></div>');
+    const report = scanLiveBundle({ liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test' });
+    assert.equal(report.assets.unresolved, 2);
+    assert.ok(report.unresolvedPaths.includes('/missing-inline.webp'));
+    assert.ok(report.unresolvedPaths.includes('/missing-attr.webp'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('live/health: scan classifies local/har/unresolved/dynamic/external and missing links', () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-'));
   try {
@@ -77,6 +102,7 @@ test('live/health: scan classifies local/har/unresolved/dynamic/external and mis
       '<link rel="stylesheet" href="/lm/x.test/styles.css?dpl=1">',
       '<img src="/missing.png">',
       '<img src="https://cdn.other/logo.svg">',
+      '<img src="https://cdn.other/image?id=7">',
       '<a href="/other/">other</a>',
       '<img src="/_next/image?url=/a.png&w=64">',
     ].join(''));
@@ -89,7 +115,7 @@ test('live/health: scan classifies local/har/unresolved/dynamic/external and mis
     assert.equal(report.assets.har, 1);
     assert.equal(report.assets.unresolved, 1);
     assert.equal(report.assets.dynamic, 1);
-    assert.equal(report.assets.externalAssets, 1);
+    assert.equal(report.assets.externalAssets, 2);
     assert.equal(report.links.missing, 1);
     assert.ok(report.unresolvedPaths.includes('/missing.png'));
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -313,7 +339,7 @@ test('live/heal: 离线包把站外 CDN 的整站前缀接进本地镜像树（�
     // （协议相对 + http 页面），文本里根本没有完整 URL 可替换。
     const off = localizeQueryEntries({ entries, liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test', hostPrefixes: true });
     assert.equal(off.map.get('//statics.cdn/'), '/lm/x.test/_ext/statics.cdn/', '协议相对前缀要接过去');
-    assert.equal(off.map.get('http://statics.cdn/'), '/lm/x.test/_ext/statics.cdn/');
+    assert.equal(off.map.get('http://statics.cdn/'), undefined, '另一个协议是独立 origin，不能复用 HTTPS 资产');
     assert.equal(off.map.get('https://statics.cdn/'), '/lm/x.test/_ext/statics.cdn/');
     // 前缀接过去之后，运行时拼出来的任意路径都落在保结构的镜像树里
     const built = new URL('assets/chunks/chunk-Y.js', 'http://x' + off.map.get('//statics.cdn/')).pathname;
@@ -325,4 +351,26 @@ test('live/heal: 离线包把站外 CDN 的整站前缀接进本地镜像树（�
     rmSync(dir, { recursive: true, force: true });
     rmSync(dir2, { recursive: true, force: true });
   }
+});
+
+test('live/heal: same-host origins retain independent, Windows-safe resource paths', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-ext-origins-'));
+  try {
+    const urls = ['https://cdn.test/app.js', 'http://cdn.test/app.js', 'http://cdn.test:8081/app.js', 'http://cdn.test:8082/app.js'];
+    const entries = urls.map((url, i) => ({ method: 'GET', url, status: 200, mimeType: 'text/javascript', body: Buffer.from(`asset-${i}`).toString('base64') }));
+    const liveDir = join(dir, 'live');
+    const result = localizeQueryEntries({ entries, liveDir, host: 'site-id', origin: 'https://main.test', hostPrefixes: true });
+    assert.equal(result.written, 4);
+    const paths = urls.map(url => result.map.get(url));
+    assert.equal(new Set(paths).size, 4);
+    for (const [i, path] of paths.entries()) {
+      assert.doesNotMatch(path, /:/);
+      assert.equal(readFileSync(join(liveDir, path.replace('/lm/site-id/', '')), 'utf8'), `asset-${i}`);
+    }
+    assert.equal(result.map.get('//cdn.test/'), '/lm/site-id/_ext/cdn.test/');
+    assert.notEqual(result.map.get('http://cdn.test/'), result.map.get('https://cdn.test/'));
+    assert.deepEqual(resolveRefPath('http://main.test/app.js', { host: 'site-id', origin: 'https://main.test' }), { external: true });
+    assert.deepEqual(resolveRefPath('https://main.test:8443/app.js', { host: 'site-id', origin: 'https://main.test' }), { external: true });
+    assert.deepEqual(resolveRefPath('https://main.test/app.js', { host: 'site-id', origin: 'https://main.test' }), { path: '/app.js', search: '' });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

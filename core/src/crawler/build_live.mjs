@@ -1,7 +1,7 @@
 /**
  * build_live — 快照 → 交互镜像页转换器
  *
- * dom.html（渲染后完整 DOM，含 script 引用）→ live/<path>/index.html
+ * dom.html（渲染后完整 DOM，含 script 引用）→ live/<path>/index.html 或独立 query 快照
  *   1) <base href="/lm/<host><dir>/">  —— 全部相对资源/请求自动归位到代理
  *   2) 全文绝对 URL 归一：https://<host> → /lm/<host>（属性/RSC payload/内联脚本一把梭）
  *   3) bootstrap patch 注入：JS 运行时硬编码的绝对域 → 代理路径（fetch/XHR 兜底）
@@ -21,10 +21,15 @@ import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { prefixRootRelative } from '../live/live-html.mjs';
+import { liveSnapshotPath } from '../live/live-path.mjs';
 import { stripFreeze } from '../freeze.mjs';
+import { isSafePageName } from '../page-name.mjs';
+import { assertSiteOrigin } from '../site-origin.mjs';
+import { rewriteSourceOrigin } from '../live/site-routing.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/build_live.mjs <host> [page]', '站点 host');
 const only = process.argv[3];
+if (only && !isSafePageName(only)) { console.error('页名无效：必须是单个安全目录名'); process.exit(2); }
 const BASE = join(WORKSPACE, host);
 const PAGES = join(BASE, 'pages');
 const SELF_URL = process.env.HEIMDALL_SELF_URL ?? `http://127.0.0.1:${process.env.HEIMDALL_PORT ?? 8900}`;
@@ -61,17 +66,18 @@ for (const name of pages) {
   const manifest = JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8'));
   if (!manifest?.target) continue;
   const target = new URL(manifest.target);
-  const lmPrefix = `/lm/${target.host}`;
+  // The route key is the workspace site id, while target.origin remains the
+  // upstream identity. This keeps same-host, different-port fixtures isolated.
+  assertSiteOrigin(BASE, target, { pageName: name });
+  const siteId = host;
+  const lmPrefix = `/lm/${siteId}`;
   const dirOnOrigin = target.pathname.replace(/\/$/, '');   // 原站目录（/pricing）
-  const baseHref = `/lm/${target.host}${dirOnOrigin === '/' || !dirOnOrigin ? '/' : dirOnOrigin + '/'}`;
+  const baseHref = `/lm/${siteId}${dirOnOrigin === '/' || !dirOnOrigin ? '/' : dirOnOrigin + '/'}`;
 
   let html = readFileSync(domPath, 'utf8');
 
   // 1) 绝对 URL 归一到代理（www 与裸域都归一）
-  for (const h of [target.origin, `https://${host}`, `http://${host}`]) {
-    html = html.split(h + '/').join(lmPrefix + '/');
-    html = html.split(h).join(lmPrefix);
-  }
+  html = rewriteSourceOrigin(html, target.origin, lmPrefix);
 
   // 1.4) 剥掉截图冻结样式 —— **这里是"能看动效"的产物，冻住就自相矛盾了**。
   //      新产物在 capture 阶段已经不写它了（见 freeze.mjs）；这一步是给**已产出的**旧产物兜底，
@@ -88,8 +94,8 @@ for (const name of pages) {
     var H='${lmPrefix}', O='${target.origin}';
     function px(u){ try{
       if(typeof u!=='string') return u;
-      if(u.indexOf(H)===0||u.indexOf('/lm/')===0) return u;
-      if(u.indexOf(O)===0) return H+u.slice(O.length);
+      if((H && u.indexOf(H)===0)||u.indexOf('/lm/')===0) return u;
+      if(u.indexOf(O)===0 && new URL(u).origin===O) return H+u.slice(O.length);
       if(u.charAt(0)==='/' && u.charAt(1)!=='/' && u.indexOf('/static/')!==0) return H+u;   // 根相对：base 管不了根路径（/ 开头直接打源根）；//cdn… 是协议相对，原样保留
     }catch(e){} return u; }
     var of=window.fetch;
@@ -133,7 +139,7 @@ for (const name of pages) {
 
   // 3) 原版 CSS 引用替换为本地校准版（cssom.css，静态镜像同款——视觉保真双保险）
   html = html.replace(/<link[^>]*rel="stylesheet"[^>]*>/gi, '');
-  html = html.replace('</head>', '<link rel="stylesheet" href="/static/' + host + '/pages/' + name + '/clone/styles/cssom.css"></head>');
+  html = html.replace('</head>', '<link rel="stylesheet" href="/static/' + siteId + '/pages/' + name + '/clone/styles/cssom.css"></head>');
 
   // 4) chunk 预检剔除：快照里的 script 若原站已 404（部署时效），剥除避免 4xx 噪声。
   //    引擎不可达时**整段跳过** —— 否则会把"探不通"误判成"全死"，把脚本剥光。
@@ -160,7 +166,7 @@ for (const name of pages) {
     } catch (e) { console.warn('  chunk precheck failed:', String(e).slice(0, 80)); }
   }
 
-  const rel = dirOnOrigin === '' || dirOnOrigin === '/' ? 'index.html' : dirOnOrigin.replace(/^\//, '') + '/index.html';
+  const rel = liveSnapshotPath(target.pathname, target.search);
   const out = join(liveDir, rel);
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, html);

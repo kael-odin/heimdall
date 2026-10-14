@@ -27,8 +27,12 @@ const gcing = ref(false);
 const gcResult = ref(null);
 const gcConfirm = ref(false);
 
-let poll = null;
-function stopPoll() { if (poll) { clearTimeout(poll); poll = null; } }
+let storagePoll = null;
+let storageGeneration = 0;
+function stopStoragePoll() {
+  storageGeneration++;
+  if (storagePoll) { clearTimeout(storagePoll); storagePoll = null; }
+}
 
 async function fetchOnce() {
   const r = await fetch(API + '/api/storage', { headers: apiHeaders() });
@@ -39,15 +43,25 @@ async function fetchOnce() {
 
 /** @param {boolean} force true = 让引擎重新盘一次（否则只读已有结果） */
 async function load(force = false) {
-  loading.value = true; error.value = ''; stopPoll();
+  stopStoragePoll();
+  const generation = storageGeneration;
+  const previousRun = info.value?.generatedAt;
+  loading.value = true; error.value = '';
   const deadline = Date.now() + 40_000;
   const loop = () => {
-    poll = setTimeout(async () => {
+    storagePoll = setTimeout(async () => {
+      if (generation !== storageGeneration) return;
       try {
         const n = await fetchOnce();
-        if (!n.pending) { info.value = n; loading.value = false; stopPoll(); return; }
+        if (generation !== storageGeneration) return;
+        if (!n.pending && !n.scanning) {
+          if (force && previousRun && n.generatedAt === previousRun) error.value = '盘点未生成新结果，请检查任务日志';
+          else info.value = n;
+          loading.value = false; stopStoragePoll(); return;
+        }
       } catch { /* 下一轮再试 */ }
-      if (Date.now() > deadline) { error.value = '盘点超时（40 秒内未完成）'; loading.value = false; stopPoll(); return; }
+      if (generation !== storageGeneration) return;
+      if (Date.now() > deadline) { error.value = '盘点超时（40 秒内未完成）'; loading.value = false; stopStoragePoll(); return; }
       loop();
     }, 1500);
   };
@@ -55,14 +69,17 @@ async function load(force = false) {
     if (force) {
       const r = await fetch(API + '/api/storage/scan', { method: 'POST', headers: apiHeaders() });
       const j = await r.json().catch(() => ({}));
+      if (generation !== storageGeneration) return;
       if (r.status !== 202 && !r.ok) throw new Error(j.error || ('HTTP ' + r.status));
       loop();
       return;
     }
     const s = await fetchOnce();
+    if (generation !== storageGeneration) return;
     info.value = s.pending ? null : s;
     if (s.pending || s.scanning) { loop(); return; }
-  } catch (e) { error.value = String(e).replace(/^Error:\s*/, ''); }
+  } catch (e) { if (generation === storageGeneration) error.value = String(e).replace(/^Error:\s*/, ''); }
+  if (generation !== storageGeneration) return;
   loading.value = false;
 }
 
@@ -103,6 +120,20 @@ const planLoading = ref(false);
 const planGcing = ref(false);
 const planConfirm = ref(false);
 const planError = ref('');
+const planNotice = ref('');
+const trashEntries = ref([]);
+const trashLoading = ref(false);
+const trashError = ref('');
+const restoringId = ref('');
+let confirmRevision = null;
+let planPoll = null;
+let planGeneration = 0;
+let planEvents = null;
+let planTimeout = null;
+function stopPlanPoll() {
+  planGeneration++;
+  if (planPoll) { clearTimeout(planPoll); planPoll = null; }
+}
 
 async function fetchPlanOnce() {
   const r = await fetch(API + '/api/deliver/plan', { headers: apiHeaders() });
@@ -112,55 +143,150 @@ async function fetchPlanOnce() {
 }
 
 async function loadPlan(force = false) {
-  planLoading.value = true; planError.value = ''; stopPoll();
+  stopPlanPoll();
+  planConfirm.value = false;
+  confirmRevision = null;
+  const generation = planGeneration;
+  const previousRun = plan.value?.runId ?? plan.value?.generatedAt;
+  planLoading.value = true; planError.value = '';
   const deadline = Date.now() + 60_000;
   const loop = () => {
-    poll = setTimeout(async () => {
+    planPoll = setTimeout(async () => {
+      if (generation !== planGeneration) return;
       try {
         const n = await fetchPlanOnce();
-        if (!n.pending) { plan.value = n; planLoading.value = false; stopPoll(); return; }
+        if (generation !== planGeneration) return;
+        if (!n.pending && !n.scanning) {
+          if (force && previousRun && (n.runId ?? n.generatedAt) === previousRun) planError.value = '盘点未生成新结果，请检查任务日志';
+          else plan.value = n;
+          planLoading.value = false; stopPlanPoll(); return;
+        }
       } catch { /* 下一轮再试 */ }
-      if (Date.now() > deadline) { planError.value = '盘点超时（60 秒内未完成）'; planLoading.value = false; stopPoll(); return; }
+      if (generation !== planGeneration) return;
+      if (Date.now() > deadline) { planError.value = '盘点超时（60 秒内未完成）'; planLoading.value = false; stopPlanPoll(); return; }
       loop();
     }, 1500);
   };
   try {
-    const s = force
-      ? await fetch(API + '/api/deliver/prune', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ apply: false }) }).then(r => r.json().catch(() => ({})))
-      : await fetchPlanOnce();
+    let s;
+    if (force) {
+      const r = await fetch(API + '/api/deliver/prune', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ apply: false }) });
+      s = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(s.error || ('HTTP ' + r.status));
+    } else s = await fetchPlanOnce();
+    if (generation !== planGeneration) return;
     if (force) { loop(); return; }
     plan.value = s.pending ? null : s;
     if (s.pending || s.scanning) { loop(); return; }
-  } catch (e) { planError.value = String(e).replace(/^Error:\s*/, ''); }
+  } catch (e) { if (generation === planGeneration) planError.value = String(e).replace(/^Error:\s*/, ''); }
+  if (generation !== planGeneration) return;
   planLoading.value = false;
+}
+
+async function loadPruned() {
+  trashLoading.value = true;
+  trashError.value = '';
+  try {
+    const r = await fetch(API + '/api/deliver/trash', { headers: apiHeaders() });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    trashEntries.value = j.entries ?? [];
+  } catch (e) { trashError.value = String(e).replace(/^Error:\s*/, ''); }
+  finally { trashLoading.value = false; }
 }
 
 async function runPrune() {
   if (planGcing.value) return;
-  if (!planConfirm.value) { planConfirm.value = true; return; }
+  if (!plan.value?.revision || !plan.value?.candidates?.length) return;
+  if (!planConfirm.value) {
+    confirmRevision = plan.value.revision;
+    planConfirm.value = true;
+    return;
+  }
+  if (confirmRevision !== plan.value.revision) {
+    planConfirm.value = false;
+    confirmRevision = null;
+    planNotice.value = '预览已变化，请核对新的候选包';
+    return;
+  }
   planGcing.value = true; planError.value = '';
   try {
     const r = await fetch(API + '/api/deliver/prune', {
       method: 'POST', headers: apiHeaders(),
-      body: JSON.stringify({ apply: true, confirm: 'HEIMDALL_DELIVER_PRUNE' }),
+      body: JSON.stringify({ apply: true, confirm: 'HEIMDALL_DELIVER_PRUNE', revision: confirmRevision }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (r.status === 409) {
+        planNotice.value = '预览已过期，正在重新盘点；请核对候选包后再次确认';
+        loadPlan(true);
+        return;
+      }
+      throw new Error(j.error || ('HTTP ' + r.status));
+    }
+    planConfirm.value = false;
+    confirmRevision = null;
+    const q = tokenOf();
+    const es = new EventSource(`${API}/api/events?task=${encodeURIComponent(j.taskId)}${q ? '&token=' + encodeURIComponent(q) : ''}`);
+    planEvents = es;
+    let result = null;
+    const finish = (failure = '') => {
+      if (planEvents !== es) return;
+      es.close(); planEvents = null;
+      clearTimeout(planTimeout); planTimeout = null;
+      planGcing.value = false;
+      if (failure) {
+        planNotice.value = failure;
+        loadPlan(true);
+      }
+      else {
+        planNotice.value = `已隔离 ${result?.removed ?? 0} 个交付包；当前未释放磁盘空间`;
+        emit('ok', planNotice.value);
+        loadPlan(false);
+      }
+      loadPruned();
+    };
+    planTimeout = setTimeout(() => finish('交付包清理等待超时，请检查任务日志'), 120_000);
+    es.onmessage = message => {
+      let ev; try { ev = JSON.parse(message.data); } catch { return; }
+      if (ev.kind === 'deliver-prune') result = ev;
+      if (ev.kind === 'deliver-prune-error') planError.value = ev.error || '交付包清理失败';
+      if (ev.kind === 'exit') finish(ev.status === 'done' && result && !result.failed ? '' : (planError.value || '交付包清理失败，请检查任务日志'));
+    };
+    es.onerror = () => finish('交付包清理任务事件流中断，请检查任务日志确认结果');
+  } catch (e) { planError.value = String(e).replace(/^Error:\s*/, ''); }
+  finally { if (!planEvents) planGcing.value = false; }
+}
+
+async function restorePruned(entry) {
+  if (restoringId.value || planGcing.value || planLoading.value) return;
+  restoringId.value = entry.id;
+  trashError.value = '';
+  try {
+    const r = await fetch(API + `/api/deliver/trash/${encodeURIComponent(entry.id)}/restore`, {
+      method: 'POST', headers: apiHeaders(), body: '{}',
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-    planConfirm.value = false;
-    emit('ok', `交付包清理已启动（后台执行，完成后数字自动刷新）`);
-    setTimeout(() => loadPlan(false), 2500);
-  } catch (e) { planError.value = String(e).replace(/^Error:\s*/, ''); }
-  finally { planGcing.value = false; }
+    planNotice.value = `已恢复 ${entry.name}`;
+    emit('ok', planNotice.value);
+    await Promise.all([loadPruned(), loadPlan(true)]);
+  } catch (e) { trashError.value = String(e).replace(/^Error:\s*/, ''); }
+  finally { restoringId.value = ''; }
 }
 
-onMounted(() => { load(false); loadPlan(false); });
-onBeforeUnmount(stopPoll);
+onMounted(() => { load(false); loadPlan(false); loadPruned(); });
+onBeforeUnmount(() => {
+  stopStoragePoll(); stopPlanPoll();
+  planEvents?.close(); planEvents = null;
+  clearTimeout(planTimeout); planTimeout = null;
+});
 </script>
 
 <template>
   <div class="report-card report-wide storage-card surface">
     <div class="storage-head">
-      <div><h3>存储治理</h3><p>站点、CAS 与交付包的实际磁盘占用；删除站点后可安全回收无引用 CAS。</p></div>
+      <div><h3>存储治理</h3><p>站点、CAS 与交付包的磁盘占用；最近删除会保留文件与 CAS 引用，不会立即释放空间。</p></div>
       <button @click="load(true)" :disabled="loading">{{ loading ? '扫描中…' : '重新扫描' }}</button>
     </div>
     <div v-if="loading && !info" class="storage-empty" role="status" aria-live="polite">正在后台盘点磁盘（引擎侧子进程遍历，约 10 秒；期间其他操作不受影响）…</div>
@@ -172,6 +298,7 @@ onBeforeUnmount(stopPoll);
         <div><b>{{ fmtBytes(info.cas?.orphanBytes ?? 0) }}</b><span>可回收 CAS</span></div>
         <div><b>{{ info.sites?.length ?? 0 }}</b><span>站点</span></div>
       </div>
+      <p class="storage-note" v-if="info.trash?.files">最近删除：{{ fmtBytes(info.trash.logicalBytes) }} 逻辑体积 · {{ info.trash.files }} 文件（已计入实际占用）。</p>
       <div class="storage-body">
         <div class="storage-sites">
           <div class="storage-subhead">站点占用</div>
@@ -199,11 +326,12 @@ onBeforeUnmount(stopPoll);
     </template>
     <div v-else class="storage-empty">尚未盘点。点击“重新扫描”获取当前占用。</div>
 
-    <!-- 交付包保留策略：deliverable/ 每次导出留一个目录，此前没有任何清理机制 -->
+    <!-- 交付包保留策略：预览绑定 revision，旧包移入同卷隔离区。 -->
     <div class="storage-deliver">
       <div class="storage-subhead">交付包保留</div>
+      <p v-if="planNotice" class="storage-note" role="status" aria-live="polite">{{ planNotice }}</p>
+      <div v-if="planError" class="storage-error">{{ planError }} <button @click="loadPlan(true)">重试</button></div>
       <div v-if="planLoading && !plan" class="storage-empty" role="status" aria-live="polite">正在盘点交付包（后台子进程遍历）…</div>
-      <div v-else-if="planError" class="storage-error">{{ planError }} <button @click="loadPlan(true)">重试</button></div>
       <template v-else-if="plan">
         <p>
           共 {{ plan.total?.bundles ?? 0 }} 个包 · {{ fmtBytes(plan.total?.bytes ?? 0) }}。
@@ -214,7 +342,13 @@ onBeforeUnmount(stopPoll);
             <span class="dg-key">{{ g.key }}</span>
             <span class="dg-n">{{ g.count }} 个</span>
             <span class="dg-keep" :title="g.keep.join('\n')">保留 {{ g.keep.length }}</span>
-            <span class="dg-remove" :class="{ bad: g.remove.length }" :title="g.remove.join('\n')">{{ g.remove.length ? '待删 ' + g.remove.length : '无需清理' }}</span>
+            <span class="dg-remove" :class="{ bad: g.remove.length || g.blocked }" :title="g.remove.join('\n')">{{ g.blocked ? '需人工检查' : (g.remove.length ? '待隔离 ' + g.remove.length : '无需隔离') }}</span>
+          </div>
+        </div>
+        <div v-if="plan.candidates?.length" class="deliver-candidates">
+          <div class="storage-subhead">本次候选 · {{ plan.candidates.length }} 个</div>
+          <div v-for="item in plan.candidates" :key="item.name" class="deliver-candidate">
+            <span :title="item.name">{{ item.name }}</span><small>{{ fmtBytes(item.bytes) }}</small>
           </div>
         </div>
         <p class="storage-note" v-if="plan.unclassified?.length">
@@ -223,18 +357,30 @@ onBeforeUnmount(stopPoll);
           <span v-for="(u, i) in plan.unclassified" :key="u.name">{{ i ? ' · ' : '' }}{{ u.name }}（{{ fmtBytes(u.bytes) }}）</span>
         </p>
         <div class="storage-buttons">
-          <button @click="loadPlan(true)" :disabled="planLoading">{{ planLoading ? '盘点中…' : '重新盘点' }}</button>
-          <button class="danger" @click="runPrune" :disabled="planGcing || !plan.total?.reclaimable">
-            {{ planConfirm ? '再次点击确认删除' : (plan.total?.reclaimable ? `执行清理（释放约 ${fmtBytes(plan.total.reclaimable)}）` : '无可清理') }}
+          <button @click="loadPlan(true)" :disabled="planLoading || planGcing">{{ planLoading ? '盘点中…' : '重新盘点' }}</button>
+          <button class="danger" @click="runPrune" :disabled="planLoading || planGcing || restoringId || !plan.candidates?.length">
+            {{ planConfirm ? '再次点击确认隔离' : (plan.candidates?.length ? `隔离 ${plan.candidates.length} 个旧包` : '无可隔离') }}
           </button>
-          <button v-if="planConfirm" @click="planConfirm = false">取消</button>
+          <button v-if="planConfirm" @click="planConfirm = false; confirmRevision = null">取消</button>
         </div>
         <p class="storage-note">
-          释放量按硬链接算（nlink=1 才真的省）：交付包里的文件与 workspace 克隆共享 inode，删掉一个链接并不释放空间。
-          无法归类的包永不自动删除。
+          隔离到同卷目录并保留恢复收据，当前不会释放磁盘空间。未来永久清理的潜在可释放量约 {{ fmtBytes(plan.total?.reclaimable ?? 0) }}。
+          无法归类或内容不安全的包不会自动隔离。
         </p>
       </template>
       <div v-else class="storage-empty">尚未盘点交付包。</div>
+      <div class="deliver-trash">
+        <div class="storage-subhead">已隔离交付包</div>
+        <div v-if="trashError" class="storage-error">{{ trashError }} <button @click="loadPruned">重试</button></div>
+        <div v-if="trashLoading && !trashEntries.length" class="storage-empty">正在读取隔离记录…</div>
+        <div v-else-if="!trashEntries.length" class="storage-empty">没有隔离记录。</div>
+        <div v-for="entry in trashEntries" :key="entry.id" class="deliver-trash-row">
+          <span :title="entry.name || entry.id">{{ entry.name || entry.id }}</span>
+          <small>{{ entry.bytes == null ? '' : fmtBytes(entry.bytes) }}</small>
+          <small>{{ entry.state === 'ready' ? '可恢复' : entry.state === 'restored' ? '已恢复' : entry.state === 'aborted' ? '未隔离' : '需人工检查' }}</small>
+          <button v-if="entry.state === 'ready'" @click="restorePruned(entry)" :disabled="!!restoringId || planLoading || planGcing">{{ restoringId === entry.id ? '恢复中…' : '恢复' }}</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

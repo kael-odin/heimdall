@@ -1,17 +1,17 @@
 /**
  * audit/deliver-prune — 交付包保留策略
  *
- * 这组测试钉住的是**"不会误删"**，不是返回值好看：
- * 清理工具的失败模式是不可逆的 —— 删错一个包，用户的交付物就没了。
- * 所以重点覆盖三条：认不出的包绝不动、分组不跨站点串、独占字节按 nlink 算。
+ * 这组测试钉住的是候选身份、内容与恢复能力。
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, linkSync, rmSync, existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, linkSync, rmSync, existsSync, renameSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const { parseBundleName, measureDir, scanBundles, planPrune, applyPrune, renderText } =
+const { parseBundleName, measureDir, scanBundles, planPrune, applyPrune, listPrunedBundles, restorePrunedBundle, renderText } =
   await import('../src/audit/deliver-prune.mjs');
 
 // ---------- 命名解析 ----------
@@ -105,7 +105,7 @@ test('planPrune: 可回收按 exclusive（nlink=1）而不是目录大小', () =
   ];
   const plan = planPrune(bundles, { keep: 1 });
   assert.equal(plan.total.reclaimable, 0, '被淘汰的包若全是硬链接，删了也不省空间');
-  assert.match(renderText(plan), /实际可释放 0B/);
+  assert.match(renderText(plan), /未来永久清理潜在可释放 0B/);
 });
 
 test('planPrune: 空输入不炸', () => {
@@ -168,7 +168,7 @@ test('fs: scanBundles 从真实目录读出并归类', () => {
   rmSync(r2, { recursive: true, force: true });
 });
 
-test('fs: applyPrune 真的删除，且只删 remove 里列出的', () => {
+test('fs: applyPrune 隔离候选，可恢复且当前释放量为零', () => {
   const r3 = mkdtempSync(join(tmpdir(), 'hd-prune3-'));
   for (const n of ['a.com-2026-10-01', 'a.com-2026-10-02', 'a.com-2026-10-03', 'keep-me']) {
     mkdirSync(join(r3, n), { recursive: true });
@@ -180,11 +180,174 @@ test('fs: applyPrune 真的删除，且只删 remove 里列出的', () => {
 
   assert.equal(res.failed.length, 0);
   assert.equal(res.removed.length, 2);
-  assert.equal(res.freed, 20);
+  assert.equal(res.freed, 0);
+  assert.equal(res.quarantinedBytes, 20);
   assert.ok(existsSync(join(r3, 'a.com-2026-10-03')), '最新的必须留下');
   assert.ok(existsSync(join(r3, 'keep-me')), '无法归类的不许动');
   assert.ok(!existsSync(join(r3, 'a.com-2026-10-01')));
+  const listed = listPrunedBundles(r3);
+  assert.equal(listed.length, 2);
+  assert.ok(listed.every(row => row.state === 'ready'));
+  const restored = restorePrunedBundle(res.removed[0].trashId, { root: r3 });
+  assert.equal(restored.restored, true);
+  assert.equal(readFileSync(join(r3, restored.name, 'f.txt'), 'utf8'), 'x'.repeat(10));
+  assert.equal(listPrunedBundles(r3).find(row => row.id === restored.id)?.state, 'restored');
   rmSync(r3, { recursive: true, force: true });
+});
+
+test('fs: 预览后新增同组包或改写候选内容均拒绝隔离', () => {
+  for (const change of ['new-sibling', 'file-content']) {
+    const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-stale-'));
+    try {
+      for (const name of ['a.test-2026-10-01', 'a.test-2026-10-02']) {
+        mkdirSync(join(dataRoot, name));
+        writeFileSync(join(dataRoot, name, 'index.html'), name);
+      }
+      const plan = planPrune(scanBundles(dataRoot), { keep: 1 });
+      if (change === 'new-sibling') {
+        mkdirSync(join(dataRoot, 'a.test-2026-10-03'));
+      } else {
+        writeFileSync(join(dataRoot, 'a.test-2026-10-01', 'index.html'), 'changed');
+      }
+      const result = applyPrune(plan, { expectedRevision: plan.revision });
+      assert.equal(result.removed.length, 0);
+      assert.equal(result.failed.length, 1);
+      assert.match(result.failed[0].error, /revision changed/);
+      assert.equal(existsSync(join(dataRoot, 'a.test-2026-10-01')), true);
+    } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+  }
+});
+
+test('fs: 符号链接候选阻断整个站点类型组', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-link-'));
+  try {
+    for (const name of ['a.test-2026-10-01', 'a.test-2026-10-02']) {
+      mkdirSync(join(dataRoot, name));
+      writeFileSync(join(dataRoot, name, 'index.html'), name);
+    }
+    const outside = join(dataRoot, 'outside.txt');
+    writeFileSync(outside, 'outside evidence');
+    symlinkSync(outside, join(dataRoot, 'a.test-2026-10-01', 'linked.txt'));
+    const plan = planPrune(scanBundles(dataRoot), { keep: 1 });
+    assert.equal(plan.remove.length, 0);
+    assert.equal(plan.groups[0].blocked, true);
+    assert.equal(readFileSync(outside, 'utf8'), 'outside evidence');
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('fs: 恢复时同名目录冲突不覆盖任何一方', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-conflict-'));
+  try {
+    for (const name of ['a.test-2026-10-01', 'a.test-2026-10-02']) {
+      mkdirSync(join(dataRoot, name));
+      writeFileSync(join(dataRoot, name, 'index.html'), name);
+    }
+    const plan = planPrune(scanBundles(dataRoot), { keep: 1 });
+    const result = applyPrune(plan);
+    const id = result.removed[0].trashId;
+    const name = result.removed[0].name;
+    mkdirSync(join(dataRoot, name));
+    writeFileSync(join(dataRoot, name, 'index.html'), 'new sibling');
+    assert.throws(() => restorePrunedBundle(id, { root: dataRoot }), /already exists/);
+    assert.equal(readFileSync(join(dataRoot, name, 'index.html'), 'utf8'), 'new sibling');
+    assert.equal(readFileSync(join(dataRoot, '.prune-trash', id, 'bundle', 'index.html'), 'utf8'), name);
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('fs: prepared 收据在中断后根据内容对账，坏收据可见', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-receipt-'));
+  try {
+    for (const name of ['a.test-2026-10-01', 'a.test-2026-10-02']) {
+      mkdirSync(join(dataRoot, name));
+      writeFileSync(join(dataRoot, name, 'index.html'), name);
+    }
+    const plan = planPrune(scanBundles(dataRoot), { keep: 1 });
+    const candidate = plan.remove[0];
+    const id = '01234567-89ab-4cde-8f01-23456789abcd';
+    const entry = join(dataRoot, '.prune-trash', id);
+    mkdirSync(entry, { recursive: true });
+    writeFileSync(join(entry, 'record.json'), JSON.stringify({ id, root: dataRoot, name: candidate.name,
+      fingerprint: candidate.fingerprint, state: 'prepared', createdAt: new Date().toISOString() }));
+    renameSync(join(dataRoot, candidate.name), join(entry, 'bundle'));
+    assert.equal(listPrunedBundles(dataRoot).find(row => row.id === id)?.state, 'ready');
+    const invalidId = '01234567-89ab-4cde-8f01-23456789abce';
+    mkdirSync(join(dataRoot, '.prune-trash', invalidId));
+    assert.equal(listPrunedBundles(dataRoot).find(row => row.id === invalidId)?.state, 'needs-review');
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('fs: applyPrune refuses a candidate moved outside its scanned root', () => {
+  const root = mkdtempSync(join(tmpdir(), 'hd-prune-boundary-'));
+  const outside = mkdtempSync(join(tmpdir(), 'hd-prune-outside-'));
+  try {
+    for (const name of ['a.test-2026-10-01', 'a.test-2026-10-02']) {
+      const dir = join(root, name);
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'index.html'), name);
+    }
+    writeFileSync(join(outside, 'keep.txt'), 'outside evidence');
+    const plan = planPrune(scanBundles(root), { keep: 1 });
+    plan.remove[0].dir = outside;
+    const result = applyPrune(plan);
+    assert.equal(result.removed.length, 0);
+    assert.equal(result.failed.length, 1);
+    assert.equal(readFileSync(join(outside, 'keep.txt'), 'utf8'), 'outside evidence');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('fs: applyPrune refuses a candidate relabeled as a different sibling', () => {
+  const root = mkdtempSync(join(tmpdir(), 'hd-prune-sibling-'));
+  try {
+    for (const name of ['a.test-2026-10-01', 'a.test-2026-10-02']) {
+      const dir = join(root, name);
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'index.html'), name);
+    }
+    const plan = planPrune(scanBundles(root), { keep: 1 });
+    plan.remove[0].dir = join(root, 'a.test-2026-10-02');
+    const result = applyPrune(plan);
+    assert.equal(result.removed.length, 0);
+    assert.equal(result.failed.length, 1);
+    assert.equal(existsSync(join(root, 'a.test-2026-10-02', 'index.html')), true);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('CLI: empty inventory writes a completed plan; after apply the saved plan reflects surviving bundles', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-cli-'));
+  const script = fileURLToPath(new URL('../src/audit/deliver-prune.mjs', import.meta.url));
+  const planFile = join(dataRoot, 'deliver-plan.json');
+  const run = (args = []) => spawnSync(process.execPath, [script, ...args], {
+    env: { ...process.env, HEIMDALL_DATA_DIR: dataRoot }, encoding: 'utf8',
+  });
+  try {
+    const empty = run();
+    assert.equal(empty.status, 0, empty.stderr);
+    assert.equal(JSON.parse(readFileSync(planFile, 'utf8')).total.bundles, 0);
+
+    const deliverable = join(dataRoot, 'deliverable');
+    for (const name of ['a.test-2026-10-01', 'a.test-2026-10-02']) {
+      const dir = join(deliverable, name);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'index.html'), name);
+    }
+    const preview = run(['--keep', '1']);
+    assert.equal(preview.status, 0, preview.stderr);
+    const revision = JSON.parse(readFileSync(planFile, 'utf8')).revision;
+    const missingRevision = run(['--keep', '1', '--apply']);
+    assert.equal(missingRevision.status, 1);
+    assert.equal(existsSync(join(deliverable, 'a.test-2026-10-01')), true);
+    const applied = run(['--keep', '1', '--apply', '--revision', revision]);
+    assert.equal(applied.status, 0, applied.stderr);
+    const saved = JSON.parse(readFileSync(planFile, 'utf8'));
+    assert.equal(saved.total.bundles, 1);
+    assert.equal(saved.total.reclaimable, 0);
+    assert.deepEqual(saved.groups[0].remove, []);
+    assert.deepEqual(saved.result.removed.map(row => row.name), ['a.test-2026-10-01']);
+    assert.equal(existsSync(join(deliverable, 'a.test-2026-10-02')), true);
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
 test.after(() => rmSync(root, { recursive: true, force: true }));

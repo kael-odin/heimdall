@@ -32,7 +32,7 @@
 | --- | --- | --- |
 | 目标站有 Cloudflare 硬墙 | 中 | 这是技术挡路，不是策略拒绝。换目标站点，或降级为"只做 SEO 审计不克隆" |
 | 站点改版导致既有适配器失效 | 中 | 适配器是探测式的（不硬编码 chunk 文件名）；重跑一次即知 |
-| 大站（>500 页）跑不动 | **高** | 当前并发 2 且有页数上限。演示用几十页量级的站；规模化见 [ROADMAP](ROADMAP.md) |
+| 大站（>500 页）跑不动 | **高** | 当前并发 2 且有页数上限。演示用几十页量级的站；规模化见 [ROADMAP](docs/ROADMAP.md) |
 | 动效类页面保真度掉档 | 高 | 每页 `score.json` 的 `dynamicShare` 量化这个缺口，如实展示而不是掩盖 |
 | 画布/WebGL 内容丢失 | 低 | 普通 canvas 已修（捕获期光栅化）。WebGL 需 `preserveDrawingBuffer`，尚未覆盖 |
 | AI 校准反而改坏页面 | 低 | fixup 有守门：改完重测，变差不保留（详情面板有校准曲线，能看到保留/回滚） |
@@ -45,9 +45,9 @@
 
 **演示前 15 分钟**
 
-- [ ] 引擎已起：`HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900`
+- [ ] 引擎已起（在 `core/` 下的 PowerShell）：`$env:HEIMDALL_CONSOLE_DIR='../console/dist'; node src/engine-server.mjs 8900`
 - [ ] 控制台能开：`http://127.0.0.1:8900`
-- [ ] 三个站点产物在位：`apify.com`(61页) / `thordata.com`(31页) / `vitest.dev`(1页)
+- [ ] 本次演示选定的自有或获授权站点产物在位；页数从当前 manifest 和控制台清单核对，不沿用历史截图数字
 - [ ] 留一个未克隆的页面用于现场实时克隆（**提前确认它能在 2 分钟内跑完**）
 - [ ] 交互镜像包已生成，Docker 可用：`node src/cli.mjs live vitest.dev --offline`
 - [ ] 同步对比页提前打开好（现场点击有加载延迟）
@@ -60,7 +60,7 @@
 
 - [ ] 每个数字都能当场打开对应 json 文件佐证
 - [ ] 主动说出的短板 ≥2 条（比被问出来可信得多）
-- [ ] 没有出现"100% 还原"这类绝对化话术
+- [ ] 没有出现"100% 还原"这类绝对化话术；分数旁标明视口、尺寸、覆盖率与 `scoreVersion`
 
 ---
 

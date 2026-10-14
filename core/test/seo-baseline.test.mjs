@@ -143,6 +143,19 @@ test('baseline: 同一页新增高severity问题 → 阻断；低severity默认�
   assert.equal(low.regressions.length, 1, '但要如实记录');
 });
 
+test('baseline: existing issue severity escalation is a regression', () => {
+  const before = buildBaseline(report({ pages: [{ url: 'https://example.com/a', issues: [iss('content-title-long', 'low')] }] }));
+  const after = snapshotOf(report({ pages: [{ url: 'https://example.com/a', issues: [iss('content-title-long', 'high')] }] }));
+  const diff = diffBaseline(before, after);
+  assert.equal(diff.ok, false);
+  assert.equal(diff.counts.blocking, 1);
+  assert.equal(diff.regressions[0].type, 'issue-worsened');
+
+  const better = diffBaseline(after, before);
+  assert.equal(better.ok, true);
+  assert.equal(better.improvements[0].type, 'issue-improved');
+});
+
 test('baseline: failOn 可配（把 medium 也算阻断）', () => {
   const before = buildBaseline(report({ pages: [{ url: 'https://example.com/a' }] }));
   const after = snapshotOf(report({ pages: [{ url: 'https://example.com/a', issues: [iss('content-h1-multiple', 'medium')] }] }));

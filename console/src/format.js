@@ -90,6 +90,16 @@ export function forgeStageProgress(stages) {
 /** 阶段轨的一行文案：`3/6 · 渲染校准`。任务行窄，不用"第…步"这种完整句式。 */
 export const stageProgressText = (p) => (p ? `${p.index}/${p.total} · ${p.label}` : '');
 
+export function verifyPageProgress(event) {
+  const result = typeof event.overall === 'number' && Number.isFinite(event.overall)
+    ? event.measured === false ? '未完整测量' : (event.overall * 100).toFixed(1) + '%'
+    : '未测到';
+  const score = event.minViewport?.score;
+  const minimum = typeof score === 'number' && Number.isFinite(score)
+    ? ` · 最低 ${event.minViewport.name} ${(score * 100).toFixed(1)}%` : '';
+  return `体检 ${event.page} · ${result}${minimum}`;
+}
+
 export const KIND_CN = {
   audit: 'SEO 审计',
   watch: '变更监控',

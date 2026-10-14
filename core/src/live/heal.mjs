@@ -196,6 +196,11 @@ export const mimeExt = (mime, url = '') => {
  * 目录里带上 host，是为了不同域上的同路径不互相覆盖；查询串变体（`?v=1` 之类）
  * 没法落成文件路径，在扩展名前插一段短哈希各自落一份。
  */
+function externalOriginDir(u) {
+  return u.hostname.replace(/[:\[\]]/g, '_')
+    + (u.protocol === 'https:' && !u.port ? '' : `--${u.protocol.slice(0, -1)}${u.port ? '-port-' + u.port : ''}`);
+}
+
 function crossOriginRel(u, entry) {
   const ext = mimeExt(entry.mimeType, entry.url);
   let p = u.pathname.replace(/^\/+/, '');
@@ -208,7 +213,7 @@ function crossOriginRel(u, entry) {
     const h = createHash('sha1').update(u.href).digest('hex').slice(0, 8);
     p = p.replace(/(\.[a-z0-9]{1,5})$/i, '~' + h + '$1');
   }
-  return '_ext/' + u.host + '/' + p;
+  return '_ext/' + externalOriginDir(u) + '/' + p;
 }
 
 export function localizeQueryEntries({ entries = [], liveDir, host, origin, hostPrefixes = false } = {}) {
@@ -246,8 +251,8 @@ export function localizeQueryEntries({ entries = [], liveDir, host, origin, host
     } else {
       // 协议相对写法在页面里极常见（实测 moonshot 的字体/图标就是 `//statics.kimi.ai/…`），
       // 而 HAR 里记的是绝对 URL —— 少这一条，HTML 里那些引用会原样留在外网。
-      map.set('//' + u.host + u.pathname + u.search, publicPath);
-      extHosts.add(u.host);
+      if (u.protocol === new URL(origin).protocol) map.set('//' + u.host + u.pathname + u.search, publicPath);
+      extHosts.add(u.origin);
     }
   }
   /**
@@ -264,9 +269,11 @@ export function localizeQueryEntries({ entries = [], liveDir, host, origin, host
    * 会让那些资源从"能回源"变成"本地 404"。
    */
   if (hostPrefixes) {
-    for (const h of extHosts) {
-      const to = '/lm/' + host + '/_ext/' + h + '/';
-      for (const p of ['https://', 'http://', '//']) map.set(p + h + '/', to);
+    for (const externalOrigin of extHosts) {
+      const source = new URL(externalOrigin);
+      const to = '/lm/' + host + '/_ext/' + externalOriginDir(source) + '/';
+      map.set(externalOrigin + '/', to);
+      if (source.protocol === new URL(origin).protocol) map.set('//' + source.host + '/', to);
     }
   }
   return { map, ...out };
@@ -288,6 +295,13 @@ export function rewriteLocalRefs({ liveDir, map }) {
   const out = { files: 0, rewrites: 0 };
   if (!map?.size) return out;
   const keys = [...map.keys()].sort((a, b) => b.length - a.length);
+  const replacements = keys.flatMap((key) => {
+    const to = map.get(key);
+    return [...new Set([key, key.replace(/&/g, '&amp;')])].map((variant) => ({
+      re: new RegExp('(?<![\\w.-])' + regexEscape(variant), 'g'),
+      to,
+    }));
+  });
   const walk = (dir) => {
     for (const n of readdirSync(dir)) {
       const p = join(dir, n);
@@ -297,16 +311,12 @@ export function rewriteLocalRefs({ liveDir, map }) {
       else if (/\.(?:html?|js|mjs|cjs|css|json)$/i.test(n)) {
         let text = readFileSync(p, 'utf8');
         let hits = 0;
-        for (const k of keys) {
-          const to = map.get(k);
-          for (const variant of [k, k.replace(/&/g, '&amp;')]) {
-            // 边界感知：避免命中更长 URL 的子串（如 /lm/www.host/_next/… 里的 /_next/…）
-            const re = new RegExp('(?<![\\w.-])' + regexEscape(variant), 'g');
-            const n2 = (text.match(re) || []).length;
-            if (!n2) continue;
-            hits += n2;
-            text = text.replace(re, to);
-          }
+        for (const { re, to } of replacements) {
+          // 边界感知：避免命中更长 URL 的子串（如 /lm/www.host/_next/… 里的 /_next/…）
+          const n2 = (text.match(re) || []).length;
+          if (!n2) continue;
+          hits += n2;
+          text = text.replace(re, to);
         }
         // 写时复制：导出包与 workspace 是硬链接，直接写会连带改坏源文件 → 先写临时文件再改名断链
         if (hits) { writeFileSync(p + '.heimdall-tmp', text); renameSync(p + '.heimdall-tmp', p); out.files++; out.rewrites += hits; }

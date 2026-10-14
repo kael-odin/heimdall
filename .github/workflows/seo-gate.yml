@@ -2,8 +2,8 @@ name: SEO Regression Gate
 
 # 与 ci.yml 的分工：
 #   ci.yml     —— 确定性检查（lint/单测/build/smoke），每次 push 和 PR 都跑，不联网
-#   seo-gate   —— 联网抓真实站点并与基线比对，跑得慢且结果受外网影响，
-#                 所以只在手动触发和每日定时跑，不阻塞 PR。
+#   seo-gate   —— 联网抓真实站点并与基线比对，跑得慢且结果受外网影响。
+#                 配置授权目标与基线后，再启用 schedule；空目标不能报告为通过。
 #
 # 门禁口径见 core/src/seo/baseline.mjs 顶部注释：只认具名问题差异，
 # LCP/CLS/FCP 属波动规则，不计入判定。
@@ -20,9 +20,6 @@ on:
         type: boolean
         required: false
         default: false
-  schedule:
-    # 每天 03:17 UTC。刻意避开整点 —— GitHub 的 cron 在 :00 排队最挤，常延迟十几分钟。
-    - cron: '17 3 * * *'
 
 concurrency:
   group: seo-gate-${{ github.ref }}
@@ -62,17 +59,14 @@ jobs:
           if [ -n "${ONE:-}" ]; then
             printf '%s\n' "$ONE" > "$RUNNER_TEMP/targets.txt"
           elif [ -f ../config/seo-targets.txt ]; then
-            # `|| true` 不是敷衍：grep 在"一行都没选中"时返回 1，而那个返回值在这里**不是错误** ——
-            # 目标文件全是注释（本仓库的默认状态）就是这种情况。少了它，`set -e` 会当场掐掉这一步，
-            # 于是下面那段"门禁无事可做"的优雅分支永远走不到，定时任务天天红着
-            # （实测 2026-10-12 的定时运行就是这么失败的）。
             grep -vE '^[[:space:]]*(#|$)' ../config/seo-targets.txt > "$RUNNER_TEMP/targets.txt" || true
           else
             : > "$RUNNER_TEMP/targets.txt"
           fi
           echo "targets:"; cat "$RUNNER_TEMP/targets.txt"
           if [ ! -s "$RUNNER_TEMP/targets.txt" ]; then
-            echo "::notice::没有配置目标站点（config/seo-targets.txt 为空），门禁无事可做。"
+            echo "::error::没有 SEO 门禁目标；手动指定 site，或提交 config/seo-targets.txt 与对应基线。"
+            exit 1
           fi
 
       # 逐站点跑，全部跑完再汇总结论 ——
@@ -86,8 +80,15 @@ jobs:
           failed=0
           while read -r host; do
             [ -z "$host" ] && continue
-            key=$(printf '%s' "$host" | sed -E 's#^https?://##; s#/.*$##; s#^www\.##')
             echo "::group::SEO — $host"
+            # 目标可能是完整 URL、非默认端口或 http；与 audit 共用同一套
+            # path-safe key，避免 sed 截断后把两个 origin 写进同一个基线文件。
+            if ! key=$(node --input-type=module -e 'import("./src/seo/baseline-file.mjs").then(({baselineFileKey}) => process.stdout.write(baselineFileKey(process.argv[1]))).catch(error => { console.error(error.message); process.exit(1); })' "$host"); then
+              echo "::error::SEO 目标无效：$host"
+              failed=1
+              echo "::endgroup::"
+              continue
+            fi
             extra=""
             if [ "${UPDATE_BASELINE:-false}" = "true" ]; then extra="--update-baseline"; fi
             node src/seo/audit.mjs "$host" \

@@ -19,10 +19,12 @@ import { emit } from '../emit.mjs';
 import { scanCas } from '../store/cas.mjs';
 
 const CAS_DIR = join(DATA_ROOT, 'assets-cas');
+const TRASH_DIR = join(DATA_ROOT, 'trash');
 
-/** 遍历一棵树；seen 传入则跨调用去重（用于求真实占用） */
-function walk(root, seen) {
+/** seen 跨目录计入总量；localSeen 只在指定目录内去重。 */
+function walk(root, seen, localSeen = null) {
   const out = { files: 0, dirs: 0, logicalBytes: 0, uniqueBytes: 0 };
+  if (localSeen) out.containedUniqueBytes = 0;
   if (!existsSync(root)) return out;
   const go = (dir) => {
     out.dirs++;
@@ -38,6 +40,10 @@ function walk(root, seen) {
       out.logicalBytes += st.size;
       if (!seen) { out.uniqueBytes += st.size; continue; }
       const key = st.dev + ':' + st.ino;
+      if (localSeen && !localSeen.has(key)) {
+        localSeen.add(key);
+        out.containedUniqueBytes += st.size;
+      }
       if (!seen.has(key)) { seen.add(key); out.uniqueBytes += st.size; }
     }
   };
@@ -82,6 +88,9 @@ export function computeStorage(opts = {}) {
   }
 
   const deliverable = walk(DELIVERABLE, seen);
+  const { uniqueBytes: uniqueContributionBytes, containedUniqueBytes: uniqueBytes, ...trashMetrics } =
+    walk(TRASH_DIR, seen, new Set());
+  const trash = { ...trashMetrics, uniqueBytes, uniqueContributionBytes };
 
   // workspace 根下直接躺着的散落文件（调试图等）—— 不属于任何站点，但确实占地方
   const rootFiles = { files: 0, dirs: 0, logicalBytes: 0, uniqueBytes: 0, names: [] };
@@ -100,9 +109,9 @@ export function computeStorage(opts = {}) {
   }
 
   const totals = {
-    logicalBytes: siteRows.reduce((n, r) => n + r.logicalBytes, 0) + workspaceOther.logicalBytes + rootFiles.logicalBytes + casWalk.logicalBytes + deliverable.logicalBytes,
-    uniqueBytes: siteRows.reduce((n, r) => n + r.uniqueBytes, 0) + workspaceOther.uniqueBytes + rootFiles.uniqueBytes + casWalk.uniqueBytes + deliverable.uniqueBytes,
-    files: siteRows.reduce((n, r) => n + r.files, 0) + workspaceOther.files + rootFiles.files + casWalk.files + deliverable.files,
+    logicalBytes: siteRows.reduce((n, r) => n + r.logicalBytes, 0) + workspaceOther.logicalBytes + rootFiles.logicalBytes + casWalk.logicalBytes + deliverable.logicalBytes + trash.logicalBytes,
+    uniqueBytes: siteRows.reduce((n, r) => n + r.uniqueBytes, 0) + workspaceOther.uniqueBytes + rootFiles.uniqueBytes + casWalk.uniqueBytes + deliverable.uniqueBytes + trash.uniqueContributionBytes,
+    files: siteRows.reduce((n, r) => n + r.files, 0) + workspaceOther.files + rootFiles.files + casWalk.files + deliverable.files + trash.files,
   };
 
   return {
@@ -117,6 +126,7 @@ export function computeStorage(opts = {}) {
       orphanFiles: cas.orphanFiles, orphanBytes: cas.orphanBytes, emptyFiles: cas.empty,
     },
     deliverable,
+    trash,
     totals,
     ms: Date.now() - started,
     generatedAt: new Date().toISOString(),
@@ -134,6 +144,7 @@ if (isMain) {
   for (const s of summary.sites) console.log(`  ${s.host.padEnd(24)} ${String(s.files).padStart(7)} 文件  逻辑 ${mb(s.logicalBytes).padStart(9)}  独占 ${mb(s.uniqueBytes).padStart(9)}`);
   console.log(`  ${'(CAS)'.padEnd(24)} ${String(summary.cas.files).padStart(7)} 文件  ${mb(summary.cas.uniqueBytes).padStart(9)} 在用 / 孤儿 ${mb(summary.cas.orphanBytes)}（${summary.cas.orphanFiles} 个）`);
   console.log(`  ${'(交付包)'.padEnd(24)} ${String(summary.deliverable.files).padStart(7)} 文件  ${mb(summary.deliverable.uniqueBytes).padStart(9)}`);
+  console.log(`  ${'(最近删除)'.padEnd(24)} ${String(summary.trash.files).padStart(7)} 文件  逻辑 ${mb(summary.trash.logicalBytes)} / 目录内去重 ${mb(summary.trash.uniqueBytes)} / 总量新增 ${mb(summary.trash.uniqueContributionBytes)}`);
   console.log('-> ' + outFile);
   // 让引擎/控制台能直接看到本次结果
   emit({ kind: 'storage', sites: summary.sites.length, uniqueBytes: summary.totals.uniqueBytes, orphanBytes: summary.cas.orphanBytes });

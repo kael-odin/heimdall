@@ -2,7 +2,7 @@ name: CI
 
 # 与 seo-gate.yml 的分工：
 #   ci.yml     —— 确定性检查（lint / 测试 / build / smoke），每次 push 与 PR 都跑，不联网
-#   seo-gate   —— 联网抓真实站点并与基线比对；慢且受外网影响，只在手动触发与每日定时跑
+#   seo-gate   —— 联网抓授权站点并与基线比对；当前仅手动触发，配置目标和基线后再考虑定时运行
 #
 # 本文件里的测试**需要真浏览器**：core 的测试集里有几条跑的是 capture → build_clone
 # 的真实流水线（CSS url() 解析基准、资产按真实类型落盘……），必须能起 Chromium。
@@ -41,6 +41,7 @@ jobs:
           cache-dependency-path: core/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm check:docs
       # 见文件头：测试集里有真浏览器用例，不装就会红
       - run: pnpm exec playwright install --with-deps chromium
       # core 与 console 是**两个独立 job，产物不互通** —— 而 core 的测试集里有一条

@@ -24,10 +24,11 @@
  * 分数是从问题列表**派生**的：新增一条 critical，分数必然掉 25。
  * 如果把「分数下降」也记成一条回归，同一个原因会被计两次，
  * `blocking` 计数虚高，报告里同一条问题出现两遍，且调 tolerance 会同时影响两处。
- * 所以：**回归 = 具名问题差异**（页面消失 / 新增问题），分数只作为顶栏数字如实展示。
+ * 所以：**回归 = 具名问题差异**（页面消失 / 新增问题 / 严重度上升），分数只作为顶栏数字如实展示。
  * `tolerance` 留给一个显式的可选项：`--tolerance N > 0` 时额外启用「总分跌幅门禁」。
  */
 import { SEVERITY_PENALTY, SEVERITY_LABEL } from './rules.mjs';
+import { canonUrl } from '../url-canon.mjs';
 
 /** 波动规则：跑一次一个值，不能作为回归判据 */
 export const VOLATILE_RULES = [/^perf-(lcp|cls|fcp)\b/];
@@ -42,7 +43,7 @@ export const BASELINE_VERSION = 1;
 /** 门禁默认拦下的严重度 */
 export const DEFAULT_FAIL_ON = ['critical', 'high'];
 
-const normUrl = (u) => String(u ?? '').replace(/\/$/, '');
+const normUrl = (u) => (canonUrl(u) ?? String(u ?? '')).replace(/\/$/, '');
 const round1 = (n) => Math.round(Number(n) * 10) / 10;
 
 /**
@@ -169,8 +170,22 @@ export function diffBaseline(baseline, current, opts = {}) {
     const curBag = cur.issues ?? {};
 
     for (const id of Object.keys(curBag)) {
-      if (id in prevBag) continue;
       const sev = sevFrom(curBag, id);
+      if (id in prevBag) {
+        const previous = sevFrom(prevBag, id);
+        if ((SEV_ORDER[sev] ?? 9) < (SEV_ORDER[previous] ?? 9)) {
+          const item = {
+            type: 'issue-worsened', severity: sev, url, ruleId: id,
+            title: SEVERITY_LABEL[sev] ?? sev,
+            detail: `严重度上升：${id}（${previous} → ${sev}）`,
+          };
+          if (isVolatile(id)) observations.push(item); else regressions.push(item);
+        } else if ((SEV_ORDER[sev] ?? 9) > (SEV_ORDER[previous] ?? 9)) {
+          improvements.push({ type: 'issue-improved', severity: sev, url, ruleId: id,
+            detail: `严重度下降：${id}（${previous} → ${sev}）` });
+        }
+        continue;
+      }
       const item = {
         type: 'new-issue', severity: sev, url, ruleId: id,
         title: SEVERITY_LABEL[sev] ?? sev,
@@ -189,8 +204,19 @@ export function diffBaseline(baseline, current, opts = {}) {
   const prevSite = baseline.siteIssues ?? {};
   const curSite = current.siteIssues ?? {};
   for (const id of Object.keys(curSite)) {
-    if (id in prevSite) continue;
     const sev = sevFrom(curSite, id);
+    if (id in prevSite) {
+      const previous = sevFrom(prevSite, id);
+      if ((SEV_ORDER[sev] ?? 9) < (SEV_ORDER[previous] ?? 9)) {
+        const item = { type: 'site-issue-worsened', severity: sev, url: null, ruleId: id,
+          detail: `严重度上升（站点级）：${id}（${previous} → ${sev}）` };
+        if (isVolatile(id)) observations.push(item); else regressions.push(item);
+      } else if ((SEV_ORDER[sev] ?? 9) > (SEV_ORDER[previous] ?? 9)) {
+        improvements.push({ type: 'site-issue-improved', severity: sev, url: null, ruleId: id,
+          detail: `严重度下降（站点级）：${id}（${previous} → ${sev}）` });
+      }
+      continue;
+    }
     const item = { type: 'new-site-issue', severity: sev, url: null, ruleId: id, detail: `新出现（站点级）：${id}` };
     if (isVolatile(id)) observations.push(item); else regressions.push(item);
   }
@@ -239,7 +265,7 @@ export function diffBaseline(baseline, current, opts = {}) {
 
 /** 排序：先按严重度，再按类型（页面消失优先），最后按 URL —— 报告要能从上往下读 */
 const SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-const TYPE_ORDER = { 'page-missing': 0, 'score-drop': 1, 'new-site-issue': 2, 'new-issue': 3 };
+const TYPE_ORDER = { 'page-missing': 0, 'score-drop': 1, 'site-issue-worsened': 2, 'issue-worsened': 3, 'new-site-issue': 4, 'new-issue': 5 };
 function sortRegressions(list) {
   return [...list].sort((a, b) =>
     (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9)

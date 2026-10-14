@@ -1,0 +1,16 @@
+{
+  "ranAt": "2026-10-13T20:36:15.264Z",
+  "cdp": "http://127.0.0.1:9223",
+  "source": "http://127.0.0.1:60745/",
+  "consoleUrl": "http://127.0.0.1:60746",
+  "taskId": "f-20eaa507-b718-43be-86ab-59c4686163c8",
+  "taskStatus": "done",
+  "pageName": "home",
+  "cloneStatus": 200,
+  "cloneTitle": "Fixture Site — Home",
+  "screenshots": [
+    "cdp-console-forge.png",
+    "cdp-clone-artifact.png"
+  ],
+  "pageErrors": []
+}

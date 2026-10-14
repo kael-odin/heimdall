@@ -45,6 +45,10 @@ function openSqlite(path) {
 class SqliteJobStore {
   constructor(db) { this.db = db; this.kind = 'sqlite'; }
   upsert(job) {
+    const previous = this.get(job.id);
+    if (previous && (previous.kind !== job.kind || previous.url !== job.url || previous.createdAt !== job.createdAt)) {
+      throw new Error('job id collision: ' + job.id);
+    }
     this.db.prepare(`INSERT INTO jobs (id, kind, url, status, page_name, created_at, ended_at, payload, error)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET status=excluded.status, ended_at=excluded.ended_at, page_name=excluded.page_name, payload=excluded.payload, error=excluded.error`)
@@ -101,7 +105,14 @@ class JsonJobStore {
     writeFileSync(tmp, JSON.stringify(this.data));
     renameSync(tmp, this.path);
   }
-  upsert(job) { this.data.jobs[job.id] = { ...(this.data.jobs[job.id] ?? {}), ...job }; this.persist(); }
+  upsert(job) {
+    const previous = this.data.jobs[job.id];
+    if (previous && (previous.kind !== job.kind || previous.url !== job.url || previous.createdAt !== job.createdAt)) {
+      throw new Error('job id collision: ' + job.id);
+    }
+    this.data.jobs[job.id] = { ...previous, ...job };
+    this.persist();
+  }
   appendEvent(jobId, ev) {
     const list = (this.data.events[jobId] ??= []);
     list.push({ ts: Date.now(), data: ev });

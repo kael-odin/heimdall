@@ -19,6 +19,7 @@ import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { writeFileAtomic } from '../fsutil.mjs';
 import { UA } from '../ua.mjs';
+import { sanitizeStaticHtml, staticCloneChooserHtml } from '../static-html-safety.mjs';
 
 
 const PAGE = requireArg(process.argv[2], 'node src/crawler/build_clone.mjs <pageDir>', '页面目录');
@@ -347,7 +348,8 @@ const { html: desktopHtmlBeforeMedia, count: videoPosters } = applyVideoPosters(
 // 自定义媒体组件（`<mux-player poster="…">`）换成那张 poster 的 <img>：
 // 它们的画面是脚本建的 shadow DOM，剥了脚本就只剩空壳（理由见 dom-refs.mjs）。
 // 同样放在引用改写之后 —— 此时 poster 已经是本地路径，直接当 src 用。
-const { html: desktopHtml, count: mediaPosters, remote: mediaPostersRemote } = materializeMediaPosters(desktopHtmlBeforeMedia);
+const { html: desktopHtmlWithMedia, count: mediaPosters, remote: mediaPostersRemote } = materializeMediaPosters(desktopHtmlBeforeMedia);
+const desktopHtml = sanitizeStaticHtml(desktopHtmlWithMedia);
 
 // ---------- 3. 多视口快照（可选） ----------
 const VARIANTS = [375, 768].filter(w => existsSync(join(PAGE, 'dom-' + w + '.html')) && existsSync(join(PAGE, 'cssom-' + w + '.css')));
@@ -356,17 +358,14 @@ for (const w of VARIANTS) {
   const meta = JSON.parse(readFileSync(join(PAGE, 'cssom-refs-' + w + '.json'), 'utf8'));
   const cssOut = 'cssom-' + w + '.css';
   const r = await localizeCss(readFileSync(join(PAGE, 'cssom-' + w + '.css'), 'utf8'), cssOut, meta.origin ?? ORIGIN, meta.refMap ?? {}, cssGaps);
-  const html = rewriteHtml(readFileSync(join(PAGE, 'dom-' + w + '.html'), 'utf8'), cssOut);
+  const html = sanitizeStaticHtml(rewriteHtml(readFileSync(join(PAGE, 'dom-' + w + '.html'), 'utf8'), cssOut));
   writeFileAtomic(join(CLONE, 'index-' + w + '.html'), header + html);
   console.log('  ' + cssOut + ' refs=' + (meta.refs ?? []).length + ' ok=' + r.fetched + ' fail=' + r.failed);
 }
 if (VARIANTS.length) {
   writeFileAtomic(join(CLONE, 'index-1440.html'), header + desktopHtml);
-  const chooser = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-    + '<title>Heimdall clone</title><script>location.replace(innerWidth<=600?"index-375.html":innerWidth<=1100?"index-768.html":"index-1440.html");</script>'
-    + '<noscript><meta http-equiv="refresh" content="0;url=index-1440.html"></noscript></head><body></body></html>';
-  writeFileAtomic(join(CLONE, 'index.html'), chooser);
-  console.log('  viewport chooser -> index.html (375/768/1440)');
+  writeFileAtomic(join(CLONE, 'index.html'), staticCloneChooserHtml([...VARIANTS, 1440]));
+  console.log('  viewport chooser -> index.html (' + [...VARIANTS, 1440].join('/') + ')');
 } else {
   writeFileAtomic(join(CLONE, 'index.html'), header + desktopHtml);
 }

@@ -4,8 +4,8 @@
 </p>
 
 <p align="center">
-  <b>把「开 DevTools 抄一周」变成「贴个网址等十分钟」</b><br>
-  <sub>不是让 AI 照着截图重写一遍 —— 是把原站的真实文件搬下来，再给出可核对的数字。</sub>
+  <b>授权网站的可核验快照、差异与前端接手包</b><br>
+  <sub>采集页面结构与真实资产，生成镜像和可复核的验证结果。</sub>
 </p>
 
 ---
@@ -20,8 +20,7 @@
   <img src="./assets/readme/console-pages.webp" width="100%" alt="控制台页面清单：逐页列出路径、标题、类型、克隆状态、视觉还原度、资产体积与缺口数">
 </p>
 
-这两个数字是上面这张图里的站点（apify.com）真跑出来的：**61 页已克隆 · 1544 条站内链接 · 平均视觉 99.1%**。
-其它站点的实测：cn.vuejs.org **100.00%** · vitest.dev **99.96%** · svelte.dev **100.00% / 99.91%** · angular.dev **100.00% / 99.76%**（全部 A 级）。
+上图与以下数字是 **2026-10-13 前的历史样例**：apify.com 当时记录 **61 页已克隆、1544 条站内链接、平均单页像素 99.1%**；其它样例包括 cn.vuejs.org 100.00%、vitest.dev 99.96%、svelte.dev 100.00% / 99.91%、angular.dev 100.00% / 99.76%。这些是旧评分口径下的运行快照，未按当前多视口 v2 算法重算，不能作为当前站点质量或全站覆盖率保证。
 
 ---
 
@@ -48,9 +47,9 @@
 四点具体差别：
 
 - **资产是真的** —— 原站的字体、图片、图标原件直接搬下来，不是照着截图的近似重绘
-- **保真度是数字** —— 像素 / DOM 结构 / 字段覆盖三维评分，可复现、可对质，不是"看起来挺像"
+- **保真度是带口径的数字** —— 单页 `score.json` 记录克隆时像素 / DOM 结构 / 字段覆盖；多视口 `verify.json` v2 另记录原/镜像尺寸、覆盖率和缺口。旧验证产物需重算后再比较
 - **缺口可枚举** —— 每份包都带自己的缺口清单（CSS 引用、HTML 引用、离线资源），不藏起来
-- **确定性** —— 同一条命令跑两次结果一致；两个日期的包可以直接 `diff`，看站点到底改了什么
+- **可追溯** —— 固定输入、会话、时间窗口和运行配置时，流程结果可复现；站点内容和根级元数据变化仍会影响两次产物
 
 ---
 
@@ -58,7 +57,9 @@
 
 ```bash
 git clone <repo> && cd heimdall
-pnpm install && pnpm -C core exec playwright install chromium
+pnpm -C core install --frozen-lockfile
+pnpm -C console install --frozen-lockfile
+pnpm -C core exec playwright install chromium
 ```
 
 **只想先试一页**（不需要先启动引擎）：
@@ -73,6 +74,15 @@ node core/src/cli.mjs forge https://example.com home
 pnpm -C console build
 cd core && HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
 # 打开 http://127.0.0.1:8900 —— 第一次打开是一片空白星图，页面上会写清接下来三步怎么做
+```
+
+Windows PowerShell 启动同一服务：
+
+```powershell
+pnpm -C console build
+Set-Location core
+$env:HEIMDALL_CONSOLE_DIR = (Resolve-Path ../console/dist).Path
+node src/engine-server.mjs 8900
 ```
 
 命令行也可以跑完整条链：
@@ -118,7 +128,7 @@ node src/cli.mjs deliver example.com                   # 打包成前端可接�
 - 交互镜像包（Docker + HAR 回放 + 健康报告 + 三级回退）
 - **改站起点清单 + 域名替换**：列出换域名 / 图片 / 文案各要动哪些文件；
   替换默认只预览，真改前逐文件备份、可逐字节还原
-- 交付包保留策略（按站点与类型保留最近 N 份，认不出的命名绝不自动删）
+- 交付包保留策略（按站点与类型保留最近 N 份；旧包经预览确认后同卷隔离、可恢复；隔离不释放空间）
 
 **运维**
 - 内容寻址存储（CAS）+ 硬链接去重，删站真的释放磁盘（`nlink===1` 判据）
@@ -130,7 +140,7 @@ node src/cli.mjs deliver example.com                   # 打包成前端可接�
 ## 仓库结构
 
 ```
-core/            确定性引擎（零外部服务依赖，99 个模块）
+core/            确定性引擎（运行时不依赖外部服务）
   src/crawler/     捕获、构建、链接接线、站点配方
   src/seo/         SEO 规则引擎、采集、报告、回归基线
   src/live/        交互镜像导出、健康检查、自愈
@@ -139,7 +149,7 @@ core/            确定性引擎（零外部服务依赖，99 个模块）
   src/audit/       资产、存储、交付包治理
   src/deliver/     改站起点清单、域名替换
   sites/           人工整理的站点配方（进 git）
-console/         Vue 3 控制台（11 个组件 + 全局 UI 样式表）
+console/         Vue 3 控制台（组件与全局 UI 样式表）
 config/          SEO 门禁的目标站点与基线（进 git）
 docs/            路线图、交付说明、上手导览（docs/guide/）
 ```
@@ -168,8 +178,8 @@ pnpm -C console build
 > `Executable doesn't exist`。CI 就在这上面栽过：`.github/workflows/ci.yml` 的 core job
 > 曾经从不装浏览器，于是长期全红 —— 而本地有浏览器的机器永远全绿，所以一直没被发现。
 
-CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / 测试 / build / smoke）；
-`seo-gate.yml` 每日定时跑 SEO 回归门禁（手动触发可指定单站）。
+CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / 测试 / build / smoke）。
+`seo-gate.yml` 当前只手动触发；配置 `config/seo-targets.txt` 与受版本控制的基线后才适合启用回归门禁。
 
 ---
 
@@ -185,8 +195,9 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [DEMO-SCRIPT.md](DEMO-SCRIPT.md) | 演示脚本 + 评委问答预案 | 答辩前 |
 | [VISUAL-SYSTEM.md](VISUAL-SYSTEM.md) | 控制台设计系统（令牌、字体、3D 星图规范） | 改界面前 |
 | [RISKS.md](RISKS.md) | 合规红线、技术风险预案、演示日 checklist | 每周对一遍 |
-| [HANDOFF.md](HANDOFF.md) | 开发记录：每批改了什么、为什么、实测数据 | 想知道"为什么这样写" |
+| [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
+| [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |
 
 `docs/archive/` 存放阶段性的验收报告与审查记录（历史证据，不再更新）。
 
@@ -194,14 +205,10 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 
 ## 边界
 
-- **静态复刻**：无登录态下的页面。需要鉴权的站点要先人工登一次（控制台「登录并保存会话」），
-  登录态之后的侦察 / 克隆 / 审计会自动带上
+- **静态复刻**：自有或明确获授权的页面。需要鉴权的站点要先人工登一次（控制台「登录并保存会话」）；
+  登录态之后的侦察 / 克隆 / 审计会自动带上。认证数据不应未经清洗直接进入可分发 HAR 或公开静态目录
 - **不做的**：外链分析、关键词研究、排名追踪 —— 那是需要买数据源的生意
-- **动效**：分三层，不是一句"不做"。**CSS 动画与过渡在静态镜像里是活的**（镜像只剥脚本，
-  样式表原样保留，打开就播）；**JS 动效（打字机 / GSAP / Framer / 轮播）在交互镜像里是活的**
-  （原脚本保留、URL 重指到代理）；只有**静态页**看不到 JS 动效，它停在被捕获的那一帧。
-  交付包会附一份**动效档案**（`motion.md`），并把每页的关键帧原样抽成可粘贴的
-  `motion-css.css` —— 包括那些"定义了但静止时抓不到引用"的入场 / 揭示动效
+- **动效**：静态镜像保留 CSS 动画与过渡，并可把部分揭示类和捕获到的 `Element.animate()` 关键帧重演为 CSS；行内样式轮播、画布/WebGL 等仍是捕获帧。交互镜像保留原脚本，能否正常运行取决于资源和原站环境。动效档案 `motion.md` 与重演结果 `motion-replay.css` 可逐页核对
 - **合规红线**：只碰公开页面，或操作者本人有权访问的页面；不实现任何访问控制绕过
 - **用途**：技术分析与自用改造的**起点**，不是"换皮上线"的许可证 —— 详见 [RISKS.md](RISKS.md)
 

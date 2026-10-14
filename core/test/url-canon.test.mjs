@@ -8,10 +8,11 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { pageNameOfUrl, canonUrl, sameCanonUrl, stableNodeId, asUrl } from '../src/url-canon.mjs';
+import { pageNameOfUrl, createPageNameResolver, canonUrl, sameCanonUrl, isSameOriginUrl, stableNodeId, asUrl } from '../src/url-canon.mjs';
 
 /**
  * 补协议这条来自一个真实的崩溃：CLI 帮助文本写的例子就是 `heimdall recon apify.com 30`，
@@ -75,6 +76,13 @@ test('解析不了就返回 null，不抛', () => {
   assert.equal(sameCanonUrl('bad', 'https://a.test/'), false);
 });
 
+test('同源判断按 URL.origin，不接受相似主机或不同端口', () => {
+  assert.equal(isSameOriginUrl('https://a.test/x', 'https://a.test/'), true);
+  assert.equal(isSameOriginUrl('https://a.test.evil.test/x', 'https://a.test/'), false);
+  assert.equal(isSameOriginUrl('https://a.test:8443/x', 'https://a.test/'), false);
+  assert.equal(isSameOriginUrl('not a url', 'https://a.test/'), false);
+});
+
 /**
  * 节点 id 的确定性 —— 这条来自一个可复现性缺陷。
  * 此前 id 是 `n${i++}`，而侦察是 3 路并发的：谁先加载完谁拿小号。
@@ -106,9 +114,17 @@ test('pageNameOfUrl: 根路径 → home，普通路径去掉首斜杠', () => {
   assert.equal(pageNameOfUrl('https://x.test/customers/'), 'customers');
 });
 
-test('pageNameOfUrl: 多级路径折成 - ，查询与锚点不进名字', () => {
-  assert.equal(pageNameOfUrl('https://x.test/a/b'), 'a-b');
-  assert.equal(pageNameOfUrl('https://x.test/pricing?plan=pro#faq'), 'pricing');
+test('pageNameOfUrl: query、分隔符和大小写差异都保留身份', () => {
+  const urls = [
+    'https://x.test/a/b', 'https://x.test/a-b',
+    'https://x.test/pricing', 'https://x.test/pricing?plan=pro', 'https://x.test/pricing?plan=team',
+    'https://x.test/', 'https://x.test/home',
+    'https://x.test/A', 'https://x.test/a',
+  ];
+  const names = urls.map(u => pageNameOfUrl(u));
+  assert.equal(new Set(names).size, urls.length);
+  for (const name of names) { assert.ok(name.length <= 60); assert.match(name, /^[a-z0-9_-]+$/); }
+  assert.equal(pageNameOfUrl('https://x.test/pricing?plan=pro#faq'), pageNameOfUrl('https://x.test/pricing?plan=pro'));
 });
 
 test('pageNameOfUrl: 解析不了用 fallback，不抛', () => {
@@ -117,31 +133,31 @@ test('pageNameOfUrl: 解析不了用 fallback，不抛', () => {
   assert.equal(pageNameOfUrl(null, 'page'), 'page');
 });
 
-test('pageNameOfUrl: 超长路径截断到 60 字符（Windows 路径长度)', () => {
-  assert.equal(pageNameOfUrl('https://x.test/' + 'a'.repeat(200)).length, 60);
+test('pageNameOfUrl: 超长路径有长度上限且尾部差异不撞名', () => {
+  const a = pageNameOfUrl('https://x.test/' + 'a'.repeat(199) + '1');
+  const b = pageNameOfUrl('https://x.test/' + 'a'.repeat(199) + '2');
+  assert.equal(a.length, 60);
+  assert.notEqual(a, b);
+  assert.notEqual(pageNameOfUrl('https://x.test/con'), 'con');
 });
 
 test('pageNameOfUrl: 接受 URL 对象', () => {
-  assert.equal(pageNameOfUrl(new URL('https://x.test/docs/intro')), 'docs-intro');
+  assert.equal(pageNameOfUrl(new URL('https://x.test/docs/intro')), pageNameOfUrl('https://x.test/docs/intro'));
 });
 
-/**
- * 控制台不能 import core 的模块（浏览器侧，另一套构建），所以 src/pages.js 里
- * 必然存在一份**同规则的副本** —— 这正是会漂移的地方，而且漂移不报错：
- * 规则不一致时链接指向不存在的产物目录，打开只是 404。
- * 所以不靠人记，直接把两边的规则表达式抽出来比。
- */
-test('控制台的 pageNameOf 规则与 pageNameOfUrl 一字不差', () => {
-  const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
-  const core = read('../src/url-canon.mjs');
-  const console_ = read('../../console/src/pages.js');
-  const ruleOf = (src) => {
-    const m = /\.pathname((?:\.replace\([^)]*\))+\.slice\(0,\s*60\))/.exec(src);
-    return m ? m[1].replace(/\s+/g, '') : null;
-  };
-  const a = ruleOf(core), b = ruleOf(console_);
-  assert.ok(a, '在 url-canon.mjs 里找不到页名规则 —— 抽取正则过期了，别直接放过');
-  assert.equal(b, a, '控制台那份页名规则已经漂移，链接会指向不存在的目录');
+test('历史 manifest 的原 URL 保持旧目录，撞名的新 URL 得到新目录', () => {
+  const siteDir = mkdtempSync(join(tmpdir(), 'heimdall-page-name-'));
+  try {
+    const legacy = join(siteDir, 'pages', 'a-b');
+    mkdirSync(legacy, { recursive: true });
+    writeFileSync(join(legacy, 'manifest.json'), JSON.stringify({ target: 'https://x.test/a/b' }));
+    const nameOf = createPageNameResolver(siteDir);
+    assert.equal(nameOf('https://x.test/a/b/'), 'a-b');
+    const next = nameOf('https://x.test/a-b');
+    assert.notEqual(next, 'a-b');
+    assert.equal(next, nameOf('https://x.test/a-b#anchor'));
+    assert.equal(nameOf('https://x.test/a/b'), 'a-b');
+  } finally { rmSync(siteDir, { recursive: true, force: true }); }
 });
 
 /**

@@ -17,13 +17,16 @@ import { loadProfile, queuePlan, sanitizeHost } from './site-profile.mjs';
 import { sourceFingerprint, incrementalDecision, decisionNote } from './fingerprint.mjs';
 import { appendHistory } from './seo/history.mjs';
 import { WORKSPACE } from './paths.mjs';
+import { readSiteOrigin } from './site-origin.mjs';
 import { emit as emitRaw } from './emit.mjs';
-import { pageNameOfUrl } from './url-canon.mjs';
+import { canonUrl, createPageNameResolver } from './url-canon.mjs';
 import { runScript } from './child-run.mjs';
 
 const host = sanitizeHost(requireArg(process.argv[2], 'node src/queue.mjs <host> [--max N] [--force] [--incremental] [--missing-har] [--no-dedupe]', '站点 host'));
 const maxIdx = process.argv.indexOf('--max');
-const profile0 = loadProfile(host);   // 站点配方：队列排除项、并发、超时
+const workspaceOrigin = readSiteOrigin(join(WORKSPACE, host));
+const profileHost = workspaceOrigin ? new URL(workspaceOrigin).hostname.replace(/^www\./, '') : host;
+const profile0 = loadProfile(profileHost);   // 站点配方仍按真实 hostname 选取
 const PLAN = queuePlan(profile0, Number(process.env.HEIMDALL_QUEUE_WORKERS || process.env.HEIMDALL_FORGE_SLOTS || 2));
 const MAX = maxIdx > -1 ? Number(process.argv[maxIdx + 1] ?? PLAN.maxPages) : PLAN.maxPages;
 const FORCE = process.argv.includes('--force');       // 忽略已有产物，强制重锻
@@ -41,23 +44,34 @@ const queuePath = join(BASE, 'queue.json');
 const emit = JSON_EVENTS ? emitRaw : () => {};
 
 const atlas = JSON.parse(readFileSync(join(BASE, 'recon', 'atlas.json'), 'utf8'));
-// 页名规则与 forge / 引擎 / 控制台**同一份实现**（src/url-canon.mjs）。
-// 以前这里有第四份副本，四处各改各的迟早会漂移 —— 而漂移的后果是产物落错目录。
-const engineName = (u) => pageNameOfUrl(u);
+const engineName = createPageNameResolver(BASE);
+const atlasRows = atlas.nodes
+  .filter(n => !profile.queue.excludeTypes.includes(n.type))
+  .map(n => ({ url: canonUrl(n.url), type: n.type }))
+  .filter(n => n.url);
 
 // ---------- 构造/载入队列 ----------
 let queue;
 let fresh = false;                      // 这次是新建的队列（--max 仍然生效）
 if (existsSync(queuePath)) {
   queue = JSON.parse(readFileSync(queuePath, 'utf8'));
+  const knownUrls = new Set();
+  queue = queue.filter(q => {
+    const canonical = canonUrl(q.url);
+    if (!canonical || knownUrls.has(canonical)) return false;
+    knownUrls.add(canonical);
+    q.url = canonical;
+    const name = engineName(canonical);
+    if (q.name !== name) { q.previousName = q.name; q.name = name; }
+    return true;
+  });
   console.log(`resume queue: ${queue.filter(q => q.status === 'done').length} done / ${queue.length} total`);
 } else {
   fresh = true;
   const seen = new Set();
-  queue = atlas.nodes
-    .filter(n => !profile.queue.excludeTypes.includes(n.type))
-    .map(n => ({ url: n.url, name: engineName(n.url), type: n.type, status: 'pending' }))
-    .filter(q => { const k = q.name; if (seen.has(k)) return false; seen.add(k); return true; });
+  queue = atlasRows
+    .filter(n => { if (seen.has(n.url)) return false; seen.add(n.url); return true; })
+    .map(n => ({ url: n.url, name: engineName(n.url), type: n.type, status: 'pending' }));
   writeFileSync(queuePath, JSON.stringify(queue, null, 2));
   console.log(`new queue: ${queue.length} pages (max ${MAX})`);
 }
@@ -69,11 +83,10 @@ if (existsSync(queuePath)) {
 // 注意 --max 只约束**新建**队列：已存在的队列代表"这就是我要的全部页面"，
 // 补进来的页不该因为它而再被砍掉（那正是这个 bug 要修的东西）。
 {
-  const known = new Set(queue.map(q => q.name));
-  const added = atlas.nodes
-    .filter(n => !profile.queue.excludeTypes.includes(n.type))
+  const known = new Set(queue.map(q => q.url));
+  const added = atlasRows
+    .filter(n => !known.has(n.url) && (known.add(n.url), true))
     .map(n => ({ url: n.url, name: engineName(n.url), type: n.type, status: 'pending', addedBy: 'recon-sync' }))
-    .filter(q => !known.has(q.name) && (known.add(q.name), true))
     .sort((a, b) => a.url.localeCompare(b.url));
   if (added.length) {
     queue.push(...added);
@@ -96,6 +109,7 @@ else if (MISSING_HAR) {
     else if (q.status !== 'done' && hasProduct(q.name)) q.status = 'done';
   }
 } else for (const q of queue) {
+  if (q.status === 'done' && !hasProduct(q.name)) { q.status = 'pending'; continue; }
   if (q.status !== 'done' && hasProduct(q.name)) { q.status = 'done'; continue; }   // 有产物即认完成
   if (q.status === 'failed' && (q.attempts ?? 0) < 2) q.status = 'pending';         // 失败页给第二次机会
 }
@@ -132,57 +146,56 @@ writeFileSync(queuePath, JSON.stringify(queue, null, 2));
 const pending = queue.filter(q => q.status === 'pending' || q.status === 'queued');
 if (!pending.length) {
   const d = queue.filter(q => q.status === 'done').length, f = queue.filter(q => q.status === 'failed').length;
-  console.log(`queue already complete: ${d} done, ${f} failed`);
-  emit({ kind: 'queue-complete', done: d, failed: f, total: queue.length });
-  process.exit(0);
+  console.log(`queue has no pending pages: ${d} done, ${f} failed; refreshing host outputs`);
 }
 console.log(`to forge: ${pending.length} (workers ${PLAN.workers})`);
 emit({ kind: 'queue-start', total: queue.length, pending: pending.length, workers: PLAN.workers });
 
 // ---------- SSE 等待任务结束 ----------
-function awaitExit(taskId, timeoutMs = 15 * 60_000) {
-  return new Promise(async (resolve) => {
-    const timer = setTimeout(() => resolve({
-      status: 'timeout',
-      error: `等不到任务结束（${Math.round(timeoutMs / 1000)}s 超时）—— 引擎可能还在跑这一页，重跑本页即可`,
-    }), timeoutMs);
-    try {
-      const res = await fetch(`${API}/api/events?task=${taskId}`, { headers: TOKEN ? { 'x-heimdall-token': TOKEN } : {} });
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let buf = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let i;
-        while ((i = buf.indexOf('\n\n')) >= 0) {
-          const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
-          if (!chunk.startsWith('data: ')) continue;
-          try {
-            const ev = JSON.parse(chunk.slice(6));
-            if (ev.kind === 'exit') { clearTimeout(timer); resolve({ status: ev.status, code: ev.code, killed: ev.killed, error: ev.error }); return; }
-          } catch {}
-        }
+async function awaitExit(taskId, timeoutMs = 15 * 60_000) {
+  const deadline = Date.now() + timeoutMs;
+  const headers = TOKEN ? { 'x-heimdall-token': TOKEN } : {};
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API}/api/events?task=${encodeURIComponent(taskId)}`, { headers, signal: controller.signal });
+    if (!res.ok || !res.body) throw new Error(`SSE HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (Date.now() < deadline) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+        const line = chunk.split('\n').find(s => s.startsWith('data:'));
+        if (!line) continue;
+        try {
+          const ev = JSON.parse(line.slice(5).trim());
+          if (ev.kind === 'exit') return { status: ev.status, code: ev.code, killed: ev.killed, error: ev.error };
+        } catch {}
       }
-    } catch (e) {
-      console.log('[queue] SSE disconnected, fallback to job polling');
-      const poll = async () => {
-        for (;;) {
-          await new Promise(r => setTimeout(r, 5000));
-          try {
-            const r = await fetch(API + '/api/jobs', { headers: TOKEN ? { 'x-heimdall-token': TOKEN } : {} });
-            if (!r.ok) continue;
-            const body = await r.json();
-            const all = [...(body.jobs ?? []), ...(body.history ?? [])];
-            const j = all.find(x => x.id === taskId);
-            if (j && ['done', 'failed', 'cancelled', 'interrupted'].includes(j.status)) { clearTimeout(timer); resolve({ status: j.status, error: j.error }); return; }
-          } catch {}
-        }
-      };
-      poll();
     }
-  });
+  } catch {
+    console.log('[queue] SSE disconnected, fallback to job polling');
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, Math.min(5000, Math.max(1, deadline - Date.now()))));
+    if (Date.now() >= deadline) break;
+    try {
+      const res = await fetch(API + '/api/jobs', { headers, signal: AbortSignal.timeout(Math.min(8000, Math.max(1, deadline - Date.now()))) });
+      if (!res.ok) continue;
+      const body = await res.json();
+      const job = [...(body.jobs ?? []), ...(body.history ?? [])].find(x => x.id === taskId);
+      if (job && ['done', 'failed', 'cancelled', 'interrupted'].includes(job.status)) return { status: job.status, error: job.error };
+    } catch {}
+  }
+  return { status: 'timeout', error: `等不到任务结束（${Math.round(timeoutMs / 1000)}s 超时）；任务可能仍在引擎运行` };
 }
 
 const save = () => writeFileSync(queuePath, JSON.stringify(queue, null, 2));
@@ -195,15 +208,27 @@ async function worker(id) {
     const job = workQueue.shift();
     // 入队（槽满则等待）
     let taskId = null;
-    for (let attempt = 0; !taskId; attempt++) {
+    let admissionError = '';
+    const admissionDeadline = Date.now() + Math.max(1000, Number(process.env.HEIMDALL_QUEUE_ADMISSION_MS) || 120_000);
+    for (let attempt = 0; !taskId && Date.now() < admissionDeadline; attempt++) {
       try {
-        const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: job.url, hostPost: false }) });
-        if (r.status === 200) { taskId = (await r.json()).taskId; break; }
+        const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: job.url, hostPost: false }), signal: AbortSignal.timeout(10_000) });
+        const body = await r.json().catch(() => ({}));
+        if (r.ok && body.taskId) { taskId = body.taskId; break; }
+        if (![409, 429, 502, 503, 504].includes(r.status)) { admissionError = `forge HTTP ${r.status}: ${String(body.error ?? '').slice(0, 160)}`; break; }
         if (attempt % 4 === 0) console.log(`[w${id}] slot busy, waiting... (${job.name})`);
       } catch (e) {
         if (attempt % 4 === 0) console.log(`[w${id}] engine unreachable, retrying... (${job.name}: ${String(e).slice(0, 60)})`);
       }
-      await new Promise(res => setTimeout(res, 15000));
+      await new Promise(res => setTimeout(res, Math.min(15000, Math.max(1, admissionDeadline - Date.now()))));
+    }
+    if (!taskId) {
+      job.status = 'failed';
+      job.attempts = (job.attempts ?? 0) + 1;
+      job.error = admissionError || '引擎在入队截止时间内不可用或并发槽始终占满';
+      save();
+      emit({ kind: 'queue-page', name: job.name, url: job.url, status: 'failed', error: job.error, done: doneCount, total: queue.length });
+      continue;
     }
     job.status = 'queued';
     job.attempts = (job.attempts ?? 0) + 1;
@@ -212,7 +237,8 @@ async function worker(id) {
     emit({ kind: 'queue-page', name: job.name, url: job.url, status: 'running', worker: id });
     // 客户端等待上限要比引擎熔断略长，否则会先把还活着的页判死
     const res = await awaitExit(taskId, PLAN.pageTimeoutMs + 120_000);
-    job.status = res.status === 'done' ? 'done' : 'failed';
+    const productReady = hasProduct(job.name);
+    job.status = res.status === 'done' && productReady ? 'done' : 'failed';
     if (job.status === 'done') {
       doneCount++;
       delete job.error;
@@ -227,7 +253,7 @@ async function worker(id) {
        * 实在没有就写明"以 exit N 结束且没留下信息"，绝不空着。
        */
       job.exitCode = res.code ?? null;
-      job.error = String(res.error || '').slice(0, 300)
+      job.error = String(res.error || (res.status === 'done' && !productReady ? '引擎报告完成，但克隆产物或评分文件缺失' : '')).slice(0, 300)
         || `任务以 exit ${res.code ?? '?'} 结束，且没有留下错误信息`;
       if (!res.error) {
         try {
@@ -260,9 +286,11 @@ async function runStep(script, args, label) {
     const msg = String(e?.message ?? e).slice(0, 200);
     console.warn(`  ⚠ ${label} 失败（已克隆的页面不受影响，但这一步的产物缺失）：${msg}`);
     emit({ kind: 'queue-warn', phase: 'finish', step: label, error: msg });
+    postFailures.push({ step: label, error: msg });
     return false;
   }
 }
+const postFailures = [];
 const d = queue.filter(q => q.status === 'done').length, f = queue.filter(q => q.status === 'failed').length;
 if (d > 0) {
   console.log('\n[host-post] xlsx / linker / index-page / repair-empty (once for the whole batch)');
@@ -292,4 +320,5 @@ if (d > 0) {
 }
 
 console.log(`\nQUEUE COMPLETE ${host}: ${d} done / ${f} failed / ${queue.length} total`);
-emit({ kind: 'queue-complete', done: d, failed: f, total: queue.length });
+emit({ kind: 'queue-complete', done: d, failed: f, postFailed: postFailures.length, total: queue.length });
+if (f || postFailures.length) process.exitCode = 1;

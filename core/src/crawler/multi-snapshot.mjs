@@ -18,6 +18,7 @@ import { freezeCss } from '../freeze.mjs';
 import { UA } from '../ua.mjs';
 import { runScript } from '../child-run.mjs';
 import { resolveCloneUrl } from '../clone-doc.mjs';
+import { assertPageName, isSafePageName } from '../page-name.mjs';
 
 const argv = process.argv.slice(2);
 const host = argv[0];
@@ -32,8 +33,9 @@ const WIDTHS = (widthsIdx > -1 ? argv[widthsIdx + 1] : '375,768').split(',').map
 
 const FREEZE = freezeCss({ consent: true });
 
-export async function snapPage(browser, host, page, widths = WIDTHS) {
-  const dir = join(WORKSPACE, host, 'pages', page);
+export async function snapPage(browser, host, page, widths = WIDTHS, pageDir = null) {
+  assertPageName(page);
+  const dir = pageDir ?? join(WORKSPACE, host, 'pages', page);
   const mf = join(dir, 'manifest.json');
   if (!existsSync(mf)) throw new Error('no manifest: ' + page);
   const target = JSON.parse(readFileSync(mf, 'utf8')).target;
@@ -74,6 +76,10 @@ export async function snapPage(browser, host, page, widths = WIDTHS) {
 const isMain = process.argv[1] && process.argv[1].endsWith('multi-snapshot.mjs');
 if (isMain) {
   if (!host || (!pageArg && !ALL)) { console.error('usage: node src/crawler/multi-snapshot.mjs <host> <page> | <host> --all [--max N] [--pages a,b]'); process.exit(2); }
+  if ((pageArg && !isSafePageName(pageArg)) || PAGES.some(page => !isSafePageName(page))) {
+    console.error('页名无效：必须是单个安全目录名');
+    process.exit(2);
+  }
   const browser = await chromium.launch();
   try {
     let pages = [];

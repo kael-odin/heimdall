@@ -1,0 +1,257 @@
+{
+  "page": "ideas",
+  "target": "https://apify.com/ideas",
+  "generatedAt": "2026-10-14T15:53:36.805Z",
+  "scoreVersion": 2,
+  "overall": null,
+  "provisionalOverall": 0.5528,
+  "measured": false,
+  "grade": null,
+  "minViewport": {
+    "name": "1440x900",
+    "score": 0.4966,
+    "grade": "D",
+    "coverageRatio": 0.5041,
+    "sourceSize": {
+      "width": 1440,
+      "height": 11326
+    },
+    "cloneSize": {
+      "width": 1440,
+      "height": 5710
+    },
+    "heightDelta": 5616,
+    "missingPixels": 8087040
+  },
+  "viewports": [
+    {
+      "name": "375x812",
+      "width": 375,
+      "score": 0.5841,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T15:53:00.036Z",
+        "finalUrl": "https://apify.com/ideas",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2500,
+            "pendingRequests": 0,
+            "height": 8310,
+            "textLength": 149178,
+            "imageCount": 17,
+            "incompleteImages": 4,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2512,
+            "pendingRequests": 0,
+            "height": 13926,
+            "textLength": 152009,
+            "imageCount": 21,
+            "incompleteImages": 4,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T15:53:06.584Z",
+        "finalUrl": "http://127.0.0.1:55820/static/apify.com/pages/ideas/clone/index-375.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2514,
+            "pendingRequests": 0,
+            "height": 8206,
+            "textLength": 4873,
+            "imageCount": 21,
+            "incompleteImages": 13,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2513,
+            "pendingRequests": 0,
+            "height": 8310,
+            "textLength": 4873,
+            "imageCount": 21,
+            "incompleteImages": 5,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 2171972,
+      "missingPixels": 2106000,
+      "coverageRatio": 0.5967,
+      "heightDelta": 5616,
+      "sourceSize": {
+        "width": 375,
+        "height": 13926
+      },
+      "cloneSize": {
+        "width": 375,
+        "height": 8310
+      },
+      "sourceHeight": 13926,
+      "cloneHeight": 8310
+    },
+    {
+      "name": "768x1024",
+      "width": 768,
+      "score": 0.634,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T15:53:13.260Z",
+        "finalUrl": "https://apify.com/ideas",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2575,
+            "pendingRequests": 0,
+            "height": 5198,
+            "textLength": 152836,
+            "imageCount": 23,
+            "incompleteImages": 4,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2524,
+            "pendingRequests": 0,
+            "height": 8006,
+            "textLength": 152836,
+            "imageCount": 25,
+            "incompleteImages": 4,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T15:53:19.570Z",
+        "finalUrl": "http://127.0.0.1:55820/static/apify.com/pages/ideas/clone/index-768.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2512,
+            "pendingRequests": 0,
+            "height": 5198,
+            "textLength": 5291,
+            "imageCount": 23,
+            "incompleteImages": 13,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2510,
+            "pendingRequests": 0,
+            "height": 5198,
+            "textLength": 5291,
+            "imageCount": 23,
+            "incompleteImages": 5,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 2250298,
+      "missingPixels": 2156544,
+      "coverageRatio": 0.6493,
+      "heightDelta": 2808,
+      "sourceSize": {
+        "width": 768,
+        "height": 8006
+      },
+      "cloneSize": {
+        "width": 768,
+        "height": 5198
+      },
+      "sourceHeight": 8006,
+      "cloneHeight": 5198
+    },
+    {
+      "name": "1440x900",
+      "width": 1440,
+      "score": 0.4966,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T15:53:29.511Z",
+        "finalUrl": "https://apify.com/ideas",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1370,
+            "height": 3838,
+            "textLength": 150566,
+            "imageCount": 24,
+            "incompleteImages": 0,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1088,
+            "height": 11326,
+            "textLength": 153397,
+            "imageCount": 28,
+            "incompleteImages": 0,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T15:53:35.355Z",
+        "finalUrl": "http://127.0.0.1:55820/static/apify.com/pages/ideas/clone/index-1440.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2521,
+            "pendingRequests": 0,
+            "height": 5710,
+            "textLength": 4183,
+            "imageCount": 33,
+            "incompleteImages": 9,
+            "brokenImages": 2
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2519,
+            "pendingRequests": 0,
+            "height": 5710,
+            "textLength": 4183,
+            "imageCount": 33,
+            "incompleteImages": 1,
+            "brokenImages": 2
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 8210740,
+      "missingPixels": 8087040,
+      "coverageRatio": 0.5041,
+      "heightDelta": 5616,
+      "sourceSize": {
+        "width": 1440,
+        "height": 11326
+      },
+      "cloneSize": {
+        "width": 1440,
+        "height": 5710
+      },
+      "sourceHeight": 11326,
+      "cloneHeight": 5710
+    }
+  ],
+  "functional": null,
+  "interactions": [],
+  "error": "375x812: render did not settle"
+}

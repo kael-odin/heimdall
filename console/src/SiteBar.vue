@@ -32,13 +32,14 @@ const current = computed(() => props.sites.find(s => s.host === props.host) ?? n
 
 /** 下拉里的每站一行：只给"我手上有多少页"，覆盖度在下面那行细说 */
 function optionText(s) {
+  const label = s.origin || s.host;
   if (s.status === 'partial') {
     // 只做过 SEO 审计的站点（没有侦察也没有克隆）也要能选到，否则审计完就找不到它了
-    if (!s.forged && s.audit) return `${s.host} · 仅审计 ${s.audit.score ?? '—'} 分`;
-    return `${s.host} · 克隆 ${s.forged} 页（未侦察）`;
+    if (!s.forged && s.audit) return `${label} · 仅审计 ${s.audit.score ?? '—'} 分`;
+    return `${label} · 克隆 ${s.forged} 页（未侦察）`;
   }
-  if (!s.discovered) return `${s.host} · 侦察结果为空`;
-  return `${s.host} · 克隆 ${s.forged} 页`;
+  if (!s.discovered) return `${label} · 侦察结果为空`;
+  return `${label} · 克隆 ${s.forged} 页`;
 }
 
 /** 选中站点的三个数分开说，别揉成一个分数 */

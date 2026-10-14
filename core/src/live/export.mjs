@@ -6,7 +6,7 @@
  *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict]
  *
  * 产物（默认 DATA_ROOT/deliverable/<host>-live-<date>/）:
- *   serve.mjs / har.mjs        零依赖 Node 服务器
+ *   serve.mjs / har.mjs / live-path.mjs   零依赖 Node 服务器
  *   heimdall-live.json         配置（host/origin/port/offline/replayApi）
  *   har.json                   清洗后的 HAR（本地资源与 API 回放）
  *   site/live/**               build_live 的交互镜像页面
@@ -18,8 +18,8 @@
  *   node serve.mjs --port 8080
  *   docker compose up -d
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, linkSync, rmSync } from 'node:fs';
-import { join, dirname, extname, resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, statSync, lstatSync, copyFileSync } from 'node:fs';
+import { join, dirname, extname, resolve, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -32,25 +32,45 @@ import { healBundle, materializeHar, localizeQueryEntries, rewriteLocalRefs, isS
 import { diffChecksums, changesLine } from './changes.mjs';
 import { mb } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
+import { assertExportTarget, promoteCandidate } from './export-path.mjs';
+import { probeOfflineBundle } from './probe.mjs';
+import { liveSnapshotPath } from './live-path.mjs';
+import { sanitizeStaticHtml, isStaticCloneChooserHtml, staticCloneChooserHtml } from '../static-html-safety.mjs';
+import { availableCloneVariantWidths } from '../clone-doc.mjs';
+import { readSiteIdentity, assertSiteOrigin } from '../site-origin.mjs';
+import { rewriteSnapshotMount } from './site-routing.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--include-api-har] [--allow-private-export]'); process.exit(2); }
+if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
 if (!existsSync(BASE)) { console.error('no workspace for host:', host); process.exit(1); }
+const identity = readSiteIdentity(WORKSPACE, host);
+if (!identity) { console.error('[export] site origin is missing:', host); process.exit(2); }
+const { origin } = identity;
 const PORT = Number(argOf('port', 8080));
 const OFFLINE = has('offline');
 const ROOT = argOf('root', 'landing') === 'mirror' ? 'mirror' : 'landing';
 const HEAL = has('heal');
 const STRICT = has('strict');
 const MATERIALIZE = has('materialize-har');
+const INCLUDE_API_HAR = has('include-api-har');
+const ALLOW_PRIVATE_EXPORT = has('allow-private-export');
+const SESSION_PRESENT = existsSync(join(BASE, 'session.json'));
+if (SESSION_PRESENT && !ALLOW_PRIVATE_EXPORT) {
+  console.error('[export] saved login session detected; use --allow-private-export only for a controlled private bundle');
+  process.exit(2);
+}
 const OUT_ARG = argOf('out', '');
-const OUT = OUT_ARG
+const FINAL_OUT = OUT_ARG
   ? resolve(process.env.HEIMDALL_INVOKE_CWD ?? process.cwd(), OUT_ARG)
   : join(DELIVERABLE, host + '-live-' + localDateStamp());
+try { assertExportTarget(DELIVERABLE, FINAL_OUT); }
+catch (e) { console.error('[export]', e.message); process.exit(2); }
 
 // ---------- 1. 确保 live/ 已生成 ----------
 if (has('rebuild') || !existsSync(join(BASE, 'live'))) {
@@ -62,27 +82,47 @@ if (has('rebuild') || !existsSync(join(BASE, 'live'))) {
 }
 
 // ---------- 2. 目录准备 ----------
+mkdirSync(DELIVERABLE, { recursive: true });
+const OUT = mkdtempSync(join(DELIVERABLE, `.candidate-${host}-`));
 const siteDir = join(OUT, 'site');
-// 上一次导出的校验和**必须在这里读**：下面 rmSync 会把整个目录清掉，
-// 而同一天重复导出落的又是同一个目录 —— 清完再读就只能和自己比（表现为永远"首次导出"）。
+// 候选包与旧包并存；差异始终与上一次已提交的包比较。
 let prevChecksums = null;
-try { prevChecksums = JSON.parse(readFileSync(join(OUT, 'checksums.json'), 'utf8')); } catch { /* 首次导出 */ }
-if (existsSync(OUT)) {
-  const resolved = OUT.toLowerCase();
-  if (!resolved.startsWith(DELIVERABLE.toLowerCase())) { console.error('[export] refusing to clean outside deliverable:', OUT); process.exit(1); }
-  rmSync(OUT, { recursive: true, force: true });
-}
+try { prevChecksums = JSON.parse(readFileSync(join(FINAL_OUT, 'checksums.json'), 'utf8')); } catch { /* 首次导出 */ }
 mkdirSync(siteDir, { recursive: true });
 
-let files = 0, linked = 0, copied = 0, bytes = 0;
+let files = 0, copied = 0, bytes = 0;
 function copyTree(src, dst) {
   if (!existsSync(src)) return;
-  const st = statSync(src);
+  const st = lstatSync(src);
+  if (st.isSymbolicLink()) throw new Error('refusing to package workspace symlink: ' + src);
   if (st.isFile()) {
     mkdirSync(dirname(dst), { recursive: true });
     if (existsSync(dst)) return;
-    try { linkSync(src, dst); linked++; } catch { copyFileSync(src, dst); copied++; }
-    files++; bytes += st.size;
+    const rel = relative(join(siteDir, 'static', host, 'pages'), dst).replaceAll('\\', '/');
+    const cloneHtml = /^[^/]+\/clone\/.+\.html?$/i.test(rel);
+    const sourceHtml = cloneHtml ? readFileSync(src, 'utf8') : null;
+    const variants = cloneHtml && rel.endsWith('/clone/index.html') && isStaticCloneChooserHtml(sourceHtml)
+      ? availableCloneVariantWidths(dirname(src)) : [];
+    if (variants.length) {
+      const trusted = staticCloneChooserHtml(variants);
+      writeFileSync(dst, trusted);
+      bytes += Buffer.byteLength(trusted);
+    } else if (cloneHtml) {
+      const clean = sanitizeStaticHtml(sourceHtml);
+      writeFileSync(dst, clean);
+      bytes += Buffer.byteLength(clean);
+    } else if (src.startsWith(join(BASE, 'live') + '/') || src.startsWith(join(BASE, 'live') + '\\')) {
+      if (/\.(?:html?|css|m?js)$/i.test(src)) {
+        const text = rewriteSnapshotMount(readFileSync(src, 'utf8'), { siteId: host, origin, mount: '/lm/' + host });
+        writeFileSync(dst, text);
+        bytes += Buffer.byteLength(text);
+      } else { copyFileSync(src, dst); bytes += st.size; }
+    } else {
+      copyFileSync(src, dst);
+      bytes += st.size;
+    }
+    copied++;
+    files++;
     return;
   }
   mkdirSync(dst, { recursive: true });
@@ -111,24 +151,59 @@ for (const name of pageNames) {
     if (existsSync(join(pagesDir, name, item))) copyTree(join(pagesDir, name, item), join(siteDir, 'static', host, 'pages', name, item));
   }
 }
+// Older compare reports embedded raw page metadata in a script. Rebuild that
+// one data literal in the candidate bundle without changing workspace files.
+const bundledCompare = join(siteDir, 'static', host, 'compare.html');
+if (existsSync(bundledCompare)) {
+  const original = readFileSync(bundledCompare, 'utf8');
+  const start = original.indexOf('const PAGES = ');
+  const end = start < 0 ? -1 : original.indexOf('\nconst PORT = ', start);
+  if (end > start) {
+    const comparePages = pageNames.map(name => {
+      const pageDir = join(pagesDir, name);
+      let score = {}, semantic = {}, manifest = {};
+      try { score = JSON.parse(readFileSync(join(pageDir, 'score.json'), 'utf8')); } catch {}
+      try { semantic = JSON.parse(readFileSync(join(pageDir, 'intel', 'semantic.json'), 'utf8')); } catch {}
+      try { manifest = JSON.parse(readFileSync(join(pageDir, 'manifest.json'), 'utf8')); } catch {}
+      return { name, path: semantic.pageType ?? '', target: manifest.target ?? '', score: score.total ?? 0 };
+    }).sort((a, b) => b.score - a.score)
+      .map(({ name, path, target }) => ({ name, path, target }));
+    const data = JSON.stringify(comparePages)
+      .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+    const compareHtml = (original.slice(0, start) + 'const PAGES = ' + data + ';' + original.slice(end))
+      .replace(/document\.getElementById\('inter'\)\.href = [\s\S]*?;/,
+        `document.getElementById('inter').href = '/lm/${host}' + t.pathname + t.search;`);
+    writeFileSync(bundledCompare, compareHtml);
+  } else {
+    console.warn('[export] compare report has no known data marker; its inline script will be blocked by the delivery server');
+  }
+}
 emit({ kind: 'live-stage', stage: 'copy', status: 'done', total: pageNames.length });
 
-let origin = 'https://' + host.replace(/^www\./, '');
 for (const name of pageNames) {
-  try { const t = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target; if (t) { origin = new URL(t).origin; break; } } catch {}
+  assertSiteOrigin(BASE, origin, { pageName: name });
 }
+const queryPages = pageNames.flatMap(name => {
+  try {
+    const target = new URL(JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target);
+    return target.origin === origin && target.search ? [target.pathname + target.search] : [];
+  } catch { return []; }
+});
 
 // ---------- 3. HAR 清洗与合并（流式：仅同源 + 去重，避免多页 GB 级峰值） ----------
 emit({ kind: 'live-stage', stage: 'har', status: 'running', total: pageNames.length });
 const harMap = new Map();
 let harPages = 0;
+const privacy = { excluded: { invalid: 0, privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 }, examples: [], includeApiBodies: INCLUDE_API_HAR, sessionPresent: SESSION_PRESENT, privateExportApproved: ALLOW_PRIVATE_EXPORT };
 for (let i = 0; i < pageNames.length; i++) {
   const name = pageNames[i];
   const p = join(pagesDir, name, 'network.har');
   if (!existsSync(p)) continue;
   harPages++;
   try {
-    const sanitized = sanitizeHar(JSON.parse(readFileSync(p, 'utf8')));
+    const sanitized = sanitizeHar(JSON.parse(readFileSync(p, 'utf8')), { includeApiBodies: INCLUDE_API_HAR });
+    for (const [reason, count] of Object.entries(sanitized.privacy.excluded)) privacy.excluded[reason] += count;
+    for (const sample of sanitized.privacy.examples) if (privacy.examples.length < 30) privacy.examples.push(sample);
     for (const e of sanitized.entries) {
       let x; try { x = new URL(e.url); } catch { continue; }
       // 站外**静态资源**也收：导出时会被本地化（判据见 heal.isStaticAsset）。
@@ -143,6 +218,7 @@ for (let i = 0; i < pageNames.length; i++) {
   emit({ kind: 'live-stage', stage: 'har', index: i + 1, total: pageNames.length });
 }
 const har = { version: 1, generatedAt: new Date().toISOString(), entries: [...harMap.values()] };
+writeFileSync(join(OUT, 'har-privacy.json'), JSON.stringify(privacy, null, 2));
 const stats = harStats(har.entries);
 console.log('[export] HAR pages=' + harPages + ' entries=' + stats.entries + ' bytes~' + (stats.bytes / 1024 / 1024).toFixed(1) + 'MB (same-origin deduped)');
 emit({ kind: 'live-stage', stage: 'har', status: 'done', entries: stats.entries, mb: +(stats.bytes / 1048576).toFixed(1) });
@@ -151,8 +227,10 @@ emit({ kind: 'live-stage', stage: 'har', status: 'done', entries: stats.entries,
 const liveSrc = fileURLToPath(new URL('.', import.meta.url));
 copyFileSync(join(liveSrc, 'serve.mjs'), join(OUT, 'serve.mjs'));
 copyFileSync(join(liveSrc, 'har.mjs'), join(OUT, 'har.mjs'));
+copyFileSync(join(liveSrc, 'live-path.mjs'), join(OUT, 'live-path.mjs'));
 
-const config = { host, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT, bind: '0.0.0.0' };
+const siteId = host;
+const config = { host: siteId, siteId, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT, bind: '0.0.0.0' };
 writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 
 // ---------- 4b. 离线体检（health.json）+ 可选自愈（--heal） ----------
@@ -160,7 +238,7 @@ const liveDir = join(siteDir, 'live');
 const staticDir = join(siteDir, 'static');
 const harIndex = indexHar(har.entries);
 emit({ kind: 'live-stage', stage: 'health', status: 'running' });
-let health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
+let health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
 const assetsBefore = { ...health.assets };
 if (HEAL && health.assets.unresolved > 0) {
   const targets = health.unresolvedPaths ?? [...new Set(health.details.flatMap(d => d.unresolved))];
@@ -169,7 +247,7 @@ if (HEAL && health.assets.unresolved > 0) {
   const healed = await healBundle({ liveDir, host, origin, targets });
   console.log('[heal] fetched=' + healed.fetched + ' failed=' + healed.failed + ' skipped=' + healed.skipped + ' bytes~' + (healed.bytes / 1024 / 1024).toFixed(1) + 'MB');
   emit({ kind: 'live-stage', stage: 'heal', status: 'done', fetched: healed.fetched, failed: healed.failed });
-  health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
+  health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
   health.healed = { attempted: targets.length, fetched: healed.fetched, failed: healed.failed, skipped: healed.skipped, bytes: healed.bytes };
 }
 if (MATERIALIZE) {
@@ -186,7 +264,7 @@ if (MATERIALIZE) {
     if (!x.search) { e.body = null; trimmed++; }   // 无查询条目已 materialize 落盘；带查询的保留回放体（覆盖 JS 动态请求）
   }
   console.log('[materialize] files=' + mat.written + ' (' + (mat.bytes / 1024 / 1024).toFixed(1) + 'MB) localized=' + loc.written + ' (' + (loc.bytes / 1024 / 1024).toFixed(1) + 'MB) rewrote=' + rw.files + ' files/' + rw.rewrites + ' refs');
-  health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir });
+  health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
   health.materialized = { ...mat, localized: loc.written, localizedBytes: loc.bytes, refRewrites: rw.rewrites, refFiles: rw.files, harTrimmed: trimmed };
   emit({ kind: 'live-stage', stage: 'materialize', status: 'done' });
 }
@@ -194,8 +272,39 @@ writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR
 
 health.assetsBefore = assetsBefore;
 health.forgedPages = pageNames.length;
-health.liveMissing = Math.max(0, pageNames.length - health.pages);
+const missingLivePages = [];
+for (const name of pageNames) {
+  try {
+    const target = new URL(JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target);
+    if (target.origin !== origin || !existsSync(join(liveDir, liveSnapshotPath(target.pathname, target.search)))) missingLivePages.push(name);
+  } catch { missingLivePages.push(name); }
+}
+health.liveMissing = missingLivePages.length;
+health.missingLivePages = missingLivePages.slice(0, 100);
+health.strictBlockers = {
+  unresolved: health.assets.unresolved,
+  dynamic: health.assets.dynamic,
+  externalAssets: health.assets.externalAssets,
+  missingLinks: health.links.missing,
+  missingLivePages: health.liveMissing,
+  emptyBundle: health.pages === 0 ? 1 : 0,
+  scanTruncated: health.scanTruncated ? 1 : 0,
+  runtimeMissing: 0,
+};
 health.strict = STRICT;
+if (STRICT && !Object.values(health.strictBlockers).some(Boolean)) {
+  try {
+    health.runtimeProbe = await probeOfflineBundle(OUT, health.probePaths);
+    health.strictBlockers.runtimeMissing = health.runtimeProbe.failed;
+  } catch (e) {
+    health.runtimeProbe = { checked: 0, failed: 1, error: String(e?.message ?? e) };
+    health.strictBlockers.runtimeMissing = 1;
+  }
+}
+// 健康报告只需路径定位问题，查询参数可能含临时凭据。
+health.unresolvedPaths = health.unresolvedPaths.map(path => path.split('?')[0]);
+for (const detail of health.details) detail.unresolved = detail.unresolved.map(path => path.split('?')[0]);
+delete health.probePaths;
 writeFileSync(join(OUT, 'health.json'), JSON.stringify(health, null, 2));
 emit({ kind: 'live-stage', stage: 'health', status: 'done', livePages: health.pages, unresolved: health.assets.unresolved });
 console.log('[health] forgedPages=' + pageNames.length + ' livePages=' + health.pages + (health.liveMissing ? ' (missing ' + health.liveMissing + ')' : '') + ' assets=' + health.assets.total + ' local=' + health.assets.local + ' har=' + health.assets.har + ' unresolved=' + health.assets.unresolved + ' externalRefs=' + health.assets.external + '(静态资源 ' + health.assets.externalAssets + ') | linksMissing=' + health.links.missing);
@@ -218,7 +327,7 @@ a.card:hover{border-color:rgba(34,211,238,.6)}a.card b{display:block;color:#22d3
 </style></head><body><div class="wrap">
 <div class="brand">HEIMDALL · LIVE MIRROR</div>
 <h1>${host}</h1>
-<div class="meta">${OFFLINE ? '离线模式（仅本地快照 + HAR 回放）' : '在线模式（本地优先 · 未捕获资源回源）'} · HAR ${stats.entries} 条 · 离线资源 ${health.assets.unresolved === 0 ? '全量可用' : health.assets.unresolved + ' 条未覆盖'} · 端口 ${PORT}</div>
+<div class="meta">${OFFLINE ? '离线模式（仅本地快照 + HAR 回放）' : '在线模式（本地优先 · 未捕获资源回源）'} · HAR ${stats.entries} 条 · 离线门禁 ${Object.values(health.strictBlockers).some(Boolean) ? '存在缺口' : '通过'} · 端口 ${PORT}</div>
 <div class="grid">
 <a class="card" href="/lm/${host}/"><b>打开交互镜像</b><span>本地快照优先 · 未锻造页回源原站 · 支持 HAR 回放</span></a>
 ${hasArchive ? `<a class="card" href="/static/${host}/index.html"><b>克隆档案</b><span>逐页还原度与卡片墙</span></a>` : ''}
@@ -259,16 +368,17 @@ docker compose up -d                   # Docker 部署
 ### 离线时会缺什么（读 health.json）
 
 \`\`\`
-assets.unresolved        同源但没抓到本地副本 → 离线 404。**这是真正需要处理的缺口**
+assets.unresolved        同源但没抓到本地副本 → 离线 404
+assets.dynamic           动态资源端点未覆盖 → 离线 404
 assets.externalAssets    站外静态资源（图片/CSS/脚本）→ 离线也裂，需本地化才能进离线包
 assets.external          站外引用总数（含 YouTube 嵌入、地图、统计脚本）
                          external − externalAssets 的差额 = 嵌入类内容，**无法本地化，属固有边界**
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
+strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断和真实 HTTP 探测）
 \`\`\`
 
 **放在任何公网服务器上时，站外引用都能正常加载** —— 只有完全离线才需要考虑它们。
-如果你要的是"断网也能跑"的包，优先处理 \`assets.unresolved\`，
-再看 \`externalAssets\` 里有没有值得本地化的（字体、图标这类小文件通常值得）。
+如果要声称"断网也能跑"，请使用 \`--offline --strict\` 并确认 \`health.json\` 的全部门禁为零。
 
 ## 路由
 
@@ -286,14 +396,16 @@ links.missing            指向未镜像页面的站内链接 → 点了会跳�
 
 ## 说明
 
-- 资产与克隆页在打包时优先使用硬链接（同卷）；把整个目录复制走即为独立副本。
-- HAR 已清洗（不含 cookie/authorization/set-cookie），仅用于资源与 API 回放。
+- 资产与克隆页按独立副本复制，构建通过后才替换目标目录；上一个版本保留为 \`.backup-*\`。
+- HAR 默认只保留静态资源；API/HTML 正文不进入分发包。排除统计见 \`har-privacy.json\`。
+- 如确需 API 回放，可在受控环境重新导出并显式加 \`--include-api-har\`；该选项允许响应正文进入包，请自行核验分发边界。
+- 保存过登录会话的站点默认拒绝导出；受控环境里须显式加 \`--allow-private-export\`，且原始 \`session.json\` 仍不会复制进包。
 - 未捕获的第三方接口在在线模式下回源；离线模式下会明确 404。
 - 仅供内部分析，禁止公开部署或商用。
 `);
 
 // ---------- 5. 校验和清单 + 与上一次导出的差异 ----------
-// prevChecksums 在"目录准备"那一步就已经读好了（那里会把旧目录清掉）
+// prevChecksums 指向上一次已提交的包。
 emit({ kind: 'live-stage', stage: 'package', status: 'running' });
 
 // ---------- 4c. 改站起点清单（换域名 / 图片 / 文案的第一入口） ----------
@@ -320,12 +432,15 @@ writeFileSync(join(OUT, 'checksums.json'), JSON.stringify({ host, generatedAt: n
 const changes = diffChecksums(prevChecksums, manifestFiles);
 writeFileSync(join(OUT, 'changes.json'), JSON.stringify(changes, null, 2));
 console.log(`[export] ${changesLine(changes)}`);
-console.log(`[export] bundle -> ${OUT}`);
 emit({ kind: 'live-stage', stage: 'package', status: 'done', files: manifestFiles.length, bytes });
-console.log(`[export] pages=${pageNames.length} liveFiles=${files} (linked=${linked} copied=${copied}) bytes=${mb(bytes)} | bundleFiles=${manifestFiles.length} | root=${ROOT} | unresolved=${health.assets.unresolved}`);
-if (STRICT && health.assets.unresolved > 0) {
-  console.error('[export] strict: ' + health.assets.unresolved + ' unresolved assets in offline mode (see health.json)');
+console.log(`[export] pages=${pageNames.length} liveFiles=${files} (copied=${copied}) bytes=${mb(bytes)} | bundleFiles=${manifestFiles.length} | root=${ROOT} | unresolved=${health.assets.unresolved}`);
+if (STRICT && Object.values(health.strictBlockers).some(Boolean)) {
+  console.error('[export] strict: offline gaps ' + JSON.stringify(health.strictBlockers) + ' (see health.json); prior bundle preserved, candidate=' + OUT);
   process.exitCode = 1;
+} else {
+  const committed = promoteCandidate(DELIVERABLE, FINAL_OUT, OUT);
+  console.log(`[export] bundle -> ${committed.out}`);
+  if (committed.backup) console.log(`[export] previous bundle retained -> ${committed.backup}`);
 }
-console.log(`[export] run: cd "${OUT}" && node serve.mjs --port ${PORT}${OFFLINE ? ' --offline' : ''}`);
+if (!process.exitCode) console.log(`[export] run: cd "${FINAL_OUT}" && node serve.mjs --port ${PORT}${OFFLINE ? ' --offline' : ''}`);
 if (ROOT === 'mirror') console.log(`[export] root=mirror：部署后 / 即镜像（drop-in），/lm/${host}/ 为别名`);

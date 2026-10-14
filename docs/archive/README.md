@@ -4,6 +4,8 @@
 （竞赛的周度验收、阶段性审查），但内容已不代表当前状态 ——
 读之前先看 [../ROADMAP.md](../ROADMAP.md) 和 [../../README.md](../../README.md)。
 
+- [2026-10-10 交付清理预览](deliver-plan-2026-10-10.json)：原 `core/deliver-plan.json` 的逐字节归档；运行时副本保留在本机且不再由 Git 跟踪。
+
 | 文件 | 是什么 | 日期 |
 | --- | --- | --- |
 | `W0`…`W4-REPORT.md` | 周度验收报告（驱动期，含每阶段的产出清单与验收结论） | 2026-09-29 ~ 09-30 |
@@ -18,4 +20,4 @@
 - 产品与定位 → [../../PRD.md](../../PRD.md)
 - 使用与交付 → [../../USAGE.md](../../USAGE.md)，[../../README.md](../../README.md)
 - 还没做的事 → [../ROADMAP.md](../ROADMAP.md)
-- 每批改了什么、为什么 → [../../HANDOFF.md](../../HANDOFF.md)
+- 每批改了什么、为什么 → [HANDOFF-through-2026-10-13.md](HANDOFF-through-2026-10-13.md)

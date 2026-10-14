@@ -1,0 +1,402 @@
+[
+  {
+    "i": 1,
+    "time": "2026-10-14T04:16:27.244Z",
+    "status": 200,
+    "finalUrl": "https://apify.com/ideas",
+    "errors": [],
+    "samples": [
+      {
+        "stage": "domcontentloaded",
+        "height": 2159,
+        "textLength": 2504,
+        "mainTextLength": 371,
+        "imageCount": 14,
+        "unloadedImages": 13,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1389,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "freeze",
+        "height": 2159,
+        "textLength": 2495,
+        "mainTextLength": 371,
+        "imageCount": 14,
+        "unloadedImages": 0,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1389,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "scroll",
+        "height": 2434,
+        "textLength": 2589,
+        "mainTextLength": 423,
+        "imageCount": 14,
+        "unloadedImages": 0,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1664,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "settled",
+        "height": 3838,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 28,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 3068,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "screenshot",
+        "height": 3838,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 28,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 3068,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      }
+    ],
+    "out": "C:\\Users\\44548\\AppData\\Local\\Temp\\heimdall-v2-pilot-20261014\\source-diagnostic-1.png"
+  },
+  {
+    "i": 2,
+    "time": "2026-10-14T04:16:57.433Z",
+    "status": 200,
+    "finalUrl": "https://apify.com/ideas",
+    "errors": [],
+    "samples": [
+      {
+        "stage": "domcontentloaded",
+        "height": 2159,
+        "textLength": 2504,
+        "mainTextLength": 371,
+        "imageCount": 14,
+        "unloadedImages": 13,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1389,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "freeze",
+        "height": 3838,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 30,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 3068,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "scroll",
+        "height": 4298,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 30,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 3528,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "settled",
+        "height": 5710,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 30,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 4940,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "screenshot",
+        "height": 5710,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 30,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 4940,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      }
+    ],
+    "out": "C:\\Users\\44548\\AppData\\Local\\Temp\\heimdall-v2-pilot-20261014\\source-diagnostic-2.png"
+  },
+  {
+    "i": 3,
+    "time": "2026-10-14T04:17:08.189Z",
+    "status": 200,
+    "finalUrl": "https://apify.com/ideas",
+    "errors": [],
+    "samples": [
+      {
+        "stage": "domcontentloaded",
+        "height": 2159,
+        "textLength": 2504,
+        "mainTextLength": 371,
+        "imageCount": 14,
+        "unloadedImages": 13,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1389,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "freeze",
+        "height": 2159,
+        "textLength": 2495,
+        "mainTextLength": 371,
+        "imageCount": 14,
+        "unloadedImages": 0,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1389,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "scroll",
+        "height": 2434,
+        "textLength": 2589,
+        "mainTextLength": 423,
+        "imageCount": 14,
+        "unloadedImages": 0,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1664,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "settled",
+        "height": 3838,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 28,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 3068,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "screenshot",
+        "height": 3838,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 28,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 3068,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      }
+    ],
+    "out": "C:\\Users\\44548\\AppData\\Local\\Temp\\heimdall-v2-pilot-20261014\\source-diagnostic-3.png"
+  },
+  {
+    "i": 4,
+    "time": "2026-10-14T04:17:18.878Z",
+    "status": 200,
+    "finalUrl": "https://apify.com/ideas",
+    "errors": [],
+    "samples": [
+      {
+        "stage": "domcontentloaded",
+        "height": 2159,
+        "textLength": 2504,
+        "mainTextLength": 371,
+        "imageCount": 14,
+        "unloadedImages": 13,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1389,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "freeze",
+        "height": 2159,
+        "textLength": 2495,
+        "mainTextLength": 371,
+        "imageCount": 14,
+        "unloadedImages": 0,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1389,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "scroll",
+        "height": 2434,
+        "textLength": 2589,
+        "mainTextLength": 423,
+        "imageCount": 14,
+        "unloadedImages": 0,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 1664,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "settled",
+        "height": 3838,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 28,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 3068,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      },
+      {
+        "stage": "screenshot",
+        "height": 3838,
+        "textLength": 4408,
+        "mainTextLength": 2242,
+        "imageCount": 28,
+        "unloadedImages": 1,
+        "title": "Actor and integration ideas · Apify",
+        "h1": "Actor and integration ideas",
+        "mainParts": [
+          {
+            "tag": "DIV",
+            "cls": "IdeasPageContent__IdeasPageContentWrapper-sc-71422ba8-0 hICyjI",
+            "height": 3068,
+            "text": "Actor and integration ideas\n\nThere are thousands of Actors in Apify Store, earni"
+          }
+        ]
+      }
+    ],
+    "out": "C:\\Users\\44548\\AppData\\Local\\Temp\\heimdall-v2-pilot-20261014\\source-diagnostic-4.png"
+  }
+]

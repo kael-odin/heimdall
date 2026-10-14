@@ -12,17 +12,16 @@
 
 ## 一句话：它是一家「复刻工坊」
 
-你给它一个网址，它把那个站点**真实的前端文件**搬回来，装成两样东西：
-一份**能打开看的复刻**，和一份**写着"到底像到什么程度"的数字报告**。
+你给它一个有权分析的网址，它会采集渲染后的页面和可取得的原站资产，生成镜像与可核对的差异报告。完整程度取决于页面覆盖率、资源缺口和验收结果。
 
 和"让 AI 照着截图重写一遍"的区别，可以用做菜打比方：
 
 | | 让模型照着截图重写 | Heimdall 的做法 |
 | --- | --- | --- |
-| 原料 | 模型凭印象"再画一份" | **原件搬运**：字体、图片、图标就是原站那几个文件 |
+| 原料 | 模型凭印象"再画一份" | **保留来源**：对可获取的字体、图片和图标保存原件与引用关系 |
 | 像不像 | 只能说"看着挺像" | **量出来的**：像素 / DOM / 字段三维打分，A/B/C 分级 |
 | 少没少 | 说不上来 | **列清单**：哪几个资源还没落到本地，一条条列出来 |
-| 再来一次 | 每次结果都不一样 | **可复现**：同一条命令跑两次，产物可以直接 `diff` |
+| 再来一次 | 每次可能不同 | **可追溯**：固定输入、会话和时间窗口后，结合运行配置与 `changes.json` / `checksums.json` 比较 |
 
 模型只用在三处**判断**上（页面分类、像素差异的 CSS 校准、语义情报抽取）。
 **搬运本身一步都不交给它** —— 这是"结果可核对"的前提。
@@ -37,7 +36,7 @@
 | --- | --- | --- | --- |
 | **控制室** | `console/` | 你在这里下指令、看进度、翻报告 | 前台的操作台与看板 |
 | **车间主任** | `core/src/engine-server.mjs` | 接活、排队、开工单、拉工人、记工时 | 调度台 |
-| **工匠与机器** | `core/src/**`（其余 98 个模块） | 真正干活的确定性流程 | 车间里的机器 |
+| **工匠与机器** | `core/src/**` | 捕获、构建、验证与审计流程 | 车间里的机器 |
 
 三者之间只有一条通道：**控制室 ↔ 车间主任走 HTTP（REST + SSE）**。
 车间主任再往下，一切都是**拉起的子进程**在干 —— 所以关掉浏览器标签页，活照干。
@@ -73,6 +72,7 @@
 | [01 · 架构](01-architecture.md) | 三层怎么分、数据放在哪、一次克隆的内部六段 | 想改代码 / 想知道"为什么这么设计" |
 | [02 · 控制台](02-console.md) | 五个视图逐个讲：星图 / 页面 / 任务 / 报告 / 设置 | **第一次打开界面时对着看** |
 | [03 · 功能全解](03-features.md) | 按"你想干什么"组织：克隆、验证、审计、交付、运维 | 想知道某个功能在哪、怎么用 |
+| [04 · 旧产物维护](04-legacy-maintenance.md) | 缺失截图与旧 CSS 坏链的预览、应用和恢复边界 | 需要处理历史工作区产物时 |
 
 ---
 
@@ -80,7 +80,9 @@
 
 ```bash
 git clone <repo> && cd heimdall
-pnpm install && pnpm -C core exec playwright install chromium
+pnpm -C core install --frozen-lockfile
+pnpm -C console install --frozen-lockfile
+pnpm -C core exec playwright install chromium
 ```
 
 **只想先看一眼**（不启动引擎，一页而已）：
@@ -95,6 +97,15 @@ node core/src/cli.mjs forge https://example.com home
 ```bash
 pnpm -C console build
 cd core && HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
+```
+
+Windows PowerShell：
+
+```powershell
+pnpm -C console build
+Set-Location core
+$env:HEIMDALL_CONSOLE_DIR = (Resolve-Path ../console/dist).Path
+node src/engine-server.mjs 8900
 ```
 
 打开 `http://127.0.0.1:8900`。第一次进来是一片空白星图，页面上会写清接下来三步：
@@ -113,5 +124,5 @@ cd core && HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
   先跑 `pnpm -C core exec playwright install chromium`。
 - **产物不进 git**。`core/workspace/`（逐页产物）与 `core/deliverable/`（可部署包）都在 `.gitignore` 里；
   想挪走就用环境变量 `HEIMDALL_DATA_DIR`。
-- **引擎默认只听本机**。`HEIMDALL_HOST` 可改；设了 `HEIMDALL_TOKEN` 之后 `/api/*` 需要带 token。
+- **引擎默认只听本机**。`HEIMDALL_HOST` 可改；设了 `HEIMDALL_TOKEN` 之后 `/api/*`、`/static/*` 和工作区静态路由都需要鉴权。
 - **交付包默认听所有网卡**（它是拿去部署的），只在本机预览用 `node serve.mjs --host 127.0.0.1`。

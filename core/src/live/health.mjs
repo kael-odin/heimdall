@@ -15,6 +15,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix, extname } from 'node:path';
 import { matchHar } from './har.mjs';
+import { LIVE_QUERY_DIR, liveSnapshotCandidates, liveSnapshotPath } from './live-path.mjs';
 import { scanCssRefs } from '../css-refs.mjs';
 
 const SKIP_REF = /^(?:data:|blob:|about:|javascript:|mailto:|tel:|#)/i;
@@ -22,12 +23,13 @@ const ASSET_EXT = /\.(?:png|jpe?g|gif|webp|avif|svg|ico|bmp|woff2?|ttf|otf|eot|c
 const ASSET_REL = /stylesheet|icon|preload|modulepreload|manifest|prefetch/i;
 const MAX_UNRESOLVED = 200;
 const MAX_FILES = 4000;
+const MAX_PROBES = 10000;
 
 const stripHash = (u) => String(u ?? '').split('#')[0].trim();
 const decodeEntities = (u) => String(u).replace(/&amp;/gi, '&');
 
 /** 把一条引用解析成站内路径 / 站外标记 / null（跳过） */
-export function resolveRefPath(raw, { host, basePath = '/' } = {}) {
+export function resolveRefPath(raw, { host, origin, basePath = '/' } = {}) {
   const clean = decodeEntities(stripHash(raw));
   if (!clean || SKIP_REF.test(clean)) return null;
   // URL 编码的片段标识符（%23 = #）：它会绕过上面的 SKIP_REF（那里只认字面 #），
@@ -35,13 +37,13 @@ export function resolveRefPath(raw, { host, basePath = '/' } = {}) {
   // 实测来源：CSS 里 data URI 内嵌 SVG 的 url(%23someFilter)。
   if (/^%23/i.test(clean)) return null;
   let u = clean;
-  if (u.startsWith('//')) u = 'https:' + u;
+  if (u.startsWith('//')) u = (origin ? new URL(origin).protocol : 'https:') + u;
   if (/^[a-z][a-z0-9+.-]*:/i.test(u)) {
     let parsed;
     try { parsed = new URL(u); } catch { return null; }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
     const targetHost = String(host).replace(/^www\./, '');
-    if (parsed.hostname.replace(/^www\./, '') !== targetHost) return { external: true };
+    if (origin ? parsed.origin !== new URL(origin).origin : parsed.hostname.replace(/^www\./, '') !== targetHost) return { external: true };
     return { path: parsed.pathname || '/', search: parsed.search };
   }
   // 根相对/相对引用：先切掉 query（Next 会产出 favicon.ico?x.ico?dpl=… 这种双 ? 形式）
@@ -55,21 +57,13 @@ export function resolveRefPath(raw, { host, basePath = '/' } = {}) {
     const seg = lm[1].toLowerCase();
     const h = String(host).toLowerCase().replace(/^www\./, '');
     const bare = seg.replace(/^www\./, '');
-    if (bare === h || bare.startsWith(h + ':')) return { path: lm[2] ?? '/', search };
+    if (bare === h || (origin ? seg === new URL(origin).host : bare.startsWith(h + ':'))) return { path: lm[2] ?? '/', search };
   }
   return { path: abs, search };
 }
 
-/** serveLive 的候选文件规则：目录 → index.html，无扩展名 → 目录/文件都试 */
-function candidatesFor(p) {
-  const rel = String(p ?? '/').replace(/^\/+/, '');
-  if (!rel) return ['index.html'];
-  if (/\.[a-z0-9]+$/i.test(rel)) return [rel];
-  return [rel.replace(/\/$/, '') + '/index.html', rel];
-}
-
-function fileFor(liveDir, p, staticDir = null, host = '') {
-  for (const c of candidatesFor(p)) {
+function fileFor(liveDir, p, search = '', staticDir = null, host = '') {
+  for (const c of liveSnapshotCandidates(p, search)) {
     const f = join(liveDir, c);
     try { if (statSync(f).isFile()) return f; } catch {}
   }
@@ -77,7 +71,7 @@ function fileFor(liveDir, p, staticDir = null, host = '') {
     for (const prefix of ['/static/' + host + '/', '/static/www.' + host + '/']) {
       if (!p.startsWith(prefix)) continue;
       const rest = p.slice(prefix.length);
-      for (const c of candidatesFor(rest)) {
+      for (const c of liveSnapshotCandidates(rest)) {
         const f = join(staticDir, host, c);
         try { if (statSync(f).isFile()) return f; } catch {}
       }
@@ -111,8 +105,8 @@ export function extractRefs(text, kind) {
     // /static/<host>/pages/<page>/clone/styles/%23SVGJNgLYdgK → 记为"未解析"。
     // 于是健康报告写着 unresolved=91，而真实缺口只有 4 个 —— 报告因此完全失去指向性
     // （用户要么无视它，要么去追 87 个不存在的洞）。
-    for (const r of scanCssRefs(text)) out.push({ url: r.raw, kind: 'asset' });
-    for (const m of text.matchAll(/@import\s+(?:url\(\s*)?["']([^"']+)["']/gi)) out.push({ url: m[1], kind: 'asset' });
+    for (const r of scanCssRefs(text)) out.push({ url: r.raw, kind: 'asset', required: true });
+    for (const m of text.matchAll(/@import\s+(?:url\(\s*)?["']([^"']+)["']/gi)) out.push({ url: m[1], kind: 'asset', required: true });
     return out;
   }
   for (const m of text.matchAll(/<(a|link|script|img|source|video|audio|iframe|embed|track|input)\b[^>]*>/gi)) {
@@ -121,12 +115,21 @@ export function extractRefs(text, kind) {
     if (name === 'a') { const h = attr(tag, 'href'); if (h) out.push({ url: h, kind: 'link' }); continue; }
     if (name === 'link') {
       const h = attr(tag, 'href');
-      if (h) out.push({ url: h, kind: ASSET_REL.test(attr(tag, 'rel') ?? '') ? 'asset' : 'link' });
+      if (h) out.push({ url: h, kind: ASSET_REL.test(attr(tag, 'rel') ?? '') ? 'asset' : 'link', required: true });
       continue;
     }
-    for (const n of ['src', 'poster']) { const v = attr(tag, n); if (v) out.push({ url: v, kind: 'asset' }); }
+    for (const n of ['src', 'poster']) { const v = attr(tag, n); if (v) out.push({ url: v, kind: 'asset', required: !['iframe', 'embed'].includes(name) }); }
     const ss = attr(tag, 'srcset');
-    if (ss) for (const part of ss.split(',')) { const u = part.trim().split(/\s+/)[0]; if (u) out.push({ url: u, kind: 'asset' }); }
+    if (ss) for (const part of ss.split(',')) { const u = part.trim().split(/\s+/)[0]; if (u) out.push({ url: u, kind: 'asset', required: true }); }
+  }
+  // Inline CSS is part of the rendered page just like a linked stylesheet.
+  // Scan it with the same tokenizer so nested url() inside data URIs is ignored.
+  for (const m of text.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)) {
+    out.push(...extractRefs(m[1], 'css'));
+  }
+  for (const m of text.matchAll(/<[a-z][^>]*>/gi)) {
+    const style = attr(m[0], 'style');
+    if (style) out.push(...extractRefs(style, 'css'));
   }
   return out;
 }
@@ -140,7 +143,7 @@ function pageFiles(liveDir) {
       const p = join(dir, n);
       let st;
       try { st = statSync(p); } catch { continue; }
-      if (st.isDirectory()) walk(p, rel ? rel + '/' + n : n);
+      if (st.isDirectory() && !(rel === '' && n === LIVE_QUERY_DIR)) walk(p, rel ? rel + '/' + n : n);
       else if (n === 'index.html') pages.push(rel ? '/' + rel + '/' : '/');
     }
   };
@@ -150,14 +153,16 @@ function pageFiles(liveDir) {
 
 function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir }) {
   const visited = new Set();
-  const queue = [{ path: pagePath, kind: 'html', base: posix.dirname(pagePath) + '/' }];
+  const pageUrl = new URL(pagePath, origin);
+  const queue = [{ path: pageUrl.pathname, search: pageUrl.search, kind: 'html', base: posix.dirname(pageUrl.pathname) + '/' }];
   const out = {
     assets: { total: 0, local: 0, har: 0, unresolvedCount: 0, dynamic: 0, unresolved: [], external: 0, externalAssetUrls: [] },
     links: { total: 0, local: 0, missing: [] },
+    probePaths: new Set(),
   };
   while (queue.length && visited.size < MAX_FILES) {
     const item = queue.shift();
-    const file = fileFor(liveDir, item.path, staticDir, host);
+    const file = fileFor(liveDir, item.path, item.search, staticDir, host);
     if (!file) continue;
     const key = file + '|' + item.kind;
     if (visited.has(key)) continue;
@@ -168,31 +173,37 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir }) {
     if (item.kind === 'html') {
       const bm = /<base\s[^>]*href\s*=\s*["']([^"']+)["']/i.exec(text);
       if (bm) {
-        const br = resolveRefPath(bm[1], { host, basePath: item.base });
+        const br = resolveRefPath(bm[1], { host, origin, basePath: item.base });
         if (br && !br.external) base = br.path.endsWith('/') ? br.path : posix.dirname(br.path) + '/';
       }
     }
     for (const ref of extractRefs(text, item.kind)) {
-      const r = resolveRefPath(ref.url, { host, basePath: base });
+      const r = resolveRefPath(ref.url, { host, origin, basePath: base });
       if (!r) continue;
       if (r.external) {
         if (ref.kind !== 'asset') continue;
         out.assets.external++;
-        const clean = decodeEntities(stripHash(ref.url)).slice(0, 300);
-        if (ASSET_EXT.test(clean)) out.assets.externalAssetUrls.push(clean);
+        const raw = decodeEntities(stripHash(ref.url));
+        const externalUrl = new URL(raw.startsWith('//') ? 'https:' + raw : raw);
+        externalUrl.username = '';
+        externalUrl.password = '';
+        externalUrl.search = '';
+        const clean = externalUrl.href.slice(0, 300);
+        if (ref.required || ASSET_EXT.test(raw)) out.assets.externalAssetUrls.push(clean);
         continue;
       }
       const target = (r.path || '/') + (r.search || '');
-      const localFile = fileFor(liveDir, r.path, staticDir, host);
+      const localFile = fileFor(liveDir, r.path, r.search, staticDir, host);
       if (ref.kind === 'link') {
         out.links.total++;
-        if (localFile) out.links.local++;
+        if (localFile) { out.links.local++; out.probePaths.add(target); }
         else if (out.links.missing.length < MAX_UNRESOLVED) out.links.missing.push(target);
         continue;
       }
       out.assets.total++;
       if (localFile) {
         out.assets.local++;
+        out.probePaths.add(target);
         if (extname(r.path).toLowerCase() === '.css') queue.push({ path: r.path, kind: 'css', base: posix.dirname(r.path) + '/' });
         continue;
       }
@@ -202,25 +213,42 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir }) {
       // 于是交付包的 landing 页和 README 说"离线可用"，而部署出去的 serve.mjs
       // 递给浏览器的是一个 404（或落到代理/离线 404）。判据必须与实际回放一致。
       const harHit = harIndex && (matchHar(harIndex, 'GET', origin + target) || matchHar(harIndex, 'GET', origin + r.path));
-      if (harHit?.body && harHit.status < 400) { out.assets.har++; continue; }
+      if (harHit?.body && harHit.status < 400) { out.assets.har++; out.probePaths.add(target); continue; }
       if (/^\/(?:_next\/image|_next\/data)\b/.test(target)) { out.assets.dynamic++; continue; }
       out.assets.unresolvedCount++;
       if (out.assets.unresolved.length < MAX_UNRESOLVED) out.assets.unresolved.push(target);
     }
   }
+  out.scanTruncated = queue.length > 0;
   return out;
 }
 
 /** 扫描整个交互镜像目录，返回可写入 health.json 的报告对象 */
-export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = null }) {
+export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = null, queryPages = [] }) {
   const pages = pageFiles(liveDir);
+  for (const page of queryPages) {
+    try {
+      const target = new URL(page, origin);
+      if (target.origin !== origin || !target.search) continue;
+      const file = join(liveDir, liveSnapshotPath(target.pathname, target.search));
+      if (statSync(file).isFile() && !pages.includes(target.pathname + target.search)) pages.push(target.pathname + target.search);
+    } catch {}
+  }
+  pages.sort();
   const details = [];
   const externalAssets = new Map();
   const assets = { total: 0, local: 0, har: 0, unresolved: 0, dynamic: 0, external: 0, externalAssets: 0 };
   const unresolvedPaths = new Set();
+  const probePaths = new Set(pages);
+  let scanTruncated = pages.length > 1000;
   const links = { total: 0, local: 0, missing: 0 };
   for (const pagePath of pages.slice(0, 1000)) {
     const r = scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir });
+    if (r.scanTruncated) scanTruncated = true;
+    for (const path of r.probePaths) {
+      if (probePaths.size < MAX_PROBES) probePaths.add(path);
+      else scanTruncated = true;
+    }
     assets.total += r.assets.total;
     assets.local += r.assets.local;
     assets.har += r.assets.har;
@@ -232,12 +260,13 @@ export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = nu
     links.local += r.links.local;
     links.missing += r.links.missing.length;
     if (r.assets.unresolvedCount) {
-      details.push({ page: pagePath, unresolvedCount: r.assets.unresolvedCount, unresolved: r.assets.unresolved, refs: { total: r.assets.total, local: r.assets.local, har: r.assets.har } });
+      details.push({ page: pagePath.split('?')[0], unresolvedCount: r.assets.unresolvedCount, unresolved: r.assets.unresolved, refs: { total: r.assets.total, local: r.assets.local, har: r.assets.har } });
     }
     for (const url of r.assets.externalAssetUrls) {
       assets.externalAssets++;
       const cur = externalAssets.get(url) ?? { url, pages: [] };
-      if (cur.pages.length < 5 && !cur.pages.includes(pagePath)) cur.pages.push(pagePath);
+      const publicPath = pagePath.split('?')[0];
+      if (cur.pages.length < 5 && !cur.pages.includes(publicPath)) cur.pages.push(publicPath);
       externalAssets.set(url, cur);
     }
   }
@@ -251,6 +280,8 @@ export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = nu
     links,
     pagesWithUnresolved: details.length,
     unresolvedPaths: [...unresolvedPaths],
+    probePaths: [...probePaths],
+    scanTruncated,
     details: details.slice(0, 40),
     externalAssetsTop: [...externalAssets.values()].slice(0, 25),
   };

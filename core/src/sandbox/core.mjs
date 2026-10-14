@@ -4,8 +4,10 @@
 import { join } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
 import { esc } from '../html.mjs';
+import { assertPageName } from '../page-name.mjs';
 
 export function sandboxPaths(host, page) {
+  assertPageName(page);
   const dir = join(WORKSPACE, host, 'sandbox', page);
   return {
     dir,

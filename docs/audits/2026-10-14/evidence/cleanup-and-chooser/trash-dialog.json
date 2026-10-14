@@ -1,0 +1,16 @@
+{
+  "capturedAt": "2026-10-14T06:05:16.844Z",
+  "viewports": [
+    1280,
+    390
+  ],
+  "capacity": {
+    "controlledApiResponses": true,
+    "pendingPolled": true,
+    "manualRefresh": true
+  },
+  "readyPayloadPreserved": true,
+  "terminalRecordCleared": true,
+  "receiptState": "complete",
+  "pageErrors": []
+}

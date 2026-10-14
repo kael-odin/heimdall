@@ -11,11 +11,14 @@ coverage/
 
 # runtime data (never commit site artifacts)
 core/workspace/
+core/_maintenance/
+core/trash/
 core/assets-cas/
 core/jobs.db*
 core/*.db-shm
 core/*.db-wal
 core/deliverable/
+core/deliver-plan.json
 data/
 logs/
 *.log

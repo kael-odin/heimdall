@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "bridgeUrl": "http://127.0.0.1:56028/?artifact=%2Fstatic%2Ffixture.test%2Fintel%2Ffixture.test-intel.xlsx",
+  "fileUrl": "http://localhost:56028/static/fixture.test/intel/fixture.test-intel.xlsx",
+  "fileStatus": 200,
+  "contentType": "application/octet-stream",
+  "suggestedFilename": "fixture.test-intel.xlsx",
+  "consoleUrl": "http://127.0.0.1:56028/"
+}

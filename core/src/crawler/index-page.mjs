@@ -13,6 +13,7 @@ import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { readJson } from '../fsutil.mjs';
 import { esc } from '../html.mjs';
+import { siteIdForOrigin } from '../site-origin.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/index-page.mjs <host>', '站点 host');
 const hostDir = process.argv[3] ?? host;
@@ -32,6 +33,9 @@ const pages = readdirSync(PAGES)
     target: readJson(join(PAGES, n, 'manifest.json'))?.target ?? '',
   }))
   .sort((a, b) => (b.score?.total ?? 0) - (a.score?.total ?? 0));
+const siteIds = Object.fromEntries(pages.map(p => {
+  try { return [new URL(p.target).origin, siteIdForOrigin(WORKSPACE, p.target)]; } catch { return [p.target, host]; }
+}));
 
 const gradeColor = (g) => g === 'A' ? '#34D399' : g === 'B' ? '#F59E0B' : '#EF4444';
 
@@ -44,9 +48,9 @@ const cards = pages.map(p => {
   <div class="thumb"><img src="pages/${esc(p.name)}/shot-clone.png" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none'"/></div>
   <div class="meta">
     <div class="row1"><span class="name">${esc(p.name)}</span>
-      <span class="grade" style="color:${gradeColor(s.grade)}">${esc(s.grade ?? '-')}·${s.total ?? '-'}%</span></div>
+      <span class="grade" style="color:${gradeColor(s.grade)}">${esc(s.grade ?? '-')}·${s.total ?? '-'}%${s.scoreFormulaVersion === 2 ? '' : ' (旧)'}</span></div>
     <div class="path">${esc(p.semantic?.pageType ?? '')}</div>
-    <div class="dims">像素 ${s.pixel ? (s.pixel * 100).toFixed(1) : '-'}% · 结构 ${s.dom ? (s.dom.dom * 100).toFixed(0) : '-'}% · 数据 ${s.data ? (s.data.data * 100).toFixed(0) : '-'}%</div>
+    <div class="dims">像素 ${Number.isFinite(s.pixel) ? (s.pixel * 100).toFixed(1) + '%' : '未测'} · 结构 ${Number.isFinite(s.dom?.dom) ? (s.dom.dom * 100).toFixed(0) + '%' : '未测'} · 数据 ${s.scoreFormulaVersion !== 2 ? '未重算' : Number.isFinite(s.data?.data) ? (s.data.data * 100).toFixed(0) + '%' : '未测'}</div>
     <div class="tags">
       ${products ? `<i>产品 ${products}</i>` : ''}${plans ? `<i>套餐 ${plans}</i>` : ''}
       ${p.intel?.prices?.length ? `<i>价格 ${p.intel.prices.length}</i>` : ''}${p.intel?.cta?.length ? `<i>CTA ${p.intel.cta.length}</i>` : ''}
@@ -118,7 +122,8 @@ console.log(`index -> ${join(BASE, 'index.html')} (${pages.length} pages, ${scor
 // 两侧统一 1440px 桌面视口 + transform 等比缩放显示：镜像在窄容器里会触发响应式断点
 // （明明还原却看起来"变移动版"），等比缩放根除此问题。原站侧用捕获全页快照（离线可靠、
 // 不受 X-Frame 限制）；"打开原站"按钮提供在线访问做最终裁决。
-const pagesJson = JSON.stringify(pages.map(p => ({ name: p.name, path: p.semantic?.pageType ?? '', target: p.target })));
+const pagesJson = JSON.stringify(pages.map(p => ({ name: p.name, path: p.semantic?.pageType ?? '', target: p.target })))
+  .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 const compare = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -192,18 +197,27 @@ window.addEventListener('resize', fit);
 
 function load(name) {
   const p = PAGES.find(x => x.name === name) ?? {};
-  document.getElementById('live').href = p.target || '#';
+  let target = '#';
+  try {
+    const url = new URL(p.target);
+    if (url.protocol === 'https:' || url.protocol === 'http:') target = url.href;
+  } catch {}
+  document.getElementById('live').href = target;
   // 交互镜像入口：<域名>.localhost:<引擎端口><原路径>。端口在这里烤成常量 ——
   // 这个页面是静态文件，没有别的地方能问出引擎开在哪个端口。
   try {
-    const t = new URL(p.target);
-    document.getElementById('inter').href = 'http://' + t.hostname.replace(/^www\./, '') + '.localhost:' + PORT + t.pathname;
+    const t = new URL(target);
+    const SITE_IDS = ${JSON.stringify(siteIds)};
+    const sid = SITE_IDS[t.origin] || t.hostname.replace(/^www\./, '');
+    document.getElementById('inter').href = /^https?:$/.test(location.protocol)
+      ? location.origin + '/api/mirror-launch?url=' + encodeURIComponent(t.href)
+      : 'http://' + sid + '.localhost:' + PORT + t.pathname + t.search;
   } catch { document.getElementById('inter').href = '#'; }
   history.replaceState(null, '', 'compare.html?p=' + encodeURIComponent(name));   // URL 随切换更新，刷新/分享不丢状态
   lwrap.style.height = 'auto';
   shot.src = 'pages/' + name + '/shot-src-full.png';
   shot.onerror = () => { shot.replaceWith(Object.assign(document.createElement('div'), { className: 'miss', textContent: '该页未捕获全页长图（旧版产物）。重新锻造此页即可获得同步对比的原站侧。' })); };
-  frame.src = 'pages/' + name + '/clone/index.html';
+  frame.src = 'pages/' + name + '/clone/index.html?compare=1';
 }
 shot.addEventListener('load', fit);
 sel.addEventListener('change', () => load(sel.value));

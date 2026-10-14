@@ -12,7 +12,7 @@ import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const { cloneDocFile, readCloneDoc, DESKTOP_VARIANT } = await import('../src/clone-doc.mjs');
+const { cloneDocFile, readCloneDoc, availableCloneVariantWidths, DESKTOP_VARIANT } = await import('../src/clone-doc.mjs');
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'heimdall-clonedoc-'));
 const CHOPPER = '<!doctype html><html><head><script>location.replace(innerWidth<=600?"index-375.html":"index-1440.html");</script></head><body></body></html>';
@@ -34,6 +34,26 @@ test('普通克隆：没有变体时就是 index.html', () => {
   const doc = readCloneDoc(d);
   assert.equal(doc.variant, false);
   assert.match(doc.html, /only/);
+});
+
+test('旧多视口克隆缺桌面时读取现有最宽变体', () => {
+  const d = tmp();
+  writeFileSync(join(d, 'index.html'), CHOPPER);
+  writeFileSync(join(d, 'index-375.html'), '<html><body>mobile</body></html>');
+  writeFileSync(join(d, 'index-768.html'), '<html><body>tablet</body></html>');
+  assert.deepEqual(availableCloneVariantWidths(d), [375, 768]);
+  assert.equal(cloneDocFile(d), join(d, 'index-768.html'));
+  assert.equal(readCloneDoc(d).variant, true);
+  assert.match(readCloneDoc(d).html, /tablet/);
+});
+
+test('完整 index.html 优先于上一次构建留下的变体文件', () => {
+  const d = tmp();
+  writeFileSync(join(d, 'index.html'), '<!doctype html><h1>current</h1>');
+  writeFileSync(join(d, DESKTOP_VARIANT), '<!doctype html><h1>stale</h1>');
+  assert.equal(cloneDocFile(d), join(d, 'index.html'));
+  assert.equal(readCloneDoc(d).variant, false);
+  assert.match(readCloneDoc(d).html, /current/);
 });
 
 test('目录不存在也不抛（调用方自己决定怎么报）', () => {

@@ -16,10 +16,12 @@
  *   root=mirror：镜像直接挂在 /（drop-in 替代部署），/lm/<host>/ 仍作为别名可用。
  */
 import { createServer } from 'node:http';
+import { randomBytes } from 'node:crypto';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, extname, normalize, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { indexHar, matchHar } from './har.mjs';
+import { liveSnapshotCandidates } from './live-path.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -42,7 +44,7 @@ const has = (name) => argv.includes('--' + name);
 const cfgPath = argOf('config', join(HERE, 'heimdall-live.json'));
 let cfg = { host: 'localhost', origin: 'http://localhost', port: 8080, offline: false, replayApi: true };
 try { cfg = { ...cfg, ...JSON.parse(readFileSync(cfgPath, 'utf8')) }; } catch {}
-const HOST = cfg.host;
+const HOST = cfg.siteId ?? cfg.host;
 const ORIGIN = cfg.origin.replace(/\/$/, '');
 const PORT = Number(argOf('port', process.env.PORT ?? cfg.port ?? 8080));
 const OFFLINE = has('offline') || !!cfg.offline;
@@ -72,6 +74,7 @@ try {
   for (const e of har.entries ?? []) {
     try {
       const x = new URL(e.url);
+      if (x.origin !== ORIGIN) continue;
       const target = x.searchParams.get('url');
       if (target) HAR_BY_QUERY.set(x.pathname + '|' + target, e);
     } catch {}
@@ -79,7 +82,8 @@ try {
 } catch {}
 
 const MIME = {
-  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8',
+  '.xhtml': 'application/xhtml+xml; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif',
   '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
@@ -102,20 +106,69 @@ const sendFile = (res, file, extra = {}) => {
   let st; try { st = statSync(file); } catch { return false; }
   if (!st.isFile()) return false;   // 目录绝不进 readFileSync（EISDIR）
   const buf = readFileSync(file);
-  res.writeHead(200, { 'Content-Type': mimeOf(file), 'Content-Length': buf.length, ...extra });
+  res.writeHead(200, { 'Content-Type': mimeOf(file), 'Content-Length': buf.length, 'X-Content-Type-Options': 'nosniff', ...extra });
   res.end(buf);
   return true;
 };
+function staticDocumentHeaders(req, file, compareView = false) {
+  const type = mimeOf(file).split(';', 1)[0];
+  if (type === 'text/html') return { 'Content-Security-Policy': compareView
+    ? "script-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'"
+    : 'sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation' };
+  if (type === 'image/svg+xml' || type === 'application/xml' || type === 'application/xhtml+xml') {
+    const headers = { 'Content-Security-Policy': 'sandbox' };
+    const dest = req.headers['sec-fetch-dest'];
+    if (dest === 'document' || (!dest && String(req.headers.accept ?? '').includes('text/html'))) {
+      headers['Content-Disposition'] = 'attachment';
+    }
+    return headers;
+  }
+  return {};
+}
+function sendCompare(req, res, file) {
+  const nonce = randomBytes(16).toString('base64');
+  const original = readFileSync(file, 'utf8');
+  const html = original
+    .replace(/<script>\r?\n(?=const PAGES = )/, `<script nonce="${nonce}">\n`)
+    .replace('<iframe id="frame"></iframe>', '<iframe id="frame" sandbox="allow-same-origin"></iframe>')
+    .replace("frame.src = 'pages/' + name + '/clone/index.html';",
+      "frame.src = 'pages/' + name + '/clone/index.html?compare=1';");
+  return send(res, 200, html, 'text/html; charset=utf-8', {
+    'Content-Security-Policy': `script-src 'nonce-${nonce}'; object-src 'none'; form-action 'none'`,
+    'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache',
+  });
+}
 const NOT_FOUND = `<!doctype html><meta charset="utf-8"><title>404 · Heimdall Live</title><body style="font-family:system-ui;background:#0b0b10;color:#e2e8f0;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1 style="color:#22d3ee">404 · 本地无快照</h1><p style="color:#94a3b8">${OFFLINE ? '离线模式：未捕获的资源不可用。' : '代理失败：原站不可达。'}</p><p><a href="/" style="color:#22d3ee">返回落地页</a></p></div></body>`;
 
-function rewriteHtml(text) {
+function rewriteHtml(text, targetPath = '/') {
   if (!text) return text;
   let out = text;
-  for (const h of [HOST, 'www.' + HOST]) {
-    out = out.split('https://' + h + '/').join('/lm/' + h + '/').split('https://' + h).join('/lm/' + h);
-    out = out.split('http://' + h + '/').join('/lm/' + h + '/').split('http://' + h).join('/lm/' + h);
+  // Older hand-authored bundles sometimes used host as an explicit alias.
+  // New bundles carry siteId and rewrite only the exact upstream origin.
+  for (const source of [ORIGIN, ...(cfg.siteId ? [] : [`http://${HOST}`, `https://${HOST}`])]) {
+    const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`${escaped}(?![a-z0-9_.:@-])`, 'gi');
+    const mount = ROOT_MODE ? '' : '/lm/' + HOST;
+    out = out.replace(pattern, (match, index, source) => mount || (source[index + match.length] === '/' ? '' : '/'));
   }
-  if (!/<base\b/i.test(out)) out = out.replace(/<head([^>]*)>/i, `<head$1><base href="/lm/${HOST}/">`);
+  if (!ROOT_MODE) {
+    out = out.replace(/<form\b[^>]*>/gi, tag =>
+      tag.replace(/(\saction\s*=\s*)(["']?)\/(?!\/|lm\/)/i, `$1$2/lm/${HOST}/`));
+  }
+  if (!ROOT_MODE && !/<base\b/i.test(out)) {
+    const directory = targetPath.replace(/[^/]*$/, '');
+    out = out.replace(/<head([^>]*)>/i, `<head$1><base href="/lm/${HOST}${directory}">`);
+  }
+  return out;
+}
+
+function rootSnapshotHtml(text) {
+  let out = text;
+  const hosts = new Set([HOST, new URL(ORIGIN).host]);
+  for (const host of hosts) {
+    const escaped = host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(`/lm/${escaped}(?![a-z0-9_.:@-])`, 'gi'), '');
+  }
   return out;
 }
 
@@ -125,29 +178,42 @@ async function readBody(req) {
   return chunks.length ? Buffer.concat(chunks) : undefined;
 }
 
+function localLocation(value, target) {
+  try {
+    const dest = new URL(value, target);
+    if (dest.origin !== ORIGIN) return value;
+    return (ROOT_MODE ? '' : '/lm/' + HOST) + dest.pathname + dest.search + dest.hash;
+  } catch { return value; }
+}
+
 async function proxy(req, res, pathAndQuery) {
   const target = ORIGIN + (pathAndQuery.startsWith('/') ? pathAndQuery : '/' + pathAndQuery);
   const headers = {};
-  for (const k of ['accept', 'accept-language', 'content-type', 'referer']) {
+  for (const k of ['accept', 'accept-language', 'content-type', 'cookie', 'authorization', 'x-csrf-token', 'x-xsrf-token', 'x-requested-with', 'if-none-match', 'if-modified-since', 'range']) {
     if (req.headers[k]) headers[k] = req.headers[k];
   }
-  headers['user-agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-  headers.referer = ORIGIN + '/';
+  // This file ships without src/ua.mjs; keep its fallback in sync with that source.
+  headers['user-agent'] = req.headers['user-agent'] ?? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+  if (req.headers.origin) headers.origin = ORIGIN;
+  try {
+    const referer = new URL(req.headers.referer);
+    const path = ROOT_MODE ? referer.pathname : referer.pathname.replace(new RegExp('^/lm/' + HOST.replace(/\./g, '\\.') + '(?=/|$)'), '');
+    headers.referer = ORIGIN + (path || '/') + referer.search;
+  } catch { headers.referer = ORIGIN + '/'; }
   const body = ['GET', 'HEAD'].includes(req.method) ? undefined : await readBody(req);
   const upstream = await fetch(target, { method: req.method, headers, body, redirect: 'manual' });
   const outHeaders = {};
   for (const [k, v] of upstream.headers) {
     const kl = k.toLowerCase();
     if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy', 'set-cookie', 'connection', 'content-type'].includes(kl)) continue;
-    if (kl === 'location') { outHeaders[k] = v.replace(ORIGIN, '/lm/' + HOST); continue; }
+    if (kl === 'location') { outHeaders[k] = localLocation(v, target); continue; }
     outHeaders[k] = v;
   }
-  for (const c of upstream.headers.getSetCookie?.() ?? []) {
-    res.append?.('Set-Cookie', c.replace(/;\s*domain=[^;]+/gi, '').replace(/;\s*secure/gi, ''));
-  }
+  const cookies = upstream.headers.getSetCookie?.() ?? [];
+  if (cookies.length) outHeaders['Set-Cookie'] = cookies.map(c => c.replace(/;\s*domain=[^;]+/gi, ''));
   const type = upstream.headers.get('content-type') ?? '';
   if (/text\/html/i.test(type)) {
-    const text = rewriteHtml(await upstream.text());
+    const text = rewriteHtml(await upstream.text(), new URL(target).pathname);
     return send(res, upstream.status, text, type, outHeaders);
   }
   const buf = Buffer.from(await upstream.arrayBuffer());
@@ -155,13 +221,19 @@ async function proxy(req, res, pathAndQuery) {
 }
 
 async function serveLive(req, res, rel, search) {
-  if (rel.endsWith('/')) rel += 'index.html';
-  // 1) local snapshot：无扩展名路径按目录 index.html 解析，且只接受文件
-  const stripped = rel.replace(/^\/+/, '') || 'index.html';
-  const candidates = /\.[a-z0-9]+$/i.test(stripped) ? [stripped] : [stripped.replace(/\/$/, '') + '/index.html', stripped];
-  for (const cand of candidates) {
-    const local = safeJoin(LIVE, cand);
-    if (sendFile(res, local, { 'Cache-Control': 'no-cache' })) return;
+  // 1) local snapshot：带 query 的页面必须精确命中对应快照。
+  const candidates = liveSnapshotCandidates(rel, search);
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    for (const cand of candidates) {
+      const local = safeJoin(LIVE, cand);
+      if (ROOT_MODE && local && /\.html?$/i.test(local) && existsSync(local) && statSync(local).isFile()) {
+        const html = rootSnapshotHtml(readFileSync(local, 'utf8'));
+        const body = Buffer.from(html);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
+        return req.method === 'HEAD' ? res.end() : res.end(body);
+      }
+      if (sendFile(res, local, { 'Cache-Control': 'no-cache' })) return;
+    }
   }
   // 2) HAR replay（原站重新部署后旧 chunk 仍可用）
   if (REPLAY && req.method === 'GET') {
@@ -206,8 +278,23 @@ createServer(async (req, res) => {
     const rel = pathname.slice('/static/'.length);
     const first = rel.split('/')[0];
     if (first === HOST || first === 'www.' + HOST) {
-      const file = safeJoin(STATIC, rel);
-      if (sendFile(res, file)) return;
+      let file = safeJoin(STATIC, rel);
+      const siteRel = rel.slice(first.length + 1);
+      if (siteRel === 'compare.html' && file && existsSync(file) && statSync(file).isFile()) {
+        return sendCompare(req, res, file);
+      }
+      const compareView = u.searchParams.get('compare') === '1'
+        && /^pages\/[^/]+\/clone\/[^/]+\.html?$/i.test(siteRel);
+      if (file && compareView && siteRel.endsWith('/clone/index.html') && existsSync(file)
+          && /<script\b[^>]*>\s*location\.replace\s*\(\s*innerWidth\s*<=\s*600\s*\?/i.test(readFileSync(file, 'utf8'))) {
+        for (const width of [1440, 768, 375]) {
+          const variant = join(dirname(file), `index-${width}.html`);
+          try {
+            if (statSync(variant).isFile()) { file = variant; break; }
+          } catch {}
+        }
+      }
+      if (sendFile(res, file, file ? staticDocumentHeaders(req, file, compareView) : {})) return;
       return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
     }
     if (!ROOT_MODE) return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
@@ -219,12 +306,14 @@ createServer(async (req, res) => {
     if (!m) return send(res, 400, 'bad lm path');
     const reqHost = m[1];
     if (reqHost !== HOST && reqHost !== 'www.' + HOST) return send(res, 403, 'host not allowed');
-    return serveLive(req, res, m[2] ?? '/', u.search);
+    return serveLive(req, res, u.pathname.slice('/lm/'.length + reqHost.length) || '/', u.search);
   }
   // root=mirror：其余路径（含真实站点的 /static/**）全部按镜像解析
-  if (ROOT_MODE) return serveLive(req, res, pathname, u.search);
+  if (ROOT_MODE) return serveLive(req, res, u.pathname, u.search);
   return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
-}).listen(PORT, BIND, () => {
+}).listen(PORT, BIND, function () {
+  const actualPort = this.address().port;
+  process.send?.({ kind: 'heimdall-live-ready', port: actualPort });
   const where = BIND === '0.0.0.0' ? '0.0.0.0（所有网卡；只在本机看请加 --host 127.0.0.1）' : BIND;
-  console.log(`[heimdall-live] 监听 ${where}:${PORT}  host=${HOST}  offline=${OFFLINE}  replay=${REPLAY}  har=${HAR_ENTRIES} entries`);
+  console.log(`[heimdall-live] 监听 ${where}:${actualPort}  host=${HOST}  offline=${OFFLINE}  replay=${REPLAY}  har=${HAR_ENTRIES} entries`);
 });

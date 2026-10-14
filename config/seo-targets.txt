@@ -1,14 +1,16 @@
 # SEO 门禁目标站点
 #
 # 每行一个站点（host 或完整 URL），`#` 开头与空行忽略。
-# 这里的站点会被 .github/workflows/seo-gate.yml 每天抓取一次，
-# 与 config/seo-baseline/<host>.json 比对，出现阻断级回归就让 workflow 失败。
+# 同一域名的 www、协议或非默认端口属于不同来源，需分别建立基线。
+# 配好目标与基线后，手动触发 .github/workflows/seo-gate.yml 比对。
+# 当前没有授权目标，因此没有启用定时任务；空目标会显式失败。
 #
 # 加一个新站点的流程：
 #   1. 在下面加一行
 #   2. 本地跑一次建立基线（首次运行会自动写入）：
-#        cd core && node src/seo/audit.mjs <host> --baseline ../config/seo-baseline/<host>.json
-#   3. 把新生成的 baseline.json 一起提交
+#        cd core && node src/seo/audit.mjs <host> --baseline ../config/seo-baseline/<key>.json
+#      <key> 见 config/seo-baseline/README.md，由来源 URL 的稳定指纹计算。
+#   3. 审核并提交新生成的 <key>.json
 #
 # 如果不提交基线，CI 会因为 --require-baseline 直接失败 —— 这是刻意的：
 # 「基线文件丢了 → 当成首次运行 → 绿灯」是门禁最隐蔽的失效方式。

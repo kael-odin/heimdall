@@ -218,7 +218,7 @@ async function main() {
     const evil = await fetch(base + '/px/evil.example/x');
     assert.equal(evil.status, 403, 'proxy must reject non-workspace hosts');
     const lmEvil = await fetch(base + '/lm/evil.example/x');
-    assert.equal(lmEvil.status, 403, 'live mirror must reject non-workspace hosts');
+    assert.equal(lmEvil.status, 410, 'main-origin prefix mirror must be disabled');
     const cloneUrl = `${base}/static/127.0.0.1/pages/home/clone/index.html`;
     assert.equal((await fetch(cloneUrl)).status, 200, 'clone page must be served');
 
@@ -238,7 +238,7 @@ async function main() {
     assert.ok(seoJson.score > 0, 'audit score should be > 0');
 
     // 7) 交互镜像 L3：导出可部署包 + 离线启动验证（不碰外网）
-    const bundleDir = join(dataDir, 'bundle');
+    const bundleDir = join(dataDir, 'deliverable', 'bundle');
     const exp = spawnSync(process.execPath, ['src/live/export.mjs', '127.0.0.1', '--out', bundleDir, '--offline', '--root', 'mirror'], {
       cwd: CORE,
       env: { ...process.env, HEIMDALL_DATA_DIR: dataDir, HEIMDALL_LLM: '0' },
@@ -302,7 +302,10 @@ async function main() {
     assert.equal(existsSync(join(dataDir, 'workspace', '127.0.0.1', 'pages', 'home')), false, 'page dir must be gone');
     const atlasAfter = JSON.parse(readFileSync(join(dataDir, 'workspace', '127.0.0.1', 'recon', 'atlas.json'), 'utf8'));
     assert.ok(!atlasAfter.nodes.some(n => { try { return new URL(n.url).pathname === '/'; } catch { return false; } }), 'atlas node must be removed');
-    const delSite = await fetch(base + '/api/sites/127.0.0.1', { method: 'DELETE' });
+    const delSite = await fetch(base + '/api/sites/127.0.0.1', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmHost: '127.0.0.1' }),
+    });
     assert.equal(delSite.status, 200, 'delete site status');
     assert.equal(existsSync(join(dataDir, 'workspace', '127.0.0.1')), false, 'site dir must be gone');
     assert.ok([400, 404].includes((await fetch(base + '/api/sites/127.0.0.1', { method: 'DELETE' })).status), 'second delete must 404');

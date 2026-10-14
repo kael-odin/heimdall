@@ -15,6 +15,8 @@
  * `?page=2` 是另一个页面，不能合并）。
  */
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 export function canonUrl(u) {
   try {
@@ -51,6 +53,11 @@ export function sameCanonUrl(a, b) {
   return !!x && x === y;
 }
 
+/** URL.origin 比较，避免 example.com.evil.test 通过字符串前缀判断。 */
+export function isSameOriginUrl(url, origin) {
+  try { return new URL(url).origin === new URL(origin).origin; } catch { return false; }
+}
+
 /**
  * 星图节点的稳定 id —— **url 的纯函数**，与访问顺序无关。
  *
@@ -71,8 +78,8 @@ export function stableNodeId(url) {
  * 页名不对还只是小事，**两个不同的 URL 会先后写进同一个目录、互相覆盖**（实测踩到：
  * 重新锻造 customers 时，它把自己放进了 page/，与上一次同样用法的锻造产物撞在一起）。
  *
- * 规则：去掉首尾斜杠，路径分隔符与残留的查询/锚点字符统一折成 `-`，截断 60 字符；
- * 根路径落成 `home`。返回 undefined/null 或解析不了时用 fallback。
+ * 简单路径保留旧目录名；会折叠信息的路径加稳定摘要。历史目录由
+ * createPageNameResolver 按 manifest.target 识别，不靠猜测旧名字。
  *
  * @param {string|URL} input
  * @param {string} [fallback='home']
@@ -80,7 +87,51 @@ export function stableNodeId(url) {
 export function pageNameOfUrl(input, fallback = 'home') {
   try {
     const x = input instanceof URL ? input : new URL(String(input));
-    const p = x.pathname.replace(/\/$/, '').replace(/^\//, '').replace(/[/?&#]+/g, '-').slice(0, 60);
-    return p || fallback;
+    const canonical = canonUrl(x.href);
+    if (x.pathname === '/') return x.search ? hashedPageName(canonical, 'home') : fallback;
+    const simple = /^\/([a-z0-9_-]+)\/?$/.exec(x.pathname);
+    if (simple && !x.search && simple[1] !== 'home' && simple[1].length <= 60
+      && !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(simple[1])) return simple[1];
+    return hashedPageName(canonical);
   } catch { return fallback; }
+}
+
+function hashedPageName(canonical, hint = '') {
+  const x = new URL(canonical);
+  const slug = (hint || x.pathname.replace(/^\//, '').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'home').slice(0, 26);
+  return slug + '--' + createHash('sha256').update(canonical).digest('hex').slice(0, 32);
+}
+
+/** 兼容历史 pages/<name>：仅 manifest.target 与当前 URL 相同时复用旧目录。 */
+export function createPageNameResolver(siteDir) {
+  const byUrl = new Map();
+  const byName = new Map();
+  const pagesDir = join(siteDir, 'pages');
+  if (existsSync(pagesDir)) {
+    for (const name of readdirSync(pagesDir).sort()) {
+      let target = null;
+      try { target = canonUrl(JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target); } catch {}
+      byName.set(name.toLowerCase(), target);
+      if (target && !byUrl.has(target)) byUrl.set(target, name);
+    }
+  }
+  return (input) => {
+    const canonical = canonUrl(input instanceof URL ? input.href : input);
+    if (!canonical) return 'home';
+    if (byUrl.has(canonical)) return byUrl.get(canonical);
+    let name = pageNameOfUrl(canonical);
+    if (byName.has(name.toLowerCase()) && byName.get(name.toLowerCase()) !== canonical) {
+      name = hashedPageName(canonical);
+    }
+    if (byName.has(name.toLowerCase()) && byName.get(name.toLowerCase()) !== canonical) {
+      throw new Error('page name collision: ' + canonical);
+    }
+    byUrl.set(canonical, name);
+    byName.set(name.toLowerCase(), canonical);
+    return name;
+  };
+}
+
+export function resolvePageNameOfUrl(input, siteDir) {
+  return createPageNameResolver(siteDir)(input);
 }

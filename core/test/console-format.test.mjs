@@ -14,7 +14,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { FORGE_STAGES, FORGE_STAGE_KEYS, forgeStageProgress, stageProgressText } = await import('../../console/src/format.js');
+const { FORGE_STAGES, FORGE_STAGE_KEYS, forgeStageProgress, stageProgressText, verifyPageProgress } = await import('../../console/src/format.js');
 
 test('阶段词表与流水线一致：六个阶段，顺序即显示顺序', () => {
   assert.deepEqual(FORGE_STAGE_KEYS, ['capture', 'build', 'shot', 'fixup', 'diff', 'harvest']);
@@ -55,4 +55,11 @@ test('全部跑完停在最后一格（不越界到 7/6）', () => {
 
 test('stageProgressText 对 null 安全 —— 任务行直接渲染它', () => {
   assert.equal(stageProgressText(null), '');
+});
+
+test('多视口 SSE 缺测不得显示假 0.0%，部分测量不得冒充完整分数', () => {
+  assert.equal(verifyPageProgress({ page: 'home', overall: null, measured: false }), '体检 home · 未测到');
+  assert.equal(verifyPageProgress({ page: 'home', overall: 1, measured: false,
+    minViewport: { name: 'desktop', score: 1 } }), '体检 home · 未完整测量 · 最低 desktop 100.0%');
+  assert.equal(verifyPageProgress({ page: 'home', overall: 0.92, measured: true }), '体检 home · 92.0%');
 });

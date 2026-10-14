@@ -1,50 +1,107 @@
 /**
- * 控制台里"交互镜像"两个入口必须指向**引擎**，不是控制台自己。
+ * 控制台里"交互镜像"入口必须指向**引擎**，不是控制台自己。
  *
  * 这条守卫来自一次实测：dev 下控制台跑在 Vite（:5173），镜像由引擎（:8900）提供。
- * 按 `location` 拼出来的入口会打到 Vite 上 ——
- *
- *     GET http://127.0.0.1:5199/lm/apify.com/   →   200 text/html
- *     <title>Heimdall · Site Atlas</title>       ← 控制台自己的 SPA 首页
- *
- * 也就是"点交互镜像毫无反应"。而 `<host>.localhost:5173` 同理。
+ * 按 `location` 拼出的 `<host>.localhost:5173` 会打到 Vite，返回控制台自己的 SPA 首页。
  * 引擎地址在 api.js 里已经是唯一事实来源（含用户在设置里改过的地址），
- * 两个入口复用它 —— 这一条钉住"用的是 API 而不是 location"。
+ * 镜像入口复用它 —— 这一条钉住"用的是 API 而不是 location"。
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 // pages.js → api.js 在**模块顶层**读 localStorage 与 location，必须先铺好再 import
-globalThis.localStorage = { getItem: () => null };
+let savedToken = '';
+globalThis.localStorage = { getItem: key => key === 'heimdall-token' ? savedToken : null };
 globalThis.location = { port: '5173', protocol: 'http:', origin: 'http://127.0.0.1:5173', hostname: '127.0.0.1' };
 
-const { liveUrl, liveAltUrl, pageNameOf, normalizeSiteUrl, normalizePageUrl } = await import('../../console/src/pages.js');
+const { liveUrl, mirrorBridgeNeeded, openMirrorWithTicket, pageNameOf, pagePathOf, normalizeSiteUrl, normalizePageUrl, workspaceHostOf } = await import('../../console/src/pages.js');
 
 test('liveUrl 指向引擎端口，不是控制台端口', () => {
   const u = liveUrl({ url: 'https://apify.com/store' });
-  assert.equal(u, 'http://apify.com.localhost:8900/store/');
+  assert.equal(new URL(u).origin, 'http://127.0.0.1:8900');
+  assert.equal(new URL(u).pathname, '/api/mirror-launch');
+  assert.equal(new URL(u).searchParams.get('url'), 'https://apify.com/store/');
   assert.doesNotMatch(u, /:5173/, 'dev 下按控制台端口拼出来的地址会打到 Vite 上（拿到 SPA 首页）');
 });
 
-test('liveAltUrl 是引擎的绝对地址 —— dev 下 Vite 没有 /lm 代理，相对路径会命中 SPA 回退', () => {
-  const u = liveAltUrl({ url: 'https://apify.com/store' });
-  assert.equal(u, 'http://127.0.0.1:8900/lm/apify.com/store/');
+test('Token 模式主入口通过引擎授权，目标路径与查询仍供独立子域使用', () => {
+  savedToken = 'test-token';
+  try {
+    assert.equal(mirrorBridgeNeeded(), true, '控制台与引擎同主机不同端口时仍需带请求头领票');
+    const page = { url: 'https://apify.com/store?page=2' };
+    const launch = new URL(liveUrl(page));
+    assert.equal(launch.origin, 'http://127.0.0.1:8900');
+    assert.equal(launch.pathname, '/api/mirror-launch');
+    assert.equal(launch.searchParams.get('url'), 'https://apify.com/store/?page=2');
+    assert.doesNotMatch(launch.href, /test-token/);
+  } finally { savedToken = ''; }
+  const launch = new URL(liveUrl({ url: 'https://apify.com/store?page=2' }));
+  assert.equal(launch.searchParams.get('url'), 'https://apify.com/store/?page=2');
+});
+
+test('openMirrorWithTicket 使用服务端 siteId，并校验来源与票据地址', async () => {
+  savedToken = 'test-token';
+  const replaced = [];
+  const closed = [];
+  globalThis.window = {
+    open() {
+      const popup = { closed: false, opener: null, location: { replace(url) { replaced.push(url); } } };
+      popup.close = () => { popup.closed = true; closed.push(true); };
+      return popup;
+    },
+    location: { assign() {} },
+  };
+  const previousFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      url: 'http://fixture.test--origin-abcdef0123456789.localhost:8900/.heimdall/session?ticket=ticket-1',
+      siteId: 'fixture.test--origin-abcdef0123456789',
+      origin: 'https://fixture.test:8443',
+    }) });
+    await openMirrorWithTicket({ url: 'https://fixture.test:8443/docs?page=2' });
+    assert.equal(replaced[0], 'http://fixture.test--origin-abcdef0123456789.localhost:8900/.heimdall/session?ticket=ticket-1');
+
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      url: 'http://fixture.test.localhost:8900/.heimdall/session?ticket=ticket-2',
+      siteId: 'fixture.test',
+      origin: 'https://other.test',
+    }) });
+    await assert.rejects(
+      () => openMirrorWithTicket({ url: 'https://fixture.test/docs' }),
+      /来源与目标不一致/,
+    );
+    assert.ok(closed.length >= 1, '无效响应应关闭已打开的窗口');
+
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      url: 'http://fixture.test.localhost:8900/.heimdall/session?ticket=ticket-3',
+      siteId: '../fixture.test',
+      origin: 'https://fixture.test',
+    }) });
+    await assert.rejects(
+      () => openMirrorWithTicket({ url: 'https://fixture.test/docs' }),
+      /无效的站点标识/,
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    delete globalThis.window;
+    savedToken = '';
+  }
 });
 
 test('目录型路径补尾斜杠（URL 的"基目录"是最后一个 / 之前的部分）', () => {
-  assert.equal(liveUrl({ url: 'https://vitest.dev/' }), 'http://vitest.dev.localhost:8900/');
-  assert.equal(liveUrl({ url: 'https://x.test/docs' }), 'http://x.test.localhost:8900/docs/');
-  assert.equal(liveUrl({ url: 'https://x.test/a.html' }), 'http://x.test.localhost:8900/a.html', '文件型路径不加');
+  assert.equal(new URL(liveUrl({ url: 'https://vitest.dev/' })).searchParams.get('url'), 'https://vitest.dev/');
+  assert.equal(new URL(liveUrl({ url: 'https://x.test/docs' })).searchParams.get('url'), 'https://x.test/docs/');
+  assert.equal(new URL(liveUrl({ url: 'https://x.test/a.html' })).searchParams.get('url'), 'https://x.test/a.html', '文件型路径不加');
 });
 
 test('非法 URL 返回 #，不抛', () => {
   assert.equal(liveUrl({ url: 'nonsense' }), '#');
-  assert.equal(liveAltUrl({}), '#');
 });
 
-test('页名规则仍在（这条规则被 core 侧的防漂移断言盯着，别动它的写法）', () => {
+test('已有产物总是使用引擎返回的目录名', () => {
   assert.equal(pageNameOf({ url: 'https://x.test/customers/anthropic' }), 'customers-anthropic');
   assert.equal(pageNameOf({ url: 'https://x.test/' }), 'home');
+  assert.equal(pageNameOf({ url: 'https://x.test/a/b', pageName: 'a-b--1234' }), 'a-b--1234');
 });
 
 /**
@@ -68,6 +125,18 @@ test('normalizePageUrl：保留路径（「只克隆此页」按整条地址走�
   assert.equal(normalizePageUrl('https://linear.app/build/ai'), 'https://linear.app/build/ai');
   assert.equal(normalizePageUrl('apify.com/#x'), 'https://apify.com/', '只去 hash，保路径');
   assert.equal(normalizePageUrl(''), '');
+});
+
+test('工作区主机名与引擎一致：去 www 和非默认端口', () => {
+  assert.equal(workspaceHostOf('http://127.0.0.1:54893/'), '127.0.0.1');
+  assert.equal(workspaceHostOf('https://www.apify.com/store'), 'apify.com');
+  assert.equal(workspaceHostOf('invalid'), '');
+});
+
+test('页面主标签保留 query，避免分页行同名', () => {
+  assert.equal(pagePathOf({ url: 'https://x.test/list?page=1', path: '/list' }), '/list?page=1');
+  assert.equal(pagePathOf({ url: 'https://x.test/list?page=2', path: '/list' }), '/list?page=2');
+  assert.equal(pagePathOf({ path: '/fallback' }), '/fallback');
 });
 
 test('两个归一器的差别就是"路径留不留" —— 别再合并成一个', () => {

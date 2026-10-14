@@ -10,7 +10,7 @@ import { chromium } from 'playwright';
 import { analyzeRawHtml } from './raw-html.mjs';
 import { isStructuralUrl } from './pagination.mjs';
 import { sessionContext } from '../session/store.mjs';
-import { canonUrl } from '../url-canon.mjs';
+import { canonUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { UA } from '../ua.mjs';
 
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
@@ -56,12 +56,12 @@ export async function fetchRobotsAndSitemaps(origin) {
             const t2 = await r2.text();
             for (const m of t2.matchAll(/<loc>([^<]+)<\/loc>/g)) {
               const u = m[1].trim();
-              if (u.startsWith(origin)) result.sitemapUrls.add(u);
+              if (isSameOriginUrl(u, origin)) result.sitemapUrls.add(u);
             }
           } catch {}
         }
       } else {
-        for (const u of locs) if (u.startsWith(origin)) result.sitemapUrls.add(u);
+        for (const u of locs) if (isSameOriginUrl(u, origin)) result.sitemapUrls.add(u);
       }
     } catch {}
   }
@@ -74,7 +74,7 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
   const seen = new Set();
   const push = (url, depth = 99) => {
     const clean = canonUrl(url);
-    if (!clean || !clean.startsWith(origin) || seen.has(clean)) return;
+    if (!isSameOriginUrl(clean, origin) || seen.has(clean)) return;
     if (/\.(pdf|zip|png|jpe?g|svg|webp|avif|mp4|mp3|xml|json|txt|ico|woff2?)$/i.test(new URL(clean).pathname)) return;
     seen.add(clean);
     targets.push({ url: clean, depth });
@@ -98,7 +98,9 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
         const links = await page.evaluate((o) =>
           [...document.querySelectorAll('a[href]')]
             .map(a => { try { return new URL(a.getAttribute('href'), location.href).href.split('#')[0]; } catch { return null; } })
-            .filter(u => u && u.startsWith(o)), origin);
+            .filter(u => {
+              try { return new URL(u).origin === o; } catch { return false; }
+            }), origin);
         // 结构性 URL（分页/分面）优先入队：它们通常排在页尾，按 DOM 顺序会被配额挤掉，
         // 而这类页面正是审计最该覆盖的
         const uniq = [...new Set(links)].sort((a, b) => (isStructuralUrl(b) ? 1 : 0) - (isStructuralUrl(a) ? 1 : 0));

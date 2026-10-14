@@ -1,0 +1,259 @@
+{
+  "page": "jobs",
+  "target": "https://apify.com/jobs",
+  "generatedAt": "2026-10-14T15:59:30.371Z",
+  "scoreVersion": 2,
+  "overall": null,
+  "provisionalOverall": 0.9075,
+  "measured": false,
+  "grade": null,
+  "minViewport": {
+    "name": "768x1024",
+    "score": 0.8629,
+    "grade": "B",
+    "coverageRatio": 0.9837,
+    "sourceSize": {
+      "width": 768,
+      "height": 10877
+    },
+    "cloneSize": {
+      "width": 768,
+      "height": 10700
+    },
+    "heightDelta": 177,
+    "missingPixels": 135936
+  },
+  "viewports": [
+    {
+      "name": "375x812",
+      "width": 375,
+      "score": 0.8866,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T15:57:12.811Z",
+        "finalUrl": "https://apify.com/jobs",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2512,
+            "pendingRequests": 0,
+            "height": 14662,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 21,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2523,
+            "pendingRequests": 0,
+            "height": 14766,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 5,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T15:57:39.529Z",
+        "finalUrl": "http://127.0.0.1:62376/static/apify.com/pages/jobs/clone/index-375.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2510,
+            "pendingRequests": 0,
+            "height": 14423,
+            "textLength": 7911,
+            "imageCount": 35,
+            "incompleteImages": 21,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2518,
+            "pendingRequests": 0,
+            "height": 14527,
+            "textLength": 7911,
+            "imageCount": 35,
+            "incompleteImages": 5,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 627742,
+      "missingPixels": 89625,
+      "coverageRatio": 0.9838,
+      "heightDelta": 239,
+      "sourceSize": {
+        "width": 375,
+        "height": 14766
+      },
+      "cloneSize": {
+        "width": 375,
+        "height": 14527
+      },
+      "sourceHeight": 14766,
+      "cloneHeight": 14527
+    },
+    {
+      "name": "768x1024",
+      "width": 768,
+      "score": 0.8629,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T15:58:07.211Z",
+        "finalUrl": "https://apify.com/jobs",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2509,
+            "pendingRequests": 0,
+            "height": 10877,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 5,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2500,
+            "pendingRequests": 0,
+            "height": 10877,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 5,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T15:58:33.671Z",
+        "finalUrl": "http://127.0.0.1:62376/static/apify.com/pages/jobs/clone/index-768.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2505,
+            "pendingRequests": 0,
+            "height": 10700,
+            "textLength": 7911,
+            "imageCount": 35,
+            "incompleteImages": 17,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2518,
+            "pendingRequests": 0,
+            "height": 10700,
+            "textLength": 7911,
+            "imageCount": 35,
+            "incompleteImages": 5,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 1145233,
+      "missingPixels": 135936,
+      "coverageRatio": 0.9837,
+      "heightDelta": 177,
+      "sourceSize": {
+        "width": 768,
+        "height": 10877
+      },
+      "cloneSize": {
+        "width": 768,
+        "height": 10700
+      },
+      "sourceHeight": 10877,
+      "cloneHeight": 10700
+    },
+    {
+      "name": "1440x900",
+      "width": 1440,
+      "score": 0.9402,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T15:59:01.942Z",
+        "finalUrl": "https://apify.com/jobs",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2509,
+            "pendingRequests": 0,
+            "height": 9307,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 1,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2606,
+            "pendingRequests": 0,
+            "height": 9307,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 1,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T15:59:28.458Z",
+        "finalUrl": "http://127.0.0.1:62376/static/apify.com/pages/jobs/clone/index-1440.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2508,
+            "pendingRequests": 0,
+            "height": 9194,
+            "textLength": 5833,
+            "imageCount": 40,
+            "incompleteImages": 13,
+            "brokenImages": 2
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2528,
+            "pendingRequests": 0,
+            "height": 9194,
+            "textLength": 5833,
+            "imageCount": 40,
+            "incompleteImages": 1,
+            "brokenImages": 2
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 801853,
+      "missingPixels": 162720,
+      "coverageRatio": 0.9879,
+      "heightDelta": 113,
+      "sourceSize": {
+        "width": 1440,
+        "height": 9307
+      },
+      "cloneSize": {
+        "width": 1440,
+        "height": 9194
+      },
+      "sourceHeight": 9307,
+      "cloneHeight": 9194
+    }
+  ],
+  "functional": null,
+  "interactions": [],
+  "error": "375x812: render did not settle"
+}

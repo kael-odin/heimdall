@@ -11,6 +11,7 @@
     "test": "pnpm -C core test",
     "lint": "pnpm -C core lint",
     "build": "pnpm -C console build",
+    "docs:links": "pnpm -C core check:docs",
     "dev:core": "pnpm -C core dev",
     "dev:console": "pnpm -C console dev",
     "smoke": "pnpm -C core smoke"

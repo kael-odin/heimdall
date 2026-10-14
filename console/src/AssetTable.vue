@@ -12,7 +12,8 @@
  * 前者是"这个站不用了"，后者是"没有任何站用"。
  */
 import { ref, reactive, computed, watch, onMounted } from 'vue';
-import { API, apiHeaders } from './api.js';
+import { API, apiHeaders, artifactOpenUrl, tokenOf } from './api.js';
+import AuthImage from './AuthImage.vue';
 
 const props = defineProps({
   host: { type: String, default: '' },
@@ -95,7 +96,7 @@ onMounted(load);
       <div class="asset-row" v-for="a in rows.slice(0, 200)" :key="a.path">
         <span>{{ a.page }}</span><span>{{ a.ext || '—' }}</span><span>{{ (a.size / 1024).toFixed(0) }}KB</span>
         <span class="asset-path" :title="a.src ? (a.src + '  ←  ' + a.path) : a.path">{{ a.path }}</span>
-        <span class="asset-actions"><a :href="a.url" target="_blank" rel="noopener" :aria-label="'在新标签打开资产 ' + a.path"><img v-if="isImg(a.ext)" class="asset-thumb" :src="a.url" loading="lazy" alt="" /><template v-else>打开</template></a><a v-if="a.src" :href="a.src" target="_blank" rel="noopener" class="asset-src">原站</a></span>
+        <span class="asset-actions"><a :href="artifactOpenUrl(a.url)" target="_blank" rel="noopener" :aria-label="'在新标签打开资产 ' + a.path"><AuthImage v-if="isImg(a.ext)" class="asset-thumb" :src="a.url" :token="tokenOf()" loading="lazy" alt="" /><template v-else>打开</template></a><a v-if="a.src" :href="a.src" target="_blank" rel="noopener" class="asset-src">原站</a></span>
       </div>
     </div>
     <p class="score-note" v-if="reclaimResult" style="margin:6px 0">{{ reclaimResult }}</p>

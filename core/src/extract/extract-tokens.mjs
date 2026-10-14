@@ -16,6 +16,7 @@ import { WORKSPACE } from '../paths.mjs';
 import { extractTokens, buildTokensCss, renderTokensHtml, topEntries } from './tokens.mjs';
 import { emit } from '../emit.mjs';
 import { makeArgs } from '../args.mjs';
+import { isSafePageName } from '../page-name.mjs';
 
 const log = (...a) => console.error('[tokens]', ...a);
 
@@ -24,6 +25,7 @@ const { num } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
 const onlyPage = (() => { const i = argv.indexOf('--page'); return i > -1 ? argv[i + 1] : null; })();
 if (!host) { console.error('usage: node src/extract/extract-tokens.mjs <host> [--pages 5] [--page <name>]'); process.exit(2); }
+if (onlyPage && !isSafePageName(onlyPage)) { console.error('页名无效：必须是单个安全目录名'); process.exit(2); }
 
 const PAGES = join(WORKSPACE, host, 'pages');
 if (!existsSync(PAGES)) { console.error('no pages for host:', host); process.exit(1); }

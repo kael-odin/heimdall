@@ -11,16 +11,18 @@
  * 它们的加载是**按站点的一次批量请求**（loadPageStatus），
  * 详情面板也要用同一份数据，放在这里会导致切换视图就重新拉一遍。
  */
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import SiteBar from './SiteBar.vue';
 import Icon from './Icon.vue';
 import { PAGE_TYPES as PT, typeColor, typeCn } from './types.js';
 import { fmtDate, fmtBytes } from './format.js';
+import { pagePathOf } from './pages.js';
 
 const PAGE_TYPES = PT;
 
 const props = defineProps({
   host: { type: String, default: '' },
+  loading: { type: Boolean, default: false },
   sites: { type: Array, default: () => [] },
   nodes: { type: Array, default: () => [] },       // 全量清单（含孤儿已克隆页）
   actions: { type: Array, default: () => [] },
@@ -43,6 +45,7 @@ const statusFilter = ref('');
 const sortKey = ref('path');
 const sortDir = ref(1);
 const selectedIds = ref(new Set());
+watch(() => props.host, () => { selectedIds.value = new Set(); });
 
 const STATE_RANK = { done: 0, running: 1, failed: 2, idle: 3 };
 
@@ -54,20 +57,23 @@ const sortAria = (k, label) => sortKey.value === k
   ? `${label}，当前${sortDir.value > 0 ? '升序' : '降序'}，回车切换`
   : `${label}，回车排序`;
 function toggleOne(id) {
+  if (props.loading) return;
   const s = new Set(selectedIds.value);
   s.has(id) ? s.delete(id) : s.add(id);
   selectedIds.value = s;
 }
 function selectAllTodo() {
+  if (props.loading) return;
   const s = new Set(selectedIds.value);
   props.nodes.filter(n => n.forgeState !== 'done').forEach(n => s.add(n.id));
   selectedIds.value = s;
 }
-function selectAll() { selectedIds.value = new Set(props.nodes.map(n => n.id)); }
+function selectAll() { if (!props.loading) selectedIds.value = new Set(props.nodes.map(n => n.id)); }
 function clearAll() { selectedIds.value = new Set(); }
 
 /** 交给父组件执行后清空勾选 */
 function handOff(kind) {
+  if (props.loading) return;
   const ids = [...selectedIds.value];
   if (!ids.length) return;
   emit(kind, ids);
@@ -75,6 +81,7 @@ function handOff(kind) {
 }
 
 const filteredNodes = computed(() => {
+  if (props.loading) return [];
   const q = pageQuery.value.trim().toLowerCase();
   const out = props.nodes.filter(n => {
     if (typeFilter.value && n.type !== typeFilter.value) return false;
@@ -96,7 +103,7 @@ const filteredNodes = computed(() => {
     }
     if (sortKey.value === 'assets') return ((props.meta[a.id]?.assets?.bytes ?? 0) - (props.meta[b.id]?.assets?.bytes ?? 0)) * dir;
     if (sortKey.value === 'title') return String(a.title || '').localeCompare(String(b.title || '')) * dir;
-    return String(a.path || '').localeCompare(String(b.path || '')) * dir;
+    return pagePathOf(a).localeCompare(pagePathOf(b)) * dir;
   });
   return out;
 });
@@ -113,9 +120,18 @@ const avgVisual = computed(() => {
   return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : '—';
 });
 const avgWorst = computed(() => {
-  const vals = Object.values(props.verify).filter(v => v?.minViewport && typeof v.minViewport.score === 'number').map(v => v.minViewport.score);
-  return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%' : null;
+  const vals = Object.values(props.verify).filter(v => v?.scoreVersion === 2 && v.measured === true
+    && typeof v.minViewport?.score === 'number').map(v => v.minViewport.score);
+  return vals.length ? { value: (vals.reduce((a, b) => a + b, 0) / vals.length * 100).toFixed(1) + '%', count: vals.length } : null;
 });
+function viewportTitle(v) {
+  const m = v?.minViewport;
+  if (!m) return '未运行多视口验证';
+  const parts = [`${v.measured === true ? '' : '未完整测量 · '}多视口 ${v.scoreVersion === 2 ? 'v2' : '历史口径'}：${m.name} ${(m.score * 100).toFixed(1)}%`];
+  if (typeof m.coverageRatio === 'number') parts.push(`覆盖 ${(m.coverageRatio * 100).toFixed(1)}%`);
+  if (m.sourceSize && m.cloneSize) parts.push(`原图 ${m.sourceSize.width}×${m.sourceSize.height} / 镜像 ${m.cloneSize.width}×${m.cloneSize.height}`);
+  return parts.join(' · ');
+}
 
 const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克隆中' : s === 'failed' ? '失败' : '未克隆');
 </script>
@@ -124,16 +140,17 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
   <section class="work-view surface">
     <div class="wv-head">
       <b>页面清单 · {{ host || '未选择站点' }}</b>
-      <span class="wv-stat">{{ doneCount }}/{{ nodes.length }} 已克隆 · 平均视觉 {{ avgVisual }}<template v-if="avgWorst"> · 最差视口均值 {{ avgWorst }}</template></span>
+      <span class="wv-stat" role="status" aria-live="polite" v-if="loading">正在载入 {{ host }} 的页面…</span>
+      <span class="wv-stat" v-else>{{ doneCount }}/{{ nodes.length }} 已克隆 · 平均单页像素 {{ avgVisual }}<template v-if="avgWorst"> · v2 完整测量 {{ avgWorst.count }} 页最差视口均值 {{ avgWorst.value }}</template></span>
       <SiteBar :sites="sites" :host="host" :actions="actions" @pick="$emit('pick', $event)" @action="$emit('action', $event)" />
-      <input class="wv-search" v-model="pageQuery" aria-label="搜索页面 URL 或标题" placeholder="搜索 URL / 标题" spellcheck="false" />
-      <select v-model="typeFilter" aria-label="按页面类型筛选"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
-      <select v-model="statusFilter" aria-label="按克隆状态筛选"><option value="">全部状态 ({{ statusCounts.all }})</option><option value="done">已克隆 ({{ statusCounts.done }})</option><option value="todo">未完成 ({{ statusCounts.todo }})</option><option value="failed">失败 ({{ statusCounts.failed }})</option></select>
-      <button @click="selectAllTodo" title="全选未克隆页">全选未克隆</button>
-      <button @click="selectAll" title="全选当前清单">全选</button>
+      <input class="wv-search" v-model="pageQuery" :disabled="loading" aria-label="搜索页面 URL 或标题" placeholder="搜索 URL / 标题" spellcheck="false" />
+      <select v-model="typeFilter" :disabled="loading" aria-label="按页面类型筛选"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
+      <select v-model="statusFilter" :disabled="loading" aria-label="按克隆状态筛选"><option value="">全部状态 ({{ statusCounts.all }})</option><option value="done">已克隆 ({{ statusCounts.done }})</option><option value="todo">未完成 ({{ statusCounts.todo }})</option><option value="failed">失败 ({{ statusCounts.failed }})</option></select>
+      <button :disabled="loading" @click="selectAllTodo" title="全选未克隆页">全选未克隆</button>
+      <button :disabled="loading" @click="selectAll" title="全选当前清单">全选</button>
       <button @click="clearAll" title="清空选择">清空</button>
-      <button class="wv-primary" :disabled="!selectedIds.size" @click="handOff('forge-checked')">克隆选中 ({{ selectedIds.size }})</button>
-      <button class="danger" :disabled="!selectedIds.size" @click="handOff('remove-checked')">移除选中 ({{ selectedIds.size }})</button>
+      <button class="wv-primary" :disabled="loading || !selectedIds.size" @click="handOff('forge-checked')">克隆选中 ({{ selectedIds.size }})</button>
+      <button class="danger" :disabled="loading || !selectedIds.size" @click="handOff('remove-checked')">移除选中 ({{ selectedIds.size }})</button>
       <button class="wv-close" @click="$emit('close')" title="返回星图（Esc）"><Icon name="close" decorative /> 返回星图</button>
     </div>
     <div class="wv-rows">
@@ -143,7 +160,7 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
         <span class="c-title sortable" role="button" tabindex="0" :aria-label="sortAria('title', '标题')" @click="toggleSort('title')" @keydown.enter.prevent="toggleSort('title')" @keydown.space.prevent="toggleSort('title')">标题 {{ sortKey === 'title' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
         <span class="c-type">类型</span>
         <span class="c-state sortable" role="button" tabindex="0" :aria-label="sortAria('state', '状态')" @click="toggleSort('state')" @keydown.enter.prevent="toggleSort('state')" @keydown.space.prevent="toggleSort('state')">状态 {{ sortKey === 'state' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-score sortable" role="button" tabindex="0" :aria-label="sortAria('score', '视觉还原度')" @click="toggleSort('score')" @keydown.enter.prevent="toggleSort('score')" @keydown.space.prevent="toggleSort('score')">视觉 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-score sortable" role="button" tabindex="0" title="单页像素为克隆时旧口径；箭头为另跑的多视口最差分数" :aria-label="sortAria('score', '单页像素')" @click="toggleSort('score')" @keydown.enter.prevent="toggleSort('score')" @keydown.space.prevent="toggleSort('score')">单页像素 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
         <span class="c-assets sortable" role="button" tabindex="0" :aria-label="sortAria('assets', '资产体积')" @click="toggleSort('assets')" @keydown.enter.prevent="toggleSort('assets')" @keydown.space.prevent="toggleSort('assets')">资产 {{ sortKey === 'assets' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
         <span class="c-gaps">缺口</span>
         <span class="c-ix">交互</span>
@@ -151,24 +168,25 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
         <span class="c-actions">操作</span>
       </div>
       <div class="wv-row" v-for="n in filteredNodes" :key="n.id">
-        <label class="c-check"><input type="checkbox" :checked="selectedIds.has(n.id)" :aria-label="'选择页面 ' + (n.path || n.url)" @change="toggleOne(n.id)" /></label>
-        <span class="wv-url c-path" role="button" tabindex="0" :aria-label="'打开详情：' + (n.path || n.url)" @click="$emit('detail', n)" @keydown.enter.prevent="$emit('detail', n)" @keydown.space.prevent="$emit('detail', n)" :title="n.url">{{ n.path }}</span>
+        <label class="c-check"><input type="checkbox" :checked="selectedIds.has(n.id)" :disabled="loading" :aria-label="'选择页面 ' + pagePathOf(n)" @change="toggleOne(n.id)" /></label>
+        <span class="wv-url c-path" role="button" tabindex="0" :aria-label="'打开详情：' + pagePathOf(n)" @click="$emit('detail', n)" @keydown.enter.prevent="$emit('detail', n)" @keydown.space.prevent="$emit('detail', n)" :title="n.url">{{ pagePathOf(n) }}</span>
         <span class="wv-title c-title" :title="n.title">{{ n.title }}</span>
         <span class="wv-type c-type" :style="{ color: typeColorThemed(n.type) }">{{ typeCn(n.type) }}</span>
         <span class="wv-state c-state" :class="n.forgeState">{{ stateLabel(n.forgeState) }}</span>
-        <span class="wv-score c-score" :title="verify[n.id]?.minViewport ? ('多视口最差：' + verify[n.id].minViewport.name + ' ' + (verify[n.id].minViewport.score * 100).toFixed(1) + '%') : '未运行多视口验证'">{{ scores[n.id]?.pixel != null ? (scores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}<i v-if="verify[n.id]?.minViewport && verify[n.id].minViewport.score < 0.95" :class="verify[n.id].minViewport.score < 0.85 ? 'min-bad' : 'min-mid'"> ↓{{ (verify[n.id].minViewport.score * 100).toFixed(0) }}</i></span>
+        <span class="wv-score c-score" :title="viewportTitle(verify[n.id])">{{ scores[n.id]?.pixel != null ? (scores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}<i v-if="verify[n.id]?.measured === false" class="min-mid partial">未完整测量</i><i v-else-if="verify[n.id]?.minViewport && verify[n.id].minViewport.score < 0.95" :class="verify[n.id].minViewport.score < 0.85 ? 'min-bad' : 'min-mid'"> ↓{{ (verify[n.id].minViewport.score * 100).toFixed(0) }}{{ verify[n.id].scoreVersion === 2 ? ' v2' : ' 旧' }}</i></span>
         <span class="wv-meta c-assets" :title="meta[n.id]?.assets ? (meta[n.id].assets.count + ' 个文件') : ''">{{ meta[n.id]?.assets ? fmtBytes(meta[n.id].assets.bytes) : '—' }}<i v-if="meta[n.id]?.assets"> · {{ meta[n.id].assets.count }}</i></span>
         <span class="wv-meta c-gaps" :class="{ bad: (meta[n.id]?.visualGaps?.visual ?? 0) > 0 }" :title="meta[n.id]?.visualGaps ? ('原站 ' + meta[n.id].visualGaps.origin + ' / 第三方 ' + meta[n.id].visualGaps.third) : ''">{{ meta[n.id]?.visualGaps == null ? '—' : meta[n.id].visualGaps.visual }}</span>
         <span class="wv-meta c-ix">{{ meta[n.id]?.interactions ? (meta[n.id].interactions.passed + '/' + meta[n.id].interactions.total) : '—' }}</span>
         <span class="wv-meta c-updated">{{ fmtDate(meta[n.id]?.updatedAt) }}</span>
         <span class="wv-actions c-actions">
           <a :href="n.url" target="_blank" rel="noopener" title="打开原站">原站</a>
-          <button @click="$emit('detail', n)">详情</button>
-          <button :disabled="n.forgeState === 'running'" @click="$emit('forge', n)">{{ n.forgeState === 'done' ? '重新克隆' : '克隆' }}</button>
-          <button v-if="n.forgeState === 'done' || n.forgeState === 'failed'" class="danger" @click="$emit('delete', n)" title="删除该页克隆产物并从星图移除">删除</button>
+          <button :disabled="loading" @click="$emit('detail', n)">详情</button>
+          <button :disabled="loading || n.forgeState === 'running'" @click="$emit('forge', n)">{{ n.forgeState === 'done' ? '重新克隆' : '克隆' }}</button>
+          <button v-if="n.forgeState === 'done' || n.forgeState === 'failed'" class="danger" :disabled="loading" @click="$emit('delete', n)" title="删除该页克隆产物并从星图移除">删除</button>
         </span>
       </div>
-      <div class="wv-empty" v-if="!filteredNodes.length">没有匹配的页面。</div>
+      <div class="wv-empty" v-if="loading" role="status" aria-live="polite">正在载入本站页面…</div>
+      <div class="wv-empty" v-else-if="!filteredNodes.length">没有匹配的页面。</div>
     </div>
   </section>
 </template>

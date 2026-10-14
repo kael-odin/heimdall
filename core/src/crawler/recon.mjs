@@ -14,8 +14,9 @@ import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { classifyPath, compileExtraRules } from './classify.mjs';
 import { WORKSPACE } from '../paths.mjs';
+import { assertSiteOrigin, siteIdForOrigin } from '../site-origin.mjs';
 import { sessionContext } from '../session/store.mjs';
-import { canonUrl, stableNodeId, asUrl } from '../url-canon.mjs';
+import { canonUrl, stableNodeId, asUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
 import { UA } from '../ua.mjs';
 
@@ -44,8 +45,14 @@ try {
   ORIGIN = new URL(LANDING).origin;
 } catch {}
 await browser0.close();
-const HOST_DIR = stripWww(hostOf(ORIGIN));
+const HOST_DIR = siteIdForOrigin(WORKSPACE, ORIGIN);
 log(`  target ${TARGET} -> origin ${ORIGIN} (dir ${HOST_DIR})`);
+try { assertSiteOrigin(join(WORKSPACE, HOST_DIR), ORIGIN, { claim: true, checkAtlas: true }); }
+catch (error) {
+  emit({ kind: 'recon-error', error: error.message });
+  console.error(error.message);
+  process.exit(1);
+}
 emit({ kind: 'calibrated', origin: ORIGIN, host: HOST_DIR });
 
 const OUT = join(WORKSPACE, HOST_DIR, 'recon');
@@ -53,7 +60,7 @@ const THUMBS = join(OUT, 'thumbs');
 mkdirSync(THUMBS, { recursive: true });
 
 // 站点配方：classify.extraRules 可追加/覆盖分类规则（站点特有的路径约定）
-const profile = loadProfile(HOST_DIR);
+const profile = loadProfile(stripWww(hostOf(ORIGIN)));
 const EXTRA_RULES = compileExtraRules(profile.classify?.extraRules);
 
 /** 页面结构特征（一次 evaluate，供分类兜底；失败不阻塞） */
@@ -94,14 +101,14 @@ try {
     if (sitemapUrls.length) break;
   }
 } catch {}
-const sitemapSame = [...new Set(sitemapUrls.map(canonUrl).filter(u => u && u.startsWith(ORIGIN)))].slice(0, 500);
+const sitemapSame = [...new Set(sitemapUrls.map(canonUrl).filter(u => isSameOriginUrl(u, ORIGIN)))].slice(0, 500);
 log(`  sitemap urls (same-origin): ${sitemapSame.length}`);
 emit({ kind: 'sitemap', count: sitemapSame.length });
 
 // ---------- 2. BFS ----------
 log('[2/4] BFS crawl');
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 640, height: 400 }, userAgent: UA, ...sessionContext(HOST_DIR) });
+const ctx = await browser.newContext({ viewport: { width: 640, height: 400 }, userAgent: UA, ...sessionContext(stripWww(hostOf(ORIGIN))) });
 const nodes = new Map();   // url -> node
 const failures = [];       // 失败页清单（诚实记录，不静默丢弃）
 const edges = [];          // {from,to} (url)
@@ -153,7 +160,7 @@ async function visit({ url, depth }) {
     const links = await page.evaluate((o) =>
       [...document.querySelectorAll('a[href]')]
         .map(a => { try { return new URL(a.getAttribute('href'), location.href).href.split('#')[0]; } catch { return null; } })
-        .filter(u => u && u.startsWith(o) && !/\.(pdf|zip|png|jpe?g|svg|mp4|xml|json)$/i.test(u)), ORIGIN);
+        .filter(u => u && new URL(u).origin === o && !/\.(pdf|zip|png|jpe?g|svg|mp4|xml|json)$/i.test(u)), ORIGIN);
     const canon = [...new Set(links.map(canonUrl).filter(Boolean))];
     for (const to of canon) {
       edges.push({ from: url, to });

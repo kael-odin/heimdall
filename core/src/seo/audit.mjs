@@ -31,44 +31,47 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, isAbsolute, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
+import { assertSiteOrigin, siteIdForOrigin } from '../site-origin.mjs';
 import { fetchRobotsAndSitemaps, discoverTargets, collectSite } from './collect.mjs';
 import { evaluatePage, evaluateSite, scoreIssues, countBySeverity, CATEGORIES, SEVERITY_PENALTY } from './rules.mjs';
 import { appendHistory } from './history.mjs';
 import { fetchFieldData, compareLabToField } from './field-data.mjs';
 import { renderHtml, renderCsv } from './report.mjs';
 import { buildBaseline, snapshotOf, diffBaseline, renderDiffText, renderDiffMarkdown, BASELINE_VERSION } from './baseline.mjs';
+import { readBaselineFile } from './baseline-file.mjs';
+import { isSameOriginUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
-import { makeArgs } from '../args.mjs';
+import { parseAuditArgs } from './cli-args.mjs';
 
 const log = (...a) => console.error('[seo]', ...a);
 
 // ---------- 参数 ----------
 const argv = process.argv.slice(2);
-const { has, num } = makeArgs(argv);
-const target = argv.find(a => !a.startsWith('--')) ?? '';
-const MAX = Math.max(1, Math.min(num('max', 25), 200));
-const THRESHOLD = num('threshold', 0);
-const TOLERANCE = num('tolerance', 0);
-const getStr = (name) => {
-  const i = argv.indexOf('--' + name);
-  if (i > -1 && argv[i + 1] && !argv[i + 1].startsWith('--')) return argv[i + 1];
-  const eq = argv.find(a => a.startsWith('--' + name + '='));
-  return eq ? eq.split('=').slice(1).join('=') : null;
-};
-const UPDATE_BASELINE = has('update-baseline');
-const FAIL_ON_REGRESSION = has('fail-on-regression');
-const REQUIRE_BASELINE = has('require-baseline');
-const BASELINE_ARG = getStr('baseline');
+let parsedArgs;
+try { parsedArgs = parseAuditArgs(argv); }
+catch (error) { console.error(String(error?.message ?? error)); process.exit(2); }
+const {
+  target, max: MAX, threshold: THRESHOLD, tolerance: TOLERANCE,
+  baseline: BASELINE_ARG, updateBaseline: UPDATE_BASELINE,
+  failOnRegression: FAIL_ON_REGRESSION, requireBaseline: REQUIRE_BASELINE,
+} = parsedArgs ?? {};
 // 基线必须进 git 才有意义（否则 CI 每次都是首次运行，门禁形同虚设）。
 // 默认放在 workspace 下，由 --baseline 指定仓库内路径覆盖。
-if (!target) { console.error('usage: node src/seo/audit.mjs <url|host> [--max 25] [--threshold 70]\n       [--baseline <file>] [--update-baseline] [--fail-on-regression] [--tolerance N] [--require-baseline]'); process.exit(2); }
 
 const targetUrl = /^https?:\/\//i.test(target) ? target : `https://${target}`;
-let origin; try { origin = new URL(targetUrl).origin; } catch { console.error('invalid target:', target); process.exit(2); }
+let origin;
+try {
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(target) && !/^https?:\/\//i.test(target)) throw new Error('unsupported protocol');
+  const parsed = new URL(targetUrl);
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error('unsupported target URL');
+  origin = parsed.origin;
+} catch { console.error('invalid HTTP(S) target:', target); process.exit(2); }
 const host = new URL(origin).hostname.replace(/^www\./, '');
+const siteId = siteIdForOrigin(WORKSPACE, origin);
 
 try {
-  const base = join(WORKSPACE, host);
+  const base = join(WORKSPACE, siteId);
+  assertSiteOrigin(base, origin, { claim: true });
   const outDir = join(base, 'seo');
   mkdirSync(outDir, { recursive: true });
 
@@ -76,11 +79,16 @@ try {
   // 同时「文件没了 → 当成首次运行 → 绿灯」是门禁最隐蔽的失效方式 ——
   // 它看起来和正常通过一模一样，没人会发现。所以要求比对时必须硬失败。
   const baselinePath = resolveUserPath(BASELINE_ARG ?? join(outDir, 'baseline.json'));
-  if ((REQUIRE_BASELINE || FAIL_ON_REGRESSION) && !existsSync(baselinePath)) {
-    log(`FATAL 找不到基线：${baselinePath}`);
-    log('      先跑一次 `audit <host> --baseline <file> --update-baseline`，把生成的基线提交进仓库。');
-    log('      （要求 --fail-on-regression 就必须有基线可比，否则「通过」不代表任何事。）');
-    emit({ kind: 'audit-error', error: `baseline not found: ${baselinePath}` });
+  let baseline;
+  try {
+    baseline = readBaselineFile(baselinePath, {
+      required: REQUIRE_BASELINE || FAIL_ON_REGRESSION,
+      expectedOrigin: origin,
+      expectedHost: host,
+    });
+  } catch (error) {
+    log(`FATAL ${error.message}`);
+    emit({ kind: 'audit-error', error: error.message });
     process.exit(1);
   }
 
@@ -92,7 +100,7 @@ try {
     try {
       const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
       targets = (atlas.nodes ?? [])
-        .filter(n => !['auth', 'legal'].includes(n.type))
+        .filter(n => isSameOriginUrl(n.url, origin) && !['auth', 'legal'].includes(n.type))
         .slice(0, MAX)
         .map(n => ({ url: n.url, depth: n.depth ?? 0 }));
       log(`reuse atlas: ${targets.length} pages`);
@@ -187,6 +195,12 @@ try {
     return { ...p, issues, score: scoreIssues(issues), counts: countBySeverity(issues) };
   });
 
+  // 浏览器未拿到页面或被 HTTP 错误页替代时，不能将错误画面更新为基线。
+  // 普通审计仍保留报告，方便定位原因；门禁和基线更新必须返回失败。
+  const failedPages = pagesScored.filter(p =>
+    !Number.isInteger(p.status) || p.status < 200 || p.status >= 400
+    || !isSameOriginUrl(p.finalUrl, origin));
+
   const avgPage = pagesScored.length ? pagesScored.reduce((a, p) => a + p.score, 0) / pagesScored.length : 100;
   const sitePenalty = allSiteIssues.reduce((a, i) => a + (SEVERITY_PENALTY[i.severity] ?? 0), 0) / Math.max(pages.length, 1);
   const siteScore = Math.max(0, Math.round((avgPage - sitePenalty) * 10) / 10);
@@ -200,7 +214,7 @@ try {
   }
 
   // 分数走势：追加一条（原子写）。历史是增强项，失败不影响本次审计。
-  appendHistory(host, {
+  appendHistory(siteId, {
     kind: 'audit', score: siteScore,
     grade: siteScore >= 90 ? 'A' : siteScore >= 75 ? 'B' : 'C',
     pages: pages.length, issues: allIssues.length,
@@ -245,16 +259,6 @@ try {
   // ---------- 回归基线 ----------
   const current = snapshotOf(report);
 
-  let baseline = null;
-  let baselineErr = null;
-  if (existsSync(baselinePath)) {
-    try { baseline = JSON.parse(readFileSync(baselinePath, 'utf8')); }
-    catch (e) { baselineErr = `基线文件无法解析：${e.message}`; }
-  }
-  // 版本不符时 diffBaseline 会抛错。**不静默降级成「首次运行」** ——
-  // 那样门禁会假装通过，等于把回归放行。宁可报错让人重新生成基线。
-  if (baselineErr) { log(`WARN ${baselineErr}`); baseline = null; }
-
   let diff = null;
   try {
     diff = diffBaseline(baseline, current, { tolerance: TOLERANCE });
@@ -276,10 +280,16 @@ try {
     });
   }
 
-  if (UPDATE_BASELINE || diff.firstRun) {
+  if ((UPDATE_BASELINE || diff.firstRun) && failedPages.length === 0) {
     writeFileSync(baselinePath, JSON.stringify(current, null, 2) + '\n');
     log(`${diff.firstRun ? '首次运行，已建立' : '已更新'}基线 -> ${baselinePath}`);
     emit({ kind: 'audit-baseline', path: baselinePath, created: diff.firstRun, version: BASELINE_VERSION });
+  }
+
+  if (failedPages.length && (FAIL_ON_REGRESSION || REQUIRE_BASELINE || UPDATE_BASELINE || diff.firstRun)) {
+    const sample = failedPages.slice(0, 3).map(p => `${p.status}: ${p.url}${isSameOriginUrl(p.finalUrl, origin) ? '' : ` -> ${p.finalUrl}`}`).join('; ');
+    log(`FAIL: ${failedPages.length}/${pagesScored.length} 页未从目标来源成功采集，拒绝通过门禁或更新基线。${sample}`);
+    process.exit(1);
   }
 
   if (THRESHOLD > 0 && siteScore < THRESHOLD) {

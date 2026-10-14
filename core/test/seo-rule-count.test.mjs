@@ -53,7 +53,7 @@ const MENTION_FILES = [
 test('规则数：CLI / MCP / 控制台里写的数字也必须与源码一致', () => {
   const stale = [];
   for (const f of MENTION_FILES) {
-    if (!existsSync(f)) continue;   // console 未构建/未检出时跳过，不误报
+    assert.ok(existsSync(f), `规则数守卫的用户可见文件缺失：${f}`);
     const text = readFileSync(f, 'utf8');
     for (const m of text.matchAll(/(\d+)\s*条规则/g)) {
       if (Number(m[1]) !== RULE_COUNT) stale.push(`${f.split(/[\\/]/).slice(-2).join('/')}: ${m[0]}`);

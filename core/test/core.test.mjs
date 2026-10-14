@@ -76,6 +76,11 @@ test('harvest: dataScore of identical documents is 1', () => {
   assert.equal(s.dims.meta, '100%');
 });
 
+test('harvest: absent source fields are unmeasured; missing clone fields score zero', () => {
+  assert.equal(dataScore('<html><body><div></div></body></html>', '<html><body><div></div></body></html>'), null);
+  assert.equal(dataScore('<html><head><title>Source</title></head><body></body></html>', '<html><body></body></html>').data, 0);
+});
+
 test('domdiff: identical DOM scores 1, different structure scores lower', () => {
   const a = '<html><body><div class="a"><span>x</span></div></body></html>';
   const b = '<html><body><section class="b"><p>y</p><p>z</p></section></body></html>';

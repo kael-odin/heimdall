@@ -30,7 +30,37 @@ test('verify: changed pixels lower the score and produce a diff image', () => {
 test('verify: different heights are reported as delta', () => {
   const r = comparePngBuffers(make(10, 10), make(10, 20));
   assert.equal(r.heightDelta, 10);
-  assert.equal(r.height, 10);
+  assert.equal(r.height, 20);
+  assert.equal(r.coverageRatio, 0.5);
+  assert.equal(r.missingPixels, 100);
+  assert.equal(r.score, 0.5);
+});
+
+test('verify: a truncated long page cannot receive A or 100%', () => {
+  const r = comparePngBuffers(make(10, 100), make(10, 10));
+  assert.equal(r.score, 0.1);
+  assert.equal(r.missingPixels, 900);
+  assert.equal(r.coverageRatio, 0.1);
+  assert.equal(gradeOf(r.score), 'D');
+  const diff = PNG.sync.read(r.diffPng);
+  assert.equal(diff.height, 100);
+  assert.deepEqual([...diff.data.subarray((20 * 10) * 4, (20 * 10) * 4 + 4)], [255, 0, 255, 255]);
+});
+
+test('verify: missing width counts as difference even if the common region is identical', () => {
+  const r = comparePngBuffers(make(20, 10), make(10, 10));
+  assert.equal(r.score, 0.5);
+  assert.equal(r.missingPixels, 100);
+  assert.equal(r.width, 20);
+});
+
+test('verify: cross-shaped sizes use occupied union area, not empty bounding corners', () => {
+  const r = comparePngBuffers(make(100, 10), make(10, 100));
+  assert.equal(r.missingPixels, 1800);
+  assert.equal(r.coverageRatio, 0.0526);
+  assert.equal(r.score, 0.0526);
+  const diff = PNG.sync.read(r.diffPng);
+  assert.equal(diff.data[(50 * 100 + 50) * 4 + 3], 0);
 });
 
 test('verify: worst viewport surfaces mobile regressions the average hides', () => {

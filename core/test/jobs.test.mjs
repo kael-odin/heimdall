@@ -46,6 +46,19 @@ for (const forceJson of [false, true]) {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  test(`jobs(${label}): conflicting task identity never overwrites history`, () => {
+    const dir = tmp();
+    const path = join(dir, 'jobs' + (forceJson ? '.json' : '.db'));
+    const store = openJobStore(path, { forceJson });
+    try {
+      store.upsert({ id: 'f1', kind: 'forge', url: 'https://x.test/old', status: 'done', createdAt: 1 });
+      store.appendEvent('f1', { kind: 'exit', status: 'done' });
+      assert.throws(() => store.upsert({ id: 'f1', kind: 'forge', url: 'https://x.test/new', status: 'running', createdAt: 2 }), /collision/);
+      assert.equal(store.get('f1').url, 'https://x.test/old');
+      assert.equal(store.events('f1').length, 1);
+    } finally { store.close(); rmSync(dir, { recursive: true, force: true }); }
+  });
+
   /**
    * 保留策略。两张表原先只增不删，界面上却只看得到最近 50 条 ——
    * "看不到的那部分"就一直在磁盘上长。这里钉住"有界"这件事本身，

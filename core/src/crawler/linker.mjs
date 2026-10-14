@@ -22,6 +22,7 @@ import { WORKSPACE } from '../paths.mjs';
 import { readJson, writeFileAtomic } from '../fsutil.mjs';
 import { replaceRefTable } from '../dom-refs.mjs';
 import { UA } from '../ua.mjs';
+import { canonUrl } from '../url-canon.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/linker.mjs <host>', '站点 host');
 const BASE = join(WORKSPACE, host);
@@ -31,17 +32,17 @@ const FONT_EXT_SET = new Set(['woff2', 'woff', 'ttf', 'otf', 'eot']);
 const pages = existsSync(PAGES) ? readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'clone', 'index.html'))) : [];
 if (!pages.length) { console.error('no cloned pages under', PAGES); process.exit(1); }
 
-// ---------- 全站路由表：URL path → 页面目录名（manifest.target 是精确来源） ----------
-const pathMap = new Map();       // path → name
+// ---------- 全站路由表：完整 URL（含 query）→ 页面目录名 ----------
+const pathMap = new Map();
 const origins = new Map();       // name → origin
+const targets = new Map();
 for (const name of pages) {
   const m = readJson(join(PAGES, name, 'manifest.json'));
   if (!m?.target) continue;
   const u = new URL(m.target);
   origins.set(name, u.origin);
-  const path = decodeURIComponent(u.pathname).replace(/\/+$/, '') || '/';
-  pathMap.set(path, name);
-  if (path !== '/') pathMap.set(path + '/', name);
+  targets.set(name, m.target);
+  pathMap.set(canonUrl(m.target), name);
 }
 
 // ---------- 资产下载（跨页共享缓存） ----------
@@ -115,13 +116,19 @@ async function fetchAsset(absUrl, dir) {
 const report = [];
 for (const name of pages) {
   const dir = join(PAGES, name, 'clone');
-  const file = join(dir, 'index.html');
   currentHar = loadHarIndex(join(PAGES, name));
   try { currentRefIndex = readJson(join(PAGES, name, 'clone', 'ref-index.json')) ?? {}; } catch { currentRefIndex = {}; }
+  const origin = origins.get(name) ?? `https://${host}`;
+  const htmlFiles = readdirSync(dir).filter(file => /^index(?:-\d+)?\.html$/.test(file));
+  const stats = { name, htmlFiles, linksRewired: 0, linksToLive: 0, assetsLocalized: 0, assetFailed: 0, assetFailures: [], missingFixed: 0, missingLocal: [], harRecovered: 0 };
+  for (const htmlName of htmlFiles) await processCloneHtml(htmlName);
+  report.push(stats);
+  console.log(`  ${name}: rewired ${stats.linksRewired}, live-fallback ${stats.linksToLive}, assets +${stats.assetsLocalized} (fail ${stats.assetFailed}, har ${stats.harRecovered}), missing ${stats.missingLocal.length}`);
+
+  async function processCloneHtml(htmlName) {
+  const file = join(dir, htmlName);
   const html0 = readFileSync(file, 'utf8');
   let html = html0;
-  const origin = origins.get(name) ?? `https://${host}`;
-  const stats = { name, linksRewired: 0, linksToLive: 0, assetsLocalized: 0, assetFailed: 0, assetFailures: [], missingFixed: 0, missingLocal: [], harRecovered: 0 };
   /**
    * 记一笔"这个资源没本地化成功"。**连 URL 一起记** —— 只报一个数字的话，
    * `fail 187` 这种读数没法行动（哪个资源？是不是同一类？原站早就 404 了还是我们抓不到？）。
@@ -136,37 +143,52 @@ for (const name of pages) {
   html = html.replace(/<a\b([^>]*)>/gi, (m0, attrs) => {
     const dup = (attrs.match(/target="_blank"/gi) ?? []).length > 1;
     const isMirror = /\.\.\/[^"]*clone\/index\.html|href="[^"]*\/clone\/index\.html/.test(attrs) && !/https?:\/\//i.test(attrs);
-    if (dup) return '<a' + attrs.replace(/\s*target="_blank"/gi, '').replace(/\s*rel="noopener"/gi, '') + ' target="_blank" rel="noopener">';
     if (isMirror && /target="_blank"/i.test(attrs)) return '<a' + attrs.replace(/\s*target="_blank"/gi, '').replace(/\s*rel="noopener"/gi, '') + '>';
+    if (dup) return '<a' + attrs.replace(/\s*target="_blank"/gi, '').replace(/\s*rel="noopener"/gi, '') + ' target="_blank" rel="noopener">';
     return m0;
   });
 
   // 1b) <a href> 跨页接线
-  html = html.replace(/(<a\b[^>]*?\bhref=")([^"]*)(")/gi, (m0, head, href, tail) => {
-    if (!href || /^(#|mailto:|javascript:|tel:|data:)/i.test(href)) return m0;
+  html = html.replace(/<a\b[^>]*>/gi, tag => {
+    const hrefAttr = /\bhref="([^"]*)"/i.exec(tag);
+    if (!hrefAttr) return tag;
+    const href = hrefAttr[1];
+    if (!href || /^(#|mailto:|javascript:|tel:|data:)/i.test(href)) return tag;
+    const withHref = value => tag.replace(hrefAttr[0], `href="${value}"`);
     // 幂等 + 自愈：历史轮次的绝对化形态必须先于 endsWith 短路检查
     const healed = /^https?:\/\/[^/]+\/([a-z0-9-]+)\/clone\/index\.html$/i.exec(href);
-    if (healed) {
+    if (healed && new URL(href).origin === origin && pages.includes(healed[1])) {
       stats.linksRewired++;
       // 重写 href 并清掉历史轮次遗留的 target="_blank"（live-fallback 残留会让镜像导航开新标签）
-      return m0
+      return withHref(`../../${healed[1]}/clone/index.html`)
         .replace(/\s*target="_blank"/gi, '')
-        .replace(/\s*rel="noopener"/gi, '')
-        .replace(/\bhref="[^"]*"/i, `href="../../${healed[1]}/clone/index.html"`);
+        .replace(/\s*rel="noopener"/gi, '');
     }
-    if (href.startsWith('../') || href.endsWith('/clone/index.html')) return m0;
+    if ((href.startsWith('../../') && /\/clone\/index\.html(?:[?#]|$)/.test(href)) || /^index\.html(?:[?#]|$)/.test(href)) return tag;
     let abs;
     try {
-      abs = /^https?:\/\//i.test(href) ? new URL(href) : new URL(href.replace(/&amp;/g, '&'), origin + '/');
-    } catch { return m0; }
-    if (!abs.href.startsWith(origin)) return m0;                     // 真外链保持原样
-    const path = decodeURIComponent(abs.pathname).replace(/\/+$/, '') || '/';
-    const hit = pathMap.get(path);
-    if (hit === name) { stats.linksRewired++; return head + 'index.html' + tail; }
-    if (hit) { stats.linksRewired++; return head + `../../${hit}/clone/index.html` + tail; }
+      abs = new URL(href.replace(/&amp;/g, '&'), targets.get(name) ?? origin + '/');
+    } catch { return tag; }
+    if (abs.origin !== origin) return tag;
+    const hit = pathMap.get(canonUrl(abs.href));
+    if (hit) {
+      stats.linksRewired++;
+      return withHref(hit === name ? `index.html${abs.hash}` : `../../${hit}/clone/index.html${abs.hash}`)
+        .replace(/\s*target="_blank"/gi, '')
+        .replace(/\s*rel="noopener"/gi, '');
+    }
     // 未克隆的同源页 → 指回原站（新标签），点击永远有合理去处
     stats.linksToLive++;
-    return head + abs.href + `" target="_blank" rel="noopener` + tail;
+    let liveTag = withHref(abs.href);
+    if (/\btarget="[^"]*"/i.test(liveTag)) liveTag = liveTag.replace(/\btarget="[^"]*"/i, 'target="_blank"');
+    else liveTag = liveTag.replace(/>$/, ' target="_blank">');
+    const relAttr = /\brel="([^"]*)"/i.exec(liveTag);
+    if (relAttr) {
+      const tokens = relAttr[1].split(/\s+/).filter(Boolean);
+      if (!tokens.some(token => token.toLowerCase() === 'noopener')) tokens.push('noopener');
+      liveTag = liveTag.replace(relAttr[0], `rel="${tokens.join(' ')}"`);
+    } else liveTag = liveTag.replace(/>$/, ' rel="noopener">');
+    return liveTag;
   });
 
   // 2) img/source 绝对资产本地化
@@ -347,8 +369,7 @@ for (const name of pages) {
   }
 
   if (html !== html0) writeFileAtomic(file, html);
-  report.push(stats);
-  console.log(`  ${name}: rewired ${stats.linksRewired}, live-fallback ${stats.linksToLive}, assets +${stats.assetsLocalized} (fail ${stats.assetFailed}, har ${stats.harRecovered}), missing ${stats.missingLocal.length}`);
+  }
 }
 
 // ---------- 站点配方：汇总各页实跑观察到的参数 → workspace/<host>/site.json ----------

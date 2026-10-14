@@ -115,4 +115,21 @@ test('storage: 空站点清单不报错', () => {
   assert.ok(s.totals.uniqueBytes >= 0);
 });
 
+test('storage: 最近删除容量在目录内去重，总量仍跨目录去重', () => {
+  const trash = join(dataDir, 'trash', 'entry');
+  const metadata = put(join(trash, 'record.json'), '{"state":"ready"}');
+  hardlink(A2, join(trash, 'site', 'logo.png'));
+  hardlink(A2, join(trash, 'site', 'logo-copy.png'));
+  try {
+    const s = computeStorage();
+    assert.equal(s.trash.files, 3);
+    assert.equal(s.trash.logicalBytes, metadata + 400);
+    assert.equal(s.trash.uniqueBytes, metadata + 200,
+      '容量告警要看到隔离区内的共享硬链接，且在隔离区内部只计算一次');
+    assert.equal(s.trash.uniqueContributionBytes, metadata,
+      '共享 inode 已由 workspace/CAS 计入总量');
+    assert.equal(s.totals.uniqueBytes, 700 + metadata);
+  } finally { rmSync(trash, { recursive: true, force: true }); }
+});
+
 test.after(() => { rmSync(dataDir, { recursive: true, force: true }); });

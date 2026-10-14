@@ -10,32 +10,89 @@
  *
  * 用法: node src/deliver.mjs <host> [hostDir]
  */
-import { writeFileSync, existsSync, readdirSync, mkdirSync, cpSync, readFileSync } from 'node:fs';
+import { writeFileSync, existsSync, readdirSync, mkdirSync, mkdtempSync, cpSync, readFileSync, lstatSync } from 'node:fs';
 import { requireArg } from './args.mjs';
 import { WORKSPACE, DELIVERABLE, localDateStamp } from './paths.mjs';
 import { join, basename } from 'node:path';
 import { readJson } from './fsutil.mjs';
 import { buildEditManifest, renderEditManifestMd } from './deliver/edit-manifest.mjs';
 import { collectCssMotion, renderMotionCss } from './crawler/motion-css.mjs';
+import { availableCloneVariantWidths } from './clone-doc.mjs';
+import { isStaticCloneChooserHtml, sanitizeStaticHtml, staticCloneChooserHtml } from './static-html-safety.mjs';
+import { assertExportTarget, promoteCandidate } from './live/export-path.mjs';
 
 const host = requireArg(process.argv[2], 'node src/deliver.mjs <host> [hostDir]', '站点 host');
 const hostDir = process.argv[3] ?? host;
+const safeHost = value => /^[a-z0-9.-]+$/i.test(value) && value !== '.' && value !== '..';
+if (!safeHost(host) || !safeHost(hostDir)) {
+  console.error('host and hostDir must be single safe directory names');
+  process.exit(2);
+}
 const BASE = join(WORKSPACE, hostDir);
 const PAGES = join(BASE, 'pages');
-const OUT = join(DELIVERABLE, `${hostDir}-${localDateStamp()}`);
+const FINAL_OUT = join(DELIVERABLE, `${hostDir}-${localDateStamp()}`);
 
 if (!existsSync(PAGES)) { console.error('no pages:', PAGES); process.exit(1); }
 
 const pages = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'clone', 'index.html')));
+if (!pages.length) { console.error('no clone pages:', PAGES); process.exit(1); }
+mkdirSync(DELIVERABLE, { recursive: true });
+assertExportTarget(DELIVERABLE, FINAL_OUT);
+const OUT = mkdtempSync(join(DELIVERABLE, `.candidate-${hostDir}-`));
+console.log('[deliver] candidate ->', OUT);
+
+function copySafe(src, dst) {
+  cpSync(src, dst, { recursive: true, filter: path => {
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink() || (!stat.isDirectory() && !stat.isFile())) {
+      throw new Error('refusing to package symlink or special file: ' + path);
+    }
+    return true;
+  } });
+}
+
+function sanitizeCloneTree(cloneDir) {
+  const visit = dir => {
+    for (const name of readdirSync(dir)) {
+      const file = join(dir, name);
+      const stat = lstatSync(file);
+      if (stat.isDirectory()) { visit(file); continue; }
+      if (!stat.isFile()) throw new Error('unexpected clone entry: ' + file);
+      if (!/\.html?$/i.test(name)) continue;
+      const original = readFileSync(file, 'utf8');
+      if (file === join(cloneDir, 'index.html') && isStaticCloneChooserHtml(original)) {
+        const widths = availableCloneVariantWidths(cloneDir);
+        if (!widths.length) throw new Error('viewport chooser has no available variant: ' + cloneDir);
+        writeFileSync(file, staticCloneChooserHtml(widths));
+      } else writeFileSync(file, sanitizeStaticHtml(original));
+    }
+  };
+  visit(cloneDir);
+}
+
+function validateCandidate() {
+  for (const name of ['README.md', 'fidelity.csv', 'edit-manifest.json']) {
+    if (!lstatSync(join(OUT, name)).isFile()) throw new Error('candidate missing ' + name);
+  }
+  for (const name of pages) {
+    const cloneDir = join(OUT, 'site', 'pages', name, 'clone');
+    const entry = join(cloneDir, 'index.html');
+    if (!lstatSync(entry).isFile()) throw new Error('candidate missing clone entry: ' + name);
+    const html = readFileSync(entry, 'utf8');
+    if (isStaticCloneChooserHtml(html) && !availableCloneVariantWidths(cloneDir).length) {
+      throw new Error('candidate chooser has no available variant: ' + name);
+    }
+  }
+}
 
 // ---------- 1. site/：镜像站 + 档案 + 对比工具（整目录拷贝，剔除 raw 材料放 raw/） ----------
 const siteDir = join(OUT, 'site');
 mkdirSync(siteDir, { recursive: true });
 for (const f of ['index.html', 'compare.html', 'intel', 'design']) {
   const src = join(BASE, f);
-  if (existsSync(src)) cpSync(src, join(siteDir, f), { recursive: true });
+  if (existsSync(src)) copySafe(src, join(siteDir, f));
 }
-if (existsSync(join(BASE, 'recon'))) cpSync(join(BASE, 'recon'), join(siteDir, 'recon'), { recursive: true });
+if (existsSync(join(BASE, 'recon'))) copySafe(join(BASE, 'recon'), join(siteDir, 'recon'));
 for (const name of pages) {
   const src = join(PAGES, name);
   const dst = join(siteDir, 'pages', name);
@@ -43,13 +100,14 @@ for (const name of pages) {
   // 镜像页 + 截图 + 评分 + 情报 进 site/；原材料进 raw/
   for (const item of ['clone', 'shot-src.png', 'shot-clone.png', 'diff.png', 'score.json', 'intel']) {
     const s = join(src, item);
-    if (existsSync(s)) cpSync(s, join(dst, item), { recursive: true });
+    if (existsSync(s)) copySafe(s, join(dst, item));
   }
+  sanitizeCloneTree(join(dst, 'clone'));
   const rawDst = join(OUT, 'raw', name);
   mkdirSync(rawDst, { recursive: true });
   for (const item of ['dom.html', 'cssom.css', 'cssom-refs.json', 'frame-1.png', 'motion.json']) {
     const s = join(src, item);
-    if (existsSync(s)) cpSync(s, join(rawDst, item));
+    if (existsSync(s)) copySafe(s, join(rawDst, item));
   }
 }
 
@@ -64,7 +122,7 @@ for (const name of pages) {
     name, s.total, s.grade,
     (s.pixel * 100).toFixed(1) + '%',
     (s.dom?.dom * 100).toFixed(1) + '%',
-    s.data ? (s.data.data * 100).toFixed(1) + '%' : '-',
+    s.scoreFormulaVersion !== 2 ? '未重算' : Number.isFinite(s.data?.data) ? (s.data.data * 100).toFixed(1) + '%' : '未测',
     s.breakdown ? Math.round(s.breakdown.refinable * 100) + '%' : '-',
     readJson(join(PAGES, name, 'intel', 'semantic.json'))?.pageType ?? '-',
   ]);
@@ -179,61 +237,68 @@ ${motionRows.join('\n') || '| — | — | — | — | — | 未检出 CSS 动效
 const weak = [];
 for (const name of pages) {
   const s = readJson(join(PAGES, name, 'score.json'));
-  if (s && s.total < 95) weak.push({ name, total: s.total, grade: s.grade, anim: s.breakdown ? Math.round(s.breakdown.dynamicShare * 100) : 0 });
+  if (s && s.total < 95) weak.push({
+    name, total: s.total, grade: s.grade,
+    anim: Number.isFinite(s.breakdown?.dynamicShare) ? Math.round(s.breakdown.dynamicShare * 100) + '%' : '-',
+  });
 }
 weak.sort((a, b) => a.total - b.total);
 const weakList = weak.length
-  ? weak.slice(0, 12).map(w => `| \`${w.name}\` | ${w.total} | ${w.grade} | ${w.anim}% |`).join('\n')
-  : '| — | — | — | 全部 ≥95，无需特别关注 |';
+  ? weak.slice(0, 12).map(w => `| \`${w.name}\` | ${w.total} | ${w.grade} | ${w.anim} |`).join('\n')
+  : graded ? '| — | — | — | 旧评分均 ≥95，仍需多视口与人工复核 |'
+    : '| — | — | — | 本包没有旧评分，需逐页复核 |';
+const hasSiteIndex = existsSync(join(siteDir, 'index.html'));
+const siteEntry = hasSiteIndex ? 'index.html' : 'pages/' + pages[0] + '/clone/index.html';
+const siteStartNote = hasSiteIndex
+  ? '站点汇总页列出已打包页面。逐页打开镜像和差异证据，核对覆盖情况。'
+  : '当前包没有站点汇总页；从该镜像页开始，其他页面在 `site/pages/<page>/clone/`。';
 
 const readMe = `# ${host} · 站点复刻交付包
 
-> Heimdall 产出 · ${localDateStamp()} · ${pages.length} 页 · 平均还原度 ${avg}%
+> Heimdall 产出 · ${localDateStamp()} · ${pages.length} 页 · 旧口径平均分 ${avg}%
 
 ## 一句话
 
-原站公开页面的**高保真静态复刻**：HTML / CSS / 图片 / 字体都是原站的真实文件，
-不是照着截图重画的。附还原度评分、竞品情报，以及原站↔镜像的同步对比工具。
+仅供**自有或获授权站点**的页面接手验收：汇集已捕获的 HTML、CSS、图片和字体，
+并附旧口径辅助评分、结构化资料和源站↔快照的同步对比工具。
 
-**这不是可以直接上线的代码**，是一份**可对齐、可核对、可拆解**的改造素材。
-下面三节按"你想拿它做什么"分开写。
+**这不是可以直接上线的代码**，是一份待核对的改造素材。
+部分文件取决于本次捕获结果，以包内实际内容为准。
 
 ## 30 秒上手
 
 \`\`\`bash
-cd site && npx serve .        # 起静态服务（双击 index.html 也能看，但起服务更完整）
+cd site && npx serve .
 \`\`\`
 
-打开后看到的是**克隆档案卡片墙**：每页一张卡，带还原度分与页面类型。
-点卡片进镜像页，点卡片上的「⇔ 同步对比」进左右对照工具。
+启动后打开 \`/${siteEntry}\`。${siteStartNote}
 
-## 要换成自己的站？从 \`edit-manifest.md\` 开始
+## 迁移到自己的代码库：从 \`edit-manifest.md\` 开始
 
 包里那份 [edit-manifest.md](edit-manifest.md) 就是为这件事准备的 —— 它把
 "换域名 / 换图片 / 换文案"各要动哪些文件列成了三张表（同名 \`.json\` 是机器可读版）：
 
-- **换域名**：原站域名出现在 ${manifest.counts.domainFiles} 个文件里（${manifest.counts.domainTotal} 处），
-  多数是 canonical / og:url / 绝对资源链接。用 Heimdall 控制台的「改站起点 → 预览/替换」
-  可以一并换掉（预览不改文件，替换前逐文件备份）
+- **换域名**：清单在 ${manifest.counts.domainFiles} 个文件里检出 ${manifest.counts.domainTotal} 处。
+  另请检查 canonical、og:url、绝对资源链接及运行时生成的地址；控制台提供预览/替换。
 - **换图片 / 图标 / 字体**：${manifest.counts.assets} 个资源，按"被多少页用到"排序
-  ${manifest.counts.remoteVisual > 0 ? `；其中 **${manifest.counts.remoteVisual} 个视觉资产仍是外链**，那几个必须处理` : '（没有仍是外链的视觉资产）'}
+  ${manifest.counts.remoteVisual > 0 ? `；其中 **${manifest.counts.remoteVisual} 个视觉资产仍是外链**，需逐项核对` : '（已扫描范围未检出外链视觉资产）'}
   ${manifest.gapCoverage?.truncated ? `\n  ⚠ 这张表**只覆盖 ${manifest.gapCoverage.scanned} / ${manifest.gapCoverage.cloned} 页**（资产扫描有 --max 上限，默认 60 页）。\n  剩下的页里可能还有外链视觉资产没被列出来 —— 要完整名单就重跑：\`node core/src/audit/assets.mjs ${manifest.host} --max ${manifest.gapCoverage.cloned}\`` : ''}
 - **换文案**：${manifest.counts.copyPages} 页的标题 / H1 / CTA / 价格
 
-**换完之后**，这些产物是"原站的快照"这一点不会改变 —— 要商用请自行确认授权。
+这些产物仍包含捕获时的站点内容。迁移和交付时应核对授权范围、资源来源及个人信息。
 
-## 三种用法
+## 三类接手材料
 
-### ① 我要抄视觉（做自己的设计系统）
+### ① 检查视觉与样式
 
-不要对着截图量尺寸。原站**全部生效 CSS**（含变量、设计 token）就在：
+\`cssom.css\` 保存了捕获时提取的样式证据，可用于核对变量、布局和字体：
 
 \`\`\`
-raw/<page>/cssom.css       原站 CSSOM 的最终计算态 —— 变量的值已经解开
+raw/<page>/cssom.css       捕获时提取的 CSSOM 样式（若已采集）
 \`\`\`
 
-"最终计算态"是关键：原站的 styled-components / CSS Modules 在运行时注入样式，
-直接看源码里的 CSS 文件往往只有一堆哈希类名。\`cssom.css\` 是浏览器把一切都算完之后的样子。
+运行时注入的规则也可能被收录，但样式结果仍受视口、状态和浏览器环境影响；
+不要把此文件视为每个元素的完整计算样式。
 
 另外还有一份归纳好的设计令牌（色板 / 字阶 / 间距 / 圆角 / 阴影）：
 
@@ -241,30 +306,30 @@ raw/<page>/cssom.css       原站 CSSOM 的最终计算态 —— 变量的值�
 site/design/tokens.html    可视化色板与字阶（有的话）
 \`\`\`
 
-### ② 我要抄结构（复用页面骨架）
+### ② 检查页面结构
 
 \`\`\`
 raw/<page>/dom.html        渲染后的完整 DOM（含原站类名体系）
-site/pages/<page>/clone/   可直接打开的镜像页 —— 拿它当"活的线框图"
+site/pages/<page>/clone/   可直接打开的静态镜像页
 \`\`\`
 
-镜像页是纯静态的（无构建、无依赖），可以直接编辑试改。
+镜像页是静态 HTML，可以直接编辑试改；仍需检查未打包的外链资源。
 但注意原站类名多半是哈希（\`sc-a54b2c-0\`、\`_abc123\`），
 **长期改造建议以镜像为视觉基准重建组件**，而不是在哈希类上堆样式 ——
 后者会在你换掉原站样式表的那一刻全部失效。
 
-### ③ 我要读竞品（理解它为什么这么做）
+### ③ 查看站点资料
 
 \`\`\`
-intel/${hostDir}-intel.xlsx              跨页汇总：概览 / 语义情报 / 定价与 CTA
-site/pages/<page>/intel/semantic.json    单页：页面类型 / 价值主张 / 套餐结构 / 官方宣称
+intel/${hostDir}-intel.xlsx              跨页汇总（若已生成）
+site/pages/<page>/intel/semantic.json    单页结构化资料（若已生成）
 \`\`\`
 
 ## 推荐流程：从这份包到你能上线的代码
 
-1. **先看 \`fidelity.csv\`**，按 total 排序，找出还原度最低的几页 —— 那些是需要你手工确认的地方
-2. **对每一页**：打开同步对比，逐个 section 看。视觉对齐的地方可以直接照搬结构，
-   对不齐的地方看该页的 \`diff.png\`（差异热图）定位到具体区域
+1. **先看 \`fidelity.csv\`**，按旧口径 total 排序，优先人工核对分数较低的页面
+2. **对每一页**：核对镜像与源站证据。有 \`compare.html\` 时做同步对比，
+   有 \`diff.png\` 时用差异热图定位未对齐的区域
 3. **抽设计令牌**：从 \`raw/<page>/cssom.css\` 里提取你的项目要用的那一小撮变量
    （颜色、字号、间距、圆角），不要整份搬
 4. **重建组件**：用你自己的技术栈重写，以镜像页为视觉基准逐屏比对
@@ -272,65 +337,60 @@ site/pages/<page>/intel/semantic.json    单页：页面类型 / 价值主张 / 
 
 ## 需要优先手工确认的页面
 
-还原度 <95 的页（按差距从大到小）。\`动效占比\` 是这一页里"无法静态复刻"的部分有多大 ——
-它高不代表做得差，而是说明这页有较多动画，需要你另外处理。
+以下是旧口径 total <95 的页（按分数排序）。\`动效占比\` 提示静态快照可能遗漏的运行态，
+不能替代真实浏览器里的多视口及交互验收。
 
-| 页面 | 还原度 | 评级 | 动效占比 |
+| 页面 | 旧口径分 | 旧等级 | 动效占比 |
 | --- | --- | --- | --- |
 ${weakList}
 
-## 还原度怎么读
+## 历史评分怎么读
 
 \`\`\`
-total = 0.5 × 像素（多帧最优匹配，动画噪声已排除）
+total = 0.5 × 像素（取最接近的采样帧，动态区域仍计入）
       + 0.3 × DOM 结构相似度
-      + 0.2 × 数据字段覆盖率（标题/价格/CTA/链接/表格）
+      + 0.2 × 数据字段覆盖率（标题/价格/CTA/链接/表格；无可抽取字段时不计入，前两项归一）
 \`\`\`
 
-评级 A ≥95 / B ≥85 / C <85。逐页明细见 \`fidelity.csv\` 与各页 \`score.json\`。
+以上是 \`score.json\` 的历史辅助口径；A ≥95 / B ≥85 / C <85 也是这一旧口径的等级。
+逐页数据见 \`fidelity.csv\` 与 \`score.json\`，不能据此判定多视口或交互已经通过。
 
-**像素分是唯一可对外核验的口径**，结构分与数据分是与捕获 DOM 的同源比对（自证辅助项），
-不构成独立证据。这一点在 \`score.json\` 的 \`dataNote\` 里也写着。
+交付前还需运行 v2 多视口验证，并核对每页是否完整测量、最差视口和差异证据；
+结构分与数据分来自同源捕获，只能作为定位线索，不能单独证明还原效果。
 
 ## 目录速查
 
 \`\`\`
 site/
-  index.html                  克隆档案卡片墙（入口）
-  compare.html                原站快照 ↔ 镜像，同屏同步滚动
+  index.html                  站点汇总页（若已生成）
+  compare.html                同屏对比工具（若已生成）
   pages/<page>/clone/         镜像页（纯静态、可直接开）
-  pages/<page>/score.json     该页还原度三维明细
-  pages/<page>/diff.png       原站 vs 镜像差异热图
-  pages/<page>/intel/         该页结构化抽取 + 语义情报
-  recon/atlas.json            全站路由结构（哪些页面、怎么互链）
-intel/                        跨页情报 Excel
+  pages/<page>/score.json     该页历史辅助评分明细
+  pages/<page>/diff.png       差异热图（若已生成）
+  pages/<page>/intel/         该页结构化资料（若已生成）
+  recon/atlas.json            路由结构（若已生成）
+intel/                        跨页资料（若已生成）
 edit-manifest.md              改站起点：换域名 / 图片 / 文案各要动什么
 edit-manifest.json            同上，机器可读
 motion.md                     动效档案：哪些页在动、CSS 还是 JS、怎么复用
 motion.json                   同上，机器可读（逐页动效账）
-fidelity.csv                  逐页还原度明细
-raw/<page>/                   原始材料：dom.html / cssom.css / 帧截图
-raw/<page>/motion-css.css     该页原样抽出的 @keyframes，可直接粘进自己的样式表
+fidelity.csv                  逐页历史辅助评分明细
+raw/<page>/                   捕获时的原始材料（内容因页而异）
+raw/<page>/motion-css.css     提取的 @keyframes（若已生成，需检查依赖）
 README.md                     本文件
 \`\`\`
 
 ## 诚实边界
 
 - **静态复刻**：无登录、无后端交互、无搜索。表单能看出结构但不会真的提交。
-- **动效**：分四层，别一概而论 —— 见 [motion.md](motion.md)。
-  **CSS 动画与过渡在镜像里是活的**（只剥脚本，样式表原样保留）。
-  **揭示/登场类，以及脚本用 \`Element.animate()\` 创建的动画，已改写回 CSS** ——
-  落在 \`site/pages/<page>/clone/motion-replay.css\`，滚动驱动用 \`view()\` 时间线，纯 CSS、不带脚本。
-  读的时候留意一件事：这是**重演可观察到的形态**，不是原脚本的还原。
-  **走行内样式或 setInterval 的那一类**（Swiper 类轮播、手写打字机、GSAP 时间线）
-  只在交互镜像里是活的（原脚本保留、URL 重指到代理），静态页停在被捕获的那一帧。
-  每页可复用的关键帧已抽成 \`raw/<page>/motion-css.css\`；这一页的动效属哪一类，看 \`motion.json\`。
-  \`canvas\` 绘制的内容**已光栅化为静态图**（保留尺寸与位置），同样是某一帧的快照。
-  每页 \`score.json\` 的 \`breakdown.dynamicShare\` 是这个缺口的量化。
-- **跨页链接**：已克隆页之间互相跳转；未克隆的链接会新标签打开原站。
-- **公开页面**：登录后区域不在范围内。
-- 原站改版后这份包就过期了 —— 重新跑一次会生成带新日期的包，旧的可以删
-  （\`heimdall deliver-prune\` 有保留策略）。
+- **动效**：保留的 CSS 动画与过渡可能运行；依赖脚本、运行时状态或远程资源的动效需逐页检查。
+  若生成了 \`motion-replay.css\`，它重演的是捕获到的形态，不保证原脚本行为一致。
+  \`motion.md\`、\`motion.json\` 和 \`score.json\` 的 \`breakdown.dynamicShare\`（若存在）
+  只能帮助定位待验区域，不能替代浏览器交互验收。\`canvas\` 快照也只代表捕获时的一帧。
+- **跨页链接**：检查已克隆页之间的导航，也要检查指向未捕获页面和原站的链接。
+- **授权范围**：仅处理自有或明确获授权站点；登录后区域需另行取得授权并单独验收。
+- 源站内容、浏览器环境和抓取时机都会影响结果；同日重跑会保留上一个正式包为
+  \`.backup-*\`。旧包先盘点用途和证据，再隔离归档，不直接删除。
 
 ## 这份包怎么产生的
 
@@ -341,11 +401,14 @@ node src/cli.mjs queue ${host}           # 2. 批量克隆（断点续跑）
 node src/cli.mjs deliver ${host}         # 3. 打包成本目录
 \`\`\`
 
-同一条命令跑两次结果一致，可以直接 diff 两个日期的包看站点改了什么。
+重跑结果可能因源站或环境变化而不同。比较包时同时核对抓取时间、验证版本和缺口清单。
 `;
 writeFileSync(join(OUT, 'README.md'), readMe);
 
 // ---------- 4. xlsx 也拷进来（若已在 site/intel 则无需重复） ----------
-console.log(`\nDELIVERABLE -> ${OUT}`);
+validateCandidate();
+const committed = promoteCandidate(DELIVERABLE, FINAL_OUT, OUT);
+console.log(`\nDELIVERABLE -> ${committed.out}`);
+if (committed.backup) console.log(`[deliver] previous bundle retained -> ${committed.backup}`);
 console.log(`  pages: ${pages.length}, avg fidelity: ${avg}%`);
 console.log(`  site/ + intel/ + fidelity.csv + raw/ + README.md + edit-manifest.md`);

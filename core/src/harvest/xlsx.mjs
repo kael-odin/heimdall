@@ -68,7 +68,7 @@ for (const name of pages) {
     total: score?.total ?? '-', grade: score?.grade ?? '-',
     pixel: score ? (score.pixel * 100).toFixed(1) + '%' : '-',
     dom: score ? (score.dom?.dom * 100).toFixed(1) + '%' : '-',
-    data: score?.data ? (score.data.data * 100).toFixed(1) + '%' : '-',
+    data: score?.scoreFormulaVersion !== 2 ? '未重算' : Number.isFinite(score?.data?.data) ? (score.data.data * 100).toFixed(1) + '%' : '未测',
     refinable: score?.breakdown ? (score.breakdown.refinable * 100).toFixed(0) + '%' : '-',
     pageType: semantic?.pageType ?? '-',
     h: intel?.headings?.length ?? 0, p: intel?.prices?.length ?? 0,

@@ -1,0 +1,89 @@
+{
+  "page": "ideas",
+  "target": "https://apify.com/ideas",
+  "generatedAt": "2026-10-14T03:58:53.520Z",
+  "scoreVersion": 2,
+  "overall": 0.9857,
+  "measured": true,
+  "grade": "A",
+  "minViewport": {
+    "name": "768x1024",
+    "score": 0.9805,
+    "grade": "A",
+    "coverageRatio": 1,
+    "sourceSize": {
+      "width": 768,
+      "height": 5198
+    },
+    "cloneSize": {
+      "width": 768,
+      "height": 5198
+    },
+    "heightDelta": 0,
+    "missingPixels": 0
+  },
+  "viewports": [
+    {
+      "name": "375x812",
+      "width": 375,
+      "score": 0.9879,
+      "grade": "A",
+      "mismatched": 37722,
+      "missingPixels": 0,
+      "coverageRatio": 1,
+      "heightDelta": 0,
+      "sourceSize": {
+        "width": 375,
+        "height": 8310
+      },
+      "cloneSize": {
+        "width": 375,
+        "height": 8310
+      },
+      "sourceHeight": 8310,
+      "cloneHeight": 8310
+    },
+    {
+      "name": "768x1024",
+      "width": 768,
+      "score": 0.9805,
+      "grade": "A",
+      "mismatched": 77718,
+      "missingPixels": 0,
+      "coverageRatio": 1,
+      "heightDelta": 0,
+      "sourceSize": {
+        "width": 768,
+        "height": 5198
+      },
+      "cloneSize": {
+        "width": 768,
+        "height": 5198
+      },
+      "sourceHeight": 5198,
+      "cloneHeight": 5198
+    },
+    {
+      "name": "1440x900",
+      "width": 1440,
+      "score": 0.9872,
+      "grade": "A",
+      "mismatched": 105554,
+      "missingPixels": 0,
+      "coverageRatio": 1,
+      "heightDelta": 0,
+      "sourceSize": {
+        "width": 1440,
+        "height": 5710
+      },
+      "cloneSize": {
+        "width": 1440,
+        "height": 5710
+      },
+      "sourceHeight": 5710,
+      "cloneHeight": 5710
+    }
+  ],
+  "functional": null,
+  "interactions": []
+}

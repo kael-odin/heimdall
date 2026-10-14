@@ -7,6 +7,8 @@
  */
 import { comparePngBuffers } from './compare.mjs';
 import { freezeCss } from '../freeze.mjs';
+import { sessionContext } from '../session/store.mjs';
+import { UA } from '../ua.mjs';
 
 export const FREEZE = freezeCss();
 
@@ -46,8 +48,15 @@ export function discoverFn() {
   return out;
 }
 
-async function clickAndCapture(browser, url, selector, { viewport = { width: 1440, height: 900 } } = {}) {
-  const ctx = await browser.newContext({ viewport, ignoreHTTPSErrors: true });
+function replayContextOptions(url, viewport, source) {
+  const options = { viewport: viewport ?? { width: 1440, height: 900 }, ignoreHTTPSErrors: true, userAgent: UA };
+  if (source) return { ...options, ...sessionContext(new URL(url).hostname) };
+  if (process.env.HEIMDALL_TOKEN) options.extraHTTPHeaders = { 'x-heimdall-token': process.env.HEIMDALL_TOKEN };
+  return options;
+}
+
+async function clickAndCapture(browser, url, selector, { viewport, source = false } = {}) {
+  const ctx = await browser.newContext(replayContextOptions(url, viewport, source));
   const page = await ctx.newPage();
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
@@ -75,7 +84,7 @@ async function clickAndCapture(browser, url, selector, { viewport = { width: 144
 }
 
 export async function verifyInteractions(browser, { sourceUrl, cloneUrl, max = 3, viewport } = {}) {
-  const ctx = await browser.newContext({ viewport: viewport ?? { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
+  const ctx = await browser.newContext(replayContextOptions(sourceUrl, viewport, true));
   const page = await ctx.newPage();
   let candidates = [];
   try {
@@ -88,7 +97,7 @@ export async function verifyInteractions(browser, { sourceUrl, cloneUrl, max = 3
   for (const c of candidates.slice(0, max)) {
     let src, clone;
     try {
-      src = await clickAndCapture(browser, sourceUrl, c.selector, { viewport });
+      src = await clickAndCapture(browser, sourceUrl, c.selector, { viewport, source: true });
       clone = await clickAndCapture(browser, cloneUrl, c.selector, { viewport });
     } catch (e) {
       results.push({ label: c.label, selector: c.selector, pass: false, error: String(e).slice(0, 160) });

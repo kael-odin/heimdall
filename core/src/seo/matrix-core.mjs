@@ -18,12 +18,13 @@ export function categorize(url) {
 const avg = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
 const round = (n, d = 1) => (n == null ? null : Math.round(n * 10 ** d) / 10 ** d);
 const pct = (num, den) => (den ? Math.round((num / den) * 1000) / 10 : null);
+const siteLabel = (audit) => audit.origin ?? audit.host;
 
 export function siteAggregate(audit) {
   const pages = audit.pages ?? [];
   const withSignals = pages.filter(p => p.status > 0);
   return {
-    host: audit.host,
+    host: siteLabel(audit),
     score: audit.score ?? null,
     pages: pages.length,
     avgTitleLen: round(avg(withSignals.map(p => p.titleLength ?? 0)), 0),
@@ -38,14 +39,14 @@ export function siteAggregate(audit) {
 }
 
 export function buildMatrix(audits) {
-  const sites = audits.map(a => ({ host: a.host, aggregate: siteAggregate(a) }));
+  const sites = audits.map(a => ({ host: siteLabel(a), aggregate: siteAggregate(a) }));
   const types = ['home', 'pricing', 'product', 'listing', 'docs', 'blog', 'company', 'other'];
   const rows = [];
   for (const type of types) {
     const cells = audits.map(a => {
       const pages = (a.pages ?? []).filter(p => categorize(p.url) === type);
       return {
-        host: a.host,
+        host: siteLabel(a),
         pages: pages.length,
         avgScore: round(avg(pages.map(p => p.score)), 1),
         avgWords: round(avg(pages.map(p => p.wordCount ?? 0)), 0),
@@ -59,7 +60,7 @@ export function buildMatrix(audits) {
     const counts = {};
     for (const p of a.pages ?? []) for (const i of p.issues ?? []) counts[i.id] = (counts[i.id] ?? 0) + 1;
     for (const i of a.siteIssues ?? []) counts[i.id] = (counts[i.id] ?? 0) + 1;
-    return { host: a.host, top: Object.entries(counts).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([id, count]) => ({ id, count })) };
+    return { host: siteLabel(a), top: Object.entries(counts).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([id, count]) => ({ id, count })) };
   });
   return { generatedAt: new Date().toISOString(), sites, rows, topIssues };
 }
@@ -143,6 +144,6 @@ footer{margin-top:36px;color:#64748b;font-size:12px}
 <h2>总体指标</h2><table><tbody><tr><th>指标</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${metricRows}</tbody></table>
 <h2>页面类型分布</h2><table><tbody><tr><th>页面类型</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${typeRows || '<tr><td>—</td></tr>'}</tbody></table>
 <h2>各站高频问题</h2><table><tbody>${issues}</tbody></table>
-<footer>数据来自 Heimdall SEO 审计（workspace/&lt;host&gt;/seo/seo.json）· 仅供内部分析</footer>
+<footer>数据来自 Heimdall SEO 审计（workspace/&lt;siteId&gt;/seo/seo.json）· 仅供内部分析</footer>
 </div></body></html>`;
 }

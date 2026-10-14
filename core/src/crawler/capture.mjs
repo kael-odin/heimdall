@@ -12,8 +12,9 @@
  * 用法: node src/crawler/capture.mjs <url> <outdir>
  */
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { join, relative, resolve, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 import { pickAdapter } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isSoftHtml } from '../asset-ext.mjs';
@@ -25,11 +26,28 @@ import { asUrl } from '../url-canon.mjs';
 import { freezeCss, stripFreeze } from '../freeze.mjs';
 import { UA } from '../ua.mjs';
 import { countOpaquePng } from '../png-stat.mjs';
+import { WORKSPACE, isInside } from '../paths.mjs';
+import { assertSiteOrigin, siteIdForOrigin } from '../site-origin.mjs';
 
 const RAW_TARGET = requireArg(process.argv[2], 'node src/crawler/capture.mjs <url> <outdir>', '目标 URL');
 const TARGET = asUrl(RAW_TARGET);   // 直接跑这个脚本时也允许省略协议
 if (!TARGET) { console.error(`不是有效的网址：${RAW_TARGET}`); process.exit(2); }
 const OUT = requireArg(process.argv[3], 'node src/crawler/capture.mjs <url> <outdir>', '输出目录');
+const outputPath = resolve(OUT);
+const expectedOrigin = new URL(TARGET).origin;
+let siteDir = null, pageName = null;
+if (isInside(WORKSPACE, outputPath)) {
+  const [site, section, name] = relative(WORKSPACE, outputPath).split(sep);
+  if (section === 'pages') {
+    const targetSiteId = siteIdForOrigin(WORKSPACE, TARGET);
+    if (site.toLowerCase() !== targetSiteId) {
+      throw new Error(`捕获目录 ${site} 与目标站点 ${targetSiteId} 不一致`);
+    }
+    siteDir = join(WORKSPACE, targetSiteId);
+    pageName = name;
+    assertSiteOrigin(siteDir, TARGET, { pageName });
+  }
+}
 const VIEWPORT = { width: 1440, height: 900 };
 // 站点配方：捕获策略（等待策略/静置时间/弹窗选择器）全部来自这里，不再写死在代码里
 const profile = loadProfile(sanitizeHost(new URL(TARGET).hostname));
@@ -40,22 +58,22 @@ const CAP = profile.capture;
 //   否则它会跟着 dom.html 进到交互镜像里，把"能看动效"的产物冻成静止的（见 freeze.mjs 顶部注释）
 const FREEZE_CSS = freezeCss({ swiper: true });
 
-mkdirSync(OUT, { recursive: true });
-mkdirSync(join(OUT, 'styles'), { recursive: true });
-mkdirSync(join(OUT, 'assets'), { recursive: true });
-
 const browser = await chromium.launch();
 // 登录态：需要登录的站点先在控制台/CLI 里人工登一次（session/login.mjs），
 // 之后这里自动带上 —— 没有会话时 sessionContext() 返回空对象，不影响公开站点
 const session = sessionContext(new URL(TARGET).hostname);
 if (session.storageState) console.log('    session: 已带登录态（workspace/<host>/session.json）');
 // 全网络录制：HAR 供交互镜像 v2 做本地资源回放（原站重新部署后旧 chunk 仍可用）
+// 导航落地前不能触碰站点产物；HAR 先写独立临时目录，校验后再归档。
+const harTempDir = mkdtempSync(join(tmpdir(), 'heimdall-capture-har-'));
+const harTempPath = join(harTempDir, 'network.har');
+process.once('exit', () => { try { rmSync(harTempDir, { recursive: true, force: true }); } catch {} });
 let context;
 try {
   context = await browser.newContext({
     viewport: VIEWPORT,
     userAgent: UA,
-    recordHar: { path: join(OUT, 'network.har'), content: 'embed' },
+    recordHar: { path: harTempPath, content: 'embed' },
     ...session,
   });
 } catch (e) {
@@ -63,6 +81,18 @@ try {
   context = await browser.newContext({ viewport: VIEWPORT, userAgent: UA, ...session });
 }
 const page = await context.newPage();
+function assertLandedOrigin() {
+  const landed = page.url();
+  let actual;
+  try { actual = new URL(landed).origin; } catch { actual = landed; }
+  if (actual !== expectedOrigin) {
+    const error = new Error(`捕获重定向跨 origin：请求 ${expectedOrigin}，落地 ${actual}；已拒绝写入 ${OUT}`);
+    error.code = 'origin-conflict';
+    throw error;
+  }
+  if (siteDir) assertSiteOrigin(siteDir, landed, { pageName });
+  return landed;
+}
 // 动效累计观测器要在页面脚本之前装：它靠 animationstart/transitionrun 事件累计
 // "这页上曾经跑过什么动画"，而不是靠运气在某一帧撞见（时间线见 crawler/motion.mjs）
 await page.addInitScript(MOTION_INIT).catch(() => {});
@@ -70,7 +100,13 @@ await page.addInitScript(MOTION_INIT).catch(() => {});
 console.log('[1/7] goto', TARGET);
 // 默认 domcontentloaded 而非 networkidle：持续轮询/长连接的页面 networkidle 永不达成，
 // 资源加载由后续扫掠兜底。站点可用配方 capture.waitUntil 覆盖。
-await page.goto(TARGET, { waitUntil: CAP.waitUntil, timeout: CAP.timeoutMs });
+try {
+  await page.goto(TARGET, { waitUntil: CAP.waitUntil, timeout: CAP.timeoutMs });
+  assertLandedOrigin();
+} catch (error) {
+  await browser.close().catch(() => {});
+  throw error;
+}
 
 console.log('[2/7] cookie banner');
 try {
@@ -102,6 +138,16 @@ if (CAP.scrollSweep) await page.evaluate(async ({ step, delay }) => {
 
 await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
 await page.waitForTimeout(CAP.settleMs);
+try {
+  const landed = assertLandedOrigin();
+  if (siteDir) assertSiteOrigin(siteDir, landed, { claim: true, pageName });
+  mkdirSync(OUT, { recursive: true });
+  mkdirSync(join(OUT, 'styles'), { recursive: true });
+  mkdirSync(join(OUT, 'assets'), { recursive: true });
+} catch (error) {
+  await browser.close().catch(() => {});
+  throw error;
+}
 
 // 动效驱动采集。时机是刻意的：**在滚动扫掠之后**（滚动揭示类此时才创建，
 // 见 framer-and-motion 那条"滚动后再点击"的纪律）、**在 FREEZE_CSS 注入之前**
@@ -522,8 +568,13 @@ try {
   }
 } catch (e) { console.warn('    final manifest pass skipped:', String(e).slice(0, 100)); }
 
-await context.close().catch(() => {});
-await browser.close();
+try {
+  await context.close().catch(() => {});
+  if (existsSync(harTempPath)) copyFileSync(harTempPath, join(OUT, 'network.har'));
+} finally {
+  await browser.close();
+  rmSync(harTempDir, { recursive: true, force: true });
+}
 
 // 下载资源矩阵（图片/图标/媒体/sprite/manifest；iframe/embed 保持在线引用）
 // 逐条打印进度：一是让人看得见为什么这一步要几分钟（首页常有 5-10MB 的大图），

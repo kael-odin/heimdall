@@ -12,10 +12,11 @@
  */
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import Icon from './Icon.vue';
-import { API, apiHeaders, wsJson } from './api.js';
+import { API, apiHeaders, wsJson, wsUrl, wsOpenUrl, tokenOf, staticBridgeNeeded } from './api.js';
+import AuthImage from './AuthImage.vue';
 import { typeColor, typeCn } from './types.js';
 import { fmtBytes, fmtDate, FORGE_STAGES } from './format.js';
-import { pageNameOf, liveUrl, liveAltUrl } from './pages.js';
+import { pageNameOf, pagePathOf, liveUrl, localEngineSupportsMirror, mirrorBridgeNeeded, openMirrorWithTicket } from './pages.js';
 
 const props = defineProps({
   host: { type: String, default: '' },
@@ -34,7 +35,17 @@ defineEmits(['close', 'open-forge', 'forge-all', 'verify', 'reveal']);
 /** 交互镜像入口的悬停说明：没导出过时说清"点下去看到的是什么" */
 const liveTitle = computed(() => props.mirrored === 0
   ? '本站尚未导出交互镜像 —— 打开等于直接访问原站（经本地代理），不是复刻结果。先导出一次再来看'
-  : '交互镜像：保留脚本、资源实时回原站。用 <域名>.localhost 作独立域名，站点的路由/登录态/本地存储都与原站一致');
+  : tokenOf() && !localEngineSupportsMirror()
+    ? '独立子域镜像只支持本机引擎地址'
+  : tokenOf()
+    ? '交互镜像：通过一次性授权进入独立子域，站点路由、登录态和本地存储按原站隔离'
+    : '交互镜像：保留脚本、资源实时回原站。用 <域名>.localhost 作独立域名，站点的路由/登录态/本地存储都与原站一致');
+const liveOpenError = ref('');
+async function openMirror(f) {
+  liveOpenError.value = '';
+  try { await openMirrorWithTicket(f); }
+  catch (error) { liveOpenError.value = '打开交互镜像失败：' + String(error?.message ?? error); }
+}
 
 /** 阶段条：词表在 format.js —— 任务中心与「进行中」轨道用的是同一份，别在这里再写一遍 */
 const STAGES = FORGE_STAGES;
@@ -148,21 +159,23 @@ async function loadQuality() {
   Object.assign(detailQuality, { verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
   const name = pageNameOf(n);
   const h = props.host;
+  const artifacts = props.pageMeta[n.id]?.artifacts ?? {};
   const [v, fu, hist, cg, lk] = await Promise.all([
-    wsJson(h, 'verify/' + name + '/verify.json'),
-    wsJson(h, 'pages/' + name + '/fixup-history.json'),
+    artifacts.verify === false ? null : wsJson(h, 'verify/' + name + '/verify.json'),
+    artifacts.fixup === false ? null : wsJson(h, 'pages/' + name + '/fixup-history.json'),
     fetch(API + '/api/history/' + encodeURIComponent(h) + '/' + encodeURIComponent(name), { headers: apiHeaders() }).then(r => r.ok ? r.json() : null).catch(() => null),
-    wsJson(h, 'pages/' + name + '/clone-gaps.json'),
-    wsJson(h, 'linker-report.json'),
+    artifacts.cloneGaps === false ? null : wsJson(h, 'pages/' + name + '/clone-gaps.json'),
+    artifacts.linker === false ? null : wsJson(h, 'linker-report.json'),
   ]);
   if (props.selected !== n) return;
-  detailQuality.verify = v; detailQuality.fixup = fu; detailQuality.history = hist; detailQuality.cloneGaps = cg;
+  detailQuality.verify = props.pageMeta[n.id]?.verifyFresh === false ? null : v;
+  detailQuality.fixup = fu; detailQuality.history = hist; detailQuality.cloneGaps = cg;
   detailQuality.linker = lk?.pages?.find(p => p.name === name) ?? null;
 
   // asset-gaps.json 可达数百 KB，按站点缓存；换站点才失效
   if (!assetGapsCache.value || assetGapsHost.value !== h) {
     assetGapsCache.value = null;
-    const gaps = await wsJson(h, 'audit/asset-gaps.json');
+    const gaps = artifacts.assetGaps === false ? null : await wsJson(h, 'audit/asset-gaps.json');
     if (gaps) { assetGapsCache.value = gaps; assetGapsHost.value = h; }
   }
   detailQuality.gaps = assetGapsCache.value?.pages?.find(p => p.page === name) ?? null;
@@ -205,7 +218,7 @@ function onTablistKey(e) {
 <div class="dock" ref="dockEl" role="dialog" aria-modal="true" :aria-label="'页面详情：' + selected.url" @keydown="onDockKeydown">
   <div class="dock-head">
     <div>
-      <div class="dock-title">{{ selected.path === '/' ? 'home' : selected.path.slice(1) }}</div>
+      <div class="dock-title">{{ pagePathOf(selected) === '/' ? 'home' : pagePathOf(selected).slice(1) }}</div>
       <div class="dock-url">{{ selected.url }}</div>
     </div>
     <div class="dock-headbtns"><button class="dock-all" @click="$emit('forge-all')" title="批量克隆尚未完成的页面（每次最多 10 页；站点级整站克隆见星图顶部按钮）">批量克隆 10 页</button><button class="dock-close" aria-label="关闭页面详情" title="关闭" @click="$emit('close')"><Icon name="close" decorative /></button></div>
@@ -244,22 +257,22 @@ function onTablistKey(e) {
     <!-- 还原度就摆在详情里。此前这里只有一个「分数 JSON」下载链接 —— 想知道自己
          这一页到底差在哪，得先把文件下下来自己看，那不是一个界面的做法。 -->
     <div class="ov-sec" v-if="detailScore">
-      <div class="panel-sec-name">还原度（可核验口径）</div>
+      <div class="panel-sec-name">单页还原度（{{ detailScore.scoreFormulaVersion === 2 ? '当前辅助口径' : '历史旧口径' }}）</div>
       <div class="q-list">
         <div class="q-row">
           <span class="q-k">视觉</span>
           <span class="q-v" :class="gradeCls(detailScore.pixel)">
             {{ (detailScore.pixel * 100).toFixed(2) }}%
-            <i class="q-file">原站与镜像同视口截图逐像素比对 —— 对外唯一可核验的分数</i>
+            <i class="q-file">克隆时的单页截图比对；缺失区域可能未计入差异。多视口 v2 结果见「质检」</i>
           </span>
         </div>
         <div class="q-row" v-if="detailScore.dom">
           <span class="q-k">结构</span>
           <span class="q-v">{{ ((detailScore.dom.dom ?? 0) * 100).toFixed(1) }}%<i class="q-file">与捕获的 DOM 自比，辅助项</i></span>
         </div>
-        <div class="q-row" v-if="detailScore.data">
+        <div class="q-row">
           <span class="q-k">数据</span>
-          <span class="q-v">{{ ((detailScore.data.data ?? 0) * 100).toFixed(1) }}%<i class="q-file">抽取字段覆盖率，辅助项</i></span>
+          <span class="q-v">{{ detailScore.scoreFormulaVersion !== 2 ? '未重算' : Number.isFinite(detailScore.data?.data) ? (detailScore.data.data * 100).toFixed(1) + '%' : '未测' }}<i class="q-file">抽取字段覆盖率，辅助项</i></span>
         </div>
         <div class="q-row">
           <span class="q-k">综合</span>
@@ -267,8 +280,8 @@ function onTablistKey(e) {
         </div>
       </div>
       <div class="score-note">
-        口径 0.5×视觉 + 0.3×结构 + 0.2×数据；等级 A≥95 / B≥85 / C&lt;85。
-        <a :href="`/${host}/pages/${pageNameOf(selected)}/score.json`" target="_blank" rel="noopener">原始数据 JSON</a>
+        {{ detailScore.scoreFormulaVersion !== 2 ? '历史分数未按当前公式重算' : Number.isFinite(detailScore.data?.data) ? '口径 0.5×视觉 + 0.3×结构 + 0.2×数据' : '数据未测，视觉和结构权重归一' }}；等级 A≥95 / B≥85 / C&lt;85。
+        <a :href="wsOpenUrl(host, `pages/${pageNameOf(selected)}/score.json`)" target="_blank" rel="noopener">原始数据 JSON</a>
       </div>
       <div class="refine" v-if="detailScore.breakdown">
         <div class="refine-bar"><i :style="{ transform: 'scaleX(' + (detailScore.breakdown.refinable || 0) + ')' }"></i></div>
@@ -276,16 +289,18 @@ function onTablistKey(e) {
       </div>
     </div>
     <div class="dock-quick" v-if="selected.forgeState === 'done'">
-      <a :href="`/${host}/pages/${pageNameOf(selected)}/clone/index.html`" target="_blank" rel="noopener" title="静态镜像：剥离脚本、资产本地化，离线可开">静态镜像</a>
-      <a :class="{ 'quick-off': mirrored === 0 }" :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener" :title="liveTitle">交互镜像{{ mirrored === 0 ? ' · 未导出' : '' }}</a>
-      <a class="quick-alt" :href="liveAltUrl({ url: selected.url })" target="_blank" rel="noopener" title="备用入口：/lm 前缀。不依赖 *.localhost 解析，但纯前端渲染站的客户端路由会把前缀当成真实路径，可能落到它自己的 404">/lm 备用</a>
-      <a :href="`/${host}/compare.html?p=${pageNameOf(selected)}`" target="_blank" rel="noopener" title="左右同步滚动，原站与静态镜像逐段对照">同步对比</a>
+      <a :href="wsOpenUrl(host, `pages/${pageNameOf(selected)}/clone/index.html`)" target="_blank" rel="noopener" title="静态镜像：剥离脚本、资产本地化，离线可开">静态镜像</a>
+      <span v-if="tokenOf() && !localEngineSupportsMirror()" class="quick-disabled" :title="liveTitle">交互镜像 · 仅本机</span>
+      <button v-else-if="mirrorBridgeNeeded()" type="button" :class="{ 'quick-off': mirrored === 0 }" :title="liveTitle" @click="openMirror({ url: selected.url })">交互镜像{{ mirrored === 0 ? ' · 未导出' : '' }}</button>
+      <a v-else :class="{ 'quick-off': mirrored === 0 }" :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener" :title="liveTitle">交互镜像{{ mirrored === 0 ? ' · 未导出' : '' }}</a>
+      <a :href="wsOpenUrl(host, `compare.html?p=${pageNameOf(selected)}`)" target="_blank" rel="noopener" title="左右同步滚动，原站与静态镜像逐段对照">同步对比</a>
       <!-- 能在浏览器里打开一份产物，不等于知道它在磁盘的哪个角落。
            这一页的静态镜像目录（换图、替换文案都要进去改）就在这里给个直达。
            交互镜像与交付包是站点级的，它们的入口在「报告 → 产物位置」。 -->
       <button class="quick-dir" @click="$emit('reveal', `workspace/${host}/pages/${pageNameOf(selected)}/clone`, '静态镜像')"
               title="在资源管理器里打开这一页的静态镜像目录（assets / styles / index.html 都在里面）">打开镜像文件夹</button>
     </div>
+    <div v-if="liveOpenError" class="dock-quick-note" role="alert">{{ liveOpenError }}</div>
     <div class="dock-quick-note" v-if="selected.forgeState === 'done' && mirrored === 0">
       <b>本站还没导出过交互镜像</b> —— 镜像路由是"本地有快照就回快照、否则反代回原站"，
       所以现在点「交互镜像」打开的是 <b>{{ host }}</b> 原站本身（经本地代理），不是复刻结果。
@@ -328,12 +343,14 @@ function onTablistKey(e) {
       <b>质检</b>把这一页「还原度之外」的几项质量证据汇总在一起。
       它们来自<b>不同的检查、在不同的时机产生</b>，跑过的才有数据：
       <table class="q-when">
+        <tbody>
         <tr><td>差异形态</td><td>每次克隆自动算（像素定谳阶段）</td></tr>
         <tr><td>AI 校准曲线</td><td>每次克隆自动（校准阶段，无静态差异时自动豁免）</td></tr>
         <tr><td>多视口视觉 / 交互回放</td><td><b>按需</b>跑到才跑 —— 点下面的「运行本页体检」或星图的「全站体检」</td></tr>
         <tr><td>资产缺口</td><td><b>按需</b> —— 报告 → 资产缺口 → 运行扫描</td></tr>
         <tr><td>交互镜像离线资源</td><td><b>按需</b> —— 导出交互镜像时加 <code>--heal --strict</code></td></tr>
         <tr><td>动效驱动画像</td><td>每次克隆自动（捕获阶段，滚动扫掠之后采样）</td></tr>
+        </tbody>
       </table>
     </div>
     <div class="seo-note" v-if="detailQuality.loading" role="status" aria-live="polite">加载质检数据…</div>
@@ -341,15 +358,16 @@ function onTablistKey(e) {
       <div class="ov-sec">
         <div class="panel-sec-name">视觉保真（多视口）</div>
         <div v-if="detailQuality.verify" class="q-list">
+          <div class="q-row"><span class="q-k">评分口径</span><span class="q-v">{{ detailQuality.verify.scoreVersion === 2 ? 'v2 · 缺失区域计入差异' : '历史旧口径 · 缺失区域可能未计入差异' }}</span></div>
           <div class="q-row" v-for="v in detailQuality.verify.viewports" :key="v.name">
             <span class="q-k">{{ v.name }}</span>
-            <span class="q-v" :class="v.grade === 'A' ? 'ok' : v.grade === 'B' ? 'mid' : 'bad'">{{ v.score != null ? ((v.score * 100).toFixed(1) + '% ' + v.grade) : (v.skipped || v.error || '—') }}</span>
+            <span class="q-v" :class="v.grade === 'A' ? 'ok' : v.grade === 'B' ? 'mid' : 'bad'">{{ v.score != null ? ((v.score * 100).toFixed(1) + '% ' + v.grade) : (v.skipped || v.error || '—') }}<i class="q-file" v-if="v.sourceSize && v.cloneSize">覆盖 {{ typeof v.coverageRatio === 'number' ? (v.coverageRatio * 100).toFixed(1) + '%' : '未知' }} · 原图 {{ v.sourceSize.width }}×{{ v.sourceSize.height }} / 镜像 {{ v.cloneSize.width }}×{{ v.cloneSize.height }}</i></span>
           </div>
-          <div class="q-row"><span class="q-k">综合</span><span class="q-v">{{ (detailQuality.verify.overall * 100).toFixed(1) }}% {{ detailQuality.verify.grade }}</span></div>
+          <div class="q-row"><span class="q-k">综合</span><span class="q-v">{{ detailQuality.verify.measured === false || detailQuality.verify.overall == null ? '未完整测量' : (detailQuality.verify.overall * 100).toFixed(1) + '% ' + (detailQuality.verify.grade ?? '') }}</span></div>
           <div class="q-row" v-if="detailQuality.verify.minViewport"><span class="q-k">最差视口</span><span class="q-v" :class="detailQuality.verify.minViewport.score >= 0.95 ? 'ok' : detailQuality.verify.minViewport.score >= 0.85 ? 'mid' : 'bad'">{{ detailQuality.verify.minViewport.name }} {{ (detailQuality.verify.minViewport.score * 100).toFixed(1) }}% {{ detailQuality.verify.minViewport.grade }}</span></div>
           <div class="q-row" v-if="detailQuality.verify.minViewport && detailQuality.verify.minViewport.score < 0.9"><span class="q-k">建议</span><span class="q-v mid">该视口差异较大（多为客户端响应式变体/JS 渲染），优先使用交互镜像</span></div>
         </div>
-        <div v-else class="seo-note">未运行多视口验证 <button class="wv-primary" style="margin-left:8px" @click="$emit('verify')">运行本页体检</button>（等价命令：<code>verify {{ host }} {{ pageNameOf(selected) }}</code>）</div>
+        <div v-else class="seo-note">{{ pageMeta[selected.id]?.verifyFresh === false ? '重新克隆后，旧体检结果已失效' : '未运行多视口验证' }} <button class="wv-primary" style="margin-left:8px" @click="$emit('verify')">运行本页体检</button>（等价命令：<code>verify {{ host }} {{ pageNameOf(selected) }}</code>）</div>
         <!-- 差异**形态**：只给百分比的话，用户分不清"少了一张图"（集中）和"文字抗锯齿略不同"（弥散） -->
         <div v-if="detailScore?.diffShape" class="q-list" style="margin-top:8px">
           <div class="q-row">
@@ -538,11 +556,11 @@ function onTablistKey(e) {
     <div v-if="selected.forgeState === 'done' && !forge" class="shot-pair">
       <figure class="shot">
         <figcaption>原站</figcaption>
-        <img :key="'s' + shotStamp" :src="`/static/${host}/pages/${pageNameOf(selected)}/shot-src.png`" alt="原站首屏截图" />
+        <AuthImage :key="'s' + shotStamp" :src="wsUrl(host, `pages/${pageNameOf(selected)}/shot-src.png`)" :token="tokenOf()" alt="原站首屏截图" />
       </figure>
       <figure class="shot">
         <figcaption>静态镜像</figcaption>
-        <img :key="'c' + shotStamp" :src="`/static/${host}/pages/${pageNameOf(selected)}/shot-clone.png`" alt="静态镜像首屏截图" />
+        <AuthImage :key="'c' + shotStamp" :src="wsUrl(host, `pages/${pageNameOf(selected)}/shot-clone.png`)" :token="tokenOf()" alt="静态镜像首屏截图" />
       </figure>
     </div>
     <div class="forge-cta" v-if="!forge && selected.forgeState === 'done'">
@@ -577,7 +595,7 @@ function onTablistKey(e) {
         </div>
         <div class="score-break">
           <span>结构 {{ ((forge.score.dom?.dom ?? 0) * 100).toFixed(1) }}%</span>
-          <span v-if="forge.score.data">数据 {{ (forge.score.data.data * 100).toFixed(1) }}%</span>
+          <span>数据 {{ Number.isFinite(forge.score.data?.data) ? (forge.score.data.data * 100).toFixed(1) + '%' : '未测' }}</span>
           <span class="grade">综合 {{ forge.score.total }} · {{ forge.score.grade }}</span>
         </div>
         <div class="score-note">结构/数据与捕获 DOM 同源比对（自证辅助项）；视觉分才是对外可核验口径。</div>
@@ -603,23 +621,25 @@ function onTablistKey(e) {
       <div class="screens" v-if="forge.done">
         <div class="pane">
           <div class="pane-label">SOURCE · 原站</div>
-          <img :src="`/${host}/pages/${forge.pageName}/shot-src.png`" alt="原站首屏截图" />
+          <AuthImage :src="wsUrl(host, `pages/${forge.pageName}/shot-src.png`)" :token="tokenOf()" alt="原站首屏截图" />
         </div>
         <div class="pane">
           <div class="pane-label">MIRROR · 镜像</div>
-          <img :src="`/${host}/pages/${forge.pageName}/shot-clone.png`" alt="静态镜像首屏截图" />
+          <AuthImage :src="wsUrl(host, `pages/${forge.pageName}/shot-clone.png`)" :token="tokenOf()" alt="静态镜像首屏截图" />
         </div>
       </div>
       <div class="compare-link" v-if="forge.done">
-        <a :href="`/${host}/compare.html?p=${forge.pageName}`" target="_blank" rel="noopener"><Icon name="swap" decorative /> 同步滚动对比</a>
+        <a :href="wsOpenUrl(host, `compare.html?p=${forge.pageName}`)" target="_blank" rel="noopener"><Icon name="swap" decorative /> 同步滚动对比</a>
         <span class="sep">·</span>
-        <a :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">⚡ 交互镜像</a>
+        <span v-if="tokenOf() && !localEngineSupportsMirror()" class="quick-disabled" :title="liveTitle">交互镜像 · 仅本机</span>
+        <button v-else-if="mirrorBridgeNeeded()" type="button" :title="liveTitle" @click="openMirror(forge)">交互镜像</button>
+        <a v-else :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">交互镜像</a>
         <span class="sep">·</span>
-        <a :href="liveAltUrl(forge)" target="_blank" rel="noopener" title="备用入口 /lm（不依赖 *.localhost 解析）">/lm 备用</a>
-        <span class="sep">·</span>
-        <a :href="`/${host}/pages/${forge.pageName}/clone/index.html`" target="_blank" rel="noopener">静态镜像</a>
+        <a :href="wsOpenUrl(host, `pages/${forge.pageName}/clone/index.html`)" target="_blank" rel="noopener">静态镜像</a>
       </div>
-      <iframe v-if="forge.done" :key="forge.taskId" class="live-clone" :src="`/${host}/pages/${forge.pageName}/clone/index.html`" title="living clone"></iframe>
+      <div v-if="liveOpenError" class="dock-quick-note" role="alert">{{ liveOpenError }}</div>
+      <iframe v-if="forge.done && !staticBridgeNeeded()" :key="forge.taskId" class="live-clone" :src="wsUrl(host, `pages/${forge.pageName}/clone/index.html`)" title="living clone"></iframe>
+      <div v-else-if="forge.done" class="dock-quick-note">跨源预览需在引擎地址打开：<a :href="wsOpenUrl(host, `pages/${forge.pageName}/clone/index.html`)" target="_blank" rel="noopener">打开静态镜像</a></div>
 </template>
   </div>
 </div>

@@ -12,32 +12,43 @@
  *
  * 安全（默认仅本机）：
  *   HEIMDALL_HOST           监听地址，默认 127.0.0.1
- *   HEIMDALL_TOKEN          设置后 /api/* 与 /px/* 需带 x-heimdall-token
+ *   HEIMDALL_TOKEN          设置后 /api/*、/static/* 与镜像子域需鉴权
  *   HEIMDALL_CORS_ORIGIN    允许的控制台来源（逗号分隔）
+ *   HEIMDALL_TRUSTED_HOSTS  反向代理公开域名（逗号分隔；默认仅本机域名）
  *   HEIMDALL_ALLOWED_HOSTS  代理白名单额外 host（逗号分隔）
  *   代理默认只允许 workspace 下已存在的 host，避免开放代理 / SSRF
  *
  * 用法: node src/engine-server.mjs [port=8900]
  */
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, rmSync, createReadStream } from 'node:fs';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, createReadStream } from 'node:fs';
 import { join, dirname, extname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSPACE, DATA_ROOT, DELIVERABLE, isInside, isSecretFile } from './paths.mjs';
+import { assertSiteOrigin, siteIdForOrigin, readSiteOrigin, readSiteIdentity, findSiteIdentity } from './site-origin.mjs';
+import { resolveMatrixTarget } from './seo/matrix-target.mjs';
+import { assertPageName, isSafePageName } from './page-name.mjs';
+import { listPurgedTrashBackups, listTrash, quarantinePage, quarantineSite, restoreTrash } from './audit/site-trash.mjs';
 import { openJobStore, recoverInterrupted } from './jobs/store.mjs';
 import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
 import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
 import { createWatchdog } from './task-watchdog.mjs';
 import { writeProxyHead, mirrorHostOf } from './proxy-headers.mjs';
 import { unmirroredBanner } from './live/live-html.mjs';
+import { liveSnapshotCandidates } from './live/live-path.mjs';
+import { rewriteSnapshotMount } from './live/site-routing.mjs';
 import { sessionInfo, clearSession } from './session/store.mjs';
 import { loadProfile, sanitizeHost, queuePlan, MAX_SLOT_CEILING } from './site-profile.mjs';
 import { UA } from './ua.mjs';
-import { pageNameOfUrl } from './url-canon.mjs';
+import { canonUrl, resolvePageNameOfUrl } from './url-canon.mjs';
 import { makeSlotBox } from './forge-slots.mjs';
+import { cloneDocFile } from './clone-doc.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
+const execFileAsync = promisify(execFile);
 
 // 任务持久化（node:sqlite；不可用时自动降级 JSON）——重启后历史/事件不丢
 let jobStore = null;
@@ -53,13 +64,23 @@ const PORT = Number(process.argv[2] ?? 8900);
 const BIND = process.env.HEIMDALL_HOST ?? '127.0.0.1';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const AUTH_TOKEN = process.env.HEIMDALL_TOKEN ?? '';
+const AUTH_SESSIONS = new Map();
+const AUTH_SESSION_SCOPES = new Map();
+const AUTH_SESSION_TTL = 12 * 60 * 60 * 1000;
+const SESSION_TICKETS = new Map();
+const SESSION_TICKET_TTL = 60 * 1000;
+const MIRROR_SESSION_PATH = '/.heimdall/session';
 const ALLOWED_ORIGINS = (process.env.HEIMDALL_CORS_ORIGIN ?? 'http://127.0.0.1:5173,http://localhost:5173')
   .split(',').map(s => s.trim()).filter(Boolean);
 const EXTRA_PROXY_HOSTS = new Set((process.env.HEIMDALL_ALLOWED_HOSTS ?? '')
   .split(',').map(s => s.trim().replace(/^www\./, '')).filter(Boolean));
+const TRUSTED_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]',
+  ...((BIND === '0.0.0.0' || BIND === '::') ? [] : [BIND.toLowerCase()]),
+  ...(process.env.HEIMDALL_TRUSTED_HOSTS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)]);
 const CORS = { 'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,x-heimdall-token' };
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8',
+  '.xhtml': 'application/xhtml+xml; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.map': 'application/json',
   '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8',
@@ -72,6 +93,40 @@ const MIME = {
   '.bin': 'application/octet-stream',
 };
 const mimeOf = (file) => MIME[extname(file).toLowerCase()] ?? 'application/octet-stream';
+
+function trustedRequestHost(raw) {
+  if (typeof raw !== 'string' || /[\\/@?#]/.test(raw)) return false;
+  try {
+    const host = new URL('http://' + raw).hostname.toLowerCase();
+    return TRUSTED_HOSTS.has(host) || !!mirrorHostOf(raw);
+  } catch { return false; }
+}
+
+function activeDocumentHeaders(req, type, { source = 'workspace', file = '', compareView = false } = {}) {
+  const mime = String(type ?? '').split(';', 1)[0].trim().toLowerCase();
+  const headers = { 'X-Content-Type-Options': 'nosniff' };
+  if (source === 'console' || source === 'mirror') return headers;
+
+  if (mime === 'text/html') {
+    const rel = source === 'workspace' ? relative(WORKSPACE, file).replaceAll('\\', '/').toLowerCase() : '';
+    if (/^[^/]+\/pages\/[^/]+\/clone\//.test(rel)) {
+      // The normal entry needs its viewport chooser script. Compare uses a
+      // script-free, same-origin view so its parent can synchronize scrolling.
+      headers['Content-Security-Policy'] = compareView
+        ? "script-src 'none'; form-action 'none'; object-src 'none'"
+        : 'sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox';
+    } else if (source !== 'workspace' || !/^[^/]+\/compare\.html$/.test(rel)) {
+      headers['Content-Security-Policy'] = source === 'proxy'
+        ? 'sandbox'
+        : 'sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation';
+    }
+  } else if (mime === 'application/xhtml+xml' || mime === 'image/svg+xml'
+      || mime === 'application/xml' || mime === 'text/xml' || mime.endsWith('+xml')) {
+    headers['Content-Security-Policy'] = 'sandbox';
+    if (frameDocNavigation(req)) headers['Content-Disposition'] = 'attachment';
+  }
+  return headers;
+}
 
 const json = (res, code, obj) => { res.writeHead(code, { ...CORS, 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
 
@@ -124,18 +179,37 @@ const readJsonBody = (req, res, cb) => {
  * 此前四处用 readFileSync 全量入内存 —— 面对几百 MB 的镜像包/合并 HAR 会顶爆堆，
  * 且不支持 Range（视频无法拖动/续传）。这里统一替换为流式。
  */
-function sendFile(req, res, file, extraHeaders = {}) {
+function sendFile(req, res, file, extraHeaders = {}, source = 'workspace') {
+  const workspaceRel = source === 'workspace' ? relative(WORKSPACE, file).replaceAll('\\', '/').toLowerCase() : '';
+  const compareView = source === 'workspace' && new URL(req.url, 'http://x').searchParams.get('compare') === '1'
+    && /^[^/]+\/pages\/[^/]+\/clone\/[^/]+\.html?$/.test(workspaceRel);
+  if (compareView && workspaceRel.endsWith('/clone/index.html')) {
+    file = cloneDocFile(dirname(file));
+  }
   let st;
   try { st = statSync(file); } catch { return json(res, 404, { error: 'nf' }); }
   if (!st.isFile()) return json(res, 404, { error: 'nf' });
   const headers = {
     ...CORS,
     'Content-Type': mimeOf(file),
+    ...activeDocumentHeaders(req, mimeOf(file), { source, file, compareView }),
     'Content-Length': String(st.size),
     'Accept-Ranges': 'bytes',
     'Last-Modified': st.mtime.toUTCString(),
     ...extraHeaders,
   };
+  if (source === 'workspace' && /^[^/]+\/compare\.html$/.test(workspaceRel)) {
+    const nonce = randomBytes(16).toString('base64');
+    const original = readFileSync(file, 'utf8');
+    const html = original
+      .replace('<script>\nconst PAGES = ', `<script nonce="${nonce}">\nconst PAGES = `)
+      .replace("frame.src = 'pages/' + name + '/clone/index.html';",
+        "frame.src = 'pages/' + name + '/clone/index.html?compare=1';");
+    headers['Content-Security-Policy'] = `script-src 'nonce-${nonce}'; form-action 'none'; object-src 'none'`;
+    headers['Content-Length'] = String(Buffer.byteLength(html));
+    res.writeHead(200, headers);
+    return req.method === 'HEAD' ? res.end() : res.end(html);
+  }
   const range = req?.headers?.range;
   const m = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
   if (m) {
@@ -160,79 +234,85 @@ function sendFile(req, res, file, extraHeaders = {}) {
 
 
 /**
- * 镜像站统一服务逻辑 —— 路径前缀入口与独立域名入口共用
- *
- *   · 路径前缀 /lm/<host>/<path>            —— 任何机器、任何浏览器都能用
- *   · 独立域名 <host>.localhost:<port>/<path> —— pathname 就是站点自己的路径
- *
- * 为什么必须有独立域名入口：纯前端渲染（SPA）站点的路由库靠读 location.pathname
- * 决定渲染什么。前缀入口下它看到 /lm/vitest.dev/，匹配不到任何路由，于是渲染
- * **它自己的 404 页** —— 脚本越正常，页面越"错"（实测 vitest.dev 修好响应头后
- * 整页变成 "404 | Vitest"）。独立域名下这个前缀根本不存在，路由、cookie、
- * localStorage 天然按站点隔离，与原站行为一致。
+ * 独立域名镜像站：<host>.localhost:<port>/<path>。
+ * pathname 与原站一致，站点脚本、cookie 和 localStorage 均与引擎主域隔离。
  *
  * 融合路由：本地 live/<path>/index.html 存在 → 回校准快照；否则全代理回原站
  * （未锻造页 / 资源 / JS chunk / API 全部原样透传，页面"活"）。
  */
-async function serveMirror(req, res, u, lmHost, prefix) {
+async function serveMirror(req, res, u, identity) {
   try {
-    const rest = prefix ? (decodeURIComponent(u.pathname.slice(prefix.length)) || '/') : u.pathname;
-    const noWww = lmHost.replace(/^www\./, '');
+    const { siteId: lmHost, origin } = identity;
+    const rest = u.pathname;
+    const liveRoot = join(WORKSPACE, lmHost, 'live');
+    const staticPrefix = `/static/${lmHost}/`;
+    if (rest.startsWith(staticPrefix)) {
+      const siteRoot = join(WORKSPACE, lmHost);
+      const file = join(siteRoot, decodeURIComponent(rest.slice(staticPrefix.length)));
+      if (!isInside(siteRoot, file) || isSecretFile(file)) return json(res, 403, { error: 'forbidden' });
+      return sendFile(req, res, file, {}, 'mirror');
+    }
 
     // 本地优先：无扩展名路径 → 该目录下的 index.html；有扩展名 → 精确路径。
     // 候选只放"文件"，目录本身绝不入候选（防 EISDIR）。
-    const rel = rest.endsWith('/') ? rest + 'index.html' : rest;
-    const candidates = /\.[a-z0-9]+$/i.test(rel)
-      ? [join(WORKSPACE, noWww, 'live', rel)]
-      : [join(WORKSPACE, noWww, 'live', rel.replace(/\/$/, '') + '/index.html')];
-    const localFile = candidates.find(f => isInsideWorkspace(f) && existsSync(f));
+    const candidates = liveSnapshotCandidates(rest, u.search).map(rel => join(liveRoot, rel));
+    const localFile = candidates.find(f => isInside(liveRoot, f) && existsSync(f) && !isSecretFile(f));
     // 只对 GET/HEAD 回本地快照：快照是静态文件，吞掉 POST 会让页面的表单直接失效
     // （实测 apify.com 的 contact-sales 表单就是 POST 到当前路径）。
     if (localFile && (req.method === 'GET' || req.method === 'HEAD')) {
-      // 独立域名模式下，快照里烘焙的 /lm/<host>/ 前缀要摘掉：那条路径在这个域名下不存在
-      if (!prefix && /\.html?$/i.test(localFile)) {
-        const html = readFileSync(localFile, 'utf8')
-          .split('/lm/' + lmHost + '/').join('/')
-          .split('/lm/' + lmHost).join('');
-        res.writeHead(200, { ...CORS, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+      // 快照里烘焙的 /lm/<host>/ 前缀在独立域名下不存在。
+      if (/\.html?$/i.test(localFile)) {
+        const html = rewriteSnapshotMount(readFileSync(localFile, 'utf8'), { siteId: lmHost, origin });
+        res.writeHead(200, { ...CORS, 'Content-Type': 'text/html; charset=utf-8',
+          'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache' });
         return req.method === 'HEAD' ? res.end() : res.end(html);
       }
-      return sendFile(req, res, localFile, { 'Cache-Control': 'no-cache' });
+      return sendFile(req, res, localFile, { 'Cache-Control': 'no-cache' }, 'mirror');
     }
 
     // 反代回原站（全方法透传；cookie 透传并剥 Domain/Secure，登录态落到我们域名下）
-    const targetUrl = 'https://' + lmHost + rest + u.search;
+    const targetUrl = origin + rest + u.search;
     const fwdHeaders = {};
-    for (const k of ['accept', 'accept-language', 'content-type', 'cookie']) {
+    for (const k of ['accept', 'accept-language', 'content-type']) {
       if (req.headers[k]) fwdHeaders[k] = req.headers[k];
     }
+    const siteCookies = String(req.headers.cookie ?? '').split(';').map(part => part.trim())
+      .filter(part => part && !part.startsWith('heimdall_session='));
+    if (siteCookies.length) fwdHeaders.cookie = siteCookies.join('; ');
     fwdHeaders['user-agent'] = UA;
-    fwdHeaders.referer = 'https://' + lmHost + '/';
+    fwdHeaders.referer = origin + '/';
+    if (req.headers.origin) fwdHeaders.origin = origin;
     const upstream = await fetch(targetUrl, {
       method: req.method,
       headers: fwdHeaders,
       body: ['GET', 'HEAD'].includes(req.method) ? undefined : req,
-      redirect: 'follow',
+      ...(['GET', 'HEAD'].includes(req.method) ? {} : { duplex: 'half' }),
+      redirect: 'manual',
     });
     const headers = new Headers();
-    const to = prefix || '/';
     for (const [k, v] of upstream.headers) {
       const kl = k.toLowerCase();
       if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy', 'set-cookie'].includes(kl)) continue;
       // 跳转目标要落回"我们这边的同一个站点"，不能把浏览器直接甩去原站
-      if (kl === 'location') { headers.set(k, v.replace('https://' + lmHost, to).replace('https://www.' + lmHost, to)); continue; }
+      if (kl === 'location') {
+        const destination = new URL(v, targetUrl);
+        headers.set(k, destination.origin === origin ? destination.pathname + destination.search + destination.hash : v);
+        continue;
+      }
       headers.set(k, v);
     }
     for (const c of upstream.headers.getSetCookie?.() ?? []) {
       headers.append('set-cookie', c.replace(/;\s*domain=[^;]+/gi, '').replace(/;\s*secure/gi, ''));
     }
+    const authCookie = res.getHeader('Set-Cookie');
+    if (authCookie) headers.append('set-cookie', String(authCookie));
     writeProxyHead(res, upstream.status, headers);
     const body = Buffer.from(await upstream.arrayBuffer());
     // 顶层文档导航 + 上游就是 HTML → 这是"用户在浏览一个没镜像的页"。
     // 只在这条路径补提示条：资源请求、RSC/fetch 载荷（sec-fetch-dest: empty）都不插，
     // 否则会把框架的数据流弄脏。理由见 live-html.mjs 的 unmirroredBanner。
     if (frameDocNavigation(req) && /text\/html/i.test(upstream.headers.get('content-type') ?? '')) {
-      return res.end(unmirroredBanner(body.toString('utf8'), lmHost, { to }));
+      return res.end(unmirroredBanner(body.toString('utf8'), lmHost, { to: '/' }));
     }
     res.end(body);
   } catch (e) {
@@ -258,11 +338,109 @@ function applyCors(req, res) {
   const origin = req.headers.origin;
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Vary', 'Origin');
   }
 }
 /** token 可走 header；SSE/EventSource 不支持自定义 header，允许 ?token= 兜底 */
-const authorized = (req, u) => !AUTH_TOKEN || req.headers['x-heimdall-token'] === AUTH_TOKEN || u?.searchParams?.get('token') === AUTH_TOKEN;
+function authorized(req, u, res, scope = '') {
+  if (!AUTH_TOKEN) return true;
+  const cookie = String(req.headers.cookie ?? '').split(';').map(part => part.trim())
+    .find(part => part.startsWith('heimdall_session='))?.slice('heimdall_session='.length);
+  if (req.headers['x-heimdall-token'] === AUTH_TOKEN || u?.searchParams?.get('token') === AUTH_TOKEN) {
+    issueAuthSession(res, cookie, scope);
+    return true;
+  }
+  const expires = AUTH_SESSIONS.get(cookie);
+  if (expires && expires > Date.now()) return AUTH_SESSION_SCOPES.get(cookie) === scope;
+  if (cookie) { AUTH_SESSIONS.delete(cookie); AUTH_SESSION_SCOPES.delete(cookie); }
+  return false;
+}
+function issueAuthSession(res, existing, scope = '') {
+  const now = Date.now();
+  for (const [id, expires] of AUTH_SESSIONS) if (expires <= now) { AUTH_SESSIONS.delete(id); AUTH_SESSION_SCOPES.delete(id); }
+  const session = existing && AUTH_SESSIONS.has(existing) && AUTH_SESSION_SCOPES.get(existing) === scope ? existing : randomUUID();
+  if (!AUTH_SESSIONS.has(session) && AUTH_SESSIONS.size >= 1024) {
+    const oldest = AUTH_SESSIONS.keys().next().value;
+    AUTH_SESSIONS.delete(oldest); AUTH_SESSION_SCOPES.delete(oldest);
+  }
+  AUTH_SESSIONS.set(session, now + AUTH_SESSION_TTL);
+  AUTH_SESSION_SCOPES.set(session, scope);
+  // CSP-sandboxed workspace HTML has an opaque origin. Its relative assets are
+  // cross-site requests, so Lax would authenticate the document but 401 its images/CSS.
+  res.setHeader('Set-Cookie', `heimdall_session=${session}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200`);
+}
+
+const MIRROR_HOST_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+function storeSessionTicket(payload) {
+  const now = Date.now();
+  for (const [id, ticket] of SESSION_TICKETS) if (ticket.expires <= now) SESSION_TICKETS.delete(id);
+  if (SESSION_TICKETS.size >= 1024) SESSION_TICKETS.delete(SESSION_TICKETS.keys().next().value);
+  const id = randomUUID();
+  SESSION_TICKETS.set(id, { ...payload, expires: now + SESSION_TICKET_TTL });
+  return id;
+}
+function issueMirrorTicket(rawUrl, mode) {
+  if (mode !== 'root') return { status: 400, error: 'invalid mirror mode' };
+  let target;
+  try { target = new URL(rawUrl ?? ''); }
+  catch { return { status: 400, error: 'invalid mirror URL' }; }
+  const host = target.hostname.toLowerCase();
+  if (!['https:', 'http:'].includes(target.protocol) || target.username || target.password
+      || !MIRROR_HOST_RE.test(host)) return { status: 400, error: 'invalid mirror URL' };
+  let identity;
+  try { identity = findSiteIdentity(WORKSPACE, target); } catch {}
+  if (!identity && EXTRA_PROXY_HOSTS.has(host) && target.origin === `https://${host}`) identity = { siteId: host, origin: target.origin };
+  if (!identity) return { status: 403, error: 'origin not allowed' };
+  const path = target.pathname + target.search;
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) {
+    return { status: 400, error: 'invalid mirror path' };
+  }
+  const id = storeSessionTicket({ host: identity.siteId, origin: identity.origin, path, mode });
+  const destination = new URL(`http://${identity.siteId}.localhost:${PORT}${MIRROR_SESSION_PATH}`);
+  destination.searchParams.set('ticket', id);
+  return { url: destination.href, siteId: identity.siteId, origin: identity.origin };
+}
+function issueArtifactTicket(rawPath, engineHost) {
+  if (typeof rawPath !== 'string' || !rawPath.startsWith('/static/')
+      || rawPath.startsWith('//') || rawPath.includes('\\') || rawPath.includes('#')) {
+    return { status: 400, error: 'invalid artifact path' };
+  }
+  let destination;
+  try { destination = new URL(rawPath, 'http://heimdall.invalid'); }
+  catch { return { status: 400, error: 'invalid artifact path' }; }
+  if (destination.origin !== 'http://heimdall.invalid'
+      || !/^\/static\/[a-z0-9.-]+\//i.test(destination.pathname)) {
+    return { status: 400, error: 'invalid artifact path' };
+  }
+  const id = storeSessionTicket({ mode: 'artifact', engineHost: String(engineHost ?? '').toLowerCase(),
+    path: destination.pathname + destination.search });
+  return { url: `${MIRROR_SESSION_PATH}?ticket=${encodeURIComponent(id)}` };
+}
+function mirrorLaunch(req, res, u) {
+  if (!authorized(req, null, res)) return json(res, 401, { error: 'unauthorized' });
+  const issued = issueMirrorTicket(u.searchParams.get('url'), 'root');
+  if (issued.error) return json(res, issued.status, { error: issued.error });
+  const destination = issued.url;
+  res.writeHead(302, { Location: destination, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+  res.end();
+}
+function exchangeMirrorTicket(req, res, u, host) {
+  if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
+  const id = u.searchParams.get('ticket');
+  const ticket = id && SESSION_TICKETS.get(id);
+  if (id) SESSION_TICKETS.delete(id);
+  if (!ticket || ticket.expires <= Date.now()
+      || (host ? ticket.mode !== 'root' || ticket.host !== host || mirrorIdentity(host)?.origin !== ticket.origin
+        : ticket.mode !== 'artifact'
+          || ticket.engineHost !== String(req.headers.host ?? '').toLowerCase())) {
+    return json(res, 401, { error: 'invalid mirror ticket' });
+  }
+  issueAuthSession(res, undefined, host ? `${host}|${ticket.origin}` : '');
+  res.writeHead(302, { Location: ticket.path,
+    'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+  res.end();
+}
 /** 代理白名单：默认只允许 workspace 下已存在的 host（已侦察/已捕获站点）
  *  用"列一次目录得到集合"代替"每个请求 stat 一次"：清单请求最热的一条路，
  *  而集合走 listCaches（8s TTL + 任务结束即失效）。顺带更安全 ——
@@ -296,7 +474,14 @@ const isProxyHost = (h) => {
     try { return new Set(readdirSync(WORKSPACE)); } catch { return new Set(); }
   }).has(noWww);
 };
-const pageFor = (u) => pageNameOfUrl(u);
+
+function mirrorIdentity(siteId) {
+  try {
+    return readSiteIdentity(WORKSPACE, siteId)
+      ?? (EXTRA_PROXY_HOSTS.has(siteId) ? { siteId, origin: `https://${siteId}` } : null);
+  } catch { return null; }
+}
+const pageFor = (u) => resolvePageNameOfUrl(u, join(WORKSPACE, siteIdForOrigin(WORKSPACE, u)));
 // 路径归属判断统一走 paths.mjs 的 isInside（用 relative 判，前缀判断会被 `..` 绕过）
 const isInsideWorkspace = (file) => isInside(WORKSPACE, file);
 const isInsideDataRoot = (file) => isInside(DATA_ROOT, file);
@@ -311,7 +496,6 @@ const MAX_TASKS = 300;
  * task = {id,kind:'recon'|'forge',url,status,events:[],subs:Set,child,atlasPath?,pageName?}
  */
 const tasks = new Map();
-let seq = 0;
 let runningRecon = null;
 let runningAudit = null;
 let runningWatch = null;
@@ -374,6 +558,12 @@ const writeSubs = (t, payload) => {
 };
 
 const push = (t, ev) => {
+  if (t.kind === 'recon' && ev?.kind === 'calibrated' && ev.host && ev.origin) {
+    t.host = ev.host;
+    t.siteId = ev.host;
+    t.origin = ev.origin;
+    t.atlasPath = join(WORKSPACE, ev.host, 'recon', 'atlas.json');
+  }
   t.events.push(ev);
   if (typeof ev?.kind === 'string' && ev.kind.endsWith('-error')) t.error = ev.error ?? 'error';
   jobStore?.appendEvent(t.id, ev);
@@ -421,7 +611,7 @@ function killTask(t, reason) {
 }
 
 function makeTask(kind, url) {
-  const id = `${kind[0]}${String(++seq).padStart(3, '0')}`;
+  const id = `${kind[0]}-${randomUUID()}`;
   const t = { id, kind, url, status: 'running', events: [], logs: [], subs: new Set(), child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false, killed: null, timeoutMs: 0, stallMs: 0 };
   tasks.set(id, t);
   jobStore?.upsert({ id, kind, url, status: 'running', createdAt: t.createdAt });
@@ -491,8 +681,20 @@ function spawnTask(t, script, args, opts = {}) {
     else if (t.kind === 'upgrade') runningUpgrade = null;
     else if (t.kind === 'clone') runningClone = null;        // 整站克隆是编排任务，不占锻造槽
     else if (t.kind === 'session') runningSession = null;    // 登录会话不占锻造槽
-    else if (t.kind === 'storage') storageScanTask = null;   // 盘点任务不占锻造槽
-    else if (t.kind === 'deliver') deliverTask = null;       // 同理
+    else if (t.kind === 'storage') {
+      storageScanTask = null;                                // 盘点任务不占锻造槽
+      if (storageScanDirty) {
+        storageScanDirty = false;
+        setImmediate(() => startStorageScan());              // 盘点过程中有变更，再扫描最终状态
+      }
+    }
+    else if (t.kind === 'deliver') {
+      deliverTask = null;
+      if (t.apply) {
+        deliverExpectedRunId = randomUUID();
+        startStorageScan({ afterMutation: true });
+      }
+    }
     // 槽位归还跟着"谁占过"走（t.tookForgeSlot 在 startForge 里置位），
     // 不再用兜底分支去猜 —— 兜底正是当初把计数减成负数的原因
     if (t.tookForgeSlot && !forgeSlots.release()) {
@@ -507,23 +709,26 @@ function spawnTask(t, script, args, opts = {}) {
 }
 
 function startRecon(url, maxPages) {
+  const siteId = siteIdForOrigin(WORKSPACE, url);
   const t = makeTask('recon', url);
-  const host = new URL(url).hostname.replace(/^www\./, '');
-  t.atlasPath = join(WORKSPACE, host, 'recon', 'atlas.json');
+  t.host = siteId;
+  t.siteId = siteId;
+  t.origin = new URL(url).origin;
+  t.atlasPath = join(WORKSPACE, siteId, 'recon', 'atlas.json');
   runningRecon = t;
   return spawnTask(t, join('src', 'crawler', 'recon.mjs'), [url, String(maxPages), '2']).id;
 }
 
 function startAudit(url, maxPages = 30) {
   const t = makeTask('audit', url);
-  t.host = new URL(url).hostname.replace(/^www\./, '');
+  t.host = siteIdForOrigin(WORKSPACE, url);
   runningAudit = t;
   return spawnTask(t, join('src', 'seo', 'audit.mjs'), [url, '--max', String(maxPages)]).id;
 }
 
 function startWatch(url, maxPages = 20, accept = false) {
   const t = makeTask('watch', url);
-  t.host = new URL(url).hostname.replace(/^www\./, '');
+  t.host = siteIdForOrigin(WORKSPACE, url);
   runningWatch = t;
   const args = [url, '--max', String(maxPages)];
   if (accept) args.push('--accept');
@@ -539,7 +744,7 @@ function startAssets(host, maxPages = 60) {
 
 function startMatrix(sites, maxPages = 15) {
   const t = makeTask('matrix', sites.join(','));
-  t.host = sites[0];
+  t.host = resolveMatrixTarget(sites[0]).siteId;
   runningMatrix = t;
   return spawnTask(t, join('src', 'seo', 'matrix.mjs'), [...sites, '--max', String(maxPages)]).id;
 }
@@ -554,12 +759,13 @@ function startResponsiveUpgrade(host, { threshold = 0.97, max = 8, force = false
   return spawnTask(t, join('src', 'crawler', 'responsive-upgrade.mjs'), args).id;
 }
 
-function startVerify(host, { page, maxPages = 20 } = {}) {
+function startVerify(host, { page, maxPages = null } = {}) {
   const t = makeTask('verify', 'https://' + host);
   t.host = host;
   t.label = page ? '多视口体检 ' + page : '全站体检';
   runningVerify = t;
-  const args = page ? [host, page, '--no-interactions'] : [host, '--all', '--max', String(maxPages)];
+  const args = page ? [host, page, '--no-interactions'] : [host, '--all'];
+  if (!page && maxPages !== null) args.push('--max', String(maxPages));
   return spawnTask(t, join('src', 'verify', 'verify.mjs'), args).id;
 }
 
@@ -568,7 +774,7 @@ function startLiveExport(host, { root = 'mirror', rebuild = false } = {}) {
   t.host = host;
   t.label = '交互镜像导出 ' + host;
   runningLive = t;
-  const args = [host, '--offline', '--root', root === 'landing' ? 'landing' : 'mirror', '--heal', '--materialize-har'];
+  const args = [host, '--offline', '--strict', '--root', root === 'landing' ? 'landing' : 'mirror', '--heal', '--materialize-har'];
   if (rebuild) args.push('--rebuild');
   return spawnTask(t, join('src', 'live', 'export.mjs'), args, { nodeArgs: ['--max-old-space-size=4096'] }).id;
 }
@@ -582,42 +788,85 @@ function startLiveExport(host, { root = 'mirror', rebuild = false } = {}) {
  */
 const STORAGE_JSON = join(DATA_ROOT, 'storage.json');
 const STORAGE_TTL_MS = 5 * 60_000;
+const TRASH_WARN_BYTES = Number.isSafeInteger(Number(process.env.HEIMDALL_TRASH_WARN_BYTES))
+  && Number(process.env.HEIMDALL_TRASH_WARN_BYTES) > 0
+  ? Number(process.env.HEIMDALL_TRASH_WARN_BYTES) : 1024 ** 3;
 let storageScanTask = null;
+let storageScanDirty = false;
+let storageMutationAt = 0;
 
 function readStorageFile() {
   try {
     const s = JSON.parse(readFileSync(STORAGE_JSON, 'utf8'));
-    return { ...s, stale: Date.now() - Date.parse(s.generatedAt ?? 0) > STORAGE_TTL_MS };
+    const generatedAt = Date.parse(s.generatedAt ?? 0);
+    return { ...s, stale: Date.now() - generatedAt > STORAGE_TTL_MS || generatedAt <= storageMutationAt };
   } catch { return null; }
 }
 
 /** 后台盘点（不阻塞事件循环）；已在跑则复用同一个任务 */
-function startStorageScan() {
-  if (storageScanTask && storageScanTask.status === 'running') return storageScanTask.id;
+function startStorageScan({ afterMutation = false } = {}) {
+  if (afterMutation) storageMutationAt = Math.max(Date.now(), storageMutationAt + 1);
+  if (storageScanTask && storageScanTask.status === 'running') {
+    if (afterMutation) storageScanDirty = true;
+    return storageScanTask.id;
+  }
   const t = makeTask('storage', 'local://storage');
   t.label = '磁盘盘点';
   storageScanTask = t;
   return spawnTask(t, join('src', 'audit', 'storage.mjs'), []).id;
 }
 
+async function runTrashCommand(args) {
+  try {
+    const longRunning = ['preview', 'backup', 'purge-record', 'recover-backup'].includes(args[0]);
+    const { stdout } = await execFileAsync(process.execPath,
+      [join(HERE, 'audit', 'site-trash.mjs'), ...args],
+      { cwd: join(HERE, '..'), env: process.env,
+        timeout: longRunning ? 30 * 60_000 : 120_000, maxBuffer: 1024 * 1024 });
+    return JSON.parse(stdout);
+  } catch (error) {
+    throw new Error(String(error?.stderr || error?.message || error).trim().slice(0, 200));
+  }
+}
+
 /**
  * 交付包清理。**同样走子进程**：deliverable/ 实测有 8 个包 / 1.88GB / 上万个文件，
- * 扫描要 stat 每一个文件、删除要 unlink 每一个 —— 与磁盘盘点同一量级，
+ * 扫描要读取文件内容计算指纹，隔离要移动目录 —— 与磁盘盘点同一量级，
  * 放在请求处理里会冻住事件循环（见上面 startStorageScan 的注释）。
  */
 const DELIVER_PLAN_JSON = join(DATA_ROOT, 'deliver-plan.json');
 let deliverTask = null;
+let deliverExpectedRunId = null;
+let deliverRestoreRunning = false;
 
 function readDeliverPlan() {
-  try { return JSON.parse(readFileSync(DELIVER_PLAN_JSON, 'utf8')); } catch { return null; }
+  try {
+    const plan = JSON.parse(readFileSync(DELIVER_PLAN_JSON, 'utf8'));
+    return !deliverExpectedRunId || plan.runId === deliverExpectedRunId ? plan : null;
+  } catch { return null; }
 }
 
-function startDeliverPrune(apply) {
+function startDeliverPrune(apply, revision = null) {
   if (deliverTask && deliverTask.status === 'running') return deliverTask.id;
   const t = makeTask('deliver', 'local://deliver');
-  t.label = apply ? '交付包清理' : '交付包盘点';
+  t.apply = apply;
+  t.revision = revision;
+  t.label = apply ? '交付包隔离' : '交付包盘点';
   deliverTask = t;
-  return spawnTask(t, join('src', 'audit', 'deliver-prune.mjs'), apply ? ['--apply'] : []).id;
+  deliverExpectedRunId = t.id;
+  return spawnTask(t, join('src', 'audit', 'deliver-prune.mjs'),
+    [...(apply ? ['--apply', '--revision', revision] : []), '--run-id', t.id]).id;
+}
+
+async function runDeliverCommand(args) {
+  try {
+    const { stdout } = await execFileAsync(process.execPath,
+      [join(HERE, 'audit', 'deliver-prune.mjs'), ...args, '--json'],
+      { cwd: join(HERE, '..'), env: process.env, timeout: 120_000, maxBuffer: 1024 * 1024 });
+    return JSON.parse(stdout);
+  } catch (error) {
+    throw new Error(String(error?.stderr || error?.message || error).trim().slice(0, 250));
+  }
 }
 
 /**
@@ -648,6 +897,11 @@ function startEditManifest(host) {
 }
 
 function startForge(url, { hostPost = true } = {}) {
+  const u = new URL(url);
+  const siteId = siteIdForOrigin(WORKSPACE, url);
+  const siteDir = join(WORKSPACE, siteId);
+  const name = assertPageName(resolvePageNameOfUrl(u, siteDir));
+  assertSiteOrigin(siteDir, url, { pageName: name });
   // 占槽的动作和"这个任务占着槽"的标记放在一起 —— 分开放就会有人漏掉一处
   if (!forgeSlots.acquire()) { const e = new Error('busy'); e.code = 'busy'; throw e; }
   let t;
@@ -655,9 +909,10 @@ function startForge(url, { hostPost = true } = {}) {
     t = makeTask('forge', url);
   } catch (e) { forgeSlots.release(); throw e; }
   t.tookForgeSlot = true;
-  const u = new URL(url);
-  const name = pageNameOfUrl(u);
   t.pageName = name;
+  t.host = siteId;
+  t.siteId = siteId;
+  t.origin = u.origin;
   const env = hostPost ? {} : { HEIMDALL_SKIP_HOST_POST: '1' };
   // 单页熔断参数来自站点配方（大站可以给更长的上限，挂死页统一在 8 分钟内判死）
   const plan = queuePlan(loadProfile(u.hostname.replace(/^www\./, '')));
@@ -669,11 +924,12 @@ function startForge(url, { hostPost = true } = {}) {
  * 好处：关掉控制台页面任务照跑、并发与超时按配方走、只占一个"编排"名额不占锻造槽。
  */
 function startCloneSite(host, { max = null, incremental = false, force = false } = {}) {
-  const t = makeTask('clone', 'https://' + host);
+  const origin = readSiteOrigin(join(WORKSPACE, host)) ?? 'https://' + host;
+  const t = makeTask('clone', origin);
   t.host = host;
   t.label = '整站克隆 ' + host;
   runningClone = t;
-  const profile = loadProfile(host);
+  const profile = loadProfile(new URL(origin).hostname.replace(/^www\./, ''));
   const plan = queuePlan(profile, MAX_FORGE);
   t.plan = { workers: plan.workers, maxPages: max ?? plan.maxPages, incremental, force };
   const args = [host, '--max', String(max ?? plan.maxPages), '--json-events'];
@@ -754,9 +1010,38 @@ function assetIndex(host) {
 }
 
 const handleRequest = async (req, res) => {
+  if (!trustedRequestHost(req.headers.host)) return json(res, 421, { error: 'untrusted host' });
   const u = new URL(req.url, 'http://x');
+  // 镜像子域的 /api/* 与 /static/* 属于原站，先按 Host 分流。
+  const mirrorHost = mirrorHostOf(req.headers.host);
+  if (mirrorHost) {
+    if (u.pathname === MIRROR_SESSION_PATH) return exchangeMirrorTicket(req, res, u, mirrorHost);
+    // Mirror hosts cannot receive the main host's cookie. They require their own
+    // session or an explicit token header; a token in the URL would reach upstream.
+    const identity = mirrorIdentity(mirrorHost);
+    if (!authorized(req, null, res, `${mirrorHost}|${identity?.origin}`)) return json(res, 401, { error: 'unauthorized' });
+    if (!identity) return json(res, 403, { error: 'host not allowed', host: mirrorHost });
+    return serveMirror(req, res, u, identity);
+  }
+  if (req.method === 'DELETE' && u.pathname.startsWith('/api/sites/')) {
+    let segments;
+    try { segments = String(req.url).split(/[?#]/, 1)[0].split('/').map(decodeURIComponent); }
+    catch { return json(res, 400, { error: 'bad delete path' }); }
+    if (segments.some(segment => segment === '.' || segment === '..' || /[\\/]/.test(segment))) {
+      return json(res, 400, { error: 'bad delete path' });
+    }
+  }
   applyCors(req, res);
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); res.end(); return; }
+
+  // Sandboxed workspace documents have an opaque Origin. Reject their simple
+  // form/fetch writes even when the browser sends the engine session cookie.
+  if (u.pathname.startsWith('/api/') && !['GET', 'HEAD'].includes(req.method)
+      && req.headers.origin && !ALLOWED_ORIGINS.includes(req.headers.origin)
+      && req.headers.origin !== `http://${req.headers.host}`
+      && req.headers.origin !== `https://${req.headers.host}`) {
+    return json(res, 403, { error: 'origin not allowed' });
+  }
 
   // 请求体上限。两道：
   //   ① 这里用 Content-Length 提前拦掉"声明了一个巨大 body"的请求（尤其是 /api/reveal、
@@ -770,7 +1055,34 @@ const handleRequest = async (req, res) => {
     if (declared > MAX_BODY_BYTES) return json(res, 413, { error: 'body too large', limit: MAX_BODY_BYTES });
   }
 
-  if (!authorized(req, u) && (u.pathname.startsWith('/api/') || u.pathname.startsWith('/px/'))) {
+  if (req.method === 'POST' && u.pathname === '/api/auth/logout') {
+    const cookie = String(req.headers.cookie ?? '').split(';').map(part => part.trim())
+      .find(part => part.startsWith('heimdall_session='))?.slice('heimdall_session='.length);
+    if (cookie) { AUTH_SESSIONS.delete(cookie); AUTH_SESSION_SCOPES.delete(cookie); }
+    res.setHeader('Set-Cookie', 'heimdall_session=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0');
+    return json(res, 200, { ok: true });
+  }
+
+  if (u.pathname === MIRROR_SESSION_PATH) return exchangeMirrorTicket(req, res, u, null);
+  if (req.method === 'GET' && u.pathname === '/api/mirror-launch') return mirrorLaunch(req, res, u);
+  if (req.method === 'POST' && u.pathname === '/api/mirror-ticket') {
+    if (!AUTH_TOKEN || !authorized(req, null, res)) return json(res, 401, { error: 'unauthorized' });
+    return readJsonBody(req, res, (body) => {
+      const issued = issueMirrorTicket(body.url, body.mode ?? 'root');
+      return issued.error ? json(res, issued.status, { error: issued.error }) : json(res, 200, issued);
+    });
+  }
+  if (req.method === 'POST' && u.pathname === '/api/artifact-ticket') {
+    if (!AUTH_TOKEN || req.headers['x-heimdall-token'] !== AUTH_TOKEN) return json(res, 401, { error: 'unauthorized' });
+    return readJsonBody(req, res, (body) => {
+      const issued = issueArtifactTicket(body.path, req.headers.host);
+      return issued.error ? json(res, issued.status, { error: issued.error }) : json(res, 200, issued);
+    });
+  }
+
+  if (!authorized(req, (u.pathname === '/lm' || u.pathname.startsWith('/lm/')) ? null : u, res)
+      && (u.pathname.startsWith('/api/') || u.pathname.startsWith('/px/')
+        || u.pathname.startsWith('/static/') || u.pathname === '/lm' || u.pathname.startsWith('/lm/'))) {
     return json(res, 401, { error: 'unauthorized' });
   }
 
@@ -861,7 +1173,12 @@ const handleRequest = async (req, res) => {
       let { url, maxPages = 40 } = b;
       try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
       if (runningRecon) return json(res, 409, { error: 'busy', taskId: runningRecon.id });
-      json(res, 200, { taskId: startRecon(url, Math.min(Math.max(maxPages ?? 40, 5), 80)), url });
+      try {
+        const taskId = startRecon(url, Math.min(Math.max(maxPages ?? 40, 5), 80));
+        json(res, 200, { taskId, url, siteId: tasks.get(taskId)?.siteId ?? null });
+      } catch (error) {
+        json(res, error?.code === 'origin-conflict' ? 409 : 500, { error: String(error?.message ?? error).slice(0, 300) });
+      }
     });
     return;
   }
@@ -872,10 +1189,11 @@ const handleRequest = async (req, res) => {
       try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
       try {
         const { id, name } = startForge(url, { hostPost: hostPost !== false });
-        json(res, 200, { taskId: id, pageName: name, url });
+        json(res, 200, { taskId: id, pageName: name, url, siteId: tasks.get(id)?.siteId ?? null });
       } catch (e) {
         // 满槽由 startForge 抛 busy —— 那是 409（可以等会儿再来），不是 500
-        json(res, e?.code === 'busy' ? 409 : 500, { error: e?.code === 'busy' ? 'busy' : String(e).slice(0, 140) });
+        json(res, e?.code === 'invalid-page-name' ? 400 : ['busy', 'origin-conflict'].includes(e?.code) ? 409 : 500,
+          { error: e?.code === 'busy' ? 'busy' : String(e.message ?? e).slice(0, 300) });
       }
     });
     return;
@@ -910,10 +1228,15 @@ const handleRequest = async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/api/matrix') {
     readJsonBody(req, res, (b) => {
       let { sites = [], maxPages = 15 } = b;
-      sites = (Array.isArray(sites) ? sites : []).map(s => String(s).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')).filter(s => /^[a-z0-9.-]+$/i.test(s));
-      if (sites.length < 2 || sites.length > 6) return json(res, 400, { error: 'need 2-6 valid hosts' });
+      try {
+        sites = [...new Map((Array.isArray(sites) ? sites : []).map(site => {
+          const target = resolveMatrixTarget(site);
+          return [target.origin, target.origin];
+        })).values()];
+      } catch { return json(res, 400, { error: 'invalid matrix site' }); }
+      if (sites.length < 2 || sites.length > 6) return json(res, 400, { error: 'need 2-6 distinct origins' });
       if (runningMatrix) return json(res, 409, { error: 'busy', taskId: runningMatrix.id });
-      const id = startMatrix([...new Set(sites)], Math.min(Math.max(maxPages ?? 15, 1), 100));
+      const id = startMatrix(sites, Math.min(Math.max(maxPages ?? 15, 1), 100));
       json(res, 200, { taskId: id, sites });
     });
     return;
@@ -958,12 +1281,13 @@ const handleRequest = async (req, res) => {
 
   if (req.method === 'POST' && u.pathname === '/api/verify') {
     readJsonBody(req, res, (b) => {
-      let { host, page = null, maxPages = 20 } = b;
+      let { host, page = null, maxPages = null } = b;
       host = String(host ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
       if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'invalid host' });
-      if (page != null && !/^[a-z0-9._-]+$/i.test(String(page))) return json(res, 400, { error: 'bad page' });
+      if (page != null && (!/^[a-z0-9._-]+$/i.test(String(page)) || !isSafePageName(String(page)))) return json(res, 400, { error: 'bad page' });
+      if (maxPages !== null && (!Number.isInteger(Number(maxPages)) || Number(maxPages) < 1 || Number(maxPages) > 200)) return json(res, 400, { error: 'maxPages must be an integer from 1 to 200' });
       if (runningVerify) return json(res, 409, { error: 'busy', taskId: runningVerify.id });
-      const id = startVerify(host, { page: page ? String(page) : null, maxPages: Math.min(Math.max(maxPages ?? 20, 1), 200) });
+      const id = startVerify(host, { page: page ? String(page) : null, maxPages: maxPages === null ? null : Number(maxPages) });
       json(res, 200, { taskId: id, host, page: page ?? null });
     });
     return;
@@ -1086,8 +1410,26 @@ const handleRequest = async (req, res) => {
     if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
     const pagesDir = join(WORKSPACE, host, 'pages');
     const out = [];
+    const invalidatedVerifyPages = new Map();
+    try {
+      const summaryPath = join(WORKSPACE, host, 'verify', 'verify-summary.json');
+      const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));
+      const generatedAt = Date.parse(summary.generatedAt ?? '');
+      const summaryAt = Number.isFinite(generatedAt) ? generatedAt : statSync(summaryPath).mtimeMs;
+      if (summary.mode === 'all' && Array.isArray(summary.pages)) {
+        for (const page of summary.pages) {
+          if (typeof page?.page === 'string' && (page.measured === false || page.invalidated)) {
+            invalidatedVerifyPages.set(page.page, summaryAt);
+          }
+        }
+      }
+    } catch {}
     // 资产缺口（若已跑过扫描）
     const gapMap = {};
+    const siteArtifacts = {
+      linker: existsSync(join(WORKSPACE, host, 'linker-report.json')),
+      assetGaps: existsSync(join(WORKSPACE, host, 'audit', 'asset-gaps.json')),
+    };
     try {
       const gaps = JSON.parse(readFileSync(join(WORKSPACE, host, 'audit', 'asset-gaps.json'), 'utf8'));
       for (const p of gaps.pages ?? []) gapMap[p.page] = { visual: p.visualGaps ?? 0, origin: p.visualOrigin ?? 0, third: p.visualThird ?? 0 };
@@ -1109,13 +1451,35 @@ const handleRequest = async (req, res) => {
         // verify 结果：interactions（交互列）与 minViewport（视觉列的最差值）同源，
         // 一次读文件一起给。控制台此前为这两列逐页发 2 个请求（80 页 = 160 个），
         // 而这里本来就已经在读同一个文件了。
-        let interactions = null, minViewport = null;
+        let interactions = null, minViewport = null, verifyScoreVersion = null;
+        const artifacts = {
+          verify: existsSync(join(WORKSPACE, host, 'verify', name, 'verify.json')),
+          fixup: existsSync(join(pagesDir, name, 'fixup-history.json')),
+          cloneGaps: existsSync(join(pagesDir, name, 'clone-gaps.json')),
+          ...siteArtifacts,
+        };
+        let verifyMeasured = invalidatedVerifyPages.has(name) ? false : null;
+        let verifyFresh = false;
         try {
-          const v = JSON.parse(readFileSync(join(WORKSPACE, host, 'verify', name, 'verify.json'), 'utf8'));
-          interactions = v.functional ?? null;
-          minViewport = v.minViewport
-            ? { name: v.minViewport.name, score: v.minViewport.score, grade: v.minViewport.grade }
-            : null;
+          const verifyPath = join(WORKSPACE, host, 'verify', name, 'verify.json');
+          const verifyMtime = statSync(verifyPath).mtimeMs;
+          if (verifyMtime >= mtime) {
+            const v = JSON.parse(readFileSync(verifyPath, 'utf8'));
+            const generatedAt = Date.parse(v.generatedAt ?? '');
+            const verifyAt = Number.isFinite(generatedAt) ? generatedAt : verifyMtime;
+            if (!invalidatedVerifyPages.has(name) || verifyAt > invalidatedVerifyPages.get(name)) {
+              verifyFresh = true;
+              interactions = v.functional ?? null;
+              verifyScoreVersion = v.scoreVersion ?? 1;
+              verifyMeasured = v.measured === true;
+              minViewport = v.minViewport
+                ? { name: v.minViewport.name, score: v.minViewport.score, grade: v.minViewport.grade,
+                    coverageRatio: v.minViewport.coverageRatio ?? null,
+                    sourceSize: v.minViewport.sourceSize ?? null, cloneSize: v.minViewport.cloneSize ?? null,
+                    heightDelta: v.minViewport.heightDelta ?? null, missingPixels: v.minViewport.missingPixels ?? null }
+                : null;
+            }
+          }
         } catch {}
         // 动效驱动画像（capture 阶段采，见 crawler/motion.mjs）——旧产物没有这个文件
         let motion = null;
@@ -1127,6 +1491,10 @@ const handleRequest = async (req, res) => {
           visualGaps: gapMap[name] ?? null,
           interactions,
           minViewport,
+          verifyScoreVersion,
+          verifyMeasured,
+          verifyFresh,
+          artifacts,
           motion,
           updatedAt: mtime,
         });
@@ -1143,7 +1511,7 @@ const handleRequest = async (req, res) => {
     if (!/^[a-z0-9.-]+$/i.test(host) || !page) return json(res, 400, { error: 'bad history path' });
     const jobs = (jobStore?.list({ limit: 500 }) ?? [])
       .filter(j => {
-        try { const x = new URL(j.url); return x.hostname.replace(/^www\./, '') === host && (j.pageName === page || (j.kind === 'forge' && pageFor(x) === page)); } catch { return false; }
+        try { const x = new URL(j.url); return siteIdForOrigin(WORKSPACE, x) === host && (j.pageName === page || (j.kind === 'forge' && pageFor(x) === page)); } catch { return false; }
       })
       .slice(0, 30)
       .map(j => {
@@ -1217,25 +1585,66 @@ const handleRequest = async (req, res) => {
     const args = [host, '--from', from, '--to', to, ...(apply ? ['--apply'] : []), ...(body.js === true ? ['--js'] : [])];
     return json(res, 202, { ok: true, taskId: spawnTask(t, join('src', 'deliver', 'replace-domain.mjs'), args).id, status: 'running' });
   }
-  // 交付包保留策略。扫描与删除都在子进程里做（上万个文件），这里只读结果文件。
+  // 交付包保留策略。扫描与隔离都在子进程里做，这里只读预览结果。
   if (u.pathname === '/api/deliver/plan' && req.method === 'GET') {
     const p = readDeliverPlan();
     if (!p) startDeliverPrune(false);      // 第一次访问时后台算一次
-    return json(res, 200, p ?? { pending: true, scanning: !!(deliverTask && deliverTask.status === 'running') });
+    const scanning = !!(deliverTask && deliverTask.status === 'running');
+    return json(res, 200, p ? { ...p, scanning } : { pending: true, scanning });
   }
   if (u.pathname === '/api/deliver/prune' && req.method === 'POST') {
     let body = {};
     try { body = JSON.parse((await readBody(req)) || '{}'); } catch { return json(res, 400, { error: 'invalid json' }); }
     const apply = body.apply === true;
-    // 与 CAS 回收同一道闸：删除不可逆，未设 token 时只允许本机回环
+    // 未设 token 时，写操作只允许本机回环。
     if (apply && !AUTH_TOKEN && !isLoopback(req)) {
-      return json(res, 403, { error: '真删除需要 HEIMDALL_TOKEN；未设置时仅允许本机回环访问' });
+      return json(res, 403, { error: '交付包隔离需要 HEIMDALL_TOKEN；未设置时仅允许本机回环访问' });
     }
     if (apply && body.confirm !== 'HEIMDALL_DELIVER_PRUNE') {
-      return json(res, 400, { error: '真删除需要 confirm=HEIMDALL_DELIVER_PRUNE' });
+      return json(res, 400, { error: '交付包隔离需要 confirm=HEIMDALL_DELIVER_PRUNE' });
     }
-    const taskId = startDeliverPrune(apply);
+    const revision = body.revision;
+    if (apply && (typeof revision !== 'string' || !/^[0-9a-f]{64}$/i.test(revision))) {
+      return json(res, 400, { error: '需要有效的预览 revision，请重新盘点' });
+    }
+    if (deliverRestoreRunning) return json(res, 409, { error: '交付包恢复正在进行，请稍后重试' });
+    if (deliverTask?.status === 'running' && deliverTask.apply !== apply) {
+      return json(res, 409, { error: '另一种交付包操作正在进行，请稍后重试' });
+    }
+    if (apply && deliverTask?.status === 'running' && deliverTask.revision !== revision) {
+      return json(res, 409, { error: '预览 revision 已变化，请重新盘点' });
+    }
+    if (apply && !deliverTask) {
+      const plan = readDeliverPlan();
+      if (!plan || plan.revision !== revision || !plan.candidates?.length) {
+        return json(res, 409, { error: '预览已过期或没有候选包，请重新盘点' });
+      }
+    }
+    const taskId = startDeliverPrune(apply, revision);
     return json(res, 202, { ok: true, taskId, apply, status: 'running' });
+  }
+  if (u.pathname === '/api/deliver/trash' && req.method === 'GET') {
+    try { return json(res, 200, { entries: await runDeliverCommand(['--list-trash']) }); }
+    catch (error) { return json(res, 500, { error: String(error.message ?? error) }); }
+  }
+  const deliverRestore = /^\/api\/deliver\/trash\/([^/]+)\/restore$/.exec(u.pathname);
+  if (deliverRestore && req.method === 'POST') {
+    const id = deliverRestore[1];
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return json(res, 400, { error: 'invalid quarantine id' });
+    }
+    if (!AUTH_TOKEN && !isLoopback(req)) return json(res, 403, { error: 'forbidden' });
+    if (deliverTask?.status === 'running' || deliverRestoreRunning) {
+      return json(res, 409, { error: '另一项交付包操作正在进行，请稍后重试' });
+    }
+    deliverRestoreRunning = true;
+    try {
+      const restored = await runDeliverCommand(['--restore', id]);
+      deliverExpectedRunId = randomUUID();
+      startStorageScan({ afterMutation: true });
+      return json(res, 200, restored);
+    } catch (error) { return json(res, 409, { error: String(error.message ?? error) }); }
+    finally { deliverRestoreRunning = false; }
   }
   if (u.pathname === '/api/storage/gc' && req.method === 'POST') {
     let body = {};
@@ -1250,7 +1659,7 @@ const handleRequest = async (req, res) => {
     // 走子进程：gcCas 要遍历整个 CAS（实测 0.5s 起），在请求线程里同步跑会冻住所有别的请求。
     // 脚本本来就存在（audit/cas-gc.mjs），结果作为 cas-gc 事件回来。
     const taskId = startCasGc(apply);
-    startStorageScan();                                               // 重新盘点交给另一个子进程
+    startStorageScan({ afterMutation: true });                        // 重新盘点交给另一个子进程
     return json(res, 202, { ok: true, taskId, apply, status: 'running' });
   }
 
@@ -1301,21 +1710,16 @@ const handleRequest = async (req, res) => {
             } catch { /* 缺 manifest 的产物不参与重合统计 */ }
           }
         }
-        const clonedUrls = new Set();
-        for (const t of clonedTargets) {
-          try { clonedUrls.add(new URL(t).pathname.replace(/\/$/, '') || '/'); } catch {}
-        }
+        const clonedUrls = new Set(clonedTargets.map(canonUrl).filter(Boolean));
         // 从**克隆产物**这一侧数重合：atlas 里可能有两个节点指向同一路径
         // （`https://x` 与 `https://x/`），从 atlas 侧数就会得出比克隆页还多的重合数。
-        const atlasPaths = new Set();
-        for (const n of atlas?.nodes ?? []) {
-          try { atlasPaths.add(new URL(n.url).pathname.replace(/\/$/, '') || '/'); } catch {}
-        }
+        const atlasPaths = new Set((atlas?.nodes ?? []).map(n => canonUrl(n.url)).filter(Boolean));
         let clonedInAtlas = 0;
         for (const p of clonedUrls) if (atlasPaths.has(p)) clonedInAtlas++;
 
         // 没有 atlas 时从页面 manifest 推 origin（manifest.target 是原站 URL）
         let origin = atlas?.origin ?? '';
+        try { origin = readSiteOrigin(join(wsDir, d)) ?? origin; } catch { /* corrupted identity must not hide every site */ }
         if (!origin) {
           for (const t of clonedTargets) { try { origin = new URL(t).origin; break; } catch {} }
         }
@@ -1379,13 +1783,17 @@ const handleRequest = async (req, res) => {
   if (req.method === 'GET' && u.pathname.startsWith('/px/')) {
     const m = /^\/px\/([^/]+)(\/.*)?$/.exec(u.pathname);
     if (!m) return json(res, 400, { error: 'bad proxy path' });
-    if (!isProxyHost(m[1])) return json(res, 403, { error: 'host not allowed (recon it first or set HEIMDALL_ALLOWED_HOSTS)' });
-    const target = 'https://' + m[1] + (m[2] ?? '/') + u.search;
+    const identity = mirrorIdentity(m[1]);
+    if (!identity) return json(res, 403, { error: 'host not allowed (recon it first or set HEIMDALL_ALLOWED_HOSTS)' });
+    const target = identity.origin + (m[2] ?? '/') + u.search;
     try {
       const upstream = await fetch(target, { headers: { 'User-Agent': UA, Accept: req.headers.accept ?? '*/*', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' }, redirect: 'follow' });
       const headers = new Headers();
       for (const [k, v] of upstream.headers) {
         if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy'].includes(k.toLowerCase())) continue;
+        headers.set(k, v);
+      }
+      for (const [k, v] of Object.entries(activeDocumentHeaders(req, headers.get('content-type'), { source: 'proxy' }))) {
         headers.set(k, v);
       }
       writeProxyHead(res, upstream.status, headers);
@@ -1394,47 +1802,10 @@ const handleRequest = async (req, res) => {
     return;
   }
 
-  // Referrer 感知兜底：交互镜像页发出的"裸根相对"请求（JS 运行时拼接，patch 漏接形态）
-  // 按 referer 里的 /lm/<host> 溯源转发原站——覆盖 fetch patch 漏掉的 Image src/srcset/动态 import/模块加载
-  //
-  // host 后面**不能要求必须有斜杠**：`/lm/ant.design`（首页无尾斜杠，正是控制台「交互镜像」
-  // 链接的形态）此前匹配不上，于是页面的根相对 chunk 全部落到 SPA 兜底 → 404 → 白屏。
-  // 实测 ant.design 交互镜像整页空白就是这个原因。
-  if (!['/api/', '/static/', '/lm/', '/px/'].some(pre => u.pathname.startsWith(pre))) {
-    const ref = req.headers.referer ?? '';
-    const lmRef = /\/lm\/([^/?#]+)(?:\/|$|\?|#)/.exec(ref);
-    if (lmRef && isProxyHost(lmRef[1])) {
-      const lh = lmRef[1];
-      const target = 'https://' + lh + u.pathname + u.search;
-      try {
-        const upstream = await fetch(target, { method: req.method, headers: { 'User-Agent': UA, Accept: req.headers.accept ?? '*/*', Referer: 'https://' + lh + '/' }, body: ['GET', 'HEAD'].includes(req.method) ? undefined : req });
-        const headers = new Headers();
-        for (const [k, v] of upstream.headers) {
-          if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy'].includes(k.toLowerCase())) continue;
-          headers.set(k, v);
-        }
-        writeProxyHead(res, upstream.status, headers);
-        res.end(Buffer.from(await upstream.arrayBuffer()));
-      } catch (e) { json(res, 502, { error: String(e).slice(0, 100) }); }
-      return;
-    }
-  }
-
-  // 独立域名入口：<host>.localhost:<port>/ —— 该站镜像的根（理由见 serveMirror 注释）
-  // 放在 /static/ 之后：本地快照引用的 /static/<host>/… 仍由引擎自己的静态分支提供，
-  // 其余一切（含被镜像站自己的 /api/）都属于那个站，原样透传。
-  const subHost = mirrorHostOf(req.headers.host);
-  if (subHost) {
-    if (!isProxyHost(subHost)) return json(res, 403, { error: 'host not allowed', host: subHost });
-    return serveMirror(req, res, u, subHost, '');
-  }
-
-  // 路径前缀入口：/lm/<host>/<path> —— 通用（不依赖 *.localhost 解析），但前缀会进 location.pathname
-  if (u.pathname.startsWith('/lm/')) {
-    const m = /^\/lm\/([^/]+)(\/.*)?$/.exec(u.pathname);
-    if (!m) return json(res, 400, { error: 'bad lm path' });
-    if (!isProxyHost(m[1])) return json(res, 403, { error: 'host not allowed' });
-    return serveMirror(req, res, u, m[1], '/lm/' + m[1]);
+  // A prefix mirror would execute source-site scripts on the engine API origin.
+  // The isolated <host>.localhost mirror remains the interactive entry point.
+  if (u.pathname === '/lm' || u.pathname.startsWith('/lm/')) {
+    return json(res, 410, { error: 'prefix mirror disabled; use the isolated mirror host' });
   }
 
   if (u.pathname === '/api/status') {
@@ -1459,7 +1830,100 @@ const handleRequest = async (req, res) => {
     });
   }
 
-  // 删除：整站（workspace/<host>）或单页（页面产物 + atlas 节点）
+  if (req.method === 'GET' && u.pathname === '/api/trash') {
+    const storage = readStorageFile();
+    if (!storage || storage.stale) startStorageScan();
+    const bytes = storage?.trash?.uniqueBytes ?? null;
+    const purged = listPurgedTrashBackups();
+    return json(res, 200, { entries: listTrash(), purged, summary: {
+      logicalBytes: storage?.trash?.logicalBytes ?? null,
+      uniqueBytes: bytes,
+      files: storage?.trash?.files ?? null,
+      generatedAt: storage?.generatedAt ?? null,
+      pending: !storage,
+      stale: !!storage?.stale,
+      scanning: !!(storageScanTask && storageScanTask.status === 'running'),
+      warningBytes: TRASH_WARN_BYTES,
+      warning: bytes !== null && bytes >= TRASH_WARN_BYTES,
+    } });
+  }
+  if (req.method === 'GET' && /^\/api\/trash\/[^/]+\/preview$/.test(u.pathname)) {
+    const id = u.pathname.split('/')[3];
+    try { return json(res, 200, await runTrashCommand(['preview', id])); }
+    catch (error) {
+      const message = String(error.message);
+      return json(res, message.includes('bad trash id') ? 400 : /ENOENT|no such file/.test(message) ? 404 : 409,
+        { error: message });
+    }
+  }
+  if (req.method === 'POST' && /^\/api\/trash\/[^/]+\/backup$/.test(u.pathname)) {
+    const id = u.pathname.split('/')[3];
+    let body;
+    try { body = JSON.parse((await readBody(req)) || '{}'); }
+    catch { return json(res, 400, { error: 'invalid json' }); }
+    if (!/^[0-9a-f]{64}$/i.test(body?.revision ?? '')) {
+      return json(res, 400, { error: 'preview revision required' });
+    }
+    try { return json(res, 200, { ok: true, ...await runTrashCommand(['backup', id, body.revision]) }); }
+    catch (error) {
+      const message = String(error.message);
+      return json(res, /ENOENT|no such file/.test(message) ? 404 : 409, { error: message });
+    }
+  }
+  if (req.method === 'POST' && /^\/api\/trash\/[^/]+\/recover-backup$/.test(u.pathname)) {
+    const id = u.pathname.split('/')[3];
+    let body;
+    try { body = JSON.parse((await readBody(req)) || '{}'); }
+    catch { return json(res, 400, { error: 'invalid json' }); }
+    if (body?.confirmId !== id || !/^[0-9a-f]{64}$/i.test(body?.revision ?? '')) {
+      return json(res, 400, { error: 'matching confirmId and backup revision required' });
+    }
+    try {
+      const result = await runTrashCommand(['recover-backup', id, body.revision, body.confirmId]);
+      startStorageScan({ afterMutation: true });
+      return json(res, 200, { ok: true, ...result });
+    } catch (error) {
+      const message = String(error.message);
+      return json(res, /ENOENT|no such file/.test(message) ? 404 : 409, { error: message });
+    }
+  }
+  if (req.method === 'DELETE' && /^\/api\/trash\/[^/]+$/.test(u.pathname)) {
+    const id = u.pathname.split('/')[3];
+    let body;
+    try { body = JSON.parse((await readBody(req)) || '{}'); }
+    catch { return json(res, 400, { error: 'invalid json' }); }
+    if (body?.confirmId !== id || !/^[0-9a-f]{64}$/i.test(body?.revision ?? '')) {
+      return json(res, 400, { error: 'matching confirmId and preview revision required' });
+    }
+    try {
+      const result = await runTrashCommand(['purge-record', id, body.revision, body.confirmId,
+        body.acceptSameFilesystem === true ? 'accept-same-filesystem' : 'reject-same-filesystem']);
+      startStorageScan({ afterMutation: true });
+      return json(res, 200, { ok: true, ...result });
+    } catch (error) {
+      const message = String(error.message);
+      return json(res, /ENOENT|no such file/.test(message) ? 404 : 409, { error: message });
+    }
+  }
+  if (req.method === 'POST' && /^\/api\/trash\/[^/]+\/restore$/.test(u.pathname)) {
+    const id = u.pathname.split('/')[3];
+    try {
+      await readBody(req);
+      const result = restoreTrash(id);
+      if (result.restored !== false) {
+        bustCaches();
+        startStorageScan({ afterMutation: true });
+      }
+      return json(res, 200, { ok: true, restored: true, ...result });
+    } catch (error) {
+      const message = String(error?.message ?? error).slice(0, 200);
+      const code = message === 'bad trash id' ? 400 : error?.code === 'ENOENT' ? 404
+        : /already exists|changed|not ready|backup missing|not a directory|not a regular file/.test(message) ? 409 : 500;
+      return json(res, code, { error: message });
+    }
+  }
+
+  // 删除：整站（workspace/<host>）或单页（页面产物 + atlas 节点），保留可恢复副本。
   if (req.method === 'DELETE' && u.pathname.startsWith('/api/sites/')) {
     const parts = u.pathname.split('/').filter(Boolean); // ['api','sites',host?...]
     const host = decodeURIComponent(parts[2] ?? '');
@@ -1468,37 +1932,25 @@ const handleRequest = async (req, res) => {
     if (!isInsideWorkspace(base) || !existsSync(base)) return json(res, 404, { error: 'site not found' });
     try {
       if (parts.length === 3) {
-        rmSync(base, { recursive: true, force: true });
-        bustCaches();                                                          // 站点没了，清单与代理白名单都得重算
-        const casGcTask = startCasGc(true);                                    // 回收改子进程，不占请求线程
-        startStorageScan();                                                    // 12s 的盘点交给子进程
-        return json(res, 200, { ok: true, removed: 'site', host, casGcTask });
+        return readJsonBody(req, res, (body) => {
+          if (body?.confirmHost !== host) return json(res, 400, { error: 'site deletion requires matching confirmHost' });
+          try {
+            const { trashId } = quarantineSite(host);
+            bustCaches();                                                        // 站点没了，清单与代理白名单都得重算
+            const casGcTask = startCasGc(true);                                  // 回收改子进程，不占请求线程
+            startStorageScan({ afterMutation: true });                           // 12s 的盘点交给子进程
+            return json(res, 200, { ok: true, removed: 'site', host, trashId, casGcTask });
+          } catch (e) { return json(res, 500, { error: String(e).slice(0, 200) }); }
+        });
       }
       if (parts.length === 5 && parts[3] === 'pages') {
         const name = decodeURIComponent(parts[4]);
-        if (!/^[a-z0-9._-]+$/i.test(name)) return json(res, 400, { error: 'bad page name' });
-        const pageDir = join(base, 'pages', name);
-        let removedArtifacts = false;
-        if (isInsideWorkspace(pageDir) && existsSync(pageDir)) { rmSync(pageDir, { recursive: true, force: true }); removedArtifacts = true; }
-        // 从 atlas 中移除对应节点与边（按 manifest.target 或页面名匹配）
-        let removedNode = false;
-        const atlasPath = join(base, 'recon', 'atlas.json');
-        if (existsSync(atlasPath)) {
-          try {
-            const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
-            const before = atlas.nodes?.length ?? 0;
-            atlas.nodes = (atlas.nodes ?? []).filter(n => pageFor(n.url) !== name);
-            const ids = new Set(atlas.nodes.map(n => n.id));
-            atlas.edges = (atlas.edges ?? []).filter(e => ids.has(e.from) && ids.has(e.to));
-            if (atlas.meta) { atlas.meta.pages = atlas.nodes.length; atlas.meta.edges = atlas.edges.length; }
-            removedNode = atlas.nodes.length !== before;
-            writeFileSync(atlasPath, JSON.stringify(atlas, null, 2));
-          } catch {}
-        }
+        if (!/^[a-z0-9._-]+$/i.test(name) || !isSafePageName(name)) return json(res, 400, { error: 'bad page name' });
+        const { removedArtifacts, removedNode, trashId } = quarantinePage(host, name);
         const casGcTask = removedArtifacts ? startCasGc(true) : null;          // 回收改子进程
-        if (removedArtifacts) startStorageScan();
+        if (trashId) startStorageScan({ afterMutation: true });
         bustCaches();                                                          // 删了一页，资产清单/站点重合数随即变化
-        return json(res, 200, { ok: true, removed: 'page', host, name, removedArtifacts, removedNode, casGcTask });
+        return json(res, 200, { ok: true, removed: 'page', host, name, removedArtifacts, removedNode, trashId, casGcTask });
       }
     } catch (e) { return json(res, 500, { error: String(e).slice(0, 200) }); }
     return json(res, 400, { error: 'bad delete path' });
@@ -1517,6 +1969,7 @@ const handleRequest = async (req, res) => {
       { id: 'tokens', name: '设计 Token 预览', file: join(base, 'design', 'tokens.html'), url: '/static/' + host + '/design/tokens.html' },
       { id: 'components', name: '组件画廊', file: join(base, 'design', 'components', 'components.html'), url: '/static/' + host + '/design/components/components.html' },
       { id: 'verify', name: '多视口验证汇总', file: join(base, 'verify', 'verify-summary.json'), url: '/static/' + host + '/verify/verify-summary.json' },
+      { id: 'edit-manifest', name: '改站起点清单', file: join(base, 'deliver', 'edit-manifest.json'), url: '/static/' + host + '/deliver/edit-manifest.json' },
       { id: 'assets', name: '资产缺口报告', file: join(base, 'audit', 'asset-gaps.html'), url: '/static/' + host + '/audit/asset-gaps.html' },
       { id: 'intel', name: '竞品情报 Excel', file: join(base, 'intel', host + '-intel.xlsx'), url: '/static/' + host + '/intel/' + host + '-intel.xlsx' },
     ];
@@ -1561,7 +2014,10 @@ const handleRequest = async (req, res) => {
       const file = join(WORKSPACE, decodeURIComponent(u.pathname.replace(/^\/+/, '')));
       if (isInsideWorkspace(file) && existsSync(file) && !isSecretFile(file)) {
         try {
-          if (statSync(file).isFile()) return sendFile(req, res, file);
+          if (statSync(file).isFile()) {
+            if (!authorized(req, u, res)) return json(res, 401, { error: 'unauthorized' });
+            return sendFile(req, res, file);
+          }
         } catch {}
       }
     }
@@ -1575,7 +2031,7 @@ const handleRequest = async (req, res) => {
       try {
         const r = relative(CONSOLE_DIR, f);
         if (r.startsWith('..') || isAbsolute(r)) continue;
-        if (existsSync(f) && statSync(f).isFile()) return sendFile(req, res, f);
+        if (existsSync(f) && statSync(f).isFile()) return sendFile(req, res, f, {}, 'console');
       } catch {}
     }
     if (!extname(u.pathname)) {
