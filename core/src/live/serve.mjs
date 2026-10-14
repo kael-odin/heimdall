@@ -20,7 +20,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, extname, normalize, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { indexHar, matchHar } from './har.mjs';
+import { indexHar, isReplayableReadOnlyDataEntry, matchHar } from './har.mjs';
 import { liveSnapshotCandidates } from './live-path.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -69,12 +69,15 @@ let HAR_ENTRIES = 0;
 const HAR_BY_QUERY = new Map();   // pathname|url参数 → 任意已捕获尺寸（图片优化端点回退）
 try {
   const har = JSON.parse(readFileSync(join(HERE, 'har.json'), 'utf8'));
-  HAR_INDEX = indexHar(har.entries);
-  HAR_ENTRIES = har.entries?.length ?? 0;
-  for (const e of har.entries ?? []) {
+  const replayable = (har.entries ?? []).filter(e => e?.kind !== 'public-read-only-data'
+    || isReplayableReadOnlyDataEntry(e, ORIGIN));
+  HAR_INDEX = indexHar(replayable);
+  HAR_ENTRIES = replayable.length;
+  for (const e of replayable) {
     try {
       const x = new URL(e.url);
-      if (x.origin !== ORIGIN) continue;
+      if (x.origin !== ORIGIN || e.kind === 'public-read-only-data' || !/^\/_next\/image$/i.test(x.pathname)
+        || !/^image\//i.test(String(e.mimeType ?? ''))) continue;
       const target = x.searchParams.get('url');
       if (target) HAR_BY_QUERY.set(x.pathname + '|' + target, e);
     } catch {}
@@ -247,9 +250,11 @@ async function serveLive(req, res, rel, search) {
     }
     if (hit && hit.body) {
       const body = Buffer.from(hit.body, 'base64');
-      const replayHeaders = { ...hit.headers };
+      const replayHeaders = hit.kind === 'public-read-only-data'
+        ? { 'Cache-Control': 'no-store' } : { ...hit.headers };
       delete replayHeaders['content-type'];
-      res.writeHead(hit.status, { 'Content-Type': hit.mimeType || 'application/octet-stream', 'Content-Length': body.length, ...replayHeaders, 'X-Heimdall-Replay': '1' });
+      res.writeHead(hit.status, { 'Content-Type': hit.mimeType || 'application/octet-stream', 'Content-Length': body.length,
+        ...replayHeaders, 'X-Content-Type-Options': 'nosniff', 'X-Heimdall-Replay': '1' });
       return res.end(body);
     }
   }

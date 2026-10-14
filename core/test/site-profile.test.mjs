@@ -130,6 +130,16 @@ test('queuePlan: 非法值退回默认并夹到边界', () => {
   assert.equal(queuePlan({ queue: { pageTimeoutMs: 1 } }, 2).pageTimeoutMs, 10_000, '超时不能被配成 1ms');
 });
 
+test('queuePlan: all-discovered overrides default exclusions and page cap only when requested', () => {
+  const normal = queuePlan(DEFAULTS, 2);
+  assert.deepEqual(normal.excludeTypes, ['auth', 'legal']);
+  assert.equal(normal.maxPages, 20);
+  const all = queuePlan(DEFAULTS, 2, { allDiscovered: true });
+  assert.deepEqual(all.excludeTypes, []);
+  assert.equal(all.maxPages, null);
+  assert.equal(all.workers, normal.workers);
+});
+
 test('queuePlan: 默认值下无进展线必须先于硬超时到达（否则那条线是死代码）', () => {
   const p = queuePlan({}, 2);
   assert.ok(p.stallMs < p.pageTimeoutMs, `stall(${p.stallMs}) 应小于 timeout(${p.pageTimeoutMs})`);

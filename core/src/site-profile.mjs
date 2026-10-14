@@ -57,9 +57,9 @@ export const DEFAULTS = {
     thirdPartyAllow: [],
   },
   queue: {
-    excludeTypes: ['auth', 'legal'],
+    excludeTypes: ['auth', 'legal'], // --all-discovered 显式覆盖，普通批量模式仍跳过
     concurrency: 2,               // 本批并行锻造页数（引擎槽位不足时自动下调）
-    maxPages: 20,                 // 默认整批上线（CLI --max 可覆盖）
+    maxPages: 20,                 // 新队列默认上限；--all-discovered 不截断
     pageTimeoutMs: 15 * 60_000,   // 单页硬超时：到点熔断，别让一页拖垮整批
     stallMs: 6 * 60_000,          // 单页无进展熔断：多久没有任何输出就判死
   },
@@ -167,8 +167,9 @@ export const MAX_SLOT_CEILING = 8;
  *
  * @param {object} profile loadProfile(host) 的结果
  * @param {number} engineMax 引擎 /api/status 报的 forge.max
+ * @param {{allDiscovered?: boolean}} [options] 显式完整侦察范围模式
  */
-export function queuePlan(profile, engineMax = 2) {
+export function queuePlan(profile, engineMax = 2, { allDiscovered = false } = {}) {
   const q = profile?.queue ?? {};
   const engineSlots = clampInt(engineMax, 1, MAX_SLOT_CEILING, 2);
   const want = clampInt(q.concurrency, 1, MAX_SLOT_CEILING, 2);
@@ -176,7 +177,8 @@ export function queuePlan(profile, engineMax = 2) {
     workers: Math.max(1, Math.min(want, engineSlots)),   // worker 数 = min(配方, 引擎槽)
     want,
     engineMax: engineSlots,
-    maxPages: clampInt(q.maxPages, 1, 2000, 20),
+    excludeTypes: allDiscovered ? [] : (q.excludeTypes ?? DEFAULTS.queue.excludeTypes),
+    maxPages: allDiscovered ? null : clampInt(q.maxPages, 1, 2000, 20),
     pageTimeoutMs: clampInt(q.pageTimeoutMs, 10_000, 60 * 60_000, 8 * 60_000),
     stallMs: clampInt(q.stallMs, 15_000, 60 * 60_000, 4 * 60_000),
   };

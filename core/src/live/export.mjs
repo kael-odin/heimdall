@@ -34,9 +34,13 @@ import { mb } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
 import { assertExportTarget, promoteCandidate } from './export-path.mjs';
 import { probeOfflineBundle, probeOfflineBrowserBundle, probeOfflineOperations } from './probe.mjs';
-import { liveSnapshotPath } from './live-path.mjs';
+import { liveSnapshotPath, liveSnapshotCandidates } from './live-path.mjs';
 import { buildCoverageLedger } from './coverage.mjs';
 import { readOperationPlan } from './operation-plan.mjs';
+import { readDataPlan } from './read-data-plan.mjs';
+import { captureSourceOperations } from '../crawler/source-operations.mjs';
+import { loadSession } from '../session/store.mjs';
+import { auditBundlePrivacy } from './privacy-audit.mjs';
 import { sanitizeStaticHtml, isStaticCloneChooserHtml, staticCloneChooserHtml } from '../static-html-safety.mjs';
 import { availableCloneVariantWidths } from '../clone-doc.mjs';
 import { readSiteIdentity, assertSiteOrigin } from '../site-origin.mjs';
@@ -46,7 +50,7 @@ const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--include-api-har] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--compare-source] [--include-readonly-data] [--include-api-har] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -59,11 +63,26 @@ const OFFLINE = has('offline');
 const ROOT = argOf('root', 'landing') === 'mirror' ? 'mirror' : 'landing';
 const HEAL = has('heal');
 const STRICT = has('strict');
+const COMPARE_SOURCE = has('compare-source');
+const INCLUDE_READONLY_DATA = has('include-readonly-data');
 const MATERIALIZE = has('materialize-har');
 const INCLUDE_API_HAR = has('include-api-har');
 const ALLOW_PRIVATE_EXPORT = has('allow-private-export');
+const dataPlan = INCLUDE_READONLY_DATA ? readDataPlan(BASE, origin) : { status: 'not-requested', urls: [] };
 if (STRICT && !OFFLINE) {
   console.error('[export] --strict requires --offline so the validated bundle cannot proxy to the source site');
+  process.exit(2);
+}
+if (COMPARE_SOURCE && !STRICT) {
+  console.error('[export] --compare-source requires --offline --strict');
+  process.exit(2);
+}
+if (INCLUDE_READONLY_DATA && !STRICT) {
+  console.error('[export] --include-readonly-data requires --offline --strict');
+  process.exit(2);
+}
+if (STRICT && INCLUDE_API_HAR) {
+  console.error('[export] --include-api-har is too broad for strict offline export');
   process.exit(2);
 }
 const SESSION_PRESENT = existsSync(join(BASE, 'session.json'));
@@ -207,7 +226,11 @@ for (let i = 0; i < pageNames.length; i++) {
   if (!existsSync(p)) continue;
   harPages++;
   try {
-    const sanitized = sanitizeHar(JSON.parse(readFileSync(p, 'utf8')), { includeApiBodies: INCLUDE_API_HAR });
+    const sanitized = sanitizeHar(JSON.parse(readFileSync(p, 'utf8')), {
+      includeApiBodies: INCLUDE_API_HAR,
+      readOnlyOrigin: origin,
+      readOnlyGetUrls: dataPlan.urls,
+    });
     for (const [reason, count] of Object.entries(sanitized.privacy.excluded)) privacy.excluded[reason] += count;
     for (const sample of sanitized.privacy.examples) if (privacy.examples.length < 30) privacy.examples.push(sample);
     for (const e of sanitized.entries) {
@@ -258,14 +281,15 @@ if (HEAL && health.assets.unresolved > 0) {
 }
 if (MATERIALIZE) {
   emit({ kind: 'live-stage', stage: 'materialize', status: 'running' });
-  const mat = materializeHar({ liveDir, origin, entries: har.entries });
+  const staticEntries = har.entries.filter(entry => entry.kind !== 'public-read-only-data');
+  const mat = materializeHar({ liveDir, origin, entries: staticEntries });
   // hostPrefixes: 离线包把站外 CDN 的整站前缀也接进本地镜像树（运行时拼出来的地址抓不到，
   // 详见 heal.localizeQueryEntries 里那段注释）。在线镜像不接 —— 它的承诺是"未捕获的实时回源"。
-  const loc = localizeQueryEntries({ entries: har.entries, liveDir, host, origin, hostPrefixes: OFFLINE });
+  const loc = localizeQueryEntries({ entries: staticEntries, liveDir, host, origin, hostPrefixes: OFFLINE });
   const rw = rewriteLocalRefs({ liveDir, map: loc.map });
   let trimmed = 0;
   for (const e of har.entries) {
-    if (!e.body) continue;
+    if (!e.body || e.kind === 'public-read-only-data') continue;
     let x; try { x = new URL(e.url); } catch { e.body = null; trimmed++; continue; }
     if (!x.search) { e.body = null; trimmed++; }   // 无查询条目已 materialize 落盘；带查询的保留回放体（覆盖 JS 动态请求）
   }
@@ -288,6 +312,24 @@ for (const name of pageNames) {
 health.liveMissing = missingLivePages.length;
 health.missingLivePages = missingLivePages.slice(0, 100);
 health.coverage = buildCoverageLedger({ baseDir: BASE, bundleDir: OUT, host, origin, pageNames });
+const includedDataUrls = new Set(har.entries
+  .filter(entry => entry.kind === 'public-read-only-data')
+  .map(entry => entry.url));
+const missingData = dataPlan.urls.filter(url => !includedDataUrls.has(url));
+const shadowedData = dataPlan.urls.filter(value => {
+  const url = new URL(value);
+  return liveSnapshotCandidates(url.pathname, url.search).some(candidate => {
+    try { return statSync(join(liveDir, candidate)).isFile(); } catch { return false; }
+  });
+});
+health.readOnlyData = {
+  status: dataPlan.status,
+  declared: dataPlan.urls.length,
+  included: includedDataUrls.size,
+  missing: missingData.length,
+  ...(shadowedData.length ? { shadowed: shadowedData.length } : {}),
+  ...(dataPlan.issue ? { issue: dataPlan.issue } : {}),
+};
 const operationPlan = readOperationPlan(BASE, origin, health.pageRoutes);
 health.operationPlan = {
   status: operationPlan.status, declaredFlows: operationPlan.flows.length,
@@ -295,6 +337,10 @@ health.operationPlan = {
 };
 health.operationProbe = {
   status: operationPlan.status === 'missing' ? 'not-configured' : 'not-run',
+  planned: operationPlan.flows.length, checked: 0, failed: 0, untested: operationPlan.flows.length,
+};
+health.sourceOperationProbe = {
+  status: COMPARE_SOURCE ? 'not-run' : 'not-requested',
   planned: operationPlan.flows.length, checked: 0, failed: 0, untested: operationPlan.flows.length,
 };
 health.strictBlockers = {
@@ -315,6 +361,13 @@ health.strictBlockers = {
   browserUntested: 0,
   operationFailed: 0,
   operationUntested: 0,
+  sourceOperationFailed: 0,
+  sourceOperationUntested: 0,
+  readOnlyDataInvalid: INCLUDE_READONLY_DATA && dataPlan.status !== 'ok' ? 1 : 0,
+  readOnlyDataMissing: missingData.length,
+  readOnlyDataShadowed: shadowedData.length,
+  privacyIssues: 0,
+  privacyIncomplete: 0,
 };
 health.strict = STRICT;
 if (STRICT) {
@@ -361,6 +414,41 @@ if (STRICT) {
     }
   } else if (operationPlan.flows.length) health.operationProbe.status = 'skipped';
   health.strictBlockers.operationUntested = health.operationProbe.untested;
+  if (COMPARE_SOURCE) {
+    if (operationPlan.status !== 'ok' || !operationPlan.flows.length) {
+      health.sourceOperationProbe.status = 'not-configured';
+      health.strictBlockers.sourceOperationUntested = 1;
+    } else {
+      try {
+        const source = await captureSourceOperations({ origin, flows: operationPlan.flows, session: loadSession(host) });
+        health.sourceOperationProbe = {
+          status: source.status, planned: source.planned, checked: source.checked,
+          failed: source.failed, untested: source.untested, sessionUsed: source.sessionUsed,
+          flows: source.flows.map(flow => ({
+            index: flow.index, passed: flow.passed,
+            plannedActions: flow.plannedActions, executedActions: flow.executedActions,
+            sourceDependencies: flow.dependencies.length,
+            sourceDynamicData: flow.dependencies.filter(item => item.category === 'dynamic-data').length,
+            bundleDependencies: health.operationProbe.flows?.[flow.index]?.dependencies?.length ?? null,
+            bundleDynamicData: health.operationProbe.flows?.[flow.index]?.categories?.['dynamic-data'] ?? null,
+            assertions: flow.assertions,
+            issueKinds: [...new Set(flow.issues.map(issue => issue.kind))],
+            omittedIssues: flow.omittedIssues,
+          })),
+        };
+        health.strictBlockers.sourceOperationFailed = source.failed;
+        health.strictBlockers.sourceOperationUntested = source.untested;
+      } catch (error) {
+        health.sourceOperationProbe = {
+          status: 'capture-error', planned: operationPlan.flows.length,
+          checked: 0, failed: 1, untested: operationPlan.flows.length,
+          errorType: ['Error', 'TimeoutError', 'TypeError'].includes(error?.name) ? error.name : 'Error',
+        };
+        health.strictBlockers.sourceOperationFailed = 1;
+        health.strictBlockers.sourceOperationUntested = operationPlan.flows.length;
+      }
+    }
+  }
 }
 // 健康报告只需路径定位问题，查询参数可能含临时凭据。
 health.unresolvedPaths = health.unresolvedPaths.map(path => path.split('?')[0]);
@@ -390,7 +478,7 @@ a.card:hover{border-color:rgba(34,211,238,.6)}a.card b{display:block;color:#22d3
 </style></head><body><div class="wrap">
 <div class="brand">HEIMDALL · LIVE MIRROR</div>
 <h1>${host}</h1>
-<div class="meta">${OFFLINE ? '离线模式（仅本地快照 + HAR 回放）' : '在线模式（本地优先 · 未捕获资源回源）'} · HAR ${stats.entries} 条 · 离线门禁 ${STRICT ? (Object.values(health.strictBlockers).some(Boolean) ? '存在缺口' : '通过') : '未运行'} · 端口 ${PORT}</div>
+<div class="meta">${OFFLINE ? '离线模式（仅本地快照 + HAR 回放）' : '在线模式（本地优先 · 未捕获资源回源）'} · HAR ${stats.entries} 条 · 离线门禁 ${STRICT ? '详见 health.json' : '未运行'} · 端口 ${PORT}</div>
 <div class="grid">
 <a class="card" href="/lm/${host}/"><b>打开交互镜像</b><span>本地快照优先 · ${OFFLINE ? '未捕获请求返回 404' : '未捕获请求回源'} · 支持 HAR 回放</span></a>
 ${hasArchive ? `<a class="card" href="/static/${host}/index.html"><b>克隆档案</b><span>逐页还原度与卡片墙</span></a>` : ''}
@@ -442,6 +530,9 @@ coverage                 侦察 URL → 克隆页 → 交付包 live 路由的�
 browserProbe             逐页断外网首次加载结果；只观察短时间窗口，不证明点击、表单或登录可用
 operationPlan            操作脚本声明数；missing 表示没有交互验收，脚本本身不进入交付包
 operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
+sourceOperationProbe     显式 --compare-source 时，源站同流程只读采集与脱敏对照；未运行不代表源站通过
+readOnlyData             显式许可的 GET 数据声明数、纳入数及缺口；只覆盖已有页面 HAR
+privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布
 \`\`\`
 
 在线部署时，站外引用是否可加载还取决于第三方服务、跨域规则和访问权限。
@@ -466,7 +557,8 @@ operationProbe           逐条在断网浏览器中执行的操作、动态依�
 - 资产与克隆页按独立副本复制，构建通过后才替换目标目录；上一个版本保留为 \`.backup-*\`。
 - HAR 默认只保留静态资源；API/HTML 正文不进入分发包。排除统计见 \`har-privacy.json\`。
 - 原始 \`recon/atlas.json\` 不进入分发包；已发现页面的覆盖摘要见 \`health.json\`。
-- 如确需 GET 数据回放，可在受控环境重新导出并显式加 \`--include-api-har\`；该选项允许响应正文进入包，不能让 POST 等写入型业务离线运行，需核验分发边界。
+- 如确需公开只读 GET 数据回放，先在工作区配置 \`read-data-plan.json\`，再用 \`--include-readonly-data --offline --strict\` 精确许可；只捕获已有 HAR，需人工审核数据分发范围。
+- 宽泛的 \`--include-api-har\` 不允许与 \`--strict\` 同用，也不能让 POST 等写入型业务离线运行。
 - 保存过登录会话的站点默认拒绝导出；受控环境里须显式加 \`--allow-private-export\`，且原始 \`session.json\` 仍不会复制进包。
 - 未捕获的第三方接口在在线模式下回源；离线模式下会明确 404。
 - 仅供内部分析，禁止公开部署或商用。
@@ -484,7 +576,7 @@ try {
   writeFileSync(join(OUT, 'edit-manifest.md'), renderEditManifestMd(manifest));
   console.log(`[edit-manifest] assets=${manifest.counts.assets} remoteVisual=${manifest.counts.remoteVisual} domainFiles=${manifest.counts.domainFiles}`);
 } catch (e) { console.warn('[edit-manifest] skipped:', String(e).slice(0, 120)); }
-const manifestFiles = [];
+let manifestFiles = [];
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
@@ -495,10 +587,20 @@ const walk = (dir) => {
     else if (st.isFile() && !p.endsWith('checksums.json') && !p.endsWith('changes.json')) manifestFiles.push({ p: p.slice(OUT.length + 1).split('\\').join('/'), s: st.size, h: createHash('sha256').update(readFileSync(p)).digest('hex') });
   }
 };
-walk(OUT);
-writeFileSync(join(OUT, 'checksums.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), files: manifestFiles }, null, 0));
-const changes = diffChecksums(prevChecksums, manifestFiles);
-writeFileSync(join(OUT, 'changes.json'), JSON.stringify(changes, null, 2));
+const packageMetadata = () => {
+  manifestFiles = [];
+  walk(OUT);
+  writeFileSync(join(OUT, 'checksums.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), files: manifestFiles }));
+  const changes = diffChecksums(prevChecksums, manifestFiles);
+  writeFileSync(join(OUT, 'changes.json'), JSON.stringify(changes, null, 2));
+  return changes;
+};
+packageMetadata();
+health.privacyAudit = auditBundlePrivacy({ bundleDir: OUT });
+health.strictBlockers.privacyIssues = health.privacyAudit.issueCount;
+health.strictBlockers.privacyIncomplete = health.privacyAudit.status === 'incomplete' ? health.privacyAudit.failureCount : 0;
+writeFileSync(join(OUT, 'health.json'), JSON.stringify(health, null, 2));
+const changes = packageMetadata();
 console.log(`[export] ${changesLine(changes)}`);
 emit({ kind: 'live-stage', stage: 'package', status: 'done', files: manifestFiles.length, bytes });
 console.log(`[export] pages=${pageNames.length} liveFiles=${files} (copied=${copied}) bytes=${mb(bytes)} | bundleFiles=${manifestFiles.length} | root=${ROOT} | unresolved=${health.assets.unresolved}`);

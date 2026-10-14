@@ -11,9 +11,20 @@ const SAFE_RESPONSE_HEADERS = [
 const STATIC_MIME = /^(?:image\/|font\/|audio\/|video\/|text\/css\b|(?:text|application)\/(?:javascript|x-javascript)\b|application\/(?:font|wasm)\b)/i;
 const STATIC_EXT = /\.(?:css|js|mjs|png|jpe?g|webp|avif|gif|svg|ico|woff2?|ttf|otf|eot|mp4|webm|mp3|wav|wasm)$/i;
 const SAFE_QUERY_KEYS = new Set(['v', 'ver', 'version', 'rev', 'hash', 'w', 'h', 'width', 'height', 'q', 'quality', 'dpr', 'fit', 'format', 'auto', 'url', 'dpl', 'cache', 'b']);
-const PRIVATE_TEXT = /(?:\b(?:authorization|bearer|api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|client[_-]?secret|set-cookie|session|csrf|sid|token|secret)\b\s*[:=]|\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/i;
+const PRIVATE_TEXT = /(?:\b(?:authorization|bearer|cookie|api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|client[_-]?secret|set-cookie|session|csrf|sid|token|secret)\b\s*[:=]|\bBearer\s+[A-Za-z0-9._~+/=-]{8,}|\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/i;
 const PRIVATE_HEADER = /^(?:cookie|authorization|proxy-authorization|x-api-key|x-auth-token)$/i;
 const PRIVATE_PATH_PARENT = /^(?:users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|avatars?|reset-password|password-reset|verify-email|email-verification|magic-link|invites?|invitations?|tokens?|secrets?)$/i;
+const PRIVATE_DATA_HEADER = /(?:cookie|authorization|api[_-]?key|auth[_-]?token|access[_-]?token|session|csrf|xsrf|secret|(?:^|[-_])(?:token|key)(?:$|[-_]))/i;
+const PRIVATE_DATA_KEY = /^(?:auth(?:orization)?|api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|password|passwd|secret|session(?:[_-]?id)?|cookie|csrf|xsrf|email|phone|mobile|address|birth(?:day|date)?|dob|ssn|credit(?:[_-]?card)?|card(?:[_-]?number)?|bank(?:[_-]?account)?|iban|customer(?:[_-]?id)?|patient(?:[_-]?id)?|account(?:[_-]?id)?|profile(?:[_-]?id)?|user(?:[_-]?id|name)?)$|(?:^|[_-])(?:auth|token|key|secret|password|session|cookie|csrf|xsrf|email|phone|address|account|customer|patient|user)(?:$|[_-])/i;
+const PRIVATE_QUERY_KEY = /(?:auth|token|key|password|passwd|secret|session|cookie|csrf|xsrf|email|phone|address|user|account|customer|patient)/i;
+const DATA_MIME = /^(?:application\/(?:[a-z0-9.+-]+\+)?json|text\/plain)(?:\s*;|$)/i;
+const MAX_PUBLIC_DATA_BYTES = 1024 * 1024;
+const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
+
+function normalizedDataMime(value) {
+  const mime = String(value ?? '').split(';', 1)[0].trim().toLowerCase();
+  return DATA_MIME.test(mime) && mime.length <= 80 ? mime + '; charset=utf-8' : null;
+}
 
 function reportPath(url) {
   return url.origin + '/[redacted]';
@@ -48,7 +59,93 @@ function isStaticResponse(url, mimeType) {
   return STATIC_MIME.test(mimeType) || STATIC_EXT.test(url.pathname);
 }
 
-export function sanitizeHar(har, { includeApiBodies = false } = {}) {
+function safePublicDataUrl(url) {
+  if (url.username || url.password || hasPrivatePath(url) || url.hash || url.href.length > 2048) return false;
+  for (const [key, value] of url.searchParams) {
+    if (!/^[a-z][a-z0-9_.-]{0,39}$/i.test(key) || PRIVATE_QUERY_KEY.test(key) || value.length > 200) return false;
+    let decoded = value;
+    for (let i = 0; i < 2; i++) {
+      try { decoded = decodeURIComponent(decoded); } catch { return false; }
+      if (PRIVATE_TEXT.test(decoded) || /^(?:https?:)?\/\//i.test(decoded)) return false;
+    }
+  }
+  return true;
+}
+
+export function isSafeReadOnlyGetUrl(value, origin) {
+  try {
+    const allowedOrigin = publicDataOrigin(origin);
+    const url = new URL(value);
+    return !!allowedOrigin && ['http:', 'https:'].includes(url.protocol)
+      && url.origin === allowedOrigin && safePublicDataUrl(url);
+  } catch { return false; }
+}
+
+function publicDataBody(raw, mimeType) {
+  if (!raw?.length || raw.length > MAX_PUBLIC_DATA_BYTES) return false;
+  let text;
+  try { text = UTF8_DECODER.decode(raw); } catch { return false; }
+  if (PRIVATE_TEXT.test(text) || /[\u0000-\u0008\u000e-\u001f]/.test(text)) return false;
+  if (!/^application\//i.test(mimeType)) return true;
+  let value;
+  try { value = JSON.parse(text); } catch { return false; }
+  const stack = [value];
+  let visited = 0;
+  while (stack.length) {
+    if (++visited > 10_000) return false;
+    const item = stack.pop();
+    if (!item || typeof item !== 'object') continue;
+    for (const [key, child] of Object.entries(item)) {
+      if (PRIVATE_DATA_KEY.test(key) || (typeof child === 'string' && PRIVATE_TEXT.test(child))) return false;
+      if (child && typeof child === 'object') stack.push(child);
+    }
+  }
+  return true;
+}
+
+function publicDataOrigin(value) {
+  if (!value) return null;
+  let url;
+  try { url = new URL(value); } catch { throw new TypeError('invalid readOnlyOrigin'); }
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password
+    || url.pathname !== '/' || url.search || url.hash) throw new TypeError('invalid readOnlyOrigin');
+  return url.origin;
+}
+
+function approvedPublicDataUrls(urls, origin) {
+  if (!Array.isArray(urls) || urls.length > 1000 || (urls.length && !origin)) {
+    throw new TypeError('readOnlyGetUrls requires an origin and at most 1000 URLs');
+  }
+  const approved = new Set();
+  for (const value of urls) {
+    let url;
+    try { url = new URL(value); } catch { throw new TypeError('invalid readOnlyGetUrl'); }
+    if (!isSafeReadOnlyGetUrl(value, origin)) throw new TypeError('unsafe readOnlyGetUrl');
+    approved.add(normalizeUrl(url.href));
+  }
+  return approved;
+}
+
+/** An opt-in public data entry must stay safe after it is copied into a bundle. */
+export function isReplayableReadOnlyDataEntry(entry, origin) {
+  let url;
+  try { url = new URL(entry?.url); } catch { return false; }
+  let raw;
+  try {
+    if (typeof entry.body !== 'string' || entry.bodyEncoding !== 'base64'
+      || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(entry.body)) return false;
+    raw = Buffer.from(entry.body, 'base64');
+  } catch { return false; }
+  return entry.kind === 'public-read-only-data' && entry.method === 'GET'
+    && url.origin === origin && safePublicDataUrl(url)
+    && Number.isInteger(entry.status) && entry.status >= 200 && entry.status < 300
+    && entry.mimeType === normalizedDataMime(entry.mimeType) && publicDataBody(raw, entry.mimeType)
+    && entry.headers && typeof entry.headers === 'object' && !Object.keys(entry.headers).length;
+}
+
+export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [], readOnlyOrigin = '' } = {}) {
+  const origin = publicDataOrigin(readOnlyOrigin);
+  const approved = approvedPublicDataUrls(readOnlyGetUrls, origin);
   const entries = [];
   const excluded = { invalid: 0, privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 };
   const examples = [];
@@ -62,10 +159,20 @@ export function sanitizeHar(har, { includeApiBodies = false } = {}) {
     try { parsed = new URL(url); } catch { excluded.invalid++; continue; }
     if (!['http:', 'https:'].includes(parsed.protocol) || !status) { excluded.invalid++; continue; }
     const mimeType = res.content?.mimeType ?? (res.headers ?? []).find(h => String(h.name).toLowerCase() === 'content-type')?.value ?? '';
+    const dataMime = normalizedDataMime(mimeType);
+    const publicData = approved.has(normalizeUrl(parsed.href)) && parsed.origin === origin && !!dataMime;
     let reason = null;
-    if (!safeReplayUrl(parsed)) reason = 'privateUrl';
+    if (publicData && !safePublicDataUrl(parsed)) reason = 'privateUrl';
+    else if (!publicData && !safeReplayUrl(parsed)) reason = 'privateUrl';
+    else if (publicData && (method !== 'GET' || status < 200 || status >= 300 || req.postData)) reason = 'nonStatic';
+    else if (publicData && ((req.headers ?? []).some(h => PRIVATE_DATA_HEADER.test(String(h.name)))
+      || (req.cookies ?? []).length > 0 || (res.cookies ?? []).length > 0
+      || (res.headers ?? []).some(h => /^set-cookie$/i.test(String(h.name))
+        || (/^vary$/i.test(String(h.name)) && /cookie|authorization/i.test(String(h.value)))
+        || (/^cache-control$/i.test(String(h.name)) && /(?:^|,)\s*private\b/i.test(String(h.value)))))) reason = 'authenticated';
     else if (!includeApiBodies && ((req.headers ?? []).some(h => PRIVATE_HEADER.test(String(h.name))) || (req.cookies ?? []).length > 0)) reason = 'authenticated';
-    else if (!includeApiBodies && (method !== 'GET' || /^\/api(?:\/|$)/i.test(parsed.pathname) || !isStaticResponse(parsed, mimeType))) reason = 'nonStatic';
+    else if (!publicData && !includeApiBodies && (method !== 'GET' || /^\/api(?:\/|$)/i.test(parsed.pathname)
+      || DATA_MIME.test(mimeType) || !isStaticResponse(parsed, mimeType))) reason = 'nonStatic';
     if (reason) {
       excluded[reason]++;
       if (examples.length < 20) examples.push({ reason, path: reportPath(parsed) });
@@ -75,22 +182,33 @@ export function sanitizeHar(har, { includeApiBodies = false } = {}) {
     const text = res.content?.text;
     if (typeof text === 'string' && text.length) {
       const raw = res.content?.encoding === 'base64' ? Buffer.from(text, 'base64') : Buffer.from(text, 'utf8');
-      if (!includeApiBodies && (/(?:text|javascript|json|xml|svg)/i.test(mimeType) || /\.(?:js|mjs|css|svg)$/i.test(parsed.pathname)) && PRIVATE_TEXT.test(raw.toString('utf8'))) {
+      if (publicData && !publicDataBody(raw, mimeType)) {
+        excluded.privateBody++;
+        if (examples.length < 20) examples.push({ reason: 'privateBody', path: reportPath(parsed) });
+        continue;
+      }
+      if (!publicData && !includeApiBodies && (/(?:text|javascript|json|xml|svg)/i.test(mimeType) || /\.(?:js|mjs|css|svg)$/i.test(parsed.pathname)) && PRIVATE_TEXT.test(raw.toString('utf8'))) {
         excluded.privateBody++;
         if (examples.length < 20) examples.push({ reason: 'privateBody', path: reportPath(parsed) });
         continue;
       }
       body = raw.toString('base64');
     }
+    if (publicData && !body) {
+      excluded.nonStatic++;
+      if (examples.length < 20) examples.push({ reason: 'nonStatic', path: reportPath(parsed) });
+      continue;
+    }
     const headers = {};
     for (const h of res.headers ?? []) {
       const name = String(h.name ?? '').toLowerCase();
-      if (SAFE_RESPONSE_HEADERS.includes(name)) headers[name] = h.value;
+      if (!publicData && SAFE_RESPONSE_HEADERS.includes(name)) headers[name] = h.value;
     }
     entries.push({
       method, url: parsed.href, status,
-      mimeType,
+      mimeType: publicData ? dataMime : mimeType,
       headers, body, bodyEncoding: body ? 'base64' : null,
+      ...(publicData ? { kind: 'public-read-only-data' } : {}),
     });
   }
   return { version: 1, generatedAt: new Date().toISOString(), entries, privacy: { excluded, examples, includeApiBodies } };

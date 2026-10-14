@@ -19,3 +19,8 @@ test('cli: resolveCommand maps args and rejects unknown commands', () => {
   assert.equal(resolveCommand([]), null);
   assert.equal(resolveCommand(['nope']), null);
 });
+
+test('cli: all-discovered queue mode is visible and forwarded', () => {
+  assert.match(COMMANDS.queue.usage, /--all-discovered/);
+  assert.deepEqual(resolveCommand(['queue', 'x.test', '--all-discovered']).args, ['x.test', '--all-discovered']);
+});

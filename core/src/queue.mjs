@@ -1,14 +1,14 @@
 /**
  * queue — 全站批量锻造（持久化队列 + 断点续跑 + 增量重跑 + 引擎并发槽）
  *
- * 读 atlas.json 全节点（排除登录/法务页），构造 workspace/<host>/queue.json，
+ * 读 atlas.json 节点（默认排除登录/法务页；--all-discovered 纳入全部有效同源页），构造 workspace/<host>/queue.json，
  * 逐页向 engine POST /api/forge（槽满自动等待），SSE 监听每页 exit 更新状态落盘。
  * 重跑自动跳过已完成页（clone/index.html + score.json 齐备即视为 done）。
  *
  * 增量模式（--incremental）：对已完成页问一句"源站变了没有"（Node fetch 取
  * 服务端 HTML 指纹，不起浏览器），没变的跳过、变了的重排。判据见 fingerprint.mjs。
  *
- * 用法: node src/queue.mjs <host> [--max 20] [--force] [--incremental] [--missing-har] [--no-dedupe] [--json-events]
+ * 用法: node src/queue.mjs <host> [--max 20|--all-discovered] [--force] [--incremental] [--missing-har] [--no-dedupe] [--json-events]
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -22,12 +22,17 @@ import { emit as emitRaw } from './emit.mjs';
 import { canonUrl, createPageNameResolver } from './url-canon.mjs';
 import { runScript } from './child-run.mjs';
 
-const host = sanitizeHost(requireArg(process.argv[2], 'node src/queue.mjs <host> [--max N] [--force] [--incremental] [--missing-har] [--no-dedupe]', '站点 host'));
+const host = sanitizeHost(requireArg(process.argv[2], 'node src/queue.mjs <host> [--max N|--all-discovered] [--force] [--incremental] [--missing-har] [--no-dedupe]', '站点 host'));
 const maxIdx = process.argv.indexOf('--max');
+const ALL_DISCOVERED = process.argv.includes('--all-discovered');
+if (ALL_DISCOVERED && process.argv.some(arg => arg === '--max' || arg.startsWith('--max='))) {
+  console.error('[queue] --all-discovered 与 --max 不能同时使用：完整侦察范围不能再截断');
+  process.exit(2);
+}
 const workspaceOrigin = readSiteOrigin(join(WORKSPACE, host));
 const profileHost = workspaceOrigin ? new URL(workspaceOrigin).hostname.replace(/^www\./, '') : host;
 const profile0 = loadProfile(profileHost);   // 站点配方仍按真实 hostname 选取
-const PLAN = queuePlan(profile0, Number(process.env.HEIMDALL_QUEUE_WORKERS || process.env.HEIMDALL_FORGE_SLOTS || 2));
+const PLAN = queuePlan(profile0, Number(process.env.HEIMDALL_QUEUE_WORKERS || process.env.HEIMDALL_FORGE_SLOTS || 2), { allDiscovered: ALL_DISCOVERED });
 const MAX = maxIdx > -1 ? Number(process.argv[maxIdx + 1] ?? PLAN.maxPages) : PLAN.maxPages;
 const FORCE = process.argv.includes('--force');       // 忽略已有产物，强制重锻
 const INCREMENTAL = process.argv.includes('--incremental');   // 只重跑源站变了的页
@@ -36,7 +41,6 @@ const JSON_EVENTS = process.argv.includes('--json-events');    // 输出 @@EVENT
 const API = process.env.HEIMDALL_API ?? 'http://127.0.0.1:8900';
 const TOKEN = process.env.HEIMDALL_TOKEN ?? '';
 const HEADERS = { 'Content-Type': 'application/json', ...(TOKEN ? { 'x-heimdall-token': TOKEN } : {}) };
-const profile = profile0;
 const BASE = join(WORKSPACE, host);
 const queuePath = join(BASE, 'queue.json');
 
@@ -44,11 +48,28 @@ const queuePath = join(BASE, 'queue.json');
 const emit = JSON_EVENTS ? emitRaw : () => {};
 
 const atlas = JSON.parse(readFileSync(join(BASE, 'recon', 'atlas.json'), 'utf8'));
+if (ALL_DISCOVERED) {
+  if (!Array.isArray(atlas.nodes)) {
+    console.error('[queue] --all-discovered 需要有效的 atlas.nodes 数组');
+    process.exit(2);
+  }
+  let atlasOrigin = null;
+  try { if (atlas.origin) atlasOrigin = new URL(atlas.origin).origin; } catch {}
+  if (!workspaceOrigin || (atlas.origin && atlasOrigin !== workspaceOrigin)) {
+    console.error('[queue] --all-discovered 无法确认 atlas 与站点工作区属于同一 origin');
+    process.exit(2);
+  }
+}
 const engineName = createPageNameResolver(BASE);
 const atlasRows = atlas.nodes
-  .filter(n => !profile.queue.excludeTypes.includes(n.type))
-  .map(n => ({ url: canonUrl(n.url), type: n.type }))
-  .filter(n => n.url);
+  .filter(n => ALL_DISCOVERED || !PLAN.excludeTypes.includes(n.type))
+  .map(n => ({ url: canonUrl(n?.url), type: n?.type }))
+  .filter(n => n.url && (!ALL_DISCOVERED || new URL(n.url).origin === workspaceOrigin));
+const discoveredTargets = ALL_DISCOVERED ? new Set(atlasRows.map(n => n.url)) : null;
+if (ALL_DISCOVERED && !discoveredTargets.size) {
+  console.error('[queue] --all-discovered 的 atlas 没有有效同源页面');
+  process.exit(2);
+}
 
 // ---------- 构造/载入队列 ----------
 let queue;
@@ -73,7 +94,9 @@ if (existsSync(queuePath)) {
     .filter(n => { if (seen.has(n.url)) return false; seen.add(n.url); return true; })
     .map(n => ({ url: n.url, name: engineName(n.url), type: n.type, status: 'pending' }));
   writeFileSync(queuePath, JSON.stringify(queue, null, 2));
-  console.log(`new queue: ${queue.length} pages (max ${MAX})`);
+  console.log(ALL_DISCOVERED
+    ? `new queue: ${queue.length} pages (all-discovered; atlas ${atlas.nodes.length} nodes, ${discoveredTargets.size} valid same-origin URLs)`
+    : `new queue: ${queue.length} pages (max ${MAX})`);
 }
 
 // ---------- 与 atlas 对齐 ----------
@@ -82,6 +105,7 @@ if (existsSync(queuePath)) {
 // 这里把 atlas 里有、队列里没有的页补进来（按 url 排序，保证同样输入得到同样队列）。
 // 注意 --max 只约束**新建**队列：已存在的队列代表"这就是我要的全部页面"，
 // 补进来的页不该因为它而再被砍掉（那正是这个 bug 要修的东西）。
+let synced = 0;
 {
   const known = new Set(queue.map(q => q.url));
   const added = atlasRows
@@ -89,13 +113,19 @@ if (existsSync(queuePath)) {
     .map(n => ({ url: n.url, name: engineName(n.url), type: n.type, status: 'pending', addedBy: 'recon-sync' }))
     .sort((a, b) => a.url.localeCompare(b.url));
   if (added.length) {
+    synced = added.length;
     queue.push(...added);
     console.log(`recon-sync: 侦察到 ${added.length} 个队列里没有的页 → 补入队列（共 ${queue.length}）`);
-    for (const q of added) console.log(`  + ${q.name}`);
+    for (const q of ALL_DISCOVERED ? added.slice(0, 20) : added) console.log(`  + ${q.name}`);
+    if (ALL_DISCOVERED && added.length > 20) console.log(`  ...另有 ${added.length - 20} 页已补入`);
   }
 }
+if (ALL_DISCOVERED) {
+  const priorExtras = queue.filter(q => !discoveredTargets.has(q.url)).length;
+  console.log(`all-discovered: ${discoveredTargets.size} valid same-origin URLs / ${atlas.nodes.length} atlas nodes; ${synced} added; ${queue.length} queue rows${priorExtras ? ` (${priorExtras} retained from prior scope)` : ''}`);
+}
 // --max 在新队列上仍然生效：先与 atlas 对齐、再截断，顺序反了就等于没限制
-if (fresh && queue.length > MAX) {
+if (fresh && !ALL_DISCOVERED && queue.length > MAX) {
   console.log(`--max ${MAX}: 队列从 ${queue.length} 截到 ${MAX}`);
   queue = queue.slice(0, MAX);
 }
@@ -149,7 +179,8 @@ if (!pending.length) {
   console.log(`queue has no pending pages: ${d} done, ${f} failed; refreshing host outputs`);
 }
 console.log(`to forge: ${pending.length} (workers ${PLAN.workers})`);
-emit({ kind: 'queue-start', total: queue.length, pending: pending.length, workers: PLAN.workers });
+emit({ kind: 'queue-start', total: queue.length, pending: pending.length, workers: PLAN.workers,
+  ...(ALL_DISCOVERED ? { scope: 'all-discovered', discoveredTargets: discoveredTargets.size } : {}) });
 
 // ---------- SSE 等待任务结束 ----------
 async function awaitExit(taskId, timeoutMs = 15 * 60_000) {

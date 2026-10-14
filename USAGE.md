@@ -67,6 +67,7 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 ```
 
 裸 `live <host>` 是允许回源的在线包。严格离线导出会把 `recon/atlas.json` 中已发现的页面与实际克隆页、包内路由核对，并逐页运行断网 Chromium 首次加载检查；没有侦察数据时，`health.json` 的 `coverage.scope` 为 `captured-only`，只能说明已捕获范围。侦察本身达到页数或深度预算时，也不能据此声称已经覆盖整站。
+需要把侦察图谱里全部有效同源 URL 纳入克隆队列时，用 `node core/src/cli.mjs queue example.org --all-discovered`；普通队列仍按站点配方与页数预算筛选。
 
 需要验收点击或输入后的状态时，在 `core/workspace/<host>/operation-plan.json` 放置操作计划（使用 `HEIMDALL_DATA_DIR` 时放在相应站点工作区）。例如：
 
@@ -86,7 +87,17 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 
 `actions` 支持 `navigate`、`click`、`fill`、`scroll`；`expect` 支持 `visible`、`hidden`、`text-includes`、`url`。每条流程必须有可观察的最终断言。严格导出会在候选包中断开外网重放这些流程，HTTP 错误、脚本错误、未执行动作或断言失败均阻断发布；`operationProbe` 记录脱敏的依赖与失败。计划文件及输入值不进入交付包。未提供计划时，`operationPlan.status=missing`，交互未验收。默认禁止提交控件和写入型请求；这些业务要由本地适配器实现并单独验证。
 
-导出前核对授权和敏感数据。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；具体准入和清洗结果以本次导出报告为准。独立包仍需验收登录、重定向、登出和长期运行。`--strict` 失败时先修缺口，不要把包标成离线完成。
+加 `--compare-source` 会在获授权的源站运行同一操作计划，并把脱敏的源站结果与离线包结果写入 `health.sourceOperationProbe`。该开关要求 `--offline --strict`；源站不可达、源站流程失败或计划缺失都会阻断发布。源站采集阻断非只读 HTTP 方法与 WebSocket；GET 在个别站点仍可能有业务副作用，因此只对已审阅的流程使用。没有该开关时，离线通过不代表已与源站交互对照。
+
+只读 GET 数据必须先确认有权分发，再在站点工作区放置 `read-data-plan.json`：
+
+```json
+{ "version": 1, "paths": ["/api/catalog?page=1"] }
+```
+
+然后显式加 `--include-readonly-data --offline --strict`。导出只接受精确 URL、同源、无认证信息、2xx 的 JSON/纯文本响应；候选包中缺少任何声明响应都会阻断发布，结果见 `health.readOnlyData`。目前只从页面已有的 `network.har` 取响应；点击后才发出的 GET 尚未自动补抓。计划和响应内容仍须人工审核，自动敏感信息规则不能识别所有个人数据或商业机密。宽泛的 `--include-api-har` 不能与 `--strict` 同用。
+
+导出前核对授权和敏感数据。严格导出会检查候选包中的凭据型 URL、Bearer、Cookie 值；`health.privacyAudit` 记录问题数与扫描是否完整。它不是全面的个人信息识别。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；独立包仍需验收登录、重定向、登出和长期运行。`--strict` 失败时先修缺口，不要把包标成离线完成。
 
 ## SEO 回归
 
