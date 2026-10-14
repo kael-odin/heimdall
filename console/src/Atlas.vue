@@ -601,7 +601,7 @@ function buildStatic(a) {
   }
   hudPages.value = a.nodes.length;
   hudEdges.value = a.meta?.edges ?? a.edges.length;
-  bump();
+  bump(false);
   loadPageStatus();
 }
 
@@ -706,7 +706,7 @@ async function finishRecon(taskId, epoch) {
     pendingEdges = [];
     hudPages.value = nodes.length;
     hudEdges.value = a.meta?.edges ?? edges.length;
-    bump();
+    bump(false);
     loadPageStatus();
     loadSites();
   } catch {}

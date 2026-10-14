@@ -45,7 +45,9 @@ const statusFilter = ref('');
 const sortKey = ref('path');
 const sortDir = ref(1);
 const selectedIds = ref(new Set());
+const rowsLoadedForHost = ref(props.loading ? '' : props.host);
 watch(() => props.host, () => { selectedIds.value = new Set(); });
+watch(() => props.loading, loading => { if (!loading) rowsLoadedForHost.value = props.host; });
 
 const STATE_RANK = { done: 0, running: 1, failed: 2, idle: 3 };
 
@@ -81,7 +83,7 @@ function handOff(kind) {
 }
 
 const filteredNodes = computed(() => {
-  if (props.loading) return [];
+  if (props.loading && rowsLoadedForHost.value !== props.host) return [];
   const q = pageQuery.value.trim().toLowerCase();
   const out = props.nodes.filter(n => {
     if (typeFilter.value && n.type !== typeFilter.value) return false;

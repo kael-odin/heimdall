@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -7,18 +7,28 @@ import { tmpdir } from 'node:os';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
-import { WORKSPACE } from '../src/paths.mjs';
 import { TILE_HEIGHT } from '../src/verify/tiled-compare.mjs';
 import { csv, inputInfo, invalidateOldVerifier, invalidateSessionMeasurements,
   verifierSha256, waitForExitOrTimeout } from '../scripts/verify-historical-batch.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/verify-historical-batch.mjs', import.meta.url));
+const DATA_ROOT = mkdtempSync(join(tmpdir(), 'heimdall-historical-batch-'));
+const WORKSPACE = join(DATA_ROOT, 'workspace');
 const RUNS = join(WORKSPACE, '_runs');
-const PAGE = join(WORKSPACE, 'angular.dev', 'pages', 'ai');
-const EVIDENCE = 'data/workspace/angular.dev/verify/ai/verify.json';
+const PAGE = join(WORKSPACE, 'fixture.test', 'pages', 'ai');
+const PENDING_PAGE = join(WORKSPACE, 'fixture.test', 'pages', 'pending');
+const EVIDENCE = 'data/workspace/fixture.test/verify/ai/verify.json';
+mkdirSync(join(PAGE, 'clone'), { recursive: true });
+writeFileSync(join(PAGE, 'manifest.json'), JSON.stringify({ target: 'https://fixture.test/ai' }));
+writeFileSync(join(PAGE, 'clone', 'index.html'), '<!doctype html><body>' + 'x'.repeat(128 * 1024) + '</body>');
+mkdirSync(join(PENDING_PAGE, 'clone'), { recursive: true });
+writeFileSync(join(PENDING_PAGE, 'manifest.json'), JSON.stringify({ target: 'https://fixture.test/pending' }));
+writeFileSync(join(PENDING_PAGE, 'clone', 'index.html'), '<!doctype html><body>Pending</body>');
+after(() => rmSync(DATA_ROOT, { recursive: true, force: true }));
 const run = (dir, ...args) => spawnSync(process.execPath, [SCRIPT, '--run-dir', dir,
-  '--host', 'angular.dev', '--page', 'ai', '--max-pages', '1', '--max-copy-mb', '5',
-  '--max-page-mb', '5', ...args], { encoding: 'utf8', timeout: 15000 });
+  '--host', 'fixture.test', '--page', 'ai', '--max-pages', '1', '--max-copy-mb', '5',
+  '--max-page-mb', '5', ...args], { encoding: 'utf8', timeout: 15000,
+  env: { ...process.env, HEIMDALL_DATA_DIR: DATA_ROOT } });
 
 function tempRun() {
   mkdirSync(RUNS, { recursive: true });
@@ -62,7 +72,7 @@ function seedMeasured(dir, { tiled = false } = {}) {
       missingPixels: 0, coverageRatio: 1, heightDelta: 0 };
   });
   const viewportRows = viewports.map(viewport => ({
-    host: 'angular.dev', page: 'ai', viewport: viewport.name, status: 'measured',
+    host: 'fixture.test', page: 'ai', viewport: viewport.name, status: 'measured',
     score: viewport.score, grade: viewport.grade, settleTimedOut: false,
   }));
   mkdirSync(join(file, '..'), { recursive: true });
@@ -72,7 +82,7 @@ function seedMeasured(dir, { tiled = false } = {}) {
     verifierSha256: verifierSha256(), evidence: EVIDENCE, newOverall: 0.9, newGrade: 'B',
     resultSha256: createHash('sha256').update(readFileSync(file)).digest('hex'),
     diffEvidence, viewportsMeasured: 3, viewports: viewportRows };
-  writeFileSync(join(dir, 'progress.json'), JSON.stringify({ records: { 'angular.dev/ai': record } }));
+  writeFileSync(join(dir, 'progress.json'), JSON.stringify({ records: { 'fixture.test/ai': record } }));
   return { file, record };
 }
 
@@ -200,7 +210,7 @@ test('input change that cannot pass the budget marks the old measurement stale',
     const { file, record } = seedMeasured(dir);
     const progressFile = join(dir, 'progress.json');
     const progress = JSON.parse(readFileSync(progressFile, 'utf8'));
-    progress.records['angular.dev/ai'].inputBytes = record.inputBytes + 1;
+    progress.records['fixture.test/ai'].inputBytes = record.inputBytes + 1;
     writeFileSync(progressFile, JSON.stringify(progress));
 
     const result = run(dir, '--max-copy-mb', '0.1');
@@ -208,14 +218,14 @@ test('input change that cannot pass the budget marks the old measurement stale',
     const summary = JSON.parse(result.stdout);
     assert.ok(summary.remaining >= 1);
     const saved = JSON.parse(readFileSync(progressFile, 'utf8'));
-    const current = saved.records['angular.dev/ai'];
+    const current = saved.records['fixture.test/ai'];
     assert.equal(current.status, 'stale');
     assert.equal(current.measured, false);
     assert.equal(current.newOverall, null);
     assert.equal(current.priorMeasured.overall, record.newOverall);
     assert.equal(current.priorMeasured.evidence, EVIDENCE);
     assert.equal(existsSync(file), true);
-    assert.doesNotMatch(readFileSync(join(dir, 'viewports.csv'), 'utf8'), /angular\.dev/);
+    assert.doesNotMatch(readFileSync(join(dir, 'viewports.csv'), 'utf8'), /fixture\.test/);
   } finally { clean(dir); }
 });
 
@@ -225,13 +235,13 @@ test('verifier change that cannot pass the budget marks the old measurement stal
     const { file } = seedMeasured(dir);
     const progressFile = join(dir, 'progress.json');
     const progress = JSON.parse(readFileSync(progressFile, 'utf8'));
-    progress.records['angular.dev/ai'].verifierSha256 = 'old-verifier';
+    progress.records['fixture.test/ai'].verifierSha256 = 'old-verifier';
     writeFileSync(progressFile, JSON.stringify(progress));
 
     const result = run(dir, '--max-copy-mb', '0.1');
     assert.equal(result.status, 1);
     const saved = JSON.parse(readFileSync(progressFile, 'utf8'));
-    const current = saved.records['angular.dev/ai'];
+    const current = saved.records['fixture.test/ai'];
     assert.equal(current.status, 'stale');
     assert.equal(current.priorMeasured.overall, 0.9);
     assert.notEqual(current.verifierSha256, 'old-verifier');
@@ -252,7 +262,7 @@ test('viewport CSV excludes records outside the current catalog', () => {
     assert.equal(result.status, 0);
     const viewports = readFileSync(join(dir, 'viewports.csv'), 'utf8');
     const savedProgress = JSON.parse(readFileSync(progressFile, 'utf8'));
-    assert.match(viewports, /angular\.dev/);
+    assert.match(viewports, /fixture\.test/);
     assert.doesNotMatch(viewports, /ghost\.example/);
     assert.equal(savedProgress.lastRun.status, 'partial');
     assert.ok(savedProgress.lastRun.remaining > 0);
@@ -280,9 +290,9 @@ test('budget failure records partial while preserving measured evidence', () => 
     assert.equal(result.status, 1);
     const saved = JSON.parse(readFileSync(join(dir, 'progress.json'), 'utf8'));
     assert.equal(saved.lastRun.status, 'partial');
-    assert.equal(saved.records['angular.dev/ai'].status, 'stale');
-    assert.equal(saved.records['angular.dev/ai'].measured, false);
-    assert.equal(saved.records['angular.dev/ai'].lastAttempt.status, 'budget_skipped');
+    assert.equal(saved.records['fixture.test/ai'].status, 'stale');
+    assert.equal(saved.records['fixture.test/ai'].measured, false);
+    assert.equal(saved.records['fixture.test/ai'].lastAttempt.status, 'budget_skipped');
     assert.equal(existsSync(file), true);
     assert.equal(existsSync(join(dir, 'run.lock')), false);
   } finally { clean(dir); }
@@ -303,7 +313,7 @@ test('run directory junction cannot redirect writes into historical workspace', 
   const dir = tempRun();
   const link = join(dir, 'redirect');
   try {
-    try { symlinkSync(join(WORKSPACE, 'apify.com'), link, process.platform === 'win32' ? 'junction' : 'dir'); }
+    try { symlinkSync(join(WORKSPACE, 'fixture.test'), link, process.platform === 'win32' ? 'junction' : 'dir'); }
     catch (error) { t.skip('junction creation unavailable: ' + error.code); return; }
     const result = run(join(link, 'nested'), '--dry-run');
     assert.equal(result.status, 1);

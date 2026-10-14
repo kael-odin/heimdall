@@ -481,11 +481,26 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
       forgeBody = route.request().postDataJSON();
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ taskId: 'e2e-stub', pageName: 'home' }) });
     });
+    let releaseTargetPages;
+    const targetPagesGate = new Promise(resolve => { releaseTargetPages = resolve; });
+    const targetPagesRoute = route => targetPagesGate.then(() => route.continue());
+    await page.route('**/api/pages/e2e-target.test', targetPagesRoute);
     await page.getByRole('button', { name: '星图', exact: true }).click();
     // 故意带路径：这条守卫同时盯着两件事 —— 按钮真的发请求，以及**路径不被丢掉**。
     // 曾经的事故：归一器返回 origin，于是 `host/store` 被克隆成首页，不报错、只是做错事。
     await page.fill('input[aria-label="目标站点域名"]', 'e2e-target.test/guides/start');
+    const targetPagesRequest = page.waitForRequest(r => new URL(r.url()).pathname === '/api/pages/e2e-target.test');
     await page.getByRole('button', { name: '只克隆此页' }).click();
+    try {
+      await targetPagesRequest;
+      await page.locator('.wv-empty').filter({ hasText: '正在载入本站页面' }).waitFor();
+      assert.match(await page.locator('.work-view .wv-head').innerText(), /e2e-target\.test/);
+      assert.equal(await page.locator('.wv-rows .wv-row:not(.wv-th)').count(), 0,
+        '切到新站但页面状态未到时，不能沿用旧站清单行');
+    } finally {
+      releaseTargetPages();
+      await page.unroute('**/api/pages/e2e-target.test', targetPagesRoute);
+    }
     await page.waitForTimeout(800);
     assert.ok(forgeBody, '「只克隆此页」必须发出 POST /api/forge —— 没发出就是按钮哑了');
     assert.equal(forgeBody.url, 'https://e2e-target.test/guides/start', '请求体里要带上完整的目标 URL（含路径）');

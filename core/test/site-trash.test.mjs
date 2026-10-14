@@ -304,7 +304,7 @@ test('receipt reconciliation refuses a symlinked trash root', (t) => {
     assert.throws(() => previewTrash(id, { dataRoot: f.dataRoot }), /artifact is not a directory/);
     assert.equal(JSON.parse(readFileSync(receiptPath, 'utf8')).state, 'started');
   } finally {
-    if (existsSync(join(f.dataRoot, 'trash'))) rmdirSync(join(f.dataRoot, 'trash'));
+    if (existsSync(join(f.dataRoot, 'trash'))) unlinkSync(join(f.dataRoot, 'trash'));
     rmSync(f.dataRoot, { recursive: true, force: true });
     rmSync(external, { recursive: true, force: true });
   }
@@ -479,7 +479,7 @@ test('page and recon symlinks cannot redirect deletion outside the site', (t) =>
     catch (error) { t.skip('directory symlinks unavailable: ' + error.code); return; }
     assert.throws(() => quarantinePage(f.host, 'home', { dataRoot: f.dataRoot }), /artifact is not a directory/);
     assert.equal(readFileSync(join(outsidePage, 'keep.txt'), 'utf8'), 'keep');
-    rmdirSync(join(f.site, 'pages'));
+    unlinkSync(join(f.site, 'pages'));
 
     symlinkSync(external, join(f.site, 'recon'), 'junction');
     assert.throws(() => quarantinePage(f.host, 'home', { dataRoot: f.dataRoot }), /artifact is not a directory/);
