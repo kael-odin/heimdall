@@ -15,7 +15,7 @@ import { loadProfile } from '../site-profile.mjs';
 import { classifyPath, compileExtraRules } from './classify.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { assertSiteOrigin, siteIdForOrigin } from '../site-origin.mjs';
-import { sessionContext } from '../session/store.mjs';
+import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { canonUrl, stableNodeId, asUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
 import { UA } from '../ua.mjs';
@@ -109,6 +109,7 @@ emit({ kind: 'sitemap', count: sitemapSame.length });
 log('[2/4] BFS crawl');
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 640, height: 400 }, userAgent: UA, ...sessionContext(stripWww(hostOf(ORIGIN))) });
+await restoreSessionStorage(ctx, stripWww(hostOf(ORIGIN)));
 const nodes = new Map();   // url -> node
 const failures = [];       // 失败页清单（诚实记录，不静默丢弃）
 const edges = [];          // {from,to} (url)

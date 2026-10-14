@@ -50,7 +50,7 @@ test('offline strict rejects dynamic, external and missing pages while preservin
     }] } }));
     writeFileSync(join(site, 'live', 'index.html'), '<img src="/_next/image?url=/a.png&w=64"><script src="https://cdn.test/app.js"></script><a href="/missing/">missing</a>');
     const run = (...args) => spawnSync(process.execPath, [EXPORT, host, ...args], {
-      cwd: CORE, encoding: 'utf8', env: { ...process.env, HEIMDALL_DATA_DIR: dir }, timeout: 30_000,
+      cwd: CORE, encoding: 'utf8', env: { ...process.env, HEIMDALL_DATA_DIR: dir }, timeout: 90_000,
     });
     const result = run('--offline', '--strict', '--out', out);
     assert.equal(result.status, 1, result.stderr + result.stdout);
@@ -80,12 +80,50 @@ test('offline strict rejects dynamic, external and missing pages while preservin
     const goodHealth = JSON.parse(readFileSync(join(out, 'health.json'), 'utf8'));
     assert.equal(goodHealth.runtimeProbe.failed, 0);
     assert.ok(goodHealth.runtimeProbe.checked >= 2);
+    assert.equal(goodHealth.browserProbe.checked, 1);
+    assert.equal(goodHealth.browserProbe.failed, 0);
+    assert.equal(goodHealth.browserProbe.untested, 0);
     const acceptedHealth = readFileSync(join(out, 'health.json'));
+    const failedStrictHealth = () => {
+      const before = new Set(readdirSync(join(dir, 'deliverable')));
+      const failed = run('--offline', '--strict', '--out', out);
+      assert.equal(failed.status, 1, failed.stderr + failed.stdout);
+      const candidate = readdirSync(join(dir, 'deliverable')).find(name => name.startsWith('.candidate-') && !before.has(name));
+      assert.ok(candidate, 'failed candidate remains for diagnosis');
+      assert.deepEqual(readFileSync(join(out, 'health.json')), acceptedHealth,
+        'failed strict export must preserve the accepted bundle');
+      return JSON.parse(readFileSync(join(dir, 'deliverable', candidate, 'health.json'), 'utf8'));
+    };
+
+    writeFileSync(join(site, 'live', 'app.js'), "fetch('/api/missing?token=local-secret').catch(() => {});");
+    const dynamicFailure = failedStrictHealth();
+    assert.equal(dynamicFailure.strictBlockers.browserFailed, 1);
+    assert.ok(dynamicFailure.browserProbe.failures.some(f => f.kind === 'http' && f.status === 404 && f.target === '/api/missing'));
+    assert.doesNotMatch(JSON.stringify(dynamicFailure), /local-secret/);
+
+    writeFileSync(join(site, 'live', 'app.js'), "fetch('https://example.invalid/data?token=external-secret').catch(() => {});");
+    const externalFailure = failedStrictHealth();
+    assert.equal(externalFailure.strictBlockers.browserFailed, 1);
+    assert.ok(externalFailure.browserProbe.failures.some(f => f.kind === 'externalRequest' && f.target === 'https://example.invalid'));
+    assert.doesNotMatch(JSON.stringify(externalFailure), /external-secret/);
+
     writeFileSync(join(site, 'live', 'index.html'), '<style>body{background:url(/missing-bg.webp)}</style>');
     const inlineFailure = run('--offline', '--strict', '--out', out);
     assert.equal(inlineFailure.status, 1, inlineFailure.stderr + inlineFailure.stdout);
     assert.deepEqual(readFileSync(join(out, 'health.json')), acceptedHealth,
       'inline CSS failure must preserve the previously accepted bundle');
+    writeFileSync(join(site, 'live', 'index.html'), '<script src="/app.js"></script>');
+    writeFileSync(join(site, 'live', 'app.js'), 'console.log(1)');
+    for (let i = 0; i < 40; i++) {
+      const pageDir = join(site, 'live', 'extra-' + i);
+      mkdirSync(pageDir);
+      writeFileSync(join(pageDir, 'index.html'), '<!doctype html><title>extra</title>');
+    }
+    const untestedFailure = failedStrictHealth();
+    assert.equal(untestedFailure.browserProbe.totalPages, 41);
+    assert.equal(untestedFailure.browserProbe.checked, 40);
+    assert.equal(untestedFailure.strictBlockers.browserUntested, 1);
+
     writeFileSync(join(site, 'live', 'index.html'), '<script src="/app.js"></script>');
     writeFileSync(join(site, 'session.json'), '{"cookies":[{"name":"sid","value":"private-secret"}]}');
     assert.equal(run('--out', out).status, 2, 'saved sessions require explicit private release');

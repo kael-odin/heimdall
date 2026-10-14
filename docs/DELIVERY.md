@@ -142,8 +142,8 @@ Dockerfile / docker-compose.yml / README.md
 | --- | --- | --- |
 | Cookie（含 session cookie） | 绝大多数站点 | ✅ `storageState.cookies` |
 | localStorage（JWT 常见） | SPA 后台 | ✅ `storageState.origins[].localStorage` |
-| sessionStorage | 少数 SPA | ❌ storageState 不含 |
-| IndexedDB | 少数应用 | ❌ |
+| sessionStorage | 少数 SPA | ✅ 源站采集时按完整 origin 恢复顶层标签页；同源多标签页差异不保留 |
+| IndexedDB | 少数应用 | ✅ 源站采集时随 Playwright `storageState` 保存和恢复；实际登录效果仍需逐站验证 |
 | HTTP Basic / Bearer 头 | 内部 API、沙箱 | ❌ 需要单独的请求头配置 |
 | 客户端签名（时间戳 + 密钥） | 部分反爬 | ❌ |
 
@@ -153,8 +153,10 @@ Dockerfile / docker-compose.yml / README.md
 
 1. 打开一个**真浏览器窗口**访问该站点；
 2. 人在窗口里完成登录 —— 验证码、短信码、扫码、第三方 SSO 都行；
-3. 我们每 2 秒把当前 `storageState` 存一次到 `workspace/<host>/session.json`（原子写）；
-4. 之后的侦察 / 克隆 / SEO 审计 / 多视口验证**自动带上它**（`src/session/store.mjs` 的 `sessionContext()`）。
+3. 我们每 2 秒把 Cookie、localStorage、IndexedDB 和顶层标签页的 sessionStorage 存一次到 `workspace/<host>/session.json`（原子写）；
+4. 之后的侦察 / 克隆 / SEO 审计 / 多视口验证在访问原站时自动恢复这些状态。
+
+这只帮助采集端访问获授权的源站。导出包不包含 `session.json`，也不会因此拥有独立的登录、登出或账号服务。Service Worker 缓存、浏览器内存状态与同源多标签页的差异仍不在保存范围内。
 
 **为什么不自动化登录**：每个站点的登录流程都不同，且几乎都有验证码或 2FA ——
 自动化注定只对少数站点有效；而"绕过验证码"既不在我们的目标里，也不该做。
@@ -172,11 +174,11 @@ React / Next / Vue / VitePress / Docusaurus / SvelteKit / Angular 的部分公�
 **需要一点配置**：纯 CSR/SPA（要独立域名入口 + `--root mirror` 部署）；
 含第三方挂件 / 懒加载 / 画布的站点（靠站点配方的剥除规则与滚动扫掠）。
 
-**目前做不到**：
+**仍需逐站处理或暂不支持**：
 
-| 做不到 | 原因 | 记录位置 |
+| 能力或限制 | 当前情况 | 记录位置 |
 | --- | --- | --- |
-| 登录/付费墙后的内容 | 需要人工登录，见 6.2；现在**有机制了**，但未在真实凭据站点上验证过 | `RISKS.md` |
+| 登录/付费墙后的内容 | 可人工登录后尝试采集，见 6.2；尚未在真实凭据站点验证，也不提供导出包的独立登录服务 | `RISKS.md` |
 | Cloudflare / CAPTCHA 硬墙 | 代码里没有任何 stealth / 出站代理；实测过的站点都没撞上硬墙 | `RISKS.md` |
 | WebGL 渲染 | 需要 `preserveDrawingBuffer`，现在只覆盖 2D canvas 光栅化 | `RISKS.md` |
 | shadow DOM 内的样式 | 只处理 light DOM | [ROADMAP](ROADMAP.md) |
@@ -199,7 +201,7 @@ React / Next / Vue / VitePress / Docusaurus / SvelteKit / Angular 的部分公�
 
 ### 7.1 交付包是"起点"，不是"成品"
 
-交付包给的是：**一套能独立部署、视觉与结构都还原的静态前端**，连同它的
+交付包给的是：**在已采集和验收范围内可部署的视觉与结构基线**，连同它的
 资源清单、健康报告、对比证据。用户拿到手之后要做的是"换内容、接后端"。
 
 它给不了的、也不该由我们伪装成能给的是：
@@ -222,7 +224,7 @@ React / Next / Vue / VitePress / Docusaurus / SvelteKit / Angular 的部分公�
 
 1. 把侦察、克隆、完整多视口测量、离线资源、动态交互的覆盖数汇成一页验收摘要；保留评分版本、失败原因与未测页，不让单个高分代替交付结论。
 2. 用获授权站点验证资源与文案清单是否足够支撑接手者完成一次改版，并记录定位、域名替换和复验耗时。
-3. 对每个独立包区分静态资源的 strict 检查与真实断网浏览器中的动态功能验收；部分 API、表单和登录流程仍可能需要回源。
+3. `--strict` 已检查逐页首次加载；继续在真实断网浏览器中验收点击、表单、API、登录及长时间运行。未覆盖的流程仍可能需要回源或逐站实现。
 
 ---
 

@@ -7,7 +7,7 @@
  */
 import { comparePngBuffers } from './compare.mjs';
 import { freezeCss } from '../freeze.mjs';
-import { sessionContext } from '../session/store.mjs';
+import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { UA } from '../ua.mjs';
 
 export const FREEZE = freezeCss();
@@ -57,6 +57,7 @@ function replayContextOptions(url, viewport, source) {
 
 async function clickAndCapture(browser, url, selector, { viewport, source = false } = {}) {
   const ctx = await browser.newContext(replayContextOptions(url, viewport, source));
+  if (source) await restoreSessionStorage(ctx, new URL(url).hostname);
   const page = await ctx.newPage();
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
@@ -85,6 +86,7 @@ async function clickAndCapture(browser, url, selector, { viewport, source = fals
 
 export async function verifyInteractions(browser, { sourceUrl, cloneUrl, max = 3, viewport } = {}) {
   const ctx = await browser.newContext(replayContextOptions(sourceUrl, viewport, true));
+  await restoreSessionStorage(ctx, new URL(sourceUrl).hostname);
   const page = await ctx.newPage();
   let candidates = [];
   try {

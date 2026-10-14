@@ -23,12 +23,14 @@ test('interaction discovery and replay reuse source session; clone replay sends 
   const storageState = {
     cookies: [{ name: 'sid', value: 'test-session', domain: 'private.example.test', path: '/' }],
     origins: [],
+    sessionStorage: [{ origin: 'https://private.example.test', entries: [{ name: 'auth', value: 'browser-secret' }] }],
   };
   saveSession('private.example.test', storageState);
   const previousToken = process.env.HEIMDALL_TOKEN;
   process.env.HEIMDALL_TOKEN = 'test-engine-token';
 
   const contexts = [];
+  const initScripts = [];
   const state = { ariaExpanded: 'true', textLength: 40, visibleCount: 10 };
   const page = () => ({
     goto: async () => {},
@@ -44,7 +46,8 @@ test('interaction discovery and replay reuse source session; clone replay sends 
   const browser = {
     newContext: async options => {
       contexts.push(options);
-      return { newPage: async () => page(), close: async () => {} };
+      const index = contexts.length - 1;
+      return { addInitScript: async (_fn, values) => initScripts.push({ index, values }), newPage: async () => page(), close: async () => {} };
     },
   };
 
@@ -54,11 +57,15 @@ test('interaction discovery and replay reuse source session; clone replay sends 
     assert.equal(results[0].pass, true);
     assert.equal(contexts.length, 3, 'discovery, source click, clone click each need a context');
     for (const options of contexts.slice(0, 2)) {
-      assert.deepEqual(options.storageState, storageState);
+      assert.deepEqual(options.storageState, { cookies: storageState.cookies, origins: storageState.origins });
       assert.equal(options.extraHTTPHeaders, undefined, 'engine token must not leak to source');
       assert.equal(options.userAgent, UA);
     }
     assert.equal(contexts[2].storageState, undefined, 'source session must not leak to clone');
+    assert.deepEqual(initScripts, [0, 1].map(index => ({
+      index,
+      values: { 'https://private.example.test': [{ name: 'auth', value: 'browser-secret' }] },
+    })), 'sessionStorage must be restored only in source contexts');
     assert.deepEqual(contexts[2].extraHTTPHeaders, { 'x-heimdall-token': 'test-engine-token' });
     assert.equal(contexts[2].userAgent, UA);
   } finally {

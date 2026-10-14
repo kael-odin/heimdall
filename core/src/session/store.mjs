@@ -8,14 +8,14 @@
  * `workspace/<host>/session.json`，之后侦察 / 克隆 / SEO 审计 / 多视口验证
  * 全部带着它去请求。
  *
- * 存的是 Playwright 的原样格式（cookies + localStorage），不解析、不改写 ——
+ * cookies / localStorage / IndexedDB 保持 Playwright 的 storageState 格式；
+ * sessionStorage 是可选的扩展字段，只在创建源站 context 后恢复。
  * 这份文件等同于"这站点的登录凭据"，所以：
  *   · 只在本地 workspace 里，不进交付包，也不进 git（见 .gitignore）
  *   · 会在控制台显示保存时间与 cookie 数，便于判断有没有过期
  *
- * **能力边界（诚实说明）**：storageState 不含 sessionStorage、IndexedDB、
- * Service Worker 缓存。纯靠 sessionStorage 维持登录的站点复现不了；
- * 用 HTTP Basic / Bearer 头的站点也不在覆盖范围内。这些先记在文档里，不装懂。
+ * **能力边界**：sessionStorage 按 origin 复用，但同一 origin 不同标签页的状态
+ * 无法完整表示；Service Worker 缓存和浏览器内存状态不会保存。
  */
 import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, rmSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -56,7 +56,64 @@ export function loadSession(host) {
  */
 export function sessionContext(host) {
   const s = loadSession(host);
-  return s ? { storageState: s } : {};
+  if (!s) return {};
+  const { sessionStorage, ...storageState } = s;
+  return { storageState };
+}
+
+let warnedIndexedDbFallback = false;
+
+/** 登录窗口定期保存原生状态，并补上顶层标签页的 sessionStorage。 */
+export async function captureSessionState(ctx, previous = {}) {
+  let state;
+  try { state = await ctx.storageState({ indexedDB: true }); }
+  catch (error) {
+    state = await ctx.storageState();
+    if (!warnedIndexedDbFallback) {
+      console.warn('[login] IndexedDB 快照不可用；已仅保存 cookie 与 localStorage:', String(error).slice(0, 120));
+      warnedIndexedDbFallback = true;
+    }
+  }
+
+  const origins = new Map((previous.sessionStorage ?? [])
+    .filter(item => item && typeof item.origin === 'string' && Array.isArray(item.entries))
+    .map(item => [item.origin, item.entries]));
+  for (const page of ctx.pages()) {
+    try {
+      const item = await page.evaluate(() => ({
+        origin: location.origin,
+        entries: Array.from({ length: sessionStorage.length }, (_, index) => {
+          const name = sessionStorage.key(index);
+          return { name, value: sessionStorage.getItem(name) };
+        }).filter(entry => entry.name != null && entry.value != null),
+      }));
+      if (/^https?:\/\//.test(item.origin)) origins.set(item.origin, item.entries);
+    } catch { /* 页面正关闭或不允许访问存储，沿用最近一次快照 */ }
+  }
+  if (origins.size) state.sessionStorage = [...origins].map(([origin, entries]) => ({ origin, entries }));
+  return state;
+}
+
+/** 必须在 context.newPage() 前调用；仅在保存时的完全相同 origin 注入。 */
+export async function restoreSessionStorage(ctx, host) {
+  const entries = loadSession(host)?.sessionStorage;
+  if (!Array.isArray(entries) || !entries.length) return false;
+  const byOrigin = Object.fromEntries(entries
+    .filter(item => {
+      try {
+        const url = new URL(item.origin);
+        return ['http:', 'https:'].includes(url.protocol) && url.origin === item.origin && Array.isArray(item.entries);
+      }
+      catch { return false; }
+    })
+    .map(item => [item.origin, item.entries.filter(entry => typeof entry?.name === 'string' && typeof entry?.value === 'string')]));
+  if (!Object.keys(byOrigin).length) return false;
+  await ctx.addInitScript((saved) => {
+    try {
+      for (const { name, value } of saved[location.origin] ?? []) sessionStorage.setItem(name, value);
+    } catch { /* 禁用存储的 origin 不能阻断页面加载 */ }
+  }, byOrigin);
+  return true;
 }
 
 /** 给界面看的元信息：有没有、什么时候存的、几个 cookie、覆盖哪些域名 */
@@ -76,6 +133,7 @@ export function sessionInfo(host) {
     ageHours: +((Date.now() - st.mtimeMs) / 3_600_000).toFixed(1),
     cookies,
     origins,
+    sessionStorageOrigins: s?.sessionStorage?.length ?? 0,
     /** 本域名下的 cookie 数 —— 只有当原站域名下有 cookie 才算"真的登进去了"。
      *  判据是**主机名以 cookie 域结尾**（cookie 常以 `.example.com` 下发，
      *  子域 shop.example.com 也吃得到），反过来比会把子域站点判成 0。 */

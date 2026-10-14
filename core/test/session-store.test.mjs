@@ -13,10 +13,12 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createServer } from 'node:http';
+import { chromium } from 'playwright';
 
 const DATA = mkdtempSync(join(tmpdir(), 'heimdall-session-'));
 process.env.HEIMDALL_DATA_DIR = DATA;
-const { saveSession, loadSession, sessionContext, sessionInfo, clearSession, hostKey, sessionPath } = await import('../src/session/store.mjs');
+const { captureSessionState, restoreSessionStorage, saveSession, loadSession, sessionContext, sessionInfo, clearSession, hostKey, sessionPath } = await import('../src/session/store.mjs');
 
 test('hostKey：去协议 / 去 www / 去路径 / 小写（与引擎其余部分同一口径）', () => {
   assert.equal(hostKey('https://WWW.Example.com/a/b?c=1'), 'example.com');
@@ -42,6 +44,83 @@ test('存-读往返：cookie 与 origin 原样保留', () => {
   assert.equal(info.sameSite, 1, '本域名下的 cookie 数要单独报 —— 那才是"真的登进去了"的证据');
   assert.deepEqual(loadSession('example.com'), state);
   assert.deepEqual(sessionContext('example.com'), { storageState: state });
+});
+
+test('扩展会话字段只用于初始化脚本，不能传入 Playwright storageState', async () => {
+  const state = {
+    cookies: [], origins: [],
+    sessionStorage: [{ origin: 'https://private.test', entries: [{ name: 'token', value: 'secret' }] }],
+  };
+  saveSession('private.test', state);
+  assert.deepEqual(loadSession('private.test'), state);
+  assert.deepEqual(sessionContext('private.test'), { storageState: { cookies: [], origins: [] } });
+  assert.equal(sessionInfo('private.test').sessionStorageOrigins, 1);
+  const calls = [];
+  assert.equal(await restoreSessionStorage({ addInitScript: async (...args) => calls.push(args) }, 'private.test'), true);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0][1], { 'https://private.test': [{ name: 'token', value: 'secret' }] });
+  assert.equal(await restoreSessionStorage({ addInitScript: async () => assert.fail('legacy state needs no script') }, 'example.com'), false);
+});
+
+test('新 context 恢复 sessionStorage 与 IndexedDB，且只恢复保存的 origin', async t => {
+  let browser;
+  try { browser = await chromium.launch(); }
+  catch (error) { t.skip(`Chromium unavailable: ${String(error).slice(0, 100)}`); return; }
+  const server = createServer((_req, res) => { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><title>session fixture</title>'); });
+  const other = createServer((_req, res) => { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><title>other origin</title>'); });
+  try {
+    await Promise.all([server, other].map(s => new Promise(resolve => s.listen(0, '127.0.0.1', resolve))));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const otherOrigin = `http://127.0.0.1:${other.address().port}`;
+    const host = '127.0.0.1';
+    const first = await browser.newContext();
+    const page = await first.newPage();
+    await page.goto(origin);
+    await page.evaluate(async () => {
+      sessionStorage.setItem('session-token', 'session-value');
+      await new Promise((resolve, reject) => {
+        const open = indexedDB.open('heimdall-auth', 1);
+        open.onupgradeneeded = () => open.result.createObjectStore('tokens');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const tx = open.result.transaction('tokens', 'readwrite');
+          tx.objectStore('tokens').put('idb-value', 'idb-token');
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        };
+      });
+    });
+    const state = await captureSessionState(first);
+    assert.equal(state.sessionStorage[0].origin, origin);
+    assert.ok(state.origins[0].indexedDB?.length, 'IndexedDB must be present in Playwright storageState');
+    await page.close();
+    const afterClose = await captureSessionState(first, state);
+    assert.deepEqual(afterClose.sessionStorage, state.sessionStorage, 'closing the login tab must retain its last sessionStorage snapshot');
+    saveSession(host, state);
+    await first.close();
+
+    const second = await browser.newContext(sessionContext(host));
+    await restoreSessionStorage(second, host);
+    const restored = await second.newPage();
+    await restored.goto(origin);
+    assert.equal(await restored.evaluate(() => sessionStorage.getItem('session-token')), 'session-value');
+    assert.equal(await restored.evaluate(() => new Promise((resolve, reject) => {
+      const open = indexedDB.open('heimdall-auth');
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const tx = open.result.transaction('tokens', 'readonly');
+        const get = tx.objectStore('tokens').get('idb-token');
+        get.onsuccess = () => resolve(get.result);
+        get.onerror = () => reject(get.error);
+      };
+    })), 'idb-value');
+    await restored.goto(otherOrigin);
+    assert.equal(await restored.evaluate(() => sessionStorage.getItem('session-token')), null);
+    await second.close();
+  } finally {
+    await browser.close();
+    await Promise.all([server, other].map(s => new Promise(resolve => s.close(resolve))));
+  }
 });
 
 test('子域 cookie 也算本站的（很多站点用 .example.com 下发）', () => {

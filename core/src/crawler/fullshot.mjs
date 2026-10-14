@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { assertPageName } from '../page-name.mjs';
 import { readSiteIdentity } from '../site-origin.mjs';
 import { WORKSPACE, isInside } from '../paths.mjs';
-import { sessionContext } from '../session/store.mjs';
+import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { UA } from '../ua.mjs';
 
 const USAGE = 'node src/crawler/fullshot.mjs <siteId> [pageName] [--apply]';
@@ -136,10 +136,12 @@ async function main(argv = process.argv.slice(2)) {
   const session = sessionContext(new URL(targets[0].url).hostname);
   let done = 0, failed = 0;
   async function shoot({ name, url, shotPath }) {
-    let p;
+    let p, ctx;
     const tempPath = `${shotPath}.tmp-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
     try {
-      p = await browser.newPage({ viewport: { width: 1440, height: 900 }, userAgent: UA, ...session });
+      ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, userAgent: UA, ...session });
+      await restoreSessionStorage(ctx, new URL(url).hostname);
+      p = await ctx.newPage();
       await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
       const landed = p.url();
       if (new URL(landed).origin !== new URL(url).origin) throw new Error(`cross-origin redirect: ${landed}`);
@@ -159,7 +161,7 @@ async function main(argv = process.argv.slice(2)) {
       failed++;
       try { if (existsSync(tempPath)) unlinkSync(tempPath); } catch {}
       console.log(`  ✗ ${name}:`, String(e).slice(0, 160));
-    } finally { await p?.close().catch(() => {}); }
+    } finally { await ctx?.close().catch(() => {}); }
   }
   const queue = [...targets];
   try {

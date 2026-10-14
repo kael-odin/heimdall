@@ -13,7 +13,7 @@
  * 也不怕中途 Ctrl-C。
  */
 import { chromium } from 'playwright';
-import { saveSession, sessionPath } from './store.mjs';
+import { captureSessionState, saveSession, sessionPath } from './store.mjs';
 import { makeArgs } from '../args.mjs';
 import { UA } from '../ua.mjs';
 
@@ -36,10 +36,15 @@ await ctx.newPage();
 const page = await ctx.newPage();
 
 let last = null;
-const snapshot = async () => {
-  try { last = saveSession(host, await ctx.storageState()); } catch { /* context 已关就跳过 */ }
+let previousState = {};
+let pending = Promise.resolve();
+const snapshot = () => pending = pending.then(async () => {
+  try {
+    previousState = await captureSessionState(ctx, previousState);
+    last = saveSession(host, previousState);
+  } catch { /* context 已关就跳过 */ }
   return last;
-};
+});
 
 const timer = setInterval(snapshot, 2000);
 let closedByUser = false;
@@ -61,6 +66,7 @@ try { await browser.close(); } catch { /* 用户已经关掉了 */ }
 
 if (!last?.exists) { console.error('[login] 没有存下任何登录态（浏览器可能根本没打开）'); process.exit(1); }
 console.log(`[login] 已保存：${last.cookies} 个 cookie（本站域名下 ${last.sameSite} 个）· ${last.origins.length} 个 origin`);
+console.log(`[login] sessionStorage：${last.sessionStorageOrigins} 个 origin`);
 console.log(`[login] 文件：${sessionPath(host)}`);
 console.log(closedByUser
   ? '[login] 之后直接跑侦察/克隆/审计，会自动带上这份登录态。'

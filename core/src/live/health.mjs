@@ -281,6 +281,7 @@ export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = nu
     pagesWithUnresolved: details.length,
     unresolvedPaths: [...unresolvedPaths],
     probePaths: [...probePaths],
+    pageRoutes: pages,
     scanTruncated,
     details: details.slice(0, 40),
     externalAssetsTop: [...externalAssets.values()].slice(0, 25),

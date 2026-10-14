@@ -13,7 +13,7 @@ import { chromium } from 'playwright';
 import { collectCssRefs } from '../css-refs.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { emit } from '../emit.mjs';
-import { sessionContext } from '../session/store.mjs';
+import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { freezeCss } from '../freeze.mjs';
 import { UA } from '../ua.mjs';
 import { runScript } from '../child-run.mjs';
@@ -42,6 +42,7 @@ export async function snapPage(browser, host, page, widths = WIDTHS, pageDir = n
   const out = [];
   for (const width of widths) {
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, userAgent: UA, ...sessionContext(host) });
+    await restoreSessionStorage(ctx, host);
     const p = await ctx.newPage();
     await p.goto(target, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await p.waitForLoadState('load', { timeout: 25000 }).catch(() => {});

@@ -9,7 +9,7 @@
 import { chromium } from 'playwright';
 import { analyzeRawHtml } from './raw-html.mjs';
 import { isStructuralUrl } from './pagination.mjs';
-import { sessionContext } from '../session/store.mjs';
+import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { canonUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { UA } from '../ua.mjs';
 
@@ -83,6 +83,7 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
 
   if (targets.length === 0) {
     const ctx = await browser.newContext({ viewport: DEFAULT_VIEWPORT, userAgent: UA, ...sessionContext(new URL(origin).hostname) });
+    await restoreSessionStorage(ctx, new URL(origin).hostname);
     const page = await ctx.newPage();
     const queue = [{ url: origin + '/', depth: 0 }];
     const visited = new Set();
@@ -115,6 +116,7 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
 /** 单页采集 */
 export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1500 } = {}) {
   const ctx = await browser.newContext({ viewport: DEFAULT_VIEWPORT, userAgent: UA, ignoreHTTPSErrors: true, ...sessionContext(new URL(url).hostname) });
+  await restoreSessionStorage(ctx, new URL(url).hostname);
   const page = await ctx.newPage();
   await page.addInitScript(VITALS_INIT);
   const started = Date.now();

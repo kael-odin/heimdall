@@ -21,7 +21,7 @@ import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
 import { canonUrl } from '../url-canon.mjs';
 import { loadProfile } from '../site-profile.mjs';
-import { sessionContext } from '../session/store.mjs';
+import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { comparePngBuffers, overallScore, worstViewport, gradeOf } from './compare.mjs';
 import { compareTiledPng, TILE_HEIGHT } from './tiled-compare.mjs';
 import { verifyInteractions, scoreInteractions } from './interactions.mjs';
@@ -239,6 +239,7 @@ try {
     }
     log('page', name, '->', target);
     const srcCtx = await browser.newContext({ userAgent: UA, ...sessionContext(new URL(target).hostname) });
+    await restoreSessionStorage(srcCtx, new URL(target).hostname);
     const cloneCtx = await browser.newContext({ userAgent: UA, ...(process.env.HEIMDALL_TOKEN ? { extraHTTPHeaders: { 'x-heimdall-token': process.env.HEIMDALL_TOKEN } } : {}) });
     const srcPage = await srcCtx.newPage();
     const clonePage = await cloneCtx.newPage();

@@ -20,7 +20,7 @@ import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isSoftHtml } from '../asset-ext.mjs';
 import { collectCssRefs } from '../css-refs.mjs';
 import { MOTION_PROBE, MOTION_INIT, classifyMotion } from './motion.mjs';
-import { sessionContext } from '../session/store.mjs';
+import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { requireArg } from '../args.mjs';
 import { asUrl } from '../url-canon.mjs';
 import { freezeCss, stripFreeze } from '../freeze.mjs';
@@ -80,6 +80,7 @@ try {
   console.warn('  HAR recording unavailable:', String(e).slice(0, 100));
   context = await browser.newContext({ viewport: VIEWPORT, userAgent: UA, ...session });
 }
+await restoreSessionStorage(context, new URL(TARGET).hostname);
 const page = await context.newPage();
 function assertLandedOrigin() {
   const landed = page.url();

@@ -33,7 +33,7 @@ import { diffChecksums, changesLine } from './changes.mjs';
 import { mb } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
 import { assertExportTarget, promoteCandidate } from './export-path.mjs';
-import { probeOfflineBundle } from './probe.mjs';
+import { probeOfflineBundle, probeOfflineBrowserBundle } from './probe.mjs';
 import { liveSnapshotPath } from './live-path.mjs';
 import { sanitizeStaticHtml, isStaticCloneChooserHtml, staticCloneChooserHtml } from '../static-html-safety.mjs';
 import { availableCloneVariantWidths } from '../clone-doc.mjs';
@@ -290,21 +290,43 @@ health.strictBlockers = {
   emptyBundle: health.pages === 0 ? 1 : 0,
   scanTruncated: health.scanTruncated ? 1 : 0,
   runtimeMissing: 0,
+  browserFailed: 0,
+  browserUntested: 0,
 };
 health.strict = STRICT;
-if (STRICT && !Object.values(health.strictBlockers).some(Boolean)) {
-  try {
-    health.runtimeProbe = await probeOfflineBundle(OUT, health.probePaths);
-    health.strictBlockers.runtimeMissing = health.runtimeProbe.failed;
-  } catch (e) {
-    health.runtimeProbe = { checked: 0, failed: 1, error: String(e?.message ?? e) };
-    health.strictBlockers.runtimeMissing = 1;
+if (STRICT) {
+  health.browserProbe = {
+    checked: 0, failed: 0, totalPages: health.pageRoutes.length,
+    untested: health.pageRoutes.length, skipped: 'earlier strict blockers',
+  };
+  if (!Object.values(health.strictBlockers).some(Boolean)) {
+    try {
+      health.runtimeProbe = await probeOfflineBundle(OUT, health.probePaths);
+      health.strictBlockers.runtimeMissing = health.runtimeProbe.failed;
+    } catch (e) {
+      health.runtimeProbe = { checked: 0, failed: 1, error: String(e?.message ?? e) };
+      health.strictBlockers.runtimeMissing = 1;
+    }
+    if (!health.strictBlockers.runtimeMissing) {
+      try {
+        health.browserProbe = await probeOfflineBrowserBundle(OUT, health.pageRoutes);
+        health.strictBlockers.browserFailed = health.browserProbe.failed;
+      } catch (e) {
+        health.browserProbe = {
+          checked: 0, failed: 1, totalPages: health.pageRoutes.length,
+          untested: health.pageRoutes.length, error: e?.name === 'Error' ? 'probe error' : 'browser unavailable',
+        };
+        health.strictBlockers.browserFailed = 1;
+      }
+    } else health.browserProbe.skipped = 'HTTP probe failed';
   }
+  health.strictBlockers.browserUntested = health.browserProbe.untested;
 }
 // 健康报告只需路径定位问题，查询参数可能含临时凭据。
 health.unresolvedPaths = health.unresolvedPaths.map(path => path.split('?')[0]);
 for (const detail of health.details) detail.unresolved = detail.unresolved.map(path => path.split('?')[0]);
 delete health.probePaths;
+delete health.pageRoutes;
 writeFileSync(join(OUT, 'health.json'), JSON.stringify(health, null, 2));
 emit({ kind: 'live-stage', stage: 'health', status: 'done', livePages: health.pages, unresolved: health.assets.unresolved });
 console.log('[health] forgedPages=' + pageNames.length + ' livePages=' + health.pages + (health.liveMissing ? ' (missing ' + health.liveMissing + ')' : '') + ' assets=' + health.assets.total + ' local=' + health.assets.local + ' har=' + health.assets.har + ' unresolved=' + health.assets.unresolved + ' externalRefs=' + health.assets.external + '(静态资源 ' + health.assets.externalAssets + ') | linksMissing=' + health.links.missing);
@@ -327,9 +349,9 @@ a.card:hover{border-color:rgba(34,211,238,.6)}a.card b{display:block;color:#22d3
 </style></head><body><div class="wrap">
 <div class="brand">HEIMDALL · LIVE MIRROR</div>
 <h1>${host}</h1>
-<div class="meta">${OFFLINE ? '离线模式（仅本地快照 + HAR 回放）' : '在线模式（本地优先 · 未捕获资源回源）'} · HAR ${stats.entries} 条 · 离线门禁 ${Object.values(health.strictBlockers).some(Boolean) ? '存在缺口' : '通过'} · 端口 ${PORT}</div>
+<div class="meta">${OFFLINE ? '离线模式（仅本地快照 + HAR 回放）' : '在线模式（本地优先 · 未捕获资源回源）'} · HAR ${stats.entries} 条 · 离线门禁 ${STRICT ? (Object.values(health.strictBlockers).some(Boolean) ? '存在缺口' : '通过') : '未运行'} · 端口 ${PORT}</div>
 <div class="grid">
-<a class="card" href="/lm/${host}/"><b>打开交互镜像</b><span>本地快照优先 · 未锻造页回源原站 · 支持 HAR 回放</span></a>
+<a class="card" href="/lm/${host}/"><b>打开交互镜像</b><span>本地快照优先 · ${OFFLINE ? '未捕获请求返回 404' : '未捕获请求回源'} · 支持 HAR 回放</span></a>
 ${hasArchive ? `<a class="card" href="/static/${host}/index.html"><b>克隆档案</b><span>逐页还原度与卡片墙</span></a>` : ''}
 ${hasCompare ? `<a class="card" href="/static/${host}/compare.html"><b>同步滚动对比</b><span>原站快照 vs 镜像</span></a>` : ''}
 ${hasSeo ? `<a class="card" href="/static/${host}/seo/seo.html"><b>SEO 审计报告</b><span>六分类评分与逐页问题</span></a>` : ''}
@@ -374,11 +396,12 @@ assets.externalAssets    站外静态资源（图片/CSS/脚本）→ 离线也�
 assets.external          站外引用总数（含 YouTube 嵌入、地图、统计脚本）
                          external − externalAssets 的差额 = 嵌入类内容，**无法本地化，属固有边界**
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
-strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断和真实 HTTP 探测）
+strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器首次加载探测）
+browserProbe             逐页断外网首次加载结果；只观察短时间窗口，不证明点击、表单或登录可用
 \`\`\`
 
-**放在任何公网服务器上时，站外引用都能正常加载** —— 只有完全离线才需要考虑它们。
-如果要声称"断网也能跑"，请使用 \`--offline --strict\` 并确认 \`health.json\` 的全部门禁为零。
+在线部署时，站外引用是否可加载还取决于第三方服务、跨域规则和访问权限。
+如果要声称声明的页面可离线浏览，请使用 \`--offline --strict\` 并确认 \`health.json\` 的全部门禁为零；点击、表单和登录仍须单独验收。
 
 ## 路由
 
