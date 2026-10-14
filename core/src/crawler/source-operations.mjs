@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import { exploreOperationStates, sanitizeObservedUrl } from './state-graph.mjs';
+import { sourceReadDataCollector } from './source-read-data.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const ASSERTION_TYPES = new Set(['visible', 'hidden', 'text-includes', 'url']);
@@ -123,11 +124,13 @@ async function checkAssertion(page, assertion, origin, timeoutMs) {
  * No workspace files are written. A disposable browser context is used per flow.
  */
 export async function captureSourceOperations({ origin, flows, session = null, browser: suppliedBrowser,
+  readOnlyGetUrls = [], onReadOnlyData,
   settleMs: requestedSettleMs, timeoutMs: requestedTimeoutMs, assertionTimeoutMs: requestedAssertionTimeoutMs } = {}) {
   const base = sourceOrigin(origin);
   if (!Array.isArray(flows) || flows.length > MAX_FLOWS) throw new TypeError('invalid source flows');
   for (const flow of flows) validateFlow(flow, base);
   const { storageState, sessionStorage } = sessionOptions(session, base);
+  const readData = sourceReadDataCollector({ origin: base, urls: readOnlyGetUrls, onEntry: onReadOnlyData });
   const settleMs = boundedInteger(requestedSettleMs, 500, 5_000);
   const timeoutMs = boundedInteger(requestedTimeoutMs, 8_000, 30_000, 1);
   const assertionTimeoutMs = boundedInteger(requestedAssertionTimeoutMs, 2_000, 5_000, 1);
@@ -135,7 +138,10 @@ export async function captureSourceOperations({ origin, flows, session = null, b
     version: 1, status: 'checked', planned: flows.length, checked: 0, failed: 0,
     untested: flows.length, sessionUsed: session != null, flows: [],
   };
-  if (!flows.length) return report;
+  if (!flows.length) {
+    report.readOnlyData = readData.summary();
+    return report;
+  }
   const ownedBrowser = !suppliedBrowser;
   const browser = suppliedBrowser ?? await chromium.launch({ headless: true });
   try {
@@ -151,6 +157,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         else omittedIssues++;
       };
       let context;
+      let onResponse;
       let closing = false;
       let result;
       try {
@@ -172,9 +179,11 @@ export async function captureSourceOperations({ origin, flows, session = null, b
           addIssue({ kind: 'websocketBlocked', target: sanitizeObservedUrl(socket.url()) });
           await socket.close({ code: 1008, reason: 'read-only capture' });
         });
-        context.on('response', response => {
+        onResponse = response => {
           if (response.status() >= 400) addIssue({ kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()) });
-        });
+          readData.observe(response);
+        };
+        context.on('response', onResponse);
         context.on('requestfailed', request => {
           if (!closing && !blocked.has(request)) addIssue({ kind: 'requestFailed', target: sanitizeObservedUrl(request.url()) });
         });
@@ -238,6 +247,8 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         };
       } finally {
         closing = true;
+        if (context && onResponse) context.off('response', onResponse);
+        await readData.drain();
         await context?.close().catch(() => {});
         result.issues = issues;
         result.omittedIssues = omittedIssues;
@@ -248,6 +259,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         if (!result.passed) report.failed++;
       }
     }
+    report.readOnlyData = readData.summary();
     return report;
   } finally {
     if (ownedBrowser) await browser.close();

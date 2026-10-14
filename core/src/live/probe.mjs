@@ -218,6 +218,12 @@ async function checkAssertion(page, assertion, base) {
 /** Replay explicit critical paths against the candidate bundle with origin access blocked. */
 export async function probeOfflineOperations(bundleDir, flows, options = {}) {
   if (!Array.isArray(flows)) throw new TypeError('flows must be an array');
+  if (options.readOnlyGetUrls && (!Array.isArray(options.readOnlyGetUrls) || options.readOnlyGetUrls.length > 100)) {
+    throw new TypeError('invalid read-only request list');
+  }
+  if (options.onReadOnlyGet && typeof options.onReadOnlyGet !== 'function') {
+    throw new TypeError('invalid read-only request observer');
+  }
   const report = {
     status: 'checked', planned: flows.length, checked: 0, failed: 0, untested: flows.length,
     failures: [], omittedFailures: 0, flows: [],
@@ -230,6 +236,10 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
   const { child, base } = await startOfflineServer(bundleDir);
   let browser;
   try {
+    const readOnlyRequests = new Map((options.readOnlyGetUrls ?? []).map(value => {
+      const sourceUrl = new URL(value);
+      return [new URL(sourceUrl.pathname + sourceUrl.search, base).href, value];
+    }));
     browser = await chromium.launch({ headless: true });
     for (const [flowIndex, flow] of flows.entries()) {
       const issues = [];
@@ -239,6 +249,11 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
       let context;
       try {
         context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
+        context.on('request', request => {
+          if (request.method().toUpperCase() !== 'GET') return;
+          const sourceUrl = readOnlyRequests.get(request.url());
+          if (sourceUrl) options.onReadOnlyGet?.(sourceUrl);
+        });
         await context.route('**/*', async route => {
           const request = route.request();
           if (new URL(request.url()).origin === base) return route.continue();

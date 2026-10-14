@@ -24,6 +24,7 @@ const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const COMMANDS = {
   recon:   { script: 'src/crawler/recon.mjs', usage: 'recon <url> [maxPages] [maxDepth]', desc: '全站侦察 → atlas.json + 缩略图' },
+  'discover-operations': { script: 'src/crawler/discover-operations.mjs', usage: 'discover-operations <siteId> [--max-pages N] [--max-candidates N]', desc: '已捕获源页的只读操作候选 → 私有工作区报告（不执行候选）' },
   forge:   { script: 'src/pipeline.mjs', usage: 'forge <url> [pageName]', desc: '单页完整克隆流水线（capture→build→diff→fixup→harvest）' },
   queue:   { script: 'src/queue.mjs', usage: 'queue <host> [--max N|--all-discovered] [--force] [--incremental] [--missing-har] [--no-dedupe]', desc: '全站批量克隆（--all-discovered 含登录/法务页且无页数上限）' },
   audit:   { script: 'src/seo/audit.mjs', usage: 'audit <host> [--max N] [--threshold N] [--baseline F] [--update-baseline] [--fail-on-regression] [--tolerance N] [--require-baseline]', desc: 'SEO 审计（66 条规则，HTML/CSV/JSON）+ 回归基线门禁' },
@@ -43,7 +44,7 @@ export const COMMANDS = {
   mcp:     { script: 'src/mcp/server.mjs', usage: 'mcp', desc: 'MCP stdio 服务器（把 Heimdall 能力暴露给 agent 客户端）' },
   browser: { script: 'src/browser/bookmarklet.mjs', usage: 'browser [--api URL] [--token T]', desc: '生成浏览器书签入口安装页（在任意页面一键送入 Heimdall）' },
   sandbox: { script: 'src/sandbox/serve.mjs', usage: 'sandbox <host> <page> [--port 8090] [--reset]', desc: '沙盒改造台（改 HTML/CSS + 与原版实时对比）' },
-  live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <deliverable-subdir>] [--rebuild] [--root mirror] [--heal] [--materialize-har] [--strict] [--include-api-har] [--allow-private-export]', desc: '导出可部署交互镜像包（静态 HAR 回放 + Docker + 离线门禁）' },
+  live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <deliverable-subdir>] [--rebuild] [--root mirror] [--heal] [--materialize-har] [--strict] [--compare-source] [--include-readonly-data] [--include-api-har] [--allow-private-export]', desc: '导出可部署交互镜像包（静态 HAR 回放 + Docker + 离线门禁）' },
   dedupe:  { script: 'src/store/dedupe.mjs', usage: 'dedupe <host> [--dry-run] [--dir <path>]', desc: '内容寻址资产去重（硬链接）' },
   storage: { script: 'src/audit/storage.mjs', usage: 'storage [--out <file>]', desc: '磁盘占用盘点（站点/CAS/交付包）' },
   'cas-gc': { script: 'src/audit/cas-gc.mjs', usage: 'cas-gc [--apply] [--json]', desc: '回收 CAS 孤儿（默认仅预览，--apply 真回收）' },

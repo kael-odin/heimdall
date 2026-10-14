@@ -136,6 +136,42 @@ test('strict export packages only declared public GET data and replays it after 
     assert.doesNotMatch(readFileSync(join(privateCandidate, 'har.json'), 'utf8'), /private@example.invalid|session-only|private-secret/);
     assert.equal(existsSync(join(source, 'deliverable', 'private-bundle')), false);
 
+    plan([PUBLIC_PATH, SUMMARY_PATH]);
+    const secondPage = join(site, 'pages', 'secondary');
+    mkdirSync(join(secondPage, 'clone'), { recursive: true });
+    mkdirSync(join(site, 'live', 'other'), { recursive: true });
+    writeFileSync(join(secondPage, 'manifest.json'), JSON.stringify({ target: ORIGIN + '/other/' }));
+    writeFileSync(join(secondPage, 'clone', 'index.html'), '<!doctype html><h1>Other clone</h1>');
+    writeFileSync(join(site, 'live', 'other', 'index.html'), '<!doctype html><h1>Other page</h1>');
+    const secondHar = join(secondPage, 'network.har');
+    writeFileSync(secondHar, JSON.stringify({ log: { entries: [
+      harEntry(PUBLIC_PATH, '{"items":["Public item"]}', {
+        requestHeaders: [{ name: 'Cookie', value: 'sid=private-second-har' }],
+      }),
+    ] } }));
+    before = new Set(readdirSync(join(source, 'deliverable')));
+    const mixedAuth = runExport(source, join(source, 'deliverable', 'mixed-auth-bundle'));
+    assert.equal(mixedAuth.status, 1, mixedAuth.stderr + mixedAuth.stdout);
+    const mixedAuthDir = failedCandidate(source, before);
+    const mixedAuthHealth = JSON.parse(readFileSync(join(mixedAuthDir, 'health.json'), 'utf8'));
+    assert.equal(mixedAuthHealth.readOnlyData.included, 2);
+    assert.equal(mixedAuthHealth.readOnlyData.missing, 0);
+    assert.equal(mixedAuthHealth.strictBlockers.readOnlyDataConflicts, 1);
+    assert.doesNotMatch(readFileSync(join(mixedAuthDir, 'health.json'), 'utf8'), /private-second-har/);
+    assert.doesNotMatch(readFileSync(join(mixedAuthDir, 'har.json'), 'utf8'), /private-second-har/);
+
+    writeFileSync(secondHar, JSON.stringify({ log: { entries: [
+      harEntry(PUBLIC_PATH, '{"email":"private-body@example.invalid"}'),
+    ] } }));
+    before = new Set(readdirSync(join(source, 'deliverable')));
+    const mixedBody = runExport(source, join(source, 'deliverable', 'mixed-body-bundle'));
+    assert.equal(mixedBody.status, 1, mixedBody.stderr + mixedBody.stdout);
+    const mixedBodyDir = failedCandidate(source, before);
+    const mixedBodyHealth = JSON.parse(readFileSync(join(mixedBodyDir, 'health.json'), 'utf8'));
+    assert.equal(mixedBodyHealth.readOnlyData.missing, 0);
+    assert.equal(mixedBodyHealth.strictBlockers.readOnlyDataConflicts, 1);
+    assert.doesNotMatch(readFileSync(join(mixedBodyDir, 'har.json'), 'utf8'), /private-body@example.invalid/);
+
     cpSync(goodOut, deployed, { recursive: true });
     rmSync(source, { recursive: true, force: true });
     assert.equal(existsSync(source), false);

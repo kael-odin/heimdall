@@ -27,7 +27,7 @@ import { WORKSPACE, DELIVERABLE, localDateStamp } from '../paths.mjs';
 import { emit } from '../emit.mjs';
 import { buildEditManifest, renderEditManifestMd } from '../deliver/edit-manifest.mjs';
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
-import { scanLiveBundle } from './health.mjs';
+import { listLivePageRoutes, scanLiveBundle } from './health.mjs';
 import { healBundle, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset } from './heal.mjs';
 import { diffChecksums, changesLine } from './changes.mjs';
 import { mb } from '../fsutil.mjs';
@@ -218,6 +218,8 @@ const queryPages = pageNames.flatMap(name => {
 // ---------- 3. HAR 清洗与合并（流式：仅同源 + 去重，避免多页 GB 级峰值） ----------
 emit({ kind: 'live-stage', stage: 'har', status: 'running', total: pageNames.length });
 const harMap = new Map();
+const readOnlyKeys = new Set(dataPlan.urls.map(url => harKey('GET', url)));
+let readOnlyDataConflicts = 0;
 let harPages = 0;
 const privacy = { excluded: { invalid: 0, privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 }, examples: [], includeApiBodies: INCLUDE_API_HAR, sessionPresent: SESSION_PRESENT, privateExportApproved: ALLOW_PRIVATE_EXPORT };
 for (let i = 0; i < pageNames.length; i++) {
@@ -226,11 +228,23 @@ for (let i = 0; i < pageNames.length; i++) {
   if (!existsSync(p)) continue;
   harPages++;
   try {
-    const sanitized = sanitizeHar(JSON.parse(readFileSync(p, 'utf8')), {
+    const rawHar = JSON.parse(readFileSync(p, 'utf8'));
+    const rawReadOnlyCounts = new Map();
+    for (const entry of rawHar?.log?.entries ?? []) {
+      const key = harKey(entry?.request?.method, entry?.request?.url);
+      if (readOnlyKeys.has(key)) rawReadOnlyCounts.set(key, (rawReadOnlyCounts.get(key) ?? 0) + 1);
+    }
+    const sanitized = sanitizeHar(rawHar, {
       includeApiBodies: INCLUDE_API_HAR,
       readOnlyOrigin: origin,
       readOnlyGetUrls: dataPlan.urls,
     });
+    for (const entry of sanitized.entries) {
+      if (entry.kind !== 'public-read-only-data') continue;
+      const key = harKey(entry.method, entry.url);
+      if (rawReadOnlyCounts.has(key)) rawReadOnlyCounts.set(key, rawReadOnlyCounts.get(key) - 1);
+    }
+    for (const remaining of rawReadOnlyCounts.values()) readOnlyDataConflicts += remaining;
     for (const [reason, count] of Object.entries(sanitized.privacy.excluded)) privacy.excluded[reason] += count;
     for (const sample of sanitized.privacy.examples) if (privacy.examples.length < 30) privacy.examples.push(sample);
     for (const e of sanitized.entries) {
@@ -241,10 +255,38 @@ for (let i = 0; i < pageNames.length; i++) {
       // 站外的 XHR/JSON 仍然不收：它们离线时本质上无法伪造，收了也只是体积。
       if (x.origin !== origin && !isStaticAsset(e)) continue;
       const k = harKey(e.method, e.url);
-      if (!harMap.has(k)) harMap.set(k, e);
+      const prior = harMap.get(k);
+      if (!prior) harMap.set(k, e);
+      else if (readOnlyKeys.has(k) && (prior.kind !== e.kind || prior.status !== e.status
+        || prior.mimeType !== e.mimeType || prior.body !== e.body)) readOnlyDataConflicts++;
     }
   } catch (e) { console.warn('[export] HAR parse failed:', name, String(e).slice(0, 80)); }
   emit({ kind: 'live-stage', stage: 'har', index: i + 1, total: pageNames.length });
+}
+const preflightRoutes = listLivePageRoutes(join(siteDir, 'live'), origin, queryPages);
+const operationPlan = readOperationPlan(BASE, origin, preflightRoutes);
+let earlySource = null;
+let earlySourceError = null;
+const currentSourceReadOnlyKeys = new Set();
+if (COMPARE_SOURCE && INCLUDE_READONLY_DATA && dataPlan.status === 'ok'
+  && operationPlan.status === 'ok' && operationPlan.flows.length) {
+  try {
+    earlySource = await captureSourceOperations({
+      origin, flows: operationPlan.flows, session: loadSession(host),
+      readOnlyGetUrls: dataPlan.urls,
+      onReadOnlyData: entry => {
+        const key = harKey(entry.method, entry.url);
+        const prior = harMap.get(key);
+        if (prior && (prior.kind !== entry.kind || prior.status !== entry.status
+          || prior.mimeType !== entry.mimeType || prior.body !== entry.body)) {
+          readOnlyDataConflicts++;
+          throw new Error('read-only response conflict');
+        }
+        if (!prior) harMap.set(key, entry);
+        currentSourceReadOnlyKeys.add(key);
+      },
+    });
+  } catch (error) { earlySourceError = error; }
 }
 const har = { version: 1, generatedAt: new Date().toISOString(), entries: [...harMap.values()] };
 writeFileSync(join(OUT, 'har-privacy.json'), JSON.stringify(privacy, null, 2));
@@ -328,9 +370,17 @@ health.readOnlyData = {
   included: includedDataUrls.size,
   missing: missingData.length,
   ...(shadowedData.length ? { shadowed: shadowedData.length } : {}),
+  ...(readOnlyDataConflicts ? { conflicts: readOnlyDataConflicts } : {}),
+  ...(earlySource?.readOnlyData ? { sourceCapture: earlySource.readOnlyData } : {}),
+  ...(COMPARE_SOURCE && INCLUDE_READONLY_DATA ? {
+    sourceCurrentAccepted: currentSourceReadOnlyKeys.size,
+    sourceCurrentMissing: dataPlan.urls.filter(url => !currentSourceReadOnlyKeys.has(harKey('GET', url))).length,
+  } : {}),
   ...(dataPlan.issue ? { issue: dataPlan.issue } : {}),
 };
-const operationPlan = readOperationPlan(BASE, origin, health.pageRoutes);
+const finalOperationPlan = readOperationPlan(BASE, origin, health.pageRoutes);
+const operationPlanChanged = JSON.stringify(operationPlan) !== JSON.stringify(finalOperationPlan)
+  || JSON.stringify(preflightRoutes) !== JSON.stringify(health.pageRoutes);
 health.operationPlan = {
   status: operationPlan.status, declaredFlows: operationPlan.flows.length,
   ...(operationPlan.issue ? { issue: operationPlan.issue } : {}),
@@ -354,6 +404,7 @@ health.strictBlockers = {
   coverageInvalid: health.coverage.sourceStatus === 'invalid' || health.coverage.unmappedClones ? 1 : 0,
   reconFailures: health.coverage.reconFailures,
   operationPlanInvalid: operationPlan.status === 'invalid' ? 1 : 0,
+  operationPlanChanged: operationPlanChanged ? 1 : 0,
   emptyBundle: health.pages === 0 ? 1 : 0,
   scanTruncated: health.scanTruncated ? 1 : 0,
   runtimeMissing: 0,
@@ -366,6 +417,14 @@ health.strictBlockers = {
   readOnlyDataInvalid: INCLUDE_READONLY_DATA && dataPlan.status !== 'ok' ? 1 : 0,
   readOnlyDataMissing: missingData.length,
   readOnlyDataShadowed: shadowedData.length,
+  readOnlyDataConflicts,
+  sourceReadOnlyCurrentMissing: COMPARE_SOURCE && INCLUDE_READONLY_DATA
+    ? health.readOnlyData.sourceCurrentMissing : 0,
+  offlineReadOnlyRequestMissing: 0,
+  sourceReadOnlyCaptureFailed: earlySource
+    ? (earlySource.readOnlyData?.rejected ?? 0) + (earlySource.readOnlyData?.oversized ?? 0)
+      + (earlySource.readOnlyData?.failed ?? 0)
+    : earlySourceError ? 1 : 0,
   privacyIssues: 0,
   privacyIncomplete: 0,
 };
@@ -397,12 +456,16 @@ if (STRICT) {
     } else health.browserProbe.skipped = 'HTTP probe failed';
   }
   health.strictBlockers.browserUntested = health.browserProbe.untested;
+  const offlineReadOnlyKeys = new Set();
   if (operationPlan.flows.length && !health.strictBlockers.browserFailed
     && !health.strictBlockers.browserUntested
     && !Object.entries(health.strictBlockers).some(([key, value]) =>
       key !== 'operationUntested' && key !== 'operationFailed' && !!value)) {
     try {
-      health.operationProbe = await probeOfflineOperations(OUT, operationPlan.flows);
+      health.operationProbe = await probeOfflineOperations(OUT, operationPlan.flows, {
+        readOnlyGetUrls: COMPARE_SOURCE && INCLUDE_READONLY_DATA ? dataPlan.urls : [],
+        onReadOnlyGet: url => offlineReadOnlyKeys.add(harKey('GET', url)),
+      });
       health.strictBlockers.operationFailed = health.operationProbe.failed;
     } catch (error) {
       health.operationProbe = {
@@ -414,16 +477,24 @@ if (STRICT) {
     }
   } else if (operationPlan.flows.length) health.operationProbe.status = 'skipped';
   health.strictBlockers.operationUntested = health.operationProbe.untested;
+  if (COMPARE_SOURCE && INCLUDE_READONLY_DATA) {
+    health.readOnlyData.offlineRequested = offlineReadOnlyKeys.size;
+    health.readOnlyData.offlineMissing = dataPlan.urls.filter(url => !offlineReadOnlyKeys.has(harKey('GET', url))).length;
+    health.readOnlyData.offlineStatus = health.operationProbe.status === 'checked' ? 'checked' : 'not-tested';
+    health.strictBlockers.offlineReadOnlyRequestMissing = health.readOnlyData.offlineMissing;
+  }
   if (COMPARE_SOURCE) {
     if (operationPlan.status !== 'ok' || !operationPlan.flows.length) {
       health.sourceOperationProbe.status = 'not-configured';
       health.strictBlockers.sourceOperationUntested = 1;
     } else {
       try {
-        const source = await captureSourceOperations({ origin, flows: operationPlan.flows, session: loadSession(host) });
+        if (earlySourceError) throw earlySourceError;
+        const source = earlySource ?? await captureSourceOperations({ origin, flows: operationPlan.flows, session: loadSession(host) });
         health.sourceOperationProbe = {
           status: source.status, planned: source.planned, checked: source.checked,
           failed: source.failed, untested: source.untested, sessionUsed: source.sessionUsed,
+          ...(source.readOnlyData ? { readOnlyData: source.readOnlyData } : {}),
           flows: source.flows.map(flow => ({
             index: flow.index, passed: flow.passed,
             plannedActions: flow.plannedActions, executedActions: flow.executedActions,
@@ -531,7 +602,7 @@ browserProbe             逐页断外网首次加载结果；只观察短时间�
 operationPlan            操作脚本声明数；missing 表示没有交互验收，脚本本身不进入交付包
 operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
 sourceOperationProbe     显式 --compare-source 时，源站同流程只读采集与脱敏对照；未运行不代表源站通过
-readOnlyData             显式许可的 GET 数据声明数、纳入数及缺口；只覆盖已有页面 HAR
+readOnlyData             显式许可的 GET 数据声明数、纳入数、缺口和冲突；源站操作采集需同时使用 --compare-source
 privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布
 \`\`\`
 
@@ -557,7 +628,7 @@ privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻
 - 资产与克隆页按独立副本复制，构建通过后才替换目标目录；上一个版本保留为 \`.backup-*\`。
 - HAR 默认只保留静态资源；API/HTML 正文不进入分发包。排除统计见 \`har-privacy.json\`。
 - 原始 \`recon/atlas.json\` 不进入分发包；已发现页面的覆盖摘要见 \`health.json\`。
-- 如确需公开只读 GET 数据回放，先在工作区配置 \`read-data-plan.json\`，再用 \`--include-readonly-data --offline --strict\` 精确许可；只捕获已有 HAR，需人工审核数据分发范围。
+- 如确需公开只读 GET 数据回放，先在工作区配置 \`read-data-plan.json\`，再用 \`--include-readonly-data --offline --strict\` 精确许可；同时加 \`--compare-source\` 与已审核的操作计划，可受控采集点击后出现的响应。冲突、缺失与被拒响应会阻断发布，数据分发范围仍需人工审核。
 - 宽泛的 \`--include-api-har\` 不允许与 \`--strict\` 同用，也不能让 POST 等写入型业务离线运行。
 - 保存过登录会话的站点默认拒绝导出；受控环境里须显式加 \`--allow-private-export\`，且原始 \`session.json\` 仍不会复制进包。
 - 未捕获的第三方接口在在线模式下回源；离线模式下会明确 404。

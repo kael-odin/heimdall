@@ -24,3 +24,9 @@ test('cli: all-discovered queue mode is visible and forwarded', () => {
   assert.match(COMMANDS.queue.usage, /--all-discovered/);
   assert.deepEqual(resolveCommand(['queue', 'x.test', '--all-discovered']).args, ['x.test', '--all-discovered']);
 });
+
+test('cli: private operation discovery command is visible and forwards its bounds', () => {
+  assert.match(COMMANDS['discover-operations'].usage, /--max-pages N/);
+  assert.deepEqual(resolveCommand(['discover-operations', 'x.test', '--max-pages', '2']).args,
+    ['x.test', '--max-pages', '2']);
+});

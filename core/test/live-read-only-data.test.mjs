@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -83,6 +83,31 @@ test('read-only data excludes authentication, writes, response cookies, private 
   assert.equal(text.entries[0].mimeType, 'text/plain; charset=utf-8');
   assert.ok(isReplayableReadOnlyDataEntry(text.entries[0], ORIGIN));
   assert.equal(isReplayableReadOnlyDataEntry({ ...text.entries[0], body: Buffer.from('Bearer abcdefghi').toString('base64') }, ORIGIN), false);
+});
+
+test('email redaction retains the original local-part and domain boundaries', () => {
+  const url = ORIGIN + '/api/text';
+  for (const body of ['a@x.io', 'name+tag@sub.example.com', 'x-y@x.io']) {
+    assert.equal(clean([entry(url, body, { mimeType: 'text/plain' })], [url]).privacy.excluded.privateBody, 1, body);
+  }
+  for (const body of ['@x.io', 'a@.io', 'a@x.y']) {
+    assert.equal(clean([entry(url, body, { mimeType: 'text/plain' })], [url]).entries.length, 1, body);
+  }
+});
+
+test('HAR sanitizer handles a long public token in bounded time', () => {
+  const script = `import { sanitizeHar } from './src/live/har.mjs';
+    const origin = 'https://origin.test';
+    const url = origin + '/api/text';
+    const har = { log: { entries: [{ request: { method: 'GET', url, headers: [] },
+      response: { status: 200, headers: [], content: { mimeType: 'text/plain', text: 'x'.repeat(800_000) } } }] } };
+    const result = sanitizeHar(har, { readOnlyOrigin: origin, readOnlyGetUrls: [url] });
+    if (result.entries.length !== 1) process.exitCode = 1;`;
+  const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: fileURLToPath(new URL('..', import.meta.url)), timeout: 5_000, encoding: 'utf8',
+  });
+  assert.equal(run.error, undefined, run.error?.message);
+  assert.equal(run.status, 0, run.stderr);
 });
 
 test('standalone offline bundle replays approved GET data exactly, without an upstream', { timeout: 15_000 }, async () => {

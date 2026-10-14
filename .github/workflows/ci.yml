@@ -1,7 +1,7 @@
 name: CI
 
 # 与 seo-gate.yml 的分工：
-#   ci.yml     —— 确定性检查（lint / 测试 / build / smoke），每次 push 与 PR 都跑，不联网
+#   ci.yml     —— 确定性检查（lint / 测试 / build / smoke），每次 push 与 PR 都跑，不访问被克隆源站
 #   seo-gate   —— 联网抓授权站点并与基线比对；当前仅手动触发，配置目标和基线后再考虑定时运行
 #
 # 本文件里的测试**需要真浏览器**：core 的测试集里有几条跑的是 capture → build_clone
@@ -51,6 +51,11 @@ jobs:
       - run: pnpm --dir ../console install --frozen-lockfile
       - run: pnpm --dir ../console build
       - run: pnpm test
+      # 交付包需脱离源工作区，在无外联网络的容器中实际启动。
+      - name: Docker offline delivery (SSR + SPA)
+        run: node --test --test-name-pattern='Docker network-none delivery' test/live-deployment-matrix.test.mjs
+        env:
+          HEIMDALL_DOCKER_TEST: "1"
 
   console:
     name: console (build)

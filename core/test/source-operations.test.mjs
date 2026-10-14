@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { captureSourceOperations } from '../src/crawler/source-operations.mjs';
+import { sourceReadDataCollector } from '../src/crawler/source-read-data.mjs';
+import { isReplayableReadOnlyDataEntry } from '../src/live/har.mjs';
 
 async function fixture(t) {
   let writes = 0;
@@ -138,4 +140,183 @@ test('source capture reports all actions and assertions as untested when context
   assert.equal(report.flows[0].assertions[0].status, 'untested');
   assert.ok(report.flows[0].issues.some(item => item.kind === 'captureError'));
   assert.doesNotMatch(JSON.stringify(report), /start-secret|private-selector|secret-result|browser-secret/);
+});
+
+async function readDataFixture(t) {
+  const huge = 'x'.repeat(1024 * 1024 + 1);
+  let version = 0;
+  const server = createServer((request, response) => {
+    const url = new URL(request.url, 'http://fixture.test');
+    if (url.pathname === '/api/public') {
+      response.setHeader('content-type', 'application/json');
+      return response.end('{"items":["public-marker"]}');
+    }
+    if (url.pathname === '/api/private') {
+      response.setHeader('content-type', 'application/json');
+      return response.end('{"email":"alice@example.com"}');
+    }
+    if (url.pathname === '/api/huge') {
+      response.setHeader('content-type', 'text/plain');
+      response.setHeader('content-length', Buffer.byteLength(huge));
+      return response.end(huge);
+    }
+    if (url.pathname === '/api/ignored') {
+      response.setHeader('content-type', 'application/json');
+      return response.end('{"items":["ignored-marker"]}');
+    }
+    if (url.pathname === '/api/change') {
+      response.setHeader('content-type', 'application/json');
+      return response.end(JSON.stringify({ version: ++version }));
+    }
+    response.setHeader('content-type', 'text/html');
+    response.end(`<!doctype html><button id="load">Load</button><button id="change">Change</button>
+      <span id="done" hidden>Done</span><span id="count"></span>
+      <script>document.querySelector('#load').onclick = async () => {
+        await Promise.all(['/api/public?page=2', '/api/private', '/api/huge', '/api/ignored']
+          .map(path => fetch(path).then(response => response.text())));
+        document.querySelector('#done').hidden = false;
+      };
+      document.querySelector('#change').onclick = async () => {
+        const data = await fetch('/api/change').then(response => response.json());
+        document.querySelector('#count').textContent = String(data.version);
+      };</script>`);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => {
+    server.close();
+    await once(server, 'close');
+  });
+  return `http://127.0.0.1:${server.address().port}`;
+}
+
+test('source operations capture only approved dynamic GET data after sanitizing it', { timeout: 30_000 }, async t => {
+  const origin = await readDataFixture(t);
+  const entries = [];
+  const report = await captureSourceOperations({
+    origin,
+    flows: [{ path: '/', actions: [{ type: 'click', selector: '#load' }],
+      expect: [{ type: 'visible', selector: '#done' }] }],
+    readOnlyGetUrls: [origin + '/api/public?page=2', origin + '/api/private', origin + '/api/huge'],
+    onReadOnlyData: entry => entries.push(entry),
+    settleMs: 100,
+  });
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].url, origin + '/api/public?page=2');
+  assert.equal(isReplayableReadOnlyDataEntry(entries[0], origin), true);
+  assert.deepEqual(entries[0].headers, {});
+  assert.deepEqual(JSON.parse(Buffer.from(entries[0].body, 'base64').toString()), { items: ['public-marker'] });
+  assert.equal(report.readOnlyData.observed, 3);
+  assert.equal(report.readOnlyData.accepted, 1);
+  assert.equal(report.readOnlyData.rejected, 1);
+  assert.equal(report.readOnlyData.oversized, 1);
+  assert.equal(report.readOnlyData.failed, 0);
+  assert.equal(report.flows[0].assertions[0].status, 'passed');
+  assert.doesNotMatch(JSON.stringify(report), /public-marker|alice@example.com|ignored-marker|"body"|"headers"/);
+});
+
+test('source read-only capture rejects credentialed responses and unsafe plans', { timeout: 30_000 }, async t => {
+  const origin = await readDataFixture(t);
+  const entries = [];
+  const session = { cookies: [{ name: 'auth', value: 'session-secret', domain: '127.0.0.1', path: '/',
+    expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' }], origins: [] };
+  const report = await captureSourceOperations({
+    origin, session,
+    flows: [{ path: '/', actions: [{ type: 'click', selector: '#load' }],
+      expect: [{ type: 'visible', selector: '#done' }] }],
+    readOnlyGetUrls: [origin + '/api/public?page=2'],
+    onReadOnlyData: entry => entries.push(entry),
+    settleMs: 100,
+  });
+  assert.equal(entries.length, 0);
+  assert.deepEqual(report.readOnlyData, { observed: 1, accepted: 0, rejected: 1, oversized: 0, failed: 0 });
+  assert.doesNotMatch(JSON.stringify(report), /session-secret|auth=/);
+  await assert.rejects(captureSourceOperations({ origin, flows: [],
+    readOnlyGetUrls: [origin + '/api/public?access_token=secret'], onReadOnlyData() {} }),
+  /unsafe source read-only data URL/);
+  await assert.rejects(captureSourceOperations({ origin, flows: [],
+    readOnlyGetUrls: [origin + '/api/public?page=2'] }), /invalid source read-only data options/);
+});
+
+test('source read-only capture emits changed bodies for the same approved URL', { timeout: 30_000 }, async t => {
+  const origin = await readDataFixture(t);
+  const entries = [];
+  const report = await captureSourceOperations({
+    origin,
+    flows: [{ path: '/', actions: [
+      { type: 'click', selector: '#change' }, { type: 'click', selector: '#change' },
+    ], expect: [{ type: 'text-includes', selector: '#count', value: '2' }] }],
+    readOnlyGetUrls: [origin + '/api/change'],
+    onReadOnlyData: entry => entries.push(entry),
+    settleMs: 100,
+  });
+  assert.deepEqual(entries.map(entry => JSON.parse(Buffer.from(entry.body, 'base64').toString()).version), [1, 2]);
+  assert.deepEqual(report.readOnlyData, { observed: 2, accepted: 2, rejected: 0, oversized: 0, failed: 0 });
+  assert.equal(report.flows[0].assertions[0].status, 'passed');
+});
+
+test('source read-only capture bounds approved URLs and cumulative delivered bytes', async () => {
+  const origin = 'https://source.test';
+  const urls = Array.from({ length: 11 }, (_, index) => origin + '/api/data-' + index);
+  const delivered = [];
+  const collector = sourceReadDataCollector({ origin, urls, onEntry: entry => delivered.push(entry) });
+  const body = Buffer.from('public '.repeat(149_796));
+  for (const url of urls) {
+    const request = { method: () => 'GET', allHeaders: async () => ({}), postData: () => null };
+    collector.observe({
+      url: () => url, status: () => 200, request: () => request,
+      allHeaders: async () => ({ 'content-type': 'text/plain', 'content-length': String(body.length) }),
+      body: async () => body,
+    });
+  }
+  await collector.drain();
+  assert.equal(delivered.length, 10);
+  assert.deepEqual(collector.summary(), { observed: 11, accepted: 10, rejected: 0, oversized: 1, failed: 0 });
+  assert.throws(() => sourceReadDataCollector({ origin,
+    urls: Array.from({ length: 101 }, (_, index) => origin + '/api/data-' + index), onEntry() {} }),
+  /invalid source read-only data options/);
+});
+
+test('source read-only capture accepts a long public text body within the byte limit', async () => {
+  const origin = 'https://source.test';
+  const url = origin + '/api/long';
+  const delivered = [];
+  const collector = sourceReadDataCollector({ origin, urls: [url], onEntry: entry => delivered.push(entry) });
+  const body = Buffer.from('x'.repeat(800_000));
+  const request = { method: () => 'GET', allHeaders: async () => ({}), postData: () => null };
+  collector.observe({
+    url: () => url, status: () => 200, request: () => request,
+    allHeaders: async () => ({ 'content-type': 'text/plain', 'content-length': String(body.length) }),
+    body: async () => body,
+  });
+  await collector.drain();
+  assert.equal(delivered.length, 1);
+  assert.equal(Buffer.from(delivered[0].body, 'base64').length, body.length);
+  assert.deepEqual(collector.summary(), { observed: 1, accepted: 1, rejected: 0, oversized: 0, failed: 0 });
+});
+
+test('source read-only capture bounds a queue of hanging bodies by one deadline', async () => {
+  const origin = 'https://source.test';
+  const url = origin + '/api/slow';
+  const delivered = [];
+  let releaseBody;
+  const body = new Promise(resolve => { releaseBody = resolve; });
+  const collector = sourceReadDataCollector({ origin, urls: [url],
+    onEntry: entry => delivered.push(entry), captureTimeoutMs: 40 });
+  const request = { method: () => 'GET', allHeaders: async () => ({}), postData: () => null };
+  for (let index = 0; index < 8; index++) {
+    collector.observe({
+      url: () => url, status: () => 200, request: () => request,
+      allHeaders: async () => ({ 'content-type': 'application/json' }),
+      body: () => body,
+    });
+  }
+  const started = Date.now();
+  await collector.drain();
+  assert.ok(Date.now() - started < 2_000);
+  assert.deepEqual(collector.summary(), { observed: 8, accepted: 0, rejected: 0, oversized: 0, failed: 8 });
+  releaseBody(Buffer.from('{"items":["public"]}'));
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(delivered.length, 0);
+  assert.equal(collector.summary().failed, 8);
 });

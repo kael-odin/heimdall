@@ -154,7 +154,7 @@ function pageFiles(liveDir) {
 function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir }) {
   const visited = new Set();
   const pageUrl = new URL(pagePath, origin);
-  const queue = [{ path: pageUrl.pathname, search: pageUrl.search, kind: 'html', base: posix.dirname(pageUrl.pathname) + '/' }];
+  const queue = [{ path: pageUrl.pathname, search: pageUrl.search, kind: 'html', base: new URL('.', pageUrl).pathname }];
   const out = {
     assets: { total: 0, local: 0, har: 0, unresolvedCount: 0, dynamic: 0, unresolved: [], external: 0, externalAssetUrls: [] },
     links: { total: 0, local: 0, missing: [] },
@@ -223,8 +223,8 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir }) {
   return out;
 }
 
-/** 扫描整个交互镜像目录，返回可写入 health.json 的报告对象 */
-export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = null, queryPages = [] }) {
+/** List navigable snapshots, including query pages stored under hashed paths. */
+export function listLivePageRoutes(liveDir, origin, queryPages = []) {
   const pages = pageFiles(liveDir);
   for (const page of queryPages) {
     try {
@@ -235,6 +235,12 @@ export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = nu
     } catch {}
   }
   pages.sort();
+  return pages;
+}
+
+/** 扫描整个交互镜像目录，返回可写入 health.json 的报告对象 */
+export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = null, queryPages = [] }) {
+  const pages = listLivePageRoutes(liveDir, origin, queryPages);
   const details = [];
   const externalAssets = new Map();
   const assets = { total: 0, local: 0, har: 0, unresolved: 0, dynamic: 0, external: 0, externalAssets: 0 };

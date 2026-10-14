@@ -11,7 +11,8 @@ const SAFE_RESPONSE_HEADERS = [
 const STATIC_MIME = /^(?:image\/|font\/|audio\/|video\/|text\/css\b|(?:text|application)\/(?:javascript|x-javascript)\b|application\/(?:font|wasm)\b)/i;
 const STATIC_EXT = /\.(?:css|js|mjs|png|jpe?g|webp|avif|gif|svg|ico|woff2?|ttf|otf|eot|mp4|webm|mp3|wav|wasm)$/i;
 const SAFE_QUERY_KEYS = new Set(['v', 'ver', 'version', 'rev', 'hash', 'w', 'h', 'width', 'height', 'q', 'quality', 'dpr', 'fit', 'format', 'auto', 'url', 'dpl', 'cache', 'b']);
-const PRIVATE_TEXT = /(?:\b(?:authorization|bearer|cookie|api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|client[_-]?secret|set-cookie|session|csrf|sid|token|secret)\b\s*[:=]|\bBearer\s+[A-Za-z0-9._~+/=-]{8,}|\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/i;
+// Start email detection at '@'; scanning its unbounded local part at every character is quadratic.
+const PRIVATE_TEXT = /(?:\b(?:authorization|bearer|cookie|api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|client[_-]?secret|set-cookie|session|csrf|sid|token|secret)\b\s*[:=]|\bBearer\s+[A-Za-z0-9._~+/=-]{8,}|\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|(?<=[\w.+-])@[\w.-]+\.[A-Za-z]{2,})/i;
 const PRIVATE_HEADER = /^(?:cookie|authorization|proxy-authorization|x-api-key|x-auth-token)$/i;
 const PRIVATE_PATH_PARENT = /^(?:users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|avatars?|reset-password|password-reset|verify-email|email-verification|magic-link|invites?|invitations?|tokens?|secrets?)$/i;
 const PRIVATE_DATA_HEADER = /(?:cookie|authorization|api[_-]?key|auth[_-]?token|access[_-]?token|session|csrf|xsrf|secret|(?:^|[-_])(?:token|key)(?:$|[-_]))/i;

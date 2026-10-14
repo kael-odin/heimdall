@@ -5,10 +5,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { resolveRefPath, extractRefs, scanLiveBundle } from '../src/live/health.mjs';
+import { dirname, join } from 'node:path';
+import { resolveRefPath, extractRefs, listLivePageRoutes, scanLiveBundle } from '../src/live/health.mjs';
 import { healBundle, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset, mimeExt } from '../src/live/heal.mjs';
 import { indexHar } from '../src/live/har.mjs';
+import { liveSnapshotPath } from '../src/live/live-path.mjs';
 
 test('live/health: resolver handles /lm prefix, queries, relative paths and externals', () => {
   assert.deepEqual(resolveRefPath('/lm/x.test/a.js?dpl=1', { host: 'x.test' }), { path: '/a.js', search: '?dpl=1' });
@@ -118,6 +119,30 @@ test('live/health: scan classifies local/har/unresolved/dynamic/external and mis
     assert.equal(report.assets.externalAssets, 2);
     assert.equal(report.links.missing, 1);
     assert.ok(report.unresolvedPaths.includes('/missing.png'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/health: relative links from a trailing-slash page resolve under that directory', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-relative-'));
+  const liveDir = join(dir, 'live');
+  const queryPath = '/docs/next?revision=2';
+  try {
+    mkdirSync(join(liveDir, 'docs'), { recursive: true });
+    writeFileSync(join(liveDir, 'docs', 'index.html'),
+      '<!doctype html><h1>Docs</h1><a href="next?revision=2">Next</a><img src="badge.svg">');
+    writeFileSync(join(liveDir, 'docs', 'badge.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    const snapshot = join(liveDir, liveSnapshotPath('/docs/next', '?revision=2'));
+    mkdirSync(dirname(snapshot), { recursive: true });
+    writeFileSync(snapshot, '<!doctype html><h1>Next</h1>');
+
+    assert.deepEqual(listLivePageRoutes(liveDir, 'https://x.test', [queryPath]), ['/docs/', queryPath]);
+    const report = scanLiveBundle({ liveDir, host: 'x.test', origin: 'https://x.test', queryPages: [queryPath] });
+    assert.equal(report.links.local, 1);
+    assert.equal(report.links.missing, 0);
+    assert.equal(report.assets.local, 1);
+    assert.equal(report.assets.unresolved, 0);
+    assert.ok(report.probePaths.includes(queryPath));
+    assert.ok(report.probePaths.includes('/docs/badge.svg'));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

@@ -95,7 +95,7 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 { "version": 1, "paths": ["/api/catalog?page=1"] }
 ```
 
-然后显式加 `--include-readonly-data --offline --strict`。导出只接受精确 URL、同源、无认证信息、2xx 的 JSON/纯文本响应；候选包中缺少任何声明响应都会阻断发布，结果见 `health.readOnlyData`。目前只从页面已有的 `network.har` 取响应；点击后才发出的 GET 尚未自动补抓。计划和响应内容仍须人工审核，自动敏感信息规则不能识别所有个人数据或商业机密。宽泛的 `--include-api-har` 不能与 `--strict` 同用。
+然后显式加 `--include-readonly-data --offline --strict`。导出只接受精确 URL、同源、无认证信息、2xx 的 JSON/纯文本响应；候选包中缺少任何声明响应都会阻断发布，结果见 `health.readOnlyData`。默认从页面已有的 `network.har` 取响应；同时加 `--compare-source` 并提供已审阅的 `operation-plan.json`，可在源站执行声明流程时采集点击后才出现的许可 GET。每个响应限 1 MiB、累计限 10 MiB；认证、超限、缺失或同 URL 内容冲突均阻断严格交付。源站流程仅执行一次，采集结果仅以脱敏计数进入 `health.json`。当前只核对许可 URL 在整组源站和离线流程中均出现，尚不证明逐流程的响应内容或业务结果一致。计划和响应内容仍须人工审核，自动敏感信息规则不能识别所有个人数据或商业机密。宽泛的 `--include-api-har` 不能与 `--strict` 同用。
 
 导出前核对授权和敏感数据。严格导出会检查候选包中的凭据型 URL、Bearer、Cookie 值；`health.privacyAudit` 记录问题数与扫描是否完整。它不是全面的个人信息识别。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；独立包仍需验收登录、重定向、登出和长期运行。`--strict` 失败时先修缺口，不要把包标成离线完成。
 
