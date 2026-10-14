@@ -90,14 +90,15 @@ node src/engine-server.mjs 8900
 ```bash
 cd core
 node src/cli.mjs recon example.com 60                  # 侦察全站 → 星图
-node src/cli.mjs queue example.com                     # 批量克隆（断点续跑 + 单页熔断）
+node src/cli.mjs queue example.com --max 60            # 按本次侦察预算批量克隆（断点续跑）
 node src/cli.mjs queue example.com --incremental       # 站点改版后：只重跑源站变了的页
 node src/cli.mjs verify example.com --all              # 多视口保真验证
-node src/cli.mjs live example.com                      # 导出可部署的交互镜像
+node src/cli.mjs live example.com --offline --strict --root mirror  # 断网验收后导出
 node src/cli.mjs deliver example.com                   # 打包成前端可接手的交付包
 ```
 
 `node src/cli.mjs`（不带参数）列出全部命令。
+裸 `live <host>` 导出的是允许未命中请求回源的在线包；`--offline --strict` 会对已发现页面和声明的操作流程执行断网门禁，缺口会保留为候选包而不覆盖旧正式包。操作流程的声明方式见 [USAGE.md](USAGE.md)。
 
 ---
 

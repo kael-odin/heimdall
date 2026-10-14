@@ -37,10 +37,15 @@ test('isSecretFile：登录凭据与原始抓包一律不外发', () => {
   assert.equal(isSecretFile(child('a.test', 'session.json')), true);
   assert.equal(isSecretFile('/static/a.test/session.json'), true);
   assert.equal(isSecretFile(child('a.test', 'pages', 'home', 'network.har')), true);
+  assert.equal(isSecretFile(child('a.test', 'operation-plan.json')), true);
+  assert.equal(isSecretFile('/static/a.test/operation-plan.json'), true);
+  for (const backup of ['session.json.bak', 'network.har.bak', 'operation-plan.json.bak', '.operation-plan.json.swp', 'operation-plan.json~']) {
+    assert.equal(isSecretFile(child('a.test', backup)), true, backup);
+  }
 });
 
 test('isSecretFile：名字相近的正常产物不受影响（别把 har.json 也拦了）', () => {
-  for (const ok of ['score.json', 'har.json', 'mysession.json', 'network.har.bak', 'health.json']) {
+  for (const ok of ['score.json', 'har.json', 'mysession.json', 'health.json']) {
     assert.equal(isSecretFile(child('a.test', ok)), false, `${ok} 不该被拦`);
   }
 });

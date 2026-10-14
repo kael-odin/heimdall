@@ -40,10 +40,16 @@ test('offline strict rejects dynamic, external and missing pages while preservin
     const out = join(dir, 'deliverable', 'fixture-live');
     mkdirSync(join(site, 'pages', 'home', 'clone'), { recursive: true });
     mkdirSync(join(site, 'live'), { recursive: true });
+    mkdirSync(join(site, 'recon'), { recursive: true });
     mkdirSync(out, { recursive: true });
     writeFileSync(join(out, 'keep.txt'), 'last-good');
     writeFileSync(join(site, 'pages', 'home', 'clone', 'index.html'), '<html>clone</html>');
     writeFileSync(join(site, 'pages', 'home', 'manifest.json'), JSON.stringify({ target: 'https://fixture.test/' }));
+    writeFileSync(join(site, 'recon', 'atlas.json'), JSON.stringify({
+      origin: 'https://fixture.test', status: 'ok',
+      nodes: [{ url: 'https://fixture.test/', title: 'atlas-secret-title' }],
+      note: 'atlas-secret-token', meta: { maxPages: 40 },
+    }));
     writeFileSync(join(site, 'pages', 'home', 'network.har'), JSON.stringify({ log: { entries: [{
       request: { method: 'GET', url: 'https://fixture.test/users/alice@example.com/avatar.webp' },
       response: { status: 200, content: { mimeType: 'image/webp', text: 'private-image' } },
@@ -63,6 +69,7 @@ test('offline strict rejects dynamic, external and missing pages while preservin
     assert.ok(health.strictBlockers.missingLinks > 0);
     assert.equal(run('--out', join(dir, 'deliverable')).status, 2);
     assert.equal(run('--out', join(dir, 'deliverable-old')).status, 2);
+    assert.equal(run('--strict', '--out', out).status, 2, 'strict must not publish an online fallback bundle');
     assert.equal(readFileSync(join(out, 'keep.txt'), 'utf8'), 'last-good');
     const promoted = run('--out', out);
     assert.equal(promoted.status, 0, promoted.stderr + promoted.stdout);
@@ -83,6 +90,9 @@ test('offline strict rejects dynamic, external and missing pages while preservin
     assert.equal(goodHealth.browserProbe.checked, 1);
     assert.equal(goodHealth.browserProbe.failed, 0);
     assert.equal(goodHealth.browserProbe.untested, 0);
+    assert.equal(goodHealth.coverage.delivered, 1);
+    assert.equal(existsSync(join(out, 'site', 'static', host, 'recon', 'atlas.json')), false);
+    assert.doesNotMatch(readFileSync(join(out, 'health.json'), 'utf8'), /atlas-secret-title|atlas-secret-token/);
     const acceptedHealth = readFileSync(join(out, 'health.json'));
     const failedStrictHealth = () => {
       const before = new Set(readdirSync(join(dir, 'deliverable')));
@@ -119,10 +129,14 @@ test('offline strict rejects dynamic, external and missing pages while preservin
       mkdirSync(pageDir);
       writeFileSync(join(pageDir, 'index.html'), '<!doctype html><title>extra</title>');
     }
-    const untestedFailure = failedStrictHealth();
-    assert.equal(untestedFailure.browserProbe.totalPages, 41);
-    assert.equal(untestedFailure.browserProbe.checked, 40);
-    assert.equal(untestedFailure.strictBlockers.browserUntested, 1);
+    const fullSite = run('--offline', '--strict', '--out', out);
+    assert.equal(fullSite.status, 0, fullSite.stderr + fullSite.stdout);
+    const fullHealth = JSON.parse(readFileSync(join(out, 'health.json'), 'utf8'));
+    assert.equal(fullHealth.browserProbe.totalPages, 41);
+    assert.equal(fullHealth.browserProbe.checked, 41);
+    assert.equal(fullHealth.browserProbe.untested, 0);
+    assert.equal(fullHealth.browserProbe.failed, 0);
+    assert.equal(fullHealth.strictBlockers.browserUntested, 0);
 
     writeFileSync(join(site, 'live', 'index.html'), '<script src="/app.js"></script>');
     writeFileSync(join(site, 'session.json'), '{"cookies":[{"name":"sid","value":"private-secret"}]}');

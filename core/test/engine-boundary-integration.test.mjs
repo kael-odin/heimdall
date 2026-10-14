@@ -74,6 +74,8 @@ test('engine protects workspace, revokes cookie and routes mirror hosts before e
   mkdirSync(join(site, 'pages', 'verify-only'), { recursive: true });
   writeFileSync(join(site, 'live', 'api', 'status', 'index.html'), '<html>MIRROR API</html>');
   writeFileSync(join(site, 'live', 'static', 'asset.js'), 'MIRROR ASSET');
+  writeFileSync(join(site, 'operation-plan.json'), '{"privateInput":"operation-secret"}');
+  writeFileSync(join(site, 'operation-plan.json.bak'), '{"privateInput":"operation-backup-secret"}');
   writeFileSync(join(site, 'pages', 'legacy', 'manifest.json'), JSON.stringify({ target: `https://${host}/docs/deep?page=2` }));
   writeFileSync(join(site, 'pages', 'verify-only', 'manifest.json'), JSON.stringify({ target: `https://${host}/verify-only` }));
   writeFileSync(join(site, 'recon', 'atlas.json'), JSON.stringify({
@@ -103,6 +105,9 @@ test('engine protects workspace, revokes cookie and routes mirror hosts before e
     const cookie = auth.headers.getSetCookie()[0].split(';')[0];
     assert.equal((await fetch(staticUrl, { headers: { cookie } })).status, 200);
     assert.equal((await fetch(base + `/${host}/recon/atlas.json`, { headers: { cookie } })).status, 200);
+    assert.equal((await fetch(base + `/static/${host}/operation-plan.json`, { headers: { cookie } })).status, 403);
+    assert.equal((await fetch(base + `/static/${host}/operation-plan.json.bak`, { headers: { cookie } })).status, 403);
+    assert.notEqual((await fetch(base + `/${host}/operation-plan.json`, { headers: { cookie } })).status, 200);
     const lmUrl = base + `/lm/${host}/api/status`;
     assert.equal((await fetch(lmUrl)).status, 401);
     assert.equal((await fetch(lmUrl + '?token=test-token')).status, 401, 'mirror token must not be accepted from a URL forwarded upstream');

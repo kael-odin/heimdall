@@ -57,3 +57,35 @@ test('browser probe executes local JS and reports uncovered pages', { timeout: 3
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('browser probe checks every declared page beyond the former 100-page limit', { timeout: 60_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-browser-probe-all-'));
+  try {
+    const routes = Array.from({ length: 102 }, (_, i) => `/page-${i}/`);
+    for (let i = 0; i < routes.length; i++) {
+      const pageDir = join(dir, 'site', 'live', `page-${i}`);
+      mkdirSync(pageDir, { recursive: true });
+      writeFileSync(join(pageDir, 'index.html'), i === 101
+        ? '<!doctype html><script>throw Error("late failure")</script>'
+        : '<!doctype html><title>offline page</title>');
+    }
+    writeFileSync(join(dir, 'heimdall-live.json'), JSON.stringify({
+      host: 'fixture.test', origin: 'https://fixture.test', root: 'mirror', offline: true,
+    }));
+    writeFileSync(join(dir, 'har.json'), JSON.stringify({ entries: [] }));
+    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
+
+    const report = await probeOfflineBrowserBundle(dir, routes, { settleMs: 0 });
+    assert.equal(report.totalPages, 102);
+    assert.equal(report.checked, 102);
+    assert.equal(report.untested, 0);
+    assert.equal(report.truncated, false);
+    assert.equal(report.failed, 1, JSON.stringify(report));
+    assert.equal(report.failureCount, 1);
+    assert.deepEqual(report.failures[0], {
+      pageIndex: 101, page: '/page-101/', kind: 'pageError', error: 'Error',
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

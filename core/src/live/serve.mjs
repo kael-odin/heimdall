@@ -260,8 +260,13 @@ async function serveLive(req, res, rel, search) {
 }
 
 createServer(async (req, res) => {
-  const u = new URL(req.url, 'http://localhost');
-  const pathname = decodeURIComponent(u.pathname);
+  let u, pathname;
+  try {
+    u = new URL(req.url, 'http://localhost');
+    pathname = decodeURIComponent(u.pathname);
+  } catch {
+    return send(res, 400, 'bad request');
+  }
 
   if (pathname === '/__heimdall/health') {
     return send(res, 200, JSON.stringify({

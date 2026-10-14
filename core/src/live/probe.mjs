@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { exploreOperationStates, sanitizeObservedUrl } from '../crawler/state-graph.mjs';
 
-const MAX_BROWSER_PAGES = 100;
 const MAX_BROWSER_FAILURES = 100;
 const PRIVATE_PATH_PARENT = /^(?:users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|reset-password|password-reset|verify-email|email-verification|magic-link|invites?|invitations?|tokens?|secrets?)$/i;
 const PUBLIC_ERROR_TYPES = new Set(['Error', 'TimeoutError', 'TypeError', 'ReferenceError', 'SyntaxError', 'RangeError', 'URIError', 'EvalError', 'AggregateError']);
@@ -92,11 +92,11 @@ export async function probeOfflineBundle(bundleDir, paths) {
   }
 }
 
-/** Inspect selected page routes in a real browser with all non-bundle network blocked. */
+/** Inspect page routes in a real browser with all non-bundle network blocked. */
 export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options = {}) {
   if (!Array.isArray(pageRoutes)) throw new TypeError('pageRoutes must be an array');
   const routes = [...new Set(pageRoutes)];
-  const maxPages = boundedInteger(options.maxPages, 40, MAX_BROWSER_PAGES);
+  const maxPages = boundedInteger(options.maxPages, routes.length, routes.length);
   const navigationTimeoutMs = boundedInteger(options.navigationTimeoutMs, 8_000, 30_000);
   const settleMs = boundedInteger(options.settleMs, 500, 5_000);
   const maxFailures = boundedInteger(options.maxFailures, MAX_BROWSER_FAILURES, MAX_BROWSER_FAILURES);
@@ -181,6 +181,134 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
       }
     }
     report.truncated ||= report.failures.length < report.failureCount;
+    return report;
+  } finally {
+    try { await browser?.close(); }
+    finally {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill();
+        await new Promise(resolve => child.once('exit', resolve));
+      }
+    }
+  }
+}
+
+async function checkAssertion(page, assertion, base) {
+  try {
+    if (assertion.type === 'visible' || assertion.type === 'hidden') {
+      await page.locator(assertion.selector).first().waitFor({
+        state: assertion.type, timeout: 2_000,
+      });
+      return true;
+    }
+    if (assertion.type === 'text-includes') {
+      await page.locator(assertion.selector).filter({ hasText: assertion.value }).first().waitFor({
+        state: 'visible', timeout: 2_000,
+      });
+      return true;
+    }
+    if (assertion.type === 'url') {
+      await page.waitForURL(new URL(assertion.path, base).href, { timeout: 2_000 });
+      return true;
+    }
+  } catch { return false; }
+  return false;
+}
+
+/** Replay explicit critical paths against the candidate bundle with origin access blocked. */
+export async function probeOfflineOperations(bundleDir, flows, options = {}) {
+  if (!Array.isArray(flows)) throw new TypeError('flows must be an array');
+  const report = {
+    status: 'checked', planned: flows.length, checked: 0, failed: 0, untested: flows.length,
+    failures: [], omittedFailures: 0, flows: [],
+  };
+  if (!flows.length) return report;
+  const addFailure = failure => {
+    if (report.failures.length < MAX_BROWSER_FAILURES) report.failures.push(failure);
+    else report.omittedFailures++;
+  };
+  const { child, base } = await startOfflineServer(bundleDir);
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+    for (const [flowIndex, flow] of flows.entries()) {
+      const issues = [];
+      const addIssue = issue => {
+        if (!issues.some(existing => JSON.stringify(existing) === JSON.stringify(issue))) issues.push(issue);
+      };
+      let context;
+      try {
+        context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
+        await context.route('**/*', async route => {
+          const request = route.request();
+          if (new URL(request.url()).origin === base) return route.continue();
+          addIssue({ kind: 'externalRequest', target: sanitizeObservedUrl(request.url()) });
+          await route.abort('blockedbyclient');
+        });
+        await context.routeWebSocket('**/*', async socket => {
+          addIssue({ kind: 'websocketUnsupported', target: sanitizeObservedUrl(socket.url()) });
+          await socket.close({ code: 1008, reason: 'offline probe' });
+        });
+        context.on('response', response => {
+          if (response.status() >= 400) addIssue({
+            kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()),
+          });
+        });
+        context.on('page', page => page.on('download', () => addIssue({ kind: 'downloadUnsupported' })));
+        const page = await context.newPage();
+        const graph = await exploreOperationStates({
+          page, baseUrl: base,
+          actions: [{ type: 'navigate', url: flow.path }, ...flow.actions],
+          allowedOrigins: [base],
+          maxActions: 12,
+          settleMs: boundedInteger(options.settleMs, 500, 5_000),
+          timeoutMs: boundedInteger(options.timeoutMs, 8_000, 30_000),
+        });
+        const dependencies = new Map();
+        const categories = {};
+        for (const state of graph.states) {
+          if (state.action && state.result.status !== 'ok') {
+            addIssue({ kind: 'action', actionIndex: state.action.index, result: state.result.status });
+          }
+          if (state.pageErrors.length) addIssue({ kind: 'pageError', stateIndex: state.index });
+          if (state.omittedRequests) addIssue({ kind: 'requestsUntested', stateIndex: state.index, count: state.omittedRequests });
+          for (const dependency of state.requests) {
+            categories[dependency.category] = (categories[dependency.category] ?? 0) + 1;
+            const key = [dependency.method, dependency.target, dependency.category].join('|');
+            if (dependencies.size < 50 && !dependencies.has(key)) dependencies.set(key, dependency);
+            if (dependency.scope === 'external') addIssue({ kind: 'externalRequest', target: dependency.target });
+            if (dependency.category === 'realtime') addIssue({ kind: 'realtimeUnsupported', target: dependency.target });
+            if (dependency.outcome !== 'complete') addIssue({
+              kind: 'request', stateIndex: state.index, outcome: dependency.outcome, target: dependency.target,
+            });
+          }
+        }
+        if (graph.summary.unexecuted) addIssue({ kind: 'actionsUntested', count: graph.summary.unexecuted });
+        if (!issues.length) {
+          for (const [assertionIndex, assertion] of flow.expect.entries()) {
+            if (!await checkAssertion(page, assertion, base)) {
+              addIssue({ kind: 'assertion', assertionIndex, type: assertion.type });
+            }
+          }
+        }
+        report.flows.push({
+          index: flowIndex, executedActions: graph.summary.executed,
+          plannedActions: graph.summary.planned, states: graph.states.length,
+          categories, dependencies: [...dependencies.values()], passed: issues.length === 0,
+        });
+      } catch (error) {
+        addIssue({ kind: 'probeError', error: publicErrorType(error) });
+        report.flows.push({ index: flowIndex, passed: false });
+      } finally {
+        await context?.close().catch(() => {});
+        report.checked++;
+        report.untested--;
+        if (issues.length) {
+          report.failed++;
+          for (const issue of issues) addFailure({ flowIndex, ...issue });
+        }
+      }
+    }
     return report;
   } finally {
     try { await browser?.close(); }

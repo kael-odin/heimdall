@@ -45,10 +45,12 @@ export function isInside(root, file) {
  *   · `session.json` —— 登录凭据（Playwright storageState，等同账号）
  *   · `network.har`  —— 未脱敏的原始抓包，带 cookie 与 authorization 头
  *     （交付包里的 HAR 是清洗过的，工作区里这份不是）
+ *   · `operation-plan.json` —— 本地交互脚本，可包含输入值和内部选择器
+ *   · 上述文件的备份/编辑器临时副本，可能保留同样内容
  *
  * `/static/**` 与 workspace 兜底都是"把目录原样发出去"的通道，
  * 只凭"在 workspace 内"这一条拦不住它们。
  */
 export function isSecretFile(file) {
-  return /(^|[/\\])(session\.json|network\.har)$/i.test(String(file));
+  return /(^|[/\\])\.?(session\.json|network\.har|operation-plan\.json)(?:$|[.~])/i.test(String(file));
 }

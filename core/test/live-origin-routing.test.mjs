@@ -115,10 +115,11 @@ test('build, mirror tickets and exported bundles isolate two real origins sharin
       const report = readFileSync(join(workspace, site.id, 'compare.html'), 'utf8');
       assert.ok(report.includes('/api/mirror-launch?url='));
       assert.ok(report.includes(site.id));
-      const exported = await cli('live/export.mjs', [site.id, '--strict', '--root', 'mirror', '--out', out], root);
+      const exported = await cli('live/export.mjs', [site.id, '--root', 'mirror', '--out', out], root);
       assert.equal(exported.code, 0, exported.output);
       const cfg = JSON.parse(readFileSync(join(out, 'heimdall-live.json'), 'utf8'));
       assert.equal(cfg.siteId, site.id); assert.equal(cfg.origin, site.origin);
+      assert.equal(cfg.offline, false, 'online origin routing requires the source proxy');
       assert.ok(readFileSync(join(out, 'site', 'static', site.id, 'compare.html'), 'utf8')
         .includes(`document.getElementById('inter').href = '/lm/${site.id}' + t.pathname + t.search;`));
       const bundle = await startBundle(out); bundles.push(bundle);

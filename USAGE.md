@@ -63,10 +63,30 @@ node core/src/cli.mjs deliver example.org
 交互镜像适合有明确授权、需要分析前端行为的场景，不能等同于任意站点的完整离线副本。
 
 ```powershell
-node core/src/cli.mjs live example.org --offline --heal --strict
+node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 ```
 
-导出前核对授权和敏感数据。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；具体准入和清洗结果以本次导出报告为准。独立包应再验证登录、表单/API、重定向、登出及断网资源。`--strict` 失败时先修缺口，不要把包标成离线完成。
+裸 `live <host>` 是允许回源的在线包。严格离线导出会把 `recon/atlas.json` 中已发现的页面与实际克隆页、包内路由核对，并逐页运行断网 Chromium 首次加载检查；没有侦察数据时，`health.json` 的 `coverage.scope` 为 `captured-only`，只能说明已捕获范围。侦察本身达到页数或深度预算时，也不能据此声称已经覆盖整站。
+
+需要验收点击或输入后的状态时，在 `core/workspace/<host>/operation-plan.json` 放置操作计划（使用 `HEIMDALL_DATA_DIR` 时放在相应站点工作区）。例如：
+
+```json
+{
+  "version": 1,
+  "flows": [{
+    "path": "/search/",
+    "actions": [
+      { "type": "fill", "selector": "input[name=q]", "value": "sample" },
+      { "type": "click", "selector": "button.search" }
+    ],
+    "expect": [{ "type": "visible", "selector": ".results" }]
+  }]
+}
+```
+
+`actions` 支持 `navigate`、`click`、`fill`、`scroll`；`expect` 支持 `visible`、`hidden`、`text-includes`、`url`。每条流程必须有可观察的最终断言。严格导出会在候选包中断开外网重放这些流程，HTTP 错误、脚本错误、未执行动作或断言失败均阻断发布；`operationProbe` 记录脱敏的依赖与失败。计划文件及输入值不进入交付包。未提供计划时，`operationPlan.status=missing`，交互未验收。默认禁止提交控件和写入型请求；这些业务要由本地适配器实现并单独验证。
+
+导出前核对授权和敏感数据。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；具体准入和清洗结果以本次导出报告为准。独立包仍需验收登录、重定向、登出和长期运行。`--strict` 失败时先修缺口，不要把包标成离线完成。
 
 ## SEO 回归
 

@@ -78,6 +78,10 @@ test('independent live bundle completes cookie login, redirect and POST/API roun
   let browser;
   try {
     await ready(base + '/__heimdall/health');
+    const malformed = await fetch(base + '/static/%');
+    assert.equal(malformed.status, 400);
+    assert.equal(child.exitCode, null, 'malformed URL must not stop the live server');
+    assert.equal((await fetch(base + '/__heimdall/health')).status, 200);
     const local = await fetch(base + '/lm/fixture.test/login');
     assert.match(await local.text(), /snapshot/);
 

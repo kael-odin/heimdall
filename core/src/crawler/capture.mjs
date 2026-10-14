@@ -569,14 +569,6 @@ try {
   }
 } catch (e) { console.warn('    final manifest pass skipped:', String(e).slice(0, 100)); }
 
-try {
-  await context.close().catch(() => {});
-  if (existsSync(harTempPath)) copyFileSync(harTempPath, join(OUT, 'network.har'));
-} finally {
-  await browser.close();
-  rmSync(harTempDir, { recursive: true, force: true });
-}
-
 // 下载资源矩阵（图片/图标/媒体/sprite/manifest；iframe/embed 保持在线引用）
 // 逐条打印进度：一是让人看得见为什么这一步要几分钟（首页常有 5-10MB 的大图），
 // 二是给引擎的单页熔断当心跳 —— 只在**开下之前**报一次，所以"沉默"就等于这一次
@@ -594,25 +586,41 @@ for (const [i, r] of toDownload.entries()) {
   const t0 = Date.now();
   process.stdout.write(`    [${i + 1}/${toDownload.length}] ${kind} `);
   try {
-    const res = await fetch(r.url, { headers: { 'User-Agent': UA, Referer: TARGET }, signal: AbortSignal.timeout(RES_TIMEOUT) });
-    if (!res.ok) throw new Error(res.status);
-    const ct = res.headers.get('content-type') || '';
-    // 软 404 / SPA 兜底：请求图片却返回 HTML —— 落盘会变成"看起来有、其实全错"的假资产
-    if (isSoftHtml(ct, r.url)) throw new Error('soft-404 (text/html for asset)');
-    const safeKind = kind.replace(/[^a-z0-9-]/gi, '') || 'asset';
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (!buf.length) throw new Error('empty body');   // 0 字节响应（追踪信标等）不落盘，交给 gaps.json
-    const name = safeKind + String(okRes).padStart(3, '0') + '.' + extFrom(r.url, ct, buf);
-    writeFileSync(join(OUT, 'assets', name), buf);
-    const rel = 'assets/' + name;
-    resMap[r.url] = rel;
-    if (r.kinds.some(k => k === 'image' || k === 'icon' || k.startsWith('preload'))) imgMap[r.url] = rel;
-    okRes++;
-    console.log(`${(buf.length / 1048576).toFixed(1)}MB ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+    // BrowserContext.request shares the browser cookie jar and applies cookie domain rules.
+    // Send only the page origin as Referer: target URLs can contain login tokens in their path/query.
+    const res = await context.request.get(r.url, {
+      timeout: RES_TIMEOUT,
+      headers: { 'User-Agent': UA, Referer: expectedOrigin + '/' },
+    });
+    try {
+      if (!res.ok()) throw new Error(res.status());
+      const ct = res.headers()['content-type'] || '';
+      // 软 404 / SPA 兜底：请求图片却返回 HTML —— 落盘会变成"看起来有、其实全错"的假资产
+      if (isSoftHtml(ct, r.url)) throw new Error('soft-404 (text/html for asset)');
+      const safeKind = kind.replace(/[^a-z0-9-]/gi, '') || 'asset';
+      const buf = await res.body();
+      if (!buf.length) throw new Error('empty body');   // 0 字节响应（追踪信标等）不落盘，交给 gaps.json
+      const name = safeKind + String(okRes).padStart(3, '0') + '.' + extFrom(r.url, ct, buf);
+      writeFileSync(join(OUT, 'assets', name), buf);
+      const rel = 'assets/' + name;
+      resMap[r.url] = rel;
+      if (r.kinds.some(k => k === 'image' || k === 'icon' || k.startsWith('preload'))) imgMap[r.url] = rel;
+      okRes++;
+      console.log(`${(buf.length / 1048576).toFixed(1)}MB ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+    } finally {
+      await res.dispose().catch(() => {});
+    }
   } catch (e) {
     failRes++; failed.push({ url: r.url, kinds: r.kinds, error: String(e).slice(0, 120) });
     console.log(`失败 ${String(e).slice(0, 70)}`);
   }
+}
+try {
+  await context.close().catch(() => {});
+  if (existsSync(harTempPath)) copyFileSync(harTempPath, join(OUT, 'network.har'));
+} finally {
+  await browser.close();
+  rmSync(harTempDir, { recursive: true, force: true });
 }
 const cssMap = {};
 for (const u of manifest.css) {

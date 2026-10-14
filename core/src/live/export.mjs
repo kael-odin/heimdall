@@ -33,8 +33,10 @@ import { diffChecksums, changesLine } from './changes.mjs';
 import { mb } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
 import { assertExportTarget, promoteCandidate } from './export-path.mjs';
-import { probeOfflineBundle, probeOfflineBrowserBundle } from './probe.mjs';
+import { probeOfflineBundle, probeOfflineBrowserBundle, probeOfflineOperations } from './probe.mjs';
 import { liveSnapshotPath } from './live-path.mjs';
+import { buildCoverageLedger } from './coverage.mjs';
+import { readOperationPlan } from './operation-plan.mjs';
 import { sanitizeStaticHtml, isStaticCloneChooserHtml, staticCloneChooserHtml } from '../static-html-safety.mjs';
 import { availableCloneVariantWidths } from '../clone-doc.mjs';
 import { readSiteIdentity, assertSiteOrigin } from '../site-origin.mjs';
@@ -60,6 +62,10 @@ const STRICT = has('strict');
 const MATERIALIZE = has('materialize-har');
 const INCLUDE_API_HAR = has('include-api-har');
 const ALLOW_PRIVATE_EXPORT = has('allow-private-export');
+if (STRICT && !OFFLINE) {
+  console.error('[export] --strict requires --offline so the validated bundle cannot proxy to the source site');
+  process.exit(2);
+}
 const SESSION_PRESENT = existsSync(join(BASE, 'session.json'));
 if (SESSION_PRESENT && !ALLOW_PRIVATE_EXPORT) {
   console.error('[export] saved login session detected; use --allow-private-export only for a controlled private bundle');
@@ -142,8 +148,8 @@ for (let i = 0; i < pageNames.length; i++) {
 }
 // 2c) 站点级报告（档案 / 对比 / 情报 / SEO）
 // **白名单式拷贝，故意的**：`session.json`（登录态）与 `network.har` 的原始件都不在这份
-// 清单里 —— 交付包是要交给别人的，绝不能夹带本机的登录凭据。
-for (const item of ['index.html', 'compare.html', 'intel', 'recon', 'seo']) {
+// 清单里；recon/atlas.json 也含原始 URL、标题和失败原因，覆盖摘要另见 health.json。
+for (const item of ['index.html', 'compare.html', 'intel', 'seo']) {
   if (existsSync(join(BASE, item))) copyTree(join(BASE, item), join(siteDir, 'static', host, item));
 }
 for (const name of pageNames) {
@@ -281,17 +287,34 @@ for (const name of pageNames) {
 }
 health.liveMissing = missingLivePages.length;
 health.missingLivePages = missingLivePages.slice(0, 100);
+health.coverage = buildCoverageLedger({ baseDir: BASE, bundleDir: OUT, host, origin, pageNames });
+const operationPlan = readOperationPlan(BASE, origin, health.pageRoutes);
+health.operationPlan = {
+  status: operationPlan.status, declaredFlows: operationPlan.flows.length,
+  ...(operationPlan.issue ? { issue: operationPlan.issue } : {}),
+};
+health.operationProbe = {
+  status: operationPlan.status === 'missing' ? 'not-configured' : 'not-run',
+  planned: operationPlan.flows.length, checked: 0, failed: 0, untested: operationPlan.flows.length,
+};
 health.strictBlockers = {
   unresolved: health.assets.unresolved,
   dynamic: health.assets.dynamic,
   externalAssets: health.assets.externalAssets,
   missingLinks: health.links.missing,
   missingLivePages: health.liveMissing,
+  discoveredUncloned: health.coverage.missingClone,
+  discoveredUndelivered: health.coverage.missingLive,
+  coverageInvalid: health.coverage.sourceStatus === 'invalid' || health.coverage.unmappedClones ? 1 : 0,
+  reconFailures: health.coverage.reconFailures,
+  operationPlanInvalid: operationPlan.status === 'invalid' ? 1 : 0,
   emptyBundle: health.pages === 0 ? 1 : 0,
   scanTruncated: health.scanTruncated ? 1 : 0,
   runtimeMissing: 0,
   browserFailed: 0,
   browserUntested: 0,
+  operationFailed: 0,
+  operationUntested: 0,
 };
 health.strict = STRICT;
 if (STRICT) {
@@ -321,6 +344,23 @@ if (STRICT) {
     } else health.browserProbe.skipped = 'HTTP probe failed';
   }
   health.strictBlockers.browserUntested = health.browserProbe.untested;
+  if (operationPlan.flows.length && !health.strictBlockers.browserFailed
+    && !health.strictBlockers.browserUntested
+    && !Object.entries(health.strictBlockers).some(([key, value]) =>
+      key !== 'operationUntested' && key !== 'operationFailed' && !!value)) {
+    try {
+      health.operationProbe = await probeOfflineOperations(OUT, operationPlan.flows);
+      health.strictBlockers.operationFailed = health.operationProbe.failed;
+    } catch (error) {
+      health.operationProbe = {
+        status: 'probe-error', planned: operationPlan.flows.length, checked: 0,
+        failed: 1, untested: operationPlan.flows.length,
+        error: error?.name === 'Error' ? 'probe error' : 'browser unavailable',
+      };
+      health.strictBlockers.operationFailed = 1;
+    }
+  } else if (operationPlan.flows.length) health.operationProbe.status = 'skipped';
+  health.strictBlockers.operationUntested = health.operationProbe.untested;
 }
 // 健康报告只需路径定位问题，查询参数可能含临时凭据。
 health.unresolvedPaths = health.unresolvedPaths.map(path => path.split('?')[0]);
@@ -330,6 +370,7 @@ delete health.pageRoutes;
 writeFileSync(join(OUT, 'health.json'), JSON.stringify(health, null, 2));
 emit({ kind: 'live-stage', stage: 'health', status: 'done', livePages: health.pages, unresolved: health.assets.unresolved });
 console.log('[health] forgedPages=' + pageNames.length + ' livePages=' + health.pages + (health.liveMissing ? ' (missing ' + health.liveMissing + ')' : '') + ' assets=' + health.assets.total + ' local=' + health.assets.local + ' har=' + health.assets.har + ' unresolved=' + health.assets.unresolved + ' externalRefs=' + health.assets.external + '(静态资源 ' + health.assets.externalAssets + ') | linksMissing=' + health.links.missing);
+console.log('[coverage] scope=' + health.coverage.scope + ' denominator=' + (health.coverage.denominator ?? 'unknown') + ' cloned=' + health.coverage.cloned + ' delivered=' + health.coverage.delivered + ' missingClone=' + health.coverage.missingClone + ' missingLive=' + health.coverage.missingLive);
 for (const d of health.details.slice(0, 5)) console.log('[health]   ' + d.page + ' -> ' + d.unresolvedCount + ' unresolved (e.g. ' + (d.unresolved[0] ?? '-') + ')');
 
 const hasArchive = existsSync(join(siteDir, 'static', host, 'index.html'));
@@ -364,7 +405,7 @@ writeFileSync(join(OUT, 'Dockerfile'), `FROM node:22-alpine\nWORKDIR /app\nCOPY 
 writeFileSync(join(OUT, 'docker-compose.yml'), `services:\n  heimdall-live:\n    build: .\n    ports:\n      - "${PORT}:${PORT}"\n    restart: unless-stopped\n`);
 writeFileSync(join(OUT, 'README.md'), `# Heimdall Live Mirror · ${host}
 
-可直接部署的交互镜像包（L3）：本地快照优先 → HAR 回放 → 原站代理。
+可直接部署的交互镜像包（L3）：本地快照优先 → HAR 回放${OFFLINE ? ' → 未命中返回 404' : ' → 未命中回源'}。
 
 ## 运行
 
@@ -397,11 +438,14 @@ assets.external          站外引用总数（含 YouTube 嵌入、地图、统�
                          external − externalAssets 的差额 = 嵌入类内容，**无法本地化，属固有边界**
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
 strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器首次加载探测）
+coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
 browserProbe             逐页断外网首次加载结果；只观察短时间窗口，不证明点击、表单或登录可用
+operationPlan            操作脚本声明数；missing 表示没有交互验收，脚本本身不进入交付包
+operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
 \`\`\`
 
 在线部署时，站外引用是否可加载还取决于第三方服务、跨域规则和访问权限。
-如果要声称声明的页面可离线浏览，请使用 \`--offline --strict\` 并确认 \`health.json\` 的全部门禁为零；点击、表单和登录仍须单独验收。
+如果要声称已发现的页面可离线浏览，请使用 \`--offline --strict\` 并确认 \`health.json\` 的全部门禁为零。\`coverage.scope=captured-only\` 表示没有侦察数据，只能证明已捕获页；侦察触达页数上限时也不能据此声称覆盖整站。只有提供 \`workspace/<host>/operation-plan.json\` 并通过 \`operationProbe\` 的流程才算做过离线交互验收；未声明流程与独立登录服务仍未验证。
 
 ## 路由
 
@@ -421,7 +465,8 @@ browserProbe             逐页断外网首次加载结果；只观察短时间�
 
 - 资产与克隆页按独立副本复制，构建通过后才替换目标目录；上一个版本保留为 \`.backup-*\`。
 - HAR 默认只保留静态资源；API/HTML 正文不进入分发包。排除统计见 \`har-privacy.json\`。
-- 如确需 API 回放，可在受控环境重新导出并显式加 \`--include-api-har\`；该选项允许响应正文进入包，请自行核验分发边界。
+- 原始 \`recon/atlas.json\` 不进入分发包；已发现页面的覆盖摘要见 \`health.json\`。
+- 如确需 GET 数据回放，可在受控环境重新导出并显式加 \`--include-api-har\`；该选项允许响应正文进入包，不能让 POST 等写入型业务离线运行，需核验分发边界。
 - 保存过登录会话的站点默认拒绝导出；受控环境里须显式加 \`--allow-private-export\`，且原始 \`session.json\` 仍不会复制进包。
 - 未捕获的第三方接口在在线模式下回源；离线模式下会明确 404。
 - 仅供内部分析，禁止公开部署或商用。
