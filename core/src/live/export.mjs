@@ -426,6 +426,10 @@ if (runtimeCacheServices) {
 }
 const preflightRoutes = listLivePageRoutes(join(siteDir, 'live'), origin, queryPages);
 const operationPlan = readOperationPlan(BASE, origin, preflightRoutes);
+const operationSessions = Object.fromEntries(
+  [...new Set(operationPlan.flows.map(flow => flow.sessionName).filter(Boolean))]
+    .map(name => [name, loadSession(host, name)]),
+);
 let earlySource = null;
 let earlySourceError = null;
 const currentSourceReadOnlyKeys = new Set();
@@ -435,7 +439,7 @@ if (COMPARE_SOURCE && INCLUDE_READONLY_DATA && dataPlan.status === 'ok'
   && operationPlan.status === 'ok' && operationPlan.flows.length) {
   try {
     earlySource = await captureSourceOperations({
-      origin, flows: operationPlan.flows, session: loadSession(host),
+      origin, flows: operationPlan.flows, session: loadSession(host), sessions: operationSessions,
       readOnlyGetUrls: dataPlan.urls,
       onReadOnlyData: entry => {
         const key = harKey(entry.method, entry.url);
@@ -951,7 +955,7 @@ if (STRICT) {
       try {
         if (earlySourceError) throw earlySourceError;
         const source = earlySource ?? await captureSourceOperations({
-          origin, flows: operationPlan.flows, session: loadSession(host),
+          origin, flows: operationPlan.flows, session: loadSession(host), sessions: operationSessions,
           onObservedRequest: (flowIndex, request) => sourceDependencyEvidence.observe(flowIndex, request),
         });
         sourceCapture = source;
@@ -961,6 +965,7 @@ if (STRICT) {
           ...(source.readOnlyData ? { readOnlyData: source.readOnlyData } : {}),
           flows: source.flows.map(flow => ({
             index: flow.index, passed: flow.passed,
+            sessionName: flow.sessionName ?? null, sessionUsed: flow.sessionUsed,
             plannedActions: flow.plannedActions, executedActions: flow.executedActions,
             sourceDependencies: flow.dependencies.length,
             sourceDynamicData: flow.dependencies.filter(item => item.category === 'dynamic-data').length,

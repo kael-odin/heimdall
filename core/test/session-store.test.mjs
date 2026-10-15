@@ -46,6 +46,22 @@ test('存-读往返：cookie 与 origin 原样保留', () => {
   assert.deepEqual(sessionContext('example.com'), { storageState: state });
 });
 
+test('命名会话与默认会话互不覆盖，且非法名字直接拒绝', () => {
+  const anonymous = { cookies: [{ name: 'anon', value: 'a', domain: 'named.test' }], origins: [] };
+  const admin = { cookies: [{ name: 'admin', value: 'secret-admin-cookie', domain: 'named.test' }], origins: [] };
+  saveSession('named.test', anonymous);
+  saveSession('named.test', admin, 'admin');
+  assert.equal(sessionPath('named.test'), join(DATA, 'workspace', 'named.test', 'session.json'));
+  assert.equal(sessionPath('named.test', 'admin'), join(DATA, 'workspace', 'named.test', 'session.admin.json'));
+  assert.equal(loadSession('named.test').cookies[0].name, 'anon');
+  assert.equal(loadSession('named.test', 'admin').cookies[0].name, 'admin');
+  assert.equal(sessionInfo('named.test', 'admin').cookies, 1);
+  assert.equal(clearSession('named.test', 'admin').exists, false);
+  assert.equal(loadSession('named.test', 'admin'), undefined);
+  assert.equal(loadSession('named.test').cookies[0].name, 'anon', '清掉命名会话不能碰默认会话');
+  assert.throws(() => sessionPath('named.test', '../escape'), /invalid session name/);
+});
+
 test('扩展会话字段只用于初始化脚本，不能传入 Playwright storageState', async () => {
   const state = {
     cookies: [], origins: [],

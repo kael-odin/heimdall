@@ -4,6 +4,7 @@ import { join } from 'node:path';
 const MAX_FLOWS = 100;
 const MAX_ACTIONS = 11;
 const MAX_ASSERTIONS = 5;
+const SESSION_NAME = /^[a-z0-9_-]{1,64}$/i;
 
 function localPath(value, origin) {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')
@@ -37,6 +38,10 @@ function validAssertion(assertion, origin) {
   return false;
 }
 
+function validSessionName(value) {
+  return value == null || (typeof value === 'string' && SESSION_NAME.test(value));
+}
+
 /** The plan stays in workspace; only redacted probe results enter the bundle. */
 export function readOperationPlan(baseDir, origin, pageRoutes) {
   let source;
@@ -63,6 +68,9 @@ export function readOperationPlan(baseDir, origin, pageRoutes) {
     if (!Array.isArray(flow.expect) || flow.expect.length < 1 || flow.expect.length > MAX_ASSERTIONS
       || !flow.expect.every(assertion => validAssertion(assertion, origin))) {
       return { status: 'invalid', issue: 'invalid-assertions', flows: [] };
+    }
+    if (!validSessionName(flow.sessionName)) {
+      return { status: 'invalid', issue: 'invalid-session-name', flows: [] };
     }
   }
   return { status: 'ok', flows: plan.flows };

@@ -25,25 +25,35 @@ import { WORKSPACE } from '../paths.mjs';
 export const hostKey = (host) => String(host ?? '')
   .replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/.*$/, '').toLowerCase();
 
-export const sessionPath = (host) => join(WORKSPACE, hostKey(host), 'session.json');
+const SESSION_NAME = /^[a-z0-9_-]{1,64}$/i;
+
+function validateSessionName(sessionName) {
+  if (sessionName != null && !SESSION_NAME.test(sessionName)) throw new TypeError('invalid session name');
+  return sessionName ?? null;
+}
+
+export const sessionPath = (host, sessionName = null) => {
+  const name = validateSessionName(sessionName);
+  return join(WORKSPACE, hostKey(host), name ? `session.${name}.json` : 'session.json');
+};
 
 /**
  * 存一份登录态。**原子写**（临时文件 + rename）：这个文件会被
  * login 进程每 2 秒覆盖一次，中途被 Ctrl-C 也不该留下半截 JSON。
  */
-export function saveSession(host, state) {
-  const file = sessionPath(host);
+export function saveSession(host, state, sessionName = null) {
+  const file = sessionPath(host, sessionName);
   mkdirSync(join(WORKSPACE, hostKey(host)), { recursive: true });
   const tmp = file + '.tmp';
   writeFileSync(tmp, JSON.stringify(state, null, 2));
   renameSync(tmp, file);   // 同目录 rename：读的人要么看到旧的、要么看到新的，不会看到半截
-  return sessionInfo(host);
+  return sessionInfo(host, sessionName);
 }
 
 /** 读登录态；没有 / 坏了 / 空壳一律返回 undefined，调用方不必 try */
-export function loadSession(host) {
+export function loadSession(host, sessionName = null) {
   try {
-    const s = JSON.parse(readFileSync(sessionPath(host), 'utf8'));
+    const s = JSON.parse(readFileSync(sessionPath(host, sessionName), 'utf8'));
     if (!s || (!Array.isArray(s.cookies) && !Array.isArray(s.origins))) return undefined;
     return s;
   } catch { return undefined; }
@@ -54,8 +64,8 @@ export function loadSession(host) {
  *   await browser.newContext({ viewport, ...sessionContext(host) })
  * 没有会话时返回 `{}`，调用点不需要写 if。
  */
-export function sessionContext(host) {
-  const s = loadSession(host);
+export function sessionContext(host, sessionName = null) {
+  const s = loadSession(host, sessionName);
   if (!s) return {};
   const { sessionStorage, ...storageState } = s;
   return { storageState };
@@ -95,8 +105,8 @@ export async function captureSessionState(ctx, previous = {}) {
 }
 
 /** 必须在 context.newPage() 前调用；仅在保存时的完全相同 origin 注入。 */
-export async function restoreSessionStorage(ctx, host) {
-  const entries = loadSession(host)?.sessionStorage;
+export async function restoreSessionStorage(ctx, host, sessionName = null) {
+  const entries = loadSession(host, sessionName)?.sessionStorage;
   if (!Array.isArray(entries) || !entries.length) return false;
   const byOrigin = Object.fromEntries(entries
     .filter(item => {
@@ -117,11 +127,11 @@ export async function restoreSessionStorage(ctx, host) {
 }
 
 /** 给界面看的元信息：有没有、什么时候存的、几个 cookie、覆盖哪些域名 */
-export function sessionInfo(host) {
-  const file = sessionPath(host);
+export function sessionInfo(host, sessionName = null) {
+  const file = sessionPath(host, sessionName);
   if (!existsSync(file)) return { exists: false, host: hostKey(host), path: file };
   let st; try { st = statSync(file); } catch { return { exists: false, host: hostKey(host), path: file }; }
-  const s = loadSession(host);
+  const s = loadSession(host, sessionName);
   const cookies = s?.cookies?.length ?? 0;
   const origins = (s?.origins ?? []).map(o => o.origin).filter(Boolean);
   const savedAt = st.mtime.toISOString();
@@ -144,8 +154,8 @@ export function sessionInfo(host) {
   };
 }
 
-export function clearSession(host) {
-  const file = sessionPath(host);
+export function clearSession(host, sessionName = null) {
+  const file = sessionPath(host, sessionName);
   if (existsSync(file)) rmSync(file, { force: true });
-  return sessionInfo(host);
+  return sessionInfo(host, sessionName);
 }

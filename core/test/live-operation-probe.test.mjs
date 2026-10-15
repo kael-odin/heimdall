@@ -26,6 +26,28 @@ test('operation plan requires bundled paths and observable postconditions', () =
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('operation plan accepts a safe named session and rejects path-like names', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-operation-plan-session-'));
+  try {
+    const read = plan => {
+      writeFileSync(join(dir, 'operation-plan.json'), JSON.stringify(plan));
+      return readOperationPlan(dir, 'https://fixture.test', ['/']);
+    };
+    const good = read({
+      version: 1,
+      flows: [{ path: '/', sessionName: 'admin', actions: [], expect: [{ type: 'visible', selector: '#x' }] }],
+    });
+    assert.equal(good.status, 'ok');
+    assert.equal(good.flows[0].sessionName, 'admin');
+    const bad = read({
+      version: 1,
+      flows: [{ path: '/', sessionName: '../escape', actions: [], expect: [{ type: 'visible', selector: '#x' }] }],
+    });
+    assert.equal(bad.status, 'invalid');
+    assert.equal(bad.issue, 'invalid-session-name');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('strict export replays declared operations offline and preserves accepted bundle on failure', { timeout: 90_000 }, () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-operation-export-'));
   try {

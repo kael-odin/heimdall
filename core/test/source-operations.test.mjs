@@ -166,6 +166,44 @@ test('source capture can use authorized cookie and sessionStorage without report
   assert.doesNotMatch(JSON.stringify(allowed), /secret-cookie|session-secret|local-secret|private-local|#allowed/);
 });
 
+test('source capture separates named sessions per flow and fails closed on missing sessions', { timeout: 30_000 }, async t => {
+  const { origin } = await fixture(t);
+  const cookie = (name, value) => ({
+    name, value, domain: '127.0.0.1', path: '/', expires: -1,
+    httpOnly: false, secure: false, sameSite: 'Lax',
+  });
+  const session = (name, value) => ({
+    cookies: [cookie('auth', name)],
+    origins: [],
+    sessionStorage: [{ origin, entries: [{ name: 'gate', value }] }],
+  });
+  const admin = session('secret-cookie', 'session-secret');
+  const guest = session('guest-cookie-secret', 'guest-gate-secret');
+  const flows = ['admin', 'guest', 'missing'].map(name => ({
+    path: '/secure', sessionName: name,
+    actions: [], expect: [{ type: 'visible', selector: '#allowed' }],
+  }));
+  const report = await captureSourceOperations({
+    origin, flows,
+    sessions: { admin, guest },
+    settleMs: 50,
+    assertionTimeoutMs: 100,
+  });
+
+  assert.equal(report.sessionUsed, true);
+  assert.equal(report.flows[0].sessionName, 'admin');
+  assert.equal(report.flows[0].sessionUsed, true);
+  assert.equal(report.flows[0].passed, true);
+  assert.equal(report.flows[1].sessionName, 'guest');
+  assert.equal(report.flows[1].sessionUsed, true);
+  assert.equal(report.flows[1].passed, false);
+  assert.equal(report.flows[2].sessionName, 'missing');
+  assert.equal(report.flows[2].sessionUsed, false);
+  assert.ok(report.flows[2].issues.some(issue => issue.kind === 'sessionMissing' && issue.sessionName === 'missing'));
+  assert.equal(report.failed, 2);
+  assert.doesNotMatch(JSON.stringify(report), /secret-cookie|session-secret|admin-cookie-secret|admin-gate-secret|guest-cookie-secret|guest-gate-secret|auth=|#allowed/);
+});
+
 test('source capture rejects malformed flow and session before opening a browser', async () => {
   await assert.rejects(captureSourceOperations({ origin: 'https://site.test/private', flows: [] }), /invalid source origin/);
   await assert.rejects(captureSourceOperations({ origin: 'https://site.test', flows: [{ path: '//foreign.test', actions: [], expect: [] }] }), /invalid source flow/);

@@ -35,6 +35,7 @@ test('isInside：根目录自身不算"在里面"（调用方要的是一个具�
 
 test('isSecretFile：登录凭据与原始抓包一律不外发', () => {
   assert.equal(isSecretFile(child('a.test', 'session.json')), true);
+  assert.equal(isSecretFile(child('a.test', 'session.admin.json')), true, '命名登录态同样是凭据');
   assert.equal(isSecretFile('/static/a.test/session.json'), true);
   assert.equal(isSecretFile(child('a.test', 'pages', 'home', 'network.har')), true);
   assert.equal(isSecretFile(child('a.test', 'operation-plan.json')), true);

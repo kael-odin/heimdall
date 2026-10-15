@@ -102,6 +102,8 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 }
 ```
 
+`flows[].sessionName` 是可选字段。若要区分“匿名 / 管理员 / 某个测试账号”，先用 `node core/src/session/login.mjs <host> --session admin` 保存命名登录态，再在对应 flow 里写 `"sessionName": "admin"`。默认 `session.json` 仍用于没有 `sessionName` 的 flow；命名会话保存为 `session.admin.json`，不会互相覆盖。源站采集会按 flow 使用对应登录态，缺失的命名会话会作为显式失败记录，不会静默退化成匿名访问。
+
 `actions` 支持 `navigate`、`click`、`fill`、`scroll`；`expect` 支持 `visible`、`hidden`、`text-includes`、`url`。每条流程必须有可观察的最终断言。严格导出会在候选包中断开外网重放这些流程，HTTP 错误、脚本错误、未执行动作或断言失败均阻断发布；`operationProbe` 记录脱敏的依赖与失败。计划文件及输入值不进入交付包。未提供计划时，`operationPlan.status=missing`，交互未验收。默认禁止提交控件和写入型请求；这些业务要由本地适配器实现并单独验证。
 
 严格导出还会在断外联浏览器中首载每个包内页面：默认至少观察 3 秒、等待 500 毫秒网络安静，最多观察 8 秒；上限时仍有未完成的本地请求或网络未安静会判失败。需要等待较晚启动的请求时可加 `--browser-observe-ms 5000`，最短观察期可设为 3000 至 15000 毫秒，实际策略与逐页时长见 `health.browserProbe.observation`。观察窗口外的请求和未声明的操作仍不属于通过范围。

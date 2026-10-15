@@ -2,7 +2,7 @@
 /**
  * session/login — 人工登录一次，把登录态存下来给后续所有抓取复用
  *
- * 用法: node src/session/login.mjs <host|url> [--timeout 15]   （--timeout 单位：分钟）
+ * 用法: node src/session/login.mjs <host|url> [--timeout 15] [--session admin]
  *
  * 为什么是"人工"：短信码、TOTP、扫码、SSO 跳转、人机验证 —— 这些我们既自动化不了，
  * 也不该去绕。所以这里的全部智能就是**开一个真浏览器，让你自己登**。
@@ -25,6 +25,7 @@ if (!raw) { console.error('usage: node src/session/login.mjs <host|url> [--timeo
 const host = raw.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/.*$/, '').toLowerCase();
 const url = /^https?:\/\//i.test(raw) ? raw : 'https://' + host + '/';
 const timeoutMs = Math.max(1, Number(argOf('timeout', 15))) * 60_000;
+const sessionName = argOf('session', null);
 console.log(`[login] 打开浏览器：${url}`);
 console.log('[login] 请在窗口里完成登录（含验证码/2FA/扫码均可），完成后**关掉那个标签页**即可。');
 
@@ -41,7 +42,7 @@ let pending = Promise.resolve();
 const snapshot = () => pending = pending.then(async () => {
   try {
     previousState = await captureSessionState(ctx, previousState);
-    last = saveSession(host, previousState);
+  last = saveSession(host, previousState, sessionName);
   } catch { /* context 已关就跳过 */ }
   return last;
 });
@@ -67,7 +68,7 @@ try { await browser.close(); } catch { /* 用户已经关掉了 */ }
 if (!last?.exists) { console.error('[login] 没有存下任何登录态（浏览器可能根本没打开）'); process.exit(1); }
 console.log(`[login] 已保存：${last.cookies} 个 cookie（本站域名下 ${last.sameSite} 个）· ${last.origins.length} 个 origin`);
 console.log(`[login] sessionStorage：${last.sessionStorageOrigins} 个 origin`);
-console.log(`[login] 文件：${sessionPath(host)}`);
+console.log(`[login] 文件：${sessionPath(host, sessionName)}`);
 console.log(closedByUser
   ? '[login] 之后直接跑侦察/克隆/审计，会自动带上这份登录态。'
   : '[login] 到时间了，先把当前状态存下来了；要刷新就再跑一次。');

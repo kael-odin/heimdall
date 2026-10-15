@@ -8,6 +8,7 @@ const SAFE_ERROR_TYPES = new Set(['Error', 'TimeoutError', 'TypeError', 'Referen
 const MAX_FLOWS = 100;
 const MAX_ISSUES = 100;
 const MAX_DEPENDENCIES = 100;
+const SESSION_NAME = /^[a-z0-9_-]{1,64}$/i;
 
 function boundedInteger(value, fallback, max, min = 0) {
   return Number.isInteger(value) && value >= min ? Math.min(value, max) : fallback;
@@ -50,6 +51,9 @@ function validateFlow(flow, origin) {
   let target;
   try { target = new URL(flow.path, origin); } catch { throw new TypeError('invalid source flow'); }
   if (target.origin !== origin) throw new TypeError('invalid source flow');
+  if (flow.sessionName != null && (typeof flow.sessionName !== 'string' || !SESSION_NAME.test(flow.sessionName))) {
+    throw new TypeError('invalid source flow');
+  }
 }
 
 function safeResult(result) {
@@ -125,7 +129,7 @@ async function checkAssertion(page, assertion, origin, timeoutMs) {
  * No workspace files are written. A disposable browser context is used per flow.
  */
 export async function captureSourceOperations({ origin, flows, session = null, browser: suppliedBrowser,
-  readOnlyGetUrls = [], onReadOnlyData, onReadOnlyObservation, onObservedRequest,
+  sessions = null, readOnlyGetUrls = [], onReadOnlyData, onReadOnlyObservation, onObservedRequest,
   settleMs: requestedSettleMs, lateMs: requestedLateMs, timeoutMs: requestedTimeoutMs,
   assertionTimeoutMs: requestedAssertionTimeoutMs } = {}) {
   const base = sourceOrigin(origin);
@@ -134,7 +138,11 @@ export async function captureSourceOperations({ origin, flows, session = null, b
   }
   if (!Array.isArray(flows) || flows.length > MAX_FLOWS) throw new TypeError('invalid source flows');
   for (const flow of flows) validateFlow(flow, base);
-  const { storageState, sessionStorage } = sessionOptions(session, base);
+  if (sessions != null && (typeof sessions !== 'object' || Array.isArray(sessions))) {
+    throw new TypeError('invalid source sessions');
+  }
+  sessionOptions(session, base);
+  for (const value of Object.values(sessions ?? {})) sessionOptions(value, base);
   const readData = sourceReadDataCollector({
     origin: base, urls: readOnlyGetUrls, onEntry: onReadOnlyData,
     onAccepted: onReadOnlyObservation,
@@ -145,7 +153,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
   const assertionTimeoutMs = boundedInteger(requestedAssertionTimeoutMs, 2_000, 5_000, 1);
   const report = {
     version: 1, status: 'checked', planned: flows.length, checked: 0, failed: 0,
-    untested: flows.length, sessionUsed: session != null, flows: [],
+    untested: flows.length, sessionUsed: false, flows: [],
   };
   if (!flows.length) {
     report.readOnlyData = readData.summary();
@@ -170,6 +178,12 @@ export async function captureSourceOperations({ origin, flows, session = null, b
       let closing = false;
       let result;
       try {
+        const sessionName = flow.sessionName ?? null;
+        const flowSession = sessionName != null ? sessions?.[sessionName] : session;
+        const sessionMissing = sessionName != null && !(sessionName in (sessions ?? {}));
+        if (sessionMissing) issues.push({ kind: 'sessionMissing', sessionName });
+        const { storageState, sessionStorage } = sessionOptions(flowSession, base);
+        report.sessionUsed ||= flowSession != null;
         context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false, ...(storageState ? { storageState } : {}) });
         if (sessionStorage.length) await context.addInitScript(({ allowedOrigin, entries }) => {
           if (location.origin !== allowedOrigin) return;
@@ -244,6 +258,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         }
         result = {
           index: flowIndex, start: sanitizeObservedUrl(new URL(flow.path, base).href),
+          sessionName, sessionUsed: flowSession != null,
           plannedActions: graph.summary.planned, executedActions: graph.summary.executed,
           unexecutedActions: graph.unexecuted.map(item => ({ index: item.index, type: item.type, reason: item.reason })),
           omittedUnexecutedActions: graph.summary.omittedUnexecuted,
@@ -253,6 +268,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         addIssue({ kind: 'captureError', error: errorType(error) });
         result = {
           index: flowIndex, start: sanitizeObservedUrl(new URL(flow.path, base).href),
+          sessionName: flow.sessionName ?? null, sessionUsed: false,
           plannedActions: flow.actions.length + 1, executedActions: 0,
           unexecutedActions: [{ index: 0, type: 'navigate', reason: 'capture-error' },
             ...flow.actions.map((action, index) => ({ index: index + 1, type: safeActionType(action?.type), reason: 'capture-error' }))],

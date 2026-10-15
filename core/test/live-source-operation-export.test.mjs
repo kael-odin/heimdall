@@ -81,9 +81,14 @@ test('strict export compares source operations, redacts private data and preserv
     </script>`);
   put(join(site, 'live', 'api', 'items.json'), '{"ok":true}');
   put(join(site, 'live', 'theme.css'), 'body { color: #333; }');
+  put(join(site, 'session.admin.json'), JSON.stringify({
+    cookies: [{ name: 'auth', value: 'admin-session-secret', domain: '127.0.0.1', path: '/',
+      expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' }],
+    origins: [],
+  }));
   put(join(site, 'operation-plan.json'), JSON.stringify({
     version: 1, flows: [{
-      path: '/', actions: [
+      path: '/', sessionName: 'admin', actions: [
         { type: 'fill', selector: '#query', value: 'typed-only-secret' },
         { type: 'click', selector: '#load' },
       ], expect: [{ type: 'visible', selector: '#result' }],
@@ -100,6 +105,8 @@ test('strict export compares source operations, redacts private data and preserv
   assert.equal(good.sourceOperationProbe.checked, 1);
   assert.equal(good.sourceOperationProbe.failed, 0);
   assert.equal(good.sourceOperationProbe.flows[0].passed, true);
+  assert.equal(good.sourceOperationProbe.flows[0].sessionName, 'admin');
+  assert.equal(good.sourceOperationProbe.flows[0].sessionUsed, true);
   assert.equal(good.sourceOperationProbe.flows[0].sourceDynamicData, 1);
   assert.equal(good.sourceOperationProbe.flows[0].bundleDynamicData, 1);
   assert.equal(good.dependencyParity.status, 'checked');
@@ -109,7 +116,7 @@ test('strict export compares source operations, redacts private data and preserv
   assert.equal(good.strictBlockers.sourceOperationFailed, 0);
   assert.equal(good.strictBlockers.sourceOperationUntested, 0);
   assert.equal(existsSync(join(out, 'operation-plan.json')), false);
-  assert.doesNotMatch(goodHealth.toString(), /typed-only-secret|source-only-secret|access_token|#query|#load|#result/);
+  assert.doesNotMatch(goodHealth.toString(), /typed-only-secret|source-only-secret|admin-session-secret|access_token|#query|#load|#result/);
 
   const failedCandidate = async () => {
     const before = new Set(readdirSync(join(dir, 'deliverable')));
