@@ -36,6 +36,11 @@ function requestMethod(request) {
   return /^[A-Z]{1,12}$/.test(method) ? method : 'OTHER';
 }
 
+function responseMime(response) {
+  const value = response.headers()['content-type']?.split(';', 1)[0]?.trim().toLowerCase();
+  return /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(value ?? '') ? value : null;
+}
+
 /** Redact all query values and all path segments that are not fixed route words. */
 export function sanitizeObservedUrl(value) {
   try {
@@ -156,6 +161,9 @@ export async function exploreOperationStates(options = {}) {
   if (!Array.isArray(actions)) throw new TypeError('actions must be an array');
   if (!options.page && !context?.newPage) throw new TypeError('page or context is required');
   if (options.page && context && options.page.context() !== context) throw new TypeError('page and context differ');
+  if (options.onObservedRequest != null && typeof options.onObservedRequest !== 'function') {
+    throw new TypeError('onObservedRequest must be a function');
+  }
 
   const maxActions = boundedInteger(options.maxActions, 12, 100);
   const maxRequestsPerState = boundedInteger(options.maxRequestsPerState, 100, 500);
@@ -187,6 +195,7 @@ export async function exploreOperationStates(options = {}) {
   let active = null;
   let current = null;
   const byRequest = new WeakMap();
+  const rawUrlByEntry = new WeakMap();
   const omitted = new WeakSet();
   const makeBucket = () => ({ requests: [], omittedRequests: 0, pageErrors: [], blockedReasons: new Set() });
   const record = (request, outcome) => {
@@ -207,6 +216,7 @@ export async function exploreOperationStates(options = {}) {
       };
       active.requests.push(entry);
       byRequest.set(request, entry);
+      rawUrlByEntry.set(entry, request.url());
     }
     if (entry && outcome) entry.outcome = outcome;
     return entry;
@@ -214,7 +224,11 @@ export async function exploreOperationStates(options = {}) {
   const onRequest = request => { record(request); };
   const onResponse = response => {
     const entry = record(response.request());
-    if (entry) { entry.status = response.status(); entry.outcome = response.status() >= 400 ? 'http-error' : 'response'; }
+    if (entry) {
+      entry.status = response.status();
+      entry.mime = responseMime(response);
+      entry.outcome = response.status() >= 400 ? 'http-error' : 'response';
+    }
   };
   const onRequestFinished = request => {
     const entry = record(request);
@@ -230,11 +244,13 @@ export async function exploreOperationStates(options = {}) {
   const onWebSocket = socket => {
     if (!active) return;
     if (active.requests.length >= maxRequestsPerState) { active.omittedRequests++; return; }
-    active.requests.push({
+    const entry = {
       target: sanitizeObservedUrl(socket.url()),
       scope: allowedOrigins.has(new URL(socket.url()).origin) ? 'first-party' : 'external',
       method: 'GET', resourceType: 'websocket', category: 'realtime', outcome: 'opened',
-    });
+    };
+    active.requests.push(entry);
+    rawUrlByEntry.set(entry, socket.url());
   };
   const routeHandler = async route => {
     const request = route.request();
@@ -253,6 +269,9 @@ export async function exploreOperationStates(options = {}) {
   const capture = async (index, action, result) => {
     const bucket = current;
     const state = await readPageState(page);
+    for (const request of bucket.requests) {
+      options.onObservedRequest?.({ ...request, url: rawUrlByEntry.get(request) ?? null, stateIndex: index });
+    }
     report.states.push({
       index,
       from: index ? index - 1 : null,

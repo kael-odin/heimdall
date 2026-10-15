@@ -345,3 +345,124 @@ test('Docker network-none delivery serves SSR, SPA and data-driven SPA bundles w
     }
   }
 });
+
+function prepareAdapterDockerFixture() {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-adapter-docker-'));
+  const source = join(root, 'source');
+  const host = 'adapter-docker.invalid';
+  const origin = `https://${host}`;
+  const site = join(source, 'workspace', host);
+  const exported = join(source, 'deliverable', 'bundle');
+  const deployed = join(root, 'deployed');
+  try {
+    writePage(site, 'home', '/', `<!doctype html><title>Adapter Docker</title>
+      <button id="save" type="button">Save</button><p id="result"></p>
+      <script>document.querySelector('#save').onclick = async () => {
+        const saved = await fetch('/api/items', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, body: '{"name":"probe"}' });
+        if (saved.status !== 201) throw Error('save failed');
+        const items = await (await fetch('/api/items')).json();
+        document.querySelector('#result').textContent = items[0]?.name ?? 'missing';
+      };</script>`, origin);
+    mkdirSync(join(site, 'runtime-adapter'), { recursive: true });
+    mkdirSync(join(site, 'recon'), { recursive: true });
+    writeFileSync(join(site, 'recon', 'atlas.json'), JSON.stringify({
+      origin, status: 'ok', nodes: [{ url: origin + '/' }],
+    }));
+    writeFileSync(join(site, 'operation-plan.json'), JSON.stringify({
+      version: 1, flows: [{ path: '/', actions: [{ type: 'click', selector: '#save' }],
+        expect: [{ type: 'text-includes', selector: '#result', value: 'probe' }] }],
+    }));
+    writeFileSync(join(site, 'runtime-adapter', 'manifest.json'), JSON.stringify({
+      version: 1, routes: [
+        { method: 'POST', path: '/api/items' }, { method: 'GET', path: '/api/items' },
+      ],
+    }));
+    writeFileSync(join(site, 'runtime-adapter', 'index.mjs'), `
+      import { readFile, writeFile } from 'node:fs/promises';
+      import { join } from 'node:path';
+      export async function handle(request, { dataDir }) {
+        const path = join(dataDir, 'items.json');
+        let items;
+        try { items = JSON.parse(await readFile(path, 'utf8')); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; items = []; }
+        if (request.method === 'POST') {
+          items.push(JSON.parse(await request.text()));
+          await writeFile(path, JSON.stringify(items));
+          return Response.json({ count: items.length }, { status: 201 });
+        }
+        return Response.json(items);
+      }
+    `);
+    const result = spawnSync(process.execPath, [EXPORT, host, '--offline', '--strict',
+      '--root', 'mirror', '--include-adapter', '--out', exported], {
+      cwd: CORE, env: { ...process.env, HEIMDALL_DATA_DIR: source },
+      encoding: 'utf8', timeout: 90_000,
+    });
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    cpSync(exported, deployed, { recursive: true });
+    rmSync(source, { recursive: true, force: true });
+    assert.equal(existsSync(source), false);
+    return { root, deployed };
+  } catch (error) {
+    rmSync(root, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+test('Docker network-none delivery persists adapter writes in a volume after container recreation', {
+  timeout: 300_000, skip: process.env.HEIMDALL_DOCKER_TEST !== '1',
+}, () => {
+  docker(['info', '--format', '{{.ServerVersion}}']);
+  const fixture = prepareAdapterDockerFixture();
+  const id = `${process.pid}-${Date.now()}`;
+  const image = `heimdall-adapter-delivery:${id}`;
+  const container = `heimdall-adapter-delivery-${id}`;
+  const volume = `heimdall-adapter-state-${id}`;
+  let built = false;
+  let volumeCreated = false;
+  try {
+    docker(['build', '--tag', image, fixture.deployed], 180_000);
+    built = true;
+    docker(['volume', 'create', volume]);
+    volumeCreated = true;
+    const start = () => docker(['run', '--detach', '--rm', '--network', 'none', '--name', container,
+      '--mount', `type=volume,source=${volume},target=/data`, image]);
+    start();
+    assert.equal(docker(['inspect', '--format', '{{.HostConfig.NetworkMode}}', container]), 'none');
+    const script = `
+      const { existsSync } = await import('node:fs');
+      if (existsSync('/app/workspace')) throw Error('source workspace in image');
+      if (process.env.HEIMDALL_RUNTIME_DATA_DIR !== '/data') throw Error('wrong runtime data directory');
+      const base = 'http://127.0.0.1:8080';
+      let health;
+      for (let i = 0; i < 50; i++) {
+        try { health = await (await fetch(base + '/__heimdall/health')).json(); break; }
+        catch { await new Promise(resolve => setTimeout(resolve, 100)); }
+      }
+      if (!health?.offline || health.root !== 'mirror') throw Error('adapter bundle is not offline');
+      const first = await (await fetch(base + '/api/items')).json();
+      if (first.length !== Number(process.argv[1])) throw Error('unexpected item count');
+      const unknown = await fetch(base + '/api/unknown', { method: 'POST' });
+      if (unknown.status !== 404) throw Error('unknown write did not return 404');
+      await unknown.body.cancel();
+      if (process.argv[2] === 'write') {
+        const saved = await fetch(base + '/api/items', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, body: '{"name":"persisted"}' });
+        if (saved.status !== 201) throw Error('write failed');
+        const items = await (await fetch(base + '/api/items')).json();
+        if (items.length !== 1 || items[0].name !== 'persisted') throw Error('read after write failed');
+      }
+      console.log('adapter state verified');
+    `;
+    assert.match(docker(['exec', container, 'node', '--input-type=module', '-e', script, '0', 'write']), /adapter state verified/);
+    docker(['rm', '--force', container]);
+    start();
+    assert.match(docker(['exec', container, 'node', '--input-type=module', '-e', script, '1', 'read']), /adapter state verified/);
+  } finally {
+    spawnSync('docker', ['rm', '--force', container], { encoding: 'utf8', timeout: 30_000 });
+    if (volumeCreated) spawnSync('docker', ['volume', 'rm', volume], { encoding: 'utf8', timeout: 30_000 });
+    if (built) spawnSync('docker', ['image', 'rm', image], { encoding: 'utf8', timeout: 30_000 });
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});

@@ -17,6 +17,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { UA } from '../ua.mjs';
 import { regexEscape } from '../html.mjs';
+import { scanLiveBundle } from './health.mjs';
 
 const DYNAMIC_ENDPOINT = /^\/(?:_next\/image|_next\/data|api\/|cdn-cgi\/)/;
 
@@ -122,6 +123,36 @@ export async function healBundle({
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, queue.length || 1)) }, worker));
   return results;
+}
+
+export async function healReferencedAssets({
+  liveDir, host, origin, harIndex, staticDir, queryPages = [],
+  fetchImpl = globalThis.fetch, maxPasses = 3, maxTargets = 300,
+} = {}) {
+  const scan = () => scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
+  let health = scan();
+  const attempted = new Set();
+  const healed = { attempted: 0, fetched: 0, failed: 0, skipped: 0, bytes: 0, passes: 0, limited: false };
+  for (let pass = 0; pass < maxPasses && health.assets.unresolved > 0; pass++) {
+    const remaining = Math.max(0, maxTargets - attempted.size);
+    const targets = health.unresolvedPaths.filter(path => !attempted.has(path)).slice(0, remaining);
+    if (!targets.length) {
+      healed.limited = health.unresolvedPaths.some(path => !attempted.has(path));
+      break;
+    }
+    for (const path of targets) attempted.add(path);
+    const result = await healBundle({ liveDir, host, origin, targets, fetchImpl });
+    healed.attempted += targets.length;
+    healed.fetched += result.fetched;
+    healed.failed += result.failed;
+    healed.skipped += result.skipped;
+    healed.bytes += result.bytes;
+    healed.passes++;
+    health = scan();
+  }
+  healed.limited ||= health.assets.unresolved > 0 && healed.passes >= maxPasses
+    && health.unresolvedPaths.some(path => !attempted.has(path));
+  return { health, healed };
 }
 
 /**

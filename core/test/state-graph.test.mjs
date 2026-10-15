@@ -59,9 +59,11 @@ test('state graph records explicit transitions and dependencies without leaking 
   const { browser, origin, writes } = await fixture(t);
   const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 800, height: 600 } });
   const page = await context.newPage();
+  const observed = [];
   t.after(() => context.close());
   const report = await exploreOperationStates({
     page,
+    onObservedRequest: request => observed.push(request),
     actions: [
       { type: 'navigate', url: `${origin}/?token=navigation-secret` },
       { type: 'fill', selector: '#search', value: 'typed-secret' },
@@ -81,6 +83,9 @@ test('state graph records explicit transitions and dependencies without leaking 
   assert.deepEqual(report.states.slice(1).map(s => s.action.type), ['navigate', 'fill', 'click', 'click']);
   assert.ok(report.states[1].requests.some(r => r.category === 'document' && r.outcome === 'complete'));
   assert.ok(report.states[3].requests.some(r => r.category === 'dynamic-data' && r.outcome === 'complete'));
+  assert.ok(observed.some(r => r.url === `${origin}/api/items?token=request-secret`
+    && r.mime === 'application/json' && r.status === 200));
+  assert.equal(report.states[3].requests.some(r => Object.hasOwn(r, 'url')), false);
   assert.ok(report.states[4].requests.some(r => r.category === 'write-risk' && r.outcome === 'blocked'));
   assert.equal(report.states[4].result.status, 'blocked');
   assert.equal(writes(), 0);

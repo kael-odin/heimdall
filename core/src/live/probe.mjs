@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { exploreOperationStates, sanitizeObservedUrl } from '../crawler/state-graph.mjs';
@@ -37,9 +39,13 @@ function publicErrorType(error) {
 
 function startOfflineServer(bundleDir) {
   return new Promise((resolve, reject) => {
+    const adapterEnabled = existsSync(join(bundleDir, 'runtime-adapter'));
+    const runtimeDataDir = adapterEnabled ? mkdtempSync(join(tmpdir(), 'heimdall-adapter-probe-')) : null;
     const child = spawn(process.execPath, [join(bundleDir, 'serve.mjs'), '--port', '0', '--host', '127.0.0.1', '--offline', '--root', 'mirror'], {
       cwd: bundleDir, stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
+      env: runtimeDataDir ? { ...process.env, HEIMDALL_RUNTIME_DATA_DIR: runtimeDataDir } : process.env,
     });
+    child.once('close', () => { if (runtimeDataDir) rmSync(runtimeDataDir, { recursive: true, force: true }); });
     let stderr = '';
     child.stderr.on('data', part => { stderr = (stderr + part).slice(-2000); });
     const timer = setTimeout(() => fail(new Error('offline server startup timed out')), 10_000);
@@ -219,6 +225,9 @@ async function checkAssertion(page, assertion, base) {
 /** Replay explicit critical paths against the candidate bundle with origin access blocked. */
 export async function probeOfflineOperations(bundleDir, flows, options = {}) {
   if (!Array.isArray(flows)) throw new TypeError('flows must be an array');
+  if (options.onObservedRequest != null && typeof options.onObservedRequest !== 'function') {
+    throw new TypeError('invalid offline request observer');
+  }
   if (options.readOnlyGetUrls && (!Array.isArray(options.readOnlyGetUrls) || options.readOnlyGetUrls.length > 100)) {
     throw new TypeError('invalid read-only request list');
   }
@@ -282,12 +291,20 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
           });
           readData.observe(response, flowIndex);
         });
-        context.on('page', page => page.on('download', () => addIssue({ kind: 'downloadUnsupported' })));
         const page = await context.newPage();
+        page.on('download', () => addIssue({ kind: 'downloadUnsupported' }));
+        context.on('page', opened => {
+          if (opened === page) return;
+          addIssue({ kind: 'popupUntested' });
+          opened.on('download', () => addIssue({ kind: 'downloadUnsupported' }));
+          void opened.close().catch(() => {});
+        });
         const graph = await exploreOperationStates({
           page, baseUrl: base,
           actions: [{ type: 'navigate', url: flow.path }, ...flow.actions],
           allowedOrigins: [base],
+          allowUnsafeRequests: existsSync(join(bundleDir, 'runtime-adapter')),
+          onObservedRequest: request => options.onObservedRequest?.(flowIndex, request, base),
           maxActions: 12,
           settleMs: boundedInteger(options.settleMs, 500, 5_000),
           timeoutMs: boundedInteger(options.timeoutMs, 8_000, 30_000),

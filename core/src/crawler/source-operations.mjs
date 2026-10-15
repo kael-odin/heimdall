@@ -124,9 +124,12 @@ async function checkAssertion(page, assertion, origin, timeoutMs) {
  * No workspace files are written. A disposable browser context is used per flow.
  */
 export async function captureSourceOperations({ origin, flows, session = null, browser: suppliedBrowser,
-  readOnlyGetUrls = [], onReadOnlyData, onReadOnlyObservation,
+  readOnlyGetUrls = [], onReadOnlyData, onReadOnlyObservation, onObservedRequest,
   settleMs: requestedSettleMs, timeoutMs: requestedTimeoutMs, assertionTimeoutMs: requestedAssertionTimeoutMs } = {}) {
   const base = sourceOrigin(origin);
+  if (onObservedRequest != null && typeof onObservedRequest !== 'function') {
+    throw new TypeError('invalid source request observer');
+  }
   if (!Array.isArray(flows) || flows.length > MAX_FLOWS) throw new TypeError('invalid source flows');
   for (const flow of flows) validateFlow(flow, base);
   const { storageState, sessionStorage } = sessionOptions(session, base);
@@ -190,15 +193,20 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         context.on('requestfailed', request => {
           if (!closing && !blocked.has(request)) addIssue({ kind: 'requestFailed', target: sanitizeObservedUrl(request.url()) });
         });
+        const openedPages = new Set();
         context.on('page', page => {
+          openedPages.add(page);
+          if (openedPages.size > 1) addIssue({ kind: 'popupUntested' });
           page.on('pageerror', error => addIssue({ kind: 'pageError', error: errorType(error) }));
           page.on('crash', () => addIssue({ kind: 'pageCrash' }));
           page.on('download', () => addIssue({ kind: 'downloadBlocked' }));
         });
         const page = await context.newPage();
+        openedPages.add(page);
         const graph = await exploreOperationStates({
           page, baseUrl: base, allowedOrigins: [base], allowUnsafeRequests: false,
           actions: [{ type: 'navigate', url: flow.path }, ...flow.actions],
+          onObservedRequest: request => onObservedRequest?.(flowIndex, request),
           maxActions: 12, maxRequestsPerState: 50, maxUnexecuted: 12,
           settleMs, timeoutMs,
         });
@@ -221,7 +229,8 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         if (omittedDependencies) addIssue({ kind: 'dependenciesUntested', count: omittedDependencies });
         if (graph.summary.unexecuted) addIssue({ kind: 'actionsUntested', count: graph.summary.unexecuted });
         const assertions = [];
-        const canAssert = graph.summary.unexecuted === 0 && states.every(state => !state.action || state.result.status === 'ok');
+        const canAssert = graph.summary.unexecuted === 0 && states.every(state => !state.action || state.result.status === 'ok')
+          && !issues.some(issue => issue.kind === 'popupUntested');
         for (const [assertionIndex, assertion] of flow.expect.entries()) {
           const type = ASSERTION_TYPES.has(assertion.type) ? assertion.type : 'unknown';
           const status = canAssert ? (await checkAssertion(page, assertion, base, assertionTimeoutMs) ? 'passed' : 'failed') : 'untested';

@@ -18,8 +18,9 @@
  *   node serve.mjs --port 8080
  *   docker compose up -d
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, statSync, lstatSync, copyFileSync } from 'node:fs';
-import { join, dirname, extname, resolve, relative } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, statSync, lstatSync, copyFileSync, cpSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname, extname, resolve, relative, isAbsolute } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -28,7 +29,7 @@ import { emit } from '../emit.mjs';
 import { buildEditManifest, renderEditManifestMd } from '../deliver/edit-manifest.mjs';
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { listLivePageRoutes, scanLiveBundle } from './health.mjs';
-import { healBundle, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset } from './heal.mjs';
+import { healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset } from './heal.mjs';
 import { diffChecksums, changesLine } from './changes.mjs';
 import { mb } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
@@ -40,18 +41,20 @@ import { readOperationPlan } from './operation-plan.mjs';
 import { readDataPlan } from './read-data-plan.mjs';
 import { captureSourceOperations } from '../crawler/source-operations.mjs';
 import { addReadOnlyFlowEvidence, compareReadOnlyFlowEvidence } from '../crawler/source-read-data.mjs';
+import { createOperationDependencyEvidence, compareOperationDependencyEvidence } from '../crawler/operation-dependency-parity.mjs';
 import { loadSession } from '../session/store.mjs';
 import { auditBundlePrivacy } from './privacy-audit.mjs';
 import { sanitizeStaticHtml, isStaticCloneChooserHtml, staticCloneChooserHtml } from '../static-html-safety.mjs';
 import { availableCloneVariantWidths } from '../clone-doc.mjs';
 import { readSiteIdentity, assertSiteOrigin } from '../site-origin.mjs';
 import { rewriteSnapshotMount } from './site-routing.mjs';
+import { inspectRuntimeAdapter } from './adapter-runtime.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--compare-source] [--include-readonly-data] [--include-api-har] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -68,6 +71,7 @@ const COMPARE_SOURCE = has('compare-source');
 const INCLUDE_READONLY_DATA = has('include-readonly-data');
 const MATERIALIZE = has('materialize-har');
 const INCLUDE_API_HAR = has('include-api-har');
+const INCLUDE_ADAPTER = has('include-adapter');
 const ALLOW_PRIVATE_EXPORT = has('allow-private-export');
 const dataPlan = INCLUDE_READONLY_DATA ? readDataPlan(BASE, origin) : { status: 'not-requested', urls: [] };
 if (STRICT && !OFFLINE) {
@@ -85,6 +89,24 @@ if (INCLUDE_READONLY_DATA && !STRICT) {
 if (STRICT && INCLUDE_API_HAR) {
   console.error('[export] --include-api-har is too broad for strict offline export');
   process.exit(2);
+}
+if (INCLUDE_ADAPTER && (!OFFLINE || !STRICT)) {
+  console.error('[export] --include-adapter requires --offline --strict');
+  process.exit(2);
+}
+let adapterRoutes = new Set();
+if (INCLUDE_ADAPTER) {
+  try {
+    const inspected = inspectRuntimeAdapter(BASE);
+    const syntax = spawnSync(process.execPath, ['--check', inspected.moduleFile], {
+      encoding: 'utf8', timeout: 10_000,
+    });
+    if (syntax.status !== 0) throw new Error('invalid adapter module syntax');
+    adapterRoutes = inspected.routes;
+  } catch {
+    console.error('[export] invalid runtime adapter; expected only regular manifest.json and index.mjs with valid routes');
+    process.exit(2);
+  }
 }
 const SESSION_PRESENT = existsSync(join(BASE, 'session.json'));
 if (SESSION_PRESENT && !ALLOW_PRIVATE_EXPORT) {
@@ -270,6 +292,7 @@ let earlySource = null;
 let earlySourceError = null;
 const currentSourceReadOnlyKeys = new Set();
 const sourceFlowReadOnlyEvidence = new Map();
+const sourceDependencyEvidence = createOperationDependencyEvidence(origin);
 if (COMPARE_SOURCE && INCLUDE_READONLY_DATA && dataPlan.status === 'ok'
   && operationPlan.status === 'ok' && operationPlan.flows.length) {
   try {
@@ -290,6 +313,7 @@ if (COMPARE_SOURCE && INCLUDE_READONLY_DATA && dataPlan.status === 'ok'
       onReadOnlyObservation: (entry, flowIndex) => {
         addReadOnlyFlowEvidence(sourceFlowReadOnlyEvidence, flowIndex, entry);
       },
+      onObservedRequest: (flowIndex, request) => sourceDependencyEvidence.observe(flowIndex, request),
     });
   } catch (error) { earlySourceError = error; }
 }
@@ -304,9 +328,19 @@ const liveSrc = fileURLToPath(new URL('.', import.meta.url));
 copyFileSync(join(liveSrc, 'serve.mjs'), join(OUT, 'serve.mjs'));
 copyFileSync(join(liveSrc, 'har.mjs'), join(OUT, 'har.mjs'));
 copyFileSync(join(liveSrc, 'live-path.mjs'), join(OUT, 'live-path.mjs'));
+if (INCLUDE_ADAPTER) {
+  const source = join(BASE, 'runtime-adapter');
+  const target = join(OUT, 'runtime-adapter');
+  mkdirSync(target);
+  copyFileSync(join(liveSrc, 'adapter-runtime.mjs'), join(OUT, 'adapter-runtime.mjs'));
+  copyFileSync(join(source, 'manifest.json'), join(target, 'manifest.json'));
+  copyFileSync(join(source, 'index.mjs'), join(target, 'index.mjs'));
+  inspectRuntimeAdapter(OUT);
+}
 
 const siteId = host;
-const config = { host: siteId, siteId, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT, bind: '0.0.0.0' };
+const config = { host: siteId, siteId, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT, bind: '0.0.0.0',
+  ...(INCLUDE_ADAPTER ? { adapter: true } : {}) };
 writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 
 // ---------- 4b. 离线体检（health.json）+ 可选自愈（--heal） ----------
@@ -316,16 +350,8 @@ const harIndex = indexHar(har.entries);
 emit({ kind: 'live-stage', stage: 'health', status: 'running' });
 let health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
 const assetsBefore = { ...health.assets };
-if (HEAL && health.assets.unresolved > 0) {
-  const targets = health.unresolvedPaths ?? [...new Set(health.details.flatMap(d => d.unresolved))];
-  console.log('[heal] unresolved=' + health.assets.unresolved + ' unique=' + targets.length + ' -> fetching from ' + origin);
-  emit({ kind: 'live-stage', stage: 'heal', status: 'running', targets: targets.length });
-  const healed = await healBundle({ liveDir, host, origin, targets });
-  console.log('[heal] fetched=' + healed.fetched + ' failed=' + healed.failed + ' skipped=' + healed.skipped + ' bytes~' + (healed.bytes / 1024 / 1024).toFixed(1) + 'MB');
-  emit({ kind: 'live-stage', stage: 'heal', status: 'done', fetched: healed.fetched, failed: healed.failed });
-  health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
-  health.healed = { attempted: targets.length, fetched: healed.fetched, failed: healed.failed, skipped: healed.skipped, bytes: healed.bytes };
-}
+let materialized = null;
+const assetUrlMap = new Map();
 if (MATERIALIZE) {
   emit({ kind: 'live-stage', stage: 'materialize', status: 'running' });
   const staticEntries = har.entries.filter(entry => entry.kind !== 'public-read-only-data');
@@ -333,6 +359,23 @@ if (MATERIALIZE) {
   // hostPrefixes: 离线包把站外 CDN 的整站前缀也接进本地镜像树（运行时拼出来的地址抓不到，
   // 详见 heal.localizeQueryEntries 里那段注释）。在线镜像不接 —— 它的承诺是"未捕获的实时回源"。
   const loc = localizeQueryEntries({ entries: staticEntries, liveDir, host, origin, hostPrefixes: OFFLINE });
+  const localPrefix = '/lm/' + host + '/_ext/';
+  for (const entry of staticEntries) {
+    if (entry.method !== 'GET' || entry.status !== 200 || !entry.body || !isStaticAsset(entry)) continue;
+    let sourceUrl;
+    try { sourceUrl = new URL(entry.url); } catch { continue; }
+    if (sourceUrl.origin === origin) continue;
+    const localPath = loc.map.get(entry.url);
+    if (typeof localPath !== 'string' || !localPath.startsWith(localPrefix)) continue;
+    const file = resolve(liveDir, localPath.slice(('/lm/' + host + '/').length));
+    const fileRel = relative(liveDir, file);
+    if (fileRel === '..' || fileRel.startsWith('../') || fileRel.startsWith('..\\') || isAbsolute(fileRel)) continue;
+    try {
+      const saved = statSync(file);
+      if (saved.isFile() && saved.size > 0) assetUrlMap.set(entry.url, localPath);
+    }
+    catch { /* A missing candidate file cannot justify dependency parity. */ }
+  }
   const rw = rewriteLocalRefs({ liveDir, map: loc.map });
   let trimmed = 0;
   for (const e of har.entries) {
@@ -342,9 +385,19 @@ if (MATERIALIZE) {
   }
   console.log('[materialize] files=' + mat.written + ' (' + (mat.bytes / 1024 / 1024).toFixed(1) + 'MB) localized=' + loc.written + ' (' + (loc.bytes / 1024 / 1024).toFixed(1) + 'MB) rewrote=' + rw.files + ' files/' + rw.rewrites + ' refs');
   health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
-  health.materialized = { ...mat, localized: loc.written, localizedBytes: loc.bytes, refRewrites: rw.rewrites, refFiles: rw.files, harTrimmed: trimmed };
+  materialized = { ...mat, localized: loc.written, localizedBytes: loc.bytes, refRewrites: rw.rewrites, refFiles: rw.files, harTrimmed: trimmed };
   emit({ kind: 'live-stage', stage: 'materialize', status: 'done' });
 }
+if (HEAL && health.assets.unresolved > 0) {
+  console.log('[heal] unresolved=' + health.assets.unresolved + ' unique=' + health.unresolvedPaths.length + ' -> fetching from ' + origin);
+  emit({ kind: 'live-stage', stage: 'heal', status: 'running', targets: health.unresolvedPaths.length });
+  const result = await healReferencedAssets({ liveDir, host, origin, harIndex, staticDir, queryPages });
+  health = result.health;
+  health.healed = result.healed;
+  console.log('[heal] fetched=' + result.healed.fetched + ' failed=' + result.healed.failed + ' skipped=' + result.healed.skipped + ' passes=' + result.healed.passes + ' bytes~' + (result.healed.bytes / 1024 / 1024).toFixed(1) + 'MB');
+  emit({ kind: 'live-stage', stage: 'heal', status: 'done', fetched: result.healed.fetched, failed: result.healed.failed });
+}
+if (materialized) health.materialized = materialized;
 writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR（materialize 时仅剩必要回放体）
 
 health.assetsBefore = assetsBefore;
@@ -395,9 +448,16 @@ health.operationProbe = {
   status: operationPlan.status === 'missing' ? 'not-configured' : 'not-run',
   planned: operationPlan.flows.length, checked: 0, failed: 0, untested: operationPlan.flows.length,
 };
+health.adapter = INCLUDE_ADAPTER
+  ? { status: 'included', declaredRoutes: adapterRoutes.size, exercisedRoutes: 0,
+    untestedRoutes: adapterRoutes.size, serverEgress: 'not-tested' }
+  : { status: 'not-included', declaredRoutes: 0, exercisedRoutes: 0, untestedRoutes: 0 };
 health.sourceOperationProbe = {
   status: COMPARE_SOURCE ? 'not-run' : 'not-requested',
   planned: operationPlan.flows.length, checked: 0, failed: 0, untested: operationPlan.flows.length,
+};
+health.dependencyParity = {
+  status: COMPARE_SOURCE ? 'not-run' : 'not-requested', checkedFlows: 0, mismatchedFlows: 0,
 };
 health.strictBlockers = {
   unresolved: health.assets.unresolved,
@@ -418,8 +478,12 @@ health.strictBlockers = {
   browserUntested: 0,
   operationFailed: 0,
   operationUntested: 0,
+  adapterRoutesUntested: 0,
+  adapterRelocationFailed: 0,
   sourceOperationFailed: 0,
   sourceOperationUntested: 0,
+  dependencyParityMismatch: 0,
+  dependencyParityUntested: 0,
   readOnlyDataInvalid: INCLUDE_READONLY_DATA && dataPlan.status !== 'ok' ? 1 : 0,
   readOnlyDataMissing: missingData.length,
   readOnlyDataShadowed: shadowedData.length,
@@ -438,6 +502,18 @@ health.strictBlockers = {
   privacyIncomplete: 0,
 };
 health.strict = STRICT;
+let relocatedProbeRoot = null;
+let probeBundleDir = OUT;
+if (STRICT && INCLUDE_ADAPTER && !Object.values(health.strictBlockers).some(Boolean)) {
+  try {
+    relocatedProbeRoot = mkdtempSync(join(tmpdir(), 'heimdall-adapter-bundle-'));
+    probeBundleDir = join(relocatedProbeRoot, 'bundle');
+    cpSync(OUT, probeBundleDir, { recursive: true });
+  } catch {
+    health.strictBlockers.adapterRelocationFailed = 1;
+  }
+}
+try {
 if (STRICT) {
   health.browserProbe = {
     checked: 0, failed: 0, totalPages: health.pageRoutes.length,
@@ -445,7 +521,7 @@ if (STRICT) {
   };
   if (!Object.values(health.strictBlockers).some(Boolean)) {
     try {
-      health.runtimeProbe = await probeOfflineBundle(OUT, health.probePaths);
+      health.runtimeProbe = await probeOfflineBundle(probeBundleDir, health.probePaths);
       health.strictBlockers.runtimeMissing = health.runtimeProbe.failed;
     } catch (e) {
       health.runtimeProbe = { checked: 0, failed: 1, error: String(e?.message ?? e) };
@@ -453,7 +529,7 @@ if (STRICT) {
     }
     if (!health.strictBlockers.runtimeMissing) {
       try {
-        health.browserProbe = await probeOfflineBrowserBundle(OUT, health.pageRoutes);
+        health.browserProbe = await probeOfflineBrowserBundle(probeBundleDir, health.pageRoutes);
         health.strictBlockers.browserFailed = health.browserProbe.failed;
       } catch (e) {
         health.browserProbe = {
@@ -467,16 +543,30 @@ if (STRICT) {
   health.strictBlockers.browserUntested = health.browserProbe.untested;
   const offlineReadOnlyKeys = new Set();
   const offlineFlowReadOnlyEvidence = new Map();
+  const exercisedAdapterRoutes = new Set();
+  let offlineDependencyEvidence = null;
+  let sourceCapture = earlySource;
   if (operationPlan.flows.length && !health.strictBlockers.browserFailed
     && !health.strictBlockers.browserUntested
     && !Object.entries(health.strictBlockers).some(([key, value]) =>
       key !== 'operationUntested' && key !== 'operationFailed' && !!value)) {
     try {
-      health.operationProbe = await probeOfflineOperations(OUT, operationPlan.flows, {
+      health.operationProbe = await probeOfflineOperations(probeBundleDir, operationPlan.flows, {
         readOnlyGetUrls: COMPARE_SOURCE && INCLUDE_READONLY_DATA ? dataPlan.urls : [],
         onReadOnlyGet: url => offlineReadOnlyKeys.add(harKey('GET', url)),
         onReadOnlyObservation: (url, entry, flowIndex) => {
           addReadOnlyFlowEvidence(offlineFlowReadOnlyEvidence, flowIndex, entry, url);
+        },
+        onObservedRequest: (flowIndex, request, base) => {
+          offlineDependencyEvidence ??= createOperationDependencyEvidence(base);
+          offlineDependencyEvidence.observe(flowIndex, request);
+          if (INCLUDE_ADAPTER) {
+            try {
+              const target = new URL(request.url);
+              const key = request.method + ' ' + target.pathname;
+              if (target.origin === base && adapterRoutes.has(key)) exercisedAdapterRoutes.add(key);
+            } catch { /* An invalid request cannot prove adapter route coverage. */ }
+          }
         },
       });
       health.strictBlockers.operationFailed = health.operationProbe.failed;
@@ -490,6 +580,11 @@ if (STRICT) {
     }
   } else if (operationPlan.flows.length) health.operationProbe.status = 'skipped';
   health.strictBlockers.operationUntested = health.operationProbe.untested;
+  if (INCLUDE_ADAPTER) {
+    health.adapter.exercisedRoutes = exercisedAdapterRoutes.size;
+    health.adapter.untestedRoutes = adapterRoutes.size - exercisedAdapterRoutes.size;
+    health.strictBlockers.adapterRoutesUntested = health.adapter.untestedRoutes;
+  }
   if (COMPARE_SOURCE && INCLUDE_READONLY_DATA) {
     health.readOnlyData.offlineRequested = offlineReadOnlyKeys.size;
     health.readOnlyData.offlineMissing = dataPlan.urls.filter(url => !offlineReadOnlyKeys.has(harKey('GET', url))).length;
@@ -509,7 +604,11 @@ if (STRICT) {
     } else {
       try {
         if (earlySourceError) throw earlySourceError;
-        const source = earlySource ?? await captureSourceOperations({ origin, flows: operationPlan.flows, session: loadSession(host) });
+        const source = earlySource ?? await captureSourceOperations({
+          origin, flows: operationPlan.flows, session: loadSession(host),
+          onObservedRequest: (flowIndex, request) => sourceDependencyEvidence.observe(flowIndex, request),
+        });
+        sourceCapture = source;
         health.sourceOperationProbe = {
           status: source.status, planned: source.planned, checked: source.checked,
           failed: source.failed, untested: source.untested, sessionUsed: source.sessionUsed,
@@ -539,6 +638,22 @@ if (STRICT) {
       }
     }
   }
+  if (COMPARE_SOURCE) {
+    const comparable = sourceCapture?.status === 'checked' && sourceCapture.failed === 0
+      && sourceCapture.untested === 0 && health.operationProbe.status === 'checked'
+      && health.operationProbe.failed === 0 && health.operationProbe.untested === 0
+      && offlineDependencyEvidence;
+    if (comparable) {
+      health.dependencyParity = compareOperationDependencyEvidence(
+        sourceDependencyEvidence, offlineDependencyEvidence, operationPlan.flows.length,
+        { assetUrlMap },
+      );
+      health.strictBlockers.dependencyParityMismatch = health.dependencyParity.mismatchedFlows;
+    } else {
+      health.dependencyParity.status = 'not-tested';
+      health.strictBlockers.dependencyParityUntested = operationPlan.flows.length || 1;
+    }
+  }
   if (COMPARE_SOURCE && INCLUDE_READONLY_DATA) {
     const comparable = earlySource?.status === 'checked' && earlySource.failed === 0
       && earlySource.untested === 0 && health.operationProbe.status === 'checked'
@@ -551,6 +666,9 @@ if (STRICT) {
       health.strictBlockers.readOnlyFlowMismatch = health.readOnlyData.flowParity.mismatchedFlows;
     } else health.strictBlockers.readOnlyFlowUntested = operationPlan.flows.length || 1;
   }
+}
+} finally {
+  if (relocatedProbeRoot) rmSync(relocatedProbeRoot, { recursive: true, force: true });
 }
 // 健康报告只需路径定位问题，查询参数可能含临时凭据。
 health.unresolvedPaths = health.unresolvedPaths.map(path => path.split('?')[0]);
@@ -591,8 +709,8 @@ ${hasSeo ? `<a class="card" href="/static/${host}/seo/seo.html"><b>SEO 审计报
 </div></body></html>`;
 writeFileSync(join(OUT, 'landing.html'), landing);
 
-writeFileSync(join(OUT, 'Dockerfile'), `FROM node:22-alpine\nWORKDIR /app\nCOPY . /app\nEXPOSE ${PORT}\nCMD ["node","serve.mjs","--port","${PORT}"]\n`);
-writeFileSync(join(OUT, 'docker-compose.yml'), `services:\n  heimdall-live:\n    build: .\n    ports:\n      - "${PORT}:${PORT}"\n    restart: unless-stopped\n`);
+writeFileSync(join(OUT, 'Dockerfile'), `FROM node:22-alpine\nWORKDIR /app\nCOPY . /app\n${INCLUDE_ADAPTER ? 'RUN mkdir -p /data\nENV HEIMDALL_RUNTIME_DATA_DIR=/data\nVOLUME ["/data"]\n' : ''}EXPOSE ${PORT}\nCMD ["node","serve.mjs","--port","${PORT}"]\n`);
+writeFileSync(join(OUT, 'docker-compose.yml'), `services:\n  heimdall-live:\n    build: .\n    ports:\n      - "${PORT}:${PORT}"\n${INCLUDE_ADAPTER ? '    volumes:\n      - heimdall-runtime-data:/data\n' : ''}    restart: unless-stopped\n${INCLUDE_ADAPTER ? 'volumes:\n  heimdall-runtime-data:\n' : ''}`);
 writeFileSync(join(OUT, 'README.md'), `# Heimdall Live Mirror · ${host}
 
 可直接部署的交互镜像包（L3）：本地快照优先 → HAR 回放${OFFLINE ? ' → 未命中返回 404' : ' → 未命中回源'}。
@@ -600,13 +718,13 @@ writeFileSync(join(OUT, 'README.md'), `# Heimdall Live Mirror · ${host}
 ## 运行
 
 \`\`\`bash
-node serve.mjs --port ${PORT}                 # 落地页 + /lm/${host}/ 镜像（默认）
+${INCLUDE_ADAPTER ? 'mkdir -p ../heimdall-runtime-data\nexport HEIMDALL_RUNTIME_DATA_DIR="$(cd ../heimdall-runtime-data && pwd)"\n' : ''}node serve.mjs --port ${PORT}                 # 落地页 + /lm/${host}/ 镜像（默认）
 node serve.mjs --port ${PORT} --root mirror   # drop-in：镜像直接挂到 /
 node serve.mjs --port ${PORT} --host 127.0.0.1  # 只监听本机（默认监听所有网卡，为了容器/内网部署）
 docker compose up -d                   # Docker 部署
 \`\`\`
 
-- **监听地址默认 0.0.0.0**（所有网卡）—— 交付包是拿去部署的，绑回环外面就访问不到。
+${INCLUDE_ADAPTER ? '适配器仅处理 manifest.json 中精确声明的路由；未捕获请求在离线模式下返回 404。Node 运行时须把 HEIMDALL_RUNTIME_DATA_DIR 指向包外目录。Docker Compose 用 heimdall-runtime-data 命名卷保存状态，容器重建后继续使用；单独 docker run 时须挂载持久卷到 /data。适配器是可信的逐站 Node 代码，并非沙箱；--compare-source 不证明写入业务与源站等价。严格探针未隔离适配器进程的网络，health.adapter.serverEgress=not-tested；逐站交付前仍须把实际候选包放入无外联容器，重跑已声明的操作并核对业务状态。\n\n' : ''}- **监听地址默认 0.0.0.0**（所有网卡）—— 交付包是拿去部署的，绑回环外面就访问不到。
   只在本机预览请加 \`--host 127.0.0.1\`。引擎本身默认绑回环，两者不同是有意的
 
 - 镜像入口：http://127.0.0.1:${PORT}/lm/${host}/
@@ -633,8 +751,10 @@ browserProbe             逐页断外网首次加载结果；只观察短时间�
 operationPlan            操作脚本声明数；missing 表示没有交互验收，脚本本身不进入交付包
 operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
 sourceOperationProbe     显式 --compare-source 时，源站同流程只读采集与脱敏对照；未运行不代表源站通过
+dependencyParity         显式 --compare-source 时，按操作流程核对脚本、样式、媒体、文档和 API 的精确请求、状态与 MIME；仅报告类别和数量，不写入私有 URL。它不比较静态资源内容，也不证明业务等价
 readOnlyData             显式许可的 GET 数据声明数、纳入数、缺口和冲突；源站操作采集需同时使用 --compare-source
 privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布
+${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实际触达路由数与未测路由数；未测路由阻断发布；serverEgress=not-tested 表示服务端外联尚未验证\n' : ''}
 \`\`\`
 
 在线部署时，站外引用是否可加载还取决于第三方服务、跨域规则和访问权限。

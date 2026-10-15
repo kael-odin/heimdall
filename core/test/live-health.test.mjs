@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { resolveRefPath, extractRefs, listLivePageRoutes, scanLiveBundle } from '../src/live/health.mjs';
-import { healBundle, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset, mimeExt } from '../src/live/heal.mjs';
+import { healBundle, healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset, mimeExt } from '../src/live/heal.mjs';
 import { indexHar } from '../src/live/har.mjs';
 import { liveSnapshotPath } from '../src/live/live-path.mjs';
 
@@ -160,6 +160,44 @@ test('live/heal: materializeHar writes same-origin bodies and skips query/extern
     assert.equal(r.written, 1);
     assert.equal(existsSync(join(dir, 'a', 'chunk.js')), true);
     assert.equal(existsSync(join(dir, '_next')), false);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/heal: materialized CSS exposes nested assets for bounded follow-up healing', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-heal-css-'));
+  const liveDir = join(dir, 'live');
+  const origin = 'https://x.test';
+  const requests = [];
+  try {
+    mkdirSync(liveDir, { recursive: true });
+    writeFileSync(join(liveDir, 'index.html'), '<link rel="stylesheet" href="/assets/theme.css"><h1>Page</h1>');
+    materializeHar({
+      liveDir, origin,
+      entries: [{ method: 'GET', url: origin + '/assets/theme.css', status: 200,
+        body: Buffer.from('@import url("/assets/fonts.css");').toString('base64') }],
+    });
+    const before = scanLiveBundle({ liveDir, host: 'x.test', origin });
+    assert.deepEqual(before.unresolvedPaths, ['/assets/fonts.css']);
+
+    const fetchImpl = async url => {
+      requests.push(String(url));
+      if (String(url).endsWith('/assets/fonts.css')) {
+        return new Response('@font-face{src:url("/assets/font.woff2")}',
+          { status: 200, headers: { 'content-type': 'text/css' } });
+      }
+      if (String(url).endsWith('/assets/font.woff2')) {
+        return new Response('font-bytes', { status: 200, headers: { 'content-type': 'font/woff2' } });
+      }
+      return new Response('missing', { status: 404 });
+    };
+    const { health, healed } = await healReferencedAssets({
+      liveDir, host: 'x.test', origin, fetchImpl,
+    });
+    assert.equal(health.assets.unresolved, 0);
+    assert.equal(healed.passes, 2);
+    assert.equal(healed.fetched, 2);
+    assert.deepEqual(requests, [origin + '/assets/fonts.css', origin + '/assets/font.woff2']);
+    assert.ok(existsSync(join(liveDir, 'assets', 'font.woff2')));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

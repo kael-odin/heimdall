@@ -102,7 +102,29 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 
 `actions` 支持 `navigate`、`click`、`fill`、`scroll`；`expect` 支持 `visible`、`hidden`、`text-includes`、`url`。每条流程必须有可观察的最终断言。严格导出会在候选包中断开外网重放这些流程，HTTP 错误、脚本错误、未执行动作或断言失败均阻断发布；`operationProbe` 记录脱敏的依赖与失败。计划文件及输入值不进入交付包。未提供计划时，`operationPlan.status=missing`，交互未验收。默认禁止提交控件和写入型请求；这些业务要由本地适配器实现并单独验证。
 
-加 `--compare-source` 会在获授权的源站运行同一操作计划，并把脱敏的源站结果与离线包结果写入 `health.sourceOperationProbe`。该开关要求 `--offline --strict`；源站不可达、源站流程失败或计划缺失都会阻断发布。源站采集阻断非只读 HTTP 方法与 WebSocket；GET 在个别站点仍可能有业务副作用，因此只对已审阅的流程使用。没有该开关时，离线通过不代表已与源站交互对照。
+加 `--compare-source` 会在获授权的源站运行同一操作计划，并把脱敏的源站结果与离线包结果写入 `health.sourceOperationProbe`。该开关要求 `--offline --strict`；源站不可达、源站流程失败或计划缺失都会阻断发布。`health.dependencyParity` 还按声明流程逐项核对源站与离线包的请求路径及查询、请求次数、响应状态和 MIME，报告仅公开类别和计数。它不比较静态资源正文，也不证明业务结果相同。源站采集阻断非只读 HTTP 方法与 WebSocket，因此不能用它证明提交、登录等写入业务等价；GET 在个别站点仍可能有业务副作用，只对已审阅的流程使用。没有该开关时，离线通过不代表已与源站交互对照。
+
+### 本地业务适配器
+
+需要在离线包内处理表单或有状态 API 时，可为**一个已授权站点**编写本地适配器。在 `core/workspace/<host>/runtime-adapter/` 放入 `manifest.json` 和 `index.mjs` 两个文件。清单只声明要接管的精确方法与路径，不含查询参数：
+
+```json
+{
+  "version": 1,
+  "routes": [
+    { "method": "GET", "path": "/api/items" },
+    { "method": "POST", "path": "/api/items" }
+  ]
+}
+```
+
+`index.mjs` 导出 `async function handle(request, { dataDir })` 并返回标准 `Response`。`request` 是 Web Request；持久化文件必须写到 `dataDir`，该目录位于交付包外，由运行时的 `HEIMDALL_RUNTIME_DATA_DIR` 指定。导出只包含这两个适配器文件，不会自动复制 npm 依赖。适配器代码由操作者编写并随包执行，应审核其数据访问与外联行为；它不是自动生成的通用登录、支付或实时服务。
+
+```powershell
+node core/src/cli.mjs live example.org --offline --strict --root mirror --include-adapter
+```
+
+导出时必须在 `operation-plan.json` 中覆盖清单里的每条路由，并用页面最终状态断言验证关键操作。`health.adapter` 会显示声明、实际触达和未测路由数，未测路由阻断严格发布。未声明的写请求在离线包中返回 404，不会静默回源。部署包生成的 Compose 会把持久数据卷挂在 `/data`；直接用 Node 启动时，先建立包外目录并设置 `HEIMDALL_RUNTIME_DATA_DIR`。严格浏览器探针阻断浏览器外联，但不会隔离适配器 Node 进程的网络，`health.adapter.serverEgress=not-tested` 会明确提示这一点。每个实际适配器还须在无外联容器中重新执行关键操作、验证状态持久化。源站写操作仍不会被 `--compare-source` 自动重放，业务正确性需要授权场景下的独立验收。
 
 只读 GET 数据必须先确认有权分发，再在站点工作区放置 `read-data-plan.json`：
 
@@ -126,7 +148,7 @@ node core/src/cli.mjs audit example.org --max 30
 
 ## 产物与排障
 
-- 工作区：`core/workspace/<host>/`；交付包：`core/deliverable/`。默认均不进 Git，可通过 `HEIMDALL_DATA_DIR` 改数据根目录。
+- 工作区：`core/workspace/<host>/`；交付包：`core/deliverable/`。默认均不进 Git，可通过 `HEIMDALL_DATA_DIR` 改数据根目录。`health.coverage` 用同一批已发现 URL 统计按当前默认配方估算的队列排除、实际入队、克隆、有效 v2 验证及交付数量；侦察页数或深度触顶、sitemap 预算耗尽、声明的 sitemap 读取失败、出现站外 sitemap 或页面采集失败时，`discovery.scopeLimited` 标记范围受限。即使它为 `false`，仍不能证明整站所有页面都已发现。
 - 页面目录名由引擎的 URL 映射决定。不要根据路径手写目录名；从「页面」清单、报告索引或 `manifest.json` 查实际路径。
 - 打不开控制台时检查 `:8900/api/status` 与 `:5173/`；有 Token 时在设置中保存后刷新。启动脚本超时会报错，不代表服务已就绪。
 - 未生成的可选产物不会在报告里显示链接。已有产物打不开时先检查引擎鉴权，再看引擎日志与浏览器网络请求。

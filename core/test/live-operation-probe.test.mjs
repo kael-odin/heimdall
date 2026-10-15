@@ -94,3 +94,35 @@ test('strict export replays declared operations offline and preserves accepted b
     assert.doesNotMatch(readFileSync(join(out, 'health.json'), 'utf8'), /private-search-value|#query|#load|#result/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('offline operation probe fails when an action opens an untracked popup', { timeout: 60_000 }, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-operation-popup-'));
+  try {
+    const host = 'popup-fixture.test';
+    const site = join(dir, 'workspace', host);
+    const page = join(site, 'pages', 'home');
+    const out = join(dir, 'deliverable', 'popup-live');
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    mkdirSync(join(site, 'live'), { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><title>clone</title>');
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `https://${host}/` }));
+    writeFileSync(join(site, 'live', 'index.html'), `<!doctype html><button id="open">Open</button>
+      <p id="result">Ready</p><script>
+      document.querySelector('#open').onclick = () => window.open('/popup', '_blank');
+      </script>`);
+    writeFileSync(join(site, 'operation-plan.json'), JSON.stringify({
+      version: 1, flows: [{ path: '/', actions: [{ type: 'click', selector: '#open' }],
+        expect: [{ type: 'text-includes', selector: '#result', value: 'Ready' }] }],
+    }));
+    const run = spawnSync(process.execPath, [EXPORT, host, '--offline', '--strict', '--root', 'mirror', '--out', out], {
+      cwd: CORE, encoding: 'utf8', env: { ...process.env, HEIMDALL_DATA_DIR: dir }, timeout: 60_000,
+    });
+    assert.equal(run.status, 1, run.stderr + run.stdout);
+    const candidate = readdirSync(join(dir, 'deliverable')).find(name => name.startsWith('.candidate-'));
+    assert.ok(candidate);
+    const health = JSON.parse(readFileSync(join(dir, 'deliverable', candidate, 'health.json'), 'utf8'));
+    assert.equal(health.operationProbe.checked, 1);
+    assert.equal(health.operationProbe.failed, 1);
+    assert.ok(health.operationProbe.failures.some(issue => issue.kind === 'popupUntested'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

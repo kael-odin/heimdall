@@ -13,10 +13,11 @@ import { join } from 'node:path';
 import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { classifyPath, compileExtraRules } from './classify.mjs';
+import { discoverSitemapUrls } from './sitemap-discovery.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { assertSiteOrigin, siteIdForOrigin } from '../site-origin.mjs';
 import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
-import { canonUrl, stableNodeId, asUrl, isSameOriginUrl } from '../url-canon.mjs';
+import { canonUrl, stableNodeId, asUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
 import { UA } from '../ua.mjs';
 
@@ -26,6 +27,10 @@ const TARGET = asUrl(RAW_TARGET);
 if (!TARGET) { console.error(`不是有效的网址：${RAW_TARGET}`); process.exit(2); }
 const MAX_PAGES = Number(process.argv[3] ?? 40);
 const MAX_DEPTH = Number(process.argv[4] ?? 2);
+if (!Number.isSafeInteger(MAX_PAGES) || MAX_PAGES < 1 || !Number.isSafeInteger(MAX_DEPTH) || MAX_DEPTH < 0) {
+  console.error('[recon] maxPages must be a positive integer and maxDepth a nonnegative integer');
+  process.exit(2);
+}
 function hostOf(u) { return new URL(u).hostname; }
 function stripWww(h) { return h.replace(/^www\./, ''); }
 function pathOf(u) { try { return new URL(u).pathname.replace(/\/$/, '') || '/'; } catch { return '/'; } }
@@ -81,29 +86,10 @@ const readFeatures = (page) => page.evaluate(() => {
 
 // ---------- 1. sitemap 先行 ----------
 log('[1/4] sitemap');
-const sitemapUrls = [];
-try {
-  for (const smUrl of [ORIGIN + '/sitemap.xml', ORIGIN + '/sitemap_index.xml']) {
-    const res = await fetch(smUrl, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) continue;
-    const text = await res.text();
-    const locs = [...text.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1].trim());
-    // sitemap index → 递归一层
-    if (/sitemapindex/i.test(text)) {
-      for (const child of locs.slice(0, 5)) {
-        try {
-          const r2 = await fetch(child, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
-          const t2 = await r2.text();
-          for (const m of t2.matchAll(/<loc>([^<]+)<\/loc>/g)) sitemapUrls.push(m[1].trim());
-        } catch {}
-      }
-    } else sitemapUrls.push(...locs);
-    if (sitemapUrls.length) break;
-  }
-} catch {}
-const sitemapSame = [...new Set(sitemapUrls.map(canonUrl).filter(u => isSameOriginUrl(u, ORIGIN)))].slice(0, 500);
+const sitemap = await discoverSitemapUrls(ORIGIN);
+const sitemapSame = sitemap.urls;
 log(`  sitemap urls (same-origin): ${sitemapSame.length}`);
-emit({ kind: 'sitemap', count: sitemapSame.length });
+emit({ kind: 'sitemap', count: sitemapSame.length, truncated: sitemap.stats.truncated });
 
 // ---------- 2. BFS ----------
 log('[2/4] BFS crawl');
@@ -113,6 +99,7 @@ await restoreSessionStorage(ctx, stripWww(hostOf(ORIGIN)));
 const nodes = new Map();   // url -> node
 const failures = [];       // 失败页清单（诚实记录，不静默丢弃）
 const edges = [];          // {from,to} (url)
+const depthSkipped = new Set();
 // 双队列：BFS 发现优先（保证结构层页面入图），sitemap 仅作补充
 const bfsQueue = [{ url: canonUrl(LANDING), depth: 0 }];
 const smQueue = [];
@@ -157,12 +144,16 @@ async function visit({ url, depth }) {
     // 缩略图（供星图 hover）
     await page.screenshot({ path: join(THUMBS, `${node.id}.png`), clip: { x: 0, y: 0, width: 640, height: 400 } }).catch(() => {});
 
-    if (depth >= MAX_DEPTH || nodes.size >= MAX_PAGES) return;
+    if (nodes.size >= MAX_PAGES) return;
     const links = await page.evaluate((o) =>
       [...document.querySelectorAll('a[href]')]
         .map(a => { try { return new URL(a.getAttribute('href'), location.href).href.split('#')[0]; } catch { return null; } })
         .filter(u => u && new URL(u).origin === o && !/\.(pdf|zip|png|jpe?g|svg|mp4|xml|json)$/i.test(u)), ORIGIN);
     const canon = [...new Set(links.map(canonUrl).filter(Boolean))];
+    if (depth >= MAX_DEPTH) {
+      for (const to of canon) if (!bfsSeen.has(to)) depthSkipped.add(to);
+      return;
+    }
     for (const to of canon) {
       edges.push({ from: url, to });
       if (!bfsSeen.has(to)) { bfsSeen.add(to); bfsQueue.push({ url: to, depth: depth + 1 }); }
@@ -183,7 +174,9 @@ await new Promise((resolve) => {
     if (active === 0 && (nodes.size >= MAX_PAGES || (bfsQueue.length === 0 && smQueue.length === 0))) {
       clearInterval(pump); resolve(); return;
     }
-    while (active < 3 && nodes.size < MAX_PAGES) {
+    // Reserve a page slot for every in-flight visit. Otherwise three concurrent
+    // completions can take the atlas past the user-requested page limit.
+    while (active < 3 && nodes.size + active < MAX_PAGES) {
       const job = bfsQueue.length ? bfsQueue.shift() : smQueue.shift();
       if (!job) break;
       active++;
@@ -212,12 +205,14 @@ log('[4/4] atlas.json');
 // nodes 按 url、edges 按 (from,to) 排好，两次侦察的 atlas.json 才逐字节可比。
 const sortedNodes = [...nodes.values()].sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0));
 const sortedEdges = [...cleanEdges].sort((a, b) => (a.from + '|' + a.to < b.from + '|' + b.to ? -1 : 1));
+const depthLimitUrls = [...depthSkipped].filter(url => !nodes.has(url)).length;
 const atlas = {
   origin: ORIGIN,
   status: nodes.size ? 'ok' : 'failed',
   failures,
   generatedAt: new Date().toISOString(),
-  meta: { pages: nodes.size, edges: sortedEdges.length, sitemapUrls: sitemapSame.length, maxPages: MAX_PAGES, maxDepth: MAX_DEPTH },
+  meta: { pages: nodes.size, edges: sortedEdges.length, sitemapUrls: sitemapSame.length, sitemap: sitemap.stats,
+    maxPages: MAX_PAGES, maxDepth: MAX_DEPTH, depthLimitReached: depthLimitUrls > 0, depthLimitUrls },
   nodes: sortedNodes,
   edges: sortedEdges,
 };

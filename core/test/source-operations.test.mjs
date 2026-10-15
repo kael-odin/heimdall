@@ -25,6 +25,10 @@ async function fixture(t) {
       return response.end(`<script>fetch('/api/save?token=popup-secret', {method:'POST'})
         .catch(() => {}).finally(() => { window.opener.document.querySelector('#popup-done').hidden = false; });</script>`);
     }
+    if (path === '/popup-readonly') {
+      return response.end(`<script>fetch('/api/items?token=popup-read-secret')
+        .then(() => { window.opener.document.querySelector('#popup-done').hidden = false; });</script>`);
+    }
     if (path === '/secure') {
       return response.end(`<!doctype html><div id="allowed" hidden>Authorized</div><script>
         if (document.cookie.includes('auth=secret-cookie') && sessionStorage.getItem('gate') === 'session-secret')
@@ -35,6 +39,7 @@ async function fixture(t) {
       <input id="secret"><button id="load" type="button">Load</button>
       <button id="write" type="button">Write</button>
       <button id="popup" type="button">Popup</button>
+      <button id="popup-read" type="button">Read in popup</button>
       <form action="/api/save" method="post"><button id="submit">Submit</button></form>
       <span id="done" hidden>Loaded</span><span id="popup-done" hidden>Opened</span>
       <script>
@@ -42,6 +47,7 @@ async function fixture(t) {
           .then(r => r.json()).then(() => { document.querySelector('#done').hidden = false; });
         document.querySelector('#write').onclick = () => fetch('/api/save?token=write-secret', { method: 'POST' }).catch(() => {});
         document.querySelector('#popup').onclick = () => window.open('/popup');
+        document.querySelector('#popup-read').onclick = () => window.open('/popup-readonly');
       </script>`);
   });
   server.listen(0, '127.0.0.1');
@@ -100,7 +106,25 @@ test('source capture blocks page and popup writes, and marks later actions and a
   assert.ok(report.flows[0].issues.some(item => item.kind === 'action' && item.result === 'blocked'));
   assert.ok(report.flows[1].issues.some(item => item.kind === 'action' && item.result === 'blocked'));
   assert.ok(report.flows[2].issues.some(item => item.kind === 'writeBlocked'));
+  assert.ok(report.flows[2].issues.some(item => item.kind === 'popupUntested'));
   assert.doesNotMatch(JSON.stringify(report), /write-secret|popup-secret|#write|#submit|#popup/);
+});
+
+test('a read-only popup is not silently treated as a fully observed source flow', { timeout: 30_000 }, async t => {
+  const { origin, writes } = await fixture(t);
+  const report = await captureSourceOperations({
+    origin,
+    flows: [{ path: '/', actions: [{ type: 'click', selector: '#popup-read' }],
+      expect: [{ type: 'visible', selector: '#popup-done' }] }],
+    settleMs: 250,
+  });
+  assert.equal(writes(), 0);
+  assert.equal(report.checked, 1);
+  assert.equal(report.failed, 1);
+  assert.equal(report.flows[0].passed, false);
+  assert.ok(report.flows[0].issues.some(item => item.kind === 'popupUntested'));
+  assert.equal(report.flows[0].assertions[0].status, 'untested');
+  assert.doesNotMatch(JSON.stringify(report), /popup-read-secret|#popup-read|#popup-done|token=/);
 });
 
 test('source capture can use authorized cookie and sessionStorage without reporting their values', { timeout: 30_000 }, async t => {

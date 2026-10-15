@@ -43,11 +43,17 @@ const has = (name) => argv.includes('--' + name);
 
 const cfgPath = argOf('config', join(HERE, 'heimdall-live.json'));
 let cfg = { host: 'localhost', origin: 'http://localhost', port: 8080, offline: false, replayApi: true };
-try { cfg = { ...cfg, ...JSON.parse(readFileSync(cfgPath, 'utf8')) }; } catch {}
+try { cfg = { ...cfg, ...JSON.parse(readFileSync(cfgPath, 'utf8')) }; }
+catch {
+  if (existsSync(cfgPath)) {
+    console.error('[heimdall-live] invalid configuration');
+    process.exit(1);
+  }
+}
 const HOST = cfg.siteId ?? cfg.host;
 const ORIGIN = cfg.origin.replace(/\/$/, '');
 const PORT = Number(argOf('port', process.env.PORT ?? cfg.port ?? 8080));
-const OFFLINE = has('offline') || !!cfg.offline;
+const OFFLINE = has('offline') || !!cfg.offline || cfg.adapter === true;
 const REPLAY = !has('no-replay') && cfg.replayApi !== false;
 const ROOT_MODE = (argOf('root', cfg.root ?? 'landing') === 'mirror');
 /**
@@ -63,6 +69,25 @@ const SITE = join(HERE, 'site');
 const LIVE = join(SITE, 'live');
 const STATIC = join(SITE, 'static');
 const LANDING = join(HERE, 'landing.html');
+let adapterRuntime = null;
+if (existsSync(join(HERE, 'runtime-adapter')) && cfg.adapter !== true) {
+  console.error('[heimdall-live] adapter files present but not enabled');
+  process.exit(1);
+}
+if (cfg.adapter !== undefined && cfg.adapter !== false && cfg.adapter !== true) {
+  console.error('[heimdall-live] invalid adapter configuration');
+  process.exit(1);
+}
+if (cfg.adapter === true) {
+  try {
+    const runtime = await import('./adapter-runtime.mjs');
+    const adapter = await runtime.loadRuntimeAdapter(HERE, process.env.HEIMDALL_RUNTIME_DATA_DIR);
+    adapterRuntime = { ...runtime, adapter };
+  } catch {
+    console.error('[heimdall-live] adapter initialization failed');
+    process.exit(1);
+  }
+}
 
 let HAR_INDEX = new Map();
 let HAR_ENTRIES = 0;
@@ -224,6 +249,7 @@ async function proxy(req, res, pathAndQuery) {
 }
 
 async function serveLive(req, res, rel, search) {
+  if (adapterRuntime && await adapterRuntime.dispatchRuntimeAdapter(adapterRuntime.adapter, req, res, rel, search)) return;
   // 1) local snapshot：带 query 的页面必须精确命中对应快照。
   const candidates = liveSnapshotCandidates(rel, search);
   if (req.method === 'GET' || req.method === 'HEAD') {
