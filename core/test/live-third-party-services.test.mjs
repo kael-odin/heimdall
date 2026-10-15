@@ -57,3 +57,12 @@ test('ordinary CDN assets do not create a runtime-service blocker', () => {
   assert.equal(report.unsupportedRuntimeServices, 0);
   assert.deepEqual(report.services, []);
 });
+
+test('ordinary outbound service links are not runtime blockers', () => {
+  const report = buildThirdPartyServicesReport({
+    externalRefs: [{ url: 'https://www.youtube.com/watch?v=demo', references: 1, required: false, tags: ['a'] }],
+  });
+  assert.equal(report.status, 'none-detected');
+  assert.equal(report.unsupportedRuntimeServices, 0);
+  assert.deepEqual(report.services, []);
+});

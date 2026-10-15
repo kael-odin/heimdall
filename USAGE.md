@@ -110,6 +110,10 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 
 CarbonAds 默认作为第三方运行时服务阻断。只有明确接受"移除广告与追踪"的降级时，才在离线 strict 导出加 `--remove-carbonads`。它会删除候选包中已识别的 CarbonAds 脚本、广告容器和关联像素，并在 `health.carbonAdsRemoval`、`heimdall-live.json` 里记录策略与结果；漏删或失败仍会阻断发布。该选项不代表复刻原站广告业务，只表示交付一个不含该运行时的离线镜像。
 
+YouTube 嵌入同样默认阻断。只有明确接受"视频不可离线播放"的降级时，才在离线 strict 导出加 `--replace-youtube`。它会替换已识别的 YouTube iframe，并在 `health.youtubePlaceholder`、`heimdall-live.json` 里记录占位策略；普通 YouTube 外链保留，因为它不是页面自动加载的运行时依赖。
+
+路径别名探测出的跨域跳转默认作为 `unsupported-external-redirect` 阻断。只有明确接受"该链接不镜像、点击后只得到本地 404"时，才加 `--allow-unsupported-external-redirects`。该选项不会跟随或抓取外部目标站；`health.externalRedirectPolicy` 会记录接受数量，报告仍保留 `pathAliases` 证据。
+
 加 `--compare-source` 会在获授权的源站运行同一操作计划，并把脱敏的源站结果与离线包结果写入 `health.sourceOperationProbe`。该开关要求 `--offline --strict`；源站不可达、源站流程失败或计划缺失都会阻断发布。`health.dependencyParity` 还按声明流程逐项核对源站与离线包的请求路径及查询、请求次数、响应状态和 MIME，报告仅公开类别和计数。它不比较静态资源正文，也不证明业务结果相同。源站采集阻断非只读 HTTP 方法与 WebSocket，因此不能用它证明提交、登录等写入业务等价；GET 在个别站点仍可能有业务副作用，只对已审阅的流程使用。没有该开关时，离线通过不代表已与源站交互对照。
 
 ### 本地业务适配器

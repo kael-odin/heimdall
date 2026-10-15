@@ -98,6 +98,10 @@ node --max-old-space-size=4096 core/src/live/export.mjs vite.dev `
 
 ## 剩余工作
 
-1. 继续设计并验证 CarbonAds 的默认阻断 / 显式移除或占位策略。
-2. 继续设计并验证 YouTube 嵌入的默认阻断 / 本地占位或授权替换策略。
-3. 在第三方运行时策略完成后重跑 Vite 57 页严格导出和断外联浏览器探针。
+1. `--allow-unsupported-external-redirects` 已支持显式接受已探测出的跨域跳转缺口：
+   - 仅允许在 `--offline --strict` 下使用
+   - `health.externalRedirectPolicy` 记录 accepted 数
+   - `heimdall-live.json` 写入 `externalRedirectPolicy: "allow-unsupported"`
+   - strict blocker 不再计入已接受的跳转，但 `pathAliases` 仍保留完整证据
+2. 与 CarbonAds 移除、YouTube 占位叠加后，Vite 57 页进入浏览器逐页探针；57/57 因动态运行时外联失败，详见[ YouTube 占位策略记录](youtube-placeholder-policy.md)。
+3. 动态运行时服务处理完成前，不得把该样本发布为独立离线可用包。

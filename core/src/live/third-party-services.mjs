@@ -34,6 +34,12 @@ function serviceEntry(service) {
   };
 }
 
+function isRuntimeReference(ref) {
+  if (ref?.required === true) return true;
+  const tags = Array.isArray(ref?.tags) ? ref.tags.map(tag => String(tag).toLowerCase()) : [];
+  return tags.some(tag => ['script', 'iframe', 'img', 'link'].includes(tag));
+}
+
 function addPage(entry, pages, maximum = 20) {
   const page = String(pages ?? '').split('?')[0];
   if (page && !entry.pages.includes(page) && entry.pages.length < maximum) entry.pages.push(page);
@@ -49,6 +55,7 @@ export function buildThirdPartyServicesReport({ externalRefs = [], unresolvedPat
     try { url = new URL(String(ref?.url ?? '')); } catch { continue; }
     const service = serviceForHostname(url.hostname);
     if (!service) continue;
+    if (!isRuntimeReference(ref)) continue;
     const key = service.id + '\0external\0' + url.origin + url.pathname;
     if (!evidence.has(key)) {
       evidence.set(key, true);

@@ -53,6 +53,7 @@ import { rewriteSnapshotMount } from './site-routing.mjs';
 import { inspectRuntimeAdapter } from './adapter-runtime.mjs';
 import { capturePublicTextLinks } from './public-text-links.mjs';
 import { removeCarbonAds } from './carbonads-removal.mjs';
+import { replaceYouTubeEmbeds } from './youtube-placeholder.mjs';
 import { buildThirdPartyServicesReport } from './third-party-services.mjs';
 import { probePublicPathAliases, rewritePathAliasLinks } from './path-aliases.mjs';
 import { canonUrl } from '../url-canon.mjs';
@@ -61,7 +62,7 @@ const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--omit-nonvisual-pixels] [--remove-carbonads] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -76,6 +77,8 @@ const HEAL = has('heal');
 const STRICT = has('strict');
 const OMIT_NONVISUAL_PIXELS = has('omit-nonvisual-pixels');
 const REMOVE_CARBONADS = has('remove-carbonads');
+const REPLACE_YOUTUBE = has('replace-youtube');
+const ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS = has('allow-unsupported-external-redirects');
 const browserObserveArg = argOf('browser-observe-ms', undefined);
 const BROWSER_OBSERVE_MS = Number(browserObserveArg ?? DEFAULT_BROWSER_OBSERVE_MS);
 if ((argv.includes('--browser-observe-ms') && browserObserveArg === undefined)
@@ -134,6 +137,14 @@ if (OMIT_NONVISUAL_PIXELS && !OFFLINE) {
 }
 if (REMOVE_CARBONADS && (!OFFLINE || !STRICT)) {
   console.error('[export] --remove-carbonads requires --offline --strict');
+  process.exit(2);
+}
+if (REPLACE_YOUTUBE && (!OFFLINE || !STRICT)) {
+  console.error('[export] --replace-youtube requires --offline --strict');
+  process.exit(2);
+}
+if (ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS && (!OFFLINE || !STRICT)) {
+  console.error('[export] --allow-unsupported-external-redirects requires --offline --strict');
   process.exit(2);
 }
 if (COMPARE_SOURCE && !STRICT) {
@@ -399,7 +410,9 @@ if (INCLUDE_ADAPTER) {
 const siteId = host;
 const config = { host: siteId, siteId, origin, port: PORT, offline: OFFLINE, replayApi: true, root: ROOT, bind: '0.0.0.0',
   ...(INCLUDE_ADAPTER ? { adapter: true } : {}),
-  ...(REMOVE_CARBONADS ? { carbonAdsPolicy: 'remove' } : {}) };
+  ...(REMOVE_CARBONADS ? { carbonAdsPolicy: 'remove' } : {}),
+  ...(REPLACE_YOUTUBE ? { youtubePolicy: 'placeholder' } : {}),
+  ...(ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS ? { externalRedirectPolicy: 'allow-unsupported' } : {}) };
 writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 
 // ---------- 4b. 离线体检（health.json）+ 可选自愈（--heal） ----------
@@ -425,9 +438,25 @@ if (REMOVE_CARBONADS) {
     files: carbonAdsRemoval.files, removed: carbonAdsRemoval.removedNodes,
     remaining: carbonAdsRemoval.remainingHtmlReferences, failed: carbonAdsRemoval.failed });
 }
+let youtubePlaceholder = null;
+if (REPLACE_YOUTUBE) {
+  emit({ kind: 'live-stage', stage: 'youtube-placeholder', status: 'running' });
+  youtubePlaceholder = replaceYouTubeEmbeds({
+    liveDir,
+    staticPagesDir: join(staticDir, host, 'pages'),
+  });
+  console.log('[youtube-placeholder] policy=placeholder files=' + youtubePlaceholder.files
+    + ' replacements=' + youtubePlaceholder.replacements
+    + ' remaining=' + youtubePlaceholder.remainingEmbeds
+    + ' failed=' + youtubePlaceholder.failed);
+  emit({ kind: 'live-stage', stage: 'youtube-placeholder', status: youtubePlaceholder.failed ? 'failed' : 'done',
+    files: youtubePlaceholder.files, replacements: youtubePlaceholder.replacements,
+    remaining: youtubePlaceholder.remainingEmbeds, failed: youtubePlaceholder.failed });
+}
 emit({ kind: 'live-stage', stage: 'health', status: 'running' });
 let health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
 if (carbonAdsRemoval) health.carbonAdsRemoval = carbonAdsRemoval;
+if (youtubePlaceholder) health.youtubePlaceholder = youtubePlaceholder;
 const assetsBefore = { ...health.assets };
 let materialized = null;
 const assetUrlMap = new Map();
@@ -553,6 +582,14 @@ if (HEAL && health.links.missing > 0) {
 }
 health.pathAliases = pathAliases;
 if (carbonAdsRemoval) health.carbonAdsRemoval = carbonAdsRemoval;
+if (youtubePlaceholder) health.youtubePlaceholder = youtubePlaceholder;
+if (ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS) {
+  health.externalRedirectPolicy = {
+    policy: 'allow-unsupported',
+    accepted: pathAliases.unsupportedExternalRedirects,
+    references: pathAliases.unsupportedExternalRedirectReferences,
+  };
+}
 if (materialized) health.materialized = materialized;
 health.nonvisualExternalPixels = nonvisualPixels;
 health.thirdPartyServices = buildThirdPartyServicesReport({
@@ -636,9 +673,12 @@ health.strictBlockers = {
   externalStaticRemaining: health.externalStatic?.remainingExternal ?? 0,
   unsupportedRuntimeServices: health.thirdPartyServices.unsupportedRuntimeServices,
   thirdPartyPolicyFailed: health.carbonAdsRemoval?.failed ?? 0,
-  thirdPartyPolicyRemaining: health.carbonAdsRemoval?.remainingHtmlReferences ?? 0,
-  unsupportedExternalRedirects: health.pathAliases?.unsupportedExternalRedirects ?? 0,
-  unsupportedExternalRedirectReferences: health.pathAliases?.unsupportedExternalRedirectReferences ?? 0,
+  thirdPartyPolicyRemaining: (health.carbonAdsRemoval?.remainingHtmlReferences ?? 0)
+    + (health.youtubePlaceholder?.remainingEmbeds ?? 0),
+  unsupportedExternalRedirects: ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS
+    ? 0 : health.pathAliases?.unsupportedExternalRedirects ?? 0,
+  unsupportedExternalRedirectReferences: ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS
+    ? 0 : health.pathAliases?.unsupportedExternalRedirectReferences ?? 0,
   missingLinks: Math.max(0, health.links.missing
     - (health.pathAliases?.expectedMissingReferences ?? 0)
     - (health.pathAliases?.unsupportedExternalRedirectReferences ?? 0)),
@@ -932,6 +972,8 @@ missingLinkDetails       未镜像链接的脱敏明细；按 source-document / 
 publicTextLinks          --heal 时补抓的公开文本文档/订阅源；报告目标预算、已捕获与未捕获分类。默认最多 128 个，可用 --public-text-links-max-targets 1..256 调整
 pathAliases              --heal 时探查的公开路径别名；源站 404/410 会改写到镜像命名空间并按可复现本地 404 处理，跨域跳转会单独归类为 unsupported-external-redirect 并阻断
 carbonAdsRemoval         --remove-carbonads 时删除候选包中已识别的 CarbonAds 脚本、广告容器和关联像素；这是显式降级，不代表业务等价
+youtubePlaceholder       --replace-youtube 时把候选包中已识别的 YouTube iframe 换成本地占位；这是显式降级，不表示视频内容可离线播放
+externalRedirectPolicy   --allow-unsupported-external-redirects 时显式接受已探测出的跨域跳转缺口；报告保留 accepted 数，不静默抓取目标站
 strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器有界加载探测）
 coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
 browserProbe             逐页断外网首载结果；observation 写明最短窗口、安静期、总上限和逐页实测时间。上限前未安静会阻断发布；窗口外触发的请求及未声明操作仍未验证

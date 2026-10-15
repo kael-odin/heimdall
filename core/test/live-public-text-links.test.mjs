@@ -284,6 +284,17 @@ test('strict export captures public text links but still blocks an uncloned HTML
   assert.match(readFileSync(join(externalCandidate, 'site', 'live', 'index.html'), 'utf8'),
     /href="\/lm\/public-text-fixture\.test\/external\/"/);
 
+  const acceptedExternal = await runExport(host, join(dir, 'deliverable', 'accepted-external'), dir,
+    ['--heal', '--allow-unsupported-external-redirects']);
+  assert.equal(acceptedExternal.status, 0, acceptedExternal.output);
+  const acceptedExternalHealth = JSON.parse(readFileSync(join(dir, 'deliverable', 'accepted-external', 'health.json'), 'utf8'));
+  assert.equal(acceptedExternalHealth.pathAliases.unsupportedExternalRedirects, 1);
+  assert.equal(acceptedExternalHealth.externalRedirectPolicy.policy, 'allow-unsupported');
+  assert.equal(acceptedExternalHealth.externalRedirectPolicy.accepted, 1);
+  assert.equal(acceptedExternalHealth.strictBlockers.unsupportedExternalRedirects, 0);
+  assert.equal(JSON.parse(readFileSync(join(dir, 'deliverable', 'accepted-external', 'heimdall-live.json'), 'utf8')).externalRedirectPolicy,
+    'allow-unsupported');
+
   put(join(site, 'live', 'index.html'), html + '<a href="/next/">Next</a>');
   const rejected = await runExport(host, out, dir, ['--heal']);
   assert.equal(rejected.status, 1, rejected.output);
