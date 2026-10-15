@@ -16,7 +16,7 @@
  * 说明：冻结动画/清空输入框后拍摄；超过 25000px 的页面分段截图并计分。
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
-import { join, relative, resolve, sep, isAbsolute } from 'node:path';
+import { join, relative, resolve, isAbsolute } from 'node:path';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
 import { canonUrl } from '../url-canon.mjs';
@@ -30,6 +30,7 @@ import { writeFileAtomic } from '../fsutil.mjs';
 import { freezeCss } from '../freeze.mjs';
 import { UA } from '../ua.mjs';
 import { isSafePageName } from '../page-name.mjs';
+import { startClonePreviewServer } from '../clone-preview-server.mjs';
 
 const log = (...a) => console.error('[verify]', ...a);
 const SINGLE_CAPTURE_HEIGHT = 25_000;
@@ -135,9 +136,13 @@ async function waitForStableRender(page, pendingRequests) {
   }
 }
 
-async function shoot(page, url, viewport, file) {
+async function shoot(page, url, viewport, file, { cloneBase = null } = {}) {
   const origin = new URL(url).origin;
   const pendingRequests = new Set();
+  let documentResponse = null;
+  const onResponse = response => {
+    if (response.request().isNavigationRequest() && response.frame() === page.mainFrame()) documentResponse = response;
+  };
   const onRequest = request => {
     if (!['fetch', 'xhr', 'image'].includes(request.resourceType())) return;
     const headers = request.headers();
@@ -149,11 +154,17 @@ async function shoot(page, url, viewport, file) {
   page.on('request', onRequest);
   page.on('requestfinished', onRequestDone);
   page.on('requestfailed', onRequestDone);
+  page.on('response', onResponse);
   try {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
-    if (response && !response.ok()) throw new Error(`page HTTP ${response.status()}: ${url}`);
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+    if (!documentResponse?.ok()) throw new Error(`page HTTP ${documentResponse?.status() ?? 'no response'}: ${url}`);
     await page.waitForLoadState('load', { timeout: 20_000 }).catch(() => {});
+    if (cloneBase && (!page.url().startsWith(cloneBase)
+        || !documentResponse?.ok()
+        || !/^text\/html(?:;|$)/i.test(documentResponse.headers()['content-type'] ?? ''))) {
+      throw new Error(`clone document is not local HTML: ${page.url()}`);
+    }
     await page.evaluate(() => document.fonts?.ready).catch(() => {});
     await page.addStyleTag({ content: FREEZE_CSS });
     await page.evaluate(() => { document.querySelectorAll('input, textarea').forEach(el => { el.value = ''; }); });
@@ -186,6 +197,7 @@ async function shoot(page, url, viewport, file) {
     page.off('request', onRequest);
     page.off('requestfinished', onRequestDone);
     page.off('requestfailed', onRequestDone);
+    page.off('response', onResponse);
   }
 }
 
@@ -211,9 +223,11 @@ async function shootTiles(page, file, width, height) {
   return parts;
 }
 
-const browser = await chromium.launch();
+const clonePreview = await startClonePreviewServer();
+let browser;
 const results = [];
 try {
+  browser = await chromium.launch();
   for (const name of targets) {
     const dir = PAGE_DIR ?? join(PAGES, name);
     const outDir = PAGE_DIR ? join(PAGE_DIR, 'verify') : join(BASE, 'verify', name);
@@ -240,18 +254,17 @@ try {
     log('page', name, '->', target);
     const srcCtx = await browser.newContext({ userAgent: UA, ...sessionContext(new URL(target).hostname) });
     await restoreSessionStorage(srcCtx, new URL(target).hostname);
-    const cloneCtx = await browser.newContext({ userAgent: UA, ...(process.env.HEIMDALL_TOKEN ? { extraHTTPHeaders: { 'x-heimdall-token': process.env.HEIMDALL_TOKEN } } : {}) });
+    const cloneCtx = await browser.newContext({ userAgent: UA });
     const srcPage = await srcCtx.newPage();
     const clonePage = await cloneCtx.newPage();
-    const cloneRel = relative(WORKSPACE, join(dir, 'clone', 'index.html')).split(sep).map(encodeURIComponent).join('/');
-    const cloneUrl = 'http://127.0.0.1:' + (process.env.HEIMDALL_PORT ?? 8900) + '/static/' + cloneRel;
+    const cloneUrl = clonePreview.urlFor(join(dir, 'clone', 'index.html'));
     const viewports = [];
     for (const vp of VIEWPORTS) {
       const srcFile = join(outDir, 'src-' + vp.name + '.png');
       const cloneFile = join(outDir, 'clone-' + vp.name + '.png');
       try {
         const s = await shoot(srcPage, target, vp, srcFile);
-        const c = await shoot(clonePage, cloneUrl, vp, cloneFile);
+        const c = await shoot(clonePage, cloneUrl, vp, cloneFile, { cloneBase: new URL('.', cloneUrl).href });
         if (s.skipped) { viewports.push({ name: vp.name, skipped: s.skipped }); continue; }
         if (c.skipped) { viewports.push({ name: vp.name, skipped: c.skipped }); continue; }
         if (s.tiled && !c.tiled) c.parts = await shootTiles(clonePage, cloneFile, c.width, c.height);
@@ -270,6 +283,9 @@ try {
         const settleTimedOut = !s.settle.beforeScroll.stable || !s.settle.afterScroll?.stable
           || !s.settle.scrollConverged || !c.settle.beforeScroll.stable
           || !c.settle.afterScroll?.stable || !c.settle.scrollConverged;
+        const additionalBrokenImages = Math.max(0,
+          c.settle.beforeScroll.brokenImages - s.settle.beforeScroll.brokenImages,
+          (c.settle.afterScroll?.brokenImages ?? 0) - (s.settle.afterScroll?.brokenImages ?? 0));
         // 默认只保留 diff + JSON 控制体积；取证时可保留两侧全页截图。
         if (!tiled) writeFileSync(join(outDir, 'diff-' + vp.name + '.png'), cmp.diffPng);
         if (!KEEP_SCREENSHOTS) {
@@ -278,7 +294,8 @@ try {
           }
         }
         viewports.push({ name: vp.name, width: vp.width, score: cmp.score,
-          grade: settleTimedOut ? null : gradeOf(cmp.score), settleTimedOut,
+          grade: settleTimedOut || additionalBrokenImages ? null : gradeOf(cmp.score),
+          settleTimedOut, additionalBrokenImages,
           captureMode: tiled ? 'tiled' : 'full', ...(tiled ? { diffParts: cmp.diffParts } : {}),
           sourceCapture: { capturedAt: s.capturedAt, finalUrl: s.finalUrl, settle: s.settle },
           cloneCapture: { capturedAt: c.capturedAt, finalUrl: c.finalUrl, settle: c.settle },
@@ -294,13 +311,18 @@ try {
     // 以前这里写的是 `?? 0` —— 于是"没测到"被记成"测出来是 0 分 / D 级"，
     // 在 verify-summary.json 与 verify-done 事件里与真的 0 分完全无法区分，
     // 还把站点均值按 100/N 拉下去。**没测到就说没测到**，不进均值。
-    const measured = viewports.length === VIEWPORTS.length && viewports.every(v => typeof v.score === 'number' && !v.settleTimedOut);
+    const measured = viewports.length === VIEWPORTS.length && viewports.every(v =>
+      typeof v.score === 'number' && !v.settleTimedOut && !v.additionalBrokenImages);
     const provisionalOverall = overallScore(viewports);
     const overall = measured ? provisionalOverall : null;
     const minViewport = worstViewport(viewports);
-    const incomplete = viewports.find(v => v.error || v.skipped || v.settleTimedOut);
+    if (!measured && minViewport) minViewport.grade = null;
+    const incomplete = viewports.find(v => v.error || v.skipped || v.settleTimedOut || v.additionalBrokenImages);
     const error = measured ? null : incomplete?.error ?? incomplete?.skipped
-      ?? (incomplete?.settleTimedOut ? `${incomplete.name}: render did not settle` : 'viewport measurement incomplete');
+      ?? (incomplete?.settleTimedOut ? `${incomplete.name}: render did not settle`
+        : incomplete?.additionalBrokenImages
+          ? `${incomplete.name}: clone has ${incomplete.additionalBrokenImages} additional broken image(s)`
+          : 'viewport measurement incomplete');
 
     // 功能保真：交互回放（按钮/折叠/标签页），状态签名 + 视口像素
     let interactions = [];
@@ -327,7 +349,7 @@ try {
     log(name, 'overall', scoreText, result.grade ?? '', minViewport ? '| 最低 ' + minViewport.name + ' ' + (minViewport.score * 100).toFixed(1) + '%' : '', functional ? '| 交互 ' + functional.passed + '/' + functional.total : '| 交互 n/a');
     emit({ kind: 'verify-page', page: name, overall, measured, grade: result.grade, minViewport, functional, error });
   }
-} finally { await browser.close(); }
+} finally { await browser?.close(); await clonePreview.close(); }
 
 if (all) {
   // 均值只按**真的测到的页**算；测不到的页单独计数并在摘要里写明 ——

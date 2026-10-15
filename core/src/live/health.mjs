@@ -63,6 +63,8 @@ export function resolveRefPath(raw, { host, origin, basePath = '/' } = {}) {
 }
 
 function fileFor(liveDir, p, search = '', staticDir = null, host = '') {
+  // The deployed server resolves the URL-encoded pathname, including Unicode links.
+  p = new URL(p, 'http://localhost').pathname;
   for (const c of liveSnapshotCandidates(p, search)) {
     const f = join(liveDir, c);
     try { if (statSync(f).isFile()) return f; } catch {}
@@ -151,7 +153,7 @@ function pageFiles(liveDir) {
   return pages.sort();
 }
 
-function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir }) {
+function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir, onMissingLink }) {
   const visited = new Set();
   const pageUrl = new URL(pagePath, origin);
   const queue = [{ path: pageUrl.pathname, search: pageUrl.search, kind: 'html', base: new URL('.', pageUrl).pathname }];
@@ -197,7 +199,10 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir }) {
       if (ref.kind === 'link') {
         out.links.total++;
         if (localFile) { out.links.local++; out.probePaths.add(target); }
-        else if (out.links.missing.length < MAX_UNRESOLVED) out.links.missing.push(target);
+        else {
+          if (out.links.missing.length < MAX_UNRESOLVED) out.links.missing.push(target);
+          onMissingLink?.(target);
+        }
         continue;
       }
       out.assets.total++;
@@ -239,7 +244,7 @@ export function listLivePageRoutes(liveDir, origin, queryPages = []) {
 }
 
 /** 扫描整个交互镜像目录，返回可写入 health.json 的报告对象 */
-export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = null, queryPages = [] }) {
+export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = null, queryPages = [], onMissingLink }) {
   const pages = listLivePageRoutes(liveDir, origin, queryPages);
   const details = [];
   const externalAssets = new Map();
@@ -249,7 +254,7 @@ export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = nu
   let scanTruncated = pages.length > 1000;
   const links = { total: 0, local: 0, missing: 0 };
   for (const pagePath of pages.slice(0, 1000)) {
-    const r = scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir });
+    const r = scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir, onMissingLink });
     if (r.scanTruncated) scanTruncated = true;
     for (const path of r.probePaths) {
       if (probePaths.size < MAX_PROBES) probePaths.add(path);

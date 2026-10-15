@@ -14,7 +14,7 @@ import { pickAdapter, refRewriteCandidates } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isNonAssetRef, isSoftHtml } from '../asset-ext.mjs';
 import { scanCssRefs, rewriteCssRefs, extractFontRules } from '../css-refs.mjs';
-import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag, replaceRefTable } from '../dom-refs.mjs';
+import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag, replaceRefTable, rewriteMappedHtmlRefs } from '../dom-refs.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { writeFileAtomic } from '../fsutil.mjs';
@@ -31,6 +31,10 @@ const map = JSON.parse(readFileSync(join(PAGE, 'asset-map.json'), 'utf8'));
 const cssomMeta = JSON.parse(readFileSync(join(PAGE, 'cssom-refs.json'), 'utf8'));
 const cssText = readFileSync(join(PAGE, 'cssom.css'), 'utf8');
 const ORIGIN = cssomMeta.origin ?? new URL(map.imgs[0] ?? map.css[0]).origin;
+const SOURCE_URL = (() => {
+  try { return JSON.parse(readFileSync(join(PAGE, 'manifest.json'), 'utf8')).target || ORIGIN + '/'; }
+  catch { return ORIGIN + '/'; }
+})();
 const domHtml = readFileSync(join(PAGE, 'dom.html'), 'utf8');
 const profile = loadProfile(HOST);
 const adapter = pickAdapter(domHtml, profile);
@@ -266,33 +270,10 @@ async function localizeCss(cssTextIn, cssFileName, origin, refMap = {}, gaps = [
 
 /** HTML 本地化重写（资产表替换 + 引用属性 + 样式让位 + 去脚本） */
 const resTable = { ...(map.resMap ?? {}), ...(map.imgMap ?? {}) };
-const lookup = (raw) => {
-  const dec = raw.replace(/&amp;/g, '&');
-  const abs = (() => { try { return new URL(dec, ORIGIN).href; } catch { return null; } })();
-  return resTable[abs] ?? resTable[dec] ?? null;
-};
 function rewriteHtml(domText, cssFileName) {
-  let html = domText;
+  let html = rewriteMappedHtmlRefs(domText, resTable, SOURCE_URL);
   // 整表一次替换，而不是逐条 split/join —— 原因（前缀、重扫、速度）见 dom-refs.replaceRefTable
   html = replaceRefTable(html, resTable);
-  html = html.replace(/(<use\b[^>]*\b(?:href|xlink:href)=")([^"#]+)(#[^"]*)(")/gi, (m, head, file, frag, tail) => {
-    const hit = lookup(file);
-    return hit ? head + hit + frag + tail : m;
-  });
-  html = html.replace(/\b(src|srcset|href|data|poster|content)="([^"]*)"/g, (m, attr, val) => {
-    if (!val || /^(#|data:|mailto:|javascript:|tel:)/.test(val)) return m;
-    if (attr === 'srcset') {
-      const out = val.split(',').map(p => {
-        const seg = p.trim().split(/\s+/);
-        const hit = lookup(seg[0]);
-        if (hit) seg[0] = hit;
-        return seg.join(' ');
-      }).join(', ');
-      return attr + '="' + out + '"';
-    }
-    const hit = lookup(val);
-    return hit ? attr + '="' + hit + '"' : m;
-  });
   // 引用都改成本地路径了，`crossorigin` 就只剩副作用：**用 file:// 打开克隆页时
   // 图片会被 CORS 拦掉**，变成一排裂图占位框（"双击即看"是我们承诺过的用法）。
   // 详见 dom-refs.mjs。放在引用改写**之后**：判断依据是改写后的值。
@@ -379,10 +360,10 @@ if (leftover) {
   console.log('    ⚠ 这些路径在本地服务下会 404：' + leftoverRefs.slice(0, 5).map(r => r.ref).join(', '));
 }
 
-// ---------- 4. 复制捕获期已下载的图片/图标 ----------
+// ---------- 4. 复制捕获期已下载的资源 ----------
 console.log('[4/4] copy captured assets');
 let copied = 0;
-for (const [origUrl, relPath] of Object.entries(map.imgMap)) {
+for (const relPath of new Set(Object.values(resTable))) {
   const src = join(PAGE, relPath);
   if (!existsSync(src)) continue;
   const dest = join(CLONE, relPath);

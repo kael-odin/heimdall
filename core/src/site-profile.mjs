@@ -52,6 +52,7 @@ export const DEFAULTS = {
       'consent.cookiebot', 'cookiebot\\.com', 'crisp\\.chat', 'mixpanel',
       'cookiepro', 'onetrust', 'tiktok', 'redditstatic', 'clarity\\.ms',
       'googletagmanager', 'doubleclick', 'facebook\\.net', 'analytics\\.',
+      'static\\.cloudflareinsights\\.com/beacon\\.min\\.js',
     ],
     inlineStripPatterns: ['CookieConsent', '\\$crisp', 'mixpanel'],
     thirdPartyAllow: [],

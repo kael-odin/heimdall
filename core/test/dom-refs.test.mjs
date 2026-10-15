@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag, replaceRefTable, DROP_RELS, ASSET_RELS } =
+const { relTokens, stripAssetLinkTags, findStrayRefs, isStrayRef, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag, replaceRefTable, rewriteMappedHtmlRefs, DROP_RELS, ASSET_RELS } =
   await import('../src/dom-refs.mjs');
 
 /**
@@ -52,6 +52,62 @@ test('replaceRefTable: 空表 / 无命中 / 特殊字符都是恒等或安全行
   // 键里有正则元字符：必须当字面量处理，否则 . ( ) + 会被当成量词/分组
   assert.equal(replaceRefTable(html, { 'https://cdn.test/a+b(1).png': 'assets/p.png' }), '<img src="assets/p.png">');
   assert.equal(replaceRefTable('', { 'https://cdn.test/a.png': 'assets/a.png' }), '');
+});
+
+test('rewriteMappedHtmlRefs: deep page resolves relative assets, srcset, SVG fragment and inline CSS', () => {
+  const base = 'https://hobix.com/learn/examples/A01/walk?view=1';
+  const table = {
+    'https://hobix.com/learn/examples/A01/assets/canal.svg': 'assets/image000.svg',
+    'https://hobix.com/learn/examples/A01/assets/canal.svg?v=2': 'assets/image001.svg',
+    'https://cdn.hobix.com/icons.svg': 'assets/sprite.svg',
+  };
+  const html = '<!doctype html><html><head></head><body>'
+    + '<img src="assets/canal.svg" srcset="assets/canal.svg 1x, assets/canal.svg?v=2 2x" data-src="assets/canal.svg">'
+    + '<svg><use href="https://cdn.hobix.com/icons.svg#pin"></use></svg>'
+    + '<div style="background-image:url(&quot;assets/canal.svg&quot;)"></div>'
+    + '<a href="next">Next</a><img src="assets/unknown.svg"></body></html>';
+  const out = rewriteMappedHtmlRefs(html, table, base);
+  assert.match(out, /src="assets\/image000\.svg"/);
+  assert.match(out, /srcset="assets\/image000\.svg 1x, assets\/image001\.svg 2x"/);
+  assert.match(out, /data-src="assets\/image000\.svg"/);
+  assert.match(out, /href="assets\/sprite\.svg#pin"/);
+  assert.match(out, /url\(&quot;assets\/image000\.svg&quot;\)/);
+  assert.match(out, /<a href="next">/);
+  assert.match(out, /src="assets\/unknown\.svg"/);
+});
+
+test('rewriteMappedHtmlRefs: HTML entity encoded query variants keep their exact asset mapping', () => {
+  const out = rewriteMappedHtmlRefs(
+    '<img src="assets/canal.svg?v=2&amp;w=640" srcset="assets/canal.svg?v=2&amp;w=640 1x">',
+    { 'https://site.test/deep/assets/canal.svg?v=2&w=640': 'assets/image002.svg' },
+    'https://site.test/deep/walk',
+  );
+  assert.match(out, /src="assets\/image002\.svg"/);
+  assert.match(out, /srcset="assets\/image002\.svg 1x"/);
+});
+
+test('rewriteMappedHtmlRefs: empty asset map leaves source HTML untouched', () => {
+  const html = '<!DOCTYPE html><img src="assets/missing.svg">';
+  assert.equal(rewriteMappedHtmlRefs(html, {}, 'https://site.test/deep/walk'), html);
+});
+
+test('rewriteMappedHtmlRefs: HTML base takes precedence; untrusted base and non-asset refs stay inert', () => {
+  const page = 'https://site.test/deep/page';
+  const table = {
+    'https://site.test/shared/a.svg': 'assets/shared.svg',
+    'https://site.test/deep/a.svg': 'assets/deep.svg',
+    'https://cdn.site.test/shared/a.svg': 'assets/cdn.svg',
+  };
+  const sameOrigin = rewriteMappedHtmlRefs('<head><base href="/shared/"></head><img src="a.svg">', table, page);
+  assert.match(sameOrigin, /src="assets\/shared\.svg"/);
+  const trusted = rewriteMappedHtmlRefs('<head><base href="https://cdn.site.test/shared/"></head><img src="a.svg">', table, page);
+  assert.match(trusted, /src="assets\/cdn\.svg"/);
+  const untrusted = rewriteMappedHtmlRefs('<head><base href="https://other.test/shared/"></head><img src="a.svg">', table, page);
+  assert.match(untrusted, /src="assets\/deep\.svg"/);
+  const unsafe = rewriteMappedHtmlRefs('<head><base href="javascript:alert(1)"></head><img src="a.svg"><img src="data:image/svg+xml,%3Csvg%3E"><a href="#top">top</a>', table, page);
+  assert.match(unsafe, /src="assets\/deep\.svg"/);
+  assert.match(unsafe, /src="data:image\/svg\+xml,%3Csvg%3E"/);
+  assert.match(unsafe, /href="#top"/);
 });
 
 const ORIGIN = 'https://vitest.dev';

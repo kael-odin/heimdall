@@ -49,6 +49,8 @@ import { availableCloneVariantWidths } from '../clone-doc.mjs';
 import { readSiteIdentity, assertSiteOrigin } from '../site-origin.mjs';
 import { rewriteSnapshotMount } from './site-routing.mjs';
 import { inspectRuntimeAdapter } from './adapter-runtime.mjs';
+import { capturePublicTextLinks } from './public-text-links.mjs';
+import { canonUrl } from '../url-canon.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -397,6 +399,17 @@ if (HEAL && health.assets.unresolved > 0) {
   console.log('[heal] fetched=' + result.healed.fetched + ' failed=' + result.healed.failed + ' skipped=' + result.healed.skipped + ' passes=' + result.healed.passes + ' bytes~' + (result.healed.bytes / 1024 / 1024).toFixed(1) + 'MB');
   emit({ kind: 'live-stage', stage: 'heal', status: 'done', fetched: result.healed.fetched, failed: result.healed.failed });
 }
+if (HEAL && health.links.missing > 0) {
+  const missingLinks = new Set();
+  scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages,
+    onMissingLink: path => { if (missingLinks.size < 10_000) missingLinks.add(path); },
+  });
+  const captured = await capturePublicTextLinks({ liveDir, origin, targets: [...missingLinks] });
+  if (captured.eligible) {
+    health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
+    health.publicTextLinks = captured;
+  }
+}
 if (materialized) health.materialized = materialized;
 writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR（materialize 时仅剩必要回放体）
 
@@ -412,6 +425,14 @@ for (const name of pageNames) {
 health.liveMissing = missingLivePages.length;
 health.missingLivePages = missingLivePages.slice(0, 100);
 health.coverage = buildCoverageLedger({ baseDir: BASE, bundleDir: OUT, host, origin, pageNames });
+const mirrorRootCaptured = pageNames.some(name => {
+  try {
+    const target = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target;
+    return canonUrl(target) === canonUrl(origin + '/')
+      && statSync(join(siteDir, 'static', host, 'pages', name, 'clone', 'index.html')).isFile()
+      && statSync(join(liveDir, 'index.html')).isFile();
+  } catch { return false; }
+});
 const includedDataUrls = new Set(har.entries
   .filter(entry => entry.kind === 'public-read-only-data')
   .map(entry => entry.url));
@@ -464,6 +485,7 @@ health.strictBlockers = {
   dynamic: health.assets.dynamic,
   externalAssets: health.assets.externalAssets,
   missingLinks: health.links.missing,
+  mirrorRootMissing: STRICT && ROOT === 'mirror' && !mirrorRootCaptured ? 1 : 0,
   missingLivePages: health.liveMissing,
   discoveredUncloned: health.coverage.missingClone,
   discoveredUndelivered: health.coverage.missingLive,
@@ -685,7 +707,7 @@ const hasArchive = existsSync(join(siteDir, 'static', host, 'index.html'));
 const hasCompare = existsSync(join(siteDir, 'static', host, 'compare.html'));
 const hasSeo = existsSync(join(siteDir, 'static', host, 'seo', 'seo.html'));
 const landing = `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,">
 <meta name="robots" content="noindex,nofollow"><title>Heimdall Live · ${host}</title>
 <style>
 body{margin:0;background:#0b0b10;color:#e2e8f0;font-family:'Segoe UI','Noto Sans SC',system-ui,sans-serif;display:grid;place-items:center;min-height:100vh}

@@ -20,6 +20,9 @@
  *    一个会撒谎的自检比没有自检更糟：它让人相信交付物是干净的。
  */
 import { regexEscape } from './html.mjs';
+import { parse, serialize } from 'parse5';
+import { isNonAssetRef } from './asset-ext.mjs';
+import { scanCssRefs, rewriteCssRefs } from './css-refs.mjs';
 
 /** <link> 标签的 rel token 列表（小写，已去空） */
 export function relTokens(tag) {
@@ -329,4 +332,71 @@ export function replaceRefTable(html, table) {
   keys.sort((a, b) => b.length - a.length);          // 同一位置上长键优先
   const re = new RegExp(keys.map(regexEscape).join('|'), 'g');
   return String(html ?? '').replace(re, (m) => table[m] ?? m);
+}
+
+/** Resolve captured HTML asset attributes against the page's document base. */
+export function rewriteMappedHtmlRefs(html, table, pageUrl) {
+  const mapped = table ?? {};
+  if (!Object.keys(mapped).length) return String(html ?? '');
+  const document = parse(String(html ?? ''));
+  let page;
+  try { page = new URL(pageUrl); } catch { return String(html ?? ''); }
+  if (!['http:', 'https:'].includes(page.protocol)) return String(html ?? '');
+
+  const head = document.childNodes?.find(node => node.tagName === 'html')
+    ?.childNodes?.find(node => node.tagName === 'head');
+  const baseHref = head?.childNodes?.find(node => node.tagName === 'base'
+    && node.attrs?.some(attr => attr.name === 'href'))?.attrs.find(attr => attr.name === 'href')?.value;
+  let base = page;
+  if (baseHref) {
+    try {
+      const candidate = new URL(baseHref, page);
+      const mappedOrigins = new Set(Object.keys(mapped).flatMap(key => {
+        try { return [new URL(key).origin]; } catch { return []; }
+      }));
+      if (['http:', 'https:'].includes(candidate.protocol)
+        && (candidate.origin === page.origin || mappedOrigins.has(candidate.origin))) base = candidate;
+    } catch { /* Malformed base: use the captured page URL. */ }
+  }
+
+  const localRef = (value) => {
+    const raw = String(value ?? '').trim();
+    if (isNonAssetRef(raw)) return null;
+    let absolute;
+    try { absolute = new URL(raw, base); } catch { return null; }
+    if (!['http:', 'https:'].includes(absolute.protocol)) return null;
+    const exact = mapped[absolute.href];
+    if (exact) return exact;
+    if (!absolute.hash) return null;
+    const fragment = absolute.hash;
+    absolute.hash = '';
+    const withoutFragment = mapped[absolute.href];
+    return withoutFragment ? withoutFragment + fragment : null;
+  };
+  const srcsetRef = (value) => value.split(',').map(part => part.replace(/^(\s*)(\S+)/, (whole, space, ref) => {
+    const local = localRef(ref);
+    return local ? space + local : whole;
+  })).join(',');
+  const walk = (node) => {
+    if (node.attrs && node.tagName !== 'base') {
+      for (const attr of node.attrs) {
+        if (['srcset', 'data-srcset'].includes(attr.name)) attr.value = srcsetRef(attr.value);
+        else if (['src', 'data-src', 'data-bg', 'data-background', 'href', 'xlink:href', 'data', 'poster', 'content', 'background'].includes(attr.name)) {
+          const local = localRef(attr.value);
+          if (local) attr.value = local;
+        } else if (attr.name === 'style') {
+          const replacements = new Map();
+          for (const ref of scanCssRefs(attr.value)) {
+            const local = localRef(ref.raw);
+            if (local) replacements.set(ref.raw, local);
+          }
+          if (replacements.size) attr.value = rewriteCssRefs(attr.value, replacements);
+        }
+      }
+    }
+    for (const child of node.childNodes ?? []) walk(child);
+    if (node.content) walk(node.content);
+  };
+  walk(document);
+  return serialize(document);
 }

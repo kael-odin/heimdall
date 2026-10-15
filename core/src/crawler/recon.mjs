@@ -168,6 +168,7 @@ async function visit({ url, depth }) {
 }
 
 let active = 0;
+let activeBfs = 0;
 await new Promise((resolve) => {
   const pump = setInterval(() => {
     // 退出：额度用尽且无在途任务；双队列取空亦退出
@@ -177,10 +178,18 @@ await new Promise((resolve) => {
     // Reserve a page slot for every in-flight visit. Otherwise three concurrent
     // completions can take the atlas past the user-requested page limit.
     while (active < 3 && nodes.size + active < MAX_PAGES) {
-      const job = bfsQueue.length ? bfsQueue.shift() : smQueue.shift();
+      // An in-flight BFS page may reveal nearby links. Wait for it before
+      // spending the remaining page budget on unrelated sitemap entries.
+      if (!bfsQueue.length && activeBfs > 0) break;
+      const fromBfs = bfsQueue.length > 0;
+      const job = fromBfs ? bfsQueue.shift() : smQueue.shift();
       if (!job) break;
       active++;
-      visit(job).catch(() => {}).finally(() => { active--; });
+      if (fromBfs) activeBfs++;
+      visit(job).catch(() => {}).finally(() => {
+        active--;
+        if (fromBfs) activeBfs--;
+      });
     }
   }, 200);
 });

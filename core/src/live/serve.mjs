@@ -113,10 +113,13 @@ const MIME = {
   '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8',
   '.xhtml': 'application/xhtml+xml; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml',
+  '.rss': 'application/rss+xml; charset=utf-8', '.atom': 'application/atom+xml; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8', '.md': 'text/markdown; charset=utf-8',
+  '.markdown': 'text/markdown; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif',
   '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
   '.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg', '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8',
-  '.xml': 'application/xml; charset=utf-8', '.map': 'application/json; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
 };
 const mimeOf = (file) => MIME[extname(file).toLowerCase()] ?? 'application/octet-stream';
 const safeJoin = (root, rel) => {

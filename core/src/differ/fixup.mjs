@@ -7,17 +7,17 @@
  *
  * 产物：fixup-history.json（轮次分数曲线）；score.json 更新为最佳轮。
  *
- * 用法: node src/differ/fixup.mjs <pageDir> [maxRounds=2] [clonePort=8961]
+ * 用法: node src/differ/fixup.mjs <pageDir> [maxRounds=2]
  */
 import { readFileSync, writeFileSync, existsSync, copyFileSync, unlinkSync } from 'node:fs';
-import { join, relative, resolve, sep } from 'node:path';
+import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { llmEnabled, llmVision } from '../llm.mjs';
 import { probeStyleDiff } from './style-probe.mjs';
 import { getEnv } from '../env.mjs';
 import { parse } from 'parse5';
 import { requireArg } from '../args.mjs';
-import { WORKSPACE } from '../paths.mjs';
+import { startClonePreviewServer } from '../clone-preview-server.mjs';
 import { emit } from '../emit.mjs';
 
 const ENV = getEnv();
@@ -26,12 +26,7 @@ const MIN_REFINABLE = Number(ENV.FIXUP_MIN_REFINABLE ?? 0.3);  // 静态差异�
 
 const DIR = requireArg(process.argv[2], 'node src/differ/fixup.mjs <pageDir> [rounds]', '页面目录');
 const MAX_ROUNDS = Number(process.argv[3] ?? 2);
-const CLONE_PORT = Number(process.argv[4] ?? process.env.HEIMDALL_PORT ?? 8900);
 const CLONE_HTML = join(DIR, 'clone', 'index.html');
-// clone 页由 engine-server 常驻静态服务提供（/static/<workspace 相对路径>）
-// 兼容绝对/相对 DIR：CLONE_REL 始终相对 workspace（HEIMDALL_DATA_DIR 迁移后 DIR 变为绝对路径）
-const CLONE_REL = relative(WORKSPACE, resolve(DIR)).split(sep).join('/');
-const CLONE_URL = `http://127.0.0.1:${CLONE_PORT}/static/${CLONE_REL}/clone/index.html`;
 const FIXES_CSS = join(DIR, 'clone', 'styles', 'fixes.css');
 const FIXES_LINK = '<link rel="stylesheet" href="styles/fixes.css">';
 // 基线备份：回滚时直接还原截图/分数/热图，避免"清补丁→重截"过程中再遇渲染/缓存异常
@@ -100,6 +95,9 @@ async function main() {
   }
   log(`[fixup] refinable ${(refinable0 * 100).toFixed(0)}% (static ${b0.staticPx}px) — worth calibrating`);
 
+  const clonePreview = await startClonePreviewServer();
+  try {
+  const CLONE_URL = clonePreview.urlFor(CLONE_HTML);
   const history = [];
   let best = readScore();
   let bestCss = '';
@@ -198,6 +196,7 @@ async function main() {
     for (const f of [BASE_SHOT_BAK, BASE_SCORE_BAK, BASE_DIFF_BAK]) { try { if (existsSync(f)) unlinkSync(f); } catch {} }
   }
   log(`[fixup] best ${best.total}%`);
+  } finally { await clonePreview.close(); }
 }
 
 main().catch(e => { log('[fixup] fatal', String(e)); process.exit(0); });   // 修复失败不阻塞流水线

@@ -38,8 +38,7 @@ assertSiteOrigin(join(WORKSPACE, host), URL_, { pageName: NAME });
 // 阶段脚本统一走 child-run：失败时会带上子进程 stderr 的尾巴（理由见那个模块）
 const run = (script, args) => runScript(script, args);
 
-// 克隆页的可访问 URL（引擎在线走 /static，否则 file://）—— 判据在 clone-doc.mjs，
-// 多视口升级那边重算分数时要用同一份，不能各写一遍
+// shot_clone 会把当前 workspace 的本地克隆文件经临时回环 HTTP 服务截图。
 const cloneUrlFor = () => resolveCloneUrl(host, NAME, DIR);
 
 const STAGES = [
@@ -63,11 +62,11 @@ try {
     writeFileSync(join(DIR, 'fingerprint.json'), JSON.stringify(fp, null, 2));
   } catch { /* 指纹只是优化，缺了不影响产物 */ }
 
-  // shot 阶段——引擎可达走 /static，否则 file://（两者截图口径相同）
+  // shot 阶段使用当前工作区的克隆文件。
   const clone = await cloneUrlFor();
   log(`\n==== [shot] (via ${clone.via}) ====`);
   emit({ kind: 'forge-stage', stage: 'shot', status: 'running', via: clone.via });
-  emit({ kind: 'forge-note', note: clone.via === 'file' ? '引擎未运行，克隆截图走 file://' : '引擎在线，克隆截图走 /static' });
+  emit({ kind: 'forge-note', note: '克隆截图使用当前工作区的临时回环静态服务' });
   await run('crawler/shot_clone.mjs', [clone.url, join(DIR, 'shot-clone.png')]);
   emit({ kind: 'forge-stage', stage: 'shot', status: 'done', via: clone.via });
 

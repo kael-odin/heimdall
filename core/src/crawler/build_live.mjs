@@ -15,11 +15,12 @@
  * 用法: node src/crawler/build_live.mjs <host>          （全部已锻页）
  *       node src/crawler/build_live.mjs <host> <page>   （单页）
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, realpathSync, statSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
-import { WORKSPACE } from '../paths.mjs';
+import { WORKSPACE, isInside } from '../paths.mjs';
+import { rewriteMappedHtmlRefs } from '../dom-refs.mjs';
 import { prefixRootRelative } from '../live/live-html.mjs';
 import { liveSnapshotPath } from '../live/live-path.mjs';
 import { stripFreeze } from '../freeze.mjs';
@@ -71,10 +72,31 @@ for (const name of pages) {
   assertSiteOrigin(BASE, target, { pageName: name });
   const siteId = host;
   const lmPrefix = `/lm/${siteId}`;
-  const dirOnOrigin = target.pathname.replace(/\/$/, '');   // 原站目录（/pricing）
-  const baseHref = `/lm/${siteId}${dirOnOrigin === '/' || !dirOnOrigin ? '/' : dirOnOrigin + '/'}`;
+  // A page without a trailing slash is a document, so relative refs resolve
+  // from its parent directory. A trailing slash already denotes a directory.
+  const baseHref = `${lmPrefix}${new URL('.', target).pathname}`;
 
   let html = readFileSync(domPath, 'utf8');
+
+  // Captured resources have stable names in the static clone. Use those exact
+  // files in the live page too, including relative refs on deep routes.
+  const assetMapPath = join(dir, 'asset-map.json');
+  if (existsSync(assetMapPath)) {
+    const assetMap = JSON.parse(readFileSync(assetMapPath, 'utf8'));
+    const cloneDir = join(dir, 'clone');
+    const local = {};
+    for (const [source, rel] of Object.entries({ ...(assetMap.resMap ?? {}), ...(assetMap.imgMap ?? {}) })) {
+      if (typeof rel !== 'string' || !rel || rel.includes('\\')) continue;
+      const file = resolve(cloneDir, rel);
+      try {
+        if (!isInside(cloneDir, file) || !statSync(file).isFile()
+          || !isInside(realpathSync(cloneDir), realpathSync(file))) continue;
+      } catch { continue; }
+      local[source] = `/static/${encodeURIComponent(siteId)}/pages/${encodeURIComponent(name)}/clone/`
+        + rel.split('/').map(encodeURIComponent).join('/');
+    }
+    html = rewriteMappedHtmlRefs(html, local, target.href);
+  }
 
   // 1) 绝对 URL 归一到代理（www 与裸域都归一）
   html = rewriteSourceOrigin(html, target.origin, lmPrefix);

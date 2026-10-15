@@ -15,6 +15,7 @@
 import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, readFileSync, renameSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
+import { parse } from 'parse5';
 import { UA } from '../ua.mjs';
 import { regexEscape } from '../html.mjs';
 import { scanLiveBundle } from './health.mjs';
@@ -322,6 +323,24 @@ export function localizeQueryEntries({ entries = [], liveDir, host, origin, host
  * 运行时拼出来的地址（`base + 'chunks/' + name`）替换不到 —— 那需要运行期拦截，
  * 是另一层的事。改完实测剩余外链数（health 的 externalAssets）会说话。
  */
+function navigationAttributeRanges(html) {
+  if (!/<(?:a|area|form|button|input)\b/i.test(html)) return [];
+  const ranges = [];
+  const walk = node => {
+    const attribute = node.tagName === 'a' || node.tagName === 'area' ? 'href'
+      : node.tagName === 'form' ? 'action'
+        : node.tagName === 'button' || node.tagName === 'input' ? 'formaction' : null;
+    if (attribute) {
+      const location = node.sourceCodeLocation?.attrs?.[attribute];
+      if (location) ranges.push([location.startOffset, location.endOffset]);
+    }
+    for (const child of node.childNodes ?? []) walk(child);
+    if (node.content) walk(node.content);
+  };
+  walk(parse(html, { sourceCodeLocationInfo: true }));
+  return ranges.sort((a, b) => a[0] - b[0]);
+}
+
 export function rewriteLocalRefs({ liveDir, map }) {
   const out = { files: 0, rewrites: 0 };
   if (!map?.size) return out;
@@ -333,6 +352,17 @@ export function rewriteLocalRefs({ liveDir, map }) {
       to,
     }));
   });
+  const rewrite = source => {
+    let text = source;
+    let hits = 0;
+    for (const { re, to } of replacements) {
+      const count = (text.match(re) || []).length;
+      if (!count) continue;
+      hits += count;
+      text = text.replace(re, to);
+    }
+    return { text, hits };
+  };
   const walk = (dir) => {
     for (const n of readdirSync(dir)) {
       const p = join(dir, n);
@@ -342,12 +372,24 @@ export function rewriteLocalRefs({ liveDir, map }) {
       else if (/\.(?:html?|js|mjs|cjs|css|json)$/i.test(n)) {
         let text = readFileSync(p, 'utf8');
         let hits = 0;
-        for (const { re, to } of replacements) {
-          // 边界感知：避免命中更长 URL 的子串（如 /lm/www.host/_next/… 里的 /_next/…）
-          const n2 = (text.match(re) || []).length;
-          if (!n2) continue;
-          hits += n2;
-          text = text.replace(re, to);
+        if (/\.html?$/i.test(n)) {
+          const parts = [];
+          let cursor = 0;
+          for (const [start, end] of navigationAttributeRanges(text)) {
+            if (start < cursor) continue;
+            const changed = rewrite(text.slice(cursor, start));
+            parts.push(changed.text, text.slice(start, end));
+            hits += changed.hits;
+            cursor = end;
+          }
+          const changed = rewrite(text.slice(cursor));
+          parts.push(changed.text);
+          hits += changed.hits;
+          text = parts.join('');
+        } else {
+          const changed = rewrite(text);
+          text = changed.text;
+          hits = changed.hits;
         }
         // 写时复制：导出包与 workspace 是硬链接，直接写会连带改坏源文件 → 先写临时文件再改名断链
         if (hits) { writeFileSync(p + '.heimdall-tmp', text); renameSync(p + '.heimdall-tmp', p); out.files++; out.rewrites += hits; }

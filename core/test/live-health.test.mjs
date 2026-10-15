@@ -348,6 +348,62 @@ test('live/heal: rewriteLocalRefs 必须改到 JS 里面（WebGL 驱动是应用
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('live/heal: absolute and relative navigation links survive external asset localization', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-ad-link-'));
+  try {
+    const live = join(dir, 'live');
+    const html = `<!doctype html><title>Ad links</title>
+      <a href="https://ads.test/click?id=1&amp;source=site">Ad<img src="https://ads.test/banner.png"></a>
+      <a href='//ads.test/offer'>Offer</a>
+      <a href="/docs?next=https://cdn.test/logo.png&amp;return=/offer">Relative query</a>
+      <area href="https://ads.test/map" alt="Map">
+      <area href="../map?next=//ads.test/offer" alt="Relative map">
+      <template><a href="https://ads.test/template-offer">Template offer</a></template>
+      <form action="https://ads.test/submit"><button formaction="https://ads.test/button-submit">Submit</button>
+        <input type="submit" formaction="//ads.test/input-submit"></form>
+      <form action="submit?next=https://cdn.test/app.js"><button formaction="/submit?next=//ads.test/offer">Submit</button>
+        <input type="submit" formaction="?next=https://ads.test/click"></form>
+      <link rel="stylesheet" href="https://cdn.test/app.css">
+      <script src="https://cdn.test/app.js"></script>
+      <img src="//cdn.test/logo.png"><img src="https://unmapped.test/missing.png">`;
+    mkdirSync(join(live, '_ext', 'ads.test'), { recursive: true });
+    mkdirSync(join(live, '_ext', 'cdn.test'), { recursive: true });
+    writeFileSync(join(live, 'index.html'), html);
+    for (const path of ['ads.test/banner.png', 'cdn.test/app.css', 'cdn.test/app.js', 'cdn.test/logo.png']) {
+      writeFileSync(join(live, '_ext', path), 'resource');
+    }
+    const map = new Map([
+      ['https://ads.test/banner.png', '/lm/x.test/_ext/ads.test/banner.png'],
+      ['https://ads.test/', '/lm/x.test/_ext/ads.test/'],
+      ['//ads.test/', '/lm/x.test/_ext/ads.test/'],
+      ['https://cdn.test/', '/lm/x.test/_ext/cdn.test/'],
+      ['//cdn.test/', '/lm/x.test/_ext/cdn.test/'],
+    ]);
+    const changed = rewriteLocalRefs({ liveDir: live, map });
+    assert.ok(changed.rewrites >= 4);
+    const result = readFileSync(join(live, 'index.html'), 'utf8');
+    assert.match(result, /href="https:\/\/ads\.test\/click\?id=1&amp;source=site"/);
+    assert.match(result, /href='\/\/ads\.test\/offer'/);
+    assert.match(result, /href="\/docs\?next=https:\/\/cdn\.test\/logo\.png&amp;return=\/offer"/,
+      'relative navigation query must remain byte-for-byte unchanged');
+    assert.match(result, /href="https:\/\/ads\.test\/map"/);
+    assert.match(result, /href="\.\.\/map\?next=\/\/ads\.test\/offer"/);
+    assert.match(result, /href="https:\/\/ads\.test\/template-offer"/);
+    assert.match(result, /<form action="https:\/\/ads\.test\/submit"/);
+    assert.match(result, /<button formaction="https:\/\/ads\.test\/button-submit"/);
+    assert.match(result, /<input type="submit" formaction="\/\/ads\.test\/input-submit"/);
+    assert.match(result, /<form action="submit\?next=https:\/\/cdn\.test\/app\.js"/);
+    assert.match(result, /<button formaction="\/submit\?next=\/\/ads\.test\/offer"/);
+    assert.match(result, /<input type="submit" formaction="\?next=https:\/\/ads\.test\/click"/);
+    assert.doesNotMatch(result, /_ext\/ads\.test\/(?:click|offer|map|template-offer|submit|button-submit|input-submit)/);
+    for (const path of ['ads.test/banner.png', 'cdn.test/app.css', 'cdn.test/app.js', 'cdn.test/logo.png']) {
+      assert.ok(result.includes('/lm/x.test/_ext/' + path), path + ' should be local');
+    }
+    const health = scanLiveBundle({ liveDir: live, host: 'x.test', origin: 'https://x.test', harIndex: new Map() });
+    assert.equal(health.assets.externalAssets, 1, 'the unmapped external image must remain a strict gap');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('live/heal: mimeExt 对 .js 不能给出 .bin —— 后缀决定 serve.mjs 发的 Content-Type', () => {
   assert.equal(mimeExt('application/octet-stream', 'https://cdn.x/a.js'), 'js',
     '.bin 会让 serve.mjs 用 octet-stream 发出去，浏览器以 MIME 不符拒绝执行模块脚本');

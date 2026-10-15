@@ -265,3 +265,39 @@ test('recon counts in-flight visits against the page budget', { timeout: 60_000 
     rmSync(dataDir, { recursive: true, force: true });
   }
 });
+
+test('recon gives discovered nearby links priority over unrelated sitemap pages', { timeout: 60_000 }, async () => {
+  let origin;
+  const site = await serverFor((req, res) => {
+    if (req.url === '/robots.txt') return res.end('Sitemap: /sitemap.xml');
+    if (req.url === '/sitemap.xml') return xmlResponse(res,
+      `<urlset><url><loc>${origin}/unrelated-one</loc></url><url><loc>${origin}/unrelated-two</loc></url></urlset>`);
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    if (req.url === '/section' || req.url === '/section/') {
+      return res.end('<html><body><a href="/section/walk">Walk</a><a href="/section/about">About</a></body></html>');
+    }
+    return res.end('<html><body>Page</body></html>');
+  });
+  origin = site.origin;
+  const dataDir = mkdtempSync(join(tmpdir(), 'hd-recon-bfs-priority-'));
+  try {
+    const run = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, ['src/crawler/recon.mjs', origin + '/section/', '3', '1'], {
+        cwd: CORE, env: { ...process.env, HEIMDALL_DATA_DIR: dataDir },
+      });
+      let output = '';
+      child.stdout.on('data', part => { output += part; });
+      child.stderr.on('data', part => { output += part; });
+      child.once('error', reject);
+      child.once('close', code => resolve({ code, output }));
+    });
+    assert.equal(run.code, 0, run.output);
+    const atlas = JSON.parse(readFileSync(join(dataDir, 'workspace', '127.0.0.1', 'recon', 'atlas.json'), 'utf8'));
+    assert.deepEqual(atlas.nodes.map(node => node.url),
+      [origin + '/section', origin + '/section/about', origin + '/section/walk']);
+    assert.equal(atlas.meta.sitemapUrls, 2);
+  } finally {
+    await site.close();
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
