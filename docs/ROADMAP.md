@@ -18,7 +18,7 @@
 
 当前 `--strict` 已在静态和 HTTP 检查后加入 Chromium 逐页断外联加载探测；外联请求、WebSocket、本地 4xx/5xx、脚本异常及未测页会阻断候选包发布，旧正式包保留。逐页探测默认覆盖全部包内路由，至少观察 3000 毫秒，再等待 500 毫秒网络安静，默认最长 8000 毫秒；到上限仍未安静则失败。普通包最多并行探测 4 页，适配器包顺序执行；`health.browserProbe.observation` 记录逐页观察结果，`health.coverage` 另对齐侦察 URL、克隆页与 live 路由。工作区有显式 `operation-plan.json` 时，还会在候选包内断网重放声明的动作与最终断言。未声明操作、延迟超过观察窗口的请求、登录和有状态业务仍未得到通用保证。
 
-侦察已从导航后固定等待 400 毫秒、读取一次链接，改为观察渲染链接最少 1200 毫秒、静默 350 毫秒、最多 3000 毫秒；晚出现的同源 query 链接会进入 BFS。HTTP 错误、非 HTML 和跨源落地不建页面节点；同源重定向使用最终 URL。客户端 `history` 改址先标为 `directNavigation=unverified-client-route`，只有该 URL 实际直访取得 HTML 才清除。`atlas.meta.renderedLinks` 记录观察预算和触顶页数。安静页可能在 1200 毫秒结束，之后出现的链接仍会漏；已发现的客户端路由也不等于独立直访可用。下面的 Vite 57 页 atlas 生成于此改动之前，尚未用新版侦察重跑。
+侦察已从导航后固定等待 400 毫秒、读取一次链接，改为观察渲染链接最少 1200 毫秒、静默 350 毫秒、最多 3000 毫秒；晚出现的同源 query 链接会进入 BFS。HTTP 错误、非 HTML 和跨源落地不建页面节点；同源重定向使用最终 URL。客户端 `history` 改址先标为 `directNavigation=unverified-client-route`，只有该 URL 实际直访取得 HTML 才清除。`atlas.meta.renderedLinks` 记录观察预算和触顶页数。安静页可能在 1200 毫秒结束，之后出现的链接仍会漏；已发现的客户端路由也不等于独立直访可用。Vite 在同一 57 URL、深度 1 预算下重跑新版侦察，结果与旧 atlas 完全一致，57 页均完成观察且无客户端路由未验证；这只能说明本预算下未发现新增链接，不能证明整站全集。
 
 严格导出已支持 CLI 和控制台的 `--all-discovered` 入队、对声明流程的源站只读对照、精确许可的 GET 回放、候选包凭据特征扫描，以及受控 SSR/SPA 包在移走源工作区后的 Node 断网浏览。侦察新增 robots 声明、递归及压缩 sitemap，并在 atlas 里记录页面数、深度与 sitemap 扫描预算；`health.coverage` 用同一已发现 URL 分母列出按当前默认配方估算的排除、实际入队、克隆、v2 验证和交付数量。预算触顶与扫描失败仍标为范围受限。`--compare-source` 逐流程核对请求的精确路径及查询、次数、状态与 MIME；许可 GET 另核对清洗后正文指纹。`--include-adapter` 为逐站有状态业务提供显式接管入口，只有已声明、已在离线操作计划中触达的路由才允许严格交付。本机严格探针不隔离适配器 Node 进程外联，`health.adapter.serverEgress=not-tested`；实际适配器必须另做无外联部署验收。Linux CI 已通过受控 SSR、SPA、数据驱动 SPA 和适配器卷持久化的 Docker 无外联网络验收（主分支提交 `75dceeb`）；本机 Docker 守护进程不可用。上述夹具与门禁仍不构成任意站点完整复刻。下一批按依赖顺序推进：
 

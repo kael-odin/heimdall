@@ -37,12 +37,12 @@ Vite 首次侦察还暴露了并发页数超限：`maxPages=3` 实际写出 5 �
 
 随后对同一工作区执行 `--offline --strict --root mirror --heal --materialize-har --omit-nonvisual-pixels --rebuild`。57 个已发现页面全部有克隆和包内路由，`mirrorRootMissing=0`；HAR/自愈后同源资源 6108/6109 本地，剩余 1 个未解析项是 `/live/` 页的 YouTube `youtube-nocookie.com` 嵌入。候选包另有 54 处跨源静态资产引用，归并后是同一个 `https://cdn.carbonads.com/carbon.js`；23 个未镜像链接归并后为 20 个唯一路径，其中 12 个是 `.md` 源文档链接，8 个是 `/rolldown`、`/why`、`/api-plugin` 等路径。严格浏览器探针因前置阻断项 57 页未测。候选包约 190.7 MB，路径为 `%TEMP%/heimdall-public-vite-wide-c40b0b28/deliverable/.candidate-vite.dev-x9QQW3`；旧正式包保持不变，未发布新正式包。CarbonAds 是第三方运行时广告服务，不能靠下载脚本宣称业务等价或离线可用。
 
-后续侦察实现新增有界的客户端渲染链接观察与 SPA 改址直访标记，已用受控站点测试；本段 Vite 的 57 URL atlas 是旧实现生成的，不能据此推断新版侦察会发现多少页面。待扩大批次完成后再在隔离目录重跑发现阶段，比较链接图与漏页。
+后续侦察实现新增有界的客户端渲染链接观察与 SPA 改址直访标记，已用受控站点测试。之后在新的隔离目录按同一预算（`maxPages=60`、`maxDepth=1`）重跑 Vite 侦察：57/57 URL 与旧 atlas 完全一致，边数同样为 7，访问失败 0；57 页均完成渲染链接观察，0 页触顶，0 个客户端路由未验证，深度边界外仍剩 1 个 URL。该站在本预算下没有发现旧实现漏掉的页面，不能把 57 个 URL 视为整站全集。
 
 本地门禁：本轮 `pnpm test` 共 854 项（852 通过、0 失败、2 项 Docker 用例按环境跳过），`pnpm lint`、`pnpm smoke`、`pnpm build`、`pnpm docs:links` 均通过。本机 Docker 守护进程未启动。主分支提交 `ea1005a` 的 Linux CI 已通过；其中的 Docker `--network none` 步骤覆盖 SSR/SPA/数据驱动 SPA 与适配器卷持久化。受控夹具、A01 简单页面和 Vite 57 页视觉验证都不改变严格离线导出失败的结论。
 
 ## 下一步
 
-1. 用新版侦察重跑 Vite 发现阶段，确认客户端渲染链接是否扩大 57 URL 分母；同时补齐 `.md` 源文档与路径别名，解释或消除 23 个未镜像链接。
+1. 补齐或明确排除 Vite 的 23 个未镜像链接，重点解释 12 个 `.md` 源文档链接与 8 个路径别名；再用更高深度或页面预算验证 57 URL 是否仍是当前站点结构的合理分母。
 2. 对 CarbonAds 与 YouTube 嵌入给出显式“不支持/需站点所有者授权替代”报告；对可安全本地化的跨源静态资源继续使用精确批准补抓，并逐项验证断网行为。
 3. 为菜单、搜索、分页等公开交互编写操作计划；对有状态业务使用逐站适配器，并在无外联容器中验证实际包、包外持久卷及重启。继续扩展认证、iframe、Shadow DOM、长页和延迟请求样本，逐类报告通过、未测和失败。
