@@ -12,7 +12,7 @@
  *
  * 入口：healBundle({ liveDir, host, origin, targets, fetchImpl?, concurrency?, maxBytes? })
  */
-import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, readFileSync, renameSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, lstatSync, readFileSync, renameSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { parse } from 'parse5';
@@ -397,5 +397,58 @@ export function rewriteLocalRefs({ liveDir, map }) {
     }
   };
   walk(liveDir);
+  return out;
+}
+
+/** Remove only external, nonvisual image beacons from a copied offline bundle. */
+export function removeNonvisualExternalPixels({ rootDir, origin } = {}) {
+  const siteOrigin = new URL(origin).origin;
+  const out = { files: 0, removed: 0 };
+  const allowedAttrs = new Set([
+    'src', 'width', 'height', 'style', 'alt', 'border', 'loading',
+    'decoding', 'referrerpolicy', 'fetchpriority', 'aria-hidden',
+  ]);
+  const shouldRemove = (node) => {
+    if (node.tagName !== 'img' || !node.sourceCodeLocation) return false;
+    const attrs = new Map((node.attrs ?? []).map(attr => [attr.name.toLowerCase(), attr.value]));
+    if ([...attrs.keys()].some(name => !allowedAttrs.has(name))) return false;
+    if (attrs.get('width')?.trim() !== '1' || attrs.get('height')?.trim() !== '1') return false;
+    const style = String(attrs.get('style') ?? '');
+    if (/[\\'"(){}]/.test(style) || style.includes('/*')) return false;
+    const display = style.split(';')
+      .map(decl => decl.trim())
+      .filter(decl => /^display\s*:/i.test(decl));
+    if (!display.length || display.some(decl =>
+      !/^display\s*:\s*none(?:\s*!important)?$/i.test(decl))) return false;
+    let url;
+    try { url = new URL(attrs.get('src'), origin); } catch { return false; }
+    return ['http:', 'https:'].includes(url.protocol) && url.origin !== siteOrigin;
+  };
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      let st;
+      try { st = lstatSync(path); } catch { continue; }
+      if (st.isSymbolicLink()) throw new Error('refusing to inspect bundle symlink: ' + path);
+      if (st.isDirectory()) { walk(path); continue; }
+      if (!st.isFile() || !/\.html?$/i.test(name)) continue;
+      const html = readFileSync(path, 'utf8');
+      const ranges = [];
+      const visit = (node) => {
+        if (shouldRemove(node)) ranges.push([node.sourceCodeLocation.startOffset, node.sourceCodeLocation.endOffset]);
+        for (const child of node.childNodes ?? []) visit(child);
+        if (node.content) visit(node.content);
+      };
+      visit(parse(html, { sourceCodeLocationInfo: true }));
+      if (!ranges.length) continue;
+      let clean = html;
+      for (const [start, end] of ranges.reverse()) clean = clean.slice(0, start) + clean.slice(end);
+      writeFileSync(path + '.heimdall-tmp', clean);
+      renameSync(path + '.heimdall-tmp', path);
+      out.files++;
+      out.removed += ranges.length;
+    }
+  };
+  walk(rootDir);
   return out;
 }

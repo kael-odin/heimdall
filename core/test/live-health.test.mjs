@@ -3,11 +3,11 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { resolveRefPath, extractRefs, listLivePageRoutes, scanLiveBundle } from '../src/live/health.mjs';
-import { healBundle, healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset, mimeExt } from '../src/live/heal.mjs';
+import { healBundle, healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, removeNonvisualExternalPixels, isStaticAsset, mimeExt } from '../src/live/heal.mjs';
 import { indexHar } from '../src/live/har.mjs';
 import { liveSnapshotPath } from '../src/live/live-path.mjs';
 
@@ -491,5 +491,64 @@ test('live/heal: same-host origins retain independent, Windows-safe resource pat
     assert.deepEqual(resolveRefPath('http://main.test/app.js', { host: 'site-id', origin: 'https://main.test' }), { external: true });
     assert.deepEqual(resolveRefPath('https://main.test:8443/app.js', { host: 'site-id', origin: 'https://main.test' }), { external: true });
     assert.deepEqual(resolveRefPath('https://main.test/app.js', { host: 'site-id', origin: 'https://main.test' }), { path: '/app.js', search: '' });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/heal: offline bundle removes only nonvisual external pixels from live and static HTML', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-pixel-'));
+  try {
+    const live = join(dir, 'live', 'index.html');
+    const staticClone = join(dir, 'static', 'clone', 'index.html');
+    const html = '<!doctype html><html><body>'
+      + '<img src="https://tracker.test/hit?order=1&amp;token=secret" width="1" height="1" style="display: none;" alt="Tracking beacon" border="0">'
+      + '<img src="https://cdn.test/logo.png" alt="Visible logo">'
+      + '<img src="https://cdn.test/tiny.png" width="1" height="1" alt="Small but visible">'
+      + '<img src="https://cdn.test/callback.gif" width="1" height="1" style="display:none" onload="ready()">'
+      + '<img src="https://cdn.test/widget.gif" width="1" height="1" style="display:none" data-widget="yes">'
+      + '<img src="https://cdn.test/overridden.gif" width="1" height="1" style="display:none; display:block">'
+      + '<img src="https://cdn.test/comment-override.gif" width="1" height="1" style="display:none; /* note */ display:block">'
+      + '<img src="/local.gif" width="1" height="1" style="display:none">'
+      + '<script src="https://cdn.test/app.js"></script>'
+      + '<a href="https://tracker.test/offer">External navigation</a>'
+      + '</body></html>';
+    mkdirSync(dirname(live), { recursive: true });
+    mkdirSync(dirname(staticClone), { recursive: true });
+    writeFileSync(live, html);
+    writeFileSync(staticClone, html);
+
+    assert.deepEqual(removeNonvisualExternalPixels({ rootDir: dir, origin: 'https://source.test' }),
+      { files: 2, removed: 2 });
+    for (const path of [live, staticClone]) {
+      const result = readFileSync(path, 'utf8');
+      assert.doesNotMatch(result, /tracker\.test\/hit/);
+      for (const required of ['cdn.test/logo.png', 'cdn.test/tiny.png', 'cdn.test/callback.gif',
+        'cdn.test/widget.gif', 'cdn.test/overridden.gif', 'cdn.test/comment-override.gif',
+        '/local.gif', 'cdn.test/app.js',
+        'tracker.test/offer']) {
+        assert.ok(result.includes(required), required + ' must remain');
+      }
+    }
+    assert.deepEqual(removeNonvisualExternalPixels({ rootDir: dir, origin: 'https://source.test' }),
+      { files: 0, removed: 0 });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/heal: pixel omission refuses a symlinked directory', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-pixel-link-'));
+  try {
+    const root = join(dir, 'bundle');
+    const outside = join(dir, 'outside');
+    mkdirSync(root);
+    mkdirSync(outside);
+    const externalHtml = join(outside, 'index.html');
+    const original = '<img src="https://tracker.test/hit" width="1" height="1" style="display:none">';
+    writeFileSync(externalHtml, original);
+    try { symlinkSync(outside, join(root, 'linked'), process.platform === 'win32' ? 'junction' : 'dir'); }
+    catch (error) {
+      if (['EPERM', 'EACCES'].includes(error.code)) return t.skip('directory links unavailable');
+      throw error;
+    }
+    assert.throws(() => removeNonvisualExternalPixels({ rootDir: root, origin: 'https://source.test' }), /symlink/);
+    assert.equal(readFileSync(externalHtml, 'utf8'), original);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

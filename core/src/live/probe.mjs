@@ -2,16 +2,25 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { chromium } from 'playwright';
 import { exploreOperationStates, sanitizeObservedUrl } from '../crawler/state-graph.mjs';
 import { sourceReadDataCollector } from '../crawler/source-read-data.mjs';
 
 const MAX_BROWSER_FAILURES = 100;
+export const DEFAULT_BROWSER_OBSERVE_MS = 3_000;
+export const MAX_BROWSER_OBSERVE_MS = 15_000;
 const PRIVATE_PATH_PARENT = /^(?:users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|reset-password|password-reset|verify-email|email-verification|magic-link|invites?|invitations?|tokens?|secrets?)$/i;
 const PUBLIC_ERROR_TYPES = new Set(['Error', 'TimeoutError', 'TypeError', 'ReferenceError', 'SyntaxError', 'RangeError', 'URIError', 'EvalError', 'AggregateError']);
 
 function boundedInteger(value, fallback, upperBound) {
   return Number.isInteger(value) && value >= 0 ? Math.min(value, upperBound) : fallback;
+}
+
+export function browserObservationState({ elapsedMs, idleMs, pendingRequests, settleMs, maxObservationMs, quietMs }) {
+  if (elapsedMs >= maxObservationMs) return 'deadline';
+  if (elapsedMs >= settleMs && pendingRequests === 0 && idleMs >= quietMs) return 'stable';
+  return 'waiting';
 }
 
 function publicPath(value) {
@@ -105,7 +114,11 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
   const routes = [...new Set(pageRoutes)];
   const maxPages = boundedInteger(options.maxPages, routes.length, routes.length);
   const navigationTimeoutMs = boundedInteger(options.navigationTimeoutMs, 8_000, 30_000);
-  const settleMs = boundedInteger(options.settleMs, 500, 5_000);
+  const settleMs = boundedInteger(options.settleMs, DEFAULT_BROWSER_OBSERVE_MS, MAX_BROWSER_OBSERVE_MS);
+  const maxObservationMs = boundedInteger(options.maxObservationMs,
+    Math.max(7_500, settleMs + 5_000), 20_000);
+  if (maxObservationMs < settleMs) throw new RangeError('maxObservationMs must cover settleMs');
+  const quietMs = boundedInteger(options.quietMs, Math.min(500, settleMs), 5_000);
   const maxFailures = boundedInteger(options.maxFailures, MAX_BROWSER_FAILURES, MAX_BROWSER_FAILURES);
   const selected = routes.slice(0, maxPages);
   const report = {
@@ -117,40 +130,64 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
     untested: routes.length - selected.length,
     truncated: routes.length > selected.length,
     observationMs: settleMs,
+    observation: {
+      minimumMs: settleMs, maximumMs: maxObservationMs, quietMs,
+      observedPages: 0, deadlinePages: 0, pages: [],
+    },
   };
   if (selected.length === 0) return report;
   const { child, base } = await startOfflineServer(bundleDir);
   let browser;
   try {
     browser = await chromium.launch({ headless: true });
-    for (const routePath of selected) {
+    const failuresByPage = new Array(selected.length);
+    async function probeRoute(routePath, pageIndex) {
       report.checked++;
       const pagePath = typeof routePath === 'string' ? publicPath(routePath) : '[invalid path]';
       const seen = new Set();
       let pageFailures = 0;
+      const failureSamples = [];
       const addFailure = failure => {
-        const item = { pageIndex: report.checked - 1, page: pagePath, ...failure };
+        const item = { pageIndex, page: pagePath, ...failure };
         const key = JSON.stringify(item);
         if (seen.has(key)) return;
         seen.add(key);
         pageFailures++;
         report.failureCount++;
-        if (report.failures.length < maxFailures) report.failures.push(item);
+        if (maxFailures) {
+          failureSamples.push(item);
+          failureSamples.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+          if (failureSamples.length > maxFailures) failureSamples.pop();
+        }
       };
       let context;
       let closing = false;
+      const pending = new Set();
+      let requests = 0;
+      let lastNetworkActivity = performance.now();
       try {
         if (typeof routePath !== 'string' || !routePath.startsWith('/') || routePath.startsWith('//') || routePath.includes('\\')) {
           addFailure({ kind: 'invalidRoute' });
-          continue;
+          return;
         }
         const target = new URL(routePath, base);
         if (target.origin !== base) {
           addFailure({ kind: 'invalidRoute' });
-          continue;
+          return;
         }
         context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
         const blocked = new WeakSet();
+        context.on('request', request => {
+          try {
+            if (new URL(request.url()).origin !== base) return;
+            pending.add(request);
+            requests++;
+            lastNetworkActivity = performance.now();
+          } catch { /* Non-network URLs cannot prove an offline dependency. */ }
+        });
+        context.on('requestfinished', request => {
+          if (pending.delete(request)) lastNetworkActivity = performance.now();
+        });
         await context.route('**/*', async requestRoute => {
           const request = requestRoute.request();
           if (new URL(request.url()).origin === base) return requestRoute.continue();
@@ -168,6 +205,7 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
           });
         });
         context.on('requestfailed', request => {
+          if (pending.delete(request)) lastNetworkActivity = performance.now();
           if (!closing && !blocked.has(request)) addFailure({ kind: 'requestFailed', target: publicTarget(request.url(), base) });
         });
         context.on('page', page => {
@@ -177,16 +215,49 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
         const page = await context.newPage();
         try { await page.goto(target.href, { waitUntil: 'domcontentloaded', timeout: navigationTimeoutMs }); }
         catch (error) { addFailure({ kind: 'navigation', error: publicErrorType(error) }); }
-        await page.waitForTimeout(settleMs);
+        const observedAt = performance.now();
+        lastNetworkActivity = observedAt;
+        let stable = false;
+        while (true) {
+          const now = performance.now();
+          const elapsedMs = now - observedAt;
+          const state = browserObservationState({
+            elapsedMs, idleMs: now - lastNetworkActivity, pendingRequests: pending.size,
+            settleMs, maxObservationMs, quietMs,
+          });
+          if (state !== 'waiting') {
+            stable = state === 'stable';
+            break;
+          }
+          await page.waitForTimeout(Math.min(50, Math.max(1, maxObservationMs - elapsedMs)));
+        }
+        const elapsedMs = performance.now() - observedAt;
+        report.observation.observedPages++;
+        report.observation.pages.push({ pageIndex, elapsedMs, requests, pendingAtEnd: pending.size, stable });
+        if (!stable) {
+          report.observation.deadlinePages++;
+          addFailure({ kind: 'observationDeadline', pendingRequests: pending.size });
+        }
       } catch (error) {
         addFailure({ kind: 'probeError', error: publicErrorType(error) });
       } finally {
         closing = true;
         try { await context?.close(); }
         catch (error) { addFailure({ kind: 'probeError', error: publicErrorType(error) }); }
+        failuresByPage[pageIndex] = failureSamples;
         if (pageFailures) report.failed++;
       }
     }
+    let next = 0;
+    const workerCount = Math.min(existsSync(join(bundleDir, 'runtime-adapter')) ? 1 : 4, selected.length);
+    await Promise.all(Array.from({ length: workerCount }, async () => {
+      while (next < selected.length) {
+        const pageIndex = next++;
+        await probeRoute(selected[pageIndex], pageIndex);
+      }
+    }));
+    report.observation.pages.sort((a, b) => a.pageIndex - b.pageIndex);
+    report.failures = failuresByPage.flat().slice(0, maxFailures);
     report.truncated ||= report.failures.length < report.failureCount;
     return report;
   } finally {

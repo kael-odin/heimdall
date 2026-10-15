@@ -4,7 +4,7 @@
 
 本机旧产物已做[只读盘点](audits/2026-10-14/evidence/historical-inventory.md)：历史 atlas 可比较的 641 个 URL 中 397 个有对应克隆，62 份原工作区多视口验证均为旧口径。按 2026-10-15 最新验证器指纹的[隔离批处理快照](audits/2026-10-14/evidence/historical-v2-final-20261015/README.md)，407 个带克隆页中 **2 页完整测量**（`angular.dev/ai` 90.55% B、`home` 94.80% B）、**3 页未测成**（`apify.com/ideas`、`jobs`、`apify-instagram-scraper` 渲染未收敛）、**402 页待测**；另有 1 页 `no_clone`，不计入分母。旧的[四页已测快照](audits/2026-10-14/evidence/historical-v2-batch/README.md)只供追溯，不能沿用 Apify 旧分数。新批处理已支持超长页分段截图，但该页仍须解决采集完成条件。批处理只做三视口视觉验证，不包含交互；原件保持只读，运行状态在被 Git 忽略的 `core/workspace/_runs/historical-v2-batch/`。以下任务不得原地覆盖旧证据。
 
-本轮[公开页面独立交付验收](audits/2026-10-15/public-site-acceptance.md)显示：`example.org` 首页 1/1 完成克隆、三视口验证与隔离离线部署；`hobix.com/learn/examples/A01/` 的受限三页样本完成九视口验证、`root=landing` 严格离线导出及搬迁后断外联导航验收；`vite.dev` 的三页受限样本 3/3 克隆及验证，二级资源补抓后同站资源 322/322 可本地提供，但 28 处跨源资源引用、67 个未镜像链接和缺少域名根页仍阻断 `root=mirror` 严格导出。这些样本都不能证明任意站点已可完整复刻。
+本轮[公开页面独立交付验收](audits/2026-10-15/public-site-acceptance.md)显示：`example.org` 首页 1/1 完成克隆、三视口验证与隔离离线部署；`hobix.com/learn/examples/A01/` 的受限三页样本完成九视口验证、`root=landing` 严格离线导出及搬迁后断外联导航验收，新版有界浏览器探针复验 3/3 通过；`vite.dev` 的三页受限样本 3/3 克隆及验证，最新 `root=landing` 候选同站缺资源 0，但 3 处跨源广告脚本与 67 个未镜像链接仍阻断严格导出，`root=mirror` 另缺域名根页。这些样本都不能证明任意站点已可完整复刻。
 
 ## 主目标：独立站点镜像
 
@@ -16,7 +16,7 @@
 4. **兼容性矩阵**：用获授权的 SSR、SPA、长页、query/分页、认证、iframe/Shadow DOM、Canvas/WebGL 和实时请求站点逐类验收。每类包含缺页、缺资源和接口失败反例；所有分数对应同一版验证器与完整覆盖率。
 5. **部署验收**：在不含原工作区的干净环境运行 Node/Docker 包，阻断原站网络，完成关键路径、数据分发检查和回滚演练，再扩大站点样本。
 
-当前 `--strict` 已在静态和 HTTP 检查后加入 Chromium 逐页首次加载探测；外联请求、WebSocket、本地 4xx/5xx、脚本异常及未测页会阻断候选包发布，旧正式包保留。逐页探测默认覆盖全部包内路由，每页观察 500 毫秒；`health.coverage` 另对齐侦察 URL、克隆页与 live 路由。工作区有显式 `operation-plan.json` 时，还会在候选包内断网重放声明的动作与最终断言。未声明操作、延迟超过观察窗口的请求、登录和有状态业务仍未得到通用保证。
+当前 `--strict` 已在静态和 HTTP 检查后加入 Chromium 逐页断外联加载探测；外联请求、WebSocket、本地 4xx/5xx、脚本异常及未测页会阻断候选包发布，旧正式包保留。逐页探测默认覆盖全部包内路由，至少观察 3000 毫秒，再等待 500 毫秒网络安静，默认最长 8000 毫秒；到上限仍未安静则失败。普通包最多并行探测 4 页，适配器包顺序执行；`health.browserProbe.observation` 记录逐页观察结果，`health.coverage` 另对齐侦察 URL、克隆页与 live 路由。工作区有显式 `operation-plan.json` 时，还会在候选包内断网重放声明的动作与最终断言。未声明操作、延迟超过观察窗口的请求、登录和有状态业务仍未得到通用保证。
 
 严格导出已支持 CLI 和控制台的 `--all-discovered` 入队、对声明流程的源站只读对照、精确许可的 GET 回放、候选包凭据特征扫描，以及受控 SSR/SPA 包在移走源工作区后的 Node 断网浏览。侦察新增 robots 声明、递归及压缩 sitemap，并在 atlas 里记录页面数、深度与 sitemap 扫描预算；`health.coverage` 用同一已发现 URL 分母列出按当前默认配方估算的排除、实际入队、克隆、v2 验证和交付数量。预算触顶与扫描失败仍标为范围受限。`--compare-source` 逐流程核对请求的精确路径及查询、次数、状态与 MIME；许可 GET 另核对清洗后正文指纹。`--include-adapter` 为逐站有状态业务提供显式接管入口，只有已声明、已在离线操作计划中触达的路由才允许严格交付。本机严格探针不隔离适配器 Node 进程外联，`health.adapter.serverEgress=not-tested`；实际适配器必须另做无外联部署验收。Linux CI 已通过受控 SSR、SPA、数据驱动 SPA 和适配器卷持久化的 Docker 无外联网络验收（主分支提交 `75dceeb`）；本机 Docker 守护进程不可用。上述夹具与门禁仍不构成任意站点完整复刻。下一批按依赖顺序推进：
 

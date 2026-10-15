@@ -32,6 +32,43 @@ test('export target rejects root, siblings, escapes and symlinks without touchin
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('offline export preserves external pixels unless explicitly omitted', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-export-pixel-'));
+  try {
+    const host = 'fixture.test';
+    const live = join(dir, 'workspace', host, 'live');
+    const preserved = join(dir, 'deliverable', 'preserved');
+    const omitted = join(dir, 'deliverable', 'omitted');
+    mkdirSync(live, { recursive: true });
+    writeFileSync(join(live, 'index.html'), '<!doctype html><html><body>'
+      + '<img src="https://tracker.test/hit" width="1" height="1" style="display:none">'
+      + '<script src="https://cdn.test/app.js"></script>'
+      + '</body></html>');
+    const run = (...args) => spawnSync(process.execPath, [EXPORT, host, ...args], {
+      cwd: CORE, encoding: 'utf8', env: { ...process.env, HEIMDALL_DATA_DIR: dir }, timeout: 30_000,
+    });
+
+    const defaultResult = run('--offline', '--out', preserved);
+    assert.equal(defaultResult.status, 0, defaultResult.stderr + defaultResult.stdout);
+    const defaultHealth = JSON.parse(readFileSync(join(preserved, 'health.json'), 'utf8'));
+    assert.deepEqual(defaultHealth.nonvisualExternalPixels, { policy: 'preserve', files: 0, removed: 0 });
+    assert.match(readFileSync(join(preserved, 'site', 'live', 'index.html'), 'utf8'), /tracker\.test\/hit/);
+
+    const omitResult = run('--offline', '--omit-nonvisual-pixels', '--out', omitted);
+    assert.equal(omitResult.status, 0, omitResult.stderr + omitResult.stdout);
+    const omitHealth = JSON.parse(readFileSync(join(omitted, 'health.json'), 'utf8'));
+    assert.deepEqual(omitHealth.nonvisualExternalPixels, { policy: 'omit', files: 1, removed: 1 });
+    const omittedHtml = readFileSync(join(omitted, 'site', 'live', 'index.html'), 'utf8');
+    assert.doesNotMatch(omittedHtml, /tracker\.test\/hit/);
+    assert.match(omittedHtml, /cdn\.test\/app\.js/, 'external scripts cannot be omitted as pixels');
+    assert.equal(omitHealth.strictBlockers.externalAssets, 1, 'the external script remains a blocker');
+
+    const onlineResult = run('--omit-nonvisual-pixels', '--out', join(dir, 'deliverable', 'online'));
+    assert.equal(onlineResult.status, 2);
+    assert.match(onlineResult.stderr, /requires --offline/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('offline strict rejects dynamic, external and missing pages while preserving previous bundle', () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-export-strict-'));
   try {
@@ -90,10 +127,19 @@ test('offline strict rejects dynamic, external and missing pages while preservin
     assert.equal(goodHealth.browserProbe.checked, 1);
     assert.equal(goodHealth.browserProbe.failed, 0);
     assert.equal(goodHealth.browserProbe.untested, 0);
+    assert.equal(goodHealth.browserProbe.observation.minimumMs, 3_000);
+    assert.equal(goodHealth.browserProbe.observation.observedPages, 1);
     assert.equal(goodHealth.coverage.delivered, 1);
     assert.equal(existsSync(join(out, 'site', 'static', host, 'recon', 'atlas.json')), false);
     assert.doesNotMatch(readFileSync(join(out, 'health.json'), 'utf8'), /atlas-secret-title|atlas-secret-token/);
+    const configured = run('--offline', '--strict', '--browser-observe-ms', '3500', '--out', out);
+    assert.equal(configured.status, 0, configured.stderr + configured.stdout);
+    const configuredHealth = JSON.parse(readFileSync(join(out, 'health.json'), 'utf8'));
+    assert.equal(configuredHealth.browserProbe.observation.minimumMs, 3_500);
+    assert.ok(configuredHealth.browserProbe.observation.pages[0].elapsedMs >= 3_500);
     const acceptedHealth = readFileSync(join(out, 'health.json'));
+    assert.equal(run('--offline', '--strict', '--browser-observe-ms', '--out', out).status, 2,
+      'an incomplete observation option must not silently shorten the configured window');
     const failedStrictHealth = () => {
       const before = new Set(readdirSync(join(dir, 'deliverable')));
       const failed = run('--offline', '--strict', '--out', out);
@@ -110,6 +156,12 @@ test('offline strict rejects dynamic, external and missing pages while preservin
     assert.equal(dynamicFailure.strictBlockers.browserFailed, 1);
     assert.ok(dynamicFailure.browserProbe.failures.some(f => f.kind === 'http' && f.status === 404 && f.target === '/api/missing'));
     assert.doesNotMatch(JSON.stringify(dynamicFailure), /local-secret/);
+
+    writeFileSync(join(site, 'live', 'app.js'), "setTimeout(() => fetch('/api/late?token=late-secret').catch(() => {}), 2000);");
+    const delayedFailure = failedStrictHealth();
+    assert.equal(delayedFailure.strictBlockers.browserFailed, 1);
+    assert.ok(delayedFailure.browserProbe.failures.some(f => f.kind === 'http' && f.status === 404 && f.target === '/api/late'));
+    assert.doesNotMatch(JSON.stringify(delayedFailure), /late-secret/);
 
     writeFileSync(join(site, 'live', 'app.js'), "fetch('https://example.invalid/data?token=external-secret').catch(() => {});");
     const externalFailure = failedStrictHealth();

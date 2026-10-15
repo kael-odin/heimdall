@@ -102,6 +102,10 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 
 `actions` 支持 `navigate`、`click`、`fill`、`scroll`；`expect` 支持 `visible`、`hidden`、`text-includes`、`url`。每条流程必须有可观察的最终断言。严格导出会在候选包中断开外网重放这些流程，HTTP 错误、脚本错误、未执行动作或断言失败均阻断发布；`operationProbe` 记录脱敏的依赖与失败。计划文件及输入值不进入交付包。未提供计划时，`operationPlan.status=missing`，交互未验收。默认禁止提交控件和写入型请求；这些业务要由本地适配器实现并单独验证。
 
+严格导出还会在断外联浏览器中首载每个包内页面：默认至少观察 3 秒、等待 500 毫秒网络安静，最多观察 8 秒；上限时仍有未完成的本地请求或网络未安静会判失败。需要等待较晚启动的请求时可加 `--browser-observe-ms 5000`，最短观察期可设为 3000 至 15000 毫秒，实际策略与逐页时长见 `health.browserProbe.observation`。观察窗口外的请求和未声明的操作仍不属于通过范围。
+
+离线包默认保留隐藏像素节点，使跨源请求继续被严格门禁报告。只有明确接受这个降级时，才加 `--omit-nonvisual-pixels`：它仅省略属性受限、行内声明隐藏的跨源 1×1 图片，`health.nonvisualExternalPixels` 会记录 `preserve` 或 `omit` 策略及移除数。静态属性无法证明页面脚本不读取这些节点，也不能排除外部 CSS 覆盖隐藏声明；如省略，应对目标站做视觉和关键操作对照。脚本、可见图片及其他跨源资源仍按原门禁处理。
+
 加 `--compare-source` 会在获授权的源站运行同一操作计划，并把脱敏的源站结果与离线包结果写入 `health.sourceOperationProbe`。该开关要求 `--offline --strict`；源站不可达、源站流程失败或计划缺失都会阻断发布。`health.dependencyParity` 还按声明流程逐项核对源站与离线包的请求路径及查询、请求次数、响应状态和 MIME，报告仅公开类别和计数。它不比较静态资源正文，也不证明业务结果相同。源站采集阻断非只读 HTTP 方法与 WebSocket，因此不能用它证明提交、登录等写入业务等价；GET 在个别站点仍可能有业务副作用，只对已审阅的流程使用。没有该开关时，离线通过不代表已与源站交互对照。
 
 ### 本地业务适配器

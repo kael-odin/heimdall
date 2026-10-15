@@ -29,12 +29,13 @@ import { emit } from '../emit.mjs';
 import { buildEditManifest, renderEditManifestMd } from '../deliver/edit-manifest.mjs';
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { listLivePageRoutes, scanLiveBundle } from './health.mjs';
-import { healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, isStaticAsset } from './heal.mjs';
+import { healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, removeNonvisualExternalPixels, isStaticAsset } from './heal.mjs';
 import { diffChecksums, changesLine } from './changes.mjs';
 import { mb } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
 import { assertExportTarget, promoteCandidate } from './export-path.mjs';
-import { probeOfflineBundle, probeOfflineBrowserBundle, probeOfflineOperations } from './probe.mjs';
+import { probeOfflineBundle, probeOfflineBrowserBundle, probeOfflineOperations,
+  DEFAULT_BROWSER_OBSERVE_MS, MAX_BROWSER_OBSERVE_MS } from './probe.mjs';
 import { liveSnapshotPath, liveSnapshotCandidates } from './live-path.mjs';
 import { buildCoverageLedger } from './coverage.mjs';
 import { readOperationPlan } from './operation-plan.mjs';
@@ -56,7 +57,7 @@ const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--browser-observe-ms 3000..15000] [--omit-nonvisual-pixels] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -69,6 +70,15 @@ const OFFLINE = has('offline');
 const ROOT = argOf('root', 'landing') === 'mirror' ? 'mirror' : 'landing';
 const HEAL = has('heal');
 const STRICT = has('strict');
+const OMIT_NONVISUAL_PIXELS = has('omit-nonvisual-pixels');
+const browserObserveArg = argOf('browser-observe-ms', undefined);
+const BROWSER_OBSERVE_MS = Number(browserObserveArg ?? DEFAULT_BROWSER_OBSERVE_MS);
+if ((argv.includes('--browser-observe-ms') && browserObserveArg === undefined)
+  || !Number.isInteger(BROWSER_OBSERVE_MS)
+  || BROWSER_OBSERVE_MS < DEFAULT_BROWSER_OBSERVE_MS || BROWSER_OBSERVE_MS > MAX_BROWSER_OBSERVE_MS) {
+  console.error(`[export] --browser-observe-ms must be an integer from ${DEFAULT_BROWSER_OBSERVE_MS} to ${MAX_BROWSER_OBSERVE_MS}`);
+  process.exit(2);
+}
 const COMPARE_SOURCE = has('compare-source');
 const INCLUDE_READONLY_DATA = has('include-readonly-data');
 const MATERIALIZE = has('materialize-har');
@@ -78,6 +88,10 @@ const ALLOW_PRIVATE_EXPORT = has('allow-private-export');
 const dataPlan = INCLUDE_READONLY_DATA ? readDataPlan(BASE, origin) : { status: 'not-requested', urls: [] };
 if (STRICT && !OFFLINE) {
   console.error('[export] --strict requires --offline so the validated bundle cannot proxy to the source site');
+  process.exit(2);
+}
+if (OMIT_NONVISUAL_PIXELS && !OFFLINE) {
+  console.error('[export] --omit-nonvisual-pixels requires --offline');
   process.exit(2);
 }
 if (COMPARE_SOURCE && !STRICT) {
@@ -349,6 +363,9 @@ writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 const liveDir = join(siteDir, 'live');
 const staticDir = join(siteDir, 'static');
 const harIndex = indexHar(har.entries);
+const nonvisualPixels = OMIT_NONVISUAL_PIXELS
+  ? { policy: 'omit', ...removeNonvisualExternalPixels({ rootDir: siteDir, origin }) }
+  : { policy: 'preserve', files: 0, removed: 0 };
 emit({ kind: 'live-stage', stage: 'health', status: 'running' });
 let health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
 const assetsBefore = { ...health.assets };
@@ -411,6 +428,7 @@ if (HEAL && health.links.missing > 0) {
   }
 }
 if (materialized) health.materialized = materialized;
+health.nonvisualExternalPixels = nonvisualPixels;
 writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR（materialize 时仅剩必要回放体）
 
 health.assetsBefore = assetsBefore;
@@ -551,7 +569,9 @@ if (STRICT) {
     }
     if (!health.strictBlockers.runtimeMissing) {
       try {
-        health.browserProbe = await probeOfflineBrowserBundle(probeBundleDir, health.pageRoutes);
+        health.browserProbe = await probeOfflineBrowserBundle(probeBundleDir, health.pageRoutes, {
+          settleMs: BROWSER_OBSERVE_MS,
+        });
         health.strictBlockers.browserFailed = health.browserProbe.failed;
       } catch (e) {
         health.browserProbe = {
@@ -767,9 +787,9 @@ assets.externalAssets    站外静态资源（图片/CSS/脚本）→ 离线也�
 assets.external          站外引用总数（含 YouTube 嵌入、地图、统计脚本）
                          external − externalAssets 的差额 = 嵌入类内容，**无法本地化，属固有边界**
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
-strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器首次加载探测）
+strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器有界加载探测）
 coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
-browserProbe             逐页断外网首次加载结果；只观察短时间窗口，不证明点击、表单或登录可用
+browserProbe             逐页断外网首载结果；observation 写明最短窗口、安静期、总上限和逐页实测时间。上限前未安静会阻断发布；窗口外触发的请求及未声明操作仍未验证
 operationPlan            操作脚本声明数；missing 表示没有交互验收，脚本本身不进入交付包
 operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
 sourceOperationProbe     显式 --compare-source 时，源站同流程只读采集与脱敏对照；未运行不代表源站通过
