@@ -111,6 +111,8 @@ export async function probePublicPathAliases({
     resolvedLocal: 0,
     expectedMissing: 0,
     expectedMissingReferences: 0,
+    unsupportedExternalRedirects: 0,
+    unsupportedExternalRedirectReferences: 0,
     unexpected: 0,
     unexpectedReferences: 0,
     failed: 0,
@@ -138,7 +140,7 @@ export async function probePublicPathAliases({
           const next = location ? sameOriginTarget(location, origin, host) : null;
           await response.body?.cancel();
           if (!next) {
-            disposition = 'external-redirect';
+            disposition = 'unsupported-external-redirect';
             break;
           }
           if (localPathExists(liveDir, next.path, next.search)) {
@@ -186,6 +188,9 @@ export async function probePublicPathAliases({
     if (disposition === 'expected-missing') {
       report.expectedMissing++;
       report.expectedMissingReferences += target.references;
+    } else if (disposition === 'unsupported-external-redirect') {
+      report.unsupportedExternalRedirects++;
+      report.unsupportedExternalRedirectReferences += target.references;
     } else if (disposition === 'failed') {
       report.failed++;
       report.unexpectedReferences += target.references;
@@ -205,6 +210,7 @@ export async function probePublicPathAliases({
   }
   report.untested += Math.max(0, unique.size - maxTargets);
   if (report.failed || report.untested) report.status = 'partial';
+  else if (report.unsupportedExternalRedirectReferences) report.status = 'unsupported-detected';
   else if (report.unexpectedReferences) report.status = 'unexpected-detected';
   return { report, rewriteMap };
 }

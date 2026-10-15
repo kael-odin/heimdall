@@ -499,6 +499,7 @@ if (externalStaticApprovals) {
 let pathAliases = {
   status: 'not-detected', targets: 0, checked: 0, resolvedLocal: 0, expectedMissing: 0,
   expectedMissingReferences: 0, unexpected: 0, unexpectedReferences: 0, failed: 0,
+  unsupportedExternalRedirects: 0, unsupportedExternalRedirectReferences: 0,
   untested: 0, details: [],
 };
 if (HEAL && health.links.missing > 0) {
@@ -521,6 +522,7 @@ if (HEAL && health.links.missing > 0) {
       unexpected: pathAliases.unexpected + pathAliases.failed });
     console.log('[path-aliases] targets=' + pathAliases.targets + ' checked=' + pathAliases.checked
       + ' resolvedLocal=' + pathAliases.resolvedLocal + ' expectedMissing=' + pathAliases.expectedMissing
+      + ' unsupportedExternalRedirects=' + pathAliases.unsupportedExternalRedirects
       + ' unexpected=' + pathAliases.unexpected + ' failed=' + pathAliases.failed
       + ' rewrites=' + pathAliases.rewrites);
   }
@@ -608,7 +610,11 @@ health.strictBlockers = {
   externalStaticFailed: health.externalStatic?.failed ?? 0,
   externalStaticRemaining: health.externalStatic?.remainingExternal ?? 0,
   unsupportedRuntimeServices: health.thirdPartyServices.unsupportedRuntimeServices,
-  missingLinks: Math.max(0, health.links.missing - (health.pathAliases?.expectedMissingReferences ?? 0)),
+  unsupportedExternalRedirects: health.pathAliases?.unsupportedExternalRedirects ?? 0,
+  unsupportedExternalRedirectReferences: health.pathAliases?.unsupportedExternalRedirectReferences ?? 0,
+  missingLinks: Math.max(0, health.links.missing
+    - (health.pathAliases?.expectedMissingReferences ?? 0)
+    - (health.pathAliases?.unsupportedExternalRedirectReferences ?? 0)),
   mirrorRootMissing: STRICT && ROOT === 'mirror' && !mirrorRootCaptured ? 1 : 0,
   missingLivePages: health.liveMissing,
   discoveredUncloned: health.coverage.missingClone,
@@ -897,7 +903,7 @@ thirdPartyServices       已识别且不能靠静态抓取变成离线等价的�
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
 missingLinkDetails       未镜像链接的脱敏明细；按 source-document / path-alias / resource-link 分类，并列出引用页
 publicTextLinks          --heal 时补抓的公开文本文档/订阅源；报告目标预算、已捕获与未捕获分类。默认最多 128 个，可用 --public-text-links-max-targets 1..256 调整
-pathAliases              --heal 时探查的公开路径别名；源站 404/410 会改写到镜像命名空间并按可复现本地 404 处理，跨域跳转与未捕获页面仍阻断
+pathAliases              --heal 时探查的公开路径别名；源站 404/410 会改写到镜像命名空间并按可复现本地 404 处理，跨域跳转会单独归类为 unsupported-external-redirect 并阻断
 strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器有界加载探测）
 coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
 browserProbe             逐页断外网首载结果；observation 写明最短窗口、安静期、总上限和逐页实测时间。上限前未安静会阻断发布；窗口外触发的请求及未声明操作仍未验证

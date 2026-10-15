@@ -180,6 +180,12 @@ test('strict export captures public text links but still blocks an uncloned HTML
       response.end('<!doctype html><h1>Not Found</h1>');
       return;
     }
+    if (path === '/external/') {
+      response.statusCode = 302;
+      response.setHeader('location', 'https://elsewhere.test/page');
+      response.end();
+      return;
+    }
     const contents = {
       '/blog.rss': ['application/rss+xml', '<rss version="2.0"><channel><title>Blog</title></channel></rss>'],
       '/guide.md': ['text/markdown', '# Guide'],
@@ -255,6 +261,28 @@ test('strict export captures public text links but still blocks an uncloned HTML
   }
   assert.equal((await fetch(base + '/lm/' + host + '/gone/')).status, 404);
   assert.match(readFileSync(join(out, 'site', 'live', 'index.html'), 'utf8'), /href="\/lm\/public-text-fixture\.test\/gone\/"/);
+
+  put(join(site, 'live', 'index.html'), html + '<a href="/external/">External</a>');
+  const externalRejected = await runExport(host, out, dir, ['--heal']);
+  assert.equal(externalRejected.status, 1, externalRejected.output);
+  assert.deepEqual(readFileSync(join(out, 'health.json')), healthBytes,
+    'unsupported external redirects must not replace the accepted bundle');
+  const externalCandidate = readdirSync(join(dir, 'deliverable'))
+    .filter(name => name.startsWith('.candidate-'))
+    .map(name => join(dir, 'deliverable', name))
+    .filter(path => existsSync(join(path, 'health.json')))
+    .at(-1);
+  const externalHealth = JSON.parse(readFileSync(join(externalCandidate, 'health.json'), 'utf8'));
+  assert.equal(externalHealth.pathAliases.unsupportedExternalRedirects, 1);
+  assert.equal(externalHealth.pathAliases.unsupportedExternalRedirectReferences, 1);
+  assert.equal(externalHealth.pathAliases.details.find(item => item.path === '/external/').disposition,
+    'unsupported-external-redirect');
+  assert.equal(externalHealth.strictBlockers.unsupportedExternalRedirects, 1);
+  assert.equal(externalHealth.strictBlockers.unsupportedExternalRedirectReferences, 1);
+  assert.equal(externalHealth.strictBlockers.missingLinks, 0,
+    'an explicitly unsupported external redirect is not an unexpected missing link');
+  assert.match(readFileSync(join(externalCandidate, 'site', 'live', 'index.html'), 'utf8'),
+    /href="\/lm\/public-text-fixture\.test\/external\/"/);
 
   put(join(site, 'live', 'index.html'), html + '<a href="/next/">Next</a>');
   const rejected = await runExport(host, out, dir, ['--heal']);

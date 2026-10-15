@@ -33,18 +33,20 @@ test('path aliases preserve source 404 and resolve verified local redirects', as
       liveDir, host: HOST, origin: ORIGIN,
       targets: ['/features', '/missing', '/missing', '/external'], fetchImpl,
     });
-    assert.equal(report.status, 'unexpected-detected');
+    assert.equal(report.status, 'unsupported-detected');
     assert.equal(report.targets, 3);
     assert.equal(report.checked, 3);
     assert.equal(report.resolvedLocal, 1);
     assert.equal(report.expectedMissing, 1);
     assert.equal(report.expectedMissingReferences, 2);
-    assert.equal(report.unexpected, 1);
-    assert.equal(report.unexpectedReferences, 1);
+    assert.equal(report.unsupportedExternalRedirects, 1);
+    assert.equal(report.unsupportedExternalRedirectReferences, 1);
+    assert.equal(report.unexpected, 0);
+    assert.equal(report.unexpectedReferences, 0);
     assert.equal(report.failed, 0);
     assert.equal(report.untested, 0);
     assert.deepEqual(report.details.map(item => item.disposition).sort(),
-      ['expected-missing', 'external-redirect', 'resolved-local']);
+      ['expected-missing', 'resolved-local', 'unsupported-external-redirect']);
     assert.equal(rewriteMap.get('/features'), '/lm/x.test/guide/features/');
     assert.equal(rewriteMap.get('/missing'), '/lm/x.test/missing');
     assert.equal(rewriteMap.get('/external'), '/lm/x.test/external');
