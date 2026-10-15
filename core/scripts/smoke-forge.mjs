@@ -26,6 +26,14 @@ const FIXTURE_DIR = join(CORE, 'test', 'fixtures', 'site');
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 const log = (...a) => console.log('[smoke]', ...a);
 
+function waitForExit(child, timeoutMs = 10_000) {
+  return new Promise((resolve, reject) => {
+    if (child.exitCode !== null || child.signalCode !== null) return resolve();
+    const timer = setTimeout(() => reject(new Error('process did not exit before timeout')), timeoutMs);
+    child.once('exit', () => { clearTimeout(timer); resolve(); });
+  });
+}
+
 /**
  * 扫一棵目录树，找出所有含截图冻结样式的 HTML。
  * 冻结样式是 `page.addStyleTag()` 注入的、只为让截图可复现的东西 —— 它出现在任何产物里都是 bug：
@@ -316,7 +324,7 @@ async function main() {
     assert.ok(jobsBefore.history.length >= 3, 'job history should cover recon/forge/audit/watch, got ' + jobsBefore.history.length);
     assert.ok(existsSync(join(dataDir, 'jobs.db')), 'jobs.db must exist');
     engine.kill('SIGTERM');
-    await new Promise(r => setTimeout(r, 900));
+    await waitForExit(engine);
     const engine2 = spawn(process.execPath, ['src/engine-server.mjs', String(port)], {
       cwd: CORE,
       env: { ...process.env, HEIMDALL_DATA_DIR: dataDir, HEIMDALL_HOST: '127.0.0.1', HEIMDALL_LLM: '0' },
