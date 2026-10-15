@@ -52,6 +52,7 @@ import { readSiteIdentity, assertSiteOrigin } from '../site-origin.mjs';
 import { rewriteSnapshotMount } from './site-routing.mjs';
 import { inspectRuntimeAdapter } from './adapter-runtime.mjs';
 import { capturePublicTextLinks } from './public-text-links.mjs';
+import { buildThirdPartyServicesReport } from './third-party-services.mjs';
 import { canonUrl } from '../url-canon.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
@@ -486,6 +487,10 @@ if (externalStaticApprovals) {
 }
 if (materialized) health.materialized = materialized;
 health.nonvisualExternalPixels = nonvisualPixels;
+health.thirdPartyServices = buildThirdPartyServicesReport({
+  externalRefs: health.externalRefsTop,
+  unresolvedPaths: health.unresolvedPaths,
+});
 writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR（materialize 时仅剩必要回放体）
 
 health.assetsBefore = assetsBefore;
@@ -561,6 +566,7 @@ health.strictBlockers = {
   externalAssets: health.assets.externalAssets,
   externalStaticFailed: health.externalStatic?.failed ?? 0,
   externalStaticRemaining: health.externalStatic?.remainingExternal ?? 0,
+  unsupportedRuntimeServices: health.thirdPartyServices.unsupportedRuntimeServices,
   missingLinks: health.links.missing,
   mirrorRootMissing: STRICT && ROOT === 'mirror' && !mirrorRootCaptured ? 1 : 0,
   missingLivePages: health.liveMissing,
@@ -846,7 +852,9 @@ assets.externalAssets    站外静态资源（图片/CSS/脚本）→ 离线也�
 externalStatic            显式批准的跨源静态补抓结果；failed > 0 会阻断严格发布
 assets.external          站外引用总数（含 YouTube 嵌入、地图、统计脚本）
                          external − externalAssets 的差额 = 嵌入类内容，**无法本地化，属固有边界**
+thirdPartyServices       已识别且不能靠静态抓取变成离线等价的运行时服务（当前含 CarbonAds、YouTube）；逐服务给出类别、阻断口径、引用数与页面
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
+missingLinkDetails       未镜像链接的脱敏明细；按 source-document / path-alias / resource-link 分类，并列出引用页
 strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器有界加载探测）
 coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
 browserProbe             逐页断外网首载结果；observation 写明最短窗口、安静期、总上限和逐页实测时间。上限前未安静会阻断发布；窗口外触发的请求及未声明操作仍未验证

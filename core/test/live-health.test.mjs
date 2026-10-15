@@ -122,6 +122,44 @@ test('live/health: scan classifies local/har/unresolved/dynamic/external and mis
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('live/health: missing links are classified without leaking query parameters', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-missing-details-'));
+  try {
+    mkdirSync(join(dir, 'live', 'guide'), { recursive: true });
+    writeFileSync(join(dir, 'live', 'guide', 'index.html'), [
+      '<a href="/config.md?token=private">Config source</a>',
+      '<a href="/config.md">Config source again</a>',
+      '<a href="/features?utm_source=internal">Features alias</a>',
+      '<a href="/missing.pdf?token=private">PDF</a>',
+    ].join(''));
+    const report = scanLiveBundle({ liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test' });
+    assert.equal(report.links.missing, 4);
+    assert.deepEqual(report.missingLinkDetails, [
+      { path: '/config.md', kind: 'source-document', references: 2, pages: ['/guide/'] },
+      { path: '/features', kind: 'path-alias', references: 1, pages: ['/guide/'] },
+      { path: '/missing.pdf', kind: 'resource-link', references: 1, pages: ['/guide/'] },
+    ]);
+    assert.equal(report.missingLinkDetailsTruncated, false);
+    assert.doesNotMatch(JSON.stringify(report.missingLinkDetails), /private|utm_source/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/health: external refs preserve serving-relevant tag evidence', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-external-details-'));
+  try {
+    mkdirSync(join(dir, 'live'), { recursive: true });
+    writeFileSync(join(dir, 'live', 'index.html'),
+      '<iframe src="https://www.youtube-nocookie.com/embed/demo"></iframe>'
+      + '<script src="https://cdn.carbonads.com/carbon.js?serve=demo"></script>');
+    const report = scanLiveBundle({ liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test' });
+    const byHost = new Map(report.externalRefsTop.map(ref => [new URL(ref.url).hostname, ref]));
+    assert.deepEqual(byHost.get('www.youtube-nocookie.com').tags, ['iframe']);
+    assert.equal(byHost.get('www.youtube-nocookie.com').required, false);
+    assert.deepEqual(byHost.get('cdn.carbonads.com').tags, ['script']);
+    assert.equal(byHost.get('cdn.carbonads.com').required, true);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('live/health: relative links from a trailing-slash page resolve under that directory', () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-relative-'));
   const liveDir = join(dir, 'live');

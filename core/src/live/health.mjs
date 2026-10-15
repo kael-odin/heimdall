@@ -24,6 +24,8 @@ const ASSET_REL = /stylesheet|icon|preload|modulepreload|manifest|prefetch/i;
 const MAX_UNRESOLVED = 200;
 const MAX_FILES = 4000;
 const MAX_PROBES = 10000;
+const MAX_MISSING_LINK_DETAILS = 5000;
+const MAX_EXTERNAL_REF_DETAILS = 5000;
 
 const stripHash = (u) => String(u ?? '').split('#')[0].trim();
 const decodeEntities = (u) => String(u).replace(/&amp;/gi, '&');
@@ -114,15 +116,15 @@ export function extractRefs(text, kind) {
   for (const m of text.matchAll(/<(a|link|script|img|source|video|audio|iframe|embed|track|input)\b[^>]*>/gi)) {
     const tag = m[0];
     const name = m[1].toLowerCase();
-    if (name === 'a') { const h = attr(tag, 'href'); if (h) out.push({ url: h, kind: 'link' }); continue; }
+    if (name === 'a') { const h = attr(tag, 'href'); if (h) out.push({ url: h, kind: 'link', tag: name }); continue; }
     if (name === 'link') {
       const h = attr(tag, 'href');
-      if (h) out.push({ url: h, kind: ASSET_REL.test(attr(tag, 'rel') ?? '') ? 'asset' : 'link', required: true });
+      if (h) out.push({ url: h, kind: ASSET_REL.test(attr(tag, 'rel') ?? '') ? 'asset' : 'link', required: true, tag: name });
       continue;
     }
-    for (const n of ['src', 'poster']) { const v = attr(tag, n); if (v) out.push({ url: v, kind: 'asset', required: !['iframe', 'embed'].includes(name) }); }
+    for (const n of ['src', 'poster']) { const v = attr(tag, n); if (v) out.push({ url: v, kind: 'asset', required: !['iframe', 'embed'].includes(name), tag: name }); }
     const ss = attr(tag, 'srcset');
-    if (ss) for (const part of ss.split(',')) { const u = part.trim().split(/\s+/)[0]; if (u) out.push({ url: u, kind: 'asset', required: true }); }
+    if (ss) for (const part of ss.split(',')) { const u = part.trim().split(/\s+/)[0]; if (u) out.push({ url: u, kind: 'asset', required: true, tag: name }); }
   }
   // Inline CSS is part of the rendered page just like a linked stylesheet.
   // Scan it with the same tokenizer so nested url() inside data URIs is ignored.
@@ -158,7 +160,7 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir, onMiss
   const pageUrl = new URL(pagePath, origin);
   const queue = [{ path: pageUrl.pathname, search: pageUrl.search, kind: 'html', base: new URL('.', pageUrl).pathname }];
   const out = {
-    assets: { total: 0, local: 0, har: 0, unresolvedCount: 0, dynamic: 0, unresolved: [], external: 0, externalAssetUrls: [] },
+    assets: { total: 0, local: 0, har: 0, unresolvedCount: 0, dynamic: 0, unresolved: [], external: 0, externalAssetUrls: [], externalRefs: [] },
     links: { total: 0, local: 0, missing: [] },
     probePaths: new Set(),
   };
@@ -192,6 +194,7 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir, onMiss
         externalUrl.search = '';
         const clean = externalUrl.href.slice(0, 300);
         if (ref.required || ASSET_EXT.test(raw)) out.assets.externalAssetUrls.push(clean);
+        out.assets.externalRefs.push({ url: clean, required: Boolean(ref.required), tag: ref.tag ?? null });
         continue;
       }
       const target = (r.path || '/') + (r.search || '');
@@ -248,6 +251,8 @@ export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = nu
   const pages = listLivePageRoutes(liveDir, origin, queryPages);
   const details = [];
   const externalAssets = new Map();
+  const externalRefs = new Map();
+  const missingLinks = new Map();
   const assets = { total: 0, local: 0, har: 0, unresolved: 0, dynamic: 0, external: 0, externalAssets: 0 };
   const unresolvedPaths = new Set();
   const probePaths = new Set(pages);
@@ -267,9 +272,29 @@ export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = nu
     assets.unresolved += r.assets.unresolvedCount;
     assets.dynamic += r.assets.dynamic ?? 0;
     for (const u of r.assets.unresolved) { if (unresolvedPaths.size < 5000) unresolvedPaths.add(u); }
+    for (const ref of r.assets.externalRefs) {
+      if (externalRefs.size >= MAX_EXTERNAL_REF_DETAILS) break;
+      const cur = externalRefs.get(ref.url) ?? { url: ref.url, references: 0, required: ref.required, tags: new Set(), pages: [] };
+      cur.references++;
+      cur.tags.add(ref.tag ?? 'asset');
+      const publicPath = pagePath.split('?')[0];
+      if (cur.pages.length < 20 && !cur.pages.includes(publicPath)) cur.pages.push(publicPath);
+      externalRefs.set(ref.url, cur);
+    }
     links.total += r.links.total;
     links.local += r.links.local;
     links.missing += r.links.missing.length;
+    for (const target of r.links.missing) {
+      if (missingLinks.size >= MAX_MISSING_LINK_DETAILS) break;
+      const path = target.split('?')[0];
+      const kind = /\.(?:md|markdown|txt|rss|atom|xml)$/i.test(path) ? 'source-document'
+        : !extname(path) ? 'path-alias' : 'resource-link';
+      const cur = missingLinks.get(path) ?? { path, kind, references: 0, pages: [] };
+      cur.references++;
+      const publicPath = pagePath.split('?')[0];
+      if (cur.pages.length < 20 && !cur.pages.includes(publicPath)) cur.pages.push(publicPath);
+      missingLinks.set(path, cur);
+    }
     if (r.assets.unresolvedCount) {
       details.push({ page: pagePath.split('?')[0], unresolvedCount: r.assets.unresolvedCount, unresolved: r.assets.unresolved, refs: { total: r.assets.total, local: r.assets.local, har: r.assets.har } });
     }
@@ -296,5 +321,8 @@ export function scanLiveBundle({ liveDir, host, origin, harIndex, staticDir = nu
     scanTruncated,
     details: details.slice(0, 40),
     externalAssetsTop: [...externalAssets.values()].slice(0, 25),
+    externalRefsTop: [...externalRefs.values()].map(ref => ({ ...ref, tags: [...ref.tags] })).slice(0, 100),
+    missingLinkDetails: [...missingLinks.values()].sort((a, b) => b.references - a.references || a.path.localeCompare(b.path)),
+    missingLinkDetailsTruncated: missingLinks.size >= MAX_MISSING_LINK_DETAILS,
   };
 }
