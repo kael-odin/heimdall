@@ -2065,7 +2065,27 @@ const server = createServer((req, res) => {
 });
 server.listen(PORT, BIND, () => console.log(`engine-server @ http://${BIND}:${PORT}`));
 
-// 优雅退出：关闭持久化存储（Docker stop / Ctrl-C）
-const shutdown = () => { try { jobStore?.close(); } catch {} process.exit(0); };
+// 优雅退出：先停掉任务子进程，再关闭持久化存储（Docker stop / Ctrl-C）。
+// 存储盘点、克隆、导出都是子进程；只杀引擎会让它们继续写数据目录，
+// 测试里表现为临时目录 ENOTEMPTY，生产里则是孤儿任务继续占资源。
+let shuttingDown = false;
+const shutdown = async () => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  server.close();
+  const running = [...tasks.values()].filter(t => t.status === 'running' && t.child && t.child.exitCode === null);
+  await Promise.all(running.map(t => new Promise(resolve => {
+    t.cancelRequested = true;
+    t.child.once('exit', resolve);
+    killTree(t.child, 'SIGTERM');
+    const forceKill = setTimeout(() => {
+      killTree(t.child, 'SIGKILL');
+      resolve();
+    }, 1500);
+    t.child.once('exit', () => clearTimeout(forceKill));
+  })));
+  try { jobStore?.close(); } catch {}
+  process.exit(0);
+};
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
