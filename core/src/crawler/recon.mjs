@@ -31,6 +31,10 @@ if (!Number.isSafeInteger(MAX_PAGES) || MAX_PAGES < 1 || !Number.isSafeInteger(M
   console.error('[recon] maxPages must be a positive integer and maxDepth a nonnegative integer');
   process.exit(2);
 }
+// A quiet page can finish at minMs; links appearing later remain outside this bounded scan.
+const LINK_OBSERVE_MIN_MS = 1_200;
+const LINK_OBSERVE_QUIET_MS = 350;
+const LINK_OBSERVE_MAX_MS = 3_000;
 function hostOf(u) { return new URL(u).hostname; }
 function stripWww(h) { return h.replace(/^www\./, ''); }
 function pathOf(u) { try { return new URL(u).pathname.replace(/\/$/, '') || '/'; } catch { return '/'; } }
@@ -99,7 +103,12 @@ await restoreSessionStorage(ctx, stripWww(hostOf(ORIGIN)));
 const nodes = new Map();   // url -> node
 const failures = [];       // 失败页清单（诚实记录，不静默丢弃）
 const edges = [];          // {from,to} (url)
+const redirects = new Map(); // one navigation's source URL -> its observed final URL
+const directEntryVerified = new Set();
 const depthSkipped = new Set();
+let linkObservedPages = 0;
+let linkObservationTimedOutPages = 0;
+let documentMimeInferredPages = 0;
 // 双队列：BFS 发现优先（保证结构层页面入图），sitemap 仅作补充
 const bfsQueue = [{ url: canonUrl(LANDING), depth: 0 }];
 const smQueue = [];
@@ -108,57 +117,128 @@ for (const u of sitemapSame) smQueue.push({ url: u, depth: 99 });
 
 // 节点 id 用 url 的稳定哈希（实现与理由见 ../url-canon.mjs 的 stableNodeId）：
 // 此前是自增序号，并发下 id 跟着"谁先加载完"漂移，同一个站点两次侦察结果对不上。
-const addNode = (url, depth, title, seoLite, features) => {
-  if (nodes.has(url)) return;
+const addNode = (url, depth, title, seoLite, features, clientRouteUnverified) => {
+  if (nodes.has(url)) return null;
   const path = pathOf(url);
-  nodes.set(url, {
+  const node = {
     id: stableNodeId(url), url, path,
     title: title || path,
     type: classifyPath(path, features, EXTRA_RULES),
     depth, seoLite,
-  });
+    ...(clientRouteUnverified ? { directNavigation: 'unverified-client-route' } : {}),
+  };
+  nodes.set(url, node);
+  return node;
 };
 
+async function observeRenderedLinks(page) {
+  return page.evaluate(async ({ origin, minMs, quietMs, maxMs }) => {
+    const readLinks = () => {
+      const found = new Set();
+      for (const anchor of document.querySelectorAll('a[href]')) {
+        try {
+          const url = new URL(anchor.getAttribute('href'), location.href);
+          if (!['http:', 'https:'].includes(url.protocol) || url.origin !== origin
+            || url.username || url.password
+            || /\.(?:pdf|zip|png|jpe?g|svg|mp4|xml|json)$/i.test(url.pathname)) continue;
+          url.hash = '';
+          found.add(url.href);
+        } catch { /* Invalid links are not crawl targets. */ }
+      }
+      return [...found].sort();
+    };
+    const started = performance.now();
+    let changedAt = started;
+    let links = readLinks();
+    let signature = location.href.split('#')[0] + '\n' + links.join('\n');
+    while (true) {
+      const now = performance.now();
+      if (now - started >= minMs && now - changedAt >= quietMs) {
+        return { links, timedOut: false };
+      }
+      if (now - started >= maxMs) return { links, timedOut: true };
+      await new Promise(resolve => setTimeout(resolve, Math.min(100, maxMs - (now - started))));
+      const next = readLinks();
+      const nextSignature = location.href.split('#')[0] + '\n' + next.join('\n');
+      if (nextSignature !== signature) {
+        links = next;
+        signature = nextSignature;
+        changedAt = performance.now();
+      }
+    }
+  }, { origin: ORIGIN, minMs: LINK_OBSERVE_MIN_MS,
+    quietMs: LINK_OBSERVE_QUIET_MS, maxMs: LINK_OBSERVE_MAX_MS });
+}
+
 async function visit({ url, depth }) {
-  if (nodes.has(url)) return;   // sitemap 重复页/重复访问兜底
+  if (nodes.has(url) && nodes.get(url).directNavigation !== 'unverified-client-route') return;
   const page = await ctx.newPage();
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 });
-    await page.waitForTimeout(400);
-    const title = await page.title().catch(() => '');
-    // SEO 轻量画像（无额外请求，纯 DOM 查询）
-    const seoLite = await page.evaluate(() => ({
-      title: document.title.slice(0, 200),
-      description: document.querySelector('meta[name="description"]')?.content?.slice(0, 200) ?? '',
-      h1Count: document.querySelectorAll('h1').length,
-      imgCount: document.querySelectorAll('img').length,
-      imgNoAlt: document.querySelectorAll('img:not([alt])').length,
-      ogTitle: document.querySelector('meta[property="og:title"]')?.content?.slice(0, 120) ?? '',
-      canonical: !!document.querySelector('link[rel="canonical"]'),
-      lang: document.documentElement.lang || '',
-    })).catch(() => null);
-    const features = await readFeatures(page);
-    addNode(url, depth, title, seoLite, features);
-    const node = nodes.get(url);
-    emit({ kind: 'page', ...node });
-    // 缩略图（供星图 hover）
-    await page.screenshot({ path: join(THUMBS, `${node.id}.png`), clip: { x: 0, y: 0, width: 640, height: 400 } }).catch(() => {});
+    const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 });
+    if (!response || response.status() < 200 || response.status() >= 300
+      || response.status() === 204 || response.status() === 205) {
+      throw new Error(`HTTP ${response?.status() ?? 'no-response'}`);
+    }
+    const initialLanded = canonUrl(page.url());
+    if (!initialLanded || new URL(initialLanded).origin !== ORIGIN) throw new Error('navigation left site origin');
+    const headerMime = response.headers()['content-type']?.split(';', 1)[0]?.trim().toLowerCase();
+    const documentMime = headerMime || await page.evaluate(() => document.contentType).catch(() => '');
+    if (documentMime !== 'text/html' && documentMime !== 'application/xhtml+xml') {
+      throw new Error(`non-HTML response (${documentMime || 'unknown MIME'})`);
+    }
+    const documentUrl = canonUrl(response.url());
+    directEntryVerified.add(documentUrl);
+    if (nodes.has(documentUrl)) delete nodes.get(documentUrl).directNavigation;
+    if (nodes.has(initialLanded) && nodes.get(initialLanded).directNavigation !== 'unverified-client-route') {
+      if (initialLanded !== url) redirects.set(url, initialLanded);
+      bfsSeen.add(initialLanded);
+      return;
+    }
+    const observation = await observeRenderedLinks(page);
+    linkObservedPages++;
+    if (observation.timedOut) linkObservationTimedOutPages++;
+    const landed = canonUrl(page.url());
+    if (!landed || new URL(landed).origin !== ORIGIN) throw new Error('navigation left site origin');
+    const clientRouteUnverified = landed !== documentUrl && !directEntryVerified.has(landed);
+    if (landed !== url) redirects.set(url, landed);
+    bfsSeen.add(landed);
+    let node = nodes.get(landed);
+    if (!node) {
+      const title = await page.title().catch(() => '');
+      // SEO 轻量画像（无额外请求，纯 DOM 查询）
+      const seoLite = await page.evaluate(() => ({
+        title: document.title.slice(0, 200),
+        description: document.querySelector('meta[name="description"]')?.content?.slice(0, 200) ?? '',
+        h1Count: document.querySelectorAll('h1').length,
+        imgCount: document.querySelectorAll('img').length,
+        imgNoAlt: document.querySelectorAll('img:not([alt])').length,
+        ogTitle: document.querySelector('meta[property="og:title"]')?.content?.slice(0, 120) ?? '',
+        canonical: !!document.querySelector('link[rel="canonical"]'),
+        lang: document.documentElement.lang || '',
+      })).catch(() => null);
+      const features = await readFeatures(page);
+      const added = addNode(landed, depth, title, seoLite, features, clientRouteUnverified);
+      node = added ?? nodes.get(landed);
+      if (added) {
+        if (!headerMime) documentMimeInferredPages++;
+        emit({ kind: 'page', ...node });
+        // 缩略图（供星图 hover）
+        await page.screenshot({ path: join(THUMBS, `${node.id}.png`), clip: { x: 0, y: 0, width: 640, height: 400 } }).catch(() => {});
+      }
+    }
+    if (!clientRouteUnverified) delete node.directNavigation;
 
     if (nodes.size >= MAX_PAGES) return;
-    const links = await page.evaluate((o) =>
-      [...document.querySelectorAll('a[href]')]
-        .map(a => { try { return new URL(a.getAttribute('href'), location.href).href.split('#')[0]; } catch { return null; } })
-        .filter(u => u && new URL(u).origin === o && !/\.(pdf|zip|png|jpe?g|svg|mp4|xml|json)$/i.test(u)), ORIGIN);
-    const canon = [...new Set(links.map(canonUrl).filter(Boolean))];
+    const canon = [...new Set(observation.links.map(canonUrl).filter(Boolean))];
     if (depth >= MAX_DEPTH) {
       for (const to of canon) if (!bfsSeen.has(to)) depthSkipped.add(to);
       return;
     }
     for (const to of canon) {
-      edges.push({ from: url, to });
+      edges.push({ from: landed, to });
       if (!bfsSeen.has(to)) { bfsSeen.add(to); bfsQueue.push({ url: to, depth: depth + 1 }); }
     }
-    emit({ kind: 'edges', from: url, tos: canon.slice(0, 40) });
+    emit({ kind: 'edges', from: landed, tos: canon.slice(0, 40) });
   } catch (e) {
     log('[visit-fail]', url.slice(0, 60), String(e).slice(0, 100));
     failures.push({ url, reason: String(e).slice(0, 200) });
@@ -201,11 +281,13 @@ const inGraph = (u) => nodes.has(u);
 const cleanEdges = [];
 const edgeSeen = new Set();
 for (const e of edges) {
-  if (!inGraph(e.from) || !inGraph(e.to) || e.from === e.to) continue;
-  const key = e.from + '|' + e.to;
+  const from = redirects.get(e.from) ?? e.from;
+  const to = redirects.get(e.to) ?? e.to;
+  if (!inGraph(from) || !inGraph(to) || from === to) continue;
+  const key = from + '|' + to;
   if (edgeSeen.has(key)) continue;
   edgeSeen.add(key);
-  cleanEdges.push({ from: nodes.get(e.from).id, to: nodes.get(e.to).id });
+  cleanEdges.push({ from: nodes.get(from).id, to: nodes.get(to).id });
 }
 
 // ---------- 4. atlas.json ----------
@@ -221,7 +303,12 @@ const atlas = {
   failures,
   generatedAt: new Date().toISOString(),
   meta: { pages: nodes.size, edges: sortedEdges.length, sitemapUrls: sitemapSame.length, sitemap: sitemap.stats,
-    maxPages: MAX_PAGES, maxDepth: MAX_DEPTH, depthLimitReached: depthLimitUrls > 0, depthLimitUrls },
+    maxPages: MAX_PAGES, maxDepth: MAX_DEPTH, depthLimitReached: depthLimitUrls > 0, depthLimitUrls,
+    renderedLinks: { minMs: LINK_OBSERVE_MIN_MS, quietMs: LINK_OBSERVE_QUIET_MS,
+      maxMs: LINK_OBSERVE_MAX_MS, observedPages: linkObservedPages,
+      timedOutPages: linkObservationTimedOutPages },
+    documentMimeInferredPages,
+    clientRouteUnverifiedPages: sortedNodes.filter(node => node.directNavigation === 'unverified-client-route').length },
   nodes: sortedNodes,
   edges: sortedEdges,
 };
