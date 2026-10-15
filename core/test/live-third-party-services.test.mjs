@@ -66,3 +66,34 @@ test('ordinary outbound service links are not runtime blockers', () => {
   assert.equal(report.unsupportedRuntimeServices, 0);
   assert.deepEqual(report.services, []);
 });
+
+test('browser-probe failures expose runtime-only services', () => {
+  const report = buildThirdPartyServicesReport({
+    browserProbe: {
+      failures: [
+        { kind: 'externalRequest', target: 'https://api.iconify.design', page: '/' },
+        { kind: 'externalRequest', target: 'https://api.simplesvg.com', page: '/' },
+        { kind: 'externalRequest', target: 'https://sponsors.vite.dev', page: '/guide/' },
+        { kind: 'externalRequest', target: 'http://cdn.carbonads.com', page: '/blog/' },
+        { kind: 'externalRequest', target: 'https://www.youtube.com', page: '/blog/announcing-vite6/' },
+        { kind: 'externalRequest', target: 'https://unknown.example.org', page: '/blog/' },
+        { kind: 'http', status: 404, target: '/missing.riv', page: '/blog/' },
+      ],
+    },
+  });
+
+  assert.equal(report.status, 'unsupported-runtime-detected');
+  assert.equal(report.unsupportedRuntimeServices, 5);
+  assert.deepEqual(report.services.map(service => ({
+    id: service.id,
+    kind: service.kind,
+    browserReferences: service.browserReferences,
+    browserPages: service.browserPages,
+  })), [
+    { id: 'carbonads', kind: 'advertising', browserReferences: 1, browserPages: ['/blog/'] },
+    { id: 'external-unknown-example-org', kind: 'external-runtime', browserReferences: 1, browserPages: ['/blog/'] },
+    { id: 'iconify', kind: 'icon-api', browserReferences: 2, browserPages: ['/'] },
+    { id: 'vite-sponsors', kind: 'sponsorship-widget', browserReferences: 1, browserPages: ['/guide/'] },
+    { id: 'youtube', kind: 'video-embed', browserReferences: 1, browserPages: ['/blog/announcing-vite6/'] },
+  ]);
+});

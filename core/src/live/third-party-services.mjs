@@ -1,5 +1,11 @@
 const KNOWN_RUNTIME_SERVICES = [
   {
+    id: 'iconify',
+    hosts: ['api.iconify.design', 'api.simplesvg.com', 'api.unisvg.com'],
+    kind: 'icon-api',
+    disposition: 'unsupported-runtime',
+  },
+  {
     id: 'carbonads',
     hosts: ['carbonads.com', 'carbonads.net'],
     kind: 'advertising',
@@ -9,6 +15,12 @@ const KNOWN_RUNTIME_SERVICES = [
     id: 'youtube',
     hosts: ['youtube.com', 'youtube-nocookie.com'],
     kind: 'video-embed',
+    disposition: 'unsupported-runtime',
+  },
+  {
+    id: 'vite-sponsors',
+    hosts: ['sponsors.vite.dev'],
+    kind: 'sponsorship-widget',
     disposition: 'unsupported-runtime',
   },
 ];
@@ -45,8 +57,31 @@ function addPage(entry, pages, maximum = 20) {
   if (page && !entry.pages.includes(page) && entry.pages.length < maximum) entry.pages.push(page);
 }
 
+function dynamicServiceForHostname(hostname) {
+  const host = String(hostname).toLowerCase().replace(/\.$/, '');
+  if (!host || !/^[a-z0-9.-]+$/.test(host)) return null;
+  return {
+    id: 'external-' + host.replaceAll('.', '-'),
+    hosts: [host],
+    kind: 'external-runtime',
+    disposition: 'unsupported-runtime',
+  };
+}
+
+function addBrowserEvidence(services, service, page) {
+  const entry = services.get(service.id) ?? serviceEntry(service);
+  if (!('browserReferences' in entry)) {
+    entry.browserReferences = 0;
+    entry.browserPages = [];
+  }
+  entry.browserReferences++;
+  addPage(entry, page, 20);
+  entry.browserPages = [...entry.pages];
+  services.set(service.id, entry);
+}
+
 /** Build a privacy-safe report of runtime services that cannot be made offline-equivalent by static capture. */
-export function buildThirdPartyServicesReport({ externalRefs = [], unresolvedPaths = [] } = {}) {
+export function buildThirdPartyServicesReport({ externalRefs = [], unresolvedPaths = [], browserProbe = null } = {}) {
   const services = new Map();
   const evidence = new Map();
 
@@ -81,10 +116,23 @@ export function buildThirdPartyServicesReport({ externalRefs = [], unresolvedPat
     services.set(service.id, entry);
   }
 
+  if (browserProbe && Array.isArray(browserProbe.failures)) {
+    for (const failure of browserProbe.failures) {
+      if (failure?.kind !== 'externalRequest') continue;
+      let url;
+      try { url = new URL(String(failure.target)); } catch { continue; }
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') continue;
+      const service = serviceForHostname(url.hostname) ?? dynamicServiceForHostname(url.hostname);
+      if (!service) continue;
+      addBrowserEvidence(services, service, failure.page);
+    }
+  }
+
   const list = [...services.values()].sort((a, b) => a.id.localeCompare(b.id));
   return {
     status: list.length ? 'unsupported-runtime-detected' : 'none-detected',
     unsupportedRuntimeServices: list.length,
     services: list,
+    ...(browserProbe ? { browserEvidenceTruncated: browserProbe.truncated === true } : {}),
   };
 }

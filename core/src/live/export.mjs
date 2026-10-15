@@ -761,6 +761,12 @@ if (STRICT) {
       }
     } else health.browserProbe.skipped = 'HTTP probe failed';
   }
+  health.thirdPartyServices = buildThirdPartyServicesReport({
+    externalRefs: health.externalRefsTop,
+    unresolvedPaths: health.unresolvedPaths,
+    browserProbe: health.browserProbe,
+  });
+  health.strictBlockers.unsupportedRuntimeServices = health.thirdPartyServices.unsupportedRuntimeServices;
   health.strictBlockers.browserUntested = health.browserProbe.untested;
   const offlineReadOnlyKeys = new Set();
   const offlineFlowReadOnlyEvidence = new Map();
@@ -966,7 +972,7 @@ assets.externalAssets    站外静态资源（图片/CSS/脚本）→ 离线也�
 externalStatic            显式批准的跨源静态补抓结果；failed > 0 会阻断严格发布
 assets.external          站外引用总数（含 YouTube 嵌入、地图、统计脚本）
                          external − externalAssets 的差额 = 嵌入类内容，**无法本地化，属固有边界**
-thirdPartyServices       已识别且不能靠静态抓取变成离线等价的运行时服务（当前含 CarbonAds、YouTube）；逐服务给出类别、阻断口径、引用数与页面
+thirdPartyServices       已识别且不能靠静态抓取变成离线等价的运行时服务；综合静态引用与 browserProbe 的 externalRequest 证据，逐服务给出类别、阻断口径、引用数与页面
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
 missingLinkDetails       未镜像链接的脱敏明细；按 source-document / path-alias / resource-link 分类，并列出引用页
 publicTextLinks          --heal 时补抓的公开文本文档/订阅源；报告目标预算、已捕获与未捕获分类。默认最多 128 个，可用 --public-text-links-max-targets 1..256 调整

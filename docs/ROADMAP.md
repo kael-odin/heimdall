@@ -10,6 +10,8 @@
 
 同日[公开文本与路径别名奇偶性](audits/2026-10-16/public-text-and-alias-parity.md)复验把公开文本预算提升为默认 128 / 上限 256，修正 `config.md` 误判私有路径的问题；Vite 44/44 个公开文本目标全部捕获，12 个 `.md` 缺口消失。7 个源站 404 别名共 10 次引用被改写到镜像命名空间并按可复现 404 处理。随后代码已把跨域别名跳转升级为独立的 `unsupported-external-redirect` 策略（见[策略记录](audits/2026-10-16/unsupported-external-redirect-policy.md)），可在 strict 下显式接受并保留证据。CarbonAds 已支持默认阻断、显式 `--remove-carbonads` 降级（见[策略记录](audits/2026-10-16/carbonads-removal-policy.md)）；YouTube 已支持默认阻断、显式 `--replace-youtube` 本地占位（见[策略记录](audits/2026-10-16/youtube-placeholder-policy.md)）。三者叠加后 Vite 57 页的静态资源缺口清零，但浏览器探针发现 Iconify、sponsors、运行时 CarbonAds、YouTube 外联和 3 个 `.riv` 资源仍导致 57/57 失败，包未发布。
 
+浏览器探针证据已并入 `health.thirdPartyServices`（见[归类记录](audits/2026-10-16/browser-runtime-services.md)）：静态扫描清零后，`externalRequest` 会按服务归类并继续进入 strict 阻断，未识别 origin 保守标记为 `external-runtime`。这解决的是失败可解释性，不表示运行时缺口已处理。
+
 ## 主目标：独立站点镜像
 
 目标是持续提高可克隆站点的覆盖率，并使导出包在声明的范围内真正脱离原站运行。每个包按 [产品定义](../PRD.md) 标注可查看快照、可离线浏览、可离线交互或完整业务替代等级；覆盖率、失败原因和未测范围与等级一起交付。实现顺序：
