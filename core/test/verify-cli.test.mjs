@@ -56,6 +56,9 @@ test('verify rejects empty viewports, invalid threshold, and unsafe site ids bef
       const result = await runVerify(dataDir, args);
       assert.equal(result.code, 2, result.output);
     }
+    const invalidSettle = await runVerify(dataDir, ['x.test', '--all'],
+      { HEIMDALL_VERIFY_SETTLE_TIMEOUT_MS: '2000' });
+    assert.equal(invalidSettle.code, 2, invalidSettle.output);
     assert.equal(existsSync(join(dataDir, 'workspace')), false);
   } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });
@@ -113,7 +116,7 @@ test('invalid manifest replaces a previously passing page result', async () => {
   } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });
 
-test('verify rejects clone-only broken images on first load or after scrolling', { timeout: 60_000 }, async () => {
+test('verify blocks visible broken images but records hidden tracking pixels separately', { timeout: 90_000 }, async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-verify-broken-images-'));
   const base = join(dataDir, 'workspace', 'x.test');
   const server = createServer((req, res) => {
@@ -126,30 +129,53 @@ test('verify rejects clone-only broken images on first load or after scrolling',
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(req.url === '/scroll'
       ? '<!doctype html><html><body style="margin:0"><div style="height:1400px"></div></body></html>'
-      : `<!doctype html><html><body style="margin:0;height:100px"><img src="${req.url === '/baseline' ? '/missing.svg' : '/ok.svg'}" alt="" width="8" height="8"></body></html>`);
+      : ['/hidden', '/self-hidden', '/visibility', '/visibility-override', '/transparent',
+        '/offscreen-fixed-x', '/offscreen-fixed-y'].includes(req.url)
+        ? '<!doctype html><html><body style="margin:0;height:100px"></body></html>'
+        : req.url === '/scaled'
+          ? '<!doctype html><html><body style="margin:0;height:100px"><img src="/ok.svg" width="1" height="1" style="width:40px;height:40px"></body></html>'
+          : `<!doctype html><html><body style="margin:0;height:100px"><img src="${req.url === '/baseline' ? '/missing.svg' : '/ok.svg'}" alt="" width="8" height="8"></body></html>`);
   });
   try {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const port = server.address().port;
-    for (const name of ['baseline', 'regression', 'scroll']) {
+    for (const name of ['baseline', 'regression', 'scroll', 'hidden', 'self-hidden', 'visibility',
+      'visibility-override', 'transparent', 'offscreen-fixed-x', 'offscreen-fixed-y', 'scaled']) {
       const page = join(base, 'pages', name);
       mkdirSync(join(page, 'clone'), { recursive: true });
       writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `http://127.0.0.1:${port}/${name}` }));
-      writeFileSync(join(page, 'clone', 'index.html'), name === 'scroll'
+      const cloneHtml = name === 'scroll'
         ? `<!doctype html><html><body style="margin:0"><div style="height:1400px"></div><script>
             addEventListener('scroll', () => {
               if (document.querySelector('img')) return;
               const img = document.createElement('img');
               img.src = 'missing.svg'; img.width = 8; img.height = 8;
-              img.style.cssText = 'position:absolute;top:20px;left:0';
+              img.style.cssText = 'position:absolute;top:1200px;left:0';
               document.body.append(img);
             });
           </script></body></html>`
-        : '<!doctype html><html><body style="margin:0;height:100px"><img src="missing.svg" alt="" width="8" height="8"></body></html>');
+        : name === 'hidden'
+          ? '<!doctype html><html><body style="margin:0;height:100px"><div style="display:none"><img src="missing.svg" width="1" height="1"></div></body></html>'
+          : name === 'self-hidden'
+            ? '<!doctype html><html><body style="margin:0;height:100px"><img src="missing.svg" width="1" height="1" style="display:none"></body></html>'
+            : name === 'visibility'
+              ? '<!doctype html><html><body style="margin:0;height:100px"><div style="visibility:hidden"><img src="missing.svg" width="1" height="1"></div></body></html>'
+                : name === 'visibility-override'
+                  ? '<!doctype html><html><body style="margin:0;height:100px"><div style="visibility:hidden"><img src="missing.svg" width="1" height="1" style="visibility:visible"></div></body></html>'
+              : name === 'transparent'
+                ? '<!doctype html><html><body style="margin:0;height:100px"><div style="opacity:0.0"><img src="missing.svg" width="1" height="1"></div></body></html>'
+                : name === 'offscreen-fixed-x'
+                  ? '<!doctype html><html><body style="margin:0;height:100px"><img src="missing.svg" style="position:fixed;left:-10000px;top:0;width:20px;height:20px"></body></html>'
+                  : name === 'offscreen-fixed-y'
+                    ? '<!doctype html><html><body style="margin:0;height:100px"><img src="missing.svg" style="position:fixed;left:0;top:10000px;width:20px;height:20px"></body></html>'
+                : name === 'scaled'
+                  ? '<!doctype html><html><body style="margin:0;height:100px"><img src="missing.svg" width="1" height="1" style="width:40px;height:40px"></body></html>'
+                  : '<!doctype html><html><body style="margin:0;height:100px"><img src="missing.svg" alt="" width="8" height="8"></body></html>';
+      writeFileSync(join(page, 'clone', 'index.html'), cloneHtml);
     }
 
     const { code, output } = await runVerify(dataDir,
-      ['x.test', '--all', '--no-interactions', '--viewports', '100x100'], {}, 45_000);
+      ['x.test', '--all', '--no-interactions', '--viewports', '100x100'], {}, 75_000);
     assert.equal(code, 1, output);
     const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
     const result = name => JSON.parse(readFileSync(join(base, 'verify', name, 'verify.json'), 'utf8'));
@@ -158,28 +184,49 @@ test('verify rejects clone-only broken images on first load or after scrolling',
     assert.equal(baseline.grade, 'A');
     assert.equal(baseline.viewports[0].sourceCapture.settle.afterScroll.brokenImages, 1);
     assert.equal(baseline.viewports[0].cloneCapture.settle.afterScroll.brokenImages, 1);
+    assert.equal(baseline.viewports[0].cloneCapture.settle.afterScroll.visibleBrokenImages, 1);
     assert.equal(baseline.viewports[0].additionalBrokenImages, 0);
+    assert.equal(baseline.viewports[0].additionalVisibleBrokenImages, 0);
 
     const regression = result('regression');
     assert.equal(regression.viewports[0].sourceCapture.settle.beforeScroll.brokenImages, 0);
     assert.equal(regression.viewports[0].cloneCapture.settle.beforeScroll.brokenImages, 1);
     assert.equal(regression.viewports[0].additionalBrokenImages, 1);
+    assert.equal(regression.viewports[0].additionalVisibleBrokenImages, 1);
     assert.ok(regression.viewports[0].score > 0.95);
     assert.equal(regression.viewports[0].grade, null);
     assert.equal(regression.measured, false);
     assert.equal(regression.grade, null);
     assert.equal(regression.minViewport.grade, null);
-    assert.match(regression.error, /additional broken image/);
+    assert.match(regression.error, /additional visible broken image/);
 
     const scroll = result('scroll');
     assert.equal(scroll.viewports[0].cloneCapture.settle.beforeScroll.brokenImages, 0);
     assert.equal(scroll.viewports[0].cloneCapture.settle.afterScroll.brokenImages, 1);
     assert.equal(scroll.viewports[0].additionalBrokenImages, 1);
+    assert.equal(scroll.viewports[0].additionalVisibleBrokenImages, 1);
     assert.equal(scroll.measured, false);
+
+    for (const name of ['hidden', 'self-hidden', 'visibility', 'transparent', 'offscreen-fixed-x', 'offscreen-fixed-y']) {
+      const page = result(name);
+      assert.equal(page.measured, true, `${name}: ${output}`);
+      assert.equal(page.viewports[0].cloneCapture.settle.afterScroll.brokenImages, 1);
+      assert.equal(page.viewports[0].cloneCapture.settle.afterScroll.visibleBrokenImages, 0);
+      assert.equal(page.viewports[0].additionalBrokenImages, 1);
+      assert.equal(page.viewports[0].additionalVisibleBrokenImages, 0);
+    }
+
+    const scaled = result('scaled');
+    assert.equal(scaled.viewports[0].additionalBrokenImages, 1);
+    assert.equal(scaled.viewports[0].additionalVisibleBrokenImages, 1);
+    assert.equal(scaled.measured, false);
+    const visibilityOverride = result('visibility-override');
+    assert.equal(visibilityOverride.viewports[0].additionalVisibleBrokenImages, 1);
+    assert.equal(visibilityOverride.measured, false);
     assert.equal(summary.passed, false);
-    assert.equal(summary.measured, 1);
-    assert.equal(summary.untested, 2);
-    assert.deepEqual(summary.failedPages.map(page => page.page).sort(), ['regression', 'scroll']);
+    assert.equal(summary.measured, 7);
+    assert.equal(summary.untested, 4);
+    assert.deepEqual(summary.failedPages.map(page => page.page).sort(), ['regression', 'scaled', 'scroll', 'visibility-override']);
   } finally {
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));

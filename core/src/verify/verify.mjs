@@ -36,7 +36,8 @@ const log = (...a) => console.error('[verify]', ...a);
 const SINGLE_CAPTURE_HEIGHT = 25_000;
 const MAX_PAGE_HEIGHT = 100_000;
 const MAX_SCROLL_PASSES = 4;
-const RENDER_SETTLE_TIMEOUT = 2500;
+const RENDER_SETTLE_TIMEOUT = process.env.HEIMDALL_VERIFY_SETTLE_TIMEOUT_MS === undefined
+  ? 2500 : Number(process.env.HEIMDALL_VERIFY_SETTLE_TIMEOUT_MS);
 const RENDER_SETTLE_MIN_WAIT = 1000;
 const RENDER_SETTLE_STABLE_FOR = 500;
 const FREEZE_CSS = freezeCss({ swiper: true, consent: true });
@@ -76,8 +77,9 @@ if ((maxIdx > -1 && (!Number.isInteger(MAX) || MAX < 1)) || (PAGE_DIR && (all ||
 if (!VIEWPORTS.length || VIEWPORTS.length > 6 || new Set(VIEWPORTS.map(v => v.name)).size !== VIEWPORTS.length
     || VIEWPORTS.some(v => !/^\d+x\d+$/.test(v.name) || !Number.isInteger(v.width)
       || !Number.isInteger(v.height) || v.width < 1 || v.width > 4096 || v.height < 1 || v.height > MAX_PAGE_HEIGHT)
-    || !Number.isFinite(THRESHOLD) || THRESHOLD < 0 || THRESHOLD > 100) {
-  console.error('--viewports must contain 1-6 unique WxH entries; --threshold must be between 0 and 100');
+    || !Number.isFinite(THRESHOLD) || THRESHOLD < 0 || THRESHOLD > 100
+    || !Number.isInteger(RENDER_SETTLE_TIMEOUT) || RENDER_SETTLE_TIMEOUT < 2500 || RENDER_SETTLE_TIMEOUT > 15000) {
+  console.error('--viewports must contain 1-6 unique WxH entries; --threshold must be between 0 and 100; HEIMDALL_VERIFY_SETTLE_TIMEOUT_MS must be 2500..15000');
   process.exit(2);
 }
 
@@ -106,19 +108,37 @@ async function waitForStableRender(page, pendingRequests) {
   while (true) {
     metrics = await page.evaluate(() => {
       const incomplete = [...document.images].filter(image => !image.complete);
+      const visibleInDocument = image => {
+        const rect = image.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return false;
+        if (rect.right <= 0 || rect.left >= innerWidth) return false;
+        const visibility = getComputedStyle(image).visibility;
+        if (visibility === 'hidden' || visibility === 'collapse') return false;
+        let fixed = false;
+        for (let element = image; element; element = element.parentElement) {
+          const style = getComputedStyle(element);
+          if (style.display === 'none' || Number(style.opacity) === 0
+              || style.contentVisibility === 'hidden') return false;
+          if (style.position === 'fixed') fixed = true;
+        }
+        if (fixed && (rect.bottom <= 0 || rect.top >= innerHeight)) return false;
+        return true;
+      };
       const visibleIncompleteImages = incomplete.filter(image => {
         const rect = image.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0 || rect.bottom <= 0 || rect.top >= innerHeight
             || rect.right <= 0 || rect.left >= innerWidth) return false;
         return getComputedStyle(image).visibility !== 'hidden';
       }).length;
+      const broken = [...document.images].filter(image => image.complete && image.naturalWidth === 0);
       return {
         height: Math.max(document.body?.scrollHeight ?? 0, document.documentElement?.scrollHeight ?? 0),
         textLength: document.body?.textContent?.length ?? 0,
         imageCount: document.images.length,
         incompleteImages: incomplete.length,
         visibleIncompleteImages,
-        brokenImages: [...document.images].filter(image => image.complete && image.naturalWidth === 0).length,
+        brokenImages: broken.length,
+        visibleBrokenImages: broken.filter(visibleInDocument).length,
       };
     });
     const next = JSON.stringify(metrics);
@@ -286,6 +306,9 @@ try {
         const additionalBrokenImages = Math.max(0,
           c.settle.beforeScroll.brokenImages - s.settle.beforeScroll.brokenImages,
           (c.settle.afterScroll?.brokenImages ?? 0) - (s.settle.afterScroll?.brokenImages ?? 0));
+        const additionalVisibleBrokenImages = Math.max(0,
+          c.settle.beforeScroll.visibleBrokenImages - s.settle.beforeScroll.visibleBrokenImages,
+          (c.settle.afterScroll?.visibleBrokenImages ?? 0) - (s.settle.afterScroll?.visibleBrokenImages ?? 0));
         // 默认只保留 diff + JSON 控制体积；取证时可保留两侧全页截图。
         if (!tiled) writeFileSync(join(outDir, 'diff-' + vp.name + '.png'), cmp.diffPng);
         if (!KEEP_SCREENSHOTS) {
@@ -294,8 +317,8 @@ try {
           }
         }
         viewports.push({ name: vp.name, width: vp.width, score: cmp.score,
-          grade: settleTimedOut || additionalBrokenImages ? null : gradeOf(cmp.score),
-          settleTimedOut, additionalBrokenImages,
+          grade: settleTimedOut || additionalVisibleBrokenImages ? null : gradeOf(cmp.score),
+          settleTimedOut, additionalBrokenImages, additionalVisibleBrokenImages,
           captureMode: tiled ? 'tiled' : 'full', ...(tiled ? { diffParts: cmp.diffParts } : {}),
           sourceCapture: { capturedAt: s.capturedAt, finalUrl: s.finalUrl, settle: s.settle },
           cloneCapture: { capturedAt: c.capturedAt, finalUrl: c.finalUrl, settle: c.settle },
@@ -312,16 +335,16 @@ try {
     // 在 verify-summary.json 与 verify-done 事件里与真的 0 分完全无法区分，
     // 还把站点均值按 100/N 拉下去。**没测到就说没测到**，不进均值。
     const measured = viewports.length === VIEWPORTS.length && viewports.every(v =>
-      typeof v.score === 'number' && !v.settleTimedOut && !v.additionalBrokenImages);
+      typeof v.score === 'number' && !v.settleTimedOut && !v.additionalVisibleBrokenImages);
     const provisionalOverall = overallScore(viewports);
     const overall = measured ? provisionalOverall : null;
     const minViewport = worstViewport(viewports);
     if (!measured && minViewport) minViewport.grade = null;
-    const incomplete = viewports.find(v => v.error || v.skipped || v.settleTimedOut || v.additionalBrokenImages);
+    const incomplete = viewports.find(v => v.error || v.skipped || v.settleTimedOut || v.additionalVisibleBrokenImages);
     const error = measured ? null : incomplete?.error ?? incomplete?.skipped
       ?? (incomplete?.settleTimedOut ? `${incomplete.name}: render did not settle`
-        : incomplete?.additionalBrokenImages
-          ? `${incomplete.name}: clone has ${incomplete.additionalBrokenImages} additional broken image(s)`
+        : incomplete?.additionalVisibleBrokenImages
+          ? `${incomplete.name}: clone has ${incomplete.additionalVisibleBrokenImages} additional visible broken image(s)`
           : 'viewport measurement incomplete');
 
     // 功能保真：交互回放（按钮/折叠/标签页），状态签名 + 视口像素
