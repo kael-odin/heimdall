@@ -4,7 +4,7 @@
 
 本机旧产物已做[只读盘点](audits/2026-10-14/evidence/historical-inventory.md)：历史 atlas 可比较的 641 个 URL 中 397 个有对应克隆，62 份原工作区多视口验证均为旧口径。按 2026-10-15 最新验证器指纹的[隔离批处理快照](audits/2026-10-14/evidence/historical-v2-final-20261015/README.md)，407 个带克隆页中 **2 页完整测量**（`angular.dev/ai` 90.55% B、`home` 94.80% B）、**3 页未测成**（`apify.com/ideas`、`jobs`、`apify-instagram-scraper` 渲染未收敛）、**402 页待测**；另有 1 页 `no_clone`，不计入分母。旧的[四页已测快照](audits/2026-10-14/evidence/historical-v2-batch/README.md)只供追溯，不能沿用 Apify 旧分数。新批处理已支持超长页分段截图，但该页仍须解决采集完成条件。批处理只做三视口视觉验证，不包含交互；原件保持只读，运行状态在被 Git 忽略的 `core/workspace/_runs/historical-v2-batch/`。以下任务不得原地覆盖旧证据。
 
-本轮[公开页面独立交付验收](audits/2026-10-15/public-site-acceptance.md)显示：`example.org` 首页 1/1 完成克隆、三视口验证与隔离离线部署；`hobix.com/learn/examples/A01/` 的受限三页样本完成九视口验证、`root=landing` 严格离线导出及搬迁后断外联导航验收，新版有界浏览器探针复验 3/3 通过；`vite.dev` 的三页受限样本 3/3 克隆及验证，最新 `root=landing` 候选同站缺资源 0，但 3 处跨源广告脚本与 67 个未镜像链接仍阻断严格导出，`root=mirror` 另缺域名根页。这些样本都不能证明任意站点已可完整复刻。
+本轮[公开页面独立交付验收](audits/2026-10-15/public-site-acceptance.md)显示：`example.org` 首页 1/1 完成克隆、三视口验证与隔离离线部署；`hobix.com/learn/examples/A01/` 的受限三页样本完成九视口验证、`root=landing` 严格离线导出及搬迁后断外联导航验收，新版有界浏览器探针复验 3/3 通过；`vite.dev` 的 57 个已发现 URL 完成 57/57 克隆和 v2 三视口验证，平均 91.51%，但 `root=mirror` 严格导出仍被 1 个 YouTube 嵌入、54 处 CarbonAds 脚本引用和 23 个未镜像链接阻断。这些样本都不能证明任意站点已可完整复刻。
 
 ## 主目标：独立站点镜像
 

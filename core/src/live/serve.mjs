@@ -117,8 +117,12 @@ const MIME = {
   '.xml': 'application/xml; charset=utf-8', '.md': 'text/markdown; charset=utf-8',
   '.markdown': 'text/markdown; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif',
-  '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
-  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg', '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8',
+  '.gif': 'image/gif', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+  '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf',
+  '.eot': 'application/vnd.ms-fontobject',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.m4a': 'audio/mp4', '.weba': 'audio/webm',
+  '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.wav': 'audio/wav',
+  '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8',
   '.map': 'application/json; charset=utf-8',
 };
 const mimeOf = (file) => MIME[extname(file).toLowerCase()] ?? 'application/octet-stream';

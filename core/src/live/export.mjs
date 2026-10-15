@@ -3,7 +3,7 @@
  * live/export — 生成"可直接部署"的交互镜像包（L3）
  *
  * 用法:
- *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict]
+ *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>]
  *
  * 产物（默认 DATA_ROOT/deliverable/<host>-live-<date>/）:
  *   serve.mjs / har.mjs / live-path.mjs   零依赖 Node 服务器
@@ -30,6 +30,7 @@ import { buildEditManifest, renderEditManifestMd } from '../deliver/edit-manifes
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { listLivePageRoutes, scanLiveBundle } from './health.mjs';
 import { healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, removeNonvisualExternalPixels, isStaticAsset } from './heal.mjs';
+import { localizeApprovedExternalStaticAssets } from './external-static.mjs';
 import { diffChecksums, changesLine } from './changes.mjs';
 import { mb } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
@@ -57,7 +58,7 @@ const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--browser-observe-ms 3000..15000] [--omit-nonvisual-pixels] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--browser-observe-ms 3000..15000] [--omit-nonvisual-pixels] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -85,6 +86,31 @@ const MATERIALIZE = has('materialize-har');
 const INCLUDE_API_HAR = has('include-api-har');
 const INCLUDE_ADAPTER = has('include-adapter');
 const ALLOW_PRIVATE_EXPORT = has('allow-private-export');
+const externalStaticArgPresent = argv.some(arg => arg === '--external-static-approvals'
+  || arg.startsWith('--external-static-approvals='));
+const externalStaticArg = argOf('external-static-approvals', undefined);
+if (externalStaticArgPresent && (!externalStaticArg || !OFFLINE || !STRICT)) {
+  console.error('[export] --external-static-approvals requires a JSON file and --offline --strict');
+  process.exit(2);
+}
+let externalStaticApprovals = null;
+if (externalStaticArgPresent) {
+  try {
+    const file = resolve(process.env.HEIMDALL_INVOKE_CWD ?? process.cwd(), externalStaticArg);
+    const stat = lstatSync(file);
+    if (!stat.isFile() || stat.size > 128 * 1024) throw new Error('invalid approval file');
+    const parsed = JSON.parse(readFileSync(file, 'utf8'));
+    if (!Array.isArray(parsed) || parsed.length > 50 || new Set(parsed).size !== parsed.length || parsed.some(raw => {
+      if (typeof raw !== 'string') return true;
+      try { const url = new URL(raw); return url.protocol !== 'https:' || url.href !== raw; }
+      catch { return true; }
+    })) throw new Error('invalid approval list');
+    externalStaticApprovals = parsed;
+  } catch {
+    console.error('[export] invalid external static approvals; expected a regular JSON file with at most 50 exact HTTPS URLs');
+    process.exit(2);
+  }
+}
 const dataPlan = INCLUDE_READONLY_DATA ? readDataPlan(BASE, origin) : { status: 'not-requested', urls: [] };
 if (STRICT && !OFFLINE) {
   console.error('[export] --strict requires --offline so the validated bundle cannot proxy to the source site');
@@ -371,6 +397,7 @@ let health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryP
 const assetsBefore = { ...health.assets };
 let materialized = null;
 const assetUrlMap = new Map();
+const cssSources = new Map();
 if (MATERIALIZE) {
   emit({ kind: 'live-stage', stage: 'materialize', status: 'running' });
   const staticEntries = har.entries.filter(entry => entry.kind !== 'public-read-only-data');
@@ -391,7 +418,13 @@ if (MATERIALIZE) {
     if (fileRel === '..' || fileRel.startsWith('../') || fileRel.startsWith('..\\') || isAbsolute(fileRel)) continue;
     try {
       const saved = statSync(file);
-      if (saved.isFile() && saved.size > 0) assetUrlMap.set(entry.url, localPath);
+      if (saved.isFile() && saved.size > 0) {
+        assetUrlMap.set(entry.url, localPath);
+        if (entry.mimeType?.split(';', 1)[0]?.trim().toLowerCase() === 'text/css'
+          && readFileSync(file).equals(Buffer.from(entry.body, 'base64'))) {
+          cssSources.set(file, sourceUrl.href);
+        }
+      }
     }
     catch { /* A missing candidate file cannot justify dependency parity. */ }
   }
@@ -426,6 +459,30 @@ if (HEAL && health.links.missing > 0) {
     health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
     health.publicTextLinks = captured;
   }
+}
+if (externalStaticApprovals) {
+  emit({ kind: 'live-stage', stage: 'external-static', status: 'running', approved: externalStaticApprovals.length });
+  let report;
+  try {
+    const captured = await localizeApprovedExternalStaticAssets({
+      liveDir, staticDir, host, origin, approvedUrls: externalStaticApprovals, cssSources,
+    });
+    report = captured.report;
+    for (const [source, local] of captured.urlMap) assetUrlMap.set(source, local);
+  } catch {
+    report = { requested: externalStaticApprovals.length, fetched: 0, failed: 1,
+      bytes: 0, transferBytes: 0, failures: [], localized: 0, rewrittenFiles: 0,
+      rewrites: 0, remainingExternal: 0, error: 'capture-error' };
+  }
+  const { healed, publicTextLinks } = health;
+  try { health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages }); }
+  catch { health.scanTruncated = true; report.error = 'capture-scan-error'; report.failed = Math.max(1, report.failed); }
+  if (healed) health.healed = healed;
+  if (publicTextLinks) health.publicTextLinks = publicTextLinks;
+  health.externalStatic = report;
+  emit({ kind: 'live-stage', stage: 'external-static', status: 'done', fetched: report.fetched, failed: report.failed });
+  console.log('[external-static] approved=' + report.requested + ' fetched=' + report.fetched
+    + ' failed=' + report.failed + ' bytes=' + report.bytes);
 }
 if (materialized) health.materialized = materialized;
 health.nonvisualExternalPixels = nonvisualPixels;
@@ -502,6 +559,8 @@ health.strictBlockers = {
   unresolved: health.assets.unresolved,
   dynamic: health.assets.dynamic,
   externalAssets: health.assets.externalAssets,
+  externalStaticFailed: health.externalStatic?.failed ?? 0,
+  externalStaticRemaining: health.externalStatic?.remainingExternal ?? 0,
   missingLinks: health.links.missing,
   mirrorRootMissing: STRICT && ROOT === 'mirror' && !mirrorRootCaptured ? 1 : 0,
   missingLivePages: health.liveMissing,
@@ -784,6 +843,7 @@ ${INCLUDE_ADAPTER ? '适配器仅处理 manifest.json 中精确声明的路由�
 assets.unresolved        同源但没抓到本地副本 → 离线 404
 assets.dynamic           动态资源端点未覆盖 → 离线 404
 assets.externalAssets    站外静态资源（图片/CSS/脚本）→ 离线也裂，需本地化才能进离线包
+externalStatic            显式批准的跨源静态补抓结果；failed > 0 会阻断严格发布
 assets.external          站外引用总数（含 YouTube 嵌入、地图、统计脚本）
                          external − externalAssets 的差额 = 嵌入类内容，**无法本地化，属固有边界**
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像

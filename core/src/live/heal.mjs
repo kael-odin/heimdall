@@ -186,15 +186,18 @@ export function materializeHar({ liveDir, origin, entries = [] } = {}) {
 
 const MIME_EXT = [
   [/^image\/webp/i, 'webp'], [/^image\/png/i, 'png'], [/^image\/jpe?g/i, 'jpg'], [/^image\/avif/i, 'avif'],
+  [/^image\/bmp/i, 'bmp'],
   [/^image\/gif/i, 'gif'], [/^image\/svg/i, 'svg'], [/^image\/x-icon|vnd\.microsoft\.icon/i, 'ico'],
   [/^font\/woff2/i, 'woff2'], [/^font\/woff/i, 'woff'], [/^font\/ttf/i, 'ttf'], [/^font\/otf/i, 'otf'],
   [/^application\/vnd\.ms-fontobject/i, 'eot'],
   [/^text\/css/i, 'css'], [/^text\/html/i, 'html'], [/^text\/plain/i, 'txt'],
   // 后缀决定 serve.mjs 的 Content-Type（它按扩展名查表）：.js 落成 .bin 会被
   // 浏览器以 MIME 不符**拒绝执行**，模块脚本直接不跑 —— 这条路以前踩过。
-  [/^text\/javascript|application\/(?:javascript|ecmascript|x-javascript)/i, 'js'],
+  [/^(?:text\/(?:javascript|ecmascript)|application\/(?:javascript|ecmascript|x-javascript))/i, 'js'],
   [/^application\/wasm/i, 'wasm'], [/^application\/json/i, 'json'],
-  [/^video\/mp4/i, 'mp4'], [/^video\/webm/i, 'webm'], [/^audio\/mpeg/i, 'mp3'],
+  [/^video\/mp4/i, 'mp4'], [/^video\/webm/i, 'webm'],
+  [/^audio\/mp4/i, 'm4a'], [/^audio\/webm/i, 'weba'],
+  [/^audio\/mpeg/i, 'mp3'], [/^audio\/ogg/i, 'ogg'], [/^audio\/wav/i, 'wav'],
 ];
 export const mimeExt = (mime, url = '') => {
   const m = String(mime || '');

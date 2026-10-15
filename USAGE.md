@@ -66,6 +66,8 @@ node core/src/cli.mjs deliver example.org
 node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 ```
 
+已审核的公开跨源静态资源可精确许可补抓：将最多 50 个完整 HTTPS URL 写成 JSON 字符串数组，然后加 `--external-static-approvals .\external-static-approvals.json --offline --strict`。导出只处理候选包 HTML/CSS 中确实引用的 URL；失败项按列表索引写入 `health.externalStatic`，失败候选保留，旧正式包不受影响。该选项不会把第三方广告、接口或动态服务变成离线业务。完整边界见 [跨源静态资源补抓](docs/guide/05-external-static-assets.md)。
+
 裸 `live <host>` 是允许回源的在线包。严格离线导出会把 `recon/atlas.json` 中已发现的页面与实际克隆页、包内路由核对，并逐页运行断网 Chromium 首次加载检查；没有侦察数据时，`health.json` 的 `coverage.scope` 为 `captured-only`，只能说明已捕获范围。侦察本身达到页数或深度预算时，也不能据此声称已经覆盖整站。
 需要把侦察图谱里全部有效同源 URL 纳入克隆队列时，用 `node core/src/cli.mjs queue example.org --all-discovered`；新建普通队列仍按站点配方与页数预算筛选，续跑旧队列可能补入更多同源页面。旧队列若含无效或站外 URL，会拒绝执行并保留原文件，需先核对来源。
 
