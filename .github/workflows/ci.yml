@@ -26,6 +26,7 @@ jobs:
   core:
     name: core (lint + test)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: core
@@ -60,6 +61,7 @@ jobs:
   console:
     name: console (build)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: console
@@ -79,6 +81,7 @@ jobs:
   smoke:
     name: core (e2e smoke, local fixture)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: core
