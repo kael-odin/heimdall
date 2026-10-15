@@ -30,7 +30,7 @@
 
 严格导出已支持 CLI 和控制台的 `--all-discovered` 入队、对声明流程的源站只读对照、精确许可的 GET 回放、候选包凭据特征扫描，以及受控 SSR/SPA 包在移走源工作区后的 Node 断网浏览。侦察新增 robots 声明、递归及压缩 sitemap，并在 atlas 里记录页面数、深度与 sitemap 扫描预算；`health.coverage` 用同一已发现 URL 分母列出按当前默认配方估算的排除、实际入队、克隆、v2 验证和交付数量。预算触顶与扫描失败仍标为范围受限。`--compare-source` 逐流程核对请求的精确路径及查询、次数、状态与 MIME；许可 GET 另核对清洗后正文指纹。`--include-adapter` 为逐站有状态业务提供显式接管入口，只有已声明、已在离线操作计划中触达的路由才允许严格交付。本机严格探针不隔离适配器 Node 进程外联，`health.adapter.serverEgress=not-tested`；实际适配器必须另做无外联部署验收。Linux CI 已通过受控 SSR、SPA、数据驱动 SPA 和适配器卷持久化的 Docker 无外联网络验收（主分支提交 `75dceeb`）；本机 Docker 守护进程不可用。上述夹具与门禁仍不构成任意站点完整复刻。下一批按依赖顺序推进：
 
-1. 将现有按声明流程的请求依赖对照扩展到 iframe、Shadow DOM、延迟请求和多会话状态。2026-10-16 已覆盖 iframe/subframe 归属、Shadow DOM 请求捕获、最后一个状态后的延迟请求阻断，以及按 flow 声明的命名登录态（见[操作依赖审计](audits/2026-10-16/operation-frame-late-parity.md)）。多会话状态已能区分匿名 / 命名登录态；跨会话状态切换仍未完成。视觉相似、请求匹配和只读响应相同都不等于业务结果一致。
+1. 将现有按声明流程的请求依赖对照扩展到 iframe、Shadow DOM、延迟请求和多会话状态。2026-10-16 已覆盖 iframe/subframe 归属、Shadow DOM 请求捕获、最后一个状态后的延迟请求阻断、按 flow 声明的命名登录态，以及同一 flow 内的 `useSession` 上下文切换（见[操作依赖审计](audits/2026-10-16/operation-frame-late-parity.md)与[会话切换审计](audits/2026-10-16/in-flow-session-switch-parity.md)）。源站可切换匿名 / 命名登录态；离线包只支持匿名切换，命名会话以 `sessionUnsupported` fail-closed。独立登录、会话延续与写入业务仍需本地适配器。视觉相似、请求匹配和只读响应相同都不等于业务结果一致。
 2. 为登录、账户状态、写入型 API 和实时连接逐站实现适配器及契约验收；现有适配器只是接入协议，没有通用业务实现。`--include-api-har` 不能替代有状态业务实现。
 3. 用授权真实站点复核 `health.coverage` 的同分母口径，处理 sitemap 不可用、JS 生成页面、隐藏入口及近乎无限的 URL 空间；已发现范围不等于整站全集。
 4. 扩展分发审查到个人数据、业务机密及二进制资源，并按授权站点人工审核；当前扫描只识别一组凭据特征，大包扫描超限会标为不完整。

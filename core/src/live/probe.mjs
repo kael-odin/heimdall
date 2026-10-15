@@ -6,6 +6,7 @@ import { performance } from 'node:perf_hooks';
 import { chromium } from 'playwright';
 import { exploreOperationStates, sanitizeObservedUrl } from '../crawler/state-graph.mjs';
 import { sourceReadDataCollector } from '../crawler/source-read-data.mjs';
+import { operationSessionSegments } from '../crawler/operation-sessions.mjs';
 
 const MAX_BROWSER_FAILURES = 100;
 export const DEFAULT_BROWSER_OBSERVE_MS = 3_000;
@@ -309,6 +310,64 @@ async function checkAssertion(page, assertion, base) {
   return false;
 }
 
+async function runOfflineSegment({ browser, base, bundleDir, segment, startUrl, readData, flowIndex,
+  options, readOnlyRequests, addIssue, settleMs, lateMs, timeoutMs }) {
+  let context;
+  try {
+    context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
+    context.on('request', request => {
+      if (request.method().toUpperCase() !== 'GET') return;
+      const sourceUrl = readOnlyRequests.get(request.url());
+      if (sourceUrl) options.onReadOnlyGet?.(sourceUrl);
+    });
+    await context.route('**/*', async route => {
+      const request = route.request();
+      if (new URL(request.url()).origin === base) return route.continue();
+      addIssue({ kind: 'externalRequest', target: sanitizeObservedUrl(request.url()) });
+      await route.abort('blockedbyclient');
+    });
+    await context.routeWebSocket('**/*', async socket => {
+      addIssue({ kind: 'websocketUnsupported', target: sanitizeObservedUrl(socket.url()) });
+      await socket.close({ code: 1008, reason: 'offline probe' });
+    });
+    context.on('response', response => {
+      if (response.status() >= 400) addIssue({
+        kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()),
+      });
+      readData.observe(response, flowIndex);
+    });
+    const page = await context.newPage();
+    page.on('download', () => addIssue({ kind: 'downloadUnsupported' }));
+    context.on('page', opened => {
+      if (opened === page) return;
+      addIssue({ kind: 'popupUntested' });
+      opened.on('download', () => addIssue({ kind: 'downloadUnsupported' }));
+      void opened.close().catch(() => {});
+    });
+    const graph = await exploreOperationStates({
+      page, baseUrl: base,
+      actions: [{ type: 'navigate', url: startUrl }, ...segment.actions],
+      allowedOrigins: [base],
+      allowUnsafeRequests: existsSync(join(bundleDir, 'runtime-adapter')),
+      onObservedRequest: request => options.onObservedRequest?.(flowIndex, request, base),
+      maxActions: 12,
+      settleMs,
+      lateMs,
+      timeoutMs,
+    });
+    return {
+      context,
+      page,
+      graph,
+      rawUrl: page.url(),
+      close: async () => { await context.close().catch(() => {}); },
+    };
+  } catch (error) {
+    await context?.close().catch(() => {});
+    throw error;
+  }
+}
+
 /** Replay explicit critical paths against the candidate bundle with origin access blocked. */
 export async function probeOfflineOperations(bundleDir, flows, options = {}) {
   if (!Array.isArray(flows)) throw new TypeError('flows must be an array');
@@ -356,88 +415,97 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
       const addIssue = issue => {
         if (!issues.some(existing => JSON.stringify(existing) === JSON.stringify(issue))) issues.push(issue);
       };
-      let context;
+      let activeClose = null;
       try {
-        context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
-        context.on('request', request => {
-          if (request.method().toUpperCase() !== 'GET') return;
-          const sourceUrl = readOnlyRequests.get(request.url());
-          if (sourceUrl) options.onReadOnlyGet?.(sourceUrl);
-        });
-        await context.route('**/*', async route => {
-          const request = route.request();
-          if (new URL(request.url()).origin === base) return route.continue();
-          addIssue({ kind: 'externalRequest', target: sanitizeObservedUrl(request.url()) });
-          await route.abort('blockedbyclient');
-        });
-        await context.routeWebSocket('**/*', async socket => {
-          addIssue({ kind: 'websocketUnsupported', target: sanitizeObservedUrl(socket.url()) });
-          await socket.close({ code: 1008, reason: 'offline probe' });
-        });
-        context.on('response', response => {
-          if (response.status() >= 400) addIssue({
-            kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()),
-          });
-          readData.observe(response, flowIndex);
-        });
-        const page = await context.newPage();
-        page.on('download', () => addIssue({ kind: 'downloadUnsupported' }));
-        context.on('page', opened => {
-          if (opened === page) return;
-          addIssue({ kind: 'popupUntested' });
-          opened.on('download', () => addIssue({ kind: 'downloadUnsupported' }));
-          void opened.close().catch(() => {});
-        });
-        const graph = await exploreOperationStates({
-          page, baseUrl: base,
-          actions: [{ type: 'navigate', url: flow.path }, ...flow.actions],
-          allowedOrigins: [base],
-          allowUnsafeRequests: existsSync(join(bundleDir, 'runtime-adapter')),
-          onObservedRequest: request => options.onObservedRequest?.(flowIndex, request, base),
-          maxActions: 12,
-          settleMs,
-          lateMs,
-          timeoutMs: boundedInteger(options.timeoutMs, 8_000, 30_000),
-        });
+        const segments = operationSessionSegments(flow);
+        const timeoutMs = boundedInteger(options.timeoutMs, 8_000, 30_000);
         const dependencies = new Map();
         const categories = {};
-        for (const state of graph.states) {
-          if (state.action && state.result.status !== 'ok') {
-            addIssue({ kind: 'action', actionIndex: state.action.index, result: state.result.status });
+        const sessionSwitches = [];
+        let plannedActions = 0;
+        let executedActions = 0;
+        let stateCount = 0;
+        let complete = true;
+        let finalPage = null;
+        let rawUrl = new URL(flow.path, base).href;
+        for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
+          const segment = segments[segmentIndex];
+          await activeClose?.();
+          activeClose = null;
+          let switchActionIndex = null;
+          if (segment.sessionName != null) {
+            addIssue({ kind: 'sessionUnsupported', sessionName: segment.sessionName });
           }
-          if (state.pageErrors.length) addIssue({ kind: 'pageError', stateIndex: state.index });
-          if (state.omittedRequests) addIssue({ kind: 'requestsUntested', stateIndex: state.index, count: state.omittedRequests });
-          for (const dependency of state.requests) {
-            categories[dependency.category] = (categories[dependency.category] ?? 0) + 1;
-            const key = [dependency.method, dependency.target, dependency.category].join('|');
-            if (dependencies.size < 50 && !dependencies.has(key)) dependencies.set(key, dependency);
-            if (dependency.scope === 'external') addIssue({ kind: 'externalRequest', target: dependency.target });
-            if (dependency.category === 'realtime') addIssue({ kind: 'realtimeUnsupported', target: dependency.target });
-            if (dependency.outcome !== 'complete') addIssue({
-              kind: 'request', stateIndex: state.index, outcome: dependency.outcome, target: dependency.target,
+          if (segmentIndex > 0) {
+            switchActionIndex = plannedActions;
+            plannedActions++;
+            executedActions++;
+          }
+          const actionOffset = plannedActions;
+          const stateOffset = stateCount;
+          const captured = await runOfflineSegment({
+            browser, base, bundleDir, segment, startUrl: rawUrl, readData, flowIndex,
+            options, readOnlyRequests, addIssue, settleMs, lateMs, timeoutMs,
+          });
+          activeClose = captured.close;
+          if (segmentIndex > 0) {
+            sessionSwitches.push({
+              actionIndex: switchActionIndex,
+              sessionName: segment.sessionName,
+              supported: segment.sessionName == null,
             });
           }
+          for (const state of captured.graph.states) {
+            state.index += stateOffset;
+            if (state.from != null) state.from += stateOffset;
+            if (state.action) state.action.index += actionOffset;
+            stateCount++;
+            if (state.action && state.result.status !== 'ok') {
+              addIssue({ kind: 'action', actionIndex: state.action.index, result: state.result.status });
+            }
+            if (state.pageErrors.length) addIssue({ kind: 'pageError', stateIndex: state.index });
+            if (state.omittedRequests) {
+              addIssue({ kind: 'requestsUntested', stateIndex: state.index, count: state.omittedRequests });
+            }
+            for (const dependency of state.requests) {
+              categories[dependency.category] = (categories[dependency.category] ?? 0) + 1;
+              const key = [dependency.method, dependency.target, dependency.category].join('|');
+              if (dependencies.size < 50 && !dependencies.has(key)) dependencies.set(key, dependency);
+              if (dependency.scope === 'external') addIssue({ kind: 'externalRequest', target: dependency.target });
+              if (dependency.category === 'realtime') addIssue({ kind: 'realtimeUnsupported', target: dependency.target });
+              if (dependency.outcome !== 'complete') addIssue({
+                kind: 'request', stateIndex: state.index, outcome: dependency.outcome, target: dependency.target,
+              });
+            }
+          }
+          plannedActions += captured.graph.summary.planned;
+          executedActions += captured.graph.summary.executed;
+          if (captured.graph.summary.unexecuted) {
+            addIssue({ kind: 'actionsUntested', count: captured.graph.summary.unexecuted });
+          }
+          if (captured.graph.lateRequests) addIssue({ kind: 'lateRequests', count: captured.graph.lateRequests });
+          complete &&= captured.graph.summary.unexecuted === 0;
+          rawUrl = captured.rawUrl;
+          finalPage = captured.page;
+          if (!complete) break;
         }
-        if (graph.summary.unexecuted) addIssue({ kind: 'actionsUntested', count: graph.summary.unexecuted });
-        if (graph.lateRequests) addIssue({ kind: 'lateRequests', count: graph.lateRequests });
-        if (!issues.length) {
+        if (!issues.length && complete) {
           for (const [assertionIndex, assertion] of flow.expect.entries()) {
-            if (!await checkAssertion(page, assertion, base)) {
+            if (!await checkAssertion(finalPage, assertion, base)) {
               addIssue({ kind: 'assertion', assertionIndex, type: assertion.type });
             }
           }
         }
         report.flows.push({
-          index: flowIndex, executedActions: graph.summary.executed,
-          plannedActions: graph.summary.planned, states: graph.states.length,
-          categories, dependencies: [...dependencies.values()], passed: issues.length === 0,
+          index: flowIndex, executedActions, plannedActions, states: stateCount,
+          sessionSwitches, categories, dependencies: [...dependencies.values()], passed: issues.length === 0,
         });
       } catch (error) {
         addIssue({ kind: 'probeError', error: publicErrorType(error) });
-        report.flows.push({ index: flowIndex, passed: false });
+        report.flows.push({ index: flowIndex, passed: false, sessionSwitches: [] });
       } finally {
+        await activeClose?.().catch(() => {});
         await readData.drain();
-        await context?.close().catch(() => {});
         report.checked++;
         report.untested--;
         if (issues.length) {

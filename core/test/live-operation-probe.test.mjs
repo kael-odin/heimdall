@@ -45,6 +45,20 @@ test('operation plan accepts a safe named session and rejects path-like names', 
     });
     assert.equal(bad.status, 'invalid');
     assert.equal(bad.issue, 'invalid-session-name');
+    const switched = read({
+      version: 1,
+      flows: [{ path: '/', sessionName: 'admin',
+        actions: [{ type: 'useSession', sessionName: 'guest' }, { type: 'useSession', sessionName: null }],
+        expect: [{ type: 'visible', selector: '#x' }] }],
+    });
+    assert.equal(switched.status, 'ok');
+    const badSwitch = read({
+      version: 1,
+      flows: [{ path: '/', actions: [{ type: 'useSession', sessionName: '../escape' }],
+        expect: [{ type: 'visible', selector: '#x' }] }],
+    });
+    assert.equal(badSwitch.status, 'invalid');
+    assert.equal(badSwitch.issue, 'invalid-actions');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -114,6 +128,84 @@ test('strict export replays declared operations offline and preserves accepted b
     assert.ok(existsSync(join(out, 'site', 'live', 'api', 'data')));
     assert.equal(existsSync(join(out, 'operation-plan.json')), false);
     assert.doesNotMatch(readFileSync(join(out, 'health.json'), 'utf8'), /private-search-value|#query|#load|#result/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('offline operations support anonymous in-flow session switches and fail named sessions', { timeout: 90_000 }, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-operation-session-switch-'));
+  try {
+    const host = 'session-switch.test';
+    const site = join(dir, 'workspace', host);
+    const live = join(site, 'live');
+    const page = join(site, 'pages', 'home');
+    const out = join(dir, 'deliverable', 'session-switch');
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    mkdirSync(live, { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><title>clone</title>');
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `https://${host}/` }));
+    writeFileSync(join(live, 'index.html'), '<!doctype html><p id="result">Ready</p>');
+    const plan = sessionName => writeFileSync(join(site, 'operation-plan.json'), JSON.stringify({
+      version: 1,
+      flows: [{ path: '/', actions: [{ type: 'useSession', sessionName }],
+        expect: [{ type: 'visible', selector: '#result' }] }],
+    }));
+    const run = () => spawnSync(process.execPath, [EXPORT, host, '--offline', '--strict', '--root', 'mirror', '--out', out], {
+      cwd: CORE, encoding: 'utf8', env: { ...process.env, HEIMDALL_DATA_DIR: dir }, timeout: 60_000,
+    });
+
+    plan(null);
+    const anonymous = run();
+    assert.equal(anonymous.status, 0, anonymous.stderr + anonymous.stdout);
+    const health = JSON.parse(readFileSync(join(out, 'health.json'), 'utf8'));
+    assert.equal(health.operationProbe.failed, 0);
+    assert.equal(health.operationProbe.flows[0].plannedActions, 3);
+    assert.equal(health.operationProbe.flows[0].executedActions, 3);
+    assert.deepEqual(health.operationProbe.flows[0].sessionSwitches, [{
+      actionIndex: 1, sessionName: null, supported: true,
+    }]);
+
+    const accepted = readFileSync(join(out, 'health.json'));
+    plan('admin');
+    const named = run();
+    assert.equal(named.status, 1, named.stderr + named.stdout);
+    assert.deepEqual(readFileSync(join(out, 'health.json')), accepted);
+    const candidate = readdirSync(join(dir, 'deliverable')).find(name => name.startsWith('.candidate-'));
+    assert.ok(candidate);
+    const failure = JSON.parse(readFileSync(join(dir, 'deliverable', candidate, 'health.json'), 'utf8'));
+    assert.equal(failure.operationProbe.failed, 1);
+    assert.ok(failure.operationProbe.failures.some(issue => issue.kind === 'sessionUnsupported' && issue.sessionName === 'admin'));
+    assert.equal(failure.strictBlockers.operationFailed, 1);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('offline operations fail closed for flow-level named sessions', { timeout: 90_000 }, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-operation-flow-session-'));
+  try {
+    const host = 'flow-session.test';
+    const site = join(dir, 'workspace', host);
+    const live = join(site, 'live');
+    const page = join(site, 'pages', 'home');
+    const out = join(dir, 'deliverable', 'flow-session');
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    mkdirSync(live, { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><title>clone</title>');
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `https://${host}/` }));
+    writeFileSync(join(live, 'index.html'), '<!doctype html><p id="result">Ready</p>');
+    writeFileSync(join(site, 'operation-plan.json'), JSON.stringify({
+      version: 1,
+      flows: [{ path: '/', sessionName: 'admin', actions: [],
+        expect: [{ type: 'visible', selector: '#result' }] }],
+    }));
+    const run = spawnSync(process.execPath, [EXPORT, host, '--offline', '--strict', '--root', 'mirror', '--out', out], {
+      cwd: CORE, encoding: 'utf8', env: { ...process.env, HEIMDALL_DATA_DIR: dir }, timeout: 60_000,
+    });
+    assert.equal(run.status, 1, run.stderr + run.stdout);
+    const candidate = readdirSync(join(dir, 'deliverable')).find(name => name.startsWith('.candidate-'));
+    assert.ok(candidate);
+    const health = JSON.parse(readFileSync(join(dir, 'deliverable', candidate, 'health.json'), 'utf8'));
+    assert.equal(health.operationProbe.failed, 1);
+    assert.ok(health.operationProbe.failures.some(issue => issue.kind === 'sessionUnsupported' && issue.sessionName === 'admin'));
+    assert.equal(health.strictBlockers.operationFailed, 1);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

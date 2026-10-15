@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { exploreOperationStates, sanitizeObservedUrl } from './state-graph.mjs';
 import { sourceReadDataCollector } from './source-read-data.mjs';
+import { operationSessionSegments } from './operation-sessions.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const ASSERTION_TYPES = new Set(['visible', 'hidden', 'text-includes', 'url']);
@@ -54,6 +55,12 @@ function validateFlow(flow, origin) {
   if (flow.sessionName != null && (typeof flow.sessionName !== 'string' || !SESSION_NAME.test(flow.sessionName))) {
     throw new TypeError('invalid source flow');
   }
+  for (const action of flow.actions) {
+    if (action?.type === 'useSession' && action.sessionName != null
+      && (typeof action.sessionName !== 'string' || !SESSION_NAME.test(action.sessionName))) {
+      throw new TypeError('invalid source flow');
+    }
+  }
 }
 
 function safeResult(result) {
@@ -67,7 +74,7 @@ function safeResult(result) {
 }
 
 function safeActionType(value) {
-  return ['navigate', 'click', 'fill', 'scroll'].includes(value) ? value : 'invalid';
+  return ['navigate', 'useSession', 'click', 'fill', 'scroll'].includes(value) ? value : 'invalid';
 }
 
 function safeRequest(request) {
@@ -122,6 +129,91 @@ async function checkAssertion(page, assertion, origin, timeoutMs) {
   } catch { return false; }
 }
 
+async function runSourceSegment({ browser, base, segment, startUrl, session, sessions, readData, flowIndex,
+  onObservedRequest, settleMs, lateMs, timeoutMs, addIssue }) {
+  let context;
+  let onResponse;
+  let closing = false;
+  const sessionName = segment.sessionName;
+  const segmentSession = sessionName != null ? sessions?.[sessionName] : session;
+  const sessionMissing = sessionName != null && !(sessionName in (sessions ?? {}));
+  if (sessionMissing) addIssue({ kind: 'sessionMissing', sessionName });
+  const { storageState, sessionStorage } = sessionOptions(segmentSession, base);
+  context = await browser.newContext({
+    serviceWorkers: 'block', acceptDownloads: false, ...(storageState ? { storageState } : {}),
+  });
+  try {
+    if (sessionStorage.length) await context.addInitScript(({ allowedOrigin, entries }) => {
+      if (location.origin !== allowedOrigin) return;
+      try { for (const { name, value } of entries) sessionStorage.setItem(name, value); } catch {}
+    }, { allowedOrigin: base, entries: sessionStorage });
+    const blocked = new WeakSet();
+    await context.route('**/*', async route => {
+      const request = route.request();
+      const method = String(request.method()).toUpperCase();
+      if (READ_METHODS.has(method)) return route.continue();
+      blocked.add(request);
+      addIssue({
+        kind: 'writeBlocked',
+        method: /^[A-Z]{1,12}$/.test(method) ? method : 'OTHER',
+        target: sanitizeObservedUrl(request.url()),
+      });
+      await route.abort('blockedbyclient');
+    });
+    await context.routeWebSocket('**/*', async socket => {
+      addIssue({ kind: 'websocketBlocked', target: sanitizeObservedUrl(socket.url()) });
+      await socket.close({ code: 1008, reason: 'read-only capture' });
+    });
+    onResponse = response => {
+      if (response.status() >= 400) {
+        addIssue({ kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()) });
+      }
+      readData.observe(response, flowIndex);
+    };
+    context.on('response', onResponse);
+    context.on('requestfailed', request => {
+      if (!closing && !blocked.has(request)) {
+        addIssue({ kind: 'requestFailed', target: sanitizeObservedUrl(request.url()) });
+      }
+    });
+    const openedPages = new Set();
+    context.on('page', page => {
+      openedPages.add(page);
+      if (openedPages.size > 1) addIssue({ kind: 'popupUntested' });
+      page.on('pageerror', error => addIssue({ kind: 'pageError', error: errorType(error) }));
+      page.on('crash', () => addIssue({ kind: 'pageCrash' }));
+      page.on('download', () => addIssue({ kind: 'downloadBlocked' }));
+    });
+    const page = await context.newPage();
+    openedPages.add(page);
+    const graph = await exploreOperationStates({
+      page, baseUrl: base, allowedOrigins: [base], allowUnsafeRequests: false,
+      actions: [{ type: 'navigate', url: startUrl }, ...segment.actions],
+      onObservedRequest: request => onObservedRequest?.(flowIndex, request),
+      maxActions: 12, maxRequestsPerState: 50, maxUnexecuted: 12,
+      settleMs, lateMs, timeoutMs,
+    });
+    return {
+      context,
+      page,
+      graph,
+      rawUrl: page.url(),
+      sessionName,
+      sessionUsed: segmentSession != null,
+      close: async () => {
+        closing = true;
+        if (context && onResponse) context.off('response', onResponse);
+        await context.close().catch(() => {});
+      },
+    };
+  } catch (error) {
+    closing = true;
+    if (context && onResponse) context.off('response', onResponse);
+    await context.close().catch(() => {});
+    throw error;
+  }
+}
+
 /**
  * Observe validated operation flows on the authorized source site. The result
  * contains only allowlisted metadata; session values, selectors, inputs, query
@@ -173,115 +265,143 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         if (issues.length < MAX_ISSUES) issues.push(issue);
         else omittedIssues++;
       };
-      let context;
-      let onResponse;
-      let closing = false;
+      let activeClose = null;
       let result;
       try {
-        const sessionName = flow.sessionName ?? null;
-        const flowSession = sessionName != null ? sessions?.[sessionName] : session;
-        const sessionMissing = sessionName != null && !(sessionName in (sessions ?? {}));
-        if (sessionMissing) issues.push({ kind: 'sessionMissing', sessionName });
-        const { storageState, sessionStorage } = sessionOptions(flowSession, base);
-        report.sessionUsed ||= flowSession != null;
-        context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false, ...(storageState ? { storageState } : {}) });
-        if (sessionStorage.length) await context.addInitScript(({ allowedOrigin, entries }) => {
-          if (location.origin !== allowedOrigin) return;
-          try { for (const { name, value } of entries) sessionStorage.setItem(name, value); } catch {}
-        }, { allowedOrigin: base, entries: sessionStorage });
-        const blocked = new WeakSet();
-        await context.route('**/*', async route => {
-          const request = route.request();
-          const method = String(request.method()).toUpperCase();
-          if (READ_METHODS.has(method)) return route.continue();
-          blocked.add(request);
-          addIssue({ kind: 'writeBlocked', method: /^[A-Z]{1,12}$/.test(method) ? method : 'OTHER', target: sanitizeObservedUrl(request.url()) });
-          await route.abort('blockedbyclient');
-        });
-        await context.routeWebSocket('**/*', async socket => {
-          addIssue({ kind: 'websocketBlocked', target: sanitizeObservedUrl(socket.url()) });
-          await socket.close({ code: 1008, reason: 'read-only capture' });
-        });
-        onResponse = response => {
-          if (response.status() >= 400) addIssue({ kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()) });
-          readData.observe(response, flowIndex);
-        };
-        context.on('response', onResponse);
-        context.on('requestfailed', request => {
-          if (!closing && !blocked.has(request)) addIssue({ kind: 'requestFailed', target: sanitizeObservedUrl(request.url()) });
-        });
-        const openedPages = new Set();
-        context.on('page', page => {
-          openedPages.add(page);
-          if (openedPages.size > 1) addIssue({ kind: 'popupUntested' });
-          page.on('pageerror', error => addIssue({ kind: 'pageError', error: errorType(error) }));
-          page.on('crash', () => addIssue({ kind: 'pageCrash' }));
-          page.on('download', () => addIssue({ kind: 'downloadBlocked' }));
-        });
-        const page = await context.newPage();
-        openedPages.add(page);
-        const graph = await exploreOperationStates({
-          page, baseUrl: base, allowedOrigins: [base], allowUnsafeRequests: false,
-          actions: [{ type: 'navigate', url: flow.path }, ...flow.actions],
-          onObservedRequest: request => onObservedRequest?.(flowIndex, request),
-          maxActions: 12, maxRequestsPerState: 50, maxUnexecuted: 12,
-          settleMs, lateMs, timeoutMs,
-        });
-        const states = graph.states.map(safeState);
+        const segments = operationSessionSegments(flow);
+        const states = [];
         const dependencies = new Map();
         let omittedDependencies = 0;
-        for (const state of states) {
-          if (state.action && state.result.status !== 'ok') addIssue({ kind: 'action', actionIndex: state.action.index, result: state.result.status });
-          if (state.pageErrors.length) addIssue({ kind: 'pageError', stateIndex: state.index });
-          if (state.omittedRequests) addIssue({ kind: 'requestsUntested', stateIndex: state.index, count: state.omittedRequests });
-          for (const request of state.requests) {
-            const key = [request.method, request.target, request.category, request.scope].join('|');
-            if (!dependencies.has(key)) {
-              if (dependencies.size < MAX_DEPENDENCIES) dependencies.set(key, request);
-              else omittedDependencies++;
-            }
-            if (request.outcome !== 'complete') addIssue({ kind: 'request', stateIndex: state.index, outcome: request.outcome, target: request.target });
+        let plannedActions = 0;
+        let executedActions = 0;
+        let omittedUnexecutedActions = 0;
+        let complete = true;
+        let finalPage = null;
+        let rawUrl = new URL(flow.path, base).href;
+        let flowSessionUsed = false;
+        const unexecutedActions = [];
+        const sessionSwitches = [];
+        for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
+          const segment = segments[segmentIndex];
+          await activeClose?.();
+          activeClose = null;
+          let switchActionIndex = null;
+          if (segmentIndex > 0) {
+            switchActionIndex = plannedActions;
+            plannedActions++;
+            executedActions++;
           }
+          const actionOffset = plannedActions;
+          const stateOffset = states.length;
+          const captured = await runSourceSegment({
+            browser, base, segment, startUrl: rawUrl, session, sessions, readData, flowIndex,
+            onObservedRequest, settleMs, lateMs, timeoutMs, addIssue,
+          });
+          activeClose = captured.close;
+          if (segmentIndex > 0) {
+            sessionSwitches.push({
+              actionIndex: switchActionIndex,
+              sessionName: captured.sessionName,
+              sessionUsed: captured.sessionUsed,
+            });
+          }
+          report.sessionUsed ||= captured.sessionUsed;
+          flowSessionUsed ||= captured.sessionUsed;
+          const graphStates = captured.graph.states.map(safeState);
+          for (const state of graphStates) {
+            state.index += stateOffset;
+            if (state.from != null) state.from += stateOffset;
+            if (state.action) state.action.index += actionOffset;
+            states.push(state);
+            if (state.action && state.result.status !== 'ok') {
+              addIssue({ kind: 'action', actionIndex: state.action.index, result: state.result.status });
+            }
+            if (state.pageErrors.length) addIssue({ kind: 'pageError', stateIndex: state.index });
+            if (state.omittedRequests) {
+              addIssue({ kind: 'requestsUntested', stateIndex: state.index, count: state.omittedRequests });
+            }
+            for (const request of state.requests) {
+              const key = [request.method, request.target, request.category, request.scope].join('|');
+              if (!dependencies.has(key)) {
+                if (dependencies.size < MAX_DEPENDENCIES) dependencies.set(key, request);
+                else omittedDependencies++;
+              }
+              if (request.outcome !== 'complete') {
+                addIssue({ kind: 'request', stateIndex: state.index, outcome: request.outcome, target: request.target });
+              }
+            }
+          }
+          plannedActions += captured.graph.summary.planned;
+          executedActions += captured.graph.summary.executed;
+          omittedUnexecutedActions += captured.graph.summary.omittedUnexecuted;
+          for (const item of captured.graph.unexecuted) {
+            unexecutedActions.push({ ...item, index: item.index + actionOffset });
+          }
+          if (captured.graph.summary.unexecuted) {
+            addIssue({ kind: 'actionsUntested', count: captured.graph.summary.unexecuted });
+          }
+          if (captured.graph.lateRequests) {
+            addIssue({ kind: 'lateRequests', count: captured.graph.lateRequests });
+          }
+          complete &&= captured.graph.summary.unexecuted === 0;
+          rawUrl = captured.rawUrl;
+          finalPage = captured.page;
+          if (!complete) break;
         }
         if (omittedDependencies) addIssue({ kind: 'dependenciesUntested', count: omittedDependencies });
-        if (graph.summary.unexecuted) addIssue({ kind: 'actionsUntested', count: graph.summary.unexecuted });
-        if (graph.lateRequests) addIssue({ kind: 'lateRequests', count: graph.lateRequests });
+        if (!complete) {
+          for (let segmentIndex = 1; segmentIndex < segments.length; segmentIndex++) {
+            if (plannedActions >= flow.actions.length + segments.length) break;
+            const segment = segments[segmentIndex];
+            unexecutedActions.push({ index: plannedActions++, type: 'useSession', reason: 'previous-action-failed' });
+            unexecutedActions.push({ index: plannedActions++, type: 'navigate', reason: 'previous-action-failed' });
+            for (const action of segment.actions) {
+              unexecutedActions.push({
+                index: plannedActions++, type: safeActionType(action?.type), reason: 'previous-action-failed',
+              });
+            }
+          }
+        }
         const assertions = [];
-        const canAssert = graph.summary.unexecuted === 0 && states.every(state => !state.action || state.result.status === 'ok')
+        const canAssert = complete && states.every(state => !state.action || state.result.status === 'ok')
           && !issues.some(issue => issue.kind === 'popupUntested');
         for (const [assertionIndex, assertion] of flow.expect.entries()) {
           const type = ASSERTION_TYPES.has(assertion.type) ? assertion.type : 'unknown';
-          const status = canAssert ? (await checkAssertion(page, assertion, base, assertionTimeoutMs) ? 'passed' : 'failed') : 'untested';
+          const status = canAssert ? (await checkAssertion(finalPage, assertion, base, assertionTimeoutMs) ? 'passed' : 'failed') : 'untested';
           assertions.push({ index: assertionIndex, type, status });
           if (status === 'failed') addIssue({ kind: 'assertion', assertionIndex, type });
           if (status === 'untested') addIssue({ kind: 'assertionUntested', assertionIndex, type });
         }
         result = {
           index: flowIndex, start: sanitizeObservedUrl(new URL(flow.path, base).href),
-          sessionName, sessionUsed: flowSession != null,
-          plannedActions: graph.summary.planned, executedActions: graph.summary.executed,
-          unexecutedActions: graph.unexecuted.map(item => ({ index: item.index, type: item.type, reason: item.reason })),
-          omittedUnexecutedActions: graph.summary.omittedUnexecuted,
+          sessionName: flow.sessionName ?? null, sessionUsed: flowSessionUsed,
+          sessionSwitches,
+          plannedActions, executedActions, unexecutedActions,
+          omittedUnexecutedActions,
           states, dependencies: [...dependencies.values()], omittedDependencies, assertions,
         };
       } catch (error) {
         addIssue({ kind: 'captureError', error: errorType(error) });
+        const segments = operationSessionSegments(flow);
         result = {
           index: flowIndex, start: sanitizeObservedUrl(new URL(flow.path, base).href),
-          sessionName: flow.sessionName ?? null, sessionUsed: false,
-          plannedActions: flow.actions.length + 1, executedActions: 0,
-          unexecutedActions: [{ index: 0, type: 'navigate', reason: 'capture-error' },
-            ...flow.actions.map((action, index) => ({ index: index + 1, type: safeActionType(action?.type), reason: 'capture-error' }))],
+          sessionName: flow.sessionName ?? null, sessionUsed: false, sessionSwitches: [],
+          plannedActions: flow.actions.length + segments.length, executedActions: 0,
+          unexecutedActions: segments.flatMap((segment, segmentIndex) => [
+            ...(segmentIndex > 0 ? [{ index: 0, type: 'useSession', reason: 'capture-error' }] : []),
+            { index: 0, type: 'navigate', reason: 'capture-error' },
+            ...segment.actions.map(action => ({
+              index: 0, type: safeActionType(action?.type), reason: 'capture-error',
+            })),
+          ]),
           omittedUnexecutedActions: 0, states: [], dependencies: [], omittedDependencies: 0,
           assertions: flow.expect.map((assertion, index) => ({
             index, type: ASSERTION_TYPES.has(assertion.type) ? assertion.type : 'unknown', status: 'untested',
           })),
         };
       } finally {
-        closing = true;
-        if (context && onResponse) context.off('response', onResponse);
+        await activeClose?.().catch(() => {});
         await readData.drain();
-        await context?.close().catch(() => {});
         result.issues = issues;
         result.omittedIssues = omittedIssues;
         result.passed = issues.length === 0 && omittedIssues === 0;

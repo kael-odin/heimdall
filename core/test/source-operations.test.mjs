@@ -204,6 +204,56 @@ test('source capture separates named sessions per flow and fails closed on missi
   assert.doesNotMatch(JSON.stringify(report), /secret-cookie|session-secret|admin-cookie-secret|admin-gate-secret|guest-cookie-secret|guest-gate-secret|auth=|#allowed/);
 });
 
+test('source capture switches sessions inside one flow and fails closed on missing switches', { timeout: 30_000 }, async t => {
+  const { origin } = await fixture(t);
+  const cookie = (name, value) => ({
+    name, value, domain: '127.0.0.1', path: '/', expires: -1,
+    httpOnly: false, secure: false, sameSite: 'Lax',
+  });
+  const session = (name, value) => ({
+    cookies: [cookie('auth', name)],
+    origins: [],
+    sessionStorage: [{ origin, entries: [{ name: 'gate', value }] }],
+  });
+  const admin = session('admin-cookie-secret', 'admin-gate-secret');
+  const guest = session('guest-cookie-secret', 'guest-gate-secret');
+  const report = await captureSourceOperations({
+    origin,
+    flows: [{
+      path: '/secure', sessionName: 'admin',
+      actions: [{ type: 'useSession', sessionName: 'guest' }],
+      expect: [{ type: 'visible', selector: '#allowed' }],
+    }],
+    sessions: { admin, guest },
+    settleMs: 50,
+    assertionTimeoutMs: 100,
+  });
+
+  assert.equal(report.failed, 1);
+  assert.equal(report.flows[0].sessionName, 'admin');
+  assert.equal(report.flows[0].sessionUsed, true);
+  assert.deepEqual(report.flows[0].sessionSwitches, [{
+    actionIndex: 1, sessionName: 'guest', sessionUsed: true,
+  }]);
+  assert.equal(report.flows[0].assertions[0].status, 'failed');
+
+  const missing = await captureSourceOperations({
+    origin,
+    flows: [{
+      path: '/secure', sessionName: 'admin',
+      actions: [{ type: 'useSession', sessionName: 'missing' }],
+      expect: [{ type: 'visible', selector: '#allowed' }],
+    }],
+    sessions: { admin },
+    settleMs: 50,
+    assertionTimeoutMs: 100,
+  });
+  assert.equal(missing.failed, 1);
+  assert.ok(missing.flows[0].issues.some(issue => issue.kind === 'sessionMissing' && issue.sessionName === 'missing'));
+  assert.equal(missing.flows[0].sessionSwitches[0].sessionUsed, false);
+  assert.doesNotMatch(JSON.stringify(report) + JSON.stringify(missing), /admin-cookie-secret|admin-gate-secret|guest-cookie-secret|guest-gate-secret|auth=|#allowed/);
+});
+
 test('source capture rejects malformed flow and session before opening a browser', async () => {
   await assert.rejects(captureSourceOperations({ origin: 'https://site.test/private', flows: [] }), /invalid source origin/);
   await assert.rejects(captureSourceOperations({ origin: 'https://site.test', flows: [{ path: '//foreign.test', actions: [], expect: [] }] }), /invalid source flow/);

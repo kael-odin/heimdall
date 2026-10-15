@@ -22,6 +22,7 @@ function validSelector(value) {
 function validAction(action, origin) {
   if (!action || typeof action !== 'object' || Array.isArray(action)) return false;
   if (action.type === 'navigate') return !!localPath(action.url, origin);
+  if (action.type === 'useSession') return validSessionName(action.sessionName);
   if (action.type === 'click') return validSelector(action.selector);
   if (action.type === 'fill') return validSelector(action.selector)
     && typeof action.value === 'string' && action.value.length <= 10_000;
