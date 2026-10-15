@@ -42,6 +42,17 @@ function publicTarget(value, localOrigin) {
   } catch { return '[invalid URL]'; }
 }
 
+function mergeRuntimeOrigin(origins, target, page) {
+  let url;
+  try { url = new URL(String(target)); } catch { return; }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+  const existing = origins.get(url.origin) ?? { origin: url.origin, requests: 0, pages: [] };
+  existing.requests++;
+  const publicPage = String(page ?? '').split('?')[0];
+  if (publicPage && !existing.pages.includes(publicPage) && existing.pages.length < 20) existing.pages.push(publicPage);
+  origins.set(url.origin, existing);
+}
+
 function publicErrorType(error) {
   return PUBLIC_ERROR_TYPES.has(error?.name) ? error.name : 'Error';
 }
@@ -121,6 +132,7 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
   const quietMs = boundedInteger(options.quietMs, Math.min(500, settleMs), 5_000);
   const maxFailures = boundedInteger(options.maxFailures, MAX_BROWSER_FAILURES, MAX_BROWSER_FAILURES);
   const selected = routes.slice(0, maxPages);
+  const runtimeOrigins = new Map();
   const report = {
     checked: 0,
     failed: 0,
@@ -129,6 +141,7 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
     totalPages: routes.length,
     untested: routes.length - selected.length,
     truncated: routes.length > selected.length,
+    runtimeOrigins: [],
     observationMs: settleMs,
     observation: {
       minimumMs: settleMs, maximumMs: maxObservationMs, quietMs,
@@ -159,6 +172,7 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
           failureSamples.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
           if (failureSamples.length > maxFailures) failureSamples.pop();
         }
+        if (failure.kind === 'externalRequest') mergeRuntimeOrigin(runtimeOrigins, failure.target, pagePath);
       };
       let context;
       let closing = false;
@@ -257,6 +271,8 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
       }
     }));
     report.observation.pages.sort((a, b) => a.pageIndex - b.pageIndex);
+    report.runtimeOrigins = [...runtimeOrigins.values()]
+      .sort((a, b) => a.origin.localeCompare(b.origin));
     report.failures = failuresByPage.flat().slice(0, maxFailures);
     report.truncated ||= report.failures.length < report.failureCount;
     return report;

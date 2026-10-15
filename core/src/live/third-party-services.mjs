@@ -59,22 +59,23 @@ function addPage(entry, pages, maximum = 20) {
 
 function dynamicServiceForHostname(hostname) {
   const host = String(hostname).toLowerCase().replace(/\.$/, '');
+  const canonicalHost = host.replace(/^www\./, '');
   if (!host || !/^[a-z0-9.-]+$/.test(host)) return null;
   return {
-    id: 'external-' + host.replaceAll('.', '-'),
-    hosts: [host],
+    id: 'external-' + canonicalHost.replaceAll('.', '-'),
+    hosts: [canonicalHost],
     kind: 'external-runtime',
     disposition: 'unsupported-runtime',
   };
 }
 
-function addBrowserEvidence(services, service, page) {
+function addBrowserEvidence(services, service, page, references = 1) {
   const entry = services.get(service.id) ?? serviceEntry(service);
   if (!('browserReferences' in entry)) {
     entry.browserReferences = 0;
     entry.browserPages = [];
   }
-  entry.browserReferences++;
+  if (references > 0) entry.browserReferences += references;
   addPage(entry, page, 20);
   entry.browserPages = [...entry.pages];
   services.set(service.id, entry);
@@ -116,15 +117,29 @@ export function buildThirdPartyServicesReport({ externalRefs = [], unresolvedPat
     services.set(service.id, entry);
   }
 
-  if (browserProbe && Array.isArray(browserProbe.failures)) {
-    for (const failure of browserProbe.failures) {
-      if (failure?.kind !== 'externalRequest') continue;
+  if (browserProbe) {
+    const evidence = Array.isArray(browserProbe.runtimeOrigins) && browserProbe.runtimeOrigins.length
+      ? browserProbe.runtimeOrigins.map(origin => ({
+        target: origin.origin,
+        pages: origin.pages,
+        references: origin.requests,
+      }))
+      : Array.isArray(browserProbe.failures)
+        ? browserProbe.failures.filter(failure => failure?.kind === 'externalRequest')
+        : [];
+    for (const item of evidence) {
       let url;
-      try { url = new URL(String(failure.target)); } catch { continue; }
+      try { url = new URL(String(item.target)); } catch { continue; }
       if (url.protocol !== 'http:' && url.protocol !== 'https:') continue;
       const service = serviceForHostname(url.hostname) ?? dynamicServiceForHostname(url.hostname);
       if (!service) continue;
-      addBrowserEvidence(services, service, failure.page);
+      if (Array.isArray(item.pages)) {
+        item.pages.forEach((page, index) => {
+          addBrowserEvidence(services, service, page, index === 0 ? item.references : 0);
+        });
+      } else {
+        addBrowserEvidence(services, service, item.page, item.references);
+      }
     }
   }
 

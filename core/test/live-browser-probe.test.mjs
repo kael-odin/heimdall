@@ -59,6 +59,7 @@ test('browser probe executes local JS and reports uncovered pages', { timeout: 3
     assert.ok(bad.failures.some(f => f.kind === 'externalRequest' && f.target === 'https://example.invalid'));
     assert.ok(bad.failures.some(f => f.kind === 'websocketUnsupported' && f.target === 'wss://example.invalid'));
     assert.ok(bad.failures.some(f => f.kind === 'pageError' && f.error === 'Error'));
+    assert.deepEqual(bad.runtimeOrigins, [{ origin: 'https://example.invalid', requests: 1, pages: ['/bad/'] }]);
     assert.doesNotMatch(JSON.stringify(bad), /local-secret|external-secret|socket-secret|error-secret|private-name-secret|token=/);
 
     const privateRoute = await probeOfflineBrowserBundle(dir, ['/users/alice@example.com?token=route-secret'], { settleMs: 0 });

@@ -77,6 +77,7 @@ test('browser-probe failures expose runtime-only services', () => {
         { kind: 'externalRequest', target: 'http://cdn.carbonads.com', page: '/blog/' },
         { kind: 'externalRequest', target: 'https://www.youtube.com', page: '/blog/announcing-vite6/' },
         { kind: 'externalRequest', target: 'https://unknown.example.org', page: '/blog/' },
+        { kind: 'externalRequest', target: 'https://www.unknown.example.org', page: '/team/' },
         { kind: 'http', status: 404, target: '/missing.riv', page: '/blog/' },
       ],
     },
@@ -91,9 +92,28 @@ test('browser-probe failures expose runtime-only services', () => {
     browserPages: service.browserPages,
   })), [
     { id: 'carbonads', kind: 'advertising', browserReferences: 1, browserPages: ['/blog/'] },
-    { id: 'external-unknown-example-org', kind: 'external-runtime', browserReferences: 1, browserPages: ['/blog/'] },
+    { id: 'external-unknown-example-org', kind: 'external-runtime', browserReferences: 2, browserPages: ['/blog/', '/team/'] },
     { id: 'iconify', kind: 'icon-api', browserReferences: 2, browserPages: ['/'] },
     { id: 'vite-sponsors', kind: 'sponsorship-widget', browserReferences: 1, browserPages: ['/guide/'] },
     { id: 'youtube', kind: 'video-embed', browserReferences: 1, browserPages: ['/blog/announcing-vite6/'] },
   ]);
+});
+
+test('aggregated browser origins keep exact counts beyond truncated failure samples', () => {
+  const report = buildThirdPartyServicesReport({
+    browserProbe: {
+      truncated: true,
+      failures: [
+        { kind: 'externalRequest', target: 'https://api.iconify.design', page: '/page-1/' },
+      ],
+      runtimeOrigins: [
+        { origin: 'https://api.iconify.design', requests: 101, pages: ['/page-1/', '/page-2/'] },
+      ],
+    },
+  });
+
+  assert.equal(report.unsupportedRuntimeServices, 1);
+  assert.equal(report.browserEvidenceTruncated, true);
+  assert.equal(report.services[0].browserReferences, 101);
+  assert.deepEqual(report.services[0].browserPages, ['/page-1/', '/page-2/']);
 });
