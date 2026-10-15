@@ -1,5 +1,5 @@
-import { existsSync, lstatSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { extname, join, relative } from 'node:path';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, extname, join, relative } from 'node:path';
 import { parse } from 'parse5';
 
 const MAX_FILES = 4000;
@@ -7,6 +7,12 @@ const MAX_TOTAL_BYTES = 64 * 1024 * 1024;
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
 const CARBON_HOSTS = ['carbonads.com', 'carbonads.net'];
 const CONTAINER_CLASSES = new Set(['vpcarbonads', 'vpdocasidecarbonads', 'carbon-pixels']);
+const RUNTIME_SCRIPT_PREFIXES = [
+  'https://cdn.carbonads.com/carbon.js?serve=',
+  'http://cdn.carbonads.com/carbon.js?serve=',
+  '//cdn.carbonads.com/carbon.js?serve=',
+];
+const PLACEHOLDER_PREFIX = '/_heimdall-runtime/carbonads-placeholder.js?serve=';
 
 function attr(node, name) {
   return (node.attrs ?? []).find(item => item.name.toLowerCase() === name)?.value ?? '';
@@ -109,6 +115,46 @@ function removeInTree(root, report) {
   walkDir(root);
 }
 
+function writeRuntimePlaceholder(liveDir, report) {
+  const file = join(liveDir, '_heimdall-runtime', 'carbonads-placeholder.js');
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `/* Heimdall offline placeholder: CarbonAds runtime removed. */\n`
+    + 'window._carbonads = window._carbonads ?? {};\n'
+    + 'window._carbonads.refresh = window._carbonads.refresh ?? function () {};\n');
+  report.runtimePlaceholder = PLACEHOLDER_PREFIX;
+}
+
+function rewriteRuntimeScripts(root, report) {
+  let files = 0;
+  const walkDir = dir => {
+    for (const name of readdirSync(dir)) {
+      const file = join(dir, name);
+      const stat = lstatSync(file);
+      if (stat.isSymbolicLink()) throw new Error('carbonads runtime rewrite refuses symlinks');
+      if (stat.isDirectory()) { walkDir(file); continue; }
+      if (!stat.isFile() || !/\.(?:html?|[cm]?js)$/i.test(name) || stat.size > MAX_FILE_BYTES) continue;
+      if (++files > MAX_FILES || (report.bytes += stat.size) > MAX_TOTAL_BYTES) {
+        throw new Error('carbonads runtime rewrite limit exceeded');
+      }
+      const source = readFileSync(file, 'utf8');
+      let text = source;
+      let rewrites = 0;
+      for (const prefix of RUNTIME_SCRIPT_PREFIXES) {
+        let at = -1;
+        while ((at = text.indexOf(prefix, at + 1)) !== -1) rewrites++;
+        text = text.replaceAll(prefix, PLACEHOLDER_PREFIX);
+      }
+      report.remainingRuntimeReferences += (text.match(/(?:https?:)?\/\/cdn\.carbonads\.com\/carbon\.js/g) ?? []).length;
+      if (text === source) continue;
+      writeFileSync(file + '.heimdall-tmp', text);
+      renameSync(file + '.heimdall-tmp', file);
+      report.runtimeFiles++;
+      report.runtimeScriptRewrites += rewrites;
+    }
+  };
+  walkDir(root);
+}
+
 /** Explicitly remove recognized CarbonAds markup from candidate HTML. */
 export function removeCarbonAds({ liveDir, staticPagesDir = null }) {
   const report = {
@@ -120,11 +166,16 @@ export function removeCarbonAds({ liveDir, staticPagesDir = null }) {
     removedScripts: 0,
     removedContainers: 0,
     remainingHtmlReferences: 0,
+    remainingRuntimeReferences: 0,
+    runtimeFiles: 0,
+    runtimeScriptRewrites: 0,
     failed: 0,
   };
   try {
+    writeRuntimePlaceholder(liveDir, report);
     removeInTree(liveDir, report);
     if (staticPagesDir) removeInTree(staticPagesDir, report);
+    rewriteRuntimeScripts(liveDir, report);
   } catch (error) {
     report.failed++;
     report.error = String(error.message ?? error);
@@ -158,9 +209,9 @@ export function removeCarbonAds({ liveDir, staticPagesDir = null }) {
   }
   report.status = report.failed
     ? 'failed'
-    : report.remainingHtmlReferences
+    : report.remainingHtmlReferences || report.remainingRuntimeReferences
       ? 'incomplete'
-      : report.removedNodes
+      : report.removedNodes || report.runtimeScriptRewrites
         ? 'removed'
         : 'not-detected';
   return report;

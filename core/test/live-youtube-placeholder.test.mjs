@@ -36,6 +36,58 @@ test('youtube placeholders replace embeds but preserve outbound links', () => {
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('youtube placeholders also neutralize runtime-created embeds', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-youtube-runtime-'));
+  try {
+    const liveDir = join(dir, 'live');
+    mkdirSync(liveDir);
+    writeFileSync(join(liveDir, 'theme.js'), `const src = \`https://www.youtube.com/embed/\${videoId}\`; export default src;`);
+    const report = replaceYouTubeEmbeds({ liveDir });
+    assert.equal(report.status, 'replaced');
+    assert.equal(report.runtimeFiles, 1);
+    assert.equal(report.runtimeEmbedRewrites, 1);
+    assert.equal(report.remainingRuntimeEmbeds, 0);
+    assert.equal(report.failed, 0);
+    const js = readFileSync(join(liveDir, 'theme.js'), 'utf8');
+    assert.doesNotMatch(js, /youtube\.com\/embed\//);
+    assert.match(js, /\/_heimdall-runtime\/youtube-placeholder\.html\?v=/);
+    assert.ok(readFileSync(join(liveDir, '_heimdall-runtime', 'youtube-placeholder.html'), 'utf8')
+      .includes('Video not included in the offline mirror'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('youtube placeholders recognize localized _ext embed paths', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-youtube-local-'));
+  try {
+    const liveDir = join(dir, 'live');
+    mkdirSync(liveDir);
+    writeFileSync(join(liveDir, 'index.html'), '<!doctype html><body>'
+      + '<iframe src="/lm/example.com/_ext/www.youtube-nocookie.com/embed/local-video?token=hidden" '
+      + 'width="560" height="315" title="Localized video"></iframe>'
+      + '</body>');
+    writeFileSync(join(liveDir, 'runtime.js'),
+      `const src = '/lm/example.com/_ext/www.youtube.com/embed/' + videoId; export default src;`);
+
+    const report = replaceYouTubeEmbeds({ liveDir });
+    assert.equal(report.status, 'replaced');
+    assert.equal(report.files, 1);
+    assert.equal(report.replacements, 1);
+    assert.equal(report.runtimeFiles, 1);
+    assert.equal(report.runtimeEmbedRewrites, 1);
+    assert.equal(report.remainingEmbeds, 0);
+    assert.equal(report.remainingRuntimeEmbeds, 0);
+    assert.equal(report.failed, 0);
+
+    const html = readFileSync(join(liveDir, 'index.html'), 'utf8');
+    assert.match(html, /data-heimdall-youtube-placeholder="1"/);
+    assert.doesNotMatch(html, /youtube-nocookie\.com\/embed/);
+
+    const js = readFileSync(join(liveDir, 'runtime.js'), 'utf8');
+    assert.doesNotMatch(js, /youtube\.com\/embed\//);
+    assert.match(js, /\/_heimdall-runtime\/youtube-placeholder\.html\?v=/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('strict export blocks YouTube by default and supports explicit placeholders', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-youtube-export-'));
   const host = 'youtube-fixture.test';

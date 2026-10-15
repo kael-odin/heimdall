@@ -54,7 +54,13 @@ import { inspectRuntimeAdapter } from './adapter-runtime.mjs';
 import { capturePublicTextLinks } from './public-text-links.mjs';
 import { removeCarbonAds } from './carbonads-removal.mjs';
 import { replaceYouTubeEmbeds } from './youtube-placeholder.mjs';
-import { buildThirdPartyServicesReport } from './third-party-services.mjs';
+import { buildThirdPartyServicesReport, runtimeServiceForUrl } from './third-party-services.mjs';
+import {
+  collectRuntimeServiceCacheUrls,
+  fetchRuntimeServiceCache,
+  parseRuntimeServiceCacheFile,
+  validateRuntimeServiceCacheServices,
+} from './runtime-service-cache.mjs';
 import { probePublicPathAliases, rewritePathAliasLinks } from './path-aliases.mjs';
 import { canonUrl } from '../url-canon.mjs';
 
@@ -62,7 +68,7 @@ const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--cache-runtime-services <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -126,6 +132,29 @@ if (externalStaticArgPresent) {
     process.exit(2);
   }
 }
+const runtimeCacheArgPresent = argv.some(arg => arg === '--cache-runtime-services'
+  || arg.startsWith('--cache-runtime-services='));
+const runtimeCacheArg = argOf('cache-runtime-services', undefined);
+if (runtimeCacheArgPresent && (!runtimeCacheArg || !OFFLINE || !STRICT)) {
+  console.error('[export] --cache-runtime-services requires a JSON file and --offline --strict');
+  process.exit(2);
+}
+let runtimeCacheServices = null;
+if (runtimeCacheArgPresent) {
+  try {
+    const file = resolve(process.env.HEIMDALL_INVOKE_CWD ?? process.cwd(), runtimeCacheArg);
+    const stat = lstatSync(file);
+    if (!stat.isFile() || stat.size > 64 * 1024) throw new Error('invalid runtime service cache file');
+    runtimeCacheServices = parseRuntimeServiceCacheFile(file);
+  } catch {
+    console.error('[export] invalid runtime service cache file; expected a JSON array of service IDs');
+    process.exit(2);
+  }
+}
+const runtimeServicePolicies = new Map();
+if (runtimeCacheServices) for (const id of runtimeCacheServices) runtimeServicePolicies.set(id, 'cache');
+if (REMOVE_CARBONADS) runtimeServicePolicies.set('carbonads', 'remove');
+if (REPLACE_YOUTUBE) runtimeServicePolicies.set('youtube', 'placeholder');
 const dataPlan = INCLUDE_READONLY_DATA ? readDataPlan(BASE, origin) : { status: 'not-requested', urls: [] };
 if (STRICT && !OFFLINE) {
   console.error('[export] --strict requires --offline so the validated bundle cannot proxy to the source site');
@@ -314,6 +343,8 @@ const readOnlyKeys = new Set(dataPlan.urls.map(url => harKey('GET', url)));
 let readOnlyDataConflicts = 0;
 let harPages = 0;
 const privacy = { excluded: { invalid: 0, privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 }, examples: [], includeApiBodies: INCLUDE_API_HAR, sessionPresent: SESSION_PRESENT, privateExportApproved: ALLOW_PRIVATE_EXPORT };
+const runtimeCacheUrls = new Set();
+const discoveredRuntimeServiceIds = new Set();
 for (let i = 0; i < pageNames.length; i++) {
   const name = pageNames[i];
   const p = join(pagesDir, name, 'network.har');
@@ -321,6 +352,15 @@ for (let i = 0; i < pageNames.length; i++) {
   harPages++;
   try {
     const rawHar = JSON.parse(readFileSync(p, 'utf8'));
+    for (const entry of rawHar?.log?.entries ?? []) {
+      const service = runtimeServiceForUrl(String(entry?.request?.url ?? ''));
+      if (service) discoveredRuntimeServiceIds.add(service.id);
+    }
+    if (runtimeCacheServices) {
+      for (const url of collectRuntimeServiceCacheUrls({ harEntries: rawHar?.log?.entries, services: runtimeCacheServices })) {
+        runtimeCacheUrls.add(url);
+      }
+    }
     const rawReadOnlyCounts = new Map();
     for (const entry of rawHar?.log?.entries ?? []) {
       const key = harKey(entry?.request?.method, entry?.request?.url);
@@ -354,6 +394,35 @@ for (let i = 0; i < pageNames.length; i++) {
     }
   } catch (e) { console.warn('[export] HAR parse failed:', name, String(e).slice(0, 80)); }
   emit({ kind: 'live-stage', stage: 'har', index: i + 1, total: pageNames.length });
+}
+let runtimeServiceCache = null;
+const runtimeServiceHosts = new Set();
+if (runtimeCacheServices) {
+  try {
+    validateRuntimeServiceCacheServices({ services: runtimeCacheServices, discoveredIds: discoveredRuntimeServiceIds });
+  } catch {
+    console.error('[export] --cache-runtime-services contains service IDs not discovered in this source HAR');
+    process.exit(2);
+  }
+  emit({ kind: 'live-stage', stage: 'runtime-service-cache', status: 'running', targets: runtimeCacheUrls.size });
+  for (const url of runtimeCacheUrls) {
+    const service = runtimeServiceForUrl(url);
+    if (service) for (const serviceHost of service.hosts) runtimeServiceHosts.add(serviceHost);
+  }
+  runtimeServiceCache = await fetchRuntimeServiceCache({ urls: runtimeCacheUrls });
+  for (const entry of runtimeServiceCache.entries) {
+    const key = harKey(entry.method, entry.url);
+    if (!harMap.has(key)) harMap.set(key, entry);
+  }
+  console.log('[runtime-service-cache] services=' + runtimeCacheServices.size
+    + ' urls=' + runtimeServiceCache.requested
+    + ' fetched=' + runtimeServiceCache.fetched
+    + ' failed=' + runtimeServiceCache.failed
+    + ' bytes=' + runtimeServiceCache.bytes);
+  emit({ kind: 'live-stage', stage: 'runtime-service-cache',
+    status: runtimeServiceCache.failed ? 'failed' : 'done',
+    targets: runtimeServiceCache.requested, fetched: runtimeServiceCache.fetched,
+    failed: runtimeServiceCache.failed });
 }
 const preflightRoutes = listLivePageRoutes(join(siteDir, 'live'), origin, queryPages);
 const operationPlan = readOperationPlan(BASE, origin, preflightRoutes);
@@ -412,6 +481,7 @@ const config = { host: siteId, siteId, origin, port: PORT, offline: OFFLINE, rep
   ...(INCLUDE_ADAPTER ? { adapter: true } : {}),
   ...(REMOVE_CARBONADS ? { carbonAdsPolicy: 'remove' } : {}),
   ...(REPLACE_YOUTUBE ? { youtubePolicy: 'placeholder' } : {}),
+  ...(runtimeCacheServices ? { runtimeServiceCache: [...runtimeCacheServices] } : {}),
   ...(ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS ? { externalRedirectPolicy: 'allow-unsupported' } : {}) };
 writeFileSync(join(OUT, 'heimdall-live.json'), JSON.stringify(config, null, 2));
 
@@ -422,43 +492,11 @@ const harIndex = indexHar(har.entries);
 const nonvisualPixels = OMIT_NONVISUAL_PIXELS
   ? { policy: 'omit', ...removeNonvisualExternalPixels({ rootDir: siteDir, origin }) }
   : { policy: 'preserve', files: 0, removed: 0 };
-let carbonAdsRemoval = null;
-if (REMOVE_CARBONADS) {
-  emit({ kind: 'live-stage', stage: 'carbonads-removal', status: 'running' });
-  carbonAdsRemoval = removeCarbonAds({
-    liveDir,
-    staticPagesDir: join(staticDir, host, 'pages'),
-  });
-  console.log('[carbonads-removal] policy=remove files=' + carbonAdsRemoval.files
-    + ' scripts=' + carbonAdsRemoval.removedScripts
-    + ' containers=' + carbonAdsRemoval.removedContainers
-    + ' remaining=' + carbonAdsRemoval.remainingHtmlReferences
-    + ' failed=' + carbonAdsRemoval.failed);
-  emit({ kind: 'live-stage', stage: 'carbonads-removal', status: carbonAdsRemoval.failed ? 'failed' : 'done',
-    files: carbonAdsRemoval.files, removed: carbonAdsRemoval.removedNodes,
-    remaining: carbonAdsRemoval.remainingHtmlReferences, failed: carbonAdsRemoval.failed });
-}
-let youtubePlaceholder = null;
-if (REPLACE_YOUTUBE) {
-  emit({ kind: 'live-stage', stage: 'youtube-placeholder', status: 'running' });
-  youtubePlaceholder = replaceYouTubeEmbeds({
-    liveDir,
-    staticPagesDir: join(staticDir, host, 'pages'),
-  });
-  console.log('[youtube-placeholder] policy=placeholder files=' + youtubePlaceholder.files
-    + ' replacements=' + youtubePlaceholder.replacements
-    + ' remaining=' + youtubePlaceholder.remainingEmbeds
-    + ' failed=' + youtubePlaceholder.failed);
-  emit({ kind: 'live-stage', stage: 'youtube-placeholder', status: youtubePlaceholder.failed ? 'failed' : 'done',
-    files: youtubePlaceholder.files, replacements: youtubePlaceholder.replacements,
-    remaining: youtubePlaceholder.remainingEmbeds, failed: youtubePlaceholder.failed });
-}
 emit({ kind: 'live-stage', stage: 'health', status: 'running' });
 let health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
-if (carbonAdsRemoval) health.carbonAdsRemoval = carbonAdsRemoval;
-if (youtubePlaceholder) health.youtubePlaceholder = youtubePlaceholder;
 const assetsBefore = { ...health.assets };
 let materialized = null;
+let localizationMap = new Map();
 const assetUrlMap = new Map();
 const cssSources = new Map();
 if (MATERIALIZE) {
@@ -467,7 +505,11 @@ if (MATERIALIZE) {
   const mat = materializeHar({ liveDir, origin, entries: staticEntries });
   // hostPrefixes: 离线包把站外 CDN 的整站前缀也接进本地镜像树（运行时拼出来的地址抓不到，
   // 详见 heal.localizeQueryEntries 里那段注释）。在线镜像不接 —— 它的承诺是"未捕获的实时回源"。
-  const loc = localizeQueryEntries({ entries: staticEntries, liveDir, host, origin, hostPrefixes: OFFLINE });
+  const loc = localizeQueryEntries({
+    entries: staticEntries, liveDir, host, origin, hostPrefixes: OFFLINE,
+    runtimeServiceHosts: [...runtimeServiceHosts],
+  });
+  localizationMap = loc.map;
   const localPrefix = '/lm/' + host + '/_ext/';
   for (const entry of staticEntries) {
     if (entry.method !== 'GET' || entry.status !== 200 || !entry.body || !isStaticAsset(entry)) continue;
@@ -496,7 +538,9 @@ if (MATERIALIZE) {
   for (const e of har.entries) {
     if (!e.body || e.kind === 'public-read-only-data') continue;
     let x; try { x = new URL(e.url); } catch { e.body = null; trimmed++; continue; }
-    if (!x.search) { e.body = null; trimmed++; }   // 无查询条目已 materialize 落盘；带查询的保留回放体（覆盖 JS 动态请求）
+    if (!x.search && e.kind !== 'runtime-service-cache') {
+      e.body = null; trimmed++;   // 无查询条目已 materialize 落盘；带查询/runtime cache 保留回放体
+    }
   }
   console.log('[materialize] files=' + mat.written + ' (' + (mat.bytes / 1024 / 1024).toFixed(1) + 'MB) localized=' + loc.written + ' (' + (loc.bytes / 1024 / 1024).toFixed(1) + 'MB) rewrote=' + rw.files + ' files/' + rw.rewrites + ' refs');
   health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
@@ -581,6 +625,65 @@ if (HEAL && health.links.missing > 0) {
   }
 }
 health.pathAliases = pathAliases;
+if (MATERIALIZE && localizationMap.size) {
+  // Heal may fetch a text asset again after materialization and restore source
+  // URLs. Apply the localization map once more after every file-producing stage.
+  const finalRefs = rewriteLocalRefs({ liveDir, map: localizationMap });
+  if (materialized) {
+    materialized.finalRefFiles = finalRefs.files;
+    materialized.finalRefRewrites = finalRefs.rewrites;
+  }
+  console.log('[localize-final] files=' + finalRefs.files + ' rewrites=' + finalRefs.rewrites);
+}
+let carbonAdsRemoval = null;
+let youtubePlaceholder = null;
+if (REMOVE_CARBONADS) {
+  emit({ kind: 'live-stage', stage: 'carbonads-removal', status: 'running' });
+  carbonAdsRemoval = removeCarbonAds({
+    liveDir,
+    staticPagesDir: join(staticDir, host, 'pages'),
+  });
+  const remaining = carbonAdsRemoval.remainingHtmlReferences + carbonAdsRemoval.remainingRuntimeReferences;
+  console.log('[carbonads-removal] policy=remove files=' + carbonAdsRemoval.files
+    + ' scripts=' + carbonAdsRemoval.removedScripts
+    + ' containers=' + carbonAdsRemoval.removedContainers
+    + ' runtimeFiles=' + carbonAdsRemoval.runtimeFiles
+    + ' runtimeRewrites=' + carbonAdsRemoval.runtimeScriptRewrites
+    + ' remaining=' + remaining
+    + ' failed=' + carbonAdsRemoval.failed);
+  emit({ kind: 'live-stage', stage: 'carbonads-removal', status: carbonAdsRemoval.failed ? 'failed' : 'done',
+    files: carbonAdsRemoval.files, removed: carbonAdsRemoval.removedNodes,
+    runtimeFiles: carbonAdsRemoval.runtimeFiles,
+    runtimeRewrites: carbonAdsRemoval.runtimeScriptRewrites,
+    remaining, failed: carbonAdsRemoval.failed });
+}
+if (REPLACE_YOUTUBE) {
+  emit({ kind: 'live-stage', stage: 'youtube-placeholder', status: 'running' });
+  youtubePlaceholder = replaceYouTubeEmbeds({
+    liveDir,
+    staticPagesDir: join(staticDir, host, 'pages'),
+  });
+  const remaining = youtubePlaceholder.remainingEmbeds + youtubePlaceholder.remainingRuntimeEmbeds;
+  console.log('[youtube-placeholder] policy=placeholder files=' + youtubePlaceholder.files
+    + ' replacements=' + youtubePlaceholder.replacements
+    + ' runtimeFiles=' + youtubePlaceholder.runtimeFiles
+    + ' runtimeRewrites=' + youtubePlaceholder.runtimeEmbedRewrites
+    + ' remaining=' + remaining
+    + ' failed=' + youtubePlaceholder.failed);
+  emit({ kind: 'live-stage', stage: 'youtube-placeholder', status: youtubePlaceholder.failed ? 'failed' : 'done',
+    files: youtubePlaceholder.files, replacements: youtubePlaceholder.replacements,
+    runtimeFiles: youtubePlaceholder.runtimeFiles,
+    runtimeRewrites: youtubePlaceholder.runtimeEmbedRewrites,
+    remaining, failed: youtubePlaceholder.failed });
+}
+if (carbonAdsRemoval || youtubePlaceholder) {
+  const { healed, publicTextLinks, externalStatic } = health;
+  health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
+  if (healed) health.healed = healed;
+  if (publicTextLinks) health.publicTextLinks = publicTextLinks;
+  if (externalStatic) health.externalStatic = externalStatic;
+  health.pathAliases = pathAliases;
+}
 if (carbonAdsRemoval) health.carbonAdsRemoval = carbonAdsRemoval;
 if (youtubePlaceholder) health.youtubePlaceholder = youtubePlaceholder;
 if (ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS) {
@@ -591,10 +694,22 @@ if (ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS) {
   };
 }
 if (materialized) health.materialized = materialized;
+if (runtimeServiceCache) {
+  health.runtimeServiceCache = {
+    status: runtimeServiceCache.failed ? 'failed' : 'cached',
+    services: runtimeCacheServices ? [...runtimeCacheServices] : [],
+    requested: runtimeServiceCache.requested,
+    fetched: runtimeServiceCache.fetched,
+    failed: runtimeServiceCache.failed,
+    bytes: runtimeServiceCache.bytes,
+    ...(runtimeServiceCache.failures.length ? { failures: runtimeServiceCache.failures } : {}),
+  };
+}
 health.nonvisualExternalPixels = nonvisualPixels;
 health.thirdPartyServices = buildThirdPartyServicesReport({
   externalRefs: health.externalRefsTop,
   unresolvedPaths: health.unresolvedPaths,
+  policies: runtimeServicePolicies,
 });
 writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR（materialize 时仅剩必要回放体）
 
@@ -674,7 +789,9 @@ health.strictBlockers = {
   unsupportedRuntimeServices: health.thirdPartyServices.unsupportedRuntimeServices,
   thirdPartyPolicyFailed: health.carbonAdsRemoval?.failed ?? 0,
   thirdPartyPolicyRemaining: (health.carbonAdsRemoval?.remainingHtmlReferences ?? 0)
-    + (health.youtubePlaceholder?.remainingEmbeds ?? 0),
+    + (health.carbonAdsRemoval?.remainingRuntimeReferences ?? 0)
+    + (health.youtubePlaceholder?.remainingEmbeds ?? 0)
+    + (health.youtubePlaceholder?.remainingRuntimeEmbeds ?? 0),
   unsupportedExternalRedirects: ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS
     ? 0 : health.pathAliases?.unsupportedExternalRedirects ?? 0,
   unsupportedExternalRedirectReferences: ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS
@@ -692,6 +809,7 @@ health.strictBlockers = {
   operationPlanChanged: operationPlanChanged ? 1 : 0,
   emptyBundle: health.pages === 0 ? 1 : 0,
   scanTruncated: health.scanTruncated ? 1 : 0,
+  runtimeServiceCacheFailed: health.runtimeServiceCache?.failed ?? 0,
   runtimeMissing: 0,
   browserFailed: 0,
   browserUntested: 0,
@@ -765,6 +883,7 @@ if (STRICT) {
     externalRefs: health.externalRefsTop,
     unresolvedPaths: health.unresolvedPaths,
     browserProbe: health.browserProbe,
+    policies: runtimeServicePolicies,
   });
   health.strictBlockers.unsupportedRuntimeServices = health.thirdPartyServices.unsupportedRuntimeServices;
   health.strictBlockers.browserUntested = health.browserProbe.untested;

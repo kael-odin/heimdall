@@ -16,7 +16,7 @@
  *   root=mirror：镜像直接挂在 /（drop-in 替代部署），/lm/<host>/ 仍作为别名可用。
  */
 import { createServer } from 'node:http';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, extname, normalize, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -255,6 +255,35 @@ async function proxy(req, res, pathAndQuery) {
   return send(res, upstream.status, buf, type || 'application/octet-stream', outHeaders);
 }
 
+function localizedQueryCandidate(rel, search) {
+  if (!search || !/^\/?_ext\//.test(rel)) return null;
+  const match = /^\/?_ext\/([^/]+)(\/.*)?$/.exec(rel);
+  if (!match) return null;
+  const externalDir = match[1];
+  let protocol = 'https:';
+  let hostname = externalDir;
+  let port = '';
+  const originMatch = /^(.*)--(https?)(?:-port-(\d+))?$/.exec(externalDir);
+  if (originMatch) {
+    hostname = originMatch[1];
+    protocol = originMatch[2] + ':';
+    port = originMatch[3] ? ':' + originMatch[3] : '';
+  }
+  let sourceUrl;
+  try {
+    sourceUrl = new URL((match[2] ?? '/') + search, protocol + '//' + hostname + port);
+  } catch {
+    return null;
+  }
+  let path = sourceUrl.pathname.replace(/^\/+/, '').replace(/[<>:"|?*\x00-\x1f]/g, '_');
+  if (!path || path.endsWith('/')) path += 'index';
+  const extension = /(\.[a-z0-9]{1,5})$/i.exec(path);
+  if (!extension) return null;
+  const digest = createHash('sha1').update(sourceUrl.href).digest('hex').slice(0, 8);
+  path = path.slice(0, extension.index) + '~' + digest + extension[1];
+  return '_ext/' + externalDir + '/' + path;
+}
+
 async function serveLive(req, res, rel, search) {
   if (adapterRuntime && await adapterRuntime.dispatchRuntimeAdapter(adapterRuntime.adapter, req, res, rel, search)) return;
   // 1) local snapshot：带 query 的页面必须精确命中对应快照。
@@ -270,6 +299,12 @@ async function serveLive(req, res, rel, search) {
       }
       if (sendFile(res, local, { 'Cache-Control': 'no-cache' })) return;
     }
+  }
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    const candidate = localizedQueryCandidate(rel, search);
+    if (candidate && sendFile(res, safeJoin(LIVE, candidate), {
+      'Cache-Control': 'no-cache', 'X-Heimdall-Localized-Query': '1',
+    })) return;
   }
   // 2) HAR replay（原站重新部署后旧 chunk 仍可用）
   if (REPLAY && req.method === 'GET') {

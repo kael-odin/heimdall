@@ -23,6 +23,12 @@ const KNOWN_RUNTIME_SERVICES = [
     kind: 'sponsorship-widget',
     disposition: 'unsupported-runtime',
   },
+  {
+    id: 'github-avatars',
+    hosts: ['github.com', 'www.github.com', 'avatars.githubusercontent.com'],
+    kind: 'avatar-image',
+    disposition: 'unsupported-runtime',
+  },
 ];
 
 function hostMatches(hostname, hosts) {
@@ -30,15 +36,32 @@ function hostMatches(hostname, hosts) {
   return hosts.some(service => host === service || host.endsWith('.' + service));
 }
 
-function serviceForHostname(hostname) {
+export function runtimeServiceForHostname(hostname) {
   return KNOWN_RUNTIME_SERVICES.find(service => hostMatches(hostname, service.hosts)) ?? null;
 }
 
-function serviceEntry(service) {
+export function runtimeServiceForUrl(value) {
+  try {
+    const { hostname } = new URL(String(value));
+    return runtimeServiceForHostname(hostname) ?? dynamicServiceForHostname(hostname);
+  } catch {
+    return null;
+  }
+}
+
+function serviceForHostname(hostname) {
+  return runtimeServiceForHostname(hostname);
+}
+
+function serviceEntry(service, policy = null) {
   return {
     id: service.id,
     kind: service.kind,
-    disposition: service.disposition,
+    disposition: policy === 'cache' ? 'cached-runtime'
+      : policy === 'remove' ? 'removed-runtime'
+        : policy === 'placeholder' ? 'placeholder-runtime'
+          : service.disposition,
+    ...(policy ? { policy } : {}),
     hosts: [...service.hosts],
     references: 0,
     urls: 0,
@@ -69,8 +92,8 @@ function dynamicServiceForHostname(hostname) {
   };
 }
 
-function addBrowserEvidence(services, service, page, references = 1) {
-  const entry = services.get(service.id) ?? serviceEntry(service);
+function addBrowserEvidence(services, service, page, references = 1, policy = null) {
+  const entry = services.get(service.id) ?? serviceEntry(service, policy);
   if (!('browserReferences' in entry)) {
     entry.browserReferences = 0;
     entry.browserPages = [];
@@ -82,7 +105,9 @@ function addBrowserEvidence(services, service, page, references = 1) {
 }
 
 /** Build a privacy-safe report of runtime services that cannot be made offline-equivalent by static capture. */
-export function buildThirdPartyServicesReport({ externalRefs = [], unresolvedPaths = [], browserProbe = null } = {}) {
+export function buildThirdPartyServicesReport({
+  externalRefs = [], unresolvedPaths = [], browserProbe = null, policies = null,
+} = {}) {
   const services = new Map();
   const evidence = new Map();
 
@@ -95,7 +120,8 @@ export function buildThirdPartyServicesReport({ externalRefs = [], unresolvedPat
     const key = service.id + '\0external\0' + url.origin + url.pathname;
     if (!evidence.has(key)) {
       evidence.set(key, true);
-      const entry = services.get(service.id) ?? serviceEntry(service);
+      const policy = policies?.get(service.id) ?? null;
+      const entry = services.get(service.id) ?? serviceEntry(service, policy);
       entry.urls++;
       services.set(service.id, entry);
     }
@@ -111,7 +137,8 @@ export function buildThirdPartyServicesReport({ externalRefs = [], unresolvedPat
     if (!match) continue;
     const service = serviceForHostname(match[1]);
     if (!service) continue;
-    const entry = services.get(service.id) ?? serviceEntry(service);
+    const policy = policies?.get(service.id) ?? null;
+    const entry = services.get(service.id) ?? serviceEntry(service, policy);
     entry.references++;
     entry.urls++;
     services.set(service.id, entry);
@@ -135,18 +162,19 @@ export function buildThirdPartyServicesReport({ externalRefs = [], unresolvedPat
       if (!service) continue;
       if (Array.isArray(item.pages)) {
         item.pages.forEach((page, index) => {
-          addBrowserEvidence(services, service, page, index === 0 ? item.references : 0);
+          addBrowserEvidence(services, service, page, index === 0 ? item.references : 0, policies?.get(service.id) ?? null);
         });
       } else {
-        addBrowserEvidence(services, service, item.page, item.references);
+        addBrowserEvidence(services, service, item.page, item.references, policies?.get(service.id) ?? null);
       }
     }
   }
 
   const list = [...services.values()].sort((a, b) => a.id.localeCompare(b.id));
+  const unsupported = list.filter(service => service.disposition === 'unsupported-runtime').length;
   return {
-    status: list.length ? 'unsupported-runtime-detected' : 'none-detected',
-    unsupportedRuntimeServices: list.length,
+    status: list.length ? (unsupported ? 'unsupported-runtime-detected' : 'runtime-policy-applied') : 'none-detected',
+    unsupportedRuntimeServices: unsupported,
     services: list,
     ...(browserProbe ? { browserEvidenceTruncated: browserProbe.truncated === true } : {}),
   };

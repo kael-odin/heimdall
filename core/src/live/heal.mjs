@@ -251,7 +251,9 @@ function crossOriginRel(u, entry) {
   return '_ext/' + externalOriginDir(u) + '/' + p;
 }
 
-export function localizeQueryEntries({ entries = [], liveDir, host, origin, hostPrefixes = false } = {}) {
+export function localizeQueryEntries({
+  entries = [], liveDir, host, origin, hostPrefixes = false, runtimeServiceHosts = [],
+} = {}) {
   const map = new Map();
   const out = { written: 0, skipped: 0, bytes: 0 };
   const extHosts = new Set();
@@ -261,7 +263,9 @@ export function localizeQueryEntries({ entries = [], liveDir, host, origin, host
     try { u = new URL(e.url); } catch { continue; }
     const sameOrigin = u.origin === origin;
     if (sameOrigin && !u.search) continue;          // 同源无查询：materializeHar 已落盘
-    if (!sameOrigin && !isStaticAsset(e)) continue; // 站外只搬静态资源（数据类 API 离线无法伪造）
+    if (!sameOrigin && !isStaticAsset(e) && e.kind !== 'runtime-service-cache') {
+      continue; // 站外只搬静态资源；显式 runtime-service-cache 是唯一例外
+    }
     // 同源带查询的是动态端点（/_next/image?…），与谁都不构成相对关系 → 拍平成哈希名即可；
     // 站外的要保住目录结构（见 crossOriginRel）
     const rel = sameOrigin
@@ -304,10 +308,17 @@ export function localizeQueryEntries({ entries = [], liveDir, host, origin, host
    * 会让那些资源从"能回源"变成"本地 404"。
    */
   if (hostPrefixes) {
-    for (const externalOrigin of extHosts) {
+    const externalOrigins = new Set(extHosts);
+    for (const runtimeServiceHost of runtimeServiceHosts) {
+      try {
+        externalOrigins.add(new URL('https://' + runtimeServiceHost).origin);
+      } catch { /* Invalid service hosts are rejected by the policy parser. */ }
+    }
+    for (const externalOrigin of externalOrigins) {
       const source = new URL(externalOrigin);
       const to = '/lm/' + host + '/_ext/' + externalOriginDir(source) + '/';
       map.set(externalOrigin + '/', to);
+      map.set(externalOrigin, to.slice(0, -1));
       if (source.protocol === new URL(origin).protocol) map.set('//' + source.host + '/', to);
     }
   }

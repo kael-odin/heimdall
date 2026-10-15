@@ -55,6 +55,25 @@ test('explicit carbonads removal reports unmatched references instead of pretend
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('carbonads removal also neutralizes runtime-created scripts', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-carbonads-runtime-'));
+  try {
+    const liveDir = join(dir, 'live');
+    mkdirSync(liveDir);
+    writeFileSync(join(liveDir, 'theme.js'), `const src = \`//cdn.carbonads.com/carbon.js?serve=${'CEBIEK3N'}&placement=${'fixture'}\`; export default src;`);
+    const report = removeCarbonAds({ liveDir });
+    assert.equal(report.status, 'removed');
+    assert.equal(report.runtimeFiles, 1);
+    assert.equal(report.runtimeScriptRewrites, 1);
+    assert.equal(report.remainingRuntimeReferences, 0);
+    assert.equal(report.failed, 0);
+    const js = readFileSync(join(liveDir, 'theme.js'), 'utf8');
+    assert.doesNotMatch(js, /cdn\.carbonads\.com\/carbon\.js/);
+    assert.match(js, /\/_heimdall-runtime\/carbonads-placeholder\.js\?serve=/);
+    assert.ok(readFileSync(join(liveDir, '_heimdall-runtime', 'carbonads-placeholder.js'), 'utf8').includes('CarbonAds runtime removed'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('strict export keeps carbonads blocked by default and supports explicit removal', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-carbonads-export-'));
   const host = 'carbon-fixture.test';

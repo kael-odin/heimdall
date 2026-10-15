@@ -82,3 +82,17 @@ test('live/har: public static paths survive, private pathname entries and their 
   assert.ok(result.privacy.examples.every(e => e.path === 'https://x.test/[redacted]'));
   assert.equal(sanitizeHar({ log: { entries: [staticEntry(privateUrls[0])] } }, { includeApiBodies: true }).entries.length, 0);
 });
+
+test('live/har: runtime-loaded .riv animation assets are static package bodies', () => {
+  const entry = {
+    request: { method: 'GET', url: 'https://x.test/assets/home.CJXD3cz6.riv' },
+    response: {
+      status: 200,
+      content: { mimeType: 'application/octet-stream', encoding: 'base64', text: Buffer.from('RIVE').toString('base64') },
+    },
+  };
+  const result = sanitizeHar({ log: { entries: [entry] } });
+  assert.equal(result.entries.length, 1);
+  assert.equal(result.entries[0].url, entry.request.url);
+  assert.equal(Buffer.from(result.entries[0].body, 'base64').toString('utf8'), 'RIVE');
+});

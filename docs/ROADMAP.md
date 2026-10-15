@@ -1,6 +1,6 @@
 # Heimdall 路线图
 
-更新：2026-10-15。这里记录当前仍需完成或长期维护的工作。2026-10-13 前的逐项历史与已完成条目在 [归档路线图](archive/ROADMAP-through-2026-10-13.md)；本轮修复前证据、复验及剩余边界见 [审查报告](audits/2026-10-14/README.md)。
+更新：2026-10-16。这里记录当前仍需完成或长期维护的工作。2026-10-13 前的逐项历史与已完成条目在 [归档路线图](archive/ROADMAP-through-2026-10-13.md)；本轮修复前证据、复验及剩余边界见 [审查报告](audits/2026-10-14/README.md)。
 
 本机旧产物已做[只读盘点](audits/2026-10-14/evidence/historical-inventory.md)：历史 atlas 可比较的 641 个 URL 中 397 个有对应克隆，62 份原工作区多视口验证均为旧口径。按 2026-10-15 最新验证器指纹的[隔离批处理快照](audits/2026-10-14/evidence/historical-v2-final-20261015/README.md)，407 个带克隆页中 **2 页完整测量**（`angular.dev/ai` 90.55% B、`home` 94.80% B）、**3 页未测成**（`apify.com/ideas`、`jobs`、`apify-instagram-scraper` 渲染未收敛）、**402 页待测**；另有 1 页 `no_clone`，不计入分母。旧的[四页已测快照](audits/2026-10-14/evidence/historical-v2-batch/README.md)只供追溯，不能沿用 Apify 旧分数。新批处理已支持超长页分段截图，但该页仍须解决采集完成条件。批处理只做三视口视觉验证，不包含交互；原件保持只读，运行状态在被 Git 忽略的 `core/workspace/_runs/historical-v2-batch/`。以下任务不得原地覆盖旧证据。
 
@@ -11,6 +11,8 @@
 同日[公开文本与路径别名奇偶性](audits/2026-10-16/public-text-and-alias-parity.md)复验把公开文本预算提升为默认 128 / 上限 256，修正 `config.md` 误判私有路径的问题；Vite 44/44 个公开文本目标全部捕获，12 个 `.md` 缺口消失。7 个源站 404 别名共 10 次引用被改写到镜像命名空间并按可复现 404 处理。随后代码已把跨域别名跳转升级为独立的 `unsupported-external-redirect` 策略（见[策略记录](audits/2026-10-16/unsupported-external-redirect-policy.md)），可在 strict 下显式接受并保留证据。CarbonAds 已支持默认阻断、显式 `--remove-carbonads` 降级（见[策略记录](audits/2026-10-16/carbonads-removal-policy.md)）；YouTube 已支持默认阻断、显式 `--replace-youtube` 本地占位（见[策略记录](audits/2026-10-16/youtube-placeholder-policy.md)）。三者叠加后 Vite 57 页的静态资源缺口清零，但浏览器探针发现 Iconify、sponsors、运行时 CarbonAds、YouTube 外联和 3 个 `.riv` 资源仍导致 57/57 失败，包未发布。
 
 浏览器探针证据已并入 `health.thirdPartyServices`（见[归类记录](audits/2026-10-16/browser-runtime-services.md)）：静态扫描清零后，`externalRequest` 会按服务归类并继续进入 strict 阻断，未识别 origin 保守标记为 `external-runtime`。这解决的是失败可解释性，不表示运行时缺口已处理。
+
+同日新增[运行时服务显式缓存策略](audits/2026-10-16/runtime-service-cache-policy.md)：只按策略文件声明缓存安全 GET 响应，补齐 Iconify 镜像域名、JS 基址改写、带查询 `_ext` 哈希实体路由、CarbonAds/YouTube 运行时脚本改写和 `.riv` 静态化。Vite 公开样本 57/57 页完成严格导出，浏览器探针 0 失败、0 未测、0 个运行时外部 origin；复制到不含原工作区的目录后搬迁复验仍为 57/57、0 失败。该结果只覆盖本样本与已声明策略，不表示任意站点已可完整复刻。
 
 ## 主目标：独立站点镜像
 

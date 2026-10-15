@@ -108,9 +108,17 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 
 离线包默认保留隐藏像素节点，使跨源请求继续被严格门禁报告。只有明确接受这个降级时，才加 `--omit-nonvisual-pixels`：它仅省略属性受限、行内声明隐藏的跨源 1×1 图片，`health.nonvisualExternalPixels` 会记录 `preserve` 或 `omit` 策略及移除数。静态属性无法证明页面脚本不读取这些节点，也不能排除外部 CSS 覆盖隐藏声明；如省略，应对目标站做视觉和关键操作对照。脚本、可见图片及其他跨源资源仍按原门禁处理。
 
+页面脚本运行时再请求的公开只读服务默认阻断。确认有权分发这些响应后，创建 JSON 数组策略文件并加 `--cache-runtime-services <json-file>`（要求 `--offline --strict`）：
+
+```json
+["iconify", "vite-sponsors", "github-avatars"]
+```
+
+导出只收集源 HAR 中已声明服务的安全 GET 响应，写入本地 `_ext` 树并改写 JS 中的完整 URL 和 API 基址；`serve.mjs` 会把带查询的运行时请求映射到本地哈希实体。策略中的每个 service ID 必须出现在本次源 HAR 的运行时服务证据里，否则导出直接失败。Iconify 的三个镜像域名会按已观测的安全 GET 补齐，GitHub 头像只跟随声明服务内的安全重定向。`health.runtimeServiceCache` 记录服务、请求、成功、失败与字节数；策略文件、任意 API、敏感 query、未知服务或捕获失败都不会被静默加入。该选项不证明任意业务接口等价，未声明或未识别的运行时 origin 仍由浏览器探针阻断。
+
 CarbonAds 默认作为第三方运行时服务阻断。只有明确接受"移除广告与追踪"的降级时，才在离线 strict 导出加 `--remove-carbonads`。它会删除候选包中已识别的 CarbonAds 脚本、广告容器和关联像素，并在 `health.carbonAdsRemoval`、`heimdall-live.json` 里记录策略与结果；漏删或失败仍会阻断发布。该选项不代表复刻原站广告业务，只表示交付一个不含该运行时的离线镜像。
 
-YouTube 嵌入同样默认阻断。只有明确接受"视频不可离线播放"的降级时，才在离线 strict 导出加 `--replace-youtube`。它会替换已识别的 YouTube iframe，并在 `health.youtubePlaceholder`、`heimdall-live.json` 里记录占位策略；普通 YouTube 外链保留，因为它不是页面自动加载的运行时依赖。
+YouTube 嵌入同样默认阻断。只有明确接受"视频不可离线播放"的降级时，才在离线 strict 导出加 `--replace-youtube`。它会替换已识别的 YouTube iframe，包括已被本地化到 `_ext` 的 iframe 路径，并在 `health.youtubePlaceholder`、`heimdall-live.json` 里记录占位策略；普通 YouTube 外链保留，因为它不是页面自动加载的运行时依赖。
 
 路径别名探测出的跨域跳转默认作为 `unsupported-external-redirect` 阻断。只有明确接受"该链接不镜像、点击后只得到本地 404"时，才加 `--allow-unsupported-external-redirects`。该选项不会跟随或抓取外部目标站；`health.externalRedirectPolicy` 会记录接受数量，报告仍保留 `pathAliases` 证据。
 
