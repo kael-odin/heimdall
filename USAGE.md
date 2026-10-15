@@ -124,7 +124,7 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 node core/src/cli.mjs live example.org --offline --strict --root mirror --include-adapter
 ```
 
-导出时必须在 `operation-plan.json` 中覆盖清单里的每条路由，并用页面最终状态断言验证关键操作。`health.adapter` 会显示声明、实际触达和未测路由数，未测路由阻断严格发布。未声明的写请求在离线包中返回 404，不会静默回源。部署包生成的 Compose 会把持久数据卷挂在 `/data`；直接用 Node 启动时，先建立包外目录并设置 `HEIMDALL_RUNTIME_DATA_DIR`。严格浏览器探针阻断浏览器外联，但不会隔离适配器 Node 进程的网络，`health.adapter.serverEgress=not-tested` 会明确提示这一点。每个实际适配器还须在无外联容器中重新执行关键操作、验证状态持久化。源站写操作仍不会被 `--compare-source` 自动重放，业务正确性需要授权场景下的独立验收。
+导出时必须在 `operation-plan.json` 中覆盖清单里的每条路由，并用页面最终状态断言验证关键操作。`health.adapter` 会显示声明、实际触达和未测路由数，未测路由阻断严格发布。未声明的写请求在离线包中返回 404，不会静默回源。请求体上限为 4 MiB，未结束的请求体在 10 秒后拒绝；适配器处理与响应流共用 15 秒期限。处理期限依赖适配器遵守取消信号，不能强制停止阻塞事件循环的代码。部署包生成的 Compose 会把持久数据卷挂在 `/data`；直接用 Node 启动时，先建立包外目录并设置 `HEIMDALL_RUNTIME_DATA_DIR`。严格浏览器探针阻断浏览器外联，但不会隔离适配器 Node 进程的网络，`health.adapter.serverEgress=not-tested` 会明确提示这一点。每个实际适配器还须在无外联容器中重新执行关键操作、验证状态持久化。源站写操作仍不会被 `--compare-source` 自动重放，业务正确性需要授权场景下的独立验收。
 
 只读 GET 数据必须先确认有权分发，再在站点工作区放置 `read-data-plan.json`：
 

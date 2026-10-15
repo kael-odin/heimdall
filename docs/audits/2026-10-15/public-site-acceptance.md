@@ -21,7 +21,7 @@
 
 Vite 首次侦察还暴露了并发页数超限：`maxPages=3` 实际写出 5 个节点。已修复调度，让在途访问占用预算；重跑后实际为 3 个节点，新增并发反例测试。该修复只保证本次侦察不超出声明页数，不会自动发现 sitemap 或链接图中的所有页面。
 
-本地门禁：`pnpm lint`、`pnpm test`（805 项：803 通过、2 项 Docker 用例按环境跳过）、`pnpm smoke`、`pnpm build`、`pnpm docs:links` 均通过。本机 Docker 守护进程未启动；Linux CI 的无外联容器用例需要本轮提交后核对结果。
+本地门禁：`pnpm lint`、`pnpm test`（805 项：803 通过、2 项 Docker 用例按环境跳过）、`pnpm smoke`、`pnpm build`、`pnpm docs:links` 均通过。本机 Docker 守护进程未启动。主分支提交 `75dceeb` 的 Linux CI 已通过；完整测试为 803 通过、0 失败、2 项按常规环境跳过，专门的 Docker `--network none` 步骤随后将 SSR/SPA/数据驱动 SPA 与适配器卷持久化两项用例都实际跑通。受控夹具的通过不改变 Vite 三页样本严格导出失败的结论。
 
 ## 下一步
 
