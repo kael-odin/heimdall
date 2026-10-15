@@ -9,11 +9,24 @@ const EXPECTED_MIMES = new Map([
   ['.rss', 'application/rss+xml'], ['.atom', 'application/atom+xml'], ['.xml', 'application/xml'],
 ]);
 const decoder = new TextDecoder('utf-8', { fatal: true });
-const bounded = (value, maximum) => Number.isSafeInteger(value) && value > 0 ? Math.min(value, maximum) : maximum;
-const PRIVATE_SEGMENT = /^(?:api|auth|login|admin|private|users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|tokens?|secrets?|credentials?|config|\.git|\.env)$/i;
+const MAX_TARGETS = 256;
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 16 * 1024 * 1024;
+const MAX_WALL_MS = 120_000;
+const bounded = (value, fallback, maximum) => Number.isSafeInteger(value) && value > 0
+  ? Math.min(value, maximum) : fallback;
+const PRIVATE_SEGMENT = /^(?:api|auth|login|admin|private|users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|tokens?|secrets?|credentials?|\.git|\.env)$/i;
 
 function extensionOf(pathname) {
   return /\.(?:rss|atom|xml|md|markdown|txt)$/i.exec(pathname)?.[0].toLowerCase() ?? null;
+}
+
+function kindOf(pathname) {
+  return FEED_EXTENSIONS.has(extensionOf(pathname)) ? 'feed' : 'document';
+}
+
+function bump(map, kind) {
+  map[kind] = (map[kind] ?? 0) + 1;
 }
 
 function targetUrl(value, origin) {
@@ -90,29 +103,59 @@ async function limitedBody(response, limit) {
 /** Capture only scanner-observed public text links; result contains counts, never URLs. */
 export async function capturePublicTextLinks({
   liveDir, origin, targets = [], fetchImpl = globalThis.fetch,
-  maxTargets = 32, maxFileBytes = 512 * 1024, maxTotalBytes = 4 * 1024 * 1024,
+  maxTargets = 128, maxFileBytes = 512 * 1024, maxTotalBytes = 4 * 1024 * 1024,
   maxRedirects = 3, timeoutMs = 10_000, maxWallMs = 60_000,
 } = {}) {
   const base = new URL(origin).origin;
-  maxTargets = bounded(maxTargets, 32);
-  maxFileBytes = bounded(maxFileBytes, 512 * 1024);
-  maxTotalBytes = bounded(maxTotalBytes, 4 * 1024 * 1024);
-  maxRedirects = bounded(maxRedirects, 3);
-  timeoutMs = bounded(timeoutMs, 10_000);
-  maxWallMs = bounded(maxWallMs, 60_000);
+  maxTargets = bounded(maxTargets, 128, MAX_TARGETS);
+  maxFileBytes = bounded(maxFileBytes, 512 * 1024, MAX_FILE_BYTES);
+  maxTotalBytes = bounded(maxTotalBytes, 4 * 1024 * 1024, MAX_TOTAL_BYTES);
+  maxRedirects = bounded(maxRedirects, 3, 8);
+  timeoutMs = bounded(timeoutMs, 10_000, 30_000);
+  maxWallMs = bounded(maxWallMs, 60_000, MAX_WALL_MS);
   const deadline = Date.now() + maxWallMs;
   const eligible = new Map();
   for (const raw of targets) {
     const url = targetUrl(raw, base);
     if (url) eligible.set(url.href, url);
   }
-  const result = { eligible: eligible.size, attempted: 0, captured: 0, rejected: 0, bytes: 0,
-    limited: eligible.size > maxTargets };
-  for (const url of [...eligible.values()].slice(0, maxTargets)) {
-    if (result.bytes >= maxTotalBytes || Date.now() >= deadline) { result.limited = true; break; }
+  const eligibleKinds = { document: 0, feed: 0 };
+  for (const url of eligible.values()) bump(eligibleKinds, kindOf(url.pathname));
+  const coveredKinds = { document: 0, feed: 0 };
+  const result = {
+    eligible: eligible.size,
+    eligibleKinds,
+    targetBudget: maxTargets,
+    attempted: 0,
+    captured: 0,
+    rejected: 0,
+    alreadyPresent: 0,
+    bytes: 0,
+    limited: eligible.size > maxTargets,
+    limitedReason: eligible.size > maxTargets ? 'target-budget' : null,
+  };
+  const ordered = [...eligible.values()].sort((a, b) =>
+    (kindOf(a.pathname) === 'document' ? 0 : 1) - (kindOf(b.pathname) === 'document' ? 0 : 1));
+  for (const url of ordered.slice(0, maxTargets)) {
+    if (result.bytes >= maxTotalBytes) {
+      result.limited = true;
+      result.limitedReason ??= 'byte-budget';
+      break;
+    }
+    if (Date.now() >= deadline) {
+      result.limited = true;
+      result.limitedReason ??= 'deadline';
+      break;
+    }
     const file = localFile(liveDir, url.pathname);
     if (!file || !regularParents(liveDir, file)) { result.rejected++; continue; }
-    try { if (statSync(file).isFile()) continue; } catch { /* Missing file is expected. */ }
+    try {
+      if (statSync(file).isFile()) {
+        result.alreadyPresent++;
+        bump(coveredKinds, kindOf(url.pathname));
+        continue;
+      }
+    } catch { /* Missing file is expected. */ }
     result.attempted++;
     let current = url;
     let response = null;
@@ -156,11 +199,17 @@ export async function capturePublicTextLinks({
         try { unlinkSync(temporary); } catch { /* The temporary file may never have been created. */ }
       }
       result.captured++;
+      bump(coveredKinds, kindOf(url.pathname));
       result.bytes += body.length;
     } catch {
       result.rejected++;
       try { await response?.body?.cancel(); } catch { /* Request already failed. */ }
     }
   }
+  result.capturedKinds = coveredKinds;
+  result.uncapturedKinds = {
+    document: Math.max(0, eligibleKinds.document - coveredKinds.document),
+    feed: Math.max(0, eligibleKinds.feed - coveredKinds.feed),
+  };
   return result;
 }

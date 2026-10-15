@@ -83,6 +83,73 @@ test('public text capture enforces exact targets, MIME, redirect origin and budg
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('public text capture reports uncaptured kinds and prioritizes documents', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-text-budget-'));
+  const liveDir = join(dir, 'live');
+  mkdirSync(liveDir);
+  const origin = 'https://site.test';
+  const requests = [];
+  const fetchImpl = async url => {
+    requests.push(url);
+    const path = new URL(url).pathname;
+    if (path.endsWith('.md')) return new Response('# Doc', { headers: { 'content-type': 'text/markdown' } });
+    if (path.endsWith('.txt')) return new Response('text', { headers: { 'content-type': 'text/plain' } });
+    return new Response('<rss><channel></channel></rss>', { headers: { 'content-type': 'application/rss+xml' } });
+  };
+  try {
+    const result = await capturePublicTextLinks({
+      liveDir, origin,
+      targets: ['/feed.rss', '/one.md', '/feed.xml', '/two.md', '/three.md'],
+      fetchImpl, maxTargets: 2,
+    });
+    assert.equal(result.eligible, 5);
+    assert.deepEqual(result.eligibleKinds, { document: 3, feed: 2 });
+    assert.equal(result.targetBudget, 2);
+    assert.equal(result.attempted, 2);
+    assert.equal(result.captured, 2);
+    assert.equal(result.rejected, 0);
+    assert.deepEqual(result.capturedKinds, { document: 2, feed: 0 });
+    assert.deepEqual(result.uncapturedKinds, { document: 1, feed: 2 });
+    assert.equal(result.limited, true);
+    assert.equal(result.limitedReason, 'target-budget');
+    assert.deepEqual(requests.map(url => new URL(url).pathname), ['/one.md', '/two.md']);
+    assert.equal(existsSync(join(liveDir, 'one.md')), true);
+    assert.equal(existsSync(join(liveDir, 'two.md')), true);
+    assert.equal(existsSync(join(liveDir, 'feed.rss')), false);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('public config documentation is eligible while private paths stay rejected', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-config-text-'));
+  const liveDir = join(dir, 'live');
+  mkdirSync(liveDir);
+  const origin = 'https://site.test';
+  const requests = [];
+  const fetchImpl = async url => {
+    requests.push(url);
+    const path = new URL(url).pathname;
+    if (path === '/config.md' || path === '/config/build-options.md') {
+      return new Response('# Config', { headers: { 'content-type': 'text/markdown' } });
+    }
+    return new Response('not found', { status: 404 });
+  };
+  try {
+    const result = await capturePublicTextLinks({
+      liveDir, origin,
+      targets: ['/config.md', '/config/build-options.md', '/private/guide.md', '/tokens.md'],
+      fetchImpl,
+    });
+    assert.equal(result.eligible, 2);
+    assert.equal(result.attempted, 2);
+    assert.equal(result.captured, 2);
+    assert.equal(result.rejected, 0);
+    assert.deepEqual(result.uncapturedKinds, { document: 0, feed: 0 });
+    assert.equal(readFileSync(join(liveDir, 'config.md'), 'utf8'), '# Config');
+    assert.equal(readFileSync(join(liveDir, 'config', 'build-options.md'), 'utf8'), '# Config');
+    assert.ok(!requests.some(url => url.includes('/private/') || url.includes('/tokens.md')));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('public text capture rejects symlinked parents inside a candidate', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-text-link-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -107,6 +174,12 @@ test('public text capture rejects symlinked parents inside a candidate', async t
 test('strict export captures public text links but still blocks an uncloned HTML page', { timeout: 120_000 }, async t => {
   const source = createServer((request, response) => {
     const path = decodeURIComponent(new URL(request.url, 'http://source.test').pathname);
+    if (path === '/gone/') {
+      response.statusCode = 404;
+      response.setHeader('content-type', 'text/html');
+      response.end('<!doctype html><h1>Not Found</h1>');
+      return;
+    }
     const contents = {
       '/blog.rss': ['application/rss+xml', '<rss version="2.0"><channel><title>Blog</title></channel></rss>'],
       '/guide.md': ['text/markdown', '# Guide'],
@@ -139,7 +212,7 @@ test('strict export captures public text links but still blocks an uncloned HTML
   const host = 'public-text-fixture.test';
   const site = join(dir, 'workspace', host);
   const out = join(dir, 'deliverable', 'accepted');
-  const html = '<!doctype html><html><body><a href="/blog.rss">RSS</a><a href="/guide.md">Markdown</a><a href="/llms.txt">Text</a><a href="/文档.md">Docs</a></body></html>';
+  const html = '<!doctype html><html><body><a href="/blog.rss">RSS</a><a href="/guide.md">Markdown</a><a href="/llms.txt">Text</a><a href="/文档.md">Docs</a><a href="/gone/">Gone</a></body></html>';
   put(join(site, 'site-origin.json'), JSON.stringify({ origin }));
   put(join(site, 'pages', 'home', 'manifest.json'), JSON.stringify({ target: origin + '/' }));
   put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><title>Clone</title>');
@@ -149,8 +222,21 @@ test('strict export captures public text links but still blocks an uncloned HTML
   assert.equal(accepted.status, 0, accepted.output);
   const healthBytes = readFileSync(join(out, 'health.json'));
   const health = JSON.parse(healthBytes);
-  assert.equal(health.links.missing, 0);
+  assert.equal(health.links.missing, 1);
+  assert.equal(health.strictBlockers.missingLinks, 0);
+  assert.equal(health.pathAliases.status, 'checked');
+  assert.equal(health.pathAliases.targets, 1);
+  assert.equal(health.pathAliases.checked, 1);
+  assert.equal(health.pathAliases.expectedMissing, 1);
+  assert.equal(health.pathAliases.expectedMissingReferences, 1);
+  assert.equal(health.pathAliases.unexpected, 0);
+  assert.equal(health.pathAliases.failed, 0);
   assert.equal(health.publicTextLinks.captured, 4);
+  assert.equal(health.publicTextLinks.targetBudget, 128);
+  assert.deepEqual(health.publicTextLinks.eligibleKinds, { document: 3, feed: 1 });
+  assert.deepEqual(health.publicTextLinks.capturedKinds, { document: 3, feed: 1 });
+  assert.deepEqual(health.publicTextLinks.uncapturedKinds, { document: 0, feed: 0 });
+  assert.equal(health.publicTextLinks.limited, false);
   assert.equal(health.strictBlockers.mirrorRootMissing, 0);
   assert.equal(health.runtimeProbe.failed, 0);
   assert.equal(readFileSync(join(out, 'site', 'live', 'guide.md'), 'utf8'), '# Guide');
@@ -167,6 +253,8 @@ test('strict export captures public text links but still blocks an uncloned HTML
     assert.equal(response.status, 200, path);
     assert.equal(response.headers.get('content-type')?.split(';')[0], mime);
   }
+  assert.equal((await fetch(base + '/lm/' + host + '/gone/')).status, 404);
+  assert.match(readFileSync(join(out, 'site', 'live', 'index.html'), 'utf8'), /href="\/lm\/public-text-fixture\.test\/gone\/"/);
 
   put(join(site, 'live', 'index.html'), html + '<a href="/next/">Next</a>');
   const rejected = await runExport(host, out, dir, ['--heal']);

@@ -53,13 +53,14 @@ import { rewriteSnapshotMount } from './site-routing.mjs';
 import { inspectRuntimeAdapter } from './adapter-runtime.mjs';
 import { capturePublicTextLinks } from './public-text-links.mjs';
 import { buildThirdPartyServicesReport } from './third-party-services.mjs';
+import { probePublicPathAliases, rewritePathAliasLinks } from './path-aliases.mjs';
 import { canonUrl } from '../url-canon.mjs';
 
 const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--browser-observe-ms 3000..15000] [--omit-nonvisual-pixels] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--omit-nonvisual-pixels] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -79,6 +80,14 @@ if ((argv.includes('--browser-observe-ms') && browserObserveArg === undefined)
   || !Number.isInteger(BROWSER_OBSERVE_MS)
   || BROWSER_OBSERVE_MS < DEFAULT_BROWSER_OBSERVE_MS || BROWSER_OBSERVE_MS > MAX_BROWSER_OBSERVE_MS) {
   console.error(`[export] --browser-observe-ms must be an integer from ${DEFAULT_BROWSER_OBSERVE_MS} to ${MAX_BROWSER_OBSERVE_MS}`);
+  process.exit(2);
+}
+const publicTextLinksMaxTargetsArg = argOf('public-text-links-max-targets', undefined);
+const PUBLIC_TEXT_LINKS_MAX_TARGETS = Number(publicTextLinksMaxTargetsArg ?? 128);
+if ((argv.includes('--public-text-links-max-targets') && publicTextLinksMaxTargetsArg === undefined)
+  || !Number.isInteger(PUBLIC_TEXT_LINKS_MAX_TARGETS)
+  || PUBLIC_TEXT_LINKS_MAX_TARGETS < 1 || PUBLIC_TEXT_LINKS_MAX_TARGETS > 256) {
+  console.error('[export] --public-text-links-max-targets must be an integer from 1 to 256');
   process.exit(2);
 }
 const COMPARE_SOURCE = has('compare-source');
@@ -455,7 +464,9 @@ if (HEAL && health.links.missing > 0) {
   scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages,
     onMissingLink: path => { if (missingLinks.size < 10_000) missingLinks.add(path); },
   });
-  const captured = await capturePublicTextLinks({ liveDir, origin, targets: [...missingLinks] });
+  const captured = await capturePublicTextLinks({
+    liveDir, origin, targets: [...missingLinks], maxTargets: PUBLIC_TEXT_LINKS_MAX_TARGETS,
+  });
   if (captured.eligible) {
     health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
     health.publicTextLinks = captured;
@@ -485,6 +496,36 @@ if (externalStaticApprovals) {
   console.log('[external-static] approved=' + report.requested + ' fetched=' + report.fetched
     + ' failed=' + report.failed + ' bytes=' + report.bytes);
 }
+let pathAliases = {
+  status: 'not-detected', targets: 0, checked: 0, resolvedLocal: 0, expectedMissing: 0,
+  expectedMissingReferences: 0, unexpected: 0, unexpectedReferences: 0, failed: 0,
+  untested: 0, details: [],
+};
+if (HEAL && health.links.missing > 0) {
+  const aliasTargets = health.missingLinkDetails
+    .filter(item => item.kind === 'path-alias')
+    .flatMap(item => Array.from({ length: item.references }, () => item.path));
+  if (aliasTargets.length) {
+    emit({ kind: 'live-stage', stage: 'path-aliases', status: 'running', targets: aliasTargets.length });
+    const probed = await probePublicPathAliases({ liveDir, host, origin, targets: aliasTargets });
+    const rewritten = rewritePathAliasLinks({ liveDir, staticDir, host, origin, map: probed.rewriteMap });
+    pathAliases = { ...probed.report, rewrittenFiles: rewritten.files, rewrites: rewritten.rewrites };
+    const { healed, publicTextLinks, externalStatic } = health;
+    health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
+    if (healed) health.healed = healed;
+    if (publicTextLinks) health.publicTextLinks = publicTextLinks;
+    if (externalStatic) health.externalStatic = externalStatic;
+    health.pathAliases = pathAliases;
+    emit({ kind: 'live-stage', stage: 'path-aliases', status: 'done',
+      checked: pathAliases.checked, expectedMissing: pathAliases.expectedMissing,
+      unexpected: pathAliases.unexpected + pathAliases.failed });
+    console.log('[path-aliases] targets=' + pathAliases.targets + ' checked=' + pathAliases.checked
+      + ' resolvedLocal=' + pathAliases.resolvedLocal + ' expectedMissing=' + pathAliases.expectedMissing
+      + ' unexpected=' + pathAliases.unexpected + ' failed=' + pathAliases.failed
+      + ' rewrites=' + pathAliases.rewrites);
+  }
+}
+health.pathAliases = pathAliases;
 if (materialized) health.materialized = materialized;
 health.nonvisualExternalPixels = nonvisualPixels;
 health.thirdPartyServices = buildThirdPartyServicesReport({
@@ -567,7 +608,7 @@ health.strictBlockers = {
   externalStaticFailed: health.externalStatic?.failed ?? 0,
   externalStaticRemaining: health.externalStatic?.remainingExternal ?? 0,
   unsupportedRuntimeServices: health.thirdPartyServices.unsupportedRuntimeServices,
-  missingLinks: health.links.missing,
+  missingLinks: Math.max(0, health.links.missing - (health.pathAliases?.expectedMissingReferences ?? 0)),
   mirrorRootMissing: STRICT && ROOT === 'mirror' && !mirrorRootCaptured ? 1 : 0,
   missingLivePages: health.liveMissing,
   discoveredUncloned: health.coverage.missingClone,
@@ -855,6 +896,8 @@ assets.external          站外引用总数（含 YouTube 嵌入、地图、统�
 thirdPartyServices       已识别且不能靠静态抓取变成离线等价的运行时服务（当前含 CarbonAds、YouTube）；逐服务给出类别、阻断口径、引用数与页面
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
 missingLinkDetails       未镜像链接的脱敏明细；按 source-document / path-alias / resource-link 分类，并列出引用页
+publicTextLinks          --heal 时补抓的公开文本文档/订阅源；报告目标预算、已捕获与未捕获分类。默认最多 128 个，可用 --public-text-links-max-targets 1..256 调整
+pathAliases              --heal 时探查的公开路径别名；源站 404/410 会改写到镜像命名空间并按可复现本地 404 处理，跨域跳转与未捕获页面仍阻断
 strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器有界加载探测）
 coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
 browserProbe             逐页断外网首载结果；observation 写明最短窗口、安静期、总上限和逐页实测时间。上限前未安静会阻断发布；窗口外触发的请求及未声明操作仍未验证
