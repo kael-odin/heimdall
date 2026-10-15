@@ -172,14 +172,19 @@ export function sourceReadDataCollector({ origin, urls = [], onEntry,
   async function drain() {
     if (!pending.size || deadlineReached()) return;
     let timer;
+    let timedOut = false;
     try {
       await Promise.race([
         Promise.allSettled([...pending]),
         new Promise(resolve => {
-          timer = setTimeout(resolve, Math.max(1, deadlineAt - Date.now()));
+          timer = setTimeout(() => {
+            timedOut = true;
+            resolve();
+          }, Math.max(1, deadlineAt - Date.now()));
         }),
       ]);
-      deadlineReached();
+      if (timedOut) expire();
+      else deadlineReached();
     } finally {
       clearTimeout(timer);
     }

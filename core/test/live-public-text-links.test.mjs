@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -271,7 +271,7 @@ test('strict export captures public text links but still blocks an uncloned HTML
     .filter(name => name.startsWith('.candidate-'))
     .map(name => join(dir, 'deliverable', name))
     .filter(path => existsSync(join(path, 'health.json')))
-    .at(-1);
+    .reduce((latest, path) => !latest || statSync(path).mtimeMs > statSync(latest).mtimeMs ? path : latest, null);
   const externalHealth = JSON.parse(readFileSync(join(externalCandidate, 'health.json'), 'utf8'));
   assert.equal(externalHealth.pathAliases.unsupportedExternalRedirects, 1);
   assert.equal(externalHealth.pathAliases.unsupportedExternalRedirectReferences, 1);
@@ -290,10 +290,13 @@ test('strict export captures public text links but still blocks an uncloned HTML
   assert.deepEqual(readFileSync(join(out, 'health.json')), healthBytes);
   const candidates = readdirSync(join(dir, 'deliverable')).filter(name => name.startsWith('.candidate-'));
   assert.ok(candidates.length);
-  const latest = JSON.parse(readFileSync(join(dir, 'deliverable', candidates.at(-1), 'health.json'), 'utf8'));
+  const latestPath = candidates
+    .map(name => join(dir, 'deliverable', name))
+    .reduce((latest, path) => !latest || statSync(path).mtimeMs > statSync(latest).mtimeMs ? path : latest, null);
+  const latest = JSON.parse(readFileSync(join(latestPath, 'health.json'), 'utf8'));
   assert.ok(latest.strictBlockers.missingLinks > 0);
   assert.equal(latest.publicTextLinks.captured, 4);
-  assert.equal(existsSync(join(dir, 'deliverable', candidates.at(-1), 'site', 'live', 'next', 'index.html')), false);
+  assert.equal(existsSync(join(latestPath, 'site', 'live', 'next', 'index.html')), false);
 });
 
 test('strict mirror export requires an actual root snapshot', { timeout: 60_000 }, async t => {

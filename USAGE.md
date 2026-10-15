@@ -108,6 +108,8 @@ node core/src/cli.mjs live example.org --offline --heal --strict --root mirror
 
 离线包默认保留隐藏像素节点，使跨源请求继续被严格门禁报告。只有明确接受这个降级时，才加 `--omit-nonvisual-pixels`：它仅省略属性受限、行内声明隐藏的跨源 1×1 图片，`health.nonvisualExternalPixels` 会记录 `preserve` 或 `omit` 策略及移除数。静态属性无法证明页面脚本不读取这些节点，也不能排除外部 CSS 覆盖隐藏声明；如省略，应对目标站做视觉和关键操作对照。脚本、可见图片及其他跨源资源仍按原门禁处理。
 
+CarbonAds 默认作为第三方运行时服务阻断。只有明确接受"移除广告与追踪"的降级时，才在离线 strict 导出加 `--remove-carbonads`。它会删除候选包中已识别的 CarbonAds 脚本、广告容器和关联像素，并在 `health.carbonAdsRemoval`、`heimdall-live.json` 里记录策略与结果；漏删或失败仍会阻断发布。该选项不代表复刻原站广告业务，只表示交付一个不含该运行时的离线镜像。
+
 加 `--compare-source` 会在获授权的源站运行同一操作计划，并把脱敏的源站结果与离线包结果写入 `health.sourceOperationProbe`。该开关要求 `--offline --strict`；源站不可达、源站流程失败或计划缺失都会阻断发布。`health.dependencyParity` 还按声明流程逐项核对源站与离线包的请求路径及查询、请求次数、响应状态和 MIME，报告仅公开类别和计数。它不比较静态资源正文，也不证明业务结果相同。源站采集阻断非只读 HTTP 方法与 WebSocket，因此不能用它证明提交、登录等写入业务等价；GET 在个别站点仍可能有业务副作用，只对已审阅的流程使用。没有该开关时，离线通过不代表已与源站交互对照。
 
 ### 本地业务适配器

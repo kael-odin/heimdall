@@ -8,7 +8,7 @@
 
 2026-10-16 的[第三方运行时与未镜像链接观测](audits/2026-10-16/third-party-runtime-report.md)已把 Vite 的 23 个未镜像链接拆成 12 个源文档链接与 8 个路径别名，并把 CarbonAds、YouTube 显式归类为 `unsupported-runtime`。严格导出仍失败并保留候选包；该报告只提升失败定位能力，不表示缺口已解决。
 
-同日[公开文本与路径别名奇偶性](audits/2026-10-16/public-text-and-alias-parity.md)复验把公开文本预算提升为默认 128 / 上限 256，修正 `config.md` 误判私有路径的问题；Vite 44/44 个公开文本目标全部捕获，12 个 `.md` 缺口消失。7 个源站 404 别名共 10 次引用被改写到镜像命名空间并按可复现 404 处理。随后代码已把跨域别名跳转升级为独立的 `unsupported-external-redirect` 策略（见[策略记录](audits/2026-10-16/unsupported-external-redirect-policy.md)），并在同一 Vite 57 页工作区复验：`unsupportedExternalRedirects=1`、`missingLinks=0`。YouTube、CarbonAds、外部广告资源与跨域跳转继续阻断严格发布。
+同日[公开文本与路径别名奇偶性](audits/2026-10-16/public-text-and-alias-parity.md)复验把公开文本预算提升为默认 128 / 上限 256，修正 `config.md` 误判私有路径的问题；Vite 44/44 个公开文本目标全部捕获，12 个 `.md` 缺口消失。7 个源站 404 别名共 10 次引用被改写到镜像命名空间并按可复现 404 处理。随后代码已把跨域别名跳转升级为独立的 `unsupported-external-redirect` 策略（见[策略记录](audits/2026-10-16/unsupported-external-redirect-policy.md)），并在同一 Vite 57 页工作区复验：`unsupportedExternalRedirects=1`、`missingLinks=0`。CarbonAds 也已支持默认阻断、显式 `--remove-carbonads` 降级（见[策略记录](audits/2026-10-16/carbonads-removal-policy.md)），复验中 external assets 从 266 降为 0。YouTube 与跨域跳转继续阻断严格发布。
 
 ## 主目标：独立站点镜像
 
