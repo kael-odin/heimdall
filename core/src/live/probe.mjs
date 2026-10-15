@@ -328,6 +328,8 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
     status: 'checked', planned: flows.length, checked: 0, failed: 0, untested: flows.length,
     failures: [], omittedFailures: 0, flows: [],
   };
+  const settleMs = boundedInteger(options.settleMs, 500, 5_000);
+  const lateMs = Math.max(settleMs, boundedInteger(options.lateMs, settleMs, 5_000));
   if (!flows.length) return report;
   const addFailure = failure => {
     if (report.failures.length < MAX_BROWSER_FAILURES) report.failures.push(failure);
@@ -393,7 +395,8 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
           allowUnsafeRequests: existsSync(join(bundleDir, 'runtime-adapter')),
           onObservedRequest: request => options.onObservedRequest?.(flowIndex, request, base),
           maxActions: 12,
-          settleMs: boundedInteger(options.settleMs, 500, 5_000),
+          settleMs,
+          lateMs,
           timeoutMs: boundedInteger(options.timeoutMs, 8_000, 30_000),
         });
         const dependencies = new Map();
@@ -416,6 +419,7 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
           }
         }
         if (graph.summary.unexecuted) addIssue({ kind: 'actionsUntested', count: graph.summary.unexecuted });
+        if (graph.lateRequests) addIssue({ kind: 'lateRequests', count: graph.lateRequests });
         if (!issues.length) {
           for (const [assertionIndex, assertion] of flow.expect.entries()) {
             if (!await checkAssertion(page, assertion, base)) {

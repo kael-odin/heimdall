@@ -35,6 +35,11 @@ async function fixture(t) {
           document.querySelector('#allowed').hidden = false;
       </script>`);
     }
+    if (path === '/late') {
+      return response.end(`<!doctype html><button id="late" type="button">Late</button>
+        <script>document.querySelector('#late').onclick = () =>
+          setTimeout(() => fetch('/api/items?token=late-secret'), 150);</script>`);
+    }
     return response.end(`<!doctype html>
       <input id="secret"><button id="load" type="button">Load</button>
       <button id="write" type="button">Write</button>
@@ -83,6 +88,20 @@ test('source capture returns redacted per-step states, dependencies and assertio
   assert.ok(report.flows[0].dependencies.some(item => item.category === 'dynamic-data' && item.outcome === 'complete'));
   assert.equal(writes(), 0);
   assert.doesNotMatch(JSON.stringify(report), /navigation-secret|request-secret|typed-secret|#secret|#load|#done|token=/);
+});
+
+test('source capture fails closed when a request starts after the final state', { timeout: 30_000 }, async t => {
+  const { origin } = await fixture(t);
+  const report = await captureSourceOperations({
+    origin,
+    flows: [{ path: '/late', actions: [{ type: 'click', selector: '#late' }],
+      expect: [{ type: 'visible', selector: '#late' }] }],
+    settleMs: 50,
+    lateMs: 300,
+  });
+  assert.equal(report.failed, 1);
+  assert.ok(report.flows[0].issues.some(issue => issue.kind === 'lateRequests' && issue.count === 1));
+  assert.doesNotMatch(JSON.stringify(report), /late-secret|#late|token=/);
 });
 
 test('source capture blocks page and popup writes, and marks later actions and assertions untested', { timeout: 30_000 }, async t => {

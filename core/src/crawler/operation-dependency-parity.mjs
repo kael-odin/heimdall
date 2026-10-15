@@ -48,7 +48,8 @@ export function createOperationDependencyEvidence(origin) {
         increment(unverified, flowIndex);
       }
       const target = scope === 'first-party' ? url.pathname + url.search : url.origin + url.pathname + url.search;
-      const key = JSON.stringify([kind, request.method, request.resourceType, scope, target]);
+      const frame = ['main', 'subframe', 'unknown'].includes(request.frame) ? request.frame : 'unknown';
+      const key = JSON.stringify([kind, request.method, request.resourceType, scope, target, frame]);
       const signature = JSON.stringify([request.outcome, request.status ?? null, normalizedMime(request.mime)]);
       const flow = flows.get(flowIndex) ?? new Map();
       const group = flow.get(key) ?? { kind, signatures: new Map() };
@@ -96,11 +97,11 @@ function mappedSourceFlow(expected, assetUrlMap) {
   const mapped = new Map();
   let localizedExternal = 0;
   for (const [key, group] of expected) {
-    const [kind, method, resourceType, scope, target] = JSON.parse(key);
+    const [kind, method, resourceType, scope, target, frame] = JSON.parse(key);
     const localPath = scope === 'external' && (method === 'GET' || method === 'HEAD')
       && LOCALIZABLE_ASSETS.has(kind) ? assetUrlMap.get(target) : null;
     const mappedKey = localPath
-      ? JSON.stringify([kind, method, resourceType, 'first-party', localPath]) : key;
+      ? JSON.stringify([kind, method, resourceType, 'first-party', localPath, frame]) : key;
     if (localPath) localizedExternal += totalSignatures(group);
     const merged = mapped.get(mappedKey) ?? { kind, signatures: new Map() };
     for (const [signature, count] of group.signatures) increment(merged.signatures, signature, count);
@@ -120,11 +121,11 @@ function mappedBundleFlow(actual, assetUrlMap) {
   if (!aliases.size) return actual;
   const mapped = new Map();
   for (const [key, group] of actual) {
-    const [kind, method, resourceType, scope, target] = JSON.parse(key);
+    const [kind, method, resourceType, scope, target, frame] = JSON.parse(key);
     const canonical = scope === 'first-party' && (method === 'GET' || method === 'HEAD')
       && LOCALIZABLE_ASSETS.has(kind) ? aliases.get(target) : null;
     const mappedKey = canonical
-      ? JSON.stringify([kind, method, resourceType, scope, canonical]) : key;
+      ? JSON.stringify([kind, method, resourceType, scope, canonical, frame]) : key;
     const merged = mapped.get(mappedKey) ?? { kind, signatures: new Map() };
     for (const [signature, count] of group.signatures) increment(merged.signatures, signature, count);
     mapped.set(mappedKey, merged);

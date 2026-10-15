@@ -170,6 +170,7 @@ export async function exploreOperationStates(options = {}) {
   const maxUnexecuted = boundedInteger(options.maxUnexecuted, 100, 500);
   const timeoutMs = boundedInteger(options.timeoutMs, 8_000, 30_000);
   const settleMs = boundedInteger(options.settleMs, 400, 5_000);
+  const lateMs = Math.max(settleMs, boundedInteger(options.lateMs, settleMs, 5_000));
   const ownedPage = !options.page;
   const page = options.page ?? await context.newPage();
   const firstUrl = page.url() === 'about:blank'
@@ -186,19 +187,37 @@ export async function exploreOperationStates(options = {}) {
 
   const report = {
     version: 1,
-    limits: { maxActions, maxRequestsPerState, settleMs, timeoutMs },
+    limits: { maxActions, maxRequestsPerState, settleMs, lateMs, timeoutMs },
     policy: { allowUnsafeRequests: !!allowUnsafeRequests },
     states: [],
     unexecuted: [],
     summary: { planned: actions.length, executed: 0, unexecuted: 0, omittedUnexecuted: 0 },
+    lateRequests: 0,
+    lateRequestCategories: {},
   };
   let active = null;
   let current = null;
   const byRequest = new WeakMap();
   const rawUrlByEntry = new WeakMap();
   const omitted = new WeakSet();
+  const lateCounted = new WeakSet();
+  let lateMode = false;
   const makeBucket = () => ({ requests: [], omittedRequests: 0, pageErrors: [], blockedReasons: new Set() });
+  const frameKind = request => {
+    const frame = request.frame();
+    if (!frame) return 'unknown';
+    return frame === page.mainFrame() ? 'main' : 'subframe';
+  };
   const record = (request, outcome) => {
+    if (lateMode && !active) {
+      if (lateCounted.has(request)) return null;
+      lateCounted.add(request);
+      report.lateRequests++;
+      const detail = classifyOperationRequest(request);
+      report.lateRequestCategories[detail.category] =
+        (report.lateRequestCategories[detail.category] ?? 0) + 1;
+      return null;
+    }
     if (omitted.has(request)) return null;
     let entry = byRequest.get(request);
     if (!entry && active) {
@@ -211,6 +230,7 @@ export async function exploreOperationStates(options = {}) {
       entry = {
         target: sanitizeObservedUrl(request.url()),
         scope: allowedOrigins.has(new URL(request.url()).origin) ? 'first-party' : 'external',
+        frame: frameKind(request),
         ...detail,
         outcome: 'pending',
       };
@@ -309,6 +329,10 @@ export async function exploreOperationStates(options = {}) {
       report.summary.executed++;
       if (result.status !== 'ok') { stopReason = result.status === 'blocked' ? result.reason : 'previous-action-failed'; break; }
     }
+    lateMode = true;
+    active = null;
+    await page.waitForTimeout(lateMs);
+    lateMode = false;
     const remaining = actions.length - report.summary.executed;
     report.summary.unexecuted = remaining;
     report.summary.omittedUnexecuted = Math.max(0, remaining - maxUnexecuted);

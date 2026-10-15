@@ -70,6 +70,7 @@ function safeRequest(request) {
   const out = {
     target: sanitizeObservedUrl(request?.target),
     scope: request?.scope === 'first-party' ? 'first-party' : 'external',
+    frame: ['main', 'subframe', 'unknown'].includes(request?.frame) ? request.frame : 'unknown',
     method: /^[A-Z]{1,12}$/.test(request?.method) ? request.method : 'OTHER',
     resourceType: typeof request?.resourceType === 'string' && /^[a-z]{1,20}$/.test(request.resourceType)
       ? request.resourceType : 'other',
@@ -125,7 +126,8 @@ async function checkAssertion(page, assertion, origin, timeoutMs) {
  */
 export async function captureSourceOperations({ origin, flows, session = null, browser: suppliedBrowser,
   readOnlyGetUrls = [], onReadOnlyData, onReadOnlyObservation, onObservedRequest,
-  settleMs: requestedSettleMs, timeoutMs: requestedTimeoutMs, assertionTimeoutMs: requestedAssertionTimeoutMs } = {}) {
+  settleMs: requestedSettleMs, lateMs: requestedLateMs, timeoutMs: requestedTimeoutMs,
+  assertionTimeoutMs: requestedAssertionTimeoutMs } = {}) {
   const base = sourceOrigin(origin);
   if (onObservedRequest != null && typeof onObservedRequest !== 'function') {
     throw new TypeError('invalid source request observer');
@@ -138,6 +140,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
     onAccepted: onReadOnlyObservation,
   });
   const settleMs = boundedInteger(requestedSettleMs, 500, 5_000);
+  const lateMs = Math.max(settleMs, boundedInteger(requestedLateMs, settleMs, 5_000));
   const timeoutMs = boundedInteger(requestedTimeoutMs, 8_000, 30_000, 1);
   const assertionTimeoutMs = boundedInteger(requestedAssertionTimeoutMs, 2_000, 5_000, 1);
   const report = {
@@ -208,7 +211,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
           actions: [{ type: 'navigate', url: flow.path }, ...flow.actions],
           onObservedRequest: request => onObservedRequest?.(flowIndex, request),
           maxActions: 12, maxRequestsPerState: 50, maxUnexecuted: 12,
-          settleMs, timeoutMs,
+          settleMs, lateMs, timeoutMs,
         });
         const states = graph.states.map(safeState);
         const dependencies = new Map();
@@ -228,6 +231,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
         }
         if (omittedDependencies) addIssue({ kind: 'dependenciesUntested', count: omittedDependencies });
         if (graph.summary.unexecuted) addIssue({ kind: 'actionsUntested', count: graph.summary.unexecuted });
+        if (graph.lateRequests) addIssue({ kind: 'lateRequests', count: graph.lateRequests });
         const assertions = [];
         const canAssert = graph.summary.unexecuted === 0 && states.every(state => !state.action || state.result.status === 'ok')
           && !issues.some(issue => issue.kind === 'popupUntested');

@@ -122,7 +122,7 @@ YouTube 嵌入同样默认阻断。只有明确接受"视频不可离线播放"�
 
 路径别名探测出的跨域跳转默认作为 `unsupported-external-redirect` 阻断。只有明确接受"该链接不镜像、点击后只得到本地 404"时，才加 `--allow-unsupported-external-redirects`。该选项不会跟随或抓取外部目标站；`health.externalRedirectPolicy` 会记录接受数量，报告仍保留 `pathAliases` 证据。
 
-加 `--compare-source` 会在获授权的源站运行同一操作计划，并把脱敏的源站结果与离线包结果写入 `health.sourceOperationProbe`。该开关要求 `--offline --strict`；源站不可达、源站流程失败或计划缺失都会阻断发布。`health.dependencyParity` 还按声明流程逐项核对源站与离线包的请求路径及查询、请求次数、响应状态和 MIME，报告仅公开类别和计数。它不比较静态资源正文，也不证明业务结果相同。源站采集阻断非只读 HTTP 方法与 WebSocket，因此不能用它证明提交、登录等写入业务等价；GET 在个别站点仍可能有业务副作用，只对已审阅的流程使用。没有该开关时，离线通过不代表已与源站交互对照。
+加 `--compare-source` 会在获授权的源站运行同一操作计划，并把脱敏的源站结果与离线包结果写入 `health.sourceOperationProbe`。该开关要求 `--offline --strict`；源站不可达、源站流程失败或计划缺失都会阻断发布。`health.dependencyParity` 还按声明流程逐项核对源站与离线包的请求路径及查询、请求次数、响应状态、MIME，以及请求来自主 frame 还是 iframe/subframe；报告仅公开类别和计数。Shadow DOM 内发起的请求按网络层归入主 frame。最后一个状态捕获之后仍出现的请求会计入 `lateRequests`，并让源站采集或离线探针失败，不会静默并入前一个状态。它不比较静态资源正文，也不证明业务结果相同。源站采集阻断非只读 HTTP 方法与 WebSocket，因此不能用它证明提交、登录等写入业务等价；GET 在个别站点仍可能有业务副作用，只对已审阅的流程使用。没有该开关时，离线通过不代表已与源站交互对照。
 
 ### 本地业务适配器
 

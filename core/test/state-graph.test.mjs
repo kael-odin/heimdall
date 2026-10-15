@@ -44,6 +44,54 @@ async function fixture(t) {
   return { browser, origin, writes: () => writes };
 }
 
+async function complexFixture(t) {
+  const server = createServer((request, response) => {
+    const path = new URL(request.url, 'http://fixture.test').pathname;
+    if (path === '/api/frame') {
+      response.setHeader('content-type', 'application/json');
+      return response.end('{"from":"iframe"}');
+    }
+    if (path === '/api/shadow') {
+      response.setHeader('content-type', 'application/json');
+      return response.end('{"from":"shadow-dom"}');
+    }
+    if (path === '/api/late') {
+      response.setHeader('content-type', 'application/json');
+      return response.end('{"from":"late"}');
+    }
+    if (path === '/frame') {
+      response.setHeader('content-type', 'text/html');
+      return response.end('<script>fetch("/api/frame")</script>');
+    }
+    response.setHeader('content-type', 'text/html');
+    return response.end(`<!doctype html>
+      <iframe src="/frame"></iframe>
+      <shadow-widget></shadow-widget>
+      <button id="late" type="button">Late</button>
+      <script>
+        customElements.define('shadow-widget', class extends HTMLElement {
+          connectedCallback() {
+            const root = this.attachShadow({ mode: 'open' });
+            root.innerHTML = '<span>shadow</span>';
+            fetch('/api/shadow');
+          }
+        });
+        document.querySelector('#late').onclick = () => {
+          setTimeout(() => fetch('/api/late'), 200);
+        };
+      </script>`);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const browser = await chromium.launch({ headless: true });
+  t.after(async () => {
+    await browser.close();
+    server.close();
+    await once(server, 'close');
+  });
+  return { browser, origin: `http://127.0.0.1:${server.address().port}` };
+}
+
 test('state graph redacts private paths and query values', () => {
   assert.equal(sanitizeObservedUrl('https://site.test/users/alice@example.com/orders/123?token=secret#private'),
     'https://site.test/[redacted]/[redacted]/[redacted]/[redacted]');
@@ -90,6 +138,35 @@ test('state graph records explicit transitions and dependencies without leaking 
   assert.equal(report.states[4].result.status, 'blocked');
   assert.equal(writes(), 0);
   assert.doesNotMatch(JSON.stringify(report), /navigation-secret|request-secret|write-secret|typed-secret|#search|#load|#save|token=/);
+});
+
+test('state graph captures iframe and Shadow DOM requests and detects late requests', { timeout: 30_000 }, async t => {
+  const { browser, origin } = await complexFixture(t);
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+  t.after(() => context.close());
+  const report = await exploreOperationStates({
+    context,
+    baseUrl: origin,
+    actions: [
+      { type: 'navigate', url: '/' },
+      { type: 'click', selector: '#late' },
+    ],
+    settleMs: 100,
+    lateMs: 350,
+  });
+
+  assert.equal(report.states.length, 3);
+  assert.ok(report.states[1].requests.some(request =>
+    request.category === 'dynamic-data' && request.frame === 'subframe'),
+  'iframe requests are attributed to the subframe');
+  assert.ok(report.states[1].requests.some(request =>
+    request.category === 'dynamic-data' && request.frame === 'main'),
+  'Shadow DOM requests are attributed to the main frame');
+  assert.equal(report.states[2].requests.some(request => request.category === 'dynamic-data'), false,
+    'a request after the final state capture is not silently folded into that state');
+  assert.equal(report.lateRequests, 1);
+  assert.equal(report.lateRequestCategories['dynamic-data'], 1);
+  assert.equal(report.limits.lateMs, 350);
 });
 
 test('state graph enforces action budget, closes owned page and blocks submit controls', { timeout: 30_000 }, async t => {

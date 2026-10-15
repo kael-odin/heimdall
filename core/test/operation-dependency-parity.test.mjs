@@ -41,6 +41,19 @@ test('operation dependencies distinguish script, style, image, media and API tar
   assert.doesNotMatch(JSON.stringify(report), /assets\/|api\/|secret|page=|[a-f0-9]{64}/);
 });
 
+test('operation dependency parity distinguishes main-frame and iframe requests', () => {
+  const source = createOperationDependencyEvidence('https://source.test');
+  const bundle = createOperationDependencyEvidence('http://127.0.0.1:8910');
+  source.observe(0, request('https://source.test/api/frame', 'fetch', 'dynamic-data', { frame: 'subframe' }));
+  bundle.observe(0, request('http://127.0.0.1:8910/api/frame', 'fetch', 'dynamic-data', { frame: 'main' }));
+  const report = compareOperationDependencyEvidence(source, bundle, 1);
+  assert.equal(report.mismatchedFlows, 1);
+  assert.equal(report.missing, 1);
+  assert.equal(report.unexpected, 1);
+  assert.equal(report.flows[0].classes.api.missing, 1);
+  assert.equal(report.flows[0].classes.api.unexpected, 1);
+});
+
 test('operation dependency parity checks response status, MIME and duplicate requests', () => {
   const source = createOperationDependencyEvidence('https://source.test');
   const bundle = createOperationDependencyEvidence('http://127.0.0.1:8910');
