@@ -265,19 +265,23 @@ test('private preparation has no HTTP route and cannot be invoked by a guessed m
   assert.equal(calls, 0); assert.equal(existsSync(dispatchDir(f)), false);
 });
 
-test('ordinary B2.1 catalog initialization and HTTP reads remain independent of a damaged sidecar', async t => {
+test('catalog remains readable with a damaged sidecar while source eligibility fails closed', async t => {
   const f = await fixture(t), input = preparedInput(f), before = heads(f);
   mkdirSync(dispatchDir(f), { recursive: true }); const file = join(dispatchDir(f), input.operationId + '.json');
   writeFileSync(file, '{broken');
   const reopened = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
   assert.equal((await reopened.initialize()).revision, f.store.read().revision);
-  assert.equal(reopened.readBaselineCandidate(f.project.id, f.candidate.id).diagnostics.eligible, true);
+  const candidate = reopened.readBaselineCandidate(f.project.id, f.candidate.id);
+  assert.equal(candidate.diagnostics.eligible, false);
+  assert.equal(candidate.preview, null);
+  assert.equal(candidate.diagnostics.issues[0].code, 'SOURCE_INTEGRITY_FAILED');
   let response;
   await handleAcceptanceCatalogRequest({ method: 'GET' }, { setHeader() {} }, new URL('http://local/api/acceptance/projects/' + f.project.id),
     { catalog: reopened, json(_res, status, body) { response = { status, body }; } });
   assert.equal(response.status, 200); assert.equal(response.body.executionReady, false);
   await assert.rejects(reopened.prepareManagedSpecDispatch(f.project.id, input));
   assert.deepEqual(heads(f), before); assert.equal(readFileSync(file, 'utf8'), '{broken'); assert.equal(runIds(f).length, 1);
+  assert.deepEqual(sourceFiles(f.sourceDir), f.originalSource);
 });
 
 test('private dispatch query returns absence without preparing an operation, including a queued future preparation', async t => {

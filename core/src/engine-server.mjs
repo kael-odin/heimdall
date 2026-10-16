@@ -48,6 +48,8 @@ import { makeSlotBox } from './forge-slots.mjs';
 import { cloneDocFile } from './clone-doc.mjs';
 import { readCloneScope } from './clone-scope.mjs';
 import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
+import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './acceptance/managed-run-schema.mjs';
+import { createLegacyAcceptanceReadScope } from './acceptance/managed-access.mjs';
 import { previewOpenApi } from './acceptance/openapi.mjs';
 import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, recoverAcceptanceRuns, acceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshot } from './acceptance/store.mjs';
 import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/comparison.mjs';
@@ -73,7 +75,11 @@ catch (error) {
 }
 // A second engine must never recover the live owner's running records.
 acceptanceOwner.assertOwned();
-recoverAcceptanceRuns({ root: acceptanceOwner.root });
+try { recoverAcceptanceRuns({ root: acceptanceOwner.root }); }
+catch (error) {
+  if (!(error instanceof ManagedAcceptanceRunError)) throw error;
+  console.warn(`[acceptance] recovery blocked: ${error.code}: ${error.message}`);
+}
 const execFileAsync = promisify(execFile);
 
 // 任务持久化（node:sqlite；不可用时自动降级 JSON）——重启后历史/事件不丢
@@ -1171,12 +1177,24 @@ const handleRequest = async (req, res) => {
     }, 4 * 1024 * 1024 + 16 * 1024);
   }
   if (u.pathname === '/api/acceptance/runs') {
-    if (req.method === 'GET') return json(res, 200, { runs: listAcceptanceRuns() });
+    if (req.method === 'GET') {
+      try { return json(res, 200, { runs: listAcceptanceRuns() }); }
+      catch (error) {
+        if (!(error instanceof ManagedAcceptanceRunError)) throw error;
+        return json(res, error.status, { code: error.code, error: error.message });
+      }
+    }
     if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
     return readJsonBody(req, res, input => {
       let plan;
-      try { plan = normalizeAcceptancePlan(input); }
-      catch (error) { return json(res, 400, { error: error.message }); }
+      try {
+        assertUnmanagedAcceptanceInput(input);
+        plan = normalizeAcceptancePlan(input);
+        createLegacyAcceptanceReadScope(acceptanceOwner.root).assertCurrent();
+      } catch (error) {
+        if (error instanceof ManagedAcceptanceRunError) return json(res, error.status, { code: error.code, error: error.message });
+        return json(res, 400, { error: error.message });
+      }
       if (runningAcceptance) return json(res, 409, { error: '已有项目验收正在运行，请等待结束。', runId: runningAcceptance.runId, taskId: runningAcceptance.id });
       const t = makeTask('acceptance', plan.targetUrl);
       let manifest;
@@ -1184,6 +1202,7 @@ const handleRequest = async (req, res) => {
       catch (error) {
         t.status = 'failed'; t.endedAt = Date.now(); t.error = String(error.message);
         jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, createdAt: t.createdAt, endedAt: t.endedAt, error: t.error });
+        if (error instanceof ManagedAcceptanceRunError) return json(res, error.status, { code: error.code, error: error.message });
         return json(res, 500, { error: '无法创建验收记录：' + error.message });
       }
       t.runId = manifest.runId;
@@ -1243,7 +1262,10 @@ const handleRequest = async (req, res) => {
       if (fileName.endsWith('.json')) res.setHeader('Content-Type', 'application/json; charset=utf-8');
       if (fileName.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
       return createReadStream(file).pipe(res);
-    } catch (error) { return json(res, 400, { error: String(error.message).slice(0, 300) }); }
+    } catch (error) {
+      if (error instanceof ManagedAcceptanceRunError) return json(res, error.status, { code: error.code, error: error.message });
+      return json(res, 400, { error: String(error.message).slice(0, 300) });
+    }
   }
 
   if (req.method === 'GET' && u.pathname === '/api/llm/status') {

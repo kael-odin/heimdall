@@ -1,0 +1,31 @@
+✔ real prepared dispatch is captured without owner, requests or filesystem writes (494.4303ms)
+✔ empty namespace and a missing version directory remain physically absent (186.0647ms)
+✔ unrelated root/ancestor entries do not invalidate the bound namespace (317.2377ms)
+✔ returned bytes, envelopes and inventory cannot poison private cached facts (386.6347ms)
+✔ private brand rejects duck types, proxies and a different root without invoking getters (327.9642ms)
+✔ inputs and lowered budgets are strict and missing root is never created (273.9158ms)
+✔ temporary bytes are bounded inventory material and never parsed or promoted (379.154ms)
+✔ malformed published JSON, UTF-8, unknown schema and filename mismatch cannot look empty (309.9094ms)
+✔ unknown entries, directories and file/directory links fail closed without repair (238.9639ms)
+✔ two accepted operations cannot reserve the same run or task (920.2667ms)
+✔ several unique operations have stable sorted references and exact count/byte limits (476.0155ms)
+✔ namespace additions, removals, same-byte replacement and in-place edits invalidate cached negatives (1560.9823ms)
+✔ root, partial ancestor and version directory replacement invalidates a context permanently (723.046ms)
+✔ reread requires the captured operation and exact original SHA instead of adopting new facts (304.9879ms)
+✔ later freshness uses read descriptors and one bounded name inventory without adopting new facts (498.8507ms)
+✔ new namespace names are rejected even when directory metadata is unchanged (1403.8257ms)
+✔ published same-length rewrite invalidates freshness even when file timestamps are unchanged (367.9939ms)
+✔ post-lstat realpath ENOENT for root, ancestors and records is unavailable, never absence (507.1192ms)
+✔ short reads finish exactly; descriptor read failure closes every handle and preserves files (396.794ms)
+✔ same-length record mutation during capture is rejected instead of returning mixed material (295.4544ms)
+✔ independent second-read corruption fails byte comparison with unchanged filesystem metadata (318.7441ms)
+✔ growth before descriptor capture is refused before any body read and closes the descriptor (294.1976ms)
+✔ directory enumeration failure closes its handle and cannot yield an empty inventory (377.9022ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11469.3239

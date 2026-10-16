@@ -1,0 +1,72 @@
+{
+  "basedOn": "c288c079c6c44d74570017438997d8cd9a0f43fa",
+  "sources": [
+    {
+      "file": "core/src/acceptance/managed-access.mjs",
+      "bytes": 1547,
+      "sha256": "0f76ff5880925c3f1d11f5dcfce518d37e55f251fdd77fe6c8485033d292df7c"
+    },
+    {
+      "file": "core/src/acceptance/managed-dispatch-reader.mjs",
+      "bytes": 11547,
+      "sha256": "0cfbca76af94077d147f97798631031cae4117797977befe9fed25d98ac1faef"
+    },
+    {
+      "file": "core/src/acceptance/managed-run-schema.mjs",
+      "bytes": 12154,
+      "sha256": "34e8372a9cb50d7410b9953f7951576f37414dbf73811137a8c681d4cb1122a3"
+    },
+    {
+      "file": "core/src/acceptance/store.mjs",
+      "bytes": 17886,
+      "sha256": "455b86150d8144edd7135e4fb79630d8911c1ffb67b66e7700feb9029d3d2564"
+    },
+    {
+      "file": "core/src/acceptance/candidate-source.mjs",
+      "bytes": 15774,
+      "sha256": "9c4ac2b9bc0ce5c7a8f86ceee4bbbab3d0abaa9efa6e525a2b407f398e400be8"
+    },
+    {
+      "file": "core/src/engine-server.mjs",
+      "bytes": 122509,
+      "sha256": "878a7630e7d10bf80ef2c0bf6ba0acda974537016ff0b52cfc9f42421a39a1e7"
+    },
+    {
+      "file": "core/test/acceptance-managed-quarantine.test.mjs",
+      "bytes": 15300,
+      "sha256": "e4b044a27c0008fbd9e5bcc44a7f5dbfb7c36a3d50ec351de09d1c359263e73e"
+    },
+    {
+      "file": "core/test/acceptance-managed-dispatch-reader.test.mjs",
+      "bytes": 32352,
+      "sha256": "f0905a42e1da58cbaac711848ada642797823122ccad7ad2a05d899f4cb6ebec"
+    },
+    {
+      "file": "core/test/acceptance-managed-run-schema.test.mjs",
+      "bytes": 23042,
+      "sha256": "7fdea8a33d46faf976f665e84a48c8dce2d7685dd58b6294f54789b45e1651f4"
+    },
+    {
+      "file": "core/test/acceptance-managed-catalog.test.mjs",
+      "bytes": 25623,
+      "sha256": "ffffb89a7b63a66d167a7930c0571cf0708fdf8b35b972803d20aa97fcf49cae"
+    }
+  ],
+  "verifierFiles": [
+    "core/src/acceptance/schema.mjs",
+    "core/src/acceptance/urls.mjs",
+    "core/src/acceptance/runner.mjs",
+    "core/src/acceptance/report.mjs",
+    "core/src/acceptance/spec-schema.mjs",
+    "core/src/acceptance/spec-runner.mjs",
+    "core/src/acceptance/response-schema.mjs",
+    "core/src/acceptance/openapi.mjs",
+    "core/src/acceptance/identity.mjs",
+    "core/src/verify/compare.mjs"
+  ],
+  "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+  "historicalPreparedRecord": {
+    "file": "docs/audits/2026-10-16/evidence/acceptance-spec-execution-control/preparation/prepared-record.json",
+    "sha256": "1a4e8eec18a8e187f47cd9ea81a6d12b4cb911a14d6c5e2e5304fbbefbb02059"
+  }
+}

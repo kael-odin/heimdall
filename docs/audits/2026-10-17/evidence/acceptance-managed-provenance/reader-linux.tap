@@ -1,0 +1,148 @@
+TAP version 13
+# Subtest: real prepared dispatch is captured without owner, requests or filesystem writes
+ok 1 - real prepared dispatch is captured without owner, requests or filesystem writes
+  ---
+  duration_ms: 88.131713
+  type: 'test'
+  ...
+# Subtest: empty namespace and a missing version directory remain physically absent
+ok 2 - empty namespace and a missing version directory remain physically absent
+  ---
+  duration_ms: 34.632694
+  type: 'test'
+  ...
+# Subtest: unrelated root/ancestor entries do not invalidate the bound namespace
+ok 3 - unrelated root/ancestor entries do not invalidate the bound namespace
+  ---
+  duration_ms: 37.91177
+  type: 'test'
+  ...
+# Subtest: returned bytes, envelopes and inventory cannot poison private cached facts
+ok 4 - returned bytes, envelopes and inventory cannot poison private cached facts
+  ---
+  duration_ms: 38.124363
+  type: 'test'
+  ...
+# Subtest: private brand rejects duck types, proxies and a different root without invoking getters
+ok 5 - private brand rejects duck types, proxies and a different root without invoking getters
+  ---
+  duration_ms: 39.743556
+  type: 'test'
+  ...
+# Subtest: inputs and lowered budgets are strict and missing root is never created
+ok 6 - inputs and lowered budgets are strict and missing root is never created
+  ---
+  duration_ms: 41.013167
+  type: 'test'
+  ...
+# Subtest: temporary bytes are bounded inventory material and never parsed or promoted
+ok 7 - temporary bytes are bounded inventory material and never parsed or promoted
+  ---
+  duration_ms: 53.608895
+  type: 'test'
+  ...
+# Subtest: malformed published JSON, UTF-8, unknown schema and filename mismatch cannot look empty
+ok 8 - malformed published JSON, UTF-8, unknown schema and filename mismatch cannot look empty
+  ---
+  duration_ms: 46.324243
+  type: 'test'
+  ...
+# Subtest: unknown entries, directories and file/directory links fail closed without repair
+ok 9 - unknown entries, directories and file/directory links fail closed without repair
+  ---
+  duration_ms: 37.614751
+  type: 'test'
+  ...
+# Subtest: two accepted operations cannot reserve the same run or task
+ok 10 - two accepted operations cannot reserve the same run or task
+  ---
+  duration_ms: 97.54561
+  type: 'test'
+  ...
+# Subtest: several unique operations have stable sorted references and exact count/byte limits
+ok 11 - several unique operations have stable sorted references and exact count/byte limits
+  ---
+  duration_ms: 48.243675
+  type: 'test'
+  ...
+# Subtest: namespace additions, removals, same-byte replacement and in-place edits invalidate cached negatives
+ok 12 - namespace additions, removals, same-byte replacement and in-place edits invalidate cached negatives
+  ---
+  duration_ms: 202.183057
+  type: 'test'
+  ...
+# Subtest: root, partial ancestor and version directory replacement invalidates a context permanently
+ok 13 - root, partial ancestor and version directory replacement invalidates a context permanently
+  ---
+  duration_ms: 103.082854
+  type: 'test'
+  ...
+# Subtest: reread requires the captured operation and exact original SHA instead of adopting new facts
+ok 14 - reread requires the captured operation and exact original SHA instead of adopting new facts
+  ---
+  duration_ms: 38.834788
+  type: 'test'
+  ...
+# Subtest: later freshness uses read descriptors and one bounded name inventory without adopting new facts
+ok 15 - later freshness uses read descriptors and one bounded name inventory without adopting new facts
+  ---
+  duration_ms: 159.059628
+  type: 'test'
+  ...
+# Subtest: new namespace names are rejected even when directory metadata is unchanged
+ok 16 - new namespace names are rejected even when directory metadata is unchanged
+  ---
+  duration_ms: 583.544376
+  type: 'test'
+  ...
+# Subtest: published same-length rewrite invalidates freshness even when file timestamps are unchanged
+ok 17 - published same-length rewrite invalidates freshness even when file timestamps are unchanged
+  ---
+  duration_ms: 153.431584
+  type: 'test'
+  ...
+# Subtest: post-lstat realpath ENOENT for root, ancestors and records is unavailable, never absence
+ok 18 - post-lstat realpath ENOENT for root, ancestors and records is unavailable, never absence
+  ---
+  duration_ms: 448.920838
+  type: 'test'
+  ...
+# Subtest: short reads finish exactly; descriptor read failure closes every handle and preserves files
+ok 19 - short reads finish exactly; descriptor read failure closes every handle and preserves files
+  ---
+  duration_ms: 255.555618
+  type: 'test'
+  ...
+# Subtest: same-length record mutation during capture is rejected instead of returning mixed material
+ok 20 - same-length record mutation during capture is rejected instead of returning mixed material
+  ---
+  duration_ms: 137.690506
+  type: 'test'
+  ...
+# Subtest: independent second-read corruption fails byte comparison with unchanged filesystem metadata
+ok 21 - independent second-read corruption fails byte comparison with unchanged filesystem metadata
+  ---
+  duration_ms: 148.340636
+  type: 'test'
+  ...
+# Subtest: growth before descriptor capture is refused before any body read and closes the descriptor
+ok 22 - growth before descriptor capture is refused before any body read and closes the descriptor
+  ---
+  duration_ms: 142.236772
+  type: 'test'
+  ...
+# Subtest: directory enumeration failure closes its handle and cannot yield an empty inventory
+ok 23 - directory enumeration failure closes its handle and cannot yield an empty inventory
+  ---
+  duration_ms: 261.012868
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3412.692726

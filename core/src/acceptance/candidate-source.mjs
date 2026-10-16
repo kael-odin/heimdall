@@ -19,6 +19,7 @@ import { types } from 'node:util';
 import { ACCEPTANCE_ROOT, ACCEPTANCE_SNAPSHOT_LIMITS } from './store.mjs';
 import { AcceptanceCatalogError } from './catalog-schema.mjs';
 import { summarizeAcceptanceReport } from './report.mjs';
+import { createLegacyAcceptanceReadScope } from './managed-access.mjs';
 
 export const SPEC_CANDIDATE_SOURCE_LIMITS = Object.freeze({ ...ACCEPTANCE_SNAPSHOT_LIMITS });
 const RUN_ID = /^ac-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -225,10 +226,13 @@ export function readSpecCandidateSource(runId, options = {}) {
       fail('INVALID_SOURCE_INPUT', 'INVALID_INPUT', 400);
     }
     const limits = limitsOf(inputLimits), directories = pinDirectories(root, owner, runId);
+    const scope = createLegacyAcceptanceReadScope(directories.actual);
+    scope.assertUnmanaged(runId);
     const manifestPath = join(directories.runDir, 'manifest.json'), reportPath = join(directories.runDir, 'report.json');
     const originalManifest = safeRead(manifestPath, directories, limits.jsonBytes);
     const originalReport = safeRead(reportPath, directories, limits.jsonBytes);
     const manifest = jsonObject(originalManifest.bytes), report = jsonObject(originalReport.bytes);
+    scope.assertUnmanaged(runId, manifest, report);
     if (manifest.runId !== runId || report.runId !== runId) fail('SOURCE_RUN_IDENTITY_INVALID');
     if (manifest.mode !== 'spec' || report.mode !== 'spec') fail('SOURCE_MODE_UNSUPPORTED', 'SOURCE_NOT_ELIGIBLE', 409);
     const { indexed, references } = sourceReferences(report, limits);
@@ -264,6 +268,7 @@ export function readSpecCandidateSource(runId, options = {}) {
     for (const [file, pinned] of pins) {
       if (!sameFile(pinned, fileIdentity(join(directories.runDir, file), directories.runDir))) fail('SOURCE_EVIDENCE_CHANGED');
     }
+    scope.assertCurrent();
     return { snapshot, files };
   } catch (cause) {
     if (cause instanceof SourceReadError) throw cause;

@@ -44,6 +44,8 @@ sidecar 使用独立 schemaVersion=1，位于 owner 根内的 `managed-spec-disp
 
 重开本阶段的 prepared 记录只允许读取。升级、重启、同键重试、来源恢复或选用变化均不能自动创建 run 或发送请求。
 
+只读来源关联层现已增加严格原字节 provenance / linkage 校验，以及普通入口的托管身份隔离。保留 runId 即使删除 manifest / report 托管标记也不能通过普通 CLI、报告、解读或候选读取路径；坏派发记录会阻塞相关读取与恢复写入，并保留原件。该层不提供托管写入或启动授权，详见[来源关联与隔离验收](../audits/2026-10-17/acceptance-managed-provenance.md)。
+
 B2.2-b 将接入持有 owner 的进程内异步 Spec executor，并补齐统一运行槽、取消 / watchdog / shutdown、不可变 manifest / report provenance 及中断恢复。只有新操作当次的受控流程可以开始执行；已存在的 prepared 记录不会因为扫描而启动。恢复不自动重发已中断请求，不声称远端 exactly-once。
 
 B2.2-c 再提供明确目标版本的界面与真实浏览器闭环。Browser 基线、写请求、鉴权会话、持久 BUG 工单和自动关闭缺陷继续另行实施。当前新增内核不能被描述成托管执行已经可用。

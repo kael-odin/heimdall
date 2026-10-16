@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "archived-existing-tool-execution",
+  "archivedFrom": "Actual functions.exec -> exec_command stdout already produced in this conversation. No new probe execution during archival.",
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "originalInvocation": "PowerShell single-quoted here-string piped to node --input-type=module",
+  "sourceFile": "triage-pending.probe.mjs",
+  "stdoutFile": "triage-pending.stdout.txt",
+  "initialToolResult": {
+    "chunkId": "7bf781",
+    "sessionId": 2001,
+    "returnedRunning": true
+  },
+  "completionToolResult": {
+    "chunkId": "6b0806",
+    "exitCode": 0,
+    "additionalStdout": ""
+  },
+  "result": {
+    "beforeAwait": {
+      "status": 503,
+      "modelCalls": 0
+    },
+    "afterAwait": {
+      "status": 503,
+      "code": "MANAGED_EXECUTION_REQUIRED"
+    },
+    "totalModelCalls": 1,
+    "triageWritten": false,
+    "manifestUnchanged": true
+  },
+  "sourceNotes": [
+    "The source is preserved from the actual executed stdin script stored in this tool session; imports are unchanged.",
+    "Run imports originally resolved from the repository root through --input-type=module stdin; this archived file is evidence, not a rewritten executable command.",
+    "The actual probe used a local HTTP model stub and a temporary acceptance data root. Engine child and temporary root were cleaned up before exit."
+  ]
+}
