@@ -47,8 +47,11 @@ import { canonUrl, resolvePageNameOfUrl } from './url-canon.mjs';
 import { makeSlotBox } from './forge-slots.mjs';
 import { cloneDocFile } from './clone-doc.mjs';
 import { readCloneScope } from './clone-scope.mjs';
+import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
+import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, recoverAcceptanceRuns, acceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage } from './acceptance/store.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
+recoverAcceptanceRuns();
 const execFileAsync = promisify(execFile);
 
 // 任务持久化（node:sqlite；不可用时自动降级 JSON）——重启后历史/事件不丢
@@ -508,6 +511,8 @@ let runningSession = null;
 let runningReclaim = null;
 let runningUpgrade = null;
 let runningClone = null;
+let runningAcceptance = null;
+let runningAcceptanceTriage = null;
 
 /**
  * 请求期读盘缓存 —— 只服务"读多写少"的三处清单接口。
@@ -1085,6 +1090,83 @@ const handleRequest = async (req, res) => {
       && (u.pathname.startsWith('/api/') || u.pathname.startsWith('/px/')
         || u.pathname.startsWith('/static/') || u.pathname === '/lm' || u.pathname.startsWith('/lm/'))) {
     return json(res, 401, { error: 'unauthorized' });
+  }
+
+  // Independent project acceptance: persistent runs, protected evidence, bounded worker.
+  if (u.pathname === '/api/acceptance/runs') {
+    if (req.method === 'GET') return json(res, 200, { runs: listAcceptanceRuns() });
+    if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
+    return readJsonBody(req, res, input => {
+      let plan;
+      try { plan = normalizeAcceptancePlan(input); }
+      catch (error) { return json(res, 400, { error: error.message }); }
+      if (runningAcceptance) return json(res, 409, { error: '已有项目验收正在运行，请等待结束。', runId: runningAcceptance.runId, taskId: runningAcceptance.id });
+      const t = makeTask('acceptance', plan.targetUrl);
+      let manifest;
+      try { manifest = createAcceptanceRun(plan, { taskId: t.id }); }
+      catch (error) {
+        t.status = 'failed'; t.endedAt = Date.now(); t.error = String(error.message);
+        jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, createdAt: t.createdAt, endedAt: t.endedAt, error: t.error });
+        return json(res, 500, { error: '无法创建验收记录：' + error.message });
+      }
+      t.runId = manifest.runId;
+      t.label = plan.name;
+      runningAcceptance = t;
+      spawnTask(t, join('src', 'acceptance', 'cli.mjs'), ['--run', manifest.runId], { timeoutMs: 360000, stallMs: 65000 });
+      const finalize = () => {
+        if (runningAcceptance?.id === t.id) runningAcceptance = null;
+        try {
+          const current = readAcceptanceRun(manifest.runId);
+          if (current?.status === 'running') updateAcceptanceRun(manifest.runId, {
+            status: t.cancelRequested ? 'interrupted' : 'failed', gate: 'blocked',
+            endedAt: new Date().toISOString(), error: t.cancelRequested ? '验收任务已取消，请重新运行。' : t.error || '验收进程未完成；已保留现场，请重新运行。',
+          });
+        } catch (error) { console.warn('[acceptance] finalize:', error.message); }
+      };
+      t.child.once('exit', finalize);
+      t.child.once('error', error => { t.error = error.message; finalize(); });
+      return json(res, 202, { runId: manifest.runId, taskId: t.id });
+    });
+  }
+  if (u.pathname.startsWith('/api/acceptance/runs/')) {
+    const segments = u.pathname.slice('/api/acceptance/runs/'.length).split('/');
+    const [runId, kind, name] = segments;
+    try {
+      const manifest = readAcceptanceRun(runId);
+      if (!manifest) return json(res, 404, { error: '验收任务不存在' });
+      if (segments.length === 2 && kind === 'triage') {
+        if (req.method === 'GET') {
+          const saved = readAcceptanceTriage(runId);
+          return saved ? json(res, 200, saved) : json(res, 404, { error: '尚未生成 AI 解读' });
+        }
+        if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
+        if (runningAcceptanceTriage) return json(res, 409, { error: 'AI 正在解读另一份验收报告，请稍后重试。' });
+        const reportFile = acceptanceArtifact(runId, 'report.json');
+        if (!reportFile) return json(res, 409, { error: '请等待验收完成后再生成 AI 解读。' });
+        runningAcceptanceTriage = runId;
+        try {
+          const { triageAcceptanceReport } = await import('./acceptance/triage.mjs');
+          const triage = await triageAcceptanceReport(JSON.parse(readFileSync(reportFile, 'utf8')));
+          saveAcceptanceTriage(runId, triage);
+          return json(res, 200, triage);
+        } finally { runningAcceptanceTriage = null; }
+      }
+      if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
+      if (segments.length === 1) return json(res, 200, manifest);
+      let fileName;
+      if (segments.length === 2 && kind === 'report') fileName = 'report.json';
+      else if (segments.length === 2 && kind === 'report.md') fileName = 'report.md';
+      else if (segments.length === 3 && kind === 'evidence') fileName = decodeURIComponent(name);
+      else return json(res, 404, { error: 'unknown acceptance endpoint' });
+      const file = acceptanceArtifact(runId, fileName);
+      if (!file) return json(res, manifest.status === 'running' ? 409 : 404, { error: '报告或证据尚不可用' });
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      if (fileName === 'report.md') res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      if (fileName.endsWith('.json')) res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      if (fileName.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
+      return createReadStream(file).pipe(res);
+    } catch (error) { return json(res, 400, { error: String(error.message).slice(0, 300) }); }
   }
 
   if (req.method === 'GET' && u.pathname === '/api/llm/status') {
@@ -1684,7 +1766,7 @@ const handleRequest = async (req, res) => {
       // 缓存键是常量 'sites'，靠 listCaches 的 TTL + 任务结束 bust 保鲜。
       sites = cached('sites', () => {
       const sites = [];
-      for (const d of readdirSync(wsDir)) {
+      for (const d of existsSync(wsDir) ? readdirSync(wsDir) : []) {
         if (d.startsWith('.') || d.startsWith('_')) continue;   // _matrix / _shots 等内部目录不是站点
         const pagesDir = join(wsDir, d, 'pages');
         const forged = existsSync(pagesDir)
@@ -1825,6 +1907,7 @@ const handleRequest = async (req, res) => {
       assets: runningAssets ? { id: runningAssets.id, url: runningAssets.url } : null,
       matrix: runningMatrix ? { id: runningMatrix.id, url: runningMatrix.url } : null,
       verify: runningVerify ? { id: runningVerify.id, host: runningVerify.host } : null,
+      acceptance: runningAcceptance ? { id: runningAcceptance.id, runId: runningAcceptance.runId } : null,
       live: runningLive ? { id: runningLive.id, host: runningLive.host } : null,
       session: runningSession ? { id: runningSession.id, host: runningSession.host } : null,
       upgrade: runningUpgrade ? { id: runningUpgrade.id, host: runningUpgrade.host } : null,

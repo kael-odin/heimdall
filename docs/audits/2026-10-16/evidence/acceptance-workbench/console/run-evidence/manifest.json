@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-73ce5157-410c-4990-9747-7c83659b1909",
+  "taskId": "a-a13184f5-b28e-4c13-b879-bea53f3f21e7",
+  "name": "比赛演示 · 菜单与配额验收",
+  "mode": "mirror",
+  "baselineUrl": "http://127.0.0.1:59669/baseline",
+  "targetUrl": "http://127.0.0.1:59669/target",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-16T09:17:15.307Z",
+  "updatedAt": "2026-10-16T09:17:33.157Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "比赛演示 · 菜单与配额验收",
+    "mode": "mirror",
+    "baselineUrl": "http://127.0.0.1:59669/baseline",
+    "targetUrl": "http://127.0.0.1:59669/target",
+    "routes": [
+      "/menu-state",
+      "/missing-field"
+    ],
+    "viewports": [
+      {
+        "name": "mobile",
+        "width": 375,
+        "height": 812
+      },
+      {
+        "name": "tablet",
+        "width": 768,
+        "height": 1024
+      },
+      {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      }
+    ],
+    "points": [
+      {
+        "id": "MENU-OPEN",
+        "title": "菜单点击后展开",
+        "route": "/menu-state",
+        "severity": "high",
+        "steps": [
+          {
+            "action": "click",
+            "selector": "#menu-toggle"
+          }
+        ],
+        "assertions": [
+          {
+            "kind": "attribute",
+            "selector": "#menu-toggle",
+            "attribute": "aria-expanded",
+            "equals": "true"
+          }
+        ]
+      }
+    ],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 10000,
+    "settleMs": 250,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 39,
+    "passed": 36,
+    "failed": 3,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 3,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 39,
+      "total": 39,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.999
+      },
+      "structure": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 3,
+        "passed": 0,
+        "failed": 3,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 24,
+        "passed": 24,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-16T09:17:32.105Z",
+  "error": null,
+  "triageAvailable": true
+}

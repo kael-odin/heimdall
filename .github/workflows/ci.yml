@@ -52,6 +52,8 @@ jobs:
       - run: pnpm --dir ../console install --frozen-lockfile
       - run: pnpm --dir ../console build
       - run: pnpm test
+      - name: Acceptance console (real browser, local model stub)
+        run: pnpm acceptance:smoke
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。
       - name: Docker offline delivery (SSR + SPA + data SPA + adapter)
         run: node --test --test-name-pattern='Docker network-none delivery' test/live-deployment-matrix.test.mjs
@@ -98,3 +100,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm smoke
+      - name: Acceptance detection benchmark (known truth fixtures)
+        run: pnpm acceptance:benchmark

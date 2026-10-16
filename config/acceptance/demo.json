@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "离线固定夹具 · Mirror 验收演示",
+  "mode": "mirror",
+  "baselineUrl": "http://127.0.0.1:9087/baseline",
+  "targetUrl": "http://127.0.0.1:9087/target",
+  "routes": ["/visual-shift", "/mobile-menu", "/menu-state", "/identical", "/baseline-error", "/masked-noise"],
+  "viewports": [{ "name": "mobile", "width": 390, "height": 844 }],
+  "thresholds": { "visual": 0.97 },
+  "timeoutMs": 3000,
+  "settleMs": 200,
+  "normalization": { "maskSelectors": ["#dynamic-noise"] },
+  "points": [
+    {
+      "id": "mobile-menu-visible",
+      "title": "移动端菜单按钮可见",
+      "route": "/mobile-menu",
+      "severity": "high",
+      "assertions": [{ "kind": "visible", "selector": "#menu-toggle" }]
+    },
+    {
+      "id": "menu-expanded-state",
+      "title": "点击菜单后 ARIA 与展开状态一致",
+      "route": "/menu-state",
+      "severity": "high",
+      "steps": [{ "action": "click", "selector": "#menu-toggle" }],
+      "assertions": [
+        { "kind": "attribute", "selector": "#menu-toggle", "attribute": "aria-expanded", "equals": "true" },
+        { "kind": "visible", "selector": "#menu" }
+      ]
+    }
+  ]
+}

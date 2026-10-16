@@ -36,6 +36,7 @@ import PagesView from './PagesView.vue';
 import StorageCard from './StorageCard.vue';
 import AssetTable from './AssetTable.vue';
 import AcceptanceSummary from './AcceptanceSummary.vue';
+import AcceptanceWorkbench from './AcceptanceWorkbench.vue';
 import DetailDock from './DetailDock.vue';
 import ActivityRail from './ActivityRail.vue';
 import TrashDialog from './TrashDialog.vue';
@@ -172,6 +173,7 @@ const view = ref('atlas');
 const VIEWS = [
   { id: 'atlas', icon: '✦', label: '星图', hint: '全站力导向图：每个行星是一页，连线是站内链接' },
   { id: 'pages', icon: '▤', label: '页面', hint: '逐页清单：克隆状态 / 还原度 / 资产 / 缺口，可搜索筛选批量克隆' },
+  { id: 'acceptance', iconName: 'swap', label: '项目验收', hint: '对照基线与目标项目，验证视觉、结构、交互与运行健康，查看缺陷和复现证据' },
   { id: 'jobs', icon: '◷', label: '任务', hint: '本次会话的任务与持久化历史（引擎重启也在）' },
   { id: 'reports', icon: '▦', label: '报告', hint: '克隆档案 / SEO 审计 / 体检 / 交互镜像 / 对标 / 情报' },
   { id: 'settings', icon: '⚙', label: '设置', hint: '模型服务、引擎地址与 Token、界面偏好' },
@@ -1862,6 +1864,8 @@ onBeforeUnmount(() => {
     @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'" @retry="retryJob" @export-live="runLiveExport"
   />
 
+  <AcceptanceWorkbench v-if="view === 'acceptance'" @close="view = 'atlas'" />
+
   <section class="work-view surface" v-if="view === 'reports'">
     <div class="wv-head">
       <b>报告中心 · {{ host || '未选择站点' }}</b>
@@ -2215,9 +2219,9 @@ onBeforeUnmount(() => {
   <div class="toast" v-if="errMsg" role="alert" aria-live="assertive">{{ errMsg }}</div>
   <div class="toast ok" v-if="okMsg" role="status" aria-live="polite">{{ okMsg }}</div>
   <TrashDialog v-if="trashOpen" @close="trashOpen = false" @restored="onTrashRestored" />
-  <div class="view-nav surface">
+  <div class="view-nav surface" style="max-width: calc(100vw - 16px); overflow-x: auto">
     <button v-for="v in VIEWS" :key="v.id" :class="{ on: view === v.id }" :aria-current="view === v.id ? 'page' : undefined" :title="v.hint" @click="selectView(v.id)">
-      <b aria-hidden="true">{{ v.icon }}</b><span>{{ v.label }}</span>
+      <b aria-hidden="true"><Icon v-if="v.iconName" :name="v.iconName" decorative /><template v-else>{{ v.icon }}</template></b><span>{{ v.label }}</span>
     </button>
   </div>
 </template>

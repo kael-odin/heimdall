@@ -1,6 +1,6 @@
 # Heimdall 接手入口
 
-更新：2026-10-14。原 2734 行逐日开发记录完整保留在 [历史 HANDOFF](docs/archive/HANDOFF-through-2026-10-13.md)，其中的分数、文件行号和待办均是当时快照。
+更新：2026-10-16。原 2734 行逐日开发记录完整保留在 [历史 HANDOFF](docs/archive/HANDOFF-through-2026-10-13.md)，其中的分数、文件行号和待办均是当时快照。
 
 ## 先看
 
@@ -8,12 +8,14 @@
 2. [USAGE](USAGE.md)：当前控制台和 CLI 操作。
 3. [2026-10-14 审查](docs/audits/2026-10-14/README.md)：第 1–6 节保留修复前证据，第 7 节记录当前复验、浏览器证据与未关闭边界；阅读缺陷清单时须同时核对第 7 节。
 4. [ROADMAP](docs/ROADMAP.md)：仍需验证或建设的事项。
+5. [项目验收工作台](docs/competition/acceptance-workbench.md)：比赛方向的可运行 MVP、输入 schema、门禁、AI 解读和演示命令。
 
 ## 代码路径
 
 - `core/src/engine-server.mjs`：引擎路由、任务编排与静态产物入口。
 - `core/src/crawler/`、`core/src/queue.mjs`、`core/src/url-canon.mjs`：侦察、捕获、页面身份与队列。
 - `core/src/verify/`、`core/src/differ/`：多视口和单页差异；跨评分版本不要直接比较。
+- `core/src/acceptance/`：独立项目验收 schema、浏览器 runner、门禁报告、持久化与可选 AI 解读；`console/src/AcceptanceWorkbench.vue` 为入口。
 - `core/src/live/`：交互镜像、HAR 清洗、离线健康与导出。
 - `core/src/seo/`：站内审计与回归基线。
 - `console/src/Atlas.vue`：控制台站点上下文和任务入口；`PagesView.vue`、`DetailDock.vue`、`SiteBar.vue` 等为工作视图。

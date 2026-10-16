@@ -17,6 +17,9 @@
   "scripts": {
     "dev": "node src/engine-server.mjs 8900",
     "verify": "node src/verify/verify.mjs",
+    "acceptance": "node src/acceptance/cli.mjs",
+    "acceptance:benchmark": "node scripts/benchmark-acceptance.mjs",
+    "acceptance:smoke": "node scripts/smoke-acceptance-console.mjs",
     "test": "node --test",
     "lint": "node scripts/check-syntax.mjs",
     "check:docs": "node scripts/check-markdown-links.mjs",

@@ -14,6 +14,9 @@
     "docs:links": "pnpm -C core check:docs",
     "dev:core": "pnpm -C core dev",
     "dev:console": "pnpm -C console dev",
-    "smoke": "pnpm -C core smoke"
+    "smoke": "pnpm -C core smoke",
+    "acceptance": "node core/src/acceptance/cli.mjs",
+    "acceptance:benchmark": "node core/scripts/benchmark-acceptance.mjs",
+    "acceptance:smoke": "node core/scripts/smoke-acceptance-console.mjs"
   }
 }
