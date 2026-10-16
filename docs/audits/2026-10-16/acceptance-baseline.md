@@ -34,11 +34,13 @@
 
 环境为 Windows、本地只读 HTTP 夹具、独立数据根的真实引擎与 Playwright Chromium。当前会话没有 Browser 插件，使用仓库已有 Playwright；桌面 1440×1000、手机 390×844 深浅主题均完成截图核对，手机 document scrollWidth 均为 390。页面身份、非空内容、无框架错误覆盖层、预期操作与控制台健康均通过。预期的 409 / 502 / 网络故障单独记录，不计为未解释的应用错误。
 
-本机跳过的两个 Docker offline 用例将以本提交的独立 CI 终态为准，不借用上一提交的成功结果。文档链接检查在证据归档后执行，记录于同一质量门 JSON。
+本机跳过的两个 Docker offline 用例已在修复提交 `022f345` 的独立 Linux CI 通过：SSR / SPA / data SPA 无源工作区交付，以及适配器卷在容器重建后的写入保留。文档链接检查记录于同一质量门 JSON。
 
-首次提交 `299304b` 的 CI（run `38917418706`）全量测试为 1269 项、1266 pass、0 fail、3 skip，console 与 e2e smoke job 成功；core job 随后在旧跨运行复验冒烟中失败。原因是脚本仅等待 manifest completed，而引擎在 CLI 子进程退出后才释放运行槽，紧接着的第二次 POST 得到合法 409。后续修正为每次启动前先等待 `/api/status.acceptance === null`，POST 保持单次发送与 202 严格断言；不重试已发送请求。该失败不作为全批 CI 成功；修复提交须单独跟踪终态。
+首次提交 `299304b` 的 CI（run `38917418706`）全量测试为 1269 项、1266 pass、0 fail、3 skip，console 与 e2e smoke job 成功；core job 随后在旧跨运行复验冒烟中失败。原因是脚本仅等待 manifest completed，而引擎在 CLI 子进程退出后才释放运行槽，紧接着的第二次 POST 得到合法 409。后续修正为每次启动前先等待 `/api/status.acceptance === null`，POST 保持单次发送与 202 严格断言；不重试已发送请求。该失败不作为全批 CI 成功。
 
 修正后的跨运行复验脚本已本机真实复跑，[15 项检查全部通过](evidence/acceptance-baseline/checks/comparison-ci-race-checks.json)，包含三个真实 Spec run、可靠复验通过与新增失败、证据篡改受阻、CLI / 下载与移动端。`pageErrors=[]`，复验阶段没有新增目标请求。
+
+修复提交 `022f345e83744f496fb64139a10bf9e6ef19db9d` 的 CI run `38921613792` 已单独核实为 success，三个 job 全部成功，包含全部验收冒烟与上述两个 Docker 用例。[CI 终态与逐步结果](evidence/acceptance-baseline/checks/ci-022f345.json)已归档；完整原始日志保存在本机 ignored 目录 `core/workspace/_runs/ci-022f345-complete.log`。
 
 ## 证据层级与剩余边界
 

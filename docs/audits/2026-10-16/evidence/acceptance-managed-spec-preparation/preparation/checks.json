@@ -1,0 +1,23 @@
+{
+  "trackedFixtureHasTwoRunsAnd14Files": true,
+  "trackedFixtureMatchesArchivedDigests": true,
+  "draftApprovalExplicitlyReselected": true,
+  "explicitTargetIsSameProjectDistinctRelease": true,
+  "privatePreparationHasNoExecutionOrRun": true,
+  "originalDraftFactAndApprovedExecutionCopyAreSeparate": true,
+  "provenanceAndExpectedComeFromSelectedSource": true,
+  "preparePreservesCatalogHeadAndPrevious": true,
+  "sameKeyReplayReturnsIdenticalRecord": true,
+  "replayPreservesCatalogHeadAndPrevious": true,
+  "selectionCancelledAfterPreparation": true,
+  "sourceUnavailableAtOriginalRunPath": true,
+  "realOwnerReleasedAndReacquired": true,
+  "newOwnerAndCatalogReplayOriginalBytesWithoutSource": true,
+  "reopenReplayPreservesCancelledCatalog": true,
+  "onlyOneImmutablePreparedRecordAndNoTemporaryFiles": true,
+  "originalTrackedFixtureStillUnchanged": true,
+  "allCopiedSource14FilesUnchangedIncludingMovedSource": true,
+  "targetFixtureReceivedZeroRequests": true,
+  "preparationAttemptedZeroFetches": true,
+  "ownTemporaryRootCleaned": true
+}

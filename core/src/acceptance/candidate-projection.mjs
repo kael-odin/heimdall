@@ -142,10 +142,11 @@ function ruleOf(plan, contract) {
 /**
  * Candidate eligibility approves complete declared requirements; source gate may
  * be failed/blocked and source spec.approved may be false. No actual/request/body
- * value can create or replace an expected contract. Returns only digest metadata
- * for catalog storage; full normalized contracts remain in the bounded preview.
+ * value can create or replace an expected contract. Internal server preparation
+ * also receives the freshly parsed, normalized plan; HTTP callers must use the
+ * public projector below, which returns only projection and bounded preview.
  */
-export function projectSpecBaselineCandidate(input, options) {
+export function verifySpecBaselineMaterial(input, options) {
   try {
     fields(input, ['snapshot', 'files']);
     fields(options, ['projectId', 'releaseId', 'sourceSide']);
@@ -318,7 +319,7 @@ export function projectSpecBaselineCandidate(input, options) {
       checks: previewChecks, executionReady: false, oracleStorage: 'stored-contract',
       reviewNotice: '人工复核并批准的是这里完整显示的来源与规范合同；来源运行门禁和目标响应不会成为期望值。批准或选用不会发起新运行。' };
     requireThat(Buffer.byteLength(JSON.stringify(preview)) <= SPEC_CANDIDATE_LIMITS_V1.previewBytes, 'SOURCE_PREVIEW_BUDGET');
-    return { projection, preview };
+    return { projection, preview, plan };
   } catch (error) {
     const reason = error instanceof Rejection ? error.reason : { code: 'SOURCE_INPUT_INVALID' };
     const integrityFailure = /(?:INTEGRITY|DIGEST|BYTES|FILE_|FILES_|EVIDENCE_|VERIFIED_INDEX)/.test(reason.code);
@@ -326,4 +327,10 @@ export function projectSpecBaselineCandidate(input, options) {
       integrityFailure ? '来源文件未通过完整性复验，不能批准为基线。' : '来源运行未满足完整 Spec 合同资格。',
       { reason: reason.code });
   }
+}
+
+/** Public candidate projection never exposes the normalized source plan/document. */
+export function projectSpecBaselineCandidate(input, options) {
+  const { projection, preview } = verifySpecBaselineMaterial(input, options);
+  return { projection, preview };
 }

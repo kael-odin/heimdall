@@ -5,6 +5,7 @@
 | 文件 | 内容 |
 | --- | --- |
 | [browser-checks.json](console/browser-checks.json) | 13 项真实浏览器检查、视口、故障注入及 0 新请求 / 运行 |
+| [ci-022f345.json](checks/ci-022f345.json) | comparison smoke 运行槽等待修复提交的独立 CI success，包含 Docker 两项通过 |
 | [complete-preview.json](console/complete-preview.json) | 全部 source、expected、schema、规则与候选身份 |
 | [catalog-storage.json](console/catalog-storage.json) | 不可变候选、批准、选用、取消与回退事件 |
 | [project-detail.json](console/project-detail.json) | 最终项目详情与取消实体的 currentSelections |

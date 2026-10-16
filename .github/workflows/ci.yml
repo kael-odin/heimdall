@@ -64,6 +64,8 @@ jobs:
         run: pnpm acceptance:catalog:migration:smoke
       - name: Spec baseline review (candidates, approvals, selections and source integrity)
         run: pnpm acceptance:baseline:smoke
+      - name: Managed Spec preparation (immutable contract, replay and zero execution)
+        run: pnpm acceptance:managed:prepare:smoke
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。
       - name: Docker offline delivery (SSR + SPA + data SPA + adapter)
         run: node --test --test-name-pattern='Docker network-none delivery' test/live-deployment-matrix.test.mjs

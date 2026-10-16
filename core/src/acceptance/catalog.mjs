@@ -8,12 +8,16 @@ import { writeAtomicFileSync } from './atomic-file.mjs';
 import { writeExclusiveCatalogFileSync } from './catalog-preimage.mjs';
 import { readSpecCandidateSource } from './candidate-source.mjs';
 import { projectSpecBaselineCandidate } from './candidate-projection.mjs';
+import { prepareManagedSpecContract } from './managed-spec-plan.mjs';
+import { createManagedSpecDispatchStore } from './managed-dispatch-store.mjs';
+import { managedSpecDispatchRequestFingerprint } from './managed-dispatch-schema.mjs';
 import { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, error, invalid, unavailable, fields, id, url,
   limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration,
   candidateProjectionOf, currentSelectionsOf } from './catalog-schema.mjs';
 
 export { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, validateAcceptanceCatalog };
 const HASH = /^[a-f0-9]{64}$/;
+const OPERATION_ID = /^ao-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const TERMINAL = new Set(['completed', 'failed', 'interrupted']);
 const MODES = new Set(['mirror', 'regression', 'spec']);
 const GATES = new Set(['passed', 'failed', 'blocked', 'needs_review']);
@@ -62,11 +66,11 @@ const missing = entity => { throw error('NOT_FOUND', 404, `${entity}不存在。
 
 /** The supplied owner must fence engine startup/recovery as well as these writes. */
 export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, limits: inputLimits = {},
-  writeAtomic = writeAtomicFileSync, writeExclusive = writeExclusiveCatalogFileSync } = {}) {
+  writeAtomic = writeAtomicFileSync, writeExclusive = writeExclusiveCatalogFileSync, managedDispatchOptions = {} } = {}) {
   if (typeof root !== 'string' || !root.trim() || typeof writeAtomic !== 'function'
     || typeof writeExclusive !== 'function') throw new TypeError('Invalid catalog store options');
   const limits = limitsOf(inputLimits), rootPath = resolve(root);
-  let pinnedRoot, pinnedIdentity, pending = 0, tail = Promise.resolve();
+  let pinnedRoot, pinnedIdentity, pending = 0, tail = Promise.resolve(), managedDispatches;
   function assertOwned() {
     if (!owner || typeof owner.assertOwned !== 'function') throw error('ACCEPTANCE_OWNER_UNAVAILABLE', 503, '项目目录没有可用的写入所有者。');
     try { owner.assertOwned(); }
@@ -329,7 +333,7 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
   function digestOf(value) {
     if (typeof value !== 'string' || !HASH.test(value)) invalid('contentDigest 必须是候选预览中的 SHA-256。');
   }
-  function projectSource(catalog, projectId, runId) {
+  function materializeProjectSource(catalog, projectId, runId) {
     if (!Object.hasOwn(catalog.projects, projectId)) missing('项目');
     const binding = catalog.runBindings[runId];
     if (!binding) throw error('SOURCE_NOT_ELIGIBLE', 409, '请先将来源运行明确归属本项目的版本。', { reason: 'SOURCE_NOT_BOUND' });
@@ -342,7 +346,12 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     if (sourceUrl !== release.targetUrl) {
       throw error('BASELINE_CHANGED', 409, '来源目标与已归属版本不一致。', { reason: 'SOURCE_RELEASE_CHANGED' });
     }
-    const result = projectSpecBaselineCandidate(material, { projectId, releaseId: binding.releaseId, sourceSide: 'source' });
+    assertOwned(); actualRoot();
+    return material;
+  }
+  function projectSource(catalog, projectId, runId) {
+    const material = materializeProjectSource(catalog, projectId, runId);
+    const result = projectSpecBaselineCandidate(material, { projectId, releaseId: catalog.runBindings[runId].releaseId, sourceSide: 'source' });
     assertOwned(); actualRoot();
     return result;
   }
@@ -434,6 +443,83 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
         ...(candidate ? { preCommitGuard: () => revalidateCandidate(catalog, candidate) } : {}) };
     });
   }
+  function dispatchStore() {
+    assertOwned();
+    const actual = actualRoot();
+    managedDispatches ??= createManagedSpecDispatchStore({ ...managedDispatchOptions, root: actual, owner });
+    managedDispatches.initialize();
+    return managedDispatches;
+  }
+  function managedContext(catalog, projectId, input) {
+    const project = catalog.projects[projectId];
+    if (!project) missing('项目');
+    const selection = currentSelectionsOf(catalog, projectId).spec;
+    if (!selection?.approvalId || selection.id !== input.selectionId) {
+      throw error('BASELINE_CHANGED', 409, '当前选用已变化，请重新确认本次执行依据。', { reason: 'CURRENT_SELECTION_CHANGED' });
+    }
+    const approval = catalog.approvals[selection.approvalId];
+    const candidate = findCandidate(catalog, projectId, approval.candidateId);
+    if (approval.contentDigest !== input.contentDigest) {
+      throw error('BASELINE_CHANGED', 409, '需求摘要与当前选用不一致。', { reason: 'CONFIRMATION_DIGEST_CHANGED' });
+    }
+    const targetRelease = catalog.releases[input.targetReleaseId];
+    if (!targetRelease) missing('目标版本');
+    if (targetRelease.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, '目标版本不属于当前项目。');
+    const material = materializeProjectSource(catalog, projectId, candidate.source.runId);
+    const contract = prepareManagedSpecContract(material, { candidate, targetRelease });
+    assertOwned(); actualRoot();
+    return { project, selection, approval, candidate, sourceRelease: catalog.releases[candidate.source.releaseId],
+      targetRelease, sourceSpecApproved: contract.sourceSpecApproved, plan: contract.plan, planFingerprint: contract.planFingerprint };
+  }
+  /**
+   * Private preparation only: reserve immutable identities and persist authority.
+   * No run/task is created and no execution may be inferred from a saved record.
+   * Replaying an operation never prepares a second record or starts any work.
+   */
+  function prepareManagedSpecDispatch(projectId, raw) {
+    let input;
+    try {
+      id(projectId, 'ap');
+      input = inputOf(raw, ['operationId', 'selectionId', 'contentDigest', 'targetReleaseId']);
+      if (typeof input.operationId !== 'string' || !OPERATION_ID.test(input.operationId)) invalid('operationId 必须是完整操作 ID。');
+      id(input.selectionId, 'as'); id(input.targetReleaseId, 'ar'); digestOf(input.contentDigest);
+    } catch (cause) { return Promise.reject(cause); }
+    const { operationId, ...confirmation } = input;
+    const request = { projectId, ...confirmation }, requestFingerprint = managedSpecDispatchRequestFingerprint(request);
+    return queue(() => {
+      const dispatches = dispatchStore(), existing = dispatches.read(operationId);
+      const resultOf = (record, replayed) => ({ record, replayed, state: 'prepared', runCreated: false, executionReady: false });
+      if (existing) {
+        if (existing.envelope.requestFingerprint !== requestFingerprint) {
+          throw error('IDEMPOTENCY_CONFLICT', 409, '操作 ID 已用于其他确认；请核对原操作记录。');
+        }
+        return resultOf(existing, true);
+      }
+      const current = readFile('catalog.json'); requireCurrent(current.catalog);
+      if (input.expectedGenerationId !== current.catalog.generationId || input.expectedRevision !== current.catalog.revision) {
+        throw error('STALE_REVISION', 409, '项目目录已变化，请刷新后重新操作。', {
+          generationId: current.catalog.generationId, revision: current.catalog.revision });
+      }
+      const previous = readFile('catalog.previous.json', { optional: true });
+      validatePredecessor(current, previous);
+      const context = managedContext(current.catalog, projectId, input);
+      const envelope = { schemaVersion: 1, operationId, dispatchId: 'ad-' + randomUUID(), runId: 'ac-' + randomUUID(),
+        taskId: 'a-' + randomUUID(), acceptedAt: new Date().toISOString(), request, requestFingerprint,
+        catalog: { generationId: current.catalog.generationId, revision: current.catalog.revision, headSha256: sha256(current.bytes) },
+        ...context, executor: 'engine-owner-spec-v1' };
+      const record = dispatches.publish(envelope, { beforePublish() {
+        assertOwned(); actualRoot();
+        checkUnchanged('catalog.json', current); checkUnchanged('catalog.previous.json', previous);
+        const verified = managedContext(current.catalog, projectId, input);
+        if (hashAcceptanceValue(verified) !== hashAcceptanceValue(context)) {
+          throw error('BASELINE_CHANGED', 409, '派发准备期间需求或目标版本已变化。', { reason: 'DISPATCH_CONTEXT_CHANGED' });
+        }
+        assertOwned(); actualRoot();
+        checkUnchanged('catalog.json', current); checkUnchanged('catalog.previous.json', previous);
+      } });
+      return resultOf(record, false);
+    });
+  }
   return Object.freeze({ initialize, read, createProject, createRelease, bindRun, readRunReference,
-    createBaselineCandidate, readBaselineCandidate, approveBaseline, selectBaseline });
+    createBaselineCandidate, readBaselineCandidate, approveBaseline, selectBaseline, prepareManagedSpecDispatch });
 }

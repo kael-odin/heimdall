@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "evidenceLevel": "local-store-probe",
+  "results": [
+    {
+      "variant": "previous-invoke-without-rejection-handling",
+      "error": {
+        "code": "INVALID_INPUT",
+        "reason": "ASYNC_GUARD_UNSUPPORTED",
+        "writeMayHaveCommitted": false
+      },
+      "publishedRecordAbsent": true,
+      "unhandledRejectionCount": 1,
+      "unhandledMessages": [
+        "guard rejected sentinel"
+      ]
+    },
+    {
+      "variant": "current-store",
+      "error": {
+        "code": "INVALID_INPUT",
+        "reason": "ASYNC_GUARD_UNSUPPORTED",
+        "writeMayHaveCommitted": false
+      },
+      "publishedRecordAbsent": true,
+      "unhandledRejectionCount": 0,
+      "unhandledMessages": []
+    }
+  ]
+}

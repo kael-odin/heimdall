@@ -1,0 +1,74 @@
+{
+  "status": "passed",
+  "date": "2026-10-16",
+  "evidenceLevel": "real-owner-private-preparation-and-local-fixture-browser-regression",
+  "core": {
+    "command": "pnpm -C core test",
+    "tests": 1377,
+    "pass": 1375,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 2,
+    "todo": 0,
+    "duration_ms": 224099.0229
+  },
+  "focused": {
+    "command": "node --test core/test/acceptance-managed-catalog.test.mjs core/test/acceptance-managed-spec-plan.test.mjs core/test/acceptance-managed-dispatch.test.mjs core/test/acceptance-baseline-catalog.test.mjs core/test/acceptance-baseline-integrity.test.mjs core/test/acceptance-candidate-projection.test.mjs core/test/acceptance-candidate-source.test.mjs",
+    "tests": 208,
+    "pass": 208,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 15805.6019
+  },
+  "lint": {
+    "command": "pnpm -C core lint",
+    "exitCode": 0,
+    "checkedFiles": 346
+  },
+  "preparation": {
+    "command": "pnpm acceptance:managed:prepare:smoke",
+    "schemaVersion": 1,
+    "passed": true,
+    "evidenceLevel": "real-owner-and-private-preparation-kernel",
+    "sourceFixtureCommit": "299304b01fb38ff7a933543c82d4aa996eff164f",
+    "sourceRunCount": 2,
+    "sourceFileCount": 14,
+    "checks": {
+      "total": 21,
+      "passed": 21
+    },
+    "preparedRecordSha256": "f50a74bf584378eddaad78619f47d0db24bc812251c44adf04f0d481e2eeace1",
+    "targetRequests": 0,
+    "fetchAttempts": 0,
+    "engineStarted": false,
+    "engineRestartTested": false,
+    "browserStarted": false,
+    "executionTested": false,
+    "runCreated": false,
+    "scope": "Private preparation, immutable replay and owner release/reacquisition only; reserved IDs do not mean a run exists.",
+    "failure": null
+  },
+  "baselineRegression": {
+    "command": "node core/scripts/smoke-acceptance-baseline-console.mjs core/workspace/_runs/acceptance-managed-preparation-baseline-regression",
+    "checks": 13,
+    "browserPostCount": 16,
+    "reviewTargetRequests": 0,
+    "newRunCount": 0,
+    "errors": []
+  },
+  "limitations": [
+    "Preparation only: no managed HTTP API, executor, run/task creation or execution recovery.",
+    "Owner reacquisition in preparation smoke is not an engine restart test; runner/browser execution is not started by this smoke.",
+    "Baseline browser regression uses real local fixture, worker and Chromium; original B2.1 source bytes are preserved.",
+    "Two Docker offline tests are skipped locally; each pushed commit needs its own Linux CI terminal result.",
+    "File publication is not a cross-file transaction or a claim of directory-entry power-loss durability."
+  ],
+  "docs": {
+    "command": "pnpm docs:links",
+    "exitCode": 0,
+    "targets": 418,
+    "files": 115
+  }
+}
