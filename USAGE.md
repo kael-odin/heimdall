@@ -140,6 +140,22 @@ YouTube 嵌入同样默认阻断。只有明确接受"视频不可离线播放"�
 }
 ```
 
+如果离线操作计划要使用命名会话，可在同一个清单里声明 `sessions`。每个会话名映射到一条已声明的 `POST` 路由；适配器必须返回 2xx 和 `Set-Cookie`，探针才会把这份 cookie 注入新的浏览器上下文：
+
+```json
+{
+  "version": 1,
+  "routes": [
+    { "method": "POST", "path": "/api/session/admin" }
+  ],
+  "sessions": {
+    "admin": { "method": "POST", "path": "/api/session/admin" }
+  }
+}
+```
+
+`sessionName: null` 永远表示匿名上下文。命名会话缺失、适配器返回失败或没有 `Set-Cookie` 时，离线探针记录 `sessionUnsupported` 并阻断严格发布；`health.adapter.sessionRoutes` 会报告 declared / initialized / failed。本地引导只用于建立离线浏览器上下文，不写入交付包，也不参与 `--compare-source` 的源站/离线依赖等价统计。它仍不证明登录业务与源站一致，独立登录、会话延续和写入业务还需要逐站适配器与授权验收。
+
 `index.mjs` 导出 `async function handle(request, { dataDir })` 并返回标准 `Response`。`request` 是 Web Request；持久化文件必须写到 `dataDir`，该目录位于交付包外，由运行时的 `HEIMDALL_RUNTIME_DATA_DIR` 指定。导出只包含这两个适配器文件，不会自动复制 npm 依赖。适配器代码由操作者编写并随包执行，应审核其数据访问与外联行为；它不是自动生成的通用登录、支付或实时服务。
 
 ```powershell

@@ -119,6 +119,7 @@ test('strict adapter export is relocatable and keeps runtime state outside the b
     assert.deepEqual(health.adapter, {
       status: 'included', declaredRoutes: 2, exercisedRoutes: 2, untestedRoutes: 0,
       serverEgress: 'not-tested',
+      sessionRoutes: { declared: 0, initialized: 0, failed: 0 },
     });
     assert.equal(health.operationProbe.failed, 0);
     assert.equal(health.strictBlockers.adapterRoutesUntested, 0);

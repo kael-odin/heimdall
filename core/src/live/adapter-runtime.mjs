@@ -10,6 +10,8 @@ const HOP_HEADERS = new Set([
   'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade',
 ]);
 const MAX_ROUTES = 200;
+const MAX_SESSIONS = 100;
+const SESSION_NAME = /^[a-z0-9_-]{1,64}$/i;
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const BODY_TIMEOUT_MS = 10_000;
 const ADAPTER_TIMEOUT_MS = 15_000;
@@ -25,7 +27,7 @@ function regularFile(path, maxBytes) {
 
 function validateManifest(manifest) {
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
-    || Object.keys(manifest).sort().join(',') !== 'routes,version'
+    || !['routes,version', 'routes,sessions,version'].includes(Object.keys(manifest).sort().join(','))
     || manifest.version !== 1 || !Array.isArray(manifest.routes)
     || manifest.routes.length < 1 || manifest.routes.length > MAX_ROUTES) {
     throw new Error('invalid adapter manifest');
@@ -54,7 +56,27 @@ function validateManifest(manifest) {
     if (routes.has(key)) throw new Error('duplicate adapter route');
     routes.add(key);
   }
-  return routes;
+  const sessionRoutes = new Map();
+  if (manifest.sessions != null) {
+    if (typeof manifest.sessions !== 'object' || Array.isArray(manifest.sessions)
+      || Object.keys(manifest.sessions).length < 1 || Object.keys(manifest.sessions).length > MAX_SESSIONS) {
+      throw new Error('invalid adapter sessions');
+    }
+    for (const [name, route] of Object.entries(manifest.sessions)) {
+      if (!SESSION_NAME.test(name) || !route || typeof route !== 'object' || Array.isArray(route)
+        || Object.keys(route).sort().join(',') !== 'method,path' || route.method !== 'POST'
+        || typeof route.path !== 'string' || route.path.length > 2048 || !route.path.startsWith('/')
+        || route.path.startsWith('//') || route.path.includes('\\') || /[?#]/.test(route.path)
+        || /%(?:2f|5c)/i.test(route.path)) {
+        throw new Error('invalid adapter session route');
+      }
+      const key = 'POST ' + route.path;
+      if (!routes.has(key)) throw new Error('adapter session route is not declared');
+      if (sessionRoutes.has(name)) throw new Error('duplicate adapter session route');
+      sessionRoutes.set(name, route);
+    }
+  }
+  return { routes, sessionRoutes };
 }
 
 export function inspectRuntimeAdapter(bundleDir) {
@@ -69,8 +91,8 @@ export function inspectRuntimeAdapter(bundleDir) {
   const moduleFile = join(adapterDir, 'index.mjs');
   regularFile(manifestFile, MAX_MANIFEST_BYTES);
   regularFile(moduleFile, MAX_MODULE_BYTES);
-  const routes = validateManifest(JSON.parse(readFileSync(manifestFile, 'utf8')));
-  return { routes, moduleFile };
+  const { routes, sessionRoutes } = validateManifest(JSON.parse(readFileSync(manifestFile, 'utf8')));
+  return { routes, sessionRoutes, moduleFile };
 }
 
 export async function loadRuntimeAdapter(bundleDir, dataDirValue) {

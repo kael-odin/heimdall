@@ -310,11 +310,52 @@ async function checkAssertion(page, assertion, base) {
   return false;
 }
 
+function setCookieObjects(response, base) {
+  const values = response.headers.getSetCookie?.() ?? [];
+  const cookies = [];
+  for (const value of values) {
+    const pair = String(value).split(';', 1)[0];
+    const eq = pair.indexOf('=');
+    if (eq <= 0) continue;
+    const name = pair.slice(0, eq).trim();
+    const cookieValue = pair.slice(eq + 1).trim();
+    if (!name || !cookieValue) continue;
+    cookies.push({ name, value: cookieValue, url: base });
+  }
+  return cookies;
+}
+
+async function initializeAdapterSession({ base, sessionName, route, flowIndex, options, report }) {
+  if (!route) {
+    report.adapterSessionRoutes.failed++;
+    return null;
+  }
+  try {
+    const response = await fetch(new URL(route.path, base).href, {
+      method: route.method,
+      redirect: 'manual',
+      signal: AbortSignal.timeout(10_000),
+    });
+    options.onAdapterSessionRoute?.(flowIndex, sessionName, route);
+    const cookies = setCookieObjects(response, base);
+    if (!response.ok || !cookies.length) {
+      report.adapterSessionRoutes.failed++;
+      return null;
+    }
+    report.adapterSessionRoutes.initialized++;
+    return cookies;
+  } catch {
+    report.adapterSessionRoutes.failed++;
+    return null;
+  }
+}
+
 async function runOfflineSegment({ browser, base, bundleDir, segment, startUrl, readData, flowIndex,
-  options, readOnlyRequests, addIssue, settleMs, lateMs, timeoutMs }) {
+  options, readOnlyRequests, cookies, addIssue, settleMs, lateMs, timeoutMs }) {
   let context;
   try {
     context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
+    if (cookies?.length) await context.addCookies(cookies);
     context.on('request', request => {
       if (request.method().toUpperCase() !== 'GET') return;
       const sourceUrl = readOnlyRequests.get(request.url());
@@ -383,9 +424,21 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
   if (options.onReadOnlyObservation && typeof options.onReadOnlyObservation !== 'function') {
     throw new TypeError('invalid read-only response observer');
   }
+  if (options.adapterSessionRoutes != null && (typeof options.adapterSessionRoutes !== 'object'
+    || Array.isArray(options.adapterSessionRoutes))) {
+    throw new TypeError('invalid adapter session routes');
+  }
+  if (options.onAdapterSessionRoute != null && typeof options.onAdapterSessionRoute !== 'function') {
+    throw new TypeError('invalid adapter session route observer');
+  }
   const report = {
     status: 'checked', planned: flows.length, checked: 0, failed: 0, untested: flows.length,
     failures: [], omittedFailures: 0, flows: [],
+    adapterSessionRoutes: {
+      declared: Object.keys(options.adapterSessionRoutes ?? {}).length,
+      initialized: 0,
+      failed: 0,
+    },
   };
   const settleMs = boundedInteger(options.settleMs, 500, 5_000);
   const lateMs = Math.max(settleMs, boundedInteger(options.lateMs, settleMs, 5_000));
@@ -428,13 +481,25 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
         let complete = true;
         let finalPage = null;
         let rawUrl = new URL(flow.path, base).href;
+        let initialSession = null;
         for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
           const segment = segments[segmentIndex];
           await activeClose?.();
           activeClose = null;
           let switchActionIndex = null;
+          let cookies = [];
           if (segment.sessionName != null) {
-            addIssue({ kind: 'sessionUnsupported', sessionName: segment.sessionName });
+            const route = options.adapterSessionRoutes?.[segment.sessionName];
+            cookies = await initializeAdapterSession({
+              base, sessionName: segment.sessionName, route, flowIndex, options, report,
+            });
+            if (!cookies) addIssue({ kind: 'sessionUnsupported', sessionName: segment.sessionName });
+          }
+          if (segmentIndex === 0) {
+            initialSession = {
+              sessionName: segment.sessionName,
+              supported: segment.sessionName == null || !!cookies,
+            };
           }
           if (segmentIndex > 0) {
             switchActionIndex = plannedActions;
@@ -445,14 +510,14 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
           const stateOffset = stateCount;
           const captured = await runOfflineSegment({
             browser, base, bundleDir, segment, startUrl: rawUrl, readData, flowIndex,
-            options, readOnlyRequests, addIssue, settleMs, lateMs, timeoutMs,
+            options, readOnlyRequests, cookies, addIssue, settleMs, lateMs, timeoutMs,
           });
           activeClose = captured.close;
           if (segmentIndex > 0) {
             sessionSwitches.push({
               actionIndex: switchActionIndex,
               sessionName: segment.sessionName,
-              supported: segment.sessionName == null,
+              supported: segment.sessionName == null || !!cookies,
             });
           }
           for (const state of captured.graph.states) {
@@ -498,11 +563,12 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
         }
         report.flows.push({
           index: flowIndex, executedActions, plannedActions, states: stateCount,
-          sessionSwitches, categories, dependencies: [...dependencies.values()], passed: issues.length === 0,
+          initialSession, sessionSwitches, categories,
+          dependencies: [...dependencies.values()], passed: issues.length === 0,
         });
       } catch (error) {
         addIssue({ kind: 'probeError', error: publicErrorType(error) });
-        report.flows.push({ index: flowIndex, passed: false, sessionSwitches: [] });
+        report.flows.push({ index: flowIndex, passed: false, initialSession: null, sessionSwitches: [] });
       } finally {
         await activeClose?.().catch(() => {});
         await readData.drain();

@@ -193,6 +193,7 @@ if (INCLUDE_ADAPTER && (!OFFLINE || !STRICT)) {
   process.exit(2);
 }
 let adapterRoutes = new Set();
+let adapterSessionRoutes = new Map();
 if (INCLUDE_ADAPTER) {
   try {
     const inspected = inspectRuntimeAdapter(BASE);
@@ -201,6 +202,7 @@ if (INCLUDE_ADAPTER) {
     });
     if (syntax.status !== 0) throw new Error('invalid adapter module syntax');
     adapterRoutes = inspected.routes;
+    adapterSessionRoutes = inspected.sessionRoutes;
   } catch {
     console.error('[export] invalid runtime adapter; expected only regular manifest.json and index.mjs with valid routes');
     process.exit(2);
@@ -775,8 +777,10 @@ health.operationProbe = {
 };
 health.adapter = INCLUDE_ADAPTER
   ? { status: 'included', declaredRoutes: adapterRoutes.size, exercisedRoutes: 0,
-    untestedRoutes: adapterRoutes.size, serverEgress: 'not-tested' }
-  : { status: 'not-included', declaredRoutes: 0, exercisedRoutes: 0, untestedRoutes: 0 };
+    untestedRoutes: adapterRoutes.size, serverEgress: 'not-tested',
+    sessionRoutes: { declared: adapterSessionRoutes.size, initialized: 0, failed: 0 } }
+  : { status: 'not-included', declaredRoutes: 0, exercisedRoutes: 0, untestedRoutes: 0,
+    sessionRoutes: { declared: 0, initialized: 0, failed: 0 } };
 health.sourceOperationProbe = {
   status: COMPARE_SOURCE ? 'not-run' : 'not-requested',
   planned: operationPlan.flows.length, checked: 0, failed: 0, untested: operationPlan.flows.length,
@@ -820,6 +824,7 @@ health.strictBlockers = {
   operationFailed: 0,
   operationUntested: 0,
   adapterRoutesUntested: 0,
+  adapterSessionRoutesFailed: 0,
   adapterRelocationFailed: 0,
   sourceOperationFailed: 0,
   sourceOperationUntested: 0,
@@ -903,6 +908,10 @@ if (STRICT) {
     try {
       health.operationProbe = await probeOfflineOperations(probeBundleDir, operationPlan.flows, {
         readOnlyGetUrls: COMPARE_SOURCE && INCLUDE_READONLY_DATA ? dataPlan.urls : [],
+        adapterSessionRoutes: Object.fromEntries(adapterSessionRoutes),
+        onAdapterSessionRoute: (flowIndex, sessionName, route) => {
+          if (INCLUDE_ADAPTER) exercisedAdapterRoutes.add(route.method + ' ' + route.path);
+        },
         onReadOnlyGet: url => offlineReadOnlyKeys.add(harKey('GET', url)),
         onReadOnlyObservation: (url, entry, flowIndex) => {
           addReadOnlyFlowEvidence(offlineFlowReadOnlyEvidence, flowIndex, entry, url);
@@ -933,7 +942,10 @@ if (STRICT) {
   if (INCLUDE_ADAPTER) {
     health.adapter.exercisedRoutes = exercisedAdapterRoutes.size;
     health.adapter.untestedRoutes = adapterRoutes.size - exercisedAdapterRoutes.size;
+    health.adapter.sessionRoutes.initialized = health.operationProbe.adapterSessionRoutes?.initialized ?? 0;
+    health.adapter.sessionRoutes.failed = health.operationProbe.adapterSessionRoutes?.failed ?? 0;
     health.strictBlockers.adapterRoutesUntested = health.adapter.untestedRoutes;
+    health.strictBlockers.adapterSessionRoutesFailed = health.adapter.sessionRoutes.failed;
   }
   if (COMPARE_SOURCE && INCLUDE_READONLY_DATA) {
     health.readOnlyData.offlineRequested = offlineReadOnlyKeys.size;
@@ -1113,7 +1125,7 @@ sourceOperationProbe     显式 --compare-source 时，源站同流程只读采�
 dependencyParity         显式 --compare-source 时，按操作流程核对脚本、样式、媒体、文档和 API 的精确请求、状态与 MIME；仅报告类别和数量，不写入私有 URL。它不比较静态资源内容，也不证明业务等价
 readOnlyData             显式许可的 GET 数据声明数、纳入数、缺口和冲突；源站操作采集需同时使用 --compare-source
 privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布
-${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实际触达路由数与未测路由数；未测路由阻断发布；serverEgress=not-tested 表示服务端外联尚未验证\n' : ''}
+${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实际触达路由数、未测路由数与 sessionRoutes 的 declared/initialized/failed；未测或失败均阻断发布；serverEgress=not-tested 表示服务端外联尚未验证\n' : ''}
 \`\`\`
 
 在线部署时，站外引用是否可加载还取决于第三方服务、跨域规则和访问权限。
