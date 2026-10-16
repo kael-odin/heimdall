@@ -30,7 +30,7 @@
 4. 业务适配器：认证、独立测试账号、写操作精确许可、只读 DB 对账和状态机，先用脱敏 Xspark 夹具，后接授权测试环境。
 5. Figma 元数据、设计容差与 PRD 来源追踪；录制交互和生成候选断言，人工批准后执行。
 
-B2.2-a 已补充[托管 Spec 准备内核](competition/acceptance-managed-spec.md)：当前选用与明确目标版本在同一目录队列中核验，重建规范合同并保存不可变派发准备；同键只查询原记录，准备不改目录修订、不创建 run / task、不发请求。B2.2-b 的[runner 控制基础](audits/2026-10-16/acceptance-spec-execution-control.md)增加可取消 fetch / body / 事件等待与同步 active 检查，操作核对物理只读并固定已见祖先身份。[来源关联与隔离](audits/2026-10-17/acceptance-managed-provenance.md)已增加纯 provenance / linkage 校验和普通入口防降级，坏派发记录阻塞恢复写入但保留目录读取。下一切片接入固定 ID 的 managed manifest / report 写入、owner 内执行、统一槽与中断恢复，再提供控制台闭环；目前仍为 `executionReady:false`。
+B2.2-a 已补充[托管 Spec 准备内核](competition/acceptance-managed-spec.md)：当前选用与明确目标版本在同一目录队列中核验，重建规范合同并保存不可变派发准备；同键只查询原记录，准备不改目录修订、不创建 run / task、不发请求。B2.2-b 的[runner 控制基础](audits/2026-10-16/acceptance-spec-execution-control.md)增加可取消 fetch / body / 事件等待与同步 active 检查，操作核对物理只读并固定已见祖先身份。[来源关联与隔离](audits/2026-10-17/acceptance-managed-provenance.md)已增加纯 provenance / linkage 校验和普通入口防降级，坏派发记录阻塞恢复写入但保留目录读取。[固定身份存储](audits/2026-10-17/acceptance-managed-store.md)现已增加 owner 约束的 create / progress / finish / settle、证据交叉核对及明确的终态提交点。下一切片迁移 managed 读取消费者与 owned recovery，再接 owner 内执行、统一槽及控制台闭环；目前仍为 `executionReady:false`。
 
 ## 主目标：独立站点镜像
 

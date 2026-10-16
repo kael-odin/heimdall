@@ -1,0 +1,54 @@
+{
+  "requested": true,
+  "httpStatus": 200,
+  "contentType": "application/json",
+  "redirectNotFollowed": false,
+  "hasLocation": false,
+  "mismatches": [],
+  "bytes": 58,
+  "bodySha256": "95638732e0ce20acaf1956d8baa9ada7bb118060501ed29d9b5ab9a184322d0a",
+  "body": {
+    "code": 0,
+    "data": {
+      "id": 7,
+      "name": "Heimdall",
+      "active": true
+    }
+  },
+  "assertions": [
+    {
+      "pointer": "/code",
+      "kind": "equals",
+      "value": 0,
+      "passed": true,
+      "actual": 0,
+      "exists": true
+    },
+    {
+      "pointer": "/data/name",
+      "kind": "required",
+      "passed": true,
+      "actual": "Heimdall",
+      "exists": true
+    },
+    {
+      "pointer": "/data/id",
+      "kind": "type",
+      "type": "integer",
+      "passed": true,
+      "actual": 7,
+      "exists": true
+    },
+    {
+      "pointer": "/data/active",
+      "kind": "enum",
+      "values": [
+        true
+      ],
+      "passed": true,
+      "actual": true,
+      "exists": true
+    }
+  ],
+  "schemaFailures": []
+}

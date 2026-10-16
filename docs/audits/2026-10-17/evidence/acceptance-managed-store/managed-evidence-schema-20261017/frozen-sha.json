@@ -1,0 +1,10 @@
+[
+  {
+    "path": "core/src/acceptance/managed-evidence-schema.mjs",
+    "sha256": "fa20e8a852bbaad2980d541ee19c6e91854a0f1d87ce4fbfe23e1951de5c707d"
+  },
+  {
+    "path": "core/test/acceptance-managed-evidence-schema.test.mjs",
+    "sha256": "37a649d336543e67bdaae8ad49cb9777d6906a1381d0f6fb2932924e86d923e1"
+  }
+]

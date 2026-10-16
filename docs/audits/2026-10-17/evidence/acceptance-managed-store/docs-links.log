@@ -1,0 +1,3 @@
+$ pnpm -C core check:docs
+$ node scripts/check-markdown-links.mjs
+markdown-links: 496 local target(s) OK in 127 file(s)

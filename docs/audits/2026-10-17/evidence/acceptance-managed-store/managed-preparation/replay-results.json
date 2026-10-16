@@ -1,0 +1,19 @@
+{
+  "evidenceLevel": "real-owner-and-private-preparation-kernel",
+  "engineRestartTested": false,
+  "executionTested": false,
+  "sameKeyReplay": {
+    "replayed": true,
+    "sha256": "ea97145669b1edf6234595280a23ed3457cbf0e3a8daa0622dc4d752a62b39af"
+  },
+  "afterCancellationSourceMoveAndNewOwner": {
+    "replayed": true,
+    "sha256": "ea97145669b1edf6234595280a23ed3457cbf0e3a8daa0622dc4d752a62b39af"
+  },
+  "operationId": "ao-a834cec4-37a3-48f1-ad3d-427c5c458d05",
+  "dispatchId": "ad-6093b9be-7e5a-4b36-b9d8-013839222e53",
+  "reservedRunId": "ac-db3df3ba-a5af-4f6a-aeb5-22e1ad8f7d6e",
+  "preparedRecordSha256": "ea97145669b1edf6234595280a23ed3457cbf0e3a8daa0622dc4d752a62b39af",
+  "sourceUnavailableAtOriginalPath": true,
+  "targetUrl": "http://127.0.0.1:49867/managed-target?tenant=preparation"
+}

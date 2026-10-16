@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-b87e50da-c3d2-4d32-8574-d8a3bd21ceef",
+  "taskId": null,
+  "name": "owner-bound managed facts",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:55361/source",
+  "status": "completed",
+  "gate": "blocked",
+  "createdAt": "2026-10-16T18:05:22.696Z",
+  "updatedAt": "2026-10-16T18:05:22.753Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "owner-bound managed facts",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:55361/source",
+    "timeoutMs": 1000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "REQ-STORE",
+        "revision": "1",
+        "type": "manual"
+      },
+      "approved": false,
+      "checks": [
+        {
+          "id": "check-0",
+          "title": "/healthy",
+          "method": "GET",
+          "path": "/healthy",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": "check-1",
+          "title": "/bug",
+          "method": "GET",
+          "path": "/bug",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": {
+    "total": 2,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 2,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 2,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 2,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-16T18:05:22.704Z",
+  "error": null,
+  "reportSha256": "49ebdc47241e105a88cfc6fa02af636d3b4bb05141af51aa7ad3d12b5636810a"
+}

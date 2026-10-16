@@ -214,7 +214,7 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [验收目录格式升级](docs/audits/2026-10-16/acceptance-catalog-migration.md) | 保留旧原件的单次迁移、版本谱系和真实旧数据浏览器复验 | 复查升级兼容性 |
 | [Spec 需求基线](docs/competition/acceptance-baseline.md) | 完整候选预览、批准历史、独立选用、来源重新核验 | 管理明确认可的需求 |
 | [需求基线实施验收](docs/audits/2026-10-16/acceptance-baseline.md) | 真实 worker / 浏览器、来源篡改、冲突和历史保护 | 复查批准可靠性 |
-| [托管 Spec 准备内核](docs/competition/acceptance-managed-spec.md) | 已选需求重建、明确目标版本、不可变准备记录、只读核对与 runner 内部停止控制 | 查阅执行准备合同；尚无托管执行入口 |
+| [托管 Spec 准备内核](docs/competition/acceptance-managed-spec.md) | 已选需求重建、不可变准备、来源隔离及 [owner 约束的报告存储](docs/audits/2026-10-17/acceptance-managed-store.md) | 查阅执行准备与存储合同；尚无托管执行入口 |
 | [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |

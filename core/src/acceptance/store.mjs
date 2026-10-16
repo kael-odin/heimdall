@@ -1,20 +1,18 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, lstatSync, openSync, fstatSync, readSync, closeSync, constants } from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
-import { DATA_ROOT } from '../paths.mjs';
+import { ACCEPTANCE_ROOT, ACCEPTANCE_SNAPSHOT_LIMITS } from './constants.mjs';
 import { normalizeAcceptancePlan } from './schema.mjs';
 import { summarizeAcceptanceReport, acceptanceMarkdown } from './report.mjs';
 import { writeAtomicFileSync } from './atomic-file.mjs';
 import { createLegacyAcceptanceReadScope, rejectManagedAcceptanceFields } from './managed-access.mjs';
 import { assertUnmanagedAcceptanceInput } from './managed-run-schema.mjs';
 
-export const ACCEPTANCE_ROOT = join(DATA_ROOT, 'acceptance');
+export { ACCEPTANCE_ROOT, ACCEPTANCE_SNAPSHOT_LIMITS };
 const RUN_ID = /^ac-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const EVIDENCE_NAME = /^[a-z0-9][a-z0-9_.-]*\.(?:png|json)$/i;
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-export const ACCEPTANCE_SNAPSHOT_LIMITS = Object.freeze({ jsonBytes: 8 * 1024 * 1024, evidenceFiles: 1024,
-  evidenceFileBytes: 64 * 1024 * 1024, evidenceBytes: 256 * 1024 * 1024, checks: 1024 });
 const inside = (root, path) => { const rel = relative(root, path); return !!rel && !rel.startsWith('..') && !isAbsolute(rel); };
 const atomic = (path, data) => writeAtomicFileSync(path, typeof data === 'string' ? data : JSON.stringify(data, null, 2) + '\n');
 export function acceptanceRunDir(runId, root = ACCEPTANCE_ROOT) {

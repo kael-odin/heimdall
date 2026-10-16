@@ -1,0 +1,10 @@
+[
+  {
+    "path": "core/src/acceptance/managed-execution-schema.mjs",
+    "sha256": "8cd97a9c4c119abbab081d4c0bb203b4b00a8b510c69736a38ca2f1247118d44"
+  },
+  {
+    "path": "core/test/acceptance-managed-execution-schema.test.mjs",
+    "sha256": "e55bb74d1bb8cfd2f5248f85c328027d18839fc359d8dff1c3586d4b5941aeb5"
+  }
+]

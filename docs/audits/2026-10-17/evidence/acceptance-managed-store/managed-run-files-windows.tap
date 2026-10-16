@@ -1,0 +1,48 @@
+✔ real owner creates and replaces complete files with private captures and no network (238.3394ms)
+✔ only optional initial absence returns null and missing directories are never created (7.9087ms)
+✔ strict names, options, bounds and expected tokens reject without invoking accessors (26.8306ms)
+✔ publication captures caller input before a business hook can mutate its bytes (49.6625ms)
+✔ lowered byte limit accepts its exact boundary and short reads/writes complete (80.2501ms)
+✔ exclusive publication never overwrites existing targets and old tokens cannot be reused (80.0579ms)
+✔ target disappearance, same-byte new inode, links and directories cannot satisfy a token (70.7478ms)
+✔ root and run directory changes are sticky and directory links are never followed (15.2346ms)
+✔ observed file/root/run realpath ENOENT is unsafe instead of optional absence (250.09ms)
+✔ same-length target mutation with fixed metadata cannot satisfy an expected capture (110.0276ms)
+✔ second descriptor read corruption is rejected even without filesystem metadata changes (14.1998ms)
+✔ read failures and invalid counts close every read descriptor (41.16ms)
+✔ file growth before descriptor capture is refused before any body read (9.7413ms)
+﹣ non-regular named pipe targets are rejected without opening or blocking (0.0877ms) # SKIP
+✔ incomplete writes, fsync failure and writer-close failure never publish (61.1021ms)
+✔ close-before-throw failures release owned read and writer descriptors without publishing (29.6932ms)
+✔ close-then-throw never closes a descriptor reused for another inode (10.2488ms)
+✔ temporary inode remains pinned through writer close and conditional cleanup (50.6875ms)
+✔ same-byte temporary replacements after writer close are preserved instead of cleaned (21.7263ms)
+✔ temporary symlink replacements after writer close are preserved and never followed (17.4536ms)
+✔ lost writable fence after a write preserves partial temporary material and never publishes (6.7501ms)
+✔ exclusive link failures distinguish before-commit and commit-then-throw without rollback (82.3882ms)
+✔ rename failures reconcile original identity versus committed replacement (160.6696ms)
+✔ postpublication lost fence retains the formal file and reports possible commit (35.0241ms)
+✔ postpublication file corruption is never deleted or reported as a successful write (39.6455ms)
+✔ Windows sharing failures retry complete bytes within an independent wait budget (633.9021ms)
+✔ beforePublish follows completed bytes and short authority, with no later business callback before commit (131.7133ms)
+✔ beforePublish runs for every Windows retry and a later failure makes the scope sticky (294.423ms)
+✔ beforePublish rejection retains temporary material and never follows a thenable getter (232.8851ms)
+✔ hook-created target or temporary replacements cannot escape the final internal fence (121.4287ms)
+✔ hook same-length byte changes with unchanged metadata are rejected after the last business callback (303.264ms)
+✔ non-Windows and permanent rename failures are never retried (268.8507ms)
+✔ Windows retry rechecks lost authority and keeps the untouched target and temporary (75.9734ms)
+✔ Windows retry rejects run or temporary replacement before a second attempt (92.1063ms)
+✔ Windows retry fences a changed run identity even when its path is still canonical (142.1929ms)
+✔ Windows retry detects same-length target and temporary edits even with frozen metadata (333.5506ms)
+✔ invalid clocks and asynchronous runtime results stop bounded retries (180.6961ms)
+✔ async/thenable guards and io reject synchronously without unhandled native rejection or getters (192.5628ms)
+✔ cleanup preserves a replacement installed by its final guard (34.0638ms)
+✔ real Windows non-share-delete reader releases and replacement retries successfully (1214.7275ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 5862.3973

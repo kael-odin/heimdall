@@ -1,0 +1,360 @@
+TAP version 13
+# Subtest: real HTTP healthy, BUG, timeout, body budget, HEAD, header and syntax evidence bind without changing verdicts
+    # Subtest: BUG cannot be relabeled passed even when the raw actual and response evidence still agree
+    ok 1 - BUG cannot be relabeled passed even when the raw actual and response evidence still agree
+      ---
+      duration_ms: 8.287474
+      type: 'test'
+      ...
+    # Subtest: fixed contract, request content and file roles cannot be substituted
+    ok 2 - fixed contract, request content and file roles cannot be substituted
+      ---
+      duration_ms: 19.204749
+      type: 'test'
+      ...
+    # Subtest: response projection is byte-capture-derived and all reported observations remain bound
+    ok 3 - response projection is byte-capture-derived and all reported observations remain bound
+      ---
+      duration_ms: 13.88077
+      type: 'test'
+      ...
+    # Subtest: missing files, extra files, malformed JSON, UTF-8 and deep evidence fail closed
+    ok 4 - missing files, extra files, malformed JSON, UTF-8 and deep evidence fail closed
+      ---
+      duration_ms: 14.755388
+      type: 'test'
+      ...
+    # Subtest: a real runner deadline cap has fixed unrequested facts and no request/response roles
+    ok 5 - a real runner deadline cap has fixed unrequested facts and no request/response roles
+      ---
+      duration_ms: 15.770534
+      type: 'test'
+      ...
+    # Subtest: a proven BUG remains failed when later schema validation reaches its instance budget
+    ok 6 - a proven BUG remains failed when later schema validation reaches its instance budget
+      ---
+      duration_ms: 29.721747
+      type: 'test'
+      ...
+    1..6
+ok 1 - real HTTP healthy, BUG, timeout, body budget, HEAD, header and syntax evidence bind without changing verdicts
+  ---
+  duration_ms: 1179.874464
+  type: 'test'
+  ...
+# Subtest: real complete OpenAPI healthy/schema BUG bind source bytes and redacted schema failures
+ok 2 - real complete OpenAPI healthy/schema BUG bind source bytes and redacted schema failures
+  ---
+  duration_ms: 22.885083
+  type: 'test'
+  ...
+# Subtest: strict facts and opaque Map byte captures reject hooks, aliases and over-budget input without executing getters
+ok 3 - strict facts and opaque Map byte captures reject hooks, aliases and over-budget input without executing getters
+  ---
+  duration_ms: 64.913383
+  type: 'test'
+  ...
+# Subtest: managed raw contract accepts real local HTTP health, BUG, timeout, body budget and HEAD results without changing verdicts
+    # Subtest: record metadata is never authoritative and returned data has no aliases
+    ok 1 - record metadata is never authoritative and returned data has no aliases
+      ---
+      duration_ms: 8.591966
+      type: 'test'
+      ...
+    # Subtest: every raw field is required and store-owned/unknown fields are rejected even with correct-looking values
+    ok 2 - every raw field is required and store-owned/unknown fields are rejected even with correct-looking values
+      ---
+      duration_ms: 75.340444
+      type: 'test'
+      ...
+    # Subtest: fixed identity, approval, fingerprints and requirement expectations cannot be replaced by actual responses
+    ok 3 - fixed identity, approval, fingerprints and requirement expectations cannot be replaced by actual responses
+      ---
+      duration_ms: 51.271036
+      type: 'test'
+      ...
+    # Subtest: coverage, safety, environment and evidence shape do not grant broader permissions
+    ok 4 - coverage, safety, environment and evidence shape do not grant broader permissions
+      ---
+      duration_ms: 39.094684
+      type: 'test'
+      ...
+    # Subtest: strict JSON rejects hooks and proxies at the envelope and every nested fact without executing them
+    ok 5 - strict JSON rejects hooks and proxies at the envelope and every nested fact without executing them
+      ---
+      duration_ms: 34.379811
+      type: 'test'
+      ...
+    # Subtest: depth, node and encoded byte budgets reject excess JSON with safe errors
+    ok 6 - depth, node and encoded byte budgets reject excess JSON with safe errors
+      ---
+      duration_ms: 339.154327
+      type: 'test'
+      ...
+    # Subtest: corrupt authoritative dispatch bytes retain a safe integrity error
+    ok 7 - corrupt authoritative dispatch bytes retain a safe integrity error
+      ---
+      duration_ms: 0.723351
+      type: 'test'
+      ...
+    # Subtest: record envelopes and byte-view properties cannot run hooks or substitute an authority
+    ok 8 - record envelopes and byte-view properties cannot run hooks or substitute an authority
+      ---
+      duration_ms: 3.694465
+      type: 'test'
+      ...
+    # Subtest: all actual runner progress kinds survive explicit event projection
+    ok 9 - all actual runner progress kinds survive explicit event projection
+      ---
+      duration_ms: 0.507333
+      type: 'test'
+      ...
+    # Subtest: real runner deadline cap remains completed with blocked checks rather than engine failure
+    ok 10 - real runner deadline cap remains completed with blocked checks rather than engine failure
+      ---
+      duration_ms: 15.210961
+      type: 'test'
+      ...
+    1..10
+ok 4 - managed raw contract accepts real local HTTP health, BUG, timeout, body budget and HEAD results without changing verdicts
+  ---
+  duration_ms: 1818.0167
+  type: 'test'
+  ...
+# Subtest: managed raw accepts real complete OpenAPI response schema and rejects a real omission outside the fixed dispatch
+ok 5 - managed raw accepts real complete OpenAPI response schema and rejects a real omission outside the fixed dispatch
+  ---
+  duration_ms: 160.328222
+  type: 'test'
+  ...
+# Subtest: managed progress and settlement are fresh narrow bounded data, never generic patches
+ok 6 - managed progress and settlement are fresh narrow bounded data, never generic patches
+  ---
+  duration_ms: 1.507693
+  type: 'test'
+  ...
+# Subtest: all narrow JSON inputs reject dangerous descriptors, prototypes and complexity before hooks execute
+ok 7 - all narrow JSON inputs reject dangerous descriptors, prototypes and complexity before hooks execute
+  ---
+  duration_ms: 0.769547
+  type: 'test'
+  ...
+# Subtest: reserved IDs cannot be downgraded by stripping every managed marker; all legacy consumers preserve bytes
+ok 8 - reserved IDs cannot be downgraded by stripping every managed marker; all legacy consumers preserve bytes
+  ---
+  duration_ms: 46.812742
+  type: 'test'
+  ...
+# Subtest: prepared records without a run remain unstarted and never create manifests or tasks
+ok 9 - prepared records without a run remain unstarted and never create manifests or tasks
+  ---
+  duration_ms: 6.357139
+  type: 'test'
+  ...
+# Subtest: legacy relative roots retain create/read/list/snapshot compatibility and share absolute read contexts
+ok 10 - legacy relative roots retain create/read/list/snapshot compatibility and share absolute read contexts
+  ---
+  duration_ms: 40.82981
+  type: 'test'
+  ...
+# Subtest: manifest-only managed markers quarantine otherwise ordinary completed facts
+ok 11 - manifest-only managed markers quarantine otherwise ordinary completed facts
+  ---
+  duration_ms: 29.47471
+  type: 'test'
+  ...
+# Subtest: report-only managed markers quarantine otherwise ordinary completed facts
+ok 12 - report-only managed markers quarantine otherwise ordinary completed facts
+  ---
+  duration_ms: 41.430088
+  type: 'test'
+  ...
+# Subtest: reserved ordinary input and patch fields fail before creating or rewriting run files
+ok 13 - reserved ordinary input and patch fields fail before creating or rewriting run files
+  ---
+  duration_ms: 3.55358
+  type: 'test'
+  ...
+# Subtest: ordinary legacy runs remain readable with a valid namespace and a shared context; stale or wrong contexts block
+ok 14 - ordinary legacy runs remain readable with a valid namespace and a shared context; stale or wrong contexts block
+  ---
+  duration_ms: 44.08922
+  type: 'test'
+  ...
+# Subtest: damaged published namespace blocks list, creation and recovery without promoting or repairing files
+ok 15 - damaged published namespace blocks list, creation and recovery without promoting or repairing files
+  ---
+  duration_ms: 5.923387
+  type: 'test'
+  ...
+# Subtest: real CLI execute rejects a stripped reserved run before its catch or runner can write or request a target
+ok 16 - real CLI execute rejects a stripped reserved run before its catch or runner can write or request a target
+  ---
+  duration_ms: 166.938373
+  type: 'test'
+  ...
+# Subtest: engine keeps catalog readable with corrupt dispatches, blocks recovery and free execution before task creation
+ok 17 - engine keeps catalog readable with corrupt dispatches, blocks recovery and free execution before task creation
+  ---
+  duration_ms: 1029.635379
+  type: 'test'
+  ...
+# Subtest: engine returns explicit unsupported status for reserved facts and rejects forged ordinary input before making tasks
+ok 18 - engine returns explicit unsupported status for reserved facts and rejects forged ordinary input before making tasks
+  ---
+  duration_ms: 1123.846855
+  type: 'test'
+  ...
+# Subtest: a report appearing after progress preparation blocks the final manifest write and preserves both originals
+ok 19 - a report appearing after progress preparation blocks the final manifest write and preserves both originals
+  ---
+  duration_ms: 213.22177
+  type: 'test'
+  ...
+# Subtest: same-length evidence mutation with frozen metadata at report publication cannot commit completion
+ok 20 - same-length evidence mutation with frozen metadata at report publication cannot commit completion
+  ---
+  duration_ms: 164.099134
+  type: 'test'
+  ...
+# Subtest: same-length evidence mutation with frozen metadata at terminal publication cannot commit completion
+ok 21 - same-length evidence mutation with frozen metadata at terminal publication cannot commit completion
+  ---
+  duration_ms: 191.178026
+  type: 'test'
+  ...
+# Subtest: fixed managed identity accepts real BUG results, commits terminal last and preserves original source bytes
+ok 22 - fixed managed identity accepts real BUG results, commits terminal last and preserves original source bytes
+  ---
+  duration_ms: 406.680239
+  type: 'test'
+  ...
+# Subtest: real request timeout remains completed and environment-blocked
+ok 23 - real request timeout remains completed and environment-blocked
+  ---
+  duration_ms: 1221.426923
+  type: 'test'
+  ...
+# Subtest: failure after exclusive mkdir preserves partial identity without publishing or retrying another run
+ok 24 - failure after exclusive mkdir preserves partial identity without publishing or retrying another run
+  ---
+  duration_ms: 107.14099
+  type: 'test'
+  ...
+# Subtest: exclusive fixed directory refuses empty, partial, complete and linked collisions without choosing another ID
+ok 25 - exclusive fixed directory refuses empty, partial, complete and linked collisions without choosing another ID
+  ---
+  duration_ms: 111.45342
+  type: 'test'
+  ...
+# Subtest: only actual owner and synchronous active guard can create; invalid controls execute no hooks or requests
+ok 26 - only actual owner and synchronous active guard can create; invalid controls execute no hooks or requests
+  ---
+  duration_ms: 106.236846
+  type: 'test'
+  ...
+# Subtest: released and changed owner reject before publication, and owner loss never settles
+ok 27 - released and changed owner reject before publication, and owner loss never settles
+  ---
+  duration_ms: 99.863347
+  type: 'test'
+  ...
+# Subtest: cancellation blocks progress but settlement still requires live owner and keeps narrow interrupted facts
+ok 28 - cancellation blocks progress but settlement still requires live owner and keeps narrow interrupted facts
+  ---
+  duration_ms: 104.757559
+  type: 'test'
+  ...
+# Subtest: partial report never resumes finish; interrupted settlement preserves published report bytes
+ok 29 - partial report never resumes finish; interrupted settlement preserves published report bytes
+  ---
+  duration_ms: 222.148441
+  type: 'test'
+  ...
+# Subtest: invalid raw, reserved evidence, links and byte/count budgets never publish a reliable report
+ok 30 - invalid raw, reserved evidence, links and byte/count budgets never publish a reliable report
+  ---
+  duration_ms: 187.11379
+  type: 'test'
+  ...
+# Subtest: fresh sidecar and run identity fence each write and preserve changes rather than repairing them
+ok 31 - fresh sidecar and run identity fence each write and preserve changes rather than repairing them
+  ---
+  duration_ms: 89.906668
+  type: 'test'
+  ...
+# Subtest: only an acquired live owner passes the private writer capability check
+ok 32 - only an acquired live owner passes the private writer capability check
+  ---
+  duration_ms: 7.92479
+  type: 'test'
+  ...
+# Subtest: store retains the shared constants and legacy export identities
+ok 33 - store retains the shared constants and legacy export identities
+  ---
+  duration_ms: 0.199837
+  type: 'test'
+  ...
+# Subtest: one owner per real root, explicit release and re-acquire
+ok 34 - one owner per real root, explicit release and re-acquire
+  ---
+  duration_ms: 23.102071
+  type: 'test'
+  ...
+# Subtest: junction/symlink aliases share ownership and retargeting loses ownership
+ok 35 - junction/symlink aliases share ownership and retargeting loses ownership
+  ---
+  duration_ms: 4.675818
+  type: 'test'
+  ...
+# Subtest: live owner is never recovered because of an old timestamp
+ok 36 - live owner is never recovered because of an old timestamp
+  ---
+  duration_ms: 2.285897
+  type: 'test'
+  ...
+# Subtest: confirmed exited same-host process can be conservatively recovered
+ok 37 - confirmed exited same-host process can be conservatively recovered
+  ---
+  duration_ms: 35.543102
+  type: 'test'
+  ...
+# Subtest: unknown and EPERM probes or remote hostname do not steal a lock
+ok 38 - unknown and EPERM probes or remote hostname do not steal a lock
+  ---
+  duration_ms: 2.013648
+  type: 'test'
+  ...
+# Subtest: malformed, oversized, and interrupted recovery records remain untouched
+ok 39 - malformed, oversized, and interrupted recovery records remain untouched
+  ---
+  duration_ms: 2.853436
+  type: 'test'
+  ...
+# Subtest: nonce change loses ownership and exit release cannot delete a replacement
+ok 40 - nonce change loses ownership and exit release cannot delete a replacement
+  ---
+  duration_ms: 4.341504
+  type: 'test'
+  ...
+# Subtest: recovery rereads nonce under guard and keeps a changed lock
+ok 41 - recovery rereads nonce under guard and keeps a changed lock
+  ---
+  duration_ms: 3.663221
+  type: 'test'
+  ...
+# Subtest: late nonce changes fence both the stale owner and the recovery guard
+ok 42 - late nonce changes fence both the stale owner and the recovery guard
+  ---
+  duration_ms: 7.603526
+  type: 'test'
+  ...
+1..42
+# tests 58
+# suites 0
+# pass 58
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2944.678114

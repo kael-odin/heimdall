@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-b87e50da-c3d2-4d32-8574-d8a3bd21ceef",
+  "name": "owner-bound managed facts",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:55361/source",
+  "startedAt": "2026-10-16T18:05:22.700Z",
+  "endedAt": "2026-10-16T18:05:22.704Z",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "spec-1-check-0",
+      "title": "/healthy",
+      "route": "/healthy",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "f6fbc7c52b8afc89143ba8471007f43a010ac8acf84d0759f0add52744147cbe",
+        "contextKey": "a30462c467e771dec790627201b4d61cb15e216b0d0adfb3662119413ff19271",
+        "ruleKey": "7f383dc3fa8ce3b90be4f0397fd50b97f19b356c03e6f13a993afa5138757c94",
+        "oracleKey": "2688ee16dcd1d38a4a386a5c1bc9e1bab53b870543211943ee3093c4063460e9",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "check-0",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "draft-spec",
+        "source": "REQ-STORE",
+        "revision": "1",
+        "sourceFingerprint": "fb90a52d736c577281d6b89dd7303bd3be0e98e015aab8d14b48005eb8f31665",
+        "documentSha256": null,
+        "contractFingerprint": "efe093bbda88eec4baf964350c78562825dd5af9e333eb4bd0cbd7001fb961fd"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "json": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0
+          }
+        ]
+      },
+      "reproduction": [
+        "Use requirement REQ-STORE at revision 1.",
+        "GET http://127.0.0.1:55361/source/healthy without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "blocked",
+      "verdict": "needs_review",
+      "evaluationLimited": true,
+      "actual": {
+        "requested": false,
+        "reason": "Requirement candidate has not been explicitly approved."
+      },
+      "evidence": {
+        "contract": "spec-1-check-0-contract.json"
+      }
+    },
+    {
+      "id": "spec-2-check-1",
+      "title": "/bug",
+      "route": "/bug",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "6e2618eb1b820c591785177da00a1b748eed8b5d86ed07a4d3ce6c217f900537",
+        "contextKey": "a54cf0028ce6f82fe884214dbbce389f1a95bed9ebd228d4018d22a380988398",
+        "ruleKey": "3f20c8f8d50e51743af1578dc5e42280c3f1793cc67e970ca1610819238492da",
+        "oracleKey": "6dba2328420ecefb6f8b16faafea0a6f578e4a391cc9e400a77d8aa2f40c97ea",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "check-1",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "draft-spec",
+        "source": "REQ-STORE",
+        "revision": "1",
+        "sourceFingerprint": "fb90a52d736c577281d6b89dd7303bd3be0e98e015aab8d14b48005eb8f31665",
+        "documentSha256": null,
+        "contractFingerprint": "efe093bbda88eec4baf964350c78562825dd5af9e333eb4bd0cbd7001fb961fd"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "json": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0
+          }
+        ]
+      },
+      "reproduction": [
+        "Use requirement REQ-STORE at revision 1.",
+        "GET http://127.0.0.1:55361/source/bug without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "blocked",
+      "verdict": "needs_review",
+      "evaluationLimited": true,
+      "actual": {
+        "requested": false,
+        "reason": "Requirement candidate has not been explicitly approved."
+      },
+      "evidence": {
+        "contract": "spec-2-check-1-contract.json"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 2,
+    "completed": 2,
+    "capped": false
+  },
+  "specSource": {
+    "id": "REQ-STORE",
+    "revision": "1",
+    "type": "manual"
+  },
+  "sourceFingerprint": "fb90a52d736c577281d6b89dd7303bd3be0e98e015aab8d14b48005eb8f31665",
+  "contractFingerprint": "efe093bbda88eec4baf964350c78562825dd5af9e333eb4bd0cbd7001fb961fd",
+  "specApproval": {
+    "approved": false,
+    "recordedAt": "2026-10-16T18:05:22.700Z"
+  },
+  "safety": {
+    "readOnly": true,
+    "allowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "redirects": "not-followed",
+    "credentials": "none",
+    "requests": 0
+  },
+  "environment": {
+    "runner": "node-fetch",
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "maxResponseBytes": 262144,
+    "timeoutMs": 1000
+  },
+  "scope": "仅验收明确批准的 GET/HEAD 及声明的 HTTP、MIME、JSON 字段/响应 schema；不使用会话、不跟随重定向。候选、未覆盖契约、超时、超响应/验证预算均不能通过；无视觉、数据库、写操作、认证或任意业务状态机保证。来源指纹用于追溯，不代表系统已经证明原需求正确。",
+  "planFingerprint": "a34842c78644a40acab3b8a0fe4d9a581681dadf29decb30c7325fa518a14de0",
+  "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+  "evidenceManifest": [
+    {
+      "file": "spec-1-check-0-contract.json",
+      "bytes": 544,
+      "sha256": "45862d2f5492c4647f6797f33a769b2845077b3f8d5735bc5d025cc97f8d6201"
+    },
+    {
+      "file": "spec-2-check-1-contract.json",
+      "bytes": 536,
+      "sha256": "c07d44b67183c3f4fc449f50b7e6d514ed329b1b9ed234c6b0cfabd5d1fee193"
+    }
+  ],
+  "gate": "blocked",
+  "summary": {
+    "total": 2,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 2,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 2,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 2,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

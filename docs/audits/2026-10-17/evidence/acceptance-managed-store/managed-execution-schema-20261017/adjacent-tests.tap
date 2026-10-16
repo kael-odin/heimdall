@@ -1,0 +1,780 @@
+TAP version 13
+# Subtest: managed raw contract accepts real local HTTP health, BUG, timeout, body budget and HEAD results without changing verdicts
+    # Subtest: record metadata is never authoritative and returned data has no aliases
+    ok 1 - record metadata is never authoritative and returned data has no aliases
+      ---
+      duration_ms: 11.1764
+      type: 'test'
+      ...
+    # Subtest: every raw field is required and store-owned/unknown fields are rejected even with correct-looking values
+    ok 2 - every raw field is required and store-owned/unknown fields are rejected even with correct-looking values
+      ---
+      duration_ms: 86.8538
+      type: 'test'
+      ...
+    # Subtest: fixed identity, approval, fingerprints and requirement expectations cannot be replaced by actual responses
+    ok 3 - fixed identity, approval, fingerprints and requirement expectations cannot be replaced by actual responses
+      ---
+      duration_ms: 68.8254
+      type: 'test'
+      ...
+    # Subtest: coverage, safety, environment and evidence shape do not grant broader permissions
+    ok 4 - coverage, safety, environment and evidence shape do not grant broader permissions
+      ---
+      duration_ms: 40.107
+      type: 'test'
+      ...
+    # Subtest: strict JSON rejects hooks and proxies at the envelope and every nested fact without executing them
+    ok 5 - strict JSON rejects hooks and proxies at the envelope and every nested fact without executing them
+      ---
+      duration_ms: 36.1138
+      type: 'test'
+      ...
+    # Subtest: depth, node and encoded byte budgets reject excess JSON with safe errors
+    ok 6 - depth, node and encoded byte budgets reject excess JSON with safe errors
+      ---
+      duration_ms: 272.5452
+      type: 'test'
+      ...
+    # Subtest: corrupt authoritative dispatch bytes retain a safe integrity error
+    ok 7 - corrupt authoritative dispatch bytes retain a safe integrity error
+      ---
+      duration_ms: 0.6635
+      type: 'test'
+      ...
+    # Subtest: record envelopes and byte-view properties cannot run hooks or substitute an authority
+    ok 8 - record envelopes and byte-view properties cannot run hooks or substitute an authority
+      ---
+      duration_ms: 3.5226
+      type: 'test'
+      ...
+    # Subtest: all actual runner progress kinds survive explicit event projection
+    ok 9 - all actual runner progress kinds survive explicit event projection
+      ---
+      duration_ms: 0.4689
+      type: 'test'
+      ...
+    # Subtest: real runner deadline cap remains completed with blocked checks rather than engine failure
+    ok 10 - real runner deadline cap remains completed with blocked checks rather than engine failure
+      ---
+      duration_ms: 22.9745
+      type: 'test'
+      ...
+    1..10
+ok 1 - managed raw contract accepts real local HTTP health, BUG, timeout, body budget and HEAD results without changing verdicts
+  ---
+  duration_ms: 3511.19
+  type: 'test'
+  ...
+# Subtest: managed raw accepts real complete OpenAPI response schema and rejects a real omission outside the fixed dispatch
+ok 2 - managed raw accepts real complete OpenAPI response schema and rejects a real omission outside the fixed dispatch
+  ---
+  duration_ms: 1286.9843
+  type: 'test'
+  ...
+# Subtest: managed progress and settlement are fresh narrow bounded data, never generic patches
+ok 3 - managed progress and settlement are fresh narrow bounded data, never generic patches
+  ---
+  duration_ms: 1.406
+  type: 'test'
+  ...
+# Subtest: all narrow JSON inputs reject dangerous descriptors, prototypes and complexity before hooks execute
+ok 4 - all narrow JSON inputs reject dangerous descriptors, prototypes and complexity before hooks execute
+  ---
+  duration_ms: 0.7062
+  type: 'test'
+  ...
+# Subtest: managed provenance and linkage from a real catalog-prepared draft source
+    # Subtest: explicit provenance mapping preserves draft authority and independent execution identity
+    ok 1 - explicit provenance mapping preserves draft authority and independent execution identity
+      ---
+      duration_ms: 1.086
+      type: 'test'
+      ...
+    # Subtest: running report-before-terminal and completed identities do not confer completion
+    ok 2 - running report-before-terminal and completed identities do not confer completion
+      ---
+      duration_ms: 7.0114
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: schemaVersion
+    ok 3 - manifest provenance mismatch: schemaVersion
+      ---
+      duration_ms: 1.7156
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: authority
+    ok 4 - manifest provenance mismatch: authority
+      ---
+      duration_ms: 1.4479
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: operationId
+    ok 5 - manifest provenance mismatch: operationId
+      ---
+      duration_ms: 1.5226
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: dispatchId
+    ok 6 - manifest provenance mismatch: dispatchId
+      ---
+      duration_ms: 0.8473
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: dispatchSha256
+    ok 7 - manifest provenance mismatch: dispatchSha256
+      ---
+      duration_ms: 0.7916
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: runId
+    ok 8 - manifest provenance mismatch: runId
+      ---
+      duration_ms: 0.8718
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: taskId
+    ok 9 - manifest provenance mismatch: taskId
+      ---
+      duration_ms: 0.7033
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: catalog.generationId
+    ok 10 - manifest provenance mismatch: catalog.generationId
+      ---
+      duration_ms: 0.6819
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: catalog.revision
+    ok 11 - manifest provenance mismatch: catalog.revision
+      ---
+      duration_ms: 0.713
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: catalog.headSha256
+    ok 12 - manifest provenance mismatch: catalog.headSha256
+      ---
+      duration_ms: 0.6668
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: projectId
+    ok 13 - manifest provenance mismatch: projectId
+      ---
+      duration_ms: 0.6536
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: selectionId
+    ok 14 - manifest provenance mismatch: selectionId
+      ---
+      duration_ms: 0.6545
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: approvalId
+    ok 15 - manifest provenance mismatch: approvalId
+      ---
+      duration_ms: 1.6189
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: candidateId
+    ok 16 - manifest provenance mismatch: candidateId
+      ---
+      duration_ms: 0.7787
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: contentDigest
+    ok 17 - manifest provenance mismatch: contentDigest
+      ---
+      duration_ms: 0.6636
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: source.runId
+    ok 18 - manifest provenance mismatch: source.runId
+      ---
+      duration_ms: 0.6306
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: source.releaseId
+    ok 19 - manifest provenance mismatch: source.releaseId
+      ---
+      duration_ms: 0.6237
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: source.sourceSpecApproved
+    ok 20 - manifest provenance mismatch: source.sourceSpecApproved
+      ---
+      duration_ms: 0.671
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: source.sourcePlanDigest
+    ok 21 - manifest provenance mismatch: source.sourcePlanDigest
+      ---
+      duration_ms: 0.8782
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: source.sourceReportDigest
+    ok 22 - manifest provenance mismatch: source.sourceReportDigest
+      ---
+      duration_ms: 1.0527
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: source.evidenceManifestDigest
+    ok 23 - manifest provenance mismatch: source.evidenceManifestDigest
+      ---
+      duration_ms: 0.8305
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: source.verifierFingerprint
+    ok 24 - manifest provenance mismatch: source.verifierFingerprint
+      ---
+      duration_ms: 0.8204
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: target.releaseId
+    ok 25 - manifest provenance mismatch: target.releaseId
+      ---
+      duration_ms: 1.1343
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: target.targetUrl
+    ok 26 - manifest provenance mismatch: target.targetUrl
+      ---
+      duration_ms: 1.2581
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: planFingerprint
+    ok 27 - manifest provenance mismatch: planFingerprint
+      ---
+      duration_ms: 0.8966
+      type: 'test'
+      ...
+    # Subtest: manifest provenance mismatch: executor
+    ok 28 - manifest provenance mismatch: executor
+      ---
+      duration_ms: 0.6754
+      type: 'test'
+      ...
+    # Subtest: manifest provenance is mandatory and has no extra fields at any level
+    ok 29 - manifest provenance is mandatory and has no extra fields at any level
+      ---
+      duration_ms: 7.1838
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: schemaVersion
+    ok 30 - report provenance mismatch: schemaVersion
+      ---
+      duration_ms: 1.29
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: authority
+    ok 31 - report provenance mismatch: authority
+      ---
+      duration_ms: 0.8783
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: operationId
+    ok 32 - report provenance mismatch: operationId
+      ---
+      duration_ms: 1.1482
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: dispatchId
+    ok 33 - report provenance mismatch: dispatchId
+      ---
+      duration_ms: 0.9771
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: dispatchSha256
+    ok 34 - report provenance mismatch: dispatchSha256
+      ---
+      duration_ms: 1.0473
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: runId
+    ok 35 - report provenance mismatch: runId
+      ---
+      duration_ms: 1.2603
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: taskId
+    ok 36 - report provenance mismatch: taskId
+      ---
+      duration_ms: 1.53
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: catalog.generationId
+    ok 37 - report provenance mismatch: catalog.generationId
+      ---
+      duration_ms: 1.3063
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: catalog.revision
+    ok 38 - report provenance mismatch: catalog.revision
+      ---
+      duration_ms: 1.031
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: catalog.headSha256
+    ok 39 - report provenance mismatch: catalog.headSha256
+      ---
+      duration_ms: 1.2855
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: projectId
+    ok 40 - report provenance mismatch: projectId
+      ---
+      duration_ms: 0.9089
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: selectionId
+    ok 41 - report provenance mismatch: selectionId
+      ---
+      duration_ms: 0.867
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: approvalId
+    ok 42 - report provenance mismatch: approvalId
+      ---
+      duration_ms: 1.0599
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: candidateId
+    ok 43 - report provenance mismatch: candidateId
+      ---
+      duration_ms: 0.9245
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: contentDigest
+    ok 44 - report provenance mismatch: contentDigest
+      ---
+      duration_ms: 1.1204
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: source.runId
+    ok 45 - report provenance mismatch: source.runId
+      ---
+      duration_ms: 0.8308
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: source.releaseId
+    ok 46 - report provenance mismatch: source.releaseId
+      ---
+      duration_ms: 0.8988
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: source.sourceSpecApproved
+    ok 47 - report provenance mismatch: source.sourceSpecApproved
+      ---
+      duration_ms: 1.3342
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: source.sourcePlanDigest
+    ok 48 - report provenance mismatch: source.sourcePlanDigest
+      ---
+      duration_ms: 1.3534
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: source.sourceReportDigest
+    ok 49 - report provenance mismatch: source.sourceReportDigest
+      ---
+      duration_ms: 1.0919
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: source.evidenceManifestDigest
+    ok 50 - report provenance mismatch: source.evidenceManifestDigest
+      ---
+      duration_ms: 1.5005
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: source.verifierFingerprint
+    ok 51 - report provenance mismatch: source.verifierFingerprint
+      ---
+      duration_ms: 1.3143
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: target.releaseId
+    ok 52 - report provenance mismatch: target.releaseId
+      ---
+      duration_ms: 0.8886
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: target.targetUrl
+    ok 53 - report provenance mismatch: target.targetUrl
+      ---
+      duration_ms: 0.8395
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: planFingerprint
+    ok 54 - report provenance mismatch: planFingerprint
+      ---
+      duration_ms: 0.8206
+      type: 'test'
+      ...
+    # Subtest: report provenance mismatch: executor
+    ok 55 - report provenance mismatch: executor
+      ---
+      duration_ms: 0.9014
+      type: 'test'
+      ...
+    # Subtest: report provenance is mandatory and has no extra fields at any level
+    ok 56 - report provenance is mandatory and has no extra fields at any level
+      ---
+      duration_ms: 7.4897
+      type: 'test'
+      ...
+    # Subtest: all manifest/report fixed identities and top-level reserved overlays reject
+    ok 57 - all manifest/report fixed identities and top-level reserved overlays reject
+      ---
+      duration_ms: 22.9162
+      type: 'test'
+      ...
+    # Subtest: saved plan content, byte-order digest and report requirement facts remain distinct
+    ok 58 - saved plan content, byte-order digest and report requirement facts remain distinct
+      ---
+      duration_ms: 8.6156
+      type: 'test'
+      ...
+    # Subtest: approval/status/current verifier fields cannot borrow source approval or fingerprints
+    ok 59 - approval/status/current verifier fields cannot borrow source approval or fingerprints
+      ---
+      duration_ms: 14.7316
+      type: 'test'
+      ...
+    # Subtest: original bytes and SHA are mandatory; malformed or structurally invalid envelope fails closed
+    ok 60 - original bytes and SHA are mandatory; malformed or structurally invalid envelope fails closed
+      ---
+      duration_ms: 1.812
+      type: 'test'
+      ...
+    # Subtest: metadata mutation and returned references cannot change authority or cache a past result
+    ok 61 - metadata mutation and returned references cannot change authority or cache a past result
+      ---
+      duration_ms: 9.8221
+      type: 'test'
+      ...
+    # Subtest: record and captured facts reject getters/proxies without invoking attacker properties
+    ok 62 - record and captured facts reject getters/proxies without invoking attacker properties
+      ---
+      duration_ms: 1.9637
+      type: 'test'
+      ...
+    # Subtest: non-JSON, hidden, cyclic and excessive facts reject before canonicalization
+    ok 63 - non-JSON, hidden, cyclic and excessive facts reject before canonicalization
+      ---
+      duration_ms: 233.3102
+      type: 'test'
+      ...
+    # Subtest: no source bytes, prepared sidecar or target requests change during pure validation
+    ok 64 - no source bytes, prepared sidecar or target requests change during pure validation
+      ---
+      duration_ms: 4.4221
+      type: 'test'
+      ...
+    1..64
+ok 5 - managed provenance and linkage from a real catalog-prepared draft source
+  ---
+  duration_ms: 1664.4113
+  type: 'test'
+  ...
+# Subtest: own managed markers and ordinary plan reserved-field guards
+ok 6 - own managed markers and ordinary plan reserved-field guards
+  ---
+  duration_ms: 0.8048
+  type: 'test'
+  ...
+# Subtest: managed errors have fixed safe code/status/message/details
+ok 7 - managed errors have fixed safe code/status/message/details
+  ---
+  duration_ms: 0.263
+  type: 'test'
+  ...
+# Subtest: OpenAPI preview is an unapproved candidate with a document fingerprint and never requests document servers
+ok 8 - OpenAPI preview is an unapproved candidate with a document fingerprint and never requests document servers
+  ---
+  duration_ms: 32.8801
+  type: 'test'
+  ...
+# Subtest: OpenAPI local component schema and response refs resolve without mutating their source
+ok 9 - OpenAPI local component schema and response refs resolve without mutating their source
+  ---
+  duration_ms: 2.3968
+  type: 'test'
+  ...
+# Subtest: OpenAPI 3.0 nullable expands only an explicitly declared type and preserves enum restrictions
+ok 10 - OpenAPI 3.0 nullable expands only an explicitly declared type and preserves enum restrictions
+  ---
+  duration_ms: 1.4433
+  type: 'test'
+  ...
+# Subtest: OpenAPI 3.0 exclusive numeric bounds convert from its boolean syntax
+ok 11 - OpenAPI 3.0 exclusive numeric bounds convert from its boolean syntax
+  ---
+  duration_ms: 0.636
+  type: 'test'
+  ...
+# Subtest: OpenAPI 3.1 boolean schemas and schema ref siblings retain their validation semantics
+ok 12 - OpenAPI 3.1 boolean schemas and schema ref siblings retain their validation semantics
+  ---
+  duration_ms: 0.839
+  type: 'test'
+  ...
+# Subtest: unsupported schemas, external refs, circular refs and ambiguous responses become one omission per operation
+ok 13 - unsupported schemas, external refs, circular refs and ambiguous responses become one omission per operation
+  ---
+  duration_ms: 1.2364
+  type: 'test'
+  ...
+# Subtest: write methods, inherited authentication, request bodies, response headers and templated paths are omitted
+ok 14 - write methods, inherited authentication, request bodies, response headers and templated paths are omitted
+  ---
+  duration_ms: 0.6985
+  type: 'test'
+  ...
+# Subtest: explicit primitive query samples use local parameter refs and operation overrides with safe serialization
+ok 15 - explicit primitive query samples use local parameter refs and operation overrides with safe serialization
+  ---
+  duration_ms: 0.69
+  type: 'test'
+  ...
+# Subtest: missing, invalid or complex query examples are omissions rather than fabricated requests
+ok 16 - missing, invalid or complex query examples are omissions rather than fabricated requests
+  ---
+  duration_ms: 0.7963
+  type: 'test'
+  ...
+# Subtest: HEAD checks status without reading or validating a response body; schema-free JSON GET is explicit
+ok 17 - HEAD checks status without reading or validating a response body; schema-free JSON GET is explicit
+  ---
+  duration_ms: 1.1693
+  type: 'test'
+  ...
+# Subtest: HEAD response header contracts are omissions instead of silently passing status-only checks
+ok 18 - HEAD response header contracts are omissions instead of silently passing status-only checks
+  ---
+  duration_ms: 1.0871
+  type: 'test'
+  ...
+# Subtest: webhooks become non-executable omissions that block downstream reports even after approval
+ok 19 - webhooks become non-executable omissions that block downstream reports even after approval
+  ---
+  duration_ms: 18.0536
+  type: 'test'
+  ...
+# Subtest: non-executable OpenAPI dialect, writeOnly response semantics and malformed nullable syntax are explicit omissions
+ok 20 - non-executable OpenAPI dialect, writeOnly response semantics and malformed nullable syntax are explicit omissions
+  ---
+  duration_ms: 0.7477
+  type: 'test'
+  ...
+# Subtest: fingerprints are deterministic across JSON key order and change with document contents
+ok 21 - fingerprints are deterministic across JSON key order and change with document contents
+  ---
+  duration_ms: 0.4398
+  type: 'test'
+  ...
+# Subtest: document fingerprints preserve full JSON data and enforce exact UTF-8, nesting and node budgets
+ok 22 - document fingerprints preserve full JSON data and enforce exact UTF-8, nesting and node budgets
+  ---
+  duration_ms: 89.4748
+  type: 'test'
+  ...
+# Subtest: coverage budgets preserve every operation as a candidate or omission and reject documents that cannot fit
+ok 23 - coverage budgets preserve every operation as a candidate or omission and reject documents that cannot fit
+  ---
+  duration_ms: 9.5568
+  type: 'test'
+  ...
+# Subtest: invalid versions, targets, non-JSON input and unsafe paths are rejected or recorded before execution
+ok 24 - invalid versions, targets, non-JSON input and unsafe paths are rejected or recorded before execution
+  ---
+  duration_ms: 1.5322
+  type: 'test'
+  ...
+# Subtest: local API fixture exposes independent content faults, bounded transport counterexamples and request evidence
+ok 25 - local API fixture exposes independent content faults, bounded transport counterexamples and request evidence
+  ---
+  duration_ms: 69.9478
+  type: 'test'
+  ...
+# Subtest: API fixture import is inert and lets node exit without a server or timer
+ok 26 - API fixture import is inert and lets node exit without a server or timer
+  ---
+  duration_ms: 93.2078
+  type: 'test'
+  ...
+# Subtest: API fixture no-argument execution and Node test discovery exit without starting a server
+ok 27 - API fixture no-argument execution and Node test discovery exit without starting a server
+  ---
+  duration_ms: 595.6983
+  type: 'test'
+  ...
+# Subtest: API fixture explicit port CLI prints the actual loopback URL and supports a live manual request
+ok 28 - API fixture explicit port CLI prints the actual loopback URL and supports a live manual request
+  ---
+  duration_ms: 120.7018
+  type: 'test'
+  ...
+# Subtest: pre-aborted control performs no directory, event, guard or target side effects
+ok 29 - pre-aborted control performs no directory, event, guard or target side effects
+  ---
+  duration_ms: 35.0195
+  type: 'test'
+  ...
+# Subtest: a synchronous initial guard failure is a control error before any output
+ok 30 - a synchronous initial guard failure is a control error before any output
+  ---
+  duration_ms: 4.9894
+  type: 'test'
+  ...
+# Subtest: accidental native async guards reject before effects and consume rejected promises
+ok 31 - accidental native async guards reject before effects and consume rejected promises
+  ---
+  duration_ms: 4.7897
+  type: 'test'
+  ...
+# Subtest: rejected guard objects never evaluate then, constructor or species accessors
+ok 32 - rejected guard objects never evaluate then, constructor or species accessors
+  ---
+  duration_ms: 3.9619
+  type: 'test'
+  ...
+# Subtest: external abort interrupts a real pending HTTP response and prevents all later contracts
+ok 33 - external abort interrupts a real pending HTTP response and prevents all later contracts
+  ---
+  duration_ms: 36.0832
+  type: 'test'
+  ...
+# Subtest: external abort interrupts a real streamed body while its next read is pending
+ok 34 - external abort interrupts a real streamed body while its next read is pending
+  ---
+  duration_ms: 24.6993
+  type: 'test'
+  ...
+# Subtest: post-fetch guard failure stays sticky and cannot become a transport verdict
+ok 35 - post-fetch guard failure stays sticky and cannot become a transport verdict
+  ---
+  duration_ms: 12.2228
+  type: 'test'
+  ...
+# Subtest: an already-started evidence write remains but its failed fence permits no next side effect
+ok 36 - an already-started evidence write remains but its failed fence permits no next side effect
+  ---
+  duration_ms: 12.2667
+  type: 'test'
+  ...
+# Subtest: onEvent backpressure rechecks the guard before creating any contract or request
+ok 37 - onEvent backpressure rechecks the guard before creating any contract or request
+  ---
+  duration_ms: 5.3621
+  type: 'test'
+  ...
+# Subtest: external abort wakes a pending acceptance-started callback and consumes its late rejection
+ok 38 - external abort wakes a pending acceptance-started callback and consumes its late rejection
+  ---
+  duration_ms: 5.8007
+  type: 'test'
+  ...
+# Subtest: external abort wakes a pending acceptance-completed callback and consumes its late rejection
+ok 39 - external abort wakes a pending acceptance-completed callback and consumes its late rejection
+  ---
+  duration_ms: 14.851
+  type: 'test'
+  ...
+# Subtest: an event rejection cannot replace an earlier external cancellation
+ok 40 - an event rejection cannot replace an earlier external cancellation
+  ---
+  duration_ms: 6.5744
+  type: 'test'
+  ...
+# Subtest: heartbeat stays single-flight, still checks the guard, stops and aborts pending HTTP
+ok 41 - heartbeat stays single-flight, still checks the guard, stops and aborts pending HTTP
+  ---
+  duration_ms: 11.9985
+  type: 'test'
+  ...
+# Subtest: guard failure after a check event prevents the next request, omission and completed event
+ok 42 - guard failure after a check event prevents the next request, omission and completed event
+  ---
+  duration_ms: 11.9871
+  type: 'test'
+  ...
+# Subtest: internal timeout stays an ordinary blocked check and continues while external control is active
+ok 43 - internal timeout stays an ordinary blocked check and continues while external control is active
+  ---
+  duration_ms: 1022.389
+  type: 'test'
+  ...
+# Subtest: omitting controls and supplying active controls have the same output and evidence contract
+ok 44 - omitting controls and supplying active controls have the same output and evidence contract
+  ---
+  duration_ms: 51.9487
+  type: 'test'
+  ...
+# Subtest: Spec normalization rejects unsupported requests, ambiguous expectations and unbounded plans
+ok 45 - Spec normalization rejects unsupported requests, ambiguous expectations and unbounded plans
+  ---
+  duration_ms: 4.6198
+  type: 'test'
+  ...
+# Subtest: Spec explicitly validates 0, false, required, enum and types without a visual score
+ok 46 - Spec explicitly validates 0, false, required, enum and types without a visual score
+  ---
+  duration_ms: 55.3229
+  type: 'test'
+  ...
+# Subtest: Spec identities exclude display titles, target entries and contract ordering, while rules and source revisions remain distinct
+ok 47 - Spec identities exclude display titles, target entries and contract ordering, while rules and source revisions remain distinct
+  ---
+  duration_ms: 60.3475
+  type: 'test'
+  ...
+# Subtest: Spec candidate and unsupported operations stay blocked and never request the target
+ok 48 - Spec candidate and unsupported operations stay blocked and never request the target
+  ---
+  duration_ms: 6.844
+  type: 'test'
+  ...
+# Subtest: Spec HTTP 200 business errors are defects, while timeout and size limits remain unmeasured
+ok 49 - Spec HTTP 200 business errors are defects, while timeout and size limits remain unmeasured
+  ---
+  duration_ms: 1052.7881
+  type: 'test'
+  ...
+# Subtest: Spec compares observed redirect status without following and supports explicit HEAD/no-body contracts
+ok 50 - Spec compares observed redirect status without following and supports explicit HEAD/no-body contracts
+  ---
+  duration_ms: 16.6498
+  type: 'test'
+  ...
+# Subtest: Spec chunked bodies and schema instance budgets cannot be misread as a passing response
+ok 51 - Spec chunked bodies and schema instance budgets cannot be misread as a passing response
+  ---
+  duration_ms: 16.989
+  type: 'test'
+  ...
+# Subtest: Spec reports persist source, approved contract, evidence hashes and useful Markdown without a fake baseline
+ok 52 - Spec reports persist source, approved contract, evidence hashes and useful Markdown without a fake baseline
+  ---
+  duration_ms: 66.544
+  type: 'test'
+  ...
+# Subtest: Spec report summaries exclude root response payloads and retain known bugs if later validation is limited
+ok 53 - Spec report summaries exclude root response payloads and retain known bugs if later validation is limited
+  ---
+  duration_ms: 12.5284
+  type: 'test'
+  ...
+# Subtest: Spec CLI --gate returns nonzero for a contract defect and draft, and zero only for passing contracts
+ok 54 - Spec CLI --gate returns nonzero for a contract defect and draft, and zero only for passing contracts
+  ---
+  duration_ms: 1813.8059
+  type: 'test'
+  ...
+1..54
+# tests 128
+# suites 0
+# pass 128
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4957.6757

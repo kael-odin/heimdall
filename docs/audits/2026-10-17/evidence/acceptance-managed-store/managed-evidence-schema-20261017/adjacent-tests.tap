@@ -1,0 +1,204 @@
+TAP version 13
+# Subtest: real HTTP healthy, BUG, timeout, body budget, HEAD, header and syntax evidence bind without changing verdicts
+    # Subtest: BUG cannot be relabeled passed even when the raw actual and response evidence still agree
+    ok 1 - BUG cannot be relabeled passed even when the raw actual and response evidence still agree
+      ---
+      duration_ms: 6.307
+      type: 'test'
+      ...
+    # Subtest: fixed contract, request content and file roles cannot be substituted
+    ok 2 - fixed contract, request content and file roles cannot be substituted
+      ---
+      duration_ms: 15.9629
+      type: 'test'
+      ...
+    # Subtest: response projection is byte-capture-derived and all reported observations remain bound
+    ok 3 - response projection is byte-capture-derived and all reported observations remain bound
+      ---
+      duration_ms: 12.1406
+      type: 'test'
+      ...
+    # Subtest: missing files, extra files, malformed JSON, UTF-8 and deep evidence fail closed
+    ok 4 - missing files, extra files, malformed JSON, UTF-8 and deep evidence fail closed
+      ---
+      duration_ms: 16.2341
+      type: 'test'
+      ...
+    # Subtest: a real runner deadline cap has fixed unrequested facts and no request/response roles
+    ok 5 - a real runner deadline cap has fixed unrequested facts and no request/response roles
+      ---
+      duration_ms: 25.4917
+      type: 'test'
+      ...
+    # Subtest: a proven BUG remains failed when later schema validation reaches its instance budget
+    ok 6 - a proven BUG remains failed when later schema validation reaches its instance budget
+      ---
+      duration_ms: 29.1744
+      type: 'test'
+      ...
+    1..6
+ok 1 - real HTTP healthy, BUG, timeout, body budget, HEAD, header and syntax evidence bind without changing verdicts
+  ---
+  duration_ms: 1218.7037
+  type: 'test'
+  ...
+# Subtest: real complete OpenAPI healthy/schema BUG bind source bytes and redacted schema failures
+ok 2 - real complete OpenAPI healthy/schema BUG bind source bytes and redacted schema failures
+  ---
+  duration_ms: 27.0002
+  type: 'test'
+  ...
+# Subtest: strict facts and opaque Map byte captures reject hooks, aliases and over-budget input without executing getters
+ok 3 - strict facts and opaque Map byte captures reject hooks, aliases and over-budget input without executing getters
+  ---
+  duration_ms: 35.1268
+  type: 'test'
+  ...
+# Subtest: managed raw contract accepts real local HTTP health, BUG, timeout, body budget and HEAD results without changing verdicts
+    # Subtest: record metadata is never authoritative and returned data has no aliases
+    ok 1 - record metadata is never authoritative and returned data has no aliases
+      ---
+      duration_ms: 7.0739
+      type: 'test'
+      ...
+    # Subtest: every raw field is required and store-owned/unknown fields are rejected even with correct-looking values
+    ok 2 - every raw field is required and store-owned/unknown fields are rejected even with correct-looking values
+      ---
+      duration_ms: 61.9828
+      type: 'test'
+      ...
+    # Subtest: fixed identity, approval, fingerprints and requirement expectations cannot be replaced by actual responses
+    ok 3 - fixed identity, approval, fingerprints and requirement expectations cannot be replaced by actual responses
+      ---
+      duration_ms: 40.8557
+      type: 'test'
+      ...
+    # Subtest: coverage, safety, environment and evidence shape do not grant broader permissions
+    ok 4 - coverage, safety, environment and evidence shape do not grant broader permissions
+      ---
+      duration_ms: 29.5198
+      type: 'test'
+      ...
+    # Subtest: strict JSON rejects hooks and proxies at the envelope and every nested fact without executing them
+    ok 5 - strict JSON rejects hooks and proxies at the envelope and every nested fact without executing them
+      ---
+      duration_ms: 29.0275
+      type: 'test'
+      ...
+    # Subtest: depth, node and encoded byte budgets reject excess JSON with safe errors
+    ok 6 - depth, node and encoded byte budgets reject excess JSON with safe errors
+      ---
+      duration_ms: 196.3678
+      type: 'test'
+      ...
+    # Subtest: corrupt authoritative dispatch bytes retain a safe integrity error
+    ok 7 - corrupt authoritative dispatch bytes retain a safe integrity error
+      ---
+      duration_ms: 0.8592
+      type: 'test'
+      ...
+    # Subtest: record envelopes and byte-view properties cannot run hooks or substitute an authority
+    ok 8 - record envelopes and byte-view properties cannot run hooks or substitute an authority
+      ---
+      duration_ms: 3.2881
+      type: 'test'
+      ...
+    # Subtest: all actual runner progress kinds survive explicit event projection
+    ok 9 - all actual runner progress kinds survive explicit event projection
+      ---
+      duration_ms: 0.439
+      type: 'test'
+      ...
+    # Subtest: real runner deadline cap remains completed with blocked checks rather than engine failure
+    ok 10 - real runner deadline cap remains completed with blocked checks rather than engine failure
+      ---
+      duration_ms: 17.7971
+      type: 'test'
+      ...
+    1..10
+ok 4 - managed raw contract accepts real local HTTP health, BUG, timeout, body budget and HEAD results without changing verdicts
+  ---
+  duration_ms: 2964.5134
+  type: 'test'
+  ...
+# Subtest: managed raw accepts real complete OpenAPI response schema and rejects a real omission outside the fixed dispatch
+ok 5 - managed raw accepts real complete OpenAPI response schema and rejects a real omission outside the fixed dispatch
+  ---
+  duration_ms: 1110.1518
+  type: 'test'
+  ...
+# Subtest: managed progress and settlement are fresh narrow bounded data, never generic patches
+ok 6 - managed progress and settlement are fresh narrow bounded data, never generic patches
+  ---
+  duration_ms: 1.3382
+  type: 'test'
+  ...
+# Subtest: all narrow JSON inputs reject dangerous descriptors, prototypes and complexity before hooks execute
+ok 7 - all narrow JSON inputs reject dangerous descriptors, prototypes and complexity before hooks execute
+  ---
+  duration_ms: 0.7938
+  type: 'test'
+  ...
+# Subtest: fixed managed identity accepts real BUG results, commits terminal last and preserves original source bytes
+ok 8 - fixed managed identity accepts real BUG results, commits terminal last and preserves original source bytes
+  ---
+  duration_ms: 2567.3263
+  type: 'test'
+  ...
+# Subtest: real request timeout remains completed and environment-blocked
+ok 9 - real request timeout remains completed and environment-blocked
+  ---
+  duration_ms: 2521.6754
+  type: 'test'
+  ...
+# Subtest: exclusive fixed directory refuses empty, partial, complete and linked collisions without choosing another ID
+ok 10 - exclusive fixed directory refuses empty, partial, complete and linked collisions without choosing another ID
+  ---
+  duration_ms: 1059.5007
+  type: 'test'
+  ...
+# Subtest: only actual owner and synchronous active guard can create; invalid controls execute no hooks or requests
+ok 11 - only actual owner and synchronous active guard can create; invalid controls execute no hooks or requests
+  ---
+  duration_ms: 866.5637
+  type: 'test'
+  ...
+# Subtest: released and changed owner reject before publication, and owner loss never settles
+ok 12 - released and changed owner reject before publication, and owner loss never settles
+  ---
+  duration_ms: 1043.3539
+  type: 'test'
+  ...
+# Subtest: cancellation blocks progress but settlement still requires live owner and keeps narrow interrupted facts
+ok 13 - cancellation blocks progress but settlement still requires live owner and keeps narrow interrupted facts
+  ---
+  duration_ms: 1364.1947
+  type: 'test'
+  ...
+# Subtest: partial report never resumes finish; interrupted settlement preserves published report bytes
+ok 14 - partial report never resumes finish; interrupted settlement preserves published report bytes
+  ---
+  duration_ms: 1779.0879
+  type: 'test'
+  ...
+# Subtest: invalid raw, reserved evidence, links and byte/count budgets never publish a reliable report
+ok 15 - invalid raw, reserved evidence, links and byte/count budgets never publish a reliable report
+  ---
+  duration_ms: 2263.0546
+  type: 'test'
+  ...
+# Subtest: fresh sidecar and run identity fence each write and preserve changes rather than repairing them
+ok 16 - fresh sidecar and run identity fence each write and preserve changes rather than repairing them
+  ---
+  duration_ms: 1186.7611
+  type: 'test'
+  ...
+1..16
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14800.4959

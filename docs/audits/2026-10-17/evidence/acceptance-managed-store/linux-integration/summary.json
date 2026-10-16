@@ -1,0 +1,89 @@
+{
+  "status": "passed",
+  "evidenceLevel": "Real WSL Linux Node process; local HTTP fixtures; no browser run",
+  "startedUtc": "2026-10-16T18:09:48Z",
+  "localDate": "2026-10-17",
+  "timezone": "Asia/Hong_Kong",
+  "exitCode": 0,
+  "runtime": {
+    "distro": "Ubuntu-24.04",
+    "kernel": "6.6.114.1-microsoft-standard-WSL2",
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v22.23.3",
+    "executable": "/tmp/heimdall-managed-linux-runtime-20261017/node-v22.23.3-linux-x64/bin/node"
+  },
+  "source": {
+    "cwd": "/mnt/c/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core",
+    "statFilesystemType": "v9fs",
+    "mountFilesystemType": "9p",
+    "mountSource": "C:\\",
+    "sourceTreeIsExt4": false
+  },
+  "fixtures": {
+    "TMPDIR": "/tmp",
+    "statFilesystemType": "ext2/ext3",
+    "mountFilesystemType": "ext4",
+    "mountSource": "/dev/sdd",
+    "note": "Tests create temporary acceptance roots using node:os tmpdir(); source files still import from /mnt/c."
+  },
+  "testSummary": {
+    "tests": 58,
+    "topLevelTests": 42,
+    "suites": 0,
+    "pass": 58,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "durationMs": 2944.678114
+  },
+  "testFiles": [
+    "test/acceptance-managed-run-store.test.mjs",
+    "test/acceptance-managed-run-store-edges.test.mjs",
+    "test/acceptance-managed-execution-schema.test.mjs",
+    "test/acceptance-managed-evidence-schema.test.mjs",
+    "test/acceptance-owner-capability.test.mjs",
+    "test/acceptance-owner.test.mjs",
+    "test/acceptance-managed-quarantine.test.mjs"
+  ],
+  "command": "node --test --test-reporter=tap test/acceptance-managed-run-store.test.mjs test/acceptance-managed-run-store-edges.test.mjs test/acceptance-managed-execution-schema.test.mjs test/acceptance-managed-evidence-schema.test.mjs test/acceptance-owner-capability.test.mjs test/acceptance-owner.test.mjs test/acceptance-managed-quarantine.test.mjs",
+  "sourceAndTestBytesUnchangedDuringRun": true,
+  "frozenFourFilesMatched": true,
+  "sha256": {
+    "src/acceptance/constants.mjs": "62a1216dc7aec4390652aeac4ecb994145e8182dd58411c2356840c48729e7ec",
+    "src/acceptance/owner.mjs": "0352edd6c13efeed680d3b699c2470501059ad2af6ee703c079f962265fb4f7b",
+    "src/acceptance/store.mjs": "394d54e819226895e116a669ca0379616db45c18f914953939cc4d86eda6ff94",
+    "src/acceptance/managed-run-files.mjs": "dbfd92634b193e1be2fd444d8f126bfa659c542a71af47e3b22727fa8920238f",
+    "src/acceptance/managed-run-store.mjs": "f267d09386e561d521810a2d4d92e17eae4e69b113a50ae62ff350b78aad0ab6",
+    "src/acceptance/managed-execution-schema.mjs": "8cd97a9c4c119abbab081d4c0bb203b4b00a8b510c69736a38ca2f1247118d44",
+    "src/acceptance/managed-evidence-schema.mjs": "fa20e8a852bbaad2980d541ee19c6e91854a0f1d87ce4fbfe23e1951de5c707d",
+    "test/acceptance-managed-run-store.test.mjs": "5238e5b9fafdda4e82f5c06bc3e7db96eb54272bfc901d837889056f47b68622",
+    "test/acceptance-managed-run-store-edges.test.mjs": "daddac52c77c57043a82a48b189a88f88b78f8ac2504ba544a9c8260c6db8cb7",
+    "test/acceptance-managed-execution-schema.test.mjs": "e55bb74d1bb8cfd2f5248f85c328027d18839fc359d8dff1c3586d4b5941aeb5",
+    "test/acceptance-managed-evidence-schema.test.mjs": "37a649d336543e67bdaae8ad49cb9777d6906a1381d0f6fb2932924e86d923e1",
+    "test/acceptance-owner-capability.test.mjs": "214f0d662faec73fde5bcd438316f70c9b2b8a795fc5e56355b8d4df3012ab2c",
+    "test/acceptance-owner.test.mjs": "b3b80508705c99a852796cdb6e78519c74dc2eae8976142ef4c5de84367970dc",
+    "test/acceptance-managed-quarantine.test.mjs": "e4b044a27c0008fbd9e5bcc44a7f5dbfb7c36a3d50ec351de09d1c359263e73e"
+  },
+  "tapSha256": "e0ef8f73e1b4054e660c6971758256bab854e29a4c00c9a9c795457987b40570",
+  "runtimeArchive": {
+    "source": "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-x64.tar.xz",
+    "officialSha256": "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de",
+    "observedSha256": "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de",
+    "verified": true
+  },
+  "git": {
+    "headObservedFromWindows": "13128a9aa10e3f0bc086684afd64006213f47f27",
+    "sourceHasUncommittedChanges": true,
+    "note": "WSL git cannot resolve the managed worktree .git file containing a Windows drive path. The raw environment log records the unsuccessful git-head field; HEAD is supplemental Windows evidence, while actual executed bytes are identified by the SHA snapshots."
+  },
+  "notes": [
+    "Default WSL PATH had no Linux Node. Runtime downloaded through Windows because direct WSL HTTPS timed out.",
+    "This run did not modify source or test files.",
+    "No tests were skipped. ext4 describes fixture/runtime temporary roots only; source tree remains Windows-backed v9fs/9p."
+  ],
+  "originalEvidenceDirectory": "/mnt/c/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core/workspace/_runs/managed-linux-final-20261017",
+  "archiveEvidenceDirectory": "core/workspace/_runs/managed-store-linux-20261017",
+  "runtimeArchiveIntentionallyExcludedFromEvidenceArchive": true
+}

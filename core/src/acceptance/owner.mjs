@@ -3,12 +3,13 @@ import { mkdirSync, realpathSync, lstatSync, readFileSync, openSync, writeFileSy
 import { resolve, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { hostname } from 'node:os';
-import { ACCEPTANCE_ROOT } from './store.mjs';
+import { ACCEPTANCE_ROOT } from './constants.mjs';
 
 export const ACCEPTANCE_OWNER_FILE = '.acceptance-owner.json';
 export const ACCEPTANCE_RECOVERY_FILE = '.acceptance-recovery.json';
 const MAX_LOCK_BYTES = 2048;
 const NONCE = /^[a-f0-9]{64}$/;
+const acquiredOwners = new WeakSet();
 
 export class AcceptanceOwnerError extends Error {
   constructor(lost = false) {
@@ -17,6 +18,12 @@ export class AcceptanceOwnerError extends Error {
     this.code = lost ? 'ACCEPTANCE_OWNER_LOST' : 'ACCEPTANCE_OWNER_UNAVAILABLE';
     this.status = 503;
   }
+}
+/** A method-shaped object is not an acquired capability. This brand does not
+ * grant execution admission; the original lock must still be owned now. */
+export function assertAcceptanceOwner(owner) {
+  if (!acquiredOwners.has(owner)) throw new AcceptanceOwnerError();
+  return owner.assertOwned();
 }
 const sameFile = (a, b) => a?.dev === b?.dev && a?.ino === b?.ino;
 function readRecord(path) {
@@ -103,7 +110,7 @@ export function acquireAcceptanceOwner({ root = ACCEPTANCE_ROOT, processProbe = 
     throw new AcceptanceOwnerError();
   }
   let released = false;
-  return Object.freeze({
+  const owner = Object.freeze({
     root: actualRoot,
     nonce: owned.value.nonce,
     assertOwned() {
@@ -118,4 +125,6 @@ export function acquireAcceptanceOwner({ root = ACCEPTANCE_ROOT, processProbe = 
       return removeOwned(lockPath, owned);
     },
   });
+  acquiredOwners.add(owner);
+  return owner;
 }
