@@ -70,6 +70,12 @@ try {
     checks: ['/quota', '/stable'].map((path, index) => ({ id: index ? 'STABLE' : 'QUOTA', title: index ? '稳定接口保持通过' : '额度接口修复', path, method: 'GET',
       expect: { status: 200, contentType: 'application/json', json: [{ pointer: '/code', kind: 'equals', value: 0 }] } })) };
   async function run(name, overrides = {}) {
+    // The worker writes a terminal manifest before its exit releases the engine slot.
+    await waitFor(async () => {
+      const status = await fetch(base + '/api/status', { headers });
+      assert.equal(status.status, 200);
+      return (await status.json()).acceptance === null;
+    });
     const response = await api('runs', { method: 'POST', body: JSON.stringify({ mode: 'spec', name, targetUrl, spec, ...overrides }) });
     assert.equal(response.status, 202);
     const manifest = await response.json();
