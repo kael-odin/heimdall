@@ -56,10 +56,11 @@ test('live/health: URL 编码的片段标识 %23 按片段处理，不当作路�
 });
 
 test('live/health: extractRefs separates assets from links', () => {
-  const html = '<link rel="stylesheet" href="/a.css"><link rel="canonical" href="/canon"><script src="/s.js"></script><img src="/i.png" srcset="/i2.png 2x"><a href="/page/">go</a>';
+  const html = '<link rel="stylesheet" href="/a.css"><link rel="canonical" href="/canon"><link rel="dns-prefetch" href="https://fonts.example"><link rel="preconnect" href="https://fonts.example"><script src="/s.js"></script><img src="/i.png" srcset="/i2.png 2x"><a href="/page/">go</a>';
   const refs = extractRefs(html, 'html');
   const kind = (u) => refs.find(r => r.url === u)?.kind;
   assert.equal(kind('/a.css'), 'asset');
+  assert.equal(kind('https://fonts.example'), 'link');
   assert.equal(kind('/s.js'), 'asset');
   assert.equal(kind('/i.png'), 'asset');
   assert.equal(kind('/i2.png'), 'asset');

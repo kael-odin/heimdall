@@ -20,7 +20,7 @@ import { scanCssRefs } from '../css-refs.mjs';
 
 const SKIP_REF = /^(?:data:|blob:|about:|javascript:|mailto:|tel:|#)/i;
 const ASSET_EXT = /\.(?:png|jpe?g|gif|webp|avif|svg|ico|bmp|woff2?|ttf|otf|eot|css|js|mjs|mp4|webm|mp3|pdf)(?:$|[?#])/i;
-const ASSET_REL = /stylesheet|icon|preload|modulepreload|manifest|prefetch/i;
+const ASSET_RELS = new Set(['stylesheet', 'icon', 'preload', 'modulepreload', 'manifest', 'prefetch']);
 const MAX_UNRESOLVED = 200;
 const MAX_FILES = 4000;
 const MAX_PROBES = 10000;
@@ -96,6 +96,10 @@ function attr(tag, name) {
   return m ? m[1] : null;
 }
 
+function isAssetRel(raw) {
+  return String(raw ?? '').toLowerCase().split(/\s+/).some(rel => ASSET_RELS.has(rel));
+}
+
 /** 返回 [{ url, kind: 'asset' | 'link' }] */
 export function extractRefs(text, kind) {
   const out = [];
@@ -119,7 +123,7 @@ export function extractRefs(text, kind) {
     if (name === 'a') { const h = attr(tag, 'href'); if (h) out.push({ url: h, kind: 'link', tag: name }); continue; }
     if (name === 'link') {
       const h = attr(tag, 'href');
-      if (h) out.push({ url: h, kind: ASSET_REL.test(attr(tag, 'rel') ?? '') ? 'asset' : 'link', required: true, tag: name });
+      if (h) out.push({ url: h, kind: isAssetRel(attr(tag, 'rel')) ? 'asset' : 'link', required: true, tag: name });
       continue;
     }
     for (const n of ['src', 'poster']) { const v = attr(tag, n); if (v) out.push({ url: v, kind: 'asset', required: !['iframe', 'embed'].includes(name), tag: name }); }
