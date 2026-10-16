@@ -10,7 +10,7 @@
 
 ---
 
-新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。交付复现步骤、来源与实测证据，AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
+新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。现在可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。交付复现步骤、来源与实测证据，AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
 
 ## 它实际长这样
 
@@ -207,6 +207,8 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [docs/competition/02-自动验收开发项目还原度BUG检测系统.md](docs/competition/02-自动验收开发项目还原度BUG检测系统.md) | 命题 02 方案：Mirror / Spec / Regression、Xspark 验收样例和 Figma 扩展路线 | 比赛方案与后续开发 |
 | [项目验收工作台](docs/competition/acceptance-workbench.md) | Mirror / Spec / Regression、断言、AI 解释、CLI / API 与边界 | 运行验收与接入 CI |
 | [Spec 实施验收记录](docs/audits/2026-10-16/acceptance-spec.md) | OpenAPI 来源快照、11 案例基准、17 项控制台检查与完整证据索引 | 复查本阶段能力与限制 |
+| [跨运行复验指南](docs/competition/acceptance-comparison.md) | 显式选择运行对、稳定身份、证据核验、关系解释与 JSON / Markdown 导出 | 核对修复与新增失败 |
+| [跨运行复验实施记录](docs/audits/2026-10-16/acceptance-comparison.md) | 固定反例基准、真实 API / CLI / 控制台验证和证据 | 复查复验结论与保守边界 |
 | [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |

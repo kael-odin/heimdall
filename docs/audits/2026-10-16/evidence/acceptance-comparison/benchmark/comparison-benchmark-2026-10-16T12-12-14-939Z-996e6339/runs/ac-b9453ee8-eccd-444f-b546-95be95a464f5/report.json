@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-b9453ee8-eccd-444f-b546-95be95a464f5",
+  "name": "Renamed API run",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:53572/api/after",
+  "startedAt": "2026-10-16T12:12:39.471Z",
+  "endedAt": "2026-10-16T12:12:39.474Z",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "spec-1-items",
+      "title": "Renamed contract",
+      "route": "/items",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "low",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "7b97c2bd44203168bbbfb08cfb168eb33333b67411a590a924531e57e6dcb1c3",
+        "contextKey": "da3627ef97eee0798fae4bf49132b2e9ea831e18c2d1990a32f99e32e2072e0d",
+        "ruleKey": "72e5e50ca9bbd7baae8c5f91f2923170ef86d3f957d68f41c1e42339dc2bc5ee",
+        "oracleKey": "801c02a5cc3c5709d64a529dcf9a3bbfe4948f7e6bd6642be7250bbd100ef5dc",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "items",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "REQ-COMPARISON",
+        "revision": "v1",
+        "sourceFingerprint": "3d7caeb496ef8902e09039dbd8b202f64c885b4ef3ca544bd8721a6f673c77a3",
+        "documentSha256": null,
+        "contractFingerprint": "b67e609a5544a3b57920cf629cfd9f74eb061864b20882526eb0947d04777689"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "json": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0
+          }
+        ]
+      },
+      "reproduction": [
+        "Use requirement REQ-COMPARISON at revision v1.",
+        "GET http://127.0.0.1:53572/api/after/items without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "failed",
+      "verdict": "bug",
+      "evaluationLimited": false,
+      "actual": {
+        "requested": true,
+        "httpStatus": 200,
+        "contentType": "application/json",
+        "redirectNotFollowed": false,
+        "hasLocation": false,
+        "mismatches": [
+          {
+            "kind": "equals",
+            "pointer": "/code",
+            "value": 0,
+            "passed": false,
+            "actual": 400,
+            "exists": true
+          }
+        ],
+        "bytes": 22,
+        "bodySha256": "cddd23c146601b8d23bb2cd88910c7203a540b49bda683b9ba99c699f9aef089",
+        "assertions": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0,
+            "passed": false,
+            "actual": 400,
+            "exists": true
+          }
+        ]
+      },
+      "evidence": {
+        "contract": "spec-1-items-contract.json",
+        "request": "spec-1-items-request.json",
+        "response": "spec-1-items-response.json"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 1,
+    "completed": 1,
+    "capped": false
+  },
+  "specSource": {
+    "id": "REQ-COMPARISON",
+    "revision": "v1",
+    "type": "manual",
+    "title": "Renamed source title"
+  },
+  "sourceFingerprint": "3d7caeb496ef8902e09039dbd8b202f64c885b4ef3ca544bd8721a6f673c77a3",
+  "contractFingerprint": "b67e609a5544a3b57920cf629cfd9f74eb061864b20882526eb0947d04777689",
+  "specApproval": {
+    "approved": true,
+    "recordedAt": "2026-10-16T12:12:39.471Z"
+  },
+  "safety": {
+    "readOnly": true,
+    "allowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "redirects": "not-followed",
+    "credentials": "none",
+    "requests": 1
+  },
+  "environment": {
+    "runner": "node-fetch",
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "maxResponseBytes": 4096,
+    "timeoutMs": 1000
+  },
+  "scope": "离线复现：本机固定版本、缺陷和假关闭反例，通过真实 browser/Spec runner、store 落盘与当前证据校验完成；只证明本组声明范围，不代表真实项目检出率、根因识别或持久缺陷自动关闭。",
+  "planFingerprint": "26464650fb5487b6b0fe386a25368d75c489b50ecb69bfce25baad888f683643",
+  "verifierFingerprint": "8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d",
+  "evidenceManifest": [
+    {
+      "file": "spec-1-items-contract.json",
+      "bytes": 589,
+      "sha256": "a90b43eb748865c4a08842a0709667e6e308a0f2ad4c823827fa8a42dbce1e35"
+    },
+    {
+      "file": "spec-1-items-request.json",
+      "bytes": 175,
+      "sha256": "4d437b6a20a3aa8df3e35e7df39c609c6fa7807acc47d2438e15d982f77caf7a"
+    },
+    {
+      "file": "spec-1-items-response.json",
+      "bytes": 622,
+      "sha256": "e68a6c8c05b45a620abe6a8cb7b102365b416615e7bc4a12cd94d4bae5c6d3c5"
+    }
+  ],
+  "gate": "failed",
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 1,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 1,
+      "total": 1,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

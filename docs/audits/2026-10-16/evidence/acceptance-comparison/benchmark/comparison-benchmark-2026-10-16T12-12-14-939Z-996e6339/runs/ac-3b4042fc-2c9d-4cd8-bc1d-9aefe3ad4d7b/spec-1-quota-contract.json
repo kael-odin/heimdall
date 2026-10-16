@@ -1,0 +1,28 @@
+{
+  "source": {
+    "id": "REQ-COMPARISON",
+    "revision": "v1",
+    "type": "manual",
+    "title": "Fixed API source"
+  },
+  "approved": true,
+  "contract": {
+    "id": "quota",
+    "title": "Contract quota",
+    "method": "GET",
+    "path": "/quota",
+    "severity": "high",
+    "expect": {
+      "status": 200,
+      "contentType": "application/json",
+      "json": [
+        {
+          "pointer": "/code",
+          "kind": "equals",
+          "value": 0
+        }
+      ]
+    }
+  },
+  "contractFingerprint": "cd9e9e05e159d7bb7c86a90a0823350160d96632ee846b38218c8263a98a1844"
+}

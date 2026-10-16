@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import Icon from './Icon.vue';
+import AcceptanceComparison from './AcceptanceComparison.vue';
 import { API, apiHeaders } from './api.js';
 import {
   DIMENSIONS, STATUS_LABELS, GATE_LABELS, VERDICT_LABELS, buildAcceptanceInput,
@@ -486,6 +487,7 @@ onBeforeUnmount(() => {
         </section>
       </aside>
       <main id="aw-result-panel" ref="resultsElement" class="aw-results" aria-live="polite" aria-busy="loadingRun || currentRunning">
+        <AcceptanceComparison :runs="runs" :request="request" @open-run="selectRun" />
         <div v-if="!selectedId" class="aw-empty">
           <h2>{{ form.mode === 'spec' ? '先把需求写成可执行的契约' : '从一次可复现的对照开始' }}</h2><p>{{ form.mode === 'spec' ? '填写需求来源与目标地址，手工声明 API 契约或导入 OpenAPI 候选清单。核对并批准后才会检查目标接口，保留请求、响应与契约依据。此模式不测量页面视觉。' : '填入作为预期的基线与待验收项目地址。验收会按路由采集视觉、结构、交互和运行健康结果，并保留截图与复现步骤。' }}</p>
           <dl><div><dt>目标缺陷</dt><dd>{{ form.mode === 'spec' ? '目标响应不符合已批准的接口契约' : '基线可运行，目标偏离预期' }}</dd></div><div v-if="form.mode !== 'spec'"><dt>基线失败</dt><dd>预期本身未成立，需要核对基线</dd></div><div><dt>待复核</dt><dd>证据不足以自动判定，需要人工检查</dd></div></dl>

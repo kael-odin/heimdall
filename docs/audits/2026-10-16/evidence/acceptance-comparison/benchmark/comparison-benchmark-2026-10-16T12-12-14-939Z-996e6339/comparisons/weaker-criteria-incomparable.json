@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "kind": "acceptance-comparison",
+  "scope": "explicit-pair",
+  "before": {
+    "runId": "ac-7e7479b4-3d7c-4760-978b-54bb43318aeb",
+    "name": "API before",
+    "mode": "spec",
+    "gate": "failed",
+    "targetUrl": "http://127.0.0.1:53572/api/before",
+    "createdAt": "2026-10-16T12:12:39.209Z",
+    "endedAt": "2026-10-16T12:12:39.236Z",
+    "verifierFingerprint": "8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d",
+    "reportSha256": "dd8474076c33b2a377700a599279b15ef12921bf3888f91f031295bf70d4508f"
+  },
+  "after": {
+    "runId": "ac-25515d44-458f-424d-b7f0-79593f50eccb",
+    "name": "Renamed API run",
+    "mode": "spec",
+    "gate": "passed",
+    "targetUrl": "http://127.0.0.1:53572/api/after",
+    "createdAt": "2026-10-16T12:12:39.365Z",
+    "endedAt": "2026-10-16T12:12:39.373Z",
+    "verifierFingerprint": "8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d",
+    "reportSha256": "ec3446c2fc62be41406ce372faac12a6c68ee868e94f550b302493a71a928e23"
+  },
+  "integrity": {
+    "before": {
+      "valid": true,
+      "evidenceVerified": true,
+      "verifiedFiles": 6,
+      "verifiedBytes": 2611,
+      "errors": []
+    },
+    "after": {
+      "valid": true,
+      "evidenceVerified": true,
+      "verifiedFiles": 6,
+      "verifiedBytes": 1930,
+      "errors": []
+    }
+  },
+  "status": "completed",
+  "summary": {
+    "total": 2,
+    "stillFailed": 0,
+    "verifiedPassed": 0,
+    "newFailure": 0,
+    "observedFailure": 0,
+    "unchangedPassed": 0,
+    "observedPassed": 0,
+    "unverified": 0,
+    "incomparable": 2
+  },
+  "checks": [
+    {
+      "key": "d0fe0253a44137d6175e95596d8cf89270def89be5a5b71c09286e21fe4afa1a",
+      "title": "Renamed contract",
+      "route": "/quota",
+      "viewport": "api",
+      "facet": "contract",
+      "before": {
+        "checkId": "spec-1-quota",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "after": {
+        "checkId": "spec-2-quota",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "incomparable",
+      "reasons": [
+        {
+          "code": "definition-changed",
+          "message": "检查定义、阈值、操作、断言或执行策略变化。"
+        },
+        {
+          "code": "oracle-changed",
+          "message": "参考内容或批准规格发生变化，不能计为修复。"
+        }
+      ]
+    },
+    {
+      "key": "da3627ef97eee0798fae4bf49132b2e9ea831e18c2d1990a32f99e32e2072e0d",
+      "title": "Renamed contract",
+      "route": "/items",
+      "viewport": "api",
+      "facet": "contract",
+      "before": {
+        "checkId": "spec-2-items",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "spec-1-items",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "incomparable",
+      "reasons": [
+        {
+          "code": "definition-changed",
+          "message": "检查定义、阈值、操作、断言或执行策略变化。"
+        },
+        {
+          "code": "oracle-changed",
+          "message": "参考内容或批准规格发生变化，不能计为修复。"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "仅对比用户明确选择的两次运行；此前/本次是选择标签，不自动批准项目基线，也不改写原门禁。",
+    "可靠复验通过针对整个相同合同、操作点或检查，不推断子失败根因相同，不自动关闭持久问题。",
+    "未测、删除、受阻、待复核及不可比均不算修复；精确参考截图哈希变化会保守停止视觉趋势比较。"
+  ]
+}

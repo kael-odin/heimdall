@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 1,
+  "runId": "comparison-benchmark-2026-10-16T12-12-14-939Z-996e6339",
+  "generatedAt": "2026-10-16T12:12:39.988Z",
+  "scope": "离线复现：本机固定版本、缺陷和假关闭反例，通过真实 browser/Spec runner、store 落盘与当前证据校验完成；只证明本组声明范围，不代表真实项目检出率、根因识别或持久缺陷自动关闭。",
+  "outputDir": "D:\\Github-Star\\heimdall\\docs\\audits\\2026-10-16\\evidence\\acceptance-comparison\\benchmark\\comparison-benchmark-2026-10-16T12-12-14-939Z-996e6339",
+  "durationMs": 25049,
+  "passed": true,
+  "metrics": {
+    "unit": "fixed-comparison-case",
+    "totalCases": 12,
+    "passedCases": 12,
+    "failedCases": 0,
+    "realRuns": 12
+  },
+  "cases": [
+    {
+      "id": "browser-reordered-fixed-and-new",
+      "description": "真实浏览器：计划重排仍配对，原视觉和按钮问题复验通过，另一操作点出现新增失败。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/browser-reordered-fixed-and-new.json",
+      "summary": {
+        "total": 28,
+        "stillFailed": 0,
+        "verifiedPassed": 4,
+        "newFailure": 2,
+        "observedFailure": 0,
+        "unchangedPassed": 22,
+        "observedPassed": 0,
+        "unverified": 0,
+        "incomparable": 0
+      },
+      "status": "completed"
+    },
+    {
+      "id": "partial-viewports-do-not-close-phone",
+      "description": "仅桌面通过不能关闭旧手机视口问题；每个视口独立保留复验事实。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/partial-viewports-do-not-close-phone.json",
+      "summary": {
+        "total": 28,
+        "stillFailed": 0,
+        "verifiedPassed": 2,
+        "newFailure": 1,
+        "observedFailure": 0,
+        "unchangedPassed": 11,
+        "observedPassed": 0,
+        "unverified": 14,
+        "incomparable": 0
+      },
+      "status": "completed"
+    },
+    {
+      "id": "deleted-route-is-unverified",
+      "description": "删除原失败路由不算修复。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/deleted-route-is-unverified.json",
+      "summary": {
+        "total": 28,
+        "stillFailed": 0,
+        "verifiedPassed": 0,
+        "newFailure": 2,
+        "observedFailure": 0,
+        "unchangedPassed": 12,
+        "observedPassed": 0,
+        "unverified": 14,
+        "incomparable": 0
+      },
+      "status": "completed"
+    },
+    {
+      "id": "same-url-reference-drift-incomparable",
+      "description": "相同参考 URL 被改成目标外观后视觉通过，也不能证明旧视觉问题已修复。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/same-url-reference-drift-incomparable.json",
+      "summary": {
+        "total": 28,
+        "stillFailed": 1,
+        "verifiedPassed": 0,
+        "newFailure": 0,
+        "observedFailure": 0,
+        "unchangedPassed": 5,
+        "observedPassed": 0,
+        "unverified": 21,
+        "incomparable": 1
+      },
+      "status": "completed"
+    },
+    {
+      "id": "api-reordered-fixed-and-new",
+      "description": "真实 Spec：合同重排、目标版本和来源标题变化不破坏身份；一个合同修复，另一合同新增失败。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/api-reordered-fixed-and-new.json",
+      "summary": {
+        "total": 2,
+        "stillFailed": 0,
+        "verifiedPassed": 1,
+        "newFailure": 1,
+        "observedFailure": 0,
+        "unchangedPassed": 0,
+        "observedPassed": 0,
+        "unverified": 0,
+        "incomparable": 0
+      },
+      "status": "completed"
+    },
+    {
+      "id": "same-contract-still-failed",
+      "description": "同一合同仍违反断言，保持仍失败。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/same-contract-still-failed.json",
+      "summary": {
+        "total": 2,
+        "stillFailed": 1,
+        "verifiedPassed": 0,
+        "newFailure": 0,
+        "observedFailure": 0,
+        "unchangedPassed": 1,
+        "observedPassed": 0,
+        "unverified": 0,
+        "incomparable": 0
+      },
+      "status": "completed"
+    },
+    {
+      "id": "weaker-criteria-incomparable",
+      "description": "删除 JSON 业务成功断言后通过属于判据变化，不属于修复。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/weaker-criteria-incomparable.json",
+      "summary": {
+        "total": 2,
+        "stillFailed": 0,
+        "verifiedPassed": 0,
+        "newFailure": 0,
+        "observedFailure": 0,
+        "unchangedPassed": 0,
+        "observedPassed": 0,
+        "unverified": 0,
+        "incomparable": 2
+      },
+      "status": "completed"
+    },
+    {
+      "id": "changed-source-incomparable",
+      "description": "同合同的来源版本变化，必须保留不可比原因。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/changed-source-incomparable.json",
+      "summary": {
+        "total": 2,
+        "stillFailed": 0,
+        "verifiedPassed": 0,
+        "newFailure": 0,
+        "observedFailure": 0,
+        "unchangedPassed": 0,
+        "observedPassed": 0,
+        "unverified": 0,
+        "incomparable": 2
+      },
+      "status": "completed"
+    },
+    {
+      "id": "deleted-contract-is-unverified",
+      "description": "删除旧失败合同不能算修复，也不能由健康 HTTP 状态替代业务断言。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/deleted-contract-is-unverified.json",
+      "summary": {
+        "total": 2,
+        "stillFailed": 0,
+        "verifiedPassed": 0,
+        "newFailure": 1,
+        "observedFailure": 0,
+        "unchangedPassed": 0,
+        "observedPassed": 0,
+        "unverified": 1,
+        "incomparable": 0
+      },
+      "status": "completed"
+    },
+    {
+      "id": "execution-limit-is-not-fixed",
+      "description": "同规则下的响应预算阻塞不能关闭此前 BUG。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/execution-limit-is-not-fixed.json",
+      "summary": {
+        "total": 2,
+        "stillFailed": 0,
+        "verifiedPassed": 0,
+        "newFailure": 0,
+        "observedFailure": 0,
+        "unchangedPassed": 0,
+        "observedPassed": 0,
+        "unverified": 2,
+        "incomparable": 0
+      },
+      "status": "completed"
+    },
+    {
+      "id": "tampered-evidence-blocks-retest",
+      "description": "完成后响应证据被修改，即使历史 gate 仍在，也必须阻止复验修复声明。",
+      "passed": true,
+      "reasons": [],
+      "comparison": "comparisons/tampered-evidence-blocks-retest.json",
+      "summary": {
+        "total": 2,
+        "stillFailed": 0,
+        "verifiedPassed": 0,
+        "newFailure": 0,
+        "observedFailure": 0,
+        "unchangedPassed": 0,
+        "observedPassed": 0,
+        "unverified": 2,
+        "incomparable": 0
+      },
+      "status": "blocked"
+    },
+    {
+      "id": "original-gates-and-reports-unchanged",
+      "description": "比较和证据验证不改写原报告或原门禁；篡改反例恢复原证据后仍能通过完整性校验。",
+      "passed": true,
+      "reasons": []
+    }
+  ],
+  "runs": [
+    {
+      "label": "browser-before",
+      "runId": "ac-3ea01809-fd5c-4dc5-baa1-ba3ebec70512",
+      "mode": "regression",
+      "gate": "failed",
+      "checkCount": 28,
+      "report": "runs/ac-3ea01809-fd5c-4dc5-baa1-ba3ebec70512/report.md"
+    },
+    {
+      "label": "browser-after-reordered",
+      "runId": "ac-62a23a6e-7182-4d2a-b6e6-9b56ccac6836",
+      "mode": "regression",
+      "gate": "failed",
+      "checkCount": 28,
+      "report": "runs/ac-62a23a6e-7182-4d2a-b6e6-9b56ccac6836/report.md"
+    },
+    {
+      "label": "browser-desktop-only",
+      "runId": "ac-fa633d4a-5ed1-487a-92e3-fa82697ed20e",
+      "mode": "regression",
+      "gate": "failed",
+      "checkCount": 14,
+      "report": "runs/ac-fa633d4a-5ed1-487a-92e3-fa82697ed20e/report.md"
+    },
+    {
+      "label": "browser-deleted-route",
+      "runId": "ac-299d0b09-3b50-472b-9fc8-c2434f408de5",
+      "mode": "regression",
+      "gate": "failed",
+      "checkCount": 14,
+      "report": "runs/ac-299d0b09-3b50-472b-9fc8-c2434f408de5/report.md"
+    },
+    {
+      "label": "browser-same-url-reference-drift",
+      "runId": "ac-a39b2f30-8bd8-4543-815a-97bdb05313e5",
+      "mode": "regression",
+      "gate": "failed",
+      "checkCount": 7,
+      "report": "runs/ac-a39b2f30-8bd8-4543-815a-97bdb05313e5/report.md"
+    },
+    {
+      "label": "api-before",
+      "runId": "ac-7e7479b4-3d7c-4760-978b-54bb43318aeb",
+      "mode": "spec",
+      "gate": "failed",
+      "checkCount": 2,
+      "report": "runs/ac-7e7479b4-3d7c-4760-978b-54bb43318aeb/report.md"
+    },
+    {
+      "label": "api-after-reordered",
+      "runId": "ac-bd416be3-bd0e-41ca-b82c-01320dbb005c",
+      "mode": "spec",
+      "gate": "failed",
+      "checkCount": 2,
+      "report": "runs/ac-bd416be3-bd0e-41ca-b82c-01320dbb005c/report.md"
+    },
+    {
+      "label": "api-still-failed",
+      "runId": "ac-1de9b23c-14dd-4e31-b914-27d2248bfc54",
+      "mode": "spec",
+      "gate": "failed",
+      "checkCount": 2,
+      "report": "runs/ac-1de9b23c-14dd-4e31-b914-27d2248bfc54/report.md"
+    },
+    {
+      "label": "api-weaker-contract",
+      "runId": "ac-25515d44-458f-424d-b7f0-79593f50eccb",
+      "mode": "spec",
+      "gate": "passed",
+      "checkCount": 2,
+      "report": "runs/ac-25515d44-458f-424d-b7f0-79593f50eccb/report.md"
+    },
+    {
+      "label": "api-source-revision-changed",
+      "runId": "ac-cce9e13d-5836-4e07-92f7-5ec55795cd20",
+      "mode": "spec",
+      "gate": "failed",
+      "checkCount": 2,
+      "report": "runs/ac-cce9e13d-5836-4e07-92f7-5ec55795cd20/report.md"
+    },
+    {
+      "label": "api-deleted-contract",
+      "runId": "ac-b9453ee8-eccd-444f-b546-95be95a464f5",
+      "mode": "spec",
+      "gate": "failed",
+      "checkCount": 1,
+      "report": "runs/ac-b9453ee8-eccd-444f-b546-95be95a464f5/report.md"
+    },
+    {
+      "label": "api-response-budget-blocked",
+      "runId": "ac-3b4042fc-2c9d-4cd8-bc1d-9aefe3ad4d7b",
+      "mode": "spec",
+      "gate": "blocked",
+      "checkCount": 2,
+      "report": "runs/ac-3b4042fc-2c9d-4cd8-bc1d-9aefe3ad4d7b/report.md"
+    }
+  ]
+}

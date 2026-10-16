@@ -1,0 +1,13 @@
+{
+  "runId": "comparison-benchmark-2026-10-16T12-12-14-939Z-996e6339",
+  "outputDir": "D:\\Github-Star\\heimdall\\docs\\audits\\2026-10-16\\evidence\\acceptance-comparison\\benchmark\\comparison-benchmark-2026-10-16T12-12-14-939Z-996e6339",
+  "passed": true,
+  "metrics": {
+    "unit": "fixed-comparison-case",
+    "totalCases": 12,
+    "passedCases": 12,
+    "failedCases": 0,
+    "realRuns": 12
+  },
+  "generatedAt": "2026-10-16T12:12:39.988Z"
+}

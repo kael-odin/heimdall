@@ -10,13 +10,14 @@
 4. [ROADMAP](docs/ROADMAP.md)：仍需验证或建设的事项。
 5. [项目验收工作台](docs/competition/acceptance-workbench.md)：比赛方向的可运行 MVP、输入 schema、门禁、AI 解读和演示命令。
 6. [Spec / OpenAPI 实施记录](docs/audits/2026-10-16/acceptance-spec.md)：只读契约、批准与来源追踪、固定真值、真实控制台和证据索引。
+7. [跨运行复验实施记录](docs/audits/2026-10-16/acceptance-comparison.md)：稳定检查身份、当前字节完整性、显式运行对关系、API / CLI / 控制台与固定反例。
 
 ## 代码路径
 
 - `core/src/engine-server.mjs`：引擎路由、任务编排与静态产物入口。
 - `core/src/crawler/`、`core/src/queue.mjs`、`core/src/url-canon.mjs`：侦察、捕获、页面身份与队列。
 - `core/src/verify/`、`core/src/differ/`：多视口和单页差异；跨评分版本不要直接比较。
-- `core/src/acceptance/`：Mirror / Regression 浏览器对照、Spec 只读契约执行、OpenAPI 候选与来源快照、门禁报告、持久化与可选 AI 解读；`console/src/AcceptanceWorkbench.vue` 为入口。[Spec 指南](docs/competition/acceptance-spec.md)包含实际子集与反例命令。
+- `core/src/acceptance/`：Mirror / Regression 浏览器对照、Spec 只读契约执行、OpenAPI 候选与来源快照、门禁报告、持久化、显式运行对复验与可选 AI 解读；`console/src/AcceptanceWorkbench.vue` 为入口。[Spec 指南](docs/competition/acceptance-spec.md)和[复验指南](docs/competition/acceptance-comparison.md)包含实际范围与反例命令。复验不自动批准项目基线，不建立持久缺陷工单，也不改写原始门禁。
 - `core/src/live/`：交互镜像、HAR 清洗、离线健康与导出。
 - `core/src/seo/`：站内审计与回归基线。
 - `console/src/Atlas.vue`：控制台站点上下文和任务入口；`PagesView.vue`、`DetailDock.vue`、`SiteBar.vue` 等为工作视图。

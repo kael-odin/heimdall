@@ -6,7 +6,8 @@ import { randomUUID, createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { normalizeSpecPlan, pointerTokens, SPEC_LIMITS } from './spec-schema.mjs';
 import { resolveAcceptanceUrl } from './urls.mjs';
-import { validateResponseSchema } from './response-schema.mjs';
+import { validateResponseSchema, RESPONSE_SCHEMA_LIMITS } from './response-schema.mjs';
+import { buildAcceptanceIdentity } from './identity.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const messageOf = error => String(error?.message ?? error).slice(0, 600);
@@ -86,6 +87,10 @@ export async function runSpecAcceptance(input, { runId = randomUUID(), outputDir
   const coverage = { planned, completed: 0, capped: false };
   const sourceFingerprint = digest(JSON.stringify(plan.spec.source));
   const contractFingerprint = digest(JSON.stringify(plan.spec));
+  const environment = { runner: 'node-fetch', platform: process.platform, arch: process.arch, nodeVersion: process.version,
+    maxResponseBytes: plan.maxResponseBytes, timeoutMs: plan.timeoutMs };
+  const sourceIdentity = { id: plan.spec.source.id, revision: plan.spec.source.revision, type: plan.spec.source.type,
+    sha256: plan.spec.source.sha256 ?? null };
   const event = async value => { if (onEvent) await onEvent({ ...value, runId }); };
   const add = async check => {
     checks.push(check); coverage.completed = checks.length;
@@ -106,13 +111,20 @@ export async function runSpecAcceptance(input, { runId = randomUUID(), outputDir
     for (const [index, contract] of plan.spec.checks.entries()) {
       const prefix = `spec-${index + 1}-${contract.id}`;
       const url = resolveAcceptanceUrl(plan.targetUrl, contract.path);
+      const contractDefinition = { method: contract.method, path: contract.path, expect: contract.expect };
+      const identity = buildAcceptanceIdentity({ kind: 'spec', facet: 'contract', route: contract.path, contractId: contract.id,
+        method: contract.method, viewport: 'api', environment,
+        rule: { ...contractDefinition, timeoutMs: plan.timeoutMs, maxResponseBytes: plan.maxResponseBytes,
+          runMs: SPEC_LIMITS.runMs, responseSchemaLimits: RESPONSE_SCHEMA_LIMITS, redirect: 'manual', credentials: 'omit', allowedMethods: ['GET', 'HEAD'] },
+        oracle: { kind: 'spec', source: sourceIdentity, contract: contractDefinition },
+      });
       const common = { id: prefix, title: contract.title, route: contract.path, viewport: 'api', dimension: 'behavior', severity: contract.severity,
-        oracle, evidenceLevel: 'http-reproduced', expected: contract.expect,
+        identity, oracle, evidenceLevel: 'http-reproduced', expected: contract.expect,
         reproduction: [`Use requirement ${plan.spec.source.id} at revision ${plan.spec.source.revision}.`, `${contract.method} ${safeUrl(url)} without cookies or credentials; redirects are not followed.`, 'Compare HTTP status, declared MIME and explicit JSON assertions/schema.'] };
       const evidence = { ...(sourceEvidence ? { source: sourceEvidence } : {}), contract: await writeEvidence(`${prefix}-contract.json`, { source: plan.spec.source, approved: plan.spec.approved, contract, contractFingerprint }) };
       if (!plan.spec.approved || Date.now() >= deadline) {
         if (Date.now() >= deadline) coverage.capped = true;
-        await add({ ...common, oracle: { ...oracle, kind: plan.spec.approved ? 'approved-spec' : 'draft-spec' }, status: 'blocked', verdict: plan.spec.approved ? 'environment' : 'needs_review', actual: { requested: false, reason: plan.spec.approved ? 'Run execution budget exhausted.' : 'Requirement candidate has not been explicitly approved.' }, evidence });
+        await add({ ...common, oracle: { ...oracle, kind: plan.spec.approved ? 'approved-spec' : 'draft-spec' }, status: 'blocked', verdict: plan.spec.approved ? 'environment' : 'needs_review', evaluationLimited: true, actual: { requested: false, reason: plan.spec.approved ? 'Run execution budget exhausted.' : 'Requirement candidate has not been explicitly approved.' }, evidence });
         continue;
       }
       const requestEvidence = { method: contract.method, url: safeUrl(url), redirect: 'manual', credentials: 'omit', headers: { Accept: contract.expect.contentType ?? 'application/json, */*;q=0.5' } };
@@ -171,7 +183,7 @@ export async function runSpecAcceptance(input, { runId = randomUUID(), outputDir
       evidence.response = await writeEvidence(`${prefix}-response.json`, observed);
       // Full bounded JSON stays in local authenticated evidence, not the report/AI payload.
       const actual = reportActual(observed);
-      await add({ ...common, status, verdict, actual, evidence });
+      await add({ ...common, status, verdict, evaluationLimited: observed.evaluationLimited === true, actual, evidence });
     }
     for (const [index, omission] of plan.spec.omissions.entries()) {
       const evidence = { ...(sourceEvidence ? { source: sourceEvidence } : {}), contract: await writeEvidence(`spec-omission-${index + 1}.json`, { source: plan.spec.source, omission, approved: plan.spec.approved }) };
@@ -183,6 +195,6 @@ export async function runSpecAcceptance(input, { runId = randomUUID(), outputDir
   return { schemaVersion: 1, runId, name: plan.name, mode: 'spec', targetUrl: plan.targetUrl, startedAt, endedAt: new Date().toISOString(), status: 'completed', checks, coverage,
     specSource: plan.spec.source, sourceFingerprint, contractFingerprint, specApproval: { approved: plan.spec.approved, recordedAt: startedAt },
     safety: { readOnly: true, allowedMethods: ['GET', 'HEAD'], redirects: 'not-followed', credentials: 'none', requests },
-    environment: { runner: 'node-fetch', nodeVersion: process.version, maxResponseBytes: plan.maxResponseBytes, timeoutMs: plan.timeoutMs },
+    environment,
     scope: '仅验收明确批准的 GET/HEAD 及声明的 HTTP、MIME、JSON 字段/响应 schema；不使用会话、不跟随重定向。候选、未覆盖契约、超时、超响应/验证预算均不能通过；无视觉、数据库、写操作、认证或任意业务状态机保证。来源指纹用于追溯，不代表系统已经证明原需求正确。' };
 }

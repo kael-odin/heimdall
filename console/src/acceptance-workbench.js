@@ -183,3 +183,32 @@ export function acceptanceViewport(value) {
   if (value?.width && value?.height) return `${value.width} × ${value.height}`;
   return value?.name || '全部视口';
 }
+
+export const COMPARISON_RELATIONS = [
+  { id: 'verified_passed', counter: 'verifiedPassed', label: '可靠复验通过', tone: 'ok' },
+  { id: 'still_failed', counter: 'stillFailed', label: '仍失败', tone: 'bad' },
+  { id: 'new_failure', counter: 'newFailure', label: '新增失败', tone: 'bad' },
+  { id: 'observed_failure', counter: 'observedFailure', label: '本次观测失败', tone: 'warn' },
+  { id: 'unverified', counter: 'unverified', label: '未复验', tone: 'warn' },
+  { id: 'incomparable', counter: 'incomparable', label: '不可比', tone: 'warn' },
+  { id: 'unchanged_passed', counter: 'unchangedPassed', label: '持续通过', tone: 'neutral' },
+  { id: 'observed_passed', counter: 'observedPassed', label: '本次观测通过', tone: 'neutral' },
+];
+
+/** Both runs are explicit choices; history ordering is never an approval. */
+export function acceptanceComparisonQuery(before, after, format = 'json') {
+  if (!before || !after) throw new Error('请分别选择此前运行和本次运行。');
+  const runId = /^ac-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  if (![before, after].every(value => typeof value === 'string' && runId.test(value))) throw new Error('运行 ID 无效，请刷新验收历史后重新选择。');
+  if (before === after) throw new Error('请选择两次不同的验收运行。');
+  if (!['json', 'md'].includes(format)) throw new Error('对比导出仅支持 JSON 或 Markdown。');
+  return '?' + new URLSearchParams({ before, after, format }).toString();
+}
+
+export function filterAcceptanceComparison(checks = [], { relation = 'all', query = '' } = {}) {
+  const text = String(query).trim().toLocaleLowerCase();
+  return checks.filter(check => (relation === 'all' || check.relation === relation)
+    && (!text || [check.title, check.route, check.facet, check.before?.checkId, check.after?.checkId,
+      ...(check.reasons ?? []).flatMap(reason => [reason.code, reason.message])]
+      .join(' ').toLocaleLowerCase().includes(text)));
+}

@@ -1,9 +1,29 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
+import { resolve, dirname, basename, relative, isAbsolute, sep } from 'node:path';
 import { emit } from '../emit.mjs';
-import { createAcceptanceRun, readAcceptanceRun, updateAcceptanceRun, finishAcceptanceRun, acceptanceRunDir } from './store.mjs';
+import { createAcceptanceRun, readAcceptanceRun, updateAcceptanceRun, finishAcceptanceRun, acceptanceRunDir, readAcceptanceSnapshot, ACCEPTANCE_ROOT } from './store.mjs';
+import { compareAcceptanceSnapshots, comparisonMarkdown } from './comparison.mjs';
+
+function protectAcceptanceOutput(output) {
+  const within = (root, path) => {
+    const pathFromRoot = relative(root, path);
+    return pathFromRoot === '' || pathFromRoot !== '..' && !pathFromRoot.startsWith('..' + sep) && !isAbsolute(pathFromRoot);
+  };
+  const root = resolve(ACCEPTANCE_ROOT);
+  let ancestor = output;
+  const suffix = [];
+  while (!existsSync(ancestor) && dirname(ancestor) !== ancestor) {
+    suffix.unshift(basename(ancestor));
+    ancestor = dirname(ancestor);
+  }
+  const actualOutput = resolve(realpathSync(ancestor), ...suffix);
+  const actualRoot = existsSync(root) ? realpathSync(root) : root;
+  if (within(root, output) || within(actualRoot, actualOutput)) {
+    throw new Error('Comparison output must stay outside the acceptance run store; original reports and evidence are immutable.');
+  }
+}
 
 export async function executeAcceptanceRun(runId) {
   const manifest = readAcceptanceRun(runId);
@@ -24,11 +44,32 @@ export async function executeAcceptanceRun(runId) {
   }
 }
 export async function main(args = process.argv.slice(2)) {
+  if (args[0] === '--compare') {
+    if (!args[1] || !args[2] || args[1] === args[2]) throw new Error('Usage: --compare <beforeRunId> <afterRunId> [--format json|md] [--output path]');
+    let format = 'json', output;
+    const seen = new Set();
+    for (let i = 3; i < args.length; i += 2) {
+      const key = args[i], value = args[i + 1];
+      if (!['--format', '--output'].includes(key) || !value || seen.has(key)) throw new Error('Comparison supports --format and --output; original run gates remain authoritative.');
+      seen.add(key);
+      if (key === '--format') format = value; else output = resolve(value);
+    }
+    if (!['json', 'md'].includes(format)) throw new Error('Comparison format must be json or md');
+    const before = readAcceptanceSnapshot(args[1]), after = readAcceptanceSnapshot(args[2]);
+    if (!before || !after) throw new Error('Comparison run not found');
+    if (Date.parse(before.manifest?.createdAt) > Date.parse(after.manifest?.createdAt)) throw new Error('Before run was created after the after run');
+    const comparison = compareAcceptanceSnapshots(before, after);
+    const content = format === 'md' ? comparisonMarkdown(comparison) : JSON.stringify(comparison, null, 2) + '\n';
+    if (output) { protectAcceptanceOutput(output); mkdirSync(dirname(output), { recursive: true }); writeFileSync(output, content); }
+    else process.stdout.write(content);
+    if (comparison.status !== 'completed') process.exitCode = 1;
+    return comparison;
+  }
   let runId;
   if (args[0] === '--run' && args[1]) runId = args[1];
   else if (args[0] === '--plan' && args[1]) {
     runId = createAcceptanceRun(JSON.parse(readFileSync(resolve(args[1]), 'utf8'))).runId;
-  } else throw new Error('Usage: node core/src/acceptance/cli.mjs --plan plan.json [--gate] | --run <runId>');
+  } else throw new Error('Usage: node core/src/acceptance/cli.mjs --plan plan.json [--gate] | --run <runId> | --compare <beforeRunId> <afterRunId> [--format json|md] [--output path]');
   const report = await executeAcceptanceRun(runId);
   process.stdout.write(JSON.stringify({ runId, gate: report.gate, summary: report.summary, outputDir: acceptanceRunDir(runId) }, null, 2) + '\n');
   if (args.includes('--gate') && report.gate !== 'passed') process.exitCode = 1;

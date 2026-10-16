@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-62a23a6e-7182-4d2a-b6e6-9b56ccac6836",
+  "taskId": null,
+  "name": "Renamed browser run",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:53572/browser/reference",
+  "targetUrl": "http://127.0.0.1:53572/browser/after",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-16T12:12:22.306Z",
+  "updatedAt": "2026-10-16T12:12:29.429Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Renamed browser run",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:53572/browser/reference",
+    "targetUrl": "http://127.0.0.1:53572/browser/after",
+    "routes": [
+      "/details",
+      "/home"
+    ],
+    "viewports": [
+      {
+        "name": "wide-renamed",
+        "width": 960,
+        "height": 720
+      },
+      {
+        "name": "phone-renamed",
+        "width": 375,
+        "height": 812
+      }
+    ],
+    "points": [
+      {
+        "id": "copy",
+        "title": "Renamed point",
+        "route": "/details",
+        "severity": "low",
+        "steps": [],
+        "assertions": [
+          {
+            "kind": "text",
+            "selector": "#copy",
+            "equals": "Ready"
+          }
+        ]
+      },
+      {
+        "id": "toggle",
+        "title": "Renamed point",
+        "route": "/home",
+        "severity": "low",
+        "steps": [
+          {
+            "action": "click",
+            "selector": "#toggle"
+          }
+        ],
+        "assertions": [
+          {
+            "kind": "attribute",
+            "selector": "#toggle",
+            "attribute": "aria-expanded",
+            "equals": "true"
+          }
+        ]
+      }
+    ],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 1500,
+    "settleMs": 80,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 28,
+    "passed": 26,
+    "failed": 2,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 2,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 28,
+      "total": 28,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.9995
+      },
+      "structure": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 4,
+        "passed": 2,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 16,
+        "passed": 16,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-16T12:12:29.352Z",
+  "error": null,
+  "reportSha256": "762a1b29514ae3e73626d83da396fd537140424b3d86f5f4813992304f74df32"
+}

@@ -4,7 +4,29 @@ import {
   acceptanceEvidenceEntries, acceptanceEvidenceFilename, acceptanceScore, acceptanceViewport,
   buildAcceptanceInput, filterAcceptanceChecks,
   acceptanceSpecFingerprint, buildOpenApiPreviewInput, SPEC_CHECK_EXAMPLE,
+  acceptanceComparisonQuery, filterAcceptanceComparison,
 } from '../../console/src/acceptance-workbench.js';
+
+test('comparison selection requires an explicit distinct valid pair and an allowed export format', () => {
+  const a = 'ac-00000000-0000-4000-8000-000000000001', b = 'ac-00000000-0000-4000-8000-000000000002';
+  assert.deepEqual(Object.fromEntries(new URLSearchParams(acceptanceComparisonQuery(a, b).slice(1))), { before: a, after: b, format: 'json' });
+  assert.equal(new URLSearchParams(acceptanceComparisonQuery(a, b, 'md').slice(1)).get('format'), 'md');
+  for (const pair of [['', b], [a, ''], [a, a], ['../report', b], [a + '&format=md', b]]) assert.throws(() => acceptanceComparisonQuery(...pair));
+  assert.throws(() => acceptanceComparisonQuery(a, b, 'html'));
+});
+
+test('comparison filters keep unverified and incomparable reasons searchable without hiding observations', () => {
+  const rows = [
+    { relation: 'verified_passed', title: 'Quota', route: '/quota', before: { checkId: 'old' }, after: { checkId: 'new' }, reasons: [] },
+    { relation: 'unverified', title: 'Missing route', route: '/other', reasons: [{ code: 'check-not-rerun', message: '缺测不能算修复' }] },
+    { relation: 'incomparable', title: 'Changed source', route: '/quota', reasons: [{ code: 'oracle-changed', message: '来源变化' }] },
+  ];
+  assert.equal(filterAcceptanceComparison(rows).length, 3);
+  assert.deepEqual(filterAcceptanceComparison(rows, { query: 'ORACLE-CHANGED' }).map(row => row.relation), ['incomparable']);
+  assert.deepEqual(filterAcceptanceComparison(rows, { query: '缺测' }).map(row => row.relation), ['unverified']);
+  assert.deepEqual(filterAcceptanceComparison(rows, { relation: 'verified_passed', query: 'OLD' }).map(row => row.title), ['Quota']);
+  assert.equal(rows.length, 3);
+});
 
 const form = overrides => ({ name: '首页验收', mode: 'mirror', baselineUrl: 'https://baseline.test',
   targetUrl: 'http://127.0.0.1:3000', routes: '/', points: '', maskSelectors: '', ...overrides });

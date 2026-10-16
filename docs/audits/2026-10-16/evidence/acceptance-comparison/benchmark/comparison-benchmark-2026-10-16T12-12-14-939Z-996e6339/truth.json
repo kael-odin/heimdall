@@ -1,0 +1,53 @@
+{
+  "scope": "离线复现：本机固定版本、缺陷和假关闭反例，通过真实 browser/Spec runner、store 落盘与当前证据校验完成；只证明本组声明范围，不代表真实项目检出率、根因识别或持久缺陷自动关闭。",
+  "cases": [
+    {
+      "id": "browser-reordered-fixed-and-new",
+      "description": "真实浏览器：计划重排仍配对，原视觉和按钮问题复验通过，另一操作点出现新增失败。"
+    },
+    {
+      "id": "partial-viewports-do-not-close-phone",
+      "description": "仅桌面通过不能关闭旧手机视口问题；每个视口独立保留复验事实。"
+    },
+    {
+      "id": "deleted-route-is-unverified",
+      "description": "删除原失败路由不算修复。"
+    },
+    {
+      "id": "same-url-reference-drift-incomparable",
+      "description": "相同参考 URL 被改成目标外观后视觉通过，也不能证明旧视觉问题已修复。"
+    },
+    {
+      "id": "api-reordered-fixed-and-new",
+      "description": "真实 Spec：合同重排、目标版本和来源标题变化不破坏身份；一个合同修复，另一合同新增失败。"
+    },
+    {
+      "id": "same-contract-still-failed",
+      "description": "同一合同仍违反断言，保持仍失败。"
+    },
+    {
+      "id": "weaker-criteria-incomparable",
+      "description": "删除 JSON 业务成功断言后通过属于判据变化，不属于修复。"
+    },
+    {
+      "id": "changed-source-incomparable",
+      "description": "同合同的来源版本变化，必须保留不可比原因。"
+    },
+    {
+      "id": "deleted-contract-is-unverified",
+      "description": "删除旧失败合同不能算修复，也不能由健康 HTTP 状态替代业务断言。"
+    },
+    {
+      "id": "execution-limit-is-not-fixed",
+      "description": "同规则下的响应预算阻塞不能关闭此前 BUG。"
+    },
+    {
+      "id": "tampered-evidence-blocks-retest",
+      "description": "完成后响应证据被修改，即使历史 gate 仍在，也必须阻止复验修复声明。"
+    },
+    {
+      "id": "original-gates-and-reports-unchanged",
+      "description": "比较和证据验证不改写原报告或原门禁；篡改反例恢复原证据后仍能通过完整性校验。"
+    }
+  ]
+}

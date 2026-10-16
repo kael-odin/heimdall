@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -75,8 +76,14 @@ test('acceptance runner reproduces missing controls, wrong ARIA, text, HTTP and 
   assert.equal(report.checks.length, 45);
   assert.equal(report.coverage.planned, 45);
   assert.equal(report.coverage.completed, 45);
-  assert.deepEqual({ ...report.environment, browserVersion: undefined }, { browser: 'chromium', browserVersion: undefined, locale: 'zh-CN', timezoneId: 'Asia/Hong_Kong', colorScheme: 'light', reducedMotion: 'reduce' });
+  assert.deepEqual(report.environment, { platform: process.platform, arch: process.arch, nodeVersion: process.version,
+    browser: 'chromium', browserVersion: report.environment.browserVersion, playwrightVersion: report.environment.playwrightVersion,
+    locale: 'zh-CN', timezoneId: 'Asia/Hong_Kong', colorScheme: 'light', reducedMotion: 'reduce' });
   assert.match(report.environment.browserVersion, /^\d+\./);
+  assert.match(report.environment.playwrightVersion, /^\d+\./);
+  assert.ok(report.checks.every(check => check.identity?.kind === 'browser' && check.identity.version === 1));
+  assert.ok(report.checks.every(check => check.identity.viewport.width === 375 && check.identity.viewport.height === 812));
+  assert.equal(report.checks.find(check => check.dimension === 'behavior').identity.pointId, 'menu');
   assert.ok(byRoute('/good').every(check => check.status === 'passed'), JSON.stringify(byRoute('/good')));
   for (const route of ['/missing', '/aria', '/text']) assert.ok(byRoute(route).some(check => check.dimension === 'behavior' && check.verdict === 'bug'), `missing behavior bug: ${route}`);
   assert.ok(byRoute('/http404').some(check => check.id.endsWith('navigation') && check.verdict === 'bug'));
@@ -85,7 +92,11 @@ test('acceptance runner reproduces missing controls, wrong ARIA, text, HTTP and 
   for (const route of ['/console', '/overflow', '/http404']) assert.ok(byRoute(route).filter(check => ['visual', 'structure'].includes(check.dimension)).every(check => check.status === 'blocked'));
   const visual = byRoute('/good').find(check => check.dimension === 'visual');
   assert.equal(visual.score, 1);
-  assert.ok((await readFile(join(outputDir, visual.evidence.baselineScreenshot))).length > 100);
+  const baselineImage = await readFile(join(outputDir, visual.evidence.baselineScreenshot));
+  assert.ok(baselineImage.length > 100);
+  const { hashAcceptanceValue } = await import('../src/acceptance/identity.mjs');
+  assert.equal(visual.identity.oracleKey, hashAcceptanceValue({ kind: 'runtime', source: plan.baselineUrl,
+    baselineScreenshotSha256: createHash('sha256').update(baselineImage).digest('hex') }));
   assert.ok((await readdir(outputDir)).some(file => file.endsWith('-diff.png')));
   const serialized = JSON.parse(await readFile(join(outputDir, visual.evidence.baselineDetails), 'utf8'));
   assert.equal(serialized.snapshot.title, 'Acceptance fixture');
@@ -94,6 +105,26 @@ test('acceptance runner reproduces missing controls, wrong ARIA, text, HTTP and 
   assert.ok(events.every(event => typeof event.message === 'string' && !Object.hasOwn(event, 'check')));
   assert.ok(events.some(event => event.kind === 'acceptance-check' && event.completed > 0 && event.total === report.coverage.planned));
   assert.ok(Object.values(visual.evidence).every(value => value === null || typeof value === 'string'));
+});
+
+test('browser identities survive reordered routes, points, renamed viewports and a different target entry', { timeout: 25_000 }, async t => {
+  const { origin, outputDir } = await fixture(t);
+  const points = [
+    { id: 'copy', title: 'Original title', route: '/text', assertions: [{ kind: 'text', selector: '#status', equals: 'Ready' }] },
+    { id: 'menu', title: 'Visible menu', route: '/good', assertions: [{ kind: 'visible', selector: '#menu' }] },
+  ];
+  const first = await runAcceptance(planFor(origin, { routes: ['/good', '/text'], points }), { outputDir: join(outputDir, 'first') });
+  const second = await runAcceptance(planFor(origin, { name: 'Renamed run', routes: ['/text', '/good'],
+    targetUrl: `${origin}/target/?version=next`, viewports: [{ name: 'phone-renamed', width: 375, height: 812 }],
+    points: [...points].reverse().map(point => ({ ...point, title: 'Changed display title', severity: 'low' })),
+  }), { outputDir: join(outputDir, 'second') });
+  assert.equal(first.checks.length, second.checks.length);
+  for (const check of first.checks) {
+    const other = second.checks.find(item => item.identity.contextKey === check.identity.contextKey);
+    assert.ok(other, `${check.route} ${check.identity.facet} ${check.identity.pointId ?? ''}`);
+    assert.deepEqual(other.identity, check.identity);
+    assert.notEqual(other.id, check.id);
+  }
 });
 
 test('acceptance runner refuses to attribute baseline failures, shared errors, dynamic noise and blocked writes', { timeout: 45_000 }, async t => {

@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-25515d44-458f-424d-b7f0-79593f50eccb",
+  "name": "Renamed API run",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:53572/api/after",
+  "startedAt": "2026-10-16T12:12:39.367Z",
+  "endedAt": "2026-10-16T12:12:39.373Z",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "spec-1-items",
+      "title": "Renamed contract",
+      "route": "/items",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "low",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "7b97c2bd44203168bbbfb08cfb168eb33333b67411a590a924531e57e6dcb1c3",
+        "contextKey": "da3627ef97eee0798fae4bf49132b2e9ea831e18c2d1990a32f99e32e2072e0d",
+        "ruleKey": "af0922fbb6c03cee14252be08d099ec3c50dda501f3dca115e4a4de209712e43",
+        "oracleKey": "b02c3ac8fdfbf1016646b102626d136b18df03c8e7fe538ea1d12f20fffba4a2",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "items",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "REQ-COMPARISON",
+        "revision": "v1",
+        "sourceFingerprint": "3d7caeb496ef8902e09039dbd8b202f64c885b4ef3ca544bd8721a6f673c77a3",
+        "documentSha256": null,
+        "contractFingerprint": "511bfebfbd44d2f6875377c25646a07e9b7b2d498119c42a799604cacea06506"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json"
+      },
+      "reproduction": [
+        "Use requirement REQ-COMPARISON at revision v1.",
+        "GET http://127.0.0.1:53572/api/after/items without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "passed",
+      "verdict": "match",
+      "evaluationLimited": false,
+      "actual": {
+        "requested": true,
+        "httpStatus": 200,
+        "contentType": "application/json",
+        "redirectNotFollowed": false,
+        "hasLocation": false,
+        "mismatches": [],
+        "bytes": 22,
+        "bodySha256": "cddd23c146601b8d23bb2cd88910c7203a540b49bda683b9ba99c699f9aef089",
+        "assertions": []
+      },
+      "evidence": {
+        "contract": "spec-1-items-contract.json",
+        "request": "spec-1-items-request.json",
+        "response": "spec-1-items-response.json"
+      }
+    },
+    {
+      "id": "spec-2-quota",
+      "title": "Renamed contract",
+      "route": "/quota",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "low",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "d2ad51a39ca2d9b1afec0dc74d86dd9a4b1cf678b624e3f0206e4f91f50fbe0b",
+        "contextKey": "d0fe0253a44137d6175e95596d8cf89270def89be5a5b71c09286e21fe4afa1a",
+        "ruleKey": "25b18af18290f878a64c3b591a578b11680be2a0bd785a33f91c642ee284efa9",
+        "oracleKey": "75e030d48968a8879f614a14869e017cc196b574afef459573a01036ae1d3481",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "quota",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "REQ-COMPARISON",
+        "revision": "v1",
+        "sourceFingerprint": "3d7caeb496ef8902e09039dbd8b202f64c885b4ef3ca544bd8721a6f673c77a3",
+        "documentSha256": null,
+        "contractFingerprint": "511bfebfbd44d2f6875377c25646a07e9b7b2d498119c42a799604cacea06506"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json"
+      },
+      "reproduction": [
+        "Use requirement REQ-COMPARISON at revision v1.",
+        "GET http://127.0.0.1:53572/api/after/quota without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "passed",
+      "verdict": "match",
+      "evaluationLimited": false,
+      "actual": {
+        "requested": true,
+        "httpStatus": 200,
+        "contentType": "application/json",
+        "redirectNotFollowed": false,
+        "hasLocation": false,
+        "mismatches": [],
+        "bytes": 20,
+        "bodySha256": "dc68b0bf4d7b177b03f9ab79472c6b7136b09f8b41c283a6e1f20da06c282719",
+        "assertions": []
+      },
+      "evidence": {
+        "contract": "spec-2-quota-contract.json",
+        "request": "spec-2-quota-request.json",
+        "response": "spec-2-quota-response.json"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 2,
+    "completed": 2,
+    "capped": false
+  },
+  "specSource": {
+    "id": "REQ-COMPARISON",
+    "revision": "v1",
+    "type": "manual",
+    "title": "Renamed source title"
+  },
+  "sourceFingerprint": "3d7caeb496ef8902e09039dbd8b202f64c885b4ef3ca544bd8721a6f673c77a3",
+  "contractFingerprint": "511bfebfbd44d2f6875377c25646a07e9b7b2d498119c42a799604cacea06506",
+  "specApproval": {
+    "approved": true,
+    "recordedAt": "2026-10-16T12:12:39.367Z"
+  },
+  "safety": {
+    "readOnly": true,
+    "allowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "redirects": "not-followed",
+    "credentials": "none",
+    "requests": 2
+  },
+  "environment": {
+    "runner": "node-fetch",
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "maxResponseBytes": 4096,
+    "timeoutMs": 1000
+  },
+  "scope": "离线复现：本机固定版本、缺陷和假关闭反例，通过真实 browser/Spec runner、store 落盘与当前证据校验完成；只证明本组声明范围，不代表真实项目检出率、根因识别或持久缺陷自动关闭。",
+  "planFingerprint": "e4968039ef45ef10cbc3505f76897335aea343571b52c3b9e59b206964585a21",
+  "verifierFingerprint": "8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d",
+  "evidenceManifest": [
+    {
+      "file": "spec-1-items-contract.json",
+      "bytes": 465,
+      "sha256": "6eb18a76f4dd99fdd92b1d75f9b625b09624f901be07886a4ab158438ebb7360"
+    },
+    {
+      "file": "spec-1-items-request.json",
+      "bytes": 175,
+      "sha256": "4d437b6a20a3aa8df3e35e7df39c609c6fa7807acc47d2438e15d982f77caf7a"
+    },
+    {
+      "file": "spec-1-items-response.json",
+      "bytes": 326,
+      "sha256": "6e71a40753ffffac871cc3df0f8e49052c79fc6acecab05972f28284ff318792"
+    },
+    {
+      "file": "spec-2-quota-contract.json",
+      "bytes": 465,
+      "sha256": "322be392ac0e7319d0589514957047264db5f0319b23724a298d1af3164845b0"
+    },
+    {
+      "file": "spec-2-quota-request.json",
+      "bytes": 175,
+      "sha256": "1903f0501417e282178b10acd2267653f9d0f98afc02f92f2800afe95c020961"
+    },
+    {
+      "file": "spec-2-quota-response.json",
+      "bytes": 324,
+      "sha256": "7d1f76b6c9b90a9ab390d44cc942436fe3d71cca72e6bbdcfe397f63f10e69d3"
+    }
+  ],
+  "gate": "passed",
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 2,
+      "total": 2,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

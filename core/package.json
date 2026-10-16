@@ -22,6 +22,8 @@
     "acceptance:smoke": "node scripts/smoke-acceptance-console.mjs",
     "acceptance:spec:benchmark": "node scripts/benchmark-acceptance-spec.mjs",
     "acceptance:spec:smoke": "node scripts/smoke-acceptance-spec-console.mjs",
+    "acceptance:comparison:benchmark": "node scripts/benchmark-acceptance-comparison.mjs",
+    "acceptance:comparison:smoke": "node scripts/smoke-acceptance-comparison-console.mjs",
     "test": "node --test",
     "lint": "node scripts/check-syntax.mjs",
     "check:docs": "node scripts/check-markdown-links.mjs",

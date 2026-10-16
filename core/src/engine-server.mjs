@@ -49,7 +49,8 @@ import { cloneDocFile } from './clone-doc.mjs';
 import { readCloneScope } from './clone-scope.mjs';
 import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
 import { previewOpenApi } from './acceptance/openapi.mjs';
-import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, recoverAcceptanceRuns, acceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage } from './acceptance/store.mjs';
+import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, recoverAcceptanceRuns, acceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshot } from './acceptance/store.mjs';
+import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/comparison.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 recoverAcceptanceRuns();
@@ -1095,6 +1096,38 @@ const handleRequest = async (req, res) => {
   }
 
   // Independent project acceptance: persistent runs, protected evidence, bounded worker.
+  if (u.pathname === '/api/acceptance/comparisons') {
+    if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
+    if ([...u.searchParams.keys()].some(key => !['before', 'after', 'format'].includes(key))
+      || ['before', 'after', 'format'].some(key => u.searchParams.getAll(key).length > 1)) {
+      return json(res, 400, { code: 'INVALID_INPUT', error: '对比参数只支持 before、after 和 format，不能重复。' });
+    }
+    const beforeId = u.searchParams.get('before');
+    const afterId = u.searchParams.get('after');
+    const format = u.searchParams.get('format') ?? 'json';
+    if (!beforeId || !afterId || !['json', 'md'].includes(format)) return json(res, 400, { code: 'INVALID_INPUT', error: '请明确选择两次不同的运行，格式支持 json 或 md。' });
+    try {
+      if (beforeId === afterId) return json(res, 400, { code: 'SAME_RUN', error: '此前运行与本次运行不能相同。' });
+      const before = readAcceptanceSnapshot(beforeId);
+      const after = readAcceptanceSnapshot(afterId);
+      if (!before || !after) return json(res, 404, { code: 'RUN_NOT_FOUND', error: '所选运行不存在。' });
+      const beforeTime = Date.parse(before.manifest?.createdAt);
+      const afterTime = Date.parse(after.manifest?.createdAt);
+      if (Number.isFinite(beforeTime) && Number.isFinite(afterTime) && beforeTime > afterTime) {
+        return json(res, 400, { code: 'RUN_ORDER', error: '此前运行的创建时间晚于本次运行，请核对选择。' });
+      }
+      const comparison = compareAcceptanceSnapshots(before, after);
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      if (format === 'md') {
+        res.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8', 'Content-Disposition': 'attachment; filename="acceptance-comparison.md"' });
+        return res.end(comparisonMarkdown(comparison));
+      }
+      return json(res, 200, comparison);
+    } catch (error) {
+      return json(res, 400, { code: error.code ?? 'COMPARISON_UNAVAILABLE', error: '无法对比所选运行，请核对运行身份、报告和证据是否可用。' });
+    }
+  }
   if (u.pathname === '/api/acceptance/openapi/preview') {
     if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
     return readJsonBody(req, res, input => {

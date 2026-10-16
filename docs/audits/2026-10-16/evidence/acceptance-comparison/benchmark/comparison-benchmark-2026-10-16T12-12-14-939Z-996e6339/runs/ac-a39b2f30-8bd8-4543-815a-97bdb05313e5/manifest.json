@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-a39b2f30-8bd8-4543-815a-97bdb05313e5",
+  "taskId": null,
+  "name": "Browser before",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:53572/browser/reference",
+  "targetUrl": "http://127.0.0.1:53572/browser/before",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-16T12:12:37.234Z",
+  "updatedAt": "2026-10-16T12:12:39.107Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Browser before",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:53572/browser/reference",
+    "targetUrl": "http://127.0.0.1:53572/browser/before",
+    "routes": [
+      "/home"
+    ],
+    "viewports": [
+      {
+        "name": "mobile",
+        "width": 375,
+        "height": 812
+      }
+    ],
+    "points": [
+      {
+        "id": "toggle",
+        "title": "Toggle exposes expanded state",
+        "route": "/home",
+        "severity": "high",
+        "steps": [
+          {
+            "action": "click",
+            "selector": "#toggle"
+          }
+        ],
+        "assertions": [
+          {
+            "kind": "attribute",
+            "selector": "#toggle",
+            "attribute": "aria-expanded",
+            "equals": "true"
+          }
+        ]
+      }
+    ],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 1500,
+    "settleMs": 80,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 7,
+    "passed": 6,
+    "failed": 1,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 1,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 7,
+      "total": 7,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 1
+      },
+      "structure": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-16T12:12:39.078Z",
+  "error": null,
+  "reportSha256": "6f98c3f03886e42b0fadd895a903299ed42ac7a6564c4c0d41a3d726d15aadf1"
+}

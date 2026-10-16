@@ -1,0 +1,1109 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-299d0b09-3b50-472b-9fc8-c2434f408de5",
+  "name": "Renamed browser run",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:53572/browser/reference",
+  "targetUrl": "http://127.0.0.1:53572/browser/after",
+  "startedAt": "2026-10-16T12:12:33.601Z",
+  "endedAt": "2026-10-16T12:12:37.072Z",
+  "status": "completed",
+  "checks": [
+    {
+      "route": "/details",
+      "viewport": "wide-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-wide-renamed-navigation",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "navigation",
+        "caseKey": "af7ea20587458cb77405bca752131515ab3bf4c56392111170dc78c06d314326",
+        "contextKey": "9af7821dba32fd456d285ebe83c67b05afc164a62edccac593b2972f15c182a1",
+        "ruleKey": "a503cc77896c3a3d3b3ee236a6ed9139aa4aee3cc63cd2e8e08e9a9ba972fb96",
+        "oracleKey": "a5e069b5240d71f49fff7b2a0981a939048b893958f56ff3ed7bc43abb2674bb",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 720
+        }
+      },
+      "title": "页面导航与 HTTP 状态",
+      "dimension": "health",
+      "expected": 200,
+      "actual": 200,
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 960×720.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-wide-renamed-baseline.png",
+        "targetScreenshot": "route-1-1-wide-renamed-target.png",
+        "baselineDetails": "route-1-1-wide-renamed-baseline.json",
+        "targetDetails": "route-1-1-wide-renamed-target.json",
+        "baselineRepeat": "route-1-1-wide-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-1-wide-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "wide-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-wide-renamed-console",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "console",
+        "caseKey": "cad3e48dab77d4703b77136d207f799669be07207d40d3dd8fa1f7a34a1814d2",
+        "contextKey": "ad2a64f4bd68ad8ec1181188669ef4693961e05a76f2fada7d0e74ffce8d36e3",
+        "ruleKey": "962a6ec87c8aafd85dbf72e1b8f10111ed0eb61e3c21e78efba3019f6cf5f8b5",
+        "oracleKey": "d66b55797bd743e0cbb5889636068079de6815b0fe306657e37b1b33b7ec9208",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 720
+        }
+      },
+      "title": "浏览器脚本与控制台错误",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 960×720.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-wide-renamed-baseline.png",
+        "targetScreenshot": "route-1-1-wide-renamed-target.png",
+        "baselineDetails": "route-1-1-wide-renamed-baseline.json",
+        "targetDetails": "route-1-1-wide-renamed-target.json",
+        "baselineRepeat": "route-1-1-wide-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-1-wide-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "wide-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-wide-renamed-network",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "network",
+        "caseKey": "5b68257611e1455f7aa508777a374ad51667f53489899e44724ff0cf29577f4d",
+        "contextKey": "5d25c0030f57eabf28eb214b067c2a4c9147f060fb0d9b98c9f89db73ab0f04f",
+        "ruleKey": "28ed4726b70af808ce438ef0ea7dbcc2463060176e1cf91f6f3dfb0dbf5f5a0a",
+        "oracleKey": "d66b55797bd743e0cbb5889636068079de6815b0fe306657e37b1b33b7ec9208",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 720
+        }
+      },
+      "title": "资源与只读网络请求",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 960×720.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-wide-renamed-baseline.png",
+        "targetScreenshot": "route-1-1-wide-renamed-target.png",
+        "baselineDetails": "route-1-1-wide-renamed-baseline.json",
+        "targetDetails": "route-1-1-wide-renamed-target.json",
+        "baselineRepeat": "route-1-1-wide-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-1-wide-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "wide-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-wide-renamed-overflow",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "overflow",
+        "caseKey": "54aa2c26915ec62b83b9ad1913d9c38b6a8a3948e8fe88ca0d1fffe489f0d873",
+        "contextKey": "64a0ec721fea4607d1b2eff33e7d6c372b8a83bafb21ac2382bb56a5bc7331e9",
+        "ruleKey": "f471f4f90320165d084765f5ebb74e90891ab4d64b0365e0cb9bf7d5be188b2b",
+        "oracleKey": "d66b55797bd743e0cbb5889636068079de6815b0fe306657e37b1b33b7ec9208",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 720
+        }
+      },
+      "title": "视口水平溢出",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 960×720.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-wide-renamed-baseline.png",
+        "targetScreenshot": "route-1-1-wide-renamed-target.png",
+        "baselineDetails": "route-1-1-wide-renamed-baseline.json",
+        "targetDetails": "route-1-1-wide-renamed-target.json",
+        "baselineRepeat": "route-1-1-wide-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-1-wide-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "wide-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-wide-renamed-structure",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "structure",
+        "caseKey": "1e1c303f77e2b0a2437c3809ffa716888a0ae027ae3ef3b381ff697f0a331a9e",
+        "contextKey": "5b5c1f21cddb5caf78ae789d3e645be795d1845b2f369aba4d4a31356ef8e9b2",
+        "ruleKey": "8bc5105ca1f86cca0bdff310401e00f9ba0bc2c078658e0885843e50037a4ba0",
+        "oracleKey": "4cdece7060787222708eb5a16218563145c97df9ebea1bac429fa478d139563f",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 720
+        }
+      },
+      "title": "标题、主标题与关键控件语义",
+      "dimension": "structure",
+      "expected": {
+        "title": "Comparison fixture",
+        "headings": [
+          "Project details"
+        ],
+        "controls": [
+          {
+            "path": "#toggle",
+            "tag": "button",
+            "role": null,
+            "label": "Toggle details",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          }
+        ]
+      },
+      "actual": {
+        "title": "Comparison fixture",
+        "headings": [
+          "Project details"
+        ],
+        "controls": [
+          {
+            "path": "#toggle",
+            "tag": "button",
+            "role": null,
+            "label": "Toggle details",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          }
+        ],
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 691200,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 691200,
+            "samplingCapped": false
+          }
+        }
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 960×720.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-wide-renamed-baseline.png",
+        "targetScreenshot": "route-1-1-wide-renamed-target.png",
+        "baselineDetails": "route-1-1-wide-renamed-baseline.json",
+        "targetDetails": "route-1-1-wide-renamed-target.json",
+        "baselineRepeat": "route-1-1-wide-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-1-wide-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "wide-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-wide-renamed-visual",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "98814d72b7982bf467e72d68b975bf9b4a86ea32c70b65a6360cccf69cfdd7b2",
+        "contextKey": "cdf0600a6b475306fc5cb234642b3d577c96b77fc462337e8757e5f2b7c6b4e8",
+        "ruleKey": "30c9a2419029466f2d9a8ad802aa64ef7f2fbd4a90161790c4fb4d9f7ca6a646",
+        "oracleKey": "de11187590871b4a8c76845cb002bf8e00698c500919e1df1483872a7839bcaa",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 720
+        }
+      },
+      "title": "页面视觉还原度",
+      "dimension": "visual",
+      "expected": {
+        "minimumScore": 0.97,
+        "stabilityMinimum": 0.9995,
+        "maximumMaskedRatio": 0.8,
+        "captureBudget": {
+          "maxPixels": 12000000,
+          "maxHeight": 12000
+        }
+      },
+      "actual": {
+        "score": 0.9994,
+        "baselineStability": 1,
+        "targetStability": 1,
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 691200,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 691200,
+            "samplingCapped": false
+          }
+        },
+        "capture": {
+          "baseline": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 960,
+              "height": 720
+            }
+          },
+          "target": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 960,
+              "height": 720
+            }
+          }
+        },
+        "eligible": true
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 960×720.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-wide-renamed-baseline.png",
+        "targetScreenshot": "route-1-1-wide-renamed-target.png",
+        "baselineDetails": "route-1-1-wide-renamed-baseline.json",
+        "targetDetails": "route-1-1-wide-renamed-target.json",
+        "baselineRepeat": "route-1-1-wide-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-1-wide-renamed-target-repeat.png",
+        "diff": "route-1-1-wide-renamed-diff.png"
+      },
+      "score": 0.9994
+    },
+    {
+      "route": "/details",
+      "viewport": "wide-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-wide-renamed-point-1-copy",
+      "title": "Renamed point",
+      "dimension": "behavior",
+      "severity": "low",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "behavior",
+        "caseKey": "9ac81bd9fbc628e46381456df8beb7f9c298b993535e4eb68fd48f0563f9b4ac",
+        "contextKey": "990afbc7fda3ee70a2e99077851a53b4ec9f2d60ab148bf3e8ceabc11fedea58",
+        "ruleKey": "d7ca954ca1a5f331fee00421455e19c51f09c432c1697b935204716f0659163e",
+        "oracleKey": "72d2f68240e0873f14ad56bb5084f51b9a97d695e4207b681dfeb49742d8fcc9",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 720
+        },
+        "pointId": "copy"
+      },
+      "status": "failed",
+      "verdict": "bug",
+      "evaluationLimited": false,
+      "expected": {
+        "stepsComplete": true,
+        "assertions": [
+          {
+            "kind": "text",
+            "selector": "#copy",
+            "expected": "Ready",
+            "actual": "Ready",
+            "passed": true
+          }
+        ],
+        "httpStatus": 200
+      },
+      "actual": {
+        "stepsComplete": true,
+        "stepError": null,
+        "assertions": [
+          {
+            "kind": "text",
+            "selector": "#copy",
+            "expected": "Ready",
+            "actual": "Unexpected value",
+            "passed": false
+          }
+        ],
+        "httpStatus": 200,
+        "navigationError": null,
+        "errors": [],
+        "network": [],
+        "overflow": false,
+        "blockedRequests": []
+      },
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 960×720.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-wide-renamed-point-1-baseline.png",
+        "targetScreenshot": "route-1-1-wide-renamed-point-1-target.png",
+        "baselineDetails": "route-1-1-wide-renamed-point-1-baseline.json",
+        "targetDetails": "route-1-1-wide-renamed-point-1-target.json",
+        "baselineRepeat": "route-1-1-wide-renamed-point-1-baseline-repeat.png",
+        "targetRepeat": "route-1-1-wide-renamed-point-1-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "phone-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-phone-renamed-navigation",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "navigation",
+        "caseKey": "af7ea20587458cb77405bca752131515ab3bf4c56392111170dc78c06d314326",
+        "contextKey": "eb03592f1b7c0adb96cd6082cb5be6d7cd9fbffa93c0b6484233674df394fd02",
+        "ruleKey": "a503cc77896c3a3d3b3ee236a6ed9139aa4aee3cc63cd2e8e08e9a9ba972fb96",
+        "oracleKey": "a5e069b5240d71f49fff7b2a0981a939048b893958f56ff3ed7bc43abb2674bb",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "页面导航与 HTTP 状态",
+      "dimension": "health",
+      "expected": 200,
+      "actual": 200,
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 375×812.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-phone-renamed-baseline.png",
+        "targetScreenshot": "route-1-2-phone-renamed-target.png",
+        "baselineDetails": "route-1-2-phone-renamed-baseline.json",
+        "targetDetails": "route-1-2-phone-renamed-target.json",
+        "baselineRepeat": "route-1-2-phone-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-2-phone-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "phone-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-phone-renamed-console",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "console",
+        "caseKey": "cad3e48dab77d4703b77136d207f799669be07207d40d3dd8fa1f7a34a1814d2",
+        "contextKey": "fa7671e19ca90bb2cee4dd9a079edf9b4bf1743218cfed447ee68d4e136082eb",
+        "ruleKey": "962a6ec87c8aafd85dbf72e1b8f10111ed0eb61e3c21e78efba3019f6cf5f8b5",
+        "oracleKey": "d66b55797bd743e0cbb5889636068079de6815b0fe306657e37b1b33b7ec9208",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "浏览器脚本与控制台错误",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 375×812.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-phone-renamed-baseline.png",
+        "targetScreenshot": "route-1-2-phone-renamed-target.png",
+        "baselineDetails": "route-1-2-phone-renamed-baseline.json",
+        "targetDetails": "route-1-2-phone-renamed-target.json",
+        "baselineRepeat": "route-1-2-phone-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-2-phone-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "phone-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-phone-renamed-network",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "network",
+        "caseKey": "5b68257611e1455f7aa508777a374ad51667f53489899e44724ff0cf29577f4d",
+        "contextKey": "1e37bba1d07f96e4606e2f513a7d5a57ca74592b902aa8fe469c9ae10eebd46c",
+        "ruleKey": "28ed4726b70af808ce438ef0ea7dbcc2463060176e1cf91f6f3dfb0dbf5f5a0a",
+        "oracleKey": "d66b55797bd743e0cbb5889636068079de6815b0fe306657e37b1b33b7ec9208",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "资源与只读网络请求",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 375×812.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-phone-renamed-baseline.png",
+        "targetScreenshot": "route-1-2-phone-renamed-target.png",
+        "baselineDetails": "route-1-2-phone-renamed-baseline.json",
+        "targetDetails": "route-1-2-phone-renamed-target.json",
+        "baselineRepeat": "route-1-2-phone-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-2-phone-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "phone-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-phone-renamed-overflow",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "overflow",
+        "caseKey": "54aa2c26915ec62b83b9ad1913d9c38b6a8a3948e8fe88ca0d1fffe489f0d873",
+        "contextKey": "59b57e9d4451986c5a8079eb1edc412c24eaee4c9c6016a3585b22f83005953c",
+        "ruleKey": "f471f4f90320165d084765f5ebb74e90891ab4d64b0365e0cb9bf7d5be188b2b",
+        "oracleKey": "d66b55797bd743e0cbb5889636068079de6815b0fe306657e37b1b33b7ec9208",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "视口水平溢出",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 375×812.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-phone-renamed-baseline.png",
+        "targetScreenshot": "route-1-2-phone-renamed-target.png",
+        "baselineDetails": "route-1-2-phone-renamed-baseline.json",
+        "targetDetails": "route-1-2-phone-renamed-target.json",
+        "baselineRepeat": "route-1-2-phone-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-2-phone-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "phone-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-phone-renamed-structure",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "structure",
+        "caseKey": "1e1c303f77e2b0a2437c3809ffa716888a0ae027ae3ef3b381ff697f0a331a9e",
+        "contextKey": "3c9ac3caa8a844da7ce35314741e553ad1187bbc8187c2609a10e2fa98122be4",
+        "ruleKey": "8bc5105ca1f86cca0bdff310401e00f9ba0bc2c078658e0885843e50037a4ba0",
+        "oracleKey": "4cdece7060787222708eb5a16218563145c97df9ebea1bac429fa478d139563f",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "标题、主标题与关键控件语义",
+      "dimension": "structure",
+      "expected": {
+        "title": "Comparison fixture",
+        "headings": [
+          "Project details"
+        ],
+        "controls": [
+          {
+            "path": "#toggle",
+            "tag": "button",
+            "role": null,
+            "label": "Toggle details",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          }
+        ]
+      },
+      "actual": {
+        "title": "Comparison fixture",
+        "headings": [
+          "Project details"
+        ],
+        "controls": [
+          {
+            "path": "#toggle",
+            "tag": "button",
+            "role": null,
+            "label": "Toggle details",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          }
+        ],
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 304500,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 304500,
+            "samplingCapped": false
+          }
+        }
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 375×812.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-phone-renamed-baseline.png",
+        "targetScreenshot": "route-1-2-phone-renamed-target.png",
+        "baselineDetails": "route-1-2-phone-renamed-baseline.json",
+        "targetDetails": "route-1-2-phone-renamed-target.json",
+        "baselineRepeat": "route-1-2-phone-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-2-phone-renamed-target-repeat.png"
+      }
+    },
+    {
+      "route": "/details",
+      "viewport": "phone-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-phone-renamed-visual",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "98814d72b7982bf467e72d68b975bf9b4a86ea32c70b65a6360cccf69cfdd7b2",
+        "contextKey": "c7c035b0a14b3c414d4496b9a35b5a5610ad81c6bf076e02fe7dc3fb036b5450",
+        "ruleKey": "30c9a2419029466f2d9a8ad802aa64ef7f2fbd4a90161790c4fb4d9f7ca6a646",
+        "oracleKey": "c59d0a735f44875b4d4c2c27107635fece8d7241cb5be4d9b0d1ec8764b70fa3",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "页面视觉还原度",
+      "dimension": "visual",
+      "expected": {
+        "minimumScore": 0.97,
+        "stabilityMinimum": 0.9995,
+        "maximumMaskedRatio": 0.8,
+        "captureBudget": {
+          "maxPixels": 12000000,
+          "maxHeight": 12000
+        }
+      },
+      "actual": {
+        "score": 0.9986,
+        "baselineStability": 1,
+        "targetStability": 1,
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 304500,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 304500,
+            "samplingCapped": false
+          }
+        },
+        "capture": {
+          "baseline": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 375,
+              "height": 812
+            }
+          },
+          "target": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 375,
+              "height": 812
+            }
+          }
+        },
+        "eligible": true
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 375×812.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-phone-renamed-baseline.png",
+        "targetScreenshot": "route-1-2-phone-renamed-target.png",
+        "baselineDetails": "route-1-2-phone-renamed-baseline.json",
+        "targetDetails": "route-1-2-phone-renamed-target.json",
+        "baselineRepeat": "route-1-2-phone-renamed-baseline-repeat.png",
+        "targetRepeat": "route-1-2-phone-renamed-target-repeat.png",
+        "diff": "route-1-2-phone-renamed-diff.png"
+      },
+      "score": 0.9986
+    },
+    {
+      "route": "/details",
+      "viewport": "phone-renamed",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:53572/browser/reference"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-phone-renamed-point-1-copy",
+      "title": "Renamed point",
+      "dimension": "behavior",
+      "severity": "low",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "behavior",
+        "caseKey": "9ac81bd9fbc628e46381456df8beb7f9c298b993535e4eb68fd48f0563f9b4ac",
+        "contextKey": "a08032ae6403083f6d5161684c6ddbedee8365032ccd0c04ab46c3589b22c92f",
+        "ruleKey": "d7ca954ca1a5f331fee00421455e19c51f09c432c1697b935204716f0659163e",
+        "oracleKey": "72d2f68240e0873f14ad56bb5084f51b9a97d695e4207b681dfeb49742d8fcc9",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "pointId": "copy"
+      },
+      "status": "failed",
+      "verdict": "bug",
+      "evaluationLimited": false,
+      "expected": {
+        "stepsComplete": true,
+        "assertions": [
+          {
+            "kind": "text",
+            "selector": "#copy",
+            "expected": "Ready",
+            "actual": "Ready",
+            "passed": true
+          }
+        ],
+        "httpStatus": 200
+      },
+      "actual": {
+        "stepsComplete": true,
+        "stepError": null,
+        "assertions": [
+          {
+            "kind": "text",
+            "selector": "#copy",
+            "expected": "Ready",
+            "actual": "Unexpected value",
+            "passed": false
+          }
+        ],
+        "httpStatus": 200,
+        "navigationError": null,
+        "errors": [],
+        "network": [],
+        "overflow": false,
+        "blockedRequests": []
+      },
+      "reproduction": [
+        "Open http://127.0.0.1:53572/browser/reference/details at 375×812.",
+        "Open http://127.0.0.1:53572/browser/after/details in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-phone-renamed-point-1-baseline.png",
+        "targetScreenshot": "route-1-2-phone-renamed-point-1-target.png",
+        "baselineDetails": "route-1-2-phone-renamed-point-1-baseline.json",
+        "targetDetails": "route-1-2-phone-renamed-point-1-target.json",
+        "baselineRepeat": "route-1-2-phone-renamed-point-1-baseline-repeat.png",
+        "targetRepeat": "route-1-2-phone-renamed-point-1-target-repeat.png"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 14,
+    "completed": 14,
+    "capped": false
+  },
+  "safety": {
+    "networkPolicy": "read-only",
+    "isolatedContexts": true,
+    "blockedRequests": 0
+  },
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "playwrightVersion": "1.63.0",
+    "locale": "zh-CN",
+    "timezoneId": "Asia/Hong_Kong",
+    "colorScheme": "light",
+    "reducedMotion": "reduce"
+  },
+  "scope": "离线复现：本机固定版本、缺陷和假关闭反例，通过真实 browser/Spec runner、store 落盘与当前证据校验完成；只证明本组声明范围，不代表真实项目检出率、根因识别或持久缺陷自动关闭。",
+  "planFingerprint": "512028dc2a877248b21a86c77f2a2d330a3e302dae5a69b55117b28e6a978ab2",
+  "verifierFingerprint": "8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d",
+  "evidenceManifest": [
+    {
+      "file": "route-1-1-wide-renamed-baseline.png",
+      "bytes": 9415,
+      "sha256": "61586eea218bdb729e34c9f6f2460e68e1172381593d43b37024f227870d4079"
+    },
+    {
+      "file": "route-1-1-wide-renamed-target.png",
+      "bytes": 9905,
+      "sha256": "f643c12617b4c9ca1e3144b81f0dd77df8b8348dd810956c2654ae8511dd674a"
+    },
+    {
+      "file": "route-1-1-wide-renamed-baseline.json",
+      "bytes": 1264,
+      "sha256": "6a03410b1be08547b0cc3a9b7d07943eaba7d73e1f6514dac1848f4323448ce6"
+    },
+    {
+      "file": "route-1-1-wide-renamed-target.json",
+      "bytes": 1250,
+      "sha256": "f425fd2af769190105ecaca7401362008c509ebbb324d8faa09880c5998a5150"
+    },
+    {
+      "file": "route-1-1-wide-renamed-baseline-repeat.png",
+      "bytes": 9415,
+      "sha256": "61586eea218bdb729e34c9f6f2460e68e1172381593d43b37024f227870d4079"
+    },
+    {
+      "file": "route-1-1-wide-renamed-target-repeat.png",
+      "bytes": 9905,
+      "sha256": "f643c12617b4c9ca1e3144b81f0dd77df8b8348dd810956c2654ae8511dd674a"
+    },
+    {
+      "file": "route-1-1-wide-renamed-diff.png",
+      "bytes": 11211,
+      "sha256": "1542d9108beaed3f421e9fec43c0e7e23f23a7b52e8554c8c683c6f06a9540e0"
+    },
+    {
+      "file": "route-1-1-wide-renamed-point-1-baseline.png",
+      "bytes": 9415,
+      "sha256": "61586eea218bdb729e34c9f6f2460e68e1172381593d43b37024f227870d4079"
+    },
+    {
+      "file": "route-1-1-wide-renamed-point-1-target.png",
+      "bytes": 9905,
+      "sha256": "f643c12617b4c9ca1e3144b81f0dd77df8b8348dd810956c2654ae8511dd674a"
+    },
+    {
+      "file": "route-1-1-wide-renamed-point-1-baseline.json",
+      "bytes": 1425,
+      "sha256": "a24c9bbc648fa6ade517e53329df98b02606a4750eb2bf2827d01c5457bf6bf3"
+    },
+    {
+      "file": "route-1-1-wide-renamed-point-1-target.json",
+      "bytes": 1423,
+      "sha256": "9249df7f5385f91d9d4316783a4b9bbbc2503cfc2776f3c1481030de728eca80"
+    },
+    {
+      "file": "route-1-1-wide-renamed-point-1-baseline-repeat.png",
+      "bytes": 9415,
+      "sha256": "61586eea218bdb729e34c9f6f2460e68e1172381593d43b37024f227870d4079"
+    },
+    {
+      "file": "route-1-1-wide-renamed-point-1-target-repeat.png",
+      "bytes": 9905,
+      "sha256": "f643c12617b4c9ca1e3144b81f0dd77df8b8348dd810956c2654ae8511dd674a"
+    },
+    {
+      "file": "route-1-2-phone-renamed-baseline.png",
+      "bytes": 8377,
+      "sha256": "03beaca956f4a3985fafd97a50f565c831722eebaec06e034bc94bb762b16d68"
+    },
+    {
+      "file": "route-1-2-phone-renamed-target.png",
+      "bytes": 8868,
+      "sha256": "3ee6c927a0cd69939a095d05eaf5a35b6dd03e4a5ff992aaa7ba660cd49dc6b6"
+    },
+    {
+      "file": "route-1-2-phone-renamed-baseline.json",
+      "bytes": 1267,
+      "sha256": "8eda53ff67a1101b009f6c546023ebf1e560559846e20b0e1a3d11a20fb4f427"
+    },
+    {
+      "file": "route-1-2-phone-renamed-target.json",
+      "bytes": 1253,
+      "sha256": "a6b9d66498729d4b85167fc679693697cefbd824f9e94ccaca2c11c87cdcfbc7"
+    },
+    {
+      "file": "route-1-2-phone-renamed-baseline-repeat.png",
+      "bytes": 8377,
+      "sha256": "03beaca956f4a3985fafd97a50f565c831722eebaec06e034bc94bb762b16d68"
+    },
+    {
+      "file": "route-1-2-phone-renamed-target-repeat.png",
+      "bytes": 8868,
+      "sha256": "3ee6c927a0cd69939a095d05eaf5a35b6dd03e4a5ff992aaa7ba660cd49dc6b6"
+    },
+    {
+      "file": "route-1-2-phone-renamed-diff.png",
+      "bytes": 9699,
+      "sha256": "209e33c99997b7fd958ab152a590b6a76a7f73b1ea64e430e4419b9b2eaf6daa"
+    },
+    {
+      "file": "route-1-2-phone-renamed-point-1-baseline.png",
+      "bytes": 8377,
+      "sha256": "03beaca956f4a3985fafd97a50f565c831722eebaec06e034bc94bb762b16d68"
+    },
+    {
+      "file": "route-1-2-phone-renamed-point-1-target.png",
+      "bytes": 8868,
+      "sha256": "3ee6c927a0cd69939a095d05eaf5a35b6dd03e4a5ff992aaa7ba660cd49dc6b6"
+    },
+    {
+      "file": "route-1-2-phone-renamed-point-1-baseline.json",
+      "bytes": 1428,
+      "sha256": "4b3ec99501147ef3e8cad95e2a373da3dfa08dae3cd72bc3d3596c2f4f548025"
+    },
+    {
+      "file": "route-1-2-phone-renamed-point-1-target.json",
+      "bytes": 1426,
+      "sha256": "025951c8781e75b73016463087782cef5c13f623afe1e70c5bd514a6fbb5f8a4"
+    },
+    {
+      "file": "route-1-2-phone-renamed-point-1-baseline-repeat.png",
+      "bytes": 8377,
+      "sha256": "03beaca956f4a3985fafd97a50f565c831722eebaec06e034bc94bb762b16d68"
+    },
+    {
+      "file": "route-1-2-phone-renamed-point-1-target-repeat.png",
+      "bytes": 8868,
+      "sha256": "3ee6c927a0cd69939a095d05eaf5a35b6dd03e4a5ff992aaa7ba660cd49dc6b6"
+    }
+  ],
+  "gate": "failed",
+  "summary": {
+    "total": 14,
+    "passed": 12,
+    "failed": 2,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 2,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 14,
+      "total": 14,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.999
+      },
+      "structure": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

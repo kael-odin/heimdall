@@ -1,10 +1,12 @@
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { chromium } from 'playwright';
 import { comparePngBuffers } from '../verify/compare.mjs';
 import { resolveAcceptanceUrl } from './schema.mjs';
+import { buildAcceptanceIdentity } from './identity.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const MAX_ROUTES = 8;
@@ -13,10 +15,15 @@ const MAX_POINTS = 24;
 const MAX_OBSERVATIONS = 100;
 const CAPTURE_BUDGET = Object.freeze({ maxPixels: 12_000_000, maxHeight: 12_000 });
 const BROWSER_PROFILE = Object.freeze({ locale: 'zh-CN', timezoneId: 'Asia/Hong_Kong', colorScheme: 'light', reducedMotion: 'reduce' });
+const PLAYWRIGHT_VERSION = (() => {
+  try { return createRequire(import.meta.url)('playwright/package.json').version; }
+  catch { return null; }
+})();
 const bounded = (value, fallback, min, max) => Math.min(max, Math.max(min, Number(value) || fallback));
 const messageOf = error => String(error?.message ?? error).slice(0, 800);
 const safeName = value => String(value).replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 70);
 const identical = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const jsonData = value => JSON.parse(JSON.stringify(value));
 const clip = value => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
 const safeUrl = value => {
   try {
@@ -240,7 +247,8 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
   const settings = { outputDir, deadline: Date.now() + 300_000, timeoutMs: bounded(plan.timeoutMs, 10_000, 500, 30_000), settleMs: plan.settleMs === 0 ? 0 : bounded(plan.settleMs, 250, 0, 2_000), maskSelectors: plan.normalization?.maskSelectors ?? [] };
   const checks = [];
   const safety = { networkPolicy: 'read-only', isolatedContexts: true, blockedRequests: 0 };
-  const environment = { browser: 'chromium', browserVersion: null, ...BROWSER_PROFILE };
+  const environment = { platform: process.platform, arch: process.arch, nodeVersion: process.version,
+    browser: 'chromium', browserVersion: null, playwrightVersion: PLAYWRIGHT_VERSION, ...BROWSER_PROFILE };
   const routes = [...new Set([...(plan.routes ?? ['/']), ...(plan.points ?? []).map(point => point.route ?? '/')])];
   const viewports = plan.viewports ?? [{ name: 'desktop', width: 1440, height: 900 }];
   const points = plan.points ?? [];
@@ -248,6 +256,23 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
   const coverage = { planned: 6 * routes.length * viewports.length + points.length * viewports.length, completed: 0, capped };
   const event = async value => { if (onEvent) await onEvent({ runId, at: new Date().toISOString(), ...value }); };
   const base = (route, viewport) => ({ route, viewport: viewport.name, oracle: { kind: 'approved-runtime', source: plan.baselineUrl }, evidenceLevel: 'browser-reproduced' });
+  const identityFor = (route, viewport, facet, expected, baseline, point) => buildAcceptanceIdentity({
+    kind: 'browser', facet, route, viewport: { width: viewport.width, height: viewport.height },
+    ...(point ? { pointId: point.id } : {}), environment,
+    rule: {
+      facet, route, timeoutMs: settings.timeoutMs, settleMs: settings.settleMs, runMs: 300_000,
+      network: { allowedMethods: [...READ_METHODS], webSockets: 'blocked', isolatedContexts: true, serviceWorkers: 'block', acceptDownloads: false, maxObservations: MAX_OBSERVATIONS },
+      capture: { ...CAPTURE_BUDGET, scope: 'bounded-full-page', animations: 'disabled', caret: 'hide',
+        repeatWaitMs: Math.max(80, settings.settleMs), timeoutMs: Math.min(settings.timeoutMs, 10_000) },
+      maskSelectors: [...new Set(settings.maskSelectors)].sort(),
+      ...(['visual', 'structure'].includes(facet) ? { stabilityMinimum: 0.9995, maximumMaskedRatio: 0.8 } : {}),
+      ...(facet === 'visual' ? { minimumScore: plan.thresholds?.visual ?? 0.97 } : {}),
+      ...(point ? { steps: jsonData(point.steps ?? []), assertions: jsonData(point.assertions ?? []) } : {}),
+    },
+    oracle: facet === 'visual'
+      ? { kind: 'runtime', source: plan.baselineUrl, baselineScreenshotSha256: baseline.image ? createHash('sha256').update(baseline.image).digest('hex') : null }
+      : { kind: 'runtime', source: plan.baselineUrl, expected: jsonData(expected) },
+  });
   const add = async check => {
     checks.push(check);
     coverage.completed = checks.length;
@@ -278,7 +303,9 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
         const common = base(route, viewport);
         const evidence = evidenceOf(baseline, target);
         const reproduction = [`Open ${resolveAcceptanceRoute(plan.baselineUrl, route)} at ${viewport.width}×${viewport.height}.`, `Open ${resolveAcceptanceRoute(plan.targetUrl, route)} in a fresh browser context at the same viewport.`];
-        const make = (suffix, title, dimension, expected, actual, status = 'passed', verdict = 'match', severity = 'medium') => ({ ...common, id: `${prefix}-${suffix}`, title, dimension, expected, actual, status, verdict, severity, reproduction, evidence });
+        const make = (suffix, title, dimension, expected, actual, status = 'passed', verdict = 'match', severity = 'medium') => ({ ...common,
+          id: `${prefix}-${suffix}`, identity: identityFor(route, viewport, suffix, expected, baseline),
+          title, dimension, expected, actual, status, verdict, severity, evaluationLimited: !['passed', 'failed'].includes(status), reproduction, evidence });
         if (!navigated(baseline)) {
           await add(make('navigation', '基线页面可访问', 'health', 'Approved runtime loads successfully.', { baseline: baseline.navigationError || baseline.captureError || baseline.httpStatus, target: target.navigationError || target.captureError || target.httpStatus }, 'blocked', 'baseline_failed', 'high'));
         } else if (!navigated(target)) {
@@ -345,10 +372,12 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
           const targetPassed = healthy(sides.target) && !sides.target.stepError && sides.target.assertions.every(assertion => assertion.passed);
           const writeBlocked = sides.baseline.blockedRequests.length || sides.target.blockedRequests.length;
           const environment = !!(sides.target.navigationError || sides.target.captureError);
+          const expected = { stepsComplete: !sides.baseline.stepError, assertions: sides.baseline.assertions, httpStatus: sides.baseline.httpStatus };
           await add({ ...common, id: `${pointPrefix}-${safeName(point.id)}`, title: point.title || point.id, dimension: 'behavior', severity: point.severity || 'high',
+            identity: identityFor(route, viewport, 'behavior', expected, sides.baseline, point),
             status: writeBlocked ? 'blocked' : !baselinePassed ? 'blocked' : environment ? 'blocked' : targetPassed ? 'passed' : 'failed',
             verdict: writeBlocked ? 'environment' : !baselinePassed ? 'baseline_failed' : environment ? 'environment' : targetPassed ? 'match' : 'bug',
-            expected: { stepsComplete: !sides.baseline.stepError, assertions: sides.baseline.assertions, httpStatus: sides.baseline.httpStatus },
+            evaluationLimited: !!(writeBlocked || !baselinePassed || environment || Date.now() >= settings.deadline), expected,
             actual: { stepsComplete: !sides.target.stepError, stepError: sides.target.stepError, assertions: sides.target.assertions, httpStatus: sides.target.httpStatus, navigationError: sides.target.navigationError, errors: sides.target.errors, network: sides.target.network, overflow: sides.target.snapshot?.overflow, blockedRequests: sides.target.blockedRequests },
             reproduction: [...reproduction, ...point.steps.map(step => `${step.action} ${step.selector}${step.value !== undefined ? ` (${String(step.value).slice(0, 120)})` : ''}`)], evidence: evidenceOf(sides.baseline, sides.target),
           });

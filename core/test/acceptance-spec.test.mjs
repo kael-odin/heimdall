@@ -56,12 +56,47 @@ test('Spec explicitly validates 0, false, required, enum and types without a vis
     assert.equal(report.summary.coverage.ratio, 1);
     assert.equal(report.summary.dimensions.visual.score, null);
     assert.equal(report.checks[0].oracle.kind, 'approved-spec');
+    assert.equal(report.checks[0].identity.kind, 'spec');
+    assert.equal(report.checks[0].identity.facet, 'contract');
+    assert.equal(report.checks[0].identity.contractId, 'API-QUOTA');
+    assert.equal(report.checks[0].identity.method, 'GET');
+    assert.equal(report.checks[0].identity.viewport, 'api');
+    assert.equal(report.checks[0].evaluationLimited, false);
+    assert.equal(report.environment.platform, process.platform);
+    assert.equal(report.environment.arch, process.arch);
     assert.equal(report.specSource.id, 'REQ-QUOTA');
     assert.equal(fixture.requests.length, 1);
     const response = JSON.parse(await readFile(join(outputDir, report.checks[0].evidence.response), 'utf8'));
     assert.equal(response.body.code, 0);
     assert.equal(Object.hasOwn(report.checks[0].actual, 'body'), false);
   } finally { await fixture.close(); }
+}));
+
+test('Spec identities exclude display titles, target entries and contract ordering, while rules and source revisions remain distinct', async () => temporary(async outputDir => {
+  const fixture = await startAcceptanceApiFixture();
+  const otherFixture = await startAcceptanceApiFixture();
+  try {
+    const checks = [contract('/healthy'), { ...contract('/wrong-code'), id: 'API-CODE' }];
+    const source = { id: 'REQ-QUOTA', revision: 'v1', type: 'manual', title: 'Original source display title' };
+    const firstPlan = plan(fixture.targetUrl, checks, { source });
+    const first = await runAcceptance(firstPlan, { outputDir: join(outputDir, 'first') });
+    const second = await runAcceptance({ ...plan(otherFixture.targetUrl, [...checks].reverse().map(check => ({ ...check, title: 'Renamed contract', severity: 'low' })),
+      { source: { ...source, title: 'Renamed source' } }), name: 'Renamed run' }, { outputDir: join(outputDir, 'second') });
+    for (const check of first.checks) {
+      const other = second.checks.find(item => item.identity.contextKey === check.identity.contextKey);
+      assert.ok(other);
+      assert.deepEqual(other.identity, check.identity);
+      assert.notEqual(other.id, check.id);
+    }
+    const limited = await runAcceptance({ ...firstPlan, timeoutMs: 1500 }, { outputDir: join(outputDir, 'changed-budget') });
+    assert.equal(limited.checks[0].identity.caseKey, first.checks[0].identity.caseKey);
+    assert.notEqual(limited.checks[0].identity.ruleKey, first.checks[0].identity.ruleKey);
+    assert.equal(limited.checks[0].identity.oracleKey, first.checks[0].identity.oracleKey);
+    const changedSource = await runAcceptance(plan(fixture.targetUrl, checks, { source: { ...source, revision: 'v2' } }), { outputDir: join(outputDir, 'changed-source') });
+    assert.equal(changedSource.checks[0].identity.caseKey, first.checks[0].identity.caseKey);
+    assert.equal(changedSource.checks[0].identity.ruleKey, first.checks[0].identity.ruleKey);
+    assert.notEqual(changedSource.checks[0].identity.oracleKey, first.checks[0].identity.oracleKey);
+  } finally { await fixture.close(); await otherFixture.close(); }
 }));
 
 test('Spec candidate and unsupported operations stay blocked and never request the target', async () => temporary(async outputDir => {
