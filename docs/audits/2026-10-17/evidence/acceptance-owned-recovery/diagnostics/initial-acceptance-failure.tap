@@ -1,0 +1,26 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'Failed to load resource: the server responded with a status of 409 (Conflict)',
++   'Failed to load resource: the server responded with a status of 409 (Conflict)'
++ ]
+- []
+
+    at file:///C:/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core/scripts/smoke-acceptance-console.mjs:139:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'Failed to load resource: the server responded with a status of 409 (Conflict)',
+    'Failed to load resource: the server responded with a status of 409 (Conflict)'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v25.2.1

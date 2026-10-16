@@ -1,0 +1,12 @@
+[
+  {
+    "name": "acceptance-browser",
+    "code": 0,
+    "startedAt": "2026-10-16T20:39:23.931Z",
+    "durationMs": 27760,
+    "args": [
+      "core/scripts/smoke-acceptance-console.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\owned-recovery-20261017\\final-acceptance\\acceptance-browser"
+    ]
+  }
+]

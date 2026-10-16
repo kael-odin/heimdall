@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "ready": true,
+  "status": "ready",
+  "counts": {
+    "managedInterrupted": 1,
+    "legacyInterrupted": 1,
+    "prepared": 1,
+    "skipped": 0,
+    "totalInterrupted": 2
+  },
+  "code": null
+}

@@ -383,7 +383,7 @@ test('real HTTP managed consumers expose safe DTOs and exact bytes while triage 
     assert.equal((await (await get('/api/llm/status')).json()).enabled, true);
     const listResponse = await get('/api/acceptance/runs'); assert.equal(listResponse.status, 200);
     const list = await listResponse.json();
-    const statuses = new Map([[runId, 'completed'], [running.envelope.runId, 'running'], [settled.envelope.runId, 'failed']]);
+    const statuses = new Map([[runId, 'completed'], [running.envelope.runId, 'interrupted'], [settled.envelope.runId, 'failed']]);
     for (const [id, status] of statuses) {
       const row = list.runs.find(item => item.runId === id); assert.ok(row); publicManagedDto(row, ownerNonce);
       const response = await get('/api/acceptance/runs/' + id); assert.equal(response.status, 200);
@@ -394,7 +394,7 @@ test('real HTTP managed consumers expose safe DTOs and exact bytes while triage 
       const response = await get('/api/acceptance/runs/' + id + '/triage', { method });
       assert.equal(response.status, 503); assert.equal((await response.json()).code, 'MANAGED_EXECUTION_REQUIRED');
     }
-    assert.equal((await get('/api/acceptance/runs/' + running.envelope.runId + '/report')).status, 409);
+    assert.equal((await get('/api/acceptance/runs/' + running.envelope.runId + '/report')).status, 404);
     const response = await get('/api/acceptance/runs/' + runId + '/report');
     assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff');

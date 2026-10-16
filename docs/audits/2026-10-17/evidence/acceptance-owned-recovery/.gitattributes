@@ -1,0 +1,6 @@
+* -text
+* whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Preserve the build tool's original reporter space in this captured log.
+console-build.log whitespace=-blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Node's original failure diagnostics contain indentation-only blank lines.
+linux/initial-focused.tap whitespace=-blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

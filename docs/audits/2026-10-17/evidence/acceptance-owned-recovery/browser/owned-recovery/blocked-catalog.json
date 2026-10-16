@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "generationId": "ag-34bdd6ca-42bc-47b4-b7b7-a26b6b29332d",
+  "revision": 1,
+  "projects": [
+    {
+      "id": "ap-3761154a-f8dc-4c41-96bf-678a89d4784a",
+      "name": "恢复受控夹具",
+      "createdAt": "2026-10-16T20:41:59.307Z"
+    }
+  ],
+  "runBindings": []
+}

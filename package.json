@@ -26,6 +26,7 @@
     "acceptance:catalog:migration:smoke": "node core/scripts/smoke-acceptance-catalog-migration.mjs",
     "acceptance:baseline:smoke": "node core/scripts/smoke-acceptance-baseline-console.mjs",
     "acceptance:managed:prepare:smoke": "node core/scripts/smoke-acceptance-managed-preparation.mjs",
-    "acceptance:managed:read:smoke": "node core/scripts/smoke-acceptance-managed-reading.mjs"
+    "acceptance:managed:read:smoke": "node core/scripts/smoke-acceptance-managed-reading.mjs",
+    "acceptance:owned:recovery:smoke": "node core/scripts/smoke-acceptance-owned-recovery.mjs"
   }
 }

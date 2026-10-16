@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-04b98e1e-e9fe-4bb1-9ccd-151ef6ecd31c",
+  "taskId": "a-8eb35e5d-1f9c-4dbe-b957-84c7c41b3d91",
+  "name": "归属前：目标额度失败",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:61561/release?tenant=alpha",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-16T20:38:32.317Z",
+  "updatedAt": "2026-10-16T20:38:32.837Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "归属前：目标额度失败",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:61561/release?tenant=alpha",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "catalog-quota-requirement",
+        "revision": "v1",
+        "type": "manual"
+      },
+      "approved": true,
+      "checks": [
+        {
+          "id": "QUOTA",
+          "title": "额度状态符合需求",
+          "method": "GET",
+          "path": "/quota",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 1,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 1,
+      "total": 1,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-16T20:38:32.810Z",
+  "error": null,
+  "reportSha256": "eae52f329d4bba4f2b12bc1936af2c30895e0224c34c1db74f36cdc5988730ee"
+}

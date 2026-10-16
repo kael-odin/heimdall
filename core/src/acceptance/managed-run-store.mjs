@@ -21,6 +21,7 @@ const EVIDENCE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.json$/;
 const RESERVED = new Set(['manifest.json', 'report.json', 'triage.json', 'plan.json', 'dispatch.json', 'evidence-manifest.json']);
 const MANIFEST_FIELDS = ['schemaVersion', 'runId', 'taskId', 'name', 'mode', 'targetUrl', 'status', 'gate', 'createdAt',
   'updatedAt', 'plan', 'summary', 'progress', 'managed'];
+const settlements = new WeakMap();
 const digest = value => createHash('sha256').update(value).digest('hex');
 const encoded = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
 const samePath = (a, b) => process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
@@ -256,13 +257,58 @@ export function finishManagedAcceptanceRun(ref, input, options) {
   });
 }
 
+/** Prepare only the existing running manifest. Partial reports and evidence
+ * stay opaque; cancellation is not consulted and no file is created or written.
+ * The private token fixes the owner, expected bytes and terminal timestamp. */
+export function prepareManagedAcceptanceSettlement(ref, input, options) {
+  const settlement = validateManagedSettlement(input), s = operation(ref, options, false);
+  return s.translate(() => {
+    s.pinRun();
+    const captured = captureFile(join(s.dir, 'manifest.json'), s.limits.jsonBytes);
+    s.captures.push(captured);
+    const files = s.fileContext(), { manifest, expected } = running(s, files);
+    if (!captured.bytes.equals(expected.bytes)) fail('FILE_CHANGED');
+    const now = new Date().toISOString(), terminal = { ...manifest, ...settlement, gate: 'blocked', updatedAt: now, endedAt: now };
+    const bytes = encoded(terminal);
+    if (bytes.length > s.limits.jsonBytes) fail('TERMINAL_BYTES_EXCEEDED');
+    s.assertWritable();
+    const token = Object.freeze(Object.create(null));
+    settlements.set(token, { s, files, expected, bytes });
+    return token;
+  });
+}
+
+const settlementOf = token => {
+  const state = settlements.get(token);
+  if (!state) invalid();
+  return state;
+};
+
+/** Zero-write freshness check. A failed scope cannot be revived by restoring
+ * old bytes, and a copied/proxied/consumed token carries no write capability. */
+export function assertManagedAcceptanceSettlement(token) {
+  const { s } = settlementOf(token);
+  return s.translate(() => { s.assertWritable(); return true; });
+}
+
+/** A commit attempt consumes its token even when options, a guard or IO fails.
+ * The batch guard runs before temporary writes and again before publication;
+ * only the original owner/dispatch/manifest may publish the prepared bytes. */
+export function commitManagedAcceptanceSettlement(token, options = {}) {
+  const { s, files, expected, bytes } = settlementOf(token);
+  settlements.delete(token);
+  return s.translate(committed => {
+    shape(options, ['beforePublish'], []);
+    const guard = options.beforePublish === undefined ? () => {} : activeGuard(options.beforePublish);
+    const beforePublish = () => { guard(); s.assertWritable(); };
+    beforePublish();
+    files.publish('manifest.json', bytes, { expected, beforePublish }); committed();
+    return parse({ bytes });
+  });
+}
+
 /** Settle after cancellation without invoking a now-cancelled active guard.
  * Owner, root, sidecar and run identity are still fenced at every publication. */
 export function settleManagedAcceptanceRun(ref, input, options) {
-  const settlement = validateManagedSettlement(input), s = operation(ref, options, false);
-  return s.translate(committed => {
-    s.pinRun(); const files = s.fileContext(), { manifest, expected } = running(s, files);
-    const now = new Date().toISOString(), terminal = { ...manifest, ...settlement, gate: 'blocked', updatedAt: now, endedAt: now };
-    files.publish('manifest.json', encoded(terminal), { expected, beforePublish: s.assertWritable }); committed(); return terminal;
-  });
+  return commitManagedAcceptanceSettlement(prepareManagedAcceptanceSettlement(ref, input, options));
 }

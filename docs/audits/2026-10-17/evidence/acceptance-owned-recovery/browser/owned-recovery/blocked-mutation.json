@@ -1,0 +1,7 @@
+{
+  "status": 503,
+  "body": {
+    "code": "ACCEPTANCE_RECOVERY_BLOCKED",
+    "error": "启动恢复未完成，验收写入暂不可用；请检查运行现场后重启引擎。"
+  }
+}

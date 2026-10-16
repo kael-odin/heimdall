@@ -1,0 +1,81 @@
+{
+  "status": "passed",
+  "evidenceLevel": "offline-reproduced",
+  "scope": "本地受控夹具，真实控制台→浏览器验收任务→证据与下载→刷新恢复；AI链路使用本地模型模拟器，不等于外部模型或真实业务站点验收。",
+  "runId": "ac-d0a9b6a8-27aa-4a33-98de-0a286a9ca113",
+  "gate": "failed",
+  "summary": {
+    "total": 39,
+    "passed": 36,
+    "failed": 3,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 3,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 39,
+      "total": 39,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.999
+      },
+      "structure": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 3,
+        "passed": 0,
+        "failed": 3,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 24,
+        "passed": 24,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "checks": {
+    "auth": true,
+    "invalidInput": true,
+    "concurrencyLimit": true,
+    "restartRecovery": true,
+    "uiCreate": true,
+    "workerCompletion": true,
+    "behaviorFailureGate": true,
+    "authenticatedEvidence": true,
+    "pathBoundary": true,
+    "markdownDownload": true,
+    "refreshRestore": true,
+    "mobileNoOverflow": true,
+    "consoleHealthy": true,
+    "aiExplicitOnly": true,
+    "aiUnknownCheckDiscarded": true,
+    "aiCannotOverrideGate": true,
+    "aiRefreshRestore": true
+  },
+  "pageErrors": [],
+  "viewports": [
+    "1440x1000",
+    "390x844"
+  ]
+}

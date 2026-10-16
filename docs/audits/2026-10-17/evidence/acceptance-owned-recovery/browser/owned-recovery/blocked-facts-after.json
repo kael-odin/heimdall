@@ -1,0 +1,30 @@
+{
+  "ac-665c322a-34f1-4bc6-b4b8-b5a2b4c2f673/": "directory",
+  "ac-665c322a-34f1-4bc6-b4b8-b5a2b4c2f673/manifest.json": {
+    "sha256": "aa7a705cc8a993a27d0c59a482ba9a79ca045208e06002e7a00b9a08bb064995",
+    "nlink": 1
+  },
+  "ac-e36e8177-cb49-470a-9a73-caa028d5b22a/": "directory",
+  "ac-e36e8177-cb49-470a-9a73-caa028d5b22a/manifest.json": {
+    "sha256": "bc21ad8da36f19245a213f163b998e119204ece246a35f2c1b6c66f7a6f99a27",
+    "nlink": 1
+  },
+  "catalog.json": {
+    "sha256": "cae1f42eb81d483a73ce0894ce040433f9e66c2c4b4e6285d69ebb72ddde5a35",
+    "nlink": 1
+  },
+  "catalog.previous.json": {
+    "sha256": "9356da56728bdc20b386149f1f3785f4d086aa578dbe6f2478b603de7ce9bbd5",
+    "nlink": 1
+  },
+  "managed-spec-dispatches/": "directory",
+  "managed-spec-dispatches/v1/": "directory",
+  "managed-spec-dispatches/v1/ao-226c8615-ccbf-4904-b2bb-e2ba6467a488.json": {
+    "sha256": "6d7a98d6169db8f12c0328d1acc6b907ff18230fcdc84d99aa431fcc878bc1f5",
+    "nlink": 1
+  },
+  "managed-spec-dispatches/v1/ao-5829d041-3259-49f3-9e65-ae4478534f97.json": {
+    "sha256": "df1954546ce430ce71c4ff44783fad3baaad4f1b6df1202803f0428ecb9e5acb",
+    "nlink": 1
+  }
+}

@@ -14,14 +14,14 @@
 8. [项目与版本实施记录](docs/audits/2026-10-16/acceptance-catalog.md)：项目、不可变版本、历史运行归属、双引擎所有权、目录冲突与重启证据。
 9. [验收目录格式升级](docs/audits/2026-10-16/acceptance-catalog-migration.md)：schema1 原件保留、schema2 单次迁移、谱系校验、故障注入及旧数据浏览器复验。
 10. [Spec 需求基线](docs/competition/acceptance-baseline.md)：完整合同候选、批准历史、独立选用与取消，以及[实施验收](docs/audits/2026-10-16/acceptance-baseline.md)。
-11. [托管 Spec 合同与读取](docs/competition/acceptance-managed-spec.md)：由当前选用重建完整合同、明确目标版本、不可变派发准备与物理只读同键核对；[runner 执行控制](docs/audits/2026-10-16/acceptance-spec-execution-control.md)支持内部停止信号与同步 active 断言，[来源关联与隔离](docs/audits/2026-10-17/acceptance-managed-provenance.md)核验原字节身份并阻止普通入口降级，[固定身份存储](docs/audits/2026-10-17/acceptance-managed-store.md)增加 owner 约束的报告与中断收尾。[托管读取验收](docs/audits/2026-10-17/acceptance-managed-reading.md)现覆盖状态、完成快照、证据下载、比较及安全 DTO；candidate / triage / owned recovery / executor 仍隔离，继续保持 `executionReady:false`。
+11. [托管 Spec 合同与读取](docs/competition/acceptance-managed-spec.md)：由当前选用重建完整合同、明确目标版本、不可变派发准备与物理只读同键核对；[runner 执行控制](docs/audits/2026-10-16/acceptance-spec-execution-control.md)支持内部停止信号与同步 active 断言，[来源关联与隔离](docs/audits/2026-10-17/acceptance-managed-provenance.md)核验原字节身份并阻止普通入口降级，[固定身份存储](docs/audits/2026-10-17/acceptance-managed-store.md)增加 owner 约束的报告与中断收尾。[托管读取验收](docs/audits/2026-10-17/acceptance-managed-reading.md)现覆盖状态、完成快照、证据下载、比较及安全 DTO；新增[启动恢复验收](docs/audits/2026-10-17/acceptance-owned-recovery.md)，真实 owner 在完整零写预检后中断遗留运行并保留现场；candidate / triage / executor 仍隔离，继续保持 `executionReady:false`。
 
 ## 代码路径
 
 - `core/src/engine-server.mjs`：引擎路由、任务编排与静态产物入口。
 - `core/src/crawler/`、`core/src/queue.mjs`、`core/src/url-canon.mjs`：侦察、捕获、页面身份与队列。
 - `core/src/verify/`、`core/src/differ/`：多视口和单页差异；跨评分版本不要直接比较。
-- `core/src/acceptance/`：Mirror / Regression 浏览器对照、Spec 只读契约执行、OpenAPI 候选与来源快照、门禁报告、持久化、显式运行对复验与可选 AI 解读；`console/src/AcceptanceWorkbench.vue` 为入口。[Spec 指南](docs/competition/acceptance-spec.md)、[复验指南](docs/competition/acceptance-comparison.md)及[项目目录指南](docs/competition/acceptance-catalog.md)包含实际范围与反例命令。项目目录组织运行与不可变版本声明；[需求基线](docs/competition/acceptance-baseline.md)提供 Spec 候选完整预览、显式批准及独立选用，响应始终 `executionReady:false`。managed 状态、完成快照、核验下载与比较已接入；candidate / triage / executor 和 owned recovery 尚未迁移。引擎先取得数据根所有权，再恢复 legacy 未完成任务；同一数据根只启动一个引擎，managed prepared 记录不会自动执行。Browser 来源锁与持久缺陷工单仍待实现，原始门禁保留。
+- `core/src/acceptance/`：Mirror / Regression 浏览器对照、Spec 只读契约执行、OpenAPI 候选与来源快照、门禁报告、持久化、显式运行对复验与可选 AI 解读；`console/src/AcceptanceWorkbench.vue` 为入口。[Spec 指南](docs/competition/acceptance-spec.md)、[复验指南](docs/competition/acceptance-comparison.md)及[项目目录指南](docs/competition/acceptance-catalog.md)包含实际范围与反例命令。项目目录组织运行与不可变版本声明；[需求基线](docs/competition/acceptance-baseline.md)提供 Spec 候选完整预览、显式批准及独立选用，响应始终 `executionReady:false`。managed 状态、完成快照、核验下载与比较已接入；candidate / triage / executor 尚未迁移。引擎先取得数据根所有权，再经整批零写预检收束 managed / legacy 未完成任务；恢复受阻时保留诊断读取并以 503 阻断验收写入；同一数据根只启动一个引擎，managed prepared 记录不会自动执行。Browser 来源锁与持久缺陷工单仍待实现，原始门禁保留。
 - `core/src/live/`：交互镜像、HAR 清洗、离线健康与导出。
 - `core/src/seo/`：站内审计与回归基线。
 - `console/src/Atlas.vue`：控制台站点上下文和任务入口；`PagesView.vue`、`DetailDock.vue`、`SiteBar.vue` 等为工作视图。

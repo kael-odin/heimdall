@@ -1,0 +1,2 @@
+[smoke] fixture :54624 (页面) / 54623 (样式表，另一个 origin) | engine :54625 | data C:\Users\44548\AppData\Local\Temp\heimdall-smoke-iW2ReG
+[smoke] PASS — recon pages = 2 | visual = 100.0% | dom = 100.0% | seo = 77 ( 13 issues ) | live bundle ok (health unresolved=0 externalAssets=0) | watch ok | jobs persistent

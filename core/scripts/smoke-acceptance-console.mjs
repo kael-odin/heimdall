@@ -35,6 +35,13 @@ async function port() {
 }
 let engine, browser, fixture, modelServer;
 let observedRunId;
+let browserPage;
+const recentResponses = [], consoleErrors = [], pageErrors = [], diagnosticReads = new Set();
+const remember = (list, value, limit = 100) => { list.push(value); if (list.length > limit) list.shift(); };
+const diagnosticUrl = value => {
+  try { const url = new URL(value); url.username = ''; url.password = ''; url.search = ''; url.hash = ''; return url.href; }
+  catch { return 'unavailable'; }
+};
 const modelCalls = [];
 let engineLog = '';
 try {
@@ -70,9 +77,24 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true, reducedMotion: 'reduce' });
   await context.addInitScript(({ token }) => localStorage.setItem('heimdall-token', token), { token });
   const page = await context.newPage();
-  const errors = [];
+  browserPage = page;
+  page.on('response', response => {
+    const entry = { url: diagnosticUrl(response.url()), method: response.request().method(), status: response.status() };
+    remember(recentResponses, entry);
+    if (entry.status < 400 || diagnosticReads.size >= 100 || !response.headers()['content-type']?.includes('application/json')) return;
+    const pending = response.json().then(body => {
+      if (typeof body?.code === 'string' && /^[A-Z0-9_]{1,100}$/.test(body.code)) entry.code = body.code;
+    }, () => {}).finally(() => diagnosticReads.delete(pending));
+    diagnosticReads.add(pending);
+  });
+  const errors = pageErrors;
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', message => {
+    if (message.type() !== 'error') return;
+    errors.push(message.text());
+    const location = message.location();
+    remember(consoleErrors, { message: message.text(), location: { ...location, url: diagnosticUrl(location.url) } }, 50);
+  });
   await page.goto(base, { waitUntil: 'networkidle' });
   assert.match(await page.title(), /Heimdall/i);
   await page.getByRole('button', { name: '项目验收', exact: true }).click();
@@ -143,6 +165,10 @@ try {
   writeFileSync(join(OUT, 'browser-checks.json'), JSON.stringify(result, null, 2) + '\n');
   console.log(JSON.stringify(result, null, 2));
 } catch (error) {
+  await Promise.race([Promise.allSettled([...diagnosticReads]), sleep(250)]);
+  writeFileSync(join(OUT, 'acceptance-failure.json'), JSON.stringify({ error: String(error.message), pageErrors,
+    consoleErrors, recentResponses }, null, 2) + '\n');
+  await browserPage?.screenshot({ path: join(OUT, 'acceptance-failure.png'), fullPage: false, timeout: 5000 }).catch(() => {});
   writeFileSync(join(OUT, 'engine-error.log'), engineLog);
   throw error;
 } finally {

@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-c0fd008c-90f9-4507-bc2a-c892b9ac4a21",
+  "taskId": "a-26ef771c-fb5f-4bb4-aad9-3967ca6c56a7",
+  "name": "托管 Spec · 待验收版本",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:57397/target",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-16T20:39:22.850Z",
+  "updatedAt": "2026-10-16T20:39:23.393Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "托管 Spec · 待验收版本",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:57397/target",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "MANAGED-READ",
+        "revision": "1",
+        "type": "manual"
+      },
+      "approved": true,
+      "checks": [
+        {
+          "id": "READ-0",
+          "title": "健康响应",
+          "method": "GET",
+          "path": "/healthy",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": "READ-1",
+          "title": "业务码符合需求",
+          "method": "GET",
+          "path": "/bug",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": {
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 1,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 2,
+      "total": 2,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-completed"
+  },
+  "managed": {
+    "schemaVersion": 1,
+    "authority": "catalog-approval",
+    "operationId": "ao-3b67c79a-aad3-4f4c-b256-64be0c831b9c",
+    "dispatchId": "ad-f4625050-8be6-43fa-87e0-f27c0c5b6304",
+    "dispatchSha256": "361071b39023d5d1cb57495bd1aee76033bf7d4eae7be3ff9bb3d102b4f5e3e1",
+    "runId": "ac-c0fd008c-90f9-4507-bc2a-c892b9ac4a21",
+    "taskId": "a-26ef771c-fb5f-4bb4-aad9-3967ca6c56a7",
+    "catalog": {
+      "generationId": "ag-ef3794fc-33b4-4164-9f23-bf1617fdc14b",
+      "revision": 7,
+      "headSha256": "3e9c09af95479775aa1b707c5566d6cb769e75e834ae54ec3f092a26279dbd23"
+    },
+    "projectId": "ap-7dfd8b40-b451-4421-882b-cffbc61ccfc9",
+    "selectionId": "as-5a987f38-e7dc-49de-905b-3afad2af9d85",
+    "approvalId": "aa-149c82f7-6ead-454c-b2e5-aafc213695bd",
+    "candidateId": "ab-9380bd4f-82fd-4d2e-8956-eee737471d6a",
+    "contentDigest": "e1f3d0b1b8203e65b6e0f9ba9ab0574d28fad3d12a378d881bae6c3ebee7ab24",
+    "source": {
+      "runId": "ac-7be24033-4a0e-40b8-8296-baff33cc7e2b",
+      "releaseId": "ar-8060f57c-d598-4126-b05f-cbe00e0af2a1",
+      "sourceSpecApproved": false,
+      "sourcePlanDigest": "d5498b9b114eb23d8b9f317b0b8b2af1e5197e386cd4d8b0aa93282d13dd4b7b",
+      "sourceReportDigest": "9579034c913226dc9e4cb55e97384a2181614d7b06de5bac7bad6301618633be",
+      "evidenceManifestDigest": "4950ebd98162d634c70615da10641efb0919020289ef116194d6f66b415262e3",
+      "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8"
+    },
+    "target": {
+      "releaseId": "ar-c9ffa7cb-d9cf-4598-ba94-267e3b5baf3c",
+      "targetUrl": "http://127.0.0.1:57397/target"
+    },
+    "planFingerprint": "ccfacbfc767ffafd423d563f89cbea0ff846e832427aa123b6b1cbe444ef351c",
+    "executor": "engine-owner-spec-v1"
+  },
+  "endedAt": "2026-10-16T20:39:23.024Z",
+  "error": null,
+  "reportSha256": "0385fe0a16c730a44ccea8f88f14c00bc67fa8e8f22d36fc9f15269be2dc0c7f"
+}

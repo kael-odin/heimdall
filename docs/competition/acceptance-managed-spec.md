@@ -1,6 +1,6 @@
 # 托管 Spec：合同重建、固定身份与核验读取
 
-本阶段从项目当前明确选用的 Spec 需求重建计划，为明确目标版本保存不可变派发准备，并提供 owner 约束的固定身份存储。已完成记录现可经核验读取、下载证据及参与显式运行对比较；HTTP / 控制台也可读取安全投影。现有[需求基线界面](acceptance-baseline.md)仍返回 `executionReady:false`，托管执行入口、worker 与 owned recovery 尚未接入。
+本阶段从项目当前明确选用的 Spec 需求重建计划，为明确目标版本保存不可变派发准备，并提供 owner 约束的固定身份存储。已完成记录现可经核验读取、下载证据及参与显式运行对比较；HTTP / 控制台也可读取安全投影。引擎启动已接入真实 owner 下的保守中断恢复；现有[需求基线界面](acceptance-baseline.md)仍返回 `executionReady:false`，托管执行入口与 worker 尚未接入。
 
 ## 已实现的准备合同
 
@@ -50,14 +50,22 @@ HTTP 列表与详情只返回安全 DTO，managed 记录明确带 `triageSupport
 
 ## 后续执行边界
 
+引擎取得唯一 owner 后、接纳任务前，调用 `recoverOwnedAcceptanceRuns` 一次。恢复有界枚举实际 run 与预留 run 的并集，固定目录身份、dispatch namespace、manifest 和 legacy 两份 head；完整零写预检通过后，先中断 managed，再处理 legacy。只将可信的 running 收束为 `interrupted / blocked / ENGINE_RESTARTED`，不恢复请求或启动队列。
+
+reserved managed 的恢复只消费 dispatch 和 manifest，partial report / evidence 保持不透明；坏 JSON、FIFO、链接、多硬链接和未提交临时文件不被读取或删除。completed / failed / interrupted 只核对 head 后跳过，不因历史证据损坏重写终态，也不因此获得可靠快照资格。prepared 仅在 run 目录完全不存在时跳过；空目录或缺 manifest 会阻断整轮预检。unreserved legacy 仍需读取 optional report，以排除仅报告带托管标记的降级。
+
+恢复固定原始 manifest 的比较写入令牌，不能采用预检之后改变的新 running。上限为 1024 个 run、4096 个 root entry、4096 份捕获文件、256 MiB 捕获 bytes、每份 JSON 8 MiB、128 次收束；调用方仅可收紧。可预见的数量与终态字节预算失败在首次写入前拒绝。多 run 发布不构成事务，中途故障会保留已经提交的中断事实、准确计数与可能提交标识，并停止后续处理。
+
+`GET /api/acceptance/recovery` 返回脱敏 readiness 和成功计数；这里的 ready 只表示启动恢复完成，不能代替仍为 false 的托管 `executionReady`。恢复受阻时保留目录诊断读取，所有验收 HTTP 写操作返回 `503 / ACCEPTANCE_RECOVERY_BLOCKED`，修复现场后需重启，运行中不自动重试。旧 root-only `recoverAcceptanceRuns` 也执行严格完整预检，只处理 legacy，不能获得 managed 写权限。实现和实际证据见[启动恢复验收](../audits/2026-10-17/acceptance-owned-recovery.md)。
+
 执行控制基础已为私有 `runSpecAcceptance` 增加可选 `signal` 与同步 `assertActive`：控制失效停止当前请求及后续副作用，事件 callback 的等待也能取消，普通请求 timeout 保持原判定。私有 `catalog.readManagedSpecDispatch(projectId,input)` 则按完整原确认只读核对 record / null，不创建目录、不准备、不执行。null 不预留槽；新入口仍需在统一启动队列内再次核对。实现和限制见[执行控制验收](../audits/2026-10-16/acceptance-spec-execution-control.md)。
 
 重开本阶段的 prepared 记录只允许读取。升级、重启、同键重试、来源恢复或选用变化均不能自动创建 run 或发送请求。
 
-只读来源关联层保留严格原字节 provenance / linkage 校验。已迁移的读取入口可核验 managed 身份；普通 CLI、旧 mutation / finish / path artifact、candidate、triage 与 recovery 仍显式拒绝 managed / reserved 身份，删除 manifest / report 的托管标记也不能降级绕过。managed 完成运行仍不能经旧目录 bind 成新的需求来源。坏派发记录阻塞相关读取与恢复写入并保留原件，原隔离切片见[来源关联与隔离验收](../audits/2026-10-17/acceptance-managed-provenance.md)。
+只读来源关联层保留严格原字节 provenance / linkage 校验。已迁移的读取入口可核验 managed 身份；普通 CLI、旧 mutation / finish / path artifact、candidate 与 triage 仍显式拒绝 managed / reserved 身份，删除 manifest / report 的托管标记也不能降级绕过。managed 完成运行仍不能经旧目录 bind 成新的需求来源。坏派发记录阻塞相关读取与恢复写入并保留原件，原隔离切片见[来源关联与隔离验收](../audits/2026-10-17/acceptance-managed-provenance.md)。
 
-B2.2-b 后续将迁移 candidate / triage 消费者与 owned recovery，再接持有 owner 的进程内异步 Spec executor、统一运行槽、取消 / watchdog / shutdown 与 task mirror。只有新操作当次的受控流程可以开始执行；已存在的 prepared 记录不会因为扫描而启动。恢复不自动重发已中断请求，不声称远端 exactly-once。
+B2.2-b 后续先接持有 owner 的进程内异步 Spec executor、统一运行槽、取消 / watchdog / shutdown 与 task mirror，candidate / triage 消费者另行迁移。只有新操作当次的受控流程可以开始执行；已存在的 prepared 记录不会因为扫描而启动。恢复不自动重发已中断请求，不声称远端 exactly-once。
 
-B2.2-c 再提供明确目标版本的执行界面与真实浏览器执行闭环。当前已验收的浏览器流程只读取由显式内部 runner / writer 生成的记录，未验收引擎 executor 或 managed recovery。Browser 基线、写请求、鉴权会话、持久 BUG 工单和自动关闭缺陷继续另行实施。整个阶段保持 `executionReady:false`。
+B2.2-c 再提供明确目标版本的执行界面与真实浏览器执行闭环。当前浏览器流程读取由显式内部 runner / writer 生成的记录，并验证启动时的保守中断；引擎 executor 尚未验收。Browser 基线、写请求、鉴权会话、持久 BUG 工单和自动关闭缺陷继续另行实施。整个阶段保持 `executionReady:false`。
 
 实现与定向故障证据见[准备内核验收](../audits/2026-10-16/acceptance-managed-spec-preparation.md)。

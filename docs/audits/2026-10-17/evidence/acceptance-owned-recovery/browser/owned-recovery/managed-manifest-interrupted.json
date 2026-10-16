@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-eee1c9c0-c161-43f4-b3b4-b375816ea4c0",
+  "taskId": "a-e927e6cd-9076-45d4-b070-dd8b00a6c1bc",
+  "name": "托管 Spec · 准备内核本地 HTTP 目标",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:52846/managed",
+  "status": "interrupted",
+  "gate": "blocked",
+  "createdAt": "2026-10-16T20:41:54.346Z",
+  "updatedAt": "2026-10-16T20:41:54.987Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "托管 Spec · 准备内核本地 HTTP 目标",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:52846/managed",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "baseline-quota-requirement",
+        "revision": "v1",
+        "type": "manual",
+        "title": "额度与健康需求"
+      },
+      "approved": true,
+      "checks": [
+        {
+          "id": "QUOTA",
+          "title": "需求预期保持正确，即使目标额度失败",
+          "method": "GET",
+          "path": "/quota",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              },
+              {
+                "pointer": "/enabled",
+                "kind": "equals",
+                "value": false
+              },
+              {
+                "pointer": "/name",
+                "kind": "equals",
+                "value": ""
+              }
+            ],
+            "schema": {
+              "type": "object",
+              "required": [
+                "code",
+                "quota",
+                "enabled",
+                "name"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "integer"
+                },
+                "quota": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "HEALTH",
+          "title": "只读HEAD健康合同",
+          "method": "HEAD",
+          "path": "/health",
+          "severity": "medium",
+          "expect": {
+            "status": 204
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": null,
+  "progress": null,
+  "managed": {
+    "schemaVersion": 1,
+    "authority": "catalog-approval",
+    "operationId": "ao-f1b83f55-b2d2-4bd0-8af0-b8d3a05e1cc7",
+    "dispatchId": "ad-b6ee70ed-14fb-4441-bea5-f19ce7ebf1c1",
+    "dispatchSha256": "9d8edce51b8bf5a1376486ecf5fb6004b9f00790aa92123e0a8c37babbbac743",
+    "runId": "ac-eee1c9c0-c161-43f4-b3b4-b375816ea4c0",
+    "taskId": "a-e927e6cd-9076-45d4-b070-dd8b00a6c1bc",
+    "catalog": {
+      "generationId": "ag-12740c8e-248e-4df3-bf00-b2b79e90bd18",
+      "revision": 23,
+      "headSha256": "0473fdeb0c1be5a62e6621740b927510619d576e4fbb4b800beb82379c3333b5"
+    },
+    "projectId": "ap-f89dfcfd-2754-41c2-abe9-97659868261b",
+    "selectionId": "as-edfa3477-65b0-4e96-9f76-e2f1440de0c4",
+    "approvalId": "aa-acfd8f3e-0ea2-4fe3-bab2-b8303e24f3a6",
+    "candidateId": "ab-3e8c6c2a-2127-4057-8929-f0b7c20d4b63",
+    "contentDigest": "9f7a0548eed717bd4603062f4c15ab4676228a23e9b8bfebfd09fee64ff61c8d",
+    "source": {
+      "runId": "ac-1897dc22-0d21-4b6f-95c3-4dd72201063d",
+      "releaseId": "ar-411bb34e-23be-4e47-90c8-a5f492697ed5",
+      "sourceSpecApproved": false,
+      "sourcePlanDigest": "4601fb6cf03530f77b3146d106764355494ef6e8cbdeaaae7e803fe03d67fd42",
+      "sourceReportDigest": "02494c72e90295577d4b26f993e6dd8006e51eae14a4d2368b44f918872b152f",
+      "evidenceManifestDigest": "c605779bbea2e5ec51ed6751ebcdfdbf230a442c0ca42206dbe55f19715ebf93",
+      "verifierFingerprint": "8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d"
+    },
+    "target": {
+      "releaseId": "ar-c04e887f-a444-45cc-8872-653498afeff1",
+      "targetUrl": "http://127.0.0.1:52846/managed"
+    },
+    "planFingerprint": "936e774881adbbc004e1afc958f5d038b402825dfe89afcf760d843daee53429",
+    "executor": "engine-owner-spec-v1"
+  },
+  "reasonCode": "ENGINE_RESTARTED",
+  "error": "引擎已重启；此任务未完成，请重新运行。",
+  "endedAt": "2026-10-16T20:41:54.987Z"
+}

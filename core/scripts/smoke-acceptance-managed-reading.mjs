@@ -96,7 +96,13 @@ try {
   await waitFor(async () => (await api('')).ok);
   const detail = await (await api('/' + completed.envelope.runId)).json();
   assert.equal(detail.plan, undefined); assert.equal(detail.managed, undefined); assert.equal(detail.triageSupported, false);
-  assert.equal((await (await api('/' + running.envelope.runId)).json()).status, 'running');
+  assert.equal((await (await api('/' + running.envelope.runId)).json()).status, 'interrupted');
+  const interruptedPath = running.envelope.runId + '/manifest.json';
+  const interrupted = JSON.parse(readFileSync(join(root, interruptedPath), 'utf8'));
+  assert.equal(interrupted.reasonCode, 'ENGINE_RESTARTED');
+  // Startup owns this single lifecycle change; subsequent reads stay read-only.
+  assert.notEqual(hash(readFileSync(join(root, interruptedPath))), beforeHeads[interruptedPath]);
+  beforeHeads[interruptedPath] = hash(readFileSync(join(root, interruptedPath)));
   checks.safeHeadAndRealLifecycle = true;
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true, reducedMotion: 'reduce' });
@@ -128,9 +134,10 @@ try {
   await page.locator('#aw-result-panel').evaluate(element => element.scrollTo({ top: 0, behavior: 'instant' }));
   await page.screenshot({ path: join(OUT, 'managed-reading-desktop.png'), fullPage: false });
   await page.locator(`[data-run-id="${running.envelope.runId}"]`).click();
-  await page.locator('.aw-running').waitFor();
+  await page.locator('.aw-failed').waitFor();
+  assert.match(await page.locator('.aw-failed').innerText(), /验收已中断/);
   assert.equal(await page.getByTestId('acceptance-gate').count(), 0);
-  checks.runningIsNotCompleted = true;
+  checks.recoveredInterruptionIsNotCompleted = true;
   await page.locator(`[data-run-id="${completed.envelope.runId}"]`).click(); await page.getByTestId('acceptance-gate').waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByTestId('acceptance-view-results').click();
@@ -147,8 +154,8 @@ try {
   checks.readingNeverExecutesOrRewritesFacts = true;
   save('source-digests.json', beforeSource); save('head-digests.json', beforeHeads); save('fixture-requests.json', requests);
   const result = { status: 'passed', evidenceLevel: 'real-browser-local-fixture',
-    scope: 'Real preparation + explicit internal runner/writer before engine startup; browser only reads. No engine executor/restart recovery tested.',
-    browserPath: 'Playwright; Browser plugin not available', engineExecutorTested: false, engineRecoveryTested: false,
+    scope: 'Real preparation + explicit internal runner/writer before engine startup; startup settles running to interrupted and browser only reads. No engine executor tested.',
+    browserPath: 'Playwright', engineExecutorTested: false, engineRecoveryTested: true,
     runIds, preparedUnstarted: prepared.envelope.runId, checks, layout, pageErrors };
   save('browser-checks.json', result); console.log(JSON.stringify(result, null, 2));
 } catch (error) {

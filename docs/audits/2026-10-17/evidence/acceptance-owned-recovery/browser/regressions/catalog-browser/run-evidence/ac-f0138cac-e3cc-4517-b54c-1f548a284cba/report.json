@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-f0138cac-e3cc-4517-b54c-1f548a284cba",
+  "name": "所有权反例：仍在执行的运行",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:61561/release?tenant=alpha",
+  "startedAt": "2026-10-16T20:38:34.210Z",
+  "endedAt": "2026-10-16T20:38:34.896Z",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "spec-1-QUOTA",
+      "title": "额度状态符合需求",
+      "route": "/quota",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "d37a7989659e7074b6a124b0d8b1c7008ca382577c1e69c8326a409651b68a9f",
+        "contextKey": "6c2b833b9b7bb51a311feebeb79a6b24e4c3f1c3d4ab64ba55bb836f2df80e83",
+        "ruleKey": "826494165f2d0443b57cfe1187ce0054d379857654dec551267cd7f5fc6525bf",
+        "oracleKey": "7c638e9362fec2d5848c8ef4de01600c749bc72b7d3bed657b3f0f82abe0a8b9",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "QUOTA",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "catalog-quota-requirement",
+        "revision": "v1",
+        "sourceFingerprint": "6ca0d3362b068d144512c963e4c2dcc7de79b46952a0ee2375e2d7ec1f8e812a",
+        "documentSha256": null,
+        "contractFingerprint": "9bd3ea85c671275a8520f347961647537000d59957850bf0537fd25f346a36b5"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "json": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0
+          }
+        ]
+      },
+      "reproduction": [
+        "Use requirement catalog-quota-requirement at revision v1.",
+        "GET http://127.0.0.1:61561/release/quota without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "passed",
+      "verdict": "match",
+      "evaluationLimited": false,
+      "actual": {
+        "requested": true,
+        "httpStatus": 200,
+        "contentType": "application/json",
+        "redirectNotFollowed": false,
+        "hasLocation": false,
+        "mismatches": [],
+        "bytes": 21,
+        "bodySha256": "ba8ae22733dd5735026a1a92a8ed785998d19150600cb0ef17f367f46c6f45f3",
+        "assertions": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0,
+            "passed": true,
+            "actual": 0,
+            "exists": true
+          }
+        ]
+      },
+      "evidence": {
+        "contract": "spec-1-QUOTA-contract.json",
+        "request": "spec-1-QUOTA-request.json",
+        "response": "spec-1-QUOTA-response.json"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 1,
+    "completed": 1,
+    "capped": false
+  },
+  "specSource": {
+    "id": "catalog-quota-requirement",
+    "revision": "v1",
+    "type": "manual"
+  },
+  "sourceFingerprint": "6ca0d3362b068d144512c963e4c2dcc7de79b46952a0ee2375e2d7ec1f8e812a",
+  "contractFingerprint": "9bd3ea85c671275a8520f347961647537000d59957850bf0537fd25f346a36b5",
+  "specApproval": {
+    "approved": true,
+    "recordedAt": "2026-10-16T20:38:34.210Z"
+  },
+  "safety": {
+    "readOnly": true,
+    "allowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "redirects": "not-followed",
+    "credentials": "none",
+    "requests": 1
+  },
+  "environment": {
+    "runner": "node-fetch",
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "maxResponseBytes": 262144,
+    "timeoutMs": 10000
+  },
+  "scope": "仅验收明确批准的 GET/HEAD 及声明的 HTTP、MIME、JSON 字段/响应 schema；不使用会话、不跟随重定向。候选、未覆盖契约、超时、超响应/验证预算均不能通过；无视觉、数据库、写操作、认证或任意业务状态机保证。来源指纹用于追溯，不代表系统已经证明原需求正确。",
+  "planFingerprint": "8d34cb1e22f5f38bc39cda235607e56c9ea53eeafbb666eef060c4ce8b4bdf2b",
+  "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+  "evidenceManifest": [
+    {
+      "file": "spec-1-QUOTA-contract.json",
+      "bytes": 572,
+      "sha256": "f9db68e901fe659be7d1bf0167047fe41b6b8717b20728eff8430e389fc37147"
+    },
+    {
+      "file": "spec-1-QUOTA-request.json",
+      "bytes": 173,
+      "sha256": "1490b7e29e65064bf7a976f1bc3990332b5eac5d9004b975d8cdbb357a12a3d6"
+    },
+    {
+      "file": "spec-1-QUOTA-response.json",
+      "bytes": 470,
+      "sha256": "91ce56749d7eee274e62a65c9f143b1034498fe094b653fe573d0f0df4320efc"
+    }
+  ],
+  "gate": "passed",
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 1,
+      "total": 1,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

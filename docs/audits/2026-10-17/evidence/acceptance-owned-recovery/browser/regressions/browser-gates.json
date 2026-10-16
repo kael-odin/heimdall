@@ -1,0 +1,82 @@
+[
+  {
+    "name": "spec-browser",
+    "code": 0,
+    "startedAt": "2026-10-16T20:37:59.686Z",
+    "durationMs": 13268,
+    "args": [
+      "core/scripts/smoke-acceptance-spec-console.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\owned-recovery-20261017\\final-browsers\\spec-browser"
+    ]
+  },
+  {
+    "name": "comparison-browser",
+    "code": 0,
+    "startedAt": "2026-10-16T20:38:12.957Z",
+    "durationMs": 18630,
+    "args": [
+      "core/scripts/smoke-acceptance-comparison-console.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\owned-recovery-20261017\\final-browsers\\comparison-browser"
+    ]
+  },
+  {
+    "name": "catalog-browser",
+    "code": 0,
+    "startedAt": "2026-10-16T20:38:31.587Z",
+    "durationMs": 14087,
+    "args": [
+      "core/scripts/smoke-acceptance-catalog-console.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\owned-recovery-20261017\\final-browsers\\catalog-browser"
+    ]
+  },
+  {
+    "name": "migration-browser",
+    "code": 0,
+    "startedAt": "2026-10-16T20:38:45.675Z",
+    "durationMs": 12247,
+    "args": [
+      "core/scripts/smoke-acceptance-catalog-migration.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\owned-recovery-20261017\\final-browsers\\migration-browser"
+    ]
+  },
+  {
+    "name": "baseline-browser",
+    "code": 0,
+    "startedAt": "2026-10-16T20:38:57.923Z",
+    "durationMs": 22081,
+    "args": [
+      "core/scripts/smoke-acceptance-baseline-console.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\owned-recovery-20261017\\final-browsers\\baseline-browser"
+    ]
+  },
+  {
+    "name": "managed-preparation",
+    "code": 0,
+    "startedAt": "2026-10-16T20:39:20.005Z",
+    "durationMs": 1131,
+    "args": [
+      "core/scripts/smoke-acceptance-managed-preparation.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\owned-recovery-20261017\\final-browsers\\managed-preparation"
+    ]
+  },
+  {
+    "name": "managed-reading-final",
+    "code": 0,
+    "startedAt": "2026-10-16T20:39:21.136Z",
+    "durationMs": 17586,
+    "args": [
+      "core/scripts/smoke-acceptance-managed-reading.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\owned-recovery-20261017\\final-browsers\\managed-reading-final"
+    ]
+  },
+  {
+    "name": "original-cdp",
+    "code": 0,
+    "startedAt": "2026-10-16T20:39:38.724Z",
+    "durationMs": 29735,
+    "args": [
+      "core/scripts/smoke-console-cdp.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\owned-recovery-20261017\\final-browsers\\original-cdp"
+    ]
+  }
+]

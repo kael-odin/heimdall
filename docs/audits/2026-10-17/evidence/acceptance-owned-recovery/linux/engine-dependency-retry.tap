@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: real HTTP managed consumers expose safe DTOs and exact bytes while triage and free-form managed execution stay isolated
+ok 1 - real HTTP managed consumers expose safe DTOs and exact bytes while triage and free-form managed execution stay isolated
+  ---
+  duration_ms: 904.678792
+  type: 'test'
+  ...
+# Subtest: engine keeps catalog readable with corrupt dispatches, blocks recovery and free execution before task creation
+ok 2 - engine keeps catalog readable with corrupt dispatches, blocks recovery and free execution before task creation
+  ---
+  duration_ms: 272.098651
+  type: 'test'
+  ...
+# Subtest: engine rejects invalid reserved facts and forged ordinary input before making tasks
+ok 3 - engine rejects invalid reserved facts and forged ordinary input before making tasks
+  ---
+  duration_ms: 236.505085
+  type: 'test'
+  ...
+# Subtest: owned engine startup settles mixed existing runs, preserves opaque managed partials and is byte-idempotent on restart
+ok 4 - owned engine startup settles mixed existing runs, preserves opaque managed partials and is byte-idempotent on restart
+  ---
+  duration_ms: 792.82102
+  type: 'test'
+  ...
+# Subtest: failed startup keeps catalog diagnostic reads, blocks every acceptance mutation and latches until a new owned startup
+ok 5 - failed startup keeps catalog diagnostic reads, blocks every acceptance mutation and latches until a new owned startup
+  ---
+  duration_ms: 406.825681
+  type: 'test'
+  ...
+# Subtest: a live owner rejects a second engine before recovery, jobs initialization or listening
+ok 6 - a live owner rejects a second engine before recovery, jobs initialization or listening
+  ---
+  duration_ms: 128.262608
+  type: 'test'
+  ...
+# Subtest: an existing prepared run directory without identity blocks the whole startup and owner loss takes precedence
+ok 7 - an existing prepared run directory without identity blocks the whole startup and owner loss takes precedence
+  ---
+  duration_ms: 193.212243
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1610.68429

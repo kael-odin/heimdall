@@ -1,0 +1,267 @@
+{
+  "generationId": "ag-77ce86ed-98da-46a6-a05f-2a881ebc9e0d",
+  "revision": 14,
+  "candidate": {
+    "id": "ab-5ba40f7f-0e97-49ef-8f8a-4c1135f0d06e",
+    "projectionVersion": 1,
+    "projectId": "ap-2316f85c-6336-4dfc-9a77-fa28df0369a9",
+    "mode": "spec",
+    "source": {
+      "runId": "ac-7f8a9c46-13df-4941-b01c-c544fa0fa62f",
+      "sourceMode": "spec",
+      "side": "source",
+      "releaseId": "ar-3caaa009-21cd-48cc-b1fa-a0b06f8433b0"
+    },
+    "sourcePlanDigest": "45fbb5c9bcb521e178a0eae936c34d7b2dc5130e5b6b20e983f51b39e6c00aac",
+    "sourceReportDigest": "742bc0134c23051846356402cef7d5cf47256974e8c993562157b600975cb145",
+    "evidenceManifestDigest": "8e0b2aac1fc04a391e54e363c368f26ff84ff068dbe704a88e9ab81eab1e822a",
+    "scopeKey": "7557b0d0f38576834c6d5cff6c3cbb4415a02cffe5b8047b253b31bcdcc2c5f5",
+    "ruleManifestKey": "3d4cc2fb104390a3479a19f93295fa20d0d9406079be744d4c163e4469fe864a",
+    "oracleManifestKey": "c9421f2f5f2c55197e869c803ad18b48a7da6e8278edbbb319ee88646c61940e",
+    "environmentKey": "a920fac644bab06ee032ec8df1c0452d2c94139c158ec89a00e708a9442a5d5e",
+    "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+    "contentDigest": "5604977199db7d65082f8c423c297e3dd140207587dde1f0fe999453584fb986",
+    "createdAt": "2026-10-16T20:39:03.481Z"
+  },
+  "executionReady": false,
+  "preview": {
+    "projectionVersion": 1,
+    "projectId": "ap-2316f85c-6336-4dfc-9a77-fa28df0369a9",
+    "releaseId": "ar-3caaa009-21cd-48cc-b1fa-a0b06f8433b0",
+    "mode": "spec",
+    "sourceReference": {
+      "runId": "ac-7f8a9c46-13df-4941-b01c-c544fa0fa62f",
+      "sourceMode": "spec",
+      "side": "source",
+      "releaseId": "ar-3caaa009-21cd-48cc-b1fa-a0b06f8433b0"
+    },
+    "source": {
+      "id": "baseline-quota-requirement",
+      "revision": "v1",
+      "type": "manual",
+      "title": "额度与健康需求"
+    },
+    "targetUrl": "http://127.0.0.1:52502/release?tenant=alpha",
+    "name": "完整需求 / 目标失败",
+    "sourceStatus": "completed",
+    "sourceGate": "failed",
+    "sourceSpecApproved": true,
+    "declaredSlots": 2,
+    "projectedSlots": 2,
+    "omissions": [],
+    "checks": [
+      {
+        "id": "QUOTA",
+        "title": "需求预期保持正确，即使目标额度失败",
+        "method": "GET",
+        "path": "/quota",
+        "severity": "high",
+        "expect": {
+          "status": 200,
+          "contentType": "application/json",
+          "json": [
+            {
+              "pointer": "/code",
+              "kind": "equals",
+              "value": 0
+            },
+            {
+              "pointer": "/enabled",
+              "kind": "equals",
+              "value": false
+            },
+            {
+              "pointer": "/name",
+              "kind": "equals",
+              "value": ""
+            }
+          ],
+          "schema": {
+            "type": "object",
+            "required": [
+              "code",
+              "quota",
+              "enabled",
+              "name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "integer"
+              },
+              "quota": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "rule": {
+          "method": "GET",
+          "path": "/quota",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              },
+              {
+                "pointer": "/enabled",
+                "kind": "equals",
+                "value": false
+              },
+              {
+                "pointer": "/name",
+                "kind": "equals",
+                "value": ""
+              }
+            ],
+            "schema": {
+              "type": "object",
+              "required": [
+                "code",
+                "quota",
+                "enabled",
+                "name"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "integer"
+                },
+                "quota": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "timeoutMs": 10000,
+          "maxResponseBytes": 262144,
+          "runMs": 300000,
+          "responseSchemaLimits": {
+            "schemaDepth": 16,
+            "schemaNodes": 256,
+            "properties": 128,
+            "required": 128,
+            "branches": 12,
+            "enumValues": 64,
+            "literalDepth": 16,
+            "literalNodes": 2000,
+            "schemaStringLength": 20000,
+            "literalCharacters": 64000,
+            "instanceDepth": 64,
+            "instanceNodes": 20000,
+            "objectProperties": 5000,
+            "arrayItems": 10000,
+            "instanceStringLength": 1000000,
+            "instancePropertyNameLength": 5000,
+            "validationSteps": 100000,
+            "failures": 30
+          },
+          "redirect": "manual",
+          "credentials": "omit",
+          "allowedMethods": [
+            "GET",
+            "HEAD"
+          ]
+        },
+        "identity": {
+          "version": 1,
+          "kind": "spec",
+          "facet": "contract",
+          "caseKey": "d37a7989659e7074b6a124b0d8b1c7008ca382577c1e69c8326a409651b68a9f",
+          "contextKey": "6c2b833b9b7bb51a311feebeb79a6b24e4c3f1c3d4ab64ba55bb836f2df80e83",
+          "ruleKey": "5dd71ec7a2a5782bc2d28be1d022d907da403ca8747084996dd0943bd8bd2bbb",
+          "oracleKey": "bee20066944e9e8b6af4b8ca29dcebfd9902f43276e1d291d403c4c6f30c147a",
+          "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+          "viewport": "api",
+          "contractId": "QUOTA",
+          "method": "GET"
+        }
+      },
+      {
+        "id": "HEALTH",
+        "title": "只读HEAD健康合同",
+        "method": "HEAD",
+        "path": "/health",
+        "severity": "medium",
+        "expect": {
+          "status": 204
+        },
+        "rule": {
+          "method": "HEAD",
+          "path": "/health",
+          "expect": {
+            "status": 204
+          },
+          "timeoutMs": 10000,
+          "maxResponseBytes": 262144,
+          "runMs": 300000,
+          "responseSchemaLimits": {
+            "schemaDepth": 16,
+            "schemaNodes": 256,
+            "properties": 128,
+            "required": 128,
+            "branches": 12,
+            "enumValues": 64,
+            "literalDepth": 16,
+            "literalNodes": 2000,
+            "schemaStringLength": 20000,
+            "literalCharacters": 64000,
+            "instanceDepth": 64,
+            "instanceNodes": 20000,
+            "objectProperties": 5000,
+            "arrayItems": 10000,
+            "instanceStringLength": 1000000,
+            "instancePropertyNameLength": 5000,
+            "validationSteps": 100000,
+            "failures": 30
+          },
+          "redirect": "manual",
+          "credentials": "omit",
+          "allowedMethods": [
+            "GET",
+            "HEAD"
+          ]
+        },
+        "identity": {
+          "version": 1,
+          "kind": "spec",
+          "facet": "contract",
+          "caseKey": "46b70c0cf1a9a83ac5b2c5831455bfe18baff243f66a329904eb0fb22a9ae242",
+          "contextKey": "15c7618d1f6cc116ae8e004689e582fb8bf768592c728da86cb0f0404a093c60",
+          "ruleKey": "aad4045b376a6ac70500d5d1e29173c527bff41b6b0a82d064bb705063aa0f38",
+          "oracleKey": "233feb266f073d05cb2495e99d29fade7b16203eb9a952510a4639911df59c10",
+          "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+          "viewport": "api",
+          "contractId": "HEALTH",
+          "method": "HEAD"
+        }
+      }
+    ],
+    "executionReady": false,
+    "oracleStorage": "stored-contract",
+    "reviewNotice": "人工复核并批准的是这里完整显示的来源与规范合同；来源运行门禁和目标响应不会成为期望值。批准或选用不会发起新运行。"
+  },
+  "diagnostics": {
+    "eligible": true,
+    "contentMatches": true,
+    "issues": []
+  }
+}

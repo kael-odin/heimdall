@@ -9,6 +9,7 @@ import { createLegacyAcceptanceReadScope, rejectManagedAcceptanceFields } from '
 import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './managed-run-schema.mjs';
 import { createAcceptanceReadScope, captureAcceptanceRunHead, captureAcceptanceRunFile, captureManagedCompletedRun } from './managed-run-reader.mjs';
 import { acceptanceRunView } from './run-view.mjs';
+import { recoverLegacyAcceptanceRuns } from './recovery.mjs';
 
 export { ACCEPTANCE_ROOT, ACCEPTANCE_SNAPSHOT_LIMITS };
 const RUN_ID = /^ac-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -149,13 +150,7 @@ export function listAcceptanceRuns({ root = ACCEPTANCE_ROOT, limit = 100, manage
   return runs;
 }
 export function recoverAcceptanceRuns({ root = ACCEPTANCE_ROOT } = {}) {
-  let recovered = 0;
-  for (const run of listLegacyAcceptanceRuns({ root, limit: Infinity })) {
-    if (run.status !== 'running') continue;
-    updateAcceptanceRun(run.runId, { status: 'interrupted', gate: 'blocked', error: '引擎已重启；此任务未完成，请重新运行。', endedAt: new Date().toISOString() }, { root });
-    recovered++;
-  }
-  return recovered;
+  return recoverLegacyAcceptanceRuns({ root });
 }
 export function finishAcceptanceRun(runId, raw, { root = ACCEPTANCE_ROOT } = {}) {
   rejectManagedAcceptanceFields(raw);

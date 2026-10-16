@@ -51,7 +51,8 @@ import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
 import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './acceptance/managed-run-schema.mjs';
 import { createLegacyAcceptanceReadScope } from './acceptance/managed-access.mjs';
 import { previewOpenApi } from './acceptance/openapi.mjs';
-import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, recoverAcceptanceRuns, acceptanceArtifact, readAcceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshots } from './acceptance/store.mjs';
+import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, acceptanceArtifact, readAcceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshots } from './acceptance/store.mjs';
+import { recoverOwnedAcceptanceRuns } from './acceptance/recovery.mjs';
 import { acceptanceRunView } from './acceptance/run-view.mjs';
 import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/comparison.mjs';
 import { acquireAcceptanceOwner } from './acceptance/owner.mjs';
@@ -76,9 +77,13 @@ catch (error) {
 }
 // A second engine must never recover the live owner's running records.
 acceptanceOwner.assertOwned();
-try { recoverAcceptanceRuns({ root: acceptanceOwner.root }); }
+let acceptanceRecovery;
+try {
+  const counts = recoverOwnedAcceptanceRuns({ owner: acceptanceOwner });
+  acceptanceRecovery = Object.freeze({ schemaVersion: 1, ready: true, status: 'ready', counts, code: null });
+}
 catch (error) {
-  if (!(error instanceof ManagedAcceptanceRunError)) throw error;
+  acceptanceRecovery = Object.freeze({ schemaVersion: 1, ready: false, status: 'blocked', counts: null, code: 'ACCEPTANCE_RECOVERY_BLOCKED' });
   console.warn(`[acceptance] recovery blocked: ${error.code}: ${error.message}`);
 }
 const execFileAsync = promisify(execFile);
@@ -1132,6 +1137,13 @@ const handleRequest = async (req, res) => {
     catch (error) {
       const failure = acceptanceCatalogError(error);
       return json(res, failure.status, failure.payload);
+    }
+    if (u.pathname === '/api/acceptance/recovery') {
+      if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
+      return json(res, 200, acceptanceRecovery);
+    }
+    if (!acceptanceRecovery.ready && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      return json(res, 503, { code: 'ACCEPTANCE_RECOVERY_BLOCKED', error: '启动恢复未完成，验收写入暂不可用；请检查运行现场后重启引擎。' });
     }
   }
   if (await handleAcceptanceCatalogRequest(req, res, u, { catalog: acceptanceCatalog, json })) return;

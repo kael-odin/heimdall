@@ -69,7 +69,8 @@ test('reserved IDs cannot be downgraded by stripping every managed marker; all l
   assert.deepEqual(snapshot.manifest, { runId }); assert.equal(snapshot.report, null);
   assert.equal(snapshot.integrity.valid, false); assert.equal(snapshot.integrity.errors[0].code, 'MANAGED_RUN_INTEGRITY_FAILED');
   assert.throws(() => readSpecCandidateSource(runId, { root, owner: { root, assertOwned() {} } }), errorIs('SOURCE_INTEGRITY_FAILED'));
-  assert.equal(recoverAcceptanceRuns({ root }), 0);
+  // Recovery now requires a strict global preflight, even for reserved rows.
+  assert.throws(() => recoverAcceptanceRuns({ root }), errorIs('ACCEPTANCE_RECOVERY_BLOCKED'));
   const list = listAcceptanceRuns({ root }); assert.equal(Array.isArray(list), true);
   assert.deepEqual(list.map(row => [row.runId, row.gate, row.code]), [[runId, 'blocked', 'MANAGED_RUN_INTEGRITY_FAILED']]);
   assert.deepEqual(tree(root), before);
@@ -136,9 +137,10 @@ test('damaged published namespace blocks list, creation and recovery without pro
   const { root } = fixture(t), run = createAcceptanceRun(input, { root }); publish(root, Buffer.from('{private payload'));
   const before = tree(root);
   for (const call of [() => listAcceptanceRuns({ root }), () => createAcceptanceRun(input, { root }),
-    () => recoverAcceptanceRuns({ root }), () => readAcceptanceRun(run.runId, { root })]) {
+    () => readAcceptanceRun(run.runId, { root })]) {
     assert.throws(call, errorIs('MANAGED_RUN_INTEGRITY_FAILED'));
   }
+  assert.throws(() => recoverAcceptanceRuns({ root }), errorIs('ACCEPTANCE_RECOVERY_BLOCKED'));
   assert.equal(readAcceptanceSnapshot(run.runId, { root }).integrity.valid, false);
   assert.deepEqual(tree(root), before);
 });
@@ -186,7 +188,7 @@ test('engine keeps catalog readable with corrupt dispatches, blocks recovery and
   const { base, output, stop } = await engine(t, parent);
   try {
   const catalog = await fetch(base + '/api/acceptance/projects'); assert.equal(catalog.status, 200);
-  assert.match(output(), /recovery blocked: MANAGED_RUN_INTEGRITY_FAILED/);
+  assert.match(output(), /recovery blocked: ACCEPTANCE_RECOVERY_BLOCKED/);
   assert.deepEqual(readFileSync(join(root, run.runId, 'manifest.json')), manifestBefore);
   const before = tree(root), jobsBefore = await (await fetch(base + '/api/jobs')).json();
   for (const path of ['/api/acceptance/runs', '/api/acceptance/runs/' + run.runId,
@@ -197,8 +199,8 @@ test('engine keeps catalog readable with corrupt dispatches, blocks recovery and
   }
   for (const extra of [{}, { managed: null }, { runId: prepared.runId }]) {
     const response = await fetch(base + '/api/acceptance/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...input, ...extra }) });
-    assert.equal(response.status, Object.keys(extra).length ? 400 : 409);
-    assert.equal((await response.json()).code, Object.keys(extra).length ? 'INVALID_INPUT' : 'MANAGED_RUN_INTEGRITY_FAILED');
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).code, 'ACCEPTANCE_RECOVERY_BLOCKED');
   }
   assert.deepEqual(await (await fetch(base + '/api/jobs')).json(), jobsBefore);
   assert.deepEqual(tree(root), before); assert.equal(readFileSync(file, 'utf8'), '{private disk payload');
@@ -220,7 +222,7 @@ test('engine rejects invalid reserved facts and forged ordinary input before mak
     for (const key of ['managed', 'authority', 'operationId', 'dispatchId', 'dispatchSha256', 'executor', 'runId', 'taskId']) {
       const response = await fetch(base + '/api/acceptance/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...input, [key]: null }) });
-      assert.equal(response.status, 400); assert.equal((await response.json()).code, 'INVALID_INPUT');
+      assert.equal(response.status, 503); assert.equal((await response.json()).code, 'ACCEPTANCE_RECOVERY_BLOCKED');
     }
     assert.deepEqual(await (await fetch(base + '/api/jobs')).json(), jobsBefore);
     assert.deepEqual(tree(root), before);

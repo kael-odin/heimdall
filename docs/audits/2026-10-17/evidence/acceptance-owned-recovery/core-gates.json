@@ -1,0 +1,21 @@
+[
+  {
+    "name": "core-full",
+    "code": 0,
+    "startedAt": "2026-10-16T20:29:31.723Z",
+    "durationMs": 269844,
+    "args": [
+      "--test",
+      "--test-reporter=tap"
+    ]
+  },
+  {
+    "name": "core-lint",
+    "code": 0,
+    "startedAt": "2026-10-16T20:34:01.570Z",
+    "durationMs": 18445,
+    "args": [
+      "core/scripts/check-syntax.mjs"
+    ]
+  }
+]

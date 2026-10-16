@@ -1,0 +1,27 @@
+{
+  "source": {
+    "id": "comparison-api-fixture",
+    "revision": "v1",
+    "type": "manual"
+  },
+  "approved": true,
+  "contract": {
+    "id": "STABLE",
+    "title": "稳定接口保持通过",
+    "method": "GET",
+    "path": "/stable",
+    "severity": "high",
+    "expect": {
+      "status": 200,
+      "contentType": "application/json",
+      "json": [
+        {
+          "pointer": "/code",
+          "kind": "equals",
+          "value": 0
+        }
+      ]
+    }
+  },
+  "contractFingerprint": "ce379431a3cc3a487e6c395bbeda3e5bd0efda0952c9eae018e0de4e14bef624"
+}
