@@ -1,0 +1,12 @@
+Final frozen B2.1 source, pnpm -C core test
+ℹ Real Windows lock released after 180 ms; 6 retries, 514 ms, old manifest readable until atomic replacement.
+﹣ Docker network-none delivery serves SSR, SPA and data-driven SPA bundles without a source workspace (0.1731ms) # SKIP
+﹣ Docker network-none delivery persists adapter writes in a volume after container recreation (0.0846ms) # SKIP
+ℹ tests 1269
+ℹ suites 0
+ℹ pass 1267
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 2
+ℹ todo 0
+ℹ duration_ms 221367.4979

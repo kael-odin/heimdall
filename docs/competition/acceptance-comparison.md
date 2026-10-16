@@ -2,7 +2,7 @@
 
 更新：2026-10-16。跨运行复验读取两次已有运行的报告和证据，判断相同检查是否可靠复验通过。支持 [Mirror / Regression](acceptance-workbench.md) 与 [Spec 契约验收](acceptance-spec.md)；实施结果见[本阶段验收记录](../audits/2026-10-16/acceptance-comparison.md)。
 
-对比不会重新请求目标、改写原报告或原门禁，也不会自动批准基线。当前范围是用户明确选择的运行对 `explicit-pair`，尚无持久项目目录、版本批准或缺陷状态账本。
+对比不会重新请求目标、改写原报告或原门禁，也不会自动批准基线。当前比较范围是用户明确选择的运行对 `explicit-pair`；[项目目录](acceptance-catalog.md)与 [Spec 需求基线](acceptance-baseline.md)另行保存版本归属及批准历史，比较结果不会替代这些记录。持久缺陷状态账本仍待实现。
 
 ## 控制台操作
 

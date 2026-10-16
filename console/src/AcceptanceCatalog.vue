@@ -1,11 +1,13 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import Icon from './Icon.vue';
+import AcceptanceBaseline from './AcceptanceBaseline.vue';
 import { API, apiHeaders } from './api.js';
 import { STATUS_LABELS, GATE_LABELS } from './acceptance-workbench.js';
 import { AcceptanceCatalogError, buildCatalogBindingInput, buildCatalogProjectInput, buildCatalogReleaseInput,
   catalogFailure, catalogTargetUrl, catalogTerminalRuns, catalogVersion, createCatalogReadGuard,
   requestAcceptanceCatalog } from './acceptance-catalog.js';
+import { validateBaselineWrite } from './acceptance-baseline.js';
 
 const props = defineProps({ runs: { type: Array, required: true } });
 const emit = defineEmits(['open-run']);
@@ -55,7 +57,9 @@ const dateLabel = value => {
   return Number.isFinite(date.getTime()) ? date.toLocaleString('zh-CN', { hour12: false }) : '时间未记录';
 };
 const runLabel = run => `${run.name || run.runId} · ${STATUS_LABELS[run.status] || run.status} · ${run.runId.slice(-8)}`;
-const eventLabel = event => event.kind.includes('binding') || event.kind.includes('bound') ? '认领历史运行'
+const eventLabel = event => event.kind === 'candidate-created' ? '记录需求候选'
+  : event.kind === 'baseline-approved' ? '批准需求合同' : event.kind === 'baseline-selected' ? '记录 Spec 选用'
+  : event.kind.includes('binding') || event.kind.includes('bound') ? '认领历史运行'
   : event.kind.includes('release') ? '登记版本' : event.kind.includes('project') ? '创建项目' : event.kind;
 const request = (path, options = {}) => requestAcceptanceCatalog(path, { baseUrl: API, headers: apiHeaders(), ...options });
 
@@ -199,6 +203,46 @@ async function mutate(kind) {
 }
 
 function openRun(runId) { expanded.value = false; emit('open-run', runId); }
+async function reconcileBaseline(problem) {
+  requiresReconcile.value = true;
+  await showError(problem);
+}
+async function writeBaseline(kind, body, projectId) {
+  if (!ready.value || stopped || selectedProject.value !== projectId || detail.value?.project.id !== projectId) {
+    throw new AcceptanceCatalogError('请先读取当前项目，再提交合同决定。', { code: 'INVALID_INPUT' });
+  }
+  const paths = { candidate: 'baseline-candidates', approval: 'baseline-approvals', selection: 'baseline-selections', cancellation: 'baseline-selections' };
+  if (!paths[kind] || body.expectedGenerationId !== version.value.generationId || body.expectedRevision !== version.value.revision) {
+    throw new AcceptanceCatalogError('目录版本已变化，请重新核对合同。', { code: 'STALE_REVISION', status: 409 });
+  }
+  const submittedProject = project.value?.name || projectId;
+  const submittedEpoch = selectionEpoch;
+  writing.value = `baseline-${kind}`; error.value = null; notice.value = '';
+  const controller = new AbortController(); writeController = controller;
+  let committed = false;
+  try {
+    const result = await request(`/${encodeURIComponent(projectId)}/${paths[kind]}`, { method: 'POST', body, signal: controller.signal });
+    validateBaselineWrite(kind, result, { projectId, body });
+    committed = true;
+    if (stopped) return { ...result, refreshed: false };
+    const refreshed = await refreshCatalog();
+    if (!refreshed) requiresReconcile.value = true;
+    const action = { candidate: '需求候选', approval: '合同批准', selection: 'Spec 选用', cancellation: '取消选用' }[kind];
+    notice.value = `项目「${submittedProject}」的${action}已记录。${refreshed ? '未启动新运行，原报告保持不变。' : '写入已确认，读取尚未完成，请刷新核对。'}`;
+    return { ...result, refreshed };
+  } catch (problem) {
+    if (!stopped) {
+      if (problem.status === 409 || problem.code === 'STALE_REVISION' || problem.writeMayHaveCommitted || committed) requiresReconcile.value = true;
+      resetConfirmation();
+      if (submittedEpoch === selectionEpoch) await showError(problem);
+      else {
+        error.value = catalogFailure(problem);
+        notice.value = `项目「${submittedProject}」的合同操作需要刷新核对。当前项目选择保持不变，系统不会自动重发。`;
+      }
+    }
+    throw problem;
+  } finally { if (!stopped) writing.value = ''; }
+}
 onBeforeUnmount(() => {
   stopped = true;
   listGuard.stop();
@@ -235,8 +279,10 @@ onBeforeUnmount(() => {
         <details class="catalog-new-release" data-testid="catalog-new-release"><summary>登记新版本</summary><form class="catalog-release-form" @submit.prevent="mutate('release')"><label for="catalog-release-label">版本名称<input id="catalog-release-label" v-model="draft.release.label" name="catalog-release-label" required maxlength="120" placeholder="例如：v1.2 候选版" /></label><label for="catalog-release-target">版本目标 URL<input id="catalog-release-target" v-model="draft.release.targetUrl" name="catalog-release-target" type="url" required spellcheck="false" placeholder="http://127.0.0.1:3000" aria-describedby="catalog-release-note" /></label><label for="catalog-release-build-ref">构建引用 <span class="catalog-optional">选填</span><input id="catalog-release-build-ref" v-model="draft.release.buildRef" name="catalog-release-build-ref" maxlength="200" spellcheck="false" placeholder="commit、构建编号或交付标记" /></label><button type="submit" class="catalog-button catalog-primary" :disabled="!ready" data-testid="catalog-create-release">{{ writing === 'release' ? '正在登记…' : '登记不可变版本' }}</button></form></details>
         <section class="catalog-binding-form" aria-labelledby="catalog-binding-title"><h3 id="catalog-binding-title">认领已结束的历史运行</h3><p class="catalog-hint">从当前历史列表显式选择。相同 URL 不会自动归属；每次运行只能认领一次。</p><form @submit.prevent="mutate('binding')"><div class="catalog-binding-fields"><label for="catalog-binding-release">归入版本<select id="catalog-binding-release" v-model="draft.binding.releaseId" name="catalog-binding-release" required :disabled="!releases.length"><option value="">请选择版本</option><option v-for="release in releases" :key="release.id" :value="release.id">{{ release.label }} · {{ release.targetUrl }}</option></select></label><label for="catalog-binding-run">历史运行<select id="catalog-binding-run" v-model="draft.binding.runId" name="catalog-binding-run" required :aria-invalid="!!bindingProblem" aria-describedby="catalog-binding-problem"><option value="">请选择已结束运行</option><option v-for="run in terminalRuns" :key="run.runId" :value="run.runId" :disabled="bindingByRun.has(run.runId)">{{ runLabel(run) }}{{ bindingByRun.has(run.runId) ? ' · 已归属' : '' }}</option></select></label></div><p v-if="!terminalRuns.length" class="catalog-hint">当前历史列表没有已结束运行。运行结束后刷新历史即可选择。</p><p v-if="bindingProblem" id="catalog-binding-problem" class="catalog-field-error" role="status">{{ bindingProblem }}</p><p v-if="selectedRun && selectedRelease" class="catalog-binding-selection">将 <strong>{{ selectedRun.name || selectedRun.runId }}</strong> 认领到 <strong>{{ project.name }} / {{ selectedRelease.label }}</strong>。</p><label class="catalog-confirm"><input v-model="draft.binding.confirmed" type="checkbox" name="catalog-binding-confirmed" :disabled="!!bindingProblem || !selectedRun || !selectedRelease" /><span>我确认这是后续归属；原始运行、报告与门禁不变。归属不代表证据或基线已获批准。</span></label><button type="submit" class="catalog-button catalog-primary" :disabled="!canBind" data-testid="catalog-bind-run">{{ writing === 'binding' ? '正在认领…' : '确认认领运行' }}</button></form></section>
         <section class="catalog-bindings" aria-labelledby="catalog-bindings-title"><h3 id="catalog-bindings-title">已归属运行 <span>{{ bindings.length }}</span></h3><ol v-if="bindings.length"><li v-for="binding in bindings" :key="binding.runId" :data-binding-run="binding.runId"><div class="catalog-binding-heading"><strong>{{ binding.releaseLabel || releases.find(item => item.id === binding.releaseId)?.label || binding.releaseId }}</strong><button type="button" class="catalog-button" data-testid="catalog-open-run" :data-run-id="binding.runId" @click="openRun(binding.runId)">查看原运行<Icon name="external" decorative /></button></div><p>{{ binding.source?.name || binding.runId }}</p><p class="catalog-hint">后续归属 · {{ dateLabel(binding.boundAt) }}<span v-if="binding.source"> · {{ STATUS_LABELS[binding.source.status] || binding.source.status }}<span v-if="binding.source.gate"> · {{ GATE_LABELS[binding.source.gate] || binding.source.gate }}</span></span></p><p class="catalog-hint">{{ binding.diagnostics?.scope === 'manifest-only' ? '仅核对运行记录；未核验报告与证据。' : '组织归属记录；未核验报告与证据。' }}</p><ul v-if="binding.diagnostics?.issues?.length" class="catalog-diagnostics"><li v-for="(issue, index) in binding.diagnostics.issues" :key="index"><code>{{ issue.code }}</code> {{ issue.message }}</li></ul></li></ol><p v-else class="catalog-empty">尚未认领运行。已有验收结果不会自动进入此项目。</p></section>
-        <details v-if="events.length" class="catalog-events"><summary>目录变更记录 {{ events.length }} 条</summary><ol><li v-for="event in events" :key="event.id"><strong>{{ eventLabel(event) }}</strong><span>修订 {{ event.revision }} · {{ dateLabel(event.at) }}</span><code>{{ event.entityId }}</code><small>本机操作者 · {{ event.actor?.kind || '未记录' }}</small></li></ol></details>
       </template>
+      <AcceptanceBaseline v-if="selectedProject" :project-id="selectedProject" :detail="detail" :version="version"
+        :ready="ready && !!detail" :writing="writing" :requires-reconcile="requiresReconcile" :request="request" :write="writeBaseline" @reconcile="reconcileBaseline" />
+      <details v-if="detail && detail.project.id === selectedProject && events.length" class="catalog-events"><summary>目录变更记录 {{ events.length }} 条</summary><ol><li v-for="event in events" :key="event.id"><strong>{{ eventLabel(event) }}</strong><span>修订 {{ event.revision }} · {{ dateLabel(event.at) }}</span><code>{{ event.entityId }}</code><small>本机操作者 · {{ event.actor?.kind || '未记录' }}</small></li></ol></details>
     </section>
   </details>
 </template>

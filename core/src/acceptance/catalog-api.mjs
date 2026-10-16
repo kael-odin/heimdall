@@ -1,6 +1,10 @@
 /** HTTP projection for local project/release/history bindings; no runner actions. */
+import { currentSelectionsOf } from './catalog-schema.mjs';
 const ROOT = '/api/acceptance/projects';
 const PROJECT_ID = /^ap-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const CANDIDATE_ID = /^ab-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const WRITES = Object.freeze({ releases: 'createRelease', 'run-bindings': 'bindRun',
+  'baseline-candidates': 'createBaselineCandidate', 'baseline-approvals': 'approveBaseline', 'baseline-selections': 'selectBaseline' });
 const MESSAGES = Object.freeze({
   INVALID_INPUT: '目录请求参数无效，请核对输入。',
   NOT_FOUND: '所选项目、版本或运行不存在。',
@@ -12,6 +16,7 @@ const MESSAGES = Object.freeze({
   SOURCE_INTEGRITY_FAILED: '来源记录无法核验，请检查原运行。',
   SOURCE_NOT_ELIGIBLE: '来源不符合当前操作要求。',
   BASELINE_CHANGED: '来源内容已变化，请重新复核。',
+  SELECTION_UNCHANGED: '当前选用未变化，无需重复提交。',
   CATALOG_CAPACITY: '目录已达到容量上限，请保留历史并检查目录配置。',
   CATALOG_QUEUE_FULL: '目录写入队列已满，请稍后重试。',
   CATALOG_CORRUPT: '目录记录损坏，已保留原件，请检查目录。',
@@ -36,7 +41,7 @@ export function acceptanceCatalogError(error) {
     if (payload.currentGenerationId) details.generationId = payload.currentGenerationId;
     if (payload.currentRevision !== undefined) details.revision = payload.currentRevision;
     if (typeof error.details.reason === 'string' && /^[A-Z0-9_]{1,80}$/.test(error.details.reason)) details.reason = error.details.reason;
-    if (typeof error.details.limit === 'string' && ['jsonBytes', 'projects', 'releases', 'runBindings', 'events', 'queue'].includes(error.details.limit)) details.limit = error.details.limit;
+    if (typeof error.details.limit === 'string' && ['jsonBytes', 'projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations', 'events', 'queue'].includes(error.details.limit)) details.limit = error.details.limit;
     if (Object.keys(details).length) payload.details = details;
   }
   return { status, payload };
@@ -79,15 +84,19 @@ export async function handleAcceptanceCatalogRequest(req, res, url, { catalog, j
     if ([...url.searchParams.keys()].some(key => key !== 'token') || url.searchParams.getAll('token').length > 1) throw invalid();
     const segments = url.pathname === ROOT ? [] : url.pathname.slice(ROOT.length + 1).split('/');
     if (segments.length && !PROJECT_ID.test(segments[0])) throw invalid();
-    if (segments.length > 2 || segments.length === 2 && !['releases', 'run-bindings'].includes(segments[1])) {
+    const candidateRead = segments.length === 3 && segments[1] === 'baseline-candidates';
+    if (segments.length > 3 || segments.length === 3 && !candidateRead
+      || segments.length === 2 && !Object.hasOwn(WRITES, segments[1])) {
       return send(404, { code: 'NOT_FOUND', error: MESSAGES.NOT_FOUND });
     }
-    const allowed = segments.length < 2 ? ['GET', ...(segments.length ? [] : ['POST'])] : ['POST'];
+    if (candidateRead && !CANDIDATE_ID.test(segments[2])) throw invalid();
+    const allowed = candidateRead ? ['GET'] : segments.length < 2 ? ['GET', ...(segments.length ? [] : ['POST'])] : ['POST'];
     if (!allowed.includes(req.method)) {
       res.setHeader('Allow', allowed.join(', '));
       return send(405, { code: 'METHOD_NOT_ALLOWED', error: '此目录接口不支持该请求方法。' });
     }
     if (req.method === 'GET') {
+      if (candidateRead) return send(200, catalog.readBaselineCandidate(segments[0], segments[2]));
       const value = catalog.read();
       const common = { schemaVersion: value.schemaVersion, generationId: value.generationId, revision: value.revision };
       if (!segments.length) return send(200, { ...common, projects: Object.values(value.projects), runBindings: bindingsOf(value) });
@@ -100,12 +109,14 @@ export async function handleAcceptanceCatalogRequest(req, res, url, { catalog, j
           issues: [{ code: 'SOURCE_UNAVAILABLE', message: '来源运行不可读取；目录归属不代表证据已核验。' }] } }; }
       });
       return send(200, { ...common, project, releases: Object.values(value.releases).filter(release => release.projectId === projectId),
-        runBindings, events: value.events.filter(event => event.projectId === projectId) });
+        runBindings, events: value.events.filter(event => event.projectId === projectId),
+        candidates: Object.values(value.candidates ?? {}).filter(item => item.projectId === projectId),
+        approvals: Object.values(value.approvals ?? {}).filter(item => item.projectId === projectId),
+        selections: Object.values(value.selections ?? {}).filter(item => item.projectId === projectId),
+        currentSelections: currentSelectionsOf(value, projectId), executionReady: false });
     }
     const input = await bodyOf(req);
-    const result = !segments.length ? await catalog.createProject(input)
-      : segments[1] === 'releases' ? await catalog.createRelease(segments[0], input)
-        : await catalog.bindRun(segments[0], input);
+    const result = !segments.length ? await catalog.createProject(input) : await catalog[WRITES[segments[1]]](segments[0], input);
     return send(201, result);
   } catch (error) {
     const failure = acceptanceCatalogError(error);

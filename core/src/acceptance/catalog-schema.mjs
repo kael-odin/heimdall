@@ -19,6 +19,24 @@ const EVENT_FIELDS = ['id', 'revision', 'kind', 'projectId', 'entityId', 'entity
 const GLOBAL_EVENT_FIELDS = EVENT_FIELDS.filter(key => key !== 'projectId');
 const MIGRATION_FIELDS = ['id', 'fromSchemaVersion', 'toSchemaVersion', 'fromGenerationId', 'fromRevision',
   'sourceHeadSha256', 'sourcePreviousSha256', 'createdAt', 'actor'];
+const CANDIDATE_DIGESTS = ['sourcePlanDigest', 'sourceReportDigest', 'evidenceManifestDigest', 'scopeKey',
+  'ruleManifestKey', 'oracleManifestKey', 'environmentKey', 'verifierFingerprint', 'contentDigest'];
+const CANDIDATE_FIELDS = ['id', 'projectId', 'mode', 'projectionVersion', 'source', ...CANDIDATE_DIGESTS, 'createdAt'];
+const APPROVAL_FIELDS = ['id', 'projectId', 'candidateId', 'contentDigest', 'reason', 'approvedAt', 'actor'];
+const SELECTION_FIELDS = ['id', 'projectId', 'mode', 'approvalId', 'previousSelectionId', 'reason', 'selectedAt', 'actor'];
+
+/** Stable candidate content, excluding the storage identity and creation time. */
+export function candidateProjectionOf(candidate) {
+  const { id: _id, createdAt: _at, ...projection } = candidate;
+  return projection;
+}
+export function currentSelectionsOf(catalog, projectId) {
+  let spec = null;
+  for (const event of catalog.events) {
+    if (event.projectId === projectId && event.kind === 'baseline-selected') spec = catalog.selections[event.entityId];
+  }
+  return { spec };
+}
 
 export const plain = value => value !== null && typeof value === 'object' && !types.isProxy(value)
   && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
@@ -117,7 +135,37 @@ function validate(catalog, schemaVersion, limits) {
       || releases[binding.releaseId].projectId !== binding.projectId || !iso(binding.boundAt)) fail('INVALID_BINDING');
   }
   if (schemaVersion === 2) {
-    if (['candidates', 'approvals', 'selections'].some(key => entries[key].length)) fail('UNSUPPORTED_B2_ENTITY');
+    for (const [key, candidate] of entries.candidates) {
+      id(key, 'ab', fail); fields(candidate, CANDIDATE_FIELDS, CANDIDATE_FIELDS, fail);
+      id(candidate.projectId, 'ap', fail);
+      fields(candidate.source, ['runId', 'sourceMode', 'side', 'releaseId'], ['runId', 'sourceMode', 'side', 'releaseId'], fail);
+      id(candidate.source.runId, 'ac', fail); id(candidate.source.releaseId, 'ar', fail);
+      const binding = runBindings[candidate.source.runId];
+      if (candidate.id !== key || !Object.hasOwn(projects, candidate.projectId) || candidate.mode !== 'spec'
+        || candidate.projectionVersion !== 1 || candidate.source.sourceMode !== 'spec' || candidate.source.side !== 'source'
+        || !binding || binding.projectId !== candidate.projectId || binding.releaseId !== candidate.source.releaseId
+        || !iso(candidate.createdAt) || CANDIDATE_DIGESTS.some(field => !sha256(candidate[field]))) fail('INVALID_CANDIDATE');
+      const { contentDigest: _digest, ...content } = candidateProjectionOf(candidate);
+      if (hashAcceptanceValue(content) !== candidate.contentDigest) fail('CANDIDATE_DIGEST_MISMATCH');
+    }
+    for (const [key, approval] of entries.approvals) {
+      id(key, 'aa', fail); fields(approval, APPROVAL_FIELDS, APPROVAL_FIELDS, fail);
+      id(approval.projectId, 'ap', fail); id(approval.candidateId, 'ab', fail); actor(approval.actor, fail);
+      const candidate = catalog.candidates[approval.candidateId];
+      if (approval.id !== key || !candidate || candidate.projectId !== approval.projectId
+        || approval.contentDigest !== candidate.contentDigest || !boundedText(approval.reason, 1000)
+        || !iso(approval.approvedAt)) fail('INVALID_APPROVAL');
+    }
+    for (const [key, selection] of entries.selections) {
+      id(key, 'as', fail); fields(selection, SELECTION_FIELDS, SELECTION_FIELDS, fail);
+      id(selection.projectId, 'ap', fail); actor(selection.actor, fail);
+      if (selection.previousSelectionId !== null) id(selection.previousSelectionId, 'as', fail);
+      if (selection.approvalId !== null) id(selection.approvalId, 'aa', fail);
+      const approval = selection.approvalId === null ? null : catalog.approvals[selection.approvalId];
+      if (selection.id !== key || !Object.hasOwn(projects, selection.projectId) || selection.mode !== 'spec'
+        || selection.approvalId !== null && (!approval || approval.projectId !== selection.projectId)
+        || !boundedText(selection.reason, 1000) || !iso(selection.selectedAt)) fail('INVALID_SELECTION');
+    }
     if (entries.migrations.length > 1) fail('INVALID_MIGRATION_COUNT');
     for (const [key, migration] of entries.migrations) {
       id(key, 'am', fail); fields(migration, MIGRATION_FIELDS, MIGRATION_FIELDS, fail);
@@ -132,6 +180,8 @@ function validate(catalog, schemaVersion, limits) {
   const entityCount = Object.values(entries).reduce((total, list) => total + list.length, 0);
   if (events.length !== catalog.revision || events.length !== entityCount) fail('EVENT_HISTORY_MISMATCH');
   const eventIds = new Set(), entities = new Set(), seenProjects = new Set(), seenReleases = new Set();
+  const seenBindings = new Set(), seenCandidates = new Set(), seenApprovals = new Set(), selected = new Map();
+  let seenBaselineEvent = false;
   for (const [index, event] of events.entries()) {
     fields(event, EVENT_FIELDS, GLOBAL_EVENT_FIELDS, fail);
     const migrationEvent = event.kind === 'catalog-migrated';
@@ -153,11 +203,30 @@ function validate(catalog, schemaVersion, limits) {
     } else if (event.kind === 'run-bound') {
       id(event.entityId, 'ac', fail); entity = runBindings[event.entityId];
       if (!entity || entity.projectId !== event.projectId || !seenReleases.has(entity.releaseId)) fail('INVALID_EVENT_REFERENCE');
+      seenBindings.add(entity.runId);
+    } else if (event.kind === 'candidate-created' && schemaVersion === 2) {
+      id(event.entityId, 'ab', fail); entity = catalog.candidates[event.entityId];
+      if (!entity || entity.projectId !== event.projectId || !seenBindings.has(entity.source.runId)) fail('INVALID_EVENT_REFERENCE');
+      seenCandidates.add(entity.id);
+      seenBaselineEvent = true;
+    } else if (event.kind === 'baseline-approved' && schemaVersion === 2) {
+      id(event.entityId, 'aa', fail); entity = catalog.approvals[event.entityId];
+      if (!entity || entity.projectId !== event.projectId || !seenCandidates.has(entity.candidateId)) fail('INVALID_EVENT_REFERENCE');
+      seenApprovals.add(entity.id);
+      seenBaselineEvent = true;
+    } else if (event.kind === 'baseline-selected' && schemaVersion === 2) {
+      id(event.entityId, 'as', fail); entity = catalog.selections[event.entityId];
+      const previous = selected.get(event.projectId) ?? null;
+      if (!entity || entity.projectId !== event.projectId || entity.approvalId !== null && !seenApprovals.has(entity.approvalId)
+        || entity.previousSelectionId !== (previous?.id ?? null) || entity.approvalId === (previous?.approvalId ?? null)) fail('INVALID_SELECTION_CHAIN');
+      selected.set(event.projectId, entity);
+      seenBaselineEvent = true;
     } else if (migrationEvent && schemaVersion === 2) {
       id(event.entityId, 'am', fail); entity = catalog.migrations[event.entityId];
-      if (!entity || entity.fromRevision !== index) fail('INVALID_MIGRATION_EVENT');
+      if (!entity || entity.fromRevision !== index || seenBaselineEvent) fail('INVALID_MIGRATION_EVENT');
     } else fail('INVALID_EVENT_KIND');
-    if ((entity.createdAt ?? entity.boundAt) !== event.at || hashAcceptanceValue(entity) !== event.entityDigest) fail('ENTITY_HISTORY_MISMATCH');
+    if ((entity.createdAt ?? entity.boundAt ?? entity.approvedAt ?? entity.selectedAt) !== event.at
+      || hashAcceptanceValue(entity) !== event.entityDigest) fail('ENTITY_HISTORY_MISMATCH');
     eventIds.add(event.id); entities.add(event.entityId);
   }
   return catalog;
@@ -167,7 +236,7 @@ function validate(catalog, schemaVersion, limits) {
 export function validateAcceptanceCatalogV1(catalog, { limits = {} } = {}) {
   return validate(catalog, 1, limitsOf(limits));
 }
-/** B2.0 reserves strict empty collections; it implements no approval behavior. */
+/** B2.1 validates immutable Spec candidates, approvals and ordered selections. */
 export function validateAcceptanceCatalogV2(catalog, { limits = {} } = {}) {
   return validate(catalog, 2, limitsOf(limits));
 }

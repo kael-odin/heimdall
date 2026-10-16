@@ -1,4 +1,4 @@
-/** B1 catalog input, transport and stale-read guards. No managed or approval actions. */
+/** Catalog input, transport and stale-read guards. Writes are never replayed. */
 export const CATALOG_TERMINAL_STATUSES = new Set(['completed', 'failed', 'interrupted']);
 
 export class AcceptanceCatalogError extends Error {
@@ -85,12 +85,13 @@ export async function requestAcceptanceCatalog(path = '', { method = 'GET', body
       method, headers, signal, cache: 'no-store', ...(body ? { body: JSON.stringify(body) } : {}),
     });
   } catch (error) {
-    if (error?.name === 'AbortError') throw error;
+    if (error?.name === 'AbortError' && !writing) throw error;
     throw new AcceptanceCatalogError(error?.message || '无法连接目录服务。', { code: 'NETWORK_ERROR', writeMayHaveCommitted: writing });
   }
   let value;
   try { value = await response.json(); } catch {
-    throw new AcceptanceCatalogError('引擎未返回有效的目录 JSON。', { status: response.status, code: 'INVALID_RESPONSE', writeMayHaveCommitted: writing && response.ok });
+    throw new AcceptanceCatalogError('引擎未返回有效的目录 JSON。', { status: response.status, code: 'INVALID_RESPONSE',
+      writeMayHaveCommitted: writing && (response.ok || response.status >= 500) });
   }
   if (!response.ok) {
     const { code, error, message, currentGenerationId, currentRevision, ...details } = value ?? {};

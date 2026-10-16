@@ -42,6 +42,8 @@
 
 上一提交 `8353595a555329e0ead1fb86688b6c01dbb9f67e` 的远端 CI `38905792592` 已于 2026-10-16 21:27（UTC+08:00）完成，三个 job 全部成功。全量 core 为 1078 项、1075 pass、0 fail、3 skip；独立 Docker 无外联验收 2/2 通过。该结果只证明上一提交，不能替代本批改动的验证。原日志保存在忽略目录 `core/workspace/_runs/ci-8353595-success.log`。
 
+后续补核：本批提交 `1a87b2d2e1a830da7df6f81e64809f1e24539453` 的 CI `38910478347` 已于 **2026-10-16 22:04（UTC+08:00）** 全部成功。Linux 全量 core **1155 项、1152 pass、0 fail、3 skip**，全部控制台 smoke、目录迁移 smoke 和独立 Docker 无外联验收 **2/2** 通过。原日志保存在忽略目录 `core/workspace/_runs/ci-1a87b2d-success.log`。本记录以上实现范围仍是该提交时的 B2.0 快照；后续候选批准能力另见[Spec 需求基线实施](acceptance-baseline.md)。
+
 ## 数据与能力边界
 
 目录仍只保存组织和迁移记录；版本 URL / buildRef 是操作者声明。格式升级不验证、修复或改写历史 run，不使 manifest-only 归属获得可信报告资格，也不改变原失败门禁。

@@ -6,8 +6,11 @@ import { ACCEPTANCE_ROOT } from './store.mjs';
 import { hashAcceptanceValue } from './identity.mjs';
 import { writeAtomicFileSync } from './atomic-file.mjs';
 import { writeExclusiveCatalogFileSync } from './catalog-preimage.mjs';
+import { readSpecCandidateSource } from './candidate-source.mjs';
+import { projectSpecBaselineCandidate } from './candidate-projection.mjs';
 import { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, error, invalid, unavailable, fields, id, url,
-  limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration } from './catalog-schema.mjs';
+  limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration,
+  candidateProjectionOf, currentSelectionsOf } from './catalog-schema.mjs';
 
 export { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, validateAcceptanceCatalog };
 const HASH = /^[a-f0-9]{64}$/;
@@ -129,12 +132,13 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       throw error('STALE_REVISION', 409, '项目目录字节已变化，请刷新后重新操作。');
     }
   }
-  function commit(current, previous, bytes) {
+  function commit(current, previous, bytes, preCommitGuard) {
     assertOwned(); actualRoot();
     checkUnchanged('catalog.json', current);
     checkUnchanged('catalog.previous.json', previous);
     write('catalog.previous.json', current.bytes);
     assertOwned(); actualRoot();
+    preCommitGuard?.();
     checkUnchanged('catalog.json', current);
     checkUnchanged('catalog.previous.json', current);
     write('catalog.json', bytes);
@@ -253,7 +257,7 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       const catalog = JSON.parse(JSON.stringify(current.catalog));
       const at = new Date().toISOString(), result = operation(catalog, at);
       catalog.revision++;
-      const entity = result.project ?? result.release ?? result.binding;
+      const entity = result.project ?? result.release ?? result.binding ?? result.candidate ?? result.approval ?? result.selection;
       const event = { id: 'ae-' + randomUUID(), revision: catalog.revision, kind: result.kind,
         projectId: result.project?.id ?? entity.projectId, entityId: entity.id ?? entity.runId,
         entityDigest: hashAcceptanceValue(entity), at, actor: { ...ACTOR } };
@@ -264,8 +268,8 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       validateAcceptanceCatalog(catalog, { limits });
       const previous = readFile('catalog.previous.json', { optional: true });
       validatePredecessor(current, previous);
-      commit(current, previous, bytes);
-      const { kind: _kind, ...payload } = result;
+      commit(current, previous, bytes, result.preCommitGuard);
+      const { kind: _kind, preCommitGuard: _guard, ...payload } = result;
       return { generationId: catalog.generationId, revision: catalog.revision, ...payload, event };
     });
   }
@@ -318,5 +322,118 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       return { kind: 'run-bound', binding, ...reference };
     });
   }
-  return Object.freeze({ initialize, read, createProject, createRelease, bindRun, readRunReference });
+  function reasonOf(input) {
+    if (typeof input.reason !== 'string' || !boundedText(input.reason.trim(), 1000)) invalid('操作理由必须为 1..1000 个字符。');
+    input.reason = input.reason.trim();
+  }
+  function digestOf(value) {
+    if (typeof value !== 'string' || !HASH.test(value)) invalid('contentDigest 必须是候选预览中的 SHA-256。');
+  }
+  function projectSource(catalog, projectId, runId) {
+    if (!Object.hasOwn(catalog.projects, projectId)) missing('项目');
+    const binding = catalog.runBindings[runId];
+    if (!binding) throw error('SOURCE_NOT_ELIGIBLE', 409, '请先将来源运行明确归属本项目的版本。', { reason: 'SOURCE_NOT_BOUND' });
+    if (binding.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, '来源运行不属于当前项目。');
+    assertOwned(); actualRoot();
+    const material = readSpecCandidateSource(runId, { root: actualRoot(), owner });
+    const release = catalog.releases[binding.releaseId];
+    const sourceUrl = url(material.snapshot.manifest.targetUrl, () => { throw error('SOURCE_INTEGRITY_FAILED', 409,
+      '来源目标地址无效。', { reason: 'SOURCE_TARGET_INVALID' }); });
+    if (sourceUrl !== release.targetUrl) {
+      throw error('BASELINE_CHANGED', 409, '来源目标与已归属版本不一致。', { reason: 'SOURCE_RELEASE_CHANGED' });
+    }
+    const result = projectSpecBaselineCandidate(material, { projectId, releaseId: binding.releaseId, sourceSide: 'source' });
+    assertOwned(); actualRoot();
+    return result;
+  }
+  function revalidateCandidate(catalog, candidate) {
+    const result = projectSource(catalog, candidate.projectId, candidate.source.runId);
+    if (hashAcceptanceValue(result.projection) !== hashAcceptanceValue(candidateProjectionOf(candidate))) {
+      throw error('BASELINE_CHANGED', 409, '候选来源内容已变化，请重新创建并复核候选。', { reason: 'CANDIDATE_SOURCE_CHANGED' });
+    }
+    return result;
+  }
+  function findCandidate(catalog, projectId, candidateId) {
+    if (!Object.hasOwn(catalog.projects, projectId)) missing('项目');
+    const candidate = catalog.candidates[candidateId];
+    if (!candidate) missing('候选');
+    if (candidate.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, '候选不属于当前项目。');
+    return candidate;
+  }
+  function createBaselineCandidate(projectId, raw) {
+    let input;
+    try {
+      id(projectId, 'ap'); input = inputOf(raw, ['mode', 'sourceRunId', 'sourceSide']); id(input.sourceRunId, 'ac');
+      if (input.mode !== 'spec' || input.sourceSide !== 'source') invalid('当前只支持 Spec 需求来源候选。');
+    } catch (cause) { return Promise.reject(cause); }
+    return mutate(input, (catalog, at) => {
+      const { projection, preview } = projectSource(catalog, projectId, input.sourceRunId);
+      const candidate = { id: 'ab-' + randomUUID(), ...projection, createdAt: at };
+      catalog.candidates[candidate.id] = candidate;
+      return { kind: 'candidate-created', candidate, preview, executionReady: false,
+        preCommitGuard: () => revalidateCandidate(catalog, candidate) };
+    });
+  }
+  function readBaselineCandidate(projectId, candidateId) {
+    id(projectId, 'ap'); id(candidateId, 'ab');
+    const catalog = read(), candidate = findCandidate(catalog, projectId, candidateId);
+    const common = { generationId: catalog.generationId, revision: catalog.revision, candidate, executionReady: false };
+    try {
+      const { preview } = revalidateCandidate(catalog, candidate);
+      return { ...common, preview, diagnostics: { eligible: true, contentMatches: true, issues: [] } };
+    } catch (cause) {
+      if (cause?.status === 503) throw cause;
+      const code = ['BASELINE_CHANGED', 'SOURCE_NOT_ELIGIBLE', 'SOURCE_INTEGRITY_FAILED'].includes(cause?.code)
+        ? cause.code : 'SOURCE_UNAVAILABLE';
+      return { ...common, preview: null, diagnostics: { eligible: false, contentMatches: false,
+        issues: [{ code, message: '当前来源无法重建此候选；历史记录保留，请检查原运行或创建新候选。' }] } };
+    }
+  }
+  function approveBaseline(projectId, raw) {
+    let input;
+    try {
+      id(projectId, 'ap'); input = inputOf(raw, ['candidateId', 'contentDigest', 'reason']);
+      id(input.candidateId, 'ab'); digestOf(input.contentDigest); reasonOf(input);
+    } catch (cause) { return Promise.reject(cause); }
+    return mutate(input, (catalog, at) => {
+      const candidate = findCandidate(catalog, projectId, input.candidateId);
+      if (candidate.contentDigest !== input.contentDigest) throw error('BASELINE_CHANGED', 409, '请使用完整预览中当前候选的摘要。');
+      revalidateCandidate(catalog, candidate);
+      const approval = { id: 'aa-' + randomUUID(), projectId, candidateId: candidate.id,
+        contentDigest: candidate.contentDigest, reason: input.reason, approvedAt: at, actor: { ...ACTOR } };
+      catalog.approvals[approval.id] = approval;
+      return { kind: 'baseline-approved', approval, executionReady: false,
+        preCommitGuard: () => revalidateCandidate(catalog, candidate) };
+    });
+  }
+  function selectBaseline(projectId, raw) {
+    let input;
+    try {
+      id(projectId, 'ap'); input = inputOf(raw, ['mode', 'approvalId', 'contentDigest', 'reason']); reasonOf(input);
+      if (input.mode !== 'spec') invalid('当前只支持 Spec 基线选用。');
+      if (input.approvalId === null) { if (input.contentDigest !== null) invalid('取消选用时 contentDigest 必须为 null。'); }
+      else { id(input.approvalId, 'aa'); digestOf(input.contentDigest); }
+    } catch (cause) { return Promise.reject(cause); }
+    return mutate(input, (catalog, at) => {
+      if (!Object.hasOwn(catalog.projects, projectId)) missing('项目');
+      const previous = currentSelectionsOf(catalog, projectId).spec;
+      if ((previous?.approvalId ?? null) === input.approvalId) throw error('SELECTION_UNCHANGED', 409, '当前选用未变化，无需重复提交。');
+      let candidate = null;
+      if (input.approvalId !== null) {
+        const approval = catalog.approvals[input.approvalId];
+        if (!approval) missing('批准');
+        if (approval.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, '批准不属于当前项目。');
+        if (approval.contentDigest !== input.contentDigest) throw error('BASELINE_CHANGED', 409, '选用摘要与批准不一致。');
+        candidate = findCandidate(catalog, projectId, approval.candidateId);
+        revalidateCandidate(catalog, candidate);
+      }
+      const selection = { id: 'as-' + randomUUID(), projectId, mode: 'spec', approvalId: input.approvalId,
+        previousSelectionId: previous?.id ?? null, reason: input.reason, selectedAt: at, actor: { ...ACTOR } };
+      catalog.selections[selection.id] = selection;
+      return { kind: 'baseline-selected', selection, executionReady: false,
+        ...(candidate ? { preCommitGuard: () => revalidateCandidate(catalog, candidate) } : {}) };
+    });
+  }
+  return Object.freeze({ initialize, read, createProject, createRelease, bindRun, readRunReference,
+    createBaselineCandidate, readBaselineCandidate, approveBaseline, selectBaseline });
 }
