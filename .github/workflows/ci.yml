@@ -58,6 +58,8 @@ jobs:
         run: pnpm acceptance:spec:smoke
       - name: Acceptance comparison console (explicit runs, integrity and CLI)
         run: pnpm acceptance:comparison:smoke
+      - name: Acceptance project catalog (versions, explicit bindings and two-engine isolation)
+        run: pnpm acceptance:catalog:smoke
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。
       - name: Docker offline delivery (SSR + SPA + data SPA + adapter)
         run: node --test --test-name-pattern='Docker network-none delivery' test/live-deployment-matrix.test.mjs

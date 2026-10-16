@@ -10,7 +10,7 @@
 
 ---
 
-新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。现在可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。交付复现步骤、来源与实测证据，AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
+新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。现已增加本地项目、不可变版本声明和历史运行显式归属，配合目录版本冲突与双引擎保护；归属保留原始门禁和证据。AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [项目与版本](docs/competition/acceptance-catalog.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
 
 ## 它实际长这样
 
@@ -209,6 +209,8 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [Spec 实施验收记录](docs/audits/2026-10-16/acceptance-spec.md) | OpenAPI 来源快照、11 案例基准、17 项控制台检查与完整证据索引 | 复查本阶段能力与限制 |
 | [跨运行复验指南](docs/competition/acceptance-comparison.md) | 显式选择运行对、稳定身份、证据核验、关系解释与 JSON / Markdown 导出 | 核对修复与新增失败 |
 | [跨运行复验实施记录](docs/audits/2026-10-16/acceptance-comparison.md) | 固定反例基准、真实 API / CLI / 控制台验证和证据 | 复查复验结论与保守边界 |
+| [项目与版本指南](docs/competition/acceptance-catalog.md) | 不可变版本、历史运行归属、目录冲突及引擎所有权 | 组织多次开发验收 |
+| [项目与版本实施记录](docs/audits/2026-10-16/acceptance-catalog.md) | 真实 worker、API / 控制台、双引擎、重启及原始证据保护 | 复查目录可靠性 |
 | [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |

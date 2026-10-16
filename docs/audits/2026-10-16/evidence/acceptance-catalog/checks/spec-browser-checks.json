@@ -1,0 +1,38 @@
+{
+  "status": "passed",
+  "evidenceLevel": "offline-reproduced",
+  "scope": "本地API夹具，真实控制台→明确批准→Spec worker→JSON证据/报告→刷新恢复。未调用生产API或模型。",
+  "runIds": [
+    "ac-5a0b4fba-7b35-41b6-af92-eb41a59e02ea",
+    "ac-595b7b52-609c-4536-baf3-422019b2eef3"
+  ],
+  "gates": [
+    "failed",
+    "failed"
+  ],
+  "checks": {
+    "manualUiCreate": true,
+    "explicitApproval": true,
+    "editsRevokeApproval": true,
+    "openApiPreviewWithoutRequests": true,
+    "importRequiresApproval": true,
+    "omissionsStayBlocked": true,
+    "sourceFingerprint": true,
+    "sourceDocumentEvidence": true,
+    "sourceDocumentHashVerified": true,
+    "sourceDraftRestored": true,
+    "apiContractFailure": true,
+    "authenticatedJsonEvidence": true,
+    "markdownDownload": true,
+    "refreshRestore": true,
+    "mobileNoOverflow": true,
+    "noWriteRequests": true,
+    "consoleHealthy": true
+  },
+  "pageErrors": [],
+  "layout": {
+    "width": 390,
+    "document": 390,
+    "results": 368
+  }
+}

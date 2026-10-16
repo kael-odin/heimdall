@@ -270,7 +270,7 @@ try {
   checks.darkLightContrastAndEnlargedText = true;
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.locator('#ac-after').selectOption(after.manifest.runId);
-  cpSync(join(dataRoot, 'acceptance'), join(OUT, 'run-evidence'), { recursive: true });
+  for (const runId of observedIds) cpSync(join(dataRoot, 'acceptance', runId), join(OUT, 'run-evidence', runId), { recursive: true });
   const responseFile = after.report.checks[0].evidence.response;
   const file = join(dataRoot, 'acceptance', after.manifest.runId, responseFile);
   writeFileSync(file, readFileSync(file, 'utf8') + ' ');

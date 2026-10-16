@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "generationId": "ag-ca176aa9-63db-4fc6-a031-a08609a5d857",
+  "revision": 12,
+  "projects": [
+    {
+      "id": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "name": "比赛验收演示项目",
+      "createdAt": "2026-10-16T13:05:43.072Z"
+    },
+    {
+      "id": "ap-9326cc48-2876-499f-8ce0-6df26e702aee",
+      "name": "独立项目",
+      "createdAt": "2026-10-16T13:05:43.128Z"
+    },
+    {
+      "id": "ap-4ccbb5b5-bac7-4348-910d-26ad8bcd4d0f",
+      "name": "控制台创建项目",
+      "createdAt": "2026-10-16T13:05:44.699Z"
+    },
+    {
+      "id": "ap-6a9635cf-8ada-48d3-877d-bd27ebd82fde",
+      "name": "另一个窗口写入",
+      "createdAt": "2026-10-16T13:05:45.271Z"
+    },
+    {
+      "id": "ap-806485a9-68fd-42cb-bb9b-b4954ab03de9",
+      "name": "A-B-A 迟到创建项目",
+      "createdAt": "2026-10-16T13:05:46.484Z"
+    }
+  ],
+  "runBindings": [
+    {
+      "runId": "ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "releaseId": "ar-6564a51e-37c5-4cd8-b985-0576ad938949",
+      "boundAt": "2026-10-16T13:05:43.107Z",
+      "actor": {
+        "kind": "local-operator"
+      },
+      "projectName": "比赛验收演示项目",
+      "releaseLabel": "release-v1"
+    },
+    {
+      "runId": "ac-4a58013b-af7f-498a-a9bb-258c81bd9b6d",
+      "projectId": "ap-4ccbb5b5-bac7-4348-910d-26ad8bcd4d0f",
+      "releaseId": "ar-89fee348-36e7-48fc-931c-0805cdf848cc",
+      "boundAt": "2026-10-16T13:05:45.098Z",
+      "actor": {
+        "kind": "local-operator"
+      },
+      "projectName": "控制台创建项目",
+      "releaseLabel": "控制台版本"
+    }
+  ]
+}

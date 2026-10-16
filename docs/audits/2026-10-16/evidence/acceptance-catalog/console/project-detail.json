@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "generationId": "ag-ca176aa9-63db-4fc6-a031-a08609a5d857",
+  "revision": 12,
+  "project": {
+    "id": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+    "name": "比赛验收演示项目",
+    "createdAt": "2026-10-16T13:05:43.072Z"
+  },
+  "releases": [
+    {
+      "id": "ar-6564a51e-37c5-4cd8-b985-0576ad938949",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "label": "release-v1",
+      "targetUrl": "http://127.0.0.1:52352/release?tenant=alpha",
+      "buildRef": "fixture-build-declared-v1",
+      "createdAt": "2026-10-16T13:05:43.090Z"
+    },
+    {
+      "id": "ar-b46593f8-b0fe-419c-9a13-5a4b60b3b4f6",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "label": "release-v2-a",
+      "targetUrl": "http://127.0.0.1:52352/release?tenant=alpha",
+      "buildRef": "release-v2-a",
+      "createdAt": "2026-10-16T13:05:43.149Z"
+    },
+    {
+      "id": "ar-b3f45193-fb98-43d6-9578-33b58ccbf31b",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "label": "查询不同",
+      "targetUrl": "http://127.0.0.1:52352/release?tenant=beta",
+      "createdAt": "2026-10-16T13:05:43.197Z"
+    }
+  ],
+  "runBindings": [
+    {
+      "runId": "ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "releaseId": "ar-6564a51e-37c5-4cd8-b985-0576ad938949",
+      "boundAt": "2026-10-16T13:05:43.107Z",
+      "actor": {
+        "kind": "local-operator"
+      },
+      "projectName": "比赛验收演示项目",
+      "releaseLabel": "release-v1",
+      "source": {
+        "runId": "ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743",
+        "name": "归属前：目标额度失败",
+        "mode": "spec",
+        "status": "completed",
+        "gate": "failed",
+        "createdAt": "2026-10-16T13:05:40.854Z",
+        "targetUrl": "http://127.0.0.1:52352/release?tenant=alpha"
+      },
+      "diagnostics": {
+        "scope": "manifest-only",
+        "manifestValid": true,
+        "reportPresent": true,
+        "reportDigestRecorded": true,
+        "evidenceVerified": false,
+        "issues": [
+          {
+            "code": "REPORT_EVIDENCE_NOT_VERIFIED",
+            "message": "本次仅核对运行元数据并建立组织归属，未验证报告内容或证据。"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "ae-c488aff4-6c10-479a-a37b-5b5b106cb76e",
+      "revision": 1,
+      "kind": "project-created",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "entityId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "entityDigest": "a467ffeb1318eb31b05e57730a0fd5aca99fce21d21ff9bd4397f2905d442c82",
+      "at": "2026-10-16T13:05:43.072Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-24828778-3791-4010-93a2-c0c24d5e0ca4",
+      "revision": 2,
+      "kind": "release-created",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "entityId": "ar-6564a51e-37c5-4cd8-b985-0576ad938949",
+      "entityDigest": "b9a7e16dd1797cf49c128be2ecc17d6b0d02c559c28743cad8989440a94c2639",
+      "at": "2026-10-16T13:05:43.090Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-bd16ebb0-a321-4c35-ba46-6e9e8cef85f3",
+      "revision": 3,
+      "kind": "run-bound",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "entityId": "ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743",
+      "entityDigest": "2520ecbae0169ef36d354877963a7df0d24afc59721a7ad4a779419782b4acd2",
+      "at": "2026-10-16T13:05:43.107Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-518b4d65-cce8-4ec9-9ca0-6b03e1e12ac1",
+      "revision": 5,
+      "kind": "release-created",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "entityId": "ar-b46593f8-b0fe-419c-9a13-5a4b60b3b4f6",
+      "entityDigest": "fea2b7221ab675c518796bb296cdd745f7a928d24ab4939c15daa6b254de83ee",
+      "at": "2026-10-16T13:05:43.149Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-41d5e4b7-c854-4f8a-84a4-b5bd8d7dd49b",
+      "revision": 6,
+      "kind": "release-created",
+      "projectId": "ap-a8d5508b-1d33-4f84-8239-83de43ea8eee",
+      "entityId": "ar-b3f45193-fb98-43d6-9578-33b58ccbf31b",
+      "entityDigest": "5e80b23d7f715cef75892d318b4110beaf0219275582e31f33c78ede07522078",
+      "at": "2026-10-16T13:05:43.197Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    }
+  ]
+}

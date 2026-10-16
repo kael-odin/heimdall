@@ -57,7 +57,9 @@ async function fixture(t) {
 }
 
 function planFor(origin, extra = {}) {
-  return normalizeAcceptancePlan({ name: 'Runner verification', mode: 'mirror', baselineUrl: `${origin}/baseline/`, targetUrl: `${origin}/target/`, routes: ['/good'], viewports: [{ name: 'mobile', width: 375, height: 812 }], timeoutMs: 1200, settleMs: 100, ...extra });
+  // This budget also covers a cold Chromium launch. Keep the production default
+  // rather than imposing a 1.2s startup benchmark on parallel, shared CI runners.
+  return normalizeAcceptancePlan({ name: 'Runner verification', mode: 'mirror', baselineUrl: `${origin}/baseline/`, targetUrl: `${origin}/target/`, routes: ['/good'], viewports: [{ name: 'mobile', width: 375, height: 812 }], timeoutMs: 10_000, settleMs: 100, ...extra });
 }
 
 test('acceptance runner reproduces missing controls, wrong ARIA, text, HTTP and runtime regressions', { timeout: 60_000 }, async t => {
@@ -73,7 +75,8 @@ test('acceptance runner reproduces missing controls, wrong ARIA, text, HTTP and 
   });
   const report = await runAcceptance(plan, { runId: 'runner-regressions', outputDir, onEvent: event => events.push(event) });
   const byRoute = route => report.checks.filter(check => check.route === route);
-  assert.equal(report.checks.length, 45);
+  assert.equal(report.checks.length, 45, JSON.stringify({ coverage: report.coverage,
+    runnerErrors: report.checks.filter(check => check.id === 'runner-environment').map(check => check.actual) }));
   assert.equal(report.coverage.planned, 45);
   assert.equal(report.coverage.completed, 45);
   assert.deepEqual(report.environment, { platform: process.platform, arch: process.arch, nodeVersion: process.version,

@@ -51,9 +51,29 @@ import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
 import { previewOpenApi } from './acceptance/openapi.mjs';
 import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, recoverAcceptanceRuns, acceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshot } from './acceptance/store.mjs';
 import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/comparison.mjs';
+import { acquireAcceptanceOwner } from './acceptance/owner.mjs';
+import { createAcceptanceCatalogStore } from './acceptance/catalog.mjs';
+import { handleAcceptanceCatalogRequest, acceptanceCatalogError } from './acceptance/catalog-api.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
-recoverAcceptanceRuns();
+let acceptanceOwner;
+try { acceptanceOwner = acquireAcceptanceOwner(); }
+catch (error) {
+  const failure = acceptanceCatalogError(error);
+  console.error(`[acceptance] ${failure.payload.code}: ${failure.payload.error}`);
+  process.exit(1);
+}
+// Registered immediately: failed startup and normal exit release only our nonce.
+process.once('exit', () => acceptanceOwner.release());
+const acceptanceCatalog = createAcceptanceCatalogStore({ root: acceptanceOwner.root, owner: acceptanceOwner });
+try { await acceptanceCatalog.initialize(); }
+catch (error) {
+  const failure = acceptanceCatalogError(error);
+  console.error(`[acceptance] ${failure.payload.code}: ${failure.payload.error}`);
+}
+// A second engine must never recover the live owner's running records.
+acceptanceOwner.assertOwned();
+recoverAcceptanceRuns({ root: acceptanceOwner.root });
 const execFileAsync = promisify(execFile);
 
 // 任务持久化（node:sqlite；不可用时自动降级 JSON）——重启后历史/事件不丢
@@ -1089,6 +1109,10 @@ const handleRequest = async (req, res) => {
     });
   }
 
+  if (u.pathname.startsWith('/api/acceptance/')) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  }
   if (!authorized(req, (u.pathname === '/lm' || u.pathname.startsWith('/lm/')) ? null : u, res)
       && (u.pathname.startsWith('/api/') || u.pathname.startsWith('/px/')
         || u.pathname.startsWith('/static/') || u.pathname === '/lm' || u.pathname.startsWith('/lm/'))) {
@@ -1096,6 +1120,14 @@ const handleRequest = async (req, res) => {
   }
 
   // Independent project acceptance: persistent runs, protected evidence, bounded worker.
+  if (u.pathname.startsWith('/api/acceptance/')) {
+    try { acceptanceOwner.assertOwned(); }
+    catch (error) {
+      const failure = acceptanceCatalogError(error);
+      return json(res, failure.status, failure.payload);
+    }
+  }
+  if (await handleAcceptanceCatalogRequest(req, res, u, { catalog: acceptanceCatalog, json })) return;
   if (u.pathname === '/api/acceptance/comparisons') {
     if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
     if ([...u.searchParams.keys()].some(key => !['before', 'after', 'format'].includes(key))
