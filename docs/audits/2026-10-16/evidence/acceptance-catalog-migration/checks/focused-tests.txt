@@ -1,0 +1,99 @@
+✔ new catalogs start at schema2 without a migration and restart without changing bytes (18.4627ms)
+✔ an unmigrated schema1 head is pure-valid but cannot be read or mutated as the active catalog (14.6029ms)
+✔ an empty schema1 head migrates once with a null previous hash and an exact immutable preimage (36.1145ms)
+✔ nonempty migration preserves every B1 entity, event and run byte and archives both raw snapshots (47.8423ms)
+▶ identical legacy head and previous bytes reuse one archive while different formatting keeps two raw preimages
+  ✔ same (35.0878ms)
+  ✔ compact (36.6171ms)
+✔ identical legacy head and previous bytes reuse one archive while different formatting keeps two raw preimages (72.1649ms)
+✔ the first B2 write accepts its exact B1 predecessor and fences old generation CAS including equal-revision ABA (59.7871ms)
+▶ legacy predecessor validation rejects another generation and valid divergent histories before archiving
+  ✔ generation (11.3143ms)
+  ✔ same-revision-entity (11.213ms)
+  ✔ event-prefix (13.1737ms)
+  ✔ newer-revision (12.586ms)
+✔ legacy predecessor validation rejects another generation and valid divergent histories before archiving (49.1113ms)
+✔ schema1 head with a schema2 previous is a refused lineage ambiguity (15.9642ms)
+▶ schema2 read remains available while an inexact legacy previous blocks every write
+  ✔ formatting (44.705ms)
+  ✔ generation (38.265ms)
+  ✔ revision (43.4929ms)
+✔ schema2 read remains available while an inexact legacy previous blocks every write (127.032ms)
+▶ schema2 predecessors require same-generation immutable event and entity ancestry
+  ✔ ancestor (48.5401ms)
+  ✔ same-snapshot (56.7423ms)
+  ✔ generation (40.9536ms)
+  ✔ same-revision-entity (45.5067ms)
+  ✔ event-prefix (41.8797ms)
+✔ schema2 predecessors require same-generation immutable event and entity ancestry (234.2517ms)
+✔ schema2 rolling previous cannot omit or alter the migration lineage (59.427ms)
+▶ corrupt, unknown and unsafe previous files abort migration without erasing recovery material
+  ✔ json (10.7303ms)
+  ✔ schema (9.452ms)
+  ✔ directory (8.07ms)
+  ✔ junction (9.1399ms)
+✔ corrupt, unknown and unsafe previous files abort migration without erasing recovery material (37.8978ms)
+▶ missing head with an archive, rolling previous or temporary file never initializes an empty directory
+  ✔ archive (4.6019ms)
+  ✔ previous (4.3378ms)
+  ✔ temporary (3.9087ms)
+✔ missing head with an archive, rolling previous or temporary file never initializes an empty directory (13.3783ms)
+▶ matching archive bytes are reused without replacement and conflicting or unsafe archive paths are refused
+  ✔ same (25.4728ms)
+  ✔ different (13.8298ms)
+  ✔ directory (11.0789ms)
+  ✔ junction (13.9435ms)
+✔ matching archive bytes are reused without replacement and conflicting or unsafe archive paths are refused (64.9176ms)
+▶ migration entity, event and byte capacity are checked before creating any preparation files
+  ✔ events (10.2523ms)
+  ✔ migrations (12.1972ms)
+  ✔ jsonBytes (9.9472ms)
+✔ migration entity, event and byte capacity are checked before creating any preparation files (32.8931ms)
+✔ archive capacity is preflighted for both new hashes without partially preparing a migration (14.2422ms)
+▶ exclusive archive publication failures preserve original files and a fresh initializer can retry
+  ✔ archive-1 (44.9416ms)
+  ✔ archive-2 (48.7353ms)
+✔ exclusive archive publication failures preserve original files and a fresh initializer can retry (94.1293ms)
+▶ an exclusive-create race is accepted only when the published archive has the exact original bytes
+  ✔ same (24.4545ms)
+  ✔ different (19.3996ms)
+✔ an exclusive-create race is accepted only when the published archive has the exact original bytes (44.2349ms)
+▶ failed rolling previous and head replacements are retryable and never reuse an uncommitted generation
+  ✔ catalog.previous.json (56.3707ms)
+  ✔ catalog.json (58.9045ms)
+✔ failed rolling previous and head replacements are retryable and never reuse an uncommitted generation (115.6304ms)
+✔ a head committed before an injected transport failure is recognized once on restart (35.783ms)
+▶ owner loss before preparation, before previous, or before head fences the next migration write
+  ✔ preparation (9.5033ms)
+  ✔ previous (22.2399ms)
+  ✔ head (23.6728ms)
+✔ owner loss before preparation, before previous, or before head fences the next migration write (55.8326ms)
+▶ byte CAS checks both legacy files again after preimages have been published
+  ✔ catalog.json (23.5288ms)
+  ✔ catalog.previous.json (29.0402ms)
+✔ byte CAS checks both legacy files again after preimages have been published (52.8853ms)
+▶ external changes after rolling previous replacement fence the final head commit
+  ✔ catalog.json (29.0975ms)
+  ✔ catalog.previous.json (30.8025ms)
+✔ external changes after rolling previous replacement fence the final head commit (60.593ms)
+✔ a root inode replacement during archive publication cannot write into the replacement root (16.3313ms)
+✔ version dispatch remains strict for reserved B2 maps and malformed migration event history (34.2236ms)
+✔ exports required helpers and independent schema validators (0.7034ms)
+✔ v1 remains strict and independent (5.3481ms)
+✔ schema dispatch rejects malformed roots and proxies without reading accessors (1.0833ms)
+✔ migration preserves every old entity and event and returns a distinct generation with one global event (2.1382ms)
+✔ fresh schema2 needs no migration and both fresh and migrated catalogs accept later B1 events (1.4223ms)
+✔ strict v2 rejects invalid or unsupported migration facts even after their event digest is recalculated (4.7263ms)
+✔ migration event cannot move before its B1 prefix or manufacture unsupported events (1.308ms)
+✔ all historical B1 entities require one ordered event with current immutable contents (2.2178ms)
+✔ event digests accept only strings and global migration fields cannot impersonate a project event (3.3313ms)
+✔ getters and unsafe map/array metadata are rejected without execution (1.1801ms)
+✔ migration construction rejects invalid input and enforces event, migration and byte budgets before return (1.9095ms)
+ℹ tests 77
+ℹ suites 0
+ℹ pass 77
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1515.9704

@@ -12,6 +12,7 @@
 6. [Spec / OpenAPI 实施记录](docs/audits/2026-10-16/acceptance-spec.md)：只读契约、批准与来源追踪、固定真值、真实控制台和证据索引。
 7. [跨运行复验实施记录](docs/audits/2026-10-16/acceptance-comparison.md)：稳定检查身份、当前字节完整性、显式运行对关系、API / CLI / 控制台与固定反例。
 8. [项目与版本实施记录](docs/audits/2026-10-16/acceptance-catalog.md)：项目、不可变版本、历史运行归属、双引擎所有权、目录冲突与重启证据。
+9. [验收目录格式升级](docs/audits/2026-10-16/acceptance-catalog-migration.md)：schema1 原件保留、schema2 单次迁移、谱系校验、故障注入及旧数据浏览器复验。
 
 ## 代码路径
 

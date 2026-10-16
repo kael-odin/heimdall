@@ -211,6 +211,7 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [跨运行复验实施记录](docs/audits/2026-10-16/acceptance-comparison.md) | 固定反例基准、真实 API / CLI / 控制台验证和证据 | 复查复验结论与保守边界 |
 | [项目与版本指南](docs/competition/acceptance-catalog.md) | 不可变版本、历史运行归属、目录冲突及引擎所有权 | 组织多次开发验收 |
 | [项目与版本实施记录](docs/audits/2026-10-16/acceptance-catalog.md) | 真实 worker、API / 控制台、双引擎、重启及原始证据保护 | 复查目录可靠性 |
+| [验收目录格式升级](docs/audits/2026-10-16/acceptance-catalog-migration.md) | 保留旧原件的单次迁移、版本谱系和真实旧数据浏览器复验 | 复查升级兼容性 |
 | [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |

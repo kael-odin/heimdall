@@ -1,127 +1,52 @@
-/** Bounded local project/release metadata. It never edits or approves a run. */
+/** Bounded versioned project metadata; immutable runs remain outside the catalog. */
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { types } from 'node:util';
+import { randomUUID, createHash } from 'node:crypto';
 import { ACCEPTANCE_ROOT } from './store.mjs';
-import { normalizeAcceptanceUrl } from './urls.mjs';
 import { hashAcceptanceValue } from './identity.mjs';
 import { writeAtomicFileSync } from './atomic-file.mjs';
+import { writeExclusiveCatalogFileSync } from './catalog-preimage.mjs';
+import { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, error, invalid, unavailable, fields, id, url,
+  limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration } from './catalog-schema.mjs';
 
-export const ACCEPTANCE_CATALOG_LIMITS = Object.freeze({ jsonBytes: 8 * 1024 * 1024, manifestBytes: 8 * 1024 * 1024,
-  projects: 64, releases: 1024, runBindings: 4096, events: 8192, queue: 32 });
-const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const IDS = Object.fromEntries(['ag', 'ap', 'ar', 'ac', 'ae'].map(prefix => [prefix, new RegExp(`^${prefix}-${UUID}$`)]));
+export { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, validateAcceptanceCatalog };
 const HASH = /^[a-f0-9]{64}$/;
 const TERMINAL = new Set(['completed', 'failed', 'interrupted']);
 const MODES = new Set(['mirror', 'regression', 'spec']);
 const GATES = new Set(['passed', 'failed', 'blocked', 'needs_review']);
 const ACTOR = Object.freeze({ kind: 'local-operator' });
-const plain = value => value !== null && typeof value === 'object' && !types.isProxy(value)
-  && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 const pathKey = value => process.platform === 'win32' ? value.toLowerCase() : value;
 const samePath = (a, b) => pathKey(a) === pathKey(b);
 const within = (root, file) => { const rel = relative(root, file); return !!rel && !rel.startsWith('..') && !isAbsolute(rel); };
-const iso = value => {
-  if (typeof value !== 'string' || value.length !== 24) return false;
-  try { return new Date(value).toISOString() === value; } catch { return false; }
-};
-const boundedText = (value, max) => typeof value === 'string' && value.trim() === value && !!value && value.length <= max;
+const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+const entityMaps = ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations'];
 
-export class AcceptanceCatalogError extends Error {
-  constructor(code, status, message, details) {
-    super(message);
-    this.name = 'AcceptanceCatalogError'; this.code = code; this.status = status;
-    if (details) this.details = details;
+/** Both inputs have already passed their own strict schema validators. */
+function hasHistoryPrefix(previous, current) {
+  if (previous.revision > current.revision
+    || hashAcceptanceValue(previous.events) !== hashAcceptanceValue(current.events.slice(0, previous.revision))) return false;
+  for (const key of entityMaps) {
+    for (const [entityId, entity] of Object.entries(previous[key] ?? {})) {
+      if (!Object.hasOwn(current[key] ?? {}, entityId) || hashAcceptanceValue(entity) !== hashAcceptanceValue(current[key][entityId])) return false;
+    }
   }
+  return true;
 }
-const error = (code, status, message, details) => new AcceptanceCatalogError(code, status, message, details);
-const invalid = message => { throw error('INVALID_INPUT', 400, message); };
-const unavailable = reason => { throw error('CATALOG_UNAVAILABLE', 503, '项目目录不可用；原记录已保留。', { reason }); };
-function fields(value, allowed, required, fail) {
-  if (!plain(value)) return fail('INVALID_OBJECT');
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  for (const key of Reflect.ownKeys(descriptors)) {
-    const descriptor = descriptors[key];
-    if (typeof key !== 'string' || !allowed.includes(key) || !descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) return fail('INVALID_FIELD');
+function validatePredecessor(current, previous) {
+  if (!previous) return;
+  const head = current.catalog, prior = previous.catalog;
+  if (head.schemaVersion === prior.schemaVersion) {
+    if (head.generationId !== prior.generationId || !hasHistoryPrefix(prior, head)
+      || head.schemaVersion === 2 && hashAcceptanceValue(head.migrations) !== hashAcceptanceValue(prior.migrations)) unavailable('CATALOG_PREVIOUS_NOT_ANCESTOR');
+    return;
   }
-  if (required.some(key => !Object.hasOwn(descriptors, key))) return fail('MISSING_FIELD');
-}
-const id = (value, prefix, fail = invalid) => IDS[prefix].test(typeof value === 'string' ? value : '') || fail('运行或目录 ID 无效。');
-function actor(value, fail) {
-  fields(value, ['kind'], ['kind'], fail);
-  if (value.kind !== 'local-operator') fail('INVALID_ACTOR');
-}
-function url(value, fail) {
-  try { return normalizeAcceptanceUrl(value); } catch { return fail('URL 必须是无凭据、无片段的完整 HTTP(S) 地址。'); }
-}
-function limitsOf(input) {
-  fields(input, Object.keys(ACCEPTANCE_CATALOG_LIMITS), [], () => { throw new TypeError('Invalid catalog limits'); });
-  const limits = { ...ACCEPTANCE_CATALOG_LIMITS, ...input };
-  if (Object.values(limits).some(value => !Number.isSafeInteger(value) || value < 0) || limits.queue < 1) throw new TypeError('Invalid catalog limits');
-  return limits;
-}
-function capacity(catalog, limits, fail) {
-  for (const key of ['projects', 'releases', 'runBindings', 'events']) {
-    const count = key === 'events' ? catalog.events.length : Object.keys(catalog[key]).length;
-    if (count > limits[key]) fail(key);
+  if (head.schemaVersion === 2 && prior.schemaVersion === 1) {
+    const migration = Object.values(head.migrations)[0];
+    if (!migration || migration.fromGenerationId !== prior.generationId || migration.fromRevision !== prior.revision
+      || migration.sourceHeadSha256 !== sha256(previous.bytes) || !hasHistoryPrefix(prior, head)) unavailable('CATALOG_MIGRATION_PREIMAGE_MISMATCH');
+    return;
   }
-}
-
-/** Strict B1 schema; future approval/managed fields are deliberately unsupported. */
-export function validateAcceptanceCatalog(catalog, { limits: inputLimits = {} } = {}) {
-  const limits = limitsOf(inputLimits), fail = unavailable;
-  fields(catalog, ['schemaVersion', 'generationId', 'revision', 'projects', 'releases', 'runBindings', 'events'],
-    ['schemaVersion', 'generationId', 'revision', 'projects', 'releases', 'runBindings', 'events'], fail);
-  if (catalog.schemaVersion !== 1) fail('UNSUPPORTED_SCHEMA');
-  id(catalog.generationId, 'ag', fail);
-  if (!Number.isSafeInteger(catalog.revision) || catalog.revision < 0) fail('INVALID_REVISION');
-  for (const key of ['projects', 'releases', 'runBindings']) if (!plain(catalog[key])) fail('INVALID_MAP');
-  if (!Array.isArray(catalog.events)) fail('INVALID_EVENTS');
-  capacity(catalog, limits, () => fail('CAPACITY_EXCEEDED'));
-  const { projects, releases, runBindings, events } = catalog;
-  for (const [key, project] of Object.entries(projects)) {
-    id(key, 'ap', fail); fields(project, ['id', 'name', 'createdAt'], ['id', 'name', 'createdAt'], fail);
-    if (project.id !== key || !boundedText(project.name, 120) || !iso(project.createdAt)) fail('INVALID_PROJECT');
-  }
-  for (const [key, release] of Object.entries(releases)) {
-    id(key, 'ar', fail); fields(release, ['id', 'projectId', 'label', 'targetUrl', 'buildRef', 'createdAt'],
-      ['id', 'projectId', 'label', 'targetUrl', 'createdAt'], fail);
-    id(release.projectId, 'ap', fail);
-    if (release.id !== key || !Object.hasOwn(projects, release.projectId) || !boundedText(release.label, 120)
-      || !iso(release.createdAt) || url(release.targetUrl, fail) !== release.targetUrl
-      || Object.hasOwn(release, 'buildRef') && !boundedText(release.buildRef, 200)) fail('INVALID_RELEASE');
-  }
-  for (const [key, binding] of Object.entries(runBindings)) {
-    id(key, 'ac', fail); fields(binding, ['runId', 'projectId', 'releaseId', 'boundAt', 'actor'], ['runId', 'projectId', 'releaseId', 'boundAt', 'actor'], fail);
-    id(binding.projectId, 'ap', fail); id(binding.releaseId, 'ar', fail); actor(binding.actor, fail);
-    if (binding.runId !== key || !Object.hasOwn(projects, binding.projectId) || !Object.hasOwn(releases, binding.releaseId)
-      || releases[binding.releaseId].projectId !== binding.projectId || !iso(binding.boundAt)) fail('INVALID_BINDING');
-  }
-  if (events.length !== catalog.revision || events.length !== Object.keys(projects).length + Object.keys(releases).length + Object.keys(runBindings).length) fail('EVENT_HISTORY_MISMATCH');
-  const eventIds = new Set(), entities = new Set(), seenProjects = new Set(), seenReleases = new Set();
-  for (const [index, event] of events.entries()) {
-    fields(event, ['id', 'revision', 'kind', 'projectId', 'entityId', 'entityDigest', 'at', 'actor'],
-      ['id', 'revision', 'kind', 'projectId', 'entityId', 'entityDigest', 'at', 'actor'], fail);
-    id(event.id, 'ae', fail); id(event.projectId, 'ap', fail); actor(event.actor, fail);
-    if (event.revision !== index + 1 || eventIds.has(event.id) || entities.has(event.entityId) || !HASH.test(event.entityDigest) || !iso(event.at)) fail('INVALID_EVENT');
-    let entity;
-    if (event.kind === 'project-created') {
-      entity = projects[event.entityId];
-      if (!entity || entity.id !== event.projectId) fail('INVALID_EVENT_REFERENCE');
-      seenProjects.add(entity.id);
-    } else if (event.kind === 'release-created') {
-      entity = releases[event.entityId];
-      if (!entity || entity.projectId !== event.projectId || !seenProjects.has(entity.projectId)) fail('INVALID_EVENT_REFERENCE');
-      seenReleases.add(entity.id);
-    } else if (event.kind === 'run-bound') {
-      entity = runBindings[event.entityId];
-      if (!entity || entity.projectId !== event.projectId || !seenReleases.has(entity.releaseId)) fail('INVALID_EVENT_REFERENCE');
-    } else fail('INVALID_EVENT_KIND');
-    if ((entity.createdAt ?? entity.boundAt) !== event.at || hashAcceptanceValue(entity) !== event.entityDigest) fail('ENTITY_HISTORY_MISMATCH');
-    eventIds.add(event.id); entities.add(event.entityId);
-  }
-  return catalog;
+  unavailable('CATALOG_PREVIOUS_SCHEMA_MISMATCH');
 }
 
 function inputOf(input, allowed) {
@@ -134,8 +59,9 @@ const missing = entity => { throw error('NOT_FOUND', 404, `${entity}不存在。
 
 /** The supplied owner must fence engine startup/recovery as well as these writes. */
 export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, limits: inputLimits = {},
-  writeAtomic = writeAtomicFileSync } = {}) {
-  if (typeof root !== 'string' || !root.trim() || typeof writeAtomic !== 'function') throw new TypeError('Invalid catalog store options');
+  writeAtomic = writeAtomicFileSync, writeExclusive = writeExclusiveCatalogFileSync } = {}) {
+  if (typeof root !== 'string' || !root.trim() || typeof writeAtomic !== 'function'
+    || typeof writeExclusive !== 'function') throw new TypeError('Invalid catalog store options');
   const limits = limitsOf(inputLimits), rootPath = resolve(root);
   let pinnedRoot, pinnedIdentity, pending = 0, tail = Promise.resolve();
   function assertOwned() {
@@ -169,8 +95,9 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       unavailable('CATALOG_FILE_UNAVAILABLE');
     }
   }
-  function readFile(name) {
-    const { file, stat } = safeFile(name);
+  function readFile(name, { optional = false } = {}) {
+    const { file, stat } = safeFile(name, { optional });
+    if (!stat) return null;
     if (stat.size > limits.jsonBytes) unavailable('CATALOG_BYTES_EXCEEDED');
     try {
       const bytes = readFileSync(file);
@@ -187,16 +114,86 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
   }
   function write(name, content) {
     const { file } = safeFile(name, { optional: true });
+    assertOwned();
     try { writeAtomic(file, content); }
     catch { unavailable('CATALOG_WRITE_FAILED'); }
   }
-  function read() { return readFile('catalog.json').catalog; }
+  function requireCurrent(catalog) {
+    if (catalog.schemaVersion !== 2) unavailable('MIGRATION_REQUIRED');
+    return catalog;
+  }
+  function read() { return requireCurrent(readFile('catalog.json').catalog); }
+  function checkUnchanged(name, expected) {
+    const current = readFile(name, { optional: !expected });
+    if (!!current !== !!expected || current && !current.bytes.equals(expected.bytes)) {
+      throw error('STALE_REVISION', 409, '项目目录字节已变化，请刷新后重新操作。');
+    }
+  }
+  function commit(current, previous, bytes) {
+    assertOwned(); actualRoot();
+    checkUnchanged('catalog.json', current);
+    checkUnchanged('catalog.previous.json', previous);
+    write('catalog.previous.json', current.bytes);
+    assertOwned(); actualRoot();
+    checkUnchanged('catalog.json', current);
+    checkUnchanged('catalog.previous.json', current);
+    write('catalog.json', bytes);
+  }
+  function preflightPreimages(sources) {
+    const names = new Set(readdirSync(actualRoot()).filter(file => /^catalog\.v1\.[a-f0-9]{64}\.json$/.test(file)));
+    for (const source of sources.filter(Boolean)) {
+      const name = `catalog.v1.${sha256(source.bytes)}.json`;
+      const existing = readFile(name, { optional: true });
+      if (existing && !existing.bytes.equals(source.bytes)) unavailable('MIGRATION_PREIMAGE_MISMATCH');
+      names.add(name);
+    }
+    if (names.size > 2) unavailable('MIGRATION_PREIMAGE_CAPACITY');
+  }
+  function preservePreimage(source) {
+    if (!source) return;
+    assertOwned(); actualRoot();
+    const name = `catalog.v1.${sha256(source.bytes)}.json`;
+    const existing = readFile(name, { optional: true });
+    if (existing) {
+      if (!existing.bytes.equals(source.bytes)) unavailable('MIGRATION_PREIMAGE_MISMATCH');
+      return;
+    }
+    const { file } = safeFile(name, { optional: true });
+    assertOwned();
+    try { writeExclusive(file, source.bytes); }
+    catch (cause) {
+      if (cause?.code !== 'EEXIST') unavailable('MIGRATION_PREIMAGE_WRITE_FAILED');
+    }
+    const published = readFile(name);
+    if (!published.bytes.equals(source.bytes)) unavailable('MIGRATION_PREIMAGE_MISMATCH');
+  }
+  function migrate(current) {
+    const previous = readFile('catalog.previous.json', { optional: true });
+    validatePredecessor(current, previous);
+    const catalog = buildCatalogMigration(current.catalog, { headSha256: sha256(current.bytes),
+      previousSha256: previous ? sha256(previous.bytes) : null, limits });
+    const bytes = Buffer.from(JSON.stringify(catalog, null, 2) + '\n');
+    if (bytes.length > limits.jsonBytes) throw error('CATALOG_CAPACITY', 409, '项目目录升级超过容量上限；原记录已保留。', { limit: 'jsonBytes' });
+    preflightPreimages([current, previous]);
+    assertOwned(); actualRoot();
+    checkUnchanged('catalog.json', current);
+    checkUnchanged('catalog.previous.json', previous);
+    preservePreimage(current); preservePreimage(previous);
+    commit(current, previous, bytes);
+    const committed = readFile('catalog.json');
+    if (!committed.bytes.equals(bytes)) unavailable('MIGRATION_COMMIT_CHANGED');
+    return requireCurrent(committed.catalog);
+  }
   async function initialize() {
     return queue(() => {
       assertOwned(); actualRoot(true);
-      if (safeFile('catalog.json', { optional: true }).stat) return read();
+      if (safeFile('catalog.json', { optional: true }).stat) {
+        const current = readFile('catalog.json');
+        return current.catalog.schemaVersion === 1 ? migrate(current) : requireCurrent(current.catalog);
+      }
       if (readdirSync(actualRoot()).some(name => name.startsWith('catalog.'))) unavailable('MISSING_CATALOG_WITH_RECOVERY_MATERIAL');
-      const catalog = { schemaVersion: 1, generationId: 'ag-' + randomUUID(), revision: 0, projects: {}, releases: {}, runBindings: {}, events: [] };
+      const catalog = { schemaVersion: 2, generationId: 'ag-' + randomUUID(), revision: 0, projects: {}, releases: {}, runBindings: {},
+        candidates: {}, approvals: {}, selections: {}, migrations: {}, events: [] };
       const bytes = Buffer.from(JSON.stringify(catalog, null, 2) + '\n');
       if (bytes.length > limits.jsonBytes) throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限。', { limit: 'jsonBytes' });
       validateAcceptanceCatalog(catalog, { limits }); assertOwned(); write('catalog.json', bytes);
@@ -249,6 +246,7 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     return queue(() => {
       assertOwned();
       const current = readFile('catalog.json');
+      requireCurrent(current.catalog);
       if (input.expectedGenerationId !== current.catalog.generationId || input.expectedRevision !== current.catalog.revision) {
         throw error('STALE_REVISION', 409, '项目目录已变化，请刷新后重新操作。', { generationId: current.catalog.generationId, revision: current.catalog.revision });
       }
@@ -263,11 +261,10 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       capacity(catalog, limits, limit => { throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限；历史记录未删除。', { limit }); });
       const bytes = Buffer.from(JSON.stringify(catalog, null, 2) + '\n');
       if (bytes.length > limits.jsonBytes) throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限；历史记录未删除。', { limit: 'jsonBytes' });
-      validateAcceptanceCatalog(catalog, { limits }); assertOwned();
-      if (!readFile('catalog.json').bytes.equals(current.bytes)) throw error('STALE_REVISION', 409, '项目目录字节已变化，请刷新后重新操作。');
-      if (safeFile('catalog.previous.json', { optional: true }).stat) readFile('catalog.previous.json');
-      write('catalog.previous.json', current.bytes);
-      assertOwned(); write('catalog.json', bytes);
+      validateAcceptanceCatalog(catalog, { limits });
+      const previous = readFile('catalog.previous.json', { optional: true });
+      validatePredecessor(current, previous);
+      commit(current, previous, bytes);
       const { kind: _kind, ...payload } = result;
       return { generationId: catalog.generationId, revision: catalog.revision, ...payload, event };
     });
