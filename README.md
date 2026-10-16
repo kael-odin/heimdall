@@ -201,9 +201,11 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [DEMO-SCRIPT.md](DEMO-SCRIPT.md) | 演示脚本 + 评委问答预案 | 答辩前 |
 | [VISUAL-SYSTEM.md](VISUAL-SYSTEM.md) | 控制台设计系统（令牌、字体、3D 星图规范） | 改界面前 |
 | [RISKS.md](RISKS.md) | 合规红线、技术风险预案、演示日 checklist | 每周对一遍 |
+| [docs/competition/02-自动验收开发项目还原度BUG检测系统.md](docs/competition/02-自动验收开发项目还原度BUG检测系统.md) | 命题 02 方案：Mirror / Spec / Regression、Xspark 验收样例和 Figma 扩展路线 | 比赛方案与后续开发 |
 | [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |
+| [docs/audits/2026-10-16/project-cleanup.md](docs/audits/2026-10-16/project-cleanup.md) | 2026-10-16 中间产物清理、可恢复归档和 CAS 回收预览 | 查看本轮清理范围 |
 
 `docs/archive/` 存放阶段性的验收报告与审查记录（历史证据，不再更新）。
 

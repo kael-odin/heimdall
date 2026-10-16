@@ -40,6 +40,7 @@ Thumbs.db
 # playwright
 playwright-report/
 test-results/
+.playwright-cli/
 
 # 运行期盘点产物（引擎会在内存里现算；CLI storage 默认写这里）
 core/storage.json
@@ -49,6 +50,9 @@ core/storage.json
 .impeccable/mocks/
 .impeccable/build/
 .impeccable/config.local.json
+
+# local assistant/debug configuration
+.claude/
 
 # Playwright MCP 工具的截图/快照（调试产物，不入库）
 .playwright-mcp/
