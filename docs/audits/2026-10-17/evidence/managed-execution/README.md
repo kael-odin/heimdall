@@ -19,7 +19,7 @@ Browser plugin / browser skill 未在本会话提供，使用仓库 Playwright �
 | [源码字节清单](source-files.json) | 本轮 18 个修改 / 新增源码与测试的 worktree 原字节 SHA，十源 verifier 与基线完全相同 |
 | [质量门摘要](validation-summary.json) | 从正式 TAP 与浏览器 JSON 提取的当次数据；重复补跑不累加 |
 
-`gates/lint.log`、`build.log`、`smoke.log`、`docs-links.log` 保存常规门禁；build 仍有既有 chunk 大小提示。源代码和运行证据单独保存，没有将依赖树或 Linux payload 写入 Git。
+`gates/lint.log`、[build.log.gz](gates/build.log.gz)、`smoke.log`、`docs-links.log` 保存常规门禁；build 仍有既有 chunk 大小提示。Vite 输出也含原始行尾空格，采用同一无损压缩与往返核验方式。源代码和运行证据单独保存，没有将依赖树或 Linux payload 写入 Git。
 
 [首次误递归 TAP](gates/core-discovery-first.tap.gz) 是未完成的首次误递归运行，包含 ignored 历史副本的缺依赖 / 原件错误，不能作为当前维护 suite 的统计。[首次默认并发 TAP](gates/core-default-concurrency-first.tap.gz) 是限定维护 suite 后、尚未限制桌面默认高并发的失败轮次（1797 total、1 fail）。取消后新操作返回 202，旧日志仅有早期 fetch 错误且引擎未退出，尚不能确定超时根因。最终受控并发全量和精确夹具复验通过；等待与业务断言没有放宽。
 

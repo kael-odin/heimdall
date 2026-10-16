@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reason": "Lossless gzip preserves original failed TAP bytes including trailing whitespace. Raw local copies remain in ignored run storage. No original output was trimmed.",
+  "reason": "Lossless gzip preserves original failed TAP and Vite build output bytes including trailing whitespace. Raw local copies remain in ignored run storage. No original output was trimmed.",
   "files": [
     {
       "path": "docs/audits/2026-10-17/evidence/managed-execution-engine-first/engine-tests-corrected-fresh.tap.gz",
@@ -36,6 +36,15 @@
       "originalSha256": "4653a8552246059b6fa7e5ca4a7fe665157c3d154f9491fe8e917d33b332206e",
       "compressedBytes": 158653,
       "compressedSha256": "ff72324bf5a2d11fa9742741cd88c5854e013878d426a3b564c575425ff57fe8",
+      "roundTripVerified": true
+    },
+    {
+      "path": "docs/audits/2026-10-17/evidence/managed-execution/gates/build.log.gz",
+      "originalPath": "docs/audits/2026-10-17/evidence/managed-execution/gates/build.log",
+      "originalBytes": 1088,
+      "originalSha256": "99c58a17df49ca17cf4e7778176da1cb8cb2aeb5a80aed967baf6d3da815d199",
+      "compressedBytes": 570,
+      "compressedSha256": "9c7f74c8b83bbd3b7e29d9ae86eac6dd673451676cc1d2d12b65914b17b9a04f",
       "roundTripVerified": true
     }
   ]
