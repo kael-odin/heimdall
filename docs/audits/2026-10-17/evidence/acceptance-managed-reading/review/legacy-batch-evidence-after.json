@@ -1,0 +1,11 @@
+{
+  "changedDuringLaterRun": true,
+  "batchFirstIntegrityValid": false,
+  "batchFirstEvidenceVerified": false,
+  "batchSecondIntegrityValid": false,
+  "evidenceBytesChanged": true,
+  "immediateFreshFirstIntegrityValid": false,
+  "immediateFreshErrors": [
+    "EVIDENCE_DIGEST_MISMATCH"
+  ]
+}

@@ -10,7 +10,7 @@
 
 ---
 
-新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。本地项目支持不可变版本声明、历史运行归属，以及 Spec 需求候选的完整预览、显式批准和独立选用；写入受目录版本冲突与双引擎保护。批准不改变原门禁，也不自动发起新运行。AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [项目与版本](docs/competition/acceptance-catalog.md) · [需求基线](docs/competition/acceptance-baseline.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
+新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。本地项目支持不可变版本声明、历史运行归属，以及 Spec 需求候选的完整预览、显式批准和独立选用；写入受目录版本冲突与双引擎保护。托管 Spec 已支持固定身份存储、状态读取、完成快照、核验下载与比较，执行入口仍保持 `executionReady:false`。批准不改变原门禁，也不自动发起新运行。AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [项目与版本](docs/competition/acceptance-catalog.md) · [需求基线](docs/competition/acceptance-baseline.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
 
 ## 它实际长这样
 
@@ -214,7 +214,8 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [验收目录格式升级](docs/audits/2026-10-16/acceptance-catalog-migration.md) | 保留旧原件的单次迁移、版本谱系和真实旧数据浏览器复验 | 复查升级兼容性 |
 | [Spec 需求基线](docs/competition/acceptance-baseline.md) | 完整候选预览、批准历史、独立选用、来源重新核验 | 管理明确认可的需求 |
 | [需求基线实施验收](docs/audits/2026-10-16/acceptance-baseline.md) | 真实 worker / 浏览器、来源篡改、冲突和历史保护 | 复查批准可靠性 |
-| [托管 Spec 准备内核](docs/competition/acceptance-managed-spec.md) | 已选需求重建、不可变准备、来源隔离及 [owner 约束的报告存储](docs/audits/2026-10-17/acceptance-managed-store.md) | 查阅执行准备与存储合同；尚无托管执行入口 |
+| [托管 Spec 合同与读取](docs/competition/acceptance-managed-spec.md) | 已选需求重建、不可变准备、owner 存储与核验快照 / 下载 / 比较 | 查阅准备、存储和读取合同；执行仍为 `executionReady:false` |
+| [托管读取实施验收](docs/audits/2026-10-17/acceptance-managed-reading.md) | 安全 DTO、完成事实、真实浏览器、Linux 定向回归及 CI 诊断边界 | 复查读取能力与仍隔离的执行消费者 |
 | [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |

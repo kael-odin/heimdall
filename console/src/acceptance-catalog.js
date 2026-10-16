@@ -55,7 +55,7 @@ export function buildCatalogBindingInput(draft, version) {
 }
 
 export function catalogTerminalRuns(runs = []) {
-  return runs.filter(run => CATALOG_TERMINAL_STATUSES.has(run.status));
+  return runs.filter(run => CATALOG_TERMINAL_STATUSES.has(run.status) && run.provenance?.kind !== 'managed-spec');
 }
 
 /** Each reader owns a guard. A project switch invalidates earlier detail responses. */

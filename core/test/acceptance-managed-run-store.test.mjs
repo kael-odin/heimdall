@@ -88,7 +88,9 @@ test('fixed managed identity accepts real BUG results, commits terminal last and
     () => updateAcceptanceRun(f.e.runId, { status: 'running' }, { root: f.root }),
     () => finishAcceptanceRun(f.e.runId, raw, { root: f.root }), () => acceptanceArtifact(f.e.runId, 'report.json', { root: f.root })]) safeFailure(action);
   assert.deepEqual(snapshot(f.dir), before);
-  assert.equal(readAcceptanceSnapshot(f.e.runId, { root: f.root }).integrity.valid, false);
+  const verified = readAcceptanceSnapshot(f.e.runId, { root: f.root });
+  assert.equal(verified.integrity.valid, true); assert.equal(verified.integrity.evidenceVerified, true);
+  assert.equal(verified.report.gate, 'failed'); assert.equal(verified.report.summary.bugs, 1);
 });
 
 test('real request timeout remains completed and environment-blocked', async t => {

@@ -1,0 +1,9 @@
+{
+  "status": "failed",
+  "error": "验收运行失败，现场已保留。",
+  "errorUnchanged": false,
+  "hasAbsolutePath": false,
+  "hasPrivatePlan": false,
+  "hasManagedEnvelope": false,
+  "targetRequests": 0
+}

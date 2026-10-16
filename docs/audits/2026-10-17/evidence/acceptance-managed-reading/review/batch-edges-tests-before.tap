@@ -1,0 +1,626 @@
+TAP version 13
+# Subtest: later legacy capture detects earlier legacy evidence changes and preserves the damaged bytes
+not ok 1 - later legacy capture detects earlier legacy evidence changes and preserves the damaged bytes
+  ---
+  duration_ms: 270.1912
+  type: 'test'
+  location: 'C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\test\\acceptance-managed-batch-edges.test.mjs:68:38'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + {
+    +   checks: [
+    +     {
+    +       actual: {
+    +         reason: 'Requirement candidate has not been explicitly approved.',
+    +         requested: false
+    +       },
+    +       dimension: 'behavior',
+    +       evaluationLimited: true,
+    +       evidence: {
+    +         contract: 'spec-1-contract-contract.json'
+    +       },
+    +       evidenceLevel: 'http-reproduced',
+    +       expected: {
+    +         status: 200
+    +       },
+    +       id: 'spec-1-contract',
+    +       identity: {
+    +         caseKey: '43e068888560f1714b20f09fb877329ab0c6d479eca05fbfb2b88d62c2815bb2',
+    +         contextKey: '24d3fb021e94452832efb2ed2eec27d9f1e2141aa76e729c4a78d874f51a2f77',
+    +         contractId: 'contract',
+    +         environmentKey: '3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c',
+    +         facet: 'contract',
+    +         kind: 'spec',
+    +         method: 'GET',
+    +         oracleKey: '064baab3d46a5c57c2da7e9f73c3021e2d9d6639bf221410fc05b7cd99eb36df',
+    +         ruleKey: 'c76a7d14300b035593c0c730d0fdea297e69f8fe8a701208b3af2c418da91003',
+    +         version: 1,
+    +         viewport: 'api'
+    +       },
+    +       oracle: {
+    +         contractFingerprint: '49ef11cb9a95d7acaeefc50c057b6764db2f2e4bc9bd164451ace141dd6ed891',
+    +         documentSha256: null,
+    +         kind: 'draft-spec',
+    +         revision: '1',
+    +         source: 'REQ-BATCH-EDGES',
+    +         sourceFingerprint: '3108420cc2c7fb6ab6799cf2092ed6d0169a7c0357c23d0b8c8b31a8c961aefb'
+    +       },
+    +       reproduction: [
+    +         'Use requirement REQ-BATCH-EDGES at revision 1.',
+    +         'GET http://127.0.0.1:9/source/healthy without cookies or credentials; redirects are not followed.',
+    +         'Compare HTTP status, declared MIME and explicit JSON assertions/schema.'
+    +       ],
+    +       route: '/healthy',
+    +       severity: 'high',
+    +       status: 'blocked',
+    +       title: 'contract',
+    +       verdict: 'needs_review',
+    +       viewport: 'api'
+    +     }
+    +   ],
+    +   contractFingerprint: '49ef11cb9a95d7acaeefc50c057b6764db2f2e4bc9bd164451ace141dd6ed891',
+    +   coverage: {
+    +     capped: false,
+    +     completed: 1,
+    +     planned: 1
+    +   },
+    +   endedAt: '2026-10-16T18:53:41.625Z',
+    +   environment: {
+    +     arch: 'x64',
+    +     maxResponseBytes: 262144,
+    +     nodeVersion: 'v25.2.1',
+    +     platform: 'win32',
+    +     runner: 'node-fetch',
+    +     timeoutMs: 10000
+    +   },
+    +   evidenceManifest: [
+    +     {
+    +       bytes: 386,
+    +       file: 'spec-1-contract-contract.json',
+    +       sha256: 'b029928e0c6e4c73f2cc948457485cd0110c3aa69cc41bd3028661d9796911bf'
+    +     }
+    +   ],
+    +   gate: 'blocked',
+    +   mode: 'spec',
+    +   name: 'batch evidence final fence',
+    +   planFingerprint: '0179d96d4c6a7804ad394f6743b4fac7be3ad583de91d50bce631956c427c991',
+    +   runId: 'ac-2d19f861-bab7-4ac9-93c1-c7258ea0a859',
+    +   safety: {
+    +     allowedMethods: [
+    +       'GET',
+    +       'HEAD'
+    +     ],
+    +     credentials: 'none',
+    +     readOnly: true,
+    +     redirects: 'not-followed',
+    +     requests: 0
+    +   },
+    +   schemaVersion: 1,
+    +   scope: '仅验收明确批准的 GET/HEAD 及声明的 HTTP、MIME、JSON 字段/响应 schema；不使用会话、不跟随重定向。候选、未覆盖契约、超时、超响应/验证预算均不能通过；无视觉、数据库、写操作、认证或任意业务状态机保证。来源指纹用于追溯，不代表系统已经证明原需求正确。',
+    +   sourceFingerprint: '3108420cc2c7fb6ab6799cf2092ed6d0169a7c0357c23d0b8c8b31a8c961aefb',
+    +   specApproval: {
+    +     approved: false,
+    +     recordedAt: '2026-10-16T18:53:41.622Z'
+    +   },
+    +   specSource: {
+    +     id: 'REQ-BATCH-EDGES',
+    +     revision: '1',
+    +     type: 'manual'
+    +   },
+    +   startedAt: '2026-10-16T18:53:41.622Z',
+    +   status: 'completed',
+    +   summary: {
+    +     baselineFailed: 0,
+    +     blocked: 1,
+    +     bugs: 0,
+    +     coverage: {
+    +       measured: 0,
+    +       ratio: 0,
+    +       total: 1
+    +     },
+    +     dimensions: {
+    +       behavior: {
+    +         blocked: 1,
+    +         failed: 0,
+    +         needsReview: 0,
+    +         passed: 0,
+    +         score: null,
+    +         total: 1
+    +       },
+    +       health: {
+    +         blocked: 0,
+    +         failed: 0,
+    +         needsReview: 0,
+    +         passed: 0,
+    +         score: null,
+    +         total: 0
+    +       },
+    +       structure: {
+    +         blocked: 0,
+    +         failed: 0,
+    +         needsReview: 0,
+    +         passed: 0,
+    +         score: null,
+    +         total: 0
+    +       },
+    +       visual: {
+    +         blocked: 0,
+    +         failed: 0,
+    +         needsReview: 0,
+    +         passed: 0,
+    +         score: null,
+    +         total: 0
+    +       }
+    +     },
+    +     failed: 0,
+    +     invalid: 0,
+    +     missing: 0,
+    +     needsReview: 0,
+    +     passed: 0,
+    +     total: 1
+    +   },
+    +   targetUrl: 'http://127.0.0.1:9/source',
+    +   verifierFingerprint: 'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8'
+    + }
+    - null
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: ~
+  actual:
+    schemaVersion: 1
+    runId: 'ac-2d19f861-bab7-4ac9-93c1-c7258ea0a859'
+    name: 'batch evidence final fence'
+    mode: 'spec'
+    targetUrl: 'http://127.0.0.1:9/source'
+    startedAt: '2026-10-16T18:53:41.622Z'
+    endedAt: '2026-10-16T18:53:41.625Z'
+    status: 'completed'
+    checks:
+      0:
+        id: 'spec-1-contract'
+        title: 'contract'
+        route: '/healthy'
+        viewport: 'api'
+        dimension: 'behavior'
+        severity: 'high'
+        identity:
+          version: 1
+          kind: 'spec'
+          facet: 'contract'
+          caseKey: '43e068888560f1714b20f09fb877329ab0c6d479eca05fbfb2b88d62c2815bb2'
+          contextKey: '24d3fb021e94452832efb2ed2eec27d9f1e2141aa76e729c4a78d874f51a2f77'
+          ruleKey: 'c76a7d14300b035593c0c730d0fdea297e69f8fe8a701208b3af2c418da91003'
+          oracleKey: '064baab3d46a5c57c2da7e9f73c3021e2d9d6639bf221410fc05b7cd99eb36df'
+          environmentKey: '3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c'
+          viewport: 'api'
+          contractId: 'contract'
+          method: 'GET'
+        oracle:
+          kind: 'draft-spec'
+          source: 'REQ-BATCH-EDGES'
+          revision: '1'
+          sourceFingerprint: '3108420cc2c7fb6ab6799cf2092ed6d0169a7c0357c23d0b8c8b31a8c961aefb'
+          documentSha256: ~
+          contractFingerprint: '49ef11cb9a95d7acaeefc50c057b6764db2f2e4bc9bd164451ace141dd6ed891'
+        evidenceLevel: 'http-reproduced'
+        expected:
+          status: 200
+        reproduction:
+          0: 'Use requirement REQ-BATCH-EDGES at revision 1.'
+          1: 'GET http://127.0.0.1:9/source/healthy without cookies or credentials; redirects are not followed.'
+          2: 'Compare HTTP status, declared MIME and explicit JSON assertions/schema.'
+        status: 'blocked'
+        verdict: 'needs_review'
+        evaluationLimited: true
+        actual:
+          requested: false
+          reason: 'Requirement candidate has not been explicitly approved.'
+        evidence:
+          contract: 'spec-1-contract-contract.json'
+    coverage:
+      planned: 1
+      completed: 1
+      capped: false
+    specSource:
+      id: 'REQ-BATCH-EDGES'
+      revision: '1'
+      type: 'manual'
+    sourceFingerprint: '3108420cc2c7fb6ab6799cf2092ed6d0169a7c0357c23d0b8c8b31a8c961aefb'
+    contractFingerprint: '49ef11cb9a95d7acaeefc50c057b6764db2f2e4bc9bd164451ace141dd6ed891'
+    specApproval:
+      approved: false
+      recordedAt: '2026-10-16T18:53:41.622Z'
+    safety:
+      readOnly: true
+      allowedMethods:
+        0: 'GET'
+        1: 'HEAD'
+      redirects: 'not-followed'
+      credentials: 'none'
+      requests: 0
+    environment:
+      runner: 'node-fetch'
+      platform: 'win32'
+      arch: 'x64'
+      nodeVersion: 'v25.2.1'
+      maxResponseBytes: 262144
+      timeoutMs: 10000
+    scope: '仅验收明确批准的 GET/HEAD 及声明的 HTTP、MIME、JSON 字段/响应 schema；不使用会话、不跟随重定向。候选、未覆盖契约、超时、超响应/验证预算均不能通过；无视觉、数据库、写操作、认证或任意业务状态机保证。来源指纹用于追溯，不代表系统已经证明原需求正确。'
+    planFingerprint: '0179d96d4c6a7804ad394f6743b4fac7be3ad583de91d50bce631956c427c991'
+    verifierFingerprint: 'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8'
+    evidenceManifest:
+      0:
+        file: 'spec-1-contract-contract.json'
+        bytes: 386
+        sha256: 'b029928e0c6e4c73f2cc948457485cd0110c3aa69cc41bd3028661d9796911bf'
+    gate: 'blocked'
+    summary:
+      total: 1
+      passed: 0
+      failed: 0
+      blocked: 1
+      needsReview: 0
+      bugs: 0
+      baselineFailed: 0
+      missing: 0
+      invalid: 0
+      coverage:
+        measured: 0
+        total: 1
+        ratio: 0
+      dimensions:
+        visual:
+          total: 0
+          passed: 0
+          failed: 0
+          blocked: 0
+          needsReview: 0
+          score: ~
+        structure:
+          total: 0
+          passed: 0
+          failed: 0
+          blocked: 0
+          needsReview: 0
+          score: ~
+        behavior:
+          total: 1
+          passed: 0
+          failed: 0
+          blocked: 1
+          needsReview: 0
+          score: ~
+        health:
+          total: 0
+          passed: 0
+          failed: 0
+          blocked: 0
+          needsReview: 0
+          score: ~
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///C:/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core/test/acceptance-managed-batch-edges.test.mjs:91:63)
+    async Test.run (node:internal/test_runner/test:1113:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3)
+  ...
+# Subtest: later managed capture detects earlier legacy evidence changes and preserves the damaged bytes
+not ok 2 - later managed capture detects earlier legacy evidence changes and preserves the damaged bytes
+  ---
+  duration_ms: 2272.0859
+  type: 'test'
+  location: 'C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\test\\acceptance-managed-batch-edges.test.mjs:68:38'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + {
+    +   checks: [
+    +     {
+    +       actual: {
+    +         reason: 'Requirement candidate has not been explicitly approved.',
+    +         requested: false
+    +       },
+    +       dimension: 'behavior',
+    +       evaluationLimited: true,
+    +       evidence: {
+    +         contract: 'spec-1-contract-contract.json'
+    +       },
+    +       evidenceLevel: 'http-reproduced',
+    +       expected: {
+    +         status: 200
+    +       },
+    +       id: 'spec-1-contract',
+    +       identity: {
+    +         caseKey: '43e068888560f1714b20f09fb877329ab0c6d479eca05fbfb2b88d62c2815bb2',
+    +         contextKey: '24d3fb021e94452832efb2ed2eec27d9f1e2141aa76e729c4a78d874f51a2f77',
+    +         contractId: 'contract',
+    +         environmentKey: '3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c',
+    +         facet: 'contract',
+    +         kind: 'spec',
+    +         method: 'GET',
+    +         oracleKey: '064baab3d46a5c57c2da7e9f73c3021e2d9d6639bf221410fc05b7cd99eb36df',
+    +         ruleKey: 'c76a7d14300b035593c0c730d0fdea297e69f8fe8a701208b3af2c418da91003',
+    +         version: 1,
+    +         viewport: 'api'
+    +       },
+    +       oracle: {
+    +         contractFingerprint: '49ef11cb9a95d7acaeefc50c057b6764db2f2e4bc9bd164451ace141dd6ed891',
+    +         documentSha256: null,
+    +         kind: 'draft-spec',
+    +         revision: '1',
+    +         source: 'REQ-BATCH-EDGES',
+    +         sourceFingerprint: '3108420cc2c7fb6ab6799cf2092ed6d0169a7c0357c23d0b8c8b31a8c961aefb'
+    +       },
+    +       reproduction: [
+    +         'Use requirement REQ-BATCH-EDGES at revision 1.',
+    +         'GET http://127.0.0.1:60676/source/healthy without cookies or credentials; redirects are not followed.',
+    +         'Compare HTTP status, declared MIME and explicit JSON assertions/schema.'
+    +       ],
+    +       route: '/healthy',
+    +       severity: 'high',
+    +       status: 'blocked',
+    +       title: 'contract',
+    +       verdict: 'needs_review',
+    +       viewport: 'api'
+    +     }
+    +   ],
+    +   contractFingerprint: '49ef11cb9a95d7acaeefc50c057b6764db2f2e4bc9bd164451ace141dd6ed891',
+    +   coverage: {
+    +     capped: false,
+    +     completed: 1,
+    +     planned: 1
+    +   },
+    +   endedAt: '2026-10-16T18:53:41.910Z',
+    +   environment: {
+    +     arch: 'x64',
+    +     maxResponseBytes: 262144,
+    +     nodeVersion: 'v25.2.1',
+    +     platform: 'win32',
+    +     runner: 'node-fetch',
+    +     timeoutMs: 10000
+    +   },
+    +   evidenceManifest: [
+    +     {
+    +       bytes: 386,
+    +       file: 'spec-1-contract-contract.json',
+    +       sha256: 'b029928e0c6e4c73f2cc948457485cd0110c3aa69cc41bd3028661d9796911bf'
+    +     }
+    +   ],
+    +   gate: 'blocked',
+    +   mode: 'spec',
+    +   name: 'batch evidence final fence',
+    +   planFingerprint: '1342b7080d7f917dfbe0489045400b3c1a2572c9463c6716fa35010a80f9d779',
+    +   runId: 'ac-7afa9269-6410-45e5-aaef-679f584c6083',
+    +   safety: {
+    +     allowedMethods: [
+    +       'GET',
+    +       'HEAD'
+    +     ],
+    +     credentials: 'none',
+    +     readOnly: true,
+    +     redirects: 'not-followed',
+    +     requests: 0
+    +   },
+    +   schemaVersion: 1,
+    +   scope: '仅验收明确批准的 GET/HEAD 及声明的 HTTP、MIME、JSON 字段/响应 schema；不使用会话、不跟随重定向。候选、未覆盖契约、超时、超响应/验证预算均不能通过；无视觉、数据库、写操作、认证或任意业务状态机保证。来源指纹用于追溯，不代表系统已经证明原需求正确。',
+    +   sourceFingerprint: '3108420cc2c7fb6ab6799cf2092ed6d0169a7c0357c23d0b8c8b31a8c961aefb',
+    +   specApproval: {
+    +     approved: false,
+    +     recordedAt: '2026-10-16T18:53:41.908Z'
+    +   },
+    +   specSource: {
+    +     id: 'REQ-BATCH-EDGES',
+    +     revision: '1',
+    +     type: 'manual'
+    +   },
+    +   startedAt: '2026-10-16T18:53:41.908Z',
+    +   status: 'completed',
+    +   summary: {
+    +     baselineFailed: 0,
+    +     blocked: 1,
+    +     bugs: 0,
+    +     coverage: {
+    +       measured: 0,
+    +       ratio: 0,
+    +       total: 1
+    +     },
+    +     dimensions: {
+    +       behavior: {
+    +         blocked: 1,
+    +         failed: 0,
+    +         needsReview: 0,
+    +         passed: 0,
+    +         score: null,
+    +         total: 1
+    +       },
+    +       health: {
+    +         blocked: 0,
+    +         failed: 0,
+    +         needsReview: 0,
+    +         passed: 0,
+    +         score: null,
+    +         total: 0
+    +       },
+    +       structure: {
+    +         blocked: 0,
+    +         failed: 0,
+    +         needsReview: 0,
+    +         passed: 0,
+    +         score: null,
+    +         total: 0
+    +       },
+    +       visual: {
+    +         blocked: 0,
+    +         failed: 0,
+    +         needsReview: 0,
+    +         passed: 0,
+    +         score: null,
+    +         total: 0
+    +       }
+    +     },
+    +     failed: 0,
+    +     invalid: 0,
+    +     missing: 0,
+    +     needsReview: 0,
+    +     passed: 0,
+    +     total: 1
+    +   },
+    +   targetUrl: 'http://127.0.0.1:60676/source',
+    +   verifierFingerprint: 'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8'
+    + }
+    - null
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: ~
+  actual:
+    schemaVersion: 1
+    runId: 'ac-7afa9269-6410-45e5-aaef-679f584c6083'
+    name: 'batch evidence final fence'
+    mode: 'spec'
+    targetUrl: 'http://127.0.0.1:60676/source'
+    startedAt: '2026-10-16T18:53:41.908Z'
+    endedAt: '2026-10-16T18:53:41.910Z'
+    status: 'completed'
+    checks:
+      0:
+        id: 'spec-1-contract'
+        title: 'contract'
+        route: '/healthy'
+        viewport: 'api'
+        dimension: 'behavior'
+        severity: 'high'
+        identity:
+          version: 1
+          kind: 'spec'
+          facet: 'contract'
+          caseKey: '43e068888560f1714b20f09fb877329ab0c6d479eca05fbfb2b88d62c2815bb2'
+          contextKey: '24d3fb021e94452832efb2ed2eec27d9f1e2141aa76e729c4a78d874f51a2f77'
+          ruleKey: 'c76a7d14300b035593c0c730d0fdea297e69f8fe8a701208b3af2c418da91003'
+          oracleKey: '064baab3d46a5c57c2da7e9f73c3021e2d9d6639bf221410fc05b7cd99eb36df'
+          environmentKey: '3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c'
+          viewport: 'api'
+          contractId: 'contract'
+          method: 'GET'
+        oracle:
+          kind: 'draft-spec'
+          source: 'REQ-BATCH-EDGES'
+          revision: '1'
+          sourceFingerprint: '3108420cc2c7fb6ab6799cf2092ed6d0169a7c0357c23d0b8c8b31a8c961aefb'
+          documentSha256: ~
+          contractFingerprint: '49ef11cb9a95d7acaeefc50c057b6764db2f2e4bc9bd164451ace141dd6ed891'
+        evidenceLevel: 'http-reproduced'
+        expected:
+          status: 200
+        reproduction:
+          0: 'Use requirement REQ-BATCH-EDGES at revision 1.'
+          1: 'GET http://127.0.0.1:60676/source/healthy without cookies or credentials; redirects are not followed.'
+          2: 'Compare HTTP status, declared MIME and explicit JSON assertions/schema.'
+        status: 'blocked'
+        verdict: 'needs_review'
+        evaluationLimited: true
+        actual:
+          requested: false
+          reason: 'Requirement candidate has not been explicitly approved.'
+        evidence:
+          contract: 'spec-1-contract-contract.json'
+    coverage:
+      planned: 1
+      completed: 1
+      capped: false
+    specSource:
+      id: 'REQ-BATCH-EDGES'
+      revision: '1'
+      type: 'manual'
+    sourceFingerprint: '3108420cc2c7fb6ab6799cf2092ed6d0169a7c0357c23d0b8c8b31a8c961aefb'
+    contractFingerprint: '49ef11cb9a95d7acaeefc50c057b6764db2f2e4bc9bd164451ace141dd6ed891'
+    specApproval:
+      approved: false
+      recordedAt: '2026-10-16T18:53:41.908Z'
+    safety:
+      readOnly: true
+      allowedMethods:
+        0: 'GET'
+        1: 'HEAD'
+      redirects: 'not-followed'
+      credentials: 'none'
+      requests: 0
+    environment:
+      runner: 'node-fetch'
+      platform: 'win32'
+      arch: 'x64'
+      nodeVersion: 'v25.2.1'
+      maxResponseBytes: 262144
+      timeoutMs: 10000
+    scope: '仅验收明确批准的 GET/HEAD 及声明的 HTTP、MIME、JSON 字段/响应 schema；不使用会话、不跟随重定向。候选、未覆盖契约、超时、超响应/验证预算均不能通过；无视觉、数据库、写操作、认证或任意业务状态机保证。来源指纹用于追溯，不代表系统已经证明原需求正确。'
+    planFingerprint: '1342b7080d7f917dfbe0489045400b3c1a2572c9463c6716fa35010a80f9d779'
+    verifierFingerprint: 'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8'
+    evidenceManifest:
+      0:
+        file: 'spec-1-contract-contract.json'
+        bytes: 386
+        sha256: 'b029928e0c6e4c73f2cc948457485cd0110c3aa69cc41bd3028661d9796911bf'
+    gate: 'blocked'
+    summary:
+      total: 1
+      passed: 0
+      failed: 0
+      blocked: 1
+      needsReview: 0
+      bugs: 0
+      baselineFailed: 0
+      missing: 0
+      invalid: 0
+      coverage:
+        measured: 0
+        total: 1
+        ratio: 0
+      dimensions:
+        visual:
+          total: 0
+          passed: 0
+          failed: 0
+          blocked: 0
+          needsReview: 0
+          score: ~
+        structure:
+          total: 0
+          passed: 0
+          failed: 0
+          blocked: 0
+          needsReview: 0
+          score: ~
+        behavior:
+          total: 1
+          passed: 0
+          failed: 0
+          blocked: 1
+          needsReview: 0
+          score: ~
+        health:
+          total: 0
+          passed: 0
+          failed: 0
+          blocked: 0
+          needsReview: 0
+          score: ~
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///C:/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core/test/acceptance-managed-batch-edges.test.mjs:91:63)
+    async Test.run (node:internal/test_runner/test:1113:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:788:7)
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 0
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2677.9495

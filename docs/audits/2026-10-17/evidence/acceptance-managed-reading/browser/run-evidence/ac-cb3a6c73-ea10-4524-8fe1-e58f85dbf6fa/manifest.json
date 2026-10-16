@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-cb3a6c73-ea10-4524-8fe1-e58f85dbf6fa",
+  "taskId": null,
+  "name": "托管验收结果",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:53970/source",
+  "status": "completed",
+  "gate": "blocked",
+  "createdAt": "2026-10-16T19:20:37.905Z",
+  "updatedAt": "2026-10-16T19:20:37.941Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "托管验收结果",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:53970/source",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "MANAGED-READ",
+        "revision": "1",
+        "type": "manual"
+      },
+      "approved": false,
+      "checks": [
+        {
+          "id": "READ-0",
+          "title": "健康响应",
+          "method": "GET",
+          "path": "/healthy",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": "READ-1",
+          "title": "业务码符合需求",
+          "method": "GET",
+          "path": "/bug",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": {
+    "total": 2,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 2,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 2,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 2,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-16T19:20:37.914Z",
+  "error": null,
+  "reportSha256": "eb4e90fdb30116021d7b44a61b74238ea8750daf7f5539ee6587830fafd2eb9b"
+}

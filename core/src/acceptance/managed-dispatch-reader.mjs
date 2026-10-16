@@ -187,6 +187,10 @@ export function createManagedSpecDispatchReadContext(options) {
         assertCurrentInternal(); return recordCopy(runs.get(runId));
       }),
       inventory: guarded(() => { assertCurrentInternal(); return Object.freeze([...records.values()].map(record => record.reference)); }),
+      // One logical batch gets copies of all accepted records after one full
+      // freshness fence. Calling read() for every inventory reference would
+      // instead re-read the whole namespace once per record.
+      captureRecords: guarded(() => { assertCurrentInternal(); return Object.freeze([...records.values()].map(recordCopy)); }),
       assertCurrent,
       reread: guarded((operationId, expectedSha256) => {
         operation(operationId);

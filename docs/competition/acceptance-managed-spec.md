@@ -1,6 +1,6 @@
-# 托管 Spec：合同重建与派发准备
+# 托管 Spec：合同重建、固定身份与核验读取
 
-本阶段交付 B2.2-a 的私有准备内核：从项目当前明确选用的 Spec 需求重建计划，并为明确目标版本保存不可变派发准备记录。现有[需求基线界面](acceptance-baseline.md)仍返回 `executionReady:false`。本阶段没有新增托管 HTTP 端点、执行按钮、worker 或运行恢复。
+本阶段从项目当前明确选用的 Spec 需求重建计划，为明确目标版本保存不可变派发准备，并提供 owner 约束的固定身份存储。已完成记录现可经核验读取、下载证据及参与显式运行对比较；HTTP / 控制台也可读取安全投影。现有[需求基线界面](acceptance-baseline.md)仍返回 `executionReady:false`，托管执行入口、worker 与 owned recovery 尚未接入。
 
 ## 已实现的准备合同
 
@@ -24,7 +24,7 @@
 }
 ```
 
-envelope 中的 runId / taskId 只是预留身份，不能呈现为已经开始运行。私有 record 含完整计划和可能的 OpenAPI document；后续 HTTP 需要独立安全投影，不能直接返回整个对象。
+envelope 中的 runId / taskId 只是预留身份，不能呈现为已经开始运行。私有 record 含完整计划和可能的 OpenAPI document；现有 HTTP 读取使用独立安全投影，不返回整个对象。
 
 ## 操作 ID 与保存方式
 
@@ -38,18 +38,26 @@ sidecar 使用独立 schemaVersion=1，位于 owner 根内的 `managed-spec-disp
 
 读取使用有界文件描述符，验证 owner、根与目录身份、regular file、长度、原字节摘要及二读结果。SHA 用于关联和发现意外损坏，不是管理员无法伪造的签名；发布也不构成整个目录的断电事务。
 
+## 固定身份存储与核验读取
+
+内部[固定身份存储层](../audits/2026-10-17/acceptance-managed-store.md)提供实际 owner 约束的 create / progress / finish / settle：只接 operationId 与原准备字节摘要，固定 run / task / plan / 来源与目标；报告交叉核对真实 runner 的合同和证据，再以 completed manifest 作为提交点。半份报告保留为 partial，不能补成成功。
+
+新增读取层在同一读取范围内重新核对派发 namespace、准备记录、manifest、报告及引用证据。`readAcceptanceRun` / `listAcceptanceRuns` 可读取 managed 运行状态；`readAcceptanceSnapshot` / `readAcceptanceSnapshots` 只把严格完成且通过核验的报告作为可靠快照。`completed + failed` 的真实 BUG 与 `completed + blocked` 的超时或预算受阻仍是完成事实；running partial、failed / interrupted 收尾不能作为完成快照或下载依据。
+
+`readAcceptanceArtifact` 返回核验捕获的 bytes、SHA-256 和内容类型。JSON 下载保留原 bytes；Markdown 从同一份已核验 JSON 派生，不信任磁盘上的 `report.md`。证据下载只允许完成报告明确引用的文件，manifest、triage、sidecar、temporary 与未引用文件均不开放。比较通过批量快照在同一范围内读取双方，保留原有保守复验规则。
+
+HTTP 列表与详情只返回安全 DTO，managed 记录明确带 `triageSupported:false`；不暴露 plan、完整 envelope、私有 receipt 或 owner nonce，基础设施错误使用脱敏说明。控制台支持查看状态、原门禁、引用证据与下载，尚不能发起托管执行。真实浏览器与故障验证见[托管读取验收](../audits/2026-10-17/acceptance-managed-reading.md)。
+
 ## 后续执行边界
 
 执行控制基础已为私有 `runSpecAcceptance` 增加可选 `signal` 与同步 `assertActive`：控制失效停止当前请求及后续副作用，事件 callback 的等待也能取消，普通请求 timeout 保持原判定。私有 `catalog.readManagedSpecDispatch(projectId,input)` 则按完整原确认只读核对 record / null，不创建目录、不准备、不执行。null 不预留槽；新入口仍需在统一启动队列内再次核对。实现和限制见[执行控制验收](../audits/2026-10-16/acceptance-spec-execution-control.md)。
 
 重开本阶段的 prepared 记录只允许读取。升级、重启、同键重试、来源恢复或选用变化均不能自动创建 run 或发送请求。
 
-只读来源关联层现已增加严格原字节 provenance / linkage 校验，以及普通入口的托管身份隔离。保留 runId 即使删除 manifest / report 托管标记也不能通过普通 CLI、报告、解读或候选读取路径；坏派发记录会阻塞相关读取与恢复写入，并保留原件，详见[来源关联与隔离验收](../audits/2026-10-17/acceptance-managed-provenance.md)。
+只读来源关联层保留严格原字节 provenance / linkage 校验。已迁移的读取入口可核验 managed 身份；普通 CLI、旧 mutation / finish / path artifact、candidate、triage 与 recovery 仍显式拒绝 managed / reserved 身份，删除 manifest / report 的托管标记也不能降级绕过。managed 完成运行仍不能经旧目录 bind 成新的需求来源。坏派发记录阻塞相关读取与恢复写入并保留原件，原隔离切片见[来源关联与隔离验收](../audits/2026-10-17/acceptance-managed-provenance.md)。
 
-内部[固定身份存储层](../audits/2026-10-17/acceptance-managed-store.md)现已提供实际 owner 约束的 create / progress / finish / settle：只接 operationId 与原准备字节摘要，固定 run / task / plan / 来源与目标；报告交叉核对真实 runner 的合同和证据，再以 completed manifest 作为提交点。半份报告保留为 partial，不能补成成功。该层没有托管执行入口，普通消费者仍拒绝 managed 身份。
+B2.2-b 后续将迁移 candidate / triage 消费者与 owned recovery，再接持有 owner 的进程内异步 Spec executor、统一运行槽、取消 / watchdog / shutdown 与 task mirror。只有新操作当次的受控流程可以开始执行；已存在的 prepared 记录不会因为扫描而启动。恢复不自动重发已中断请求，不声称远端 exactly-once。
 
-B2.2-b 将接入持有 owner 的进程内异步 Spec executor，并补齐统一运行槽、取消 / watchdog / shutdown、不可变 manifest / report provenance 及中断恢复。只有新操作当次的受控流程可以开始执行；已存在的 prepared 记录不会因为扫描而启动。恢复不自动重发已中断请求，不声称远端 exactly-once。
-
-B2.2-c 再提供明确目标版本的界面与真实浏览器闭环。Browser 基线、写请求、鉴权会话、持久 BUG 工单和自动关闭缺陷继续另行实施。当前新增内核不能被描述成托管执行已经可用。
+B2.2-c 再提供明确目标版本的执行界面与真实浏览器执行闭环。当前已验收的浏览器流程只读取由显式内部 runner / writer 生成的记录，未验收引擎 executor 或 managed recovery。Browser 基线、写请求、鉴权会话、持久 BUG 工单和自动关闭缺陷继续另行实施。整个阶段保持 `executionReady:false`。
 
 实现与定向故障证据见[准备内核验收](../audits/2026-10-16/acceptance-managed-spec-preparation.md)。

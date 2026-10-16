@@ -60,17 +60,18 @@ async function completed(root) {
 test('reserved IDs cannot be downgraded by stripping every managed marker; all legacy consumers preserve bytes', t => {
   const { root } = fixture(t); publish(root); reservedRun(root);
   const before = tree(root), runId = prepared.runId;
-  const calls = [() => readAcceptanceRun(runId, { root }), () => updateAcceptanceRun(runId, { status: 'failed' }, { root }),
+  assert.throws(() => readAcceptanceRun(runId, { root }), errorIs('MANAGED_RUN_INTEGRITY_FAILED'));
+  const calls = [() => updateAcceptanceRun(runId, { status: 'failed' }, { root }),
     () => finishAcceptanceRun(runId, {}, { root }), () => acceptanceArtifact(runId, 'report.json', { root }),
     () => saveAcceptanceTriage(runId, {}, { root }), () => readAcceptanceTriage(runId, { root })];
   for (const call of calls) assert.throws(call, errorIs('MANAGED_EXECUTION_REQUIRED'));
   const snapshot = readAcceptanceSnapshot(runId, { root });
   assert.deepEqual(snapshot.manifest, { runId }); assert.equal(snapshot.report, null);
-  assert.equal(snapshot.integrity.valid, false); assert.equal(snapshot.integrity.errors[0].code, 'MANAGED_EXECUTION_REQUIRED');
+  assert.equal(snapshot.integrity.valid, false); assert.equal(snapshot.integrity.errors[0].code, 'MANAGED_RUN_INTEGRITY_FAILED');
   assert.throws(() => readSpecCandidateSource(runId, { root, owner: { root, assertOwned() {} } }), errorIs('SOURCE_INTEGRITY_FAILED'));
   assert.equal(recoverAcceptanceRuns({ root }), 0);
   const list = listAcceptanceRuns({ root }); assert.equal(Array.isArray(list), true);
-  assert.deepEqual(list.map(row => [row.runId, row.gate, row.code]), [[runId, 'blocked', 'MANAGED_EXECUTION_REQUIRED']]);
+  assert.deepEqual(list.map(row => [row.runId, row.gate, row.code]), [[runId, 'blocked', 'MANAGED_RUN_INTEGRITY_FAILED']]);
   assert.deepEqual(tree(root), before);
 });
 
@@ -96,11 +97,11 @@ for (const location of ['manifest', 'report']) test(`${location}-only managed ma
   assert.equal(readAcceptanceSnapshot(run.runId, { root }).integrity.valid, true);
   const path = join(dir, location + '.json'), value = get(path); value.managed = null; put(path, value);
   const before = tree(root);
-  assert.throws(() => readAcceptanceRun(run.runId, { root }), errorIs('MANAGED_EXECUTION_REQUIRED'));
+  assert.throws(() => readAcceptanceRun(run.runId, { root }), errorIs('MANAGED_RUN_INTEGRITY_FAILED'));
   assert.throws(() => acceptanceArtifact(run.runId, 'report.md', { root }), errorIs('MANAGED_EXECUTION_REQUIRED'));
   assert.throws(() => readSpecCandidateSource(run.runId, { root, owner: { root, assertOwned() {} } }), errorIs('SOURCE_INTEGRITY_FAILED'));
   assert.equal(readAcceptanceSnapshot(run.runId, { root }).report, null);
-  assert.equal(listAcceptanceRuns({ root })[0].code, 'MANAGED_EXECUTION_REQUIRED');
+  assert.equal(listAcceptanceRuns({ root })[0].code, 'MANAGED_RUN_INTEGRITY_FAILED');
   assert.deepEqual(tree(root), before);
 });
 
@@ -204,17 +205,17 @@ test('engine keeps catalog readable with corrupt dispatches, blocks recovery and
   } finally { await stop(); }
 });
 
-test('engine returns explicit unsupported status for reserved facts and rejects forged ordinary input before making tasks', async t => {
+test('engine rejects invalid reserved facts and forged ordinary input before making tasks', async t => {
   const { parent, root } = fixture(t); publish(root); reservedRun(root);
   const { base, stop } = await engine(t, parent);
   try {
     const before = tree(root), jobsBefore = await (await fetch(base + '/api/jobs')).json();
     const list = await (await fetch(base + '/api/acceptance/runs')).json();
     assert.equal(Array.isArray(list.runs), true); assert.equal(list.runs[0].gate, 'blocked');
-    assert.equal(list.runs[0].code, 'MANAGED_EXECUTION_REQUIRED');
+    assert.equal(list.runs[0].code, 'MANAGED_RUN_INTEGRITY_FAILED');
     for (const suffix of ['', '/report', '/report.md', '/evidence/detail.json', '/triage']) {
       const response = await fetch(base + '/api/acceptance/runs/' + prepared.runId + suffix);
-      assert.equal(response.status, 503); assert.equal((await response.json()).code, 'MANAGED_EXECUTION_REQUIRED');
+      assert.equal(response.status, 409); assert.equal((await response.json()).code, 'MANAGED_RUN_INTEGRITY_FAILED');
     }
     for (const key of ['managed', 'authority', 'operationId', 'dispatchId', 'dispatchSha256', 'executor', 'runId', 'taskId']) {
       const response = await fetch(base + '/api/acceptance/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' },

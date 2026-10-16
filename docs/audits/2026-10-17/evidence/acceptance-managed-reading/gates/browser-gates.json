@@ -1,0 +1,74 @@
+[
+  {
+    "name": "managed-reading",
+    "script": "smoke-acceptance-managed-reading.mjs",
+    "output": "browser-final",
+    "exitCode": 0,
+    "startedAt": "2026-10-16T19:20:37.4034085Z",
+    "completedAt": "2026-10-16T19:20:52.8567839Z"
+  },
+  {
+    "name": "spec-console",
+    "script": "smoke-acceptance-spec-console.mjs",
+    "output": "spec-final",
+    "exitCode": 0,
+    "startedAt": "2026-10-16T19:20:52.8818817Z",
+    "completedAt": "2026-10-16T19:21:06.0024033Z"
+  },
+  {
+    "name": "comparison-console",
+    "script": "smoke-acceptance-comparison-console.mjs",
+    "output": "comparison-final",
+    "exitCode": 0,
+    "startedAt": "2026-10-16T19:21:06.0162809Z",
+    "completedAt": "2026-10-16T19:21:24.8527524Z"
+  },
+  {
+    "name": "catalog-console",
+    "script": "smoke-acceptance-catalog-console.mjs",
+    "output": "catalog-final",
+    "exitCode": 0,
+    "startedAt": "2026-10-16T19:21:24.8685464Z",
+    "completedAt": "2026-10-16T19:21:38.3146841Z"
+  },
+  {
+    "name": "acceptance-console",
+    "script": "smoke-acceptance-console.mjs",
+    "output": "acceptance-final",
+    "exitCode": 0,
+    "startedAt": "2026-10-16T19:21:38.3257905Z",
+    "completedAt": "2026-10-16T19:22:05.3792094Z"
+  },
+  {
+    "name": "catalog-migration",
+    "script": "smoke-acceptance-catalog-migration.mjs",
+    "output": "migration-final",
+    "exitCode": 0,
+    "startedAt": "2026-10-16T19:22:05.3917086Z",
+    "completedAt": "2026-10-16T19:22:16.0731876Z"
+  },
+  {
+    "name": "baseline-console",
+    "script": "smoke-acceptance-baseline-console.mjs",
+    "output": "baseline-final",
+    "exitCode": 0,
+    "startedAt": "2026-10-16T19:22:16.0849525Z",
+    "completedAt": "2026-10-16T19:22:35.3984257Z"
+  },
+  {
+    "name": "managed-preparation",
+    "script": "smoke-acceptance-managed-preparation.mjs",
+    "output": "preparation-final",
+    "exitCode": 0,
+    "startedAt": "2026-10-16T19:22:35.4132881Z",
+    "completedAt": "2026-10-16T19:22:36.3892834Z"
+  },
+  {
+    "name": "console-cdp",
+    "script": "smoke-console-cdp.mjs",
+    "output": "cdp-final",
+    "exitCode": 0,
+    "startedAt": "2026-10-16T19:22:36.3980484Z",
+    "completedAt": "2026-10-16T19:23:05.9626795Z"
+  }
+]

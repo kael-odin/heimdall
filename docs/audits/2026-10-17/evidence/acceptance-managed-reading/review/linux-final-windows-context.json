@@ -1,0 +1,10 @@
+{
+  "windowsUtc": "2026-10-16T19:09:15.3148431Z",
+  "workingDirectory": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "gitHead": "f72edadcf5e31c066bac8141733569e8f02ee084",
+  "branch": "codex/managed-spec-readers",
+  "requiredReaderSha256": "e83faa109b391c22fa064a747223c3f631f309afa0db4972728b9391cf9ad43a",
+  "actualReaderSha256": "e83faa109b391c22fa064a747223c3f631f309afa0db4972728b9391cf9ad43a",
+  "stagedImplementation": false,
+  "note": "Frozen working-tree implementation; docs and evidence may still change. Linux source bytes are recorded independently before and after."
+}

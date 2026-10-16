@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: later legacy capture detects earlier legacy evidence changes and preserves the damaged bytes
+ok 1 - later legacy capture detects earlier legacy evidence changes and preserves the damaged bytes
+  ---
+  duration_ms: 424.3734
+  type: 'test'
+  ...
+# Subtest: later managed capture detects earlier legacy evidence changes and preserves the damaged bytes
+ok 2 - later managed capture detects earlier legacy evidence changes and preserves the damaged bytes
+  ---
+  duration_ms: 2352.7046
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2902.7032

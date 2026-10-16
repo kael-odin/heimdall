@@ -16,7 +16,7 @@ const OUT = resolve(process.argv[2] ?? join(CORE, 'workspace', '_runs', 'accepta
 const dataRoot = mkdtempSync(join(tmpdir(), 'heimdall-acceptance-catalog-'));
 const token = 'acceptance-catalog-local-fixture';
 const headers = { 'content-type': 'application/json', 'x-heimdall-token': token };
-const checks = {}, apiCases = [], fixtureRequests = [], children = [];
+const checks = {}, apiCases = [], fixtureRequests = [], children = [], catalogResponses = [];
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const delay = ms => new Promise(ready => setTimeout(ready, ms));
 const save = (name, value) => writeFileSync(join(OUT, name), typeof value === 'string' ? value : JSON.stringify(value, null, 2) + '\n');
@@ -58,7 +58,7 @@ const fixture = createServer(async (req, res) => {
   res.writeHead(200, { 'content-type': 'application/json' });
   res.end(JSON.stringify({ code: answerCode, quota: 10 }));
 });
-let engine, base, browser;
+let engine, base, browser, page;
 async function launch(root = dataRoot) {
   const address = `http://127.0.0.1:${await freePort()}`;
   const child = spawn(process.execPath, ['src/engine-server.mjs', new URL(address).port], {
@@ -191,7 +191,19 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
   await context.addInitScript(value => localStorage.setItem('heimdall-token', value), token);
-  const page = await context.newPage();
+  page = await context.newPage();
+  page.on('response', response => {
+    const path = new URL(response.url()).pathname;
+    if (path.startsWith('/api/acceptance/projects') && catalogResponses.length < 200) {
+      catalogResponses.push({ method: response.request().method(), path, status: response.status() });
+    }
+  });
+  page.on('requestfailed', request => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith('/api/acceptance/projects') && catalogResponses.length < 200) {
+      catalogResponses.push({ method: request.method(), path, failure: request.failure()?.errorText ?? 'request failed' });
+    }
+  });
   const errors = [], expectedResourceErrors = [];
   let catalogCorruptionVisible = false;
   page.on('pageerror', error => errors.push(error.message));
@@ -255,18 +267,20 @@ try {
   checks.consoleConflictPreservesDraftWithoutAutomaticRetry = true;
   // A delayed detail response must not re-select or populate a different project.
   const heldDetail = await expectApi(`projects/${projectId}`, undefined, 200);
-  let releaseDetail, detailHeld = false;
+  let releaseDetail, detailHeld = false, detailFinished = false;
   const detailGate = new Promise(ready => { releaseDetail = ready; });
   await page.route(`**/api/acceptance/projects/${projectId}`, async route => {
     detailHeld = true; await detailGate;
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(heldDetail) }).catch(() => {});
+    try { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(heldDetail) }); }
+    catch { /* Switching projects intentionally aborts this read. */ }
+    finally { detailFinished = true; }
   }, { times: 1 });
   await panel.locator('[name="catalog-project"]').selectOption(projectId);
   await waitFor(() => detailHeld);
   await panel.locator('[name="catalog-project"]').selectOption(uiProjectId);
   await panel.locator(`[data-binding-run="${after.runId}"]`).waitFor();
   releaseDetail();
-  await delay(150);
+  await waitFor(() => detailFinished);
   assert.equal(await panel.locator('[name="catalog-project"]').inputValue(), uiProjectId);
   assert.equal(await panel.locator(`[data-binding-run="${before.runId}"]`).count(), 0);
   checks.delayedDetailsCannotReplaceCurrentProject = true;
@@ -275,22 +289,31 @@ try {
   if (await releaseDetails.getAttribute('open') === null) await releaseDetails.locator('summary').click();
   await panel.locator('[name="catalog-release-label"]').fill('延迟响应版本');
   await panel.locator('[name="catalog-release-target"]').fill(targetUrl);
-  let releasePost, postHeld = false;
+  let releasePost, postHeld = false, postStatus, postDelivery;
   const postGate = new Promise(ready => { releasePost = ready; });
   await page.route(`**/api/acceptance/projects/${uiProjectId}/releases`, async route => {
     const result = await route.fetch();
+    postStatus = result.status();
     postHeld = true; await postGate;
-    await route.fulfill({ response: result }).catch(() => {});
+    try { await route.fulfill({ response: result }); postDelivery = { delivered: true }; }
+    catch (problem) { postDelivery = { delivered: false, message: problem.message }; }
   }, { times: 1 });
   await panel.getByTestId('catalog-create-release').click();
   await waitFor(() => postHeld);
+  assert.equal(postStatus, 201, 'the delayed release response must acknowledge a committed write');
   await panel.locator('[name="catalog-project"]').selectOption(projectId);
   await panel.locator(`[data-binding-run="${before.runId}"]`).waitFor();
   const currentDetails = panel.getByTestId('catalog-new-release');
   if (await currentDetails.getAttribute('open') === null) await currentDetails.locator('summary').click();
   await panel.locator('[name="catalog-release-label"]').fill('当前项目未提交草稿');
   releasePost();
-  await waitFor(async () => (await panel.getByTestId('catalog-notice').innerText()).includes('延迟响应版本'));
+  await waitFor(() => postDelivery);
+  assert.equal(postDelivery.delivered, true, postDelivery.message);
+  await waitFor(async () => {
+    const errors = await panel.getByTestId('catalog-error').allTextContents();
+    assert.deepEqual(errors, [], 'delayed release write failed: ' + errors.join(' '));
+    return (await panel.getByTestId('catalog-notice').allTextContents()).join(' ').includes('延迟响应版本');
+  });
   assert.equal(await panel.locator('[name="catalog-project"]').inputValue(), projectId);
   assert.equal(await panel.locator('[name="catalog-release-label"]').inputValue(), '当前项目未提交草稿');
   assert.ok((await expectApi(`projects/${uiProjectId}`, undefined, 200)).releases.some(item => item.label === '延迟响应版本'));
@@ -300,22 +323,31 @@ try {
   const newProjectDetails = panel.getByTestId('catalog-new-project');
   if (await newProjectDetails.getAttribute('open') === null) await newProjectDetails.locator('summary').click();
   await panel.locator('[name="catalog-project-name"]').fill('A-B-A 迟到创建项目');
-  let releaseProjectPost, projectPostHeld = false;
+  let releaseProjectPost, projectPostHeld = false, projectPostStatus, projectPostDelivery;
   const projectPostGate = new Promise(ready => { releaseProjectPost = ready; });
   await page.route('**/api/acceptance/projects', async route => {
     if (route.request().method() !== 'POST') return route.continue();
     const result = await route.fetch();
+    projectPostStatus = result.status();
     projectPostHeld = true; await projectPostGate;
-    await route.fulfill({ response: result }).catch(() => {});
+    try { await route.fulfill({ response: result }); projectPostDelivery = { delivered: true }; }
+    catch (problem) { projectPostDelivery = { delivered: false, message: problem.message }; }
   }, { times: 1 });
   await panel.getByTestId('catalog-create-project').click();
   await waitFor(() => projectPostHeld);
+  assert.equal(projectPostStatus, 201, 'the delayed project response must acknowledge a committed write');
   await panel.locator('[name="catalog-project"]').selectOption(uiProjectId);
   await panel.locator(`[data-binding-run="${after.runId}"]`).waitFor();
   await panel.locator('[name="catalog-project"]').selectOption(projectId);
   await panel.locator(`[data-binding-run="${before.runId}"]`).waitFor();
   releaseProjectPost();
-  await waitFor(async () => (await panel.getByTestId('catalog-notice').innerText()).includes('A-B-A 迟到创建项目'));
+  await waitFor(() => projectPostDelivery);
+  assert.equal(projectPostDelivery.delivered, true, projectPostDelivery.message);
+  await waitFor(async () => {
+    const errors = await panel.getByTestId('catalog-error').allTextContents();
+    assert.deepEqual(errors, [], 'delayed project write failed: ' + errors.join(' '));
+    return (await panel.getByTestId('catalog-notice').allTextContents()).join(' ').includes('A-B-A 迟到创建项目');
+  });
   assert.equal(await panel.locator('[name="catalog-project"]').inputValue(), projectId);
   assert.equal(await panel.locator('[name="catalog-release-label"]').inputValue(), '当前项目未提交草稿');
   checks.projectSelectionEpochRejectsABAResponse = true;
@@ -413,10 +445,26 @@ try {
     checkCount: Object.keys(checks).length, checks, layouts, contrasts, errors, expectedResourceErrors, runIds, originalGates: ['failed', 'passed', 'passed'],
     apiCaseCount: apiCases.length, catalogTargetRequests: fixtureRequests.length - requestsAtCatalog };
   save('browser-checks.json', result);
+  save('catalog-responses.json', catalogResponses);
   console.log(JSON.stringify(result, null, 2));
 } catch (error) {
   mkdirSync(OUT, { recursive: true });
-  save('failure.json', { status: 'failed', message: error.message, checks, apiCases });
+  save('failure.json', { status: 'failed', message: error.message, checks, apiCases, catalogResponses });
+  if (page && !page.isClosed()) {
+    try {
+      const state = await page.getByTestId('acceptance-catalog').evaluate(element => ({
+        text: element.innerText, html: element.outerHTML,
+        projectId: element.querySelector('[name="catalog-project"]')?.value ?? null,
+        busy: element.querySelector('.catalog-body')?.getAttribute('aria-busy') ?? null,
+        notices: [...element.querySelectorAll('[data-testid="catalog-notice"]')].map(item => item.textContent.slice(0, 1000)),
+        errors: [...element.querySelectorAll('[data-testid="catalog-error"]')].map(item => item.textContent.slice(0, 1000)),
+      }));
+      save('failure-ui.json', state);
+      console.error('Catalog smoke UI state: ' + JSON.stringify({ projectId: state.projectId, busy: state.busy,
+        notices: state.notices, errors: state.errors, responses: catalogResponses.slice(-12) }));
+      await page.screenshot({ path: join(OUT, 'catalog-failure.png'), fullPage: false });
+    } catch { /* Preserve the original failure when the page is unavailable. */ }
+  }
   throw error;
 } finally {
   releaseSlow?.();

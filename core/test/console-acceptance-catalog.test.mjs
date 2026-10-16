@@ -50,6 +50,8 @@ test('only terminal runs enter the claim selector, without changing original his
   const runs = ['completed', 'failed', 'interrupted', 'running', 'unknown'].map((status, index) => ({ runId: `ac-${index}`, status }));
   assert.deepEqual(catalogTerminalRuns(runs).map(run => run.status), ['completed', 'failed', 'interrupted']);
   assert.equal(runs.length, 5);
+  const managed = { runId: 'ac-managed', status: 'completed', provenance: { kind: 'managed-spec' } };
+  assert.deepEqual(catalogTerminalRuns([...runs, managed]), runs.slice(0, 3));
 });
 
 test('detail read guards discard delayed responses after project changes and newer refreshes', () => {

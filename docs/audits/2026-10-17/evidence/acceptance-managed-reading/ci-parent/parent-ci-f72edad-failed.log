@@ -1,0 +1,21 @@
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	﻿2026-10-16T18:36:09.7895214Z ##[group]Run pnpm acceptance:catalog:smoke
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:09.7895844Z ^[[36;1mpnpm acceptance:catalog:smoke^[[0m
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:09.7988818Z shell: /usr/bin/bash -e {0}
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:09.7989296Z env:
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:09.7989770Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:09.7990377Z ##[endgroup]
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:10.8416515Z $ node scripts/smoke-acceptance-catalog-console.mjs
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7196078Z file:///home/runner/work/heimdall/heimdall/core/scripts/smoke-acceptance-catalog-console.mjs:30
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7197459Z   throw new Error(`Catalog smoke timeout: ${last?.message ?? 'state not reached'}`);
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7198282Z         ^
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7198482Z
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7199023Z Error: Catalog smoke timeout: locator.innerText: Timeout 30000ms exceeded.
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7199694Z Call log:
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7200369Z   - waiting for getByTestId('acceptance-catalog').getByTestId('catalog-notice')
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7201214Z
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7202043Z     at waitFor (file:///home/runner/work/heimdall/heimdall/core/scripts/smoke-acceptance-catalog-console.mjs:30:9)
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7203522Z     at async file:///home/runner/work/heimdall/heimdall/core/scripts/smoke-acceptance-catalog-console.mjs:293:3
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7204146Z
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7204242Z Node.js v22.23.3
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.7541334Z [ELIFECYCLE] Command failed with exit code 1.
+core (lint + test)	Acceptance project catalog (versions, explicit bindings and two-engine isolation)	2026-10-16T18:36:47.8152146Z ##[error]Process completed with exit code 1.

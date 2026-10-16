@@ -1,0 +1,375 @@
+TAP version 13
+# Subtest: real prepared dispatch is captured without owner, requests or filesystem writes
+ok 1 - real prepared dispatch is captured without owner, requests or filesystem writes
+  ---
+  duration_ms: 47.590505
+  type: 'test'
+  ...
+# Subtest: empty namespace and a missing version directory remain physically absent
+ok 2 - empty namespace and a missing version directory remain physically absent
+  ---
+  duration_ms: 13.49371
+  type: 'test'
+  ...
+# Subtest: unrelated root/ancestor entries do not invalidate the bound namespace
+ok 3 - unrelated root/ancestor entries do not invalidate the bound namespace
+  ---
+  duration_ms: 22.913484
+  type: 'test'
+  ...
+# Subtest: returned bytes, envelopes and inventory cannot poison private cached facts
+ok 4 - returned bytes, envelopes and inventory cannot poison private cached facts
+  ---
+  duration_ms: 22.347399
+  type: 'test'
+  ...
+# Subtest: record batch performs one full namespace fence instead of one per record
+ok 5 - record batch performs one full namespace fence instead of one per record
+  ---
+  duration_ms: 133.297392
+  type: 'test'
+  ...
+# Subtest: private brand rejects duck types, proxies and a different root without invoking getters
+ok 6 - private brand rejects duck types, proxies and a different root without invoking getters
+  ---
+  duration_ms: 18.966603
+  type: 'test'
+  ...
+# Subtest: inputs and lowered budgets are strict and missing root is never created
+ok 7 - inputs and lowered budgets are strict and missing root is never created
+  ---
+  duration_ms: 17.772207
+  type: 'test'
+  ...
+# Subtest: temporary bytes are bounded inventory material and never parsed or promoted
+ok 8 - temporary bytes are bounded inventory material and never parsed or promoted
+  ---
+  duration_ms: 19.365754
+  type: 'test'
+  ...
+# Subtest: malformed published JSON, UTF-8, unknown schema and filename mismatch cannot look empty
+ok 9 - malformed published JSON, UTF-8, unknown schema and filename mismatch cannot look empty
+  ---
+  duration_ms: 21.1752
+  type: 'test'
+  ...
+# Subtest: unknown entries, directories and file/directory links fail closed without repair
+ok 10 - unknown entries, directories and file/directory links fail closed without repair
+  ---
+  duration_ms: 20.734895
+  type: 'test'
+  ...
+# Subtest: two accepted operations cannot reserve the same run or task
+ok 11 - two accepted operations cannot reserve the same run or task
+  ---
+  duration_ms: 46.672559
+  type: 'test'
+  ...
+# Subtest: several unique operations have stable sorted references and exact count/byte limits
+ok 12 - several unique operations have stable sorted references and exact count/byte limits
+  ---
+  duration_ms: 26.328792
+  type: 'test'
+  ...
+# Subtest: namespace additions, removals, same-byte replacement and in-place edits invalidate cached negatives
+ok 13 - namespace additions, removals, same-byte replacement and in-place edits invalidate cached negatives
+  ---
+  duration_ms: 83.967968
+  type: 'test'
+  ...
+# Subtest: root, partial ancestor and version directory replacement invalidates a context permanently
+ok 14 - root, partial ancestor and version directory replacement invalidates a context permanently
+  ---
+  duration_ms: 41.87344
+  type: 'test'
+  ...
+# Subtest: reread requires the captured operation and exact original SHA instead of adopting new facts
+ok 15 - reread requires the captured operation and exact original SHA instead of adopting new facts
+  ---
+  duration_ms: 17.823725
+  type: 'test'
+  ...
+# Subtest: later freshness uses read descriptors and one bounded name inventory without adopting new facts
+ok 16 - later freshness uses read descriptors and one bounded name inventory without adopting new facts
+  ---
+  duration_ms: 65.057228
+  type: 'test'
+  ...
+# Subtest: new namespace names are rejected even when directory metadata is unchanged
+ok 17 - new namespace names are rejected even when directory metadata is unchanged
+  ---
+  duration_ms: 236.484693
+  type: 'test'
+  ...
+# Subtest: published same-length rewrite invalidates freshness even when file timestamps are unchanged
+ok 18 - published same-length rewrite invalidates freshness even when file timestamps are unchanged
+  ---
+  duration_ms: 64.635587
+  type: 'test'
+  ...
+# Subtest: post-lstat realpath ENOENT for root, ancestors and records is unavailable, never absence
+ok 19 - post-lstat realpath ENOENT for root, ancestors and records is unavailable, never absence
+  ---
+  duration_ms: 176.703414
+  type: 'test'
+  ...
+# Subtest: short reads finish exactly; descriptor read failure closes every handle and preserves files
+ok 20 - short reads finish exactly; descriptor read failure closes every handle and preserves files
+  ---
+  duration_ms: 94.735072
+  type: 'test'
+  ...
+# Subtest: same-length record mutation during capture is rejected instead of returning mixed material
+ok 21 - same-length record mutation during capture is rejected instead of returning mixed material
+  ---
+  duration_ms: 49.856865
+  type: 'test'
+  ...
+# Subtest: independent second-read corruption fails byte comparison with unchanged filesystem metadata
+ok 22 - independent second-read corruption fails byte comparison with unchanged filesystem metadata
+  ---
+  duration_ms: 55.369689
+  type: 'test'
+  ...
+# Subtest: growth before descriptor capture is refused before any body read and closes the descriptor
+ok 23 - growth before descriptor capture is refused before any body read and closes the descriptor
+  ---
+  duration_ms: 55.915189
+  type: 'test'
+  ...
+# Subtest: directory enumeration failure closes its handle and cannot yield an empty inventory
+ok 24 - directory enumeration failure closes its handle and cannot yield an empty inventory
+  ---
+  duration_ms: 96.938582
+  type: 'test'
+  ...
+# Subtest: completed passed, BUG failed and environment blocked remain readable without owner, writes or requests
+    # Subtest: passed
+    ok 1 - passed
+      ---
+      duration_ms: 133.461811
+      type: 'test'
+      ...
+    # Subtest: failed
+    ok 2 - failed
+      ---
+      duration_ms: 72.305426
+      type: 'test'
+      ...
+    # Subtest: blocked
+    ok 3 - blocked
+      ---
+      duration_ms: 69.785774
+      type: 'test'
+      ...
+    1..3
+ok 25 - completed passed, BUG failed and environment blocked remain readable without owner, writes or requests
+  ---
+  duration_ms: 276.464479
+  type: 'test'
+  ...
+# Subtest: head shows running progress while prepared and missing runs remain absent without creating anything
+ok 26 - head shows running progress while prepared and missing runs remain absent without creating anything
+  ---
+  duration_ms: 52.157429
+  type: 'test'
+  ...
+# Subtest: partial report hardlinks retained by a real failed finish do not hide running or settled heads
+ok 27 - partial report hardlinks retained by a real failed finish do not hide running or settled heads
+  ---
+  duration_ms: 69.075908
+  type: 'test'
+  ...
+# Subtest: a real interrupted create after mkdir is diagnosed as partial instead of an unstarted null
+ok 28 - a real interrupted create after mkdir is diagnosed as partial instead of an unstarted null
+  ---
+  duration_ms: 22.270282
+  type: 'test'
+  ...
+# Subtest: legacy head capture shares bounded files, detects both marker locations, and stable bad rows do not poison a batch
+ok 29 - legacy head capture shares bounded files, detects both marker locations, and stable bad rows do not poison a batch
+  ---
+  duration_ms: 23.344627
+  type: 'test'
+  ...
+# Subtest: reserved IDs cannot become legacy by stripping both managed markers
+ok 30 - reserved IDs cannot become legacy by stripping both managed markers
+  ---
+  duration_ms: 56.208925
+  type: 'test'
+  ...
+# Subtest: scope and dispatch brands, roots and caller options reject without invoking accessors or proxy traps
+ok 31 - scope and dispatch brands, roots and caller options reject without invoking accessors or proxy traps
+  ---
+  duration_ms: 21.548015
+  type: 'test'
+  ...
+# Subtest: returned records, buffers, maps and JSON cannot poison the scope private capture
+ok 32 - returned records, buffers, maps and JSON cannot poison the scope private capture
+  ---
+  duration_ms: 68.603691
+  type: 'test'
+  ...
+# Subtest: narrow file capture fixes legacy evidence in the batch and rejects arbitrary paths, hooks and loosened budgets
+ok 33 - narrow file capture fixes legacy evidence in the batch and rejects arbitrary paths, hooks and loosened budgets
+  ---
+  duration_ms: 20.138898
+  type: 'test'
+  ...
+# Subtest: a batch final fence rechecks earlier managed evidence and legacy heads and stays invalid after restoration
+    # Subtest: evidence
+    ok 1 - evidence
+      ---
+      duration_ms: 61.806726
+      type: 'test'
+      ...
+    # Subtest: legacy-head
+    ok 2 - legacy-head
+      ---
+      duration_ms: 57.227787
+      type: 'test'
+      ...
+    1..2
+ok 34 - a batch final fence rechecks earlier managed evidence and legacy heads and stays invalid after restoration
+  ---
+  duration_ms: 119.474755
+  type: 'test'
+  ...
+# Subtest: stale namespace and same-length sidecar mutation block and never refresh a scope
+ok 35 - stale namespace and same-length sidecar mutation block and never refresh a scope
+  ---
+  duration_ms: 24.378094
+  type: 'test'
+  ...
+# Subtest: manifest, report and evidence are two-read fenced even when all visible file stats stay unchanged
+    # Subtest: manifest
+    ok 1 - manifest
+      ---
+      duration_ms: 51.556426
+      type: 'test'
+      ...
+    # Subtest: report
+    ok 2 - report
+      ---
+      duration_ms: 53.017207
+      type: 'test'
+      ...
+    # Subtest: evidence
+    ok 3 - evidence
+      ---
+      duration_ms: 60.610454
+      type: 'test'
+      ...
+    1..3
+ok 36 - manifest, report and evidence are two-read fenced even when all visible file stats stay unchanged
+  ---
+  duration_ms: 165.616227
+  type: 'test'
+  ...
+# Subtest: bounded descriptor reads reject growth, premature EOF and strict invalid UTF-8 without unbounded readFileSync
+    # Subtest: growth
+    ok 1 - growth
+      ---
+      duration_ms: 52.315341
+      type: 'test'
+      ...
+    # Subtest: short-read
+    ok 2 - short-read
+      ---
+      duration_ms: 51.104239
+      type: 'test'
+      ...
+    # Subtest: utf8
+    ok 3 - utf8
+      ---
+      duration_ms: 54.507429
+      type: 'test'
+      ...
+    # Subtest: bom
+    ok 4 - bom
+      ---
+      duration_ms: 49.192274
+      type: 'test'
+      ...
+    1..4
+ok 37 - bounded descriptor reads reject growth, premature EOF and strict invalid UTF-8 without unbounded readFileSync
+  ---
+  duration_ms: 207.767626
+  type: 'test'
+  ...
+# Subtest: missing evidence, digest mismatch, reserved names and index/reference closure reject without repairing originals
+ok 38 - missing evidence, digest mismatch, reserved names and index/reference closure reject without repairing originals
+  ---
+  duration_ms: 66.031627
+  type: 'test'
+  ...
+# Subtest: read budgets tighten only and cap cumulative batch files/bytes as well as each snapshot
+ok 39 - read budgets tighten only and cap cumulative batch files/bytes as well as each snapshot
+  ---
+  duration_ms: 63.564609
+  type: 'test'
+  ...
+# Subtest: links, nonregular evidence and replaced root/run identities fail closed
+    # Subtest: head-link
+    ok 1 - head-link
+      ---
+      duration_ms: 44.565713
+      type: 'test'
+      ...
+    # Subtest: evidence-link
+    ok 2 - evidence-link
+      ---
+      duration_ms: 50.97651
+      type: 'test'
+      ...
+    # Subtest: hardlink
+    ok 3 - hardlink
+      ---
+      duration_ms: 49.108663
+      type: 'test'
+      ...
+    # Subtest: run-replaced
+    ok 4 - run-replaced
+      ---
+      duration_ms: 54.518399
+      type: 'test'
+      ...
+    # Subtest: root-replaced
+    ok 5 - root-replaced
+      ---
+      duration_ms: 50.557597
+      type: 'test'
+      ...
+    1..5
+ok 40 - links, nonregular evidence and replaced root/run identities fail closed
+  ---
+  duration_ms: 250.594729
+  type: 'test'
+  ...
+# Subtest: FIFO evidence is rejected before open on Linux
+ok 41 - FIFO evidence is rejected before open on Linux
+  ---
+  duration_ms: 48.075129
+  type: 'test'
+  ...
+# Subtest: multi-run and multi-evidence batches use fixed namespace boundary counts
+ok 42 - multi-run and multi-evidence batches use fixed namespace boundary counts
+  ---
+  duration_ms: 290.046523
+  type: 'test'
+  ...
+# Subtest: legacy file adapter reads evidence a fixed number of times rather than re-reading the growing prefix
+ok 43 - legacy file adapter reads evidence a fixed number of times rather than re-reading the growing prefix
+  ---
+  duration_ms: 71.123577
+  type: 'test'
+  ...
+1..43
+# tests 60
+# suites 0
+# pass 60
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1983.82188

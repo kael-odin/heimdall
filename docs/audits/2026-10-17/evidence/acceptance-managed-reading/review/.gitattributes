@@ -1,0 +1,4 @@
+# Preserve the original evidence bytes across Git staging and checkout.
+* -text !eol
+# Preserve intentional whitespace in the original failing TAP diagnostic.
+batch-edges-tests-before.tap -whitespace

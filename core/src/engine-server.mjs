@@ -51,7 +51,8 @@ import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
 import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './acceptance/managed-run-schema.mjs';
 import { createLegacyAcceptanceReadScope } from './acceptance/managed-access.mjs';
 import { previewOpenApi } from './acceptance/openapi.mjs';
-import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, recoverAcceptanceRuns, acceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshot } from './acceptance/store.mjs';
+import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, recoverAcceptanceRuns, acceptanceArtifact, readAcceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshots } from './acceptance/store.mjs';
+import { acceptanceRunView } from './acceptance/run-view.mjs';
 import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/comparison.mjs';
 import { acquireAcceptanceOwner } from './acceptance/owner.mjs';
 import { createAcceptanceCatalogStore } from './acceptance/catalog.mjs';
@@ -1146,8 +1147,7 @@ const handleRequest = async (req, res) => {
     if (!beforeId || !afterId || !['json', 'md'].includes(format)) return json(res, 400, { code: 'INVALID_INPUT', error: '请明确选择两次不同的运行，格式支持 json 或 md。' });
     try {
       if (beforeId === afterId) return json(res, 400, { code: 'SAME_RUN', error: '此前运行与本次运行不能相同。' });
-      const before = readAcceptanceSnapshot(beforeId);
-      const after = readAcceptanceSnapshot(afterId);
+      const [before, after] = readAcceptanceSnapshots([beforeId, afterId]);
       if (!before || !after) return json(res, 404, { code: 'RUN_NOT_FOUND', error: '所选运行不存在。' });
       const beforeTime = Date.parse(before.manifest?.createdAt);
       const afterTime = Date.parse(after.manifest?.createdAt);
@@ -1248,20 +1248,18 @@ const handleRequest = async (req, res) => {
         } finally { runningAcceptanceTriage = null; }
       }
       if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
-      if (segments.length === 1) return json(res, 200, manifest);
+      if (segments.length === 1) return json(res, 200, acceptanceRunView(manifest, { includePlan: true }));
       let fileName;
       if (segments.length === 2 && kind === 'report') fileName = 'report.json';
       else if (segments.length === 2 && kind === 'report.md') fileName = 'report.md';
       else if (segments.length === 3 && kind === 'evidence') fileName = decodeURIComponent(name);
       else return json(res, 404, { error: 'unknown acceptance endpoint' });
-      const file = acceptanceArtifact(runId, fileName);
-      if (!file) return json(res, manifest.status === 'running' ? 409 : 404, { error: '报告或证据尚不可用' });
+      const artifact = readAcceptanceArtifact(runId, fileName);
+      if (!artifact) return json(res, manifest.status === 'running' ? 409 : 404, { error: '报告或证据尚不可用' });
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      if (fileName === 'report.md') res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-      if (fileName.endsWith('.json')) res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      if (fileName.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
-      return createReadStream(file).pipe(res);
+      res.setHeader('Content-Type', artifact.contentType);
+      return res.end(artifact.bytes);
     } catch (error) {
       if (error instanceof ManagedAcceptanceRunError) return json(res, error.status, { code: error.code, error: error.message });
       return json(res, 400, { error: String(error.message).slice(0, 300) });

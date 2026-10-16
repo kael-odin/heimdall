@@ -11,6 +11,7 @@ import { projectSpecBaselineCandidate } from './candidate-projection.mjs';
 import { prepareManagedSpecContract } from './managed-spec-plan.mjs';
 import { createManagedSpecDispatchStore } from './managed-dispatch-store.mjs';
 import { managedSpecDispatchRequestFingerprint } from './managed-dispatch-schema.mjs';
+import { createAcceptanceReadScope, captureAcceptanceRunFile } from './managed-run-reader.mjs';
 import { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, error, invalid, unavailable, fields, id, url,
   limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration,
   candidateProjectionOf, currentSelectionsOf } from './catalog-schema.mjs';
@@ -319,11 +320,29 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       if (!release) missing('版本');
       if (release.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, '所选版本不属于当前项目。');
       if (Object.hasOwn(catalog.runBindings, input.runId)) throw error('CONTEXT_ALREADY_BOUND', 409, '该运行已有明确归属，不能重新绑定。');
+      // Managed runs already have a frozen catalog destination. Opening their
+      // result reader must not expose the legacy subsequent-binding writer.
+      let sourceScope, sourceHead;
+      const sourceUnavailable = () => { throw error('SOURCE_INTEGRITY_FAILED', 409, '来源记录无法安全核验，不能建立归属。'); };
+      try {
+        sourceScope = createAcceptanceReadScope({ root: actualRoot() });
+        const manifestBytes = captureAcceptanceRunFile(input.runId, 'manifest.json', { scope: sourceScope });
+        const reportBytes = captureAcceptanceRunFile(input.runId, 'report.json', { scope: sourceScope });
+        const manifest = manifestBytes ? JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(manifestBytes)) : null;
+        let report;
+        // A malformed legacy report is preserved as opaque captured bytes.
+        // Organizational binding remains manifest-only, never evidence proof.
+        if (reportBytes) try { report = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(reportBytes)); } catch { /* Diagnostic only. */ }
+        sourceHead = sourceScope.classify(input.runId, manifest, report);
+      } catch { sourceUnavailable(); }
+      if (sourceHead?.kind === 'managed') throw error('SOURCE_NOT_ELIGIBLE', 409, '托管运行已有固定的项目与版本，暂不支持后续认领。');
+      const preCommitGuard = () => { try { sourceScope.assertCurrent(); } catch { sourceUnavailable(); } };
+      preCommitGuard();
       const reference = readRunReference(input.runId);
       if (reference.source.targetUrl !== release.targetUrl) throw error('PROJECT_MISMATCH', 409, '运行的完整目标 URL 与所选版本不一致。');
       const binding = { runId: input.runId, projectId, releaseId: release.id, boundAt: at, actor: { ...ACTOR } };
       catalog.runBindings[input.runId] = binding;
-      return { kind: 'run-bound', binding, ...reference };
+      return { kind: 'run-bound', binding, ...reference, preCommitGuard };
     });
   }
   function reasonOf(input) {

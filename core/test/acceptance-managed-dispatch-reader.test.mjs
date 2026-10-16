@@ -91,13 +91,14 @@ test('real prepared dispatch is captured without owner, requests or filesystem w
   globalThis.fetch = () => { requests++; throw Error('No reader network'); };
   try {
     const context = createManagedSpecDispatchReadContext({ root: f.root });
-    assert.deepEqual(Object.keys(context), ['read', 'findByRunId', 'inventory', 'assertCurrent', 'reread']);
+    assert.deepEqual(Object.keys(context), ['read', 'findByRunId', 'inventory', 'captureRecords', 'assertCurrent', 'reread']);
     assert.equal(Object.isFrozen(context), true); assert.equal(assertManagedSpecDispatchReadContext(context, f.root), true);
     assert.deepEqual(context.read(f.envelope.operationId), f.record);
     assert.deepEqual(context.findByRunId(f.envelope.runId), f.record);
     assert.deepEqual(context.reread(f.envelope.operationId, f.record.sha256), f.record);
     assert.deepEqual(context.inventory(), [{ operationId: f.envelope.operationId, dispatchId: f.envelope.dispatchId,
       runId: f.envelope.runId, taskId: f.envelope.taskId, sha256: f.record.sha256 }]);
+    assert.deepEqual(context.captureRecords(), [f.record]);
     assert.equal(context.read(uuid('ao')), null); assert.equal(context.findByRunId(uuid('ac')), null);
     assert.equal(context.read(f.envelope.operationId).envelope.sourceSpecApproved, false);
     assert.equal(context.read(f.envelope.operationId).envelope.plan.spec.approved, true);
@@ -138,6 +139,28 @@ test('returned bytes, envelopes and inventory cannot poison private cached facts
   const inventory = context.inventory(); assert.equal(Object.isFrozen(inventory), true); assert.equal(Object.isFrozen(inventory[0]), true);
   assert.throws(() => inventory.push({}), TypeError); assert.throws(() => { inventory[0].runId = uuid('ac'); }, TypeError);
   assert.deepEqual(context.findByRunId(f.envelope.runId), f.record);
+  const batch = context.captureRecords();
+  assert.equal(Object.isFrozen(batch), true);
+  batch[0].bytes.fill(0); batch[0].envelope.runId = uuid('ac'); batch[0].sha256 = 'b'.repeat(64);
+  assert.deepEqual(context.captureRecords(), [f.record]);
+});
+
+test('record batch performs one full namespace fence instead of one per record', async t => {
+  const f = await fixture(t);
+  for (let index = 0; index < 5; index++) f.store.publish(another(f));
+  const output = childProbe(f, `
+    const context = createManagedSpecDispatchReadContext({ root });
+    const open = fs.opendirSync; let enumerations = 0;
+    fs.opendirSync = (...args) => { if (args[0] === directory) enumerations++; return open(...args); };
+    syncBuiltinESMExports();
+    try {
+      const records = context.captureRecords();
+      assert.equal(records.length, 6); assert.equal(enumerations, 1);
+      records[0].bytes.fill(0);
+    } finally { fs.opendirSync = open; syncBuiltinESMExports(); }
+    assert.equal(context.captureRecords().length, 6);
+  `);
+  assert.equal(output, '');
 });
 
 test('private brand rejects duck types, proxies and a different root without invoking getters', async t => {

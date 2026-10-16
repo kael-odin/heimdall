@@ -28,6 +28,7 @@
     "acceptance:catalog:migration:smoke": "node scripts/smoke-acceptance-catalog-migration.mjs",
     "acceptance:baseline:smoke": "node scripts/smoke-acceptance-baseline-console.mjs",
     "acceptance:managed:prepare:smoke": "node scripts/smoke-acceptance-managed-preparation.mjs",
+    "acceptance:managed:read:smoke": "node scripts/smoke-acceptance-managed-reading.mjs",
     "test": "node --test",
     "lint": "node scripts/check-syntax.mjs",
     "check:docs": "node scripts/check-markdown-links.mjs",

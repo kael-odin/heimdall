@@ -63,7 +63,8 @@ const downloadError = ref('');
 const triage = ref(null);
 const triageLoading = ref(false);
 const triageError = ref('');
-const triageEligible = computed(() => report.value?.checks.some(check => check.status !== 'passed') ?? false);
+const triageEligible = computed(() => manifest.value?.triageSupported !== false
+  && (report.value?.checks.some(check => check.status !== 'passed') ?? false));
 const filters = reactive({ dimension: 'all', verdict: 'attention', query: '' });
 const evidence = reactive({});
 const resultsElement = ref(null);
@@ -517,6 +518,7 @@ onBeforeUnmount(() => {
               <div class="aw-dimensions" aria-label="按验收维度筛选">
                 <button v-for="dimension in DIMENSIONS" :key="dimension.id" type="button" :class="{ active: filters.dimension === dimension.id }" :aria-pressed="filters.dimension === dimension.id" @click="filters.dimension = filters.dimension === dimension.id ? 'all' : dimension.id"><span>{{ dimensionLabel(dimension.id) }}</span><b>{{ dimensionReading(dimension.id) }}</b><small v-if="summary?.dimensions?.[dimension.id]?.total > 0">{{ count(summary?.dimensions?.[dimension.id]?.passed) }} / {{ count(summary?.dimensions?.[dimension.id]?.total) }} 通过</small><small v-else>{{ dimension.id === 'behavior' ? (specReport ? '未声明接口契约' : '未声明交互验收点') : '未声明检查' }}</small></button>
               </div>
+              <p v-if="manifest.triageSupported === false" class="aw-hint">此报告暂不支持 AI 解读。可下载报告与证据继续排查。</p>
               <section v-if="triageEligible" class="aw-triage" aria-labelledby="aw-triage-title" :aria-busy="triageLoading">
                 <div class="aw-triage-head"><h3 id="aw-triage-title">AI 证据解读</h3><button type="button" class="aw-button" :disabled="triageLoading" data-testid="acceptance-triage" @click="loadTriage('POST')"><Icon name="bolt" decorative />{{ triageLoading ? '正在解读…' : triage?.status === 'completed' ? '重新解读缺陷' : 'AI 解读缺陷' }}</button></div>
                 <p class="aw-hint">仅向已配置模型发送脱敏检查摘要，AI 建议不改变验收门禁。</p>

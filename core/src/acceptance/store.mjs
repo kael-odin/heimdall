@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, lstatSync, openSync, fstatSync, readSync, closeSync, constants } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, opendirSync, realpathSync, statSync, lstatSync, openSync, fstatSync, readSync, closeSync, constants } from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { ACCEPTANCE_ROOT, ACCEPTANCE_SNAPSHOT_LIMITS } from './constants.mjs';
@@ -6,7 +6,9 @@ import { normalizeAcceptancePlan } from './schema.mjs';
 import { summarizeAcceptanceReport, acceptanceMarkdown } from './report.mjs';
 import { writeAtomicFileSync } from './atomic-file.mjs';
 import { createLegacyAcceptanceReadScope, rejectManagedAcceptanceFields } from './managed-access.mjs';
-import { assertUnmanagedAcceptanceInput } from './managed-run-schema.mjs';
+import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './managed-run-schema.mjs';
+import { createAcceptanceReadScope, captureAcceptanceRunHead, captureAcceptanceRunFile, captureManagedCompletedRun } from './managed-run-reader.mjs';
+import { acceptanceRunView } from './run-view.mjs';
 
 export { ACCEPTANCE_ROOT, ACCEPTANCE_SNAPSHOT_LIMITS };
 const RUN_ID = /^ac-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -70,7 +72,9 @@ function readAcceptanceRunInScope(runId, root, scope) {
   scope.assertUnmanaged(runId, manifest, optionalReportHead(dir));
   return manifest;
 }
-export function readAcceptanceRun(runId, { root = ACCEPTANCE_ROOT, managedRead } = {}) {
+/** Explicit legacy boundary for mutations, recovery and the standalone CLI.
+ * Displaying a managed head must never make it executable by these callers. */
+export function readLegacyAcceptanceRun(runId, { root = ACCEPTANCE_ROOT, managedRead } = {}) {
   const dir = acceptanceRunDir(runId, root);
   if (!existsSync(join(dir, 'manifest.json'))) return null;
   const scope = createLegacyAcceptanceReadScope(root, managedRead);
@@ -78,9 +82,17 @@ export function readAcceptanceRun(runId, { root = ACCEPTANCE_ROOT, managedRead }
   scope.assertCurrent();
   return manifest;
 }
+export function readAcceptanceRun(runId, { root = ACCEPTANCE_ROOT, managedRead } = {}) {
+  acceptanceRunDir(runId, root);
+  if (!existsSync(root)) return null;
+  const scope = createAcceptanceReadScope({ root: resolve(root), managedRead });
+  const head = captureAcceptanceRunHead(runId, { scope });
+  scope.assertCurrent();
+  return head?.manifest ?? null;
+}
 export function updateAcceptanceRun(runId, patch, { root = ACCEPTANCE_ROOT } = {}) {
   rejectManagedAcceptanceFields(patch);
-  const current = readAcceptanceRun(runId, { root });
+  const current = readLegacyAcceptanceRun(runId, { root });
   if (!current) throw new Error('acceptance run not found');
   if (patch.progress && current.status !== 'running') throw new Error('acceptance run is no longer running');
   if (patch.status && current.status !== 'running' && patch.status !== current.status) throw new Error('terminal acceptance status cannot be overwritten');
@@ -95,7 +107,7 @@ export function updateAcceptanceRun(runId, patch, { root = ACCEPTANCE_ROOT } = {
   atomic(join(acceptanceRunDir(runId, root), 'manifest.json'), manifest);
   return manifest;
 }
-export function listAcceptanceRuns({ root = ACCEPTANCE_ROOT, limit = 100, managedRead } = {}) {
+function listLegacyAcceptanceRuns({ root = ACCEPTANCE_ROOT, limit = 100, managedRead } = {}) {
   if (!existsSync(root)) return [];
   const scope = createLegacyAcceptanceReadScope(root, managedRead);
   const runs = readdirSync(root).filter(name => RUN_ID.test(name)).map(runId => {
@@ -113,9 +125,32 @@ export function listAcceptanceRuns({ root = ACCEPTANCE_ROOT, limit = 100, manage
   scope.assertCurrent();
   return runs;
 }
+export function listAcceptanceRuns({ root = ACCEPTANCE_ROOT, limit = 100, managedRead } = {}) {
+  if (!existsSync(root)) return [];
+  const scope = createAcceptanceReadScope({ root: resolve(root), managedRead });
+  const names = [], handle = opendirSync(root);
+  try {
+    let seen = 0, entry;
+    while ((entry = handle.readSync())) {
+      if (++seen > 4096) throw new ManagedAcceptanceRunError('MANAGED_RUN_INTEGRITY_FAILED');
+      if (RUN_ID.test(entry.name)) names.push(entry.name);
+    }
+  } finally { handle.closeSync(); }
+  const runs = names.map(runId => {
+    try {
+      const head = captureAcceptanceRunHead(runId, { scope });
+      return head ? acceptanceRunView(head.manifest) : null;
+    } catch (error) {
+      return { runId, name: '验收记录无法核验', status: 'failed', gate: 'blocked',
+        code: error.code ?? 'RUN_UNREADABLE', error: '运行记录无法安全读取，原现场已保留。' };
+    }
+  }).filter(Boolean).sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? ''))).slice(0, limit);
+  scope.assertCurrent();
+  return runs;
+}
 export function recoverAcceptanceRuns({ root = ACCEPTANCE_ROOT } = {}) {
   let recovered = 0;
-  for (const run of listAcceptanceRuns({ root, limit: Infinity })) {
+  for (const run of listLegacyAcceptanceRuns({ root, limit: Infinity })) {
     if (run.status !== 'running') continue;
     updateAcceptanceRun(run.runId, { status: 'interrupted', gate: 'blocked', error: '引擎已重启；此任务未完成，请重新运行。', endedAt: new Date().toISOString() }, { root });
     recovered++;
@@ -124,7 +159,7 @@ export function recoverAcceptanceRuns({ root = ACCEPTANCE_ROOT } = {}) {
 }
 export function finishAcceptanceRun(runId, raw, { root = ACCEPTANCE_ROOT } = {}) {
   rejectManagedAcceptanceFields(raw);
-  const current = readAcceptanceRun(runId, { root });
+  const current = readLegacyAcceptanceRun(runId, { root });
   if (!current) throw new Error('acceptance run not found');
   if (current.status !== 'running') throw new Error('cannot finish an interrupted or terminal acceptance run');
   const dir = acceptanceRunDir(runId, root);
@@ -154,16 +189,15 @@ export function finishAcceptanceRun(runId, raw, { root = ACCEPTANCE_ROOT } = {})
 }
 
 /** Re-read current bytes before comparison; historical hashes alone are not proof. */
-export function readAcceptanceSnapshot(runId, { root = ACCEPTANCE_ROOT, limits = ACCEPTANCE_SNAPSHOT_LIMITS, managedRead } = {}) {
+function readLegacyAcceptanceSnapshotInScope(runId, { root, limits }, scope) {
   limits = { ...ACCEPTANCE_SNAPSHOT_LIMITS, ...limits };
   if (Object.values(limits).some(value => !Number.isSafeInteger(value) || value < 0)) throw new Error('invalid acceptance snapshot limits');
   const dir = acceptanceRunDir(runId, root);
   if (!existsSync(join(dir, 'manifest.json'))) return null;
   const errors = [];
-  let scope;
   const managedBlocked = error => ({ manifest: { runId }, report: null, integrity: { valid: false, evidenceVerified: false,
     errors: [{ code: error.code, message: error.message }], verifiedFiles: 0, verifiedBytes: 0, reportSha256: null } });
-  try { scope = createLegacyAcceptanceReadScope(root, managedRead); scope.assertUnmanaged(runId); }
+  try { scope.assertUnmanaged(runId); }
   catch (error) { return managedBlocked(error); }
   const fail = (code, message, file) => {
     if (errors.length < 40) errors.push({ code, message, ...(file ? { file } : {}) });
@@ -175,7 +209,8 @@ export function readAcceptanceSnapshot(runId, { root = ACCEPTANCE_ROOT, limits =
         fail('FILE_UNAVAILABLE', '运行文件缺失或超出本次目录。', name); return null;
       }
       if (statSync(file).size > maxBytes) { fail('INTEGRITY_BUDGET', '文件超过完整性验证预算。', name); return null; }
-      const bytes = readFileSync(file);
+      const bytes = scope.read(name, maxBytes);
+      if (!bytes) { fail('FILE_UNAVAILABLE', '运行文件缺失或超出本次目录。', name); return null; }
       if (bytes.length > maxBytes) { fail('INTEGRITY_BUDGET', '文件超过完整性验证预算。', name); return null; }
       return bytes;
     } catch { fail('FILE_UNREADABLE', '运行文件不可读取。', name); return null; }
@@ -245,15 +280,122 @@ export function readAcceptanceSnapshot(runId, { root = ACCEPTANCE_ROOT, limits =
     integrity: { valid: errors.length === 0, evidenceVerified, errors, verifiedFiles, verifiedBytes,
       reportSha256: reportBytes ? digest(reportBytes) : null } };
 }
+
+function invalidSnapshot(runId, error, manifest = { runId }) {
+  return { manifest, report: null, integrity: { valid: false, evidenceVerified: false,
+    errors: [{ code: error?.details?.reason === 'UNSAFE_JSON' ? 'INVALID_JSON' : error?.code ?? 'RUN_INTEGRITY_FAILED',
+      message: '运行报告与证据无法形成可靠快照。' }],
+    verifiedFiles: 0, verifiedBytes: 0, reportSha256: null } };
+}
+
+/** A single synchronous batch keeps one dispatch inventory and fences every
+ * captured head/evidence again after all runs have been read. No scope escapes. */
+export function readAcceptanceSnapshots(runIds, { root = ACCEPTANCE_ROOT, limits = ACCEPTANCE_SNAPSHOT_LIMITS, managedRead } = {}) {
+  if (!Array.isArray(runIds) || runIds.length > 1024) throw new Error('invalid acceptance snapshot batch');
+  limits = { ...ACCEPTANCE_SNAPSHOT_LIMITS, ...limits };
+  if (Object.values(limits).some(value => !Number.isSafeInteger(value) || value < 0)) throw new Error('invalid acceptance snapshot limits');
+  for (const runId of runIds) acceptanceRunDir(runId, root);
+  if (!existsSync(root)) return runIds.map(() => null);
+  let scope;
+  try { scope = createAcceptanceReadScope({ root: resolve(root), managedRead, limits }); }
+  catch (error) { return runIds.map(runId => invalidSnapshot(runId, error)); }
+  const legacyScope = runId => ({
+    read(name, maxBytes) { return captureAcceptanceRunFile(runId, name, { scope, maxBytes }); },
+    assertUnmanaged(runId, manifest, report) {
+      if (scope.classify(runId, manifest, report).kind !== 'legacy') throw new ManagedAcceptanceRunError('MANAGED_EXECUTION_REQUIRED');
+    },
+    // The enclosing batch owns the final full namespace and captured-byte fence.
+    assertCurrent() {},
+  });
+  const snapshots = runIds.map(runId => {
+    let head;
+    try {
+      head = captureAcceptanceRunHead(runId, { scope });
+      if (!head) return null;
+      return head.kind === 'managed' ? captureManagedCompletedRun(runId, { scope }).snapshot
+        : readLegacyAcceptanceSnapshotInScope(runId, { root, limits }, legacyScope(runId));
+    } catch (error) { return invalidSnapshot(runId, error, head?.manifest); }
+  });
+  try { scope.assertCurrent(); }
+  catch (error) { return runIds.map(runId => invalidSnapshot(runId, error)); }
+  return snapshots;
+}
+
+export function readAcceptanceSnapshot(runId, options = {}) {
+  return readAcceptanceSnapshots([runId], options)[0];
+}
+
+function captureLegacyArtifact(path, maxBytes) {
+  const same = (a, b) => a.dev === b.dev && a.ino === b.ino && a.birthtimeNs === b.birthtimeNs
+    && a.size === b.size && a.mode === b.mode && a.nlink === b.nlink && a.mtimeNs === b.mtimeNs && a.ctimeNs === b.ctimeNs;
+  const read = () => {
+    let fd;
+    try {
+      let before;
+      try { before = lstatSync(path, { bigint: true }); }
+      catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+      if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n || before.size > BigInt(maxBytes)) throw Error();
+      fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
+      const stat = fstatSync(fd, { bigint: true });
+      if (!same(before, stat)) throw Error();
+      const bytes = Buffer.alloc(Number(stat.size));
+      let offset = 0;
+      while (offset < bytes.length) {
+        const count = readSync(fd, bytes, offset, bytes.length - offset, offset);
+        if (!count) throw Error(); offset += count;
+      }
+      if (readSync(fd, Buffer.alloc(1), 0, 1, bytes.length) !== 0
+        || !same(stat, fstatSync(fd, { bigint: true })) || !same(stat, lstatSync(path, { bigint: true }))) throw Error();
+      return { bytes, stat };
+    } finally { if (fd !== undefined) closeSync(fd); }
+  };
+  try {
+    const first = read(), second = read();
+    if (!first && !second) return null;
+    if (!first || !second || !same(first.stat, second.stat) || !first.bytes.equals(second.bytes)) throw Error();
+    return first.bytes;
+  } catch { throw new Error('acceptance artifact unreadable'); }
+}
+
+/** Managed artifacts come only from a fully verified capture. Markdown is
+ * derived from that same report; a stored report.md never supplies its bytes.
+ * Legacy downloads retain their existing eligibility and use bounded captures. */
+export function readAcceptanceArtifact(runId, artifact, { root = ACCEPTANCE_ROOT, managedRead, limits = ACCEPTANCE_SNAPSHOT_LIMITS } = {}) {
+  acceptanceRunDir(runId, root);
+  if (typeof artifact !== 'string' || !['report.json', 'report.md'].includes(artifact) && !EVIDENCE_NAME.test(artifact)) {
+    throw new Error('invalid acceptance evidence name');
+  }
+  if (!existsSync(root)) return null;
+  limits = { ...ACCEPTANCE_SNAPSHOT_LIMITS, ...limits };
+  const scope = createAcceptanceReadScope({ root: resolve(root), managedRead, limits });
+  const head = captureAcceptanceRunHead(runId, { scope });
+  if (!head || head.manifest.status !== 'completed') { scope.assertCurrent(); return null; }
+  let bytes;
+  if (head.kind === 'managed') {
+    const captured = captureManagedCompletedRun(runId, { scope });
+    if (artifact === 'report.md') bytes = Buffer.from(acceptanceMarkdown(captured.snapshot.report));
+    else if (artifact === 'report.json' || captured.snapshot.report.evidenceManifest.some(item => item.file === artifact)) {
+      bytes = captured.files.get(artifact);
+    }
+  } else {
+    const allowed = ['report.json', 'report.md', ...(head.report?.checks ?? []).flatMap(check => Object.values(check.evidence ?? {}))];
+    if (allowed.includes(artifact)) bytes = head.files.get(artifact)
+      ?? captureLegacyArtifact(join(acceptanceRunDir(runId, root), artifact), artifact.endsWith('.png') ? limits.evidenceFileBytes : limits.jsonBytes);
+  }
+  scope.assertCurrent();
+  if (!bytes) return null;
+  return { bytes: Buffer.from(bytes), sha256: digest(bytes), contentType: artifact.endsWith('.md') ? 'text/markdown; charset=utf-8'
+    : artifact.endsWith('.png') ? 'image/png' : 'application/json; charset=utf-8' };
+}
 export function saveAcceptanceTriage(runId, triage, { root = ACCEPTANCE_ROOT } = {}) {
-  const manifest = readAcceptanceRun(runId, { root });
+  const manifest = readLegacyAcceptanceRun(runId, { root });
   if (manifest?.status !== 'completed') throw new Error('acceptance report is not complete');
   atomic(join(acceptanceRunDir(runId, root), 'triage.json'), triage);
   updateAcceptanceRun(runId, { triageAvailable: true }, { root });
   return triage;
 }
 export function readAcceptanceTriage(runId, { root = ACCEPTANCE_ROOT } = {}) {
-  const manifest = readAcceptanceRun(runId, { root });
+  const manifest = readLegacyAcceptanceRun(runId, { root });
   if (!manifest?.triageAvailable) return null;
   const file = join(acceptanceRunDir(runId, root), 'triage.json');
   if (!existsSync(file)) return null;
@@ -261,7 +403,7 @@ export function readAcceptanceTriage(runId, { root = ACCEPTANCE_ROOT } = {}) {
 }
 /** Only referenced PNG/JSON evidence can be downloaded. Never expose plan/temp files. */
 export function acceptanceArtifact(runId, artifact, { root = ACCEPTANCE_ROOT } = {}) {
-  const manifest = readAcceptanceRun(runId, { root });
+  const manifest = readLegacyAcceptanceRun(runId, { root });
   if (!manifest || manifest.status !== 'completed') return null;
   const dir = acceptanceRunDir(runId, root);
   let allowed = ['report.json', 'report.md'];
