@@ -54,6 +54,8 @@ jobs:
       - run: pnpm test
       - name: Acceptance console (real browser, local model stub)
         run: pnpm acceptance:smoke
+      - name: Spec contract console (real browser, local API fixture)
+        run: pnpm acceptance:spec:smoke
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。
       - name: Docker offline delivery (SSR + SPA + data SPA + adapter)
         run: node --test --test-name-pattern='Docker network-none delivery' test/live-deployment-matrix.test.mjs
@@ -102,3 +104,5 @@ jobs:
       - run: pnpm smoke
       - name: Acceptance detection benchmark (known truth fixtures)
         run: pnpm acceptance:benchmark
+      - name: Spec API benchmark (OpenAPI candidates and known truth)
+        run: pnpm acceptance:spec:benchmark

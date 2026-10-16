@@ -1,0 +1,9 @@
+{
+  "requested": true,
+  "httpStatus": 200,
+  "contentType": "application/json",
+  "redirectNotFollowed": false,
+  "hasLocation": false,
+  "mismatches": [],
+  "bodyRead": "HEAD-has-no-body"
+}

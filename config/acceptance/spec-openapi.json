@@ -1,0 +1,20 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "本地配额接口验收示例", "version": "2026-10-16" },
+  "paths": {
+    "/healthy": { "get": { "summary": "健康响应", "responses": { "200": { "description": "业务成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Quota" } } } } } } },
+    "/wrong-code": { "get": { "summary": "HTTP 200 业务错误反例", "responses": { "200": { "description": "业务成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Quota" } } } } } } },
+    "/head": { "head": { "summary": "只检查响应头中的HTTP状态", "responses": { "200": { "description": "可访问" } } } }
+  },
+  "components": {
+    "schemas": {
+      "Quota": {
+        "type": "object", "required": ["code", "data"],
+        "properties": {
+          "code": { "type": "integer", "const": 0 },
+          "data": { "type": "object", "required": ["id", "name", "active"], "properties": { "id": { "type": "integer" }, "name": { "type": "string" }, "active": { "type": "boolean" } } }
+        }
+      }
+    }
+  }
+}

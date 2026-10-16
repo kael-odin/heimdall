@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-10-16T11:13:34.927Z",
+  "evidenceLevel": "local-verification",
+  "coreTest": {
+    "command": "pnpm -C core test",
+    "exitCode": 0,
+    "tests": 982,
+    "pass": 980,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 2,
+    "todo": 0,
+    "duration_ms": 225158.0196,
+    "rawLog": "core/workspace/_runs/acceptance-spec-tests-final.log"
+  },
+  "forgeSmoke": {
+    "command": "pnpm -C core smoke",
+    "exitCode": 0,
+    "output": "$ node scripts/smoke-forge.mjs\r\n[smoke] fixture :64554 (页面) / 64553 (样式表，另一个 origin) | engine :64555 | data C:\\Users\\44548\\AppData\\Local\\Temp\\heimdall-smoke-YaBPBt\r\n[smoke] PASS — recon pages = 2 | visual = 100.0% | dom = 100.0% | seo = 77 ( 13 issues ) | live bundle ok (health unresolved=0 externalAssets=0) | watch ok | jobs persistent"
+  },
+  "specBenchmark": {
+    "runId": "spec-benchmark-2026-10-16T10-52-35-812Z-07e964f1",
+    "outputDir": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\acceptance-spec-benchmark\\spec-benchmark-2026-10-16T10-52-35-812Z-07e964f1",
+    "passed": true,
+    "metrics": {
+      "unit": "case",
+      "totalCases": 11,
+      "knownBugCases": 7,
+      "nonBugCases": 4,
+      "truePositive": 7,
+      "falsePositive": 0,
+      "falseNegative": 0,
+      "trueNegative": 4,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0
+    },
+    "generatedAt": "2026-10-16T10:52:37.010Z"
+  },
+  "mirrorBenchmark": {
+    "runId": "benchmark-2026-10-16T11-04-55-162Z-a21f6994",
+    "outputDir": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\acceptance-benchmark\\benchmark-2026-10-16T11-04-55-162Z-a21f6994",
+    "passed": true,
+    "metrics": {
+      "unit": "case",
+      "totalCases": 11,
+      "knownBugCases": 7,
+      "nonBugCases": 4,
+      "truePositive": 7,
+      "falsePositive": 0,
+      "falseNegative": 0,
+      "trueNegative": 4,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0
+    },
+    "generatedAt": "2026-10-16T11:05:19.455Z"
+  },
+  "ci": "Current commit CI must be verified after push; not inferred from local checks."
+}

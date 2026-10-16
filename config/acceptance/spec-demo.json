@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "name": "Spec 演示 · HTTP 200 业务错误与字段契约",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:9088",
+  "timeoutMs": 1000,
+  "spec": {
+    "source": { "id": "DEMO-API-QUOTA", "revision": "2026-10-16", "type": "manual" },
+    "approved": true,
+    "checks": [
+      { "id": "healthy", "title": "健康接口业务成功", "method": "GET", "path": "/healthy", "expect": { "status": 200, "contentType": "application/json", "json": [ { "pointer": "/code", "kind": "equals", "value": 0 }, { "pointer": "/data/id", "kind": "type", "type": "integer" } ] } },
+      { "id": "business-error", "title": "HTTP 200 中的业务错误不能通过", "method": "GET", "path": "/wrong-code", "expect": { "status": 200, "contentType": "application/json", "json": [ { "pointer": "/code", "kind": "equals", "value": 0 } ] } },
+      { "id": "required-field", "title": "必填名称不能缺失", "method": "GET", "path": "/missing-field", "expect": { "status": 200, "contentType": "application/json", "json": [ { "pointer": "/data/name", "kind": "required" } ] } }
+    ]
+  }
+}

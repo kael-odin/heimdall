@@ -1,14 +1,51 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import Icon from './Icon.vue';
 import { API, apiHeaders } from './api.js';
 import {
   DIMENSIONS, STATUS_LABELS, GATE_LABELS, VERDICT_LABELS, buildAcceptanceInput,
   filterAcceptanceChecks, acceptanceEvidenceEntries, acceptanceScore, acceptanceViewport,
+  acceptanceSpecFingerprint, buildOpenApiPreviewInput, SPEC_CHECK_EXAMPLE,
 } from './acceptance-workbench.js';
 
 defineEmits(['close']);
-const form = reactive({ name: '', mode: 'mirror', baselineUrl: '', targetUrl: '', routes: '/', points: '', maskSelectors: '' });
+const form = reactive({ name: '', mode: 'mirror', baselineUrl: '', targetUrl: '', routes: '/', points: '', maskSelectors: '',
+  specSourceId: '', specRevision: '', specSourceTitle: '', specSourceType: 'manual', specSourceSha256: '',
+  specChecks: '', specOmissions: '[]', specApproved: false, specApprovedFingerprint: '', openApiDocument: '' });
+const previewLoading = ref(false);
+const previewResult = ref(null);
+const previewError = ref('');
+const approvalInvalidated = ref(false);
+const specOmissions = computed(() => {
+  try { const values = JSON.parse(form.specOmissions); return Array.isArray(values) ? values : []; } catch { return []; }
+});
+function approveSpec(event) {
+  form.specApproved = event.target.checked;
+  form.specApprovedFingerprint = event.target.checked ? acceptanceSpecFingerprint(form) : '';
+  approvalInvalidated.value = false;
+}
+watch(() => acceptanceSpecFingerprint(form), () => {
+  if (form.specApproved) approvalInvalidated.value = true;
+  form.specApproved = false;
+  form.specApprovedFingerprint = '';
+}, { flush: 'sync' });
+watch(() => [form.targetUrl, form.openApiDocument, form.mode], () => {
+  previewController?.abort();
+  previewLoading.value = false;
+  previewResult.value = null;
+  previewError.value = '';
+});
+function insertSpecExample() {
+  form.specSourceId = 'quota-requirement';
+  form.specRevision = 'v1';
+  form.specSourceTitle = '额度接口需求';
+  form.specSourceType = 'manual';
+  form.specSourceSha256 = '';
+  form.specChecks = JSON.stringify(SPEC_CHECK_EXAMPLE, null, 2);
+  form.specOmissions = '[]';
+  previewResult.value = null;
+  previewError.value = '';
+}
 const runs = ref([]);
 const runsLoaded = ref(false);
 const listError = ref('');
@@ -42,7 +79,7 @@ const currentRunning = computed(() => manifest.value?.status === 'running');
 const runningCount = computed(() => runs.value.filter(run => run.status === 'running').length);
 let stopped = false;
 let listTimer, runTimer;
-let listController, runController, createController, downloadController, triageController;
+let listController, runController, createController, downloadController, triageController, previewController;
 let triageRestoreAttempted = false;
 let listEpoch = 0;
 let runEpoch = 0;
@@ -52,13 +89,16 @@ const downloadTimers = new Set();
 const count = value => Number.isFinite(value) ? value.toLocaleString('zh-CN') : '—';
 const pretty = value => value == null ? '未记录' : typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 const oracleLabel = value => value && typeof value === 'object'
-  ? [value.kind === 'approved-runtime' ? '运行基线' : value.kind, value.source].filter(Boolean).join(' · ') || pretty(value)
+  ? [value.kind === 'approved-runtime' ? '运行基线' : value.kind === 'approved-spec' ? '已批准需求' : value.kind,
+    value.source && typeof value.source === 'object' ? [value.source.id, value.source.revision].filter(Boolean).join(' · ') || pretty(value.source) : value.source].filter(Boolean).join(' · ') || pretty(value)
   : value || '未记录';
 const evidenceLabel = value => value === 'browser-reproduced' ? '浏览器实测' : value || '未记录';
 const coverageLabel = computed(() => summary.value?.coverage?.total > 0
   ? `已测 ${count(summary.value.coverage.measured)} / ${count(summary.value.coverage.total)} 项 · ${count(summary.value.passed)} 项通过`
   : '未声明有效检查，无法判断验收通过');
-const dimensionLabel = value => DIMENSIONS.find(item => item.id === value)?.label ?? value;
+const specReport = computed(() => (report.value?.mode ?? manifest.value?.mode) === 'spec');
+const modeLabel = value => ({ spec: '需求契约验收', mirror: '还原验收', regression: '回归验收' })[value] ?? value;
+const dimensionLabel = value => specReport.value && value === 'behavior' ? '接口契约' : DIMENSIONS.find(item => item.id === value)?.label ?? value;
 function dimensionReading(dimension) {
   const value = summary.value?.dimensions?.[dimension];
   if (!(value?.total > 0)) return '未声明';
@@ -69,9 +109,11 @@ function dimensionReading(dimension) {
   return '已检查';
 }
 function showResults() {
-  resultsElement.value?.scrollIntoView({
-    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start',
-  });
+  const results = resultsElement.value;
+  const layout = results?.parentElement;
+  if (!results || !layout) return;
+  layout.scrollTo({ top: layout.scrollTop + results.getBoundingClientRect().top - layout.getBoundingClientRect().top,
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 const dateLabel = value => {
   const date = new Date(value);
@@ -79,15 +121,15 @@ const dateLabel = value => {
 };
 const progressLabel = computed(() => {
   const progress = manifest.value?.progress;
-  if (!progress) return '浏览器正在采集基线、目标与差异证据。';
+  if (!progress) return specReport.value ? '正在按已批准清单检查目标 API 契约。' : '浏览器正在采集基线、目标与差异证据。';
   if (typeof progress === 'string') return progress;
   return [progress.message || progress.stage, progress.route,
     Number.isFinite(progress.completed) && Number.isFinite(progress.total) ? `${progress.completed} / ${progress.total}` : '',
   ].filter(Boolean).join(' · ') || '正在执行验收计划…';
 });
 
-async function request(path, { signal, method = 'GET', body, responseType = 'json' } = {}) {
-  const response = await fetch(`${API}/api/acceptance/runs${path}`, {
+async function request(path, { signal, method = 'GET', body, responseType = 'json', basePath = '/api/acceptance/runs' } = {}) {
+  const response = await fetch(`${API}${basePath}${path}`, {
     method, headers: apiHeaders(), signal, ...(body ? { body: JSON.stringify(body) } : {}),
   });
   if (!response.ok) {
@@ -97,6 +139,41 @@ async function request(path, { signal, method = 'GET', body, responseType = 'jso
   if (responseType === 'blob') return response.blob();
   if (!(response.headers.get('content-type') ?? '').includes('json')) throw new Error('引擎返回内容不是 JSON，请检查引擎地址与版本。');
   return response.json();
+}
+
+async function previewOpenApi() {
+  if (previewLoading.value || stopped) return;
+  previewError.value = '';
+  let input;
+  try { input = buildOpenApiPreviewInput(form); } catch (error) { previewError.value = error.message; return; }
+  const fingerprint = JSON.stringify([form.targetUrl, form.openApiDocument, form.name]);
+  const controller = new AbortController();
+  previewController?.abort();
+  previewController = controller;
+  previewLoading.value = true;
+  form.specApproved = false;
+  form.specApprovedFingerprint = '';
+  try {
+    const result = await request('', { method: 'POST', body: input, signal: controller.signal, basePath: '/api/acceptance/openapi/preview' });
+    if (stopped || controller.signal.aborted || form.mode !== 'spec'
+      || fingerprint !== JSON.stringify([form.targetUrl, form.openApiDocument, form.name])) return;
+    const spec = result.plan?.spec;
+    if (!spec?.source || !Array.isArray(spec.checks) || !Array.isArray(spec.omissions)) throw new Error('OpenAPI 预览返回格式无效，请更新引擎后重试。');
+    form.specSourceId = spec.source.id || '';
+    form.specRevision = spec.source.revision || '';
+    form.specSourceTitle = spec.source.title || '';
+    form.specSourceType = spec.source.type || 'openapi';
+    form.specSourceSha256 = spec.source.sha256 || '';
+    form.specChecks = JSON.stringify(spec.checks, null, 2);
+    form.specOmissions = JSON.stringify(spec.omissions, null, 2);
+    if (!form.name) form.name = result.plan.name || '';
+    form.specApproved = false;
+    form.specApprovedFingerprint = '';
+    approvalInvalidated.value = false;
+    previewResult.value = result;
+  } catch (error) {
+    if (!stopped && !controller.signal.aborted) previewError.value = error.message;
+  } finally { if (!stopped && previewController === controller) previewLoading.value = false; }
 }
 
 async function loadRuns() {
@@ -140,6 +217,7 @@ function selectRun(id) {
   runController?.abort();
   downloadController?.abort();
   triageController?.abort();
+  previewController?.abort();
   clearEvidence();
   runEpoch++;
   selectedId.value = id;
@@ -159,6 +237,24 @@ function selectRun(id) {
   loadSelected(id, runEpoch);
 }
 
+function restoreSpecDraft(plan) {
+  const spec = plan.spec;
+  form.mode = 'spec';
+  form.name = plan.name || '';
+  form.targetUrl = plan.targetUrl || '';
+  form.specSourceId = spec.source?.id || '';
+  form.specRevision = spec.source?.revision || '';
+  form.specSourceTitle = spec.source?.title || '';
+  form.specSourceType = spec.source?.type || 'manual';
+  form.specSourceSha256 = spec.source?.sha256 || '';
+  form.specChecks = JSON.stringify(spec.checks ?? [], null, 2);
+  form.specOmissions = JSON.stringify(spec.omissions ?? [], null, 2);
+  form.openApiDocument = spec.document ? JSON.stringify(spec.document, null, 2) : '';
+  form.specApproved = false;
+  form.specApprovedFingerprint = '';
+  approvalInvalidated.value = false;
+}
+
 async function loadSelected(id = selectedId.value, epoch = runEpoch) {
   clearTimeout(runTimer);
   runController?.abort();
@@ -169,7 +265,9 @@ async function loadSelected(id = selectedId.value, epoch = runEpoch) {
   try {
     const data = await request(`/${encodeURIComponent(id)}`, { signal });
     if (stopped || signal.aborted || epoch !== runEpoch || id !== selectedId.value) return;
+    const firstLoad = !manifest.value;
     manifest.value = data;
+    if (firstLoad && data.plan?.mode === 'spec' && data.plan.spec) restoreSpecDraft(data.plan);
     runError.value = '';
     keepPolling = data.status === 'running';
     if (data.status === 'completed' && !report.value) {
@@ -315,6 +413,7 @@ onBeforeUnmount(() => {
   createController?.abort();
   downloadController?.abort();
   triageController?.abort();
+  previewController?.abort();
   clearEvidence();
 });
 </script>
@@ -322,7 +421,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="work-view surface acceptance-workbench" aria-labelledby="aw-title" data-testid="acceptance-workbench">
     <header class="aw-header">
-      <div><h1 id="aw-title">项目验收</h1><p>对照基线，复现差异，把还原度和 BUG 落到可检查的证据。</p></div>
+      <div><h1 id="aw-title">项目验收</h1><p>以基线或需求为依据，把还原度和 BUG 落到可检查的证据。</p></div>
       <div class="aw-header-actions"><button v-if="selectedId" type="button" class="aw-button aw-mobile-results" aria-controls="aw-result-panel" data-testid="acceptance-view-results" @click="showResults">查看结果<Icon name="chevron" decorative /></button><button type="button" class="aw-button aw-close" @click="$emit('close')"><Icon name="close" decorative /> 返回星图</button></div>
     </header>
     <div class="aw-layout">
@@ -333,20 +432,44 @@ onBeforeUnmount(() => {
           <fieldset class="aw-modes"><legend>验收方式</legend>
             <label :class="{ selected: form.mode === 'mirror' }"><input v-model="form.mode" type="radio" name="acceptance-mode" value="mirror" /><span>还原验收<small>原站与开发项目对照</small></span></label>
             <label :class="{ selected: form.mode === 'regression' }"><input v-model="form.mode" type="radio" name="acceptance-mode" value="regression" /><span>回归验收<small>稳定版本与新版本对照</small></span></label>
+            <label class="aw-spec-mode" :class="{ selected: form.mode === 'spec' }"><input v-model="form.mode" type="radio" name="acceptance-mode" value="spec" /><span>需求契约验收<small>按已批准需求检查目标 API</small></span></label>
           </fieldset>
-          <label>基线 URL<input v-model="form.baselineUrl" name="acceptance-baseline" type="url" placeholder="https://reference.example.com" required spellcheck="false" /></label>
+          <label v-if="form.mode !== 'spec'">基线 URL<input v-model="form.baselineUrl" name="acceptance-baseline" type="url" placeholder="https://reference.example.com" required spellcheck="false" /></label>
           <label>目标 URL<input v-model="form.targetUrl" name="acceptance-target" type="url" placeholder="http://127.0.0.1:3000" required spellcheck="false" /></label>
-          <label>路由 <span class="aw-optional">一行一个</span><textarea v-model="form.routes" name="acceptance-routes" rows="3" required spellcheck="false" aria-describedby="aw-route-note"></textarea></label>
-          <p id="aw-route-note" class="aw-hint">{{ routeCount }} 条路由 · 默认桌面、平板、手机三个视口。路径相对入口 URL，/ 保留入口页。</p>
-          <details class="aw-advanced"><summary>验收点与忽略区域</summary>
-            <label>验收点 JSON<textarea v-model="form.points" name="acceptance-points" rows="5" placeholder='[]' spellcheck="false" aria-describedby="aw-points-note"></textarea></label>
-            <p id="aw-points-note" class="aw-hint">填入验收点对象数组，支持可见、隐藏、文本、属性与 URL 断言。空白时执行页面默认检查。</p>
-            <button type="button" class="aw-text-button aw-example" :disabled="!!form.points.trim()" @click="insertPointExample">填入菜单展开示例</button>
-            <label>忽略区域 JSON<textarea v-model="form.maskSelectors" name="acceptance-masks" rows="2" placeholder='[".timestamp", "[data-dynamic]"]' spellcheck="false"></textarea></label>
-            <p class="aw-hint">CSS 选择器数组，用于截图中的动态时间、广告等区域。</p>
-          </details>
+          <template v-if="form.mode !== 'spec'">
+            <label>路由 <span class="aw-optional">一行一个</span><textarea v-model="form.routes" name="acceptance-routes" rows="3" required spellcheck="false" aria-describedby="aw-route-note"></textarea></label>
+            <p id="aw-route-note" class="aw-hint">{{ routeCount }} 条路由 · 默认桌面、平板、手机三个视口。路径相对入口 URL，/ 保留入口页。</p>
+            <details class="aw-advanced"><summary>验收点与忽略区域</summary>
+              <label>验收点 JSON<textarea v-model="form.points" name="acceptance-points" rows="5" placeholder='[]' spellcheck="false" aria-describedby="aw-points-note"></textarea></label>
+              <p id="aw-points-note" class="aw-hint">填入验收点对象数组，支持可见、隐藏、文本、属性与 URL 断言。空白时执行页面默认检查。</p>
+              <button type="button" class="aw-text-button aw-example" :disabled="!!form.points.trim()" @click="insertPointExample">填入菜单展开示例</button>
+              <label>忽略区域 JSON<textarea v-model="form.maskSelectors" name="acceptance-masks" rows="2" placeholder='[".timestamp", "[data-dynamic]"]' spellcheck="false"></textarea></label>
+              <p class="aw-hint">CSS 选择器数组，用于截图中的动态时间、广告等区域。</p>
+            </details>
+          </template>
+          <section v-else class="aw-spec-form" aria-labelledby="aw-spec-title">
+            <h3 id="aw-spec-title">需求依据与契约</h3>
+            <details class="aw-advanced aw-openapi"><summary>从 OpenAPI JSON 导入候选清单</summary>
+              <label>OpenAPI 文档<textarea v-model="form.openApiDocument" name="acceptance-openapi" rows="6" placeholder='{"openapi":"3.0.3","info":{"title":"服务 API","version":"1.0"},"paths":{}}' spellcheck="false"></textarea></label>
+              <p class="aw-hint">预览只解析文档，不请求目标 API。生成的候选清单仍需核对并批准。</p>
+              <button type="button" class="aw-button aw-preview" :disabled="previewLoading" data-testid="acceptance-openapi-preview" @click="previewOpenApi">{{ previewLoading ? '正在解析…' : '预览并填入候选契约' }}</button>
+              <p v-if="previewError" class="aw-error" role="alert">{{ previewError }}</p>
+            </details>
+            <div class="aw-spec-source-grid"><label>来源 ID<input v-model="form.specSourceId" name="acceptance-spec-source" placeholder="quota-requirement" required maxlength="160" /></label><label>版本 / 修订号<input v-model="form.specRevision" name="acceptance-spec-revision" placeholder="v1" required maxlength="128" /></label></div>
+            <label>来源标题 <span class="aw-optional">选填</span><input v-model="form.specSourceTitle" name="acceptance-spec-title" placeholder="额度接口需求" maxlength="200" /></label>
+            <p class="aw-hint">来源类型：{{ form.specSourceType === 'openapi' ? 'OpenAPI 导入' : '手工声明' }}<span v-if="form.specSourceSha256"> · 已保留文档 SHA-256</span></p>
+            <label>API 契约 JSON<textarea v-model="form.specChecks" name="acceptance-spec-checks" rows="9" placeholder='[{"id":"QUOTA","title":"额度接口","path":"/api/quota","method":"GET","expect":{"status":200}}]' spellcheck="false" required aria-describedby="aw-spec-checks-note"></textarea></label>
+            <p id="aw-spec-checks-note" class="aw-hint">支持 GET / HEAD、HTTP 状态、Content-Type、JSON Pointer 的 equals / required / type / enum，以及 JSON Schema。</p>
+            <button type="button" class="aw-text-button aw-example" :disabled="!!form.specChecks.trim()" @click="insertSpecExample">填入额度接口手工示例</button>
+            <div v-if="previewResult?.coverage" class="aw-import-coverage" data-testid="acceptance-spec-coverage"><h4>导入时的文档覆盖</h4><dl><div><dt>声明操作</dt><dd>{{ count(previewResult.coverage.declaredOperations) }}</dd></div><div><dt>候选契约</dt><dd>{{ count(previewResult.coverage.candidateChecks) }}</dd></div><div><dt>未覆盖</dt><dd>{{ count(previewResult.coverage.omittedOperations) }}</dd></div></dl><p class="aw-hint">{{ previewResult.coverage.complete ? '文档操作均生成候选契约。' : '部分操作无法生成可执行契约，需要核对未覆盖项。' }}<span v-if="Number.isFinite(previewResult.coverage.ratio)"> 覆盖 {{ acceptanceScore(previewResult.coverage.ratio) }}。</span>编辑候选清单后，以当前清单为准。</p></div>
+            <ul v-if="previewResult?.warnings?.length" class="aw-spec-warnings"><li v-for="(warning, index) in previewResult.warnings" :key="index">{{ pretty(warning) }}</li></ul>
+            <details v-if="specOmissions.length" class="aw-spec-omissions"><summary>未覆盖项 {{ specOmissions.length }} 条</summary><ul><li v-for="(item, index) in specOmissions" :key="item.id || index"><strong>{{ item.method }} {{ item.path }}</strong><p>{{ item.reason }}</p></li></ul></details>
+            <p v-else class="aw-hint">当前清单未声明遗漏项；这不代表未录入的业务需求已经覆盖。</p>
+            <label class="aw-spec-approval"><input type="checkbox" name="acceptance-spec-approved" :checked="form.specApproved" @change="approveSpec" /><span>我已核对需求来源、当前契约及未覆盖项，批准运行此清单。</span></label>
+            <p v-if="approvalInvalidated" class="aw-hint aw-warn" role="status">清单或依据已修改，原批准已失效，请重新核对。</p>
+          </section>
           <p v-if="formError" class="aw-error" role="alert">{{ formError }}</p>
-          <button type="submit" class="aw-button aw-primary" :disabled="creating" data-testid="acceptance-run"><Icon name="bolt" decorative />{{ creating ? '正在创建…' : '运行验收' }}</button>
+          <button type="submit" class="aw-button aw-primary" :disabled="creating || previewLoading || (form.mode === 'spec' && !form.specApproved)" data-testid="acceptance-run"><Icon name="bolt" decorative />{{ creating ? '正在创建…' : '运行验收' }}</button>
         </form>
         <section class="aw-history" aria-labelledby="aw-history-title">
           <div class="aw-section-title"><h2 id="aw-history-title">验收历史 <span>{{ runs.length }}</span></h2><button class="aw-icon-button" type="button" @click="loadRuns" aria-label="刷新验收历史"><Icon name="refresh" decorative /></button></div>
@@ -364,14 +487,14 @@ onBeforeUnmount(() => {
       </aside>
       <main id="aw-result-panel" ref="resultsElement" class="aw-results" aria-live="polite" aria-busy="loadingRun || currentRunning">
         <div v-if="!selectedId" class="aw-empty">
-          <h2>从一次可复现的对照开始</h2><p>填入作为预期的基线与待验收项目地址。验收会按路由采集视觉、结构、交互和运行健康结果，并保留截图与复现步骤。</p>
-          <dl><div><dt>目标缺陷</dt><dd>基线可运行，目标偏离预期</dd></div><div><dt>基线失败</dt><dd>预期本身未成立，需要核对基线</dd></div><div><dt>待复核</dt><dd>证据不足以自动判定，需要人工检查</dd></div></dl>
+          <h2>{{ form.mode === 'spec' ? '先把需求写成可执行的契约' : '从一次可复现的对照开始' }}</h2><p>{{ form.mode === 'spec' ? '填写需求来源与目标地址，手工声明 API 契约或导入 OpenAPI 候选清单。核对并批准后才会检查目标接口，保留请求、响应与契约依据。此模式不测量页面视觉。' : '填入作为预期的基线与待验收项目地址。验收会按路由采集视觉、结构、交互和运行健康结果，并保留截图与复现步骤。' }}</p>
+          <dl><div><dt>目标缺陷</dt><dd>{{ form.mode === 'spec' ? '目标响应不符合已批准的接口契约' : '基线可运行，目标偏离预期' }}</dd></div><div v-if="form.mode !== 'spec'"><dt>基线失败</dt><dd>预期本身未成立，需要核对基线</dd></div><div><dt>待复核</dt><dd>证据不足以自动判定，需要人工检查</dd></div></dl>
         </div>
         <template v-else>
           <p v-if="loadingRun" class="aw-loading" role="status">正在读取验收任务…</p>
           <div v-if="runError" class="aw-error aw-load-error" role="alert"><p>任务读取失败：{{ runError }}</p><button type="button" class="aw-button" @click="loadSelected()">重新读取</button></div>
           <template v-if="manifest">
-            <div class="aw-report-head"><div><h2>{{ manifest.name || selectedId }}</h2><p>{{ manifest.mode === 'regression' ? '回归验收' : '还原验收' }} · {{ dateLabel(manifest.createdAt || report?.startedAt) }}<span v-if="report?.endedAt"> · 完成于 {{ dateLabel(report.endedAt) }}</span></p></div>
+            <div class="aw-report-head"><div><h2>{{ manifest.name || selectedId }}</h2><p>{{ modeLabel(manifest.mode) }} · {{ dateLabel(manifest.createdAt || report?.startedAt) }}<span v-if="report?.endedAt"> · 完成于 {{ dateLabel(report.endedAt) }}</span></p></div>
               <div v-if="report" class="aw-downloads"><button class="aw-button" type="button" @click="downloadReport('md')" :disabled="!!downloading">{{ downloading === 'md' ? '正在下载…' : '下载 Markdown' }}</button><button class="aw-button" type="button" @click="downloadReport('json')" :disabled="!!downloading">JSON</button></div>
             </div>
             <p v-if="downloadError" class="aw-error" role="alert">报告下载失败：{{ downloadError }}</p>
@@ -379,16 +502,16 @@ onBeforeUnmount(() => {
             <div v-else-if="['failed', 'interrupted'].includes(manifest.status)" class="aw-failed" role="alert"><strong>{{ manifest.status === 'interrupted' ? '验收已中断' : '验收运行失败' }}</strong><p>{{ pretty(manifest.error || '引擎没有记录失败原因；请检查引擎日志后重新运行。') }}</p></div>
             <template v-if="report">
               <div :class="['aw-verdict', report.gate]" data-testid="acceptance-gate"><strong>{{ GATE_LABELS[report.gate] ?? '结论未记录' }}</strong><span>{{ coverageLabel }}</span></div>
-              <dl class="aw-scope"><div><dt>基线</dt><dd><code>{{ report.baselineUrl }}</code></dd></div><div><dt>目标</dt><dd><code>{{ report.targetUrl }}</code></dd></div></dl>
-              <p class="aw-hint aw-scope-note">{{ report.scope || '仅验收已声明路由、视口和操作；未声明的业务流程与接口契约尚未测量。' }}</p>
+              <dl class="aw-scope"><div v-if="!specReport"><dt>基线</dt><dd><code>{{ report.baselineUrl }}</code></dd></div><div><dt>目标</dt><dd><code>{{ report.targetUrl }}</code></dd></div><template v-if="specReport && report.specSource"><div><dt>需求</dt><dd><code>{{ report.specSource.id }} · {{ report.specSource.revision }}</code></dd></div><div v-if="report.specSource.sha256"><dt>指纹</dt><dd><code>{{ report.specSource.sha256 }}</code></dd></div><div><dt>批准</dt><dd>{{ report.specApproval?.approved === true ? '当前清单已批准' : '未批准' }}</dd></div></template></dl>
+              <p class="aw-hint aw-scope-note">{{ report.scope || (specReport ? '仅验收已声明且已批准的接口契约；此模式不测量页面视觉或未声明的业务流程。' : '仅验收已声明路由、视口和操作；未声明的业务流程与接口契约尚未测量。') }}</p>
               <div class="aw-summary" aria-label="验收结果统计">
                 <button type="button" :class="{ active: filters.verdict === 'bug' }" @click="filters.verdict = filters.verdict === 'bug' ? 'attention' : 'bug'"><span>目标缺陷</span><strong class="aw-bad">{{ count(summary?.bugs) }}</strong></button>
-                <button type="button" :class="{ active: filters.verdict === 'baseline_failed' }" @click="filters.verdict = filters.verdict === 'baseline_failed' ? 'attention' : 'baseline_failed'"><span>基线失败</span><strong class="aw-warn">{{ count(summary?.baselineFailed) }}</strong></button>
+                <button v-if="!specReport" type="button" :class="{ active: filters.verdict === 'baseline_failed' }" @click="filters.verdict = filters.verdict === 'baseline_failed' ? 'attention' : 'baseline_failed'"><span>基线失败</span><strong class="aw-warn">{{ count(summary?.baselineFailed) }}</strong></button>
                 <button type="button" :class="{ active: filters.verdict === 'needs_review' }" @click="filters.verdict = filters.verdict === 'needs_review' ? 'attention' : 'needs_review'"><span>待复核</span><strong class="aw-warn">{{ count(summary?.needsReview) }}</strong></button>
                 <button type="button" :class="{ active: filters.verdict === 'environment' }" @click="filters.verdict = filters.verdict === 'environment' ? 'attention' : 'environment'"><span>受阻检查</span><strong>{{ count(summary?.blocked) }}</strong></button>
               </div>
               <div class="aw-dimensions" aria-label="按验收维度筛选">
-                <button v-for="dimension in DIMENSIONS" :key="dimension.id" type="button" :class="{ active: filters.dimension === dimension.id }" :aria-pressed="filters.dimension === dimension.id" @click="filters.dimension = filters.dimension === dimension.id ? 'all' : dimension.id"><span>{{ dimension.label }}</span><b>{{ dimensionReading(dimension.id) }}</b><small v-if="summary?.dimensions?.[dimension.id]?.total > 0">{{ count(summary?.dimensions?.[dimension.id]?.passed) }} / {{ count(summary?.dimensions?.[dimension.id]?.total) }} 通过</small><small v-else>{{ dimension.id === 'behavior' ? '未声明交互验收点' : '未声明检查' }}</small></button>
+                <button v-for="dimension in DIMENSIONS" :key="dimension.id" type="button" :class="{ active: filters.dimension === dimension.id }" :aria-pressed="filters.dimension === dimension.id" @click="filters.dimension = filters.dimension === dimension.id ? 'all' : dimension.id"><span>{{ dimensionLabel(dimension.id) }}</span><b>{{ dimensionReading(dimension.id) }}</b><small v-if="summary?.dimensions?.[dimension.id]?.total > 0">{{ count(summary?.dimensions?.[dimension.id]?.passed) }} / {{ count(summary?.dimensions?.[dimension.id]?.total) }} 通过</small><small v-else>{{ dimension.id === 'behavior' ? (specReport ? '未声明接口契约' : '未声明交互验收点') : '未声明检查' }}</small></button>
               </div>
               <section v-if="triageEligible" class="aw-triage" aria-labelledby="aw-triage-title" :aria-busy="triageLoading">
                 <div class="aw-triage-head"><h3 id="aw-triage-title">AI 证据解读</h3><button type="button" class="aw-button" :disabled="triageLoading" data-testid="acceptance-triage" @click="loadTriage('POST')"><Icon name="bolt" decorative />{{ triageLoading ? '正在解读…' : triage?.status === 'completed' ? '重新解读缺陷' : 'AI 解读缺陷' }}</button></div>
@@ -439,9 +562,9 @@ onBeforeUnmount(() => {
 .aw-sidebar { overflow-y: auto; border-right: 1px solid var(--border); background: var(--surface-2); }
 .aw-form { padding: 22px 22px 23px; }
 .aw-form h2, .aw-history h2 { font-size: 14px; font-weight: 650; margin-bottom: 17px; }
-.aw-form > label, .aw-advanced label { display: block; font-size: 12px; font-weight: 550; margin-top: 14px; }
+.aw-form > label, .aw-advanced label, .aw-spec-form label:not(.aw-spec-approval) { display: block; font-size: 12px; font-weight: 550; margin-top: 14px; }
 .aw-optional { color: var(--text-faint); font-size: 11px; font-weight: 400; margin-left: 5px; }
-.aw-form input:not([type='radio']), .aw-form textarea, .aw-filters input, .aw-filters select { display: block; width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--bg); color: var(--text); font-size: 12px; margin-top: 6px; caret-color: var(--accent); }
+.aw-form input:not([type='radio']):not([type='checkbox']), .aw-form textarea, .aw-filters input, .aw-filters select { display: block; width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--bg); color: var(--text); font-size: 12px; margin-top: 6px; caret-color: var(--accent); }
 .aw-form input[type='url'], .aw-form textarea { font-family: var(--font-mono); font-size: 11.5px; }
 .aw-form textarea { resize: vertical; min-height: 64px; max-height: 350px; line-height: 1.65; }
 .aw-form input:focus, .aw-form textarea:focus { border-color: var(--accent); }
@@ -450,11 +573,34 @@ onBeforeUnmount(() => {
 .aw-modes legend { font-size: 12px; margin-bottom: 7px; font-weight: 550; }
 .aw-modes label { padding: 9px 8px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); display: flex; align-items: start; gap: 6px; cursor: pointer; }
 .aw-modes label.selected { border-color: var(--accent); background: var(--bg); }
+.aw-modes label.aw-spec-mode { grid-column: 1 / -1; }
 .aw-modes input { accent-color: var(--accent); margin-top: 3px; }
 .aw-modes span { font-size: 12px; }
 .aw-modes small { display: block; margin-top: 3px; font-size: 10px; color: var(--text-faint); }
 .aw-advanced { border-top: 1px solid var(--border); margin-top: 17px; padding-top: 13px; }
 .aw-advanced > summary { color: var(--text-dim); cursor: pointer; font-size: 12px; }
+.aw-spec-form { margin-top: 22px; min-width: 0; }
+.aw-spec-form h3 { font-size: 13px; font-weight: 600; }
+.aw-spec-form .aw-openapi { margin-top: 11px; }
+.aw-spec-source-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.aw-spec-source-grid > label { min-width: 0; }
+.aw-spec-source-grid input { font-family: var(--font-mono); font-size: 11px; }
+.aw-spec-form .aw-preview { width: 100%; margin-top: 10px; font-size: 11px; }
+.aw-import-coverage { margin-top: 17px; padding-top: 13px; border-top: 1px solid var(--border); }
+.aw-import-coverage h4 { font-size: 11px; font-weight: 550; }
+.aw-import-coverage dl { display: flex; justify-content: space-between; gap: 9px; margin-top: 9px; }
+.aw-import-coverage dl > div { font-size: 11px; color: var(--text-dim); }
+.aw-import-coverage dd { color: var(--text); font-variant-numeric: tabular-nums; margin-top: 3px; }
+.aw-spec-warnings { padding-left: 17px; margin-top: 12px; color: var(--warn); font-size: 10px; line-height: 1.8; overflow-wrap: anywhere; }
+.aw-spec-omissions { margin-top: 13px; color: var(--text-dim); font-size: 11px; }
+.aw-spec-omissions summary { cursor: pointer; }
+.aw-spec-omissions ul { list-style: none; margin-top: 7px; }
+.aw-spec-omissions li { padding: 8px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.aw-spec-omissions strong { font-size: 10px; font-family: var(--font-mono); font-weight: 500; }
+.aw-spec-omissions p { color: var(--text-faint); font-size: 10px; margin-top: 4px; }
+.aw-spec-form label.aw-spec-approval { display: flex; align-items: start; gap: 8px; margin-top: 18px; color: var(--text-dim); font-size: 11px; line-height: 1.8; cursor: pointer; }
+.aw-spec-approval input { accent-color: var(--accent); flex: none; margin-top: 3px; width: 14px; height: 14px; }
+.aw-hint.aw-warn { color: var(--warn); }
 .aw-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 11px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--text-dim); cursor: pointer; font-size: 12px; white-space: nowrap; transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
 .aw-button:hover:not(:disabled) { color: var(--text); border-color: var(--text-faint); background: var(--surface-2); }
 .aw-button:disabled { cursor: wait; }

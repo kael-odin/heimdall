@@ -230,6 +230,10 @@ const healthy = side => navigated(side) && !side.errors.length && !side.network.
 
 /** Execute independent, read-only browser acceptance against an approved runtime. */
 export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onEvent } = {}) {
+  if (plan?.mode === 'spec') {
+    const { runSpecAcceptance } = await import('./spec-runner.mjs');
+    return runSpecAcceptance(plan, { runId, outputDir, onEvent });
+  }
   const startedAt = new Date().toISOString();
   outputDir = outputDir || await mkdtemp(join(tmpdir(), 'heimdall-acceptance-'));
   await mkdir(outputDir, { recursive: true });

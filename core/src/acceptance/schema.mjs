@@ -1,4 +1,7 @@
 /** Declarative, bounded acceptance inputs. No arbitrary JavaScript is executed. */
+import { normalizeAcceptanceUrl as urlOf, normalizeAcceptancePath as routeOf, resolveAcceptanceUrl } from './urls.mjs';
+import { normalizeSpecPlan } from './spec-schema.mjs';
+export { resolveAcceptanceUrl } from './urls.mjs';
 export const ACCEPTANCE_SCHEMA_VERSION = 1;
 export const DEFAULT_VIEWPORTS = [
   { name: 'mobile', width: 375, height: 812 },
@@ -19,31 +22,6 @@ const list = (value, fallback, max, label, min = 0) => {
   if (!Array.isArray(a) || a.length < min || a.length > max) fail(`${label} must contain ${min}..${max} entries`);
   return a;
 };
-function urlOf(value, label) {
-  let u;
-  try { u = new URL(text(value, label, 2048)); } catch { fail(`${label} must be an absolute HTTP(S) URL`); }
-  if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password || u.hash) fail(`${label} must be HTTP(S), without credentials or fragment`);
-  return u.href;
-}
-function routeOf(value) {
-  const route = text(value, 'route', 1024);
-  let decoded = route;
-  try { for (let i = 0; i < 3; i++) decoded = decodeURIComponent(decoded); } catch { fail('route contains invalid encoding'); }
-  if (!route.startsWith('/') || decoded.startsWith('//') || /[\\\s#\u0000-\u001f]/.test(decoded)
-      || decoded.split(/[/?]/).includes('..') || decoded.split(/[/?]/).includes('.')) fail('route must be an entry-relative path without traversal, fragment or origin');
-  return route;
-}
-/** '/' keeps the entry URL; other routes are relative to its path as a directory. */
-export function resolveAcceptanceUrl(baseUrl, route = '/') {
-  const base = new URL(urlOf(baseUrl, 'entry URL'));
-  route = routeOf(route);
-  if (route === '/') return base.href;
-  base.search = '';
-  base.pathname = base.pathname.replace(/\/$/, '') + '/';
-  const result = new URL(route.slice(1), base);
-  if (result.origin !== base.origin || !result.pathname.startsWith(base.pathname)) fail('route escapes entry URL');
-  return result.href;
-}
 function assertionOf(raw) {
   if (!object(raw)) fail('assertion must be an object');
   const kind = raw.kind;
@@ -72,7 +50,8 @@ export function normalizeAcceptancePlan(input) {
   if (!object(input)) fail('acceptance plan must be an object');
   if (input.schemaVersion !== undefined && input.schemaVersion !== 1) fail('unsupported acceptance schema version');
   const mode = input.mode ?? 'mirror';
-  if (!['mirror', 'regression'].includes(mode)) fail('mode must be mirror or regression');
+  if (mode === 'spec') return normalizeSpecPlan(input);
+  if (!['mirror', 'regression'].includes(mode)) fail('mode must be mirror, regression or spec');
   const baselineUrl = urlOf(input.baselineUrl, 'baselineUrl');
   const targetUrl = urlOf(input.targetUrl, 'targetUrl');
   if (baselineUrl === targetUrl) fail('baselineUrl and targetUrl must identify different entries');

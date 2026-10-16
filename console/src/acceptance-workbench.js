@@ -33,6 +33,7 @@ function jsonArray(value, label) {
 }
 
 export function buildAcceptanceInput(form) {
+  if (form.mode === 'spec') return buildSpecInput(form);
   const baselineUrl = httpUrl(form.baselineUrl, '基线 URL');
   const targetUrl = httpUrl(form.targetUrl, '目标 URL');
   if (baselineUrl === targetUrl) throw new Error('基线与目标需要使用不同的地址。');
@@ -63,6 +64,83 @@ export function buildAcceptanceInput(form) {
   };
 }
 
+export const SPEC_CHECK_EXAMPLE = [{
+  id: 'QUOTA-CONTRACT', title: '额度接口符合需求', path: '/api/quota', method: 'GET', severity: 'high',
+  expect: { status: 200, contentType: 'application/json', json: [
+    { pointer: '/code', kind: 'equals', value: 0 },
+    { pointer: '/data/quota', kind: 'required' },
+    { pointer: '/data/quota', kind: 'type', type: 'number' },
+  ] },
+}];
+
+/** Approval is bound to the exact draft, including its target and source identity. */
+export function acceptanceSpecFingerprint(form) {
+  return JSON.stringify([form.mode, form.targetUrl, form.specSourceId, form.specRevision, form.specSourceTitle,
+    form.specSourceType, form.specSourceSha256, form.specChecks, form.specOmissions, form.openApiDocument]);
+}
+
+function specPath(value) {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || /[\\#\s]/.test(value)) {
+    throw new Error('接口 path 需要是 / 开头的相对路径，不能包含域名、空格或片段。');
+  }
+}
+
+function buildSpecInput(form) {
+  const targetUrl = httpUrl(form.targetUrl, '目标 URL');
+  const id = String(form.specSourceId ?? '').trim();
+  const revision = String(form.specRevision ?? '').trim();
+  if (!id || !revision) throw new Error('请填写需求来源 ID 与版本，以便追溯验收依据。');
+  const checks = jsonArray(form.specChecks, '接口契约');
+  const omissions = jsonArray(form.specOmissions, '未覆盖清单');
+  if (!checks.length && !omissions.length) throw new Error('至少声明一条接口契约或明确的未覆盖项。');
+  const ids = new Set();
+  for (const check of checks) {
+    if (!check || typeof check !== 'object' || Array.isArray(check) || !check.id || !check.title) throw new Error('每条接口契约需要 id 与 title。');
+    if (ids.has(check.id)) throw new Error(`接口契约 ID「${check.id}」重复。`);
+    ids.add(check.id);
+    if (!['GET', 'HEAD'].includes(check.method)) throw new Error('接口契约只支持 GET 或 HEAD。');
+    specPath(check.path);
+    const expect = check.expect;
+    if (!expect || typeof expect !== 'object' || Array.isArray(expect)) throw new Error(`接口契约「${check.id}」需要 expect 对象。`);
+    if (!Number.isInteger(expect.status) || expect.status < 100 || expect.status > 599) throw new Error('预期 HTTP status 需要是 100 到 599 的整数。');
+    if (expect.schema !== undefined && typeof expect.schema !== 'boolean'
+      && (!expect.schema || typeof expect.schema !== 'object' || Array.isArray(expect.schema))) throw new Error('预期 schema 需要是 JSON 对象或布尔值。');
+    if (expect.json !== undefined && !Array.isArray(expect.json)) throw new Error('expect.json 需要是断言数组。');
+    if (check.method === 'HEAD' && ((expect.json?.length ?? 0) > 0 || expect.schema !== undefined)) throw new Error('HEAD 契约不能检查响应体，请使用 GET。');
+    for (const assertion of expect.json ?? []) {
+      if (!assertion || typeof assertion !== 'object' || !['equals', 'required', 'type', 'enum'].includes(assertion.kind)) throw new Error('JSON 断言 kind 支持 equals、required、type、enum。');
+      if (typeof assertion.pointer !== 'string' || (assertion.pointer && !assertion.pointer.startsWith('/'))) throw new Error('JSON 断言需要使用 / 开头的 pointer；空字符串代表整个响应。');
+      if (assertion.kind === 'equals' && !Object.hasOwn(assertion, 'value')) throw new Error('equals 断言需要 value。');
+      if (assertion.kind === 'type' && !['string', 'number', 'integer', 'boolean', 'object', 'array', 'null'].includes(assertion.type)) throw new Error('type 断言需要有效的 JSON 类型。');
+      if (assertion.kind === 'enum' && (!Array.isArray(assertion.values) || !assertion.values.length)) throw new Error('enum 断言需要非空 values 数组。');
+    }
+  }
+  if (omissions.some(item => !item || typeof item !== 'object' || !item.id || !item.path || !item.method || !item.reason)) throw new Error('每条未覆盖记录需要 id、path、method 与 reason。');
+  if (form.specApproved !== true || form.specApprovedFingerprint !== acceptanceSpecFingerprint(form)) {
+    throw new Error('请核对当前接口契约与未覆盖项，并明确批准；修改后需要重新批准。');
+  }
+  const type = form.specSourceType === 'openapi' ? 'openapi' : 'manual';
+  const title = String(form.specSourceTitle ?? '').trim();
+  const sha256 = String(form.specSourceSha256 ?? '').trim();
+  const document = type === 'openapi' ? parseOpenApiDocument(form.openApiDocument) : undefined;
+  return { schemaVersion: 1, name: String(form.name ?? '').trim() || '项目需求验收', mode: 'spec', targetUrl,
+    spec: { source: { id, revision, type, ...(title ? { title } : {}), ...(sha256 ? { sha256 } : {}) },
+      ...(document ? { document } : {}), approved: true, checks, omissions } };
+}
+
+function parseOpenApiDocument(value) {
+  let document;
+  try { document = JSON.parse(value); } catch { throw new Error('OpenAPI 文档不是有效 JSON。'); }
+  if (!document || typeof document !== 'object' || Array.isArray(document)) throw new Error('OpenAPI 文档需要是 JSON 对象。');
+  return document;
+}
+
+export function buildOpenApiPreviewInput(form) {
+  const targetUrl = httpUrl(form.targetUrl, '目标 URL');
+  const document = parseOpenApiDocument(form.openApiDocument);
+  return { document, targetUrl, name: String(form.name ?? '').trim() || 'OpenAPI 需求验收' };
+}
+
 export function filterAcceptanceChecks(checks = [], { dimension = 'all', verdict = 'attention', query = '' } = {}) {
   const text = String(query).trim().toLocaleLowerCase();
   const verdictMatches = check => verdict === 'all'
@@ -84,6 +162,7 @@ export function acceptanceEvidenceEntries(check) {
   const rows = [
     ['baselineScreenshot', '基线截图'], ['targetScreenshot', '目标截图'], ['diff', '差异图'],
     ['baselineDetails', '基线采集详情'], ['targetDetails', '目标采集详情'], ['details', '采集详情'],
+    ['request', '请求证据'], ['response', '响应证据'], ['contract', '契约依据'], ['source', '需求源文档'],
   ].map(([key, label]) => ({ key, label, filename: acceptanceEvidenceFilename(source[key]) }));
   // Keep older persisted reports with paired details readable as the evidence contract evolves.
   if (source.details && typeof source.details === 'object') {
@@ -99,6 +178,7 @@ export function acceptanceScore(value) {
 }
 
 export function acceptanceViewport(value) {
+  if (value === 'api') return 'API';
   if (typeof value === 'string') return value;
   if (value?.width && value?.height) return `${value.width} × ${value.height}`;
   return value?.name || '全部视口';

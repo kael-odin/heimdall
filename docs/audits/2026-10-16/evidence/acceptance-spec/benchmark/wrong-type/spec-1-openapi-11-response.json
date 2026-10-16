@@ -1,0 +1,35 @@
+{
+  "requested": true,
+  "httpStatus": 200,
+  "contentType": "application/json",
+  "redirectNotFollowed": false,
+  "hasLocation": false,
+  "mismatches": [
+    {
+      "kind": "json-schema",
+      "pointer": "/data/id",
+      "keyword": "type",
+      "expected": "integer",
+      "actual": "7"
+    }
+  ],
+  "bytes": 60,
+  "bodySha256": "0de4dc8e9bb2aee16cb1c1984147490aee9c5f990720bdc266d47fd4aa439446",
+  "body": {
+    "code": 0,
+    "data": {
+      "id": "7",
+      "name": "Heimdall",
+      "active": true
+    }
+  },
+  "assertions": [],
+  "schemaFailures": [
+    {
+      "pointer": "/data/id",
+      "keyword": "type",
+      "expected": "integer",
+      "actual": "7"
+    }
+  ]
+}

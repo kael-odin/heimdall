@@ -1,0 +1,9 @@
+{
+  "method": "HEAD",
+  "url": "http://127.0.0.1:55335/head",
+  "redirect": "manual",
+  "credentials": "omit",
+  "headers": {
+    "Accept": "application/json, */*;q=0.5"
+  }
+}

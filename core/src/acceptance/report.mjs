@@ -37,7 +37,7 @@ export function acceptanceMarkdown(input) {
   const labels = { passed: '通过', failed: '阻断：发现缺陷', blocked: '阻断：存在未测/环境失败', needs_review: '待复核' };
   const lines = [`# ${cell(r.name)} · 项目验收报告`, '',
     `任务：${cell(r.runId)}`, `模式：${cell(r.mode)}；时间：${cell(r.startedAt)} → ${cell(r.endedAt)}`,
-    `基线：${cell(r.baselineUrl)}`, `目标：${cell(r.targetUrl)}`, '',
+    ...(r.mode === 'spec' ? [`需求来源：${cell(r.specSource?.id)}；版本：${cell(r.specSource?.revision)}`, `清单批准：${r.specApproval?.approved ? '已显式声明批准' : '未批准候选'}`, `来源指纹：${cell(r.sourceFingerprint)}`, `契约指纹：${cell(r.contractFingerprint)}`] : [`基线：${cell(r.baselineUrl)}`]), `目标：${cell(r.targetUrl)}`, '',
     ...(r.planFingerprint ? [`计划指纹：${r.planFingerprint}`, `验证器指纹：${r.verifierFingerprint}`, ''] : []),
     `**门禁：${labels[r.gate]}**`, '',
     `声明检查 ${r.summary.coverage.total}，已形成结果 ${r.summary.total}，完成可靠判定 ${r.summary.coverage.measured}。`,
@@ -53,6 +53,8 @@ export function acceptanceMarkdown(input) {
       ...(c.reproduction ?? []).map((s, i) => `${i + 1}. ${cell(s)}`), '', '证据文件：', '',
       ...Object.entries(c.evidence ?? {}).map(([key, file]) => `- ${cell(key)}：${cell(file)}`), '');
   }
-  lines.push('## 边界', '', '页面来自用户指定的运行基线。浏览器实测可以证明本次观测结果，不能代替 PRD、业务数据库或接口契约验收。视觉分不覆盖未声明功能。默认阻断非 GET/HEAD/OPTIONS 请求；依赖写请求的流程记为环境阻塞。截图、DOM 摘要及文本输入可能包含业务数据，应使用授权测试环境。', '');
+  lines.push('## 边界', '', r.mode === 'spec'
+    ? '仅执行用户批准清单的 GET/HEAD，不跟随重定向、不携带会话或凭据。明确断言与支持的响应 schema 是本次真值；来源指纹用于追溯，不证明需求本身正确。未覆盖操作、未批准候选、网络/执行/响应/验证预算受阻不能通过。响应 JSON 保存在本地鉴权证据中；没有视觉、认证、数据库、写操作或完整业务状态机验收保证。'
+    : '页面来自用户指定的运行基线。浏览器实测可以证明本次观测结果，不能代替 PRD、业务数据库或接口契约验收。视觉分不覆盖未声明功能。默认阻断非 GET/HEAD/OPTIONS 请求；依赖写请求的流程记为环境阻塞。截图、DOM 摘要及文本输入可能包含业务数据，应使用授权测试环境。', '');
   return lines.join('\n');
 }

@@ -1,0 +1,16 @@
+{
+  "source": {
+    "id": "openapi-aaf9bc63b0bec61b",
+    "revision": "1.0.0",
+    "type": "openapi",
+    "title": "Write-only omission guard",
+    "sha256": "aaf9bc63b0bec61bd602fb3914a54a6cd4629c5b1d5977fecd1ac54bbe70b9d9"
+  },
+  "omission": {
+    "id": "openapi-1",
+    "path": "/write",
+    "method": "POST",
+    "reason": "only GET and HEAD are read-only candidates; this method is not executed"
+  },
+  "approved": true
+}

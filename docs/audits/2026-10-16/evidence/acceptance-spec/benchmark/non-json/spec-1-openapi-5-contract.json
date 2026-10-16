@@ -1,0 +1,56 @@
+{
+  "source": {
+    "id": "openapi-e82e1bddfc3906e1",
+    "revision": "1.0.0",
+    "type": "openapi",
+    "title": "Heimdall 固定 API 验收夹具",
+    "sha256": "e82e1bddfc3906e15573aab2144c4f811d7560b6a1c61609f8e9eeeeb57564a8"
+  },
+  "approved": true,
+  "contract": {
+    "id": "openapi-5",
+    "title": "固定合同 non-json",
+    "method": "GET",
+    "path": "/non-json",
+    "severity": "high",
+    "expect": {
+      "status": 200,
+      "contentType": "application/json",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "const": 0,
+            "type": "integer"
+          },
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "active"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "data"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "contractFingerprint": "2c64c6f48b7da5b0145cae6164d3ca9ea25db487b3688ff1cc8b34554f0d5dab"
+}

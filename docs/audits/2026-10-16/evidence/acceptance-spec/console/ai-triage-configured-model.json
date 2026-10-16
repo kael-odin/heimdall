@@ -1,0 +1,87 @@
+{
+  "evidenceLevel": "configured-model-on-controlled-report",
+  "scope": "One explicit configured-model call on sanitized Spec fixture report; no raw response or source document uploaded.",
+  "reportRunId": "ac-5210041a-cc04-48e8-b02b-702fddd5c8a8",
+  "reportSha256": "224ea63e25f2cb9795d4668b843e2e2387962b503771e2b6203058ed5eae1b73",
+  "reportUnchanged": true,
+  "originalGate": "failed",
+  "input": {
+    "schemaVersion": 1,
+    "kind": "acceptance-triage-input",
+    "evidenceTrust": "untrusted-data",
+    "totalNonPassed": 2,
+    "selected": 2,
+    "truncated": false,
+    "checks": [
+      {
+        "checkId": "spec-2-openapi-3",
+        "dimension": "behavior",
+        "title": "/wrong-code 契约",
+        "status": "failed",
+        "verdict": "bug",
+        "expected": "{\"status\":200,\"contentType\":\"application/json\",\"schema\":{\"additionalProperties\":false,\"properties\":{\"code\":{\"const\":0,\"type\":\"integer\"},\"data\":{\"additionalProperties\":false,\"properties\":{\"active\":\"[truncated]\",\"id\":\"[truncated]\",\"name\":\"[truncated]\"},\"required\":[\"[truncated]\",\"[truncated]\",\"[truncated]\"],\"type\":\"object\"}},\"required\":[\"code\",\"data\"],\"type\":\"object\"}}",
+        "actual": "{\"requested\":true,\"httpStatus\":200,\"contentType\":\"application/json\",\"redirectNotFollowed\":false,\"hasLocation\":false,\"mismatches\":[{\"kind\":\"json-schema\",\"pointer\":\"/code\",\"keyword\":\"const\",\"expected\":0,\"actual\":400}],\"bytes\":60,\"assertions\":[],\"schemaFailures\":[{\"pointer\":\"/code\",\"keyword\":\"const\",\"expected\":0,\"actual\":400}]}",
+        "reproduction": [
+          "Use requirement openapi-b1c25a66855ed0c6 at revision 2026-10-16.",
+          "GET http://127.0.0.1:63010/wrong-code without cookies or credentials; redirects are not followed.",
+          "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+        ],
+        "evidence": [
+          "requirement-source.json",
+          "spec-2-openapi-3-contract.json",
+          "spec-2-openapi-3-request.json",
+          "spec-2-openapi-3-response.json"
+        ]
+      },
+      {
+        "checkId": "spec-omission-1",
+        "dimension": "health",
+        "title": "未覆盖契约：POST /write",
+        "status": "blocked",
+        "verdict": "needs_review",
+        "expected": "Every declared operation has an executable, approved contract.",
+        "actual": "{\"requested\":false,\"reason\":\"only GET and HEAD are read-only candidates; this method is not executed\"}",
+        "reproduction": [
+          "Resolve the declared unsupported requirement before approving a full API scope."
+        ],
+        "evidence": [
+          "requirement-source.json",
+          "spec-omission-1.json"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "schemaVersion": 1,
+    "status": "completed",
+    "kind": "ai-assistance",
+    "generatedAt": "2026-10-16T11:06:50.471Z",
+    "summary": "本次仅解释 2 条非通过检查：spec-2-openapi-3 为已确认的响应契约不符（failed/bug），spec-omission-1 为未实际执行导致的复核阻塞（blocked/needs_review）。以下保持原 status、verdict 与 gate 含义不变，不新增 BUG 或 checkId。",
+    "items": [
+      {
+        "checkId": "spec-2-openapi-3",
+        "explanation": "现有证据显示该检查已确认失败：GET /wrong-code 在未跟随重定向、无凭据的条件下返回 httpStatus 200、contentType application/json，且 hasLocation 为 false；响应 JSON 中 /code 字段的实际值为 400，而 OpenAPI 契约要求该字段为 const 0，因此产生 json-schema 不匹配（pointer=/code，keyword=const，expected=0，actual=400）。响应体约 60 字节，其他 schema 字段在证据中被截断，无法据此评估 data 内各字段，但 /code 一项的不匹配有明确证据支持，故 failed/bug 的解释成立。",
+        "suggestedFix": "候选修复是检查 GET /wrong-code 的响应处理器与序列化逻辑，使业务 code 按已批准契约返回 0；若 400 是有意行为，则应通过评审更新 OpenAPI 契约而非在验收阶段直接改判。不要依据本解释修改 status 或 verdict。",
+        "verification": [
+          "按同一复现条件重新请求 GET http://127.0.0.1:63010/wrong-code%EF%BC%8C%E4%B8%8D%E6%90%BA%E5%B8%A6%E5%87%AD%E6%8D%AE%E4%B8%94%E4%B8%8D%E8%B7%9F%E9%9A%8F%E9%87%8D%E5%AE%9A%E5%90%91%E3%80%82",
+          "断言 HTTP 状态为 200、声明 MIME 为 application/json，且不存在 Location 头。",
+          "对响应 JSON 执行契约校验，重点断言 /code 为 const 0，并检查 schema 中 additionalProperties 与 required 等可见约束；若 data 字段完整证据可用，再补充校验 data 内字段。",
+          "保存新的响应、契约与请求证据，与原 evidence 文件对照确认不匹配项是否消失。"
+        ]
+      },
+      {
+        "checkId": "spec-omission-1",
+        "explanation": "该检查状态为 blocked、verdict 为 needs_review，属于未执行导致的复核阻塞，不能据此认定 POST /write 存在目标缺陷。现有证据显示 requested=false，原因是本次仅将 GET 与 HEAD 作为可安全执行的只读候选方法，POST /write 未被实际调用，因此没有该请求的响应或契约比对结果。期望要求每个已声明操作都有可执行且经批准的契约，但当前证据不足以判断该操作是否违约。",
+        "suggestedFix": "候选处理是向需求/接口负责人确认 POST /write 是否在本次验收范围内；若在范围内，补充经批准的可执行契约与安全测试数据、凭据及环境隔离方案，再进行受控执行；若不在范围内，形成明确的排除或豁免记录。现有证据不支持直接修改代码或推定具体缺陷。",
+        "verification": [
+          "确认 POST /write 在 requirement openapi 及本次 API 范围内是否被正式声明和批准。",
+          "获取该操作的已批准契约、允许的非生产测试数据与安全执行方式，确保不会触发真实写入副作用。",
+          "在受控环境中执行 POST /write，记录 HTTP 状态、MIME、响应 JSON 与 schema 校验结果，并补齐请求与响应证据。",
+          "若无法安全执行，则保留 blocked/needs_review，并记录范围裁定的依据与批准人信息。"
+        ]
+      }
+    ],
+    "disclaimer": "AI 建议不改变验收状态、缺陷归因或门禁结论；修复建议需结合原始证据人工复核。",
+    "model": "deepseek-flash"
+  }
+}

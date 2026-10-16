@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 1,
+  "runId": "spec-benchmark-2026-10-16T10-52-35-812Z-07e964f1",
+  "generatedAt": "2026-10-16T10:52:37.010Z",
+  "scope": "离线复现：固定 API 缺陷注入与执行策略反例，只证明这组已声明合同和观察窗口，不代表真实项目检出率或完整 OpenAPI 兼容性。",
+  "outputDir": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\acceptance-spec-benchmark\\spec-benchmark-2026-10-16T10-52-35-812Z-07e964f1",
+  "durationMs": 1198,
+  "passed": true,
+  "metrics": {
+    "unit": "case",
+    "totalCases": 11,
+    "knownBugCases": 7,
+    "nonBugCases": 4,
+    "truePositive": 7,
+    "falsePositive": 0,
+    "falseNegative": 0,
+    "trueNegative": 4,
+    "precision": 1,
+    "recall": 1,
+    "falsePositiveRate": 0
+  },
+  "cases": [
+    {
+      "id": "healthy",
+      "path": "/healthy",
+      "method": "GET",
+      "targetBug": false,
+      "predictedBug": false,
+      "expectedVerdict": "match",
+      "expectedGate": "passed",
+      "actualGate": "passed",
+      "verdicts": [
+        "match"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "healthy/report.json",
+      "markdown": "healthy/report.md"
+    },
+    {
+      "id": "wrong-code",
+      "path": "/wrong-code",
+      "method": "GET",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "bug"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "wrong-code/report.json",
+      "markdown": "wrong-code/report.md"
+    },
+    {
+      "id": "missing-field",
+      "path": "/missing-field",
+      "method": "GET",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "bug"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "missing-field/report.json",
+      "markdown": "missing-field/report.md"
+    },
+    {
+      "id": "wrong-type",
+      "path": "/wrong-type",
+      "method": "GET",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "bug"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "wrong-type/report.json",
+      "markdown": "wrong-type/report.md"
+    },
+    {
+      "id": "wrong-status",
+      "path": "/wrong-status",
+      "method": "GET",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "bug"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "wrong-status/report.json",
+      "markdown": "wrong-status/report.md"
+    },
+    {
+      "id": "non-json",
+      "path": "/non-json",
+      "method": "GET",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "bug"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "non-json/report.json",
+      "markdown": "non-json/report.md"
+    },
+    {
+      "id": "bad-json",
+      "path": "/bad-json",
+      "method": "GET",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "bug"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "bad-json/report.json",
+      "markdown": "bad-json/report.md"
+    },
+    {
+      "id": "redirect",
+      "path": "/redirect",
+      "method": "GET",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "bug"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "redirect/report.json",
+      "markdown": "redirect/report.md"
+    },
+    {
+      "id": "oversized",
+      "path": "/oversized",
+      "method": "GET",
+      "targetBug": false,
+      "predictedBug": false,
+      "expectedVerdict": "environment",
+      "expectedGate": "blocked",
+      "actualGate": "blocked",
+      "verdicts": [
+        "environment"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "oversized/report.json",
+      "markdown": "oversized/report.md"
+    },
+    {
+      "id": "slow",
+      "path": "/slow",
+      "method": "GET",
+      "targetBug": false,
+      "predictedBug": false,
+      "expectedVerdict": "environment",
+      "expectedGate": "blocked",
+      "actualGate": "blocked",
+      "verdicts": [
+        "environment"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "slow/report.json",
+      "markdown": "slow/report.md"
+    },
+    {
+      "id": "head",
+      "path": "/head",
+      "method": "HEAD",
+      "targetBug": false,
+      "predictedBug": false,
+      "expectedVerdict": "match",
+      "expectedGate": "passed",
+      "actualGate": "passed",
+      "verdicts": [
+        "match"
+      ],
+      "checkCount": 1,
+      "complete": true,
+      "passed": true,
+      "reasons": [],
+      "report": "head/report.json",
+      "markdown": "head/report.md"
+    }
+  ],
+  "guards": [
+    {
+      "id": "preview-no-requests",
+      "passed": true,
+      "description": "OpenAPI 转候选不访问 servers；候选保留完整来源且保持未批准；本地请求 0。"
+    },
+    {
+      "id": "draft-no-requests",
+      "passed": true,
+      "description": "未批准的全部 11 个候选只生成阻塞证据；HTTP 请求 0。"
+    },
+    {
+      "id": "omission-no-requests",
+      "passed": true,
+      "description": "明确漏项生成阻塞门禁，不能被空检查或批准标记变成通过。"
+    },
+    {
+      "id": "write-method-rejected",
+      "passed": true,
+      "description": "将候选篡改为 POST 时，在请求之前拒绝。"
+    }
+  ]
+}

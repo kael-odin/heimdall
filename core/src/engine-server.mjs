@@ -48,6 +48,7 @@ import { makeSlotBox } from './forge-slots.mjs';
 import { cloneDocFile } from './clone-doc.mjs';
 import { readCloneScope } from './clone-scope.mjs';
 import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
+import { previewOpenApi } from './acceptance/openapi.mjs';
 import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, recoverAcceptanceRuns, acceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage } from './acceptance/store.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
@@ -160,19 +161,20 @@ const isLoopback = (req) => {
  * 顺带把 13 份 `try { JSON.parse(body || '{}') } catch {}` 收成一处。
  * 解析失败照旧给 `{}` —— 字段缺省由各路由自己兜（这是原来的行为，不改）。
  */
-const readJsonBody = (req, res, cb) => {
-  let body = '', n = 0, done = false;
+const readJsonBody = (req, res, cb, limit = 64 * 1024) => {
+  const chunks = [];
+  let n = 0, done = false;
   req.on('data', (c) => {
     if (done) return;
     n += c.length;
-    if (n > 64 * 1024) { done = true; json(res, 413, { error: 'body too large' }); try { req.destroy(); } catch {} return; }
-    body += c;
+    if (n > limit) { done = true; json(res, 413, { error: 'body too large', limit }); try { req.destroy(); } catch {} return; }
+    chunks.push(c);
   });
   req.on('end', () => {
     if (done) return;
     done = true;
     let parsed = {};
-    try { parsed = JSON.parse(body || '{}'); } catch {}
+    try { parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); } catch {}
     cb(parsed);
   });
   req.on('error', () => { done = true; });
@@ -1093,6 +1095,16 @@ const handleRequest = async (req, res) => {
   }
 
   // Independent project acceptance: persistent runs, protected evidence, bounded worker.
+  if (u.pathname === '/api/acceptance/openapi/preview') {
+    if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
+    return readJsonBody(req, res, input => {
+      try {
+        const preview = previewOpenApi(input.document, { targetUrl: input.targetUrl, name: input.name });
+        preview.plan = normalizeAcceptancePlan(preview.plan);
+        return json(res, 200, preview);
+      } catch (error) { return json(res, 400, { error: String(error.message).slice(0, 500) }); }
+    }, 4 * 1024 * 1024 + 16 * 1024);
+  }
   if (u.pathname === '/api/acceptance/runs') {
     if (req.method === 'GET') return json(res, 200, { runs: listAcceptanceRuns() });
     if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
@@ -1126,7 +1138,7 @@ const handleRequest = async (req, res) => {
       t.child.once('exit', finalize);
       t.child.once('error', error => { t.error = error.message; finalize(); });
       return json(res, 202, { runId: manifest.runId, taskId: t.id });
-    });
+    }, 7 * 1024 * 1024);
   }
   if (u.pathname.startsWith('/api/acceptance/runs/')) {
     const segments = u.pathname.slice('/api/acceptance/runs/'.length).split('/');

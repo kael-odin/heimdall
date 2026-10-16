@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "runId": "spec-benchmark-2026-10-16T10-52-35-812Z-07e964f1-oversized",
+  "name": "Heimdall 固定 API 验收夹具 API 验收候选",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:55335/",
+  "startedAt": "2026-10-16T10:52:35.963Z",
+  "endedAt": "2026-10-16T10:52:35.982Z",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "spec-1-openapi-6",
+      "title": "固定合同 oversized",
+      "route": "/oversized",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "high",
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "openapi-e82e1bddfc3906e1",
+        "revision": "1.0.0",
+        "sourceFingerprint": "5a920f4da30f08ce48fc3f02f72165ac1edb859121f1146cf788a4103941e554",
+        "documentSha256": "e82e1bddfc3906e15573aab2144c4f811d7560b6a1c61609f8e9eeeeb57564a8",
+        "contractFingerprint": "9178d3d4cc97ec4fbf5b35da5b2d479fcbfa31e280e52299fea85194d46fd8ed"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "const": 0,
+              "type": "integer"
+            },
+            "data": {
+              "additionalProperties": false,
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "active"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "code",
+            "data"
+          ],
+          "type": "object"
+        }
+      },
+      "reproduction": [
+        "Use requirement openapi-e82e1bddfc3906e1 at revision 1.0.0.",
+        "GET http://127.0.0.1:55335/oversized without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "blocked",
+      "verdict": "environment",
+      "actual": {
+        "requested": true,
+        "httpStatus": 200,
+        "contentType": "application/json",
+        "redirectNotFollowed": false,
+        "hasLocation": false,
+        "mismatches": [],
+        "error": "Response exceeds 16384 byte body budget",
+        "errorCode": "RESPONSE_BODY_BUDGET",
+        "evaluationLimited": true
+      },
+      "evidence": {
+        "source": "requirement-source.json",
+        "contract": "spec-1-openapi-6-contract.json",
+        "request": "spec-1-openapi-6-request.json",
+        "response": "spec-1-openapi-6-response.json"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 1,
+    "completed": 1,
+    "capped": false
+  },
+  "specSource": {
+    "id": "openapi-e82e1bddfc3906e1",
+    "revision": "1.0.0",
+    "type": "openapi",
+    "title": "Heimdall 固定 API 验收夹具",
+    "sha256": "e82e1bddfc3906e15573aab2144c4f811d7560b6a1c61609f8e9eeeeb57564a8"
+  },
+  "sourceFingerprint": "5a920f4da30f08ce48fc3f02f72165ac1edb859121f1146cf788a4103941e554",
+  "contractFingerprint": "9178d3d4cc97ec4fbf5b35da5b2d479fcbfa31e280e52299fea85194d46fd8ed",
+  "specApproval": {
+    "approved": true,
+    "recordedAt": "2026-10-16T10:52:35.963Z"
+  },
+  "safety": {
+    "readOnly": true,
+    "allowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "redirects": "not-followed",
+    "credentials": "none",
+    "requests": 1
+  },
+  "environment": {
+    "runner": "node-fetch",
+    "nodeVersion": "v25.2.1",
+    "maxResponseBytes": 16384,
+    "timeoutMs": 1000
+  },
+  "scope": "离线复现：固定 API 缺陷注入与执行策略反例，只证明这组已声明合同和观察窗口，不代表真实项目检出率或完整 OpenAPI 兼容性。",
+  "gate": "blocked",
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 1,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 1,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

@@ -17,6 +17,8 @@
     "smoke": "pnpm -C core smoke",
     "acceptance": "node core/src/acceptance/cli.mjs",
     "acceptance:benchmark": "node core/scripts/benchmark-acceptance.mjs",
-    "acceptance:smoke": "node core/scripts/smoke-acceptance-console.mjs"
+    "acceptance:smoke": "node core/scripts/smoke-acceptance-console.mjs",
+    "acceptance:spec:benchmark": "node core/scripts/benchmark-acceptance-spec.mjs",
+    "acceptance:spec:smoke": "node core/scripts/smoke-acceptance-spec-console.mjs"
   }
 }

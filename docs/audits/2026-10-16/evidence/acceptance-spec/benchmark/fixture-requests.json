@@ -1,0 +1,61 @@
+{
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/healthy"
+    },
+    {
+      "method": "GET",
+      "path": "/wrong-code"
+    },
+    {
+      "method": "GET",
+      "path": "/missing-field"
+    },
+    {
+      "method": "GET",
+      "path": "/wrong-type"
+    },
+    {
+      "method": "GET",
+      "path": "/wrong-status"
+    },
+    {
+      "method": "GET",
+      "path": "/non-json"
+    },
+    {
+      "method": "GET",
+      "path": "/bad-json"
+    },
+    {
+      "method": "GET",
+      "path": "/redirect"
+    },
+    {
+      "method": "GET",
+      "path": "/oversized"
+    },
+    {
+      "method": "GET",
+      "path": "/slow"
+    },
+    {
+      "method": "HEAD",
+      "path": "/head"
+    }
+  ],
+  "counts": {
+    "/healthy": 1,
+    "/wrong-code": 1,
+    "/missing-field": 1,
+    "/wrong-type": 1,
+    "/wrong-status": 1,
+    "/non-json": 1,
+    "/bad-json": 1,
+    "/redirect": 1,
+    "/oversized": 1,
+    "/slow": 1,
+    "/head": 1
+  }
+}

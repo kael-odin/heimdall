@@ -1,18 +1,15 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { DATA_ROOT } from '../paths.mjs';
 import { normalizeAcceptancePlan } from './schema.mjs';
 import { summarizeAcceptanceReport, acceptanceMarkdown } from './report.mjs';
+import { writeAtomicFileSync } from './atomic-file.mjs';
 
 export const ACCEPTANCE_ROOT = join(DATA_ROOT, 'acceptance');
 const RUN_ID = /^ac-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const inside = (root, path) => { const rel = relative(root, path); return !!rel && !rel.startsWith('..') && !isAbsolute(rel); };
-const atomic = (path, data) => {
-  const temporary = path + '.' + randomUUID() + '.tmp';
-  writeFileSync(temporary, typeof data === 'string' ? data : JSON.stringify(data, null, 2) + '\n', { mode: 0o600 });
-  renameSync(temporary, path);
-};
+const atomic = (path, data) => writeAtomicFileSync(path, typeof data === 'string' ? data : JSON.stringify(data, null, 2) + '\n');
 export function acceptanceRunDir(runId, root = ACCEPTANCE_ROOT) {
   if (!RUN_ID.test(String(runId))) throw new Error('invalid acceptance run ID');
   const path = resolve(root, runId);
@@ -84,7 +81,7 @@ export function finishAcceptanceRun(runId, raw, { root = ACCEPTANCE_ROOT } = {})
   const checks = [...(raw.checks ?? [])];
   if (unavailable.length) checks.push({ id: 'evidence-integrity', title: '证据完整性', dimension: 'health',
     status: 'blocked', verdict: 'environment', severity: 'high', expected: 'All referenced evidence files exist inside this run.', actual: { unavailable }, reproduction: ['重新运行验收并检查证据目录。'], evidence: {} });
-  const verifierFingerprint = hash(['schema.mjs', 'runner.mjs', 'report.mjs'].map(file => readFileSync(new URL('./' + file, import.meta.url), 'utf8')).join('\n')
+  const verifierFingerprint = hash(['schema.mjs', 'urls.mjs', 'runner.mjs', 'report.mjs', 'spec-schema.mjs', 'spec-runner.mjs', 'response-schema.mjs', 'openapi.mjs'].map(file => readFileSync(new URL('./' + file, import.meta.url), 'utf8')).join('\n')
     + readFileSync(new URL('../verify/compare.mjs', import.meta.url), 'utf8'));
   const report = summarizeAcceptanceReport({ ...raw, checks, runId, planFingerprint: hash(JSON.stringify(current.plan)), verifierFingerprint, evidenceManifest });
   atomic(join(dir, 'report.json'), report);
