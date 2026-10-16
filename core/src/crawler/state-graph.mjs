@@ -199,6 +199,7 @@ export async function exploreOperationStates(options = {}) {
   let current = null;
   const byRequest = new WeakMap();
   const rawUrlByEntry = new WeakMap();
+  const pendingRequests = new Set();
   const omitted = new WeakSet();
   const lateCounted = new WeakSet();
   let lateMode = false;
@@ -239,6 +240,7 @@ export async function exploreOperationStates(options = {}) {
       rawUrlByEntry.set(entry, request.url());
     }
     if (entry && outcome) entry.outcome = outcome;
+    if (entry?.outcome === 'pending') pendingRequests.add(request);
     return entry;
   };
   const onRequest = request => { record(request); };
@@ -252,10 +254,12 @@ export async function exploreOperationStates(options = {}) {
   };
   const onRequestFinished = request => {
     const entry = record(request);
+    pendingRequests.delete(request);
     if (entry && entry.outcome === 'response') entry.outcome = 'complete';
   };
   const onRequestFailed = request => {
     const entry = record(request);
+    pendingRequests.delete(request);
     if (entry && entry.outcome !== 'blocked') entry.outcome = 'network-failed';
   };
   const onPageError = error => {
@@ -303,6 +307,11 @@ export async function exploreOperationStates(options = {}) {
       pageErrors: [...bucket.pageErrors],
     });
   };
+  const waitForPendingRequests = async timeoutMs => {
+    if (!pendingRequests.size) return;
+    const deadline = Date.now() + timeoutMs;
+    while (pendingRequests.size && Date.now() < deadline) await page.waitForTimeout(20);
+  };
 
   page.on('request', onRequest);
   page.on('response', onResponse);
@@ -314,6 +323,7 @@ export async function exploreOperationStates(options = {}) {
     await page.route('**/*', routeHandler);
     current = makeBucket(); active = current;
     await page.waitForTimeout(settleMs);
+    await waitForPendingRequests(500);
     await capture(0, null, { status: 'initial' });
     let stopReason = null;
     for (let i = 0; i < actions.length && i < maxActions; i++) {
@@ -322,6 +332,7 @@ export async function exploreOperationStates(options = {}) {
       try { result = await runAction(page, actions[i], { allowedOrigins, baseUrl: options.baseUrl, timeoutMs, allowUnsafeRequests }); }
       catch (error) { result = { status: 'error', errorType: safeErrorType(error) }; }
       await page.waitForTimeout(settleMs);
+      await waitForPendingRequests(500);
       if (current.blockedReasons.size) {
         result = { status: 'blocked', reason: [...current.blockedReasons][0] };
       }
