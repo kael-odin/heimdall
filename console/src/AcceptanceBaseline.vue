@@ -146,13 +146,13 @@ onBeforeUnmount(() => { stopped = true; guard.stop(); previewController?.abort()
 <template>
   <section class="baseline" aria-labelledby="baseline-title" data-testid="acceptance-baseline">
     <div class="baseline-heading"><div><h3 id="baseline-title">Spec 需求合同</h3><p>核对来源与预期，分别记录批准和本项目的选用。</p></div><span class="baseline-scope">记录模式 · 不启动运行</span></div>
-    <p class="baseline-boundary">这些操作不会发起目标请求或启动新验收。合同批准、当前选用与原运行结果分别记录；执行能力尚未开放。</p>
+    <p class="baseline-boundary">合同批准、当前选用与原运行结果分别记录。需要执行时，请在下方“执行已选需求验收”核对合同并明确目标版本。</p>
     <p v-if="!detail" class="baseline-muted" role="status">正在读取所选项目的合同历史…</p>
     <p v-else-if="!available" class="baseline-muted">当前引擎未返回完整的合同记录能力，请更新并刷新目录后继续。</p>
     <template v-else>
       <div class="baseline-current" data-testid="baseline-current">
         <div class="baseline-row"><h4>当前 Spec 选用</h4><button v-if="current" type="button" class="baseline-button" :disabled="!ready" data-testid="baseline-open-cancel" @click="draft.cancelOpen = !draft.cancelOpen; draft.cancel.confirmed = false">取消当前选用</button></div>
-        <template v-if="current"><p><strong>{{ currentCandidate ? releaseLabel(currentCandidate.source.releaseId) : '已记录的合同批准' }}</strong></p><p v-if="currentCandidate" class="baseline-muted">来源运行 <code>{{ currentCandidate.source.runId }}</code></p><p class="baseline-muted">批准 <code>{{ current.approvalId }}</code></p><p class="baseline-muted">选用 <code>{{ current.id }}</code> · {{ dateLabel(current.selectedAt) }}</p><p>{{ current.reason }}</p><p class="baseline-muted">当前为选用历史记录，尚未提供执行能力。来源后来变化时仍保留此记录，可独立取消。</p></template>
+        <template v-if="current"><p><strong>{{ currentCandidate ? releaseLabel(currentCandidate.source.releaseId) : '已记录的合同批准' }}</strong></p><p v-if="currentCandidate" class="baseline-muted">来源运行 <code>{{ currentCandidate.source.runId }}</code></p><p class="baseline-muted">批准 <code>{{ current.approvalId }}</code></p><p class="baseline-muted">选用 <code>{{ current.id }}</code> · {{ dateLabel(current.selectedAt) }}</p><p>{{ current.reason }}</p><p class="baseline-muted">本项目已记录当前选用。来源后来变化时仍保留此记录，可独立取消；每次执行前会重新核对来源。</p></template>
         <p v-else class="baseline-muted">尚未选用。批准合同后，仍需单独核对并选用。</p>
         <form v-if="draft.cancelOpen && current" class="baseline-decision" @submit.prevent="decide('cancellation')">
           <label for="baseline-cancel-reason">取消理由<textarea id="baseline-cancel-reason" v-model="draft.cancel.reason" rows="2" required maxlength="1000" data-testid="baseline-cancel-reason" /></label>

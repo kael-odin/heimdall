@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-16T23:26:33.113Z",
+  "evidenceLevel": "local-fixture-real-button-flow",
+  "windowsCore": {
+    "tests": 1819,
+    "pass": 1811,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 8,
+    "todo": 0,
+    "durationMs": 458391.8319,
+    "source": "gates/core.stdout.gz",
+    "originalMisnamedSource": "core/workspace/_runs/execution-ui-20261017-gates/core.tap",
+    "actualReporter": "spec stdout; not TAP",
+    "skippedTests": [
+      "﹣ managed HTTP lifecycle: POSIX SIGTERM settles the held worker as ENGINE_SHUTDOWN and restart never resumes it (0.1163ms) # Windows child.kill(SIGTERM) terminates the process without delivering a catchable POSIX shutdown signal.",
+      "﹣ non-regular named pipe targets are rejected without opening or blocking (0.0783ms) # SKIP",
+      "﹣ FIFO evidence is rejected before open on Linux (0.0506ms) # SKIP",
+      "﹣ a partial report FIFO stays opaque during settlement (0.2717ms) # SKIP",
+      "﹣ running managed fifo partial report and evidence remain opaque and unchanged (0.1905ms) # POSIX FIFO is exercised by the Linux recovery suite",
+      "﹣ terminal managed fifo partial report and evidence remain opaque and unchanged (0.0593ms) # POSIX FIFO is exercised by the Linux recovery suite",
+      "﹣ Docker network-none delivery serves SSR, SPA and data-driven SPA bundles without a source workspace (0.1553ms) # SKIP",
+      "﹣ Docker network-none delivery persists adapter writes in a volume after container recreation (0.1013ms) # SKIP"
+    ]
+  },
+  "executionHelper": {
+    "tests": 22,
+    "pass": 22,
+    "fail": 0,
+    "source": "helper/execution-ui-helper.tap.gz",
+    "overlappingConsoleHelperRegression": {
+      "tests": 63,
+      "pass": 63,
+      "countedAsAdditionalCoreTests": false,
+      "source": "Earlier helper tool output; no standalone original log archived"
+    }
+  },
+  "finalCdp": {
+    "status": "passed",
+    "checks": {
+      "nativeRepeatedClickPersistsStrictInputAndCreatesOneRun": true,
+      "lateStartResponseAcrossProjectABACannotRestoreOldConfirmation": true,
+      "managedSlotBlocksOrdinaryButOriginalOperationLookupWorks": true,
+      "terminalLookupFailureRetainsCompletedStateAndReportEntry": true,
+      "bugCompletionTaskDoneAndReportEvidenceOpenedThroughButton": true,
+      "lateBusyCapabilityCannotOverwriteNewProjectCapability": true,
+      "lost202AndHtml502ReloadRecoverOriginalRunWithOnlyGet": true,
+      "ordinarySharedSlotDisablesFreshManagedStartAndRecovers": true,
+      "nativeStopClosesPendingTargetAndPreventsEveryLaterCheck": true,
+      "lateStopResponseCannotOverrideAnotherSelectedOperation": true,
+      "desktopAndBothMobileThemesHaveNoHorizontalOverflow": true,
+      "lateOperationLookupAcrossProjectABACannotChangeSelection": true,
+      "preparedReceiptReloadAndNativeLookupNeverStart": true,
+      "explicitTargetAndChangedTargetClearsConfirmation": true,
+      "receiptPersistedBeforeNativePostAndUnknown404ReloadOnlyGets": true,
+      "oldCasRejectionCreatesNoRunAndRefreshRequiresNewReview": true
+    },
+    "checkCount": 16,
+    "caseCount": 8,
+    "pageErrors": [],
+    "expectedResourceErrors": [
+      "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "Failed to load resource: net::ERR_FAILED",
+      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+      "Failed to load resource: net::ERR_FAILED",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 409 (Conflict)"
+    ],
+    "browser": "Chromium via actual connectOverCDP",
+    "browserVersion": "Chrome/153.0.8010.12",
+    "browserPluginAvailable": false,
+    "executionUiImplemented": true,
+    "sourceDirectory": "core/workspace/_runs/execution-ui-bdad78f7-e5bb-4765-bb0d-c8ccceff3ac6",
+    "publishedDirectory": "cdp-final",
+    "caseNames": [
+      "native-completed-bug",
+      "lost-response-reload-only-gets",
+      "html502-reload-only-gets",
+      "native-stop-interrupted",
+      "late-operation-lookup-aba",
+      "prepared-query-only",
+      "unknown-404-stays-unresolved",
+      "stale-cas-explicit-rejection"
+    ],
+    "browserExecutionPostCount": 6,
+    "postAccounting": "Six browser POSTs: four real admissions, one fault not forwarded to the engine, and one stale-CAS rejection. This does not mean six executions.",
+    "fixtureCounters": [
+      {
+        "fixture": 0,
+        "targetRequests": 8,
+        "modelRequests": 0,
+        "sourceBytesUnchanged": true
+      },
+      {
+        "fixture": 1,
+        "targetRequests": 0,
+        "modelRequests": 0,
+        "sourceBytesUnchanged": true
+      }
+    ],
+    "targetRequestCount": 8,
+    "readonlyFixtureTargetRequestCount": 0,
+    "modelRequestCount": 0,
+    "targetCounterScope": "Execution fixture total includes the ordinary shared-slot hold and the cancelled pending target; it is not eight completed executions.",
+    "screenshots": [
+      {
+        "file": "cdp-final/execution-cancelled-mobile-light.png",
+        "valid": true
+      },
+      {
+        "file": "cdp-final/execution-completed-mobile-dark.png",
+        "valid": true
+      },
+      {
+        "file": "cdp-final/execution-prepared-query-only-desktop.png",
+        "valid": true
+      },
+      {
+        "file": "cdp-final/execution-running-native-desktop.png",
+        "valid": true
+      },
+      {
+        "file": "cdp-final/execution-stale-cas-requires-new-review-desktop.png",
+        "valid": true
+      },
+      {
+        "file": "cdp-final/execution-unknown-404-reload-desktop.png",
+        "valid": true
+      }
+    ],
+    "validScreenshotCount": 6,
+    "mobileEvidenceLimit": "Mobile images prove status/identity readability and recorded width checks. The report button is below both mobile viewports; mobile report-button visual/touch acceptance is not claimed.",
+    "operationStateEvidence": "The operation response validates the run head. Full reports and referenced evidence are opened through the existing verified run/report reader.",
+    "smokeSource": {
+      "path": "core/scripts/smoke-acceptance-execution-ui.mjs",
+      "executedSource": {
+        "bytes": 38415,
+        "sha256": "f86d89829290a5874bb01467b956a81df1d30c42e1cf2935d6ac37c5060a8d12",
+        "scope": "Final successful Chromium CDP run before EOF cleanup"
+      },
+      "publishedSource": {
+        "bytes": 38414,
+        "sha256": "09ceb538d6e1390b590c020e3e6f229e0492b14a8c3ec21670580ddf1aaa646b",
+        "difference": "Removed one final LF byte, eliminating an extra empty line at EOF; no executable statement or assertion changed."
+      },
+      "byteDifferenceVerified": true
+    }
+  },
+  "ordinaryConsoleCdp": {
+    "source": "http://127.0.0.1:65260/",
+    "ranAt": "2026-10-16T23:07:00.130Z",
+    "cdp": "http://127.0.0.1:65264",
+    "cdpLaunch": "script-managed Chromium",
+    "consoleUrl": "http://127.0.0.1:65261",
+    "taskId": "f-81b41ded-eb67-4645-a71a-86627ae4d233",
+    "taskStatus": "done",
+    "pageName": "home",
+    "cloneStatus": 200,
+    "cloneTitle": "Fixture Site — Home",
+    "screenshots": [
+      "cdp-console-forge.png",
+      "cdp-clone-artifact.png"
+    ],
+    "pageErrors": []
+  },
+  "latestConsoleBuild": {
+    "status": "passed",
+    "modules": 433,
+    "durationMs": 669,
+    "source": "Root tool output after final text corrections; original filesystem log was not saved",
+    "archivedOriginalLog": false,
+    "knownWarning": "Existing Graph3D large chunk warning"
+  },
+  "independentVisualReview": {
+    "disposition": "ship",
+    "source": "independent-review.json",
+    "scope": "This execution UI slice only; no claim of whole-application defect freedom."
+  },
+  "attempts": [
+    {
+      "source": "core/workspace/_runs/execution-ui-9c53b5b5-9d8d-48a1-b9c2-c39167944332",
+      "status": "failed-fixture-missing-receipt-seed",
+      "archived": "attempts/first-missing-seed/failure.json",
+      "countedInFinalTotals": false,
+      "rootCauseEvidenceLimit": "The failed run did not freeze its smoke source. Classification uses its failure/DOM and the corrected seedReceipt(firstReceipt) path, with root-provided test-history context."
+    },
+    {
+      "source": "core/workspace/_runs/execution-ui-0903870d-0927-4bf9-adfd-76361840ffb4",
+      "status": "mobile-captures-invalid",
+      "archived": "attempts/superseded-mobile/validation-note.json",
+      "countedInFinalTotals": false
+    }
+  ],
+  "redactionManifest": "redactions.json",
+  "sourceFilesManifestSha256": "a1027bdc5c62788b73ad15180b354e31eb51d566537f5e7770827134f6edc534",
+  "validationTimeline": "Core ran after helper/test/smoke freeze. Later Vue polling/read-error retention and text corrections were checked by final CDP and Console build; source-files records the final frozen working tree.",
+  "ciPolicy": "Verify the execution UI pushed head independently. Parent backend commit success is not this UI commit verification.",
+  "retainedLimits": [
+    "Local controlled fixtures only; no general external-project guarantee.",
+    "No model-backed judging was exercised; model fixture requests are zero.",
+    "Authentication sessions, write-type acceptance, durable BUG lifecycle and cross-browser receipt recovery remain outside this slice."
+  ]
+}

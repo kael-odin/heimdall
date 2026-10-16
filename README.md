@@ -10,7 +10,7 @@
 
 ---
 
-新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。本地项目支持不可变版本声明、历史运行归属，以及 Spec 需求候选的完整预览、显式批准和独立选用；写入受目录版本冲突与双引擎保护。托管 Spec 已接入[专用 HTTP 执行链](docs/competition/acceptance-managed-spec.md)：以完整新确认和明确目标版本启动真实检查，共享运行槽，支持取消、超时和保守重启恢复；控制台可查看结果并下载核验原件，执行按钮继续后续实施。批准、选用和旧操作查询均不自动执行，也不改变原门禁。AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [项目与版本](docs/competition/acceptance-catalog.md) · [需求基线](docs/competition/acceptance-baseline.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
+新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。本地项目支持不可变版本声明、历史运行归属，以及 Spec 需求候选的完整预览、显式批准和独立选用；写入受目录版本冲突与双引擎保护。托管 Spec 已接入[专用 HTTP 执行链](docs/competition/acceptance-managed-spec.md)：以完整新确认和明确目标版本启动真实检查，共享运行槽，支持取消、超时和保守重启恢复；控制台已提供明确目标版本的执行入口、原操作只读恢复和请求停止，可查看结果并下载核验原件。批准、选用和旧操作查询均不自动执行，也不改变原门禁。AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [项目与版本](docs/competition/acceptance-catalog.md) · [需求基线](docs/competition/acceptance-baseline.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
 
 ## 它实际长这样
 
@@ -217,7 +217,8 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [托管 Spec 合同与执行](docs/competition/acceptance-managed-spec.md) | 已选需求重建、明确目标版本、真实执行与核验快照 / 下载 / 比较 | 专用 HTTP 接纳、运行槽、取消及查询合同 |
 | [托管读取实施验收](docs/audits/2026-10-17/acceptance-managed-reading.md) | 安全 DTO、完成事实、真实浏览器、Linux 定向回归及 CI 诊断边界 | 复查读取能力与仍隔离的执行消费者 |
 | [验收启动恢复](docs/audits/2026-10-17/acceptance-owned-recovery.md) | 真实 owner、整批零写预检、保守中断、故障诊断和写入阻断 | 重启不重发请求；partial 现场保留；该切片的执行入口尚未开放 |
-| [托管 Spec 执行验收](docs/audits/2026-10-17/acceptance-managed-execution.md) | 新确认接纳、真实 runner、统一槽、取消、任务镜像与浏览器核验 | HTTP / CDP 实施证据；执行按钮后续实施 |
+| [托管 Spec 执行验收](docs/audits/2026-10-17/acceptance-managed-execution.md) | 新确认接纳、真实 runner、统一槽、取消、任务镜像与浏览器核验 | HTTP / CDP 实施证据；该报告对应后端切片 |
+| [执行工作台验收](docs/audits/2026-10-17/acceptance-execution-ui.md) | 明确版本的执行入口、原操作恢复、请求停止与浏览器故障验证 | Spec 执行 UI 与证据 |
 | [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |

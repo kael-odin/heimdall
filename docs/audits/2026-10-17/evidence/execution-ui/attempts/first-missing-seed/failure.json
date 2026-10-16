@@ -1,0 +1,1222 @@
+{
+  "status": "failed",
+  "message": "locator.selectOption: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('acceptance-execution').getByTestId('execution-operation')\u001b[22m\n\u001b[2m    - locator resolved to <select data-v-61218bc5=\"\" id=\"execution-operation\" data-testid=\"execution-operation\">…</select>\u001b[22m\n\u001b[2m  - attempting select option action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - did not find some options\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - did not find some options\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    29 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m       - did not find some options\u001b[22m\n\u001b[2m     - retrying select option action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n",
+  "stack": "locator.selectOption: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('acceptance-execution').getByTestId('execution-operation')\u001b[22m\n\u001b[2m    - locator resolved to <select data-v-61218bc5=\"\" id=\"execution-operation\" data-testid=\"execution-operation\">…</select>\u001b[22m\n\u001b[2m  - attempting select option action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - did not find some options\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - did not find some options\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    29 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m       - did not find some options\u001b[22m\n\u001b[2m     - retrying select option action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n    at realExecutionScenarios (C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\scripts\\smoke-acceptance-execution-ui.mjs:478:56)\n    at async file:///C:/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core/scripts/smoke-acceptance-execution-ui.mjs:514:3",
+  "checks": {
+    "nativeRepeatedClickPersistsStrictInputAndCreatesOneRun": true,
+    "lateStartResponseAcrossProjectABACannotRestoreOldConfirmation": true,
+    "managedSlotBlocksOrdinaryButOriginalOperationLookupWorks": true,
+    "terminalLookupFailureRetainsCompletedStateAndReportEntry": true,
+    "bugCompletionTaskDoneAndReportEvidenceOpenedThroughButton": true,
+    "lateBusyCapabilityCannotOverwriteNewProjectCapability": true,
+    "lost202AndHtml502ReloadRecoverOriginalRunWithOnlyGet": true,
+    "ordinarySharedSlotDisablesFreshManagedStartAndRecovers": true
+  },
+  "cases": [
+    {
+      "name": "native-completed-bug",
+      "operationId": "ao-9415559f-9b23-4c75-97f5-37e5f4607fc4",
+      "operation": {
+        "schemaVersion": 1,
+        "operationId": "ao-9415559f-9b23-4c75-97f5-37e5f4607fc4",
+        "projectId": "ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c",
+        "runId": "ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a",
+        "taskId": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+        "sourceRunId": "ac-501f319d-e4ae-40ec-bbc1-e89ceef70677",
+        "targetReleaseId": "ar-8e22a746-6571-4da6-a57b-454bf1612f6b",
+        "state": "running",
+        "runCreated": true,
+        "gate": "blocked",
+        "reasonCode": null,
+        "replayed": false
+      },
+      "report": {
+        "gate": "failed",
+        "summary": {
+          "total": 2,
+          "passed": 1,
+          "failed": 1,
+          "blocked": 0,
+          "needsReview": 0,
+          "bugs": 1,
+          "baselineFailed": 0,
+          "missing": 0,
+          "invalid": 0,
+          "coverage": {
+            "measured": 2,
+            "total": 2,
+            "ratio": 1
+          },
+          "dimensions": {
+            "visual": {
+              "total": 0,
+              "passed": 0,
+              "failed": 0,
+              "blocked": 0,
+              "needsReview": 0,
+              "score": null
+            },
+            "structure": {
+              "total": 0,
+              "passed": 0,
+              "failed": 0,
+              "blocked": 0,
+              "needsReview": 0,
+              "score": null
+            },
+            "behavior": {
+              "total": 2,
+              "passed": 1,
+              "failed": 1,
+              "blocked": 0,
+              "needsReview": 0,
+              "score": null
+            },
+            "health": {
+              "total": 0,
+              "passed": 0,
+              "failed": 0,
+              "blocked": 0,
+              "needsReview": 0,
+              "score": null
+            }
+          }
+        }
+      },
+      "sourceHashes": {
+        "manifest.json": {
+          "sha256": "463821644e1cc80b8abec10a254f0d74d3c57f43a1a75c327ef9b54762a6589d",
+          "nlink": 1
+        },
+        "report.json": {
+          "sha256": "82306a04fdab976dce1d5aafbde7b8de49f25d7c82efd0bcbeecc44967dbad0e",
+          "nlink": 1
+        },
+        "report.md": {
+          "sha256": "700027cdab22403663278025e4f14885337c752aab6056e38970acd116f7ffa4",
+          "nlink": 1
+        },
+        "spec-1-CHECK-0-contract.json": {
+          "sha256": "727accfe41ad7fcee670d3ebcd58cfee50b64a99492098a57948a1dae1da5214",
+          "nlink": 1
+        },
+        "spec-2-CHECK-1-contract.json": {
+          "sha256": "07edad164b74646e8941ceb619a479cb20ca9796ef2bb9179b366661ed9e253f",
+          "nlink": 1
+        }
+      },
+      "runIds": [
+        "ac-501f319d-e4ae-40ec-bbc1-e89ceef70677",
+        "ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a"
+      ],
+      "sidecarIds": [
+        "ao-9415559f-9b23-4c75-97f5-37e5f4607fc4.json"
+      ],
+      "jobs": {
+        "store": "sqlite",
+        "jobs": [
+          {
+            "id": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191621318,
+            "endedAt": 1792191629867,
+            "events": 6,
+            "mirrorDegraded": false
+          }
+        ],
+        "history": [
+          {
+            "id": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191621318,
+            "endedAt": 1792191629867,
+            "payload": {
+              "managedAcceptance": {
+                "schemaVersion": 1,
+                "operationId": "ao-9415559f-9b23-4c75-97f5-37e5f4607fc4",
+                "runId": "ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a",
+                "taskId": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+                "dispatchSha256": "0029c6706dae680dd2c5dbf821ce8dd929344655e6d67ff37abda9003662e061",
+                "projectId": "ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+              }
+            },
+            "error": null
+          }
+        ]
+      },
+      "targetRequestCount": 2,
+      "browserExecutionPostCount": 1
+    },
+    {
+      "name": "lost-response-reload-only-gets",
+      "operationId": "ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834",
+      "operation": {
+        "schemaVersion": 1,
+        "operationId": "ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834",
+        "projectId": "ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c",
+        "runId": "ac-ca873e3d-46d7-4eec-8ffb-29da1d775723",
+        "taskId": "a-e16cc044-8a51-4588-9619-e67568c100c5",
+        "sourceRunId": "ac-501f319d-e4ae-40ec-bbc1-e89ceef70677",
+        "targetReleaseId": "ar-8e22a746-6571-4da6-a57b-454bf1612f6b",
+        "state": "running",
+        "runCreated": true,
+        "gate": "blocked",
+        "reasonCode": null,
+        "replayed": false
+      },
+      "runIds": [
+        "ac-501f319d-e4ae-40ec-bbc1-e89ceef70677",
+        "ac-ca873e3d-46d7-4eec-8ffb-29da1d775723",
+        "ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a"
+      ],
+      "sidecarIds": [
+        "ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834.json",
+        "ao-9415559f-9b23-4c75-97f5-37e5f4607fc4.json"
+      ],
+      "jobs": {
+        "store": "sqlite",
+        "jobs": [
+          {
+            "id": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191621318,
+            "endedAt": 1792191629867,
+            "events": 6,
+            "mirrorDegraded": false
+          },
+          {
+            "id": "a-e16cc044-8a51-4588-9619-e67568c100c5",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191636336,
+            "endedAt": 1792191648702,
+            "events": 6,
+            "mirrorDegraded": false
+          }
+        ],
+        "history": [
+          {
+            "id": "a-e16cc044-8a51-4588-9619-e67568c100c5",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191636336,
+            "endedAt": 1792191648702,
+            "payload": {
+              "managedAcceptance": {
+                "schemaVersion": 1,
+                "operationId": "ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834",
+                "runId": "ac-ca873e3d-46d7-4eec-8ffb-29da1d775723",
+                "taskId": "a-e16cc044-8a51-4588-9619-e67568c100c5",
+                "dispatchSha256": "c2d8a2e19156e04c9bb024fba1675e90be4863589a7d731c5e026a8dd86c4cb8",
+                "projectId": "ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+              }
+            },
+            "error": null
+          },
+          {
+            "id": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191621318,
+            "endedAt": 1792191629867,
+            "payload": {
+              "managedAcceptance": {
+                "schemaVersion": 1,
+                "operationId": "ao-9415559f-9b23-4c75-97f5-37e5f4607fc4",
+                "runId": "ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a",
+                "taskId": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+                "dispatchSha256": "0029c6706dae680dd2c5dbf821ce8dd929344655e6d67ff37abda9003662e061",
+                "projectId": "ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+              }
+            },
+            "error": null
+          }
+        ]
+      },
+      "targetRequestCount": 4,
+      "browserExecutionPostCount": 2
+    },
+    {
+      "name": "html502-reload-only-gets",
+      "operationId": "ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a",
+      "operation": {
+        "schemaVersion": 1,
+        "operationId": "ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a",
+        "projectId": "ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c",
+        "runId": "ac-8042c3c1-12d0-426a-979d-4e5d4a3e94ab",
+        "taskId": "a-799730ec-b77b-4a79-97c4-ba20d6d939b8",
+        "sourceRunId": "ac-501f319d-e4ae-40ec-bbc1-e89ceef70677",
+        "targetReleaseId": "ar-8e22a746-6571-4da6-a57b-454bf1612f6b",
+        "state": "running",
+        "runCreated": true,
+        "gate": "blocked",
+        "reasonCode": null,
+        "replayed": false
+      },
+      "runIds": [
+        "ac-501f319d-e4ae-40ec-bbc1-e89ceef70677",
+        "ac-8042c3c1-12d0-426a-979d-4e5d4a3e94ab",
+        "ac-ca873e3d-46d7-4eec-8ffb-29da1d775723",
+        "ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a"
+      ],
+      "sidecarIds": [
+        "ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834.json",
+        "ao-9415559f-9b23-4c75-97f5-37e5f4607fc4.json",
+        "ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a.json"
+      ],
+      "jobs": {
+        "store": "sqlite",
+        "jobs": [
+          {
+            "id": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191621318,
+            "endedAt": 1792191629867,
+            "events": 6,
+            "mirrorDegraded": false
+          },
+          {
+            "id": "a-e16cc044-8a51-4588-9619-e67568c100c5",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191636336,
+            "endedAt": 1792191648702,
+            "events": 6,
+            "mirrorDegraded": false
+          },
+          {
+            "id": "a-799730ec-b77b-4a79-97c4-ba20d6d939b8",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191652505,
+            "endedAt": 1792191672821,
+            "events": 6,
+            "mirrorDegraded": false
+          }
+        ],
+        "history": [
+          {
+            "id": "a-799730ec-b77b-4a79-97c4-ba20d6d939b8",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191652505,
+            "endedAt": 1792191672821,
+            "payload": {
+              "managedAcceptance": {
+                "schemaVersion": 1,
+                "operationId": "ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a",
+                "runId": "ac-8042c3c1-12d0-426a-979d-4e5d4a3e94ab",
+                "taskId": "a-799730ec-b77b-4a79-97c4-ba20d6d939b8",
+                "dispatchSha256": "3fd5fb346ca87092d1f571af1080a8cda3d08e7d642921f900f241c3e3d682fe",
+                "projectId": "ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+              }
+            },
+            "error": null
+          },
+          {
+            "id": "a-e16cc044-8a51-4588-9619-e67568c100c5",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191636336,
+            "endedAt": 1792191648702,
+            "payload": {
+              "managedAcceptance": {
+                "schemaVersion": 1,
+                "operationId": "ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834",
+                "runId": "ac-ca873e3d-46d7-4eec-8ffb-29da1d775723",
+                "taskId": "a-e16cc044-8a51-4588-9619-e67568c100c5",
+                "dispatchSha256": "c2d8a2e19156e04c9bb024fba1675e90be4863589a7d731c5e026a8dd86c4cb8",
+                "projectId": "ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+              }
+            },
+            "error": null
+          },
+          {
+            "id": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+            "kind": "acceptance",
+            "url": "http://127.0.0.1:56451/target?tenant=execution",
+            "status": "done",
+            "pageName": null,
+            "createdAt": 1792191621318,
+            "endedAt": 1792191629867,
+            "payload": {
+              "managedAcceptance": {
+                "schemaVersion": 1,
+                "operationId": "ao-9415559f-9b23-4c75-97f5-37e5f4607fc4",
+                "runId": "ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a",
+                "taskId": "a-13994473-23f4-4015-8fdc-d9e83f97f939",
+                "dispatchSha256": "0029c6706dae680dd2c5dbf821ce8dd929344655e6d67ff37abda9003662e061",
+                "projectId": "ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+              }
+            },
+            "error": null
+          }
+        ]
+      },
+      "targetRequestCount": 6,
+      "browserExecutionPostCount": 3
+    }
+  ],
+  "browserRequests": [
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-501f319d-e4ae-40ec-bbc1-e89ceef70677"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-501f319d-e4ae-40ec-bbc1-e89ceef70677/report"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/baseline-candidates/ab-b2d0f133-276d-48f1-ad9a-403699cb0738"
+    },
+    {
+      "method": "POST",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions",
+      "body": {
+        "operationId": "ao-9415559f-9b23-4c75-97f5-37e5f4607fc4",
+        "expectedGenerationId": "ag-a37df2d7-0c69-4c09-8f5f-f0582d40b354",
+        "expectedRevision": 9,
+        "selectionId": "as-17757122-b76f-4b70-805e-00a08bbc4045",
+        "contentDigest": "42b9116a148cee74a336bc59fa895455918dd310e64424278ea2dfae602938ca",
+        "targetReleaseId": "ar-8e22a746-6571-4da6-a57b-454bf1612f6b"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-5e4c13a9-6780-4ac3-956c-c28c374d224d"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-9415559f-9b23-4c75-97f5-37e5f4607fc4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-9415559f-9b23-4c75-97f5-37e5f4607fc4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-9415559f-9b23-4c75-97f5-37e5f4607fc4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-9415559f-9b23-4c75-97f5-37e5f4607fc4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-5e4c13a9-6780-4ac3-956c-c28c374d224d"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-9415559f-9b23-4c75-97f5-37e5f4607fc4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-9415559f-9b23-4c75-97f5-37e5f4607fc4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-9415559f-9b23-4c75-97f5-37e5f4607fc4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a/report"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a/evidence/spec-2-CHECK-1-request.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a/evidence/spec-2-CHECK-1-response.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a/evidence/spec-2-CHECK-1-contract.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a/report"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/baseline-candidates/ab-b2d0f133-276d-48f1-ad9a-403699cb0738"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions",
+      "body": {
+        "operationId": "ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834",
+        "expectedGenerationId": "ag-a37df2d7-0c69-4c09-8f5f-f0582d40b354",
+        "expectedRevision": 9,
+        "selectionId": "as-17757122-b76f-4b70-805e-00a08bbc4045",
+        "contentDigest": "42b9116a148cee74a336bc59fa895455918dd310e64424278ea2dfae602938ca",
+        "targetReleaseId": "ar-8e22a746-6571-4da6-a57b-454bf1612f6b"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-fdc9c08b-c9c9-4e43-b85c-2b33af275f8a/report"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-8d99ce10-a4fe-4a2e-9e16-dac0ae539834"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-ca873e3d-46d7-4eec-8ffb-29da1d775723"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-ca873e3d-46d7-4eec-8ffb-29da1d775723/report"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/baseline-candidates/ab-b2d0f133-276d-48f1-ad9a-403699cb0738"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions",
+      "body": {
+        "operationId": "ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a",
+        "expectedGenerationId": "ag-a37df2d7-0c69-4c09-8f5f-f0582d40b354",
+        "expectedRevision": 9,
+        "selectionId": "as-17757122-b76f-4b70-805e-00a08bbc4045",
+        "contentDigest": "42b9116a148cee74a336bc59fa895455918dd310e64424278ea2dfae602938ca",
+        "targetReleaseId": "ar-8e22a746-6571-4da6-a57b-454bf1612f6b"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-ca873e3d-46d7-4eec-8ffb-29da1d775723"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-ca873e3d-46d7-4eec-8ffb-29da1d775723/report"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-fbe90ae2-3410-4bb4-85ac-9d9169b6b98a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-2671f72a-a4ce-4c39-baf7-502a3029e776"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/baseline-candidates/ab-b2d0f133-276d-48f1-ad9a-403699cb0738"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-2671f72a-a4ce-4c39-baf7-502a3029e776"
+    },
+    {
+      "method": "POST",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions",
+      "body": {
+        "operationId": "ao-0e67396a-e57a-40c8-95db-d38da4cdfddb",
+        "expectedGenerationId": "ag-a37df2d7-0c69-4c09-8f5f-f0582d40b354",
+        "expectedRevision": 9,
+        "selectionId": "as-17757122-b76f-4b70-805e-00a08bbc4045",
+        "contentDigest": "42b9116a148cee74a336bc59fa895455918dd310e64424278ea2dfae602938ca",
+        "targetReleaseId": "ar-8e22a746-6571-4da6-a57b-454bf1612f6b"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-36868a43-0cd4-42d0-a9b0-5ae3dacd68d0"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-0e67396a-e57a-40c8-95db-d38da4cdfddb"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-36868a43-0cd4-42d0-a9b0-5ae3dacd68d0"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-0e67396a-e57a-40c8-95db-d38da4cdfddb"
+    },
+    {
+      "method": "POST",
+      "path": "/api/jobs/a-be13600d-1ff3-41c2-ab95-e8d202a1a1b0/cancel",
+      "body": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-36868a43-0cd4-42d0-a9b0-5ae3dacd68d0"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-b96cc98f-11d2-404e-b0e0-f6170c8c0e6c/spec-executions/ao-0e67396a-e57a-40c8-95db-d38da4cdfddb"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs/ac-36868a43-0cd4-42d0-a9b0-5ae3dacd68d0"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/execution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/runs"
+    }
+  ],
+  "pageErrors": []
+}

@@ -26,3 +26,5 @@ Browser plugin / browser skill 未在本会话提供，使用仓库 Playwright �
 上述两份 TAP 与初次引擎的 [fresh TAP](../managed-execution-engine-first/engine-tests-corrected-fresh.tap.gz)、[首轮 TAP](../managed-execution-engine-first/engine-tests.tap.gz) 含原始缩进空白行，使用无损 gzip 保留全部字节，避免改写原输出或降低 Git 空白检查。[压缩清单](tap-archives.json) 记录原字节长度、原 SHA256、压缩 SHA256 与解压往返核验；未压缩副本保留在 ignored 本轮运行目录。
 
 最终 CDP 与前一 authoritative-download 轮次逻辑均通过；`cdp-final` 额外等待左侧历史轮询更新后再截图，保证中断详情与历史一致。正式全量后，失败诊断夹具发生一次不改变行为的增强；最终六项 engine 与 Linux 单项分别使用该精确版本复验。CI 由 main push 触发并按新 SHA 独立核对，不使用父提交成功替代。
+
+后续 CI 核对：[main `2737c76` 的独立运行](ci-main-2737c76/README.md)已全部 success；Linux Core 1797 项 / 1793 pass / 4 skip，POSIX SIGTERM 实测，Docker 独立步骤 2/2。该结果仅适用于此后端提交。

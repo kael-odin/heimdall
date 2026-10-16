@@ -1,6 +1,19 @@
 # 托管 Spec：合同重建、真实执行与核验结果
 
-本阶段从项目当前明确选用的 Spec 需求重建计划，为明确目标版本保存不可变派发准备，并由持有 owner 的引擎执行真实只读 API 检查。完成记录可经核验读取、下载证据及参与显式运行对比较；控制台可查看运行进展、原门禁与中断结果。新增专用 HTTP 执行入口；现有[需求基线界面](acceptance-baseline.md)的候选、批准、选用响应仍返回 `executionReady:false`，这些动作不会自动执行。明确目标版本的执行按钮继续后续实施。
+本阶段从项目当前明确选用的 Spec 需求重建计划，为明确目标版本保存不可变派发准备，并由持有 owner 的引擎执行真实只读 API 检查。完成记录可经核验读取、下载证据及参与显式运行对比较；控制台可查看运行进展、原门禁与中断结果。专用 HTTP 执行入口已接入“项目与版本 → 执行已选需求验收”；现有[需求基线界面](acceptance-baseline.md)的候选、批准、选用响应仍返回 `executionReady:false`，这些动作不会自动执行。
+
+## 从工作台启动
+
+1. 打开“项目验收 → 项目与版本”，选择项目。在需求基线中核对完整 Spec 候选，记录批准并明确选用。
+2. 在“执行已选需求验收”点击“核对本次执行合同”。这里读取当前选用对应的候选，不沿用需求基线面板正在浏览的草稿。
+3. 明确选择待验收目标版本，核对完整目标 URL 与登记的构建引用，勾选本次确认，点击“启动需求验收”。目录修订、选用或目标发生变化时，本次确认失效，需要重新核对。
+4. “本机操作记录”显示原操作编号和状态；可请求停止运行，或打开运行与报告。执行完成与验收通过分别展示：正常完成的运行仍可能检出 BUG。
+
+客户端先把不可变确认写入当前浏览器本地存储并读回，再发送一次启动 POST。每次请求只带 operationId、目录双 CAS、selectionId、contentDigest 和 targetReleaseId，计划和预期由引擎重建。恢复只查询原 project / operationId；网络失败、非 JSON 响应、启动失败或单次 404 都不能触发自动重发。只有明确的前置拒绝成功保存独立拒绝记录后，才允许重新核对并确认新操作。prepared 只有查询，没有继续执行入口。
+
+当前浏览器同一项目仍有未知、未核对、prepared 或 running 操作时，暂停新确认。跨标签页新记录会清除确认；点击前再读本地记录。记录按引擎 origin、目录世代、项目及操作编号隔离，旧世代原操作仍可只读查询；不保存 token、plan 或 expected。关闭目录或隐藏页面会暂停轮询；未知 / prepared 自动核对有次数上限，之后可手动查询。停止响应丢失时，当前页面继续查询原运行，不能把停止请求当作中断已经完成。
+
+本地存储不可用、损坏或达到每项目 100 条记录上限时阻止新启动并保留原记录。跨浏览器、人工清除浏览器数据和远端 exactly-once 不在该凭据机制的保证范围；操作归档管理继续后续实现。运行 head 只确认执行状态，完整报告与证据仍经既有读取接口核验。
 
 ## 已实现的准备合同
 
@@ -46,7 +59,7 @@ sidecar 使用独立 schemaVersion=1，位于 owner 根内的 `managed-spec-disp
 
 `readAcceptanceArtifact` 返回核验捕获的 bytes、SHA-256 和内容类型。JSON 下载保留原 bytes；Markdown 从同一份已核验 JSON 派生，不信任磁盘上的 `report.md`。证据下载只允许完成报告明确引用的文件，manifest、triage、sidecar、temporary 与未引用文件均不开放。比较通过批量快照在同一范围内读取双方，保留原有保守复验规则。
 
-HTTP 列表与详情只返回安全 DTO，managed 记录明确带 `triageSupported:false`；不暴露 plan、完整 envelope、私有 receipt 或 owner nonce，基础设施错误使用脱敏说明。控制台支持查看状态、原门禁、引用证据与下载，尚不能发起托管执行。真实浏览器与故障验证见[托管读取验收](../audits/2026-10-17/acceptance-managed-reading.md)。
+HTTP 列表与详情只返回安全 DTO，managed 记录明确带 `triageSupported:false`；不暴露 plan、完整 envelope、私有 receipt 或 owner nonce，基础设施错误使用脱敏说明。控制台支持查看状态、原门禁、引用证据与下载；读取切片的真实浏览器与故障验证见[托管读取验收](../audits/2026-10-17/acceptance-managed-reading.md)。后续接入的明确版本启动、原操作恢复与停止见[执行工作台验收](../audits/2026-10-17/acceptance-execution-ui.md)。
 
 ## 启动恢复与执行边界
 
@@ -96,6 +109,6 @@ POST 只接以下确认，不接 plan、URL、expected、approved、runId / task
 
 完整请求 body 已被接纳后，HTTP 断连不会取消执行。响应丢失应携带原 operationId 查询；不完整 body 不接纳。此机制不承诺远端 exactly-once。实现与真实 HTTP / CDP 证据见[托管执行验收](../audits/2026-10-17/acceptance-managed-execution.md)。
 
-B2.2-c 继续提供明确目标版本的执行界面。Browser 基线、写请求、鉴权会话、持久 BUG 工单和自动关闭缺陷继续后续实施；candidate / triage 仍隔离，原 source 草稿、报告和门禁保留。
+B2.2-c 已接入明确目标版本的执行界面、原操作只读恢复与请求停止。Browser 基线、写请求、鉴权会话、持久 BUG 工单、操作归档管理和自动关闭缺陷继续后续实施；candidate / triage 仍隔离，原 source 草稿、报告和门禁保留。
 
 实现与定向故障证据见[准备内核验收](../audits/2026-10-16/acceptance-managed-spec-preparation.md)。

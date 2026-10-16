@@ -31,6 +31,7 @@
     "acceptance:managed:read:smoke": "node scripts/smoke-acceptance-managed-reading.mjs",
     "acceptance:owned:recovery:smoke": "node scripts/smoke-acceptance-owned-recovery.mjs",
     "acceptance:managed:execute:smoke": "node scripts/smoke-acceptance-managed-execution.mjs",
+    "acceptance:execution:ui:smoke": "node scripts/smoke-acceptance-execution-ui.mjs",
     "test": "node scripts/test-core.mjs",
     "lint": "node scripts/check-syntax.mjs",
     "check:docs": "node scripts/check-markdown-links.mjs",
