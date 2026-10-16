@@ -58,6 +58,11 @@ import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/com
 import { acquireAcceptanceOwner } from './acceptance/owner.mjs';
 import { createAcceptanceCatalogStore } from './acceptance/catalog.mjs';
 import { handleAcceptanceCatalogRequest, acceptanceCatalogError } from './acceptance/catalog-api.mjs';
+import { createAcceptanceExecutionRuntime } from './acceptance/execution-runtime.mjs';
+import { createManagedSpecExecutionService } from './acceptance/execution-service.mjs';
+import { handleAcceptanceExecutionRequest, acceptanceExecutionError } from './acceptance/execution-api.mjs';
+import { createManagedSpecDispatchReadContext } from './acceptance/managed-dispatch-reader.mjs';
+import { managedRunProvenanceOf } from './acceptance/managed-run-schema.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 let acceptanceOwner;
@@ -92,10 +97,6 @@ const execFileAsync = promisify(execFile);
 let jobStore = null;
 try {
   jobStore = openJobStore(process.env.HEIMDALL_JOBS_DB ?? join(DATA_ROOT, 'jobs.db'));
-  const recovered = recoverInterrupted(jobStore);
-  if (recovered) console.log('[jobs] recovered ' + recovered + ' interrupted job(s) from previous run');
-  const pruned = jobStore.prune();
-  if (pruned) console.log('[jobs] pruned ' + pruned + ' old job(s) past the retention cap');
 } catch (e) { console.warn('[jobs] store unavailable:', String(e).slice(0, 120)); }
 
 const PORT = Number(process.argv[2] ?? 8900);
@@ -548,6 +549,8 @@ let runningUpgrade = null;
 let runningClone = null;
 let runningAcceptance = null;
 let runningAcceptanceTriage = null;
+const acceptanceRuntime = createAcceptanceExecutionRuntime();
+let shuttingDown = false;
 
 /**
  * 请求期读盘缓存 —— 只服务"读多写少"的三处清单接口。
@@ -607,7 +610,7 @@ const push = (t, ev) => {
   }
   t.events.push(ev);
   if (typeof ev?.kind === 'string' && ev.kind.endsWith('-error')) t.error = ev.error ?? 'error';
-  jobStore?.appendEvent(t.id, ev);
+  try { jobStore?.appendEvent(t.id, ev); } catch { t.mirrorDegraded = true; }
   writeSubs(t, `data: ${JSON.stringify(ev)}\n\n`);
   // 有进展就重置"无进展熔断"计时 —— 熔断判的是卡死，不是总耗时
   t.watchdog?.touch();
@@ -648,6 +651,9 @@ function killTask(t, reason) {
   t.killed = reason;
   t.error = reason === 'stalled' ? '单页长时间无进展，已熔断' : '单页超出时间上限，已熔断';
   push(t, { kind: 'forge-timeout', reason, message: t.error });
+  if (t.acceptanceLease) {
+    try { acceptanceRuntime.stop(t.acceptanceLease, reason === 'stalled' ? 'WATCHDOG_STALLED' : 'WATCHDOG_TIMEOUT'); } catch {}
+  }
   killTree(t.child);
 }
 
@@ -655,7 +661,8 @@ function makeTask(kind, url) {
   const id = `${kind[0]}-${randomUUID()}`;
   const t = { id, kind, url, status: 'running', events: [], logs: [], subs: new Set(), child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false, killed: null, timeoutMs: 0, stallMs: 0 };
   tasks.set(id, t);
-  jobStore?.upsert({ id, kind, url, status: 'running', createdAt: t.createdAt });
+  try { jobStore?.upsert({ id, kind, url, status: 'running', createdAt: t.createdAt }); }
+  catch { t.mirrorDegraded = true; }
   // 淘汰：终态任务超过上限就按创建时间丢掉最老的。每个任务的 events/logs 只涨不消，
   // 长跑（或长时间不重启引擎）必然涨内存 —— 而任务列表本来就是"最近发生过什么"。
   if (tasks.size > MAX_TASKS) {
@@ -741,12 +748,115 @@ function spawnTask(t, script, args, opts = {}) {
     if (t.tookForgeSlot && !forgeSlots.release()) {
       console.warn('[slots] 归还了一个没占过的锻造槽（记账漏了一笔），已忽略');
     }
-    jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null });
+    try { jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: t.endedAt ?? null, error: t.error ?? null }); }
+    catch { t.mirrorDegraded = true; }
     // 保留策略。放在这里而不是只放启动时：演示/长跑时引擎可能连着开好几天不重启，
     // 只靠启动那一次裁剪就等于不裁。一次 SELECT 的开销，超限才会删。
     try { jobStore?.prune(); } catch (e) { console.warn('[jobs] prune failed:', String(e).slice(0, 120)); }
   });
   return t;
+}
+
+// Jobs and SSE are projections. Only the owned writer may decide a managed
+// run's terminal fact; a broken projection must not trigger a second finish.
+function managedTaskMirror({ lease, record }) {
+  const p = managedRunProvenanceOf(record);
+  const binding = { schemaVersion: 1, operationId: p.operationId, runId: p.runId,
+    taskId: p.taskId, dispatchSha256: p.dispatchSha256, projectId: p.projectId };
+  let t;
+  const attempt = action => { try { action(); } catch { if (t) t.mirrorDegraded = true; } };
+  const persist = () => attempt(() => jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url,
+    status: t.status, createdAt: t.createdAt, endedAt: t.endedAt ?? null,
+    payload: { managedAcceptance: binding }, error: t.error ?? null }));
+  const event = ev => {
+    t.events.push(ev);
+    if (t.events.length > 1000) t.events.splice(0, t.events.length - 1000);
+    attempt(() => jobStore?.appendEvent(t.id, ev));
+    attempt(() => writeSubs(t, `data: ${JSON.stringify(ev)}\n\n`));
+  };
+  return {
+    preflight({ taskId }) {
+      // A failed lookup is never interpreted as absence.
+      if (tasks.has(taskId) || jobStore?.get(taskId)) {
+        throw Object.assign(new Error('reserved task already exists'), { code: 'MANAGED_RUN_CONFLICT', status: 409 });
+      }
+    },
+    register(manifest) {
+      t = { id: p.taskId, kind: 'acceptance', runId: p.runId, url: p.target.targetUrl,
+        label: manifest.name, status: 'running', createdAt: Date.parse(manifest.createdAt),
+        events: [], logs: [], subs: new Set(), child: null, cancelRequested: false,
+        managedAcceptance: true, acceptanceLease: lease, mirrorDegraded: false };
+      t.requestStop = reason => { acceptanceRuntime.stop(lease, reason); };
+      tasks.set(t.id, t); runningAcceptance = t;
+      persist();
+    },
+    event,
+    terminal(result) {
+      if (!t || t.status !== 'running') return;
+      t.status = result.status; t.endedAt = Date.now();
+      t.error = result.code ?? (result.runStatus === 'completed' ? null : result.reasonCode);
+      if (result.runStatus === 'completed') event({ kind: 'acceptance-complete', runId: t.runId,
+        gate: result.gate, summary: result.summary });
+      event({ kind: 'exit', status: t.status, code: result.code ?? null });
+      persist();
+      for (const res of t.subs) attempt(() => res.end());
+      t.subs.clear();
+      if (runningAcceptance?.id === t.id) runningAcceptance = null;
+      bustCaches(); attempt(() => jobStore?.prune());
+      if (tasks.size > MAX_TASKS) {
+        const finished = [...tasks.values()].filter(item => item.status !== 'running').sort((a, b) => a.createdAt - b.createdAt);
+        for (const old of finished.slice(0, tasks.size - MAX_TASKS)) tasks.delete(old.id);
+      }
+    },
+  };
+}
+const acceptanceExecutions = createManagedSpecExecutionService({ owner: acceptanceOwner,
+  catalog: acceptanceCatalog, runtime: acceptanceRuntime, mirrorFactory: managedTaskMirror,
+  assertReady() {
+    acceptanceOwner.assertOwned();
+    if (!acceptanceRecovery.ready || shuttingDown) throw Object.assign(new Error('acceptance admission unavailable'),
+      { code: 'MANAGED_EXECUTION_UNAVAILABLE', status: 503 });
+    return true;
+  } });
+
+// Recover the disposable job projection from verified run facts, never in the
+// other direction. In particular, completed BUG reports still mean task done.
+if (jobStore) {
+  try {
+    const jobs = jobStore.list({ limit: 500 });
+    const managed = job => job.payload && Object.hasOwn(job.payload, 'managedAcceptance');
+    for (const job of jobs.filter(managed)) {
+      try {
+        if (!acceptanceRecovery.ready) throw new Error('recovery blocked');
+        acceptanceOwner.assertOwned();
+        const b = job.payload.managedAcceptance;
+        const managedRead = createManagedSpecDispatchReadContext({ root: acceptanceOwner.root });
+        const record = managedRead.reread(b.operationId, b.dispatchSha256), p = managedRunProvenanceOf(record);
+        const expected = { schemaVersion: 1, operationId: p.operationId, runId: p.runId,
+          taskId: p.taskId, dispatchSha256: p.dispatchSha256, projectId: p.projectId };
+        if (!b || Object.keys(b).length !== Object.keys(expected).length
+            || Object.entries(expected).some(([key, value]) => b[key] !== value)
+            || job.id !== p.taskId || job.kind !== 'acceptance' || job.url !== p.target.targetUrl) throw new Error('binding mismatch');
+        const head = readAcceptanceRun(p.runId, { root: acceptanceOwner.root, managedRead });
+        if (!head || Date.parse(head.createdAt) !== job.createdAt || head.status === 'running') throw new Error('unsettled run');
+        if (head.status === 'completed') {
+          const [snapshot] = readAcceptanceSnapshots([p.runId], { root: acceptanceOwner.root, managedRead });
+          if (!snapshot?.integrity?.valid || !snapshot.integrity.evidenceVerified) throw new Error('completed snapshot unavailable');
+        }
+        managedRead.assertCurrent(); acceptanceOwner.assertOwned();
+        const status = head.status === 'completed' ? 'done'
+          : head.reasonCode === 'CANCELLED' ? 'cancelled' : head.status;
+        jobStore.upsert({ ...job, status, endedAt: Date.parse(head.endedAt ?? head.updatedAt),
+          error: head.status === 'completed' ? null : head.reasonCode ?? 'MANAGED_EXECUTION_INTERRUPTED' });
+      } catch {
+        // Unknown is a projection failure, not permission to resume or rewrite.
+        try { jobStore.upsert({ ...job, status: 'failed', endedAt: job.endedAt ?? Date.now(), error: 'MANAGED_MIRROR_UNAVAILABLE' }); } catch {}
+      }
+    }
+    const n = recoverInterrupted({ list: () => jobs.filter(job => !managed(job)), upsert: job => jobStore.upsert(job) });
+    if (n) console.log(`[jobs] recovered ${n} interrupted task(s)`);
+    jobStore.prune();
+  } catch { console.warn('[jobs] startup projection reconciliation unavailable'); }
 }
 
 function startRecon(url, maxPages) {
@@ -1146,6 +1256,7 @@ const handleRequest = async (req, res) => {
       return json(res, 503, { code: 'ACCEPTANCE_RECOVERY_BLOCKED', error: '启动恢复未完成，验收写入暂不可用；请检查运行现场后重启引擎。' });
     }
   }
+  if (await handleAcceptanceExecutionRequest(req, res, u, { service: acceptanceExecutions, json })) return;
   if (await handleAcceptanceCatalogRequest(req, res, u, { catalog: acceptanceCatalog, json })) return;
   if (u.pathname === '/api/acceptance/comparisons') {
     if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
@@ -1207,33 +1318,55 @@ const handleRequest = async (req, res) => {
         if (error instanceof ManagedAcceptanceRunError) return json(res, error.status, { code: error.code, error: error.message });
         return json(res, 400, { error: error.message });
       }
-      if (runningAcceptance) return json(res, 409, { error: '已有项目验收正在运行，请等待结束。', runId: runningAcceptance.runId, taskId: runningAcceptance.id });
-      const t = makeTask('acceptance', plan.targetUrl);
-      let manifest;
-      try { manifest = createAcceptanceRun(plan, { taskId: t.id }); }
-      catch (error) {
-        t.status = 'failed'; t.endedAt = Date.now(); t.error = String(error.message);
-        jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status, createdAt: t.createdAt, endedAt: t.endedAt, error: t.error });
-        if (error instanceof ManagedAcceptanceRunError) return json(res, error.status, { code: error.code, error: error.message });
-        return json(res, 500, { error: '无法创建验收记录：' + error.message });
-      }
-      t.runId = manifest.runId;
-      t.label = plan.name;
-      runningAcceptance = t;
-      spawnTask(t, join('src', 'acceptance', 'cli.mjs'), ['--run', manifest.runId], { timeoutMs: 360000, stallMs: 65000 });
+      let lease, t, manifest, finalized = false;
       const finalize = () => {
-        if (runningAcceptance?.id === t.id) runningAcceptance = null;
+        if (finalized) return;
+        finalized = true;
+        if (runningAcceptance?.id === t?.id) runningAcceptance = null;
         try {
-          const current = readAcceptanceRun(manifest.runId);
-          if (current?.status === 'running') updateAcceptanceRun(manifest.runId, {
-            status: t.cancelRequested ? 'interrupted' : 'failed', gate: 'blocked',
-            endedAt: new Date().toISOString(), error: t.cancelRequested ? '验收任务已取消，请重新运行。' : t.error || '验收进程未完成；已保留现场，请重新运行。',
-          });
-        } catch (error) { console.warn('[acceptance] finalize:', error.message); }
+          acceptanceOwner.assertOwned();
+          if (manifest) {
+            const current = readAcceptanceRun(manifest.runId);
+            if (current?.status === 'running') updateAcceptanceRun(manifest.runId, {
+              status: t.cancelRequested ? 'interrupted' : 'failed', gate: 'blocked',
+              endedAt: new Date().toISOString(), error: t.cancelRequested ? '验收任务已取消，请重新运行。' : '验收进程未完成；已保留现场，请重新运行。',
+            });
+          }
+        } catch { acceptanceRuntime.block(); }
+        finally { if (lease) { try { acceptanceRuntime.release(lease); } catch {} } }
       };
-      t.child.once('exit', finalize);
-      t.child.once('error', error => { t.error = error.message; finalize(); });
-      return json(res, 202, { runId: manifest.runId, taskId: t.id });
+      try {
+        acceptanceOwner.assertOwned();
+        lease = acceptanceRuntime.reserve({ kind: 'legacy' });
+        t = makeTask('acceptance', plan.targetUrl);
+        manifest = createAcceptanceRun(plan, { taskId: t.id });
+        t.runId = manifest.runId; t.label = plan.name; t.acceptanceLease = lease;
+        t.requestStop = reason => { acceptanceRuntime.stop(lease, reason); };
+        acceptanceRuntime.bind(lease, { runId: t.runId, taskId: t.id, onStop(reason) {
+          if (['CANCELLED', 'ENGINE_SHUTDOWN'].includes(reason)) t.cancelRequested = true;
+          killTree(t.child, 'SIGTERM');
+        } });
+        acceptanceRuntime.assertActive(lease);
+        runningAcceptance = t;
+        spawnTask(t, join('src', 'acceptance', 'cli.mjs'), ['--run', manifest.runId], { timeoutMs: 360000, stallMs: 65000 });
+        t.child.once('exit', finalize);
+        t.child.once('error', () => {
+          t.watchdog?.stop(); t.status = 'failed'; t.endedAt = Date.now();
+          t.error = '验收进程未能启动。'; finalize();
+          try { jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status,
+            createdAt: t.createdAt, endedAt: t.endedAt, error: t.error }); } catch {}
+        });
+        return json(res, 202, { runId: manifest.runId, taskId: t.id });
+      } catch (error) {
+        if (t) {
+          t.status = 'failed'; t.endedAt = Date.now(); t.error = '无法创建验收记录。';
+          try { jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status,
+            createdAt: t.createdAt, endedAt: t.endedAt, error: t.error }); } catch {}
+        }
+        finalize();
+        const failure = acceptanceExecutionError(error);
+        return json(res, failure.status, failure.payload);
+      }
     }, 7 * 1024 * 1024);
   }
   if (u.pathname.startsWith('/api/acceptance/runs/')) {
@@ -1342,6 +1475,7 @@ const handleRequest = async (req, res) => {
       jobs: [...tasks.values()].map(t => ({
         id: t.id, kind: t.kind, url: t.url, status: t.status, pageName: t.pageName ?? null,
         createdAt: t.createdAt, endedAt: t.endedAt ?? null, events: t.events.length,
+        mirrorDegraded: t.mirrorDegraded === true,
       })),
       history: jobStore?.list({ limit: 50 }) ?? [],
     });
@@ -1351,6 +1485,16 @@ const handleRequest = async (req, res) => {
     const id = u.pathname.split('/')[3];
     const t = tasks.get(id);
     if (!t) return json(res, 404, { error: 'no such task' });
+    if (t.requestStop) {
+      if (t.status === 'running') {
+        // Aborting local work is safe even if ownership was lost. The writer
+        // independently refuses settlement without the original owner fence.
+        t.cancelRequested = true;
+        try { t.requestStop('CANCELLED'); }
+        catch (cause) { const failure = acceptanceExecutionError(cause); return json(res, failure.status, failure.payload); }
+      }
+      return json(res, 200, { id, status: t.status, cancelRequested: t.cancelRequested });
+    }
     if (t.status === 'running') {
       t.cancelRequested = true;
       killTree(t.child, 'SIGTERM');      // 取消时先给个优雅退出的机会（win32 上仍是整树杀）
@@ -2260,13 +2404,13 @@ server.listen(PORT, BIND, () => console.log(`engine-server @ http://${BIND}:${PO
 // 优雅退出：先停掉任务子进程，再关闭持久化存储（Docker stop / Ctrl-C）。
 // 存储盘点、克隆、导出都是子进程；只杀引擎会让它们继续写数据目录，
 // 测试里表现为临时目录 ENOTEMPTY，生产里则是孤儿任务继续占资源。
-let shuttingDown = false;
 const shutdown = async () => {
   if (shuttingDown) return;
   shuttingDown = true;
+  try { acceptanceRuntime.close(); } catch { acceptanceRuntime.block(); }
   server.close();
   const running = [...tasks.values()].filter(t => t.status === 'running' && t.child && t.child.exitCode === null);
-  await Promise.all(running.map(t => new Promise(resolve => {
+  const children = Promise.all(running.map(t => new Promise(resolve => {
     t.cancelRequested = true;
     t.child.once('exit', resolve);
     killTree(t.child, 'SIGTERM');
@@ -2276,6 +2420,10 @@ const shutdown = async () => {
     }, 1500);
     t.child.once('exit', () => clearTimeout(forceKill));
   })));
+  let grace;
+  await Promise.race([Promise.allSettled([children, acceptanceExecutions.drain()]),
+    new Promise(resolve => { grace = setTimeout(resolve, 2500); })]);
+  clearTimeout(grace);
   try { jobStore?.close(); } catch {}
   process.exit(0);
 };

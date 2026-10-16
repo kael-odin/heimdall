@@ -1,0 +1,17 @@
+{
+  "status": 202,
+  "body": {
+    "schemaVersion": 1,
+    "operationId": "ao-527a66a3-1a53-47d7-a3f2-dd08823774a1",
+    "projectId": "ap-6b1ae13f-c646-4686-bb94-4b9bb064baf3",
+    "runId": "ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a",
+    "taskId": "a-c5b44cd0-576e-4213-9b02-2643b82fefe1",
+    "sourceRunId": "ac-ec4f8888-4f60-4220-a42c-e7c6cb9957c8",
+    "targetReleaseId": "ar-c7394875-7005-4517-99b4-9e87b46b844a",
+    "state": "running",
+    "runCreated": true,
+    "gate": "blocked",
+    "reasonCode": null,
+    "replayed": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "evidenceLevel": "real-catalog-admission-engine-cdp-browser-local-fixture",
+  "engineExecutorTested": true,
+  "freshCatalogAdmissionTested": true,
+  "executionUiImplemented": false,
+  "browserPluginAvailable": false,
+  "browserAutomation": "Repository Playwright with an actual Chromium CDP endpoint",
+  "scope": "Real legacy draft, binding, candidate, approval and selection. Browser POST invokes fresh managed engine execution; existing workbench observes running, completed BUG and cancelled interrupted states.",
+  "checks": {
+    "realCatalogFreshHttpAdmissionAndRunningUi": true,
+    "completedBugHasDoneTaskAndVerifiedDownloads": true,
+    "replayAndConflictDoNotExecute": true,
+    "pendingCancelStopsLaterRequestsAndUiIsInterrupted": true
+  },
+  "pageErrors": [],
+  "targetRequestCount": 3,
+  "zeroModelRequests": true,
+  "originalDraftUnchanged": true,
+  "outputDirectory": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\docs\\audits\\2026-10-17\\evidence\\managed-execution\\cdp-final"
+}

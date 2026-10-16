@@ -386,9 +386,10 @@ async function downloadReport(format) {
   downloadError.value = '';
   downloadController = new AbortController();
   try {
-    const blob = format === 'json'
-      ? new Blob([JSON.stringify(report.value, null, 2)], { type: 'application/json;charset=utf-8' })
-      : await request(`/${encodeURIComponent(id)}/report.md`, { signal: downloadController.signal, responseType: 'blob' });
+    const artifact = format === 'json' ? 'report' : 'report.md';
+    const blob = await request(`/${encodeURIComponent(id)}/${artifact}`, {
+      signal: downloadController.signal, responseType: 'blob',
+    });
     if (stopped || epoch !== runEpoch || downloadController.signal.aborted) return;
     const url = URL.createObjectURL(blob);
     blobUrls.add(url);

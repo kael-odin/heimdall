@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-0ce07f60-9e6f-4085-a46d-0080ca1547e2",
+  "taskId": "a-3edb5b40-c874-49d1-a2cd-e1ffca0ca540",
+  "name": "托管 Spec · 明确待验收版本",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:60180/target?tenant=execution",
+  "status": "interrupted",
+  "gate": "blocked",
+  "createdAt": "2026-10-16T22:03:13.682Z",
+  "updatedAt": "2026-10-16T22:03:16.930Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "托管 Spec · 明确待验收版本",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:60180/target?tenant=execution",
+    "timeoutMs": 30000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "REQ-MANAGED-EXECUTION",
+        "revision": "1",
+        "type": "manual",
+        "title": "健康与业务码合同"
+      },
+      "approved": true,
+      "checks": [
+        {
+          "id": "CHECK-0",
+          "title": "响应符合已批准合同",
+          "method": "GET",
+          "path": "/healthy",
+          "severity": "medium",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": "CHECK-1",
+          "title": "业务码必须为零",
+          "method": "GET",
+          "path": "/bug",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": null,
+  "progress": {
+    "kind": "acceptance-started",
+    "message": "Starting approved read-only API contract acceptance.",
+    "completed": 0,
+    "total": 2,
+    "at": "2026-10-16T22:03:14.701Z"
+  },
+  "managed": {
+    "schemaVersion": 1,
+    "authority": "catalog-approval",
+    "operationId": "ao-0170570b-2617-4745-8210-41c64b2ccd9b",
+    "dispatchId": "ad-2d0a48a2-d7e0-4d92-aef9-bbfa497e1682",
+    "dispatchSha256": "23fd54f44f357f1fee83c89eede26997a3ab01a448d45f09b082676ce54dcfd9",
+    "runId": "ac-0ce07f60-9e6f-4085-a46d-0080ca1547e2",
+    "taskId": "a-3edb5b40-c874-49d1-a2cd-e1ffca0ca540",
+    "catalog": {
+      "generationId": "ag-be4b1d7f-1b03-449a-8015-acaaa5119060",
+      "revision": 8,
+      "headSha256": "bc13bac969781827aef63e389a28c3e2db0bd3b11816780c96338b44bfcae40e"
+    },
+    "projectId": "ap-bfa489fc-6fcf-44bf-9ad0-aac7a2728dc2",
+    "selectionId": "as-0277c60d-2946-4e49-90b1-e940663bcfc7",
+    "approvalId": "aa-1b7c1ebb-1168-40cb-a819-e585cd005c3c",
+    "candidateId": "ab-5b5efc2d-61b9-40e6-8436-1d1986f8ed6d",
+    "contentDigest": "8e0189b7ff2b341a95266d9934dd3c196e3765172c1b99c926ecf6494c31b10b",
+    "source": {
+      "runId": "ac-6bea94cf-b4d7-4632-84bc-cd3a8f0628af",
+      "releaseId": "ar-0c1523c4-aba5-4f71-a986-38a56fcd411c",
+      "sourceSpecApproved": false,
+      "sourcePlanDigest": "94d3ed3b1a6f15479ab1ef2eb49693d704322196cc744fdf14531274cb3bc0ff",
+      "sourceReportDigest": "3cf962d2311d96ca0f7b361402111ec899a73d44d3ee190ecbba08a6782a2bf3",
+      "evidenceManifestDigest": "9e93f27160f2f25c2672dc11ee21d36fdcd5b04fc7b58995511f924e5ef557ea",
+      "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8"
+    },
+    "target": {
+      "releaseId": "ar-f6a2cf87-4130-4449-8b2a-a42f1bd521d5",
+      "targetUrl": "http://127.0.0.1:60180/target?tenant=execution"
+    },
+    "planFingerprint": "a1e483f1455d71fe91197d2391fee67bd4b11cebc4102740213f8ed9f154fb3a",
+    "executor": "engine-owner-spec-v1"
+  },
+  "reasonCode": "CANCELLED",
+  "error": "验收任务已取消；已保留运行现场。",
+  "endedAt": "2026-10-16T22:03:16.930Z"
+}

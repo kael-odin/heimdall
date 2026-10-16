@@ -1,0 +1,27 @@
+{
+  "source": {
+    "id": "MANAGED-READ",
+    "revision": "1",
+    "type": "manual"
+  },
+  "approved": true,
+  "contract": {
+    "id": "READ-0",
+    "title": "健康响应",
+    "method": "GET",
+    "path": "/healthy",
+    "severity": "high",
+    "expect": {
+      "status": 200,
+      "contentType": "application/json",
+      "json": [
+        {
+          "pointer": "/code",
+          "kind": "equals",
+          "value": 0
+        }
+      ]
+    }
+  },
+  "contractFingerprint": "d25e213ee788ec8d4a1ebef8d1067d9ca85024589228c2160fb9cc396d94ab90"
+}

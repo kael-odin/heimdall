@@ -1,0 +1,8 @@
+{
+  "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n... Skipped lines\n\n+ Buffer(10863) [Uint8Array] [\n- Buffer(10864) [Uint8Array] [\n    123,\n    10,\n    32,\n    32,\n    34,\n...\n    125,\n-   10\n  ]\n",
+  "stack": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n... Skipped lines\n\n+ Buffer(10863) [Uint8Array] [\n- Buffer(10864) [Uint8Array] [\n    123,\n    10,\n    32,\n    32,\n    34,\n...\n    125,\n-   10\n  ]\n\n    at file:///C:/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core/scripts/smoke-acceptance-managed-execution.mjs:120:10",
+  "checks": {
+    "realCatalogFreshHttpAdmissionAndRunningUi": true
+  },
+  "pageErrors": []
+}

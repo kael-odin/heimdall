@@ -1,0 +1,71 @@
+{
+  "project": {
+    "id": "ap-366196ed-5a6f-49c2-9a48-c3b95449b622",
+    "name": "托管执行真实接纳夹具",
+    "createdAt": "2026-10-16T21:53:35.801Z"
+  },
+  "sourceRelease": {
+    "id": "ar-63b6d6ca-340e-4ac0-913d-e7996623dab8",
+    "projectId": "ap-366196ed-5a6f-49c2-9a48-c3b95449b622",
+    "label": "草稿需求来源",
+    "targetUrl": "http://127.0.0.1:65488/source?tenant=source",
+    "createdAt": "2026-10-16T21:53:35.823Z"
+  },
+  "targetRelease": {
+    "id": "ar-05e09a90-8e46-4f64-9f18-eb8d6bb40b5c",
+    "projectId": "ap-366196ed-5a6f-49c2-9a48-c3b95449b622",
+    "label": "明确待验收版本",
+    "targetUrl": "http://127.0.0.1:65488/target?tenant=execution",
+    "createdAt": "2026-10-16T21:53:35.845Z"
+  },
+  "sourceRunId": "ac-87d69efb-c15b-46fc-961c-3abd12a0080d",
+  "candidate": {
+    "id": "ab-8c1eecd5-3f4b-4f32-b8fe-7e08002815f5",
+    "projectionVersion": 1,
+    "projectId": "ap-366196ed-5a6f-49c2-9a48-c3b95449b622",
+    "mode": "spec",
+    "source": {
+      "runId": "ac-87d69efb-c15b-46fc-961c-3abd12a0080d",
+      "sourceMode": "spec",
+      "side": "source",
+      "releaseId": "ar-63b6d6ca-340e-4ac0-913d-e7996623dab8"
+    },
+    "sourcePlanDigest": "a875f8c312937dc013c2f73bdd943e99d8c235e5608e40ca6ba2d34e70cc18a2",
+    "sourceReportDigest": "9e7d37ea3b5a50fa8f82a47854385ffe4744c3421a1f225cf939435858a85c32",
+    "evidenceManifestDigest": "9e93f27160f2f25c2672dc11ee21d36fdcd5b04fc7b58995511f924e5ef557ea",
+    "scopeKey": "6f13c98b60a18cc352c777a1a0d4870df6affcf5d16e27cdf4d38d5ae54e7dca",
+    "ruleManifestKey": "4cb1542d2cf7bb5b5bb1980ad405ebafef39e83ee41a0e5d59d601a348aabf2d",
+    "oracleManifestKey": "2208fbd4caaee29a8948a70d75ffd41a8f63fdaf347fe0dba7f9c30362d2e4dc",
+    "environmentKey": "a920fac644bab06ee032ec8df1c0452d2c94139c158ec89a00e708a9442a5d5e",
+    "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+    "contentDigest": "13bbf49a44da43cc82def18e7cf7615c7d5c57d3d31376f8ad05a5376617e3a9",
+    "createdAt": "2026-10-16T21:53:36.028Z"
+  },
+  "approval": {
+    "id": "aa-384c0896-b739-45fa-be21-c3e844c473d3",
+    "projectId": "ap-366196ed-5a6f-49c2-9a48-c3b95449b622",
+    "candidateId": "ab-8c1eecd5-3f4b-4f32-b8fe-7e08002815f5",
+    "contentDigest": "13bbf49a44da43cc82def18e7cf7615c7d5c57d3d31376f8ad05a5376617e3a9",
+    "reason": "已核对完整草稿合同，批准托管执行测试来源",
+    "approvedAt": "2026-10-16T21:53:36.235Z",
+    "actor": {
+      "kind": "local-operator"
+    }
+  },
+  "selection": {
+    "id": "as-f8d7916c-c54b-42cc-a949-880f64a09bd7",
+    "projectId": "ap-366196ed-5a6f-49c2-9a48-c3b95449b622",
+    "mode": "spec",
+    "approvalId": "aa-384c0896-b739-45fa-be21-c3e844c473d3",
+    "previousSelectionId": null,
+    "reason": "本次测试明确选用此批准，并单独确认目标版本",
+    "selectedAt": "2026-10-16T21:53:36.422Z",
+    "actor": {
+      "kind": "local-operator"
+    }
+  },
+  "version": {
+    "expectedGenerationId": "ag-31737cd3-e4d8-493d-83b5-ae3fbd7a893a",
+    "expectedRevision": 8
+  }
+}

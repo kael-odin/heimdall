@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "kind": "ai-assistance",
+  "generatedAt": "2026-10-16T22:08:08.273Z",
+  "summary": "已依据菜单状态证据生成复验建议。",
+  "items": [
+    {
+      "checkId": "route-1-1-mobile-point-1-MENU-OPEN",
+      "explanation": "目标菜单展开后 aria-expanded 仍是 false，与基线和显式断言不一致。",
+      "suggestedFix": "在菜单切换状态时同步 aria-expanded。",
+      "verification": [
+        "在三个视口点击菜单，再检查 aria-expanded=true。"
+      ]
+    },
+    {
+      "checkId": "route-1-2-tablet-point-1-MENU-OPEN",
+      "explanation": "目标菜单展开后 aria-expanded 仍是 false，与基线和显式断言不一致。",
+      "suggestedFix": "在菜单切换状态时同步 aria-expanded。",
+      "verification": [
+        "在三个视口点击菜单，再检查 aria-expanded=true。"
+      ]
+    },
+    {
+      "checkId": "route-1-3-desktop-point-1-MENU-OPEN",
+      "explanation": "目标菜单展开后 aria-expanded 仍是 false，与基线和显式断言不一致。",
+      "suggestedFix": "在菜单切换状态时同步 aria-expanded。",
+      "verification": [
+        "在三个视口点击菜单，再检查 aria-expanded=true。"
+      ]
+    }
+  ],
+  "disclaimer": "AI 建议不改变验收状态、缺陷归因或门禁结论；修复建议需结合原始证据人工复核。",
+  "model": "fixture-model"
+}

@@ -1,0 +1,6 @@
+2026-10-16T22:26:25Z
+Linux kael 6.6.114.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Mon Dec  1 20:46:23 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+{"platform":"linux","arch":"x64","node":"v22.23.3","execPath":"/tmp/heimdall-http-final-20261017.NoKHZs/node-v22.23.3-linux-x64/bin/node"}
+source-filesystem: /dev/sdd ext4   /
+fixture-filesystem: /dev/sdd ext4   /
+archive-sha256: df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de

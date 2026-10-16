@@ -2,6 +2,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
+import { types } from 'node:util';
 import { ACCEPTANCE_ROOT } from './store.mjs';
 import { hashAcceptanceValue } from './identity.mjs';
 import { writeAtomicFileSync } from './atomic-file.mjs';
@@ -64,6 +65,14 @@ function inputOf(input, allowed) {
   return { ...input };
 }
 const missing = entity => { throw error('NOT_FOUND', 404, `${entity}不存在。`); };
+const nativePromise = Promise, nativePromisePrototype = Promise.prototype, nativeThen = Promise.prototype.then;
+const nativeSpecies = Object.getOwnPropertyDescriptor(Promise, Symbol.species).get;
+function consumeAdmissionPromise(value) {
+  if (types.isPromise(value) && Object.getPrototypeOf(value) === nativePromisePrototype
+    && !Object.getOwnPropertyDescriptor(value, 'constructor')
+    && Object.getOwnPropertyDescriptor(nativePromisePrototype, 'constructor')?.value === nativePromise
+    && Object.getOwnPropertyDescriptor(nativePromise, Symbol.species)?.get === nativeSpecies) nativeThen.call(value, undefined, () => {});
+}
 
 /** The supplied owner must fence engine startup/recovery as well as these writes. */
 export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, limits: inputLimits = {},
@@ -518,15 +527,34 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
    * No run/task is created and no execution may be inferred from a saved record.
    * Replaying an operation never prepares a second record or starts any work.
    */
-  function prepareManagedSpecDispatch(projectId, raw) {
-    let confirmation;
-    try { confirmation = managedConfirmation(projectId, raw); }
+  function prepareManagedSpecDispatch(projectId, raw, options = {}) {
+    let confirmation, assertAdmission;
+    try {
+      fields(options, ['assertAdmission'], [], invalid);
+      assertAdmission = options.assertAdmission;
+      if (assertAdmission !== undefined && (typeof assertAdmission !== 'function' || types.isProxy(assertAdmission)
+        || types.isAsyncFunction(assertAdmission) || types.isGeneratorFunction(assertAdmission))) invalid('接纳检查必须同步执行。');
+      confirmation = managedConfirmation(projectId, raw);
+    }
     catch (cause) { return Promise.reject(cause); }
+    const admission = () => {
+      if (!assertAdmission) return;
+      const result = assertAdmission();
+      if (result !== true && result !== undefined) {
+        // Only consume native promises; never assimilate caller thenables.
+        consumeAdmissionPromise(result);
+        throw error('MANAGED_EXECUTION_UNAVAILABLE', 503, '本次执行接纳已停止。');
+      }
+    };
     const { input, operationId, request, requestFingerprint } = confirmation;
     return queue(() => {
+      // This fence precedes namespace initialization and remains inside the
+      // catalog queue: an outer check cannot revoke already queued work.
+      admission();
       const dispatches = dispatchStore(), existing = matchingDispatch(dispatches, confirmation);
       const resultOf = (record, replayed) => ({ record, replayed, state: 'prepared', runCreated: false, executionReady: false });
       if (existing) return resultOf(existing, true);
+      admission();
       const current = readFile('catalog.json'); requireCurrent(current.catalog);
       if (input.expectedGenerationId !== current.catalog.generationId || input.expectedRevision !== current.catalog.revision) {
         throw error('STALE_REVISION', 409, '项目目录已变化，请刷新后重新操作。', {
@@ -540,6 +568,7 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
         catalog: { generationId: current.catalog.generationId, revision: current.catalog.revision, headSha256: sha256(current.bytes) },
         ...context, executor: 'engine-owner-spec-v1' };
       const record = dispatches.publish(envelope, { beforePublish() {
+        admission();
         assertOwned(); actualRoot();
         checkUnchanged('catalog.json', current); checkUnchanged('catalog.previous.json', previous);
         const verified = managedContext(current.catalog, projectId, input);
@@ -548,6 +577,7 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
         }
         assertOwned(); actualRoot();
         checkUnchanged('catalog.json', current); checkUnchanged('catalog.previous.json', previous);
+        admission();
       } });
       return resultOf(record, false);
     });

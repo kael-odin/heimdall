@@ -1,6 +1,6 @@
-# 托管 Spec：合同重建、固定身份与核验读取
+# 托管 Spec：合同重建、真实执行与核验结果
 
-本阶段从项目当前明确选用的 Spec 需求重建计划，为明确目标版本保存不可变派发准备，并提供 owner 约束的固定身份存储。已完成记录现可经核验读取、下载证据及参与显式运行对比较；HTTP / 控制台也可读取安全投影。引擎启动已接入真实 owner 下的保守中断恢复；现有[需求基线界面](acceptance-baseline.md)仍返回 `executionReady:false`，托管执行入口与 worker 尚未接入。
+本阶段从项目当前明确选用的 Spec 需求重建计划，为明确目标版本保存不可变派发准备，并由持有 owner 的引擎执行真实只读 API 检查。完成记录可经核验读取、下载证据及参与显式运行对比较；控制台可查看运行进展、原门禁与中断结果。新增专用 HTTP 执行入口；现有[需求基线界面](acceptance-baseline.md)的候选、批准、选用响应仍返回 `executionReady:false`，这些动作不会自动执行。明确目标版本的执行按钮继续后续实施。
 
 ## 已实现的准备合同
 
@@ -48,7 +48,7 @@ sidecar 使用独立 schemaVersion=1，位于 owner 根内的 `managed-spec-disp
 
 HTTP 列表与详情只返回安全 DTO，managed 记录明确带 `triageSupported:false`；不暴露 plan、完整 envelope、私有 receipt 或 owner nonce，基础设施错误使用脱敏说明。控制台支持查看状态、原门禁、引用证据与下载，尚不能发起托管执行。真实浏览器与故障验证见[托管读取验收](../audits/2026-10-17/acceptance-managed-reading.md)。
 
-## 后续执行边界
+## 启动恢复与执行边界
 
 引擎取得唯一 owner 后、接纳任务前，调用 `recoverOwnedAcceptanceRuns` 一次。恢复有界枚举实际 run 与预留 run 的并集，固定目录身份、dispatch namespace、manifest 和 legacy 两份 head；完整零写预检通过后，先中断 managed，再处理 legacy。只将可信的 running 收束为 `interrupted / blocked / ENGINE_RESTARTED`，不恢复请求或启动队列。
 
@@ -56,7 +56,7 @@ reserved managed 的恢复只消费 dispatch 和 manifest，partial report / evi
 
 恢复固定原始 manifest 的比较写入令牌，不能采用预检之后改变的新 running。上限为 1024 个 run、4096 个 root entry、4096 份捕获文件、256 MiB 捕获 bytes、每份 JSON 8 MiB、128 次收束；调用方仅可收紧。可预见的数量与终态字节预算失败在首次写入前拒绝。多 run 发布不构成事务，中途故障会保留已经提交的中断事实、准确计数与可能提交标识，并停止后续处理。
 
-`GET /api/acceptance/recovery` 返回脱敏 readiness 和成功计数；这里的 ready 只表示启动恢复完成，不能代替仍为 false 的托管 `executionReady`。恢复受阻时保留目录诊断读取，所有验收 HTTP 写操作返回 `503 / ACCEPTANCE_RECOVERY_BLOCKED`，修复现场后需重启，运行中不自动重试。旧 root-only `recoverAcceptanceRuns` 也执行严格完整预检，只处理 legacy，不能获得 managed 写权限。实现和实际证据见[启动恢复验收](../audits/2026-10-17/acceptance-owned-recovery.md)。
+`GET /api/acceptance/recovery` 返回脱敏 readiness 和成功计数；这里的 ready 只表示启动恢复完成。执行接纳状态另由 `GET /api/acceptance/execution` 返回。恢复受阻时保留目录诊断读取，所有验收 HTTP 写操作返回 `503 / ACCEPTANCE_RECOVERY_BLOCKED`，修复现场后需重启，运行中不自动重试。旧 root-only `recoverAcceptanceRuns` 也执行严格完整预检，只处理 legacy，不能获得 managed 写权限。实现和实际证据见[启动恢复验收](../audits/2026-10-17/acceptance-owned-recovery.md)。
 
 执行控制基础已为私有 `runSpecAcceptance` 增加可选 `signal` 与同步 `assertActive`：控制失效停止当前请求及后续副作用，事件 callback 的等待也能取消，普通请求 timeout 保持原判定。私有 `catalog.readManagedSpecDispatch(projectId,input)` 则按完整原确认只读核对 record / null，不创建目录、不准备、不执行。null 不预留槽；新入口仍需在统一启动队列内再次核对。实现和限制见[执行控制验收](../audits/2026-10-16/acceptance-spec-execution-control.md)。
 
@@ -64,8 +64,38 @@ reserved managed 的恢复只消费 dispatch 和 manifest，partial report / evi
 
 只读来源关联层保留严格原字节 provenance / linkage 校验。已迁移的读取入口可核验 managed 身份；普通 CLI、旧 mutation / finish / path artifact、candidate 与 triage 仍显式拒绝 managed / reserved 身份，删除 manifest / report 的托管标记也不能降级绕过。managed 完成运行仍不能经旧目录 bind 成新的需求来源。坏派发记录阻塞相关读取与恢复写入并保留原件，原隔离切片见[来源关联与隔离验收](../audits/2026-10-17/acceptance-managed-provenance.md)。
 
-B2.2-b 后续先接持有 owner 的进程内异步 Spec executor、统一运行槽、取消 / watchdog / shutdown 与 task mirror，candidate / triage 消费者另行迁移。只有新操作当次的受控流程可以开始执行；已存在的 prepared 记录不会因为扫描而启动。恢复不自动重发已中断请求，不声称远端 exactly-once。
+B2.2-b 已接持有 owner 的进程内异步 Spec executor，与普通验收共用一个运行槽。只有新操作当次准备正常返回、且仍持有原接纳许可的调用链可以开始执行；旧 prepared、查询、重试和重启均不能启动。取消、总时限、无进展时限和 shutdown 共用停止通道；runner 的完成事件只是进展，严格 writer 发布 completed manifest 后才形成完成事实。BUG 报告仍保留 failed gate，同时任务正常结束为 done。
 
-B2.2-c 再提供明确目标版本的执行界面与真实浏览器执行闭环。当前浏览器流程读取由显式内部 runner / writer 生成的记录，并验证启动时的保守中断；引擎 executor 尚未验收。Browser 基线、写请求、鉴权会话、持久 BUG 工单和自动关闭缺陷继续另行实施。整个阶段保持 `executionReady:false`。
+## 专用 HTTP 执行合同
+
+| 接口 | 用途 |
+| --- | --- |
+| `GET /api/acceptance/execution` | enabled / ready、busy、closing、blocked、运行槽身份及启动恢复状态；methods 表示允许目标请求 GET / HEAD |
+| `POST /api/acceptance/projects/:projectId/spec-executions` | 对完整新确认接纳一次执行；首次返回 202，已存在操作只读返回 200 / replayed |
+| `GET /api/acceptance/projects/:projectId/spec-executions/:operationId` | 读取 prepared / running / completed / failed / interrupted；不会重试、恢复或补发 |
+| `POST /api/jobs/:taskId/cancel` | 请求停止，返回 cancelRequested；最终状态由执行结束和受控收尾决定 |
+
+POST 只接以下确认，不接 plan、URL、expected、approved、runId / taskId 或预算。body 上限 16 KiB，必须是严格 UTF-8 JSON 对象；query 只允许单个鉴权 token，鉴权也可沿用请求头或会话。
+
+```json
+{
+  "operationId": "ao-<uuid>",
+  "expectedGenerationId": "<当前目录 generationId>",
+  "expectedRevision": 1,
+  "selectionId": "<当前 selection id>",
+  "contentDigest": "<candidate contentDigest>",
+  "targetReleaseId": "<明确目标版本 id>"
+}
+```
+
+相同 operationId 的完整确认核对先于 busy 检查，因此占槽期间仍可查询旧操作。同进程并发同键合并；不同确认返回 409 / IDEMPOTENCY_CONFLICT。只有确认记录不存在时才预留槽；其他新验收返回 409 / ACCEPTANCE_BUSY。目录队列首行、准备前和最终发布均核对原接纳许可，队列内撤销不能偷偷准备。
+
+固定 taskId 在 run 创建前核对内存与可用任务库，冲突或查询故障不能被当作空位。任务库和 SSE 仅为可降级投影；`/api/jobs` 的 store 为 null 时表示仅内存。重启只从核验过的运行事实对齐任务历史：完成 BUG 对应 done，取消对应 cancelled，重启中断对应 interrupted。绑定、报告或证据无法核验时，任务投影标记 failed / MANAGED_MIRROR_UNAVAILABLE；原运行不被改写。
+
+不确定发布不重复 finish / settle，也不放行新验收。引擎先仅读 manifest，只有完整完成快照核验后才投影完成，blocked latch 保留到重启。owner 或原目录 / dispatch / head 身份丢失停止副作用；丢失 owner 不进行收尾写入。shutdown 先关闭接纳、停止请求与子进程，再等待同一 finished，最后关闭 jobs 与退出；超出宽限直接退出整个进程。
+
+完整请求 body 已被接纳后，HTTP 断连不会取消执行。响应丢失应携带原 operationId 查询；不完整 body 不接纳。此机制不承诺远端 exactly-once。实现与真实 HTTP / CDP 证据见[托管执行验收](../audits/2026-10-17/acceptance-managed-execution.md)。
+
+B2.2-c 继续提供明确目标版本的执行界面。Browser 基线、写请求、鉴权会话、持久 BUG 工单和自动关闭缺陷继续后续实施；candidate / triage 仍隔离，原 source 草稿、报告和门禁保留。
 
 实现与定向故障证据见[准备内核验收](../audits/2026-10-16/acceptance-managed-spec-preparation.md)。

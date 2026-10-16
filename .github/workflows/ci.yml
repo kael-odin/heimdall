@@ -70,6 +70,8 @@ jobs:
         run: pnpm acceptance:managed:read:smoke
       - name: Owned acceptance recovery (startup barrier, restart and zero execution)
         run: pnpm acceptance:owned:recovery:smoke
+      - name: Managed Spec execution (fresh admission, real runner, BUG and cancel)
+        run: pnpm acceptance:managed:execute:smoke
       - name: Preserve acceptance smoke failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -83,6 +85,9 @@ jobs:
             core/workspace/_runs/acceptance-console/acceptance-failure.json
             core/workspace/_runs/acceptance-console/acceptance-failure.png
             core/workspace/_runs/acceptance-console/engine-error.log
+            core/workspace/_runs/managed-execution-*/failure.json
+            core/workspace/_runs/managed-execution-*/failure.png
+            core/workspace/_runs/managed-execution-*/engine-*.log
           if-no-files-found: ignore
           retention-days: 7
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。

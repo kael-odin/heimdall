@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-96e2c9fb-8905-4c32-b438-253ccbdba37a",
+  "taskId": "a-ae967a5a-755f-4c37-8b32-96429144f637",
+  "name": "本次：额度修复且稳定接口回归",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:51852/",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-16T22:08:30.435Z",
+  "updatedAt": "2026-10-16T22:08:30.974Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "本次：额度修复且稳定接口回归",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:51852/",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "comparison-api-fixture",
+        "revision": "v1",
+        "type": "manual"
+      },
+      "approved": true,
+      "checks": [
+        {
+          "id": "QUOTA",
+          "title": "额度接口修复",
+          "method": "GET",
+          "path": "/quota",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": "STABLE",
+          "title": "稳定接口保持通过",
+          "method": "GET",
+          "path": "/stable",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": {
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 1,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 2,
+      "total": 2,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-16T22:08:30.942Z",
+  "error": null,
+  "reportSha256": "05c4cd0dc627e8d8938b74d1619e3570e331b1261924cc8b16e72ec0c58c7168"
+}

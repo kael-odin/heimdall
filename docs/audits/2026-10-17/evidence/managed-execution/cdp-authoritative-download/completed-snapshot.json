@@ -1,0 +1,493 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "runId": "ac-c18599f5-7810-43f4-b1ae-d726c8f07591",
+    "taskId": "a-6cdd2a59-4a99-4aff-9acb-d2aea189445b",
+    "name": "托管 Spec · 明确待验收版本",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:60180/target?tenant=execution",
+    "status": "completed",
+    "gate": "failed",
+    "createdAt": "2026-10-16T22:03:00.967Z",
+    "updatedAt": "2026-10-16T22:03:07.892Z",
+    "plan": {
+      "schemaVersion": 1,
+      "name": "托管 Spec · 明确待验收版本",
+      "mode": "spec",
+      "targetUrl": "http://127.0.0.1:60180/target?tenant=execution",
+      "timeoutMs": 30000,
+      "maxResponseBytes": 262144,
+      "spec": {
+        "source": {
+          "id": "REQ-MANAGED-EXECUTION",
+          "revision": "1",
+          "type": "manual",
+          "title": "健康与业务码合同"
+        },
+        "approved": true,
+        "checks": [
+          {
+            "id": "CHECK-0",
+            "title": "响应符合已批准合同",
+            "method": "GET",
+            "path": "/healthy",
+            "severity": "medium",
+            "expect": {
+              "status": 200,
+              "contentType": "application/json",
+              "json": [
+                {
+                  "pointer": "/code",
+                  "kind": "equals",
+                  "value": 0
+                }
+              ]
+            }
+          },
+          {
+            "id": "CHECK-1",
+            "title": "业务码必须为零",
+            "method": "GET",
+            "path": "/bug",
+            "severity": "high",
+            "expect": {
+              "status": 200,
+              "contentType": "application/json",
+              "json": [
+                {
+                  "pointer": "/code",
+                  "kind": "equals",
+                  "value": 0
+                }
+              ]
+            }
+          }
+        ],
+        "omissions": []
+      }
+    },
+    "summary": {
+      "total": 2,
+      "passed": 1,
+      "failed": 1,
+      "blocked": 0,
+      "needsReview": 0,
+      "bugs": 1,
+      "baselineFailed": 0,
+      "missing": 0,
+      "invalid": 0,
+      "coverage": {
+        "measured": 2,
+        "total": 2,
+        "ratio": 1
+      },
+      "dimensions": {
+        "visual": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        },
+        "structure": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        },
+        "behavior": {
+          "total": 2,
+          "passed": 1,
+          "failed": 1,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        },
+        "health": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        }
+      }
+    },
+    "progress": {
+      "kind": "acceptance-completed"
+    },
+    "managed": {
+      "schemaVersion": 1,
+      "authority": "catalog-approval",
+      "operationId": "ao-1704aebe-b838-4a8a-8211-d884babc7a16",
+      "dispatchId": "ad-be1e5cec-0f47-48e5-a669-94e1b1a9f04b",
+      "dispatchSha256": "bdc01e3bc142d34ce430204b45a7e3f684bcbedbe090c07499dda13558d9db14",
+      "runId": "ac-c18599f5-7810-43f4-b1ae-d726c8f07591",
+      "taskId": "a-6cdd2a59-4a99-4aff-9acb-d2aea189445b",
+      "catalog": {
+        "generationId": "ag-be4b1d7f-1b03-449a-8015-acaaa5119060",
+        "revision": 8,
+        "headSha256": "bc13bac969781827aef63e389a28c3e2db0bd3b11816780c96338b44bfcae40e"
+      },
+      "projectId": "ap-bfa489fc-6fcf-44bf-9ad0-aac7a2728dc2",
+      "selectionId": "as-0277c60d-2946-4e49-90b1-e940663bcfc7",
+      "approvalId": "aa-1b7c1ebb-1168-40cb-a819-e585cd005c3c",
+      "candidateId": "ab-5b5efc2d-61b9-40e6-8436-1d1986f8ed6d",
+      "contentDigest": "8e0189b7ff2b341a95266d9934dd3c196e3765172c1b99c926ecf6494c31b10b",
+      "source": {
+        "runId": "ac-6bea94cf-b4d7-4632-84bc-cd3a8f0628af",
+        "releaseId": "ar-0c1523c4-aba5-4f71-a986-38a56fcd411c",
+        "sourceSpecApproved": false,
+        "sourcePlanDigest": "94d3ed3b1a6f15479ab1ef2eb49693d704322196cc744fdf14531274cb3bc0ff",
+        "sourceReportDigest": "3cf962d2311d96ca0f7b361402111ec899a73d44d3ee190ecbba08a6782a2bf3",
+        "evidenceManifestDigest": "9e93f27160f2f25c2672dc11ee21d36fdcd5b04fc7b58995511f924e5ef557ea",
+        "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8"
+      },
+      "target": {
+        "releaseId": "ar-f6a2cf87-4130-4449-8b2a-a42f1bd521d5",
+        "targetUrl": "http://127.0.0.1:60180/target?tenant=execution"
+      },
+      "planFingerprint": "a1e483f1455d71fe91197d2391fee67bd4b11cebc4102740213f8ed9f154fb3a",
+      "executor": "engine-owner-spec-v1"
+    },
+    "endedAt": "2026-10-16T22:03:07.220Z",
+    "error": null,
+    "reportSha256": "ac740522f1ba1a54df0fcb63e5710e69ea432c2683c925295835ca7f38d4d441"
+  },
+  "report": {
+    "schemaVersion": 1,
+    "runId": "ac-c18599f5-7810-43f4-b1ae-d726c8f07591",
+    "name": "托管 Spec · 明确待验收版本",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:60180/target?tenant=execution",
+    "startedAt": "2026-10-16T22:03:01.758Z",
+    "endedAt": "2026-10-16T22:03:07.220Z",
+    "status": "completed",
+    "checks": [
+      {
+        "id": "spec-1-CHECK-0",
+        "title": "响应符合已批准合同",
+        "route": "/healthy",
+        "viewport": "api",
+        "dimension": "behavior",
+        "severity": "medium",
+        "identity": {
+          "version": 1,
+          "kind": "spec",
+          "facet": "contract",
+          "caseKey": "0b54428913222299ae26466f27a372beb97a8172a4abc4295f347375e1244c99",
+          "contextKey": "8ed95b313387dff805d53da7d3643474098582817aabea95048065d9f327f9d5",
+          "ruleKey": "8581b86b8d3e9e0acc2cdace22b547869970fc1a5e4086040157809992fb121a",
+          "oracleKey": "57cc049be0dd8638618930bd37dd1b3b76193440cb9ccfe4426982dcc0435f55",
+          "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+          "viewport": "api",
+          "contractId": "CHECK-0",
+          "method": "GET"
+        },
+        "oracle": {
+          "kind": "approved-spec",
+          "source": "REQ-MANAGED-EXECUTION",
+          "revision": "1",
+          "sourceFingerprint": "bb4de9250608bd5d6b1515e0d95d086b34bf62a17da01cbf0a72fb2ed09a308e",
+          "documentSha256": null,
+          "contractFingerprint": "73fb6ba9970764becca68eb2602eb6dbdbfdea8d9c758ecc2b3663e5bcec10d4"
+        },
+        "evidenceLevel": "http-reproduced",
+        "expected": {
+          "status": 200,
+          "contentType": "application/json",
+          "json": [
+            {
+              "pointer": "/code",
+              "kind": "equals",
+              "value": 0
+            }
+          ]
+        },
+        "reproduction": [
+          "Use requirement REQ-MANAGED-EXECUTION at revision 1.",
+          "GET http://127.0.0.1:60180/target/healthy without cookies or credentials; redirects are not followed.",
+          "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+        ],
+        "status": "passed",
+        "verdict": "match",
+        "evaluationLimited": false,
+        "actual": {
+          "requested": true,
+          "httpStatus": 200,
+          "contentType": "application/json",
+          "redirectNotFollowed": false,
+          "hasLocation": false,
+          "mismatches": [],
+          "bytes": 10,
+          "bodySha256": "7a97b9b4d758a3929b8a2be53fbe189c9ba9378d6fbb8190d37f7cc14f5cf5d3",
+          "assertions": [
+            {
+              "pointer": "/code",
+              "kind": "equals",
+              "value": 0,
+              "passed": true,
+              "actual": 0,
+              "exists": true
+            }
+          ]
+        },
+        "evidence": {
+          "contract": "spec-1-CHECK-0-contract.json",
+          "request": "spec-1-CHECK-0-request.json",
+          "response": "spec-1-CHECK-0-response.json"
+        }
+      },
+      {
+        "id": "spec-2-CHECK-1",
+        "title": "业务码必须为零",
+        "route": "/bug",
+        "viewport": "api",
+        "dimension": "behavior",
+        "severity": "high",
+        "identity": {
+          "version": 1,
+          "kind": "spec",
+          "facet": "contract",
+          "caseKey": "c083d011cf105a92a0ba90e89276d99b69fddef2001d3b4acd84b3ed6df5dca0",
+          "contextKey": "0453af1247f4646ae243225f8b67fa385bcb4d098423f0479f2751cb3fc56663",
+          "ruleKey": "ef1bfc23c091ebc188c52cd5ca91b2f36073007fc9fef97c3593d23a863f8c0e",
+          "oracleKey": "df909597758b8dcb6bfb4e9c05f709ace3246f54f072fb66e0a3bb0aaad8f890",
+          "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+          "viewport": "api",
+          "contractId": "CHECK-1",
+          "method": "GET"
+        },
+        "oracle": {
+          "kind": "approved-spec",
+          "source": "REQ-MANAGED-EXECUTION",
+          "revision": "1",
+          "sourceFingerprint": "bb4de9250608bd5d6b1515e0d95d086b34bf62a17da01cbf0a72fb2ed09a308e",
+          "documentSha256": null,
+          "contractFingerprint": "73fb6ba9970764becca68eb2602eb6dbdbfdea8d9c758ecc2b3663e5bcec10d4"
+        },
+        "evidenceLevel": "http-reproduced",
+        "expected": {
+          "status": 200,
+          "contentType": "application/json",
+          "json": [
+            {
+              "pointer": "/code",
+              "kind": "equals",
+              "value": 0
+            }
+          ]
+        },
+        "reproduction": [
+          "Use requirement REQ-MANAGED-EXECUTION at revision 1.",
+          "GET http://127.0.0.1:60180/target/bug without cookies or credentials; redirects are not followed.",
+          "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+        ],
+        "status": "failed",
+        "verdict": "bug",
+        "evaluationLimited": false,
+        "actual": {
+          "requested": true,
+          "httpStatus": 200,
+          "contentType": "application/json",
+          "redirectNotFollowed": false,
+          "hasLocation": false,
+          "mismatches": [
+            {
+              "kind": "equals",
+              "pointer": "/code",
+              "value": 0,
+              "passed": false,
+              "actual": 9,
+              "exists": true
+            }
+          ],
+          "bytes": 10,
+          "bodySha256": "006bc09a1498874b1e271f6c8cf4cb88ceb7c2b5b6e42f684a3dd5157bb15c45",
+          "assertions": [
+            {
+              "pointer": "/code",
+              "kind": "equals",
+              "value": 0,
+              "passed": false,
+              "actual": 9,
+              "exists": true
+            }
+          ]
+        },
+        "evidence": {
+          "contract": "spec-2-CHECK-1-contract.json",
+          "request": "spec-2-CHECK-1-request.json",
+          "response": "spec-2-CHECK-1-response.json"
+        }
+      }
+    ],
+    "coverage": {
+      "planned": 2,
+      "completed": 2,
+      "capped": false
+    },
+    "specSource": {
+      "id": "REQ-MANAGED-EXECUTION",
+      "revision": "1",
+      "type": "manual",
+      "title": "健康与业务码合同"
+    },
+    "sourceFingerprint": "bb4de9250608bd5d6b1515e0d95d086b34bf62a17da01cbf0a72fb2ed09a308e",
+    "contractFingerprint": "73fb6ba9970764becca68eb2602eb6dbdbfdea8d9c758ecc2b3663e5bcec10d4",
+    "specApproval": {
+      "approved": true,
+      "recordedAt": "2026-10-16T22:03:01.758Z"
+    },
+    "safety": {
+      "readOnly": true,
+      "allowedMethods": [
+        "GET",
+        "HEAD"
+      ],
+      "redirects": "not-followed",
+      "credentials": "none",
+      "requests": 2
+    },
+    "environment": {
+      "runner": "node-fetch",
+      "platform": "win32",
+      "arch": "x64",
+      "nodeVersion": "v25.2.1",
+      "maxResponseBytes": 262144,
+      "timeoutMs": 30000
+    },
+    "scope": "仅验收明确批准的 GET/HEAD 及声明的 HTTP、MIME、JSON 字段/响应 schema；不使用会话、不跟随重定向。候选、未覆盖契约、超时、超响应/验证预算均不能通过；无视觉、数据库、写操作、认证或任意业务状态机保证。来源指纹用于追溯，不代表系统已经证明原需求正确。",
+    "taskId": "a-6cdd2a59-4a99-4aff-9acb-d2aea189445b",
+    "managed": {
+      "schemaVersion": 1,
+      "authority": "catalog-approval",
+      "operationId": "ao-1704aebe-b838-4a8a-8211-d884babc7a16",
+      "dispatchId": "ad-be1e5cec-0f47-48e5-a669-94e1b1a9f04b",
+      "dispatchSha256": "bdc01e3bc142d34ce430204b45a7e3f684bcbedbe090c07499dda13558d9db14",
+      "runId": "ac-c18599f5-7810-43f4-b1ae-d726c8f07591",
+      "taskId": "a-6cdd2a59-4a99-4aff-9acb-d2aea189445b",
+      "catalog": {
+        "generationId": "ag-be4b1d7f-1b03-449a-8015-acaaa5119060",
+        "revision": 8,
+        "headSha256": "bc13bac969781827aef63e389a28c3e2db0bd3b11816780c96338b44bfcae40e"
+      },
+      "projectId": "ap-bfa489fc-6fcf-44bf-9ad0-aac7a2728dc2",
+      "selectionId": "as-0277c60d-2946-4e49-90b1-e940663bcfc7",
+      "approvalId": "aa-1b7c1ebb-1168-40cb-a819-e585cd005c3c",
+      "candidateId": "ab-5b5efc2d-61b9-40e6-8436-1d1986f8ed6d",
+      "contentDigest": "8e0189b7ff2b341a95266d9934dd3c196e3765172c1b99c926ecf6494c31b10b",
+      "source": {
+        "runId": "ac-6bea94cf-b4d7-4632-84bc-cd3a8f0628af",
+        "releaseId": "ar-0c1523c4-aba5-4f71-a986-38a56fcd411c",
+        "sourceSpecApproved": false,
+        "sourcePlanDigest": "94d3ed3b1a6f15479ab1ef2eb49693d704322196cc744fdf14531274cb3bc0ff",
+        "sourceReportDigest": "3cf962d2311d96ca0f7b361402111ec899a73d44d3ee190ecbba08a6782a2bf3",
+        "evidenceManifestDigest": "9e93f27160f2f25c2672dc11ee21d36fdcd5b04fc7b58995511f924e5ef557ea",
+        "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8"
+      },
+      "target": {
+        "releaseId": "ar-f6a2cf87-4130-4449-8b2a-a42f1bd521d5",
+        "targetUrl": "http://127.0.0.1:60180/target?tenant=execution"
+      },
+      "planFingerprint": "a1e483f1455d71fe91197d2391fee67bd4b11cebc4102740213f8ed9f154fb3a",
+      "executor": "engine-owner-spec-v1"
+    },
+    "planFingerprint": "a1e483f1455d71fe91197d2391fee67bd4b11cebc4102740213f8ed9f154fb3a",
+    "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+    "evidenceManifest": [
+      {
+        "file": "spec-1-CHECK-0-contract.json",
+        "bytes": 617,
+        "sha256": "a7cb6256ef137a6902345101aac2dba15e8802e9d04ba844585ec3c398c5b804"
+      },
+      {
+        "file": "spec-1-CHECK-0-request.json",
+        "bytes": 174,
+        "sha256": "26d567c52bb9e55b3e83bcfaef69fcb41989b114987a5e89c5d1f1ccce4bd0cc"
+      },
+      {
+        "file": "spec-1-CHECK-0-response.json",
+        "bytes": 453,
+        "sha256": "5792fd093a38e5e32d22dfb4fb34ffd2123ae3c56f5d741c979f2508955d3af2"
+      },
+      {
+        "file": "spec-2-CHECK-1-contract.json",
+        "bytes": 605,
+        "sha256": "b9b89198ba914e4e499f4c4259098c91b9ef0c202aa76912f97ff7bd0455cf38"
+      },
+      {
+        "file": "spec-2-CHECK-1-request.json",
+        "bytes": 170,
+        "sha256": "746833a36dadb97acc1fe739b4923c420c213387a38ed9668800b8495869bf40"
+      },
+      {
+        "file": "spec-2-CHECK-1-response.json",
+        "bytes": 600,
+        "sha256": "b86f30d2ade980f2361a9ba7445171967c30567f5f902c3854d10ee1974ba18d"
+      }
+    ],
+    "gate": "failed",
+    "summary": {
+      "total": 2,
+      "passed": 1,
+      "failed": 1,
+      "blocked": 0,
+      "needsReview": 0,
+      "bugs": 1,
+      "baselineFailed": 0,
+      "missing": 0,
+      "invalid": 0,
+      "coverage": {
+        "measured": 2,
+        "total": 2,
+        "ratio": 1
+      },
+      "dimensions": {
+        "visual": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        },
+        "structure": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        },
+        "behavior": {
+          "total": 2,
+          "passed": 1,
+          "failed": 1,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        },
+        "health": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        }
+      }
+    }
+  },
+  "integrity": {
+    "valid": true,
+    "evidenceVerified": true,
+    "errors": [],
+    "verifiedFiles": 6,
+    "verifiedBytes": 2619,
+    "reportSha256": "ac740522f1ba1a54df0fcb63e5710e69ea432c2683c925295835ca7f38d4d441"
+  }
+}

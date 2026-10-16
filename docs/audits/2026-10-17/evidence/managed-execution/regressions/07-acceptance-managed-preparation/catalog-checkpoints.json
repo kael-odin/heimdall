@@ -1,0 +1,57 @@
+[
+  {
+    "phase": "before-prepare",
+    "catalog.json": {
+      "bytes": 21771,
+      "sha256": "f80b3562cd199a0bee1c1daa221f9d489ee8b42cd5d00dff2cc62ebe5fca9ea7"
+    },
+    "catalog.previous.json": {
+      "bytes": 20930,
+      "sha256": "4f5f8ec7528082a190672a8a7fb9e1bf7bebfae33aa15d651ca4e55f4043a263"
+    }
+  },
+  {
+    "phase": "after-prepare",
+    "catalog.json": {
+      "bytes": 21771,
+      "sha256": "f80b3562cd199a0bee1c1daa221f9d489ee8b42cd5d00dff2cc62ebe5fca9ea7"
+    },
+    "catalog.previous.json": {
+      "bytes": 20930,
+      "sha256": "4f5f8ec7528082a190672a8a7fb9e1bf7bebfae33aa15d651ca4e55f4043a263"
+    }
+  },
+  {
+    "phase": "after-replay",
+    "catalog.json": {
+      "bytes": 21771,
+      "sha256": "f80b3562cd199a0bee1c1daa221f9d489ee8b42cd5d00dff2cc62ebe5fca9ea7"
+    },
+    "catalog.previous.json": {
+      "bytes": 20930,
+      "sha256": "4f5f8ec7528082a190672a8a7fb9e1bf7bebfae33aa15d651ca4e55f4043a263"
+    }
+  },
+  {
+    "phase": "after-cancellation-and-move",
+    "catalog.json": {
+      "bytes": 22693,
+      "sha256": "530695369aaf00b9e05edd334cecae316f196134d6fa2c96013f98d02ea89eeb"
+    },
+    "catalog.previous.json": {
+      "bytes": 21771,
+      "sha256": "f80b3562cd199a0bee1c1daa221f9d489ee8b42cd5d00dff2cc62ebe5fca9ea7"
+    }
+  },
+  {
+    "phase": "after-reopen-replay",
+    "catalog.json": {
+      "bytes": 22693,
+      "sha256": "530695369aaf00b9e05edd334cecae316f196134d6fa2c96013f98d02ea89eeb"
+    },
+    "catalog.previous.json": {
+      "bytes": 21771,
+      "sha256": "f80b3562cd199a0bee1c1daa221f9d489ee8b42cd5d00dff2cc62ebe5fca9ea7"
+    }
+  }
+]

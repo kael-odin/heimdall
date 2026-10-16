@@ -1,0 +1,36 @@
+{
+  "markdown": "a773eb26a8d3d0a8b6a7595d77119b865909b993676a77244f989ecfc4c61a6b",
+  "json": "78110657a178950e0e56c1b570d762944f48a25fb0ca54bcbc275bc68aef8031",
+  "evidence": [
+    {
+      "file": "spec-1-CHECK-0-contract.json",
+      "sha256": "a7cb6256ef137a6902345101aac2dba15e8802e9d04ba844585ec3c398c5b804",
+      "size": 617
+    },
+    {
+      "file": "spec-1-CHECK-0-request.json",
+      "sha256": "4f394bfc9901c6eab6b6935f6f0c69abf97514d0f0a5c3eb955ae3d8466626cd",
+      "size": 174
+    },
+    {
+      "file": "spec-1-CHECK-0-response.json",
+      "sha256": "5792fd093a38e5e32d22dfb4fb34ffd2123ae3c56f5d741c979f2508955d3af2",
+      "size": 453
+    },
+    {
+      "file": "spec-2-CHECK-1-contract.json",
+      "sha256": "b9b89198ba914e4e499f4c4259098c91b9ef0c202aa76912f97ff7bd0455cf38",
+      "size": 605
+    },
+    {
+      "file": "spec-2-CHECK-1-request.json",
+      "sha256": "e00d5c86b93ddcfc57a39a0187ba167ee76099f78ceb854ed9bdc036a1420b10",
+      "size": 170
+    },
+    {
+      "file": "spec-2-CHECK-1-response.json",
+      "sha256": "b86f30d2ade980f2361a9ba7445171967c30567f5f902c3854d10ee1974ba18d",
+      "size": 600
+    }
+  ]
+}

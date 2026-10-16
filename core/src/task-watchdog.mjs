@@ -18,13 +18,14 @@ export function createWatchdog(opts = {}) {
   } = opts;
 
   let killed = null;
+  let stopped = false;
   let hardTimer = null;
   let stallTimer = null;
 
-  const fire = (reason) => { if (!killed) { killed = reason; onKill(reason); } };
+  const fire = (reason) => { if (!stopped && !killed) { killed = reason; onKill(reason); } };
 
   const armStall = () => {
-    if (stallMs > 0) stallTimer = setTimer(() => fire('stalled'), stallMs);
+    if (!stopped && stallMs > 0) stallTimer = setTimer(() => fire('stalled'), stallMs);
   };
 
   if (timeoutMs > 0) hardTimer = setTimer(() => fire('timeout'), timeoutMs);
@@ -33,12 +34,13 @@ export function createWatchdog(opts = {}) {
   return {
     /** 有进展：重新计无进展的时 */
     touch() {
-      if (killed || stallMs <= 0) return;
+      if (stopped || killed || stallMs <= 0) return;
       if (stallTimer) clearTimer(stallTimer);
       armStall();
     },
     /** 任务结束：停掉所有计时 */
     stop() {
+      stopped = true;
       if (hardTimer) clearTimer(hardTimer);
       if (stallTimer) clearTimer(stallTimer);
       hardTimer = stallTimer = null;

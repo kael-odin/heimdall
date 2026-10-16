@@ -87,6 +87,57 @@ test('watchdog: stop 之后不再开火', () => {
   assert.deepEqual(fired, []);
 });
 
+test('watchdog: stop 永久停用，之后的 touch 不会重建无进展计时', () => {
+  const c = fakeClock();
+  const fired = [];
+  const w = createWatchdog({ timeoutMs: 1000, stallMs: 200, setTimer: c.setTimer, clearTimer: c.clearTimer, onKill: (r) => fired.push(r) });
+  c.advanceTo(100);
+  w.stop();
+  for (const t of [150, 500, 1000, 10_000]) { c.advanceTo(t); w.touch(); }
+  c.advanceTo(20_000);
+  assert.deepEqual(fired, []);
+  assert.equal(w.killed, null);
+});
+
+test('watchdog: stop 后已经排队的迟到回调也不能开火或被 touch 复活', () => {
+  const callbacks = [], cleared = [], fired = [];
+  const w = createWatchdog({ timeoutMs: 1000, stallMs: 200,
+    setTimer(fn) { callbacks.push(fn); return callbacks.length; }, clearTimer(id) { cleared.push(id); },
+    onKill(reason) { fired.push(reason); },
+  });
+  w.stop();
+  assert.deepEqual(cleared, [1, 2]);
+  callbacks.forEach(fn => fn());
+  w.touch(); w.stop();
+  callbacks.forEach(fn => fn());
+  assert.equal(callbacks.length, 2, '停止之后不再安排新计时器');
+  assert.deepEqual(fired, []);
+  assert.equal(w.killed, null);
+});
+
+test('watchdog: stop 先锁住状态，clearTimer 的重入也不能 touch 或开火', () => {
+  const callbacks = [], fired = [];
+  let w;
+  w = createWatchdog({ timeoutMs: 1000, stallMs: 200,
+    setTimer(fn) { callbacks.push(fn); return callbacks.length; },
+    clearTimer() { w.touch(); callbacks.forEach(fn => fn()); },
+    onKill(reason) { fired.push(reason); },
+  });
+  w.stop();
+  assert.equal(callbacks.length, 2);
+  assert.deepEqual(fired, []);
+});
+
+test('watchdog: 真实 timer 下 stop 后 touch 不再误杀已经结束的任务', async () => {
+  const fired = [];
+  const w = createWatchdog({ timeoutMs: 30, stallMs: 15, onKill: reason => fired.push(reason) });
+  w.stop();
+  w.touch();
+  await new Promise(resolve => setTimeout(resolve, 60));
+  assert.deepEqual(fired, []);
+  assert.equal(w.killed, null);
+});
+
 test('watchdog: 两条线都关掉就是空转（不设时间上限的场景）', () => {
   const c = fakeClock();
   const fired = [];

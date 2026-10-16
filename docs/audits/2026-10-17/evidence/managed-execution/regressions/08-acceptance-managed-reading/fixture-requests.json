@@ -1,0 +1,10 @@
+[
+  {
+    "method": "GET",
+    "url": "/target/healthy"
+  },
+  {
+    "method": "GET",
+    "url": "/target/bug"
+  }
+]

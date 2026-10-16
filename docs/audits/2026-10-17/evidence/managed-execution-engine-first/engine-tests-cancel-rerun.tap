@@ -1,0 +1,16 @@
+TAP version 13
+# Subtest: same-key concurrent managed calls execute once, ordinary admission shares the slot, and pending cancellation prevents every later request
+ok 1 - same-key concurrent managed calls execute once, ordinary admission shares the slot, and pending cancellation prevents every later request
+  ---
+  duration_ms: 31158.2682
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 31699.5864

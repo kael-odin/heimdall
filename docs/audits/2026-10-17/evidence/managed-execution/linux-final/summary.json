@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-16T22:27:44.073Z",
+  "head": "c8344ff9797a020f5897dd5ec10a7632df6dc2bc",
+  "scope": "Final current fixture diagnostic revision; rerun only POSIX SIGTERM lifecycle case.",
+  "testSha256": "9e95186807dbfab4a268d84667e70f63349c17482ed0e686f5357189137cc2a5",
+  "fixtureSha256": "1103aac84ef72b5607f505282216f30166ffebfe6ee46a9d8c67838c37c762bb",
+  "snapshotManifestSha256": "b5c158c8900b0d4dfe6c8615f3bc69ef0d53d6b61b3e2cd26f2e68ae451683ed",
+  "capturedFiles": 479,
+  "capturedBytes": 21784952,
+  "finalLinux": {
+    "distro": "Ubuntu-24.04",
+    "node": "v22.23.3",
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 626.640437,
+    "tapSha256": "111d3d1c88ecb92c59e39b979e67e47ef48952a983a26f673ad8645b92be3e63",
+    "environment": "2026-10-16T22:26:25Z\nLinux kael 6.6.114.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Mon Dec  1 20:46:23 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux\n{\"platform\":\"linux\",\"arch\":\"x64\",\"node\":\"v22.23.3\",\"execPath\":\"/tmp/heimdall-http-final-20261017.NoKHZs/node-v22.23.3-linux-x64/bin/node\"}\nsource-filesystem: /dev/sdd ext4   /\nfixture-filesystem: /dev/sdd ext4   /\narchive-sha256: df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de\n"
+  },
+  "priorEvidence": {
+    "directory": "..",
+    "snapshotManifestSha256": "e57414ac36f4fb8870c59d91140e747e2b8873ae16072a043b21096c43d14cce",
+    "windows": {
+      "tests": 3,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 1,
+      "durationMs": 13797.9859,
+      "evidence": "Preceding real terminal execution in this session; complete-body and incomplete-body TCP cases passed.",
+      "skipReason": "Windows child.kill(SIGTERM) does not deliver a catchable POSIX shutdown signal."
+    },
+    "linux": {
+      "distro": "Ubuntu-24.04",
+      "node": "v22.23.3",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 1501.887967,
+      "archiveSha256": "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de",
+      "filesystem": {
+        "source": "/dev/sdd",
+        "type": "ext4",
+        "mount": "/",
+        "inspectedPath": "/tmp"
+      },
+      "testPattern": "POSIX SIGTERM",
+      "tapSha256": "bccd21dbe673ab27c4b7997c9738e12d1b26d2f40e115850ce7740b3c768da32"
+    },
+    "note": "Prior evidence is preserved unchanged. Its current-input comparison predates the final fixture diagnostic update."
+  },
+  "changedFromPriorSnapshot": [
+    "core/scripts/fixtures/managed-execution.mjs"
+  ],
+  "inputVerification": [
+    {
+      "name": "linux-input-verification-before.json",
+      "checkedAt": "2026-10-16T22:26:25.950Z",
+      "count": 479,
+      "changed": [],
+      "manifestSha256": "b5c158c8900b0d4dfe6c8615f3bc69ef0d53d6b61b3e2cd26f2e68ae451683ed",
+      "project": "/tmp/heimdall-http-final-20261017.NoKHZs/project"
+    },
+    {
+      "name": "linux-input-verification-after.json",
+      "checkedAt": "2026-10-16T22:26:26.669Z",
+      "count": 479,
+      "changed": [],
+      "manifestSha256": "b5c158c8900b0d4dfe6c8615f3bc69ef0d53d6b61b3e2cd26f2e68ae451683ed",
+      "project": "/tmp/heimdall-http-final-20261017.NoKHZs/project"
+    },
+    {
+      "name": "current-input-verification-after.json",
+      "checkedAt": "2026-10-16T22:27:43.506Z",
+      "count": 479,
+      "changed": [],
+      "manifestSha256": "b5c158c8900b0d4dfe6c8615f3bc69ef0d53d6b61b3e2cd26f2e68ae451683ed"
+    }
+  ],
+  "findings": []
+}

@@ -1,0 +1,28 @@
+{
+  "source": {
+    "id": "REQ-MANAGED-EXECUTION",
+    "revision": "1",
+    "type": "manual",
+    "title": "健康与业务码合同"
+  },
+  "approved": true,
+  "contract": {
+    "id": "CHECK-0",
+    "title": "响应符合已批准合同",
+    "method": "GET",
+    "path": "/healthy",
+    "severity": "medium",
+    "expect": {
+      "status": 200,
+      "contentType": "application/json",
+      "json": [
+        {
+          "pointer": "/code",
+          "kind": "equals",
+          "value": 0
+        }
+      ]
+    }
+  },
+  "contractFingerprint": "73fb6ba9970764becca68eb2602eb6dbdbfdea8d9c758ecc2b3663e5bcec10d4"
+}

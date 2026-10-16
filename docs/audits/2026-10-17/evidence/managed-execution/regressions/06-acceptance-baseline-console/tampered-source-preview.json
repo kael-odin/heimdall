@@ -1,0 +1,38 @@
+{
+  "generationId": "ag-ca3ae923-f060-4b3c-a949-6808d2b530d5",
+  "revision": 18,
+  "candidate": {
+    "id": "ab-15dc9ee3-dc47-40ad-bb79-12626b7af7a2",
+    "projectionVersion": 1,
+    "projectId": "ap-f8476e7f-7aaa-4992-854a-adb461848b1e",
+    "mode": "spec",
+    "source": {
+      "runId": "ac-9bbb0d88-73f1-4dce-8d17-f55c65c59252",
+      "sourceMode": "spec",
+      "side": "source",
+      "releaseId": "ar-b54c939f-d056-4af8-b3fe-408254752dd8"
+    },
+    "sourcePlanDigest": "eb0b8d08374e3e1000053989af1f2dec25902c8183e2299af26d2488569994a8",
+    "sourceReportDigest": "8fed72f2b2f3c613d891364aeb007975a5b1c719fb5d765230a30d9988d4b665",
+    "evidenceManifestDigest": "42b9ee61f72a8f592024b6f68be8ed06f0dfe1b1cc85b4635897bd0d8716744d",
+    "scopeKey": "7557b0d0f38576834c6d5cff6c3cbb4415a02cffe5b8047b253b31bcdcc2c5f5",
+    "ruleManifestKey": "3d4cc2fb104390a3479a19f93295fa20d0d9406079be744d4c163e4469fe864a",
+    "oracleManifestKey": "c9421f2f5f2c55197e869c803ad18b48a7da6e8278edbbb319ee88646c61940e",
+    "environmentKey": "a920fac644bab06ee032ec8df1c0452d2c94139c158ec89a00e708a9442a5d5e",
+    "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+    "contentDigest": "820166af7071f04c6f187793b256ed55e1834faf6f4bf613c1991d93bfd2eac1",
+    "createdAt": "2026-10-16T22:09:17.545Z"
+  },
+  "executionReady": false,
+  "preview": null,
+  "diagnostics": {
+    "eligible": false,
+    "contentMatches": false,
+    "issues": [
+      {
+        "code": "SOURCE_INTEGRITY_FAILED",
+        "message": "当前来源无法重建此候选；历史记录保留，请检查原运行或创建新候选。"
+      }
+    ]
+  }
+}

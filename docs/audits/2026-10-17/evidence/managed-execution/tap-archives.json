@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "reason": "Lossless gzip preserves original failed TAP bytes including trailing whitespace. Raw local copies remain in ignored run storage. No original output was trimmed.",
+  "files": [
+    {
+      "path": "docs/audits/2026-10-17/evidence/managed-execution-engine-first/engine-tests-corrected-fresh.tap.gz",
+      "originalPath": "docs/audits/2026-10-17/evidence/managed-execution-engine-first/engine-tests-corrected-fresh.tap",
+      "originalBytes": 1257,
+      "originalSha256": "56a0ae03900e1afe4757dc543a3f175ab1dd0296d3c76cf2c383cd2ff1bd6288",
+      "compressedBytes": 639,
+      "compressedSha256": "b1aa1a8bdf97c87360d070e915be51f01ec65fc20a38d25110e02a15e6d48573",
+      "roundTripVerified": true
+    },
+    {
+      "path": "docs/audits/2026-10-17/evidence/managed-execution-engine-first/engine-tests.tap.gz",
+      "originalPath": "docs/audits/2026-10-17/evidence/managed-execution-engine-first/engine-tests.tap",
+      "originalBytes": 3020,
+      "originalSha256": "2ed1866f9a11c3984e1f766177c83a39762ec1422c5aa45ee6f5d1f712aa871a",
+      "compressedBytes": 1089,
+      "compressedSha256": "4bcec852890fc81728977b1748b896438922af7c38118c95bb43513b1e3a0b36",
+      "roundTripVerified": true
+    },
+    {
+      "path": "docs/audits/2026-10-17/evidence/managed-execution/gates/core-default-concurrency-first.tap.gz",
+      "originalPath": "docs/audits/2026-10-17/evidence/managed-execution/gates/core-default-concurrency-first.tap",
+      "originalBytes": 398488,
+      "originalSha256": "7c6a1deac78de91824fef5aecec9c3cd60cf6d6e996d33a08a90c897b8fb3146",
+      "compressedBytes": 80886,
+      "compressedSha256": "67859ac8a626a3f1731f256e1ea5c6875bc9794b6fb157d93b0b39be30d5aa62",
+      "roundTripVerified": true
+    },
+    {
+      "path": "docs/audits/2026-10-17/evidence/managed-execution/gates/core-discovery-first.tap.gz",
+      "originalPath": "docs/audits/2026-10-17/evidence/managed-execution/gates/core-discovery-first.tap",
+      "originalBytes": 949629,
+      "originalSha256": "4653a8552246059b6fa7e5ca4a7fe665157c3d154f9491fe8e917d33b332206e",
+      "compressedBytes": 158653,
+      "compressedSha256": "ff72324bf5a2d11fa9742741cd88c5854e013878d426a3b564c575425ff57fe8",
+      "roundTripVerified": true
+    }
+  ]
+}

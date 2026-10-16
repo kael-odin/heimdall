@@ -1,0 +1,114 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-ec4f8888-4f60-4220-a42c-e7c6cb9957c8"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-6b1ae13f-c646-4686-bb94-4b9bb064baf3/spec-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-ec4f8888-4f60-4220-a42c-e7c6cb9957c8/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a/evidence/spec-2-CHECK-1-request.json"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a/evidence/spec-2-CHECK-1-response.json"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a/evidence/spec-2-CHECK-1-contract.json"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a/report.md"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-0dd6e7c1-0fa3-4912-8e63-95ce825ab04a/report"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-6b1ae13f-c646-4686-bb94-4b9bb064baf3/spec-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-6b1ae13f-c646-4686-bb94-4b9bb064baf3/spec-executions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-6b1ae13f-c646-4686-bb94-4b9bb064baf3/spec-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-c8ecff06-68e5-469b-bf66-2c390d2fe975"
+  },
+  {
+    "method": "POST",
+    "path": "/api/jobs/a-c6d9d2e3-fb5b-4795-9fcf-83ed4cf27b07/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-c8ecff06-68e5-469b-bf66-2c390d2fe975"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-6b1ae13f-c646-4686-bb94-4b9bb064baf3/spec-executions"
+  }
+]

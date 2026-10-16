@@ -1,0 +1,37 @@
+{
+  "store": "sqlite",
+  "jobs": [
+    {
+      "id": "a-e6abc514-42f8-49c8-bd34-433b52c7dead",
+      "kind": "acceptance",
+      "url": "http://127.0.0.1:65488/target?tenant=execution",
+      "status": "done",
+      "pageName": null,
+      "createdAt": 1792187619568,
+      "endedAt": 1792187627342,
+      "events": 6
+    }
+  ],
+  "history": [
+    {
+      "id": "a-e6abc514-42f8-49c8-bd34-433b52c7dead",
+      "kind": "acceptance",
+      "url": "http://127.0.0.1:65488/target?tenant=execution",
+      "status": "done",
+      "pageName": null,
+      "createdAt": 1792187619568,
+      "endedAt": 1792187627342,
+      "payload": {
+        "managedAcceptance": {
+          "schemaVersion": 1,
+          "operationId": "ao-86b05446-6f05-44df-8bdc-d320c9942677",
+          "runId": "ac-d2575ec5-f562-48a7-88d7-f448f33d60fe",
+          "taskId": "a-e6abc514-42f8-49c8-bd34-433b52c7dead",
+          "dispatchSha256": "200faaf24a6a6e02bb400a6688a6faccb90c54b251cf03b49b46b97c3a11db06",
+          "projectId": "ap-366196ed-5a6f-49c2-9a48-c3b95449b622"
+        }
+      },
+      "error": null
+    }
+  ]
+}
