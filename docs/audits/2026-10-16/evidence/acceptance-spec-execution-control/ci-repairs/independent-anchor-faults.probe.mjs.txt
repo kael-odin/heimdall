@@ -1,0 +1,62 @@
+import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import { resolve, relative, sep } from 'node:path';
+import { tmpdir } from 'node:os';
+
+const testPath = resolve('core/test/acceptance-managed-dispatch.test.mjs');
+const source = fs.readFileSync(testPath, 'utf8');
+const prefix = source.slice(0, source.indexOf("test('strict envelope"))
+  .replaceAll(/from '(\.\.\/[^']+)'/g, (_match, specifier) => `from '${new URL(specifier, pathToFileURL(testPath)).href}'`);
+const { fixture } = await import('data:text/javascript;base64,' + Buffer.from(prefix + '\nexport { fixture };').toString('base64'));
+
+const results = [];
+for (const fault of ['writeSync', 'fsyncSync', 'writer-close', 'pin-close-after-effect']) {
+  const cleanups = [], descriptors = new Map();
+  let writer, pin, unlinkChecked = false, f;
+  const io = {
+    openSync(path, flags, ...args) {
+      const fd = fs.openSync(path, flags, ...args);
+      descriptors.set(fd, { path, flags });
+      if (flags === 'wx') writer = fd;
+      else if (typeof flags === 'number' && pin === undefined) pin = fd;
+      return fd;
+    },
+    writeSync(...args) {
+      if (fault === 'writeSync' && args[0] === writer) throw Error('write-failure');
+      return fs.writeSync(...args);
+    },
+    fsyncSync(...args) {
+      if (fault === 'fsyncSync' && args[0] === writer) throw Error('fsync-failure');
+      return fs.fsyncSync(...args);
+    },
+    unlinkSync(path) {
+      const anchor = pin ?? writer;
+      assert.ok(descriptors.has(anchor), `${fault}: anchor stays live through unlink`);
+      const anchored = fs.fstatSync(anchor, { bigint: true }), current = fs.lstatSync(path, { bigint: true });
+      assert.equal(anchored.dev, current.dev); assert.equal(anchored.ino, current.ino);
+      unlinkChecked = true; return fs.unlinkSync(path);
+    },
+    closeSync(fd) {
+      fs.closeSync(fd); descriptors.delete(fd);
+      if (fault === 'writer-close' && fd === writer) throw Error('writer-close-after-effect');
+      if (fault === 'pin-close-after-effect' && fd === pin) throw Error('pin-close-after-effect');
+    },
+  };
+  try {
+    f = await fixture({ after(callback) { cleanups.push(callback); } }, { io });
+    if (fault === 'pin-close-after-effect') assert.deepEqual(f.store.publish(f.envelope).envelope, f.envelope);
+    else assert.throws(() => f.store.publish(f.envelope), error => error.code === 'MANAGED_DISPATCH_UNAVAILABLE' && error.writeMayHaveCommitted === false);
+    assert.equal(unlinkChecked, true); assert.equal(descriptors.size, 0);
+    assert.equal(fs.existsSync(f.file), fault === 'pin-close-after-effect');
+    assert.equal(fs.readdirSync(f.directory).length, fault === 'pin-close-after-effect' ? 1 : 0);
+    results.push({ fault, unlinkWithLiveAnchor: unlinkChecked, descriptorsRemaining: descriptors.size, accepted: fs.existsSync(f.file) });
+  } finally {
+    if (f) {
+      const checked = relative(fs.realpathSync(tmpdir()), f.root);
+      assert.ok(checked.startsWith('heimdall-managed-dispatch-') && !checked.includes(sep));
+    }
+    for (const cleanup of cleanups.reverse()) cleanup();
+  }
+}
+console.log(JSON.stringify(results, null, 2));

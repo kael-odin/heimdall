@@ -1,0 +1,63 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { once } from 'node:events';
+import { createHash } from 'node:crypto';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { normalizeAcceptancePlan } from '../src/acceptance/schema.mjs';
+import { runAcceptance } from '../src/acceptance/runner.mjs';
+import { chromium } from 'playwright';
+
+async function fixture(t) {
+  let writes = 0;
+  const server = createServer((request, response) => {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) { writes++; response.end('unexpected write'); return; }
+    const path = new URL(request.url, 'http://fixture.test').pathname;
+    const [, side, name = 'good'] = path.split('/');
+    const target = side === 'target';
+    if (name === 'http404' && target || name === 'badbaseline') { response.writeHead(404); response.end('missing'); return; }
+    if (name === 'missing-resource') { response.writeHead(404); response.end('missing resource'); return; }
+    const missingMenu = target && name === 'missing';
+    const badExpanded = target && name === 'aria';
+    const wrongText = target && name === 'text';
+    const consoleError = name === 'shared-console' || target && name === 'console';
+    const overflow = target && name === 'overflow';
+    response.setHeader('content-type', 'text/html');
+    response.end(`<!doctype html><html><head><title>Acceptance fixture</title>
+      <style>body{margin:0;font-family:Arial;background:#fff;color:#222}main{padding:20px}#menu{display:block}@media(min-width:600px){#menu{display:none}}#dynamic{height:240px;width:100%}</style></head>
+      <body><main id="app" ${name === 'full-mask' ? `style="box-sizing:border-box;min-height:100vh;background:${target ? 'red' : 'white'}"` : ''}><h1>${name === 'full-mask' && target ? 'Entirely different target content' : 'Fixture'}</h1>${missingMenu ? '' : '<button id="menu">Menu</button>'}
+      <button id="toggle" aria-expanded="false">Toggle details</button><p id="status">${wrongText ? 'Unexpected copy' : 'Ready'}</p>
+      <input id="entry" aria-label="Search"><button id="save">Save</button>
+      ${overflow ? '<div style="width:1200px">Overflow</div>' : ''}
+      ${name === 'dynamic' ? '<div id="dynamic"></div>' : ''}
+      ${name === 'long-page' ? `<section style="height:1600px;background:#f5f5f5">Shared content above the fold</section>${target ? '' : '<section style="height:700px;background:#c0275b;color:white">Required content below the first viewport</section>'}` : ''}
+      ${name === 'over-budget-height' ? '<section style="height:13000px">Content exceeds the capture height budget</section>' : ''}
+      ${name === 'over-budget-pixels' ? '<section style="height:9000px">Content exceeds the capture pixel budget</section>' : ''}
+      </main><script>
+      document.querySelector('#toggle').onclick=()=>{${badExpanded ? '' : "document.querySelector('#toggle').setAttribute('aria-expanded','true')"}};
+      document.querySelector('#save').onclick=()=>fetch('/api/save',{method:'POST',body:'private-user-value'}).catch(()=>{});
+      ${consoleError ? "console.error('Fixture runtime error')" : ''};
+      ${name === 'shared-network' ? `fetch('/${side}/missing-resource').catch(()=>{})` : ''};
+      ${target && name === 'auto-write' ? "fetch('/api/save',{method:'POST'}).catch(()=>console.error('Target POST was blocked by the execution policy'))" : ''};
+      ${name === 'dynamic' ? "let i=0;setInterval(()=>{document.querySelector('#dynamic').style.background=['red','green','blue'][i++%3]},33)" : ''};
+      </script></body></html>`);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const outputDir = await mkdtemp(join(tmpdir(), 'acceptance-runner-test-'));
+  t.after(async () => {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    await rm(outputDir, { recursive: true, force: true });
+  });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  return { outputDir, origin, writes: () => writes };
+}
+
+function planFor(origin, extra = {}) {
+  // This budget also covers a cold Chromium launch. Keep the production default
+  // rather than imposing a 1.2s startup benchmark on parallel, shared CI runners.
+  return normalizeAcceptancePlan({ name: 'Runner verification', mode: 'mirror', baselineUrl: `${origin}/baseline/`, targetUrl: `${origin}/target/`, routes: ['/good'], viewports: [{ name: 'mobile', width: 375, height: 812 }], timeoutMs: 10_000, settleMs: 100, ...extra });
+}

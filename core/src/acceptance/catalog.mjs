@@ -443,11 +443,11 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
         ...(candidate ? { preCommitGuard: () => revalidateCandidate(catalog, candidate) } : {}) };
     });
   }
-  function dispatchStore() {
+  function dispatchStore(initialize = true) {
     assertOwned();
     const actual = actualRoot();
     managedDispatches ??= createManagedSpecDispatchStore({ ...managedDispatchOptions, root: actual, owner });
-    managedDispatches.initialize();
+    if (initialize) managedDispatches.initialize();
     return managedDispatches;
   }
   function managedContext(catalog, projectId, input) {
@@ -471,30 +471,43 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     return { project, selection, approval, candidate, sourceRelease: catalog.releases[candidate.source.releaseId],
       targetRelease, sourceSpecApproved: contract.sourceSpecApproved, plan: contract.plan, planFingerprint: contract.planFingerprint };
   }
+  function managedConfirmation(projectId, raw) {
+    id(projectId, 'ap');
+    const input = inputOf(raw, ['operationId', 'selectionId', 'contentDigest', 'targetReleaseId']);
+    if (typeof input.operationId !== 'string' || !OPERATION_ID.test(input.operationId)) invalid('operationId 必须是完整操作 ID。');
+    id(input.selectionId, 'as'); id(input.targetReleaseId, 'ar'); digestOf(input.contentDigest);
+    const { operationId, ...confirmation } = input;
+    const request = { projectId, ...confirmation };
+    return { input, operationId, request, requestFingerprint: managedSpecDispatchRequestFingerprint(request) };
+  }
+  function matchingDispatch(dispatches, confirmation) {
+    const record = dispatches.read(confirmation.operationId);
+    if (record && record.envelope.requestFingerprint !== confirmation.requestFingerprint) {
+      throw error('IDEMPOTENCY_CONFLICT', 409, '操作 ID 已用于其他确认；请核对原操作记录。');
+    }
+    return record;
+  }
+  /** Private reconciliation only. Absence never publishes, reserves or starts.
+   * The full original confirmation prevents a key being reused across projects
+   * or substituted with a fresh CAS. Current catalog/source are not consulted. */
+  function readManagedSpecDispatch(projectId, raw) {
+    const confirmation = managedConfirmation(projectId, raw);
+    return matchingDispatch(dispatchStore(false), confirmation);
+  }
   /**
    * Private preparation only: reserve immutable identities and persist authority.
    * No run/task is created and no execution may be inferred from a saved record.
    * Replaying an operation never prepares a second record or starts any work.
    */
   function prepareManagedSpecDispatch(projectId, raw) {
-    let input;
-    try {
-      id(projectId, 'ap');
-      input = inputOf(raw, ['operationId', 'selectionId', 'contentDigest', 'targetReleaseId']);
-      if (typeof input.operationId !== 'string' || !OPERATION_ID.test(input.operationId)) invalid('operationId 必须是完整操作 ID。');
-      id(input.selectionId, 'as'); id(input.targetReleaseId, 'ar'); digestOf(input.contentDigest);
-    } catch (cause) { return Promise.reject(cause); }
-    const { operationId, ...confirmation } = input;
-    const request = { projectId, ...confirmation }, requestFingerprint = managedSpecDispatchRequestFingerprint(request);
+    let confirmation;
+    try { confirmation = managedConfirmation(projectId, raw); }
+    catch (cause) { return Promise.reject(cause); }
+    const { input, operationId, request, requestFingerprint } = confirmation;
     return queue(() => {
-      const dispatches = dispatchStore(), existing = dispatches.read(operationId);
+      const dispatches = dispatchStore(), existing = matchingDispatch(dispatches, confirmation);
       const resultOf = (record, replayed) => ({ record, replayed, state: 'prepared', runCreated: false, executionReady: false });
-      if (existing) {
-        if (existing.envelope.requestFingerprint !== requestFingerprint) {
-          throw error('IDEMPOTENCY_CONFLICT', 409, '操作 ID 已用于其他确认；请核对原操作记录。');
-        }
-        return resultOf(existing, true);
-      }
+      if (existing) return resultOf(existing, true);
       const current = readFile('catalog.json'); requireCurrent(current.catalog);
       if (input.expectedGenerationId !== current.catalog.generationId || input.expectedRevision !== current.catalog.revision) {
         throw error('STALE_REVISION', 409, '项目目录已变化，请刷新后重新操作。', {
@@ -521,5 +534,5 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     });
   }
   return Object.freeze({ initialize, read, createProject, createRelease, bindRun, readRunReference,
-    createBaselineCandidate, readBaselineCandidate, approveBaseline, selectBaseline, prepareManagedSpecDispatch });
+    createBaselineCandidate, readBaselineCandidate, approveBaseline, selectBaseline, prepareManagedSpecDispatch, readManagedSpecDispatch });
 }

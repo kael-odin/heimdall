@@ -25,7 +25,10 @@ export const SPEC_CANDIDATE_LIMITS_V1 = Object.freeze({ jsonBytes: 8 * 1024 * 10
   jsonDepth: 80, jsonNodes: 400_000, jsonCharacters: 32 * 1024 * 1024,
 });
 /**
- * store.mjs legacy verifier concatenation, sampled from main 1a87b2d.
+ * store.mjs legacy ten-file verifier concatenation. The original pair was
+ * sampled from main 1a87b2d; the controlled Spec runner pair was explicitly
+ * reviewed with unchanged contract/report/identity semantics when controls are
+ * omitted. Cancellation produces no completed report or reusable candidate.
  * Explicit compatibility is intentional. No unknown historical digest can select
  * today's rules by assertion. When any verifier source changes, review/rebuild
  * this mapping and its golden fixtures; do not simply accept a reported hash.
@@ -35,6 +38,10 @@ export const SUPPORTED_SPEC_VERIFIERS_V1 = Object.freeze([
   '8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d',
   // Same reviewed ten source files with CRLF contents; separators remain LF.
   '32fab6ccb46b1954e7a64c81783699a715013062e6c0bfb6ba19299afc18654f',
+  // Reviewed B2.2 controlled Spec runner, exact LF source files.
+  'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8',
+  // Same controlled runner source set with CRLF contents; separators stay LF.
+  '8d1b75da7efad4f18b279a466ebdf880b1e24bb641ca80070cd03d0700376e9f',
 ]);
 const HASH = /^[a-f0-9]{64}$/;
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';

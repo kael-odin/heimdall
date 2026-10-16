@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-16T15:55:06.487Z",
+  "reviewedRunnerSha256": "aa06081911341b9cad6df79088e1d631dc596d9ce59ffde40cab145b24855206",
+  "scope": "Direct runSpecAcceptance control and private dispatch query only; no engine-managed execution was started.",
+  "files": [
+    "results.json",
+    "events-fixed.json",
+    "query-pin-fixed.json"
+  ],
+  "confirmedFixes": [
+    "Pending started/completed onEvent is interrupted by external abort, removes signal listener and consumes late rejection.",
+    "Read-only dispatch query does not create absent sidecar; observed parent replacement and post-lstat resolution failure are unavailable."
+  ],
+  "otherChecks": [
+    "Stalled response body cancel does not block external control rejection.",
+    "Stalled reader read/cancel does not block external control rejection.",
+    "Pending heartbeat event stays single-flight while later ticks continue owner guards; failure remains sticky and clears timer."
+  ],
+  "integrationBoundary": "Legacy runAcceptance wrapper does not forward signal/assertActive; future managed executor must call controlled Spec runner or explicitly forward controls.",
+  "outstandingConfirmedIssues": []
+}

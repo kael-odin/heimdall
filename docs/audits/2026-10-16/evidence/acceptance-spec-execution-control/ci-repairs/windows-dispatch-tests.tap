@@ -1,0 +1,38 @@
+✔ strict envelope validates a real unapproved source without creating a new run or sending requests (124.6338ms)
+✔ absent operation reads do not create either sidecar directory and later publication remains possible (347.1706ms)
+✔ read-only absence cannot bypass an unsafe sidecar ancestor (110.3773ms)
+✔ read-only absence pins an observed parent even before its version directory exists (169.18ms)
+✔ read-only absence still requires the current root owner (94.3257ms)
+✔ envelope rejects identity/reference, approved selection and plan/source/budget substitutions (100.9196ms)
+✔ no getter/proxy/toJSON/symbol/nonenumerable/cycle/array hooks execute during validation (86.3716ms)
+✔ limits only tighten and complexity is bounded before recursion or serialization (80.5931ms)
+✔ lazy store publishes exactly once with private bytes, no catalog/head/run changes, stable list/read (563.0644ms)
+✔ same operation never overwrites an existing envelope (375.645ms)
+✔ synchronous final guard sees full fsynced temporary and runs before publication (349.4485ms)
+✔ final guard follows all temporary/history byte reads and immediately precedes publication fences (316.1086ms)
+✔ post-guard temporary metadata change still prevents publication without a late byte read (215.773ms)
+✔ guard rejection/thenable cannot publish and private temporary is removed (457.3213ms)
+✔ ordinary async rejection is consumed under strict unhandled mode and then getters never execute (621.4389ms)
+✔ short writes complete, while write/fsync/close failure never publishes (870.3379ms)
+✔ post-publication faults retain accepted originals and expose lookup identities (784.9834ms)
+✔ temporary mutation and inode replacement fail closed without deleting replaced files (358.2236ms)
+✔ a live read-only inode pin survives same-byte temporary replacement and closes on every outcome (774.0973ms)
+✔ temporary inode pin acquisition failure closes the writer and never publishes (148.573ms)
+✔ owner loss after temporary write preserves temporary and prevents any publish/cleanup mutation (134.3103ms)
+✔ directory replacement is detected across calls and cleanup leaves replacement intact (112.4446ms)
+✔ orphan temporary is never promoted; malformed/unknown published records cannot look missing (354.5516ms)
+✔ a published file removed during a bounded read is unavailable rather than missing (264.9653ms)
+✔ a record observed by lstat cannot become absent after realpath ENOENT (358.0784ms)
+✔ oversized and filename-mismatched published records reject without returning raw filesystem errors (286.0088ms)
+✔ capacity is bounded with immutable history and same-key replay still works at capacity (434.7494ms)
+✔ guard cannot add files beyond the reserved directory budget; orphans still consume capacity (226.7937ms)
+✔ unlink cleanup failure keeps accepted bytes queryable and never replays an orphan as accepted (540.1143ms)
+✔ linked directory and linked envelope are rejected (129.8849ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9895.0153

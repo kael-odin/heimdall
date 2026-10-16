@@ -138,6 +138,12 @@ async function main() {
     save('preparation-input.json', { projectId, ...input });
     sourcesUnchanged('before-prepare'); noRunCreated('before-prepare');
     const before = recordHeads('before-prepare');
+    check('missingOperationQueryDoesNotCreateDirectoriesOrRecords', () => {
+      const names = readdirSync(acceptanceRoot).sort();
+      assert.equal(store.readManagedSpecDispatch(projectId, input), null);
+      assert.deepEqual(readdirSync(acceptanceRoot).sort(), names);
+      assert.equal(existsSync(join(acceptanceRoot, 'managed-spec-dispatches')), false);
+    });
     stage = 'prepare'; first = await store.prepareManagedSpecDispatch(projectId, input);
     save('prepared-record.json', first.record.bytes);
     const envelope = first.record.envelope;
@@ -158,6 +164,16 @@ async function main() {
       assert.equal(envelope.catalog.headSha256, sha(before['catalog.json']));
     });
     check('preparePreservesCatalogHeadAndPrevious', () => assert.deepEqual(recordHeads('after-prepare'), before));
+    check('readOnlyQueryReturnsOriginalPreparedBytes', () => {
+      const queried = store.readManagedSpecDispatch(projectId, input);
+      assert.equal(queried.sha256, first.record.sha256); assert.deepEqual(queried.bytes, first.record.bytes);
+      assert.deepEqual(heads(), before);
+    });
+    check('readOnlyQueryRejectsChangedConfirmationWithoutPublishing', () => {
+      assert.throws(() => store.readManagedSpecDispatch(projectId, { ...input, expectedRevision: input.expectedRevision + 1 }), { code: 'IDEMPOTENCY_CONFLICT' });
+      assert.deepEqual(heads(), before);
+      assert.deepEqual(readdirSync(join(acceptanceRoot, 'managed-spec-dispatches', 'v1')), [input.operationId + '.json']);
+    });
     sourcesUnchanged('after-prepare'); noRunCreated('after-prepare');
     stage = 'same-key-replay'; replay = await store.prepareManagedSpecDispatch(projectId, input);
     check('sameKeyReplayReturnsIdenticalRecord', () => {
@@ -181,6 +197,12 @@ async function main() {
     owner = acquireAcceptanceOwner({ root: acceptanceRoot });
     check('realOwnerReleasedAndReacquired', () => { assert.notEqual(owner.nonce, oldNonce); assert.equal(owner.assertOwned(), true); });
     const reopenedStore = createAcceptanceCatalogStore({ root: acceptanceRoot, owner }); await reopenedStore.initialize();
+    check('readOnlyQueryWithNewOwnerNeedsNeitherCurrentSelectionNorSource', () => {
+      const queried = reopenedStore.readManagedSpecDispatch(projectId, input);
+      assert.deepEqual(queried.bytes, first.record.bytes); assert.equal(queried.sha256, first.record.sha256);
+      assert.equal(existsSync(join(acceptanceRoot, queried.envelope.runId)), false);
+      assert.deepEqual(heads(), afterCancellation);
+    });
     reopened = await reopenedStore.prepareManagedSpecDispatch(projectId, input);
     check('newOwnerAndCatalogReplayOriginalBytesWithoutSource', () => {
       assert.equal(reopened.replayed, true); assert.equal(reopened.state, 'prepared'); assert.equal(reopened.executionReady, false); assert.equal(reopened.runCreated, false);

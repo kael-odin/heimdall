@@ -81,6 +81,42 @@ test('strict envelope validates a real unapproved source without creating a new 
   assert.equal(managedSpecDispatchPlanFingerprint(f.envelope.plan), sha(JSON.stringify(f.envelope.plan)));
 });
 
+test('absent operation reads do not create either sidecar directory and later publication remains possible', async t => {
+  const f = await fixture(t), before = fs.readdirSync(f.root).sort();
+  assert.equal(f.store.read(f.envelope.operationId), null);
+  assert.deepEqual(fs.readdirSync(f.root).sort(), before);
+  const parent = join(f.root, 'managed-spec-dispatches'); fs.mkdirSync(parent);
+  assert.equal(f.store.read(f.envelope.operationId), null);
+  assert.deepEqual(fs.readdirSync(parent), []);
+  fs.mkdirSync(f.directory);
+  assert.equal(f.store.read(f.envelope.operationId), null);
+  assert.deepEqual(fs.readdirSync(f.directory), []);
+  const record = f.store.publish(f.envelope);
+  assert.deepEqual(f.store.read(f.envelope.operationId), record);
+});
+
+test('read-only absence cannot bypass an unsafe sidecar ancestor', async t => {
+  const f = await fixture(t), destination = join(f.root, 'linked-destination'); fs.mkdirSync(destination);
+  const parent = join(f.root, 'managed-spec-dispatches'); fs.symlinkSync(destination, parent, 'junction');
+  assert.throws(() => f.store.read(f.envelope.operationId), unavailable);
+  assert.equal(fs.lstatSync(parent).isSymbolicLink(), true); assert.deepEqual(fs.readdirSync(destination), []);
+});
+
+test('read-only absence pins an observed parent even before its version directory exists', async t => {
+  const f = await fixture(t), parent = join(f.root, 'managed-spec-dispatches'); fs.mkdirSync(parent);
+  assert.equal(f.store.read(f.envelope.operationId), null);
+  fs.renameSync(parent, parent + '.saved'); fs.mkdirSync(f.directory, { recursive: true });
+  assert.throws(() => f.store.read(f.envelope.operationId), unavailable);
+  assert.throws(() => f.store.initialize(), unavailable);
+  assert.deepEqual(fs.readdirSync(parent + '.saved'), []); assert.deepEqual(fs.readdirSync(f.directory), []);
+});
+
+test('read-only absence still requires the current root owner', async t => {
+  const f = await fixture(t); assert.equal(f.owner.release(), true);
+  assert.throws(() => f.store.read(f.envelope.operationId), { code: 'ACCEPTANCE_OWNER_LOST' });
+  assert.equal(fs.existsSync(join(f.root, 'managed-spec-dispatches')), false);
+});
+
 test('envelope rejects identity/reference, approved selection and plan/source/budget substitutions', async t => {
   const f = await fixture(t);
   const cases = [
@@ -188,19 +224,24 @@ test('final guard follows all temporary/history byte reads and immediately prece
   let guardFinished = false, published = false;
   const descriptors = new Map();
   const f = await fixture(t, { io: {
-    openSync(path, ...args) { const fd = fs.openSync(path, ...args); descriptors.set(fd, path); return fd; },
+    openSync(path, flags, ...args) { const fd = fs.openSync(path, flags, ...args); descriptors.set(fd, { path, flags }); return fd; },
     closeSync(fd) { fs.closeSync(fd); descriptors.delete(fd); },
     readSync(...args) {
       assert.equal(guardFinished && !published, false, 'No byte read may separate final guard from exclusive link');
       return fs.readSync(...args);
     },
     linkSync(from, to) {
-      assert.equal(guardFinished, true); assert.equal(descriptors.size, 0);
+      assert.equal(guardFinished, true); assert.equal(descriptors.size, 1);
+      const [[pin, { path, flags }]] = descriptors;
+      assert.equal(path, from); assert.equal(typeof flags, 'number');
+      assert.equal(flags & (fs.constants.O_WRONLY | fs.constants.O_RDWR), 0);
+      assert.equal(fs.fstatSync(pin, { bigint: true }).ino, fs.lstatSync(from, { bigint: true }).ino);
       fs.linkSync(from, to); published = true;
     },
   } });
   const record = f.store.publish(f.envelope, { beforePublish() { guardFinished = true; } });
-  assert.equal(published, true); assert.deepEqual(f.store.read(f.envelope.operationId), record);
+  assert.equal(published, true); assert.equal(descriptors.size, 0);
+  assert.deepEqual(f.store.read(f.envelope.operationId), record);
 });
 
 test('post-guard temporary metadata change still prevents publication without a late byte read', async t => {
@@ -298,6 +339,59 @@ test('temporary mutation and inode replacement fail closed without deleting repl
   assert.equal(replaced.store.read(replaced.envelope.operationId), null);
 });
 
+test('a live read-only inode pin survives same-byte temporary replacement and closes on every outcome', async t => {
+  for (const outcome of ['accepted', 'guard-rejected', 'temporary-replaced', 'owner-lost']) {
+    const descriptors = new Map(); let checked = false, temporaryPath, f;
+    f = await fixture(t, { io: {
+      openSync(path, flags, ...args) { const fd = fs.openSync(path, flags, ...args); descriptors.set(fd, { path, flags }); return fd; },
+      closeSync(fd) { fs.closeSync(fd); descriptors.delete(fd); },
+    }, hooks: { afterTemporaryWrite(context) {
+      temporaryPath = context.temporaryPath;
+      assert.equal(descriptors.size, 1, 'The writer is closed while an independent inode pin remains open');
+      const [[pin, { path, flags }]] = descriptors;
+      assert.equal(path, temporaryPath); assert.equal(typeof flags, 'number');
+      assert.equal(flags & (fs.constants.O_WRONLY | fs.constants.O_RDWR), 0);
+      const original = fs.fstatSync(pin, { bigint: true });
+      assert.equal(original.ino, fs.lstatSync(temporaryPath, { bigint: true }).ino);
+      if (outcome === 'temporary-replaced') {
+        const bytes = fs.readFileSync(temporaryPath);
+        fs.unlinkSync(temporaryPath); fs.writeFileSync(temporaryPath, bytes);
+        const replacement = fs.lstatSync(temporaryPath, { bigint: true });
+        assert.equal(replacement.dev === original.dev && replacement.ino === original.ino, false,
+          'An unlinked original inode remains allocated until its live pin is closed');
+        assert.equal(fs.fstatSync(pin, { bigint: true }).ino, original.ino);
+      }
+      if (outcome === 'owner-lost') f.owner.release();
+      checked = true;
+    } } });
+    const publish = () => f.store.publish(f.envelope, { beforePublish() {
+      if (outcome === 'guard-rejected') throw new AcceptanceCatalogError('STALE_REVISION', 409, '目录已变化');
+    } });
+    if (outcome === 'accepted') assert.deepEqual(publish().envelope, f.envelope);
+    else assert.throws(publish, error => error.writeMayHaveCommitted === false
+      && (outcome === 'temporary-replaced' ? unavailable(error)
+        : error.code === (outcome === 'owner-lost' ? 'ACCEPTANCE_OWNER_LOST' : 'STALE_REVISION')));
+    assert.equal(checked, true, outcome); assert.equal(descriptors.size, 0, outcome);
+    assert.equal(fs.existsSync(f.file), outcome === 'accepted', outcome);
+    assert.equal(fs.existsSync(temporaryPath), ['temporary-replaced', 'owner-lost'].includes(outcome), outcome);
+    if (outcome === 'temporary-replaced') assert.deepEqual(JSON.parse(fs.readFileSync(temporaryPath, 'utf8')), f.envelope);
+  }
+});
+
+test('temporary inode pin acquisition failure closes the writer and never publishes', async t => {
+  const descriptors = new Set(); let opens = 0;
+  const f = await fixture(t, { io: {
+    openSync(path, flags, ...args) {
+      if (++opens === 2) throw Object.assign(Error('pin unavailable'), { code: 'EIO' });
+      const fd = fs.openSync(path, flags, ...args); descriptors.add(fd); return fd;
+    },
+    closeSync(fd) { fs.closeSync(fd); descriptors.delete(fd); },
+  } });
+  assert.throws(() => f.store.publish(f.envelope), error => unavailable(error) && error.writeMayHaveCommitted === false);
+  assert.equal(opens, 2); assert.equal(descriptors.size, 0);
+  assert.equal(f.store.read(f.envelope.operationId), null); assert.deepEqual(fs.readdirSync(f.directory), []);
+});
+
 test('owner loss after temporary write preserves temporary and prevents any publish/cleanup mutation', async t => {
   let temporaryPath, f;
   f = await fixture(t, { hooks: { afterTemporaryWrite(context) { temporaryPath = context.temporaryPath; f.owner.release(); } } });
@@ -341,6 +435,41 @@ test('a published file removed during a bounded read is unavailable rather than 
   } });
   assert.throws(() => store.read(f.envelope.operationId), unavailable);
   assert.equal(store.read(f.envelope.operationId), null);
+});
+
+test('a record observed by lstat cannot become absent after realpath ENOENT', async t => {
+  const f = await fixture(t); f.store.publish(f.envelope); f.owner.release();
+  const storeUrl = new URL('../src/acceptance/managed-dispatch-store.mjs', import.meta.url).href;
+  const ownerUrl = new URL('../src/acceptance/owner.mjs', import.meta.url).href;
+  const source = `
+    import assert from 'node:assert/strict';
+    import fs from 'node:fs';
+    import { syncBuiltinESMExports } from 'node:module';
+    import { createManagedSpecDispatchStore } from ${JSON.stringify(storeUrl)};
+    import { acquireAcceptanceOwner } from ${JSON.stringify(ownerUrl)};
+    const { root, file, operationId } = JSON.parse(fs.readFileSync(0, 'utf8'));
+    const owner = acquireAcceptanceOwner({ root });
+    const realpath = fs.realpathSync; let resolutions = 0;
+    assert.equal(fs.lstatSync(file).isFile(), true);
+    fs.realpathSync = (path, ...args) => {
+      if (path === file) { resolutions++; throw Object.assign(Error('record resolution failed'), { code: 'ENOENT' }); }
+      return realpath(path, ...args);
+    };
+    syncBuiltinESMExports();
+    try {
+      const store = createManagedSpecDispatchStore({ root, owner });
+      assert.throws(() => store.read(operationId), error => error.code === 'MANAGED_DISPATCH_UNAVAILABLE'
+        && error.details.reason === 'FILESYSTEM_FAILURE');
+      assert.equal(resolutions, 1);
+      console.log('Observed record resolution failure remains unavailable');
+    } finally { fs.realpathSync = realpath; syncBuiltinESMExports(); owner.release(); }
+  `;
+  const child = spawnSync(process.execPath, ['--input-type=module', '-e', source], {
+    input: JSON.stringify({ root: f.root, file: f.file, operationId: f.envelope.operationId }), encoding: 'utf8', timeout: 10000,
+  });
+  assert.equal(child.error, undefined); assert.equal(child.status, 0, child.stderr);
+  assert.equal(child.stderr, ''); assert.match(child.stdout, /remains unavailable/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(f.file, 'utf8')), f.envelope);
 });
 
 test('oversized and filename-mismatched published records reject without returning raw filesystem errors', async t => {

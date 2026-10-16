@@ -51,13 +51,17 @@ export function createManagedSpecDispatchStore(options) {
   if (Object.values(overrides).some(value => typeof value !== 'function')) badInput('INVALID_IO');
   const io = Object.fromEntries(ioNames.map(key => [key, overrides[key] ?? fs[key]]));
   const parent = join(ownerRoot, 'managed-spec-dispatches'), directory = join(parent, 'v1');
-  let pins = null;
+  let pins = null, rootPin = null, parentPin = null;
   const assertOwner = () => {
     try { ownerDescriptor.value.call(owner); }
     catch { fail('OWNER_LOST', 'ACCEPTANCE_OWNER_LOST'); }
   };
-  const directoryIdentity = path => {
-    const stat = fs.lstatSync(path, { bigint: true });
+  const directoryIdentity = (path, { optional = false } = {}) => {
+    let stat;
+    try { stat = fs.lstatSync(path, { bigint: true }); }
+    catch (cause) { if (optional && cause?.code === 'ENOENT') return null; throw cause; }
+    // Once lstat observed a component, any later resolution failure is unsafe;
+    // only the initial lstat may establish optional absence.
     if (!stat.isDirectory() || stat.isSymbolicLink() || !samePath(fs.realpathSync(path), path)) fail('DIRECTORY_IDENTITY_INVALID');
     return stat;
   };
@@ -67,7 +71,13 @@ export function createManagedSpecDispatchStore(options) {
       fail('ROOT_CHANGED', 'ACCEPTANCE_OWNER_LOST');
     }
     const stat = directoryIdentity(ownerRoot);
-    if (pins && !sameInode(pins.root, stat)) fail('ROOT_CHANGED', 'ACCEPTANCE_OWNER_LOST');
+    if (rootPin && !sameInode(rootPin, stat)) fail('ROOT_CHANGED', 'ACCEPTANCE_OWNER_LOST');
+    rootPin ??= stat;
+    return stat;
+  };
+  const observeParent = stat => {
+    if (parentPin && !sameInode(parentPin, stat)) fail('DIRECTORY_CHANGED');
+    parentPin ??= stat;
     return stat;
   };
   const assertFence = () => {
@@ -82,7 +92,7 @@ export function createManagedSpecDispatchStore(options) {
     // Fence each individual mkdir. Never follow an existing linked component.
     assertRoot();
     try { fs.mkdirSync(parent, { mode: 0o700 }); } catch (cause) { if (cause?.code !== 'EEXIST') throw cause; }
-    const parentStat = directoryIdentity(parent);
+    const parentStat = observeParent(directoryIdentity(parent));
     assertRoot();
     if (!sameInode(parentStat, directoryIdentity(parent))) fail('DIRECTORY_CHANGED');
     try { fs.mkdirSync(directory, { mode: 0o700 }); } catch (cause) { if (cause?.code !== 'EEXIST') throw cause; }
@@ -91,8 +101,35 @@ export function createManagedSpecDispatchStore(options) {
     pins = { root: rootStat, parent: parentStat, directory: directoryStat };
     assertFence();
   };
-  const fileIdentity = path => {
-    const stat = fs.lstatSync(path, { bigint: true });
+  // Reconciliation is physically read-only: do not create sidecar directories
+  // just to prove an operation absent. Existing ancestors are still fenced;
+  // inaccessible, linked or replaced paths are never treated as absence.
+  const pinExisting = () => {
+    if (pins) { assertFence(); return true; }
+    const rootStat = assertRoot();
+    const parentStat = directoryIdentity(parent, { optional: true });
+    if (!parentStat) {
+      if (parentPin) fail('DIRECTORY_CHANGED');
+      if (!sameInode(rootStat, assertRoot())) fail('ROOT_CHANGED', 'ACCEPTANCE_OWNER_LOST');
+      return false;
+    }
+    observeParent(parentStat);
+    const directoryStat = directoryIdentity(directory, { optional: true });
+    if (!directoryStat) {
+      if (!sameInode(rootStat, assertRoot()) || !sameInode(parentStat, directoryIdentity(parent))) fail('DIRECTORY_CHANGED');
+      return false;
+    }
+    if (!sameInode(rootStat, assertRoot()) || !sameInode(parentStat, directoryIdentity(parent))) fail('DIRECTORY_CHANGED');
+    pins = { root: rootStat, parent: parentStat, directory: directoryStat };
+    assertFence();
+    return true;
+  };
+  const fileIdentity = (path, { optional = false } = {}) => {
+    let stat;
+    try { stat = fs.lstatSync(path, { bigint: true }); }
+    catch (cause) { if (optional && cause?.code === 'ENOENT') return null; throw cause; }
+    // A record observed by lstat cannot become an absent operation merely
+    // because its later path resolution failed.
     if (!stat.isFile() || stat.isSymbolicLink() || !samePath(fs.realpathSync(path), path)) fail('FILE_IDENTITY_INVALID');
     return stat;
   };
@@ -126,15 +163,12 @@ export function createManagedSpecDispatchStore(options) {
   };
   const read = operationId => {
     if (!isManagedSpecOperationId(operationId)) badInput('INVALID_OPERATION_ID');
-    initialize(); assertFence();
+    if (!pinExisting()) return null;
+    assertFence();
     const path = join(directory, operationId + '.json');
-    let pin;
-    try { pin = fileIdentity(path); }
-    catch (cause) {
-      // Absence is only accepted while the directory/owner fence still holds.
-      if (cause?.code === 'ENOENT') { assertFence(); return null; }
-      throw cause;
-    }
+    const pin = fileIdentity(path, { optional: true });
+    // Absence is only accepted at the initial lstat with a valid owner fence.
+    if (!pin) { assertFence(); return null; }
     const source = captured(path, pin);
     let envelope;
     try {
@@ -194,7 +228,7 @@ export function createManagedSpecDispatchStore(options) {
     // Capture a private normalized copy before callbacks can mutate caller data.
     const ownedEnvelope = JSON.parse(bytes.toString('utf8'));
     const { operationId, dispatchId, runId } = ownedEnvelope, context = { operationId, dispatchId, runId };
-    let descriptor, temporaryPath, temporaryStat, published = false, publicationAttempted = false;
+    let descriptor, temporaryPin, temporaryPath, temporaryStat, published = false, publicationAttempted = false;
     try {
       initialize();
       const existing = read(operationId);
@@ -222,6 +256,13 @@ export function createManagedSpecDispatchStore(options) {
         offset += count;
       }
       assertFence(); io.fsyncSync(descriptor);
+      // Keep the original inode allocated through hooks, publication and cleanup.
+      // Closing every handle before a hook can unlink it lets Linux immediately
+      // reuse dev/ino for a replacement, making an inode-only cleanup unsafe.
+      temporaryPin = io.openSync(temporaryPath, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0));
+      const pinnedTemporary = fs.fstatSync(temporaryPin, { bigint: true });
+      if (!pinnedTemporary.isFile() || !sameInode(temporaryStat, pinnedTemporary)) fail('TEMPORARY_CHANGED');
+      assertFence();
       const completed = descriptor; descriptor = undefined; io.closeSync(completed);
       invoke(hooks.afterTemporaryWrite, { ...context, temporaryPath });
       const temporary = captured(temporaryPath);
@@ -258,13 +299,19 @@ export function createManagedSpecDispatchStore(options) {
       else error.writeMayHaveCommitted = false;
       throw error;
     } finally {
-      if (descriptor !== undefined) try { io.closeSync(descriptor); } catch { /* Keep primary failure; partial temp is not accepted. */ }
-      if (temporaryPath && temporaryStat) {
+      // A live handle pins the original inode until after the conditional unlink.
+      // Never close it first: even failure cleanup must not delete a replacement
+      // that received the now-free inode number.
+      const cleanupPin = temporaryPin ?? descriptor;
+      if (temporaryPath && temporaryStat && cleanupPin !== undefined) {
         try {
           assertFence();
-          if (sameInode(temporaryStat, fileIdentity(temporaryPath))) { assertFence(); io.unlinkSync(temporaryPath); }
+          if (sameInode(temporaryStat, fs.fstatSync(cleanupPin, { bigint: true }))
+            && sameInode(temporaryStat, fileIdentity(temporaryPath))) { assertFence(); io.unlinkSync(temporaryPath); }
         } catch { /* A lost fence or replaced inode forbids cleanup. Keep it. */ }
       }
+      if (descriptor !== undefined) try { io.closeSync(descriptor); } catch { /* Keep primary failure; partial temp is not accepted. */ }
+      if (temporaryPin !== undefined) try { io.closeSync(temporaryPin); } catch { /* Publication outcome is already determined. */ }
     }
   };
   const safe = fn => (...args) => {

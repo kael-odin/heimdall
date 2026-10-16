@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { projectSpecBaselineCandidate, SPEC_CANDIDATE_LIMITS_V1, SUPPORTED_SPEC_VERIFIERS_V1 } from '../src/acceptance/candidate-projection.mjs';
-import { AcceptanceCatalogError } from '../src/acceptance/catalog-schema.mjs';
+import { AcceptanceCatalogError, candidateProjectionOf } from '../src/acceptance/catalog-schema.mjs';
 import { hashAcceptanceValue } from '../src/acceptance/identity.mjs';
 import { normalizeSpecPlan } from '../src/acceptance/spec-schema.mjs';
 import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
@@ -243,6 +243,36 @@ test('reviewed LF and CRLF verifier hashes preserve exact legacy provenance and 
   rejects(changed, 'SOURCE_VERIFIER_UNSUPPORTED');
 });
 
+test('verifier support is an exact reviewed set and real current completion retains its byte-based provenance', async t => {
+  const reviewed = [
+    '8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d',
+    '32fab6ccb46b1954e7a64c81783699a715013062e6c0bfb6ba19299afc18654f',
+    'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8',
+    '8d1b75da7efad4f18b279a466ebdf880b1e24bb641ca80070cd03d0700376e9f',
+  ];
+  assert.deepEqual(SUPPORTED_SPEC_VERIFIERS_V1, reviewed);
+  const files = ['schema.mjs', 'urls.mjs', 'runner.mjs', 'report.mjs', 'spec-schema.mjs',
+    'spec-runner.mjs', 'response-schema.mjs', 'openapi.mjs', 'identity.mjs'];
+  const sources = await Promise.all([...files.map(file => new URL('../src/acceptance/' + file, import.meta.url)),
+    new URL('../src/verify/compare.mjs', import.meta.url)].map(url => readFile(url, 'utf8')));
+  // Preserve store.mjs's legacy separators exactly: LF between the first nine
+  // sources, with the final compare source appended without an extra separator.
+  const fingerprint = values => sha(values.slice(0, -1).join('\n') + values.at(-1));
+  const lf = sources.map(source => source.replaceAll('\r\n', '\n'));
+  assert.equal(fingerprint(lf), reviewed[2]);
+  assert.equal(fingerprint(lf.map(source => source.replaceAll('\n', '\r\n'))), reviewed[3]);
+  const actual = fingerprint(sources);
+  assert.ok([reviewed[2], reviewed[3]].includes(actual), 'mixed or unreviewed checkout bytes need explicit review');
+  const source = await materialize(t);
+  assert.equal(source.snapshot.report.verifierFingerprint, actual);
+  assert.equal(project(source).projection.verifierFingerprint, actual);
+  const unreviewed = [...sources]; unreviewed[5] += '\n// Unreviewed source byte change.\n';
+  const unknown = fingerprint(unreviewed);
+  assert.equal(SUPPORTED_SPEC_VERIFIERS_V1.includes(unknown), false);
+  const changed = cloneSource(source); changed.snapshot.report.verifierFingerprint = unknown; seal(changed);
+  rejects(changed, 'SOURCE_VERIFIER_UNSUPPORTED');
+});
+
 test('strict pure inputs reject accessors/proxies/Map substitutes without evaluating user hooks', async t => {
   const source = await materialize(t);
   let reads = 0;
@@ -297,4 +327,43 @@ test('archived real passing/BUG runs project through the source reader with ever
   } finally { globalThis.fetch = originalFetch; }
   assert.equal(requests, 0);
   assert.deepEqual(await tree(root), before);
+});
+
+test('archived B2.1 draft and BUG candidates retain their golden projection and all 14 original files', async () => {
+  const archive = fileURLToPath(new URL('../../docs/audits/2026-10-16/evidence/acceptance-baseline/console/', import.meta.url));
+  const root = join(archive, 'run-evidence'), catalogBytes = await readFile(join(archive, 'catalog-storage.json'));
+  const catalog = JSON.parse(catalogBytes), archivedDigests = JSON.parse(await readFile(join(archive, 'run-file-digests.json')));
+  const cases = [
+    { runId: 'ac-1897dc22-0d21-4b6f-95c3-4dd72201063d', approved: false, gate: 'blocked', fileCount: 5,
+      contentDigest: '9f7a0548eed717bd4603062f4c15ab4676228a23e9b8bfebfd09fee64ff61c8d' },
+    { runId: 'ac-10afe248-c3f9-4b86-b3db-373a55025c05', approved: true, gate: 'failed', fileCount: 9,
+      contentDigest: 'cbf10096861b5b95f2c03a749f1184b29f4b4cd9bb86a02d2d23e3ec1ad7c965' },
+  ];
+  const digests = async () => Object.fromEntries(await Promise.all(cases.map(async ({ runId }) => [runId,
+    Object.fromEntries(await Promise.all((await readdir(join(root, runId))).sort().map(async name =>
+      [name, sha(await readFile(join(root, runId, name)))])))])));
+  assert.deepEqual(await digests(), archivedDigests);
+  assert.equal(Object.values(archivedDigests).reduce((total, files) => total + Object.keys(files).length, 0), 14);
+  const owner = { root: await realpath(root), assertOwned() { return true; } }, originalFetch = globalThis.fetch;
+  let requests = 0;
+  globalThis.fetch = () => { requests++; throw new Error('historical projection must never request'); };
+  try {
+    for (const expected of cases) {
+      const candidate = Object.values(catalog.candidates).find(item => item.source.runId === expected.runId);
+      assert.ok(candidate);
+      const source = readSpecCandidateSource(expected.runId, { root, owner });
+      const result = project(source, { projectId: candidate.projectId, releaseId: candidate.source.releaseId, sourceSide: 'source' });
+      assert.deepEqual(result.projection, candidateProjectionOf(candidate));
+      assert.equal(result.projection.contentDigest, expected.contentDigest);
+      assert.equal(result.projection.verifierFingerprint, '8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d');
+      assert.equal(result.preview.sourceSpecApproved, expected.approved);
+      assert.equal(result.preview.sourceGate, expected.gate);
+      assert.equal(result.preview.projectedSlots, 2);
+      assert.equal(result.preview.executionReady, false);
+      assert.equal(Object.keys(archivedDigests[expected.runId]).length, expected.fileCount);
+    }
+  } finally { globalThis.fetch = originalFetch; }
+  assert.equal(requests, 0);
+  assert.deepEqual(await digests(), archivedDigests);
+  assert.deepEqual(await readFile(join(archive, 'catalog-storage.json')), catalogBytes);
 });

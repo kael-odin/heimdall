@@ -1,0 +1,190 @@
+TAP version 13
+# Subtest: strict envelope validates a real unapproved source without creating a new run or sending requests
+ok 1 - strict envelope validates a real unapproved source without creating a new run or sending requests
+  ---
+  duration_ms: 81.079075
+  type: 'test'
+  ...
+# Subtest: absent operation reads do not create either sidecar directory and later publication remains possible
+ok 2 - absent operation reads do not create either sidecar directory and later publication remains possible
+  ---
+  duration_ms: 50.406353
+  type: 'test'
+  ...
+# Subtest: read-only absence cannot bypass an unsafe sidecar ancestor
+ok 3 - read-only absence cannot bypass an unsafe sidecar ancestor
+  ---
+  duration_ms: 31.36591
+  type: 'test'
+  ...
+# Subtest: read-only absence pins an observed parent even before its version directory exists
+ok 4 - read-only absence pins an observed parent even before its version directory exists
+  ---
+  duration_ms: 28.869941
+  type: 'test'
+  ...
+# Subtest: read-only absence still requires the current root owner
+ok 5 - read-only absence still requires the current root owner
+  ---
+  duration_ms: 28.763587
+  type: 'test'
+  ...
+# Subtest: envelope rejects identity/reference, approved selection and plan/source/budget substitutions
+ok 6 - envelope rejects identity/reference, approved selection and plan/source/budget substitutions
+  ---
+  duration_ms: 38.340054
+  type: 'test'
+  ...
+# Subtest: no getter/proxy/toJSON/symbol/nonenumerable/cycle/array hooks execute during validation
+ok 7 - no getter/proxy/toJSON/symbol/nonenumerable/cycle/array hooks execute during validation
+  ---
+  duration_ms: 31.556067
+  type: 'test'
+  ...
+# Subtest: limits only tighten and complexity is bounded before recursion or serialization
+ok 8 - limits only tighten and complexity is bounded before recursion or serialization
+  ---
+  duration_ms: 38.115927
+  type: 'test'
+  ...
+# Subtest: lazy store publishes exactly once with private bytes, no catalog/head/run changes, stable list/read
+ok 9 - lazy store publishes exactly once with private bytes, no catalog/head/run changes, stable list/read
+  ---
+  duration_ms: 45.245657
+  type: 'test'
+  ...
+# Subtest: same operation never overwrites an existing envelope
+ok 10 - same operation never overwrites an existing envelope
+  ---
+  duration_ms: 47.924145
+  type: 'test'
+  ...
+# Subtest: synchronous final guard sees full fsynced temporary and runs before publication
+ok 11 - synchronous final guard sees full fsynced temporary and runs before publication
+  ---
+  duration_ms: 41.225734
+  type: 'test'
+  ...
+# Subtest: final guard follows all temporary/history byte reads and immediately precedes publication fences
+ok 12 - final guard follows all temporary/history byte reads and immediately precedes publication fences
+  ---
+  duration_ms: 42.521311
+  type: 'test'
+  ...
+# Subtest: post-guard temporary metadata change still prevents publication without a late byte read
+ok 13 - post-guard temporary metadata change still prevents publication without a late byte read
+  ---
+  duration_ms: 45.897276
+  type: 'test'
+  ...
+# Subtest: guard rejection/thenable cannot publish and private temporary is removed
+ok 14 - guard rejection/thenable cannot publish and private temporary is removed
+  ---
+  duration_ms: 56.171705
+  type: 'test'
+  ...
+# Subtest: ordinary async rejection is consumed under strict unhandled mode and then getters never execute
+ok 15 - ordinary async rejection is consumed under strict unhandled mode and then getters never execute
+  ---
+  duration_ms: 257.037735
+  type: 'test'
+  ...
+# Subtest: short writes complete, while write/fsync/close failure never publishes
+ok 16 - short writes complete, while write/fsync/close failure never publishes
+  ---
+  duration_ms: 151.072143
+  type: 'test'
+  ...
+# Subtest: post-publication faults retain accepted originals and expose lookup identities
+ok 17 - post-publication faults retain accepted originals and expose lookup identities
+  ---
+  duration_ms: 121.060904
+  type: 'test'
+  ...
+# Subtest: temporary mutation and inode replacement fail closed without deleting replaced files
+ok 18 - temporary mutation and inode replacement fail closed without deleting replaced files
+  ---
+  duration_ms: 104.42846
+  type: 'test'
+  ...
+# Subtest: a live read-only inode pin survives same-byte temporary replacement and closes on every outcome
+ok 19 - a live read-only inode pin survives same-byte temporary replacement and closes on every outcome
+  ---
+  duration_ms: 158.879704
+  type: 'test'
+  ...
+# Subtest: temporary inode pin acquisition failure closes the writer and never publishes
+ok 20 - temporary inode pin acquisition failure closes the writer and never publishes
+  ---
+  duration_ms: 36.878638
+  type: 'test'
+  ...
+# Subtest: owner loss after temporary write preserves temporary and prevents any publish/cleanup mutation
+ok 21 - owner loss after temporary write preserves temporary and prevents any publish/cleanup mutation
+  ---
+  duration_ms: 37.311184
+  type: 'test'
+  ...
+# Subtest: directory replacement is detected across calls and cleanup leaves replacement intact
+ok 22 - directory replacement is detected across calls and cleanup leaves replacement intact
+  ---
+  duration_ms: 32.520846
+  type: 'test'
+  ...
+# Subtest: orphan temporary is never promoted; malformed/unknown published records cannot look missing
+ok 23 - orphan temporary is never promoted; malformed/unknown published records cannot look missing
+  ---
+  duration_ms: 41.382358
+  type: 'test'
+  ...
+# Subtest: a published file removed during a bounded read is unavailable rather than missing
+ok 24 - a published file removed during a bounded read is unavailable rather than missing
+  ---
+  duration_ms: 45.816696
+  type: 'test'
+  ...
+# Subtest: a record observed by lstat cannot become absent after realpath ENOENT
+ok 25 - a record observed by lstat cannot become absent after realpath ENOENT
+  ---
+  duration_ms: 194.88999
+  type: 'test'
+  ...
+# Subtest: oversized and filename-mismatched published records reject without returning raw filesystem errors
+ok 26 - oversized and filename-mismatched published records reject without returning raw filesystem errors
+  ---
+  duration_ms: 40.671108
+  type: 'test'
+  ...
+# Subtest: capacity is bounded with immutable history and same-key replay still works at capacity
+ok 27 - capacity is bounded with immutable history and same-key replay still works at capacity
+  ---
+  duration_ms: 74.379569
+  type: 'test'
+  ...
+# Subtest: guard cannot add files beyond the reserved directory budget; orphans still consume capacity
+ok 28 - guard cannot add files beyond the reserved directory budget; orphans still consume capacity
+  ---
+  duration_ms: 37.709786
+  type: 'test'
+  ...
+# Subtest: unlink cleanup failure keeps accepted bytes queryable and never replays an orphan as accepted
+ok 29 - unlink cleanup failure keeps accepted bytes queryable and never replays an orphan as accepted
+  ---
+  duration_ms: 72.49779
+  type: 'test'
+  ...
+# Subtest: linked directory and linked envelope are rejected
+ok 30 - linked directory and linked envelope are rejected
+  ---
+  duration_ms: 33.468362
+  type: 'test'
+  ...
+1..30
+# tests 30
+# suites 0
+# pass 30
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2253.541721

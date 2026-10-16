@@ -1,0 +1,372 @@
+{
+  "schemaVersion": 1,
+  "evidenceLevel": "real-local-http-comparison",
+  "passed": true,
+  "provenance": {
+    "prior": {
+      "commit": "a45c8ae622e081d8b8048c44cf22fa7026e61a22",
+      "source": "local-git-object",
+      "path": "core/src/acceptance/spec-runner.mjs",
+      "sha256": "31d48ce3cdf56e8b760218abf9f7a56620fbfcd9917c1c623baecd159f9216f0"
+    },
+    "current": {
+      "path": "core/src/acceptance/spec-runner.mjs",
+      "sha256": "aa06081911341b9cad6df79088e1d631dc596d9ce59ffde40cab145b24855206"
+    },
+    "dependencies": [
+      {
+        "file": "core/src/acceptance/spec-schema.mjs",
+        "sha256": "2c652249fb80c725f1480c378a56e94f3296bb9a1ece19d0cc55c95302540919",
+        "unchangedFromPriorCommit": true
+      },
+      {
+        "file": "core/src/acceptance/urls.mjs",
+        "sha256": "1e1cd552b7020878526afe34cc2219a432ba9bc304fd6ae1f7bc4994d7a7a503",
+        "unchangedFromPriorCommit": true
+      },
+      {
+        "file": "core/src/acceptance/response-schema.mjs",
+        "sha256": "b386b5cd8991f52d187e1414ddd8178e99d5192bf1582446631c22d57235d255",
+        "unchangedFromPriorCommit": true
+      },
+      {
+        "file": "core/src/acceptance/identity.mjs",
+        "sha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5",
+        "unchangedFromPriorCommit": true
+      }
+    ],
+    "priorModuleImportRewrites": "Only four relative imports were resolved to the unchanged local dependency modules.",
+    "ciDependsOnHistoricalGitObjects": false
+  },
+  "ignoredReportPaths": [
+    "startedAt",
+    "endedAt",
+    "specApproval.recordedAt"
+  ],
+  "cases": [
+    {
+      "name": "approved-result-compatibility",
+      "approved": true,
+      "reportEqualExceptListedClockPaths": true,
+      "eventSequenceEqual": true,
+      "everyEvidenceFileByteEqual": true,
+      "checkCount": 4,
+      "checkOutcomes": [
+        {
+          "id": "spec-1-healthy",
+          "status": "passed",
+          "verdict": "match",
+          "errorCode": null
+        },
+        {
+          "id": "spec-2-bug",
+          "status": "failed",
+          "verdict": "bug",
+          "errorCode": null
+        },
+        {
+          "id": "spec-3-timeout",
+          "status": "blocked",
+          "verdict": "environment",
+          "errorCode": "REQUEST_TIMEOUT"
+        },
+        {
+          "id": "spec-4-redirect",
+          "status": "failed",
+          "verdict": "bug",
+          "errorCode": null
+        }
+      ],
+      "events": [
+        {
+          "kind": "acceptance-started",
+          "message": "Starting approved read-only API contract acceptance.",
+          "completed": 0,
+          "total": 4,
+          "runId": "ac-00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "kind": "acceptance-check",
+          "message": "healthy",
+          "completed": 1,
+          "total": 4,
+          "route": "/healthy",
+          "viewport": "api",
+          "runId": "ac-00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "kind": "acceptance-check",
+          "message": "bug",
+          "completed": 2,
+          "total": 4,
+          "route": "/wrong-code",
+          "viewport": "api",
+          "runId": "ac-00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "kind": "acceptance-check",
+          "message": "timeout",
+          "completed": 3,
+          "total": 4,
+          "route": "/slow",
+          "viewport": "api",
+          "runId": "ac-00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "kind": "acceptance-check",
+          "message": "redirect",
+          "completed": 4,
+          "total": 4,
+          "route": "/redirect",
+          "viewport": "api",
+          "runId": "ac-00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "kind": "acceptance-completed",
+          "message": "API contract acceptance completed with 4 results.",
+          "completed": 4,
+          "total": 4,
+          "runId": "ac-00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "executions": [
+        {
+          "variant": "prior",
+          "reportedRequests": 4,
+          "fixtureRequests": [
+            {
+              "method": "GET",
+              "path": "/healthy"
+            },
+            {
+              "method": "GET",
+              "path": "/wrong-code"
+            },
+            {
+              "method": "GET",
+              "path": "/slow"
+            },
+            {
+              "method": "GET",
+              "path": "/redirect"
+            }
+          ],
+          "evidence": [
+            {
+              "file": "spec-1-healthy-contract.json",
+              "bytes": 544,
+              "sha256": "975950c7c1c771f5bca6bf10b0ff43107267f19193c3d7351d19f299d39d0e6a"
+            },
+            {
+              "file": "spec-1-healthy-request.json",
+              "bytes": 167,
+              "sha256": "2dcdd9567bc95c50d70f7fdcaf391787fdd354a128f21a286f1d51c4c9bfafd4"
+            },
+            {
+              "file": "spec-1-healthy-response.json",
+              "bytes": 536,
+              "sha256": "43a2bed5405deb5a56d41f28052f26da36d54ff645243039237b4d34f8b2cbef"
+            },
+            {
+              "file": "spec-2-bug-contract.json",
+              "bytes": 498,
+              "sha256": "03c70f9337eb19d292d630f375926471a82a863e4778bd8bea772e3cff07e02a"
+            },
+            {
+              "file": "spec-2-bug-request.json",
+              "bytes": 181,
+              "sha256": "0458fa3480f9d00cd9d714823f1c5a57405e14cb61e51c38b6a48c7fe6ba6674"
+            },
+            {
+              "file": "spec-2-bug-response.json",
+              "bytes": 689,
+              "sha256": "1e0abc966112edd55669dce2ff0847d67ef9f3da52254731f81b131d5ff11afb"
+            },
+            {
+              "file": "spec-3-timeout-contract.json",
+              "bytes": 376,
+              "sha256": "0fe03cb93e73e0b4f299e54c39f995a1418bd1902e09c22f3513c3cc11d13695"
+            },
+            {
+              "file": "spec-3-timeout-request.json",
+              "bytes": 175,
+              "sha256": "79d8e544a9ac87dd3c65c5a812508720270c8e1879bc8b2c3d286f2db851d77b"
+            },
+            {
+              "file": "spec-3-timeout-response.json",
+              "bytes": 121,
+              "sha256": "e2787aa2f43e7711469b050b0187dc3fa3baaf0a53af62e7d55a200c23780eda"
+            },
+            {
+              "file": "spec-4-redirect-contract.json",
+              "bytes": 382,
+              "sha256": "7d4e2d5f5bae4ecc214611179cbadbb2eb1f095234a8340e6d74f09bd5dab378"
+            },
+            {
+              "file": "spec-4-redirect-request.json",
+              "bytes": 179,
+              "sha256": "859d81b3d3b6e0eba3ccfe5477be85e3fdac00d67ba41f3cf56b1e65e1addec5"
+            },
+            {
+              "file": "spec-4-redirect-response.json",
+              "bytes": 277,
+              "sha256": "0cdcb75c9580d0b2aa6ef34a7cee5d6e86f15cd65a46ad179931e6fc7a5ca967"
+            }
+          ]
+        },
+        {
+          "variant": "current",
+          "reportedRequests": 4,
+          "fixtureRequests": [
+            {
+              "method": "GET",
+              "path": "/healthy"
+            },
+            {
+              "method": "GET",
+              "path": "/wrong-code"
+            },
+            {
+              "method": "GET",
+              "path": "/slow"
+            },
+            {
+              "method": "GET",
+              "path": "/redirect"
+            }
+          ],
+          "evidence": [
+            {
+              "file": "spec-1-healthy-contract.json",
+              "bytes": 544,
+              "sha256": "975950c7c1c771f5bca6bf10b0ff43107267f19193c3d7351d19f299d39d0e6a"
+            },
+            {
+              "file": "spec-1-healthy-request.json",
+              "bytes": 167,
+              "sha256": "2dcdd9567bc95c50d70f7fdcaf391787fdd354a128f21a286f1d51c4c9bfafd4"
+            },
+            {
+              "file": "spec-1-healthy-response.json",
+              "bytes": 536,
+              "sha256": "43a2bed5405deb5a56d41f28052f26da36d54ff645243039237b4d34f8b2cbef"
+            },
+            {
+              "file": "spec-2-bug-contract.json",
+              "bytes": 498,
+              "sha256": "03c70f9337eb19d292d630f375926471a82a863e4778bd8bea772e3cff07e02a"
+            },
+            {
+              "file": "spec-2-bug-request.json",
+              "bytes": 181,
+              "sha256": "0458fa3480f9d00cd9d714823f1c5a57405e14cb61e51c38b6a48c7fe6ba6674"
+            },
+            {
+              "file": "spec-2-bug-response.json",
+              "bytes": 689,
+              "sha256": "1e0abc966112edd55669dce2ff0847d67ef9f3da52254731f81b131d5ff11afb"
+            },
+            {
+              "file": "spec-3-timeout-contract.json",
+              "bytes": 376,
+              "sha256": "0fe03cb93e73e0b4f299e54c39f995a1418bd1902e09c22f3513c3cc11d13695"
+            },
+            {
+              "file": "spec-3-timeout-request.json",
+              "bytes": 175,
+              "sha256": "79d8e544a9ac87dd3c65c5a812508720270c8e1879bc8b2c3d286f2db851d77b"
+            },
+            {
+              "file": "spec-3-timeout-response.json",
+              "bytes": 121,
+              "sha256": "e2787aa2f43e7711469b050b0187dc3fa3baaf0a53af62e7d55a200c23780eda"
+            },
+            {
+              "file": "spec-4-redirect-contract.json",
+              "bytes": 382,
+              "sha256": "7d4e2d5f5bae4ecc214611179cbadbb2eb1f095234a8340e6d74f09bd5dab378"
+            },
+            {
+              "file": "spec-4-redirect-request.json",
+              "bytes": 179,
+              "sha256": "859d81b3d3b6e0eba3ccfe5477be85e3fdac00d67ba41f3cf56b1e65e1addec5"
+            },
+            {
+              "file": "spec-4-redirect-response.json",
+              "bytes": 277,
+              "sha256": "0cdcb75c9580d0b2aa6ef34a7cee5d6e86f15cd65a46ad179931e6fc7a5ca967"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "draft-result-compatibility",
+      "approved": false,
+      "reportEqualExceptListedClockPaths": true,
+      "eventSequenceEqual": true,
+      "everyEvidenceFileByteEqual": true,
+      "checkCount": 1,
+      "checkOutcomes": [
+        {
+          "id": "spec-1-draft",
+          "status": "blocked",
+          "verdict": "needs_review",
+          "errorCode": null
+        }
+      ],
+      "events": [
+        {
+          "kind": "acceptance-started",
+          "message": "Starting approved read-only API contract acceptance.",
+          "completed": 0,
+          "total": 1,
+          "runId": "ac-00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "kind": "acceptance-check",
+          "message": "draft",
+          "completed": 1,
+          "total": 1,
+          "route": "/healthy",
+          "viewport": "api",
+          "runId": "ac-00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "kind": "acceptance-completed",
+          "message": "API contract acceptance completed with 1 results.",
+          "completed": 1,
+          "total": 1,
+          "runId": "ac-00000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "executions": [
+        {
+          "variant": "prior",
+          "reportedRequests": 0,
+          "fixtureRequests": [],
+          "evidence": [
+            {
+              "file": "spec-1-draft-contract.json",
+              "bytes": 376,
+              "sha256": "d85a054bf1f5f84b0a447b6faa909368c3c15bbd11e5374f19f0ff75696a96c9"
+            }
+          ]
+        },
+        {
+          "variant": "current",
+          "reportedRequests": 0,
+          "fixtureRequests": [],
+          "evidence": [
+            {
+              "file": "spec-1-draft-contract.json",
+              "bytes": 376,
+              "sha256": "d85a054bf1f5f84b0a447b6faa909368c3c15bbd11e5374f19f0ff75696a96c9"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "temporaryRootCleaned": true
+}

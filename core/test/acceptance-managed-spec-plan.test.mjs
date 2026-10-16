@@ -306,5 +306,7 @@ test('generated names are bounded and do not split surrogate pairs; public proje
   assert.deepEqual(SUPPORTED_SPEC_VERIFIERS_V1, [
     '8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d',
     '32fab6ccb46b1954e7a64c81783699a715013062e6c0bfb6ba19299afc18654f',
+    'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8',
+    '8d1b75da7efad4f18b279a466ebdf880b1e24bb641ca80070cd03d0700376e9f',
   ]);
 });

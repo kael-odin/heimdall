@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-16T15:48:40.405Z",
+  "results": [
+    {
+      "scenario": "acceptance-started",
+      "early": {
+        "state": "rejected",
+        "code": "SPEC_ACCEPTANCE_ABORTED"
+      },
+      "adds": 1,
+      "removes": 1
+    },
+    {
+      "scenario": "acceptance-completed",
+      "early": {
+        "state": "rejected",
+        "code": "SPEC_ACCEPTANCE_ABORTED"
+      },
+      "adds": 1,
+      "removes": 1
+    }
+  ]
+}

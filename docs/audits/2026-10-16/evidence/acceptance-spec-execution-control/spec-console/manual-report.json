@@ -1,0 +1,469 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-2cdec8b4-f56e-4d4b-b725-b8b7542a5f9c",
+  "name": "手工需求契约验收",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:49217/",
+  "startedAt": "2026-10-16T15:56:24.140Z",
+  "endedAt": "2026-10-16T15:56:24.183Z",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "spec-1-MANUAL-1",
+      "title": "健康接口契约",
+      "route": "/healthy",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "f7eaf89edb1a7898555fb0bb1f400f2224dbb53f5c1926483539a0d35cfffea9",
+        "contextKey": "d38807e07cdd9bb5db51288138b9a61d4f7b1ae04778e96a0e232569ac5ea7de",
+        "ruleKey": "c92299d0f49070b8409dae89d8d392110a15b632bf1dc4a3a6b2a0811662e9f4",
+        "oracleKey": "c21da1b5f1baacdd31338f42c7275289dad9b4dddaf2d7f4e1d368cf4f44a4b8",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "MANUAL-1",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "manual-api-requirements",
+        "revision": "v2",
+        "sourceFingerprint": "4062230c92de1c99194e163c7526c6e9178eb3a074fd9c19ee3532f9cd345dff",
+        "documentSha256": null,
+        "contractFingerprint": "4e89f62b6e31c8602c919188300fcd05a35bf88b731ba4bb9b3a3d4f6b75f2d2"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "json": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0
+          },
+          {
+            "pointer": "/data/name",
+            "kind": "required"
+          },
+          {
+            "pointer": "/data/id",
+            "kind": "type",
+            "type": "integer"
+          },
+          {
+            "pointer": "/data/active",
+            "kind": "enum",
+            "values": [
+              true
+            ]
+          }
+        ],
+        "schema": {
+          "type": "object",
+          "required": [
+            "code",
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "integer",
+              "const": 0
+            },
+            "data": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "active"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "reproduction": [
+        "Use requirement manual-api-requirements at revision v2.",
+        "GET http://127.0.0.1:49217/healthy without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "passed",
+      "verdict": "match",
+      "evaluationLimited": false,
+      "actual": {
+        "requested": true,
+        "httpStatus": 200,
+        "contentType": "application/json",
+        "redirectNotFollowed": false,
+        "hasLocation": false,
+        "mismatches": [],
+        "bytes": 58,
+        "bodySha256": "95638732e0ce20acaf1956d8baa9ada7bb118060501ed29d9b5ab9a184322d0a",
+        "assertions": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0,
+            "passed": true,
+            "actual": 0,
+            "exists": true
+          },
+          {
+            "pointer": "/data/name",
+            "kind": "required",
+            "passed": true,
+            "actual": {
+              "type": "string",
+              "length": 8,
+              "sha256": "22c25870d54219c34a4ad91339e4b9d5a4acfc2c4a3a5c16a953f35d8c545672",
+              "detail": "See authenticated response evidence."
+            },
+            "exists": true
+          },
+          {
+            "pointer": "/data/id",
+            "kind": "type",
+            "type": "integer",
+            "passed": true,
+            "actual": 7,
+            "exists": true
+          },
+          {
+            "pointer": "/data/active",
+            "kind": "enum",
+            "values": [
+              true
+            ],
+            "passed": true,
+            "actual": true,
+            "exists": true
+          }
+        ],
+        "schemaFailures": []
+      },
+      "evidence": {
+        "contract": "spec-1-MANUAL-1-contract.json",
+        "request": "spec-1-MANUAL-1-request.json",
+        "response": "spec-1-MANUAL-1-response.json"
+      }
+    },
+    {
+      "id": "spec-2-MANUAL-2",
+      "title": "响应包含需求规定的名称",
+      "route": "/missing-field",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "11ee4362df50546aa26b45cee6457b58dfd5da771ce9f94ebb0ad0807999162e",
+        "contextKey": "7777a8487526fe082adc7860916cfa262edaf6cdf95483e5f9bbc3f21bae43fc",
+        "ruleKey": "d72fdd67d7c7465294a622f6836699ca72bc3c0971b028c85bbe394440183573",
+        "oracleKey": "5cc9e21ea54758f7871a61c856f0acf162f534e1ffb27b3d5cde74766dc9258f",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "MANUAL-2",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "manual-api-requirements",
+        "revision": "v2",
+        "sourceFingerprint": "4062230c92de1c99194e163c7526c6e9178eb3a074fd9c19ee3532f9cd345dff",
+        "documentSha256": null,
+        "contractFingerprint": "4e89f62b6e31c8602c919188300fcd05a35bf88b731ba4bb9b3a3d4f6b75f2d2"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "json": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0
+          },
+          {
+            "pointer": "/data/name",
+            "kind": "required"
+          },
+          {
+            "pointer": "/data/id",
+            "kind": "type",
+            "type": "integer"
+          },
+          {
+            "pointer": "/data/active",
+            "kind": "enum",
+            "values": [
+              true
+            ]
+          }
+        ],
+        "schema": {
+          "type": "object",
+          "required": [
+            "code",
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "integer",
+              "const": 0
+            },
+            "data": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "active"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "reproduction": [
+        "Use requirement manual-api-requirements at revision v2.",
+        "GET http://127.0.0.1:49217/missing-field without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "failed",
+      "verdict": "bug",
+      "evaluationLimited": false,
+      "actual": {
+        "requested": true,
+        "httpStatus": 200,
+        "contentType": "application/json",
+        "redirectNotFollowed": false,
+        "hasLocation": false,
+        "mismatches": [
+          {
+            "kind": "required",
+            "pointer": "/data/name",
+            "passed": false,
+            "actual": "[missing]",
+            "exists": false
+          },
+          {
+            "kind": "json-schema",
+            "pointer": "/data/name",
+            "keyword": "required",
+            "expected": "name",
+            "actual": {
+              "type": "object",
+              "properties": 1,
+              "sha256": "7dc386e22fccb03994ed06cb561164205272a488be8d121895fb86de2c654f39",
+              "detail": "See authenticated response evidence."
+            }
+          }
+        ],
+        "bytes": 40,
+        "bodySha256": "951cbb026c1daed8fba867deeacf06e02f4a7209fa77d1a4e098b1e6fdd5ecb5",
+        "assertions": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0,
+            "passed": true,
+            "actual": 0,
+            "exists": true
+          },
+          {
+            "pointer": "/data/name",
+            "kind": "required",
+            "passed": false,
+            "actual": "[missing]",
+            "exists": false
+          },
+          {
+            "pointer": "/data/id",
+            "kind": "type",
+            "type": "integer",
+            "passed": true,
+            "actual": 7,
+            "exists": true
+          },
+          {
+            "pointer": "/data/active",
+            "kind": "enum",
+            "values": [
+              true
+            ],
+            "passed": true,
+            "actual": true,
+            "exists": true
+          }
+        ],
+        "schemaFailures": [
+          {
+            "pointer": "/data/name",
+            "keyword": "required",
+            "expected": "name",
+            "actual": {
+              "type": "object",
+              "properties": 1,
+              "sha256": "7dc386e22fccb03994ed06cb561164205272a488be8d121895fb86de2c654f39",
+              "detail": "See authenticated response evidence."
+            }
+          }
+        ]
+      },
+      "evidence": {
+        "contract": "spec-2-MANUAL-2-contract.json",
+        "request": "spec-2-MANUAL-2-request.json",
+        "response": "spec-2-MANUAL-2-response.json"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 2,
+    "completed": 2,
+    "capped": false
+  },
+  "specSource": {
+    "id": "manual-api-requirements",
+    "revision": "v2",
+    "type": "manual"
+  },
+  "sourceFingerprint": "4062230c92de1c99194e163c7526c6e9178eb3a074fd9c19ee3532f9cd345dff",
+  "contractFingerprint": "4e89f62b6e31c8602c919188300fcd05a35bf88b731ba4bb9b3a3d4f6b75f2d2",
+  "specApproval": {
+    "approved": true,
+    "recordedAt": "2026-10-16T15:56:24.140Z"
+  },
+  "safety": {
+    "readOnly": true,
+    "allowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "redirects": "not-followed",
+    "credentials": "none",
+    "requests": 2
+  },
+  "environment": {
+    "runner": "node-fetch",
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "maxResponseBytes": 262144,
+    "timeoutMs": 10000
+  },
+  "scope": "仅验收明确批准的 GET/HEAD 及声明的 HTTP、MIME、JSON 字段/响应 schema；不使用会话、不跟随重定向。候选、未覆盖契约、超时、超响应/验证预算均不能通过；无视觉、数据库、写操作、认证或任意业务状态机保证。来源指纹用于追溯，不代表系统已经证明原需求正确。",
+  "planFingerprint": "c90c9623f0337110f5a4895626d108e43ba360fbc89b0b6f1723f1adc1a140f4",
+  "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+  "evidenceManifest": [
+    {
+      "file": "spec-1-MANUAL-1-contract.json",
+      "bytes": 1654,
+      "sha256": "8fb58df29da61cd72ab21145393c6cf65df324e0d5ecc5bcc8e4c6ab66b8bbad"
+    },
+    {
+      "file": "spec-1-MANUAL-1-request.json",
+      "bytes": 167,
+      "sha256": "03f6547dd7783548948565db4b494712e985f8a54346d3c266111b1e03af6d76"
+    },
+    {
+      "file": "spec-1-MANUAL-1-response.json",
+      "bytes": 1025,
+      "sha256": "1b6e97dcc2b3799050eded85a8441caef1c89b490a6e9ef949b680f11a5daa55"
+    },
+    {
+      "file": "spec-2-MANUAL-2-contract.json",
+      "bytes": 1675,
+      "sha256": "048ced8631aab351c5c49e2914a99b13475dab6c30daf9240da7603ccd85e1f3"
+    },
+    {
+      "file": "spec-2-MANUAL-2-request.json",
+      "bytes": 173,
+      "sha256": "d0d051c0bdd26d9b815a81f3baa36704f5ab5e53ea5a85bef4993a385562b65f"
+    },
+    {
+      "file": "spec-2-MANUAL-2-response.json",
+      "bytes": 1477,
+      "sha256": "53de6794783854f6e3c92fd0c727acc333fe269f5ec29f99de8c63ee09a0e0be"
+    }
+  ],
+  "gate": "failed",
+  "summary": {
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 1,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 2,
+      "total": 2,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

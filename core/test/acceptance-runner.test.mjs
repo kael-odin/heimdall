@@ -41,7 +41,7 @@ async function fixture(t) {
       ${consoleError ? "console.error('Fixture runtime error')" : ''};
       ${name === 'shared-network' ? `fetch('/${side}/missing-resource').catch(()=>{})` : ''};
       ${target && name === 'auto-write' ? "fetch('/api/save',{method:'POST'}).catch(()=>console.error('Target POST was blocked by the execution policy'))" : ''};
-      ${name === 'dynamic' ? "let i=0;setInterval(()=>{document.querySelector('#dynamic').style.background=['red','green','blue'][i++%3]},33)" : ''};
+      ${name === 'dynamic' ? "window.setAcceptanceNoisePhase=phase=>{const element=document.querySelector('#dynamic');element.style.background=['red','green','blue'][phase%3];return getComputedStyle(element).backgroundColor};window.setAcceptanceNoisePhase(0)" : ''};
       </script></body></html>`);
   });
   server.listen(0, '127.0.0.1');
@@ -60,6 +60,37 @@ function planFor(origin, extra = {}) {
   // This budget also covers a cold Chromium launch. Keep the production default
   // rather than imposing a 1.2s startup benchmark on parallel, shared CI runners.
   return normalizeAcceptancePlan({ name: 'Runner verification', mode: 'mirror', baselineUrl: `${origin}/baseline/`, targetUrl: `${origin}/target/`, routes: ['/good'], viewports: [{ name: 'mobile', width: 375, height: 812 }], timeoutMs: 10_000, settleMs: 100, ...extra });
+}
+
+function dynamicCapturePhases(t, phases = [0, 1]) {
+  // A three-color 33ms interval repeats every 99ms and can alias the runner's
+  // two samples. Drive the real fixture at each real capture so this test
+  // proves different pixels, independently of screenshot/CI scheduling.
+  const observations = [], launch = chromium.launch.bind(chromium);
+  t.mock.method(chromium, 'launch', async options => {
+    const browser = await launch(options), newContext = browser.newContext.bind(browser);
+    browser.newContext = async options => {
+      const context = await newContext(options), newPage = context.newPage.bind(context);
+      context.newPage = async () => {
+        const page = await newPage(), screenshot = page.screenshot.bind(page);
+        let capture = 0;
+        page.screenshot = async options => {
+          const path = new URL(page.url()).pathname;
+          if (path.endsWith('/dynamic')) {
+            assert.ok(capture < phases.length, 'Every dynamic capture has an explicit fixture phase.');
+            const phase = phases[capture++];
+            const background = await page.evaluate(phase => window.setAcceptanceNoisePhase(phase), phase);
+            observations.push({ path, phase, background });
+          }
+          return screenshot(options);
+        };
+        return page;
+      };
+      return context;
+    };
+    return browser;
+  });
+  return observations;
 }
 
 test('acceptance runner reproduces missing controls, wrong ARIA, text, HTTP and runtime regressions', { timeout: 60_000 }, async t => {
@@ -132,6 +163,7 @@ test('browser identities survive reordered routes, points, renamed viewports and
 
 test('acceptance runner refuses to attribute baseline failures, shared errors, dynamic noise and blocked writes', { timeout: 45_000 }, async t => {
   const { origin, outputDir, writes } = await fixture(t);
+  const captures = dynamicCapturePhases(t);
   const plan = planFor(origin, {
     routes: ['/badbaseline', '/shared-console', '/shared-network', '/dynamic', '/good', '/auto-write'],
     points: [
@@ -146,7 +178,14 @@ test('acceptance runner refuses to attribute baseline failures, shared errors, d
   assert.ok(byRoute('/badbaseline').some(check => check.verdict === 'baseline_failed'));
   assert.ok(byRoute('/shared-console').some(check => check.verdict === 'baseline_failed' && check.status === 'needs_review'));
   assert.ok(byRoute('/shared-network').some(check => check.verdict === 'baseline_failed' && check.status === 'needs_review'));
-  assert.equal(byRoute('/dynamic').find(check => check.dimension === 'visual').status, 'needs_review');
+  const dynamic = byRoute('/dynamic').find(check => check.dimension === 'visual');
+  assert.deepEqual(captures.map(capture => capture.phase), [0, 1, 0, 1]);
+  assert.deepEqual(captures.map(capture => capture.background), ['rgb(255, 0, 0)', 'rgb(0, 128, 0)', 'rgb(255, 0, 0)', 'rgb(0, 128, 0)']);
+  assert.equal(dynamic.actual.score, 1, 'Baseline and target start in the same phase.');
+  assert.ok(dynamic.actual.baselineStability < dynamic.expected.stabilityMinimum);
+  assert.ok(dynamic.actual.targetStability < dynamic.expected.stabilityMinimum);
+  assert.equal(dynamic.status, 'needs_review');
+  assert.equal(dynamic.verdict, 'needs_review');
   assert.equal(report.checks.find(check => check.title === 'Invalid approved oracle').verdict, 'baseline_failed');
   assert.equal(report.checks.find(check => check.title === 'Read-only POST guard').verdict, 'environment');
   assert.equal(report.checks.find(check => check.title === 'Fill and keyboard input').status, 'passed');
@@ -163,14 +202,30 @@ test('acceptance runner refuses to attribute baseline failures, shared errors, d
 
 test('dynamic masks permit deterministic comparison, and unreachable targets stay environment blockers', { timeout: 25_000 }, async t => {
   const { origin, outputDir } = await fixture(t);
+  const captures = dynamicCapturePhases(t);
   const masked = await runAcceptance(planFor(origin, { routes: ['/dynamic'], normalization: { maskSelectors: ['#dynamic'] } }), { outputDir });
   const maskedVisual = masked.checks.find(check => check.dimension === 'visual');
   assert.equal(maskedVisual.status, 'passed');
+  assert.deepEqual(captures.map(capture => capture.phase), [0, 1, 0, 1]);
+  assert.equal(maskedVisual.actual.baselineStability, 1);
+  assert.equal(maskedVisual.actual.targetStability, 1);
   assert.ok(maskedVisual.actual.maskCoverage.baseline.maskedRatio > 0);
   assert.ok(maskedVisual.actual.maskCoverage.baseline.maskedRatio < 0.8);
   const unreachable = await runAcceptance(planFor(origin, { targetUrl: 'http://127.0.0.1:1/', routes: ['/good'] }), { outputDir: join(outputDir, 'unreachable') });
   assert.ok(unreachable.checks.every(check => check.verdict !== 'bug'));
   assert.ok(unreachable.checks.some(check => check.status === 'blocked' && check.verdict === 'environment'));
+});
+
+test('same-phase periodic samples remain a bounded observation rather than proof of all-time stability', { timeout: 15_000 }, async t => {
+  const { origin, outputDir } = await fixture(t), captures = dynamicCapturePhases(t, [0, 3]);
+  const report = await runAcceptance(planFor(origin, { routes: ['/dynamic'] }), { outputDir });
+  const visual = report.checks.find(check => check.dimension === 'visual');
+  assert.deepEqual(captures.map(capture => capture.phase), [0, 3, 0, 3]);
+  assert.ok(captures.every(capture => capture.background === 'rgb(255, 0, 0)'));
+  assert.equal(visual.actual.baselineStability, 1);
+  assert.equal(visual.actual.targetStability, 1);
+  assert.equal(visual.status, 'passed');
+  assert.match(report.scope, /有界观察窗口/);
 });
 
 test('overlapping full-screen masks cannot produce false green acceptance', { timeout: 15_000 }, async t => {

@@ -32,6 +32,10 @@
 
 原始大日志位于本机 ignored 目录 `core/workspace/_runs/acceptance-managed-preparation-*`。本机两个 Docker offline 用例仍按环境跳过，本批推送后单独跟踪对应提交的 CI；`022f345` 的绿色结果只用于其自身的上一阶段修复。
 
+### 对应提交的 CI 结果
+
+`a45c8ae622e081d8b8048c44cf22fa7026e61a22` 的 CI run `38925385944` 于 2026-10-16 结束为 failure：console build 与独立 e2e smoke job 成功，core 全量 1377 项中 1372 pass、2 fail、3 skip。core 中的后续验收 smoke 与 Docker 步骤未执行，不能计为通过。失败分别为临时文件替换后的清理删除，以及 Browser 动态噪声测试的截图时序碰撞。原失败终态与日志摘录保存在[后续执行控制证据](evidence/acceptance-spec-execution-control/README.md)；修复和对应回归见[执行控制验收](acceptance-spec-execution-control.md)。此前本机通过的结果保留其本机证据级别。
+
 ## 剩余边界
 
 本阶段的 runId / taskId 仅预留，prepared 不表示任务已启动。记录是当前本地 owner 接受的合同与来源快照，不是对需求正确性的证明，也不是管理员不可重写的签名。

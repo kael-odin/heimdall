@@ -1,0 +1,245 @@
+{
+  "plan": {
+    "schemaVersion": 1,
+    "name": "OpenAPI 候选契约验收",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:49217/",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "openapi-b1c25a66855ed0c6",
+        "revision": "2026-10-16",
+        "type": "openapi",
+        "title": "Spec acceptance fixture",
+        "sha256": "b1c25a66855ed0c662d3656d0899ff332f38d5b9cc9c424d11271cd97f0b7577"
+      },
+      "approved": false,
+      "checks": [
+        {
+          "id": "openapi-1",
+          "title": "/healthy 契约",
+          "method": "GET",
+          "path": "/healthy",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "const": 0,
+                  "type": "integer"
+                },
+                "data": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "active": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "active"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "code",
+                "data"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        {
+          "id": "openapi-3",
+          "title": "/wrong-code 契约",
+          "method": "GET",
+          "path": "/wrong-code",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "const": 0,
+                  "type": "integer"
+                },
+                "data": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "active": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "active"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "code",
+                "data"
+              ],
+              "type": "object"
+            }
+          }
+        }
+      ],
+      "omissions": [
+        {
+          "id": "openapi-2",
+          "path": "/write",
+          "method": "POST",
+          "reason": "only GET and HEAD are read-only candidates; this method is not executed"
+        }
+      ],
+      "document": {
+        "info": {
+          "title": "Spec acceptance fixture",
+          "version": "2026-10-16"
+        },
+        "openapi": "3.1.0",
+        "paths": {
+          "/healthy": {
+            "get": {
+              "operationId": "readQuota1",
+              "responses": {
+                "200": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "code": {
+                            "const": 0,
+                            "type": "integer"
+                          },
+                          "data": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "id": {
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "active"
+                            ],
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "data"
+                        ],
+                        "type": "object"
+                      }
+                    }
+                  },
+                  "description": "成功响应"
+                }
+              },
+              "summary": "/healthy 契约"
+            }
+          },
+          "/write": {
+            "post": {
+              "operationId": "writeQuota",
+              "responses": {
+                "200": {
+                  "description": "写请求不执行"
+                }
+              }
+            }
+          },
+          "/wrong-code": {
+            "get": {
+              "operationId": "readQuota2",
+              "responses": {
+                "200": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "code": {
+                            "const": 0,
+                            "type": "integer"
+                          },
+                          "data": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "id": {
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "active"
+                            ],
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "data"
+                        ],
+                        "type": "object"
+                      }
+                    }
+                  },
+                  "description": "成功响应"
+                }
+              },
+              "summary": "/wrong-code 契约"
+            }
+          }
+        }
+      }
+    }
+  },
+  "coverage": {
+    "declaredOperations": 3,
+    "candidateChecks": 2,
+    "omittedOperations": 1,
+    "complete": false,
+    "ratio": 0.6666666666666666
+  },
+  "warnings": []
+}

@@ -257,7 +257,7 @@ test('private preparation has no HTTP route and cannot be invoked by a guessed m
       { catalog, json(_res, status, body) { response = { status, body }; } });
     assert.equal(handled, true); return response;
   };
-  for (const suffix of ['managed-spec-runs', 'managed-spec-dispatches', 'prepareManagedSpecDispatch']) {
+  for (const suffix of ['managed-spec-runs', 'managed-spec-dispatches', 'prepareManagedSpecDispatch', 'readManagedSpecDispatch']) {
     assert.equal((await invoke('POST', f.project.id + '/' + suffix)).status, 404);
   }
   assert.equal((await invoke('GET', f.project.id)).status, 200);
@@ -278,4 +278,64 @@ test('ordinary B2.1 catalog initialization and HTTP reads remain independent of 
   assert.equal(response.status, 200); assert.equal(response.body.executionReady, false);
   await assert.rejects(reopened.prepareManagedSpecDispatch(f.project.id, input));
   assert.deepEqual(heads(f), before); assert.equal(readFileSync(file, 'utf8'), '{broken'); assert.equal(runIds(f).length, 1);
+});
+
+test('private dispatch query returns absence without preparing an operation, including a queued future preparation', async t => {
+  const f = await fixture(t), input = preparedInput(f), before = heads(f), runs = runIds(f);
+  const originalFetch = globalThis.fetch; let requests = 0;
+  globalThis.fetch = async () => { requests++; throw Error('A dispatch query cannot execute'); };
+  try {
+    assert.equal(f.store.readManagedSpecDispatch(f.project.id, input), null);
+    assert.equal(existsSync(join(f.root, 'managed-spec-dispatches')), false);
+    assert.deepEqual(published(f), []); assert.deepEqual(heads(f), before); assert.deepEqual(runIds(f), runs);
+    const pending = f.store.prepareManagedSpecDispatch(f.project.id, input);
+    assert.equal(f.store.readManagedSpecDispatch(f.project.id, input), null);
+    const prepared = await pending;
+    const record = f.store.readManagedSpecDispatch(f.project.id, input);
+    assert.deepEqual(record.bytes, prepared.record.bytes); assert.equal(record.sha256, prepared.record.sha256);
+    record.envelope.plan.name = 'Caller mutation'; record.bytes.fill(0);
+    assert.deepEqual(f.store.readManagedSpecDispatch(f.project.id, input), prepared.record);
+    assert.equal(requests, 0); assert.equal(existsSync(join(f.root, prepared.record.envelope.runId)), false);
+  } finally { globalThis.fetch = originalFetch; }
+  assert.deepEqual(heads(f), before); assert.deepEqual(runIds(f), runs); assert.deepEqual(sourceFiles(f.sourceDir), f.originalSource);
+});
+
+test('private dispatch query reads original confirmation after cancellation and source or catalog loss without initializing the catalog', async t => {
+  const f = await fixture(t), input = preparedInput(f), first = await f.store.prepareManagedSpecDispatch(f.project.id, input);
+  await f.store.selectBaseline(f.project.id, { ...cas(f.store), mode: 'spec', approvalId: null, contentDigest: null, reason: '取消但保留已接受操作' });
+  renameSync(f.sourceDir, f.sourceDir + '.saved');
+  renameSync(join(f.root, 'catalog.json'), join(f.root, 'catalog.saved'));
+  const restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
+  const record = restarted.readManagedSpecDispatch(f.project.id, input);
+  assert.deepEqual(record, first.record); assert.equal(existsSync(join(f.root, 'catalog.json')), false);
+  assert.equal(published(f).length, 1); assert.equal(existsSync(join(f.root, record.envelope.runId)), false);
+  assert.deepEqual(sourceFiles(f.sourceDir + '.saved'), f.originalSource);
+});
+
+test('private dispatch query requires all original confirmation fields and rejects unknown fields or getters before storage access', async t => {
+  const f = await fixture(t), input = preparedInput(f);
+  let called = false;
+  const accessor = { ...input }; Object.defineProperty(accessor, 'contentDigest', { enumerable: true, get() { called = true; return input.contentDigest; } });
+  for (const raw of [{ ...input, plan: f.plan }, { ...input, expectedRevision: '8' }, { ...input, operationId: '../outside' }, accessor]) {
+    assert.throws(() => f.store.readManagedSpecDispatch(f.project.id, raw), { code: 'INVALID_INPUT' });
+  }
+  assert.equal(called, false); assert.equal(existsSync(dispatchDir(f)), false);
+  const first = await f.store.prepareManagedSpecDispatch(f.project.id, input);
+  for (const patch of [{ expectedGenerationId: uid('ag') }, { expectedRevision: input.expectedRevision + 1 },
+    { targetReleaseId: f.release.id }, { selectionId: uid('as') }, { contentDigest: 'a'.repeat(64) }]) {
+    assert.throws(() => f.store.readManagedSpecDispatch(f.project.id, { ...input, ...patch }), { code: 'IDEMPOTENCY_CONFLICT' });
+  }
+  assert.throws(() => f.store.readManagedSpecDispatch(uid('ap'), input), { code: 'IDEMPOTENCY_CONFLICT' });
+  assert.deepEqual(f.store.readManagedSpecDispatch(f.project.id, input), first.record); assert.equal(published(f).length, 1);
+});
+
+test('private dispatch query preserves corrupt accepted bytes and refuses reads when the owner is lost', async t => {
+  const f = await fixture(t), input = preparedInput(f), first = await f.store.prepareManagedSpecDispatch(f.project.id, input);
+  const file = join(dispatchDir(f), input.operationId + '.json'); writeFileSync(file, '{broken-query-record');
+  assert.throws(() => f.store.readManagedSpecDispatch(f.project.id, input), { code: 'MANAGED_DISPATCH_UNAVAILABLE' });
+  assert.equal(readFileSync(file, 'utf8'), '{broken-query-record');
+  f.active = false;
+  assert.throws(() => f.store.readManagedSpecDispatch(f.project.id, input), { code: 'ACCEPTANCE_OWNER_LOST' });
+  assert.throws(() => f.store.readManagedSpecDispatch(f.project.id, { ...input, operationId: uid('ao') }), { code: 'ACCEPTANCE_OWNER_LOST' });
+  assert.equal(published(f).length, 1); assert.equal(existsSync(join(f.root, first.record.envelope.runId)), false);
 });

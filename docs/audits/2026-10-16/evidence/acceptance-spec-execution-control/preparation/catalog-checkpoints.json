@@ -1,0 +1,57 @@
+[
+  {
+    "phase": "before-prepare",
+    "catalog.json": {
+      "bytes": 21771,
+      "sha256": "0473fdeb0c1be5a62e6621740b927510619d576e4fbb4b800beb82379c3333b5"
+    },
+    "catalog.previous.json": {
+      "bytes": 20930,
+      "sha256": "e89e3fb0c985556e886079ee34f0ce311c68eb22e16bf7b34b97f31ab8760444"
+    }
+  },
+  {
+    "phase": "after-prepare",
+    "catalog.json": {
+      "bytes": 21771,
+      "sha256": "0473fdeb0c1be5a62e6621740b927510619d576e4fbb4b800beb82379c3333b5"
+    },
+    "catalog.previous.json": {
+      "bytes": 20930,
+      "sha256": "e89e3fb0c985556e886079ee34f0ce311c68eb22e16bf7b34b97f31ab8760444"
+    }
+  },
+  {
+    "phase": "after-replay",
+    "catalog.json": {
+      "bytes": 21771,
+      "sha256": "0473fdeb0c1be5a62e6621740b927510619d576e4fbb4b800beb82379c3333b5"
+    },
+    "catalog.previous.json": {
+      "bytes": 20930,
+      "sha256": "e89e3fb0c985556e886079ee34f0ce311c68eb22e16bf7b34b97f31ab8760444"
+    }
+  },
+  {
+    "phase": "after-cancellation-and-move",
+    "catalog.json": {
+      "bytes": 22693,
+      "sha256": "4553dcd02e360436431b0ea372809c0bdd5227bbbf3071b9aebe5b750e84f866"
+    },
+    "catalog.previous.json": {
+      "bytes": 21771,
+      "sha256": "0473fdeb0c1be5a62e6621740b927510619d576e4fbb4b800beb82379c3333b5"
+    }
+  },
+  {
+    "phase": "after-reopen-replay",
+    "catalog.json": {
+      "bytes": 22693,
+      "sha256": "4553dcd02e360436431b0ea372809c0bdd5227bbbf3071b9aebe5b750e84f866"
+    },
+    "catalog.previous.json": {
+      "bytes": 21771,
+      "sha256": "0473fdeb0c1be5a62e6621740b927510619d576e4fbb4b800beb82379c3333b5"
+    }
+  }
+]
