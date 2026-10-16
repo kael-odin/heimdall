@@ -54,6 +54,14 @@ function mergeRuntimeOrigin(origins, target, page) {
   origins.set(url.origin, existing);
 }
 
+function isLocalMediaRequest(request, base) {
+  try {
+    return new URL(request.url()).origin === base && request.resourceType() === 'media';
+  } catch {
+    return false;
+  }
+}
+
 function publicErrorType(error) {
   return PUBLIC_ERROR_TYPES.has(error?.name) ? error.name : 'Error';
 }
@@ -194,8 +202,11 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
         const blocked = new WeakSet();
         context.on('request', request => {
           try {
-            if (new URL(request.url()).origin !== base) return;
-            pending.add(request);
+            const url = new URL(request.url());
+            if (url.origin !== base) return;
+            // Media elements can intentionally keep a local stream open after
+            // metadata starts arriving. They are not unstable network activity.
+            if (!isLocalMediaRequest(request, base)) pending.add(request);
             requests++;
             lastNetworkActivity = performance.now();
           } catch { /* Non-network URLs cannot prove an offline dependency. */ }

@@ -12,10 +12,10 @@ const decoder = new TextDecoder('utf-8', { fatal: true });
 const MAX_TARGETS = 256;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 16 * 1024 * 1024;
-const MAX_WALL_MS = 120_000;
+const MAX_WALL_MS = 900_000;
 const bounded = (value, fallback, maximum) => Number.isSafeInteger(value) && value > 0
   ? Math.min(value, maximum) : fallback;
-const PRIVATE_SEGMENT = /^(?:api|auth|login|admin|private|users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|tokens?|secrets?|credentials?|\.git|\.env)$/i;
+const PRIVATE_SEGMENT = /^(?:auth|login|admin|private|users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|tokens?|secrets?|credentials?|\.git|\.env)$/i;
 
 function extensionOf(pathname) {
   return /\.(?:rss|atom|xml|md|markdown|txt)$/i.exec(pathname)?.[0].toLowerCase() ?? null;

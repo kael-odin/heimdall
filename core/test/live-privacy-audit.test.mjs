@@ -47,12 +47,15 @@ test('privacy audit does not mistake pagination, placeholders, benign cookies or
       'Cookie: theme=dark; locale=en',
       'const header = `Bearer ${token}`;',
       'https://example.test/path?token=redacted',
+      'https://localhost:51204/__vitest__/?token=123',
+      'http://localhost:51204/__vitest__/?token=`...`',
     ].join('\n'));
+    put(join(dir, 'site', 'live', 'guide.md'), Buffer.from('\u001b[32m# Benchmarking\u001b[39m\n', 'utf8'));
     put(join(dir, 'site', 'static', 'source.test', 'assets', 'photo.png'), Buffer.from('Cookie: session=realValue123\0', 'utf8'));
     const audit = auditBundlePrivacy({ bundleDir: dir });
     assert.equal(audit.status, 'clean');
     assert.equal(audit.issueCount, 0);
-    assert.equal(audit.scannedFiles, 1);
+    assert.equal(audit.scannedFiles, 2);
     assert.equal(audit.skippedBinaryFiles, 1);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

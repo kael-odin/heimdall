@@ -68,7 +68,7 @@ const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--cache-runtime-services <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--cache-runtime-services <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--public-text-links-max-wall-ms 60000..900000] [--privacy-max-total-bytes 134217728..1073741824] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -100,6 +100,41 @@ if ((argv.includes('--public-text-links-max-targets') && publicTextLinksMaxTarge
   || PUBLIC_TEXT_LINKS_MAX_TARGETS < 1 || PUBLIC_TEXT_LINKS_MAX_TARGETS > 256) {
   console.error('[export] --public-text-links-max-targets must be an integer from 1 to 256');
   process.exit(2);
+}
+const publicTextLinksMaxWallMsArg = argOf('public-text-links-max-wall-ms', undefined);
+const PUBLIC_TEXT_LINKS_MAX_WALL_MS = Number(publicTextLinksMaxWallMsArg
+  ?? process.env.HEIMDALL_PUBLIC_TEXT_LINKS_MAX_WALL_MS ?? 60_000);
+if ((argv.includes('--public-text-links-max-wall-ms') && publicTextLinksMaxWallMsArg === undefined)
+  || !Number.isInteger(PUBLIC_TEXT_LINKS_MAX_WALL_MS)
+  || PUBLIC_TEXT_LINKS_MAX_WALL_MS < 60_000 || PUBLIC_TEXT_LINKS_MAX_WALL_MS > 900_000) {
+  console.error('[export] --public-text-links-max-wall-ms must be an integer from 60000 to 900000');
+  process.exit(2);
+}
+const privacyMaxTotalBytesArg = argOf('privacy-max-total-bytes', undefined);
+const PRIVACY_MAX_TOTAL_BYTES = Number(privacyMaxTotalBytesArg
+  ?? process.env.HEIMDALL_PRIVACY_MAX_TOTAL_BYTES ?? 128 * 1024 * 1024);
+if ((argv.includes('--privacy-max-total-bytes') && privacyMaxTotalBytesArg === undefined)
+  || !Number.isInteger(PRIVACY_MAX_TOTAL_BYTES)
+  || PRIVACY_MAX_TOTAL_BYTES < 128 * 1024 * 1024 || PRIVACY_MAX_TOTAL_BYTES > 1024 * 1024 * 1024) {
+  console.error('[export] --privacy-max-total-bytes must be an integer from 134217728 to 1073741824');
+  process.exit(2);
+}
+
+function countAcceptedExternalRedirectReconFailures(pathAliases) {
+  if (!pathAliases?.unsupportedExternalRedirects) return 0;
+  const externalPaths = new Set(pathAliases.details
+    ?.filter(item => item?.disposition === 'unsupported-external-redirect')
+    .map(item => item?.path).filter(Boolean));
+  if (!externalPaths.size) return 0;
+  let atlas;
+  try { atlas = JSON.parse(readFileSync(join(BASE, 'recon', 'atlas.json'), 'utf8')); }
+  catch { return 0; }
+  if (!Array.isArray(atlas?.failures)) return 0;
+  return atlas.failures.filter(failure => {
+    if (!/navigation left site origin/i.test(String(failure?.reason ?? ''))) return false;
+    try { return externalPaths.has(new URL(failure.url, origin).pathname); }
+    catch { return false; }
+  }).length;
 }
 const COMPARE_SOURCE = has('compare-source');
 const INCLUDE_READONLY_DATA = has('include-readonly-data');
@@ -569,6 +604,7 @@ if (HEAL && health.links.missing > 0) {
   });
   const captured = await capturePublicTextLinks({
     liveDir, origin, targets: [...missingLinks], maxTargets: PUBLIC_TEXT_LINKS_MAX_TARGETS,
+    maxWallMs: PUBLIC_TEXT_LINKS_MAX_WALL_MS,
   });
   if (captured.eligible) {
     health = scanLiveBundle({ liveDir, host, origin, harIndex, staticDir, queryPages });
@@ -693,10 +729,12 @@ if (carbonAdsRemoval || youtubePlaceholder) {
 if (carbonAdsRemoval) health.carbonAdsRemoval = carbonAdsRemoval;
 if (youtubePlaceholder) health.youtubePlaceholder = youtubePlaceholder;
 if (ALLOW_UNSUPPORTED_EXTERNAL_REDIRECTS) {
+  const acceptedReconFailures = countAcceptedExternalRedirectReconFailures(pathAliases);
   health.externalRedirectPolicy = {
     policy: 'allow-unsupported',
     accepted: pathAliases.unsupportedExternalRedirects,
     references: pathAliases.unsupportedExternalRedirectReferences,
+    acceptedReconFailures,
   };
 }
 if (materialized) health.materialized = materialized;
@@ -812,7 +850,8 @@ health.strictBlockers = {
   discoveredUncloned: health.coverage.missingClone,
   discoveredUndelivered: health.coverage.missingLive,
   coverageInvalid: health.coverage.sourceStatus === 'invalid' || health.coverage.unmappedClones ? 1 : 0,
-  reconFailures: health.coverage.reconFailures,
+  reconFailures: Math.max(0, health.coverage.reconFailures
+    - (health.externalRedirectPolicy?.acceptedReconFailures ?? 0)),
   operationPlanInvalid: operationPlan.status === 'invalid' ? 1 : 0,
   operationPlanChanged: operationPlanChanged ? 1 : 0,
   emptyBundle: health.pages === 0 ? 1 : 0,
@@ -1111,7 +1150,7 @@ assets.external          站外引用总数（含 YouTube 嵌入、地图、统�
 thirdPartyServices       已识别且不能靠静态抓取变成离线等价的运行时服务；综合静态引用与 browserProbe 的 externalRequest 证据，逐服务给出类别、阻断口径、引用数与页面
 links.missing            指向未镜像页面的站内链接 → 点了会跳出镜像
 missingLinkDetails       未镜像链接的脱敏明细；按 source-document / path-alias / resource-link 分类，并列出引用页
-publicTextLinks          --heal 时补抓的公开文本文档/订阅源；报告目标预算、已捕获与未捕获分类。默认最多 128 个，可用 --public-text-links-max-targets 1..256 调整
+publicTextLinks          --heal 时补抓的公开文本文档/订阅源；报告目标预算、已捕获与未捕获分类。默认最多 128 个、60 秒；可用 --public-text-links-max-targets 1..256 与 --public-text-links-max-wall-ms 60000..900000 调整
 pathAliases              --heal 时探查的公开路径别名；源站 404/410 会改写到镜像命名空间并按可复现本地 404 处理，跨域跳转会单独归类为 unsupported-external-redirect 并阻断
 carbonAdsRemoval         --remove-carbonads 时删除候选包中已识别的 CarbonAds 脚本、广告容器和关联像素；这是显式降级，不代表业务等价
 youtubePlaceholder       --replace-youtube 时把候选包中已识别的 YouTube iframe 换成本地占位；这是显式降级，不表示视频内容可离线播放
@@ -1124,7 +1163,7 @@ operationProbe           逐条在断网浏览器中执行的操作、动态依�
 sourceOperationProbe     显式 --compare-source 时，源站同流程只读采集与脱敏对照；未运行不代表源站通过
 dependencyParity         显式 --compare-source 时，按操作流程核对脚本、样式、媒体、文档和 API 的精确请求、状态与 MIME；仅报告类别和数量，不写入私有 URL。它不比较静态资源内容，也不证明业务等价
 readOnlyData             显式许可的 GET 数据声明数、纳入数、缺口和冲突；源站操作采集需同时使用 --compare-source
-privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布
+privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布。默认累计扫描 128MB，可用 --privacy-max-total-bytes 134217728..1073741824 调整
 ${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实际触达路由数、未测路由数与 sessionRoutes 的 declared/initialized/failed；未测或失败均阻断发布；serverEgress=not-tested 表示服务端外联尚未验证\n' : ''}
 \`\`\`
 
@@ -1189,7 +1228,8 @@ const packageMetadata = () => {
   return changes;
 };
 packageMetadata();
-health.privacyAudit = auditBundlePrivacy({ bundleDir: OUT });
+health.privacyAudit = auditBundlePrivacy({ bundleDir: OUT,
+  limits: { maxTotalBytes: PRIVACY_MAX_TOTAL_BYTES } });
 health.strictBlockers.privacyIssues = health.privacyAudit.issueCount;
 health.strictBlockers.privacyIncomplete = health.privacyAudit.status === 'incomplete' ? health.privacyAudit.failureCount : 0;
 writeFileSync(join(OUT, 'health.json'), JSON.stringify(health, null, 2));

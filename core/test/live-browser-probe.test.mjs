@@ -157,6 +157,38 @@ test('browser probe fails closed when a local request remains pending at the obs
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('browser probe does not wait for intentionally open local media streams', { timeout: 30_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-browser-media-'));
+  try {
+    writeFileSync(join(dir, 'serve.mjs'), `
+      import { createServer } from 'node:http';
+      const server = createServer((request, response) => {
+        if (request.url === '/') {
+          response.setHeader('Content-Type', 'text/html');
+          response.end('<!doctype html><video preload="auto"><source src="/movie.webm" type="video/webm"></video>');
+          return;
+        }
+        if (request.url === '/movie.webm') {
+          response.setHeader('Content-Type', 'video/webm');
+          response.write(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+          return;
+        }
+        response.writeHead(404);
+        response.end();
+      });
+      server.listen(0, '127.0.0.1', () => process.send?.({ kind: 'heimdall-live-ready', port: server.address().port }));
+    `);
+    const report = await probeOfflineBrowserBundle(dir, ['/'], {
+      settleMs: 100, maxObservationMs: 350, quietMs: 50,
+    });
+    assert.equal(report.failed, 0, JSON.stringify(report));
+    assert.equal(report.observation.deadlinePages, 0);
+    assert.equal(report.observation.pages[0].stable, true);
+    assert.equal(report.observation.pages[0].pendingAtEnd, 0);
+    assert.ok(report.observation.pages[0].requests >= 2, 'the page and media request are observed');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('parallel browser probe keeps bounded failure evidence in declared page order', { timeout: 30_000 }, async () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-browser-failure-order-'));
   try {

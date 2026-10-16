@@ -172,7 +172,7 @@ node core/src/cli.mjs live example.org --offline --strict --root mirror --includ
 
 然后显式加 `--include-readonly-data --offline --strict`。导出只接受精确 URL、同源、无认证信息、2xx 的 JSON/纯文本响应；候选包中缺少任何声明响应都会阻断发布，结果见 `health.readOnlyData`。默认从页面已有的 `network.har` 取响应；同时加 `--compare-source` 并提供已审阅的 `operation-plan.json`，可在源站执行声明流程时采集点击后才出现的许可 GET。每个响应限 1 MiB、累计限 10 MiB；认证、超限、缺失或同 URL 内容冲突均阻断严格交付。源站流程仅执行一次，`health.readOnlyData.flowParity` 按声明流程对照许可 GET 的精确 URL、状态、MIME 和清洗后正文指纹；报告只保留脱敏计数及问题类别。对照不证明请求时序、重复次数、未声明操作或业务结果一致。计划和响应内容仍须人工审核，自动敏感信息规则不能识别所有个人数据或商业机密。宽泛的 `--include-api-har` 不能与 `--strict` 同用。
 
-导出前核对授权和敏感数据。严格导出会检查候选包中的凭据型 URL、Bearer、Cookie 值；`health.privacyAudit` 记录问题数与扫描是否完整。它不是全面的个人信息识别。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；独立包仍需验收登录、重定向、登出和长期运行。`--strict` 失败时先修缺口，不要把包标成离线完成。
+导出前核对授权和敏感数据。严格导出会检查候选包中的凭据型 URL、Bearer、Cookie 值；`health.privacyAudit` 记录问题数与扫描是否完整。它不是全面的个人信息识别。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；独立包仍需验收登录、重定向、登出和长期运行。隐私扫描默认累计检查 128MB 文本；大站可用 `--privacy-max-total-bytes 134217728..1073741824` 提高预算。公开文档补抓默认 60 秒，可用 `--public-text-links-max-wall-ms 60000..900000` 延长。`--strict` 失败时先修缺口，不要把包标成离线完成。
 
 ## SEO 回归
 

@@ -3,7 +3,8 @@ import { dirname, extname, join, relative } from 'node:path';
 import { parse } from 'parse5';
 
 const MAX_FILES = 4000;
-const MAX_TOTAL_BYTES = 64 * 1024 * 1024;
+const DEFAULT_MAX_TOTAL_BYTES = 64 * 1024 * 1024;
+const MAX_TOTAL_BYTES_LIMIT = 1024 * 1024 * 1024;
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
 const CARBON_HOSTS = ['carbonads.com', 'carbonads.net'];
 const CONTAINER_CLASSES = new Set(['vpcarbonads', 'vpdocasidecarbonads', 'carbon-pixels']);
@@ -78,7 +79,7 @@ function removeHtmlNodes(html) {
   };
 }
 
-function removeInTree(root, report) {
+function removeInTree(root, report, maxTotalBytes) {
   let files = 0;
   const walkDir = dir => {
     for (const name of readdirSync(dir)) {
@@ -90,7 +91,7 @@ function removeInTree(root, report) {
         continue;
       }
       if (!stat.isFile() || !/\.html?$/i.test(name) || extname(name).toLowerCase() === '') continue;
-      if (++files > MAX_FILES || (report.bytes += stat.size) > MAX_TOTAL_BYTES) {
+      if (++files > MAX_FILES || (report.bytes += stat.size) > maxTotalBytes) {
         throw new Error('carbonads removal limit exceeded');
       }
       if (stat.size > MAX_FILE_BYTES) {
@@ -124,7 +125,7 @@ function writeRuntimePlaceholder(liveDir, report) {
   report.runtimePlaceholder = PLACEHOLDER_PREFIX;
 }
 
-function rewriteRuntimeScripts(root, report) {
+function rewriteRuntimeScripts(root, report, maxTotalBytes) {
   let files = 0;
   const walkDir = dir => {
     for (const name of readdirSync(dir)) {
@@ -133,7 +134,7 @@ function rewriteRuntimeScripts(root, report) {
       if (stat.isSymbolicLink()) throw new Error('carbonads runtime rewrite refuses symlinks');
       if (stat.isDirectory()) { walkDir(file); continue; }
       if (!stat.isFile() || !/\.(?:html?|[cm]?js)$/i.test(name) || stat.size > MAX_FILE_BYTES) continue;
-      if (++files > MAX_FILES || (report.bytes += stat.size) > MAX_TOTAL_BYTES) {
+      if (++files > MAX_FILES || (report.bytes += stat.size) > maxTotalBytes) {
         throw new Error('carbonads runtime rewrite limit exceeded');
       }
       const source = readFileSync(file, 'utf8');
@@ -155,8 +156,16 @@ function rewriteRuntimeScripts(root, report) {
   walkDir(root);
 }
 
+function resolveMaxTotalBytes(requested) {
+  const value = requested ?? process.env.HEIMDALL_CARBONADS_MAX_TOTAL_BYTES ?? DEFAULT_MAX_TOTAL_BYTES;
+  const bytes = Number(value);
+  return Number.isSafeInteger(bytes) && bytes >= DEFAULT_MAX_TOTAL_BYTES && bytes <= MAX_TOTAL_BYTES_LIMIT
+    ? bytes : DEFAULT_MAX_TOTAL_BYTES;
+}
+
 /** Explicitly remove recognized CarbonAds markup from candidate HTML. */
-export function removeCarbonAds({ liveDir, staticPagesDir = null }) {
+export function removeCarbonAds({ liveDir, staticPagesDir = null, maxTotalBytes = null }) {
+  const totalBytesLimit = resolveMaxTotalBytes(maxTotalBytes);
   const report = {
     policy: 'remove-carbonads',
     status: 'not-detected',
@@ -173,9 +182,9 @@ export function removeCarbonAds({ liveDir, staticPagesDir = null }) {
   };
   try {
     writeRuntimePlaceholder(liveDir, report);
-    removeInTree(liveDir, report);
-    if (staticPagesDir) removeInTree(staticPagesDir, report);
-    rewriteRuntimeScripts(liveDir, report);
+    removeInTree(liveDir, report, totalBytesLimit);
+    if (staticPagesDir) removeInTree(staticPagesDir, report, totalBytesLimit);
+    rewriteRuntimeScripts(liveDir, report, totalBytesLimit);
   } catch (error) {
     report.failed++;
     report.error = String(error.message ?? error);

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -30,6 +30,24 @@ async function runExport(host, out, dataDir, flags = []) {
     child.once('close', status => { clearTimeout(timer); resolve({ status, output }); });
   });
 }
+
+test('export validates public text and privacy budget arguments before touching a bundle', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-export-budget-args-'));
+  try {
+    const host = 'budget-args-fixture.test';
+    const site = join(dir, 'workspace', host);
+    mkdirSync(join(site, 'live'), { recursive: true });
+    writeFileSync(join(site, 'site-origin.json'), JSON.stringify({ origin: 'https://budget-args-fixture.test' }));
+    for (const flag of ['--public-text-links-max-wall-ms', '--privacy-max-total-bytes']) {
+      const result = spawnSync(process.execPath, [EXPORT, host, flag, '1'], {
+        cwd: CORE, encoding: 'utf8', env: { ...process.env, HEIMDALL_DATA_DIR: dir },
+      });
+      assert.equal(result.status, 2, result.stderr + result.stdout);
+      assert.ok(result.stderr.includes(flag), result.stderr);
+      assert.equal(existsSync(join(dir, 'deliverable')), false);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
 
 test('public text capture enforces exact targets, MIME, redirect origin and budgets', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-text-capture-'));
@@ -128,7 +146,7 @@ test('public config documentation is eligible while private paths stay rejected'
   const fetchImpl = async url => {
     requests.push(url);
     const path = new URL(url).pathname;
-    if (path === '/config.md' || path === '/config/build-options.md') {
+    if (path === '/config.md' || path === '/config/build-options.md' || path === '/api/public.md') {
       return new Response('# Config', { headers: { 'content-type': 'text/markdown' } });
     }
     return new Response('not found', { status: 404 });
@@ -136,17 +154,17 @@ test('public config documentation is eligible while private paths stay rejected'
   try {
     const result = await capturePublicTextLinks({
       liveDir, origin,
-      targets: ['/config.md', '/config/build-options.md', '/private/guide.md', '/tokens.md'],
+      targets: ['/config.md', '/config/build-options.md', '/api/public.md', '/api/users/guide.md', '/private/guide.md', '/tokens.md'],
       fetchImpl,
     });
-    assert.equal(result.eligible, 2);
-    assert.equal(result.attempted, 2);
-    assert.equal(result.captured, 2);
+    assert.equal(result.eligible, 3);
+    assert.equal(result.attempted, 3);
+    assert.equal(result.captured, 3);
     assert.equal(result.rejected, 0);
     assert.deepEqual(result.uncapturedKinds, { document: 0, feed: 0 });
     assert.equal(readFileSync(join(liveDir, 'config.md'), 'utf8'), '# Config');
     assert.equal(readFileSync(join(liveDir, 'config', 'build-options.md'), 'utf8'), '# Config');
-    assert.ok(!requests.some(url => url.includes('/private/') || url.includes('/tokens.md')));
+    assert.ok(!requests.some(url => url.includes('/api/users/') || url.includes('/private/') || url.includes('/tokens.md')));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

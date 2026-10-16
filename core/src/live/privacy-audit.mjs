@@ -11,6 +11,7 @@ const DEFAULT_LIMITS = Object.freeze({
   maxFindings: 200,
   maxFailures: 40,
 });
+const MAX_TOTAL_BYTES_LIMIT = 1024 * 1024 * 1024;
 
 const TEXT_EXT = new Set([
   '.css', '.csv', '.htm', '.html', '.js', '.json', '.md', '.mjs', '.cjs',
@@ -30,14 +31,14 @@ const SAFE_PARTS = new Set([
 const CREDENTIAL_QUERY_KEY = /^(?:access[_-]?token|refresh[_-]?token|id[_-]?token|auth[_-]?token|authorization|api[_-]?key|apikey|client[_-]?secret|password|passwd|pwd|session[_-]?(?:id|token)|sid|jwt|bearer|token|secret|x-amz-(?:credential|security-token|signature)|x-goog-(?:credential|signature)|awsaccesskeyid|googleaccessid)$/i;
 const AUTH_COOKIE_NAME = /(?:^|[-_.])(?:session|auth|token|sid|jwt|csrf|xsrf|bearer)(?:$|[-_.])|^(?:phpsessid|jsessionid|connect\.sid)$/i;
 const COOKIE_ATTRIBUTE = /^(?:domain|path|expires|max-age|samesite|secure|httponly|priority|partitioned)$/i;
-const QUERY_PAIR = /[?&]([a-z0-9_.%+-]+)=([^&#\s"'<>\\]*)/gi;
+const QUERY_PAIR = /[?&]([a-z0-9_.%+-]+)=([^&#\s"'<>`\\]*)/gi;
 const BEARER_HEADER = /\b(?:authorization|proxy-authorization)\b["']?\s*[:=]\s*["']?Bearer[ \t]+([a-z0-9._~+/=-]{8,})/gi;
 const COOKIE_HEADER = /\b(set-cookie|cookie)\b["']?\s*[:=]\s*["']?([^"'\r\n<>]+)/gi;
 const COOKIE_PAIR = /(?:^|;)\s*([^=;\s]+)\s*=\s*([^;\s]*)/g;
 const decoder = new TextDecoder('utf-8', { fatal: true });
 
-function boundedLimit(value, fallback) {
-  return Number.isSafeInteger(value) && value > 0 ? Math.min(value, fallback) : fallback;
+function boundedLimit(value, fallback, maximum = fallback) {
+  return Number.isSafeInteger(value) && value > 0 ? Math.min(value, maximum) : fallback;
 }
 
 function safePath(root, path) {
@@ -62,7 +63,7 @@ function normalizedText(text) {
 function meaningfulValue(value) {
   let decoded = value;
   try { decoded = decodeURIComponent(value); } catch { /* The literal is still inspectable. */ }
-  if (!decoded || /^(?:0|1|true|false|null|undefined|redacted|placeholder|example|sample|dummy|changeme|x+)$/i.test(decoded)) return false;
+  if (!decoded || /^(?:0|1|123|abc|xyz|foo|foobar|\.{3}|true|false|null|undefined|redacted|placeholder|example|sample|dummy|changeme|x+)$/i.test(decoded)) return false;
   if (/^(?:your[_-]?|<|\$\{|\{\{)/i.test(decoded)) return false;
   return true;
 }
@@ -93,7 +94,9 @@ function scanText(text, add) {
 function isBinary(buffer) {
   if (buffer.includes(0)) return true;
   let controls = 0;
-  for (const byte of buffer) if (byte < 32 && byte !== 9 && byte !== 10 && byte !== 13) controls++;
+  // Text documentation can legitimately contain ANSI escape sequences (for
+  // example copied terminal output). Escape is not evidence of binary content.
+  for (const byte of buffer) if (byte < 32 && ![9, 10, 13, 27].includes(byte)) controls++;
   return controls > Math.max(2, buffer.length / 100);
 }
 
@@ -103,6 +106,7 @@ function isBinary(buffer) {
  */
 export function auditBundlePrivacy({ bundleDir, limits = {} }) {
   const bound = Object.fromEntries(Object.entries(DEFAULT_LIMITS).map(([key, value]) => [key, boundedLimit(limits[key], value)]));
+  bound.maxTotalBytes = boundedLimit(limits.maxTotalBytes, DEFAULT_LIMITS.maxTotalBytes, MAX_TOTAL_BYTES_LIMIT);
   const counts = { 'credential-query': 0, 'bearer-value': 0, 'cookie-value': 0 };
   const findings = new Map();
   const failures = [];
