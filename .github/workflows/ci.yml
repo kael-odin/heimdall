@@ -74,6 +74,8 @@ jobs:
         run: pnpm acceptance:managed:execute:smoke
       - name: Managed execution UI (explicit click, durable recovery and stop)
         run: pnpm acceptance:execution:ui:smoke
+      - name: Browser candidate source (fresh captures and explicit healthy side)
+        run: pnpm acceptance:browser:source:smoke
       - name: Preserve acceptance smoke failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -94,6 +96,8 @@ jobs:
             core/workspace/_runs/execution-ui-*/failure*.png
             core/workspace/_runs/execution-ui-*/fixture-*-engine-*.log
             core/workspace/_runs/execution-ui-*/chromium.log
+            core/workspace/_runs/browser-source-smoke-*/failure.json
+            core/workspace/_runs/browser-source-smoke-*/materials/source-index.json
           if-no-files-found: ignore
           retention-days: 7
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。

@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-3936910f-2092-4473-87d5-36f0ce87b01a",
+  "taskId": null,
+  "name": "Browser source matrix",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:1/unavailable",
+  "targetUrl": "http://127.0.0.1:56437/target",
+  "status": "completed",
+  "gate": "blocked",
+  "createdAt": "2026-10-17T00:05:49.929Z",
+  "updatedAt": "2026-10-17T00:05:50.527Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Browser source matrix",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:1/unavailable",
+    "targetUrl": "http://127.0.0.1:56437/target",
+    "routes": [
+      "/identical"
+    ],
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 960,
+        "height": 640
+      }
+    ],
+    "points": [],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 1000,
+    "settleMs": 50,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 6,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 6,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 6,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 6,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 4,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 4,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-17T00:05:50.498Z",
+  "error": null,
+  "reportSha256": "1e491d351ee7b8363af2d0f6a6a5700416802afa42f6e7d9bdd8bed6873b0b7c"
+}

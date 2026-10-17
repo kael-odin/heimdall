@@ -31,6 +31,10 @@
 
 浏览器插件在本机不可用，使用仓库 Playwright 与实际 Chromium 的 `connectOverCDP`，未把静态页面分析当成点击流程。两张手机截图直接证明终态与原操作身份可读；“查看运行与报告”按钮位于当前截图视口下方，六图本身不能证明该按钮的移动端触控可达性。报告打开闭环由浏览器操作记录证明。键盘全路径、屏幕阅读器和合成颜色对比度未在本独立视觉复核中重新实跑。
 
+## 对应提交的 CI 补录
+
+推送后自身提交 `e427ec1f4b9d7b6d2b6bc4b2760a3fd262bbf1ed` 的 GitHub run `38982028983` 已完成，三个 job 全部 success。Linux Core 为 1819 total / 1815 pass / 0 fail / 4 skip；新执行 UI 16/16，独立 Docker 2/2，Core job 的 11 项 acceptance smoke 均成功。Docker 两项不重复增加主 suite 总数。完整原件元数据、无损压缩日志和计数边界已补录至[自身 CI 证据](evidence/execution-ui/ci-main-e427ec1/README.md)。
+
 ## 失败轮次与证据处理
 
 首次 late-cancel 测试的新 context 没有 seed 旧完成操作，却尝试选择该操作，在原有 15 秒期限内超时。修正夹具 seed 后重跑，没有放宽业务断言或时限；首次 failure.json 保留，不能计为产品功能通过。

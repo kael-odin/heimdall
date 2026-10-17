@@ -1,0 +1,83 @@
+{
+  "repoRoot": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "logRoot": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017",
+  "stages": [
+    {
+      "stage": "01-core-lint",
+      "command": "pnpm -C core lint",
+      "startedAt": "2026-10-17T00:30:07.204Z",
+      "finishedAt": "2026-10-17T00:30:26.638Z",
+      "durationMs": 19433,
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\01-core-lint.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\01-core-lint.stderr.log",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "02-console-build",
+      "command": "pnpm -C console build",
+      "startedAt": "2026-10-17T00:30:41.324Z",
+      "finishedAt": "2026-10-17T00:30:43.33Z",
+      "durationMs": 2005,
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\02-console-build.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\02-console-build.stderr.log",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "03-core-test",
+      "command": "pnpm -C core test",
+      "startedAt": "2026-10-17T00:31:01.275Z",
+      "finishedAt": "2026-10-17T00:38:42.576Z",
+      "durationMs": 461300,
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\03-core-test.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\03-core-test.stderr.log",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "04-core-smoke",
+      "command": "pnpm -C core smoke",
+      "startedAt": "2026-10-17T00:39:01.172Z",
+      "finishedAt": "2026-10-17T00:39:36.219Z",
+      "durationMs": 35046,
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\04-core-smoke.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\04-core-smoke.stderr.log",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "05-cdp-clone",
+      "command": "node core/scripts/smoke-console-cdp.mjs \"C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\cdp-clone\"",
+      "startedAt": "2026-10-17T00:39:57.424Z",
+      "finishedAt": "2026-10-17T00:39:57.789Z",
+      "durationMs": 364,
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\05-cdp-clone-invocation-1.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\05-cdp-clone-invocation-1.stderr.log",
+      "exitCode": 1,
+      "signal": null,
+      "failureClassification": "Invocation quoting error before browser startup",
+      "productTestStarted": false,
+      "productPassClaim": false,
+      "environment": {
+        "HEIMDALL_E2E_CDP_SELF": "1"
+      }
+    },
+    {
+      "stage": "06-cdp-clone-retry",
+      "command": "node core/scripts/smoke-console-cdp.mjs C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\cdp-clone",
+      "startedAt": "2026-10-17T00:40:45.390Z",
+      "finishedAt": "2026-10-17T00:41:14.999Z",
+      "durationMs": 29608,
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\06-cdp-clone-retry.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-source-gates-20261017\\06-cdp-clone-retry.stderr.log",
+      "exitCode": 0,
+      "signal": null,
+      "retryOf": "05-cdp-clone",
+      "retryReason": "The first invocation preserved literal outer quotes in the output path and failed at mkdir before browser startup. Retry uses the same absolute no-space path without outer quotes.",
+      "environment": {
+        "HEIMDALL_E2E_CDP_SELF": "1"
+      }
+    }
+  ]
+}

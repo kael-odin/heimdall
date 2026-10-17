@@ -29,6 +29,7 @@
     "acceptance:managed:read:smoke": "node core/scripts/smoke-acceptance-managed-reading.mjs",
     "acceptance:owned:recovery:smoke": "node core/scripts/smoke-acceptance-owned-recovery.mjs",
     "acceptance:managed:execute:smoke": "node core/scripts/smoke-acceptance-managed-execution.mjs",
-    "acceptance:execution:ui:smoke": "node core/scripts/smoke-acceptance-execution-ui.mjs"
+    "acceptance:execution:ui:smoke": "node core/scripts/smoke-acceptance-execution-ui.mjs",
+    "acceptance:browser:source:smoke": "node core/scripts/smoke-acceptance-browser-source.mjs"
   }
 }

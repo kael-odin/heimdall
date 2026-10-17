@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-a18a92a6-c5b4-48f0-8747-0e54b45220c6",
+  "taskId": null,
+  "name": "Browser source matrix",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:56437/baseline",
+  "targetUrl": "http://127.0.0.1:1/unavailable",
+  "status": "completed",
+  "gate": "blocked",
+  "createdAt": "2026-10-17T00:05:49.127Z",
+  "updatedAt": "2026-10-17T00:05:49.779Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Browser source matrix",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:56437/baseline",
+    "targetUrl": "http://127.0.0.1:1/unavailable",
+    "routes": [
+      "/identical"
+    ],
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 960,
+        "height": 640
+      }
+    ],
+    "points": [],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 1000,
+    "settleMs": 50,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 6,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 6,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 6,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 4,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 4,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-17T00:05:49.752Z",
+  "error": null,
+  "reportSha256": "e3b304012c4eeeab557a4a4c1cacf0e094a99e7fd3cb045610027ce6e6e10fd7"
+}

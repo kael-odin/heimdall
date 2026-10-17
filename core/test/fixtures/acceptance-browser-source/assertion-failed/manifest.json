@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-6cd643c6-6d32-42fb-8c06-7717418ea243",
+  "taskId": null,
+  "name": "Browser source matrix",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:56437/baseline",
+  "targetUrl": "http://127.0.0.1:56437/target",
+  "status": "completed",
+  "gate": "blocked",
+  "createdAt": "2026-10-17T00:05:50.669Z",
+  "updatedAt": "2026-10-17T00:05:52.425Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Browser source matrix",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:56437/baseline",
+    "targetUrl": "http://127.0.0.1:56437/target",
+    "routes": [
+      "/identical"
+    ],
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 960,
+        "height": 640
+      }
+    ],
+    "points": [
+      {
+        "id": "false-menu",
+        "title": "展开菜单 false-menu",
+        "route": "/identical",
+        "severity": "high",
+        "steps": [
+          {
+            "action": "click",
+            "selector": "#menu-toggle"
+          }
+        ],
+        "assertions": [
+          {
+            "kind": "attribute",
+            "selector": "#menu-toggle",
+            "attribute": "aria-expanded",
+            "equals": "false"
+          }
+        ]
+      }
+    ],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 1000,
+    "settleMs": 50,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 7,
+    "passed": 6,
+    "failed": 0,
+    "blocked": 1,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 1,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 6,
+      "total": 7,
+      "ratio": 0.8571
+    },
+    "dimensions": {
+      "visual": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 1
+      },
+      "structure": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-17T00:05:52.384Z",
+  "error": null,
+  "reportSha256": "4340c57a63b4c80c3a79fbf0bce3a50c450703aebde21193bd6dc1b530dc0838"
+}
