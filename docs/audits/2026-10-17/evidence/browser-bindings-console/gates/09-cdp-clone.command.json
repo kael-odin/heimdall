@@ -1,0 +1,9 @@
+{
+  "stage": "09-cdp-clone",
+  "command": "node core/scripts/smoke-console-cdp.mjs core/workspace/_runs/browser-bindings-console-gates-20261017/cdp-clone",
+  "startedAt": "2026-10-17T04:52:56.131Z",
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "environmentOverrides": {
+    "HEIMDALL_E2E_CDP_SELF": "1"
+  }
+}

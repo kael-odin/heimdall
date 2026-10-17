@@ -1,0 +1,25 @@
+{
+  "tag": "02-jobs",
+  "attempt": 1,
+  "executable": "gh",
+  "args": [
+    "api",
+    "repos/kael-odin/heimdall/actions/runs/39000366975/jobs?per_page=100"
+  ],
+  "startedAt": "2026-10-17T04:18:12.063Z",
+  "endedAt": "2026-10-17T04:18:13.024Z",
+  "elapsedMs": 961,
+  "code": 0,
+  "signal": null,
+  "error": null,
+  "stdout": {
+    "path": "commands/02-jobs-attempt-1.stdout.bin",
+    "bytes": 12609,
+    "sha256": "ebc889730d1440644bb2e7d4e60d3bf58940a2b9e8db908a1f31e05443c46f11"
+  },
+  "stderr": {
+    "path": "commands/02-jobs-attempt-1.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

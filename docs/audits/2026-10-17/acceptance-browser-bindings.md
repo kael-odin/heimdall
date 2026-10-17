@@ -37,7 +37,11 @@ Store 首轮为 57 total / 54 pass / 3 fail；其中包含失败父分组，实�
 
 包内保留专项首轮失败、纯 schema 两轮、store 最终重试、fresh 两轮及其命令/检查、六套兼容流程完整输出和 CDP 证据。打包器对每个 tar 解压核对完整集合、大小、SHA 和原字节，最后独占写入完成凭据。协调者另行核对来源、gzip、解包文件及 Git 暂存字节；[独立发布检查](evidence/browser-bindings-publication-checks/README.md)记录文档链接与强凭据模式扫描的实际结果。完整 Core、专项、UI 和 fresh 检查分别计数，不累加重叠覆盖。
 
-上一片 `db3cd3f` 的精确 CI 已单独归档并记录于[Schema3 验收](acceptance-catalog-schema3.md)。它不作为本片的 CI；本片推送后按自身 SHA 跟踪，当前本节只陈述已完成的本机验证。
+上一片 `db3cd3f` 的精确 CI 已单独归档并记录于[Schema3 验收](acceptance-catalog-schema3.md)，不作为本片 CI。来源归属本片提交 `3b7af9ae644cba0f1b045fe58b29fcb48268d4e0` 的自身 [CI 归档](evidence/browser-bindings-ci-main-3b7af9a/README.md)现已完成：run `39000366975`、attempt 1、main / push，三个 job 全成功。Linux Core **2204 total / 2200 pass / 0 fail / 4 skip**，14/14 验收 smoke、独立 Docker 2/2 全部通过。
+
+该 CI 包共 **114 文件 / 6,634,876 字节**。GitHub 原 ZIP 为 458,402 字节，含 60 entries / 60 份日志 / 2,070,355 解压字节；逐份核对 ZIP 原字节、CRC、SHA 链，gh 与 ZIP 的 Core / Docker TAP 及 14 份 smoke JSON 一致。按记录的六类强凭据模式扫描 60 份日志为 0 匹配；Actions artifacts 为 0，没有远端截图或 run 树可归档，也未用本机材料冒充。
+
+原日志真实尾空格保留，包内精确 Git 属性只控制相关原文本的行尾与空白检查；首版元数据和一轮本机收尾失败现场保留在 history。最终完成链与 86 份原输出逐字节复核通过。这个 CI 只对应来源归属本片，后续 [HTTP / 工作台接入](acceptance-browser-bindings-console.md)另做自己的质量门和提交 CI。
 
 ## 证据边界
 

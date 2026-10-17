@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "evidenceLevel": "real-owner-and-private-preparation-kernel",
+  "sourceFixtureCommit": "299304b01fb38ff7a933543c82d4aa996eff164f",
+  "sourceRunCount": 2,
+  "sourceFileCount": 14,
+  "checks": {
+    "total": 25,
+    "passed": 25
+  },
+  "preparedRecordSha256": "52515fed72ec3a7c753e9ff0d34ed12ce46be477ba4d2d7a719f18e4c83fa020",
+  "targetRequests": 0,
+  "fetchAttempts": 0,
+  "engineStarted": false,
+  "engineRestartTested": false,
+  "browserStarted": false,
+  "executionTested": false,
+  "runCreated": false,
+  "scope": "Private preparation, immutable replay and owner release/reacquisition only; reserved IDs do not mean a run exists.",
+  "failure": null
+}

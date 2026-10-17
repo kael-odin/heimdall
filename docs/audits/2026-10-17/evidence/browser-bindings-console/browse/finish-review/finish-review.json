@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-17",
+  "reviewer": "fresh-impeccable-finish-reviewer",
+  "disposition": "ship",
+  "mode": "Operate",
+  "buildPath": "code-led-incumbent-extension",
+  "evidenceLevel": "provided-fresh-real-CDP-artifacts-plus-read-only-source-review",
+  "captureValidity": {
+    "status": "pass",
+    "required": 8,
+    "openedAndVisuallyInspected": 8,
+    "invalidOrMissing": [],
+    "evidenceRoot": "core/workspace/_runs/browser-bindings-console-smoke-dfb73d91-b154-47c0-99a9-86b6b7e8eeb2",
+    "captures": [
+      { "file": "browser-binding-desktop-form.png", "width": 1440, "height": 1000, "theme": "dark", "valid": true },
+      { "file": "browser-binding-desktop-review.png", "width": 1440, "height": 1000, "theme": "dark", "valid": true },
+      { "file": "browser-binding-desktop-evidence.png", "width": 1440, "height": 1000, "theme": "dark", "valid": true },
+      { "file": "browser-binding-source-changed.png", "width": 1440, "height": 1000, "theme": "dark", "valid": true },
+      { "file": "browser-binding-mobile-form-dark.png", "width": 390, "height": 844, "theme": "dark", "valid": true },
+      { "file": "browser-binding-mobile-form-light.png", "width": 390, "height": 844, "theme": "light", "valid": true },
+      { "file": "browser-binding-mobile-review-dark.png", "width": 390, "height": 844, "theme": "dark", "valid": true },
+      { "file": "browser-binding-mobile-review-light.png", "width": 390, "height": 844, "theme": "light", "valid": true }
+    ],
+    "notes": [
+      "All captures display a nonblank native Heimdall workbench with matching form, review, evidence or source-change content.",
+      "These are focused viewport captures inside the incumbent scrolling workbench, not full-document captures. The internal scroll viewport explains controls continuing below the visible mobile fold.",
+      "layouts.json reports documentWidth equal to viewport width and component scrollWidth equal to clientWidth for every capture.",
+      "browser-checks.json records 14 of 14 passed checks, two fresh real-worker source runs, no pageErrors and zero binding/read target requests. These records were read, not rerun."
+    ]
+  },
+  "materialFindings": [],
+  "reviewedPromises": [
+    {
+      "promise": "Explicit run, source side and release ownership",
+      "result": "match",
+      "evidence": ["console/src/AcceptanceBrowserBindings.vue:164", "console/src/AcceptanceBrowserBindings.vue:173", "console/src/acceptance-browser-bindings.js:81", "browser-binding-desktop-form.png", "browser-binding-mobile-form-light.png"]
+    },
+    {
+      "promise": "Stored history is distinct from on-demand current-source verification",
+      "result": "match",
+      "evidence": ["console/src/AcceptanceBrowserBindings.vue:105", "console/src/AcceptanceBrowserBindings.vue:181", "console/src/acceptance-browser-bindings.js:69", "browser-binding-desktop-form-dom.txt", "browser-binding-source-changed.png"]
+    },
+    {
+      "promise": "Protected screenshot, repeat screenshot and raw details evidence",
+      "result": "match",
+      "evidence": ["console/src/AcceptanceBrowserBindings.vue:127", "console/src/AcceptanceBrowserBindings.vue:196", "console/src/acceptance-browser-bindings.js:207", "console/src/acceptance-browser-bindings.js:237", "browser-binding-desktop-review-dom.txt", "browser-binding-desktop-evidence.png"]
+    },
+    {
+      "promise": "Browser approval, selection and executor remain closed",
+      "result": "match",
+      "evidence": ["console/src/AcceptanceBrowserBindings.vue:173", "console/src/AcceptanceBrowserBindings.vue:192", "console/src/acceptance-browser-bindings.js:152", "console/src/acceptance-browser-bindings.js:169", "browser-checks.json:executionReady"]
+    },
+    {
+      "promise": "Incumbent typography, material and ground",
+      "result": "match",
+      "evidence": ["console/src/AcceptanceBrowserBindings.vue:208", "console/src/AcceptanceBrowserBindings.vue:215", "console/src/AcceptanceBrowserBindings.vue:222", "console/src/AcceptanceBrowserBindings.vue:245", "browser-binding-mobile-review-dark.png", "browser-binding-mobile-review-light.png"]
+    },
+    {
+      "promise": "Responsive composition and accessible native control vocabulary",
+      "result": "match",
+      "evidence": ["console/src/AcceptanceBrowserBindings.vue:164", "console/src/AcceptanceBrowserBindings.vue:177", "console/src/AcceptanceBrowserBindings.vue:194", "console/src/AcceptanceBrowserBindings.vue:230", "console/src/AcceptanceBrowserBindings.vue:273", "layouts.json"]
+    }
+  ],
+  "intentionalAndPreExistingConstraints": [
+    "No approved comp, new identity, image asset obligation or new visual world applies to this ordinary code-led extension.",
+    "Dense 12/13/14px workbench typography, native select/details controls and the bounded internal scroll layout inherit the incumbent Operate surface.",
+    "The sole supplied detector item is the unchanged AcceptanceCatalog.vue:374 border-left: 2px solid var(--accent-dim). The inspected git diff does not change that declaration; it is not introduced by this extension.",
+    "No shipping raster was introduced. The saved screenshots displayed as evidence and the test captures are functional evidence materials.",
+    "Root PRODUCT.md and DESIGN.md are absent. This was disclosed as an existing context/persistence limitation and does not establish a new-world requirement or block this narrow extension."
+  ],
+  "exactScopeAndRemainingLimits": {
+    "sourceFiles": ["console/src/AcceptanceCatalog.vue", "console/src/AcceptanceBrowserBindings.vue", "console/src/acceptance-browser-bindings.js"],
+    "scope": "Browser source-side organizational ownership and selected-side evidence review in the existing acceptance catalog.",
+    "sourceReviewOnly": true,
+    "sourceCodeChangedByReviewer": false,
+    "browserStartedByReviewer": false,
+    "testsRunByReviewer": false,
+    "detectorRunByReviewer": false,
+    "agentDefinitionFilesRead": false,
+    "limits": [
+      "No global shell redesign or full competition product acceptance is covered by this verdict.",
+      "The provided screenshots cover desktop dark and 390px mobile dark/light; desktop light, other mobile widths, zoom and assistive-technology runtime behavior were not captured in this packet.",
+      "Labels, native controls, status/error announcements, error focus, visible-focus CSS, image alt text and responsive rules were inspected in source. Independent keyboard navigation and numeric WCAG contrast measurement were not performed.",
+      "Controlled local fixtures and fresh real engine workers are the current evidence level; this review does not prove arbitrary-site compatibility or deployment immutability.",
+      "Browser approval, selection and execution are intentionally unavailable and are not approved by this ship verdict."
+    ]
+  }
+}

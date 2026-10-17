@@ -1,0 +1,9 @@
+{
+  "stage": "08-execution-ui",
+  "command": "pnpm acceptance:execution:ui:smoke",
+  "startedAt": "2026-10-17T04:51:25.509Z",
+  "finishedAt": "2026-10-17T04:52:56.129Z",
+  "durationMs": 90620,
+  "exitCode": 0,
+  "signal": null
+}

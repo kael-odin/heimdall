@@ -1,0 +1,9 @@
+{
+  "stage": "09-cdp-clone",
+  "command": "node core/scripts/smoke-console-cdp.mjs core/workspace/_runs/browser-bindings-console-gates-20261017/cdp-clone",
+  "startedAt": "2026-10-17T04:52:56.131Z",
+  "finishedAt": "2026-10-17T04:53:25.688Z",
+  "durationMs": 29557,
+  "exitCode": 0,
+  "signal": null
+}

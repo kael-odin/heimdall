@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "completedAt": "2026-10-17T05:07:06.412Z",
+  "inventory": {
+    "path": "package-files.json",
+    "bytes": 19589,
+    "sha256": "b6715433271ea8def550181c12161421341bf6d5fb9a1deda35ed6733a731867"
+  },
+  "inventoryFileCount": 114,
+  "archiveCount": 13,
+  "allByteRoundTripsPassed": true,
+  "completeArchiveFileSetsVerified": true,
+  "sourcesUnchanged": true,
+  "allOriginalInputsUnchanged": true,
+  "serialGatesPassed": 9
+}

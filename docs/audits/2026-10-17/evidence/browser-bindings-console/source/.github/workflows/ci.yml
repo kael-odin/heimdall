@@ -1,0 +1,173 @@
+name: CI
+
+# 与 seo-gate.yml 的分工：
+#   ci.yml     —— 确定性检查（lint / 测试 / build / smoke），每次 push 与 PR 都跑，不访问被克隆源站
+#   seo-gate   —— 联网抓授权站点并与基线比对；当前仅手动触发，配置目标和基线后再考虑定时运行
+#
+# 本文件里的测试**需要真浏览器**：core 的测试集里有几条跑的是 capture → build_clone
+# 的真实流水线（CSS url() 解析基准、资产按真实类型落盘……），必须能起 Chromium。
+# 此前 core job 没装 Chromium，那几条直接抛 "Executable doesn't exist"，
+# 于是整个 job 长期变红 —— 而本地（有浏览器）永远是绿的，所以一直没被发现。
+# 结论：装了浏览器再跑测试，别让"跑不过"和"环境没装"看起来一样。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    name: core (lint + test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: core/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm check:docs
+      # 见文件头：测试集里有真浏览器用例，不装就会红
+      - run: pnpm exec playwright install --with-deps chromium
+      # core 与 console 是**两个独立 job，产物不互通** —— 而 core 的测试集里有一条
+      # 控制台 E2E，它需要 console/dist。不在这里构建的话，那条用例每次都走"跳过"分支，
+      # 等于在 CI 里根本不存在（本地有 dist，所以本地永远是绿的，看不出来）。
+      # 与其把两个 job 串起来，不如在这儿就地构建一次：多花一分钟，换一条真的会跑的守卫。
+      - run: pnpm --dir ../console install --frozen-lockfile
+      - run: pnpm --dir ../console build
+      - run: pnpm test
+      - name: Acceptance console (real browser, local model stub)
+        run: pnpm acceptance:smoke
+      - name: Spec contract console (real browser, local API fixture)
+        run: pnpm acceptance:spec:smoke
+      - name: Acceptance comparison console (explicit runs, integrity and CLI)
+        run: pnpm acceptance:comparison:smoke
+      - name: Acceptance project catalog (versions, explicit bindings and two-engine isolation)
+        run: pnpm acceptance:catalog:smoke
+      - name: Acceptance catalog migration (real v1 artifacts and browser continuity)
+        run: pnpm acceptance:catalog:migration:smoke
+      - name: Spec baseline review (candidates, approvals, selections and source integrity)
+        run: pnpm acceptance:baseline:smoke
+      - name: Managed Spec preparation (immutable contract, replay and zero execution)
+        run: pnpm acceptance:managed:prepare:smoke
+      - name: Managed Spec result reading (captured evidence and zero execution)
+        run: pnpm acceptance:managed:read:smoke
+      - name: Owned acceptance recovery (startup barrier, restart and zero execution)
+        run: pnpm acceptance:owned:recovery:smoke
+      - name: Managed Spec execution (fresh admission, real runner, BUG and cancel)
+        run: pnpm acceptance:managed:execute:smoke
+      - name: Managed execution UI (explicit click, durable recovery and stop)
+        run: pnpm acceptance:execution:ui:smoke
+      - name: Browser candidate source (fresh captures and explicit healthy side)
+        run: pnpm acceptance:browser:source:smoke
+      - name: Browser private source reader (owner fences and unchanged originals)
+        run: pnpm acceptance:browser:read:smoke
+      - name: Browser source bindings (fresh captures, explicit sides and source revalidation)
+        run: pnpm acceptance:browser:bindings:smoke
+      - name: Browser source binding console (native HTTP, source review and verified evidence)
+        run: pnpm acceptance:browser:bindings:ui:smoke
+      - name: Preserve acceptance smoke failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-catalog-failure-${{ github.run_attempt }}
+          path: |
+            core/workspace/_runs/acceptance-catalog-console/**/failure.json
+            core/workspace/_runs/acceptance-catalog-console/**/failure-ui.json
+            core/workspace/_runs/acceptance-catalog-console/**/catalog-failure.png
+            core/workspace/_runs/acceptance-catalog-console/**/engine-*.log
+            core/workspace/_runs/acceptance-console/acceptance-failure.json
+            core/workspace/_runs/acceptance-console/acceptance-failure.png
+            core/workspace/_runs/acceptance-console/engine-error.log
+            core/workspace/_runs/managed-execution-*/failure.json
+            core/workspace/_runs/managed-execution-*/failure.png
+            core/workspace/_runs/managed-execution-*/engine-*.log
+            core/workspace/_runs/execution-ui-*/failure.json
+            core/workspace/_runs/execution-ui-*/failure*.png
+            core/workspace/_runs/execution-ui-*/fixture-*-engine-*.log
+            core/workspace/_runs/execution-ui-*/chromium.log
+            core/workspace/_runs/browser-source-smoke-*/failure.json
+            core/workspace/_runs/browser-source-smoke-*/materials/source-index.json
+            core/workspace/_runs/browser-reading-smoke-*/failure.json
+            core/workspace/_runs/browser-reading-smoke-*/materials/source-index.json
+            core/workspace/_runs/browser-bindings-smoke-*/failure.json
+            core/workspace/_runs/browser-bindings-smoke-*/summary.json
+            core/workspace/_runs/browser-bindings-smoke-*/checks.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/failure.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/failure*.png
+            core/workspace/_runs/browser-bindings-console-smoke-*/failure*.txt
+            core/workspace/_runs/browser-bindings-console-smoke-*/engine.log
+            core/workspace/_runs/browser-bindings-console-smoke-*/chromium.log
+            core/workspace/_runs/browser-bindings-console-smoke-*/browser-requests.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/browser-errors.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/target-requests.json
+          if-no-files-found: ignore
+          retention-days: 7
+      # 交付包需脱离源工作区，在无外联网络的容器中实际启动。
+      - name: Docker offline delivery (SSR + SPA + data SPA + adapter)
+        run: node --test --test-name-pattern='Docker network-none delivery' test/live-deployment-matrix.test.mjs
+        env:
+          HEIMDALL_DOCKER_TEST: "1"
+
+  console:
+    name: console (build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: console
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: console/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+  smoke:
+    name: core (e2e smoke, local fixture)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: core/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm smoke
+      - name: Acceptance detection benchmark (known truth fixtures)
+        run: pnpm acceptance:benchmark
+      - name: Spec API benchmark (OpenAPI candidates and known truth)
+        run: pnpm acceptance:spec:benchmark
+      - name: Acceptance comparison benchmark (known retest and false-closure cases)
+        run: pnpm acceptance:comparison:benchmark

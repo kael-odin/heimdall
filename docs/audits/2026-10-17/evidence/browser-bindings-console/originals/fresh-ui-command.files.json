@@ -1,0 +1,32 @@
+[
+  {
+    "path": "attempt-c1c7b180-ddd9-4632-9e48-bd7bca56d72a/command.json",
+    "bytes": 297,
+    "sha256": "e305cc4c1169ea10a7f14444a124c4a2835b265dd6fd668c40b19a60aaffcc2d"
+  },
+  {
+    "path": "attempt-c1c7b180-ddd9-4632-9e48-bd7bca56d72a/exitcode.json",
+    "bytes": 409,
+    "sha256": "45b138308fc5332eb90d70a356893f274cc536fb1b1b87149fb2320e5b2793b8"
+  },
+  {
+    "path": "attempt-c1c7b180-ddd9-4632-9e48-bd7bca56d72a/smoke-source.mjs",
+    "bytes": 27489,
+    "sha256": "8d162e048055f34e561cca39d3251530b4290fcba3b18bc5a35a9bcc0985ba43"
+  },
+  {
+    "path": "attempt-c1c7b180-ddd9-4632-9e48-bd7bca56d72a/stderr.log",
+    "bytes": 66,
+    "sha256": "896b2370b8350b9c3e4db6166e097d2a066616e2fcf8d5769c3424412f9f3340"
+  },
+  {
+    "path": "attempt-c1c7b180-ddd9-4632-9e48-bd7bca56d72a/stdout.log",
+    "bytes": 1341,
+    "sha256": "d533b0e2eb9b35d798c046444a8d40a23dc3790d68684a46a62a6d36e9dccc61"
+  },
+  {
+    "path": "run.mjs",
+    "bytes": 2022,
+    "sha256": "e561ab0e58e0f09293af6f262b0c6b564db4ee46ec7d2271f31da15d41e67aad"
+  }
+]

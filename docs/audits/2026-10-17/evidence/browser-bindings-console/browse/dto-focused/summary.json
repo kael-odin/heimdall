@@ -1,0 +1,71 @@
+{
+  "records": [
+    {
+      "name": "view-syntax",
+      "executable": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "--check",
+        "src/acceptance/browser-binding-view.mjs"
+      ],
+      "startedAt": "2026-10-17T04:02:45.468Z",
+      "completedAt": "2026-10-17T04:02:45.515Z",
+      "code": 0,
+      "signal": null,
+      "stdout": {
+        "path": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-binding-http-dto-73e57b7a-29a6-4ee0-aff8-998e8c5cd7cc\\view-syntax.stdout.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-binding-http-dto-73e57b7a-29a6-4ee0-aff8-998e8c5cd7cc\\view-syntax.stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "api-syntax",
+      "executable": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "--check",
+        "src/acceptance/catalog-api.mjs"
+      ],
+      "startedAt": "2026-10-17T04:02:45.518Z",
+      "completedAt": "2026-10-17T04:02:45.565Z",
+      "code": 0,
+      "signal": null,
+      "stdout": {
+        "path": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-binding-http-dto-73e57b7a-29a6-4ee0-aff8-998e8c5cd7cc\\api-syntax.stdout.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-binding-http-dto-73e57b7a-29a6-4ee0-aff8-998e8c5cd7cc\\api-syntax.stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "dto-tests",
+      "executable": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "--test",
+        "test/acceptance-browser-binding-view.test.mjs"
+      ],
+      "startedAt": "2026-10-17T04:02:45.567Z",
+      "completedAt": "2026-10-17T04:02:45.697Z",
+      "code": 0,
+      "signal": null,
+      "stdout": {
+        "path": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-binding-http-dto-73e57b7a-29a6-4ee0-aff8-998e8c5cd7cc\\dto-tests.stdout.log",
+        "bytes": 1753,
+        "sha256": "95bfb6aac7cd7d6a2e69322267fea9bed30e5e575cfdc14761f5b7c8ed354ff8"
+      },
+      "stderr": {
+        "path": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-binding-http-dto-73e57b7a-29a6-4ee0-aff8-998e8c5cd7cc\\dto-tests.stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "passed": true
+}

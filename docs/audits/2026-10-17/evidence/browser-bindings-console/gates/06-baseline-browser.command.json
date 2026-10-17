@@ -1,0 +1,7 @@
+{
+  "stage": "06-baseline-browser",
+  "command": "pnpm acceptance:baseline:smoke",
+  "startedAt": "2026-10-17T04:50:57.623Z",
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "environmentOverrides": {}
+}

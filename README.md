@@ -12,7 +12,7 @@
 
 新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。本地项目支持不可变版本声明、历史运行归属，以及 Spec 需求候选的完整预览、显式批准和独立选用；写入受目录版本冲突与双引擎保护。托管 Spec 已接入[专用 HTTP 执行链](docs/competition/acceptance-managed-spec.md)：以完整新确认和明确目标版本启动真实检查，共享运行槽，支持取消、超时和保守重启恢复；控制台已提供明确目标版本的执行入口、原操作只读恢复和请求停止，可查看结果并下载核验原件。批准、选用和旧操作查询均不自动执行，也不改变原门禁。AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [项目与版本](docs/competition/acceptance-catalog.md) · [需求基线](docs/competition/acceptance-baseline.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
 
-Browser 页面的[所选侧来源核验内核](docs/competition/acceptance-browser-source.md)已增加完整证据与声明槽位检查，候选 oracle 从明确选中的参考侧或目标侧重建；[私有读取层](docs/competition/acceptance-browser-reading.md)在真实 owner 内捕获全部实际引用，支持导航失败侧的空截图，并核验目录身份与字节。[Schema3 分步迁移](docs/competition/acceptance-catalog-schema3.md)保留原 Spec 历史；新[来源侧归属](docs/competition/acceptance-browser-bindings.md)在内部 store 明确绑定项目 / 版本、核对完整入口并在提交前重读来源。HTTP / UI、Browser 批准、选用与执行仍待接入。
+Browser 页面的[所选侧来源核验内核](docs/competition/acceptance-browser-source.md)已增加完整证据与声明槽位检查，候选 oracle 从明确选中的参考侧或目标侧重建；[私有读取层](docs/competition/acceptance-browser-reading.md)在真实 owner 内捕获全部实际引用，支持导航失败侧的空截图，并核验目录身份与字节。[Schema3 分步迁移](docs/competition/acceptance-catalog-schema3.md)保留原 Spec 历史；[来源侧归属](docs/competition/acceptance-browser-bindings.md)明确绑定项目 / 版本、核对完整入口并在提交前重读来源。现已接入[HTTP 与归属工作台](docs/competition/acceptance-browser-bindings-console.md)：按需核对单条来源、受保护证据完整性验证、失联提交只读恢复。Browser 完整批准预览、候选、批准、选用与执行继续建设。
 
 ## 它实际长这样
 

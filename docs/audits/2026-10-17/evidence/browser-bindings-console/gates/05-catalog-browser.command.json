@@ -1,0 +1,7 @@
+{
+  "stage": "05-catalog-browser",
+  "command": "pnpm acceptance:catalog:smoke",
+  "startedAt": "2026-10-17T04:50:42.856Z",
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "environmentOverrides": {}
+}

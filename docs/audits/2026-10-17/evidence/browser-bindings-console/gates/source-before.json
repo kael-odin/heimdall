@@ -1,0 +1,62 @@
+[
+  {
+    "path": "core/src/acceptance/catalog-api.mjs",
+    "bytes": 9296,
+    "sha256": "cd0d6015f1505c9c33a8469b07ae11a2bd0e3cb8f03a43da1d46ff2a48fe3b37"
+  },
+  {
+    "path": "core/src/acceptance/browser-binding-view.mjs",
+    "bytes": 9701,
+    "sha256": "c2c71f8f3b7f513e923c7927a5fd030c321473753a8b5d9acad055d5172ddba7"
+  },
+  {
+    "path": "console/src/AcceptanceCatalog.vue",
+    "bytes": 36338,
+    "sha256": "671e4c09e8205a987b0420fd93e9fabdf921a2b7d37b9659a387ca8320d80d4f"
+  },
+  {
+    "path": "console/src/AcceptanceBrowserBindings.vue",
+    "bytes": 29429,
+    "sha256": "1540ade5fd17fdecdfd57baaa983fac81f00f2ef56ca9204f72515116b22e8b5"
+  },
+  {
+    "path": "console/src/acceptance-browser-bindings.js",
+    "bytes": 18159,
+    "sha256": "cccb4c0f4cb15cc4a846d02bfad1174cb9e7ecaa6e4ec8ca2b6c9763358d02b3"
+  },
+  {
+    "path": "core/test/acceptance-browser-binding-api.test.mjs",
+    "bytes": 32056,
+    "sha256": "7e450db72f9ee5290fa5f414a6c19c5c0705f8961ae25f4790c11e3802c99139"
+  },
+  {
+    "path": "core/test/acceptance-browser-binding-view.test.mjs",
+    "bytes": 12774,
+    "sha256": "af693f239f96755671f86b31e2235aa33611ccced756be0317a22092367919de"
+  },
+  {
+    "path": "core/test/console-acceptance-browser-bindings.test.mjs",
+    "bytes": 19301,
+    "sha256": "5a2c408376d0c77da7f560c221952358044c83994034a3b4e410545081e3ccad"
+  },
+  {
+    "path": "core/scripts/smoke-acceptance-browser-bindings-console.mjs",
+    "bytes": 27489,
+    "sha256": "8d162e048055f34e561cca39d3251530b4290fcba3b18bc5a35a9bcc0985ba43"
+  },
+  {
+    "path": "core/package.json",
+    "bytes": 3489,
+    "sha256": "81c4b18fefa861222ad29ca49d21599cd5517a3d24efb916e6034d472e91c249"
+  },
+  {
+    "path": "package.json",
+    "bytes": 2241,
+    "sha256": "a3ac58a2f2ca9b0f06c6d58f051115bfa63c295761ea88b266e1495e9f94e7f4"
+  },
+  {
+    "path": ".github/workflows/ci.yml",
+    "bytes": 8371,
+    "sha256": "8e58293ccb18a6e1dc5b3d2c4a325e815308c02af4631b9bb9c6f2b7f302e6cb"
+  }
+]

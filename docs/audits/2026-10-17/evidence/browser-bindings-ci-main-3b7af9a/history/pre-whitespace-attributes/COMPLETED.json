@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "runId": 39000366975,
+  "head": "3b7af9ae644cba0f1b045fe58b29fcb48268d4e0",
+  "completedAt": "2026-10-17T04:18:19.653Z",
+  "manifest": {
+    "path": "file-manifest.json",
+    "bytes": 19541,
+    "sha256": "c5bd9289efe9a86767bfe27ad59a3454d91167193c7e5ce96826ca3a4bcbba1a"
+  },
+  "sha256sums": {
+    "path": "SHA256SUMS.txt",
+    "bytes": 12542,
+    "sha256": "c243ea898c978e3aab402e22bb2cf5b648b911b20fc0f27dc25bda1113804e09"
+  },
+  "originalZipCrcPassed": true,
+  "extractedLogFiles": 60,
+  "verifiedCommandAttempts": 8,
+  "strongSensitiveMatchCount": 0
+}

@@ -1,0 +1,9 @@
+{
+  "stage": "07-managed-prepare",
+  "command": "pnpm acceptance:managed:prepare:smoke",
+  "startedAt": "2026-10-17T04:51:23.357Z",
+  "finishedAt": "2026-10-17T04:51:25.507Z",
+  "durationMs": 2150,
+  "exitCode": 0,
+  "signal": null
+}

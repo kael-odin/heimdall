@@ -1,0 +1,25 @@
+{
+  "tag": "01-run-initial",
+  "attempt": 1,
+  "executable": "gh",
+  "args": [
+    "api",
+    "repos/kael-odin/heimdall/actions/runs/39000366975"
+  ],
+  "startedAt": "2026-10-17T04:18:11.321Z",
+  "endedAt": "2026-10-17T04:18:12.050Z",
+  "elapsedMs": 729,
+  "code": 0,
+  "signal": null,
+  "error": null,
+  "stdout": {
+    "path": "commands/01-run-initial-attempt-1.stdout.bin",
+    "bytes": 12329,
+    "sha256": "3ab70acab39d21958d9ad4544656e07131bc615d819a7c03711ee79904523652"
+  },
+  "stderr": {
+    "path": "commands/01-run-initial-attempt-1.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

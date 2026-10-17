@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "observedExitCode": 1,
+  "command": [
+    "node",
+    "docs/audits/2026-10-17/evidence/browser-bindings-ci-main-3b7af9a/finalize-whitespace.mjs"
+  ],
+  "observedError": {
+    "name": "AssertionError",
+    "code": "ERR_ASSERTION",
+    "actual": 20,
+    "expected": 0,
+    "file": "finalize-whitespace.mjs",
+    "line": 48
+  },
+  "correction": "The no-index comparison against an outside empty file reports original whitespace even after scoped attributes. It detects source bytes, not the later repository attribute gate. Finalization instead verifies the exact Git attributes and unchanged original byte hashes; no actual Git index is modified.",
+  "outputPolicy": "This is a structured record of the captured tool result. No original local stdout/stderr byte archive is claimed. All remote CI command stdout/stderr originals remain included."
+}

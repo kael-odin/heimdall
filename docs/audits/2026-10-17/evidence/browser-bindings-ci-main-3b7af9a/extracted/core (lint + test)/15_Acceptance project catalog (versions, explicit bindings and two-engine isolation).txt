@@ -1,0 +1,139 @@
+﻿2026-10-17T04:10:15.0504845Z ##[group]Run pnpm acceptance:catalog:smoke
+2026-10-17T04:10:15.0505829Z [36;1mpnpm acceptance:catalog:smoke[0m
+2026-10-17T04:10:15.0599862Z shell: /usr/bin/bash -e {0}
+2026-10-17T04:10:15.0600335Z env:
+2026-10-17T04:10:15.0601167Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T04:10:15.0601738Z ##[endgroup]
+2026-10-17T04:10:16.1648121Z $ node scripts/smoke-acceptance-catalog-console.mjs
+2026-10-17T04:10:24.6220498Z {
+2026-10-17T04:10:24.6221351Z   "status": "passed",
+2026-10-17T04:10:24.6222165Z   "evidenceLevel": "local-fixture-real-flow",
+2026-10-17T04:10:24.6223205Z   "browser": "Browser plugin not available; existing Playwright Chromium",
+2026-10-17T04:10:24.6224854Z   "scope": "真实 Spec worker→项目/版本/后续归属→并发CAS→双引擎/别名→重启→真实控制台；不包含基线批准或托管执行。",
+2026-10-17T04:10:24.6226120Z   "checkCount": 17,
+2026-10-17T04:10:24.6226801Z   "checks": {
+2026-10-17T04:10:24.6227648Z     "secondEngineAndJunctionCannotRecoverActiveRun": true,
+2026-10-17T04:10:24.6228728Z     "concurrentRevisionHasExactlyOneWinner": true,
+2026-10-17T04:10:24.6229790Z     "rejectedWritesPreserveCatalog": true,
+2026-10-17T04:10:24.6251867Z     "fullUrlMatchAndCorruptionFailClosed": true,
+2026-10-17T04:10:24.6277140Z     "restartPreservesProjectReleaseBindings": true,
+2026-10-17T04:10:24.6290442Z     "consoleCreatesProjectReleaseAndExplicitBinding": true,
+2026-10-17T04:10:24.6313299Z     "consoleConflictPreservesDraftWithoutAutomaticRetry": true,
+2026-10-17T04:10:24.6314409Z     "delayedDetailsCannotReplaceCurrentProject": true,
+2026-10-17T04:10:24.6315552Z     "delayedPostPreservesCurrentProjectAndDraft": true,
+2026-10-17T04:10:24.6316510Z     "projectSelectionEpochRejectsABAResponse": true,
+2026-10-17T04:10:24.6317828Z     "unavailableIsDistinctFromEmptyAndRecoveryPreservesDraft": true,
+2026-10-17T04:10:24.6319141Z     "responsiveLayouts": true,
+2026-10-17T04:10:24.6336167Z     "keyboardCanToggleWithoutLosingFocus": true,
+2026-10-17T04:10:24.6342671Z     "themeContrastAndEnlargedText": true,
+2026-10-17T04:10:24.6343469Z     "originalReportAndGateRemainVisible": true,
+2026-10-17T04:10:24.6344307Z     "noTargetRequestsOrOriginalRunMutations": true,
+2026-10-17T04:10:24.6345419Z     "pageIdentityNonblankOverlayAndConsoleHealthy": true
+2026-10-17T04:10:24.6346530Z   },
+2026-10-17T04:10:24.6347656Z   "layouts": [
+2026-10-17T04:10:24.6348208Z     {
+2026-10-17T04:10:24.6348701Z       "width": 390,
+2026-10-17T04:10:24.6352492Z       "height": 844,
+2026-10-17T04:10:24.6353164Z       "viewport": 390,
+2026-10-17T04:10:24.6353844Z       "scrollWidth": 390,
+2026-10-17T04:10:24.6354540Z       "panelWidth": 336
+2026-10-17T04:10:24.6355584Z     },
+2026-10-17T04:10:24.6356184Z     {
+2026-10-17T04:10:24.6356764Z       "width": 375,
+2026-10-17T04:10:24.6357396Z       "height": 812,
+2026-10-17T04:10:24.6358383Z       "viewport": 375,
+2026-10-17T04:10:24.6359055Z       "scrollWidth": 375,
+2026-10-17T04:10:24.6359717Z       "panelWidth": 321
+2026-10-17T04:10:24.6360337Z     },
+2026-10-17T04:10:24.6360898Z     {
+2026-10-17T04:10:24.6361454Z       "width": 844,
+2026-10-17T04:10:24.6362074Z       "height": 390,
+2026-10-17T04:10:24.6362719Z       "viewport": 844,
+2026-10-17T04:10:24.6363376Z       "scrollWidth": 844,
+2026-10-17T04:10:24.6364094Z       "panelWidth": 460
+2026-10-17T04:10:24.6367500Z     }
+2026-10-17T04:10:24.6368017Z   ],
+2026-10-17T04:10:24.6368507Z   "contrasts": [
+2026-10-17T04:10:24.6369011Z     {
+2026-10-17T04:10:24.6369488Z       "theme": "dark",
+2026-10-17T04:10:24.6370032Z       "readings": [
+2026-10-17T04:10:24.6370530Z         {
+2026-10-17T04:10:24.6371059Z           "selector": ".catalog-hint",
+2026-10-17T04:10:24.6371702Z           "ratio": 6.429025800388402
+2026-10-17T04:10:24.6372255Z         },
+2026-10-17T04:10:24.6372717Z         {
+2026-10-17T04:10:24.6373261Z           "selector": ".catalog-primary",
+2026-10-17T04:10:24.6373917Z           "ratio": 5.079290922781561
+2026-10-17T04:10:24.6374478Z         },
+2026-10-17T04:10:24.6375817Z         {
+2026-10-17T04:10:24.6376479Z           "selector": ".catalog-version",
+2026-10-17T04:10:24.6377663Z           "ratio": 6.429025800388402
+2026-10-17T04:10:24.6378245Z         },
+2026-10-17T04:10:24.6378758Z         {
+2026-10-17T04:10:24.6379814Z           "selector": ".catalog-boundary",
+2026-10-17T04:10:24.6380867Z           "ratio": 6.429025800388402
+2026-10-17T04:10:24.6381472Z         },
+2026-10-17T04:10:24.6381945Z         {
+2026-10-17T04:10:24.6400512Z           "selector": ".catalog-new-project > summary",
+2026-10-17T04:10:24.6401693Z           "ratio": 12.668153133574618
+2026-10-17T04:10:24.6402618Z         },
+2026-10-17T04:10:24.6403120Z         {
+2026-10-17T04:10:24.6403947Z           "selector": ".catalog-new-release > summary",
+2026-10-17T04:10:24.6404818Z           "ratio": 12.668153133574618
+2026-10-17T04:10:24.6405505Z         }
+2026-10-17T04:10:24.6406289Z       ]
+2026-10-17T04:10:24.6406772Z     },
+2026-10-17T04:10:24.6407456Z     {
+2026-10-17T04:10:24.6407942Z       "theme": "light",
+2026-10-17T04:10:24.6408705Z       "readings": [
+2026-10-17T04:10:24.6409211Z         {
+2026-10-17T04:10:24.6410017Z           "selector": ".catalog-hint",
+2026-10-17T04:10:24.6410916Z           "ratio": 6.8113391798647465
+2026-10-17T04:10:24.6411496Z         },
+2026-10-17T04:10:24.6412202Z         {
+2026-10-17T04:10:24.6412780Z           "selector": ".catalog-primary",
+2026-10-17T04:10:24.6413673Z           "ratio": 4.688072140815365
+2026-10-17T04:10:24.6414396Z         },
+2026-10-17T04:10:24.6414877Z         {
+2026-10-17T04:10:24.6415711Z           "selector": ".catalog-version",
+2026-10-17T04:10:24.6416494Z           "ratio": 6.8113391798647465
+2026-10-17T04:10:24.6417423Z         },
+2026-10-17T04:10:24.6418264Z         {
+2026-10-17T04:10:24.6419053Z           "selector": ".catalog-boundary",
+2026-10-17T04:10:24.6420776Z           "ratio": 6.8113391798647465
+2026-10-17T04:10:24.6421456Z         },
+2026-10-17T04:10:24.6422262Z         {
+2026-10-17T04:10:24.6423787Z           "selector": ".catalog-new-project > summary",
+2026-10-17T04:10:24.6424727Z           "ratio": 16.24825636008273
+2026-10-17T04:10:24.6425709Z         },
+2026-10-17T04:10:24.6426816Z         {
+2026-10-17T04:10:24.6430500Z           "selector": ".catalog-new-release > summary",
+2026-10-17T04:10:24.6431502Z           "ratio": 16.24825636008273
+2026-10-17T04:10:24.6432109Z         }
+2026-10-17T04:10:24.6432767Z       ]
+2026-10-17T04:10:24.6433215Z     }
+2026-10-17T04:10:24.6433860Z   ],
+2026-10-17T04:10:24.6434324Z   "errors": [],
+2026-10-17T04:10:24.6435041Z   "expectedResourceErrors": [
+2026-10-17T04:10:24.6435616Z     {
+2026-10-17T04:10:24.6436523Z       "reason": "explicit revision conflict",
+2026-10-17T04:10:24.6437698Z       "message": "Failed to load resource: the server responded with a status of 409 (Conflict)"
+2026-10-17T04:10:24.6438574Z     },
+2026-10-17T04:10:24.6439016Z     {
+2026-10-17T04:10:24.6439579Z       "reason": "owned fixture catalog corruption",
+2026-10-17T04:10:24.6440606Z       "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+2026-10-17T04:10:24.6441491Z     }
+2026-10-17T04:10:24.6441939Z   ],
+2026-10-17T04:10:24.6442372Z   "runIds": [
+2026-10-17T04:10:24.6443164Z     "ac-f107e3b3-0623-47d0-afe4-0ec05f078097",
+2026-10-17T04:10:24.6443874Z     "ac-73deea7d-c3d6-47bf-938f-81f90fc92d8a",
+2026-10-17T04:10:24.6444568Z     "ac-7b7c2210-355a-4453-9a79-84c372dff6ff"
+2026-10-17T04:10:24.6445324Z   ],
+2026-10-17T04:10:24.6445791Z   "originalGates": [
+2026-10-17T04:10:24.6446278Z     "failed",
+2026-10-17T04:10:24.6446738Z     "passed",
+2026-10-17T04:10:24.6447194Z     "passed"
+2026-10-17T04:10:24.6447640Z   ],
+2026-10-17T04:10:24.6448087Z   "apiCaseCount": 31,
+2026-10-17T04:10:24.6448618Z   "catalogTargetRequests": 0
+2026-10-17T04:10:24.6449144Z }

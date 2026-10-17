@@ -2,7 +2,7 @@
 
 Browser 历史对照运行可以包含两个独立来源：`baseline` 和 `target`。内部 catalog store 现在允许操作方明确选择其中一侧，归属到一个项目的不可变版本；绑定时验证该侧的完整 planned entry URL、来源原件、实际引用证据与投影摘要。它为后续完整预览、批准和固定来源执行建立可复核的组织关系。
 
-本片提供严格 Schema3 实体与服务器内部方法。HTTP、工作台操作和 Browser 批准 / 选用 / 托管执行仍在后续接入；Spec 的候选、批准和选用链保持原合同。[目录迁移](acceptance-catalog-schema3.md)继续负责旧格式和完整 Spec 历史的兼容，[来源读取器](acceptance-browser-reading.md)与[纯来源投影器](acceptance-browser-source.md)负责实际材料核验。
+本文说明严格 Schema3 实体与服务器内部方法。后续已接入[HTTP 与来源归属工作台](acceptance-browser-bindings-console.md)，使用有意不完整的显示 DTO；Browser 完整批准预览、候选 / 批准 / 选用 / 托管执行继续建设，Spec 的候选、批准和选用链保持原合同。[目录迁移](acceptance-catalog-schema3.md)继续负责旧格式和完整 Spec 历史的兼容，[来源读取器](acceptance-browser-reading.md)与[纯来源投影器](acceptance-browser-source.md)负责实际材料核验。
 
 ## 明确来源与项目版本
 

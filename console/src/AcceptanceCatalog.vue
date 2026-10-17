@@ -3,12 +3,14 @@ import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import Icon from './Icon.vue';
 import AcceptanceBaseline from './AcceptanceBaseline.vue';
 import AcceptanceExecution from './AcceptanceExecution.vue';
+import AcceptanceBrowserBindings from './AcceptanceBrowserBindings.vue';
 import { API, apiHeaders } from './api.js';
 import { STATUS_LABELS, GATE_LABELS } from './acceptance-workbench.js';
 import { AcceptanceCatalogError, buildCatalogBindingInput, buildCatalogProjectInput, buildCatalogReleaseInput,
   catalogFailure, catalogTargetUrl, catalogTerminalRuns, catalogVersion, createCatalogReadGuard,
   requestAcceptanceCatalog } from './acceptance-catalog.js';
 import { validateBaselineWrite } from './acceptance-baseline.js';
+import { validateBrowserBindingWrite } from './acceptance-browser-bindings.js';
 
 const props = defineProps({ runs: { type: Array, required: true } });
 const emit = defineEmits(['open-run', 'execution-run']);
@@ -60,6 +62,7 @@ const dateLabel = value => {
 const runLabel = run => `${run.name || run.runId} · ${STATUS_LABELS[run.status] || run.status} · ${run.runId.slice(-8)}`;
 const eventLabel = event => event.kind === 'candidate-created' ? '记录需求候选'
   : event.kind === 'baseline-approved' ? '批准需求合同' : event.kind === 'baseline-selected' ? '记录 Spec 选用'
+  : event.kind === 'browser-source-bound' ? '归属 Browser 来源侧'
   : event.kind.includes('binding') || event.kind.includes('bound') ? '认领历史运行'
   : event.kind.includes('release') ? '登记版本' : event.kind.includes('project') ? '创建项目' : event.kind;
 const request = (path, options = {}) => requestAcceptanceCatalog(path, { baseUrl: API, headers: apiHeaders(), ...options });
@@ -244,6 +247,52 @@ async function writeBaseline(kind, body, projectId) {
     throw problem;
   } finally { if (!stopped) writing.value = ''; }
 }
+async function writeBrowserBinding(body, projectId) {
+  if (!ready.value || stopped || selectedProject.value !== projectId || detail.value?.project.id !== projectId) {
+    throw new AcceptanceCatalogError('请先读取当前项目，再记录 Browser 来源归属。', { code: 'INVALID_INPUT' });
+  }
+  if (body.expectedGenerationId !== version.value.generationId || body.expectedRevision !== version.value.revision) {
+    const problem = new AcceptanceCatalogError('目录版本已变化，请重新核对 Browser 来源归属。', { code: 'STALE_REVISION', status: 409 });
+    requiresReconcile.value = true;
+    await showError(problem);
+    throw problem;
+  }
+  const submittedProject = project.value?.name || projectId, submittedEpoch = selectionEpoch;
+  const stillSelected = () => selectedProject.value === projectId && selectionEpoch === submittedEpoch;
+  writing.value = 'browser-binding'; error.value = null; notice.value = '';
+  const controller = new AbortController(); writeController = controller;
+  let committed = false;
+  try {
+    const result = await request(`/${encodeURIComponent(projectId)}/browser-source-bindings`, { method: 'POST', body, signal: controller.signal });
+    validateBrowserBindingWrite(result, { projectId, body });
+    committed = true;
+    if (stopped) return { ...result, refreshed: false };
+    if (!stillSelected()) {
+      requiresReconcile.value = true;
+      notice.value = `项目「${submittedProject}」的 Browser 来源归属已记录。提交已确认，请刷新目录核对。`;
+      return { ...result, refreshed: false };
+    }
+    const refreshed = await refreshCatalog();
+    if (!refreshed || !stillSelected()) requiresReconcile.value = true;
+    if (stillSelected()) notice.value = `项目「${submittedProject}」的 Browser 来源归属已记录。${refreshed
+      ? '归属已完成，可按需核对保存来源。' : '提交已确认，列表待刷新；请刷新目录核对。'}`;
+    return { ...result, refreshed: refreshed && stillSelected() };
+  } catch (problem) {
+    if (!stopped) {
+      if (problem.status === 409 || problem.code === 'STALE_REVISION' || problem.writeMayHaveCommitted || committed) requiresReconcile.value = true;
+      resetConfirmation();
+      if (stillSelected()) await showError(problem);
+      else {
+        error.value = catalogFailure(problem);
+        notice.value = `项目「${submittedProject}」的 Browser 来源归属需要刷新核对。系统不会自动重发。`;
+      }
+    }
+    throw problem;
+  } finally {
+    if (!stopped) writing.value = '';
+    if (writeController === controller) writeController = undefined;
+  }
+}
 onBeforeUnmount(() => {
   stopped = true;
   listGuard.stop();
@@ -281,6 +330,9 @@ onBeforeUnmount(() => {
         <section class="catalog-binding-form" aria-labelledby="catalog-binding-title"><h3 id="catalog-binding-title">认领已结束的历史运行</h3><p class="catalog-hint">从当前历史列表显式选择。相同 URL 不会自动归属；每次运行只能认领一次。</p><form @submit.prevent="mutate('binding')"><div class="catalog-binding-fields"><label for="catalog-binding-release">归入版本<select id="catalog-binding-release" v-model="draft.binding.releaseId" name="catalog-binding-release" required :disabled="!releases.length"><option value="">请选择版本</option><option v-for="release in releases" :key="release.id" :value="release.id">{{ release.label }} · {{ release.targetUrl }}</option></select></label><label for="catalog-binding-run">历史运行<select id="catalog-binding-run" v-model="draft.binding.runId" name="catalog-binding-run" required :aria-invalid="!!bindingProblem" aria-describedby="catalog-binding-problem"><option value="">请选择已结束运行</option><option v-for="run in terminalRuns" :key="run.runId" :value="run.runId" :disabled="bindingByRun.has(run.runId)">{{ runLabel(run) }}{{ bindingByRun.has(run.runId) ? ' · 已归属' : '' }}</option></select></label></div><p v-if="!terminalRuns.length" class="catalog-hint">当前历史列表没有已结束运行。运行结束后刷新历史即可选择。</p><p v-if="bindingProblem" id="catalog-binding-problem" class="catalog-field-error" role="status">{{ bindingProblem }}</p><p v-if="selectedRun && selectedRelease" class="catalog-binding-selection">将 <strong>{{ selectedRun.name || selectedRun.runId }}</strong> 认领到 <strong>{{ project.name }} / {{ selectedRelease.label }}</strong>。</p><label class="catalog-confirm"><input v-model="draft.binding.confirmed" type="checkbox" name="catalog-binding-confirmed" :disabled="!!bindingProblem || !selectedRun || !selectedRelease" /><span>我确认这是后续归属；原始运行、报告与门禁不变。归属不代表证据或基线已获批准。</span></label><button type="submit" class="catalog-button catalog-primary" :disabled="!canBind" data-testid="catalog-bind-run">{{ writing === 'binding' ? '正在认领…' : '确认认领运行' }}</button></form></section>
         <section class="catalog-bindings" aria-labelledby="catalog-bindings-title"><h3 id="catalog-bindings-title">已归属运行 <span>{{ bindings.length }}</span></h3><ol v-if="bindings.length"><li v-for="binding in bindings" :key="binding.runId" :data-binding-run="binding.runId"><div class="catalog-binding-heading"><strong>{{ binding.releaseLabel || releases.find(item => item.id === binding.releaseId)?.label || binding.releaseId }}</strong><button type="button" class="catalog-button" data-testid="catalog-open-run" :data-run-id="binding.runId" @click="openRun(binding.runId)">查看原运行<Icon name="external" decorative /></button></div><p>{{ binding.source?.name || binding.runId }}</p><p class="catalog-hint">后续归属 · {{ dateLabel(binding.boundAt) }}<span v-if="binding.source"> · {{ STATUS_LABELS[binding.source.status] || binding.source.status }}<span v-if="binding.source.gate"> · {{ GATE_LABELS[binding.source.gate] || binding.source.gate }}</span></span></p><p class="catalog-hint">{{ binding.diagnostics?.scope === 'manifest-only' ? '仅核对运行记录；未核验报告与证据。' : '组织归属记录；未核验报告与证据。' }}</p><ul v-if="binding.diagnostics?.issues?.length" class="catalog-diagnostics"><li v-for="(issue, index) in binding.diagnostics.issues" :key="index"><code>{{ issue.code }}</code> {{ issue.message }}</li></ul></li></ol><p v-else class="catalog-empty">尚未认领运行。已有验收结果不会自动进入此项目。</p></section>
       </template>
+      <AcceptanceBrowserBindings v-if="selectedProject" :project-id="selectedProject" :detail="detail" :version="version" :runs="runs"
+        :ready="ready && !!detail" :active="expanded" :writing="writing" :requires-reconcile="requiresReconcile"
+        :request="request" :write="writeBrowserBinding" @reconcile="reconcileBaseline" @open-run="openRun" />
       <AcceptanceBaseline v-if="selectedProject" :project-id="selectedProject" :detail="detail" :version="version"
         :ready="ready && !!detail" :writing="writing" :requires-reconcile="requiresReconcile" :request="request" :write="writeBaseline" @reconcile="reconcileBaseline" />
       <AcceptanceExecution v-if="selectedProject" :key="selectedProject" :project-id="selectedProject" :detail="detail" :version="version"

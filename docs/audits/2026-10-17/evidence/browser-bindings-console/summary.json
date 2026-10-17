@@ -1,0 +1,516 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "fullCore": {
+    "tests": 2273,
+    "suites": 0,
+    "pass": 2264,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 9,
+    "todo": 0,
+    "duration_ms": 553978.1225
+  },
+  "dtoFocused": {
+    "tests": 20,
+    "suites": 0,
+    "pass": 20,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 79.2284
+  },
+  "httpRounds": [
+    {
+      "id": "http-initial",
+      "tests": 26,
+      "suites": 0,
+      "pass": 20,
+      "fail": 6,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "duration_ms": 38495.8588
+    },
+    {
+      "id": "http-second",
+      "tests": 34,
+      "suites": 0,
+      "pass": 32,
+      "fail": 2,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "duration_ms": 48792.9506
+    },
+    {
+      "id": "http-final",
+      "tests": 34,
+      "suites": 0,
+      "pass": 34,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "duration_ms": 44146.0414
+    }
+  ],
+  "finalHttpComposition": {
+    "total": 34,
+    "browserHttp": 28,
+    "previousCatalogApiRegression": 6
+  },
+  "uiHelperEvidence": {
+    "reportedFocusedTests": 21,
+    "rawFocusedLogArchived": false,
+    "reason": "Initial helper/build commands were only visible in tool output; no wx command log exists and none is reconstructed.",
+    "frozenTestSourceCoveredByFinalCore": "core/test/console-acceptance-browser-bindings.test.mjs"
+  },
+  "authoritativeFreshSmoke": {
+    "schemaVersion": 1,
+    "status": "passed",
+    "startedAt": "2026-10-17T04:22:20.735Z",
+    "finishedAt": "2026-10-17T04:22:50.214Z",
+    "evidenceLevel": "fresh-local-fixture-real-engine-workers-native-browser-controls",
+    "browser": "Chromium CDP",
+    "browserPluginAvailable": false,
+    "browserFallbackReason": "Browser plugin not available",
+    "checks": {
+      "freshMirrorAndRegressionWorkersPreserveFailedComparison": true,
+      "noImplicitSideAndNoAutomaticBinding": true,
+      "changingSideRequiresFreshConfirmation": true,
+      "nativeBaselineBindingAndSelectedSideReviewAreSafe": true,
+      "sameLengthCorruptEvidenceCannotBecomeBlobOrImage": true,
+      "selectedSideAllThreeEvidenceRolesOpenThroughAuthenticatedBlob": true,
+      "targetRemainsCompatibleWithLegacyAndBaselineIndependent": true,
+      "projectABACannotRestoreLatePreview": true,
+      "lostPostReconcilesStoredHistoryWithoutReplay": true,
+      "changedSourceRetainsHistoryAndReadNeverWrites": true,
+      "desktopAndBothMobileThemesHaveNoHorizontalOverflow": true,
+      "closingOrChangingReviewRevokesVerifiedBlobUrls": true,
+      "pageIdentityNonblankOverlayAndConsoleHealthy": true,
+      "noNewRunNoTargetRequestAndOriginalBytesPreserved": true
+    },
+    "checkCount": 14,
+    "layouts": [
+      {
+        "name": "browser-binding-desktop-form",
+        "width": 1440,
+        "height": 1000,
+        "theme": "dark",
+        "focus": "form",
+        "viewport": 1440,
+        "documentWidth": 1440,
+        "clientWidth": 964,
+        "scrollWidth": 964,
+        "rect": {
+          "x": 393,
+          "y": 24.84375,
+          "width": 964,
+          "height": 651.921875,
+          "top": 24.84375,
+          "bottom": 676.765625
+        }
+      },
+      {
+        "name": "browser-binding-desktop-review",
+        "width": 1440,
+        "height": 1000,
+        "theme": "dark",
+        "focus": "preview",
+        "viewport": 1440,
+        "documentWidth": 1440,
+        "clientWidth": 964,
+        "scrollWidth": 964,
+        "rect": {
+          "x": 393,
+          "y": -647.15625,
+          "width": 964,
+          "height": 3526.46875,
+          "top": -647.15625,
+          "bottom": 2879.3125
+        }
+      },
+      {
+        "name": "browser-binding-desktop-evidence",
+        "width": 1440,
+        "height": 1000,
+        "theme": "dark",
+        "focus": "evidence",
+        "viewport": 1440,
+        "documentWidth": 1440,
+        "clientWidth": 964,
+        "scrollWidth": 964,
+        "rect": {
+          "x": 393,
+          "y": -1318.15625,
+          "width": 964,
+          "height": 3526.46875,
+          "top": -1318.15625,
+          "bottom": 2208.3125
+        }
+      },
+      {
+        "name": "browser-binding-source-changed",
+        "width": 1440,
+        "height": 1000,
+        "theme": "dark",
+        "focus": "preview",
+        "viewport": 1440,
+        "documentWidth": 1440,
+        "clientWidth": 964,
+        "scrollWidth": 964,
+        "rect": {
+          "x": 393,
+          "y": -773.15625,
+          "width": 964,
+          "height": 1054.5,
+          "top": -773.15625,
+          "bottom": 281.34375
+        }
+      },
+      {
+        "name": "browser-binding-mobile-form-dark",
+        "width": 390,
+        "height": 844,
+        "theme": "dark",
+        "focus": "form",
+        "viewport": 390,
+        "documentWidth": 390,
+        "clientWidth": 296,
+        "scrollWidth": 296,
+        "rect": {
+          "x": 42,
+          "y": 12.640625,
+          "width": 296,
+          "height": 1946.953125,
+          "top": 12.640625,
+          "bottom": 1959.59375
+        }
+      },
+      {
+        "name": "browser-binding-mobile-review-dark",
+        "width": 390,
+        "height": 844,
+        "theme": "dark",
+        "focus": "preview",
+        "viewport": 390,
+        "documentWidth": 390,
+        "clientWidth": 296,
+        "scrollWidth": 296,
+        "rect": {
+          "x": 42,
+          "y": -1151.359375,
+          "width": 296,
+          "height": 1946.953125,
+          "top": -1151.359375,
+          "bottom": 795.59375
+        }
+      },
+      {
+        "name": "browser-binding-mobile-form-light",
+        "width": 390,
+        "height": 844,
+        "theme": "light",
+        "focus": "form",
+        "viewport": 390,
+        "documentWidth": 390,
+        "clientWidth": 296,
+        "scrollWidth": 296,
+        "rect": {
+          "x": 42,
+          "y": 12.640625,
+          "width": 296,
+          "height": 1946.953125,
+          "top": 12.640625,
+          "bottom": 1959.59375
+        }
+      },
+      {
+        "name": "browser-binding-mobile-review-light",
+        "width": 390,
+        "height": 844,
+        "theme": "light",
+        "focus": "preview",
+        "viewport": 390,
+        "documentWidth": 390,
+        "clientWidth": 296,
+        "scrollWidth": 296,
+        "rect": {
+          "x": 42,
+          "y": -1151.359375,
+          "width": 296,
+          "height": 1946.953125,
+          "top": -1151.359375,
+          "bottom": 795.59375
+        }
+      }
+    ],
+    "captures": [
+      "browser-binding-desktop-form.png",
+      "browser-binding-desktop-review.png",
+      "browser-binding-desktop-evidence.png",
+      "browser-binding-source-changed.png",
+      "browser-binding-mobile-form-dark.png",
+      "browser-binding-mobile-review-dark.png",
+      "browser-binding-mobile-form-light.png",
+      "browser-binding-mobile-review-light.png"
+    ],
+    "pageErrors": [],
+    "expectedResourceErrors": [
+      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+    ],
+    "sourceRuns": [
+      {
+        "mode": "mirror",
+        "runId": "ac-63300ae5-0981-426a-a59a-247901dcade3",
+        "reportGate": "failed"
+      },
+      {
+        "mode": "regression",
+        "runId": "ac-2c5e7435-f9df-4d6e-924e-6723a91082e5",
+        "reportGate": "failed"
+      }
+    ],
+    "browserBindingPostCount": 3,
+    "captureTargetRequests": 16,
+    "bindingAndReadTargetRequests": 0,
+    "executionReady": false,
+    "boundary": "Controlled organization UI only. No Browser candidate, approval, selection or executor; legacy URL surfaces remain separate. One source whitespace change is an explicit test injection restored from the original bytes."
+  },
+  "finishReview": {
+    "disposition": "ship",
+    "capturesReviewed": 8,
+    "materialFindings": 0
+  },
+  "documentationReview": {
+    "status": "documentation-complete"
+  },
+  "stages": [
+    {
+      "stage": "01-lint",
+      "command": "pnpm -C core lint",
+      "startedAt": "2026-10-17T04:40:28.525Z",
+      "finishedAt": "2026-10-17T04:40:49.807Z",
+      "durationMs": 21280,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "02-console-build",
+      "command": "pnpm -C console build",
+      "startedAt": "2026-10-17T04:40:49.809Z",
+      "finishedAt": "2026-10-17T04:40:51.901Z",
+      "durationMs": 2092,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "03-core-test",
+      "command": "pnpm -C core test",
+      "startedAt": "2026-10-17T04:40:51.903Z",
+      "finishedAt": "2026-10-17T04:50:06.998Z",
+      "durationMs": 555095,
+      "exitCode": 0,
+      "signal": null,
+      "testCounts": {
+        "tests": 2273,
+        "suites": 0,
+        "pass": 2264,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 9,
+        "todo": 0,
+        "duration_ms": 553978.1225
+      }
+    },
+    {
+      "stage": "04-core-smoke",
+      "command": "pnpm -C core smoke",
+      "startedAt": "2026-10-17T04:50:07.000Z",
+      "finishedAt": "2026-10-17T04:50:42.854Z",
+      "durationMs": 35854,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "05-catalog-browser",
+      "command": "pnpm acceptance:catalog:smoke",
+      "startedAt": "2026-10-17T04:50:42.856Z",
+      "finishedAt": "2026-10-17T04:50:57.621Z",
+      "durationMs": 14765,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "06-baseline-browser",
+      "command": "pnpm acceptance:baseline:smoke",
+      "startedAt": "2026-10-17T04:50:57.623Z",
+      "finishedAt": "2026-10-17T04:51:23.355Z",
+      "durationMs": 25732,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "07-managed-prepare",
+      "command": "pnpm acceptance:managed:prepare:smoke",
+      "startedAt": "2026-10-17T04:51:23.357Z",
+      "finishedAt": "2026-10-17T04:51:25.507Z",
+      "durationMs": 2150,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "08-execution-ui",
+      "command": "pnpm acceptance:execution:ui:smoke",
+      "startedAt": "2026-10-17T04:51:25.509Z",
+      "finishedAt": "2026-10-17T04:52:56.129Z",
+      "durationMs": 90620,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "09-cdp-clone",
+      "command": "node core/scripts/smoke-console-cdp.mjs core/workspace/_runs/browser-bindings-console-gates-20261017/cdp-clone",
+      "startedAt": "2026-10-17T04:52:56.131Z",
+      "finishedAt": "2026-10-17T04:53:25.688Z",
+      "durationMs": 29557,
+      "exitCode": 0,
+      "signal": null
+    }
+  ],
+  "archiveRoundTrips": [
+    {
+      "id": "dto-focused",
+      "source": "core/workspace/_runs/browser-binding-http-dto-73e57b7a-29a6-4ee0-aff8-998e8c5cd7cc",
+      "fileCount": 10,
+      "bytes": 7476,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "http-initial",
+      "source": "core/workspace/_runs/browser-bindings-http-tests-2315c9f8-a136-4154-b54b-4e2ed140b6c1",
+      "fileCount": 4,
+      "bytes": 11616,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "http-second",
+      "source": "core/workspace/_runs/browser-bindings-http-tests-b4f8f91b-ba31-4b29-ba95-c6a8c017d9b5",
+      "fileCount": 4,
+      "bytes": 10114,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "http-final",
+      "source": "core/workspace/_runs/browser-bindings-http-tests-bd1a42cf-901c-41ff-bcaf-533c37a5fa83",
+      "fileCount": 4,
+      "bytes": 8695,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "fresh-ui-command",
+      "source": "core/workspace/_runs/browser-bindings-console-attempts-20261017",
+      "fileCount": 6,
+      "bytes": 31624,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "fresh-ui",
+      "source": "core/workspace/_runs/browser-bindings-console-smoke-dfb73d91-b154-47c0-99a9-86b6b7e8eeb2",
+      "fileCount": 97,
+      "bytes": 2194335,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "finish-review",
+      "source": "core/workspace/_runs/browser-bindings-console-review-20261017",
+      "fileCount": 2,
+      "bytes": 12532,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "documentation-review",
+      "source": "core/workspace/_runs/browser-bindings-console-documentation-20261017",
+      "fileCount": 2,
+      "bytes": 15085,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "catalog-console",
+      "source": "core/workspace/_runs/acceptance-catalog-console/2026-10-17T04-50-43.652Z-a2917ff3",
+      "fileCount": 38,
+      "bytes": 704904,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "baseline-console",
+      "source": "core/workspace/_runs/acceptance-baseline-console/2026-10-17T04-50-58.453Z-4f27958f",
+      "fileCount": 29,
+      "bytes": 635153,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "managed-preparation",
+      "source": "core/workspace/_runs/acceptance-managed-preparation/2026-10-17T04-51-24.092Z-1c751bc9",
+      "fileCount": 10,
+      "bytes": 14730,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "execution-ui",
+      "source": "core/workspace/_runs/execution-ui-fb7c19da-8396-42e0-859e-538aa2147656",
+      "fileCount": 31,
+      "bytes": 844483,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "cdp-clone",
+      "source": "core/workspace/_runs/browser-bindings-console-gates-20261017/cdp-clone",
+      "fileCount": 3,
+      "bytes": 99585,
+      "packExitCode": 0,
+      "unpackExitCode": 0,
+      "completeFileSetVerified": true,
+      "byteRoundTripPassed": true
+    }
+  ],
+  "countPolicy": "Full Core once; focused suites, failed attempts, 14 fresh checks and later smoke regressions remain separate and overlap."
+}

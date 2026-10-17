@@ -1,0 +1,8 @@
+2026-10-17T03:51:21.7230000Z Requested labels: ubuntu-latest
+2026-10-17T03:51:21.7230000Z Job defined at: kael-odin/heimdall/.github/workflows/ci.yml@refs/heads/main
+2026-10-17T03:51:21.7230000Z Waiting for a runner to pick up this job...
+2026-10-17T03:51:21.7260000Z Job is about to start running on the hosted runner: GitHub Actions 1000002891
+2026-10-17T03:51:21.7220000Z Evaluating console.if
+2026-10-17T03:51:21.7220000Z Evaluating: success()
+2026-10-17T03:51:21.7220000Z Result: true
+2026-10-17T03:51:21.7290000Z Job is waiting for a hosted runner to come online.

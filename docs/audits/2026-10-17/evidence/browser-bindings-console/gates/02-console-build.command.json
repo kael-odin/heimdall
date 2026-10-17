@@ -1,0 +1,7 @@
+{
+  "stage": "02-console-build",
+  "command": "pnpm -C console build",
+  "startedAt": "2026-10-17T04:40:49.809Z",
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "environmentOverrides": {}
+}

@@ -80,6 +80,8 @@ jobs:
         run: pnpm acceptance:browser:read:smoke
       - name: Browser source bindings (fresh captures, explicit sides and source revalidation)
         run: pnpm acceptance:browser:bindings:smoke
+      - name: Browser source binding console (native HTTP, source review and verified evidence)
+        run: pnpm acceptance:browser:bindings:ui:smoke
       - name: Preserve acceptance smoke failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -107,6 +109,14 @@ jobs:
             core/workspace/_runs/browser-bindings-smoke-*/failure.json
             core/workspace/_runs/browser-bindings-smoke-*/summary.json
             core/workspace/_runs/browser-bindings-smoke-*/checks.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/failure.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/failure*.png
+            core/workspace/_runs/browser-bindings-console-smoke-*/failure*.txt
+            core/workspace/_runs/browser-bindings-console-smoke-*/engine.log
+            core/workspace/_runs/browser-bindings-console-smoke-*/chromium.log
+            core/workspace/_runs/browser-bindings-console-smoke-*/browser-requests.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/browser-errors.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/target-requests.json
           if-no-files-found: ignore
           retention-days: 7
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。
