@@ -1,0 +1,28 @@
+﻿2026-10-17T15:42:18.3267491Z ##[group]Run pnpm acceptance:managed:execute:smoke
+2026-10-17T15:42:18.3267888Z [36;1mpnpm acceptance:managed:execute:smoke[0m
+2026-10-17T15:42:18.3324334Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:42:18.3324656Z env:
+2026-10-17T15:42:18.3324815Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:42:18.3325030Z ##[endgroup]
+2026-10-17T15:42:18.9555075Z $ node scripts/smoke-acceptance-managed-execution.mjs
+2026-10-17T15:42:28.0181357Z {
+2026-10-17T15:42:28.0181904Z   "status": "passed",
+2026-10-17T15:42:28.0182516Z   "evidenceLevel": "real-catalog-admission-engine-cdp-browser-local-fixture",
+2026-10-17T15:42:28.0183056Z   "engineExecutorTested": true,
+2026-10-17T15:42:28.0183462Z   "freshCatalogAdmissionTested": true,
+2026-10-17T15:42:28.0183832Z   "executionUiImplemented": false,
+2026-10-17T15:42:28.0184219Z   "browserPluginAvailable": false,
+2026-10-17T15:42:28.0185016Z   "browserAutomation": "Repository Playwright with an actual Chromium CDP endpoint",
+2026-10-17T15:42:28.0186156Z   "scope": "Real legacy draft, binding, candidate, approval and selection. Browser POST invokes fresh managed engine execution; existing workbench observes running, completed BUG and cancelled interrupted states.",
+2026-10-17T15:42:28.0187102Z   "checks": {
+2026-10-17T15:42:28.0188318Z     "realCatalogFreshHttpAdmissionAndRunningUi": true,
+2026-10-17T15:42:28.0189559Z     "completedBugHasDoneTaskAndVerifiedDownloads": true,
+2026-10-17T15:42:28.0193332Z     "replayAndConflictDoNotExecute": true,
+2026-10-17T15:42:28.0193911Z     "pendingCancelStopsLaterRequestsAndUiIsInterrupted": true
+2026-10-17T15:42:28.0194356Z   },
+2026-10-17T15:42:28.0194783Z   "pageErrors": [],
+2026-10-17T15:42:28.0195108Z   "targetRequestCount": 3,
+2026-10-17T15:42:28.0195414Z   "zeroModelRequests": true,
+2026-10-17T15:42:28.0195762Z   "originalDraftUnchanged": true,
+2026-10-17T15:42:28.0196457Z   "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/managed-execution-182149e6-7726-46d4-b1fb-b760661fbe0a"
+2026-10-17T15:42:28.0197119Z }

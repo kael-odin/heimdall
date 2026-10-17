@@ -1,7 +1,7 @@
 /** Owner-bound Browser operations, outside the legacy ac-* run namespace. */
 import { constants, mkdirSync, readdirSync, realpathSync, lstatSync, openSync, closeSync, fstatSync,
   readSync, writeFileSync, fsyncSync, linkSync, unlinkSync, renameSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { resolve, join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { types } from 'node:util';
@@ -13,7 +13,8 @@ import { BROWSER_OPERATION_LIMITS, BrowserOperationError, browserOperationFail a
   browserOperationSha256 as sha, browserOperationSame as same, browserOperationJson as data,
   browserOperationFileName as fileName, browserOperationHash, isBrowserOperationId, validateBrowserOperationRequest,
   browserOperationRequestFingerprint, validateBrowserOperationDispatch, validateBrowserOperationHead,
-  validateBrowserOperationReport, browserCheckBugKey, browserCheckRelation } from './browser-operation-schema.mjs';
+  validateBrowserOperationReport, validateBrowserOperationRejection, browserOperationRejectionBytes,
+  browserCheckBugKey, browserCheckRelation } from './browser-operation-schema.mjs';
 
 const encode = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -74,20 +75,23 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
     limits[key] = value;
   }
   const root = resolve(owner.root), parent = join(root, 'browser-operations'), namespace = join(parent, 'v1'), pins = new Map();
+  const claims = new WeakSet(), temporaries = new Map(), decisionScopes = new WeakMap();
   const owned = () => { assertAcceptanceOwner(owner); if (realpathSync(root) !== root) fail('ROOT_CHANGED'); };
   function directory(path, create = false, optional = false) {
     owned();
-    let stat;
+    let stat, created = false;
     try { stat = lstatSync(path, { bigint: true }); }
     catch (cause) {
       if (cause.code !== 'ENOENT') throw cause;
       if (pins.has(path)) fail('DIRECTORY_CHANGED');
-      if (create) { mkdirSync(path); stat = lstatSync(path, { bigint: true }); }
+      if (create) { mkdirSync(path); created = true; stat = lstatSync(path, { bigint: true }); }
       else if (optional) return false; else throw cause;
     }
     if (!stat.isDirectory() || stat.isSymbolicLink() || realpathSync(path) !== path) fail('DIRECTORY_UNSAFE');
     const previous = pins.get(path); if (previous && !identity(previous, stat)) fail('DIRECTORY_CHANGED');
-    pins.set(path, stat); owned(); return true;
+    pins.set(path, stat); owned();
+    if (created) syncDirectory(dirname(path));
+    return true;
   }
   function base(create = false) {
     if (!directory(parent, create, true)) return false;
@@ -99,8 +103,85 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
     const path = join(namespace, operationId);
     return directory(path, create, true) ? path : null;
   }
+  function syncDirectory(path) {
+    // Windows does not expose a portable directory fsync through Node. File
+    // contents are flushed there; whole-machine power-loss durability is not claimed.
+    if (process.platform === 'win32') return;
+    directory(path); const fd = openSync(path, constants.O_RDONLY | (constants.O_DIRECTORY ?? 0));
+    try { fsyncSync(fd); } finally { closeSync(fd); }
+    directory(path);
+  }
+  function safeFileShape(path, maximum) {
+    const stat = lstatSync(path, { bigint: true });
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1n || stat.size < 0n
+      || stat.size > BigInt(maximum) || realpathSync(path) !== path
+      || !sameFile(stat, lstatSync(path, { bigint: true }))) fail('FILE_UNSAFE');
+    return stat;
+  }
+  function shape(path, kind, claim = null) {
+    directory(path);
+    const rootEntries = readdirSync(path, { withFileTypes: true });
+    if (rootEntries.length > limits.directoryEntries) fail('DIRECTORY_CAPACITY');
+    const semantic = [], rootNames = rootEntries.map(v => v.name).sort();
+    const temporary = (folder, entry) => {
+      const target = join(folder, entry.name), tracked = temporaries.get(target);
+      if (!tracked) return false;
+      if (claim && tracked.claim !== claim) fail('CLAIM_TEMPORARY_MISMATCH', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+      const stat = safeFileShape(target, tracked.maximum);
+      if (!identity(stat, tracked.stat)) fail('TEMPORARY_CHANGED');
+      return true;
+    };
+    for (const entry of rootEntries) {
+      if (temporary(path, entry)) continue;
+      semantic.push(entry.name);
+      if (kind === 'rejected') {
+        if (entry.name !== 'rejection.json') fail('DECISION_MIXED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+        safeFileShape(join(path, entry.name), limits.rejectionBytes);
+      } else if (entry.name === 'evidence') {
+        const evidence = join(path, 'evidence'); directory(evidence);
+        const entries = readdirSync(evidence, { withFileTypes: true }), names = [];
+        if (entries.length > limits.directoryEntries) fail('EVIDENCE_BUDGET');
+        let bytes = 0n;
+        for (const file of entries) {
+          if (temporary(evidence, file)) continue;
+          if (!fileName(file.name)) fail('DECISION_EVIDENCE_UNSAFE', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+          names.push(file.name); bytes += safeFileShape(join(evidence, file.name), limits.evidenceFileBytes).size;
+        }
+        if (names.length > limits.evidenceFiles || bytes > BigInt(limits.evidenceBytes)) fail('EVIDENCE_BUDGET');
+        if (claim && !same(names.sort(), [...claim.evidence].sort())) fail('CLAIM_EVIDENCE_CHANGED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+        if (!same(entries.map(v => v.name).sort(), readdirSync(evidence).sort())) fail('DIRECTORY_CHANGED');
+        directory(evidence);
+      } else {
+        if (!['dispatch.json', 'head.json', 'report.json', 'observations.json'].includes(entry.name))
+          fail('DECISION_MIXED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+        safeFileShape(join(path, entry.name), entry.name === 'head.json' ? 64 * 1024 : limits.jsonBytes);
+      }
+    }
+    if (claim) {
+      if (!claims.has(claim) || claim.path !== path || claim.kind !== kind
+        || !identity(claim.stat, lstatSync(path, { bigint: true })) || !same(semantic.sort(), [...claim.entries].sort()))
+        fail('CLAIM_CHANGED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+    } else if (kind === 'rejected' ? !same(semantic, ['rejection.json']) : !semantic.includes('dispatch.json'))
+      fail('DECISION_INCOMPLETE', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+    if (!same(rootNames, readdirSync(path).sort())) fail('DIRECTORY_CHANGED');
+    directory(path); owned();
+  }
+  function claimNew(operationId, kind, fingerprint) {
+    if (inventory().length >= limits.operations) fail('OPERATION_CAPACITY');
+    base(true);
+    const path = join(namespace, operationId);
+    try { mkdirSync(path); }
+    catch (cause) { if (cause.code === 'EEXIST') return null; throw cause; }
+    directory(path); syncDirectory(namespace);
+    const claim = { operationId, kind, fingerprint, path, stat: lstatSync(path, { bigint: true }), entries: new Set(), evidence: new Set() };
+    claims.add(claim); shape(path, kind, claim); return claim;
+  }
+  function currentClaim(claim) {
+    if (!claims.has(claim) || pathOf(claim.operationId) !== claim.path) fail('CLAIM_CHANGED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+    inventory(); shape(claim.path, claim.kind, claim);
+  }
   const checkPath = operationId => { const path = pathOf(operationId); if (!path) fail('OPERATION_MISSING', 'NOT_FOUND', 404); return path; };
-  function captures(operationId) {
+  function captures(operationId, kind = 'recorded') {
     const path = checkPath(operationId), seen = [];
     const readFile = (name, maximum = limits.jsonBytes, optional = false, evidence = false) => {
       directory(path); const folder = evidence ? join(path, 'evidence') : path;
@@ -110,26 +191,33 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
       catch (cause) { if (optional && cause.code === 'ENOENT') return null; throw cause; }
     };
     const current = () => {
-      directory(path); for (const c of seen) { const again = boundedFile(c.path, c.maximum);
+      shape(path, kind); for (const c of seen) { const again = boundedFile(c.path, c.maximum);
         if (!sameFile(c.stat, again.stat) || !c.bytes.equals(again.bytes)) fail('FILE_CHANGED'); }
-      directory(path); owned();
+      shape(path, kind); owned();
     };
     return { path, readFile, current, seen };
   }
-  function publishFile(path, name, bytes, beforePublish = () => {}, previous = null) {
+  function publishFile(path, name, bytes, beforePublish = () => {}, previous = null, claim = null) {
     owned(); directory(path); const target = join(path, name), temporary = join(path, `${name}.tmp.${randomUUID()}`);
     let fd, temporaryStat, committed = false;
     try {
       fd = openSync(temporary, 'wx', 0o600); temporaryStat = fstatSync(fd, { bigint: true });
+      temporaries.set(temporary, { stat: temporaryStat, maximum: Math.max(bytes.length, 1), claim });
       writeFileSync(fd, bytes); fsyncSync(fd); closeSync(fd); fd = undefined;
       directory(path); const captured = boundedFile(temporary, Math.max(bytes.length, 1));
       if (!captured.bytes.equals(bytes) || !identity(captured.stat, temporaryStat)) fail('TEMPORARY_CHANGED');
       beforePublish(); directory(path); owned();
+      const ready = boundedFile(temporary, Math.max(bytes.length, 1));
+      if (!sameFile(captured.stat, ready.stat) || !ready.bytes.equals(bytes)) fail('TEMPORARY_CHANGED');
       if (previous) {
         const now = boundedFile(target, previous.maximum);
         if (!sameFile(now.stat, previous.stat) || !now.bytes.equals(previous.bytes)) fail('HEAD_CHANGED');
         renameSync(temporary, target); committed = true;
       } else { linkSync(temporary, target); committed = true; unlinkSync(temporary); }
+      temporaries.delete(temporary); syncDirectory(path);
+      const published = boundedFile(target, Math.max(bytes.length, 1));
+      if (!identity(published.stat, temporaryStat) || !published.bytes.equals(bytes)) fail('PUBLICATION_CHANGED');
+      if (!claim) shape(path, 'recorded');
       directory(path); owned();
     } catch (cause) {
       if (committed) cause.writeMayHaveCommitted = true;
@@ -141,6 +229,7 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
         directory(path); const now = lstatSync(temporary, { bigint: true });
         if (identity(now, temporaryStat)) { owned(); unlinkSync(temporary); }
       } catch { /* Failed preparation evidence remains if identity is uncertain. */ }
+      temporaries.delete(temporary);
     }
   }
   function inventory() {
@@ -150,8 +239,8 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
     for (const entry of entries) if (!isBrowserOperationId(entry.name) || !entry.isDirectory() || entry.isSymbolicLink()) fail('NAMESPACE_UNSAFE');
     return entries.map(v => v.name).sort();
   }
-  function readInternal(operationId, full = true) {
-    if (!pathOf(operationId)) return null;
+  function readRecorded(operationId, full = true) {
+    shape(checkPath(operationId), 'recorded');
     const scope = captures(operationId), dispatch = scope.readFile('dispatch.json'), envelope = validateBrowserOperationDispatch(parse(dispatch));
     if (envelope.operationId !== operationId) fail('OPERATION_IDENTITY_MISMATCH');
     const record = { envelope, bytes: Buffer.from(dispatch.bytes), sha256: dispatch.sha256 };
@@ -181,19 +270,72 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
     return { operationId, projectId: envelope.project.id, runId: envelope.runId, taskId: envelope.taskId,
       record, head, report, state: head?.status ?? 'prepared', files, _scope: scope, _headCapture: headCapture };
   }
+  function inspectDecisionInternal(operationId, { full = true } = {}) {
+    const path = pathOf(operationId);
+    if (!path) return { kind: 'absent', operationId };
+    const entries = readdirSync(path);
+    if (!entries.includes('rejection.json')) return { kind: 'recorded', value: readRecorded(operationId, full) };
+    shape(path, 'rejected');
+    const scope = captures(operationId, 'rejected'), captured = scope.readFile('rejection.json', limits.rejectionBytes);
+    let envelope, bytes;
+    try { envelope = validateBrowserOperationRejection(parse(captured)); bytes = browserOperationRejectionBytes(envelope); }
+    catch { fail('INVALID_REJECTION', 'BROWSER_OPERATION_INTEGRITY_FAILED'); }
+    if (envelope.operationId !== operationId || !bytes.equals(captured.bytes)) fail('REJECTION_CHANGED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+    scope.current();
+    const decision = { kind: 'rejected', record: { envelope, bytes: Buffer.from(captured.bytes), sha256: captured.sha256 } };
+    decisionScopes.set(decision, scope); return decision;
+  }
+  function currentDecision(decision) {
+    if (decision.kind === 'recorded') decision.value._scope.current();
+    else if (decision.kind === 'rejected') decisionScopes.get(decision).current();
+  }
+  function readInternal(operationId, full = true) {
+    let decision;
+    try { decision = inspectDecisionInternal(operationId, { full }); }
+    catch (cause) {
+      // Legacy accepted-operation readers keep their unavailable contract for a
+      // retained partial preparation. The decision inspector remains strict.
+      if (cause instanceof BrowserOperationError && cause.code === 'BROWSER_OPERATION_INTEGRITY_FAILED'
+        && cause.details.reason === 'DECISION_INCOMPLETE') fail('DECISION_INCOMPLETE');
+      throw cause;
+    }
+    if (decision.kind === 'absent') return null;
+    if (decision.kind === 'rejected') fail('START_REJECTED', 'BROWSER_START_REJECTED', 409);
+    return decision.value;
+  }
+  function inspectDecision(operationId, options = {}) { return boundary(() => {
+    const checked = data(options, 1024);
+    if (!checked || Array.isArray(checked) || Object.keys(checked).some(key => key !== 'full')
+      || Object.hasOwn(checked, 'full') && typeof checked.full !== 'boolean') fail('INVALID_INSPECTION_OPTIONS', 'INVALID_INPUT', 400);
+    return inspectDecisionInternal(operationId, checked);
+  }); }
+  function inspectInventory(full = false) {
+    const ids = inventory(), decisions = ids.map(id => inspectDecisionInternal(id, { full }));
+    if (decisions.some(v => v.kind === 'absent') || !same(ids, inventory())) fail('NAMESPACE_CHANGED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+    return decisions;
+  }
+  function matchingDecision(operationId, fingerprint, full = true) {
+    const decision = inspectDecisionInternal(operationId, { full });
+    if (decision.kind === 'absent') return null;
+    const record = decision.kind === 'recorded' ? decision.value.record : decision.record;
+    if (record.envelope.requestFingerprint !== fingerprint) fail('REQUEST_CONFLICT', 'IDEMPOTENCY_CONFLICT', 409);
+    return decision;
+  }
   function read(operationId) { return boundary(() => readInternal(operationId)); }
   function list(projectId) { return boundary(() => {
     if (typeof projectId !== 'string' || !/^ap-[0-9a-f-]{36}$/.test(projectId)) fail('INVALID_PROJECT', 'INVALID_INPUT', 400);
-    return inventory().map(id => readInternal(id, false)).filter(v => v.projectId === projectId);
+    const decisions = inspectInventory(); for (const decision of decisions) currentDecision(decision);
+    return decisions.filter(v => v.kind === 'recorded').map(v => v.value).filter(v => v.projectId === projectId);
   }); }
   function publish(input, { assertCurrent } = {}) { return boundary(() => {
     const guard = synchronousGuard(assertCurrent), request = validateBrowserOperationRequest(input.request), project = data(input.project);
     const fingerprint = browserOperationRequestFingerprint({ projectId: project.id, ...request });
-    const existing = readInternal(request.operationId, false);
-    if (existing) {
-      if (existing.record.envelope.requestFingerprint !== fingerprint) fail('REQUEST_CONFLICT', 'IDEMPOTENCY_CONFLICT', 409);
-      return { record: existing.record, replayed: true };
-    }
+    const replay = decision => {
+      if (decision.kind === 'rejected') fail('START_REJECTED', 'BROWSER_START_REJECTED', 409);
+      return { record: decision.value.record, replayed: true };
+    };
+    const existing = matchingDecision(request.operationId, fingerprint, false);
+    if (existing) return replay(existing);
     const now = new Date().toISOString();
     const envelope = validateBrowserOperationDispatch({ schemaVersion: 1, operationId: request.operationId,
       runId: 'br-' + randomUUID(), taskId: 'a-' + randomUUID(), acceptedAt: now, request, requestFingerprint: fingerprint,
@@ -214,19 +356,66 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
       sourceFiles.set(entry.file, bytes);
     }
     const bytes = encode(envelope); if (bytes.length > limits.jsonBytes) fail('JSON_BUDGET');
-    guard(); if (inventory().length >= limits.operations) fail('OPERATION_CAPACITY');
-    const path = pathOf(request.operationId, true), evidence = join(path, 'evidence'); directory(evidence, true);
+    guard();
+    const concurrent = matchingDecision(request.operationId, fingerprint, false);
+    if (concurrent) return replay(concurrent);
+    const claim = claimNew(request.operationId, 'recorded', fingerprint);
+    if (!claim) {
+      const winner = matchingDecision(request.operationId, fingerprint, false);
+      if (!winner) fail('CLAIM_UNVERIFIED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+      return replay(winner);
+    }
+    const claimGuard = () => { guard(); currentClaim(claim); };
+    currentClaim(claim);
+    const path = claim.path, evidence = join(path, 'evidence');
+    mkdirSync(evidence); directory(evidence); claim.entries.add('evidence'); syncDirectory(path); currentClaim(claim);
     // Source bytes are already captured and hashed. Individual copies retain the
     // owner/directory fence; the expensive catalog/source fence runs once before
     // preparation and once immediately before the immutable dispatch commit.
-    for (const [file, contents] of sourceFiles) publishFile(evidence, file, contents);
+    for (const [file, contents] of sourceFiles) {
+      publishFile(evidence, file, contents, () => currentClaim(claim), null, claim);
+      claim.evidence.add(file); currentClaim(claim);
+    }
+    let result;
     publishFile(path, 'dispatch.json', bytes, () => {
       for (const [file, contents] of sourceFiles) if (!boundedFile(join(evidence, file), limits.evidenceFileBytes).bytes.equals(contents)) fail('SOURCE_FILES_CHANGED');
-      guard(); });
-    let result;
-    try { result = readInternal(request.operationId, false); }
+      claimGuard(); }, null, claim);
+    claim.entries.add('dispatch.json');
+    try { claimGuard(); result = readInternal(request.operationId, false); claimGuard(); }
     catch (cause) { cause.writeMayHaveCommitted = true; throw cause; }
     return { record: result.record, replayed: false };
+  }); }
+  function publishRejection(input, { assertCurrent } = {}) { return boundary(() => {
+    const guard = synchronousGuard(assertCurrent), checked = data(input, limits.rejectionBytes);
+    if (Object.keys(checked).length !== 2 || !Object.hasOwn(checked, 'projectId') || !Object.hasOwn(checked, 'request'))
+      fail('INVALID_REJECTION_INPUT', 'INVALID_INPUT', 400);
+    const request = validateBrowserOperationRequest(checked.request), projectId = checked.projectId;
+    const fingerprint = browserOperationRequestFingerprint({ projectId, ...request });
+    const existing = matchingDecision(request.operationId, fingerprint);
+    if (existing) return { decision: existing, replayed: true };
+    const envelope = validateBrowserOperationRejection({ schemaVersion: 1, kind: 'browser-start-rejection', projectId,
+      operationId: request.operationId, request, requestFingerprint: fingerprint, rejectedAt: new Date().toISOString(),
+      reasonCode: 'USER_REJECTED_UNKNOWN_START', effect: 'deny-future-starts-for-operation', actor: { kind: 'local-user' } });
+    const bytes = browserOperationRejectionBytes(envelope);
+    if (bytes.length > limits.rejectionBytes) fail('REJECTION_BUDGET');
+    guard();
+    const concurrent = matchingDecision(request.operationId, fingerprint);
+    if (concurrent) return { decision: concurrent, replayed: true };
+    const claim = claimNew(request.operationId, 'rejected', fingerprint);
+    if (!claim) {
+      const winner = matchingDecision(request.operationId, fingerprint);
+      if (!winner) fail('CLAIM_UNVERIFIED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+      return { decision: winner, replayed: true };
+    }
+    const claimGuard = () => { guard(); currentClaim(claim); };
+    claimGuard();
+    publishFile(claim.path, 'rejection.json', bytes, claimGuard, null, claim);
+    claim.entries.add('rejection.json');
+    try {
+      claimGuard(); const decision = inspectDecisionInternal(request.operationId); claimGuard(); currentDecision(decision);
+      if (decision.kind !== 'rejected' || !decision.record.bytes.equals(bytes)) fail('REJECTION_CHANGED', 'BROWSER_OPERATION_INTEGRITY_FAILED');
+      return { decision, replayed: false };
+    } catch (cause) { cause.writeMayHaveCommitted = true; throw cause; }
   }); }
   function createRun(operationId, { assertActive } = {}) { return boundary(() => {
     const guard = synchronousGuard(assertActive), value = readInternal(operationId, false);
@@ -297,20 +486,21 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
       contentType: file.endsWith('.png') ? 'image/png' : 'application/json; charset=utf-8' };
   }); }
   function recover() { return boundary(() => {
-    const ids = inventory(), values = ids.map(id => readInternal(id, false));
+    const decisions = inspectInventory(true),
+      values = decisions.filter(v => v.kind === 'recorded').map(v => v.value);
     // Whole-batch preflight before any write; partial reports/evidence stay opaque.
     const plans = values.filter(value => value.state === 'running').map(value => {
       const head = validateBrowserOperationHead({ ...value.head, status: 'interrupted', reasonCode: 'ENGINE_RESTARTED',
         gate: 'blocked', reportSha256: null, updatedAt: new Date().toISOString() }, value.record), bytes = encode(head);
       if (bytes.length > 64 * 1024) fail('JSON_BUDGET'); return { value, bytes };
     });
-    for (const value of values) value._scope.current();
+    for (const decision of decisions) currentDecision(decision);
     let interrupted = 0;
     for (const { value, bytes } of plans) {
       try { publishFile(value._scope.path, 'head.json', bytes, () => value._scope.current(), value._headCapture); interrupted++; }
       catch (cause) { if (interrupted) cause.writeMayHaveCommitted = true; throw cause; }
     }
-    return { schemaVersion: 1, inspected: values.length, interrupted, prepared: values.filter(v => v.state === 'prepared').length };
+    return { schemaVersion: 1, inspected: decisions.length, interrupted, prepared: values.filter(v => v.state === 'prepared').length };
   }); }
   function observationValue(after, before, beforeObservationSha256, inheritedOrigins = new Map()) {
     const e = after.record.envelope, a = before?.report?.checks ?? [], b = after.report.checks;
@@ -429,9 +619,11 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
   }); }
   function ledger(projectId) { return boundary(() => {
     if (typeof projectId !== 'string' || !/^ap-[0-9a-f-]{36}$/.test(projectId)) fail('INVALID_PROJECT', 'INVALID_INPUT', 400);
-    const registered = [], context = observationContext();
-    for (const operationId of inventory()) {
-      const metadata = readInternal(operationId, false); if (metadata.projectId !== projectId || metadata.state !== 'completed') continue;
+    const registered = [], context = observationContext(), decisions = inspectInventory();
+    for (const decision of decisions) {
+      if (decision.kind !== 'recorded') continue;
+      const metadata = decision.value; if (metadata.projectId !== projectId || metadata.state !== 'completed') continue;
+      const operationId = metadata.operationId;
       const value = readInternal(operationId), observation = readObservation(value);
       if (observation) { verifyObservation(value, observation, context); registered.push({ observation, acceptedAt: value.record.envelope.acceptedAt });
       }
@@ -456,7 +648,7 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
         reportSha256: entry.reportSha256, relation, status: observation.status, verdict: observation.verdict, recordedAt: entry.recordedAt });
       issues.set(observation.bugId, issue);
     }
-    currentObservations(context);
+    currentObservations(context); for (const decision of decisions) currentDecision(decision);
     return { schemaVersion: 1, kind: 'browser-check-ledger', granularity: 'check', projectId,
       scope: 'explicit-operation-observations', closesBugs: false, entries, issues: [...issues.values()] };
   }); }
@@ -468,5 +660,5 @@ export function createBrowserOperationStore({ owner, limits: inputLimits = {} } 
       const error = new BrowserOperationError(); if (cause.writeMayHaveCommitted) error.writeMayHaveCommitted = true; throw error;
     }
   }
-  return Object.freeze({ read, list, publish, createRun, finishRun, settleRun, readEvidence, recover, registerResult, ledger });
+  return Object.freeze({ read, inspectDecision, list, publish, publishRejection, createRun, finishRun, settleRun, readEvidence, recover, registerResult, ledger });
 }

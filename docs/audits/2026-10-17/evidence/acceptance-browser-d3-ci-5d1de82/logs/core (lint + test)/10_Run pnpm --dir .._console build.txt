@@ -1,0 +1,27 @@
+﻿2026-10-17T15:20:10.1426265Z ##[group]Run pnpm --dir ../console build
+2026-10-17T15:20:10.1426584Z [36;1mpnpm --dir ../console build[0m
+2026-10-17T15:20:10.1493942Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:20:10.1494192Z env:
+2026-10-17T15:20:10.1494533Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:20:10.1494828Z ##[endgroup]
+2026-10-17T15:20:11.0587450Z $ vite build
+2026-10-17T15:20:11.4546206Z [36mvite v8.3.1 [32mbuilding client environment for production...[36m[39m
+2026-10-17T15:20:11.4635290Z transforming...
+2026-10-17T15:20:12.6814675Z ✓ 442 modules transformed.
+2026-10-17T15:20:12.8355925Z rendering chunks...
+2026-10-17T15:20:13.0745514Z computing gzip size...
+2026-10-17T15:20:13.1001562Z dist/index.html                       0.63 kB │ gzip:   0.41 kB
+2026-10-17T15:20:13.1015436Z [33m[plugin builtin:vite-reporter] 
+2026-10-17T15:20:13.1015996Z dist/assets/Graph3D-DkULweKj.css      0.10 kB │ gzip:   0.09 kB
+2026-10-17T15:20:13.1035259Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2026-10-17T15:20:13.1044881Z - Using dynamic import() to code-split the application
+2026-10-17T15:20:13.1045510Z dist/assets/index-Ci96Vj07.css       43.56 kB │ gzip:   8.59 kB
+2026-10-17T15:20:13.1046722Z - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+2026-10-17T15:20:13.1065439Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+2026-10-17T15:20:13.1066069Z dist/assets/Atlas-BkilpEtT.css       76.62 kB │ gzip:  11.29 kB
+2026-10-17T15:20:13.1074891Z dist/assets/api-DBmNeZNu.js           2.07 kB │ gzip:   1.09 kB
+2026-10-17T15:20:13.1104925Z dist/assets/index-C5Y4B3_a.js        71.05 kB │ gzip:  28.11 kB
+2026-10-17T15:20:13.1105412Z dist/assets/Atlas-d7JXayZw.js       435.38 kB │ gzip: 137.43 kB
+2026-10-17T15:20:13.1125067Z dist/assets/Graph3D-x4XlqFDh.js   1,395.59 kB │ gzip: 373.00 kB
+2026-10-17T15:20:13.1134560Z 
+2026-10-17T15:20:13.1164848Z [32m✓ built in 1.65s[39m

@@ -10,9 +10,10 @@ const bytes = Buffer.from('controlled original evidence'), sha256 = createHash('
 const post = value => ({ method: 'POST', body: Buffer.isBuffer(value) || typeof value === 'string' ? value : JSON.stringify(value),
   headers: { 'content-type': 'application/json' } });
 async function serving(t, overrides = {}) {
-  const calls = [], service = Object.fromEntries(['list', 'read', 'report', 'cancel', 'registerResult', 'ledger'].map(method => [method,
+  const calls = [], service = Object.fromEntries(['list', 'read', 'report', 'cancel', 'registerResult', 'ledger', 'resolution'].map(method => [method,
     (...args) => { calls.push({ method, args }); return { method, args }; }]));
   service.execute = async (...args) => { calls.push({ method: 'execute', args }); return { status: 202, payload: { accepted: true } }; };
+  service.denyStart = (...args) => { calls.push({ method: 'denyStart', args }); return { status: 200, payload: { denied: true } }; };
   service.evidence = (...args) => { calls.push({ method: 'evidence', args }); return { bytes, sha256 }; };
   Object.assign(service, overrides);
   const server = createServer(async (req, res) => {
@@ -61,6 +62,39 @@ test('Browser HTTP: evidence requires an expected hash and returns the exact bou
     assert.equal((await f.request(root + '/browser-executions/' + operationId + '/evidence/' + file + '?expectedSha256=' + sha256)).status, 400);
   }
   assert.equal(f.calls.length, 1);
+});
+
+test('Browser HTTP: resolution and permanent denial have explicit methods and independently bounded bodies', async t => {
+  const f = await serving(t), path = root + '/browser-executions/' + operationId;
+  const read = await f.request(path + '/resolution');
+  assert.equal(read.status, 200); assert.equal(read.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(f.calls.at(-1), { method: 'resolution', args: [projectId, operationId] });
+  const value = { action: 'deny-future-starts-for-operation', request: { operationId } };
+  const denied = await f.request(path + '/deny-start', post(value));
+  assert.equal(denied.status, 200); assert.deepEqual(denied.payload, { denied: true });
+  assert.deepEqual(f.calls.at(-1), { method: 'denyStart', args: [projectId, operationId, value] });
+  for (const [suffix, options, allow] of [['resolution', post({}), 'GET'], ['resolution', { method: 'HEAD' }, 'GET'],
+    ['deny-start', {}, 'POST'], ['deny-start', { method: 'PUT' }, 'POST']]) {
+    const result = await f.request(path + '/' + suffix, options);
+    assert.equal(result.status, 405); assert.equal(result.headers.get('allow'), allow);
+  }
+  for (const body of ['{', 'null', '[]', Buffer.from([0xff]), JSON.stringify({ huge: 'x'.repeat(16384) })]) {
+    assert.equal((await f.request(path + '/deny-start', post(body))).status, typeof body === 'string' && body.length > 16384 ? 413 : 400);
+  }
+  for (const suffix of ['resolution?unknown=1', 'deny-start?unknown=1', 'resolution?token=a&token=b']) {
+    assert.equal((await f.request(path + '/' + suffix, suffix.startsWith('deny') ? post({}) : {})).status, 400);
+  }
+  assert.equal((await f.request(path + '/deny-start/extra', post({}))).status, 404);
+  assert.equal(f.calls.length, 2);
+});
+
+test('Browser HTTP: denial and admission conflicts are safe 409 errors, never an implicit proof', async t => {
+  for (const code of ['BROWSER_ADMISSION_PENDING', 'BROWSER_START_REJECTED', 'BROWSER_OPERATION_SCOPE_UNVERIFIED']) {
+    const f = await serving(t, { denyStart() { throw Object.assign(Error('private file path'), { code, status: 409 }); } });
+    const result = await f.request(root + '/browser-executions/' + operationId + '/deny-start', post({}));
+    assert.equal(result.status, 409); assert.equal(result.payload.code, code);
+    assert.equal(Object.hasOwn(result.payload, 'rejection'), false); assert.equal(JSON.stringify(result.payload).includes('private'), false);
+  }
 });
 
 test('Browser HTTP: unsupported methods, unknown actions, malformed IDs and extra queries cannot dispatch', async t => {

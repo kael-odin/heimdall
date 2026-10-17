@@ -1,0 +1,30 @@
+﻿2026-10-17T15:42:02.2133164Z ##[group]Run pnpm acceptance:managed:prepare:smoke
+2026-10-17T15:42:02.2133470Z [36;1mpnpm acceptance:managed:prepare:smoke[0m
+2026-10-17T15:42:02.2193525Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:42:02.2193790Z env:
+2026-10-17T15:42:02.2194022Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:42:02.2194315Z ##[endgroup]
+2026-10-17T15:42:02.8598475Z $ node scripts/smoke-acceptance-managed-preparation.mjs
+2026-10-17T15:42:03.0998197Z {
+2026-10-17T15:42:03.1014957Z   "schemaVersion": 1,
+2026-10-17T15:42:03.1015201Z   "passed": true,
+2026-10-17T15:42:03.1015441Z   "evidenceLevel": "real-owner-and-private-preparation-kernel",
+2026-10-17T15:42:03.1015751Z   "sourceFixtureCommit": "299304b01fb38ff7a933543c82d4aa996eff164f",
+2026-10-17T15:42:03.1015973Z   "sourceRunCount": 2,
+2026-10-17T15:42:03.1016117Z   "sourceFileCount": 14,
+2026-10-17T15:42:03.1016252Z   "checks": {
+2026-10-17T15:42:03.1016372Z     "total": 27,
+2026-10-17T15:42:03.1016500Z     "passed": 27
+2026-10-17T15:42:03.1016618Z   },
+2026-10-17T15:42:03.1016941Z   "preparedRecordSha256": "0f1a6c05498610e629075eb7dc5a14decca44c4d41a2172e7a7e639709dc45c0",
+2026-10-17T15:42:03.1017213Z   "targetRequests": 0,
+2026-10-17T15:42:03.1017363Z   "fetchAttempts": 0,
+2026-10-17T15:42:03.1017499Z   "engineStarted": false,
+2026-10-17T15:42:03.1017655Z   "engineRestartTested": false,
+2026-10-17T15:42:03.1017809Z   "browserStarted": false,
+2026-10-17T15:42:03.1017951Z   "executionTested": false,
+2026-10-17T15:42:03.1018089Z   "runCreated": false,
+2026-10-17T15:42:03.1018690Z   "scope": "Private preparation, immutable replay and owner release/reacquisition only; reserved IDs do not mean a run exists.",
+2026-10-17T15:42:03.1019010Z   "failure": null,
+2026-10-17T15:42:03.1019394Z   "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/acceptance-managed-preparation/2026-10-17T15-42-02.923Z-7c0e437d"
+2026-10-17T15:42:03.1019835Z }

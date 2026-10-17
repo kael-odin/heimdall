@@ -1,0 +1,8 @@
+﻿2026-10-17T15:19:46.9762202Z ##[group]Run pnpm check:docs
+2026-10-17T15:19:46.9762501Z [36;1mpnpm check:docs[0m
+2026-10-17T15:19:46.9823340Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:19:46.9823531Z env:
+2026-10-17T15:19:46.9823682Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:19:46.9823870Z ##[endgroup]
+2026-10-17T15:19:47.6207397Z $ node scripts/check-markdown-links.mjs
+2026-10-17T15:19:47.7766150Z markdown-links: 931 local target(s) OK in 243 file(s)

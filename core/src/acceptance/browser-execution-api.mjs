@@ -14,6 +14,9 @@ const MESSAGES = Object.freeze({
   RESULT_NOT_COMPLETED: '仅可登记已完整核验的完成结果。',
   BUG_LEDGER_CONFLICT: '问题登记或复验关系冲突，原记录已保留。',
   ACCEPTANCE_BUSY: '已有验收占用执行槽，请等待结束。',
+  BROWSER_ADMISSION_PENDING: '原操作仍在接纳或执行中；请只读核对，稍后再决定。',
+  BROWSER_START_REJECTED: '此操作的迟到启动已被永久拒绝；请核对原决定。',
+  BROWSER_OPERATION_SCOPE_UNVERIFIED: '无法确认原启动所属的目录范围；原确认仍待核对。',
 });
 const invalid = (status = 400) => Object.assign(new Error('invalid Browser request'), { code: 'INVALID_INPUT', status });
 
@@ -39,7 +42,8 @@ export function browserExecutionError(cause) {
     : /^EXECUTION_/.test(captured.code ?? '') ? 'BROWSER_EXECUTION_UNAVAILABLE' : captured.code;
   const known = typeof code === 'string' && Object.hasOwn(MESSAGES, code);
   const mapped = known ? { status: ['ACCEPTANCE_BUSY', 'IDEMPOTENCY_CONFLICT', 'BROWSER_OPERATION_CONFLICT',
-    'RESULT_NOT_COMPLETED', 'BUG_LEDGER_CONFLICT'].includes(code) ? 409 : 503,
+    'RESULT_NOT_COMPLETED', 'BUG_LEDGER_CONFLICT', 'BROWSER_ADMISSION_PENDING', 'BROWSER_START_REJECTED',
+    'BROWSER_OPERATION_SCOPE_UNVERIFIED'].includes(code) ? 409 : 503,
     payload: { code, error: MESSAGES[code] } } : acceptanceCatalogError(captured);
   if (captured.writeMayHaveCommitted === true) mapped.payload.outcomeUnknown = true;
   return mapped;
@@ -81,14 +85,14 @@ export async function handleBrowserExecutionRequest(req, res, url, { service, js
     const evidence = resource === 'browser-executions' && operationId && action === 'evidence' && segments.length === 9;
     const valid = resource === 'browser-bugs' ? segments.length === 6
       : segments.length === 6 || segments.length === 7
-        || segments.length === 8 && ['report', 'cancel', 'register-result'].includes(action) || evidence;
+        || segments.length === 8 && ['report', 'cancel', 'register-result', 'resolution', 'deny-start'].includes(action) || evidence;
     if (!valid) return send(404, { code: 'NOT_FOUND', error: '此 Browser 接口不存在。' });
     const allowedQuery = evidence ? ['token', 'expectedSha256'] : ['token'];
     if ([...url.searchParams.keys()].some(key => !allowedQuery.includes(key))
       || allowedQuery.some(key => url.searchParams.getAll(key).length > 1)) throw invalid();
     if (evidence && (!/^[a-z0-9][a-z0-9_.-]{0,234}\.(png|json)$/i.test(file ?? '')
       || !HASH.test(url.searchParams.get('expectedSha256') ?? ''))) throw invalid();
-    const methods = resource === 'browser-bugs' || operationId && !['cancel', 'register-result'].includes(action)
+    const methods = resource === 'browser-bugs' || operationId && !['cancel', 'register-result', 'deny-start'].includes(action)
       ? ['GET'] : operationId ? ['POST'] : ['GET', 'POST'];
     if (!methods.includes(req.method)) {
       res.setHeader('Allow', methods.join(', '));
@@ -108,6 +112,11 @@ export async function handleBrowserExecutionRequest(req, res, url, { service, js
       res.end(result.bytes); return true;
     }
     if (action === 'report') return send(200, service.report(projectId, operationId));
+    if (action === 'resolution') return send(200, service.resolution(projectId, operationId));
+    if (action === 'deny-start') {
+      const result = service.denyStart(projectId, operationId, await body(req));
+      return send(result.status, result.payload);
+    }
     if (action === 'cancel') return send(200, service.cancel(projectId, operationId, await body(req)));
     if (action === 'register-result') return send(200, service.registerResult(projectId, operationId, await body(req)));
     return send(200, service.read(projectId, operationId));

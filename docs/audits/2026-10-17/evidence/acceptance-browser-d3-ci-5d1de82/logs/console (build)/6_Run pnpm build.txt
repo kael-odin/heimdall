@@ -1,0 +1,27 @@
+﻿2026-10-17T15:19:42.9710209Z ##[group]Run pnpm build
+2026-10-17T15:19:42.9710391Z [36;1mpnpm build[0m
+2026-10-17T15:19:42.9762373Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:19:42.9762521Z env:
+2026-10-17T15:19:42.9762663Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:19:42.9762835Z ##[endgroup]
+2026-10-17T15:19:43.6085234Z $ vite build
+2026-10-17T15:19:43.9213185Z [36mvite v8.3.1 [32mbuilding client environment for production...[36m[39m
+2026-10-17T15:19:43.9278315Z transforming...
+2026-10-17T15:19:44.7412859Z ✓ 442 modules transformed.
+2026-10-17T15:19:44.8182995Z rendering chunks...
+2026-10-17T15:19:44.9839729Z computing gzip size...
+2026-10-17T15:19:45.0014275Z dist/index.html                       0.63 kB │ gzip:   0.41 kB
+2026-10-17T15:19:45.0015212Z dist/assets/Graph3D-DkULweKj.css      0.10 kB │ gzip:   0.09 kB
+2026-10-17T15:19:45.0015792Z dist/assets/index-Ci96Vj07.css       43.56 kB │ gzip:   8.59 kB
+2026-10-17T15:19:45.0016269Z dist/assets/Atlas-BkilpEtT.css       76.62 kB │ gzip:  11.29 kB
+2026-10-17T15:19:45.0016704Z dist/assets/api-DBmNeZNu.js           2.07 kB │ gzip:   1.09 kB
+2026-10-17T15:19:45.0017003Z dist/assets/index-C5Y4B3_a.js        71.05 kB │ gzip:  28.11 kB
+2026-10-17T15:19:45.0017288Z dist/assets/Atlas-d7JXayZw.js       435.38 kB │ gzip: 137.43 kB
+2026-10-17T15:19:45.0017577Z dist/assets/Graph3D-x4XlqFDh.js   1,395.59 kB │ gzip: 373.00 kB
+2026-10-17T15:19:45.0017717Z 
+2026-10-17T15:19:45.0024631Z [33m[plugin builtin:vite-reporter] 
+2026-10-17T15:19:45.0025284Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2026-10-17T15:19:45.0026054Z - Using dynamic import() to code-split the application
+2026-10-17T15:19:45.0027414Z - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+2026-10-17T15:19:45.0028106Z [32m✓ built in 1.08s[39m
+2026-10-17T15:19:45.0041978Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m

@@ -1,0 +1,9 @@
+{
+  "command": [
+    "git",
+    "show",
+    "5d1de82ac31fa48ef45ed0746591fbd0c710d264:.github/workflows/ci.yml"
+  ],
+  "exitCode": 0,
+  "capturedAt": "2026-10-17T15:54:54.613467+00:00"
+}

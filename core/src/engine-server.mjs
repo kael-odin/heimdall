@@ -1266,7 +1266,11 @@ const handleRequest = async (req, res) => {
       if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
       return json(res, 200, acceptanceRecovery);
     }
-    if (!acceptanceRecovery.ready && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    // This exact decision endpoint reads an existing immutable fact first. Its
+    // service still requires recovery readiness and a lease for every new denial.
+    const browserDecisionRead = req.method === 'POST'
+      && /^\/api\/acceptance\/projects\/ap-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/browser-executions\/bo-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/deny-start$/.test(u.pathname);
+    if (!acceptanceRecovery.ready && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !browserDecisionRead) {
       return json(res, 503, { code: 'ACCEPTANCE_RECOVERY_BLOCKED', error: '启动恢复未完成，验收写入暂不可用；请检查运行现场后重启引擎。' });
     }
   }

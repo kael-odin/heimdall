@@ -1,0 +1,28 @@
+﻿2026-10-17T15:20:07.5450528Z ##[group]Run pnpm --dir ../console install --frozen-lockfile
+2026-10-17T15:20:07.5450948Z [36;1mpnpm --dir ../console install --frozen-lockfile[0m
+2026-10-17T15:20:07.5510035Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:20:07.5510217Z env:
+2026-10-17T15:20:07.5510375Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:20:07.5510562Z ##[endgroup]
+2026-10-17T15:20:08.4166234Z ? Verifying lockfile against supply-chain policies (95 entries)...
+2026-10-17T15:20:08.4269253Z Lockfile is up to date, resolution step is skipped
+2026-10-17T15:20:08.4876777Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-10-17T15:20:08.4983032Z Packages: +70
+2026-10-17T15:20:08.5015438Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-10-17T15:20:08.9243818Z Packages are hard linked from the content-addressable store to the virtual store.
+2026-10-17T15:20:08.9244672Z   Content-addressable store is at: /home/runner/setup-pnpm/node_modules/.bin/store/v11
+2026-10-17T15:20:08.9245223Z   Virtual store is at:             node_modules/.pnpm
+2026-10-17T15:20:09.4116486Z ✓ Lockfile passes supply-chain policies (95 entries in 993ms)
+2026-10-17T15:20:09.4903134Z Progress: resolved 70, reused 0, downloaded 64, added 7
+2026-10-17T15:20:09.9662293Z Progress: resolved 70, reused 0, downloaded 70, added 70, done
+2026-10-17T15:20:10.0524982Z 
+2026-10-17T15:20:10.0527541Z dependencies:
+2026-10-17T15:20:10.0528109Z + 3d-force-graph 1.80.0
+2026-10-17T15:20:10.0528471Z + three 0.186.1
+2026-10-17T15:20:10.0528792Z + vue 3.5.43
+2026-10-17T15:20:10.0529011Z 
+2026-10-17T15:20:10.0529211Z devDependencies:
+2026-10-17T15:20:10.0529554Z + @vitejs/plugin-vue 6.0.9
+2026-10-17T15:20:10.0529894Z + vite 8.3.1
+2026-10-17T15:20:10.0530110Z 
+2026-10-17T15:20:10.0692849Z Done in 1.9s using pnpm v11.28.2

@@ -1,6 +1,6 @@
 # Heimdall 接手入口
 
-更新：2026-10-17。原 2734 行逐日开发记录完整保留在 [历史 HANDOFF](docs/archive/HANDOFF-through-2026-10-13.md)，其中的分数、文件行号和待办均是当时快照。
+更新：2026-10-18。原 2734 行逐日开发记录完整保留在 [历史 HANDOFF](docs/archive/HANDOFF-through-2026-10-13.md)，其中的分数、文件行号和待办均是当时快照。
 
 ## 先看
 
@@ -16,7 +16,7 @@
 10. [Spec 需求基线](docs/competition/acceptance-baseline.md)：完整合同候选、批准历史、独立选用与取消，以及[实施验收](docs/audits/2026-10-16/acceptance-baseline.md)。
 11. [托管 Spec 合同与读取](docs/competition/acceptance-managed-spec.md)：由当前选用重建完整合同、明确目标版本、不可变派发准备与物理只读同键核对；[runner 执行控制](docs/audits/2026-10-16/acceptance-spec-execution-control.md)支持内部停止信号与同步 active 断言，[来源关联与隔离](docs/audits/2026-10-17/acceptance-managed-provenance.md)核验原字节身份并阻止普通入口降级，[固定身份存储](docs/audits/2026-10-17/acceptance-managed-store.md)增加 owner 约束的报告与中断收尾。[托管读取验收](docs/audits/2026-10-17/acceptance-managed-reading.md)现覆盖状态、完成快照、证据下载、比较及安全 DTO；新增[启动恢复验收](docs/audits/2026-10-17/acceptance-owned-recovery.md)，真实 owner 在完整零写预检后中断遗留运行并保留现场；新增[托管执行验收](docs/audits/2026-10-17/acceptance-managed-execution.md)，专用 HTTP 对完整新确认启动真实 Spec 检查，统一运行槽并支持取消、超时和任务镜像；新增[执行工作台验收](docs/audits/2026-10-17/acceptance-execution-ui.md)，明确目标版本后启动，持久操作凭据只读恢复并支持请求停止；candidate / triage 继续隔离。
 
-12. [Browser 所选侧来源核验](docs/competition/acceptance-browser-source.md)：纯投影器核对完整槽位、截图稳定性与选侧健康，[私有读取层](docs/competition/acceptance-browser-reading.md)补齐真实 owner、有界 fd、nullable 角色、全引用与 managed 隔离。[来源侧归属](docs/competition/acceptance-browser-bindings.md)提供严格 ax 实体、双向 target 归属约束和提交前完整来源重建，详见[绑定验收](docs/audits/2026-10-17/acceptance-browser-bindings.md)；[HTTP 与工作台](docs/competition/acceptance-browser-bindings-console.md)增加显式归属、按需重核验、安全显示预览和证据校验，详见[工作台验收](docs/audits/2026-10-17/acceptance-browser-bindings-console.md)。显示预览仍为 `completeSourceProjection:false`；[Browser 完整复核与持久候选](docs/competition/acceptance-browser-candidates.md)包含完整明文合同、明确确认、只读对账和重启读取，详见[D2 实施验收](docs/audits/2026-10-17/acceptance-browser-candidates.md)。D3 已接入[单次批准的固定来源执行](docs/competition/acceptance-browser-execution.md)、显式检查问题登记与前后操作复验，详见[D3 实施记录](docs/audits/2026-10-17/acceptance-browser-execution.md)。全局 Browser approval / selection、业务工单最终关闭与未知不存在操作的安全解除仍待建设。
+12. [Browser 所选侧来源核验](docs/competition/acceptance-browser-source.md)：纯投影器核对完整槽位、截图稳定性与选侧健康，[私有读取层](docs/competition/acceptance-browser-reading.md)补齐真实 owner、有界 fd、nullable 角色、全引用与 managed 隔离。[来源侧归属](docs/competition/acceptance-browser-bindings.md)提供严格 ax 实体、双向 target 归属约束和提交前完整来源重建，详见[绑定验收](docs/audits/2026-10-17/acceptance-browser-bindings.md)；[HTTP 与工作台](docs/competition/acceptance-browser-bindings-console.md)增加显式归属、按需重核验、安全显示预览和证据校验，详见[工作台验收](docs/audits/2026-10-17/acceptance-browser-bindings-console.md)。显示预览仍为 `completeSourceProjection:false`；[Browser 完整复核与持久候选](docs/competition/acceptance-browser-candidates.md)包含完整明文合同、明确确认、只读对账和重启读取，详见[D2 实施验收](docs/audits/2026-10-17/acceptance-browser-candidates.md)。D3 已接入[单次批准的固定来源执行](docs/competition/acceptance-browser-execution.md)、显式检查问题登记与前后操作复验，详见[D3 实施记录](docs/audits/2026-10-17/acceptance-browser-execution.md)。D4 已增加[启动结果核对与永久拒绝](docs/competition/acceptance-browser-start-resolution.md)，原确认六字段只在完整决定证明核验后解除；来源兼容清单不扩充，D3 / D4 检查验证器保持不可比。全局 Browser approval / selection 与业务工单最终关闭仍待建设。
 
 13. [运行展示读取竞态](docs/audits/2026-10-17/acceptance-display-head-race.md)：正常 legacy worker 原子发布时保留本请求已稳定捕获的展示版本；来源 / 证据 / 恢复仍严格核验，原工作台 CI 失败及放弃方案均保留。
 

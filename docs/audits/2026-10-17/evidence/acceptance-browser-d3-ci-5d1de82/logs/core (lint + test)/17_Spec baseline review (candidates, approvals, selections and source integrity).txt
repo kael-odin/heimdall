@@ -1,0 +1,70 @@
+﻿2026-10-17T15:41:47.4438132Z ##[group]Run pnpm acceptance:baseline:smoke
+2026-10-17T15:41:47.4438500Z [36;1mpnpm acceptance:baseline:smoke[0m
+2026-10-17T15:41:47.4515461Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:41:47.4515734Z env:
+2026-10-17T15:41:47.4515978Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:41:47.4516284Z ##[endgroup]
+2026-10-17T15:41:48.1377585Z $ node scripts/smoke-acceptance-baseline-console.mjs
+2026-10-17T15:41:57.1205625Z {
+2026-10-17T15:41:57.1206239Z   "status": "passed",
+2026-10-17T15:41:57.1206989Z   "evidenceLevel": "local-fixture-real-flow",
+2026-10-17T15:41:57.1207625Z   "browser": "Browser plugin not available; existing Playwright Chromium",
+2026-10-17T15:41:57.1208583Z   "url": "http://127.0.0.1:36183",
+2026-10-17T15:41:57.1209711Z   "scope": "真实Spec draft/failed worker产物→项目绑定→完整source/expected预览→独立批准/选用/取消/回退；含真实API传输故障注入，不启动managed执行。",
+2026-10-17T15:41:57.1210339Z   "checkCount": 13,
+2026-10-17T15:41:57.1210902Z   "checks": {
+2026-10-17T15:41:57.1211298Z     "realWorkersProduceDraftAndFailedTarget": true,
+2026-10-17T15:41:57.1211907Z     "completeExpectedPreviewAndIndependentApprovalSelection": true,
+2026-10-17T15:41:57.1212439Z     "cancelAndRollbackAppendHistory": true,
+2026-10-17T15:41:57.1212935Z     "latePreviewProjectABACannotRestoreConfirmation": true,
+2026-10-17T15:41:57.1213553Z     "conflictPreservesReasonAndRequiresFreshReviewWithoutReplay": true,
+2026-10-17T15:41:57.1214199Z     "nonJsonGateway502ReconcilesCommittedHistoryWithoutReplay": true,
+2026-10-17T15:41:57.1215027Z     "lostPostResponseReconcilesCommittedHistoryWithoutReplay": true,
+2026-10-17T15:41:57.1215609Z     "lateApprovalDoesNotSwitchProjectOrAutoSelect": true,
+2026-10-17T15:41:57.1216138Z     "finalApprovalRevalidatesSourceBytes": true,
+2026-10-17T15:41:57.1216692Z     "missingSourceRetainsHistoryAndCancellationDoesNotReadSource": true,
+2026-10-17T15:41:57.1217325Z     "desktopMobileAndBothThemesRenderWithoutHorizontalOverflow": true,
+2026-10-17T15:41:57.1217896Z     "noTargetRequestsNewWorkersOrSourceRunMutations": true,
+2026-10-17T15:41:57.1218424Z     "pageIdentityNonblankOverlayAndConsoleHealthy": true
+2026-10-17T15:41:57.1218854Z   },
+2026-10-17T15:41:57.1219156Z   "layouts": [
+2026-10-17T15:41:57.1219468Z     {
+2026-10-17T15:41:57.1219777Z       "theme": "dark",
+2026-10-17T15:41:57.1220105Z       "viewport": 390,
+2026-10-17T15:41:57.1220428Z       "scrollWidth": 390,
+2026-10-17T15:41:57.1220771Z       "baselineWidth": 306
+2026-10-17T15:41:57.1221180Z     },
+2026-10-17T15:41:57.1221794Z     {
+2026-10-17T15:41:57.1246039Z       "theme": "light",
+2026-10-17T15:41:57.1285069Z       "viewport": 390,
+2026-10-17T15:41:57.1303468Z       "scrollWidth": 390,
+2026-10-17T15:41:57.1317471Z       "baselineWidth": 306
+2026-10-17T15:41:57.1319950Z     }
+2026-10-17T15:41:57.1320123Z   ],
+2026-10-17T15:41:57.1320296Z   "errors": [],
+2026-10-17T15:41:57.1320501Z   "expectedResourceErrors": [
+2026-10-17T15:41:57.1320906Z     "Failed to load resource: the server responded with a status of 409 (Conflict)",
+2026-10-17T15:41:57.1321434Z     "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+2026-10-17T15:41:57.1321894Z     "Failed to load resource: net::ERR_FAILED",
+2026-10-17T15:41:57.1322297Z     "Failed to load resource: the server responded with a status of 409 (Conflict)"
+2026-10-17T15:41:57.1322631Z   ],
+2026-10-17T15:41:57.1322793Z   "runs": [
+2026-10-17T15:41:57.1322959Z     {
+2026-10-17T15:41:57.1323207Z       "runId": "ac-eaaad241-04ed-41fc-bd8e-d0e5f4896774",
+2026-10-17T15:41:57.1323486Z       "gate": "blocked",
+2026-10-17T15:41:57.1323692Z       "approved": false,
+2026-10-17T15:41:57.1323989Z       "candidateId": "ab-3b012c15-8cbc-41c1-94ca-52cc6ebf06fb",
+2026-10-17T15:41:57.1324869Z       "approvalId": "aa-eec7e89c-45df-44f4-ae46-c0ed45965aae"
+2026-10-17T15:41:57.1325147Z     },
+2026-10-17T15:41:57.1325534Z     {
+2026-10-17T15:41:57.1325774Z       "runId": "ac-fe81cfec-de0d-4ed0-a314-6ddf89491910",
+2026-10-17T15:41:57.1326218Z       "gate": "failed",
+2026-10-17T15:41:57.1326423Z       "approved": true,
+2026-10-17T15:41:57.1326975Z       "candidateId": "ab-d9354a6b-a6aa-4bfb-bc27-6fab1b9b6fe2",
+2026-10-17T15:41:57.1327578Z       "approvalId": "aa-0034892a-cf0f-48e4-8fb5-02874451f790"
+2026-10-17T15:41:57.1327865Z     }
+2026-10-17T15:41:57.1328023Z   ],
+2026-10-17T15:41:57.1328235Z   "browserPostCount": 16,
+2026-10-17T15:41:57.1328570Z   "reviewTargetRequests": 0,
+2026-10-17T15:41:57.1328835Z   "newRunCount": 0
+2026-10-17T15:41:57.1329024Z }

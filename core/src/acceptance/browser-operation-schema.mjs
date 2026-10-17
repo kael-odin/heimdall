@@ -8,7 +8,7 @@ import { hashOrganizedBrowserCandidateValue } from './browser-organized-candidat
 import { summarizeAcceptanceReport } from './report.mjs';
 import { validateFixedBrowserContract, fixedBrowserCheckIdentity, fixedBrowserEnvironmentComparison } from './browser-fixed-contract.mjs';
 
-export const BROWSER_OPERATION_LIMITS = Object.freeze({ operations: 1024, jsonBytes: 12 * 1024 * 1024,
+export const BROWSER_OPERATION_LIMITS = Object.freeze({ operations: 1024, jsonBytes: 12 * 1024 * 1024, rejectionBytes: 16 * 1024,
   evidenceFiles: 1024, evidenceFileBytes: 64 * 1024 * 1024, evidenceBytes: 256 * 1024 * 1024,
   checks: 240, directoryEntries: 1152 });
 const UUID = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
@@ -19,7 +19,7 @@ export const browserOperationSha256 = bytes => createHash('sha256').update(bytes
 export const browserOperationSame = (a, b) => canonicalAcceptanceJson(a) === canonicalAcceptanceJson(b);
 export const browserOperationFileName = value => typeof value === 'string' && value.length <= 240
   && /^[a-z0-9][a-z0-9_.-]*\.(?:png|json)$/i.test(value)
-  && !['dispatch.json', 'head.json', 'report.json', 'observations.json'].includes(value.toLowerCase())
+  && !['dispatch.json', 'head.json', 'report.json', 'observations.json', 'rejection.json'].includes(value.toLowerCase())
   && !value.includes('.tmp.');
 export const browserOperationHash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 export const browserOperationIso = value => typeof value === 'string' && value.length === 24
@@ -81,6 +81,25 @@ export function browserOperationRequestFingerprint(raw) {
   ident(raw.projectId, 'ap'); const { projectId, ...request } = raw;
   return hashAcceptanceValue({ domain: 'heimdall-browser-operation-request', version: 1, projectId,
     request: validateBrowserOperationRequest(request) });
+}
+export function validateBrowserOperationRejection(input) {
+  const e = browserOperationJson(input, BROWSER_OPERATION_LIMITS.rejectionBytes);
+  fields(e, ['schemaVersion', 'kind', 'projectId', 'operationId', 'request', 'requestFingerprint',
+    'rejectedAt', 'reasonCode', 'effect', 'actor']);
+  ident(e.projectId, 'ap'); ident(e.operationId, 'bo');
+  const request = validateBrowserOperationRequest(e.request);
+  fields(e.actor, ['kind']);
+  need(e.schemaVersion === 1 && e.kind === 'browser-start-rejection' && request.operationId === e.operationId
+    && e.requestFingerprint === browserOperationRequestFingerprint({ projectId: e.projectId, ...request })
+    && browserOperationIso(e.rejectedAt) && e.reasonCode === 'USER_REJECTED_UNKNOWN_START'
+    && e.effect === 'deny-future-starts-for-operation' && e.actor.kind === 'local-user', 'INVALID_REJECTION');
+  return e;
+}
+export function browserOperationRejectionBytes(value) {
+  const record = validateBrowserOperationRejection(value);
+  const bytes = Buffer.from(canonicalAcceptanceJson(record) + '\n', 'utf8');
+  need(bytes.length <= BROWSER_OPERATION_LIMITS.rejectionBytes, 'REJECTION_BUDGET');
+  return bytes;
 }
 export function validateBrowserOperationDispatch(input) {
   const e = browserOperationJson(input);

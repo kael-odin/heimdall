@@ -1,0 +1,28 @@
+﻿2026-10-17T15:44:37.9823570Z ##[group]Run pnpm acceptance:browser:candidates:ui:smoke
+2026-10-17T15:44:37.9823843Z [36;1mpnpm acceptance:browser:candidates:ui:smoke[0m
+2026-10-17T15:44:37.9878205Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:44:37.9878356Z env:
+2026-10-17T15:44:37.9878502Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:44:37.9878685Z ##[endgroup]
+2026-10-17T15:44:38.6005613Z $ node scripts/smoke-acceptance-browser-candidates-console.mjs
+2026-10-17T15:44:38.9010420Z {"event":"started","startedAt":"2026-10-17T15:44:38.900Z","outputDirectory":"/home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-candidates-console-smoke-75314bbc-7f34-4d4e-a7c9-03e22475cec7"}
+2026-10-17T15:45:08.4169090Z {
+2026-10-17T15:45:08.4169751Z   "status": "passed",
+2026-10-17T15:45:08.4170263Z   "checkCount": 13,
+2026-10-17T15:45:08.4171101Z   "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-candidates-console-smoke-75314bbc-7f34-4d4e-a7c9-03e22475cec7",
+2026-10-17T15:45:08.4172297Z   "checks": {
+2026-10-17T15:45:08.4172739Z     "freshMirrorAndRegressionPreserveFailedComparison": true,
+2026-10-17T15:45:08.4173317Z     "schema3ShowsMaintenanceWithoutImplicitMigration": true,
+2026-10-17T15:45:08.4173861Z     "explicitOfflineCLIUpgradeThenOrdinaryRestart": true,
+2026-10-17T15:45:08.4175431Z     "fullTextRetainsOrderedQueryStepsAssertionsAndEveryManifest": true,
+2026-10-17T15:45:08.4176048Z     "dedicatedFreshPNGAndClientDigestValidation": true,
+2026-10-17T15:45:08.4176614Z     "explicitSaveCreatesExactlyOneCandidateEventAndRevision": true,
+2026-10-17T15:45:08.4177175Z     "projectABACannotRestoreLateFullReview": true,
+2026-10-17T15:45:08.4177686Z     "lost201ReplyReconcilesByGETWithoutAnotherPOST": true,
+2026-10-17T15:45:08.4178284Z     "badSourcePreservesHistoryAndRestoredBytesRevalidateSameCandidate": true,
+2026-10-17T15:45:08.4178872Z     "fullSourceNeverEntersStorageOrHrefs": true,
+2026-10-17T15:45:08.4179382Z     "restartReadsSameDurableCandidateWithoutWrites": true,
+2026-10-17T15:45:08.4179980Z     "noExtraTargetRequestsOrExecutionAndAllSourceBytesUnchanged": true,
+2026-10-17T15:45:08.4180557Z     "onlyExactInjectedPOST502IsAllowed": true
+2026-10-17T15:45:08.4180944Z   }
+2026-10-17T15:45:08.4181227Z }

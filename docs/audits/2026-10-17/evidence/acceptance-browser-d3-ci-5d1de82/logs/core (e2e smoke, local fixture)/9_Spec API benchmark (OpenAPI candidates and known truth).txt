@@ -1,0 +1,19 @@
+﻿2026-10-17T15:21:22.4177954Z ##[group]Run pnpm acceptance:spec:benchmark
+2026-10-17T15:21:22.4178279Z [36;1mpnpm acceptance:spec:benchmark[0m
+2026-10-17T15:21:22.4234075Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:21:22.4234303Z env:
+2026-10-17T15:21:22.4234522Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:21:22.4234800Z ##[endgroup]
+2026-10-17T15:21:23.2145381Z $ node scripts/benchmark-acceptance-spec.mjs
+2026-10-17T15:21:23.3398173Z [acceptance-spec-benchmark] healthy: PASS; targetBug=false; detected=false; gate=passed
+2026-10-17T15:21:23.3465195Z [acceptance-spec-benchmark] wrong-code: PASS; targetBug=true; detected=true; gate=failed
+2026-10-17T15:21:23.3536997Z [acceptance-spec-benchmark] missing-field: PASS; targetBug=true; detected=true; gate=failed
+2026-10-17T15:21:23.3576763Z [acceptance-spec-benchmark] wrong-type: PASS; targetBug=true; detected=true; gate=failed
+2026-10-17T15:21:23.3624068Z [acceptance-spec-benchmark] wrong-status: PASS; targetBug=true; detected=true; gate=failed
+2026-10-17T15:21:23.3680230Z [acceptance-spec-benchmark] non-json: PASS; targetBug=true; detected=true; gate=failed
+2026-10-17T15:21:23.3777188Z [acceptance-spec-benchmark] bad-json: PASS; targetBug=true; detected=true; gate=failed
+2026-10-17T15:21:23.3877424Z [acceptance-spec-benchmark] redirect: PASS; targetBug=true; detected=true; gate=failed
+2026-10-17T15:21:23.4407796Z [acceptance-spec-benchmark] oversized: PASS; targetBug=false; detected=false; gate=blocked
+2026-10-17T15:21:24.4461510Z [acceptance-spec-benchmark] slow: PASS; targetBug=false; detected=false; gate=blocked
+2026-10-17T15:21:24.4499338Z [acceptance-spec-benchmark] head: PASS; targetBug=false; detected=false; gate=passed
+2026-10-17T15:21:24.4571799Z [acceptance-spec-benchmark] {"unit":"case","totalCases":11,"knownBugCases":7,"nonBugCases":4,"truePositive":7,"falsePositive":0,"falseNegative":0,"trueNegative":4,"precision":1,"recall":1,"falsePositiveRate":0,"passed":true,"outputDir":"/home/runner/work/heimdall/heimdall/core/workspace/_runs/acceptance-spec-benchmark/spec-benchmark-2026-10-17T15-21-23-270Z-d9d192ed"}

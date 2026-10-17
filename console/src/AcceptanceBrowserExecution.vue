@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { API, apiHeaders } from './api.js';
 import { browserCandidateReviewState } from './acceptance-browser-candidates.js';
-import { browserOperationView, browserOperationCollection, browserOperationReport, browserExecutionLedger,
+import { browserOperationView, browserOperationCollection, browserOperationReport, browserExecutionLedger, browserStartResolution,
   browserExecutionRegistration, createBrowserExecutionReadGuard, createBrowserExecutionReceipts,
   fetchBrowserExecutionEvidence, requestBrowserExecution } from './acceptance-browser-execution.js';
 
@@ -11,13 +11,15 @@ const props = defineProps({ projectId: { type: String, required: true }, detail:
 const candidateId = ref(''), targetReleaseId = ref(''), confirmed = ref(false), review = ref(null), reviewing = ref(false);
 const operations = ref([]), capability = ref(null), pending = ref([]), selected = ref(''), report = ref(null), bugs = ref(null);
 const beforeOperationId = ref(''), error = ref(''), notice = ref(''), writing = ref(false), images = ref([]), imageLoading = ref(false);
+const receiptReadable = ref(false), receiptWritable = ref(false), denyConfirmed = ref([]), denialAttempts = ref(new Set());
 const guard = createBrowserExecutionReadGuard();
-let stopped = false, pollTimer, receiptStore;
+const receiptClients = new WeakMap(), receiptFaults = new Map();
+let stopped = false, pollTimer, receiptStore, receiptKey = '', writeToken;
 const candidates = computed(() => props.detail?.browserCandidates ?? []);
 const releases = computed(() => props.detail?.releases ?? []);
 const target = computed(() => releases.value.find(value => value.id === targetReleaseId.value));
 const candidate = computed(() => candidates.value.find(value => value.id === candidateId.value));
-const unknown = computed(() => pending.value.filter(value => !operations.value.some(op => op.operationId === value.operationId)));
+const unknown = computed(() => pending.value);
 const selectedOperation = computed(() => operations.value.find(value => value.operationId === selected.value));
 const labels = { prepared: '已准备，未启动', running: '正在验收', completed: '已完成', interrupted: '已中断', failed: '执行失败' };
 const gateLabels = { passed: '通过', failed: '发现问题', blocked: '存在阻塞', needs_review: '需要复核' };
@@ -29,11 +31,15 @@ const dateLabel = value => new Date(value).toLocaleString('zh-CN', { hour12: fal
 const path = suffix => `/${props.projectId}/${suffix}`;
 const request = (suffix, options = {}) => requestBrowserExecution(path(suffix), { baseUrl: API, headers: apiHeaders(), ...options });
 const current = ticket => !stopped && props.active && guard.current(ticket);
+const denialKey = receipt => `${props.projectId}:${receipt.operationId}`;
+const denialAttempted = receipt => denialAttempts.value.has(denialKey(receipt));
+const beginWrite = () => { const token = {}; writeToken = token; writing.value = true; return token; };
+const endWrite = token => { if (writeToken === token) { writeToken = null; writing.value = false; } };
 const validReview = computed(() => review.value?.candidate?.id === candidateId.value && review.value?.review
   && review.value?.generationId === props.version?.generationId && review.value?.revision === props.version?.revision
   && review.value?.diagnostics?.contentMatches === true && review.value?.presentation?.completeSourceProjection === true);
 const canStart = computed(() => props.ready && props.active && validReview.value && target.value && confirmed.value
-  && capability.value?.ready && !writing.value && !unknown.value.length && !!receiptStore);
+  && capability.value?.ready && !writing.value && !unknown.value.length && receiptReadable.value && receiptWritable.value);
 
 function clearImages() {
   guard.begin('images'); for (const image of images.value) URL.revokeObjectURL(image.url);
@@ -42,34 +48,80 @@ function clearImages() {
 function clearReview() { guard.begin('review'); reviewing.value = false; review.value = null; confirmed.value = false; }
 function reset() {
   guard.reset(); clearTimeout(pollTimer); clearReview(); clearImages();
+  writeToken = null; writing.value = false; denyConfirmed.value = [];
   report.value = null; selected.value = ''; beforeOperationId.value = ''; bugs.value = null; notice.value = ''; error.value = '';
 }
 function initializeReceipts() {
+  receiptReadable.value = false; receiptWritable.value = false; receiptKey = '';
   try {
-    receiptStore = createBrowserExecutionReceipts({ projectId: props.projectId,
-      origin: new URL(API || location.origin, location.href).origin, storage: localStorage });
-    pending.value = receiptStore.read();
+    const origin = new URL(API || location.origin, location.href).origin;
+    receiptStore = createBrowserExecutionReceipts({ projectId: props.projectId, origin, storage: localStorage });
+    receiptKey = `heimdall:browser-operations:v1:${origin}:${props.projectId}`;
+    receiptClients.set(receiptStore, receiptKey); receiptWritable.value = receiptStore.canWrite;
+    pending.value = receiptStore.read(); receiptReadable.value = !receiptFaults.has(receiptKey);
+    if (!receiptReadable.value) error.value = receiptFaults.get(receiptKey);
   } catch { receiptStore = null; pending.value = []; error.value = '本机待核对操作记录无法读取，已阻止提交。'; }
+}
+function blockReceiptWrites(client) {
+  receiptFaults.set(receiptClients.get(client), '本机启动确认写入或完整回读失败，当前页面已阻止该项目继续提交或解除。请保留现场并核对原操作。');
+  if (client === receiptStore) receiptReadable.value = false;
+}
+function readPending(client) {
+  try {
+    const values = client.read();
+    if (client === receiptStore) {
+      const fault = receiptFaults.get(receiptClients.get(client));
+      if (!fault) { pending.value = values; receiptReadable.value = true; }
+      else { receiptReadable.value = false; error.value = fault; }
+    }
+    return values;
+  } catch (cause) { if (client === receiptStore) receiptReadable.value = false; throw cause; }
+}
+function capturedClient(projectId) {
+  const client = receiptStore, headers = apiHeaders();
+  return { client, projectId, request: (suffix, options = {}) => requestBrowserExecution(`/${projectId}/${suffix}`, { baseUrl: API, headers, ...options }) };
+}
+async function applyResolution(raw, receipt, context, ticket) {
+  const proof = await browserStartResolution(raw, { projectId: context.projectId, request: receipt });
+  if (!current(ticket) || context.client !== receiptStore || proof.outcome === 'unresolved' || !context.client.canWrite) return proof;
+  const fault = receiptFaults.get(receiptClients.get(context.client)); if (fault) throw new Error(fault);
+  try { await context.client.resolveExact(receipt); }
+  catch (cause) { blockReceiptWrites(context.client); throw cause; }
+  // The lock may yield across a context switch. Its captured client only writes its original key.
+  if (current(ticket) && context.client === receiptStore) readPending(context.client);
+  return proof;
+}
+async function recoverPending() {
+  if (stopped || !props.active || !receiptStore) return;
+  const ticket = guard.begin('resolution'), context = capturedClient(props.projectId);
+  try {
+    for (const receipt of readPending(context.client)) {
+      if (!current(ticket) || context.client !== receiptStore) return;
+      try {
+        const raw = await context.request(`browser-executions/${receipt.operationId}/resolution`, { signal: ticket.signal });
+        const proof = await applyResolution(raw, receipt, context, ticket);
+        if (current(ticket) && context.client === receiptStore && proof.outcome === 'rejected' && !pending.value.some(value => value.operationId === receipt.operationId)) {
+          notice.value = '原操作的永久拒绝证明已核验，本机原确认已解除。请重新复核后再批准新的验收。';
+        }
+      } catch (cause) { if (current(ticket) && cause?.name !== 'AbortError') error.value = cause.message; }
+    }
+  } catch (cause) { if (current(ticket) && cause?.name !== 'AbortError') error.value = cause.message; }
 }
 async function load() {
   if (stopped || !props.active) return;
-  clearTimeout(pollTimer); const ticket = guard.begin('list'), projectId = props.projectId, client = receiptStore;
+  clearTimeout(pollTimer); const ticket = guard.begin('list'), context = capturedClient(props.projectId);
+  const collection = async () => {
   try {
-    const value = await request('browser-executions', { signal: ticket.signal });
+    const value = await context.request('browser-executions', { signal: ticket.signal });
     if (!current(ticket)) return;
-    browserOperationCollection(value, projectId);
-    // An operation number alone cannot reconcile a receipt for another candidate or target.
-    if (client) for (const receipt of client.read()) {
-      const found = value.operations.find(op => op.operationId === receipt.operationId);
-      if (found) { browserOperationView(found, projectId, receipt.operationId, receipt); client.resolve(receipt.operationId); }
-    }
-    if (!current(ticket)) return;
+    browserOperationCollection(value, context.projectId);
     operations.value = value.operations; capability.value = value.capability;
-    if (client) pending.value = client.read();
     if (selected.value && report.value && selectedOperation.value?.reportSha256 !== report.value.reportSha256) {
       guard.begin('report'); report.value = null; clearImages();
     }
   } catch (cause) { if (current(ticket) && cause?.name !== 'AbortError') { capability.value = null; error.value = cause.message; } }
+  };
+  try { await Promise.all([collection(), recoverPending()]); }
   finally {
     if (current(ticket) && (unknown.value.length || operations.value.some(op => op.state === 'running'))) pollTimer = setTimeout(load, 1500);
   }
@@ -90,22 +142,47 @@ async function reviewCandidate() {
 }
 async function start() {
   if (!canStart.value) return;
-  const ticket = guard.begin('submit'), projectId = props.projectId, client = receiptStore;
+  const ticket = guard.begin('submit'), context = capturedClient(props.projectId), { client, projectId } = context;
+  try { if (readPending(client).length) { clearReview(); await load(); return; } }
+  catch (cause) { error.value = cause.message; return; }
   const input = { operationId: 'bo-' + crypto.randomUUID(), expectedGenerationId: props.version.generationId,
     expectedRevision: props.version.revision, candidateId: candidateId.value,
     contentDigest: review.value.candidate.contentDigest, targetReleaseId: targetReleaseId.value };
-  writing.value = true; error.value = ''; notice.value = '';
+  const token = beginWrite(); error.value = ''; notice.value = '';
   try {
-    client.save(input); pending.value = client.read();
-    const value = await requestBrowserExecution(`/${projectId}/browser-executions`, { baseUrl: API, headers: apiHeaders(), method: 'POST', body: input });
+    let claimed;
+    try { claimed = await client.claimForStart(input); }
+    catch (cause) { blockReceiptWrites(client); throw cause; }
+    if (!current(ticket) || client !== receiptStore) return;
+    readPending(client);
+    if (!claimed) { notice.value = '其他页面已有待核对启动确认，请先查询原操作，再重新复核并批准新的验收。'; return; }
+    const value = await context.request('browser-executions', { method: 'POST', body: input });
     browserOperationView(value, projectId, input.operationId, input);
     if (current(ticket)) { selected.value = value.operationId; notice.value = '本次批准已记录。验收只采集目标，参考来自固定来源材料。'; }
   } catch (cause) {
-    if (cause.status >= 400 && cause.status < 500 && !cause.outcomeUnknown) {
-      try { client.resolve(input.operationId); } catch { /* Receipt remains if storage is unavailable. */ }
-    }
     if (current(ticket)) error.value = cause.message;
-  } finally { writing.value = false; if (current(ticket)) { clearReview(); await load(); } }
+  } finally { endWrite(token); if (current(ticket)) { clearReview(); await load(); } }
+}
+async function denyStart(receipt) {
+  if (!props.ready || !props.active || writing.value || !receiptReadable.value || !receiptWritable.value
+    || !denyConfirmed.value.includes(receipt.operationId) || denialAttempted(receipt) || stopped) return;
+  const ticket = guard.begin('deny'), context = capturedClient(props.projectId), token = beginWrite();
+  error.value = ''; notice.value = '';
+  try {
+    const original = readPending(context.client).find(value => value.operationId === receipt.operationId);
+    if (!original || pretty(original) !== pretty(receipt)) throw new Error('本机原确认已变化，请重新读取后核对。');
+    denialAttempts.value.add(denialKey(receipt));
+    const raw = await context.request(`browser-executions/${receipt.operationId}/deny-start`, {
+      method: 'POST', body: { action: 'deny-future-starts-for-operation', request: original } });
+    const proof = await applyResolution(raw, original, context, ticket);
+    if (current(ticket)) {
+      if (proof.outcome === 'unresolved') throw new Error('服务端尚未给出完整决定证明，原确认继续保留。');
+      notice.value = proof.outcome === 'rejected'
+        ? '已核验永久拒绝证明：此操作号的迟到启动将被永久阻止。原确认已解除，请重新复核后再批准新的验收。'
+        : '原启动已有完整接纳记录，已核验并解除本机原确认；本次拒绝未停止或重新启动该运行。';
+    }
+  } catch (cause) { if (current(ticket)) error.value = cause.message; }
+  finally { endWrite(token); if (current(ticket)) { clearReview(); await load(); } }
 }
 async function openReport(op) {
   if (!props.ready || !props.active || stopped) return;
@@ -119,14 +196,14 @@ async function openReport(op) {
 }
 async function cancel(op) {
   if (!props.ready || !props.active || writing.value || stopped) return;
-  const ticket = guard.begin('cancel'), projectId = props.projectId; writing.value = true; error.value = '';
+  const ticket = guard.begin('cancel'), projectId = props.projectId, token = beginWrite(); error.value = '';
   try {
     const value = await request(`browser-executions/${op.operationId}/cancel`, { method: 'POST', body: {} });
     browserOperationView(value, projectId, op.operationId);
     if (typeof value.stopRequested !== 'boolean') throw new Error('停止结果无法核对，请读取操作终态。');
     if (current(ticket)) { notice.value = '已请求停止，请以操作终态为准。'; await load(); }
   } catch (cause) { if (current(ticket)) error.value = cause.message; }
-  finally { writing.value = false; }
+  finally { endWrite(token); }
 }
 async function loadBugs() {
   if (!props.ready || !props.active || stopped) return;
@@ -137,13 +214,13 @@ async function loadBugs() {
 async function register() {
   if (writing.value || !report.value || !props.ready || !props.active || stopped) return;
   const ticket = guard.begin('register'), op = selected.value, fullReport = report.value, projectId = props.projectId;
-  const before = beforeOperationId.value || null; writing.value = true; error.value = '';
+  const before = beforeOperationId.value || null, token = beginWrite(); error.value = '';
   try {
     const value = await request(`browser-executions/${op}/register-result`, { method: 'POST', body: before ? { beforeOperationId: before } : {} });
     browserExecutionRegistration(value, projectId, op, fullReport, before);
     if (current(ticket)) { notice.value = '本次结果已登记。可靠检查的复验通过记录与业务问题最终关闭分别保留。'; await loadBugs(); }
   } catch (cause) { if (current(ticket)) error.value = cause.message; }
-  finally { writing.value = false; }
+  finally { endWrite(token); }
 }
 async function loadImages(check) {
   if (!report.value || !props.ready || !props.active || stopped) return;
@@ -168,7 +245,9 @@ watch(() => [props.projectId, props.version?.generationId, props.version?.revisi
 }, { immediate: true, flush: 'sync' });
 watch([candidateId, targetReleaseId], () => { reset(); if (props.active) load(); }, { flush: 'sync' });
 watch(() => [props.active, props.ready], ([active]) => { reset(); if (active) { initializeReceipts(); load(); } }, { flush: 'sync' });
-onBeforeUnmount(() => { stopped = true; reset(); });
+const storageChanged = event => { if (event.key === receiptKey || event.key === null) { clearReview(); if (props.active) load(); } };
+window.addEventListener('storage', storageChanged);
+onBeforeUnmount(() => { stopped = true; reset(); window.removeEventListener('storage', storageChanged); });
 </script>
 
 <template>
@@ -177,7 +256,20 @@ onBeforeUnmount(() => { stopped = true; reset(); });
     <div class="fields"><label>参考候选<select v-model="candidateId" data-testid="browser-execution-candidate"><option value="">请选择候选</option><option v-for="candidate in candidates" :key="candidate.id" :value="candidate.id">{{ releases.find(value => value.id === candidate.releaseId)?.label || candidate.id }} · {{ candidate.id }}</option></select></label><label>本次目标版本<select v-model="targetReleaseId" data-testid="browser-execution-target"><option value="">请选择目标版本</option><option v-for="release in releases" :key="release.id" :value="release.id">{{ release.label }} · {{ release.targetUrl }}</option></select></label></div>
     <div class="actions"><button type="button" :disabled="!ready || !active || !candidateId || reviewing || writing" data-testid="browser-execution-review" @click="reviewCandidate">{{ reviewing ? '正在核验来源…' : '复核本次验收合同' }}</button><button type="button" :disabled="!active" data-testid="browser-execution-refresh" @click="load">读取操作并核对结果</button></div>
     <div v-if="validReview" class="review" data-testid="browser-execution-confirmation"><p>参考：{{ review.organizationContext.release.label }} · {{ review.sourceProjection.source.side }}；目标：{{ target?.label || '请选择版本' }}</p><p class="mono">{{ review.candidate.contentDigest }}</p><p class="muted">{{ review.review.declaredSlots }} 项声明检查；本次授权范围为所选目标，原比较门禁保持原结论。</p><details><summary>查看完整候选合同原文</summary><pre>{{ pretty(review) }}</pre></details><label class="confirm"><input v-model="confirmed" type="checkbox" data-testid="browser-execution-confirm" /><span>我已核对完整来源，批准此候选用于本次所选目标验收。</span></label><button type="button" class="primary" :disabled="!canStart" data-testid="browser-execution-start" @click="start">{{ writing ? '正在接纳…' : '批准并开始本次验收' }}</button></div>
-    <p v-if="unknown.length" class="warning" role="status" data-testid="browser-execution-unknown">{{ unknown.length }} 次启动结果尚待核对。已保留原操作编号，正在只读查询，暂不重复提交。</p>
+    <p v-if="receiptReadable && !receiptWritable" class="warning" role="status" data-testid="browser-execution-readonly">当前浏览器不支持 Web Locks，无法安全保存或解除启动确认。仍可只读查询原操作；提交按钮已禁用。</p>
+    <section v-if="unknown.length" class="unresolved" data-testid="browser-execution-unknown" aria-label="待核对的原启动确认">
+      <p class="warning" role="status">{{ unknown.length }} 次启动结果尚待核对。已保留原操作编号，正在只读查询，暂不重复提交。</p>
+      <ol class="receipts"><li v-for="receipt in unknown" :key="receipt.operationId" :data-browser-receipt="receipt.operationId">
+        <h4>原启动确认</h4><code>{{ receipt.operationId }}</code>
+        <p>原候选：<code>{{ receipt.candidateId }}</code><br />原目标：<code>{{ receipt.targetReleaseId }}</code></p>
+        <details><summary>核对原确认六字段</summary><pre>{{ pretty(receipt) }}</pre></details>
+        <p class="muted">若无法查到决定，可明确永久拒绝这个操作号的迟到启动。服务端已有接纳记录时只返回原记录；此操作不会停止真实运行。只有完整决定证明通过核验后，才解除本机原确认。</p>
+        <label class="confirm"><input v-model="denyConfirmed" type="checkbox" :value="receipt.operationId" :disabled="writing || denialAttempted(receipt) || !receiptWritable" data-testid="browser-execution-deny-confirm" :data-operation-id="receipt.operationId" /><span>我确认永久阻止此操作号的迟到启动。</span></label>
+        <button type="button" :disabled="!ready || !active || writing || !receiptReadable || !receiptWritable || !denyConfirmed.includes(receipt.operationId) || denialAttempted(receipt)" data-testid="browser-execution-deny" :data-operation-id="receipt.operationId" @click="denyStart(receipt)">永久拒绝此操作的迟到启动</button>
+        <p v-if="denialAttempted(receipt)" class="muted" data-testid="browser-execution-deny-pending">已提交本次拒绝请求，正在只读核对原决定；不会重发拒绝或启动请求。请勿重新使用此操作号。</p>
+      </li></ol>
+      <p class="muted">解除后不会自动创建新操作或重发启动。要继续验收，请重新复核候选与目标，再明确批准。</p>
+    </section>
     <p v-if="notice" role="status" class="muted">{{ notice }}</p><p v-if="error" role="alert" class="warning" data-testid="browser-execution-error">{{ error }}</p>
     <p v-if="!operations.length" class="muted" data-testid="browser-execution-empty">尚无本次验收操作。请选择候选与目标，完整复核后开始。</p><ol class="operations"><li v-for="op in operations" :key="op.operationId" :data-browser-operation="op.operationId"><div><strong>{{ op.targetLabel }}</strong><span>{{ labels[op.state] }}{{ op.gate ? ' · ' + gateLabels[op.gate] : '' }}</span></div><code>{{ op.operationId }}</code><p v-if="op.summary" class="muted">目标缺陷 {{ op.summary.bugs }} · 通过 {{ op.summary.passed }} · 阻塞 {{ op.summary.blocked }}</p><button v-if="op.state === 'completed'" type="button" :disabled="!ready || !active" data-testid="browser-execution-open-report" :data-operation-id="op.operationId" @click="openReport(op)">读取完成报告与证据</button><button v-if="op.state === 'running'" type="button" :disabled="!ready || !active || writing" data-testid="browser-execution-stop" @click="cancel(op)">请求停止</button></li></ol>
     <section v-if="report" class="result" data-testid="browser-execution-report"><h4>本次验收结果 · {{ gateLabels[report.gate] }}</h4><p class="muted">{{ report.report.checks.length }} 项检查，{{ report.summary?.bugs }} 个目标缺陷。来源不重访，未声明范围保持未测。</p><ul class="checks"><li v-for="check in report.report.checks" :key="check.id"><span>{{ check.title }} · {{ check.status }} / {{ check.verdict }}</span><button v-if="check.evidence?.diff" type="button" :disabled="imageLoading" data-testid="browser-execution-images" @click="loadImages(check)">查看来源、目标与差异图</button></li></ul><div v-if="images.length" class="images"><figure v-for="image in images" :key="image.role"><figcaption>{{ image.label }}</figcaption><img :src="image.url" :alt="image.label + '验收证据'" /></figure></div><details><summary>查看完整完成报告</summary><pre>{{ pretty(report.report) }}</pre></details><label>显式复验此前运行 <span class="muted">首次登记可留空</span><select v-model="beforeOperationId" data-testid="browser-execution-before"><option value="">首次登记，不声明修复</option><option v-for="op in operations.filter(value => value.state === 'completed' && value.operationId !== selected && value.candidateId === report.candidateId)" :key="op.operationId" :value="op.operationId">{{ op.targetLabel }} · {{ op.operationId }}</option></select></label><button type="button" :disabled="writing || !ready" data-testid="browser-execution-register" @click="register">登记本次问题与复验</button></section>
@@ -209,5 +301,6 @@ summary { min-height:44px; padding:12px 0; font-size:12px; cursor:pointer; } pre
 .operations,.checks { list-style:none; padding:0; } .operations li { border-bottom:1px solid var(--border); padding:14px 0; display:grid; gap:7px; min-width:0; } .operations li>div { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; font-size:12px; } .operations button { justify-self:start; }
 .checks li { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid var(--border); font-size:12px; overflow-wrap:anywhere; } .images { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:14px 0; } figure { min-width:0; } figcaption { font-size:12px; margin:8px 0; } img { max-width:100%; height:auto; border:1px solid var(--border); }
 .result>label { margin:14px 0; } .ledger { margin-top:24px; padding-top:20px; border-top:1px solid var(--border); min-width:0; } .issues,.issue-history { list-style:none; padding:0; } .issues>li { padding:16px 0; border-bottom:1px solid var(--border); } .issue-heading { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; font-size:14px; line-height:1.7; } .issue-heading span { color:var(--text-dim); } .issue-history li { display:grid; gap:6px; padding:12px 0; font-size:12px; line-height:1.7; } .issue-history span { color:var(--text-dim); }
+.receipts { list-style:none; padding:0; } .receipts>li { min-width:0; border:1px solid var(--border); border-radius:var(--r-sm); padding:15px; margin:14px 0; } .receipts .confirm { display:flex; } .receipts>li>button { white-space:normal; text-align:start; }
 @media(max-width:700px) { p,label,select,button { font-size:16px; } .muted,.checks li { font-size:14px; } .fields,.images { grid-template-columns:1fr; } .checks li { align-items:start; flex-direction:column; } .review,.result { padding:12px; } }
 </style>

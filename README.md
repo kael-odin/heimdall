@@ -14,7 +14,7 @@
 
 Browser 页面的[所选侧来源核验内核](docs/competition/acceptance-browser-source.md)核对完整证据与声明槽位，候选参考从明确选中的 baseline 或 target 侧重建；[私有读取层](docs/competition/acceptance-browser-reading.md)在真实 owner 内捕获全部实际引用。[来源侧归属](docs/competition/acceptance-browser-bindings.md)和[归属工作台](docs/competition/acceptance-browser-bindings-console.md)明确绑定项目 / 版本，提供隐藏查询字面量的安全显示预览。[完整复核与持久候选](docs/competition/acceptance-browser-candidates.md)按需展开完整计划、规则、所选侧参考和证据，独立确认后保存 `bc-*`，支持未知提交只读对账、损坏来源下保留历史以及重启后重新核验。候选响应仍为 `executionReady:false`，保存与读取候选不会启动验收。
 
-D3 已接入[固定来源 Browser 单次验收](docs/competition/acceptance-browser-execution.md)：每次完整复核并批准明确目标后，固定候选所选侧原件，只采集本次目标；支持共享执行槽、取消、保守重启恢复和核验证据。完成后可显式登记检查问题，并选择此前操作记录可靠复验通过、再次发现、阻塞或不可比。全局 Browser approval / selection、业务工单聚合与最终关闭，以及长期不存在的未知操作安全解除仍待建设；检查级复验不会改写原比较门禁。
+D3 已接入[固定来源 Browser 单次验收](docs/competition/acceptance-browser-execution.md)：每次完整复核并批准明确目标后，固定候选所选侧原件，只采集本次目标；支持共享执行槽、取消、保守重启恢复和核验证据。完成后可显式登记检查问题，并选择此前操作记录可靠复验通过、再次发现、阻塞或不可比。D4 增加[启动结果核对与永久拒绝](docs/competition/acceptance-browser-start-resolution.md)：响应未知时保留原确认，只读核对完整决定；可明确永久拒绝同操作号的迟到启动，并在核验证明后精确解除本机确认。全局 Browser approval / selection、业务工单聚合与最终关闭仍待建设；检查级复验不会改写原比较门禁。
 
 [Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md)已实现 D1 的纯格式、分步迁移与旧历史兼容，为 Browser 候选预留独立 `browserCandidates` 表。已有 Schema3 / Schema4 只打开并验证；旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，需先停止同根引擎，再显式预览并确认迁移。当前引擎为全新空目录明确创建 Schema3。本机完整 Core 为 2325 项、0 失败，旧数据真实迁移与 Browser 混合历史检查均通过；完整证据与精确提交自身 CI 的边界见[实施验收](docs/audits/2026-10-17/acceptance-catalog-schema4.md)。
 
@@ -233,6 +233,8 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [执行工作台验收](docs/audits/2026-10-17/acceptance-execution-ui.md) | 明确版本的执行入口、原操作恢复、请求停止与浏览器故障验证 | Spec 执行 UI 与证据 |
 | [Browser 固定来源单次验收](docs/competition/acceptance-browser-execution.md) | 本次完整确认、固定来源原件、目标采集、检查问题登记与显式复验 | 从已存 Browser 候选验收新目标 |
 | [Browser 执行实施记录](docs/audits/2026-10-17/acceptance-browser-execution.md) | D3 操作、来源证据、问题记录、恢复与验证边界 | 复查本阶段实现与证据 |
+| [Browser 启动结果核对与永久拒绝](docs/competition/acceptance-browser-start-resolution.md) | D4 完整决定证明、原确认核对、迟到启动阻断与跨页写锁 | 处理响应未知的原启动 |
+| [Browser 启动结果实施验收](docs/audits/2026-10-17/acceptance-browser-start-resolution.md) | 冻结源码、决定互斥、真实 UI、失败原件与精确 CI | 复查 D4 的实现和证据范围 |
 | [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |

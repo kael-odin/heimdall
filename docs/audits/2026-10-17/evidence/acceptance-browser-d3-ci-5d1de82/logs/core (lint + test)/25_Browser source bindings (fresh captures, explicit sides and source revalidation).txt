@@ -1,0 +1,92 @@
+﻿2026-10-17T15:43:23.6619510Z ##[group]Run pnpm acceptance:browser:bindings:smoke
+2026-10-17T15:43:23.6619765Z [36;1mpnpm acceptance:browser:bindings:smoke[0m
+2026-10-17T15:43:23.6674576Z shell: /usr/bin/bash -e {0}
+2026-10-17T15:43:23.6674747Z env:
+2026-10-17T15:43:23.6674899Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T15:43:23.6675237Z ##[endgroup]
+2026-10-17T15:43:24.3125825Z $ node scripts/smoke-acceptance-browser-bindings.mjs
+2026-10-17T15:43:27.6043657Z {
+2026-10-17T15:43:27.6044545Z   "phase": "capture",
+2026-10-17T15:43:27.6045037Z   "mode": "mirror",
+2026-10-17T15:43:27.6045470Z   "runId": "ac-b7d336e6-7199-496e-90f4-439dd5d3a883",
+2026-10-17T15:43:27.6045909Z   "gate": "failed",
+2026-10-17T15:43:27.6046241Z   "checks": 14,
+2026-10-17T15:43:27.6046570Z   "targetRequests": 8
+2026-10-17T15:43:27.6046900Z }
+2026-10-17T15:43:27.6059102Z 
+2026-10-17T15:43:30.3859151Z {
+2026-10-17T15:43:30.3859686Z   "phase": "capture",
+2026-10-17T15:43:30.3860134Z   "mode": "regression",
+2026-10-17T15:43:30.3860557Z   "runId": "ac-c307beff-9f4a-4ff1-a251-aa63e8a6b801",
+2026-10-17T15:43:30.3861048Z   "gate": "failed",
+2026-10-17T15:43:30.3861357Z   "checks": 14,
+2026-10-17T15:43:30.3861670Z   "targetRequests": 8
+2026-10-17T15:43:30.3861985Z }
+2026-10-17T15:43:30.3862193Z 
+2026-10-17T15:43:39.7849774Z {
+2026-10-17T15:43:39.7850514Z   "schemaVersion": 1,
+2026-10-17T15:43:39.7850949Z   "status": "passed",
+2026-10-17T15:43:39.7851339Z   "startedAt": "2026-10-17T15:43:24.647Z",
+2026-10-17T15:43:39.7851756Z   "finishedAt": "2026-10-17T15:43:39.784Z",
+2026-10-17T15:43:39.7852356Z   "evidenceLevel": "fresh-controlled-mirror-regression-browser-real-owner-store-binding",
+2026-10-17T15:43:39.7852880Z   "checkCount": 30,
+2026-10-17T15:43:39.7853071Z   "checks": {
+2026-10-17T15:43:39.7853324Z     "mirror:freshCompletedFailedComparison": true,
+2026-10-17T15:43:39.7853678Z     "mirror:completionDigestsMatchOriginalBytes": true,
+2026-10-17T15:43:39.7862727Z     "regression:freshCompletedFailedComparison": true,
+2026-10-17T15:43:39.7863170Z     "regression:completionDigestsMatchOriginalBytes": true,
+2026-10-17T15:43:39.7863609Z     "mirror:bothHealthySidesHaveIndependentOracle": true,
+2026-10-17T15:43:39.7864086Z     "mirror:plannedEntryQueryIdentityRetained": true,
+2026-10-17T15:43:39.7864691Z     "fullPlannedEntryUrlRejectsQueryValueOrderAndOmission": true,
+2026-10-17T15:43:39.7865163Z     "mirror:explicitSidesBindAcrossDifferentProjects": true,
+2026-10-17T15:43:39.7865603Z     "mirror:singleReadsRevalidateExactStoredProjection": true,
+2026-10-17T15:43:39.7866068Z     "mirror:previewsRebuildSelectedRawDetailsAndPngOracle": true,
+2026-10-17T15:43:39.7874846Z     "mirror:productPreservesOriginalRunBytesAndMetadata": true,
+2026-10-17T15:43:39.7875318Z     "regression:bothHealthySidesHaveIndependentOracle": true,
+2026-10-17T15:43:39.7875707Z     "regression:plannedEntryQueryIdentityRetained": true,
+2026-10-17T15:43:39.7876109Z     "regression:explicitSidesBindAcrossDifferentProjects": true,
+2026-10-17T15:43:39.7876573Z     "regression:singleReadsRevalidateExactStoredProjection": true,
+2026-10-17T15:43:39.7877053Z     "regression:previewsRebuildSelectedRawDetailsAndPngOracle": true,
+2026-10-17T15:43:39.7877522Z     "regression:productPreservesOriginalRunBytesAndMetadata": true,
+2026-10-17T15:43:39.7877991Z     "legacyTargetBothMutationOrdersKeepBaselineIndependent": true,
+2026-10-17T15:43:39.7878379Z     "sameRunAndSideGloballyUnique": true,
+2026-10-17T15:43:39.7878682Z     "staleCasDoesNotAdvanceCatalog": true,
+2026-10-17T15:43:39.7879033Z     "sideIsExplicitAndClientProjectionRejected": true,
+2026-10-17T15:43:39.7879473Z     "browserCandidateApprovalAndSelectionRemainClosed": true,
+2026-10-17T15:43:39.7879897Z     "browserBindingCannotPrepareOrCreateExecution": true,
+2026-10-17T15:43:39.7880306Z     "changedSourceReturnsSafeReadOnlyDiagnostics": true,
+2026-10-17T15:43:39.7880743Z     "sourceRestorationRevalidatesWithoutRewritingHistory": true,
+2026-10-17T15:43:39.7881177Z     "catalogStoresOnlyBindingsAndNoSpecAuthority": true,
+2026-10-17T15:43:39.7881567Z     "dtoDoesNotExposePrivatePlansBuffersOrMaps": true,
+2026-10-17T15:43:39.7882273Z     "zeroTargetRequestsAndFetchesAfterCapture": true,
+2026-10-17T15:43:39.7882649Z     "zeroProcessLaunchesDuringBindingAndReads": true,
+2026-10-17T15:43:39.7883040Z     "allOriginalAndArchivedRunBytesRemainIdentical": true
+2026-10-17T15:43:39.7883492Z   },
+2026-10-17T15:43:39.7883680Z   "browserRuns": 2,
+2026-10-17T15:43:39.7883881Z   "sourceRunIds": [
+2026-10-17T15:43:39.7884070Z     {
+2026-10-17T15:43:39.7884251Z       "mode": "mirror",
+2026-10-17T15:43:39.7884669Z       "runId": "ac-b7d336e6-7199-496e-90f4-439dd5d3a883",
+2026-10-17T15:43:39.7884983Z       "gate": "failed"
+2026-10-17T15:43:39.7885181Z     },
+2026-10-17T15:43:39.7885354Z     {
+2026-10-17T15:43:39.7885540Z       "mode": "regression",
+2026-10-17T15:43:39.7885834Z       "runId": "ac-c307beff-9f4a-4ff1-a251-aa63e8a6b801",
+2026-10-17T15:43:39.7886120Z       "gate": "failed"
+2026-10-17T15:43:39.7886314Z     }
+2026-10-17T15:43:39.7886481Z   ],
+2026-10-17T15:43:39.7886667Z   "bindings": 4,
+2026-10-17T15:43:39.7886878Z   "singleBindingReads": 6,
+2026-10-17T15:43:39.7887132Z   "captureTargetRequests": 16,
+2026-10-17T15:43:39.7887404Z   "bindingAndReadTargetRequests": 0,
+2026-10-17T15:43:39.7887677Z   "bindingFetchAttempts": 0,
+2026-10-17T15:43:39.7887942Z   "forbiddenProcessEvents": [],
+2026-10-17T15:43:39.7888182Z   "executionReady": false,
+2026-10-17T15:43:39.7888408Z   "candidateCount": 0,
+2026-10-17T15:43:39.7888619Z   "approvalCount": 0,
+2026-10-17T15:43:39.7888828Z   "selectionCount": 0,
+2026-10-17T15:43:39.7889039Z   "newExecutionRuns": 0,
+2026-10-17T15:43:39.7889660Z   "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-bindings-smoke-35badeae-7c05-4acf-b542-0e554c899611",
+2026-10-17T15:43:39.7891401Z   "scope": "Fresh local controlled capture, explicit side organization and private per-binding revalidation only. No Browser approval/selection/executor or HTTP/UI route; no external deployment, cross-call inode guarantee or reusable execution authorization. Runtime originals and copied full run trees are preserved; one source mutation is an explicit recorded test injection."
+2026-10-17T15:43:39.7892646Z }
+2026-10-17T15:43:39.7892747Z 

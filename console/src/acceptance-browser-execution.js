@@ -83,6 +83,47 @@ export function browserOperationView(value, projectId, operationId, request) {
   if (request) { const expected = browserExecutionRequest(request); if (!['operationId', 'candidateId', 'contentDigest', 'targetReleaseId'].every(key => value[key] === expected[key])) invalid(); }
   return value;
 }
+export async function browserStartResolution(raw, { projectId, request, crypto = globalThis.crypto } = {}) {
+  const expected = browserExecutionRequest(request);
+  json(raw, 12 * 1024 * 1024);
+  // Retain an inert snapshot while Web Crypto yields; callers cannot swap a proof mid-check.
+  const value = JSON.parse(JSON.stringify(raw));
+  const common = ['schemaVersion', 'kind', 'projectId', 'operationId', 'observedAt', 'outcome'];
+  const variants = { recorded: ['request', 'requestFingerprint', 'dispatchSha256', 'operation'],
+    rejected: ['rejection', 'rejectionSha256'], unresolved: ['reasonCode'] };
+  if (!object(value) || !Object.hasOwn(variants, value.outcome)) invalid();
+  fields(value, [...common, ...variants[value.outcome]]);
+  if (!validId(projectId, 'ap') || value.schemaVersion !== 1 || value.kind !== 'browser-start-resolution'
+    || value.projectId !== projectId || value.operationId !== expected.operationId || !iso(value.observedAt)) invalid();
+  if (value.outcome === 'unresolved') {
+    if (!['ABSENT_OBSERVED', 'ADMISSION_PENDING'].includes(value.reasonCode)) invalid();
+    return value;
+  }
+  const digest = async input => {
+    if (typeof crypto?.subtle?.digest !== 'function') invalid('当前浏览器无法核验操作证明摘要；原确认已保留。');
+    let bytes;
+    try { bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))); }
+    catch { invalid('操作证明摘要无法核验；原确认已保留。'); }
+    const result = [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    if (!hash(result)) invalid(); return result;
+  };
+  const fingerprint = await digest(canonical({ domain: 'heimdall-browser-operation-request', version: 1, projectId, request: expected }));
+  if (value.outcome === 'recorded') {
+    if (!same(browserExecutionRequest(value.request), expected) || value.requestFingerprint !== fingerprint || !hash(value.dispatchSha256)) invalid();
+    fields(value.operation, VIEW); browserOperationView(value.operation, projectId, expected.operationId, expected);
+  } else {
+    const rejection = value.rejection;
+    fields(rejection, ['schemaVersion', 'kind', 'projectId', 'operationId', 'request', 'requestFingerprint', 'rejectedAt', 'reasonCode', 'effect', 'actor']);
+    fields(rejection.actor, ['kind']);
+    if (rejection.schemaVersion !== 1 || rejection.kind !== 'browser-start-rejection' || rejection.projectId !== projectId
+      || rejection.operationId !== expected.operationId || !same(browserExecutionRequest(rejection.request), expected)
+      || rejection.requestFingerprint !== fingerprint || !iso(rejection.rejectedAt)
+      || rejection.reasonCode !== 'USER_REJECTED_UNKNOWN_START' || rejection.effect !== 'deny-future-starts-for-operation'
+      || rejection.actor.kind !== 'local-user' || !hash(value.rejectionSha256)
+      || value.rejectionSha256 !== await digest(canonical(rejection) + '\n')) invalid();
+  }
+  return value;
+}
 export function browserOperationCollection(value, projectId) {
   json(value); fields(value, ['schemaVersion', 'projectId', 'operations', 'capability']);
   if (value.schemaVersion !== 1 || value.projectId !== projectId || !Array.isArray(value.operations) || value.operations.length > 1024) invalid();
@@ -207,8 +248,9 @@ export function createBrowserExecutionReadGuard() {
   });
 }
 export async function requestBrowserExecution(path, { baseUrl = '', headers = {}, method = 'GET', body, signal, fetcher = globalThis.fetch, timeoutMs = 60_000 } = {}) {
-  const route = new RegExp(`^/ap-${UUID}/(?:browser-executions(?:/bo-${UUID}(?:/(?:report|cancel|register-result))?)?|browser-bugs|browser-baseline-candidates/bc-${UUID})$`);
-  if (!route.test(path) || !['GET', 'POST'].includes(method)) invalid();
+  const route = new RegExp(`^/ap-${UUID}/(?:browser-executions(?:/bo-${UUID}(?:/(?:report|cancel|register-result|resolution|deny-start))?)?|browser-bugs|browser-baseline-candidates/bc-${UUID})$`);
+  if (!route.test(path) || !['GET', 'POST'].includes(method) || path.endsWith('/resolution') && method !== 'GET'
+    || path.endsWith('/deny-start') && method !== 'POST') invalid();
   const perform = async requestSignal => {
     let response, value;
     try { response = await fetcher(`${baseUrl}/api/acceptance/projects${path}`, { method, headers, cache: 'no-store', signal: requestSignal, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }); }
@@ -244,7 +286,7 @@ export async function fetchBrowserExecutionEvidence({ projectId, operationId, en
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   if (bytes.byteLength !== entry.bytes || digest !== entry.sha256 || ![137, 80, 78, 71, 13, 10, 26, 10].every((value, i) => new Uint8Array(bytes)[i] === value)) invalid('图片大小、格式或 SHA-256 不一致。'); return new Blob([bytes], { type: 'image/png' });
 }
-export function createBrowserExecutionReceipts({ projectId, origin, storage }) {
+export function createBrowserExecutionReceipts({ projectId, origin, storage, locks = globalThis.navigator?.locks }) {
   let normalized; try { normalized = new URL(origin); } catch { invalid('执行记录上下文无效。'); }
   if (!validId(projectId, 'ap') || !['http:', 'https:'].includes(normalized.protocol) || normalized.origin !== origin || !storage || typeof storage.getItem !== 'function' || typeof storage.setItem !== 'function') invalid('执行记录上下文无效。');
   const key = `heimdall:browser-operations:v1:${origin}:${projectId}`;
@@ -255,8 +297,43 @@ export function createBrowserExecutionReceipts({ projectId, origin, storage }) {
     if (!Array.isArray(values) || values.length > 32) invalid('本机待核对操作过多或记录损坏。');
     const result = values.map(browserExecutionRequest); if (new Set(result.map(value => value.operationId)).size !== result.length) invalid('本机操作记录重复。'); return result;
   }
-  return Object.freeze({ read,
-    save(request) { const value = browserExecutionRequest(request), values = read(), old = values.find(item => item.operationId === value.operationId); if (old && !same(old, value)) invalid('操作 ID 已用于其他确认。'); if (!old) values.push(value); if (values.length > 32) invalid('请先核对原操作，再开始新的验收。'); storage.setItem(key, JSON.stringify(values)); if (!same(read(), values)) invalid('本机操作记录未能完整保存；尚未提交请求。'); },
-    resolve(operationId) { if (!validId(operationId, 'bo')) invalid('操作 ID 无效。'); const values = read().filter(value => value.operationId !== operationId); storage.setItem(key, JSON.stringify(values)); if (!same(read(), values)) invalid('本机操作记录尚未核对完成。'); },
+  const canWrite = typeof locks?.request === 'function';
+  const exclusive = async action => {
+    if (!canWrite) invalid('当前浏览器不支持安全保存或解除启动确认所需的 Web Locks；仅可只读查询。');
+    return locks.request(key, { mode: 'exclusive' }, action);
+  };
+  return Object.freeze({ canWrite, read,
+    async claimForStart(request) {
+      const value = browserExecutionRequest(request);
+      return exclusive(() => {
+        if (read().length) return false;
+        const values = [value];
+        storage.setItem(key, JSON.stringify(values));
+        if (!same(read(), values)) invalid('本机操作记录未能完整保存；尚未提交请求。');
+        return true;
+      });
+    },
+    async save(request) {
+      const value = browserExecutionRequest(request);
+      await exclusive(() => {
+        const values = read(), old = values.find(item => item.operationId === value.operationId);
+        if (old && !same(old, value)) invalid('操作 ID 已用于其他确认。');
+        if (!old) values.push(value);
+        if (values.length > 32) invalid('请先核对原操作，再开始新的验收。');
+        storage.setItem(key, JSON.stringify(values));
+        if (!same(read(), values)) invalid('本机操作记录未能完整保存；尚未提交请求。');
+      });
+    },
+    async resolveExact(request) {
+      const expected = browserExecutionRequest(request);
+      await exclusive(() => {
+        const values = read(), old = values.find(value => value.operationId === expected.operationId);
+        if (old && !same(old, expected)) invalid('本机原确认已变化，不能解除另一条确认。');
+        if (!old) return;
+        const remaining = values.filter(value => value.operationId !== expected.operationId);
+        storage.setItem(key, JSON.stringify(remaining));
+        if (!same(read(), remaining)) invalid('本机操作记录尚未完整核对；不能报告已解除。');
+      });
+    },
   });
 }
