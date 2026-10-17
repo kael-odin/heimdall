@@ -12,7 +12,7 @@ const props = defineProps({
   runs: { type: Array, default: () => [] }, ready: Boolean, active: Boolean, requiresReconcile: Boolean,
   writing: { type: String, default: '' }, request: { type: Function, required: true }, write: { type: Function, required: true },
 });
-const emit = defineEmits(['reconcile', 'open-run']);
+const emit = defineEmits(['reconcile', 'open-run', 'review-candidate']);
 const drafts = reactive(new Map()), selectedBindingId = ref(''), previewState = ref(null), previewLoading = ref(false);
 const error = ref(null), errorElement = ref(null), notice = ref(''), submitting = ref(false);
 const evidence = reactive(new Map()), evidenceControllers = new Map(), objectUrls = new Set();
@@ -40,6 +40,8 @@ const canBind = computed(() => ready.value && !!selectedRelease.value && !!draft
   && draft.value.confirmed && !duplicate.value);
 const preview = computed(() => previewState.value?.preview ?? null);
 const selectedBinding = computed(() => previewState.value?.binding ?? history.value.find(value => value.id === selectedBindingId.value));
+const candidateReviewAvailable = computed(() => props.detail?.browserCandidateSupport?.available === true);
+const candidateForBinding = bindingId => props.detail?.browserCandidates?.find(value => value.sourceBindingId === bindingId)?.id || '';
 const dateLabel = value => {
   const date = new Date(value); return Number.isFinite(date.getTime()) ? date.toLocaleString('zh-CN', { hour12: false }) : '时间未记录';
 };
@@ -124,6 +126,11 @@ async function openPreview(bindingId) {
   selectionEpoch++; invalidatePreview({ close: true }); selectedBindingId.value = bindingId; await loadPreview();
 }
 function closePreview() { selectionEpoch++; invalidatePreview({ close: true }); }
+function reviewCandidate(bindingId) {
+  if (!props.ready || !props.active || !candidateReviewAvailable.value) return;
+  const candidateId = candidateForBinding(bindingId);
+  closePreview(); emit('review-candidate', { sourceBindingId: bindingId, candidateId });
+}
 async function loadEvidence(index, role) {
   const observation = preview.value?.observations[index], binding = selectedBinding.value;
   if (!observation || !binding || stopped || !props.active || !props.ready) return;
@@ -179,7 +186,7 @@ onBeforeUnmount(() => { stopped = true; guard.stop(); readController?.abort(); c
       <p v-if="requiresReconcile" class="browser-warning">草稿已保留。请先使用上方“刷新并核对目录”，再重新确认归属。</p>
 
       <div class="browser-history-heading"><h4>已归属来源 <span>{{ history.length }}</span></h4><p class="browser-muted">这里只显示已存记录；点击单条“核对来源”才重读原件。</p></div>
-      <ol v-if="history.length" class="browser-history"><li v-for="binding in history" :key="binding.id" data-testid="browser-binding-row" :data-binding-id="binding.id"><div class="browser-row"><strong>{{ releaseLabel(binding.releaseId) }} · {{ binding.source.side }}</strong><button type="button" class="browser-button" :disabled="!props.ready || previewLoading" data-testid="browser-binding-preview" :data-binding-id="binding.id" @click="openPreview(binding.id)">核对来源</button></div><p>{{ binding.source.sourceMode }} · <code>{{ binding.source.runId }}</code></p><p class="browser-muted"><code>{{ displayText(binding.source.entryUrlDisplay) }}</code></p><p class="browser-muted">归属于 {{ dateLabel(binding.boundAt) }} · <code>{{ binding.id }}</code></p></li></ol>
+      <ol v-if="history.length" class="browser-history"><li v-for="binding in history" :key="binding.id" data-testid="browser-binding-row" :data-binding-id="binding.id"><div class="browser-row"><strong>{{ releaseLabel(binding.releaseId) }} · {{ binding.source.side }}</strong><div class="browser-row-actions"><button type="button" class="browser-button" :disabled="!props.ready || previewLoading" data-testid="browser-binding-preview" :data-binding-id="binding.id" @click="openPreview(binding.id)">核对来源</button><button v-if="candidateReviewAvailable" type="button" class="browser-button" :disabled="!props.ready || !props.active" data-testid="browser-binding-candidate-review" :data-binding-id="binding.id" :data-candidate-id="candidateForBinding(binding.id)" @click="reviewCandidate(binding.id)">{{ candidateForBinding(binding.id) ? '查看已保存候选' : '查看完整候选合同' }}</button></div></div><p>{{ binding.source.sourceMode }} · <code>{{ binding.source.runId }}</code></p><p class="browser-muted"><code>{{ displayText(binding.source.entryUrlDisplay) }}</code></p><p class="browser-muted">归属于 {{ dateLabel(binding.boundAt) }} · <code>{{ binding.id }}</code></p></li></ol>
       <p v-else class="browser-empty">尚无 Browser 来源归属。明确选择运行、来源侧和版本后，即可保存第一条记录。</p>
 
       <section v-if="selectedBindingId" class="browser-review" aria-labelledby="browser-binding-review-title" data-testid="browser-binding-preview-content">
@@ -197,7 +204,7 @@ onBeforeUnmount(() => { stopped = true; guard.stop(); readController?.abort(); c
               <div v-for="role in evidenceRoles" :key="role.key" class="browser-evidence-result"><p v-if="evidenceState(index, role.key)?.loading" class="browser-muted" role="status" data-testid="browser-binding-evidence-loading" :data-role="role.key" :data-observation-index="index">正在读取并核对证据大小与摘要…</p><p v-else-if="evidenceState(index, role.key)?.error" class="browser-warning" role="alert" data-testid="browser-binding-evidence-error" :data-role="role.key" :data-observation-index="index">{{ evidenceState(index, role.key).error }}</p><figure v-else-if="evidenceState(index, role.key)?.url" data-testid="browser-binding-evidence-content" :data-role="role.key" :data-observation-index="index"><figcaption><strong>{{ role.label }}</strong><button type="button" class="browser-text-button" @click="releaseEvidence(evidenceKey(index, role.key))">关闭此证据</button></figcaption><template v-if="role.key === 'details'"><p class="browser-muted">原始保存证据，可能包含页面文字、链接及断言观察；仅作文本展示，不执行。</p><pre>{{ evidenceState(index, role.key).content }}</pre></template><img v-else :src="evidenceState(index, role.key).url" :alt="sideLabel(selectedBinding.source.side) + ' · ' + role.label + ' · ' + observation.viewportName" /><p class="browser-muted">已核对大小与 SHA-256 · <code>{{ observation.evidence[role.key].file }}</code></p></figure></div>
             </div></details></li></ol>
           </template>
-          <div class="browser-review-actions"><button type="button" class="browser-button" :disabled="!props.ready" @click="loadPreview"><Icon name="refresh" decorative />重新核对此来源</button><button v-if="selectedBinding" type="button" class="browser-button" :disabled="!props.ready" @click="emit('open-run', selectedBinding.source.runId)">查看原运行<Icon name="external" decorative /></button></div>
+          <div class="browser-review-actions"><button type="button" class="browser-button" :disabled="!props.ready" @click="loadPreview"><Icon name="refresh" decorative />重新核对此来源</button><button v-if="selectedBinding && candidateReviewAvailable" type="button" class="browser-button" :disabled="!props.ready || !props.active" data-testid="browser-binding-candidate-review" :data-binding-id="selectedBinding.id" :data-candidate-id="candidateForBinding(selectedBinding.id)" @click="reviewCandidate(selectedBinding.id)">{{ candidateForBinding(selectedBinding.id) ? '查看已保存候选' : '查看完整候选合同' }}</button><button v-if="selectedBinding" type="button" class="browser-button" :disabled="!props.ready" @click="emit('open-run', selectedBinding.source.runId)">查看原运行<Icon name="external" decorative /></button></div>
         </template>
       </section>
     </template>
@@ -208,6 +215,7 @@ onBeforeUnmount(() => { stopped = true; guard.stop(); readController?.abort(); c
 .browser-bindings { min-width: 0; margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--border); font-size: 12px; line-height: 1.8; }
 .browser-binding-heading, .browser-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .browser-binding-heading { align-items: start; }
+.browser-row-actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .browser-bindings h3 { font-size: 14px; font-weight: 650; }
 .browser-bindings h4, .browser-bindings h5 { font-size: 13px; font-weight: 600; }
 .browser-bindings h4 span { color: var(--text-dim); margin-left: 6px; font-weight: 400; }

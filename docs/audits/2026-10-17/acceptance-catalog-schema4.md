@@ -4,7 +4,7 @@
 
 基准提交自身 CI 再次出现展示读取 409 后，已独立复现另一早期 fd 时序并追加修正。包含追加修正的新一轮语法、原 Acceptance console、真实 forge、Console→Clone CDP、旧数据显式迁移和 fresh Browser Schema4 混合历史均已通过。最终完整 Core 为 **2325 total / 2313 pass / 0 fail / 12 skip**；七轮各自的 549 份源码快照前后不变。证据封存与精确提交自身远端 CI 分别记录，不用本机成功代替 Linux 结论。
 
-本片基于 `0988fc333b3ec6abd857c4a5ccac5a5484906ee1`，包含 [运行展示读取竞态修复](acceptance-display-head-race.md)的追加修正。该基准自身 CI `39015344019`、attempt 1 已实际 **failure**；Schema4 与追加修正一起提交，精确提交的自身 CI 待推送触发。基准失败、追加专项和 D1 最终验证分别记录，不能互相代替。
+本片基于 `0988fc333b3ec6abd857c4a5ccac5a5484906ee1`，包含 [运行展示读取竞态修复](acceptance-display-head-race.md)的追加修正。该基准自身 CI `39015344019`、attempt 1 已实际 **failure**；Schema4 与追加修正已提交为 `c170f503964601b7d125c2f902760c1235cc2e39`，自身 CI `39020282414` 已结束：整轮 failure，完整 Core 与原 Acceptance console 通过，后续旧 preparation 夹具依赖隐式迁移而失败；[精确复核与适配记录](acceptance-catalog-d1-ci.md)保留原件。基准失败、追加专项和 D1 最终验证分别记录，不能互相代替。
 
 ## 1. 实现与停止线
 
@@ -51,9 +51,9 @@ Schema1 按 `1→2→3→4`、Schema2 按 `2→3→4`、Schema3 按 `3→4` 逐�
 | 含追加修正的最终完整 Core | **2325 total / 2313 pass / 0 fail / 12 skip**，579,577.5286 ms，exit 0；549 份源码前后不变 |
 | 证据包独立验证 | 工作树与 Git 暂存两轮均 passed / exit 0；95 份包文件、41 组、549 条源码全部匹配；[独立发布核验](evidence/acceptance-catalog-schema4-publication/README.md)保存原件 |
 | 文档链接 | `pnpm docs:links` exit 0；[命令与日志](evidence/acceptance-catalog-schema4-publication/docs-links/command.json)完整保留；最终暂存前再次确认链接 |
-| D1 精确提交与自身远端 CI | 本提交推送后触发，再按精确 head、run / attempt 和实际执行范围单独归档；本报告没有 D1 Linux CI 通过结论 |
+| D1 精确提交与自身远端 CI | `c170f503` / run `39020282414` / attempt 1，整轮 failure；Linux Core 2325 total / 2321 pass / 0 fail / 4 skip，原 Console 与原生 first-fstat 用例通过；旧 preparation smoke 失败，详见[复核](acceptance-catalog-d1-ci.md) |
 
-追加修正后的语法、原 Console、forge、CDP、legacy migration、Browser v4 与完整 Core 七轮包装器均记录 `sourcesUnchanged:true`、`sourceFileCount:549`。快照范围为实现、脚本、测试、前端、workflow 与 package 文件的明确集合；不把它等同于依赖、构建目录和整台机器被冻结。追加修正前的旧快照与结果仍独立保留，不替代新轮。新增 Linux 原生时序用例在 Windows 跳过；自身 Linux CI 仍需实际执行。
+追加修正后的语法、原 Console、forge、CDP、legacy migration、Browser v4 与完整 Core 七轮包装器均记录 `sourcesUnchanged:true`、`sourceFileCount:549`。快照范围为实现、脚本、测试、前端、workflow 与 package 文件的明确集合；不把它等同于依赖、构建目录和整台机器被冻结。追加修正前的旧快照与结果仍独立保留，不替代新轮。新增 Linux 原生时序用例在 Windows 跳过，随后 D1 自身 Linux CI 已实际执行通过；整轮仍因后续旧夹具失败，不宣称整轮通过。
 
 ## 4. 真实旧数据迁移与成功归档
 

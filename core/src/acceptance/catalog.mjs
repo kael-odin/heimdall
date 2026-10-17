@@ -13,6 +13,7 @@ import { readSpecCandidateSource } from './candidate-source.mjs';
 import { projectSpecBaselineCandidate } from './candidate-projection.mjs';
 import { readBrowserCandidateSource } from './browser-candidate-source.mjs';
 import { projectBrowserBaselineCandidate } from './browser-candidate-projection.mjs';
+import { buildBrowserCandidateReview, assertBrowserCandidateEnvelope } from './browser-candidate-review.mjs';
 import { prepareManagedSpecContract } from './managed-spec-plan.mjs';
 import { createManagedSpecDispatchStore } from './managed-dispatch-store.mjs';
 import { managedSpecDispatchRequestFingerprint } from './managed-dispatch-schema.mjs';
@@ -509,9 +510,12 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       validateAcceptanceCatalog(catalog, { limits });
       const previous = readFile('catalog.previous.json', { optional: true });
       validatePredecessor(current, previous);
+      const { kind: _kind, preCommitGuard: _guard, responseGuard: _responseGuard, ...payload } = result;
+      const response = { generationId: catalog.generationId, revision: catalog.revision, ...payload, event };
+      // A new response contract must be returnable before publishing any bytes.
+      result.responseGuard?.(response);
       commit(current, previous, bytes, result.preCommitGuard);
-      const { kind: _kind, preCommitGuard: _guard, ...payload } = result;
-      return { generationId: catalog.generationId, revision: catalog.revision, ...payload, event };
+      return response;
     });
   }
   function createProject(raw) {
@@ -652,6 +656,144 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       return { ...common, preview: null, diagnostics: { eligible: false, contentMatches: false,
         issues: [{ code: 'BASELINE_CHANGED', message: '当前 Browser 所选来源无法重建已记录内容；历史归属保留，请检查原运行。' }] } };
     }
+  }
+  function requireBrowserCandidateSchema(catalog) {
+    if (catalog.schemaVersion !== 4) throw error('CATALOG_MIGRATION_REQUIRED', 409,
+      '请先停止同根引擎，显式预览并确认维护到 Schema4 后再记录 Browser 候选。', { reason: 'SCHEMA4_REQUIRED' });
+    return catalog;
+  }
+  function browserReviewContext(catalog, projectId, sourceBindingId) {
+    requireBrowserCandidateSchema(catalog);
+    const project = catalog.projects[projectId];
+    if (!project) missing('项目');
+    const sourceBinding = catalog.browserSourceBindings[sourceBindingId];
+    if (!sourceBinding) missing('Browser 来源归属');
+    if (sourceBinding.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, 'Browser 来源归属不属于当前项目。');
+    const release = catalog.releases[sourceBinding.releaseId];
+    if (!release || release.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, 'Browser 来源版本与项目不一致。');
+    return { project, release, sourceBinding };
+  }
+  function materializeBrowserReview(catalog, projectId, sourceBindingId) {
+    const context = browserReviewContext(catalog, projectId, sourceBindingId);
+    try {
+      assertOwned(); actualRoot();
+      const material = readBrowserCandidateSource(context.sourceBinding.source.runId, { root: actualRoot(), owner });
+      const review = buildBrowserCandidateReview({ ...context, material });
+      assertOwned(); actualRoot();
+      return { review, material };
+    } catch (cause) {
+      if (cause?.status === 503) throw cause;
+      // Ownership/root failures are availability failures, never a stale-source diagnostic.
+      assertOwned(); actualRoot();
+      if (cause?.code === 'SOURCE_NOT_ELIGIBLE' && cause?.details?.reason === 'BROWSER_REVIEW_BUDGET') throw cause;
+      throw error('BASELINE_CHANGED', 409, 'Browser 当前来源无法重建完整候选，已存归属与候选保留。', { reason: 'BROWSER_SOURCE_CHANGED' });
+    }
+  }
+  function findBrowserCandidate(catalog, projectId, candidateId) {
+    requireBrowserCandidateSchema(catalog);
+    if (!Object.hasOwn(catalog.projects, projectId)) missing('项目');
+    const candidate = catalog.browserCandidates[candidateId];
+    if (!candidate) missing('Browser 候选');
+    if (candidate.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, 'Browser 候选不属于当前项目。');
+    return candidate;
+  }
+  function assertBrowserCandidateMatches(candidate, review) {
+    if (candidate.contentDigest !== review.contentDigest
+      || candidate.sourceContentDigest !== review.candidateContent.sourceContentDigest
+      || candidate.organizationContextDigest !== review.organizationContextDigest
+      || candidate.sourceBindingId !== review.candidateContent.sourceBindingId
+      || candidate.projectId !== review.candidateContent.projectId
+      || candidate.releaseId !== review.candidateContent.releaseId) {
+      throw error('BASELINE_CHANGED', 409, 'Browser 候选与当前完整来源不一致。', { reason: 'BROWSER_CANDIDATE_CHANGED' });
+    }
+  }
+  function previewBrowserBaselineCandidate(projectId, sourceBindingId) {
+    id(projectId, 'ap'); id(sourceBindingId, 'ax');
+    const current = readFile('catalog.json'), catalog = requireCurrent(current.catalog);
+    const { review } = materializeBrowserReview(catalog, projectId, sourceBindingId);
+    checkUnchanged('catalog.json', current);
+    return assertBrowserCandidateEnvelope({ ...review, generationId: catalog.generationId, revision: catalog.revision });
+  }
+  function createBrowserBaselineCandidate(projectId, raw) {
+    let input;
+    try {
+      id(projectId, 'ap'); input = inputOf(raw, ['sourceBindingId', 'contentDigest']);
+      id(input.sourceBindingId, 'ax'); digestOf(input.contentDigest);
+    } catch (cause) { return Promise.reject(cause); }
+    return mutate(input, (catalog, at) => {
+      const context = browserReviewContext(catalog, projectId, input.sourceBindingId);
+      const existing = Object.values(catalog.browserCandidates).find(value => value.sourceBindingId === input.sourceBindingId);
+      if (existing) throw error('CANDIDATE_ALREADY_EXISTS', 409, '此 Browser 来源已有候选，请先读取原记录核对。', { existingCandidateId: existing.id });
+      for (const [limit, count] of [['browserCandidates', Object.keys(catalog.browserCandidates).length], ['events', catalog.events.length]]) {
+        if (count >= limits[limit]) throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限；历史记录未删除。', { limit });
+      }
+      const { review } = materializeBrowserReview(catalog, projectId, input.sourceBindingId);
+      if (review.contentDigest !== input.contentDigest) throw error('BASELINE_CHANGED', 409,
+        '完整候选合同已变化，请重新复核再明确保存。', { reason: 'BROWSER_CANDIDATE_CHANGED' });
+      const candidate = { id: 'bc-' + randomUUID(), ...review.candidateContent,
+        contentDigest: review.contentDigest, createdAt: at, actor: { ...ACTOR } };
+      // Context is taken from the catalog, never accepted from the request.
+      if (candidate.releaseId !== context.release.id) throw error('PROJECT_MISMATCH', 409, '候选版本不一致。');
+      catalog.browserCandidates[candidate.id] = candidate;
+      return { kind: 'browser-candidate-created', candidate, ...review,
+        responseGuard: response => assertBrowserCandidateEnvelope(response),
+        preCommitGuard: () => {
+          const fresh = materializeBrowserReview(catalog, projectId, input.sourceBindingId).review;
+          assertBrowserCandidateMatches(candidate, fresh);
+          if (hashAcceptanceValue(fresh) !== hashAcceptanceValue(review)) throw error('BASELINE_CHANGED', 409,
+            'Browser 完整来源在提交前变化，请重新复核。', { reason: 'BROWSER_SOURCE_CHANGED' });
+        } };
+    });
+  }
+  function readBrowserBaselineCandidate(projectId, candidateId) {
+    id(projectId, 'ap'); id(candidateId, 'bc');
+    const current = readFile('catalog.json'), catalog = requireCurrent(current.catalog);
+    const candidate = findBrowserCandidate(catalog, projectId, candidateId);
+    const common = { schemaVersion: catalog.schemaVersion, generationId: catalog.generationId,
+      revision: catalog.revision, candidate, executionReady: false };
+    try {
+      const { review } = materializeBrowserReview(catalog, projectId, candidate.sourceBindingId);
+      assertBrowserCandidateMatches(candidate, review);
+      checkUnchanged('catalog.json', current);
+      return assertBrowserCandidateEnvelope({ ...review, ...common });
+    } catch (cause) {
+      if (!['BASELINE_CHANGED', 'SOURCE_NOT_ELIGIBLE', 'SOURCE_INTEGRITY_FAILED'].includes(cause?.code)) throw cause;
+      assertOwned(); actualRoot(); checkUnchanged('catalog.json', current);
+      return { ...common, review: null, diagnostics: { eligible: false, contentMatches: false,
+        issues: [{ code: cause.code, message: '当前来源无法完整复核此 Browser 候选；原记录保留，请检查原运行。' }] } };
+    }
+  }
+  function browserEvidenceInput(raw) {
+    fields(raw, ['file', 'expectedContentDigest'], ['file', 'expectedContentDigest'], invalid);
+    if (typeof raw.file !== 'string' || !/^[a-z0-9][a-z0-9_.-]{0,234}\.png$/i.test(raw.file)) invalid('图片文件名无效。');
+    digestOf(raw.expectedContentDigest);
+    return { file: raw.file, expectedContentDigest: raw.expectedContentDigest };
+  }
+  function captureBrowserCandidateEvidence(projectId, sourceOrCandidateId, raw, saved) {
+    id(projectId, 'ap'); id(sourceOrCandidateId, saved ? 'bc' : 'ax');
+    const input = browserEvidenceInput(raw), current = readFile('catalog.json'), catalog = requireCurrent(current.catalog);
+    requireBrowserCandidateSchema(catalog);
+    const candidate = saved ? findBrowserCandidate(catalog, projectId, sourceOrCandidateId) : null;
+    const sourceBindingId = candidate?.sourceBindingId ?? sourceOrCandidateId;
+    const { review, material } = materializeBrowserReview(catalog, projectId, sourceBindingId);
+    if (candidate) assertBrowserCandidateMatches(candidate, review);
+    if (review.contentDigest !== input.expectedContentDigest) throw error('BASELINE_CHANGED', 409,
+      '图片所属完整候选合同已变化，请重新复核。', { reason: 'BROWSER_CANDIDATE_CHANGED' });
+    const selected = review.review.selectedEvidence.flatMap(value => [value.roles.screenshot, value.roles.repeat]);
+    const metadata = selected.find(value => value.file === input.file);
+    if (!metadata) missing('所选来源截图');
+    const captured = material.files.get(input.file);
+    if (!Buffer.isBuffer(captured) || captured.length !== metadata.bytes || sha256(captured) !== metadata.sha256) {
+      throw error('SOURCE_INTEGRITY_FAILED', 409, '图片与完整来源不一致。', { reason: 'BROWSER_EVIDENCE_CHANGED' });
+    }
+    assertOwned(); actualRoot(); checkUnchanged('catalog.json', current);
+    return { bytes: Buffer.from(captured), sha256: metadata.sha256 };
+  }
+  function readBrowserCandidatePreviewEvidence(projectId, sourceBindingId, input) {
+    return captureBrowserCandidateEvidence(projectId, sourceBindingId, input, false);
+  }
+  function readBrowserBaselineCandidateEvidence(projectId, candidateId, input) {
+    return captureBrowserCandidateEvidence(projectId, candidateId, input, true);
   }
   function reasonOf(input) {
     if (typeof input.reason !== 'string' || !boundedText(input.reason.trim(), 1000)) invalid('操作理由必须为 1..1000 个字符。');
@@ -882,5 +1024,7 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     });
   }
   return Object.freeze({ initialize, previewMigration, applyMigration, read, createProject, createRelease, bindRun, readRunReference, bindBrowserSource, readBrowserSourceBinding,
+    previewBrowserBaselineCandidate, createBrowserBaselineCandidate, readBrowserBaselineCandidate,
+    readBrowserCandidatePreviewEvidence, readBrowserBaselineCandidateEvidence,
     createBaselineCandidate, readBaselineCandidate, approveBaseline, selectBaseline, prepareManagedSpecDispatch, readManagedSpecDispatch });
 }

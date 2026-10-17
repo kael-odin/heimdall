@@ -38,6 +38,7 @@
     "acceptance:browser:bindings:smoke": "node scripts/smoke-acceptance-browser-bindings.mjs",
     "acceptance:browser:bindings:ui:smoke": "node scripts/smoke-acceptance-browser-bindings-console.mjs",
     "acceptance:browser:bindings:v4:smoke": "node scripts/smoke-acceptance-browser-bindings-console.mjs --migrate-catalog",
+    "acceptance:browser:candidates:ui:smoke": "node scripts/smoke-acceptance-browser-candidates-console.mjs",
     "test": "node scripts/test-core.mjs",
     "lint": "node scripts/check-syntax.mjs",
     "check:docs": "node scripts/check-markdown-links.mjs",

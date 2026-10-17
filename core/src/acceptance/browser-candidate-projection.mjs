@@ -571,7 +571,8 @@ export function verifyBrowserBaselineMaterial(input, options) {
       reviewNotice: '人工复核的是明确所选侧的已保存截图、结构与已声明操作；原比较门禁仍保留。观测仅覆盖声明槽位、有界语义摘要和两次截图，不证明全部业务正确、持续稳定、最终完整查询参数、部署内容冻结或目录归属。此投影不会批准、选用或启动运行。',
     };
     requireThat(Buffer.byteLength(JSON.stringify(preview)) <= L.previewBytes, 'SOURCE_PREVIEW_BUDGET');
-    return { projection, preview, plan };
+    return { projection, preview, plan, manifests: copy({ scope: slots, rules, selectedOracles: oracles,
+      selectedEvidence, verifiedEvidence: verified }) };
   } catch (cause) {
     const reason = cause instanceof Rejection ? cause.reason : 'SOURCE_INPUT_INVALID';
     const integrity = /(?:INTEGRITY|DIGEST|BYTES|FILE_|FILES_|EVIDENCE_|VERIFIED_INDEX|PNG_INVALID)/.test(reason);

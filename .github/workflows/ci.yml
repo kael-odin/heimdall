@@ -26,7 +26,8 @@ jobs:
   core:
     name: core (lint + test)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Linux Core tests take about 18 minutes; serial real-browser smokes follow.
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: core
@@ -84,6 +85,8 @@ jobs:
         run: pnpm acceptance:browser:bindings:ui:smoke
       - name: Schema4 combined history (fresh Browser bindings and explicit Spec lifecycle fixtures)
         run: pnpm acceptance:browser:bindings:v4:smoke
+      - name: Browser full candidates (explicit review, durable save and read-only reconciliation)
+        run: pnpm acceptance:browser:candidates:ui:smoke
       - name: Preserve acceptance smoke failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -95,6 +98,7 @@ jobs:
             core/workspace/_runs/acceptance-catalog-console/**/catalog-failure.png
             core/workspace/_runs/acceptance-catalog-console/**/engine-*.log
             core/workspace/_runs/acceptance-catalog-migration/**
+            core/workspace/_runs/acceptance-managed-preparation/**
             core/workspace/_runs/acceptance-console/acceptance-failure.json
             core/workspace/_runs/acceptance-console/acceptance-failure.png
             core/workspace/_runs/acceptance-console/engine-error.log
@@ -124,6 +128,7 @@ jobs:
             core/workspace/_runs/browser-bindings-console-smoke-*/source-file-digests.json
             core/workspace/_runs/browser-bindings-console-smoke-*/catalog-v4-*.json
             core/workspace/_runs/browser-bindings-console-smoke-*/runtime/**
+            core/workspace/_runs/browser-candidates-console-smoke-*/**
           if-no-files-found: ignore
           retention-days: 7
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。

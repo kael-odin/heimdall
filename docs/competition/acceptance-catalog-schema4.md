@@ -2,7 +2,7 @@
 
 Schema4 为 Browser 需求候选增加独立的持久化格式，并把目录升级改为明确的维护操作。已有运行、Spec 候选与批准、选用及取消历史、Browser 来源侧归属保持原值；升级只追加迁移记录，不生成新来源、候选或执行授权。
 
-本阶段交付格式、迁移与旧历史兼容。Browser 候选写入接口、完整批准预览、批准、选用和固定来源执行仍待接入。[来源归属工作台](acceptance-browser-bindings-console.md)继续提供显示预览，其 `completeSourceProjection:false` 不能作为批准合同。
+D1 交付格式、迁移与旧历史兼容；D2 已接入 [Browser 完整复核与持久候选](acceptance-browser-candidates.md)，包含专用完整预览、明确保存、历史读取与只读对账。Browser 批准、选用和固定来源执行仍待接入。[来源归属工作台](acceptance-browser-bindings-console.md)继续提供显示预览，其 `completeSourceProjection:false` 不能作为完整合同。
 
 ## 普通启动与创建
 

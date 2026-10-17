@@ -4,6 +4,7 @@ import Icon from './Icon.vue';
 import AcceptanceBaseline from './AcceptanceBaseline.vue';
 import AcceptanceExecution from './AcceptanceExecution.vue';
 import AcceptanceBrowserBindings from './AcceptanceBrowserBindings.vue';
+import AcceptanceBrowserCandidates from './AcceptanceBrowserCandidates.vue';
 import { API, apiHeaders } from './api.js';
 import { STATUS_LABELS, GATE_LABELS } from './acceptance-workbench.js';
 import { AcceptanceCatalogError, buildCatalogBindingInput, buildCatalogProjectInput, buildCatalogReleaseInput,
@@ -11,6 +12,7 @@ import { AcceptanceCatalogError, buildCatalogBindingInput, buildCatalogProjectIn
   requestAcceptanceCatalog } from './acceptance-catalog.js';
 import { validateBaselineWrite } from './acceptance-baseline.js';
 import { validateBrowserBindingWrite } from './acceptance-browser-bindings.js';
+import { createBrowserCandidateSubmission } from './acceptance-browser-candidates.js';
 
 const props = defineProps({ runs: { type: Array, required: true } });
 const emit = defineEmits(['open-run', 'execution-run']);
@@ -19,6 +21,9 @@ const projects = ref([]), allBindings = ref([]), version = ref(null), selectedPr
 const projectDraft = reactive({ name: '' });
 const drafts = reactive(new Map());
 const writing = ref(''), error = ref(null), notice = ref(''), requiresReconcile = ref(false), errorElement = ref(null);
+const browserCandidateSelection = ref(null), browserCandidateFacts = ref([]);
+const browserCandidateSubmission = createBrowserCandidateSubmission();
+let browserCandidateSelectionEpoch = 0;
 const listGuard = createCatalogReadGuard(), detailGuard = createCatalogReadGuard();
 let listController, detailController, writeController, detailsPromise;
 let stopped = false;
@@ -63,6 +68,7 @@ const runLabel = run => `${run.name || run.runId} · ${STATUS_LABELS[run.status]
 const eventLabel = event => event.kind === 'candidate-created' ? '记录需求候选'
   : event.kind === 'baseline-approved' ? '批准需求合同' : event.kind === 'baseline-selected' ? '记录 Spec 选用'
   : event.kind === 'browser-source-bound' ? '归属 Browser 来源侧'
+  : event.kind === 'browser-candidate-created' ? '记录 Browser 候选'
   : event.kind.includes('binding') || event.kind.includes('bound') ? '认领历史运行'
   : event.kind.includes('release') ? '登记版本' : event.kind.includes('project') ? '创建项目' : event.kind;
 const request = (path, options = {}) => requestAcceptanceCatalog(path, { baseUrl: API, headers: apiHeaders(), ...options });
@@ -71,6 +77,7 @@ function resetConfirmation() { draft.value.binding.confirmed = false; }
 watch(() => [draft.value.binding.runId, draft.value.binding.releaseId], resetConfirmation, { flush: 'sync' });
 watch(selectedProject, id => {
   selectionEpoch++;
+  browserCandidateSelection.value = null;
   detailController?.abort();
   detailGuard.invalidate();
   detailLoading.value = false;
@@ -293,6 +300,68 @@ async function writeBrowserBinding(body, projectId) {
     if (writeController === controller) writeController = undefined;
   }
 }
+function reviewBrowserCandidate(selection) {
+  browserCandidateSelection.value = { ...selection, epoch: ++browserCandidateSelectionEpoch };
+}
+async function writeBrowserCandidate(body, projectId) {
+  if (!ready.value || stopped || selectedProject.value !== projectId || detail.value?.project.id !== projectId) {
+    throw new AcceptanceCatalogError('请先读取当前项目，再记录 Browser 候选。', { code: 'INVALID_INPUT' });
+  }
+  if (body.expectedGenerationId !== version.value.generationId || body.expectedRevision !== version.value.revision) {
+    const problem = new AcceptanceCatalogError('目录版本已变化，请重新读取完整候选合同。', { code: 'STALE_REVISION', status: 409 });
+    requiresReconcile.value = true; await showError(problem); throw problem;
+  }
+  const submittedEpoch = selectionEpoch, submittedProject = project.value?.name || projectId;
+  const stillSelected = () => !stopped && projectId === selectedProject.value && submittedEpoch === selectionEpoch;
+  const controller = new AbortController(); writeController = controller;
+  writing.value = 'browser-candidate'; error.value = null; notice.value = '';
+  try {
+    const pending = browserCandidateSubmission.submit({ projectId, body,
+      post: input => request(`/${encodeURIComponent(projectId)}/browser-baseline-candidates`, { method: 'POST', body: input, signal: controller.signal }),
+      refresh: async () => {
+        browserCandidateFacts.value = browserCandidateSubmission.facts();
+        if (!stillSelected()) return false;
+        return await refreshCatalog() && stillSelected();
+      },
+    });
+    browserCandidateFacts.value = browserCandidateSubmission.facts();
+    const result = await pending;
+    if (!result.refreshed && !stopped) requiresReconcile.value = true;
+    if (!stopped) notice.value = `项目「${submittedProject}」的 Browser 候选已记录。${result.refreshed ? '可从候选记录重新核对完整合同。' : '写入已确认，列表待刷新。'}`;
+    return result;
+  } catch (problem) {
+    if (!stopped) {
+      if (problem.status === 409 || problem.code === 'STALE_REVISION' || problem.writeMayHaveCommitted) requiresReconcile.value = true;
+      if (stillSelected()) await showError(problem);
+      else error.value = catalogFailure(problem);
+    }
+    throw problem;
+  } finally {
+    browserCandidateFacts.value = browserCandidateSubmission.facts();
+    if (!stopped) writing.value = '';
+    if (writeController === controller) writeController = undefined;
+  }
+}
+async function reconcileBrowserCandidate(projectId, sourceBindingId) {
+  if (stopped || writing.value || projectId !== selectedProject.value) {
+    throw new AcceptanceCatalogError('请先完成当前写入，再核对本项目候选集合。', { code: 'INVALID_INPUT' });
+  }
+  const controller = new AbortController(); writeController = controller; writing.value = 'browser-candidate-reconcile';
+  try {
+    const value = await request(`/${encodeURIComponent(projectId)}/browser-baseline-candidates`, { signal: controller.signal });
+    const result = browserCandidateSubmission.reconcile(value, { projectId, sourceBindingId });
+    browserCandidateFacts.value = browserCandidateSubmission.facts();
+    const refreshed = await refreshCatalog({ reconcile: true });
+    if (!refreshed) {
+      requiresReconcile.value = true;
+      if (result.phase === 'absent') throw new AcceptanceCatalogError('集合未找到本次内容，但目录刷新尚未完成。请先刷新目录，再重新读取完整合同。', { code: 'INVALID_RESPONSE' });
+    }
+    return { ...result, refreshed };
+  } finally {
+    if (!stopped) writing.value = '';
+    if (writeController === controller) writeController = undefined;
+  }
+}
 onBeforeUnmount(() => {
   stopped = true;
   listGuard.stop();
@@ -332,7 +401,11 @@ onBeforeUnmount(() => {
       </template>
       <AcceptanceBrowserBindings v-if="selectedProject" :project-id="selectedProject" :detail="detail" :version="version" :runs="runs"
         :ready="ready && !!detail" :active="expanded" :writing="writing" :requires-reconcile="requiresReconcile"
-        :request="request" :write="writeBrowserBinding" @reconcile="reconcileBaseline" @open-run="openRun" />
+        :request="request" :write="writeBrowserBinding" @reconcile="reconcileBaseline" @open-run="openRun" @review-candidate="reviewBrowserCandidate" />
+      <AcceptanceBrowserCandidates v-if="selectedProject" :project-id="selectedProject" :detail="detail" :version="version"
+        :ready="ready && !!detail" :active="expanded" :writing="writing" :requires-reconcile="requiresReconcile"
+        :selection="browserCandidateSelection" :facts="browserCandidateFacts" :request="request" :write="writeBrowserCandidate"
+        :reconcile-write="reconcileBrowserCandidate" @reconcile="reconcileBaseline" />
       <AcceptanceBaseline v-if="selectedProject" :project-id="selectedProject" :detail="detail" :version="version"
         :ready="ready && !!detail" :writing="writing" :requires-reconcile="requiresReconcile" :request="request" :write="writeBaseline" @reconcile="reconcileBaseline" />
       <AcceptanceExecution v-if="selectedProject" :key="selectedProject" :project-id="selectedProject" :detail="detail" :version="version"

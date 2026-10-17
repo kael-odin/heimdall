@@ -116,7 +116,44 @@ async function main() {
     globalThis.fetch = () => { fetchAttempts++; throw new Error('Preparation smoke forbids HTTP execution.'); };
     stage = 'owner-and-selection';
     owner = acquireAcceptanceOwner({ root: acceptanceRoot });
-    const store = createAcceptanceCatalogStore({ root: acceptanceRoot, owner }); await store.initialize({ createSchemaVersion: 3 });
+    const store = createAcceptanceCatalogStore({ root: acceptanceRoot, owner });
+    // The historical B2.1 fixture is Schema2. Ordinary initialization deliberately
+    // preserves old catalogs, so this copied test root needs explicit maintenance.
+    stage = 'fixture-catalog-maintenance';
+    const beforeMaintenance = heads(), historicalCatalog = JSON.parse(catalogBytes.toString('utf8'));
+    const migrationPreview = await store.previewMigration({ targetSchemaVersion: 4 });
+    check('historicalFixtureMigrationPreviewIsReadOnly', () => {
+      assert.equal(historicalCatalog.schemaVersion, 2);
+      assert.equal(migrationPreview.source.schemaVersion, 2);
+      assert.deepEqual(migrationPreview.steps.map(step => [step.fromSchemaVersion, step.toSchemaVersion]), [[2, 3], [3, 4]]);
+      assert.equal(migrationPreview.source.headSha256, sha(catalogBytes));
+      assert.equal(migrationPreview.executionReady, false);
+      assert.deepEqual(heads(), beforeMaintenance);
+    });
+    const migrationConfirmation = { targetSchemaVersion: 4,
+      expectedGenerationId: migrationPreview.source.generationId, expectedRevision: migrationPreview.source.revision,
+      expectedHeadSha256: migrationPreview.source.headSha256, expectedPreviousSha256: migrationPreview.source.previousSha256,
+      expectedPlanDigest: migrationPreview.planDigest };
+    save('fixture-catalog-migration-preview.json', migrationPreview);
+    save('fixture-catalog-migration-confirmation.json', migrationConfirmation);
+    const migrated = await store.applyMigration(migrationConfirmation);
+    check('historicalFixtureExplicitlyMigratedWithOriginalPreimage', () => {
+      assert.equal(migrated.catalog.schemaVersion, 4); assert.equal(migrated.changed, true);
+      assert.deepEqual(migrated.completedSteps.map(step => [step.fromSchemaVersion, step.toSchemaVersion]), [[2, 3], [3, 4]]);
+      assert.equal(migrated.executionReady, false);
+      assert.deepEqual(readFileSync(join(acceptanceRoot, 'catalog.v2.' + sha(catalogBytes) + '.json')), catalogBytes);
+      for (const key of ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections']) {
+        assert.deepEqual(migrated.catalog[key], historicalCatalog[key]);
+      }
+      assert.deepEqual(migrated.catalog.events.slice(0, historicalCatalog.events.length), historicalCatalog.events);
+      assert.deepEqual(readFileSync(join(REPO, FIXTURE, 'catalog-storage.json')), catalogBytes);
+    });
+    save('fixture-catalog-migration-result.json', { changed: migrated.changed, executionReady: migrated.executionReady,
+      completedSteps: migrated.completedSteps, schemaVersion: migrated.catalog.schemaVersion,
+      generationId: migrated.catalog.generationId, revision: migrated.catalog.revision,
+      preservedSourceHeadSha256: sha(catalogBytes) });
+    await store.initialize({ createSchemaVersion: 3 });
+    stage = 'owner-and-selection';
     const catalog = store.read(), candidate = Object.values(catalog.candidates).find(item => item.source.runId === DRAFT);
     assert.ok(candidate); const projectId = candidate.projectId;
     const approval = Object.values(catalog.approvals).find(item => item.candidateId === candidate.id && item.contentDigest === candidate.contentDigest);
