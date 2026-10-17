@@ -5,6 +5,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { MessageChannel } from 'node:worker_threads';
 import { chromium } from 'playwright';
 import { runFixedBrowserAcceptance } from '../src/acceptance/browser-fixed-runner.mjs';
 import { fixedBrowserCheckIdentity } from '../src/acceptance/browser-fixed-contract.mjs';
@@ -17,9 +18,13 @@ const OUTPUT = fileURLToPath(new URL('../workspace/_runs/d3-fixed-runner-tests/'
 async function output() { const dir = join(OUTPUT, randomUUID()); await mkdir(dir, { recursive: true }); return dir; }
 function fakeBrowser(t, fixture, options = {}) {
   const visited = [], handlers = new Map(), pending = new Set(); let closes = 0, contexts = 0;
+  // A real Playwright driver keeps navigation alive until the browser closes.
+  const driver = new MessageChannel(); driver.port1.ref();
+  const closeDriver = () => { driver.port1.close(); driver.port2.close(); };
+  t.after(closeDriver);
   const browser = {
     version: () => options.browserVersion ?? fixture.contract.fixedBaseline.sourceEnvironment.browserVersion,
-    async close() { closes++; for (const reject of pending) reject(new Error('Browser closed.')); pending.clear(); },
+    async close() { closes++; closeDriver(); for (const reject of pending) reject(new Error('Browser closed.')); pending.clear(); },
     async newContext({ viewport }) {
       contexts++; let route, point, routePolicy;
       const selected = () => fixture.contract.observations.find(value => value.slot.route === route

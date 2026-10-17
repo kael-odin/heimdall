@@ -1,0 +1,22 @@
+{
+  "name": "failed-steps",
+  "args": [
+    "run",
+    "view",
+    "39039535285",
+    "--repo",
+    "kael-odin/heimdall",
+    "--log-failed"
+  ],
+  "startedAt": "2026-10-17T14:46:10.655Z",
+  "endedAt": "2026-10-17T14:46:15.497Z",
+  "exitCode": 0,
+  "stdout": {
+    "bytes": 1453467,
+    "sha256": "f613e839dbaa46e2a877c8478aaa6566766fcfe08c5e350c4337f2378d16614d"
+  },
+  "stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
