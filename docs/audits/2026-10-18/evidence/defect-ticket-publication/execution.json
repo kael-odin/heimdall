@@ -1,0 +1,31 @@
+{
+  "command": [
+    "C:\\Python311\\python.exe",
+    "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\verify-public.py",
+    "--public-directory",
+    "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\docs\\audits\\2026-10-18\\evidence\\defect-tickets",
+    "--batch-directory",
+    "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\batch-d616f4c9-f7a7-422b-8236-50ba987818b2",
+    "--output-directory",
+    "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-59df8ca2-ae60-4a6a-b0d3-5098a6603293"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+  "startedAt": "2026-10-17T21:15:44.174726+00:00",
+  "endedAt": "2026-10-17T21:16:09.318509+00:00",
+  "exitCode": 1,
+  "verifierSha256Before": "9b998bc3f622cc505f12c52f1ec0db692ce1fea594af1296999cc20c20c4f33d",
+  "verifierSha256After": "9b998bc3f622cc505f12c52f1ec0db692ce1fea594af1296999cc20c20c4f33d",
+  "archiveIndexSha256Before": "d9abae28dbafad19ea80950989e2d70b5c21727fd99ff0b174e706b0e8342ef4",
+  "archiveIndexSha256After": "d9abae28dbafad19ea80950989e2d70b5c21727fd99ff0b174e706b0e8342ef4",
+  "outputDirectory": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-59df8ca2-ae60-4a6a-b0d3-5098a6603293",
+  "logs": {
+    "stdout.log": {
+      "bytes": 313,
+      "sha256": "3bafbbaf71c7108a707aa0b551b527132668d3634664e5a012f532b998130b9b"
+    },
+    "stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

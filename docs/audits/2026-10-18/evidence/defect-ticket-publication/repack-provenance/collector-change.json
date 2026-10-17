@@ -1,0 +1,56 @@
+{
+  "status": "exact-collector-line-ending-correction",
+  "at": "2026-10-17T21:25:38.667351+00:00",
+  "oldCollectorSha256": "0a6e6d598e208efb9f9680ee569d6c8795a67ae29a763bf175813dc5227e99d5",
+  "newCollectorSha256": "cc02dfb4162fa5af4517336e2796d27b4d2836e830b8d5121279b1182d548f17",
+  "onlyExpectedReplacement": true,
+  "oldAttributeHex": "2a202d746578740d0a",
+  "newAttributeHex": "2a202d746578740a",
+  "failedIndexSha256": "d9abae28dbafad19ea80950989e2d70b5c21727fd99ff0b174e706b0e8342ef4",
+  "currentIndexSha256": "40897db2e88dbf78419d2908e4fcdff421f6f925a674bc94c3e6933aed8822b4",
+  "copies": [
+    {
+      "file": "failed-publication-relocation.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\failed-publication-relocation-20261017T2119Z.json",
+      "bytes": 16258,
+      "sha256": "dc9179e77afb4638fc01f58de37b00278dbcf6be4c7bb4166aea7f807c5c4d9e"
+    },
+    {
+      "file": "original-attributes.bin",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\failed-publication-crlf-20261017T2119Z\\.gitattributes",
+      "bytes": 9,
+      "sha256": "8b9c3028d6467ff3be7c793141927841d70f47f52d0590677438f488ca154992"
+    },
+    {
+      "file": "original-archive-index.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\failed-publication-crlf-20261017T2119Z\\archive-index.json",
+      "bytes": 2376551,
+      "sha256": "d9abae28dbafad19ea80950989e2d70b5c21727fd99ff0b174e706b0e8342ef4"
+    },
+    {
+      "file": "original-collect.py",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\failed-publication-crlf-20261017T2119Z\\collect.py",
+      "bytes": 11287,
+      "sha256": "0a6e6d598e208efb9f9680ee569d6c8795a67ae29a763bf175813dc5227e99d5"
+    },
+    {
+      "file": "fixed-collect.py",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\collect.py",
+      "bytes": 11271,
+      "sha256": "cc02dfb4162fa5af4517336e2796d27b4d2836e830b8d5121279b1182d548f17"
+    },
+    {
+      "file": "retain-failed-publication.py",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\retain-failed-publication.py",
+      "bytes": 2459,
+      "sha256": "45523b1cdbedf7efe85a6c884dacc45508e63ba3539dc666229eff2b31a57f5e"
+    },
+    {
+      "file": "record-repack-provenance.py",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\record-repack-provenance.py",
+      "bytes": 2819,
+      "sha256": "0711ef44b91db2ed5e01b8285d4b200ffe9296e4a56941bb2c464af0759f4d47"
+    }
+  ],
+  "scope": "The entire original 88-file failed bundle remains at the retained local path. These public copies document the failure, exact correction and full relocation inventory; they do not duplicate all previous compressed archives. Product inputs and the completed 17-gate batch are unchanged."
+}

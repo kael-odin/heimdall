@@ -20,6 +20,8 @@ const DATA = join(OUT, 'runtime'), ROOT = join(DATA, 'acceptance'); fs.mkdirSync
 const token = 'browser-candidates-console-local-fixture';
 const headers = { 'content-type': 'application/json', 'x-heimdall-token': token };
 const checks = {}, targetRequests = [], browserRequests = [], httpErrors = [], consoleMessages = [], pageErrors = [], layouts = [], captures = [], samples = [], held = [];
+const runListReads = new Set();
+const isRunListRead = request => request.method() === 'GET' && new URL(request.url()).pathname === '/api/acceptance/runs' && !new URL(request.url()).search;
 const startedAt = new Date().toISOString();
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const save = (name, value) => fs.writeFileSync(join(OUT, name), Buffer.isBuffer(value) || typeof value === 'string' ? value : JSON.stringify(value, null, 2) + '\n', { flag: 'wx' });
@@ -86,7 +88,10 @@ async function startBrowser() {
   page.on('pageerror', cause => pageErrors.push(cause.message));
   page.on('console', message => { if (['warning', 'error'].includes(message.type())) consoleMessages.push({ type: message.type(), text: message.text(), location: message.location() }); });
   page.on('request', request => { const url = new URL(request.url()); if (!url.pathname.startsWith('/api/acceptance/')) return;
+    if (isRunListRead(request)) runListReads.add(request);
     browserRequests.push({ method: request.method(), path: url.pathname, query: url.search, ...(request.method() === 'POST' ? { body: request.postDataJSON() } : {}) }); });
+  page.on('requestfinished', request => runListReads.delete(request));
+  page.on('requestfailed', request => runListReads.delete(request));
   page.on('response', response => { if (response.status() >= 400) httpErrors.push({ method: response.request().method(), path: new URL(response.url()).pathname, status: response.status() }); });
 }
 const catalogPanel = () => page.getByTestId('acceptance-catalog');
@@ -118,6 +123,23 @@ async function holdResponse(path) {
   const handler = async route => { const response = await route.fetch(); arrived = true; await gate; await route.fulfill({ response }).catch(() => {}); };
   await page.route('**' + path, handler, { times: 1 });
   const value = { release, arrived: () => waitFor(() => arrived, 'held response'), dispose: () => page.unroute('**' + path, handler) }; held.push(value); return value;
+}
+async function pauseRunListReads() {
+  const queued = new Set(); let release;
+  const gate = new Promise(ready => { release = ready; });
+  const path = url => url.pathname === '/api/acceptance/runs' && !url.search;
+  const handler = async route => {
+    if (!isRunListRead(route.request())) return route.continue();
+    queued.add(route.request()); await gate; await route.continue();
+  };
+  await page.route(path, handler);
+  // Drain requests already forwarded before this route was installed. During
+  // deliberate in-place corruption only candidate diagnostics should read it.
+  await waitFor(() => [...runListReads].every(request => queued.has(request)), 'background run-list reads drained');
+  return async () => {
+    release(); await page.unrouteAll({ behavior: 'wait' });
+    await Promise.all([...queued].map(request => request.response()));
+  };
 }
 async function capture(name, width, height, theme) {
   await page.setViewportSize({ width, height }); await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
@@ -222,13 +244,17 @@ try {
   await capture('browser-candidate-desktop-light', 1440, 1000, 'light'); await capture('browser-candidate-mobile-dark', 390, 844, 'dark');
   await closeReview(); await assertBlobsReleased('project and close');
   const reportFile = join(ROOT, samples[0].runId, 'report.json'), reportBytes = fs.readFileSync(reportFile), beforeBad = heads();
+  const resumeRunListReads = await pauseRunListReads();
   try {
     fs.writeFileSync(reportFile, Buffer.concat([reportBytes, Buffer.from(' ')]));
     await component().locator('[data-testid="browser-candidate-open"][data-candidate-id="' + savedB.id + '"]').click();
     await component().getByTestId('browser-candidate-diagnostics').waitFor(); assert.equal(await component().getByTestId('browser-candidate-plan').count(), 0);
     assert.equal((await api('projects/' + b.project.id + '/browser-baseline-candidates/' + savedB.id)).review, null);
     assert.equal((await api('projects/' + b.project.id + '/browser-baseline-candidates')).browserCandidates[0].id, savedB.id); assert.deepEqual(heads(), beforeBad);
-  } finally { fs.writeFileSync(reportFile, reportBytes); }
+  } finally {
+    fs.writeFileSync(reportFile, reportBytes); assert.deepEqual(fs.readFileSync(reportFile), reportBytes);
+    await resumeRunListReads();
+  }
   await component().getByTestId('browser-candidate-reload').click(); await component().getByTestId('browser-candidate-plan').waitFor(); assert.equal(await full().getAttribute('data-candidate-id'), savedB.id);
   checks.badSourcePreservesHistoryAndRestoredBytesRevalidateSameCandidate = true;
   const storage = await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage }, hrefs: [...document.querySelectorAll('a[href]')].map(value => value.getAttribute('href')) }));

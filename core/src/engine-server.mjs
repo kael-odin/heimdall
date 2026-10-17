@@ -63,6 +63,8 @@ import { createManagedSpecExecutionService } from './acceptance/execution-servic
 import { handleAcceptanceExecutionRequest, acceptanceExecutionError } from './acceptance/execution-api.mjs';
 import { createBrowserExecutionService } from './acceptance/browser-execution-service.mjs';
 import { handleBrowserExecutionRequest } from './acceptance/browser-execution-api.mjs';
+import { createDefectTicketService } from './acceptance/defect-ticket-service.mjs';
+import { handleDefectTicketRequest } from './acceptance/defect-ticket-api.mjs';
 import { createManagedSpecDispatchReadContext } from './acceptance/managed-dispatch-reader.mjs';
 import { managedRunProvenanceOf } from './acceptance/managed-run-schema.mjs';
 
@@ -830,6 +832,7 @@ const acceptanceExecutions = createManagedSpecExecutionService({ owner: acceptan
 const browserExecutions = createBrowserExecutionService({ owner: acceptanceOwner,
   catalog: acceptanceCatalog, runtime: acceptanceRuntime,
   assertReady: () => acceptanceRecovery.ready && !shuttingDown });
+const defectTickets = createDefectTicketService({ owner: acceptanceOwner });
 try { browserExecutions.recover(); }
 catch { console.warn('[acceptance] Browser operation recovery blocked; original records retained.'); }
 
@@ -1276,6 +1279,7 @@ const handleRequest = async (req, res) => {
   }
   if (await handleAcceptanceExecutionRequest(req, res, u, { service: acceptanceExecutions, json })) return;
   if (await handleBrowserExecutionRequest(req, res, u, { service: browserExecutions, json })) return;
+  if (await handleDefectTicketRequest(req, res, u, { service: defectTickets, json })) return;
   if (await handleAcceptanceCatalogRequest(req, res, u, { catalog: acceptanceCatalog, json })) return;
   if (u.pathname === '/api/acceptance/comparisons') {
     if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });

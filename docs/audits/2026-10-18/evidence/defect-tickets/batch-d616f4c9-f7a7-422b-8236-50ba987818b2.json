@@ -1,0 +1,145 @@
+{
+  "startedAt": "2026-10-17T20:23:10.241Z",
+  "gates": [
+    "build",
+    "browser",
+    "core",
+    "original",
+    "managed",
+    "d3",
+    "d4",
+    "candidates",
+    "bindings",
+    "recovery",
+    "cdp",
+    "forge",
+    "benchmark",
+    "specbenchmark",
+    "comparisonbenchmark",
+    "lint",
+    "docs"
+  ],
+  "results": [
+    {
+      "gate": "build",
+      "startedAt": "2026-10-17T20:23:10.242Z",
+      "endedAt": "2026-10-17T20:23:13.175Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "browser",
+      "startedAt": "2026-10-17T20:23:13.176Z",
+      "endedAt": "2026-10-17T20:33:36.988Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "core",
+      "startedAt": "2026-10-17T20:33:36.989Z",
+      "endedAt": "2026-10-17T20:57:42.462Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "original",
+      "startedAt": "2026-10-17T20:57:42.463Z",
+      "endedAt": "2026-10-17T20:58:10.747Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "managed",
+      "startedAt": "2026-10-17T20:58:10.747Z",
+      "endedAt": "2026-10-17T20:59:42.310Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "d3",
+      "startedAt": "2026-10-17T20:59:42.311Z",
+      "endedAt": "2026-10-17T21:04:13.561Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "d4",
+      "startedAt": "2026-10-17T21:04:13.561Z",
+      "endedAt": "2026-10-17T21:05:18.094Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "candidates",
+      "startedAt": "2026-10-17T21:05:18.094Z",
+      "endedAt": "2026-10-17T21:06:11.943Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "bindings",
+      "startedAt": "2026-10-17T21:06:11.944Z",
+      "endedAt": "2026-10-17T21:07:09.162Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "recovery",
+      "startedAt": "2026-10-17T21:07:09.162Z",
+      "endedAt": "2026-10-17T21:07:18.792Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "cdp",
+      "startedAt": "2026-10-17T21:07:18.792Z",
+      "endedAt": "2026-10-17T21:07:49.684Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "forge",
+      "startedAt": "2026-10-17T21:07:49.684Z",
+      "endedAt": "2026-10-17T21:08:25.809Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "benchmark",
+      "startedAt": "2026-10-17T21:08:25.810Z",
+      "endedAt": "2026-10-17T21:08:51.061Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "specbenchmark",
+      "startedAt": "2026-10-17T21:08:51.061Z",
+      "endedAt": "2026-10-17T21:08:53.088Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "comparisonbenchmark",
+      "startedAt": "2026-10-17T21:08:53.089Z",
+      "endedAt": "2026-10-17T21:09:29.245Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "lint",
+      "startedAt": "2026-10-17T21:09:29.246Z",
+      "endedAt": "2026-10-17T21:09:51.661Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "gate": "docs",
+      "startedAt": "2026-10-17T21:09:51.662Z",
+      "endedAt": "2026-10-17T21:09:52.814Z",
+      "exitCode": 0,
+      "signal": null
+    }
+  ],
+  "passed": true,
+  "endedAt": "2026-10-17T21:09:52.815Z"
+}

@@ -1,0 +1,28 @@
+{
+  "kind": "failed-publication-attribute-observation",
+  "observedAt": "2026-10-17T21:20:39.200123+00:00",
+  "publicDirectory": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\docs\\audits\\2026-10-18\\evidence\\defect-tickets",
+  "actualAttributes": {
+    "bytes": 9,
+    "hex": "2a202d746578740d0a",
+    "sha256": "8b9c3028d6467ff3be7c793141927841d70f47f52d0590677438f488ca154992",
+    "escapedAscii": "b'* -text\\r\\n'"
+  },
+  "requiredAttributes": {
+    "bytes": 8,
+    "hex": "2a202d746578740a"
+  },
+  "archiveIndex": {
+    "bytes": 2376551,
+    "sha256": "d9abae28dbafad19ea80950989e2d70b5c21727fd99ff0b174e706b0e8342ef4"
+  },
+  "error": "Public binary preservation attributes differ",
+  "mainVerifierExitCode": 1,
+  "mainVerifierCompleted": false,
+  "stoppedBefore": [
+    "Core native statistics",
+    "eight baseline Git blob comparisons",
+    "D5 strict Browser checks"
+  ],
+  "boundary": "Extra read-only observations are not completed stages of the failed main verifier. No source, public package, verifier, collector or original artifact was changed."
+}

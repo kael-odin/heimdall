@@ -1,0 +1,295 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "verifiedAt": "2026-10-17T18:58:31.486Z",
+  "method": "read-only Buffer byte comparison, raw git show bytes and SHA-256; no Browser or tests started",
+  "baselineCommit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+  "headCommit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+  "d5Root": "C:/Users/44548/.codex/worktrees/defect-ticket-closure-d5/heimdall",
+  "d4Root": "C:/Users/44548/.codex/worktrees/browser-start-resolution-d4/heimdall",
+  "definition": {
+    "path": "C:\\Users\\44548\\.codex\\worktrees\\browser-start-resolution-d4\\heimdall\\core\\workspace\\_runs\\d4-frontend-20261017\\final-before-sha256.json",
+    "lines": "3-32",
+    "documentationPath": "C:\\Users\\44548\\.codex\\worktrees\\browser-start-resolution-d4\\heimdall\\core\\workspace\\_runs\\d4-frontend-20261017\\frontend-review.md",
+    "documentationLine": 28,
+    "note": "The first eight entries are the eight verifier files. This historical 14-file frontend snapshot is definition evidence, not the final D4 byte baseline. The operation-store changed during D4; final round7 source-snapshot and commit 5006e16 are the byte baselines. The ten-file legacy fingerprint manifest is a separate contract."
+  },
+  "d4FinalSnapshot": {
+    "path": "C:\\Users\\44548\\.codex\\worktrees\\browser-start-resolution-d4\\heimdall\\core\\workspace\\_runs\\d4-validation-round7-20261018\\source-snapshot.json",
+    "bytes": 107207,
+    "sha256": "f700d54a3bb10a55748818d68b6d33fe43724f8485ec72063e0a35d253c078d8",
+    "fileCount": 600
+  },
+  "fileCount": 8,
+  "allEqual": true,
+  "files": [
+    {
+      "file": "core/src/acceptance/browser-operation-schema.mjs",
+      "d5": {
+        "bytes": 20848,
+        "sha256": "bb088bea4986339d8bee957346a1e088ed1a6e3d159a56db98bc4fc5fccaf062"
+      },
+      "headGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 20848,
+        "sha256": "bb088bea4986339d8bee957346a1e088ed1a6e3d159a56db98bc4fc5fccaf062"
+      },
+      "baselineGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 20848,
+        "sha256": "bb088bea4986339d8bee957346a1e088ed1a6e3d159a56db98bc4fc5fccaf062"
+      },
+      "d4Current": {
+        "bytes": 20848,
+        "sha256": "bb088bea4986339d8bee957346a1e088ed1a6e3d159a56db98bc4fc5fccaf062"
+      },
+      "d4FinalSnapshot": {
+        "bytes": 20848,
+        "sha256": "bb088bea4986339d8bee957346a1e088ed1a6e3d159a56db98bc4fc5fccaf062"
+      },
+      "historicalD4FrontendHash": "bb088bea4986339d8bee957346a1e088ed1a6e3d159a56db98bc4fc5fccaf062",
+      "checks": {
+        "d5EqualsHead": true,
+        "d5EqualsBaselineCommit": true,
+        "d5EqualsD4Current": true,
+        "d5EqualsD4FinalSnapshot": true
+      },
+      "allEqual": true
+    },
+    {
+      "file": "core/src/acceptance/browser-operation-store.mjs",
+      "d5": {
+        "bytes": 46174,
+        "sha256": "f1b3a61fc0e88838f987e46375f8311e7819e348c7484b94ef8a57e42166684a"
+      },
+      "headGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 46174,
+        "sha256": "f1b3a61fc0e88838f987e46375f8311e7819e348c7484b94ef8a57e42166684a"
+      },
+      "baselineGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 46174,
+        "sha256": "f1b3a61fc0e88838f987e46375f8311e7819e348c7484b94ef8a57e42166684a"
+      },
+      "d4Current": {
+        "bytes": 46174,
+        "sha256": "f1b3a61fc0e88838f987e46375f8311e7819e348c7484b94ef8a57e42166684a"
+      },
+      "d4FinalSnapshot": {
+        "bytes": 46174,
+        "sha256": "f1b3a61fc0e88838f987e46375f8311e7819e348c7484b94ef8a57e42166684a"
+      },
+      "historicalD4FrontendHash": "dd00e2ecf730637e6243c254907c0e75d1f6c8e66265005cd6221ec089496f5a",
+      "checks": {
+        "d5EqualsHead": true,
+        "d5EqualsBaselineCommit": true,
+        "d5EqualsD4Current": true,
+        "d5EqualsD4FinalSnapshot": true
+      },
+      "allEqual": true
+    },
+    {
+      "file": "core/src/acceptance/browser-fixed-contract.mjs",
+      "d5": {
+        "bytes": 13573,
+        "sha256": "d0ed6efc68445c71a1d36d0565829f3997f6161e4d73dcab9f6fddcdd0d3a09c"
+      },
+      "headGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 13573,
+        "sha256": "d0ed6efc68445c71a1d36d0565829f3997f6161e4d73dcab9f6fddcdd0d3a09c"
+      },
+      "baselineGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 13573,
+        "sha256": "d0ed6efc68445c71a1d36d0565829f3997f6161e4d73dcab9f6fddcdd0d3a09c"
+      },
+      "d4Current": {
+        "bytes": 13573,
+        "sha256": "d0ed6efc68445c71a1d36d0565829f3997f6161e4d73dcab9f6fddcdd0d3a09c"
+      },
+      "d4FinalSnapshot": {
+        "bytes": 13573,
+        "sha256": "d0ed6efc68445c71a1d36d0565829f3997f6161e4d73dcab9f6fddcdd0d3a09c"
+      },
+      "historicalD4FrontendHash": "d0ed6efc68445c71a1d36d0565829f3997f6161e4d73dcab9f6fddcdd0d3a09c",
+      "checks": {
+        "d5EqualsHead": true,
+        "d5EqualsBaselineCommit": true,
+        "d5EqualsD4Current": true,
+        "d5EqualsD4FinalSnapshot": true
+      },
+      "allEqual": true
+    },
+    {
+      "file": "core/src/acceptance/browser-fixed-runner.mjs",
+      "d5": {
+        "bytes": 272,
+        "sha256": "fda76d30533719efc67e746ef36e8c0f1b8232db28cc2f410638c8f5d55ce846"
+      },
+      "headGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 272,
+        "sha256": "fda76d30533719efc67e746ef36e8c0f1b8232db28cc2f410638c8f5d55ce846"
+      },
+      "baselineGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 272,
+        "sha256": "fda76d30533719efc67e746ef36e8c0f1b8232db28cc2f410638c8f5d55ce846"
+      },
+      "d4Current": {
+        "bytes": 272,
+        "sha256": "fda76d30533719efc67e746ef36e8c0f1b8232db28cc2f410638c8f5d55ce846"
+      },
+      "d4FinalSnapshot": {
+        "bytes": 272,
+        "sha256": "fda76d30533719efc67e746ef36e8c0f1b8232db28cc2f410638c8f5d55ce846"
+      },
+      "historicalD4FrontendHash": "fda76d30533719efc67e746ef36e8c0f1b8232db28cc2f410638c8f5d55ce846",
+      "checks": {
+        "d5EqualsHead": true,
+        "d5EqualsBaselineCommit": true,
+        "d5EqualsD4Current": true,
+        "d5EqualsD4FinalSnapshot": true
+      },
+      "allEqual": true
+    },
+    {
+      "file": "core/src/acceptance/runner.mjs",
+      "d5": {
+        "bytes": 40165,
+        "sha256": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57"
+      },
+      "headGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 40165,
+        "sha256": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57"
+      },
+      "baselineGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 40165,
+        "sha256": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57"
+      },
+      "d4Current": {
+        "bytes": 40165,
+        "sha256": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57"
+      },
+      "d4FinalSnapshot": {
+        "bytes": 40165,
+        "sha256": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57"
+      },
+      "historicalD4FrontendHash": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57",
+      "checks": {
+        "d5EqualsHead": true,
+        "d5EqualsBaselineCommit": true,
+        "d5EqualsD4Current": true,
+        "d5EqualsD4FinalSnapshot": true
+      },
+      "allEqual": true
+    },
+    {
+      "file": "core/src/acceptance/identity.mjs",
+      "d5": {
+        "bytes": 6601,
+        "sha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5"
+      },
+      "headGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 6601,
+        "sha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5"
+      },
+      "baselineGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 6601,
+        "sha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5"
+      },
+      "d4Current": {
+        "bytes": 6601,
+        "sha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5"
+      },
+      "d4FinalSnapshot": {
+        "bytes": 6601,
+        "sha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5"
+      },
+      "historicalD4FrontendHash": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5",
+      "checks": {
+        "d5EqualsHead": true,
+        "d5EqualsBaselineCommit": true,
+        "d5EqualsD4Current": true,
+        "d5EqualsD4FinalSnapshot": true
+      },
+      "allEqual": true
+    },
+    {
+      "file": "core/src/acceptance/report.mjs",
+      "d5": {
+        "bytes": 6191,
+        "sha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15"
+      },
+      "headGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 6191,
+        "sha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15"
+      },
+      "baselineGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 6191,
+        "sha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15"
+      },
+      "d4Current": {
+        "bytes": 6191,
+        "sha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15"
+      },
+      "d4FinalSnapshot": {
+        "bytes": 6191,
+        "sha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15"
+      },
+      "historicalD4FrontendHash": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15",
+      "checks": {
+        "d5EqualsHead": true,
+        "d5EqualsBaselineCommit": true,
+        "d5EqualsD4Current": true,
+        "d5EqualsD4FinalSnapshot": true
+      },
+      "allEqual": true
+    },
+    {
+      "file": "core/src/verify/compare.mjs",
+      "d5": {
+        "bytes": 3617,
+        "sha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68"
+      },
+      "headGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 3617,
+        "sha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68"
+      },
+      "baselineGitBlob": {
+        "commit": "5006e16bf73e47f36877da24df4ac4a5c8207965",
+        "bytes": 3617,
+        "sha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68"
+      },
+      "d4Current": {
+        "bytes": 3617,
+        "sha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68"
+      },
+      "d4FinalSnapshot": {
+        "bytes": 3617,
+        "sha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68"
+      },
+      "historicalD4FrontendHash": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68",
+      "checks": {
+        "d5EqualsHead": true,
+        "d5EqualsBaselineCommit": true,
+        "d5EqualsD4Current": true,
+        "d5EqualsD4FinalSnapshot": true
+      },
+      "allEqual": true
+    }
+  ],
+  "limitations": [
+    "This proves only the eight named current files equal the compared original bytes. It does not certify any test result or unlisted file.",
+    "Output is an independent ignored review artifact and was created with exclusive write."
+  ]
+}

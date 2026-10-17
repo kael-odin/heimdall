@@ -1,0 +1,453 @@
+{
+  "status": "retained-failed-publication",
+  "at": "2026-10-17T21:21:25.075789+00:00",
+  "previousPath": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\docs\\audits\\2026-10-18\\evidence\\defect-tickets",
+  "retainedPath": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\failed-publication-crlf-20261017T2119Z",
+  "filesUnchanged": true,
+  "archiveIndexSha256": "d9abae28dbafad19ea80950989e2d70b5c21727fd99ff0b174e706b0e8342ef4",
+  "attributeHex": "2a202d746578740d0a",
+  "files": [
+    {
+      "file": ".gitattributes",
+      "bytes": 9,
+      "sha256": "8b9c3028d6467ff3be7c793141927841d70f47f52d0590677438f488ca154992"
+    },
+    {
+      "file": "README.md",
+      "bytes": 12771,
+      "sha256": "4cca59fc66516900c95bf7605a742fc39c41075d5774e6b0727b6ae8f5c75a0c"
+    },
+    {
+      "file": "all.mjs",
+      "bytes": 1522,
+      "sha256": "21c4ef61b0db61eb79caa5cb8abff7011d1f7121d9cb598d59c6fe675594b155"
+    },
+    {
+      "file": "archive-index.json",
+      "bytes": 2376551,
+      "sha256": "d9abae28dbafad19ea80950989e2d70b5c21727fd99ff0b174e706b0e8342ef4"
+    },
+    {
+      "file": "batch-7d8cb478-4a11-4ecc-b82a-822306276bdf.json",
+      "bytes": 1589,
+      "sha256": "aca9588da2b1beca442a58d185058499ac99eec30cc37106da9ebf8ea322eea7"
+    },
+    {
+      "file": "batch-d616f4c9-f7a7-422b-8236-50ba987818b2.json",
+      "bytes": 3318,
+      "sha256": "90985e5e9284e06cde77f854ca9bd8503932d4068767aadcdd12317d74e29472"
+    },
+    {
+      "file": "batch-fb039ae7-5270-48bb-a1bf-adfa75a05e31.json",
+      "bytes": 1589,
+      "sha256": "fab28d1ad62e01045a3798bf5129ab9aafe18b8b39e54088c203485ff2e59da0"
+    },
+    {
+      "file": "benchmark-6a8c36e9-b4c1-49b9-96ca-bed0b2e563bb.tar.gz",
+      "bytes": 66345,
+      "sha256": "f2ad5e61c619e33c46413e11f47283a815c5bb0667b938ce50230e39a4779bfd"
+    },
+    {
+      "file": "bindings-790e3b89-5c50-4e68-b076-49d2c54a52f6.tar.gz",
+      "bytes": 1355905,
+      "sha256": "8de8484798b8d7eb122d263901d353eb2ccebe68b5e02b0b443bdb7ea9d862fa"
+    },
+    {
+      "file": "browser-443e598a-9d5a-44d8-a579-42fb0010c5ee.tar.gz",
+      "bytes": 1769871,
+      "sha256": "b89acbe8cfc710aa0d41e55b5431f2e8351027525dbfc62ecd06c55e7abbb757"
+    },
+    {
+      "file": "browser-fa0f5e52-c414-45d8-a671-97a1f1a11c03.tar.gz",
+      "bytes": 1888528,
+      "sha256": "2abe95bae25cfc98b9ec66e9207a663c5c64055c421adc93a29a4a9b6a46d6c8"
+    },
+    {
+      "file": "build-03839c6e-2a87-4e94-b5fb-5c298cc6ce1f.tar.gz",
+      "bytes": 65621,
+      "sha256": "d73988667bd3f449d1aff370499259813b86591e5ea19d69d6f87b39164dc154"
+    },
+    {
+      "file": "build-2841cf89-0a38-43c7-94dc-3a1a78616b96.tar.gz",
+      "bytes": 65613,
+      "sha256": "29e0be353378b9e3452ac03e0bd5e67996db45669dafcf6cac455fb2c8d84fcf"
+    },
+    {
+      "file": "build-d8adf122-2059-4b2b-9e00-fb94a2eb9f2c.tar.gz",
+      "bytes": 65621,
+      "sha256": "c2972958f5d068d4f39c4ab517c6be675ed036a20752c0b0da981a80ed32fb9b"
+    },
+    {
+      "file": "candidates-6c4fb653-4366-46ba-adca-2d8c4c3b5085.tar.gz",
+      "bytes": 832126,
+      "sha256": "0875368c25b4e6575554c903d5c3d966702a7283f09bd70f22314988ee9158b3"
+    },
+    {
+      "file": "candidates-8f79b0ec-086b-454b-9fff-2bc85b17eb62.tar.gz",
+      "bytes": 764292,
+      "sha256": "25f3ed47b94520c754ba10c4aa455bfd1cdc4d253e34750a43f6bb2bc16d0ce0"
+    },
+    {
+      "file": "candidates-ade3b66e-fa99-44f3-ae1f-2e476e74cb1e.tar.gz",
+      "bytes": 756888,
+      "sha256": "85fd2f1fe913d02bb44a1bb07a7d82adeb31d56a92eb960e381f77ceef789f6d"
+    },
+    {
+      "file": "candidates-e24b5447-b9f4-4313-94c0-50e7bd92de6c.tar.gz",
+      "bytes": 763945,
+      "sha256": "635a28332cd34ba049c8eb2db08fd5125f9ba54fb040221491130de1c353b053"
+    },
+    {
+      "file": "candidates-e737b267-1b49-49f4-bb0b-f3c3560e3cbc.tar.gz",
+      "bytes": 830458,
+      "sha256": "011f47e45e8d6248b8fb1e405c531bbf7577b391a95e7467069b4da0edc73598"
+    },
+    {
+      "file": "candidates-fe8d1943-a03a-4da6-8e9b-4da22ad33503.tar.gz",
+      "bytes": 764472,
+      "sha256": "2168d23031af9b76cdd1e2ac67eb5fac4e292fa2781cac074a1a1eb5d119a029"
+    },
+    {
+      "file": "cdp-e3fd944b-bc78-4381-be11-320137aca17c.tar.gz",
+      "bytes": 157924,
+      "sha256": "84629001d08ac04823cb579de9aa7ebd0508065c390ebc87376e8e7d8b05c813"
+    },
+    {
+      "file": "collect.py",
+      "bytes": 11287,
+      "sha256": "0a6e6d598e208efb9f9680ee569d6c8795a67ae29a763bf175813dc5227e99d5"
+    },
+    {
+      "file": "comparisonbenchmark-c9f2a2ba-1316-46fe-9894-6fdb11ddabfa.tar.gz",
+      "bytes": 66549,
+      "sha256": "0d6fd9f0eb89252124f6e21c057e292dc82928df662e5eb8d94272c1341f01b0"
+    },
+    {
+      "file": "core-5401b73b-129e-4c1f-b6f8-73252ba278c4.tar.gz",
+      "bytes": 148151,
+      "sha256": "f1486185bf56a349239c64f92770fabd98ca8ae1c7bcfed8cce8265552a031a8"
+    },
+    {
+      "file": "core-5a20bdee-ed8b-42bf-b5de-4813d5251d51.tar.gz",
+      "bytes": 148159,
+      "sha256": "94b0578c04898d2a8836746aadd67dfde2cfade64c5dc710d5c4c76901f8a2df"
+    },
+    {
+      "file": "core-c01869d1-47da-481a-952b-a44fbed3294c.tar.gz",
+      "bytes": 148184,
+      "sha256": "d84a0238b192b4e99a7aca7f049f6a45ee57d15f77ad37557119ad5c91dc57ad"
+    },
+    {
+      "file": "d3-28ad1909-cb62-49cb-a795-976cc9ad0f9a.tar.gz",
+      "bytes": 1580102,
+      "sha256": "fc9fc18be236e6d771c1061be1bf07cb5dd15a58598ba8185af0b644176c1f2b"
+    },
+    {
+      "file": "d3-63e6c35a-2f19-4749-a375-c4dff0214d8e.tar.gz",
+      "bytes": 1576094,
+      "sha256": "57354a27415e5d74fa3c5fead10bbc8b8783f7872ccfa2237a50f05b3ac00a36"
+    },
+    {
+      "file": "d3-fc342fdc-8812-4baa-a2db-86ff672b0652.tar.gz",
+      "bytes": 1576286,
+      "sha256": "dc3d78c472cfc257614b8056d7ddf58a7868b17c0458e03fe72e52c865a88498"
+    },
+    {
+      "file": "d4-3f2d4427-18cf-4e46-8ce5-1781760b84ff.tar.gz",
+      "bytes": 858443,
+      "sha256": "9642f56a58f69781adef5d40aa20d81cca40821e009616922d861c54c3b2c529"
+    },
+    {
+      "file": "d4-b938b0f3-f7ab-44b2-afb2-6e0994487651.tar.gz",
+      "bytes": 856811,
+      "sha256": "990dd54478ab365ec0b7737bcea5439b25e1bf11a9bdc81048b4daf2bb8797c7"
+    },
+    {
+      "file": "d4-d5f46242-8ca5-409e-8f16-b8b2eded7627.tar.gz",
+      "bytes": 858395,
+      "sha256": "e6ecf1fb0a73981cafa5f92f7d333d3e8d3f0b8bcb3a02aba2034bef6b3ad31c"
+    },
+    {
+      "file": "d5-api-20261018.tar.gz",
+      "bytes": 128628,
+      "sha256": "ef28f2d7e596977913018d634e95bbdc792159b7ade3ddf380bc6884f8726553"
+    },
+    {
+      "file": "d5-backend-freeze-20261018.tar.gz",
+      "bytes": 1568699,
+      "sha256": "108d94a7b6497df73d551e2da7e6fd0b11006330747cd8f99ec52b7373763119"
+    },
+    {
+      "file": "d5-browser-browser-errors.json",
+      "bytes": 1855,
+      "sha256": "66a841c2c0462e30aea0a56d1031a8250a43834b40d9e44501dff70138e39726"
+    },
+    {
+      "file": "d5-browser-checks.json",
+      "bytes": 650,
+      "sha256": "e6177201840b3a40e60af0759d3a95f37d1ec8bc4b00e78aa683257c7de65007"
+    },
+    {
+      "file": "d5-browser-layouts.json",
+      "bytes": 8271,
+      "sha256": "f5e951ae9bcc401643ea79a08e75a606d76e551483187f120ba9e38f8972b78e"
+    },
+    {
+      "file": "d5-browser-summary.json",
+      "bytes": 1432,
+      "sha256": "0322f8c03e1d2bccadc00407ef61deb751ac5dc2d6fdc361856ff807794d0b9d"
+    },
+    {
+      "file": "d5-browser-ticket-export.json",
+      "bytes": 11110,
+      "sha256": "3cf6f25a19f821c7f8954e14260514104c7c50d2af1a431d3e448cf3f591387e"
+    },
+    {
+      "file": "d5-browser-ticket-export.md",
+      "bytes": 4370,
+      "sha256": "86bb592ca2d4f7c8bb28edac016b971689979f170fbc99234ae0fab9b1e93d85"
+    },
+    {
+      "file": "d5-chain-boundary-20261018.tar.gz",
+      "bytes": 20378,
+      "sha256": "8430f7487ad943988eb41e3a2b4fd28ce979a385fdf8486454809ac152ebfd59"
+    },
+    {
+      "file": "d5-console-helper-20261018.tar.gz",
+      "bytes": 66399,
+      "sha256": "18774e0d920d3bffbf0509613c825cb550ebb757ac8e9dc03ac4e66578cbde73"
+    },
+    {
+      "file": "d5-console-state-build-20261018.tar.gz",
+      "bytes": 35643,
+      "sha256": "1eeff367374270de196ac4e67a104677cf2a2031d6772ed55c0ff30074b234a0"
+    },
+    {
+      "file": "d5-engine-20261018.tar.gz",
+      "bytes": 8067047,
+      "sha256": "66b91976b4a8fa5e11a5ca69d5d24e24182c58a5bea89e2b67e1a6fff67a1115"
+    },
+    {
+      "file": "d5-schema-model-20261018.tar.gz",
+      "bytes": 3336977,
+      "sha256": "23a202f10846468a2f43feb0191943ea1f6698b2adbb842e3b4986a9e80f671c"
+    },
+    {
+      "file": "d5-service-review-20261018.tar.gz",
+      "bytes": 581,
+      "sha256": "eb604e750f52e1d7a307cc22eadc05f25f99849f0bbf753f8e8e5b1cd575bf58"
+    },
+    {
+      "file": "d5-service-validation-20261018.tar.gz",
+      "bytes": 67434,
+      "sha256": "2712ba7535f932e9917b07b9f08629142e9594d706d84dce3783be9e93e22ca6"
+    },
+    {
+      "file": "d5-source-validation-20261018.tar.gz",
+      "bytes": 112916,
+      "sha256": "de8c2728a70cce8261951cc65505363abfc0206497939f8f17b9a939273e1306"
+    },
+    {
+      "file": "d5-store-20261018.tar.gz",
+      "bytes": 56945,
+      "sha256": "e5e59fe40cf953898ed8112f99a9cdb8c7f79eca14242c44a7736a90da92e554"
+    },
+    {
+      "file": "d5-store-direct-20261018.tar.gz",
+      "bytes": 4972,
+      "sha256": "3a5073d217c04e5ef522220be65537032fb42c7e7faf35bb8ad70d9ce72609a3"
+    },
+    {
+      "file": "defect-ticket-open-desktop.png",
+      "bytes": 120792,
+      "sha256": "f425c71a3df33da1715a7221249d40e1b3f96a548bd5cbec50518f25abf0b71e"
+    },
+    {
+      "file": "defect-ticket-open-mobile.png",
+      "bytes": 47780,
+      "sha256": "6f4dabb53f0c1bc0793ff4d310125e6175d6e7f2153b17b6f2423e4e85d8339d"
+    },
+    {
+      "file": "defect-ticket-reopened-desktop.png",
+      "bytes": 134079,
+      "sha256": "9b91b0b65915e0f74675478f114caade4dd261626b83af2167729763d94451ad"
+    },
+    {
+      "file": "defect-ticket-reopened-mobile.png",
+      "bytes": 47881,
+      "sha256": "e094348a3cf910a74a24d4f3e6b8cbcb8a8558f4c0462f0d5fdaf4a2c67f1335"
+    },
+    {
+      "file": "diagnostic-loader.mjs",
+      "bytes": 2521,
+      "sha256": "bd5e598ba2f9062f3a0d05efade1be3a310b78cd77817cef86d1b72829a3cefe"
+    },
+    {
+      "file": "diagnostic-provenance.json",
+      "bytes": 2143,
+      "sha256": "12bccc879ec07d5d440cf8cbb7fdcf395b21a6c43714a35652972b53ff514b8c"
+    },
+    {
+      "file": "docs-861d5691-cb16-4720-8031-0d519a52fb87.tar.gz",
+      "bytes": 66044,
+      "sha256": "2eee983ff40cd7a272967912a144dccbfaea857718464172c5e592e24520825e"
+    },
+    {
+      "file": "forge-0ed1bcf5-8c1b-4da9-a653-f3cdc9aaf9a1.tar.gz",
+      "bytes": 66286,
+      "sha256": "00d28ebff7e4422dd59bb1cf1340d100be2cc83915bd60422c625f248b0999c3"
+    },
+    {
+      "file": "git-index-review-20261017T192641.371595Z.json",
+      "bytes": 10331,
+      "sha256": "4858145d9511c0dff8ff4f12d10eb754934cd01206bca16289ce9878170c680b"
+    },
+    {
+      "file": "git-index-review-20261017T194626.358701Z.json",
+      "bytes": 10646,
+      "sha256": "e7b683c064bf5bdafba9830f30c47253403259cc9d03688e778e01e030934547"
+    },
+    {
+      "file": "git-index-review-20261017T204507.075919Z.json",
+      "bytes": 10646,
+      "sha256": "87e471a327724e7f195cc3e5eb7013cccebb8f011a7582739932701d79295fb8"
+    },
+    {
+      "file": "lint-25dcfd0d-88b3-44f2-bfc0-8447fef5788b.tar.gz",
+      "bytes": 63968,
+      "sha256": "7f981e9d19160fa07def53a2669672a6059f9da70ba6cd4d6f1780374668e69c"
+    },
+    {
+      "file": "lint-aee8b31c-a768-4acc-bed7-c5b219246716.tar.gz",
+      "bytes": 66030,
+      "sha256": "71c28b886255b4e903d1eed079976d1cab275057d9a07f36d90d0bd1adb4c102"
+    },
+    {
+      "file": "managed-30ba77c5-20e4-459a-a83a-bf131279826e.tar.gz",
+      "bytes": 789759,
+      "sha256": "6c6b7bf29bed2f52c2afb7ac2a5822ba5c0d927114bec25b9cf3919aaeea73cc"
+    },
+    {
+      "file": "managed-4bfb5570-bb52-423b-a39f-0e5eba6670a8.tar.gz",
+      "bytes": 793083,
+      "sha256": "e2b3a015690ef9eeed4c05557fa121be187409f938af4fe3d4ad8201db12561a"
+    },
+    {
+      "file": "managed-e7810ae0-4c8c-473f-b9a4-5ac0b64bde0b.tar.gz",
+      "bytes": 790707,
+      "sha256": "ee5a5212c89a7ddc015d7150447b1c3ccb854fc65ce0711fd5c11737c5c6d304"
+    },
+    {
+      "file": "original-58abd2b4-7292-432b-a184-15bccfc9fcd4.tar.gz",
+      "bytes": 910755,
+      "sha256": "f07d595f7d9848aa21b7daab2a08a0c7f16342bb635d953dd03e9cf0b397b2de"
+    },
+    {
+      "file": "original-62ad2b90-79d6-4938-bc6e-2396f162db57.tar.gz",
+      "bytes": 910632,
+      "sha256": "5d4c1b781a062726530626c1b1fff9cedeb1d5a8843a8dca46d0c7598486c4f6"
+    },
+    {
+      "file": "original-a79f129c-d6db-4ca7-8414-97166ad05f03.tar.gz",
+      "bytes": 910875,
+      "sha256": "93cfbc29ce8c83785e34a70bb22c85524574389ba77aef04be7fa9b8262ba7e9"
+    },
+    {
+      "file": "recovery-c5c052da-0c99-4972-ba75-a15953ad501a.tar.gz",
+      "bytes": 182100,
+      "sha256": "ce451751c8ec430cb18bc42cd1165cc1ea136e79947279538d00ed2d53e58a32"
+    },
+    {
+      "file": "run.mjs",
+      "bytes": 4919,
+      "sha256": "be47f839b659dfe2157590021ded03f1d302d1c44f857f43e3891890873b4807"
+    },
+    {
+      "file": "source-30662b89cdf54724.tar.gz",
+      "bytes": 2224087,
+      "sha256": "e99c8ed7c1696ee4dc2914bd637c50d08570b7ad1177ccc8d2adf3d99e103176"
+    },
+    {
+      "file": "source-61adbce7f3be2d5a.tar.gz",
+      "bytes": 2231810,
+      "sha256": "b02e29d57a8824a1b066ea17781b02f2872388f89dfac42120ea5b92059d950c"
+    },
+    {
+      "file": "source-74e38eb0b61df515.tar.gz",
+      "bytes": 2799907,
+      "sha256": "725df6bccdf650299316693754c9f8b4c67bca4819db32a472743892ee16292e"
+    },
+    {
+      "file": "source-aee398ddc97da689.tar.gz",
+      "bytes": 2229581,
+      "sha256": "d92df5464b0243ed37fe94b8d17d7f3df850d9b9a0e8754e8cab024cbd95eb0e"
+    },
+    {
+      "file": "source-b20ec08cafa32b1c.tar.gz",
+      "bytes": 2797731,
+      "sha256": "976d167c252e546ee9db87ff67d4f1794edb93be44b4552b5c7b588d8003e4a6"
+    },
+    {
+      "file": "source-cf559df6b4e2e27e.tar.gz",
+      "bytes": 2799902,
+      "sha256": "ba21b822b3ae2f3323c9ffb43036823ebc1b32097fa4dd22edfcd5f1d44f9a12"
+    },
+    {
+      "file": "source-d1438b2c764d41cf.tar.gz",
+      "bytes": 2231795,
+      "sha256": "5864f446030c6cc05cfd8a36e8c1142ccdc34df6a30dd2ee53a76fae1652bac9"
+    },
+    {
+      "file": "source-f02c203be8e43168.tar.gz",
+      "bytes": 2799473,
+      "sha256": "55e2a2cbf9386279337b7a90d61ab9f03275e21398893d30485819669b22780d"
+    },
+    {
+      "file": "specbenchmark-36574644-5cc1-4cf4-a170-5933b783ec51.tar.gz",
+      "bytes": 66341,
+      "sha256": "b25efa0b3104b3af2a0c7b80e57786c83c6665624fc0ce1ebffadeb7469a2463"
+    },
+    {
+      "file": "staged-source-review-20261017T191211.288563Z.json",
+      "bytes": 136535,
+      "sha256": "0f42f13d6d1179f3ab2e6a54039b1d0990497588014831a337d9552309e8696e"
+    },
+    {
+      "file": "staged-source-review-20261017T200854.097237Z.json",
+      "bytes": 160736,
+      "sha256": "bb847ca25cce4d137118cef40bd37f25c2d7a9b8a5d687ae75ce4d8d4fd77e5e"
+    },
+    {
+      "file": "staged-source-review-20261017T205852.102572Z.json",
+      "bytes": 160736,
+      "sha256": "1d9418de6fdf25263ab3e630ba268535d9a5c0882a0414e3a4daf28ccb86238d"
+    },
+    {
+      "file": "static-review.md",
+      "bytes": 11605,
+      "sha256": "0abaaa4118187576362bbb61613c840052f1f4944fded22aad7616e1a5366c97"
+    },
+    {
+      "file": "verifier-review.json",
+      "bytes": 11380,
+      "sha256": "43f5453159f57442c24f8f661bee3e8a458f73380c32479d9fa89da080289153"
+    },
+    {
+      "file": "verify-index.py",
+      "bytes": 1489,
+      "sha256": "d6eb5fe793f63c8b5e4f3d1cfe3dfc9a7caa401a1bbe0c79721b4328104033e3"
+    },
+    {
+      "file": "verify-public.py",
+      "bytes": 36697,
+      "sha256": "9b998bc3f622cc505f12c52f1ec0db692ce1fea594af1296999cc20c20c4f33d"
+    },
+    {
+      "file": "verify-staged.py",
+      "bytes": 9147,
+      "sha256": "0874f0882ce678c3f5233a3bae724be2bf4d6b2f8cdc99f040442957988c7ccc"
+    }
+  ],
+  "independentFailure": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-59df8ca2-ae60-4a6a-b0d3-5098a6603293",
+  "reason": "Windows text-mode translation produced CRLF; verifier requires exact LF. Product inputs and gates unchanged."
+}

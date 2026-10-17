@@ -1,0 +1,12 @@
+{
+  "realSourceAndRegisteredVisualBehaviorFailures": true,
+  "fixedMembersAndLostCreateReconcileAfterReloadWithoutPost": true,
+  "partialRepairCannotCloseFixedMemberSet": true,
+  "allMembersRequireExplicitCloseAndLostCloseUsesOnlyGet": true,
+  "reliableFailureReopensAndLaterPassDoesNotAutoClose": true,
+  "definiteStalePostRetainsDraftAndRequiresFreshExplicitPreview": true,
+  "markdownAndJsonDownloadsPreserveHistoryAndOmitRecognizedSecrets": true,
+  "restartReadsExactTicketWithoutStartingOrRegisteringBrowserWork": true,
+  "renderedDesktopMobileAndOriginalSourceIntegrity": true,
+  "consoleErrorsAreOnlyTheExplicitControlledHttpFailures": true
+}

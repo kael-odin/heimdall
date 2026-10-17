@@ -1,0 +1,125 @@
+{
+  "kind": "successful-full-independent-publication-recheck-context",
+  "createdAt": "2026-10-17T21:26:52.857870+00:00",
+  "status": "passed",
+  "exitCode": 0,
+  "sourceDirectory": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-12bb561c-be6b-4566-ae0e-39bc2137e35c",
+  "sourceCommand": [
+    "C:\\Python311\\python.exe",
+    "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\verify-public.py",
+    "--public-directory",
+    "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\docs\\audits\\2026-10-18\\evidence\\defect-tickets",
+    "--batch-directory",
+    "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\batch-d616f4c9-f7a7-422b-8236-50ba987818b2",
+    "--output-directory",
+    "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-12bb561c-be6b-4566-ae0e-39bc2137e35c"
+  ],
+  "publicDirectory": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\docs\\audits\\2026-10-18\\evidence\\defect-tickets",
+  "archiveIndex": {
+    "bytes": 2376551,
+    "sha256": "40897db2e88dbf78419d2908e4fcdff421f6f925a674bc94c3e6933aed8822b4",
+    "unchangedDuringRun": true
+  },
+  "archives": 56,
+  "gatesIncludingHistory": 36,
+  "archiveBytes": 57162268,
+  "finalGateCount": 17,
+  "verifier": {
+    "sha256": "9b998bc3f622cc505f12c52f1ec0db692ce1fea594af1296999cc20c20c4f33d",
+    "unchangedDuringRun": true
+  },
+  "coreCountOrigin": {
+    "reporter": "node-spec",
+    "counts": {
+      "tests": 2661,
+      "pass": 2649,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 12,
+      "todo": 0
+    },
+    "sourceSummary": {
+      "path": "core\\workspace\\_runs\\d5-gates-20261018\\core-5a20bdee-ed8b-42bf-b5de-4813d5251d51\\summary.json",
+      "bytes": 225725,
+      "sha256": "86b4ba4fd8d4fd8f8f4539a152c81231823010bbf44cc01115ed151e7a70ed90"
+    },
+    "sourceBeforeFileCount": 629,
+    "selectedNonDistCount": 621,
+    "consoleDistExcludedCount": 8,
+    "stagedSourceReview": {
+      "path": "core\\workspace\\_runs\\d5-gates-20261018\\staged-source-review-20261017T205852.102572Z.json",
+      "bytes": 160736,
+      "sha256": "1d9418de6fdf25263ab3e630ba268535d9a5c0882a0414e3a4daf28ccb86238d",
+      "passed": true,
+      "sourceSummary": {
+        "path": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\core-5a20bdee-ed8b-42bf-b5de-4813d5251d51\\summary.json",
+        "bytes": 225725,
+        "sha256": "86b4ba4fd8d4fd8f8f4539a152c81231823010bbf44cc01115ed151e7a70ed90"
+      },
+      "sourceFileCount": 629,
+      "selectedNonDistCount": 621,
+      "checkedRows": 621,
+      "allMatchesFrozenSource": true,
+      "allWorkspaceMatchesFrozenSource": true
+    },
+    "explanation": "629 is the final Core before-manifest count; 621 excludes the 8 console/dist files and is independently bound by the staged source review to the same Core summary SHA."
+  },
+  "historicalFailure": {
+    "summary": "../summary.json",
+    "review": "../review.md",
+    "assessment": "../assessment.md",
+    "manifest": "../publication-manifest.json",
+    "status": "failed",
+    "exitCode": 1,
+    "error": "Public binary preservation attributes differ",
+    "repackProvenance": "../repack-provenance/collector-change.json",
+    "preservedAsHistoricalFailure": true
+  },
+  "exactOriginalReportCopies": [
+    {
+      "file": "summary.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-12bb561c-be6b-4566-ae0e-39bc2137e35c\\summary.json",
+      "copiedByteForByte": true,
+      "bytes": 4220,
+      "sha256": "ded17b86e58f6942b8872cc0bac23cc4519764538ec148501f47e938ff1787ae"
+    },
+    {
+      "file": "review.md",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-12bb561c-be6b-4566-ae0e-39bc2137e35c\\review.md",
+      "copiedByteForByte": true,
+      "bytes": 4295,
+      "sha256": "6fe5a4b5382db1e788bdfcc579adbc9102030b89fec2e40f75d9c9910ec4b3b3"
+    },
+    {
+      "file": "stdout.log",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-12bb561c-be6b-4566-ae0e-39bc2137e35c\\stdout.log",
+      "copiedByteForByte": true,
+      "bytes": 4320,
+      "sha256": "c280b4f20e06951cdf4c33c62c34e702e742603bd61f4bee4b693d014c5b2cf7"
+    },
+    {
+      "file": "stderr.log",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-12bb561c-be6b-4566-ae0e-39bc2137e35c\\stderr.log",
+      "copiedByteForByte": true,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "execution.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-gates-20261018\\independent-public-review-12bb561c-be6b-4566-ae0e-39bc2137e35c\\execution.json",
+      "copiedByteForByte": true,
+      "bytes": 1973,
+      "sha256": "510e29ad38bd05e387367da12c706d206790ba1619e30f78279dab07a291a24b"
+    }
+  ],
+  "limitations": [
+    "Read-only artifact verification; no Browser, tests or engine were started.",
+    "PNG signature/dimensions/SHA and DOM were verified; this is not a visual human review.",
+    "Lost-response Browser evidence is route.fetch/502 simulation, not a TCP or power-loss test.",
+    "The Browser request log covers /api/acceptance; unrelated Browser network is outside that log.",
+    "The input freeze covers the enumerated maintained source/build inputs, not every Markdown file.",
+    "Existing Symlink/Junction metadata and Python readlink substitution-target strings are preserved without following or extracting links; raw reparse buffers and arbitrary reparse types are outside this contract.",
+    "Original files are frozen by workflow and checked again; Windows lstat/read is not an atomic defense against concurrent malicious replacement.",
+    "This does not certify atomic multi-file snapshots or detect a self-consistent external backup rollback."
+  ]
+}

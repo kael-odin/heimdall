@@ -1,0 +1,60 @@
+{
+  "kind": "first-failed-independent-review-exact-report-set",
+  "createdAt": "2026-10-17T21:24:34.754235+00:00",
+  "status": "failed",
+  "exitCode": 1,
+  "collectionScope": "Exactly these named first-failure root report files; later recheck and provenance subdirectories and future root navigation README are outside this immutable set.",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 8,
+      "sha256": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
+    },
+    {
+      "path": "assessment.md",
+      "bytes": 2320,
+      "sha256": "9832b47cdb69b464cdbccee86ccb9a5392eafd20f76d10f1ecbc0d9b29935ddc"
+    },
+    {
+      "path": "attribute-observation.json",
+      "bytes": 1094,
+      "sha256": "9b3d574958814cf00617d8ea7bc7770fcacd1d65cf6e4663a24ef1d2712dc7fb"
+    },
+    {
+      "path": "copy-manifest.json",
+      "bytes": 2735,
+      "sha256": "b9a0ab9329968ce3d4286ed19cd2d0a2b794af960eac0df38f115eeeeef5d6fe"
+    },
+    {
+      "path": "execution.json",
+      "bytes": 1815,
+      "sha256": "409f0146a2a5b56e2e01346f0b2a5e8a1dcb288fc7dd52b05aa16ba123d6ad78"
+    },
+    {
+      "path": "observed-facts.json",
+      "bytes": 9563,
+      "sha256": "d12cbe76d3db3a614584219628a137710ebc23e4ed430c1de3e6b38a12541e94"
+    },
+    {
+      "path": "review.md",
+      "bytes": 380,
+      "sha256": "9c8612ee3f735fbe7384273038668826f6faffb8bf99f1334fbef6caaad28ce2"
+    },
+    {
+      "path": "stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "bytes": 313,
+      "sha256": "3bafbbaf71c7108a707aa0b551b527132668d3634664e5a012f532b998130b9b"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 305,
+      "sha256": "ef9424f0fd899d7ce3613b28697fdc864236063828d9ea5015c6a4bf2dc5d91f"
+    }
+  ],
+  "manifestSelfHash": "This manifest is excluded from its own files list; SHA is reported externally."
+}

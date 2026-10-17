@@ -1,0 +1,4 @@
+# Frozen evidence preserves original bytes, including historical CRLF output.
+# Review these payloads through their manifests and independent reports.
+defect-tickets/** -diff
+defect-ticket-publication/** -diff

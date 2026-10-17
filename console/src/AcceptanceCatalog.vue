@@ -6,6 +6,7 @@ import AcceptanceExecution from './AcceptanceExecution.vue';
 import AcceptanceBrowserBindings from './AcceptanceBrowserBindings.vue';
 import AcceptanceBrowserCandidates from './AcceptanceBrowserCandidates.vue';
 import AcceptanceBrowserExecution from './AcceptanceBrowserExecution.vue';
+import AcceptanceDefectTickets from './AcceptanceDefectTickets.vue';
 import { API, apiHeaders } from './api.js';
 import { STATUS_LABELS, GATE_LABELS } from './acceptance-workbench.js';
 import { AcceptanceCatalogError, buildCatalogBindingInput, buildCatalogProjectInput, buildCatalogReleaseInput,
@@ -413,6 +414,8 @@ onBeforeUnmount(() => {
         :ready="ready && !!detail" :active="expanded" :request="request" @reconcile="reconcileBaseline" @open-run="openRun" @run-created="emit('execution-run', $event)" />
       <AcceptanceBrowserExecution v-if="selectedProject" :key="'browser-' + selectedProject" :project-id="selectedProject"
         :detail="detail" :version="version" :ready="ready && !!detail" :active="expanded" />
+      <AcceptanceDefectTickets v-if="selectedProject" :project-id="selectedProject" :detail="detail" :version="version"
+        :ready="ready && !!detail" :active="expanded" />
       <details v-if="detail && detail.project.id === selectedProject && events.length" class="catalog-events"><summary>目录变更记录 {{ events.length }} 条</summary><ol><li v-for="event in events" :key="event.id"><strong>{{ eventLabel(event) }}</strong><span>修订 {{ event.revision }} · {{ dateLabel(event.at) }}</span><code>{{ event.entityId }}</code><small>本机操作者 · {{ event.actor?.kind || '未记录' }}</small></li></ol></details>
     </section>
   </details>

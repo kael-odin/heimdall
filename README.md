@@ -14,9 +14,11 @@
 
 Browser 页面的[所选侧来源核验内核](docs/competition/acceptance-browser-source.md)核对完整证据与声明槽位，候选参考从明确选中的 baseline 或 target 侧重建；[私有读取层](docs/competition/acceptance-browser-reading.md)在真实 owner 内捕获全部实际引用。[来源侧归属](docs/competition/acceptance-browser-bindings.md)和[归属工作台](docs/competition/acceptance-browser-bindings-console.md)明确绑定项目 / 版本，提供隐藏查询字面量的安全显示预览。[完整复核与持久候选](docs/competition/acceptance-browser-candidates.md)按需展开完整计划、规则、所选侧参考和证据，独立确认后保存 `bc-*`，支持未知提交只读对账、损坏来源下保留历史以及重启后重新核验。候选响应仍为 `executionReady:false`，保存与读取候选不会启动验收。
 
-D3 已接入[固定来源 Browser 单次验收](docs/competition/acceptance-browser-execution.md)：每次完整复核并批准明确目标后，固定候选所选侧原件，只采集本次目标；支持共享执行槽、取消、保守重启恢复和核验证据。完成后可显式登记检查问题，并选择此前操作记录可靠复验通过、再次发现、阻塞或不可比。D4 增加[启动结果核对与永久拒绝](docs/competition/acceptance-browser-start-resolution.md)：响应未知时保留原确认，只读核对完整决定；可明确永久拒绝同操作号的迟到启动，并在核验证明后精确解除本机确认。全局 Browser approval / selection、业务工单聚合与最终关闭仍待建设；检查级复验不会改写原比较门禁。
+D3 已接入[固定来源 Browser 单次验收](docs/competition/acceptance-browser-execution.md)：每次完整复核并批准明确目标后，固定候选所选侧原件，只采集本次目标；支持共享执行槽、取消、保守重启恢复和核验证据。完成后可显式登记检查问题，并选择此前操作记录可靠复验通过、再次发现、阻塞或不可比。D4 增加[启动结果核对与永久拒绝](docs/competition/acceptance-browser-start-resolution.md)：响应未知时保留原确认，只读核对完整决定；可明确永久拒绝同操作号的迟到启动，并在核验证明后精确解除本机确认。检查级复验不会改写原比较门禁。
 
-[Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md)已实现 D1 的纯格式、分步迁移与旧历史兼容，为 Browser 候选预留独立 `browserCandidates` 表。已有 Schema3 / Schema4 只打开并验证；旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，需先停止同根引擎，再显式预览并确认迁移。当前引擎为全新空目录明确创建 Schema3。本机完整 Core 为 2325 项、0 失败，旧数据真实迁移与 Browser 混合历史检查均通过；完整证据与精确提交自身 CI 的边界见[实施验收](docs/audits/2026-10-17/acceptance-catalog-schema4.md)。
+D5 已接入[固定成员人工缺陷单](docs/competition/acceptance-defect-tickets.md)：从同一次已登记操作的可靠失败中人工选择成员，固定来源与证据摘要，分别显示处理状态和当前核验。最新同范围登记必须在同次复验中可靠通过全部固定成员，再由操作者明确关闭；关闭后又发现可靠失败会重新打开，后续通过仍需再次明确关闭。支持处理历史及 Markdown / JSON 导出。人工动作的未知结果保留原确认，只 GET 核对，不自动重发 POST；尚无永久拒绝迟到人工动作的服务端决定。全局 Browser approval / selection 与操作归档继续独立建设。
+
+[Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md)已实现 D1 的纯格式、分步迁移与旧历史兼容，为 Browser 候选预留独立 `browserCandidates` 表。已有 Schema3 / Schema4 只打开并验证；旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，需先停止同根引擎，再显式预览并确认迁移。当前引擎为全新空目录明确创建 Schema3。D1 阶段的本机回归、旧数据真实迁移、Browser 混合历史及精确提交自身 CI 的证据见[实施验收](docs/audits/2026-10-17/acceptance-catalog-schema4.md)。
 
 D1 提交 `c170f50` 的[自身 Linux CI 复核](docs/audits/2026-10-17/acceptance-catalog-d1-ci.md)已完成：完整 Core 和原 Acceptance console 通过，后续旧 Managed Spec preparation smoke 因依赖隐式迁移失败。D2 已把该夹具 setup 改为真实 owner 下的显式维护；本机复验与下一轮精确提交 CI 分开记录。
 
@@ -47,6 +49,7 @@ D1 提交 `c170f50` 的[自身 Linux CI 复核](docs/audits/2026-10-17/acceptanc
 | **竞品情报** | `intel/<host>-intel.xlsx`：概览 / 语义情报 / 定价与 CTA | 产品 / 市场 |
 | **全站星图** | `workspace/<host>/recon/atlas.json` + 控制台 3D 视图 | 所有人：先看清这个站的结构 |
 | **项目验收** | `acceptance/<runId>/`：检查报告、双方截图、差异图、DOM / 网络摘要与证据校验和 | 产品 / 测试 / 开发：确认差异、复现问题、阻断失败交付 |
+| **人工缺陷单** | `acceptance/defect-tickets/v1/events/` 人工事件原件；工作台当前核验与 Markdown / JSON 导出 | 测试 / 开发：按固定检查明确成单、复验、关闭与重新打开 |
 
 ---
 
@@ -235,6 +238,7 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [Browser 执行实施记录](docs/audits/2026-10-17/acceptance-browser-execution.md) | D3 操作、来源证据、问题记录、恢复与验证边界 | 复查本阶段实现与证据 |
 | [Browser 启动结果核对与永久拒绝](docs/competition/acceptance-browser-start-resolution.md) | D4 完整决定证明、原确认核对、迟到启动阻断与跨页写锁 | 处理响应未知的原启动 |
 | [Browser 启动结果实施验收](docs/audits/2026-10-17/acceptance-browser-start-resolution.md) | 冻结源码、决定互斥、真实 UI、失败原件与精确 CI | 复查 D4 的实现和证据范围 |
+| [固定成员人工缺陷单](docs/competition/acceptance-defect-tickets.md) | D5 同次可靠失败成单、双状态、全员复验后显式关闭、失败重开与只读动作核对；[本机验收记录](docs/audits/2026-10-18/acceptance-defect-tickets.md) | 管理固定检查的人工处理闭环与导出 |
 | [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |
