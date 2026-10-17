@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "26-followup-syntax-gate",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d1-integration-20261017\\final-first-fstat-syntax-5e241a6b-ef5d-4374-bb03-0e2029955a2b",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792225960259624600
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225937133925700,
+      "bytes": 410,
+      "sha256": "1d8727b688006338794a96d9b19f7bebbb139535069f91aaef173ae3ded6df9f"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225959909109300,
+      "bytes": 101,
+      "sha256": "9576d24bdff5cd75c736258c0e07542c695b7e19891587cffb8002744b809dbf"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225960258116900,
+      "bytes": 92216,
+      "sha256": "bb3bf1497be59e7b0d9ca057739701c19ca94c574fc6c3d534275c5e31f78d36"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225937132925900,
+      "bytes": 92216,
+      "sha256": "bb3bf1497be59e7b0d9ca057739701c19ca94c574fc6c3d534275c5e31f78d36"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225937136013200,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225959901666400,
+      "bytes": 29,
+      "sha256": "3c1bb30dbce7cb1aad0b42d42302a4ed3bfa9f186db4678be50b73a88efbdd3a"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225960259624600,
+      "bytes": 88,
+      "sha256": "aa86fef64fd095a50680eac7fd37b74349dc39a9fcf3c39370b58cb4df129e7a"
+    }
+  ]
+}

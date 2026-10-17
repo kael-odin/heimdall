@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "14-final-console-build",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d1-integration-20261017\\final-console-build-c1a8bb46-a8e9-4652-84e5-93d4a4ea31fd",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792223923915654800
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223922584296000,
+      "bytes": 441,
+      "sha256": "7ae2227d4a58ccf1aa7352c431d39c6e5d54c4c47d00375e41513dac152a1f76"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223923789479500,
+      "bytes": 100,
+      "sha256": "45c405433e5a651a5a425b92ae4057bba80f5ad49207085ebd38d4ad9a722e5e"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223923913648200,
+      "bytes": 92216,
+      "sha256": "65b7daccb89bf0d7de0efad5af104b3a1879939ee56ac2459ef91f240c84cf72"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223922583294000,
+      "bytes": 92216,
+      "sha256": "65b7daccb89bf0d7de0efad5af104b3a1879939ee56ac2459ef91f240c84cf72"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223923752609100,
+      "bytes": 360,
+      "sha256": "351b524197fb492920789369e7f1a271420c757633fbb553b280a181ac4c31a4"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223923751607400,
+      "bytes": 758,
+      "sha256": "db2fada8149f02d8aad913769526122ebfba140839f83db3519cff23ae94b7e5"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223923915654800,
+      "bytes": 88,
+      "sha256": "aa86fef64fd095a50680eac7fd37b74349dc39a9fcf3c39370b58cb4df129e7a"
+    }
+  ]
+}

@@ -33,9 +33,12 @@ const reject = value => assert.throws(() => schema.validateAcceptanceCatalog(val
 test('exports required helpers and independent schema validators', () => {
   for (const name of ['error', 'invalid', 'unavailable', 'fields', 'id', 'actor', 'url', 'limitsOf', 'capacity', 'plain', 'iso',
     'boundedText', 'validateAcceptanceCatalog', 'validateAcceptanceCatalogV1', 'validateAcceptanceCatalogV2', 'validateAcceptanceCatalogV3',
-    'buildCatalogMigration', 'buildCatalogMigrationV3']) assert.equal(typeof schema[name], 'function');
-  assert.equal(schema.ACCEPTANCE_CATALOG_LIMITS.migrations, 2);
+    'validateAcceptanceCatalogV4', 'browserCandidateContentOf', 'buildCatalogMigration', 'buildCatalogMigrationV3',
+    'buildCatalogMigrationV4']) assert.equal(typeof schema[name], 'function');
+  assert.equal(schema.ACCEPTANCE_CATALOG_LIMITS.migrations, 3);
   assert.equal(schema.ACCEPTANCE_CATALOG_LIMITS.browserSourceBindings, 4096);
+  assert.equal(schema.ACCEPTANCE_CATALOG_LIMITS.browserCandidates, 1024);
+  assert.equal(schema.ACCEPTANCE_CATALOG_LIMITS.browserCandidateBytes, 8192);
   assert.equal(Object.isFrozen(schema.ACCEPTANCE_CATALOG_LIMITS), true);
 });
 test('v1 remains strict and independent', () => {

@@ -75,7 +75,11 @@ catch (error) {
 // Registered immediately: failed startup and normal exit release only our nonce.
 process.once('exit', () => acceptanceOwner.release());
 const acceptanceCatalog = createAcceptanceCatalogStore({ root: acceptanceOwner.root, owner: acceptanceOwner });
-try { await acceptanceCatalog.initialize(); }
+let acceptanceCatalogOpened = false;
+try {
+  await acceptanceCatalog.initialize({ createSchemaVersion: 3 });
+  acceptanceCatalogOpened = true;
+}
 catch (error) {
   const failure = acceptanceCatalogError(error);
   console.error(`[acceptance] ${failure.payload.code}: ${failure.payload.error}`);
@@ -84,6 +88,9 @@ catch (error) {
 acceptanceOwner.assertOwned();
 let acceptanceRecovery;
 try {
+  // Maintenance is explicit. Do not settle run heads while their catalog
+  // cannot be opened, including legacy formats that require operator migration.
+  if (!acceptanceCatalogOpened) throw Object.assign(new Error('项目目录尚未打开，请先完成目录维护。'), { code: 'CATALOG_NOT_OPEN' });
   const counts = recoverOwnedAcceptanceRuns({ owner: acceptanceOwner });
   acceptanceRecovery = Object.freeze({ schemaVersion: 1, ready: true, status: 'ready', counts, code: null });
 }

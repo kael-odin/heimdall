@@ -1,314 +1,178 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync, readdirSync, rmSync, cpSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, readdirSync, rmSync, cpSync, renameSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { createAcceptanceCatalogStore, validateAcceptanceCatalog } from '../src/acceptance/catalog.mjs';
-import { buildCatalogMigration, buildCatalogMigrationV3, currentSelectionsOf } from '../src/acceptance/catalog-schema.mjs';
+import { buildCatalogMigration, buildCatalogMigrationV3, buildCatalogMigrationV4, currentSelectionsOf } from '../src/acceptance/catalog-schema.mjs';
 import { hashAcceptanceValue } from '../src/acceptance/identity.mjs';
 import { writeAtomicFileSync } from '../src/acceptance/atomic-file.mjs';
+import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 import { readSpecCandidateSource } from '../src/acceptance/candidate-source.mjs';
 import { projectSpecBaselineCandidate } from '../src/acceptance/candidate-projection.mjs';
 
-const at = '2026-10-17T00:00:00.000Z';
-const uid = prefix => prefix + '-' + randomUUID();
+const at = '2026-10-17T00:00:00.000Z', uid = prefix => prefix + '-' + randomUUID();
 const copy = value => JSON.parse(JSON.stringify(value));
 const encode = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-const archiveName = bytes => `catalog.v${JSON.parse(bytes).schemaVersion}.${hash(bytes)}.json`;
+const archiveName = bytes => 'catalog.v' + JSON.parse(bytes).schemaVersion + '.' + hash(bytes) + '.json';
 const cas = value => ({ expectedGenerationId: value.generationId, expectedRevision: value.revision });
 const unavailable = { code: 'CATALOG_UNAVAILABLE', status: 503 };
-const archivedRun = 'ac-2424d160-cf8e-4991-8fba-c972a84becd1';
-const archivedRoot = fileURLToPath(new URL('../../docs/audits/2026-10-16/evidence/acceptance-catalog/console/run-evidence/', import.meta.url));
-
+const confirm = preview => ({ targetSchemaVersion: 4, expectedGenerationId: preview.source.generationId, expectedRevision: preview.source.revision,
+  expectedHeadSha256: preview.source.headSha256, expectedPreviousSha256: preview.source.previousSha256, expectedPlanDigest: preview.planDigest });
+const migrate = async store => store.applyMigration(confirm(await store.previewMigration({ targetSchemaVersion: 4 })));
+function native(version) {
+  return { schemaVersion: version, generationId: uid('ag'), revision: 0, projects: {}, releases: {}, runBindings: {},
+    ...(version >= 2 ? { candidates: {}, approvals: {}, selections: {}, migrations: {} } : {}), ...(version >= 3 ? { browserSourceBindings: {} } : {}), events: [] };
+}
 function fixture(t, options = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'heimdall-catalog-schema3-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const owner = { root, assertOwned() {} };
+  const owner = acquireAcceptanceOwner({ root: mkdtempSync(join(tmpdir(), 'heimdall-catalog-explicit-recovery-')) }), root = owner.root;
+  t.after(() => { owner.release(); rmSync(root, { recursive: true, force: true }); });
   return { root, owner, store: createAcceptanceCatalogStore({ root, owner, ...options }) };
 }
+function seed(f, value, previous = null) {
+  const raw = Buffer.isBuffer(value) ? value : encode(value); writeFileSync(join(f.root, 'catalog.json'), raw);
+  if (previous) writeFileSync(join(f.root, 'catalog.previous.json'), Buffer.isBuffer(previous) ? previous : encode(previous));
+  return raw;
+}
 const bytesOf = (f, name = 'catalog.json') => readFileSync(join(f.root, name));
-const parse = (f, name = 'catalog.json') => JSON.parse(bytesOf(f, name));
-const archives = (f, version) => readdirSync(f.root).filter(name => new RegExp(`^catalog\\.v${version}\\.[a-f0-9]{64}\\.json$`).test(name)).sort();
-function nativeV2() {
-  return { schemaVersion: 2, generationId: uid('ag'), revision: 0, projects: {}, releases: {}, runBindings: {},
-    candidates: {}, approvals: {}, selections: {}, migrations: {}, events: [] };
-}
-function v1() {
-  const value = nativeV2(); value.schemaVersion = 1;
-  for (const key of ['candidates', 'approvals', 'selections', 'migrations']) delete value[key];
-  return value;
-}
-function seed(f, head, previous = null) {
-  const headRaw = Buffer.isBuffer(head) ? head : encode(head), previousRaw = previous && (Buffer.isBuffer(previous) ? previous : encode(previous));
-  writeFileSync(join(f.root, 'catalog.json'), headRaw);
-  if (previousRaw) writeFileSync(join(f.root, 'catalog.previous.json'), previousRaw);
-  return { head: JSON.parse(headRaw), headRaw, previous: previousRaw && JSON.parse(previousRaw), previousRaw };
-}
+const archives = f => readdirSync(f.root).filter(name => /^catalog\.v[123]\.[a-f0-9]{64}\.json$/.test(name)).sort();
 function append(catalog, map, entity, kind, projectId) {
-  const entityId = entity.id ?? entity.runId;
-  catalog[map][entityId] = entity;
-  catalog.events.push({ id: uid('ae'), revision: ++catalog.revision, kind, projectId, entityId,
-    entityDigest: hashAcceptanceValue(entity), at: entity.createdAt ?? entity.boundAt ?? entity.approvedAt ?? entity.selectedAt,
-    actor: { kind: 'local-operator' } });
+  const entityId = entity.id ?? entity.runId; catalog[map][entityId] = entity;
+  catalog.events.push({ id: uid('ae'), revision: ++catalog.revision, kind, projectId, entityId, entityDigest: hashAcceptanceValue(entity),
+    at: entity.createdAt ?? entity.boundAt ?? entity.approvedAt ?? entity.selectedAt, actor: { kind: 'local-operator' } });
 }
 function assertPreserved(before, after) {
-  for (const map of ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations']) {
+  for (const map of ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations', 'browserSourceBindings']) {
     for (const [id, entity] of Object.entries(before[map] ?? {})) {
-      assert.equal(JSON.stringify(after[map][id]), JSON.stringify(entity), `${map}/${id} serialized bytes`);
-      assert.equal(hashAcceptanceValue(after[map][id]), hashAcceptanceValue(entity), `${map}/${id} entity digest`);
+      assert.equal(JSON.stringify(after[map][id]), JSON.stringify(entity)); assert.equal(hashAcceptanceValue(after[map][id]), hashAcceptanceValue(entity));
     }
   }
   assert.equal(JSON.stringify(after.events.slice(0, before.revision)), JSON.stringify(before.events));
 }
-function assertV3Step(current, source) {
-  assert.equal(current.schemaVersion, 3);
-  assert.equal(current.revision, source.head.revision + 1);
-  assert.notEqual(current.generationId, source.head.generationId);
-  assert.deepEqual(current.browserSourceBindings, {});
-  assertPreserved(source.head, current);
-  const added = Object.values(current.migrations).filter(value => !Object.hasOwn(source.head.migrations, value.id));
-  assert.equal(added.length, 1);
-  const migration = added[0];
-  assert.equal(migration.fromSchemaVersion, 2); assert.equal(migration.toSchemaVersion, 3);
-  assert.equal(migration.fromRevision, source.head.revision); assert.equal(migration.fromGenerationId, source.head.generationId);
-  assert.equal(migration.sourceHeadSha256, hash(source.headRaw));
-  assert.equal(migration.sourcePreviousSha256, source.previousRaw ? hash(source.previousRaw) : null);
-  assert.equal(current.events.at(-1).entityId, migration.id);
-  assert.equal(current.events.at(-1).entityDigest, hashAcceptanceValue(migration));
-  validateAcceptanceCatalog(current);
-}
 
-test('native V2 requires initialization, migrates with exact raw hashes and retires its generation even at the new revision', async t => {
-  for (const prior of ['none', 'same', 'compact']) await t.test(prior, async t => {
-    const f = fixture(t), before = nativeV2(), headRaw = encode(before);
-    const previousRaw = prior === 'none' ? null : prior === 'same' ? headRaw : Buffer.from(JSON.stringify(before));
-    const source = seed(f, headRaw, previousRaw);
-    assert.equal(validateAcceptanceCatalog(before), before);
-    assert.throws(() => f.store.read(), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
-    await assert.rejects(f.store.createProject({ ...cas(before), name: '迁移前写入' }), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
-    assert.deepEqual(bytesOf(f), headRaw);
-    const current = await f.store.initialize(); assertV3Step(current, source);
-    assert.deepEqual(bytesOf(f, 'catalog.previous.json'), headRaw);
-    assert.equal(archives(f, 1).length, 0); assert.equal(archives(f, 2).length, prior === 'compact' ? 2 : 1);
-    for (const raw of [headRaw, previousRaw].filter(Boolean)) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
-    const committedRaw = bytesOf(f);
-    for (const revision of [before.revision, current.revision]) {
-      await assert.rejects(f.store.createProject({ expectedGenerationId: before.generationId, expectedRevision: revision,
-        name: '旧代 CAS' }), { code: 'STALE_REVISION', status: 409 });
-      assert.deepEqual(bytesOf(f), committedRaw);
-    }
-    const restart = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-    assert.deepEqual(await restart.initialize(), current); assert.deepEqual(await restart.initialize(), current);
-    assert.deepEqual(bytesOf(f), committedRaw);
-    assert.equal((await restart.createProject({ ...cas(current), name: '迁移后写入' })).revision, current.revision + 1);
-  });
-});
-
-test('a V1 chain can fail in every second-step publication phase and restart without replaying its committed first migration', async t => {
-  for (const phase of ['preimage', 'previous', 'head', 'after-head']) await t.test(phase, async t => {
-    let attempted, firstCommittedRaw;
+test('each migration publication phase preserves committed steps and requires a fresh explicit confirmation after interruption', async t => {
+  for (const failedFrom of [1, 2, 3]) for (const phase of ['preimage', 'previous', 'head', 'after-head']) await t.test(failedFrom + '/' + phase, async t => {
+    let failed = false; const published = new Map();
     const f = fixture(t, {
       writeExclusive(file, bytes) {
-        if (JSON.parse(bytes).schemaVersion === 2 && phase === 'preimage') throw new Error('second step preimage publication failed');
+        if (!failed && JSON.parse(bytes).schemaVersion === failedFrom && phase === 'preimage') { failed = true; throw Error('injected wx failure'); }
         writeFileSync(file, bytes, { flag: 'wx' });
       },
       writeAtomic(file, bytes) {
-        const value = JSON.parse(bytes);
-        if (basename(file) === 'catalog.json' && value.schemaVersion === 2) firstCommittedRaw = Buffer.from(bytes);
-        if (basename(file) === 'catalog.previous.json' && value.schemaVersion === 2 && phase === 'previous') throw new Error('second step previous failed');
-        if (basename(file) === 'catalog.json' && value.schemaVersion === 3) {
-          attempted = value;
-          if (phase === 'head') throw new Error('second step head failed');
-        }
+        const value = JSON.parse(bytes), isPrevious = basename(file) === 'catalog.previous.json';
+        if (!failed && (isPrevious && value.schemaVersion === failedFrom && phase === 'previous'
+          || !isPrevious && value.schemaVersion === failedFrom + 1 && phase === 'head')) { failed = true; throw Error('injected publication failure'); }
         writeAtomicFileSync(file, bytes);
-        if (basename(file) === 'catalog.json' && value.schemaVersion === 3 && phase === 'after-head') throw new Error('completion lost after V3 commit');
+        if (!isPrevious) published.set(value.schemaVersion, Buffer.from(bytes));
+        if (!failed && !isPrevious && value.schemaVersion === failedFrom + 1 && phase === 'after-head') { failed = true; throw Error('completion lost after published head'); }
       },
-    }), source = seed(f, v1());
-    await assert.rejects(f.store.initialize(), unavailable);
-    assert.ok(firstCommittedRaw);
-    const first = JSON.parse(firstCommittedRaw), afterFailure = parse(f);
-    assert.equal(first.schemaVersion, 2); assert.equal(Object.keys(first.migrations).length, 1);
-    assert.equal(afterFailure.schemaVersion, phase === 'after-head' ? 3 : 2);
-    assert.deepEqual(bytesOf(f, 'catalog.previous.json'), ['head', 'after-head'].includes(phase) ? firstCommittedRaw : source.headRaw);
-    assert.deepEqual(readFileSync(join(f.root, archiveName(source.headRaw))), source.headRaw);
-    assert.equal(archives(f, 1).length, 1); assert.equal(archives(f, 2).length, phase === 'preimage' ? 0 : 1);
-    if (phase !== 'after-head') assert.throws(() => f.store.read(), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
-    const restart = createAcceptanceCatalogStore({ root: f.root, owner: f.owner }), current = await restart.initialize();
-    assertV3Step(current, { head: first, headRaw: firstCommittedRaw,
-      previousRaw: phase === 'head' ? firstCommittedRaw : source.headRaw });
-    assert.equal(Object.keys(current.migrations).length, 2);
-    assert.deepEqual(current.migrations[Object.keys(first.migrations)[0]], Object.values(first.migrations)[0]);
-    if (attempted && phase === 'head') assert.notEqual(current.generationId, attempted.generationId);
-    if (phase === 'after-head') assert.deepEqual(current, afterFailure);
-    const finalRaw = bytesOf(f); assert.deepEqual(await restart.initialize(), current); assert.deepEqual(bytesOf(f), finalRaw);
+    }), source = seed(f, native(1)), first = confirm(await f.store.previewMigration({ targetSchemaVersion: 4 }));
+    await assert.rejects(f.store.applyMigration(first), unavailable); assert.equal(failed, true);
+    const retained = bytesOf(f), current = JSON.parse(retained), beforeRestart = archives(f);
+    assert.equal(current.schemaVersion, failedFrom + (phase === 'after-head' ? 1 : 0));
+    const reopened = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
+    if (current.schemaVersion < 3) await assert.rejects(reopened.initialize(), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
+    else assert.deepEqual(await reopened.initialize(), current);
+    assert.deepEqual(bytesOf(f), retained); assert.deepEqual(archives(f), beforeRestart);
+    if (current.schemaVersion > 1) await assert.rejects(reopened.applyMigration(first), { code: 'STALE_REVISION', status: 409 });
+    const result = await migrate(reopened), final = result.catalog;
+    assert.equal(final.schemaVersion, 4); assert.equal(final.revision, 3); assert.equal(Object.keys(final.migrations).length, 3);
+    assert.deepEqual(final.events.map(event => { const migration = final.migrations[event.entityId]; return [migration.fromSchemaVersion, migration.toSchemaVersion]; }), [[1, 2], [2, 3], [3, 4]]);
+    assert.deepEqual(readFileSync(join(f.root, archiveName(source))), source);
+    for (const [version, bytes] of published) if (version < 4) assert.deepEqual(readFileSync(join(f.root, archiveName(bytes))), bytes);
+    const after = bytesOf(f); assert.deepEqual(await reopened.initialize(), final); assert.deepEqual(bytesOf(f), after);
   });
 });
 
-test('second-step byte CAS detects changes to either input after V2 preimage publication and preserves all original preimages', async t => {
-  for (const name of ['catalog.json', 'catalog.previous.json']) await t.test(name, async t => {
-    let sourceV2Raw, oldPreviousRaw;
-    const f = fixture(t, { writeExclusive(file, bytes) {
-      writeFileSync(file, bytes, { flag: 'wx' });
-      if (JSON.parse(bytes).schemaVersion === 2) {
-        sourceV2Raw = Buffer.from(bytes); oldPreviousRaw = bytesOf(f, 'catalog.previous.json');
-        const changed = join(f.root, name); writeFileSync(changed, Buffer.concat([readFileSync(changed), Buffer.from(' ')]));
-      }
-    } }), source = seed(f, v1());
-    await assert.rejects(f.store.initialize(), { code: 'STALE_REVISION', status: 409 });
-    assert.ok(sourceV2Raw);
-    assert.deepEqual(bytesOf(f), name === 'catalog.json' ? Buffer.concat([sourceV2Raw, Buffer.from(' ')]) : sourceV2Raw);
-    assert.deepEqual(bytesOf(f, 'catalog.previous.json'), name === 'catalog.previous.json'
-      ? Buffer.concat([oldPreviousRaw, Buffer.from(' ')]) : oldPreviousRaw);
-    for (const raw of [source.headRaw, sourceV2Raw]) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
+test('both source bytes are checked after preimages and again after rolling previous replacement', async t => {
+  for (const phase of ['preimage', 'previous']) for (const name of ['catalog.json', 'catalog.previous.json']) await t.test(phase + '/' + name, async t => {
+    let changed = false;
+    const alter = f => { const path = join(f.root, name); writeFileSync(path, Buffer.concat([readFileSync(path), Buffer.from(' ')])); changed = true; };
+    let f; f = fixture(t, {
+      writeExclusive(file, bytes) { writeFileSync(file, bytes, { flag: 'wx' }); if (!changed && phase === 'preimage') alter(f); },
+      writeAtomic(file, bytes) { writeAtomicFileSync(file, bytes); if (!changed && phase === 'previous' && basename(file) === 'catalog.previous.json') alter(f); },
+    });
+    const raw = seed(f, native(3)); writeFileSync(join(f.root, 'catalog.previous.json'), raw);
+    const confirmation = confirm(await f.store.previewMigration({ targetSchemaVersion: 4 }));
+    await assert.rejects(f.store.applyMigration(confirmation), { code: 'STALE_REVISION', status: 409 });
+    assert.equal(JSON.parse(bytesOf(f)).schemaVersion, 3); assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
+    assert.deepEqual(bytesOf(f, name), Buffer.concat([raw, Buffer.from(' ')]));
   });
 });
 
-test('schema3 initialization and writes reject a V1 predecessor even when it is the exact earlier chain source', async t => {
-  const f = fixture(t), source = seed(f, v1()), current = await f.store.initialize(), original = bytesOf(f);
-  writeFileSync(join(f.root, 'catalog.previous.json'), source.headRaw);
-  assert.deepEqual(f.store.read(), current);
-  await assert.rejects(f.store.initialize(), unavailable);
-  await assert.rejects(f.store.createProject({ ...cas(current), name: '拒绝跳步桥' }), unavailable);
-  assert.deepEqual(bytesOf(f), original); assert.deepEqual(bytesOf(f, 'catalog.previous.json'), source.headRaw);
-});
-
-test('V2 history cannot change after a separately built V3 migration merely by making the predecessor pure-valid', async t => {
-  for (const variant of ['formatting', 'generation', 'event', 'entity']) await t.test(variant, async t => {
-    const f = fixture(t), old = nativeV2(), project = { id: uid('ap'), name: '旧项目', createdAt: at };
-    append(old, 'projects', project, 'project-created', project.id);
-    const raw = encode(old), current = buildCatalogMigrationV3(old, { headSha256: hash(raw), at });
-    let prior = copy(old);
-    if (variant === 'generation') prior.generationId = uid('ag');
-    if (variant === 'event') prior.events[0].id = uid('ae');
-    if (variant === 'entity') { prior.projects[project.id].name = '另一个旧项目'; prior.events[0].entityDigest = hashAcceptanceValue(prior.projects[project.id]); }
-    validateAcceptanceCatalog(prior);
-    const previousRaw = variant === 'formatting' ? Buffer.from(JSON.stringify(prior)) : encode(prior);
-    seed(f, current, previousRaw); const headRaw = bytesOf(f);
-    assert.deepEqual(f.store.read(), current);
-    await assert.rejects(f.store.initialize(), unavailable);
-    await assert.rejects(f.store.createProject({ ...cas(current), name: '不接受分叉历史' }), unavailable);
-    assert.deepEqual(bytesOf(f), headRaw); assert.deepEqual(bytesOf(f, 'catalog.previous.json'), previousRaw);
-    assert.deepEqual(archives(f, 2), []);
+test('exclusive-create races accept only exact source bytes and new unrelated preimages invalidate the confirmed inventory', async t => {
+  for (const kind of ['same', 'different', 'unrelated']) await t.test(kind, async t => {
+    let injected = false; const f = fixture(t, { writeExclusive(file, bytes) {
+      if (injected) return writeFileSync(file, bytes, { flag: 'wx' }); injected = true;
+      writeFileSync(file, kind === 'different' ? encode(native(3)) : bytes, { flag: 'wx' });
+      if (kind === 'unrelated') { const other = encode(native(1)); writeFileSync(join(f.root, archiveName(other)), other); }
+      throw Object.assign(Error('wx race'), { code: 'EEXIST' });
+    } }); seed(f, native(3)); const input = confirm(await f.store.previewMigration({ targetSchemaVersion: 4 }));
+    if (kind === 'same') assert.equal((await f.store.applyMigration(input)).catalog.schemaVersion, 4);
+    else { await assert.rejects(f.store.applyMigration(input), kind === 'unrelated' ? { code: 'STALE_REVISION', status: 409 } : unavailable); assert.equal(JSON.parse(bytesOf(f)).schemaVersion, 3); }
   });
 });
 
-test('preimage capacities are independent by actual schema and both V2 raw inputs are preflighted before publication', async t => {
-  for (const kind of ['two-v1', 'extra-v2']) await t.test(kind, async t => {
-    const f = fixture(t), head = nativeV2(), source = seed(f, head, Buffer.from(JSON.stringify(head)));
-    const existing = kind === 'two-v1' ? [encode(v1()), encode(v1())] : [encode(nativeV2())];
-    for (const raw of existing) writeFileSync(join(f.root, archiveName(raw)), raw);
-    if (kind === 'two-v1') {
-      assertV3Step(await f.store.initialize(), source);
-      assert.equal(archives(f, 1).length, 2); assert.equal(archives(f, 2).length, 2);
-    } else {
-      await assert.rejects(f.store.initialize(), unavailable);
-      assert.deepEqual(bytesOf(f), source.headRaw); assert.deepEqual(bytesOf(f, 'catalog.previous.json'), source.previousRaw);
-      assert.deepEqual(archives(f, 2), [archiveName(existing[0])]);
-    }
-    for (const raw of existing) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
+test('owner loss after preimage or previous publication cannot publish a new head', async t => {
+  for (const phase of ['preimage', 'previous']) await t.test(phase, async t => {
+    let f; f = fixture(t, { writeExclusive(file, bytes) { writeFileSync(file, bytes, { flag: 'wx' }); if (phase === 'preimage') f.owner.release(); },
+      writeAtomic(file, bytes) { writeAtomicFileSync(file, bytes); if (phase === 'previous' && basename(file) === 'catalog.previous.json') f.owner.release(); } });
+    const raw = seed(f, native(3)), input = confirm(await f.store.previewMigration({ targetSchemaVersion: 4 }));
+    await assert.rejects(f.store.applyMigration(input), { code: 'ACCEPTANCE_OWNER_LOST', status: 503 }); assert.deepEqual(bytesOf(f), raw);
   });
 });
 
-test('a preimage with correct content hash but the wrong schema label blocks migration without relabeling or replacing it', async t => {
-  for (const version of [1, 2]) await t.test('mislabeled-v' + version, async t => {
-    const f = fixture(t), source = seed(f, nativeV2()), raw = encode(version === 1 ? nativeV2() : v1());
-    const name = `catalog.v${version}.${hash(raw)}.json`; writeFileSync(join(f.root, name), raw);
-    await assert.rejects(f.store.initialize(), unavailable);
-    assert.deepEqual(bytesOf(f), source.headRaw); assert.deepEqual(readFileSync(join(f.root, name)), raw);
-    assert.deepEqual(readdirSync(f.root).sort(), ['catalog.json', name].sort());
+test('root replacement during wx publication leaves the replacement root untouched', async t => {
+  let f, moved; f = fixture(t, { writeExclusive(file, bytes) { writeFileSync(file, bytes, { flag: 'wx' }); moved = f.root + '-moved'; renameSync(f.root, moved); mkdirSync(f.root); } });
+  t.after(() => { if (moved) rmSync(moved, { recursive: true, force: true }); }); const raw = seed(f, native(3));
+  await assert.rejects(migrate(f.store), { code: 'ACCEPTANCE_OWNER_LOST', status: 503 }); assert.deepEqual(readdirSync(f.root), []); assert.deepEqual(readFileSync(join(moved, 'catalog.json')), raw);
+});
+
+test('strict previous lineage rejects skips, reverse schemas, retired generations and divergent but pure-valid history', async t => {
+  for (const kind of ['skip', 'reverse', 'format', 'generation', 'entity', 'migration']) await t.test(kind, async t => {
+    const f = fixture(t), v1 = native(1), v1raw = encode(v1), v2 = buildCatalogMigration(v1, { headSha256: hash(v1raw), at }), v2raw = encode(v2), v3 = buildCatalogMigrationV3(v2, { headSha256: hash(v2raw), previousSha256: hash(v1raw), at }), v3raw = encode(v3), v4 = buildCatalogMigrationV4(v3, { headSha256: hash(v3raw), previousSha256: hash(v2raw), at });
+    let current = v4, previous = v3raw;
+    if (kind === 'skip') previous = v2raw;
+    if (kind === 'reverse') { current = v2; previous = v3raw; }
+    if (kind === 'format') previous = Buffer.from(JSON.stringify(v3));
+    if (kind === 'generation') { const prior = copy(v3); prior.generationId = uid('ag'); previous = encode(prior); }
+    if (kind === 'entity') { const prior = copy(v3); append(prior, 'projects', { id: uid('ap'), name: '分叉项目', createdAt: at }, 'project-created', null); prior.events.at(-1).projectId = prior.events.at(-1).entityId; previous = encode(prior); }
+    if (kind === 'migration') { const prior = copy(v4); prior.migrations = {}; prior.events = []; prior.revision = 0; current = prior; previous = encode(v4); }
+    seed(f, current, previous); const raw = bytesOf(f), priorRaw = bytesOf(f, 'catalog.previous.json');
+    await assert.rejects(f.store.initialize(), unavailable); await assert.rejects(f.store.previewMigration({ targetSchemaVersion: 4 }), unavailable);
+    assert.deepEqual(bytesOf(f), raw); assert.deepEqual(bytesOf(f, 'catalog.previous.json'), priorRaw); assert.deepEqual(archives(f), []);
   });
 });
 
-test('second-step capacity failures preserve committed V2 without preparation and continue once the actual limit is increased', async t => {
-  for (const limit of ['migrations', 'events', 'jsonBytes']) await t.test(limit, async t => {
-    const old = v1(), oldRaw = encode(old);
-    // All generated IDs, hashes and timestamps have fixed serialized widths.
-    // This computes the exact V2 byte budget without using a V3 initializer.
-    const expectedV2 = buildCatalogMigration(old, { headSha256: hash(oldRaw), at });
-    const limits = limit === 'migrations' ? { migrations: 1 }
-      : limit === 'events' ? { events: expectedV2.revision } : { jsonBytes: encode(expectedV2).length };
-    const f = fixture(t, { limits }), source = seed(f, oldRaw);
-    await assert.rejects(f.store.initialize(), { code: 'CATALOG_CAPACITY', status: 409, details: { limit } });
-    const retainedRaw = bytesOf(f), retained = JSON.parse(retainedRaw);
-    assert.equal(retained.schemaVersion, 2); assert.equal(retained.revision, old.revision + 1);
-    assert.equal(retained.events.at(-1).kind, 'catalog-migrated');
-    assert.equal(Object.keys(retained.migrations).length, 1);
-    assert.equal(validateAcceptanceCatalog(retained, { limits }), retained);
-    if (limit === 'jsonBytes') assert.equal(retainedRaw.length, limits.jsonBytes);
-    assert.deepEqual(bytesOf(f, 'catalog.previous.json'), source.headRaw);
-    assert.deepEqual(archives(f, 1), [archiveName(source.headRaw)]);
-    assert.deepEqual(readFileSync(join(f.root, archiveName(source.headRaw))), source.headRaw);
-    assert.deepEqual(archives(f, 2), []);
-    assert.deepEqual(readdirSync(f.root).sort(), ['catalog.json', 'catalog.previous.json', archiveName(source.headRaw)].sort());
-    assert.throws(() => f.store.read(), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
-
-    const expectedV3 = buildCatalogMigrationV3(retained, { headSha256: hash(retainedRaw),
-      previousSha256: hash(source.headRaw), at });
-    const relaxedLimits = { ...limits, [limit]: limit === 'migrations' ? 2
-      : limit === 'events' ? expectedV3.revision : encode(expectedV3).length };
-    assert.ok(relaxedLimits[limit] > limits[limit]);
-    const restart = createAcceptanceCatalogStore({ root: f.root, owner: f.owner, limits: relaxedLimits });
-    const current = await restart.initialize();
-    assertV3Step(current, { head: retained, headRaw: retainedRaw, previousRaw: source.headRaw });
-    assertPreserved(retained, current);
-    assert.deepEqual(bytesOf(f, 'catalog.previous.json'), retainedRaw);
-    assert.deepEqual(readFileSync(join(f.root, archiveName(retainedRaw))), retainedRaw);
-    assert.deepEqual(readFileSync(join(f.root, archiveName(source.headRaw))), source.headRaw);
-    assert.equal(Object.keys(current.migrations).length, 2);
-    const committedRaw = bytesOf(f); assert.deepEqual(await restart.initialize(), current); assert.deepEqual(bytesOf(f), committedRaw);
-  });
-});
-
-test('complete native and previously migrated V2 Spec histories retain entity bytes, digests, source bytes and cancel/reselect identity after migration', async t => {
+test('full native and migrated Spec history keeps entity/digest/source bytes and permits the original prepare contract after v4 migration', async t => {
+  const archivedRun = 'ac-2424d160-cf8e-4991-8fba-c972a84becd1';
+  const archivedRoot = fileURLToPath(new URL('../../docs/audits/2026-10-16/evidence/acceptance-catalog/console/run-evidence/', import.meta.url));
   for (const origin of ['native-v2', 'migrated-v2']) await t.test(origin, async t => {
     const f = fixture(t), runDir = join(f.root, archivedRun); cpSync(join(archivedRoot, archivedRun), runDir, { recursive: true });
     const originalFiles = Object.fromEntries(readdirSync(runDir).map(name => [name, readFileSync(join(runDir, name))]));
-    const material = readSpecCandidateSource(archivedRun, { root: f.root, owner: f.owner });
-    const oldV1Raw = encode(v1());
-    const old = origin === 'native-v2' ? nativeV2()
-      : buildCatalogMigration(JSON.parse(oldV1Raw), { headSha256: hash(oldV1Raw), at });
-    if (origin === 'migrated-v2') writeFileSync(join(f.root, archiveName(oldV1Raw)), oldV1Raw);
-    const project = { id: uid('ap'), name: '完整 Spec 历史', createdAt: at };
-    const release = { id: uid('ar'), projectId: project.id, label: 'V2 原版本', targetUrl: material.snapshot.manifest.targetUrl, createdAt: at };
-    const binding = { runId: archivedRun, projectId: project.id, releaseId: release.id, boundAt: at, actor: { kind: 'local-operator' } };
-    append(old, 'projects', project, 'project-created', project.id);
-    append(old, 'releases', release, 'release-created', project.id);
-    append(old, 'runBindings', binding, 'run-bound', project.id);
+    const material = readSpecCandidateSource(archivedRun, { root: f.root, owner: f.owner }), v1raw = encode(native(1));
+    const old = origin === 'native-v2' ? native(2) : buildCatalogMigration(JSON.parse(v1raw), { headSha256: hash(v1raw), at });
+    if (origin === 'migrated-v2') writeFileSync(join(f.root, archiveName(v1raw)), v1raw);
+    const project = { id: uid('ap'), name: '完整 Spec 历史', createdAt: at }, release = { id: uid('ar'), projectId: project.id, label: '原版本', targetUrl: material.snapshot.manifest.targetUrl, createdAt: at };
+    append(old, 'projects', project, 'project-created', project.id); append(old, 'releases', release, 'release-created', project.id);
+    append(old, 'runBindings', { runId: archivedRun, projectId: project.id, releaseId: release.id, boundAt: at, actor: { kind: 'local-operator' } }, 'run-bound', project.id);
     const { projection } = projectSpecBaselineCandidate(material, { projectId: project.id, releaseId: release.id, sourceSide: 'source' });
-    const candidate = { id: uid('ab'), ...projection, createdAt: at };
-    const approval = { id: uid('aa'), projectId: project.id, candidateId: candidate.id,
-      contentDigest: candidate.contentDigest, reason: 'V2 中已审阅完整需求', approvedAt: at, actor: { kind: 'local-operator' } };
-    append(old, 'candidates', candidate, 'candidate-created', project.id);
-    append(old, 'approvals', approval, 'baseline-approved', project.id);
+    const candidate = { id: uid('ab'), ...projection, createdAt: at }, approval = { id: uid('aa'), projectId: project.id, candidateId: candidate.id, contentDigest: candidate.contentDigest, reason: '已审阅需求', approvedAt: at, actor: { kind: 'local-operator' } };
+    append(old, 'candidates', candidate, 'candidate-created', project.id); append(old, 'approvals', approval, 'baseline-approved', project.id);
     let selected = null, ancestor;
-    for (const approved of [approval.id, null, approval.id]) {
-      const selection = { id: uid('as'), projectId: project.id, mode: 'spec', approvalId: approved,
-        previousSelectionId: selected?.id ?? null, reason: approved ? 'V2 明确选用需求' : 'V2 取消选用', selectedAt: at, actor: { kind: 'local-operator' } };
+    for (const approvalId of [approval.id, null, approval.id]) {
+      const selection = { id: uid('as'), projectId: project.id, mode: 'spec', approvalId, previousSelectionId: selected?.id ?? null, reason: approvalId ? '明确选用' : '取消选用', selectedAt: at, actor: { kind: 'local-operator' } };
       ancestor = copy(old); append(old, 'selections', selection, 'baseline-selected', project.id); selected = selection;
     }
-    validateAcceptanceCatalog(old); validateAcceptanceCatalog(ancestor);
-    const source = seed(f, old, ancestor), current = await f.store.initialize(); assertV3Step(current, source);
-    assertPreserved(old, current);
-    assert.deepEqual(currentSelectionsOf(current, project.id).spec, selected);
-    assert.equal(current.approvals[approval.id].contentDigest, approval.contentDigest);
-    const view = f.store.readBaselineCandidate(project.id, candidate.id);
-    assert.equal(view.diagnostics.eligible, true); assert.equal(view.diagnostics.contentMatches, true);
-    assert.equal(view.candidate.contentDigest, candidate.contentDigest);
-    const prepared = await f.store.prepareManagedSpecDispatch(project.id, { ...cas(current), operationId: uid('ao'),
-      selectionId: selected.id, contentDigest: approval.contentDigest, targetReleaseId: release.id });
-    assert.equal(prepared.state, 'prepared'); assert.equal(prepared.runCreated, false); assert.equal(prepared.executionReady, false);
-    assert.equal(prepared.record.envelope.selection.id, selected.id);
-    assert.equal(prepared.record.envelope.approval.contentDigest, approval.contentDigest);
-    assert.equal(prepared.record.envelope.plan.mode, 'spec');
-    assert.deepEqual(bytesOf(f), encode(current));
-    for (const [name, raw] of Object.entries(originalFiles)) assert.deepEqual(readFileSync(join(runDir, name)), raw, name);
-    assert.deepEqual(readdirSync(runDir).sort(), Object.keys(originalFiles).sort());
-    if (origin === 'migrated-v2') {
-      assert.deepEqual(readFileSync(join(f.root, archiveName(oldV1Raw))), oldV1Raw);
-      assert.equal(Object.keys(current.migrations).length, 2);
-    } else assert.equal(Object.keys(current.migrations).length, 1);
+    validateAcceptanceCatalog(old); const raw = seed(f, old, ancestor), current = (await migrate(f.store)).catalog; assertPreserved(old, current);
+    assert.deepEqual(currentSelectionsOf(current, project.id).spec, selected); assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
+    const view = f.store.readBaselineCandidate(project.id, candidate.id); assert.equal(view.diagnostics.eligible, true); assert.equal(view.candidate.contentDigest, candidate.contentDigest);
+    const prepared = await f.store.prepareManagedSpecDispatch(project.id, { ...cas(current), operationId: uid('ao'), selectionId: selected.id, contentDigest: approval.contentDigest, targetReleaseId: release.id });
+    assert.equal(prepared.state, 'prepared'); assert.equal(prepared.runCreated, false); assert.equal(prepared.executionReady, false); assert.equal(prepared.record.envelope.approval.contentDigest, approval.contentDigest);
+    assert.deepEqual(bytesOf(f), encode(current)); for (const [name, bytes] of Object.entries(originalFiles)) assert.deepEqual(readFileSync(join(runDir, name)), bytes, name);
+    assert.deepEqual(readdirSync(runDir).sort(), Object.keys(originalFiles).sort()); assert.equal(Object.keys(current.migrations).length, origin === 'native-v2' ? 2 : 3);
   });
 });

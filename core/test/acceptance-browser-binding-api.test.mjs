@@ -87,7 +87,7 @@ async function fixture(t, sample = 'target-unavailable', side = 'baseline') {
     assert.ok(parent.startsWith(fs.realpathSync(tmpdir()) + sep) && parent.includes('heimdall-browser-http-'));
     fs.rmSync(parent, { recursive: true, force: true });
   });
-  await store.initialize(); Object.assign(f, await context(f, manifest.plan[side + 'Url'], 'Browser HTTP fixture'));
+  await store.initialize({ createSchemaVersion: 3 }); Object.assign(f, await context(f, manifest.plan[side + 'Url'], 'Browser HTTP fixture'));
   writes.length = 0; return f;
 }
 async function rejectedUnchanged(f, action, status, code) {

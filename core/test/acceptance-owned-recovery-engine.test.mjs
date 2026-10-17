@@ -122,3 +122,56 @@ test('an existing prepared run directory without identity blocks the whole start
   }
   noExecution(f);
 });
+
+for (const schemaVersion of [1, 2, 99]) test(`schema${schemaVersion} startup preserves the maintenance scene and never settles running records`, async t => {
+  const f = await fixture(t), managed = f.prepare({ start: true }), legacy = f.legacy();
+  const catalog = { schemaVersion, generationId: 'ag-' + randomUUID(), revision: 0,
+    projects: {}, releases: {}, runBindings: {}, events: [] };
+  if (schemaVersion === 2) Object.assign(catalog, { candidates: {}, approvals: {}, selections: {}, migrations: {} });
+  for (const name of ['catalog.json', 'catalog.previous.json']) fs.writeFileSync(join(f.root, name), encode(catalog));
+  const before = facts(f.root);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const engine = await f.startEngine();
+    assert.deepEqual(await responseJson(engine, '/api/acceptance/recovery'), blocked);
+    const response = await engine.get('/api/acceptance/projects');
+    assert.equal(response.status, 503);
+    const failure = await response.json();
+    assert.equal(failure.code, 'CATALOG_UNAVAILABLE');
+    assert.equal(failure.details.reason, schemaVersion === 99 ? 'UNSUPPORTED_SCHEMA' : 'MIGRATION_REQUIRED');
+    assert.match(engine.output(), /recovery blocked: CATALOG_NOT_OPEN/);
+    const write = await engine.get('/api/acceptance/projects', { method: 'POST', body: '{}' });
+    assert.equal(write.status, 503); assert.equal((await write.json()).code, 'ACCEPTANCE_RECOVERY_BLOCKED');
+    assert.deepEqual(facts(f.root), before);
+    assert.equal(json(managed.manifestPath).status, 'running');
+    assert.equal(json(join(f.root, legacy.runId, 'manifest.json')).status, 'running');
+    noExecution(f); await engine.stop();
+  }
+});
+
+test('explicit schema4 maintenance preserves prepared dispatch bytes and repeated ordinary startup stays read only', async t => {
+  const f = await fixture(t), prepared = f.prepare();
+  const preview = await f.catalog.previewMigration({ targetSchemaVersion: 4 });
+  const migrated = await f.catalog.applyMigration({ targetSchemaVersion: 4,
+    expectedGenerationId: preview.source.generationId, expectedRevision: preview.source.revision,
+    expectedHeadSha256: preview.source.headSha256, expectedPreviousSha256: preview.source.previousSha256,
+    expectedPlanDigest: preview.planDigest });
+  assert.equal(migrated.catalog.schemaVersion, 4); assert.equal(migrated.completedSteps.length, 1);
+  assert.deepEqual(migrated.catalog.browserCandidates, {});
+  const before = facts(f.root), statPaths = Object.keys(before).filter(name => !name.endsWith('/'));
+  const stats = () => Object.fromEntries(statPaths.map(name => {
+    const stat = fs.statSync(join(f.root, name), { bigint: true });
+    return [name, [stat.size, stat.nlink, stat.mtimeNs, stat.ctimeNs].map(String)];
+  }));
+  const beforeStats = stats();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const engine = await f.startEngine();
+    assert.deepEqual(await responseJson(engine, '/api/acceptance/recovery'), ready({ managedInterrupted: 0,
+      legacyInterrupted: 0, prepared: 1, skipped: 0, totalInterrupted: 0 }));
+    const listed = await responseJson(engine, '/api/acceptance/projects');
+    assert.equal(listed.schemaVersion, 4); assert.equal(listed.generationId, migrated.catalog.generationId);
+    assert.equal(listed.revision, migrated.catalog.revision);
+    assert.deepEqual(facts(f.root), before); assert.deepEqual(stats(), beforeStats);
+    assert.deepEqual(fs.readFileSync(prepared.sidecar), prepared.bytes); assert.equal(fs.existsSync(prepared.dir), false);
+    noExecution(f); await engine.stop();
+  }
+});

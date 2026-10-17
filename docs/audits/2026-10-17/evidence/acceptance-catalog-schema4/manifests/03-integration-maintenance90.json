@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "03-integration-maintenance90",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d1-integration-20261017\\root-capacity-983e6568-aca2-4efd-abe1-24f28206871c",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792217057623838500
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217028163940500,
+      "bytes": 555,
+      "sha256": "666f60e55c460d50d9fd005f76671354463f77d4cb9298289fc48e1e3e6e6c8d"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217057518191200,
+      "bytes": 101,
+      "sha256": "4168448d3c8c9a7244c9680473f1086aac19a7c9ff5e3a82864fb55495a7f3ec"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217057622838400,
+      "bytes": 92043,
+      "sha256": "8da2799b1be1fc73bf472037c8752e3455ae67a6678d8f5d09399095183e4f3c"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217028161933600,
+      "bytes": 92043,
+      "sha256": "8da2799b1be1fc73bf472037c8752e3455ae67a6678d8f5d09399095183e4f3c"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217028164939700,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217057511191700,
+      "bytes": 6577,
+      "sha256": "3cbc291ba95a4b4c49ef41b42ce2ff7f0f4ab5502a1cc3650f004dbf7ba02eed"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217057623838500,
+      "bytes": 88,
+      "sha256": "3153ab7afe617005ffd27e451f9e1ecd1ddabc7278733a60faf1d3f90aba8e3d"
+    }
+  ]
+}

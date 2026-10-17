@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "phase": "staged",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "kind": "file",
+      "bytes": 20,
+      "sha256": "e97602ab9cac70102245345c5ab0fc9830df8b17f1072b188265a662a3a547ae"
+    },
+    {
+      "path": "authority.json",
+      "kind": "file",
+      "bytes": 6560,
+      "sha256": "7a4ae7557ac9e31937a53827a2028a8cdd18678a2a64e01aaa9998085ce874bd"
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "bytes": 1568,
+      "sha256": "f2a872babffd8b71a14efa09ac6d0bd1039f5c8d723080523c970cb41df1cefe"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "bytes": 73,
+      "sha256": "c786dce450f8fb2bf8f864f0ae58061518ae74892de42b22e4523b6456f3c080"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "bytes": 294,
+      "sha256": "a8b7a0fa8f84965c97dd0a2d7debcedb6f05134fb3277584abf95d892d7e4f15"
+    },
+    {
+      "path": "verify-package.py",
+      "kind": "file",
+      "bytes": 24513,
+      "sha256": "f84a1cc154191d00b07bbc31a9bd436d7f67b6ac1523f0189e816fdc1de34ce3"
+    },
+    {
+      "path": "result/credential-scan.json",
+      "kind": "file",
+      "bytes": 776,
+      "sha256": "f66204bb85cac5a4bf45481dcf7cbc84e4d7ab61dbe6ec470fbbafdb18e55041"
+    },
+    {
+      "path": "result/verification.json",
+      "kind": "file",
+      "bytes": 7336,
+      "sha256": "f7a6cdc7152af4fe7257ad2e9cb136418faa3d8463d47a4332f5a885b93d3a09"
+    }
+  ],
+  "excludes": [
+    "file-manifest.json",
+    "COMPLETED.json"
+  ]
+}

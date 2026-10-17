@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "id": "10-legacy-first-failure-runtime",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\acceptance-catalog-migration\\2026-10-17T06-16-11.542Z-9e9865f6",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792217774887113000
+    },
+    {
+      "path": "catalog-v1-input.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217771562807000,
+      "bytes": 8740,
+      "sha256": "1108e814ace681ffff6933e1c4d8fda7c01e6011ede9feb5f47c38285cfe1cd9"
+    },
+    {
+      "path": "engine-migration-initial-maintained.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217774888111400,
+      "bytes": 208,
+      "sha256": "7ebc47c4b2938f6525f5904899f1ab296a61a4ba89fbb306417c39e05ca09e09"
+    },
+    {
+      "path": "engine-migration-initial-ordinary-startup.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217774881102600,
+      "bytes": 389,
+      "sha256": "2ea411cbdb00367f63b46be86d9c439094dff3e3466409130801c27b234f05eb"
+    },
+    {
+      "path": "failure.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217774880101000,
+      "bytes": 1378,
+      "sha256": "ee7ed675287113cf4a8d375126a4dd3cd70684b6f62907c9ee185afbd747f861"
+    },
+    {
+      "path": "fixture-provenance.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217771562279700,
+      "bytes": 3251,
+      "sha256": "7fd5b10ee9d3d9d57695f756d6f04918f1d450f80186048fabe38bf44695a0c4"
+    },
+    {
+      "path": "migration-initial-apply-command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217773751633300,
+      "bytes": 876,
+      "sha256": "96b3591cbcd89d0c1e43aba901814d705d82047c94439bdcbd5a9837f203cfac"
+    },
+    {
+      "path": "migration-initial-apply-stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217773752632500,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "migration-initial-apply-stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217773752632500,
+      "bytes": 995,
+      "sha256": "ebf551d8f1e454b504516ee7b5a0f54f6254708655e8516bb6ada1b6935215d4"
+    },
+    {
+      "path": "migration-initial-live-owner-command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772029431800,
+      "bytes": 512,
+      "sha256": "ee23d1c08e5b52554196bfe036821ec07a43ff0f63e977823163b784b2f34157"
+    },
+    {
+      "path": "migration-initial-live-owner-stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772030546200,
+      "bytes": 142,
+      "sha256": "2385052448687f3a8767c5ec668d9de3ce5f87133d564e55118fd5880188769c"
+    },
+    {
+      "path": "migration-initial-live-owner-stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772030041600,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "migration-initial-old-confirmation-command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217773963415100,
+      "bytes": 876,
+      "sha256": "8e21dc1297d6c29cff925b1b60331ff565d81779a5fb0cde2926c9e7e21190a9"
+    },
+    {
+      "path": "migration-initial-old-confirmation-stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217773965075200,
+      "bytes": 104,
+      "sha256": "bfc5383a6527984d6d2661b2765d29ca362951526866418f955db7443c6cdde9"
+    },
+    {
+      "path": "migration-initial-old-confirmation-stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217773964421400,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "migration-initial-preview-command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772300205400,
+      "bytes": 512,
+      "sha256": "f708ae053d36ce365eda8e02fdb596f8cd7d7b30953e268350f672cb4c86ce60"
+    },
+    {
+      "path": "migration-initial-preview-repeat-command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772539062000,
+      "bytes": 512,
+      "sha256": "4780f4f537e150903945aedb86499bf6bce73889565f84f70133234115125525"
+    },
+    {
+      "path": "migration-initial-preview-repeat-stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772540187000,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "migration-initial-preview-repeat-stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772540066300,
+      "bytes": 3051,
+      "sha256": "d525bed209b0487b4ff5bab256a36c8f5afc0fcb08bf800dbbba291e2ddd5c8a"
+    },
+    {
+      "path": "migration-initial-preview-stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772301220900,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "migration-initial-preview-stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772300205400,
+      "bytes": 3051,
+      "sha256": "d525bed209b0487b4ff5bab256a36c8f5afc0fcb08bf800dbbba291e2ddd5c8a"
+    },
+    {
+      "path": "migration-initial-stale-confirmation-command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772743831000,
+      "bytes": 876,
+      "sha256": "2754285bdbbd229e5aa36a4378ecc30cf267bf91829be49271b22499bc23fb95"
+    },
+    {
+      "path": "migration-initial-stale-confirmation-stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772744353600,
+      "bytes": 104,
+      "sha256": "bfc5383a6527984d6d2661b2765d29ca362951526866418f955db7443c6cdde9"
+    },
+    {
+      "path": "migration-initial-stale-confirmation-stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217772744353600,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

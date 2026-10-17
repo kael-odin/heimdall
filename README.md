@@ -12,7 +12,9 @@
 
 新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。本地项目支持不可变版本声明、历史运行归属，以及 Spec 需求候选的完整预览、显式批准和独立选用；写入受目录版本冲突与双引擎保护。托管 Spec 已接入[专用 HTTP 执行链](docs/competition/acceptance-managed-spec.md)：以完整新确认和明确目标版本启动真实检查，共享运行槽，支持取消、超时和保守重启恢复；控制台已提供明确目标版本的执行入口、原操作只读恢复和请求停止，可查看结果并下载核验原件。批准、选用和旧操作查询均不自动执行，也不改变原门禁。AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [项目与版本](docs/competition/acceptance-catalog.md) · [需求基线](docs/competition/acceptance-baseline.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
 
-Browser 页面的[所选侧来源核验内核](docs/competition/acceptance-browser-source.md)已增加完整证据与声明槽位检查，候选 oracle 从明确选中的参考侧或目标侧重建；[私有读取层](docs/competition/acceptance-browser-reading.md)在真实 owner 内捕获全部实际引用，支持导航失败侧的空截图，并核验目录身份与字节。[Schema3 分步迁移](docs/competition/acceptance-catalog-schema3.md)保留原 Spec 历史；[来源侧归属](docs/competition/acceptance-browser-bindings.md)明确绑定项目 / 版本、核对完整入口并在提交前重读来源。现已接入[HTTP 与归属工作台](docs/competition/acceptance-browser-bindings-console.md)：按需核对单条来源、受保护证据完整性验证、失联提交只读恢复。Browser 完整批准预览、候选、批准、选用与执行继续建设。
+Browser 页面的[所选侧来源核验内核](docs/competition/acceptance-browser-source.md)已增加完整证据与声明槽位检查，候选 oracle 从明确选中的参考侧或目标侧重建；[私有读取层](docs/competition/acceptance-browser-reading.md)在真实 owner 内捕获全部实际引用，支持导航失败侧的空截图，并核验目录身份与字节。[Schema3 分步迁移](docs/competition/acceptance-catalog-schema3.md)保留原 Spec 历史；[来源侧归属](docs/competition/acceptance-browser-bindings.md)明确绑定项目 / 版本、核对完整入口并在提交前重读来源。现已接入[HTTP 与归属工作台](docs/competition/acceptance-browser-bindings-console.md)：按需核对单条来源、受保护证据完整性验证、失联提交只读恢复。该工作台的显示预览标记为 `completeSourceProjection:false`；Browser 完整来源复核、候选写入、批准、选用与固定来源执行继续建设。
+
+[Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md)已实现 D1 的纯格式、分步迁移与旧历史兼容，为 Browser 候选预留独立 `browserCandidates` 表。已有 Schema3 / Schema4 只打开并验证；旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，需先停止同根引擎，再显式预览并确认迁移。当前引擎为全新空目录明确创建 Schema3。本机完整 Core 为 2325 项、0 失败，旧数据真实迁移与 Browser 混合历史检查均通过；完整证据与精确提交自身 CI 的边界见[实施验收](docs/audits/2026-10-17/acceptance-catalog-schema4.md)。
 
 运行列表与详情已补充[原子发布期间的稳定展示读取](docs/audits/2026-10-17/acceptance-display-head-race.md)，避免正常 worker 更新进度时误报完整性冲突；来源与证据仍走严格核验。原工作台提交自身的 CI 失败与修复验证分别保留。
 
@@ -215,7 +217,9 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [跨运行复验实施记录](docs/audits/2026-10-16/acceptance-comparison.md) | 固定反例基准、真实 API / CLI / 控制台验证和证据 | 复查复验结论与保守边界 |
 | [项目与版本指南](docs/competition/acceptance-catalog.md) | 不可变版本、历史运行归属、目录冲突及引擎所有权 | 组织多次开发验收 |
 | [项目与版本实施记录](docs/audits/2026-10-16/acceptance-catalog.md) | 真实 worker、API / 控制台、双引擎、重启及原始证据保护 | 复查目录可靠性 |
-| [验收目录格式升级](docs/audits/2026-10-16/acceptance-catalog-migration.md) | 保留旧原件的单次迁移、版本谱系和真实旧数据浏览器复验 | 复查升级兼容性 |
+| [Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md) | D1 纯格式、旧历史兼容、预览与确认迁移；本机完整回归与真实流程通过 | 维护旧 Schema1 / Schema2，明确升级到 Schema4 |
+| [Schema3 格式与历史迁移](docs/competition/acceptance-catalog-schema3.md) | Browser 来源表的格式沿革与原 Spec 历史兼容 | 理解历史切片；当前操作见 Schema4 指南 |
+| [验收目录格式升级历史验收](docs/audits/2026-10-16/acceptance-catalog-migration.md) | 保留旧原件的单次迁移、版本谱系和真实旧数据浏览器复验 | 复查原阶段升级兼容性 |
 | [Spec 需求基线](docs/competition/acceptance-baseline.md) | 完整候选预览、批准历史、独立选用、来源重新核验 | 管理明确认可的需求 |
 | [需求基线实施验收](docs/audits/2026-10-16/acceptance-baseline.md) | 真实 worker / 浏览器、来源篡改、冲突和历史保护 | 复查批准可靠性 |
 | [托管 Spec 合同与执行](docs/competition/acceptance-managed-spec.md) | 已选需求重建、明确目标版本、真实执行与核验快照 / 下载 / 比较 | 专用 HTTP 接纳、运行槽、取消及查询合同 |

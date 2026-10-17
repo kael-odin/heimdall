@@ -172,7 +172,7 @@ try {
     globalThis.fetch = originalFetch; syncBuiltinESMExports();
   };
   store = createAcceptanceCatalogStore({ root: ROOT, owner });
-  await store.initialize();
+  await store.initialize({ createSchemaVersion: 3 });
   for (const sample of samples) {
     const material = readBrowserCandidateSource(sample.runId, { root: ROOT, owner });
     const projected = Object.fromEntries(['baseline', 'target'].map(sourceSide => [sourceSide,

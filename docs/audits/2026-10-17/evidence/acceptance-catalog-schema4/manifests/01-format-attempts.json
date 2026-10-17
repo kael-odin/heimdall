@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "id": "01-format-attempts",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-v4-format-tests-20261017",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792214973356426100
+    },
+    {
+      "path": "attempt-61502af9-ff6d-41ea-b1a7-bb7f40657f9b",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792214874747845300
+    },
+    {
+      "path": "attempt-61502af9-ff6d-41ea-b1a7-bb7f40657f9b/command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214874255524800,
+      "bytes": 522,
+      "sha256": "8e2c85d30d3c69042ad6d2cac005b9d4c06f75cba931f5a2936f2845415374d2"
+    },
+    {
+      "path": "attempt-61502af9-ff6d-41ea-b1a7-bb7f40657f9b/exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214874746845600,
+      "bytes": 75,
+      "sha256": "6ae549834871d0bfe92c7c118c2f17f8988ef684ce1a3e178ed4bef836592cc1"
+    },
+    {
+      "path": "attempt-61502af9-ff6d-41ea-b1a7-bb7f40657f9b/source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214874747845300,
+      "bytes": 1245,
+      "sha256": "d181d685cc499f457713e6c8ec85551b4f949e405be507065156c8f238172d8c"
+    },
+    {
+      "path": "attempt-61502af9-ff6d-41ea-b1a7-bb7f40657f9b/source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214874258138700,
+      "bytes": 1245,
+      "sha256": "d181d685cc499f457713e6c8ec85551b4f949e405be507065156c8f238172d8c"
+    },
+    {
+      "path": "attempt-61502af9-ff6d-41ea-b1a7-bb7f40657f9b/stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214874745837100,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "attempt-61502af9-ff6d-41ea-b1a7-bb7f40657f9b/stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214874745837100,
+      "bytes": 4459,
+      "sha256": "bc117b51232f4173c8c33ce50c6eb368faf37880301adf19e3f53c0b85beb372"
+    },
+    {
+      "path": "attempt-f3d20223-d763-4940-8c18-b37e7dba45f6",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792215090934585200
+    },
+    {
+      "path": "attempt-f3d20223-d763-4940-8c18-b37e7dba45f6/command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214973357432800,
+      "bytes": 522,
+      "sha256": "f6066b15517833702bdb4420521a604505e66a6a912e680da55e87d46c184248"
+    },
+    {
+      "path": "attempt-f3d20223-d763-4940-8c18-b37e7dba45f6/exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214974025160200,
+      "bytes": 75,
+      "sha256": "d4d74ea1c6989a0f95320a86dcf15a25a37d654dbe3e5ae645f32b172d63ee44"
+    },
+    {
+      "path": "attempt-f3d20223-d763-4940-8c18-b37e7dba45f6/source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214974026483600,
+      "bytes": 1245,
+      "sha256": "3754827861a4c22650ade961d1e767d6571319e065fbf3e9621f2127c4e76c9f"
+    },
+    {
+      "path": "attempt-f3d20223-d763-4940-8c18-b37e7dba45f6/source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214973360433500,
+      "bytes": 1245,
+      "sha256": "3754827861a4c22650ade961d1e767d6571319e065fbf3e9621f2127c4e76c9f"
+    },
+    {
+      "path": "attempt-f3d20223-d763-4940-8c18-b37e7dba45f6/stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214974024153300,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "attempt-f3d20223-d763-4940-8c18-b37e7dba45f6/stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214974024153300,
+      "bytes": 4663,
+      "sha256": "ada4faead83937650393ebe62ff33ee00a091f2776a3d5230f006b1d044b3b06"
+    },
+    {
+      "path": "attempt-f3d20223-d763-4940-8c18-b37e7dba45f6/summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792215090934585200,
+      "bytes": 293,
+      "sha256": "bcdb09bb25f4482d3d1e97e0d016f0f6289360dfb7e372b0b07873b7c8d06fde"
+    },
+    {
+      "path": "run.mjs",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792214873742334100,
+      "bytes": 2210,
+      "sha256": "6cb6d8e268e10064a67745e4d8eba5d54edba6fa312ccbef6d09baffb5fc8ddc"
+    }
+  ]
+}

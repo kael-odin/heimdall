@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "03-browser-v4-third-pass-gate",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d1-integration-20261017\\fresh-browser-v4-opaque-origin-4677dcfd-ffee-4f53-8809-e9fab989aeb2",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792219413949507100
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219362150555000,
+      "bytes": 470,
+      "sha256": "0979b3e00f9bfda8e962d313c96c1c982a02e61e18150138afdc1d9742e23a1f"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219413845461900,
+      "bytes": 101,
+      "sha256": "560405c5d4583a69efbabec914989d73f15e0b4cded1facb679f7ea7976bd7af"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219413948504800,
+      "bytes": 92043,
+      "sha256": "a43c377f5c69dad20dedb82fda3c9882c8f018e48d84a3563596e9939e74c503"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219362148547000,
+      "bytes": 92043,
+      "sha256": "a43c377f5c69dad20dedb82fda3c9882c8f018e48d84a3563596e9939e74c503"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219362152552600,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219408631429900,
+      "bytes": 1699,
+      "sha256": "da317b66398c8c198805e0b79423b51fffc033f073b2de17b7962917811b44b7"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219413949507100,
+      "bytes": 88,
+      "sha256": "3153ab7afe617005ffd27e451f9e1ecd1ddabc7278733a60faf1d3f90aba8e3d"
+    }
+  ]
+}

@@ -29,7 +29,7 @@ async function fixture(t, options = {}) {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const f = { root, owner: { root, assertOwned() {} } };
   f.store = createAcceptanceCatalogStore({ root, owner: f.owner, ...options });
-  await f.store.initialize();
+  await f.store.initialize({ createSchemaVersion: 3 });
   f.project = (await f.store.createProject({ ...cas(f.store), name: '合同验收' })).project;
   f.release = (await f.store.createRelease(f.project.id, { ...cas(f.store), label: 'v1', targetUrl: options.targetUrl ?? TARGET })).release;
   return f;
@@ -83,7 +83,7 @@ test('complete draft creates a candidate, approval leaves current empty, selecti
   assert.deepEqual(digest(s.dir), s.original);
   const saved = bytes(f);
   const reloaded = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-  await reloaded.initialize(); assert.deepEqual(bytes(f), saved);
+  await reloaded.initialize({ createSchemaVersion: 3 }); assert.deepEqual(bytes(f), saved);
   assert.equal(reloaded.readBaselineCandidate(f.project.id, candidate.id).diagnostics.eligible, true);
 });
 
@@ -168,7 +168,7 @@ test('candidate approval and selection writes each have exactly one double-CAS w
   const selections = await Promise.allSettled([f.store.selectBaseline(f.project.id, selectionRequest), f.store.selectBaseline(f.project.id, selectionRequest)]);
   assert.equal(selections.filter(item => item.status === 'fulfilled').length, 1);
   assert.equal(selections.find(item => item.status === 'rejected').reason.code, 'STALE_REVISION');
-  const restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner }); await restarted.initialize();
+  const restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner }); await restarted.initialize({ createSchemaVersion: 3 });
   assert.equal(restarted.read().revision, 6);
 });
 

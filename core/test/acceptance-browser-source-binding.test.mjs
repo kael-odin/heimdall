@@ -86,7 +86,7 @@ async function fixture(t, sample = 'target-unavailable', side = 'baseline') {
   const owner = acquireAcceptanceOwner({ root });
   t.after(() => { owner.release(); rmSync(parent, { recursive: true, force: true }); });
   const f = { parent, root, owner, sample, side, runId: manifest.runId, dir, writes: [], afterPrevious: null };
-  f.store = openStore(f); await f.store.initialize();
+  f.store = openStore(f); await f.store.initialize({ createSchemaVersion: 3 });
   Object.assign(f, await projectRelease(f, manifest.plan[side + 'Url'], 'Browser 来源归属'));
   f.writes.length = 0; return f;
 }
@@ -144,7 +144,7 @@ test('four frozen Browser fixtures bind only explicitly eligible sides and prese
       assert.deepEqual(read.binding, result.binding); assert.deepEqual(read.preview, expected.preview);
       assert.deepEqual(read.diagnostics, { eligible: true, contentMatches: true, issues: [] }); assert.equal(read.executionReady, false);
       noCapabilities(read); assert.deepEqual(tree(f.root), snapshot);
-      const restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner }); await restarted.initialize();
+      const restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner }); await restarted.initialize({ createSchemaVersion: 3 });
       assert.deepEqual(restarted.read().browserSourceBindings[result.binding.id], result.binding);
       assert.deepEqual(restarted.readBrowserSourceBinding(f.project.id, result.binding.id), read); assert.deepEqual(tree(f.root), snapshot);
     });

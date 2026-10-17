@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "27-followup-cdp-gate",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d1-integration-20261017\\final-first-fstat-cdp-f3a7f80b-a2c2-4e12-9b84-9c44903eda5c",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792225880207238300
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225849260242900,
+      "bytes": 484,
+      "sha256": "68b5e7aca81d5d3f3da6fe7e4528335fa4d4805c444bffb4d9b2ca4989005f13"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225879843358800,
+      "bytes": 101,
+      "sha256": "bbc5bdcfc7bc1dd2c2d24ca618745720e93a8a3a807378fb4a631b5f28c8ad15"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225880206713300,
+      "bytes": 92216,
+      "sha256": "bb3bf1497be59e7b0d9ca057739701c19ca94c574fc6c3d534275c5e31f78d36"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225849258670000,
+      "bytes": 92216,
+      "sha256": "bb3bf1497be59e7b0d9ca057739701c19ca94c574fc6c3d534275c5e31f78d36"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225849262385000,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225874764264600,
+      "bytes": 465,
+      "sha256": "3f53e1347af525cb457561c87c6b692e62fa02a4f56bd4c023a68de9e806a89a"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225880207238300,
+      "bytes": 88,
+      "sha256": "aa86fef64fd095a50680eac7fd37b74349dc39a9fcf3c39370b58cb4df129e7a"
+    }
+  ]
+}

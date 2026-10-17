@@ -34,7 +34,7 @@ async function fixture(t) {
   t.after(async () => { await new Promise(resolve => server.close(resolve)); owner.release(); fs.rmSync(root, { recursive: true, force: true }); });
   const base = 'http://127.0.0.1:' + server.address().port;
   const store = createAcceptanceCatalogStore({ root, owner });
-  await store.initialize();
+  await store.initialize({ createSchemaVersion: 3 });
   const project = (await store.createProject({ ...cas(store), name: '纯关联真实准备来源' })).project;
   const sourceRelease = (await store.createRelease(project.id, { ...cas(store), label: '需求草稿', targetUrl: base + '/source' })).release;
   const targetRelease = (await store.createRelease(project.id, { ...cas(store), label: '明确目标', targetUrl: base + '/target' })).release;

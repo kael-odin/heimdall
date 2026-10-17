@@ -158,7 +158,19 @@ function createScope(options, display) {
         descriptor = fs.openSync(path, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0));
         const opened = fs.fstatSync(descriptor, { bigint: true });
         if (!opened.isFile()) changed();
-        if (!sameFile(before, opened) && !publishedHead(run, name, before, opened)) changed();
+        if (!sameFile(before, opened) && !publishedHead(run, name, before, opened)) {
+          // A Linux rename can detach this descriptor before its first fstat.
+          // Pin the safe replacement path without adopting its bytes. The fd
+          // must either be the unchanged pre-open inode, or an intervening
+          // publication opened after that pathname observation.
+          const current = identity(path, false, false, allowHardlinks);
+          const intervening = before.dev !== opened.dev || before.ino !== opened.ino || before.birthtimeNs !== opened.birthtimeNs;
+          const detached = opened.nlink === 0n && publishedHead(run, name, opened, current)
+            && (intervening || (sameIdentity(before, opened) && before.nlink === 1n
+              && before.size === opened.size && before.mtimeNs === opened.mtimeNs));
+          if (!detached) changed();
+          rememberPublication(path, current);
+        }
         if (opened.size < 0n || opened.size > BigInt(maxBytes)) fail('JSON_BYTES_EXCEEDED');
         const bytes = Buffer.alloc(Number(opened.size)); let offset = 0;
         while (offset < bytes.length) {
@@ -173,7 +185,7 @@ function createScope(options, display) {
         // Linux may unlink the old inode while this descriptor still pins its
         // bytes. Only link/ctime changes from replacement are tolerated here.
         const released = replaced && sameIdentity(opened, finished) && opened.size === finished.size
-          && opened.mtimeNs === finished.mtimeNs && finished.nlink <= 1n;
+          && opened.mtimeNs === finished.mtimeNs && opened.nlink === 1n && finished.nlink === 0n;
         if (!sameFile(opened, finished) && !released) changed();
         if (!sameFile(opened, current) && !replaced) changed();
         if (replaced) rememberPublication(path, current);

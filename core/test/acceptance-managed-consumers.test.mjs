@@ -88,7 +88,7 @@ async function fixture(t, paths = ['/healthy', '/bug']) {
       checks: paths.map((path, index) => ({ id: 'consumer-' + index, title: path, path, method: 'GET', severity: 'high',
         expect: { status: 200, contentType: 'application/json', json: [{ pointer: '/code', kind: 'equals', value: 0 }] } })) } });
   const catalog = createAcceptanceCatalogStore({ root, owner });
-  await catalog.initialize();
+  await catalog.initialize({ createSchemaVersion: 3 });
   const project = (await catalog.createProject({ ...cas(catalog), name: 'managed consumers' })).project;
   const sourceRelease = (await catalog.createRelease(project.id, { ...cas(catalog), label: 'source', targetUrl: plan.targetUrl })).release;
   const targetRelease = (await catalog.createRelease(project.id, { ...cas(catalog), label: 'target', targetUrl: base + '/target' })).release;

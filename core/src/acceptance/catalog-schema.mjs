@@ -4,20 +4,24 @@ import { types } from 'node:util';
 import { normalizeAcceptanceUrl } from './urls.mjs';
 import { hashAcceptanceValue } from './identity.mjs';
 import { hashBrowserCandidateValue } from './browser-candidate-identity.mjs';
+import { hashOrganizedBrowserCandidateValue } from './browser-organized-candidate-identity.mjs';
 
 export const ACCEPTANCE_CATALOG_LIMITS = Object.freeze({ jsonBytes: 8 * 1024 * 1024, manifestBytes: 8 * 1024 * 1024,
   projects: 64, releases: 1024, runBindings: 4096, candidates: 1024, approvals: 2048, selections: 4096,
-  migrations: 2, browserSourceBindings: 4096, events: 8192, queue: 32 });
+  migrations: 3, browserSourceBindings: 4096, browserCandidates: 1024, browserCandidateBytes: 8 * 1024,
+  events: 8192, queue: 32 });
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const IDS = Object.fromEntries(['ag', 'ap', 'ar', 'ac', 'ae', 'ab', 'aa', 'as', 'am', 'ax'].map(prefix => [prefix, new RegExp(`^${prefix}-${UUID}$`)]));
+const IDS = Object.fromEntries(['ag', 'ap', 'ar', 'ac', 'ae', 'ab', 'aa', 'as', 'am', 'ax', 'bc'].map(prefix => [prefix, new RegExp(`^${prefix}-${UUID}$`)]));
 const HASH = /^[a-f0-9]{64}$/;
 const sha256 = value => typeof value === 'string' && HASH.test(value);
 const BASE_MAPS = ['projects', 'releases', 'runBindings'];
 const EXTRA_MAPS = ['candidates', 'approvals', 'selections', 'migrations'];
 const V3_MAPS = ['browserSourceBindings'];
+const V4_MAPS = ['browserCandidates'];
 const V1_FIELDS = ['schemaVersion', 'generationId', 'revision', ...BASE_MAPS, 'events'];
 const V2_FIELDS = [...V1_FIELDS, ...EXTRA_MAPS];
 const V3_FIELDS = [...V2_FIELDS, ...V3_MAPS];
+const V4_FIELDS = [...V3_FIELDS, ...V4_MAPS];
 const EVENT_FIELDS = ['id', 'revision', 'kind', 'projectId', 'entityId', 'entityDigest', 'at', 'actor'];
 const GLOBAL_EVENT_FIELDS = EVENT_FIELDS.filter(key => key !== 'projectId');
 const MIGRATION_FIELDS = ['id', 'fromSchemaVersion', 'toSchemaVersion', 'fromGenerationId', 'fromRevision',
@@ -33,6 +37,8 @@ const BROWSER_BINDING_DIGESTS = ['sourcePlanDigest', 'sourceReportDigest', 'evid
 const BROWSER_BINDING_FIELDS = ['id', 'projectId', 'releaseId', 'projectionVersion', 'source',
   ...BROWSER_BINDING_DIGESTS, 'boundAt', 'actor'];
 const BROWSER_SOURCE_FIELDS = ['runId', 'sourceMode', 'side', 'entryUrl'];
+const BROWSER_CANDIDATE_FIELDS = ['id', 'candidateContractVersion', 'mode', 'projectId', 'releaseId',
+  'sourceBindingId', 'sourceContentDigest', 'organizationContextDigest', 'contentDigest', 'createdAt', 'actor'];
 
 /** Stable candidate content, excluding the storage identity and creation time. */
 export function candidateProjectionOf(candidate) {
@@ -50,6 +56,12 @@ export function browserBindingProjectionOf(binding) {
     scopeKey: binding.scopeKey, ruleManifestKey: binding.ruleManifestKey,
     oracleManifestKey: binding.oracleManifestKey, environmentKey: binding.environmentKey,
     verifierFingerprint: binding.verifierFingerprint, contentDigest: binding.sourceContentDigest };
+}
+/** Content identity of an already strictly validated organized Browser record. */
+export function browserCandidateContentOf(candidate) {
+  return { candidateContractVersion: candidate.candidateContractVersion, mode: candidate.mode,
+    projectId: candidate.projectId, releaseId: candidate.releaseId, sourceBindingId: candidate.sourceBindingId,
+    sourceContentDigest: candidate.sourceContentDigest, organizationContextDigest: candidate.organizationContextDigest };
 }
 export function currentSelectionsOf(catalog, projectId) {
   let spec = null;
@@ -102,7 +114,7 @@ export function limitsOf(input = {}) {
   return limits;
 }
 export function capacity(catalog, limits, fail) {
-  for (const key of [...BASE_MAPS, ...EXTRA_MAPS, ...V3_MAPS, 'events']) {
+  for (const key of [...BASE_MAPS, ...EXTRA_MAPS, ...V3_MAPS, ...V4_MAPS, 'events']) {
     const count = key === 'events' ? catalog.events.length : Object.keys(catalog[key] ?? {}).length;
     if (count > limits[key]) fail(key);
   }
@@ -128,12 +140,14 @@ function eventsOf(value, fail) {
   return value;
 }
 function validate(catalog, schemaVersion, limits) {
-  const fail = unavailable, rootFields = schemaVersion === 1 ? V1_FIELDS : schemaVersion === 2 ? V2_FIELDS : V3_FIELDS;
+  const fail = unavailable, rootFields = schemaVersion === 1 ? V1_FIELDS : schemaVersion === 2 ? V2_FIELDS
+    : schemaVersion === 3 ? V3_FIELDS : V4_FIELDS;
   fields(catalog, rootFields, rootFields, fail);
   if (catalog.schemaVersion !== schemaVersion) fail('UNSUPPORTED_SCHEMA');
   id(catalog.generationId, 'ag', fail);
   if (!Number.isSafeInteger(catalog.revision) || catalog.revision < 0) fail('INVALID_REVISION');
-  const entries = Object.fromEntries([...BASE_MAPS, ...(schemaVersion >= 2 ? EXTRA_MAPS : []), ...(schemaVersion === 3 ? V3_MAPS : [])]
+  const entries = Object.fromEntries([...BASE_MAPS, ...(schemaVersion >= 2 ? EXTRA_MAPS : []), ...(schemaVersion >= 3 ? V3_MAPS : []),
+    ...(schemaVersion >= 4 ? V4_MAPS : [])]
     .map(key => [key, mapEntries(catalog[key], fail)]));
   const { projects, releases, runBindings } = catalog, events = eventsOf(catalog.events, fail);
   capacity(catalog, limits, () => fail('CAPACITY_EXCEEDED'));
@@ -155,7 +169,7 @@ function validate(catalog, schemaVersion, limits) {
     if (binding.runId !== key || !Object.hasOwn(projects, binding.projectId) || !Object.hasOwn(releases, binding.releaseId)
       || releases[binding.releaseId].projectId !== binding.projectId || !iso(binding.boundAt)) fail('INVALID_BINDING');
   }
-  if (schemaVersion === 3) {
+  if (schemaVersion >= 3) {
     const sourceSides = new Map();
     for (const [key, binding] of entries.browserSourceBindings) {
       id(key, 'ax', fail); fields(binding, BROWSER_BINDING_FIELDS, BROWSER_BINDING_FIELDS, fail);
@@ -176,6 +190,31 @@ function validate(catalog, schemaVersion, limits) {
       sides.add(binding.source.side); sourceSides.set(binding.source.runId, sides);
       const target = binding.source.side === 'target' ? runBindings[binding.source.runId] : null;
       if (target && (target.projectId !== binding.projectId || target.releaseId !== binding.releaseId)) fail('BROWSER_TARGET_MISMATCH');
+    }
+  }
+  if (schemaVersion >= 4) {
+    const sourceBindings = new Set();
+    for (const [key, candidate] of entries.browserCandidates) {
+      id(key, 'bc', fail); fields(candidate, BROWSER_CANDIDATE_FIELDS, BROWSER_CANDIDATE_FIELDS, fail);
+      id(candidate.projectId, 'ap', fail); id(candidate.releaseId, 'ar', fail); id(candidate.sourceBindingId, 'ax', fail);
+      actor(candidate.actor, fail);
+      const project = Object.hasOwn(projects, candidate.projectId) ? projects[candidate.projectId] : null;
+      const release = Object.hasOwn(releases, candidate.releaseId) ? releases[candidate.releaseId] : null;
+      const sourceBinding = Object.hasOwn(catalog.browserSourceBindings, candidate.sourceBindingId)
+        ? catalog.browserSourceBindings[candidate.sourceBindingId] : null;
+      if (candidate.id !== key || candidate.candidateContractVersion !== 1 || candidate.mode !== 'browser'
+        || !project || !release || !sourceBinding || release.projectId !== candidate.projectId
+        || sourceBinding.projectId !== candidate.projectId || sourceBinding.releaseId !== candidate.releaseId
+        || !iso(candidate.createdAt) || !sha256(candidate.sourceContentDigest)
+        || !sha256(candidate.organizationContextDigest) || !sha256(candidate.contentDigest)) fail('INVALID_BROWSER_CANDIDATE');
+      if (candidate.sourceContentDigest !== sourceBinding.sourceContentDigest) fail('BROWSER_CANDIDATE_SOURCE_MISMATCH');
+      if (hashOrganizedBrowserCandidateValue('organization-context', { project, release, sourceBinding })
+        !== candidate.organizationContextDigest) fail('BROWSER_CANDIDATE_ORGANIZATION_MISMATCH');
+      if (hashOrganizedBrowserCandidateValue('content', browserCandidateContentOf(candidate))
+        !== candidate.contentDigest) fail('BROWSER_CANDIDATE_DIGEST_MISMATCH');
+      if (sourceBindings.has(candidate.sourceBindingId)) fail('BROWSER_CANDIDATE_ALREADY_EXISTS');
+      sourceBindings.add(candidate.sourceBindingId);
+      if (Buffer.byteLength(JSON.stringify(candidate)) > limits.browserCandidateBytes) fail('BROWSER_CANDIDATE_BYTES_EXCEEDED');
     }
   }
   if (schemaVersion >= 2) {
@@ -217,7 +256,8 @@ function validate(catalog, schemaVersion, limits) {
       id(migration.fromGenerationId, 'ag', fail); actor(migration.actor, fail);
       const transition = migration.fromSchemaVersion;
       if (migration.id !== key || !(migration.fromSchemaVersion === 1 && migration.toSchemaVersion === 2
-          || schemaVersion === 3 && migration.fromSchemaVersion === 2 && migration.toSchemaVersion === 3)
+          || schemaVersion >= 3 && migration.fromSchemaVersion === 2 && migration.toSchemaVersion === 3
+          || schemaVersion >= 4 && migration.fromSchemaVersion === 3 && migration.toSchemaVersion === 4)
         || generations.has(migration.fromGenerationId) || transitions.has(transition) || !Number.isSafeInteger(migration.fromRevision)
         || migration.fromRevision < 0 || !sha256(migration.sourceHeadSha256)
         || migration.sourcePreviousSha256 !== null && !sha256(migration.sourcePreviousSha256)
@@ -228,9 +268,10 @@ function validate(catalog, schemaVersion, limits) {
   const entityCount = Object.values(entries).reduce((total, list) => total + list.length, 0);
   if (events.length !== catalog.revision || events.length !== entityCount) fail('EVENT_HISTORY_MISMATCH');
   const eventIds = new Set(), entities = new Set(), seenProjects = new Set(), seenReleases = new Set();
-  const seenBindings = new Set(), seenCandidates = new Set(), seenApprovals = new Set(), selected = new Map();
-  const hasV3Migration = schemaVersion === 3 && entries.migrations.some(([, migration]) => migration.toSchemaVersion === 3);
-  let seenBaselineEvent = false, seenV3Migration = false, lastMigration = null;
+  const seenBindings = new Set(), seenBrowserBindings = new Set(), seenCandidates = new Set(), seenApprovals = new Set(), selected = new Map();
+  const hasV3Migration = schemaVersion >= 3 && entries.migrations.some(([, migration]) => migration.toSchemaVersion === 3);
+  const hasV4Migration = schemaVersion >= 4 && entries.migrations.some(([, migration]) => migration.toSchemaVersion === 4);
+  let seenBaselineEvent = false, seenV3Migration = false, seenV4Migration = false, lastMigration = null;
   for (const [index, event] of events.entries()) {
     fields(event, EVENT_FIELDS, GLOBAL_EVENT_FIELDS, fail);
     const migrationEvent = event.kind === 'catalog-migrated';
@@ -253,10 +294,16 @@ function validate(catalog, schemaVersion, limits) {
       id(event.entityId, 'ac', fail); entity = runBindings[event.entityId];
       if (!entity || entity.projectId !== event.projectId || !seenReleases.has(entity.releaseId)) fail('INVALID_EVENT_REFERENCE');
       seenBindings.add(entity.runId);
-    } else if (event.kind === 'browser-source-bound' && schemaVersion === 3) {
+    } else if (event.kind === 'browser-source-bound' && schemaVersion >= 3) {
       id(event.entityId, 'ax', fail); entity = catalog.browserSourceBindings[event.entityId];
       if (!entity || entity.projectId !== event.projectId || !seenProjects.has(entity.projectId)
         || !seenReleases.has(entity.releaseId) || hasV3Migration && !seenV3Migration) fail('INVALID_EVENT_REFERENCE');
+      seenBrowserBindings.add(entity.id);
+    } else if (event.kind === 'browser-candidate-created' && schemaVersion >= 4) {
+      id(event.entityId, 'bc', fail); entity = catalog.browserCandidates[event.entityId];
+      if (!entity || entity.projectId !== event.projectId || !seenProjects.has(entity.projectId)
+        || !seenReleases.has(entity.releaseId) || !seenBrowserBindings.has(entity.sourceBindingId)
+        || hasV4Migration && !seenV4Migration) fail('INVALID_EVENT_REFERENCE');
     } else if (event.kind === 'candidate-created' && schemaVersion >= 2) {
       id(event.entityId, 'ab', fail); entity = catalog.candidates[event.entityId];
       if (!entity || entity.projectId !== event.projectId || !seenBindings.has(entity.source.runId)) fail('INVALID_EVENT_REFERENCE');
@@ -280,6 +327,7 @@ function validate(catalog, schemaVersion, limits) {
         || lastMigration && lastMigration.toSchemaVersion !== entity.fromSchemaVersion) fail('INVALID_MIGRATION_EVENT');
       lastMigration = entity;
       if (entity.toSchemaVersion === 3) seenV3Migration = true;
+      if (entity.toSchemaVersion === 4) seenV4Migration = true;
     } else fail('INVALID_EVENT_KIND');
     if ((entity.createdAt ?? entity.boundAt ?? entity.approvedAt ?? entity.selectedAt) !== event.at
       || hashAcceptanceValue(entity) !== event.entityDigest) fail('ENTITY_HISTORY_MISMATCH');
@@ -301,9 +349,13 @@ export function validateAcceptanceCatalogV2(catalog, { limits = {} } = {}) {
 export function validateAcceptanceCatalogV3(catalog, { limits = {} } = {}) {
   return validate(catalog, 3, limitsOf(limits));
 }
+/** Schema4 freezes organized Browser candidate metadata without source reads. */
+export function validateAcceptanceCatalogV4(catalog, { limits = {} } = {}) {
+  return validate(catalog, 4, limitsOf(limits));
+}
 export function validateAcceptanceCatalog(catalog, { limits = {} } = {}) {
-  fields(catalog, V3_FIELDS, V1_FIELDS, unavailable);
-  if (![1, 2, 3].includes(catalog.schemaVersion)) unavailable('UNSUPPORTED_SCHEMA');
+  fields(catalog, V4_FIELDS, V1_FIELDS, unavailable);
+  if (![1, 2, 3, 4].includes(catalog.schemaVersion)) unavailable('UNSUPPORTED_SCHEMA');
   return validate(catalog, catalog.schemaVersion, limitsOf(limits));
 }
 
@@ -353,4 +405,29 @@ export function buildCatalogMigrationV3(catalog, { headSha256, previousSha256 = 
     throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限；历史记录未删除。', { limit: 'jsonBytes' });
   }
   return validate(migrated, 3, limits);
+}
+
+/** Preserve a complete validated V3 value, then append exactly one V4 step. */
+export function buildCatalogMigrationV4(catalog, { headSha256, previousSha256 = null,
+  at = new Date().toISOString(), limits: inputLimits = {} } = {}) {
+  const limits = limitsOf(inputLimits);
+  validate(catalog, 3, limits);
+  if (!sha256(headSha256) || previousSha256 !== null && !sha256(previousSha256) || !iso(at)) invalid('目录迁移摘要或时间无效。');
+  const migrated = JSON.parse(JSON.stringify(catalog));
+  const migration = { id: 'am-' + randomUUID(), fromSchemaVersion: 3, toSchemaVersion: 4,
+    fromGenerationId: catalog.generationId, fromRevision: catalog.revision,
+    sourceHeadSha256: headSha256, sourcePreviousSha256: previousSha256, createdAt: at, actor: { kind: 'local-operator' } };
+  migrated.schemaVersion = 4;
+  const generations = new Set([catalog.generationId, ...Object.values(catalog.migrations).map(item => item.fromGenerationId)]);
+  do { migrated.generationId = 'ag-' + randomUUID(); } while (generations.has(migrated.generationId));
+  migrated.revision++;
+  migrated.browserCandidates = {};
+  migrated.migrations[migration.id] = migration;
+  migrated.events.push({ id: 'ae-' + randomUUID(), revision: migrated.revision, kind: 'catalog-migrated',
+    entityId: migration.id, entityDigest: hashAcceptanceValue(migration), at, actor: { kind: 'local-operator' } });
+  capacity(migrated, limits, limit => { throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限；历史记录未删除。', { limit }); });
+  if (Buffer.byteLength(JSON.stringify(migrated, null, 2) + '\n') > limits.jsonBytes) {
+    throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限；历史记录未删除。', { limit: 'jsonBytes' });
+  }
+  return validate(migrated, 4, limits);
 }

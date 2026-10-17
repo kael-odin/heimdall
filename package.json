@@ -24,6 +24,7 @@
     "acceptance:comparison:smoke": "node core/scripts/smoke-acceptance-comparison-console.mjs",
     "acceptance:catalog:smoke": "node core/scripts/smoke-acceptance-catalog-console.mjs",
     "acceptance:catalog:migration:smoke": "node core/scripts/smoke-acceptance-catalog-migration.mjs",
+    "acceptance:catalog:maintenance": "node core/src/acceptance/catalog-maintenance-cli.mjs",
     "acceptance:baseline:smoke": "node core/scripts/smoke-acceptance-baseline-console.mjs",
     "acceptance:managed:prepare:smoke": "node core/scripts/smoke-acceptance-managed-preparation.mjs",
     "acceptance:managed:read:smoke": "node core/scripts/smoke-acceptance-managed-reading.mjs",
@@ -33,6 +34,7 @@
     "acceptance:browser:source:smoke": "node core/scripts/smoke-acceptance-browser-source.mjs",
     "acceptance:browser:read:smoke": "node core/scripts/smoke-acceptance-browser-reading.mjs",
     "acceptance:browser:bindings:smoke": "node core/scripts/smoke-acceptance-browser-bindings.mjs",
-    "acceptance:browser:bindings:ui:smoke": "node core/scripts/smoke-acceptance-browser-bindings-console.mjs"
+    "acceptance:browser:bindings:ui:smoke": "node core/scripts/smoke-acceptance-browser-bindings-console.mjs",
+    "acceptance:browser:bindings:v4:smoke": "node core/scripts/smoke-acceptance-browser-bindings-console.mjs --migrate-catalog"
   }
 }

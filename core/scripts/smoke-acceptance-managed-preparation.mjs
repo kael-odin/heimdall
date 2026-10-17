@@ -116,7 +116,7 @@ async function main() {
     globalThis.fetch = () => { fetchAttempts++; throw new Error('Preparation smoke forbids HTTP execution.'); };
     stage = 'owner-and-selection';
     owner = acquireAcceptanceOwner({ root: acceptanceRoot });
-    const store = createAcceptanceCatalogStore({ root: acceptanceRoot, owner }); await store.initialize();
+    const store = createAcceptanceCatalogStore({ root: acceptanceRoot, owner }); await store.initialize({ createSchemaVersion: 3 });
     const catalog = store.read(), candidate = Object.values(catalog.candidates).find(item => item.source.runId === DRAFT);
     assert.ok(candidate); const projectId = candidate.projectId;
     const approval = Object.values(catalog.approvals).find(item => item.candidateId === candidate.id && item.contentDigest === candidate.contentDigest);
@@ -196,7 +196,7 @@ async function main() {
     const oldNonce = owner.nonce; assert.equal(owner.release(), true); owner = null;
     owner = acquireAcceptanceOwner({ root: acceptanceRoot });
     check('realOwnerReleasedAndReacquired', () => { assert.notEqual(owner.nonce, oldNonce); assert.equal(owner.assertOwned(), true); });
-    const reopenedStore = createAcceptanceCatalogStore({ root: acceptanceRoot, owner }); await reopenedStore.initialize();
+    const reopenedStore = createAcceptanceCatalogStore({ root: acceptanceRoot, owner }); await reopenedStore.initialize({ createSchemaVersion: 3 });
     check('readOnlyQueryWithNewOwnerNeedsNeitherCurrentSelectionNorSource', () => {
       const queried = reopenedStore.readManagedSpecDispatch(projectId, input);
       assert.deepEqual(queried.bytes, first.record.bytes); assert.equal(queried.sha256, first.record.sha256);

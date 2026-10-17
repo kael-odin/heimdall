@@ -44,7 +44,7 @@ async function fixture(t, managed) {
   }
   const plan = planOf(targetUrl + '/source'), first = await legacy(root, plan);
   if (!managed) return { root, first, second: await legacy(root, plan), requests };
-  const catalog = createAcceptanceCatalogStore({ root, owner }); await catalog.initialize();
+  const catalog = createAcceptanceCatalogStore({ root, owner }); await catalog.initialize({ createSchemaVersion: 3 });
   const project = (await catalog.createProject({ ...cas(catalog), name: 'mixed batch final fence' })).project;
   const sourceRelease = (await catalog.createRelease(project.id, { ...cas(catalog), label: 'source', targetUrl: plan.targetUrl })).release;
   const targetRelease = (await catalog.createRelease(project.id, { ...cas(catalog), label: 'target', targetUrl: targetUrl + '/target' })).release;

@@ -28,7 +28,7 @@ async function fixture(t, options = {}) {
     if (!f.active) throw Object.assign(new Error('Owner lost'), { code: 'ACCEPTANCE_OWNER_LOST', status: 503 });
   } };
   f.store = createAcceptanceCatalogStore({ root, owner: f.owner, managedDispatchOptions: options });
-  await f.store.initialize();
+  await f.store.initialize({ createSchemaVersion: 3 });
   f.project = (await f.store.createProject({ ...cas(f.store), name: '受控需求准备' })).project;
   f.release = (await f.store.createRelease(f.project.id, { ...cas(f.store), label: '需求来源 v1', targetUrl: 'http://127.0.0.1:32987/source?revision=1' })).release;
   f.target = (await f.store.createRelease(f.project.id, { ...cas(f.store), label: '明确目标 v2', targetUrl: 'http://127.0.0.1:32988/development?revision=2', buildRef: 'target-build-v2' })).release;
@@ -270,7 +270,7 @@ test('catalog remains readable with a damaged sidecar while source eligibility f
   mkdirSync(dispatchDir(f), { recursive: true }); const file = join(dispatchDir(f), input.operationId + '.json');
   writeFileSync(file, '{broken');
   const reopened = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-  assert.equal((await reopened.initialize()).revision, f.store.read().revision);
+  assert.equal((await reopened.initialize({ createSchemaVersion: 3 })).revision, f.store.read().revision);
   const candidate = reopened.readBaselineCandidate(f.project.id, f.candidate.id);
   assert.equal(candidate.diagnostics.eligible, false);
   assert.equal(candidate.preview, null);

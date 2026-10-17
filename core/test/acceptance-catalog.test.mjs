@@ -18,7 +18,7 @@ function fixture(t, options = {}) {
   return { root, owner, store: createAcceptanceCatalogStore({ root, owner, ...options }) };
 }
 async function projectAndRelease(f, targetUrl = TARGET) {
-  await f.store.initialize();
+  await f.store.initialize({ createSchemaVersion: 3 });
   const { project } = await f.store.createProject({ ...cas(f.store), name: '验收演示' });
   const { release } = await f.store.createRelease(project.id, { ...cas(f.store), label: 'v1', targetUrl });
   return { project, release };
@@ -44,18 +44,18 @@ async function unchanged(f, operation, code, status) {
 
 test('catalog initializes once, persists immutable entities and reloads their event history', async t => {
   const f = fixture(t);
-  const empty = await f.store.initialize();
+  const empty = await f.store.initialize({ createSchemaVersion: 3 });
   assert.equal(empty.schemaVersion, 3); assert.equal(empty.revision, 0); assert.match(empty.generationId, /^ag-/);
   assert.deepEqual(Object.keys(empty).sort(), ['approvals', 'browserSourceBindings', 'candidates', 'events', 'generationId', 'migrations',
     'projects', 'releases', 'revision', 'runBindings', 'schemaVersion', 'selections']);
-  assert.deepEqual(await f.store.initialize(), empty);
+  assert.deepEqual(await f.store.initialize({ createSchemaVersion: 3 }), empty);
   const first = await f.store.createProject({ ...cas(f.store), name: '  中文项目  ' });
   assert.equal(first.project.name, '中文项目'); assert.equal(first.revision, 1); assert.equal(first.event.kind, 'project-created');
   const second = await f.store.createRelease(first.project.id, { ...cas(f.store), label: '  v1  ', targetUrl: 'HTTP://EXAMPLE.TEST:80/app?x=1', buildRef: ' commit-1 ' });
   assert.equal(second.release.targetUrl, 'http://example.test/app?x=1'); assert.equal(second.release.buildRef, 'commit-1');
   assert.equal(second.event.entityId, second.release.id); assert.equal(second.revision, 2);
   const reloaded = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-  assert.deepEqual(await reloaded.initialize(), f.store.read());
+  assert.deepEqual(await reloaded.initialize({ createSchemaVersion: 3 }), f.store.read());
   first.project.name = 'changed by caller'; second.release.targetUrl = 'https://evil.test/';
   const returned = f.store.read(); returned.projects[first.project.id].name = 'changed local copy';
   assert.equal(reloaded.read().projects[first.project.id].name, '中文项目');
@@ -202,7 +202,7 @@ test('a manifest file alias cannot read metadata outside its run directory', asy
 });
 
 test('generation and revision are checked inside serialized writes and cannot be replayed', async t => {
-  const f = fixture(t); await f.store.initialize(); const original = cas(f.store);
+  const f = fixture(t); await f.store.initialize({ createSchemaVersion: 3 }); const original = cas(f.store);
   const results = await Promise.allSettled(['A', 'B'].map(name => f.store.createProject({ ...original, name })));
   assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
   assert.equal(results.find(result => result.status === 'rejected').reason.code, 'STALE_REVISION');
@@ -213,7 +213,7 @@ test('generation and revision are checked inside serialized writes and cannot be
 });
 
 test('bounded write queue rejects overload and recovers after rejected transactions', async t => {
-  const f = fixture(t, { limits: { queue: 2 } }); await f.store.initialize(); const base = cas(f.store);
+  const f = fixture(t, { limits: { queue: 2 } }); await f.store.initialize({ createSchemaVersion: 3 }); const base = cas(f.store);
   const results = await Promise.allSettled(['A', 'B', 'C'].map(name => f.store.createProject({ ...base, name })));
   assert.deepEqual(results.map(result => result.status === 'fulfilled' ? 'ok' : result.reason.code), ['ok', 'STALE_REVISION', 'CATALOG_QUEUE_FULL']);
   await f.store.createProject({ ...cas(f.store), name: 'queue still works' }); assert.equal(f.store.read().revision, 2);
@@ -221,7 +221,7 @@ test('bounded write queue rejects overload and recovers after rejected transacti
 
 test('entity, event and byte capacity refuse writes without deleting or revising history', async t => {
   for (const limits of [{ projects: 1 }, { events: 1 }, { jsonBytes: 800 }]) {
-    const f = fixture(t, { limits }); await f.store.initialize();
+    const f = fixture(t, { limits }); await f.store.initialize({ createSchemaVersion: 3 });
     if (!limits.jsonBytes) await f.store.createProject({ ...cas(f.store), name: 'first' });
     await unchanged(f, f.store.createProject({ ...cas(f.store), name: 'x'.repeat(120) }), 'CATALOG_CAPACITY', 409);
   }
@@ -246,28 +246,28 @@ test('corrupt catalog schemas, references and event history are preserved rather
     const corrupt = JSON.parse(JSON.stringify(valid)); mutate(corrupt);
     const original = Buffer.from(JSON.stringify(corrupt)); writeFileSync(join(f.root, 'catalog.json'), original);
     assert.throws(() => f.store.read(), { code: 'CATALOG_UNAVAILABLE', status: 503 });
-    await assert.rejects(f.store.initialize(), { code: 'CATALOG_UNAVAILABLE', status: 503 });
+    await assert.rejects(f.store.initialize({ createSchemaVersion: 3 }), { code: 'CATALOG_UNAVAILABLE', status: 503 });
     assert.deepEqual(bytes(f.root), original);
   }
   for (const invalidJson of ['null', '[]', '{}', '{broken']) {
     writeFileSync(join(f.root, 'catalog.json'), invalidJson);
-    await assert.rejects(f.store.initialize(), { code: 'CATALOG_UNAVAILABLE', status: 503 });
+    await assert.rejects(f.store.initialize({ createSchemaVersion: 3 }), { code: 'CATALOG_UNAVAILABLE', status: 503 });
     assert.equal(bytes(f.root).toString(), invalidJson);
   }
 });
 
 test('missing catalog with a backup or orphan temporary is never silently replaced by an empty catalog', async t => {
-  const f = fixture(t); await f.store.initialize(); await f.store.createProject({ ...cas(f.store), name: 'old' });
+  const f = fixture(t); await f.store.initialize({ createSchemaVersion: 3 }); await f.store.createProject({ ...cas(f.store), name: 'old' });
   const original = readFileSync(join(f.root, 'catalog.previous.json')); rmSync(join(f.root, 'catalog.json'));
-  await assert.rejects(f.store.initialize(), { code: 'CATALOG_UNAVAILABLE', status: 503 });
+  await assert.rejects(f.store.initialize({ createSchemaVersion: 3 }), { code: 'CATALOG_UNAVAILABLE', status: 503 });
   assert.deepEqual(readFileSync(join(f.root, 'catalog.previous.json')), original);
   const other = fixture(t); writeFileSync(join(other.root, 'catalog.json.crashed.tmp'), 'unfinished');
-  await assert.rejects(other.store.initialize(), { code: 'CATALOG_UNAVAILABLE', status: 503 });
+  await assert.rejects(other.store.initialize({ createSchemaVersion: 3 }), { code: 'CATALOG_UNAVAILABLE', status: 503 });
   assert.equal(readdirSync(other.root).includes('catalog.json'), false);
 });
 
 test('catalog byte limits and corrupt recovery material block writes without clobbering originals', async t => {
-  const f = fixture(t); await f.store.initialize(); await f.store.createProject({ ...cas(f.store), name: 'old' });
+  const f = fixture(t); await f.store.initialize({ createSchemaVersion: 3 }); await f.store.createProject({ ...cas(f.store), name: 'old' });
   writeFileSync(join(f.root, 'catalog.previous.json'), '{broken backup');
   await unchanged(f, f.store.createProject({ ...cas(f.store), name: 'new' }), 'CATALOG_UNAVAILABLE', 503);
   assert.equal(readFileSync(join(f.root, 'catalog.previous.json'), 'utf8'), '{broken backup');
@@ -278,15 +278,15 @@ test('catalog byte limits and corrupt recovery material block writes without clo
 test('owner fencing runs before initialization and immediately before committing a mutation', async t => {
   const f = fixture(t); let allowed = false, calls = 0, loseAt = Infinity;
   f.owner.assertOwned = () => { calls++; if (!allowed || calls === loseAt) throw Object.assign(new Error('private disk path'), { status: 503, code: 'ACCEPTANCE_OWNER_UNAVAILABLE' }); };
-  await assert.rejects(f.store.initialize(), { code: 'ACCEPTANCE_OWNER_UNAVAILABLE', status: 503 });
+  await assert.rejects(f.store.initialize({ createSchemaVersion: 3 }), { code: 'ACCEPTANCE_OWNER_UNAVAILABLE', status: 503 });
   assert.equal(readdirSync(f.root).length, 0);
-  allowed = true; await f.store.initialize(); calls = 0; loseAt = 2;
+  allowed = true; await f.store.initialize({ createSchemaVersion: 3 }); calls = 0; loseAt = 2;
   await unchanged(f, f.store.createProject({ ...cas(f.store), name: 'lost owner' }), 'ACCEPTANCE_OWNER_UNAVAILABLE', 503);
   assert.equal(f.store.read().revision, 0);
   loseAt = Infinity; allowed = false;
   await unchanged(f, f.store.createProject({ ...cas(f.store), name: 'not owner' }), 'ACCEPTANCE_OWNER_UNAVAILABLE', 503);
   const wrong = createAcceptanceCatalogStore({ root: f.root, owner: { root: join(f.root, 'different'), assertOwned() {} } });
-  await assert.rejects(wrong.initialize(), { code: 'CATALOG_UNAVAILABLE', status: 503 });
+  await assert.rejects(wrong.initialize({ createSchemaVersion: 3 }), { code: 'CATALOG_UNAVAILABLE', status: 503 });
 });
 
 test('failed atomic replacement leaves the old catalog and safe recovery preimage intact', async t => {
@@ -295,7 +295,7 @@ test('failed atomic replacement leaves the old catalog and safe recovery preimag
     if (failedPath && file.endsWith(failedPath)) throw new Error('secret absolute path and filesystem details');
     return writeAtomicFileSync(file, content);
   } });
-  await f.store.initialize(); const original = bytes(f.root);
+  await f.store.initialize({ createSchemaVersion: 3 }); const original = bytes(f.root);
   for (const name of ['catalog.previous.json', 'catalog.json']) {
     failedPath = name;
     await unchanged(f, f.store.createProject({ ...cas(f.store), name: 'failed write' }), 'CATALOG_UNAVAILABLE', 503);
@@ -310,25 +310,25 @@ test('catalog path aliases cannot overwrite another directory or escape through 
   t.after(() => rmSync(outside, { recursive: true, force: true }));
   writeFileSync(join(outside, 'keep.json'), '{"keep":true}');
   symlinkSync(outside, join(f.root, 'catalog.json'), process.platform === 'win32' ? 'junction' : 'dir');
-  await assert.rejects(f.store.initialize(), { code: 'CATALOG_UNAVAILABLE', status: 503 });
+  await assert.rejects(f.store.initialize({ createSchemaVersion: 3 }), { code: 'CATALOG_UNAVAILABLE', status: 503 });
   assert.deepEqual(readdirSync(outside), ['keep.json']);
   const alias = join(outside, 'root-alias'); rmSync(join(f.root, 'catalog.json'), { recursive: true, force: true });
   symlinkSync(f.root, alias, process.platform === 'win32' ? 'junction' : 'dir');
   const throughAlias = createAcceptanceCatalogStore({ root: alias, owner: f.owner });
-  await throughAlias.initialize();
+  await throughAlias.initialize({ createSchemaVersion: 3 });
   assert.deepEqual(throughAlias.read(), f.store.read());
 });
 
 test('root directory replacement is detected even when the pathname stays the same', async t => {
-  const f = fixture(t); await f.store.initialize(); const moved = f.root + '-moved';
+  const f = fixture(t); await f.store.initialize({ createSchemaVersion: 3 }); const moved = f.root + '-moved';
   t.after(() => rmSync(moved, { recursive: true, force: true }));
   renameSync(f.root, moved); mkdirSync(f.root);
-  await assert.rejects(f.store.initialize(), { code: 'CATALOG_UNAVAILABLE', status: 503 });
+  await assert.rejects(f.store.initialize({ createSchemaVersion: 3 }), { code: 'CATALOG_UNAVAILABLE', status: 503 });
   assert.deepEqual(readdirSync(f.root), []);
 });
 
 test('pure catalog validation rejects prototype-map keys and malformed revision types', async t => {
-  const f = fixture(t); const valid = await f.store.initialize();
+  const f = fixture(t); const valid = await f.store.initialize({ createSchemaVersion: 3 });
   for (const value of [true, '0', Infinity, NaN, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => validateAcceptanceCatalog({ ...valid, revision: value }), { code: 'CATALOG_UNAVAILABLE', status: 503 });
   }

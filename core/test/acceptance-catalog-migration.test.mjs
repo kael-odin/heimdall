@@ -1,517 +1,207 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, statSync, symlinkSync, renameSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, readdirSync, rmSync, lstatSync, linkSync, mkdirSync, symlinkSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
-import { createHash, randomUUID } from 'node:crypto';
+import { join } from 'node:path';
+import { randomUUID, createHash } from 'node:crypto';
 import { createAcceptanceCatalogStore, validateAcceptanceCatalog } from '../src/acceptance/catalog.mjs';
-import { buildCatalogMigration } from '../src/acceptance/catalog-schema.mjs';
-import { hashAcceptanceValue } from '../src/acceptance/identity.mjs';
-import { writeAtomicFileSync } from '../src/acceptance/atomic-file.mjs';
+import { buildCatalogMigration, buildCatalogMigrationV3, buildCatalogMigrationV4 } from '../src/acceptance/catalog-schema.mjs';
+import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 
-const at = '2026-10-16T00:00:00.000Z';
-const targetUrl = 'http://127.0.0.1:3000/preview?version=1';
-const uid = prefix => `${prefix}-${randomUUID()}`;
-const clone = value => JSON.parse(JSON.stringify(value));
+const uid = prefix => prefix + '-' + randomUUID();
 const encode = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
-const sha256 = value => createHash('sha256').update(value).digest('hex');
-const archiveName = bytes => `catalog.v1.${sha256(bytes)}.json`;
-const versionedArchiveName = bytes => `catalog.v${JSON.parse(bytes).schemaVersion}.${sha256(bytes)}.json`;
-const headBytes = f => readFileSync(join(f.root, 'catalog.json'));
-const previousBytes = f => readFileSync(join(f.root, 'catalog.previous.json'));
-const archives = root => readdirSync(root).filter(name => /^catalog\.v1\.[a-f0-9]{64}\.json$/.test(name)).sort();
-const archivesV2 = root => readdirSync(root).filter(name => /^catalog\.v2\.[a-f0-9]{64}\.json$/.test(name)).sort();
-const cas = value => ({ expectedGenerationId: value.generationId, expectedRevision: value.revision });
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const unavailable = { code: 'CATALOG_UNAVAILABLE', status: 503 };
-
+function native(version) {
+  return { schemaVersion: version, generationId: uid('ag'), revision: 0, projects: {}, releases: {}, runBindings: {},
+    ...(version >= 2 ? { candidates: {}, approvals: {}, selections: {}, migrations: {} } : {}),
+    ...(version >= 3 ? { browserSourceBindings: {} } : {}), ...(version >= 4 ? { browserCandidates: {} } : {}), events: [] };
+}
 function fixture(t, options = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'heimdall-catalog-migration-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const owner = { root, assertOwned() {} };
+  const owner = acquireAcceptanceOwner({ root: mkdtempSync(join(tmpdir(), 'heimdall-explicit-catalog-')) }), root = owner.root;
+  t.after(() => { owner.release(); rmSync(root, { recursive: true, force: true }); });
   return { root, owner, store: createAcceptanceCatalogStore({ root, owner, ...options }) };
 }
+function seed(f, value, previous = null) {
+  const raw = Buffer.isBuffer(value) ? value : encode(value);
+  writeFileSync(join(f.root, 'catalog.json'), raw);
+  if (previous) writeFileSync(join(f.root, 'catalog.previous.json'), Buffer.isBuffer(previous) ? previous : encode(previous));
+  return raw;
+}
+const archiveName = bytes => 'catalog.v' + JSON.parse(bytes).schemaVersion + '.' + sha(bytes) + '.json';
+function facts(f) {
+  return Object.fromEntries(readdirSync(f.root).filter(name => name !== '.acceptance-owner.json').sort().map(name => {
+    const path = join(f.root, name), stat = lstatSync(path, { bigint: true });
+    return [name, { bytes: stat.isFile() ? readFileSync(path) : null, ino: stat.ino, nlink: stat.nlink, mtimeNs: stat.mtimeNs, ctimeNs: stat.ctimeNs }];
+  }));
+}
+const confirm = preview => ({ targetSchemaVersion: 4, expectedGenerationId: preview.source.generationId,
+  expectedRevision: preview.source.revision, expectedHeadSha256: preview.source.headSha256,
+  expectedPreviousSha256: preview.source.previousSha256, expectedPlanDigest: preview.planDigest });
+const migrate = async store => store.applyMigration(confirm(await store.previewMigration({ targetSchemaVersion: 4 })));
 
-// Construct only the exact B1 format. It must remain valid without a B2 initializer.
-function legacySnapshots() {
-  const catalog = { schemaVersion: 1, generationId: uid('ag'), revision: 0,
-    projects: {}, releases: {}, runBindings: {}, events: [] };
-  const snapshots = [clone(catalog)];
-  const project = { id: uid('ap'), name: '迁移前项目', createdAt: at };
-  const release = { id: uid('ar'), projectId: project.id, label: 'v1', targetUrl, buildRef: 'old-build', createdAt: at };
-  const binding = { runId: uid('ac'), projectId: project.id, releaseId: release.id, boundAt: at, actor: { kind: 'local-operator' } };
-  for (const [map, entity, kind] of [['projects', project, 'project-created'], ['releases', release, 'release-created'], ['runBindings', binding, 'run-bound']]) {
-    const entityId = entity.id ?? entity.runId;
-    catalog[map][entityId] = entity;
-    catalog.events.push({ id: uid('ae'), revision: ++catalog.revision, kind, projectId: project.id,
-      entityId, entityDigest: hashAcceptanceValue(entity), at, actor: { kind: 'local-operator' } });
-    snapshots.push(clone(catalog));
+test('whole-chain root entry capacity reserves new preimages, a missing previous file and one publication temporary', async t => {
+  for (const scene of [
+    { version: 3, entries: 4093, newEntries: 2, accepted: true },
+    { version: 3, entries: 4094, newEntries: 2, accepted: false },
+    { version: 3, entries: 4095, newEntries: 2, accepted: false },
+    { version: 3, entries: 4096, newEntries: 2, accepted: false },
+    { version: 1, entries: 4092, newEntries: 4, accepted: false },
+    { version: 3, entries: 4095, newEntries: 0, previousAndArchive: true, accepted: true },
+    { version: 4, entries: 4096, newEntries: 0, accepted: true },
+  ]) await t.test(JSON.stringify(scene), async t => {
+    const f = fixture(t), raw = seed(f, native(scene.version));
+    if (scene.previousAndArchive) {
+      writeFileSync(join(f.root, 'catalog.previous.json'), raw);
+      writeFileSync(join(f.root, archiveName(raw)), raw);
+    }
+    for (let count = readdirSync(f.root).length; count < scene.entries; count++) mkdirSync(join(f.root, 'unrelated-' + count));
+    const before = facts(f);
+    if (!scene.accepted) {
+      for (let attempt = 0; attempt < 2; attempt++) await assert.rejects(f.store.previewMigration({ targetSchemaVersion: 4 }),
+        { ...unavailable, details: { reason: 'MIGRATION_ROOT_ENTRY_CAPACITY' } });
+      assert.deepEqual(facts(f), before);
+      return;
+    }
+    const preview = await f.store.previewMigration({ targetSchemaVersion: 4 });
+    assert.deepEqual(preview.capacity.rootEntries, { currentCount: scene.entries, requiredNewCount: scene.newEntries,
+      temporaryEntries: scene.version === 4 ? 0 : 1, projectedFinalCount: scene.entries + scene.newEntries, maximumCount: 4096 });
+    assert.deepEqual(facts(f), before);
+    assert.equal((await f.store.applyMigration(confirm(preview))).catalog.schemaVersion, 4);
+    assert.equal(readdirSync(f.root).length, scene.entries + scene.newEntries);
+    if (scene.version === 4) assert.deepEqual(facts(f), before);
+  });
+});
+
+test('unrelated root entries changed since preview invalidate apply before any migration publication', async t => {
+  const f = fixture(t); seed(f, native(3));
+  const preview = await f.store.previewMigration({ targetSchemaVersion: 4 });
+  mkdirSync(join(f.root, 'new-unrelated-entry'));
+  const before = facts(f);
+  await assert.rejects(f.store.applyMigration(confirm(preview)), { code: 'STALE_REVISION', status: 409 });
+  assert.deepEqual(facts(f), before);
+});
+
+test('empty creation explicitly chooses 3 or 4; existing opens never migrate or change metadata bytes/stat', async t => {
+  for (const version of [3, 4]) await t.test('v' + version, async t => {
+    const f = fixture(t);
+    await assert.rejects(f.store.initialize(), { ...unavailable, details: { reason: 'CREATION_SCHEMA_REQUIRED' } });
+    assert.deepEqual(Object.keys(facts(f)), []);
+    const current = await f.store.initialize({ createSchemaVersion: version }), before = facts(f);
+    assert.equal(current.schemaVersion, version); assert.equal(current.revision, 0); assert.deepEqual(current.migrations, {});
+    for (const options of [undefined, { createSchemaVersion: 3 }, { createSchemaVersion: 4 }]) assert.deepEqual(await f.store.initialize(options), current);
+    assert.deepEqual(await createAcceptanceCatalogStore({ root: f.root, owner: f.owner }).initialize(), current); assert.deepEqual(facts(f), before);
+    const result = await f.store.createProject({ expectedGenerationId: current.generationId, expectedRevision: 0, name: '原写合同仍可用' });
+    assert.equal(result.revision, 1); assert.equal(f.store.read().schemaVersion, version);
+  });
+});
+
+test('legacy ordinary opens refuse migration even when a create format is supplied, preserving the scene', async t => {
+  for (const version of [1, 2]) await t.test('v' + version, async t => {
+    const f = fixture(t), value = native(version); seed(f, value); const before = facts(f);
+    for (const options of [undefined, { createSchemaVersion: 3 }, { createSchemaVersion: 4 }]) await assert.rejects(f.store.initialize(options), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
+    assert.throws(() => f.store.read(), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
+    await assert.rejects(f.store.createProject({ expectedGenerationId: value.generationId, expectedRevision: 0, name: '旧写入口' }), unavailable);
+    assert.deepEqual(facts(f), before);
+  });
+});
+
+test('strict initialize options cannot overwrite missing-head recovery material', async t => {
+  const f = fixture(t);
+  for (const input of [null, [], { createSchemaVersion: 1 }, { createSchemaVersion: '4' }, { other: 4 }, Object.defineProperty({}, 'createSchemaVersion', { get() { throw Error('getter'); }, enumerable: true })]) await assert.rejects(f.store.initialize(input), { code: 'INVALID_INPUT', status: 400 });
+  for (const name of ['catalog.previous.json', 'catalog.json.crashed.tmp', 'catalog.v3.' + '0'.repeat(64) + '.json']) {
+    const other = fixture(t); writeFileSync(join(other.root, name), '{original opaque recovery'); const before = facts(other);
+    await assert.rejects(other.store.initialize({ createSchemaVersion: 4 }), { ...unavailable, details: { reason: 'MISSING_CATALOG_WITH_RECOVERY_MATERIAL' } }); assert.deepEqual(facts(other), before);
   }
-  for (const snapshot of snapshots) validateAcceptanceCatalog(snapshot);
-  return { snapshots, project, release, binding };
-}
-
-function seedLegacy(f, { head = 3, previous = 2 } = {}) {
-  const old = legacySnapshots(), headValue = old.snapshots[head];
-  const headRaw = encode(headValue);
-  writeFileSync(join(f.root, 'catalog.json'), headRaw);
-  const previousValue = previous === null ? null : old.snapshots[previous];
-  const previousRaw = previousValue ? encode(previousValue) : null;
-  if (previousRaw) writeFileSync(join(f.root, 'catalog.previous.json'), previousRaw);
-  return { ...old, root: f.root, head: headValue, headRaw, previous: previousValue, previousRaw };
-}
-
-function assertOldEntities(current, old) {
-  for (const map of ['projects', 'releases', 'runBindings']) assert.deepEqual(current[map], old[map]);
-  assert.deepEqual(current.events.slice(0, old.revision), old.events);
-}
-
-// Preserve the original 1 -> 2 facts, including its exact input raw hashes.
-function assertMigrationV2(current, old, { headRaw, previousRaw }) {
-  assert.equal(current.schemaVersion, 2);
-  assert.notEqual(current.generationId, old.generationId);
-  assert.equal(current.revision, old.revision + 1);
-  for (const map of ['candidates', 'approvals', 'selections']) assert.deepEqual(current[map], {});
-  assert.equal(Object.keys(current.migrations).length, 1);
-  const migration = Object.values(current.migrations)[0];
-  assert.match(migration.id, /^am-[a-f0-9-]{36}$/);
-  assert.deepEqual(Object.keys(migration).sort(), ['actor', 'createdAt', 'fromGenerationId', 'fromRevision', 'fromSchemaVersion', 'id',
-    'sourceHeadSha256', 'sourcePreviousSha256', 'toSchemaVersion']);
-  assert.equal(migration.fromSchemaVersion, 1); assert.equal(migration.toSchemaVersion, 2);
-  assert.equal(migration.fromGenerationId, old.generationId); assert.equal(migration.fromRevision, old.revision);
-  assert.equal(migration.sourceHeadSha256, sha256(headRaw));
-  assert.equal(migration.sourcePreviousSha256, previousRaw ? sha256(previousRaw) : null);
-  assert.deepEqual(migration.actor, { kind: 'local-operator' });
-  const event = current.events.at(-1);
-  assert.equal(event.kind, 'catalog-migrated'); assert.equal(event.revision, current.revision);
-  assert.equal(event.entityId, migration.id); assert.equal(event.entityDigest, hashAcceptanceValue(migration));
-  assert.equal(event.at, migration.createdAt); assert.equal(Object.hasOwn(event, 'projectId'), false);
-  assertOldEntities(current, old);
-  validateAcceptanceCatalog(current);
-  return migration;
-}
-
-function assertMigration(current, old, source) {
-  if (current.schemaVersion === 2) return assertMigrationV2(current, old, source);
-  const migrations = Object.values(current.migrations), last = migrations.find(value => value.fromSchemaVersion === 2);
-  assert.equal(current.schemaVersion, 3);
-  assert.equal(migrations.length, 2);
-  assert.deepEqual(current.browserSourceBindings, {});
-  assert.equal(current.revision, old.revision + 2);
-  assert.equal(last.toSchemaVersion, 3);
-  const intermediateRaw = readFileSync(join(source.root, `catalog.v2.${last.sourceHeadSha256}.json`));
-  const intermediate = JSON.parse(intermediateRaw);
-  assertMigrationV2(intermediate, old, source);
-  assert.notEqual(current.generationId, old.generationId);
-  assert.notEqual(current.generationId, intermediate.generationId);
-  assert.equal(last.fromGenerationId, intermediate.generationId);
-  assert.equal(last.fromRevision, intermediate.revision);
-  assert.equal(last.sourceHeadSha256, sha256(intermediateRaw));
-  assert.equal(last.sourcePreviousSha256, sha256(source.headRaw));
-  assert.deepEqual(current.events.slice(0, intermediate.revision), intermediate.events);
-  assert.deepEqual(current.migrations[Object.keys(intermediate.migrations)[0]], Object.values(intermediate.migrations)[0]);
-  const event = current.events.at(-1);
-  assert.equal(event.kind, 'catalog-migrated'); assert.equal(event.revision, current.revision);
-  assert.equal(event.entityId, last.id); assert.equal(event.entityDigest, hashAcceptanceValue(last));
-  assert.equal(event.at, last.createdAt); assert.equal(Object.hasOwn(event, 'projectId'), false);
-  assertOldEntities(current, old);
-  validateAcceptanceCatalog(current);
-  return last;
-}
-
-async function assertBlockedMigration(f, old, expected = unavailable) {
-  await assert.rejects(f.store.initialize(), expected);
-  assert.deepEqual(headBytes(f), old.headRaw);
-  if (old.previousRaw) assert.deepEqual(previousBytes(f), old.previousRaw);
-  assert.throws(() => f.store.read(), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
-}
-
-function changeProject(catalog) {
-  const changed = clone(catalog), project = Object.values(changed.projects)[0];
-  project.name = '另一个合法历史';
-  changed.events.find(event => event.entityId === project.id).entityDigest = hashAcceptanceValue(project);
-  validateAcceptanceCatalog(changed);
-  return changed;
-}
-
-test('new catalogs start at schema3 without a migration and restart without changing bytes', async t => {
-  const f = fixture(t), current = await f.store.initialize();
-  assert.equal(current.schemaVersion, 3); assert.equal(current.revision, 0);
-  assert.deepEqual(Object.keys(current).sort(), ['approvals', 'browserSourceBindings', 'candidates', 'events', 'generationId', 'migrations',
-    'projects', 'releases', 'revision', 'runBindings', 'schemaVersion', 'selections']);
-  for (const key of ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations', 'browserSourceBindings']) assert.deepEqual(current[key], {});
-  assert.deepEqual(current.events, []); assert.deepEqual(readdirSync(f.root), ['catalog.json']);
-  const original = headBytes(f);
-  assert.deepEqual(await f.store.initialize(), current);
-  const restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-  assert.deepEqual(await restarted.initialize(), current); assert.deepEqual(headBytes(f), original);
 });
 
-test('an unmigrated schema1 head is pure-valid but cannot be read or mutated as the active catalog', async t => {
-  const f = fixture(t), old = seedLegacy(f);
-  assert.equal(validateAcceptanceCatalog(old.head), old.head);
-  assert.throws(() => f.store.read(), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
-  await assert.rejects(f.store.createProject({ ...cas(old.head), name: '不能回退旧写路径' }), { ...unavailable, details: { reason: 'MIGRATION_REQUIRED' } });
-  assert.deepEqual(headBytes(f), old.headRaw); assert.deepEqual(previousBytes(f), old.previousRaw);
-  assert.deepEqual(archives(f.root), []);
-});
-
-test('an empty schema1 head commits both migration steps and preserves the null first previous hash', async t => {
-  const f = fixture(t), old = seedLegacy(f, { head: 0, previous: null });
-  const current = await f.store.initialize();
-  assertMigration(current, old.head, old);
-  assert.deepEqual(archives(f.root), [archiveName(old.headRaw)]);
-  assert.deepEqual(readFileSync(join(f.root, archiveName(old.headRaw))), old.headRaw);
-  assert.equal(JSON.parse(previousBytes(f)).schemaVersion, 2);
-  assert.equal(archivesV2(f.root).length, 1);
-  assert.deepEqual(readFileSync(join(f.root, versionedArchiveName(previousBytes(f)))), previousBytes(f));
-  const committed = headBytes(f), restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-  assert.deepEqual(await restarted.initialize(), current); assert.deepEqual(headBytes(f), committed);
-  assert.equal(restarted.read().events.filter(event => event.kind === 'catalog-migrated').length, 2);
-});
-
-test('nonempty migration preserves every B1 entity, event and run byte and archives both raw snapshots', async t => {
-  const f = fixture(t), old = seedLegacy(f);
-  const runDir = join(f.root, old.binding.runId); mkdirSync(runDir);
-  const manifestRaw = encode({ schemaVersion: 1, runId: old.binding.runId, name: '旧运行', mode: 'spec', targetUrl,
-    status: 'completed', gate: 'failed', createdAt: at, plan: { mode: 'spec', targetUrl } });
-  const reportRaw = Buffer.from('{"originalReport":true}\n');
-  writeFileSync(join(runDir, 'manifest.json'), manifestRaw); writeFileSync(join(runDir, 'report.json'), reportRaw);
-  const current = await f.store.initialize();
-  assertMigration(current, old.head, old);
-  assert.deepEqual(archives(f.root), [archiveName(old.headRaw), archiveName(old.previousRaw)].sort());
-  for (const raw of [old.headRaw, old.previousRaw]) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
-  assert.equal(JSON.parse(previousBytes(f)).schemaVersion, 2);
-  assert.deepEqual(readFileSync(join(runDir, 'manifest.json')), manifestRaw);
-  assert.deepEqual(readFileSync(join(runDir, 'report.json')), reportRaw);
-  const source = f.store.readRunReference(old.binding.runId);
-  assert.equal(source.diagnostics.manifestValid, true); assert.equal(source.diagnostics.evidenceVerified, false);
-  assert.deepEqual(source.source.runId, old.binding.runId);
-});
-
-test('identical legacy head and previous bytes reuse one archive while different formatting keeps two raw preimages', async t => {
-  for (const formatting of ['same', 'compact']) await t.test(formatting, async t => {
-    const f = fixture(t), old = seedLegacy(f, { head: 3, previous: 3 });
-    if (formatting === 'compact') {
-      old.previousRaw = Buffer.from(JSON.stringify(old.head));
-      writeFileSync(join(f.root, 'catalog.previous.json'), old.previousRaw);
+test('deterministic metadata previews and explicit legacy chains preserve exact preimages and retire generations', async t => {
+  for (const version of [1, 2, 3]) for (const prior of ['none', 'same', 'compact']) await t.test('v' + version + '/' + prior, async t => {
+    const f = fixture(t), value = native(version), raw = encode(value), previous = prior === 'none' ? null : prior === 'same' ? raw : Buffer.from(JSON.stringify(value));
+    seed(f, raw, previous); mkdirSync(join(f.root, uid('ac'))); const before = facts(f);
+    const preview = await f.store.previewMigration({ targetSchemaVersion: 4 }); assert.deepEqual(await f.store.previewMigration({ targetSchemaVersion: 4 }), preview); assert.deepEqual(facts(f), before);
+    assert.equal(preview.executionReady, false); assert.equal(preview.source.headSha256, sha(raw)); assert.equal(preview.source.previousSha256, previous ? sha(previous) : null);
+    assert.deepEqual(preview.steps.map(step => [step.fromSchemaVersion, step.toSchemaVersion]), Array.from({ length: 4 - version }, (_, i) => [version + i, version + i + 1])); assert.equal(JSON.stringify(preview).includes('targetUrl'), false);
+    const applied = await f.store.applyMigration(confirm(preview)), current = applied.catalog;
+    assert.equal(current.schemaVersion, 4); assert.equal(current.revision, 4 - version); assert.equal(applied.completedSteps.length, 4 - version); assert.equal(applied.executionReady, false);
+    assert.equal(readFileSync(join(f.root, 'catalog.json')).length, preview.capacity.finalJsonBytes); assert.deepEqual(current.browserCandidates, {});
+    const generations = [value.generationId, ...applied.completedSteps.map(step => step.generationId)]; assert.equal(new Set(generations).size, generations.length);
+    for (const bytes of [raw, previous].filter(Boolean)) assert.deepEqual(readFileSync(join(f.root, archiveName(bytes))), bytes);
+    for (const [index, event] of current.events.entries()) {
+      const migration = current.migrations[event.entityId], source = readFileSync(join(f.root, 'catalog.v' + migration.fromSchemaVersion + '.' + migration.sourceHeadSha256 + '.json'));
+      assert.equal(sha(source), migration.sourceHeadSha256); assert.equal(migration.fromGenerationId, generations[index]); assert.equal(migration.fromRevision, index); assert.equal(migration.toSchemaVersion, migration.fromSchemaVersion + 1);
     }
-    const current = await f.store.initialize(); assertMigration(current, old.head, old);
-    assert.equal(archives(f.root).length, formatting === 'same' ? 1 : 2);
-    assert.deepEqual(readFileSync(join(f.root, archiveName(old.previousRaw))), old.previousRaw);
+    validateAcceptanceCatalog(current); const final = facts(f); assert.deepEqual(await f.store.initialize(), current); assert.deepEqual(facts(f), final);
+    await assert.rejects(f.store.applyMigration(confirm(preview)), { code: 'STALE_REVISION', status: 409 });
+    const noop = await migrate(f.store); assert.equal(noop.changed, false); assert.deepEqual(noop.completedSteps, []); assert.deepEqual(facts(f), final);
   });
 });
 
-test('the first schema3 write accepts its exact B2 predecessor and fences both older generation CAS including equal-revision ABA', async t => {
-  const f = fixture(t), old = seedLegacy(f), migrated = await f.store.initialize(), migratedRaw = headBytes(f);
-  for (const revision of [old.head.revision, migrated.revision]) {
-    await assert.rejects(f.store.createProject({ expectedGenerationId: old.head.generationId, expectedRevision: revision, name: '旧页面' }), { code: 'STALE_REVISION', status: 409 });
-    assert.deepEqual(headBytes(f), migratedRaw);
+test('genuine owner brand rejects method-shaped owners and proxies before reflection', async t => {
+  const f = fixture(t); seed(f, native(3)); const preview = await f.store.previewMigration({ targetSchemaVersion: 4 }); let traps = 0;
+  for (const owner of [null, undefined, { root: f.root, assertOwned() { traps++; } }, { ...f.owner }, new Proxy(f.owner, { get() { traps++; throw Error('trap'); } })]) {
+    const store = createAcceptanceCatalogStore({ root: f.root, owner });
+    await assert.rejects(store.previewMigration({ targetSchemaVersion: 4 }), { code: 'ACCEPTANCE_OWNER_UNAVAILABLE', status: 503 }); await assert.rejects(store.applyMigration(confirm(preview)), { code: 'ACCEPTANCE_OWNER_UNAVAILABLE', status: 503 });
   }
-  const intermediate = JSON.parse(previousBytes(f));
-  await assert.rejects(f.store.createProject({ expectedGenerationId: intermediate.generationId,
-    expectedRevision: migrated.revision, name: '中间代旧页面' }), { code: 'STALE_REVISION', status: 409 });
-  assert.deepEqual(headBytes(f), migratedRaw);
-  const result = await f.store.createProject({ ...cas(migrated), name: '升级后项目' });
-  assert.equal(result.generationId, migrated.generationId); assert.equal(result.revision, migrated.revision + 1);
-  assert.deepEqual(previousBytes(f), migratedRaw);
-  for (const raw of [old.headRaw, old.previousRaw]) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
-  assert.deepEqual(f.store.read().events.slice(0, migrated.revision), migrated.events);
+  assert.equal(traps, 0); f.owner.release(); await assert.rejects(f.store.previewMigration({ targetSchemaVersion: 4 }), { code: 'ACCEPTANCE_OWNER_LOST', status: 503 });
 });
 
-test('legacy predecessor validation rejects another generation and valid divergent histories before archiving', async t => {
-  for (const kind of ['generation', 'same-revision-entity', 'event-prefix', 'newer-revision']) await t.test(kind, async t => {
-    const f = fixture(t), old = seedLegacy(f);
-    let prior = clone(old.previous);
-    if (kind === 'generation') prior.generationId = uid('ag');
-    if (kind === 'same-revision-entity') prior = changeProject(old.head);
-    if (kind === 'event-prefix') prior.events[0].id = uid('ae');
-    if (kind === 'newer-revision') {
-      prior = clone(old.head);
-      const project = { id: uid('ap'), name: '未来项目', createdAt: at };
-      prior.projects[project.id] = project;
-      prior.events.push({ id: uid('ae'), revision: ++prior.revision, kind: 'project-created', projectId: project.id,
-        entityId: project.id, entityDigest: hashAcceptanceValue(project), at, actor: { kind: 'local-operator' } });
-    }
-    validateAcceptanceCatalog(prior); old.previousRaw = encode(prior);
-    writeFileSync(join(f.root, 'catalog.previous.json'), old.previousRaw);
-    await assertBlockedMigration(f, old); assert.deepEqual(archives(f.root), []);
-  });
-});
-
-test('schema1 head with a schema2 previous is a refused lineage ambiguity', async t => {
-  const f = fixture(t), old = seedLegacy(f);
-  old.previousRaw = encode(buildCatalogMigration(old.head, { headSha256: sha256(old.headRaw) }));
-  writeFileSync(join(f.root, 'catalog.previous.json'), old.previousRaw);
-  await assertBlockedMigration(f, old); assert.deepEqual(archives(f.root), []);
-});
-
-test('schema3 diagnostic read remains available while an inexact B2 previous blocks initialization and every write', async t => {
-  for (const kind of ['formatting', 'generation', 'revision']) await t.test(kind, async t => {
-    const f = fixture(t), old = seedLegacy(f), migrated = await f.store.initialize(), committed = headBytes(f);
-    let prior = JSON.parse(previousBytes(f));
-    if (kind === 'generation') prior.generationId = uid('ag');
-    if (kind === 'revision') prior = buildCatalogMigration(old.previous, { headSha256: sha256(old.previousRaw) });
-    const altered = kind === 'formatting' ? Buffer.from(JSON.stringify(prior)) : encode(prior);
-    writeFileSync(join(f.root, 'catalog.previous.json'), altered);
-    assert.deepEqual(f.store.read(), migrated);
-    await assert.rejects(f.store.initialize(), unavailable);
-    await assert.rejects(f.store.createProject({ ...cas(migrated), name: '不会覆盖前像' }), unavailable);
-    assert.deepEqual(headBytes(f), committed); assert.deepEqual(previousBytes(f), altered);
-  });
-});
-
-test('schema3 predecessors require same-generation immutable event and entity ancestry', async t => {
-  for (const kind of ['ancestor', 'same-snapshot', 'generation', 'same-revision-entity', 'event-prefix']) await t.test(kind, async t => {
-    const f = fixture(t); await f.store.initialize();
-    await f.store.createProject({ ...cas(f.store.read()), name: '项目一' }); const ancestor = f.store.read();
-    await f.store.createProject({ ...cas(ancestor), name: '项目二' }); const head = f.store.read(), original = headBytes(f);
-    let prior = kind === 'same-snapshot' || kind === 'same-revision-entity' ? clone(head) : clone(ancestor);
-    if (kind === 'generation') prior.generationId = uid('ag');
-    if (kind === 'same-revision-entity') prior = changeProject(prior);
-    if (kind === 'event-prefix') prior.events[0].id = uid('ae');
-    validateAcceptanceCatalog(prior); const raw = encode(prior); writeFileSync(join(f.root, 'catalog.previous.json'), raw);
-    const operation = f.store.createProject({ ...cas(head), name: '后续操作' });
-    if (['ancestor', 'same-snapshot'].includes(kind)) {
-      assert.equal((await operation).revision, head.revision + 1); assert.deepEqual(previousBytes(f), original);
-    } else {
-      await assert.rejects(operation, unavailable); assert.deepEqual(headBytes(f), original); assert.deepEqual(previousBytes(f), raw);
-    }
-  });
-});
-
-test('schema3 rolling previous cannot omit or alter the migration lineage', async t => {
-  const f = fixture(t); seedLegacy(f); const migrated = await f.store.initialize();
-  await f.store.createProject({ ...cas(migrated), name: '迁移后项目' }); const committed = headBytes(f), current = f.store.read();
-  const prior = clone(migrated), migration = Object.values(prior.migrations)[0];
-  migration.sourcePreviousSha256 = 'f'.repeat(64);
-  prior.events.find(event => event.entityId === migration.id).entityDigest = hashAcceptanceValue(migration);
-  validateAcceptanceCatalog(prior); const raw = encode(prior); writeFileSync(join(f.root, 'catalog.previous.json'), raw);
-  assert.deepEqual(f.store.read(), current);
-  await assert.rejects(f.store.createProject({ ...cas(current), name: '阻止改谱系' }), unavailable);
-  assert.deepEqual(headBytes(f), committed); assert.deepEqual(previousBytes(f), raw);
-});
-
-test('corrupt, unknown and unsafe previous files abort migration without erasing recovery material', async t => {
-  for (const kind of ['json', 'schema', 'directory', 'junction']) await t.test(kind, async t => {
-    const f = fixture(t), old = seedLegacy(f, { previous: null });
-    const path = join(f.root, 'catalog.previous.json');
-    if (kind === 'json') writeFileSync(path, '{broken previous');
-    if (kind === 'schema') writeFileSync(path, encode({ ...old.head, schemaVersion: 3 }));
-    if (kind === 'directory') mkdirSync(path);
-    const outside = fixture(t); writeFileSync(join(outside.root, 'keep.txt'), 'outside original');
-    if (kind === 'junction') symlinkSync(outside.root, path, process.platform === 'win32' ? 'junction' : 'dir');
-    const original = ['json', 'schema'].includes(kind) ? readFileSync(path) : null;
-    await assert.rejects(f.store.initialize(), unavailable); assert.deepEqual(headBytes(f), old.headRaw);
-    assert.deepEqual(archives(f.root), []);
-    if (original) assert.deepEqual(readFileSync(path), original);
-    else assert.equal(statSync(path).isDirectory(), true);
-    assert.equal(readFileSync(join(outside.root, 'keep.txt'), 'utf8'), 'outside original');
-  });
-});
-
-test('missing head with an archive, rolling previous or temporary file never initializes an empty directory', async t => {
-  for (const kind of ['archive', 'previous', 'temporary']) await t.test(kind, async t => {
-    const f = fixture(t), legacy = encode(legacySnapshots().snapshots[0]);
-    const name = kind === 'archive' ? archiveName(legacy) : kind === 'previous' ? 'catalog.previous.json' : 'catalog.json.crashed.tmp';
-    writeFileSync(join(f.root, name), legacy);
-    await assert.rejects(f.store.initialize(), unavailable);
-    assert.deepEqual(readdirSync(f.root), [name]); assert.deepEqual(readFileSync(join(f.root, name)), legacy);
-  });
-});
-
-test('matching archive bytes are reused without replacement and conflicting or unsafe archive paths are refused', async t => {
-  for (const kind of ['same', 'different', 'directory', 'junction']) await t.test(kind, async t => {
-    const f = fixture(t), old = seedLegacy(f, { head: 0, previous: null }), path = join(f.root, archiveName(old.headRaw));
-    const outside = fixture(t); writeFileSync(join(outside.root, 'keep.txt'), 'outside original');
-    if (kind === 'same') writeFileSync(path, old.headRaw);
-    if (kind === 'different') writeFileSync(path, encode(legacySnapshots().snapshots[0]));
-    if (kind === 'directory') mkdirSync(path);
-    if (kind === 'junction') symlinkSync(outside.root, path, process.platform === 'win32' ? 'junction' : 'dir');
-    const before = statSync(path, { bigint: true });
-    const original = ['same', 'different'].includes(kind) ? readFileSync(path) : null;
-    if (kind === 'same') {
-      await f.store.initialize(); const after = statSync(path, { bigint: true });
-      assert.equal(after.ino, before.ino); assert.equal(after.mtimeNs, before.mtimeNs);
-    } else await assertBlockedMigration(f, old);
-    if (original) assert.deepEqual(readFileSync(path), original);
-    assert.equal(readFileSync(join(outside.root, 'keep.txt'), 'utf8'), 'outside original');
-  });
-});
-
-test('migration entity, event and byte capacity are checked before creating any preparation files', async t => {
-  for (const kind of ['events', 'migrations', 'jsonBytes']) await t.test(kind, async t => {
-    const f = fixture(t), old = seedLegacy(f);
-    const limits = kind === 'events' ? { events: old.head.revision } : kind === 'migrations' ? { migrations: 0 } : { jsonBytes: old.headRaw.length };
-    const limited = createAcceptanceCatalogStore({ root: f.root, owner: f.owner, limits });
-    await assert.rejects(limited.initialize(), { code: 'CATALOG_CAPACITY', status: 409, details: { limit: kind } });
-    assert.deepEqual(headBytes(f), old.headRaw); assert.deepEqual(previousBytes(f), old.previousRaw);
-    assert.deepEqual(archives(f.root), []);
-  });
-});
-
-test('archive capacity is preflighted for both new hashes without partially preparing a migration', async t => {
-  const f = fixture(t), old = seedLegacy(f), unrelated = encode(legacySnapshots().snapshots[0]);
-  writeFileSync(join(f.root, archiveName(unrelated)), unrelated);
-  await assertBlockedMigration(f, old);
-  assert.deepEqual(archives(f.root), [archiveName(unrelated)]);
-  assert.deepEqual(readFileSync(join(f.root, archiveName(unrelated))), unrelated);
-});
-
-test('exclusive archive publication failures preserve original files and a fresh initializer can retry', async t => {
-  for (const failAt of [1, 2]) await t.test(`archive-${failAt}`, async t => {
-    let calls = 0;
-    const f = fixture(t, { writeExclusive(file, bytes) {
-      if (++calls === failAt) throw new Error('private filesystem failure');
-      writeFileSync(file, bytes, { flag: 'wx' });
-    } }), old = seedLegacy(f);
-    await assertBlockedMigration(f, old); assert.equal(archives(f.root).length, failAt - 1);
-    const restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-    const current = await restarted.initialize(); assertMigration(current, old.head, old);
-    for (const raw of [old.headRaw, old.previousRaw]) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
-  });
-});
-
-test('an exclusive-create race is accepted only when the published archive has the exact original bytes', async t => {
-  for (const kind of ['same', 'different']) await t.test(kind, async t => {
-    let competingRaw;
-    const f = fixture(t, { writeExclusive(file, bytes) {
-      const publishedRaw = kind === 'same' ? bytes : encode(legacySnapshots().snapshots[0]);
-      competingRaw ??= publishedRaw;
-      writeFileSync(file, publishedRaw, { flag: 'wx' });
-      throw Object.assign(new Error('another publisher won'), { code: 'EEXIST' });
-    } }), old = seedLegacy(f, { head: 0, previous: null });
-    if (kind === 'same') assertMigration(await f.store.initialize(), old.head, old);
-    else await assertBlockedMigration(f, old);
-    assert.deepEqual(readFileSync(join(f.root, archiveName(old.headRaw))), competingRaw);
-  });
-});
-
-test('failed rolling previous and head replacements are retryable and never reuse an uncommitted generation', async t => {
-  for (const failAt of ['catalog.previous.json', 'catalog.json']) await t.test(failAt, async t => {
-    let attempted;
-    const f = fixture(t, { writeAtomic(file, bytes) {
-      if (basename(file) === failAt) {
-        if (failAt === 'catalog.json') attempted = JSON.parse(bytes.toString('utf8'));
-        throw new Error('private filesystem failure');
-      }
-      writeAtomicFileSync(file, bytes);
-    } }), old = seedLegacy(f);
-    await assert.rejects(f.store.initialize(), unavailable); assert.deepEqual(headBytes(f), old.headRaw);
-    assert.deepEqual(previousBytes(f), failAt === 'catalog.json' ? old.headRaw : old.previousRaw);
-    const beforeRetry = previousBytes(f), restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-    const current = await restarted.initialize();
-    assertMigration(current, old.head, { root: f.root, headRaw: old.headRaw, previousRaw: beforeRetry });
-    if (attempted) assert.notEqual(current.generationId, attempted.generationId);
-    for (const raw of [old.headRaw, old.previousRaw]) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
-    assert.equal(current.events.filter(event => event.kind === 'catalog-migrated').length, 2);
-  });
-});
-
-test('a B2 head committed before an injected transport failure is recognized before the remaining step on restart', async t => {
-  const f = fixture(t, { writeAtomic(file, bytes) {
-    writeAtomicFileSync(file, bytes);
-    if (basename(file) === 'catalog.json') throw new Error('lost completion after durable replacement');
-  } }), old = seedLegacy(f);
-  await assert.rejects(f.store.initialize(), unavailable);
-  const committedRaw = headBytes(f), committed = JSON.parse(committedRaw.toString('utf8'));
-  assertMigrationV2(committed, old.head, old);
-  const restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-  const current = await restarted.initialize();
-  assertMigration(current, old.head, old); assert.deepEqual(previousBytes(f), committedRaw);
-  const finalRaw = headBytes(f);
-  assert.deepEqual(await restarted.initialize(), current); assert.deepEqual(headBytes(f), finalRaw);
-  assert.equal(current.events.filter(event => event.kind === 'catalog-migrated').length, 2);
-});
-
-test('owner loss before preparation, before previous, or before head fences the next migration write', async t => {
-  for (const phase of ['preparation', 'previous', 'head']) await t.test(phase, async t => {
-    let allowed = true, ownerCalls = 0, archiveCalls = 0;
-    const f = fixture(t, {
-      writeExclusive(file, bytes) {
-        writeFileSync(file, bytes, { flag: 'wx' });
-        if (phase === 'previous' && ++archiveCalls === 2) allowed = false;
-      },
-      writeAtomic(file, bytes) {
-        writeAtomicFileSync(file, bytes);
-        if (phase === 'head' && basename(file) === 'catalog.previous.json') allowed = false;
-      },
-    }), old = seedLegacy(f);
-    f.owner.assertOwned = () => {
-      if (phase === 'preparation' && ++ownerCalls === 2) allowed = false;
-      if (!allowed) throw Object.assign(new Error('owner lost'), { code: 'ACCEPTANCE_OWNER_UNAVAILABLE', status: 503 });
-    };
-    await assert.rejects(f.store.initialize(), { code: 'ACCEPTANCE_OWNER_UNAVAILABLE', status: 503 });
-    assert.deepEqual(headBytes(f), old.headRaw);
-    assert.deepEqual(previousBytes(f), phase === 'head' ? old.headRaw : old.previousRaw);
-    assert.equal(archives(f.root).length, phase === 'preparation' ? 0 : 2);
-  });
-});
-
-test('byte CAS checks both legacy files again after preimages have been published', async t => {
-  for (const changedName of ['catalog.json', 'catalog.previous.json']) await t.test(changedName, async t => {
-    let calls = 0;
-    const f = fixture(t, { writeExclusive(file, bytes) {
-      writeFileSync(file, bytes, { flag: 'wx' });
-      if (++calls === 2) {
-        const changed = join(f.root, changedName);
-        writeFileSync(changed, Buffer.concat([readFileSync(changed), Buffer.from(' ')]));
-      }
-    } }), old = seedLegacy(f);
-    await assert.rejects(f.store.initialize(), { code: 'STALE_REVISION', status: 409 });
-    assert.deepEqual(headBytes(f), changedName === 'catalog.json' ? Buffer.concat([old.headRaw, Buffer.from(' ')]) : old.headRaw);
-    assert.deepEqual(previousBytes(f), changedName === 'catalog.previous.json' ? Buffer.concat([old.previousRaw, Buffer.from(' ')]) : old.previousRaw);
-    assert.equal(JSON.parse(headBytes(f).toString('utf8')).schemaVersion, 1);
-    for (const raw of [old.headRaw, old.previousRaw]) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
-  });
-});
-
-test('external changes after rolling previous replacement fence the final head commit', async t => {
-  for (const changedName of ['catalog.json', 'catalog.previous.json']) await t.test(changedName, async t => {
-    const f = fixture(t, { writeAtomic(file, bytes) {
-      writeAtomicFileSync(file, bytes);
-      if (basename(file) === 'catalog.previous.json') {
-        const changed = join(f.root, changedName);
-        writeFileSync(changed, Buffer.concat([readFileSync(changed), Buffer.from(' ')]));
-      }
-    } }), old = seedLegacy(f);
-    await assert.rejects(f.store.initialize(), { code: 'STALE_REVISION', status: 409 });
-    assert.deepEqual(headBytes(f), changedName === 'catalog.json' ? Buffer.concat([old.headRaw, Buffer.from(' ')]) : old.headRaw);
-    assert.deepEqual(previousBytes(f), changedName === 'catalog.previous.json' ? Buffer.concat([old.headRaw, Buffer.from(' ')]) : old.headRaw);
-    assert.equal(JSON.parse(headBytes(f).toString('utf8')).schemaVersion, 1);
-    for (const raw of [old.headRaw, old.previousRaw]) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
-  });
-});
-
-test('a root inode replacement during archive publication cannot write into the replacement root', async t => {
-  let replaced = false, moved;
-  const f = fixture(t, { writeExclusive(file, bytes) {
-    writeFileSync(file, bytes, { flag: 'wx' });
-    if (!replaced) {
-      replaced = true; moved = f.root + '-moved'; renameSync(f.root, moved); mkdirSync(f.root);
-    }
-  } }), old = seedLegacy(f);
-  t.after(() => { if (moved) rmSync(moved, { recursive: true, force: true }); });
-  await assert.rejects(f.store.initialize(), unavailable);
-  assert.deepEqual(readdirSync(f.root), []);
-  assert.deepEqual(readFileSync(join(moved, 'catalog.json')), old.headRaw);
-  assert.deepEqual(readFileSync(join(moved, 'catalog.previous.json')), old.previousRaw);
-});
-
-test('version dispatch remains strict for reserved B2 maps and malformed migration event history', async t => {
-  const f = fixture(t); seedLegacy(f); const current = await f.store.initialize();
-  const variants = [
-    value => { value.schemaVersion = 4; },
-    value => { value.candidates[uid('ab')] = { arbitrary: true }; },
-    value => { value.approvals[uid('aa')] = { arbitrary: true }; },
-    value => { value.selections[uid('as')] = { arbitrary: true }; },
-    value => { delete value.migrations; },
-    value => { value.events.at(-1).projectId = Object.keys(value.projects)[0]; },
-    value => { value.events.at(-1).entityDigest = '0'.repeat(64); },
-    value => { Object.values(value.migrations)[0].fromGenerationId = value.generationId; },
-    value => { Object.values(value.migrations)[0].fromRevision--; },
-  ];
-  for (const alter of variants) {
-    const value = clone(current); alter(value);
-    assert.throws(() => validateAcceptanceCatalog(value), unavailable);
+test('maintenance fields, versions, digests and descriptors are strict without preparation', async t => {
+  const f = fixture(t); seed(f, native(3)); const preview = await f.store.previewMigration({ targetSchemaVersion: 4 }), input = confirm(preview), before = facts(f);
+  for (const value of [{}, { targetSchemaVersion: 3 }, { targetSchemaVersion: '4' }, { targetSchemaVersion: 4, extra: true }, new Proxy({}, {})]) await assert.rejects(f.store.previewMigration(value), { code: 'INVALID_INPUT', status: 400 });
+  for (const change of [v => { delete v.expectedPreviousSha256; }, v => { v.actor = {}; }, v => { v.expectedRevision = '0'; }, v => { v.expectedRevision = Number.MAX_SAFE_INTEGER + 1; }, v => { v.expectedHeadSha256 = 'A'.repeat(64); }, v => { v.expectedPreviousSha256 = ''; }, v => { v.targetSchemaVersion = 3; }, v => { v.expectedPlanDigest = 'bad'; }, v => { Object.defineProperty(v, 'expectedGenerationId', { get() { throw Error('getter'); }, enumerable: true }); }]) {
+    const value = { ...input }; change(value); await assert.rejects(f.store.applyMigration(value), { code: 'INVALID_INPUT', status: 400 });
   }
+  assert.deepEqual(facts(f), before);
+});
+
+test('generation, revision, head/previous bytes, plan and preimage inventory all fence stale applies', async t => {
+  for (const kind of ['generation', 'revision', 'head-hash', 'previous-hash', 'plan', 'head-bytes', 'previous-bytes', 'inventory']) await t.test(kind, async t => {
+    const f = fixture(t), raw = encode(native(3)); seed(f, raw, raw); const input = confirm(await f.store.previewMigration({ targetSchemaVersion: 4 }));
+    if (kind === 'generation') input.expectedGenerationId = uid('ag'); if (kind === 'revision') input.expectedRevision++;
+    if (kind === 'head-hash') input.expectedHeadSha256 = '0'.repeat(64); if (kind === 'previous-hash') input.expectedPreviousSha256 = null; if (kind === 'plan') input.expectedPlanDigest = '0'.repeat(64);
+    if (kind === 'head-bytes') writeFileSync(join(f.root, 'catalog.json'), Buffer.concat([raw, Buffer.from(' ')])); if (kind === 'previous-bytes') writeFileSync(join(f.root, 'catalog.previous.json'), Buffer.concat([raw, Buffer.from(' ')]));
+    if (kind === 'inventory') { const other = encode(native(1)); writeFileSync(join(f.root, archiveName(other)), other); }
+    const before = facts(f); await assert.rejects(f.store.applyMigration(input), { code: 'STALE_REVISION', status: 409 }); assert.deepEqual(facts(f), before);
+  });
+});
+
+test('the shared queue consumes a confirmation once', async t => {
+  const f = fixture(t); seed(f, native(3)); const input = confirm(await f.store.previewMigration({ targetSchemaVersion: 4 })); const results = await Promise.allSettled([f.store.applyMigration(input), f.store.applyMigration(input)]);
+  assert.equal(results.filter(v => v.status === 'fulfilled').length, 1); assert.equal(results.find(v => v.status === 'rejected').reason.code, 'STALE_REVISION'); assert.equal(f.store.read().revision, 1);
+});
+
+test('whole-chain event, migration and JSON budgets fail before preparing any file', async t => {
+  const value = native(1), raw = encode(value), v2 = buildCatalogMigration(value, { headSha256: sha(raw) }), v2raw = encode(v2), v3 = buildCatalogMigrationV3(v2, { headSha256: sha(v2raw), previousSha256: sha(raw) }), v3raw = encode(v3), v4 = buildCatalogMigrationV4(v3, { headSha256: sha(v3raw), previousSha256: sha(v2raw) });
+  for (const limits of [{ events: 2 }, { migrations: 2 }, { jsonBytes: encode(v4).length - 1 }]) {
+    const f = fixture(t, { limits }); seed(f, raw); const before = facts(f);
+    await assert.rejects(f.store.previewMigration({ targetSchemaVersion: 4 }), { code: 'CATALOG_CAPACITY', status: 409, details: { limit: Object.keys(limits)[0] } }); assert.deepEqual(facts(f), before);
+    const relaxed = createAcceptanceCatalogStore({ root: f.root, owner: f.owner }); await migrate(relaxed); assert.equal(relaxed.read().schemaVersion, 4);
+  }
+});
+
+test('each preimage version keeps its own two slots and exact existing bytes/stat are reused', async t => {
+  const f = fixture(t), raw = encode(native(3)); seed(f, raw);
+  for (const version of [1, 2]) for (let index = 0; index < 2; index++) { const bytes = encode(native(version)); writeFileSync(join(f.root, archiveName(bytes)), bytes); }
+  writeFileSync(join(f.root, archiveName(raw)), raw); const original = facts(f)[archiveName(raw)]; await migrate(f.store); assert.deepEqual(facts(f)[archiveName(raw)], original);
+  const full = fixture(t); seed(full, native(3)); for (let i = 0; i < 2; i++) { const bytes = encode(native(3)); writeFileSync(join(full.root, archiveName(bytes)), bytes); }
+  const before = facts(full); await assert.rejects(full.store.previewMigration({ targetSchemaVersion: 4 }), { ...unavailable, details: { reason: 'MIGRATION_PREIMAGE_CAPACITY' } }); assert.deepEqual(facts(full), before);
+});
+
+test('wrong labels/hashes/names, bad JSON, hardlinks and symlinks preserve the original scene', async t => {
+  for (const kind of ['label', 'hash', 'unknown', 'invalid-json', 'head-hardlink', 'preimage-hardlink', 'symlink']) await t.test(kind, async t => {
+    const f = fixture(t), raw = encode(native(3)); seed(f, raw);
+    if (kind === 'label') { const other = encode(native(2)); writeFileSync(join(f.root, 'catalog.v1.' + sha(other) + '.json'), other); }
+    if (kind === 'hash') writeFileSync(join(f.root, 'catalog.v3.' + '0'.repeat(64) + '.json'), raw); if (kind === 'unknown') writeFileSync(join(f.root, 'catalog.v5.' + sha(raw) + '.json'), raw);
+    if (kind === 'invalid-json') writeFileSync(join(f.root, 'catalog.previous.json'), '{opaque invalid original'); if (kind === 'head-hardlink') linkSync(join(f.root, 'catalog.json'), join(f.root, 'external-link'));
+    if (kind === 'preimage-hardlink') { writeFileSync(join(f.root, archiveName(raw)), raw); linkSync(join(f.root, archiveName(raw)), join(f.root, 'external-link')); }
+    if (kind === 'symlink') { mkdirSync(join(f.root, 'outside')); symlinkSync(join(f.root, 'outside'), join(f.root, 'catalog.previous.json'), process.platform === 'win32' ? 'junction' : 'dir'); }
+    const before = facts(f); await assert.rejects(f.store.previewMigration({ targetSchemaVersion: 4 }), unavailable); assert.deepEqual(facts(f), before);
+  });
+});
+
+test('wrong genuine root and acquisition-time root replacement cannot authorize migration', async t => {
+  const f = fixture(t), other = fixture(t); seed(f, native(3)); await assert.rejects(createAcceptanceCatalogStore({ root: f.root, owner: other.owner }).previewMigration({ targetSchemaVersion: 4 }), unavailable);
+  const moved = f.root + '-moved'; t.after(() => rmSync(moved, { recursive: true, force: true })); renameSync(f.root, moved); mkdirSync(f.root);
+  await assert.rejects(f.store.previewMigration({ targetSchemaVersion: 4 }), { code: 'ACCEPTANCE_OWNER_LOST', status: 503 }); assert.deepEqual(readdirSync(f.root), []);
 });

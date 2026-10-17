@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "03-browser-v4-second-failure-gate",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d1-integration-20261017\\fresh-browser-v4-two-preimages-88183da7-4319-47c3-ae8d-f3c1b3949e9a",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792219225173440400
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219170528099800,
+      "bytes": 470,
+      "sha256": "b92307b46d2a6561f00809b033f76585fed87264ff9782b7006aa7993a173d28"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219225068677800,
+      "bytes": 101,
+      "sha256": "f87e40171b52e2beac268e2fa8f9d436879cb5eb5dcb74903e792edb93c4bcec"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219225172925200,
+      "bytes": 92043,
+      "sha256": "b7aad8ffcf80690e8d6b064267c05700b0cdc6c3f135597782f2ee621b4f0659"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219170526007100,
+      "bytes": 92043,
+      "sha256": "b7aad8ffcf80690e8d6b064267c05700b0cdc6c3f135597782f2ee621b4f0659"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219225057222500,
+      "bytes": 789,
+      "sha256": "365ace6a22f4b090575fabb51df1bec43c8f9e79356d60af9575fb5283ce91ad"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219171014467200,
+      "bytes": 243,
+      "sha256": "a177492bd0158d9f2b5d601c54f5e8c6eacf20b1c04a4da0209744f9d742ecf1"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219225173440400,
+      "bytes": 88,
+      "sha256": "4630ecaa84ae0231f0a9ea7213a965f2a55c76392faeb5c526381b59d106179a"
+    }
+  ]
+}

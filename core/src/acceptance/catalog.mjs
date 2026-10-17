@@ -1,5 +1,6 @@
 /** Bounded versioned project metadata; immutable runs remain outside the catalog. */
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync,
+  openSync, closeSync, fstatSync, readSync, opendirSync, constants as fsConstants } from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { types } from 'node:util';
@@ -7,6 +8,7 @@ import { ACCEPTANCE_ROOT } from './store.mjs';
 import { hashAcceptanceValue } from './identity.mjs';
 import { writeAtomicFileSync } from './atomic-file.mjs';
 import { writeExclusiveCatalogFileSync } from './catalog-preimage.mjs';
+import { assertAcceptanceOwner } from './owner.mjs';
 import { readSpecCandidateSource } from './candidate-source.mjs';
 import { projectSpecBaselineCandidate } from './candidate-projection.mjs';
 import { readBrowserCandidateSource } from './browser-candidate-source.mjs';
@@ -16,7 +18,7 @@ import { createManagedSpecDispatchStore } from './managed-dispatch-store.mjs';
 import { managedSpecDispatchRequestFingerprint } from './managed-dispatch-schema.mjs';
 import { createAcceptanceReadScope, captureAcceptanceRunFile } from './managed-run-reader.mjs';
 import { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, error, invalid, unavailable, fields, id, url,
-  limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration, buildCatalogMigrationV3,
+  limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration, buildCatalogMigrationV3, buildCatalogMigrationV4,
   candidateProjectionOf, currentSelectionsOf, browserBindingProjectionOf } from './catalog-schema.mjs';
 
 export { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, validateAcceptanceCatalog };
@@ -30,7 +32,10 @@ const pathKey = value => process.platform === 'win32' ? value.toLowerCase() : va
 const samePath = (a, b) => pathKey(a) === pathKey(b);
 const within = (root, file) => { const rel = relative(root, file); return !!rel && !rel.startsWith('..') && !isAbsolute(rel); };
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const entityMaps = ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations', 'browserSourceBindings'];
+const entityMaps = ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations', 'browserSourceBindings', 'browserCandidates'];
+const MIGRATION_BUILDERS = Object.freeze({ 1: buildCatalogMigration, 2: buildCatalogMigrationV3, 3: buildCatalogMigrationV4 });
+const MAINTENANCE_ROOT_ENTRIES = 4096;
+const sameFileStat = (a, b) => ['dev', 'ino', 'size', 'nlink', 'mode', 'mtimeNs', 'ctimeNs', 'birthtimeNs'].every(key => a[key] === b[key]);
 
 /** Both inputs have already passed their own strict schema validators. */
 function hasHistoryPrefix(previous, current) {
@@ -51,7 +56,7 @@ function validatePredecessor(current, previous) {
       || head.schemaVersion >= 2 && hashAcceptanceValue(head.migrations) !== hashAcceptanceValue(prior.migrations)) unavailable('CATALOG_PREVIOUS_NOT_ANCESTOR');
     return;
   }
-  if (head.schemaVersion === prior.schemaVersion + 1 && [2, 3].includes(head.schemaVersion)) {
+  if (head.schemaVersion === prior.schemaVersion + 1 && [2, 3, 4].includes(head.schemaVersion)) {
     const migration = Object.values(head.migrations).find(value => value.fromSchemaVersion === prior.schemaVersion
       && value.toSchemaVersion === head.schemaVersion);
     if (!migration || migration.fromGenerationId !== prior.generationId || migration.fromRevision !== prior.revision
@@ -90,6 +95,85 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     catch (cause) {
       if (cause?.status === 503 && typeof cause.code === 'string') throw cause;
       throw error('ACCEPTANCE_OWNER_UNAVAILABLE', 503, '项目目录写入所有权已失效。');
+    }
+  }
+  function assertMaintenanceOwned() {
+    // The brand check precedes all reflection on a caller-supplied owner.
+    assertAcceptanceOwner(owner);
+    actualRoot();
+  }
+  function readMaintenanceFile(name, { optional = false } = {}) {
+    assertMaintenanceOwned();
+    const { file, stat } = safeFile(name, { optional });
+    if (!stat) return null;
+    let descriptor;
+    try {
+      const before = lstatSync(file, { bigint: true });
+      if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n
+        || before.size > BigInt(limits.jsonBytes)) unavailable('INVALID_CATALOG_PATH');
+      descriptor = openSync(file, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
+      if (!sameFileStat(before, fstatSync(descriptor, { bigint: true }))) unavailable('CATALOG_FILE_CHANGED');
+      const chunks = []; let size = 0;
+      for (;;) {
+        const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, limits.jsonBytes + 1 - size));
+        const count = readSync(descriptor, chunk, 0, chunk.length, null);
+        if (!count) break;
+        size += count;
+        if (size > limits.jsonBytes) unavailable('CATALOG_BYTES_EXCEEDED');
+        chunks.push(chunk.subarray(0, count));
+      }
+      if (BigInt(size) !== before.size || !sameFileStat(before, fstatSync(descriptor, { bigint: true }))
+        || !sameFileStat(before, lstatSync(file, { bigint: true })) || !samePath(realpathSync(file), file)) unavailable('CATALOG_FILE_CHANGED');
+      const bytes = Buffer.concat(chunks, size);
+      const catalog = validateAcceptanceCatalog(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)), { limits });
+      assertMaintenanceOwned();
+      return { bytes, catalog };
+    } catch (cause) {
+      assertMaintenanceOwned();
+      if (cause instanceof AcceptanceCatalogError) throw cause;
+      unavailable('CATALOG_UNREADABLE');
+    } finally { if (descriptor !== undefined) closeSync(descriptor); }
+  }
+  function maintenanceNames() {
+    assertMaintenanceOwned();
+    const names = [], directory = opendirSync(actualRoot()); let count = 0;
+    try {
+      let entry;
+      while ((entry = directory.readSync())) {
+        if (++count > MAINTENANCE_ROOT_ENTRIES) unavailable('MIGRATION_ROOT_ENTRY_CAPACITY');
+        if (/^catalog\.v[0-9]+\..*\.json$/.test(entry.name)) names.push(entry.name);
+      }
+    } finally { directory.closeSync(); }
+    assertMaintenanceOwned();
+    return { names: names.sort(), count };
+  }
+  function inventoryItem(name, source) {
+    return { name, schemaVersion: source.catalog.schemaVersion, bytes: source.bytes.length, sha256: sha256(source.bytes) };
+  }
+  function preimageInventory() {
+    const { names } = maintenanceNames(), inventory = [], counts = new Map([1, 2, 3].map(version => [version, 0]));
+    for (const name of names) {
+      const match = /^catalog\.v([123])\.([a-f0-9]{64})\.json$/.exec(name);
+      if (!match) unavailable('MIGRATION_PREIMAGE_NAME_INVALID');
+      const source = readMaintenanceFile(name);
+      if (source.catalog.schemaVersion !== Number(match[1]) || sha256(source.bytes) !== match[2]) unavailable('MIGRATION_PREIMAGE_MISMATCH');
+      counts.set(Number(match[1]), counts.get(Number(match[1])) + 1);
+      if (counts.get(Number(match[1])) > 2) unavailable('MIGRATION_PREIMAGE_CAPACITY');
+      inventory.push(inventoryItem(name, source));
+    }
+    if (hashAcceptanceValue(names) !== hashAcceptanceValue(maintenanceNames().names)) unavailable('MIGRATION_PREIMAGE_CHANGED');
+    return inventory;
+  }
+  function checkInventory(expected) {
+    const sorted = [...expected.values()].sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    if (hashAcceptanceValue(preimageInventory()) !== hashAcceptanceValue(sorted)) {
+      throw error('STALE_REVISION', 409, '目录前像已变化，请重新预览迁移计划。');
+    }
+  }
+  function checkMaintenanceUnchanged(name, expected) {
+    const current = readMaintenanceFile(name, { optional: !expected });
+    if (!!current !== !!expected || current && !current.bytes.equals(expected.bytes)) {
+      throw error('STALE_REVISION', 409, '项目目录字节已变化，请刷新后重新操作。');
     }
   }
   function actualRoot(create = false) {
@@ -139,7 +223,7 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     catch { unavailable('CATALOG_WRITE_FAILED'); }
   }
   function requireCurrent(catalog) {
-    if (catalog.schemaVersion !== 3) unavailable('MIGRATION_REQUIRED');
+    if (![3, 4].includes(catalog.schemaVersion)) unavailable('MIGRATION_REQUIRED');
     return catalog;
   }
   function read() { return requireCurrent(readFile('catalog.json').catalog); }
@@ -161,81 +245,203 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     write('catalog.json', bytes);
   }
   function preimageName(source) {
-    if (![1, 2].includes(source.catalog.schemaVersion)) unavailable('MIGRATION_PREIMAGE_SCHEMA');
+    if (![1, 2, 3].includes(source.catalog.schemaVersion)) unavailable('MIGRATION_PREIMAGE_SCHEMA');
     return `catalog.v${source.catalog.schemaVersion}.${sha256(source.bytes)}.json`;
   }
   function preflightPreimages(sources) {
-    const names = new Map([[1, new Set()], [2, new Set()]]);
-    for (const name of readdirSync(actualRoot())) {
-      const match = /^catalog\.v([12])\.([a-f0-9]{64})\.json$/.exec(name);
-      if (!match) continue;
-      const source = readFile(name);
-      if (source.catalog.schemaVersion !== Number(match[1]) || sha256(source.bytes) !== match[2]) unavailable('MIGRATION_PREIMAGE_MISMATCH');
-      names.get(Number(match[1])).add(name);
-    }
+    const inventory = preimageInventory(), names = new Map([1, 2, 3].map(version => [version, new Set()]));
+    for (const item of inventory) names.get(item.schemaVersion).add(item.name);
     for (const source of sources.filter(Boolean)) {
       const name = preimageName(source);
-      const existing = readFile(name, { optional: true });
+      const existing = readMaintenanceFile(name, { optional: true });
       if (existing && !existing.bytes.equals(source.bytes)) unavailable('MIGRATION_PREIMAGE_MISMATCH');
       names.get(source.catalog.schemaVersion).add(name);
     }
     if ([...names.values()].some(values => values.size > 2)) unavailable('MIGRATION_PREIMAGE_CAPACITY');
+    return inventory;
   }
   function preservePreimage(source) {
     if (!source) return;
-    assertOwned(); actualRoot();
+    assertMaintenanceOwned();
     const name = preimageName(source);
-    const existing = readFile(name, { optional: true });
+    const existing = readMaintenanceFile(name, { optional: true });
     if (existing) {
       if (!existing.bytes.equals(source.bytes)) unavailable('MIGRATION_PREIMAGE_MISMATCH');
       return;
     }
     const { file } = safeFile(name, { optional: true });
-    assertOwned();
+    assertMaintenanceOwned();
     try { writeExclusive(file, source.bytes); }
     catch (cause) {
       if (cause?.code !== 'EEXIST') unavailable('MIGRATION_PREIMAGE_WRITE_FAILED');
     }
-    const published = readFile(name);
+    const published = readMaintenanceFile(name);
     if (!published.bytes.equals(source.bytes)) unavailable('MIGRATION_PREIMAGE_MISMATCH');
   }
-  function migrateOne(current) {
-    const previous = readFile('catalog.previous.json', { optional: true });
+  function migrateOne(current, expectedInventory) {
+    assertMaintenanceOwned();
+    const previous = readMaintenanceFile('catalog.previous.json', { optional: true });
     validatePredecessor(current, previous);
-    const buildMigration = current.catalog.schemaVersion === 1 ? buildCatalogMigration : buildCatalogMigrationV3;
+    const buildMigration = MIGRATION_BUILDERS[current.catalog.schemaVersion];
+    if (!buildMigration) unavailable('MIGRATION_REQUIRED');
     const catalog = buildMigration(current.catalog, { headSha256: sha256(current.bytes),
       previousSha256: previous ? sha256(previous.bytes) : null, limits });
     const bytes = Buffer.from(JSON.stringify(catalog, null, 2) + '\n');
     if (bytes.length > limits.jsonBytes) throw error('CATALOG_CAPACITY', 409, '项目目录升级超过容量上限；原记录已保留。', { limit: 'jsonBytes' });
     preflightPreimages([current, previous]);
-    assertOwned(); actualRoot();
+    checkInventory(expectedInventory);
+    assertMaintenanceOwned();
     checkUnchanged('catalog.json', current);
     checkUnchanged('catalog.previous.json', previous);
-    preservePreimage(current); preservePreimage(previous);
-    commit(current, previous, bytes);
-    const committed = readFile('catalog.json');
+    for (const source of [current, previous].filter(Boolean)) {
+      preservePreimage(source);
+      expectedInventory.set(preimageName(source), inventoryItem(preimageName(source), source));
+      checkInventory(expectedInventory);
+    }
+    commit(current, previous, bytes, () => {
+      assertMaintenanceOwned(); checkInventory(expectedInventory);
+      checkMaintenanceUnchanged('catalog.json', current);
+      checkMaintenanceUnchanged('catalog.previous.json', current);
+    });
+    assertMaintenanceOwned();
+    const committed = readMaintenanceFile('catalog.json');
     if (!committed.bytes.equals(bytes)) unavailable('MIGRATION_COMMIT_CHANGED');
-    // Each step is an independent durable fact. A failed 2 -> 3 step leaves a
-    // valid schema2 head that a fresh initializer can continue without replaying
-    // 1 -> 2, changing its generation or rewriting earlier source bytes.
-    validatePredecessor(committed, readFile('catalog.previous.json', { optional: true }));
+    // Each step is independent. Only a new explicit preview/confirmation may
+    // continue after interruption; ordinary initialization never migrates.
+    validatePredecessor(committed, readMaintenanceFile('catalog.previous.json', { optional: true }));
     return committed;
   }
-  async function initialize() {
+  function migrationTarget(input) {
+    fields(input, ['targetSchemaVersion'], ['targetSchemaVersion'], invalid);
+    if (input.targetSchemaVersion !== 4) invalid('迁移目标必须明确为格式4。');
+  }
+  function migrationPlan(current, previous) {
+    validatePredecessor(current, previous);
+    const currentRootEntries = maintenanceNames().count;
+    const inventory = preimageInventory(), known = new Map(inventory.map(item => [item.name, item]));
+    const preimages = [1, 2, 3].map(schemaVersion => ({ schemaVersion, existingCount: inventory.filter(item => item.schemaVersion === schemaVersion).length,
+      requiredNewCount: 0, maximumCount: 2, sources: [] }));
+    function reserve(source, origin, generated = false) {
+      if (!source) return;
+      const version = source.catalog.schemaVersion, plan = preimages[version - 1];
+      if (!plan) unavailable('MIGRATION_PREIMAGE_SCHEMA');
+      const name = preimageName(source);
+      // Future step IDs/times are deliberately absent from the confirmation
+      // identity. Reserve a slot; its exact filename is known only on publish.
+      if (generated) {
+        plan.requiredNewCount++;
+        plan.sources.push({ origin, bytes: source.bytes.length, filename: 'resolved-at-apply' });
+      } else if (!plan.sources.some(item => item.name === name)) {
+        plan.sources.push({ origin, name, bytes: source.bytes.length, sha256: sha256(source.bytes), alreadyPresent: known.has(name) });
+        if (!known.has(name)) { plan.requiredNewCount++; known.set(name, inventoryItem(name, source)); }
+      }
+      if (plan.existingCount + plan.requiredNewCount > plan.maximumCount) unavailable('MIGRATION_PREIMAGE_CAPACITY');
+    }
+    let simulated = current, prior = previous;
+    const steps = [];
+    while (simulated.catalog.schemaVersion < 4) {
+      const from = simulated.catalog.schemaVersion, buildMigration = MIGRATION_BUILDERS[from];
+      if (!buildMigration) unavailable('MIGRATION_REQUIRED');
+      if (!steps.length) { reserve(simulated, 'head'); reserve(prior, 'previous'); }
+      else reserve(simulated, 'step-' + steps.length + '-head', true);
+      const catalog = buildMigration(simulated.catalog, { headSha256: sha256(simulated.bytes),
+        previousSha256: prior ? sha256(prior.bytes) : null, at: '2000-01-01T00:00:00.000Z', limits });
+      const bytes = Buffer.from(JSON.stringify(catalog, null, 2) + '\n');
+      if (bytes.length > limits.jsonBytes) throw error('CATALOG_CAPACITY', 409, '项目目录升级超过容量上限；原记录已保留。', { limit: 'jsonBytes' });
+      steps.push({ fromSchemaVersion: from, toSchemaVersion: catalog.schemaVersion,
+        fromRevision: simulated.catalog.revision, revision: catalog.revision, projectedJsonBytes: bytes.length,
+        addedMaps: from === 1 ? ['candidates', 'approvals', 'selections', 'migrations'] : from === 2 ? ['browserSourceBindings'] : ['browserCandidates'],
+        addedMigrationCount: 1, addedEventCount: 1 });
+      prior = simulated; simulated = { bytes, catalog };
+    }
+    const source = { schemaVersion: current.catalog.schemaVersion, generationId: current.catalog.generationId,
+      revision: current.catalog.revision, headSha256: sha256(current.bytes), headBytes: current.bytes.length,
+      previousSha256: previous ? sha256(previous.bytes) : null, previousBytes: previous?.bytes.length ?? null };
+    // Reserve the whole chain before publishing any recovery material. Both
+    // exclusive-link and atomic-rename writers briefly need one extra name.
+    const requiredNewEntries = preimages.reduce((sum, item) => sum + item.requiredNewCount, 0)
+      + (steps.length && !previous ? 1 : 0);
+    const rootEntries = { currentCount: currentRootEntries, requiredNewCount: requiredNewEntries,
+      temporaryEntries: steps.length ? 1 : 0, projectedFinalCount: currentRootEntries + requiredNewEntries,
+      maximumCount: MAINTENANCE_ROOT_ENTRIES };
+    if (rootEntries.projectedFinalCount + rootEntries.temporaryEntries > MAINTENANCE_ROOT_ENTRIES) unavailable('MIGRATION_ROOT_ENTRY_CAPACITY');
+    const content = { previewVersion: 1, targetSchemaVersion: 4, changed: steps.length > 0, source, steps, preimages, inventory,
+      limits: { ...limits }, capacity: { eligible: true, rootEntries, finalJsonBytes: simulated.bytes.length,
+        finalRevision: simulated.catalog.revision, finalMigrationCount: Object.keys(simulated.catalog.migrations).length } };
+    checkMaintenanceUnchanged('catalog.json', current);
+    checkMaintenanceUnchanged('catalog.previous.json', previous);
+    checkInventory(new Map(inventory.map(item => [item.name, item])));
+    if (maintenanceNames().count !== currentRootEntries) throw error('STALE_REVISION', 409, '目录条目已变化，请重新预览迁移计划。');
+    return { ...content, planDigest: hashAcceptanceValue({ domain: 'heimdall-acceptance-catalog-migration-plan', ...content }), executionReady: false };
+  }
+  async function previewMigration(input) {
+    migrationTarget(input);
+    return queue(() => {
+      assertMaintenanceOwned();
+      const current = readMaintenanceFile('catalog.json'), previous = readMaintenanceFile('catalog.previous.json', { optional: true });
+      return migrationPlan(current, previous);
+    });
+  }
+  async function applyMigration(input) {
+    const keys = ['targetSchemaVersion', 'expectedGenerationId', 'expectedRevision', 'expectedHeadSha256', 'expectedPreviousSha256', 'expectedPlanDigest'];
+    fields(input, keys, keys, invalid);
+    const confirmation = { ...input };
+    migrationTarget({ targetSchemaVersion: confirmation.targetSchemaVersion });
+    id(confirmation.expectedGenerationId, 'ag');
+    if (!Number.isSafeInteger(confirmation.expectedRevision) || confirmation.expectedRevision < 0
+      || !HASH.test(typeof confirmation.expectedHeadSha256 === 'string' ? confirmation.expectedHeadSha256 : '')
+      || !HASH.test(typeof confirmation.expectedPlanDigest === 'string' ? confirmation.expectedPlanDigest : '')
+      || confirmation.expectedPreviousSha256 !== null && !HASH.test(typeof confirmation.expectedPreviousSha256 === 'string' ? confirmation.expectedPreviousSha256 : '')) invalid('迁移确认摘要或版本无效。');
+    return queue(() => {
+      assertMaintenanceOwned();
+      let current = readMaintenanceFile('catalog.json');
+      const previous = readMaintenanceFile('catalog.previous.json', { optional: true });
+      if (confirmation.expectedGenerationId !== current.catalog.generationId || confirmation.expectedRevision !== current.catalog.revision
+        || confirmation.expectedHeadSha256 !== sha256(current.bytes)
+        || confirmation.expectedPreviousSha256 !== (previous ? sha256(previous.bytes) : null)) {
+        throw error('STALE_REVISION', 409, '目录或前像已变化，请重新预览迁移计划。');
+      }
+      const plan = migrationPlan(current, previous);
+      if (confirmation.expectedPlanDigest !== plan.planDigest) throw error('STALE_REVISION', 409, '目录迁移计划已变化，请重新预览后确认。');
+      const expectedInventory = new Map(plan.inventory.map(item => [item.name, item])), completedSteps = [];
+      while (current.catalog.schemaVersion < 4) {
+        const fromSchemaVersion = current.catalog.schemaVersion;
+        current = migrateOne(current, expectedInventory);
+        completedSteps.push({ fromSchemaVersion, toSchemaVersion: current.catalog.schemaVersion,
+          generationId: current.catalog.generationId, revision: current.catalog.revision, headSha256: sha256(current.bytes) });
+      }
+      assertMaintenanceOwned(); checkInventory(expectedInventory);
+      checkMaintenanceUnchanged('catalog.json', current);
+      return { catalog: current.catalog, completedSteps, changed: completedSteps.length > 0, executionReady: false };
+    });
+  }
+  async function initialize(options = {}) {
+    fields(options, ['createSchemaVersion'], [], invalid);
+    const createSchemaVersion = options.createSchemaVersion;
+    if (createSchemaVersion !== undefined && ![3, 4].includes(createSchemaVersion)) invalid('新目录必须明确选择格式3或4。');
     return queue(() => {
       assertOwned(); actualRoot(true);
       if (safeFile('catalog.json', { optional: true }).stat) {
-        let current = readFile('catalog.json');
+        const current = readFile('catalog.json');
         validatePredecessor(current, readFile('catalog.previous.json', { optional: true }));
-        while (current.catalog.schemaVersion < 3) current = migrateOne(current);
         return requireCurrent(current.catalog);
       }
       if (readdirSync(actualRoot()).some(name => name.startsWith('catalog.'))) unavailable('MISSING_CATALOG_WITH_RECOVERY_MATERIAL');
-      const catalog = { schemaVersion: 3, generationId: 'ag-' + randomUUID(), revision: 0, projects: {}, releases: {}, runBindings: {},
-        candidates: {}, approvals: {}, selections: {}, migrations: {}, browserSourceBindings: {}, events: [] };
+      if (createSchemaVersion === undefined) unavailable('CREATION_SCHEMA_REQUIRED');
+      const catalog = { schemaVersion: createSchemaVersion, generationId: 'ag-' + randomUUID(), revision: 0, projects: {}, releases: {}, runBindings: {},
+        candidates: {}, approvals: {}, selections: {}, migrations: {}, browserSourceBindings: {},
+        ...(createSchemaVersion === 4 ? { browserCandidates: {} } : {}), events: [] };
       const bytes = Buffer.from(JSON.stringify(catalog, null, 2) + '\n');
       if (bytes.length > limits.jsonBytes) throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限。', { limit: 'jsonBytes' });
-      validateAcceptanceCatalog(catalog, { limits }); assertOwned(); write('catalog.json', bytes);
+      validateAcceptanceCatalog(catalog, { limits }); assertOwned();
+      const { file } = safeFile('catalog.json', { optional: true });
+      try { writeExclusive(file, bytes); }
+      catch (cause) {
+        if (cause?.code === 'EEXIST') throw error('STALE_REVISION', 409, '目录已经存在，请打开并核对当前记录。');
+        unavailable('CATALOG_WRITE_FAILED');
+      }
+      assertOwned(); actualRoot();
+      if (!readFile('catalog.json').bytes.equals(bytes)) unavailable('CATALOG_COMMIT_CHANGED');
       return catalog;
     });
   }
@@ -675,6 +881,6 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       return resultOf(record, false);
     });
   }
-  return Object.freeze({ initialize, read, createProject, createRelease, bindRun, readRunReference, bindBrowserSource, readBrowserSourceBinding,
+  return Object.freeze({ initialize, previewMigration, applyMigration, read, createProject, createRelease, bindRun, readRunReference, bindBrowserSource, readBrowserSourceBinding,
     createBaselineCandidate, readBaselineCandidate, approveBaseline, selectBaseline, prepareManagedSpecDispatch, readManagedSpecDispatch });
 }

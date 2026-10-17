@@ -46,7 +46,7 @@ let owner, engine, browser, engineLog = '';
 try {
   const target = 'http://127.0.0.1:' + await listen(fixture);
   owner = acquireAcceptanceOwner({ root });
-  const catalog = createAcceptanceCatalogStore({ root, owner }); await catalog.initialize();
+  const catalog = createAcceptanceCatalogStore({ root, owner }); await catalog.initialize({ createSchemaVersion: 3 });
   const project = (await catalog.createProject({ ...cas(catalog), name: '托管验收结果读取夹具' })).project;
   const sourceRelease = (await catalog.createRelease(project.id, { ...cas(catalog), label: '需求来源', targetUrl: target + '/source' })).release;
   const targetRelease = (await catalog.createRelease(project.id, { ...cas(catalog), label: '待验收版本', targetUrl: target + '/target' })).release;

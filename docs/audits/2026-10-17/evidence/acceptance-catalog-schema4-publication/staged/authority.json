@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "readyForVerification": true,
+  "preparedAt": "2026-10-17T08:48:19.800540+00:00",
+  "readyMeaning": "Final packer/plan/document authority frozen and root package-ready notification received for working-tree pass. Staged verification requires a separate root notification.",
+  "packerSourceRoot": "core/workspace/_runs/acceptance-schema4-evidence-packer-20261017",
+  "packerSha256": {
+    "inputs.json": "f914fd0a353d683036f8c5cefa5fd852a368d0e85c0a22f51d95376ab906cacb",
+    "pack.py": "12df8a8e82185874815bd4443c68abd29934a7f55960bd62e0d7e8ffb4442399",
+    "PUBLIC-README.md": "5428343ce13865e2ecea4b93acb8acadc500ce4b9e8b21cea55e11eb5abc8607"
+  },
+  "groupIds": [
+    "01-format-attempts",
+    "02-maintenance-specialist",
+    "03-integration-targeted149",
+    "03-integration-maintenance90",
+    "03-integration-syntax-intermediate",
+    "03-legacy-initial-failure-gate",
+    "03-legacy-corrected-pass-gate",
+    "03-browser-v4-first-failure-gate",
+    "03-browser-v4-second-failure-gate",
+    "03-browser-v4-third-pass-gate",
+    "04-format-independent-probes",
+    "05-capacity-original-failure",
+    "06-capacity-corrected-probes",
+    "07-browser-v4-first-failure-runtime",
+    "08-browser-v4-second-failure-runtime",
+    "09-browser-v4-third-pass-runtime",
+    "10-legacy-first-failure-runtime",
+    "10-legacy-corrected-pass-runtime",
+    "11-independent-evidence-review",
+    "12-packer-source",
+    "13-final-syntax",
+    "14-final-console-build",
+    "15-final-legacy-gate",
+    "16-final-legacy-runtime",
+    "17-final-browser-v4-gate",
+    "18-final-browser-v4-runtime",
+    "19-final-full-core",
+    "20-main-ci-0988-failure",
+    "21-first-fstat-repro",
+    "22-first-fstat-targeted",
+    "23-followup-original-console-gate",
+    "24-followup-original-console-runtime",
+    "25-followup-forge-gate",
+    "26-followup-syntax-gate",
+    "27-followup-cdp-gate",
+    "28-followup-cdp-runtime",
+    "29-followup-legacy-gate",
+    "30-followup-legacy-runtime",
+    "31-followup-browser-v4-gate",
+    "32-followup-browser-v4-runtime",
+    "33-followup-full-core"
+  ],
+  "sourceGuardPath": "core/workspace/_runs/d1-integration-20261017/final-first-fstat-full-core-346ba75b-3e2c-4e31-8745-8af482cb24bf/source-before.json",
+  "sourceGuardSha256": "bb3bf1497be59e7b0d9ca057739701c19ca94c574fc6c3d534275c5e31f78d36",
+  "fullSourceCount": 549,
+  "frozenAuthorityPath": "core/workspace/_runs/d1-integration-20261017/final-first-fstat-full-core-346ba75b-3e2c-4e31-8745-8af482cb24bf/source-before.json",
+  "frozenAuthoritySha256": "bb3bf1497be59e7b0d9ca057739701c19ca94c574fc6c3d534275c5e31f78d36",
+  "frozenSources": [
+    {
+      "path": "core/src/acceptance/catalog-api.mjs",
+      "bytes": 9342,
+      "sha256": "7118c83172df100d94a4bbd605626984079b651a6bbe0bd6527700dc179d7c20"
+    },
+    {
+      "path": "core/src/acceptance/catalog-schema.mjs",
+      "bytes": 30508,
+      "sha256": "af6be66714fd68dc56ff315ffff131c5ea45048e0c602843eb0d5358589f654c"
+    },
+    {
+      "path": "core/src/acceptance/catalog.mjs",
+      "bytes": 56162,
+      "sha256": "f14034f3f9ad458101fd4e68d30703c654053bdfeb3ae2d857330b00fdd2d80b"
+    },
+    {
+      "path": "core/src/acceptance/catalog-maintenance-cli.mjs",
+      "bytes": 4942,
+      "sha256": "d9f908c2608c12ab650590d67bb956c60ee46e29677b5c34e8cb4aa6f7dfc999"
+    },
+    {
+      "path": "core/src/acceptance/browser-organized-candidate-identity.mjs",
+      "bytes": 520,
+      "sha256": "b70e07be5b6775a61cc0a66a2f108d4f6c9d5b60ea8f64ec6d7b022eeb80a6e4"
+    },
+    {
+      "path": "core/src/acceptance/managed-run-reader.mjs",
+      "bytes": 21254,
+      "sha256": "d6b9b9b509df8de270fb4d112be51443c856cb18ec8240d7ca5b565d46fe6560"
+    },
+    {
+      "path": "core/src/engine-server.mjs",
+      "bytes": 131842,
+      "sha256": "c2edbfb4cd1c3f2960b2ce0456a7c93e41964d150bcc65220ffab63b8cefeafc"
+    },
+    {
+      "path": "core/scripts/fixtures/catalog-v4-compatibility.mjs",
+      "bytes": 9582,
+      "sha256": "eda8c0aa21cb30bf076be09c705932b80991c617cd31417a94288f0d589e2098"
+    },
+    {
+      "path": "core/scripts/smoke-acceptance-browser-bindings-console.mjs",
+      "bytes": 31676,
+      "sha256": "1241f91147ac3f6180f4a6fe180ecd5b6dd99b4c8bae91ad58998b7e93787d7f"
+    },
+    {
+      "path": "core/scripts/smoke-acceptance-browser-bindings.mjs",
+      "bytes": 28064,
+      "sha256": "140459dff68ad41cb16014681cfd6bb67cfd56651acfb432fb6cc431df070d0e"
+    },
+    {
+      "path": "core/scripts/smoke-acceptance-catalog-migration.mjs",
+      "bytes": 39926,
+      "sha256": "32703d1295c2b5638ee11b6c59b430df01b4dea22578de3d4cd8261e1dc49296"
+    },
+    {
+      "path": "core/test/acceptance-browser-organized-candidate-identity.test.mjs",
+      "bytes": 7238,
+      "sha256": "b5c60264d68b7334a846fe45445c010757641de8502882a112c53cb023eb14fa"
+    },
+    {
+      "path": "core/test/acceptance-catalog-maintenance-cli.test.mjs",
+      "bytes": 7431,
+      "sha256": "e36b9bb9d8f8caf13d47f4dafb50eb55ebc0881b27ca75a6484b18442938d5b0"
+    },
+    {
+      "path": "core/test/acceptance-catalog-schema-v4.test.mjs",
+      "bytes": 21794,
+      "sha256": "0aa9d4a541be38f6da86fd7415bfcb4261cec49d2a593b90c35b89cbaaea9e22"
+    },
+    {
+      "path": "core/test/acceptance-catalog-schema3-migration.test.mjs",
+      "bytes": 16417,
+      "sha256": "fcfb1bda8dc3892a8ca49336529a80ec8c045b507a5f6ae750c3b28ff9530bc5"
+    },
+    {
+      "path": "core/test/acceptance-catalog-migration.test.mjs",
+      "bytes": 18746,
+      "sha256": "b17ced45d87f94e011a5fd398c8b4d12b1ebbaea43520aab33a658f8cd4b6a76"
+    },
+    {
+      "path": "core/test/acceptance-display-head-race.test.mjs",
+      "bytes": 28591,
+      "sha256": "fd884848787a076867f8d3f63986e5e51ec231649b6b08b117e32f275bc7187a"
+    }
+  ],
+  "frozenGroupId": "",
+  "finalSnapshotGroups": [
+    "23-followup-original-console-gate",
+    "25-followup-forge-gate",
+    "26-followup-syntax-gate",
+    "27-followup-cdp-gate",
+    "29-followup-legacy-gate",
+    "31-followup-browser-v4-gate",
+    "33-followup-full-core"
+  ],
+  "preservedCiPath": "docs/audits/2026-10-17/evidence/browser-bindings-console-ci-main-b42826e",
+  "preservedCiCompletedSha256": "f0045d5f606ea2ed1ca901072956a2e3464689555ee13da0e8678f57faf9fa5b",
+  "preservedCiFileCount": 351,
+  "allowedCredentialDigests": [],
+  "readyAt": "2026-10-17T08:58:23.113920+00:00",
+  "rootReadyPackageHashes": {
+    "COMPLETED.json": "8eb770fa28e80cd6725c330fd26014190dac2bb6a8c2c78b44ef110ec7cee020",
+    "INDEX.json": "5703beb0e6783843c21ac1ee4d8d6768767c95900350449fdbb56141b2cefcf2"
+  }
+}

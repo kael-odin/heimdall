@@ -53,7 +53,7 @@ async function fixture(t, openapi = false) {
   } else sourcePlan = normalizeSpecPlan({ name: 'managed real HTTP raw', mode: 'spec', targetUrl: base + '/source', timeoutMs: 1000, maxResponseBytes: 1024,
     spec: { source: { id: 'REQ-EXECUTION', revision: '1', type: 'manual' }, approved: false,
       checks: [contract('healthy'), contract('bug'), contract('slow'), contract('large'), contract('head', '/head', 'HEAD')] } });
-  const store = createAcceptanceCatalogStore({ root, owner }); await store.initialize();
+  const store = createAcceptanceCatalogStore({ root, owner }); await store.initialize({ createSchemaVersion: 3 });
   const project = (await store.createProject({ ...cas(store), name: 'pure managed raw fixture' })).project;
   const sourceRelease = (await store.createRelease(project.id, { ...cas(store), label: 'draft source', targetUrl: sourcePlan.targetUrl })).release;
   const targetRelease = (await store.createRelease(project.id, { ...cas(store), label: 'fixed target', targetUrl: base + '/target' })).release;

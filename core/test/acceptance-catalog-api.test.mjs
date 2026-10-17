@@ -106,7 +106,7 @@ test('real catalog HTTP mutations preserve strict fields and single-winner doubl
   const owner = acquireAcceptanceOwner({ root });
   try {
     const catalog = createAcceptanceCatalogStore({ root, owner });
-    await catalog.initialize();
+    await catalog.initialize({ createSchemaVersion: 3 });
     await serving(catalog, async base => {
       const call = async (suffix, value) => {
         const response = await fetch(base + '/api/acceptance/projects' + suffix, { method: 'POST', headers, body: JSON.stringify(value) });

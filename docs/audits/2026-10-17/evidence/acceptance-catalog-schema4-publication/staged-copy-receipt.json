@@ -1,0 +1,87 @@
+{
+  "copiedAt": "2026-10-17T09:05:33.025735+00:00",
+  "source": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\acceptance-schema4-publication-independent-20261017-aed86718-a9d4-44be-b550-7f9722c3e422\\staged-c1f74fd2-55d6-4937-a7d8-9f264cc96ba1",
+  "destination": "docs/audits/2026-10-17/evidence/acceptance-catalog-schema4-publication/staged",
+  "complete": true,
+  "sourceUnchanged": true,
+  "pathSetsTypesBytesSha256Equal": true,
+  "files": 11,
+  "directoriesIncludingRoot": 2,
+  "totalBytes": 43538,
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory"
+    },
+    {
+      "path": ".gitattributes",
+      "kind": "file",
+      "bytes": 20,
+      "sha256": "e97602ab9cac70102245345c5ab0fc9830df8b17f1072b188265a662a3a547ae"
+    },
+    {
+      "path": "COMPLETED.json",
+      "kind": "file",
+      "bytes": 657,
+      "sha256": "551c00dbaaddbcc2bf8d7f64cf133aaab5f2855209682468f6689cf39a7d162b"
+    },
+    {
+      "path": "authority.json",
+      "kind": "file",
+      "bytes": 6560,
+      "sha256": "7a4ae7557ac9e31937a53827a2028a8cdd18678a2a64e01aaa9998085ce874bd"
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "bytes": 1568,
+      "sha256": "f2a872babffd8b71a14efa09ac6d0bd1039f5c8d723080523c970cb41df1cefe"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "bytes": 73,
+      "sha256": "c786dce450f8fb2bf8f864f0ae58061518ae74892de42b22e4523b6456f3c080"
+    },
+    {
+      "path": "file-manifest.json",
+      "kind": "file",
+      "bytes": 1741,
+      "sha256": "228d7ef003010690573cbfd976161588e3b982b2d660739d08ce662560516579"
+    },
+    {
+      "path": "result",
+      "kind": "directory"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "bytes": 294,
+      "sha256": "a8b7a0fa8f84965c97dd0a2d7debcedb6f05134fb3277584abf95d892d7e4f15"
+    },
+    {
+      "path": "verify-package.py",
+      "kind": "file",
+      "bytes": 24513,
+      "sha256": "f84a1cc154191d00b07bbc31a9bd436d7f67b6ac1523f0189e816fdc1de34ce3"
+    },
+    {
+      "path": "result/credential-scan.json",
+      "kind": "file",
+      "bytes": 776,
+      "sha256": "f66204bb85cac5a4bf45481dcf7cbc84e4d7ab61dbe6ec470fbbafdb18e55041"
+    },
+    {
+      "path": "result/verification.json",
+      "kind": "file",
+      "bytes": 7336,
+      "sha256": "f7a6cdc7152af4fe7257ad2e9cb136418faa3d8463d47a4332f5a885b93d3a09"
+    }
+  ]
+}

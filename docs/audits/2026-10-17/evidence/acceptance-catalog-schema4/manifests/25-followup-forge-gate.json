@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "25-followup-forge-gate",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d1-integration-20261017\\final-first-fstat-forge-9efa4e9f-902b-4a8b-8e90-ef71700d1abe",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792225826944071600
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225791535947600,
+      "bytes": 408,
+      "sha256": "0fc9a1562ed891288a1457e70d31ef14a2745cf7cc22b14cafb3339eedcabd80"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225826639204500,
+      "bytes": 101,
+      "sha256": "cc2265fe6e6f701b2fae318da5834f9a0e1bfb61bff7f9d857d791f54b0aaf73"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225826943540900,
+      "bytes": 92216,
+      "sha256": "bb3bf1497be59e7b0d9ca057739701c19ca94c574fc6c3d534275c5e31f78d36"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225791534353800,
+      "bytes": 92216,
+      "sha256": "bb3bf1497be59e7b0d9ca057739701c19ca94c574fc6c3d534275c5e31f78d36"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225791537511400,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225826096531200,
+      "bytes": 326,
+      "sha256": "8a523fb8244f8fc5159bd7f5b564fb19ddba5e2de4c7540ead4516f620ce4540"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225826944071600,
+      "bytes": 88,
+      "sha256": "aa86fef64fd095a50680eac7fd37b74349dc39a9fcf3c39370b58cb4df129e7a"
+    }
+  ]
+}

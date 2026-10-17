@@ -60,7 +60,7 @@ jobs:
         run: pnpm acceptance:comparison:smoke
       - name: Acceptance project catalog (versions, explicit bindings and two-engine isolation)
         run: pnpm acceptance:catalog:smoke
-      - name: Acceptance catalog migration (real v1 artifacts and browser continuity)
+      - name: Acceptance catalog explicit migration (legacy artifacts, CLI confirmation and browser continuity)
         run: pnpm acceptance:catalog:migration:smoke
       - name: Spec baseline review (candidates, approvals, selections and source integrity)
         run: pnpm acceptance:baseline:smoke
@@ -82,6 +82,8 @@ jobs:
         run: pnpm acceptance:browser:bindings:smoke
       - name: Browser source binding console (native HTTP, source review and verified evidence)
         run: pnpm acceptance:browser:bindings:ui:smoke
+      - name: Schema4 combined history (fresh Browser bindings and explicit Spec lifecycle fixtures)
+        run: pnpm acceptance:browser:bindings:v4:smoke
       - name: Preserve acceptance smoke failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -92,6 +94,7 @@ jobs:
             core/workspace/_runs/acceptance-catalog-console/**/failure-ui.json
             core/workspace/_runs/acceptance-catalog-console/**/catalog-failure.png
             core/workspace/_runs/acceptance-catalog-console/**/engine-*.log
+            core/workspace/_runs/acceptance-catalog-migration/**
             core/workspace/_runs/acceptance-console/acceptance-failure.json
             core/workspace/_runs/acceptance-console/acceptance-failure.png
             core/workspace/_runs/acceptance-console/engine-error.log
@@ -117,6 +120,10 @@ jobs:
             core/workspace/_runs/browser-bindings-console-smoke-*/browser-requests.json
             core/workspace/_runs/browser-bindings-console-smoke-*/browser-errors.json
             core/workspace/_runs/browser-bindings-console-smoke-*/target-requests.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/browser-checks.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/source-file-digests.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/catalog-v4-*.json
+            core/workspace/_runs/browser-bindings-console-smoke-*/runtime/**
           if-no-files-found: ignore
           retention-days: 7
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。

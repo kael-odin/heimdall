@@ -57,7 +57,7 @@ export async function recoveryFixture() {
     req.resume(); res.setHeader('Content-Type', 'application/json'); res.end('{"code":0,"quota":1,"enabled":false,"name":""}');
   });
   const base = 'http://127.0.0.1:' + await listen(target), owner = acquireAcceptanceOwner({ root });
-  const catalog = createAcceptanceCatalogStore({ root, owner }); await catalog.initialize();
+  const catalog = createAcceptanceCatalogStore({ root, owner }); await catalog.initialize({ createSchemaVersion: 3 });
   const current = catalog.read();
   const project = (await catalog.createProject({ expectedGenerationId: current.generationId, expectedRevision: current.revision,
     name: '恢复受控夹具' })).project;

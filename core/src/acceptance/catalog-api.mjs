@@ -45,7 +45,7 @@ export function acceptanceCatalogError(error) {
     if (payload.currentGenerationId) details.generationId = payload.currentGenerationId;
     if (payload.currentRevision !== undefined) details.revision = payload.currentRevision;
     if (typeof error.details.reason === 'string' && /^[A-Z0-9_]{1,80}$/.test(error.details.reason)) details.reason = error.details.reason;
-    if (typeof error.details.limit === 'string' && ['jsonBytes', 'projects', 'releases', 'runBindings', 'browserSourceBindings', 'candidates', 'approvals', 'selections', 'migrations', 'events', 'queue'].includes(error.details.limit)) details.limit = error.details.limit;
+    if (typeof error.details.limit === 'string' && ['jsonBytes', 'projects', 'releases', 'runBindings', 'browserSourceBindings', 'browserCandidates', 'browserCandidateBytes', 'candidates', 'approvals', 'selections', 'migrations', 'events', 'queue'].includes(error.details.limit)) details.limit = error.details.limit;
     if (Object.keys(details).length) payload.details = details;
   }
   return { status, payload };

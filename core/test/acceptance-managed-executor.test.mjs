@@ -32,7 +32,7 @@ async function fixture(t, paths = ['/healthy'], timeoutMs = 1000) {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); owner.release(); fs.rmSync(root, { recursive: true, force: true }); });
   const base = 'http://127.0.0.1:' + server.address().port, catalog = createAcceptanceCatalogStore({ root, owner });
-  await catalog.initialize();
+  await catalog.initialize({ createSchemaVersion: 3 });
   const project = (await catalog.createProject({ ...cas(catalog), name: 'executor real admission fixture' })).project;
   const sourceRelease = (await catalog.createRelease(project.id, { ...cas(catalog), label: 'source', targetUrl: base + '/source' })).release;
   const targetRelease = (await catalog.createRelease(project.id, { ...cas(catalog), label: 'target', targetUrl: base + '/target' })).release;

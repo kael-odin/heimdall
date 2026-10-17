@@ -1,0 +1,592 @@
+{
+  "complete": true,
+  "copiedAt": "2026-10-17T08:38:54.823699+00:00",
+  "scope": "Exact frozen main gate tree copies for relative-path-only independent package verification; source command.json cwd and all original bytes preserved. No product changes, tests, browser, plan or pack run.",
+  "sourceBase": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\display-head-hotfix-gates-20261017",
+  "destinationRelative": "core/workspace/_runs/first-fstat-main-gates-13f939e3-a932-48c9-997a-aad54d8fbcc9",
+  "sourceBefore": {
+    "first-fstat-repro-33c9e056-467e-4036-9816-21f76f4b17a6": {
+      "directories": [],
+      "files": {
+        "command.json": {
+          "bytes": 433,
+          "sha256": "7ac9b35f3f723fe7f3390d93b797febb67284d8a1f78c919265ad0a3cf1143b5",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383421,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 433,
+            "st_mtime_ns": 1792225333731906900,
+            "st_ctime_ns": 1792225333731906900
+          }
+        },
+        "exitcode.json": {
+          "bytes": 99,
+          "sha256": "c4d0212a7b9f43a2445672388e0f3a3f5f6cb1122f140d2fbe92ffca38b11ce1",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383424,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 99,
+            "st_mtime_ns": 1792225334294296100,
+            "st_ctime_ns": 1792225334293295700
+          }
+        },
+        "source-after.json": {
+          "bytes": 90957,
+          "sha256": "2f7799663caee33f24d43b88b6a3b3aeda3717642255eb4a3ae5fa11ee8f52a1",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383425,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225334603562400,
+            "st_ctime_ns": 1792225334603039100
+          }
+        },
+        "source-before.json": {
+          "bytes": 90957,
+          "sha256": "2f7799663caee33f24d43b88b6a3b3aeda3717642255eb4a3ae5fa11ee8f52a1",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383420,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225333729902400,
+            "st_ctime_ns": 1792225333729902400
+          }
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383423,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 0,
+            "st_mtime_ns": 1792225333733480300,
+            "st_ctime_ns": 1792225333733480300
+          }
+        },
+        "stdout.log": {
+          "bytes": 1582,
+          "sha256": "037a91a7c482b409e87f16315db1cb8b153fd9f3027e07849b29ca94b5c46d14",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383422,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 1582,
+            "st_mtime_ns": 1792225334285673000,
+            "st_ctime_ns": 1792225333733480300
+          }
+        },
+        "summary.json": {
+          "bytes": 88,
+          "sha256": "ec93c5547eaab7c030a035a5f87a78240547580078322674da6c28e45d72b8f5",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383426,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 88,
+            "st_mtime_ns": 1792225334604078900,
+            "st_ctime_ns": 1792225334604078900
+          }
+        }
+      }
+    },
+    "first-fstat-targeted-2f870c6a-266d-4c69-a546-f6bbc67fc598": {
+      "directories": [],
+      "files": {
+        "command.json": {
+          "bytes": 471,
+          "sha256": "2ffa6388abbf59a1c63180ba43b2ba65be7a28e5cad719282a0c37f369b7d9aa",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383429,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 471,
+            "st_mtime_ns": 1792225548471626200,
+            "st_ctime_ns": 1792225548471626200
+          }
+        },
+        "exitcode.json": {
+          "bytes": 101,
+          "sha256": "17f9ca7b6e6c9dccc4f1a86ff4eef52f2e4bfa2d58c6e8fedd119ebf9a21522e",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383432,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 101,
+            "st_mtime_ns": 1792225597487560100,
+            "st_ctime_ns": 1792225597486560100
+          }
+        },
+        "source-after.json": {
+          "bytes": 90957,
+          "sha256": "d649d0c19148e77b3ff9ba6e3ebaf1e8720a5c8c7ed36eef2e3aa98d852b39cb",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383434,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225597793939800,
+            "st_ctime_ns": 1792225597793939800
+          }
+        },
+        "source-before.json": {
+          "bytes": 90957,
+          "sha256": "d649d0c19148e77b3ff9ba6e3ebaf1e8720a5c8c7ed36eef2e3aa98d852b39cb",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383428,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225548469621000,
+            "st_ctime_ns": 1792225548469621000
+          }
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383431,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 0,
+            "st_mtime_ns": 1792225548473626900,
+            "st_ctime_ns": 1792225548473626900
+          }
+        },
+        "stdout.log": {
+          "bytes": 5220,
+          "sha256": "b101ce4bacdf9c77df636abfbdf6272aeb95f9faba9a3c3b98219a7a0a4259a0",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383430,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 5220,
+            "st_mtime_ns": 1792225597478834800,
+            "st_ctime_ns": 1792225548472626300
+          }
+        },
+        "summary.json": {
+          "bytes": 88,
+          "sha256": "7c046dbf7fcdb9de3fb35740f76a419c2c500fb2bbe44ad565129469e6e0e3ec",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383435,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 88,
+            "st_mtime_ns": 1792225597794939900,
+            "st_ctime_ns": 1792225597794939900
+          }
+        }
+      }
+    }
+  },
+  "copied": {
+    "first-fstat-repro-33c9e056-467e-4036-9816-21f76f4b17a6": {
+      "directories": [],
+      "files": {
+        "command.json": {
+          "bytes": 433,
+          "sha256": "7ac9b35f3f723fe7f3390d93b797febb67284d8a1f78c919265ad0a3cf1143b5",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6755399441942936,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 433,
+            "st_mtime_ns": 1792225333731906900,
+            "st_ctime_ns": 1792226334749959000
+          }
+        },
+        "exitcode.json": {
+          "bytes": 99,
+          "sha256": "c4d0212a7b9f43a2445672388e0f3a3f5f6cb1122f140d2fbe92ffca38b11ce1",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6473924465232281,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 99,
+            "st_mtime_ns": 1792225334294296100,
+            "st_ctime_ns": 1792226334751568600
+          }
+        },
+        "source-after.json": {
+          "bytes": 90957,
+          "sha256": "2f7799663caee33f24d43b88b6a3b3aeda3717642255eb4a3ae5fa11ee8f52a1",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6755399441942938,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225334603562400,
+            "st_ctime_ns": 1792226334752696400
+          }
+        },
+        "source-before.json": {
+          "bytes": 90957,
+          "sha256": "2f7799663caee33f24d43b88b6a3b3aeda3717642255eb4a3ae5fa11ee8f52a1",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6473924465232283,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225333729902400,
+            "st_ctime_ns": 1792226334753705500
+          }
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6755399441942944,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 0,
+            "st_mtime_ns": 1792225333733480300,
+            "st_ctime_ns": 1792226334756015500
+          }
+        },
+        "stdout.log": {
+          "bytes": 1582,
+          "sha256": "037a91a7c482b409e87f16315db1cb8b153fd9f3027e07849b29ca94b5c46d14",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 7036874418653601,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 1582,
+            "st_mtime_ns": 1792225334285673000,
+            "st_ctime_ns": 1792226334757025000
+          }
+        },
+        "summary.json": {
+          "bytes": 88,
+          "sha256": "ec93c5547eaab7c030a035a5f87a78240547580078322674da6c28e45d72b8f5",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6755399441942946,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 88,
+            "st_mtime_ns": 1792225334604078900,
+            "st_ctime_ns": 1792226334758061300
+          }
+        }
+      }
+    },
+    "first-fstat-targeted-2f870c6a-266d-4c69-a546-f6bbc67fc598": {
+      "directories": [],
+      "files": {
+        "command.json": {
+          "bytes": 471,
+          "sha256": "2ffa6388abbf59a1c63180ba43b2ba65be7a28e5cad719282a0c37f369b7d9aa",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6755399441942948,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 471,
+            "st_mtime_ns": 1792225548471626200,
+            "st_ctime_ns": 1792226334760071000
+          }
+        },
+        "exitcode.json": {
+          "bytes": 101,
+          "sha256": "17f9ca7b6e6c9dccc4f1a86ff4eef52f2e4bfa2d58c6e8fedd119ebf9a21522e",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6473924465232293,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 101,
+            "st_mtime_ns": 1792225597487560100,
+            "st_ctime_ns": 1792226334761069400
+          }
+        },
+        "source-after.json": {
+          "bytes": 90957,
+          "sha256": "d649d0c19148e77b3ff9ba6e3ebaf1e8720a5c8c7ed36eef2e3aa98d852b39cb",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6473924465232294,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225597793939800,
+            "st_ctime_ns": 1792226334762158500
+          }
+        },
+        "source-before.json": {
+          "bytes": 90957,
+          "sha256": "d649d0c19148e77b3ff9ba6e3ebaf1e8720a5c8c7ed36eef2e3aa98d852b39cb",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6755399441942952,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225548469621000,
+            "st_ctime_ns": 1792226334763882300
+          }
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6473924465232299,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 0,
+            "st_mtime_ns": 1792225548473626900,
+            "st_ctime_ns": 1792226334765465800
+          }
+        },
+        "stdout.log": {
+          "bytes": 5220,
+          "sha256": "b101ce4bacdf9c77df636abfbdf6272aeb95f9faba9a3c3b98219a7a0a4259a0",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6755399441942956,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 5220,
+            "st_mtime_ns": 1792225597478834800,
+            "st_ctime_ns": 1792226334766512100
+          }
+        },
+        "summary.json": {
+          "bytes": 88,
+          "sha256": "7c046dbf7fcdb9de3fb35740f76a419c2c500fb2bbe44ad565129469e6e0e3ec",
+          "sourceStat": {
+            "st_dev": 1451399181,
+            "st_ino": 6755399441942957,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 88,
+            "st_mtime_ns": 1792225597794939900,
+            "st_ctime_ns": 1792226334768091400
+          }
+        }
+      }
+    }
+  },
+  "sourceAfter": {
+    "first-fstat-repro-33c9e056-467e-4036-9816-21f76f4b17a6": {
+      "directories": [],
+      "files": {
+        "command.json": {
+          "bytes": 433,
+          "sha256": "7ac9b35f3f723fe7f3390d93b797febb67284d8a1f78c919265ad0a3cf1143b5",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383421,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 433,
+            "st_mtime_ns": 1792225333731906900,
+            "st_ctime_ns": 1792225333731906900
+          }
+        },
+        "exitcode.json": {
+          "bytes": 99,
+          "sha256": "c4d0212a7b9f43a2445672388e0f3a3f5f6cb1122f140d2fbe92ffca38b11ce1",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383424,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 99,
+            "st_mtime_ns": 1792225334294296100,
+            "st_ctime_ns": 1792225334293295700
+          }
+        },
+        "source-after.json": {
+          "bytes": 90957,
+          "sha256": "2f7799663caee33f24d43b88b6a3b3aeda3717642255eb4a3ae5fa11ee8f52a1",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383425,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225334603562400,
+            "st_ctime_ns": 1792225334603039100
+          }
+        },
+        "source-before.json": {
+          "bytes": 90957,
+          "sha256": "2f7799663caee33f24d43b88b6a3b3aeda3717642255eb4a3ae5fa11ee8f52a1",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383420,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225333729902400,
+            "st_ctime_ns": 1792225333729902400
+          }
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383423,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 0,
+            "st_mtime_ns": 1792225333733480300,
+            "st_ctime_ns": 1792225333733480300
+          }
+        },
+        "stdout.log": {
+          "bytes": 1582,
+          "sha256": "037a91a7c482b409e87f16315db1cb8b153fd9f3027e07849b29ca94b5c46d14",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383422,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 1582,
+            "st_mtime_ns": 1792225334285673000,
+            "st_ctime_ns": 1792225333733480300
+          }
+        },
+        "summary.json": {
+          "bytes": 88,
+          "sha256": "ec93c5547eaab7c030a035a5f87a78240547580078322674da6c28e45d72b8f5",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383426,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 88,
+            "st_mtime_ns": 1792225334604078900,
+            "st_ctime_ns": 1792225334604078900
+          }
+        }
+      }
+    },
+    "first-fstat-targeted-2f870c6a-266d-4c69-a546-f6bbc67fc598": {
+      "directories": [],
+      "files": {
+        "command.json": {
+          "bytes": 471,
+          "sha256": "2ffa6388abbf59a1c63180ba43b2ba65be7a28e5cad719282a0c37f369b7d9aa",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383429,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 471,
+            "st_mtime_ns": 1792225548471626200,
+            "st_ctime_ns": 1792225548471626200
+          }
+        },
+        "exitcode.json": {
+          "bytes": 101,
+          "sha256": "17f9ca7b6e6c9dccc4f1a86ff4eef52f2e4bfa2d58c6e8fedd119ebf9a21522e",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383432,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 101,
+            "st_mtime_ns": 1792225597487560100,
+            "st_ctime_ns": 1792225597486560100
+          }
+        },
+        "source-after.json": {
+          "bytes": 90957,
+          "sha256": "d649d0c19148e77b3ff9ba6e3ebaf1e8720a5c8c7ed36eef2e3aa98d852b39cb",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383434,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225597793939800,
+            "st_ctime_ns": 1792225597793939800
+          }
+        },
+        "source-before.json": {
+          "bytes": 90957,
+          "sha256": "d649d0c19148e77b3ff9ba6e3ebaf1e8720a5c8c7ed36eef2e3aa98d852b39cb",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383428,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 90957,
+            "st_mtime_ns": 1792225548469621000,
+            "st_ctime_ns": 1792225548469621000
+          }
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383431,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 0,
+            "st_mtime_ns": 1792225548473626900,
+            "st_ctime_ns": 1792225548473626900
+          }
+        },
+        "stdout.log": {
+          "bytes": 5220,
+          "sha256": "b101ce4bacdf9c77df636abfbdf6272aeb95f9faba9a3c3b98219a7a0a4259a0",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383430,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 5220,
+            "st_mtime_ns": 1792225597478834800,
+            "st_ctime_ns": 1792225548472626300
+          }
+        },
+        "summary.json": {
+          "bytes": 88,
+          "sha256": "7c046dbf7fcdb9de3fb35740f76a419c2c500fb2bbe44ad565129469e6e0e3ec",
+          "sourceStat": {
+            "st_dev": 2428494741,
+            "st_ino": 5629499534383435,
+            "st_mode": 33206,
+            "st_nlink": 1,
+            "st_size": 88,
+            "st_mtime_ns": 1792225597794939900,
+            "st_ctime_ns": 1792225597794939900
+          }
+        }
+      }
+    }
+  },
+  "sourceBeforeAfterEqual": true,
+  "copiedFullDirectoryAndFileSetsAndBytesEqual": true,
+  "metadataBoundary": "copytree uses copy2; receipt verifies complete directory/file sets and exact regular-file bytes/length/SHA256. It does not claim preserved inode, ctime, nlink or every directory attribute."
+}

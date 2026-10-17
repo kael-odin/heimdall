@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "phase": "working-tree",
+  "verificationStatus": "passed",
+  "copiedFileCountIncludingControls": 11,
+  "fileManifest": {
+    "path": "file-manifest.json",
+    "bytes": 1747,
+    "sha256": "cc8deb743380917ac79286eea526cf66cae442f7154496a3cd05c005df1c3366"
+  },
+  "verification": {
+    "path": "result/verification.json",
+    "bytes": 7339,
+    "sha256": "622ec21bb366315d9286e95b314ff0eeee1ed75bd6feb3b68cd81e8e63988a39"
+  },
+  "credentialScan": {
+    "path": "result/credential-scan.json",
+    "bytes": 776,
+    "sha256": "f66204bb85cac5a4bf45481dcf7cbc84e4d7ab61dbe6ec470fbbafdb18e55041"
+  }
+}

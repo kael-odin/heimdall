@@ -6,6 +6,7 @@ import { join, basename } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createAcceptanceCatalogStore, validateAcceptanceCatalog } from '../src/acceptance/catalog.mjs';
 import { currentSelectionsOf } from '../src/acceptance/catalog-schema.mjs';
+import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 import { normalizeSpecPlan } from '../src/acceptance/spec-schema.mjs';
 import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
 import { createAcceptanceRun, finishAcceptanceRun, acceptanceRunDir, readAcceptanceSnapshot } from '../src/acceptance/store.mjs';
@@ -40,7 +41,7 @@ async function fixture(t, targetUrl = 'http://127.0.0.1:1/app?release=one') {
       const callback = f.afterPrevious; f.afterPrevious = null; callback();
     }
   } });
-  await f.store.initialize();
+  await f.store.initialize({ createSchemaVersion: 3 });
   f.project = (await f.store.createProject({ ...cas(f), name: '完整性独立回归' })).project;
   f.release = (await f.store.createRelease(f.project.id, { ...cas(f), label: 'v1', targetUrl })).release;
   return f;
@@ -215,22 +216,34 @@ test('B2 JSON accessors and extra fields reject before evaluating hooks or writi
   await unchanged(f, f.store.selectBaseline(f.project.id, { ...selectInput(f, approved), previousSelectionId: null }), 'INVALID_INPUT');
 });
 
-test('migrated B1 bindings can produce B2 history and ordered selections across restart without changing the B1 prefix', async t => {
+test('explicitly migrated B1 bindings retain Spec history and ordered selections across schema4 restart', async t => {
   const f = await fixture(t), s = await source(f), original = f.store.read();
   const v1 = { schemaVersion: 1, generationId: original.generationId, revision: original.revision,
     projects: original.projects, releases: original.releases, runBindings: original.runBindings, events: original.events };
   const oldBytes = jsonBytes(v1);
   writeFileSync(join(f.root, 'catalog.json'), oldBytes); writeFileSync(join(f.root, 'catalog.previous.json'), oldBytes);
   f.store = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-  const migrated = await f.store.initialize();
-  assert.equal(migrated.schemaVersion, 3);
-  assert.equal(migrated.revision, v1.revision + 2);
+  await assert.rejects(f.store.initialize(), { code: 'CATALOG_UNAVAILABLE', details: { reason: 'MIGRATION_REQUIRED' } });
+  assert.deepEqual(heads(f), oldBytes);
+  const maintenanceOwner = acquireAcceptanceOwner({ root: f.root });
+  let migrated;
+  try {
+    const maintenance = createAcceptanceCatalogStore({ root: f.root, owner: maintenanceOwner });
+    const preview = await maintenance.previewMigration({ targetSchemaVersion: 4 });
+    migrated = (await maintenance.applyMigration({ targetSchemaVersion: 4,
+      expectedGenerationId: preview.source.generationId, expectedRevision: preview.source.revision,
+      expectedHeadSha256: preview.source.headSha256, expectedPreviousSha256: preview.source.previousSha256,
+      expectedPlanDigest: preview.planDigest })).catalog;
+  } finally { maintenanceOwner.release(); }
+  assert.equal(migrated.schemaVersion, 4);
+  assert.equal(migrated.revision, v1.revision + 3);
+  assert.deepEqual(migrated.browserCandidates, {});
   assert.deepEqual(migrated.events.slice(v1.revision).map(event => {
     assert.equal(event.kind, 'catalog-migrated');
     const migration = migrated.migrations[event.entityId];
     assert.equal(migration.fromRevision, event.revision - 1);
     return [migration.fromSchemaVersion, migration.toSchemaVersion];
-  }), [[1, 2], [2, 3]]);
+  }), [[1, 2], [2, 3], [3, 4]]);
   assert.deepEqual(migrated.events.slice(0, v1.revision), v1.events);
   assert.deepEqual(migrated.runBindings, v1.runBindings);
   const old = await candidate(f, s), approved = await approval(f, old);
@@ -239,7 +252,7 @@ test('migrated B1 bindings can produce B2 history and ordered selections across 
   const rollback = (await f.store.selectBaseline(f.project.id, selectInput(f, approved))).selection;
   assert.equal(cancel.previousSelectionId, first.id); assert.equal(rollback.previousSelectionId, cancel.id);
   const before = heads(f), restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-  await restarted.initialize(); assert.deepEqual(heads(f), before);
+  await restarted.initialize({ createSchemaVersion: 3 }); assert.deepEqual(heads(f), before);
   assert.deepEqual(currentSelectionsOf(restarted.read(), f.project.id).spec, rollback);
   assert.deepEqual(restarted.read().events.slice(0, v1.revision), v1.events);
   validateAcceptanceCatalog(restarted.read());

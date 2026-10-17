@@ -2,7 +2,7 @@
 
 项目验收工作台中的“项目与版本”将独立验收记录组织到明确的开发项目和版本。一个项目可以登记多个不可变版本，再将已经结束的运行逐一归属。查看原始报告和[显式运行对复验](acceptance-comparison.md)继续使用原运行 ID。
 
-这是本地项目目录。版本中的 URL 和 buildRef 是操作者声明，不能证明部署内容在以后保持相同。运行归属也不表示该版本已经通过验收；失败、受阻和旧记录的原始门禁继续保留。[Spec 需求基线](acceptance-baseline.md)在明确归属后提供完整候选预览、人工批准与独立选用；托管执行和持久 BUG 关闭仍待实现。
+这是本地项目目录。版本中的 URL 和 buildRef 是操作者声明，不能证明部署内容在以后保持相同。运行归属也不表示该版本已经通过验收；失败、受阻和旧记录的原始门禁继续保留。[Spec 需求基线](acceptance-baseline.md)在明确归属后提供完整候选预览、人工批准与独立选用；[托管 Spec 执行](acceptance-managed-spec.md)已接入专用 HTTP 和明确目标版本的工作台入口。Browser 候选写入、完整来源复核、批准、选用和固定来源执行，以及持久 BUG 关闭仍待实现。
 
 ## 控制台流程
 
@@ -47,27 +47,27 @@
 
 ## 所有权、持久化与恢复
 
-目录位于 `HEIMDALL_DATA_DIR` 派生的 acceptance 根。运行目录保持原位。引擎启动先取得真实路径上的独占所有权，再恢复未完成运行；同一数据根的第二个引擎或 junction / symlink 别名不能进入恢复。
+目录位于 `HEIMDALL_DATA_DIR` 派生的 acceptance 根。运行目录保持原位。引擎启动先取得真实路径上的独占所有权并打开目录，再预检和收束未完成运行；旧格式或未知版本无法打开时跳过恢复写入，保留原运行现场；同一数据根的第二个引擎或 junction / symlink 别名不能进入恢复。
 
 所有者保存本机 hostname、PID 和随机 nonce。仅当同一主机的 PID 被系统明确报告不存在时，才在独立恢复互斥区重读并核对原锁，再尝试接管。无法确认、权限拒绝、PID 复用、不同主机、损坏锁或遗留恢复锁均保守失败。不会按锁年龄自动接管。正常退出只释放仍属于本进程的锁。
 
 owner 内的目录写入按队列顺序执行，覆盖 read → validate → revision 检查 → 修改 → 前像核对 → 原子替换。原子替换失败保留原目录，不把 rename 本身称为跨文件事务或完整断电耐久。本阶段不提供从备份恢复目录、改绑或删除接口；正常重启不改变 generationId。
 
-## 目录格式升级
+## 目录格式与显式维护
 
-当前活动目录使用 schemaVersion 2。它保留原项目、版本、运行归属和事件格式；candidates、approvals、selections 按[需求基线合同](acceptance-baseline.md)严格验证 Spec 候选、批准与选用历史。最初 B2.0 版本仅允许这些集合为空，不能回写已包含新历史的目录。
+当前支持打开并验证 Schema3 / Schema4；引擎为全新空目录明确创建 Schema3。Schema3 的 `browserSourceBindings` 按[来源侧归属合同](acceptance-browser-bindings.md)验证 Browser 来源关系，Schema4 再增加独立 `browserCandidates` 表与严格历史格式。Spec 的 candidates、approvals、selections 继续遵循[需求基线合同](acceptance-baseline.md)，迁移不扩展 Spec 的批准、选用或托管执行语义。
 
-最新目录为 schemaVersion 3；Browser 表已有独立的[来源侧归属合同](acceptance-browser-bindings.md)，迁移本身仍生成空表。旧 schemaVersion 1 在单个引擎取得所有权后，由 initialize 队列依次执行 `1→2→3`；旧 2 仅执行 `2→3`。每步保留全部旧实体与事件、追加一条全局迁移记录、revision 增加 1，并生成新 generationId。迁移事件没有 projectId，不计作项目用户操作；旧页面 CAS 失效，需要刷新。完整合同见 [Schema3 指南](acceptance-catalog-schema3.md)。
+现行操作见 [Schema4 与显式维护](acceptance-catalog-schema4.md)。旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，不会静默升级；未知版本拒绝打开并保留原件。先停止使用同一数据根的引擎，再用维护 CLI 的 `--preview --target-schema 4` 检查计划，核对后以全部身份执行 `--apply`。活动 owner 持锁时维护拒绝；CLI 不启动引擎恢复或 worker。D1 的本机完整 Core、旧数据真实迁移和 Browser 混合历史检查均通过，证据与自身 CI 待核验边界见[实施验收](../audits/2026-10-17/acceptance-catalog-schema4.md)。
 
-迁移前严格检查活动目录和 rolling previous：同格式备份必须与活动目录同 generation，且是完整事件及不可变实体的历史前缀或相同快照。不会仅凭 revision 较小接受无关备份。schema1 活动目录搭配 schema2 备份属于谱系不明，升级失败并保留原件。
+Schema1 依次经过 `1→2→3→4`，Schema2 经过 `2→3→4`，Schema3 经过 `3→4`。每步保留旧实体和事件前缀、追加迁移实体与全局事件、增加一次 revision 并切换 generation，旧页面 CAS 因此失效。迁移不会生成 Browser 来源、候选或执行授权，已有 Schema4 的新预览可确认零步计划。
 
-升级前原始 head 和 previous 按实际 schema 及原字节 SHA-256 排他保存为 `catalog.v1.<sha256>.json` 或 `catalog.v2.<sha256>.json`，每种版本最多两份；不能把 previous1 标为 V2。相同名字仅复用完全相同字节，已有前像的版本和 SHA 也必须与文件名一致。容量、未知格式、坏备份、路径别名或归档失败阻止当前步提交。归档使用同目录完整临时文件和排他硬链接发布；不支持该操作时失败并保留原件。
+迁移前严格检查活动目录和 rolling previous：同格式备份必须同 generation，且是完整事件及不可变实体的历史前缀或相同快照；相邻格式必须以对应迁移的原字节摘要、generation、revision 和完整历史前缀桥接。逆向版本、跳步或分叉历史均拒绝并保留原件。
 
-每步先将原 head 写入 `catalog.previous.json`，再原子提交下一格式 head；head 是该步语义提交点。每次写入前重新检查 owner、根身份和已读取字节。失败时 previous 可能已推进，已提交的前一步和已保存前像保留；再次启动按当前有效原件继续，不重放已成功的第一步。旧格式不能作为当前目录继续写入。
+原始 head 和 previous 按实际 schema 与原字节 SHA-256 排他保存为 `catalog.v1.<sha256>.json`、`catalog.v2.<sha256>.json` 或 `catalog.v3.<sha256>.json`，每种版本最多两份。相同名字仅复用原字节完全相同的安全常规文件；版本、SHA 或路径异常均拒绝。完整链的事件、迁移、JSON、前像及根条目预算在任何准备文件写入前检查。
 
-相邻格式仅在 rolling previous 的原字节摘要、generation、revision 和完整历史前缀精确匹配对应迁移时，接受 `head2 / previous1` 或 `head3 / previous2`；拒绝 `head3 / previous1`。迁移后正常写入将 previous 推进为当前格式；最新格式初始化同样核对谱系，合法 head 仍可诊断读取。正常重启不重复迁移；原验收运行、报告、计划、门禁和证据保持原位。前像保留用于调查，没有自动恢复或自动删除入口；旧引擎不能写入 Schema3。
+每步先保存前像，再写 rolling previous，最后原子替换 head；head 是本步语义提交点，不能当作跨文件或断电事务。中断后可能已提交前几步，或留下当前步的前像 / previous；保留现场，重新预览并以新确认续迁。普通启动不续迁，也不清除现场。head / previous 原字节或计划变化时，旧确认被拒绝。
 
-这些保护针对协作进程和意外失败，不能阻止管理员手工改磁盘。独立 CLI 仍产生独立验收记录；目录操作只经拥有该数据根的引擎执行。不要在引擎管理同一目录期间从其他工具改写活动运行。
+这些保护依赖真实 owner、根身份、有界读取与原字节围栏，面向协作进程和意外失败。正常目录写入经拥有该根的引擎执行，显式维护则必须停用同根引擎后由独立 owner 执行；普通验收 CLI 仍产生独立运行记录。不要在引擎管理同一目录期间从其他工具改写活动运行。
 
 ## 复现检查
 
@@ -77,4 +77,4 @@ pnpm acceptance:catalog:smoke
 pnpm acceptance:catalog:migration:smoke
 ```
 
-目录 smoke 使用隔离数据目录和本地只读 API 夹具，覆盖真实 worker、目录冲突、第二引擎与路径别名、重启、控制台及原始证据不变。迁移 smoke 使用上一版真实目录与运行证据的副本，检查格式升级、旧请求冲突、连续重启、浏览器报告和所有来源字节不变。构建完成后再运行读取构建产物的浏览器检查。结果和实际边界见[目录实施验收记录](../audits/2026-10-16/acceptance-catalog.md)及[格式升级验收记录](../audits/2026-10-16/acceptance-catalog-migration.md)。
+目录 smoke 使用隔离数据目录和本地只读 API 夹具，覆盖真实 worker、目录冲突、第二引擎与路径别名、重启、控制台及原始证据不变。迁移 smoke 使用上一版真实目录与运行证据的副本，检查格式升级、旧请求冲突、连续重启、浏览器报告和所有来源字节不变。构建完成后再运行读取构建产物的浏览器检查。当前迁移命令已使用显式 Schema4 维护；本轮实际结果见[Schema4 实施验收](../audits/2026-10-17/acceptance-catalog-schema4.md)，历史结果和当时边界见[目录实施验收记录](../audits/2026-10-16/acceptance-catalog.md)及[格式升级验收记录](../audits/2026-10-16/acceptance-catalog-migration.md)。

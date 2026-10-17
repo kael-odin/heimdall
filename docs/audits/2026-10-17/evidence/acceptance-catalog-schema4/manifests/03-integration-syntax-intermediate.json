@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "03-integration-syntax-intermediate",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d1-integration-20261017\\syntax-1e8bfd35-d913-448b-8ded-1f6bb6ff1620",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792217481678485700
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217461824996200,
+      "bytes": 392,
+      "sha256": "c181033e7cb20e2811a871393a13640ae48d76b2e521b97ac3a306edaf919953"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217481582295000,
+      "bytes": 101,
+      "sha256": "19e85ab4d2609cb1995db2b4b87ece50e4f488cae5f1d94c1e224d7764792f1c"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217481677386800,
+      "bytes": 92043,
+      "sha256": "d877a3759df49302e3b9de0897d5eb06bc326dfe534a26e80c1d3f5f24af14b7"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217461823420300,
+      "bytes": 92043,
+      "sha256": "d877a3759df49302e3b9de0897d5eb06bc326dfe534a26e80c1d3f5f24af14b7"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217461827173800,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217481575042900,
+      "bytes": 29,
+      "sha256": "951aafa3e97eb84d39360cae07626570be999daa944b408f06294fd48add4ba5"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792217481678485700,
+      "bytes": 88,
+      "sha256": "3153ab7afe617005ffd27e451f9e1ecd1ddabc7278733a60faf1d3f90aba8e3d"
+    }
+  ]
+}

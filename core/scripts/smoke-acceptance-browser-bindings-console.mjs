@@ -10,10 +10,14 @@ import { join, dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { migrateCombinedCatalogFixture, catalogCompatibilityTree } from './fixtures/catalog-v4-compatibility.mjs';
 
-assert.ok(process.argv.length <= 3);
+const arguments_ = process.argv.slice(2), migrateCatalog = arguments_.includes('--migrate-catalog');
+assert.ok(arguments_.filter(value => value === '--migrate-catalog').length <= 1);
+const outputArguments = arguments_.filter(value => value !== '--migrate-catalog');
+assert.ok(outputArguments.length <= 1 && outputArguments.every(value => !value.startsWith('--')));
 const CORE = fileURLToPath(new URL('../', import.meta.url));
-const OUT = resolve(process.argv[2] ?? join(CORE, 'workspace/_runs/browser-bindings-console-smoke-' + randomUUID()));
+const OUT = resolve(outputArguments[0] ?? join(CORE, 'workspace/_runs/browser-bindings-console-smoke-' + randomUUID()));
 fs.mkdirSync(dirname(OUT), { recursive: true }); fs.mkdirSync(OUT);
 const DATA = join(OUT, 'runtime'), ROOT = join(DATA, 'acceptance');
 fs.mkdirSync(DATA);
@@ -68,7 +72,9 @@ async function startBrowser() {
   save('cdp-version.json', await (await fetch(endpoint + '/json/version')).json());
   browser = await chromium.connectOverCDP(endpoint);
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce', extraHTTPHeaders: { 'x-heimdall-token': token } });
-  await context.addInitScript(value => localStorage.setItem('heimdall-token', value), token);
+  await context.addInitScript(value => {
+    if (location.protocol === 'http:' || location.protocol === 'https:') localStorage.setItem('heimdall-token', value);
+  }, token);
   await context.addInitScript(() => {
     const facts = window.__browserBindingBlobFacts = { created: [], revoked: [] };
     const create = URL.createObjectURL.bind(URL), revoke = URL.revokeObjectURL.bind(URL);
@@ -260,8 +266,51 @@ try {
   checks.pageIdentityNonblankOverlayAndConsoleHealthy = true;
   assert.equal(requests.length, captureRequestCount); assert.equal(fs.readdirSync(ROOT).filter(name => /^ac-/.test(name)).length, 2);
   for (const sample of samples) assert.deepEqual(runFiles(sample.runId), sample.originalFiles);
-  const catalog = parse(join(ROOT, 'catalog.json')); assert.equal(Object.keys(catalog.candidates).length, 0); assert.equal(Object.keys(catalog.approvals).length, 0); assert.equal(Object.keys(catalog.selections).length, 0);
+  let catalog = parse(join(ROOT, 'catalog.json')); assert.equal(Object.keys(catalog.candidates).length, 0); assert.equal(Object.keys(catalog.approvals).length, 0); assert.equal(Object.keys(catalog.selections).length, 0);
   checks.noNewRunNoTargetRequestAndOriginalBytesPreserved = true;
+  let catalogMigration = null;
+  if (migrateCatalog) {
+    const expectedErrorsBeforeV4 = expectedResourceErrors.length;
+    save('catalog-before-v4-setup.json', catalog);
+    await page.goto('about:blank'); await stop(engine);
+    catalogMigration = await migrateCombinedCatalogFixture(ROOT, fixtureBase + '/baseline?declared=spec');
+    save('catalog-v4-compatibility.json', catalogMigration);
+    assert.equal(requests.length, captureRequestCount, 'Spec draft/lifecycle setup and catalog migration do not request the live target.');
+    for (const sample of samples) assert.deepEqual(runFiles(sample.runId), sample.originalFiles);
+    checks.explicitSchema4MigrationPreservesCombinedSpecAndBrowserHistory = true;
+    checks.schema4MaintenanceHasZeroSourceOrDispatchReads = true;
+    await startEngine();
+    assert.deepEqual(catalogCompatibilityTree(ROOT), catalogMigration.afterTree, 'Schema4 startup preserves the complete Spec/Browser/dispatch file tree and file metadata.');
+    catalog = parse(join(ROOT, 'catalog.json'));
+    assert.deepEqual(catalog, catalogMigration.afterCatalog);
+    await page.goto(base, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: '项目验收', exact: true }).click();
+    await panel().getByTestId('catalog-toggle').click();
+    await selectProject(projects.a.project.id); await preview(baseline);
+    await capture('browser-binding-v4-desktop-review', 1440, 1000, 'dark');
+    await capture('browser-binding-v4-mobile-review', 390, 844, 'light');
+    const specDetail = await projectDetail(catalogMigration.projectId);
+    assert.equal(specDetail.candidates.length, 1); assert.equal(specDetail.approvals.length, 1); assert.equal(specDetail.selections.length, 3);
+    assert.equal(specDetail.currentSelections.spec.id, catalogMigration.selectionId);
+    assert.equal((await api(`projects/${catalogMigration.projectId}/baseline-candidates/${catalogMigration.candidateId}`)).diagnostics.contentMatches, true);
+    for (const binding of Object.values(catalog.browserSourceBindings)) {
+      const read = await api(`projects/${binding.projectId}/browser-source-bindings/${binding.id}`);
+      assert.equal(read.diagnostics.contentMatches, true);
+      assert.equal(read.preview.presentation.completeSourceProjection, false);
+      assert.equal(read.executionReady, false);
+    }
+    assert.deepEqual(parse(join(ROOT, 'catalog.json')), catalogMigration.afterCatalog);
+    assert.equal(requests.length, captureRequestCount);
+    assert.equal(Object.keys(catalog.browserCandidates).length, 0);
+    assert.deepEqual(errors, []);
+    assert.equal(expectedResourceErrors.length, expectedErrorsBeforeV4, 'Schema4 restart/review has no newly ignored HTTP resource errors.');
+    const afterReviewTree = catalogCompatibilityTree(ROOT);
+    assert.deepEqual(afterReviewTree, catalogMigration.afterTree, 'Schema4 HTTP/UI reads preserve every original catalog, source, dispatch and lifecycle file.');
+    save('catalog-v4-after-review-tree.json', afterReviewTree);
+    checks.schema4RestartAndReviewPreserveEveryFileByteAndStat = true;
+    checks.schema4ReviewHasZeroAdditionalResourceErrorsAndNoApprovalAuthority = true;
+    checks.schema4NativeBrowserReviewAndSpecCurrentSelectionRemainReadable = true;
+  }
   save('source-file-digests.json', samples.map(sample => ({ runId: sample.runId, before: sample.originalFiles, after: runFiles(sample.runId) })));
   save('catalog-final.json', catalog); save('projects.json', projects); save('runs.json', samples);
   save('browser-checks.json', { schemaVersion: 1, status: 'passed', startedAt, finishedAt: new Date().toISOString(),
@@ -269,7 +318,10 @@ try {
     browserPluginAvailable: false, browserFallbackReason: 'Browser plugin not available', checks, checkCount: Object.keys(checks).length,
     layouts, captures, pageErrors: errors, expectedResourceErrors, sourceRuns: samples.map(({ mode, runId, reportGate }) => ({ mode, runId, reportGate })),
     browserBindingPostCount: posts().length, captureTargetRequests: captureRequestCount, bindingAndReadTargetRequests: requests.length - captureRequestCount,
-    executionReady: false, boundary: 'Controlled organization UI only. No Browser candidate, approval, selection or executor; legacy URL surfaces remain separate. One source whitespace change is an explicit test injection restored from the original bytes.' });
+    catalogMigration: catalogMigration ? { schemaVersion: 4, combinedHistory: true, forbiddenSourceReads: catalogMigration.forbiddenSourceReads,
+      specSetupSourceRunId: catalogMigration.sourceRunId, dispatchLifecycleFixtures: catalogMigration.dispatches,
+      boundary: catalogMigration.boundary } : null,
+    executionReady: false, boundary: 'Controlled organization UI only. No Browser candidate, approval, selection or executor; legacy URL surfaces remain separate. One source whitespace change is an explicit test injection restored from the original bytes. Optional schema4 mode separately labels explicit Spec draft/lifecycle setup before migration.' });
   console.log(JSON.stringify({ status: 'passed', checkCount: Object.keys(checks).length, checks, outputDirectory: OUT }, null, 2));
 } catch (error) {
   failed = error;

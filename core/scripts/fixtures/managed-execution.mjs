@@ -81,7 +81,7 @@ export async function managedExecutionFixture({ paths = ['/healthy', '/bug'], ho
   const base = 'http://127.0.0.1:' + await listen(target);
   try {
     owner = acquireAcceptanceOwner({ root });
-    const catalog = createAcceptanceCatalogStore({ root, owner }); await catalog.initialize();
+    const catalog = createAcceptanceCatalogStore({ root, owner }); await catalog.initialize({ createSchemaVersion: 3 });
     const project = (await catalog.createProject({ ...cas(catalog), name: '托管执行真实接纳夹具' })).project;
     const sourceRelease = (await catalog.createRelease(project.id, { ...cas(catalog), label: '草稿需求来源',
       targetUrl: base + '/source?tenant=source' })).release;

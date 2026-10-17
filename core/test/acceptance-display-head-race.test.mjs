@@ -51,7 +51,7 @@ function listOrder(root) {
   finally { handle.closeSync(); }
   return names;
 }
-function releasedDescriptor(f, mutation, read) {
+function releasedDescriptor(f, mutation, read, releaseAt = 2, intervening = false) {
   const open = nativeFs.openSync, close = nativeFs.closeSync, fstat = nativeFs.fstatSync, lstat = nativeFs.lstatSync;
   const descriptors = new Map(); let released = false;
   nativeFs.openSync = (path, ...args) => {
@@ -63,17 +63,19 @@ function releasedDescriptor(f, mutation, read) {
     const stat = fstat(descriptor, ...args);
     if (!descriptors.has(descriptor)) return stat;
     const count = descriptors.get(descriptor) + 1; descriptors.set(descriptor, count);
-    if (count < 2) return stat;
+    if (count < releaseAt) return stat;
     released = true;
     // Model Linux's detached old fd while Windows denies the actual rename.
     return Object.assign(Object.create(stat), { nlink: 0n, ctimeNs: stat.ctimeNs + 1n,
+      ...(intervening ? { ino: stat.ino + 1n, birthtimeNs: stat.birthtimeNs + 1n } : {}),
       ...(mutation === 'write' ? { mtimeNs: stat.mtimeNs + 1n } : {}),
       ...(mutation === 'permissions' ? { mode: stat.mode ^ 0o200n } : {}) });
   };
   nativeFs.lstatSync = (path, ...args) => {
     const stat = lstat(path, ...args);
-    return String(path) === f.path && released ? Object.assign(Object.create(stat), { ino: stat.ino + 1n,
-      birthtimeNs: stat.birthtimeNs + 1n }) : stat;
+    const publication = intervening ? 2n : 1n;
+    return String(path) === f.path && released ? Object.assign(Object.create(stat), { ino: stat.ino + publication,
+      birthtimeNs: stat.birthtimeNs + publication }) : stat;
   };
   nativeFs.closeSync = descriptor => { descriptors.delete(descriptor); return close(descriptor); };
   syncBuiltinESMExports();
@@ -91,6 +93,55 @@ test('detached descriptor link/ctime metadata preserves display bytes while stri
   for (const mutation of ['write', 'permissions']) {
     assert.throws(() => releasedDescriptor(f, mutation, () => readAcceptanceDisplayRun(f.runId, { root: f.root })), integrity);
   }
+});
+
+test('replacement after open but before its first fstat preserves only stable display bytes', t => {
+  const f = fixture(t);
+  assert.deepEqual(releasedDescriptor(f, 'unlink', () => readAcceptanceDisplayRun(f.runId, { root: f.root }), 1), f.manifest);
+  assert.throws(() => releasedDescriptor(f, 'unlink', () => readAcceptanceRun(f.runId, { root: f.root }), 1), integrity);
+  for (const mutation of ['write', 'permissions']) {
+    assert.throws(() => releasedDescriptor(f, mutation, () => readAcceptanceDisplayRun(f.runId, { root: f.root }), 1), integrity);
+  }
+});
+
+test('a publication before open and another before first fstat retain the opened display version', t => {
+  const f = fixture(t);
+  assert.deepEqual(releasedDescriptor(f, 'unlink', () => readAcceptanceDisplayRun(f.runId, { root: f.root }), 1, true), f.manifest);
+  assert.throws(() => releasedDescriptor(f, 'unlink', () => readAcceptanceRun(f.runId, { root: f.root }), 1, true), integrity);
+});
+
+test('an actual Linux rename after open and before its first fstat retains the opened version', { skip: process.platform === 'win32' }, t => {
+  const f = fixture(t), open = nativeFs.openSync; let publications = 0;
+  nativeFs.openSync = (path, ...args) => {
+    const descriptor = open(path, ...args);
+    if (String(path) === f.path && !publications) {
+      publications++;
+      writeAtomicFileSync(f.path, encode({ ...f.manifest, progress: { kind: 'before-first-fstat' } }));
+    }
+    return descriptor;
+  };
+  syncBuiltinESMExports();
+  try { assert.deepEqual(readAcceptanceDisplayRun(f.runId, { root: f.root }), f.manifest); }
+  finally { nativeFs.openSync = open; syncBuiltinESMExports(); }
+  assert.equal(publications, 1);
+  assert.deepEqual(readAcceptanceDisplayRun(f.runId, { root: f.root }).progress, { kind: 'before-first-fstat' });
+});
+
+test('actual Linux publications around open retain the intervening descriptor version', { skip: process.platform === 'win32' }, t => {
+  const f = fixture(t), open = nativeFs.openSync; let publications = 0;
+  const middle = { ...f.manifest, progress: { kind: 'opened-middle-version' } };
+  nativeFs.openSync = (path, ...args) => {
+    const publish = String(path) === f.path && !publications;
+    if (publish) { publications++; writeAtomicFileSync(f.path, encode(middle)); }
+    const descriptor = open(path, ...args);
+    if (publish) writeAtomicFileSync(f.path, encode({ ...f.manifest, progress: { kind: 'latest-version' } }));
+    return descriptor;
+  };
+  syncBuiltinESMExports();
+  try { assert.deepEqual(readAcceptanceDisplayRun(f.runId, { root: f.root }), middle); }
+  finally { nativeFs.openSync = open; syncBuiltinESMExports(); }
+  assert.equal(publications, 1);
+  assert.deepEqual(readAcceptanceDisplayRun(f.runId, { root: f.root }).progress, { kind: 'latest-version' });
 });
 
 test('an actual Linux rename while a descriptor is open returns only that descriptor version', { skip: process.platform === 'win32' }, t => {

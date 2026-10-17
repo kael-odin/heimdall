@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "13-final-syntax",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d1-integration-20261017\\final-syntax-5f0fc4b3-becd-4b32-bb7f-5551fff62a63",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792223851776250300
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223832214220000,
+      "bytes": 398,
+      "sha256": "027f7c21f908f0d10a76944f05ecd4254b74341332cbc3df08cd74ad6322da33"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223851660558100,
+      "bytes": 101,
+      "sha256": "eb8f3f290f01373a3420a6b624713f84a408eb6770d899b4b4d2398a3074b3e2"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223851776250300,
+      "bytes": 92216,
+      "sha256": "65b7daccb89bf0d7de0efad5af104b3a1879939ee56ac2459ef91f240c84cf72"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223832212221100,
+      "bytes": 92216,
+      "sha256": "65b7daccb89bf0d7de0efad5af104b3a1879939ee56ac2459ef91f240c84cf72"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223832216835900,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223851653554900,
+      "bytes": 29,
+      "sha256": "3c1bb30dbce7cb1aad0b42d42302a4ed3bfa9f186db4678be50b73a88efbdd3a"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792223851776250300,
+      "bytes": 88,
+      "sha256": "aa86fef64fd095a50680eac7fd37b74349dc39a9fcf3c39370b58cb4df129e7a"
+    }
+  ]
+}

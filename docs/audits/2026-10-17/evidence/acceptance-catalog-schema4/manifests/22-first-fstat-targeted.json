@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "22-first-fstat-targeted",
+  "sourceAbsolutePath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\first-fstat-main-gates-13f939e3-a932-48c9-997a-aad54d8fbcc9\\first-fstat-targeted-2f870c6a-266d-4c69-a546-f6bbc67fc598",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792225597794939900
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225548471626200,
+      "bytes": 471,
+      "sha256": "2ffa6388abbf59a1c63180ba43b2ba65be7a28e5cad719282a0c37f369b7d9aa"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225597487560100,
+      "bytes": 101,
+      "sha256": "17f9ca7b6e6c9dccc4f1a86ff4eef52f2e4bfa2d58c6e8fedd119ebf9a21522e"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225597793939800,
+      "bytes": 90957,
+      "sha256": "d649d0c19148e77b3ff9ba6e3ebaf1e8720a5c8c7ed36eef2e3aa98d852b39cb"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225548469621000,
+      "bytes": 90957,
+      "sha256": "d649d0c19148e77b3ff9ba6e3ebaf1e8720a5c8c7ed36eef2e3aa98d852b39cb"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225548473626900,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225597478834800,
+      "bytes": 5220,
+      "sha256": "b101ce4bacdf9c77df636abfbdf6272aeb95f9faba9a3c3b98219a7a0a4259a0"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792225597794939900,
+      "bytes": 88,
+      "sha256": "7c046dbf7fcdb9de3fb35740f76a419c2c500fb2bbe44ad565129469e6e0e3ec"
+    }
+  ]
+}
