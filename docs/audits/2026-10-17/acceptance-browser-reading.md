@@ -32,6 +32,14 @@ fresh 运行与独立故障测试分别保留原始日志，不将重复捕获�
 
 [证据目录](evidence/browser-reading/README.md)保存完整首轮失败与最终成功阶段、专项日志、目录替换前后探针、性能与 junction 探针、CDP JSON / 截图以及最终 fresh 材料。[source-files.json](evidence/browser-reading/source-files.json)记录 51 份归档工件的源文件大小与 SHA-256；其中完整 fresh 原件压缩包包含 86 文件，已解包逐文件比较原始字节。stdout / stderr 为无损 gzip，原运行目录继续保留。该片自己的远端 CI 在提交后独立核对，先前纯投影提交的 CI 不能替代本片验证。
 
+## 本提交远端 CI
+
+已发布提交 `ee4d1a7e731811b0df3a0b9d27a177d2cf851689` 的自身 CI run `38992636174`、attempt 1 于 2026-10-17 01:51:59Z—02:13:20Z 完成，三个 job 全部成功。Core job 21 分 18 秒；Linux Core 为 2087 total / 2083 pass / 0 fail / 4 skip，cancelled / todo 均为 0。四个 skip 是两项 Windows 专用及两项待独立 Docker 执行的测试；此环境执行了本机因打开 lock FD 而跳过的 root rename 分支。
+
+13 项 acceptance smoke 全部成功，其中新私有 reader 为 13/13、4 次 fresh Browser 运行、8 次成功 capture、2 次 owner 拒绝，8 个选侧案例为 4 合格 / 4 拒绝，观察的 forbiddenReaderEvents 为空。独立 Docker 检查 2/2、0 skip，不加进 Core suite 总数。
+
+[CI 原始日志、JSON 与摘要](evidence/browser-reading/ci-main-ee4d1a7/README.md)已落盘。完整日志 1,551,632 字节，SHA-256 `d50451783994e29274bdf582970a22a672d0ec38f2d66876923460f662a6ea2f`；原日志 ZIP 437,529 字节、59 entries 可读，SHA-256 `5f905816591edcc4d39be44feef8a9a26202049ec3d65ac33904f71a14cb991c`。归档逐字节及 gzip 回环核对通过，强密钥格式扫描无命中。Actions artifacts=0，远端 fresh 截图原件树没有随该成功 run 上传，不能把日志归档表述为远端截图归档。这份 CI 只覆盖该精确提交，不覆盖随后 Schema3 工作。
+
 reader 专项覆盖四组真实固定材料、52 个实际引用逐个缺失或损坏、nullable 两向材料、品牌 / root / run / alias / 链接、fd 短读与预算、JSON 复杂度、采集阶段竞态、managed 隔离及返回值隔离。最初专项有两条注入计数断言误报及对应父分组失败；修正测试计数后保留全部轮次，不将首轮失败改写为通过，也没有因这两条误报修改产品实现。
 
 ## 首轮失败与性能归因

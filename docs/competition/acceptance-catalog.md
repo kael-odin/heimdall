@@ -57,15 +57,15 @@ owner 内的目录写入按队列顺序执行，覆盖 read → validate → rev
 
 当前活动目录使用 schemaVersion 2。它保留原项目、版本、运行归属和事件格式；candidates、approvals、selections 按[需求基线合同](acceptance-baseline.md)严格验证 Spec 候选、批准与选用历史。最初 B2.0 版本仅允许这些集合为空，不能回写已包含新历史的目录。
 
-旧 schemaVersion 1 目录在单个引擎取得所有权后，由 initialize 队列执行一次升级。升级保留全部旧实体与旧事件内容，追加一条全局迁移记录，将 revision 从 R 推进为 R+1，并生成新的 generationId。迁移事件没有 projectId，不计作项目的用户操作。旧页面持有的 generationId 失效，需要刷新目录。
+最新目录为 schemaVersion 3，Browser 来源表当前严格为空。旧 schemaVersion 1 在单个引擎取得所有权后，由 initialize 队列依次执行 `1→2→3`；旧 2 仅执行 `2→3`。每步保留全部旧实体与事件、追加一条全局迁移记录、revision 增加 1，并生成新 generationId。迁移事件没有 projectId，不计作项目用户操作；旧页面 CAS 失效，需要刷新。完整合同见 [Schema3 指南](acceptance-catalog-schema3.md)。
 
 迁移前严格检查活动目录和 rolling previous：同格式备份必须与活动目录同 generation，且是完整事件及不可变实体的历史前缀或相同快照。不会仅凭 revision 较小接受无关备份。schema1 活动目录搭配 schema2 备份属于谱系不明，升级失败并保留原件。
 
-升级前原始 head 和原始 previous 按 SHA-256 去重，排他保存为 `catalog.v1.<sha256>.json`，最多两份。相同名字仅在已有字节完全相同时复用；容量、未知格式、坏备份、路径别名或归档失败都会阻止提交。归档使用同目录完整临时文件和排他硬链接发布；文件系统不支持该操作时升级失败，不覆盖旧文件。
+升级前原始 head 和 previous 按实际 schema 及原字节 SHA-256 排他保存为 `catalog.v1.<sha256>.json` 或 `catalog.v2.<sha256>.json`，每种版本最多两份；不能把 previous1 标为 V2。相同名字仅复用完全相同字节，已有前像的版本和 SHA 也必须与文件名一致。容量、未知格式、坏备份、路径别名或归档失败阻止当前步提交。归档使用同目录完整临时文件和排他硬链接发布；不支持该操作时失败并保留原件。
 
-之后先将原 schema1 head 写入 `catalog.previous.json`，再原子提交 schema2 head；head 是唯一语义提交点。每次写入前重新检查 owner、根身份和已读取字节。最后一步失败时 previous 可能已推进，但活动 head 仍为 schema1，已保存的前像保留；再次启动可按当前有效原件重新尝试。升级失败期间目录读写返回不可用，不回退到旧格式继续写入。
+每步先将原 head 写入 `catalog.previous.json`，再原子提交下一格式 head；head 是该步语义提交点。每次写入前重新检查 owner、根身份和已读取字节。失败时 previous 可能已推进，已提交的前一步和已保存前像保留；再次启动按当前有效原件继续，不重放已成功的第一步。旧格式不能作为当前目录继续写入。
 
-迁移后第一次正常写入，只有 rolling previous 的原字节摘要、generation 和 revision 精确匹配迁移记录所记 head 前像时，才接受 schema2 head + schema1 previous 的组合。该次写入再将 previous 推进为 schema2。正常重启不重复迁移；原验收运行、报告、计划、门禁和证据均保持原位。前像文件保留用于调查，本阶段没有自动恢复或自动删除入口。旧二进制不能写入 schema2 活动目录。
+相邻格式仅在 rolling previous 的原字节摘要、generation、revision 和完整历史前缀精确匹配对应迁移时，接受 `head2 / previous1` 或 `head3 / previous2`；拒绝 `head3 / previous1`。迁移后正常写入将 previous 推进为当前格式；最新格式初始化同样核对谱系，合法 head 仍可诊断读取。正常重启不重复迁移；原验收运行、报告、计划、门禁和证据保持原位。前像保留用于调查，没有自动恢复或自动删除入口；旧引擎不能写入 Schema3。
 
 这些保护针对协作进程和意外失败，不能阻止管理员手工改磁盘。独立 CLI 仍产生独立验收记录；目录操作只经拥有该数据根的引擎执行。不要在引擎管理同一目录期间从其他工具改写活动运行。
 

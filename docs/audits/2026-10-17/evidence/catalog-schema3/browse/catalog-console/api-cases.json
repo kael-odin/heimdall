@@ -1,0 +1,136 @@
+[
+  {
+    "path": "projects",
+    "status": 201
+  },
+  {
+    "path": "projects",
+    "status": 200
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3/releases",
+    "status": 201
+  },
+  {
+    "path": "projects",
+    "status": 200
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3/run-bindings",
+    "status": 201
+  },
+  {
+    "path": "projects",
+    "status": 200
+  },
+  {
+    "path": "projects",
+    "status": 201
+  },
+  {
+    "path": "projects",
+    "status": 200
+  },
+  {
+    "path": "projects",
+    "status": 200
+  },
+  {
+    "path": "projects",
+    "status": 409,
+    "code": "STALE_REVISION"
+  },
+  {
+    "path": "projects",
+    "status": 400,
+    "code": "INVALID_INPUT"
+  },
+  {
+    "path": "projects",
+    "status": 400,
+    "code": "INVALID_INPUT"
+  },
+  {
+    "path": "projects",
+    "status": 409,
+    "code": "STALE_REVISION"
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3/run-bindings",
+    "status": 409,
+    "code": "CONTEXT_ALREADY_BOUND"
+  },
+  {
+    "path": "projects/ap-88f62615-2a9c-4810-a319-3596e53dd587/run-bindings",
+    "status": 409,
+    "code": "PROJECT_MISMATCH"
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3/releases",
+    "status": 400,
+    "code": "INVALID_INPUT"
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3/releases",
+    "status": 201
+  },
+  {
+    "path": "projects",
+    "status": 200
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3/run-bindings",
+    "status": 409,
+    "code": "PROJECT_MISMATCH"
+  },
+  {
+    "path": "projects",
+    "status": 503,
+    "code": "CATALOG_UNAVAILABLE"
+  },
+  {
+    "path": "projects",
+    "status": 503,
+    "code": "CATALOG_UNAVAILABLE"
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  },
+  {
+    "path": "projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf",
+    "status": 200
+  },
+  {
+    "path": "projects",
+    "status": 200
+  },
+  {
+    "path": "projects",
+    "status": 201
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  },
+  {
+    "path": "projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf",
+    "status": 200
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  },
+  {
+    "path": "projects",
+    "status": 200
+  },
+  {
+    "path": "projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  }
+]

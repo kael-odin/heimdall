@@ -14,7 +14,7 @@ import { createManagedSpecDispatchStore } from './managed-dispatch-store.mjs';
 import { managedSpecDispatchRequestFingerprint } from './managed-dispatch-schema.mjs';
 import { createAcceptanceReadScope, captureAcceptanceRunFile } from './managed-run-reader.mjs';
 import { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, error, invalid, unavailable, fields, id, url,
-  limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration,
+  limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration, buildCatalogMigrationV3,
   candidateProjectionOf, currentSelectionsOf } from './catalog-schema.mjs';
 
 export { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, validateAcceptanceCatalog };
@@ -28,7 +28,7 @@ const pathKey = value => process.platform === 'win32' ? value.toLowerCase() : va
 const samePath = (a, b) => pathKey(a) === pathKey(b);
 const within = (root, file) => { const rel = relative(root, file); return !!rel && !rel.startsWith('..') && !isAbsolute(rel); };
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const entityMaps = ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations'];
+const entityMaps = ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations', 'browserSourceBindings'];
 
 /** Both inputs have already passed their own strict schema validators. */
 function hasHistoryPrefix(previous, current) {
@@ -46,11 +46,12 @@ function validatePredecessor(current, previous) {
   const head = current.catalog, prior = previous.catalog;
   if (head.schemaVersion === prior.schemaVersion) {
     if (head.generationId !== prior.generationId || !hasHistoryPrefix(prior, head)
-      || head.schemaVersion === 2 && hashAcceptanceValue(head.migrations) !== hashAcceptanceValue(prior.migrations)) unavailable('CATALOG_PREVIOUS_NOT_ANCESTOR');
+      || head.schemaVersion >= 2 && hashAcceptanceValue(head.migrations) !== hashAcceptanceValue(prior.migrations)) unavailable('CATALOG_PREVIOUS_NOT_ANCESTOR');
     return;
   }
-  if (head.schemaVersion === 2 && prior.schemaVersion === 1) {
-    const migration = Object.values(head.migrations)[0];
+  if (head.schemaVersion === prior.schemaVersion + 1 && [2, 3].includes(head.schemaVersion)) {
+    const migration = Object.values(head.migrations).find(value => value.fromSchemaVersion === prior.schemaVersion
+      && value.toSchemaVersion === head.schemaVersion);
     if (!migration || migration.fromGenerationId !== prior.generationId || migration.fromRevision !== prior.revision
       || migration.sourceHeadSha256 !== sha256(previous.bytes) || !hasHistoryPrefix(prior, head)) unavailable('CATALOG_MIGRATION_PREIMAGE_MISMATCH');
     return;
@@ -136,7 +137,7 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     catch { unavailable('CATALOG_WRITE_FAILED'); }
   }
   function requireCurrent(catalog) {
-    if (catalog.schemaVersion !== 2) unavailable('MIGRATION_REQUIRED');
+    if (catalog.schemaVersion !== 3) unavailable('MIGRATION_REQUIRED');
     return catalog;
   }
   function read() { return requireCurrent(readFile('catalog.json').catalog); }
@@ -157,20 +158,31 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     checkUnchanged('catalog.previous.json', current);
     write('catalog.json', bytes);
   }
+  function preimageName(source) {
+    if (![1, 2].includes(source.catalog.schemaVersion)) unavailable('MIGRATION_PREIMAGE_SCHEMA');
+    return `catalog.v${source.catalog.schemaVersion}.${sha256(source.bytes)}.json`;
+  }
   function preflightPreimages(sources) {
-    const names = new Set(readdirSync(actualRoot()).filter(file => /^catalog\.v1\.[a-f0-9]{64}\.json$/.test(file)));
+    const names = new Map([[1, new Set()], [2, new Set()]]);
+    for (const name of readdirSync(actualRoot())) {
+      const match = /^catalog\.v([12])\.([a-f0-9]{64})\.json$/.exec(name);
+      if (!match) continue;
+      const source = readFile(name);
+      if (source.catalog.schemaVersion !== Number(match[1]) || sha256(source.bytes) !== match[2]) unavailable('MIGRATION_PREIMAGE_MISMATCH');
+      names.get(Number(match[1])).add(name);
+    }
     for (const source of sources.filter(Boolean)) {
-      const name = `catalog.v1.${sha256(source.bytes)}.json`;
+      const name = preimageName(source);
       const existing = readFile(name, { optional: true });
       if (existing && !existing.bytes.equals(source.bytes)) unavailable('MIGRATION_PREIMAGE_MISMATCH');
-      names.add(name);
+      names.get(source.catalog.schemaVersion).add(name);
     }
-    if (names.size > 2) unavailable('MIGRATION_PREIMAGE_CAPACITY');
+    if ([...names.values()].some(values => values.size > 2)) unavailable('MIGRATION_PREIMAGE_CAPACITY');
   }
   function preservePreimage(source) {
     if (!source) return;
     assertOwned(); actualRoot();
-    const name = `catalog.v1.${sha256(source.bytes)}.json`;
+    const name = preimageName(source);
     const existing = readFile(name, { optional: true });
     if (existing) {
       if (!existing.bytes.equals(source.bytes)) unavailable('MIGRATION_PREIMAGE_MISMATCH');
@@ -185,10 +197,11 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     const published = readFile(name);
     if (!published.bytes.equals(source.bytes)) unavailable('MIGRATION_PREIMAGE_MISMATCH');
   }
-  function migrate(current) {
+  function migrateOne(current) {
     const previous = readFile('catalog.previous.json', { optional: true });
     validatePredecessor(current, previous);
-    const catalog = buildCatalogMigration(current.catalog, { headSha256: sha256(current.bytes),
+    const buildMigration = current.catalog.schemaVersion === 1 ? buildCatalogMigration : buildCatalogMigrationV3;
+    const catalog = buildMigration(current.catalog, { headSha256: sha256(current.bytes),
       previousSha256: previous ? sha256(previous.bytes) : null, limits });
     const bytes = Buffer.from(JSON.stringify(catalog, null, 2) + '\n');
     if (bytes.length > limits.jsonBytes) throw error('CATALOG_CAPACITY', 409, '项目目录升级超过容量上限；原记录已保留。', { limit: 'jsonBytes' });
@@ -200,18 +213,24 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
     commit(current, previous, bytes);
     const committed = readFile('catalog.json');
     if (!committed.bytes.equals(bytes)) unavailable('MIGRATION_COMMIT_CHANGED');
-    return requireCurrent(committed.catalog);
+    // Each step is an independent durable fact. A failed 2 -> 3 step leaves a
+    // valid schema2 head that a fresh initializer can continue without replaying
+    // 1 -> 2, changing its generation or rewriting earlier source bytes.
+    validatePredecessor(committed, readFile('catalog.previous.json', { optional: true }));
+    return committed;
   }
   async function initialize() {
     return queue(() => {
       assertOwned(); actualRoot(true);
       if (safeFile('catalog.json', { optional: true }).stat) {
-        const current = readFile('catalog.json');
-        return current.catalog.schemaVersion === 1 ? migrate(current) : requireCurrent(current.catalog);
+        let current = readFile('catalog.json');
+        validatePredecessor(current, readFile('catalog.previous.json', { optional: true }));
+        while (current.catalog.schemaVersion < 3) current = migrateOne(current);
+        return requireCurrent(current.catalog);
       }
       if (readdirSync(actualRoot()).some(name => name.startsWith('catalog.'))) unavailable('MISSING_CATALOG_WITH_RECOVERY_MATERIAL');
-      const catalog = { schemaVersion: 2, generationId: 'ag-' + randomUUID(), revision: 0, projects: {}, releases: {}, runBindings: {},
-        candidates: {}, approvals: {}, selections: {}, migrations: {}, events: [] };
+      const catalog = { schemaVersion: 3, generationId: 'ag-' + randomUUID(), revision: 0, projects: {}, releases: {}, runBindings: {},
+        candidates: {}, approvals: {}, selections: {}, migrations: {}, browserSourceBindings: {}, events: [] };
       const bytes = Buffer.from(JSON.stringify(catalog, null, 2) + '\n');
       if (bytes.length > limits.jsonBytes) throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限。', { limit: 'jsonBytes' });
       validateAcceptanceCatalog(catalog, { limits }); assertOwned(); write('catalog.json', bytes);

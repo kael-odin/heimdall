@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { createAcceptanceCatalogStore, validateAcceptanceCatalog } from '../src/acceptance/catalog.mjs';
+import { buildCatalogMigration } from '../src/acceptance/catalog-schema.mjs';
 import { hashAcceptanceValue } from '../src/acceptance/identity.mjs';
 import { writeAtomicFileSync } from '../src/acceptance/atomic-file.mjs';
 
@@ -15,9 +16,11 @@ const clone = value => JSON.parse(JSON.stringify(value));
 const encode = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const archiveName = bytes => `catalog.v1.${sha256(bytes)}.json`;
+const versionedArchiveName = bytes => `catalog.v${JSON.parse(bytes).schemaVersion}.${sha256(bytes)}.json`;
 const headBytes = f => readFileSync(join(f.root, 'catalog.json'));
 const previousBytes = f => readFileSync(join(f.root, 'catalog.previous.json'));
 const archives = root => readdirSync(root).filter(name => /^catalog\.v1\.[a-f0-9]{64}\.json$/.test(name)).sort();
+const archivesV2 = root => readdirSync(root).filter(name => /^catalog\.v2\.[a-f0-9]{64}\.json$/.test(name)).sort();
 const cas = value => ({ expectedGenerationId: value.generationId, expectedRevision: value.revision });
 const unavailable = { code: 'CATALOG_UNAVAILABLE', status: 503 };
 
@@ -54,7 +57,7 @@ function seedLegacy(f, { head = 3, previous = 2 } = {}) {
   const previousValue = previous === null ? null : old.snapshots[previous];
   const previousRaw = previousValue ? encode(previousValue) : null;
   if (previousRaw) writeFileSync(join(f.root, 'catalog.previous.json'), previousRaw);
-  return { ...old, head: headValue, headRaw, previous: previousValue, previousRaw };
+  return { ...old, root: f.root, head: headValue, headRaw, previous: previousValue, previousRaw };
 }
 
 function assertOldEntities(current, old) {
@@ -62,7 +65,8 @@ function assertOldEntities(current, old) {
   assert.deepEqual(current.events.slice(0, old.revision), old.events);
 }
 
-function assertMigration(current, old, { headRaw, previousRaw }) {
+// Preserve the original 1 -> 2 facts, including its exact input raw hashes.
+function assertMigrationV2(current, old, { headRaw, previousRaw }) {
   assert.equal(current.schemaVersion, 2);
   assert.notEqual(current.generationId, old.generationId);
   assert.equal(current.revision, old.revision + 1);
@@ -86,6 +90,34 @@ function assertMigration(current, old, { headRaw, previousRaw }) {
   return migration;
 }
 
+function assertMigration(current, old, source) {
+  if (current.schemaVersion === 2) return assertMigrationV2(current, old, source);
+  const migrations = Object.values(current.migrations), last = migrations.find(value => value.fromSchemaVersion === 2);
+  assert.equal(current.schemaVersion, 3);
+  assert.equal(migrations.length, 2);
+  assert.deepEqual(current.browserSourceBindings, {});
+  assert.equal(current.revision, old.revision + 2);
+  assert.equal(last.toSchemaVersion, 3);
+  const intermediateRaw = readFileSync(join(source.root, `catalog.v2.${last.sourceHeadSha256}.json`));
+  const intermediate = JSON.parse(intermediateRaw);
+  assertMigrationV2(intermediate, old, source);
+  assert.notEqual(current.generationId, old.generationId);
+  assert.notEqual(current.generationId, intermediate.generationId);
+  assert.equal(last.fromGenerationId, intermediate.generationId);
+  assert.equal(last.fromRevision, intermediate.revision);
+  assert.equal(last.sourceHeadSha256, sha256(intermediateRaw));
+  assert.equal(last.sourcePreviousSha256, sha256(source.headRaw));
+  assert.deepEqual(current.events.slice(0, intermediate.revision), intermediate.events);
+  assert.deepEqual(current.migrations[Object.keys(intermediate.migrations)[0]], Object.values(intermediate.migrations)[0]);
+  const event = current.events.at(-1);
+  assert.equal(event.kind, 'catalog-migrated'); assert.equal(event.revision, current.revision);
+  assert.equal(event.entityId, last.id); assert.equal(event.entityDigest, hashAcceptanceValue(last));
+  assert.equal(event.at, last.createdAt); assert.equal(Object.hasOwn(event, 'projectId'), false);
+  assertOldEntities(current, old);
+  validateAcceptanceCatalog(current);
+  return last;
+}
+
 async function assertBlockedMigration(f, old, expected = unavailable) {
   await assert.rejects(f.store.initialize(), expected);
   assert.deepEqual(headBytes(f), old.headRaw);
@@ -101,12 +133,12 @@ function changeProject(catalog) {
   return changed;
 }
 
-test('new catalogs start at schema2 without a migration and restart without changing bytes', async t => {
+test('new catalogs start at schema3 without a migration and restart without changing bytes', async t => {
   const f = fixture(t), current = await f.store.initialize();
-  assert.equal(current.schemaVersion, 2); assert.equal(current.revision, 0);
-  assert.deepEqual(Object.keys(current).sort(), ['approvals', 'candidates', 'events', 'generationId', 'migrations',
+  assert.equal(current.schemaVersion, 3); assert.equal(current.revision, 0);
+  assert.deepEqual(Object.keys(current).sort(), ['approvals', 'browserSourceBindings', 'candidates', 'events', 'generationId', 'migrations',
     'projects', 'releases', 'revision', 'runBindings', 'schemaVersion', 'selections']);
-  for (const key of ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations']) assert.deepEqual(current[key], {});
+  for (const key of ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'migrations', 'browserSourceBindings']) assert.deepEqual(current[key], {});
   assert.deepEqual(current.events, []); assert.deepEqual(readdirSync(f.root), ['catalog.json']);
   const original = headBytes(f);
   assert.deepEqual(await f.store.initialize(), current);
@@ -123,16 +155,18 @@ test('an unmigrated schema1 head is pure-valid but cannot be read or mutated as 
   assert.deepEqual(archives(f.root), []);
 });
 
-test('an empty schema1 head migrates once with a null previous hash and an exact immutable preimage', async t => {
+test('an empty schema1 head commits both migration steps and preserves the null first previous hash', async t => {
   const f = fixture(t), old = seedLegacy(f, { head: 0, previous: null });
   const current = await f.store.initialize();
   assertMigration(current, old.head, old);
   assert.deepEqual(archives(f.root), [archiveName(old.headRaw)]);
   assert.deepEqual(readFileSync(join(f.root, archiveName(old.headRaw))), old.headRaw);
-  assert.deepEqual(previousBytes(f), old.headRaw);
+  assert.equal(JSON.parse(previousBytes(f)).schemaVersion, 2);
+  assert.equal(archivesV2(f.root).length, 1);
+  assert.deepEqual(readFileSync(join(f.root, versionedArchiveName(previousBytes(f)))), previousBytes(f));
   const committed = headBytes(f), restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
   assert.deepEqual(await restarted.initialize(), current); assert.deepEqual(headBytes(f), committed);
-  assert.equal(restarted.read().events.filter(event => event.kind === 'catalog-migrated').length, 1);
+  assert.equal(restarted.read().events.filter(event => event.kind === 'catalog-migrated').length, 2);
 });
 
 test('nonempty migration preserves every B1 entity, event and run byte and archives both raw snapshots', async t => {
@@ -146,7 +180,7 @@ test('nonempty migration preserves every B1 entity, event and run byte and archi
   assertMigration(current, old.head, old);
   assert.deepEqual(archives(f.root), [archiveName(old.headRaw), archiveName(old.previousRaw)].sort());
   for (const raw of [old.headRaw, old.previousRaw]) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
-  assert.deepEqual(previousBytes(f), old.headRaw);
+  assert.equal(JSON.parse(previousBytes(f)).schemaVersion, 2);
   assert.deepEqual(readFileSync(join(runDir, 'manifest.json')), manifestRaw);
   assert.deepEqual(readFileSync(join(runDir, 'report.json')), reportRaw);
   const source = f.store.readRunReference(old.binding.runId);
@@ -167,12 +201,16 @@ test('identical legacy head and previous bytes reuse one archive while different
   });
 });
 
-test('the first B2 write accepts its exact B1 predecessor and fences old generation CAS including equal-revision ABA', async t => {
+test('the first schema3 write accepts its exact B2 predecessor and fences both older generation CAS including equal-revision ABA', async t => {
   const f = fixture(t), old = seedLegacy(f), migrated = await f.store.initialize(), migratedRaw = headBytes(f);
   for (const revision of [old.head.revision, migrated.revision]) {
     await assert.rejects(f.store.createProject({ expectedGenerationId: old.head.generationId, expectedRevision: revision, name: '旧页面' }), { code: 'STALE_REVISION', status: 409 });
     assert.deepEqual(headBytes(f), migratedRaw);
   }
+  const intermediate = JSON.parse(previousBytes(f));
+  await assert.rejects(f.store.createProject({ expectedGenerationId: intermediate.generationId,
+    expectedRevision: migrated.revision, name: '中间代旧页面' }), { code: 'STALE_REVISION', status: 409 });
+  assert.deepEqual(headBytes(f), migratedRaw);
   const result = await f.store.createProject({ ...cas(migrated), name: '升级后项目' });
   assert.equal(result.generationId, migrated.generationId); assert.equal(result.revision, migrated.revision + 1);
   assert.deepEqual(previousBytes(f), migratedRaw);
@@ -201,27 +239,28 @@ test('legacy predecessor validation rejects another generation and valid diverge
 });
 
 test('schema1 head with a schema2 previous is a refused lineage ambiguity', async t => {
-  const newer = fixture(t); await newer.store.initialize();
   const f = fixture(t), old = seedLegacy(f);
-  old.previousRaw = headBytes(newer); writeFileSync(join(f.root, 'catalog.previous.json'), old.previousRaw);
+  old.previousRaw = encode(buildCatalogMigration(old.head, { headSha256: sha256(old.headRaw) }));
+  writeFileSync(join(f.root, 'catalog.previous.json'), old.previousRaw);
   await assertBlockedMigration(f, old); assert.deepEqual(archives(f.root), []);
 });
 
-test('schema2 read remains available while an inexact legacy previous blocks every write', async t => {
+test('schema3 diagnostic read remains available while an inexact B2 previous blocks initialization and every write', async t => {
   for (const kind of ['formatting', 'generation', 'revision']) await t.test(kind, async t => {
     const f = fixture(t), old = seedLegacy(f), migrated = await f.store.initialize(), committed = headBytes(f);
-    let prior = clone(old.head);
+    let prior = JSON.parse(previousBytes(f));
     if (kind === 'generation') prior.generationId = uid('ag');
-    if (kind === 'revision') prior = clone(old.previous);
+    if (kind === 'revision') prior = buildCatalogMigration(old.previous, { headSha256: sha256(old.previousRaw) });
     const altered = kind === 'formatting' ? Buffer.from(JSON.stringify(prior)) : encode(prior);
     writeFileSync(join(f.root, 'catalog.previous.json'), altered);
     assert.deepEqual(f.store.read(), migrated);
+    await assert.rejects(f.store.initialize(), unavailable);
     await assert.rejects(f.store.createProject({ ...cas(migrated), name: '不会覆盖前像' }), unavailable);
     assert.deepEqual(headBytes(f), committed); assert.deepEqual(previousBytes(f), altered);
   });
 });
 
-test('schema2 predecessors require same-generation immutable event and entity ancestry', async t => {
+test('schema3 predecessors require same-generation immutable event and entity ancestry', async t => {
   for (const kind of ['ancestor', 'same-snapshot', 'generation', 'same-revision-entity', 'event-prefix']) await t.test(kind, async t => {
     const f = fixture(t); await f.store.initialize();
     await f.store.createProject({ ...cas(f.store.read()), name: '项目一' }); const ancestor = f.store.read();
@@ -240,12 +279,12 @@ test('schema2 predecessors require same-generation immutable event and entity an
   });
 });
 
-test('schema2 rolling previous cannot omit or alter the migration lineage', async t => {
+test('schema3 rolling previous cannot omit or alter the migration lineage', async t => {
   const f = fixture(t); seedLegacy(f); const migrated = await f.store.initialize();
   await f.store.createProject({ ...cas(migrated), name: '迁移后项目' }); const committed = headBytes(f), current = f.store.read();
   const prior = clone(migrated), migration = Object.values(prior.migrations)[0];
   migration.sourcePreviousSha256 = 'f'.repeat(64);
-  prior.events.at(-1).entityDigest = hashAcceptanceValue(migration);
+  prior.events.find(event => event.entityId === migration.id).entityDigest = hashAcceptanceValue(migration);
   validateAcceptanceCatalog(prior); const raw = encode(prior); writeFileSync(join(f.root, 'catalog.previous.json'), raw);
   assert.deepEqual(f.store.read(), current);
   await assert.rejects(f.store.createProject({ ...cas(current), name: '阻止改谱系' }), unavailable);
@@ -336,8 +375,9 @@ test('an exclusive-create race is accepted only when the published archive has t
   for (const kind of ['same', 'different']) await t.test(kind, async t => {
     let competingRaw;
     const f = fixture(t, { writeExclusive(file, bytes) {
-      competingRaw = kind === 'same' ? bytes : encode(legacySnapshots().snapshots[0]);
-      writeFileSync(file, competingRaw, { flag: 'wx' });
+      const publishedRaw = kind === 'same' ? bytes : encode(legacySnapshots().snapshots[0]);
+      competingRaw ??= publishedRaw;
+      writeFileSync(file, publishedRaw, { flag: 'wx' });
       throw Object.assign(new Error('another publisher won'), { code: 'EEXIST' });
     } }), old = seedLegacy(f, { head: 0, previous: null });
     if (kind === 'same') assertMigration(await f.store.initialize(), old.head, old);
@@ -360,24 +400,27 @@ test('failed rolling previous and head replacements are retryable and never reus
     assert.deepEqual(previousBytes(f), failAt === 'catalog.json' ? old.headRaw : old.previousRaw);
     const beforeRetry = previousBytes(f), restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
     const current = await restarted.initialize();
-    assertMigration(current, old.head, { headRaw: old.headRaw, previousRaw: beforeRetry });
+    assertMigration(current, old.head, { root: f.root, headRaw: old.headRaw, previousRaw: beforeRetry });
     if (attempted) assert.notEqual(current.generationId, attempted.generationId);
     for (const raw of [old.headRaw, old.previousRaw]) assert.deepEqual(readFileSync(join(f.root, archiveName(raw))), raw);
-    assert.equal(current.events.filter(event => event.kind === 'catalog-migrated').length, 1);
+    assert.equal(current.events.filter(event => event.kind === 'catalog-migrated').length, 2);
   });
 });
 
-test('a head committed before an injected transport failure is recognized once on restart', async t => {
+test('a B2 head committed before an injected transport failure is recognized before the remaining step on restart', async t => {
   const f = fixture(t, { writeAtomic(file, bytes) {
     writeAtomicFileSync(file, bytes);
     if (basename(file) === 'catalog.json') throw new Error('lost completion after durable replacement');
   } }), old = seedLegacy(f);
   await assert.rejects(f.store.initialize(), unavailable);
   const committedRaw = headBytes(f), committed = JSON.parse(committedRaw.toString('utf8'));
-  assertMigration(committed, old.head, old);
+  assertMigrationV2(committed, old.head, old);
   const restarted = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
-  assert.deepEqual(await restarted.initialize(), committed); assert.deepEqual(headBytes(f), committedRaw);
-  assert.equal(restarted.read().events.filter(event => event.kind === 'catalog-migrated').length, 1);
+  const current = await restarted.initialize();
+  assertMigration(current, old.head, old); assert.deepEqual(previousBytes(f), committedRaw);
+  const finalRaw = headBytes(f);
+  assert.deepEqual(await restarted.initialize(), current); assert.deepEqual(headBytes(f), finalRaw);
+  assert.equal(current.events.filter(event => event.kind === 'catalog-migrated').length, 2);
 });
 
 test('owner loss before preparation, before previous, or before head fences the next migration write', async t => {
@@ -457,7 +500,7 @@ test('a root inode replacement during archive publication cannot write into the 
 test('version dispatch remains strict for reserved B2 maps and malformed migration event history', async t => {
   const f = fixture(t); seedLegacy(f); const current = await f.store.initialize();
   const variants = [
-    value => { value.schemaVersion = 3; },
+    value => { value.schemaVersion = 4; },
     value => { value.candidates[uid('ab')] = { arbitrary: true }; },
     value => { value.approvals[uid('aa')] = { arbitrary: true }; },
     value => { value.selections[uid('as')] = { arbitrary: true }; },

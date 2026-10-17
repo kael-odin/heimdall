@@ -1,0 +1,77 @@
+[
+  {
+    "path": "catalog-storage.json",
+    "bytes": 19079,
+    "sha256": "2fd75752916f7e93e136f86909467f4a681380cb3a076efcc86bd4d3666ca501"
+  },
+  {
+    "path": "run-evidence/ac-10afe248-c3f9-4b86-b3db-373a55025c05/manifest.json",
+    "bytes": 3648,
+    "sha256": "0a4a92573cf8c8886d660d396f20b4e0ff01abae966e12f132c7e1fc38900773"
+  },
+  {
+    "path": "run-evidence/ac-10afe248-c3f9-4b86-b3db-373a55025c05/report.json",
+    "bytes": 10000,
+    "sha256": "0beeef2e29790577c94383fb4d00daf698d1e361951d33b7a448067fb5619c8f"
+  },
+  {
+    "path": "run-evidence/ac-10afe248-c3f9-4b86-b3db-373a55025c05/report.md",
+    "bytes": 4204,
+    "sha256": "df85fb87806d77b407890cfd5b25c76d340b3561f94a571c8454fb9084fa57b7"
+  },
+  {
+    "path": "run-evidence/ac-10afe248-c3f9-4b86-b3db-373a55025c05/spec-1-QUOTA-contract.json",
+    "bytes": 1360,
+    "sha256": "3c4b4e07fb8145c1c2da117fe4c765f80b25619b4101442cb7ff8e47e3e47d00"
+  },
+  {
+    "path": "run-evidence/ac-10afe248-c3f9-4b86-b3db-373a55025c05/spec-1-QUOTA-request.json",
+    "bytes": 173,
+    "sha256": "6b9dafe072af7771c42ea64ca5d782195f464111f1875f106e657a631616fa80"
+  },
+  {
+    "path": "run-evidence/ac-10afe248-c3f9-4b86-b3db-373a55025c05/spec-1-QUOTA-response.json",
+    "bytes": 978,
+    "sha256": "cbaefe78643144dd20f794691672f5b11ba36c100eac1c7d7a3f0cf55db891e9"
+  },
+  {
+    "path": "run-evidence/ac-10afe248-c3f9-4b86-b3db-373a55025c05/spec-2-HEALTH-contract.json",
+    "bytes": 449,
+    "sha256": "d3474367a377c539f2a125663a93479b222194c3ba34506e6c5feb04d28802fa"
+  },
+  {
+    "path": "run-evidence/ac-10afe248-c3f9-4b86-b3db-373a55025c05/spec-2-HEALTH-request.json",
+    "bytes": 186,
+    "sha256": "2246c3858598437bc6dbed8d14f293c6c11f64ce4867052f8b06b22133ce533a"
+  },
+  {
+    "path": "run-evidence/ac-10afe248-c3f9-4b86-b3db-373a55025c05/spec-2-HEALTH-response.json",
+    "bytes": 176,
+    "sha256": "17c32fd987739e3c2d52453f905c8dcd8bbe18c4293a2cf52ec435a4973642d7"
+  },
+  {
+    "path": "run-evidence/ac-1897dc22-0d21-4b6f-95c3-4dd72201063d/manifest.json",
+    "bytes": 3662,
+    "sha256": "e23ffdcd2eb0f4c694f4c56c7dcbbe5e2e6aef3a213174aaec1feddba8e071f7"
+  },
+  {
+    "path": "run-evidence/ac-1897dc22-0d21-4b6f-95c3-4dd72201063d/report.json",
+    "bytes": 7795,
+    "sha256": "02494c72e90295577d4b26f993e6dd8006e51eae14a4d2368b44f918872b152f"
+  },
+  {
+    "path": "run-evidence/ac-1897dc22-0d21-4b6f-95c3-4dd72201063d/report.md",
+    "bytes": 4313,
+    "sha256": "72cdafee4895d7f298b21d09e5cb682a86bae8dc6a738a38a073341706e5cece"
+  },
+  {
+    "path": "run-evidence/ac-1897dc22-0d21-4b6f-95c3-4dd72201063d/spec-1-QUOTA-contract.json",
+    "bytes": 1361,
+    "sha256": "86456065f8bc7a094da54bc92b9cb84464c69ddf372361fc63528d1518fa48ec"
+  },
+  {
+    "path": "run-evidence/ac-1897dc22-0d21-4b6f-95c3-4dd72201063d/spec-2-HEALTH-contract.json",
+    "bytes": 450,
+    "sha256": "a91e468c090f976c40049e1bde4b10790bb0a5af7cb30617467ef3f309b8c132"
+  }
+]

@@ -6,15 +6,17 @@ import { hashAcceptanceValue } from './identity.mjs';
 
 export const ACCEPTANCE_CATALOG_LIMITS = Object.freeze({ jsonBytes: 8 * 1024 * 1024, manifestBytes: 8 * 1024 * 1024,
   projects: 64, releases: 1024, runBindings: 4096, candidates: 1024, approvals: 2048, selections: 4096,
-  migrations: 1, events: 8192, queue: 32 });
+  migrations: 2, browserSourceBindings: 4096, events: 8192, queue: 32 });
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const IDS = Object.fromEntries(['ag', 'ap', 'ar', 'ac', 'ae', 'ab', 'aa', 'as', 'am'].map(prefix => [prefix, new RegExp(`^${prefix}-${UUID}$`)]));
 const HASH = /^[a-f0-9]{64}$/;
 const sha256 = value => typeof value === 'string' && HASH.test(value);
 const BASE_MAPS = ['projects', 'releases', 'runBindings'];
 const EXTRA_MAPS = ['candidates', 'approvals', 'selections', 'migrations'];
+const V3_MAPS = ['browserSourceBindings'];
 const V1_FIELDS = ['schemaVersion', 'generationId', 'revision', ...BASE_MAPS, 'events'];
 const V2_FIELDS = [...V1_FIELDS, ...EXTRA_MAPS];
+const V3_FIELDS = [...V2_FIELDS, ...V3_MAPS];
 const EVENT_FIELDS = ['id', 'revision', 'kind', 'projectId', 'entityId', 'entityDigest', 'at', 'actor'];
 const GLOBAL_EVENT_FIELDS = EVENT_FIELDS.filter(key => key !== 'projectId');
 const MIGRATION_FIELDS = ['id', 'fromSchemaVersion', 'toSchemaVersion', 'fromGenerationId', 'fromRevision',
@@ -81,7 +83,7 @@ export function limitsOf(input = {}) {
   return limits;
 }
 export function capacity(catalog, limits, fail) {
-  for (const key of [...BASE_MAPS, ...EXTRA_MAPS, 'events']) {
+  for (const key of [...BASE_MAPS, ...EXTRA_MAPS, ...V3_MAPS, 'events']) {
     const count = key === 'events' ? catalog.events.length : Object.keys(catalog[key] ?? {}).length;
     if (count > limits[key]) fail(key);
   }
@@ -107,15 +109,18 @@ function eventsOf(value, fail) {
   return value;
 }
 function validate(catalog, schemaVersion, limits) {
-  const fail = unavailable, rootFields = schemaVersion === 1 ? V1_FIELDS : V2_FIELDS;
+  const fail = unavailable, rootFields = schemaVersion === 1 ? V1_FIELDS : schemaVersion === 2 ? V2_FIELDS : V3_FIELDS;
   fields(catalog, rootFields, rootFields, fail);
   if (catalog.schemaVersion !== schemaVersion) fail('UNSUPPORTED_SCHEMA');
   id(catalog.generationId, 'ag', fail);
   if (!Number.isSafeInteger(catalog.revision) || catalog.revision < 0) fail('INVALID_REVISION');
-  const entries = Object.fromEntries([...BASE_MAPS, ...(schemaVersion === 2 ? EXTRA_MAPS : [])]
+  const entries = Object.fromEntries([...BASE_MAPS, ...(schemaVersion >= 2 ? EXTRA_MAPS : []), ...(schemaVersion === 3 ? V3_MAPS : [])]
     .map(key => [key, mapEntries(catalog[key], fail)]));
   const { projects, releases, runBindings } = catalog, events = eventsOf(catalog.events, fail);
   capacity(catalog, limits, () => fail('CAPACITY_EXCEEDED'));
+  // Browser-side attribution stays disabled until its entity/event contract
+  // is implemented; reserving this map does not admit any Browser authority.
+  if (schemaVersion === 3 && entries.browserSourceBindings.length) fail('BROWSER_BINDINGS_NOT_SUPPORTED');
   for (const [key, project] of entries.projects) {
     id(key, 'ap', fail); fields(project, ['id', 'name', 'createdAt'], ['id', 'name', 'createdAt'], fail);
     if (project.id !== key || !boundedText(project.name, 120) || !iso(project.createdAt)) fail('INVALID_PROJECT');
@@ -134,7 +139,7 @@ function validate(catalog, schemaVersion, limits) {
     if (binding.runId !== key || !Object.hasOwn(projects, binding.projectId) || !Object.hasOwn(releases, binding.releaseId)
       || releases[binding.releaseId].projectId !== binding.projectId || !iso(binding.boundAt)) fail('INVALID_BINDING');
   }
-  if (schemaVersion === 2) {
+  if (schemaVersion >= 2) {
     for (const [key, candidate] of entries.candidates) {
       id(key, 'ab', fail); fields(candidate, CANDIDATE_FIELDS, CANDIDATE_FIELDS, fail);
       id(candidate.projectId, 'ap', fail);
@@ -166,22 +171,26 @@ function validate(catalog, schemaVersion, limits) {
         || selection.approvalId !== null && (!approval || approval.projectId !== selection.projectId)
         || !boundedText(selection.reason, 1000) || !iso(selection.selectedAt)) fail('INVALID_SELECTION');
     }
-    if (entries.migrations.length > 1) fail('INVALID_MIGRATION_COUNT');
+    if (entries.migrations.length > schemaVersion - 1) fail('INVALID_MIGRATION_COUNT');
+    const generations = new Set([catalog.generationId]), transitions = new Set();
     for (const [key, migration] of entries.migrations) {
       id(key, 'am', fail); fields(migration, MIGRATION_FIELDS, MIGRATION_FIELDS, fail);
       id(migration.fromGenerationId, 'ag', fail); actor(migration.actor, fail);
-      if (migration.id !== key || migration.fromSchemaVersion !== 1 || migration.toSchemaVersion !== 2
-        || migration.fromGenerationId === catalog.generationId || !Number.isSafeInteger(migration.fromRevision)
+      const transition = migration.fromSchemaVersion;
+      if (migration.id !== key || !(migration.fromSchemaVersion === 1 && migration.toSchemaVersion === 2
+          || schemaVersion === 3 && migration.fromSchemaVersion === 2 && migration.toSchemaVersion === 3)
+        || generations.has(migration.fromGenerationId) || transitions.has(transition) || !Number.isSafeInteger(migration.fromRevision)
         || migration.fromRevision < 0 || !sha256(migration.sourceHeadSha256)
         || migration.sourcePreviousSha256 !== null && !sha256(migration.sourcePreviousSha256)
         || !iso(migration.createdAt)) fail('INVALID_MIGRATION');
+      generations.add(migration.fromGenerationId); transitions.add(transition);
     }
   }
   const entityCount = Object.values(entries).reduce((total, list) => total + list.length, 0);
   if (events.length !== catalog.revision || events.length !== entityCount) fail('EVENT_HISTORY_MISMATCH');
   const eventIds = new Set(), entities = new Set(), seenProjects = new Set(), seenReleases = new Set();
   const seenBindings = new Set(), seenCandidates = new Set(), seenApprovals = new Set(), selected = new Map();
-  let seenBaselineEvent = false;
+  let seenBaselineEvent = false, lastMigration = null;
   for (const [index, event] of events.entries()) {
     fields(event, EVENT_FIELDS, GLOBAL_EVENT_FIELDS, fail);
     const migrationEvent = event.kind === 'catalog-migrated';
@@ -204,31 +213,34 @@ function validate(catalog, schemaVersion, limits) {
       id(event.entityId, 'ac', fail); entity = runBindings[event.entityId];
       if (!entity || entity.projectId !== event.projectId || !seenReleases.has(entity.releaseId)) fail('INVALID_EVENT_REFERENCE');
       seenBindings.add(entity.runId);
-    } else if (event.kind === 'candidate-created' && schemaVersion === 2) {
+    } else if (event.kind === 'candidate-created' && schemaVersion >= 2) {
       id(event.entityId, 'ab', fail); entity = catalog.candidates[event.entityId];
       if (!entity || entity.projectId !== event.projectId || !seenBindings.has(entity.source.runId)) fail('INVALID_EVENT_REFERENCE');
       seenCandidates.add(entity.id);
       seenBaselineEvent = true;
-    } else if (event.kind === 'baseline-approved' && schemaVersion === 2) {
+    } else if (event.kind === 'baseline-approved' && schemaVersion >= 2) {
       id(event.entityId, 'aa', fail); entity = catalog.approvals[event.entityId];
       if (!entity || entity.projectId !== event.projectId || !seenCandidates.has(entity.candidateId)) fail('INVALID_EVENT_REFERENCE');
       seenApprovals.add(entity.id);
       seenBaselineEvent = true;
-    } else if (event.kind === 'baseline-selected' && schemaVersion === 2) {
+    } else if (event.kind === 'baseline-selected' && schemaVersion >= 2) {
       id(event.entityId, 'as', fail); entity = catalog.selections[event.entityId];
       const previous = selected.get(event.projectId) ?? null;
       if (!entity || entity.projectId !== event.projectId || entity.approvalId !== null && !seenApprovals.has(entity.approvalId)
         || entity.previousSelectionId !== (previous?.id ?? null) || entity.approvalId === (previous?.approvalId ?? null)) fail('INVALID_SELECTION_CHAIN');
       selected.set(event.projectId, entity);
       seenBaselineEvent = true;
-    } else if (migrationEvent && schemaVersion === 2) {
+    } else if (migrationEvent && schemaVersion >= 2) {
       id(event.entityId, 'am', fail); entity = catalog.migrations[event.entityId];
-      if (!entity || entity.fromRevision !== index || seenBaselineEvent) fail('INVALID_MIGRATION_EVENT');
+      if (!entity || entity.fromRevision !== index || entity.fromSchemaVersion === 1 && seenBaselineEvent
+        || lastMigration && lastMigration.toSchemaVersion !== entity.fromSchemaVersion) fail('INVALID_MIGRATION_EVENT');
+      lastMigration = entity;
     } else fail('INVALID_EVENT_KIND');
     if ((entity.createdAt ?? entity.boundAt ?? entity.approvedAt ?? entity.selectedAt) !== event.at
       || hashAcceptanceValue(entity) !== event.entityDigest) fail('ENTITY_HISTORY_MISMATCH');
     eventIds.add(event.id); entities.add(event.entityId);
   }
+  if (lastMigration && lastMigration.toSchemaVersion !== schemaVersion) fail('INCOMPLETE_MIGRATION_CHAIN');
   return catalog;
 }
 
@@ -240,9 +252,13 @@ export function validateAcceptanceCatalogV1(catalog, { limits = {} } = {}) {
 export function validateAcceptanceCatalogV2(catalog, { limits = {} } = {}) {
   return validate(catalog, 2, limitsOf(limits));
 }
+/** Schema3 retains Spec history and reserves a strictly empty Browser map. */
+export function validateAcceptanceCatalogV3(catalog, { limits = {} } = {}) {
+  return validate(catalog, 3, limitsOf(limits));
+}
 export function validateAcceptanceCatalog(catalog, { limits = {} } = {}) {
-  fields(catalog, V2_FIELDS, V1_FIELDS, unavailable);
-  if (![1, 2].includes(catalog.schemaVersion)) unavailable('UNSUPPORTED_SCHEMA');
+  fields(catalog, V3_FIELDS, V1_FIELDS, unavailable);
+  if (![1, 2, 3].includes(catalog.schemaVersion)) unavailable('UNSUPPORTED_SCHEMA');
   return validate(catalog, catalog.schemaVersion, limitsOf(limits));
 }
 
@@ -267,4 +283,29 @@ export function buildCatalogMigration(catalog, { headSha256, previousSha256 = nu
     throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限；历史记录未删除。', { limit: 'jsonBytes' });
   }
   return validate(migrated, 2, limits);
+}
+
+/** Preserve a complete validated V2 value, then append exactly one V3 step. */
+export function buildCatalogMigrationV3(catalog, { headSha256, previousSha256 = null,
+  at = new Date().toISOString(), limits: inputLimits = {} } = {}) {
+  const limits = limitsOf(inputLimits);
+  validate(catalog, 2, limits);
+  if (!sha256(headSha256) || previousSha256 !== null && !sha256(previousSha256) || !iso(at)) invalid('目录迁移摘要或时间无效。');
+  const migrated = JSON.parse(JSON.stringify(catalog));
+  const migration = { id: 'am-' + randomUUID(), fromSchemaVersion: 2, toSchemaVersion: 3,
+    fromGenerationId: catalog.generationId, fromRevision: catalog.revision,
+    sourceHeadSha256: headSha256, sourcePreviousSha256: previousSha256, createdAt: at, actor: { kind: 'local-operator' } };
+  migrated.schemaVersion = 3;
+  const generations = new Set([catalog.generationId, ...Object.values(catalog.migrations).map(item => item.fromGenerationId)]);
+  do { migrated.generationId = 'ag-' + randomUUID(); } while (generations.has(migrated.generationId));
+  migrated.revision++;
+  migrated.browserSourceBindings = {};
+  migrated.migrations[migration.id] = migration;
+  migrated.events.push({ id: 'ae-' + randomUUID(), revision: migrated.revision, kind: 'catalog-migrated',
+    entityId: migration.id, entityDigest: hashAcceptanceValue(migration), at, actor: { kind: 'local-operator' } });
+  capacity(migrated, limits, limit => { throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限；历史记录未删除。', { limit }); });
+  if (Buffer.byteLength(JSON.stringify(migrated, null, 2) + '\n') > limits.jsonBytes) {
+    throw error('CATALOG_CAPACITY', 409, '项目目录超过容量上限；历史记录未删除。', { limit: 'jsonBytes' });
+  }
+  return validate(migrated, 3, limits);
 }

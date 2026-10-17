@@ -1,0 +1,2 @@
+# Preserve the archived source bytes; CRLF is an observed line ending.
+catalog-schema3/source/core/test/acceptance-catalog-schema3-migration.test.mjs whitespace=cr-at-eol

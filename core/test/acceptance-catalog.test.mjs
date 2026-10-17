@@ -45,8 +45,8 @@ async function unchanged(f, operation, code, status) {
 test('catalog initializes once, persists immutable entities and reloads their event history', async t => {
   const f = fixture(t);
   const empty = await f.store.initialize();
-  assert.equal(empty.schemaVersion, 2); assert.equal(empty.revision, 0); assert.match(empty.generationId, /^ag-/);
-  assert.deepEqual(Object.keys(empty).sort(), ['approvals', 'candidates', 'events', 'generationId', 'migrations',
+  assert.equal(empty.schemaVersion, 3); assert.equal(empty.revision, 0); assert.match(empty.generationId, /^ag-/);
+  assert.deepEqual(Object.keys(empty).sort(), ['approvals', 'browserSourceBindings', 'candidates', 'events', 'generationId', 'migrations',
     'projects', 'releases', 'revision', 'runBindings', 'schemaVersion', 'selections']);
   assert.deepEqual(await f.store.initialize(), empty);
   const first = await f.store.createProject({ ...cas(f.store), name: '  中文项目  ' });
@@ -236,7 +236,7 @@ test('corrupt catalog schemas, references and event history are preserved rather
   const f = fixture(t); await projectAndRelease(f); const valid = f.store.read();
   const projectId = Object.keys(valid.projects)[0], releaseId = Object.keys(valid.releases)[0];
   const mutations = [
-    value => { value.schemaVersion = 3; }, value => { value.approvals = { unsupported: {} }; }, value => { value.revision = -1; },
+    value => { value.schemaVersion = 4; }, value => { value.approvals = { unsupported: {} }; }, value => { value.revision = -1; },
     value => { value.projects[projectId].current = {}; }, value => { value.releases[releaseId].projectId = uid('ap'); },
     value => { value.releases[releaseId].targetUrl = 'https://changed.test/'; }, value => { value.events[0].revision = 2; },
     value => { value.events[1].kind = 'baseline-approved'; }, value => { value.events[1].entityDigest = '0'.repeat(64); },

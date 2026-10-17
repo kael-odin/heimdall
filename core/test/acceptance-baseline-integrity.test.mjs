@@ -223,7 +223,14 @@ test('migrated B1 bindings can produce B2 history and ordered selections across 
   writeFileSync(join(f.root, 'catalog.json'), oldBytes); writeFileSync(join(f.root, 'catalog.previous.json'), oldBytes);
   f.store = createAcceptanceCatalogStore({ root: f.root, owner: f.owner });
   const migrated = await f.store.initialize();
-  assert.equal(migrated.revision, v1.revision + 1);
+  assert.equal(migrated.schemaVersion, 3);
+  assert.equal(migrated.revision, v1.revision + 2);
+  assert.deepEqual(migrated.events.slice(v1.revision).map(event => {
+    assert.equal(event.kind, 'catalog-migrated');
+    const migration = migrated.migrations[event.entityId];
+    assert.equal(migration.fromRevision, event.revision - 1);
+    return [migration.fromSchemaVersion, migration.toSchemaVersion];
+  }), [[1, 2], [2, 3]]);
   assert.deepEqual(migrated.events.slice(0, v1.revision), v1.events);
   assert.deepEqual(migrated.runBindings, v1.runBindings);
   const old = await candidate(f, s), approved = await approval(f, old);

@@ -12,7 +12,7 @@
 6. [Spec / OpenAPI 实施记录](docs/audits/2026-10-16/acceptance-spec.md)：只读契约、批准与来源追踪、固定真值、真实控制台和证据索引。
 7. [跨运行复验实施记录](docs/audits/2026-10-16/acceptance-comparison.md)：稳定检查身份、当前字节完整性、显式运行对关系、API / CLI / 控制台与固定反例。
 8. [项目与版本实施记录](docs/audits/2026-10-16/acceptance-catalog.md)：项目、不可变版本、历史运行归属、双引擎所有权、目录冲突与重启证据。
-9. [验收目录格式升级](docs/audits/2026-10-16/acceptance-catalog-migration.md)：schema1 原件保留、schema2 单次迁移、谱系校验、故障注入及旧数据浏览器复验。
+9. [验收目录格式升级](docs/audits/2026-10-16/acceptance-catalog-migration.md)保留原 1→2 验收；当前 [Schema3 分步迁移](docs/competition/acceptance-catalog-schema3.md)增加 2→3、版本独立前像、完整 Spec 历史兼容和失败续迁，Browser 来源表严格为空，详见[本轮验证](docs/audits/2026-10-17/acceptance-catalog-schema3.md)。
 10. [Spec 需求基线](docs/competition/acceptance-baseline.md)：完整合同候选、批准历史、独立选用与取消，以及[实施验收](docs/audits/2026-10-16/acceptance-baseline.md)。
 11. [托管 Spec 合同与读取](docs/competition/acceptance-managed-spec.md)：由当前选用重建完整合同、明确目标版本、不可变派发准备与物理只读同键核对；[runner 执行控制](docs/audits/2026-10-16/acceptance-spec-execution-control.md)支持内部停止信号与同步 active 断言，[来源关联与隔离](docs/audits/2026-10-17/acceptance-managed-provenance.md)核验原字节身份并阻止普通入口降级，[固定身份存储](docs/audits/2026-10-17/acceptance-managed-store.md)增加 owner 约束的报告与中断收尾。[托管读取验收](docs/audits/2026-10-17/acceptance-managed-reading.md)现覆盖状态、完成快照、证据下载、比较及安全 DTO；新增[启动恢复验收](docs/audits/2026-10-17/acceptance-owned-recovery.md)，真实 owner 在完整零写预检后中断遗留运行并保留现场；新增[托管执行验收](docs/audits/2026-10-17/acceptance-managed-execution.md)，专用 HTTP 对完整新确认启动真实 Spec 检查，统一运行槽并支持取消、超时和任务镜像；新增[执行工作台验收](docs/audits/2026-10-17/acceptance-execution-ui.md)，明确目标版本后启动，持久操作凭据只读恢复并支持请求停止；candidate / triage 继续隔离。
 

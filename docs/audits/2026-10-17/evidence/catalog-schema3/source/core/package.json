@@ -1,0 +1,72 @@
+{
+  "name": "@heimdall/core",
+  "version": "2.0.0-dev",
+  "description": "Heimdall deterministic core: capture, build, diff, harvest, audit",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.7.0",
+      "onFail": "download"
+    }
+  },
+  "scripts": {
+    "dev": "node src/engine-server.mjs 8900",
+    "verify": "node src/verify/verify.mjs",
+    "acceptance": "node src/acceptance/cli.mjs",
+    "acceptance:benchmark": "node scripts/benchmark-acceptance.mjs",
+    "acceptance:smoke": "node scripts/smoke-acceptance-console.mjs",
+    "acceptance:spec:benchmark": "node scripts/benchmark-acceptance-spec.mjs",
+    "acceptance:spec:smoke": "node scripts/smoke-acceptance-spec-console.mjs",
+    "acceptance:comparison:benchmark": "node scripts/benchmark-acceptance-comparison.mjs",
+    "acceptance:comparison:smoke": "node scripts/smoke-acceptance-comparison-console.mjs",
+    "acceptance:catalog:smoke": "node scripts/smoke-acceptance-catalog-console.mjs",
+    "acceptance:catalog:migration:smoke": "node scripts/smoke-acceptance-catalog-migration.mjs",
+    "acceptance:baseline:smoke": "node scripts/smoke-acceptance-baseline-console.mjs",
+    "acceptance:managed:prepare:smoke": "node scripts/smoke-acceptance-managed-preparation.mjs",
+    "acceptance:managed:read:smoke": "node scripts/smoke-acceptance-managed-reading.mjs",
+    "acceptance:owned:recovery:smoke": "node scripts/smoke-acceptance-owned-recovery.mjs",
+    "acceptance:managed:execute:smoke": "node scripts/smoke-acceptance-managed-execution.mjs",
+    "acceptance:execution:ui:smoke": "node scripts/smoke-acceptance-execution-ui.mjs",
+    "acceptance:browser:source:smoke": "node scripts/smoke-acceptance-browser-source.mjs",
+    "acceptance:browser:read:smoke": "node scripts/smoke-acceptance-browser-reading.mjs",
+    "test": "node scripts/test-core.mjs",
+    "lint": "node scripts/check-syntax.mjs",
+    "check:docs": "node scripts/check-markdown-links.mjs",
+    "smoke": "node scripts/smoke-forge.mjs",
+    "queue": "node src/queue.mjs",
+    "audit": "node src/seo/audit.mjs",
+    "audit:history": "node scripts/audit-historical-verification.mjs",
+    "verify:history:batch": "node scripts/verify-historical-batch.mjs",
+    "assets": "node src/audit/assets.mjs",
+    "watch": "node src/watch/watch.mjs",
+    "tokens": "node src/extract/extract-tokens.mjs",
+    "components": "node src/extract/extract-components.mjs",
+    "matrix": "node src/seo/matrix.mjs",
+    "mcp": "node src/mcp/server.mjs",
+    "browser": "node src/browser/bookmarklet.mjs",
+    "sandbox": "node src/sandbox/serve.mjs",
+    "live:export": "node src/live/export.mjs",
+    "live:serve": "node src/live/serve.mjs",
+    "dedupe": "node src/store/dedupe.mjs",
+    "cli": "node src/cli.mjs",
+    "probe:render": "node scripts/probe-render-mode.mjs",
+    "probe:fingerprint": "node scripts/probe-fingerprint.mjs",
+    "probe:regions": "node scripts/diff-regions.mjs",
+    "probe:shift": "node scripts/diff-shift.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "parse5": "^8.0.1",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.63.0",
+    "pngjs": "^7.0.0"
+  }
+}
