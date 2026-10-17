@@ -1,0 +1,16 @@
+* -text
+README.md text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.json whitespace=cr-at-eol
+
+# Preserve exact original output whitespace.
+ci.stdout.log -whitespace
+commands/*.stdout.bin -whitespace
+commands/*.stderr.log -whitespace
+extracted/**/*.txt -whitespace
+monitoring/*/stdout.bin -whitespace
+monitoring/*/stderr.log -whitespace
+monitoring/watch-*/stdout.log -whitespace
+monitoring/collect-failure-*/stdout.log -whitespace
+artifacts/**/extracted/**/*.log -whitespace

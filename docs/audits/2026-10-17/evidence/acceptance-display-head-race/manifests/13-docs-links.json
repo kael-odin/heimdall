@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "13-docs-links",
+  "sourceAbsolutePath": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\display-head-hotfix-gates-20261017\\docs-links-ee74ad94-2969-4e74-b26b-39a2bf9fee8f",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792220439028782900
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220438619427200,
+      "bytes": 325,
+      "sha256": "f05c984dbde0c0654bf6e1c1f88221406e6af75eed8ee11ee9cca317253c5016"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220438923318900,
+      "bytes": 99,
+      "sha256": "237ee1ad7a678405956488fb668a7251ea477f40883346ab19bf11cf8f990709"
+    },
+    {
+      "path": "source-after.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220439027785700,
+      "bytes": 90957,
+      "sha256": "62dda1aee2548bde937bfc1a5355d54dff850a8b3e1b6200d2f202e3eb2b9d02"
+    },
+    {
+      "path": "source-before.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220438617426700,
+      "bytes": 90957,
+      "sha256": "62dda1aee2548bde937bfc1a5355d54dff850a8b3e1b6200d2f202e3eb2b9d02"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220438620427900,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220438916510800,
+      "bytes": 54,
+      "sha256": "c094e82dd533940dc20d13e43ba593d86263fa75fcef2e8d0425e706beb8aa72"
+    },
+    {
+      "path": "summary.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220439028782900,
+      "bytes": 88,
+      "sha256": "7c046dbf7fcdb9de3fb35740f76a419c2c500fb2bbe44ad565129469e6e0e3ec"
+    }
+  ]
+}

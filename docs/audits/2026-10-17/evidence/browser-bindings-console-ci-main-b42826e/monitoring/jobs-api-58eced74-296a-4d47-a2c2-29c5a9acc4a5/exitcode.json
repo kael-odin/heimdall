@@ -1,0 +1,23 @@
+{
+  "executable": "gh",
+  "args": [
+    "api",
+    "repos/kael-odin/heimdall/actions/runs/39005540253/jobs?per_page=100"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "startedAt": "2026-10-17T05:32:34.265Z",
+  "finishedAt": "2026-10-17T05:32:35.142Z",
+  "code": 0,
+  "signal": null,
+  "error": null,
+  "stdout": {
+    "path": "jobs-api-58eced74-296a-4d47-a2c2-29c5a9acc4a5/stdout.bin",
+    "bytes": 11776,
+    "sha256": "4265368bf72f0cf8ddd0f644c224cfb4f12605eef1e8b088f105414d4682fa17"
+  },
+  "stderr": {
+    "path": "jobs-api-58eced74-296a-4d47-a2c2-29c5a9acc4a5/stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

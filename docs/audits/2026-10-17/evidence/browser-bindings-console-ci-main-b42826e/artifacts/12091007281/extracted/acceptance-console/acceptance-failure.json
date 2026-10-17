@@ -1,0 +1,366 @@
+{
+  "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'Failed to load resource: the server responded with a status of 409 (Conflict)'\n+ ]\n- []\n",
+  "pageErrors": [
+    "Failed to load resource: the server responded with a status of 409 (Conflict)"
+  ],
+  "consoleErrors": [
+    {
+      "message": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "location": {
+        "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ],
+  "recentResponses": [
+    {
+      "url": "http://127.0.0.1:45131/",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/index-Ci96Vj07.css",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/index-0_Sma-JU.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/Atlas-ChaWGVbp.css",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/api-DBmNeZNu.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/Atlas-ZJKHZOFV.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/status",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/jobs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/sites",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/status",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e3c2b1d0-a9ad-4f24-af63-c038e03f0f9c",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "POST",
+      "status": 202
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 409,
+      "code": "MANAGED_RUN_INTEGRITY_FAILED"
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/status",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/triage",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/evidence/route-1-1-mobile-point-1-baseline.png",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/evidence/route-1-1-mobile-point-1-target.png",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/evidence/route-1-1-mobile-point-1-baseline.json",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/evidence/route-1-1-mobile-point-1-target.json",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "blob:http://127.0.0.1:45131/5e91cafd-9220-4600-84e2-3641e7faeb24",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "blob:http://127.0.0.1:45131/6958ee86-3e9e-452c-a666-66c84385ef57",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/report.md",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/index-0_Sma-JU.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/index-Ci96Vj07.css",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/Atlas-ZJKHZOFV.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/api-DBmNeZNu.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/assets/Atlas-ChaWGVbp.css",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/status",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/jobs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/sites",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/status",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/triage",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f/triage",
+      "method": "GET",
+      "status": 200
+    }
+  ]
+}

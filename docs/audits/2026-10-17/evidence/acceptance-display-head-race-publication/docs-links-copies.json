@@ -1,0 +1,41 @@
+{
+  "source": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\display-head-hotfix-gates-20261017\\final-docs-links-215c6a87-b9e6-497c-b9a2-9a6621aa9dd2",
+  "destination": "D:\\Github-Star\\heimdall\\docs\\audits\\2026-10-17\\evidence\\acceptance-display-head-race-publication\\docs-links",
+  "files": [
+    {
+      "path": "command.json",
+      "bytes": 331,
+      "sha256": "1f9034866d4221afa60c457d5e060741e55e14eac6363a5c9f8848d38ec62105"
+    },
+    {
+      "path": "exitcode.json",
+      "bytes": 99,
+      "sha256": "4e26beb0d4e598d0eb31d30d7ff10329cd8b61822b51fcd76cf91eaa1980a4e5"
+    },
+    {
+      "path": "source-after.json",
+      "bytes": 90957,
+      "sha256": "62dda1aee2548bde937bfc1a5355d54dff850a8b3e1b6200d2f202e3eb2b9d02"
+    },
+    {
+      "path": "source-before.json",
+      "bytes": 90957,
+      "sha256": "62dda1aee2548bde937bfc1a5355d54dff850a8b3e1b6200d2f202e3eb2b9d02"
+    },
+    {
+      "path": "stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "bytes": 54,
+      "sha256": "4fb14a0efb0b4cb274701345f4eb7050d45801f1ba1ce07d4162affeb2168185"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 88,
+      "sha256": "7c046dbf7fcdb9de3fb35740f76a419c2c500fb2bbe44ad565129469e6e0e3ec"
+    }
+  ]
+}

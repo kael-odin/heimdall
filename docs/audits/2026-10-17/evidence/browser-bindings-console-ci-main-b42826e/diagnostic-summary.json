@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "failedStep": {
+    "number": 12,
+    "name": "Acceptance console (real browser, local model stub)",
+    "status": "completed",
+    "conclusion": "failure",
+    "startedAt": "2026-10-17T05:33:10Z",
+    "completedAt": "2026-10-17T05:33:34Z",
+    "command": "pnpm acceptance:smoke"
+  },
+  "failureJson": "artifacts/12091007281/extracted/acceptance-console/acceptance-failure.json",
+  "failureScreenshot": "artifacts/12091007281/extracted/acceptance-console/acceptance-failure.png",
+  "screenshotDimensions": {
+    "width": 390,
+    "height": 844
+  },
+  "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'Failed to load resource: the server responded with a status of 409 (Conflict)'\n+ ]\n- []\n",
+  "consoleErrors": [
+    {
+      "message": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "location": {
+        "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ],
+  "pageErrors": [
+    "Failed to load resource: the server responded with a status of 409 (Conflict)"
+  ],
+  "recordedConflictResponses": [
+    {
+      "index": 26,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 409,
+      "code": "MANAGED_RUN_INTEGRITY_FAILED"
+    }
+  ],
+  "sameUrlResponses": [
+    {
+      "index": 13,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 15,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 16,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 18,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 19,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 21,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 23,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 24,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 26,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 409,
+      "code": "MANAGED_RUN_INTEGRITY_FAILED"
+    },
+    {
+      "index": 27,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 29,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 30,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 32,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 33,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 36,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 37,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 39,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 40,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 42,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 63,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "index": 66,
+      "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "rawFailureStepText": "##[group]Run pnpm acceptance:smoke\n^[[36;1mpnpm acceptance:smoke^[[0m\nshell: /usr/bin/bash -e {0}\nenv:\n  PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin\n##[endgroup]\n$ node scripts/smoke-acceptance-console.mjs\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'Failed to load resource: the server responded with a status of 409 (Conflict)'\n+ ]\n- []\n\n    at file:///home/runner/work/heimdall/heimdall/core/scripts/smoke-acceptance-console.mjs:161:10 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: [\n    'Failed to load resource: the server responded with a status of 409 (Conflict)'\n  ],\n  expected: [],\n  operator: 'deepStrictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.3\n[ELIFECYCLE] Command failed with exit code 1.\n##[error]Process completed with exit code 1.",
+  "timingBoundary": "recentResponses preserves order only; the uploaded failure JSON contains no per-response timestamp or full response body. No race root cause is asserted from the transient 409 alone."
+}

@@ -1,0 +1,155 @@
+{
+  "status": "passed",
+  "repo": "D:\\Github-Star\\heimdall",
+  "package": "D:\\Github-Star\\heimdall\\docs\\audits\\2026-10-17\\evidence\\acceptance-display-head-race",
+  "stagedRequested": false,
+  "verifierSha256": "f84a1cc154191d00b07bbc31a9bd436d7f67b6ac1523f0189e816fdc1de34ce3",
+  "completedSha256": "5a337fd122634066cb2ef23f302daf8bbe6f01984675d7f1733e5c2ccd7e237d",
+  "indexSha256": "47fa351e1be6b93cc98f70136ba8476be2fe3390527b82ef23a64090f190208c",
+  "publicFileCount": 47,
+  "sourceGuardFileCount": 542,
+  "frozenSourceCount": 5,
+  "groups": [
+    {
+      "id": "01-original-ci",
+      "files": 351,
+      "directories": 65,
+      "bytes": 7265009,
+      "inflatedTarBytes": 7987200
+    },
+    {
+      "id": "02-initial-race-failure",
+      "files": 4,
+      "directories": 1,
+      "bytes": 6155,
+      "inflatedTarBytes": 20480
+    },
+    {
+      "id": "03-abandoned-retry-targeted",
+      "files": 4,
+      "directories": 1,
+      "bytes": 1130,
+      "inflatedTarBytes": 20480
+    },
+    {
+      "id": "04-abandoned-retry-validation",
+      "files": 92,
+      "directories": 3,
+      "bytes": 1683358,
+      "inflatedTarBytes": 1853440
+    },
+    {
+      "id": "05-intermediate-independent-review",
+      "files": 7,
+      "directories": 1,
+      "bytes": 6137,
+      "inflatedTarBytes": 20480
+    },
+    {
+      "id": "06-abandoned-retry-smoke-failure",
+      "files": 100,
+      "directories": 9,
+      "bytes": 1869321,
+      "inflatedTarBytes": 2068480
+    },
+    {
+      "id": "07-runtime-diagnostic-failure",
+      "files": 84,
+      "directories": 3,
+      "bytes": 1783452,
+      "inflatedTarBytes": 1945600
+    },
+    {
+      "id": "08-review-harness-failure",
+      "files": 7,
+      "directories": 1,
+      "bytes": 16973,
+      "inflatedTarBytes": 40960
+    },
+    {
+      "id": "09-review-harness-corrected",
+      "files": 8,
+      "directories": 1,
+      "bytes": 15087,
+      "inflatedTarBytes": 40960
+    },
+    {
+      "id": "10-final-independent-review",
+      "files": 8,
+      "directories": 1,
+      "bytes": 16500,
+      "inflatedTarBytes": 40960
+    },
+    {
+      "id": "11-final-four-stages",
+      "files": 101,
+      "directories": 9,
+      "bytes": 1938153,
+      "inflatedTarBytes": 2129920
+    },
+    {
+      "id": "12-full-core",
+      "files": 7,
+      "directories": 1,
+      "bytes": 385163,
+      "inflatedTarBytes": 409600
+    },
+    {
+      "id": "13-docs-links",
+      "files": 7,
+      "directories": 1,
+      "bytes": 182480,
+      "inflatedTarBytes": 204800
+    },
+    {
+      "id": "14-forge-smoke",
+      "files": 7,
+      "directories": 1,
+      "bytes": 182746,
+      "inflatedTarBytes": 204800
+    },
+    {
+      "id": "15-console-clone-cdp-gate",
+      "files": 7,
+      "directories": 1,
+      "bytes": 182967,
+      "inflatedTarBytes": 204800
+    },
+    {
+      "id": "16-console-clone-cdp-runtime",
+      "files": 3,
+      "directories": 1,
+      "bytes": 98799,
+      "inflatedTarBytes": 112640
+    },
+    {
+      "id": "17-packer-source",
+      "files": 4,
+      "directories": 1,
+      "bytes": 33112,
+      "inflatedTarBytes": 51200
+    },
+    {
+      "id": "18-browser-bindings-ui-gate",
+      "files": 7,
+      "directories": 1,
+      "bytes": 183709,
+      "inflatedTarBytes": 204800
+    },
+    {
+      "id": "19-browser-bindings-ui-runtime",
+      "files": 97,
+      "directories": 5,
+      "bytes": 2195809,
+      "inflatedTarBytes": 2385920
+    }
+  ],
+  "preservedCiFiles": 351,
+  "credentialScan": "passed",
+  "stagedFilesChecked": null,
+  "independentGzipCrcAndTarParsing": true,
+  "sourceByteAndPathSetsMatched": true,
+  "packageUnchanged": true,
+  "metadataBoundary": "Tar/file path sets, types, bytes and SHA256 checked; no claim of nanosecond mtime or filesystem inode retention.",
+  "wallTimeMs": 5645
+}

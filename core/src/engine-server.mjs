@@ -51,7 +51,7 @@ import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
 import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './acceptance/managed-run-schema.mjs';
 import { createLegacyAcceptanceReadScope } from './acceptance/managed-access.mjs';
 import { previewOpenApi } from './acceptance/openapi.mjs';
-import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, updateAcceptanceRun, acceptanceArtifact, readAcceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshots } from './acceptance/store.mjs';
+import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, readAcceptanceDisplayRun, updateAcceptanceRun, acceptanceArtifact, readAcceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshots } from './acceptance/store.mjs';
 import { recoverOwnedAcceptanceRuns } from './acceptance/recovery.mjs';
 import { acceptanceRunView } from './acceptance/run-view.mjs';
 import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/comparison.mjs';
@@ -1373,7 +1373,8 @@ const handleRequest = async (req, res) => {
     const segments = u.pathname.slice('/api/acceptance/runs/'.length).split('/');
     const [runId, kind, name] = segments;
     try {
-      const manifest = readAcceptanceRun(runId);
+      const manifest = segments.length === 1 && req.method === 'GET'
+        ? readAcceptanceDisplayRun(runId) : readAcceptanceRun(runId);
       if (!manifest) return json(res, 404, { error: '验收任务不存在' });
       if (segments.length === 2 && kind === 'triage') {
         if (req.method === 'GET') {

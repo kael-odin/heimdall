@@ -1,0 +1,27 @@
+﻿2026-10-17T05:14:48.6714750Z ##[group]Run pnpm/action-setup@v6
+2026-10-17T05:14:48.6715122Z with:
+2026-10-17T05:14:48.6715352Z   version: 11.7.0
+2026-10-17T05:14:48.6715581Z   dest: ~/setup-pnpm
+2026-10-17T05:14:48.6715807Z   run_install: null
+2026-10-17T05:14:48.6716020Z   cache: false
+2026-10-17T05:14:48.6716250Z   cache_dependency_path: pnpm-lock.yaml
+2026-10-17T05:14:48.6716572Z   package_json_file: package.json
+2026-10-17T05:14:48.6717036Z   standalone: false
+2026-10-17T05:14:48.6717267Z ##[endgroup]
+2026-10-17T05:14:48.8290640Z ##[group]Running self-installer...
+2026-10-17T05:14:52.4721344Z 
+2026-10-17T05:14:52.4722256Z added 1 package, and audited 2 packages in 3s
+2026-10-17T05:14:52.4723216Z 
+2026-10-17T05:14:52.4747560Z 1 package is looking for funding
+2026-10-17T05:14:52.4767536Z   run `npm fund` for details
+2026-10-17T05:14:52.4768176Z 
+2026-10-17T05:14:52.4772196Z found 0 vulnerabilities
+2026-10-17T05:14:53.1633471Z Checking for updates...
+2026-10-17T05:14:53.5479853Z Switching pnpm from v11.19.0 to v11.7.0...
+2026-10-17T05:14:54.0914338Z .../v11/83f-1a14848d065-64b6d3efec752b34 | Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-10-17T05:14:54.0938199Z .../v11/83f-1a14848d065-64b6d3efec752b34 |   +1 +
+2026-10-17T05:14:54.3577486Z .../v11/83f-1a14848d065-64b6d3efec752b34 | Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-10-17T05:14:55.1261295Z [WARN] Detected a pnpm v10 installation layout at PNPM_HOME. The pnpm shims at PNPM_HOME have been refreshed so the new version is active, but pnpm v11 expects bins in PNPM_HOME/bin. Run "pnpm setup" to migrate your PATH to the v11 layout.
+2026-10-17T05:14:55.1287759Z Successfully updated pnpm to v11.7.0
+2026-10-17T05:14:55.1601568Z ##[endgroup]
+2026-10-17T05:14:55.1602728Z Installation Completed!

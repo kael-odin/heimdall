@@ -1,0 +1,22 @@
+{
+  "executable": "node",
+  "args": [
+    "core/workspace/_runs/browser-bindings-console-ci-main-b42826e-20261017/collect-failed-ci.mjs"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "startedAt": "2026-10-17T05:38:21.379Z",
+  "finishedAt": "2026-10-17T05:38:30.760Z",
+  "code": 0,
+  "signal": null,
+  "error": null,
+  "stdout": {
+    "path": "stdout.log",
+    "bytes": 927,
+    "sha256": "77f00bbfd601a4cea64a7c1eaf545fbf6720adb3cf79f092b3693eb508526085"
+  },
+  "stderr": {
+    "path": "stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

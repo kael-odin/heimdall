@@ -1,0 +1,31 @@
+﻿2026-10-17T05:16:11.8860768Z ##[group]Run pnpm acceptance:comparison:benchmark
+2026-10-17T05:16:11.8860981Z [36;1mpnpm acceptance:comparison:benchmark[0m
+2026-10-17T05:16:11.8912467Z shell: /usr/bin/bash -e {0}
+2026-10-17T05:16:11.8912612Z env:
+2026-10-17T05:16:11.8912747Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T05:16:11.8912945Z ##[endgroup]
+2026-10-17T05:16:12.4708366Z $ node scripts/benchmark-acceptance-comparison.mjs
+2026-10-17T05:16:18.5450793Z [acceptance-comparison-benchmark] run browser-before: gate=failed; checks=28
+2026-10-17T05:16:24.1384294Z [acceptance-comparison-benchmark] run browser-after-reordered: gate=failed; checks=28
+2026-10-17T05:16:24.2634013Z [acceptance-comparison-benchmark] browser-reordered-fixed-and-new: PASS
+2026-10-17T05:16:27.2227000Z [acceptance-comparison-benchmark] run browser-desktop-only: gate=failed; checks=14
+2026-10-17T05:16:27.3105746Z [acceptance-comparison-benchmark] partial-viewports-do-not-close-phone: PASS
+2026-10-17T05:16:30.0875795Z [acceptance-comparison-benchmark] run browser-deleted-route: gate=failed; checks=14
+2026-10-17T05:16:30.1711438Z [acceptance-comparison-benchmark] deleted-route-is-unverified: PASS
+2026-10-17T05:16:31.6156515Z [acceptance-comparison-benchmark] run browser-same-url-reference-drift: gate=failed; checks=7
+2026-10-17T05:16:31.6898172Z [acceptance-comparison-benchmark] same-url-reference-drift-incomparable: PASS
+2026-10-17T05:16:31.7108210Z [acceptance-comparison-benchmark] run api-before: gate=failed; checks=2
+2026-10-17T05:16:31.7238081Z [acceptance-comparison-benchmark] run api-after-reordered: gate=failed; checks=2
+2026-10-17T05:16:31.7527384Z [acceptance-comparison-benchmark] api-reordered-fixed-and-new: PASS
+2026-10-17T05:16:31.7627418Z [acceptance-comparison-benchmark] run api-still-failed: gate=failed; checks=2
+2026-10-17T05:16:31.7844838Z [acceptance-comparison-benchmark] same-contract-still-failed: PASS
+2026-10-17T05:16:31.7913696Z [acceptance-comparison-benchmark] run api-weaker-contract: gate=passed; checks=2
+2026-10-17T05:16:31.8108899Z [acceptance-comparison-benchmark] weaker-criteria-incomparable: PASS
+2026-10-17T05:16:31.8178496Z [acceptance-comparison-benchmark] run api-source-revision-changed: gate=failed; checks=2
+2026-10-17T05:16:31.8368009Z [acceptance-comparison-benchmark] changed-source-incomparable: PASS
+2026-10-17T05:16:31.8414384Z [acceptance-comparison-benchmark] run api-deleted-contract: gate=failed; checks=1
+2026-10-17T05:16:31.8586556Z [acceptance-comparison-benchmark] deleted-contract-is-unverified: PASS
+2026-10-17T05:16:31.8659272Z [acceptance-comparison-benchmark] run api-response-budget-blocked: gate=blocked; checks=2
+2026-10-17T05:16:31.8879081Z [acceptance-comparison-benchmark] execution-limit-is-not-fixed: PASS
+2026-10-17T05:16:31.9176333Z [acceptance-comparison-benchmark] tampered-evidence-blocks-retest: PASS
+2026-10-17T05:16:32.1952967Z [acceptance-comparison-benchmark] {"passed":true,"unit":"fixed-comparison-case","totalCases":12,"passedCases":12,"failedCases":0,"realRuns":12,"outputDir":"/home/runner/work/heimdall/heimdall/core/workspace/_runs/acceptance-comparison-benchmark/comparison-benchmark-2026-10-17T05-16-12-763Z-eed6e18a"}

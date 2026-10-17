@@ -1,0 +1,50 @@
+{
+  "capturedAt": "2026-10-17T05:29:24.484Z",
+  "runId": 39005540253,
+  "head": "b42826e4956d491b461bbd00af3d18b2ad702ad5",
+  "attempt": 1,
+  "status": "in_progress",
+  "conclusion": null,
+  "startedAt": "2026-10-17T05:14:39Z",
+  "updatedAt": "2026-10-17T05:14:51Z",
+  "url": "https://github.com/kael-odin/heimdall/actions/runs/39005540253",
+  "rawOperations": [
+    "run-list-569eee68-745e-4bd6-8bae-165f61372d0d",
+    "run-api-6275fb8c-b994-4cfd-bf6a-bfc9f67be2e6",
+    "jobs-api-ebbc8509-8473-4d80-b65d-27e9295cfe62"
+  ],
+  "jobs": [
+    {
+      "id": 117317141086,
+      "name": "core (lint + test)",
+      "status": "in_progress",
+      "conclusion": null,
+      "startedAt": "2026-10-17T05:14:41Z",
+      "completedAt": null,
+      "activeSteps": [
+        {
+          "number": 11,
+          "name": "Run pnpm test"
+        }
+      ]
+    },
+    {
+      "id": 117317141301,
+      "name": "core (e2e smoke, local fixture)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T05:14:41Z",
+      "completedAt": "2026-10-17T05:16:34Z",
+      "activeSteps": []
+    },
+    {
+      "id": 117317141307,
+      "name": "console (build)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T05:14:41Z",
+      "completedAt": "2026-10-17T05:15:07Z",
+      "activeSteps": []
+    }
+  ]
+}

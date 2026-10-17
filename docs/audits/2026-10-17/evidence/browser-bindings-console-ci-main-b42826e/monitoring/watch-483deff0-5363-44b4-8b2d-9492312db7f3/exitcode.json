@@ -1,0 +1,23 @@
+{
+  "executable": "node",
+  "args": [
+    "core/workspace/_runs/browser-bindings-console-ci-main-b42826e-20261017/poll-ci.mjs",
+    "--watch"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "startedAt": "2026-10-17T05:23:05.885Z",
+  "finishedAt": "2026-10-17T05:34:09.664Z",
+  "code": 0,
+  "signal": null,
+  "error": null,
+  "stdout": {
+    "path": "stdout.log",
+    "bytes": 4252,
+    "sha256": "23fc2bb992f1deec852f634dae0ac71719e5516a471fc16bd986ed123ce6f50a"
+  },
+  "stderr": {
+    "path": "stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

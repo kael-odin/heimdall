@@ -1,0 +1,86 @@
+﻿2026-10-17T05:14:44.0084383Z ##[group]Run actions/checkout@v7
+2026-10-17T05:14:44.0085405Z with:
+2026-10-17T05:14:44.0085918Z   repository: kael-odin/heimdall
+2026-10-17T05:14:44.0090337Z   token: ***
+2026-10-17T05:14:44.0090839Z   ssh-strict: true
+2026-10-17T05:14:44.0091321Z   ssh-user: git
+2026-10-17T05:14:44.0091808Z   persist-credentials: true
+2026-10-17T05:14:44.0092333Z   clean: true
+2026-10-17T05:14:44.0092814Z   sparse-checkout-cone-mode: true
+2026-10-17T05:14:44.0093387Z   fetch-depth: 1
+2026-10-17T05:14:44.0093853Z   fetch-tags: false
+2026-10-17T05:14:44.0094336Z   show-progress: true
+2026-10-17T05:14:44.0094824Z   lfs: false
+2026-10-17T05:14:44.0095276Z   submodules: false
+2026-10-17T05:14:44.0095773Z   set-safe-directory: true
+2026-10-17T05:14:44.0096321Z   allow-unsafe-pr-checkout: false
+2026-10-17T05:14:44.0097367Z ##[endgroup]
+2026-10-17T05:14:44.1497725Z Syncing repository: kael-odin/heimdall
+2026-10-17T05:14:44.1504092Z ##[group]Getting Git version info
+2026-10-17T05:14:44.1506467Z Working directory is '/home/runner/work/heimdall/heimdall'
+2026-10-17T05:14:44.1510643Z [command]/usr/bin/git version
+2026-10-17T05:14:44.1599763Z git version 2.55.0
+2026-10-17T05:14:44.1606293Z ##[endgroup]
+2026-10-17T05:14:44.1653855Z Temporarily overriding HOME='/home/runner/work/_temp/f7b7cf86-0576-4e37-92de-dbb7181e36f0' before making global git config changes
+2026-10-17T05:14:44.1657122Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-17T05:14:44.1660017Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/heimdall/heimdall
+2026-10-17T05:14:44.1732550Z Deleting the contents of '/home/runner/work/heimdall/heimdall'
+2026-10-17T05:14:44.1735001Z ##[group]Determining repository object format
+2026-10-17T05:14:44.1738027Z ##[endgroup]
+2026-10-17T05:14:44.1740677Z ##[group]Initializing the repository
+2026-10-17T05:14:44.1742278Z [command]/usr/bin/git init /home/runner/work/heimdall/heimdall
+2026-10-17T05:14:44.1919239Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-17T05:14:44.1922679Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-17T05:14:44.1925693Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-17T05:14:44.1928912Z hint: call:
+2026-10-17T05:14:44.1930587Z hint:
+2026-10-17T05:14:44.1932999Z hint: 	git config --global init.defaultBranch <name>
+2026-10-17T05:14:44.1936086Z hint:
+2026-10-17T05:14:44.1958466Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-17T05:14:44.1960586Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-17T05:14:44.1963685Z hint:
+2026-10-17T05:14:44.1966109Z hint: 	git branch -m <name>
+2026-10-17T05:14:44.1968557Z hint:
+2026-10-17T05:14:44.1971408Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-17T05:14:44.1974783Z Initialized empty Git repository in /home/runner/work/heimdall/heimdall/.git/
+2026-10-17T05:14:44.1980238Z [command]/usr/bin/git remote add origin https://github.com/kael-odin/heimdall
+2026-10-17T05:14:44.2240771Z ##[endgroup]
+2026-10-17T05:14:44.2265748Z ##[group]Disabling automatic garbage collection
+2026-10-17T05:14:44.2272157Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-17T05:14:44.2281264Z ##[endgroup]
+2026-10-17T05:14:44.2284886Z ##[group]Setting up auth
+2026-10-17T05:14:44.2287683Z Removing SSH command configuration
+2026-10-17T05:14:44.2289834Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-17T05:14:44.2300203Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-17T05:14:44.2691277Z Removing HTTP extra header
+2026-10-17T05:14:44.2693173Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-17T05:14:44.2789481Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-17T05:14:44.3022538Z Removing includeIf entries pointing to credentials config files
+2026-10-17T05:14:44.3024932Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-17T05:14:44.3063984Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-17T05:14:44.3356671Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-4f9a5de9-9f1d-4b96-9952-6ef048ad8931.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-17T05:14:44.3407967Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/heimdall/heimdall/.git.path /home/runner/work/_temp/git-credentials-4f9a5de9-9f1d-4b96-9952-6ef048ad8931.config
+2026-10-17T05:14:44.3452725Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/heimdall/heimdall/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-4f9a5de9-9f1d-4b96-9952-6ef048ad8931.config
+2026-10-17T05:14:44.3504768Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-4f9a5de9-9f1d-4b96-9952-6ef048ad8931.config
+2026-10-17T05:14:44.3550369Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-4f9a5de9-9f1d-4b96-9952-6ef048ad8931.config
+2026-10-17T05:14:44.3591914Z ##[endgroup]
+2026-10-17T05:14:44.3593977Z ##[group]Fetching the repository
+2026-10-17T05:14:44.3601141Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +b42826e4956d491b461bbd00af3d18b2ad702ad5:refs/remotes/origin/main
+2026-10-17T05:14:48.0796608Z From https://github.com/kael-odin/heimdall
+2026-10-17T05:14:48.0808835Z  * [new ref]         b42826e4956d491b461bbd00af3d18b2ad702ad5 -> origin/main
+2026-10-17T05:14:48.0813935Z [command]/usr/bin/git branch --list --remote origin/main
+2026-10-17T05:14:48.0846534Z   origin/main
+2026-10-17T05:14:48.0860116Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-10-17T05:14:48.0892506Z b42826e4956d491b461bbd00af3d18b2ad702ad5
+2026-10-17T05:14:48.0907173Z ##[endgroup]
+2026-10-17T05:14:48.0909127Z ##[group]Determining the checkout info
+2026-10-17T05:14:48.0911126Z ##[endgroup]
+2026-10-17T05:14:48.0912412Z [command]/usr/bin/git sparse-checkout disable
+2026-10-17T05:14:48.0975384Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-17T05:14:48.1037793Z ##[group]Checking out the ref
+2026-10-17T05:14:48.1050332Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-10-17T05:14:48.6273429Z Switched to a new branch 'main'
+2026-10-17T05:14:48.6289639Z branch 'main' set up to track 'origin/main'.
+2026-10-17T05:14:48.6338030Z ##[endgroup]
+2026-10-17T05:14:48.6417537Z [command]/usr/bin/git log -1 --format=%H
+2026-10-17T05:14:48.6431716Z b42826e4956d491b461bbd00af3d18b2ad702ad5

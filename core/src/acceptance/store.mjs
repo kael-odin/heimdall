@@ -7,7 +7,8 @@ import { summarizeAcceptanceReport, acceptanceMarkdown } from './report.mjs';
 import { writeAtomicFileSync } from './atomic-file.mjs';
 import { createLegacyAcceptanceReadScope, rejectManagedAcceptanceFields } from './managed-access.mjs';
 import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './managed-run-schema.mjs';
-import { createAcceptanceReadScope, captureAcceptanceRunHead, captureAcceptanceRunFile, captureManagedCompletedRun } from './managed-run-reader.mjs';
+import { createAcceptanceReadScope, createAcceptanceDisplayReadScope, captureAcceptanceRunHead,
+  captureAcceptanceRunFile, captureManagedCompletedRun } from './managed-run-reader.mjs';
 import { acceptanceRunView } from './run-view.mjs';
 import { recoverLegacyAcceptanceRuns } from './recovery.mjs';
 
@@ -83,6 +84,10 @@ export function readLegacyAcceptanceRun(runId, { root = ACCEPTANCE_ROOT, managed
   scope.assertCurrent();
   return manifest;
 }
+function displayHeads(root, managedRead, capture) {
+  const scope = createAcceptanceDisplayReadScope({ root: resolve(root), managedRead });
+  const result = capture(scope); scope.assertCurrent(); return result;
+}
 export function readAcceptanceRun(runId, { root = ACCEPTANCE_ROOT, managedRead } = {}) {
   acceptanceRunDir(runId, root);
   if (!existsSync(root)) return null;
@@ -90,6 +95,13 @@ export function readAcceptanceRun(runId, { root = ACCEPTANCE_ROOT, managedRead }
   const head = captureAcceptanceRunHead(runId, { scope });
   scope.assertCurrent();
   return head?.manifest ?? null;
+}
+/** Request-local display version only. Mutations, admission, recovery and
+ * evidence consumers must use the strict readAcceptanceRun boundary above. */
+export function readAcceptanceDisplayRun(runId, { root = ACCEPTANCE_ROOT, managedRead } = {}) {
+  acceptanceRunDir(runId, root);
+  if (!existsSync(root)) return null;
+  return displayHeads(root, managedRead, scope => captureAcceptanceRunHead(runId, { scope })?.manifest ?? null);
 }
 export function updateAcceptanceRun(runId, patch, { root = ACCEPTANCE_ROOT } = {}) {
   rejectManagedAcceptanceFields(patch);
@@ -128,26 +140,26 @@ function listLegacyAcceptanceRuns({ root = ACCEPTANCE_ROOT, limit = 100, managed
 }
 export function listAcceptanceRuns({ root = ACCEPTANCE_ROOT, limit = 100, managedRead } = {}) {
   if (!existsSync(root)) return [];
-  const scope = createAcceptanceReadScope({ root: resolve(root), managedRead });
-  const names = [], handle = opendirSync(root);
-  try {
-    let seen = 0, entry;
-    while ((entry = handle.readSync())) {
-      if (++seen > 4096) throw new ManagedAcceptanceRunError('MANAGED_RUN_INTEGRITY_FAILED');
-      if (RUN_ID.test(entry.name)) names.push(entry.name);
-    }
-  } finally { handle.closeSync(); }
-  const runs = names.map(runId => {
+  return displayHeads(root, managedRead, scope => {
+    const names = [], handle = opendirSync(root);
     try {
-      const head = captureAcceptanceRunHead(runId, { scope });
-      return head ? acceptanceRunView(head.manifest) : null;
-    } catch (error) {
-      return { runId, name: '验收记录无法核验', status: 'failed', gate: 'blocked',
-        code: error.code ?? 'RUN_UNREADABLE', error: '运行记录无法安全读取，原现场已保留。' };
-    }
-  }).filter(Boolean).sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? ''))).slice(0, limit);
-  scope.assertCurrent();
-  return runs;
+      let seen = 0, entry;
+      while ((entry = handle.readSync())) {
+        if (++seen > 4096) throw new ManagedAcceptanceRunError('MANAGED_RUN_INTEGRITY_FAILED');
+        if (RUN_ID.test(entry.name)) names.push(entry.name);
+      }
+    } finally { handle.closeSync(); }
+    const runs = names.map(runId => {
+      try {
+        const head = captureAcceptanceRunHead(runId, { scope });
+        return head ? acceptanceRunView(head.manifest) : null;
+      } catch (error) {
+        return { runId, name: '验收记录无法核验', status: 'failed', gate: 'blocked',
+          code: error.code ?? 'RUN_UNREADABLE', error: '运行记录无法安全读取，原现场已保留。' };
+      }
+    }).filter(Boolean).sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? ''))).slice(0, limit);
+    return runs;
+  });
 }
 export function recoverAcceptanceRuns({ root = ACCEPTANCE_ROOT } = {}) {
   return recoverLegacyAcceptanceRuns({ root });

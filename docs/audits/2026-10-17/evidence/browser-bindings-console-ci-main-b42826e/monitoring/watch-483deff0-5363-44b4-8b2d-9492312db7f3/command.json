@@ -1,0 +1,9 @@
+{
+  "executable": "node",
+  "args": [
+    "core/workspace/_runs/browser-bindings-console-ci-main-b42826e-20261017/poll-ci.mjs",
+    "--watch"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "startedAt": "2026-10-17T05:23:05.885Z"
+}

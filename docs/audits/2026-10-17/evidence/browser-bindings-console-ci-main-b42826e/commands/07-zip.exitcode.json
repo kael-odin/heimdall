@@ -1,0 +1,24 @@
+{
+  "tag": "07-zip",
+  "executable": "gh",
+  "args": [
+    "api",
+    "repos/kael-odin/heimdall/actions/runs/39005540253/logs"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "startedAt": "2026-10-17T05:38:21.530Z",
+  "finishedAt": "2026-10-17T05:38:24.724Z",
+  "code": 0,
+  "signal": null,
+  "error": null,
+  "stdout": {
+    "path": "commands/07-zip.stdout.bin",
+    "bytes": 432687,
+    "sha256": "6e758bd7d8f1e923d9e80518d04e12e34f63e3aae3bd3703ee0432227d8b3e9c"
+  },
+  "stderr": {
+    "path": "commands/07-zip.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

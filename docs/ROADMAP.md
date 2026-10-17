@@ -34,6 +34,8 @@ B2.2-a 已补充[托管 Spec 准备内核](competition/acceptance-managed-spec.m
 
 Browser 所选侧来源已交付[纯字节核验内核](competition/acceptance-browser-source.md)：独立重建六基础槽及 point 槽、核验原件和所有实际引用证据、重算稳定性并从所选侧生成新 oracle；四组真实 Browser 样本与离线反例见[实施记录](audits/2026-10-17/acceptance-browser-source.md)。[owner/fence 私有读取器](competition/acceptance-browser-reading.md)原生读取 nullable 角色和全引用，保留 managed 隔离；[读取验收](audits/2026-10-17/acceptance-browser-reading.md)记录新采集闭环与对抗检查。[Schema3 分步迁移](competition/acceptance-catalog-schema3.md)建立独立来源表与兼容格式，保留完整 Spec 历史；[来源侧归属与重核验](competition/acceptance-browser-bindings.md)显式选择 baseline / target 并归属 project / release，全库同 run 与 side 唯一，target 与旧运行归属双向相容，完整 planned URL 严格匹配版本，head 提交前重建完整 projection，单条诊断读取保留历史，新采集 mirror / regression 与事务反例见[绑定验收](audits/2026-10-17/acceptance-browser-bindings.md)。现已增加[HTTP 与工作台](competition/acceptance-browser-bindings-console.md)：已存列表不读来源，单条按需重核验，专用 URL 字段隐藏整段 query，三类证据经受保护接口与 MIME / 大小 / SHA 校验后展示，迟到读取与未知 POST 通过共享目录状态恢复，详见[工作台验收](audits/2026-10-17/acceptance-browser-bindings-console.md)。后续建设 Browser 完整批准预览、候选、批准、选用和固定来源执行，当前返回 `executionReady:false`；操作归档与持久 BUG 账本继续独立推进。
 
+运行轮询已补充[原子发布期间的稳定展示读取](audits/2026-10-17/acceptance-display-head-race.md)，修复普通 worker 更新进度时的误拒绝。展示版本不能授权来源快照、证据下载或写操作；原工作台精确提交的 CI 失败与修复验证分别归档。
+
 ## 主目标：独立站点镜像
 
 目标是持续提高可克隆站点的覆盖率，并使导出包在声明的范围内真正脱离原站运行。每个包按 [产品定义](../PRD.md) 标注可查看快照、可离线浏览、可离线交互或完整业务替代等级；覆盖率、失败原因和未测范围与等级一起交付。实现顺序：

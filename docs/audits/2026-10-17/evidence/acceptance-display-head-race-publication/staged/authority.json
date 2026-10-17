@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "readyForVerification": true,
+  "preparedAt": "2026-10-17",
+  "readyMeaning": "Schema authority frozen; execution also requires root ready notification, received for working-tree pass only.",
+  "packerSourceRoot": "core/workspace/_runs/acceptance-display-head-evidence-packer-20261017",
+  "packerSha256": {
+    "pack.py": "12df8a8e82185874815bd4443c68abd29934a7f55960bd62e0d7e8ffb4442399",
+    "inputs.json": "fd9b3dcf1f8c6847ea7110790df7c127a5f2769629d661007b308cf91296e893",
+    "PUBLIC-README.md": "7ef941e224aa7bea100d064c9b6e075e59d5558fce4d7085a7acbebdc7e20d3e",
+    "README.md": "14385af6d7968c464d8c67d3a5f59f3c398f7ff1f8340d69024974d3a98f8577"
+  },
+  "groupIds": [
+    "01-original-ci",
+    "02-initial-race-failure",
+    "03-abandoned-retry-targeted",
+    "04-abandoned-retry-validation",
+    "05-intermediate-independent-review",
+    "06-abandoned-retry-smoke-failure",
+    "07-runtime-diagnostic-failure",
+    "08-review-harness-failure",
+    "09-review-harness-corrected",
+    "10-final-independent-review",
+    "11-final-four-stages",
+    "12-full-core",
+    "13-docs-links",
+    "14-forge-smoke",
+    "15-console-clone-cdp-gate",
+    "16-console-clone-cdp-runtime",
+    "17-packer-source",
+    "18-browser-bindings-ui-gate",
+    "19-browser-bindings-ui-runtime"
+  ],
+  "sourceGuardPath": "core/workspace/_runs/display-head-hotfix-gates-20261017/full-core-7430f2b6-e083-41da-8732-e0746aa1d02d/source-before.json",
+  "sourceGuardSha256": "62dda1aee2548bde937bfc1a5355d54dff850a8b3e1b6200d2f202e3eb2b9d02",
+  "fullSourceCount": 542,
+  "frozenAuthorityPath": "core/workspace/_runs/acceptance-display-version-final-1792219805648/source-before.json",
+  "frozenAuthoritySha256": "45b02e500f7e732a89ec8e80dd0e4775ea9083e43fbe9b05911759d431461af4",
+  "frozenSources": [
+    {
+      "path": "core/src/engine-server.mjs",
+      "bytes": 131436,
+      "sha256": "a38b5a4a650b7ba693ccbbe8caa4509bf7743c25412d188409b04351ea78b2d1"
+    },
+    {
+      "path": "core/src/acceptance/managed-run-reader.mjs",
+      "bytes": 20385,
+      "sha256": "04916edde625b5b02fba6541833375faace00ed32bb840bad71b25a74a063a47"
+    },
+    {
+      "path": "core/src/acceptance/store.mjs",
+      "bytes": 26031,
+      "sha256": "0d53346020669bb5a12ef0b966e7afb9632cbd1bdd1cd40cac01efffc5c02054"
+    },
+    {
+      "path": "core/test/acceptance-display-head-race.test.mjs",
+      "bytes": 25591,
+      "sha256": "08f09a154fdd0977cf9b248d82bf846fc8e7f5cddd2cdac9ef5090551daa5545"
+    },
+    {
+      "path": "core/scripts/smoke-acceptance-console.mjs",
+      "bytes": 13452,
+      "sha256": "7f31c24de47518cdf840e47907dabe087637bacba08c4d2b1bdddfe4ce606e9c"
+    }
+  ],
+  "frozenGroupId": "11-final-four-stages",
+  "finalSnapshotGroups": [
+    "12-full-core",
+    "13-docs-links",
+    "14-forge-smoke",
+    "15-console-clone-cdp-gate",
+    "18-browser-bindings-ui-gate"
+  ],
+  "preservedCiPath": "docs/audits/2026-10-17/evidence/browser-bindings-console-ci-main-b42826e",
+  "preservedCiCompletedSha256": "f0045d5f606ea2ed1ca901072956a2e3464689555ee13da0e8678f57faf9fa5b",
+  "preservedCiFileCount": 351,
+  "allowedCredentialDigests": []
+}

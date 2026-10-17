@@ -1,0 +1,332 @@
+{
+  "schemaVersion": 1,
+  "zipEntries": 46,
+  "fileCount": 46,
+  "bytes": 2012649,
+  "crcTestPassed": true,
+  "allExtractedBytesEqualZipEntries": true,
+  "files": [
+    {
+      "path": "0_console (build).txt",
+      "bytes": 21371,
+      "sha256": "8d30f97aebbf85de2b82b41e51bbc76bababe3523f6327803ea73ff93aebfd29",
+      "compressedBytes": 5734,
+      "crc32": "b36a862c"
+    },
+    {
+      "path": "console (build)/system.txt",
+      "bytes": 569,
+      "sha256": "a7c6613a459ed376b530458fcbdc2e0f580af7e5dfce8026096e7192a0ddcda1",
+      "compressedBytes": 266,
+      "crc32": "bd2ffaee"
+    },
+    {
+      "path": "console (build)/1_Set up job.txt",
+      "bytes": 2154,
+      "sha256": "2342401d94a1a3b4ff7a1adaff64aac9c42be80f6678fe42b6d35c6fde9c3392",
+      "compressedBytes": 869,
+      "crc32": "9591cdef"
+    },
+    {
+      "path": "console (build)/2_Run actions_checkout@v7.txt",
+      "bytes": 7281,
+      "sha256": "4931548cf4e13e4e7ef9bed51112b5764edc34c144aedae7feb1c1ef4072cdd7",
+      "compressedBytes": 2030,
+      "crc32": "c0c1bf0f"
+    },
+    {
+      "path": "console (build)/3_Run pnpm_action-setup@v6.txt",
+      "bytes": 1808,
+      "sha256": "aa9a9e819a005313a7da82deb4c062ccacdc72aab51e617756a09319423a6902",
+      "compressedBytes": 749,
+      "crc32": "44e49e32"
+    },
+    {
+      "path": "console (build)/4_Run actions_setup-node@v7.txt",
+      "bytes": 1763,
+      "sha256": "7f2b5979cc954d3fd97934e4613ed2b61b23f7a884977b22ebd5e6fcb780478c",
+      "compressedBytes": 737,
+      "crc32": "e0e4645d"
+    },
+    {
+      "path": "console (build)/5_Run pnpm install --frozen-lockfile.txt",
+      "bytes": 1823,
+      "sha256": "42b23ea96fdd5cac9d67a2066850a08526f7f2e343a65ee6e8874998a75ff4d2",
+      "compressedBytes": 702,
+      "crc32": "666743f5"
+    },
+    {
+      "path": "console (build)/6_Run pnpm build.txt",
+      "bytes": 2040,
+      "sha256": "b169ef112ba8805564f711351e403c3313013486017e85397c36b7de5f4e2349",
+      "compressedBytes": 870,
+      "crc32": "e1116a28"
+    },
+    {
+      "path": "console (build)/10_Post Run actions_setup-node@v7.txt",
+      "bytes": 227,
+      "sha256": "1db0100f83001e9b921f5d14f3d31ea63d81dab1406cd5462a762b73637a433f",
+      "compressedBytes": 185,
+      "crc32": "b035b692"
+    },
+    {
+      "path": "console (build)/11_Post Run pnpm_action-setup@v6.txt",
+      "bytes": 103,
+      "sha256": "2fc156ca0be9c26db86bd78ef1c61e5ae8cc3e64c2916879a6fb75f30ae99d41",
+      "compressedBytes": 94,
+      "crc32": "9ed1da7e"
+    },
+    {
+      "path": "console (build)/12_Post Run actions_checkout@v7.txt",
+      "bytes": 4138,
+      "sha256": "1ec0a39c47d15cb0505193ebd6d77d386eb2c6957ae900fa89d6caf438574fd5",
+      "compressedBytes": 908,
+      "crc32": "84420db9"
+    },
+    {
+      "path": "console (build)/13_Complete job.txt",
+      "bytes": 61,
+      "sha256": "55b3d75a905cb0ab7dbe7046ae3f26d05365ad09981fe9f213caf2cc25105b1a",
+      "compressedBytes": 67,
+      "crc32": "332376d0"
+    },
+    {
+      "path": "1_core (e2e smoke, local fixture).txt",
+      "bytes": 50138,
+      "sha256": "4a33285fa515501a6ea55f4c97a0aa031b943c03a76f72d448579114e05eeaa9",
+      "compressedBytes": 11017,
+      "crc32": "56607a22"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/system.txt",
+      "bytes": 567,
+      "sha256": "ff6ea1b8191e561232410654f073a3beb272a758892638df061953120c67085e",
+      "compressedBytes": 277,
+      "crc32": "a8254e30"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/1_Set up job.txt",
+      "bytes": 2173,
+      "sha256": "580867e28b1f9e058df7475abbc1984acb908f52e05e3491aa2c694c09f95045",
+      "compressedBytes": 876,
+      "crc32": "c9e034d6"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/2_Run actions_checkout@v7.txt",
+      "bytes": 7281,
+      "sha256": "d5b16d8ce592bb7d35083ec3cc47daef622bef882edd2408381a1347a1539a46",
+      "compressedBytes": 1997,
+      "crc32": "1a9786d0"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/3_Run pnpm_action-setup@v6.txt",
+      "bytes": 1808,
+      "sha256": "71d332b1fabba267af5b389339b525b71693b2fd4aba3ba4c0080f11207d7546",
+      "compressedBytes": 748,
+      "crc32": "eb5f35d5"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/4_Run actions_setup-node@v7.txt",
+      "bytes": 1760,
+      "sha256": "8a998951045abd9227b41c46a5c227a3f95c545bca0da1cc06fea49613212ae8",
+      "compressedBytes": 733,
+      "crc32": "ef6b5271"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/5_Run pnpm install --frozen-lockfile.txt",
+      "bytes": 1665,
+      "sha256": "7692a501715f61e58f000cbf5f9b1dae991ba477b75429b904173b9483240acc",
+      "compressedBytes": 666,
+      "crc32": "e28d25d2"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/6_Run pnpm exec playwright install --with-deps chromium.txt",
+      "bytes": 22779,
+      "sha256": "46a379b7ba16e60bc10376081fcdc769b01c3da731822f1dc61f493a249e0c9c",
+      "compressedBytes": 4037,
+      "crc32": "aa8e4ecb"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/7_Run pnpm smoke.txt",
+      "bytes": 739,
+      "sha256": "0812f6a6cc46d4e3419495a85923a351d5bc27c22373a15a5c028f2511b7041e",
+      "compressedBytes": 468,
+      "crc32": "3ad15139"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/8_Acceptance detection benchmark (known truth fixtures).txt",
+      "bytes": 2084,
+      "sha256": "840e1f1528d5776d90eb5698f8d765db355ea1f2141dd8cff3aab551a2fd0e1e",
+      "compressedBytes": 680,
+      "crc32": "782a8f4a"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/9_Spec API benchmark (OpenAPI candidates and known truth).txt",
+      "bytes": 2129,
+      "sha256": "14ebc3dc456209cbf76e0a6e2bbf6fea858bdf7ff4482c2caac3ae5f4760b292",
+      "compressedBytes": 635,
+      "crc32": "30c66a38"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/10_Acceptance comparison benchmark (known retest and false-closure cases).txt",
+      "bytes": 3230,
+      "sha256": "28cee1dbf092215dfd485834b4d1f54f5e6ba2f26c13da29330c9d327e419451",
+      "compressedBytes": 885,
+      "crc32": "c674acbb"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/18_Post Run actions_setup-node@v7.txt",
+      "bytes": 227,
+      "sha256": "cf22c4581ec6e93ab24a3384e2671dc475e24b9c73841ad9e8a0d0d5f4c05e3b",
+      "compressedBytes": 185,
+      "crc32": "5ce5c02c"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/19_Post Run pnpm_action-setup@v6.txt",
+      "bytes": 103,
+      "sha256": "02596a845061cbfca047419f414ba98d100ed267b1c547024c518b133df43518",
+      "compressedBytes": 92,
+      "crc32": "e8abbd13"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/20_Post Run actions_checkout@v7.txt",
+      "bytes": 4138,
+      "sha256": "8b1ca91c89179e1c5f7bd02ae86b6b9092195cf53eef7174fbda8dfd6c2f3375",
+      "compressedBytes": 906,
+      "crc32": "e7302053"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/21_Complete job.txt",
+      "bytes": 61,
+      "sha256": "ce11f034f046d5c711a3f644ac5514825ff25d12eab3ee83d8bb2b72bc8930e0",
+      "compressedBytes": 67,
+      "crc32": "d8e02cc7"
+    },
+    {
+      "path": "2_core (lint + test).txt",
+      "bytes": 933909,
+      "sha256": "714a38fa685e865bb642980c3b2f6765131f4cf551e98a431966dddfa3496f17",
+      "compressedBytes": 191727,
+      "crc32": "4ea18d6c"
+    },
+    {
+      "path": "core (lint + test)/system.txt",
+      "bytes": 566,
+      "sha256": "366ee20326aa75d3d1da528eb45e7a9667d1899a4d723a4975ddbef741835651",
+      "compressedBytes": 276,
+      "crc32": "9d9940e5"
+    },
+    {
+      "path": "core (lint + test)/1_Set up job.txt",
+      "bytes": 2289,
+      "sha256": "9541b1515173da9aae2d75ed1b31de555fc4c7a2ee981daecb8bc913fdecff9a",
+      "compressedBytes": 912,
+      "crc32": "78e10688"
+    },
+    {
+      "path": "core (lint + test)/2_Run actions_checkout@v7.txt",
+      "bytes": 7281,
+      "sha256": "223f99cfda603357fd5cb1957f2f41c53edae7ef2a97740bc2b4f583675483f0",
+      "compressedBytes": 2005,
+      "crc32": "74157e6a"
+    },
+    {
+      "path": "core (lint + test)/3_Run pnpm_action-setup@v6.txt",
+      "bytes": 1808,
+      "sha256": "6e9354af3e8306ed2cc3d38dec573666a7af12782d613a39d671df401ac987e1",
+      "compressedBytes": 750,
+      "crc32": "6d069219"
+    },
+    {
+      "path": "core (lint + test)/4_Run actions_setup-node@v7.txt",
+      "bytes": 1760,
+      "sha256": "328f119838eae3218c52a853e439ec9366d82573969fd1384b49f0cc9b10eca3",
+      "compressedBytes": 735,
+      "crc32": "8b72ab3a"
+    },
+    {
+      "path": "core (lint + test)/5_Run pnpm install --frozen-lockfile.txt",
+      "bytes": 1662,
+      "sha256": "75bd636cdb7dc17e488bf695998e787aa142834d618a8cc79dd7139696dafbe9",
+      "compressedBytes": 670,
+      "crc32": "da1bacdb"
+    },
+    {
+      "path": "core (lint + test)/6_Run pnpm lint.txt",
+      "bytes": 441,
+      "sha256": "091405f588d6384eecbf5c09188b3d29cb4bb7b3c65ff205202beb723646a2f1",
+      "compressedBytes": 256,
+      "crc32": "c741a2ea"
+    },
+    {
+      "path": "core (lint + test)/7_Run pnpm checkdocs.txt",
+      "bytes": 486,
+      "sha256": "7cdb3bb43e5072e7fd141a8e1aa4d7353969331d5f54232c01915af8d8faf809",
+      "compressedBytes": 280,
+      "crc32": "4f04b661"
+    },
+    {
+      "path": "core (lint + test)/8_Run pnpm exec playwright install --with-deps chromium.txt",
+      "bytes": 22779,
+      "sha256": "af39586c8983ba1718bcead40ff59cdcce425af74faeac97dec739627f13b666",
+      "compressedBytes": 4068,
+      "crc32": "e951c26d"
+    },
+    {
+      "path": "core (lint + test)/9_Run pnpm --dir .._console install --frozen-lockfile.txt",
+      "bytes": 1858,
+      "sha256": "d7242ed249773f13364d3d73acb38bc5d6479b023a274d5b9893c4847c2e91c6",
+      "compressedBytes": 724,
+      "crc32": "999fcc55"
+    },
+    {
+      "path": "core (lint + test)/10_Run pnpm --dir .._console build.txt",
+      "bytes": 2074,
+      "sha256": "65f22272aedd18fcee7614170390c29af041188037ba95f60be9b4f63eb15cbd",
+      "compressedBytes": 880,
+      "crc32": "05f8d76b"
+    },
+    {
+      "path": "core (lint + test)/11_Run pnpm test.txt",
+      "bytes": 881769,
+      "sha256": "dbcece8a7ae69f2b0258ea5a017b8b4842cf5041299591f03a4126026a5e8f61",
+      "compressedBytes": 179885,
+      "crc32": "92f981bf"
+    },
+    {
+      "path": "core (lint + test)/12_Acceptance console (real browser, local model stub).txt",
+      "bytes": 1867,
+      "sha256": "22c2cd22f6729baab72854b6f3c7d853fb722ce4d4fb25e80edc7c06a2b770bf",
+      "compressedBytes": 740,
+      "crc32": "a3a36630"
+    },
+    {
+      "path": "core (lint + test)/27_Preserve acceptance smoke failure diagnostics.txt",
+      "bytes": 3578,
+      "sha256": "05403ac257db1b10f43d1b05ebf74ac55faadb8bb486973e1e09b4cc7f1b7a39",
+      "compressedBytes": 989,
+      "crc32": "7de89276"
+    },
+    {
+      "path": "core (lint + test)/55_Post Run pnpm_action-setup@v6.txt",
+      "bytes": 103,
+      "sha256": "3a58d314b8d810752eab99705d9b648fa3ef5c52a4b5e5a9a86eeabe329cbd28",
+      "compressedBytes": 92,
+      "crc32": "f51c01e2"
+    },
+    {
+      "path": "core (lint + test)/56_Post Run actions_checkout@v7.txt",
+      "bytes": 4138,
+      "sha256": "e6bd373f80dd2716c708a33ea988c114b4337a2f05c3225ebf74d896ea3b67b8",
+      "compressedBytes": 905,
+      "crc32": "86ba9160"
+    },
+    {
+      "path": "core (lint + test)/57_Complete job.txt",
+      "bytes": 61,
+      "sha256": "47c42197ea4b0dd0475b6efbf90e93e05668466a90490fa5615a86324460e9be",
+      "compressedBytes": 67,
+      "crc32": "e9620fcb"
+    }
+  ]
+}

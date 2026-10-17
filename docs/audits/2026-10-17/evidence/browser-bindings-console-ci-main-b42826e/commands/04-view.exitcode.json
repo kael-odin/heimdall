@@ -1,0 +1,29 @@
+{
+  "tag": "04-view",
+  "executable": "gh",
+  "args": [
+    "run",
+    "view",
+    "39005540253",
+    "--repo",
+    "kael-odin/heimdall",
+    "--json",
+    "attempt,conclusion,createdAt,databaseId,displayTitle,event,headBranch,headSha,jobs,name,number,startedAt,status,updatedAt,url,workflowDatabaseId,workflowName"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "startedAt": "2026-10-17T05:38:21.485Z",
+  "finishedAt": "2026-10-17T05:38:23.689Z",
+  "code": 0,
+  "signal": null,
+  "error": null,
+  "stdout": {
+    "path": "commands/04-view.stdout.bin",
+    "bytes": 11373,
+    "sha256": "4c3f2a3164b3f19f7e93e5726eb393c3c0be5af3bb1168e3f7a0ef8721968d7c"
+  },
+  "stderr": {
+    "path": "commands/04-view.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

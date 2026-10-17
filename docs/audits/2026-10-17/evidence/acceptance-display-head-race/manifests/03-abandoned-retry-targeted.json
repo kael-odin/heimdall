@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "03-abandoned-retry-targeted",
+  "sourceAbsolutePath": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\acceptance-head-publication-hotfix-5cf063fd-9574-46b3-b0a7-b2ef9c20bd2f",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792216349137514600
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792216349136459100,
+      "bytes": 221,
+      "sha256": "28689a8d27a0a65a628be4b0359fdd7d35f75113a48d5976578479b16867e2e1"
+    },
+    {
+      "path": "exitcode.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792216349137514600,
+      "bytes": 82,
+      "sha256": "46417a1dfae253374b0cce71c018dcbd1d816a2d14e40bc86fb33cc7bf31da4f"
+    },
+    {
+      "path": "stderr.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792216349137514600,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792216349136459100,
+      "bytes": 827,
+      "sha256": "fa8e0073f0da8aa99e8c0101a33e1c6b1d8e6c8fe8df2239f62058c517dc12ef"
+    }
+  ]
+}

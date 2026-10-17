@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "08-review-harness-failure",
+  "sourceAbsolutePath": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\display-original-bytes-independent-2026-10-17T06-47-26-939Z-dff5fa85",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792219649934369300
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219649892493500,
+      "bytes": 352,
+      "sha256": "43f76c5a452876667e2e5e956c64801fc7889fca49d51a97eef00a4f7dd13354"
+    },
+    {
+      "path": "exit.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219649893536700,
+      "bytes": 55,
+      "sha256": "87a5168a6c15ac183f4274005ffa09bd86abf6c237dd84dde645c2e5569731a5"
+    },
+    {
+      "path": "probe.mjs",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219646983686700,
+      "bytes": 10207,
+      "sha256": "e8d5014894de1fb7b9a730e7437f78e28795f4254bd7aed08d703146bfe595a5"
+    },
+    {
+      "path": "source-sha256.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219649933834100,
+      "bytes": 1157,
+      "sha256": "4604f436aa8e2ba6e7cf06691025a831729273c3d55c99a25a89f0f1aec1bd7f"
+    },
+    {
+      "path": "stderr.txt",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219649893015800,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.jsonl",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219649892493500,
+      "bytes": 4192,
+      "sha256": "a1c9ce856aee41cae47be11a255fc2da5477682d1655c157ec9cdb33dbcb6071"
+    },
+    {
+      "path": "summary.md",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792219649934369300,
+      "bytes": 1010,
+      "sha256": "304f633a114be1ba444f8c245a913f563fd500e7f9936ed2d514aab9a7054cf1"
+    }
+  ]
+}

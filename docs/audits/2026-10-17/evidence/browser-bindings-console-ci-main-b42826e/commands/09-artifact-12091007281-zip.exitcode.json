@@ -1,0 +1,24 @@
+{
+  "tag": "09-artifact-12091007281-zip",
+  "executable": "gh",
+  "args": [
+    "api",
+    "repos/kael-odin/heimdall/actions/artifacts/12091007281/zip"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "startedAt": "2026-10-17T05:38:27.538Z",
+  "finishedAt": "2026-10-17T05:38:30.612Z",
+  "code": 0,
+  "signal": null,
+  "error": null,
+  "stdout": {
+    "path": "commands/09-artifact-12091007281-zip.stdout.bin",
+    "bytes": 77476,
+    "sha256": "e3218e39dc97e22c928bcd05f8b8f472c1ac343994afd2888940eb0aba1c164a"
+  },
+  "stderr": {
+    "path": "commands/09-artifact-12091007281-zip.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

@@ -1,0 +1,25 @@
+﻿2026-10-17T05:14:51.3904533Z ##[group]Run actions/setup-node@v7
+2026-10-17T05:14:51.3904692Z with:
+2026-10-17T05:14:51.3904799Z   node-version: 22
+2026-10-17T05:14:51.3904905Z   cache: pnpm
+2026-10-17T05:14:51.3905030Z   cache-dependency-path: core/pnpm-lock.yaml
+2026-10-17T05:14:51.3905182Z   check-latest: false
+2026-10-17T05:14:51.3906549Z   token: ***
+2026-10-17T05:14:51.3906660Z   package-manager-cache: true
+2026-10-17T05:14:51.3906789Z env:
+2026-10-17T05:14:51.3906931Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T05:14:51.3907092Z ##[endgroup]
+2026-10-17T05:14:51.4712053Z Found in cache @ /opt/hostedtoolcache/node/22.23.3/x64
+2026-10-17T05:14:51.5529460Z ##[group]Environment details
+2026-10-17T05:14:51.8083911Z node: v22.23.3
+2026-10-17T05:14:51.8084502Z npm: 10.9.9
+2026-10-17T05:14:51.8085049Z yarn: 1.22.22
+2026-10-17T05:14:51.8096124Z ##[endgroup]
+2026-10-17T05:14:51.8112793Z [command]/home/runner/setup-pnpm/node_modules/.bin/bin/pnpm store path --silent
+2026-10-17T05:14:52.0768963Z /home/runner/setup-pnpm/node_modules/.bin/store/v11
+2026-10-17T05:14:52.2441849Z Cache hit for: node-cache-Linux-x64-pnpm-a61ef3ef9f390cbdaf714a34a7a0dacc1101cec65153a34b3c2e6cbe5c6dbd91
+2026-10-17T05:14:53.1747972Z Received 16788502 of 16788502 (100.0%), 21.1 MBs/sec
+2026-10-17T05:14:53.1748593Z Cache Size: ~16 MB (16788502 B)
+2026-10-17T05:14:53.1774169Z [command]/usr/bin/tar -xf /home/runner/work/_temp/2f3d00af-c87f-43ef-8a88-3c1304153e0c/cache.tzst -P -C /home/runner/work/heimdall/heimdall --use-compress-program unzstd
+2026-10-17T05:14:53.3282660Z Cache restored successfully
+2026-10-17T05:14:53.3293344Z Cache restored from key: node-cache-Linux-x64-pnpm-a61ef3ef9f390cbdaf714a34a7a0dacc1101cec65153a34b3c2e6cbe5c6dbd91

@@ -1,0 +1,9 @@
+{
+  "head": "b42826e4956d491b461bbd00af3d18b2ad702ad5",
+  "repo": "kael-odin/heimdall",
+  "branch": "main",
+  "event": "push",
+  "destination": "docs/audits/2026-10-17/evidence/browser-bindings-console-ci-main-b42826e",
+  "policy": "Remote exact-SHA CI only; new-only wx raw records; no source edits, local tests, browser runs, stage or commit.",
+  "createdAt": "2026-10-17T05:18:09.225Z"
+}

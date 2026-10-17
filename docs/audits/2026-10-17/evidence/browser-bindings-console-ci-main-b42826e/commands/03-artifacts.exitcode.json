@@ -1,0 +1,24 @@
+{
+  "tag": "03-artifacts",
+  "executable": "gh",
+  "args": [
+    "api",
+    "repos/kael-odin/heimdall/actions/runs/39005540253/artifacts?per_page=100"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "startedAt": "2026-10-17T05:38:21.471Z",
+  "finishedAt": "2026-10-17T05:38:22.308Z",
+  "code": 0,
+  "signal": null,
+  "error": null,
+  "stdout": {
+    "path": "commands/03-artifacts.stdout.bin",
+    "bytes": 723,
+    "sha256": "f5a32f11439a39af9d5a8d49d1ad7bce4241a1820788bca9280f69fcaf938995"
+  },
+  "stderr": {
+    "path": "commands/03-artifacts.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

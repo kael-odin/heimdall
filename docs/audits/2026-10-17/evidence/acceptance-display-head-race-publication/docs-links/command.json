@@ -1,0 +1,9 @@
+{
+  "cwd": "D:\\Github-Star\\heimdall",
+  "command": "node",
+  "args": [
+    "core/scripts/check-markdown-links.mjs"
+  ],
+  "startedAt": "2026-10-17T07:32:46.682Z",
+  "outputDirectory": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\display-head-hotfix-gates-20261017\\final-docs-links-215c6a87-b9e6-497c-b9a2-9a6621aa9dd2"
+}

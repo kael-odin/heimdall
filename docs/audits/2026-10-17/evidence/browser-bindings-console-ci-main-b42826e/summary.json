@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "runId": 39005540253,
+  "head": "b42826e4956d491b461bbd00af3d18b2ad702ad5",
+  "attempt": 1,
+  "headBranch": "main",
+  "event": "push",
+  "status": "completed",
+  "conclusion": "failure",
+  "runUrl": "https://github.com/kael-odin/heimdall/actions/runs/39005540253",
+  "createdAt": "2026-10-17T05:14:39Z",
+  "startedAt": "2026-10-17T05:14:39Z",
+  "updatedAt": "2026-10-17T05:33:37Z",
+  "archivedAt": "2026-10-17T05:47:39.571Z",
+  "jobs": [
+    {
+      "id": 117317141086,
+      "name": "core (lint + test)",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-17T05:14:41Z",
+      "completedAt": "2026-10-17T05:33:36Z"
+    },
+    {
+      "id": 117317141301,
+      "name": "core (e2e smoke, local fixture)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T05:14:41Z",
+      "completedAt": "2026-10-17T05:16:34Z"
+    },
+    {
+      "id": 117317141307,
+      "name": "console (build)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T05:14:41Z",
+      "completedAt": "2026-10-17T05:15:07Z"
+    }
+  ],
+  "coreSuite": {
+    "tests": 2273,
+    "suites": 0,
+    "pass": 2269,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 4,
+    "todo": 0,
+    "duration_ms": 1045616.546411
+  },
+  "coreSkippedTests": [
+    "ok 7 - real Windows reader holding a non-delete-sharing file handle releases after 180ms and replacement succeeds # SKIP",
+    "ok 531 - real Windows non-share-delete reader releases and replacement retries successfully # SKIP",
+    "ok 1164 - Docker network-none delivery serves SSR, SPA and data-driven SPA bundles without a source workspace # SKIP",
+    "ok 1165 - Docker network-none delivery persists adapter writes in a volume after container recreation # SKIP"
+  ],
+  "coreCountsFromZipStep": "extracted/core (lint + test)/11_Run pnpm test.txt",
+  "acceptanceSmokes": {
+    "total": 15,
+    "successful": 0,
+    "failed": 1,
+    "skipped": 14,
+    "steps": [
+      {
+        "number": 12,
+        "name": "Acceptance console (real browser, local model stub)",
+        "status": "completed",
+        "conclusion": "failure",
+        "startedAt": "2026-10-17T05:33:10Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:smoke"
+      },
+      {
+        "number": 13,
+        "name": "Spec contract console (real browser, local API fixture)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:spec:smoke"
+      },
+      {
+        "number": 14,
+        "name": "Acceptance comparison console (explicit runs, integrity and CLI)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:comparison:smoke"
+      },
+      {
+        "number": 15,
+        "name": "Acceptance project catalog (versions, explicit bindings and two-engine isolation)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:catalog:smoke"
+      },
+      {
+        "number": 16,
+        "name": "Acceptance catalog migration (real v1 artifacts and browser continuity)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:catalog:migration:smoke"
+      },
+      {
+        "number": 17,
+        "name": "Spec baseline review (candidates, approvals, selections and source integrity)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:baseline:smoke"
+      },
+      {
+        "number": 18,
+        "name": "Managed Spec preparation (immutable contract, replay and zero execution)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:managed:prepare:smoke"
+      },
+      {
+        "number": 19,
+        "name": "Managed Spec result reading (captured evidence and zero execution)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:managed:read:smoke"
+      },
+      {
+        "number": 20,
+        "name": "Owned acceptance recovery (startup barrier, restart and zero execution)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:owned:recovery:smoke"
+      },
+      {
+        "number": 21,
+        "name": "Managed Spec execution (fresh admission, real runner, BUG and cancel)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:managed:execute:smoke"
+      },
+      {
+        "number": 22,
+        "name": "Managed execution UI (explicit click, durable recovery and stop)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:execution:ui:smoke"
+      },
+      {
+        "number": 23,
+        "name": "Browser candidate source (fresh captures and explicit healthy side)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:browser:source:smoke"
+      },
+      {
+        "number": 24,
+        "name": "Browser private source reader (owner fences and unchanged originals)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:browser:read:smoke"
+      },
+      {
+        "number": 25,
+        "name": "Browser source bindings (fresh captures, explicit sides and source revalidation)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:browser:bindings:smoke"
+      },
+      {
+        "number": 26,
+        "name": "Browser source binding console (native HTTP, source review and verified evidence)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "startedAt": "2026-10-17T05:33:34Z",
+        "completedAt": "2026-10-17T05:33:34Z",
+        "command": "pnpm acceptance:browser:bindings:ui:smoke"
+      }
+    ]
+  },
+  "phaseCConsole": {
+    "number": 26,
+    "name": "Browser source binding console (native HTTP, source review and verified evidence)",
+    "status": "completed",
+    "conclusion": "skipped",
+    "startedAt": "2026-10-17T05:33:34Z",
+    "completedAt": "2026-10-17T05:33:34Z",
+    "command": "pnpm acceptance:browser:bindings:ui:smoke"
+  },
+  "docker": {
+    "step": {
+      "number": 28,
+      "name": "Docker offline delivery (SSR + SPA + data SPA + adapter)",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-17T05:33:35Z",
+      "completedAt": "2026-10-17T05:33:35Z"
+    },
+    "tests": null,
+    "boundary": "Skipped after acceptance console failure; no Docker test result exists in this run."
+  },
+  "artifactsTotalCount": 1,
+  "downloadedArtifacts": [
+    {
+      "id": 12091007281,
+      "name": "acceptance-catalog-failure-1",
+      "metadataDigestVerified": true,
+      "archive": {
+        "path": "artifacts/12091007281/artifact.zip",
+        "bytes": 77476,
+        "sha256": "e3218e39dc97e22c928bcd05f8b8f472c1ac343994afd2888940eb0aba1c164a"
+      },
+      "extractedPath": "artifacts/12091007281/extracted",
+      "inventory": {
+        "path": "artifacts/12091007281/zip-inventory.json",
+        "bytes": 894,
+        "sha256": "5e6c543725ba4cff10d84b73d77c1368a189409f9a2035e702febe8d67af229f"
+      },
+      "zipEntries": 3,
+      "fileCount": 3,
+      "extractedBytes": 88090,
+      "crcTestPassed": true,
+      "allExtractedBytesEqualZipEntries": true
+    }
+  ],
+  "rawLog": {
+    "path": "ci.stdout.log",
+    "bytes": 1544280,
+    "sha256": "03f3a363644e4677aadbe727766fa2513548807dc58097b58da7f60f9ba170f0"
+  },
+  "rawZip": {
+    "path": "run-logs.zip",
+    "bytes": 432687,
+    "sha256": "6e758bd7d8f1e923d9e80518d04e12e34f63e3aae3bd3703ee0432227d8b3e9c",
+    "entries": 46,
+    "extractedFiles": 46,
+    "extractedBytes": 2012649
+  },
+  "strongSensitiveMatches": 0,
+  "countPolicy": "Only this remote full Core is counted once. Its success does not make the failed CI successful. First acceptance smoke failed; the next 14 including C and Docker were skipped. No local or other-commit result substitutes for them.",
+  "failure": {
+    "step": {
+      "number": 12,
+      "name": "Acceptance console (real browser, local model stub)",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-17T05:33:10Z",
+      "completedAt": "2026-10-17T05:33:34Z",
+      "command": "pnpm acceptance:smoke"
+    },
+    "sourceLocation": "core/scripts/smoke-acceptance-console.mjs:161:10",
+    "statusCode": 409,
+    "code": "MANAGED_RUN_INTEGRITY_FAILED",
+    "method": "GET",
+    "url": "http://127.0.0.1:45131/api/acceptance/runs/ac-e1fc022d-f729-4a07-88b0-d6f0d247b34f",
+    "diagnostic": "diagnostic-summary.json",
+    "artifactFailureJson": "artifacts/12091007281/extracted/acceptance-console/acceptance-failure.json",
+    "artifactScreenshot": "artifacts/12091007281/extracted/acceptance-console/acceptance-failure.png"
+  }
+}

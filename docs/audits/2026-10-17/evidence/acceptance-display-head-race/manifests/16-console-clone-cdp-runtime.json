@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "16-console-clone-cdp-runtime",
+  "sourceAbsolutePath": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\display-head-hotfix-cdp-20261017-04e6a018",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792220870912263300
+    },
+    {
+      "path": "cdp-clone-artifact.png",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220870909263800,
+      "bytes": 30993,
+      "sha256": "44e5aadd877495a10fa0ecd1779beb1db359ac0a688781da48d62b7ea336da1f"
+    },
+    {
+      "path": "cdp-console-forge.png",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220870816055300,
+      "bytes": 67342,
+      "sha256": "f6ea1ea3a98fbd97c70a36fba639031f851991cbae5b14d351372ef8fe4139d8"
+    },
+    {
+      "path": "cdp-real-forge.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220870912263300,
+      "bytes": 464,
+      "sha256": "7acdaad8d436afc35fb44a25b3e9a751830decdd2fb1038f3251385fe0e66c0e"
+    }
+  ]
+}

@@ -14,6 +14,8 @@
 
 Browser 页面的[所选侧来源核验内核](docs/competition/acceptance-browser-source.md)已增加完整证据与声明槽位检查，候选 oracle 从明确选中的参考侧或目标侧重建；[私有读取层](docs/competition/acceptance-browser-reading.md)在真实 owner 内捕获全部实际引用，支持导航失败侧的空截图，并核验目录身份与字节。[Schema3 分步迁移](docs/competition/acceptance-catalog-schema3.md)保留原 Spec 历史；[来源侧归属](docs/competition/acceptance-browser-bindings.md)明确绑定项目 / 版本、核对完整入口并在提交前重读来源。现已接入[HTTP 与归属工作台](docs/competition/acceptance-browser-bindings-console.md)：按需核对单条来源、受保护证据完整性验证、失联提交只读恢复。Browser 完整批准预览、候选、批准、选用与执行继续建设。
 
+运行列表与详情已补充[原子发布期间的稳定展示读取](docs/audits/2026-10-17/acceptance-display-head-race.md)，避免正常 worker 更新进度时误报完整性冲突；来源与证据仍走严格核验。原工作台提交自身的 CI 失败与修复验证分别保留。
+
 ## 它实际长这样
 
 左边是全站星图：每个星球是一页，大小按被站内链接的次数，连线是页与页之间的链接。右边是同一批页面的清单，每一行的「视觉」是**实测出来的**还原度，不是估计值。

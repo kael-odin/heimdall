@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "id": "10-final-independent-review",
+  "sourceAbsolutePath": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\display-original-bytes-independent-final-2026-10-17T06-53-51-327Z-a5790224",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792220033976796600
+    },
+    {
+      "path": "command.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220033936784900,
+      "bytes": 358,
+      "sha256": "914aa978cbff8cb383ee5e07dec575808424de19a433b045692c8df102d395ae"
+    },
+    {
+      "path": "exit.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220033937785700,
+      "bytes": 55,
+      "sha256": "07818db839063759e30a47b4d4da8f02386c8d4ed547f5408f3e127a77f95ad6"
+    },
+    {
+      "path": "probe.mjs",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220031370625800,
+      "bytes": 10444,
+      "sha256": "2c70d1c8b7206156bddc359540af428d947d80128c50fbf19be93b86df1bd5e6"
+    },
+    {
+      "path": "provenance.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220031370625800,
+      "bytes": 483,
+      "sha256": "bd5da5f786b09f500a2b921c4cbfd531e106fb035555ebec4ad00b9e630b5a7e"
+    },
+    {
+      "path": "source-sha256.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220033975791300,
+      "bytes": 2348,
+      "sha256": "3730973410c0abfc0fe14e744f7494da26d538364eb641d68fd5333540155e99"
+    },
+    {
+      "path": "stderr.txt",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220033937785700,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.jsonl",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220033937785700,
+      "bytes": 1464,
+      "sha256": "500d2fd03069f1c9d85ebba3ad2c3c87fead7df89c67eddfc009bc06c1d801a3"
+    },
+    {
+      "path": "summary.md",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792220033976796600,
+      "bytes": 1348,
+      "sha256": "4fcaab48fac83ce1bb203b8b885484728575d40072b0fb20b467ebf20a048eef"
+    }
+  ]
+}

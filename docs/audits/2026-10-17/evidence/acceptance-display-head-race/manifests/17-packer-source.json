@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "17-packer-source",
+  "sourceAbsolutePath": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\acceptance-display-head-evidence-packer-20261017",
+  "entries": [
+    {
+      "path": ".",
+      "kind": "directory",
+      "mode": 511,
+      "mtimeNs": 1792221443897814200
+    },
+    {
+      "path": "PUBLIC-README.md",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792221721029924100,
+      "bytes": 5063,
+      "sha256": "7ef941e224aa7bea100d064c9b6e075e59d5558fce4d7085a7acbebdc7e20d3e"
+    },
+    {
+      "path": "README.md",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792221848529839400,
+      "bytes": 3363,
+      "sha256": "14385af6d7968c464d8c67d3a5f59f3c398f7ff1f8340d69024974d3a98f8577"
+    },
+    {
+      "path": "inputs.json",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792221721028864500,
+      "bytes": 9731,
+      "sha256": "fd9b3dcf1f8c6847ea7110790df7c127a5f2769629d661007b308cf91296e893"
+    },
+    {
+      "path": "pack.py",
+      "kind": "file",
+      "mode": 438,
+      "mtimeNs": 1792221848528840100,
+      "bytes": 14955,
+      "sha256": "12df8a8e82185874815bd4443c68abd29934a7f55960bd62e0d7e8ffb4442399"
+    }
+  ]
+}

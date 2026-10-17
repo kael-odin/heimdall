@@ -74,7 +74,7 @@ function identity(path, directory, optional = false, allowHardlinks = false) {
 export function assertAcceptanceReadScope(scope, root) {
   return boundary(() => {
     const state = scopes.get(scope);
-    if (!state || typeof root !== 'string' || !root.trim() || !samePath(state.root, resolve(root))) invalid();
+    if (!state || state.display || typeof root !== 'string' || !root.trim() || !samePath(state.root, resolve(root))) invalid();
     return state.assertCurrent();
   });
 }
@@ -82,7 +82,13 @@ export function assertAcceptanceReadScope(scope, root) {
 /** The dispatch context is captured once, by one batch API. classify() does
  * no filesystem work. assertCurrent() rechecks namespace and every captured
  * head/evidence/absence, so a later run cannot invalidate an earlier result. */
-export function createAcceptanceReadScope(options = {}) {
+export const createAcceptanceReadScope = (options = {}) => createScope(options, false);
+/** Display heads retain their first stable bytes if an ordinary legacy writer
+ * atomically publishes a newer version. They never adopt that replacement in
+ * the same request. Namespace, managed facts and in-place edits stay fenced.
+ * This capability cannot be used for source snapshots or artifact captures. */
+export const createAcceptanceDisplayReadScope = (options = {}) => createScope(options, true);
+function createScope(options, display) {
   return boundary(() => {
     fields(options, ['root', 'managedRead', 'limits'], [], invalid);
     const requestedRoot = options.root === undefined ? ACCEPTANCE_ROOT : options.root;
@@ -100,7 +106,7 @@ export function createAcceptanceReadScope(options = {}) {
       if (!SHA256.test(record.sha256) || hash(record.bytes) !== record.sha256 || records.has(envelope.runId)) fail('INVALID_RECORD');
       records.set(envelope.runId, { bytes: Buffer.from(record.bytes), sha256: record.sha256 });
     }
-    const runs = new Map(), captures = new Map(); let totalBytes = 0, invalidated = false;
+    const runs = new Map(), captures = new Map(), publicationPins = new Map(); let totalBytes = 0, invalidated = false;
     const changed = () => { invalidated = true; fail(); };
     const rootFence = () => {
       try { if (!sameIdentity(rootPin, identity(root, true))) changed(); }
@@ -111,6 +117,17 @@ export function createAcceptanceReadScope(options = {}) {
       let current;
       try { current = identity(run.dir, true, true); } catch (cause) { invalidated = true; throw cause; }
       if (run.stat ? !current || !sameIdentity(run.stat, current) : current !== null) changed();
+    };
+    const publishedHead = (run, name, previous, current) => display && !records.has(run.runId)
+      && (name === 'manifest.json' || name === 'report.json') && current?.isFile() && current.nlink === 1n
+      && (!previous || previous.dev !== current.dev || previous.ino !== current.ino || previous.birthtimeNs !== current.birthtimeNs);
+    const rememberPublication = (path, current) => {
+      const pinned = publicationPins.get(path);
+      // Newer bytes are not adopted. Still reject a later in-place change to
+      // the replacement inode after its metadata was first observed.
+      if (pinned && pinned.dev === current.dev && pinned.ino === current.ino && pinned.birthtimeNs === current.birthtimeNs
+        && !sameFile(pinned, current)) changed();
+      publicationPins.set(path, current);
     };
     const run = runId => {
       runIdOf(runId); rootFence();
@@ -130,22 +147,36 @@ export function createAcceptanceReadScope(options = {}) {
         if (expected?.stat) changed();
         runFence(run); return null;
       }
-      if (expected && (!expected.stat || !sameFile(expected.stat, before))) changed();
+      if (expected && (!expected.stat || !sameFile(expected.stat, before))) {
+        if (!publishedHead(run, name, expected.stat, before)) changed();
+        rememberPublication(path, before);
+        runFence(run); return expected.stat ? expected : null;
+      }
       if (before.size < 0n || before.size > BigInt(maxBytes)) fail('JSON_BYTES_EXCEEDED');
       let descriptor;
       try {
         descriptor = fs.openSync(path, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0));
         const opened = fs.fstatSync(descriptor, { bigint: true });
-        if (!opened.isFile() || !sameFile(before, opened)) changed();
+        if (!opened.isFile()) changed();
+        if (!sameFile(before, opened) && !publishedHead(run, name, before, opened)) changed();
+        if (opened.size < 0n || opened.size > BigInt(maxBytes)) fail('JSON_BYTES_EXCEEDED');
         const bytes = Buffer.alloc(Number(opened.size)); let offset = 0;
         while (offset < bytes.length) {
           const count = fs.readSync(descriptor, bytes, offset, bytes.length - offset, offset);
           if (!Number.isSafeInteger(count) || count < 1 || count > bytes.length - offset) changed();
           offset += count;
         }
-        if (fs.readSync(descriptor, Buffer.alloc(1), 0, 1, bytes.length) !== 0
-          || !sameFile(opened, fs.fstatSync(descriptor, { bigint: true }))
-          || !sameFile(opened, identity(path, false, false, allowHardlinks))) changed();
+        if (fs.readSync(descriptor, Buffer.alloc(1), 0, 1, bytes.length) !== 0) changed();
+        const finished = fs.fstatSync(descriptor, { bigint: true });
+        const current = identity(path, false, false, allowHardlinks);
+        const replaced = publishedHead(run, name, opened, current);
+        // Linux may unlink the old inode while this descriptor still pins its
+        // bytes. Only link/ctime changes from replacement are tolerated here.
+        const released = replaced && sameIdentity(opened, finished) && opened.size === finished.size
+          && opened.mtimeNs === finished.mtimeNs && finished.nlink <= 1n;
+        if (!sameFile(opened, finished) && !released) changed();
+        if (!sameFile(opened, current) && !replaced) changed();
+        if (replaced) rememberPublication(path, current);
         runFence(run);
         return { run, name, path, stat: opened, bytes, maxBytes, allowHardlinks };
       } finally { if (descriptor !== undefined) fs.closeSync(descriptor); }
@@ -196,7 +227,7 @@ export function createAcceptanceReadScope(options = {}) {
       rootFence(); return true;
     });
     const scope = Object.freeze({ root, classify, assertCurrent });
-    scopes.set(scope, { root, limits, run, read, compare, runFence, classify, assertCurrent,
+    scopes.set(scope, { root, limits, display, run, read, compare, runFence, classify, assertCurrent,
       captureFence(run) {
         for (const capture of captures.values()) if (capture.run === run) compare(capture);
         runFence(run);
@@ -253,7 +284,7 @@ export function captureAcceptanceRunFile(runId, name, options) {
     runIdOf(runId);
     fields(options, ['scope', 'maxBytes'], ['scope'], invalid);
     const state = scopes.get(options.scope);
-    if (!state || typeof name !== 'string' || name.length > 240) invalid();
+    if (!state || state.display || typeof name !== 'string' || name.length > 240) invalid();
     const isHead = name === 'manifest.json' || name === 'report.json';
     if (!isHead && (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(?:png|json)$/i.test(name)
       || RESERVED.has(name.toLowerCase()) || name.toLowerCase().includes('.tmp.'))) invalid();
@@ -301,7 +332,9 @@ function references(report, limits) {
  * files is a caller-owned Map<basename, Buffer>; binding stays outside snapshot. */
 export function captureManagedCompletedRun(runId, options) {
   return boundary(() => {
-    runIdOf(runId); const state = context(options), captured = head(runId, state);
+    runIdOf(runId); const state = context(options);
+    if (state.display) invalid();
+    const captured = head(runId, state);
     if (!captured) return null;
     if (captured.kind !== 'managed' || captured.manifest.status !== 'completed' || !captured.report) fail();
     const run = state.run(runId), evidence = new Map();

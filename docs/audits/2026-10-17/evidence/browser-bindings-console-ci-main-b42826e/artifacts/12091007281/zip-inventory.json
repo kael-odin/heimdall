@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "zipEntries": 3,
+  "fileCount": 3,
+  "bytes": 88090,
+  "crcTestPassed": true,
+  "allExtractedBytesEqualZipEntries": true,
+  "files": [
+    {
+      "path": "acceptance-console/acceptance-failure.png",
+      "bytes": 77696,
+      "sha256": "ba70bc57ddcfded0a1d3b8b46b08989717c23ababf6b2bccc1a847d549926e79",
+      "compressedBytes": 76000,
+      "crc32": "dbbbd997"
+    },
+    {
+      "path": "acceptance-console/acceptance-failure.json",
+      "bytes": 10186,
+      "sha256": "1169533a13c1bb04f07d40069423272bc6fb91dc0d033b0258b6e4b534912b09",
+      "compressedBytes": 781,
+      "crc32": "f74d2809"
+    },
+    {
+      "path": "acceptance-console/engine-error.log",
+      "bytes": 208,
+      "sha256": "1b4fc98a5dbfebe5457d5f4fd494ba0334e96e6543e69dae63e6ef9e85a987a6",
+      "compressedBytes": 161,
+      "crc32": "ef492d54"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "ciConclusion": "failure",
+  "runId": 39005540253,
+  "head": "b42826e4956d491b461bbd00af3d18b2ad702ad5",
+  "completedAt": "2026-10-17T05:47:40.913Z",
+  "manifest": {
+    "path": "file-manifest.json",
+    "bytes": 67610,
+    "sha256": "707a2a31cf307748620821f53966b6e64d44fdf048015697cfd543cd8f64a2d9"
+  },
+  "sha256sums": {
+    "path": "SHA256SUMS.txt",
+    "bytes": 44130,
+    "sha256": "7fc94e3fcc57a5602438ffeae0f62fd2a2707db3f6905b8ab940b5caf9f14996"
+  },
+  "originalInputFiles": 339,
+  "allOriginalInputsUnchanged": true,
+  "copiedOriginalBytesRoundTripPassed": true,
+  "originalLogZipCrcPassed": true,
+  "extractedLogFiles": 46,
+  "artifactZipCount": 1,
+  "extractedArtifactFiles": 3,
+  "strongSensitiveMatchCount": 0
+}

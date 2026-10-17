@@ -53,6 +53,8 @@ Impeccable 机械检测仅执行一次，新组件没有 finding；唯一警示�
 
 来源归属父提交 `3b7af9a` 的[自身 CI](evidence/browser-bindings-ci-main-3b7af9a/README.md)已单独归档；本片不会用父提交的成功替代自己的远端 CI，推送后按本片精确 SHA 跟踪。
 
+发布后已核对本片精确提交 `b42826e4956d491b461bbd00af3d18b2ad702ad5` 的自身 CI，run `39005540253` / attempt 1 为 **failure**。Linux 完整 Core 通过，但第一个 Acceptance console smoke 的真实浏览器 GET 出现 409，后续 14 个验收 smoke 与 Docker 步骤 skipped，因此本片不能据该 CI 标记远端通过。[原始 CI 失败包](evidence/browser-bindings-console-ci-main-b42826e/README.md)保留完整日志与附件；[读取竞态修复记录](acceptance-display-head-race.md)单独说明复现、失败方案及后续验证，不改写本报告原有本机结果。
+
 ## 边界与下一步
 
 这是一份来源组织核对预览，有意省略批准所需的完整内容。不能把显示 DTO 交回内部 schema、重算原实体摘要或作为 Browser 批准合同。原始采集详情经 SHA 核对后按保存字节作文本展示，可能包含页面文字、链接与断言观察；旧 release / run / plan / report / evidence 接口继续保留各自合同，本片不声明全系统脱敏。

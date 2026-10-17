@@ -1,0 +1,46 @@
+{
+  "source": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\display-head-publication-independent-20261017\\working-tree-335cb099-dce7-4e52-90bb-4a103d29a619",
+  "destination": "D:\\Github-Star\\heimdall\\docs\\audits\\2026-10-17\\evidence\\acceptance-display-head-race-publication\\working-tree",
+  "files": [
+    {
+      "path": "authority.json",
+      "bytes": 3140,
+      "sha256": "a5e38a0b26ba8199d1b7ded111ba53c96891ef21d04c8107d0a450b683c03a01"
+    },
+    {
+      "path": "command.json",
+      "bytes": 443,
+      "sha256": "9b08105a8fa9f77a16d2e95411099d30a32e0738a9efb8a42f9b7c955da6c4d5"
+    },
+    {
+      "path": "exit.json",
+      "bytes": 72,
+      "sha256": "957ceff0e28f9e3f683ba01e28e95706eab53f0f949a9eef404def5b0359b5a8"
+    },
+    {
+      "path": "result/credential-scan.json",
+      "bytes": 776,
+      "sha256": "4289e7971873c75a555a3ef9eb2b76d6922e50c47656011a8d887ab04d69f96e"
+    },
+    {
+      "path": "result/verification.json",
+      "bytes": 3789,
+      "sha256": "2bd6c277e487f3a7856d4695fd31e2bd8cd71d67a810e09a79897edcc70ab958"
+    },
+    {
+      "path": "stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "bytes": 211,
+      "sha256": "03244869eefc2a39a5f94f23393dd9b79b45d04506197307257e99176343124e"
+    },
+    {
+      "path": "verify-package.py",
+      "bytes": 24513,
+      "sha256": "f84a1cc154191d00b07bbc31a9bd436d7f67b6ac1523f0189e816fdc1de34ce3"
+    }
+  ]
+}
