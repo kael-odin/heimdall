@@ -36,6 +36,7 @@
     "acceptance:browser:bindings:smoke": "node core/scripts/smoke-acceptance-browser-bindings.mjs",
     "acceptance:browser:bindings:ui:smoke": "node core/scripts/smoke-acceptance-browser-bindings-console.mjs",
     "acceptance:browser:bindings:v4:smoke": "node core/scripts/smoke-acceptance-browser-bindings-console.mjs --migrate-catalog",
-    "acceptance:browser:candidates:ui:smoke": "node core/scripts/smoke-acceptance-browser-candidates-console.mjs"
+    "acceptance:browser:candidates:ui:smoke": "node core/scripts/smoke-acceptance-browser-candidates-console.mjs",
+    "acceptance:browser:execute:smoke": "node core/scripts/smoke-acceptance-browser-execution-console.mjs"
   }
 }

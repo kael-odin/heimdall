@@ -472,9 +472,11 @@ test('full human review preview is rejected over budget instead of truncating a 
   rejects(changed, 'SOURCE_PREVIEW_BUDGET', 'target');
 });
 
-test('Browser verifier compatibility is a fixed independently reviewed pair rather than the Spec compatibility set', async () => {
+test('Browser verifier compatibility is the fixed reviewed legacy and D3 pairs with a pinned source manifest', async () => {
   const reviewed = ['e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8',
-    '8d1b75da7efad4f18b279a466ebdf880b1e24bb641ca80070cd03d0700376e9f'];
+    '8d1b75da7efad4f18b279a466ebdf880b1e24bb641ca80070cd03d0700376e9f',
+    '2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337',
+    '270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2'];
   assert.deepEqual(SUPPORTED_BROWSER_VERIFIERS_V1, reviewed);
   const names = ['schema.mjs', 'urls.mjs', 'runner.mjs', 'report.mjs', 'spec-schema.mjs',
     'spec-runner.mjs', 'response-schema.mjs', 'openapi.mjs', 'identity.mjs'];
@@ -482,8 +484,12 @@ test('Browser verifier compatibility is a fixed independently reviewed pair rath
     new URL('../src/verify/compare.mjs', import.meta.url)].map(url => readFile(url, 'utf8')));
   const fingerprint = values => sha(values.slice(0, -1).join('\n') + values.at(-1));
   const lf = sources.map(value => value.replaceAll('\r\n', '\n'));
-  assert.equal(fingerprint(lf), reviewed[0]);
-  assert.equal(fingerprint(lf.map(value => value.replaceAll('\n', '\r\n'))), reviewed[1]);
+  const manifest = JSON.parse(await readFile(new URL('./fixtures/browser-verifier-reviewed-d3.json', import.meta.url), 'utf8'));
+  assert.equal(manifest.reviewedParent, '007760ed80019b4a5369ab284ea7ba734f18d0d2');
+  assert.equal(fingerprint(lf), reviewed[2]); assert.equal(manifest.lfFingerprint, reviewed[2]);
+  assert.equal(fingerprint(lf.map(value => value.replaceAll('\n', '\r\n'))), reviewed[3]); assert.equal(manifest.crlfFingerprint, reviewed[3]);
+  assert.deepEqual(manifest.files, [...names, '../verify/compare.mjs'].map((name, i) => ({ name,
+    lfSha256: sha(lf[i]), crlfSha256: sha(lf[i].replaceAll('\n', '\r\n')) })));
   const source = await loadSource('target-unavailable'), original = project(source);
   for (const verifierFingerprint of reviewed) {
     const changed = cloneSource(source); changed.snapshot.report.verifierFingerprint = verifierFingerprint; seal(changed);

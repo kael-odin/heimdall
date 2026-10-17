@@ -5,11 +5,13 @@ import { mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 import { projectSpecBaselineCandidate, SPEC_CANDIDATE_LIMITS_V1, SUPPORTED_SPEC_VERIFIERS_V1 } from '../src/acceptance/candidate-projection.mjs';
 import { AcceptanceCatalogError, candidateProjectionOf } from '../src/acceptance/catalog-schema.mjs';
 import { hashAcceptanceValue } from '../src/acceptance/identity.mjs';
 import { normalizeSpecPlan } from '../src/acceptance/spec-schema.mjs';
 import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
+import { runAcceptance } from '../src/acceptance/runner.mjs';
 import { createAcceptanceRun, finishAcceptanceRun, readAcceptanceSnapshot, acceptanceRunDir } from '../src/acceptance/store.mjs';
 import { summarizeAcceptanceReport } from '../src/acceptance/report.mjs';
 import { previewOpenApi } from '../src/acceptance/openapi.mjs';
@@ -249,6 +251,8 @@ test('verifier support is an exact reviewed set and real current completion reta
     '32fab6ccb46b1954e7a64c81783699a715013062e6c0bfb6ba19299afc18654f',
     'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8',
     '8d1b75da7efad4f18b279a466ebdf880b1e24bb641ca80070cd03d0700376e9f',
+    '2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337',
+    '270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2',
   ];
   assert.deepEqual(SUPPORTED_SPEC_VERIFIERS_V1, reviewed);
   const files = ['schema.mjs', 'urls.mjs', 'runner.mjs', 'report.mjs', 'spec-schema.mjs',
@@ -259,18 +263,54 @@ test('verifier support is an exact reviewed set and real current completion reta
   // sources, with the final compare source appended without an extra separator.
   const fingerprint = values => sha(values.slice(0, -1).join('\n') + values.at(-1));
   const lf = sources.map(source => source.replaceAll('\r\n', '\n'));
-  assert.equal(fingerprint(lf), reviewed[2]);
-  assert.equal(fingerprint(lf.map(source => source.replaceAll('\n', '\r\n'))), reviewed[3]);
+  const manifest = JSON.parse(await readFile(new URL('./fixtures/browser-verifier-reviewed-d3.json', import.meta.url), 'utf8'));
+  assert.equal(manifest.reviewedParent, '007760ed80019b4a5369ab284ea7ba734f18d0d2');
+  assert.equal(fingerprint(lf), reviewed[4]); assert.equal(manifest.lfFingerprint, reviewed[4]);
+  assert.equal(fingerprint(lf.map(source => source.replaceAll('\n', '\r\n'))), reviewed[5]);
+  assert.equal(manifest.crlfFingerprint, reviewed[5]);
+  assert.deepEqual(manifest.files, [...files, '../verify/compare.mjs'].map((name, index) => ({ name,
+    lfSha256: sha(lf[index]), crlfSha256: sha(lf[index].replaceAll('\n', '\r\n')) })));
   const actual = fingerprint(sources);
-  assert.ok([reviewed[2], reviewed[3]].includes(actual), 'mixed or unreviewed checkout bytes need explicit review');
+  assert.ok([reviewed[4], reviewed[5]].includes(actual), 'mixed or unreviewed checkout bytes need explicit review');
   const source = await materialize(t);
   assert.equal(source.snapshot.report.verifierFingerprint, actual);
   assert.equal(project(source).projection.verifierFingerprint, actual);
-  const unreviewed = [...sources]; unreviewed[5] += '\n// Unreviewed source byte change.\n';
-  const unknown = fingerprint(unreviewed);
-  assert.equal(SUPPORTED_SPEC_VERIFIERS_V1.includes(unknown), false);
-  const changed = cloneSource(source); changed.snapshot.report.verifierFingerprint = unknown; seal(changed);
-  rejects(changed, 'SOURCE_VERIFIER_UNSUPPORTED');
+  for (const index of [2, 5]) {
+    const unreviewed = [...sources]; unreviewed[index] += '\n// Unreviewed source byte change.\n';
+    const unknown = fingerprint(unreviewed);
+    assert.equal(SUPPORTED_SPEC_VERIFIERS_V1.includes(unknown), false);
+    const changed = cloneSource(source); changed.snapshot.report.verifierFingerprint = unknown; seal(changed);
+    rejects(changed, 'SOURCE_VERIFIER_UNSUPPORTED');
+  }
+});
+
+test('D3 shared runner preserves Spec contracts, verdicts, identities and evidence without launching Browser', async t => {
+  let browserLaunches = 0;
+  t.mock.method(chromium, 'launch', () => { browserLaunches++; throw new Error('Spec must delegate before Browser execution.'); });
+  const fixture = await startAcceptanceApiFixture(); t.after(() => fixture.close());
+  const root = await mkdtemp(join(tmpdir(), 'heimdall-spec-delegation-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const normalized = report => {
+    const value = copy(report); delete value.startedAt; delete value.endedAt; delete value.specApproval.recordedAt;
+    return value;
+  };
+  for (const approved of [false, true]) {
+    const plan = manualPlan({ targetUrl: fixture.targetUrl }, { approved,
+      checks: [contract({ id: 'healthy' }), contract({ id: 'bug', path: '/wrong-code' })] });
+    const runId = 'ac-' + randomUUID(), directDir = join(root, `${approved}-direct`), sharedDir = join(root, `${approved}-shared`);
+    const directEvents = [], sharedEvents = [], requestsBefore = fixture.requests.length;
+    const direct = await runSpecAcceptance(plan, { runId, outputDir: directDir, onEvent: event => directEvents.push(event) });
+    const shared = await runAcceptance(plan, { runId, outputDir: sharedDir, onEvent: event => sharedEvents.push(event) });
+    assert.deepEqual(normalized(shared), normalized(direct));
+    assert.deepEqual(sharedEvents, directEvents);
+    assert.deepEqual(shared.checks.map(check => [check.status, check.verdict]), approved
+      ? [['passed', 'match'], ['failed', 'bug']] : [['blocked', 'needs_review'], ['blocked', 'needs_review']]);
+    assert.equal(fixture.requests.length - requestsBefore, approved ? 4 : 0);
+    const directFiles = (await readdir(directDir)).sort(), sharedFiles = (await readdir(sharedDir)).sort();
+    assert.deepEqual(sharedFiles, directFiles);
+    for (const file of directFiles) assert.deepEqual(await readFile(join(sharedDir, file)), await readFile(join(directDir, file)), file);
+  }
+  assert.equal(browserLaunches, 0);
 });
 
 test('strict pure inputs reject accessors/proxies/Map substitutes without evaluating user hooks', async t => {

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "reviewedParent": "007760ed80019b4a5369ab284ea7ba734f18d0d2",
+  "lfFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+  "crlfFingerprint": "270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2",
+  "files": [
+    {
+      "name": "schema.mjs",
+      "lfSha256": "d7fb1300e177128db9a9b99088e881edc0f3c10e2d79dc1bc476230bbae33660",
+      "crlfSha256": "ce52667446af02da517230ce28822e93cd86147e0bba4660ec2f5e17a01f8061"
+    },
+    {
+      "name": "urls.mjs",
+      "lfSha256": "1e1cd552b7020878526afe34cc2219a432ba9bc304fd6ae1f7bc4994d7a7a503",
+      "crlfSha256": "cfbbc1bf714495a185e172aef8e5d30ac18aec0c584ccd46cab6cd84faa7b8bd"
+    },
+    {
+      "name": "runner.mjs",
+      "lfSha256": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57",
+      "crlfSha256": "9fe4bcbe16c216abbc51f007d15b9af0bd28f14bcfb90d1a6dba65b12cd80982"
+    },
+    {
+      "name": "report.mjs",
+      "lfSha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15",
+      "crlfSha256": "955df221101a3d0b656601aa2385e67da538389848a2dc732f7acfb8a4d15626"
+    },
+    {
+      "name": "spec-schema.mjs",
+      "lfSha256": "2c652249fb80c725f1480c378a56e94f3296bb9a1ece19d0cc55c95302540919",
+      "crlfSha256": "396c69b10055a5fb4c3fca2e94485f7c9fbdaf1a9130e894c26b5ff3f5b5ef0d"
+    },
+    {
+      "name": "spec-runner.mjs",
+      "lfSha256": "aa06081911341b9cad6df79088e1d631dc596d9ce59ffde40cab145b24855206",
+      "crlfSha256": "1aa8355212f51ac1dbf0b367fe36c016fa7fd053213dababe3b73b030875fe6d"
+    },
+    {
+      "name": "response-schema.mjs",
+      "lfSha256": "b386b5cd8991f52d187e1414ddd8178e99d5192bf1582446631c22d57235d255",
+      "crlfSha256": "924bf35d5f5db5bcb0f71d05d6dcf89abba58dab99669bf5aa734ee34c3ae59f"
+    },
+    {
+      "name": "openapi.mjs",
+      "lfSha256": "a1f94491cdbe219389a9b96bd078385f170699500d5c356fc9d5aee725ca4b7e",
+      "crlfSha256": "4b4da8b6be1ec25371042d1e89e3c9d3c745b7a419944504006fb95801810e7b"
+    },
+    {
+      "name": "identity.mjs",
+      "lfSha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5",
+      "crlfSha256": "0dbd96065bc227136ee201f9e023fca14176e3933e34ffbe8199de91421f1455"
+    },
+    {
+      "name": "../verify/compare.mjs",
+      "lfSha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68",
+      "crlfSha256": "ec57ff3bdb7865d1756f3321548136bcd58f9eb6674b8653ed1d4a757036bdb7"
+    }
+  ]
+}

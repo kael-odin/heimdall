@@ -156,7 +156,7 @@ try {
   const beforeMaintenance = heads(); await component().getByTestId('browser-candidate-maintenance').waitFor();
   assert.equal((await latest()).schemaVersion, 3); assert.deepEqual(heads(), beforeMaintenance); assert.equal(posts().length, 0);
   checks.schema3ShowsMaintenanceWithoutImplicitMigration = true;
-  await stop(engine); const migrationPreview = await maintenance('--preview', [], 'maintenance-preview');
+  await page.goto('about:blank', { waitUntil: 'load' }); await stop(engine); const migrationPreview = await maintenance('--preview', [], 'maintenance-preview');
   const p = migrationPreview.source;
   await maintenance('--apply', ['--expected-generation-id', p.generationId, '--expected-revision', String(p.revision), '--expected-head-sha256', p.headSha256, '--expected-previous-sha256', p.previousSha256 ?? 'none', '--expected-plan-digest', migrationPreview.planDigest], 'maintenance-apply');
   await startEngine(); await openConsole(a.project.id); assert.equal((await latest()).schemaVersion, 4); checks.explicitOfflineCLIUpgradeThenOrdinaryRestart = true;
@@ -235,7 +235,7 @@ try {
   assert.equal(/query-review-sentinel|fill-value-review-sentinel|assertion-literal-review-sentinel/.test(JSON.stringify(storage)), false);
   checks.fullSourceNeverEntersStorageOrHrefs = true;
   await closeReview(); save('blob-facts-before-restart.json', await assertBlobsReleased('before restart'));
-  const beforeRestart = heads(); await stop(engine); await startEngine(); await openConsole(b.project.id); await openStored(savedB);
+  const beforeRestart = heads(); await page.goto('about:blank', { waitUntil: 'load' }); await stop(engine); await startEngine(); await openConsole(b.project.id); await openStored(savedB);
   assert.deepEqual(heads(), beforeRestart); assert.equal((await detail(b.project.id)).browserCandidates[0].id, savedB.id); checks.restartReadsSameDurableCandidateWithoutWrites = true;
   await closeReview(); save('blob-facts-after-restart.json', await assertBlobsReleased('after restart'));
   const catalog = parse(join(ROOT, 'catalog.json'));

@@ -7,6 +7,8 @@ import { fields } from './catalog-schema.mjs';
 const UUID = '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
 const OPERATION_ID = new RegExp(`^ao-${UUID}$`);
 const RUN_ID = new RegExp(`^ac-${UUID}$`);
+const BROWSER_OPERATION_ID = new RegExp(`^bo-${UUID}$`);
+const BROWSER_RUN_ID = new RegExp(`^br-${UUID}$`);
 const TASK_ID = new RegExp(`^a-${UUID}$`);
 const REASONS = new Set(['CANCELLED', 'WATCHDOG_TIMEOUT', 'WATCHDOG_STALLED', 'ENGINE_SHUTDOWN', 'ENGINE_RESTARTED', 'EXECUTION_FAILED']);
 const BLOCK_CODES = new Set(['EXECUTION_BLOCKED', 'OWNER_LOST', 'PUBLICATION_UNCERTAIN', 'LEASE_LOST', 'ENGINE_SHUTDOWN', 'ENGINE_RESTARTED']);
@@ -88,8 +90,10 @@ export function createAcceptanceExecutionRuntime() {
   return Object.freeze({
     reserve(input) {
       shape(input, ['kind', 'operationId'], ['kind']);
-      if (!['legacy', 'managed'].includes(input.kind)
-          || Object.hasOwn(input, 'operationId') && !id(input.operationId, OPERATION_ID)) invalid();
+      if (!['legacy', 'managed', 'browser'].includes(input.kind)
+          || input.kind === 'browser' && !id(input.operationId, BROWSER_OPERATION_ID)
+          || Object.hasOwn(input, 'operationId') && !id(input.operationId,
+            input.kind === 'browser' ? BROWSER_OPERATION_ID : OPERATION_ID)) invalid();
       if (closing) fail('EXECUTION_CLOSED');
       if (blocked) fail('EXECUTION_BLOCKED');
       if (current) fail('EXECUTION_BUSY');
@@ -113,7 +117,7 @@ export function createAcceptanceExecutionRuntime() {
     bind(lease, input) {
       const record = held(lease);
       shape(input, ['runId', 'taskId', 'onStop'], ['runId', 'taskId']);
-      if (!id(input.runId, RUN_ID) || !id(input.taskId, TASK_ID)) invalid();
+      if (!id(input.runId, record.kind === 'browser' ? BROWSER_RUN_ID : RUN_ID) || !id(input.taskId, TASK_ID)) invalid();
       const onStop = Object.hasOwn(input, 'onStop') ? synchronousHandler(input.onStop) : null;
       if (record.runId !== null && (record.runId !== input.runId || record.taskId !== input.taskId)
           || record.onStop && onStop && record.onStop !== onStop) invalid();

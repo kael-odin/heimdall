@@ -14,6 +14,7 @@ import { projectSpecBaselineCandidate } from './candidate-projection.mjs';
 import { readBrowserCandidateSource } from './browser-candidate-source.mjs';
 import { projectBrowserBaselineCandidate } from './browser-candidate-projection.mjs';
 import { buildBrowserCandidateReview, assertBrowserCandidateEnvelope } from './browser-candidate-review.mjs';
+import { compileFixedBrowserContract } from './browser-fixed-contract.mjs';
 import { prepareManagedSpecContract } from './managed-spec-plan.mjs';
 import { createManagedSpecDispatchStore } from './managed-dispatch-store.mjs';
 import { managedSpecDispatchRequestFingerprint } from './managed-dispatch-schema.mjs';
@@ -795,6 +796,67 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
   function readBrowserBaselineCandidateEvidence(projectId, candidateId, input) {
     return captureBrowserCandidateEvidence(projectId, candidateId, input, true);
   }
+  /** Single-operation approval uses the current complete candidate, under the
+   * catalog queue. Publishing an operation does not mutate global selections. */
+  function withBrowserExecutionCandidate(projectId, raw, options) {
+    let input;
+    try {
+      id(projectId, 'ap');
+      input = inputOf(raw, ['operationId', 'candidateId', 'contentDigest', 'targetReleaseId']);
+      if (!/^bo-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(input.operationId ?? '')) invalid('Browser 操作 ID 无效。');
+      id(input.candidateId, 'bc'); id(input.targetReleaseId, 'ar'); digestOf(input.contentDigest);
+      fields(options, ['assertAdmission', 'publish'], ['assertAdmission', 'publish'], invalid);
+      for (const callback of [options.assertAdmission, options.publish]) {
+        if (typeof callback !== 'function' || types.isProxy(callback) || types.isAsyncFunction(callback)
+          || types.isGeneratorFunction(callback)) invalid('Browser 接纳与发布必须同步执行。');
+      }
+    } catch (cause) { return Promise.reject(cause); }
+    const admission = () => {
+      assertOwned(); actualRoot();
+      const result = options.assertAdmission();
+      if (result !== undefined && result !== true) {
+        consumeAdmissionPromise(result);
+        throw error('BROWSER_EXECUTION_UNAVAILABLE', 503, '本次 Browser 执行接纳已停止。');
+      }
+    };
+    return queue(() => {
+      admission();
+      const current = readFile('catalog.json'), catalog = requireCurrent(current.catalog);
+      if (catalog.generationId !== input.expectedGenerationId || catalog.revision !== input.expectedRevision) {
+        throw error('STALE_REVISION', 409, '项目目录已变化，请重新完整复核后确认。',
+          { generationId: catalog.generationId, revision: catalog.revision });
+      }
+      const previous = readFile('catalog.previous.json', { optional: true });
+      validatePredecessor(current, previous);
+      const candidate = findBrowserCandidate(catalog, projectId, input.candidateId);
+      if (candidate.contentDigest !== input.contentDigest) throw error('BASELINE_CHANGED', 409, '候选内容与本次确认不一致。');
+      const targetRelease = catalog.releases[input.targetReleaseId];
+      if (!targetRelease) missing('目标版本');
+      if (targetRelease.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, '目标版本不属于本项目。');
+      const { review, material } = materializeBrowserReview(catalog, projectId, candidate.sourceBindingId);
+      assertBrowserCandidateMatches(candidate, review);
+      const compiled = compileFixedBrowserContract({ material, review, candidate, targetRelease });
+      const assertCurrent = () => {
+        admission(); checkUnchanged('catalog.json', current); checkUnchanged('catalog.previous.json', previous);
+        const fresh = materializeBrowserReview(catalog, projectId, candidate.sourceBindingId);
+        assertBrowserCandidateMatches(candidate, fresh.review);
+        if (hashAcceptanceValue(fresh.review) !== hashAcceptanceValue(review)) {
+          throw error('BASELINE_CHANGED', 409, '来源完整合同在批准过程中发生变化。');
+        }
+        admission(); checkUnchanged('catalog.json', current); checkUnchanged('catalog.previous.json', previous);
+      };
+      assertCurrent();
+      const result = options.publish({ request: input, project: catalog.projects[projectId], candidate,
+        sourceBinding: catalog.browserSourceBindings[candidate.sourceBindingId], targetRelease, review, ...compiled }, { assertCurrent });
+      const invalidPublication = () => {
+        consumeAdmissionPromise(result);
+        throw Object.assign(error('BROWSER_EXECUTION_UNAVAILABLE', 503, 'Browser 准备发布未同步完成。'), { writeMayHaveCommitted: true });
+      };
+      fields(result, ['record', 'replayed'], ['record', 'replayed'], invalidPublication);
+      if (typeof result.replayed !== 'boolean' || !plain(result.record)) invalidPublication();
+      return { ...result, ...compiled };
+    });
+  }
   function reasonOf(input) {
     if (typeof input.reason !== 'string' || !boundedText(input.reason.trim(), 1000)) invalid('操作理由必须为 1..1000 个字符。');
     input.reason = input.reason.trim();
@@ -1025,6 +1087,6 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
   }
   return Object.freeze({ initialize, previewMigration, applyMigration, read, createProject, createRelease, bindRun, readRunReference, bindBrowserSource, readBrowserSourceBinding,
     previewBrowserBaselineCandidate, createBrowserBaselineCandidate, readBrowserBaselineCandidate,
-    readBrowserCandidatePreviewEvidence, readBrowserBaselineCandidateEvidence,
+    readBrowserCandidatePreviewEvidence, readBrowserBaselineCandidateEvidence, withBrowserExecutionCandidate,
     createBaselineCandidate, readBaselineCandidate, approveBaseline, selectBaseline, prepareManagedSpecDispatch, readManagedSpecDispatch });
 }

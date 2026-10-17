@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
@@ -7,6 +7,7 @@ import { chromium } from 'playwright';
 import { comparePngBuffers } from '../verify/compare.mjs';
 import { resolveAcceptanceUrl } from './schema.mjs';
 import { buildAcceptanceIdentity } from './identity.mjs';
+import { fixedBrowserRuntimeOf, fixedBrowserEnvironmentComparison } from './browser-fixed-contract.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const MAX_ROUTES = 8;
@@ -21,6 +22,15 @@ const PLAYWRIGHT_VERSION = (() => {
 })();
 const bounded = (value, fallback, min, max) => Math.min(max, Math.max(min, Number(value) || fallback));
 const messageOf = error => String(error?.message ?? error).slice(0, 800);
+// Browser/driver exceptions can contain executable, profile and temporary paths.
+// Fixed-operation HTTP evidence uses stage diagnostics; page observations stay intact.
+const fixedDiagnostic = stage => ({
+  code: { execution: 'BROWSER_EXECUTION_ENVIRONMENT', navigation: 'BROWSER_NAVIGATION_FAILED',
+    capture: 'BROWSER_CAPTURE_FAILED', step: 'BROWSER_STEP_FAILED', assertion: 'BROWSER_ASSERTION_UNAVAILABLE' }[stage],
+  message: { execution: 'Browser acceptance could not complete in the current environment.',
+    navigation: 'Target navigation could not complete.', capture: 'Target browser observation could not complete.',
+    step: 'The declared target step could not complete.', assertion: 'The declared target assertion could not be observed.' }[stage],
+});
 const safeName = value => String(value).replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 70);
 const identical = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const jsonData = value => JSON.parse(JSON.stringify(value));
@@ -150,9 +160,12 @@ async function observe(browser, url, entryUrl, viewport, prefix, settings, point
   const result = { url: safeUrl(url), navigationError: null, httpStatus: null, errors: [], network: [], blockedRequests: [], assertions: [], stepError: null, snapshot: null, screenshot: null, repeatedScreenshot: null, stability: null, captureScope: null, captureLimited: false, documentSize: null };
   let context;
   const append = (list, item) => { if (list.length < MAX_OBSERVATIONS) list.push(item); };
+  const diagnostic = (stage, error) => settings.fixedDiagnostics ? fixedDiagnostic(stage) : messageOf(error);
   try {
+    await settings.assertActive?.();
     if (Date.now() >= settings.deadline) throw new Error('Acceptance run exceeded its 5 minute execution limit.');
     context = await browser.newContext({ ...BROWSER_PROFILE, viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: 'block', acceptDownloads: false });
+    await settings.assertActive?.();
     context.setDefaultTimeout(settings.timeoutMs);
     await context.route('**/*', async route => {
       const request = route.request();
@@ -175,13 +188,15 @@ async function observe(browser, url, entryUrl, viewport, prefix, settings, point
     page.on('popup', popup => popup.close().catch(() => {}));
     try {
       const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: settings.timeoutMs });
+      await settings.assertActive?.();
       result.httpStatus = response?.status() ?? null;
       await page.waitForTimeout(settings.settleMs);
-    } catch (error) { result.navigationError = messageOf(error); }
+    } catch (error) { result.navigationError = diagnostic('navigation', error); }
     if (!result.navigationError) {
       if (point) {
         for (const step of point.steps ?? []) {
           try {
+            await settings.assertActive?.();
             const timeout = Math.min(settings.timeoutMs, settings.deadline - Date.now());
             if (timeout <= 0) throw new Error('Acceptance execution time budget exhausted.');
             const locator = page.locator(step.selector).first();
@@ -189,20 +204,22 @@ async function observe(browser, url, entryUrl, viewport, prefix, settings, point
             else if (step.action === 'fill') await locator.fill(String(step.value ?? ''), { timeout });
             else if (step.action === 'press') await locator.press(String(step.value ?? ''), { timeout });
             else throw new Error(`Unsupported step action: ${step.action}`);
-          } catch (error) { result.stepError = messageOf(error); break; }
+          } catch (error) { result.stepError = diagnostic('step', error); break; }
         }
         await page.waitForTimeout(settings.settleMs);
         for (const assertion of point.assertions ?? []) {
           try {
+            await settings.assertActive?.();
             const timeout = Math.min(settings.timeoutMs, settings.deadline - Date.now());
             if (timeout <= 0) throw new Error('Acceptance execution time budget exhausted.');
             page.setDefaultTimeout(timeout);
             result.assertions.push(await checkAssertion(page, assertion));
           }
-          catch (error) { result.assertions.push({ kind: assertion.kind, selector: assertion.selector, passed: false, error: messageOf(error) }); }
+          catch (error) { result.assertions.push({ kind: assertion.kind, selector: assertion.selector, passed: false, error: diagnostic('assertion', error) }); }
         }
       }
       result.snapshot = await page.evaluate(semanticSnapshot, { entryUrl, maskSelectors: settings.maskSelectors });
+      await settings.assertActive?.();
       result.snapshot.url = safeUrl(result.snapshot.url);
       result.documentSize = result.snapshot.documentSize;
       result.captureLimited = result.documentSize.height > CAPTURE_BUDGET.maxHeight
@@ -213,21 +230,25 @@ async function observe(browser, url, entryUrl, viewport, prefix, settings, point
       const mask = settings.maskSelectors.map(selector => page.locator(selector));
       const shotOptions = { animations: 'disabled', caret: 'hide', fullPage: !result.captureLimited, mask, timeout: Math.min(settings.timeoutMs, 10_000) };
       result.screenshot = `${prefix}.png`;
-      const first = await page.screenshot({ ...shotOptions, path: join(settings.outputDir, result.screenshot) });
+      const first = await page.screenshot({ ...shotOptions, ...(!settings.writeEvidence ? { path: join(settings.outputDir, result.screenshot) } : {}) });
+      if (settings.writeEvidence) await settings.writeEvidence(result.screenshot, first);
       await page.waitForTimeout(Math.max(80, settings.settleMs));
       result.repeatedScreenshot = `${prefix}-repeat.png`;
-      const repeated = await page.screenshot({ ...shotOptions, path: join(settings.outputDir, result.repeatedScreenshot) });
+      const repeated = await page.screenshot({ ...shotOptions, ...(!settings.writeEvidence ? { path: join(settings.outputDir, result.repeatedScreenshot) } : {}) });
+      if (settings.writeEvidence) await settings.writeEvidence(result.repeatedScreenshot, repeated);
       result.stability = comparePngBuffers(first, repeated).score;
       result.image = first;
     }
   } catch (error) {
-    result.captureError = messageOf(error);
+    result.captureError = diagnostic('capture', error);
   } finally {
     if (context) await context.close().catch(() => {});
   }
   result.details = `${prefix}.json`;
   const { image, ...serializable } = result;
-  await writeFile(join(settings.outputDir, result.details), JSON.stringify(serializable, null, 2));
+  await settings.assertActive?.();
+  if (settings.writeEvidence) await settings.writeEvidence(result.details, JSON.stringify(serializable, null, 2));
+  else await writeFile(join(settings.outputDir, result.details), JSON.stringify(serializable, null, 2));
   return result;
 }
 
@@ -241,10 +262,44 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
     const { runSpecAcceptance } = await import('./spec-runner.mjs');
     return runSpecAcceptance(plan, { runId, outputDir, onEvent });
   }
+  return executeBrowserPlan(plan, { runId, outputDir, onEvent });
+}
+
+/** Internal bridge rejects uncompiled objects, including user plans carrying provider keys. */
+export async function runCompiledBrowserAcceptance(contract, { runId, outputDir, sourceFiles, onEvent, signal, assertActive } = {}) {
+  if (typeof runId !== 'string' || !/^br-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(runId)) {
+    throw new TypeError('Fixed Browser execution requires a br-UUID run ID.');
+  }
+  if (typeof outputDir !== 'string' || !outputDir.trim()) throw new TypeError('Fixed Browser execution requires an isolated output directory.');
+  if (signal !== undefined && !(signal instanceof AbortSignal)) throw new TypeError('Fixed Browser execution requires an AbortSignal.');
+  if (assertActive !== undefined && typeof assertActive !== 'function') throw new TypeError('assertActive must be a function.');
+  const fixed = fixedBrowserRuntimeOf(contract, sourceFiles);
+  if (signal?.aborted) throw Object.assign(new Error('Browser execution was cancelled.'), { code: 'BROWSER_EXECUTION_CANCELLED' });
+  await assertActive?.();
+  if (signal?.aborted) throw Object.assign(new Error('Browser execution was cancelled.'), { code: 'BROWSER_EXECUTION_CANCELLED' });
+  return executeBrowserPlan(contract.plan, { runId, outputDir, onEvent }, { ...fixed, signal, assertActive });
+}
+
+async function executeBrowserPlan(plan, { runId, outputDir, onEvent }, fixed) {
   const startedAt = new Date().toISOString();
   outputDir = outputDir || await mkdtemp(join(tmpdir(), 'heimdall-acceptance-'));
   await mkdir(outputDir, { recursive: true });
   const settings = { outputDir, deadline: Date.now() + 300_000, timeoutMs: bounded(plan.timeoutMs, 10_000, 500, 30_000), settleMs: plan.settleMs === 0 ? 0 : bounded(plan.settleMs, 250, 0, 2_000), maskSelectors: plan.normalization?.maskSelectors ?? [] };
+  let stopped, browser, controlTimer, deadlineTimer, heartbeat, executionIncomplete = false;
+  const stop = cause => { if (!stopped) stopped = cause; if (browser) browser.close().catch(() => {}); };
+  const controlError = (code, message) => Object.assign(new Error(message), { code });
+  const assertCurrent = async () => {
+    if (stopped) throw stopped;
+    if (fixed?.signal?.aborted) throw controlError('BROWSER_EXECUTION_CANCELLED', 'Browser execution was cancelled.');
+    if (Date.now() >= settings.deadline) throw controlError('BROWSER_EXECUTION_DEADLINE', 'Browser execution exceeded its 5 minute execution limit.');
+    try { await fixed?.assertActive?.(); }
+    catch (cause) { stop(cause); throw cause; }
+    if (stopped) throw stopped;
+    if (fixed?.signal?.aborted) throw controlError('BROWSER_EXECUTION_CANCELLED', 'Browser execution was cancelled.');
+  };
+  const writeEvidence = async (file, data) => { await assertCurrent(); await writeFile(join(outputDir, file), data, { flag: 'wx' }); await assertCurrent(); };
+  const onAbort = () => stop(controlError('BROWSER_EXECUTION_CANCELLED', 'Browser execution was cancelled.'));
+  if (fixed) { settings.assertActive = assertCurrent; settings.writeEvidence = writeEvidence; settings.fixedDiagnostics = true; }
   const checks = [];
   const safety = { networkPolicy: 'read-only', isolatedContexts: true, blockedRequests: 0 };
   const environment = { platform: process.platform, arch: process.arch, nodeVersion: process.version,
@@ -254,9 +309,16 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
   const points = plan.points ?? [];
   const capped = routes.length > MAX_ROUTES || viewports.length > MAX_VIEWPORTS || points.length > MAX_POINTS || points.some(point => (point.steps?.length ?? 0) > 12 || (point.assertions?.length ?? 0) > 20);
   const coverage = { planned: 6 * routes.length * viewports.length + points.length * viewports.length, completed: 0, capped };
-  const event = async value => { if (onEvent) await onEvent({ runId, at: new Date().toISOString(), ...value }); };
-  const base = (route, viewport) => ({ route, viewport: viewport.name, oracle: { kind: 'approved-runtime', source: plan.baselineUrl }, evidenceLevel: 'browser-reproduced' });
-  const identityFor = (route, viewport, facet, expected, baseline, point) => buildAcceptanceIdentity({
+  const event = async value => { if (fixed) await assertCurrent(); if (onEvent) await onEvent({ runId, at: new Date().toISOString(), ...value }); };
+  const base = (route, viewport) => ({ route, viewport: viewport.name,
+    oracle: fixed ? { kind: 'captured-browser-side', candidateId: fixed.contract.candidateId,
+      contentDigest: fixed.contract.contentDigest, sourceContentDigest: fixed.contract.fixedBaseline.sourceContentDigest,
+      sourceRunId: fixed.contract.fixedBaseline.sourceRunId, sourceSide: fixed.contract.fixedBaseline.sourceSide }
+      : { kind: 'approved-runtime', source: plan.baselineUrl }, evidenceLevel: 'browser-reproduced' });
+  const identityFor = (route, viewport, facet, expected, baseline, point) => fixed ? buildAcceptanceIdentity({
+    kind: 'browser', facet, route, viewport: { width: viewport.width, height: viewport.height },
+    ...(point ? { pointId: point.id } : {}), environment, ...fixed.identity(route, viewport, facet, point),
+  }) : buildAcceptanceIdentity({
     kind: 'browser', facet, route, viewport: { width: viewport.width, height: viewport.height },
     ...(point ? { pointId: point.id } : {}), environment,
     rule: {
@@ -274,6 +336,13 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
       : { kind: 'runtime', source: plan.baselineUrl, expected: jsonData(expected) },
   });
   const add = async check => {
+    if (fixed) {
+      await assertCurrent();
+      const differences = environmentDifferences();
+      if (differences.length && ['passed', 'failed'].includes(check.status)) check = { ...check,
+        observedStatus: check.status, observedVerdict: check.verdict, status: 'blocked', verdict: 'environment',
+        evaluationLimited: true, environmentDifferences: differences };
+    }
     checks.push(check);
     coverage.completed = checks.length;
     coverage.planned = Math.max(coverage.planned, coverage.completed);
@@ -281,19 +350,40 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
   };
   const evidenceOf = (baseline, target) => ({ baselineScreenshot: baseline.screenshot, targetScreenshot: target.screenshot, baselineDetails: baseline.details, targetDetails: target.details, baselineRepeat: baseline.repeatedScreenshot, targetRepeat: target.repeatedScreenshot });
   const pair = async (browser, route, viewport, prefix, point) => {
-    const baseline = await observe(browser, resolveAcceptanceRoute(plan.baselineUrl, route), plan.baselineUrl, viewport, `${prefix}-baseline`, settings, point);
+    const baseline = fixed ? fixed.observation(route, viewport, point)
+      : await observe(browser, resolveAcceptanceRoute(plan.baselineUrl, route), plan.baselineUrl, viewport, `${prefix}-baseline`, settings, point);
     const target = await observe(browser, resolveAcceptanceRoute(plan.targetUrl, route), plan.targetUrl, viewport, `${prefix}-target`, settings, point);
     safety.blockedRequests += baseline.blockedRequests.length + target.blockedRequests.length;
     return { baseline, target };
   };
-  let browser;
-  let heartbeat;
+  const environmentDifferences = () => !fixed ? [] : fixedBrowserEnvironmentComparison(fixed.contract, environment).differences;
   try {
+    if (fixed) {
+      await assertCurrent();
+      fixed.signal?.addEventListener('abort', onAbort, { once: true });
+      controlTimer = setInterval(() => assertCurrent().catch(stop), 100); controlTimer.unref();
+      deadlineTimer = setTimeout(() => stop(controlError('BROWSER_EXECUTION_DEADLINE', 'Browser execution exceeded its 5 minute execution limit.')), Math.max(1, settings.deadline - Date.now()));
+      deadlineTimer.unref();
+      for (const entry of fixed.contract.sourceEvidence) {
+        const expected = fixed.sourceFiles.get(entry.sourceFile);
+        try { await writeEvidence(entry.file, expected); }
+        catch (cause) {
+          if (cause?.code !== 'EEXIST') throw cause;
+          await assertCurrent();
+          if (!(await readFile(join(outputDir, entry.file))).equals(expected)) {
+            throw Object.assign(new Error('Captured Browser evidence differs from the fixed contract.'), { code: 'SOURCE_INTEGRITY_FAILED' });
+          }
+          await assertCurrent();
+        }
+      }
+    }
     await event({ kind: 'acceptance-started', message: 'Starting isolated read-only browser acceptance.', completed: coverage.completed, total: coverage.planned });
     heartbeat = setInterval(() => event({ kind: 'acceptance-heartbeat', message: 'Browser acceptance is running.', completed: coverage.completed, total: coverage.planned }).catch(() => {}), 30_000);
     heartbeat.unref();
     if (capped) throw new Error('Acceptance plan exceeds runner execution limits (8 routes, 3 viewports, 24 points, 12 steps and 20 assertions per point).');
+    if (fixed) await assertCurrent();
     browser = await chromium.launch({ headless: true, timeout: settings.timeoutMs });
+    if (fixed) await assertCurrent();
     environment.browserVersion = browser.version();
     for (const [routeIndex, route] of routes.slice(0, MAX_ROUTES).entries()) {
       for (const [viewportIndex, viewport] of viewports.slice(0, MAX_VIEWPORTS).entries()) {
@@ -302,7 +392,8 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
         const { baseline, target } = await pair(browser, route, viewport, prefix);
         const common = base(route, viewport);
         const evidence = evidenceOf(baseline, target);
-        const reproduction = [`Open ${resolveAcceptanceRoute(plan.baselineUrl, route)} at ${viewport.width}×${viewport.height}.`, `Open ${resolveAcceptanceRoute(plan.targetUrl, route)} in a fresh browser context at the same viewport.`];
+        const reproduction = [fixed ? `Read captured candidate ${fixed.contract.candidateId}, ${fixed.contract.fixedBaseline.sourceSide} side, at ${viewport.width}×${viewport.height}; the source URL is not visited.`
+          : `Open ${resolveAcceptanceRoute(plan.baselineUrl, route)} at ${viewport.width}×${viewport.height}.`, `Open ${resolveAcceptanceRoute(plan.targetUrl, route)} in a fresh browser context at the same viewport.`];
         const make = (suffix, title, dimension, expected, actual, status = 'passed', verdict = 'match', severity = 'medium') => ({ ...common,
           id: `${prefix}-${suffix}`, identity: identityFor(route, viewport, suffix, expected, baseline),
           title, dimension, expected, actual, status, verdict, severity, evaluationLimited: !['passed', 'failed'].includes(status), reproduction, evidence });
@@ -359,7 +450,8 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
         if (visual) {
           visualCheck.score = visual.score;
           visualCheck.evidence = { ...evidence, diff: `${prefix}-diff.png` };
-          await writeFile(join(outputDir, visualCheck.evidence.diff), visual.diffPng);
+          if (fixed) await writeEvidence(visualCheck.evidence.diff, visual.diffPng);
+          else await writeFile(join(outputDir, visualCheck.evidence.diff), visual.diffPng);
         }
         await add(visualCheck);
         for (const [pointIndex, originalPoint] of points.slice(0, MAX_POINTS).entries()) {
@@ -387,13 +479,29 @@ export async function runAcceptance(plan, { runId = randomUUID(), outputDir, onE
     }
     if (capped) await add({ ...base('/', viewports[0] ?? { name: 'unknown' }), id: 'execution-limit', title: '执行覆盖达到安全上限', dimension: 'health', status: 'blocked', verdict: 'environment', severity: 'high', expected: 'All planned routes, viewports, steps and assertions execute.', actual: { maxRoutes: MAX_ROUTES, maxViewports: MAX_VIEWPORTS, maxPoints: MAX_POINTS, maxSteps: 12, maxAssertions: 20 }, reproduction: [], evidence: {} });
   } catch (error) {
-    await add({ ...base('/', viewports[0] ?? { name: 'unknown' }), id: 'runner-environment', title: '浏览器验收执行环境', dimension: 'health', status: 'blocked', verdict: 'environment', severity: 'high', expected: 'Browser acceptance completes.', actual: messageOf(error), reproduction: [], evidence: {} });
+    if (fixed) await assertCurrent();
+    if (fixed && error?.code === 'SOURCE_INTEGRITY_FAILED') throw error;
+    if (fixed) executionIncomplete = true;
+    await add({ ...base('/', viewports[0] ?? { name: 'unknown' }), id: 'runner-environment', title: '浏览器验收执行环境', dimension: 'health', status: 'blocked', verdict: 'environment', severity: 'high', expected: 'Browser acceptance completes.', actual: fixed ? fixedDiagnostic('execution') : messageOf(error), reproduction: [], evidence: {} });
   } finally {
     if (heartbeat) clearInterval(heartbeat);
+    if (controlTimer) clearInterval(controlTimer);
+    if (deadlineTimer) clearTimeout(deadlineTimer);
+    fixed?.signal?.removeEventListener('abort', onAbort);
     if (browser) await browser.close().catch(() => {});
   }
-  const report = { schemaVersion: 1, runId, name: plan.name, mode: plan.mode, baselineUrl: plan.baselineUrl, targetUrl: plan.targetUrl, startedAt, endedAt: new Date().toISOString(), status: 'completed', checks, coverage, safety, environment,
+  if (fixed) await assertCurrent();
+  if (fixed && executionIncomplete) for (const check of checks) {
+    if (['passed', 'failed'].includes(check.status)) Object.assign(check, { observedStatus: check.status,
+      observedVerdict: check.verdict, status: 'blocked', verdict: 'environment', evaluationLimited: true,
+      executionIncomplete: true });
+  }
+  const report = { schemaVersion: 1, runId, name: plan.name, mode: fixed ? 'browser-fixed' : plan.mode, baselineUrl: plan.baselineUrl, targetUrl: plan.targetUrl, startedAt, endedAt: new Date().toISOString(), status: 'completed', checks, coverage, safety, environment,
     scope: '仅验收已声明路由、视口、操作和有界观察窗口；未声明业务与接口契约为未测。单侧文档高度不超过12,000像素且面积不超过12,000,000像素时截图覆盖全页，两次稳定性截图采用相同范围。超过预算仅保留首屏证据，视觉检查标为待复核，不作为完整页面通过依据。' };
+  if (fixed) Object.assign(report, { fixedBaseline: jsonData(fixed.contract.fixedBaseline), targetReleaseId: fixed.contract.targetReleaseId,
+    contractDigest: fixed.contract.contractDigest, sourceEvidence: jsonData(fixed.contract.sourceEvidence),
+    environmentComparison: { comparable: environmentDifferences().length === 0, differences: environmentDifferences() },
+    resolution: { kind: 'observation-only', closesBugs: false } });
   await event({ kind: 'acceptance-completed', message: `Browser acceptance completed with ${checks.length} checks.`, completed: coverage.completed, total: coverage.planned });
-  return report;
+  return fixed ? jsonData(report) : report;
 }

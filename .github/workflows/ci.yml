@@ -87,6 +87,8 @@ jobs:
         run: pnpm acceptance:browser:bindings:v4:smoke
       - name: Browser full candidates (explicit review, durable save and read-only reconciliation)
         run: pnpm acceptance:browser:candidates:ui:smoke
+      - name: Browser single-operation execution (fixed source, real target BUG, explicit retest and restart)
+        run: pnpm acceptance:browser:execute:smoke
       - name: Preserve acceptance smoke failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -129,6 +131,7 @@ jobs:
             core/workspace/_runs/browser-bindings-console-smoke-*/catalog-v4-*.json
             core/workspace/_runs/browser-bindings-console-smoke-*/runtime/**
             core/workspace/_runs/browser-candidates-console-smoke-*/**
+            core/workspace/_runs/browser-execution-console-smoke-*/**
           if-no-files-found: ignore
           retention-days: 7
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。

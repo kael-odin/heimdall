@@ -25,12 +25,16 @@ export const BROWSER_CANDIDATE_LIMITS_V1 = Object.freeze({
  * Independently reviewed Browser semantics at e427ec1: bounded full-page
  * capture, read-only isolated contexts, six base facets and declared points.
  * These are the exact legacy ten-file fingerprints with LF / CRLF sources.
- * The controlled Spec change in this source set did not alter Browser rules.
+ * D3 adds the reviewed fixed-source execution branch; legacy capture rules are
+ * unchanged and the original runner suite remains a required regression gate.
+ * Its ten-file LF / CRLF manifests are pinned in browser-verifier-reviewed-d3.json.
  * Never derive this allowlist from the running checkout or a source assertion.
  */
 export const SUPPORTED_BROWSER_VERIFIERS_V1 = Object.freeze([
   'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8',
   '8d1b75da7efad4f18b279a466ebdf880b1e24bb641ca80070cd03d0700376e9f',
+  '2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337',
+  '270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2',
 ]);
 
 const L = BROWSER_CANDIDATE_LIMITS_V1;

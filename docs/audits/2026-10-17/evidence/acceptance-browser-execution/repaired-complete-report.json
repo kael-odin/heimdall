@@ -1,0 +1,1459 @@
+{
+  "schemaVersion": 1,
+  "operationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+  "runId": "br-ff6bcd6f-50a1-4006-ba25-4f6f2f194c15",
+  "taskId": "a-80d5f951-a9f0-461b-99ae-a23594b6526e",
+  "projectId": "ap-c547e076-988c-41ac-85aa-a6ecf90c8e4d",
+  "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+  "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+  "targetReleaseId": "ar-a4c836e0-cbdc-4880-9985-02e80d65b97d",
+  "targetLabel": "Repaired target",
+  "approvalScope": "single-operation",
+  "state": "completed",
+  "acceptedAt": "2026-10-17T13:27:40.466Z",
+  "updatedAt": "2026-10-17T13:27:48.486Z",
+  "gate": "passed",
+  "reportSha256": "feb66d660ff18930fd43fbdcebc8bcdf0c0494fd69e584f19536205e21d67adb",
+  "reasonCode": null,
+  "summary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 14,
+      "total": 14,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 1
+      },
+      "structure": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "executionReady": false,
+  "report": {
+    "schemaVersion": 1,
+    "runId": "br-ff6bcd6f-50a1-4006-ba25-4f6f2f194c15",
+    "name": "Fixed Browser complete acceptance",
+    "mode": "browser-fixed",
+    "baselineUrl": "http://127.0.0.1:53556/source?source=fixed-contract-url-sentinel",
+    "targetUrl": "http://127.0.0.1:53556/healthy",
+    "startedAt": "2026-10-17T13:27:43.577Z",
+    "endedAt": "2026-10-17T13:27:47.920Z",
+    "status": "completed",
+    "checks": [
+      {
+        "route": "/",
+        "viewport": "desktop",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-1-desktop-navigation",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "navigation",
+          "caseKey": "0b11ebce9c6d09ef31889bc71326449c364098c2d845bb3ecbcd4b4fd187aefb",
+          "contextKey": "5400d84c556920df9bd2e86145f13b78a4c168b14c32da5c43b983184a2f3b3f",
+          "ruleKey": "9a77612e8cfefa49415998cc5259471752b2e37f708e9dc95fbd039d6af2d3e1",
+          "oracleKey": "b010e03df2a144650489efd263f1503a6e63c499fc21e52ef3332197eb841f07",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          }
+        },
+        "title": "页面导航与 HTTP 状态",
+        "dimension": "health",
+        "expected": 200,
+        "actual": 200,
+        "status": "passed",
+        "verdict": "match",
+        "severity": "medium",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 960×640; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-1-desktop-baseline.png",
+          "targetScreenshot": "route-1-1-desktop-target.png",
+          "baselineDetails": "source-route-1-1-desktop-baseline.json",
+          "targetDetails": "route-1-1-desktop-target.json",
+          "baselineRepeat": "source-route-1-1-desktop-baseline-repeat.png",
+          "targetRepeat": "route-1-1-desktop-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "desktop",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-1-desktop-console",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "console",
+          "caseKey": "03532c5b84efa3f7885b11a9402239d2b940cd12f75cb9780f7d49a405d2d971",
+          "contextKey": "dbf232bc134bd1591fa62aaf445f062027aba5bef93aa501be2977a90506f944",
+          "ruleKey": "09471dfb931bf0f02e0a1b903f526d7336bef4f2814fca65aae1a51644da9eef",
+          "oracleKey": "b010e03df2a144650489efd263f1503a6e63c499fc21e52ef3332197eb841f07",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          }
+        },
+        "title": "浏览器脚本与控制台错误",
+        "dimension": "health",
+        "expected": [],
+        "actual": {
+          "observed": [],
+          "added": [],
+          "policyAffected": false
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "high",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 960×640; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-1-desktop-baseline.png",
+          "targetScreenshot": "route-1-1-desktop-target.png",
+          "baselineDetails": "source-route-1-1-desktop-baseline.json",
+          "targetDetails": "route-1-1-desktop-target.json",
+          "baselineRepeat": "source-route-1-1-desktop-baseline-repeat.png",
+          "targetRepeat": "route-1-1-desktop-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "desktop",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-1-desktop-network",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "network",
+          "caseKey": "cfaa917cfc63e28cc0d4dacff1e1aeaaf6abbad350899ca36e45d758766ccc5f",
+          "contextKey": "5bd79f08cdd4d5eba7f69f7606654f1d4b9f7f33b6d71604fe2134f2cdbd5bc8",
+          "ruleKey": "c7478fb511cd30bffa22fdb2ce1b32ee8e4682e3eb3211f4fc270964d55a1818",
+          "oracleKey": "b010e03df2a144650489efd263f1503a6e63c499fc21e52ef3332197eb841f07",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          }
+        },
+        "title": "资源与只读网络请求",
+        "dimension": "health",
+        "expected": [],
+        "actual": {
+          "observed": [],
+          "added": [],
+          "policyAffected": false
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "medium",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 960×640; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-1-desktop-baseline.png",
+          "targetScreenshot": "route-1-1-desktop-target.png",
+          "baselineDetails": "source-route-1-1-desktop-baseline.json",
+          "targetDetails": "route-1-1-desktop-target.json",
+          "baselineRepeat": "source-route-1-1-desktop-baseline-repeat.png",
+          "targetRepeat": "route-1-1-desktop-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "desktop",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-1-desktop-overflow",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "overflow",
+          "caseKey": "9aacacd271da1affc974561a3d3040a7ed950f7cb5601e32b2c3110836bf47d6",
+          "contextKey": "14db45a8be8be0d7203f51a12b511ab8b5abaff2b9c329aa2395178d10aea6c1",
+          "ruleKey": "c327679067deed382c156c9033028b75eb9efbb4bb3c33733606715956614ead",
+          "oracleKey": "b010e03df2a144650489efd263f1503a6e63c499fc21e52ef3332197eb841f07",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          }
+        },
+        "title": "视口水平溢出",
+        "dimension": "health",
+        "expected": [],
+        "actual": {
+          "observed": [],
+          "added": [],
+          "policyAffected": false
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "medium",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 960×640; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-1-desktop-baseline.png",
+          "targetScreenshot": "route-1-1-desktop-target.png",
+          "baselineDetails": "source-route-1-1-desktop-baseline.json",
+          "targetDetails": "route-1-1-desktop-target.json",
+          "baselineRepeat": "source-route-1-1-desktop-baseline-repeat.png",
+          "targetRepeat": "route-1-1-desktop-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "desktop",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-1-desktop-structure",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "structure",
+          "caseKey": "2b2128133032214987c1a48e841b73606e9ea895b2d54fdddc8d1ed267ad9564",
+          "contextKey": "9574ba2482d491cd3cd1421cae1b54bad884de8750b925058b492013039d6eee",
+          "ruleKey": "2600844878b036b8282932cdfb6378cb1d9e67809877369871e4bd60cb167ae6",
+          "oracleKey": "b010e03df2a144650489efd263f1503a6e63c499fc21e52ef3332197eb841f07",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          }
+        },
+        "title": "标题、主标题与关键控件语义",
+        "dimension": "structure",
+        "expected": {
+          "title": "Fixed Browser acceptance fixture",
+          "headings": [
+            "Controlled target acceptance"
+          ],
+          "controls": [
+            {
+              "path": "#menu-toggle",
+              "tag": "button",
+              "role": null,
+              "label": "Menu",
+              "type": null,
+              "href": null,
+              "disabled": false,
+              "expanded": "false",
+              "selected": null
+            },
+            {
+              "path": "#entry",
+              "tag": "input",
+              "role": null,
+              "label": "",
+              "type": null,
+              "href": null,
+              "disabled": false,
+              "expanded": null,
+              "selected": null
+            }
+          ]
+        },
+        "actual": {
+          "title": "Fixed Browser acceptance fixture",
+          "headings": [
+            "Controlled target acceptance"
+          ],
+          "controls": [
+            {
+              "path": "#menu-toggle",
+              "tag": "button",
+              "role": null,
+              "label": "Menu",
+              "type": null,
+              "href": null,
+              "disabled": false,
+              "expanded": "false",
+              "selected": null
+            },
+            {
+              "path": "#entry",
+              "tag": "input",
+              "role": null,
+              "label": "",
+              "type": null,
+              "href": null,
+              "disabled": false,
+              "expanded": null,
+              "selected": null
+            }
+          ],
+          "maskCoverage": {
+            "baseline": {
+              "maskedRatio": 0,
+              "effectiveAreaPx": 614400,
+              "samplingCapped": false
+            },
+            "target": {
+              "maskedRatio": 0,
+              "effectiveAreaPx": 614400,
+              "samplingCapped": false
+            }
+          }
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "high",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 960×640; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-1-desktop-baseline.png",
+          "targetScreenshot": "route-1-1-desktop-target.png",
+          "baselineDetails": "source-route-1-1-desktop-baseline.json",
+          "targetDetails": "route-1-1-desktop-target.json",
+          "baselineRepeat": "source-route-1-1-desktop-baseline-repeat.png",
+          "targetRepeat": "route-1-1-desktop-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "desktop",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-1-desktop-visual",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "visual",
+          "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+          "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+          "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+          "oracleKey": "b010e03df2a144650489efd263f1503a6e63c499fc21e52ef3332197eb841f07",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          }
+        },
+        "title": "页面视觉还原度",
+        "dimension": "visual",
+        "expected": {
+          "minimumScore": 0.97,
+          "stabilityMinimum": 0.9995,
+          "maximumMaskedRatio": 0.8,
+          "captureBudget": {
+            "maxPixels": 12000000,
+            "maxHeight": 12000
+          }
+        },
+        "actual": {
+          "score": 1,
+          "baselineStability": 1,
+          "targetStability": 1,
+          "maskCoverage": {
+            "baseline": {
+              "maskedRatio": 0,
+              "effectiveAreaPx": 614400,
+              "samplingCapped": false
+            },
+            "target": {
+              "maskedRatio": 0,
+              "effectiveAreaPx": 614400,
+              "samplingCapped": false
+            }
+          },
+          "capture": {
+            "baseline": {
+              "captureScope": "full-page",
+              "captureLimited": false,
+              "documentSize": {
+                "width": 960,
+                "height": 640
+              }
+            },
+            "target": {
+              "captureScope": "full-page",
+              "captureLimited": false,
+              "documentSize": {
+                "width": 960,
+                "height": 640
+              }
+            }
+          },
+          "eligible": true
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "medium",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 960×640; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-1-desktop-baseline.png",
+          "targetScreenshot": "route-1-1-desktop-target.png",
+          "baselineDetails": "source-route-1-1-desktop-baseline.json",
+          "targetDetails": "route-1-1-desktop-target.json",
+          "baselineRepeat": "source-route-1-1-desktop-baseline-repeat.png",
+          "targetRepeat": "route-1-1-desktop-target-repeat.png",
+          "diff": "route-1-1-desktop-diff.png"
+        },
+        "score": 1
+      },
+      {
+        "route": "/",
+        "viewport": "desktop",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-1-desktop-point-1-menu",
+        "title": "Expanded menu",
+        "dimension": "behavior",
+        "severity": "high",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "behavior",
+          "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+          "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+          "ruleKey": "5a34f88af9f0a88ce3d4c5da938f4971bddf66b13ca973a8f14189b9c5711aac",
+          "oracleKey": "dd13421066d229b19af21796d96b09288f8dcbb3130a8b47d8b744f93683e39e",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          },
+          "pointId": "menu"
+        },
+        "status": "passed",
+        "verdict": "match",
+        "evaluationLimited": false,
+        "expected": {
+          "stepsComplete": true,
+          "assertions": [
+            {
+              "kind": "visible",
+              "selector": "#menu",
+              "expected": true,
+              "actual": true,
+              "passed": true
+            },
+            {
+              "kind": "attribute",
+              "selector": "#menu-toggle",
+              "attribute": "aria-expanded",
+              "expected": "true",
+              "actual": "true",
+              "passed": true
+            },
+            {
+              "kind": "text",
+              "selector": "#literal",
+              "expected": "fixed-contract-source-sentinel",
+              "actual": "fixed-contract-source-sentinel",
+              "passed": true
+            }
+          ],
+          "httpStatus": 200
+        },
+        "actual": {
+          "stepsComplete": true,
+          "stepError": null,
+          "assertions": [
+            {
+              "kind": "visible",
+              "selector": "#menu",
+              "expected": true,
+              "actual": true,
+              "passed": true
+            },
+            {
+              "kind": "attribute",
+              "selector": "#menu-toggle",
+              "attribute": "aria-expanded",
+              "expected": "true",
+              "actual": "true",
+              "passed": true
+            },
+            {
+              "kind": "text",
+              "selector": "#literal",
+              "expected": "fixed-contract-source-sentinel",
+              "actual": "fixed-contract-source-sentinel",
+              "passed": true
+            }
+          ],
+          "httpStatus": 200,
+          "navigationError": null,
+          "errors": [],
+          "network": [],
+          "overflow": false,
+          "blockedRequests": []
+        },
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 960×640; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport.",
+          "fill #entry (fixed-contract-fill-sentinel)",
+          "click #menu-toggle"
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-1-desktop-point-1-baseline.png",
+          "targetScreenshot": "route-1-1-desktop-point-1-target.png",
+          "baselineDetails": "source-route-1-1-desktop-point-1-baseline.json",
+          "targetDetails": "route-1-1-desktop-point-1-target.json",
+          "baselineRepeat": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+          "targetRepeat": "route-1-1-desktop-point-1-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "mobile",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-2-mobile-navigation",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "navigation",
+          "caseKey": "0b11ebce9c6d09ef31889bc71326449c364098c2d845bb3ecbcd4b4fd187aefb",
+          "contextKey": "4eef54f812e96c5147a033afdaef4bf80b80b1fe213a9efe48854e68e8a32d0a",
+          "ruleKey": "9a77612e8cfefa49415998cc5259471752b2e37f708e9dc95fbd039d6af2d3e1",
+          "oracleKey": "ba5c7dc2f1902d8239db7c9131e32517a97f1ef2ef236cbdc243c691013d76a5",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          }
+        },
+        "title": "页面导航与 HTTP 状态",
+        "dimension": "health",
+        "expected": 200,
+        "actual": 200,
+        "status": "passed",
+        "verdict": "match",
+        "severity": "medium",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 375×812; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-2-mobile-baseline.png",
+          "targetScreenshot": "route-1-2-mobile-target.png",
+          "baselineDetails": "source-route-1-2-mobile-baseline.json",
+          "targetDetails": "route-1-2-mobile-target.json",
+          "baselineRepeat": "source-route-1-2-mobile-baseline-repeat.png",
+          "targetRepeat": "route-1-2-mobile-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "mobile",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-2-mobile-console",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "console",
+          "caseKey": "03532c5b84efa3f7885b11a9402239d2b940cd12f75cb9780f7d49a405d2d971",
+          "contextKey": "57960ccaab477f7c776b64495c2eab9080a21628fb06d8aeb5febc8a46c93392",
+          "ruleKey": "09471dfb931bf0f02e0a1b903f526d7336bef4f2814fca65aae1a51644da9eef",
+          "oracleKey": "ba5c7dc2f1902d8239db7c9131e32517a97f1ef2ef236cbdc243c691013d76a5",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          }
+        },
+        "title": "浏览器脚本与控制台错误",
+        "dimension": "health",
+        "expected": [],
+        "actual": {
+          "observed": [],
+          "added": [],
+          "policyAffected": false
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "high",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 375×812; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-2-mobile-baseline.png",
+          "targetScreenshot": "route-1-2-mobile-target.png",
+          "baselineDetails": "source-route-1-2-mobile-baseline.json",
+          "targetDetails": "route-1-2-mobile-target.json",
+          "baselineRepeat": "source-route-1-2-mobile-baseline-repeat.png",
+          "targetRepeat": "route-1-2-mobile-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "mobile",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-2-mobile-network",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "network",
+          "caseKey": "cfaa917cfc63e28cc0d4dacff1e1aeaaf6abbad350899ca36e45d758766ccc5f",
+          "contextKey": "38d3359f855e341006940652bd480f322cdd482869ce00acca78ce722dc77372",
+          "ruleKey": "c7478fb511cd30bffa22fdb2ce1b32ee8e4682e3eb3211f4fc270964d55a1818",
+          "oracleKey": "ba5c7dc2f1902d8239db7c9131e32517a97f1ef2ef236cbdc243c691013d76a5",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          }
+        },
+        "title": "资源与只读网络请求",
+        "dimension": "health",
+        "expected": [],
+        "actual": {
+          "observed": [],
+          "added": [],
+          "policyAffected": false
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "medium",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 375×812; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-2-mobile-baseline.png",
+          "targetScreenshot": "route-1-2-mobile-target.png",
+          "baselineDetails": "source-route-1-2-mobile-baseline.json",
+          "targetDetails": "route-1-2-mobile-target.json",
+          "baselineRepeat": "source-route-1-2-mobile-baseline-repeat.png",
+          "targetRepeat": "route-1-2-mobile-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "mobile",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-2-mobile-overflow",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "overflow",
+          "caseKey": "9aacacd271da1affc974561a3d3040a7ed950f7cb5601e32b2c3110836bf47d6",
+          "contextKey": "50a0bd266c3f20ce0a231340bbee0a557c0dfd84d77e7dd31d35b9872210cf95",
+          "ruleKey": "c327679067deed382c156c9033028b75eb9efbb4bb3c33733606715956614ead",
+          "oracleKey": "ba5c7dc2f1902d8239db7c9131e32517a97f1ef2ef236cbdc243c691013d76a5",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          }
+        },
+        "title": "视口水平溢出",
+        "dimension": "health",
+        "expected": [],
+        "actual": {
+          "observed": [],
+          "added": [],
+          "policyAffected": false
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "medium",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 375×812; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-2-mobile-baseline.png",
+          "targetScreenshot": "route-1-2-mobile-target.png",
+          "baselineDetails": "source-route-1-2-mobile-baseline.json",
+          "targetDetails": "route-1-2-mobile-target.json",
+          "baselineRepeat": "source-route-1-2-mobile-baseline-repeat.png",
+          "targetRepeat": "route-1-2-mobile-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "mobile",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-2-mobile-structure",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "structure",
+          "caseKey": "2b2128133032214987c1a48e841b73606e9ea895b2d54fdddc8d1ed267ad9564",
+          "contextKey": "9810d20c77c496962d6ba71667a13cf397750db0730474d4bbf78f901dc6f554",
+          "ruleKey": "2600844878b036b8282932cdfb6378cb1d9e67809877369871e4bd60cb167ae6",
+          "oracleKey": "ba5c7dc2f1902d8239db7c9131e32517a97f1ef2ef236cbdc243c691013d76a5",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          }
+        },
+        "title": "标题、主标题与关键控件语义",
+        "dimension": "structure",
+        "expected": {
+          "title": "Fixed Browser acceptance fixture",
+          "headings": [
+            "Controlled target acceptance"
+          ],
+          "controls": [
+            {
+              "path": "#menu-toggle",
+              "tag": "button",
+              "role": null,
+              "label": "Menu",
+              "type": null,
+              "href": null,
+              "disabled": false,
+              "expanded": "false",
+              "selected": null
+            },
+            {
+              "path": "#entry",
+              "tag": "input",
+              "role": null,
+              "label": "",
+              "type": null,
+              "href": null,
+              "disabled": false,
+              "expanded": null,
+              "selected": null
+            }
+          ]
+        },
+        "actual": {
+          "title": "Fixed Browser acceptance fixture",
+          "headings": [
+            "Controlled target acceptance"
+          ],
+          "controls": [
+            {
+              "path": "#menu-toggle",
+              "tag": "button",
+              "role": null,
+              "label": "Menu",
+              "type": null,
+              "href": null,
+              "disabled": false,
+              "expanded": "false",
+              "selected": null
+            },
+            {
+              "path": "#entry",
+              "tag": "input",
+              "role": null,
+              "label": "",
+              "type": null,
+              "href": null,
+              "disabled": false,
+              "expanded": null,
+              "selected": null
+            }
+          ],
+          "maskCoverage": {
+            "baseline": {
+              "maskedRatio": 0,
+              "effectiveAreaPx": 304500,
+              "samplingCapped": false
+            },
+            "target": {
+              "maskedRatio": 0,
+              "effectiveAreaPx": 304500,
+              "samplingCapped": false
+            }
+          }
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "high",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 375×812; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-2-mobile-baseline.png",
+          "targetScreenshot": "route-1-2-mobile-target.png",
+          "baselineDetails": "source-route-1-2-mobile-baseline.json",
+          "targetDetails": "route-1-2-mobile-target.json",
+          "baselineRepeat": "source-route-1-2-mobile-baseline-repeat.png",
+          "targetRepeat": "route-1-2-mobile-target-repeat.png"
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "mobile",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-2-mobile-visual",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "visual",
+          "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+          "contextKey": "f72824569117cf7144b465ab6e0d93201d6d75e0a052646865851787c5c8c9be",
+          "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+          "oracleKey": "ba5c7dc2f1902d8239db7c9131e32517a97f1ef2ef236cbdc243c691013d76a5",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          }
+        },
+        "title": "页面视觉还原度",
+        "dimension": "visual",
+        "expected": {
+          "minimumScore": 0.97,
+          "stabilityMinimum": 0.9995,
+          "maximumMaskedRatio": 0.8,
+          "captureBudget": {
+            "maxPixels": 12000000,
+            "maxHeight": 12000
+          }
+        },
+        "actual": {
+          "score": 1,
+          "baselineStability": 1,
+          "targetStability": 1,
+          "maskCoverage": {
+            "baseline": {
+              "maskedRatio": 0,
+              "effectiveAreaPx": 304500,
+              "samplingCapped": false
+            },
+            "target": {
+              "maskedRatio": 0,
+              "effectiveAreaPx": 304500,
+              "samplingCapped": false
+            }
+          },
+          "capture": {
+            "baseline": {
+              "captureScope": "full-page",
+              "captureLimited": false,
+              "documentSize": {
+                "width": 375,
+                "height": 812
+              }
+            },
+            "target": {
+              "captureScope": "full-page",
+              "captureLimited": false,
+              "documentSize": {
+                "width": 375,
+                "height": 812
+              }
+            }
+          },
+          "eligible": true
+        },
+        "status": "passed",
+        "verdict": "match",
+        "severity": "medium",
+        "evaluationLimited": false,
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 375×812; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport."
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-2-mobile-baseline.png",
+          "targetScreenshot": "route-1-2-mobile-target.png",
+          "baselineDetails": "source-route-1-2-mobile-baseline.json",
+          "targetDetails": "route-1-2-mobile-target.json",
+          "baselineRepeat": "source-route-1-2-mobile-baseline-repeat.png",
+          "targetRepeat": "route-1-2-mobile-target-repeat.png",
+          "diff": "route-1-2-mobile-diff.png"
+        },
+        "score": 1
+      },
+      {
+        "route": "/",
+        "viewport": "mobile",
+        "oracle": {
+          "kind": "captured-browser-side",
+          "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+          "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+          "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+          "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+          "sourceSide": "baseline"
+        },
+        "evidenceLevel": "browser-reproduced",
+        "id": "route-1-2-mobile-point-1-menu",
+        "title": "Expanded menu",
+        "dimension": "behavior",
+        "severity": "high",
+        "identity": {
+          "version": 1,
+          "kind": "browser",
+          "facet": "behavior",
+          "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+          "contextKey": "d43626f41c82ecad6641652ade35a49d8be98e79a3b51fbb038a991186d0a8d5",
+          "ruleKey": "5a34f88af9f0a88ce3d4c5da938f4971bddf66b13ca973a8f14189b9c5711aac",
+          "oracleKey": "1e86c2bdbc90962a2534973c21a51555fb766cc1019cc8972281fa999756ccb4",
+          "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "pointId": "menu"
+        },
+        "status": "passed",
+        "verdict": "match",
+        "evaluationLimited": false,
+        "expected": {
+          "stepsComplete": true,
+          "assertions": [
+            {
+              "kind": "visible",
+              "selector": "#menu",
+              "expected": true,
+              "actual": true,
+              "passed": true
+            },
+            {
+              "kind": "attribute",
+              "selector": "#menu-toggle",
+              "attribute": "aria-expanded",
+              "expected": "true",
+              "actual": "true",
+              "passed": true
+            },
+            {
+              "kind": "text",
+              "selector": "#literal",
+              "expected": "fixed-contract-source-sentinel",
+              "actual": "fixed-contract-source-sentinel",
+              "passed": true
+            }
+          ],
+          "httpStatus": 200
+        },
+        "actual": {
+          "stepsComplete": true,
+          "stepError": null,
+          "assertions": [
+            {
+              "kind": "visible",
+              "selector": "#menu",
+              "expected": true,
+              "actual": true,
+              "passed": true
+            },
+            {
+              "kind": "attribute",
+              "selector": "#menu-toggle",
+              "attribute": "aria-expanded",
+              "expected": "true",
+              "actual": "true",
+              "passed": true
+            },
+            {
+              "kind": "text",
+              "selector": "#literal",
+              "expected": "fixed-contract-source-sentinel",
+              "actual": "fixed-contract-source-sentinel",
+              "passed": true
+            }
+          ],
+          "httpStatus": 200,
+          "navigationError": null,
+          "errors": [],
+          "network": [],
+          "overflow": false,
+          "blockedRequests": []
+        },
+        "reproduction": [
+          "Read captured candidate bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b, baseline side, at 375×812; the source URL is not visited.",
+          "Open http://127.0.0.1:53556/healthy in a fresh browser context at the same viewport.",
+          "fill #entry (fixed-contract-fill-sentinel)",
+          "click #menu-toggle"
+        ],
+        "evidence": {
+          "baselineScreenshot": "source-route-1-2-mobile-point-1-baseline.png",
+          "targetScreenshot": "route-1-2-mobile-point-1-target.png",
+          "baselineDetails": "source-route-1-2-mobile-point-1-baseline.json",
+          "targetDetails": "route-1-2-mobile-point-1-target.json",
+          "baselineRepeat": "source-route-1-2-mobile-point-1-baseline-repeat.png",
+          "targetRepeat": "route-1-2-mobile-point-1-target-repeat.png"
+        }
+      }
+    ],
+    "coverage": {
+      "planned": 14,
+      "completed": 14,
+      "capped": false
+    },
+    "safety": {
+      "networkPolicy": "read-only",
+      "isolatedContexts": true,
+      "blockedRequests": 0
+    },
+    "environment": {
+      "platform": "win32",
+      "arch": "x64",
+      "nodeVersion": "v25.2.1",
+      "browser": "chromium",
+      "browserVersion": "153.0.8010.12",
+      "playwrightVersion": "1.63.0",
+      "locale": "zh-CN",
+      "timezoneId": "Asia/Hong_Kong",
+      "colorScheme": "light",
+      "reducedMotion": "reduce"
+    },
+    "scope": "仅验收已声明路由、视口、操作和有界观察窗口；未声明业务与接口契约为未测。单侧文档高度不超过12,000像素且面积不超过12,000,000像素时截图覆盖全页，两次稳定性截图采用相同范围。超过预算仅保留首屏证据，视觉检查标为待复核，不作为完整页面通过依据。",
+    "fixedBaseline": {
+      "kind": "captured-browser-side",
+      "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+      "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+      "sourceBindingId": "ax-f17424ba-33ba-444b-ab0c-59851318bb49",
+      "sourceRunId": "ac-88e98aab-c7ad-43e0-aa8a-5c32cf6ee0c2",
+      "sourceMode": "regression",
+      "sourceSide": "baseline",
+      "entryUrl": "http://127.0.0.1:53556/source?source=fixed-contract-url-sentinel",
+      "sourceContentDigest": "0729dda10ce4f69bc84ffb84d0e433a7c54566b895b3e968af4343043b227b3f",
+      "organizationContextDigest": "86b8496c968805caa518c301c54e43f7d9aec53d3c937d4d3e66c242063a74f6",
+      "sourceEnvironment": {
+        "platform": "win32",
+        "arch": "x64",
+        "nodeVersion": "v25.2.1",
+        "browser": "chromium",
+        "browserVersion": "153.0.8010.12",
+        "playwrightVersion": "1.63.0",
+        "locale": "zh-CN",
+        "timezoneId": "Asia/Hong_Kong",
+        "colorScheme": "light",
+        "reducedMotion": "reduce"
+      },
+      "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+      "sourcePlanDigest": "93c3c49e611224071c2f7cce8b6de317308e848ac6d88e8b91f4c74dbc8dbf66",
+      "selectedEvidenceManifestDigest": "828f72d624c56f994934eca8dbd8bc1169b74252f1f54dc63c3f90d8196d96f2",
+      "scopeKey": "b751246a867ccca9d267333603849b354f3ba9d9be434d1c4ebacda177280167",
+      "ruleManifestKey": "34981459ac5def2b0081966fbb3b88705ee2c66b78bc68cb5d9886e7a5ffced4",
+      "oracleManifestKey": "9291ac12052995435e538b53da0904a1b804154357b6b2c5361a5cdb2e367364"
+    },
+    "targetReleaseId": "ar-a4c836e0-cbdc-4880-9985-02e80d65b97d",
+    "contractDigest": "d08cf16f005c07d8553131e0fb1072fd93e82644e48b218d35cde6d3c9dc579e",
+    "sourceEvidence": [
+      {
+        "sourceFile": "route-1-1-desktop-baseline-repeat.png",
+        "file": "source-route-1-1-desktop-baseline-repeat.png",
+        "bytes": 17550,
+        "sha256": "3719c5e6148e99cc2b462e5a8984d197ad50ebbcef5bd5251eb5057b5532b01e"
+      },
+      {
+        "sourceFile": "route-1-1-desktop-baseline.json",
+        "file": "source-route-1-1-desktop-baseline.json",
+        "bytes": 1510,
+        "sha256": "1e12a0eefaa436eade3e988646c07a385c011b8e440dec565edbe2717b60488b"
+      },
+      {
+        "sourceFile": "route-1-1-desktop-baseline.png",
+        "file": "source-route-1-1-desktop-baseline.png",
+        "bytes": 17550,
+        "sha256": "3719c5e6148e99cc2b462e5a8984d197ad50ebbcef5bd5251eb5057b5532b01e"
+      },
+      {
+        "sourceFile": "route-1-1-desktop-point-1-baseline-repeat.png",
+        "file": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+        "bytes": 20167,
+        "sha256": "9d95bbcb4903d1fc8bdecd37cd1d02336deedbd2f2070689f6cfe51d7022deb9"
+      },
+      {
+        "sourceFile": "route-1-1-desktop-point-1-baseline.json",
+        "file": "source-route-1-1-desktop-point-1-baseline.json",
+        "bytes": 2036,
+        "sha256": "94889efc10a252e62ded5530f2b8e865f921b85cf32b4bba271f68456ce89abb"
+      },
+      {
+        "sourceFile": "route-1-1-desktop-point-1-baseline.png",
+        "file": "source-route-1-1-desktop-point-1-baseline.png",
+        "bytes": 20167,
+        "sha256": "9d95bbcb4903d1fc8bdecd37cd1d02336deedbd2f2070689f6cfe51d7022deb9"
+      },
+      {
+        "sourceFile": "route-1-2-mobile-baseline-repeat.png",
+        "file": "source-route-1-2-mobile-baseline-repeat.png",
+        "bytes": 16262,
+        "sha256": "edeaaed026a45fa0451b1d3218be85a63d8c65bd47c4be506888093da32bf997"
+      },
+      {
+        "sourceFile": "route-1-2-mobile-baseline.json",
+        "file": "source-route-1-2-mobile-baseline.json",
+        "bytes": 1507,
+        "sha256": "50e6d0435d8fc455004d8363d256ed5621b543cb29b2ee408bac099d7c6d6347"
+      },
+      {
+        "sourceFile": "route-1-2-mobile-baseline.png",
+        "file": "source-route-1-2-mobile-baseline.png",
+        "bytes": 16262,
+        "sha256": "edeaaed026a45fa0451b1d3218be85a63d8c65bd47c4be506888093da32bf997"
+      },
+      {
+        "sourceFile": "route-1-2-mobile-point-1-baseline-repeat.png",
+        "file": "source-route-1-2-mobile-point-1-baseline-repeat.png",
+        "bytes": 18752,
+        "sha256": "f2b5b430e4a55c373b9a4ef6446e913667147cac163df0783ad06d2f7bf35485"
+      },
+      {
+        "sourceFile": "route-1-2-mobile-point-1-baseline.json",
+        "file": "source-route-1-2-mobile-point-1-baseline.json",
+        "bytes": 2033,
+        "sha256": "d78402aefddfa55367b7f382fb31d13714ce29641920e680f1ea19992c5d6cc9"
+      },
+      {
+        "sourceFile": "route-1-2-mobile-point-1-baseline.png",
+        "file": "source-route-1-2-mobile-point-1-baseline.png",
+        "bytes": 18752,
+        "sha256": "f2b5b430e4a55c373b9a4ef6446e913667147cac163df0783ad06d2f7bf35485"
+      }
+    ],
+    "environmentComparison": {
+      "comparable": true,
+      "differences": []
+    },
+    "resolution": {
+      "kind": "observation-only",
+      "closesBugs": false
+    },
+    "operationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+    "taskId": "a-80d5f951-a9f0-461b-99ae-a23594b6526e",
+    "dispatchSha256": "9a0cf3064a799824e67178de5ce9a9d6ae7e2f8b6e67d46571b64eafc0c9634f",
+    "contractFingerprint": "d08cf16f005c07d8553131e0fb1072fd93e82644e48b218d35cde6d3c9dc579e",
+    "verifierFingerprint": "03f86ce11ab884fb14f2ee17adde4e39f3ef0787f10ebc76f7eed9b7ee1562e3",
+    "evidenceManifest": [
+      {
+        "file": "route-1-1-desktop-diff.png",
+        "bytes": 22037,
+        "sha256": "ea1a917bd7dd48ee89a11771b7d90cd7d13ee12d699afe4df486d3317cb7b3b3"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target-repeat.png",
+        "bytes": 20167,
+        "sha256": "9d95bbcb4903d1fc8bdecd37cd1d02336deedbd2f2070689f6cfe51d7022deb9"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.json",
+        "bytes": 1988,
+        "sha256": "80ed92159cf74599b5c129ff295c55a95c43c7896fd85e849310c56fd3fb4b40"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.png",
+        "bytes": 20167,
+        "sha256": "9d95bbcb4903d1fc8bdecd37cd1d02336deedbd2f2070689f6cfe51d7022deb9"
+      },
+      {
+        "file": "route-1-1-desktop-target-repeat.png",
+        "bytes": 17550,
+        "sha256": "3719c5e6148e99cc2b462e5a8984d197ad50ebbcef5bd5251eb5057b5532b01e"
+      },
+      {
+        "file": "route-1-1-desktop-target.json",
+        "bytes": 1462,
+        "sha256": "776cd6f8caf5f02a4c5c7f2a42dd8659ea2e386bad6d6c4f0f6f88c112c734b7"
+      },
+      {
+        "file": "route-1-1-desktop-target.png",
+        "bytes": 17550,
+        "sha256": "3719c5e6148e99cc2b462e5a8984d197ad50ebbcef5bd5251eb5057b5532b01e"
+      },
+      {
+        "file": "route-1-2-mobile-diff.png",
+        "bytes": 19290,
+        "sha256": "10b9d5e9576751595c3b1f57c9f0b4bb36e636a75315135dbd072e62cbbfbe33"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target-repeat.png",
+        "bytes": 18752,
+        "sha256": "f2b5b430e4a55c373b9a4ef6446e913667147cac163df0783ad06d2f7bf35485"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.json",
+        "bytes": 1985,
+        "sha256": "ab0b22edba00dc44e72c8a554f9b0ff210b46bfc4bf610b2c3b2c1d22017eedb"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.png",
+        "bytes": 18752,
+        "sha256": "f2b5b430e4a55c373b9a4ef6446e913667147cac163df0783ad06d2f7bf35485"
+      },
+      {
+        "file": "route-1-2-mobile-target-repeat.png",
+        "bytes": 16262,
+        "sha256": "edeaaed026a45fa0451b1d3218be85a63d8c65bd47c4be506888093da32bf997"
+      },
+      {
+        "file": "route-1-2-mobile-target.json",
+        "bytes": 1459,
+        "sha256": "2dbbb758f0a51d52c2a519b75c61398fd4f04a7e7d8b405931b0b37bd59c0dc2"
+      },
+      {
+        "file": "route-1-2-mobile-target.png",
+        "bytes": 16262,
+        "sha256": "edeaaed026a45fa0451b1d3218be85a63d8c65bd47c4be506888093da32bf997"
+      },
+      {
+        "file": "source-route-1-1-desktop-baseline-repeat.png",
+        "bytes": 17550,
+        "sha256": "3719c5e6148e99cc2b462e5a8984d197ad50ebbcef5bd5251eb5057b5532b01e"
+      },
+      {
+        "file": "source-route-1-1-desktop-baseline.json",
+        "bytes": 1510,
+        "sha256": "1e12a0eefaa436eade3e988646c07a385c011b8e440dec565edbe2717b60488b"
+      },
+      {
+        "file": "source-route-1-1-desktop-baseline.png",
+        "bytes": 17550,
+        "sha256": "3719c5e6148e99cc2b462e5a8984d197ad50ebbcef5bd5251eb5057b5532b01e"
+      },
+      {
+        "file": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+        "bytes": 20167,
+        "sha256": "9d95bbcb4903d1fc8bdecd37cd1d02336deedbd2f2070689f6cfe51d7022deb9"
+      },
+      {
+        "file": "source-route-1-1-desktop-point-1-baseline.json",
+        "bytes": 2036,
+        "sha256": "94889efc10a252e62ded5530f2b8e865f921b85cf32b4bba271f68456ce89abb"
+      },
+      {
+        "file": "source-route-1-1-desktop-point-1-baseline.png",
+        "bytes": 20167,
+        "sha256": "9d95bbcb4903d1fc8bdecd37cd1d02336deedbd2f2070689f6cfe51d7022deb9"
+      },
+      {
+        "file": "source-route-1-2-mobile-baseline-repeat.png",
+        "bytes": 16262,
+        "sha256": "edeaaed026a45fa0451b1d3218be85a63d8c65bd47c4be506888093da32bf997"
+      },
+      {
+        "file": "source-route-1-2-mobile-baseline.json",
+        "bytes": 1507,
+        "sha256": "50e6d0435d8fc455004d8363d256ed5621b543cb29b2ee408bac099d7c6d6347"
+      },
+      {
+        "file": "source-route-1-2-mobile-baseline.png",
+        "bytes": 16262,
+        "sha256": "edeaaed026a45fa0451b1d3218be85a63d8c65bd47c4be506888093da32bf997"
+      },
+      {
+        "file": "source-route-1-2-mobile-point-1-baseline-repeat.png",
+        "bytes": 18752,
+        "sha256": "f2b5b430e4a55c373b9a4ef6446e913667147cac163df0783ad06d2f7bf35485"
+      },
+      {
+        "file": "source-route-1-2-mobile-point-1-baseline.json",
+        "bytes": 2033,
+        "sha256": "d78402aefddfa55367b7f382fb31d13714ce29641920e680f1ea19992c5d6cc9"
+      },
+      {
+        "file": "source-route-1-2-mobile-point-1-baseline.png",
+        "bytes": 18752,
+        "sha256": "f2b5b430e4a55c373b9a4ef6446e913667147cac163df0783ad06d2f7bf35485"
+      }
+    ],
+    "gate": "passed",
+    "summary": {
+      "total": 14,
+      "passed": 14,
+      "failed": 0,
+      "blocked": 0,
+      "needsReview": 0,
+      "bugs": 0,
+      "baselineFailed": 0,
+      "missing": 0,
+      "invalid": 0,
+      "coverage": {
+        "measured": 14,
+        "total": 14,
+        "ratio": 1
+      },
+      "dimensions": {
+        "visual": {
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": 1
+        },
+        "structure": {
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        },
+        "behavior": {
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        },
+        "health": {
+          "total": 8,
+          "passed": 8,
+          "failed": 0,
+          "blocked": 0,
+          "needsReview": 0,
+          "score": null
+        }
+      }
+    }
+  }
+}

@@ -29,6 +29,9 @@ export const SPEC_CANDIDATE_LIMITS_V1 = Object.freeze({ jsonBytes: 8 * 1024 * 10
  * sampled from main 1a87b2d; the controlled Spec runner pair was explicitly
  * reviewed with unchanged contract/report/identity semantics when controls are
  * omitted. Cancellation produces no completed report or reusable candidate.
+ * D3 changes the shared Browser runner bytes, while its early Spec delegation
+ * and the other nine verifier sources retain their reviewed semantics. The
+ * shared ten-file D3 LF/CRLF manifest is browser-verifier-reviewed-d3.json.
  * Explicit compatibility is intentional. No unknown historical digest can select
  * today's rules by assertion. When any verifier source changes, review/rebuild
  * this mapping and its golden fixtures; do not simply accept a reported hash.
@@ -42,6 +45,10 @@ export const SUPPORTED_SPEC_VERIFIERS_V1 = Object.freeze([
   'e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8',
   // Same controlled runner source set with CRLF contents; separators stay LF.
   '8d1b75da7efad4f18b279a466ebdf880b1e24bb641ca80070cd03d0700376e9f',
+  // Reviewed D3 shared Browser runner; Spec delegates before Browser execution.
+  '2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337',
+  // Same reviewed D3 source set with CRLF contents; separators remain LF.
+  '270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2',
 ]);
 const HASH = /^[a-f0-9]{64}$/;
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';

@@ -1,0 +1,574 @@
+{
+  "schemaVersion": 1,
+  "kind": "browser-check-ledger",
+  "granularity": "check",
+  "projectId": "ap-c547e076-988c-41ac-85aa-a6ecf90c8e4d",
+  "scope": "explicit-operation-observations",
+  "closesBugs": false,
+  "entries": [
+    {
+      "schemaVersion": 1,
+      "kind": "browser-check-observation",
+      "granularity": "check",
+      "projectId": "ap-c547e076-988c-41ac-85aa-a6ecf90c8e4d",
+      "operationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+      "runId": "br-7c4abcdb-3f29-4b7b-aaa3-cc319c624f5c",
+      "reportSha256": "62160459738fcdcbd777bb35cb7b856243181f83d9e889099b6fd17794ae4037",
+      "dispatchSha256": "be0493f5f5dda074d08a054d40b257a887fb3b4f50983a758c1a71f9a303f5c1",
+      "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+      "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+      "targetReleaseId": "ar-99b4136a-2c60-49b5-90ee-bec569dd1d8f",
+      "beforeOperationId": null,
+      "beforeObservationSha256": null,
+      "recordedAt": "2026-10-17T13:27:33.976Z",
+      "observations": [
+        {
+          "bugId": "bug-05ad5e216b0415ab144762db00b4061c7db4d26886d2bf7ec69af4a7ba743cb8",
+          "bugKey": "05ad5e216b0415ab144762db00b4061c7db4d26886d2bf7ec69af4a7ba743cb8",
+          "checkId": "route-1-1-desktop-visual",
+          "beforeCheckId": null,
+          "title": "页面视觉还原度",
+          "route": "/",
+          "facet": "visual",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          },
+          "identity": {
+            "version": 1,
+            "kind": "browser",
+            "facet": "visual",
+            "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+            "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+            "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+            "oracleKey": "b010e03df2a144650489efd263f1503a6e63c499fc21e52ef3332197eb841f07",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "viewport": {
+              "width": 960,
+              "height": 640
+            }
+          },
+          "status": "failed",
+          "verdict": "bug",
+          "relation": "observed_failure",
+          "evidenceReferences": {
+            "baselineScreenshot": "source-route-1-1-desktop-baseline.png",
+            "targetScreenshot": "route-1-1-desktop-target.png",
+            "baselineDetails": "source-route-1-1-desktop-baseline.json",
+            "targetDetails": "route-1-1-desktop-target.json",
+            "baselineRepeat": "source-route-1-1-desktop-baseline-repeat.png",
+            "targetRepeat": "route-1-1-desktop-target-repeat.png",
+            "diff": "route-1-1-desktop-diff.png"
+          }
+        },
+        {
+          "bugId": "bug-e5990e56af195ad87e10ce1bed5b385cba28aeaeb659ab4e239f379fb867324b",
+          "bugKey": "e5990e56af195ad87e10ce1bed5b385cba28aeaeb659ab4e239f379fb867324b",
+          "checkId": "route-1-1-desktop-point-1-menu",
+          "beforeCheckId": null,
+          "title": "Expanded menu",
+          "route": "/",
+          "facet": "behavior",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          },
+          "identity": {
+            "version": 1,
+            "kind": "browser",
+            "facet": "behavior",
+            "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+            "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+            "ruleKey": "5a34f88af9f0a88ce3d4c5da938f4971bddf66b13ca973a8f14189b9c5711aac",
+            "oracleKey": "dd13421066d229b19af21796d96b09288f8dcbb3130a8b47d8b744f93683e39e",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "viewport": {
+              "width": 960,
+              "height": 640
+            },
+            "pointId": "menu"
+          },
+          "status": "failed",
+          "verdict": "bug",
+          "relation": "observed_failure",
+          "evidenceReferences": {
+            "baselineScreenshot": "source-route-1-1-desktop-point-1-baseline.png",
+            "targetScreenshot": "route-1-1-desktop-point-1-target.png",
+            "baselineDetails": "source-route-1-1-desktop-point-1-baseline.json",
+            "targetDetails": "route-1-1-desktop-point-1-target.json",
+            "baselineRepeat": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+            "targetRepeat": "route-1-1-desktop-point-1-target-repeat.png"
+          }
+        },
+        {
+          "bugId": "bug-8a1f03ec283d15e523c00276e843aa268ae40e34281449f7ac2e9076393cb4e6",
+          "bugKey": "8a1f03ec283d15e523c00276e843aa268ae40e34281449f7ac2e9076393cb4e6",
+          "checkId": "route-1-2-mobile-visual",
+          "beforeCheckId": null,
+          "title": "页面视觉还原度",
+          "route": "/",
+          "facet": "visual",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "identity": {
+            "version": 1,
+            "kind": "browser",
+            "facet": "visual",
+            "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+            "contextKey": "f72824569117cf7144b465ab6e0d93201d6d75e0a052646865851787c5c8c9be",
+            "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+            "oracleKey": "ba5c7dc2f1902d8239db7c9131e32517a97f1ef2ef236cbdc243c691013d76a5",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "viewport": {
+              "width": 375,
+              "height": 812
+            }
+          },
+          "status": "failed",
+          "verdict": "bug",
+          "relation": "observed_failure",
+          "evidenceReferences": {
+            "baselineScreenshot": "source-route-1-2-mobile-baseline.png",
+            "targetScreenshot": "route-1-2-mobile-target.png",
+            "baselineDetails": "source-route-1-2-mobile-baseline.json",
+            "targetDetails": "route-1-2-mobile-target.json",
+            "baselineRepeat": "source-route-1-2-mobile-baseline-repeat.png",
+            "targetRepeat": "route-1-2-mobile-target-repeat.png",
+            "diff": "route-1-2-mobile-diff.png"
+          }
+        },
+        {
+          "bugId": "bug-d3853ef8a43f98277f910916f3fd1954b26613b8aecab040865a2c6243fe2f35",
+          "bugKey": "d3853ef8a43f98277f910916f3fd1954b26613b8aecab040865a2c6243fe2f35",
+          "checkId": "route-1-2-mobile-point-1-menu",
+          "beforeCheckId": null,
+          "title": "Expanded menu",
+          "route": "/",
+          "facet": "behavior",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "identity": {
+            "version": 1,
+            "kind": "browser",
+            "facet": "behavior",
+            "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+            "contextKey": "d43626f41c82ecad6641652ade35a49d8be98e79a3b51fbb038a991186d0a8d5",
+            "ruleKey": "5a34f88af9f0a88ce3d4c5da938f4971bddf66b13ca973a8f14189b9c5711aac",
+            "oracleKey": "1e86c2bdbc90962a2534973c21a51555fb766cc1019cc8972281fa999756ccb4",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "viewport": {
+              "width": 375,
+              "height": 812
+            },
+            "pointId": "menu"
+          },
+          "status": "failed",
+          "verdict": "bug",
+          "relation": "observed_failure",
+          "evidenceReferences": {
+            "baselineScreenshot": "source-route-1-2-mobile-point-1-baseline.png",
+            "targetScreenshot": "route-1-2-mobile-point-1-target.png",
+            "baselineDetails": "source-route-1-2-mobile-point-1-baseline.json",
+            "targetDetails": "route-1-2-mobile-point-1-target.json",
+            "baselineRepeat": "source-route-1-2-mobile-point-1-baseline-repeat.png",
+            "targetRepeat": "route-1-2-mobile-point-1-target-repeat.png"
+          }
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "browser-check-observation",
+      "granularity": "check",
+      "projectId": "ap-c547e076-988c-41ac-85aa-a6ecf90c8e4d",
+      "operationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+      "runId": "br-ff6bcd6f-50a1-4006-ba25-4f6f2f194c15",
+      "reportSha256": "feb66d660ff18930fd43fbdcebc8bcdf0c0494fd69e584f19536205e21d67adb",
+      "dispatchSha256": "9a0cf3064a799824e67178de5ce9a9d6ae7e2f8b6e67d46571b64eafc0c9634f",
+      "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+      "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+      "targetReleaseId": "ar-a4c836e0-cbdc-4880-9985-02e80d65b97d",
+      "beforeOperationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+      "beforeObservationSha256": "fde836abd749a3fbb6e6ec58cac8e768984a4d031c848d29cb6cfafd1fef4436",
+      "recordedAt": "2026-10-17T13:27:52.954Z",
+      "observations": [
+        {
+          "bugId": "bug-05ad5e216b0415ab144762db00b4061c7db4d26886d2bf7ec69af4a7ba743cb8",
+          "bugKey": "05ad5e216b0415ab144762db00b4061c7db4d26886d2bf7ec69af4a7ba743cb8",
+          "checkId": "route-1-1-desktop-visual",
+          "beforeCheckId": "route-1-1-desktop-visual",
+          "title": "页面视觉还原度",
+          "route": "/",
+          "facet": "visual",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          },
+          "identity": {
+            "version": 1,
+            "kind": "browser",
+            "facet": "visual",
+            "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+            "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+            "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+            "oracleKey": "b010e03df2a144650489efd263f1503a6e63c499fc21e52ef3332197eb841f07",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "viewport": {
+              "width": 960,
+              "height": 640
+            }
+          },
+          "status": "passed",
+          "verdict": "match",
+          "relation": "verified_passed",
+          "evidenceReferences": {
+            "baselineScreenshot": "source-route-1-1-desktop-baseline.png",
+            "targetScreenshot": "route-1-1-desktop-target.png",
+            "baselineDetails": "source-route-1-1-desktop-baseline.json",
+            "targetDetails": "route-1-1-desktop-target.json",
+            "baselineRepeat": "source-route-1-1-desktop-baseline-repeat.png",
+            "targetRepeat": "route-1-1-desktop-target-repeat.png",
+            "diff": "route-1-1-desktop-diff.png"
+          }
+        },
+        {
+          "bugId": "bug-e5990e56af195ad87e10ce1bed5b385cba28aeaeb659ab4e239f379fb867324b",
+          "bugKey": "e5990e56af195ad87e10ce1bed5b385cba28aeaeb659ab4e239f379fb867324b",
+          "checkId": "route-1-1-desktop-point-1-menu",
+          "beforeCheckId": "route-1-1-desktop-point-1-menu",
+          "title": "Expanded menu",
+          "route": "/",
+          "facet": "behavior",
+          "viewport": {
+            "width": 960,
+            "height": 640
+          },
+          "identity": {
+            "version": 1,
+            "kind": "browser",
+            "facet": "behavior",
+            "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+            "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+            "ruleKey": "5a34f88af9f0a88ce3d4c5da938f4971bddf66b13ca973a8f14189b9c5711aac",
+            "oracleKey": "dd13421066d229b19af21796d96b09288f8dcbb3130a8b47d8b744f93683e39e",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "viewport": {
+              "width": 960,
+              "height": 640
+            },
+            "pointId": "menu"
+          },
+          "status": "passed",
+          "verdict": "match",
+          "relation": "verified_passed",
+          "evidenceReferences": {
+            "baselineScreenshot": "source-route-1-1-desktop-point-1-baseline.png",
+            "targetScreenshot": "route-1-1-desktop-point-1-target.png",
+            "baselineDetails": "source-route-1-1-desktop-point-1-baseline.json",
+            "targetDetails": "route-1-1-desktop-point-1-target.json",
+            "baselineRepeat": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+            "targetRepeat": "route-1-1-desktop-point-1-target-repeat.png"
+          }
+        },
+        {
+          "bugId": "bug-8a1f03ec283d15e523c00276e843aa268ae40e34281449f7ac2e9076393cb4e6",
+          "bugKey": "8a1f03ec283d15e523c00276e843aa268ae40e34281449f7ac2e9076393cb4e6",
+          "checkId": "route-1-2-mobile-visual",
+          "beforeCheckId": "route-1-2-mobile-visual",
+          "title": "页面视觉还原度",
+          "route": "/",
+          "facet": "visual",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "identity": {
+            "version": 1,
+            "kind": "browser",
+            "facet": "visual",
+            "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+            "contextKey": "f72824569117cf7144b465ab6e0d93201d6d75e0a052646865851787c5c8c9be",
+            "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+            "oracleKey": "ba5c7dc2f1902d8239db7c9131e32517a97f1ef2ef236cbdc243c691013d76a5",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "viewport": {
+              "width": 375,
+              "height": 812
+            }
+          },
+          "status": "passed",
+          "verdict": "match",
+          "relation": "verified_passed",
+          "evidenceReferences": {
+            "baselineScreenshot": "source-route-1-2-mobile-baseline.png",
+            "targetScreenshot": "route-1-2-mobile-target.png",
+            "baselineDetails": "source-route-1-2-mobile-baseline.json",
+            "targetDetails": "route-1-2-mobile-target.json",
+            "baselineRepeat": "source-route-1-2-mobile-baseline-repeat.png",
+            "targetRepeat": "route-1-2-mobile-target-repeat.png",
+            "diff": "route-1-2-mobile-diff.png"
+          }
+        },
+        {
+          "bugId": "bug-d3853ef8a43f98277f910916f3fd1954b26613b8aecab040865a2c6243fe2f35",
+          "bugKey": "d3853ef8a43f98277f910916f3fd1954b26613b8aecab040865a2c6243fe2f35",
+          "checkId": "route-1-2-mobile-point-1-menu",
+          "beforeCheckId": "route-1-2-mobile-point-1-menu",
+          "title": "Expanded menu",
+          "route": "/",
+          "facet": "behavior",
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "identity": {
+            "version": 1,
+            "kind": "browser",
+            "facet": "behavior",
+            "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+            "contextKey": "d43626f41c82ecad6641652ade35a49d8be98e79a3b51fbb038a991186d0a8d5",
+            "ruleKey": "5a34f88af9f0a88ce3d4c5da938f4971bddf66b13ca973a8f14189b9c5711aac",
+            "oracleKey": "1e86c2bdbc90962a2534973c21a51555fb766cc1019cc8972281fa999756ccb4",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "viewport": {
+              "width": 375,
+              "height": 812
+            },
+            "pointId": "menu"
+          },
+          "status": "passed",
+          "verdict": "match",
+          "relation": "verified_passed",
+          "evidenceReferences": {
+            "baselineScreenshot": "source-route-1-2-mobile-point-1-baseline.png",
+            "targetScreenshot": "route-1-2-mobile-point-1-target.png",
+            "baselineDetails": "source-route-1-2-mobile-point-1-baseline.json",
+            "targetDetails": "route-1-2-mobile-point-1-target.json",
+            "baselineRepeat": "source-route-1-2-mobile-point-1-baseline-repeat.png",
+            "targetRepeat": "route-1-2-mobile-point-1-target-repeat.png"
+          }
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "bugId": "bug-05ad5e216b0415ab144762db00b4061c7db4d26886d2bf7ec69af4a7ba743cb8",
+      "bugKey": "05ad5e216b0415ab144762db00b4061c7db4d26886d2bf7ec69af4a7ba743cb8",
+      "projectId": "ap-c547e076-988c-41ac-85aa-a6ecf90c8e4d",
+      "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+      "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+      "title": "页面视觉还原度",
+      "route": "/",
+      "facet": "visual",
+      "viewport": {
+        "width": 960,
+        "height": 640
+      },
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+        "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+        "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+        "oracleKey": "b010e03df2a144650489efd263f1503a6e63c499fc21e52ef3332197eb841f07",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "status": "verified_passed",
+      "lastVerifiedState": "verified_passed",
+      "closesBusinessIssue": false,
+      "history": [
+        {
+          "operationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+          "beforeOperationId": null,
+          "reportSha256": "62160459738fcdcbd777bb35cb7b856243181f83d9e889099b6fd17794ae4037",
+          "relation": "observed_failure",
+          "status": "failed",
+          "verdict": "bug",
+          "recordedAt": "2026-10-17T13:27:33.976Z"
+        },
+        {
+          "operationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+          "beforeOperationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+          "reportSha256": "feb66d660ff18930fd43fbdcebc8bcdf0c0494fd69e584f19536205e21d67adb",
+          "relation": "verified_passed",
+          "status": "passed",
+          "verdict": "match",
+          "recordedAt": "2026-10-17T13:27:52.954Z"
+        }
+      ],
+      "latestOperationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+      "latestTargetReleaseId": "ar-a4c836e0-cbdc-4880-9985-02e80d65b97d"
+    },
+    {
+      "bugId": "bug-e5990e56af195ad87e10ce1bed5b385cba28aeaeb659ab4e239f379fb867324b",
+      "bugKey": "e5990e56af195ad87e10ce1bed5b385cba28aeaeb659ab4e239f379fb867324b",
+      "projectId": "ap-c547e076-988c-41ac-85aa-a6ecf90c8e4d",
+      "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+      "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+      "title": "Expanded menu",
+      "route": "/",
+      "facet": "behavior",
+      "viewport": {
+        "width": 960,
+        "height": 640
+      },
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "behavior",
+        "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+        "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+        "ruleKey": "5a34f88af9f0a88ce3d4c5da938f4971bddf66b13ca973a8f14189b9c5711aac",
+        "oracleKey": "dd13421066d229b19af21796d96b09288f8dcbb3130a8b47d8b744f93683e39e",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        },
+        "pointId": "menu"
+      },
+      "status": "verified_passed",
+      "lastVerifiedState": "verified_passed",
+      "closesBusinessIssue": false,
+      "history": [
+        {
+          "operationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+          "beforeOperationId": null,
+          "reportSha256": "62160459738fcdcbd777bb35cb7b856243181f83d9e889099b6fd17794ae4037",
+          "relation": "observed_failure",
+          "status": "failed",
+          "verdict": "bug",
+          "recordedAt": "2026-10-17T13:27:33.976Z"
+        },
+        {
+          "operationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+          "beforeOperationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+          "reportSha256": "feb66d660ff18930fd43fbdcebc8bcdf0c0494fd69e584f19536205e21d67adb",
+          "relation": "verified_passed",
+          "status": "passed",
+          "verdict": "match",
+          "recordedAt": "2026-10-17T13:27:52.954Z"
+        }
+      ],
+      "latestOperationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+      "latestTargetReleaseId": "ar-a4c836e0-cbdc-4880-9985-02e80d65b97d"
+    },
+    {
+      "bugId": "bug-8a1f03ec283d15e523c00276e843aa268ae40e34281449f7ac2e9076393cb4e6",
+      "bugKey": "8a1f03ec283d15e523c00276e843aa268ae40e34281449f7ac2e9076393cb4e6",
+      "projectId": "ap-c547e076-988c-41ac-85aa-a6ecf90c8e4d",
+      "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+      "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+      "title": "页面视觉还原度",
+      "route": "/",
+      "facet": "visual",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+        "contextKey": "f72824569117cf7144b465ab6e0d93201d6d75e0a052646865851787c5c8c9be",
+        "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+        "oracleKey": "ba5c7dc2f1902d8239db7c9131e32517a97f1ef2ef236cbdc243c691013d76a5",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "status": "verified_passed",
+      "lastVerifiedState": "verified_passed",
+      "closesBusinessIssue": false,
+      "history": [
+        {
+          "operationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+          "beforeOperationId": null,
+          "reportSha256": "62160459738fcdcbd777bb35cb7b856243181f83d9e889099b6fd17794ae4037",
+          "relation": "observed_failure",
+          "status": "failed",
+          "verdict": "bug",
+          "recordedAt": "2026-10-17T13:27:33.976Z"
+        },
+        {
+          "operationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+          "beforeOperationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+          "reportSha256": "feb66d660ff18930fd43fbdcebc8bcdf0c0494fd69e584f19536205e21d67adb",
+          "relation": "verified_passed",
+          "status": "passed",
+          "verdict": "match",
+          "recordedAt": "2026-10-17T13:27:52.954Z"
+        }
+      ],
+      "latestOperationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+      "latestTargetReleaseId": "ar-a4c836e0-cbdc-4880-9985-02e80d65b97d"
+    },
+    {
+      "bugId": "bug-d3853ef8a43f98277f910916f3fd1954b26613b8aecab040865a2c6243fe2f35",
+      "bugKey": "d3853ef8a43f98277f910916f3fd1954b26613b8aecab040865a2c6243fe2f35",
+      "projectId": "ap-c547e076-988c-41ac-85aa-a6ecf90c8e4d",
+      "candidateId": "bc-b1b3cfef-8dc6-4b59-b0ab-bef3123fcf2b",
+      "contentDigest": "07697a791f464a0a1c812f17b536b51ef98b232c8f28705976d5d06738239cb8",
+      "title": "Expanded menu",
+      "route": "/",
+      "facet": "behavior",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "behavior",
+        "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+        "contextKey": "d43626f41c82ecad6641652ade35a49d8be98e79a3b51fbb038a991186d0a8d5",
+        "ruleKey": "5a34f88af9f0a88ce3d4c5da938f4971bddf66b13ca973a8f14189b9c5711aac",
+        "oracleKey": "1e86c2bdbc90962a2534973c21a51555fb766cc1019cc8972281fa999756ccb4",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "pointId": "menu"
+      },
+      "status": "verified_passed",
+      "lastVerifiedState": "verified_passed",
+      "closesBusinessIssue": false,
+      "history": [
+        {
+          "operationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+          "beforeOperationId": null,
+          "reportSha256": "62160459738fcdcbd777bb35cb7b856243181f83d9e889099b6fd17794ae4037",
+          "relation": "observed_failure",
+          "status": "failed",
+          "verdict": "bug",
+          "recordedAt": "2026-10-17T13:27:33.976Z"
+        },
+        {
+          "operationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+          "beforeOperationId": "bo-aac68888-386d-4da4-962c-90e37d45e379",
+          "reportSha256": "feb66d660ff18930fd43fbdcebc8bcdf0c0494fd69e584f19536205e21d67adb",
+          "relation": "verified_passed",
+          "status": "passed",
+          "verdict": "match",
+          "recordedAt": "2026-10-17T13:27:52.954Z"
+        }
+      ],
+      "latestOperationId": "bo-5bf2c305-3114-4bf4-8d8f-d2eb89f41b3c",
+      "latestTargetReleaseId": "ar-a4c836e0-cbdc-4880-9985-02e80d65b97d"
+    }
+  ]
+}
