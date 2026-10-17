@@ -57,7 +57,7 @@ owner 内的目录写入按队列顺序执行，覆盖 read → validate → rev
 
 当前活动目录使用 schemaVersion 2。它保留原项目、版本、运行归属和事件格式；candidates、approvals、selections 按[需求基线合同](acceptance-baseline.md)严格验证 Spec 候选、批准与选用历史。最初 B2.0 版本仅允许这些集合为空，不能回写已包含新历史的目录。
 
-最新目录为 schemaVersion 3，Browser 来源表当前严格为空。旧 schemaVersion 1 在单个引擎取得所有权后，由 initialize 队列依次执行 `1→2→3`；旧 2 仅执行 `2→3`。每步保留全部旧实体与事件、追加一条全局迁移记录、revision 增加 1，并生成新 generationId。迁移事件没有 projectId，不计作项目用户操作；旧页面 CAS 失效，需要刷新。完整合同见 [Schema3 指南](acceptance-catalog-schema3.md)。
+最新目录为 schemaVersion 3；Browser 表已有独立的[来源侧归属合同](acceptance-browser-bindings.md)，迁移本身仍生成空表。旧 schemaVersion 1 在单个引擎取得所有权后，由 initialize 队列依次执行 `1→2→3`；旧 2 仅执行 `2→3`。每步保留全部旧实体与事件、追加一条全局迁移记录、revision 增加 1，并生成新 generationId。迁移事件没有 projectId，不计作项目用户操作；旧页面 CAS 失效，需要刷新。完整合同见 [Schema3 指南](acceptance-catalog-schema3.md)。
 
 迁移前严格检查活动目录和 rolling previous：同格式备份必须与活动目录同 generation，且是完整事件及不可变实体的历史前缀或相同快照。不会仅凭 revision 较小接受无关备份。schema1 活动目录搭配 schema2 备份属于谱系不明，升级失败并保留原件。
 

@@ -1,0 +1,118 @@
+{
+  "status": "passed",
+  "evidenceLevel": "committed-b1-fixture-real-engine-browser-migration",
+  "sourceCommit": "8353595",
+  "fixture": "docs/audits/2026-10-16/evidence/acceptance-catalog/console",
+  "checkCount": 15,
+  "checks": {
+    "committedB1FixtureHasThreeRealRunsAnd18Files": true,
+    "schema3TwoStepGenerationRevisionAndHistoryPrefix": true,
+    "exactB1PreimageBytesArchived": true,
+    "exactIntermediateV2PreimageBytesArchived": true,
+    "oldB1CasGets409AndFailedGatePreserved": true,
+    "twoRestartsAreByteIdempotent": true,
+    "newB1ProjectReleaseBindingRemainWritable": true,
+    "realConsoleShowsMigratedAndNewB1Organization": true,
+    "desktopAndMobileOriginalFailedReportVisible": true,
+    "missingSourceBindingPreservedWithSeparateDiagnostics": true,
+    "completeNativeV2SpecHistoryMigratesWithoutChangingEntities": true,
+    "nativeV2SpecDesktopMobileAndCurrentSelectionVisible": true,
+    "nativeV2SpecRestartAndSourceBytesUnchanged": true,
+    "zeroTargetRequestsAndNoNewAcceptanceWorker": true,
+    "originalAndCopiedRunTreesRemainByteIdentical": true
+  },
+  "originalRevision": 12,
+  "migratedRevision": 14,
+  "originalGenerationId": "ag-ca176aa9-63db-4fc6-a031-a08609a5d857",
+  "migratedGenerationId": "ag-28d323d2-fbab-47b2-b7e7-27bc9447a033",
+  "sourceRunFiles": 18,
+  "originalFailedRunId": "ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743",
+  "restartCount": 2,
+  "targetRequests": 0,
+  "apiCaseCount": 16,
+  "layouts": [
+    {
+      "scenario": "migration-restart-2",
+      "screen": "migration-catalog-1440",
+      "width": 1440,
+      "height": 1000,
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "catalogWidth": 1012,
+      "catalogScrollWidth": 1012,
+      "workbenchWidth": 1390
+    },
+    {
+      "scenario": "migration-restart-2",
+      "screen": "migration-failed-report-1440",
+      "width": 1440,
+      "height": 1000,
+      "viewportWidth": 1440,
+      "documentWidth": 1440
+    },
+    {
+      "scenario": "migration-restart-2",
+      "screen": "migration-catalog-390",
+      "width": 390,
+      "height": 844,
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "catalogWidth": 334,
+      "catalogScrollWidth": 334,
+      "workbenchWidth": 368
+    },
+    {
+      "scenario": "migration-restart-2",
+      "screen": "migration-failed-report-390",
+      "width": 390,
+      "height": 844,
+      "viewportWidth": 390,
+      "documentWidth": 390
+    },
+    {
+      "scenario": "isolated-missing-source",
+      "screen": "migration-missing-source-390",
+      "width": 390,
+      "height": 844,
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "catalogWidth": 334,
+      "catalogScrollWidth": 334,
+      "workbenchWidth": 368
+    },
+    {
+      "scenario": "native-v2-spec-history",
+      "screen": "native-v2-spec-history-1440",
+      "width": 1440,
+      "height": 1000,
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "catalogWidth": 1012,
+      "catalogScrollWidth": 1012,
+      "workbenchWidth": 1390
+    },
+    {
+      "scenario": "native-v2-spec-history",
+      "screen": "native-v2-spec-history-390",
+      "width": 390,
+      "height": 844,
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "catalogWidth": 334,
+      "catalogScrollWidth": 334,
+      "workbenchWidth": 368
+    }
+  ],
+  "errors": [],
+  "nativeV2Spec": {
+    "fixture": "docs/audits/2026-10-16/evidence/acceptance-baseline/console",
+    "originalRevision": 20,
+    "migratedRevision": 21,
+    "candidates": 2,
+    "approvals": 5,
+    "selections": 7,
+    "sourceRunFiles": 14,
+    "restartCount": 1
+  },
+  "scope": "B1真实运行副本→真实引擎1→2→3逐步迁移→两次重启→旧CAS拒绝→组织写入→桌面/手机与原失败报告；缺失来源用单独副本。另用完整原生V2 Spec历史副本做2→3、候选/批准/选用/取消历史和桌面/手机复验及重启。Browser来源表严格为空，不执行新worker、不新增批准或选用、不宣称Browser绑定或执行。"
+}

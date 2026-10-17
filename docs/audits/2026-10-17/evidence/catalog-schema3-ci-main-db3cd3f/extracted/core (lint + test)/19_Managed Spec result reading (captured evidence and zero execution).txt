@@ -1,0 +1,37 @@
+﻿2026-10-17T03:14:22.2563684Z ##[group]Run pnpm acceptance:managed:read:smoke
+2026-10-17T03:14:22.2564209Z [36;1mpnpm acceptance:managed:read:smoke[0m
+2026-10-17T03:14:22.2641163Z shell: /usr/bin/bash -e {0}
+2026-10-17T03:14:22.2641430Z env:
+2026-10-17T03:14:22.2641656Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T03:14:22.2641917Z ##[endgroup]
+2026-10-17T03:14:23.1066088Z $ node scripts/smoke-acceptance-managed-reading.mjs
+2026-10-17T03:14:26.3246669Z {
+2026-10-17T03:14:26.3247462Z   "status": "passed",
+2026-10-17T03:14:26.3248197Z   "evidenceLevel": "real-browser-local-fixture",
+2026-10-17T03:14:26.3249535Z   "scope": "Real preparation + explicit internal runner/writer before engine startup; startup settles running to interrupted and browser only reads. No engine executor tested.",
+2026-10-17T03:14:26.3250710Z   "browserPath": "Playwright",
+2026-10-17T03:14:26.3251265Z   "engineExecutorTested": false,
+2026-10-17T03:14:26.3251774Z   "engineRecoveryTested": true,
+2026-10-17T03:14:26.3253749Z   "runIds": [
+2026-10-17T03:14:26.3254317Z     "ac-5d8e3817-9777-42a9-ba5f-b90a73789384",
+2026-10-17T03:14:26.3255473Z     "ac-0e4a238e-efd2-4ba4-b2ce-f7149bcca224",
+2026-10-17T03:14:26.3256051Z     "ac-17edb24c-256a-4913-b811-6f37d8818c67"
+2026-10-17T03:14:26.3256837Z   ],
+2026-10-17T03:14:26.3257374Z   "preparedUnstarted": "ac-bd7020a0-d5f9-47ba-9acb-82dba660dc33",
+2026-10-17T03:14:26.3257927Z   "checks": {
+2026-10-17T03:14:26.3258356Z     "safeHeadAndRealLifecycle": true,
+2026-10-17T03:14:26.3258900Z     "completedBugVisibleAndTriageUnavailable": true,
+2026-10-17T03:14:26.3259478Z     "referencedEvidenceRendered": true,
+2026-10-17T03:14:26.3260076Z     "downloadUsesVerifiedJsonAndDerivedMarkdown": true,
+2026-10-17T03:14:26.3262223Z     "recoveredInterruptionIsNotCompleted": true,
+2026-10-17T03:14:26.3262931Z     "mobileNoOverflow": true,
+2026-10-17T03:14:26.3263441Z     "readingNeverExecutesOrRewritesFacts": true
+2026-10-17T03:14:26.3263909Z   },
+2026-10-17T03:14:26.3264269Z   "layout": {
+2026-10-17T03:14:26.3264639Z     "width": 390,
+2026-10-17T03:14:26.3265198Z     "document": 390,
+2026-10-17T03:14:26.3265598Z     "results": 368,
+2026-10-17T03:14:26.3265980Z     "resultWidth": 368
+2026-10-17T03:14:26.3266360Z   },
+2026-10-17T03:14:26.3266726Z   "pageErrors": []
+2026-10-17T03:14:26.3267105Z }

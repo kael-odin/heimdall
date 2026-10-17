@@ -78,6 +78,8 @@ jobs:
         run: pnpm acceptance:browser:source:smoke
       - name: Browser private source reader (owner fences and unchanged originals)
         run: pnpm acceptance:browser:read:smoke
+      - name: Browser source bindings (fresh captures, explicit sides and source revalidation)
+        run: pnpm acceptance:browser:bindings:smoke
       - name: Preserve acceptance smoke failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -102,6 +104,9 @@ jobs:
             core/workspace/_runs/browser-source-smoke-*/materials/source-index.json
             core/workspace/_runs/browser-reading-smoke-*/failure.json
             core/workspace/_runs/browser-reading-smoke-*/materials/source-index.json
+            core/workspace/_runs/browser-bindings-smoke-*/failure.json
+            core/workspace/_runs/browser-bindings-smoke-*/summary.json
+            core/workspace/_runs/browser-bindings-smoke-*/checks.json
           if-no-files-found: ignore
           retention-days: 7
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。

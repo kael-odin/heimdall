@@ -3,12 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { types } from 'node:util';
 import { normalizeAcceptanceUrl } from './urls.mjs';
 import { hashAcceptanceValue } from './identity.mjs';
+import { hashBrowserCandidateValue } from './browser-candidate-identity.mjs';
 
 export const ACCEPTANCE_CATALOG_LIMITS = Object.freeze({ jsonBytes: 8 * 1024 * 1024, manifestBytes: 8 * 1024 * 1024,
   projects: 64, releases: 1024, runBindings: 4096, candidates: 1024, approvals: 2048, selections: 4096,
   migrations: 2, browserSourceBindings: 4096, events: 8192, queue: 32 });
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const IDS = Object.fromEntries(['ag', 'ap', 'ar', 'ac', 'ae', 'ab', 'aa', 'as', 'am'].map(prefix => [prefix, new RegExp(`^${prefix}-${UUID}$`)]));
+const IDS = Object.fromEntries(['ag', 'ap', 'ar', 'ac', 'ae', 'ab', 'aa', 'as', 'am', 'ax'].map(prefix => [prefix, new RegExp(`^${prefix}-${UUID}$`)]));
 const HASH = /^[a-f0-9]{64}$/;
 const sha256 = value => typeof value === 'string' && HASH.test(value);
 const BASE_MAPS = ['projects', 'releases', 'runBindings'];
@@ -26,11 +27,29 @@ const CANDIDATE_DIGESTS = ['sourcePlanDigest', 'sourceReportDigest', 'evidenceMa
 const CANDIDATE_FIELDS = ['id', 'projectId', 'mode', 'projectionVersion', 'source', ...CANDIDATE_DIGESTS, 'createdAt'];
 const APPROVAL_FIELDS = ['id', 'projectId', 'candidateId', 'contentDigest', 'reason', 'approvedAt', 'actor'];
 const SELECTION_FIELDS = ['id', 'projectId', 'mode', 'approvalId', 'previousSelectionId', 'reason', 'selectedAt', 'actor'];
+const BROWSER_BINDING_DIGESTS = ['sourcePlanDigest', 'sourceReportDigest', 'evidenceManifestDigest',
+  'selectedEvidenceManifestDigest', 'scopeKey', 'ruleManifestKey', 'oracleManifestKey',
+  'environmentKey', 'verifierFingerprint', 'sourceContentDigest'];
+const BROWSER_BINDING_FIELDS = ['id', 'projectId', 'releaseId', 'projectionVersion', 'source',
+  ...BROWSER_BINDING_DIGESTS, 'boundAt', 'actor'];
+const BROWSER_SOURCE_FIELDS = ['runId', 'sourceMode', 'side', 'entryUrl'];
 
 /** Stable candidate content, excluding the storage identity and creation time. */
 export function candidateProjectionOf(candidate) {
   const { id: _id, createdAt: _at, ...projection } = candidate;
   return projection;
+}
+/** Reconstruct a source projection after its stored entity passes strict validation. */
+export function browserBindingProjectionOf(binding) {
+  return { projectionVersion: binding.projectionVersion, mode: 'browser',
+    source: { runId: binding.source.runId, sourceMode: binding.source.sourceMode,
+      side: binding.source.side, entryUrl: binding.source.entryUrl },
+    sourcePlanDigest: binding.sourcePlanDigest, sourceReportDigest: binding.sourceReportDigest,
+    evidenceManifestDigest: binding.evidenceManifestDigest,
+    selectedEvidenceManifestDigest: binding.selectedEvidenceManifestDigest,
+    scopeKey: binding.scopeKey, ruleManifestKey: binding.ruleManifestKey,
+    oracleManifestKey: binding.oracleManifestKey, environmentKey: binding.environmentKey,
+    verifierFingerprint: binding.verifierFingerprint, contentDigest: binding.sourceContentDigest };
 }
 export function currentSelectionsOf(catalog, projectId) {
   let spec = null;
@@ -118,9 +137,6 @@ function validate(catalog, schemaVersion, limits) {
     .map(key => [key, mapEntries(catalog[key], fail)]));
   const { projects, releases, runBindings } = catalog, events = eventsOf(catalog.events, fail);
   capacity(catalog, limits, () => fail('CAPACITY_EXCEEDED'));
-  // Browser-side attribution stays disabled until its entity/event contract
-  // is implemented; reserving this map does not admit any Browser authority.
-  if (schemaVersion === 3 && entries.browserSourceBindings.length) fail('BROWSER_BINDINGS_NOT_SUPPORTED');
   for (const [key, project] of entries.projects) {
     id(key, 'ap', fail); fields(project, ['id', 'name', 'createdAt'], ['id', 'name', 'createdAt'], fail);
     if (project.id !== key || !boundedText(project.name, 120) || !iso(project.createdAt)) fail('INVALID_PROJECT');
@@ -138,6 +154,29 @@ function validate(catalog, schemaVersion, limits) {
     id(binding.projectId, 'ap', fail); id(binding.releaseId, 'ar', fail); actor(binding.actor, fail);
     if (binding.runId !== key || !Object.hasOwn(projects, binding.projectId) || !Object.hasOwn(releases, binding.releaseId)
       || releases[binding.releaseId].projectId !== binding.projectId || !iso(binding.boundAt)) fail('INVALID_BINDING');
+  }
+  if (schemaVersion === 3) {
+    const sourceSides = new Map();
+    for (const [key, binding] of entries.browserSourceBindings) {
+      id(key, 'ax', fail); fields(binding, BROWSER_BINDING_FIELDS, BROWSER_BINDING_FIELDS, fail);
+      id(binding.projectId, 'ap', fail); id(binding.releaseId, 'ar', fail); actor(binding.actor, fail);
+      fields(binding.source, BROWSER_SOURCE_FIELDS, BROWSER_SOURCE_FIELDS, fail);
+      id(binding.source.runId, 'ac', fail);
+      if (binding.id !== key || !Object.hasOwn(projects, binding.projectId)
+        || !Object.hasOwn(releases, binding.releaseId) || releases[binding.releaseId].projectId !== binding.projectId
+        || binding.projectionVersion !== 1 || !['mirror', 'regression'].includes(binding.source.sourceMode)
+        || !['baseline', 'target'].includes(binding.source.side) || !iso(binding.boundAt)
+        || url(binding.source.entryUrl, fail) !== binding.source.entryUrl
+        || binding.source.entryUrl !== releases[binding.releaseId].targetUrl
+        || BROWSER_BINDING_DIGESTS.some(field => !sha256(binding[field]))) fail('INVALID_BROWSER_BINDING');
+      const { contentDigest, ...content } = browserBindingProjectionOf(binding);
+      if (hashBrowserCandidateValue('content', content) !== contentDigest) fail('BROWSER_BINDING_DIGEST_MISMATCH');
+      const sides = sourceSides.get(binding.source.runId) ?? new Set();
+      if (sides.has(binding.source.side)) fail('BROWSER_SOURCE_ALREADY_BOUND');
+      sides.add(binding.source.side); sourceSides.set(binding.source.runId, sides);
+      const target = binding.source.side === 'target' ? runBindings[binding.source.runId] : null;
+      if (target && (target.projectId !== binding.projectId || target.releaseId !== binding.releaseId)) fail('BROWSER_TARGET_MISMATCH');
+    }
   }
   if (schemaVersion >= 2) {
     for (const [key, candidate] of entries.candidates) {
@@ -190,7 +229,8 @@ function validate(catalog, schemaVersion, limits) {
   if (events.length !== catalog.revision || events.length !== entityCount) fail('EVENT_HISTORY_MISMATCH');
   const eventIds = new Set(), entities = new Set(), seenProjects = new Set(), seenReleases = new Set();
   const seenBindings = new Set(), seenCandidates = new Set(), seenApprovals = new Set(), selected = new Map();
-  let seenBaselineEvent = false, lastMigration = null;
+  const hasV3Migration = schemaVersion === 3 && entries.migrations.some(([, migration]) => migration.toSchemaVersion === 3);
+  let seenBaselineEvent = false, seenV3Migration = false, lastMigration = null;
   for (const [index, event] of events.entries()) {
     fields(event, EVENT_FIELDS, GLOBAL_EVENT_FIELDS, fail);
     const migrationEvent = event.kind === 'catalog-migrated';
@@ -213,6 +253,10 @@ function validate(catalog, schemaVersion, limits) {
       id(event.entityId, 'ac', fail); entity = runBindings[event.entityId];
       if (!entity || entity.projectId !== event.projectId || !seenReleases.has(entity.releaseId)) fail('INVALID_EVENT_REFERENCE');
       seenBindings.add(entity.runId);
+    } else if (event.kind === 'browser-source-bound' && schemaVersion === 3) {
+      id(event.entityId, 'ax', fail); entity = catalog.browserSourceBindings[event.entityId];
+      if (!entity || entity.projectId !== event.projectId || !seenProjects.has(entity.projectId)
+        || !seenReleases.has(entity.releaseId) || hasV3Migration && !seenV3Migration) fail('INVALID_EVENT_REFERENCE');
     } else if (event.kind === 'candidate-created' && schemaVersion >= 2) {
       id(event.entityId, 'ab', fail); entity = catalog.candidates[event.entityId];
       if (!entity || entity.projectId !== event.projectId || !seenBindings.has(entity.source.runId)) fail('INVALID_EVENT_REFERENCE');
@@ -235,6 +279,7 @@ function validate(catalog, schemaVersion, limits) {
       if (!entity || entity.fromRevision !== index || entity.fromSchemaVersion === 1 && seenBaselineEvent
         || lastMigration && lastMigration.toSchemaVersion !== entity.fromSchemaVersion) fail('INVALID_MIGRATION_EVENT');
       lastMigration = entity;
+      if (entity.toSchemaVersion === 3) seenV3Migration = true;
     } else fail('INVALID_EVENT_KIND');
     if ((entity.createdAt ?? entity.boundAt ?? entity.approvedAt ?? entity.selectedAt) !== event.at
       || hashAcceptanceValue(entity) !== event.entityDigest) fail('ENTITY_HISTORY_MISMATCH');
@@ -252,7 +297,7 @@ export function validateAcceptanceCatalogV1(catalog, { limits = {} } = {}) {
 export function validateAcceptanceCatalogV2(catalog, { limits = {} } = {}) {
   return validate(catalog, 2, limitsOf(limits));
 }
-/** Schema3 retains Spec history and reserves a strictly empty Browser map. */
+/** Schema3 retains Spec history and validates explicit Browser source-side attribution. */
 export function validateAcceptanceCatalogV3(catalog, { limits = {} } = {}) {
   return validate(catalog, 3, limitsOf(limits));
 }

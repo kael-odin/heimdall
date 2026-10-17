@@ -1,0 +1,1087 @@
+{
+  "schemaVersion": 1,
+  "runId": 38996824641,
+  "head": "db3cd3fd9efe7e46ae079cab8d529e64a14b842b",
+  "attempt": 1,
+  "status": "completed",
+  "conclusion": "success",
+  "headBranch": "main",
+  "event": "push",
+  "runUrl": "https://github.com/kael-odin/heimdall/actions/runs/38996824641",
+  "createdAt": "2026-10-17T02:55:54Z",
+  "startedAt": "2026-10-17T02:55:54Z",
+  "updatedAt": "2026-10-17T03:16:41Z",
+  "archivedAt": "2026-10-17T03:35:08.871Z",
+  "jobs": [
+    {
+      "id": 117291110156,
+      "name": "core (lint + test)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T02:55:57Z",
+      "completedAt": "2026-10-17T03:16:40Z"
+    },
+    {
+      "id": 117291110233,
+      "name": "core (e2e smoke, local fixture)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T02:55:56Z",
+      "completedAt": "2026-10-17T02:58:10Z"
+    },
+    {
+      "id": 117291110295,
+      "name": "console (build)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T02:55:56Z",
+      "completedAt": "2026-10-17T02:56:23Z"
+    }
+  ],
+  "coreSuite": {
+    "tests": 2130,
+    "suites": 0,
+    "pass": 2126,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 4,
+    "todo": 0,
+    "duration_ms": 937584.349778
+  },
+  "coreSkippedTests": [
+    "ok 7 - real Windows reader holding a non-delete-sharing file handle releases after 180ms and replacement succeeds # SKIP",
+    "ok 475 - real Windows non-share-delete reader releases and replacement retries successfully # SKIP",
+    "ok 1087 - Docker network-none delivery serves SSR, SPA and data-driven SPA bundles without a source workspace # SKIP",
+    "ok 1088 - Docker network-none delivery persists adapter writes in a volume after container recreation # SKIP"
+  ],
+  "acceptanceSmokeCount": 13,
+  "acceptanceSmokeSteps": [
+    {
+      "name": "Acceptance console (real browser, local model stub)",
+      "number": 12,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:12:46Z",
+      "completedAt": "2026-10-17T03:13:13Z"
+    },
+    {
+      "name": "Spec contract console (real browser, local API fixture)",
+      "number": 13,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:13:13Z",
+      "completedAt": "2026-10-17T03:13:26Z"
+    },
+    {
+      "name": "Acceptance comparison console (explicit runs, integrity and CLI)",
+      "number": 14,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:13:26Z",
+      "completedAt": "2026-10-17T03:13:39Z"
+    },
+    {
+      "name": "Acceptance project catalog (versions, explicit bindings and two-engine isolation)",
+      "number": 15,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:13:39Z",
+      "completedAt": "2026-10-17T03:13:52Z"
+    },
+    {
+      "name": "Acceptance catalog migration (real v1 artifacts and browser continuity)",
+      "number": 16,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:13:52Z",
+      "completedAt": "2026-10-17T03:14:05Z"
+    },
+    {
+      "name": "Spec baseline review (candidates, approvals, selections and source integrity)",
+      "number": 17,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:14:05Z",
+      "completedAt": "2026-10-17T03:14:21Z"
+    },
+    {
+      "name": "Managed Spec preparation (immutable contract, replay and zero execution)",
+      "number": 18,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:14:21Z",
+      "completedAt": "2026-10-17T03:14:22Z"
+    },
+    {
+      "name": "Managed Spec result reading (captured evidence and zero execution)",
+      "number": 19,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:14:22Z",
+      "completedAt": "2026-10-17T03:14:31Z"
+    },
+    {
+      "name": "Owned acceptance recovery (startup barrier, restart and zero execution)",
+      "number": 20,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:14:31Z",
+      "completedAt": "2026-10-17T03:14:38Z"
+    },
+    {
+      "name": "Managed Spec execution (fresh admission, real runner, BUG and cancel)",
+      "number": 21,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:14:38Z",
+      "completedAt": "2026-10-17T03:14:51Z"
+    },
+    {
+      "name": "Managed execution UI (explicit click, durable recovery and stop)",
+      "number": 22,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:14:51Z",
+      "completedAt": "2026-10-17T03:15:23Z"
+    },
+    {
+      "name": "Browser candidate source (fresh captures and explicit healthy side)",
+      "number": 23,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:15:23Z",
+      "completedAt": "2026-10-17T03:15:39Z"
+    },
+    {
+      "name": "Browser private source reader (owner fences and unchanged originals)",
+      "number": 24,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:15:39Z",
+      "completedAt": "2026-10-17T03:15:54Z"
+    }
+  ],
+  "smokeSummaries": [
+    {
+      "step": {
+        "name": "Acceptance console (real browser, local model stub)",
+        "number": 12,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:12:46Z",
+        "completedAt": "2026-10-17T03:13:13Z"
+      },
+      "summary": {
+        "status": "passed",
+        "evidenceLevel": "offline-reproduced",
+        "scope": "本地受控夹具，真实控制台→浏览器验收任务→证据与下载→刷新恢复；AI链路使用本地模型模拟器，不等于外部模型或真实业务站点验收。",
+        "runId": "ac-c2822167-8669-4c87-b153-7d7fb654f445",
+        "gate": "failed",
+        "summary": {
+          "total": 39,
+          "passed": 36,
+          "failed": 3,
+          "blocked": 0,
+          "needsReview": 0,
+          "bugs": 3,
+          "baselineFailed": 0,
+          "missing": 0,
+          "invalid": 0,
+          "coverage": {
+            "measured": 39,
+            "total": 39,
+            "ratio": 1
+          },
+          "dimensions": {
+            "visual": {
+              "total": 6,
+              "passed": 6,
+              "failed": 0,
+              "blocked": 0,
+              "needsReview": 0,
+              "score": 0.9988
+            },
+            "structure": {
+              "total": 6,
+              "passed": 6,
+              "failed": 0,
+              "blocked": 0,
+              "needsReview": 0,
+              "score": null
+            },
+            "behavior": {
+              "total": 3,
+              "passed": 0,
+              "failed": 3,
+              "blocked": 0,
+              "needsReview": 0,
+              "score": null
+            },
+            "health": {
+              "total": 24,
+              "passed": 24,
+              "failed": 0,
+              "blocked": 0,
+              "needsReview": 0,
+              "score": null
+            }
+          }
+        },
+        "checks": {
+          "auth": true,
+          "invalidInput": true,
+          "concurrencyLimit": true,
+          "restartRecovery": true,
+          "uiCreate": true,
+          "workerCompletion": true,
+          "behaviorFailureGate": true,
+          "authenticatedEvidence": true,
+          "pathBoundary": true,
+          "markdownDownload": true,
+          "refreshRestore": true,
+          "mobileNoOverflow": true,
+          "consoleHealthy": true,
+          "aiExplicitOnly": true,
+          "aiUnknownCheckDiscarded": true,
+          "aiCannotOverrideGate": true,
+          "aiRefreshRestore": true
+        },
+        "pageErrors": [],
+        "viewports": [
+          "1440x1000",
+          "390x844"
+        ]
+      }
+    },
+    {
+      "step": {
+        "name": "Spec contract console (real browser, local API fixture)",
+        "number": 13,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:13:13Z",
+        "completedAt": "2026-10-17T03:13:26Z"
+      },
+      "summary": {
+        "status": "passed",
+        "evidenceLevel": "offline-reproduced",
+        "scope": "本地API夹具，真实控制台→明确批准→Spec worker→JSON证据/报告→刷新恢复。未调用生产API或模型。",
+        "runIds": [
+          "ac-ff8857de-4a19-4747-b2ec-f6e34fd5169d",
+          "ac-4f4372c7-ef5e-4a73-84f3-f87defba2030"
+        ],
+        "gates": [
+          "failed",
+          "failed"
+        ],
+        "checks": {
+          "manualUiCreate": true,
+          "explicitApproval": true,
+          "editsRevokeApproval": true,
+          "openApiPreviewWithoutRequests": true,
+          "importRequiresApproval": true,
+          "omissionsStayBlocked": true,
+          "sourceFingerprint": true,
+          "sourceDocumentEvidence": true,
+          "sourceDocumentHashVerified": true,
+          "sourceDraftRestored": true,
+          "apiContractFailure": true,
+          "authenticatedJsonEvidence": true,
+          "markdownDownload": true,
+          "refreshRestore": true,
+          "mobileNoOverflow": true,
+          "noWriteRequests": true,
+          "consoleHealthy": true
+        },
+        "pageErrors": [],
+        "layout": {
+          "width": 390,
+          "document": 390,
+          "results": 368
+        }
+      }
+    },
+    {
+      "step": {
+        "name": "Acceptance comparison console (explicit runs, integrity and CLI)",
+        "number": 14,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:13:26Z",
+        "completedAt": "2026-10-17T03:13:39Z"
+      },
+      "summary": {
+        "status": "passed",
+        "evidenceLevel": "offline-reproduced",
+        "browser": "Browser plugin not available; existing Playwright Chromium",
+        "scope": "本地夹具真实 Spec worker→持久证据→比较API/CLI→控制台。无生产 API、外部模型或项目级基线批准。",
+        "runIds": [
+          "ac-f9e01ad8-c59a-4eef-8bdf-202649302e15",
+          "ac-2cb603a1-a87e-45c8-9bbb-ae37458fe6de",
+          "ac-c4ef3a6c-d294-454e-be59-54c8f50a68ac"
+        ],
+        "checks": {
+          "apiAuthAndInputGuards": true,
+          "realFixAndNewFailure": true,
+          "cliSameResultAndExplicitGate": true,
+          "explicitSelectionAndSameRunGuard": true,
+          "errorRecovery": true,
+          "filterAndAuthenticatedDownloads": true,
+          "staleRequestIgnoredAndRuleChangeIncomparable": true,
+          "staleExportCannotRestoreOldPair": true,
+          "refreshRestoresExplicitPair": true,
+          "mobileAndLandscapeNoOverflow": true,
+          "darkLightContrastAndEnlargedText": true,
+          "changedEvidenceCannotVerifyFix": true,
+          "openOriginalReport": true,
+          "originalGatesAndNoNewTargetRequests": true,
+          "pageIdentityNonblankOverlayAndConsoleHealthy": true
+        },
+        "checkCount": 15,
+        "layouts": [
+          {
+            "width": 390,
+            "height": 844,
+            "document": 390,
+            "panel": 334,
+            "client": 334
+          },
+          {
+            "width": 375,
+            "height": 812,
+            "document": 375,
+            "panel": 319,
+            "client": 319
+          },
+          {
+            "width": 844,
+            "height": 390,
+            "document": 844,
+            "panel": 458,
+            "client": 458
+          }
+        ],
+        "contrasts": [
+          {
+            "theme": "dark",
+            "readings": [
+              {
+                "selector": ".ac-intro",
+                "ratio": 6.429025800388402
+              },
+              {
+                "selector": ".ac-primary",
+                "ratio": 5.079290922781561
+              },
+              {
+                "selector": ".ac-counts .ok strong",
+                "ratio": 6.720656375935986
+              },
+              {
+                "selector": ".ac-counts .bad strong",
+                "ratio": 6.408654954073597
+              }
+            ]
+          },
+          {
+            "theme": "light",
+            "readings": [
+              {
+                "selector": ".ac-intro",
+                "ratio": 6.8113391798647465
+              },
+              {
+                "selector": ".ac-primary",
+                "ratio": 4.688072140815365
+              },
+              {
+                "selector": ".ac-counts .ok strong",
+                "ratio": 4.857025590327768
+              },
+              {
+                "selector": ".ac-counts .bad strong",
+                "ratio": 6.237116206088258
+              }
+            ]
+          }
+        ],
+        "pageErrors": [],
+        "fixtureRequests": 6,
+        "originalGates": [
+          "failed",
+          "failed"
+        ]
+      }
+    },
+    {
+      "step": {
+        "name": "Acceptance project catalog (versions, explicit bindings and two-engine isolation)",
+        "number": 15,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:13:39Z",
+        "completedAt": "2026-10-17T03:13:52Z"
+      },
+      "summary": {
+        "status": "passed",
+        "evidenceLevel": "local-fixture-real-flow",
+        "browser": "Browser plugin not available; existing Playwright Chromium",
+        "scope": "真实 Spec worker→项目/版本/后续归属→并发CAS→双引擎/别名→重启→真实控制台；不包含基线批准或托管执行。",
+        "checkCount": 17,
+        "checks": {
+          "secondEngineAndJunctionCannotRecoverActiveRun": true,
+          "concurrentRevisionHasExactlyOneWinner": true,
+          "rejectedWritesPreserveCatalog": true,
+          "fullUrlMatchAndCorruptionFailClosed": true,
+          "restartPreservesProjectReleaseBindings": true,
+          "consoleCreatesProjectReleaseAndExplicitBinding": true,
+          "consoleConflictPreservesDraftWithoutAutomaticRetry": true,
+          "delayedDetailsCannotReplaceCurrentProject": true,
+          "delayedPostPreservesCurrentProjectAndDraft": true,
+          "projectSelectionEpochRejectsABAResponse": true,
+          "unavailableIsDistinctFromEmptyAndRecoveryPreservesDraft": true,
+          "responsiveLayouts": true,
+          "keyboardCanToggleWithoutLosingFocus": true,
+          "themeContrastAndEnlargedText": true,
+          "originalReportAndGateRemainVisible": true,
+          "noTargetRequestsOrOriginalRunMutations": true,
+          "pageIdentityNonblankOverlayAndConsoleHealthy": true
+        },
+        "layouts": [
+          {
+            "width": 390,
+            "height": 844,
+            "viewport": 390,
+            "scrollWidth": 390,
+            "panelWidth": 336
+          },
+          {
+            "width": 375,
+            "height": 812,
+            "viewport": 375,
+            "scrollWidth": 375,
+            "panelWidth": 321
+          },
+          {
+            "width": 844,
+            "height": 390,
+            "viewport": 844,
+            "scrollWidth": 844,
+            "panelWidth": 460
+          }
+        ],
+        "contrasts": [
+          {
+            "theme": "dark",
+            "readings": [
+              {
+                "selector": ".catalog-hint",
+                "ratio": 6.429025800388402
+              },
+              {
+                "selector": ".catalog-primary",
+                "ratio": 5.079290922781561
+              },
+              {
+                "selector": ".catalog-version",
+                "ratio": 6.429025800388402
+              },
+              {
+                "selector": ".catalog-boundary",
+                "ratio": 6.429025800388402
+              },
+              {
+                "selector": ".catalog-new-project > summary",
+                "ratio": 12.668153133574618
+              },
+              {
+                "selector": ".catalog-new-release > summary",
+                "ratio": 12.668153133574618
+              }
+            ]
+          },
+          {
+            "theme": "light",
+            "readings": [
+              {
+                "selector": ".catalog-hint",
+                "ratio": 6.8113391798647465
+              },
+              {
+                "selector": ".catalog-primary",
+                "ratio": 4.688072140815365
+              },
+              {
+                "selector": ".catalog-version",
+                "ratio": 6.8113391798647465
+              },
+              {
+                "selector": ".catalog-boundary",
+                "ratio": 6.8113391798647465
+              },
+              {
+                "selector": ".catalog-new-project > summary",
+                "ratio": 16.24825636008273
+              },
+              {
+                "selector": ".catalog-new-release > summary",
+                "ratio": 16.24825636008273
+              }
+            ]
+          }
+        ],
+        "errors": [],
+        "expectedResourceErrors": [
+          {
+            "reason": "explicit revision conflict",
+            "message": "Failed to load resource: the server responded with a status of 409 (Conflict)"
+          },
+          {
+            "reason": "owned fixture catalog corruption",
+            "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+          }
+        ],
+        "runIds": [
+          "ac-18311321-7835-4d5a-b38c-d2dcf312fc2c",
+          "ac-22e56afa-5121-4b39-ad03-7b6347aeae79",
+          "ac-e56edb54-4fc2-4960-b93f-cb56bdc83fe5"
+        ],
+        "originalGates": [
+          "failed",
+          "passed",
+          "passed"
+        ],
+        "apiCaseCount": 31,
+        "catalogTargetRequests": 0
+      }
+    },
+    {
+      "step": {
+        "name": "Acceptance catalog migration (real v1 artifacts and browser continuity)",
+        "number": 16,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:13:52Z",
+        "completedAt": "2026-10-17T03:14:05Z"
+      },
+      "summary": {
+        "status": "passed",
+        "evidenceLevel": "committed-b1-fixture-real-engine-browser-migration",
+        "sourceCommit": "8353595",
+        "fixture": "docs/audits/2026-10-16/evidence/acceptance-catalog/console",
+        "checkCount": 15,
+        "checks": {
+          "committedB1FixtureHasThreeRealRunsAnd18Files": true,
+          "schema3TwoStepGenerationRevisionAndHistoryPrefix": true,
+          "exactB1PreimageBytesArchived": true,
+          "exactIntermediateV2PreimageBytesArchived": true,
+          "oldB1CasGets409AndFailedGatePreserved": true,
+          "twoRestartsAreByteIdempotent": true,
+          "newB1ProjectReleaseBindingRemainWritable": true,
+          "realConsoleShowsMigratedAndNewB1Organization": true,
+          "desktopAndMobileOriginalFailedReportVisible": true,
+          "missingSourceBindingPreservedWithSeparateDiagnostics": true,
+          "completeNativeV2SpecHistoryMigratesWithoutChangingEntities": true,
+          "nativeV2SpecDesktopMobileAndCurrentSelectionVisible": true,
+          "nativeV2SpecRestartAndSourceBytesUnchanged": true,
+          "zeroTargetRequestsAndNoNewAcceptanceWorker": true,
+          "originalAndCopiedRunTreesRemainByteIdentical": true
+        },
+        "originalRevision": 12,
+        "migratedRevision": 14,
+        "originalGenerationId": "ag-ca176aa9-63db-4fc6-a031-a08609a5d857",
+        "migratedGenerationId": "ag-93004f1d-3a68-4173-94d8-8026fe1dcf55",
+        "sourceRunFiles": 18,
+        "originalFailedRunId": "ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743",
+        "restartCount": 2,
+        "targetRequests": 0,
+        "apiCaseCount": 16,
+        "layouts": [
+          {
+            "scenario": "migration-restart-2",
+            "screen": "migration-catalog-1440",
+            "width": 1440,
+            "height": 1000,
+            "viewportWidth": 1440,
+            "documentWidth": 1440,
+            "catalogWidth": 1012,
+            "catalogScrollWidth": 1012,
+            "workbenchWidth": 1390
+          },
+          {
+            "scenario": "migration-restart-2",
+            "screen": "migration-failed-report-1440",
+            "width": 1440,
+            "height": 1000,
+            "viewportWidth": 1440,
+            "documentWidth": 1440
+          },
+          {
+            "scenario": "migration-restart-2",
+            "screen": "migration-catalog-390",
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "documentWidth": 390,
+            "catalogWidth": 334,
+            "catalogScrollWidth": 334,
+            "workbenchWidth": 368
+          },
+          {
+            "scenario": "migration-restart-2",
+            "screen": "migration-failed-report-390",
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "documentWidth": 390
+          },
+          {
+            "scenario": "isolated-missing-source",
+            "screen": "migration-missing-source-390",
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "documentWidth": 390,
+            "catalogWidth": 334,
+            "catalogScrollWidth": 334,
+            "workbenchWidth": 368
+          },
+          {
+            "scenario": "native-v2-spec-history",
+            "screen": "native-v2-spec-history-1440",
+            "width": 1440,
+            "height": 1000,
+            "viewportWidth": 1440,
+            "documentWidth": 1440,
+            "catalogWidth": 1012,
+            "catalogScrollWidth": 1012,
+            "workbenchWidth": 1390
+          },
+          {
+            "scenario": "native-v2-spec-history",
+            "screen": "native-v2-spec-history-390",
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "documentWidth": 390,
+            "catalogWidth": 334,
+            "catalogScrollWidth": 334,
+            "workbenchWidth": 368
+          }
+        ],
+        "errors": [],
+        "nativeV2Spec": {
+          "fixture": "docs/audits/2026-10-16/evidence/acceptance-baseline/console",
+          "originalRevision": 20,
+          "migratedRevision": 21,
+          "candidates": 2,
+          "approvals": 5,
+          "selections": 7,
+          "sourceRunFiles": 14,
+          "restartCount": 1
+        },
+        "scope": "B1真实运行副本→真实引擎1→2→3逐步迁移→两次重启→旧CAS拒绝→组织写入→桌面/手机与原失败报告；缺失来源用单独副本。另用完整原生V2 Spec历史副本做2→3、候选/批准/选用/取消历史和桌面/手机复验及重启。Browser来源表严格为空，不执行新worker、不新增批准或选用、不宣称Browser绑定或执行。"
+      }
+    },
+    {
+      "step": {
+        "name": "Spec baseline review (candidates, approvals, selections and source integrity)",
+        "number": 17,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:14:05Z",
+        "completedAt": "2026-10-17T03:14:21Z"
+      },
+      "summary": {
+        "status": "passed",
+        "evidenceLevel": "local-fixture-real-flow",
+        "browser": "Browser plugin not available; existing Playwright Chromium",
+        "url": "http://127.0.0.1:34833",
+        "scope": "真实Spec draft/failed worker产物→项目绑定→完整source/expected预览→独立批准/选用/取消/回退；含真实API传输故障注入，不启动managed执行。",
+        "checkCount": 13,
+        "checks": {
+          "realWorkersProduceDraftAndFailedTarget": true,
+          "completeExpectedPreviewAndIndependentApprovalSelection": true,
+          "cancelAndRollbackAppendHistory": true,
+          "latePreviewProjectABACannotRestoreConfirmation": true,
+          "conflictPreservesReasonAndRequiresFreshReviewWithoutReplay": true,
+          "nonJsonGateway502ReconcilesCommittedHistoryWithoutReplay": true,
+          "lostPostResponseReconcilesCommittedHistoryWithoutReplay": true,
+          "lateApprovalDoesNotSwitchProjectOrAutoSelect": true,
+          "finalApprovalRevalidatesSourceBytes": true,
+          "missingSourceRetainsHistoryAndCancellationDoesNotReadSource": true,
+          "desktopMobileAndBothThemesRenderWithoutHorizontalOverflow": true,
+          "noTargetRequestsNewWorkersOrSourceRunMutations": true,
+          "pageIdentityNonblankOverlayAndConsoleHealthy": true
+        },
+        "layouts": [
+          {
+            "theme": "dark",
+            "viewport": 390,
+            "scrollWidth": 390,
+            "baselineWidth": 306
+          },
+          {
+            "theme": "light",
+            "viewport": 390,
+            "scrollWidth": 390,
+            "baselineWidth": 306
+          }
+        ],
+        "errors": [],
+        "expectedResourceErrors": [
+          "Failed to load resource: the server responded with a status of 409 (Conflict)",
+          "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+          "Failed to load resource: net::ERR_FAILED",
+          "Failed to load resource: the server responded with a status of 409 (Conflict)"
+        ],
+        "runs": [
+          {
+            "runId": "ac-a8abe865-98d5-4cad-be62-3fa34f2b50ea",
+            "gate": "blocked",
+            "approved": false,
+            "candidateId": "ab-22dd32bc-a1f4-4ee3-bd20-544efde4e0a0",
+            "approvalId": "aa-167635f3-e778-4152-8e34-d6721f8ef4ee"
+          },
+          {
+            "runId": "ac-d266a1a7-8a50-4050-b357-cd771675b7f9",
+            "gate": "failed",
+            "approved": true,
+            "candidateId": "ab-0a9ed6ad-1469-4d58-8e7d-787be546a8f9",
+            "approvalId": "aa-54e9d85c-79d3-4704-96c5-5ea993418826"
+          }
+        ],
+        "browserPostCount": 16,
+        "reviewTargetRequests": 0,
+        "newRunCount": 0
+      }
+    },
+    {
+      "step": {
+        "name": "Managed Spec preparation (immutable contract, replay and zero execution)",
+        "number": 18,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:14:21Z",
+        "completedAt": "2026-10-17T03:14:22Z"
+      },
+      "summary": {
+        "schemaVersion": 1,
+        "passed": true,
+        "evidenceLevel": "real-owner-and-private-preparation-kernel",
+        "sourceFixtureCommit": "299304b01fb38ff7a933543c82d4aa996eff164f",
+        "sourceRunCount": 2,
+        "sourceFileCount": 14,
+        "checks": {
+          "total": 25,
+          "passed": 25
+        },
+        "preparedRecordSha256": "713b19dd2fb1b575bfcc2a23ee8e237142b4f33630c65f10c494a98561a6394c",
+        "targetRequests": 0,
+        "fetchAttempts": 0,
+        "engineStarted": false,
+        "engineRestartTested": false,
+        "browserStarted": false,
+        "executionTested": false,
+        "runCreated": false,
+        "scope": "Private preparation, immutable replay and owner release/reacquisition only; reserved IDs do not mean a run exists.",
+        "failure": null,
+        "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/acceptance-managed-preparation/2026-10-17T03-14-22.039Z-4f575d7e"
+      }
+    },
+    {
+      "step": {
+        "name": "Managed Spec result reading (captured evidence and zero execution)",
+        "number": 19,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:14:22Z",
+        "completedAt": "2026-10-17T03:14:31Z"
+      },
+      "summary": {
+        "status": "passed",
+        "evidenceLevel": "real-browser-local-fixture",
+        "scope": "Real preparation + explicit internal runner/writer before engine startup; startup settles running to interrupted and browser only reads. No engine executor tested.",
+        "browserPath": "Playwright",
+        "engineExecutorTested": false,
+        "engineRecoveryTested": true,
+        "runIds": [
+          "ac-5d8e3817-9777-42a9-ba5f-b90a73789384",
+          "ac-0e4a238e-efd2-4ba4-b2ce-f7149bcca224",
+          "ac-17edb24c-256a-4913-b811-6f37d8818c67"
+        ],
+        "preparedUnstarted": "ac-bd7020a0-d5f9-47ba-9acb-82dba660dc33",
+        "checks": {
+          "safeHeadAndRealLifecycle": true,
+          "completedBugVisibleAndTriageUnavailable": true,
+          "referencedEvidenceRendered": true,
+          "downloadUsesVerifiedJsonAndDerivedMarkdown": true,
+          "recoveredInterruptionIsNotCompleted": true,
+          "mobileNoOverflow": true,
+          "readingNeverExecutesOrRewritesFacts": true
+        },
+        "layout": {
+          "width": 390,
+          "document": 390,
+          "results": 368,
+          "resultWidth": 368
+        },
+        "pageErrors": []
+      }
+    },
+    {
+      "step": {
+        "name": "Owned acceptance recovery (startup barrier, restart and zero execution)",
+        "number": 20,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:14:31Z",
+        "completedAt": "2026-10-17T03:14:38Z"
+      },
+      "summary": {
+        "status": "passed",
+        "evidenceLevel": "real-engine-cdp-browser-local-fixture",
+        "engineRecoveryTested": true,
+        "engineExecutorTested": false,
+        "scope": "Archived validated dispatch template with varied fixture IDs/local target; real owner/writer and engine startup. Catalog approval admission is outside this smoke.",
+        "checks": {
+          "ownedMixedStartupAndPreparedUntouched": true,
+          "cdpInterruptedUiAndRecoveryGet": true,
+          "restartIsByteIdempotent": true,
+          "corruptNamespaceBlocksWritesAndPreservesCatalogReads": true
+        },
+        "pageErrors": [],
+        "zeroTargetRequests": true,
+        "zeroModelRequests": true,
+        "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/owned-recovery-bbd5a687-b6f4-4b3b-8135-01736cd3d9d3"
+      }
+    },
+    {
+      "step": {
+        "name": "Managed Spec execution (fresh admission, real runner, BUG and cancel)",
+        "number": 21,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:14:38Z",
+        "completedAt": "2026-10-17T03:14:51Z"
+      },
+      "summary": {
+        "status": "passed",
+        "evidenceLevel": "real-catalog-admission-engine-cdp-browser-local-fixture",
+        "engineExecutorTested": true,
+        "freshCatalogAdmissionTested": true,
+        "executionUiImplemented": false,
+        "browserPluginAvailable": false,
+        "browserAutomation": "Repository Playwright with an actual Chromium CDP endpoint",
+        "scope": "Real legacy draft, binding, candidate, approval and selection. Browser POST invokes fresh managed engine execution; existing workbench observes running, completed BUG and cancelled interrupted states.",
+        "checks": {
+          "realCatalogFreshHttpAdmissionAndRunningUi": true,
+          "completedBugHasDoneTaskAndVerifiedDownloads": true,
+          "replayAndConflictDoNotExecute": true,
+          "pendingCancelStopsLaterRequestsAndUiIsInterrupted": true
+        },
+        "pageErrors": [],
+        "targetRequestCount": 3,
+        "zeroModelRequests": true,
+        "originalDraftUnchanged": true,
+        "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/managed-execution-fed08d78-862f-4cab-b5bd-b49acd5471c6"
+      }
+    },
+    {
+      "step": {
+        "name": "Managed execution UI (explicit click, durable recovery and stop)",
+        "number": 22,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:14:51Z",
+        "completedAt": "2026-10-17T03:15:23Z"
+      },
+      "summary": {
+        "status": "passed",
+        "checkCount": 16,
+        "checks": {
+          "nativeRepeatedClickPersistsStrictInputAndCreatesOneRun": true,
+          "lateStartResponseAcrossProjectABACannotRestoreOldConfirmation": true,
+          "managedSlotBlocksOrdinaryButOriginalOperationLookupWorks": true,
+          "terminalLookupFailureRetainsCompletedStateAndReportEntry": true,
+          "bugCompletionTaskDoneAndReportEvidenceOpenedThroughButton": true,
+          "lateBusyCapabilityCannotOverwriteNewProjectCapability": true,
+          "lost202AndHtml502ReloadRecoverOriginalRunWithOnlyGet": true,
+          "ordinarySharedSlotDisablesFreshManagedStartAndRecovers": true,
+          "nativeStopClosesPendingTargetAndPreventsEveryLaterCheck": true,
+          "lateStopResponseCannotOverrideAnotherSelectedOperation": true,
+          "desktopAndBothMobileThemesHaveNoHorizontalOverflow": true,
+          "lateOperationLookupAcrossProjectABACannotChangeSelection": true,
+          "preparedReceiptReloadAndNativeLookupNeverStart": true,
+          "explicitTargetAndChangedTargetClearsConfirmation": true,
+          "receiptPersistedBeforeNativePostAndUnknown404ReloadOnlyGets": true,
+          "oldCasRejectionCreatesNoRunAndRefreshRequiresNewReview": true
+        },
+        "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/execution-ui-cbde66f2-2c20-4dd4-8728-133d9a4ed8aa"
+      }
+    },
+    {
+      "step": {
+        "name": "Browser candidate source (fresh captures and explicit healthy side)",
+        "number": 23,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:15:23Z",
+        "completedAt": "2026-10-17T03:15:39Z"
+      },
+      "summary": {
+        "schemaVersion": 1,
+        "status": "passed",
+        "evidenceLevel": "local-fixture-real-browser-and-offline-projection",
+        "checkCount": 8,
+        "checks": {
+          "freshFourRunsWithExactBytes": true,
+          "failedComparisonStillAllowsBothHealthySides": true,
+          "targetOracleComesFromTarget": true,
+          "oppositeNullScreenshotsDoNotDisqualifyHealthySide": true,
+          "failedSelectedSidesRejected": true,
+          "completeReviewAndNoExecution": true,
+          "inputsUnchanged": true,
+          "projectionIssuesZeroFetchRequests": true
+        },
+        "realBrowserRuns": 4,
+        "projectionCases": 8,
+        "eligibleProjections": 4,
+        "rejectedProjections": 4,
+        "deterministicRechecks": 4,
+        "projectionFetchAttempts": 0,
+        "materialFiles": 81,
+        "cases": [
+          {
+            "id": "matrix",
+            "runId": "ac-10fec91b-7b3f-4706-bcf4-388066d1fdaf",
+            "gate": "failed",
+            "declaredChecks": 28,
+            "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+            "reportSha256": "67dbe06c0777095fa99b8789378d1fe2c6a41e177976153801e675a5c7223245"
+          },
+          {
+            "id": "target-unavailable",
+            "runId": "ac-8b5e817d-0f1e-4668-88e7-8588b0f916f5",
+            "gate": "blocked",
+            "declaredChecks": 6,
+            "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+            "reportSha256": "01f8b652360da8fd5b461b057a1d3e98ea438ceca7d749337b66c55ad753780c"
+          },
+          {
+            "id": "baseline-unavailable",
+            "runId": "ac-8c3b7121-8825-4888-9173-1da87abd4bb4",
+            "gate": "blocked",
+            "declaredChecks": 6,
+            "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+            "reportSha256": "784d3b3bd64f2264a3b1b7311781c2520393ea445e9c59ef6a54749a27ef9578"
+          },
+          {
+            "id": "assertion-failed",
+            "runId": "ac-864b816c-a74d-4664-b947-d09ec31ec2eb",
+            "gate": "blocked",
+            "declaredChecks": 7,
+            "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+            "reportSha256": "0edc3ad2ec9782a16949b4f14281ca19cde5f1aa1c8ed8fd509594583b6cd386"
+          }
+        ],
+        "boundary": "No catalog ownership, release binding, approval, managed execution, external deployment or UI claim."
+      }
+    },
+    {
+      "step": {
+        "name": "Browser private source reader (owner fences and unchanged originals)",
+        "number": 24,
+        "status": "completed",
+        "conclusion": "success",
+        "startedAt": "2026-10-17T03:15:39Z",
+        "completedAt": "2026-10-17T03:15:54Z"
+      },
+      "summary": {
+        "schemaVersion": 1,
+        "status": "passed",
+        "evidenceLevel": "fresh-local-browser-owner-reader-and-pure-projection",
+        "checkCount": 13,
+        "checks": {
+          "fourFreshBrowserRuns": true,
+          "requiresAcquiredOwnerBrand": true,
+          "allOriginalBytesCaptured": true,
+          "integrityRebuiltFromActualReferences": true,
+          "nullableBothDirectionsCaptured": true,
+          "explicitSideEightCases": true,
+          "targetOracleRebuilt": true,
+          "failedComparisonPreserved": true,
+          "privateMaterialAndNoExecution": true,
+          "callerMutationIsolated": true,
+          "zeroReaderWritesRequestsOrLaunches": true,
+          "originalFilesAndMetadataUnchanged": true,
+          "releasedOwnerRejected": true
+        },
+        "realBrowserRuns": 4,
+        "materialFiles": 81,
+        "successfulReaderCaptures": 8,
+        "rejectedOwnerAttempts": 2,
+        "eligibilityCases": 8,
+        "eligibleProjections": 4,
+        "rejectedProjections": 4,
+        "forbiddenReaderEvents": [],
+        "sourceRunIds": [
+          {
+            "id": "matrix",
+            "runId": "ac-83e2388c-57ce-4819-b6c0-f1413d63f249"
+          },
+          {
+            "id": "target-unavailable",
+            "runId": "ac-e9782a37-70ad-4a48-8d83-4079d4911f39"
+          },
+          {
+            "id": "baseline-unavailable",
+            "runId": "ac-44bbf81d-2a44-402b-b6e5-30092da695a2"
+          },
+          {
+            "id": "assertion-failed",
+            "runId": "ac-da4bce2b-0089-4a6c-a436-165b84c1a50c"
+          }
+        ],
+        "boundary": "Private bounded read, no release binding, catalog approval, HTTP/UI or managed Browser execution; no atomic or future filesystem guarantee."
+      }
+    }
+  ],
+  "docker": {
+    "step": {
+      "name": "Docker offline delivery (SSR + SPA + data SPA + adapter)",
+      "number": 26,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-17T03:15:54Z",
+      "completedAt": "2026-10-17T03:16:37Z"
+    },
+    "tests": {
+      "tests": 2,
+      "suites": 0,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "duration_ms": 42841.167477
+    }
+  },
+  "artifactsTotalCount": 0,
+  "rawLog": {
+    "path": "ci.stdout.log",
+    "bytes": 1581899,
+    "sha256": "873ff68b1ad11db47486e62789f2caad4154f87545f403eed05b481a10143839"
+  },
+  "rawZip": {
+    "path": "run-logs.zip",
+    "bytes": 441499,
+    "sha256": "aa1fbd55270b77d6c142bcfdd44d2f5c9b2e68e0e49737bb55ce4f0d70158a84",
+    "entries": 59,
+    "extractedFiles": 59,
+    "extractedBytes": 2001312
+  },
+  "strongSensitiveMatches": 0,
+  "countingPolicy": "Only the remote full Core suite is counted once. The 13 acceptance smokes and independent two-test Docker step are separate. No local or prior-commit result substitutes for this run.",
+  "boundary": "This run uploaded no Actions artifacts; exact logs and ZIP entries are preserved, but fresh remote screenshot/run trees are unavailable and are not reconstructed from local materials."
+}

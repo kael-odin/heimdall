@@ -34,6 +34,7 @@
     "acceptance:execution:ui:smoke": "node scripts/smoke-acceptance-execution-ui.mjs",
     "acceptance:browser:source:smoke": "node scripts/smoke-acceptance-browser-source.mjs",
     "acceptance:browser:read:smoke": "node scripts/smoke-acceptance-browser-reading.mjs",
+    "acceptance:browser:bindings:smoke": "node scripts/smoke-acceptance-browser-bindings.mjs",
     "test": "node scripts/test-core.mjs",
     "lint": "node scripts/check-syntax.mjs",
     "check:docs": "node scripts/check-markdown-links.mjs",

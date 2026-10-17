@@ -1,0 +1,22 @@
+[
+  {
+    "path": "command.json",
+    "bytes": 519,
+    "sha256": "2fb20310e07006614e6bd80f93ea3068eba893773e759147dc36538f0c306881"
+  },
+  {
+    "path": "exitcode.json",
+    "bytes": 288,
+    "sha256": "38a497ddbdd26f442fd98455ec53cbd6b387595f88a68840e8391bbc16e84542"
+  },
+  {
+    "path": "stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "stdout.log",
+    "bytes": 8176,
+    "sha256": "0eaa7aad8c933d9a85f46725cf1d323c1ba9e5ba407c5d2f7cc418bdd2d85505"
+  }
+]

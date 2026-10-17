@@ -44,3 +44,9 @@
 迁移输出目录有 34 份原件和 7 条布局记录、12 张截图；其中没有仍存活的临时复制 run 树。归档另收两套已提交 Spec 源夹具的 catalog 和完整 run 原件，并把 32 项源文件 SHA 与 smoke 摘要逐项匹配。源材料、运行时副本摘要和迁移输出是不同证据，不将它们合并计作更多运行。
 
 这是本机受控真实流程与离线对抗回归。当前 Browser 表严格为空，下一片才实现显式选侧归属；Browser 的批准、选用与托管执行仍待后续接入。
+
+## 本片发布后的独立 CI
+
+提交 `db3cd3fd9efe7e46ae079cab8d529e64a14b842b` 的 main push 运行 `38996824641`（attempt 1）于 2026-10-17 完成，三个 job 均为 success。Linux 完整 Core 为 **2130 total / 2126 pass / 0 fail / 4 skip**；13 条 acceptance smoke 全部成功，Docker 独立步骤 **2/2**。远端与本机的平台 skip 不同，分别按各自日志计数，不互相代替或累加。
+
+[精确 CI 归档](evidence/catalog-schema3-ci-main-db3cd3f/README.md)保留 API 元数据、jobs、原始日志 ZIP、完整解压日志、原始命令与 SHA 清单。该运行没有发布 Actions artifacts，因此归档不包含远端临时 fresh 截图树，也不据此声称完成远端截图字节复播。这份结果仅覆盖 Schema3 迁移提交；后续 Browser 侧归属实现需要核对自身提交的 CI。

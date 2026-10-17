@@ -80,7 +80,7 @@ function reindexMigrations(catalog) {
   rehashMigrations(catalog);
 }
 
-test('fresh V3 requires its exact empty Browser reservation and still validates ordinary history', () => {
+test('fresh V3 requires its Browser binding map and still validates ordinary history', () => {
   const catalog = empty(3);
   assert.equal(schema.validateAcceptanceCatalogV3(catalog), catalog);
   assert.equal(schema.validateAcceptanceCatalog(catalog), catalog);
@@ -149,7 +149,7 @@ test('two-step V1 to V2 to V3 retains the old migration and has three distinct g
   assert.equal(Object.keys(value.migrations).length, 2);
 });
 
-test('V3 rejects every unsupported Browser map shape, entry and event without invoking accessors', () => {
+test('V3 rejects malformed Browser maps, entries and event references without invoking accessors', () => {
   for (const value of [null, [], '', true, { bogus: {} }, JSON.parse('{"__proto__":{}}'), Object.create({ inherited: true })]) {
     const catalog = empty(3); catalog.browserSourceBindings = value; reject(catalog);
   }

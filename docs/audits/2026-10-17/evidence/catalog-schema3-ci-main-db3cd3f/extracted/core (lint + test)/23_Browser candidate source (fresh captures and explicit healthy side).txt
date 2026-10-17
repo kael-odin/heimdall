@@ -1,0 +1,71 @@
+﻿2026-10-17T03:15:23.0578988Z ##[group]Run pnpm acceptance:browser:source:smoke
+2026-10-17T03:15:23.0579338Z [36;1mpnpm acceptance:browser:source:smoke[0m
+2026-10-17T03:15:23.0638348Z shell: /usr/bin/bash -e {0}
+2026-10-17T03:15:23.0638574Z env:
+2026-10-17T03:15:23.0638788Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T03:15:23.0639051Z ##[endgroup]
+2026-10-17T03:15:23.8765549Z $ node scripts/smoke-acceptance-browser-source.mjs
+2026-10-17T03:15:30.6866812Z {"sample":"matrix","checks":28,"gate":"failed","files":54}
+2026-10-17T03:15:31.2767688Z {"sample":"target-unavailable","checks":6,"gate":"blocked","files":6}
+2026-10-17T03:15:31.8796117Z {"sample":"baseline-unavailable","checks":6,"gate":"blocked","files":6}
+2026-10-17T03:15:33.5781201Z {"sample":"assertion-failed","checks":7,"gate":"blocked","files":15}
+2026-10-17T03:15:39.5376248Z {
+2026-10-17T03:15:39.5415439Z   "schemaVersion": 1,
+2026-10-17T03:15:39.5455194Z   "status": "passed",
+2026-10-17T03:15:39.5456000Z   "evidenceLevel": "local-fixture-real-browser-and-offline-projection",
+2026-10-17T03:15:39.5488672Z   "checkCount": 8,
+2026-10-17T03:15:39.5489269Z   "checks": {
+2026-10-17T03:15:39.5489745Z     "freshFourRunsWithExactBytes": true,
+2026-10-17T03:15:39.5491514Z     "failedComparisonStillAllowsBothHealthySides": true,
+2026-10-17T03:15:39.5492120Z     "targetOracleComesFromTarget": true,
+2026-10-17T03:15:39.5492784Z     "oppositeNullScreenshotsDoNotDisqualifyHealthySide": true,
+2026-10-17T03:15:39.5493447Z     "failedSelectedSidesRejected": true,
+2026-10-17T03:15:39.5494144Z     "completeReviewAndNoExecution": true,
+2026-10-17T03:15:39.5494656Z     "inputsUnchanged": true,
+2026-10-17T03:15:39.5498083Z     "projectionIssuesZeroFetchRequests": true
+2026-10-17T03:15:39.5498633Z   },
+2026-10-17T03:15:39.5498970Z   "realBrowserRuns": 4,
+2026-10-17T03:15:39.5499342Z   "projectionCases": 8,
+2026-10-17T03:15:39.5499725Z   "eligibleProjections": 4,
+2026-10-17T03:15:39.5500135Z   "rejectedProjections": 4,
+2026-10-17T03:15:39.5500527Z   "deterministicRechecks": 4,
+2026-10-17T03:15:39.5500982Z   "projectionFetchAttempts": 0,
+2026-10-17T03:15:39.5501381Z   "materialFiles": 81,
+2026-10-17T03:15:39.5501765Z   "cases": [
+2026-10-17T03:15:39.5502104Z     {
+2026-10-17T03:15:39.5502446Z       "id": "matrix",
+2026-10-17T03:15:39.5502944Z       "runId": "ac-10fec91b-7b3f-4706-bcf4-388066d1fdaf",
+2026-10-17T03:15:39.5503444Z       "gate": "failed",
+2026-10-17T03:15:39.5503834Z       "declaredChecks": 28,
+2026-10-17T03:15:39.5504517Z       "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+2026-10-17T03:15:39.5505515Z       "reportSha256": "67dbe06c0777095fa99b8789378d1fe2c6a41e177976153801e675a5c7223245"
+2026-10-17T03:15:39.5506100Z     },
+2026-10-17T03:15:39.5506421Z     {
+2026-10-17T03:15:39.5506779Z       "id": "target-unavailable",
+2026-10-17T03:15:39.5507263Z       "runId": "ac-8b5e817d-0f1e-4668-88e7-8588b0f916f5",
+2026-10-17T03:15:39.5507722Z       "gate": "blocked",
+2026-10-17T03:15:39.5508106Z       "declaredChecks": 6,
+2026-10-17T03:15:39.5508771Z       "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+2026-10-17T03:15:39.5509661Z       "reportSha256": "01f8b652360da8fd5b461b057a1d3e98ea438ceca7d749337b66c55ad753780c"
+2026-10-17T03:15:39.5531414Z     },
+2026-10-17T03:15:39.5559521Z     {
+2026-10-17T03:15:39.5560072Z       "id": "baseline-unavailable",
+2026-10-17T03:15:39.5575645Z       "runId": "ac-8c3b7121-8825-4888-9173-1da87abd4bb4",
+2026-10-17T03:15:39.5576222Z       "gate": "blocked",
+2026-10-17T03:15:39.5576652Z       "declaredChecks": 6,
+2026-10-17T03:15:39.5577391Z       "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+2026-10-17T03:15:39.5578389Z       "reportSha256": "784d3b3bd64f2264a3b1b7311781c2520393ea445e9c59ef6a54749a27ef9578"
+2026-10-17T03:15:39.5579079Z     },
+2026-10-17T03:15:39.5579454Z     {
+2026-10-17T03:15:39.5579869Z       "id": "assertion-failed",
+2026-10-17T03:15:39.5580426Z       "runId": "ac-864b816c-a74d-4664-b947-d09ec31ec2eb",
+2026-10-17T03:15:39.5581546Z       "gate": "blocked",
+2026-10-17T03:15:39.5581982Z       "declaredChecks": 7,
+2026-10-17T03:15:39.5582738Z       "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+2026-10-17T03:15:39.5583803Z       "reportSha256": "0edc3ad2ec9782a16949b4f14281ca19cde5f1aa1c8ed8fd509594583b6cd386"
+2026-10-17T03:15:39.5584485Z     }
+2026-10-17T03:15:39.5585021Z   ],
+2026-10-17T03:15:39.5585852Z   "boundary": "No catalog ownership, release binding, approval, managed execution, external deployment or UI claim."
+2026-10-17T03:15:39.5586653Z }
+2026-10-17T03:15:39.5586929Z 
+2026-10-17T03:15:39.5587941Z Browser source smoke evidence: /home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-source-smoke-48a0b6b3-1242-49ed-950d-29ab64d85e9a

@@ -9,13 +9,15 @@ import { writeAtomicFileSync } from './atomic-file.mjs';
 import { writeExclusiveCatalogFileSync } from './catalog-preimage.mjs';
 import { readSpecCandidateSource } from './candidate-source.mjs';
 import { projectSpecBaselineCandidate } from './candidate-projection.mjs';
+import { readBrowserCandidateSource } from './browser-candidate-source.mjs';
+import { projectBrowserBaselineCandidate } from './browser-candidate-projection.mjs';
 import { prepareManagedSpecContract } from './managed-spec-plan.mjs';
 import { createManagedSpecDispatchStore } from './managed-dispatch-store.mjs';
 import { managedSpecDispatchRequestFingerprint } from './managed-dispatch-schema.mjs';
 import { createAcceptanceReadScope, captureAcceptanceRunFile } from './managed-run-reader.mjs';
 import { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, error, invalid, unavailable, fields, id, url,
   limitsOf, capacity, plain, iso, boundedText, validateAcceptanceCatalog, buildCatalogMigration, buildCatalogMigrationV3,
-  candidateProjectionOf, currentSelectionsOf } from './catalog-schema.mjs';
+  candidateProjectionOf, currentSelectionsOf, browserBindingProjectionOf } from './catalog-schema.mjs';
 
 export { ACCEPTANCE_CATALOG_LIMITS, AcceptanceCatalogError, validateAcceptanceCatalog };
 const HASH = /^[a-f0-9]{64}$/;
@@ -348,6 +350,7 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       if (!release) missing('版本');
       if (release.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, '所选版本不属于当前项目。');
       if (Object.hasOwn(catalog.runBindings, input.runId)) throw error('CONTEXT_ALREADY_BOUND', 409, '该运行已有明确归属，不能重新绑定。');
+      assertBrowserTargetContext(catalog, input.runId, projectId, release.id);
       // Managed runs already have a frozen catalog destination. Opening their
       // result reader must not expose the legacy subsequent-binding writer.
       let sourceScope, sourceHead;
@@ -372,6 +375,77 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       catalog.runBindings[input.runId] = binding;
       return { kind: 'run-bound', binding, ...reference, preCommitGuard };
     });
+  }
+  function assertBrowserTargetContext(catalog, runId, projectId, releaseId) {
+    const target = Object.values(catalog.browserSourceBindings).find(binding => binding.source.runId === runId && binding.source.side === 'target');
+    if (target && (target.projectId !== projectId || target.releaseId !== releaseId)) {
+      throw error('PROJECT_MISMATCH', 409, '该运行的 Browser 目标来源已有不同的项目或版本归属。');
+    }
+  }
+  function projectBrowserSource(runId, sourceSide) {
+    assertOwned(); actualRoot();
+    const material = readBrowserCandidateSource(runId, { root: actualRoot(), owner });
+    const result = projectBrowserBaselineCandidate(material, { sourceSide });
+    assertOwned(); actualRoot();
+    return result;
+  }
+  function revalidateBrowserBinding(catalog, binding) {
+    try {
+      const result = projectBrowserSource(binding.source.runId, binding.source.side);
+      const release = catalog.releases[binding.releaseId];
+      if (!release || release.projectId !== binding.projectId || result.projection.source.entryUrl !== release.targetUrl
+        || hashAcceptanceValue(result.projection) !== hashAcceptanceValue(browserBindingProjectionOf(binding))) throw new Error('changed');
+      return result;
+    } catch (cause) {
+      if (cause?.status === 503) throw cause;
+      throw error('BASELINE_CHANGED', 409, 'Browser 所选来源已变化或无法重建，原归属记录保留。', { reason: 'BROWSER_SOURCE_CHANGED' });
+    }
+  }
+  function bindBrowserSource(projectId, raw) {
+    let input;
+    try {
+      id(projectId, 'ap'); input = inputOf(raw, ['runId', 'sourceSide', 'releaseId']);
+      id(input.runId, 'ac'); id(input.releaseId, 'ar');
+      if (!['baseline', 'target'].includes(input.sourceSide)) invalid('必须明确选择 Browser 的 baseline 或 target 来源侧。');
+    } catch (cause) { return Promise.reject(cause); }
+    return mutate(input, (catalog, at) => {
+      if (!Object.hasOwn(catalog.projects, projectId)) missing('项目');
+      const release = catalog.releases[input.releaseId];
+      if (!release) missing('版本');
+      if (release.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, '所选版本不属于当前项目。');
+      if (Object.values(catalog.browserSourceBindings).some(binding => binding.source.runId === input.runId && binding.source.side === input.sourceSide)) {
+        throw error('CONTEXT_ALREADY_BOUND', 409, '该运行的所选 Browser 来源侧已有明确归属，不能重新绑定。');
+      }
+      const target = catalog.runBindings[input.runId];
+      if (input.sourceSide === 'target' && target && (target.projectId !== projectId || target.releaseId !== release.id)) {
+        throw error('PROJECT_MISMATCH', 409, '所选 Browser 目标来源与已有运行归属不一致。');
+      }
+      const { projection, preview } = projectBrowserSource(input.runId, input.sourceSide);
+      if (projection.source.entryUrl !== release.targetUrl) throw error('PROJECT_MISMATCH', 409, '所选 Browser 来源的完整入口 URL 与版本不一致。');
+      const { mode: _mode, contentDigest, ...sourceProjection } = projection;
+      const binding = { id: 'ax-' + randomUUID(), projectId, releaseId: release.id, ...sourceProjection,
+        sourceContentDigest: contentDigest, boundAt: at, actor: { ...ACTOR } };
+      catalog.browserSourceBindings[binding.id] = binding;
+      return { kind: 'browser-source-bound', binding, preview, executionReady: false,
+        preCommitGuard: () => revalidateBrowserBinding(catalog, binding) };
+    });
+  }
+  function readBrowserSourceBinding(projectId, bindingId) {
+    id(projectId, 'ap'); id(bindingId, 'ax');
+    const catalog = read();
+    if (!Object.hasOwn(catalog.projects, projectId)) missing('项目');
+    const binding = catalog.browserSourceBindings[bindingId];
+    if (!binding) missing('Browser 来源归属');
+    if (binding.projectId !== projectId) throw error('PROJECT_MISMATCH', 409, 'Browser 来源归属不属于当前项目。');
+    const common = { generationId: catalog.generationId, revision: catalog.revision, binding, executionReady: false };
+    try {
+      const { preview } = revalidateBrowserBinding(catalog, binding);
+      return { ...common, preview, diagnostics: { eligible: true, contentMatches: true, issues: [] } };
+    } catch (cause) {
+      if (cause?.status === 503) throw cause;
+      return { ...common, preview: null, diagnostics: { eligible: false, contentMatches: false,
+        issues: [{ code: 'BASELINE_CHANGED', message: '当前 Browser 所选来源无法重建已记录内容；历史归属保留，请检查原运行。' }] } };
+    }
   }
   function reasonOf(input) {
     if (typeof input.reason !== 'string' || !boundedText(input.reason.trim(), 1000)) invalid('操作理由必须为 1..1000 个字符。');
@@ -601,6 +675,6 @@ export function createAcceptanceCatalogStore({ root = ACCEPTANCE_ROOT, owner, li
       return resultOf(record, false);
     });
   }
-  return Object.freeze({ initialize, read, createProject, createRelease, bindRun, readRunReference,
+  return Object.freeze({ initialize, read, createProject, createRelease, bindRun, readRunReference, bindBrowserSource, readBrowserSourceBinding,
     createBaselineCandidate, readBaselineCandidate, approveBaseline, selectBaseline, prepareManagedSpecDispatch, readManagedSpecDispatch });
 }

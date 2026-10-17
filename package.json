@@ -31,6 +31,7 @@
     "acceptance:managed:execute:smoke": "node core/scripts/smoke-acceptance-managed-execution.mjs",
     "acceptance:execution:ui:smoke": "node core/scripts/smoke-acceptance-execution-ui.mjs",
     "acceptance:browser:source:smoke": "node core/scripts/smoke-acceptance-browser-source.mjs",
-    "acceptance:browser:read:smoke": "node core/scripts/smoke-acceptance-browser-reading.mjs"
+    "acceptance:browser:read:smoke": "node core/scripts/smoke-acceptance-browser-reading.mjs",
+    "acceptance:browser:bindings:smoke": "node core/scripts/smoke-acceptance-browser-bindings.mjs"
   }
 }

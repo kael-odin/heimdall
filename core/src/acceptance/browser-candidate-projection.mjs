@@ -7,16 +7,14 @@
 import { createHash } from 'node:crypto';
 import { types } from 'node:util';
 import { PNG } from 'pngjs';
-import { canonicalAcceptanceJson, hashAcceptanceValue, buildAcceptanceIdentity } from './identity.mjs';
+import { canonicalAcceptanceJson, buildAcceptanceIdentity } from './identity.mjs';
+import { hashBrowserCandidateValue as digest } from './browser-candidate-identity.mjs';
 import { normalizeAcceptancePlan, resolveAcceptanceUrl } from './schema.mjs';
 import { summarizeAcceptanceReport } from './report.mjs';
 import { AcceptanceCatalogError } from './catalog-schema.mjs';
 import { comparePngBuffers } from '../verify/compare.mjs';
 
-export const BROWSER_CANDIDATE_PROJECTION_V1 = Object.freeze({
-  projectionVersion: 1, canonicalJsonVersion: 'acceptance-json-v1', digestAlgorithm: 'sha256',
-  domain: 'heimdall-acceptance-browser-candidate',
-});
+export { BROWSER_CANDIDATE_PROJECTION_V1 } from './browser-candidate-identity.mjs';
 export const BROWSER_CANDIDATE_LIMITS_V1 = Object.freeze({
   jsonBytes: 8 * 1024 * 1024, snapshotBytes: 24 * 1024 * 1024, previewBytes: 2 * 1024 * 1024,
   evidenceFiles: 1024, evidenceFileBytes: 64 * 1024 * 1024, evidenceBytes: 256 * 1024 * 1024,
@@ -125,7 +123,6 @@ function parse(bytes) {
   strictJson(value, L.jsonBytes, 'SOURCE_FILE_JSON_BUDGET');
   return value;
 }
-const digest = (kind, value) => hashAcceptanceValue({ ...BROWSER_CANDIDATE_PROJECTION_V1, kind, value });
 function redactedUrl(value) {
   const url = new URL(value);
   url.username = ''; url.password = ''; url.hash = '';

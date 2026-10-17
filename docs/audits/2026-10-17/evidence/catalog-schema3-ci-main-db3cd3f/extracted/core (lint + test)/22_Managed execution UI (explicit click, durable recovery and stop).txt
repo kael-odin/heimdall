@@ -1,0 +1,30 @@
+﻿2026-10-17T03:14:51.0767048Z ##[group]Run pnpm acceptance:execution:ui:smoke
+2026-10-17T03:14:51.0783657Z [36;1mpnpm acceptance:execution:ui:smoke[0m
+2026-10-17T03:14:51.0853798Z shell: /usr/bin/bash -e {0}
+2026-10-17T03:14:51.0854067Z env:
+2026-10-17T03:14:51.0854299Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T03:14:51.0854575Z ##[endgroup]
+2026-10-17T03:14:51.9135977Z $ node scripts/smoke-acceptance-execution-ui.mjs
+2026-10-17T03:15:22.4995868Z {
+2026-10-17T03:15:22.5018325Z   "status": "passed",
+2026-10-17T03:15:22.5019216Z   "checkCount": 16,
+2026-10-17T03:15:22.5019509Z   "checks": {
+2026-10-17T03:15:22.5019974Z     "nativeRepeatedClickPersistsStrictInputAndCreatesOneRun": true,
+2026-10-17T03:15:22.5020701Z     "lateStartResponseAcrossProjectABACannotRestoreOldConfirmation": true,
+2026-10-17T03:15:22.5021409Z     "managedSlotBlocksOrdinaryButOriginalOperationLookupWorks": true,
+2026-10-17T03:15:22.5022106Z     "terminalLookupFailureRetainsCompletedStateAndReportEntry": true,
+2026-10-17T03:15:22.5022827Z     "bugCompletionTaskDoneAndReportEvidenceOpenedThroughButton": true,
+2026-10-17T03:15:22.5023654Z     "lateBusyCapabilityCannotOverwriteNewProjectCapability": true,
+2026-10-17T03:15:22.5024343Z     "lost202AndHtml502ReloadRecoverOriginalRunWithOnlyGet": true,
+2026-10-17T03:15:22.5025229Z     "ordinarySharedSlotDisablesFreshManagedStartAndRecovers": true,
+2026-10-17T03:15:22.5025966Z     "nativeStopClosesPendingTargetAndPreventsEveryLaterCheck": true,
+2026-10-17T03:15:22.5026673Z     "lateStopResponseCannotOverrideAnotherSelectedOperation": true,
+2026-10-17T03:15:22.5027402Z     "desktopAndBothMobileThemesHaveNoHorizontalOverflow": true,
+2026-10-17T03:15:22.5028083Z     "lateOperationLookupAcrossProjectABACannotChangeSelection": true,
+2026-10-17T03:15:22.5056261Z     "preparedReceiptReloadAndNativeLookupNeverStart": true,
+2026-10-17T03:15:22.5076418Z     "explicitTargetAndChangedTargetClearsConfirmation": true,
+2026-10-17T03:15:22.5098278Z     "receiptPersistedBeforeNativePostAndUnknown404ReloadOnlyGets": true,
+2026-10-17T03:15:22.5099474Z     "oldCasRejectionCreatesNoRunAndRefreshRequiresNewReview": true
+2026-10-17T03:15:22.5100251Z   },
+2026-10-17T03:15:22.5101218Z   "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/execution-ui-cbde66f2-2c20-4dd4-8728-133d9a4ed8aa"
+2026-10-17T03:15:22.5102052Z }

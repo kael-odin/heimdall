@@ -1,2 +1,6 @@
 # Preserve the archived source bytes; CRLF is an observed line ending.
 catalog-schema3/source/core/test/acceptance-catalog-schema3-migration.test.mjs whitespace=cr-at-eol
+# Actions log whitespace is original evidence; keep its byte hashes intact.
+catalog-schema3-ci-main-db3cd3f/ci.stdout.log -whitespace
+catalog-schema3-ci-main-db3cd3f/commands/*.stdout.bin -whitespace
+catalog-schema3-ci-main-db3cd3f/extracted/** -whitespace

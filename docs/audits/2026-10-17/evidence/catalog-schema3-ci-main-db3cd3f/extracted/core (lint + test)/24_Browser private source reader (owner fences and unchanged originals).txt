@@ -1,0 +1,61 @@
+﻿2026-10-17T03:15:39.6180638Z ##[group]Run pnpm acceptance:browser:read:smoke
+2026-10-17T03:15:39.6180951Z [36;1mpnpm acceptance:browser:read:smoke[0m
+2026-10-17T03:15:39.6238608Z shell: /usr/bin/bash -e {0}
+2026-10-17T03:15:39.6238829Z env:
+2026-10-17T03:15:39.6239051Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T03:15:39.6239308Z ##[endgroup]
+2026-10-17T03:15:40.4346138Z $ node scripts/smoke-acceptance-browser-reading.mjs
+2026-10-17T03:15:47.4957238Z {"sample":"matrix","checks":28,"gate":"failed","files":54}
+2026-10-17T03:15:48.2166743Z {"sample":"target-unavailable","checks":6,"gate":"blocked","files":6}
+2026-10-17T03:15:48.8425295Z {"sample":"baseline-unavailable","checks":6,"gate":"blocked","files":6}
+2026-10-17T03:15:50.6886654Z {"sample":"assertion-failed","checks":7,"gate":"blocked","files":15}
+2026-10-17T03:15:54.5563246Z {
+2026-10-17T03:15:54.5563845Z   "schemaVersion": 1,
+2026-10-17T03:15:54.5564542Z   "status": "passed",
+2026-10-17T03:15:54.5565388Z   "evidenceLevel": "fresh-local-browser-owner-reader-and-pure-projection",
+2026-10-17T03:15:54.5566070Z   "checkCount": 13,
+2026-10-17T03:15:54.5566455Z   "checks": {
+2026-10-17T03:15:54.5566888Z     "fourFreshBrowserRuns": true,
+2026-10-17T03:15:54.5567415Z     "requiresAcquiredOwnerBrand": true,
+2026-10-17T03:15:54.5567975Z     "allOriginalBytesCaptured": true,
+2026-10-17T03:15:54.5568565Z     "integrityRebuiltFromActualReferences": true,
+2026-10-17T03:15:54.5569357Z     "nullableBothDirectionsCaptured": true,
+2026-10-17T03:15:54.5570891Z     "explicitSideEightCases": true,
+2026-10-17T03:15:54.5571530Z     "targetOracleRebuilt": true,
+2026-10-17T03:15:54.5572060Z     "failedComparisonPreserved": true,
+2026-10-17T03:15:54.5572592Z     "privateMaterialAndNoExecution": true,
+2026-10-17T03:15:54.5573106Z     "callerMutationIsolated": true,
+2026-10-17T03:15:54.5573638Z     "zeroReaderWritesRequestsOrLaunches": true,
+2026-10-17T03:15:54.5574207Z     "originalFilesAndMetadataUnchanged": true,
+2026-10-17T03:15:54.5574747Z     "releasedOwnerRejected": true
+2026-10-17T03:15:54.5575371Z   },
+2026-10-17T03:15:54.5575728Z   "realBrowserRuns": 4,
+2026-10-17T03:15:54.5576132Z   "materialFiles": 81,
+2026-10-17T03:15:54.5576575Z   "successfulReaderCaptures": 8,
+2026-10-17T03:15:54.5577026Z   "rejectedOwnerAttempts": 2,
+2026-10-17T03:15:54.5577466Z   "eligibilityCases": 8,
+2026-10-17T03:15:54.5577874Z   "eligibleProjections": 4,
+2026-10-17T03:15:54.5578297Z   "rejectedProjections": 4,
+2026-10-17T03:15:54.5578751Z   "forbiddenReaderEvents": [],
+2026-10-17T03:15:54.5579168Z   "sourceRunIds": [
+2026-10-17T03:15:54.5579532Z     {
+2026-10-17T03:15:54.5579888Z       "id": "matrix",
+2026-10-17T03:15:54.5580356Z       "runId": "ac-83e2388c-57ce-4819-b6c0-f1413d63f249"
+2026-10-17T03:15:54.5580836Z     },
+2026-10-17T03:15:54.5581181Z     {
+2026-10-17T03:15:54.5581568Z       "id": "target-unavailable",
+2026-10-17T03:15:54.5582086Z       "runId": "ac-e9782a37-70ad-4a48-8d83-4079d4911f39"
+2026-10-17T03:15:54.5582567Z     },
+2026-10-17T03:15:54.5582909Z     {
+2026-10-17T03:15:54.5583305Z       "id": "baseline-unavailable",
+2026-10-17T03:15:54.5583844Z       "runId": "ac-44bbf81d-2a44-402b-b6e5-30092da695a2"
+2026-10-17T03:15:54.5584311Z     },
+2026-10-17T03:15:54.5584632Z     {
+2026-10-17T03:15:54.5585128Z       "id": "assertion-failed",
+2026-10-17T03:15:54.5585631Z       "runId": "ac-da4bce2b-0089-4a6c-a436-165b84c1a50c"
+2026-10-17T03:15:54.5586118Z     }
+2026-10-17T03:15:54.5586456Z   ],
+2026-10-17T03:15:54.5587355Z   "boundary": "Private bounded read, no release binding, catalog approval, HTTP/UI or managed Browser execution; no atomic or future filesystem guarantee."
+2026-10-17T03:15:54.5588264Z }
+2026-10-17T03:15:54.5588510Z 
+2026-10-17T03:15:54.5589551Z Browser private reading evidence: /home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-reading-smoke-8bfb0c29-5075-4000-ae6f-a32817da8ffe

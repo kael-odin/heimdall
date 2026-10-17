@@ -1,0 +1,100 @@
+407d25c4000c14ecda62a258e4fb4b83e22daf6740c19aea8dc9b6c59d5774b4  .gitattributes
+291ba2f208a97cffc91512fdba69b0cfbc0ab65e2fc4ee0018a52e3b8cedd7bc  README.md
+b6b5379a1bdcf26b51f21adf2d080096a01d0f7f82757c0f97a74c38892515cc  archive-ci.mjs
+244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c  artifacts.json
+873ff68b1ad11db47486e62789f2caad4154f87545f403eed05b481a10143839  ci.stdout.log
+51c83cce8f5d1d3673985b181bcc671cddedc75e8e0d10075deb0152778d9a3b  commands/01-run-attempt-1.exitcode.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  commands/01-run-attempt-1.stderr.log
+7314aaeb6e0a454828489758773259b2a9ec11b207c0ef1ed80c240d8e6c4cc5  commands/01-run-attempt-1.stdout.bin
+b511e17104ef5273990b6fc918ea031a6ab0ce880c3ce3bd1577d0142ffe935d  commands/02-jobs-attempt-1.exitcode.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  commands/02-jobs-attempt-1.stderr.log
+51e576f5ecf4aee8db5205d0dc4e963a69f216277bec6d87eeff4bcea3553b8d  commands/02-jobs-attempt-1.stdout.bin
+236a271db69edf27565229e186473b4da85d20bb95e1f0c3144d207a3203fb0f  commands/03-artifacts-attempt-1.exitcode.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  commands/03-artifacts-attempt-1.stderr.log
+244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c  commands/03-artifacts-attempt-1.stdout.bin
+f49db38452251251dd7716340baeef7bf7aac074277617e955cc96a1d4736a22  commands/04-view-attempt-1.exitcode.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  commands/04-view-attempt-1.stderr.log
+611ba56245c9d088673a3d6f9c0b1eb2d9886bb595d23f3f96c073ea6e036f7a  commands/04-view-attempt-1.stdout.bin
+2b6593b04c00793c05964a0654111f7325195af0f27e8edf85009822e81e6702  commands/05-workflow-attempt-1.exitcode.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  commands/05-workflow-attempt-1.stderr.log
+89217aecc065b32052a8080fd587fe147674817110764259a854d6cccdb293a4  commands/05-workflow-attempt-1.stdout.bin
+d78798023d7dc18f511a539e4e955e000051331d60c3e1244c056a1fde58fe16  commands/06-log-attempt-1.exitcode.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  commands/06-log-attempt-1.stderr.log
+873ff68b1ad11db47486e62789f2caad4154f87545f403eed05b481a10143839  commands/06-log-attempt-1.stdout.bin
+723405d924266e36cf41278736436602518c92c38db471c5fdb90fc4dad48814  commands/07-zip-attempt-1.exitcode.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  commands/07-zip-attempt-1.stderr.log
+aa1fbd55270b77d6c142bcfdd44d2f5c9b2e68e0e49737bb55ce4f0d70158a84  commands/07-zip-attempt-1.stdout.bin
+19a701b474a1bfe69969e5b9860506f2a2564745f22d894bca5b55620eae74d3  commands/08-extract-attempt-1.exitcode.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  commands/08-extract-attempt-1.stderr.log
+657a5739c07bdedd8b2ede27904f34c1b06c365e34a507f7c71dee0d547973f8  commands/08-extract-attempt-1.stdout.bin
+f9be3ff5d442bf927d71bfc6e6b9b4ef7c849fcc993614c12e91650b0b3d48f1  extract-logs.py
+23bf23eac31d611912f1cf7f3fea07df7cc53ec643d818417c5bf50efa97630b  extracted/0_console (build).txt
+0c320870bf473984ae1bdc2faf04b2fecf49a5ba5fbd3880206cf95c8075d9b2  extracted/1_core (e2e smoke, local fixture).txt
+c82f70ea0c23e99bbb5fce9f112a2727bf26d499a03be33373f420558093896f  extracted/2_core (lint + test).txt
+859c10f893be07082292cd95cf0d6c819727147a9d23ca4fedb5e93d906ff203  extracted/console (build)/10_Post Run actions_setup-node@v7.txt
+e0237003bbd584f17bd74ccefef8cdfbad5b1c54771f4ebecc83afb79933147c  extracted/console (build)/11_Post Run pnpm_action-setup@v6.txt
+3e942a778f1549bdf085be4ee549cda6bf89710b1f7caf09a6a921cccfa770b6  extracted/console (build)/12_Post Run actions_checkout@v7.txt
+52116b09109099398077a8b478bbaf5bb1ae2c6028f674983acf3f393bb36331  extracted/console (build)/13_Complete job.txt
+79b5fec3cfd37d453ec8a2a18f98ce1b03f3d1df05ba013774068e1f679d0b7f  extracted/console (build)/1_Set up job.txt
+e7d7b6c10005ea98ced8749ab1ea0e5716d289a41a3b4d78402aec76587205b5  extracted/console (build)/2_Run actions_checkout@v7.txt
+773cbdf3eea4fc9967309fc4aaeb293aa32efd8b964c5690081f8dee1dfa5d6c  extracted/console (build)/3_Run pnpm_action-setup@v6.txt
+502b22fb5cc2d35b9a6683d87c5454a182e5d3e4afa1decc3b0fff7f8e0cccde  extracted/console (build)/4_Run actions_setup-node@v7.txt
+5a0c6d9c91c52d4405e18edc366140142fea96c582903ee5980ebdca8b1749ca  extracted/console (build)/5_Run pnpm install --frozen-lockfile.txt
+04a642942af0d09f72d511d02f85f545537a63cc325f372a64b8d88c35c99bad  extracted/console (build)/6_Run pnpm build.txt
+d22775b3bbbe803c4068fe6f39a5ff8525be8fd6178da42efc70db07073ff86d  extracted/console (build)/system.txt
+6a4bec33230ac028514d267bab5b40e7fef02817ca4503d2640a6962a433dbfa  extracted/core (e2e smoke, local fixture)/10_Acceptance comparison benchmark (known retest and false-closure cases).txt
+5d54543d36f879e464367d724310b176e4d10535be078b0fc11e44751c60693b  extracted/core (e2e smoke, local fixture)/18_Post Run actions_setup-node@v7.txt
+1511a59898e68b4dc1ca9306b57a0daa064b3d16f5c7ca39a3248469d32066f8  extracted/core (e2e smoke, local fixture)/19_Post Run pnpm_action-setup@v6.txt
+cc4ab3830ed4deddbe99d07aea08a8a81bdb793ab8ecb73c71d95a3fd636bef4  extracted/core (e2e smoke, local fixture)/1_Set up job.txt
+594fe52d5087a0d1f4ada8d06d102694809952d38e82a1b879ae892743b5c714  extracted/core (e2e smoke, local fixture)/20_Post Run actions_checkout@v7.txt
+924a62c0e9b4adf1d7e6ec3438edba11169cd82246a6947f92ac6c52f039ff66  extracted/core (e2e smoke, local fixture)/21_Complete job.txt
+03f6326eb09215c36942b81594a9859fa22473239cc6eb669d67263f96fb8343  extracted/core (e2e smoke, local fixture)/2_Run actions_checkout@v7.txt
+e3881a5c36e4ff461415782d3c9d861ffa2731248f30a4e1f2f76492bb57cdb2  extracted/core (e2e smoke, local fixture)/3_Run pnpm_action-setup@v6.txt
+7d9e3822b3a2fc3f12a022f677062a7557be373767847f38e71e9f736965d047  extracted/core (e2e smoke, local fixture)/4_Run actions_setup-node@v7.txt
+84d2082ebea5be39d81418e1418cab52841c7247ca46b91183034a4a84727ccd  extracted/core (e2e smoke, local fixture)/5_Run pnpm install --frozen-lockfile.txt
+61b502efab61fde8cd1cee3912e6846a13f9c0e88ee277c3a9aa148571be1efa  extracted/core (e2e smoke, local fixture)/6_Run pnpm exec playwright install --with-deps chromium.txt
+138dd69af797d977dadbdbac7473a7839cae2e565900be167a9960fca584bc37  extracted/core (e2e smoke, local fixture)/7_Run pnpm smoke.txt
+d6ebf7864da83af81ec4bd7bb31ac1c027ac09521e1e0336a7912aac62b86a79  extracted/core (e2e smoke, local fixture)/8_Acceptance detection benchmark (known truth fixtures).txt
+58919793643573d8cd2255d4e18f497760232c087a397f9681a1dce0ef251cf8  extracted/core (e2e smoke, local fixture)/9_Spec API benchmark (OpenAPI candidates and known truth).txt
+6d2342e8891f98fdc3d914fd9c6471df5db1854ed0fced39c773c9e59304b061  extracted/core (e2e smoke, local fixture)/system.txt
+3dcf7c0f5431b735ceb4d2fd0d44bae530bf04634dde726bf680033777e973d7  extracted/core (lint + test)/10_Run pnpm --dir .._console build.txt
+aec01ed6922bf074dc04921b18540b6bed10e593b76290feb9bfecdc81021b54  extracted/core (lint + test)/11_Run pnpm test.txt
+574064178a327a19ade2e3c66287df129370d55fb6d3021fefdbdc55b8512f70  extracted/core (lint + test)/12_Acceptance console (real browser, local model stub).txt
+79cfdcb13ea941277fddb726d23862bbd1e2b621cde620fd300ce302e9faa3f4  extracted/core (lint + test)/13_Spec contract console (real browser, local API fixture).txt
+50a3e9cd2cd776910fa4c9cfa6fdab7be111d04a5631b577b55f9f98a4154443  extracted/core (lint + test)/14_Acceptance comparison console (explicit runs, integrity and CLI).txt
+9c840d160660de3991b2133fbc50c03011ba718155a698064dbb8ac5f282c13c  extracted/core (lint + test)/15_Acceptance project catalog (versions, explicit bindings and two-engine isolation).txt
+6a46bed44c517db74b999183acb05d0e537ae208eda3c95882703a12acb11095  extracted/core (lint + test)/16_Acceptance catalog migration (real v1 artifacts and browser continuity).txt
+7f9129a4741c108a65e68b5b08b4b7c3884189d71503d97d9b61b3497ce5f537  extracted/core (lint + test)/17_Spec baseline review (candidates, approvals, selections and source integrity).txt
+d4a7fa9cfe841f22ef525f2fd0a28eae581e6ee694b64ec086de9197017ef36a  extracted/core (lint + test)/18_Managed Spec preparation (immutable contract, replay and zero execution).txt
+f80b7793b2bffb1e7ad62b5c54b4365c3c281ee0f54686ec9abed9faa5950e47  extracted/core (lint + test)/19_Managed Spec result reading (captured evidence and zero execution).txt
+8e9a18e9a04b015121692f806e7eff7738269167ffd714b4eaf570f5a19603ff  extracted/core (lint + test)/1_Set up job.txt
+5b7b9d79860ad9ae61674bc505b8b4c7e19a495e60523613287b0ec78014056c  extracted/core (lint + test)/20_Owned acceptance recovery (startup barrier, restart and zero execution).txt
+15ccdf40a7deaf8a414f4a61534f415afcb216c11551796d56351ebabbcce262  extracted/core (lint + test)/21_Managed Spec execution (fresh admission, real runner, BUG and cancel).txt
+c4087ca61a81568dc43e681a1f0fd9794c7219136285f9a7c313c7255213cd07  extracted/core (lint + test)/22_Managed execution UI (explicit click, durable recovery and stop).txt
+94e04c92cd82d4874c3c89c84f3b34723c86769370e2a316be59de49456db4f4  extracted/core (lint + test)/23_Browser candidate source (fresh captures and explicit healthy side).txt
+234579f90c595a63802aab5a118851765198972afeb1eb0c1aa664faaab3027c  extracted/core (lint + test)/24_Browser private source reader (owner fences and unchanged originals).txt
+cf4bad7c5a94df1ca92d1fc9597acc7749f331d605cfbf25ac18deb11f17d3c3  extracted/core (lint + test)/26_Docker offline delivery (SSR + SPA + data SPA + adapter).txt
+4b945c1c8ff988c40c12b2e5b8f88db70ea294fee20b0185e10120f193284649  extracted/core (lint + test)/2_Run actions_checkout@v7.txt
+f6fcc2b1be2821d4699e031e40ca0c3046e1035ef0f9b764a71a4cca1c8856f7  extracted/core (lint + test)/3_Run pnpm_action-setup@v6.txt
+e636fa4fcc98ca3db4e496f3bd73b76962d492a4a020ed1eb85e7ad3d3ae2186  extracted/core (lint + test)/4_Run actions_setup-node@v7.txt
+bdcb2290dbf5f52c2abe312d60c56647c364367441f7d35a9f3f6880b2d1920d  extracted/core (lint + test)/50_Post Run actions_setup-node@v7.txt
+13259b764e5cb466d09c4aac39a43827eb5c8af10e4ad28e137f37cdaa8216a8  extracted/core (lint + test)/51_Post Run pnpm_action-setup@v6.txt
+53f26d929b707ac26773cf9cc55337a20552d86b9d12def585742115dc14a759  extracted/core (lint + test)/52_Post Run actions_checkout@v7.txt
+eee0f3cd240906cfc9a2b35e4998da0c61f880e9e0908d43d96b0fb035d4b0aa  extracted/core (lint + test)/53_Complete job.txt
+5a8d2fbd47014bb8c5a7d4195ce877fe82228438f90c0368d8323b589dba5d59  extracted/core (lint + test)/5_Run pnpm install --frozen-lockfile.txt
+7b98e72a4be17fe867d980da2f06a1e5b26d7fedfaf2f167f879777c4914ed02  extracted/core (lint + test)/6_Run pnpm lint.txt
+f65f1c72b2c46b17cb5afc2ad796a735dc0753579192551363846ff30f7e1c1e  extracted/core (lint + test)/7_Run pnpm checkdocs.txt
+b41093c9c734390e78ca0d553590680b65813a783a96f9df864ffbcf7fe72f7d  extracted/core (lint + test)/8_Run pnpm exec playwright install --with-deps chromium.txt
+b3042b1870052c57f47e18cc279c058f9c9c7bda25aef12a9f39589b3979e15e  extracted/core (lint + test)/9_Run pnpm --dir .._console install --frozen-lockfile.txt
+228755955220dd694e63c959325c31a23439b5af95e9a00b3e86e1fa3de8b593  extracted/core (lint + test)/system.txt
+a73727d8d5488f478f5d097d9151e38061e25287ce791a44c8fc12062b307ed1  file-manifest.json
+51e576f5ecf4aee8db5205d0dc4e963a69f216277bec6d87eeff4bcea3553b8d  jobs.json
+aa1fbd55270b77d6c142bcfdd44d2f5c9b2e68e0e49737bb55ce4f0d70158a84  run-logs.zip
+611ba56245c9d088673a3d6f9c0b1eb2d9886bb595d23f3f96c073ea6e036f7a  run-view.json
+7314aaeb6e0a454828489758773259b2a9ec11b207c0ef1ed80c240d8e6c4cc5  run.json
+13a4ebd12bc79e4f82c4088ec38637fc5f881073740079f2c761234a7c858e4a  sensitive-scan.json
+160f09925651a768e46815f89a1cfbff7329ffa41cc5fa96b5711fd2b04e568e  summary.json
+edc4c1e726dda7e5b317fe99edac7436f78b99195e463b84d6c49b873078bba3  verification.json
+64123bbd457b25badb30ed944482c08f15906c10aa9f560c1f3759dc2f775996  workflow-at-head.yml
+89217aecc065b32052a8080fd587fe147674817110764259a854d6cccdb293a4  workflow-content.json
+657a5739c07bdedd8b2ede27904f34c1b06c365e34a507f7c71dee0d547973f8  zip-inventory.json
