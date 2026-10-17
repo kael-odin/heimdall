@@ -41,9 +41,23 @@ legacy snapshot reader 仍会拒绝另一侧 `null` 截图。这里按所有非�
 
 本次修正了开发中的真实兼容问题：详情 JSON 实际包含 `details` 字段，首版错误排除该字段导致健康样本被拒；通过真实原件发现后恢复必需字段并核对角色文件名。反例测试还促成比较包围网格预算与完整 PNG chunk/编码预检。早一轮因缺少比较网格预算而 19/20 的日志保留，不计为功能通过。
 
-首次原控制台 CDP 的 Windows 调用包装把输出路径外层引号保留为实际参数，mkdir 即失败，浏览器没有启动。保留 exit=1 的原日志，纠正调用后独立重跑通过；不重跑或累加此前已通过的全量门。Windows 的 8 项跳过为六项 POSIX 场景和两项显式 Docker；新提交的 Linux CI 将独立核验这些平台边界。
+首次原控制台 CDP 的 Windows 调用包装把输出路径外层引号保留为实际参数，mkdir 即失败，浏览器没有启动。保留 exit=1 的原日志，纠正调用后独立重跑通过；不重跑或累加此前已通过的全量门。Windows 的 8 项跳过为六项 POSIX 场景和两项显式 Docker；对应提交的 Linux CI 已独立核验平台边界，见下节。
 
 发布副本、完整日志与摘要见[证据索引](evidence/browser-source/README.md)。本片同时补录上一执行 UI 提交 `e427ec1` 自身的[成功 Linux CI](evidence/execution-ui/ci-main-e427ec1/README.md)，该 CI 不作为新 Browser 模块自身提交的验证。
+
+## 对应提交的自身 CI
+
+纯投影 head `0f90fa7cab485b82589272e55a752eaf32bab734` 的 main push 运行 `38988539457` 于 2026-10-17 01:15:27Z 完成，三个 job 全部 success。完整原始元数据、日志及精确摘要见[自身 CI 证据](evidence/browser-source/ci-main-0f90fa7/README.md)。
+
+| 检查 | 结果 |
+| --- | --- |
+| Linux Core 正式 suite | 1841 total / 1837 pass / 0 fail / 4 skip，950781.649011 ms；专项 22 项已包含在总数内 |
+| Acceptance smoke | Core job 中 12 项全部 success |
+| 新 Browser source smoke | 8/8；4 次 fresh 运行、8 个选侧案例、4 合格 / 4 拒绝、4 次确定性重查，projection fetch=0 |
+| 独立 Docker step | 2/2 pass，0 fail / 0 skip；不重复增加正式 suite 的声明总数 |
+| Core job | 20 分 33 秒，处于 30 分钟预算内 |
+
+Linux 主 suite 的四项跳过是两项 Windows 文件句柄特有场景和两项显式 Docker 用例；六项 POSIX 场景在 Linux 实际运行，Docker 两项在后续专用 step 实跑。该 run 的 artifacts 为零，fresh Browser 完整材料未上传为 CI artifact；八项断言和运行/报告摘要由完整 CI stdout 证明。后续私有 reader、owner 根目录加固及其新增测试不在此 head 中，不能计入此次 CI 通过范围。本节只补录原运行，没有重新触发 CI。
 
 ## 保留边界与下一步
 

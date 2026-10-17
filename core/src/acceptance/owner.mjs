@@ -26,6 +26,12 @@ export function assertAcceptanceOwner(owner) {
   return owner.assertOwned();
 }
 const sameFile = (a, b) => a?.dev === b?.dev && a?.ino === b?.ino;
+const sameRoot = (a, b) => a.dev === b.dev && a.ino === b.ino && a.birthtimeNs === b.birthtimeNs && a.mode === b.mode;
+function rootIdentity(path) {
+  const stat = lstatSync(path, { bigint: true });
+  if (!stat.isDirectory() || stat.isSymbolicLink() || realpathSync(path) !== path) throw new AcceptanceOwnerError();
+  return stat;
+}
 function readRecord(path) {
   const stat = lstatSync(path);
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 1 || stat.size > MAX_LOCK_BYTES) throw new AcceptanceOwnerError();
@@ -43,24 +49,33 @@ function matching(a, b) {
   return sameFile(a.stat, b.stat) && a.value.nonce === b.value.nonce && a.value.pid === b.value.pid
     && a.value.hostname === b.value.hostname && a.value.createdAt === b.value.createdAt;
 }
-function removeOwned(path, owned) {
+function removeOwned(path, owned, assertRoot) {
   try {
+    assertRoot();
     if (!matching(readRecord(path), owned)) return false;
+    assertRoot();
     unlinkSync(path);
     return true;
   } catch { return false; }
 }
-function createRecord(path, value) {
+function createRecord(path, value, assertRoot, assertCleanupRoot) {
   let fd, stat;
   try {
+    assertRoot();
     fd = openSync(path, 'wx', 0o600);
     stat = fstatSync(fd);
+    assertRoot();
     writeFileSync(fd, JSON.stringify(value) + '\n');
     fsyncSync(fd);
+    assertRoot();
     return { value, stat };
   } catch (error) {
     // Only our exclusively created inode may be removed after a partial write.
-    if (stat) try { if (sameFile(lstatSync(path), stat)) unlinkSync(path); } catch { /* Preserve the failure. */ }
+    // A moved lock inode does not authorize deleting a replacement root's file.
+    if (stat) try {
+      assertCleanupRoot();
+      if (sameFile(lstatSync(path), stat)) { assertCleanupRoot(); unlinkSync(path); }
+    } catch { /* Preserve the failure and any unowned directory's scene. */ }
     throw error;
   } finally { if (fd !== undefined) closeSync(fd); }
 }
@@ -75,7 +90,14 @@ export function acquireAcceptanceOwner({ root = ACCEPTANCE_ROOT, processProbe = 
   const host = hostname();
   const record = () => ({ schemaVersion: 1, pid: process.pid, hostname: host,
     nonce: randomBytes(32).toString('hex'), createdAt: new Date().toISOString() });
-  let actualRoot, lockPath, recoveryPath, owned;
+  let actualRoot, rootPin, lockPath, recoveryPath, owned;
+  const assertCanonicalRoot = () => {
+    if (!actualRoot || !rootPin || !sameRoot(rootPin, rootIdentity(actualRoot))) throw new AcceptanceOwnerError(true);
+  };
+  const assertRoot = () => {
+    if (!actualRoot || realpathSync(requestedRoot) !== actualRoot) throw new AcceptanceOwnerError(true);
+    assertCanonicalRoot();
+  };
   const dead = value => {
     if (value.hostname !== host) return false;
     try { processProbe(value.pid); return false; }
@@ -84,29 +106,39 @@ export function acquireAcceptanceOwner({ root = ACCEPTANCE_ROOT, processProbe = 
   try {
     mkdirSync(requestedRoot, { recursive: true });
     actualRoot = realpathSync(requestedRoot);
+    // Pin before creating/recovering a lock. A nonce and the same lock inode can
+    // otherwise be moved into a newly created directory at this same pathname.
+    rootPin = rootIdentity(actualRoot);
+    assertRoot();
     lockPath = join(actualRoot, ACCEPTANCE_OWNER_FILE);
     recoveryPath = join(actualRoot, ACCEPTANCE_RECOVERY_FILE);
     // An interrupted recovery cannot be safely inferred complete by a newcomer.
     try { lstatSync(recoveryPath); throw new AcceptanceOwnerError(); }
     catch (error) { if (error?.code !== 'ENOENT') throw error; }
-    try { owned = createRecord(lockPath, record()); }
+    try { owned = createRecord(lockPath, record(), assertRoot, assertCanonicalRoot); }
     catch (error) {
       if (error?.code !== 'EEXIST') throw error;
       const stale = readRecord(lockPath);
       if (!dead(stale.value)) throw new AcceptanceOwnerError();
-      const recovery = createRecord(recoveryPath, record());
+      assertRoot();
+      const recovery = createRecord(recoveryPath, record(), assertRoot, assertCanonicalRoot);
       try {
         const current = readRecord(lockPath);
         if (!matching(stale, current) || !dead(current.value)) throw new AcceptanceOwnerError();
+        assertRoot();
         if (!matching(readRecord(recoveryPath), recovery) || !matching(readRecord(lockPath), current)) throw new AcceptanceOwnerError();
         // Cooperating reclaimers are serialized; another fresh owner may win
         // the subsequent exclusive create, which is treated as a conflict.
+        assertRoot();
         unlinkSync(lockPath);
-        owned = createRecord(lockPath, record());
-      } finally { removeOwned(recoveryPath, recovery); }
+        owned = createRecord(lockPath, record(), assertRoot, assertCanonicalRoot);
+      } finally { removeOwned(recoveryPath, recovery, assertCanonicalRoot); }
     }
+    assertRoot();
+    if (!matching(readRecord(lockPath), owned)) throw new AcceptanceOwnerError();
+    assertRoot();
   } catch {
-    if (owned && lockPath) removeOwned(lockPath, owned);
+    if (owned && lockPath) removeOwned(lockPath, owned, assertCanonicalRoot);
     throw new AcceptanceOwnerError();
   }
   let released = false;
@@ -115,14 +147,20 @@ export function acquireAcceptanceOwner({ root = ACCEPTANCE_ROOT, processProbe = 
     nonce: owned.value.nonce,
     assertOwned() {
       try {
-        if (released || realpathSync(requestedRoot) !== actualRoot || !matching(readRecord(lockPath), owned)) throw new AcceptanceOwnerError(true);
+        if (released) throw new AcceptanceOwnerError(true);
+        assertRoot();
+        if (!matching(readRecord(lockPath), owned)) throw new AcceptanceOwnerError(true);
+        assertRoot();
       } catch { throw new AcceptanceOwnerError(true); }
       return true;
     },
     release() {
       if (released) return false;
       released = true;
-      return removeOwned(lockPath, owned);
+      // A retargeted caller alias loses authority, but the unchanged canonical
+      // root still permits cleanup of this owner's original lock. A replacement
+      // canonical root never does, even if the lock inode was moved into it.
+      return removeOwned(lockPath, owned, assertCanonicalRoot);
     },
   });
   acquiredOwners.add(owner);

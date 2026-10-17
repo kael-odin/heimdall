@@ -195,7 +195,7 @@ test('recovery requires the private live owner capability before reading an atta
   assert.deepEqual(fs.readFileSync(managed.path), before);
 });
 
-test('an owned root disappearing at its first directory check blocks without writes while an absent legacy root stays compatible', t => {
+test('an owned root disappearing at its first owner check loses authority without writes while an absent legacy root stays compatible', t => {
   const f = fixture(t), legacy = f.legacy(), moved = f.root + '.moved', writes = [];
   const mutations = ['mkdirSync', 'writeSync', 'writeFileSync', 'fsyncSync', 'linkSync', 'renameSync', 'unlinkSync'];
   const originals = new Map(mutations.map(name => [name, nativeFs[name]])), originalLstat = nativeFs.lstatSync;
@@ -209,7 +209,12 @@ test('an owned root disappearing at its first directory check blocks without wri
       return originalLstat(path, ...args);
     };
     syncBuiltinESMExports();
-    blocked(() => recoverOwnedAcceptanceRuns({ owner: f.owner }), { phase: 'preflight', count: 0, mayHaveCommitted: false });
+    assert.throws(() => recoverOwnedAcceptanceRuns({ owner: f.owner }), error => {
+      assert.equal(error.code, 'ACCEPTANCE_OWNER_LOST');
+      assert.equal(error.status, 503);
+      assert.doesNotMatch(JSON.stringify({ message: error.message, details: error.details }), /SECRET|[A-Z]:\\|\/tmp\//);
+      return true;
+    });
     assert.equal(injected, true); assert.deepEqual(writes, []);
     assert.deepEqual(fs.readFileSync(join(moved, legacy.manifest.runId, 'manifest.json')), legacy.bytes);
   } finally {

@@ -1,0 +1,140 @@
+{
+  "generatedAt": "2026-10-17T01:32:24.738Z",
+  "node": "v25.2.1",
+  "platform": "win32",
+  "oldOwnerSource": "git HEAD:core/src/acceptance/owner.mjs",
+  "hardenedOwnerSource": "file:///C:/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core/src/acceptance/owner.mjs",
+  "fixture": {
+    "runId": "ac-566861a4-619d-4f97-8e91-8d26f8759f76",
+    "rawRoot": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-owner-perf-6aa76d46\\raw-managed-material",
+    "paths": [
+      "/healthy",
+      "/bug"
+    ],
+    "requests": 2
+  },
+  "measurements": {
+    "owner.assertOwned": {
+      "old": {
+        "samples": 60,
+        "minMs": 0.7241270000000077,
+        "medianMs": 0.8019510000000082,
+        "p95Ms": 1.001242000000002,
+        "maxMs": 1.1728839999999763,
+        "meanMs": 0.8265420666666656
+      },
+      "hardened": {
+        "samples": 60,
+        "minMs": 1.7511449999999968,
+        "medianMs": 1.8303230000000257,
+        "p95Ms": 2.1366889999999876,
+        "maxMs": 2.3134409999999845,
+        "meanMs": 1.8542288333333337
+      },
+      "medianDeltaMs": 1.0283720000000174
+    },
+    "managedHead.ownerFree": {
+      "old": {
+        "samples": 40,
+        "minMs": 70.60809999999765,
+        "medianMs": 74.13060000000405,
+        "p95Ms": 90.01600000000326,
+        "maxMs": 95.72950000000128,
+        "meanMs": 75.76581750000014
+      },
+      "hardened": {
+        "samples": 40,
+        "minMs": 71.49339999999938,
+        "medianMs": 74.3705000000009,
+        "p95Ms": 83.1211000000003,
+        "maxMs": 84.67710000000079,
+        "meanMs": 75.27128250000041
+      },
+      "medianDeltaMs": 0.23989999999685097
+    },
+    "managedHead.withTwoOwnerChecks": {
+      "old": {
+        "samples": 40,
+        "minMs": 71.07910000000265,
+        "medianMs": 75.24529999999504,
+        "p95Ms": 83.01569999999629,
+        "maxMs": 85.9994000000006,
+        "meanMs": 75.67630249999948
+      },
+      "hardened": {
+        "samples": 40,
+        "minMs": 74.08970000000409,
+        "medianMs": 77.00390000000334,
+        "p95Ms": 80.1221000000005,
+        "maxMs": 80.18950000000041,
+        "meanMs": 76.88306249999968
+      },
+      "medianDeltaMs": 1.7586000000083004
+    },
+    "managedSnapshot.ownerFree": {
+      "old": {
+        "samples": 25,
+        "minMs": 161.64800000000105,
+        "medianMs": 167.96979999999894,
+        "p95Ms": 183.05520000000251,
+        "maxMs": 186.6672000000035,
+        "meanMs": 169.2653839999996
+      },
+      "hardened": {
+        "samples": 25,
+        "minMs": 161.36389999999665,
+        "medianMs": 168.56860000000597,
+        "p95Ms": 189.0297999999966,
+        "maxMs": 204.73249999999825,
+        "meanMs": 171.04321999999928
+      },
+      "medianDeltaMs": 0.5988000000070315
+    },
+    "managedDispatch.withOwnerCheck": {
+      "old": {
+        "samples": 40,
+        "minMs": 6.732899999995425,
+        "medianMs": 7.130799999998999,
+        "p95Ms": 8.358200000002398,
+        "maxMs": 10.04950000000099,
+        "meanMs": 7.314510000000155
+      },
+      "hardened": {
+        "samples": 40,
+        "minMs": 7.5371999999988475,
+        "medianMs": 8.116500000003725,
+        "p95Ms": 9.915999999997439,
+        "maxMs": 11.123099999997066,
+        "meanMs": 8.283669999999983
+      },
+      "medianDeltaMs": 0.9857000000047265
+    }
+  },
+  "nativeCallCounts": {
+    "old": {
+      "realpathSync": 1,
+      "lstatSync": 1,
+      "readFileSync": 1,
+      "openSync": 1,
+      "readSync": 1,
+      "closeSync": 1
+    },
+    "hardened": {
+      "realpathSync": 4,
+      "lstatSync": 3,
+      "readFileSync": 1,
+      "openSync": 1,
+      "readSync": 1,
+      "closeSync": 1
+    },
+    "managedHeadOwnerFree": {
+      "lstatSync": 163,
+      "realpathSync": 163,
+      "openSync": 15,
+      "fstatSync": 30,
+      "readSync": 30,
+      "closeSync": 15
+    }
+  },
+  "limits": "Quiet local interleaved microbenchmarks, no whole-suite load. Managed public readers are owner-free; combined cases model added guards rather than claiming a production route."
+}

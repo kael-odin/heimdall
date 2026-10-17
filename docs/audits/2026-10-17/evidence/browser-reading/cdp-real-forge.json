@@ -1,0 +1,17 @@
+{
+  "ranAt": "2026-10-17T01:45:46.716Z",
+  "cdp": "http://127.0.0.1:57620",
+  "cdpLaunch": "script-managed Chromium",
+  "source": "http://127.0.0.1:57616/",
+  "consoleUrl": "http://127.0.0.1:57617",
+  "taskId": "f-3211c8fc-7101-4336-9460-1e419a971875",
+  "taskStatus": "done",
+  "pageName": "home",
+  "cloneStatus": 200,
+  "cloneTitle": "Fixture Site — Home",
+  "screenshots": [
+    "cdp-console-forge.png",
+    "cdp-clone-artifact.png"
+  ],
+  "pageErrors": []
+}

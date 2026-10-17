@@ -2,7 +2,7 @@
 
 Browser 验收已经能够对照参考页和目标页，生成视觉、结构、健康与交互报告。本切片增加纯字节核验器：明确选择一次已完成运行的 `baseline` 或 `target` 侧，核验原件和全部实际引用证据，生成完整候选预览及版本化摘要。它为后续页面基线的批准和复验提供来源合同。
 
-当前交付是内部模块 [browser-candidate-projection.mjs](../../core/src/acceptance/browser-candidate-projection.mjs)。控制台和项目目录仍只开放 Spec 候选；Browser 的 owner 读取器、版本归属、批准、选用和托管执行另行接入。公开函数不返回私有计划或原始字节，预览固定 `executionReady:false`。
+当前交付是内部模块 [browser-candidate-projection.mjs](../../core/src/acceptance/browser-candidate-projection.mjs)，已有独立的[owner 私有读取器](acceptance-browser-reading.md)捕获全引用原件。控制台和项目目录仍只开放 Spec 候选；Browser 的版本归属、批准、选用和托管执行另行接入。公开投影函数不返回私有计划或原始字节，预览固定 `executionReady:false`。
 
 ## 为什么按侧核验
 
@@ -52,7 +52,7 @@ const { projection, preview } = projectBrowserBaselineCandidate(
 
 [固定真实样本](../../core/test/fixtures/acceptance-browser-source/source-index.json)由现有 Chromium runner 和完成存储器生成，原件逐字节保留。主样本包含两条路由、两种视口、两个交互点和 28 个检查；另有两组对称的单侧导航失败，以及一组真实断言失败。失败侧的空截图不计入实际引用集合。
 
-现有 legacy snapshot reader 把 `null` 证据角色视为无效，因此两个导航失败样本的 `integrity.json` 是按全部非空引用字节及完成索引独立核对后构建的交接值，不能冒充该 reader 已原生支持 nullable。原始 manifest、report、details 和 PNG 没有重写。下一阶段 Browser 私有读取器须明确实现此合同，不能放宽 Spec 证据规则。
+现有 legacy snapshot reader 把 `null` 证据角色视为无效，因此两个导航失败样本的 `integrity.json` 是按全部非空引用字节及完成索引独立核对后构建的交接值，不能冒充 legacy reader 已原生支持 nullable。原始 manifest、report、details 和 PNG 没有重写。新增 Browser 私有读取器原生保留这些空角色并重建一致的 integrity；Spec 证据规则保持独立。
 
 ```powershell
 node --test core/test/acceptance-browser-candidate-projection.test.mjs

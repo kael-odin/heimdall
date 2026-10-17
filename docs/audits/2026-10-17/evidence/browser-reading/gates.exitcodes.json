@@ -1,0 +1,82 @@
+{
+  "repoRoot": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "stages": [
+    {
+      "stage": "01-core-lint",
+      "command": "pnpm -C core lint",
+      "startedAt": "2026-10-17T01:12:56.506Z",
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\01-core-lint.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\01-core-lint.stderr.log",
+      "finishedAt": "2026-10-17T01:13:17.413Z",
+      "durationMs": 20905,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "02-console-build",
+      "command": "pnpm -C console build",
+      "startedAt": "2026-10-17T01:13:17.415Z",
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\02-console-build.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\02-console-build.stderr.log",
+      "finishedAt": "2026-10-17T01:13:19.412Z",
+      "durationMs": 1997,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "03-core-test",
+      "command": "pnpm -C core test",
+      "startedAt": "2026-10-17T01:13:19.414Z",
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\03-core-test.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\03-core-test.stderr.log",
+      "finishedAt": "2026-10-17T01:21:52.636Z",
+      "durationMs": 513222,
+      "exitCode": 1,
+      "signal": null
+    },
+    {
+      "stage": "03-core-test-retry",
+      "command": "pnpm -C core test",
+      "startedAt": "2026-10-17T01:36:17.610Z",
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\03-core-test-retry.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\03-core-test-retry.stderr.log",
+      "finishedAt": "2026-10-17T01:44:46.683Z",
+      "durationMs": 509072,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "04-core-smoke",
+      "command": "pnpm -C core smoke",
+      "startedAt": "2026-10-17T01:44:46.685Z",
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\04-core-smoke.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\04-core-smoke.stderr.log",
+      "finishedAt": "2026-10-17T01:45:21.842Z",
+      "durationMs": 35157,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "05-cdp-clone",
+      "command": "node core/scripts/smoke-console-cdp.mjs core/workspace/_runs/browser-reading-gates-20261017/cdp-clone",
+      "startedAt": "2026-10-17T01:45:21.844Z",
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\05-cdp-clone.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\05-cdp-clone.stderr.log",
+      "finishedAt": "2026-10-17T01:45:51.797Z",
+      "durationMs": 29953,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "06-browser-reading",
+      "command": "pnpm acceptance:browser:read:smoke",
+      "startedAt": "2026-10-17T01:45:51.799Z",
+      "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\06-browser-reading.stdout.log",
+      "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-reading-gates-20261017\\06-browser-reading.stderr.log",
+      "finishedAt": "2026-10-17T01:46:09.113Z",
+      "durationMs": 17314,
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}
