@@ -1,0 +1,19 @@
+{
+  "command": [
+    "gh",
+    "api",
+    "repos/kael-odin/heimdall/contents/.github/workflows/ci.yml?ref=a0f834ebe727d6d00e2d692a008d3d0512a56536"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+  "startedAt": "2026-10-17T22:29:14.187770+00:00",
+  "endedAt": "2026-10-17T22:29:15.025115+00:00",
+  "exitCode": 0,
+  "timedOut": false,
+  "launchError": null,
+  "stdoutFile": "workflow-content-api.json",
+  "stdoutBytes": 14910,
+  "stdoutSha256": "4db84408070fddc2a6afb564aed118e483eadf34d52d1819543ece4a9a8f2c2c",
+  "stderrFile": "workflow-api.stderr.log",
+  "stderrBytes": 0,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

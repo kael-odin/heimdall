@@ -1,0 +1,4 @@
+* -text
+*.log -diff
+*.txt -diff
+verification-20261017T222932.385061Z/REPORT.md -diff

@@ -1,0 +1,331 @@
+{
+  "recordedAt": "2026-10-17T22:29:32.506881+00:00",
+  "sourceDirectory": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-ci-20261018\\final-20261017T222913.304634Z",
+  "repo": "kael-odin/heimdall",
+  "workflow": {
+    "gitBlobSha": "a0f7ce5a1ee12fe7c967fd1ec34072efda9594f6",
+    "sha256": "2b64775c15abb1a40900af2650e81908b49ef4a3ae51afbc48670de7a85079b9",
+    "bytes": 10039
+  },
+  "runId": 39072135745,
+  "attempt": 1,
+  "headSha": "a0f834ebe727d6d00e2d692a008d3d0512a56536",
+  "event": "push",
+  "branch": "main",
+  "runStatus": "completed",
+  "runConclusion": "cancelled",
+  "captureComplete": false,
+  "identityMatches": true,
+  "executionChecksPassed": false,
+  "executionAccepted": false,
+  "passed": false,
+  "checks": 312,
+  "failedChecks": [
+    {
+      "category": "execution",
+      "name": "run completed successfully",
+      "passed": false,
+      "detail": {
+        "status": "completed",
+        "conclusion": "cancelled"
+      }
+    },
+    {
+      "category": "execution",
+      "name": "core (lint + test) completed successfully",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "category": "execution",
+      "name": "core (lint + test) / Manual defect tickets (fixed source members, explicit closure, regression and read-only reconciliation)",
+      "passed": false,
+      "detail": {
+        "number": 31,
+        "status": "completed",
+        "conclusion": "cancelled"
+      }
+    },
+    {
+      "category": "execution",
+      "name": "core (lint + test) / Docker offline delivery (SSR + SPA + data SPA + adapter)",
+      "passed": false,
+      "detail": {
+        "number": 33,
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    },
+    {
+      "category": "execution",
+      "name": "core (lint + test) / Post Run actions/setup-node@v7",
+      "passed": false,
+      "detail": {
+        "number": 64,
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    },
+    {
+      "category": "capture",
+      "name": "unique step log core (lint + test) / Docker offline delivery (SSR + SPA + data SPA + adapter)",
+      "passed": false,
+      "detail": []
+    },
+    {
+      "category": "execution",
+      "name": "D5 unique terminal summary event",
+      "passed": false,
+      "detail": []
+    },
+    {
+      "category": "execution",
+      "name": "D5 passed with exact ten true keys",
+      "passed": false,
+      "detail": {}
+    },
+    {
+      "category": "execution",
+      "name": "D5 exact four desktop/mobile captures",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "category": "execution",
+      "name": "D5 zero page errors",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "category": "execution",
+      "name": "D5 three explicitly controlled HTTP console errors",
+      "passed": false,
+      "detail": {
+        "consoleMessageCount": null,
+        "controlledReplyCount": null
+      }
+    },
+    {
+      "category": "execution",
+      "name": "Docker stats available",
+      "passed": false,
+      "detail": null
+    }
+  ],
+  "jobs": [
+    {
+      "id": 117511756157,
+      "name": "core (lint + test)",
+      "status": "completed",
+      "conclusion": "cancelled"
+    },
+    {
+      "id": 117511756235,
+      "name": "core (e2e smoke, local fixture)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 117511756428,
+      "name": "console (build)",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "coreTest": {
+    "path": "core (lint + test)/11_Run pnpm test.txt",
+    "stats": {
+      "tests": 2661,
+      "suites": 0,
+      "pass": 2657,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 4,
+      "todo": 0,
+      "duration_ms": 2047064.490832
+    },
+    "skippedTests": [
+      "real Windows reader holding a non-delete-sharing file handle releases after 180ms and replacement succeeds",
+      "real Windows non-share-delete reader releases and replacement retries successfully",
+      "Docker network-none delivery serves SSR, SPA and data-driven SPA bundles without a source workspace",
+      "Docker network-none delivery persists adapter writes in a volume after container recreation"
+    ]
+  },
+  "coreSmokes": [
+    {
+      "command": "pnpm acceptance:smoke",
+      "name": "Acceptance console (real browser, local model stub)",
+      "path": "core (lint + test)/12_Acceptance console (real browser, local model stub).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:spec:smoke",
+      "name": "Spec contract console (real browser, local API fixture)",
+      "path": "core (lint + test)/13_Spec contract console (real browser, local API fixture).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:comparison:smoke",
+      "name": "Acceptance comparison console (explicit runs, integrity and CLI)",
+      "path": "core (lint + test)/14_Acceptance comparison console (explicit runs, integrity and CLI).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:catalog:smoke",
+      "name": "Acceptance project catalog (versions, explicit bindings and two-engine isolation)",
+      "path": "core (lint + test)/15_Acceptance project catalog (versions, explicit bindings and two-engine isolation).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:catalog:migration:smoke",
+      "name": "Acceptance catalog explicit migration (legacy artifacts, CLI confirmation and browser continuity)",
+      "path": "core (lint + test)/16_Acceptance catalog explicit migration (legacy artifacts, CLI confirmation and browser continuity).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:baseline:smoke",
+      "name": "Spec baseline review (candidates, approvals, selections and source integrity)",
+      "path": "core (lint + test)/17_Spec baseline review (candidates, approvals, selections and source integrity).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:managed:prepare:smoke",
+      "name": "Managed Spec preparation (immutable contract, replay and zero execution)",
+      "path": "core (lint + test)/18_Managed Spec preparation (immutable contract, replay and zero execution).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:managed:read:smoke",
+      "name": "Managed Spec result reading (captured evidence and zero execution)",
+      "path": "core (lint + test)/19_Managed Spec result reading (captured evidence and zero execution).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:owned:recovery:smoke",
+      "name": "Owned acceptance recovery (startup barrier, restart and zero execution)",
+      "path": "core (lint + test)/20_Owned acceptance recovery (startup barrier, restart and zero execution).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:managed:execute:smoke",
+      "name": "Managed Spec execution (fresh admission, real runner, BUG and cancel)",
+      "path": "core (lint + test)/21_Managed Spec execution (fresh admission, real runner, BUG and cancel).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:execution:ui:smoke",
+      "name": "Managed execution UI (explicit click, durable recovery and stop)",
+      "path": "core (lint + test)/22_Managed execution UI (explicit click, durable recovery and stop).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:browser:source:smoke",
+      "name": "Browser candidate source (fresh captures and explicit healthy side)",
+      "path": "core (lint + test)/23_Browser candidate source (fresh captures and explicit healthy side).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:browser:read:smoke",
+      "name": "Browser private source reader (owner fences and unchanged originals)",
+      "path": "core (lint + test)/24_Browser private source reader (owner fences and unchanged originals).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:browser:bindings:smoke",
+      "name": "Browser source bindings (fresh captures, explicit sides and source revalidation)",
+      "path": "core (lint + test)/25_Browser source bindings (fresh captures, explicit sides and source revalidation).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:browser:bindings:ui:smoke",
+      "name": "Browser source binding console (native HTTP, source review and verified evidence)",
+      "path": "core (lint + test)/26_Browser source binding console (native HTTP, source review and verified evidence).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:browser:bindings:v4:smoke",
+      "name": "Schema4 combined history (fresh Browser bindings and explicit Spec lifecycle fixtures)",
+      "path": "core (lint + test)/27_Schema4 combined history (fresh Browser bindings and explicit Spec lifecycle fixtures).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:browser:candidates:ui:smoke",
+      "name": "Browser full candidates (explicit review, durable save and read-only reconciliation)",
+      "path": "core (lint + test)/28_Browser full candidates (explicit review, durable save and read-only reconciliation).txt",
+      "apiConclusion": "success"
+    },
+    {
+      "command": "pnpm acceptance:browser:execute:smoke",
+      "name": "Browser single-operation execution (fixed source, real target BUG, explicit retest and restart)",
+      "path": "core (lint + test)/29_Browser single-operation execution (fixed source, real target BUG, explicit retest and restart).txt",
+      "apiConclusion": "success",
+      "events": [
+        {
+          "status": "passed",
+          "checks": 16,
+          "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-execution-console-smoke-209e9c19-c04e-4476-b400-edf6de926bab"
+        }
+      ]
+    },
+    {
+      "command": "pnpm acceptance:browser:resolution:smoke",
+      "name": "Browser start resolution (same unfinished ingress, durable deny, same-origin restart and native locks)",
+      "path": "core (lint + test)/30_Browser start resolution (same unfinished ingress, durable deny, same-origin restart and native locks).txt",
+      "apiConclusion": "success",
+      "events": [
+        {
+          "status": "passed",
+          "checks": 9,
+          "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-resolution-console-smoke-255370d1-bc21-4ced-b638-0b3d501f8b12"
+        }
+      ]
+    },
+    {
+      "command": "pnpm acceptance:defect:tickets:smoke",
+      "name": "Manual defect tickets (fixed source members, explicit closure, regression and read-only reconciliation)",
+      "path": "core (lint + test)/31_Manual defect tickets (fixed source members, explicit closure, regression and read-only reconciliation).txt",
+      "apiConclusion": "cancelled",
+      "events": []
+    }
+  ],
+  "defectTicketSmoke": {
+    "path": "core (lint + test)/31_Manual defect tickets (fixed source members, explicit closure, regression and read-only reconciliation).txt",
+    "summary": {},
+    "consoleExpectation": "Three explicitly controlled HTTP errors; zero page errors does not mean zero console errors."
+  },
+  "independentSmokeSteps": [
+    {
+      "name": "Run pnpm smoke",
+      "command": "pnpm smoke",
+      "path": "core (e2e smoke, local fixture)/7_Run pnpm smoke.txt"
+    },
+    {
+      "name": "Acceptance detection benchmark (known truth fixtures)",
+      "command": "pnpm acceptance:benchmark",
+      "path": "core (e2e smoke, local fixture)/8_Acceptance detection benchmark (known truth fixtures).txt"
+    },
+    {
+      "name": "Spec API benchmark (OpenAPI candidates and known truth)",
+      "command": "pnpm acceptance:spec:benchmark",
+      "path": "core (e2e smoke, local fixture)/9_Spec API benchmark (OpenAPI candidates and known truth).txt"
+    },
+    {
+      "name": "Acceptance comparison benchmark (known retest and false-closure cases)",
+      "command": "pnpm acceptance:comparison:benchmark",
+      "path": "core (e2e smoke, local fixture)/10_Acceptance comparison benchmark (known retest and false-closure cases).txt"
+    }
+  ],
+  "logComparisonNormalization": "strip timestamps, BOM, real ANSI and gh printable ^[ ANSI; raw originals and SHA retained",
+  "verifierSha256": "071aebb1ce4ba28aa2e615560cb2997444e0365a0a39eaa64dbfc77f4ab97be3",
+  "argv": [
+    "core/workspace/_runs/d5-ci-20261018/verify-ci.py",
+    "--source",
+    "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-ci-20261018\\final-20261017T222913.304634Z",
+    "--head",
+    "a0f834ebe727d6d00e2d692a008d3d0512a56536",
+    "--run",
+    "39072135745",
+    "--attempt",
+    "1"
+  ]
+}

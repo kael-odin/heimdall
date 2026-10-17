@@ -1,0 +1,131 @@
+﻿2026-10-17T22:19:56.0134692Z ##[group]Run pnpm acceptance:catalog:migration:smoke
+2026-10-17T22:19:56.0135513Z [36;1mpnpm acceptance:catalog:migration:smoke[0m
+2026-10-17T22:19:56.0226138Z shell: /usr/bin/bash -e {0}
+2026-10-17T22:19:56.0226449Z env:
+2026-10-17T22:19:56.0226731Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T22:19:56.0227067Z ##[endgroup]
+2026-10-17T22:19:57.0939577Z $ node scripts/smoke-acceptance-catalog-migration.mjs
+2026-10-17T22:20:11.9588210Z {
+2026-10-17T22:20:11.9598684Z   "status": "passed",
+2026-10-17T22:20:11.9621281Z   "evidenceLevel": "committed-b1-fixture-real-engine-browser-migration",
+2026-10-17T22:20:11.9622663Z   "sourceCommit": "8353595",
+2026-10-17T22:20:11.9623807Z   "fixture": "docs/audits/2026-10-16/evidence/acceptance-catalog/console",
+2026-10-17T22:20:11.9624674Z   "checkCount": 21,
+2026-10-17T22:20:11.9625183Z   "checks": {
+2026-10-17T22:20:11.9625928Z     "committedB1FixtureHasThreeRealRunsAnd18Files": true,
+2026-10-17T22:20:11.9627155Z     "migration-initial:ordinaryStartupAndLiveOwnerRejectWithoutCatalogWrites": true,
+2026-10-17T22:20:11.9628503Z     "migration-initial:explicitPreviewApplyAndStaleConfirmation": true,
+2026-10-17T22:20:11.9629716Z     "schema4ThreeExplicitStepsGenerationRevisionAndHistoryPrefix": true,
+2026-10-17T22:20:11.9630738Z     "exactB1PreimageBytesArchived": true,
+2026-10-17T22:20:11.9631909Z     "exactIntermediateV2PreimageBytesArchived": true,
+2026-10-17T22:20:11.9632827Z     "oldB1CasGets409AndFailedGatePreserved": true,
+2026-10-17T22:20:11.9633652Z     "twoRestartsAreByteIdempotent": true,
+2026-10-17T22:20:11.9634496Z     "newB1ProjectReleaseBindingRemainWritable": true,
+2026-10-17T22:20:11.9635476Z     "realConsoleShowsMigratedAndNewB1Organization": true,
+2026-10-17T22:20:11.9636849Z     "desktopAndMobileOriginalFailedReportVisible": true,
+2026-10-17T22:20:11.9638081Z     "isolated-missing-source:ordinaryStartupAndLiveOwnerRejectWithoutCatalogWrites": true,
+2026-10-17T22:20:11.9639431Z     "isolated-missing-source:explicitPreviewApplyAndStaleConfirmation": true,
+2026-10-17T22:20:11.9640598Z     "missingSourceBindingPreservedWithSeparateDiagnostics": true,
+2026-10-17T22:20:11.9642357Z     "native-v2-spec-history:ordinaryStartupAndLiveOwnerRejectWithoutCatalogWrites": true,
+2026-10-17T22:20:11.9662316Z     "native-v2-spec-history:explicitPreviewApplyAndStaleConfirmation": true,
+2026-10-17T22:20:11.9682571Z     "completeNativeV2SpecHistoryMigratesWithoutChangingEntities": true,
+2026-10-17T22:20:11.9684103Z     "nativeV2SpecDesktopMobileAndCurrentSelectionVisible": true,
+2026-10-17T22:20:11.9701688Z     "nativeV2SpecRestartAndSourceBytesUnchanged": true,
+2026-10-17T22:20:11.9707536Z     "zeroTargetRequestsAndNoNewAcceptanceWorker": true,
+2026-10-17T22:20:11.9708765Z     "originalAndCopiedRunTreesRemainByteIdentical": true
+2026-10-17T22:20:11.9709836Z   },
+2026-10-17T22:20:11.9710418Z   "originalRevision": 12,
+2026-10-17T22:20:11.9711248Z   "migratedRevision": 15,
+2026-10-17T22:20:11.9712480Z   "originalGenerationId": "ag-ca176aa9-63db-4fc6-a031-a08609a5d857",
+2026-10-17T22:20:11.9746043Z   "migratedGenerationId": "ag-0bb49b53-6ae5-40bd-b156-de4bd67b7054",
+2026-10-17T22:20:11.9762586Z   "sourceRunFiles": 18,
+2026-10-17T22:20:11.9765618Z   "originalFailedRunId": "ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743",
+2026-10-17T22:20:11.9767714Z   "restartCount": 2,
+2026-10-17T22:20:11.9769585Z   "targetRequests": 0,
+2026-10-17T22:20:11.9770381Z   "apiCaseCount": 22,
+2026-10-17T22:20:11.9771198Z   "layouts": [
+2026-10-17T22:20:11.9780766Z     {
+2026-10-17T22:20:11.9781523Z       "scenario": "migration-restart-2",
+2026-10-17T22:20:11.9782579Z       "screen": "migration-catalog-1440",
+2026-10-17T22:20:11.9783452Z       "width": 1440,
+2026-10-17T22:20:11.9783994Z       "height": 1000,
+2026-10-17T22:20:11.9784802Z       "viewportWidth": 1440,
+2026-10-17T22:20:11.9785646Z       "documentWidth": 1440,
+2026-10-17T22:20:11.9786288Z       "catalogWidth": 1012,
+2026-10-17T22:20:11.9787143Z       "catalogScrollWidth": 1012,
+2026-10-17T22:20:11.9787992Z       "workbenchWidth": 1390
+2026-10-17T22:20:11.9789201Z     },
+2026-10-17T22:20:11.9789722Z     {
+2026-10-17T22:20:11.9790481Z       "scenario": "migration-restart-2",
+2026-10-17T22:20:11.9791287Z       "screen": "migration-failed-report-1440",
+2026-10-17T22:20:11.9792276Z       "width": 1440,
+2026-10-17T22:20:11.9792822Z       "height": 1000,
+2026-10-17T22:20:11.9793435Z       "viewportWidth": 1440,
+2026-10-17T22:20:11.9794367Z       "documentWidth": 1440
+2026-10-17T22:20:11.9794959Z     },
+2026-10-17T22:20:11.9795452Z     {
+2026-10-17T22:20:11.9796035Z       "scenario": "migration-restart-2",
+2026-10-17T22:20:11.9796785Z       "screen": "migration-catalog-390",
+2026-10-17T22:20:11.9797448Z       "width": 390,
+2026-10-17T22:20:11.9798298Z       "height": 844,
+2026-10-17T22:20:11.9798875Z       "viewportWidth": 390,
+2026-10-17T22:20:11.9799467Z       "documentWidth": 390,
+2026-10-17T22:20:11.9800038Z       "catalogWidth": 334,
+2026-10-17T22:20:11.9800651Z       "catalogScrollWidth": 334,
+2026-10-17T22:20:11.9801264Z       "workbenchWidth": 368
+2026-10-17T22:20:11.9802137Z     },
+2026-10-17T22:20:11.9802633Z     {
+2026-10-17T22:20:11.9803217Z       "scenario": "migration-restart-2",
+2026-10-17T22:20:11.9803986Z       "screen": "migration-failed-report-390",
+2026-10-17T22:20:11.9804677Z       "width": 390,
+2026-10-17T22:20:11.9805464Z       "height": 844,
+2026-10-17T22:20:11.9806067Z       "viewportWidth": 390,
+2026-10-17T22:20:11.9806694Z       "documentWidth": 390
+2026-10-17T22:20:11.9807261Z     },
+2026-10-17T22:20:11.9807747Z     {
+2026-10-17T22:20:11.9808409Z       "scenario": "isolated-missing-source-maintained",
+2026-10-17T22:20:11.9809269Z       "screen": "migration-missing-source-390",
+2026-10-17T22:20:11.9809979Z       "width": 390,
+2026-10-17T22:20:11.9810754Z       "height": 844,
+2026-10-17T22:20:11.9811315Z       "viewportWidth": 390,
+2026-10-17T22:20:11.9812548Z       "documentWidth": 390,
+2026-10-17T22:20:11.9813148Z       "catalogWidth": 334,
+2026-10-17T22:20:11.9813865Z       "catalogScrollWidth": 334,
+2026-10-17T22:20:11.9814748Z       "workbenchWidth": 368
+2026-10-17T22:20:11.9815409Z     },
+2026-10-17T22:20:11.9815925Z     {
+2026-10-17T22:20:11.9816561Z       "scenario": "native-v2-spec-history-maintained",
+2026-10-17T22:20:11.9817369Z       "screen": "native-v2-spec-history-1440",
+2026-10-17T22:20:11.9818028Z       "width": 1440,
+2026-10-17T22:20:11.9818846Z       "height": 1000,
+2026-10-17T22:20:11.9819471Z       "viewportWidth": 1440,
+2026-10-17T22:20:11.9820099Z       "documentWidth": 1440,
+2026-10-17T22:20:11.9820679Z       "catalogWidth": 1012,
+2026-10-17T22:20:11.9821307Z       "catalogScrollWidth": 1012,
+2026-10-17T22:20:11.9822209Z       "workbenchWidth": 1390
+2026-10-17T22:20:11.9822774Z     },
+2026-10-17T22:20:11.9823249Z     {
+2026-10-17T22:20:11.9823963Z       "scenario": "native-v2-spec-history-maintained",
+2026-10-17T22:20:11.9824807Z       "screen": "native-v2-spec-history-390",
+2026-10-17T22:20:11.9825493Z       "width": 390,
+2026-10-17T22:20:11.9826031Z       "height": 844,
+2026-10-17T22:20:11.9826591Z       "viewportWidth": 390,
+2026-10-17T22:20:11.9827203Z       "documentWidth": 390,
+2026-10-17T22:20:11.9827792Z       "catalogWidth": 334,
+2026-10-17T22:20:11.9828428Z       "catalogScrollWidth": 334,
+2026-10-17T22:20:11.9829055Z       "workbenchWidth": 368
+2026-10-17T22:20:11.9829624Z     }
+2026-10-17T22:20:11.9830103Z   ],
+2026-10-17T22:20:11.9830596Z   "errors": [],
+2026-10-17T22:20:11.9831129Z   "nativeV2Spec": {
+2026-10-17T22:20:11.9832708Z     "fixture": "docs/audits/2026-10-16/evidence/acceptance-baseline/console",
+2026-10-17T22:20:11.9833639Z     "originalRevision": 20,
+2026-10-17T22:20:11.9834234Z     "migratedRevision": 22,
+2026-10-17T22:20:11.9834809Z     "candidates": 2,
+2026-10-17T22:20:11.9835341Z     "approvals": 5,
+2026-10-17T22:20:11.9835882Z     "selections": 7,
+2026-10-17T22:20:11.9836424Z     "sourceRunFiles": 14,
+2026-10-17T22:20:11.9837117Z     "restartCount": 1
+2026-10-17T22:20:11.9837702Z   },
+2026-10-17T22:20:11.9839800Z   "scope": "B1真实运行副本→普通启动不迁移且不恢复运行→离线CLI显式预览/确认1→2→3→4→两次重启→旧CAS拒绝→组织写入→桌面/手机与原失败报告；缺失来源用单独副本。另用完整原生V2 Spec历史副本做显式2→3→4、候选/批准/选用/取消历史和桌面/手机复验及重启。Browser来源及候选表严格为空，不执行新worker、不新增批准或选用、不宣称Browser绑定或执行。"
+2026-10-17T22:20:11.9841321Z }

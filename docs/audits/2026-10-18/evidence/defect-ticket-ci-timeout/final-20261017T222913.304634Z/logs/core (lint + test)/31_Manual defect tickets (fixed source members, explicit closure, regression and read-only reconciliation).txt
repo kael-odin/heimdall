@@ -1,0 +1,12 @@
+﻿2026-10-17T22:27:54.0223330Z ##[group]Run pnpm acceptance:defect:tickets:smoke
+2026-10-17T22:27:54.0224011Z [36;1mpnpm acceptance:defect:tickets:smoke[0m
+2026-10-17T22:27:54.0316614Z shell: /usr/bin/bash -e {0}
+2026-10-17T22:27:54.0317061Z env:
+2026-10-17T22:27:54.0317508Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T22:27:54.0318079Z ##[endgroup]
+2026-10-17T22:27:55.0923020Z $ node scripts/smoke-acceptance-defect-tickets-console.mjs
+2026-10-17T22:27:55.6817556Z {"event":"started","startedAt":"2026-10-17T22:27:55.680Z","outputDirectory":"/home/runner/work/heimdall/heimdall/core/workspace/_runs/defect-tickets-console-smoke-452d9ad0-e3c4-4270-8716-575c67681273"}
+2026-10-17T22:28:14.0923657Z {"event":"check","name":"realSourceAndRegisteredVisualBehaviorFailures","passed":true,"at":"2026-10-17T22:28:14.091Z"}
+2026-10-17T22:28:20.9683413Z {"event":"check","name":"fixedMembersAndLostCreateReconcileAfterReloadWithoutPost","passed":true,"at":"2026-10-17T22:28:20.968Z"}
+2026-10-17T22:28:33.9079235Z {"event":"check","name":"partialRepairCannotCloseFixedMemberSet","passed":true,"at":"2026-10-17T22:28:33.902Z"}
+2026-10-17T22:28:42.6882777Z ##[error]The operation was canceled.

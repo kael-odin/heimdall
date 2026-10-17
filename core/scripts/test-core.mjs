@@ -13,8 +13,11 @@ if (!files.length) throw new Error('No maintained core tests found.');
 const args = process.argv.slice(2);
 // Browser and filesystem suites allocate real engines. Large desktop CPU
 // counts must not turn the default into dozens of competing engine workers.
+// Two-core CI runners need both workers so the full suite leaves time for
+// the serial browser smokes within the existing job deadline.
+const parallelism = availableParallelism();
 const concurrency = args.some(arg => arg === '--test-concurrency' || arg.startsWith('--test-concurrency='))
-  ? [] : ['--test-concurrency=' + Math.max(1, Math.min(4, availableParallelism() - 1))];
+  ? [] : ['--test-concurrency=' + Math.max(1, Math.min(4, parallelism === 2 ? 2 : parallelism - 1))];
 const result = spawnSync(process.execPath, ['--test', ...concurrency, ...args, ...files], { cwd: root, stdio: 'inherit' });
 if (result.error) throw result.error;
 process.exitCode = result.status ?? 1;

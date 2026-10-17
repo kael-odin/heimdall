@@ -20,7 +20,9 @@
 
 13. [固定成员人工缺陷单](docs/competition/acceptance-defect-tickets.md)：D5 从同次登记的可靠失败人工成单，固定成员与来源摘要；全部成员在最新同范围登记中可靠通过后显式关闭，后续可靠失败派生重开。处理状态与当前核验分开，支持历史和 Markdown / JSON 导出。未知结果保留原确认，只 GET 核对、不自动重发 POST；尚无永久拒绝迟到人工动作的服务端决定。[本机验收记录](docs/audits/2026-10-18/acceptance-defect-tickets.md)保存完整门禁、失败历史与公开证据入口。
 
-14. [运行展示读取竞态](docs/audits/2026-10-17/acceptance-display-head-race.md)：正常 legacy worker 原子发布时保留本请求已稳定捕获的展示版本；来源 / 证据 / 恢复仍严格核验，原工作台 CI 失败及放弃方案均保留。
+14. [D5 自身 CI 超时与双核调度](docs/audits/2026-10-18/acceptance-defect-ticket-ci-timeout.md)：D5 全量 Core 通过、前 19 项 smoke 成功，但第 20 项因 45 分钟 job 超时被取消、Docker 未运行，整轮为 cancelled。新片仅调整双核默认文件并发 1→2，修复提交自身 CI 独立采集。
+
+15. [运行展示读取竞态](docs/audits/2026-10-17/acceptance-display-head-race.md)：正常 legacy worker 原子发布时保留本请求已稳定捕获的展示版本；来源 / 证据 / 恢复仍严格核验，原工作台 CI 失败及放弃方案均保留。
 
 ## 代码路径
 

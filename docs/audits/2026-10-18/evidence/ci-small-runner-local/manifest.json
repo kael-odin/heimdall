@@ -1,0 +1,119 @@
+{
+  "at": "2026-10-17T23:16:26.805937+00:00",
+  "files": [
+    {
+      "path": "policy.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\policy.json",
+      "bytes": 133316,
+      "sha256": "dd502847b1f8449d37d24111d764d010dfdf6ff702e50fb79749375e8f1ca936"
+    },
+    {
+      "path": "gates.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\gates.json",
+      "bytes": 1460,
+      "sha256": "3a709df4ce0be8aabf1ac410d27940ae770436747bef4bf08cdb53ecfe682b86"
+    },
+    {
+      "path": "core-concurrency2.log",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\core-concurrency2.log",
+      "bytes": 239618,
+      "sha256": "ed46c6960ae09ecd7579656c1db8739d5ba9bd127ebcdcc7f3df0bbf50fb032d"
+    },
+    {
+      "path": "lint.log",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\lint.log",
+      "bytes": 29,
+      "sha256": "691048879fc8d9518c1ad2f30aba30403754f30c36d909e11fef12833b625bcf"
+    },
+    {
+      "path": "docs.log",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\docs.log",
+      "bytes": 55,
+      "sha256": "cb5a01651e213e65e927f11a935d4bb113734d545f8aba8ef89074c95b507adc"
+    },
+    {
+      "path": "inputs-before.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\inputs-before.json",
+      "bytes": 72657,
+      "sha256": "94fa1db0283610a24275fd777b712701b456d100c674aa7b7a2526490979f367"
+    },
+    {
+      "path": "inputs-after.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\inputs-after.json",
+      "bytes": 72657,
+      "sha256": "94fa1db0283610a24275fd777b712701b456d100c674aa7b7a2526490979f367"
+    },
+    {
+      "path": "review.md",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\review.md",
+      "bytes": 6357,
+      "sha256": "adace220b71de464ba851ff4415a4dd7f945aa1a31130d78c65daec836821ead"
+    },
+    {
+      "path": "archive-index.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\archive-index.json",
+      "bytes": 30327,
+      "sha256": "6fc56008e2915995830ab8406010d777c33580609a5aeffdf2631dcb06ad5a9d"
+    },
+    {
+      "path": "build.log",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\build.log",
+      "bytes": 1067,
+      "sha256": "86fb75dda18aefaea4cb4f88d12e8f5a79854735682a4ed34b1745f3c0a7ac87"
+    },
+    {
+      "path": "build.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\build.json",
+      "bytes": 381,
+      "sha256": "98218089a36d21a313256873e67a7c807f30f08c1146871c37c4891b955a3435"
+    },
+    {
+      "path": "runtime.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\runtime.json",
+      "bytes": 169,
+      "sha256": "41df50284cb40850ca964a739fd60f95f18f7b0f10d053d05ebfc3d6a8f7b62a"
+    },
+    {
+      "path": "core-stats.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\core-stats.json",
+      "bytes": 143,
+      "sha256": "bbbe760f3285ad02683a0ddec045643b680eae5385d0654ffd2886cef320d184"
+    },
+    {
+      "path": "policy-loader.mjs",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\policy-loader.mjs",
+      "bytes": 675,
+      "sha256": "ed5a37235b5b16ca143316f337cc04c32cbb129ad87ece5c6ade2542053537ae"
+    },
+    {
+      "path": "validate.py",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\validate.py",
+      "bytes": 4339,
+      "sha256": "21fd71da84c8adbfcfd2c837e3dc8bd756e128f376e1207955caeacc5ad0276c"
+    },
+    {
+      "path": "verify-index.py",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\verify-index.py",
+      "bytes": 1829,
+      "sha256": "b3efdd61d1e9368c53124b245a0ddffd04e2ddfeb66526abefa07a9a7a1d91a8"
+    },
+    {
+      "path": "source/test-core.mjs",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\scripts\\test-core.mjs",
+      "bytes": 1450,
+      "sha256": "36c4cab4696de79e7c82fc401297094f5fd8f688b8dc009d562845ba19b440bf"
+    },
+    {
+      "path": "docs-final.log",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\docs-final.log",
+      "bytes": 55,
+      "sha256": "554b5bb7d83a3dd565b0b2ded382a95d2de15ca1f86cdbd2918c3f91ce3d233e"
+    },
+    {
+      "path": "docs-final.json",
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\ci-small-runner-20261018\\docs-final.json",
+      "bytes": 360,
+      "sha256": "25600b6488fd0bfbff558040d7c304bb60d9874eeae90f34aec12444125645fc"
+    }
+  ]
+}

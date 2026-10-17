@@ -1,0 +1,45 @@
+{
+  "results": [
+    {
+      "gate": "core-concurrency2",
+      "argv": [
+        "node",
+        "scripts/test-core.mjs",
+        "--test-concurrency=2"
+      ],
+      "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core",
+      "started": "2026-10-17T22:34:23.162194+00:00",
+      "ended": "2026-10-17T23:15:06.800934+00:00",
+      "exitCode": 0,
+      "logSha256": "ed46c6960ae09ecd7579656c1db8739d5ba9bd127ebcdcc7f3df0bbf50fb032d"
+    },
+    {
+      "gate": "lint",
+      "argv": [
+        "node",
+        "scripts/check-syntax.mjs"
+      ],
+      "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core",
+      "started": "2026-10-17T23:15:06.808939+00:00",
+      "ended": "2026-10-17T23:15:28.198817+00:00",
+      "exitCode": 0,
+      "logSha256": "691048879fc8d9518c1ad2f30aba30403754f30c36d909e11fef12833b625bcf"
+    },
+    {
+      "gate": "docs",
+      "argv": [
+        "node",
+        "scripts/check-markdown-links.mjs"
+      ],
+      "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core",
+      "started": "2026-10-17T23:15:28.204821+00:00",
+      "ended": "2026-10-17T23:15:28.654466+00:00",
+      "exitCode": 0,
+      "logSha256": "cb5a01651e213e65e927f11a935d4bb113734d545f8aba8ef89074c95b507adc"
+    }
+  ],
+  "complete": true,
+  "inputsUnchanged": true,
+  "inputCount": 614,
+  "passed": true
+}

@@ -1,0 +1,624 @@
+{
+  "at": "2026-10-17T22:54:23.747604+00:00",
+  "archiveFiles": 96,
+  "archiveBytes": 5196054,
+  "checks": [
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/capture-runtime.json",
+      "bytes": 908,
+      "sha256": "0a99cce1d019e1e78de6a68e798d68f30c79cafa78b4307ee0d69d71d000146a",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/capture-summary.json",
+      "bytes": 15589,
+      "sha256": "a3edfb838330b730ac5e797369c65cf58c42342997151a7bdbe7bc815700f506",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/command-results.json",
+      "bytes": 245,
+      "sha256": "2f4b47d2fddf99348ec7830ada6ea41195c23d5ef4ba16c4ab73d2797244bf3d",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/command-results.json",
+      "bytes": 555,
+      "sha256": "b63d1baa4ed81dd085ae83f1d3442277d51bafe59cd54d4896ba8cd8e6676c3a",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/complete-stdout.log",
+      "bytes": 1948549,
+      "sha256": "6556963e9ae7c00e2bcf7ee7b1fa40e6c8ca6485284ece82e964e9ce69a85ce2",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/full-log.command.json",
+      "bytes": 694,
+      "sha256": "b85bb5e048e82df5d56387f28d91efde4806e208bfb4152c0a02fe9f9bed299e",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/full-log.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/logs-zip.command.json",
+      "bytes": 649,
+      "sha256": "7fbf3c231dc4629e0a8d7571372c77ac7074d42f2c1e3976b14a065a1f37e481",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/logs-zip.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/run-logs.zip",
+      "bytes": 542877,
+      "sha256": "153c7379cd0a19e5d789a78ac08af93db4f2f7a0d7bd4871742d6e3f8a801a3c",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/workflow-api.command.json",
+      "bytes": 703,
+      "sha256": "7f070e3324925036f48565a34e742e8dbdd98e351ade759ff2af43621593a775",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/workflow-api.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/workflow-at-head.yml",
+      "bytes": 10039,
+      "sha256": "2b64775c15abb1a40900af2650e81908b49ef4a3ae51afbc48670de7a85079b9",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/workflow-content-api.json",
+      "bytes": 14910,
+      "sha256": "4db84408070fddc2a6afb564aed118e483eadf34d52d1819543ece4a9a8f2c2c",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/workflow-git.command.json",
+      "bytes": 662,
+      "sha256": "d375b09e702c3fb94d6b8786bfedfc6b9df47dd51f7094a9ac25bfc931e44bf4",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/downloads/workflow-git.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/jobs.command.json",
+      "bytes": 654,
+      "sha256": "3cc3c4a14acef30ac6cfa8e35d8732e87f7dcb90d055b5c56d68cdc99aef3cc5",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/jobs.json",
+      "bytes": 14042,
+      "sha256": "a6bfe4043b500f2784973255ee488f108f30bd566c874403f4b9e76527f027b4",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/jobs.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/0_console (build).txt",
+      "bytes": 21291,
+      "sha256": "dda6abeb504862f558b3c39073d81d83a7014a2785ed652fd0407a4a524a3435",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/1_core (e2e smoke, local fixture).txt",
+      "bytes": 50136,
+      "sha256": "03e328808492cc5f1283f4329ee3b26af577ba09eb0105cc27312ee2caadd492",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/2_core (lint + test).txt",
+      "bytes": 1163796,
+      "sha256": "ddb4e0e5b5e3834e6fca7f5ee48861dbb0eab805e9a86e424229278e75134cc1",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/10_Post Run actions_setup-node@v7.txt",
+      "bytes": 227,
+      "sha256": "24aa1a28e2107cdb0c56242fddc6ff31287cd9dc812be3c477b5baeb48f81a03",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/11_Post Run pnpm_action-setup@v6.txt",
+      "bytes": 103,
+      "sha256": "41679c31387e8c7685b8a77ffa46d43187ff4fdaa3ee83fa1e488a9441ef0715",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/12_Post Run actions_checkout@v7.txt",
+      "bytes": 4138,
+      "sha256": "3e6bfaac61ff61333ca3aabe6de278714d6db127317cffc6da841c5bbf735b28",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/13_Complete job.txt",
+      "bytes": 61,
+      "sha256": "338787a7ce8ae7edccd715082b5ae959dbab2215487b284246beb13908fffedf",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/1_Set up job.txt",
+      "bytes": 2157,
+      "sha256": "f78e49e1e2e2e94cd39a4b2a458916debd50e9aa2d19bc545f246b1b838f5328",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/2_Run actions_checkout@v7.txt",
+      "bytes": 7281,
+      "sha256": "3edc6ad8d7b51b995943fd556aa3b6b61a96ed9f74c12442dcc480db6d445a9e",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/3_Run pnpm_action-setup@v6.txt",
+      "bytes": 1808,
+      "sha256": "0551160c2965d579cbfff3f8b0cf6c7867d028fc7581258f69ef68fe6adc2ac0",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/4_Run actions_setup-node@v7.txt",
+      "bytes": 1763,
+      "sha256": "ebb8afe4ed6fe1c60df424afd438e6d5b3a83cbb87baaf6bb6c66ec64f2c30c7",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/5_Run pnpm install --frozen-lockfile.txt",
+      "bytes": 1740,
+      "sha256": "d0b89c4a03f36d5020132a909b8a1f8899faaf2bf1a22ae867467e4f62fe2c84",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/6_Run pnpm build.txt",
+      "bytes": 2040,
+      "sha256": "b0216f23558f8346d9e9d5b7f3c4fdbc88550a6c69edca94571ca3a17a724744",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/console (build)/system.txt",
+      "bytes": 569,
+      "sha256": "4c1b933fae750bf9adbfdcda109136063cb0f8a8ea09d2e95ccab20208253985",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/10_Acceptance comparison benchmark (known retest and false-closure cases).txt",
+      "bytes": 3230,
+      "sha256": "60c736f8283d512f996bfa1dd7023ef4b59309b3d3c3ccf4aef7207e6bb5ebfb",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/18_Post Run actions_setup-node@v7.txt",
+      "bytes": 227,
+      "sha256": "5a984f60e7deb06622d5f83bd3fa1b6a3637ac07ddbb9587372d046d14654323",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/19_Post Run pnpm_action-setup@v6.txt",
+      "bytes": 103,
+      "sha256": "354650eb53d68b16d3917833f27f334a5bd1dfe6ee32b24cd2727ea8cbe6e7f1",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/1_Set up job.txt",
+      "bytes": 2171,
+      "sha256": "0d1ebf8fb50852e9998c828b5be490d879ae2e35e8573f8a59cfb41369c5a035",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/20_Post Run actions_checkout@v7.txt",
+      "bytes": 4138,
+      "sha256": "621e33b60dceaea917a9e9c49b85878985ebf7115c3202c0e91998a303472803",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/21_Complete job.txt",
+      "bytes": 61,
+      "sha256": "f143fae083597c8616a0d751d1a0725bc7a7f8d1dfd1e874b40761be2b68026d",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/2_Run actions_checkout@v7.txt",
+      "bytes": 7281,
+      "sha256": "1dc756686d2c95586e242068cc6357b1db9ea38b4d2d1d200300e6654086bfe4",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/3_Run pnpm_action-setup@v6.txt",
+      "bytes": 1808,
+      "sha256": "5b1f47d9e3050d0209d1fc12ddcb5fbf1113e8bec9c9ddcd4ccf2aa2139a9a4c",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/4_Run actions_setup-node@v7.txt",
+      "bytes": 1760,
+      "sha256": "0f6eb322675434055e822ae53002138367fd793a954a6fc46ce524da61e56591",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/5_Run pnpm install --frozen-lockfile.txt",
+      "bytes": 1665,
+      "sha256": "a3b4907760602ab39a2bbbf7c4427b96c76211397c5b2266924e21c57b2c16ae",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/6_Run pnpm exec playwright install --with-deps chromium.txt",
+      "bytes": 22779,
+      "sha256": "f28e5c58708b03d78c76c633e9bbdcd1e9b09fe82ae36e2607699a23132232f3",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/7_Run pnpm smoke.txt",
+      "bytes": 739,
+      "sha256": "e2b6d7e6e800b4e4fb9de4fc2f56947401cc240305c279cee692f664eaceaf6c",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/8_Acceptance detection benchmark (known truth fixtures).txt",
+      "bytes": 2084,
+      "sha256": "53b211dfd7b0e70f45235013353a91154e6c6e69438e72cc0cd49ffb50bf25ee",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/9_Spec API benchmark (OpenAPI candidates and known truth).txt",
+      "bytes": 2129,
+      "sha256": "24f7e7094a9b663a4dab3b4c2cfcf3b8776085c431c275ae2329ecd9a9bcfa25",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (e2e smoke, local fixture)/system.txt",
+      "bytes": 567,
+      "sha256": "539696047deaac03d3d6cc02aeaac3e109b37a94d02ef029177915b1767ed68d",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/10_Run pnpm --dir .._console build.txt",
+      "bytes": 2074,
+      "sha256": "2d4a8df658ab2d52e75c90c48fb362fa89f41bcc7f2c4fd0e2a3c70c297d8465",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/11_Run pnpm test.txt",
+      "bytes": 1044805,
+      "sha256": "9b22662529c570c1782afea57240c47817b1627ed5a127b37e6c0c2e81bc869b",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/12_Acceptance console (real browser, local model stub).txt",
+      "bytes": 4634,
+      "sha256": "359b07ad5247263b44f5c452c93065b87ce60ce491529757fea9a7dd551125e2",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/13_Spec contract console (real browser, local API fixture).txt",
+      "bytes": 2579,
+      "sha256": "a643ea694e3f8f39b72297d1cef969b7fe15a2a14443f1a1376e328e69729333",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/14_Acceptance comparison console (explicit runs, integrity and CLI).txt",
+      "bytes": 5952,
+      "sha256": "6b05d1d094b76c1b162acba96b954c7a76d6b68ef6f630292c925c48b48c16c2",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/15_Acceptance project catalog (versions, explicit bindings and two-engine isolation).txt",
+      "bytes": 8837,
+      "sha256": "4ff7cab78fc4e70f99ec543dcfa50535d887104b338b434da46d034519b008c1",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/16_Acceptance catalog explicit migration (legacy artifacts, CLI confirmation and browser continuity).txt",
+      "bytes": 8663,
+      "sha256": "16e4d033c77b56018b71309e6206e7f67602036a9afd49ff6d83d850f456f944",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/17_Spec baseline review (candidates, approvals, selections and source integrity).txt",
+      "bytes": 4672,
+      "sha256": "88fa966fa62229c45350e1625a23b865e05ca142d38b111b68a24f1dc710931f",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/18_Managed Spec preparation (immutable contract, replay and zero execution).txt",
+      "bytes": 1976,
+      "sha256": "7ecf02764ff1a10c44818b85038a8df3c2037d32dcc61d937628aeb2d72c7212",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/19_Managed Spec result reading (captured evidence and zero execution).txt",
+      "bytes": 2350,
+      "sha256": "8066af10c76495f9ec35d4f4472abde8ae6ad72c206ad3cb57277a51cecc8bd6",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/1_Set up job.txt",
+      "bytes": 2290,
+      "sha256": "dcba3893e7f79a51ce32412c605459c4d77a1c7c98f98170b722513fdef01f0a",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/20_Owned acceptance recovery (startup barrier, restart and zero execution).txt",
+      "bytes": 1704,
+      "sha256": "eba42def2904caecb4d2bd3b3aa05b0cc2ffcda317acee40a6785498a3d9d2a6",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/21_Managed Spec execution (fresh admission, real runner, BUG and cancel).txt",
+      "bytes": 2096,
+      "sha256": "b111db77e0a979349842c418819243b9a0232e835c9055402c3da79cf49403b8",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/22_Managed execution UI (explicit click, durable recovery and stop).txt",
+      "bytes": 2400,
+      "sha256": "dd9e800ab1f82b38c5bf2eeaa9d08d749011f69c4d86088df565c82e1170d4e3",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/23_Browser candidate source (fresh captures and explicit healthy side).txt",
+      "bytes": 4930,
+      "sha256": "56cb7b5f94c50d8cb8167d3842389ccb39d4527cdefed5d1bd19e0fc19ab5812",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/24_Browser private source reader (owner fences and unchanged originals).txt",
+      "bytes": 3930,
+      "sha256": "ae259dbdc4f8ff5144ce1f9e7302c0111dadecf45fd186bde1ee90c04154dda7",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/25_Browser source bindings (fresh captures, explicit sides and source revalidation).txt",
+      "bytes": 6382,
+      "sha256": "2bde5b429c15b3a49a02bcee48e3a2832a1645e58509f551d6cb38704d825a4f",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/26_Browser source binding console (native HTTP, source review and verified evidence).txt",
+      "bytes": 2377,
+      "sha256": "a6fe4dd7cc9bc88095d12f337f7853b56909a7f50d62cb17b87f5b9591e9e833",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/27_Schema4 combined history (fresh Browser bindings and explicit Spec lifecycle fixtures).txt",
+      "bytes": 2898,
+      "sha256": "9fa19a7d5906962ed0fb6eaf3f575c4c22efe91ec2d8e33257adea0ddd0eced5",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/28_Browser full candidates (explicit review, durable save and read-only reconciliation).txt",
+      "bytes": 2303,
+      "sha256": "23a29f0cec79d4bf337c9ab0dfe6c848ccfdece8bc988b71dba052ec1867f8a4",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/29_Browser single-operation execution (fixed source, real target BUG, explicit retest and restart).txt",
+      "bytes": 910,
+      "sha256": "fef32bbeb5cd838b0d7f0e537391ea38e1a84be02357fd81752d384c8208c9df",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/2_Run actions_checkout@v7.txt",
+      "bytes": 7281,
+      "sha256": "5a74786e7f6e0815075524274b0ebea843042b5c57b904dec7657d60595c989b",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/30_Browser start resolution (same unfinished ingress, durable deny, same-origin restart and native locks).txt",
+      "bytes": 918,
+      "sha256": "0494d03dba58cd15f6d86dd847e7362eafca6e20f899d643aada920ea19b4286",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/31_Manual defect tickets (fixed source members, explicit closure, regression and read-only reconciliation).txt",
+      "bytes": 1209,
+      "sha256": "3c6a9084a2c96304fcb46edb68e32a00b330d9426d061d4a1788660f591a6da1",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/3_Run pnpm_action-setup@v6.txt",
+      "bytes": 1808,
+      "sha256": "b309253f252b8f25f2deb662955a4f8816a812cdd70788b0f49881f57438cf0a",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/4_Run actions_setup-node@v7.txt",
+      "bytes": 1836,
+      "sha256": "5883eb3ab8f0aece1a0cbf2ccb7a06958cf1d1bca62ce78e688a9ad2a4dfa4b1",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/5_Run pnpm install --frozen-lockfile.txt",
+      "bytes": 1662,
+      "sha256": "f0606558b999117ee6f687cf5b834d6c6e2bdb427a198c259f6143863f5cab29",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/65_Post Run pnpm_action-setup@v6.txt",
+      "bytes": 103,
+      "sha256": "1f857b307f3babbf1fd514a9bc724aea4afacf24822c672b1e18244c9980d0a9",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/66_Post Run actions_checkout@v7.txt",
+      "bytes": 4138,
+      "sha256": "a03b99e7bf48dbca6f4b59a3d7bdd90e091aadf5f63181c003430fb8cf7bf3d5",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/67_Complete job.txt",
+      "bytes": 613,
+      "sha256": "9fd2f3659f7380c4d3b4dc9ad749e09c324c38636a5c7c9ef18a068ca3c83215",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/6_Run pnpm lint.txt",
+      "bytes": 441,
+      "sha256": "339e51d35196bd7b5ed1598287d8a1bcc765ebc402a3a16d5fecde8afabded3e",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/7_Run pnpm checkdocs.txt",
+      "bytes": 487,
+      "sha256": "919aa591b628243a2ee3f6a40d20f3d1fbedddf296286cd349fe73d379693ad0",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/8_Run pnpm exec playwright install --with-deps chromium.txt",
+      "bytes": 22779,
+      "sha256": "c584668118d9f3632d537f89cc0aa01763a3ce8f83ed39393d5ca5e3a3f86bc6",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/9_Run pnpm --dir .._console install --frozen-lockfile.txt",
+      "bytes": 1858,
+      "sha256": "9ea55e371a42064542ee421176161bb2a3d7695e99020ef3d2cb5e7167e19011",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/logs/core (lint + test)/system.txt",
+      "bytes": 566,
+      "sha256": "a90eccf45c5135c2b72ecebc4d5348e166b7bd92717cfd7f03c47d5e7e4077a0",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/observation-summary.json",
+      "bytes": 795,
+      "sha256": "5d0b403fab7e0953d4a533e3b414a25db8ddd9b57b27655f4931215b8e22e69f",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/run.command.json",
+      "bytes": 634,
+      "sha256": "1413bef2ca83efe82a3a2844e4f0d79b339810b62c4d37df80f4d1604f653f8f",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/run.json",
+      "bytes": 12335,
+      "sha256": "34c84c93416dd7d0310ad1938baff159b8ed140d688645d7170c30b2fb403f05",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/run.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/final-20261017T222913.304634Z/workflow-identity.json",
+      "bytes": 319,
+      "sha256": "ca19f187372530dfc9b68bb1cd7bbdfdf13877e74c039f6176a34287e8e363c1",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/verification-20261017T222932.385061Z/REPORT.md",
+      "bytes": 8852,
+      "sha256": "d43da34dbf9becb8de0bce5dea297c6069a609fad8319a42ee37251e6261028d",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/verification-20261017T222932.385061Z/source-file-digests.json",
+      "bytes": 16284,
+      "sha256": "cdfbeeb3e341554d7df772df0bfc52f03e7e86890b69f550ee1d329b5c9a8e79",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/verification-20261017T222932.385061Z/verification-checks.json",
+      "bytes": 77658,
+      "sha256": "a939ace0f7491e301cfb755e874dd1636d2b118306d82e9b914d6e1d4ec5eb79",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/verification-20261017T222932.385061Z/verified-summary.json",
+      "bytes": 12989,
+      "sha256": "9cb6449deff898ef35d4a0045d0a8d1c8e98fce8838aeb10ed700713892e0571",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/timeout-annotations/check-run.json",
+      "bytes": 3062,
+      "sha256": "e95a22e22b666b159ee2426b34328c9e17e3cf52f3dd419564db2bbd28411f45",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/timeout-annotations/annotations.json",
+      "bytes": 1029,
+      "sha256": "45f2cc1ff40fada4a1a1906432c391bf18f42312c5aa955ac7cdc5932c729be1",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/tools/capture-v2.py",
+      "bytes": 11710,
+      "sha256": "f0727a28d924f6672988161257fcb243a5572f124b3eeb1819d139374a7b7950",
+      "passed": true
+    },
+    {
+      "path": "docs/audits/2026-10-18/evidence/defect-ticket-ci-timeout/tools/verify-ci.py",
+      "bytes": 26998,
+      "sha256": "071aebb1ce4ba28aa2e615560cb2997444e0365a0a39eaa64dbfc77f4ab97be3",
+      "passed": true
+    },
+    {
+      "path": "core/src/acceptance/browser-operation-schema.mjs",
+      "sha256": "bb088bea4986339d8bee957346a1e088ed1a6e3d159a56db98bc4fc5fccaf062",
+      "passed": true
+    },
+    {
+      "path": "core/src/acceptance/browser-operation-store.mjs",
+      "sha256": "f1b3a61fc0e88838f987e46375f8311e7819e348c7484b94ef8a57e42166684a",
+      "passed": true
+    },
+    {
+      "path": "core/src/acceptance/browser-fixed-contract.mjs",
+      "sha256": "d0ed6efc68445c71a1d36d0565829f3997f6161e4d73dcab9f6fddcdd0d3a09c",
+      "passed": true
+    },
+    {
+      "path": "core/src/acceptance/browser-fixed-runner.mjs",
+      "sha256": "fda76d30533719efc67e746ef36e8c0f1b8232db28cc2f410638c8f5d55ce846",
+      "passed": true
+    },
+    {
+      "path": "core/src/acceptance/runner.mjs",
+      "sha256": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57",
+      "passed": true
+    },
+    {
+      "path": "core/src/acceptance/identity.mjs",
+      "sha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5",
+      "passed": true
+    },
+    {
+      "path": "core/src/acceptance/report.mjs",
+      "sha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15",
+      "passed": true
+    },
+    {
+      "path": "core/src/verify/compare.mjs",
+      "sha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

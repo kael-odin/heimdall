@@ -1,0 +1,9 @@
+{
+  "headSha": "a0f834ebe727d6d00e2d692a008d3d0512a56536",
+  "path": ".github/workflows/ci.yml",
+  "gitBlobSha": "a0f7ce5a1ee12fe7c967fd1ec34072efda9594f6",
+  "bytes": 10039,
+  "sha256": "2b64775c15abb1a40900af2650e81908b49ef4a3ae51afbc48670de7a85079b9",
+  "apiMatchesGitShow": true,
+  "computedBlobMatchesApi": true
+}

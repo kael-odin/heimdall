@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "node",
+    "scripts/check-markdown-links.mjs"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core",
+  "started": "2026-10-17T23:16:26.392903+00:00",
+  "ended": "2026-10-17T23:16:26.790376+00:00",
+  "exitCode": 0,
+  "logSha256": "554b5bb7d83a3dd565b0b2ded382a95d2de15ca1f86cdbd2918c3f91ce3d233e"
+}
