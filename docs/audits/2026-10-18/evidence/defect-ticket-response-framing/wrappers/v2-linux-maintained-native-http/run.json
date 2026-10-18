@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "argv": [
+    "wsl.exe",
+    "-d",
+    "Ubuntu-24.04",
+    "--exec",
+    "/usr/bin/env",
+    "HEIMDALL_FRAMING_TEST_OUT=/root/heimdall-d6-framing-v2-20261018/native-test-artifacts",
+    "/root/heimdall-d6-framing-v2-20261018/node-linux.sh",
+    "--test",
+    "test/defect-ticket-decision-relay.test.mjs"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "explicitEnvironment": {},
+  "platform": "Windows-10-10.0.29667-SP0",
+  "startedAt": "2026-10-18T05:14:36.877615+00:00",
+  "exitCode": 0,
+  "endedAt": "2026-10-18T05:14:38.328282+00:00",
+  "durationSeconds": 1.4059999999881256,
+  "changedInputs": [],
+  "stdoutSha256": "a2e02cfae435ea9b53e67d9625a89e689d8d3f7f953bae136af98557287aad7a",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

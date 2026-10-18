@@ -1,0 +1,9 @@
+﻿2026-10-18T04:55:25.1051133Z ##[group]Run pnpm acceptance:browser:resolution:smoke
+2026-10-18T04:55:25.1051912Z [36;1mpnpm acceptance:browser:resolution:smoke[0m
+2026-10-18T04:55:25.1120377Z shell: /usr/bin/bash -e {0}
+2026-10-18T04:55:25.1120659Z env:
+2026-10-18T04:55:25.1120933Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T04:55:25.1121266Z ##[endgroup]
+2026-10-18T04:55:26.2071452Z $ node scripts/smoke-acceptance-browser-resolution-console.mjs
+2026-10-18T04:55:26.8040525Z {"event":"started","startedAt":"2026-10-18T04:55:26.802Z","outputDirectory":"/home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-resolution-console-smoke-03b2d35f-0069-4c1f-8fcb-adfb0ac56ccc"}
+2026-10-18T04:56:01.1308426Z {"status":"passed","checks":9,"outputDirectory":"/home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-resolution-console-smoke-03b2d35f-0069-4c1f-8fcb-adfb0ac56ccc"}

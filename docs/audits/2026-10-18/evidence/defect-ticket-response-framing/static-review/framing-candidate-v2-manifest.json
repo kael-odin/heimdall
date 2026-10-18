@@ -1,0 +1,22 @@
+{
+  "kind": "unapplied-framing-candidate-static-only",
+  "version": 2,
+  "sourceHead": "06e4303871d485a14b66d24318db80595a3db774",
+  "sourcePath": "core/scripts/fixtures/defect-ticket-decision-relay.mjs",
+  "sourceGitBlob": "3756fb53aeadf211fce89d19ba22f9f8aa0ebfcd",
+  "sourceRawSha256": "6e6f6fb39c5635b5cdc30d8d9d584fa99dead2b3f2858758c928aed3843975a5",
+  "responseBudgetBytes": 33554432,
+  "changeFromV1": "Preserve the original error writes exactly for every unframed route.",
+  "maintenanceFilesApplied": false,
+  "engineOrBrowserStarted": false,
+  "files": {
+    "relay.framed-candidate-v2.mjs": {
+      "bytes": 13535,
+      "sha256": "48f656b994087649101946bcd3fb0c2cc9aabddb0e951149acfa5fd797a6da6a"
+    },
+    "action-reply-framing-v2.patch": {
+      "bytes": 6281,
+      "sha256": "a46a390c894dc75a707087911bcb7d34d370b32112f599901b30f17231e3a1c0"
+    }
+  }
+}

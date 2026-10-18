@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "argv": [
+    "python",
+    "core/workspace/_runs/d5-ci-20261018/verify-ci.py",
+    "--source",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d5-ci-20261018\\final-20261018T050110.462854Z",
+    "--head",
+    "06e4303871d485a14b66d24318db80595a3db774",
+    "--run",
+    "39096514869",
+    "--attempt",
+    "1"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "explicitEnvironment": {},
+  "platform": "Windows-10-10.0.29667-SP0",
+  "startedAt": "2026-10-18T05:01:31.484764+00:00",
+  "exitCode": 1,
+  "endedAt": "2026-10-18T05:01:31.957524+00:00",
+  "durationSeconds": 0.42199999999138527,
+  "changedInputs": [],
+  "stdoutSha256": "2c6a25d4243ccc525328383ee3a8defd2c949676d11f468c5d52a41ff8103ef4",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

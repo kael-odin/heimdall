@@ -1,0 +1,31 @@
+{
+  "recordedAt": "2026-10-18T05:01:10.462854+00:00",
+  "python": "3.11.9",
+  "executable": "C:\\Python311\\python.exe",
+  "optimization": 0,
+  "argv": [
+    "core/workspace/_runs/d5-ci-20261018/capture-v2.py",
+    "final",
+    "--repo",
+    "kael-odin/heimdall",
+    "--run",
+    "39096514869",
+    "--attempt",
+    "1",
+    "--head",
+    "06e4303871d485a14b66d24318db80595a3db774",
+    "--out",
+    "core/workspace/_runs/d5-ci-20261018"
+  ],
+  "scriptPath": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d5-ci-20261018\\capture-v2.py",
+  "scriptSha256": "f0727a28d924f6672988161257fcb243a5572f124b3eeb1819d139374a7b7950",
+  "requestedIdentity": {
+    "repo": "kael-odin/heimdall",
+    "runId": 39096514869,
+    "attempt": 1,
+    "headSha": "06e4303871d485a14b66d24318db80595a3db774",
+    "workflow": "CI",
+    "branch": "main",
+    "event": "push"
+  }
+}

@@ -1,0 +1,27 @@
+﻿2026-10-18T04:17:31.7192092Z ##[group]Run pnpm --dir ../console build
+2026-10-18T04:17:31.7192708Z [36;1mpnpm --dir ../console build[0m
+2026-10-18T04:17:31.7339587Z shell: /usr/bin/bash -e {0}
+2026-10-18T04:17:31.7340049Z env:
+2026-10-18T04:17:31.7340501Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T04:17:31.7341087Z ##[endgroup]
+2026-10-18T04:17:32.9365186Z $ vite build
+2026-10-18T04:17:33.3809324Z [36mvite v8.3.1 [32mbuilding client environment for production...[36m[39m
+2026-10-18T04:17:33.3916051Z transforming...
+2026-10-18T04:17:34.7314591Z ✓ 445 modules transformed.
+2026-10-18T04:17:34.8174864Z rendering chunks...
+2026-10-18T04:17:35.0516317Z computing gzip size...
+2026-10-18T04:17:35.0764494Z dist/index.html                       0.63 kB │ gzip:   0.41 kB
+2026-10-18T04:17:35.0765856Z dist/assets/Graph3D-DkULweKj.css      0.10 kB │ gzip:   0.09 kB
+2026-10-18T04:17:35.0771926Z [33m[plugin builtin:vite-reporter] 
+2026-10-18T04:17:35.0773054Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2026-10-18T04:17:35.0774441Z - Using dynamic import() to code-split the application
+2026-10-18T04:17:35.0776247Z - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+2026-10-18T04:17:35.0778889Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+2026-10-18T04:17:35.0780469Z dist/assets/index-Ci96Vj07.css       43.56 kB │ gzip:   8.59 kB
+2026-10-18T04:17:35.0782657Z dist/assets/Atlas-DOslNSuq.css       83.93 kB │ gzip:  12.36 kB
+2026-10-18T04:17:35.0784112Z dist/assets/api-DBmNeZNu.js           2.07 kB │ gzip:   1.09 kB
+2026-10-18T04:17:35.0785722Z dist/assets/index-BiGJ8PiQ.js        71.05 kB │ gzip:  28.11 kB
+2026-10-18T04:17:35.0803894Z dist/assets/Atlas-SgWAog6v.js       494.31 kB │ gzip: 154.73 kB
+2026-10-18T04:17:35.0805433Z dist/assets/Graph3D-CxFFoOVC.js   1,395.59 kB │ gzip: 373.00 kB
+2026-10-18T04:17:35.0806197Z 
+2026-10-18T04:17:35.0807031Z [32m✓ built in 1.70s[39m

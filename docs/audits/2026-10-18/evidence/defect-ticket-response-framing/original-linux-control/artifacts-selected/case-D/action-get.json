@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "kind": "manual-defect-ticket-action",
+  "outcome": "recorded",
+  "projectId": "ap-70895b21-5903-4408-b32b-418f9512c3c6",
+  "ticketId": "dt-af0ad344-cff8-4ad1-b707-ba902014f258",
+  "actionId": "da-e306d927-f03a-4991-990f-0bd893247ebe",
+  "requestFingerprint": "8a52614c37d604c95c4d2f81b1bec90786178c1fd666736c4109e3ff706d9428",
+  "eventSha256": "ddc38f779489ac4199876bc12faa97554348fb657c4048d8d391e60a3c3c864a",
+  "event": {
+    "actionId": "da-e306d927-f03a-4991-990f-0bd893247ebe",
+    "actor": {
+      "kind": "local-operator"
+    },
+    "after": {
+      "acceptedAt": "2026-10-18T04:45:27.697Z",
+      "dispatchSha256": "be0c1665e60275c4555fdfc00f0e2aa8d62575a9f8f2fdc3d1575f4dabdb29db",
+      "observationsSha256": "3945c79a84218fe954ad9145d133ec19aa7801e19f773454d1757965706a3bc9",
+      "operationId": "bo-ef22e23b-4ff5-4b59-af79-16c8a3b3cc84",
+      "recordedAt": "2026-10-18T04:45:31.858Z",
+      "reportSha256": "53b9dec3954e8ed2980625506f89f9f698fac3b8157a106250f012c393936625",
+      "targetReleaseId": "ar-14744adc-91b5-455c-85a8-29ed4e39a48f"
+    },
+    "candidateId": "bc-e23099e4-ae1f-401f-b949-79e49b6bfa6d",
+    "confirmed": true,
+    "contentDigest": "79f643d18e8607ce143d59dbf521d4a8d6f733d6c72775df5597842e90e4c22e",
+    "createdAt": "2026-10-18T04:45:37.111Z",
+    "factsDigest": "f9522b0737dedb3b26ccf22ba6a7d4f031d1a3dc957b84c784a7f3f6d2255ded",
+    "kind": "close",
+    "memberSetDigest": "b9403fe4c462397903dd29ae134ef02bf4559e4271ba021f860ebe6894d85383",
+    "previewDigest": "934111fbb307b1ea235346ca3ad3261c1dcadc867094693931b2acde3fcafefc",
+    "previousEventSha256": "e433f9a9c9a9ef8e998555f27e0814bb6d36a48809aa04f26a6c155abbcf3e43",
+    "projectId": "ap-70895b21-5903-4408-b32b-418f9512c3c6",
+    "requestFingerprint": "8a52614c37d604c95c4d2f81b1bec90786178c1fd666736c4109e3ff706d9428",
+    "resolution": "两项固定检查在同一次健康目标复验中通过。",
+    "results": [
+      {
+        "afterCheckId": "route-1-1-desktop-point-1-menu",
+        "bugId": "bug-afa1ece6c06b69da17f360c60da6f905b209376aafc21cada8db7515223b07c5",
+        "relation": "verified_passed",
+        "sourceCheckId": "route-1-1-desktop-point-1-menu"
+      },
+      {
+        "afterCheckId": "route-1-1-desktop-visual",
+        "bugId": "bug-528fd958cdf44927347443992bf03652b34518e18e7552c2fc911cdc3281a603",
+        "relation": "verified_passed",
+        "sourceCheckId": "route-1-1-desktop-visual"
+      }
+    ],
+    "revision": 1,
+    "ticketContractVersion": 1,
+    "ticketId": "dt-af0ad344-cff8-4ad1-b707-ba902014f258"
+  }
+}

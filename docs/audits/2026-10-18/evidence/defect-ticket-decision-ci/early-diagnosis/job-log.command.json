@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "gh",
+    "api",
+    "repos/kael-odin/heimdall/actions/jobs/117583999059/logs"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "startedAt": "2026-10-18T04:21:33.970347+00:00",
+  "endedAt": "2026-10-18T04:21:36.627512+00:00",
+  "exitCode": 0,
+  "timedOut": false,
+  "launchError": null,
+  "stdoutFile": "job.raw.log",
+  "stdoutBytes": 53689,
+  "stdoutSha256": "e391385739b929d1fcfd9029b17b45d252cd3855e2715b7828671b8056f14438",
+  "stderrFile": "job-log.stderr.log",
+  "stderrBytes": 0,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,1035 @@
+[
+  {
+    "requestId": "ui-173e9c5e-f796-4a87-bc9f-ffc7bb1db5d1",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-1af1e63d-4f0b-49d8-af37-0c5df6d41f58",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs/ac-f2115c84-ff06-48bc-88b3-8fbec8a1f126",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-4c081840-fa8c-4dec-847b-0ca4a4307fe0",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs/ac-f2115c84-ff06-48bc-88b3-8fbec8a1f126/report",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-503f5886-4f38-48d0-a604-9be700a16ece",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f35c953e-e1a9-4e3e-91e1-9ce8738828ff",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-33bd8625-361d-4787-884e-2313350ccd80",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-25f4aa18-4724-4fc6-98c3-539433374c02",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/browser-executions",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-c0e50427-dd81-4c00-9cc5-08801dbe4ef7",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-87ac7997-66af-47c6-955b-79aada3bf5d0",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/sources",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-bbcb2e33-423d-449e-a8fd-566cde9ff804",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-907f7288-56bb-4cae-8cd4-c24bea624d80",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-b61d7031-da25-4e85-a317-162bbe9cfc12",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets",
+    "method": "POST",
+    "status": 502,
+    "rawBody": "{\"code\":\"D6_CONTROLLED_HTTP_502\",\"error\":\"Controlled relay response; original action remains unknown.\",\"outcomeUnknown\":true}",
+    "bodySha256": "897d30837e78193624667d933a5c0df9b1400512cf35cefed81f6fa5076c1472",
+    "payload": {
+      "code": "D6_CONTROLLED_HTTP_502",
+      "error": "Controlled relay response; original action remains unknown.",
+      "outcomeUnknown": true
+    }
+  },
+  {
+    "requestId": "ui-b9f2aa58-3aa4-4655-b18a-5bb30e6ca0a7",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95",
+    "method": "GET",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"actionId\":\"da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95\",\"outcome\":\"unresolved\",\"reason\":\"ABSENCE_IS_NOT_A_COMMIT_DECISION\"}",
+    "bodySha256": "f46f66dccfaf387da95ee4dd23d7a1d16549d68a62ffaf48f6da6bd08ba6ebd1",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "actionId": "da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95",
+      "outcome": "unresolved",
+      "reason": "ABSENCE_IS_NOT_A_COMMIT_DECISION"
+    }
+  },
+  {
+    "requestId": "ui-73c9a145-4eba-47fe-8102-56ba4c79ba48",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95",
+    "method": "GET",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"actionId\":\"da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95\",\"outcome\":\"unresolved\",\"reason\":\"ABSENCE_IS_NOT_A_COMMIT_DECISION\"}",
+    "bodySha256": "f46f66dccfaf387da95ee4dd23d7a1d16549d68a62ffaf48f6da6bd08ba6ebd1",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "actionId": "da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95",
+      "outcome": "unresolved",
+      "reason": "ABSENCE_IS_NOT_A_COMMIT_DECISION"
+    }
+  },
+  {
+    "requestId": "ui-5ca94d59-747f-4166-8689-e5f76c726cf7",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95/deny",
+    "method": "POST",
+    "status": 201,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"outcome\":\"rejected\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"ticketId\":\"dt-3895ad60-de81-4e52-945f-28d8f312c7f7\",\"actionId\":\"da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95\",\"requestFingerprint\":\"3e34410c93a5ff423145be1527e1dddcbc385b54f643b66eecc4a4b81b9b726a\",\"rejectionSha256\":\"71c8d4f69661c6fd3cba1fba37265abb525077c6e64c6fd1d7767688979dbc07\",\"rejection\":{\"actionDecisionVersion\":1,\"actor\":{\"kind\":\"local-operator\"},\"decidedAt\":\"2026-10-18T05:00:03.892Z\",\"effect\":\"deny-late-manual-defect-ticket-action\",\"kind\":\"manual-defect-ticket-action-rejection\",\"original\":{\"actionId\":\"da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95\",\"kind\":\"create\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"request\":{\"actionId\":\"da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95\",\"description\":\"本机受控样例：固定来源、两项可靠失败、人工动作决定。\",\"memberCheckIds\":[\"route-1-1-desktop-point-1-menu\",\"route-1-1-desktop-visual\"],\"reproduction\":\"打开页面，展开菜单，核对布局及导航。\",\"severity\":\"high\",\"sourceOperationId\":\"bo-3bf4dffa-4c6e-4248-a38a-c37c37ebaf48\",\"ticketId\":\"dt-3895ad60-de81-4e52-945f-28d8f312c7f7\",\"title\":\"菜单布局与展开行为的两个固定检查\"},\"requestFingerprint\":\"3e34410c93a5ff423145be1527e1dddcbc385b54f643b66eecc4a4b81b9b726a\",\"ticketId\":\"dt-3895ad60-de81-4e52-945f-28d8f312c7f7\",\"version\":1}},\"replayed\":false}",
+    "bodySha256": "967dded269d35441a0a19a8a50bde6151a0246a9f8a94cf207d82e93cfe62c0e",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "rejected",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "ticketId": "dt-3895ad60-de81-4e52-945f-28d8f312c7f7",
+      "actionId": "da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95",
+      "requestFingerprint": "3e34410c93a5ff423145be1527e1dddcbc385b54f643b66eecc4a4b81b9b726a",
+      "rejectionSha256": "71c8d4f69661c6fd3cba1fba37265abb525077c6e64c6fd1d7767688979dbc07",
+      "rejection": {
+        "actionDecisionVersion": 1,
+        "actor": {
+          "kind": "local-operator"
+        },
+        "decidedAt": "2026-10-18T05:00:03.892Z",
+        "effect": "deny-late-manual-defect-ticket-action",
+        "kind": "manual-defect-ticket-action-rejection",
+        "original": {
+          "actionId": "da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95",
+          "kind": "create",
+          "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+          "request": {
+            "actionId": "da-210ca6b5-2b6f-4c42-9eb1-29a4aeadfa95",
+            "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+            "memberCheckIds": [
+              "route-1-1-desktop-point-1-menu",
+              "route-1-1-desktop-visual"
+            ],
+            "reproduction": "打开页面，展开菜单，核对布局及导航。",
+            "severity": "high",
+            "sourceOperationId": "bo-3bf4dffa-4c6e-4248-a38a-c37c37ebaf48",
+            "ticketId": "dt-3895ad60-de81-4e52-945f-28d8f312c7f7",
+            "title": "菜单布局与展开行为的两个固定检查"
+          },
+          "requestFingerprint": "3e34410c93a5ff423145be1527e1dddcbc385b54f643b66eecc4a4b81b9b726a",
+          "ticketId": "dt-3895ad60-de81-4e52-945f-28d8f312c7f7",
+          "version": 1
+        }
+      },
+      "replayed": false
+    }
+  },
+  {
+    "requestId": "ui-6f2f02e7-12b4-4e49-ba83-57e808145bbb",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-bc24aff0-0a95-47a9-a9cc-cd8459b4e1a7",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets",
+    "method": "POST",
+    "status": 502,
+    "rawBody": "{\"code\":\"D6_CONTROLLED_HTTP_502\",\"error\":\"Controlled relay response; original action remains unknown.\",\"outcomeUnknown\":true}",
+    "bodySha256": "897d30837e78193624667d933a5c0df9b1400512cf35cefed81f6fa5076c1472",
+    "payload": {
+      "code": "D6_CONTROLLED_HTTP_502",
+      "error": "Controlled relay response; original action remains unknown.",
+      "outcomeUnknown": true
+    }
+  },
+  {
+    "requestId": "ui-d244440f-6152-4f28-a561-d1657491b84b",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-6dc070fe-8117-41a2-b422-c760b81255eb",
+    "method": "GET",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"actionId\":\"da-6dc070fe-8117-41a2-b422-c760b81255eb\",\"outcome\":\"unresolved\",\"reason\":\"ABSENCE_IS_NOT_A_COMMIT_DECISION\"}",
+    "bodySha256": "ac13c86fabdf215a1b01232abf46f530fda0ca5a9ba19ea3e4f774a2f7886057",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "actionId": "da-6dc070fe-8117-41a2-b422-c760b81255eb",
+      "outcome": "unresolved",
+      "reason": "ABSENCE_IS_NOT_A_COMMIT_DECISION"
+    }
+  },
+  {
+    "requestId": "ui-a61700e7-0794-4753-82ad-dfd8257a5214",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-6dc070fe-8117-41a2-b422-c760b81255eb",
+    "method": "GET",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"actionId\":\"da-6dc070fe-8117-41a2-b422-c760b81255eb\",\"outcome\":\"unresolved\",\"reason\":\"ABSENCE_IS_NOT_A_COMMIT_DECISION\"}",
+    "bodySha256": "ac13c86fabdf215a1b01232abf46f530fda0ca5a9ba19ea3e4f774a2f7886057",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "actionId": "da-6dc070fe-8117-41a2-b422-c760b81255eb",
+      "outcome": "unresolved",
+      "reason": "ABSENCE_IS_NOT_A_COMMIT_DECISION"
+    }
+  },
+  {
+    "requestId": "ui-969465bc-8582-415f-bcff-91a2ca641b4d",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e57a2bc4-32df-4733-8ae9-8471d67ce5ce",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-21789140-2f8a-4be7-bac0-09255c5a9536",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-6dc070fe-8117-41a2-b422-c760b81255eb/deny",
+    "method": "POST",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"outcome\":\"recorded\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"ticketId\":\"dt-301d4d61-dacb-49c1-b341-f006cd786afe\",\"actionId\":\"da-6dc070fe-8117-41a2-b422-c760b81255eb\",\"requestFingerprint\":\"157b2a15f24552dc8670981428ecb5235a65793b32d0db9af39673d89d1da619\",\"eventSha256\":\"93f76908bd1f29a1f7188fcf7f00648a644f309084c8ade1d9c2242aacf43a7f\",\"event\":{\"actionId\":\"da-6dc070fe-8117-41a2-b422-c760b81255eb\",\"actor\":{\"kind\":\"local-operator\"},\"candidateId\":\"bc-48e851a8-60ef-44d8-8a59-a3b85925199a\",\"contentDigest\":\"2554f99ed7ce3f2cd4fc503b3f25866b8d649b36d01d19c9aad452994942aadf\",\"createdAt\":\"2026-10-18T05:00:06.869Z\",\"description\":\"本机受控样例：固定来源、两项可靠失败、人工动作决定。\",\"kind\":\"create\",\"memberSetDigest\":\"424c7b2730bf2e491e5ed973cf8c4b0d3fdd8ac417e0872634d8ea872cdc5021\",\"members\":[{\"bugId\":\"bug-b5ec729770c149553d191f71a84a3c4dabd00e464cb4f63d421f1a61795b332b\",\"checkId\":\"route-1-1-desktop-point-1-menu\",\"evidence\":[{\"bytes\":2019,\"file\":\"source-route-1-1-desktop-point-1-baseline.json\",\"role\":\"baselineDetails\",\"sha256\":\"fc78bc21188c1a16c2fc88b3b6cc576f6545c066f4d3e19fe019e6053f997aa4\"},{\"bytes\":20876,\"file\":\"source-route-1-1-desktop-point-1-baseline-repeat.png\",\"role\":\"baselineRepeat\",\"sha256\":\"32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d\"},{\"bytes\":20876,\"file\":\"source-route-1-1-desktop-point-1-baseline.png\",\"role\":\"baselineScreenshot\",\"sha256\":\"32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d\"},{\"bytes\":1976,\"file\":\"route-1-1-desktop-point-1-target.json\",\"role\":\"targetDetails\",\"sha256\":\"9dc33c4478341786c39d429256c7d6b27e1fa1b16aac13958b770cbdf9a30b5a\"},{\"bytes\":19525,\"file\":\"route-1-1-desktop-point-1-target-repeat.png\",\"role\":\"targetRepeat\",\"sha256\":\"e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b\"},{\"bytes\":19525,\"file\":\"route-1-1-desktop-point-1-target.png\",\"role\":\"targetScreenshot\",\"sha256\":\"e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b\"}],\"identity\":{\"caseKey\":\"5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59\",\"contextKey\":\"ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370\",\"environmentKey\":\"e663ea4f9640c3be702129922e74e2e7218876ead957d796ef364f1e1478442e\",\"facet\":\"behavior\",\"kind\":\"browser\",\"oracleKey\":\"d7ccf85dace20463eaa1b8bda39bd70515ef8672f7736bd8bc2f9adcaddc5119\",\"pointId\":\"menu\",\"ruleKey\":\"345e3c732d7cbff13bb8407aa0e60e6b17c917803f530dced2b151d80f0b104d\",\"version\":1,\"viewport\":{\"height\":640,\"width\":960}},\"route\":\"/\",\"verifierFingerprint\":\"e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8\"},{\"bugId\":\"bug-df0a3318ac57cb56924977010e81cfa40177d10c217113bdb27b48109607bb2a\",\"checkId\":\"route-1-1-desktop-visual\",\"evidence\":[{\"bytes\":1499,\"file\":\"source-route-1-1-desktop-baseline.json\",\"role\":\"baselineDetails\",\"sha256\":\"b3eff1b5e6d51fc875ab3bdf42d7ef4066048847f0a804d8df409007d6ef1b3a\"},{\"bytes\":18640,\"file\":\"source-route-1-1-desktop-baseline-repeat.png\",\"role\":\"baselineRepeat\",\"sha256\":\"a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726\"},{\"bytes\":18640,\"file\":\"source-route-1-1-desktop-baseline.png\",\"role\":\"baselineScreenshot\",\"sha256\":\"a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726\"},{\"bytes\":18900,\"file\":\"route-1-1-desktop-diff.png\",\"role\":\"diff\",\"sha256\":\"e3488c5926cc334dd8478f6e7473191725c9bf350e317d85d28a2c0306a21b78\"},{\"bytes\":1451,\"file\":\"route-1-1-desktop-target.json\",\"role\":\"targetDetails\",\"sha256\":\"4c1e695a56fd51f780fcc95c4d2750a7011d5aa643ca6a7ac0cc6ea500f82e6e\"},{\"bytes\":18733,\"file\":\"route-1-1-desktop-target-repeat.png\",\"role\":\"targetRepeat\",\"sha256\":\"e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e\"},{\"bytes\":18733,\"file\":\"route-1-1-desktop-target.png\",\"role\":\"targetScreenshot\",\"sha256\":\"e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e\"}],\"identity\":{\"caseKey\":\"df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7\",\"contextKey\":\"7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d\",\"environmentKey\":\"e663ea4f9640c3be702129922e74e2e7218876ead957d796ef364f1e1478442e\",\"facet\":\"visual\",\"kind\":\"browser\",\"oracleKey\":\"089b3f512dae8eec77be0d3b7275e597c8ebd978783a3da982184537955da45e\",\"ruleKey\":\"779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa\",\"version\":1,\"viewport\":{\"height\":640,\"width\":960}},\"route\":\"/\",\"verifierFingerprint\":\"e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8\"}],\"previousEventSha256\":null,\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"reproduction\":\"打开页面，展开菜单，核对布局及导航。\",\"requestFingerprint\":\"157b2a15f24552dc8670981428ecb5235a65793b32d0db9af39673d89d1da619\",\"revision\":0,\"severity\":\"high\",\"source\":{\"acceptedAt\":\"2026-10-18T04:59:42.026Z\",\"dispatchSha256\":\"d2b30407738fba13297d2291b259421078391c89f74d55955e6ea16926155764\",\"observationsSha256\":\"3e347d382eb9d968fa0654eab344935331d6d2414ccaeedf7f531812e923431b\",\"operationId\":\"bo-3bf4dffa-4c6e-4248-a38a-c37c37ebaf48\",\"recordedAt\":\"2026-10-18T04:59:57.686Z\",\"reportSha256\":\"8c79b8883c6546a673aeb4aff62fe1c4322c616efc7b3ff0a84f6376de043886\",\"targetReleaseId\":\"ar-4fdd2cb2-13a5-4342-a708-4d62ece4365e\"},\"ticketContractVersion\":1,\"ticketId\":\"dt-301d4d61-dacb-49c1-b341-f006cd786afe\",\"title\":\"菜单布局与展开行为的两个固定检查\"},\"replayed\":true}",
+    "bodySha256": "d64b7936cdee2c926712eb57d74ab1a62503fd2809c971d22a68485d36c80daa",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "recorded",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "ticketId": "dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+      "actionId": "da-6dc070fe-8117-41a2-b422-c760b81255eb",
+      "requestFingerprint": "157b2a15f24552dc8670981428ecb5235a65793b32d0db9af39673d89d1da619",
+      "eventSha256": "93f76908bd1f29a1f7188fcf7f00648a644f309084c8ade1d9c2242aacf43a7f",
+      "event": {
+        "actionId": "da-6dc070fe-8117-41a2-b422-c760b81255eb",
+        "actor": {
+          "kind": "local-operator"
+        },
+        "candidateId": "bc-48e851a8-60ef-44d8-8a59-a3b85925199a",
+        "contentDigest": "2554f99ed7ce3f2cd4fc503b3f25866b8d649b36d01d19c9aad452994942aadf",
+        "createdAt": "2026-10-18T05:00:06.869Z",
+        "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+        "kind": "create",
+        "memberSetDigest": "424c7b2730bf2e491e5ed973cf8c4b0d3fdd8ac417e0872634d8ea872cdc5021",
+        "members": [
+          {
+            "bugId": "bug-b5ec729770c149553d191f71a84a3c4dabd00e464cb4f63d421f1a61795b332b",
+            "checkId": "route-1-1-desktop-point-1-menu",
+            "evidence": [
+              {
+                "bytes": 2019,
+                "file": "source-route-1-1-desktop-point-1-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "fc78bc21188c1a16c2fc88b3b6cc576f6545c066f4d3e19fe019e6053f997aa4"
+              },
+              {
+                "bytes": 20876,
+                "file": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+              },
+              {
+                "bytes": 20876,
+                "file": "source-route-1-1-desktop-point-1-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+              },
+              {
+                "bytes": 1976,
+                "file": "route-1-1-desktop-point-1-target.json",
+                "role": "targetDetails",
+                "sha256": "9dc33c4478341786c39d429256c7d6b27e1fa1b16aac13958b770cbdf9a30b5a"
+              },
+              {
+                "bytes": 19525,
+                "file": "route-1-1-desktop-point-1-target-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+              },
+              {
+                "bytes": 19525,
+                "file": "route-1-1-desktop-point-1-target.png",
+                "role": "targetScreenshot",
+                "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+              }
+            ],
+            "identity": {
+              "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+              "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+              "environmentKey": "e663ea4f9640c3be702129922e74e2e7218876ead957d796ef364f1e1478442e",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "d7ccf85dace20463eaa1b8bda39bd70515ef8672f7736bd8bc2f9adcaddc5119",
+              "pointId": "menu",
+              "ruleKey": "345e3c732d7cbff13bb8407aa0e60e6b17c917803f530dced2b151d80f0b104d",
+              "version": 1,
+              "viewport": {
+                "height": 640,
+                "width": 960
+              }
+            },
+            "route": "/",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          },
+          {
+            "bugId": "bug-df0a3318ac57cb56924977010e81cfa40177d10c217113bdb27b48109607bb2a",
+            "checkId": "route-1-1-desktop-visual",
+            "evidence": [
+              {
+                "bytes": 1499,
+                "file": "source-route-1-1-desktop-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "b3eff1b5e6d51fc875ab3bdf42d7ef4066048847f0a804d8df409007d6ef1b3a"
+              },
+              {
+                "bytes": 18640,
+                "file": "source-route-1-1-desktop-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+              },
+              {
+                "bytes": 18640,
+                "file": "source-route-1-1-desktop-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+              },
+              {
+                "bytes": 18900,
+                "file": "route-1-1-desktop-diff.png",
+                "role": "diff",
+                "sha256": "e3488c5926cc334dd8478f6e7473191725c9bf350e317d85d28a2c0306a21b78"
+              },
+              {
+                "bytes": 1451,
+                "file": "route-1-1-desktop-target.json",
+                "role": "targetDetails",
+                "sha256": "4c1e695a56fd51f780fcc95c4d2750a7011d5aa643ca6a7ac0cc6ea500f82e6e"
+              },
+              {
+                "bytes": 18733,
+                "file": "route-1-1-desktop-target-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+              },
+              {
+                "bytes": 18733,
+                "file": "route-1-1-desktop-target.png",
+                "role": "targetScreenshot",
+                "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+              }
+            ],
+            "identity": {
+              "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+              "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+              "environmentKey": "e663ea4f9640c3be702129922e74e2e7218876ead957d796ef364f1e1478442e",
+              "facet": "visual",
+              "kind": "browser",
+              "oracleKey": "089b3f512dae8eec77be0d3b7275e597c8ebd978783a3da982184537955da45e",
+              "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+              "version": 1,
+              "viewport": {
+                "height": 640,
+                "width": 960
+              }
+            },
+            "route": "/",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          }
+        ],
+        "previousEventSha256": null,
+        "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+        "reproduction": "打开页面，展开菜单，核对布局及导航。",
+        "requestFingerprint": "157b2a15f24552dc8670981428ecb5235a65793b32d0db9af39673d89d1da619",
+        "revision": 0,
+        "severity": "high",
+        "source": {
+          "acceptedAt": "2026-10-18T04:59:42.026Z",
+          "dispatchSha256": "d2b30407738fba13297d2291b259421078391c89f74d55955e6ea16926155764",
+          "observationsSha256": "3e347d382eb9d968fa0654eab344935331d6d2414ccaeedf7f531812e923431b",
+          "operationId": "bo-3bf4dffa-4c6e-4248-a38a-c37c37ebaf48",
+          "recordedAt": "2026-10-18T04:59:57.686Z",
+          "reportSha256": "8c79b8883c6546a673aeb4aff62fe1c4322c616efc7b3ff0a84f6376de043886",
+          "targetReleaseId": "ar-4fdd2cb2-13a5-4342-a708-4d62ece4365e"
+        },
+        "ticketContractVersion": 1,
+        "ticketId": "dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+        "title": "菜单布局与展开行为的两个固定检查"
+      },
+      "replayed": true
+    }
+  },
+  {
+    "requestId": "ui-59ef88b2-16e3-4e1f-99b2-6454cd486f85",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e91f6619-66cd-4f85-abcc-94bea1a62585",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-49ce2d6f-6fcc-4f5f-a1fe-72ac8cdcb980",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-9be0c345-4b76-48f9-8e73-e7cea94fe119",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-eff4a3f8-b4ff-45d1-8041-1b09802aebae",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-d7679f4a-1bc0-4057-bc15-c6b15f9d68b4",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-09c8dab6-28ef-4b00-965f-c59b890d48b1",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-d847a429-229c-4fff-aed4-56c1e650334d",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e6c51415-3eef-4980-bc56-2321254bd058",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-8e0852f3-8d5e-4bc0-be0e-14cd5c04977a",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-328433b1-0ce3-4da4-87fd-16053a1c4684",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-ec56b2b6-bd29-4875-a3af-2df92c7cc743",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e275bd25-9210-467a-9990-5ba1c228fc3e",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-d5eec124-4d11-44ad-beae-bdff243ef535",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-bf06d16d-d79a-4c75-8ee2-24f7a6ca4eda",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f5815fdc-8ad0-4c4c-9035-24cd2db7ef62",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-3b30d179-11ef-4588-9670-b851f0ebb0f4",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-6d1fd6e1-04ca-4708-836b-6ed67991f7dc",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f3257ab2-49ec-4565-a466-0e3d498c9344",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-81626789-caa5-4781-b8de-5a3081a46c26",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-87f2274d-165d-4d48-b93b-33adc6379044",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-ffb2c91d-eb8d-44a6-b4a7-b49bf8968ee2",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-8cb8e6a8-8131-43a4-8c79-34218b37dc1e",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-574aa74f-5d37-430b-b767-27a10533d29d",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/dt-301d4d61-dacb-49c1-b341-f006cd786afe/close-preview",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-c27a6cdd-631f-44f8-bb3c-987e1cc3532e",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e44d9dd0-342b-4557-990c-619e40a0fff8",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-bc219903-fcd8-4063-bff0-7b12a655f871",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e9b2b582-288d-4788-b04b-d51acf4bdd6e",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-04c37fc0-9ea9-44b6-955d-089dda8deda7",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-24363eeb-13ac-41ea-a336-dffd40db6c96",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-d63af392-917f-4976-af8b-d55c3764a627",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-0eac96f7-e62e-4f52-8f85-3d066ecb2e81",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-8a859e88-2efd-44a2-9b73-e1de1e9ead7e",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/dt-301d4d61-dacb-49c1-b341-f006cd786afe/close",
+    "method": "POST",
+    "status": 502,
+    "rawBody": "{\"code\":\"D6_CONTROLLED_HTTP_502\",\"error\":\"Controlled relay response; original action remains unknown.\",\"outcomeUnknown\":true}",
+    "bodySha256": "897d30837e78193624667d933a5c0df9b1400512cf35cefed81f6fa5076c1472",
+    "payload": {
+      "code": "D6_CONTROLLED_HTTP_502",
+      "error": "Controlled relay response; original action remains unknown.",
+      "outcomeUnknown": true
+    }
+  },
+  {
+    "requestId": "ui-756fb6d1-f747-4c61-b680-59fde186a67c",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-46fcebde-3865-4dee-8fb9-711ff6ba822b",
+    "method": "GET",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"actionId\":\"da-46fcebde-3865-4dee-8fb9-711ff6ba822b\",\"outcome\":\"unresolved\",\"reason\":\"ABSENCE_IS_NOT_A_COMMIT_DECISION\"}",
+    "bodySha256": "c0042a529bfeeb1855ce836dcf4500a297f27896d1136a85f9b39d08daf82f85",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "actionId": "da-46fcebde-3865-4dee-8fb9-711ff6ba822b",
+      "outcome": "unresolved",
+      "reason": "ABSENCE_IS_NOT_A_COMMIT_DECISION"
+    }
+  },
+  {
+    "requestId": "ui-5954d29d-63c1-4785-80be-d4772b9ab541",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-46fcebde-3865-4dee-8fb9-711ff6ba822b",
+    "method": "GET",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"actionId\":\"da-46fcebde-3865-4dee-8fb9-711ff6ba822b\",\"outcome\":\"unresolved\",\"reason\":\"ABSENCE_IS_NOT_A_COMMIT_DECISION\"}",
+    "bodySha256": "c0042a529bfeeb1855ce836dcf4500a297f27896d1136a85f9b39d08daf82f85",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "actionId": "da-46fcebde-3865-4dee-8fb9-711ff6ba822b",
+      "outcome": "unresolved",
+      "reason": "ABSENCE_IS_NOT_A_COMMIT_DECISION"
+    }
+  },
+  {
+    "requestId": "ui-3a5ff55c-9e11-4566-8f52-41b3a11373eb",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-46fcebde-3865-4dee-8fb9-711ff6ba822b/deny",
+    "method": "POST",
+    "status": 201,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"outcome\":\"rejected\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"ticketId\":\"dt-301d4d61-dacb-49c1-b341-f006cd786afe\",\"actionId\":\"da-46fcebde-3865-4dee-8fb9-711ff6ba822b\",\"requestFingerprint\":\"094ffb22ab31c3468c7ac4c71862c486ac34549414bd405172b3d4eef906591e\",\"rejectionSha256\":\"82a5ddb1a7fd8e390f5abc729aac95738054d3ea258fdc1f377dcf6fafcfe74f\",\"rejection\":{\"actionDecisionVersion\":1,\"actor\":{\"kind\":\"local-operator\"},\"decidedAt\":\"2026-10-18T05:01:01.567Z\",\"effect\":\"deny-late-manual-defect-ticket-action\",\"kind\":\"manual-defect-ticket-action-rejection\",\"original\":{\"actionId\":\"da-46fcebde-3865-4dee-8fb9-711ff6ba822b\",\"kind\":\"close\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"request\":{\"actionId\":\"da-46fcebde-3865-4dee-8fb9-711ff6ba822b\",\"afterOperationId\":\"bo-b7af664e-0412-478b-b92b-6e6cb7390d85\",\"confirmed\":true,\"expectedHeadSha256\":\"93f76908bd1f29a1f7188fcf7f00648a644f309084c8ade1d9c2242aacf43a7f\",\"expectedRevision\":0,\"factsDigest\":\"637bb3a00337f2c6c8aa67f77ba0a69fcf2f7abdc054eb67fea1b992db0da67e\",\"memberSetDigest\":\"424c7b2730bf2e491e5ed973cf8c4b0d3fdd8ac417e0872634d8ea872cdc5021\",\"previewDigest\":\"dd0f235af9f2f03175a65b322270871b66fad4aebdc3268d0c7e3b171c3f638c\",\"resolution\":\"两项固定检查在同一次健康目标复验中通过。\"},\"requestFingerprint\":\"094ffb22ab31c3468c7ac4c71862c486ac34549414bd405172b3d4eef906591e\",\"ticketId\":\"dt-301d4d61-dacb-49c1-b341-f006cd786afe\",\"version\":1}},\"replayed\":false}",
+    "bodySha256": "34223cbbf88c0ddc31f236152a1f9d842f575e548efbea530d28f91c1584299d",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "rejected",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "ticketId": "dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+      "actionId": "da-46fcebde-3865-4dee-8fb9-711ff6ba822b",
+      "requestFingerprint": "094ffb22ab31c3468c7ac4c71862c486ac34549414bd405172b3d4eef906591e",
+      "rejectionSha256": "82a5ddb1a7fd8e390f5abc729aac95738054d3ea258fdc1f377dcf6fafcfe74f",
+      "rejection": {
+        "actionDecisionVersion": 1,
+        "actor": {
+          "kind": "local-operator"
+        },
+        "decidedAt": "2026-10-18T05:01:01.567Z",
+        "effect": "deny-late-manual-defect-ticket-action",
+        "kind": "manual-defect-ticket-action-rejection",
+        "original": {
+          "actionId": "da-46fcebde-3865-4dee-8fb9-711ff6ba822b",
+          "kind": "close",
+          "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+          "request": {
+            "actionId": "da-46fcebde-3865-4dee-8fb9-711ff6ba822b",
+            "afterOperationId": "bo-b7af664e-0412-478b-b92b-6e6cb7390d85",
+            "confirmed": true,
+            "expectedHeadSha256": "93f76908bd1f29a1f7188fcf7f00648a644f309084c8ade1d9c2242aacf43a7f",
+            "expectedRevision": 0,
+            "factsDigest": "637bb3a00337f2c6c8aa67f77ba0a69fcf2f7abdc054eb67fea1b992db0da67e",
+            "memberSetDigest": "424c7b2730bf2e491e5ed973cf8c4b0d3fdd8ac417e0872634d8ea872cdc5021",
+            "previewDigest": "dd0f235af9f2f03175a65b322270871b66fad4aebdc3268d0c7e3b171c3f638c",
+            "resolution": "两项固定检查在同一次健康目标复验中通过。"
+          },
+          "requestFingerprint": "094ffb22ab31c3468c7ac4c71862c486ac34549414bd405172b3d4eef906591e",
+          "ticketId": "dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+          "version": 1
+        }
+      },
+      "replayed": false
+    }
+  },
+  {
+    "requestId": "ui-26f864c6-896c-42b9-99c2-6225b643a4cd",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-90f88269-b3e3-4bb4-99fb-f1db34b7f73a",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-b844f9c8-b9ae-4987-84d7-cbc548dedf86",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-174f4fae-ba03-4b93-9d5e-47017dacd906",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-d961f9bb-a5fa-42ab-9937-d58bdaa0ca07",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-7a21f7c0-f0b4-47f8-aa19-5041912505ed",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f379210c-db07-47d6-9a3a-ab9b9a3c5093",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-4662e74f-7d2d-4173-903c-7ccffc02e944",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/dt-301d4d61-dacb-49c1-b341-f006cd786afe/close-preview",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-19ba40c2-f85f-421d-82d6-e07e09dab705",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-99dd79f3-3044-4e4e-a638-3eabbfeae1e8",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f5cd4371-d6ab-4844-ac15-277f53d0df65",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-8737475f-28e8-414b-8a70-ebca6c6cf423",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-19c9d79c-3ffb-4ff0-99a0-c56f7cb35182",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-6e270d93-7bde-4b81-a3e1-38f970068fc7",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-5209ac82-ec45-48b5-be78-ddde966dda43",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/dt-301d4d61-dacb-49c1-b341-f006cd786afe/close",
+    "method": "POST",
+    "status": 502,
+    "rawBody": "{\"code\":\"D6_CONTROLLED_HTTP_502\",\"error\":\"Controlled relay response; original action remains unknown.\",\"outcomeUnknown\":true}",
+    "bodySha256": "897d30837e78193624667d933a5c0df9b1400512cf35cefed81f6fa5076c1472",
+    "payload": {
+      "code": "D6_CONTROLLED_HTTP_502",
+      "error": "Controlled relay response; original action remains unknown.",
+      "outcomeUnknown": true
+    }
+  },
+  {
+    "requestId": "ui-4c65e41b-a74f-48f4-8124-0c357578baf0",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4",
+    "method": "GET",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"actionId\":\"da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4\",\"outcome\":\"unresolved\",\"reason\":\"ABSENCE_IS_NOT_A_COMMIT_DECISION\"}",
+    "bodySha256": "aafa5c507675cf818e1807dfb7af0c7297a6fe46aa585b7b89942f4372058aef",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "actionId": "da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4",
+      "outcome": "unresolved",
+      "reason": "ABSENCE_IS_NOT_A_COMMIT_DECISION"
+    }
+  },
+  {
+    "requestId": "ui-6ed40782-c253-495d-8686-d0c5a365b65b",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4",
+    "method": "GET",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"actionId\":\"da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4\",\"outcome\":\"unresolved\",\"reason\":\"ABSENCE_IS_NOT_A_COMMIT_DECISION\"}",
+    "bodySha256": "aafa5c507675cf818e1807dfb7af0c7297a6fe46aa585b7b89942f4372058aef",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "actionId": "da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4",
+      "outcome": "unresolved",
+      "reason": "ABSENCE_IS_NOT_A_COMMIT_DECISION"
+    }
+  },
+  {
+    "requestId": "ui-e56b0955-b2da-4afe-8210-dbe2237ad983",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-a0d2d251-1c19-4c4e-9905-9e3ca62b59b5",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-21234a65-1823-452b-b48c-2cb2f42c7035",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/actions/da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4/deny",
+    "method": "POST",
+    "status": 200,
+    "rawBody": "{\"schemaVersion\":1,\"kind\":\"manual-defect-ticket-action\",\"outcome\":\"recorded\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"ticketId\":\"dt-301d4d61-dacb-49c1-b341-f006cd786afe\",\"actionId\":\"da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4\",\"requestFingerprint\":\"5ccda1253f72846948b21c447d93c776fe7520de2247db01b119c480dca0be3e\",\"eventSha256\":\"c6824dc78b7cc2e3527127ca6749cd584d6f1ee091cd3db000e741b43852754b\",\"event\":{\"actionId\":\"da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4\",\"actor\":{\"kind\":\"local-operator\"},\"after\":{\"acceptedAt\":\"2026-10-18T05:00:17.209Z\",\"dispatchSha256\":\"98c45d5e901e460bd3064a054fe3e9d44838d8879153cfec60b53577dbfba378\",\"observationsSha256\":\"2edc390afb4a89b2cc0a4a1c5e859e185ca3239b8a419dcfed9be1201da44bc8\",\"operationId\":\"bo-b7af664e-0412-478b-b92b-6e6cb7390d85\",\"recordedAt\":\"2026-10-18T05:00:34.666Z\",\"reportSha256\":\"625775763f7a9e2299a16f3ca683bc2d13d51d64b9fc47c90e5ab2ab3dc0f38a\",\"targetReleaseId\":\"ar-faf7251d-4a3a-45f4-8c7a-280f6875f12e\"},\"candidateId\":\"bc-48e851a8-60ef-44d8-8a59-a3b85925199a\",\"confirmed\":true,\"contentDigest\":\"2554f99ed7ce3f2cd4fc503b3f25866b8d649b36d01d19c9aad452994942aadf\",\"createdAt\":\"2026-10-18T05:01:27.862Z\",\"factsDigest\":\"637bb3a00337f2c6c8aa67f77ba0a69fcf2f7abdc054eb67fea1b992db0da67e\",\"kind\":\"close\",\"memberSetDigest\":\"424c7b2730bf2e491e5ed973cf8c4b0d3fdd8ac417e0872634d8ea872cdc5021\",\"previewDigest\":\"dd0f235af9f2f03175a65b322270871b66fad4aebdc3268d0c7e3b171c3f638c\",\"previousEventSha256\":\"93f76908bd1f29a1f7188fcf7f00648a644f309084c8ade1d9c2242aacf43a7f\",\"projectId\":\"ap-42b5a274-4ef5-42a6-a829-60509c03cf40\",\"requestFingerprint\":\"5ccda1253f72846948b21c447d93c776fe7520de2247db01b119c480dca0be3e\",\"resolution\":\"两项固定检查在同一次健康目标复验中通过。\",\"results\":[{\"afterCheckId\":\"route-1-1-desktop-point-1-menu\",\"bugId\":\"bug-b5ec729770c149553d191f71a84a3c4dabd00e464cb4f63d421f1a61795b332b\",\"relation\":\"verified_passed\",\"sourceCheckId\":\"route-1-1-desktop-point-1-menu\"},{\"afterCheckId\":\"route-1-1-desktop-visual\",\"bugId\":\"bug-df0a3318ac57cb56924977010e81cfa40177d10c217113bdb27b48109607bb2a\",\"relation\":\"verified_passed\",\"sourceCheckId\":\"route-1-1-desktop-visual\"}],\"revision\":1,\"ticketContractVersion\":1,\"ticketId\":\"dt-301d4d61-dacb-49c1-b341-f006cd786afe\"},\"replayed\":true}",
+    "bodySha256": "1b4076d1baf5af8d4572346a313b33c558a40084ebfcb666e897a23c658228d7",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "recorded",
+      "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+      "ticketId": "dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+      "actionId": "da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4",
+      "requestFingerprint": "5ccda1253f72846948b21c447d93c776fe7520de2247db01b119c480dca0be3e",
+      "eventSha256": "c6824dc78b7cc2e3527127ca6749cd584d6f1ee091cd3db000e741b43852754b",
+      "event": {
+        "actionId": "da-4f68b2ea-1e2a-434a-9e66-9dab09ecc0a4",
+        "actor": {
+          "kind": "local-operator"
+        },
+        "after": {
+          "acceptedAt": "2026-10-18T05:00:17.209Z",
+          "dispatchSha256": "98c45d5e901e460bd3064a054fe3e9d44838d8879153cfec60b53577dbfba378",
+          "observationsSha256": "2edc390afb4a89b2cc0a4a1c5e859e185ca3239b8a419dcfed9be1201da44bc8",
+          "operationId": "bo-b7af664e-0412-478b-b92b-6e6cb7390d85",
+          "recordedAt": "2026-10-18T05:00:34.666Z",
+          "reportSha256": "625775763f7a9e2299a16f3ca683bc2d13d51d64b9fc47c90e5ab2ab3dc0f38a",
+          "targetReleaseId": "ar-faf7251d-4a3a-45f4-8c7a-280f6875f12e"
+        },
+        "candidateId": "bc-48e851a8-60ef-44d8-8a59-a3b85925199a",
+        "confirmed": true,
+        "contentDigest": "2554f99ed7ce3f2cd4fc503b3f25866b8d649b36d01d19c9aad452994942aadf",
+        "createdAt": "2026-10-18T05:01:27.862Z",
+        "factsDigest": "637bb3a00337f2c6c8aa67f77ba0a69fcf2f7abdc054eb67fea1b992db0da67e",
+        "kind": "close",
+        "memberSetDigest": "424c7b2730bf2e491e5ed973cf8c4b0d3fdd8ac417e0872634d8ea872cdc5021",
+        "previewDigest": "dd0f235af9f2f03175a65b322270871b66fad4aebdc3268d0c7e3b171c3f638c",
+        "previousEventSha256": "93f76908bd1f29a1f7188fcf7f00648a644f309084c8ade1d9c2242aacf43a7f",
+        "projectId": "ap-42b5a274-4ef5-42a6-a829-60509c03cf40",
+        "requestFingerprint": "5ccda1253f72846948b21c447d93c776fe7520de2247db01b119c480dca0be3e",
+        "resolution": "两项固定检查在同一次健康目标复验中通过。",
+        "results": [
+          {
+            "afterCheckId": "route-1-1-desktop-point-1-menu",
+            "bugId": "bug-b5ec729770c149553d191f71a84a3c4dabd00e464cb4f63d421f1a61795b332b",
+            "relation": "verified_passed",
+            "sourceCheckId": "route-1-1-desktop-point-1-menu"
+          },
+          {
+            "afterCheckId": "route-1-1-desktop-visual",
+            "bugId": "bug-df0a3318ac57cb56924977010e81cfa40177d10c217113bdb27b48109607bb2a",
+            "relation": "verified_passed",
+            "sourceCheckId": "route-1-1-desktop-visual"
+          }
+        ],
+        "revision": 1,
+        "ticketContractVersion": 1,
+        "ticketId": "dt-301d4d61-dacb-49c1-b341-f006cd786afe"
+      },
+      "replayed": true
+    }
+  },
+  {
+    "requestId": "ui-a1b69c16-96ad-42dd-ad56-f59990906b5b",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-d45e0dca-5d26-407a-b577-268471f7bb10",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-db92a44c-8a5f-4397-99ec-a7096fc6c994",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-ddbdec63-ac3e-4de0-a833-e270c3b93624",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/projects/ap-42b5a274-4ef5-42a6-a829-60509c03cf40/defect-tickets/dt-301d4d61-dacb-49c1-b341-f006cd786afe",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-c7758a2c-4fb3-4a6d-9804-0f94fabb559b",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f843913c-0227-423c-ba1e-5e47e5f9a085",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-bff80508-6b66-4797-beb1-4a442c28efd6",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-4c69cc28-8e1c-46ed-881f-bd725e6bfdc5",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f6f16da3-0fe8-4e21-af38-0e7ed6d4661a",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-a4b8d875-467f-4896-b5f2-eea11cf46cf4",
+    "origin": "http://127.0.0.1:62990",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  }
+]

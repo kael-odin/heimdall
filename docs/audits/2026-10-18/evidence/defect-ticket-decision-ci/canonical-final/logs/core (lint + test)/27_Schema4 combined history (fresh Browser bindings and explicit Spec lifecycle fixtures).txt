@@ -1,0 +1,34 @@
+﻿2026-10-18T04:51:33.7151839Z ##[group]Run pnpm acceptance:browser:bindings:v4:smoke
+2026-10-18T04:51:33.7152552Z [36;1mpnpm acceptance:browser:bindings:v4:smoke[0m
+2026-10-18T04:51:33.7217227Z shell: /usr/bin/bash -e {0}
+2026-10-18T04:51:33.7217797Z env:
+2026-10-18T04:51:33.7218074Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T04:51:33.7218413Z ##[endgroup]
+2026-10-18T04:51:34.7902142Z $ node scripts/smoke-acceptance-browser-bindings-console.mjs --migrate-catalog
+2026-10-18T04:51:35.3124981Z {"event":"started","startedAt":"2026-10-18T04:51:35.311Z","outputDirectory":"/home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-bindings-console-smoke-a148655e-eb17-435a-ab07-9fc623a84ef9"}
+2026-10-18T04:52:13.4528388Z {
+2026-10-18T04:52:13.4704909Z   "status": "passed",
+2026-10-18T04:52:13.4728247Z   "checkCount": 19,
+2026-10-18T04:52:13.4810680Z   "checks": {
+2026-10-18T04:52:13.4883262Z     "freshMirrorAndRegressionWorkersPreserveFailedComparison": true,
+2026-10-18T04:52:13.4918767Z     "noImplicitSideAndNoAutomaticBinding": true,
+2026-10-18T04:52:13.4921515Z     "changingSideRequiresFreshConfirmation": true,
+2026-10-18T04:52:13.4922653Z     "nativeBaselineBindingAndSelectedSideReviewAreSafe": true,
+2026-10-18T04:52:13.4923912Z     "sameLengthCorruptEvidenceCannotBecomeBlobOrImage": true,
+2026-10-18T04:52:13.4925957Z     "selectedSideAllThreeEvidenceRolesOpenThroughAuthenticatedBlob": true,
+2026-10-18T04:52:13.4928106Z     "targetRemainsCompatibleWithLegacyAndBaselineIndependent": true,
+2026-10-18T04:52:13.4929372Z     "projectABACannotRestoreLatePreview": true,
+2026-10-18T04:52:13.4930487Z     "lostPostReconcilesStoredHistoryWithoutReplay": true,
+2026-10-18T04:52:13.4937666Z     "changedSourceRetainsHistoryAndReadNeverWrites": true,
+2026-10-18T04:52:13.4938712Z     "desktopAndBothMobileThemesHaveNoHorizontalOverflow": true,
+2026-10-18T04:52:13.4939898Z     "closingOrChangingReviewRevokesVerifiedBlobUrls": true,
+2026-10-18T04:52:13.4941201Z     "pageIdentityNonblankOverlayAndConsoleHealthy": true,
+2026-10-18T04:52:13.4942488Z     "noNewRunNoTargetRequestAndOriginalBytesPreserved": true,
+2026-10-18T04:52:13.4943796Z     "explicitSchema4MigrationPreservesCombinedSpecAndBrowserHistory": true,
+2026-10-18T04:52:13.4945022Z     "schema4MaintenanceHasZeroSourceOrDispatchReads": true,
+2026-10-18T04:52:13.4946439Z     "schema4RestartAndReviewPreserveEveryFileByteAndStat": true,
+2026-10-18T04:52:13.4948183Z     "schema4ReviewHasZeroAdditionalResourceErrorsAndNoApprovalAuthority": true,
+2026-10-18T04:52:13.4949559Z     "schema4NativeBrowserReviewAndSpecCurrentSelectionRemainReadable": true
+2026-10-18T04:52:13.4950541Z   },
+2026-10-18T04:52:13.4952426Z   "outputDirectory": "/home/runner/work/heimdall/heimdall/core/workspace/_runs/browser-bindings-console-smoke-a148655e-eb17-435a-ab07-9fc623a84ef9"
+2026-10-18T04:52:13.4953679Z }

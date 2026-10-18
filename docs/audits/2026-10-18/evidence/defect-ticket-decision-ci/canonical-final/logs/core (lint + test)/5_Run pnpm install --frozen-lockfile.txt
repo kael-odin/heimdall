@@ -1,0 +1,25 @@
+﻿2026-10-18T04:16:45.9608666Z ##[group]Run pnpm install --frozen-lockfile
+2026-10-18T04:16:45.9609116Z [36;1mpnpm install --frozen-lockfile[0m
+2026-10-18T04:16:45.9863703Z shell: /usr/bin/bash -e {0}
+2026-10-18T04:16:45.9864022Z env:
+2026-10-18T04:16:45.9864310Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T04:16:45.9864664Z ##[endgroup]
+2026-10-18T04:16:47.3266551Z ? Verifying lockfile against supply-chain policies (91 entries)...
+2026-10-18T04:16:47.3456392Z Lockfile is up to date, resolution step is skipped
+2026-10-18T04:16:47.4756925Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-10-18T04:16:47.5007153Z Packages: +91
+2026-10-18T04:16:47.5008646Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-10-18T04:16:48.0869331Z Packages are hard linked from the content-addressable store to the virtual store.
+2026-10-18T04:16:48.0880527Z   Content-addressable store is at: /home/runner/setup-pnpm/node_modules/.bin/store/v11
+2026-10-18T04:16:48.0895293Z   Virtual store is at:             node_modules/.pnpm
+2026-10-18T04:16:48.2420465Z Progress: resolved 91, reused 91, downloaded 0, added 91, done
+2026-10-18T04:16:48.3988863Z ✓ Lockfile passes supply-chain policies (91 entries in 1s)
+2026-10-18T04:16:48.4301437Z 
+2026-10-18T04:16:48.4301940Z dependencies:
+2026-10-18T04:16:48.4302237Z + exceljs 4.4.0
+2026-10-18T04:16:48.4302481Z + parse5 8.0.1
+2026-10-18T04:16:48.4302736Z + pixelmatch 7.2.0
+2026-10-18T04:16:48.4303201Z + playwright 1.63.0
+2026-10-18T04:16:48.4303591Z + pngjs 7.0.0
+2026-10-18T04:16:48.4303792Z 
+2026-10-18T04:16:48.4418023Z Done in 1.8s using pnpm v11.28.2

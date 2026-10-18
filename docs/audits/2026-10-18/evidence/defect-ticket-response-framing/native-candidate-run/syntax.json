@@ -1,0 +1,14 @@
+{
+  "label": "syntax",
+  "argv": [
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-ci-artifact-supplement-20261018\\runtime\\extracted\\node-v22.23.3-win-x64\\node.exe",
+    "--check",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-response-body-readonly-review-20261018\\relay-framing-native-http-v2.test.mjs"
+  ],
+  "startedAt": "2026-10-18T04:59:13.521443+00:00",
+  "endedAt": "2026-10-18T04:59:13.575902+00:00",
+  "exitCode": 0,
+  "timedOut": false,
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

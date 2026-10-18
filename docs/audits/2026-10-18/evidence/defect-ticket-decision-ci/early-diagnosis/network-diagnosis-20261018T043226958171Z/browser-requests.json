@@ -1,0 +1,143 @@
+[
+  {
+    "id": "ui-a862d2d4-dd1e-480a-bafc-33a6051ec6f4",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:33961/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-cc79cf98-7857-412e-9b2e-b84fb9efc253",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/runs/ac-ec3785e6-18fe-4762-abc8-9e3a2726ff15",
+    "url": "http://127.0.0.1:33961/api/acceptance/runs/ac-ec3785e6-18fe-4762-abc8-9e3a2726ff15",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-5f84ac7c-e499-4aed-bcc4-f05949aaff05",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/runs/ac-ec3785e6-18fe-4762-abc8-9e3a2726ff15/report",
+    "url": "http://127.0.0.1:33961/api/acceptance/runs/ac-ec3785e6-18fe-4762-abc8-9e3a2726ff15/report",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-13499909-0658-4a5f-8967-5943a07b5c40",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/projects",
+    "url": "http://127.0.0.1:33961/api/acceptance/projects",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-493526a6-d60f-45ef-9299-3af1e3f8b25a",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577",
+    "url": "http://127.0.0.1:33961/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-648a3264-837c-4967-baf0-c24f3b948d39",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/browser-executions",
+    "url": "http://127.0.0.1:33961/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/browser-executions",
+    "finished": false,
+    "failed": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "id": "ui-714f5998-5ac7-4ad6-a536-31419be1d147",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:33961/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-6ff538fd-9322-43b3-ac49-a7c389c574ad",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/browser-executions",
+    "url": "http://127.0.0.1:33961/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/browser-executions",
+    "finished": false,
+    "failed": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "id": "ui-005e0166-5339-43cc-a781-28e2e830f318",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/browser-executions",
+    "url": "http://127.0.0.1:33961/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/browser-executions",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-6db2144e-c8b2-45de-8a0d-d623a525d594",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/defect-tickets",
+    "url": "http://127.0.0.1:33961/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/defect-tickets",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-ca1ac131-bb05-4fe5-8e14-d35fea798ccb",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/defect-tickets/sources",
+    "url": "http://127.0.0.1:33961/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/defect-tickets/sources?candidateId=bc-e41d7b1a-b84f-470e-b0f8-822450f44f45",
+    "finished": false,
+    "failed": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "id": "ui-7b42c9f2-0e5f-4144-a4b8-33089a396603",
+    "method": "POST",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/defect-tickets",
+    "url": "http://127.0.0.1:33961/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/defect-tickets",
+    "rawBody": "{\"actionId\":\"da-24c57ccf-074d-4577-8ded-3da4e45c6640\",\"description\":\"本机受控样例：固定来源、两项可靠失败、人工动作决定。\",\"memberCheckIds\":[\"route-1-1-desktop-point-1-menu\",\"route-1-1-desktop-visual\"],\"reproduction\":\"打开页面，展开菜单，核对布局及导航。\",\"severity\":\"high\",\"sourceOperationId\":\"bo-0e666a5c-3ac7-4fcc-af8c-7b11e6a55bcc\",\"ticketId\":\"dt-6d44a736-b759-42ad-9cd6-babd5abe604a\",\"title\":\"菜单布局与展开行为的两个固定检查\"}",
+    "bytes": 492,
+    "bodySha256": "773c7a40159dc455c991a62b65e29f90a09ba3eb835fbc6e7fbface5dd369a28",
+    "body": {
+      "actionId": "da-24c57ccf-074d-4577-8ded-3da4e45c6640",
+      "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+      "memberCheckIds": [
+        "route-1-1-desktop-point-1-menu",
+        "route-1-1-desktop-visual"
+      ],
+      "reproduction": "打开页面，展开菜单，核对布局及导航。",
+      "severity": "high",
+      "sourceOperationId": "bo-0e666a5c-3ac7-4fcc-af8c-7b11e6a55bcc",
+      "ticketId": "dt-6d44a736-b759-42ad-9cd6-babd5abe604a",
+      "title": "菜单布局与展开行为的两个固定检查"
+    },
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-64b76888-e4b6-4802-b56b-d834bfb71a15",
+    "method": "GET",
+    "origin": "http://127.0.0.1:33961",
+    "path": "/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/defect-tickets/actions/da-24c57ccf-074d-4577-8ded-3da4e45c6640",
+    "url": "http://127.0.0.1:33961/api/acceptance/projects/ap-18b95d8d-7edd-4170-a7fd-90359728d577/defect-tickets/actions/da-24c57ccf-074d-4577-8ded-3da4e45c6640",
+    "finished": false,
+    "failed": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  }
+]

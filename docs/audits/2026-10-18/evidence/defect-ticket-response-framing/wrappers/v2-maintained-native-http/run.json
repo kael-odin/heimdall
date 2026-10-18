@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "argv": [
+    "core/workspace/_runs/d6-ci-artifact-supplement-20261018/runtime/extracted/node-v22.23.3-win-x64/node.exe",
+    "--test",
+    "core/test/defect-ticket-decision-relay.test.mjs"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "explicitEnvironment": {
+    "HEIMDALL_FRAMING_TEST_OUT": "core/workspace/_runs/d6-implementation-20261018/framing-v2-maintained-http-artifacts-01"
+  },
+  "platform": "Windows-10-10.0.29667-SP0",
+  "startedAt": "2026-10-18T05:03:49.861845+00:00",
+  "exitCode": 0,
+  "endedAt": "2026-10-18T05:03:51.054701+00:00",
+  "durationSeconds": 1.1570000000065193,
+  "changedInputs": [],
+  "stdoutSha256": "99577a329ef5916d448a90d13fdfe80fe32062dc1a217eea0d0819152b983393",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

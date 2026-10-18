@@ -1,0 +1,23 @@
+{
+  "kind": "early-completed-job-diagnosis-not-full-ci-capture",
+  "headSha": "06e4303871d485a14b66d24318db80595a3db774",
+  "runId": 39096514869,
+  "attempt": 1,
+  "jobId": 117583999059,
+  "runStatusAtCapture": "in_progress",
+  "jobConclusion": "failure",
+  "identityMatches": true,
+  "failedSteps": [
+    {
+      "name": "Manual defect ticket decisions (four real UI races)",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 9,
+      "started_at": "2026-10-18T04:17:21Z",
+      "completed_at": "2026-10-18T04:17:50Z"
+    }
+  ],
+  "logBytes": 53689,
+  "logSha256": "e391385739b929d1fcfd9029b17b45d252cd3855e2715b7828671b8056f14438",
+  "directory": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-ci-20261018\\early-job-diagnosis-39096514869-117583999059-20261018T0420190270097Z"
+}

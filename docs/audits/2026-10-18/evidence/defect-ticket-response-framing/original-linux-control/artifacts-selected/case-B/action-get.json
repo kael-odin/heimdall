@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "kind": "manual-defect-ticket-action",
+  "outcome": "recorded",
+  "projectId": "ap-70895b21-5903-4408-b32b-418f9512c3c6",
+  "ticketId": "dt-af0ad344-cff8-4ad1-b707-ba902014f258",
+  "actionId": "da-cf737bee-14cc-4588-961e-96d0205e32d0",
+  "requestFingerprint": "1f464a4d80bd5fec6c7004461c860776338362a08d008e6e3e652a403ea23a31",
+  "eventSha256": "e433f9a9c9a9ef8e998555f27e0814bb6d36a48809aa04f26a6c155abbcf3e43",
+  "event": {
+    "actionId": "da-cf737bee-14cc-4588-961e-96d0205e32d0",
+    "actor": {
+      "kind": "local-operator"
+    },
+    "candidateId": "bc-e23099e4-ae1f-401f-b949-79e49b6bfa6d",
+    "contentDigest": "79f643d18e8607ce143d59dbf521d4a8d6f733d6c72775df5597842e90e4c22e",
+    "createdAt": "2026-10-18T04:45:25.419Z",
+    "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+    "kind": "create",
+    "memberSetDigest": "b9403fe4c462397903dd29ae134ef02bf4559e4271ba021f860ebe6894d85383",
+    "members": [
+      {
+        "bugId": "bug-afa1ece6c06b69da17f360c60da6f905b209376aafc21cada8db7515223b07c5",
+        "checkId": "route-1-1-desktop-point-1-menu",
+        "evidence": [
+          {
+            "bytes": 2019,
+            "file": "source-route-1-1-desktop-point-1-baseline.json",
+            "role": "baselineDetails",
+            "sha256": "5ae37a171097a5ad788f453e9a41c012071c35a61222f52ce690e007f647371f"
+          },
+          {
+            "bytes": 29333,
+            "file": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+            "role": "baselineRepeat",
+            "sha256": "120395230f0c5951e668deb6ecaccf8a46d1a549433c9458787ed01766a231a7"
+          },
+          {
+            "bytes": 29333,
+            "file": "source-route-1-1-desktop-point-1-baseline.png",
+            "role": "baselineScreenshot",
+            "sha256": "120395230f0c5951e668deb6ecaccf8a46d1a549433c9458787ed01766a231a7"
+          },
+          {
+            "bytes": 1976,
+            "file": "route-1-1-desktop-point-1-target.json",
+            "role": "targetDetails",
+            "sha256": "7916bef512c4ac12298121a4c14d58fa0f64ded189a7ecb6307c8d5da5198b9f"
+          },
+          {
+            "bytes": 27388,
+            "file": "route-1-1-desktop-point-1-target-repeat.png",
+            "role": "targetRepeat",
+            "sha256": "7f39be2d59fe792169eb14ee425962311dab936e19f7aa40b38f490ab63abfa4"
+          },
+          {
+            "bytes": 27388,
+            "file": "route-1-1-desktop-point-1-target.png",
+            "role": "targetScreenshot",
+            "sha256": "7f39be2d59fe792169eb14ee425962311dab936e19f7aa40b38f490ab63abfa4"
+          }
+        ],
+        "identity": {
+          "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+          "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+          "environmentKey": "dbd8b2cf559cd3512b80ca3f4175c5d4feecc0da1860e481be9a5da3278ad69a",
+          "facet": "behavior",
+          "kind": "browser",
+          "oracleKey": "abc49bca88e8b3741756d7264239230bfa424f83ff23ef0e7433dfd45967d190",
+          "pointId": "menu",
+          "ruleKey": "345e3c732d7cbff13bb8407aa0e60e6b17c917803f530dced2b151d80f0b104d",
+          "version": 1,
+          "viewport": {
+            "height": 640,
+            "width": 960
+          }
+        },
+        "route": "/",
+        "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+      },
+      {
+        "bugId": "bug-528fd958cdf44927347443992bf03652b34518e18e7552c2fc911cdc3281a603",
+        "checkId": "route-1-1-desktop-visual",
+        "evidence": [
+          {
+            "bytes": 1499,
+            "file": "source-route-1-1-desktop-baseline.json",
+            "role": "baselineDetails",
+            "sha256": "88b8e10381503718ff8a29cc9e6b29e657013c6e3c564f05509a8c3ccc1c3063"
+          },
+          {
+            "bytes": 25312,
+            "file": "source-route-1-1-desktop-baseline-repeat.png",
+            "role": "baselineRepeat",
+            "sha256": "4d46bebdda0f4b2480874bafd22236aac11feecde50279347e98e1c37591c11a"
+          },
+          {
+            "bytes": 25312,
+            "file": "source-route-1-1-desktop-baseline.png",
+            "role": "baselineScreenshot",
+            "sha256": "4d46bebdda0f4b2480874bafd22236aac11feecde50279347e98e1c37591c11a"
+          },
+          {
+            "bytes": 20562,
+            "file": "route-1-1-desktop-diff.png",
+            "role": "diff",
+            "sha256": "0f2943f6bfd6a034660dd563cb77f4601c9dd216f9bccbc672029c702b8f29cf"
+          },
+          {
+            "bytes": 1451,
+            "file": "route-1-1-desktop-target.json",
+            "role": "targetDetails",
+            "sha256": "e38b06eb6c167973760bbcdbafa3ee99e01255dbe06535017061e7110b546e63"
+          },
+          {
+            "bytes": 25805,
+            "file": "route-1-1-desktop-target-repeat.png",
+            "role": "targetRepeat",
+            "sha256": "2bc6f060da96bbd4a84208bf3fb6171b60835d859c27fd6a137bb9445d18dfb7"
+          },
+          {
+            "bytes": 25805,
+            "file": "route-1-1-desktop-target.png",
+            "role": "targetScreenshot",
+            "sha256": "2bc6f060da96bbd4a84208bf3fb6171b60835d859c27fd6a137bb9445d18dfb7"
+          }
+        ],
+        "identity": {
+          "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+          "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+          "environmentKey": "dbd8b2cf559cd3512b80ca3f4175c5d4feecc0da1860e481be9a5da3278ad69a",
+          "facet": "visual",
+          "kind": "browser",
+          "oracleKey": "42fe7dddb34690104702d442db3c5975036f2e92de69e48616d2864b733212b5",
+          "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+          "version": 1,
+          "viewport": {
+            "height": 640,
+            "width": 960
+          }
+        },
+        "route": "/",
+        "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+      }
+    ],
+    "previousEventSha256": null,
+    "projectId": "ap-70895b21-5903-4408-b32b-418f9512c3c6",
+    "reproduction": "打开页面，展开菜单，核对布局及导航。",
+    "requestFingerprint": "1f464a4d80bd5fec6c7004461c860776338362a08d008e6e3e652a403ea23a31",
+    "revision": 0,
+    "severity": "high",
+    "source": {
+      "acceptedAt": "2026-10-18T04:45:17.572Z",
+      "dispatchSha256": "8a977d8c8f68197c35024dda77b560a6bf3b0e2109fdb301121faa96e7d9fdec",
+      "observationsSha256": "88eed62b17203028c6573adc3e99544708189bf7644efe6e33c58a4f0d4a9fd8",
+      "operationId": "bo-30e2d8e8-5287-42cc-9c8b-d9a25f2a772e",
+      "recordedAt": "2026-10-18T04:45:21.609Z",
+      "reportSha256": "188e5176988a81eab46008d30a5c0d579fc83a9aa20e1fbd8d1ad467d0b45aca",
+      "targetReleaseId": "ar-278d8fbe-a32a-475e-8cf5-8cafc52f125a"
+    },
+    "ticketContractVersion": 1,
+    "ticketId": "dt-af0ad344-cff8-4ad1-b707-ba902014f258",
+    "title": "菜单布局与展开行为的两个固定检查"
+  }
+}

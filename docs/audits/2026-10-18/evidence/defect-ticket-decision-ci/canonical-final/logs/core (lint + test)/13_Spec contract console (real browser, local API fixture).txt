@@ -1,0 +1,45 @@
+﻿2026-10-18T04:47:20.8885052Z ##[group]Run pnpm acceptance:spec:smoke
+2026-10-18T04:47:20.8885446Z [36;1mpnpm acceptance:spec:smoke[0m
+2026-10-18T04:47:20.8948221Z shell: /usr/bin/bash -e {0}
+2026-10-18T04:47:20.8948498Z env:
+2026-10-18T04:47:20.8948765Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T04:47:20.8949118Z ##[endgroup]
+2026-10-18T04:47:21.9778903Z $ node scripts/smoke-acceptance-spec-console.mjs
+2026-10-18T04:47:29.7340190Z {
+2026-10-18T04:47:29.7341057Z   "status": "passed",
+2026-10-18T04:47:29.7342079Z   "evidenceLevel": "offline-reproduced",
+2026-10-18T04:47:29.7343660Z   "scope": "本地API夹具，真实控制台→明确批准→Spec worker→JSON证据/报告→刷新恢复。未调用生产API或模型。",
+2026-10-18T04:47:29.7344607Z   "runIds": [
+2026-10-18T04:47:29.7345353Z     "ac-344ac4ea-6268-4cae-b4ec-d6e097634639",
+2026-10-18T04:47:29.7346297Z     "ac-aa713715-7206-40dd-aea4-42d47989e808"
+2026-10-18T04:47:29.7347100Z   ],
+2026-10-18T04:47:29.7348047Z   "gates": [
+2026-10-18T04:47:29.7348681Z     "failed",
+2026-10-18T04:47:29.7349297Z     "failed"
+2026-10-18T04:47:29.7350006Z   ],
+2026-10-18T04:47:29.7350598Z   "checks": {
+2026-10-18T04:47:29.7351246Z     "manualUiCreate": true,
+2026-10-18T04:47:29.7351975Z     "explicitApproval": true,
+2026-10-18T04:47:29.7352757Z     "editsRevokeApproval": true,
+2026-10-18T04:47:29.7353668Z     "openApiPreviewWithoutRequests": true,
+2026-10-18T04:47:29.7354539Z     "importRequiresApproval": true,
+2026-10-18T04:47:29.7355374Z     "omissionsStayBlocked": true,
+2026-10-18T04:47:29.7356188Z     "sourceFingerprint": true,
+2026-10-18T04:47:29.7357005Z     "sourceDocumentEvidence": true,
+2026-10-18T04:47:29.7358121Z     "sourceDocumentHashVerified": true,
+2026-10-18T04:47:29.7358980Z     "sourceDraftRestored": true,
+2026-10-18T04:47:29.7359774Z     "apiContractFailure": true,
+2026-10-18T04:47:29.7360590Z     "authenticatedJsonEvidence": true,
+2026-10-18T04:47:29.7361389Z     "markdownDownload": true,
+2026-10-18T04:47:29.7362155Z     "refreshRestore": true,
+2026-10-18T04:47:29.7362890Z     "mobileNoOverflow": true,
+2026-10-18T04:47:29.7363674Z     "noWriteRequests": true,
+2026-10-18T04:47:29.7364439Z     "consoleHealthy": true
+2026-10-18T04:47:29.7365179Z   },
+2026-10-18T04:47:29.7365793Z   "pageErrors": [],
+2026-10-18T04:47:29.7366461Z   "layout": {
+2026-10-18T04:47:29.7367117Z     "width": 390,
+2026-10-18T04:47:29.7368065Z     "document": 390,
+2026-10-18T04:47:29.7369024Z     "results": 368
+2026-10-18T04:47:29.7369681Z   }
+2026-10-18T04:47:29.7371150Z }

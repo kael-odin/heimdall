@@ -1,0 +1,60 @@
+{
+  "status": 201,
+  "payload": {
+    "schemaVersion": 1,
+    "kind": "manual-defect-ticket-action",
+    "outcome": "recorded",
+    "projectId": "ap-aa039963-2daf-4a33-9567-765fe70be560",
+    "ticketId": "dt-4cc177e7-b16b-4e31-a528-62157e21470a",
+    "actionId": "da-008fadd7-883f-4b69-bba1-585e646c7dbd",
+    "requestFingerprint": "a833183fbaacbe25da7fcc6c523b3c60c7aa8c93c27313251458b001744e5aae",
+    "eventSha256": "a8bf52729a5edccec8ebe9b35a286585c64a68735643bc0c73522505cb00f1cf",
+    "event": {
+      "actionId": "da-008fadd7-883f-4b69-bba1-585e646c7dbd",
+      "actor": {
+        "kind": "local-operator"
+      },
+      "after": {
+        "acceptedAt": "2026-10-18T04:58:13.979Z",
+        "dispatchSha256": "c15023390ddafd738b34491608e8079ea32c275225062ac40bcf1b050860d45f",
+        "observationsSha256": "4e2616a446238b715e1ab4379b420b6a0b00334087dbbe69fef7cc1451eba9ef",
+        "operationId": "bo-6acb594a-79cd-47c9-b4b8-df960e551d49",
+        "recordedAt": "2026-10-18T04:58:17.956Z",
+        "reportSha256": "34a3e8bfc0e85757920c5888e2cdf72e3f91cc396a4a9ae49eacc88eef360b39",
+        "targetReleaseId": "ar-2329fd0e-99af-49ae-9472-4b8cd1d30908"
+      },
+      "candidateId": "bc-65ee4c19-9874-4031-9ecf-807a426e2ea2",
+      "confirmed": true,
+      "contentDigest": "34ff58d9010d063a30af25e91742051e55082eb1155cf4d23a33b4597f3bfd81",
+      "createdAt": "2026-10-18T04:58:22.964Z",
+      "factsDigest": "a9ea9772ee9d9f4ae692e165069d301a5d6b3f1eef8dbd887927dc0be2aa6bca",
+      "kind": "close",
+      "memberSetDigest": "fda224e689b9e5c555ba8ee2600179e5ac2bdfca2f8c38a8a9f8a1b8574c042f",
+      "previewDigest": "76baa86d60e1cfe2f77a0d333c5538e28f3d7421366fe4485e76da54bfc54c71",
+      "previousEventSha256": "1b095d8202bb20633bd1f61173c6375089fee5d968dd08ff88615ba6b55339b6",
+      "projectId": "ap-aa039963-2daf-4a33-9567-765fe70be560",
+      "requestFingerprint": "a833183fbaacbe25da7fcc6c523b3c60c7aa8c93c27313251458b001744e5aae",
+      "resolution": "两项固定检查在同一次健康目标复验中通过。",
+      "results": [
+        {
+          "afterCheckId": "route-1-1-desktop-point-1-menu",
+          "bugId": "bug-8ecd05dcd063e7d9da3dc090db4a5ddded2427ce69f5829fd1239781dcae8e18",
+          "relation": "verified_passed",
+          "sourceCheckId": "route-1-1-desktop-point-1-menu"
+        },
+        {
+          "afterCheckId": "route-1-1-desktop-visual",
+          "bugId": "bug-c73aa985e39dcbb3a23573a08588df06c23e4fc5bec4512d95fc69a6439dd019",
+          "relation": "verified_passed",
+          "sourceCheckId": "route-1-1-desktop-visual"
+        }
+      ],
+      "revision": 1,
+      "ticketContractVersion": 1,
+      "ticketId": "dt-4cc177e7-b16b-4e31-a528-62157e21470a"
+    },
+    "replayed": false
+  },
+  "diskSha256": "a8bf52729a5edccec8ebe9b35a286585c64a68735643bc0c73522505cb00f1cf",
+  "denyForwardCount": 0
+}

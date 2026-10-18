@@ -1,0 +1,78 @@
+{
+  "kind": "framing-candidate-static-checks-not-runtime-verification",
+  "passed": true,
+  "sourceBefore": {
+    "core/scripts/fixtures/defect-ticket-decision-relay.mjs": "6e6f6fb39c5635b5cdc30d8d9d584fa99dead2b3f2858758c928aed3843975a5",
+    "core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs": "d1ce1e754ee8fabfa1db6927812ff4afb6d285a443a7b26ce3b93ff8bf2b6b80",
+    "core/scripts/verify-acceptance-defect-ticket-decisions-console.mjs": "c6017f8c608131cc577619d8fc515ef50c5457eee5cf4c191138f2989d9e993b",
+    "core/src/acceptance/defect-ticket-api.mjs": "3b75185de616c3f221d44be1ada7ab2577b9830343a697af75cc4b7b1094036c",
+    "core/src/acceptance/defect-ticket-service.mjs": "408e056c8b94e4b3a0b9bcd9586c6907aaf53fb55dcf129cd04feea5371cc58e",
+    "console/src/AcceptanceDefectTickets.vue": "bf65084e2b8785892f6ce7b729d0bc7d44bed8313d9826c9d795d418be5a5570",
+    "console/src/acceptance-defect-tickets.js": "d4d341644a2a38b83d21bb9cb567c2091e3940730ecdf229b2758f3f49487c04"
+  },
+  "sourceAfter": {
+    "core/scripts/fixtures/defect-ticket-decision-relay.mjs": "6e6f6fb39c5635b5cdc30d8d9d584fa99dead2b3f2858758c928aed3843975a5",
+    "core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs": "d1ce1e754ee8fabfa1db6927812ff4afb6d285a443a7b26ce3b93ff8bf2b6b80",
+    "core/scripts/verify-acceptance-defect-ticket-decisions-console.mjs": "c6017f8c608131cc577619d8fc515ef50c5457eee5cf4c191138f2989d9e993b",
+    "core/src/acceptance/defect-ticket-api.mjs": "3b75185de616c3f221d44be1ada7ab2577b9830343a697af75cc4b7b1094036c",
+    "core/src/acceptance/defect-ticket-service.mjs": "408e056c8b94e4b3a0b9bcd9586c6907aaf53fb55dcf129cd04feea5371cc58e",
+    "console/src/AcceptanceDefectTickets.vue": "bf65084e2b8785892f6ce7b729d0bc7d44bed8313d9826c9d795d418be5a5570",
+    "console/src/acceptance-defect-tickets.js": "d4d341644a2a38b83d21bb9cb567c2091e3940730ecdf229b2758f3f49487c04"
+  },
+  "sourceUnchanged": true,
+  "checks": [
+    {
+      "name": "node22-version",
+      "argv": [
+        "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-ci-artifact-supplement-20261018\\runtime\\extracted\\node-v22.23.3-win-x64\\node.exe",
+        "--version"
+      ],
+      "startedAt": "2026-10-18T04:49:54.517265+00:00",
+      "endedAt": "2026-10-18T04:49:54.558720+00:00",
+      "exitCode": 0,
+      "stdout": "v22.23.3\r\n",
+      "stderr": ""
+    },
+    {
+      "name": "node22-syntax",
+      "argv": [
+        "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-ci-artifact-supplement-20261018\\runtime\\extracted\\node-v22.23.3-win-x64\\node.exe",
+        "--check",
+        "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-response-body-readonly-review-20261018\\relay.framed-candidate.mjs"
+      ],
+      "startedAt": "2026-10-18T04:49:54.518264+00:00",
+      "endedAt": "2026-10-18T04:49:54.593411+00:00",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "git-apply-check",
+      "argv": [
+        "git",
+        "apply",
+        "--check",
+        "--whitespace=error-all",
+        "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-response-body-readonly-review-20261018\\action-reply-framing.patch"
+      ],
+      "startedAt": "2026-10-18T04:49:54.518264+00:00",
+      "endedAt": "2026-10-18T04:49:54.571666+00:00",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "git-status",
+      "argv": [
+        "git",
+        "status",
+        "--short"
+      ],
+      "startedAt": "2026-10-18T04:49:54.518264+00:00",
+      "endedAt": "2026-10-18T04:49:54.609373+00:00",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

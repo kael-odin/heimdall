@@ -1,0 +1,19 @@
+{
+  "command": [
+    "git",
+    "show",
+    "06e4303871d485a14b66d24318db80595a3db774:.github/workflows/ci.yml"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "startedAt": "2026-10-18T05:01:11.370401+00:00",
+  "endedAt": "2026-10-18T05:01:11.447727+00:00",
+  "exitCode": 0,
+  "timedOut": false,
+  "launchError": null,
+  "stdoutFile": "workflow-at-head.yml",
+  "stdoutBytes": 11058,
+  "stdoutSha256": "b365fc4123cb182f4c86d494454c9017bdfe4ade3fecf52919da673bb9690dfd",
+  "stderrFile": "workflow-git.stderr.log",
+  "stderrBytes": 0,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

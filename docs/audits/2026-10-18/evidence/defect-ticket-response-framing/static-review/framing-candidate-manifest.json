@@ -1,0 +1,23 @@
+{
+  "kind": "unapplied-framing-candidate-static-only",
+  "sourceHead": "06e4303871d485a14b66d24318db80595a3db774",
+  "sourcePath": "core/scripts/fixtures/defect-ticket-decision-relay.mjs",
+  "sourceGitBlob": "3756fb53aeadf211fce89d19ba22f9f8aa0ebfcd",
+  "responseBudgetBytes": 33554432,
+  "maintenanceFilesApplied": false,
+  "engineOrBrowserStarted": false,
+  "files": {
+    "relay.original.mjs": {
+      "bytes": 10463,
+      "sha256": "6e6f6fb39c5635b5cdc30d8d9d584fa99dead2b3f2858758c928aed3843975a5"
+    },
+    "relay.framed-candidate.mjs": {
+      "bytes": 13360,
+      "sha256": "5a383620ee25f74cd61f9808f592616db9519c366f958d671a85b444cb25cf02"
+    },
+    "action-reply-framing.patch": {
+      "bytes": 6102,
+      "sha256": "83a24578a09cfc290c6af00a56c2ea5c937a78092fccce09b0a5ce84f4b726b3"
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "pageErrors": [],
+  "consoleMessages": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+      "location": {
+        "url": "http://127.0.0.1:41044/api/acceptance/projects/ap-70895b21-5903-4408-b32b-418f9512c3c6/defect-tickets",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "caseId": "A"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+      "location": {
+        "url": "http://127.0.0.1:41044/api/acceptance/projects/ap-70895b21-5903-4408-b32b-418f9512c3c6/defect-tickets",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "caseId": "B"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+      "location": {
+        "url": "http://127.0.0.1:41044/api/acceptance/projects/ap-70895b21-5903-4408-b32b-418f9512c3c6/defect-tickets/dt-af0ad344-cff8-4ad1-b707-ba902014f258/close",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "caseId": "C"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+      "location": {
+        "url": "http://127.0.0.1:41044/api/acceptance/projects/ap-70895b21-5903-4408-b32b-418f9512c3c6/defect-tickets/dt-af0ad344-cff8-4ad1-b707-ba902014f258/close",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "caseId": "D"
+    }
+  ],
+  "controlledReplies": [
+    {
+      "at": "2026-10-18T04:45:24.223Z",
+      "event": "controlled-http-502",
+      "caseId": "A",
+      "path": "/api/acceptance/projects/ap-70895b21-5903-4408-b32b-418f9512c3c6/defect-tickets",
+      "frontRequestId": "front-ca4b3cf4-c5cb-4d97-a125-15378d793383",
+      "status": 502,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 125,
+      "bodySha256": "897d30837e78193624667d933a5c0df9b1400512cf35cefed81f6fa5076c1472"
+    },
+    {
+      "at": "2026-10-18T04:45:25.034Z",
+      "event": "controlled-http-502",
+      "caseId": "B",
+      "path": "/api/acceptance/projects/ap-70895b21-5903-4408-b32b-418f9512c3c6/defect-tickets",
+      "frontRequestId": "front-7700c8e8-9451-4c19-a1b9-36993dcdf4ee",
+      "status": 502,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 125,
+      "bodySha256": "897d30837e78193624667d933a5c0df9b1400512cf35cefed81f6fa5076c1472"
+    },
+    {
+      "at": "2026-10-18T04:45:34.035Z",
+      "event": "controlled-http-502",
+      "caseId": "C",
+      "path": "/api/acceptance/projects/ap-70895b21-5903-4408-b32b-418f9512c3c6/defect-tickets/dt-af0ad344-cff8-4ad1-b707-ba902014f258/close",
+      "frontRequestId": "front-f4b8dc50-de64-48fe-b74f-d65d84535b96",
+      "status": 502,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 125,
+      "bodySha256": "897d30837e78193624667d933a5c0df9b1400512cf35cefed81f6fa5076c1472"
+    },
+    {
+      "at": "2026-10-18T04:45:36.616Z",
+      "event": "controlled-http-502",
+      "caseId": "D",
+      "path": "/api/acceptance/projects/ap-70895b21-5903-4408-b32b-418f9512c3c6/defect-tickets/dt-af0ad344-cff8-4ad1-b707-ba902014f258/close",
+      "frontRequestId": "front-cdf973a7-83da-48bc-9f8a-60f2abef1704",
+      "status": 502,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 125,
+      "bodySha256": "897d30837e78193624667d933a5c0df9b1400512cf35cefed81f6fa5076c1472"
+    }
+  ]
+}

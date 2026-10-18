@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "kind": "manual-defect-ticket-action",
+  "outcome": "rejected",
+  "projectId": "ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda",
+  "ticketId": "dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c",
+  "actionId": "da-bc5bdd19-9dad-4d4c-be03-0127b1730863",
+  "requestFingerprint": "3b8d416fe6b50a983de9ae30759d16bcac6b3a23ea5d3ab25d2ff163a3f2f341",
+  "rejectionSha256": "830832e06e93991ff10cfd9370cf0f942659d385482045d4a002178e66c40cb8",
+  "rejection": {
+    "actionDecisionVersion": 1,
+    "actor": {
+      "kind": "local-operator"
+    },
+    "decidedAt": "2026-10-18T04:55:14.802Z",
+    "effect": "deny-late-manual-defect-ticket-action",
+    "kind": "manual-defect-ticket-action-rejection",
+    "original": {
+      "actionId": "da-bc5bdd19-9dad-4d4c-be03-0127b1730863",
+      "kind": "close",
+      "projectId": "ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda",
+      "request": {
+        "actionId": "da-bc5bdd19-9dad-4d4c-be03-0127b1730863",
+        "afterOperationId": "bo-b1a8d45a-f27a-43b4-befe-a2a78052e07a",
+        "confirmed": true,
+        "expectedHeadSha256": "96ecec705054e84a92c9a90e3efc427ca466db66850873d9625d23101793149a",
+        "expectedRevision": 0,
+        "factsDigest": "e4d4a92abfba9311cab7410cee2523280e72806d937dd0163899d13b3a109934",
+        "memberSetDigest": "04c776e31344e3acaf683418b1f77be5f0e57e7f8bc0c63baec7af4cf3cac851",
+        "previewDigest": "ccedfa8c30abaed770d23bfdf80d6bb9abd0ea17ea42bbc006300d9d06654bc3",
+        "resolution": "两项固定检查在同一次健康目标复验中通过。"
+      },
+      "requestFingerprint": "3b8d416fe6b50a983de9ae30759d16bcac6b3a23ea5d3ab25d2ff163a3f2f341",
+      "ticketId": "dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c",
+      "version": 1
+    }
+  }
+}

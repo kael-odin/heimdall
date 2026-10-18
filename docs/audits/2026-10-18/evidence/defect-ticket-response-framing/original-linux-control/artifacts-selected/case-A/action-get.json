@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "kind": "manual-defect-ticket-action",
+  "outcome": "rejected",
+  "projectId": "ap-70895b21-5903-4408-b32b-418f9512c3c6",
+  "ticketId": "dt-ffa1de01-16a1-4e95-80a0-799475cc31c1",
+  "actionId": "da-4e0c3634-e10b-424a-884e-557e460d7eee",
+  "requestFingerprint": "b83d85e11453acccfd405c7814e71931326c8a458202ccb19f8619d299ea90e0",
+  "rejectionSha256": "09f39a1bf482e08d3c0e9c598bb249fe272790b8b39250865dd9acc1540db76d",
+  "rejection": {
+    "actionDecisionVersion": 1,
+    "actor": {
+      "kind": "local-operator"
+    },
+    "decidedAt": "2026-10-18T04:45:24.703Z",
+    "effect": "deny-late-manual-defect-ticket-action",
+    "kind": "manual-defect-ticket-action-rejection",
+    "original": {
+      "actionId": "da-4e0c3634-e10b-424a-884e-557e460d7eee",
+      "kind": "create",
+      "projectId": "ap-70895b21-5903-4408-b32b-418f9512c3c6",
+      "request": {
+        "actionId": "da-4e0c3634-e10b-424a-884e-557e460d7eee",
+        "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+        "memberCheckIds": [
+          "route-1-1-desktop-point-1-menu",
+          "route-1-1-desktop-visual"
+        ],
+        "reproduction": "打开页面，展开菜单，核对布局及导航。",
+        "severity": "high",
+        "sourceOperationId": "bo-30e2d8e8-5287-42cc-9c8b-d9a25f2a772e",
+        "ticketId": "dt-ffa1de01-16a1-4e95-80a0-799475cc31c1",
+        "title": "菜单布局与展开行为的两个固定检查"
+      },
+      "requestFingerprint": "b83d85e11453acccfd405c7814e71931326c8a458202ccb19f8619d299ea90e0",
+      "ticketId": "dt-ffa1de01-16a1-4e95-80a0-799475cc31c1",
+      "version": 1
+    }
+  }
+}

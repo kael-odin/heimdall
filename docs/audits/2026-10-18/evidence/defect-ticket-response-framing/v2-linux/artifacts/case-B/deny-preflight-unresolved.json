@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "kind": "manual-defect-ticket-action",
+  "projectId": "ap-aa039963-2daf-4a33-9567-765fe70be560",
+  "actionId": "da-b2c313de-1590-46f9-aa60-f7819b36162c",
+  "outcome": "unresolved",
+  "reason": "ABSENCE_IS_NOT_A_COMMIT_DECISION"
+}

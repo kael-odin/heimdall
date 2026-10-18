@@ -1,0 +1,28 @@
+{
+  "kind": "raw-artifact-browser-runtime-diagnosis-not-ci-acceptance",
+  "argv": [
+    "core/workspace/_runs/d6-ci-20261018/early-job-diagnosis-39096514869-117583999059-20261018T0420190270097Z/runtime-diagnose.py"
+  ],
+  "sourceScriptSha256": "b75420c8b8e4a8ad9740cf6b7667923955306da1b3a25269bd147af6d9335f8e",
+  "runId": 39096514869,
+  "attempt": 1,
+  "headSha": "06e4303871d485a14b66d24318db80595a3db774",
+  "artifactId": 12124333500,
+  "sourceZIP": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-ci-20261018\\early-job-diagnosis-39096514869-117583999059-20261018T0420190270097Z\\artifact-original.zip",
+  "sourceZIPBytes": 2347822,
+  "sourceZIPSha256": "10947b600a60da1c800ebfcd5e344eaac434610024e56ebf675c9c5bc4d02894",
+  "createdAt": "2026-10-18T04:38:43.685821+00:00",
+  "selected": {
+    "core/workspace/_runs/defect-ticket-decisions-ci/cdp-version.json": {
+      "file": "cdp-version.json",
+      "bytes": 405,
+      "sha256": "d43243b5f43d96392909353f60e4ae0b6a6d85f54e1c7d5c8b3834bdfc5be98b"
+    },
+    "core/workspace/_runs/defect-ticket-decisions-ci/chromium.log": {
+      "file": "chromium.log",
+      "bytes": 4373,
+      "sha256": "1be2d6a251d2f49464dd8d18b5ae7adf13a42ecd9f19724f86c224d540f33dcd"
+    }
+  },
+  "directory": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-ci-20261018\\early-job-diagnosis-39096514869-117583999059-20261018T0420190270097Z\\browser-runtime-diagnosis-20261018T043843685821Z"
+}

@@ -1,0 +1,24 @@
+{
+  "kind": "native-http-only-v2-test-preparation-not-runtime-result",
+  "testedCandidateVersion": 2,
+  "testedCandidateSha256": "48f656b994087649101946bcd3fb0c2cc9aabddb0e951149acfa5fd797a6da6a",
+  "v1PreservedSha256": "5a383620ee25f74cd61f9808f592616db9519c366f958d671a85b444cb25cf02",
+  "testCandidateSha256": "7d098e051a86817c5a5b42561f1d0a4ff5df00cdbf7ae97ff3ae8e8ca8c8610e",
+  "testExecutionOnlyAdaptation": "Replace exactly one fixture import; test assertions and runtime behavior are unchanged.",
+  "maintenanceFilesApplied": false,
+  "engineOrBrowserStarted": false,
+  "files": {
+    "action-reply-framing-v1-to-v2.patch": {
+      "bytes": 1169,
+      "sha256": "96339b7e36f3f24824e487b9238578a35cb59c949e97412377d380cc9f368cf1"
+    },
+    "relay-framing-native-http-v2.test.mjs": {
+      "bytes": 14298,
+      "sha256": "b95c87df067d3911e65b6e07bfc344907d3e8da67f775a88eb4a6307b9604c56"
+    },
+    "browser-resolution-stream.mjs": {
+      "bytes": 3148,
+      "sha256": "0c6f8079ece2cc92c1765e1f9237b9ff85ba55d249b2408c07a2f88ea88a81bd"
+    }
+  }
+}

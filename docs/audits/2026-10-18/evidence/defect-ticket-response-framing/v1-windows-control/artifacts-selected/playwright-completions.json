@@ -1,0 +1,750 @@
+[
+  {
+    "at": "2026-10-18T04:54:12.245Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:12.249Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/assets/index-BiGJ8PiQ.js",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:12.251Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/assets/index-Ci96Vj07.css",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:12.270Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/assets/api-DBmNeZNu.js",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:12.271Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/assets/Atlas-DOslNSuq.css",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:12.276Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/assets/Atlas-SgWAog6v.js",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:12.408Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/jobs",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:12.410Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/sites",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:12.417Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/status",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:12.443Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/status",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:13.097Z",
+    "event": "finished",
+    "requestId": "ui-852370c7-a391-42c5-89a5-5f4c4382f770",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:13.144Z",
+    "event": "finished",
+    "requestId": "ui-6e303ceb-0703-43ff-bda9-b8ccf2b9a59f",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs/ac-c7e703c6-7e0a-45dd-b6c6-715d0166c37f",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:13.224Z",
+    "event": "finished",
+    "requestId": "ui-6dec1ffe-368e-4d0d-a198-2409d9c9c5e2",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs/ac-c7e703c6-7e0a-45dd-b6c6-715d0166c37f/report",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:13.254Z",
+    "event": "finished",
+    "requestId": "ui-f4ba5d21-d5a4-4fd3-9abb-7140a0b97763",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:13.300Z",
+    "event": "finished",
+    "requestId": "ui-c70c9dfa-4709-490f-9781-0d14fa3a3db7",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:13.343Z",
+    "event": "failed",
+    "requestId": "ui-c0622b9b-26e1-485b-87b9-bdfa47c0405e",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/browser-executions",
+    "mapped": true,
+    "failure": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "at": "2026-10-18T04:54:13.343Z",
+    "event": "failed",
+    "requestId": "ui-b2837ca0-a265-4078-b7ce-3475f50367a6",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/browser-executions",
+    "mapped": true,
+    "failure": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "at": "2026-10-18T04:54:13.611Z",
+    "event": "finished",
+    "requestId": "ui-92081195-4213-4546-9577-8b18785a9fd4",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:14.206Z",
+    "event": "finished",
+    "requestId": "ui-33815edc-920a-4e4c-b577-cf12fe2d5bb4",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/browser-executions",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:14.267Z",
+    "event": "finished",
+    "requestId": "ui-74bcec69-ea7c-4bf4-baa8-6e6c51b5f52f",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:15.762Z",
+    "event": "finished",
+    "requestId": "ui-18fd8df6-a9a5-4aa6-8d8c-40f45309ed41",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/sources?candidateId=bc-f7764714-3bf0-4fec-aade-e811dee316d2",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:15.800Z",
+    "event": "finished",
+    "requestId": "ui-18096f8a-fe4b-4e94-b43c-64ec18bf9965",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:16.642Z",
+    "event": "finished",
+    "requestId": "ui-189fa4e3-6fcd-44cf-8134-3194083c0b54",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:16.649Z",
+    "event": "finished",
+    "requestId": "ui-6b887bfe-4d1c-4986-a4c1-b57177751fb1",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:17.016Z",
+    "event": "finished",
+    "requestId": "ui-ed63c4e1-fd67-4cb0-afa4-92b9521f9256",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-5ea3e1e7-74a0-440f-8ece-6ed2a7c0e245",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:17.149Z",
+    "event": "finished",
+    "requestId": "ui-49dbb5ad-d1ef-471a-9dda-fcaf1a77990a",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-5ea3e1e7-74a0-440f-8ece-6ed2a7c0e245",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:17.723Z",
+    "event": "finished",
+    "requestId": "ui-4f638116-cad1-4b45-9a7f-c50494e012c9",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-5ea3e1e7-74a0-440f-8ece-6ed2a7c0e245/deny",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:17.906Z",
+    "event": "finished",
+    "requestId": "ui-a576eab5-df41-4219-b453-e5fcaca23f83",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:18.320Z",
+    "event": "finished",
+    "requestId": "ui-6368ea92-2a9f-45bf-8474-9f2d540a0ff5",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:18.561Z",
+    "event": "finished",
+    "requestId": "ui-0c36c405-8155-4eb8-9802-54bf3f399778",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-2fbd4470-5701-4b7a-ae06-b7ae86179c45",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:18.722Z",
+    "event": "finished",
+    "requestId": "ui-f3796587-ae43-408b-a5d4-c9bc422db7c0",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-2fbd4470-5701-4b7a-ae06-b7ae86179c45",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:20.816Z",
+    "event": "finished",
+    "requestId": "ui-17adc113-2a2b-4223-83d4-bc3950bec30d",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:20.857Z",
+    "event": "finished",
+    "requestId": "ui-da051a88-8aa5-4349-8a01-7eee6145a62b",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:21.003Z",
+    "event": "finished",
+    "requestId": "ui-4856f16a-1c90-487f-8fb0-2eaf6c32e009",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-2fbd4470-5701-4b7a-ae06-b7ae86179c45/deny",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:22.455Z",
+    "event": "finished",
+    "requestId": "ui-27a7f906-0b32-42cd-b4f5-82968c90a855",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:23.888Z",
+    "event": "finished",
+    "requestId": "ui-92055905-45c0-41d9-8424-431f1a9f2624",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:23.923Z",
+    "event": "finished",
+    "requestId": "ui-d401e568-067d-44eb-8913-f1f7df7b5125",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:23.933Z",
+    "event": "finished",
+    "requestId": "ui-5966f4ac-7d3b-417c-a0c8-ccb2b5824b78",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:27.720Z",
+    "event": "finished",
+    "requestId": "ui-105afe32-1e6e-4840-8220-1c8ae2213558",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:27.732Z",
+    "event": "finished",
+    "requestId": "ui-ab8dce27-65da-4fb9-a92c-7c4bbca676c7",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:27.738Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/status",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:37.765Z",
+    "event": "finished",
+    "requestId": "ui-d7adbc96-28bc-47f3-82d9-7d9a02afd59b",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:37.776Z",
+    "event": "finished",
+    "requestId": "ui-26c058fe-08b9-4531-9ffc-64632cacb8bf",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:39.822Z",
+    "event": "finished",
+    "requestId": "ui-4afb5580-a9ef-45be-864f-5d90feb6f151",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:40.956Z",
+    "event": "finished",
+    "requestId": "ui-099b5277-55ac-472d-a16d-da114fa046f7",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:41.881Z",
+    "event": "finished",
+    "requestId": "ui-0807d7da-4da6-4bf2-b638-2157210f4109",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:42.463Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/status",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:45.708Z",
+    "event": "finished",
+    "requestId": "ui-50fd8a58-fd8e-4d92-94ab-10e2f253210b",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:45.716Z",
+    "event": "finished",
+    "requestId": "ui-481c9c2e-06b5-40f9-982e-aa569b7fedfd",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:48.710Z",
+    "event": "finished",
+    "requestId": "ui-2bd19105-eedd-4b1c-b7df-771c25b005a9",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:52.084Z",
+    "event": "finished",
+    "requestId": "ui-287f8235-b3dc-4aad-a2cd-9309c6f21613",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:52.089Z",
+    "event": "finished",
+    "requestId": "ui-47f614b3-fdb2-4758-b158-7af622e81999",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:52.134Z",
+    "event": "finished",
+    "requestId": "ui-e3ef9efc-d95f-488c-a26c-2735e0cfb829",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:55.787Z",
+    "event": "finished",
+    "requestId": "ui-7350f1dd-78b4-4312-ab1b-413686ea727f",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:55.820Z",
+    "event": "finished",
+    "requestId": "ui-657f4a82-b9bc-4689-86bf-648004e8d61c",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:55.828Z",
+    "event": "finished",
+    "requestId": "ui-845f88ed-41ce-40c9-b05c-f29503d38c70",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:59.231Z",
+    "event": "finished",
+    "requestId": "ui-6db5160f-83d5-4d95-8f4f-4c22d9f5625b",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:59.232Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/status",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:54:59.274Z",
+    "event": "finished",
+    "requestId": "ui-d3efc07e-aa85-4463-84a0-0413d39732d5",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:54:59.282Z",
+    "event": "finished",
+    "requestId": "ui-49ba5593-a2fd-418a-ba70-3ce67ef902e4",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:02.916Z",
+    "event": "finished",
+    "requestId": "ui-2097bb2c-4f87-42df-a95f-a7b5ad69ea50",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c/close-preview?afterOperationId=bo-b1a8d45a-f27a-43b4-befe-a2a78052e07a",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:02.950Z",
+    "event": "finished",
+    "requestId": "ui-9d7a008c-e2bd-4467-9e51-e9eede827a8a",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:02.958Z",
+    "event": "finished",
+    "requestId": "ui-e200d4c9-9a3a-4b51-be32-e6ebd6dd2312",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:06.909Z",
+    "event": "finished",
+    "requestId": "ui-d3c24c0d-8ee1-4515-ba39-8bcf534839e0",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:06.934Z",
+    "event": "finished",
+    "requestId": "ui-6af956f7-d912-4818-aeed-9bbae3332427",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:10.300Z",
+    "event": "finished",
+    "requestId": "ui-ce133f28-3cf4-4a3d-a835-3109dce3aab9",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:10.309Z",
+    "event": "finished",
+    "requestId": "ui-f8ba3d3b-fd39-4689-8752-b10aaf5e5452",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:13.822Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/status",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:55:13.882Z",
+    "event": "finished",
+    "requestId": "ui-2ee014cc-b7af-477c-87f6-e5c36df7ac9d",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:13.885Z",
+    "event": "finished",
+    "requestId": "ui-90bffb77-ddb9-487a-929d-a1f996722420",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:14.018Z",
+    "event": "finished",
+    "requestId": "ui-d279d4db-d1ad-41c3-a304-238723097d57",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c/close",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:14.445Z",
+    "event": "finished",
+    "requestId": "ui-1c52a53c-4789-486a-b19f-a5c9096669ee",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-bc5bdd19-9dad-4d4c-be03-0127b1730863",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:14.628Z",
+    "event": "finished",
+    "requestId": "ui-43824452-381d-450f-85af-f15a2b5543d2",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-bc5bdd19-9dad-4d4c-be03-0127b1730863",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:15.147Z",
+    "event": "finished",
+    "requestId": "ui-36af8f8f-f969-4286-89d7-88defcf9e8be",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-bc5bdd19-9dad-4d4c-be03-0127b1730863/deny",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:18.719Z",
+    "event": "finished",
+    "requestId": "ui-a8af439e-8dbe-45e5-a572-ae7810dfd545",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:18.728Z",
+    "event": "finished",
+    "requestId": "ui-32d869f9-9b59-4d1e-b82a-8c2e2abc4202",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:22.247Z",
+    "event": "finished",
+    "requestId": "ui-43c447a0-4c55-429f-aebf-b36278ee1688",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:22.255Z",
+    "event": "finished",
+    "requestId": "ui-7ecc62c2-4028-40e4-8e05-1f5140afc256",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:25.757Z",
+    "event": "finished",
+    "requestId": "ui-010f3e85-a8ad-4053-b82c-7d0b712082d9",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:25.792Z",
+    "event": "finished",
+    "requestId": "ui-95d7ab43-dfbe-43c7-ae9b-ead566055f9e",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:25.801Z",
+    "event": "finished",
+    "requestId": "ui-89e5aeff-3533-4fe0-af4e-c0c2f0669b95",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:29.485Z",
+    "event": "finished",
+    "requestId": "ui-151bf9cc-f948-422c-a19d-2059fbc9753c",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c/close-preview?afterOperationId=bo-b1a8d45a-f27a-43b4-befe-a2a78052e07a",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:29.486Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/status",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:55:29.526Z",
+    "event": "finished",
+    "requestId": "ui-ff6f099c-5db1-41e4-a204-52a5c5ba1645",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:29.535Z",
+    "event": "finished",
+    "requestId": "ui-151faced-397b-44d8-983b-ddc249a0b917",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:33.642Z",
+    "event": "finished",
+    "requestId": "ui-156f7ef3-6289-49e9-9484-d445df934aa2",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:33.650Z",
+    "event": "finished",
+    "requestId": "ui-d252f880-6baf-4c57-8e38-0e1d95911cab",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:37.513Z",
+    "event": "finished",
+    "requestId": "ui-14d0dd9c-7b6d-45aa-b6e8-9f0ee502965d",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:37.519Z",
+    "event": "finished",
+    "requestId": "ui-4a9dc86f-c2c0-4399-a98e-5a0b921d186b",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:37.632Z",
+    "event": "finished",
+    "requestId": "ui-eeb2b797-d180-46f4-a7ed-c5692bac5133",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c/close",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:37.904Z",
+    "event": "finished",
+    "requestId": "ui-bec918b2-9437-4cf6-afe6-cba984cb94c5",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-d7d86225-18a0-40ba-b2b4-b53763aa500c",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:38.101Z",
+    "event": "finished",
+    "requestId": "ui-b1f06a8f-f396-4f40-b3ad-3adbd5bef7ee",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-d7d86225-18a0-40ba-b2b4-b53763aa500c",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:42.515Z",
+    "event": "finished",
+    "requestId": "ui-a879b38d-1f06-4a04-ad45-fc4af392db0f",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:42.524Z",
+    "event": "finished",
+    "requestId": "ui-0b10fdd7-1702-45a2-8c55-48f08da6aed6",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:42.524Z",
+    "event": "finished",
+    "requestId": null,
+    "url": "http://127.0.0.1:56528/api/status",
+    "mapped": false
+  },
+  {
+    "at": "2026-10-18T04:55:42.679Z",
+    "event": "finished",
+    "requestId": "ui-a6ca9705-6145-405b-901a-2a68f94efd57",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/actions/da-d7d86225-18a0-40ba-b2b4-b53763aa500c/deny",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:46.039Z",
+    "event": "finished",
+    "requestId": "ui-86f1f62b-c169-42e1-8f00-cc93c85f7f8d",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:46.078Z",
+    "event": "finished",
+    "requestId": "ui-077f903a-d439-450a-9019-00f68f2cc61d",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:46.086Z",
+    "event": "finished",
+    "requestId": "ui-2e62e207-66af-4917-9ac3-f5fb9434983a",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:49.556Z",
+    "event": "finished",
+    "requestId": "ui-e1977e44-a2df-4126-95fb-3f97f6942fac",
+    "url": "http://127.0.0.1:56528/api/acceptance/projects/ap-5190cb18-943a-4b40-a22e-5c4b6a0cfcda/defect-tickets/dt-4e457ad5-1df6-445b-9f07-7b0d66b95d9c",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:49.600Z",
+    "event": "finished",
+    "requestId": "ui-ef20132a-1d6b-46a9-a0ad-acd51494f0a6",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:49.608Z",
+    "event": "finished",
+    "requestId": "ui-7e30eebf-3a8a-44bc-8fc8-8b21089aa435",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:53.118Z",
+    "event": "finished",
+    "requestId": "ui-e5ce69ac-aa4f-4302-ab72-0743b3af8c35",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:53.125Z",
+    "event": "finished",
+    "requestId": "ui-46124f33-9cc5-4527-824d-0ab9e9ed9d33",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:56.736Z",
+    "event": "finished",
+    "requestId": "ui-e5cde2e4-1ead-43ad-a92f-925a7fb6b24a",
+    "url": "http://127.0.0.1:56528/api/acceptance/runs",
+    "mapped": true
+  },
+  {
+    "at": "2026-10-18T04:55:56.744Z",
+    "event": "finished",
+    "requestId": "ui-aaeb1e3d-d671-4775-9276-d7d7b2087bbf",
+    "url": "http://127.0.0.1:56528/api/acceptance/execution",
+    "mapped": true
+  }
+]

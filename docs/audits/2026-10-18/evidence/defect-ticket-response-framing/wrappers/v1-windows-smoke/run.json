@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "argv": [
+    "core/workspace/_runs/d6-ci-artifact-supplement-20261018/runtime/extracted/node-v22.23.3-win-x64/node.exe",
+    "core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs",
+    "core/workspace/_runs/d6-implementation-20261018/framing-win22-artifacts-01"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "explicitEnvironment": {},
+  "platform": "Windows-10-10.0.29667-SP0",
+  "startedAt": "2026-10-18T04:53:42.079157+00:00",
+  "exitCode": 0,
+  "endedAt": "2026-10-18T04:56:05.586361+00:00",
+  "durationSeconds": 143.46899999998277,
+  "changedInputs": [],
+  "stdoutSha256": "af84b500d5ac6df8a07cc29746a36e6c6246b18bf0b76378fd946f322fe7b3a1",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

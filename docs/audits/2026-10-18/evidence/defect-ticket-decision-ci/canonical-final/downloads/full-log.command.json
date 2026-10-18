@@ -1,0 +1,25 @@
+{
+  "command": [
+    "gh",
+    "run",
+    "view",
+    "39096514869",
+    "--repo",
+    "kael-odin/heimdall",
+    "--attempt",
+    "1",
+    "--log"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "startedAt": "2026-10-18T05:01:11.369398+00:00",
+  "endedAt": "2026-10-18T05:01:15.948143+00:00",
+  "exitCode": 0,
+  "timedOut": false,
+  "launchError": null,
+  "stdoutFile": "complete-stdout.log",
+  "stdoutBytes": 2025864,
+  "stdoutSha256": "50aa952b5847d9726e25c1742e73ca90019d21a955fa70c0239eedfec4b93f83",
+  "stderrFile": "full-log.stderr.log",
+  "stderrBytes": 0,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

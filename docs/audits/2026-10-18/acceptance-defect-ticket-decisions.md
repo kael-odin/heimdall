@@ -2,6 +2,8 @@
 
 本片为人工成单、明确关闭增加永久拒绝决定，并修复 Catalog 已收到提交回执后、刷新请求长时间不结算时的状态恢复。实施起点为 `41c359a62ecbb67ac15f38c51c95fa983a7492d3`，开发工作树为 `codex/defect-ticket-decisions-d6`。冻结后的完整 Core 与 27 阶段 Browser 已通过；发布后的精确提交完整 Linux CI 仍须独立核验，本机结果不能替代该发布门禁。
 
+后续状态：原发布提交 `06e4303` 的完整 Linux CI 已终态为 failure，Core、原二十项 smoke、Docker 与前端构建成功，独立 D6 四案正文取证失败。精确原件和原验证器的不接受结果见[原提交 CI 记录](acceptance-defect-ticket-decision-ci.md)；[后续动作回复边界增强](acceptance-defect-ticket-response-framing.md)保留本机对照与待验边界。
+
 ## 产品行为
 
 人工动作响应未知时保留完整旧确认。操作者可以只读核对，或逐条复核后明确拒绝同动作号的迟到提交。原 accepted event 和 rejection 竞争同一个不可覆盖决定文件；先发布的决定获胜。已成单或关闭的决定不会被后来拒绝撤销，拒绝先胜后原业务请求只返回同一个完整拒绝。

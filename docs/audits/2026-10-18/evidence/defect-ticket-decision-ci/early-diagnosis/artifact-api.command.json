@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "gh",
+    "api",
+    "repos/kael-odin/heimdall/actions/artifacts/12124333500"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "startedAt": "2026-10-18T04:23:53.683097+00:00",
+  "endedAt": "2026-10-18T04:23:54.467850+00:00",
+  "exitCode": 0,
+  "timedOut": false,
+  "launchError": null,
+  "stdoutFile": "artifact-api.raw.json",
+  "stdoutBytes": 697,
+  "stdoutSha256": "1d8cc22d472af6550fc3993b66250d3e84c4df83b930aa228802186a07974543",
+  "stderrFile": "artifact-api.stderr.log",
+  "stderrBytes": 0,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

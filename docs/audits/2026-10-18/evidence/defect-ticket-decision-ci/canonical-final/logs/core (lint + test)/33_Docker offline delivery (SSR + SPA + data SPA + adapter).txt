@@ -1,0 +1,29 @@
+﻿2026-10-18T04:58:21.3773909Z ##[group]Run node --test --test-name-pattern='Docker network-none delivery' test/live-deployment-matrix.test.mjs
+2026-10-18T04:58:21.3774791Z [36;1mnode --test --test-name-pattern='Docker network-none delivery' test/live-deployment-matrix.test.mjs[0m
+2026-10-18T04:58:21.3846014Z shell: /usr/bin/bash -e {0}
+2026-10-18T04:58:21.3846484Z env:
+2026-10-18T04:58:21.3846943Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T04:58:21.3849072Z   HEIMDALL_DOCKER_TEST: 1
+2026-10-18T04:58:21.3849345Z ##[endgroup]
+2026-10-18T04:58:21.4618356Z TAP version 13
+2026-10-18T04:59:02.2957033Z # Subtest: Docker network-none delivery serves SSR, SPA and data-driven SPA bundles without a source workspace
+2026-10-18T04:59:02.2988957Z ok 1 - Docker network-none delivery serves SSR, SPA and data-driven SPA bundles without a source workspace
+2026-10-18T04:59:02.3002161Z   ---
+2026-10-18T04:59:02.3002914Z   duration_ms: 31504.88662
+2026-10-18T04:59:02.3003535Z   type: 'test'
+2026-10-18T04:59:02.3004085Z   ...
+2026-10-18T04:59:02.3005280Z # Subtest: Docker network-none delivery persists adapter writes in a volume after container recreation
+2026-10-18T04:59:02.3006903Z ok 2 - Docker network-none delivery persists adapter writes in a volume after container recreation
+2026-10-18T04:59:02.3008244Z   ---
+2026-10-18T04:59:02.3008857Z   duration_ms: 8629.142253
+2026-10-18T04:59:02.3009537Z   type: 'test'
+2026-10-18T04:59:02.3010111Z   ...
+2026-10-18T04:59:02.3314221Z 1..2
+2026-10-18T04:59:02.3330056Z # tests 2
+2026-10-18T04:59:02.3331327Z # suites 0
+2026-10-18T04:59:02.3336705Z # pass 2
+2026-10-18T04:59:02.3348131Z # fail 0
+2026-10-18T04:59:02.3348760Z # cancelled 0
+2026-10-18T04:59:02.3349414Z # skipped 0
+2026-10-18T04:59:02.3350417Z # todo 0
+2026-10-18T04:59:02.3368099Z # duration_ms 40891.530674
