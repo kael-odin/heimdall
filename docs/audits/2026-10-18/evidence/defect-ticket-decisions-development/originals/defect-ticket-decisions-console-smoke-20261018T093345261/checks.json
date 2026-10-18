@@ -1,0 +1,15 @@
+{
+  "realCapturedSource": true,
+  "registeredTwoFixedFailures": true,
+  "registeredHealthyTwoMembers": true,
+  "fourUniqueOriginalActions": true,
+  "realUIOriginsAndReceiptScope": true,
+  "sameUniqueUpstreamBodyPerCase": true,
+  "denyAndAcceptedMutuallyExclusive": true,
+  "noTargetOrSourceOrBrowserOrCatalogSideEffects": true,
+  "sourceOriginalBytesRemain": true,
+  "pendingLayoutsDesktopMobile": true,
+  "onlyExactControlledHttp502Errors": true,
+  "implementationInputsUnchanged": true,
+  "fourCompleteCases": true
+}

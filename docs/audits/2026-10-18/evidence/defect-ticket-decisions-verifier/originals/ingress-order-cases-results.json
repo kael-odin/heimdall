@@ -1,0 +1,67 @@
+{
+  "evidenceLevel": "offline-artifact-verifier-negative-controls-only",
+  "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\defect-ticket-decisions-console-smoke-20261018T093910120",
+  "fixture": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-script-independent-review-20261018\\ingress-order-unit-fixture",
+  "results": [
+    {
+      "label": "new-order-positive-offline-fixture",
+      "exitCode": 0,
+      "expected": 0,
+      "matched": true
+    },
+    {
+      "label": "new-order-prefix-snapshot-diverges",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-order-deny-ack-snapshot-diverges",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-order-held-deny-snapshot-diverges",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-order-prefix-year2099",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-order-prefix-after-controlled-response",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-order-end-before-original-tail",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-order-end-after-original-response",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-order-noncanonical-ISO-time",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-order-stream-time-backwards",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    }
+  ]
+}

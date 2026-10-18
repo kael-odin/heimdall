@@ -1,0 +1,18 @@
+{
+  "name": "07-acceptance-managed-prepare-smoke",
+  "argv": [
+    "node",
+    "core/scripts/smoke-acceptance-managed-preparation.mjs",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\07-artifacts"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "environment": {},
+  "startedAt": "2026-10-18T03:08:30.515046+00:00",
+  "exitCode": 0,
+  "pid": 9592,
+  "endedAt": "2026-10-18T03:08:32.447064+00:00",
+  "durationSeconds": 1.9219999999913853,
+  "changedInputs": [],
+  "stdoutSha256": "2704690212f019f6fd1fe92071c2838a2764b071a3491294fb724d5915669d49",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

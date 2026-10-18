@@ -1,0 +1,139 @@
+{
+  "identity": {
+    "repo": "kael-odin/heimdall",
+    "runId": 39082419484,
+    "attempt": 1,
+    "headSha": "41c359a62ecbb67ac15f38c51c95fa983a7492d3"
+  },
+  "runConclusion": {
+    "status": "completed",
+    "conclusion": "failure"
+  },
+  "originalVerification": {
+    "passed": false,
+    "checks": 263,
+    "captureComplete": false,
+    "identityMatches": true,
+    "executionChecksPassed": false,
+    "executionAccepted": false
+  },
+  "failedVerificationChecks": {
+    "execution": 28,
+    "capture": 17
+  },
+  "artifact": {
+    "id": 12120555294,
+    "name": "acceptance-catalog-failure-1",
+    "bytes": 149526,
+    "digest": "sha256:7c02655c6ce6c013ea99c55eed28963fb448316bbe86624264c47b5718ae4ab9"
+  },
+  "originalFailure": {
+    "message": "Catalog smoke timeout: state not reached",
+    "catalogResponsesCount": 61,
+    "apiCasesCount": 27,
+    "completedChecks": {
+      "secondEngineAndJunctionCannotRecoverActiveRun": true,
+      "concurrentRevisionHasExactlyOneWinner": true,
+      "rejectedWritesPreserveCatalog": true,
+      "fullUrlMatchAndCorruptionFailClosed": true,
+      "restartPreservesProjectReleaseBindings": true,
+      "consoleCreatesProjectReleaseAndExplicitBinding": true,
+      "consoleConflictPreservesDraftWithoutAutomaticRetry": true,
+      "delayedDetailsCannotReplaceCurrentProject": true
+    },
+    "responseTail": [
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "method": "GET",
+        "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/releases",
+        "status": 201
+      }
+    ]
+  },
+  "originalUi": {
+    "projectId": "ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b",
+    "busy": "true",
+    "notices": [],
+    "errors": []
+  },
+  "sourceConfirmedInferences": [
+    {
+      "statement": "listLoading=true at failure capture",
+      "evidence": "original failure-ui HTML refresh label is 正在读取… and project selector has disabled attribute; exact template depends only on listLoading for the label and listLoading/empty projects for selector"
+    },
+    {
+      "statement": "writing=release at failure capture",
+      "evidence": "original failure-ui HTML create-release button label is 正在登记…; exact template chooses this label only when writing === release"
+    },
+    {
+      "statement": "normal release success notice depends on refreshCatalog settling",
+      "evidence": "AcceptanceCatalog.vue mutate awaits refreshCatalog at line 204 and sets notice at line 208; finally clears writing at line 215"
+    },
+    {
+      "statement": "the evidence does not identify which HTTP phase stalled",
+      "evidence": "only response and requestfailed are recorded, no request-start/requestfinished or fetch/json phase trace"
+    }
+  ],
+  "notEstablished": [
+    "No proof of a server-side catalog deadlock",
+    "No proof of runner slowness",
+    "No proof that the write or current draft was lost",
+    "No proof that prior named-session failure shares this cause",
+    "No proof that increasing any timeout would correct behavior"
+  ],
+  "workPerformed": "Read original artifact and exact-commit sources only; no Browser/engine/Core run, CI rerun, maintained source change or tool change."
+}

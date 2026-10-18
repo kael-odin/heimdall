@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "kind": "acceptance-comparison",
+  "scope": "explicit-pair",
+  "before": {
+    "runId": "ac-259bca6b-c730-4668-87f6-a9a7322f10dc",
+    "name": "API before",
+    "mode": "spec",
+    "gate": "failed",
+    "targetUrl": "http://127.0.0.1:52299/api/before",
+    "createdAt": "2026-10-18T03:35:28.333Z",
+    "endedAt": "2026-10-18T03:35:28.368Z",
+    "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+    "reportSha256": "e43019a6e1630fc1db1eb0a99f0c4f8b0a07ca47c5d33f4f6a27bb05994f2ef1"
+  },
+  "after": {
+    "runId": "ac-7bc5f804-f95d-430c-aab3-d17e8ab7eb82",
+    "name": "Renamed API run",
+    "mode": "spec",
+    "gate": "failed",
+    "targetUrl": "http://127.0.0.1:52299/api/after",
+    "createdAt": "2026-10-18T03:35:28.446Z",
+    "endedAt": "2026-10-18T03:35:28.460Z",
+    "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+    "reportSha256": "93d92c1f5b681ed69a922449a54ac40dcff2ce61e392e5e454487e9b161fdab9"
+  },
+  "integrity": {
+    "before": {
+      "valid": true,
+      "evidenceVerified": true,
+      "verifiedFiles": 6,
+      "verifiedBytes": 2611,
+      "errors": []
+    },
+    "after": {
+      "valid": false,
+      "evidenceVerified": false,
+      "verifiedFiles": 5,
+      "verifiedBytes": 2621,
+      "errors": [
+        {
+          "code": "EVIDENCE_DIGEST_MISMATCH",
+          "message": "证据字节与完成时的索引不一致。",
+          "file": "spec-2-quota-response.json"
+        }
+      ]
+    }
+  },
+  "status": "blocked",
+  "summary": {
+    "total": 2,
+    "stillFailed": 0,
+    "verifiedPassed": 0,
+    "newFailure": 0,
+    "observedFailure": 0,
+    "unchangedPassed": 0,
+    "observedPassed": 0,
+    "unverified": 2,
+    "incomparable": 0
+  },
+  "checks": [
+    {
+      "key": "d0fe0253a44137d6175e95596d8cf89270def89be5a5b71c09286e21fe4afa1a",
+      "title": "Renamed contract",
+      "route": "/quota",
+      "viewport": "api",
+      "facet": "contract",
+      "before": {
+        "checkId": "spec-1-quota",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "after": {
+        "checkId": "spec-2-quota",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "after-evidence-integrity",
+          "message": "after 当前报告及引用证据未通过完整性验证（EVIDENCE_DIGEST_MISMATCH）。"
+        }
+      ]
+    },
+    {
+      "key": "da3627ef97eee0798fae4bf49132b2e9ea831e18c2d1990a32f99e32e2072e0d",
+      "title": "Renamed contract",
+      "route": "/items",
+      "viewport": "api",
+      "facet": "contract",
+      "before": {
+        "checkId": "spec-2-items",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "spec-1-items",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "after-evidence-integrity",
+          "message": "after 当前报告及引用证据未通过完整性验证（EVIDENCE_DIGEST_MISMATCH）。"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "仅对比用户明确选择的两次运行；此前/本次是选择标签，不自动批准项目基线，也不改写原门禁。",
+    "可靠复验通过针对整个相同合同、操作点或检查，不推断子失败根因相同，不自动关闭持久问题。",
+    "未测、删除、受阻、待复核及不可比均不算修复；精确参考截图哈希变化会保守停止视觉趋势比较。",
+    "after-evidence-integrity：after 当前报告及引用证据未通过完整性验证（EVIDENCE_DIGEST_MISMATCH）。"
+  ]
+}

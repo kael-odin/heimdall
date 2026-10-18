@@ -1,0 +1,262 @@
+[
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/after/details"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/reference/home"
+  },
+  {
+    "method": "GET",
+    "path": "/browser/before/home"
+  },
+  {
+    "method": "GET",
+    "path": "/api/before/quota"
+  },
+  {
+    "method": "GET",
+    "path": "/api/before/items"
+  },
+  {
+    "method": "GET",
+    "path": "/api/after/items"
+  },
+  {
+    "method": "GET",
+    "path": "/api/after/quota"
+  },
+  {
+    "method": "GET",
+    "path": "/api/still/quota"
+  },
+  {
+    "method": "GET",
+    "path": "/api/still/items"
+  },
+  {
+    "method": "GET",
+    "path": "/api/after/items"
+  },
+  {
+    "method": "GET",
+    "path": "/api/after/quota"
+  },
+  {
+    "method": "GET",
+    "path": "/api/after/items"
+  },
+  {
+    "method": "GET",
+    "path": "/api/after/quota"
+  },
+  {
+    "method": "GET",
+    "path": "/api/after/items"
+  },
+  {
+    "method": "GET",
+    "path": "/api/limited/quota"
+  },
+  {
+    "method": "GET",
+    "path": "/api/limited/items"
+  }
+]

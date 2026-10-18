@@ -1,0 +1,18 @@
+{
+  "requested": true,
+  "httpStatus": 200,
+  "contentType": "application/json",
+  "redirectNotFollowed": false,
+  "hasLocation": false,
+  "mismatches": [
+    {
+      "kind": "json-syntax",
+      "expected": "Valid UTF-8 JSON",
+      "actual": "invalid"
+    }
+  ],
+  "bytes": 10,
+  "bodySha256": "c72360f8ea83cafa370282cd218f6fb789776751d86eadd4398617efa0cb34a2",
+  "parseError": "Response is not valid UTF-8 JSON.",
+  "bodyPreview": "{\"code\":0,"
+}

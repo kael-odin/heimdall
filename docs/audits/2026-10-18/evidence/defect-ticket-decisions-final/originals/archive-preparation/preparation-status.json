@@ -1,0 +1,27 @@
+{
+  "kind": "v2-syntax-only-not-executed",
+  "jsonTemplateParsed": true,
+  "nodeCheckExitCode": 0,
+  "templateExecutionEnabled": false,
+  "createdAt": "2026-10-18T03:55:14.7333860Z",
+  "historicalAborted": "original-running-null-or-original-completed-false-with-operator-bound-nonzero-stage",
+  "completedValidation": "full-original-batch-stage-run-log-input-time-and-raw-passed-consistency",
+  "originalV1Untouched": true,
+  "files": [
+    {
+      "path": "archive-control.mjs",
+      "bytes": 33015,
+      "sha256": "b264d684cfd71db38d4fbc2da91b851bf0520e634defad03b0f4675562eab4ac"
+    },
+    {
+      "path": "inputs.example.json",
+      "bytes": 3694,
+      "sha256": "9cfcc238780d771329b87597a77490040df91597491f5142f133f4bfcf9b328d"
+    },
+    {
+      "path": "README.md",
+      "bytes": 8236,
+      "sha256": "8836ee1ebce98dd127ba2e37b3557a0cabc5b6a14aa64629f78be1c1c4d36f94"
+    }
+  ]
+}

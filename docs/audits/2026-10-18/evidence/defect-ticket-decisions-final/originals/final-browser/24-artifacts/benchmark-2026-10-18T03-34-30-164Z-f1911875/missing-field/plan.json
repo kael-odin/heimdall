@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "name": "固定注入基准 · 套餐配额文字字段缺失",
+  "mode": "mirror",
+  "baselineUrl": "http://127.0.0.1:55191/baseline",
+  "targetUrl": "http://127.0.0.1:55191/target",
+  "routes": [
+    "/missing-field"
+  ],
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ],
+  "points": [
+    {
+      "id": "truth-missing-field",
+      "title": "套餐配额文字字段缺失",
+      "route": "/missing-field",
+      "severity": "high",
+      "steps": [],
+      "assertions": [
+        {
+          "kind": "text",
+          "selector": "#quota",
+          "contains": "128 个任务"
+        }
+      ]
+    }
+  ],
+  "thresholds": {
+    "visual": 0.97
+  },
+  "timeoutMs": 2000,
+  "settleMs": 180,
+  "normalization": {
+    "maskSelectors": []
+  }
+}

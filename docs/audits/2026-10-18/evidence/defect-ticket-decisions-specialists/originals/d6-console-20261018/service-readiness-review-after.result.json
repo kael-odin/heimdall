@@ -1,0 +1,5 @@
+{
+  "command": "node core/workspace/_runs/d6-console-20261018/service-readiness-review.mjs",
+  "exitCode": 0,
+  "completedAt": "2026-10-18T08:58:22.1385901+08:00"
+}

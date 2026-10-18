@@ -1,0 +1,119 @@
+{
+  "evidenceLevel": "offline-actual-Vue-script-refs-watchers",
+  "productionRequestTimeoutMs": 60000,
+  "ciCause": "unknown; the prior CI was not reproduced and the unchanged Browser smoke still needs separate validation",
+  "inputs": {
+    "console/src/AcceptanceCatalog.vue": "4682fb669fbecfc95c6c6d05be836e6b3be31374add2c37f163f1dc6b8a7b01b",
+    "console/src/acceptance-catalog.js": "9aba189523aff61b9dd223a4bcaaf256798c8cbe3e4d6ee1404a689d5c8df20f"
+  },
+  "results": [
+    {
+      "stage": "fetch",
+      "timeoutMs": 35,
+      "whileRefreshing": {
+        "selectedProject": "ap-a",
+        "listLoading": true,
+        "detailLoading": false,
+        "writing": "release",
+        "ready": false,
+        "notice": "项目「Project A」已登记版本「Acknowledged release」。写入已确认，正在刷新目录。",
+        "error": null,
+        "requiresReconcile": false
+      },
+      "boundedFailure": {
+        "selectedProject": "ap-a",
+        "listLoading": false,
+        "detailLoading": false,
+        "writing": "",
+        "ready": false,
+        "notice": "项目「Project A」已登记版本「Acknowledged release」。写入已确认，目录读取尚未完成，请刷新核对。",
+        "error": {
+          "message": "目录请求超时，请刷新并核对目录。",
+          "status": null,
+          "code": "REQUEST_TIMEOUT",
+          "details": null,
+          "currentGenerationId": null,
+          "currentRevision": null,
+          "writeMayHaveCommitted": false
+        },
+        "requiresReconcile": true
+      },
+      "afterReadOnlyRecovery": {
+        "selectedProject": "ap-a",
+        "listLoading": false,
+        "detailLoading": false,
+        "writing": "",
+        "ready": true,
+        "notice": "目录已刷新。草稿已保留，请核对版本和归属记录后再提交。",
+        "error": null,
+        "requiresReconcile": false
+      },
+      "posted": 1,
+      "cancellations": 0,
+      "serverEntity": {
+        "id": "ar-committed",
+        "projectId": "ap-a",
+        "label": "Acknowledged release",
+        "targetUrl": "https://example.test/"
+      },
+      "recoveryMethods": [
+        "GET",
+        "GET"
+      ]
+    },
+    {
+      "stage": "body",
+      "timeoutMs": 35,
+      "whileRefreshing": {
+        "selectedProject": "ap-a",
+        "listLoading": true,
+        "detailLoading": false,
+        "writing": "release",
+        "ready": false,
+        "notice": "项目「Project A」已登记版本「Acknowledged release」。写入已确认，正在刷新目录。",
+        "error": null,
+        "requiresReconcile": false
+      },
+      "boundedFailure": {
+        "selectedProject": "ap-a",
+        "listLoading": false,
+        "detailLoading": false,
+        "writing": "",
+        "ready": false,
+        "notice": "项目「Project A」已登记版本「Acknowledged release」。写入已确认，目录读取尚未完成，请刷新核对。",
+        "error": {
+          "message": "目录请求超时，请刷新并核对目录。",
+          "status": 200,
+          "code": "REQUEST_TIMEOUT",
+          "details": null,
+          "currentGenerationId": null,
+          "currentRevision": null,
+          "writeMayHaveCommitted": false
+        },
+        "requiresReconcile": true
+      },
+      "afterReadOnlyRecovery": {
+        "selectedProject": "ap-a",
+        "listLoading": false,
+        "detailLoading": false,
+        "writing": "",
+        "ready": true,
+        "notice": "目录已刷新。草稿已保留，请核对版本和归属记录后再提交。",
+        "error": null,
+        "requiresReconcile": false
+      },
+      "posted": 1,
+      "cancellations": 1,
+      "serverEntity": {
+        "id": "ar-committed",
+        "projectId": "ap-a",
+        "label": "Acknowledged release",
+        "targetUrl": "https://example.test/"
+      },
+      "recoveryMethods": [
+        "GET",
+        "GET"
+      ]
+    }
+  ]
+}

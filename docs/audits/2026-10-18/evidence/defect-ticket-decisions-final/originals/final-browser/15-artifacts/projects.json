@@ -1,0 +1,30 @@
+{
+  "a": {
+    "project": {
+      "id": "ap-691bb31e-aa8f-4584-aa17-bb394e6e2f57",
+      "name": "Browser baseline evidence",
+      "createdAt": "2026-10-18T03:12:11.887Z"
+    },
+    "release": {
+      "id": "ar-e45ec8d6-140c-4115-9ab3-f4ec715fa727",
+      "projectId": "ap-691bb31e-aa8f-4584-aa17-bb394e6e2f57",
+      "label": "baseline declared release",
+      "targetUrl": "http://127.0.0.1:60286/baseline?build=approved-query-sentinel&channel=stable",
+      "createdAt": "2026-10-18T03:12:11.928Z"
+    }
+  },
+  "b": {
+    "project": {
+      "id": "ap-abf5f1fc-cacf-426d-9f6d-cd777025d5aa",
+      "name": "Browser target evidence",
+      "createdAt": "2026-10-18T03:12:11.969Z"
+    },
+    "release": {
+      "id": "ar-7af1b795-9bba-4ff3-aadc-3950dc404cab",
+      "projectId": "ap-abf5f1fc-cacf-426d-9f6d-cd777025d5aa",
+      "label": "target declared release",
+      "targetUrl": "http://127.0.0.1:60286/target?build=current-query-sentinel&channel=development",
+      "createdAt": "2026-10-18T03:12:12.013Z"
+    }
+  }
+}

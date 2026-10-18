@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "body": {
+    "schemaVersion": 1,
+    "operationId": "ao-997d07fe-451a-470e-8793-939237d098f2",
+    "projectId": "ap-be9367ce-504c-4984-a340-cf7921cf3db0",
+    "runId": "ac-c15acf99-fef9-4884-902d-f159efbf6ec5",
+    "taskId": "a-3485c4be-a917-4b47-8a95-896962fdcb9d",
+    "sourceRunId": "ac-87728f38-1404-4fc2-8323-e9bbd9184f4b",
+    "targetReleaseId": "ar-c85d593b-99ca-448a-9119-a979eae8791a",
+    "state": "interrupted",
+    "runCreated": true,
+    "gate": "blocked",
+    "reasonCode": "CANCELLED",
+    "replayed": true
+  }
+}

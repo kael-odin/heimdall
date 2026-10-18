@@ -1,0 +1,12 @@
+[acceptance-spec-benchmark] healthy: PASS; targetBug=false; detected=false; gate=passed
+[acceptance-spec-benchmark] wrong-code: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-spec-benchmark] missing-field: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-spec-benchmark] wrong-type: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-spec-benchmark] wrong-status: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-spec-benchmark] non-json: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-spec-benchmark] bad-json: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-spec-benchmark] redirect: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-spec-benchmark] oversized: PASS; targetBug=false; detected=false; gate=blocked
+[acceptance-spec-benchmark] slow: PASS; targetBug=false; detected=false; gate=blocked
+[acceptance-spec-benchmark] head: PASS; targetBug=false; detected=false; gate=passed
+[acceptance-spec-benchmark] {"unit":"case","totalCases":11,"knownBugCases":7,"nonBugCases":4,"truePositive":7,"falsePositive":0,"falseNegative":0,"trueNegative":4,"precision":1,"recall":1,"falsePositiveRate":0,"passed":true,"outputDir":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\25-artifacts\\spec-benchmark-2026-10-18T03-34-54-939Z-947b0fca"}

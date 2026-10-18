@@ -1,0 +1,28 @@
+{
+  "command": "C:\\Program Files\\nodejs\\node.exe",
+  "args": [
+    "--import",
+    "file:///[temporary-data-root]/old-target-guard.mjs",
+    "src/acceptance/catalog-maintenance-cli.mjs",
+    "--apply",
+    "--target-schema",
+    "4",
+    "--root",
+    "[temporary-data-root]\\acceptance",
+    "--expected-generation-id",
+    "ag-ca176aa9-63db-4fc6-a031-a08609a5d857",
+    "--expected-revision",
+    "12",
+    "--expected-head-sha256",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "--expected-previous-sha256",
+    "none",
+    "--expected-plan-digest",
+    "730ab5ffe1314655e7c66549cd894b2fd026f7ec0969d8bc7d594a5bb02b70ba"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\",
+  "startedAt": "2026-10-18T03:07:49.185Z",
+  "finishedAt": "2026-10-18T03:07:49.386Z",
+  "exitCode": 1,
+  "signal": null
+}

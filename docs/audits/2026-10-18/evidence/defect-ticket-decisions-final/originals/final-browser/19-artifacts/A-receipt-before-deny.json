@@ -1,0 +1,10 @@
+[
+  {
+    "operationId": "bo-4372b452-be1d-4c3e-aab4-3b3e7b17de49",
+    "expectedGenerationId": "ag-de6237d9-75a1-42ce-8160-1effae150340",
+    "expectedRevision": 5,
+    "candidateId": "bc-547542c6-e498-45a6-b3b1-b7811f9fc3a7",
+    "contentDigest": "7f10812eb076610123da0cadda93f1948a530bad2024d89e90990b7b746e5960",
+    "targetReleaseId": "ar-6aa74836-09f9-4432-a903-1c151ee8f883"
+  }
+]

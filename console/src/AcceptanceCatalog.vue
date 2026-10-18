@@ -190,6 +190,9 @@ async function mutate(kind) {
       throw new AcceptanceCatalogError('写入响应缺少已提交实体，请先刷新核对。', { code: 'INVALID_RESPONSE', writeMayHaveCommitted: true });
     }
     committed = true;
+    const subject = kind === 'project' ? `项目「${entity.name}」已创建` : kind === 'release'
+      ? `项目「${submittedProject}」已登记版本「${entity.label}」` : `运行已认领到「${submittedProject} / ${submittedRelease}」`;
+    notice.value = `${subject}。写入已确认，正在刷新目录。`;
     if (kind === 'project' && JSON.stringify(projectDraft) === snapshot) projectDraft.name = '';
     if (kind === 'release' && JSON.stringify(currentDraft.release) === snapshot) Object.assign(currentDraft.release, { label: '', targetUrl: '', buildRef: '' });
     if (kind === 'binding') {
@@ -202,9 +205,8 @@ async function mutate(kind) {
       selectedProject.value = entity.id;
     }
     const refreshed = await refreshCatalog();
+    if (stopped) return;
     if (!refreshed) requiresReconcile.value = true;
-    const subject = kind === 'project' ? `项目「${entity.name}」已创建` : kind === 'release'
-      ? `项目「${submittedProject}」已登记版本「${entity.label}」` : `运行已认领到「${submittedProject} / ${submittedRelease}」`;
     notice.value = `${subject}。${refreshed ? '原始运行和报告保持不变。' : '写入已确认，目录读取尚未完成，请刷新核对。'}`;
   } catch (problem) {
     if (!stopped && !controller.signal.aborted) {
@@ -238,9 +240,11 @@ async function writeBaseline(kind, body, projectId) {
     validateBaselineWrite(kind, result, { projectId, body });
     committed = true;
     if (stopped) return { ...result, refreshed: false };
-    const refreshed = await refreshCatalog();
-    if (!refreshed) requiresReconcile.value = true;
     const action = { candidate: '需求候选', approval: '合同批准', selection: 'Spec 选用', cancellation: '取消选用' }[kind];
+    notice.value = `项目「${submittedProject}」的${action}已记录。写入已确认，正在刷新目录。`;
+    const refreshed = await refreshCatalog();
+    if (stopped) return { ...result, refreshed: false };
+    if (!refreshed) requiresReconcile.value = true;
     notice.value = `项目「${submittedProject}」的${action}已记录。${refreshed ? '未启动新运行，原报告保持不变。' : '写入已确认，读取尚未完成，请刷新核对。'}`;
     return { ...result, refreshed };
   } catch (problem) {
@@ -276,12 +280,14 @@ async function writeBrowserBinding(body, projectId) {
     validateBrowserBindingWrite(result, { projectId, body });
     committed = true;
     if (stopped) return { ...result, refreshed: false };
+    notice.value = `项目「${submittedProject}」的 Browser 来源归属已记录。提交已确认，正在刷新目录。`;
     if (!stillSelected()) {
       requiresReconcile.value = true;
       notice.value = `项目「${submittedProject}」的 Browser 来源归属已记录。提交已确认，请刷新目录核对。`;
       return { ...result, refreshed: false };
     }
     const refreshed = await refreshCatalog();
+    if (stopped) return { ...result, refreshed: false };
     if (!refreshed || !stillSelected()) requiresReconcile.value = true;
     if (stillSelected()) notice.value = `项目「${submittedProject}」的 Browser 来源归属已记录。${refreshed
       ? '归属已完成，可按需核对保存来源。' : '提交已确认，列表待刷新；请刷新目录核对。'}`;
@@ -322,6 +328,7 @@ async function writeBrowserCandidate(body, projectId) {
       post: input => request(`/${encodeURIComponent(projectId)}/browser-baseline-candidates`, { method: 'POST', body: input, signal: controller.signal }),
       refresh: async () => {
         browserCandidateFacts.value = browserCandidateSubmission.facts();
+        if (!stopped) notice.value = `项目「${submittedProject}」的 Browser 候选已记录。写入已确认，正在刷新目录。`;
         if (!stillSelected()) return false;
         return await refreshCatalog() && stillSelected();
       },

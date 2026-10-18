@@ -1,0 +1,18 @@
+{
+  "name": "20-acceptance-defect-tickets-smoke",
+  "argv": [
+    "node",
+    "core/scripts/smoke-acceptance-defect-tickets-console.mjs",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\20-artifacts"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "environment": {},
+  "startedAt": "2026-10-18T03:20:21.754466+00:00",
+  "exitCode": 0,
+  "pid": 2776,
+  "endedAt": "2026-10-18T03:31:02.193439+00:00",
+  "durationSeconds": 640.4370000000054,
+  "changedInputs": [],
+  "stdoutSha256": "ff4e6dfdbcee3f8c37a323dc7b3382f3a8a6ff88d42fab62eb404788c17c80c6",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

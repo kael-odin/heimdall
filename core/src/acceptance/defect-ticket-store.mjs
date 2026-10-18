@@ -1,4 +1,4 @@
-/** Owner-bound, append-only manual defect-ticket events. No Browser effects.
+/** Owner-bound, append-only manual defect-ticket decisions. No Browser effects.
  * Reads never create, repair or remove namespace entries. A checked namespace
  * is not a multi-file atomic snapshot or a backup/rollback detector. */
 import { constants, mkdirSync, opendirSync, realpathSync, lstatSync, openSync, closeSync, fstatSync,
@@ -8,7 +8,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { types } from 'node:util';
 import { assertAcceptanceOwner, AcceptanceOwnerError } from './owner.mjs';
 import { DEFECT_TICKET_LIMITS, DefectTicketError, defectTicketFail as fail,
-  isDefectTicketActionId, validateDefectTicketEvent, defectTicketEventBytes,
+  isDefectTicketActionId, validateDefectTicketEvent, validateDefectTicketRejection,
+  validateDefectTicketDecision, defectTicketDecisionBytes,
   validateDefectTicketChain } from './defect-ticket-schema.mjs';
 
 export const DEFECT_TICKET_STORE_LIMITS = Object.freeze(Object.fromEntries(
@@ -22,6 +23,7 @@ const sameFile = (a, b) => identity(a, b) && a.size === b.size && a.nlink === b.
   && a.mtimeNs === b.mtimeNs && a.ctimeNs === b.ctimeNs;
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const sameNames = (a, b) => a.length === b.length && a.every((value, index) => value === b[index]);
+const scopeOf = record => record.event ?? record.rejection.original;
 const freeze = value => { if (value && typeof value === 'object') {
   Object.values(value).forEach(freeze); Object.freeze(value);
 } return value; };
@@ -74,6 +76,7 @@ function safeError(cause, writeMayHaveCommitted = false) {
   if (cause && !types.isProxy(cause) && types.isNativeError(cause)) {
     const prototype = Object.getPrototypeOf(cause), descriptors = Object.getOwnPropertyDescriptors(cause);
     const value = key => descriptors[key] && Object.hasOwn(descriptors[key], 'value') ? descriptors[key].value : undefined;
+    writeMayHaveCommitted ||= value('writeMayHaveCommitted') === true;
     if (prototype === DefectTicketError.prototype) {
       const code = value('code'), status = value('status'), details = value('details');
       if (typeof code === 'string' && /^[A-Z_]{1,64}$/.test(code) && Number.isSafeInteger(status) && status >= 400 && status <= 599
@@ -198,13 +201,16 @@ export function createDefectTicketStore(input = {}) {
       totalBytes += Number(stat.size); if (totalBytes > limits.namespaceBytes) fail('NAMESPACE_BYTE_CAPACITY', 'CAPACITY', 503);
       return { path, stat, name };
     });
-    const records = shapes.map(shape => {
+    const decisions = shapes.map(shape => {
       const current = boundedFile(shape.path, limits.actionBytes); if (!sameFile(shape.stat, current.stat)) fail('FILE_CHANGED');
-      const event = validateDefectTicketEvent(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(current.bytes)));
-      if (shape.name !== event.actionId + '.json' || !defectTicketEventBytes(event).equals(current.bytes)) fail('EVENT_BYTES_CHANGED');
-      captures.push(current); return { event, sha256: current.sha256 };
+      const decision = validateDefectTicketDecision(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(current.bytes))),
+        record = Object.hasOwn(decision, 'ticketContractVersion') ? { event: decision, sha256: current.sha256 }
+          : { rejection: decision, sha256: current.sha256 };
+      if (shape.name !== scopeOf(record).actionId + '.json' || !defectTicketDecisionBytes(decision).equals(current.bytes)) fail('EVENT_BYTES_CHANGED');
+      captures.push(current); return record;
     });
-    const tickets = group(records), ordered = tickets.flat(); freeze(tickets); freeze(ordered);
+    const tickets = group(decisions.filter(record => Object.hasOwn(record, 'event'))), ordered = tickets.flat();
+    freeze(decisions); freeze(tickets); freeze(ordered);
     const checkShape = () => {
       owned();
       for (const [path, stat] of capturedDirectories) if (!identity(stat, directory(path))) fail('DIRECTORY_CHANGED');
@@ -224,7 +230,7 @@ export function createDefectTicketStore(input = {}) {
       checkShape(); owned(); return true;
     });
     assertCurrent();
-    return { records: ordered, tickets, assertCurrent, totalBytes, present: !absent };
+    return { decisions, records: ordered, tickets, assertCurrent, totalBytes, present: !absent };
   }
   const projectIdOf = value => { if (!id(value, 'ap')) fail('INVALID_PROJECT_ID', 'INVALID_INPUT', 400); return value; };
   function snapshot(projectId) { return boundary(() => {
@@ -234,41 +240,45 @@ export function createDefectTicketStore(input = {}) {
   }); }
   function action(projectId, actionId) { return boundary(() => {
     projectIdOf(projectId); if (!isDefectTicketActionId(actionId)) fail('INVALID_ACTION_ID', 'INVALID_INPUT', 400);
-    const checked = capture(), record = checked.records.find(value => value.event.actionId === actionId);
-    if (record && record.event.projectId !== projectId) fail('ACTION_NOT_FOUND', 'NOT_FOUND', 404);
+    const checked = capture(), record = checked.decisions.find(value => scopeOf(value).actionId === actionId);
+    if (record && scopeOf(record).projectId !== projectId) fail('ACTION_NOT_FOUND', 'NOT_FOUND', 404);
     return record ?? null;
   }); }
+  function replay(checked, { projectId, actionId, requestFingerprint }) {
+    const existing = checked.decisions.find(record => scopeOf(record).actionId === actionId);
+    if (!existing) return null;
+    const scope = scopeOf(existing);
+    if (scope.projectId !== projectId) fail('ACTION_NOT_FOUND', 'NOT_FOUND', 404);
+    if (scope.requestFingerprint !== requestFingerprint) fail('ACTION_CONTENT_CONFLICT', 'ACTION_CONFLICT', 409);
+    checked.assertCurrent(); return Object.freeze({ record: existing, replayed: true });
+  }
   function createNamespace(previous, guard) {
     guard(); previous.assertCurrent();
     for (const path of [parent, version, events]) {
       owned(); directory(dirname(path)); mkdirSync(path); directory(path); syncDirectory(dirname(path));
     }
     const fresh = capture();
-    if (fresh.records.length !== previous.records.length
-      || fresh.records.some((record, index) => record.sha256 !== previous.records[index].sha256)) fail('NAMESPACE_CHANGED', 'STALE_TICKET', 409);
+    if (fresh.decisions.length !== previous.decisions.length
+      || fresh.decisions.some((record, index) => record.sha256 !== previous.decisions[index].sha256)) fail('NAMESPACE_CHANGED', 'STALE_TICKET', 409);
     guard(); fresh.assertCurrent(); return fresh;
   }
-  function execute({ projectId, actionId, requestFingerprint, prepare }) {
+  function execute({ projectId, actionId, requestFingerprint, prepare }, kind) {
     let publicationAttempted = false, fd, temporary;
     try {
       owned(); let checked = capture();
-      const existing = checked.records.find(record => record.event.actionId === actionId);
-      if (existing) {
-        if (existing.event.projectId !== projectId) fail('ACTION_NOT_FOUND', 'NOT_FOUND', 404);
-        if (existing.event.requestFingerprint !== requestFingerprint)
-          fail('ACTION_CONTENT_CONFLICT', 'ACTION_CONFLICT', 409);
-        checked.assertCurrent(); return Object.freeze({ record: existing, replayed: true });
-      }
+      const existing = replay(checked, { projectId, actionId, requestFingerprint }); if (existing) return existing;
       const projectRecords = Object.freeze(checked.records.filter(record => record.event.projectId === projectId));
-      const prepared = ownValues(invoke(prepare, [projectRecords]), ['event', 'assertCurrent']);
-      const guard = synchronousGuard(prepared.assertCurrent), event = validateDefectTicketEvent(prepared.event);
-      if (event.projectId !== projectId || event.actionId !== actionId || event.requestFingerprint !== requestFingerprint)
+      const prepared = ownValues(invoke(prepare, [projectRecords]), [kind, 'assertCurrent']);
+      const guard = synchronousGuard(prepared.assertCurrent), decision = kind === 'event'
+        ? validateDefectTicketEvent(prepared.event) : validateDefectTicketRejection(prepared.rejection);
+      const scope = kind === 'event' ? decision : decision.original;
+      if (scope.projectId !== projectId || scope.actionId !== actionId || scope.requestFingerprint !== requestFingerprint)
         fail('APPEND_SCOPE_MISMATCH', 'INVALID_INPUT', 400);
-      const bytes = defectTicketEventBytes(event), record = freeze({ event, sha256: sha(bytes) });
+      const bytes = defectTicketDecisionBytes(decision), record = freeze({ [kind]: decision, sha256: sha(bytes) });
       if (bytes.length > limits.actionBytes) fail('ACTION_BYTE_CAPACITY', 'CAPACITY', 503);
-      if (checked.records.length >= limits.actions) fail('ACTION_CAPACITY', 'CAPACITY', 503);
+      if (checked.decisions.length >= limits.actions) fail('ACTION_CAPACITY', 'CAPACITY', 503);
       if (checked.totalBytes + bytes.length > limits.namespaceBytes) fail('NAMESPACE_BYTE_CAPACITY', 'CAPACITY', 503);
-      try { group([...checked.records, record]); }
+      try { group(kind === 'event' ? [...checked.records, record] : checked.records); }
       catch (cause) {
         const safe = safeError(cause); if (safe.code === 'CAPACITY') throw safe;
         fail('APPEND_CHAIN_INVALID', 'STALE_TICKET', 409);
@@ -297,11 +307,11 @@ export function createDefectTicketStore(input = {}) {
       directory(events); owned(); unlinkSync(temporary); temporaries.delete(temporary); syncDirectory(events);
       const published = boundedFile(target, limits.actionBytes);
       if (!identity(published.stat, staged.stat) || !published.bytes.equals(bytes)) fail('PUBLICATION_CHANGED');
-      const receipt = capture(), expected = new Map([...checked.records, record].map(value => [value.event.actionId, value.sha256]));
-      if (receipt.records.length !== expected.size || receipt.records.some(value => expected.get(value.event.actionId) !== value.sha256))
+      const receipt = capture(), expected = new Map([...checked.decisions, record].map(value => [scopeOf(value).actionId, value.sha256]));
+      if (receipt.decisions.length !== expected.size || receipt.decisions.some(value => expected.get(scopeOf(value).actionId) !== value.sha256))
         fail('PUBLICATION_NAMESPACE_CHANGED');
       guard(); receipt.assertCurrent(); owned();
-      return Object.freeze({ record: receipt.records.find(value => value.event.actionId === actionId), replayed: false });
+      return Object.freeze({ record: receipt.decisions.find(value => scopeOf(value).actionId === actionId), replayed: false });
     } catch (cause) { throw safeError(cause, publicationAttempted); }
     finally {
       if (fd !== undefined) try { closeSync(fd); } catch { /* Preserve the primary failure and scene. */ }
@@ -310,20 +320,23 @@ export function createDefectTicketStore(input = {}) {
       if (temporary) temporaries.delete(temporary);
     }
   }
-  function append(input) {
-    let value;
-    try { value = boundary(() => {
+  function enqueue(input, kind) {
+    let admission;
+    try { admission = boundary(() => {
       const checked = ownValues(input, ['projectId', 'actionId', 'requestFingerprint', 'prepare']);
       projectIdOf(checked.projectId);
       if (!isDefectTicketActionId(checked.actionId) || !hash(checked.requestFingerprint)) fail('INVALID_APPEND_REQUEST', 'INVALID_INPUT', 400);
       callable(checked.prepare, 'INVALID_PREPARE');
+      const existing = replay(capture(), checked); if (existing) return { existing };
       if (pending >= limits.queue) fail('QUEUE_CAPACITY', 'CAPACITY', 503);
-      return checked;
+      return { value: checked };
     }); } catch (cause) { return Promise.reject(safeError(cause)); }
+    if (admission.existing) return Promise.resolve(admission.existing);
     pending++;
-    const result = tail.then(() => execute(value));
+    const result = tail.then(() => execute(admission.value, kind));
     tail = result.then(() => { pending--; }, () => { pending--; });
     return result;
   }
-  return Object.freeze({ snapshot, action, append });
+  const append = input => enqueue(input, 'event'), deny = input => enqueue(input, 'rejection');
+  return Object.freeze({ snapshot, action, append, deny });
 }

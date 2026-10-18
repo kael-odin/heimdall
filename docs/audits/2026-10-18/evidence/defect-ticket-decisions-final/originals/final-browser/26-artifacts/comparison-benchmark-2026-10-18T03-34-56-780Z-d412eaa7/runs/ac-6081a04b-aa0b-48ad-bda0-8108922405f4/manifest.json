@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-6081a04b-aa0b-48ad-bda0-8108922405f4",
+  "taskId": null,
+  "name": "Renamed browser run",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:52299/browser/reference",
+  "targetUrl": "http://127.0.0.1:52299/browser/after",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-18T03:35:18.575Z",
+  "updatedAt": "2026-10-18T03:35:22.217Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Renamed browser run",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:52299/browser/reference",
+    "targetUrl": "http://127.0.0.1:52299/browser/after",
+    "routes": [
+      "/details"
+    ],
+    "viewports": [
+      {
+        "name": "wide-renamed",
+        "width": 960,
+        "height": 720
+      },
+      {
+        "name": "phone-renamed",
+        "width": 375,
+        "height": 812
+      }
+    ],
+    "points": [
+      {
+        "id": "copy",
+        "title": "Renamed point",
+        "route": "/details",
+        "severity": "low",
+        "steps": [],
+        "assertions": [
+          {
+            "kind": "text",
+            "selector": "#copy",
+            "equals": "Ready"
+          }
+        ]
+      }
+    ],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 1500,
+    "settleMs": 80,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 14,
+    "passed": 12,
+    "failed": 2,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 2,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 14,
+      "total": 14,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.999
+      },
+      "structure": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-18T03:35:22.141Z",
+  "error": null,
+  "reportSha256": "3919579aac6cfd8d00df961f8a7c80f4d45ad287417c125944cb8334a929725d"
+}

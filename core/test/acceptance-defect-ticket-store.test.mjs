@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, realpathSync, existsSync, readFileSync, writeFi
 import { resolve, join } from 'node:path';
 import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 import { DefectTicketError, defectTicketRequestFingerprint, defectTicketMemberSetDigest,
-  defectTicketEventBytes } from '../src/acceptance/defect-ticket-schema.mjs';
+  defectTicketEventBytes, defectTicketRejectionBytes } from '../src/acceptance/defect-ticket-schema.mjs';
 import { createDefectTicketStore, DEFECT_TICKET_STORE_LIMITS } from '../src/acceptance/defect-ticket-store.mjs';
 
 const uid = (prefix, n) => `${prefix}-00000000-0000-0000-0000-${n.toString(16).padStart(12, '0')}`;
@@ -303,4 +303,150 @@ test('append admission binds scope/fingerprint and rejects invalid limits or for
   await assert.rejects(f.store.append({ ...args(first), actionId: uid('da', 2) }), { code: 'INVALID_INPUT' });
   await assert.rejects(f.store.append({ ...args(first), prepare: () => ({ event: { ...first, passed: true }, assertCurrent: () => true }) }), { code: 'INTEGRITY_BLOCKED' });
   assert.equal(existsSync(join(f.root, 'defect-tickets')), false);
+});
+
+function rejection(event = createEvent()) {
+  const request = event.kind === 'create' ? { ticketId: event.ticketId, actionId: event.actionId,
+    sourceOperationId: event.source.operationId, memberCheckIds: event.members.map(member => member.checkId),
+    title: event.title, severity: event.severity, description: event.description, reproduction: event.reproduction }
+    : { actionId: event.actionId, afterOperationId: event.after.operationId, expectedRevision: event.revision - 1,
+      expectedHeadSha256: event.previousEventSha256, memberSetDigest: event.memberSetDigest,
+      factsDigest: event.factsDigest, previewDigest: event.previewDigest, resolution: event.resolution, confirmed: true };
+  return { actionDecisionVersion: 1, kind: 'manual-defect-ticket-action-rejection', original: { version: 1,
+    projectId: event.projectId, ticketId: event.ticketId, kind: event.kind, actionId: event.actionId,
+    requestFingerprint: event.requestFingerprint, request }, effect: 'deny-late-manual-defect-ticket-action',
+  decidedAt: '2026-10-18T03:00:00.000Z', actor: { kind: 'local-operator' } };
+}
+const denyArgs = (rejected, assertCurrent = () => true) => ({ projectId: rejected.original.projectId,
+  actionId: rejected.original.actionId, requestFingerprint: rejected.original.requestFingerprint,
+  prepare: () => ({ rejection: rejected, assertCurrent }) });
+const deny = (store, rejected, guard) => store.deny(denyArgs(rejected, guard));
+
+test('D6 rejected-only namespace is present, immutable, restartable, and absent from accepted ticket chains', async t => {
+  const f = fixture(t), first = createEvent(), denied = rejection(first), result = await deny(f.store, denied);
+  assert.equal(result.replayed, false); assert.deepEqual(result.record.rejection, denied);
+  assert.equal(Object.isFrozen(result.record.rejection.original.request), true);
+  const bytes = readFileSync(finalPath(f, first)); assert.deepEqual(bytes, defectTicketRejectionBytes(denied));
+  assert.equal(result.record.sha256, hashBytes(bytes)); assert.deepEqual(f.store.snapshot(projectId).records, []);
+  assert.deepEqual(f.store.snapshot(projectId).tickets, []);
+  assert.deepEqual(f.store.action(projectId, first.actionId), result.record);
+  assert.equal(f.owner.release(), true); const owner = acquireAcceptanceOwner({ root: f.root }); t.after(() => owner.release());
+  const restarted = createDefectTicketStore({ owner }); assert.deepEqual(restarted.action(projectId, first.actionId), result.record);
+  const accepted = await put(restarted, createEvent(2)); assert.equal(accepted.replayed, false);
+  assert.deepEqual(restarted.snapshot(projectId).records.map(value => value.event.actionId), [uid('da', 2)]);
+  assert.deepEqual(readFileSync(finalPath(f, first)), bytes);
+  assert.deepEqual(readdirSync(f.events).sort(), [uid('da', 1), uid('da', 2)].map(value => value + '.json'));
+});
+
+test('D6 append and deny compete for one action slot on one queue in both orders', async t => {
+  for (const winner of ['event', 'rejection']) {
+    const f = fixture(t), event = createEvent(), rejected = rejection(event); let losingPrepare = 0;
+    const first = winner === 'event' ? put(f.store, event) : deny(f.store, rejected);
+    const second = winner === 'event' ? f.store.deny({ ...denyArgs(rejected), prepare() { losingPrepare++; throw Error('must not prepare'); } })
+      : f.store.append({ ...args(event), prepare() { losingPrepare++; throw Error('must not prepare'); } });
+    assert.equal(first instanceof Promise, true); assert.equal(second instanceof Promise, true);
+    const [one, two] = await Promise.all([first, second]);
+    assert.equal(one.replayed, false); assert.equal(two.replayed, true); assert.deepEqual(two.record, one.record);
+    assert.equal(losingPrepare, 0); assert.equal(Object.hasOwn(one.record, winner), true);
+    assert.equal(readdirSync(f.events).length, 1);
+    assert.equal(f.store.snapshot(projectId).records.length, winner === 'event' ? 1 : 0);
+  }
+  const f = fixture(t), denied = rejection(), results = await Promise.all([deny(f.store, denied), deny(f.store, denied)]);
+  assert.deepEqual(results.map(value => value.replayed), [false, true]); assert.deepEqual(results[0].record, results[1].record);
+});
+
+test('D6 exact complete decisions precede zero/full queue limits and never run prepare', async t => {
+  for (const winner of ['event', 'rejection']) {
+    const f = fixture(t, { queue: 1 }), event = createEvent(), rejected = rejection(event);
+    if (winner === 'event') await put(f.store, event); else await deny(f.store, rejected);
+    const pending = put(f.store, createEvent(2)); let prepared = 0;
+    for (const store of [f.store, createDefectTicketStore({ owner: f.owner, limits: { queue: 0 } })]) {
+      const prepare = () => { prepared++; throw Error('existing proof must bypass admission'); };
+      const appendResult = store.append({ ...args(event), prepare }), denyResult = store.deny({ ...denyArgs(rejected), prepare });
+      assert.equal(appendResult instanceof Promise, true); assert.equal(denyResult instanceof Promise, true);
+      for (const result of await Promise.all([appendResult, denyResult])) {
+        assert.equal(result.replayed, true); assert.equal(Object.hasOwn(result.record, winner), true);
+      }
+    }
+    assert.equal(prepared, 0); await pending;
+  }
+});
+
+test('D6 rejected identity remains globally unique and cross-project/mismatched actions cannot reuse it', async t => {
+  const f = fixture(t), event = createEvent(), rejected = rejection(event); await deny(f.store, rejected);
+  assert.throws(() => f.store.action(otherProject, event.actionId), { code: 'NOT_FOUND', status: 404 });
+  for (const fn of [input => f.store.append(input), input => f.store.deny(input)]) {
+    await assert.rejects(fn({ ...args(event), projectId: otherProject }), { code: 'NOT_FOUND', status: 404 });
+    await assert.rejects(fn({ ...args(event), requestFingerprint: h('different') }), { code: 'ACTION_CONFLICT', status: 409 });
+  }
+  const first = createEvent(2); await put(f.store, first); const close = closeEvent(first);
+  const before = f.store.snapshot(projectId); await deny(f.store, rejection(close));
+  assert.deepEqual(f.store.snapshot(projectId).records, before.records); assert.deepEqual(f.store.snapshot(projectId).tickets, before.tickets);
+  assert.throws(before.assertCurrent, { code: 'STALE_TICKET' }, 'the complete decision namespace fence also observes rejected changes');
+  const next = closeEvent(first, { action: 102 }); await put(f.store, next);
+  assert.deepEqual(f.store.snapshot(projectId).records.map(value => value.event.revision), [0, 1]);
+});
+
+test('D6 all rejected decisions count toward actions and bytes but never consume ticket capacity', async t => {
+  const f = fixture(t, { tickets: 0 }), event = createEvent(), rejected = rejection(event); await deny(f.store, rejected);
+  assert.deepEqual(f.store.snapshot(projectId).records, []);
+  const bytes = defectTicketRejectionBytes(rejected).length;
+  const exact = createDefectTicketStore({ owner: f.owner, limits: { tickets: 0, actions: 1, actionBytes: bytes, namespaceBytes: bytes } });
+  assert.deepEqual(exact.action(projectId, event.actionId).rejection, rejected);
+  await assert.rejects(deny(exact, rejection(createEvent(2))), { code: 'CAPACITY' });
+  for (const limits of [{ actions: 0 }, { namespaceBytes: bytes - 1 }])
+    assert.throws(() => createDefectTicketStore({ owner: f.owner, limits }).snapshot(projectId), { code: 'CAPACITY' });
+  assertBlocked(() => createDefectTicketStore({ owner: f.owner, limits: { actionBytes: bytes - 1 } }).snapshot(projectId));
+  const mixed = fixture(t, { tickets: 1 }); await deny(mixed.store, rejection(createEvent())); await put(mixed.store, createEvent(2));
+  assert.equal(mixed.store.snapshot(projectId).tickets.length, 1);
+  const total = bytes + defectTicketEventBytes(createEvent(2)).length;
+  assert.throws(() => createDefectTicketStore({ owner: mixed.owner, limits: { namespaceBytes: total - 1 } }).snapshot(projectId), { code: 'CAPACITY' });
+});
+
+test('D6 rejected records cannot satisfy an accepted close chain and original rejection bytes are fenced', async t => {
+  const missing = fixture(t), event = createEvent(); await deny(missing.store, rejection(event));
+  await assert.rejects(put(missing.store, closeEvent(event)), { code: 'STALE_TICKET' });
+  assert.deepEqual(missing.store.snapshot(projectId).records, []);
+  const changed = fixture(t); await deny(changed.store, rejection(event)); const before = readFileSync(finalPath(changed, event));
+  await assert.rejects(changed.store.append({ ...args(createEvent(2)), prepare() {
+    appendFileSync(finalPath(changed, event), '\n'); return { event: createEvent(2), assertCurrent: () => true };
+  } }), { code: 'STALE_TICKET' });
+  assert.deepEqual(readFileSync(finalPath(changed, event)), Buffer.concat([before, Buffer.from('\n')]));
+  assert.equal(existsSync(finalPath(changed, createEvent(2))), false); assertBlocked(() => changed.store.snapshot(projectId));
+});
+
+test('D6 rejection publication failures retain temporary scenes and uncertain complete decisions', async t => {
+  const temporary = fixture(t), event = createEvent(), rejected = rejection(event);
+  await assert.rejects(deny(temporary.store, rejected, () => {
+    if (existsSync(temporary.events) && readdirSync(temporary.events).some(name => name.endsWith('.tmp')))
+      throw new DefectTicketError('STALE_FACTS', 409, 'READY_CHANGED');
+  }), error => { assert.equal(error.code, 'STALE_FACTS'); assert.equal(error.writeMayHaveCommitted, undefined); return true; });
+  const names = readdirSync(temporary.events); assert.equal(names.length, 1); assert.match(names[0], /\.tmp$/);
+  assert.deepEqual(readFileSync(join(temporary.events, names[0])), defectTicketRejectionBytes(rejected)); assertBlocked(() => temporary.store.snapshot(projectId));
+  const committed = fixture(t);
+  await assert.rejects(deny(committed.store, rejected, () => {
+    if (existsSync(finalPath(committed, event))) throw new DefectTicketError('STALE_FACTS', 409, 'READY_CHANGED');
+  }), error => { assert.equal(error.code, 'STALE_FACTS'); assert.equal(error.writeMayHaveCommitted, true); return true; });
+  assert.deepEqual(committed.store.action(projectId, event.actionId).rejection, rejected);
+  const replayed = await put(committed.store, event); assert.equal(replayed.replayed, true); assert.deepEqual(replayed.record.rejection, rejected);
+});
+
+test('D6 publication expected map includes old rejections and uncertainty survives safe error rewrapping', async t => {
+  const f = fixture(t), event = createEvent(), denied = rejection(event); await deny(f.store, denied); const next = createEvent(2);
+  await assert.rejects(put(f.store, next, () => {
+    if (existsSync(finalPath(f, next))) appendFileSync(finalPath(f, event), '\n');
+  }), error => { assert.equal(error.writeMayHaveCommitted, true); return true; });
+  assert.equal(existsSync(finalPath(f, next)), true); assertBlocked(() => f.store.action(projectId, event.actionId));
+  const clean = fixture(t); let hooks = 0;
+  for (const error of [new DefectTicketError('STALE_FACTS', 409, 'SOURCE_CHANGED'), Error('native callback')]) {
+    error.writeMayHaveCommitted = true;
+    await assert.rejects(clean.store.deny({ ...denyArgs(denied), prepare() { throw error; } }), caught => {
+      assert.equal(caught.writeMayHaveCommitted, true); return true;
+    });
+  }
+  const accessor = new DefectTicketError(); Object.defineProperty(accessor, 'writeMayHaveCommitted', { get() { hooks++; return true; } });
+  await assert.rejects(clean.store.deny({ ...denyArgs(denied), prepare() { throw accessor; } }), caught => {
+    assert.equal(caught.writeMayHaveCommitted, undefined); return true;
+  });
+  assert.equal(hooks, 0); assert.equal(existsSync(join(clean.root, 'defect-tickets')), false);
 });

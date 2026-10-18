@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-c4972769-8b5b-46d5-9724-724c6ed9bd55",
+  "taskId": null,
+  "name": "Browser before",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:52299/browser/reference",
+  "targetUrl": "http://127.0.0.1:52299/browser/before",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-18T03:34:56.804Z",
+  "updatedAt": "2026-10-18T03:35:03.771Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Browser before",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:52299/browser/reference",
+    "targetUrl": "http://127.0.0.1:52299/browser/before",
+    "routes": [
+      "/home",
+      "/details"
+    ],
+    "viewports": [
+      {
+        "name": "mobile",
+        "width": 375,
+        "height": 812
+      },
+      {
+        "name": "desktop",
+        "width": 960,
+        "height": 720
+      }
+    ],
+    "points": [
+      {
+        "id": "toggle",
+        "title": "Toggle exposes expanded state",
+        "route": "/home",
+        "severity": "high",
+        "steps": [
+          {
+            "action": "click",
+            "selector": "#toggle"
+          }
+        ],
+        "assertions": [
+          {
+            "kind": "attribute",
+            "selector": "#toggle",
+            "attribute": "aria-expanded",
+            "equals": "true"
+          }
+        ]
+      },
+      {
+        "id": "copy",
+        "title": "Detail copy remains correct",
+        "route": "/details",
+        "severity": "high",
+        "steps": [],
+        "assertions": [
+          {
+            "kind": "text",
+            "selector": "#copy",
+            "equals": "Ready"
+          }
+        ]
+      }
+    ],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 1500,
+    "settleMs": 80,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 28,
+    "passed": 24,
+    "failed": 4,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 4,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 28,
+      "total": 28,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 4,
+        "passed": 2,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.587
+      },
+      "structure": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 4,
+        "passed": 2,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 16,
+        "passed": 16,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-18T03:35:03.654Z",
+  "error": null,
+  "reportSha256": "4c65be4061498fe8510582f5877271152cecc6efe3760412c28341e2050f70dc"
+}

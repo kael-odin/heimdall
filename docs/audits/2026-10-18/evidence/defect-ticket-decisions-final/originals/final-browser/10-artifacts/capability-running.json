@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "ready": false,
+  "busy": true,
+  "closing": false,
+  "blocked": false,
+  "code": null,
+  "kind": "managed",
+  "runId": "ac-dd1a6582-da67-4521-8adb-4f2fdd32a2e9",
+  "taskId": "a-cc7f8db5-c165-4e34-a384-186ade25040c",
+  "recoveryReady": true,
+  "methods": [
+    "GET",
+    "HEAD"
+  ],
+  "triageSupported": false
+}

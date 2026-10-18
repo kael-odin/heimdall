@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "kind": "acceptance-comparison",
+  "scope": "explicit-pair",
+  "before": {
+    "runId": "ac-259bca6b-c730-4668-87f6-a9a7322f10dc",
+    "name": "API before",
+    "mode": "spec",
+    "gate": "failed",
+    "targetUrl": "http://127.0.0.1:52299/api/before",
+    "createdAt": "2026-10-18T03:35:28.333Z",
+    "endedAt": "2026-10-18T03:35:28.368Z",
+    "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+    "reportSha256": "e43019a6e1630fc1db1eb0a99f0c4f8b0a07ca47c5d33f4f6a27bb05994f2ef1"
+  },
+  "after": {
+    "runId": "ac-e67167d4-0771-4fe0-8c83-936eb03201a0",
+    "name": "Renamed API run",
+    "mode": "spec",
+    "gate": "failed",
+    "targetUrl": "http://127.0.0.1:52299/api/after",
+    "createdAt": "2026-10-18T03:35:30.581Z",
+    "endedAt": "2026-10-18T03:35:30.588Z",
+    "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+    "reportSha256": "303e90598acccb8cc7e357e72ef9aabbb52d6c85bd5232bc79ccae3e39385724"
+  },
+  "integrity": {
+    "before": {
+      "valid": true,
+      "evidenceVerified": true,
+      "verifiedFiles": 6,
+      "verifiedBytes": 2611,
+      "errors": []
+    },
+    "after": {
+      "valid": true,
+      "evidenceVerified": true,
+      "verifiedFiles": 3,
+      "verifiedBytes": 1386,
+      "errors": []
+    }
+  },
+  "status": "completed",
+  "summary": {
+    "total": 2,
+    "stillFailed": 0,
+    "verifiedPassed": 0,
+    "newFailure": 1,
+    "observedFailure": 0,
+    "unchangedPassed": 0,
+    "observedPassed": 0,
+    "unverified": 1,
+    "incomparable": 0
+  },
+  "checks": [
+    {
+      "key": "d0fe0253a44137d6175e95596d8cf89270def89be5a5b71c09286e21fe4afa1a",
+      "title": "Contract quota",
+      "route": "/quota",
+      "viewport": "api",
+      "facet": "contract",
+      "before": {
+        "checkId": "spec-1-quota",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "da3627ef97eee0798fae4bf49132b2e9ea831e18c2d1990a32f99e32e2072e0d",
+      "title": "Renamed contract",
+      "route": "/items",
+      "viewport": "api",
+      "facet": "contract",
+      "before": {
+        "checkId": "spec-2-items",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "spec-1-items",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "relation": "new_failure",
+      "reasons": []
+    }
+  ],
+  "limitations": [
+    "仅对比用户明确选择的两次运行；此前/本次是选择标签，不自动批准项目基线，也不改写原门禁。",
+    "可靠复验通过针对整个相同合同、操作点或检查，不推断子失败根因相同，不自动关闭持久问题。",
+    "未测、删除、受阻、待复核及不可比均不算修复；精确参考截图哈希变化会保守停止视觉趋势比较。"
+  ]
+}

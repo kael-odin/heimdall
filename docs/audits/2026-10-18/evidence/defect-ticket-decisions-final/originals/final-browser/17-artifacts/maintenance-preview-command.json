@@ -1,0 +1,13 @@
+{
+  "command": "C:\\Program Files\\nodejs\\node.exe",
+  "args": [
+    "src/acceptance/catalog-maintenance-cli.mjs",
+    "--preview",
+    "--target-schema",
+    "4",
+    "--root",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\17-artifacts\\runtime\\acceptance"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\",
+  "exitCode": 0
+}

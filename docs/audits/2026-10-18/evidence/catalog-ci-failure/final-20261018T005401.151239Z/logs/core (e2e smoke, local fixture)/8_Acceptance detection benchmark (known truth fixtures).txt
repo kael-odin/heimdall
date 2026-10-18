@@ -1,0 +1,19 @@
+﻿2026-10-18T00:22:26.4289883Z ##[group]Run pnpm acceptance:benchmark
+2026-10-18T00:22:26.4290385Z [36;1mpnpm acceptance:benchmark[0m
+2026-10-18T00:22:26.4340232Z shell: /usr/bin/bash -e {0}
+2026-10-18T00:22:26.4340684Z env:
+2026-10-18T00:22:26.4341115Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T00:22:26.4341610Z ##[endgroup]
+2026-10-18T00:22:27.2533499Z $ node scripts/benchmark-acceptance.mjs
+2026-10-18T00:22:29.2928151Z [acceptance-benchmark] visual-shift: PASS; targetBug=true; detected=true; gate=failed
+2026-10-18T00:22:31.9244137Z [acceptance-benchmark] mobile-menu: PASS; targetBug=true; detected=true; gate=failed
+2026-10-18T00:22:34.6143738Z [acceptance-benchmark] menu-state: PASS; targetBug=true; detected=true; gate=failed
+2026-10-18T00:22:39.5817358Z [acceptance-benchmark] missing-field: PASS; targetBug=true; detected=true; gate=failed
+2026-10-18T00:22:42.7154319Z [acceptance-benchmark] wrong-link: PASS; targetBug=true; detected=true; gate=failed
+2026-10-18T00:22:44.1769060Z [acceptance-benchmark] runtime-error: PASS; targetBug=true; detected=true; gate=failed
+2026-10-18T00:22:45.6904671Z [acceptance-benchmark] missing-resource: PASS; targetBug=true; detected=true; gate=failed
+2026-10-18T00:22:47.2503275Z [acceptance-benchmark] identical: PASS; targetBug=false; detected=false; gate=passed
+2026-10-18T00:22:48.7987600Z [acceptance-benchmark] baseline-error: PASS; targetBug=false; detected=false; gate=blocked
+2026-10-18T00:22:50.3607739Z [acceptance-benchmark] masked-noise: PASS; targetBug=false; detected=false; gate=passed
+2026-10-18T00:22:51.8790117Z [acceptance-benchmark] blocked-write: PASS; targetBug=false; detected=false; gate=blocked
+2026-10-18T00:22:51.8804645Z [acceptance-benchmark] {"unit":"case","totalCases":11,"knownBugCases":7,"nonBugCases":4,"truePositive":7,"falsePositive":0,"falseNegative":0,"trueNegative":4,"precision":1,"recall":1,"falsePositiveRate":0,"passed":true,"outputDir":"/home/runner/work/heimdall/heimdall/core/workspace/_runs/acceptance-benchmark/benchmark-2026-10-18T00-22-27-639Z-c7446f3b"}

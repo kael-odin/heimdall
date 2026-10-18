@@ -1,0 +1,85 @@
+{
+  "evidenceLevel": "offline-artifact-input-validator-only",
+  "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\defect-ticket-decisions-console-smoke-20261018T093910120",
+  "fixture": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-script-independent-review-20261018\\current-inputs-unit-fixture-v2",
+  "results": [
+    {
+      "label": "new-offline-current-inputs-positive",
+      "exitCode": 0,
+      "expected": 0,
+      "matched": true
+    },
+    {
+      "label": "new-real-run-stale-inputs",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-stale-source-sha",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-stale-source-bytes",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-same-count-wrong-source-path",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-malformed-source-sha",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-negative-source-bytes",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-fractional-source-bytes",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-unexpected-source-record-field",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-stale-bundle-sha",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-missing-bundle-file",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-empty-bundle",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    },
+    {
+      "label": "new-mismatched-before-after",
+      "exitCode": 1,
+      "expected": 1,
+      "matched": true
+    }
+  ]
+}

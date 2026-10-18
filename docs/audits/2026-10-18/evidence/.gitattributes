@@ -1,4 +1,8 @@
-# Frozen evidence preserves original bytes, including historical CRLF output.
-# Review these payloads through their manifests and independent reports.
-defect-tickets/** -diff
-defect-ticket-publication/** -diff
+# Frozen evidence keeps its original CRLF and whitespace; never reformat it.
+* whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+**/originals/** -whitespace
+# Exact built bundle snapshot; its bytes are covered by the sealed manifest.
+defect-ticket-decisions-final/implementation/console/dist/** -whitespace
+# Exact downloaded GitHub job logs include original terminal spacing.
+catalog-ci-failure/final-20261018T005401.151239Z/downloads/complete-stdout.log -whitespace
+catalog-ci-failure/final-20261018T005401.151239Z/logs/** -whitespace

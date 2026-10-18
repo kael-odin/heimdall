@@ -1,0 +1,29 @@
+"""Compare protected inputs as raw Git/file bytes without checkout filters."""
+import datetime
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+root = Path(__file__).resolve().parents[4]
+manifest = json.loads((Path(__file__).parent / 'old-eight-raw.json').read_text(encoding='utf-8'))
+out = Path(__file__).parent / ('protected-eight-' + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ'))
+out.mkdir()
+rows = []
+for entry in manifest['files']:
+    name = entry['path']
+    values = {
+        label: subprocess.check_output(['git', 'cat-file', 'blob', revision], cwd=root)
+        for label, revision in [('baseline', manifest['baseline'] + ':' + name), ('head', 'HEAD:' + name), ('index', ':' + name)]
+    }
+    values['worktree'] = (root / name).read_bytes()
+    rows.append({'path': name, 'sources': {label: {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+        for label, raw in values.items()}, 'exactMatch': all(raw == values['baseline'] for raw in values.values()),
+        'expectedBaselineMatches': hashlib.sha256(values['baseline']).hexdigest() == entry['baseline']})
+result = {'schemaVersion': 1, 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    'baseline': manifest['baseline'], 'head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root).decode().strip(),
+    'passed': len(rows) == 8 and all(row['exactMatch'] and row['expectedBaselineMatches'] for row in rows), 'files': rows}
+(out / 'result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+print(json.dumps({'out': str(out), 'passed': result['passed'], 'fileCount': len(rows)}))
+sys.exit(0 if result['passed'] else 1)

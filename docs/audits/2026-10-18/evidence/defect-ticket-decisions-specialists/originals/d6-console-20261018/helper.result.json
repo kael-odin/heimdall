@@ -1,0 +1,6 @@
+{
+  "command": "node --test core/test/console-acceptance-defect-tickets.test.mjs",
+  "startedAt": "2026-10-18T08:48:31.6511738+08:00",
+  "completedAt": "2026-10-18T08:48:32.2137496+08:00",
+  "exitCode": 0
+}

@@ -1,0 +1,82 @@
+{
+  "scope": "离线复现：固定 API 缺陷注入与执行策略反例，只证明这组已声明合同和观察窗口，不代表真实项目检出率或完整 OpenAPI 兼容性。",
+  "cases": [
+    {
+      "id": "healthy",
+      "path": "/healthy",
+      "method": "GET",
+      "targetBug": false,
+      "expectedVerdict": "match"
+    },
+    {
+      "id": "wrong-code",
+      "path": "/wrong-code",
+      "method": "GET",
+      "targetBug": true,
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "missing-field",
+      "path": "/missing-field",
+      "method": "GET",
+      "targetBug": true,
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "wrong-type",
+      "path": "/wrong-type",
+      "method": "GET",
+      "targetBug": true,
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "wrong-status",
+      "path": "/wrong-status",
+      "method": "GET",
+      "targetBug": true,
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "non-json",
+      "path": "/non-json",
+      "method": "GET",
+      "targetBug": true,
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "bad-json",
+      "path": "/bad-json",
+      "method": "GET",
+      "targetBug": true,
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "redirect",
+      "path": "/redirect",
+      "method": "GET",
+      "targetBug": true,
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "oversized",
+      "path": "/oversized",
+      "method": "GET",
+      "targetBug": false,
+      "expectedVerdict": "environment"
+    },
+    {
+      "id": "slow",
+      "path": "/slow",
+      "method": "GET",
+      "targetBug": false,
+      "expectedVerdict": "environment"
+    },
+    {
+      "id": "head",
+      "path": "/head",
+      "method": "HEAD",
+      "targetBug": false,
+      "expectedVerdict": "match"
+    }
+  ]
+}

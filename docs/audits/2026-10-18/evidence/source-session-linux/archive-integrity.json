@@ -1,0 +1,41 @@
+{
+  "verifiedAt": "2026-10-18T01:38:54.248372+00:00",
+  "label": "offline archive integrity verification only; no test, Browser, engine or preparation script executed",
+  "allChecksPassed": true,
+  "originalFilesVerified": 67,
+  "originalBytesVerified": 391315,
+  "manifestSha256": "dd44169e502d95810c6f519033b41244925d2f71dca157a3e95f37060586873b",
+  "historicalFocusedManifestFilesVerified": 14,
+  "historicalPreparationManifestFilesVerified": 66,
+  "historicalPreparationManifestExcludedFiles": 2,
+  "inputSnapshotsEqualBytes": true,
+  "inputSnapshotRowsVerified": 199,
+  "publishedSourceMatchRowsVerified": 199,
+  "historicalGitObjects": {
+    "checked": true,
+    "head": "41c359a62ecbb67ac15f38c51c95fa983a7492d3",
+    "filesVerified": 199,
+    "allBlobsMatch": true,
+    "currentWorkingTreeCompared": false
+  },
+  "historicalTestStats": {
+    "tests": 17,
+    "suites": 0,
+    "pass": 17,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "historicalStdoutSha256": "dcbe2995d8e11334146e1c9d084e15501d2c0c6939053241e7aeec72f45370cf",
+  "historicalStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "scope": "One historical WSL Linux source-operations single-file run; does not establish full CI, the 20 smokes, D5 or Docker success.",
+  "sourceCopyVerification": {
+    "selectedFiles": 67,
+    "selectedBytes": 391315,
+    "sourceEnumerationFiles": 69,
+    "sourcePreAndPostBytesEqual": true,
+    "destinationBytesEqualSource": true,
+    "excludedFiles": 2
+  }
+}

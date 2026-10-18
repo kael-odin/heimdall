@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "/root/heimdall-node22-diagnosis-20261018/runtime/bin/node",
+    "--test",
+    "--test-reporter=tap",
+    "test/source-operations.test.mjs"
+  ],
+  "cwd": "/root/heimdall-node22-diagnosis-20261018/app-core",
+  "startedAt": "2026-10-18T00:24:12.210308+00:00",
+  "environment": {
+    "PATH": "/root/heimdall-node22-diagnosis-20261018/runtime/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "PLAYWRIGHT_BROWSERS_PATH": "/root/heimdall-node22-diagnosis-20261018/browsers"
+  },
+  "cpuAffinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "cpuLoadAdded": false,
+  "parallelBrowserTasksStarted": 0,
+  "automaticRetries": 0,
+  "label": "targeted Linux single-file verification; does not replace full CI"
+}

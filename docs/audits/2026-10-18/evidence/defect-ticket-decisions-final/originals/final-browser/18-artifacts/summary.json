@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-18T03:14:34.271Z",
+  "endedAt": "2026-10-18T03:19:09.923Z",
+  "browserPath": "Browser plugin not available; repository Playwright CDP",
+  "checks": 16,
+  "captures": [
+    "browser-execution-evidence-desktop.png",
+    "browser-execution-desktop-dark.png",
+    "browser-execution-mobile-light.png",
+    "browser-execution-issue-history-desktop.png",
+    "browser-execution-issue-history-mobile.png",
+    "browser-execution-desktop-light.png",
+    "browser-execution-mobile-dark.png"
+  ],
+  "outputDirectory": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\18-artifacts"
+}

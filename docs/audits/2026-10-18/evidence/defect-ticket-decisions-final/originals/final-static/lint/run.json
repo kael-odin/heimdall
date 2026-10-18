@@ -1,0 +1,17 @@
+{
+  "name": "lint",
+  "argv": [
+    "node",
+    "core/scripts/check-syntax.mjs"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "environment": {},
+  "startedAt": "2026-10-18T02:36:52.212183+00:00",
+  "exitCode": 0,
+  "pid": 21752,
+  "endedAt": "2026-10-18T02:37:15.042879+00:00",
+  "durationSeconds": 22.828000000008615,
+  "changedInputs": [],
+  "stdoutSha256": "3699efc2079efb41447716bf9642b7eeafab0207ae9a55575219f53332857cb4",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,2139 @@
+[
+  {
+    "category": "capture",
+    "name": "run command and raw bytes",
+    "passed": true,
+    "detail": {
+      "command": [
+        "gh",
+        "api",
+        "repos/kael-odin/heimdall/actions/runs/39082419484/attempts/1"
+      ],
+      "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+      "startedAt": "2026-10-18T00:54:01.161098+00:00",
+      "endedAt": "2026-10-18T00:54:02.475158+00:00",
+      "exitCode": 0,
+      "timedOut": false,
+      "launchError": null,
+      "stdoutFile": "run.json",
+      "stdoutBytes": 12337,
+      "stdoutSha256": "2766aec127f1df4bc926cc5e5db33b18bc12680b3c74aebdecf114fe03a5b509",
+      "stderrFile": "run.stderr.log",
+      "stderrBytes": 0,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  {
+    "category": "capture",
+    "name": "jobs command and raw bytes",
+    "passed": true,
+    "detail": {
+      "command": [
+        "gh",
+        "api",
+        "repos/kael-odin/heimdall/actions/runs/39082419484/attempts/1/jobs?per_page=100"
+      ],
+      "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+      "startedAt": "2026-10-18T00:54:01.161626+00:00",
+      "endedAt": "2026-10-18T00:54:02.113389+00:00",
+      "exitCode": 0,
+      "timedOut": false,
+      "launchError": null,
+      "stdoutFile": "jobs.json",
+      "stdoutBytes": 14038,
+      "stdoutSha256": "29f73a6646dd19bdd883facf3c03d0805a8350a6b1ea026bedf0f07eb1bac6c8",
+      "stderrFile": "jobs.stderr.log",
+      "stderrBytes": 0,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  {
+    "category": "capture",
+    "name": "full-log command and raw bytes",
+    "passed": true,
+    "detail": {
+      "command": [
+        "gh",
+        "run",
+        "view",
+        "39082419484",
+        "--repo",
+        "kael-odin/heimdall",
+        "--attempt",
+        "1",
+        "--log"
+      ],
+      "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+      "startedAt": "2026-10-18T00:54:02.501276+00:00",
+      "endedAt": "2026-10-18T00:54:06.999822+00:00",
+      "exitCode": 0,
+      "timedOut": false,
+      "launchError": null,
+      "stdoutFile": "complete-stdout.log",
+      "stdoutBytes": 1819274,
+      "stdoutSha256": "54c50bf5ad64e1a85304d874cacf6ea8de2cd139ebf2a3cce111069551bf122f",
+      "stderrFile": "full-log.stderr.log",
+      "stderrBytes": 0,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  {
+    "category": "capture",
+    "name": "logs-zip command and raw bytes",
+    "passed": true,
+    "detail": {
+      "command": [
+        "gh",
+        "api",
+        "repos/kael-odin/heimdall/actions/runs/39082419484/attempts/1/logs"
+      ],
+      "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+      "startedAt": "2026-10-18T00:54:02.501276+00:00",
+      "endedAt": "2026-10-18T00:54:05.378148+00:00",
+      "exitCode": 0,
+      "timedOut": false,
+      "launchError": null,
+      "stdoutFile": "run-logs.zip",
+      "stdoutBytes": 499550,
+      "stdoutSha256": "5bb1de7b5bfb3e53936419cffbb6adf922ee6d067909668a1b397c8b763337ea",
+      "stderrFile": "logs-zip.stderr.log",
+      "stderrBytes": 0,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  {
+    "category": "capture",
+    "name": "workflow-api command and raw bytes",
+    "passed": true,
+    "detail": {
+      "command": [
+        "gh",
+        "api",
+        "repos/kael-odin/heimdall/contents/.github/workflows/ci.yml?ref=41c359a62ecbb67ac15f38c51c95fa983a7492d3"
+      ],
+      "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+      "startedAt": "2026-10-18T00:54:02.501276+00:00",
+      "endedAt": "2026-10-18T00:54:03.386499+00:00",
+      "exitCode": 0,
+      "timedOut": false,
+      "launchError": null,
+      "stdoutFile": "workflow-content-api.json",
+      "stdoutBytes": 14910,
+      "stdoutSha256": "cad644a2155049b5e1fb08dc67710aac94b6d8c7d165a706985ee2f630870b43",
+      "stderrFile": "workflow-api.stderr.log",
+      "stderrBytes": 0,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  {
+    "category": "capture",
+    "name": "workflow-git command and raw bytes",
+    "passed": true,
+    "detail": {
+      "command": [
+        "git",
+        "show",
+        "41c359a62ecbb67ac15f38c51c95fa983a7492d3:.github/workflows/ci.yml"
+      ],
+      "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+      "startedAt": "2026-10-18T00:54:02.502272+00:00",
+      "endedAt": "2026-10-18T00:54:02.564961+00:00",
+      "exitCode": 0,
+      "timedOut": false,
+      "launchError": null,
+      "stdoutFile": "workflow-at-head.yml",
+      "stdoutBytes": 10039,
+      "stdoutSha256": "2b64775c15abb1a40900af2650e81908b49ef4a3ae51afbc48670de7a85079b9",
+      "stderrFile": "workflow-git.stderr.log",
+      "stderrBytes": 0,
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  {
+    "category": "identity",
+    "name": "exact D5 run/repo/workflow/attempt/head/event/branch",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "run completed successfully",
+    "passed": false,
+    "detail": {
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  },
+  {
+    "category": "capture",
+    "name": "capture summary matches exact completed API and ZIP marker",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "reviewed capture-v2 runtime identity",
+    "passed": true,
+    "detail": {
+      "recordedAt": "2026-10-18T00:54:01.151239+00:00",
+      "python": "3.11.9",
+      "executable": "C:\\Python311\\python.exe",
+      "optimization": 0,
+      "argv": [
+        "core/workspace/_runs/d5-ci-20261018/capture-v2.py",
+        "final",
+        "--repo",
+        "kael-odin/heimdall",
+        "--run",
+        "39082419484",
+        "--attempt",
+        "1",
+        "--head",
+        "41c359a62ecbb67ac15f38c51c95fa983a7492d3",
+        "--out",
+        "core/workspace/_runs/d5-ci-20261018"
+      ],
+      "scriptPath": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall\\core\\workspace\\_runs\\d5-ci-20261018\\capture-v2.py",
+      "scriptSha256": "f0727a28d924f6672988161257fcb243a5572f124b3eeb1819d139374a7b7950",
+      "requestedIdentity": {
+        "repo": "kael-odin/heimdall",
+        "runId": 39082419484,
+        "attempt": 1,
+        "headSha": "41c359a62ecbb67ac15f38c51c95fa983a7492d3",
+        "workflow": "CI",
+        "branch": "main",
+        "event": "push"
+      }
+    }
+  },
+  {
+    "category": "capture",
+    "name": "batch results exact final-20261018T005401.151239Z",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "batch results exact downloads",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "identity",
+    "name": "exactly three distinct expected jobs",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "identity",
+    "name": "console (build) run/head/attempt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "console (build) completed successfully",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "identity",
+    "name": "console (build) unique step identifiers",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Set up job",
+    "passed": true,
+    "detail": {
+      "number": 1,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Run actions/checkout@v7",
+    "passed": true,
+    "detail": {
+      "number": 2,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Run pnpm/action-setup@v6",
+    "passed": true,
+    "detail": {
+      "number": 3,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Run actions/setup-node@v7",
+    "passed": true,
+    "detail": {
+      "number": 4,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": {
+      "number": 5,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Run pnpm build",
+    "passed": true,
+    "detail": {
+      "number": 6,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Post Run actions/setup-node@v7",
+    "passed": true,
+    "detail": {
+      "number": 10,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Post Run pnpm/action-setup@v6",
+    "passed": true,
+    "detail": {
+      "number": 11,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Post Run actions/checkout@v7",
+    "passed": true,
+    "detail": {
+      "number": 12,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "console (build) / Complete job",
+    "passed": true,
+    "detail": {
+      "number": 13,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "identity",
+    "name": "core (lint + test) run/head/attempt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) completed successfully",
+    "passed": false,
+    "detail": null
+  },
+  {
+    "category": "identity",
+    "name": "core (lint + test) unique step identifiers",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Set up job",
+    "passed": true,
+    "detail": {
+      "number": 1,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run actions/checkout@v7",
+    "passed": true,
+    "detail": {
+      "number": 2,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run pnpm/action-setup@v6",
+    "passed": true,
+    "detail": {
+      "number": 3,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run actions/setup-node@v7",
+    "passed": true,
+    "detail": {
+      "number": 4,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": {
+      "number": 5,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run pnpm lint",
+    "passed": true,
+    "detail": {
+      "number": 6,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run pnpm check:docs",
+    "passed": true,
+    "detail": {
+      "number": 7,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": {
+      "number": 8,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run pnpm --dir ../console install --frozen-lockfile",
+    "passed": true,
+    "detail": {
+      "number": 9,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run pnpm --dir ../console build",
+    "passed": true,
+    "detail": {
+      "number": 10,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Run pnpm test",
+    "passed": true,
+    "detail": {
+      "number": 11,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Acceptance console (real browser, local model stub)",
+    "passed": true,
+    "detail": {
+      "number": 12,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Spec contract console (real browser, local API fixture)",
+    "passed": true,
+    "detail": {
+      "number": 13,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Acceptance comparison console (explicit runs, integrity and CLI)",
+    "passed": true,
+    "detail": {
+      "number": 14,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Acceptance project catalog (versions, explicit bindings and two-engine isolation)",
+    "passed": false,
+    "detail": {
+      "number": 15,
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Acceptance catalog explicit migration (legacy artifacts, CLI confirmation and browser continuity)",
+    "passed": false,
+    "detail": {
+      "number": 16,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Spec baseline review (candidates, approvals, selections and source integrity)",
+    "passed": false,
+    "detail": {
+      "number": 17,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Managed Spec preparation (immutable contract, replay and zero execution)",
+    "passed": false,
+    "detail": {
+      "number": 18,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Managed Spec result reading (captured evidence and zero execution)",
+    "passed": false,
+    "detail": {
+      "number": 19,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Owned acceptance recovery (startup barrier, restart and zero execution)",
+    "passed": false,
+    "detail": {
+      "number": 20,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Managed Spec execution (fresh admission, real runner, BUG and cancel)",
+    "passed": false,
+    "detail": {
+      "number": 21,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Managed execution UI (explicit click, durable recovery and stop)",
+    "passed": false,
+    "detail": {
+      "number": 22,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Browser candidate source (fresh captures and explicit healthy side)",
+    "passed": false,
+    "detail": {
+      "number": 23,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Browser private source reader (owner fences and unchanged originals)",
+    "passed": false,
+    "detail": {
+      "number": 24,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Browser source bindings (fresh captures, explicit sides and source revalidation)",
+    "passed": false,
+    "detail": {
+      "number": 25,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Browser source binding console (native HTTP, source review and verified evidence)",
+    "passed": false,
+    "detail": {
+      "number": 26,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Schema4 combined history (fresh Browser bindings and explicit Spec lifecycle fixtures)",
+    "passed": false,
+    "detail": {
+      "number": 27,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Browser full candidates (explicit review, durable save and read-only reconciliation)",
+    "passed": false,
+    "detail": {
+      "number": 28,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Browser single-operation execution (fixed source, real target BUG, explicit retest and restart)",
+    "passed": false,
+    "detail": {
+      "number": 29,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Browser start resolution (same unfinished ingress, durable deny, same-origin restart and native locks)",
+    "passed": false,
+    "detail": {
+      "number": 30,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Manual defect tickets (fixed source members, explicit closure, regression and read-only reconciliation)",
+    "passed": false,
+    "detail": {
+      "number": 31,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Preserve acceptance smoke failure diagnostics",
+    "passed": false,
+    "detail": {
+      "number": 32,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Docker offline delivery (SSR + SPA + data SPA + adapter)",
+    "passed": false,
+    "detail": {
+      "number": 33,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Post Run actions/setup-node@v7",
+    "passed": false,
+    "detail": {
+      "number": 64,
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Post Run pnpm/action-setup@v6",
+    "passed": true,
+    "detail": {
+      "number": 65,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Post Run actions/checkout@v7",
+    "passed": true,
+    "detail": {
+      "number": 66,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (lint + test) / Complete job",
+    "passed": true,
+    "detail": {
+      "number": 67,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "identity",
+    "name": "core (e2e smoke, local fixture) run/head/attempt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) completed successfully",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "identity",
+    "name": "core (e2e smoke, local fixture) unique step identifiers",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Set up job",
+    "passed": true,
+    "detail": {
+      "number": 1,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Run actions/checkout@v7",
+    "passed": true,
+    "detail": {
+      "number": 2,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Run pnpm/action-setup@v6",
+    "passed": true,
+    "detail": {
+      "number": 3,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Run actions/setup-node@v7",
+    "passed": true,
+    "detail": {
+      "number": 4,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": {
+      "number": 5,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": {
+      "number": 6,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Run pnpm smoke",
+    "passed": true,
+    "detail": {
+      "number": 7,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Acceptance detection benchmark (known truth fixtures)",
+    "passed": true,
+    "detail": {
+      "number": 8,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Spec API benchmark (OpenAPI candidates and known truth)",
+    "passed": true,
+    "detail": {
+      "number": 9,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Acceptance comparison benchmark (known retest and false-closure cases)",
+    "passed": true,
+    "detail": {
+      "number": 10,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Post Run actions/setup-node@v7",
+    "passed": true,
+    "detail": {
+      "number": 18,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Post Run pnpm/action-setup@v6",
+    "passed": true,
+    "detail": {
+      "number": 19,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Post Run actions/checkout@v7",
+    "passed": true,
+    "detail": {
+      "number": 20,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "execution",
+    "name": "core (e2e smoke, local fixture) / Complete job",
+    "passed": true,
+    "detail": {
+      "number": 21,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  },
+  {
+    "category": "identity",
+    "name": "workflow API and exact git bytes/blob",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "identity",
+    "name": "exact twenty maintained Core smoke commands",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "identity",
+    "name": "Core 45 minute timeout and explicit Docker env",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "identity",
+    "name": "independent smoke job four checks",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP digest and manifest unique",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP complete CRC",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP and manifest exact member set",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "expanded files exact manifest set",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA 0_core (lint + test).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/system.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/1_Set up job.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/2_Run actions_checkout@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/3_Run pnpm_action-setup@v6.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/4_Run actions_setup-node@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/5_Run pnpm install --frozen-lockfile.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/6_Run pnpm lint.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/7_Run pnpm checkdocs.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/8_Run pnpm exec playwright install --with-deps chromium.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/9_Run pnpm --dir .._console install --frozen-lockfile.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/10_Run pnpm --dir .._console build.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/11_Run pnpm test.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/12_Acceptance console (real browser, local model stub).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/13_Spec contract console (real browser, local API fixture).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/14_Acceptance comparison console (explicit runs, integrity and CLI).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/15_Acceptance project catalog (versions, explicit bindings and two-engine isolation).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/32_Preserve acceptance smoke failure diagnostics.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/65_Post Run pnpm_action-setup@v6.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/66_Post Run actions_checkout@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (lint + test)/67_Complete job.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA 1_core (e2e smoke, local fixture).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/system.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/1_Set up job.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/2_Run actions_checkout@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/3_Run pnpm_action-setup@v6.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/4_Run actions_setup-node@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/5_Run pnpm install --frozen-lockfile.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/6_Run pnpm exec playwright install --with-deps chromium.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/7_Run pnpm smoke.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/8_Acceptance detection benchmark (known truth fixtures).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/9_Spec API benchmark (OpenAPI candidates and known truth).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/10_Acceptance comparison benchmark (known retest and false-closure cases).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/18_Post Run actions_setup-node@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/19_Post Run pnpm_action-setup@v6.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/20_Post Run actions_checkout@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA core (e2e smoke, local fixture)/21_Complete job.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA 2_console (build).txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/system.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/1_Set up job.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/2_Run actions_checkout@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/3_Run pnpm_action-setup@v6.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/4_Run actions_setup-node@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/5_Run pnpm install --frozen-lockfile.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/6_Run pnpm build.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/10_Post Run actions_setup-node@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/11_Post Run pnpm_action-setup@v6.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/12_Post Run actions_checkout@v7.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "ZIP member bytes/CRC/SHA console (build)/13_Complete job.txt",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "gh stdout job prefixes completely parsed",
+    "passed": true,
+    "detail": {
+      "unparsedCount": 0,
+      "samples": []
+    }
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/5_Run pnpm install --frozen-lockfile.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/5_Run pnpm install --frozen-lockfile.txt",
+      "zipLines": 25,
+      "ghLines": 25
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": "pnpm install --frozen-lockfile"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Run pnpm lint",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Run pnpm lint",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/6_Run pnpm lint.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Run pnpm lint",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/6_Run pnpm lint.txt",
+      "zipLines": 8,
+      "ghLines": 8
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Run pnpm lint",
+    "passed": true,
+    "detail": "pnpm lint"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Run pnpm check:docs",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Run pnpm check:docs",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/7_Run pnpm checkdocs.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Run pnpm check:docs",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/7_Run pnpm checkdocs.txt",
+      "zipLines": 8,
+      "ghLines": 8
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Run pnpm check:docs",
+    "passed": true,
+    "detail": "pnpm check:docs"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/8_Run pnpm exec playwright install --with-deps chromium.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/8_Run pnpm exec playwright install --with-deps chromium.txt",
+      "zipLines": 217,
+      "ghLines": 217
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": "pnpm exec playwright install --with-deps chromium"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Run pnpm --dir ../console install --frozen-lockfile",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Run pnpm --dir ../console install --frozen-lockfile",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/9_Run pnpm --dir .._console install --frozen-lockfile.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Run pnpm --dir ../console install --frozen-lockfile",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/9_Run pnpm --dir .._console install --frozen-lockfile.txt",
+      "zipLines": 29,
+      "ghLines": 29
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Run pnpm --dir ../console install --frozen-lockfile",
+    "passed": true,
+    "detail": "pnpm --dir ../console install --frozen-lockfile"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Run pnpm --dir ../console build",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Run pnpm --dir ../console build",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/10_Run pnpm --dir .._console build.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Run pnpm --dir ../console build",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/10_Run pnpm --dir .._console build.txt",
+      "zipLines": 27,
+      "ghLines": 27
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Run pnpm --dir ../console build",
+    "passed": true,
+    "detail": "pnpm --dir ../console build"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Run pnpm test",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Run pnpm test",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/11_Run pnpm test.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Run pnpm test",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/11_Run pnpm test.txt",
+      "zipLines": 16082,
+      "ghLines": 16082
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Run pnpm test",
+    "passed": true,
+    "detail": "pnpm test"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Acceptance console (real browser, local model stub)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Acceptance console (real browser, local model stub)",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/12_Acceptance console (real browser, local model stub).txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Acceptance console (real browser, local model stub)",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/12_Acceptance console (real browser, local model stub).txt",
+      "zipLines": 88,
+      "ghLines": 88
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Acceptance console (real browser, local model stub)",
+    "passed": true,
+    "detail": "pnpm acceptance:smoke"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Spec contract console (real browser, local API fixture)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Spec contract console (real browser, local API fixture)",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/13_Spec contract console (real browser, local API fixture).txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Spec contract console (real browser, local API fixture)",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/13_Spec contract console (real browser, local API fixture).txt",
+      "zipLines": 45,
+      "ghLines": 45
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Spec contract console (real browser, local API fixture)",
+    "passed": true,
+    "detail": "pnpm acceptance:spec:smoke"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Acceptance comparison console (explicit runs, integrity and CLI)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Acceptance comparison console (explicit runs, integrity and CLI)",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/14_Acceptance comparison console (explicit runs, integrity and CLI).txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Acceptance comparison console (explicit runs, integrity and CLI)",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/14_Acceptance comparison console (explicit runs, integrity and CLI).txt",
+      "zipLines": 109,
+      "ghLines": 109
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Acceptance comparison console (explicit runs, integrity and CLI)",
+    "passed": true,
+    "detail": "pnpm acceptance:comparison:smoke"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Acceptance project catalog (versions, explicit bindings and two-engine isolation)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Acceptance project catalog (versions, explicit bindings and two-engine isolation)",
+    "passed": true,
+    "detail": [
+      "core (lint + test)/15_Acceptance project catalog (versions, explicit bindings and two-engine isolation).txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (lint + test) / Acceptance project catalog (versions, explicit bindings and two-engine isolation)",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (lint + test)/15_Acceptance project catalog (versions, explicit bindings and two-engine isolation).txt",
+      "zipLines": 19,
+      "ghLines": 19
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (lint + test) / Acceptance project catalog (versions, explicit bindings and two-engine isolation)",
+    "passed": true,
+    "detail": "pnpm acceptance:catalog:smoke"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Acceptance catalog explicit migration (legacy artifacts, CLI confirmation and browser continuity)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Acceptance catalog explicit migration (legacy artifacts, CLI confirmation and browser continuity)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Spec baseline review (candidates, approvals, selections and source integrity)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Spec baseline review (candidates, approvals, selections and source integrity)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Managed Spec preparation (immutable contract, replay and zero execution)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Managed Spec preparation (immutable contract, replay and zero execution)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Managed Spec result reading (captured evidence and zero execution)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Managed Spec result reading (captured evidence and zero execution)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Owned acceptance recovery (startup barrier, restart and zero execution)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Owned acceptance recovery (startup barrier, restart and zero execution)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Managed Spec execution (fresh admission, real runner, BUG and cancel)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Managed Spec execution (fresh admission, real runner, BUG and cancel)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Managed execution UI (explicit click, durable recovery and stop)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Managed execution UI (explicit click, durable recovery and stop)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Browser candidate source (fresh captures and explicit healthy side)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Browser candidate source (fresh captures and explicit healthy side)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Browser private source reader (owner fences and unchanged originals)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Browser private source reader (owner fences and unchanged originals)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Browser source bindings (fresh captures, explicit sides and source revalidation)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Browser source bindings (fresh captures, explicit sides and source revalidation)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Browser source binding console (native HTTP, source review and verified evidence)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Browser source binding console (native HTTP, source review and verified evidence)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Schema4 combined history (fresh Browser bindings and explicit Spec lifecycle fixtures)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Schema4 combined history (fresh Browser bindings and explicit Spec lifecycle fixtures)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Browser full candidates (explicit review, durable save and read-only reconciliation)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Browser full candidates (explicit review, durable save and read-only reconciliation)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Browser single-operation execution (fixed source, real target BUG, explicit retest and restart)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Browser single-operation execution (fixed source, real target BUG, explicit retest and restart)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Browser start resolution (same unfinished ingress, durable deny, same-origin restart and native locks)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Browser start resolution (same unfinished ingress, durable deny, same-origin restart and native locks)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Manual defect tickets (fixed source members, explicit closure, regression and read-only reconciliation)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Manual defect tickets (fixed source members, explicit closure, regression and read-only reconciliation)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (lint + test) / Docker offline delivery (SSR + SPA + data SPA + adapter)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (lint + test) / Docker offline delivery (SSR + SPA + data SPA + adapter)",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (e2e smoke, local fixture) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (e2e smoke, local fixture) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": [
+      "core (e2e smoke, local fixture)/5_Run pnpm install --frozen-lockfile.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (e2e smoke, local fixture) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (e2e smoke, local fixture)/5_Run pnpm install --frozen-lockfile.txt",
+      "zipLines": 25,
+      "ghLines": 25
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (e2e smoke, local fixture) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": "pnpm install --frozen-lockfile"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (e2e smoke, local fixture) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (e2e smoke, local fixture) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": [
+      "core (e2e smoke, local fixture)/6_Run pnpm exec playwright install --with-deps chromium.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (e2e smoke, local fixture) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (e2e smoke, local fixture)/6_Run pnpm exec playwright install --with-deps chromium.txt",
+      "zipLines": 217,
+      "ghLines": 217
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (e2e smoke, local fixture) / Run pnpm exec playwright install --with-deps chromium",
+    "passed": true,
+    "detail": "pnpm exec playwright install --with-deps chromium"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (e2e smoke, local fixture) / Run pnpm smoke",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (e2e smoke, local fixture) / Run pnpm smoke",
+    "passed": true,
+    "detail": [
+      "core (e2e smoke, local fixture)/7_Run pnpm smoke.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (e2e smoke, local fixture) / Run pnpm smoke",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (e2e smoke, local fixture)/7_Run pnpm smoke.txt",
+      "zipLines": 9,
+      "ghLines": 9
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (e2e smoke, local fixture) / Run pnpm smoke",
+    "passed": true,
+    "detail": "pnpm smoke"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (e2e smoke, local fixture) / Acceptance detection benchmark (known truth fixtures)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (e2e smoke, local fixture) / Acceptance detection benchmark (known truth fixtures)",
+    "passed": true,
+    "detail": [
+      "core (e2e smoke, local fixture)/8_Acceptance detection benchmark (known truth fixtures).txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (e2e smoke, local fixture) / Acceptance detection benchmark (known truth fixtures)",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (e2e smoke, local fixture)/8_Acceptance detection benchmark (known truth fixtures).txt",
+      "zipLines": 19,
+      "ghLines": 19
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (e2e smoke, local fixture) / Acceptance detection benchmark (known truth fixtures)",
+    "passed": true,
+    "detail": "pnpm acceptance:benchmark"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (e2e smoke, local fixture) / Spec API benchmark (OpenAPI candidates and known truth)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (e2e smoke, local fixture) / Spec API benchmark (OpenAPI candidates and known truth)",
+    "passed": true,
+    "detail": [
+      "core (e2e smoke, local fixture)/9_Spec API benchmark (OpenAPI candidates and known truth).txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (e2e smoke, local fixture) / Spec API benchmark (OpenAPI candidates and known truth)",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (e2e smoke, local fixture)/9_Spec API benchmark (OpenAPI candidates and known truth).txt",
+      "zipLines": 19,
+      "ghLines": 19
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (e2e smoke, local fixture) / Spec API benchmark (OpenAPI candidates and known truth)",
+    "passed": true,
+    "detail": "pnpm acceptance:spec:benchmark"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage core (e2e smoke, local fixture) / Acceptance comparison benchmark (known retest and false-closure cases)",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log core (e2e smoke, local fixture) / Acceptance comparison benchmark (known retest and false-closure cases)",
+    "passed": true,
+    "detail": [
+      "core (e2e smoke, local fixture)/10_Acceptance comparison benchmark (known retest and false-closure cases).txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal core (e2e smoke, local fixture) / Acceptance comparison benchmark (known retest and false-closure cases)",
+    "passed": true,
+    "detail": {
+      "zipPath": "core (e2e smoke, local fixture)/10_Acceptance comparison benchmark (known retest and false-closure cases).txt",
+      "zipLines": 31,
+      "ghLines": 31
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command core (e2e smoke, local fixture) / Acceptance comparison benchmark (known retest and false-closure cases)",
+    "passed": true,
+    "detail": "pnpm acceptance:comparison:benchmark"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage console (build) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log console (build) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": [
+      "console (build)/5_Run pnpm install --frozen-lockfile.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal console (build) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": {
+      "zipPath": "console (build)/5_Run pnpm install --frozen-lockfile.txt",
+      "zipLines": 27,
+      "ghLines": 27
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command console (build) / Run pnpm install --frozen-lockfile",
+    "passed": true,
+    "detail": "pnpm install --frozen-lockfile"
+  },
+  {
+    "category": "execution",
+    "name": "workflow step API coverage console (build) / Run pnpm build",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "capture",
+    "name": "unique step log console (build) / Run pnpm build",
+    "passed": true,
+    "detail": [
+      "console (build)/6_Run pnpm build.txt"
+    ]
+  },
+  {
+    "category": "capture",
+    "name": "gh and ZIP step content equal console (build) / Run pnpm build",
+    "passed": true,
+    "detail": {
+      "zipPath": "console (build)/6_Run pnpm build.txt",
+      "zipLines": 27,
+      "ghLines": 27
+    }
+  },
+  {
+    "category": "execution",
+    "name": "logged workflow command console (build) / Run pnpm build",
+    "passed": true,
+    "detail": "pnpm build"
+  },
+  {
+    "category": "execution",
+    "name": "main Core one terminal stats block",
+    "passed": true,
+    "detail": {
+      "tests": [
+        2661
+      ],
+      "suites": [
+        0
+      ],
+      "pass": [
+        2657
+      ],
+      "fail": [
+        0
+      ],
+      "cancelled": [
+        0
+      ],
+      "skipped": [
+        4
+      ],
+      "todo": [
+        0
+      ],
+      "duration_ms": [
+        1665894.745146
+      ]
+    }
+  },
+  {
+    "category": "execution",
+    "name": "main Core zero failure/cancelled/todo",
+    "passed": true,
+    "detail": {
+      "tests": 2661,
+      "suites": 0,
+      "pass": 2657,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 4,
+      "todo": 0,
+      "duration_ms": 1665894.745146
+    }
+  },
+  {
+    "category": "execution",
+    "name": "main Core no not-ok TAP result",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "main Core four expected Linux skips",
+    "passed": true,
+    "detail": [
+      "real Windows reader holding a non-delete-sharing file handle releases after 180ms and replacement succeeds",
+      "real Windows non-share-delete reader releases and replacement retries successfully",
+      "Docker network-none delivery serves SSR, SPA and data-driven SPA bundles without a source workspace",
+      "Docker network-none delivery persists adapter writes in a volume after container recreation"
+    ]
+  },
+  {
+    "category": "execution",
+    "name": "main Core totals reconcile",
+    "passed": true,
+    "detail": {
+      "tests": 2661,
+      "suites": 0,
+      "pass": 2657,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 4,
+      "todo": 0,
+      "duration_ms": 1665894.745146
+    }
+  },
+  {
+    "category": "execution",
+    "name": "D5 unique terminal summary event",
+    "passed": false,
+    "detail": []
+  },
+  {
+    "category": "execution",
+    "name": "D5 passed with exact ten true keys",
+    "passed": false,
+    "detail": {}
+  },
+  {
+    "category": "execution",
+    "name": "D5 exact four desktop/mobile captures",
+    "passed": false,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "D5 zero page errors",
+    "passed": false,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "D5 three explicitly controlled HTTP console errors",
+    "passed": false,
+    "detail": {
+      "consoleMessageCount": null,
+      "controlledReplyCount": null
+    }
+  },
+  {
+    "category": "identity",
+    "name": "one explicit Docker step",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "category": "execution",
+    "name": "Docker stats available",
+    "passed": false,
+    "detail": null
+  }
+]

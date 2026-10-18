@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "runId": "spec-benchmark-2026-10-18T03-34-54-939Z-947b0fca-slow",
+  "name": "Heimdall 固定 API 验收夹具 API 验收候选",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:52293/",
+  "startedAt": "2026-10-18T03:34:55.101Z",
+  "endedAt": "2026-10-18T03:34:56.107Z",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "spec-1-openapi-8",
+      "title": "固定合同 slow",
+      "route": "/slow",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "f3e022b0ec638f6e49b3a70a08d32604e631b7f5caa38e432534688f3a8b3ffa",
+        "contextKey": "5c8c82a780663bc4d76d1f1e68680a48b60ef058f6fbeaa1b6266e99da550140",
+        "ruleKey": "5bb6c09d461e9d240332b05bb003831c0a8fb75dc187c1818eb7721b0891a69f",
+        "oracleKey": "d12b80b7d49b5f4cb828751c88937149d38d40780e0dc9cdcef3d7165a8692f2",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "openapi-8",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "openapi-e82e1bddfc3906e1",
+        "revision": "1.0.0",
+        "sourceFingerprint": "5a920f4da30f08ce48fc3f02f72165ac1edb859121f1146cf788a4103941e554",
+        "documentSha256": "e82e1bddfc3906e15573aab2144c4f811d7560b6a1c61609f8e9eeeeb57564a8",
+        "contractFingerprint": "dc07563946b99dd1c4f7a3561a679e7204eb8e6201aa082c6cbef8535d42ba82"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "const": 0,
+              "type": "integer"
+            },
+            "data": {
+              "additionalProperties": false,
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "active"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "code",
+            "data"
+          ],
+          "type": "object"
+        }
+      },
+      "reproduction": [
+        "Use requirement openapi-e82e1bddfc3906e1 at revision 1.0.0.",
+        "GET http://127.0.0.1:52293/slow without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "blocked",
+      "verdict": "environment",
+      "evaluationLimited": true,
+      "actual": {
+        "requested": true,
+        "error": "API request timeout",
+        "errorCode": "REQUEST_TIMEOUT",
+        "evaluationLimited": true
+      },
+      "evidence": {
+        "source": "requirement-source.json",
+        "contract": "spec-1-openapi-8-contract.json",
+        "request": "spec-1-openapi-8-request.json",
+        "response": "spec-1-openapi-8-response.json"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 1,
+    "completed": 1,
+    "capped": false
+  },
+  "specSource": {
+    "id": "openapi-e82e1bddfc3906e1",
+    "revision": "1.0.0",
+    "type": "openapi",
+    "title": "Heimdall 固定 API 验收夹具",
+    "sha256": "e82e1bddfc3906e15573aab2144c4f811d7560b6a1c61609f8e9eeeeb57564a8"
+  },
+  "sourceFingerprint": "5a920f4da30f08ce48fc3f02f72165ac1edb859121f1146cf788a4103941e554",
+  "contractFingerprint": "dc07563946b99dd1c4f7a3561a679e7204eb8e6201aa082c6cbef8535d42ba82",
+  "specApproval": {
+    "approved": true,
+    "recordedAt": "2026-10-18T03:34:55.101Z"
+  },
+  "safety": {
+    "readOnly": true,
+    "allowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "redirects": "not-followed",
+    "credentials": "none",
+    "requests": 1
+  },
+  "environment": {
+    "runner": "node-fetch",
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "maxResponseBytes": 16384,
+    "timeoutMs": 1000
+  },
+  "scope": "离线复现：固定 API 缺陷注入与执行策略反例，只证明这组已声明合同和观察窗口，不代表真实项目检出率或完整 OpenAPI 兼容性。",
+  "gate": "blocked",
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 1,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 1,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

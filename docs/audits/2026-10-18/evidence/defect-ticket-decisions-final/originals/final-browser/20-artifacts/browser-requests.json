@@ -1,0 +1,912 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-31d44596-3ff3-4d1e-9a4a-8a351fe11bd8"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-31d44596-3ff3-4d1e-9a4a-8a351fe11bd8/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/sources"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets",
+    "body": {
+      "actionId": "da-aee35738-1376-4dd1-a57e-79ae9926034f",
+      "description": "Compare dashboard?session=EXPORT_SENTINEL and //user:password@example.test/path?token=OTHER_SENTINEL",
+      "memberCheckIds": [
+        "route-1-1-desktop-point-1-menu",
+        "route-1-1-desktop-visual"
+      ],
+      "reproduction": "打开固定页面并展开菜单，核对布局与行为。",
+      "severity": "high",
+      "sourceOperationId": "bo-88033ac0-7783-422e-9bae-ec37e2d9da35",
+      "ticketId": "dt-f449a223-346a-4821-8578-7f36b78ae678",
+      "title": "菜单还原的两个固定检查"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-31d44596-3ff3-4d1e-9a4a-8a351fe11bd8"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-31d44596-3ff3-4d1e-9a4a-8a351fe11bd8/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/actions/da-aee35738-1376-4dd1-a57e-79ae9926034f"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678/close-preview"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678/close-preview"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678/close",
+    "body": {
+      "actionId": "da-28dc819e-0139-432d-be16-ef676788445c",
+      "afterOperationId": "bo-5e1401a4-7b6c-4a8e-9be6-bdb6db680563",
+      "confirmed": true,
+      "expectedHeadSha256": "809038246fe75370eac48af1264fc2317bda3b56917042708463f9826f168c1d",
+      "expectedRevision": 0,
+      "factsDigest": "38b59dd50d50e65f29296548eca7d46ae76834a262e139de854310ba6cd63d1e",
+      "memberSetDigest": "dd792742cc266a9895fedb36a28fa9c5e470ac803298233dab8743cc143bae3e",
+      "previewDigest": "166ae4ed6c75f70e319055cebf92b00aec3b8420ae43915167aa8210e4eb5ad0",
+      "resolution": "两项固定检查均已在当前登记中通过。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/actions/da-28dc819e-0139-432d-be16-ef676788445c"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678/close-preview"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678/close",
+    "body": {
+      "actionId": "da-98265769-4210-42cb-92fd-9ff6d329399e",
+      "afterOperationId": "bo-7322eba3-9def-448d-b14a-896b767e7660",
+      "confirmed": true,
+      "expectedHeadSha256": "0cc4860e61421714c45464c7ec79793ac94be86f1a58b56290c6b4145f406b31",
+      "expectedRevision": 1,
+      "factsDigest": "095a51fb7b51577adee4e65f0c8240fcbef11c32e139dddb40c3033efa84d39d",
+      "memberSetDigest": "dd792742cc266a9895fedb36a28fa9c5e470ac803298233dab8743cc143bae3e",
+      "previewDigest": "c2b456e4360157f9624bd1f1815b5169805025c798f11876cbec5134986ae0bc",
+      "resolution": "两项固定检查均已在当前登记中通过。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678/close-preview"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678/close",
+    "body": {
+      "actionId": "da-85d40fcc-15ea-45d0-8d4d-7816cc96db92",
+      "afterOperationId": "bo-b10fda1e-013d-43a1-992b-f31409dcfd15",
+      "confirmed": true,
+      "expectedHeadSha256": "0cc4860e61421714c45464c7ec79793ac94be86f1a58b56290c6b4145f406b31",
+      "expectedRevision": 1,
+      "factsDigest": "1f751142491e35ca3b317a8d5abbb266b2f744e8c300bbf8acdcea330846cf83",
+      "memberSetDigest": "dd792742cc266a9895fedb36a28fa9c5e470ac803298233dab8743cc143bae3e",
+      "previewDigest": "a5ffcbd1ee42af2878b2bb417caf41506672b9708ced2c6d043d513bbb0fd89c",
+      "resolution": "两项固定检查均已在当前登记中通过。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678/export.md"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678/export.json"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-31d44596-3ff3-4d1e-9a4a-8a351fe11bd8"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-31d44596-3ff3-4d1e-9a4a-8a351fe11bd8/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f5e57d40-9eee-46df-98f8-93a845ce7783/defect-tickets/dt-f449a223-346a-4821-8578-7f36b78ae678"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  }
+]

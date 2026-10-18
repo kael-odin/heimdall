@@ -1,0 +1,554 @@
+{
+  "schemaVersion": 1,
+  "runId": "benchmark-2026-10-18T03-34-30-164Z-f1911875-missing-field",
+  "name": "固定注入基准 · 套餐配额文字字段缺失",
+  "mode": "mirror",
+  "baselineUrl": "http://127.0.0.1:55191/baseline",
+  "targetUrl": "http://127.0.0.1:55191/target",
+  "startedAt": "2026-10-18T03:34:37.245Z",
+  "endedAt": "2026-10-18T03:34:42.367Z",
+  "status": "completed",
+  "checks": [
+    {
+      "route": "/missing-field",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-navigation",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "navigation",
+        "caseKey": "fa9a95b373644d916edc4d9653e8390a22971c5ed2bce7037e15391df767412a",
+        "contextKey": "ef6a28f870056e7e870f5ee1d5e054fafba38469c44abbec70379c3e058490fb",
+        "ruleKey": "3f766ee7a136dad7ca8af6d769e740ab80d1c8b8b116dd546a08328f24f16853",
+        "oracleKey": "c6c7f7c6f936fb00f57636dc8bbd140566854c455369a361ab203afdc32819ff",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "页面导航与 HTTP 状态",
+      "dimension": "health",
+      "expected": 200,
+      "actual": 200,
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/missing-field at 1280×800.",
+        "Open http://127.0.0.1:55191/target/missing-field in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/missing-field",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-console",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "console",
+        "caseKey": "3e68f314a4eecbb81af810a2f1ca373f21b187806a277662467eab9bd4de6ad4",
+        "contextKey": "da5b325c24670c72523b8c6f5066afa75fc6fa3b9a699070dd459b4ab8a79ee2",
+        "ruleKey": "d7ddd804e215dc3e92617cc18e62117710e46a57455a0f7ba2895eb3aa467f35",
+        "oracleKey": "67e8b4445b81d0f0500025e58638a734684274effaeafd78b1b5c08e9cec1d8d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "浏览器脚本与控制台错误",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/missing-field at 1280×800.",
+        "Open http://127.0.0.1:55191/target/missing-field in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/missing-field",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-network",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "network",
+        "caseKey": "1ba743281ea1b0318e33deb9b3d003d66ae5fbf7600d2be315fb1909434f39f4",
+        "contextKey": "787f33a48f72f82dbbaff4c591bf5d3432fd7488854e1470157b2b4dbb7e31d1",
+        "ruleKey": "b3e43ae297a89c526337ba4a7769529110937b946613783caaa644c4eb21ae50",
+        "oracleKey": "67e8b4445b81d0f0500025e58638a734684274effaeafd78b1b5c08e9cec1d8d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "资源与只读网络请求",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/missing-field at 1280×800.",
+        "Open http://127.0.0.1:55191/target/missing-field in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/missing-field",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-overflow",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "overflow",
+        "caseKey": "cedfc30c1a8929962c5dc59106947d21a2cf5ca4f0b8d1b3d96a1240ab9f453f",
+        "contextKey": "8091f7e5f3fe92de5c097ddd57ce45d4ffb2ab5ea4b083a309fc41cacfee6f5f",
+        "ruleKey": "03bb7e21508d0b289a13d52216b3411afe98841072eeb4569622339049451ce4",
+        "oracleKey": "67e8b4445b81d0f0500025e58638a734684274effaeafd78b1b5c08e9cec1d8d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "视口水平溢出",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/missing-field at 1280×800.",
+        "Open http://127.0.0.1:55191/target/missing-field in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/missing-field",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-structure",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "structure",
+        "caseKey": "76ef97b49e731b81312c8ba1dfe17bed8c9f18ed89c0d4fc20c4a96c44153804",
+        "contextKey": "5a12b64bed4eaec9fd26f67815f5f75783450c2b5e301901731b325a1cf1c159",
+        "ruleKey": "265e294ecc131277a1ec20a8d9a1eddf1eaf005a67f130394dd2f34143d147ca",
+        "oracleKey": "b07fb5f631e5d713ea67d2b0ec6216cf2db2d78f9cae9742b2668e1964f4302f",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "标题、主标题与关键控件语义",
+      "dimension": "structure",
+      "expected": {
+        "title": "Heimdall 验收演示",
+        "headings": [
+          "团队项目概览"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "菜单",
+            "type": "button",
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#details-link",
+            "tag": "a",
+            "role": null,
+            "label": "查看详情",
+            "type": null,
+            "href": "/details",
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ]
+      },
+      "actual": {
+        "title": "Heimdall 验收演示",
+        "headings": [
+          "团队项目概览"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "菜单",
+            "type": "button",
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#details-link",
+            "tag": "a",
+            "role": null,
+            "label": "查看详情",
+            "type": null,
+            "href": "/details",
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ],
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 1024000,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 1024000,
+            "samplingCapped": false
+          }
+        }
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/missing-field at 1280×800.",
+        "Open http://127.0.0.1:55191/target/missing-field in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/missing-field",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-visual",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "dafe6af537907d6e2d8a1c20b48ee878fee273938705e1b11155b7c4679b2040",
+        "contextKey": "6b0a5b43490f2ecc635abffabd164a3d933c59ac3e4aadebb49110f36858e032",
+        "ruleKey": "02edd3e20b88dc0aeb78b86da9ce31cb64779fcdee50b9668493db23410fba87",
+        "oracleKey": "e1acf3177094e1e0bcef63aa8657e9178a023664dac636e0ffecd39a21c667e4",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "页面视觉还原度",
+      "dimension": "visual",
+      "expected": {
+        "minimumScore": 0.97,
+        "stabilityMinimum": 0.9995,
+        "maximumMaskedRatio": 0.8,
+        "captureBudget": {
+          "maxPixels": 12000000,
+          "maxHeight": 12000
+        }
+      },
+      "actual": {
+        "score": 0.9988,
+        "baselineStability": 1,
+        "targetStability": 1,
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 1024000,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 1024000,
+            "samplingCapped": false
+          }
+        },
+        "capture": {
+          "baseline": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 1280,
+              "height": 800
+            }
+          },
+          "target": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 1280,
+              "height": 800
+            }
+          }
+        },
+        "eligible": true
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/missing-field at 1280×800.",
+        "Open http://127.0.0.1:55191/target/missing-field in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png",
+        "diff": "route-1-1-desktop-diff.png"
+      },
+      "score": 0.9988
+    },
+    {
+      "route": "/missing-field",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-point-1-truth-missing-field",
+      "title": "套餐配额文字字段缺失",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "behavior",
+        "caseKey": "fa2ab290338a4cd55dec079796976734afae3364a9d0135587fe4937ea60ce51",
+        "contextKey": "51f3ebc82cf9cd66cb8e7b445a0f6f9eaf50a9746c1d75216b83a67a88c04a2b",
+        "ruleKey": "f6308d775c3d217a93e8e72ab5d5b2ff96fd605d7519d6256c346c764baab6bf",
+        "oracleKey": "3809866463b9da463dbe6499ca00dc7f884e9e74d522b2a9acec2919224dcaa8",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "pointId": "truth-missing-field"
+      },
+      "status": "failed",
+      "verdict": "bug",
+      "evaluationLimited": false,
+      "expected": {
+        "stepsComplete": true,
+        "assertions": [
+          {
+            "kind": "text",
+            "selector": "#quota",
+            "expected": {
+              "contains": "128 个任务"
+            },
+            "actual": "剩余配额：128 个任务",
+            "passed": true
+          }
+        ],
+        "httpStatus": 200
+      },
+      "actual": {
+        "stepsComplete": true,
+        "stepError": null,
+        "assertions": [
+          {
+            "kind": "text",
+            "selector": "#quota",
+            "passed": false,
+            "error": "locator.textContent: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#quota').first()\u001b[22m\n"
+          }
+        ],
+        "httpStatus": 200,
+        "navigationError": null,
+        "errors": [],
+        "network": [],
+        "overflow": false,
+        "blockedRequests": []
+      },
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/missing-field at 1280×800.",
+        "Open http://127.0.0.1:55191/target/missing-field in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-point-1-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-point-1-target.png",
+        "baselineDetails": "route-1-1-desktop-point-1-baseline.json",
+        "targetDetails": "route-1-1-desktop-point-1-target.json",
+        "baselineRepeat": "route-1-1-desktop-point-1-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-point-1-target-repeat.png"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 7,
+    "completed": 7,
+    "capped": false
+  },
+  "safety": {
+    "networkPolicy": "read-only",
+    "isolatedContexts": true,
+    "blockedRequests": 0
+  },
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "playwrightVersion": "1.63.0",
+    "locale": "zh-CN",
+    "timezoneId": "Asia/Hong_Kong",
+    "colorScheme": "light",
+    "reducedMotion": "reduce"
+  },
+  "scope": "离线复现：固定注入缺陷夹具，仅证明本基准中声明的案例与观察窗口；不代表真实站点业务验收或通用检出率。",
+  "gate": "failed",
+  "summary": {
+    "total": 7,
+    "passed": 6,
+    "failed": 1,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 1,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 7,
+      "total": 7,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.9988
+      },
+      "structure": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

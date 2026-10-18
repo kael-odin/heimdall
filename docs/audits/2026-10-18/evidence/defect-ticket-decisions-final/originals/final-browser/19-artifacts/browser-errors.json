@@ -1,0 +1,60 @@
+{
+  "pageErrors": [],
+  "consoleMessages": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "location": {
+        "url": "http://127.0.0.1:53311/api/acceptance/projects/ap-72f9fcb7-3627-4bec-881c-a7c7e5433a9d/browser-executions",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "location": {
+        "url": "http://127.0.0.1:53311/api/acceptance/projects/ap-72f9fcb7-3627-4bec-881c-a7c7e5433a9d/browser-executions",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "location": {
+        "url": "http://127.0.0.1:53311/api/acceptance/projects/ap-72f9fcb7-3627-4bec-881c-a7c7e5433a9d/browser-executions/bo-f83eebe1-7fbd-4eb9-86d9-7cf0489d3da1/resolution",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "location": {
+        "url": "http://127.0.0.1:53311/api/acceptance/projects/ap-72f9fcb7-3627-4bec-881c-a7c7e5433a9d/browser-executions/bo-f83eebe1-7fbd-4eb9-86d9-7cf0489d3da1/deny-start",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "location": {
+        "url": "http://127.0.0.1:53311/api/acceptance/projects/ap-72f9fcb7-3627-4bec-881c-a7c7e5433a9d/browser-executions/bo-f83eebe1-7fbd-4eb9-86d9-7cf0489d3da1/resolution",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ]
+}

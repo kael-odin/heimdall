@@ -1,0 +1,31 @@
+{
+  "caseId": "C",
+  "kind": "close",
+  "intendedWinner": "rejected",
+  "completed": true,
+  "checks": {
+    "uiOriginalBound": true,
+    "prefixObservedBeforeDownstream502": true,
+    "controlled502FinishedNormally": true,
+    "unknownRetainsFullOriginal": true,
+    "readOnlyUnresolvedPreservesOriginal": true,
+    "manualDenyBoundExact": true,
+    "winnerOrderingProved": true,
+    "completeProofMatchesDisk": true,
+    "lateOriginalMatchesWinningDecision": true,
+    "oneUpstreamRequestAndBodyEnd": true,
+    "oneDenyRequestAndOneForward": true,
+    "pendingReleasedAfterProof": true,
+    "uiOutcomeAndDraft": true,
+    "ticketEffectMatchesWinner": true,
+    "sideEffectsUnchanged": true,
+    "decisionTreeOnlyExpectedAddition": true,
+    "postGetMatchesWinner": true
+  },
+  "actionId": "da-734e4588-1061-4c35-a2d9-7e784e0aedfa",
+  "ticketId": "dt-bdf97766-bb5e-4a8b-9830-e7a8bdbbcc62",
+  "requestFingerprint": "14f49e24ea3b691501ec6ea67c6be316256cff975597ee862702e8c2e59d8554",
+  "actualOutcome": "rejected",
+  "rawBodySha256": "56aec4e69f503a4c0f92c8627d3b5fc16625c8875d300cdadd0453cbd393578d",
+  "decisionSha256": "4f62ac2d815b6279217608f2456e97626b6b76c866f219cd4a40b92652e6fdef"
+}

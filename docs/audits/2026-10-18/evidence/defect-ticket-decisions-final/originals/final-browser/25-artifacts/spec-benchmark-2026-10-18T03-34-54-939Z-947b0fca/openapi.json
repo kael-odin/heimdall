@@ -1,0 +1,232 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Heimdall 固定 API 验收夹具",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://not-authorized.invalid"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Healthy": {
+        "type": "object",
+        "required": [
+          "code",
+          "data"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "integer",
+            "const": 0
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "active"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "active": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/healthy": {
+      "get": {
+        "summary": "固定合同 healthy",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrong-code": {
+      "get": {
+        "summary": "固定合同 wrong-code",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/missing-field": {
+      "get": {
+        "summary": "固定合同 missing-field",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrong-type": {
+      "get": {
+        "summary": "固定合同 wrong-type",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrong-status": {
+      "get": {
+        "summary": "固定合同 wrong-status",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/non-json": {
+      "get": {
+        "summary": "固定合同 non-json",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bad-json": {
+      "get": {
+        "summary": "固定合同 bad-json",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/redirect": {
+      "get": {
+        "summary": "固定合同 redirect",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oversized": {
+      "get": {
+        "summary": "固定合同 oversized",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/slow": {
+      "get": {
+        "summary": "固定合同 slow",
+        "responses": {
+          "200": {
+            "description": "Healthy contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Healthy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/head": {
+      "head": {
+        "summary": "固定合同 head",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        }
+      }
+    }
+  }
+}

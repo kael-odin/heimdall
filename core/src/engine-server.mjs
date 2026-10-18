@@ -832,7 +832,8 @@ const acceptanceExecutions = createManagedSpecExecutionService({ owner: acceptan
 const browserExecutions = createBrowserExecutionService({ owner: acceptanceOwner,
   catalog: acceptanceCatalog, runtime: acceptanceRuntime,
   assertReady: () => acceptanceRecovery.ready && !shuttingDown });
-const defectTickets = createDefectTicketService({ owner: acceptanceOwner });
+const defectTickets = createDefectTicketService({ owner: acceptanceOwner,
+  assertReady: () => acceptanceRecovery.ready && !shuttingDown });
 try { browserExecutions.recover(); }
 catch { console.warn('[acceptance] Browser operation recovery blocked; original records retained.'); }
 
@@ -1269,11 +1270,13 @@ const handleRequest = async (req, res) => {
       if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
       return json(res, 200, acceptanceRecovery);
     }
-    // This exact decision endpoint reads an existing immutable fact first. Its
-    // service still requires recovery readiness and a lease for every new denial.
+    // These exact decision endpoints read an existing immutable fact first.
+    // Their services still require recovery readiness and ownership for new decisions.
     const browserDecisionRead = req.method === 'POST'
       && /^\/api\/acceptance\/projects\/ap-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/browser-executions\/bo-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/deny-start$/.test(u.pathname);
-    if (!acceptanceRecovery.ready && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !browserDecisionRead) {
+    const defectDecisionRead = req.method === 'POST'
+      && /^\/api\/acceptance\/projects\/ap-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/defect-tickets\/actions\/da-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/deny$/.test(u.pathname);
+    if (!acceptanceRecovery.ready && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !browserDecisionRead && !defectDecisionRead) {
       return json(res, 503, { code: 'ACCEPTANCE_RECOVERY_BLOCKED', error: '启动恢复未完成，验收写入暂不可用；请检查运行现场后重启引擎。' });
     }
   }

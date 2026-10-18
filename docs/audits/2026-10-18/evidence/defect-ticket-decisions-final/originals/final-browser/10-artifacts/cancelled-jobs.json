@@ -1,0 +1,69 @@
+{
+  "store": "sqlite",
+  "jobs": [
+    {
+      "id": "a-cc7f8db5-c165-4e34-a384-186ade25040c",
+      "kind": "acceptance",
+      "url": "http://127.0.0.1:62531/target?tenant=execution",
+      "status": "done",
+      "pageName": null,
+      "createdAt": 1792292943991,
+      "endedAt": 1792292951905,
+      "events": 6,
+      "mirrorDegraded": false
+    },
+    {
+      "id": "a-3485c4be-a917-4b47-8a95-896962fdcb9d",
+      "kind": "acceptance",
+      "url": "http://127.0.0.1:62531/target?tenant=execution",
+      "status": "cancelled",
+      "pageName": null,
+      "createdAt": 1792292957079,
+      "endedAt": 1792292960623,
+      "events": 2,
+      "mirrorDegraded": false
+    }
+  ],
+  "history": [
+    {
+      "id": "a-3485c4be-a917-4b47-8a95-896962fdcb9d",
+      "kind": "acceptance",
+      "url": "http://127.0.0.1:62531/target?tenant=execution",
+      "status": "cancelled",
+      "pageName": null,
+      "createdAt": 1792292957079,
+      "endedAt": 1792292960623,
+      "payload": {
+        "managedAcceptance": {
+          "schemaVersion": 1,
+          "operationId": "ao-997d07fe-451a-470e-8793-939237d098f2",
+          "runId": "ac-c15acf99-fef9-4884-902d-f159efbf6ec5",
+          "taskId": "a-3485c4be-a917-4b47-8a95-896962fdcb9d",
+          "dispatchSha256": "42e0e205fe7f6183a45dc94c71203ee22bd8fc8d844042ab8bd36c332b98c914",
+          "projectId": "ap-be9367ce-504c-4984-a340-cf7921cf3db0"
+        }
+      },
+      "error": "CANCELLED"
+    },
+    {
+      "id": "a-cc7f8db5-c165-4e34-a384-186ade25040c",
+      "kind": "acceptance",
+      "url": "http://127.0.0.1:62531/target?tenant=execution",
+      "status": "done",
+      "pageName": null,
+      "createdAt": 1792292943991,
+      "endedAt": 1792292951905,
+      "payload": {
+        "managedAcceptance": {
+          "schemaVersion": 1,
+          "operationId": "ao-37b7d4d6-e8ef-4e25-8dea-a11afa07208e",
+          "runId": "ac-dd1a6582-da67-4521-8adb-4f2fdd32a2e9",
+          "taskId": "a-cc7f8db5-c165-4e34-a384-186ade25040c",
+          "dispatchSha256": "ad529973ae4852ad0df672b1808cdfcbd94b351a04a2b48a93744fc5fbdbaef4",
+          "projectId": "ap-be9367ce-504c-4984-a340-cf7921cf3db0"
+        }
+      },
+      "error": null
+    }
+  ]
+}

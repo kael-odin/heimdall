@@ -1,0 +1,12 @@
+[acceptance-benchmark] visual-shift: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-benchmark] mobile-menu: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-benchmark] menu-state: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-benchmark] missing-field: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-benchmark] wrong-link: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-benchmark] runtime-error: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-benchmark] missing-resource: PASS; targetBug=true; detected=true; gate=failed
+[acceptance-benchmark] identical: PASS; targetBug=false; detected=false; gate=passed
+[acceptance-benchmark] baseline-error: PASS; targetBug=false; detected=false; gate=blocked
+[acceptance-benchmark] masked-noise: PASS; targetBug=false; detected=false; gate=passed
+[acceptance-benchmark] blocked-write: PASS; targetBug=false; detected=false; gate=blocked
+[acceptance-benchmark] {"unit":"case","totalCases":11,"knownBugCases":7,"nonBugCases":4,"truePositive":7,"falsePositive":0,"falseNegative":0,"trueNegative":4,"precision":1,"recall":1,"falsePositiveRate":0,"passed":true,"outputDir":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\24-artifacts\\benchmark-2026-10-18T03-34-30-164Z-f1911875"}

@@ -1,0 +1,7 @@
+{
+  "status": 409,
+  "body": {
+    "code": "IDEMPOTENCY_CONFLICT",
+    "error": "操作 ID 已用于其他确认，请查询原操作。"
+  }
+}

@@ -1,0 +1,478 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-1bb2f82e-1d9e-4711-8660-34c79bf43446",
+  "name": "Browser source matrix",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:1/unavailable",
+  "targetUrl": "http://127.0.0.1:59761/target",
+  "startedAt": "2026-10-18T03:11:17.838Z",
+  "endedAt": "2026-10-18T03:11:18.423Z",
+  "status": "completed",
+  "checks": [
+    {
+      "route": "/identical",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:1/unavailable"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-navigation",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "navigation",
+        "caseKey": "d15240ce3a20855e8bab547d099b514bac0d3af0816cdde4f7b954e5fe7e51e4",
+        "contextKey": "5c3d52d61a6fd1462e3c74614f3a395d6511b14a807627365f4bb12cdecf10d3",
+        "ruleKey": "a0db33b96a039206580ebc3e2392880adc9d947d799044bc33ae1c309f56b5fc",
+        "oracleKey": "7d20bb838ce1fd0ccd1e3d96249f0c7c63607508c66a089e8610b32f519fb7af",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "基线页面可访问",
+      "dimension": "health",
+      "expected": "Approved runtime loads successfully.",
+      "actual": {
+        "baseline": "page.goto: net::ERR_UNSAFE_PORT at http://127.0.0.1:1/unavailable/identical\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:1/unavailable/identical\", waiting until \"domcontentloaded\"\u001b[22m\n",
+        "target": 200
+      },
+      "status": "blocked",
+      "verdict": "baseline_failed",
+      "severity": "high",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:1/unavailable/identical at 960×640.",
+        "Open http://127.0.0.1:59761/target/identical in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": null,
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": null,
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/identical",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:1/unavailable"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-console",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "console",
+        "caseKey": "2438b5b0153e386b53f4ecfe3b3adefe06098d91067aff46416b4fd38ddaf0c2",
+        "contextKey": "70d55460731f69690c8018a561ca4a4d1247002067b0dc2fba1bdfc20160babb",
+        "ruleKey": "948805a3f4cc520e40f7f4b4e19e5af81f0cf5ce23981a23ae20abd15660417e",
+        "oracleKey": "72bf784d4fe7b63c3c3d132dabca796bd9f2d7d7edfc6fc938fe752ad6eb4fce",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "浏览器脚本与控制台错误",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "blocked",
+      "verdict": "baseline_failed",
+      "severity": "high",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:1/unavailable/identical at 960×640.",
+        "Open http://127.0.0.1:59761/target/identical in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": null,
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": null,
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/identical",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:1/unavailable"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-network",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "network",
+        "caseKey": "ef4f5f47ac6d6e4fc2421a58959bad3d7544a73d6049b0506ae4211dc690a7a6",
+        "contextKey": "5981cdb06caa6c9757c7f8ef48c218d1e16c5d0d8033c36e7f83aa4dacae73fa",
+        "ruleKey": "367f33d927d3af833c8565529cebc78ff05df4fff9303f7ed3aebd2b281972d3",
+        "oracleKey": "270cbf956fcee00af3c4a69dd02a0e636568c397dd684a54920761886bbe5c9c",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "资源与只读网络请求",
+      "dimension": "health",
+      "expected": [
+        {
+          "kind": "requestfailed",
+          "method": "GET",
+          "url": "http://127.0.0.1:1/unavailable/identical",
+          "message": "net::ERR_UNSAFE_PORT"
+        }
+      ],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "blocked",
+      "verdict": "baseline_failed",
+      "severity": "medium",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:1/unavailable/identical at 960×640.",
+        "Open http://127.0.0.1:59761/target/identical in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": null,
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": null,
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/identical",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:1/unavailable"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-overflow",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "overflow",
+        "caseKey": "5dc92bde7f962a474598070b5ef702a11e3e76d9aba31ea37e81ac911325a2de",
+        "contextKey": "d6b48c9711d4c729847d09f29a9bb4000531a06ce73741890afbb6b938676ed0",
+        "ruleKey": "9b05c527ed1dd59a93088822be5e4451adf77a0e6b80ec78a0dd7f7d4c990147",
+        "oracleKey": "72bf784d4fe7b63c3c3d132dabca796bd9f2d7d7edfc6fc938fe752ad6eb4fce",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "视口水平溢出",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "blocked",
+      "verdict": "baseline_failed",
+      "severity": "medium",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:1/unavailable/identical at 960×640.",
+        "Open http://127.0.0.1:59761/target/identical in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": null,
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": null,
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/identical",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:1/unavailable"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-structure",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "structure",
+        "caseKey": "898e29d1881a51fd4f9a48a56a51be56ea85f8418301fece58c137b96e70754e",
+        "contextKey": "abf133434420b92fb8f93be04ee955abe64233b19988dd8414a0f2a76b012b14",
+        "ruleKey": "939bcef0740b4397fd1f7d655ff2e7bc5f792ae5def60561aa964c9d5dce263f",
+        "oracleKey": "9b3abdc2b5c69575afc5d1cd5cf8b9d0f2ab12feafc8b28de52e65eb8badd01d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "标题、主标题与关键控件语义",
+      "dimension": "structure",
+      "expected": null,
+      "actual": {
+        "title": "Heimdall 验收演示",
+        "headings": [
+          "团队项目概览"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "菜单",
+            "type": "button",
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#details-link",
+            "tag": "a",
+            "role": null,
+            "label": "查看详情",
+            "type": null,
+            "href": "/details",
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ],
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": null,
+            "effectiveAreaPx": null,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 614400,
+            "samplingCapped": false
+          }
+        }
+      },
+      "status": "blocked",
+      "verdict": "baseline_failed",
+      "severity": "high",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:1/unavailable/identical at 960×640.",
+        "Open http://127.0.0.1:59761/target/identical in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": null,
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": null,
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/identical",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:1/unavailable"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-visual",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "9ae5d1e00f8f576c710c68724f44c070fd0c4320a739b52cd8882e2b54c7f263",
+        "contextKey": "a1a03f35ac45fb359c6567ad82644a359f457b102a44046febb72a2268a5df9e",
+        "ruleKey": "fbb481c615d3aab2a173c2023ca9c813d704ca22a18f19871ff67dfaa4741d2d",
+        "oracleKey": "f6ffaf70a43d0a2d165c81463bfbe6d28cc5399e3dcf12c246b04711d7350eee",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "页面视觉还原度",
+      "dimension": "visual",
+      "expected": {
+        "minimumScore": 0.97,
+        "stabilityMinimum": 0.9995,
+        "maximumMaskedRatio": 0.8,
+        "captureBudget": {
+          "maxPixels": 12000000,
+          "maxHeight": 12000
+        }
+      },
+      "actual": {
+        "score": null,
+        "baselineStability": null,
+        "targetStability": 1,
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": null,
+            "effectiveAreaPx": null,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 614400,
+            "samplingCapped": false
+          }
+        },
+        "capture": {
+          "baseline": {
+            "captureScope": null,
+            "captureLimited": false,
+            "documentSize": null
+          },
+          "target": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 960,
+              "height": 640
+            }
+          }
+        },
+        "eligible": false
+      },
+      "status": "blocked",
+      "verdict": "baseline_failed",
+      "severity": "medium",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:1/unavailable/identical at 960×640.",
+        "Open http://127.0.0.1:59761/target/identical in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": null,
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": null,
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 6,
+    "completed": 6,
+    "capped": false
+  },
+  "safety": {
+    "networkPolicy": "read-only",
+    "isolatedContexts": true,
+    "blockedRequests": 0
+  },
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "playwrightVersion": "1.63.0",
+    "locale": "zh-CN",
+    "timezoneId": "Asia/Hong_Kong",
+    "colorScheme": "light",
+    "reducedMotion": "reduce"
+  },
+  "scope": "仅验收已声明路由、视口、操作和有界观察窗口；未声明业务与接口契约为未测。单侧文档高度不超过12,000像素且面积不超过12,000,000像素时截图覆盖全页，两次稳定性截图采用相同范围。超过预算仅保留首屏证据，视觉检查标为待复核，不作为完整页面通过依据。",
+  "planFingerprint": "041572f3306853bb39e993b605ea4af2678bb96b7a804f5efdebcac2d5992ff6",
+  "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+  "evidenceManifest": [
+    {
+      "file": "route-1-1-desktop-target.png",
+      "bytes": 21800,
+      "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+    },
+    {
+      "file": "route-1-1-desktop-baseline.json",
+      "bytes": 790,
+      "sha256": "57821c2f0686be7670eca6bd3e38f35cbdab1271982762c3e0aff7ae8b03b66f"
+    },
+    {
+      "file": "route-1-1-desktop-target.json",
+      "bytes": 1485,
+      "sha256": "9ee6dfabb85502ec82e5dcbedb249d29e026cc3d27124a0defd9ae095bad5f64"
+    },
+    {
+      "file": "route-1-1-desktop-target-repeat.png",
+      "bytes": 21800,
+      "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+    }
+  ],
+  "gate": "blocked",
+  "summary": {
+    "total": 6,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 6,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 6,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 6,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 4,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 4,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

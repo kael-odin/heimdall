@@ -13,6 +13,7 @@ import { validateAcceptanceCatalog } from '../src/acceptance/catalog-schema.mjs'
 import { createBrowserOperationStore } from '../src/acceptance/browser-operation-store.mjs';
 import { compileFixedBrowserContract } from '../src/acceptance/browser-fixed-contract.mjs';
 import { createDefectTicketService } from '../src/acceptance/defect-ticket-service.mjs';
+import { defectTicketRequestFingerprint, validateDefectTicketCreateRequest, validateDefectTicketCloseRequest } from '../src/acceptance/defect-ticket-schema.mjs';
 import { browserFixedFixture } from './fixtures/acceptance-browser-fixed.mjs';
 import { browserOperationRaw } from './fixtures/acceptance-browser-operation.mjs';
 import { append, empty, copy, AT } from './fixtures/acceptance-browser-organized-candidate.mjs';
@@ -38,7 +39,7 @@ function tree(root) {
 
 // These are offline, schema-checked captured facts. No Browser is launched to
 // prepare them. A local target sentinel independently records any accidental I/O.
-async function fixture(t, name, { seedTicket = false, blockedRecovery = false } = {}) {
+async function fixture(t, name, { seedTicket = false, seedRejection = false, blockedRecovery = false } = {}) {
   const evidenceRoot = process.env.HEIMDALL_D5_ENGINE_TEST_EVIDENCE_DIR;
   const evidence = evidenceRoot ? join(evidenceRoot, name) : null;
   if (evidence) fs.mkdirSync(evidence, { recursive: true });
@@ -100,6 +101,9 @@ async function fixture(t, name, { seedTicket = false, blockedRecovery = false } 
     memberCheckIds: source.report.checks.slice(0, 2).map(check => check.id), title: '两项页面还原缺陷', severity: 'high',
     description: '捕获的来源包含两项失败检查。', reproduction: '打开固定路由并核对这两项检查。' };
   if (seedTicket) await createDefectTicketService({ owner }).create(project.id, createRequest);
+  const rejectedRequest = { ...createRequest, ticketId: uid('dt'), actionId: uid('da') };
+  const rejectedOriginal = confirmation(project.id, rejectedRequest.ticketId, 'create', rejectedRequest);
+  if (seedRejection) await createDefectTicketService({ owner }).deny(project.id, rejectedRequest.actionId, rejectedOriginal);
   let corruptPath;
   if (blockedRecovery) {
     corruptPath = join(root, uid('ac')); fs.mkdirSync(corruptPath); fs.writeFileSync(join(corruptPath, 'manifest.json'), '{partial fixture');
@@ -170,7 +174,7 @@ async function fixture(t, name, { seedTicket = false, blockedRecovery = false } 
     assert.deepEqual(jobs.jobs, []); assert.deepEqual(jobs.history, []);
     assert.equal((await engine.request('/api/status')).payload.acceptance, null);
   }
-  return { root, project, foreignProject, candidate: f.candidate, source, healthy, createRequest, start, stop, unchanged, noJobs, token,
+  return { root, project, foreignProject, candidate: f.candidate, source, healthy, createRequest, rejectedRequest, rejectedOriginal, start, stop, unchanged, noJobs, token,
     path: '/api/acceptance/projects/' + project.id + '/defect-tickets', ticketNamespace: join(root, 'defect-tickets') };
 }
 
@@ -178,6 +182,13 @@ const closeRequest = preview => ({ actionId: uid('da'), afterOperationId: previe
   expectedRevision: preview.expectedRevision, expectedHeadSha256: preview.expectedHeadSha256,
   memberSetDigest: preview.memberSetDigest, factsDigest: preview.factsDigest, previewDigest: preview.previewDigest,
   resolution: '两项固定检查均已复核通过。', confirmed: true });
+
+function confirmation(projectId, ticketId, kind, raw) {
+  const request = kind === 'create' ? validateDefectTicketCreateRequest(raw) : validateDefectTicketCloseRequest(raw);
+  return { version: 1, projectId, ticketId, kind, actionId: request.actionId,
+    requestFingerprint: defectTicketRequestFingerprint({ projectId, ticketId, kind, request }), request };
+}
+const envelope = original => ({ schemaVersion: 1, confirmed: true, original });
 
 test('D5 real engine authenticates all ticket routes and reads sources/actions without creating a ticket namespace', async t => {
   const f = await fixture(t, 'read-only'), engine = await f.start(), { ticketId, actionId } = f.createRequest;
@@ -290,4 +301,72 @@ test('D5 real engine checks live ownership before any ticket source, action, dow
   await engine.request(f.path, { auth: null, status: 401 });
   assert.deepEqual(tree(f.root), originals, 'Lost owner cannot repair or mutate original records.');
   await f.noJobs(engine); f.unchanged('after-owner-lost-http');
+});
+
+test('D6 real engine authenticates denial, preserves its sole decision and seals a late create across restart', async t => {
+  const f = await fixture(t, 'd6-denial-restart'), engine = await f.start(), request = f.createRequest;
+  const original = confirmation(f.project.id, request.ticketId, 'create', request), body = envelope(original);
+  const deny = f.path + '/actions/' + request.actionId + '/deny';
+  for (const auth of [null, 'wrong-token']) await engine.request(deny, { method: 'POST', body, auth, status: 401 });
+  assert.equal(fs.existsSync(f.ticketNamespace), false);
+  const rejected = (await engine.request(deny, { method: 'POST', body, status: 201 })).payload;
+  assert.equal(rejected.outcome, 'rejected'); assert.deepEqual(rejected.rejection.original, original);
+  assert.equal((await engine.request(f.path)).payload.ticketCount, 0);
+  const before = tree(f.ticketNamespace);
+  const late = (await engine.request(f.path, { method: 'POST', body: request })).payload;
+  assert.equal(late.outcome, 'rejected'); assert.equal(late.rejectionSha256, rejected.rejectionSha256);
+  assert.equal((await engine.request(deny, { method: 'POST', body })).payload.replayed, true);
+  const foreign = deny.replace(f.project.id, f.foreignProject.id);
+  await engine.request(foreign, { method: 'POST', body, status: 400 });
+  assert.deepEqual(tree(f.ticketNamespace), before); await f.stop(engine);
+  const restarted = await f.start();
+  assert.equal((await restarted.request(f.path + '/actions/' + request.actionId)).payload.rejectionSha256, rejected.rejectionSha256);
+  assert.equal((await restarted.request(f.path, { method: 'POST', body: request })).payload.outcome, 'rejected');
+  assert.deepEqual(tree(f.ticketNamespace), before);
+  const fresh = { ...request, actionId: uid('da') };
+  const created = (await restarted.request(f.path, { method: 'POST', body: fresh, status: 201 })).payload;
+  assert.equal(created.outcome, 'recorded');
+  const accepted = (await restarted.request(f.path + '/actions/' + fresh.actionId + '/deny', { method: 'POST',
+    body: envelope(confirmation(f.project.id, request.ticketId, 'create', fresh)) })).payload;
+  assert.equal(accepted.outcome, 'recorded'); assert.equal(accepted.eventSha256, created.eventSha256);
+  await f.noJobs(restarted); f.unchanged('after-d6-denial-restart');
+});
+
+test('D6 blocked recovery permits only complete existing decisions through exact deny and GET routes', async t => {
+  const f = await fixture(t, 'd6-blocked-decisions', { seedTicket: true, seedRejection: true, blockedRecovery: true });
+  const engine = await f.start(), before = tree(f.ticketNamespace);
+  assert.equal((await engine.request('/api/acceptance/recovery')).payload.ready, false);
+  for (const [request, original, outcome] of [[f.createRequest,
+    confirmation(f.project.id, f.createRequest.ticketId, 'create', f.createRequest), 'recorded'],
+  [f.rejectedRequest, f.rejectedOriginal, 'rejected']]) {
+    const read = (await engine.request(f.path + '/actions/' + request.actionId)).payload;
+    assert.equal(read.outcome, outcome);
+    const replay = (await engine.request(f.path + '/actions/' + request.actionId + '/deny',
+      { method: 'POST', body: envelope(original) })).payload;
+    assert.equal(replay.outcome, outcome); assert.equal(replay.requestFingerprint, read.requestFingerprint);
+    await engine.request(f.path, { method: 'POST', body: request, status: 503 });
+  }
+  const fresh = { ...f.createRequest, actionId: uid('da') }, freshOriginal = confirmation(f.project.id, fresh.ticketId, 'create', fresh);
+  const denied = (await engine.request(f.path + '/actions/' + fresh.actionId + '/deny',
+    { method: 'POST', body: envelope(freshOriginal), status: 503 })).payload;
+  assert.equal(denied.code, 'INTEGRITY_BLOCKED'); assert.equal(denied.outcomeUnknown, false);
+  assert.equal((await engine.request(f.path + '/actions/' + fresh.actionId)).payload.outcome, 'unresolved');
+  for (const path of [f.path + '/actions/' + fresh.actionId + '/deny/extra', f.path + '/actions/bad/deny',
+    f.path + '/actions/' + fresh.actionId + '/DENY', f.path + '/' + fresh.ticketId + '/close']) {
+    const response = (await engine.request(path, { method: 'POST', body: envelope(freshOriginal), status: 503 })).payload;
+    assert.equal(response.code, 'ACCEPTANCE_RECOVERY_BLOCKED');
+  }
+  assert.deepEqual(tree(f.ticketNamespace), before); await f.noJobs(engine); f.unchanged('after-d6-blocked-decisions');
+});
+
+test('D6 exact deny retains authentication and live-owner barriers before reading old proof', async t => {
+  const f = await fixture(t, 'd6-owner-lost', { seedRejection: true }), engine = await f.start();
+  const path = f.path + '/actions/' + f.rejectedRequest.actionId + '/deny', body = envelope(f.rejectedOriginal);
+  const ownerFile = join(f.root, ACCEPTANCE_OWNER_FILE);
+  fs.renameSync(ownerFile, ownerFile + '.retained'); fs.writeFileSync(ownerFile, '{}', { flag: 'wx' });
+  const before = tree(f.root);
+  const failed = (await engine.request(path, { method: 'POST', body, status: 503 })).payload;
+  assert.equal(failed.code, 'ACCEPTANCE_OWNER_LOST');
+  await engine.request(path, { method: 'POST', body, auth: null, status: 401 });
+  assert.deepEqual(tree(f.root), before); await f.noJobs(engine); f.unchanged('after-d6-owner-lost');
 });

@@ -1,0 +1,94 @@
+{
+  "url": "http://127.0.0.1:55176/baseline/menu-state",
+  "navigationError": null,
+  "httpStatus": 200,
+  "errors": [],
+  "network": [],
+  "blockedRequests": [],
+  "assertions": [
+    {
+      "kind": "attribute",
+      "selector": "#menu-toggle",
+      "attribute": "aria-expanded",
+      "expected": "true",
+      "actual": "true",
+      "passed": true
+    }
+  ],
+  "stepError": null,
+  "snapshot": {
+    "title": "Heimdall 验收演示",
+    "headings": [
+      "团队项目概览"
+    ],
+    "controls": [
+      {
+        "path": "#menu-toggle",
+        "tag": "button",
+        "role": null,
+        "label": "菜单",
+        "type": "button",
+        "href": null,
+        "disabled": false,
+        "expanded": "true",
+        "selected": null
+      },
+      {
+        "path": "body:nth-of-type(1) > main:nth-of-type(1) > nav:nth-of-type(1) > a:nth-of-type(1)",
+        "tag": "a",
+        "role": null,
+        "label": "项目详情",
+        "type": null,
+        "href": "/details",
+        "disabled": false,
+        "expanded": null,
+        "selected": null
+      },
+      {
+        "path": "body:nth-of-type(1) > main:nth-of-type(1) > nav:nth-of-type(1) > a:nth-of-type(2)",
+        "tag": "a",
+        "role": null,
+        "label": "套餐价格",
+        "type": null,
+        "href": "/pricing",
+        "disabled": false,
+        "expanded": null,
+        "selected": null
+      },
+      {
+        "path": "#details-link",
+        "tag": "a",
+        "role": null,
+        "label": "查看详情",
+        "type": null,
+        "href": "/details",
+        "disabled": false,
+        "expanded": null,
+        "selected": null
+      }
+    ],
+    "overflow": false,
+    "overflowingElements": [],
+    "maskedRatio": 0,
+    "effectiveAreaPx": 1296000,
+    "maskSamplingCapped": false,
+    "documentSize": {
+      "width": 1440,
+      "height": 900
+    },
+    "bodyTextLength": 93,
+    "url": "http://127.0.0.1:55176/baseline/menu-state",
+    "captureScope": "full-page",
+    "captureLimited": false
+  },
+  "screenshot": "route-1-3-desktop-point-1-baseline.png",
+  "repeatedScreenshot": "route-1-3-desktop-point-1-baseline-repeat.png",
+  "stability": 1,
+  "captureScope": "full-page",
+  "captureLimited": false,
+  "documentSize": {
+    "width": 1440,
+    "height": 900
+  },
+  "details": "route-1-3-desktop-point-1-baseline.json"
+}

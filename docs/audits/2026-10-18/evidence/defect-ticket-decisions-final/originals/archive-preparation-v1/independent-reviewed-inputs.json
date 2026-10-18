@@ -1,0 +1,32 @@
+{
+  "kind": "d6-archive-independent-static-review",
+  "files": [
+    {
+      "path": "core/workspace/_runs/d6-final-archive-preparation-20261018/archive-control.mjs",
+      "bytes": 30515,
+      "sha256": "711625bc19765991a7094f09009597808b9788d1c5f9d94262b7ebe7c090fbcb"
+    },
+    {
+      "path": "core/workspace/_runs/d6-final-archive-preparation-20261018/inputs.example.json",
+      "bytes": 3565,
+      "sha256": "87943a58aaf0f3e0a8e9bb075d2ad72db4f781bc63dfe28de42985652ac306c3"
+    },
+    {
+      "path": "core/workspace/_runs/d6-final-archive-preparation-20261018/README.md",
+      "bytes": 6764,
+      "sha256": "491788e9a257a26aa62117f8497ec36a1e5ff1e55884ac1b7ba0a2ef3de9aacd"
+    },
+    {
+      "path": "core/scripts/verify-acceptance-defect-ticket-decisions-console.mjs",
+      "bytes": 25770,
+      "sha256": "c6017f8c608131cc577619d8fc515ef50c5457eee5cf4c191138f2989d9e993b"
+    }
+  ],
+  "scriptUnchangedSinceFinalRead": true,
+  "activeFinalBrowserRead": false,
+  "scriptExecuted": false,
+  "strictExecuted": false,
+  "engineStarted": false,
+  "browserStarted": false,
+  "testsExecuted": false
+}

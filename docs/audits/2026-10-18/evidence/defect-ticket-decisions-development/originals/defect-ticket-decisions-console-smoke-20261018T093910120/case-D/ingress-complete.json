@@ -1,0 +1,67 @@
+[
+  {
+    "event": "request",
+    "at": "2026-10-18T01:41:12.845Z",
+    "requestId": "ingress-279c3cce-0a95-4590-bbd6-3700a44ff75a",
+    "connectionId": "connection-c7eb3d6c-ac79-4d05-9e96-a0dd1d326b4b",
+    "actionId": "da-3c20d2ca-bed0-49a9-82a1-9cae1b37bf43",
+    "traceId": "d6-original-85b1eb66-ca44-41a3-be87-06dac877b8de",
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-067a2f86-dd4d-4102-a639-eee05d283f22/defect-tickets/dt-bdf97766-bb5e-4a8b-9830-e7a8bdbbcc62/close",
+    "bytes": 0,
+    "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "contentLength": 566
+  },
+  {
+    "event": "data",
+    "at": "2026-10-18T01:41:12.848Z",
+    "requestId": "ingress-279c3cce-0a95-4590-bbd6-3700a44ff75a",
+    "connectionId": "connection-c7eb3d6c-ac79-4d05-9e96-a0dd1d326b4b",
+    "actionId": "da-3c20d2ca-bed0-49a9-82a1-9cae1b37bf43",
+    "traceId": "d6-original-85b1eb66-ca44-41a3-be87-06dac877b8de",
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-067a2f86-dd4d-4102-a639-eee05d283f22/defect-tickets/dt-bdf97766-bb5e-4a8b-9830-e7a8bdbbcc62/close",
+    "bytes": 283,
+    "bodySha256": "46aa08d003eb07a894385b65288525fed344382b564a6032766a908182b5ff2a",
+    "ended": false
+  },
+  {
+    "event": "data",
+    "at": "2026-10-18T01:41:13.440Z",
+    "requestId": "ingress-279c3cce-0a95-4590-bbd6-3700a44ff75a",
+    "connectionId": "connection-c7eb3d6c-ac79-4d05-9e96-a0dd1d326b4b",
+    "actionId": "da-3c20d2ca-bed0-49a9-82a1-9cae1b37bf43",
+    "traceId": "d6-original-85b1eb66-ca44-41a3-be87-06dac877b8de",
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-067a2f86-dd4d-4102-a639-eee05d283f22/defect-tickets/dt-bdf97766-bb5e-4a8b-9830-e7a8bdbbcc62/close",
+    "bytes": 566,
+    "bodySha256": "888d492788cce53614a829ea1792151677ade74eec73f7a76477da0638725623",
+    "ended": false
+  },
+  {
+    "event": "end",
+    "at": "2026-10-18T01:41:13.440Z",
+    "requestId": "ingress-279c3cce-0a95-4590-bbd6-3700a44ff75a",
+    "connectionId": "connection-c7eb3d6c-ac79-4d05-9e96-a0dd1d326b4b",
+    "actionId": "da-3c20d2ca-bed0-49a9-82a1-9cae1b37bf43",
+    "traceId": "d6-original-85b1eb66-ca44-41a3-be87-06dac877b8de",
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-067a2f86-dd4d-4102-a639-eee05d283f22/defect-tickets/dt-bdf97766-bb5e-4a8b-9830-e7a8bdbbcc62/close",
+    "bytes": 566,
+    "bodySha256": "888d492788cce53614a829ea1792151677ade74eec73f7a76477da0638725623",
+    "ended": true
+  },
+  {
+    "event": "close",
+    "at": "2026-10-18T01:41:13.441Z",
+    "requestId": "ingress-279c3cce-0a95-4590-bbd6-3700a44ff75a",
+    "connectionId": "connection-c7eb3d6c-ac79-4d05-9e96-a0dd1d326b4b",
+    "actionId": "da-3c20d2ca-bed0-49a9-82a1-9cae1b37bf43",
+    "traceId": "d6-original-85b1eb66-ca44-41a3-be87-06dac877b8de",
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-067a2f86-dd4d-4102-a639-eee05d283f22/defect-tickets/dt-bdf97766-bb5e-4a8b-9830-e7a8bdbbcc62/close",
+    "bytes": 566,
+    "bodySha256": "888d492788cce53614a829ea1792151677ade74eec73f7a76477da0638725623",
+    "ended": true
+  }
+]

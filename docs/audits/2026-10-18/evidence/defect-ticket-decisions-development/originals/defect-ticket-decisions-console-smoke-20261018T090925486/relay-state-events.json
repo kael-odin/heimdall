@@ -1,0 +1,45 @@
+[
+  {
+    "caseId": "A",
+    "actionId": "da-1c779d0f-87b8-4d85-81c7-091769bbb923",
+    "events": [
+      {
+        "at": "2026-10-18T01:10:05.151Z",
+        "event": "original-body",
+        "caseId": "A",
+        "frontRequestId": "front-29a18e1b-1487-4071-8d60-91869ec35484",
+        "actionId": "da-1c779d0f-87b8-4d85-81c7-091769bbb923",
+        "bytes": 492,
+        "bodySha256": "0aaed26b92b7c31315fdcc77876968202fcabe2614aff0f5f1cd79d9cf5a438a",
+        "traceId": "d6-original-f48fa30b-f0a3-434b-991d-218daf30a77f",
+        "host": "127.0.0.1:57752",
+        "origin": "http://127.0.0.1:57752",
+        "contentType": "application/json"
+      },
+      {
+        "at": "2026-10-18T01:10:05.270Z",
+        "event": "controlled-http-502",
+        "caseId": "A",
+        "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets",
+        "frontRequestId": "front-29a18e1b-1487-4071-8d60-91869ec35484",
+        "status": 502
+      },
+      {
+        "at": "2026-10-18T01:10:05.271Z",
+        "event": "original-downstream-finish",
+        "caseId": "A",
+        "actionId": "da-1c779d0f-87b8-4d85-81c7-091769bbb923",
+        "writableEnded": true,
+        "writableFinished": true
+      },
+      {
+        "at": "2026-10-18T01:10:05.272Z",
+        "event": "original-downstream-close",
+        "caseId": "A",
+        "actionId": "da-1c779d0f-87b8-4d85-81c7-091769bbb923",
+        "writableEnded": true,
+        "writableFinished": true
+      }
+    ]
+  }
+]

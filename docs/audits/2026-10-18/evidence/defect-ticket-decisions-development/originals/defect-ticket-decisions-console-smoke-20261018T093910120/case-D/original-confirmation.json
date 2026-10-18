@@ -1,0 +1,19 @@
+{
+  "actionId": "da-3c20d2ca-bed0-49a9-82a1-9cae1b37bf43",
+  "kind": "close",
+  "projectId": "ap-067a2f86-dd4d-4102-a639-eee05d283f22",
+  "request": {
+    "actionId": "da-3c20d2ca-bed0-49a9-82a1-9cae1b37bf43",
+    "afterOperationId": "bo-e3233e91-00d5-4b71-9abb-74790afba8a6",
+    "confirmed": true,
+    "expectedHeadSha256": "5b2f94d7a7cf6dbe73d1368e72cb1fbb899a311686994eaac39304cbf87e6632",
+    "expectedRevision": 0,
+    "factsDigest": "ad728120a5ef877903d93e2df7c91bc9db614e99e4d889fb6d471ad2a987f02e",
+    "memberSetDigest": "789fafe2c93d6b468f7ecb009b1df39e778e118cf0d2afb03f4aaa920adaccc3",
+    "previewDigest": "ad1fadbdbc791cf262521f9c266fbd363e8cb08a04242aa095d1251faed15479",
+    "resolution": "两项固定检查在同一次健康目标复验中通过。"
+  },
+  "requestFingerprint": "c1c9f25c46b3236ab70cfbaeb74f03162e871e13b6341ec33eb31619c6c101ba",
+  "ticketId": "dt-bdf97766-bb5e-4a8b-9830-e7a8bdbbcc62",
+  "version": 1
+}

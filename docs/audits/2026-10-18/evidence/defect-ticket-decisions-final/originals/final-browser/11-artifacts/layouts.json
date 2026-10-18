@@ -1,0 +1,70 @@
+[
+  {
+    "name": "execution-completed-mobile-dark",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "viewport": 390,
+    "documentWidth": 390,
+    "panelClientWidth": 358,
+    "panelScrollWidth": 358,
+    "viewportWidth": 390,
+    "viewportHeight": 844,
+    "headerBottom": 63.8125,
+    "stateText": "执行已完成",
+    "stateRect": {
+      "x": 42,
+      "y": 375.78125,
+      "width": 65,
+      "height": 20.140625,
+      "top": 375.78125,
+      "bottom": 395.921875,
+      "left": 42,
+      "right": 107
+    },
+    "executionRect": {
+      "x": 42,
+      "y": -508.25,
+      "width": 296,
+      "height": 1276.65625,
+      "top": -508.25,
+      "bottom": 768.40625,
+      "left": 42,
+      "right": 338
+    }
+  },
+  {
+    "name": "execution-cancelled-mobile-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "viewport": 390,
+    "documentWidth": 390,
+    "panelClientWidth": 358,
+    "panelScrollWidth": 358,
+    "viewportWidth": 390,
+    "viewportHeight": 844,
+    "headerBottom": 114.8125,
+    "stateText": "执行已中断",
+    "stateRect": {
+      "x": 42,
+      "y": 426.75,
+      "width": 65,
+      "height": 20.140625,
+      "top": 426.75,
+      "bottom": 446.890625,
+      "left": 42,
+      "right": 107
+    },
+    "executionRect": {
+      "x": 42,
+      "y": -645.25,
+      "width": 296,
+      "height": 1464.625,
+      "top": -645.25,
+      "bottom": 819.375,
+      "left": 42,
+      "right": 338
+    }
+  }
+]

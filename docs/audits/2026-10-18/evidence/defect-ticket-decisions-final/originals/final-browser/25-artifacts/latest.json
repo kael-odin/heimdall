@@ -1,0 +1,19 @@
+{
+  "runId": "spec-benchmark-2026-10-18T03-34-54-939Z-947b0fca",
+  "outputDir": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\25-artifacts\\spec-benchmark-2026-10-18T03-34-54-939Z-947b0fca",
+  "passed": true,
+  "metrics": {
+    "unit": "case",
+    "totalCases": 11,
+    "knownBugCases": 7,
+    "nonBugCases": 4,
+    "truePositive": 7,
+    "falsePositive": 0,
+    "falseNegative": 0,
+    "trueNegative": 4,
+    "precision": 1,
+    "recall": 1,
+    "falsePositiveRate": 0
+  },
+  "generatedAt": "2026-10-18T03:34:56.122Z"
+}

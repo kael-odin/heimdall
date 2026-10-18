@@ -1,0 +1,52 @@
+{
+  "url": "http://127.0.0.1:52299/browser/before/details",
+  "navigationError": null,
+  "httpStatus": 200,
+  "errors": [],
+  "network": [],
+  "blockedRequests": [],
+  "assertions": [],
+  "stepError": null,
+  "snapshot": {
+    "title": "Comparison fixture",
+    "headings": [
+      "Project details"
+    ],
+    "controls": [
+      {
+        "path": "#toggle",
+        "tag": "button",
+        "role": null,
+        "label": "Toggle details",
+        "type": null,
+        "href": null,
+        "disabled": false,
+        "expanded": "false",
+        "selected": null
+      }
+    ],
+    "overflow": false,
+    "overflowingElements": [],
+    "maskedRatio": 0,
+    "effectiveAreaPx": 691200,
+    "maskSamplingCapped": false,
+    "documentSize": {
+      "width": 960,
+      "height": 720
+    },
+    "bodyTextLength": 37,
+    "url": "http://127.0.0.1:52299/browser/before/details",
+    "captureScope": "full-page",
+    "captureLimited": false
+  },
+  "screenshot": "route-2-2-desktop-target.png",
+  "repeatedScreenshot": "route-2-2-desktop-target-repeat.png",
+  "stability": 1,
+  "captureScope": "full-page",
+  "captureLimited": false,
+  "documentSize": {
+    "width": 960,
+    "height": 720
+  },
+  "details": "route-2-2-desktop-target.json"
+}

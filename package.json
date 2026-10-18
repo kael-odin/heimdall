@@ -39,6 +39,8 @@
     "acceptance:browser:candidates:ui:smoke": "node core/scripts/smoke-acceptance-browser-candidates-console.mjs",
     "acceptance:browser:execute:smoke": "node core/scripts/smoke-acceptance-browser-execution-console.mjs",
     "acceptance:browser:resolution:smoke": "node core/scripts/smoke-acceptance-browser-resolution-console.mjs",
-    "acceptance:defect:tickets:smoke": "node core/scripts/smoke-acceptance-defect-tickets-console.mjs"
+    "acceptance:defect:tickets:smoke": "node core/scripts/smoke-acceptance-defect-tickets-console.mjs",
+    "acceptance:defect:decisions:smoke": "node core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs",
+    "acceptance:defect:decisions:verify": "node core/scripts/verify-acceptance-defect-ticket-decisions-console.mjs"
   }
 }

@@ -1,0 +1,18 @@
+{
+  "name": "19-acceptance-browser-resolution-smoke",
+  "argv": [
+    "node",
+    "core/scripts/smoke-acceptance-browser-resolution-console.mjs",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\19-artifacts"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "environment": {},
+  "startedAt": "2026-10-18T03:19:15.230570+00:00",
+  "exitCode": 0,
+  "pid": 36808,
+  "endedAt": "2026-10-18T03:20:21.623831+00:00",
+  "durationSeconds": 66.39000000001397,
+  "changedInputs": [],
+  "stdoutSha256": "53257096599b11a1762fe648cc21de399658b51362351b0f75c626f9e057a885",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,27 @@
+{
+  "source": {
+    "id": "MANAGED-READ",
+    "revision": "1",
+    "type": "manual"
+  },
+  "approved": false,
+  "contract": {
+    "id": "READ-1",
+    "title": "业务码符合需求",
+    "method": "GET",
+    "path": "/bug",
+    "severity": "high",
+    "expect": {
+      "status": 200,
+      "contentType": "application/json",
+      "json": [
+        {
+          "pointer": "/code",
+          "kind": "equals",
+          "value": 0
+        }
+      ]
+    }
+  },
+  "contractFingerprint": "17a320bb33eb4806eb61917a7e885d031a3133577be9e8e9b269c01d88d183a0"
+}

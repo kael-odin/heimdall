@@ -1,5 +1,7 @@
 /** Catalog input, transport and stale-read guards. Writes are never replayed. */
 export const CATALOG_TERMINAL_STATUSES = new Set(['completed', 'failed', 'interrupted']);
+// One budget covers response headers and the entire JSON body, matching other console writes.
+export const CATALOG_REQUEST_TIMEOUT_MS = 60000;
 
 export class AcceptanceCatalogError extends Error {
   constructor(message, fields = {}) {
@@ -76,35 +78,88 @@ export function catalogFailure(error) {
     writeMayHaveCommitted: error?.writeMayHaveCommitted === true };
 }
 
-/** One invocation issues exactly one request. A lost POST response is never replayed. */
-export async function requestAcceptanceCatalog(path = '', { method = 'GET', body, signal, fetcher = fetch, baseUrl = '', headers = {} } = {}) {
-  const writing = method === 'POST';
-  let response;
+function throwIfCatalogAborted(signal) {
+  if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+}
+async function catalogAbortable(promise, signal) {
+  let rejectAbort;
+  const aborted = new Promise((_, reject) => { rejectAbort = () => reject(new DOMException('Aborted', 'AbortError')); });
+  signal.addEventListener('abort', rejectAbort, { once: true });
+  if (signal.aborted) rejectAbort();
   try {
-    response = await fetcher(`${baseUrl}/api/acceptance/projects${path}`, {
-      method, headers, signal, cache: 'no-store', ...(body ? { body: JSON.stringify(body) } : {}),
+    const value = await Promise.race([promise, aborted]);
+    throwIfCatalogAborted(signal);
+    return value;
+  }
+  finally { signal.removeEventListener('abort', rejectAbort); }
+}
+function cancelCatalogResponse(response) {
+  // A stream (or its cancellation) may ignore abort; cleanup must never extend the deadline.
+  try { Promise.resolve(response?.body?.cancel()).catch(() => {}); } catch { /* Preserve the request failure. */ }
+}
+
+/** One invocation issues at most one request. Fetch and body share a deadline; writes are never replayed. */
+export async function requestAcceptanceCatalog(path = '', { method = 'GET', body, signal, fetcher = fetch, baseUrl = '', headers = {},
+  timeoutMs = CATALOG_REQUEST_TIMEOUT_MS } = {}) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 2147483647) {
+    throw new AcceptanceCatalogError('目录请求期限无效。', { code: 'INVALID_INPUT' });
+  }
+  const writing = method === 'POST';
+  const controller = new AbortController();
+  let response, timedOut = false, attempted = false, complete = false;
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
+  const timer = setTimeout(() => { timedOut = true; abort(); }, timeoutMs);
+  try {
+    throwIfCatalogAborted(controller.signal);
+    attempted = true;
+    const pending = Promise.resolve(fetcher(`${baseUrl}/api/acceptance/projects${path}`, {
+      method, headers, signal: controller.signal, cache: 'no-store', ...(body ? { body: JSON.stringify(body) } : {}),
+    })).then(value => {
+      // Non-cooperating fetchers can deliver after this invocation has already ended.
+      if (controller.signal.aborted) cancelCatalogResponse(value);
+      return value;
     });
+    response = await catalogAbortable(pending, controller.signal);
+    let value;
+    try { value = await catalogAbortable(Promise.resolve().then(() => {
+      throwIfCatalogAborted(controller.signal);
+      return response.json();
+    }), controller.signal); } catch (cause) {
+      if (controller.signal.aborted) throw cause;
+      throw new AcceptanceCatalogError('引擎未返回有效的目录 JSON。', { status: response.status, code: 'INVALID_RESPONSE',
+        writeMayHaveCommitted: writing && (response.ok || response.status >= 500) });
+    }
+    complete = true;
+    if (!response.ok) {
+      const { code, error, message, currentGenerationId, currentRevision, ...details } = value ?? {};
+      throw new AcceptanceCatalogError(error || message || `目录请求返回 HTTP ${response.status}。`, {
+        status: response.status, code: code || 'CATALOG_ERROR', details: value?.details ?? details,
+        currentGenerationId: currentGenerationId ?? null, currentRevision: currentRevision ?? null,
+        writeMayHaveCommitted: writing && response.status >= 500,
+      });
+    }
+    try { catalogVersion(value); } catch (error) {
+      error.status = response.status;
+      error.writeMayHaveCommitted = writing;
+      throw error;
+    }
+    return value;
   } catch (error) {
+    if (controller.signal.aborted) {
+      if (!timedOut && !writing) throw new DOMException('Aborted', 'AbortError');
+      throw new AcceptanceCatalogError(timedOut
+        ? '目录请求超时，请刷新并核对目录。' : '目录写入已中断，请刷新并核对目录。', {
+        status: response?.status ?? null, code: timedOut ? 'REQUEST_TIMEOUT' : 'REQUEST_ABORTED', writeMayHaveCommitted: writing && attempted,
+      });
+    }
+    if (error instanceof AcceptanceCatalogError) throw error;
     if (error?.name === 'AbortError' && !writing) throw error;
     throw new AcceptanceCatalogError(error?.message || '无法连接目录服务。', { code: 'NETWORK_ERROR', writeMayHaveCommitted: writing });
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+    if (!complete) cancelCatalogResponse(response);
   }
-  let value;
-  try { value = await response.json(); } catch {
-    throw new AcceptanceCatalogError('引擎未返回有效的目录 JSON。', { status: response.status, code: 'INVALID_RESPONSE',
-      writeMayHaveCommitted: writing && (response.ok || response.status >= 500) });
-  }
-  if (!response.ok) {
-    const { code, error, message, currentGenerationId, currentRevision, ...details } = value ?? {};
-    throw new AcceptanceCatalogError(error || message || `目录请求返回 HTTP ${response.status}。`, {
-      status: response.status, code: code || 'CATALOG_ERROR', details: value?.details ?? details,
-      currentGenerationId: currentGenerationId ?? null, currentRevision: currentRevision ?? null,
-      writeMayHaveCommitted: writing && response.status >= 500,
-    });
-  }
-  try { catalogVersion(value); } catch (error) {
-    error.status = response.status;
-    error.writeMayHaveCommitted = writing;
-    throw error;
-  }
-  return value;
 }

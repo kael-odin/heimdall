@@ -1,0 +1,66 @@
+[
+  {
+    "method": "GET",
+    "path": "/baseline?build=approved-query-sentinel&channel=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?build=current-query-sentinel&channel=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?build=approved-query-sentinel&channel=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?build=current-query-sentinel&channel=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?build=approved-query-sentinel&channel=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?build=current-query-sentinel&channel=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?build=approved-query-sentinel&channel=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?build=current-query-sentinel&channel=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?build=approved-query-sentinel&channel=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?build=current-query-sentinel&channel=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?build=approved-query-sentinel&channel=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?build=current-query-sentinel&channel=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?build=approved-query-sentinel&channel=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?build=current-query-sentinel&channel=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?build=approved-query-sentinel&channel=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?build=current-query-sentinel&channel=development"
+  }
+]

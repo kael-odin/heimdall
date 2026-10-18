@@ -18,13 +18,17 @@
 
 12. [Browser 所选侧来源核验](docs/competition/acceptance-browser-source.md)：纯投影器核对完整槽位、截图稳定性与选侧健康，[私有读取层](docs/competition/acceptance-browser-reading.md)补齐真实 owner、有界 fd、nullable 角色、全引用与 managed 隔离。[来源侧归属](docs/competition/acceptance-browser-bindings.md)提供严格 ax 实体、双向 target 归属约束和提交前完整来源重建，详见[绑定验收](docs/audits/2026-10-17/acceptance-browser-bindings.md)；[HTTP 与工作台](docs/competition/acceptance-browser-bindings-console.md)增加显式归属、按需重核验、安全显示预览和证据校验，详见[工作台验收](docs/audits/2026-10-17/acceptance-browser-bindings-console.md)。显示预览仍为 `completeSourceProjection:false`；[Browser 完整复核与持久候选](docs/competition/acceptance-browser-candidates.md)包含完整明文合同、明确确认、只读对账和重启读取，详见[D2 实施验收](docs/audits/2026-10-17/acceptance-browser-candidates.md)。D3 已接入[单次批准的固定来源执行](docs/competition/acceptance-browser-execution.md)、显式检查问题登记与前后操作复验，详见[D3 实施记录](docs/audits/2026-10-17/acceptance-browser-execution.md)。D4 已增加[启动结果核对与永久拒绝](docs/competition/acceptance-browser-start-resolution.md)，原确认六字段只在完整决定证明核验后解除；来源兼容清单不扩充，D3 / D4 检查验证器保持不可比。全局 Browser approval / selection 继续独立建设。
 
-13. [固定成员人工缺陷单](docs/competition/acceptance-defect-tickets.md)：D5 从同次登记的可靠失败人工成单，固定成员与来源摘要；全部成员在最新同范围登记中可靠通过后显式关闭，后续可靠失败派生重开。处理状态与当前核验分开，支持历史和 Markdown / JSON 导出。未知结果保留原确认，只 GET 核对、不自动重发 POST；尚无永久拒绝迟到人工动作的服务端决定。[本机验收记录](docs/audits/2026-10-18/acceptance-defect-tickets.md)保存完整门禁、失败历史与公开证据入口。
+13. [固定成员人工缺陷单](docs/competition/acceptance-defect-tickets.md)：D5 从同次登记的可靠失败人工成单，固定成员与来源摘要；全部成员在最新同范围登记中可靠通过后显式关闭，后续可靠失败派生重开。处理状态与当前核验分开，支持历史和 Markdown / JSON 导出。未知结果保留原确认，只 GET 核对、不自动重发原 POST。D6 已增加[人工动作完整决定核对与永久拒绝](docs/competition/acceptance-defect-ticket-decisions.md)：原事件与拒绝争用同一不可变决定，页面在完整原件、请求身份与字节摘要核验后精确解除对应本机确认；本机完整 Core 和 27 阶段 Browser 已通过，精确提交的完整 Linux CI 仍待核验。[D5 本机验收记录](docs/audits/2026-10-18/acceptance-defect-tickets.md)保留该阶段门禁与失败历史，不能替代 D6 结果。
 
-14. [D5 自身 CI 超时与双核调度](docs/audits/2026-10-18/acceptance-defect-ticket-ci-timeout.md)：D5 全量 Core 通过、前 19 项 smoke 成功，但第 20 项因 45 分钟 job 超时被取消、Docker 未运行，整轮为 cancelled。新片仅调整双核默认文件并发 1→2，修复提交自身 CI 独立采集。
+14. [D6 人工动作决定与 Catalog 状态恢复](docs/audits/2026-10-18/acceptance-defect-ticket-decisions.md)：记录新决定合同、开发失败、独立 verifier 反例与 Catalog 状态修复；最终冻结门禁和精确提交 CI 以该记录的实际终态为准。
 
-15. [运行展示读取竞态](docs/audits/2026-10-17/acceptance-display-head-race.md)：正常 legacy worker 原子发布时保留本请求已稳定捕获的展示版本；来源 / 证据 / 恢复仍严格核验，原工作台 CI 失败及放弃方案均保留。
+15. [D5 自身 CI 超时与双核调度](docs/audits/2026-10-18/acceptance-defect-ticket-ci-timeout.md)：D5 全量 Core 通过、前 19 项 smoke 成功，但第 20 项因 45 分钟 job 超时被取消、Docker 未运行，整轮为 cancelled。新片仅调整双核默认文件并发 1→2，修复提交自身 CI 独立采集。
 
-16. [来源会话 CI 断言失败与诊断](docs/audits/2026-10-18/acceptance-source-session-ci.md)：双核调度提交自身 CI 为明确 failure，完整 Core 唯一失败是 admin flow 的 `passed` 断言；20 项 smoke 和 Docker 未执行。受控高负载复现了短预算可见性超时，但旧 CI 未保存内部 report，不能认定同根因。原断言新增脱敏 flow 诊断，期望与 timeout 保持；间歇失败尚未标记修复。
+16. [运行展示读取竞态](docs/audits/2026-10-17/acceptance-display-head-race.md)：正常 legacy worker 原子发布时保留本请求已稳定捕获的展示版本；来源 / 证据 / 恢复仍严格核验，原工作台 CI 失败及放弃方案均保留。
+
+17. [来源会话 CI 断言失败与诊断](docs/audits/2026-10-18/acceptance-source-session-ci.md)：双核调度提交自身 CI 为明确 failure，完整 Core 唯一失败是 admin flow 的 `passed` 断言；20 项 smoke 和 Docker 未执行。受控高负载复现了短预算可见性超时，但旧 CI 未保存内部 report，不能认定同根因。原断言新增脱敏 flow 诊断，期望与 timeout 保持；间歇失败尚未标记修复。
+
+18. [D7 本地固定示例完整流程计划](docs/ROADMAP.md)：D6 最终门禁与精确提交 CI 完成核验后，先从全新界面实际走通本地固定示例的采集、固定来源、发现 BUG、人工成单、修复复验、明确关闭和证据导出；真实浏览器与人工确认均保留，结论仅覆盖声明检查。取得获授权的外部项目 URL 后再拓展真实项目，不把本地示例表述为外部泛化。
 
 ## 代码路径
 
@@ -32,7 +36,7 @@
 - `core/src/crawler/`、`core/src/queue.mjs`、`core/src/url-canon.mjs`：侦察、捕获、页面身份与队列。
 - `core/src/verify/`、`core/src/differ/`：多视口和单页差异；跨评分版本不要直接比较。
 - `core/src/acceptance/`：Mirror / Regression 浏览器对照、Spec 只读契约执行、OpenAPI 候选与来源快照、门禁报告、持久化、显式运行对复验与可选 AI 解读；`console/src/AcceptanceWorkbench.vue` 为入口。[Spec 指南](docs/competition/acceptance-spec.md)、[复验指南](docs/competition/acceptance-comparison.md)及[项目目录指南](docs/competition/acceptance-catalog.md)包含实际范围与反例命令。项目目录组织运行与不可变版本声明；[需求基线](docs/competition/acceptance-baseline.md)提供 Spec 候选完整预览、显式批准及独立选用，响应始终 `executionReady:false`。managed 状态、完成快照、核验下载与比较已接入；托管 executor 已接专用 HTTP，新确认当次链启动；candidate / triage 仍隔离。引擎先取得数据根所有权并打开目录，再经整批零写预检收束 managed / legacy 未完成任务；旧格式或未知版本未能打开时跳过收束，保留运行现场并等待明确维护；恢复受阻时保留诊断读取并以 503 阻断验收写入；同一数据根只启动一个引擎，managed prepared 记录不会自动执行。Browser 来源侧归属、提交前完整投影重建、单条按需重核验及 HTTP / 工作台已接入；D1 增加候选格式与显式维护，D2 已接完整复核、候选写入与重启读取，D3 通过独立 `bo-*` 操作固定来源并只采集本次目标，保存检查级问题与显式复验记录；`console/src/AcceptanceBrowserExecution.vue` 提供入口。全局 Browser 批准 / 选用仍待接入，原始门禁保留。
-- `core/src/acceptance/defect-ticket-*.mjs`：D5 人工事件合同、固定成员投影、原件存储、来源批次核验、HTTP 与导出；`console/src/AcceptanceDefectTickets.vue` 提供人工成单、关闭、失败重开与原动作只读核对入口。单据存储独立于检查账本，读取与人工操作均不启动 Browser 验收。
+- `core/src/acceptance/defect-ticket-*.mjs`：D5 人工事件合同、固定成员投影、原件存储、来源批次核验、HTTP 与导出，D6 增加同动作永久决定与严格证明读取；`console/src/AcceptanceDefectTickets.vue` 提供人工成单、关闭、失败重开、原动作只读核对和显式永久拒绝入口。单据存储独立于检查账本，读取与人工操作均不启动 Browser 验收。
 - `core/src/acceptance/catalog-maintenance-cli.mjs`：停用同根引擎后显式创建或维护目录；`--preview` 不生成迁移准备文件，`--apply` 绑定本次 head / previous 字节与计划摘要。命令和中断续迁方式见 [Schema4 指南](docs/competition/acceptance-catalog-schema4.md)。
 - `core/src/live/`：交互镜像、HAR 清洗、离线健康与导出。
 - `core/src/seo/`：站内审计与回归基线。

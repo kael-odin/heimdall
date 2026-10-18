@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "argv": [
+    "node",
+    "--test",
+    "--test-name-pattern=D6 native HTTP",
+    "core/test/acceptance-defect-ticket-service.test.mjs"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "explicitEnvironment": {},
+  "platform": "Windows-10-10.0.29667-SP0",
+  "startedAt": "2026-10-18T02:34:16.080221+00:00",
+  "exitCode": 0,
+  "endedAt": "2026-10-18T02:36:10.859995+00:00",
+  "durationSeconds": 114.75,
+  "changedInputs": [],
+  "stdoutSha256": "a75cbc6dc5512a40f8047cebeea55dc8175266245b33bd7ccff901367adf3414",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

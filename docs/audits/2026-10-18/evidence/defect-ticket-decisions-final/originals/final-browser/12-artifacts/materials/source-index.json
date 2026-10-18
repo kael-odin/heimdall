@@ -1,0 +1,568 @@
+{
+  "schemaVersion": 1,
+  "kind": "frozen-real-browser-source-material",
+  "generatedAt": "2026-10-18T03:11:04.476Z",
+  "generator": "core/scripts/freeze-acceptance-browser-source.mjs",
+  "fixture": "core/test/fixtures/acceptance-site.mjs",
+  "runtime": "core/workspace/_runs/browser-source-freeze-1792293053665",
+  "origin": "http://127.0.0.1:63590",
+  "integrityHandoff": "integrity.json is independently reconstructed from all non-null report references and exact completion bytes. The legacy reader rejects null evidence values on an unavailable side. No raw manifest, report or evidence bytes are rewritten.",
+  "limitations": "Local deterministic fixture only; no external deployment, authentication, complete query redirect chain, ownership or reusable execution proof.",
+  "samples": [
+    {
+      "id": "matrix",
+      "description": "Two healthy sides differ visually; two routes, two viewports, two declared behavior points.",
+      "runId": "ac-4cb3477e-8855-4a16-ad1a-bcb23b70719f",
+      "gate": "failed",
+      "declaredChecks": 28,
+      "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+      "reportSha256": "69368d8c1bb213a4d3defd70f67603ceb7966f716f5fb6cbf4a25c52b13c6368",
+      "files": [
+        {
+          "file": "manifest.json",
+          "bytes": 3356,
+          "sha256": "d54fe38f8420390ef6bd2fce90747765441625485ea94f06bca73613698b8637"
+        },
+        {
+          "file": "report.json",
+          "bytes": 79271,
+          "sha256": "69368d8c1bb213a4d3defd70f67603ceb7966f716f5fb6cbf4a25c52b13c6368"
+        },
+        {
+          "file": "route-1-1-desktop-baseline-repeat.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-1-1-desktop-baseline.json",
+          "bytes": 1549,
+          "sha256": "c139f39baae8decb540b94a795713b00d68415b36d17ca578f966ed62eb3569a"
+        },
+        {
+          "file": "route-1-1-desktop-baseline.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-1-1-desktop-diff.png",
+          "bytes": 19853,
+          "sha256": "9cd42d1d139e3ea4ab039543e89eaf5b6d4647d024b3e2ccf8ab0eeba58be187"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-baseline.json",
+          "bytes": 2529,
+          "sha256": "8518389d710c25e7a27eeaf0d321bad2487759320f0367bee5a7eadc624d1d23"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-baseline.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-target-repeat.png",
+          "bytes": 24441,
+          "sha256": "1bd5a63483244b054935437eca95e1e116afe5ea2d8e64d5dd3c764a407ec224"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-target.json",
+          "bytes": 2519,
+          "sha256": "81ab129577fc7d82f0c566b36c44b452ef4d780a7c7f332d7ea683e6c82fb88f"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-target.png",
+          "bytes": 24441,
+          "sha256": "1bd5a63483244b054935437eca95e1e116afe5ea2d8e64d5dd3c764a407ec224"
+        },
+        {
+          "file": "route-1-1-desktop-target-repeat.png",
+          "bytes": 22170,
+          "sha256": "95e76a7871b324e65561e28a3234c2f13ae94a7d1230b113ba6615409fe325cb"
+        },
+        {
+          "file": "route-1-1-desktop-target.json",
+          "bytes": 1539,
+          "sha256": "b8e9466f2e0bcd767c01c355c9203b23197fd3014a7a151a27d90e88f564c375"
+        },
+        {
+          "file": "route-1-1-desktop-target.png",
+          "bytes": 22170,
+          "sha256": "95e76a7871b324e65561e28a3234c2f13ae94a7d1230b113ba6615409fe325cb"
+        },
+        {
+          "file": "route-1-2-mobile-baseline-repeat.png",
+          "bytes": 19865,
+          "sha256": "f082b38693bde0d1964209238f3ec46540bf448aaf827910cd569a3b5aa573d6"
+        },
+        {
+          "file": "route-1-2-mobile-baseline.json",
+          "bytes": 1546,
+          "sha256": "afea8274d4609cedde32796fced71501dff5aeef1cdb0812ba043d44dbe65df7"
+        },
+        {
+          "file": "route-1-2-mobile-baseline.png",
+          "bytes": 19865,
+          "sha256": "f082b38693bde0d1964209238f3ec46540bf448aaf827910cd569a3b5aa573d6"
+        },
+        {
+          "file": "route-1-2-mobile-diff.png",
+          "bytes": 19483,
+          "sha256": "cbf8ccfc6275839a2ae16177e00880a779980b44f891de453e903f7612816404"
+        },
+        {
+          "file": "route-1-2-mobile-point-1-baseline-repeat.png",
+          "bytes": 21566,
+          "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+        },
+        {
+          "file": "route-1-2-mobile-point-1-baseline.json",
+          "bytes": 2526,
+          "sha256": "58bb24cf6b535e6b9af20ad3a97be6d2cb9d6a03c6a3d2a0d0c6c8988054ae86"
+        },
+        {
+          "file": "route-1-2-mobile-point-1-baseline.png",
+          "bytes": 21566,
+          "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+        },
+        {
+          "file": "route-1-2-mobile-point-1-target-repeat.png",
+          "bytes": 21698,
+          "sha256": "7ec449403f8b7367afe46baa8911d142411953c56d52ebdab52045043bfbaa56"
+        },
+        {
+          "file": "route-1-2-mobile-point-1-target.json",
+          "bytes": 2516,
+          "sha256": "3e8329d94bddb89130a06782804e80fd2c270bff79fc6db5806af2f8c6c941e0"
+        },
+        {
+          "file": "route-1-2-mobile-point-1-target.png",
+          "bytes": 21698,
+          "sha256": "7ec449403f8b7367afe46baa8911d142411953c56d52ebdab52045043bfbaa56"
+        },
+        {
+          "file": "route-1-2-mobile-target-repeat.png",
+          "bytes": 20001,
+          "sha256": "44ea8975f2bfb33f0c1f4e49067912d1abf6c858d4ea3ed4263ac32a234119a4"
+        },
+        {
+          "file": "route-1-2-mobile-target.json",
+          "bytes": 1536,
+          "sha256": "f8909a1cb786cc2c4abf9fb679bd92760150dc63891643372131cecca08f4fdf"
+        },
+        {
+          "file": "route-1-2-mobile-target.png",
+          "bytes": 20001,
+          "sha256": "44ea8975f2bfb33f0c1f4e49067912d1abf6c858d4ea3ed4263ac32a234119a4"
+        },
+        {
+          "file": "route-2-1-desktop-baseline-repeat.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-2-1-desktop-baseline.json",
+          "bytes": 1543,
+          "sha256": "cc0a3674efd9d2b6238661c8e63733af535a884f5e457edb0250b54fd16bf23e"
+        },
+        {
+          "file": "route-2-1-desktop-baseline.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-2-1-desktop-diff.png",
+          "bytes": 23174,
+          "sha256": "1d2b99c2b6b0c8a02d61a9195c3f910e85880da1a5943a836bd0dcdd9de88f86"
+        },
+        {
+          "file": "route-2-1-desktop-point-2-baseline-repeat.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-2-1-desktop-point-2-baseline.json",
+          "bytes": 2523,
+          "sha256": "65aa52a08c56683ae4e5315b02c76ee3adcdee818fbaad573d9a5fa7592abf13"
+        },
+        {
+          "file": "route-2-1-desktop-point-2-baseline.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-2-1-desktop-point-2-target-repeat.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-2-1-desktop-point-2-target.json",
+          "bytes": 2513,
+          "sha256": "26e20fde4eec0c6c6194ad5a81e35d3e142c7fbe7f49b275e7c1a5b8d5df864b"
+        },
+        {
+          "file": "route-2-1-desktop-point-2-target.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-2-1-desktop-target-repeat.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-2-1-desktop-target.json",
+          "bytes": 1533,
+          "sha256": "4d5e479eedb3ef39dc771de20d0f377cadda2d2a7c236216bb42a13bbd045578"
+        },
+        {
+          "file": "route-2-1-desktop-target.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-2-2-mobile-baseline-repeat.png",
+          "bytes": 19865,
+          "sha256": "f082b38693bde0d1964209238f3ec46540bf448aaf827910cd569a3b5aa573d6"
+        },
+        {
+          "file": "route-2-2-mobile-baseline.json",
+          "bytes": 1540,
+          "sha256": "996873732256d5f5c76de65d3008acfa6f081239a30fd4a04a8219343bf56a11"
+        },
+        {
+          "file": "route-2-2-mobile-baseline.png",
+          "bytes": 19865,
+          "sha256": "f082b38693bde0d1964209238f3ec46540bf448aaf827910cd569a3b5aa573d6"
+        },
+        {
+          "file": "route-2-2-mobile-diff.png",
+          "bytes": 20978,
+          "sha256": "d217e30bbe86356fb3dc594853dbda4095f00289624983606f8b4f9779439998"
+        },
+        {
+          "file": "route-2-2-mobile-point-2-baseline-repeat.png",
+          "bytes": 21566,
+          "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+        },
+        {
+          "file": "route-2-2-mobile-point-2-baseline.json",
+          "bytes": 2520,
+          "sha256": "4b7afd7da254c2875baf6a43e9ebe0c833e5072058968c1eb79eff451e9c458b"
+        },
+        {
+          "file": "route-2-2-mobile-point-2-baseline.png",
+          "bytes": 21566,
+          "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+        },
+        {
+          "file": "route-2-2-mobile-point-2-target-repeat.png",
+          "bytes": 21566,
+          "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+        },
+        {
+          "file": "route-2-2-mobile-point-2-target.json",
+          "bytes": 2510,
+          "sha256": "8cf3e3dd4942dee1b78e7972da0435ab4dd0a1066bcd0a40d00522bdd02d809f"
+        },
+        {
+          "file": "route-2-2-mobile-point-2-target.png",
+          "bytes": 21566,
+          "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+        },
+        {
+          "file": "route-2-2-mobile-target-repeat.png",
+          "bytes": 19865,
+          "sha256": "f082b38693bde0d1964209238f3ec46540bf448aaf827910cd569a3b5aa573d6"
+        },
+        {
+          "file": "route-2-2-mobile-target.json",
+          "bytes": 1530,
+          "sha256": "e76b26ec2b5d45d07645cc1eaffa0a2445ce714f5dcf190f568f5c69b33160dc"
+        },
+        {
+          "file": "route-2-2-mobile-target.png",
+          "bytes": 19865,
+          "sha256": "f082b38693bde0d1964209238f3ec46540bf448aaf827910cd569a3b5aa573d6"
+        }
+      ],
+      "legacyReaderValid": true,
+      "legacyReaderErrors": []
+    },
+    {
+      "id": "target-unavailable",
+      "description": "Healthy baseline; target cannot navigate and has null screenshot roles.",
+      "runId": "ac-18ed83e8-bc88-493b-b383-f4dae9d3d3b3",
+      "gate": "blocked",
+      "declaredChecks": 6,
+      "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+      "reportSha256": "c23996fa652b5c7d09fbbcceea6a28e3987938e4c195186b36fbc87fd5e38e12",
+      "files": [
+        {
+          "file": "manifest.json",
+          "bytes": 2050,
+          "sha256": "fa8df3e6d432a73e898f7f900773c0a63cc03a13aa2b4e6eae27edfef06c219a"
+        },
+        {
+          "file": "report.json",
+          "bytes": 16204,
+          "sha256": "c23996fa652b5c7d09fbbcceea6a28e3987938e4c195186b36fbc87fd5e38e12"
+        },
+        {
+          "file": "route-1-1-desktop-baseline-repeat.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-1-1-desktop-baseline.json",
+          "bytes": 1495,
+          "sha256": "09a6419b751a3574d4a5f5c85c9042d2273c436cfbc7670132aff4fd75a7eb55"
+        },
+        {
+          "file": "route-1-1-desktop-baseline.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-1-1-desktop-target.json",
+          "bytes": 788,
+          "sha256": "be9983d7fa7cf7633996119c5259563ecad60f18d0948f1838eda45e7772433a"
+        }
+      ],
+      "legacyReaderValid": false,
+      "legacyReaderErrors": [
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        }
+      ]
+    },
+    {
+      "id": "baseline-unavailable",
+      "description": "Healthy target; baseline cannot navigate and has null screenshot roles.",
+      "runId": "ac-8300361e-3295-471a-a4a4-a08f713b1d46",
+      "gate": "blocked",
+      "declaredChecks": 6,
+      "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+      "reportSha256": "acb66c77c5d970747179d1cbde96de44a28ae9f667f18dfab96c72549eda460d",
+      "files": [
+        {
+          "file": "manifest.json",
+          "bytes": 2046,
+          "sha256": "a89d630c3f4f66d46c732737f17b4c684a90400cc67faf8e92736a90f3267e86"
+        },
+        {
+          "file": "report.json",
+          "bytes": 16035,
+          "sha256": "acb66c77c5d970747179d1cbde96de44a28ae9f667f18dfab96c72549eda460d"
+        },
+        {
+          "file": "route-1-1-desktop-baseline.json",
+          "bytes": 790,
+          "sha256": "57821c2f0686be7670eca6bd3e38f35cbdab1271982762c3e0aff7ae8b03b66f"
+        },
+        {
+          "file": "route-1-1-desktop-target-repeat.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-1-1-desktop-target.json",
+          "bytes": 1485,
+          "sha256": "63bd14fabb842ccad2a0f1e04752b9015c6b93e961d2436fb81a90f03b4867d4"
+        },
+        {
+          "file": "route-1-1-desktop-target.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        }
+      ],
+      "legacyReaderValid": false,
+      "legacyReaderErrors": [
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        },
+        {
+          "code": "INVALID_EVIDENCE_REFERENCE",
+          "message": "检查包含无效证据引用。"
+        }
+      ]
+    },
+    {
+      "id": "assertion-failed",
+      "description": "Healthy page and capture, but declared point assertion is false on both sides.",
+      "runId": "ac-f72b9da8-61ec-48af-bb3e-52e9604720fc",
+      "gate": "blocked",
+      "declaredChecks": 7,
+      "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+      "reportSha256": "5fdd46c86044fe7407fe9e296c0954167d5039a830f3470f2a4393f268a30280",
+      "files": [
+        {
+          "file": "manifest.json",
+          "bytes": 2529,
+          "sha256": "5cf5dc9b80dc02faba00152ef33aca5bc9dbebc529dc17587ec81871e30d3bca"
+        },
+        {
+          "file": "report.json",
+          "bytes": 21001,
+          "sha256": "5fdd46c86044fe7407fe9e296c0954167d5039a830f3470f2a4393f268a30280"
+        },
+        {
+          "file": "route-1-1-desktop-baseline-repeat.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-1-1-desktop-baseline.json",
+          "bytes": 1495,
+          "sha256": "09a6419b751a3574d4a5f5c85c9042d2273c436cfbc7670132aff4fd75a7eb55"
+        },
+        {
+          "file": "route-1-1-desktop-baseline.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-1-1-desktop-diff.png",
+          "bytes": 23174,
+          "sha256": "1d2b99c2b6b0c8a02d61a9195c3f910e85880da1a5943a836bd0dcdd9de88f86"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-baseline.json",
+          "bytes": 2345,
+          "sha256": "2e9a5c989b3e9d01db516e26a4745c8c8c9c90c008dbeef1af44e1680336ec29"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-baseline.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-target-repeat.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-target.json",
+          "bytes": 2335,
+          "sha256": "d28e442b3cc02d402e878a39a870aa2b81c2ed845576b4da69e39128d1bc45d9"
+        },
+        {
+          "file": "route-1-1-desktop-point-1-target.png",
+          "bytes": 23523,
+          "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+        },
+        {
+          "file": "route-1-1-desktop-target-repeat.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        },
+        {
+          "file": "route-1-1-desktop-target.json",
+          "bytes": 1485,
+          "sha256": "63bd14fabb842ccad2a0f1e04752b9015c6b93e961d2436fb81a90f03b4867d4"
+        },
+        {
+          "file": "route-1-1-desktop-target.png",
+          "bytes": 21800,
+          "sha256": "02612337dff4a135700a64f5c9bc8c433684c9c02d32d6c0db18e3016614542e"
+        }
+      ],
+      "legacyReaderValid": true,
+      "legacyReaderErrors": []
+    }
+  ]
+}

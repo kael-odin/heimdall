@@ -1,0 +1,450 @@
+[
+  {
+    "requestId": "ui-9653b267-fa1d-437b-9578-ac88f4ff4095",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-d4ade823-222c-4b55-a846-08fd03716271",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs/ac-050b5e7e-a02d-4639-ba68-36f5bbe8aa78",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-a4a87232-8c68-44cd-a60e-490bb683808d",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-87286e65-2d25-49ae-b7e0-67fe183b3c10",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs/ac-050b5e7e-a02d-4639-ba68-36f5bbe8aa78/report",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f89067e1-8ca1-4bb4-b8c8-3d08a695e55d",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-b620b27b-eaa6-43a1-807d-5cc16a93d972",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-0683e4d4-5c22-4b89-8a2b-8bcdc6f97962",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/browser-executions",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-09c827fc-b458-41fb-ad44-3b15d868ae57",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-d45fac97-145a-43a6-8268-58cf5cde1e17",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets/sources",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-039ad7c9-111d-4c1a-b436-14f3968e0414",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-9dfea886-43a0-48e4-a900-d06d01b9c3d7",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f95ff282-79e6-4052-9a2c-97fe6f7aa54e",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets",
+    "method": "POST",
+    "status": 502
+  },
+  {
+    "requestId": "ui-bf1dc5d4-d93c-4612-9884-7a05cd802496",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-7f8c3360-aae3-461a-8a58-b10dd1fb442e",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-7797b78f-291d-406a-bdf8-90ff1f0c6219",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-b771db14-c9fd-4b3f-a3e4-bb3c8cb027ba",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-ce94cba0-8bc5-489f-b07d-4ef2188f5a5c",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-7346fd02-4be3-432a-8be4-6cbcfd6ca3b6",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f25fdbd0-9958-4cdf-a14b-fce048e1bec7",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-cd4c4309-0c26-429e-9505-56ca8638cf08",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f9ddc10e-44d2-4dc5-a36b-f2dbd8a5f51e",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-b95ea5b7-a758-45ac-a83e-e037b2e8a299",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e342aa4a-071d-4c4f-ae61-8a98d903d03d",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-992aa41f-0ac4-4191-90a8-7dad33ae1403",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-cd9be10b-a4ba-44d2-bc45-a2fdad3556c1",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-6b258331-aa61-43f0-9bc7-dfbdf4bee1ea",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-62857d51-2ceb-45e8-a6d7-a34e93a24d8b",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-96e33883-c206-4a84-85b7-2d5649db5783",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-99162354-5c97-471c-a77a-e66326c48af3",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-993d17d6-25ca-4544-a53b-b7b5e515ca4f",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-a8f5842e-6cc2-460c-aa73-20ed52a0d6b5",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-831ce25a-2348-452f-82ff-23700bc62a72",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-7fbb1646-23c0-4a88-85b8-0fe37c649263",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-62f13b8a-751f-46f6-87c0-c28c904a1972",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-1b0aef26-2dc9-4e8c-abe3-67714a4b125f",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e9e95043-9a1b-4e60-bbf1-cbdc0528e1f4",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e6ec8018-38c5-431d-ae9f-510a27803a26",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-a53e03c4-e774-4e8e-87c0-663bb52eb1e3",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-cffbf224-8e3b-4e16-98e0-9dd227973abe",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-815632f1-99af-45a7-8a57-a6da47c872b5",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-10c55f6d-6552-4623-9fb4-13d43ee0686b",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f60974e0-3225-4aa2-af65-e007c9a5b788",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-9b38a29a-64ef-45b3-b23a-8b5fb5474b78",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-f8e1ee41-b559-4820-a28d-ec14a8c151a8",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-d97eab99-2ecd-4416-865e-6ce49815422f",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e9139602-2a3a-4f06-8734-94f3d4519304",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-149df78c-175f-4bd1-8a88-63fd3bde7ab9",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-4bacf91e-f27b-48e9-a914-6ab81dac5251",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-ae27b19c-9bea-4623-8d53-c4fca35317d0",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-5bf7b91b-d63a-4a2d-a47c-4211fb31357c",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-4704822f-2c60-4ae3-a07f-c34f61d41b5d",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-1c710abe-eb00-4e85-8b04-97795addfda6",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-09561a30-b4e1-42e1-b7f1-49773ff729c4",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-5d55edf2-b770-422b-9cd5-456f4f8f1866",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-4efda5cf-da58-4cc3-a5e4-7d80681fe75a",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-cd392832-45a8-4939-a117-1e887057f752",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-63162207-a4d1-4ed1-8f3a-8ae9f3d75e0c",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-57132bb5-ac01-4e23-a408-db624f83e07c",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-eefbfe0f-f565-4d9e-a377-3c0711dc0710",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-1057823a-2471-4ed3-99b5-66bb97078087",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-757b6ed7-91c8-4228-a405-61f9251fe5f2",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-03742e99-afb8-4b51-813d-a3b6f70f7642",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-e92d99b3-91af-4927-b729-92b67f5ca208",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "method": "GET",
+    "status": 200
+  },
+  {
+    "requestId": "ui-3a5cf7f9-46de-4c4b-9181-ddd235add088",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "method": "GET",
+    "status": 200
+  }
+]

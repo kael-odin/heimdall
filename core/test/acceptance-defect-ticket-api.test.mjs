@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request as httpRequest } from 'node:http';
 import { handleDefectTicketRequest, defectTicketError } from '../src/acceptance/defect-ticket-api.mjs';
-import { DEFECT_TICKET_LIMITS } from '../src/acceptance/defect-ticket-schema.mjs';
+import { DEFECT_TICKET_LIMITS, defectTicketRequestFingerprint, validateDefectTicketCreateRequest, validateDefectTicketCloseRequest } from '../src/acceptance/defect-ticket-schema.mjs';
 
 const uid = (prefix, value) => prefix + '-00000000-0000-0000-0000-' + String(value).padStart(12, '0');
 const projectId = uid('ap', 31), otherProjectId = uid('ap', 32), ticketId = uid('dt', 33), actionId = uid('da', 34);
@@ -23,6 +23,7 @@ async function serving(t, overrides = {}) {
     read: (...args) => ({ method: 'read', args }), previewClose: (...args) => ({ method: 'previewClose', args }),
     create: async () => ({ status: 201, payload: { outcome: 'recorded', ticketId, actionId } }),
     close: async () => ({ status: 201, payload: { outcome: 'recorded', ticketId, actionId } }),
+    deny: async () => ({ status: 201, payload: { outcome: 'rejected', ticketId, actionId } }),
     action: (project, action) => ({ projectId: project, actionId: action, outcome: 'unresolved', reason: 'ABSENCE_IS_NOT_A_COMMIT_DECISION' }),
     exportTicket: (_project, ticket, format) => ({ bytes: exportBytes(format), filename: ticket + '.' + format, contentType: contentType(format) }),
   };
@@ -355,4 +356,91 @@ test('Defect-ticket HTTP: an actual disconnected create response is reconciled o
   assert.equal(reconciled.status, 200); assert.deepEqual(reconciled.payload, receipt);
   assert.equal(committed, 1); assert.deepEqual(f.calls.map(call => call.method), ['create', 'action']);
   assert.deepEqual(f.calls.at(-1).args, [projectId, actionId]);
+});
+
+function confirmation(kind = 'create', raw = kind === 'create' ? create() : close()) {
+  const request = kind === 'create' ? validateDefectTicketCreateRequest(raw) : validateDefectTicketCloseRequest(raw);
+  return { version: 1, projectId, ticketId, kind, actionId: request.actionId,
+    requestFingerprint: defectTicketRequestFingerprint({ projectId, ticketId, kind, request }), request };
+}
+const denyEnvelope = original => ({ schemaVersion: 1, confirmed: true, original });
+
+test('D6 HTTP literal deny strictly binds the path, complete original and method before dispatch', async t => {
+  const f = await serving(t), path = root + '/actions/' + actionId + '/deny';
+  for (const kind of ['create', 'close']) {
+    const original = confirmation(kind), result = await f.request(path, post(denyEnvelope(original)));
+    assert.equal(result.status, 201); assert.equal(result.payload.outcome, 'rejected');
+    assert.deepEqual(f.calls.at(-1), { method: 'deny', args: [projectId, actionId, original] });
+  }
+  const count = f.calls.length;
+  const original = confirmation(), wrongFingerprint = { ...original, requestFingerprint: 'b'.repeat(64) };
+  const invalidBodies = [{}, { ...denyEnvelope(original), schemaVersion: 2 }, { ...denyEnvelope(original), confirmed: false },
+    { ...denyEnvelope(original), extra: true }, denyEnvelope(wrongFingerprint),
+    denyEnvelope({ ...original, request: { ...original.request, title: 'Changed after confirmation' } }),
+    denyEnvelope({ ...original, request: { ...original.request, memberCheckIds: [...original.request.memberCheckIds].reverse() } })];
+  for (const body of invalidBodies) assert.equal((await f.request(path, post(body))).status, 400);
+  for (const [requested, options, status, allow] of [
+    [path, {}, 405, 'POST'], [path, { method: 'PUT' }, 405, 'POST'], [path, { method: 'HEAD' }, 405, 'POST'],
+    [path + '/extra', post(denyEnvelope(original)), 404], [path + '?extra=1', post(denyEnvelope(original)), 400],
+    [path + '?token=a&token=b', post(denyEnvelope(original)), 400],
+    [path.replace(projectId, otherProjectId), post(denyEnvelope(original)), 400],
+    [path.replace(actionId, uid('da', 999)), post(denyEnvelope(original)), 400],
+    [root + '/actions/bad/deny', post(denyEnvelope(original)), 400],
+  ]) {
+    const result = await f.request(requested, options); assert.equal(result.status, status, requested);
+    if (allow) assert.equal(result.headers.get('allow'), allow);
+  }
+  assert.equal(f.calls.length, count, 'invalid deny cannot dispatch to any service method');
+});
+
+test('D6 HTTP denial has its own bounded raw UTF-8 budget and retains the old request ceiling', async t => {
+  const f = await serving(t), path = root + '/actions/' + actionId + '/deny';
+  const base = create({ title: 't'.repeat(240), reproduction: 'r'.repeat(4000),
+    memberCheckIds: Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0') + '中'.repeat(238)) });
+  let best;
+  for (let count = 0; count <= 4000; count++) {
+    const input = { ...base, description: '中'.repeat(count) + 'd'.repeat(4000 - count) };
+    if (Buffer.byteLength(JSON.stringify(input)) > DEFECT_TICKET_LIMITS.requestBytes) break;
+    best = input;
+  }
+  assert.ok(best); assert.ok(Buffer.byteLength(JSON.stringify(best)) > 32000);
+  const original = confirmation('create', best), envelope = JSON.stringify(denyEnvelope(original));
+  assert.ok(Buffer.byteLength(envelope) > DEFECT_TICKET_LIMITS.requestBytes, 'complete legal confirmation can exceed the old body ceiling');
+  assert.equal((await f.request(path, post(envelope))).status, 201);
+  assert.equal((await f.request(root, post(best))).status, 201);
+  const valid = JSON.stringify(denyEnvelope(confirmation()));
+  const maximum = valid + ' '.repeat(DEFECT_TICKET_LIMITS.denyRequestBytes - Buffer.byteLength(valid));
+  assert.equal((await f.request(path, post(maximum))).status, 201);
+  assert.equal((await f.request(path, post(maximum + ' '))).status, 413);
+  const createRaw = JSON.stringify(create());
+  assert.equal((await f.request(root, post(createRaw + ' '.repeat(DEFECT_TICKET_LIMITS.requestBytes + 1 - Buffer.byteLength(createRaw))))).status, 413);
+  const before = f.calls.length;
+  for (const bytes of [Buffer.concat([Buffer.from(valid.slice(0, -1)), Buffer.from([0xff]), Buffer.from('}')]),
+    Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(valid)]), Buffer.from('{partial')]) {
+    assert.equal((await f.request(path, post(bytes))).status, 400);
+  }
+  for (const mime of ['text/plain', 'application/json; charset=latin1', 'application/json; mode=unsafe']) {
+    assert.equal((await f.request(path, { ...post(valid), headers: { 'content-type': mime } })).status, 400);
+  }
+  assert.equal(f.calls.length, before);
+});
+
+test('D6 HTTP returns both complete decision variants unchanged and marks uncertain denial as unknown', async t => {
+  for (const outcome of ['recorded', 'rejected']) {
+    const payload = { schemaVersion: 1, kind: 'manual-defect-ticket-action', outcome, projectId, ticketId, actionId,
+      requestFingerprint: confirmation().requestFingerprint, replayed: true,
+      ...(outcome === 'recorded' ? { eventSha256: hash, event: { retained: 'accepted original' } }
+        : { rejectionSha256: hash, rejection: { original: confirmation(), retained: 'permanent original' } }) };
+    const f = await serving(t, Object.fromEntries(['create', 'close', 'deny'].map(method => [method, async () => ({ status: 200, payload })])));
+    for (const [path, input] of [[root, create()], [root + '/' + ticketId + '/close', close()],
+      [root + '/actions/' + actionId + '/deny', denyEnvelope(confirmation())]]) {
+      const result = await f.request(path, post(input)); assert.equal(result.status, 200); assert.deepEqual(result.payload, payload);
+    }
+  }
+  const f = await serving(t, { deny: async () => { throw Object.assign(Error('private publication failure'),
+    { code: 'INTEGRITY_BLOCKED', writeMayHaveCommitted: true }); } });
+  const result = await f.request(root + '/actions/' + actionId + '/deny', post(denyEnvelope(confirmation())));
+  assert.equal(result.status, 503); assert.equal(result.payload.outcomeUnknown, true);
+  assert.equal(result.bytes.includes(Buffer.from('private')), false);
+  assert.deepEqual(f.calls.map(call => call.method), ['deny']);
 });

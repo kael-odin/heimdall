@@ -1,0 +1,31 @@
+✔ catalog writes pin both lineage and revision, including revision zero (1.3788ms)
+✔ project input only submits the declared name and explicit catalog preconditions (0.2227ms)
+✔ release declarations keep the full normalized URL and never add approval or deployment facts (0.3994ms)
+✔ binding requires a fresh explicit confirmation and sends only selected run and release (0.2248ms)
+✔ only terminal runs enter the claim selector, without changing original history (0.1875ms)
+✔ detail read guards discard delayed responses after project changes and newer refreshes (0.1401ms)
+✔ catalog transport preserves structured conflict code, HTTP status and current CAS version (15.7878ms)
+✔ a lost write response is uncertain and is never retried automatically (0.4174ms)
+✔ malformed successful writes remain uncertain until a GET reconciles the directory (0.8343ms)
+✔ successful catalog request uses authenticated JSON without caching or duplicated sends (0.4857ms)
+✔ server-side unavailable writes keep their structured diagnostic and require reconciliation (0.3958ms)
+✔ catalog deadline defaults to 60 seconds and invalid budgets issue no request (0.2843ms)
+✔ GET fetch ignoring abort still times out with exactly one send (34.4994ms)
+✔ GET body and cancellation ignoring abort cannot keep the caller busy (30.9381ms)
+✔ GET external abort settles a non-cooperating fetch and removes its listener (0.8344ms)
+✔ GET external abort settles a non-cooperating body and removes its listener (1.2212ms)
+✔ POST fetch ignoring abort still times out with exactly one send (27.8931ms)
+✔ POST body and cancellation ignoring abort cannot keep the caller busy (31.3847ms)
+✔ POST external abort settles a non-cooperating fetch and removes its listener (0.8386ms)
+✔ POST external abort settles a non-cooperating body and removes its listener (0.5972ms)
+✔ fetch and full JSON body share one deadline rather than restarting it at headers (2.271ms)
+✔ late fetch responses are cancelled without reading or changing the completed timeout outcome (26.3258ms)
+✔ pre-aborted callers send nothing and successful responses clear the shared deadline (1.0396ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 256.3524

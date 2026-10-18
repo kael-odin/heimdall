@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "kind": "copied-original-d6-strict-verifier",
+  "argv": [
+    "C:\\Program Files\\nodejs\\node.exe",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\docs\\audits\\2026-10-18\\evidence\\defect-ticket-decisions-final\\implementation\\core\\scripts\\verify-acceptance-defect-ticket-decisions-console.mjs",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\docs\\audits\\2026-10-18\\evidence\\defect-ticket-decisions-final\\originals\\final-browser\\21-decision-artifacts"
+  ],
+  "startedAt": "2026-10-18T04:00:21.204Z",
+  "endedAt": "2026-10-18T04:00:21.393Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "passed": true,
+  "stdoutSha256": "568fc6bb39c119c5d87bb5ca2bdc3293bdd3e7cb5923e3cefa87a3722ec4619c",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

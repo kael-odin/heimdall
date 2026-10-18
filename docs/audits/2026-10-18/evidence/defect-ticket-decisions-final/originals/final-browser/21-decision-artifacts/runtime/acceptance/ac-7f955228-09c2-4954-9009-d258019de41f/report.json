@@ -1,0 +1,1217 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-7f955228-09c2-4954-9009-d258019de41f",
+  "name": "D6 fixed manual decisions",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel",
+  "targetUrl": "http://127.0.0.1:61734/broken",
+  "startedAt": "2026-10-18T03:31:03.927Z",
+  "endedAt": "2026-10-18T03:31:07.456Z",
+  "status": "completed",
+  "checks": [
+    {
+      "route": "/",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-navigation",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "navigation",
+        "caseKey": "0b11ebce9c6d09ef31889bc71326449c364098c2d845bb3ecbcd4b4fd187aefb",
+        "contextKey": "5400d84c556920df9bd2e86145f13b78a4c168b14c32da5c43b983184a2f3b3f",
+        "ruleKey": "9a77612e8cfefa49415998cc5259471752b2e37f708e9dc95fbd039d6af2d3e1",
+        "oracleKey": "69cab35ead9357b2ded4427789d6d603889fab112d49f3b3dcb5f296d9070d32",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "页面导航与 HTTP 状态",
+      "dimension": "health",
+      "expected": 200,
+      "actual": 200,
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 960×640.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-console",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "console",
+        "caseKey": "03532c5b84efa3f7885b11a9402239d2b940cd12f75cb9780f7d49a405d2d971",
+        "contextKey": "dbf232bc134bd1591fa62aaf445f062027aba5bef93aa501be2977a90506f944",
+        "ruleKey": "09471dfb931bf0f02e0a1b903f526d7336bef4f2814fca65aae1a51644da9eef",
+        "oracleKey": "8abf11a4a075e7fa514b63f7d1770effe96977304b75c3bca31c102e94112d69",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "浏览器脚本与控制台错误",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 960×640.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-network",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "network",
+        "caseKey": "cfaa917cfc63e28cc0d4dacff1e1aeaaf6abbad350899ca36e45d758766ccc5f",
+        "contextKey": "5bd79f08cdd4d5eba7f69f7606654f1d4b9f7f33b6d71604fe2134f2cdbd5bc8",
+        "ruleKey": "c7478fb511cd30bffa22fdb2ce1b32ee8e4682e3eb3211f4fc270964d55a1818",
+        "oracleKey": "8abf11a4a075e7fa514b63f7d1770effe96977304b75c3bca31c102e94112d69",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "资源与只读网络请求",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 960×640.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-overflow",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "overflow",
+        "caseKey": "9aacacd271da1affc974561a3d3040a7ed950f7cb5601e32b2c3110836bf47d6",
+        "contextKey": "14db45a8be8be0d7203f51a12b511ab8b5abaff2b9c329aa2395178d10aea6c1",
+        "ruleKey": "c327679067deed382c156c9033028b75eb9efbb4bb3c33733606715956614ead",
+        "oracleKey": "8abf11a4a075e7fa514b63f7d1770effe96977304b75c3bca31c102e94112d69",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "视口水平溢出",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 960×640.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-structure",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "structure",
+        "caseKey": "2b2128133032214987c1a48e841b73606e9ea895b2d54fdddc8d1ed267ad9564",
+        "contextKey": "9574ba2482d491cd3cd1421cae1b54bad884de8750b925058b492013039d6eee",
+        "ruleKey": "2600844878b036b8282932cdfb6378cb1d9e67809877369871e4bd60cb167ae6",
+        "oracleKey": "d530c786c9f908975eaa703a3fe199bee06eb52d6e0b2200382225979f1c30f0",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "标题、主标题与关键控件语义",
+      "dimension": "structure",
+      "expected": {
+        "title": "D6 controlled acceptance",
+        "headings": [
+          "Fixed manual defect members"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "Menu",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#entry",
+            "tag": "input",
+            "role": null,
+            "label": "",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ]
+      },
+      "actual": {
+        "title": "D6 controlled acceptance",
+        "headings": [
+          "Fixed manual defect members"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "Menu",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#entry",
+            "tag": "input",
+            "role": null,
+            "label": "",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ],
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 614400,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 614400,
+            "samplingCapped": false
+          }
+        }
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 960×640.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-visual",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+        "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+        "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+        "oracleKey": "678fb50a4d7505686de9bfff4aaa6bd1b5cb933eb9c2882d45ca0e08aeb5ea47",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        }
+      },
+      "title": "页面视觉还原度",
+      "dimension": "visual",
+      "expected": {
+        "minimumScore": 0.97,
+        "stabilityMinimum": 0.9995,
+        "maximumMaskedRatio": 0.8,
+        "captureBudget": {
+          "maxPixels": 12000000,
+          "maxHeight": 12000
+        }
+      },
+      "actual": {
+        "score": 0.6787,
+        "baselineStability": 1,
+        "targetStability": 1,
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 614400,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 614400,
+            "samplingCapped": false
+          }
+        },
+        "capture": {
+          "baseline": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 960,
+              "height": 640
+            }
+          },
+          "target": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 960,
+              "height": 640
+            }
+          }
+        },
+        "eligible": true
+      },
+      "status": "failed",
+      "verdict": "bug",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 960×640.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png",
+        "diff": "route-1-1-desktop-diff.png"
+      },
+      "score": 0.6787
+    },
+    {
+      "route": "/",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-1-desktop-point-1-menu",
+      "title": "Expanded menu",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "behavior",
+        "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+        "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+        "ruleKey": "345e3c732d7cbff13bb8407aa0e60e6b17c917803f530dced2b151d80f0b104d",
+        "oracleKey": "338fe4d5e5fddd061afd689042737a6848faf88c56e8ea2ffdf58a8714f424b8",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 960,
+          "height": 640
+        },
+        "pointId": "menu"
+      },
+      "status": "failed",
+      "verdict": "bug",
+      "evaluationLimited": false,
+      "expected": {
+        "stepsComplete": true,
+        "assertions": [
+          {
+            "kind": "visible",
+            "selector": "#menu",
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          {
+            "kind": "attribute",
+            "selector": "#menu-toggle",
+            "attribute": "aria-expanded",
+            "expected": "true",
+            "actual": "true",
+            "passed": true
+          },
+          {
+            "kind": "text",
+            "selector": "#literal",
+            "expected": "d6-captured-source-sentinel",
+            "actual": "d6-captured-source-sentinel",
+            "passed": true
+          }
+        ],
+        "httpStatus": 200
+      },
+      "actual": {
+        "stepsComplete": true,
+        "stepError": null,
+        "assertions": [
+          {
+            "kind": "visible",
+            "selector": "#menu",
+            "expected": true,
+            "actual": false,
+            "passed": false
+          },
+          {
+            "kind": "attribute",
+            "selector": "#menu-toggle",
+            "attribute": "aria-expanded",
+            "expected": "true",
+            "actual": "false",
+            "passed": false
+          },
+          {
+            "kind": "text",
+            "selector": "#literal",
+            "expected": "d6-captured-source-sentinel",
+            "actual": "d6-captured-source-sentinel",
+            "passed": true
+          }
+        ],
+        "httpStatus": 200,
+        "navigationError": null,
+        "errors": [],
+        "network": [],
+        "overflow": false,
+        "blockedRequests": []
+      },
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 960×640.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport.",
+        "fill #entry (d6-fill-sentinel)",
+        "click #menu-toggle"
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-point-1-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-point-1-target.png",
+        "baselineDetails": "route-1-1-desktop-point-1-baseline.json",
+        "targetDetails": "route-1-1-desktop-point-1-target.json",
+        "baselineRepeat": "route-1-1-desktop-point-1-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-point-1-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "mobile",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-mobile-navigation",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "navigation",
+        "caseKey": "0b11ebce9c6d09ef31889bc71326449c364098c2d845bb3ecbcd4b4fd187aefb",
+        "contextKey": "4eef54f812e96c5147a033afdaef4bf80b80b1fe213a9efe48854e68e8a32d0a",
+        "ruleKey": "9a77612e8cfefa49415998cc5259471752b2e37f708e9dc95fbd039d6af2d3e1",
+        "oracleKey": "69cab35ead9357b2ded4427789d6d603889fab112d49f3b3dcb5f296d9070d32",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "页面导航与 HTTP 状态",
+      "dimension": "health",
+      "expected": 200,
+      "actual": 200,
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 375×812.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-mobile-baseline.png",
+        "targetScreenshot": "route-1-2-mobile-target.png",
+        "baselineDetails": "route-1-2-mobile-baseline.json",
+        "targetDetails": "route-1-2-mobile-target.json",
+        "baselineRepeat": "route-1-2-mobile-baseline-repeat.png",
+        "targetRepeat": "route-1-2-mobile-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "mobile",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-mobile-console",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "console",
+        "caseKey": "03532c5b84efa3f7885b11a9402239d2b940cd12f75cb9780f7d49a405d2d971",
+        "contextKey": "57960ccaab477f7c776b64495c2eab9080a21628fb06d8aeb5febc8a46c93392",
+        "ruleKey": "09471dfb931bf0f02e0a1b903f526d7336bef4f2814fca65aae1a51644da9eef",
+        "oracleKey": "8abf11a4a075e7fa514b63f7d1770effe96977304b75c3bca31c102e94112d69",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "浏览器脚本与控制台错误",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 375×812.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-mobile-baseline.png",
+        "targetScreenshot": "route-1-2-mobile-target.png",
+        "baselineDetails": "route-1-2-mobile-baseline.json",
+        "targetDetails": "route-1-2-mobile-target.json",
+        "baselineRepeat": "route-1-2-mobile-baseline-repeat.png",
+        "targetRepeat": "route-1-2-mobile-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "mobile",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-mobile-network",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "network",
+        "caseKey": "cfaa917cfc63e28cc0d4dacff1e1aeaaf6abbad350899ca36e45d758766ccc5f",
+        "contextKey": "38d3359f855e341006940652bd480f322cdd482869ce00acca78ce722dc77372",
+        "ruleKey": "c7478fb511cd30bffa22fdb2ce1b32ee8e4682e3eb3211f4fc270964d55a1818",
+        "oracleKey": "8abf11a4a075e7fa514b63f7d1770effe96977304b75c3bca31c102e94112d69",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "资源与只读网络请求",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 375×812.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-mobile-baseline.png",
+        "targetScreenshot": "route-1-2-mobile-target.png",
+        "baselineDetails": "route-1-2-mobile-baseline.json",
+        "targetDetails": "route-1-2-mobile-target.json",
+        "baselineRepeat": "route-1-2-mobile-baseline-repeat.png",
+        "targetRepeat": "route-1-2-mobile-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "mobile",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-mobile-overflow",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "overflow",
+        "caseKey": "9aacacd271da1affc974561a3d3040a7ed950f7cb5601e32b2c3110836bf47d6",
+        "contextKey": "50a0bd266c3f20ce0a231340bbee0a557c0dfd84d77e7dd31d35b9872210cf95",
+        "ruleKey": "c327679067deed382c156c9033028b75eb9efbb4bb3c33733606715956614ead",
+        "oracleKey": "8abf11a4a075e7fa514b63f7d1770effe96977304b75c3bca31c102e94112d69",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "视口水平溢出",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 375×812.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-mobile-baseline.png",
+        "targetScreenshot": "route-1-2-mobile-target.png",
+        "baselineDetails": "route-1-2-mobile-baseline.json",
+        "targetDetails": "route-1-2-mobile-target.json",
+        "baselineRepeat": "route-1-2-mobile-baseline-repeat.png",
+        "targetRepeat": "route-1-2-mobile-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "mobile",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-mobile-structure",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "structure",
+        "caseKey": "2b2128133032214987c1a48e841b73606e9ea895b2d54fdddc8d1ed267ad9564",
+        "contextKey": "9810d20c77c496962d6ba71667a13cf397750db0730474d4bbf78f901dc6f554",
+        "ruleKey": "2600844878b036b8282932cdfb6378cb1d9e67809877369871e4bd60cb167ae6",
+        "oracleKey": "d530c786c9f908975eaa703a3fe199bee06eb52d6e0b2200382225979f1c30f0",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "标题、主标题与关键控件语义",
+      "dimension": "structure",
+      "expected": {
+        "title": "D6 controlled acceptance",
+        "headings": [
+          "Fixed manual defect members"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "Menu",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#entry",
+            "tag": "input",
+            "role": null,
+            "label": "",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ]
+      },
+      "actual": {
+        "title": "D6 controlled acceptance",
+        "headings": [
+          "Fixed manual defect members"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "Menu",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#entry",
+            "tag": "input",
+            "role": null,
+            "label": "",
+            "type": null,
+            "href": null,
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ],
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 304500,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 304500,
+            "samplingCapped": false
+          }
+        }
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 375×812.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-mobile-baseline.png",
+        "targetScreenshot": "route-1-2-mobile-target.png",
+        "baselineDetails": "route-1-2-mobile-baseline.json",
+        "targetDetails": "route-1-2-mobile-target.json",
+        "baselineRepeat": "route-1-2-mobile-baseline-repeat.png",
+        "targetRepeat": "route-1-2-mobile-target-repeat.png"
+      }
+    },
+    {
+      "route": "/",
+      "viewport": "mobile",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-mobile-visual",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+        "contextKey": "f72824569117cf7144b465ab6e0d93201d6d75e0a052646865851787c5c8c9be",
+        "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+        "oracleKey": "eba8399ff7e88508b5b130f1b54b6e5efe9c2a3bcabe959faf67e098d1025edd",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        }
+      },
+      "title": "页面视觉还原度",
+      "dimension": "visual",
+      "expected": {
+        "minimumScore": 0.97,
+        "stabilityMinimum": 0.9995,
+        "maximumMaskedRatio": 0.8,
+        "captureBudget": {
+          "maxPixels": 12000000,
+          "maxHeight": 12000
+        }
+      },
+      "actual": {
+        "score": 0.7685,
+        "baselineStability": 1,
+        "targetStability": 1,
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 304500,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 304500,
+            "samplingCapped": false
+          }
+        },
+        "capture": {
+          "baseline": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 375,
+              "height": 812
+            }
+          },
+          "target": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 375,
+              "height": 812
+            }
+          }
+        },
+        "eligible": true
+      },
+      "status": "failed",
+      "verdict": "bug",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 375×812.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-mobile-baseline.png",
+        "targetScreenshot": "route-1-2-mobile-target.png",
+        "baselineDetails": "route-1-2-mobile-baseline.json",
+        "targetDetails": "route-1-2-mobile-target.json",
+        "baselineRepeat": "route-1-2-mobile-baseline-repeat.png",
+        "targetRepeat": "route-1-2-mobile-target-repeat.png",
+        "diff": "route-1-2-mobile-diff.png"
+      },
+      "score": 0.7685
+    },
+    {
+      "route": "/",
+      "viewport": "mobile",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel"
+      },
+      "evidenceLevel": "browser-reproduced",
+      "id": "route-1-2-mobile-point-1-menu",
+      "title": "Expanded menu",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "behavior",
+        "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+        "contextKey": "d43626f41c82ecad6641652ade35a49d8be98e79a3b51fbb038a991186d0a8d5",
+        "ruleKey": "345e3c732d7cbff13bb8407aa0e60e6b17c917803f530dced2b151d80f0b104d",
+        "oracleKey": "338fe4d5e5fddd061afd689042737a6848faf88c56e8ea2ffdf58a8714f424b8",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "pointId": "menu"
+      },
+      "status": "failed",
+      "verdict": "bug",
+      "evaluationLimited": false,
+      "expected": {
+        "stepsComplete": true,
+        "assertions": [
+          {
+            "kind": "visible",
+            "selector": "#menu",
+            "expected": true,
+            "actual": true,
+            "passed": true
+          },
+          {
+            "kind": "attribute",
+            "selector": "#menu-toggle",
+            "attribute": "aria-expanded",
+            "expected": "true",
+            "actual": "true",
+            "passed": true
+          },
+          {
+            "kind": "text",
+            "selector": "#literal",
+            "expected": "d6-captured-source-sentinel",
+            "actual": "d6-captured-source-sentinel",
+            "passed": true
+          }
+        ],
+        "httpStatus": 200
+      },
+      "actual": {
+        "stepsComplete": true,
+        "stepError": null,
+        "assertions": [
+          {
+            "kind": "visible",
+            "selector": "#menu",
+            "expected": true,
+            "actual": false,
+            "passed": false
+          },
+          {
+            "kind": "attribute",
+            "selector": "#menu-toggle",
+            "attribute": "aria-expanded",
+            "expected": "true",
+            "actual": "false",
+            "passed": false
+          },
+          {
+            "kind": "text",
+            "selector": "#literal",
+            "expected": "d6-captured-source-sentinel",
+            "actual": "d6-captured-source-sentinel",
+            "passed": true
+          }
+        ],
+        "httpStatus": 200,
+        "navigationError": null,
+        "errors": [],
+        "network": [],
+        "overflow": false,
+        "blockedRequests": []
+      },
+      "reproduction": [
+        "Open http://127.0.0.1:61734/source?token=d6-source-url-sentinel at 375×812.",
+        "Open http://127.0.0.1:61734/broken in a fresh browser context at the same viewport.",
+        "fill #entry (d6-fill-sentinel)",
+        "click #menu-toggle"
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-2-mobile-point-1-baseline.png",
+        "targetScreenshot": "route-1-2-mobile-point-1-target.png",
+        "baselineDetails": "route-1-2-mobile-point-1-baseline.json",
+        "targetDetails": "route-1-2-mobile-point-1-target.json",
+        "baselineRepeat": "route-1-2-mobile-point-1-baseline-repeat.png",
+        "targetRepeat": "route-1-2-mobile-point-1-target-repeat.png"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 14,
+    "completed": 14,
+    "capped": false
+  },
+  "safety": {
+    "networkPolicy": "read-only",
+    "isolatedContexts": true,
+    "blockedRequests": 0
+  },
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "playwrightVersion": "1.63.0",
+    "locale": "zh-CN",
+    "timezoneId": "Asia/Hong_Kong",
+    "colorScheme": "light",
+    "reducedMotion": "reduce"
+  },
+  "scope": "仅验收已声明路由、视口、操作和有界观察窗口；未声明业务与接口契约为未测。单侧文档高度不超过12,000像素且面积不超过12,000,000像素时截图覆盖全页，两次稳定性截图采用相同范围。超过预算仅保留首屏证据，视觉检查标为待复核，不作为完整页面通过依据。",
+  "planFingerprint": "75336a993c4c7b1daad709812a1f041da3c663a9372d7e036ef8ab61171c4430",
+  "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+  "evidenceManifest": [
+    {
+      "file": "route-1-1-desktop-baseline.png",
+      "bytes": 18640,
+      "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+    },
+    {
+      "file": "route-1-1-desktop-target.png",
+      "bytes": 18733,
+      "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+    },
+    {
+      "file": "route-1-1-desktop-baseline.json",
+      "bytes": 1499,
+      "sha256": "d8f612cc50583c8ceb321e539059c05b6a05f0e611639efbc51a8613dc72e730"
+    },
+    {
+      "file": "route-1-1-desktop-target.json",
+      "bytes": 1451,
+      "sha256": "77d31abffb475d7c9a0a6eb7cd50b17a2b532da329eebe49f8269918e2c5eb53"
+    },
+    {
+      "file": "route-1-1-desktop-baseline-repeat.png",
+      "bytes": 18640,
+      "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+    },
+    {
+      "file": "route-1-1-desktop-target-repeat.png",
+      "bytes": 18733,
+      "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+    },
+    {
+      "file": "route-1-1-desktop-diff.png",
+      "bytes": 18900,
+      "sha256": "e3488c5926cc334dd8478f6e7473191725c9bf350e317d85d28a2c0306a21b78"
+    },
+    {
+      "file": "route-1-1-desktop-point-1-baseline.png",
+      "bytes": 20876,
+      "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+    },
+    {
+      "file": "route-1-1-desktop-point-1-target.png",
+      "bytes": 19525,
+      "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+    },
+    {
+      "file": "route-1-1-desktop-point-1-baseline.json",
+      "bytes": 2019,
+      "sha256": "c4a12b49c1d922001a18ed11e9734d8a8f4da0f4831acfe70ebd2efcdf139fda"
+    },
+    {
+      "file": "route-1-1-desktop-point-1-target.json",
+      "bytes": 1976,
+      "sha256": "1ffc7f11c73e996ca6df75b2c759d2387c83c5a17e2095f00d6f01419e04c4fb"
+    },
+    {
+      "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+      "bytes": 20876,
+      "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+    },
+    {
+      "file": "route-1-1-desktop-point-1-target-repeat.png",
+      "bytes": 19525,
+      "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+    },
+    {
+      "file": "route-1-2-mobile-baseline.png",
+      "bytes": 18930,
+      "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+    },
+    {
+      "file": "route-1-2-mobile-target.png",
+      "bytes": 19011,
+      "sha256": "17e7b5ed85427684525db31d44e6fec13fe1d92367699385c50b263d10de80b5"
+    },
+    {
+      "file": "route-1-2-mobile-baseline.json",
+      "bytes": 1496,
+      "sha256": "3b1a6bc6cfe5680795b70584f20d605a73c477bfdf82d8fa86b222d4ff3380d1"
+    },
+    {
+      "file": "route-1-2-mobile-target.json",
+      "bytes": 1448,
+      "sha256": "01f2f4c7c7ef3f40a7863c5b2d21026184bc9411e9496b91863c42378aa25bec"
+    },
+    {
+      "file": "route-1-2-mobile-baseline-repeat.png",
+      "bytes": 18930,
+      "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+    },
+    {
+      "file": "route-1-2-mobile-target-repeat.png",
+      "bytes": 19011,
+      "sha256": "17e7b5ed85427684525db31d44e6fec13fe1d92367699385c50b263d10de80b5"
+    },
+    {
+      "file": "route-1-2-mobile-diff.png",
+      "bytes": 18112,
+      "sha256": "a0a0b7003d822a03508dc6d9ec59864294ad2192e5fa0609e5c5ad2387af8423"
+    },
+    {
+      "file": "route-1-2-mobile-point-1-baseline.png",
+      "bytes": 21059,
+      "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+    },
+    {
+      "file": "route-1-2-mobile-point-1-target.png",
+      "bytes": 19758,
+      "sha256": "c98e46b35b4a8b06701bc77a50bc3d5d501359ed3cc09ab5efc4d6f613b39cc0"
+    },
+    {
+      "file": "route-1-2-mobile-point-1-baseline.json",
+      "bytes": 2016,
+      "sha256": "4b56cbc34fdec254390a9a503ca1473f0b5a663503a8516e5e6f6aeeeaabac0d"
+    },
+    {
+      "file": "route-1-2-mobile-point-1-target.json",
+      "bytes": 1973,
+      "sha256": "d7174520e90306f278da877246d6e4a673af127f51fbf3f8b40b3c0030de9371"
+    },
+    {
+      "file": "route-1-2-mobile-point-1-baseline-repeat.png",
+      "bytes": 21059,
+      "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+    },
+    {
+      "file": "route-1-2-mobile-point-1-target-repeat.png",
+      "bytes": 19758,
+      "sha256": "c98e46b35b4a8b06701bc77a50bc3d5d501359ed3cc09ab5efc4d6f613b39cc0"
+    }
+  ],
+  "gate": "failed",
+  "summary": {
+    "total": 14,
+    "passed": 10,
+    "failed": 4,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 4,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 14,
+      "total": 14,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.7236
+      },
+      "structure": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

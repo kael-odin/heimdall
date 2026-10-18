@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { DEFECT_TICKET_LIMITS, defectTicketJson, defectTicketRequestFingerprint, defectTicketMemberSetDigest,
   validateDefectTicketCreateRequest, validateDefectTicketCloseRequest, validateDefectTicketEvent,
-  defectTicketEventBytes, validateDefectTicketChain, defectTicketDigest } from '../src/acceptance/defect-ticket-schema.mjs';
+  defectTicketEventBytes, validateDefectTicketChain, defectTicketDigest, validateDefectTicketConfirmation,
+  validateDefectTicketRejection, validateDefectTicketDecision, validateDefectTicketDenyRequest,
+  defectTicketRejectionBytes, defectTicketDecisionBytes } from '../src/acceptance/defect-ticket-schema.mjs';
 
 const uid = (prefix, n) => `${prefix}-00000000-0000-0000-0000-${n.toString(16).padStart(12, '0')}`;
 const h = value => createHash('sha256').update(String(value)).digest('hex');
@@ -166,4 +168,88 @@ test('record wrapper budget permits a valid chain close to the raw namespace byt
   assert.equal(wrappedBytes, rawBytes + 86 * records.length + 1);
   assert.equal(validateDefectTicketChain(records).length, records.length);
   t.diagnostic(JSON.stringify({ actions: records.length, rawBytes, wrappedBytes }));
+});
+
+function original(kind = 'create') {
+  const first = createEvent(), close = closeEvent(first), request = kind === 'create'
+    ? validateDefectTicketCreateRequest({ ticketId: first.ticketId, actionId: first.actionId,
+      sourceOperationId: first.source.operationId, memberCheckIds: first.members.map(member => member.checkId),
+      title: first.title, severity: first.severity, description: first.description, reproduction: first.reproduction })
+    : { actionId: close.actionId, afterOperationId: close.after.operationId, expectedRevision: 0,
+      expectedHeadSha256: close.previousEventSha256, memberSetDigest: close.memberSetDigest,
+      factsDigest: close.factsDigest, previewDigest: close.previewDigest, resolution: close.resolution, confirmed: true };
+  return { version: 1, projectId: first.projectId, ticketId: first.ticketId, kind, actionId: request.actionId,
+    requestFingerprint: defectTicketRequestFingerprint({ projectId: first.projectId, ticketId: first.ticketId, kind, request }), request };
+}
+const rejection = (confirmation = original()) => ({ actionDecisionVersion: 1, kind: 'manual-defect-ticket-action-rejection',
+  original: confirmation, effect: 'deny-late-manual-defect-ticket-action', decidedAt: '2026-10-18T02:00:00.000Z', actor: { kind: 'local-operator' } });
+
+test('D6 confirmation binds every original identity and request field without silently normalizing members', () => {
+  for (const kind of ['create', 'close']) {
+    const value = original(kind); assert.deepEqual(validateDefectTicketConfirmation(value), value);
+    for (const [key, changed] of Object.entries({ version: 2, projectId: uid('ap', 99), ticketId: uid('dt', 99),
+      kind: kind === 'create' ? 'close' : 'create', actionId: uid('da', 99), requestFingerprint: h('different') }))
+      assert.throws(() => validateDefectTicketConfirmation({ ...value, [key]: changed }), { code: 'INVALID_INPUT' }, key);
+    for (const [key, before] of Object.entries(value.request)) {
+      const changed = typeof before === 'string' ? before + 'x' : typeof before === 'number' ? before + 1
+        : typeof before === 'boolean' ? !before : [...before, 'extra-member'];
+      assert.throws(() => validateDefectTicketConfirmation({ ...value, request: { ...value.request, [key]: changed } }),
+        { code: 'INVALID_INPUT' }, `${kind}.${key}`);
+    }
+    assert.throws(() => validateDefectTicketConfirmation({ ...value, generation: uid('ag', 1) }), { code: 'INVALID_INPUT' });
+  }
+  const value = original(); value.request.memberCheckIds = ['mobile', 'desktop'];
+  value.requestFingerprint = defectTicketRequestFingerprint({ projectId: value.projectId, ticketId: value.ticketId, kind: value.kind, request: value.request });
+  assert.throws(() => validateDefectTicketConfirmation(value), { code: 'INVALID_INPUT' });
+  value.request.memberCheckIds.sort(); assert.deepEqual(validateDefectTicketConfirmation(value), value);
+});
+
+test('D6 rejection is an independent strict decision and accepted serialization remains byte identical', () => {
+  const event = createEvent(), denied = rejection(), bytes = defectTicketRejectionBytes(denied);
+  assert.deepEqual(validateDefectTicketRejection(denied), denied);
+  assert.deepEqual(validateDefectTicketDecision(denied), denied); assert.equal(bytes.at(-1), 10);
+  assert.deepEqual(defectTicketDecisionBytes(denied), bytes);
+  assert.deepEqual(validateDefectTicketDecision(event), event);
+  assert.deepEqual(defectTicketDecisionBytes(event), defectTicketEventBytes(event));
+  assert.throws(() => validateDefectTicketEvent(denied), { code: 'INTEGRITY_BLOCKED' });
+  for (const patch of [{ actionDecisionVersion: 2 }, { kind: 'create' }, { effect: 'cancel' },
+    { decidedAt: '2026-10-18' }, { actor: { kind: 'remote-operator' } }, { ticketContractVersion: 1 }, { extra: true }])
+    assert.throws(() => validateDefectTicketDecision({ ...denied, ...patch }), { code: 'INTEGRITY_BLOCKED' });
+  for (const invalid of [null, false, [], {}, { kind: 'create' }, { ...event, actionDecisionVersion: 1 }, { ...denied, original: { ...denied.original, requestFingerprint: h('bad') } }])
+    assert.throws(() => validateDefectTicketDecision(invalid), { code: 'INTEGRITY_BLOCKED' });
+});
+
+test('D6 confirmation, rejection, decision and deny boundaries reject hooks without invoking them', () => {
+  let hooks = 0;
+  const accessor = {}; Object.defineProperty(accessor, 'original', { enumerable: true, get() { hooks++; } });
+  const proxy = new Proxy({}, { get() { hooks++; }, ownKeys() { hooks++; }, getPrototypeOf() { hooks++; } });
+  const nested = rejection(); Object.defineProperty(nested.original.request, 'title', { enumerable: true, get() { hooks++; } });
+  for (const input of [accessor, proxy, nested]) for (const validate of [validateDefectTicketConfirmation,
+    validateDefectTicketRejection, validateDefectTicketDecision, validateDefectTicketDenyRequest]) assert.throws(() => validate(input));
+  assert.equal(hooks, 0);
+});
+
+test('D6 deny has a separate 65536 byte wrapper budget while original requests retain 32768', t => {
+  assert.equal(DEFECT_TICKET_LIMITS.requestBytes, 32768); assert.equal(DEFECT_TICKET_LIMITS.denyRequestBytes, 65536);
+  const confirmation = original();
+  confirmation.request.title = 'a'.repeat(239); confirmation.request.description = '界'.repeat(4000);
+  confirmation.request.reproduction = '界'.repeat(4000);
+  confirmation.request.memberCheckIds = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0') + 'a'.repeat(236));
+  // Change one-byte characters to three-byte characters, within each legacy text limit.
+  for (let index = 0; Buffer.byteLength(JSON.stringify(confirmation.request)) < DEFECT_TICKET_LIMITS.requestBytes - 1; index++) {
+    const member = index % 24;
+    confirmation.request.memberCheckIds[member] = confirmation.request.memberCheckIds[member].replace('a', '界');
+  }
+  const room = DEFECT_TICKET_LIMITS.requestBytes - Buffer.byteLength(JSON.stringify(confirmation.request));
+  confirmation.request.title += 'a'.repeat(room);
+  assert.equal(Buffer.byteLength(JSON.stringify(confirmation.request)), 32768);
+  confirmation.requestFingerprint = defectTicketRequestFingerprint({ projectId: confirmation.projectId,
+    ticketId: confirmation.ticketId, kind: confirmation.kind, request: confirmation.request });
+  const envelope = { schemaVersion: 1, confirmed: true, original: confirmation };
+  assert(Buffer.byteLength(JSON.stringify(envelope)) > 32768);
+  assert.deepEqual(validateDefectTicketDenyRequest(envelope), envelope);
+  assert.throws(() => validateDefectTicketCreateRequest({ ...confirmation.request, title: confirmation.request.title + 'a' }), { code: 'INVALID_INPUT' });
+  for (const patch of [{ schemaVersion: 2 }, { confirmed: false }, { extra: true }, { original: { ...confirmation, extra: 'a'.repeat(65536) } }])
+    assert.throws(() => validateDefectTicketDenyRequest({ ...envelope, ...patch }), { code: 'INVALID_INPUT' });
+  t.diagnostic(JSON.stringify({ originalBytes: Buffer.byteLength(JSON.stringify(confirmation.request)), denyBytes: Buffer.byteLength(JSON.stringify(envelope)) }));
 });

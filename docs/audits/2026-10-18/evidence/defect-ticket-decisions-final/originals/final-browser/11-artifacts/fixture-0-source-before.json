@@ -1,0 +1,22 @@
+{
+  "manifest.json": {
+    "sha256": "2b36ae41c8f7b27644c2388eb7b2a0aedd9f7e6fdfac9a2f5764fff1518381fa",
+    "nlink": 1
+  },
+  "report.json": {
+    "sha256": "af0ca1fdf556e197e61874c1c4ee88f82781e00173afc590ea486826f6c88daa",
+    "nlink": 1
+  },
+  "report.md": {
+    "sha256": "ec57ad52bcbb193535b4a436475068c772585d14e81a4a38a9972b8015ed1aba",
+    "nlink": 1
+  },
+  "spec-1-CHECK-0-contract.json": {
+    "sha256": "727accfe41ad7fcee670d3ebcd58cfee50b64a99492098a57948a1dae1da5214",
+    "nlink": 1
+  },
+  "spec-2-CHECK-1-contract.json": {
+    "sha256": "07edad164b74646e8941ceb619a479cb20ca9796ef2bb9179b366661ed9e253f",
+    "nlink": 1
+  }
+}

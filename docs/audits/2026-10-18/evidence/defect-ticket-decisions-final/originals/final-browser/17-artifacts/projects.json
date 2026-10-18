@@ -1,0 +1,84 @@
+{
+  "a": {
+    "project": {
+      "id": "ap-75d61818-9e15-4e25-9e99-c5a960f6248d",
+      "name": "Full review baseline",
+      "createdAt": "2026-10-18T03:13:50.273Z"
+    },
+    "release": {
+      "id": "ar-6b381f5d-a568-4835-9711-900dd9377ef8",
+      "projectId": "ap-75d61818-9e15-4e25-9e99-c5a960f6248d",
+      "label": "baseline declared version",
+      "targetUrl": "http://127.0.0.1:55007/baseline?z=approved-query-review-sentinel&a=stable",
+      "createdAt": "2026-10-18T03:13:50.308Z"
+    },
+    "binding": {
+      "id": "ax-1545d90b-5a9a-4ad8-aa27-c56155678e6c",
+      "projectId": "ap-75d61818-9e15-4e25-9e99-c5a960f6248d",
+      "releaseId": "ar-6b381f5d-a568-4835-9711-900dd9377ef8",
+      "projectionVersion": 1,
+      "source": {
+        "runId": "ac-59799b5d-eafb-486b-a0e3-f2504f65dbf0",
+        "sourceMode": "mirror",
+        "side": "baseline",
+        "entryUrlDisplay": "http://127.0.0.1:55007/baseline?[redacted]",
+        "queryPresent": true
+      },
+      "sourceContentDigest": "0c704c80ca3cc9f965008c2700360b498ed3771a21dc4de278ec31311c96e149",
+      "boundAt": "2026-10-18T03:13:50.346Z",
+      "actor": {
+        "kind": "local-operator"
+      },
+      "sourcePlanDigest": "a505d0e1dcfdd9b14c82d838a8dec63c0f9162ed6bf844aec182324bd4167b02",
+      "sourceReportDigest": "0302882c41ec36f43a8b28825cc71201e1512ff6eca2edeb4f54f90e65b31894",
+      "evidenceManifestDigest": "862289861a2c0c439e460e538656128725b5eae9cf84b2e8fa004ebbb99f410c",
+      "selectedEvidenceManifestDigest": "b12c94f444ae5dbd4e83581867cab26125093c734c56cec56fd4ea4c68a57dbb",
+      "scopeKey": "b751246a867ccca9d267333603849b354f3ba9d9be434d1c4ebacda177280167",
+      "ruleManifestKey": "bbd66a8b5c9d2cfb3975a71bbd7a1af7a2bb1bff76c8e7535d0cdcda721d1c0b",
+      "oracleManifestKey": "fd446193e0e09936daf92059b7786dd7b8a5b80c63b7f3f09e1128f198241f22",
+      "environmentKey": "99b25dcb496070e02a66a7fac9e1602d97ca62212d5866c9c818f7fd78ee9be9",
+      "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337"
+    }
+  },
+  "b": {
+    "project": {
+      "id": "ap-3cc9c1a9-6005-493b-9898-5e134648f430",
+      "name": "Full review target",
+      "createdAt": "2026-10-18T03:13:52.706Z"
+    },
+    "release": {
+      "id": "ar-e1d22409-212b-440f-8f36-baa927877f20",
+      "projectId": "ap-3cc9c1a9-6005-493b-9898-5e134648f430",
+      "label": "target declared version",
+      "targetUrl": "http://127.0.0.1:55007/target?z=current-query-review-sentinel&a=development",
+      "createdAt": "2026-10-18T03:13:52.745Z"
+    },
+    "binding": {
+      "id": "ax-76de05ac-dcea-4ee9-8bf6-52ffb8219226",
+      "projectId": "ap-3cc9c1a9-6005-493b-9898-5e134648f430",
+      "releaseId": "ar-e1d22409-212b-440f-8f36-baa927877f20",
+      "projectionVersion": 1,
+      "source": {
+        "runId": "ac-59799b5d-eafb-486b-a0e3-f2504f65dbf0",
+        "sourceMode": "mirror",
+        "side": "target",
+        "entryUrlDisplay": "http://127.0.0.1:55007/target?[redacted]",
+        "queryPresent": true
+      },
+      "sourceContentDigest": "4b3c5ccb392c8bda68ad454e90a91e2643d6e8566b1e2d92e985b182270c0036",
+      "boundAt": "2026-10-18T03:13:52.784Z",
+      "actor": {
+        "kind": "local-operator"
+      },
+      "sourcePlanDigest": "a505d0e1dcfdd9b14c82d838a8dec63c0f9162ed6bf844aec182324bd4167b02",
+      "sourceReportDigest": "0302882c41ec36f43a8b28825cc71201e1512ff6eca2edeb4f54f90e65b31894",
+      "evidenceManifestDigest": "862289861a2c0c439e460e538656128725b5eae9cf84b2e8fa004ebbb99f410c",
+      "selectedEvidenceManifestDigest": "6309889ba6c7895ffd768f649898d544f789464608a4128d1cf89948ac5525ec",
+      "scopeKey": "b751246a867ccca9d267333603849b354f3ba9d9be434d1c4ebacda177280167",
+      "ruleManifestKey": "bbd66a8b5c9d2cfb3975a71bbd7a1af7a2bb1bff76c8e7535d0cdcda721d1c0b",
+      "oracleManifestKey": "5c76f13cdfb1218e944ec5cb7dcf1a9103ae66274edfa0abfaa382f62a3aea9b",
+      "environmentKey": "99b25dcb496070e02a66a7fac9e1602d97ca62212d5866c9c818f7fd78ee9be9",
+      "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337"
+    }
+  }
+}

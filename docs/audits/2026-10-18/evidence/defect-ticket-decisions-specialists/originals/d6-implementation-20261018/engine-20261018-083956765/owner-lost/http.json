@@ -1,0 +1,720 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 0,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 0,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 9,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=6ca1c309-c6d4-42d0-a061-09efb574a2e5; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked"
+    },
+    "bytes": 274,
+    "sha256": "34d50ed17c3729880fbd328c6099a5dc308f89a643ca20b19b965d576081f1d5",
+    "payload": {
+      "ok": true,
+      "recon": null,
+      "audit": null,
+      "watch": null,
+      "assets": null,
+      "matrix": null,
+      "verify": null,
+      "acceptance": null,
+      "live": null,
+      "session": null,
+      "upgrade": null,
+      "clone": null,
+      "editManifest": null,
+      "forge": {
+        "slots": 0,
+        "max": 2
+      },
+      "jobs": 0,
+      "jobsStore": "sqlite",
+      "bind": "127.0.0.1",
+      "auth": true
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets",
+    "auth": "valid",
+    "elapsedMs": 4,
+    "status": 503,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=eb5fdc51-9b1c-491e-91dc-5f5d4c078a28; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 109,
+    "sha256": "326ec922d8a7946d1ffad7c3ffca4f8e9efe87a9b2783081daa0267a76459d78",
+    "payload": {
+      "code": "ACCEPTANCE_OWNER_LOST",
+      "error": "验收目录所有权已失效，请停止当前引擎后重试。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/sources?candidateId=bc-00000000-0000-0000-0000-000000000704",
+    "auth": "valid",
+    "elapsedMs": 3,
+    "status": 503,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=6e0b9935-20e6-4ccd-a16f-d21383f195f2; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 109,
+    "sha256": "326ec922d8a7946d1ffad7c3ffca4f8e9efe87a9b2783081daa0267a76459d78",
+    "payload": {
+      "code": "ACCEPTANCE_OWNER_LOST",
+      "error": "验收目录所有权已失效，请停止当前引擎后重试。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/actions/da-ff7f1596-7e9a-413c-890b-5edb6971819a",
+    "auth": "valid",
+    "elapsedMs": 3,
+    "status": 503,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=b9b1051d-f465-49ab-9f7d-6b28709f82ac; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 109,
+    "sha256": "326ec922d8a7946d1ffad7c3ffca4f8e9efe87a9b2783081daa0267a76459d78",
+    "payload": {
+      "code": "ACCEPTANCE_OWNER_LOST",
+      "error": "验收目录所有权已失效，请停止当前引擎后重试。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-d72d60d3-ba3f-4a78-b7b5-e649ae82e155",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "status": 503,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=8f92270f-faed-415e-a326-a137d6d0aa8a; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 109,
+    "sha256": "326ec922d8a7946d1ffad7c3ffca4f8e9efe87a9b2783081daa0267a76459d78",
+    "payload": {
+      "code": "ACCEPTANCE_OWNER_LOST",
+      "error": "验收目录所有权已失效，请停止当前引擎后重试。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-d72d60d3-ba3f-4a78-b7b5-e649ae82e155/export.md",
+    "auth": "valid",
+    "elapsedMs": 3,
+    "status": 503,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=5a8658f7-0679-41c8-b6aa-f07d84517015; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 109,
+    "sha256": "326ec922d8a7946d1ffad7c3ffca4f8e9efe87a9b2783081daa0267a76459d78",
+    "payload": {
+      "code": "ACCEPTANCE_OWNER_LOST",
+      "error": "验收目录所有权已失效，请停止当前引擎后重试。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-d72d60d3-ba3f-4a78-b7b5-e649ae82e155/export.json",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "status": 503,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=0b5157dc-4a51-4439-8dec-f89695fe0166; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 109,
+    "sha256": "326ec922d8a7946d1ffad7c3ffca4f8e9efe87a9b2783081daa0267a76459d78",
+    "payload": {
+      "code": "ACCEPTANCE_OWNER_LOST",
+      "error": "验收目录所有权已失效，请停止当前引擎后重试。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-d72d60d3-ba3f-4a78-b7b5-e649ae82e155/close-preview?afterOperationId=bo-17f44636-bb5c-4f3c-9ead-333cb43d946b",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "status": 503,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=d2b5553f-e33b-4fef-9321-a0c738dc8fa6; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 109,
+    "sha256": "326ec922d8a7946d1ffad7c3ffca4f8e9efe87a9b2783081daa0267a76459d78",
+    "payload": {
+      "code": "ACCEPTANCE_OWNER_LOST",
+      "error": "验收目录所有权已失效，请停止当前引擎后重试。"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets",
+    "auth": "valid",
+    "body": {
+      "ticketId": "dt-d72d60d3-ba3f-4a78-b7b5-e649ae82e155",
+      "actionId": "da-ff7f1596-7e9a-413c-890b-5edb6971819a",
+      "sourceOperationId": "bo-96e25dc7-1f0f-44f4-8943-c28a6f412d96",
+      "memberCheckIds": [
+        "check-0",
+        "check-1"
+      ],
+      "title": "两项页面还原缺陷",
+      "severity": "high",
+      "description": "捕获的来源包含两项失败检查。",
+      "reproduction": "打开固定路由并核对这两项检查。"
+    },
+    "elapsedMs": 4,
+    "status": 503,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=2b89e4ba-f13d-4f05-8dc0-8c98b174e97c; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 109,
+    "sha256": "326ec922d8a7946d1ffad7c3ffca4f8e9efe87a9b2783081daa0267a76459d78",
+    "payload": {
+      "code": "ACCEPTANCE_OWNER_LOST",
+      "error": "验收目录所有权已失效，请停止当前引擎后重试。"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-d72d60d3-ba3f-4a78-b7b5-e649ae82e155/close",
+    "auth": "valid",
+    "body": {
+      "ticketId": "dt-d72d60d3-ba3f-4a78-b7b5-e649ae82e155",
+      "actionId": "da-ff7f1596-7e9a-413c-890b-5edb6971819a",
+      "sourceOperationId": "bo-96e25dc7-1f0f-44f4-8943-c28a6f412d96",
+      "memberCheckIds": [
+        "check-0",
+        "check-1"
+      ],
+      "title": "两项页面还原缺陷",
+      "severity": "high",
+      "description": "捕获的来源包含两项失败检查。",
+      "reproduction": "打开固定路由并核对这两项检查。"
+    },
+    "elapsedMs": 2,
+    "status": 503,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=27655475-3e21-480e-9e3a-16aeb2edca49; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 109,
+    "sha256": "326ec922d8a7946d1ffad7c3ffca4f8e9efe87a9b2783081daa0267a76459d78",
+    "payload": {
+      "code": "ACCEPTANCE_OWNER_LOST",
+      "error": "验收目录所有权已失效，请停止当前引擎后重试。"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets",
+    "auth": "missing",
+    "elapsedMs": 1,
+    "status": 401,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 24,
+    "sha256": "782eeaa7f1915f6783146f8180751785584f0f24bd4e503165c7fc4a597da600",
+    "payload": {
+      "error": "unauthorized"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/jobs",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=7eca5fcf-dcc1-4953-9816-32d4fd2d54d7; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked"
+    },
+    "bytes": 41,
+    "sha256": "a65ab90b203a3451a6e9da8e50a34418c3c5280e0bb9e010913df21fa01e158e",
+    "payload": {
+      "store": "sqlite",
+      "jobs": [],
+      "history": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:44:32 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=ae07476b-e553-414f-b496-5c7efda2d6f4; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked"
+    },
+    "bytes": 274,
+    "sha256": "34d50ed17c3729880fbd328c6099a5dc308f89a643ca20b19b965d576081f1d5",
+    "payload": {
+      "ok": true,
+      "recon": null,
+      "audit": null,
+      "watch": null,
+      "assets": null,
+      "matrix": null,
+      "verify": null,
+      "acceptance": null,
+      "live": null,
+      "session": null,
+      "upgrade": null,
+      "clone": null,
+      "editManifest": null,
+      "forge": {
+        "slots": 0,
+        "max": 2
+      },
+      "jobs": 0,
+      "jobsStore": "sqlite",
+      "bind": "127.0.0.1",
+      "auth": true
+    }
+  }
+]

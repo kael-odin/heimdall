@@ -1,0 +1,57 @@
+[
+  {
+    "phase": "before-prepare",
+    "catalog.json": {
+      "bytes": 23637,
+      "sha256": "88ae94c283e77bc1b5cd8b68202f0b605cae42b63dcd730f1d55dfdff5c38975"
+    },
+    "catalog.previous.json": {
+      "bytes": 22796,
+      "sha256": "9f326f58db3eaf39a8dc2a00e38a1cb72de6cd32d795e0b35fb952a80c5f0dd4"
+    }
+  },
+  {
+    "phase": "after-prepare",
+    "catalog.json": {
+      "bytes": 23637,
+      "sha256": "88ae94c283e77bc1b5cd8b68202f0b605cae42b63dcd730f1d55dfdff5c38975"
+    },
+    "catalog.previous.json": {
+      "bytes": 22796,
+      "sha256": "9f326f58db3eaf39a8dc2a00e38a1cb72de6cd32d795e0b35fb952a80c5f0dd4"
+    }
+  },
+  {
+    "phase": "after-replay",
+    "catalog.json": {
+      "bytes": 23637,
+      "sha256": "88ae94c283e77bc1b5cd8b68202f0b605cae42b63dcd730f1d55dfdff5c38975"
+    },
+    "catalog.previous.json": {
+      "bytes": 22796,
+      "sha256": "9f326f58db3eaf39a8dc2a00e38a1cb72de6cd32d795e0b35fb952a80c5f0dd4"
+    }
+  },
+  {
+    "phase": "after-cancellation-and-move",
+    "catalog.json": {
+      "bytes": 24559,
+      "sha256": "3cbe71b725b935f1958fc0c22b13609def5ea0983f42aa05fc34d45c3f12f266"
+    },
+    "catalog.previous.json": {
+      "bytes": 23637,
+      "sha256": "88ae94c283e77bc1b5cd8b68202f0b605cae42b63dcd730f1d55dfdff5c38975"
+    }
+  },
+  {
+    "phase": "after-reopen-replay",
+    "catalog.json": {
+      "bytes": 24559,
+      "sha256": "3cbe71b725b935f1958fc0c22b13609def5ea0983f42aa05fc34d45c3f12f266"
+    },
+    "catalog.previous.json": {
+      "bytes": 23637,
+      "sha256": "88ae94c283e77bc1b5cd8b68202f0b605cae42b63dcd730f1d55dfdff5c38975"
+    }
+  }
+]

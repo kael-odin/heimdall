@@ -1,0 +1,356 @@
+[
+  {
+    "at": "2026-10-18T01:25:24.216Z",
+    "event": "cdp-request",
+    "id": "9E36CBBC8BE0CFAA310E3DE7509C94CB",
+    "url": "http://127.0.0.1:49996/"
+  },
+  {
+    "at": "2026-10-18T01:25:24.219Z",
+    "event": "cdp-response",
+    "id": "9E36CBBC8BE0CFAA310E3DE7509C94CB",
+    "url": "http://127.0.0.1:49996/",
+    "status": 200
+  },
+  {
+    "at": "2026-10-18T01:25:24.231Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:49996/"
+  },
+  {
+    "at": "2026-10-18T01:25:24.231Z",
+    "event": "cdp-finished",
+    "id": "9E36CBBC8BE0CFAA310E3DE7509C94CB",
+    "url": "http://127.0.0.1:49996/"
+  },
+  {
+    "at": "2026-10-18T01:25:24.231Z",
+    "event": "cdp-request",
+    "id": "31272.2",
+    "url": "http://127.0.0.1:49996/helper.mjs"
+  },
+  {
+    "at": "2026-10-18T01:25:24.238Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:49996/helper.mjs"
+  },
+  {
+    "at": "2026-10-18T01:25:24.238Z",
+    "event": "cdp-response",
+    "id": "31272.2",
+    "url": "http://127.0.0.1:49996/helper.mjs",
+    "status": 200
+  },
+  {
+    "at": "2026-10-18T01:25:24.239Z",
+    "event": "cdp-finished",
+    "id": "31272.2",
+    "url": "http://127.0.0.1:49996/helper.mjs"
+  },
+  {
+    "at": "2026-10-18T01:25:24.270Z",
+    "event": "probe-start",
+    "mode": "native-full-options",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:24.275Z",
+    "event": "server-finish",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:24.275Z",
+    "event": "server-close",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:24.276Z",
+    "event": "cdp-request",
+    "id": "31272.3",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:24.278Z",
+    "event": "cdp-response",
+    "id": "31272.3",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "status": 502
+  },
+  {
+    "at": "2026-10-18T01:25:24.327Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:24.328Z",
+    "event": "cdp-finished",
+    "id": "31272.3",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:26.293Z",
+    "event": "probe-end",
+    "cache": "unspecified",
+    "mode": "native-full-options",
+    "value": {
+      "error": "MIME rejected"
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "at": "2026-10-18T01:25:26.293Z",
+    "event": "probe-start",
+    "mode": "helper",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:26.302Z",
+    "event": "server-finish",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:26.302Z",
+    "event": "server-close",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:26.302Z",
+    "event": "cdp-request",
+    "id": "31272.4",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:26.303Z",
+    "event": "cdp-response",
+    "id": "31272.4",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "status": 502
+  },
+  {
+    "at": "2026-10-18T01:25:26.357Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:26.358Z",
+    "event": "cdp-finished",
+    "id": "31272.4",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:28.312Z",
+    "event": "probe-end",
+    "cache": "unspecified",
+    "mode": "helper",
+    "value": {
+      "error": "人工缺陷单请求未能完整核对，请保留原确认并只读查询。"
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "at": "2026-10-18T01:25:28.313Z",
+    "event": "probe-start",
+    "mode": "native-full-options",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:28.321Z",
+    "event": "server-finish",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:28.321Z",
+    "event": "server-close",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:28.321Z",
+    "event": "cdp-request",
+    "id": "31272.5",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:28.323Z",
+    "event": "cdp-response",
+    "id": "31272.5",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "status": 502
+  },
+  {
+    "at": "2026-10-18T01:25:30.324Z",
+    "event": "probe-end",
+    "cache": "no-store",
+    "mode": "native-full-options",
+    "value": {
+      "error": "MIME rejected"
+    },
+    "pwFinished": false,
+    "cdpFinished": false,
+    "failed": []
+  },
+  {
+    "at": "2026-10-18T01:25:30.325Z",
+    "event": "probe-start",
+    "mode": "helper",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:30.331Z",
+    "event": "server-finish",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:30.331Z",
+    "event": "server-close",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:30.332Z",
+    "event": "cdp-request",
+    "id": "31272.6",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:30.333Z",
+    "event": "cdp-response",
+    "id": "31272.6",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "status": 502
+  },
+  {
+    "at": "2026-10-18T01:25:32.347Z",
+    "event": "probe-end",
+    "cache": "no-store",
+    "mode": "helper",
+    "value": {
+      "error": "人工缺陷单请求未能完整核对，请保留原确认并只读查询。"
+    },
+    "pwFinished": false,
+    "cdpFinished": false,
+    "failed": []
+  },
+  {
+    "at": "2026-10-18T01:25:32.348Z",
+    "event": "probe-start",
+    "mode": "native-full-options",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:32.357Z",
+    "event": "server-finish",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:32.357Z",
+    "event": "server-close",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:32.357Z",
+    "event": "cdp-request",
+    "id": "31272.7",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:32.359Z",
+    "event": "cdp-response",
+    "id": "31272.7",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "status": 502
+  },
+  {
+    "at": "2026-10-18T01:25:32.425Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:32.425Z",
+    "event": "cdp-finished",
+    "id": "31272.7",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:34.370Z",
+    "event": "probe-end",
+    "cache": "public, max-age=0",
+    "mode": "native-full-options",
+    "value": {
+      "error": "MIME rejected"
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "at": "2026-10-18T01:25:34.371Z",
+    "event": "probe-start",
+    "mode": "helper",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:34.374Z",
+    "event": "cdp-request",
+    "id": "31272.8",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:34.375Z",
+    "event": "server-finish",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:34.375Z",
+    "event": "server-close",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:25:34.377Z",
+    "event": "cdp-response",
+    "id": "31272.8",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "status": 502
+  },
+  {
+    "at": "2026-10-18T01:25:34.433Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:34.433Z",
+    "event": "cdp-finished",
+    "id": "31272.8",
+    "url": "http://127.0.0.1:49996/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:25:36.392Z",
+    "event": "probe-end",
+    "cache": "public, max-age=0",
+    "mode": "helper",
+    "value": {
+      "error": "人工缺陷单请求未能完整核对，请保留原确认并只读查询。"
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "at": "2026-10-18T01:25:36.392Z",
+    "event": "before-teardown"
+  }
+]

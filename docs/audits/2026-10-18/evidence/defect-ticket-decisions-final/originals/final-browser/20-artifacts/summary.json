@@ -1,0 +1,30 @@
+{
+  "startedAt": "2026-10-18T03:20:22.142Z",
+  "endedAt": "2026-10-18T03:30:57.047Z",
+  "passed": true,
+  "checkCount": 10,
+  "checks": {
+    "realSourceAndRegisteredVisualBehaviorFailures": true,
+    "fixedMembersAndLostCreateReconcileAfterReloadWithoutPost": true,
+    "partialRepairCannotCloseFixedMemberSet": true,
+    "allMembersRequireExplicitCloseAndLostCloseUsesOnlyGet": true,
+    "reliableFailureReopensAndLaterPassDoesNotAutoClose": true,
+    "definiteStalePostRetainsDraftAndRequiresFreshExplicitPreview": true,
+    "markdownAndJsonDownloadsPreserveHistoryAndOmitRecognizedSecrets": true,
+    "restartReadsExactTicketWithoutStartingOrRegisteringBrowserWork": true,
+    "renderedDesktopMobileAndOriginalSourceIntegrity": true,
+    "consoleErrorsAreOnlyTheExplicitControlledHttpFailures": true
+  },
+  "captures": [
+    "defect-ticket-open-desktop.png",
+    "defect-ticket-open-mobile.png",
+    "defect-ticket-reopened-desktop.png",
+    "defect-ticket-reopened-mobile.png"
+  ],
+  "outputDirectory": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\20-artifacts",
+  "evidenceLevel": "real-local-chromium-fixed-captured-source-explicit-manual-ticket-lifecycle",
+  "browserPath": "Browser plugin not available; repository Playwright/CDP",
+  "pageErrors": [],
+  "consoleMessageCount": 3,
+  "controlledReplyCount": 3
+}

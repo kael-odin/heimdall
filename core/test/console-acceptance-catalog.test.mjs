@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AcceptanceCatalogError, buildCatalogBindingInput, buildCatalogProjectInput, buildCatalogReleaseInput,
+import { AcceptanceCatalogError, CATALOG_REQUEST_TIMEOUT_MS, buildCatalogBindingInput, buildCatalogProjectInput, buildCatalogReleaseInput,
   catalogFailure, catalogPreconditions, catalogTargetUrl, catalogTerminalRuns, catalogVersion,
   createCatalogReadGuard, requestAcceptanceCatalog } from '../../console/src/acceptance-catalog.js';
 
@@ -122,4 +122,107 @@ test('server-side unavailable writes keep their structured diagnostic and requir
     code: 'CATALOG_UNAVAILABLE', error: 'Atomic replace failed', details: { reason: 'temporarily-busy' },
   }, 503) }), error => error instanceof AcceptanceCatalogError && error.code === 'CATALOG_UNAVAILABLE'
     && error.status === 503 && error.details.reason === 'temporarily-busy' && error.writeMayHaveCommitted);
+});
+
+const never = () => new Promise(() => {});
+const flush = async () => { for (let i = 0; i < 4; i++) await new Promise(setImmediate); };
+function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
+
+test('catalog deadline defaults to 60 seconds and invalid budgets issue no request', async () => {
+  assert.equal(CATALOG_REQUEST_TIMEOUT_MS, 60000);
+  let requests = 0;
+  for (const timeoutMs of [0, -1, 0.5, NaN, Infinity, '60000', 2147483648]) {
+    await assert.rejects(requestAcceptanceCatalog('', { timeoutMs, fetcher: () => { requests++; } }),
+      problem => problem.code === 'INVALID_INPUT' && !problem.writeMayHaveCommitted);
+  }
+  assert.equal(requests, 0);
+});
+
+for (const method of ['GET', 'POST']) {
+  test(`${method} fetch ignoring abort still times out with exactly one send`, { timeout: 2000 }, async () => {
+    let requests = 0, requestSignal;
+    await assert.rejects(requestAcceptanceCatalog('', { method, timeoutMs: 20, ...(method === 'POST' ? { body: {} } : {}),
+      fetcher: (_url, options) => { requests++; requestSignal = options.signal; return never(); } }),
+    problem => problem.code === 'REQUEST_TIMEOUT' && problem.status === null && problem.writeMayHaveCommitted === (method === 'POST'));
+    assert.equal(requests, 1);
+    assert.equal(requestSignal.aborted, true);
+  });
+
+  test(`${method} body and cancellation ignoring abort cannot keep the caller busy`, { timeout: 2000 }, async () => {
+    let requests = 0, cancellations = 0, reads = 0, requestSignal;
+    await assert.rejects(requestAcceptanceCatalog('', { method, timeoutMs: 20, ...(method === 'POST' ? { body: {} } : {}),
+      fetcher: (_url, options) => { requests++; requestSignal = options.signal; return {
+        ok: true, status: method === 'POST' ? 201 : 200,
+        json() { reads++; return never(); }, body: { cancel() { cancellations++; return never(); } },
+      }; } }), problem => problem.code === 'REQUEST_TIMEOUT' && problem.status === (method === 'POST' ? 201 : 200)
+        && problem.writeMayHaveCommitted === (method === 'POST'));
+    assert.equal(requests, 1); assert.equal(reads, 1); assert.equal(cancellations, 1); assert.equal(requestSignal.aborted, true);
+  });
+
+  for (const stage of ['fetch', 'body']) {
+    test(`${method} external abort settles a non-cooperating ${stage} and removes its listener`, { timeout: 2000 }, async () => {
+      const controller = new AbortController(), originalAdd = controller.signal.addEventListener.bind(controller.signal),
+        originalRemove = controller.signal.removeEventListener.bind(controller.signal);
+      let listeners = 0, requests = 0, reads = 0;
+      controller.signal.addEventListener = (...args) => { listeners++; originalAdd(...args); };
+      controller.signal.removeEventListener = (...args) => { listeners--; originalRemove(...args); };
+      const pending = requestAcceptanceCatalog('', { method, signal: controller.signal, timeoutMs: 1000,
+        fetcher: () => { requests++; return stage === 'fetch' ? never() : { ok: true, status: 200,
+          json() { reads++; return never(); }, body: { cancel: never } }; } });
+      const outcome = assert.rejects(pending, problem => method === 'GET' ? problem.name === 'AbortError'
+        : problem.code === 'REQUEST_ABORTED' && problem.writeMayHaveCommitted === true);
+      await flush(); assert.equal(reads, stage === 'body' ? 1 : 0);
+      controller.abort(); await outcome;
+      assert.equal(listeners, 0); assert.equal(requests, 1);
+    });
+  }
+}
+
+test('fetch and full JSON body share one deadline rather than restarting it at headers', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const headers = deferred(), body = deferred(); let reads = 0, failed = false;
+  const pending = requestAcceptanceCatalog('', { timeoutMs: 40, fetcher: () => headers.promise });
+  const outcome = assert.rejects(pending, problem => { failed = true; return problem.code === 'REQUEST_TIMEOUT'; });
+  t.mock.timers.tick(20);
+  headers.resolve({ ok: true, status: 200, json() { reads++; return body.promise; }, body: { cancel: never } });
+  await flush(); assert.equal(reads, 1);
+  t.mock.timers.tick(19); await flush(); assert.equal(failed, false);
+  t.mock.timers.tick(1); await outcome; assert.equal(failed, true);
+  body.resolve({ ...version, projects: [], runBindings: [] }); await flush();
+});
+
+test('late fetch responses are cancelled without reading or changing the completed timeout outcome', { timeout: 2000 }, async () => {
+  const headers = deferred(); let requests = 0, reads = 0, cancellations = 0;
+  await assert.rejects(requestAcceptanceCatalog('', { timeoutMs: 20, fetcher: () => { requests++; return headers.promise; } }),
+    problem => problem.code === 'REQUEST_TIMEOUT');
+  headers.resolve({ json() { reads++; }, body: { cancel() { cancellations++; return never(); } } });
+  await flush();
+  assert.equal(requests, 1); assert.equal(reads, 0); assert.equal(cancellations, 1);
+});
+
+test('an incomplete POST error body never becomes a definite rejection from its status alone', { timeout: 2000 }, async () => {
+  for (const status of [400, 409, 503]) {
+    let requests = 0;
+    await assert.rejects(requestAcceptanceCatalog('', { method: 'POST', body: {}, timeoutMs: 20, fetcher: () => {
+      requests++; return { ok: false, status, json: never, body: { cancel: never } };
+    } }), problem => problem.code === 'REQUEST_TIMEOUT' && problem.status === status && problem.writeMayHaveCommitted);
+    assert.equal(requests, 1);
+  }
+});
+
+test('pre-aborted callers send nothing and successful responses clear the shared deadline', async t => {
+  let requests = 0; const controller = new AbortController(); controller.abort();
+  await assert.rejects(requestAcceptanceCatalog('', { signal: controller.signal, fetcher: () => { requests++; } }),
+    problem => problem.name === 'AbortError');
+  await assert.rejects(requestAcceptanceCatalog('', { method: 'POST', signal: controller.signal, fetcher: () => { requests++; } }),
+    problem => problem.code === 'REQUEST_ABORTED' && problem.writeMayHaveCommitted === false);
+  assert.equal(requests, 0);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let requestSignal;
+  const value = await requestAcceptanceCatalog('', { timeoutMs: 25, fetcher: (_url, options) => {
+    requests++; requestSignal = options.signal; return response({ ...version, projects: [], runBindings: [] });
+  } });
+  assert.equal(value.revision, version.revision);
+  t.mock.timers.tick(1000); await flush();
+  assert.equal(requestSignal.aborted, false); assert.equal(requests, 1);
 });

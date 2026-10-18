@@ -1,0 +1,31 @@
+✔ D6 permanent rejection preserves ticket facts and seals create/close action IDs across restart (57460.2441ms)
+✔ D6 complete accepted/rejected proofs precede damaged catalog, source, readiness and full queue (25242.4077ms)
+✔ D6 new denial requires a current project and synchronous ready guard but no ticket or source (4255.3327ms)
+✔ D6 service rechecks admission before and after rejection publication without losing uncertainty (6336.8547ms)
+✔ D6 native HTTP create: rejected wins the same action while original body tail is held (11091.6247ms)
+✔ D6 native HTTP create: recorded wins the same action while original body tail is held (17675.0745ms)
+✔ D6 native HTTP close: rejected wins the same action while original body tail is held (45739.6763ms)
+✖ D6 native HTTP close: recorded wins the same action while original body tail is held (40045.0664ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 7
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 208018.8067
+
+✖ failing tests:
+
+test at core\test\acceptance-defect-ticket-service.test.mjs:331:3
+✖ D6 native HTTP close: recorded wins the same action while original body tail is held (40045.0664ms)
+  Error: fixture delayed body timeout
+      at ClientRequest.<anonymous> (file:///C:/Users/44548/.codex/worktrees/ci-small-runner-concurrency/heimdall/core/test/acceptance-defect-ticket-service.test.mjs:321:85)
+      at Object.onceWrapper (node:events:622:28)
+      at ClientRequest.emit (node:events:508:28)
+      at Socket.emitRequestTimeout (node:_http_client:927:9)
+      at Object.onceWrapper (node:events:622:28)
+      at Socket.emit (node:events:520:35)
+      at Socket._onTimeout (node:net:604:8)
+      at listOnTimeout (node:internal/timers:605:17)
+      at process.processTimers (node:internal/timers:541:7)

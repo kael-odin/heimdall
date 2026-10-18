@@ -1,0 +1,931 @@
+{
+  "originals": {
+    "catalog": "3d06fcdd5bd61b23405effaa767aaa7a7471c942bc8850cbe8e5f1c92103fcb2",
+    "browser": {
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/dispatch.json": {
+        "bytes": 43167,
+        "sha256": "8bc485c5ac81341b4e0c63649eaf877f9b89641ac28504248e60622345f42228"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-1-desktop-diff.png": {
+        "bytes": 18900,
+        "sha256": "e3488c5926cc334dd8478f6e7473191725c9bf350e317d85d28a2c0306a21b78"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-1-desktop-point-1-target-repeat.png": {
+        "bytes": 19525,
+        "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-1-desktop-point-1-target.json": {
+        "bytes": 1976,
+        "sha256": "bd469e519faaaf9afc3712b11465e4dbc9a8766e08487cca92a6f686121677a6"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-1-desktop-point-1-target.png": {
+        "bytes": 19525,
+        "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-1-desktop-target-repeat.png": {
+        "bytes": 18733,
+        "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-1-desktop-target.json": {
+        "bytes": 1451,
+        "sha256": "8538a3d62d16e1c73701b623c821a5ae1a12294023062eedc559e54bd8c810de"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-1-desktop-target.png": {
+        "bytes": 18733,
+        "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-2-mobile-diff.png": {
+        "bytes": 18112,
+        "sha256": "a0a0b7003d822a03508dc6d9ec59864294ad2192e5fa0609e5c5ad2387af8423"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-2-mobile-point-1-target-repeat.png": {
+        "bytes": 19758,
+        "sha256": "c98e46b35b4a8b06701bc77a50bc3d5d501359ed3cc09ab5efc4d6f613b39cc0"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-2-mobile-point-1-target.json": {
+        "bytes": 1973,
+        "sha256": "b99bd3a1638cacfe725db4ecfc0bef2f61a9b0d15e129efcf9896adb11ebcf9d"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-2-mobile-point-1-target.png": {
+        "bytes": 19758,
+        "sha256": "c98e46b35b4a8b06701bc77a50bc3d5d501359ed3cc09ab5efc4d6f613b39cc0"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-2-mobile-target-repeat.png": {
+        "bytes": 19011,
+        "sha256": "17e7b5ed85427684525db31d44e6fec13fe1d92367699385c50b263d10de80b5"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-2-mobile-target.json": {
+        "bytes": 1448,
+        "sha256": "ddcadea75ca189dfed450b04c9ce3a7176d5520e47832aa6c6b3a3cf95afdd9c"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/route-1-2-mobile-target.png": {
+        "bytes": 19011,
+        "sha256": "17e7b5ed85427684525db31d44e6fec13fe1d92367699385c50b263d10de80b5"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-1-desktop-baseline-repeat.png": {
+        "bytes": 18640,
+        "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-1-desktop-baseline.json": {
+        "bytes": 1499,
+        "sha256": "e3f9a7c7dfc9843e31b417f63126e3663db85bc6b09e240b4702ac68559bf5fa"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-1-desktop-baseline.png": {
+        "bytes": 18640,
+        "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-1-desktop-point-1-baseline-repeat.png": {
+        "bytes": 20876,
+        "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-1-desktop-point-1-baseline.json": {
+        "bytes": 2019,
+        "sha256": "439fd6bdfbc6f34759004d358921d2b4f82423d85b314d6160fb69b9f813dcce"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-1-desktop-point-1-baseline.png": {
+        "bytes": 20876,
+        "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-2-mobile-baseline-repeat.png": {
+        "bytes": 18930,
+        "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-2-mobile-baseline.json": {
+        "bytes": 1496,
+        "sha256": "6841361637c98e1c8de5f4e7e2cc9d92cf63b2ba10c038d36188951d45166d44"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-2-mobile-baseline.png": {
+        "bytes": 18930,
+        "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-2-mobile-point-1-baseline-repeat.png": {
+        "bytes": 21059,
+        "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-2-mobile-point-1-baseline.json": {
+        "bytes": 2016,
+        "sha256": "ca8bf354458dea00711f9f9e61e14571dac76233bf84a54fdd53fff9eb23c964"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/evidence/source-route-1-2-mobile-point-1-baseline.png": {
+        "bytes": 21059,
+        "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/head.json": {
+        "bytes": 520,
+        "sha256": "2d20ec6f3b965df44f55af0f9d9f8fea3a2268f6ac2bc80a042ee0c3b5f1725a"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/observations.json": {
+        "bytes": 7282,
+        "sha256": "84b30a8c7982b7cd8a842d4efb466059d7a066890169bda58db472e6a14cc479"
+      },
+      "v1/bo-2a0fe32c-4d9c-4379-807a-60c03862ae40/report.json": {
+        "bytes": 51480,
+        "sha256": "9ae73d080e0597d8c38d4249b0fd737d26bd9daaf13b4b9575368236bec4e49c"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/dispatch.json": {
+        "bytes": 43171,
+        "sha256": "7f19380ea0e76dbb9295207a28fff548301f30b6dcbe957d77310347fa3c0776"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-1-desktop-diff.png": {
+        "bytes": 21671,
+        "sha256": "3a9eb3100d6d540a4a5316168627e430be137712cec90ad04d174e3f5fb10c7f"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-1-desktop-point-1-target-repeat.png": {
+        "bytes": 20876,
+        "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-1-desktop-point-1-target.json": {
+        "bytes": 1973,
+        "sha256": "c1a7062e86ca924edc15d3fcd8dc0bf63bef852b6ef711d168d46e4558a7cd63"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-1-desktop-point-1-target.png": {
+        "bytes": 20876,
+        "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-1-desktop-target-repeat.png": {
+        "bytes": 18640,
+        "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-1-desktop-target.json": {
+        "bytes": 1453,
+        "sha256": "006a5ae32b22941a79789e868506e41a806b6e0fe2970ccde8f90f198f3225d0"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-1-desktop-target.png": {
+        "bytes": 18640,
+        "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-2-mobile-diff.png": {
+        "bytes": 20316,
+        "sha256": "cd88731750e1d0d25071786081d24a8dec87ccf1e84d9aed6ca2a8b29f39fcbb"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-2-mobile-point-1-target-repeat.png": {
+        "bytes": 21059,
+        "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-2-mobile-point-1-target.json": {
+        "bytes": 1970,
+        "sha256": "b2be7793572e0421ce17ab150553226256c0a2b93323ecd16048bfda1b56c0b6"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-2-mobile-point-1-target.png": {
+        "bytes": 21059,
+        "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-2-mobile-target-repeat.png": {
+        "bytes": 18930,
+        "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-2-mobile-target.json": {
+        "bytes": 1450,
+        "sha256": "fc035c76662b98a4c58a3b4d7748d656bfc7e7021f9a41321a1d7e91a7644e59"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/route-1-2-mobile-target.png": {
+        "bytes": 18930,
+        "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-1-desktop-baseline-repeat.png": {
+        "bytes": 18640,
+        "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-1-desktop-baseline.json": {
+        "bytes": 1499,
+        "sha256": "e3f9a7c7dfc9843e31b417f63126e3663db85bc6b09e240b4702ac68559bf5fa"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-1-desktop-baseline.png": {
+        "bytes": 18640,
+        "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-1-desktop-point-1-baseline-repeat.png": {
+        "bytes": 20876,
+        "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-1-desktop-point-1-baseline.json": {
+        "bytes": 2019,
+        "sha256": "439fd6bdfbc6f34759004d358921d2b4f82423d85b314d6160fb69b9f813dcce"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-1-desktop-point-1-baseline.png": {
+        "bytes": 20876,
+        "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-2-mobile-baseline-repeat.png": {
+        "bytes": 18930,
+        "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-2-mobile-baseline.json": {
+        "bytes": 1496,
+        "sha256": "6841361637c98e1c8de5f4e7e2cc9d92cf63b2ba10c038d36188951d45166d44"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-2-mobile-baseline.png": {
+        "bytes": 18930,
+        "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-2-mobile-point-1-baseline-repeat.png": {
+        "bytes": 21059,
+        "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-2-mobile-point-1-baseline.json": {
+        "bytes": 2016,
+        "sha256": "ca8bf354458dea00711f9f9e61e14571dac76233bf84a54fdd53fff9eb23c964"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/evidence/source-route-1-2-mobile-point-1-baseline.png": {
+        "bytes": 21059,
+        "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/head.json": {
+        "bytes": 520,
+        "sha256": "a5ec467560db177ba6f1d5da855c84198631758b8df64759fbf14bd9be6da2dd"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/observations.json": {
+        "bytes": 7483,
+        "sha256": "fd2eca88b7149f4bbb8bcb26061ba4ed058c38636c618e3d48dd1a06db438b91"
+      },
+      "v1/bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4/report.json": {
+        "bytes": 51470,
+        "sha256": "06c170e1af507203a0dbac05dc3e24a875b5eba111192497017d7c92f0031025"
+      }
+    },
+    "source": {
+      "manifest.json": {
+        "bytes": 3039,
+        "sha256": "1fe81fa2c1fb663f1a9291de98fff7a8403d2437c5f3a7edb4c3647073deae6e"
+      },
+      "report.json": {
+        "bytes": 41484,
+        "sha256": "39a874f310a91fef59ae354770ca9e4cbc9f0fd4143f26b8095f0af38b7504ec"
+      },
+      "report.md": {
+        "bytes": 9008,
+        "sha256": "fd7ede184f2850ada92942fae89947f54b28b89eec0ac6e5f67bd376dd56a56a"
+      },
+      "route-1-1-desktop-baseline-repeat.png": {
+        "bytes": 18640,
+        "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+      },
+      "route-1-1-desktop-baseline.json": {
+        "bytes": 1499,
+        "sha256": "e3f9a7c7dfc9843e31b417f63126e3663db85bc6b09e240b4702ac68559bf5fa"
+      },
+      "route-1-1-desktop-baseline.png": {
+        "bytes": 18640,
+        "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+      },
+      "route-1-1-desktop-diff.png": {
+        "bytes": 18900,
+        "sha256": "e3488c5926cc334dd8478f6e7473191725c9bf350e317d85d28a2c0306a21b78"
+      },
+      "route-1-1-desktop-point-1-baseline-repeat.png": {
+        "bytes": 20876,
+        "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+      },
+      "route-1-1-desktop-point-1-baseline.json": {
+        "bytes": 2019,
+        "sha256": "439fd6bdfbc6f34759004d358921d2b4f82423d85b314d6160fb69b9f813dcce"
+      },
+      "route-1-1-desktop-point-1-baseline.png": {
+        "bytes": 20876,
+        "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+      },
+      "route-1-1-desktop-point-1-target-repeat.png": {
+        "bytes": 19525,
+        "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+      },
+      "route-1-1-desktop-point-1-target.json": {
+        "bytes": 1976,
+        "sha256": "bd469e519faaaf9afc3712b11465e4dbc9a8766e08487cca92a6f686121677a6"
+      },
+      "route-1-1-desktop-point-1-target.png": {
+        "bytes": 19525,
+        "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+      },
+      "route-1-1-desktop-target-repeat.png": {
+        "bytes": 18733,
+        "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+      },
+      "route-1-1-desktop-target.json": {
+        "bytes": 1451,
+        "sha256": "8538a3d62d16e1c73701b623c821a5ae1a12294023062eedc559e54bd8c810de"
+      },
+      "route-1-1-desktop-target.png": {
+        "bytes": 18733,
+        "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+      },
+      "route-1-2-mobile-baseline-repeat.png": {
+        "bytes": 18930,
+        "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+      },
+      "route-1-2-mobile-baseline.json": {
+        "bytes": 1496,
+        "sha256": "6841361637c98e1c8de5f4e7e2cc9d92cf63b2ba10c038d36188951d45166d44"
+      },
+      "route-1-2-mobile-baseline.png": {
+        "bytes": 18930,
+        "sha256": "1a6f9b427731db61ba1dc65ab85939196405b2e09fe964ce1b134ca8bb7ad58c"
+      },
+      "route-1-2-mobile-diff.png": {
+        "bytes": 18112,
+        "sha256": "a0a0b7003d822a03508dc6d9ec59864294ad2192e5fa0609e5c5ad2387af8423"
+      },
+      "route-1-2-mobile-point-1-baseline-repeat.png": {
+        "bytes": 21059,
+        "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+      },
+      "route-1-2-mobile-point-1-baseline.json": {
+        "bytes": 2016,
+        "sha256": "ca8bf354458dea00711f9f9e61e14571dac76233bf84a54fdd53fff9eb23c964"
+      },
+      "route-1-2-mobile-point-1-baseline.png": {
+        "bytes": 21059,
+        "sha256": "38d5489f482c8e074b328c0ed8dec998d07a1c8d76016c9889ea4723969fbe9b"
+      },
+      "route-1-2-mobile-point-1-target-repeat.png": {
+        "bytes": 19758,
+        "sha256": "c98e46b35b4a8b06701bc77a50bc3d5d501359ed3cc09ab5efc4d6f613b39cc0"
+      },
+      "route-1-2-mobile-point-1-target.json": {
+        "bytes": 1973,
+        "sha256": "b99bd3a1638cacfe725db4ecfc0bef2f61a9b0d15e129efcf9896adb11ebcf9d"
+      },
+      "route-1-2-mobile-point-1-target.png": {
+        "bytes": 19758,
+        "sha256": "c98e46b35b4a8b06701bc77a50bc3d5d501359ed3cc09ab5efc4d6f613b39cc0"
+      },
+      "route-1-2-mobile-target-repeat.png": {
+        "bytes": 19011,
+        "sha256": "17e7b5ed85427684525db31d44e6fec13fe1d92367699385c50b263d10de80b5"
+      },
+      "route-1-2-mobile-target.json": {
+        "bytes": 1448,
+        "sha256": "ddcadea75ca189dfed450b04c9ce3a7176d5520e47832aa6c6b3a3cf95afdd9c"
+      },
+      "route-1-2-mobile-target.png": {
+        "bytes": 19011,
+        "sha256": "17e7b5ed85427684525db31d44e6fec13fe1d92367699385c50b263d10de80b5"
+      }
+    }
+  },
+  "targetCount": 16,
+  "decisions": {
+    "v1/events/da-3692dca1-3f08-4f35-88d3-ba6c9da49c19.json": {
+      "bytes": 4951,
+      "sha256": "7f8d282e3a45a8f18001a3186b709a94571b99153a62d07d74d363042666f923"
+    },
+    "v1/events/da-f0860a51-ac6b-449b-8cd1-23d017e51fdc.json": {
+      "bytes": 989,
+      "sha256": "52551e84da1e9b618f9e78a089582b9c11a68699ac0fdf154ba45e1b448e52d7"
+    }
+  },
+  "ticket": {
+    "ticket": {
+      "projectionVersion": 1,
+      "kind": "manual-defect-ticket",
+      "scope": "declared-members",
+      "ticketId": "dt-6f38d7fb-a34c-48ea-8374-c60355b7750c",
+      "projectId": "ap-8ea9b95d-be29-45a9-bba7-b406882fe7ae",
+      "candidateId": "bc-6a55748a-471e-4f19-aa89-2df51c1bdd34",
+      "contentDigest": "c1c66ad9277afc2bdddce461a3caa11331b96a33fc2e2c92b9c54879e52f8e3d",
+      "title": "菜单布局与展开行为的两个固定检查",
+      "severity": "high",
+      "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+      "reproduction": "打开页面，展开菜单，核对布局及导航。",
+      "source": {
+        "acceptedAt": "2026-10-18T01:33:58.741Z",
+        "dispatchSha256": "8bc485c5ac81341b4e0c63649eaf877f9b89641ac28504248e60622345f42228",
+        "observationsSha256": "84b30a8c7982b7cd8a842d4efb466059d7a066890169bda58db472e6a14cc479",
+        "operationId": "bo-2a0fe32c-4d9c-4379-807a-60c03862ae40",
+        "recordedAt": "2026-10-18T01:34:15.206Z",
+        "reportSha256": "9ae73d080e0597d8c38d4249b0fd737d26bd9daaf13b4b9575368236bec4e49c",
+        "targetReleaseId": "ar-39ffeee6-ab22-481e-a0fb-0a4eed2dac16"
+      },
+      "members": [
+        {
+          "bugId": "bug-96155d6ceefbf9bcb20bb5ab6c62376d1262162de7ab62bcd2cb383796c1fe98",
+          "checkId": "route-1-1-desktop-point-1-menu",
+          "evidence": [
+            {
+              "bytes": 2019,
+              "file": "source-route-1-1-desktop-point-1-baseline.json",
+              "role": "baselineDetails",
+              "sha256": "439fd6bdfbc6f34759004d358921d2b4f82423d85b314d6160fb69b9f813dcce"
+            },
+            {
+              "bytes": 20876,
+              "file": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+              "role": "baselineRepeat",
+              "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+            },
+            {
+              "bytes": 20876,
+              "file": "source-route-1-1-desktop-point-1-baseline.png",
+              "role": "baselineScreenshot",
+              "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+            },
+            {
+              "bytes": 1976,
+              "file": "route-1-1-desktop-point-1-target.json",
+              "role": "targetDetails",
+              "sha256": "bd469e519faaaf9afc3712b11465e4dbc9a8766e08487cca92a6f686121677a6"
+            },
+            {
+              "bytes": 19525,
+              "file": "route-1-1-desktop-point-1-target-repeat.png",
+              "role": "targetRepeat",
+              "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+            },
+            {
+              "bytes": 19525,
+              "file": "route-1-1-desktop-point-1-target.png",
+              "role": "targetScreenshot",
+              "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+            }
+          ],
+          "identity": {
+            "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+            "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "facet": "behavior",
+            "kind": "browser",
+            "oracleKey": "cd36e0c92056f7cdf4786ebf44627e085cc968e7d4beb990d68418a9b3d284d6",
+            "pointId": "menu",
+            "ruleKey": "345e3c732d7cbff13bb8407aa0e60e6b17c917803f530dced2b151d80f0b104d",
+            "version": 1,
+            "viewport": {
+              "height": 640,
+              "width": 960
+            }
+          },
+          "route": "/",
+          "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+        },
+        {
+          "bugId": "bug-2181d1404d6f02fefdf310785b9693141a965474048d414a7dc7ecb3bbc7081a",
+          "checkId": "route-1-1-desktop-visual",
+          "evidence": [
+            {
+              "bytes": 1499,
+              "file": "source-route-1-1-desktop-baseline.json",
+              "role": "baselineDetails",
+              "sha256": "e3f9a7c7dfc9843e31b417f63126e3663db85bc6b09e240b4702ac68559bf5fa"
+            },
+            {
+              "bytes": 18640,
+              "file": "source-route-1-1-desktop-baseline-repeat.png",
+              "role": "baselineRepeat",
+              "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+            },
+            {
+              "bytes": 18640,
+              "file": "source-route-1-1-desktop-baseline.png",
+              "role": "baselineScreenshot",
+              "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+            },
+            {
+              "bytes": 18900,
+              "file": "route-1-1-desktop-diff.png",
+              "role": "diff",
+              "sha256": "e3488c5926cc334dd8478f6e7473191725c9bf350e317d85d28a2c0306a21b78"
+            },
+            {
+              "bytes": 1451,
+              "file": "route-1-1-desktop-target.json",
+              "role": "targetDetails",
+              "sha256": "8538a3d62d16e1c73701b623c821a5ae1a12294023062eedc559e54bd8c810de"
+            },
+            {
+              "bytes": 18733,
+              "file": "route-1-1-desktop-target-repeat.png",
+              "role": "targetRepeat",
+              "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+            },
+            {
+              "bytes": 18733,
+              "file": "route-1-1-desktop-target.png",
+              "role": "targetScreenshot",
+              "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+            }
+          ],
+          "identity": {
+            "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+            "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "facet": "visual",
+            "kind": "browser",
+            "oracleKey": "0ac00cd131412943b62e16b90330bffc0dcc4149042209042ea967820231974c",
+            "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+            "version": 1,
+            "viewport": {
+              "height": 640,
+              "width": 960
+            }
+          },
+          "route": "/",
+          "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+        }
+      ],
+      "memberSetDigest": "79b277c839f2bfe10f7ac4c98c80aa3336d2c4db2d70b04bd339cb457b7587ef",
+      "revision": 0,
+      "headSha256": "7f8d282e3a45a8f18001a3186b709a94571b99153a62d07d74d363042666f923",
+      "processingStatus": "open",
+      "lastClose": null,
+      "history": [
+        {
+          "actionId": "da-3692dca1-3f08-4f35-88d3-ba6c9da49c19",
+          "actor": {
+            "kind": "local-operator"
+          },
+          "candidateId": "bc-6a55748a-471e-4f19-aa89-2df51c1bdd34",
+          "contentDigest": "c1c66ad9277afc2bdddce461a3caa11331b96a33fc2e2c92b9c54879e52f8e3d",
+          "createdAt": "2026-10-18T01:34:24.484Z",
+          "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+          "kind": "create",
+          "memberSetDigest": "79b277c839f2bfe10f7ac4c98c80aa3336d2c4db2d70b04bd339cb457b7587ef",
+          "members": [
+            {
+              "bugId": "bug-96155d6ceefbf9bcb20bb5ab6c62376d1262162de7ab62bcd2cb383796c1fe98",
+              "checkId": "route-1-1-desktop-point-1-menu",
+              "evidence": [
+                {
+                  "bytes": 2019,
+                  "file": "source-route-1-1-desktop-point-1-baseline.json",
+                  "role": "baselineDetails",
+                  "sha256": "439fd6bdfbc6f34759004d358921d2b4f82423d85b314d6160fb69b9f813dcce"
+                },
+                {
+                  "bytes": 20876,
+                  "file": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+                  "role": "baselineRepeat",
+                  "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+                },
+                {
+                  "bytes": 20876,
+                  "file": "source-route-1-1-desktop-point-1-baseline.png",
+                  "role": "baselineScreenshot",
+                  "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+                },
+                {
+                  "bytes": 1976,
+                  "file": "route-1-1-desktop-point-1-target.json",
+                  "role": "targetDetails",
+                  "sha256": "bd469e519faaaf9afc3712b11465e4dbc9a8766e08487cca92a6f686121677a6"
+                },
+                {
+                  "bytes": 19525,
+                  "file": "route-1-1-desktop-point-1-target-repeat.png",
+                  "role": "targetRepeat",
+                  "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+                },
+                {
+                  "bytes": 19525,
+                  "file": "route-1-1-desktop-point-1-target.png",
+                  "role": "targetScreenshot",
+                  "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+                }
+              ],
+              "identity": {
+                "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+                "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+                "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+                "facet": "behavior",
+                "kind": "browser",
+                "oracleKey": "cd36e0c92056f7cdf4786ebf44627e085cc968e7d4beb990d68418a9b3d284d6",
+                "pointId": "menu",
+                "ruleKey": "345e3c732d7cbff13bb8407aa0e60e6b17c917803f530dced2b151d80f0b104d",
+                "version": 1,
+                "viewport": {
+                  "height": 640,
+                  "width": 960
+                }
+              },
+              "route": "/",
+              "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+            },
+            {
+              "bugId": "bug-2181d1404d6f02fefdf310785b9693141a965474048d414a7dc7ecb3bbc7081a",
+              "checkId": "route-1-1-desktop-visual",
+              "evidence": [
+                {
+                  "bytes": 1499,
+                  "file": "source-route-1-1-desktop-baseline.json",
+                  "role": "baselineDetails",
+                  "sha256": "e3f9a7c7dfc9843e31b417f63126e3663db85bc6b09e240b4702ac68559bf5fa"
+                },
+                {
+                  "bytes": 18640,
+                  "file": "source-route-1-1-desktop-baseline-repeat.png",
+                  "role": "baselineRepeat",
+                  "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+                },
+                {
+                  "bytes": 18640,
+                  "file": "source-route-1-1-desktop-baseline.png",
+                  "role": "baselineScreenshot",
+                  "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+                },
+                {
+                  "bytes": 18900,
+                  "file": "route-1-1-desktop-diff.png",
+                  "role": "diff",
+                  "sha256": "e3488c5926cc334dd8478f6e7473191725c9bf350e317d85d28a2c0306a21b78"
+                },
+                {
+                  "bytes": 1451,
+                  "file": "route-1-1-desktop-target.json",
+                  "role": "targetDetails",
+                  "sha256": "8538a3d62d16e1c73701b623c821a5ae1a12294023062eedc559e54bd8c810de"
+                },
+                {
+                  "bytes": 18733,
+                  "file": "route-1-1-desktop-target-repeat.png",
+                  "role": "targetRepeat",
+                  "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+                },
+                {
+                  "bytes": 18733,
+                  "file": "route-1-1-desktop-target.png",
+                  "role": "targetScreenshot",
+                  "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+                }
+              ],
+              "identity": {
+                "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+                "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+                "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+                "facet": "visual",
+                "kind": "browser",
+                "oracleKey": "0ac00cd131412943b62e16b90330bffc0dcc4149042209042ea967820231974c",
+                "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+                "version": 1,
+                "viewport": {
+                  "height": 640,
+                  "width": 960
+                }
+              },
+              "route": "/",
+              "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+            }
+          ],
+          "previousEventSha256": null,
+          "projectId": "ap-8ea9b95d-be29-45a9-bba7-b406882fe7ae",
+          "reproduction": "打开页面，展开菜单，核对布局及导航。",
+          "requestFingerprint": "bd980fbd500bb258ad96d92bd23ad3da48a798d76cba2df09c45bdafbab55c05",
+          "revision": 0,
+          "severity": "high",
+          "source": {
+            "acceptedAt": "2026-10-18T01:33:58.741Z",
+            "dispatchSha256": "8bc485c5ac81341b4e0c63649eaf877f9b89641ac28504248e60622345f42228",
+            "observationsSha256": "84b30a8c7982b7cd8a842d4efb466059d7a066890169bda58db472e6a14cc479",
+            "operationId": "bo-2a0fe32c-4d9c-4379-807a-60c03862ae40",
+            "recordedAt": "2026-10-18T01:34:15.206Z",
+            "reportSha256": "9ae73d080e0597d8c38d4249b0fd737d26bd9daaf13b4b9575368236bec4e49c",
+            "targetReleaseId": "ar-39ffeee6-ab22-481e-a0fb-0a4eed2dac16"
+          },
+          "ticketContractVersion": 1,
+          "ticketId": "dt-6f38d7fb-a34c-48ea-8374-c60355b7750c",
+          "title": "菜单布局与展开行为的两个固定检查"
+        }
+      ],
+      "verificationStatus": "verified_passed",
+      "currentOperationId": "bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4",
+      "factsDigest": "6c1af3b647587527da2bb11f2053426a2d2fda37e721df0c1233627f14bd5c3a",
+      "counts": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "incomparable": 0,
+        "unverified": 0
+      },
+      "results": [
+        {
+          "bugId": "bug-96155d6ceefbf9bcb20bb5ab6c62376d1262162de7ab62bcd2cb383796c1fe98",
+          "sourceCheckId": "route-1-1-desktop-point-1-menu",
+          "afterCheckId": "route-1-1-desktop-point-1-menu",
+          "relation": "verified_passed",
+          "reason": "REGISTERED_RELIABLE_PASS"
+        },
+        {
+          "bugId": "bug-2181d1404d6f02fefdf310785b9693141a965474048d414a7dc7ecb3bbc7081a",
+          "sourceCheckId": "route-1-1-desktop-visual",
+          "afterCheckId": "route-1-1-desktop-visual",
+          "relation": "verified_passed",
+          "reason": "REGISTERED_RELIABLE_PASS"
+        }
+      ],
+      "reopenReasons": [],
+      "closeEligible": true,
+      "reason": "READY_FOR_EXPLICIT_CLOSE"
+    },
+    "artifact": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket",
+      "scope": "declared-members",
+      "ticketId": "dt-6f38d7fb-a34c-48ea-8374-c60355b7750c",
+      "projectId": "ap-8ea9b95d-be29-45a9-bba7-b406882fe7ae",
+      "candidateId": "bc-6a55748a-471e-4f19-aa89-2df51c1bdd34",
+      "contentDigest": "c1c66ad9277afc2bdddce461a3caa11331b96a33fc2e2c92b9c54879e52f8e3d",
+      "revision": 0,
+      "headSha256": "7f8d282e3a45a8f18001a3186b709a94571b99153a62d07d74d363042666f923",
+      "memberSetDigest": "79b277c839f2bfe10f7ac4c98c80aa3336d2c4db2d70b04bd339cb457b7587ef",
+      "title": "菜单布局与展开行为的两个固定检查",
+      "severity": "high",
+      "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+      "reproduction": "打开页面，展开菜单，核对布局及导航。",
+      "source": {
+        "acceptedAt": "2026-10-18T01:33:58.741Z",
+        "dispatchSha256": "8bc485c5ac81341b4e0c63649eaf877f9b89641ac28504248e60622345f42228",
+        "observationsSha256": "84b30a8c7982b7cd8a842d4efb466059d7a066890169bda58db472e6a14cc479",
+        "operationId": "bo-2a0fe32c-4d9c-4379-807a-60c03862ae40",
+        "recordedAt": "2026-10-18T01:34:15.206Z",
+        "reportSha256": "9ae73d080e0597d8c38d4249b0fd737d26bd9daaf13b4b9575368236bec4e49c",
+        "targetReleaseId": "ar-39ffeee6-ab22-481e-a0fb-0a4eed2dac16"
+      },
+      "members": [
+        {
+          "bugId": "bug-96155d6ceefbf9bcb20bb5ab6c62376d1262162de7ab62bcd2cb383796c1fe98",
+          "checkId": "route-1-1-desktop-point-1-menu",
+          "evidence": [
+            {
+              "bytes": 2019,
+              "file": "source-route-1-1-desktop-point-1-baseline.json",
+              "role": "baselineDetails",
+              "sha256": "439fd6bdfbc6f34759004d358921d2b4f82423d85b314d6160fb69b9f813dcce"
+            },
+            {
+              "bytes": 20876,
+              "file": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+              "role": "baselineRepeat",
+              "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+            },
+            {
+              "bytes": 20876,
+              "file": "source-route-1-1-desktop-point-1-baseline.png",
+              "role": "baselineScreenshot",
+              "sha256": "32d6cda76fb31fe057bd107680ba5420f2fe2c4dcf9545384c66ef9fdda1c85d"
+            },
+            {
+              "bytes": 1976,
+              "file": "route-1-1-desktop-point-1-target.json",
+              "role": "targetDetails",
+              "sha256": "bd469e519faaaf9afc3712b11465e4dbc9a8766e08487cca92a6f686121677a6"
+            },
+            {
+              "bytes": 19525,
+              "file": "route-1-1-desktop-point-1-target-repeat.png",
+              "role": "targetRepeat",
+              "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+            },
+            {
+              "bytes": 19525,
+              "file": "route-1-1-desktop-point-1-target.png",
+              "role": "targetScreenshot",
+              "sha256": "e21e096c35f7139d636422bbafaac712509f5e230a89c59c6f21b64df1e4352b"
+            }
+          ],
+          "identity": {
+            "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+            "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "facet": "behavior",
+            "kind": "browser",
+            "oracleKey": "cd36e0c92056f7cdf4786ebf44627e085cc968e7d4beb990d68418a9b3d284d6",
+            "pointId": "menu",
+            "ruleKey": "345e3c732d7cbff13bb8407aa0e60e6b17c917803f530dced2b151d80f0b104d",
+            "version": 1,
+            "viewport": {
+              "height": 640,
+              "width": 960
+            }
+          },
+          "route": "/",
+          "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+        },
+        {
+          "bugId": "bug-2181d1404d6f02fefdf310785b9693141a965474048d414a7dc7ecb3bbc7081a",
+          "checkId": "route-1-1-desktop-visual",
+          "evidence": [
+            {
+              "bytes": 1499,
+              "file": "source-route-1-1-desktop-baseline.json",
+              "role": "baselineDetails",
+              "sha256": "e3f9a7c7dfc9843e31b417f63126e3663db85bc6b09e240b4702ac68559bf5fa"
+            },
+            {
+              "bytes": 18640,
+              "file": "source-route-1-1-desktop-baseline-repeat.png",
+              "role": "baselineRepeat",
+              "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+            },
+            {
+              "bytes": 18640,
+              "file": "source-route-1-1-desktop-baseline.png",
+              "role": "baselineScreenshot",
+              "sha256": "a5e96a884b823bd99307420636bcb67a12840926373c82bef6b9a68daa88d726"
+            },
+            {
+              "bytes": 18900,
+              "file": "route-1-1-desktop-diff.png",
+              "role": "diff",
+              "sha256": "e3488c5926cc334dd8478f6e7473191725c9bf350e317d85d28a2c0306a21b78"
+            },
+            {
+              "bytes": 1451,
+              "file": "route-1-1-desktop-target.json",
+              "role": "targetDetails",
+              "sha256": "8538a3d62d16e1c73701b623c821a5ae1a12294023062eedc559e54bd8c810de"
+            },
+            {
+              "bytes": 18733,
+              "file": "route-1-1-desktop-target-repeat.png",
+              "role": "targetRepeat",
+              "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+            },
+            {
+              "bytes": 18733,
+              "file": "route-1-1-desktop-target.png",
+              "role": "targetScreenshot",
+              "sha256": "e5cf122611782022cf6839f94460dbce29928bb43025c9dea9effbc82975c33e"
+            }
+          ],
+          "identity": {
+            "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+            "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "facet": "visual",
+            "kind": "browser",
+            "oracleKey": "0ac00cd131412943b62e16b90330bffc0dcc4149042209042ea967820231974c",
+            "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+            "version": 1,
+            "viewport": {
+              "height": 640,
+              "width": 960
+            }
+          },
+          "route": "/",
+          "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+        }
+      ],
+      "handling": {
+        "status": "open",
+        "lastClose": null
+      },
+      "verification": {
+        "status": "verified_passed",
+        "factsDigest": "6c1af3b647587527da2bb11f2053426a2d2fda37e721df0c1233627f14bd5c3a",
+        "currentOperationId": "bo-c04cf3d7-0fca-4798-b0ff-42dfb8056fa4",
+        "counts": {
+          "failed": 0,
+          "incomparable": 0,
+          "passed": 2,
+          "total": 2,
+          "unverified": 0
+        },
+        "results": [
+          {
+            "afterCheckId": "route-1-1-desktop-point-1-menu",
+            "bugId": "bug-96155d6ceefbf9bcb20bb5ab6c62376d1262162de7ab62bcd2cb383796c1fe98",
+            "reason": "REGISTERED_RELIABLE_PASS",
+            "relation": "verified_passed",
+            "sourceCheckId": "route-1-1-desktop-point-1-menu"
+          },
+          {
+            "afterCheckId": "route-1-1-desktop-visual",
+            "bugId": "bug-2181d1404d6f02fefdf310785b9693141a965474048d414a7dc7ecb3bbc7081a",
+            "reason": "REGISTERED_RELIABLE_PASS",
+            "relation": "verified_passed",
+            "sourceCheckId": "route-1-1-desktop-visual"
+          }
+        ],
+        "reopenReasons": [],
+        "reason": "READY_FOR_EXPLICIT_CLOSE",
+        "closeEligible": true,
+        "sourceIntegrityVerified": true,
+        "repairVerified": true
+      },
+      "history": [
+        {
+          "actionId": "da-3692dca1-3f08-4f35-88d3-ba6c9da49c19",
+          "kind": "create",
+          "revision": 0,
+          "previousEventSha256": null,
+          "eventSha256": "7f8d282e3a45a8f18001a3186b709a94571b99153a62d07d74d363042666f923",
+          "requestFingerprint": "bd980fbd500bb258ad96d92bd23ad3da48a798d76cba2df09c45bdafbab55c05",
+          "createdAt": "2026-10-18T01:34:24.484Z"
+        }
+      ],
+      "limitations": [
+        "仅覆盖此人工缺陷单固定关联的检查；不代表整个页面、项目或业务流程已修复。",
+        "人工处理状态与当前核验状态分开；历史关闭不代替当前证据核验。",
+        "导出省略 URL 查询参数及已识别的敏感字段，不包含原始报告、截图、网络记录或 AI 原文。",
+        "无法保证识别任意人工输入的秘密；共享前仍应检查人工文字。"
+      ]
+    }
+  },
+  "draft": {
+    "title": "菜单布局与展开行为的两个固定检查",
+    "severity": "high",
+    "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+    "reproduction": "打开页面，展开菜单，核对布局及导航。",
+    "resolution": "两项固定检查在同一次健康目标复验中通过。",
+    "memberCheckIds": [
+      "route-1-1-desktop-point-1-menu",
+      "route-1-1-desktop-visual"
+    ]
+  }
+}

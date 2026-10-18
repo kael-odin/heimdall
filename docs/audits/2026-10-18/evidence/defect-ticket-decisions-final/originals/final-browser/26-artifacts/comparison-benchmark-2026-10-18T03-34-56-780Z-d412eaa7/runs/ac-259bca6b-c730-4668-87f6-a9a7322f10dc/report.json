@@ -1,0 +1,290 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-259bca6b-c730-4668-87f6-a9a7322f10dc",
+  "name": "API before",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:52299/api/before",
+  "startedAt": "2026-10-18T03:35:28.339Z",
+  "endedAt": "2026-10-18T03:35:28.368Z",
+  "status": "completed",
+  "checks": [
+    {
+      "id": "spec-1-quota",
+      "title": "Contract quota",
+      "route": "/quota",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "d2ad51a39ca2d9b1afec0dc74d86dd9a4b1cf678b624e3f0206e4f91f50fbe0b",
+        "contextKey": "d0fe0253a44137d6175e95596d8cf89270def89be5a5b71c09286e21fe4afa1a",
+        "ruleKey": "4d40c2de46809f6a4e46727e40926504637b6b6376607358add00d5673079f33",
+        "oracleKey": "c1a004317b95897155a6baaf1fd1808237aa695044cc39829df607275b7d6e0d",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "quota",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "REQ-COMPARISON",
+        "revision": "v1",
+        "sourceFingerprint": "d2882e9edf5b33bd01c26e5f4c84b8ac218200ecefb46c592e5d98db61ad8ff1",
+        "documentSha256": null,
+        "contractFingerprint": "cd9e9e05e159d7bb7c86a90a0823350160d96632ee846b38218c8263a98a1844"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "json": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0
+          }
+        ]
+      },
+      "reproduction": [
+        "Use requirement REQ-COMPARISON at revision v1.",
+        "GET http://127.0.0.1:52299/api/before/quota without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "failed",
+      "verdict": "bug",
+      "evaluationLimited": false,
+      "actual": {
+        "requested": true,
+        "httpStatus": 200,
+        "contentType": "application/json",
+        "redirectNotFollowed": false,
+        "hasLocation": false,
+        "mismatches": [
+          {
+            "kind": "equals",
+            "pointer": "/code",
+            "value": 0,
+            "passed": false,
+            "actual": 400,
+            "exists": true
+          }
+        ],
+        "bytes": 22,
+        "bodySha256": "cddd23c146601b8d23bb2cd88910c7203a540b49bda683b9ba99c699f9aef089",
+        "assertions": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0,
+            "passed": false,
+            "actual": 400,
+            "exists": true
+          }
+        ]
+      },
+      "evidence": {
+        "contract": "spec-1-quota-contract.json",
+        "request": "spec-1-quota-request.json",
+        "response": "spec-1-quota-response.json"
+      }
+    },
+    {
+      "id": "spec-2-items",
+      "title": "Contract items",
+      "route": "/items",
+      "viewport": "api",
+      "dimension": "behavior",
+      "severity": "high",
+      "identity": {
+        "version": 1,
+        "kind": "spec",
+        "facet": "contract",
+        "caseKey": "7b97c2bd44203168bbbfb08cfb168eb33333b67411a590a924531e57e6dcb1c3",
+        "contextKey": "da3627ef97eee0798fae4bf49132b2e9ea831e18c2d1990a32f99e32e2072e0d",
+        "ruleKey": "72e5e50ca9bbd7baae8c5f91f2923170ef86d3f957d68f41c1e42339dc2bc5ee",
+        "oracleKey": "801c02a5cc3c5709d64a529dcf9a3bbfe4948f7e6bd6642be7250bbd100ef5dc",
+        "environmentKey": "3649816327b9a2043831ad574b1f5b68f15f3432b01f6e1b0c063706b6cd342c",
+        "viewport": "api",
+        "contractId": "items",
+        "method": "GET"
+      },
+      "oracle": {
+        "kind": "approved-spec",
+        "source": "REQ-COMPARISON",
+        "revision": "v1",
+        "sourceFingerprint": "d2882e9edf5b33bd01c26e5f4c84b8ac218200ecefb46c592e5d98db61ad8ff1",
+        "documentSha256": null,
+        "contractFingerprint": "cd9e9e05e159d7bb7c86a90a0823350160d96632ee846b38218c8263a98a1844"
+      },
+      "evidenceLevel": "http-reproduced",
+      "expected": {
+        "status": 200,
+        "contentType": "application/json",
+        "json": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0
+          }
+        ]
+      },
+      "reproduction": [
+        "Use requirement REQ-COMPARISON at revision v1.",
+        "GET http://127.0.0.1:52299/api/before/items without cookies or credentials; redirects are not followed.",
+        "Compare HTTP status, declared MIME and explicit JSON assertions/schema."
+      ],
+      "status": "passed",
+      "verdict": "match",
+      "evaluationLimited": false,
+      "actual": {
+        "requested": true,
+        "httpStatus": 200,
+        "contentType": "application/json",
+        "redirectNotFollowed": false,
+        "hasLocation": false,
+        "mismatches": [],
+        "bytes": 20,
+        "bodySha256": "dc68b0bf4d7b177b03f9ab79472c6b7136b09f8b41c283a6e1f20da06c282719",
+        "assertions": [
+          {
+            "pointer": "/code",
+            "kind": "equals",
+            "value": 0,
+            "passed": true,
+            "actual": 0,
+            "exists": true
+          }
+        ]
+      },
+      "evidence": {
+        "contract": "spec-2-items-contract.json",
+        "request": "spec-2-items-request.json",
+        "response": "spec-2-items-response.json"
+      }
+    }
+  ],
+  "coverage": {
+    "planned": 2,
+    "completed": 2,
+    "capped": false
+  },
+  "specSource": {
+    "id": "REQ-COMPARISON",
+    "revision": "v1",
+    "type": "manual",
+    "title": "Fixed API source"
+  },
+  "sourceFingerprint": "d2882e9edf5b33bd01c26e5f4c84b8ac218200ecefb46c592e5d98db61ad8ff1",
+  "contractFingerprint": "cd9e9e05e159d7bb7c86a90a0823350160d96632ee846b38218c8263a98a1844",
+  "specApproval": {
+    "approved": true,
+    "recordedAt": "2026-10-18T03:35:28.339Z"
+  },
+  "safety": {
+    "readOnly": true,
+    "allowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "redirects": "not-followed",
+    "credentials": "none",
+    "requests": 2
+  },
+  "environment": {
+    "runner": "node-fetch",
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "maxResponseBytes": 4096,
+    "timeoutMs": 1000
+  },
+  "scope": "离线复现：本机固定版本、缺陷和假关闭反例，通过真实 browser/Spec runner、store 落盘与当前证据校验完成；只证明本组声明范围，不代表真实项目检出率、根因识别或持久缺陷自动关闭。",
+  "planFingerprint": "6bf92eda0b95788557545c30ba58eded9ff9a5ba6be4390887712f63c23ff2c0",
+  "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+  "evidenceManifest": [
+    {
+      "file": "spec-1-quota-contract.json",
+      "bytes": 584,
+      "sha256": "52f46b2180a84252bf59867fea65a6e808c6fada07082634aca07446fb0ac6fa"
+    },
+    {
+      "file": "spec-1-quota-request.json",
+      "bytes": 176,
+      "sha256": "caef1b3aff2f9e3d5f13f648887a93a5a3545db04d6d284524030573364d850a"
+    },
+    {
+      "file": "spec-1-quota-response.json",
+      "bytes": 622,
+      "sha256": "e68a6c8c05b45a620abe6a8cb7b102365b416615e7bc4a12cd94d4bae5c6d3c5"
+    },
+    {
+      "file": "spec-2-items-contract.json",
+      "bytes": 584,
+      "sha256": "f33f98177086a130efc63c36ead4dddf913c109ad91d20c246c8687eee000b25"
+    },
+    {
+      "file": "spec-2-items-request.json",
+      "bytes": 176,
+      "sha256": "e049689c8e98c9b0ea8ef98b8e742fbed40792da209d8e57535e234bdb08124c"
+    },
+    {
+      "file": "spec-2-items-response.json",
+      "bytes": 469,
+      "sha256": "7554918b9f9309629ba6d8ea3d048db4283df1c82653cad679f1168d40748cd3"
+    }
+  ],
+  "gate": "failed",
+  "summary": {
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 1,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 2,
+      "total": 2,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

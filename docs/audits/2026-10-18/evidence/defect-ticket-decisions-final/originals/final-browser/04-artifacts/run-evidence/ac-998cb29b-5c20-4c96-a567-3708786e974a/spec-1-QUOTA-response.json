@@ -1,0 +1,33 @@
+{
+  "requested": true,
+  "httpStatus": 200,
+  "contentType": "application/json",
+  "redirectNotFollowed": false,
+  "hasLocation": false,
+  "mismatches": [
+    {
+      "kind": "equals",
+      "pointer": "/code",
+      "value": 0,
+      "passed": false,
+      "actual": 1,
+      "exists": true
+    }
+  ],
+  "bytes": 21,
+  "bodySha256": "4aa1c5f85970ae959846c5837c38376a6d245fe8fbb63142720ba07b5890b287",
+  "body": {
+    "code": 1,
+    "quota": 10
+  },
+  "assertions": [
+    {
+      "pointer": "/code",
+      "kind": "equals",
+      "value": 0,
+      "passed": false,
+      "actual": 1,
+      "exists": true
+    }
+  ]
+}

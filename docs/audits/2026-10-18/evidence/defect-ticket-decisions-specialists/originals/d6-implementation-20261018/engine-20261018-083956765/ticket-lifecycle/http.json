@@ -1,0 +1,3679 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 0,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 0,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 11,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:17 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=b90ec7d1-18e1-421f-8418-36975fb3a8e1; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked"
+    },
+    "bytes": 274,
+    "sha256": "34d50ed17c3729880fbd328c6099a5dc308f89a643ca20b19b965d576081f1d5",
+    "payload": {
+      "ok": true,
+      "recon": null,
+      "audit": null,
+      "watch": null,
+      "assets": null,
+      "matrix": null,
+      "verify": null,
+      "acceptance": null,
+      "live": null,
+      "session": null,
+      "upgrade": null,
+      "clone": null,
+      "editManifest": null,
+      "forge": {
+        "slots": 0,
+        "max": 2
+      },
+      "jobs": 0,
+      "jobsStore": "sqlite",
+      "bind": "127.0.0.1",
+      "auth": true
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets",
+    "auth": "valid",
+    "body": {
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+      "sourceOperationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+      "memberCheckIds": [
+        "check-0",
+        "check-1"
+      ],
+      "title": "两项页面还原缺陷",
+      "severity": "high",
+      "description": "捕获的来源包含两项失败检查。",
+      "reproduction": "打开固定路由并核对这两项检查。"
+    },
+    "elapsedMs": 10835,
+    "status": 201,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:17 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=7ce396da-c7d4-4ae0-9196-cb9ef14bf8f3; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 5310,
+    "sha256": "e243502a5ef4642d58e51b444af85223a39ec31b675a2c27b3acf898f8303641",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "recorded",
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+      "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+      "eventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+      "event": {
+        "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+        "actor": {
+          "kind": "local-operator"
+        },
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "createdAt": "2026-10-18T00:41:24.520Z",
+        "description": "捕获的来源包含两项失败检查。",
+        "kind": "create",
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "members": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "checkId": "check-0",
+            "evidence": [
+              {
+                "bytes": 2523,
+                "file": "source-route-2-1-desktop-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 2523,
+                "file": "target-route-2-1-desktop-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 640,
+                "width": 960
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "checkId": "check-1",
+            "evidence": [
+              {
+                "bytes": 2520,
+                "file": "source-route-2-2-mobile-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 2520,
+                "file": "target-route-2-2-mobile-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 812,
+                "width": 375
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          }
+        ],
+        "previousEventSha256": null,
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "reproduction": "打开固定路由并核对这两项检查。",
+        "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+        "revision": 0,
+        "severity": "high",
+        "source": {
+          "acceptedAt": "2026-10-18T00:40:45.305Z",
+          "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+          "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+          "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+          "recordedAt": "2026-10-18T00:40:57.575Z",
+          "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "ticketContractVersion": 1,
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+        "title": "两项页面还原缺陷"
+      },
+      "replayed": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/actions/da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+    "auth": "valid",
+    "elapsedMs": 126,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:27 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=3b5af50a-a3dd-454a-8e3e-9d16e987d0fc; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 5293,
+    "sha256": "c7a19cc56d22041fed140536653da294efc85369b48a22600cbef641409a1d85",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "recorded",
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+      "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+      "eventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+      "event": {
+        "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+        "actor": {
+          "kind": "local-operator"
+        },
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "createdAt": "2026-10-18T00:41:24.520Z",
+        "description": "捕获的来源包含两项失败检查。",
+        "kind": "create",
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "members": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "checkId": "check-0",
+            "evidence": [
+              {
+                "bytes": 2523,
+                "file": "source-route-2-1-desktop-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 2523,
+                "file": "target-route-2-1-desktop-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 640,
+                "width": 960
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "checkId": "check-1",
+            "evidence": [
+              {
+                "bytes": 2520,
+                "file": "source-route-2-2-mobile-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 2520,
+                "file": "target-route-2-2-mobile-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 812,
+                "width": 375
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          }
+        ],
+        "previousEventSha256": null,
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "reproduction": "打开固定路由并核对这两项检查。",
+        "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+        "revision": 0,
+        "severity": "high",
+        "source": {
+          "acceptedAt": "2026-10-18T00:40:45.305Z",
+          "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+          "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+          "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+          "recordedAt": "2026-10-18T00:40:57.575Z",
+          "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "ticketContractVersion": 1,
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+        "title": "两项页面还原缺陷"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets",
+    "auth": "valid",
+    "body": {
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+      "sourceOperationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+      "memberCheckIds": [
+        "check-0",
+        "check-1"
+      ],
+      "title": "两项页面还原缺陷",
+      "severity": "high",
+      "description": "捕获的来源包含两项失败检查。",
+      "reproduction": "打开固定路由并核对这两项检查。"
+    },
+    "elapsedMs": 191,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:27 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=325e932e-cf8a-4348-a5f1-9a27486455b3; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 5309,
+    "sha256": "162ff1e7656d30032fce477b467f4a13e43b95865511c2b7758eb80baac14aba",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "recorded",
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+      "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+      "eventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+      "event": {
+        "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+        "actor": {
+          "kind": "local-operator"
+        },
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "createdAt": "2026-10-18T00:41:24.520Z",
+        "description": "捕获的来源包含两项失败检查。",
+        "kind": "create",
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "members": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "checkId": "check-0",
+            "evidence": [
+              {
+                "bytes": 2523,
+                "file": "source-route-2-1-desktop-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 2523,
+                "file": "target-route-2-1-desktop-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 640,
+                "width": 960
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "checkId": "check-1",
+            "evidence": [
+              {
+                "bytes": 2520,
+                "file": "source-route-2-2-mobile-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 2520,
+                "file": "target-route-2-2-mobile-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 812,
+                "width": 375
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          }
+        ],
+        "previousEventSha256": null,
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "reproduction": "打开固定路由并核对这两项检查。",
+        "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+        "revision": 0,
+        "severity": "high",
+        "source": {
+          "acceptedAt": "2026-10-18T00:40:45.305Z",
+          "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+          "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+          "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+          "recordedAt": "2026-10-18T00:40:57.575Z",
+          "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "ticketContractVersion": 1,
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+        "title": "两项页面还原缺陷"
+      },
+      "replayed": true
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets",
+    "auth": "valid",
+    "body": {
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+      "sourceOperationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+      "memberCheckIds": [
+        "check-0",
+        "check-1"
+      ],
+      "title": "Different title",
+      "severity": "high",
+      "description": "捕获的来源包含两项失败检查。",
+      "reproduction": "打开固定路由并核对这两项检查。"
+    },
+    "elapsedMs": 110,
+    "status": 409,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:28 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=442ef498-d746-4a95-90ae-2cd4faeecc21; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 117,
+    "sha256": "b323089f10dee5fd1510819a92e3035efa0013cf155da1ba8c41421a24648688",
+    "payload": {
+      "code": "ACTION_CONFLICT",
+      "error": "此动作编号已有不同确认，请核对原动作。",
+      "outcomeUnknown": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+    "auth": "valid",
+    "elapsedMs": 7723,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:28 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=52960a58-f48d-4361-a7a1-44010275c47c; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 10511,
+    "sha256": "eaf92860de661792e0de3eb0ddcd15bcab2aa754f9993b0c6e31545077327dfe",
+    "payload": {
+      "schemaVersion": 1,
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticket": {
+        "projectionVersion": 1,
+        "kind": "manual-defect-ticket",
+        "scope": "declared-members",
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "title": "两项页面还原缺陷",
+        "severity": "high",
+        "description": "捕获的来源包含两项失败检查。",
+        "reproduction": "打开固定路由并核对这两项检查。",
+        "source": {
+          "acceptedAt": "2026-10-18T00:40:45.305Z",
+          "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+          "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+          "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+          "recordedAt": "2026-10-18T00:40:57.575Z",
+          "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "members": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "checkId": "check-0",
+            "evidence": [
+              {
+                "bytes": 2523,
+                "file": "source-route-2-1-desktop-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 2523,
+                "file": "target-route-2-1-desktop-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 640,
+                "width": 960
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "checkId": "check-1",
+            "evidence": [
+              {
+                "bytes": 2520,
+                "file": "source-route-2-2-mobile-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 2520,
+                "file": "target-route-2-2-mobile-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 812,
+                "width": 375
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          }
+        ],
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "revision": 0,
+        "headSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+        "processingStatus": "open",
+        "lastClose": null,
+        "history": [
+          {
+            "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+            "actor": {
+              "kind": "local-operator"
+            },
+            "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+            "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+            "createdAt": "2026-10-18T00:41:24.520Z",
+            "description": "捕获的来源包含两项失败检查。",
+            "kind": "create",
+            "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+            "members": [
+              {
+                "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+                "checkId": "check-0",
+                "evidence": [
+                  {
+                    "bytes": 2523,
+                    "file": "source-route-2-1-desktop-point-2-baseline.json",
+                    "role": "baselineDetails",
+                    "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                    "role": "baselineRepeat",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "source-route-2-1-desktop-point-2-baseline.png",
+                    "role": "baselineScreenshot",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  },
+                  {
+                    "bytes": 2523,
+                    "file": "target-route-2-1-desktop-point-2-baseline.json",
+                    "role": "targetDetails",
+                    "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                    "role": "targetRepeat",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "target-route-2-1-desktop-point-2-baseline.png",
+                    "role": "targetScreenshot",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  }
+                ],
+                "identity": {
+                  "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+                  "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+                  "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+                  "facet": "behavior",
+                  "kind": "browser",
+                  "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+                  "pointId": "identical-menu",
+                  "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+                  "version": 1,
+                  "viewport": {
+                    "height": 640,
+                    "width": 960
+                  }
+                },
+                "route": "/identical?revision=two",
+                "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+              },
+              {
+                "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+                "checkId": "check-1",
+                "evidence": [
+                  {
+                    "bytes": 2520,
+                    "file": "source-route-2-2-mobile-point-2-baseline.json",
+                    "role": "baselineDetails",
+                    "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                    "role": "baselineRepeat",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "source-route-2-2-mobile-point-2-baseline.png",
+                    "role": "baselineScreenshot",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  },
+                  {
+                    "bytes": 2520,
+                    "file": "target-route-2-2-mobile-point-2-baseline.json",
+                    "role": "targetDetails",
+                    "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                    "role": "targetRepeat",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "target-route-2-2-mobile-point-2-baseline.png",
+                    "role": "targetScreenshot",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  }
+                ],
+                "identity": {
+                  "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+                  "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+                  "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+                  "facet": "behavior",
+                  "kind": "browser",
+                  "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+                  "pointId": "identical-menu",
+                  "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+                  "version": 1,
+                  "viewport": {
+                    "height": 812,
+                    "width": 375
+                  }
+                },
+                "route": "/identical?revision=two",
+                "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+              }
+            ],
+            "previousEventSha256": null,
+            "projectId": "ap-00000000-0000-0000-0000-000000000701",
+            "reproduction": "打开固定路由并核对这两项检查。",
+            "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+            "revision": 0,
+            "severity": "high",
+            "source": {
+              "acceptedAt": "2026-10-18T00:40:45.305Z",
+              "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+              "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+              "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+              "recordedAt": "2026-10-18T00:40:57.575Z",
+              "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+              "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+            },
+            "ticketContractVersion": 1,
+            "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+            "title": "两项页面还原缺陷"
+          }
+        ],
+        "verificationStatus": "verified_passed",
+        "currentOperationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+        "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+        "counts": {
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "incomparable": 0,
+          "unverified": 0
+        },
+        "results": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "sourceCheckId": "check-0",
+            "afterCheckId": "check-0",
+            "relation": "verified_passed",
+            "reason": "REGISTERED_RELIABLE_PASS"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "sourceCheckId": "check-1",
+            "afterCheckId": "check-1",
+            "relation": "verified_passed",
+            "reason": "REGISTERED_RELIABLE_PASS"
+          }
+        ],
+        "reopenReasons": [],
+        "closeEligible": true,
+        "reason": "READY_FOR_EXPLICIT_CLOSE"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3/close-preview?afterOperationId=bo-c2039b2e-38ce-4718-919e-12796048b76f",
+    "auth": "valid",
+    "elapsedMs": 8035,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:44 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=9798198f-fef4-4715-9e6b-1e41c76d8ba8; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 1673,
+    "sha256": "781d0e7c126e32472580b9be9a5d336aeefa7f1e6950bc9cf3232f137c752ff0",
+    "payload": {
+      "schemaVersion": 1,
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "preview": {
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+        "expectedRevision": 0,
+        "expectedHeadSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+        "afterOperationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+        "after": {
+          "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705",
+          "acceptedAt": "2026-10-18T00:40:57.996Z",
+          "recordedAt": "2026-10-18T00:41:12.124Z",
+          "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+          "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+          "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e"
+        },
+        "closeEligible": true,
+        "verificationStatus": "verified_passed",
+        "results": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "sourceCheckId": "check-0",
+            "afterCheckId": "check-0",
+            "relation": "verified_passed",
+            "reason": "REGISTERED_RELIABLE_PASS"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "sourceCheckId": "check-1",
+            "afterCheckId": "check-1",
+            "relation": "verified_passed",
+            "reason": "REGISTERED_RELIABLE_PASS"
+          }
+        ],
+        "reason": "READY_FOR_EXPLICIT_CLOSE",
+        "processingStatus": "open",
+        "counts": {
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "incomparable": 0,
+          "unverified": 0
+        },
+        "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3/close",
+    "auth": "valid",
+    "body": {
+      "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+      "afterOperationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+      "expectedRevision": 0,
+      "expectedHeadSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+      "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+      "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+      "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c",
+      "resolution": "两项固定检查均已复核通过。",
+      "confirmed": true
+    },
+    "elapsedMs": 9358,
+    "status": 201,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:44 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=58a96394-22cf-4c97-b38f-9d8f1103be0c; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 2151,
+    "sha256": "ef840ae01a4517ea1835fe3c3497519a350b8bb13074bdef2ff71b10b27e08ae",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "recorded",
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+      "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+      "eventSha256": "508de6a84c2093c5d5f14daa1342e9f7b5d8f291d3257ea523a528cc9267f2d1",
+      "event": {
+        "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+        "actor": {
+          "kind": "local-operator"
+        },
+        "after": {
+          "acceptedAt": "2026-10-18T00:40:57.996Z",
+          "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+          "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e",
+          "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+          "recordedAt": "2026-10-18T00:41:12.124Z",
+          "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "confirmed": true,
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "createdAt": "2026-10-18T00:41:51.092Z",
+        "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+        "kind": "close",
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c",
+        "previousEventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+        "resolution": "两项固定检查均已复核通过。",
+        "results": [
+          {
+            "afterCheckId": "check-0",
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "relation": "verified_passed",
+            "sourceCheckId": "check-0"
+          },
+          {
+            "afterCheckId": "check-1",
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "relation": "verified_passed",
+            "sourceCheckId": "check-1"
+          }
+        ],
+        "revision": 1,
+        "ticketContractVersion": 1,
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3"
+      },
+      "replayed": false
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3/close",
+    "auth": "valid",
+    "body": {
+      "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+      "afterOperationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+      "expectedRevision": 0,
+      "expectedHeadSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+      "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+      "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+      "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c",
+      "resolution": "两项固定检查均已复核通过。",
+      "confirmed": true
+    },
+    "elapsedMs": 194,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:53 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=f49f62be-b53f-4314-8ed6-26f18dbe4e14; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 2150,
+    "sha256": "52ed1fa546023bf2a7380b48b77f9e545558a394e17b8b0e0a04c81c318b40d3",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "recorded",
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+      "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+      "eventSha256": "508de6a84c2093c5d5f14daa1342e9f7b5d8f291d3257ea523a528cc9267f2d1",
+      "event": {
+        "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+        "actor": {
+          "kind": "local-operator"
+        },
+        "after": {
+          "acceptedAt": "2026-10-18T00:40:57.996Z",
+          "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+          "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e",
+          "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+          "recordedAt": "2026-10-18T00:41:12.124Z",
+          "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "confirmed": true,
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "createdAt": "2026-10-18T00:41:51.092Z",
+        "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+        "kind": "close",
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c",
+        "previousEventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+        "resolution": "两项固定检查均已复核通过。",
+        "results": [
+          {
+            "afterCheckId": "check-0",
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "relation": "verified_passed",
+            "sourceCheckId": "check-0"
+          },
+          {
+            "afterCheckId": "check-1",
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "relation": "verified_passed",
+            "sourceCheckId": "check-1"
+          }
+        ],
+        "revision": 1,
+        "ticketContractVersion": 1,
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3"
+      },
+      "replayed": true
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+    "auth": "valid",
+    "elapsedMs": 7717,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:41:53 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=56e07e7a-0518-4e6a-ad57-9b9e889d6dfe; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 13939,
+    "sha256": "6e88b0c151b691acefed2b11d3a3f4f1b28f8f2d72c7d42c2e5749d4302332f6",
+    "payload": {
+      "schemaVersion": 1,
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticket": {
+        "projectionVersion": 1,
+        "kind": "manual-defect-ticket",
+        "scope": "declared-members",
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "title": "两项页面还原缺陷",
+        "severity": "high",
+        "description": "捕获的来源包含两项失败检查。",
+        "reproduction": "打开固定路由并核对这两项检查。",
+        "source": {
+          "acceptedAt": "2026-10-18T00:40:45.305Z",
+          "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+          "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+          "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+          "recordedAt": "2026-10-18T00:40:57.575Z",
+          "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "members": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "checkId": "check-0",
+            "evidence": [
+              {
+                "bytes": 2523,
+                "file": "source-route-2-1-desktop-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 2523,
+                "file": "target-route-2-1-desktop-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 640,
+                "width": 960
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "checkId": "check-1",
+            "evidence": [
+              {
+                "bytes": 2520,
+                "file": "source-route-2-2-mobile-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 2520,
+                "file": "target-route-2-2-mobile-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 812,
+                "width": 375
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          }
+        ],
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "revision": 1,
+        "headSha256": "508de6a84c2093c5d5f14daa1342e9f7b5d8f291d3257ea523a528cc9267f2d1",
+        "processingStatus": "closed",
+        "lastClose": {
+          "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+          "actor": {
+            "kind": "local-operator"
+          },
+          "after": {
+            "acceptedAt": "2026-10-18T00:40:57.996Z",
+            "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+            "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e",
+            "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+            "recordedAt": "2026-10-18T00:41:12.124Z",
+            "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+            "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+          },
+          "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+          "confirmed": true,
+          "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+          "createdAt": "2026-10-18T00:41:51.092Z",
+          "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+          "kind": "close",
+          "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+          "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c",
+          "previousEventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+          "projectId": "ap-00000000-0000-0000-0000-000000000701",
+          "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+          "resolution": "两项固定检查均已复核通过。",
+          "results": [
+            {
+              "afterCheckId": "check-0",
+              "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+              "relation": "verified_passed",
+              "sourceCheckId": "check-0"
+            },
+            {
+              "afterCheckId": "check-1",
+              "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+              "relation": "verified_passed",
+              "sourceCheckId": "check-1"
+            }
+          ],
+          "revision": 1,
+          "ticketContractVersion": 1,
+          "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3"
+        },
+        "history": [
+          {
+            "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+            "actor": {
+              "kind": "local-operator"
+            },
+            "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+            "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+            "createdAt": "2026-10-18T00:41:24.520Z",
+            "description": "捕获的来源包含两项失败检查。",
+            "kind": "create",
+            "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+            "members": [
+              {
+                "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+                "checkId": "check-0",
+                "evidence": [
+                  {
+                    "bytes": 2523,
+                    "file": "source-route-2-1-desktop-point-2-baseline.json",
+                    "role": "baselineDetails",
+                    "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                    "role": "baselineRepeat",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "source-route-2-1-desktop-point-2-baseline.png",
+                    "role": "baselineScreenshot",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  },
+                  {
+                    "bytes": 2523,
+                    "file": "target-route-2-1-desktop-point-2-baseline.json",
+                    "role": "targetDetails",
+                    "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                    "role": "targetRepeat",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "target-route-2-1-desktop-point-2-baseline.png",
+                    "role": "targetScreenshot",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  }
+                ],
+                "identity": {
+                  "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+                  "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+                  "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+                  "facet": "behavior",
+                  "kind": "browser",
+                  "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+                  "pointId": "identical-menu",
+                  "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+                  "version": 1,
+                  "viewport": {
+                    "height": 640,
+                    "width": 960
+                  }
+                },
+                "route": "/identical?revision=two",
+                "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+              },
+              {
+                "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+                "checkId": "check-1",
+                "evidence": [
+                  {
+                    "bytes": 2520,
+                    "file": "source-route-2-2-mobile-point-2-baseline.json",
+                    "role": "baselineDetails",
+                    "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                    "role": "baselineRepeat",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "source-route-2-2-mobile-point-2-baseline.png",
+                    "role": "baselineScreenshot",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  },
+                  {
+                    "bytes": 2520,
+                    "file": "target-route-2-2-mobile-point-2-baseline.json",
+                    "role": "targetDetails",
+                    "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                    "role": "targetRepeat",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "target-route-2-2-mobile-point-2-baseline.png",
+                    "role": "targetScreenshot",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  }
+                ],
+                "identity": {
+                  "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+                  "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+                  "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+                  "facet": "behavior",
+                  "kind": "browser",
+                  "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+                  "pointId": "identical-menu",
+                  "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+                  "version": 1,
+                  "viewport": {
+                    "height": 812,
+                    "width": 375
+                  }
+                },
+                "route": "/identical?revision=two",
+                "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+              }
+            ],
+            "previousEventSha256": null,
+            "projectId": "ap-00000000-0000-0000-0000-000000000701",
+            "reproduction": "打开固定路由并核对这两项检查。",
+            "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+            "revision": 0,
+            "severity": "high",
+            "source": {
+              "acceptedAt": "2026-10-18T00:40:45.305Z",
+              "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+              "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+              "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+              "recordedAt": "2026-10-18T00:40:57.575Z",
+              "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+              "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+            },
+            "ticketContractVersion": 1,
+            "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+            "title": "两项页面还原缺陷"
+          },
+          {
+            "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+            "actor": {
+              "kind": "local-operator"
+            },
+            "after": {
+              "acceptedAt": "2026-10-18T00:40:57.996Z",
+              "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+              "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e",
+              "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+              "recordedAt": "2026-10-18T00:41:12.124Z",
+              "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+              "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+            },
+            "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+            "confirmed": true,
+            "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+            "createdAt": "2026-10-18T00:41:51.092Z",
+            "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+            "kind": "close",
+            "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+            "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c",
+            "previousEventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+            "projectId": "ap-00000000-0000-0000-0000-000000000701",
+            "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+            "resolution": "两项固定检查均已复核通过。",
+            "results": [
+              {
+                "afterCheckId": "check-0",
+                "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+                "relation": "verified_passed",
+                "sourceCheckId": "check-0"
+              },
+              {
+                "afterCheckId": "check-1",
+                "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+                "relation": "verified_passed",
+                "sourceCheckId": "check-1"
+              }
+            ],
+            "revision": 1,
+            "ticketContractVersion": 1,
+            "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3"
+          }
+        ],
+        "verificationStatus": "verified_passed",
+        "currentOperationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+        "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+        "counts": {
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "incomparable": 0,
+          "unverified": 0
+        },
+        "results": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "sourceCheckId": "check-0",
+            "afterCheckId": "check-0",
+            "relation": "verified_passed",
+            "reason": "REGISTERED_RELIABLE_PASS"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "sourceCheckId": "check-1",
+            "afterCheckId": "check-1",
+            "relation": "verified_passed",
+            "reason": "REGISTERED_RELIABLE_PASS"
+          }
+        ],
+        "reopenReasons": [],
+        "closeEligible": false,
+        "reason": "ALREADY_CLOSED"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets",
+    "auth": "valid",
+    "elapsedMs": 7876,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:09 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=24faaeb9-6303-4806-b677-185777ad3334; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 920,
+    "sha256": "9b5ff7ca563515329ed91a49af9825678c373f20a1179d8d0c9d3d3695c83742",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-list",
+      "scope": "declared-members",
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticketCount": 1,
+      "associatedCheckCount": 2,
+      "tickets": [
+        {
+          "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+          "projectId": "ap-00000000-0000-0000-0000-000000000701",
+          "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+          "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+          "title": "两项页面还原缺陷",
+          "severity": "high",
+          "revision": 1,
+          "headSha256": "508de6a84c2093c5d5f14daa1342e9f7b5d8f291d3257ea523a528cc9267f2d1",
+          "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+          "processingStatus": "closed",
+          "verificationStatus": "verified_passed",
+          "currentOperationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+          "counts": {
+            "total": 2,
+            "passed": 2,
+            "failed": 0,
+            "incomparable": 0,
+            "unverified": 0
+          },
+          "closeEligible": false,
+          "reason": "ALREADY_CLOSED"
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3/export.md",
+    "auth": "valid",
+    "elapsedMs": 8375,
+    "status": 200,
+    "headers": {
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-disposition": "attachment; filename=\"dt-b6b6f515-d868-45fb-b43f-e6841d6534b3.md\"",
+      "content-length": "4024",
+      "content-type": "text/markdown; charset=utf-8",
+      "date": "Sun, 18 Oct 2026 00:42:09 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=1981ccca-3068-4547-b8f0-f14cb45e4bfc; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 4024,
+    "sha256": "95d652e2c2834dd9cd1a36ed684537b0fb6317ae8aacaea14ea7a1adc402f728",
+    "text": "# 人工缺陷单\n\n范围：固定关联检查。\n\n> 两项页面还原缺陷\n\n编号：dt\\-b6b6f515\\-d868\\-45fb\\-b43f\\-e6841d6534b3\n严重度：high\n人工处理状态：closed\n当前核验状态：verified\\_passed\n关联检查数量：2\n导出时间：2026\\-10\\-18T00:42:17\\.016Z\n\n## 问题说明\n\n> 捕获的来源包含两项失败检查。\n\n## 复现说明\n\n> 打开固定路由并核对这两项检查。\n\n## 固定来源\n\n操作：bo\\-6ad52df0\\-1149\\-48ae\\-8ade\\-b85ab6b407ee\n报告 SHA256：bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573\n登记 SHA256：ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0\n成员集合 SHA256：bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb\n\n## 关联检查与证据\n\n- 检查：check\\-0；路由：/identical\\[query omitted\\]；BUG：bug\\-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174\n  - baselineDetails：source\\-route\\-2\\-1\\-desktop\\-point\\-2\\-baseline\\.json；2523 bytes；SHA256 9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5\n  - baselineRepeat：source\\-route\\-2\\-1\\-desktop\\-point\\-2\\-baseline\\-repeat\\.png；23523 bytes；SHA256 a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94\n  - baselineScreenshot：source\\-route\\-2\\-1\\-desktop\\-point\\-2\\-baseline\\.png；23523 bytes；SHA256 a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94\n  - targetDetails：target\\-route\\-2\\-1\\-desktop\\-point\\-2\\-baseline\\.json；2523 bytes；SHA256 9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5\n  - targetRepeat：target\\-route\\-2\\-1\\-desktop\\-point\\-2\\-baseline\\-repeat\\.png；23523 bytes；SHA256 a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94\n  - targetScreenshot：target\\-route\\-2\\-1\\-desktop\\-point\\-2\\-baseline\\.png；23523 bytes；SHA256 a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94\n- 检查：check\\-1；路由：/identical\\[query omitted\\]；BUG：bug\\-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed\n  - baselineDetails：source\\-route\\-2\\-2\\-mobile\\-point\\-2\\-baseline\\.json；2520 bytes；SHA256 adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4\n  - baselineRepeat：source\\-route\\-2\\-2\\-mobile\\-point\\-2\\-baseline\\-repeat\\.png；21566 bytes；SHA256 6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40\n  - baselineScreenshot：source\\-route\\-2\\-2\\-mobile\\-point\\-2\\-baseline\\.png；21566 bytes；SHA256 6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40\n  - targetDetails：target\\-route\\-2\\-2\\-mobile\\-point\\-2\\-baseline\\.json；2520 bytes；SHA256 adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4\n  - targetRepeat：target\\-route\\-2\\-2\\-mobile\\-point\\-2\\-baseline\\-repeat\\.png；21566 bytes；SHA256 6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40\n  - targetScreenshot：target\\-route\\-2\\-2\\-mobile\\-point\\-2\\-baseline\\.png；21566 bytes；SHA256 6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40\n\n## 当前逐项核验\n\n- check\\-0：verified\\_passed（REGISTERED\\_RELIABLE\\_PASS）\n- check\\-1：verified\\_passed（REGISTERED\\_RELIABLE\\_PASS）\n\n## 人工处理历史\n\n- revision 0 · create · 2026\\-10\\-18T00:41:24\\.520Z · da\\-4c9a8561\\-4278\\-47b0\\-8864\\-0c7199fbfe43 · SHA256 2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac\n- revision 1 · close · 2026\\-10\\-18T00:41:51\\.092Z · da\\-8eff065c\\-40e5\\-4472\\-9a0c\\-ba2087d62c3b · SHA256 508de6a84c2093c5d5f14daa1342e9f7b5d8f291d3257ea523a528cc9267f2d1\n\n> 两项固定检查均已复核通过。\n\n\n## 范围限制\n\n- 仅覆盖此人工缺陷单固定关联的检查；不代表整个页面、项目或业务流程已修复。\n- 人工处理状态与当前核验状态分开；历史关闭不代替当前证据核验。\n- 导出省略 URL 查询参数及已识别的敏感字段，不包含原始报告、截图、网络记录或 AI 原文。\n- 无法保证识别任意人工输入的秘密；共享前仍应检查人工文字。\n"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3/export.json",
+    "auth": "valid",
+    "elapsedMs": 8023,
+    "status": 200,
+    "headers": {
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-disposition": "attachment; filename=\"dt-b6b6f515-d868-45fb-b43f-e6841d6534b3.json\"",
+      "content-length": "9847",
+      "content-type": "application/json; charset=utf-8",
+      "date": "Sun, 18 Oct 2026 00:42:25 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=9c20cf59-8e36-46f8-9e3c-8794fb16c11e; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 9847,
+    "sha256": "e1ed81701405a9204ba4501da175fa0107f3b1995932beefa8b863f36c5ca454",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket",
+      "scope": "declared-members",
+      "exportedAt": "2026-10-18T00:42:25.148Z",
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+      "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+      "revision": 1,
+      "headSha256": "508de6a84c2093c5d5f14daa1342e9f7b5d8f291d3257ea523a528cc9267f2d1",
+      "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+      "title": "两项页面还原缺陷",
+      "severity": "high",
+      "description": "捕获的来源包含两项失败检查。",
+      "reproduction": "打开固定路由并核对这两项检查。",
+      "source": {
+        "acceptedAt": "2026-10-18T00:40:45.305Z",
+        "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+        "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+        "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+        "recordedAt": "2026-10-18T00:40:57.575Z",
+        "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+        "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+      },
+      "members": [
+        {
+          "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+          "checkId": "check-0",
+          "evidence": [
+            {
+              "bytes": 2523,
+              "file": "source-route-2-1-desktop-point-2-baseline.json",
+              "role": "baselineDetails",
+              "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+            },
+            {
+              "bytes": 23523,
+              "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+              "role": "baselineRepeat",
+              "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+            },
+            {
+              "bytes": 23523,
+              "file": "source-route-2-1-desktop-point-2-baseline.png",
+              "role": "baselineScreenshot",
+              "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+            },
+            {
+              "bytes": 2523,
+              "file": "target-route-2-1-desktop-point-2-baseline.json",
+              "role": "targetDetails",
+              "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+            },
+            {
+              "bytes": 23523,
+              "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+              "role": "targetRepeat",
+              "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+            },
+            {
+              "bytes": 23523,
+              "file": "target-route-2-1-desktop-point-2-baseline.png",
+              "role": "targetScreenshot",
+              "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+            }
+          ],
+          "identity": {
+            "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+            "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "facet": "behavior",
+            "kind": "browser",
+            "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+            "pointId": "identical-menu",
+            "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+            "version": 1,
+            "viewport": {
+              "height": 640,
+              "width": 960
+            }
+          },
+          "route": "/identical[query omitted]",
+          "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+        },
+        {
+          "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+          "checkId": "check-1",
+          "evidence": [
+            {
+              "bytes": 2520,
+              "file": "source-route-2-2-mobile-point-2-baseline.json",
+              "role": "baselineDetails",
+              "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+            },
+            {
+              "bytes": 21566,
+              "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+              "role": "baselineRepeat",
+              "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+            },
+            {
+              "bytes": 21566,
+              "file": "source-route-2-2-mobile-point-2-baseline.png",
+              "role": "baselineScreenshot",
+              "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+            },
+            {
+              "bytes": 2520,
+              "file": "target-route-2-2-mobile-point-2-baseline.json",
+              "role": "targetDetails",
+              "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+            },
+            {
+              "bytes": 21566,
+              "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+              "role": "targetRepeat",
+              "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+            },
+            {
+              "bytes": 21566,
+              "file": "target-route-2-2-mobile-point-2-baseline.png",
+              "role": "targetScreenshot",
+              "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+            }
+          ],
+          "identity": {
+            "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+            "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+            "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+            "facet": "behavior",
+            "kind": "browser",
+            "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+            "pointId": "identical-menu",
+            "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+            "version": 1,
+            "viewport": {
+              "height": 812,
+              "width": 375
+            }
+          },
+          "route": "/identical[query omitted]",
+          "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+        }
+      ],
+      "handling": {
+        "status": "closed",
+        "lastClose": {
+          "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+          "after": {
+            "acceptedAt": "2026-10-18T00:40:57.996Z",
+            "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+            "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e",
+            "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+            "recordedAt": "2026-10-18T00:41:12.124Z",
+            "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+            "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+          },
+          "closedAt": "2026-10-18T00:41:51.092Z",
+          "resolution": "两项固定检查均已复核通过。"
+        }
+      },
+      "verification": {
+        "status": "verified_passed",
+        "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+        "currentOperationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+        "counts": {
+          "failed": 0,
+          "incomparable": 0,
+          "passed": 2,
+          "total": 2,
+          "unverified": 0
+        },
+        "results": [
+          {
+            "afterCheckId": "check-0",
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "reason": "REGISTERED_RELIABLE_PASS",
+            "relation": "verified_passed",
+            "sourceCheckId": "check-0"
+          },
+          {
+            "afterCheckId": "check-1",
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "reason": "REGISTERED_RELIABLE_PASS",
+            "relation": "verified_passed",
+            "sourceCheckId": "check-1"
+          }
+        ],
+        "reopenReasons": [],
+        "reason": "ALREADY_CLOSED",
+        "closeEligible": false,
+        "sourceIntegrityVerified": true,
+        "repairVerified": true
+      },
+      "history": [
+        {
+          "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+          "kind": "create",
+          "revision": 0,
+          "previousEventSha256": null,
+          "eventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+          "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+          "createdAt": "2026-10-18T00:41:24.520Z"
+        },
+        {
+          "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+          "kind": "close",
+          "revision": 1,
+          "previousEventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+          "eventSha256": "508de6a84c2093c5d5f14daa1342e9f7b5d8f291d3257ea523a528cc9267f2d1",
+          "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+          "createdAt": "2026-10-18T00:41:51.092Z",
+          "after": {
+            "acceptedAt": "2026-10-18T00:40:57.996Z",
+            "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+            "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e",
+            "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+            "recordedAt": "2026-10-18T00:41:12.124Z",
+            "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+            "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+          },
+          "resolution": "两项固定检查均已复核通过。"
+        }
+      ],
+      "limitations": [
+        "仅覆盖此人工缺陷单固定关联的检查；不代表整个页面、项目或业务流程已修复。",
+        "人工处理状态与当前核验状态分开；历史关闭不代替当前证据核验。",
+        "导出省略 URL 查询参数及已识别的敏感字段，不包含原始报告、截图、网络记录或 AI 原文。",
+        "无法保证识别任意人工输入的秘密；共享前仍应检查人工文字。"
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-41cb7b32-1eef-40e4-acdc-31aed27455b7/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+    "auth": "valid",
+    "elapsedMs": 128,
+    "status": 404,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:25 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=1810cd7a-59c0-4620-a789-7741c7687dc2; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 105,
+    "sha256": "0b3fdb2e7d441e7ec637191d76ed61f836e487ef38535ebeb31f753b24371321",
+    "payload": {
+      "code": "NOT_FOUND",
+      "error": "所选人工缺陷单、来源或动作不存在。",
+      "outcomeUnknown": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-41cb7b32-1eef-40e4-acdc-31aed27455b7/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3/export.json",
+    "auth": "valid",
+    "elapsedMs": 128,
+    "status": 404,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:25 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=17d0c536-2fa3-4ee1-b1ba-a5e9179dc95b; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 105,
+    "sha256": "0b3fdb2e7d441e7ec637191d76ed61f836e487ef38535ebeb31f753b24371321",
+    "payload": {
+      "code": "NOT_FOUND",
+      "error": "所选人工缺陷单、来源或动作不存在。",
+      "outcomeUnknown": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-41cb7b32-1eef-40e4-acdc-31aed27455b7/defect-tickets/actions/da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+    "auth": "valid",
+    "elapsedMs": 120,
+    "status": 404,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:25 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=f82ccc26-dfd4-4809-a380-68f903b2bbe1; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 105,
+    "sha256": "0b3fdb2e7d441e7ec637191d76ed61f836e487ef38535ebeb31f753b24371321",
+    "payload": {
+      "code": "NOT_FOUND",
+      "error": "所选人工缺陷单、来源或动作不存在。",
+      "outcomeUnknown": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-41cb7b32-1eef-40e4-acdc-31aed27455b7/defect-tickets/actions/da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+    "auth": "valid",
+    "elapsedMs": 115,
+    "status": 404,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:25 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=61e06ae3-8d7a-4cb5-afd1-1a6e1ba8ef6e; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 105,
+    "sha256": "0b3fdb2e7d441e7ec637191d76ed61f836e487ef38535ebeb31f753b24371321",
+    "payload": {
+      "code": "NOT_FOUND",
+      "error": "所选人工缺陷单、来源或动作不存在。",
+      "outcomeUnknown": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/jobs",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:26 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=c4fd543e-51cb-4684-b505-981fe21f1c66; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked"
+    },
+    "bytes": 41,
+    "sha256": "a65ab90b203a3451a6e9da8e50a34418c3c5280e0bb9e010913df21fa01e158e",
+    "payload": {
+      "store": "sqlite",
+      "jobs": [],
+      "history": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:26 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=4e682edc-1106-48ea-8951-354a80352495; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked"
+    },
+    "bytes": 274,
+    "sha256": "34d50ed17c3729880fbd328c6099a5dc308f89a643ca20b19b965d576081f1d5",
+    "payload": {
+      "ok": true,
+      "recon": null,
+      "audit": null,
+      "watch": null,
+      "assets": null,
+      "matrix": null,
+      "verify": null,
+      "acceptance": null,
+      "live": null,
+      "session": null,
+      "upgrade": null,
+      "clone": null,
+      "editManifest": null,
+      "forge": {
+        "slots": 0,
+        "max": 2
+      },
+      "jobs": 0,
+      "jobsStore": "sqlite",
+      "bind": "127.0.0.1",
+      "auth": true
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 0,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 0,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 0,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 0,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 2,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "transportFailure": "TypeError: fetch failed"
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 11,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:30 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=5f1e3c1c-7265-4d86-b88a-d4e2c1d761fd; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked"
+    },
+    "bytes": 274,
+    "sha256": "34d50ed17c3729880fbd328c6099a5dc308f89a643ca20b19b965d576081f1d5",
+    "payload": {
+      "ok": true,
+      "recon": null,
+      "audit": null,
+      "watch": null,
+      "assets": null,
+      "matrix": null,
+      "verify": null,
+      "acceptance": null,
+      "live": null,
+      "session": null,
+      "upgrade": null,
+      "clone": null,
+      "editManifest": null,
+      "forge": {
+        "slots": 0,
+        "max": 2
+      },
+      "jobs": 0,
+      "jobsStore": "sqlite",
+      "bind": "127.0.0.1",
+      "auth": true
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+    "auth": "valid",
+    "elapsedMs": 7634,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:30 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=548177d5-5605-4905-a96d-a896a356d7a8; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 13939,
+    "sha256": "6e88b0c151b691acefed2b11d3a3f4f1b28f8f2d72c7d42c2e5749d4302332f6",
+    "payload": {
+      "schemaVersion": 1,
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticket": {
+        "projectionVersion": 1,
+        "kind": "manual-defect-ticket",
+        "scope": "declared-members",
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "title": "两项页面还原缺陷",
+        "severity": "high",
+        "description": "捕获的来源包含两项失败检查。",
+        "reproduction": "打开固定路由并核对这两项检查。",
+        "source": {
+          "acceptedAt": "2026-10-18T00:40:45.305Z",
+          "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+          "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+          "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+          "recordedAt": "2026-10-18T00:40:57.575Z",
+          "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "members": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "checkId": "check-0",
+            "evidence": [
+              {
+                "bytes": 2523,
+                "file": "source-route-2-1-desktop-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 2523,
+                "file": "target-route-2-1-desktop-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 640,
+                "width": 960
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "checkId": "check-1",
+            "evidence": [
+              {
+                "bytes": 2520,
+                "file": "source-route-2-2-mobile-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 2520,
+                "file": "target-route-2-2-mobile-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 812,
+                "width": 375
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          }
+        ],
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "revision": 1,
+        "headSha256": "508de6a84c2093c5d5f14daa1342e9f7b5d8f291d3257ea523a528cc9267f2d1",
+        "processingStatus": "closed",
+        "lastClose": {
+          "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+          "actor": {
+            "kind": "local-operator"
+          },
+          "after": {
+            "acceptedAt": "2026-10-18T00:40:57.996Z",
+            "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+            "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e",
+            "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+            "recordedAt": "2026-10-18T00:41:12.124Z",
+            "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+            "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+          },
+          "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+          "confirmed": true,
+          "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+          "createdAt": "2026-10-18T00:41:51.092Z",
+          "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+          "kind": "close",
+          "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+          "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c",
+          "previousEventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+          "projectId": "ap-00000000-0000-0000-0000-000000000701",
+          "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+          "resolution": "两项固定检查均已复核通过。",
+          "results": [
+            {
+              "afterCheckId": "check-0",
+              "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+              "relation": "verified_passed",
+              "sourceCheckId": "check-0"
+            },
+            {
+              "afterCheckId": "check-1",
+              "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+              "relation": "verified_passed",
+              "sourceCheckId": "check-1"
+            }
+          ],
+          "revision": 1,
+          "ticketContractVersion": 1,
+          "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3"
+        },
+        "history": [
+          {
+            "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+            "actor": {
+              "kind": "local-operator"
+            },
+            "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+            "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+            "createdAt": "2026-10-18T00:41:24.520Z",
+            "description": "捕获的来源包含两项失败检查。",
+            "kind": "create",
+            "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+            "members": [
+              {
+                "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+                "checkId": "check-0",
+                "evidence": [
+                  {
+                    "bytes": 2523,
+                    "file": "source-route-2-1-desktop-point-2-baseline.json",
+                    "role": "baselineDetails",
+                    "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                    "role": "baselineRepeat",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "source-route-2-1-desktop-point-2-baseline.png",
+                    "role": "baselineScreenshot",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  },
+                  {
+                    "bytes": 2523,
+                    "file": "target-route-2-1-desktop-point-2-baseline.json",
+                    "role": "targetDetails",
+                    "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                    "role": "targetRepeat",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  },
+                  {
+                    "bytes": 23523,
+                    "file": "target-route-2-1-desktop-point-2-baseline.png",
+                    "role": "targetScreenshot",
+                    "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+                  }
+                ],
+                "identity": {
+                  "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+                  "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+                  "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+                  "facet": "behavior",
+                  "kind": "browser",
+                  "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+                  "pointId": "identical-menu",
+                  "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+                  "version": 1,
+                  "viewport": {
+                    "height": 640,
+                    "width": 960
+                  }
+                },
+                "route": "/identical?revision=two",
+                "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+              },
+              {
+                "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+                "checkId": "check-1",
+                "evidence": [
+                  {
+                    "bytes": 2520,
+                    "file": "source-route-2-2-mobile-point-2-baseline.json",
+                    "role": "baselineDetails",
+                    "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                    "role": "baselineRepeat",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "source-route-2-2-mobile-point-2-baseline.png",
+                    "role": "baselineScreenshot",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  },
+                  {
+                    "bytes": 2520,
+                    "file": "target-route-2-2-mobile-point-2-baseline.json",
+                    "role": "targetDetails",
+                    "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                    "role": "targetRepeat",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  },
+                  {
+                    "bytes": 21566,
+                    "file": "target-route-2-2-mobile-point-2-baseline.png",
+                    "role": "targetScreenshot",
+                    "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+                  }
+                ],
+                "identity": {
+                  "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+                  "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+                  "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+                  "facet": "behavior",
+                  "kind": "browser",
+                  "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+                  "pointId": "identical-menu",
+                  "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+                  "version": 1,
+                  "viewport": {
+                    "height": 812,
+                    "width": 375
+                  }
+                },
+                "route": "/identical?revision=two",
+                "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+              }
+            ],
+            "previousEventSha256": null,
+            "projectId": "ap-00000000-0000-0000-0000-000000000701",
+            "reproduction": "打开固定路由并核对这两项检查。",
+            "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+            "revision": 0,
+            "severity": "high",
+            "source": {
+              "acceptedAt": "2026-10-18T00:40:45.305Z",
+              "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+              "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+              "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+              "recordedAt": "2026-10-18T00:40:57.575Z",
+              "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+              "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+            },
+            "ticketContractVersion": 1,
+            "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+            "title": "两项页面还原缺陷"
+          },
+          {
+            "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+            "actor": {
+              "kind": "local-operator"
+            },
+            "after": {
+              "acceptedAt": "2026-10-18T00:40:57.996Z",
+              "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+              "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e",
+              "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+              "recordedAt": "2026-10-18T00:41:12.124Z",
+              "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+              "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+            },
+            "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+            "confirmed": true,
+            "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+            "createdAt": "2026-10-18T00:41:51.092Z",
+            "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+            "kind": "close",
+            "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+            "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c",
+            "previousEventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+            "projectId": "ap-00000000-0000-0000-0000-000000000701",
+            "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+            "resolution": "两项固定检查均已复核通过。",
+            "results": [
+              {
+                "afterCheckId": "check-0",
+                "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+                "relation": "verified_passed",
+                "sourceCheckId": "check-0"
+              },
+              {
+                "afterCheckId": "check-1",
+                "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+                "relation": "verified_passed",
+                "sourceCheckId": "check-1"
+              }
+            ],
+            "revision": 1,
+            "ticketContractVersion": 1,
+            "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3"
+          }
+        ],
+        "verificationStatus": "verified_passed",
+        "currentOperationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+        "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+        "counts": {
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "incomparable": 0,
+          "unverified": 0
+        },
+        "results": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "sourceCheckId": "check-0",
+            "afterCheckId": "check-0",
+            "relation": "verified_passed",
+            "reason": "REGISTERED_RELIABLE_PASS"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "sourceCheckId": "check-1",
+            "afterCheckId": "check-1",
+            "relation": "verified_passed",
+            "reason": "REGISTERED_RELIABLE_PASS"
+          }
+        ],
+        "reopenReasons": [],
+        "closeEligible": false,
+        "reason": "ALREADY_CLOSED"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets/actions/da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+    "auth": "valid",
+    "elapsedMs": 120,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:37 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=6f411007-fb3f-4e87-a730-93689353562b; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 2134,
+    "sha256": "5735d1ce929b7cbf84761c9952c6e70899f00198299689a8677c760cc5ebb19d",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "recorded",
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+      "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+      "eventSha256": "508de6a84c2093c5d5f14daa1342e9f7b5d8f291d3257ea523a528cc9267f2d1",
+      "event": {
+        "actionId": "da-8eff065c-40e5-4472-9a0c-ba2087d62c3b",
+        "actor": {
+          "kind": "local-operator"
+        },
+        "after": {
+          "acceptedAt": "2026-10-18T00:40:57.996Z",
+          "dispatchSha256": "556e17a449efc19a618411b74995a2133f1eb9c5f1a4d55a63fd963beb76f605",
+          "observationsSha256": "f4287f81717806d74de4e4c5e1228b7effbe0173c77a71486cd335ef7228012e",
+          "operationId": "bo-c2039b2e-38ce-4718-919e-12796048b76f",
+          "recordedAt": "2026-10-18T00:41:12.124Z",
+          "reportSha256": "6673cfec4a54b5b68f9149b3e36abefc5b69064609118c1ca81688ad9c063bb7",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "confirmed": true,
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "createdAt": "2026-10-18T00:41:51.092Z",
+        "factsDigest": "7d1b0a8b0af055c04868aab271d5084de3a6dc0fe7394ecbb1758c68d592cc09",
+        "kind": "close",
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "previewDigest": "920818e6e506e98d88d6ba7a597e3cd9587762683f853e764e45ae40eeb41e9c",
+        "previousEventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "requestFingerprint": "0c1268734810ff2dbf9c872f168fcc10f516f98a84050479a6d122563f6cf938",
+        "resolution": "两项固定检查均已复核通过。",
+        "results": [
+          {
+            "afterCheckId": "check-0",
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "relation": "verified_passed",
+            "sourceCheckId": "check-0"
+          },
+          {
+            "afterCheckId": "check-1",
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "relation": "verified_passed",
+            "sourceCheckId": "check-1"
+          }
+        ],
+        "revision": 1,
+        "ticketContractVersion": 1,
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-00000000-0000-0000-0000-000000000701/defect-tickets",
+    "auth": "valid",
+    "body": {
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+      "sourceOperationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+      "memberCheckIds": [
+        "check-0",
+        "check-1"
+      ],
+      "title": "两项页面还原缺陷",
+      "severity": "high",
+      "description": "捕获的来源包含两项失败检查。",
+      "reproduction": "打开固定路由并核对这两项检查。"
+    },
+    "elapsedMs": 171,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "cache-control": "no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:37 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=bfe4f45e-dd87-462e-b989-42cbd6023be0; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff"
+    },
+    "bytes": 5309,
+    "sha256": "162ff1e7656d30032fce477b467f4a13e43b95865511c2b7758eb80baac14aba",
+    "payload": {
+      "schemaVersion": 1,
+      "kind": "manual-defect-ticket-action",
+      "outcome": "recorded",
+      "projectId": "ap-00000000-0000-0000-0000-000000000701",
+      "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+      "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+      "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+      "eventSha256": "2ea5cded4ca3223592b367e95a0dbe776b7339699803f040a2c697421e6337ac",
+      "event": {
+        "actionId": "da-4c9a8561-4278-47b0-8864-0c7199fbfe43",
+        "actor": {
+          "kind": "local-operator"
+        },
+        "candidateId": "bc-00000000-0000-0000-0000-000000000704",
+        "contentDigest": "a78c16950a312bfc61f4b589ff2ec00ae1e0ee88e9786a85b1675a13ea577ca6",
+        "createdAt": "2026-10-18T00:41:24.520Z",
+        "description": "捕获的来源包含两项失败检查。",
+        "kind": "create",
+        "memberSetDigest": "bde03cc6baa973dd345937512922c957be2c626d4fd894ef6e465d745f791ebb",
+        "members": [
+          {
+            "bugId": "bug-10beaee74e6c5afb8f23ec905e6f10ea18e7decd8cfff89bf4284b0d88e94174",
+            "checkId": "check-0",
+            "evidence": [
+              {
+                "bytes": 2523,
+                "file": "source-route-2-1-desktop-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "source-route-2-1-desktop-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 2523,
+                "file": "target-route-2-1-desktop-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "9d2a3e13b3a0935fbeefd011f85fa1401a025e28c9ce220652a7fec64b80c3f5"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              },
+              {
+                "bytes": 23523,
+                "file": "target-route-2-1-desktop-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "a5143771fe6c452668ebd199924178129f8522beb9f5af9bc7cd0086156d1e94"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "e0e47754c59abe53d804d344e4450e7e8261c2d773c4b0efdaf4a12eae6e1a42",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "428acbe70cf4ef92e1c5c35904187a422030eccabb21947f1a13ee6ae3b26de4",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 640,
+                "width": 960
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          },
+          {
+            "bugId": "bug-89583ac3dabee63210615ca4e920322a58b2c303ec86dbdc0b0237ac77605aed",
+            "checkId": "check-1",
+            "evidence": [
+              {
+                "bytes": 2520,
+                "file": "source-route-2-2-mobile-point-2-baseline.json",
+                "role": "baselineDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "baselineRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "source-route-2-2-mobile-point-2-baseline.png",
+                "role": "baselineScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 2520,
+                "file": "target-route-2-2-mobile-point-2-baseline.json",
+                "role": "targetDetails",
+                "sha256": "adc941034f29fef58886973b73ebbd1acb1d1622a1ca0145d1d56279f08007d4"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline-repeat.png",
+                "role": "targetRepeat",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              },
+              {
+                "bytes": 21566,
+                "file": "target-route-2-2-mobile-point-2-baseline.png",
+                "role": "targetScreenshot",
+                "sha256": "6b22e2b73870114d619fd4f10193bf2569c26b1309060a226f9f6193a00a8c40"
+              }
+            ],
+            "identity": {
+              "caseKey": "4c3f94ccc65b4458fc7ab8b4bb0fbbc974feeac633742fad7abc5c52168583df",
+              "contextKey": "3843357c7776d1f07bca549cb9e05862ebf22e8ec78d90ead44e1c6d3876b659",
+              "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+              "facet": "behavior",
+              "kind": "browser",
+              "oracleKey": "1a52845578fd0b93b7824dcb0c69e7799d9fc89555a5573a77044dd1bd0c31b3",
+              "pointId": "identical-menu",
+              "ruleKey": "deb086d370aba6d4caf9723976acd2df4115fa0d9eb048d840016806c43f4d4f",
+              "version": 1,
+              "viewport": {
+                "height": 812,
+                "width": 375
+              }
+            },
+            "route": "/identical?revision=two",
+            "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+          }
+        ],
+        "previousEventSha256": null,
+        "projectId": "ap-00000000-0000-0000-0000-000000000701",
+        "reproduction": "打开固定路由并核对这两项检查。",
+        "requestFingerprint": "6f2e30552aa80b1856089a2db769b781a88b10a6ec800093380136a74d40d890",
+        "revision": 0,
+        "severity": "high",
+        "source": {
+          "acceptedAt": "2026-10-18T00:40:45.305Z",
+          "dispatchSha256": "51905382d3ad99eec5069199fba91e295b05dcd578628e4442f640cec18c2774",
+          "observationsSha256": "ca2d2eda5abfce7037854d8e00358b89a6baf21ddb053e1e13c835b87270c1e0",
+          "operationId": "bo-6ad52df0-1149-48ae-8ade-b85ab6b407ee",
+          "recordedAt": "2026-10-18T00:40:57.575Z",
+          "reportSha256": "bab1c80e73135253e4f4cdb37aabd5df646f0bb8cd32a8ce38b4bd6682953573",
+          "targetReleaseId": "ar-00000000-0000-0000-0000-000000000705"
+        },
+        "ticketContractVersion": 1,
+        "ticketId": "dt-b6b6f515-d868-45fb-b43f-e6841d6534b3",
+        "title": "两项页面还原缺陷"
+      },
+      "replayed": true
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/jobs",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:38 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=cb12bf6f-d208-40d8-b8e7-90171c333800; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked"
+    },
+    "bytes": 41,
+    "sha256": "a65ab90b203a3451a6e9da8e50a34418c3c5280e0bb9e010913df21fa01e158e",
+    "payload": {
+      "store": "sqlite",
+      "jobs": [],
+      "history": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/status",
+    "auth": "valid",
+    "elapsedMs": 1,
+    "status": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type,x-heimdall-token",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Sun, 18 Oct 2026 00:42:38 GMT",
+      "keep-alive": "timeout=5",
+      "set-cookie": "heimdall_session=25b9fa9d-1982-445f-a78d-2ec82e6a276e; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+      "transfer-encoding": "chunked"
+    },
+    "bytes": 274,
+    "sha256": "34d50ed17c3729880fbd328c6099a5dc308f89a643ca20b19b965d576081f1d5",
+    "payload": {
+      "ok": true,
+      "recon": null,
+      "audit": null,
+      "watch": null,
+      "assets": null,
+      "matrix": null,
+      "verify": null,
+      "acceptance": null,
+      "live": null,
+      "session": null,
+      "upgrade": null,
+      "clone": null,
+      "editManifest": null,
+      "forge": {
+        "slots": 0,
+        "max": 2
+      },
+      "jobs": 0,
+      "jobsStore": "sqlite",
+      "bind": "127.0.0.1",
+      "auth": true
+    }
+  }
+]

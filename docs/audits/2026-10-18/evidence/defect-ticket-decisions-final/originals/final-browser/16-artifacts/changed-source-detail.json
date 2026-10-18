@@ -1,0 +1,44 @@
+{
+  "viewVersion": 1,
+  "generationId": "ag-fb33cdde-7759-4b37-a815-8eaad58d9cd5",
+  "revision": 8,
+  "binding": {
+    "id": "ax-16784ac9-58c2-4099-9627-644ef62053ab",
+    "projectId": "ap-6c81782c-8f0c-419f-a522-63d8dec4d607",
+    "releaseId": "ar-8a08419f-17aa-4265-a96a-dbda610acf03",
+    "projectionVersion": 1,
+    "source": {
+      "runId": "ac-26891466-ded7-4298-8579-68def0052e62",
+      "sourceMode": "mirror",
+      "side": "baseline",
+      "entryUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+      "queryPresent": true
+    },
+    "sourceContentDigest": "75ac5dfcb5c0ef18eae148d0dfa4fcfac9c3906ba702ee095e6f8baab1397a31",
+    "boundAt": "2026-10-18T03:12:53.518Z",
+    "actor": {
+      "kind": "local-operator"
+    },
+    "sourcePlanDigest": "b3988dd1c5cdf10ba10263c56be1a2039cd5a54024951cf1ce82114af913cbc2",
+    "sourceReportDigest": "71e84c36fae83a334323ed2b344b9390bf3a6b18611c114eb30e7a122401162c",
+    "evidenceManifestDigest": "f265b3c37ebac7b89d53ce1722beeb318f8625642fa7633685db214d5413303b",
+    "selectedEvidenceManifestDigest": "a3674ccbe0ac33b1536c251d442cdcacbac52443c587a577fe72c9a051be8247",
+    "scopeKey": "b751246a867ccca9d267333603849b354f3ba9d9be434d1c4ebacda177280167",
+    "ruleManifestKey": "7ea6cffe224a944b1543957bef4bc14af30a342f4a3c6caed3d570aaa980c15d",
+    "oracleManifestKey": "f5fa6e4831faf9b2472557f1b472d308b0e75890822e01d2bb416daa079c5aa8",
+    "environmentKey": "99b25dcb496070e02a66a7fac9e1602d97ca62212d5866c9c818f7fd78ee9be9",
+    "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337"
+  },
+  "preview": null,
+  "diagnostics": {
+    "eligible": false,
+    "contentMatches": false,
+    "issues": [
+      {
+        "code": "BASELINE_CHANGED",
+        "message": "当前 Browser 所选来源无法重建已记录内容；历史归属保留，请检查原运行。"
+      }
+    ]
+  },
+  "executionReady": false
+}

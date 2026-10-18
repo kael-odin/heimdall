@@ -1,0 +1,17 @@
+{
+  "name": "core",
+  "argv": [
+    "node",
+    "core/scripts/test-core.mjs"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "environment": {},
+  "startedAt": "2026-10-18T01:55:32.170575+00:00",
+  "exitCode": 1,
+  "pid": 40724,
+  "endedAt": "2026-10-18T01:59:44.981717+00:00",
+  "durationSeconds": 252.81299999999464,
+  "changedInputs": [],
+  "stdoutSha256": "e68166b29f18c2dd6a4c2aa96268268acc570a6b37f829abda73d22865cf5716",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,27 @@
+{
+  "key": "heimdall:defect-tickets:v1:http://127.0.0.1:61743:ap-81bb995b-d202-430f-a0fe-e252a2633bb0",
+  "raw": "[{\"actionId\":\"da-d5e9bffa-347f-4a3b-9f70-7559bec2a84f\",\"kind\":\"create\",\"projectId\":\"ap-81bb995b-d202-430f-a0fe-e252a2633bb0\",\"request\":{\"actionId\":\"da-d5e9bffa-347f-4a3b-9f70-7559bec2a84f\",\"description\":\"本机受控样例：固定来源、两项可靠失败、人工动作决定。\",\"memberCheckIds\":[\"route-1-1-desktop-point-1-menu\",\"route-1-1-desktop-visual\"],\"reproduction\":\"打开页面，展开菜单，核对布局及导航。\",\"severity\":\"high\",\"sourceOperationId\":\"bo-dfe6e319-b29a-47f2-be9b-3dcea10ad180\",\"ticketId\":\"dt-2783542d-995d-44c6-a41f-b5a686f9e6a7\",\"title\":\"菜单布局与展开行为的两个固定检查\"},\"requestFingerprint\":\"3c49fc6b698d8998ec5d122b283296748af6b01a5206ada460209bf9eb2bc1c9\",\"ticketId\":\"dt-2783542d-995d-44c6-a41f-b5a686f9e6a7\",\"version\":1}]",
+  "values": [
+    {
+      "actionId": "da-d5e9bffa-347f-4a3b-9f70-7559bec2a84f",
+      "kind": "create",
+      "projectId": "ap-81bb995b-d202-430f-a0fe-e252a2633bb0",
+      "request": {
+        "actionId": "da-d5e9bffa-347f-4a3b-9f70-7559bec2a84f",
+        "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+        "memberCheckIds": [
+          "route-1-1-desktop-point-1-menu",
+          "route-1-1-desktop-visual"
+        ],
+        "reproduction": "打开页面，展开菜单，核对布局及导航。",
+        "severity": "high",
+        "sourceOperationId": "bo-dfe6e319-b29a-47f2-be9b-3dcea10ad180",
+        "ticketId": "dt-2783542d-995d-44c6-a41f-b5a686f9e6a7",
+        "title": "菜单布局与展开行为的两个固定检查"
+      },
+      "requestFingerprint": "3c49fc6b698d8998ec5d122b283296748af6b01a5206ada460209bf9eb2bc1c9",
+      "ticketId": "dt-2783542d-995d-44c6-a41f-b5a686f9e6a7",
+      "version": 1
+    }
+  ]
+}

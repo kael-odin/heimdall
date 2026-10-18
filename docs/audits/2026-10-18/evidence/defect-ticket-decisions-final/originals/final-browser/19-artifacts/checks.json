@@ -1,0 +1,11 @@
+{
+  "sameOriginalUnfinishedIngressLosesToDurableDeny": true,
+  "rejectedOriginalHasNoDispatchRunOrTargetNavigation": true,
+  "lostCommittedDenySurvivesSameRootOriginPortAndContextRestart": true,
+  "restartRecoveryUsesOnlyGetAndPreservesDecisionBytes": true,
+  "nativeTwoPagesSerializeAllReceiptWrites": true,
+  "noWebLocksAllowsReadAndRefusesWrite": true,
+  "explicitFreshReviewUsesNewBoAndRunsNormally": true,
+  "fullSourceRemainsMemoryOnlyAndOriginalCaptureUnchanged": true,
+  "renderedUiHasNoUnexpectedPageOrConsoleErrors": true
+}

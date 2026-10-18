@@ -1,0 +1,82 @@
+[
+  {
+    "method": "GET",
+    "path": "/source",
+    "at": "2026-10-18T01:33:47.096Z"
+  },
+  {
+    "method": "GET",
+    "path": "/broken",
+    "at": "2026-10-18T01:33:47.465Z"
+  },
+  {
+    "method": "GET",
+    "path": "/source",
+    "at": "2026-10-18T01:33:47.934Z"
+  },
+  {
+    "method": "GET",
+    "path": "/broken",
+    "at": "2026-10-18T01:33:48.392Z"
+  },
+  {
+    "method": "GET",
+    "path": "/source",
+    "at": "2026-10-18T01:33:48.855Z"
+  },
+  {
+    "method": "GET",
+    "path": "/broken",
+    "at": "2026-10-18T01:33:49.158Z"
+  },
+  {
+    "method": "GET",
+    "path": "/source",
+    "at": "2026-10-18T01:33:49.583Z"
+  },
+  {
+    "method": "GET",
+    "path": "/broken",
+    "at": "2026-10-18T01:33:50.000Z"
+  },
+  {
+    "method": "GET",
+    "path": "/broken",
+    "at": "2026-10-18T01:34:06.788Z"
+  },
+  {
+    "method": "GET",
+    "path": "/broken",
+    "at": "2026-10-18T01:34:08.086Z"
+  },
+  {
+    "method": "GET",
+    "path": "/broken",
+    "at": "2026-10-18T01:34:09.274Z"
+  },
+  {
+    "method": "GET",
+    "path": "/broken",
+    "at": "2026-10-18T01:34:10.255Z"
+  },
+  {
+    "method": "GET",
+    "path": "/healthy",
+    "at": "2026-10-18T01:34:45.965Z"
+  },
+  {
+    "method": "GET",
+    "path": "/healthy",
+    "at": "2026-10-18T01:34:47.497Z"
+  },
+  {
+    "method": "GET",
+    "path": "/healthy",
+    "at": "2026-10-18T01:34:48.787Z"
+  },
+  {
+    "method": "GET",
+    "path": "/healthy",
+    "at": "2026-10-18T01:34:50.038Z"
+  }
+]

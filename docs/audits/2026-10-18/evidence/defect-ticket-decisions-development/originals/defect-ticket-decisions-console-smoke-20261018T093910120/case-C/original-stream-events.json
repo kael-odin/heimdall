@@ -1,0 +1,21 @@
+[
+  {
+    "event": "connected",
+    "localPort": 52209,
+    "remotePort": 60870
+  },
+  {
+    "event": "prefix-written",
+    "bytes": 283,
+    "endCalled": false
+  },
+  {
+    "event": "tail-released",
+    "bytes": 283
+  },
+  {
+    "event": "response",
+    "status": 200,
+    "bytes": 1500
+  }
+]

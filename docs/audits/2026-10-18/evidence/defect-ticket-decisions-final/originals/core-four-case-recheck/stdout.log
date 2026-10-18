@@ -1,0 +1,12 @@
+✔ D6 native HTTP create: rejected wins the same action while original body tail is held (11860.3001ms)
+✔ D6 native HTTP create: recorded wins the same action while original body tail is held (17230.0409ms)
+✔ D6 native HTTP close: rejected wins the same action while original body tail is held (39571.9193ms)
+✔ D6 native HTTP close: recorded wins the same action while original body tail is held (45726.1914ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114555.7846

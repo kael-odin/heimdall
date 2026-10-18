@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "evidenceLevel": "real-browser-local-fixture",
+  "scope": "Real preparation + explicit internal runner/writer before engine startup; startup settles running to interrupted and browser only reads. No engine executor tested.",
+  "browserPath": "Playwright",
+  "engineExecutorTested": false,
+  "engineRecoveryTested": true,
+  "runIds": [
+    "ac-11b7df30-4eb5-4662-a582-5b8c87b41c3e",
+    "ac-3c2710fa-a1e7-4075-b4a4-941c1e88cc13",
+    "ac-d3620ad4-4b67-4b93-902e-b7af598bb0eb"
+  ],
+  "preparedUnstarted": "ac-41e31659-c853-4391-81ed-8d1d20c3fca6",
+  "checks": {
+    "safeHeadAndRealLifecycle": true,
+    "completedBugVisibleAndTriageUnavailable": true,
+    "referencedEvidenceRendered": true,
+    "downloadUsesVerifiedJsonAndDerivedMarkdown": true,
+    "recoveredInterruptionIsNotCompleted": true,
+    "mobileNoOverflow": true,
+    "readingNeverExecutesOrRewritesFacts": true
+  },
+  "layout": {
+    "width": 390,
+    "document": 390,
+    "results": 368,
+    "resultWidth": 368
+  },
+  "pageErrors": []
+}

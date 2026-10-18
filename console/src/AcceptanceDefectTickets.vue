@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import Icon from './Icon.vue';
 import { API, apiHeaders } from './api.js';
-import { DEFECT_HANDLING_LABELS, DEFECT_VERIFICATION_LABELS, defectTicketCreateInput, defectTicketCloseInput,
+import { DEFECT_HANDLING_LABELS, DEFECT_VERIFICATION_LABELS, defectTicketCreateInput, defectTicketCloseInput, defectTicketDenyInput,
   defectTicketSources, defectTicketList, defectTicketDetail, defectTicketPreview, defectTicketConfirmation,
   defectTicketAction, createDefectTicketReadGuard, createDefectTicketReceipts, requestDefectTickets,
   fetchDefectTicketExport } from './acceptance-defect-tickets.js';
@@ -11,10 +11,10 @@ const props = defineProps({ projectId: { type: String, required: true }, detail:
   version: { type: Object, default: null }, ready: Boolean, active: Boolean });
 const drafts = reactive(new Map()), clients = new Map(), guard = createDefectTicketReadGuard(), downloadUrls = new Set();
 const tickets = ref([]), sources = ref(null), selectedTicket = ref(null), preview = ref(null), pending = ref([]);
-const loading = reactive({ list: false, sources: false, detail: false, preview: false, resolve: false, export: false });
+const loading = reactive({ list: false, sources: false, detail: false, preview: false, resolve: false, deny: false, export: false });
 const writing = ref(false), error = ref(''), notice = ref(''), errorElement = ref(null), receiptsReady = ref(false), receiptsWritable = ref(false);
-const createConfirmed = ref(false), closeConfirmed = ref(false);
-let stopped = false, client, writeToken;
+const createConfirmed = ref(false), closeConfirmed = ref(false), denyConfirmed = ref([]);
+let stopped = false, client, writeToken, pendingEpoch = 0;
 const draft = computed(() => {
   if (!drafts.has(props.projectId)) drafts.set(props.projectId, { candidateId: '', sourceOperationId: '', memberCheckIds: [],
     title: '', severity: 'high', description: '', reproduction: '', selectedTicketId: '', resolution: '' });
@@ -26,7 +26,9 @@ const candidate = computed(() => candidates.value.find(value => value.id === dra
 const sourceOperation = computed(() => sources.value?.operations.find(value => value.operationId === draft.value.sourceOperationId));
 const selectedMembers = computed(() => sourceOperation.value?.members.filter(value => draft.value.memberCheckIds.includes(value.checkId)) ?? []);
 const canWrite = computed(() => props.active && props.ready && !stopped && receiptsReady.value && receiptsWritable.value
-  && !pending.value.length && !writing.value && !loading.resolve);
+  && !pending.value.length && !writing.value && !loading.resolve && !loading.deny);
+const canDecide = computed(() => props.active && props.ready && !stopped && receiptsReady.value && receiptsWritable.value
+  && !writing.value && !loading.resolve && !loading.deny);
 const canCreate = computed(() => canWrite.value && createConfirmed.value && !!candidate.value && !!sourceOperation.value
   && sources.value?.contentDigest === candidate.value.contentDigest && selectedMembers.value.length >= 1 && selectedMembers.value.length <= 24
   && selectedMembers.value.length === draft.value.memberCheckIds.length
@@ -41,6 +43,15 @@ const pretty = value => JSON.stringify(value, null, 2);
 const handling = value => DEFECT_HANDLING_LABELS[value] || value;
 const verification = value => DEFECT_VERIFICATION_LABELS[value] || value;
 const relationLabel = value => ({ verified_passed: '复验通过', still_failed: '仍有问题', incomparable: '条件不同', unverified: '未核验' })[value] || value;
+const originalToken = original => JSON.stringify(defectTicketDenyInput({ schemaVersion: 1, confirmed: true, original }).original);
+const pendingToken = values => JSON.stringify(values.map(originalToken));
+const canDeny = original => canDecide.value && denyConfirmed.value.includes(originalToken(original))
+  && pending.value.some(value => originalToken(value) === originalToken(original));
+function confirmDeny(original, confirmed) {
+  const token = originalToken(original);
+  denyConfirmed.value = denyConfirmed.value.filter(value => value !== token);
+  if (confirmed && canDecide.value && pending.value.some(value => originalToken(value) === token)) denyConfirmed.value.push(token);
+}
 const current = ticket => !stopped && props.active && props.ready && guard.current(ticket);
 const context = () => {
   const projectId = props.projectId, receipts = client, headers = apiHeaders();
@@ -52,8 +63,17 @@ async function showError(problem) {
 }
 function readPending(receipts = client) {
   const values = receipts.read();
-  if (receipts === client) { pending.value = values; receiptsWritable.value = receipts.canWrite; receiptsReady.value = true; }
+  if (receipts === client) {
+    if (pendingToken(values) !== pendingToken(pending.value)) { pendingEpoch++; denyConfirmed.value = []; }
+    pending.value = values; receiptsWritable.value = receipts.canWrite; receiptsReady.value = true;
+  }
   return values;
+}
+function exactPending(original, captured, ticket, requireConfirmation = false) {
+  const token = originalToken(original), epoch = pendingEpoch, snapshot = pendingToken(pending.value);
+  return () => current(ticket) && captured.receipts === client && props.projectId === captured.projectId && epoch === pendingEpoch
+    && (!requireConfirmation || denyConfirmed.value.includes(token)) && pendingToken(pending.value) === snapshot
+    && pending.value.some(value => originalToken(value) === token) && pendingToken(captured.receipts.read()) === snapshot;
 }
 function initializeClient() {
   receiptsReady.value = false; receiptsWritable.value = false; pending.value = [];
@@ -65,7 +85,7 @@ function initializeClient() {
 }
 function resetContext() {
   guard.reset(); tickets.value = []; sources.value = null; selectedTicket.value = null; preview.value = null;
-  createConfirmed.value = false; closeConfirmed.value = false; error.value = ''; notice.value = '';
+  createConfirmed.value = false; closeConfirmed.value = false; denyConfirmed.value = []; pendingEpoch++; error.value = ''; notice.value = '';
   writeToken = null; writing.value = false; for (const key of Object.keys(loading)) loading[key] = false;
   for (const url of downloadUrls) URL.revokeObjectURL(url); downloadUrls.clear();
 }
@@ -119,7 +139,7 @@ async function previewClose() {
 async function submit(kind) {
   if (kind === 'create' ? !canCreate.value : !canClose.value) return;
   const ticket = guard.begin('submit'), captured = context(), token = {}; writeToken = token; writing.value = true;
-  error.value = ''; notice.value = ''; let original, claimed = false, dispatched = false, accepted = false;
+  error.value = ''; notice.value = ''; let original, exact, claimed = false, dispatched = false, accepted = false;
   try {
     const ticketId = kind === 'create' ? 'dt-' + crypto.randomUUID() : selectedTicket.value.ticketId;
     const request = kind === 'create' ? defectTicketCreateInput({ ticketId, actionId: 'da-' + crypto.randomUUID(),
@@ -134,16 +154,20 @@ async function submit(kind) {
     claimed = await captured.receipts.claimForSubmit(original);
     if (!claimed) { if (current(ticket)) notice.value = '本项目已有原确认待核对；本次没有发送请求。'; return; }
     if (!current(ticket)) { await captured.receipts.cancelUnsent(original); return; }
-    readPending(captured.receipts); captured.receipts.markDispatched(original); dispatched = true;
+    readPending(captured.receipts); exact = exactPending(original, captured, ticket); captured.receipts.markDispatched(original); dispatched = true;
     const raw = await captured.request(kind === 'create' ? '' : `/${ticketId}/close`, { method: 'POST', body: request, signal: ticket.signal });
+    if (!exact()) return;
     const proof = await defectTicketAction(raw, original);
-    if (proof.outcome !== 'recorded') throw new Error('提交响应没有完整动作原件，原确认继续保留。');
-    await captured.receipts.resolveExact(original, proof); accepted = true;
-    if (current(ticket)) { notice.value = kind === 'create' ? '人工缺陷单已记录。固定成员与来源已保存。' : '已明确关闭固定关联检查；后续可靠失败仍会再次打开。'; draft.value.selectedTicketId = ticketId; }
+    if (!exact()) return;
+    if (proof.outcome === 'unresolved') throw new Error('提交响应没有完整动作决定，原确认继续保留。');
+    if (!await captured.receipts.resolveExact(original, proof, { current: exact }) || !current(ticket)) return;
+    accepted = proof.outcome === 'recorded';
+    if (accepted) { notice.value = kind === 'create' ? '人工缺陷单已记录。固定成员与来源已保存。' : '已明确关闭固定关联检查；后续可靠失败仍会再次打开。'; draft.value.selectedTicketId = ticketId; }
+    else notice.value = '原动作已永久拒绝，迟到提交不会执行。本机原确认已精确解除，草稿已保留。';
   } catch (cause) {
-    if (claimed && dispatched && original && cause?.outcomeUnknown === false) {
-      try { await captured.receipts.releaseRejected(original, cause);
-        if (current(ticket)) notice.value = '原请求已明确拒绝。草稿保留，请重新读取和预览后再明确提交。';
+    if (claimed && dispatched && original && current(ticket) && cause?.outcomeUnknown === false) {
+      try { const released = await captured.receipts.releaseRejected(original, cause, { current: exact });
+        if (released && current(ticket)) notice.value = '原请求已明确拒绝。草稿保留，请重新读取和预览后再明确提交。';
       } catch { if (current(ticket)) receiptsReady.value = false; }
     }
     if (current(ticket)) await showError(cause);
@@ -157,15 +181,54 @@ async function submit(kind) {
   }
 }
 async function reconcile(original) {
-  if (!props.active || !props.ready || stopped || loading.resolve || !client) return;
-  const ticket = guard.begin('resolve'), captured = context(); loading.resolve = true; error.value = ''; notice.value = '';
+  if (!props.active || !props.ready || stopped || writing.value || loading.resolve || loading.deny || !client) return;
+  const ticket = guard.begin('resolve'), captured = context(), exact = exactPending(original, captured, ticket);
+  loading.resolve = true; error.value = ''; notice.value = '';
   try {
-    const proof = await defectTicketAction(await captured.request(`/actions/${original.actionId}`, { signal: ticket.signal }), original);
+    if (!exact()) return;
+    const raw = await captured.request(`/actions/${original.actionId}`, { signal: ticket.signal });
+    if (!exact()) return;
+    const proof = await defectTicketAction(raw, original); if (!exact()) return;
     if (proof.outcome === 'unresolved') { if (current(ticket)) notice.value = '服务端尚未给出此动作的完整原件。未查到记录不代表确定未提交，原确认继续保留。'; return; }
-    await captured.receipts.resolveExact(original, proof);
-    if (current(ticket)) { readPending(captured.receipts); notice.value = '原动作与确认内容已完整核对，本机待核对记录已解除。'; await loadList(); if (current(ticket)) await openTicket(original.ticketId); }
+    if (!await captured.receipts.resolveExact(original, proof, { current: exact }) || !current(ticket)) return;
+    await showDecision(proof, original, captured, ticket);
   } catch (cause) { if (current(ticket)) await showError(cause); }
-  finally { if (current(ticket)) loading.resolve = false; }
+  finally { if (current(ticket)) {
+    loading.resolve = false;
+    try { readPending(captured.receipts); } catch (cause) { receiptsReady.value = false; await showError(cause); }
+  } }
+}
+async function showDecision(proof, original, captured, ticket) {
+  readPending(captured.receipts); createConfirmed.value = false; closeConfirmed.value = false; preview.value = null;
+  if (proof.outcome === 'rejected') {
+    notice.value = '原动作已永久拒绝，迟到提交不会执行。本机原确认已精确解除，草稿已保留。'; return;
+  }
+  notice.value = '原动作已记录，与原确认内容完整一致。本机待核对记录已解除。';
+  await loadList(); if (current(ticket)) await openTicket(original.ticketId);
+}
+async function denyOriginal(original) {
+  if (!canDeny(original)) return;
+  const ticket = guard.begin('deny'), captured = context(), exact = exactPending(original, captured, ticket, true);
+  loading.deny = true; error.value = ''; notice.value = '';
+  try {
+    if (!exact()) return;
+    const raw = await captured.request(`/actions/${original.actionId}`, { signal: ticket.signal });
+    if (!exact()) return;
+    let proof = await defectTicketAction(raw, original); if (!exact()) return;
+    if (proof.outcome === 'unresolved') {
+      const body = defectTicketDenyInput({ schemaVersion: 1, confirmed: true, original });
+      const decided = await captured.request(`/actions/${original.actionId}/deny`, { method: 'POST', body, signal: ticket.signal });
+      if (!exact()) return;
+      proof = await defectTicketAction(decided, original); if (!exact()) return;
+      if (proof.outcome === 'unresolved') throw new Error('永久拒绝未取得完整决定，原确认继续保留。请只读核对原动作。');
+    }
+    if (!await captured.receipts.resolveExact(original, proof, { current: exact }) || !current(ticket)) return;
+    await showDecision(proof, original, captured, ticket);
+  } catch (cause) { if (current(ticket)) await showError(cause); }
+  finally { if (current(ticket)) {
+    loading.deny = false; denyConfirmed.value = [];
+    try { readPending(captured.receipts); } catch (cause) { receiptsReady.value = false; await showError(cause); }
+  } }
 }
 async function download(format) {
   if (!selectedTicket.value || !props.active || !props.ready || stopped || loading.export) return;
@@ -197,6 +260,7 @@ watch(() => [draft.value.title, draft.value.severity, draft.value.description, d
 watch(() => draft.value.resolution, () => { closeConfirmed.value = false; }, { flush: 'sync' });
 const storageChanged = event => {
   if (client && (event.key === client.key || event.key === null)) {
+    pendingEpoch++; denyConfirmed.value = []; guard.begin('deny'); guard.begin('resolve'); loading.deny = false; loading.resolve = false;
     createConfirmed.value = false; closeConfirmed.value = false; preview.value = null;
     try { readPending(); } catch (cause) { receiptsReady.value = false; showError(cause); }
   }
@@ -206,15 +270,25 @@ onBeforeUnmount(() => { stopped = true; resetContext(); guard.stop(); window.rem
 </script>
 
 <template>
-  <section class="defect-tickets" aria-labelledby="defect-ticket-title" data-testid="defect-tickets" :aria-busy="writing || loading.list || loading.detail">
+  <section class="defect-tickets" aria-labelledby="defect-ticket-title" data-testid="defect-tickets" :aria-busy="writing || loading.list || loading.detail || loading.resolve || loading.deny">
     <div class="section-heading"><div><p class="eyebrow">问题闭环</p><h3 id="defect-ticket-title">人工缺陷单</h3></div><button type="button" :disabled="!active || !ready || loading.list" data-testid="defect-tickets-refresh" @click="loadList"><Icon name="refresh" decorative />{{ loading.list ? '正在读取…' : '刷新缺陷单' }}</button></div>
     <p class="muted">从已登记的可靠失败固定关联检查。处理状态与当前核验分开；全员同次复验通过后，再明确关闭。</p>
     <div v-if="error" ref="errorElement" role="alert" tabindex="-1" class="feedback error" data-testid="defect-ticket-error">{{ error }}</div>
     <p v-if="notice" role="status" class="feedback" data-testid="defect-ticket-notice">{{ notice }}</p>
     <p v-if="!receiptsReady || !receiptsWritable" class="feedback warning" role="status" data-testid="defect-ticket-readonly">当前本机确认无法安全读写，提交已暂停。仍可读取缺陷单和查询原动作。</p>
     <section v-if="pending.length" class="pending" aria-label="原人工操作待核对" data-testid="defect-ticket-pending">
-      <h4>原动作结果待核对 <span>{{ pending.length }}</span></h4><p>原确认已保留。这里只查询原动作，不会重发成单或关闭请求。</p>
-      <ol><li v-for="original in pending" :key="original.actionId" :data-defect-action="original.actionId"><strong>{{ original.kind === 'create' ? '人工成单确认' : '明确关闭确认' }}</strong><code>{{ original.actionId }}</code><p>缺陷单 <code>{{ original.ticketId }}</code></p><details><summary>查看原确认内容</summary><pre>{{ pretty(original) }}</pre></details><button type="button" :disabled="!active || !ready || loading.resolve" data-testid="defect-ticket-reconcile" :data-action-id="original.actionId" @click="reconcile(original)">{{ loading.resolve ? '正在只读核对…' : '只读核对原动作' }}</button></li></ol>
+      <h4>原动作结果待核对 <span>{{ pending.length }}</span></h4><p>原确认已保留。只读核对不会重发成单或关闭请求。</p>
+      <p id="defect-ticket-deny-note" class="muted">永久拒绝只封住此动作号的迟到提交，不能撤销已经记录的成单或关闭。操作前会先查询已有决定；未知结果继续保留原确认。</p>
+      <ol><li v-for="original in pending" :key="original.actionId" :data-defect-action="original.actionId">
+        <strong>{{ original.kind === 'create' ? '人工成单确认' : '明确关闭确认' }}</strong><code>{{ original.actionId }}</code>
+        <p>项目 <code>{{ original.projectId }}</code><br />缺陷单 <code>{{ original.ticketId }}</code><br />原确认摘要 <code>{{ original.requestFingerprint }}</code></p>
+        <details><summary>查看原确认内容</summary><pre>{{ pretty(original) }}</pre></details>
+        <button type="button" :disabled="!active || !ready || writing || loading.resolve || loading.deny" data-testid="defect-ticket-reconcile" :data-action-id="original.actionId" @click="reconcile(original)">{{ loading.resolve ? '正在只读核对…' : '只读核对原动作' }}</button>
+        <div class="deny-action">
+          <label class="confirm"><input type="checkbox" :checked="denyConfirmed.includes(originalToken(original))" :disabled="!canDecide" aria-describedby="defect-ticket-deny-note" data-testid="defect-ticket-deny-confirm" :data-action-id="original.actionId" @change="confirmDeny(original, $event.target.checked)" /><span>我已核对完整原确认，永久拒绝此动作号的迟到提交；若已经记录，则保留原记录。</span></label>
+          <button type="button" :disabled="!canDeny(original)" data-testid="defect-ticket-deny" :data-action-id="original.actionId" @click="denyOriginal(original)">{{ loading.deny ? '正在核对并决定…' : '永久拒绝此动作号的迟到提交' }}</button>
+        </div>
+      </li></ol>
     </section>
     <details class="create-panel" data-testid="defect-ticket-create-panel"><summary data-testid="defect-tickets-toggle">从可靠失败创建缺陷单</summary>
       <form @submit.prevent="submit('create')">
@@ -265,9 +339,10 @@ summary { min-height:44px; cursor:pointer; padding:12px 0; font-size:13px; line-
 .create-panel>summary { font-weight:600; } .confirm,.check-row { flex-direction:row; align-items:start; gap:10px; margin:12px 0; min-height:44px; padding:8px 0; }
 .confirm input,.check-row input { width:18px; height:18px; min-height:18px; flex:0 0 18px; margin-top:4px; padding:0; accent-color:var(--accent); } .check-row>span { min-width:0; display:grid; gap:3px; }
 .member-selection { border:1px solid var(--border); border-radius:var(--r-sm); padding:12px; min-width:0; } legend { font-size:13px; padding:0 6px; } .check-row { border-bottom:1px solid var(--border); }
-.feedback { border-left:3px solid var(--accent); background:var(--surface); padding:12px 14px; margin:14px 0; } .warning,.error { border-color:var(--warn); } .error { color:var(--warn); }
+.feedback { border-left:1px solid var(--accent); background:var(--surface); padding:12px 14px; margin:14px 0; } .warning,.error { border-color:var(--warn); } .error { color:var(--warn); }
 .pending { border:1px solid var(--border-strong); border-radius:var(--r-sm); padding:16px; margin:18px 0; } ol,ul { list-style:none; padding:0; }
 .pending li { border-top:1px solid var(--border); margin-top:12px; padding-top:12px; } .pending li>code { display:block; }
+.deny-action { margin-top:16px; padding-top:4px; border-top:1px solid var(--border); } .deny-action .confirm { margin-top:4px; }
 .ticket-workspace { display:grid; grid-template-columns:minmax(220px,.8fr) minmax(0,1.6fr); gap:20px; margin-top:24px; }
 .ticket-list,.ticket-detail { min-width:0; } .ticket-detail { border-left:1px solid var(--border); padding-left:20px; } .ticket-list ol { display:grid; gap:10px; }
 .ticket-row { width:100%; display:grid; gap:9px; padding:14px; justify-content:stretch; } .ticket-row.selected { border-color:var(--accent); background:var(--surface-2); } .ticket-row strong { overflow-wrap:anywhere; }

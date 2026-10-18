@@ -1,0 +1,25 @@
+{
+  "command": [
+    "gh",
+    "run",
+    "view",
+    "39082419484",
+    "--repo",
+    "kael-odin/heimdall",
+    "--attempt",
+    "1",
+    "--log"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+  "startedAt": "2026-10-18T00:54:02.501276+00:00",
+  "endedAt": "2026-10-18T00:54:06.999822+00:00",
+  "exitCode": 0,
+  "timedOut": false,
+  "launchError": null,
+  "stdoutFile": "complete-stdout.log",
+  "stdoutBytes": 1819274,
+  "stdoutSha256": "54c50bf5ad64e1a85304d874cacf6ea8de2cd139ebf2a3cce111069551bf122f",
+  "stderrFile": "full-log.stderr.log",
+  "stderrBytes": 0,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,24 @@
+✔ normal delayed release acknowledgement preserves a different current project and its unsubmitted draft (29.0192ms)
+✔ acknowledged release keeps its confirmed fact when post-write list fetch stalls and cancellation never settles (53.2573ms)
+✔ acknowledged release keeps its confirmed fact when post-write detail fetch stalls and cancellation never settles (47.1748ms)
+✔ acknowledged release keeps its confirmed fact when post-write list body stalls and cancellation never settles (46.0453ms)
+✔ acknowledged release keeps its confirmed fact when post-write detail body stalls and cancellation never settles (47.2949ms)
+✔ initial fetch timeout releases catalog busy state and only an explicit refresh reads again (46.3423ms)
+✔ unknown POST fetch preserves the draft, blocks new writes and permits only read recovery (46.724ms)
+✔ initial body timeout releases catalog busy state and only an explicit refresh reads again (46.6782ms)
+✔ unknown POST body preserves the draft, blocks new writes and permits only read recovery (45.9466ms)
+✔ project A-B-A discards the first A fetch even when its abort is ignored (16.5429ms)
+✔ project A-B-A discards the first A body even when its abort is ignored (14.729ms)
+✔ project creation acknowledged after A-B-A does not hijack the returned A selection or a newer draft (2.597ms)
+✔ a superseded list response cannot overwrite the newer catalog even if the fetcher ignores abort (2.9406ms)
+✔ unmount settles an ignored fetch abort and suppresses late component writes (0.7522ms)
+✔ unmount settles an ignored body abort and suppresses late component writes (0.6716ms)
+✔ unmount during an acknowledged write refresh does not replace its last confirmed notice (7.6755ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 673.5588

@@ -1,0 +1,441 @@
+{
+  "status": "failed",
+  "message": "Catalog smoke timeout: state not reached",
+  "checks": {
+    "secondEngineAndJunctionCannotRecoverActiveRun": true,
+    "concurrentRevisionHasExactlyOneWinner": true,
+    "rejectedWritesPreserveCatalog": true,
+    "fullUrlMatchAndCorruptionFailClosed": true,
+    "restartPreservesProjectReleaseBindings": true,
+    "consoleCreatesProjectReleaseAndExplicitBinding": true,
+    "consoleConflictPreservesDraftWithoutAutomaticRetry": true,
+    "delayedDetailsCannotReplaceCurrentProject": true
+  },
+  "apiCases": [
+    {
+      "path": "projects",
+      "status": 201
+    },
+    {
+      "path": "projects",
+      "status": 200
+    },
+    {
+      "path": "projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/releases",
+      "status": 201
+    },
+    {
+      "path": "projects",
+      "status": 200
+    },
+    {
+      "path": "projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/run-bindings",
+      "status": 201
+    },
+    {
+      "path": "projects",
+      "status": 200
+    },
+    {
+      "path": "projects",
+      "status": 201
+    },
+    {
+      "path": "projects",
+      "status": 200
+    },
+    {
+      "path": "projects",
+      "status": 200
+    },
+    {
+      "path": "projects",
+      "status": 409,
+      "code": "STALE_REVISION"
+    },
+    {
+      "path": "projects",
+      "status": 400,
+      "code": "INVALID_INPUT"
+    },
+    {
+      "path": "projects",
+      "status": 400,
+      "code": "INVALID_INPUT"
+    },
+    {
+      "path": "projects",
+      "status": 409,
+      "code": "STALE_REVISION"
+    },
+    {
+      "path": "projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/run-bindings",
+      "status": 409,
+      "code": "CONTEXT_ALREADY_BOUND"
+    },
+    {
+      "path": "projects/ap-1b7e9bc9-639f-4267-9d6e-9f0648457d62/run-bindings",
+      "status": 409,
+      "code": "PROJECT_MISMATCH"
+    },
+    {
+      "path": "projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/releases",
+      "status": 400,
+      "code": "INVALID_INPUT"
+    },
+    {
+      "path": "projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/releases",
+      "status": 201
+    },
+    {
+      "path": "projects",
+      "status": 200
+    },
+    {
+      "path": "projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/run-bindings",
+      "status": 409,
+      "code": "PROJECT_MISMATCH"
+    },
+    {
+      "path": "projects",
+      "status": 503,
+      "code": "CATALOG_UNAVAILABLE"
+    },
+    {
+      "path": "projects",
+      "status": 503,
+      "code": "CATALOG_UNAVAILABLE"
+    },
+    {
+      "path": "projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b",
+      "status": 200
+    },
+    {
+      "path": "projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b",
+      "status": 200
+    },
+    {
+      "path": "projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c",
+      "status": 200
+    },
+    {
+      "path": "projects",
+      "status": 200
+    },
+    {
+      "path": "projects",
+      "status": 201
+    },
+    {
+      "path": "projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b",
+      "status": 200
+    }
+  ],
+  "catalogResponses": [
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/defect-tickets",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/acceptance/projects",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/releases",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/run-bindings",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/acceptance/projects",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/defect-tickets",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/defect-tickets",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/acceptance/projects/ap-9ca2f3fb-1fec-44f4-b7af-02e8fcf0dc6b/browser-executions",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/acceptance/projects/ap-8400ff54-e17a-402f-892e-49b698a6d24c/releases",
+      "status": 201
+    }
+  ]
+}

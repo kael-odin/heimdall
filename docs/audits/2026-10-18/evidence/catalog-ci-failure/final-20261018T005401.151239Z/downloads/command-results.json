@@ -1,0 +1,30 @@
+[
+  {
+    "name": "full-log",
+    "exitCode": 0,
+    "timedOut": false,
+    "launchError": null,
+    "output": "complete-stdout.log"
+  },
+  {
+    "name": "logs-zip",
+    "exitCode": 0,
+    "timedOut": false,
+    "launchError": null,
+    "output": "run-logs.zip"
+  },
+  {
+    "name": "workflow-api",
+    "exitCode": 0,
+    "timedOut": false,
+    "launchError": null,
+    "output": "workflow-content-api.json"
+  },
+  {
+    "name": "workflow-git",
+    "exitCode": 0,
+    "timedOut": false,
+    "launchError": null,
+    "output": "workflow-at-head.yml"
+  }
+]

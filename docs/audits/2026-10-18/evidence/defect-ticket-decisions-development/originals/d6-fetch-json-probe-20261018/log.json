@@ -1,0 +1,169 @@
+[
+  {
+    "at": "2026-10-18T01:26:27.036Z",
+    "event": "cdp-request",
+    "id": "8F47E6F71BB74C80AE37F5D6CECF622A",
+    "url": "http://127.0.0.1:54308/"
+  },
+  {
+    "at": "2026-10-18T01:26:27.039Z",
+    "event": "cdp-response",
+    "id": "8F47E6F71BB74C80AE37F5D6CECF622A",
+    "url": "http://127.0.0.1:54308/",
+    "status": 200
+  },
+  {
+    "at": "2026-10-18T01:26:27.054Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:54308/"
+  },
+  {
+    "at": "2026-10-18T01:26:27.055Z",
+    "event": "cdp-finished",
+    "id": "8F47E6F71BB74C80AE37F5D6CECF622A",
+    "url": "http://127.0.0.1:54308/"
+  },
+  {
+    "at": "2026-10-18T01:26:27.055Z",
+    "event": "cdp-request",
+    "id": "12156.2",
+    "url": "http://127.0.0.1:54308/helper.mjs"
+  },
+  {
+    "at": "2026-10-18T01:26:27.061Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:54308/helper.mjs"
+  },
+  {
+    "at": "2026-10-18T01:26:27.061Z",
+    "event": "cdp-response",
+    "id": "12156.2",
+    "url": "http://127.0.0.1:54308/helper.mjs",
+    "status": 200
+  },
+  {
+    "at": "2026-10-18T01:26:27.062Z",
+    "event": "cdp-finished",
+    "id": "12156.2",
+    "url": "http://127.0.0.1:54308/helper.mjs"
+  },
+  {
+    "at": "2026-10-18T01:26:27.092Z",
+    "event": "probe-start",
+    "mode": "helper",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:26:27.099Z",
+    "event": "server-finish",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:26:27.099Z",
+    "event": "server-close",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:26:27.100Z",
+    "event": "cdp-request",
+    "id": "12156.3",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:26:27.102Z",
+    "event": "cdp-response",
+    "id": "12156.3",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "status": 502
+  },
+  {
+    "at": "2026-10-18T01:26:27.103Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:26:27.103Z",
+    "event": "cdp-finished",
+    "id": "12156.3",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:26:29.104Z",
+    "event": "probe-end",
+    "mode": "helper",
+    "value": {
+      "error": "人工缺陷单请求失败，请保留原确认并只读核对。",
+      "code": "D6_CONTROLLED_HTTP_502",
+      "status": 502,
+      "outcomeUnknown": true
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "at": "2026-10-18T01:26:29.105Z",
+    "event": "probe-start",
+    "mode": "helper-click",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:26:29.145Z",
+    "event": "server-finish",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:26:29.145Z",
+    "event": "server-close",
+    "path": "/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:26:29.145Z",
+    "event": "cdp-request",
+    "id": "12156.4",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:26:29.156Z",
+    "event": "cdp-response",
+    "id": "12156.4",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets",
+    "status": 502
+  },
+  {
+    "at": "2026-10-18T01:26:29.156Z",
+    "event": "pw-finished",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:26:29.156Z",
+    "event": "cdp-finished",
+    "id": "12156.4",
+    "url": "http://127.0.0.1:54308/api/acceptance/projects/ap-a4623856-6934-47a5-bd96-78d297a5ba9c/defect-tickets"
+  },
+  {
+    "at": "2026-10-18T01:26:31.176Z",
+    "event": "probe-end",
+    "mode": "helper-click",
+    "value": {
+      "armed": true,
+      "result": {
+        "error": "人工缺陷单请求失败，请保留原确认并只读核对。",
+        "code": "D6_CONTROLLED_HTTP_502",
+        "status": 502,
+        "outcomeUnknown": true
+      }
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "at": "2026-10-18T01:26:31.177Z",
+    "event": "before-teardown"
+  }
+]

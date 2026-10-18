@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-1f82aa72-e470-4607-b4aa-032083c98426",
+  "taskId": null,
+  "name": "Browser source matrix",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:59761/baseline",
+  "targetUrl": "http://127.0.0.1:59761/target",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-18T03:11:09.823Z",
+  "updatedAt": "2026-10-18T03:11:16.181Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Browser source matrix",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:59761/baseline",
+    "targetUrl": "http://127.0.0.1:59761/target",
+    "routes": [
+      "/visual-shift?revision=one",
+      "/identical?revision=two"
+    ],
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 960,
+        "height": 640
+      },
+      {
+        "name": "mobile",
+        "width": 375,
+        "height": 812
+      }
+    ],
+    "points": [
+      {
+        "id": "shift-menu",
+        "title": "展开菜单 shift-menu",
+        "route": "/visual-shift?revision=one",
+        "severity": "high",
+        "steps": [
+          {
+            "action": "click",
+            "selector": "#menu-toggle"
+          }
+        ],
+        "assertions": [
+          {
+            "kind": "visible",
+            "selector": "#menu"
+          },
+          {
+            "kind": "attribute",
+            "selector": "#menu-toggle",
+            "attribute": "aria-expanded",
+            "equals": "true"
+          }
+        ]
+      },
+      {
+        "id": "identical-menu",
+        "title": "展开菜单 identical-menu",
+        "route": "/identical?revision=two",
+        "severity": "high",
+        "steps": [
+          {
+            "action": "click",
+            "selector": "#menu-toggle"
+          }
+        ],
+        "assertions": [
+          {
+            "kind": "visible",
+            "selector": "#menu"
+          },
+          {
+            "kind": "attribute",
+            "selector": "#menu-toggle",
+            "attribute": "aria-expanded",
+            "equals": "true"
+          }
+        ]
+      }
+    ],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 10000,
+    "settleMs": 50,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 28,
+    "passed": 26,
+    "failed": 2,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 2,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 28,
+      "total": 28,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 4,
+        "passed": 2,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.8166
+      },
+      "structure": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 16,
+        "passed": 16,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-18T03:11:16.078Z",
+  "error": null,
+  "reportSha256": "547e4dd2f4943e42b322444e01569abaf5310da0549581a1a1c075196bbc4d33"
+}

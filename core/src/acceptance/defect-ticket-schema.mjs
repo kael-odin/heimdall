@@ -5,7 +5,7 @@ import { browserOperationFileName } from './browser-operation-schema.mjs';
 
 export const DEFECT_TICKET_LIMITS = Object.freeze({ members: 24, tickets: 256, actions: 4096,
   actionBytes: 64 * 1024, namespaceBytes: 16 * 1024 * 1024, queue: 32,
-  requestBytes: 32 * 1024, factsJsonBytes: 32 * 1024 * 1024,
+  requestBytes: 32 * 1024, denyRequestBytes: 64 * 1024, factsJsonBytes: 32 * 1024 * 1024,
   titleCharacters: 240, descriptionCharacters: 4000, reproductionCharacters: 4000,
   resolutionCharacters: 4000, evidencePerMember: 32 });
 const UUID = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
@@ -119,6 +119,59 @@ export function defectTicketRequestFingerprint(raw) {
   const checked = kind === 'create' ? validateDefectTicketCreateRequest(request) : validateDefectTicketCloseRequest(request);
   need(kind !== 'create' || checked.ticketId === ticketId, 'TICKET_MISMATCH');
   return hashAcceptanceValue({ domain: 'heimdall-defect-ticket-request', version: 1, projectId, ticketId, kind, request: checked });
+}
+/** The original browser confirmation is exact: normalization cannot change it. */
+export function validateDefectTicketConfirmation(raw) { return inputBoundary(() => {
+  const value = defectTicketJson(raw);
+  fields(value, ['version', 'projectId', 'ticketId', 'kind', 'actionId', 'requestFingerprint', 'request']);
+  need(value.version === 1 && ['create', 'close'].includes(value.kind), 'INVALID_CONFIRMATION');
+  ident(value.projectId, 'ap'); ident(value.ticketId, 'dt'); ident(value.actionId, 'da');
+  need(hash(value.requestFingerprint), 'INVALID_CONFIRMATION');
+  const checked = value.kind === 'create' ? validateDefectTicketCreateRequest(value.request)
+    : validateDefectTicketCloseRequest(value.request);
+  need(canonicalAcceptanceJson(value.request) === canonicalAcceptanceJson(checked)
+    && value.actionId === checked.actionId && (value.kind !== 'create' || value.ticketId === checked.ticketId), 'INVALID_CONFIRMATION');
+  need(value.requestFingerprint === defectTicketRequestFingerprint({ projectId: value.projectId,
+    ticketId: value.ticketId, kind: value.kind, request: checked }), 'REQUEST_FINGERPRINT_MISMATCH');
+  return value;
+}); }
+export function validateDefectTicketDenyRequest(raw) { return inputBoundary(() => {
+  const value = defectTicketJson(raw, DEFECT_TICKET_LIMITS.denyRequestBytes);
+  fields(value, ['schemaVersion', 'confirmed', 'original']);
+  need(value.schemaVersion === 1 && value.confirmed === true, 'INVALID_CONFIRMATION');
+  value.original = validateDefectTicketConfirmation(value.original); return value;
+}); }
+export function validateDefectTicketRejection(raw) {
+  try {
+    const value = defectTicketJson(raw);
+    fields(value, ['actionDecisionVersion', 'kind', 'original', 'effect', 'decidedAt', 'actor']);
+    need(value.actionDecisionVersion === 1, 'UNKNOWN_ACTION_DECISION');
+    need(value.kind === 'manual-defect-ticket-action-rejection'
+      && value.effect === 'deny-late-manual-defect-ticket-action' && iso(value.decidedAt), 'INVALID_REJECTION');
+    fields(value.actor, ['kind']); need(value.actor.kind === 'local-operator', 'INVALID_ACTOR');
+    value.original = validateDefectTicketConfirmation(value.original); return value;
+  } catch (cause) {
+    defectTicketFail(cause instanceof DefectTicketError ? cause.details.reason : 'INVALID_REJECTION');
+  }
+}
+export function defectTicketRejectionBytes(value) {
+  const bytes = Buffer.from(canonicalAcceptanceJson(validateDefectTicketRejection(value)) + '\n');
+  need(bytes.length <= DEFECT_TICKET_LIMITS.actionBytes, 'ACTION_BUDGET'); return bytes;
+}
+/** A physical action slot holds exactly one event or one independent rejection. */
+export function validateDefectTicketDecision(raw) {
+  try {
+    const value = defectTicketJson(raw), event = Object.hasOwn(value, 'ticketContractVersion'),
+      rejection = Object.hasOwn(value, 'actionDecisionVersion');
+    need(event !== rejection, 'INVALID_DECISION');
+    return event ? validateDefectTicketEvent(value) : validateDefectTicketRejection(value);
+  } catch (cause) {
+    defectTicketFail(cause instanceof DefectTicketError ? cause.details.reason : 'INVALID_DECISION');
+  }
+}
+export function defectTicketDecisionBytes(raw) {
+  const value = validateDefectTicketDecision(raw);
+  return Object.hasOwn(value, 'ticketContractVersion') ? defectTicketEventBytes(value) : defectTicketRejectionBytes(value);
 }
 function identity(value) {
   fields(value, ['version', 'kind', 'facet', 'caseKey', 'contextKey', 'ruleKey', 'oracleKey', 'environmentKey', 'viewport', 'pointId'],

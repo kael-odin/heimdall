@@ -1,0 +1,18 @@
+{
+  "command": "C:\\Program Files\\nodejs\\node.exe",
+  "args": [
+    "--import",
+    "file:///[temporary-data-root]/old-target-guard.mjs",
+    "src/acceptance/catalog-maintenance-cli.mjs",
+    "--preview",
+    "--target-schema",
+    "4",
+    "--root",
+    "[temporary-data-root]\\acceptance"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\",
+  "startedAt": "2026-10-18T03:07:37.805Z",
+  "finishedAt": "2026-10-18T03:07:38.139Z",
+  "exitCode": 0,
+  "signal": null
+}

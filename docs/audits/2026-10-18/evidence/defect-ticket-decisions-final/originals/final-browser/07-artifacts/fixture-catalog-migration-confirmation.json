@@ -1,0 +1,8 @@
+{
+  "targetSchemaVersion": 4,
+  "expectedGenerationId": "ag-12740c8e-248e-4df3-bf00-b2b79e90bd18",
+  "expectedRevision": 20,
+  "expectedHeadSha256": "2fd75752916f7e93e136f86909467f4a681380cb3a076efcc86bd4d3666ca501",
+  "expectedPreviousSha256": null,
+  "expectedPlanDigest": "9db82618b79720217d33b7efa4b0f18965e0692d11c82cd765b90eaa4efb8e24"
+}

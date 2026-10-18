@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "name": "固定注入基准 · 菜单展开但 aria-expanded 未更新",
+  "mode": "mirror",
+  "baselineUrl": "http://127.0.0.1:55191/baseline",
+  "targetUrl": "http://127.0.0.1:55191/target",
+  "routes": [
+    "/menu-state"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "points": [
+    {
+      "id": "truth-menu-state",
+      "title": "菜单展开但 aria-expanded 未更新",
+      "route": "/menu-state",
+      "severity": "high",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "#menu-toggle"
+        }
+      ],
+      "assertions": [
+        {
+          "kind": "attribute",
+          "selector": "#menu-toggle",
+          "attribute": "aria-expanded",
+          "equals": "true"
+        },
+        {
+          "kind": "visible",
+          "selector": "#menu"
+        }
+      ]
+    }
+  ],
+  "thresholds": {
+    "visual": 0.97
+  },
+  "timeoutMs": 2000,
+  "settleMs": 180,
+  "normalization": {
+    "maskSelectors": []
+  }
+}

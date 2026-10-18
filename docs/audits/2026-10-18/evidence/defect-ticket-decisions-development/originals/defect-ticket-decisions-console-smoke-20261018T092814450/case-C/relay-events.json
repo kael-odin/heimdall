@@ -1,0 +1,85 @@
+[
+  {
+    "at": "2026-10-18T01:29:52.553Z",
+    "event": "original-body",
+    "caseId": "C",
+    "frontRequestId": "front-aed80d7e-3872-4247-b751-a4f18ccc1d21",
+    "actionId": "da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "bytes": 566,
+    "bodySha256": "db1cff48e3fcd817ef41b18fbb8ec3744fdd95e09b9b53844d5ca0b0aa38e06b",
+    "traceId": "d6-original-1083d400-7695-4407-aa44-d03c875f911d",
+    "host": "127.0.0.1:58706",
+    "origin": "http://127.0.0.1:58706",
+    "contentType": "application/json"
+  },
+  {
+    "at": "2026-10-18T01:29:52.674Z",
+    "event": "controlled-http-502",
+    "caseId": "C",
+    "path": "/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close",
+    "frontRequestId": "front-aed80d7e-3872-4247-b751-a4f18ccc1d21",
+    "status": 502,
+    "contentType": "application/json; charset=utf-8",
+    "bytes": 125,
+    "bodySha256": "897d30837e78193624667d933a5c0df9b1400512cf35cefed81f6fa5076c1472"
+  },
+  {
+    "at": "2026-10-18T01:29:52.675Z",
+    "event": "original-downstream-finish",
+    "caseId": "C",
+    "actionId": "da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "writableEnded": true,
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:29:52.676Z",
+    "event": "original-downstream-close",
+    "caseId": "C",
+    "actionId": "da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "writableEnded": true,
+    "writableFinished": true
+  },
+  {
+    "at": "2026-10-18T01:29:53.365Z",
+    "event": "deny-body",
+    "caseId": "C",
+    "frontRequestId": "front-b4f9db66-e3d4-4461-8e17-3642316f7e2b",
+    "actionId": "da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "bytes": 901,
+    "bodySha256": "af048f8f716f84207727b55d6f79474038c24c1b41cfa698b8f6b279f8268b9a"
+  },
+  {
+    "at": "2026-10-18T01:29:53.365Z",
+    "event": "deny-forward",
+    "caseId": "C",
+    "frontRequestId": "front-b4f9db66-e3d4-4461-8e17-3642316f7e2b",
+    "actionId": "da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "bytes": 901,
+    "bodySha256": "af048f8f716f84207727b55d6f79474038c24c1b41cfa698b8f6b279f8268b9a"
+  },
+  {
+    "at": "2026-10-18T01:29:53.952Z",
+    "event": "deny-response",
+    "caseId": "C",
+    "frontRequestId": "front-b4f9db66-e3d4-4461-8e17-3642316f7e2b",
+    "actionId": "da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "status": 201,
+    "bytes": 1501,
+    "bodySha256": "6e313df97a1c7158a51e61c184ae1cc6b254e588a026e6083f4229b55a663021"
+  },
+  {
+    "at": "2026-10-18T01:29:53.967Z",
+    "event": "original-tail-release",
+    "caseId": "C",
+    "actionId": "da-0135f2bd-4a08-46d5-9136-867cab986151"
+  },
+  {
+    "at": "2026-10-18T01:29:54.133Z",
+    "event": "original-upstream-response",
+    "caseId": "C",
+    "actionId": "da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "status": 200,
+    "bytes": 1500,
+    "bodySha256": "72b7b4962be8a9d44bb7d1514778965154e71fa6357414eb48d534f22b5e4f87"
+  }
+]

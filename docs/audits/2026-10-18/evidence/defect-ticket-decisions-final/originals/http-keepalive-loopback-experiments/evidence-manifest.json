@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "one-loopback-experiment-originals",
+  "fileCount": 9,
+  "files": [
+    {
+      "path": "command.json",
+      "bytes": 2268,
+      "sha256": "2aba01f1d34e46fea7056c8023f11a6fe18ad03ddfc0165c65912c29c8be7b67"
+    },
+    {
+      "path": "experiment/events.jsonl",
+      "bytes": 10459,
+      "sha256": "51db6d5f5eaacf7e8fdf788169e9e58afecd69500c55338856a82d30ccd9f800"
+    },
+    {
+      "path": "experiment/result.json",
+      "bytes": 19954,
+      "sha256": "3d30c43eba268188b6548e17c445b24fea3a3f87e4b7fd093b97a5d7f00b6f66"
+    },
+    {
+      "path": "experiment/script-identity.json",
+      "bytes": 277,
+      "sha256": "059896f44fa6d39d129f736447cd202d15432531997e5c22c5d4700e5fe0703f"
+    },
+    {
+      "path": "http-keepalive-loopback.mjs",
+      "bytes": 8042,
+      "sha256": "f44678569ca57ced872059f83aee62653358d452240b7b5c7ed9360a6a4f4b1c"
+    },
+    {
+      "path": "REPORT.md",
+      "bytes": 3193,
+      "sha256": "989d7de4ee49971f79c4b15cd9f1d35ad685e1e2ca76c579785a7c034ac3a93b"
+    },
+    {
+      "path": "run-http-keepalive-loopback.py",
+      "bytes": 2225,
+      "sha256": "3bf2cdd4fad2b70a018f0c3292f85cc0f6fac4bc07824c7ee166753a4933859f"
+    },
+    {
+      "path": "stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stdout.log",
+      "bytes": 10787,
+      "sha256": "6fe14f0ce851ca1b8680d147baa08b663ee9fc978a686695815500bc286bc7fb"
+    }
+  ],
+  "scriptCopies": [
+    {
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-ci-artifact-supplement-20261018\\http-keepalive-loopback.mjs",
+      "path": "http-keepalive-loopback.mjs",
+      "bytes": 8042,
+      "sha256": "f44678569ca57ced872059f83aee62653358d452240b7b5c7ed9360a6a4f4b1c",
+      "sourceAndTargetByteEqual": true
+    },
+    {
+      "source": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-ci-artifact-supplement-20261018\\run-http-keepalive-loopback.py",
+      "path": "run-http-keepalive-loopback.py",
+      "bytes": 2225,
+      "sha256": "3bf2cdd4fad2b70a018f0c3292f85cc0f6fac4bc07824c7ee166753a4933859f",
+      "sourceAndTargetByteEqual": true
+    }
+  ],
+  "sourcesPreserved": true,
+  "stagedOrCommitted": false
+}

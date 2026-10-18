@@ -217,6 +217,10 @@ function confirmation(raw) {
   const request = value.kind === 'create' ? defectTicketCreateInput(value.request) : defectTicketCloseInput(value.request);
   need(request.actionId === value.actionId && (value.kind !== 'create' || request.ticketId === value.ticketId) && equal(request, value.request)); return value;
 }
+export function defectTicketDenyInput(raw) {
+  const value = json(raw, 65536); fields(value, ['schemaVersion', 'confirmed', 'original']);
+  need(value.schemaVersion === 1 && value.confirmed === true); value.original = confirmation(value.original); return value;
+}
 export async function defectTicketConfirmation(raw, { crypto = globalThis.crypto } = {}) {
   const value = json(raw, 65536); fields(value, ['projectId', 'ticketId', 'kind', 'request']);
   need(id(value.projectId, 'ap') && id(value.ticketId, 'dt') && ['create', 'close'].includes(value.kind));
@@ -234,6 +238,21 @@ export async function defectTicketAction(raw, expected, { crypto = globalThis.cr
     fields(value, ['schemaVersion', 'kind', 'projectId', 'actionId', 'outcome', 'reason']);
     need(value.schemaVersion === 1 && value.kind === 'manual-defect-ticket-action' && value.projectId === original.projectId
       && value.actionId === original.actionId && value.reason === 'ABSENCE_IS_NOT_A_COMMIT_DECISION'); return freeze(value);
+  }
+  if (value.outcome === 'rejected') {
+    fields(value, ['schemaVersion', 'kind', 'outcome', 'projectId', 'ticketId', 'actionId', 'requestFingerprint', 'rejectionSha256', 'rejection', 'replayed'],
+      ['schemaVersion', 'kind', 'outcome', 'projectId', 'ticketId', 'actionId', 'requestFingerprint', 'rejectionSha256', 'rejection']);
+    need(value.schemaVersion === 1 && value.kind === 'manual-defect-ticket-action' && value.projectId === original.projectId
+      && value.ticketId === original.ticketId && value.actionId === original.actionId && value.requestFingerprint === original.requestFingerprint
+      && hash(value.rejectionSha256) && (!Object.hasOwn(value, 'replayed') || typeof value.replayed === 'boolean'));
+    const saved = value.rejection;
+    fields(saved, ['actionDecisionVersion', 'kind', 'original', 'effect', 'decidedAt', 'actor']); fields(saved.actor, ['kind']);
+    need(saved.actionDecisionVersion === 1 && saved.kind === 'manual-defect-ticket-action-rejection'
+      && saved.effect === 'deny-late-manual-defect-ticket-action' && iso(saved.decidedAt) && saved.actor.kind === 'local-operator'
+      && equal(confirmation(saved.original), original));
+    const bytes = canonical(saved) + '\n'; need(new TextEncoder().encode(bytes).length <= 65536
+      && await digest(bytes, crypto) === value.rejectionSha256);
+    freeze(value); proofBindings.set(value, canonical(original)); return value;
   }
   fields(value, ['schemaVersion', 'kind', 'outcome', 'projectId', 'ticketId', 'actionId', 'requestFingerprint', 'eventSha256', 'event', 'replayed'],
     ['schemaVersion', 'kind', 'outcome', 'projectId', 'ticketId', 'actionId', 'requestFingerprint', 'eventSha256', 'event']);
@@ -299,12 +318,13 @@ export function createDefectTicketReceipts({ projectId, origin, storage, locks =
     markDispatched(input) { const original = confirmation(input), token = canonical(original); need(claims.has(token) && claims.get(token) === false); claims.set(token, true); },
     cancelUnsent(input) { const original = confirmation(input), token = canonical(original);
       return lock(() => { need(claims.has(token) && claims.get(token) === false); return remove(original); }); },
-    resolveExact(input, proof) { const original = confirmation(input); need(original.projectId === projectId && proofBindings.get(proof) === canonical(original));
-      return lock(() => remove(original)); },
-    releaseRejected(input, proof) {
+    resolveExact(input, proof, { current = () => true } = {}) { const original = confirmation(input);
+      need(original.projectId === projectId && proofBindings.get(proof) === canonical(original) && typeof current === 'function');
+      return lock(() => current() === true ? remove(original) : false); },
+    releaseRejected(input, proof, { current = () => true } = {}) {
       const original = confirmation(input), binding = rejectionBindings.get(proof);
       need(original.projectId === projectId && binding?.projectId === projectId && binding.suffix === (original.kind === 'create' ? '' : `/${original.ticketId}/close`)
-        && binding.body === canonical(original.request)); return lock(() => remove(original));
+        && binding.body === canonical(original.request) && typeof current === 'function'); return lock(() => current() === true ? remove(original) : false);
     },
   });
 }
@@ -336,13 +356,22 @@ async function boundedResponse(response, maximum, signal) {
   const joined = new Uint8Array(bytes); let offset = 0; for (const chunk of chunks) { joined.set(chunk, offset); offset += chunk.byteLength; } return joined;
 }
 export async function requestDefectTickets(projectId, suffix = '', { baseUrl = '', headers = {}, method = 'GET', body, signal,
-  fetcher = globalThis.fetch, timeoutMs = 60000 } = {}) {
+  fetcher = globalThis.fetch, timeoutMs = 60000, crypto = globalThis.crypto } = {}) {
   const ticket = `dt-${UUID}`, operation = `bo-${UUID}`, action = `da-${UUID}`, candidate = `bc-${UUID}`;
   const readable = suffix === '' || new RegExp(`^/(?:sources\\?candidateId=${candidate}|actions/${action}|${ticket}(?:/close-preview\\?afterOperationId=${operation})?)$`).test(suffix);
-  const writable = suffix === '' || new RegExp(`^/${ticket}/close$`).test(suffix);
+  const deny = new RegExp(`^/actions/${action}/deny$`).test(suffix);
+  const writable = suffix === '' || new RegExp(`^/${ticket}/close$`).test(suffix) || deny;
   need(id(projectId, 'ap') && typeof suffix === 'string' && (method === 'GET' ? readable && body === undefined : method === 'POST' && writable && body !== undefined)
     && Number.isSafeInteger(timeoutMs) && timeoutMs > 0);
-  const encoded = body === undefined ? undefined : canonical(suffix === '' ? defectTicketCreateInput(body) : defectTicketCloseInput(body), 32768);
+  let encoded;
+  if (body !== undefined) {
+    if (deny) {
+      const input = defectTicketDenyInput(body), original = input.original;
+      need(original.projectId === projectId && suffix === `/actions/${original.actionId}/deny`);
+      const verified = await defectTicketConfirmation({ projectId, ticketId: original.ticketId, kind: original.kind, request: original.request }, { crypto });
+      need(equal(original, verified)); encoded = canonical(input, 65536);
+    } else encoded = canonical(suffix === '' ? defectTicketCreateInput(body) : defectTicketCloseInput(body), 32768);
+  }
   const requestHeaders = new Headers(headers); requestHeaders.set('accept', 'application/json');
   if (method === 'POST') requestHeaders.set('content-type', 'application/json');
   const controller = new AbortController();
@@ -357,7 +386,7 @@ export async function requestDefectTickets(projectId, suffix = '', { baseUrl = '
     const bytes = await boundedResponse(response, MAX_JSON, controller.signal);
     const value = json(JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)));
     if (!response.ok) {
-      const known = failures[value.code], definite = method === 'POST' && response.status >= 400 && response.status < 500 && known && (response.status === known[0]
+      const known = failures[value.code], definite = method === 'POST' && !deny && response.status >= 400 && response.status < 500 && known && (response.status === known[0]
         || value.code === 'INVALID_INPUT' && response.status === 413) && value.outcomeUnknown === false
         && text(value.error, 1000, false) && Object.keys(value).every(key => ['code', 'error', 'outcomeUnknown'].includes(key));
       const problem = Object.assign(new Error(known?.[1] || '人工缺陷单请求失败，请保留原确认并只读核对。'), {

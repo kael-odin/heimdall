@@ -1,0 +1,1242 @@
+[
+  {
+    "mode": "mirror",
+    "runId": "ac-146419c2-d1bb-42ed-9563-eadfe124144f",
+    "before": [
+      {
+        "file": "manifest.json",
+        "bytes": 2838,
+        "sha256": "dad2c2ba87af2a6fee87e96245fe74317f9574ca51e6fe2d8a68905ac4dce551"
+      },
+      {
+        "file": "report.json",
+        "bytes": 41545,
+        "sha256": "bdc5ca0b1144152456268229804bf0fee47187e751b2fe888958c92c1fdf2acf"
+      },
+      {
+        "file": "report.md",
+        "bytes": 5658,
+        "sha256": "c309d26b194989bc3470fe84605d43fb57ab59c93b45001de870df88df90b2c7"
+      },
+      {
+        "file": "route-1-1-desktop-baseline-repeat.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.json",
+        "bytes": 1650,
+        "sha256": "7a763ad4cd65c7ae22564fb7055d00ce81e486b9ef2686c3e5ab6f8968082263"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1"
+      },
+      {
+        "file": "route-1-1-desktop-diff.png",
+        "bytes": 17765,
+        "sha256": "e84e0cf077abb9730b87abf9cc6ae3e5c7e00e5c71c7d41073e4ab4c1a582ad4"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.json",
+        "bytes": 2312,
+        "sha256": "288f6db8523390015e2e63cec1a32500d754e3a1d0c3425374feeab8e1626e32"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target-repeat.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.json",
+        "bytes": 2302,
+        "sha256": "5007ec66a2ea0f80bd37665fa5a295fdaa5beeb79eeee4b94e6ce1ed775c75c9"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9"
+      },
+      {
+        "file": "route-1-1-desktop-target-repeat.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2"
+      },
+      {
+        "file": "route-1-1-desktop-target.json",
+        "bytes": 1640,
+        "sha256": "391d88a33d47d52e2dbd0e865ff06a0c4b90818aa1596516243b0e8f72a2d432"
+      },
+      {
+        "file": "route-1-1-desktop-target.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2"
+      },
+      {
+        "file": "route-1-2-mobile-baseline-repeat.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.json",
+        "bytes": 1647,
+        "sha256": "9f06685312544c9998dfc884604711a937a29b417eb247fdc53ddf62b49e6e85"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8"
+      },
+      {
+        "file": "route-1-2-mobile-diff.png",
+        "bytes": 15111,
+        "sha256": "851756e73d8ebb92cbfb431eff32633c3f8b9e3a89f131067cd957f26bf7edf5"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline-repeat.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.json",
+        "bytes": 2309,
+        "sha256": "c4770fc22e0ea38d2eff1cdc673fe690df3d4e1b182b5978faa5f36ce40bcc08"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target-repeat.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.json",
+        "bytes": 2299,
+        "sha256": "5fd7c96a29f7fe3b35658b8aeaacabda3b6cf7e40e8edadd8932a06fce1ac0fc"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e"
+      },
+      {
+        "file": "route-1-2-mobile-target-repeat.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4"
+      },
+      {
+        "file": "route-1-2-mobile-target.json",
+        "bytes": 1637,
+        "sha256": "72821144c2cafb81290e9be086489f6ac1bf92ca4aa4a307bd037f17f22f52d9"
+      },
+      {
+        "file": "route-1-2-mobile-target.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4"
+      }
+    ],
+    "after": [
+      {
+        "file": "manifest.json",
+        "bytes": 2838,
+        "sha256": "dad2c2ba87af2a6fee87e96245fe74317f9574ca51e6fe2d8a68905ac4dce551"
+      },
+      {
+        "file": "report.json",
+        "bytes": 41545,
+        "sha256": "bdc5ca0b1144152456268229804bf0fee47187e751b2fe888958c92c1fdf2acf"
+      },
+      {
+        "file": "report.md",
+        "bytes": 5658,
+        "sha256": "c309d26b194989bc3470fe84605d43fb57ab59c93b45001de870df88df90b2c7"
+      },
+      {
+        "file": "route-1-1-desktop-baseline-repeat.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.json",
+        "bytes": 1650,
+        "sha256": "7a763ad4cd65c7ae22564fb7055d00ce81e486b9ef2686c3e5ab6f8968082263"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1"
+      },
+      {
+        "file": "route-1-1-desktop-diff.png",
+        "bytes": 17765,
+        "sha256": "e84e0cf077abb9730b87abf9cc6ae3e5c7e00e5c71c7d41073e4ab4c1a582ad4"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.json",
+        "bytes": 2312,
+        "sha256": "288f6db8523390015e2e63cec1a32500d754e3a1d0c3425374feeab8e1626e32"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target-repeat.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.json",
+        "bytes": 2302,
+        "sha256": "5007ec66a2ea0f80bd37665fa5a295fdaa5beeb79eeee4b94e6ce1ed775c75c9"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9"
+      },
+      {
+        "file": "route-1-1-desktop-target-repeat.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2"
+      },
+      {
+        "file": "route-1-1-desktop-target.json",
+        "bytes": 1640,
+        "sha256": "391d88a33d47d52e2dbd0e865ff06a0c4b90818aa1596516243b0e8f72a2d432"
+      },
+      {
+        "file": "route-1-1-desktop-target.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2"
+      },
+      {
+        "file": "route-1-2-mobile-baseline-repeat.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.json",
+        "bytes": 1647,
+        "sha256": "9f06685312544c9998dfc884604711a937a29b417eb247fdc53ddf62b49e6e85"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8"
+      },
+      {
+        "file": "route-1-2-mobile-diff.png",
+        "bytes": 15111,
+        "sha256": "851756e73d8ebb92cbfb431eff32633c3f8b9e3a89f131067cd957f26bf7edf5"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline-repeat.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.json",
+        "bytes": 2309,
+        "sha256": "c4770fc22e0ea38d2eff1cdc673fe690df3d4e1b182b5978faa5f36ce40bcc08"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target-repeat.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.json",
+        "bytes": 2299,
+        "sha256": "5fd7c96a29f7fe3b35658b8aeaacabda3b6cf7e40e8edadd8932a06fce1ac0fc"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e"
+      },
+      {
+        "file": "route-1-2-mobile-target-repeat.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4"
+      },
+      {
+        "file": "route-1-2-mobile-target.json",
+        "bytes": 1637,
+        "sha256": "72821144c2cafb81290e9be086489f6ac1bf92ca4aa4a307bd037f17f22f52d9"
+      },
+      {
+        "file": "route-1-2-mobile-target.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4"
+      }
+    ],
+    "beforeProductMetadata": [
+      {
+        "file": "manifest.json",
+        "bytes": 2838,
+        "sha256": "dad2c2ba87af2a6fee87e96245fe74317f9574ca51e6fe2d8a68905ac4dce551",
+        "dev": "1451399181",
+        "ino": "2533274792147699",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091939430900",
+        "ctimeNs": "1792293091940431800"
+      },
+      {
+        "file": "report.json",
+        "bytes": 41545,
+        "sha256": "bdc5ca0b1144152456268229804bf0fee47187e751b2fe888958c92c1fdf2acf",
+        "dev": "1451399181",
+        "ino": "2533274792147697",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091922429100",
+        "ctimeNs": "1792293091923435200"
+      },
+      {
+        "file": "report.md",
+        "bytes": 5658,
+        "sha256": "c309d26b194989bc3470fe84605d43fb57ab59c93b45001de870df88df90b2c7",
+        "dev": "1451399181",
+        "ino": "2533274792147698",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091925435800",
+        "ctimeNs": "1792293091925435800"
+      },
+      {
+        "file": "route-1-1-desktop-baseline-repeat.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1",
+        "dev": "1451399181",
+        "ino": "2533274792147755",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293089004396400",
+        "ctimeNs": "1792293089004396400"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.json",
+        "bytes": 1650,
+        "sha256": "7a763ad4cd65c7ae22564fb7055d00ce81e486b9ef2686c3e5ab6f8968082263",
+        "dev": "1451399181",
+        "ino": "2533274792147756",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293089078095400",
+        "ctimeNs": "1792293089078095400"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1",
+        "dev": "1451399181",
+        "ino": "2533274792147748",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293088899260600",
+        "ctimeNs": "1792293088899260600"
+      },
+      {
+        "file": "route-1-1-desktop-diff.png",
+        "bytes": 17765,
+        "sha256": "e84e0cf077abb9730b87abf9cc6ae3e5c7e00e5c71c7d41073e4ab4c1a582ad4",
+        "dev": "1451399181",
+        "ino": "2251799815437106",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293089521730600",
+        "ctimeNs": "1792293089521730600"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81",
+        "dev": "1451399181",
+        "ino": "2251799815437108",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293089883414800",
+        "ctimeNs": "1792293089883414800"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.json",
+        "bytes": 2312,
+        "sha256": "288f6db8523390015e2e63cec1a32500d754e3a1d0c3425374feeab8e1626e32",
+        "dev": "1451399181",
+        "ino": "2251799815437109",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293089938413600",
+        "ctimeNs": "1792293089938413600"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81",
+        "dev": "1451399181",
+        "ino": "2251799815437107",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293089769929400",
+        "ctimeNs": "1792293089769929400"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target-repeat.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9",
+        "dev": "1451399181",
+        "ino": "2251799815437111",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293090315168200",
+        "ctimeNs": "1792293090315168200"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.json",
+        "bytes": 2302,
+        "sha256": "5007ec66a2ea0f80bd37665fa5a295fdaa5beeb79eeee4b94e6ce1ed775c75c9",
+        "dev": "1451399181",
+        "ino": "2251799815437112",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293090387947800",
+        "ctimeNs": "1792293090387947800"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9",
+        "dev": "1451399181",
+        "ino": "2251799815437110",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293090197131500",
+        "ctimeNs": "1792293090197131500"
+      },
+      {
+        "file": "route-1-1-desktop-target-repeat.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2",
+        "dev": "1451399181",
+        "ino": "2533274792147760",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293089365127100",
+        "ctimeNs": "1792293089365127100"
+      },
+      {
+        "file": "route-1-1-desktop-target.json",
+        "bytes": 1640,
+        "sha256": "391d88a33d47d52e2dbd0e865ff06a0c4b90818aa1596516243b0e8f72a2d432",
+        "dev": "1451399181",
+        "ino": "2251799815437105",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293089428813900",
+        "ctimeNs": "1792293089428813900"
+      },
+      {
+        "file": "route-1-1-desktop-target.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2",
+        "dev": "1451399181",
+        "ino": "2533274792147759",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293089249633200",
+        "ctimeNs": "1792293089249633200"
+      },
+      {
+        "file": "route-1-2-mobile-baseline-repeat.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8",
+        "dev": "1451399181",
+        "ino": "2251799815437114",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293090669213400",
+        "ctimeNs": "1792293090669213400"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.json",
+        "bytes": 1647,
+        "sha256": "9f06685312544c9998dfc884604711a937a29b417eb247fdc53ddf62b49e6e85",
+        "dev": "1451399181",
+        "ino": "2251799815437115",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293090704831000",
+        "ctimeNs": "1792293090704831000"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8",
+        "dev": "1451399181",
+        "ino": "2251799815437113",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293090561718200",
+        "ctimeNs": "1792293090561718200"
+      },
+      {
+        "file": "route-1-2-mobile-diff.png",
+        "bytes": 15111,
+        "sha256": "851756e73d8ebb92cbfb431eff32633c3f8b9e3a89f131067cd957f26bf7edf5",
+        "dev": "1451399181",
+        "ino": "2251799815437119",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091044865900",
+        "ctimeNs": "1792293091044865900"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline-repeat.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835",
+        "dev": "1451399181",
+        "ino": "2251799815437121",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091410589000",
+        "ctimeNs": "1792293091410589000"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.json",
+        "bytes": 2309,
+        "sha256": "c4770fc22e0ea38d2eff1cdc673fe690df3d4e1b182b5978faa5f36ce40bcc08",
+        "dev": "1451399181",
+        "ino": "2251799815437122",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091450337300",
+        "ctimeNs": "1792293091450337300"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835",
+        "dev": "1451399181",
+        "ino": "2251799815437120",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091311925200",
+        "ctimeNs": "1792293091311925200"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target-repeat.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e",
+        "dev": "1451399181",
+        "ino": "2533274792147782",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091782231200",
+        "ctimeNs": "1792293091782231200"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.json",
+        "bytes": 2299,
+        "sha256": "5fd7c96a29f7fe3b35658b8aeaacabda3b6cf7e40e8edadd8932a06fce1ac0fc",
+        "dev": "1451399181",
+        "ino": "2251799815437127",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091816232500",
+        "ctimeNs": "1792293091816232500"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e",
+        "dev": "1451399181",
+        "ino": "2533274792147781",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091680606200",
+        "ctimeNs": "1792293091680606200"
+      },
+      {
+        "file": "route-1-2-mobile-target-repeat.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4",
+        "dev": "1451399181",
+        "ino": "2251799815437117",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293090963600200",
+        "ctimeNs": "1792293090963600200"
+      },
+      {
+        "file": "route-1-2-mobile-target.json",
+        "bytes": 1637,
+        "sha256": "72821144c2cafb81290e9be086489f6ac1bf92ca4aa4a307bd037f17f22f52d9",
+        "dev": "1451399181",
+        "ino": "2251799815437118",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293091005489700",
+        "ctimeNs": "1792293091005489700"
+      },
+      {
+        "file": "route-1-2-mobile-target.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4",
+        "dev": "1451399181",
+        "ino": "2251799815437116",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293090860950100",
+        "ctimeNs": "1792293090860950100"
+      }
+    ],
+    "note": "Metadata comparison passed before an explicit whitespace injection/restoration; final bytes match."
+  },
+  {
+    "mode": "regression",
+    "runId": "ac-0fbee61e-2591-4565-a223-e193587780e7",
+    "before": [
+      {
+        "file": "manifest.json",
+        "bytes": 2854,
+        "sha256": "2ca568a7cebd0d82cc4efc46fcc9daa6231a150cb293def04fe457a20ff1083a"
+      },
+      {
+        "file": "report.json",
+        "bytes": 41553,
+        "sha256": "480536066e8bffc448409af0ca5aaca45a4221703ccecf57264505669e1f0c7b"
+      },
+      {
+        "file": "report.md",
+        "bytes": 5666,
+        "sha256": "ed50fd1dae93cc5b5c7f98b8406f9cf96c9d7de029a2b3d7aaa72443dfd6c55d"
+      },
+      {
+        "file": "route-1-1-desktop-baseline-repeat.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.json",
+        "bytes": 1650,
+        "sha256": "7a763ad4cd65c7ae22564fb7055d00ce81e486b9ef2686c3e5ab6f8968082263"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1"
+      },
+      {
+        "file": "route-1-1-desktop-diff.png",
+        "bytes": 17765,
+        "sha256": "e84e0cf077abb9730b87abf9cc6ae3e5c7e00e5c71c7d41073e4ab4c1a582ad4"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.json",
+        "bytes": 2312,
+        "sha256": "288f6db8523390015e2e63cec1a32500d754e3a1d0c3425374feeab8e1626e32"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target-repeat.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.json",
+        "bytes": 2302,
+        "sha256": "5007ec66a2ea0f80bd37665fa5a295fdaa5beeb79eeee4b94e6ce1ed775c75c9"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9"
+      },
+      {
+        "file": "route-1-1-desktop-target-repeat.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2"
+      },
+      {
+        "file": "route-1-1-desktop-target.json",
+        "bytes": 1640,
+        "sha256": "391d88a33d47d52e2dbd0e865ff06a0c4b90818aa1596516243b0e8f72a2d432"
+      },
+      {
+        "file": "route-1-1-desktop-target.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2"
+      },
+      {
+        "file": "route-1-2-mobile-baseline-repeat.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.json",
+        "bytes": 1647,
+        "sha256": "9f06685312544c9998dfc884604711a937a29b417eb247fdc53ddf62b49e6e85"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8"
+      },
+      {
+        "file": "route-1-2-mobile-diff.png",
+        "bytes": 15111,
+        "sha256": "851756e73d8ebb92cbfb431eff32633c3f8b9e3a89f131067cd957f26bf7edf5"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline-repeat.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.json",
+        "bytes": 2309,
+        "sha256": "c4770fc22e0ea38d2eff1cdc673fe690df3d4e1b182b5978faa5f36ce40bcc08"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target-repeat.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.json",
+        "bytes": 2299,
+        "sha256": "5fd7c96a29f7fe3b35658b8aeaacabda3b6cf7e40e8edadd8932a06fce1ac0fc"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e"
+      },
+      {
+        "file": "route-1-2-mobile-target-repeat.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4"
+      },
+      {
+        "file": "route-1-2-mobile-target.json",
+        "bytes": 1637,
+        "sha256": "72821144c2cafb81290e9be086489f6ac1bf92ca4aa4a307bd037f17f22f52d9"
+      },
+      {
+        "file": "route-1-2-mobile-target.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4"
+      }
+    ],
+    "after": [
+      {
+        "file": "manifest.json",
+        "bytes": 2854,
+        "sha256": "2ca568a7cebd0d82cc4efc46fcc9daa6231a150cb293def04fe457a20ff1083a"
+      },
+      {
+        "file": "report.json",
+        "bytes": 41553,
+        "sha256": "480536066e8bffc448409af0ca5aaca45a4221703ccecf57264505669e1f0c7b"
+      },
+      {
+        "file": "report.md",
+        "bytes": 5666,
+        "sha256": "ed50fd1dae93cc5b5c7f98b8406f9cf96c9d7de029a2b3d7aaa72443dfd6c55d"
+      },
+      {
+        "file": "route-1-1-desktop-baseline-repeat.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.json",
+        "bytes": 1650,
+        "sha256": "7a763ad4cd65c7ae22564fb7055d00ce81e486b9ef2686c3e5ab6f8968082263"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1"
+      },
+      {
+        "file": "route-1-1-desktop-diff.png",
+        "bytes": 17765,
+        "sha256": "e84e0cf077abb9730b87abf9cc6ae3e5c7e00e5c71c7d41073e4ab4c1a582ad4"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.json",
+        "bytes": 2312,
+        "sha256": "288f6db8523390015e2e63cec1a32500d754e3a1d0c3425374feeab8e1626e32"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target-repeat.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.json",
+        "bytes": 2302,
+        "sha256": "5007ec66a2ea0f80bd37665fa5a295fdaa5beeb79eeee4b94e6ce1ed775c75c9"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9"
+      },
+      {
+        "file": "route-1-1-desktop-target-repeat.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2"
+      },
+      {
+        "file": "route-1-1-desktop-target.json",
+        "bytes": 1640,
+        "sha256": "391d88a33d47d52e2dbd0e865ff06a0c4b90818aa1596516243b0e8f72a2d432"
+      },
+      {
+        "file": "route-1-1-desktop-target.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2"
+      },
+      {
+        "file": "route-1-2-mobile-baseline-repeat.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.json",
+        "bytes": 1647,
+        "sha256": "9f06685312544c9998dfc884604711a937a29b417eb247fdc53ddf62b49e6e85"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8"
+      },
+      {
+        "file": "route-1-2-mobile-diff.png",
+        "bytes": 15111,
+        "sha256": "851756e73d8ebb92cbfb431eff32633c3f8b9e3a89f131067cd957f26bf7edf5"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline-repeat.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.json",
+        "bytes": 2309,
+        "sha256": "c4770fc22e0ea38d2eff1cdc673fe690df3d4e1b182b5978faa5f36ce40bcc08"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target-repeat.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.json",
+        "bytes": 2299,
+        "sha256": "5fd7c96a29f7fe3b35658b8aeaacabda3b6cf7e40e8edadd8932a06fce1ac0fc"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e"
+      },
+      {
+        "file": "route-1-2-mobile-target-repeat.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4"
+      },
+      {
+        "file": "route-1-2-mobile-target.json",
+        "bytes": 1637,
+        "sha256": "72821144c2cafb81290e9be086489f6ac1bf92ca4aa4a307bd037f17f22f52d9"
+      },
+      {
+        "file": "route-1-2-mobile-target.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4"
+      }
+    ],
+    "beforeProductMetadata": [
+      {
+        "file": "manifest.json",
+        "bytes": 2854,
+        "sha256": "2ca568a7cebd0d82cc4efc46fcc9daa6231a150cb293def04fe457a20ff1083a",
+        "dev": "1451399181",
+        "ino": "2814749768858390",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293095339276900",
+        "ctimeNs": "1792293095339807800"
+      },
+      {
+        "file": "report.json",
+        "bytes": 41553,
+        "sha256": "480536066e8bffc448409af0ca5aaca45a4221703ccecf57264505669e1f0c7b",
+        "dev": "1451399181",
+        "ino": "2814749768858388",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293095319995200",
+        "ctimeNs": "1792293095320997100"
+      },
+      {
+        "file": "report.md",
+        "bytes": 5666,
+        "sha256": "ed50fd1dae93cc5b5c7f98b8406f9cf96c9d7de029a2b3d7aaa72443dfd6c55d",
+        "dev": "1451399181",
+        "ino": "2814749768858389",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293095321996600",
+        "ctimeNs": "1792293095322996400"
+      },
+      {
+        "file": "route-1-1-desktop-baseline-repeat.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1",
+        "dev": "1451399181",
+        "ino": "2251799815437164",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293092464823100",
+        "ctimeNs": "1792293092464823100"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.json",
+        "bytes": 1650,
+        "sha256": "7a763ad4cd65c7ae22564fb7055d00ce81e486b9ef2686c3e5ab6f8968082263",
+        "dev": "1451399181",
+        "ino": "2251799815437165",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293092526519500",
+        "ctimeNs": "1792293092526519500"
+      },
+      {
+        "file": "route-1-1-desktop-baseline.png",
+        "bytes": 16485,
+        "sha256": "d40b0f347766703f8b310cadfb36afd5ad62457604bef9b463c11b02f9076cb1",
+        "dev": "1451399181",
+        "ino": "2533274792147819",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293092348466400",
+        "ctimeNs": "1792293092348466400"
+      },
+      {
+        "file": "route-1-1-desktop-diff.png",
+        "bytes": 17765,
+        "sha256": "e84e0cf077abb9730b87abf9cc6ae3e5c7e00e5c71c7d41073e4ab4c1a582ad4",
+        "dev": "1451399181",
+        "ino": "2251799815437169",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293092958638900",
+        "ctimeNs": "1792293092958638900"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81",
+        "dev": "1451399181",
+        "ino": "2251799815437171",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293093315487500",
+        "ctimeNs": "1792293093315487500"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.json",
+        "bytes": 2312,
+        "sha256": "288f6db8523390015e2e63cec1a32500d754e3a1d0c3425374feeab8e1626e32",
+        "dev": "1451399181",
+        "ino": "2251799815437172",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293093372100200",
+        "ctimeNs": "1792293093372100200"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-baseline.png",
+        "bytes": 17753,
+        "sha256": "dac1772466a31d38fef708904b65973e58dfd4299247a6cc3e73caed523b8e81",
+        "dev": "1451399181",
+        "ino": "2251799815437170",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293093213321200",
+        "ctimeNs": "1792293093213321200"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target-repeat.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9",
+        "dev": "1451399181",
+        "ino": "2251799815437174",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293093737232900",
+        "ctimeNs": "1792293093737232900"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.json",
+        "bytes": 2302,
+        "sha256": "5007ec66a2ea0f80bd37665fa5a295fdaa5beeb79eeee4b94e6ce1ed775c75c9",
+        "dev": "1451399181",
+        "ino": "2251799815437175",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293093791095700",
+        "ctimeNs": "1792293093791095700"
+      },
+      {
+        "file": "route-1-1-desktop-point-1-target.png",
+        "bytes": 17862,
+        "sha256": "922ed296f10ce7f91d7b0150e6480b99235d1b786d57046384da858f4d10c0b9",
+        "dev": "1451399181",
+        "ino": "2251799815437173",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293093634225100",
+        "ctimeNs": "1792293093634225100"
+      },
+      {
+        "file": "route-1-1-desktop-target-repeat.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2",
+        "dev": "1451399181",
+        "ino": "2251799815437167",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293092820677500",
+        "ctimeNs": "1792293092820677500"
+      },
+      {
+        "file": "route-1-1-desktop-target.json",
+        "bytes": 1640,
+        "sha256": "391d88a33d47d52e2dbd0e865ff06a0c4b90818aa1596516243b0e8f72a2d432",
+        "dev": "1451399181",
+        "ino": "2251799815437168",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293092887518000",
+        "ctimeNs": "1792293092887518000"
+      },
+      {
+        "file": "route-1-1-desktop-target.png",
+        "bytes": 16609,
+        "sha256": "556d040583aa08dfafd443d1d4df567a412fabf5f3903d9eecb093b21e53e0d2",
+        "dev": "1451399181",
+        "ino": "2251799815437166",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293092713494600",
+        "ctimeNs": "1792293092713494600"
+      },
+      {
+        "file": "route-1-2-mobile-baseline-repeat.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8",
+        "dev": "1451399181",
+        "ino": "2251799815437177",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293094061115300",
+        "ctimeNs": "1792293094061115300"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.json",
+        "bytes": 1647,
+        "sha256": "9f06685312544c9998dfc884604711a937a29b417eb247fdc53ddf62b49e6e85",
+        "dev": "1451399181",
+        "ino": "2251799815437178",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293094095583000",
+        "ctimeNs": "1792293094095583000"
+      },
+      {
+        "file": "route-1-2-mobile-baseline.png",
+        "bytes": 14651,
+        "sha256": "4bf4c1d5da9aeecf95423b632a49bd9aaa6e238863a4caeac623456c0926c8f8",
+        "dev": "1451399181",
+        "ino": "2251799815437176",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293093960561200",
+        "ctimeNs": "1792293093960561200"
+      },
+      {
+        "file": "route-1-2-mobile-diff.png",
+        "bytes": 15111,
+        "sha256": "851756e73d8ebb92cbfb431eff32633c3f8b9e3a89f131067cd957f26bf7edf5",
+        "dev": "1451399181",
+        "ino": "2251799815437182",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293094433076800",
+        "ctimeNs": "1792293094433076800"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline-repeat.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835",
+        "dev": "1451399181",
+        "ino": "2251799815437184",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293094784513400",
+        "ctimeNs": "1792293094784513400"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.json",
+        "bytes": 2309,
+        "sha256": "c4770fc22e0ea38d2eff1cdc673fe690df3d4e1b182b5978faa5f36ce40bcc08",
+        "dev": "1451399181",
+        "ino": "2251799815437185",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293094817040300",
+        "ctimeNs": "1792293094817040300"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-baseline.png",
+        "bytes": 15840,
+        "sha256": "f9c60770b09555db3a4897be65b74327fb92bc1b15697dc1e5f966ae0f248835",
+        "dev": "1451399181",
+        "ino": "2251799815437183",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293094680773400",
+        "ctimeNs": "1792293094680773400"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target-repeat.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e",
+        "dev": "1451399181",
+        "ino": "2533274792147843",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293095177465200",
+        "ctimeNs": "1792293095177465200"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.json",
+        "bytes": 2299,
+        "sha256": "5fd7c96a29f7fe3b35658b8aeaacabda3b6cf7e40e8edadd8932a06fce1ac0fc",
+        "dev": "1451399181",
+        "ino": "2251799815437188",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293095209813600",
+        "ctimeNs": "1792293095209813600"
+      },
+      {
+        "file": "route-1-2-mobile-point-1-target.png",
+        "bytes": 15949,
+        "sha256": "148eb7c78c5be3e6001c1c8b9d22444ec178fca103a1c8a470c2261b3971434e",
+        "dev": "1451399181",
+        "ino": "2533274792147842",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293095068518100",
+        "ctimeNs": "1792293095068518100"
+      },
+      {
+        "file": "route-1-2-mobile-target-repeat.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4",
+        "dev": "1451399181",
+        "ino": "2251799815437180",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293094364076200",
+        "ctimeNs": "1792293094364076200"
+      },
+      {
+        "file": "route-1-2-mobile-target.json",
+        "bytes": 1637,
+        "sha256": "72821144c2cafb81290e9be086489f6ac1bf92ca4aa4a307bd037f17f22f52d9",
+        "dev": "1451399181",
+        "ino": "2251799815437181",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293094396076500",
+        "ctimeNs": "1792293094396076500"
+      },
+      {
+        "file": "route-1-2-mobile-target.png",
+        "bytes": 14764,
+        "sha256": "985810c5d052a67a5fa7bce7cdb25800a2da4ef764afa0860a397e17100d29b4",
+        "dev": "1451399181",
+        "ino": "2251799815437179",
+        "mode": "33206",
+        "nlink": "1",
+        "mtimeNs": "1792293094260112800",
+        "ctimeNs": "1792293094260112800"
+      }
+    ],
+    "note": "Product-phase file metadata and final bytes are unchanged."
+  }
+]

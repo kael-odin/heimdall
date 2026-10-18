@@ -1,0 +1,478 @@
+{
+  "schemaVersion": 1,
+  "runId": "benchmark-2026-10-18T03-34-30-164Z-f1911875-masked-noise",
+  "name": "固定注入基准 · 动态刷新区按已声明规则遮罩",
+  "mode": "mirror",
+  "baselineUrl": "http://127.0.0.1:55191/baseline",
+  "targetUrl": "http://127.0.0.1:55191/target",
+  "startedAt": "2026-10-18T03:34:51.576Z",
+  "endedAt": "2026-10-18T03:34:53.154Z",
+  "status": "completed",
+  "checks": [
+    {
+      "route": "/masked-noise",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-navigation",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "navigation",
+        "caseKey": "752de9095703b986c069eca96d96448d32dd668c2f23f0240639e487073ce942",
+        "contextKey": "d078bc2547d78366f8697f57351593a154c2cac55a3da938a19c7a0e3ee2155a",
+        "ruleKey": "bc01c19d7e84b67c7349a31b58bf8c5e33ad7e3475b4b74885ec73b61af990b2",
+        "oracleKey": "c6c7f7c6f936fb00f57636dc8bbd140566854c455369a361ab203afdc32819ff",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "页面导航与 HTTP 状态",
+      "dimension": "health",
+      "expected": 200,
+      "actual": 200,
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/masked-noise at 1280×800.",
+        "Open http://127.0.0.1:55191/target/masked-noise in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/masked-noise",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-console",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "console",
+        "caseKey": "0445332979e5abe0324d7db03eed1c72c5bdad6a57c425296bc2d903f0c50c25",
+        "contextKey": "ceb735153e9bbbfa275571a0f7053ddf6d9f82f310c1b25a3c102340ea738a52",
+        "ruleKey": "cb33e197c473dc747ca95932d26d083948a8278aa8b21026edfa12f9645d49a5",
+        "oracleKey": "67e8b4445b81d0f0500025e58638a734684274effaeafd78b1b5c08e9cec1d8d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "浏览器脚本与控制台错误",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/masked-noise at 1280×800.",
+        "Open http://127.0.0.1:55191/target/masked-noise in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/masked-noise",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-network",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "network",
+        "caseKey": "96f1d23a71ab498f70308a1c862913a814fc89b656c066ab5c6b3deff5430549",
+        "contextKey": "858639219c3ffc23621c0d5a5d86d2ceb2aeb294e9eefe56a3a47f0eb2cf5481",
+        "ruleKey": "d1411b1dc4818e51925a922963c430c659955dba9b5874e8600ba5f27c325c31",
+        "oracleKey": "67e8b4445b81d0f0500025e58638a734684274effaeafd78b1b5c08e9cec1d8d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "资源与只读网络请求",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/masked-noise at 1280×800.",
+        "Open http://127.0.0.1:55191/target/masked-noise in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/masked-noise",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-overflow",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "overflow",
+        "caseKey": "992340b91bb7179f20da214d877d3120371b2ab16f2a0c9beee81d9a3d6ec429",
+        "contextKey": "a7a5cdbcfeedb22df7b12aa26eafbb7fe18d826f62385853eb233b6b47d5fa05",
+        "ruleKey": "92c119dc9d27fc3abab0bd56445cd5a9f9dd92d48f4ce6d6487230e6e873dbc5",
+        "oracleKey": "67e8b4445b81d0f0500025e58638a734684274effaeafd78b1b5c08e9cec1d8d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "视口水平溢出",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/masked-noise at 1280×800.",
+        "Open http://127.0.0.1:55191/target/masked-noise in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/masked-noise",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-structure",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "structure",
+        "caseKey": "9e46dac39536d16dbb62a54eb9b4df693a1fc092515965e235ff9312e6599a00",
+        "contextKey": "021479142f393a3b5001d2c51b7e5f0173214ec4063ae551a54508f278447233",
+        "ruleKey": "26c92a9ebc706092e616cca14e2eec5deef7afa9ccc09ecef177f75b4a503950",
+        "oracleKey": "b07fb5f631e5d713ea67d2b0ec6216cf2db2d78f9cae9742b2668e1964f4302f",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "标题、主标题与关键控件语义",
+      "dimension": "structure",
+      "expected": {
+        "title": "Heimdall 验收演示",
+        "headings": [
+          "团队项目概览"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "菜单",
+            "type": "button",
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#details-link",
+            "tag": "a",
+            "role": null,
+            "label": "查看详情",
+            "type": null,
+            "href": "/details",
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ]
+      },
+      "actual": {
+        "title": "Heimdall 验收演示",
+        "headings": [
+          "团队项目概览"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "菜单",
+            "type": "button",
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#details-link",
+            "tag": "a",
+            "role": null,
+            "label": "查看详情",
+            "type": null,
+            "href": "/details",
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ],
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0.0875,
+            "effectiveAreaPx": 934400,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0.0875,
+            "effectiveAreaPx": 934400,
+            "samplingCapped": false
+          }
+        }
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "high",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/masked-noise at 1280×800.",
+        "Open http://127.0.0.1:55191/target/masked-noise in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/masked-noise",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-visual",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "f6133c8445209b7ef6a10c89b520beece87da0810484141ee29a5d0bc7f319d0",
+        "contextKey": "3d059b65d9a061fe680eea0254db1172db392b7ff7d70e113efe1611399b5af6",
+        "ruleKey": "57e6d948799a50403857b65baa725915d558c87c9fadf2f0e57c784a9c990b37",
+        "oracleKey": "f77cb62704f30f0d21268bb9dfeb02e2523b50f1e56d3cecdbfbe90545cfcd7f",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "页面视觉还原度",
+      "dimension": "visual",
+      "expected": {
+        "minimumScore": 0.97,
+        "stabilityMinimum": 0.9995,
+        "maximumMaskedRatio": 0.8,
+        "captureBudget": {
+          "maxPixels": 12000000,
+          "maxHeight": 12000
+        }
+      },
+      "actual": {
+        "score": 1,
+        "baselineStability": 1,
+        "targetStability": 1,
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0.0875,
+            "effectiveAreaPx": 934400,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0.0875,
+            "effectiveAreaPx": 934400,
+            "samplingCapped": false
+          }
+        },
+        "capture": {
+          "baseline": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 1280,
+              "height": 800
+            }
+          },
+          "target": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 1280,
+              "height": 800
+            }
+          }
+        },
+        "eligible": true
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/masked-noise at 1280×800.",
+        "Open http://127.0.0.1:55191/target/masked-noise in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png",
+        "diff": "route-1-1-desktop-diff.png"
+      },
+      "score": 1
+    }
+  ],
+  "coverage": {
+    "planned": 6,
+    "completed": 6,
+    "capped": false
+  },
+  "safety": {
+    "networkPolicy": "read-only",
+    "isolatedContexts": true,
+    "blockedRequests": 0
+  },
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "playwrightVersion": "1.63.0",
+    "locale": "zh-CN",
+    "timezoneId": "Asia/Hong_Kong",
+    "colorScheme": "light",
+    "reducedMotion": "reduce"
+  },
+  "scope": "离线复现：固定注入缺陷夹具，仅证明本基准中声明的案例与观察窗口；不代表真实站点业务验收或通用检出率。",
+  "gate": "passed",
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 6,
+      "total": 6,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 1
+      },
+      "structure": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "cache": "unspecified",
+    "mode": "native-full-options",
+    "value": {
+      "error": "MIME rejected"
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "cache": "unspecified",
+    "mode": "helper",
+    "value": {
+      "error": "人工缺陷单请求未能完整核对，请保留原确认并只读查询。"
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "cache": "no-store",
+    "mode": "native-full-options",
+    "value": {
+      "error": "MIME rejected"
+    },
+    "pwFinished": false,
+    "cdpFinished": false,
+    "failed": []
+  },
+  {
+    "cache": "no-store",
+    "mode": "helper",
+    "value": {
+      "error": "人工缺陷单请求未能完整核对，请保留原确认并只读查询。"
+    },
+    "pwFinished": false,
+    "cdpFinished": false,
+    "failed": []
+  },
+  {
+    "cache": "public, max-age=0",
+    "mode": "native-full-options",
+    "value": {
+      "error": "MIME rejected"
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "cache": "public, max-age=0",
+    "mode": "helper",
+    "value": {
+      "error": "人工缺陷单请求未能完整核对，请保留原确认并只读查询。"
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  }
+]

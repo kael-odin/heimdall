@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "/usr/bin/ldd",
+    "/root/heimdall-node22-diagnosis-20261018/browsers/chromium-1243/chrome-linux64/chrome"
+  ],
+  "cwd": "/root/heimdall-node22-diagnosis-20261018/app-core",
+  "startedAt": "2026-10-18T00:20:46.422984+00:00",
+  "completedAt": "2026-10-18T00:20:46.451851+00:00",
+  "exitCode": 0,
+  "stdoutBytes": 6645,
+  "stderrBytes": 0
+}

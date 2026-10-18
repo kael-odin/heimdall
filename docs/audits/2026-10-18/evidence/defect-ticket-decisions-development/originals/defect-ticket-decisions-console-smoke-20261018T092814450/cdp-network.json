@@ -1,0 +1,2886 @@
+[
+  {
+    "at": "2026-10-18T01:28:47.092Z",
+    "event": "request",
+    "requestId": "26012.13",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.105Z",
+    "event": "response",
+    "requestId": "26012.13",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:47.106Z",
+    "event": "finished",
+    "requestId": "26012.13",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:28:47.121Z",
+    "event": "request",
+    "requestId": "26012.14",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs/ac-4b8ba765-0058-4cf4-bed0-02eb5eec6664",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.157Z",
+    "event": "response",
+    "requestId": "26012.14",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs/ac-4b8ba765-0058-4cf4-bed0-02eb5eec6664",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:47.159Z",
+    "event": "finished",
+    "requestId": "26012.14",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs/ac-4b8ba765-0058-4cf4-bed0-02eb5eec6664",
+    "encodedDataLength": 2402
+  },
+  {
+    "at": "2026-10-18T01:28:47.159Z",
+    "event": "request",
+    "requestId": "26012.15",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs/ac-4b8ba765-0058-4cf4-bed0-02eb5eec6664/report",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.188Z",
+    "event": "request",
+    "requestId": "26012.16",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.247Z",
+    "event": "response",
+    "requestId": "26012.15",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs/ac-4b8ba765-0058-4cf4-bed0-02eb5eec6664/report",
+    "status": 200,
+    "headers": {
+      "cache-control": "no-store",
+      "content-length": "41484",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:47 GMT",
+      "content-type": "application/json; charset=utf-8",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:47.248Z",
+    "event": "finished",
+    "requestId": "26012.15",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs/ac-4b8ba765-0058-4cf4-bed0-02eb5eec6664/report",
+    "encodedDataLength": 41838
+  },
+  {
+    "at": "2026-10-18T01:28:47.278Z",
+    "event": "response",
+    "requestId": "26012.16",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:47.280Z",
+    "event": "finished",
+    "requestId": "26012.16",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects",
+    "encodedDataLength": 720
+  },
+  {
+    "at": "2026-10-18T01:28:47.295Z",
+    "event": "request",
+    "requestId": "26012.17",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.295Z",
+    "event": "request",
+    "requestId": "26012.18",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/browser-executions",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.295Z",
+    "event": "request",
+    "requestId": "26012.19",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.311Z",
+    "event": "response",
+    "requestId": "26012.17",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:47.317Z",
+    "event": "finished",
+    "requestId": "26012.17",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d",
+    "encodedDataLength": 4908
+  },
+  {
+    "at": "2026-10-18T01:28:47.333Z",
+    "event": "request",
+    "requestId": "26012.20",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/browser-executions",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.333Z",
+    "event": "request",
+    "requestId": "26012.21",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/browser-executions",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.333Z",
+    "event": "request",
+    "requestId": "26012.22",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.350Z",
+    "event": "failed",
+    "requestId": "26012.18",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/browser-executions",
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true
+  },
+  {
+    "at": "2026-10-18T01:28:47.350Z",
+    "event": "failed",
+    "requestId": "26012.20",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/browser-executions",
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true
+  },
+  {
+    "at": "2026-10-18T01:28:47.420Z",
+    "event": "request",
+    "requestId": "26012.23",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/sources?candidateId=bc-438041db-13f6-4e1f-8aab-bdf6b042ed76",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:47.655Z",
+    "event": "response",
+    "requestId": "26012.19",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:47.656Z",
+    "event": "finished",
+    "requestId": "26012.19",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:28:48.309Z",
+    "event": "response",
+    "requestId": "26012.21",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/browser-executions",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:48.311Z",
+    "event": "finished",
+    "requestId": "26012.21",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/browser-executions",
+    "encodedDataLength": 1527
+  },
+  {
+    "at": "2026-10-18T01:28:48.378Z",
+    "event": "response",
+    "requestId": "26012.22",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:48.379Z",
+    "event": "finished",
+    "requestId": "26012.22",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "encodedDataLength": 660
+  },
+  {
+    "at": "2026-10-18T01:28:49.118Z",
+    "event": "request",
+    "requestId": "26012.24",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:50.076Z",
+    "event": "response",
+    "requestId": "26012.23",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/sources?candidateId=bc-438041db-13f6-4e1f-8aab-bdf6b042ed76",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:50.083Z",
+    "event": "finished",
+    "requestId": "26012.23",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/sources?candidateId=bc-438041db-13f6-4e1f-8aab-bdf6b042ed76",
+    "encodedDataLength": 8640
+  },
+  {
+    "at": "2026-10-18T01:28:50.125Z",
+    "event": "response",
+    "requestId": "26012.24",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:50 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:50.126Z",
+    "event": "finished",
+    "requestId": "26012.24",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:28:50.493Z",
+    "event": "request",
+    "requestId": "26012.25",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "method": "POST",
+    "bodySha256": "04a881482eba8456fa0f5bbecc7960edf4aaae35fe90e5e89a0d208aa5a1b997"
+  },
+  {
+    "at": "2026-10-18T01:28:50.612Z",
+    "event": "response",
+    "requestId": "26012.25",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "status": 502,
+    "headers": {
+      "cache-control": "no-store",
+      "content-length": "125",
+      "Date": "Sun, 18 Oct 2026 01:28:50 GMT",
+      "content-type": "application/json; charset=utf-8",
+      "connection": "close"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:50.624Z",
+    "event": "finished",
+    "requestId": "26012.25",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "encodedDataLength": 302
+  },
+  {
+    "at": "2026-10-18T01:28:50.659Z",
+    "event": "request",
+    "requestId": "26012.26",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:50.673Z",
+    "event": "response",
+    "requestId": "26012.26",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:50 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:50.674Z",
+    "event": "finished",
+    "requestId": "26012.26",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:28:50.960Z",
+    "event": "request",
+    "requestId": "26012.27",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-9df8ea1b-1499-44fd-8ab4-ee2c6a92dce7",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:51.010Z",
+    "event": "response",
+    "requestId": "26012.27",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-9df8ea1b-1499-44fd-8ab4-ee2c6a92dce7",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:50 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:51.017Z",
+    "event": "finished",
+    "requestId": "26012.27",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-9df8ea1b-1499-44fd-8ab4-ee2c6a92dce7",
+    "encodedDataLength": 701
+  },
+  {
+    "at": "2026-10-18T01:28:51.093Z",
+    "event": "request",
+    "requestId": "26012.28",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-9df8ea1b-1499-44fd-8ab4-ee2c6a92dce7",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:51.138Z",
+    "event": "response",
+    "requestId": "26012.28",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-9df8ea1b-1499-44fd-8ab4-ee2c6a92dce7",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:51 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:51.142Z",
+    "event": "request",
+    "requestId": "26012.29",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-9df8ea1b-1499-44fd-8ab4-ee2c6a92dce7/deny",
+    "method": "POST",
+    "bodySha256": "8145eda03f7ad60ae36fe0432baab9160b66b9895ab660db89b6e788069ad38f"
+  },
+  {
+    "at": "2026-10-18T01:28:51.142Z",
+    "event": "finished",
+    "requestId": "26012.28",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-9df8ea1b-1499-44fd-8ab4-ee2c6a92dce7",
+    "encodedDataLength": 701
+  },
+  {
+    "at": "2026-10-18T01:28:51.829Z",
+    "event": "response",
+    "requestId": "26012.29",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-9df8ea1b-1499-44fd-8ab4-ee2c6a92dce7/deny",
+    "status": 201,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:51 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:51.829Z",
+    "event": "finished",
+    "requestId": "26012.29",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-9df8ea1b-1499-44fd-8ab4-ee2c6a92dce7/deny",
+    "encodedDataLength": 1905
+  },
+  {
+    "at": "2026-10-18T01:28:52.154Z",
+    "event": "request",
+    "requestId": "26012.30",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:52.195Z",
+    "event": "response",
+    "requestId": "26012.30",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:52 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:52.196Z",
+    "event": "finished",
+    "requestId": "26012.30",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:28:52.389Z",
+    "event": "request",
+    "requestId": "26012.31",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "method": "POST",
+    "bodySha256": "41a0d67643c2cea63866b649c1296cfe450f1e53e986d469203f652063ef4de5"
+  },
+  {
+    "at": "2026-10-18T01:28:52.520Z",
+    "event": "response",
+    "requestId": "26012.31",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "status": 502,
+    "headers": {
+      "cache-control": "no-store",
+      "content-length": "125",
+      "Date": "Sun, 18 Oct 2026 01:28:52 GMT",
+      "content-type": "application/json; charset=utf-8",
+      "connection": "close"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:52.530Z",
+    "event": "finished",
+    "requestId": "26012.31",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "encodedDataLength": 302
+  },
+  {
+    "at": "2026-10-18T01:28:52.675Z",
+    "event": "request",
+    "requestId": "26012.32",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:52.772Z",
+    "event": "response",
+    "requestId": "26012.32",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:52 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:52.776Z",
+    "event": "finished",
+    "requestId": "26012.32",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6",
+    "encodedDataLength": 701
+  },
+  {
+    "at": "2026-10-18T01:28:52.859Z",
+    "event": "request",
+    "requestId": "26012.33",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:52.955Z",
+    "event": "response",
+    "requestId": "26012.33",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:52 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:52.957Z",
+    "event": "request",
+    "requestId": "26012.34",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6/deny",
+    "method": "POST",
+    "bodySha256": "613558ce2de975297cd36db4ed30c1d69135d0f3416c9fe78f0b4d5ddc821d9c"
+  },
+  {
+    "at": "2026-10-18T01:28:52.958Z",
+    "event": "finished",
+    "requestId": "26012.33",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6",
+    "encodedDataLength": 701
+  },
+  {
+    "at": "2026-10-18T01:28:53.689Z",
+    "event": "request",
+    "requestId": "26012.35",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:54.202Z",
+    "event": "request",
+    "requestId": "26012.36",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:55.350Z",
+    "event": "response",
+    "requestId": "26012.35",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:55 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:55.350Z",
+    "event": "finished",
+    "requestId": "26012.35",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:28:55.391Z",
+    "event": "response",
+    "requestId": "26012.36",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:55 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:55.391Z",
+    "event": "finished",
+    "requestId": "26012.36",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:28:55.558Z",
+    "event": "response",
+    "requestId": "26012.34",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6/deny",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:55 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:55.559Z",
+    "event": "finished",
+    "requestId": "26012.34",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6/deny",
+    "encodedDataLength": 5854
+  },
+  {
+    "at": "2026-10-18T01:28:55.559Z",
+    "event": "request",
+    "requestId": "26012.37",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:57.129Z",
+    "event": "response",
+    "requestId": "26012.37",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:55 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:57.132Z",
+    "event": "request",
+    "requestId": "26012.38",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:57.138Z",
+    "event": "finished",
+    "requestId": "26012.37",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "encodedDataLength": 1416
+  },
+  {
+    "at": "2026-10-18T01:28:57.401Z",
+    "event": "request",
+    "requestId": "26012.39",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:58.355Z",
+    "event": "request",
+    "requestId": "26012.40",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:28:58.759Z",
+    "event": "response",
+    "requestId": "26012.38",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:58 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:58.773Z",
+    "event": "finished",
+    "requestId": "26012.38",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "encodedDataLength": 11201
+  },
+  {
+    "at": "2026-10-18T01:28:58.808Z",
+    "event": "response",
+    "requestId": "26012.39",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:58 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:58.808Z",
+    "event": "finished",
+    "requestId": "26012.39",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:28:58.820Z",
+    "event": "response",
+    "requestId": "26012.40",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:28:58 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:28:58.820Z",
+    "event": "finished",
+    "requestId": "26012.40",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:00.810Z",
+    "event": "request",
+    "requestId": "26012.41",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:01.833Z",
+    "event": "request",
+    "requestId": "26012.43",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:02.274Z",
+    "event": "response",
+    "requestId": "26012.41",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:02 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:02.274Z",
+    "event": "finished",
+    "requestId": "26012.41",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:02.285Z",
+    "event": "response",
+    "requestId": "26012.43",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:02 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:02.286Z",
+    "event": "finished",
+    "requestId": "26012.43",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:04.286Z",
+    "event": "request",
+    "requestId": "26012.44",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:05.290Z",
+    "event": "request",
+    "requestId": "26012.45",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:12.184Z",
+    "event": "response",
+    "requestId": "26012.45",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 502,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "Keep-Alive": "timeout=5",
+      "Date": "Sun, 18 Oct 2026 01:29:12 GMT",
+      "content-type": "text/plain",
+      "Connection": "keep-alive"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:12.191Z",
+    "event": "response",
+    "requestId": "26012.44",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 502,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "Keep-Alive": "timeout=5",
+      "Date": "Sun, 18 Oct 2026 01:29:12 GMT",
+      "content-type": "text/plain",
+      "Connection": "keep-alive"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:12.192Z",
+    "event": "finished",
+    "requestId": "26012.44",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 202
+  },
+  {
+    "at": "2026-10-18T01:29:12.234Z",
+    "event": "finished",
+    "requestId": "26012.45",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 202
+  },
+  {
+    "at": "2026-10-18T01:29:14.199Z",
+    "event": "request",
+    "requestId": "26012.46",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:14.497Z",
+    "event": "response",
+    "requestId": "26012.46",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:14 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:14.497Z",
+    "event": "finished",
+    "requestId": "26012.46",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:15.191Z",
+    "event": "request",
+    "requestId": "26012.47",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:15.402Z",
+    "event": "response",
+    "requestId": "26012.47",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:15 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:15.403Z",
+    "event": "finished",
+    "requestId": "26012.47",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 763
+  },
+  {
+    "at": "2026-10-18T01:29:16.507Z",
+    "event": "request",
+    "requestId": "26012.49",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:16.554Z",
+    "event": "response",
+    "requestId": "26012.49",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:16 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:16.555Z",
+    "event": "finished",
+    "requestId": "26012.49",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:18.411Z",
+    "event": "request",
+    "requestId": "26012.50",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:18.475Z",
+    "event": "response",
+    "requestId": "26012.50",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:18 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:18.475Z",
+    "event": "finished",
+    "requestId": "26012.50",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 763
+  },
+  {
+    "at": "2026-10-18T01:29:18.566Z",
+    "event": "request",
+    "requestId": "26012.51",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:18.815Z",
+    "event": "response",
+    "requestId": "26012.51",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:18 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:18.815Z",
+    "event": "finished",
+    "requestId": "26012.51",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:20.833Z",
+    "event": "request",
+    "requestId": "26012.52",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:21.035Z",
+    "event": "response",
+    "requestId": "26012.52",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:20 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:21.035Z",
+    "event": "finished",
+    "requestId": "26012.52",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:21.484Z",
+    "event": "request",
+    "requestId": "26012.53",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:21.593Z",
+    "event": "response",
+    "requestId": "26012.53",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:21 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:21.594Z",
+    "event": "finished",
+    "requestId": "26012.53",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:23.052Z",
+    "event": "request",
+    "requestId": "26012.54",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:24.508Z",
+    "event": "request",
+    "requestId": "26012.55",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:24.527Z",
+    "event": "response",
+    "requestId": "26012.54",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:24 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:24.528Z",
+    "event": "finished",
+    "requestId": "26012.54",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:24.602Z",
+    "event": "request",
+    "requestId": "26012.56",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:26.536Z",
+    "event": "request",
+    "requestId": "26012.57",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:28.460Z",
+    "event": "response",
+    "requestId": "26012.55",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:24 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:28.468Z",
+    "event": "finished",
+    "requestId": "26012.55",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "encodedDataLength": 1423
+  },
+  {
+    "at": "2026-10-18T01:29:28.478Z",
+    "event": "response",
+    "requestId": "26012.56",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:28 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:28.478Z",
+    "event": "finished",
+    "requestId": "26012.56",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:28.524Z",
+    "event": "response",
+    "requestId": "26012.57",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:28 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:28.524Z",
+    "event": "finished",
+    "requestId": "26012.57",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:28.594Z",
+    "event": "request",
+    "requestId": "26012.58",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:30.533Z",
+    "event": "request",
+    "requestId": "26012.59",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:31.481Z",
+    "event": "request",
+    "requestId": "26012.61",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:32.152Z",
+    "event": "response",
+    "requestId": "26012.58",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:28 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:32.163Z",
+    "event": "finished",
+    "requestId": "26012.58",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "encodedDataLength": 11208
+  },
+  {
+    "at": "2026-10-18T01:29:32.202Z",
+    "event": "response",
+    "requestId": "26012.59",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:32 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:32.203Z",
+    "event": "finished",
+    "requestId": "26012.59",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:32.213Z",
+    "event": "response",
+    "requestId": "26012.61",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:32 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:32.213Z",
+    "event": "finished",
+    "requestId": "26012.61",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:32.257Z",
+    "event": "request",
+    "requestId": "26012.62",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:34.216Z",
+    "event": "request",
+    "requestId": "26012.63",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:35.228Z",
+    "event": "request",
+    "requestId": "26012.64",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:35.811Z",
+    "event": "response",
+    "requestId": "26012.62",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:32 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:35.815Z",
+    "event": "request",
+    "requestId": "26012.65",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close-preview?afterOperationId=bo-96a57a22-d1d8-46d8-be15-3b4079e5314e",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:35.815Z",
+    "event": "finished",
+    "requestId": "26012.62",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "encodedDataLength": 11208
+  },
+  {
+    "at": "2026-10-18T01:29:35.853Z",
+    "event": "response",
+    "requestId": "26012.63",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:35 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:35.853Z",
+    "event": "finished",
+    "requestId": "26012.63",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:35.864Z",
+    "event": "response",
+    "requestId": "26012.64",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:35 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:35.865Z",
+    "event": "finished",
+    "requestId": "26012.64",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:37.855Z",
+    "event": "request",
+    "requestId": "26012.66",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:38.868Z",
+    "event": "request",
+    "requestId": "26012.67",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:39.948Z",
+    "event": "response",
+    "requestId": "26012.65",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close-preview?afterOperationId=bo-96a57a22-d1d8-46d8-be15-3b4079e5314e",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:35 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:39.956Z",
+    "event": "finished",
+    "requestId": "26012.65",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close-preview?afterOperationId=bo-96a57a22-d1d8-46d8-be15-3b4079e5314e",
+    "encodedDataLength": 2225
+  },
+  {
+    "at": "2026-10-18T01:29:39.998Z",
+    "event": "response",
+    "requestId": "26012.66",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:39 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:39.999Z",
+    "event": "finished",
+    "requestId": "26012.66",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:40.008Z",
+    "event": "response",
+    "requestId": "26012.67",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:39 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:40.008Z",
+    "event": "finished",
+    "requestId": "26012.67",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:42.010Z",
+    "event": "request",
+    "requestId": "26012.68",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:43.019Z",
+    "event": "request",
+    "requestId": "26012.69",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:44.067Z",
+    "event": "response",
+    "requestId": "26012.68",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:44 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:44.067Z",
+    "event": "finished",
+    "requestId": "26012.68",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:44.079Z",
+    "event": "response",
+    "requestId": "26012.69",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:44 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:44.079Z",
+    "event": "finished",
+    "requestId": "26012.69",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:46.084Z",
+    "event": "request",
+    "requestId": "26012.70",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:47.095Z",
+    "event": "request",
+    "requestId": "26012.72",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:47.965Z",
+    "event": "response",
+    "requestId": "26012.70",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:47.965Z",
+    "event": "finished",
+    "requestId": "26012.70",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:47.977Z",
+    "event": "response",
+    "requestId": "26012.72",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:47 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:47.977Z",
+    "event": "finished",
+    "requestId": "26012.72",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:49.973Z",
+    "event": "request",
+    "requestId": "26012.73",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:50.993Z",
+    "event": "request",
+    "requestId": "26012.74",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:52.549Z",
+    "event": "response",
+    "requestId": "26012.73",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:52 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:52.555Z",
+    "event": "request",
+    "requestId": "26012.75",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close",
+    "method": "POST",
+    "bodySha256": "db1cff48e3fcd817ef41b18fbb8ec3744fdd95e09b9b53844d5ca0b0aa38e06b"
+  },
+  {
+    "at": "2026-10-18T01:29:52.557Z",
+    "event": "finished",
+    "requestId": "26012.73",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:52.559Z",
+    "event": "response",
+    "requestId": "26012.74",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:52 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:52.559Z",
+    "event": "finished",
+    "requestId": "26012.74",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:52.681Z",
+    "event": "response",
+    "requestId": "26012.75",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close",
+    "status": 502,
+    "headers": {
+      "cache-control": "no-store",
+      "content-length": "125",
+      "Date": "Sun, 18 Oct 2026 01:29:52 GMT",
+      "content-type": "application/json; charset=utf-8",
+      "connection": "close"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:52.693Z",
+    "event": "finished",
+    "requestId": "26012.75",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close",
+    "encodedDataLength": 302
+  },
+  {
+    "at": "2026-10-18T01:29:53.041Z",
+    "event": "request",
+    "requestId": "26012.76",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:53.162Z",
+    "event": "response",
+    "requestId": "26012.76",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:53 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:53.164Z",
+    "event": "finished",
+    "requestId": "26012.76",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "encodedDataLength": 701
+  },
+  {
+    "at": "2026-10-18T01:29:53.257Z",
+    "event": "request",
+    "requestId": "26012.77",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:53.363Z",
+    "event": "response",
+    "requestId": "26012.77",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:53 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:53.367Z",
+    "event": "request",
+    "requestId": "26012.78",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-0135f2bd-4a08-46d5-9136-867cab986151/deny",
+    "method": "POST",
+    "bodySha256": "af048f8f716f84207727b55d6f79474038c24c1b41cfa698b8f6b279f8268b9a"
+  },
+  {
+    "at": "2026-10-18T01:29:53.367Z",
+    "event": "finished",
+    "requestId": "26012.77",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-0135f2bd-4a08-46d5-9136-867cab986151",
+    "encodedDataLength": 701
+  },
+  {
+    "at": "2026-10-18T01:29:53.957Z",
+    "event": "response",
+    "requestId": "26012.78",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-0135f2bd-4a08-46d5-9136-867cab986151/deny",
+    "status": 201,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:53 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:53.958Z",
+    "event": "finished",
+    "requestId": "26012.78",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-0135f2bd-4a08-46d5-9136-867cab986151/deny",
+    "encodedDataLength": 1978
+  },
+  {
+    "at": "2026-10-18T01:29:54.570Z",
+    "event": "request",
+    "requestId": "26012.79",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:55.577Z",
+    "event": "request",
+    "requestId": "26012.80",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:29:57.851Z",
+    "event": "response",
+    "requestId": "26012.79",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:57 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:57.852Z",
+    "event": "finished",
+    "requestId": "26012.79",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:29:57.862Z",
+    "event": "response",
+    "requestId": "26012.80",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:29:57 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:29:57.862Z",
+    "event": "finished",
+    "requestId": "26012.80",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:29:59.864Z",
+    "event": "request",
+    "requestId": "26012.81",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:00.878Z",
+    "event": "request",
+    "requestId": "26012.82",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:01.808Z",
+    "event": "response",
+    "requestId": "26012.81",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:01 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:01.809Z",
+    "event": "response",
+    "requestId": "26012.82",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:01 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:01.809Z",
+    "event": "finished",
+    "requestId": "26012.81",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:30:01.809Z",
+    "event": "finished",
+    "requestId": "26012.82",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:30:01.938Z",
+    "event": "request",
+    "requestId": "26012.84",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:03.818Z",
+    "event": "request",
+    "requestId": "26012.85",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:04.814Z",
+    "event": "request",
+    "requestId": "26012.86",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:05.533Z",
+    "event": "response",
+    "requestId": "26012.84",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:01 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:05.537Z",
+    "event": "request",
+    "requestId": "26012.87",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close-preview?afterOperationId=bo-96a57a22-d1d8-46d8-be15-3b4079e5314e",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:05.538Z",
+    "event": "finished",
+    "requestId": "26012.84",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "encodedDataLength": 11208
+  },
+  {
+    "at": "2026-10-18T01:30:05.574Z",
+    "event": "response",
+    "requestId": "26012.85",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:05 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:05.575Z",
+    "event": "finished",
+    "requestId": "26012.85",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:30:05.585Z",
+    "event": "response",
+    "requestId": "26012.86",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:05 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:05.585Z",
+    "event": "finished",
+    "requestId": "26012.86",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:30:07.584Z",
+    "event": "request",
+    "requestId": "26012.88",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:08.594Z",
+    "event": "request",
+    "requestId": "26012.89",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:09.938Z",
+    "event": "response",
+    "requestId": "26012.87",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close-preview?afterOperationId=bo-96a57a22-d1d8-46d8-be15-3b4079e5314e",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:05 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:09.946Z",
+    "event": "finished",
+    "requestId": "26012.87",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close-preview?afterOperationId=bo-96a57a22-d1d8-46d8-be15-3b4079e5314e",
+    "encodedDataLength": 2225
+  },
+  {
+    "at": "2026-10-18T01:30:09.986Z",
+    "event": "response",
+    "requestId": "26012.88",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:09 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:09.987Z",
+    "event": "finished",
+    "requestId": "26012.88",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:30:09.996Z",
+    "event": "response",
+    "requestId": "26012.89",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:09 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:09.996Z",
+    "event": "finished",
+    "requestId": "26012.89",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:30:11.990Z",
+    "event": "request",
+    "requestId": "26012.90",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:13.004Z",
+    "event": "request",
+    "requestId": "26012.91",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:14.657Z",
+    "event": "response",
+    "requestId": "26012.90",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:14 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:14.657Z",
+    "event": "finished",
+    "requestId": "26012.90",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:30:14.667Z",
+    "event": "response",
+    "requestId": "26012.91",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:14 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:14.667Z",
+    "event": "finished",
+    "requestId": "26012.91",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:30:16.659Z",
+    "event": "request",
+    "requestId": "26012.93",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:17.680Z",
+    "event": "request",
+    "requestId": "26012.94",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:18.549Z",
+    "event": "response",
+    "requestId": "26012.93",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:18 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:18.554Z",
+    "event": "request",
+    "requestId": "26012.95",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close",
+    "method": "POST",
+    "bodySha256": "9c25a88e757180758df3681bc4ac9704d2c6adf68d22f149ffe21e0f9ff02618"
+  },
+  {
+    "at": "2026-10-18T01:30:18.555Z",
+    "event": "finished",
+    "requestId": "26012.93",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:30:18.561Z",
+    "event": "response",
+    "requestId": "26012.94",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:18 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:18.561Z",
+    "event": "finished",
+    "requestId": "26012.94",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:30:18.665Z",
+    "event": "response",
+    "requestId": "26012.95",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close",
+    "status": 502,
+    "headers": {
+      "cache-control": "no-store",
+      "content-length": "125",
+      "Date": "Sun, 18 Oct 2026 01:30:18 GMT",
+      "content-type": "application/json; charset=utf-8",
+      "connection": "close"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:18.671Z",
+    "event": "finished",
+    "requestId": "26012.95",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2/close",
+    "encodedDataLength": 302
+  },
+  {
+    "at": "2026-10-18T01:30:18.822Z",
+    "event": "request",
+    "requestId": "26012.96",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-94cad465-4d2e-435d-ac98-cf37a6d99d64",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:18.943Z",
+    "event": "response",
+    "requestId": "26012.96",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-94cad465-4d2e-435d-ac98-cf37a6d99d64",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:18 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:18.945Z",
+    "event": "finished",
+    "requestId": "26012.96",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-94cad465-4d2e-435d-ac98-cf37a6d99d64",
+    "encodedDataLength": 701
+  },
+  {
+    "at": "2026-10-18T01:30:19.022Z",
+    "event": "request",
+    "requestId": "26012.97",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-94cad465-4d2e-435d-ac98-cf37a6d99d64",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:19.133Z",
+    "event": "response",
+    "requestId": "26012.97",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-94cad465-4d2e-435d-ac98-cf37a6d99d64",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:19 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:19.136Z",
+    "event": "request",
+    "requestId": "26012.98",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-94cad465-4d2e-435d-ac98-cf37a6d99d64/deny",
+    "method": "POST",
+    "bodySha256": "2e50953955fbfe7a44ed62105b294ab621aa662f4e0cc772991d705c1ca7c9fc"
+  },
+  {
+    "at": "2026-10-18T01:30:19.136Z",
+    "event": "finished",
+    "requestId": "26012.97",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-94cad465-4d2e-435d-ac98-cf37a6d99d64",
+    "encodedDataLength": 701
+  },
+  {
+    "at": "2026-10-18T01:30:20.566Z",
+    "event": "request",
+    "requestId": "26012.99",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:21.563Z",
+    "event": "request",
+    "requestId": "26012.100",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:28.072Z",
+    "event": "response",
+    "requestId": "26012.100",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 502,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "Keep-Alive": "timeout=5",
+      "Date": "Sun, 18 Oct 2026 01:30:28 GMT",
+      "content-type": "text/plain",
+      "Connection": "keep-alive"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:28.082Z",
+    "event": "response",
+    "requestId": "26012.99",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 502,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "Keep-Alive": "timeout=5",
+      "Date": "Sun, 18 Oct 2026 01:30:28 GMT",
+      "content-type": "text/plain",
+      "Connection": "keep-alive"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:28.082Z",
+    "event": "finished",
+    "requestId": "26012.99",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 202
+  },
+  {
+    "at": "2026-10-18T01:30:28.122Z",
+    "event": "finished",
+    "requestId": "26012.100",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 202
+  },
+  {
+    "at": "2026-10-18T01:30:28.316Z",
+    "event": "response",
+    "requestId": "26012.98",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-94cad465-4d2e-435d-ac98-cf37a6d99d64/deny",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:28 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:28.316Z",
+    "event": "finished",
+    "requestId": "26012.98",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/actions/da-94cad465-4d2e-435d-ac98-cf37a6d99d64/deny",
+    "encodedDataLength": 2723
+  },
+  {
+    "at": "2026-10-18T01:30:28.317Z",
+    "event": "request",
+    "requestId": "26012.101",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:30.088Z",
+    "event": "request",
+    "requestId": "26012.102",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:31.093Z",
+    "event": "request",
+    "requestId": "26012.103",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:37.727Z",
+    "event": "response",
+    "requestId": "26012.101",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:28 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:37.731Z",
+    "event": "request",
+    "requestId": "26012.105",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:37.737Z",
+    "event": "finished",
+    "requestId": "26012.101",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets",
+    "encodedDataLength": 1416
+  },
+  {
+    "at": "2026-10-18T01:30:37.780Z",
+    "event": "response",
+    "requestId": "26012.102",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:37 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:37.780Z",
+    "event": "finished",
+    "requestId": "26012.102",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:30:37.790Z",
+    "event": "response",
+    "requestId": "26012.103",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:37 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:37.791Z",
+    "event": "finished",
+    "requestId": "26012.103",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:30:39.797Z",
+    "event": "request",
+    "requestId": "26012.106",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:40.794Z",
+    "event": "request",
+    "requestId": "26012.107",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:42.255Z",
+    "event": "response",
+    "requestId": "26012.105",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:37 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:42.267Z",
+    "event": "finished",
+    "requestId": "26012.105",
+    "url": "http://127.0.0.1:58706/api/acceptance/projects/ap-89743cf5-67da-446b-879a-1e172dbddf3d/defect-tickets/dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "encodedDataLength": 14838
+  },
+  {
+    "at": "2026-10-18T01:30:42.311Z",
+    "event": "response",
+    "requestId": "26012.106",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:42 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:42.312Z",
+    "event": "finished",
+    "requestId": "26012.106",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:30:42.324Z",
+    "event": "response",
+    "requestId": "26012.107",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:42 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:42.325Z",
+    "event": "finished",
+    "requestId": "26012.107",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:30:44.325Z",
+    "event": "request",
+    "requestId": "26012.108",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:45.332Z",
+    "event": "request",
+    "requestId": "26012.109",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:46.299Z",
+    "event": "response",
+    "requestId": "26012.108",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:46 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:46.299Z",
+    "event": "finished",
+    "requestId": "26012.108",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:30:46.311Z",
+    "event": "response",
+    "requestId": "26012.109",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:46 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:46.312Z",
+    "event": "finished",
+    "requestId": "26012.109",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  },
+  {
+    "at": "2026-10-18T01:30:48.314Z",
+    "event": "request",
+    "requestId": "26012.111",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:49.321Z",
+    "event": "request",
+    "requestId": "26012.112",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "method": "GET"
+  },
+  {
+    "at": "2026-10-18T01:30:50.541Z",
+    "event": "response",
+    "requestId": "26012.111",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:50 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:50.541Z",
+    "event": "response",
+    "requestId": "26012.112",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "status": 200,
+    "headers": {
+      "Transfer-Encoding": "chunked",
+      "cache-control": "no-store",
+      "Connection": "keep-alive",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "Keep-Alive": "timeout=5",
+      "date": "Sun, 18 Oct 2026 01:30:50 GMT",
+      "content-type": "application/json",
+      "access-control-allow-headers": "Content-Type,x-heimdall-token"
+    }
+  },
+  {
+    "at": "2026-10-18T01:30:50.541Z",
+    "event": "finished",
+    "requestId": "26012.111",
+    "url": "http://127.0.0.1:58706/api/acceptance/runs",
+    "encodedDataLength": 1579
+  },
+  {
+    "at": "2026-10-18T01:30:50.541Z",
+    "event": "finished",
+    "requestId": "26012.112",
+    "url": "http://127.0.0.1:58706/api/acceptance/execution",
+    "encodedDataLength": 684
+  }
+]

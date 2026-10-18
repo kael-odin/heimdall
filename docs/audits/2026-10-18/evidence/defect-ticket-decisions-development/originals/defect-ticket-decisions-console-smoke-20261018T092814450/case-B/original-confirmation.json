@@ -1,0 +1,21 @@
+{
+  "actionId": "da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6",
+  "kind": "create",
+  "projectId": "ap-89743cf5-67da-446b-879a-1e172dbddf3d",
+  "request": {
+    "actionId": "da-92cb8d0e-6bc2-4540-b003-93aad9bf35c6",
+    "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+    "memberCheckIds": [
+      "route-1-1-desktop-point-1-menu",
+      "route-1-1-desktop-visual"
+    ],
+    "reproduction": "打开页面，展开菜单，核对布局及导航。",
+    "severity": "high",
+    "sourceOperationId": "bo-833e7e85-3704-4a31-a08b-e20d99344cdf",
+    "ticketId": "dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+    "title": "菜单布局与展开行为的两个固定检查"
+  },
+  "requestFingerprint": "f215f761405e5eeb333108ee65151c73e6f8d8c2892c0c736b3dfea5a75427f9",
+  "ticketId": "dt-5acf0ad6-7573-4c9d-b6e3-0330c66483e2",
+  "version": 1
+}

@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-f990ddf6-6192-4261-8e57-e90171559c86",
+  "taskId": null,
+  "name": "Renamed API run",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:52299/api/after",
+  "status": "completed",
+  "gate": "passed",
+  "createdAt": "2026-10-18T03:35:29.446Z",
+  "updatedAt": "2026-10-18T03:35:29.504Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Renamed API run",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:52299/api/after",
+    "timeoutMs": 1000,
+    "maxResponseBytes": 4096,
+    "spec": {
+      "source": {
+        "id": "REQ-COMPARISON",
+        "revision": "v1",
+        "type": "manual",
+        "title": "Renamed source title"
+      },
+      "approved": true,
+      "checks": [
+        {
+          "id": "items",
+          "title": "Renamed contract",
+          "method": "GET",
+          "path": "/items",
+          "severity": "low",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json"
+          }
+        },
+        {
+          "id": "quota",
+          "title": "Renamed contract",
+          "method": "GET",
+          "path": "/quota",
+          "severity": "low",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json"
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 2,
+      "total": 2,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-18T03:35:29.459Z",
+  "error": null,
+  "reportSha256": "dbeea6a2122b50dd01d4ebb03ac8f07d4b2c137c34a1271d61c372fe2af11fa6"
+}

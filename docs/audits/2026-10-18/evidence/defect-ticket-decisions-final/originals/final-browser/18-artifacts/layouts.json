@@ -1,0 +1,142 @@
+[
+  {
+    "name": "browser-execution-evidence-desktop",
+    "width": 1440,
+    "height": 1000,
+    "theme": "light",
+    "documentWidth": 1440,
+    "clientWidth": 964,
+    "scrollWidth": 964,
+    "rect": {
+      "x": 393,
+      "y": -1026.9375,
+      "width": 964,
+      "height": 1596.90625,
+      "top": -1026.9375,
+      "right": 1357,
+      "bottom": 569.96875,
+      "left": 393
+    },
+    "text": "固定来源验收\n\n批准一个已保存候选用于本次目标验收。参考取自已核验材料，每次只访问目标版本；执行完成后再登记问题与复验。\n\n参考候选\n请选择候选\nCaptured approved source · bc-8771da1e-a0bb-418d-ae80-0a043f061e28\n本次目标版本\n请选择目标版本\nCaptured approved source · http://127.0.0.1:51205/source?source=fixed-contract-url-sentinel\nKnown broken target · http://127.0.0.1:51205/broken\nRepaired target · http://127.0.0.1:51205/healthy\nRegressed target · http://127.0.0.1:51205/regressed\nCancelled target · http://127.0.0.1:51205/hold\n复核本次验收合同\n读取操作并核对结果\n\n本次批准已记录。验收只采集目标，参考来自固定来源材料。\n\nKnown broken target\n已完成 · 发现问题\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n读取完成报告与证据\n本次验收结果 · 发现问题\n\n14 项检查，4 个目标缺陷。来源不重访，未声明范围保持未测。\n\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n固定来源\n本次目标\n视觉差异\n查看完整完成报告\n显式复验此前运行\n首次登记可留空\n首次登记，不声明修复\n登记本次问题与复验\n读取持久问题记录"
+  },
+  {
+    "name": "browser-execution-desktop-dark",
+    "width": 1440,
+    "height": 1000,
+    "theme": "dark",
+    "documentWidth": 1440,
+    "clientWidth": 964,
+    "scrollWidth": 964,
+    "rect": {
+      "x": 393,
+      "y": 25.0625,
+      "width": 964,
+      "height": 2042.953125,
+      "top": 25.0625,
+      "right": 1357,
+      "bottom": 2068.015625,
+      "left": 393
+    },
+    "text": "固定来源验收\n\n批准一个已保存候选用于本次目标验收。参考取自已核验材料，每次只访问目标版本；执行完成后再登记问题与复验。\n\n参考候选\n请选择候选\nCaptured approved source · bc-8771da1e-a0bb-418d-ae80-0a043f061e28\n本次目标版本\n请选择目标版本\nCaptured approved source · http://127.0.0.1:51205/source?source=fixed-contract-url-sentinel\nKnown broken target · http://127.0.0.1:51205/broken\nRepaired target · http://127.0.0.1:51205/healthy\nRegressed target · http://127.0.0.1:51205/regressed\nCancelled target · http://127.0.0.1:51205/hold\n复核本次验收合同\n读取操作并核对结果\n\n本次结果已登记。可靠检查的复验通过记录与业务问题最终关闭分别保留。\n\nKnown broken target\n已完成 · 发现问题\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n读取完成报告与证据\n本次验收结果 · 发现问题\n\n14 项检查，4 个目标缺陷。来源不重访，未声明范围保持未测。\n\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n查看完整完成报告\n显式复验此前运行\n首次登记可留空\n首次登记，不声明修复\n登记本次问题与复验\n读取持久问题记录\n项目问题与复验记录\n\n记录按声明检查汇总。已复验通过表示对应检查的同源可靠复验结果，业务问题最终关闭仍需另行确认。\n\n页面视觉还原度\n待处理\n\n/ · visual · 960 × 640\n\n最近目标：Known broken target\n\n查看 1 次发现与复验\nExpanded menu\n待处理\n\n/ · behavior · 960 × 640\n\n最近目标：Known broken target\n\n查看 1 次发现与复验\n页面视觉还原度\n待处理\n\n/ · visual · 375 × 812\n\n最近目标：Known broken target\n\n查看 1 次发现与复验\nExpanded menu\n待处理\n\n/ · behavior · 375 × 812\n\n最近目标：Known broken target\n\n查看 1 次发现与复验\n查看完整登记原文"
+  },
+  {
+    "name": "browser-execution-mobile-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "documentWidth": 390,
+    "clientWidth": 296,
+    "scrollWidth": 296,
+    "rect": {
+      "x": 42,
+      "y": 13.21875,
+      "width": 296,
+      "height": 2579.28125,
+      "top": 13.21875,
+      "right": 338,
+      "bottom": 2592.5,
+      "left": 42
+    },
+    "text": "固定来源验收\n\n批准一个已保存候选用于本次目标验收。参考取自已核验材料，每次只访问目标版本；执行完成后再登记问题与复验。\n\n参考候选\n请选择候选\nCaptured approved source · bc-8771da1e-a0bb-418d-ae80-0a043f061e28\n本次目标版本\n请选择目标版本\nCaptured approved source · http://127.0.0.1:51205/source?source=fixed-contract-url-sentinel\nKnown broken target · http://127.0.0.1:51205/broken\nRepaired target · http://127.0.0.1:51205/healthy\nRegressed target · http://127.0.0.1:51205/regressed\nCancelled target · http://127.0.0.1:51205/hold\n复核本次验收合同\n读取操作并核对结果\n\n本次结果已登记。可靠检查的复验通过记录与业务问题最终关闭分别保留。\n\nKnown broken target\n已完成 · 发现问题\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n读取完成报告与证据\n本次验收结果 · 发现问题\n\n14 项检查，4 个目标缺陷。来源不重访，未声明范围保持未测。\n\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n查看完整完成报告\n显式复验此前运行\n首次登记可留空\n首次登记，不声明修复\n登记本次问题与复验\n读取持久问题记录\n项目问题与复验记录\n\n记录按声明检查汇总。已复验通过表示对应检查的同源可靠复验结果，业务问题最终关闭仍需另行确认。\n\n页面视觉还原度\n待处理\n\n/ · visual · 960 × 640\n\n最近目标：Known broken target\n\n查看 1 次发现与复验\nExpanded menu\n待处理\n\n/ · behavior · 960 × 640\n\n最近目标：Known broken target\n\n查看 1 次发现与复验\n页面视觉还原度\n待处理\n\n/ · visual · 375 × 812\n\n最近目标：Known broken target\n\n查看 1 次发现与复验\nExpanded menu\n待处理\n\n/ · behavior · 375 × 812\n\n最近目标：Known broken target\n\n查看 1 次发现与复验\n查看完整登记原文"
+  },
+  {
+    "name": "browser-execution-issue-history-desktop",
+    "width": 1440,
+    "height": 1000,
+    "theme": "light",
+    "documentWidth": 1440,
+    "clientWidth": 964,
+    "scrollWidth": 964,
+    "rect": {
+      "x": 393,
+      "y": -1574.9375,
+      "width": 964,
+      "height": 2577.921875,
+      "top": -1574.9375,
+      "right": 1357,
+      "bottom": 1002.984375,
+      "left": 393
+    },
+    "text": "固定来源验收\n\n批准一个已保存候选用于本次目标验收。参考取自已核验材料，每次只访问目标版本；执行完成后再登记问题与复验。\n\n参考候选\n请选择候选\nCaptured approved source · bc-8771da1e-a0bb-418d-ae80-0a043f061e28\n本次目标版本\n请选择目标版本\nCaptured approved source · http://127.0.0.1:51205/source?source=fixed-contract-url-sentinel\nKnown broken target · http://127.0.0.1:51205/broken\nRepaired target · http://127.0.0.1:51205/healthy\nRegressed target · http://127.0.0.1:51205/regressed\nCancelled target · http://127.0.0.1:51205/hold\n复核本次验收合同\n读取操作并核对结果\n\n本次结果已登记。可靠检查的复验通过记录与业务问题最终关闭分别保留。\n\nRegressed target\n已完成 · 发现问题\nbo-0b31e032-83c2-406b-b8eb-d7b93a28c32c\n读取完成报告与证据\nRepaired target\n已完成 · 通过\nbo-d0630718-9a6a-493f-90e8-55b75a72fa97\n读取完成报告与证据\nKnown broken target\n已完成 · 发现问题\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n读取完成报告与证据\n本次验收结果 · 发现问题\n\n14 项检查，4 个目标缺陷。来源不重访，未声明范围保持未测。\n\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n查看完整完成报告\n显式复验此前运行\n首次登记可留空\n首次登记，不声明修复\nRepaired target · bo-d0630718-9a6a-493f-90e8-55b75a72fa97\nKnown broken target · bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n登记本次问题与复验\n读取持久问题记录\n项目问题与复验记录\n\n记录按声明检查汇总。已复验通过表示对应检查的同源可靠复验结果，业务问题最终关闭仍需另行确认。\n\n页面视觉还原度\n再次发现\n\n/ · visual · 960 × 640\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n首次发现\n2026/10/18 11:15:26\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n已复验通过\n2026/10/18 11:16:09\nbo-d0630718-9a6a-493f-90e8-55b75a72fa97\n通过后再次发现\n2026/10/18 11:16:55\nbo-0b31e032-83c2-406b-b8eb-d7b93a28c32c\nExpanded menu\n再次发现\n\n/ · behavior · 960 × 640\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n页面视觉还原度\n再次发现\n\n/ · visual · 375 × 812\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\nExpanded menu\n再次发现\n\n/ · behavior · 375 × 812\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n查看完整登记原文"
+  },
+  {
+    "name": "browser-execution-issue-history-mobile",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "documentWidth": 390,
+    "clientWidth": 296,
+    "scrollWidth": 296,
+    "rect": {
+      "x": 42,
+      "y": -2030.78125,
+      "width": 296,
+      "height": 3119.84375,
+      "top": -2030.78125,
+      "right": 338,
+      "bottom": 1089.0625,
+      "left": 42
+    },
+    "text": "固定来源验收\n\n批准一个已保存候选用于本次目标验收。参考取自已核验材料，每次只访问目标版本；执行完成后再登记问题与复验。\n\n参考候选\n请选择候选\nCaptured approved source · bc-8771da1e-a0bb-418d-ae80-0a043f061e28\n本次目标版本\n请选择目标版本\nCaptured approved source · http://127.0.0.1:51205/source?source=fixed-contract-url-sentinel\nKnown broken target · http://127.0.0.1:51205/broken\nRepaired target · http://127.0.0.1:51205/healthy\nRegressed target · http://127.0.0.1:51205/regressed\nCancelled target · http://127.0.0.1:51205/hold\n复核本次验收合同\n读取操作并核对结果\n\n本次结果已登记。可靠检查的复验通过记录与业务问题最终关闭分别保留。\n\nRegressed target\n已完成 · 发现问题\nbo-0b31e032-83c2-406b-b8eb-d7b93a28c32c\n读取完成报告与证据\nRepaired target\n已完成 · 通过\nbo-d0630718-9a6a-493f-90e8-55b75a72fa97\n读取完成报告与证据\nKnown broken target\n已完成 · 发现问题\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n读取完成报告与证据\n本次验收结果 · 发现问题\n\n14 项检查，4 个目标缺陷。来源不重访，未声明范围保持未测。\n\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n查看完整完成报告\n显式复验此前运行\n首次登记可留空\n首次登记，不声明修复\nRepaired target · bo-d0630718-9a6a-493f-90e8-55b75a72fa97\nKnown broken target · bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n登记本次问题与复验\n读取持久问题记录\n项目问题与复验记录\n\n记录按声明检查汇总。已复验通过表示对应检查的同源可靠复验结果，业务问题最终关闭仍需另行确认。\n\n页面视觉还原度\n再次发现\n\n/ · visual · 960 × 640\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n首次发现\n2026/10/18 11:15:26\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n已复验通过\n2026/10/18 11:16:09\nbo-d0630718-9a6a-493f-90e8-55b75a72fa97\n通过后再次发现\n2026/10/18 11:16:55\nbo-0b31e032-83c2-406b-b8eb-d7b93a28c32c\nExpanded menu\n再次发现\n\n/ · behavior · 960 × 640\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n页面视觉还原度\n再次发现\n\n/ · visual · 375 × 812\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\nExpanded menu\n再次发现\n\n/ · behavior · 375 × 812\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n查看完整登记原文"
+  },
+  {
+    "name": "browser-execution-desktop-light",
+    "width": 1440,
+    "height": 1000,
+    "theme": "light",
+    "documentWidth": 1440,
+    "clientWidth": 964,
+    "scrollWidth": 964,
+    "rect": {
+      "x": 393,
+      "y": 25.0625,
+      "width": 964,
+      "height": 2577.921875,
+      "top": 25.0625,
+      "right": 1357,
+      "bottom": 2602.984375,
+      "left": 393
+    },
+    "text": "固定来源验收\n\n批准一个已保存候选用于本次目标验收。参考取自已核验材料，每次只访问目标版本；执行完成后再登记问题与复验。\n\n参考候选\n请选择候选\nCaptured approved source · bc-8771da1e-a0bb-418d-ae80-0a043f061e28\n本次目标版本\n请选择目标版本\nCaptured approved source · http://127.0.0.1:51205/source?source=fixed-contract-url-sentinel\nKnown broken target · http://127.0.0.1:51205/broken\nRepaired target · http://127.0.0.1:51205/healthy\nRegressed target · http://127.0.0.1:51205/regressed\nCancelled target · http://127.0.0.1:51205/hold\n复核本次验收合同\n读取操作并核对结果\n\n本次结果已登记。可靠检查的复验通过记录与业务问题最终关闭分别保留。\n\nRegressed target\n已完成 · 发现问题\nbo-0b31e032-83c2-406b-b8eb-d7b93a28c32c\n读取完成报告与证据\nRepaired target\n已完成 · 通过\nbo-d0630718-9a6a-493f-90e8-55b75a72fa97\n读取完成报告与证据\nKnown broken target\n已完成 · 发现问题\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n读取完成报告与证据\n本次验收结果 · 发现问题\n\n14 项检查，4 个目标缺陷。来源不重访，未声明范围保持未测。\n\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n查看完整完成报告\n显式复验此前运行\n首次登记可留空\n首次登记，不声明修复\nRepaired target · bo-d0630718-9a6a-493f-90e8-55b75a72fa97\nKnown broken target · bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n登记本次问题与复验\n读取持久问题记录\n项目问题与复验记录\n\n记录按声明检查汇总。已复验通过表示对应检查的同源可靠复验结果，业务问题最终关闭仍需另行确认。\n\n页面视觉还原度\n再次发现\n\n/ · visual · 960 × 640\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n首次发现\n2026/10/18 11:15:26\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n已复验通过\n2026/10/18 11:16:09\nbo-d0630718-9a6a-493f-90e8-55b75a72fa97\n通过后再次发现\n2026/10/18 11:16:55\nbo-0b31e032-83c2-406b-b8eb-d7b93a28c32c\nExpanded menu\n再次发现\n\n/ · behavior · 960 × 640\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n页面视觉还原度\n再次发现\n\n/ · visual · 375 × 812\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\nExpanded menu\n再次发现\n\n/ · behavior · 375 × 812\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n查看完整登记原文"
+  },
+  {
+    "name": "browser-execution-mobile-dark",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "documentWidth": 390,
+    "clientWidth": 296,
+    "scrollWidth": 296,
+    "rect": {
+      "x": 42,
+      "y": 13.21875,
+      "width": 296,
+      "height": 3119.84375,
+      "top": 13.21875,
+      "right": 338,
+      "bottom": 3133.0625,
+      "left": 42
+    },
+    "text": "固定来源验收\n\n批准一个已保存候选用于本次目标验收。参考取自已核验材料，每次只访问目标版本；执行完成后再登记问题与复验。\n\n参考候选\n请选择候选\nCaptured approved source · bc-8771da1e-a0bb-418d-ae80-0a043f061e28\n本次目标版本\n请选择目标版本\nCaptured approved source · http://127.0.0.1:51205/source?source=fixed-contract-url-sentinel\nKnown broken target · http://127.0.0.1:51205/broken\nRepaired target · http://127.0.0.1:51205/healthy\nRegressed target · http://127.0.0.1:51205/regressed\nCancelled target · http://127.0.0.1:51205/hold\n复核本次验收合同\n读取操作并核对结果\n\n本次结果已登记。可靠检查的复验通过记录与业务问题最终关闭分别保留。\n\nRegressed target\n已完成 · 发现问题\nbo-0b31e032-83c2-406b-b8eb-d7b93a28c32c\n读取完成报告与证据\nRepaired target\n已完成 · 通过\nbo-d0630718-9a6a-493f-90e8-55b75a72fa97\n读取完成报告与证据\nKnown broken target\n已完成 · 发现问题\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n读取完成报告与证据\n本次验收结果 · 发现问题\n\n14 项检查，4 个目标缺陷。来源不重访，未声明范围保持未测。\n\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n页面导航与 HTTP 状态 · passed / match\n浏览器脚本与控制台错误 · passed / match\n资源与只读网络请求 · passed / match\n视口水平溢出 · passed / match\n标题、主标题与关键控件语义 · passed / match\n页面视觉还原度 · failed / bug\n查看来源、目标与差异图\nExpanded menu · failed / bug\n查看完整完成报告\n显式复验此前运行\n首次登记可留空\n首次登记，不声明修复\nRepaired target · bo-d0630718-9a6a-493f-90e8-55b75a72fa97\nKnown broken target · bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n登记本次问题与复验\n读取持久问题记录\n项目问题与复验记录\n\n记录按声明检查汇总。已复验通过表示对应检查的同源可靠复验结果，业务问题最终关闭仍需另行确认。\n\n页面视觉还原度\n再次发现\n\n/ · visual · 960 × 640\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n首次发现\n2026/10/18 11:15:26\nbo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e\n已复验通过\n2026/10/18 11:16:09\nbo-d0630718-9a6a-493f-90e8-55b75a72fa97\n通过后再次发现\n2026/10/18 11:16:55\nbo-0b31e032-83c2-406b-b8eb-d7b93a28c32c\nExpanded menu\n再次发现\n\n/ · behavior · 960 × 640\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n页面视觉还原度\n再次发现\n\n/ · visual · 375 × 812\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\nExpanded menu\n再次发现\n\n/ · behavior · 375 × 812\n\n最近目标：Regressed target\n\n查看 3 次发现与复验\n查看完整登记原文"
+  }
+]

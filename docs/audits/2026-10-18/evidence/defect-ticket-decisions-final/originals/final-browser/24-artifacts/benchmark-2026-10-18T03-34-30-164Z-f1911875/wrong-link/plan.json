@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "name": "固定注入基准 · 查看详情跳向错误页面",
+  "mode": "mirror",
+  "baselineUrl": "http://127.0.0.1:55191/baseline",
+  "targetUrl": "http://127.0.0.1:55191/target",
+  "routes": [
+    "/wrong-link"
+  ],
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ],
+  "points": [
+    {
+      "id": "truth-wrong-link",
+      "title": "查看详情跳向错误页面",
+      "route": "/wrong-link",
+      "severity": "high",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "#details-link"
+        }
+      ],
+      "assertions": [
+        {
+          "kind": "url",
+          "contains": "/details"
+        }
+      ]
+    }
+  ],
+  "thresholds": {
+    "visual": 0.97
+  },
+  "timeoutMs": 2000,
+  "settleMs": 180,
+  "normalization": {
+    "maskSelectors": []
+  }
+}

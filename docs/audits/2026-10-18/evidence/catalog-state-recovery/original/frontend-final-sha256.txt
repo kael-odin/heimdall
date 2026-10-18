@@ -1,0 +1,4 @@
+9aba189523aff61b9dd223a4bcaaf256798c8cbe3e4d6ee1404a689d5c8df20f  console/src/acceptance-catalog.js
+4682fb669fbecfc95c6c6d05be836e6b3be31374add2c37f163f1dc6b8a7b01b  console/src/AcceptanceCatalog.vue
+c3db286e782e7924b5d17a222b05a4ca43f42d05f671ddaf00edf482eb9d7897  core/test/console-acceptance-catalog.test.mjs
+a1dd58c655589ad62d2a6d439c9a2ab67938cd22dbbb9645235ddda02d7a3f48  core/test/console-acceptance-catalog-state.test.mjs

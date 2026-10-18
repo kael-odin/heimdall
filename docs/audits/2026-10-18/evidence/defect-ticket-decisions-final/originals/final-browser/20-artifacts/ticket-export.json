@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 1,
+  "kind": "manual-defect-ticket",
+  "scope": "declared-members",
+  "exportedAt": "2026-10-18T03:29:21.384Z",
+  "ticketId": "dt-f449a223-346a-4821-8578-7f36b78ae678",
+  "projectId": "ap-f5e57d40-9eee-46df-98f8-93a845ce7783",
+  "candidateId": "bc-1795893b-8afe-42a8-99a4-c318c35a6e93",
+  "contentDigest": "4f75a523522eefcf9f94941827e7c4dae0f99eb1a13f2cefbda3378f2eb9a058",
+  "revision": 2,
+  "headSha256": "8efd8913a5adc7ca4e9b6afdfb742a6f68930994308b9e445402c496a2e9c34b",
+  "memberSetDigest": "dd792742cc266a9895fedb36a28fa9c5e470ac803298233dab8743cc143bae3e",
+  "title": "菜单还原的两个固定检查",
+  "severity": "high",
+  "description": "Compare dashboard[query omitted] and //example.test/path",
+  "reproduction": "打开固定页面并展开菜单，核对布局与行为。",
+  "source": {
+    "acceptedAt": "2026-10-18T03:20:37.255Z",
+    "dispatchSha256": "f1d30afe8f3d2ef3322e91c5449069b7c66b2bf4857bea993872dd79750c6274",
+    "observationsSha256": "d2a6b5fd31968c7650083764994b52686d1d7bcaea2e00d8a94023dd190896e3",
+    "operationId": "bo-88033ac0-7783-422e-9bae-ec37e2d9da35",
+    "recordedAt": "2026-10-18T03:20:57.461Z",
+    "reportSha256": "813b0bb32e68c8e1b61d73e3ded7cef51e1ba91268856696039e7424f3a59cb8",
+    "targetReleaseId": "ar-a3685d2d-20ba-4f20-853d-284dd0b481ce"
+  },
+  "members": [
+    {
+      "bugId": "bug-f863e6846cbc3c9f85c76a5506f186a92c65c72320093ae0d3e9ff8c67183611",
+      "checkId": "route-1-1-desktop-point-1-menu",
+      "evidence": [
+        {
+          "bytes": 2019,
+          "file": "source-route-1-1-desktop-point-1-baseline.json",
+          "role": "baselineDetails",
+          "sha256": "d0dfd5a695915236e8157707cd46f67092d218e8b782168f84c6b5fabafddf14"
+        },
+        {
+          "bytes": 20801,
+          "file": "source-route-1-1-desktop-point-1-baseline-repeat.png",
+          "role": "baselineRepeat",
+          "sha256": "fad70f008284c23961c1f598183376a691918a323818a7351c4d6876f5bb8fe0"
+        },
+        {
+          "bytes": 20801,
+          "file": "source-route-1-1-desktop-point-1-baseline.png",
+          "role": "baselineScreenshot",
+          "sha256": "fad70f008284c23961c1f598183376a691918a323818a7351c4d6876f5bb8fe0"
+        },
+        {
+          "bytes": 1976,
+          "file": "route-1-1-desktop-point-1-target.json",
+          "role": "targetDetails",
+          "sha256": "f0ed67881ac76f11bbca2edffb4dd1d327d4385faa5bc98eb5b4deeec4bc9875"
+        },
+        {
+          "bytes": 19446,
+          "file": "route-1-1-desktop-point-1-target-repeat.png",
+          "role": "targetRepeat",
+          "sha256": "1225aed12b39a898e611acfdbfeaec641f39d32f6257aef2c70e1b3d3e045885"
+        },
+        {
+          "bytes": 19446,
+          "file": "route-1-1-desktop-point-1-target.png",
+          "role": "targetScreenshot",
+          "sha256": "1225aed12b39a898e611acfdbfeaec641f39d32f6257aef2c70e1b3d3e045885"
+        }
+      ],
+      "identity": {
+        "caseKey": "5c78467a24af019a7a57fda5593d23478cb2e1ebcc8831d82bc50415e7dffe59",
+        "contextKey": "ac23f7dcd4759051a8915ab8df8978ce2508084703922f7b3b9b5915ba5f8370",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "facet": "behavior",
+        "kind": "browser",
+        "oracleKey": "af519f0028fa693a34246bc71d3469100e3fe86214452750eb60bc09766ddb74",
+        "pointId": "menu",
+        "ruleKey": "b2d904b4bd7bfc2fbf6b7cdf5e60c823f34de153cfb3a3a431db2d707506e13e",
+        "version": 1,
+        "viewport": {
+          "height": 640,
+          "width": 960
+        }
+      },
+      "route": "/",
+      "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+    },
+    {
+      "bugId": "bug-d897ffe3baaf1672f5ecf6d36134211753ab14af7201c8aace39dc1d2dbf49e4",
+      "checkId": "route-1-1-desktop-visual",
+      "evidence": [
+        {
+          "bytes": 1499,
+          "file": "source-route-1-1-desktop-baseline.json",
+          "role": "baselineDetails",
+          "sha256": "9a4f46886e80502a07c742bb32fa3da3a7745d8a41bffd26cb79a1823195436a"
+        },
+        {
+          "bytes": 18603,
+          "file": "source-route-1-1-desktop-baseline-repeat.png",
+          "role": "baselineRepeat",
+          "sha256": "202d38f7589893b5087810ec44d54397af3d1dd83e82b7a9146a262672ee49d1"
+        },
+        {
+          "bytes": 18603,
+          "file": "source-route-1-1-desktop-baseline.png",
+          "role": "baselineScreenshot",
+          "sha256": "202d38f7589893b5087810ec44d54397af3d1dd83e82b7a9146a262672ee49d1"
+        },
+        {
+          "bytes": 18902,
+          "file": "route-1-1-desktop-diff.png",
+          "role": "diff",
+          "sha256": "fcfb328862c42286b58454bd70838b284574f859872e2a0e61244ac4117fa8e3"
+        },
+        {
+          "bytes": 1451,
+          "file": "route-1-1-desktop-target.json",
+          "role": "targetDetails",
+          "sha256": "bbbe4247184d619ea07e21eb34c5fddab57a983309a4067f3dc03276abb8e6f9"
+        },
+        {
+          "bytes": 18689,
+          "file": "route-1-1-desktop-target-repeat.png",
+          "role": "targetRepeat",
+          "sha256": "66bf1a1be26da389544bda3856aa681eb947d889eb2099e52aaeb54412f4c832"
+        },
+        {
+          "bytes": 18689,
+          "file": "route-1-1-desktop-target.png",
+          "role": "targetScreenshot",
+          "sha256": "66bf1a1be26da389544bda3856aa681eb947d889eb2099e52aaeb54412f4c832"
+        }
+      ],
+      "identity": {
+        "caseKey": "df347ef433c550c6615c4e6f554da05bba43f74f87f84d281fa26c55941a42e7",
+        "contextKey": "7ffccd0fcf3e6de7e203463a62ced59a5ff36df675bac04ca3a5d4da4af1337d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "facet": "visual",
+        "kind": "browser",
+        "oracleKey": "ce6d4fd88060fddf5d187e58beac0e5ff8d90ed694dfde59b1cd9a1e3ed04666",
+        "ruleKey": "779fb955346a66fab349ca3370a2cb2bba1b1fff8a3c4c1ca16fe5128bc4c0aa",
+        "version": 1,
+        "viewport": {
+          "height": 640,
+          "width": 960
+        }
+      },
+      "route": "/",
+      "verifierFingerprint": "e58c73d409a403879fe6ebb9ab213d3ea2ddf129b45a4b769a5888d8a82d60f8"
+    }
+  ],
+  "handling": {
+    "status": "closed",
+    "lastClose": {
+      "actionId": "da-85d40fcc-15ea-45d0-8d4d-7816cc96db92",
+      "after": {
+        "acceptedAt": "2026-10-18T03:26:01.509Z",
+        "dispatchSha256": "e93fba60142f6ab06aaec520aa43782f5f2f572786af9c95fd2c68520b6627e9",
+        "observationsSha256": "3e3fb911c8a17e88ea845abff73515ee2763209c3449760661cd4c3098a2ad31",
+        "operationId": "bo-b10fda1e-013d-43a1-992b-f31409dcfd15",
+        "recordedAt": "2026-10-18T03:26:25.142Z",
+        "reportSha256": "85209af6af89d22b2bcb297614d70846983b546806fb5f47a1075a55190669c9",
+        "targetReleaseId": "ar-e821ea0b-0560-4f88-882c-545f5622757b"
+      },
+      "closedAt": "2026-10-18T03:27:45.329Z",
+      "resolution": "两项固定检查均已在当前登记中通过。"
+    }
+  },
+  "verification": {
+    "status": "verified_passed",
+    "factsDigest": "1f751142491e35ca3b317a8d5abbb266b2f744e8c300bbf8acdcea330846cf83",
+    "currentOperationId": "bo-b10fda1e-013d-43a1-992b-f31409dcfd15",
+    "counts": {
+      "failed": 0,
+      "incomparable": 0,
+      "passed": 2,
+      "total": 2,
+      "unverified": 0
+    },
+    "results": [
+      {
+        "afterCheckId": "route-1-1-desktop-point-1-menu",
+        "bugId": "bug-f863e6846cbc3c9f85c76a5506f186a92c65c72320093ae0d3e9ff8c67183611",
+        "reason": "REGISTERED_RELIABLE_PASS",
+        "relation": "verified_passed",
+        "sourceCheckId": "route-1-1-desktop-point-1-menu"
+      },
+      {
+        "afterCheckId": "route-1-1-desktop-visual",
+        "bugId": "bug-d897ffe3baaf1672f5ecf6d36134211753ab14af7201c8aace39dc1d2dbf49e4",
+        "reason": "REGISTERED_RELIABLE_PASS",
+        "relation": "verified_passed",
+        "sourceCheckId": "route-1-1-desktop-visual"
+      }
+    ],
+    "reopenReasons": [],
+    "reason": "ALREADY_CLOSED",
+    "closeEligible": false,
+    "sourceIntegrityVerified": true,
+    "repairVerified": true
+  },
+  "history": [
+    {
+      "actionId": "da-aee35738-1376-4dd1-a57e-79ae9926034f",
+      "kind": "create",
+      "revision": 0,
+      "previousEventSha256": null,
+      "eventSha256": "809038246fe75370eac48af1264fc2317bda3b56917042708463f9826f168c1d",
+      "requestFingerprint": "bff2c6fce12ef3f101bd31177d8f1edcb0f2b75505ff43ada8c496da32620b1b",
+      "createdAt": "2026-10-18T03:21:05.015Z"
+    },
+    {
+      "actionId": "da-28dc819e-0139-432d-be16-ef676788445c",
+      "kind": "close",
+      "revision": 1,
+      "previousEventSha256": "809038246fe75370eac48af1264fc2317bda3b56917042708463f9826f168c1d",
+      "eventSha256": "0cc4860e61421714c45464c7ec79793ac94be86f1a58b56290c6b4145f406b31",
+      "requestFingerprint": "8e995e5458c4e022c36634d721d6c2c01a183ea038d30a859e9673fc59e24a78",
+      "createdAt": "2026-10-18T03:23:05.761Z",
+      "after": {
+        "acceptedAt": "2026-10-18T03:22:09.874Z",
+        "dispatchSha256": "fc95d88e29889da5eab1479c059d190826e41c256a9c4c9a6aae6c4f56cbdbd2",
+        "observationsSha256": "776554fa9637275138617754f065eddb4472a7fc817c5070d2b9d3f9f9942869",
+        "operationId": "bo-5e1401a4-7b6c-4a8e-9be6-bdb6db680563",
+        "recordedAt": "2026-10-18T03:22:31.812Z",
+        "reportSha256": "dc573c2ecc617a5c62a02be84e13781978fcd53202006e23724a09d13910a329",
+        "targetReleaseId": "ar-e821ea0b-0560-4f88-882c-545f5622757b"
+      },
+      "resolution": "两项固定检查均已在当前登记中通过。"
+    },
+    {
+      "actionId": "da-85d40fcc-15ea-45d0-8d4d-7816cc96db92",
+      "kind": "close",
+      "revision": 2,
+      "previousEventSha256": "0cc4860e61421714c45464c7ec79793ac94be86f1a58b56290c6b4145f406b31",
+      "eventSha256": "8efd8913a5adc7ca4e9b6afdfb742a6f68930994308b9e445402c496a2e9c34b",
+      "requestFingerprint": "1e0659fac673e0cd7326b15122424bfdc7475c00b154369d62af1cdb16ca39ce",
+      "createdAt": "2026-10-18T03:27:45.329Z",
+      "after": {
+        "acceptedAt": "2026-10-18T03:26:01.509Z",
+        "dispatchSha256": "e93fba60142f6ab06aaec520aa43782f5f2f572786af9c95fd2c68520b6627e9",
+        "observationsSha256": "3e3fb911c8a17e88ea845abff73515ee2763209c3449760661cd4c3098a2ad31",
+        "operationId": "bo-b10fda1e-013d-43a1-992b-f31409dcfd15",
+        "recordedAt": "2026-10-18T03:26:25.142Z",
+        "reportSha256": "85209af6af89d22b2bcb297614d70846983b546806fb5f47a1075a55190669c9",
+        "targetReleaseId": "ar-e821ea0b-0560-4f88-882c-545f5622757b"
+      },
+      "resolution": "两项固定检查均已在当前登记中通过。"
+    }
+  ],
+  "limitations": [
+    "仅覆盖此人工缺陷单固定关联的检查；不代表整个页面、项目或业务流程已修复。",
+    "人工处理状态与当前核验状态分开；历史关闭不代替当前证据核验。",
+    "导出省略 URL 查询参数及已识别的敏感字段，不包含原始报告、截图、网络记录或 AI 原文。",
+    "无法保证识别任意人工输入的秘密；共享前仍应检查人工文字。"
+  ]
+}

@@ -1,0 +1,4 @@
+[acceptance] recovery blocked: ACCEPTANCE_RECOVERY_BLOCKED: 启动恢复无法安全完成；已保留运行现场，验收写入暂不可用。
+[acceptance] Browser operation recovery blocked; original records retained.
+(node:25696) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

@@ -1,0 +1,66 @@
+[
+  {
+    "method": "GET",
+    "path": "/baseline?z=approved-query-review-sentinel&a=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?z=current-query-review-sentinel&a=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?z=approved-query-review-sentinel&a=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?z=current-query-review-sentinel&a=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?z=approved-query-review-sentinel&a=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?z=current-query-review-sentinel&a=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?z=approved-query-review-sentinel&a=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?z=current-query-review-sentinel&a=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?z=approved-query-review-sentinel&a=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?z=current-query-review-sentinel&a=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?z=approved-query-review-sentinel&a=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?z=current-query-review-sentinel&a=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?z=approved-query-review-sentinel&a=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?z=current-query-review-sentinel&a=development"
+  },
+  {
+    "method": "GET",
+    "path": "/baseline?z=approved-query-review-sentinel&a=stable"
+  },
+  {
+    "method": "GET",
+    "path": "/target?z=current-query-review-sentinel&a=development"
+  }
+]

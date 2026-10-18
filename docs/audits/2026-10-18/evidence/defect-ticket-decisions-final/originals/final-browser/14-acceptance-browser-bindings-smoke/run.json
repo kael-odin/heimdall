@@ -1,0 +1,18 @@
+{
+  "name": "14-acceptance-browser-bindings-smoke",
+  "argv": [
+    "node",
+    "core/scripts/smoke-acceptance-browser-bindings.mjs",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\14-artifacts"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "environment": {},
+  "startedAt": "2026-10-18T03:11:28.097522+00:00",
+  "exitCode": 0,
+  "pid": 39608,
+  "endedAt": "2026-10-18T03:12:01.615022+00:00",
+  "durationSeconds": 33.51500000001397,
+  "changedInputs": [],
+  "stdoutSha256": "c41de1a00f6d471c50aa876171f040971e55a9bcc1828cb9a810d2aa74a319ed",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

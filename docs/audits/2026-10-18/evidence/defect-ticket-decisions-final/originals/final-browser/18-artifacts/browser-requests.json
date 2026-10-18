@@ -1,0 +1,902 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-fd69293a-68f5-4017-afb8-b28ddc33d74d"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-fd69293a-68f5-4017-afb8-b28ddc33d74d/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-baseline-candidates/bc-8771da1e-a0bb-418d-ae80-0a043f061e28"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions",
+    "body": {
+      "operationId": "bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e",
+      "expectedGenerationId": "ag-faa338e6-6002-4074-97c4-e087dea20bab",
+      "expectedRevision": 8,
+      "candidateId": "bc-8771da1e-a0bb-418d-ae80-0a043f061e28",
+      "contentDigest": "06839e5d8980b73ea97af37915c3f8495f12e588aee85e3a8f81cb92cbcd1fa8",
+      "targetReleaseId": "ar-1e5fc04e-dd5b-43f3-b617-b227c7335f6e"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e/resolution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e/evidence/source-route-1-1-desktop-baseline.png"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e/evidence/route-1-1-desktop-target.png"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e/evidence/source-route-1-1-desktop-baseline.png"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e/evidence/route-1-1-desktop-target.png"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e/evidence/route-1-1-desktop-diff.png"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e/register-result",
+    "body": {}
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-bugs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-baseline-candidates/bc-8771da1e-a0bb-418d-ae80-0a043f061e28"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions",
+    "body": {
+      "operationId": "bo-d0630718-9a6a-493f-90e8-55b75a72fa97",
+      "expectedGenerationId": "ag-faa338e6-6002-4074-97c4-e087dea20bab",
+      "expectedRevision": 8,
+      "candidateId": "bc-8771da1e-a0bb-418d-ae80-0a043f061e28",
+      "contentDigest": "06839e5d8980b73ea97af37915c3f8495f12e588aee85e3a8f81cb92cbcd1fa8",
+      "targetReleaseId": "ar-fcfe0bf0-7347-4fe6-8c35-2d83895cba39"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d0630718-9a6a-493f-90e8-55b75a72fa97/resolution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d0630718-9a6a-493f-90e8-55b75a72fa97/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-d0630718-9a6a-493f-90e8-55b75a72fa97/register-result",
+    "body": {
+      "beforeOperationId": "bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-bugs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-baseline-candidates/bc-8771da1e-a0bb-418d-ae80-0a043f061e28"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions",
+    "body": {
+      "operationId": "bo-0b31e032-83c2-406b-b8eb-d7b93a28c32c",
+      "expectedGenerationId": "ag-faa338e6-6002-4074-97c4-e087dea20bab",
+      "expectedRevision": 8,
+      "candidateId": "bc-8771da1e-a0bb-418d-ae80-0a043f061e28",
+      "contentDigest": "06839e5d8980b73ea97af37915c3f8495f12e588aee85e3a8f81cb92cbcd1fa8",
+      "targetReleaseId": "ar-cef794f2-c8fb-410b-b375-3ff53190f58d"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-0b31e032-83c2-406b-b8eb-d7b93a28c32c/resolution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-0b31e032-83c2-406b-b8eb-d7b93a28c32c/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-0b31e032-83c2-406b-b8eb-d7b93a28c32c/register-result",
+    "body": {
+      "beforeOperationId": "bo-d0630718-9a6a-493f-90e8-55b75a72fa97"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-bugs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions/bo-42700736-5c3f-454b-ab7e-bc9fc18d842d/cancel",
+    "body": {}
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-fd69293a-68f5-4017-afb8-b28ddc33d74d"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-fd69293a-68f5-4017-afb8-b28ddc33d74d/report"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-executions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/defect-tickets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d/browser-bugs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/execution"
+  }
+]

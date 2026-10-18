@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "argv": [
+    "node",
+    "docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/archive-control.mjs",
+    "verify"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "explicitEnvironment": {},
+  "platform": "Windows-10-10.0.29667-SP0",
+  "startedAt": "2026-10-18T04:01:31.900000+00:00",
+  "exitCode": 0,
+  "endedAt": "2026-10-18T04:01:35.529831+00:00",
+  "durationSeconds": 3.5780000000086147,
+  "changedInputs": [],
+  "stdoutSha256": "2eb43ec131a1737c2688e9483c3ba0254bd31c477bbb097f8a789ed31574c10e",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,55 @@
+"""Check staged evidence blobs against unchanged on-disk original bytes."""
+import datetime
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+repo = Path(__file__).resolve().parents[4]
+out = Path(__file__).parent / ('evidence-index-' + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ'))
+out.mkdir()
+argv = ['git', 'diff', '--cached', '--name-only', '--diff-filter=ACM', '-z', '--', 'docs/audits/2026-10-18/evidence']
+names_before = subprocess.check_output(argv, cwd=repo)
+names = [name.decode('utf-8') for name in names_before.split(b'\0') if name]
+batch = subprocess.Popen(['git', 'cat-file', '--batch'], cwd=repo, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+rows = []
+try:
+    for name in names:
+        if '\n' in name or '\r' in name:
+            raise ValueError('Unsupported newline in an evidence path')
+        batch.stdin.write((':' + name + '\n').encode('utf-8'))
+        batch.stdin.flush()
+        header = batch.stdout.readline().rstrip(b'\n')
+        blob_id, kind, raw_size = header.rsplit(b' ', 2)
+        if kind != b'blob':
+            raise ValueError('Staged evidence is not a blob: ' + name)
+        size = int(raw_size)
+        raw = batch.stdout.read(size)
+        if len(raw) != size or batch.stdout.read(1) != b'\n':
+            raise ValueError('Truncated cat-file response: ' + name)
+        path = repo / name
+        before = path.stat()
+        disk = path.read_bytes()
+        after = path.stat()
+        rows.append({'path': name, 'gitBlobId': blob_id.decode('ascii'), 'bytes': size,
+            'indexSha256': hashlib.sha256(raw).hexdigest(), 'worktreeSha256': hashlib.sha256(disk).hexdigest(),
+            'sourceStatUnchanged': (before.st_size, before.st_mtime_ns, before.st_ino) == (after.st_size, after.st_mtime_ns, after.st_ino),
+            'exactMatch': raw == disk})
+    batch.stdin.close()
+    stderr = batch.stderr.read()
+    code = batch.wait()
+finally:
+    if batch.poll() is None:
+        batch.terminate()
+        batch.wait()
+names_after = subprocess.check_output(argv, cwd=repo)
+report = {'schemaVersion': 1, 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    'argv': argv, 'cwd': str(repo), 'fileCount': len(rows), 'bytes': sum(row['bytes'] for row in rows),
+    'indexPathSetUnchanged': names_before == names_after, 'catFileExitCode': code,
+    'passed': bool(rows) and code == 0 and not stderr and names_before == names_after
+        and all(row['exactMatch'] and row['sourceStatUnchanged'] for row in rows), 'files': rows}
+(out / 'cat-file.stderr.log').write_bytes(stderr)
+(out / 'result.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+print(json.dumps({key: value for key, value in report.items() if key not in ['files', 'argv', 'cwd']} | {'out': str(out)}))
+sys.exit(0 if report['passed'] else 1)

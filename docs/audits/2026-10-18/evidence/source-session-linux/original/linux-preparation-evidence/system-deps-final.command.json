@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "/root/heimdall-node22-diagnosis-20261018/runtime/bin/node",
+    "node_modules/playwright/cli.js",
+    "install-deps",
+    "--dry-run",
+    "chromium"
+  ],
+  "cwd": "/root/heimdall-node22-diagnosis-20261018/app-core",
+  "startedAt": "2026-10-18T00:20:45.672439+00:00",
+  "completedAt": "2026-10-18T00:20:46.422281+00:00",
+  "exitCode": 0,
+  "stdoutBytes": 39,
+  "stderrBytes": 0
+}

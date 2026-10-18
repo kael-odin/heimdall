@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "/root/heimdall-node22-diagnosis-20261018/runtime/bin/node",
+    "node_modules/playwright/cli.js",
+    "--version"
+  ],
+  "cwd": "/root/heimdall-node22-diagnosis-20261018/app-core",
+  "startedAt": "2026-10-18T00:20:45.154556+00:00",
+  "completedAt": "2026-10-18T00:20:45.672088+00:00",
+  "exitCode": 0,
+  "stdoutBytes": 15,
+  "stderrBytes": 0
+}

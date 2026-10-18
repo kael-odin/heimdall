@@ -1,0 +1,50 @@
+[
+  {
+    "method": "GET",
+    "path": "/source"
+  },
+  {
+    "method": "GET",
+    "path": "/broken"
+  },
+  {
+    "method": "GET",
+    "path": "/source"
+  },
+  {
+    "method": "GET",
+    "path": "/broken"
+  },
+  {
+    "method": "GET",
+    "path": "/source"
+  },
+  {
+    "method": "GET",
+    "path": "/broken"
+  },
+  {
+    "method": "GET",
+    "path": "/source"
+  },
+  {
+    "method": "GET",
+    "path": "/broken"
+  },
+  {
+    "method": "GET",
+    "path": "/healthy"
+  },
+  {
+    "method": "GET",
+    "path": "/healthy"
+  },
+  {
+    "method": "GET",
+    "path": "/healthy"
+  },
+  {
+    "method": "GET",
+    "path": "/healthy"
+  }
+]

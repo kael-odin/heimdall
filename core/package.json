@@ -42,6 +42,8 @@
     "acceptance:browser:execute:smoke": "node scripts/smoke-acceptance-browser-execution-console.mjs",
     "acceptance:browser:resolution:smoke": "node scripts/smoke-acceptance-browser-resolution-console.mjs",
     "acceptance:defect:tickets:smoke": "node scripts/smoke-acceptance-defect-tickets-console.mjs",
+    "acceptance:defect:decisions:smoke": "node scripts/smoke-acceptance-defect-ticket-decisions-console.mjs",
+    "acceptance:defect:decisions:verify": "node scripts/verify-acceptance-defect-ticket-decisions-console.mjs",
     "test": "node scripts/test-core.mjs",
     "lint": "node scripts/check-syntax.mjs",
     "check:docs": "node scripts/check-markdown-links.mjs",

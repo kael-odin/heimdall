@@ -1,0 +1,21 @@
+{
+  "source": {
+    "id": "openapi-e82e1bddfc3906e1",
+    "revision": "1.0.0",
+    "type": "openapi",
+    "title": "Heimdall 固定 API 验收夹具",
+    "sha256": "e82e1bddfc3906e15573aab2144c4f811d7560b6a1c61609f8e9eeeeb57564a8"
+  },
+  "approved": true,
+  "contract": {
+    "id": "openapi-2",
+    "title": "固定合同 head",
+    "method": "HEAD",
+    "path": "/head",
+    "severity": "high",
+    "expect": {
+      "status": 200
+    }
+  },
+  "contractFingerprint": "1c710b6577527a4af5a2efa892b48b2f9f9f17e9681edd99450a41c454f287b1"
+}

@@ -1,0 +1,31 @@
+✔ project switches preserve each draft, abort stale source reads and clear every explicit confirmation (29.0628ms)
+✔ switching projects after an exclusive claim cancels only the provably unsent original (24.667ms)
+✔ unknown POST results survive collapse, project switching and unresolved GET reconciliation without another POST (21.9387ms)
+✔ safe original POST rejection releases only its receipt and keeps the visible draft (22.4653ms)
+✔ an aborted late GET cannot clear its receipt or mutate another project; a new exact GET can resolve it (31.6362ms)
+✔ close preview uses the latest registered operation even when an earlier operation passed (14.7438ms)
+✔ storage changes invalidate explicit close confirmation and preserve unknown originals (5.7668ms)
+✔ create permanent denial requires an explicit exact confirmation, queries first and preserves the draft (12.018ms)
+✔ close permanent denial requires an explicit exact confirmation, queries first and preserves the draft (9.7555ms)
+✔ recorded first wins the denial preflight and follows the existing ticket detail path without another POST (15.1773ms)
+✔ an accepted original arriving between GET and deny keeps the recorded path (19.0232ms)
+✔ a complete rejected preflight or read-only reconciliation never opens an absent ticket (12.4313ms)
+✔ original create and close POST rejected receipts use neither accepted UI nor ticket detail requests (38.7639ms)
+✔ unknown, malformed, digest-mismatched and 4xx deny responses preserve the original and only a later explicit GET resolves it (39.4196ms)
+✔ denial confirmation resets on context, project ABA, storage events and replacement of the complete original (11.5484ms)
+✔ project ABA during preflight-fetch preserves the original and cannot apply a stale denial result (6.4238ms)
+✔ project ABA during preflight-proof preserves the original and cannot apply a stale denial result (6.7398ms)
+✔ project ABA during deny-fetch preserves the original and cannot apply a stale denial result (6.6173ms)
+✔ project ABA during decision-proof preserves the original and cannot apply a stale denial result (7.2984ms)
+✔ project ABA during exclusive-lock preserves the original and cannot apply a stale denial result (8.1006ms)
+✔ a storage event at the exclusive decision lock invalidates the checked original even if its bytes return unchanged (5.1039ms)
+✔ a failed local removal retains the visible original and disables all subsequent denial writes (5.737ms)
+✔ without Web Locks permanent denial is disabled while explicit read-only reconciliation remains available (4.7805ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 575.119

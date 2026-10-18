@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-99a7da6c-a3c8-4a79-a943-c6680ad3d5ed",
+  "taskId": null,
+  "name": "Browser source matrix",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:59761/baseline",
+  "targetUrl": "http://127.0.0.1:1/unavailable",
+  "status": "completed",
+  "gate": "blocked",
+  "createdAt": "2026-10-18T03:11:17.065Z",
+  "updatedAt": "2026-10-18T03:11:17.685Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "Browser source matrix",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:59761/baseline",
+    "targetUrl": "http://127.0.0.1:1/unavailable",
+    "routes": [
+      "/identical"
+    ],
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 960,
+        "height": 640
+      }
+    ],
+    "points": [],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 10000,
+    "settleMs": 50,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 6,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 6,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 6,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 4,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 4,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-18T03:11:17.659Z",
+  "error": null,
+  "reportSha256": "7681378068c52f669faed0400be2529986483edd702d3aca932f9b569092fdb2"
+}

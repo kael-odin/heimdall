@@ -1,0 +1,18 @@
+{
+  "name": "build",
+  "argv": [
+    "node",
+    "node_modules/vite/bin/vite.js",
+    "build"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\console",
+  "environment": {},
+  "startedAt": "2026-10-18T02:37:15.163976+00:00",
+  "exitCode": 0,
+  "pid": 30672,
+  "endedAt": "2026-10-18T02:37:16.386369+00:00",
+  "durationSeconds": 1.2189999999827705,
+  "changedInputs": [],
+  "stdoutSha256": "3525fc772f7364b4e4bcaf4964edc9321fbd3dafe45dd72fea449b310589487e",
+  "stderrSha256": "351b524197fb492920789369e7f1a271420c757633fbb553b280a181ac4c31a4"
+}

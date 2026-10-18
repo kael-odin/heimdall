@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "kind": "manual-defect-ticket-decision-browser-smoke",
+  "startedAt": "2026-10-18T01:00:40.175Z",
+  "endedAt": "2026-10-18T01:02:21.667Z",
+  "passed": false,
+  "caseCount": 1,
+  "cases": [
+    {
+      "caseId": "A",
+      "kind": "create",
+      "intendedWinner": "rejected",
+      "completed": false,
+      "checks": {
+        "uiOriginalBound": true,
+        "prefixObservedBeforeDownstream502": true
+      },
+      "actionId": "da-45dbf2ec-0302-47b4-bfcc-262a2ad0192f",
+      "ticketId": "dt-a30bccc2-8d4e-425a-a2a0-a4c2d51c59b5",
+      "requestFingerprint": "2c6d07e972171b5e59b7bbe11164d506bb467154c862511482eab62fc7707b88"
+    }
+  ],
+  "requiredChecks": [
+    "realCapturedSource",
+    "registeredTwoFixedFailures",
+    "registeredHealthyTwoMembers",
+    "fourUniqueOriginalActions",
+    "realUIOriginsAndReceiptScope",
+    "sameUniqueUpstreamBodyPerCase",
+    "denyAndAcceptedMutuallyExclusive",
+    "noTargetOrSourceOrBrowserOrCatalogSideEffects",
+    "sourceOriginalBytesRemain",
+    "pendingLayoutsDesktopMobile",
+    "onlyExactControlledHttp502Errors",
+    "implementationInputsUnchanged",
+    "fourCompleteCases"
+  ],
+  "caseCheckNames": [
+    "uiOriginalBound",
+    "prefixObservedBeforeDownstream502",
+    "controlled502FinishedNormally",
+    "unknownRetainsFullOriginal",
+    "readOnlyUnresolvedPreservesOriginal",
+    "manualDenyBoundExact",
+    "winnerOrderingProved",
+    "completeProofMatchesDisk",
+    "lateOriginalMatchesWinningDecision",
+    "oneUpstreamRequestAndBodyEnd",
+    "oneDenyRequestAndOneForward",
+    "pendingReleasedAfterProof",
+    "uiOutcomeAndDraft",
+    "ticketEffectMatchesWinner",
+    "sideEffectsUnchanged",
+    "decisionTreeOnlyExpectedAddition",
+    "postGetMatchesWinner"
+  ],
+  "checkCount": 2,
+  "checks": {
+    "realCapturedSource": true,
+    "registeredTwoFixedFailures": true
+  },
+  "captures": [],
+  "outputDirectory": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\defect-ticket-decisions-console-smoke-20261018T090039779",
+  "engineBase": "http://127.0.0.1:49924",
+  "uiBase": "http://127.0.0.1:49939",
+  "targetBase": "http://127.0.0.1:49923",
+  "evidenceLevel": "real-local-chromium-ui-original-body-single-upstream-prefix-controlled-http-502-manual-decision",
+  "guaranteeScope": "Same real data root and retained immutable action ledger; controlled sample; no power-loss or rollback guarantee.",
+  "sourceRunId": "ac-4f37cc63-4531-4c19-a13e-9add4c49ceba",
+  "badOperationId": "bo-a3b686e1-850f-4787-8c03-0ba0c740a61b",
+  "pageErrors": [],
+  "failure": {
+    "message": "controlled HTTP response finishes normally: state not reached"
+  }
+}

@@ -1,0 +1,56 @@
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:58: trailing whitespace.
++	#if defined( USE_CLEARCOAT ) 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:61: trailing whitespace.
++	#if defined( USE_SHEEN ) 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:546: trailing whitespace.
++		
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1213: trailing whitespace.
++ 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1214: space before tab in indent.
++ 		sheenSpecularDirect += irradiance * BRDF_Sheen( directLight.direction, geometryViewDir, geometryNormal, material.sheenColor, material.sheenRoughness );
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1215: trailing whitespace.
++ 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1216: space before tab in indent.
++ 		float sheenAlbedoV = IBLSheenBRDF( geometryNormal, geometryViewDir, material.sheenRoughness );
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1217: space before tab in indent.
++ 		float sheenAlbedoL = IBLSheenBRDF( geometryNormal, directLight.direction, material.sheenRoughness );
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1218: trailing whitespace.
++ 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1219: space before tab in indent.
++ 		float sheenEnergyComp = 1.0 - max3( material.sheenColor ) * max( sheenAlbedoV, sheenAlbedoL );
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1220: trailing whitespace.
++ 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1221: space before tab in indent.
++ 		irradiance *= sheenEnergyComp;
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1222: trailing whitespace.
++ 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1223: space before tab in indent.
++ 	#endif
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1265: space before tab in indent.
++ 	#endif
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1811: trailing whitespace.
++	
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1821: trailing whitespace.
++	
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:1980: trailing whitespace.
++				
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:3575: trailing whitespace.
++ 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:3577: trailing whitespace.
++ 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:3578: space before tab in indent.
++ 	#endif
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:4250: trailing whitespace.
++  set: function(v) { 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:4252: trailing whitespace.
++    v{var} = v; 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:4266: trailing whitespace.
++  
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:4342: trailing whitespace.
++    var r; 
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:4518: trailing whitespace.
++  
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:4520: trailing whitespace.
++  }  
+docs/audits/2026-10-18/evidence/defect-ticket-decisions-final/implementation/console/dist/assets/Graph3D-CxFFoOVC.js:4708: trailing whitespace.
++      // We normalize it so that we move within timeStep range. 

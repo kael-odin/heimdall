@@ -1,0 +1,27 @@
+﻿2026-10-18T00:21:59.1547931Z ##[group]Run pnpm --dir ../console build
+2026-10-18T00:21:59.1548528Z [36;1mpnpm --dir ../console build[0m
+2026-10-18T00:21:59.1716931Z shell: /usr/bin/bash -e {0}
+2026-10-18T00:21:59.1717395Z env:
+2026-10-18T00:21:59.1717845Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T00:21:59.1718420Z ##[endgroup]
+2026-10-18T00:22:00.6696474Z $ vite build
+2026-10-18T00:22:01.1434416Z [36mvite v8.3.1 [32mbuilding client environment for production...[36m[39m
+2026-10-18T00:22:01.1538679Z transforming...
+2026-10-18T00:22:02.4836217Z ✓ 445 modules transformed.
+2026-10-18T00:22:02.5757319Z rendering chunks...
+2026-10-18T00:22:02.8064224Z computing gzip size...
+2026-10-18T00:22:02.8320019Z dist/index.html                       0.63 kB │ gzip:   0.41 kB
+2026-10-18T00:22:02.8321921Z dist/assets/Graph3D-DkULweKj.css      0.10 kB │ gzip:   0.09 kB
+2026-10-18T00:22:02.8323393Z dist/assets/index-Ci96Vj07.css       43.56 kB │ gzip:   8.59 kB
+2026-10-18T00:22:02.8324864Z dist/assets/Atlas-XaD7f5rj.css       83.78 kB │ gzip:  12.33 kB
+2026-10-18T00:22:02.8326368Z dist/assets/api-DBmNeZNu.js           2.07 kB │ gzip:   1.09 kB
+2026-10-18T00:22:02.8327791Z dist/assets/index-DXvcBTLR.js        71.05 kB │ gzip:  28.11 kB
+2026-10-18T00:22:02.8329773Z [33m[plugin builtin:vite-reporter] 
+2026-10-18T00:22:02.8331007Z dist/assets/Atlas-CbgwjZKx.js       487.71 kB │ gzip: 153.03 kB
+2026-10-18T00:22:02.8332403Z dist/assets/Graph3D-FmNJmf-v.js   1,395.59 kB │ gzip: 373.00 kB
+2026-10-18T00:22:02.8333023Z 
+2026-10-18T00:22:02.8333588Z [32m✓ built in 1.69s[39m
+2026-10-18T00:22:02.8350768Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2026-10-18T00:22:02.8351654Z - Using dynamic import() to code-split the application
+2026-10-18T00:22:02.8353081Z - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+2026-10-18T00:22:02.8354754Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m

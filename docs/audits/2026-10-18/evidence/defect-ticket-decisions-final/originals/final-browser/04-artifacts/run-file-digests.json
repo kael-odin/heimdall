@@ -1,0 +1,26 @@
+{
+  "ac-998cb29b-5c20-4c96-a567-3708786e974a": {
+    "manifest.json": "4f0cbafa2dfdda2fa6a3b6d4076922054d07f8df815d00342a6a52c04312c16c",
+    "report.json": "064ad84ba7a0dd1821c4b05242946931f96a0eb24f593917b827a190ec1f5bb6",
+    "report.md": "71dbbf860f9eeca2334e4314194dd123defca0c1c067e9d401cc5f0496e1bb43",
+    "spec-1-QUOTA-contract.json": "f9db68e901fe659be7d1bf0167047fe41b6b8717b20728eff8430e389fc37147",
+    "spec-1-QUOTA-request.json": "1c388c889ece49d67bb1b8a9a6f8993ee64eab250a28465bb8d1ce728ca88c59",
+    "spec-1-QUOTA-response.json": "3b05ddb88d4595b682cb9a50f8645f4a8092fb1f0ee1dd4b0b245750a019c31b"
+  },
+  "ac-c9496069-b3c9-4067-9fe1-5e0eaef3235a": {
+    "manifest.json": "eeb0c0dde04581e57086bec5ba6eaafa286b6caf296de11674adc3a85127d0b7",
+    "report.json": "ba8bfbaa56795c25481b779059376b36992ab9e49eeda61dc3e713a8f45f7b53",
+    "report.md": "9abefb1cbd666f468590d0348f2ebcd64e44dd0c646eb1a6c37280aa82086a63",
+    "spec-1-QUOTA-contract.json": "f9db68e901fe659be7d1bf0167047fe41b6b8717b20728eff8430e389fc37147",
+    "spec-1-QUOTA-request.json": "1c388c889ece49d67bb1b8a9a6f8993ee64eab250a28465bb8d1ce728ca88c59",
+    "spec-1-QUOTA-response.json": "91ce56749d7eee274e62a65c9f143b1034498fe094b653fe573d0f0df4320efc"
+  },
+  "ac-b4f807af-67e4-4610-aec2-a47db55d36e5": {
+    "manifest.json": "e62b61e33d51e33937cecebf70c5f78d40ccf6de0ff90a3de042f266627d7b14",
+    "report.json": "4aae813f0b93877b2ae75adf981bab54592f7b9c5c7417144954851e1f9b403a",
+    "report.md": "83e53be8764d627c5402afe8da0272b5f4b3bcf91088e264b6fe0a723210c880",
+    "spec-1-QUOTA-contract.json": "f9db68e901fe659be7d1bf0167047fe41b6b8717b20728eff8430e389fc37147",
+    "spec-1-QUOTA-request.json": "1c388c889ece49d67bb1b8a9a6f8993ee64eab250a28465bb8d1ce728ca88c59",
+    "spec-1-QUOTA-response.json": "91ce56749d7eee274e62a65c9f143b1034498fe094b653fe573d0f0df4320efc"
+  }
+}

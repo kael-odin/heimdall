@@ -1,0 +1,105 @@
+固定来源验收
+
+批准一个已保存候选用于本次目标验收。参考取自已核验材料，每次只访问目标版本；执行完成后再登记问题与复验。
+
+参考候选
+请选择候选
+Captured approved source · bc-8771da1e-a0bb-418d-ae80-0a043f061e28
+本次目标版本
+请选择目标版本
+Captured approved source · http://127.0.0.1:51205/source?source=fixed-contract-url-sentinel
+Known broken target · http://127.0.0.1:51205/broken
+Repaired target · http://127.0.0.1:51205/healthy
+Regressed target · http://127.0.0.1:51205/regressed
+Cancelled target · http://127.0.0.1:51205/hold
+复核本次验收合同
+读取操作并核对结果
+
+本次结果已登记。可靠检查的复验通过记录与业务问题最终关闭分别保留。
+
+Regressed target
+已完成 · 发现问题
+bo-0b31e032-83c2-406b-b8eb-d7b93a28c32c
+读取完成报告与证据
+Repaired target
+已完成 · 通过
+bo-d0630718-9a6a-493f-90e8-55b75a72fa97
+读取完成报告与证据
+Known broken target
+已完成 · 发现问题
+bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e
+读取完成报告与证据
+本次验收结果 · 发现问题
+
+14 项检查，4 个目标缺陷。来源不重访，未声明范围保持未测。
+
+页面导航与 HTTP 状态 · passed / match
+浏览器脚本与控制台错误 · passed / match
+资源与只读网络请求 · passed / match
+视口水平溢出 · passed / match
+标题、主标题与关键控件语义 · passed / match
+页面视觉还原度 · failed / bug
+查看来源、目标与差异图
+Expanded menu · failed / bug
+页面导航与 HTTP 状态 · passed / match
+浏览器脚本与控制台错误 · passed / match
+资源与只读网络请求 · passed / match
+视口水平溢出 · passed / match
+标题、主标题与关键控件语义 · passed / match
+页面视觉还原度 · failed / bug
+查看来源、目标与差异图
+Expanded menu · failed / bug
+查看完整完成报告
+显式复验此前运行
+首次登记可留空
+首次登记，不声明修复
+Repaired target · bo-d0630718-9a6a-493f-90e8-55b75a72fa97
+Known broken target · bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e
+登记本次问题与复验
+读取持久问题记录
+项目问题与复验记录
+
+记录按声明检查汇总。已复验通过表示对应检查的同源可靠复验结果，业务问题最终关闭仍需另行确认。
+
+页面视觉还原度
+再次发现
+
+/ · visual · 960 × 640
+
+最近目标：Regressed target
+
+查看 3 次发现与复验
+首次发现
+2026/10/18 11:15:26
+bo-d42a783e-e7e7-4229-9fa1-a2a377ce3e0e
+已复验通过
+2026/10/18 11:16:09
+bo-d0630718-9a6a-493f-90e8-55b75a72fa97
+通过后再次发现
+2026/10/18 11:16:55
+bo-0b31e032-83c2-406b-b8eb-d7b93a28c32c
+Expanded menu
+再次发现
+
+/ · behavior · 960 × 640
+
+最近目标：Regressed target
+
+查看 3 次发现与复验
+页面视觉还原度
+再次发现
+
+/ · visual · 375 × 812
+
+最近目标：Regressed target
+
+查看 3 次发现与复验
+Expanded menu
+再次发现
+
+/ · behavior · 375 × 812
+
+最近目标：Regressed target
+
+查看 3 次发现与复验
+查看完整登记原文

@@ -1,0 +1,27 @@
+{
+  "capturedAtUtc": "2026-10-18T01:00:34.861657+00:00",
+  "commands": [
+    {
+      "argv": [
+        "gh",
+        "api",
+        "repos/kael-odin/heimdall/actions/artifacts/12120555294"
+      ],
+      "output": "artifact-api.json",
+      "returnCode": 0,
+      "stdoutBytes": 692,
+      "stderrBytes": 0
+    },
+    {
+      "argv": [
+        "gh",
+        "api",
+        "repos/kael-odin/heimdall/actions/artifacts/12120555294/zip"
+      ],
+      "output": "acceptance-catalog-failure-1.zip",
+      "returnCode": 0,
+      "stdoutBytes": 149526,
+      "stderrBytes": 0
+    }
+  ]
+}

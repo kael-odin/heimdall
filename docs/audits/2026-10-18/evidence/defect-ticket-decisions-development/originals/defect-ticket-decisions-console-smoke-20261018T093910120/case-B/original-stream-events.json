@@ -1,0 +1,16 @@
+[
+  {
+    "event": "prefix-written",
+    "bytes": 246,
+    "endCalled": false
+  },
+  {
+    "event": "tail-released",
+    "bytes": 246
+  },
+  {
+    "event": "response",
+    "status": 201,
+    "bytes": 5382
+  }
+]

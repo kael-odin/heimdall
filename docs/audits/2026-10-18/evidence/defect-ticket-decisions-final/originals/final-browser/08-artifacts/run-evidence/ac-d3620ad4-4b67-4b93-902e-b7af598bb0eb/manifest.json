@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-d3620ad4-4b67-4b93-902e-b7af598bb0eb",
+  "taskId": "a-26bdecb6-8d8c-4bc6-a5b2-568bfbd1ac15",
+  "name": "托管 Spec · 待验收版本",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:49328/target",
+  "status": "interrupted",
+  "gate": "blocked",
+  "createdAt": "2026-10-18T03:08:35.824Z",
+  "updatedAt": "2026-10-18T03:08:37.853Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "托管 Spec · 待验收版本",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:49328/target",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "MANAGED-READ",
+        "revision": "1",
+        "type": "manual"
+      },
+      "approved": true,
+      "checks": [
+        {
+          "id": "READ-0",
+          "title": "健康响应",
+          "method": "GET",
+          "path": "/healthy",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": "READ-1",
+          "title": "业务码符合需求",
+          "method": "GET",
+          "path": "/bug",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": null,
+  "progress": {
+    "kind": "acceptance-started",
+    "total": 2,
+    "completed": 0
+  },
+  "managed": {
+    "schemaVersion": 1,
+    "authority": "catalog-approval",
+    "operationId": "ao-93afba0b-0549-4829-ba2f-159a04588f8c",
+    "dispatchId": "ad-6f29580a-1850-4961-b8f6-e682283b55c7",
+    "dispatchSha256": "dc439740a3c114ccb032a84d1ca1deeb37c55ab5946730e59ddc0528a8642f45",
+    "runId": "ac-d3620ad4-4b67-4b93-902e-b7af598bb0eb",
+    "taskId": "a-26bdecb6-8d8c-4bc6-a5b2-568bfbd1ac15",
+    "catalog": {
+      "generationId": "ag-f455651a-1afa-4c26-a5f4-e28b8274b7e5",
+      "revision": 7,
+      "headSha256": "5c690363ae425829815cf26cb6866df5a16fd62b6d4f8974fcdf600e3d9b33aa"
+    },
+    "projectId": "ap-cca2594b-2821-4258-87fa-6a9724f209c2",
+    "selectionId": "as-f215097f-3f03-4211-9115-45b978c8d259",
+    "approvalId": "aa-84fac9ca-06c3-43c7-b9f4-2c4b7990d3db",
+    "candidateId": "ab-231b7ee6-cb92-4d34-a8af-cac0405b974d",
+    "contentDigest": "bca9fe285c0192df632a0b612833203c7c5700d330bc646675a3df16c128b858",
+    "source": {
+      "runId": "ac-11b7df30-4eb5-4662-a582-5b8c87b41c3e",
+      "releaseId": "ar-106f439e-f291-4414-9c43-59b81c6e3f9a",
+      "sourceSpecApproved": false,
+      "sourcePlanDigest": "82bde8d3bcd7a4563b93211979521955c1bc4595fe7c2615fd2ac8df91ef9546",
+      "sourceReportDigest": "2428672c60b87290a509bcbaad537d45c017009df57a4cafa9ea0877d9f6f991",
+      "evidenceManifestDigest": "4950ebd98162d634c70615da10641efb0919020289ef116194d6f66b415262e3",
+      "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337"
+    },
+    "target": {
+      "releaseId": "ar-010c298c-2c28-47ab-b49e-0be0beb9a0e0",
+      "targetUrl": "http://127.0.0.1:49328/target"
+    },
+    "planFingerprint": "d4ac2f40f243bd9929c572187be98a33fe4b78bb054eea9f94703691d4499848",
+    "executor": "engine-owner-spec-v1"
+  },
+  "reasonCode": "ENGINE_RESTARTED",
+  "error": "引擎已重启；此任务未完成，请重新运行。",
+  "endedAt": "2026-10-18T03:08:37.853Z"
+}

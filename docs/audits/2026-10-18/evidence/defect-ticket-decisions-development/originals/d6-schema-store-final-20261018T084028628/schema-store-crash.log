@@ -1,0 +1,72 @@
+✔ D6 real process crash preserves event at namespace-parent without guessed repair (522.8895ms)
+ℹ {"phase":"namespace-parent","kind":"event","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\event-namespace-parent-a9jp5e","pid":22012,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves event at namespace-version without guessed repair (525.4771ms)
+ℹ {"phase":"namespace-version","kind":"event","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\event-namespace-version-D0YpYw","pid":31680,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves event at temporary without guessed repair (874.9647ms)
+ℹ {"phase":"temporary","kind":"event","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\event-temporary-1U0RMS","pid":27272,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves event at before-link without guessed repair (939.8115ms)
+ℹ {"phase":"before-link","kind":"event","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\event-before-link-NhTyT8","pid":7668,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves event at linked without guessed repair (961.3464ms)
+ℹ {"phase":"linked","kind":"event","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\event-linked-t9Q5Oo","pid":21512,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves event at committed without guessed repair (1655.7296ms)
+ℹ {"phase":"committed","kind":"event","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\event-committed-xUunAZ","pid":31732,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves rejection at namespace-parent without guessed repair (471.761ms)
+ℹ {"phase":"namespace-parent","kind":"rejection","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\rejection-namespace-parent-yEGW7W","pid":40096,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves rejection at namespace-version without guessed repair (596.4225ms)
+ℹ {"phase":"namespace-version","kind":"rejection","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\rejection-namespace-version-vMCnjZ","pid":23516,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves rejection at temporary without guessed repair (997.4346ms)
+ℹ {"phase":"temporary","kind":"rejection","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\rejection-temporary-evJa9b","pid":33192,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves rejection at before-link without guessed repair (963.3879ms)
+ℹ {"phase":"before-link","kind":"rejection","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\rejection-before-link-FDj2eU","pid":11208,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves rejection at linked without guessed repair (973.1912ms)
+ℹ {"phase":"linked","kind":"rejection","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\rejection-linked-nUXhMB","pid":29056,"exitCode":1,"signal":null}
+✔ D6 real process crash preserves rejection at committed without guessed repair (1585.247ms)
+ℹ {"phase":"committed","kind":"rejection","root":"C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-schema-store-final-20261018T084028628\\crash-fixtures\\rejection-committed-yLtJ6u","pid":41020,"exitCode":1,"signal":null}
+✔ create input has one strict selector/text contract and normalizes only member order (4.191ms)
+✔ identifiers, severities, explicit confirmation and human text are bounded (7.4598ms)
+✔ JSON guards never invoke accessors, toJSON, proxy or inherited hooks (0.8179ms)
+✔ non JSON graphs, sparse/named arrays and structural budgets fail before encoding (1.6565ms)
+✔ member and request digests have fixed domain/version and bind all selected source facts (1.5975ms)
+✔ event bytes are canonical, bounded, and unknown contract versions fail closed (4.7146ms)
+✔ immutable chain needs one contiguous unbranched create/close sequence with original previous SHA (14.1159ms)
+✔ chain rejects partial member close results and action ID reuse (5.9714ms)
+✔ record wrapper budget permits a valid chain close to the raw namespace byte limit (1798.4446ms)
+ℹ {"actions":3034,"rawBytes":16776545,"wrappedBytes":17037470}
+✔ D6 confirmation binds every original identity and request field without silently normalizing members (8.0273ms)
+✔ D6 rejection is an independent strict decision and accepted serialization remains byte identical (5.4588ms)
+✔ D6 confirmation, rejection, decision and deny boundaries reject hooks without invoking them (1.5762ms)
+✔ D6 deny has a separate 65536 byte wrapper budget while original requests retain 32768 (48.7406ms)
+ℹ {"originalBytes":32768,"denyBytes":33104}
+✔ read-only snapshot/action do not create namespace and retain the absence fence (209.3328ms)
+✔ canonical create/close/reclose events survive owner restart with identical original bytes (2834.5085ms)
+✔ action identity is globally unique and cross-project reads/replays return 404 (2944.6259ms)
+✔ one independent queue takes fresh records and allows only one stale-head close (2197.3918ms)
+✔ pending queue capacity is exact, releases on either outcome, and zero blocks writes (2691.826ms)
+✔ options, callbacks, results and callback errors reject hooks without invoking them (1418.6257ms)
+✔ prepare cannot change namespace or source after capture and before admission (212.9151ms)
+✔ positive raw-byte fences detect original event mutation during prepare (959.3907ms)
+✔ only this invocation exact tracked temp is tolerated; failed preparation residue is preserved (1233.644ms)
+✔ post-publication failure is explicitly uncertain and action can reconcile a durable receipt (880.6736ms)
+✔ post-publication namespace mutation cannot be returned as a successful receipt (682.5571ms)
+✔ owner release and canonical root replacement stop reads and writes (779.6122ms)
+✔ replaced directories, junctions, symlink files and hardlinked originals fail closed (2305.0473ms)
+✔ unknown files, foreign corrupt JSON and canonical mismatches are never filtered or repaired (2958.6775ms)
+✔ global chain validation rejects forks, cross-scope ticket reuse and filename identity changes (2442.3814ms)
+✔ all namespace projects count toward exact action, ticket and byte budgets (3972.8682ms)
+✔ append admission binds scope/fingerprint and rejects invalid limits or forged event scope (369.1598ms)
+✔ D6 rejected-only namespace is present, immutable, restartable, and absent from accepted ticket chains (1933.0786ms)
+✔ D6 append and deny compete for one action slot on one queue in both orders (3128.1889ms)
+✔ D6 exact complete decisions precede zero/full queue limits and never run prepare (4362.0853ms)
+✔ D6 rejected identity remains globally unique and cross-project/mismatched actions cannot reuse it (3845.7771ms)
+✔ D6 all rejected decisions count toward actions and bytes but never consume ticket capacity (2751.4467ms)
+✔ D6 rejected records cannot satisfy an accepted close chain and original rejection bytes are fenced (2024.4601ms)
+✔ D6 rejection publication failures retain temporary scenes and uncertain complete decisions (1411.8853ms)
+✔ D6 publication expected map includes old rejections and uncertainty survives safe error rewrapping (1613.916ms)
+ℹ tests 50
+ℹ suites 0
+ℹ pass 50
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50352.15

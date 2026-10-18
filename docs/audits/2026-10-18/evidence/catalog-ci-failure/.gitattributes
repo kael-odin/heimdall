@@ -1,0 +1,2 @@
+# Preserve every frozen original byte, including CRLF.
+* -text

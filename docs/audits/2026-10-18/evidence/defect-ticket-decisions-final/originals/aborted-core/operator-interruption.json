@@ -1,0 +1,8 @@
+{
+  "kind": "operator-interruption",
+  "reason": "Stopped early to include same-job console/dist bytes in CI artifact before refreezing maintenance inputs. Not a completed Core test result.",
+  "targetPid": 40724,
+  "verifiedCommand": "node core/scripts/test-core.mjs",
+  "termination": "taskkill /PID 40724 /T /F",
+  "next": "fresh static and full Core run after CI path edit"
+}

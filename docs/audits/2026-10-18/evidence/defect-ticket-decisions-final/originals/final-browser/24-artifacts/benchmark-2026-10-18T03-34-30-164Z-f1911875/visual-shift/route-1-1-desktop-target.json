@@ -1,0 +1,63 @@
+{
+  "url": "http://127.0.0.1:55191/target/visual-shift",
+  "navigationError": null,
+  "httpStatus": 200,
+  "errors": [],
+  "network": [],
+  "blockedRequests": [],
+  "assertions": [],
+  "stepError": null,
+  "snapshot": {
+    "title": "Heimdall 验收演示",
+    "headings": [
+      "团队项目概览"
+    ],
+    "controls": [
+      {
+        "path": "#menu-toggle",
+        "tag": "button",
+        "role": null,
+        "label": "菜单",
+        "type": "button",
+        "href": null,
+        "disabled": false,
+        "expanded": "false",
+        "selected": null
+      },
+      {
+        "path": "#details-link",
+        "tag": "a",
+        "role": null,
+        "label": "查看详情",
+        "type": null,
+        "href": "/details",
+        "disabled": false,
+        "expanded": null,
+        "selected": null
+      }
+    ],
+    "overflow": false,
+    "overflowingElements": [],
+    "maskedRatio": 0,
+    "effectiveAreaPx": 1024000,
+    "maskSamplingCapped": false,
+    "documentSize": {
+      "width": 1280,
+      "height": 800
+    },
+    "bodyTextLength": 81,
+    "url": "http://127.0.0.1:55191/target/visual-shift",
+    "captureScope": "full-page",
+    "captureLimited": false
+  },
+  "screenshot": "route-1-1-desktop-target.png",
+  "repeatedScreenshot": "route-1-1-desktop-target-repeat.png",
+  "stability": 1,
+  "captureScope": "full-page",
+  "captureLimited": false,
+  "documentSize": {
+    "width": 1280,
+    "height": 800
+  },
+  "details": "route-1-1-desktop-target.json"
+}

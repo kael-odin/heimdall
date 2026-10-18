@@ -1,0 +1,79 @@
+{
+  "verifiedAt": "2026-10-18T01:59:12.488470+00:00",
+  "evidenceLevel": "offline archive integrity verification only; no tests or archived repro executed",
+  "allChecksPassed": true,
+  "originalFilesVerified": 33,
+  "originalBytesVerified": 138651,
+  "manifestSha256": "9fe28877748bea4b25bc6b8b47fa8f045877f96490a3ad0847cda2547686282b",
+  "historicalFinalTestStats": {
+    "helper-final": {
+      "tests": 24,
+      "suites": 0,
+      "pass": 24,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "state-final": {
+      "tests": 16,
+      "suites": 0,
+      "pass": 16,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    }
+  },
+  "historicalDetector": {
+    "exitCode": 2,
+    "warnings": 1,
+    "declarationPresentBeforeAndAfter": true
+  },
+  "beforeAndAfterSourceIdentitiesVerified": 4,
+  "historicalFinalSourceSha256": {
+    "console/src/acceptance-catalog.js": "9aba189523aff61b9dd223a4bcaaf256798c8cbe3e4d6ee1404a689d5c8df20f",
+    "console/src/AcceptanceCatalog.vue": "4682fb669fbecfc95c6c6d05be836e6b3be31374add2c37f163f1dc6b8a7b01b",
+    "core/test/console-acceptance-catalog.test.mjs": "c3db286e782e7924b5d17a222b05a4ca43f42d05f671ddaf00edf482eb9d7897",
+    "core/test/console-acceptance-catalog-state.test.mjs": "a1dd58c655589ad62d2a6d439c9a2ab67938cd22dbbb9645235ddda02d7a3f48"
+  },
+  "historicalBaselineGitObjects": {
+    "checked": true,
+    "head": "41c359a62ecbb67ac15f38c51c95fa983a7492d3",
+    "filesVerified": 2,
+    "allBlobsMatch": true
+  },
+  "scope": "Independent offline actual-Vue/helper recovery evidence; does not establish old CI stall cause, original Browser smoke success or full CI success.",
+  "sourceCopyVerification": {
+    "files": 33,
+    "bytes": 138651,
+    "sourcePreAndPostBytesEqual": true,
+    "destinationBytesEqualSource": true
+  },
+  "currentMaintenanceInputCheckAtArchive": [
+    {
+      "path": "console/src/acceptance-catalog.js",
+      "bytes": 8272,
+      "sha256": "9aba189523aff61b9dd223a4bcaaf256798c8cbe3e4d6ee1404a689d5c8df20f",
+      "matchesHistoricalFinalSha256": true
+    },
+    {
+      "path": "console/src/AcceptanceCatalog.vue",
+      "bytes": 42167,
+      "sha256": "4682fb669fbecfc95c6c6d05be836e6b3be31374add2c37f163f1dc6b8a7b01b",
+      "matchesHistoricalFinalSha256": true
+    },
+    {
+      "path": "core/test/console-acceptance-catalog.test.mjs",
+      "bytes": 15124,
+      "sha256": "c3db286e782e7924b5d17a222b05a4ca43f42d05f671ddaf00edf482eb9d7897",
+      "matchesHistoricalFinalSha256": true
+    },
+    {
+      "path": "core/test/console-acceptance-catalog-state.test.mjs",
+      "bytes": 17371,
+      "sha256": "a1dd58c655589ad62d2a6d439c9a2ab67938cd22dbbb9645235ddda02d7a3f48",
+      "matchesHistoricalFinalSha256": true
+    }
+  ]
+}

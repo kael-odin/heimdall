@@ -1,0 +1,86 @@
+{
+  "scope": "离线复现：固定注入缺陷夹具，仅证明本基准中声明的案例与观察窗口；不代表真实站点业务验收或通用检出率。",
+  "cases": [
+    {
+      "id": "visual-shift",
+      "title": "目标主要内容布局偏移",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "mobile-menu",
+      "title": "移动端菜单按钮缺失",
+      "targetBug": true,
+      "viewport": "mobile",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "menu-state",
+      "title": "菜单展开但 aria-expanded 未更新",
+      "targetBug": true,
+      "viewport": "mobile",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "missing-field",
+      "title": "套餐配额文字字段缺失",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "wrong-link",
+      "title": "查看详情跳向错误页面",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "runtime-error",
+      "title": "目标脚本抛出异常",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "missing-resource",
+      "title": "目标静态资源返回 404",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "identical",
+      "title": "稳定一致页面",
+      "targetBug": false,
+      "viewport": "desktop",
+      "expectedVerdict": "match",
+      "expectedGate": "passed"
+    },
+    {
+      "id": "baseline-error",
+      "title": "基线与目标共有基线脚本异常",
+      "targetBug": false,
+      "viewport": "desktop",
+      "expectedVerdict": "baseline_failed",
+      "expectedGate": "not_passed"
+    },
+    {
+      "id": "masked-noise",
+      "title": "动态刷新区按已声明规则遮罩",
+      "targetBug": false,
+      "viewport": "desktop",
+      "expectedVerdict": "match",
+      "expectedGate": "passed"
+    },
+    {
+      "id": "blocked-write",
+      "title": "依赖写请求的流程被只读策略阻断",
+      "targetBug": false,
+      "viewport": "desktop",
+      "expectedVerdict": "environment",
+      "expectedGate": "not_passed"
+    }
+  ]
+}

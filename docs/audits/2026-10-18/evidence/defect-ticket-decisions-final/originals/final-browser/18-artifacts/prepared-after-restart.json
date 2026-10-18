@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "operationId": "bo-4ece78ab-bd5a-404c-a8ee-10714f2f119c",
+  "runId": "br-3edc8f0f-7138-43dc-90d3-f58f6af9fa74",
+  "taskId": "a-dae79fbd-744c-4856-b9ad-1eeb3da6ab04",
+  "projectId": "ap-f448593c-16fe-4ddd-8c10-c6c711e62f5d",
+  "candidateId": "bc-8771da1e-a0bb-418d-ae80-0a043f061e28",
+  "contentDigest": "06839e5d8980b73ea97af37915c3f8495f12e588aee85e3a8f81cb92cbcd1fa8",
+  "targetReleaseId": "ar-fcfe0bf0-7347-4fe6-8c35-2d83895cba39",
+  "targetLabel": "Repaired target",
+  "approvalScope": "single-operation",
+  "state": "prepared",
+  "acceptedAt": "2026-10-18T03:18:30.456Z",
+  "updatedAt": "2026-10-18T03:18:30.456Z",
+  "gate": null,
+  "reportSha256": null,
+  "reasonCode": null,
+  "summary": null,
+  "executionReady": false
+}

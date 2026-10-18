@@ -1,0 +1,24 @@
+{
+  "kind": "syntax-only-not-executed",
+  "jsonTemplateParsed": true,
+  "nodeCheckExitCode": 0,
+  "templateExecutionEnabled": false,
+  "createdAt": "2026-10-18T03:19:36.9205884Z",
+  "files": [
+    {
+      "bytes": 30515,
+      "path": "archive-control.mjs",
+      "sha256": "711625bc19765991a7094f09009597808b9788d1c5f9d94262b7ebe7c090fbcb"
+    },
+    {
+      "bytes": 3565,
+      "path": "inputs.example.json",
+      "sha256": "87943a58aaf0f3e0a8e9bb075d2ad72db4f781bc63dfe28de42985652ac306c3"
+    },
+    {
+      "bytes": 6764,
+      "path": "README.md",
+      "sha256": "491788e9a257a26aa62117f8497ec36a1e5ff1e55884ac1b7ba0a2ef3de9aacd"
+    }
+  ]
+}

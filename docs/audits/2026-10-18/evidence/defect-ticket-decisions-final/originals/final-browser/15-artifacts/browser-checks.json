@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "startedAt": "2026-10-18T03:12:02.226Z",
+  "finishedAt": "2026-10-18T03:12:35.580Z",
+  "evidenceLevel": "fresh-local-fixture-real-engine-workers-native-browser-controls",
+  "browser": "Chromium CDP",
+  "browserPluginAvailable": false,
+  "browserFallbackReason": "Browser plugin not available",
+  "checks": {
+    "freshMirrorAndRegressionWorkersPreserveFailedComparison": true,
+    "noImplicitSideAndNoAutomaticBinding": true,
+    "changingSideRequiresFreshConfirmation": true,
+    "nativeBaselineBindingAndSelectedSideReviewAreSafe": true,
+    "sameLengthCorruptEvidenceCannotBecomeBlobOrImage": true,
+    "selectedSideAllThreeEvidenceRolesOpenThroughAuthenticatedBlob": true,
+    "targetRemainsCompatibleWithLegacyAndBaselineIndependent": true,
+    "projectABACannotRestoreLatePreview": true,
+    "lostPostReconcilesStoredHistoryWithoutReplay": true,
+    "changedSourceRetainsHistoryAndReadNeverWrites": true,
+    "desktopAndBothMobileThemesHaveNoHorizontalOverflow": true,
+    "closingOrChangingReviewRevokesVerifiedBlobUrls": true,
+    "pageIdentityNonblankOverlayAndConsoleHealthy": true,
+    "noNewRunNoTargetRequestAndOriginalBytesPreserved": true
+  },
+  "checkCount": 14,
+  "layouts": [
+    {
+      "name": "browser-binding-desktop-form",
+      "width": 1440,
+      "height": 1000,
+      "theme": "dark",
+      "focus": "form",
+      "viewport": 1440,
+      "documentWidth": 1440,
+      "clientWidth": 964,
+      "scrollWidth": 964,
+      "rect": {
+        "x": 393,
+        "y": 24.84375,
+        "width": 964,
+        "height": 651.921875,
+        "top": 24.84375,
+        "bottom": 676.765625
+      }
+    },
+    {
+      "name": "browser-binding-desktop-review",
+      "width": 1440,
+      "height": 1000,
+      "theme": "dark",
+      "focus": "preview",
+      "viewport": 1440,
+      "documentWidth": 1440,
+      "clientWidth": 964,
+      "scrollWidth": 964,
+      "rect": {
+        "x": 393,
+        "y": -647.15625,
+        "width": 964,
+        "height": 3526.46875,
+        "top": -647.15625,
+        "bottom": 2879.3125
+      }
+    },
+    {
+      "name": "browser-binding-desktop-evidence",
+      "width": 1440,
+      "height": 1000,
+      "theme": "dark",
+      "focus": "evidence",
+      "viewport": 1440,
+      "documentWidth": 1440,
+      "clientWidth": 964,
+      "scrollWidth": 964,
+      "rect": {
+        "x": 393,
+        "y": -1318.15625,
+        "width": 964,
+        "height": 3526.46875,
+        "top": -1318.15625,
+        "bottom": 2208.3125
+      }
+    },
+    {
+      "name": "browser-binding-source-changed",
+      "width": 1440,
+      "height": 1000,
+      "theme": "dark",
+      "focus": "preview",
+      "viewport": 1440,
+      "documentWidth": 1440,
+      "clientWidth": 964,
+      "scrollWidth": 964,
+      "rect": {
+        "x": 393,
+        "y": -773.15625,
+        "width": 964,
+        "height": 1054.5,
+        "top": -773.15625,
+        "bottom": 281.34375
+      }
+    },
+    {
+      "name": "browser-binding-mobile-form-dark",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "focus": "form",
+      "viewport": 390,
+      "documentWidth": 390,
+      "clientWidth": 296,
+      "scrollWidth": 296,
+      "rect": {
+        "x": 42,
+        "y": 12.640625,
+        "width": 296,
+        "height": 1946.953125,
+        "top": 12.640625,
+        "bottom": 1959.59375
+      }
+    },
+    {
+      "name": "browser-binding-mobile-review-dark",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "focus": "preview",
+      "viewport": 390,
+      "documentWidth": 390,
+      "clientWidth": 296,
+      "scrollWidth": 296,
+      "rect": {
+        "x": 42,
+        "y": -1151.359375,
+        "width": 296,
+        "height": 1946.953125,
+        "top": -1151.359375,
+        "bottom": 795.59375
+      }
+    },
+    {
+      "name": "browser-binding-mobile-form-light",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "focus": "form",
+      "viewport": 390,
+      "documentWidth": 390,
+      "clientWidth": 296,
+      "scrollWidth": 296,
+      "rect": {
+        "x": 42,
+        "y": 12.640625,
+        "width": 296,
+        "height": 1946.953125,
+        "top": 12.640625,
+        "bottom": 1959.59375
+      }
+    },
+    {
+      "name": "browser-binding-mobile-review-light",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "focus": "preview",
+      "viewport": 390,
+      "documentWidth": 390,
+      "clientWidth": 296,
+      "scrollWidth": 296,
+      "rect": {
+        "x": 42,
+        "y": -1151.359375,
+        "width": 296,
+        "height": 1946.953125,
+        "top": -1151.359375,
+        "bottom": 795.59375
+      }
+    }
+  ],
+  "captures": [
+    "browser-binding-desktop-form.png",
+    "browser-binding-desktop-review.png",
+    "browser-binding-desktop-evidence.png",
+    "browser-binding-source-changed.png",
+    "browser-binding-mobile-form-dark.png",
+    "browser-binding-mobile-review-dark.png",
+    "browser-binding-mobile-form-light.png",
+    "browser-binding-mobile-review-light.png"
+  ],
+  "pageErrors": [],
+  "expectedResourceErrors": [
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+  ],
+  "sourceRuns": [
+    {
+      "mode": "mirror",
+      "runId": "ac-c89ee792-b87d-4398-98e3-b915af536fa0",
+      "reportGate": "failed"
+    },
+    {
+      "mode": "regression",
+      "runId": "ac-54ebdb97-a87f-49f3-92b6-c7798d21eb24",
+      "reportGate": "failed"
+    }
+  ],
+  "browserBindingPostCount": 3,
+  "captureTargetRequests": 16,
+  "bindingAndReadTargetRequests": 0,
+  "catalogMigration": null,
+  "executionReady": false,
+  "boundary": "Controlled organization UI only. No Browser candidate, approval, selection or executor; legacy URL surfaces remain separate. One source whitespace change is an explicit test injection restored from the original bytes. Optional schema4 mode separately labels explicit Spec draft/lifecycle setup before migration."
+}

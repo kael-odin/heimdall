@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "manual-defect-ticket-decision-browser-verification",
+  "passed": true,
+  "caseCount": 4,
+  "outcomes": [
+    {
+      "caseId": "A",
+      "kind": "create",
+      "winner": "rejected",
+      "actionId": "da-d5e9bffa-347f-4a3b-9f70-7559bec2a84f",
+      "originalBodySha256": "247bcdb6b856d6f617c28ea98982282ad18ab6706efdc462bad55c075e9fe3c2",
+      "decisionSha256": "aae214f04592ddbc271d2eaa70207ac9ca9c315f4c577cc44aa5196f1c4780bf"
+    },
+    {
+      "caseId": "B",
+      "kind": "create",
+      "winner": "recorded",
+      "actionId": "da-e4d03603-ae4b-4c73-826f-9d34433f5ff5",
+      "originalBodySha256": "dc15eae620633e12de97ed12f59bd9e50558e68b2d40da4a5e691f15592379d5",
+      "decisionSha256": "e2c7b505d49cafc4fb7c1ab77e2298081fe2d19180fd117b0d6583db273efe68"
+    },
+    {
+      "caseId": "C",
+      "kind": "close",
+      "winner": "rejected",
+      "actionId": "da-004674a1-2004-4cfd-80bd-8a4fd0b9b3b4",
+      "originalBodySha256": "061dc5f3dbaf0f1aae0e0bb0c5e922d9affdb4e035e916a64dcf499bd8af5afe",
+      "decisionSha256": "ac336e87d4f9994893f6b9ed3ca90703c37143bdf4ec24e1b2e4438f22e99205"
+    },
+    {
+      "caseId": "D",
+      "kind": "close",
+      "winner": "recorded",
+      "actionId": "da-dc61fa69-329f-40da-a403-eb2e433fed1c",
+      "originalBodySha256": "1081a7a5ec3b0e5f0b83b6ce9ac537f5dc1db71e11c217c52ef16e1dceb67c7b",
+      "decisionSha256": "d7bb330a3c92689d84b91a35d78fb55c3061726f3c694aaca4a9a5e30103ba1b"
+    }
+  ],
+  "outputDirectory": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\21-decision-artifacts"
+}

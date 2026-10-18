@@ -1,0 +1,692 @@
+{
+  "schemaVersion": 1,
+  "kind": "acceptance-comparison",
+  "scope": "explicit-pair",
+  "before": {
+    "runId": "ac-c4972769-8b5b-46d5-9724-724c6ed9bd55",
+    "name": "Browser before",
+    "mode": "regression",
+    "gate": "failed",
+    "targetUrl": "http://127.0.0.1:52299/browser/before",
+    "createdAt": "2026-10-18T03:34:56.804Z",
+    "endedAt": "2026-10-18T03:35:03.654Z",
+    "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+    "reportSha256": "4c65be4061498fe8510582f5877271152cecc6efe3760412c28341e2050f70dc"
+  },
+  "after": {
+    "runId": "ac-6081a04b-aa0b-48ad-bda0-8108922405f4",
+    "name": "Renamed browser run",
+    "mode": "regression",
+    "gate": "failed",
+    "targetUrl": "http://127.0.0.1:52299/browser/after",
+    "createdAt": "2026-10-18T03:35:18.575Z",
+    "endedAt": "2026-10-18T03:35:22.141Z",
+    "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+    "reportSha256": "3919579aac6cfd8d00df961f8a7c80f4d45ad287417c125944cb8334a929725d"
+  },
+  "integrity": {
+    "before": {
+      "valid": true,
+      "evidenceVerified": true,
+      "verifiedFiles": 52,
+      "verifiedBytes": 349617,
+      "errors": []
+    },
+    "after": {
+      "valid": true,
+      "evidenceVerified": true,
+      "verifiedFiles": 26,
+      "verifiedBytes": 177906,
+      "errors": []
+    }
+  },
+  "status": "completed",
+  "summary": {
+    "total": 28,
+    "stillFailed": 0,
+    "verifiedPassed": 0,
+    "newFailure": 2,
+    "observedFailure": 0,
+    "unchangedPassed": 12,
+    "observedPassed": 0,
+    "unverified": 14,
+    "incomparable": 0
+  },
+  "checks": [
+    {
+      "key": "a0ec5472d1d50695709ca87a1e533eb55f4cff13a321c9e9afa4e590638bf4d4",
+      "title": "页面导航与 HTTP 状态",
+      "route": "/home",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "navigation",
+      "before": {
+        "checkId": "route-1-1-mobile-navigation",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "d960a7c8854280da40c3a7e2ab520da85633849857ab5a506927d6a87c6e73e2",
+      "title": "浏览器脚本与控制台错误",
+      "route": "/home",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "console",
+      "before": {
+        "checkId": "route-1-1-mobile-console",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "13b1575bdcedf333792a7ba857a2a008ddd232b82d1ebb6f11f1c1acd18e7f5a",
+      "title": "资源与只读网络请求",
+      "route": "/home",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "network",
+      "before": {
+        "checkId": "route-1-1-mobile-network",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "eec5d85cb932fff6f026ac411b98d434ee6bf0042c7fce804810d8fb487f20e1",
+      "title": "视口水平溢出",
+      "route": "/home",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "overflow",
+      "before": {
+        "checkId": "route-1-1-mobile-overflow",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "d3afa7791a01249e70cad568cb91cd4ffbf0e6db697b1d9b029ae92039ed7fa4",
+      "title": "标题、主标题与关键控件语义",
+      "route": "/home",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "structure",
+      "before": {
+        "checkId": "route-1-1-mobile-structure",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "8ebbf11676c829a8bef2fd34f0663267decea6543913182a117aa4e117351fc9",
+      "title": "页面视觉还原度",
+      "route": "/home",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "visual",
+      "before": {
+        "checkId": "route-1-1-mobile-visual",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "116e3913a0f06889b285bb062141923da2ae544372adc385aca246fca7e07798",
+      "title": "Toggle exposes expanded state",
+      "route": "/home",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "behavior",
+      "before": {
+        "checkId": "route-1-1-mobile-point-1-toggle",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "bca6c21c25ab8266b46bac3005c7ca3b76973b8fb6da5515d94399781edd739e",
+      "title": "页面导航与 HTTP 状态",
+      "route": "/home",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "navigation",
+      "before": {
+        "checkId": "route-1-2-desktop-navigation",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "e04d152a4619e3d0e9636010175f3a7ad434bb000a8b827c6854a9b5201529c9",
+      "title": "浏览器脚本与控制台错误",
+      "route": "/home",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "console",
+      "before": {
+        "checkId": "route-1-2-desktop-console",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "e889f3249f0530c55de5acf6acfb43c52ad10eebe38bd25b3a43487c2d91df42",
+      "title": "资源与只读网络请求",
+      "route": "/home",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "network",
+      "before": {
+        "checkId": "route-1-2-desktop-network",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "53cb262356ed6dc637b5cc9ad4d68da60cf08be3ff2d41e1dd1ab9822344146d",
+      "title": "视口水平溢出",
+      "route": "/home",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "overflow",
+      "before": {
+        "checkId": "route-1-2-desktop-overflow",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "bf49f84f6613cfcd3a38cdadb70cfe251225a7672452f10c6e49ce68e0f86865",
+      "title": "标题、主标题与关键控件语义",
+      "route": "/home",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "structure",
+      "before": {
+        "checkId": "route-1-2-desktop-structure",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "bfcdbb974025a9a60004b81e289220c18ca7d3097c3013a120d35415946b39a7",
+      "title": "页面视觉还原度",
+      "route": "/home",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "visual",
+      "before": {
+        "checkId": "route-1-2-desktop-visual",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "53a3243741fc28c1251f7b5f697e3e2badd23b4130813077ed4181de98d0ee59",
+      "title": "Toggle exposes expanded state",
+      "route": "/home",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "behavior",
+      "before": {
+        "checkId": "route-1-2-desktop-point-1-toggle",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "after": null,
+      "relation": "unverified",
+      "reasons": [
+        {
+          "code": "check-not-rerun",
+          "message": "本次没有同一上下文的检查；删除或缺测不能算修复。"
+        }
+      ]
+    },
+    {
+      "key": "eb03592f1b7c0adb96cd6082cb5be6d7cd9fbffa93c0b6484233674df394fd02",
+      "title": "页面导航与 HTTP 状态",
+      "route": "/details",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "navigation",
+      "before": {
+        "checkId": "route-2-1-mobile-navigation",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-2-phone-renamed-navigation",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "fa7671e19ca90bb2cee4dd9a079edf9b4bf1743218cfed447ee68d4e136082eb",
+      "title": "浏览器脚本与控制台错误",
+      "route": "/details",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "console",
+      "before": {
+        "checkId": "route-2-1-mobile-console",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-2-phone-renamed-console",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "1e37bba1d07f96e4606e2f513a7d5a57ca74592b902aa8fe469c9ae10eebd46c",
+      "title": "资源与只读网络请求",
+      "route": "/details",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "network",
+      "before": {
+        "checkId": "route-2-1-mobile-network",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-2-phone-renamed-network",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "59b57e9d4451986c5a8079eb1edc412c24eaee4c9c6016a3585b22f83005953c",
+      "title": "视口水平溢出",
+      "route": "/details",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "overflow",
+      "before": {
+        "checkId": "route-2-1-mobile-overflow",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-2-phone-renamed-overflow",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "3c9ac3caa8a844da7ce35314741e553ad1187bbc8187c2609a10e2fa98122be4",
+      "title": "标题、主标题与关键控件语义",
+      "route": "/details",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "structure",
+      "before": {
+        "checkId": "route-2-1-mobile-structure",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-2-phone-renamed-structure",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "c7c035b0a14b3c414d4496b9a35b5a5610ad81c6bf076e02fe7dc3fb036b5450",
+      "title": "页面视觉还原度",
+      "route": "/details",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "visual",
+      "before": {
+        "checkId": "route-2-1-mobile-visual",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-2-phone-renamed-visual",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "a08032ae6403083f6d5161684c6ddbedee8365032ccd0c04ab46c3589b22c92f",
+      "title": "Renamed point",
+      "route": "/details",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "facet": "behavior",
+      "before": {
+        "checkId": "route-2-1-mobile-point-2-copy",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-2-phone-renamed-point-1-copy",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "relation": "new_failure",
+      "reasons": []
+    },
+    {
+      "key": "9af7821dba32fd456d285ebe83c67b05afc164a62edccac593b2972f15c182a1",
+      "title": "页面导航与 HTTP 状态",
+      "route": "/details",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "navigation",
+      "before": {
+        "checkId": "route-2-2-desktop-navigation",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-1-wide-renamed-navigation",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "ad2a64f4bd68ad8ec1181188669ef4693961e05a76f2fada7d0e74ffce8d36e3",
+      "title": "浏览器脚本与控制台错误",
+      "route": "/details",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "console",
+      "before": {
+        "checkId": "route-2-2-desktop-console",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-1-wide-renamed-console",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "5d25c0030f57eabf28eb214b067c2a4c9147f060fb0d9b98c9f89db73ab0f04f",
+      "title": "资源与只读网络请求",
+      "route": "/details",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "network",
+      "before": {
+        "checkId": "route-2-2-desktop-network",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-1-wide-renamed-network",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "64a0ec721fea4607d1b2eff33e7d6c372b8a83bafb21ac2382bb56a5bc7331e9",
+      "title": "视口水平溢出",
+      "route": "/details",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "overflow",
+      "before": {
+        "checkId": "route-2-2-desktop-overflow",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-1-wide-renamed-overflow",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "5b5c1f21cddb5caf78ae789d3e645be795d1845b2f369aba4d4a31356ef8e9b2",
+      "title": "标题、主标题与关键控件语义",
+      "route": "/details",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "structure",
+      "before": {
+        "checkId": "route-2-2-desktop-structure",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-1-wide-renamed-structure",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "cdf0600a6b475306fc5cb234642b3d577c96b77fc462337e8757e5f2b7c6b4e8",
+      "title": "页面视觉还原度",
+      "route": "/details",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "visual",
+      "before": {
+        "checkId": "route-2-2-desktop-visual",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-1-wide-renamed-visual",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "relation": "unchanged_passed",
+      "reasons": []
+    },
+    {
+      "key": "990afbc7fda3ee70a2e99077851a53b4ec9f2d60ab148bf3e8ceabc11fedea58",
+      "title": "Renamed point",
+      "route": "/details",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "facet": "behavior",
+      "before": {
+        "checkId": "route-2-2-desktop-point-2-copy",
+        "status": "passed",
+        "verdict": "match"
+      },
+      "after": {
+        "checkId": "route-1-1-wide-renamed-point-1-copy",
+        "status": "failed",
+        "verdict": "bug"
+      },
+      "relation": "new_failure",
+      "reasons": []
+    }
+  ],
+  "limitations": [
+    "仅对比用户明确选择的两次运行；此前/本次是选择标签，不自动批准项目基线，也不改写原门禁。",
+    "可靠复验通过针对整个相同合同、操作点或检查，不推断子失败根因相同，不自动关闭持久问题。",
+    "未测、删除、受阻、待复核及不可比均不算修复；精确参考截图哈希变化会保守停止视觉趋势比较。"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "/usr/bin/ldd",
+    "/root/heimdall-node22-diagnosis-20261018/browsers/ffmpeg-1011/ffmpeg-linux"
+  ],
+  "cwd": "/root/heimdall-node22-diagnosis-20261018/app-core",
+  "startedAt": "2026-10-18T00:20:47.037035+00:00",
+  "completedAt": "2026-10-18T00:20:47.040574+00:00",
+  "exitCode": 1,
+  "stdoutBytes": 0,
+  "stderrBytes": 26
+}

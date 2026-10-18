@@ -1,0 +1,18 @@
+{
+  "name": "12-acceptance-browser-source-smoke",
+  "argv": [
+    "node",
+    "core/scripts/smoke-acceptance-browser-source.mjs",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\12-artifacts"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "environment": {},
+  "startedAt": "2026-10-18T03:10:53.255556+00:00",
+  "exitCode": 0,
+  "pid": 10928,
+  "endedAt": "2026-10-18T03:11:09.294269+00:00",
+  "durationSeconds": 16.03100000001723,
+  "changedInputs": [],
+  "stdoutSha256": "75418977254039888cb9c40c28b485d054eba6bb2d971fe40ff3cddbc1a54dc8",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

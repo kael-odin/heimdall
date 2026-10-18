@@ -1,0 +1,428 @@
+{
+  "viewVersion": 1,
+  "generationId": "ag-fb33cdde-7759-4b37-a815-8eaad58d9cd5",
+  "revision": 6,
+  "binding": {
+    "id": "ax-16784ac9-58c2-4099-9627-644ef62053ab",
+    "projectId": "ap-6c81782c-8f0c-419f-a522-63d8dec4d607",
+    "releaseId": "ar-8a08419f-17aa-4265-a96a-dbda610acf03",
+    "projectionVersion": 1,
+    "source": {
+      "runId": "ac-26891466-ded7-4298-8579-68def0052e62",
+      "sourceMode": "mirror",
+      "side": "baseline",
+      "entryUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+      "queryPresent": true
+    },
+    "sourceContentDigest": "75ac5dfcb5c0ef18eae148d0dfa4fcfac9c3906ba702ee095e6f8baab1397a31",
+    "boundAt": "2026-10-18T03:12:53.518Z",
+    "actor": {
+      "kind": "local-operator"
+    },
+    "sourcePlanDigest": "b3988dd1c5cdf10ba10263c56be1a2039cd5a54024951cf1ce82114af913cbc2",
+    "sourceReportDigest": "71e84c36fae83a334323ed2b344b9390bf3a6b18611c114eb30e7a122401162c",
+    "evidenceManifestDigest": "f265b3c37ebac7b89d53ce1722beeb318f8625642fa7633685db214d5413303b",
+    "selectedEvidenceManifestDigest": "a3674ccbe0ac33b1536c251d442cdcacbac52443c587a577fe72c9a051be8247",
+    "scopeKey": "b751246a867ccca9d267333603849b354f3ba9d9be434d1c4ebacda177280167",
+    "ruleManifestKey": "7ea6cffe224a944b1543957bef4bc14af30a342f4a3c6caed3d570aaa980c15d",
+    "oracleManifestKey": "f5fa6e4831faf9b2472557f1b472d308b0e75890822e01d2bb416daa079c5aa8",
+    "environmentKey": "99b25dcb496070e02a66a7fac9e1602d97ca62212d5866c9c818f7fd78ee9be9",
+    "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337"
+  },
+  "preview": {
+    "projectionVersion": 1,
+    "mode": "browser",
+    "sourceReference": {
+      "runId": "ac-26891466-ded7-4298-8579-68def0052e62",
+      "sourceMode": "mirror",
+      "side": "baseline",
+      "entryUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+      "queryPresent": true
+    },
+    "name": "Browser organization mirror",
+    "sourceStatus": "completed",
+    "sourceGate": "failed",
+    "declaredSlots": 14,
+    "projectedSlots": 14,
+    "observations": [
+      {
+        "slot": {
+          "routeDisplay": "/",
+          "queryPresent": false,
+          "viewport": {
+            "width": 960,
+            "height": 640
+          },
+          "pointId": "menu"
+        },
+        "viewportName": "desktop",
+        "title": "Menu expands",
+        "severity": "high",
+        "plannedUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+        "plannedQueryPresent": true,
+        "observedFinalUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+        "observedFinalQueryPresent": true,
+        "finalUrlProof": "redacted-observation-only",
+        "evidence": {
+          "details": {
+            "file": "route-1-1-desktop-point-1-baseline.json",
+            "bytes": 1973,
+            "sha256": "a24f19a54ef32ea4c44c4f74b15ea3f8f2a41bdaa09c0779e8c1f00372a5d9c6"
+          },
+          "screenshot": {
+            "file": "route-1-1-desktop-point-1-baseline.png",
+            "bytes": 15713,
+            "sha256": "a9ff0cfee13d248cd548c2a6e44f320a892c43d4baf92e98fbbfa3e8f7890cf8"
+          },
+          "repeat": {
+            "file": "route-1-1-desktop-point-1-baseline-repeat.png",
+            "bytes": 15713,
+            "sha256": "a9ff0cfee13d248cd548c2a6e44f320a892c43d4baf92e98fbbfa3e8f7890cf8"
+          }
+        },
+        "expected": {
+          "httpStatus": 200,
+          "screenshotSha256": "a9ff0cfee13d248cd548c2a6e44f320a892c43d4baf92e98fbbfa3e8f7890cf8",
+          "structure": {
+            "title": "Browser organization fixture",
+            "headings": [
+              "Controlled delivery review"
+            ],
+            "controls": [
+              {
+                "path": "#menu-toggle",
+                "tag": "button",
+                "role": null,
+                "label": "Menu",
+                "type": null,
+                "disabled": false,
+                "expanded": "true",
+                "selected": null,
+                "hrefDisplay": null,
+                "hrefQueryPresent": false
+              },
+              {
+                "path": "body:nth-of-type(1) > main:nth-of-type(1) > nav:nth-of-type(1) > a:nth-of-type(1)",
+                "tag": "a",
+                "role": null,
+                "label": "Details",
+                "type": null,
+                "disabled": false,
+                "expanded": null,
+                "selected": null,
+                "hrefDisplay": "/details",
+                "hrefQueryPresent": false
+              }
+            ]
+          },
+          "assertionSummary": {
+            "total": 2,
+            "passed": 2,
+            "checks": [
+              {
+                "kind": "visible",
+                "passed": true
+              },
+              {
+                "kind": "attribute",
+                "passed": true
+              }
+            ]
+          }
+        },
+        "capture": {
+          "captureScope": "full-page",
+          "captureLimited": false,
+          "documentSize": {
+            "width": 960,
+            "height": 640
+          }
+        },
+        "mask": {
+          "maskedRatio": 0,
+          "effectiveAreaPx": 614400,
+          "samplingCapped": false
+        },
+        "stability": 1
+      },
+      {
+        "slot": {
+          "routeDisplay": "/",
+          "queryPresent": false,
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "pointId": "menu"
+        },
+        "viewportName": "mobile",
+        "title": "Menu expands",
+        "severity": "high",
+        "plannedUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+        "plannedQueryPresent": true,
+        "observedFinalUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+        "observedFinalQueryPresent": true,
+        "finalUrlProof": "redacted-observation-only",
+        "evidence": {
+          "details": {
+            "file": "route-1-2-mobile-point-1-baseline.json",
+            "bytes": 1970,
+            "sha256": "4424801b9bf5f14f321529a1e5f176481a3618084e0cac798a0da764c7e2ffd2"
+          },
+          "screenshot": {
+            "file": "route-1-2-mobile-point-1-baseline.png",
+            "bytes": 14036,
+            "sha256": "472257c1c16725c0f39580a0c8381b963d2bae35151eaaba9f0e96b8b866ee8e"
+          },
+          "repeat": {
+            "file": "route-1-2-mobile-point-1-baseline-repeat.png",
+            "bytes": 14036,
+            "sha256": "472257c1c16725c0f39580a0c8381b963d2bae35151eaaba9f0e96b8b866ee8e"
+          }
+        },
+        "expected": {
+          "httpStatus": 200,
+          "screenshotSha256": "472257c1c16725c0f39580a0c8381b963d2bae35151eaaba9f0e96b8b866ee8e",
+          "structure": {
+            "title": "Browser organization fixture",
+            "headings": [
+              "Controlled delivery review"
+            ],
+            "controls": [
+              {
+                "path": "#menu-toggle",
+                "tag": "button",
+                "role": null,
+                "label": "Menu",
+                "type": null,
+                "disabled": false,
+                "expanded": "true",
+                "selected": null,
+                "hrefDisplay": null,
+                "hrefQueryPresent": false
+              },
+              {
+                "path": "body:nth-of-type(1) > main:nth-of-type(1) > nav:nth-of-type(1) > a:nth-of-type(1)",
+                "tag": "a",
+                "role": null,
+                "label": "Details",
+                "type": null,
+                "disabled": false,
+                "expanded": null,
+                "selected": null,
+                "hrefDisplay": "/details",
+                "hrefQueryPresent": false
+              }
+            ]
+          },
+          "assertionSummary": {
+            "total": 2,
+            "passed": 2,
+            "checks": [
+              {
+                "kind": "visible",
+                "passed": true
+              },
+              {
+                "kind": "attribute",
+                "passed": true
+              }
+            ]
+          }
+        },
+        "capture": {
+          "captureScope": "full-page",
+          "captureLimited": false,
+          "documentSize": {
+            "width": 375,
+            "height": 812
+          }
+        },
+        "mask": {
+          "maskedRatio": 0,
+          "effectiveAreaPx": 304500,
+          "samplingCapped": false
+        },
+        "stability": 1
+      },
+      {
+        "slot": {
+          "routeDisplay": "/",
+          "queryPresent": false,
+          "viewport": {
+            "width": 960,
+            "height": 640
+          }
+        },
+        "viewportName": "desktop",
+        "plannedUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+        "plannedQueryPresent": true,
+        "observedFinalUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+        "observedFinalQueryPresent": true,
+        "finalUrlProof": "redacted-observation-only",
+        "evidence": {
+          "details": {
+            "file": "route-1-1-desktop-baseline.json",
+            "bytes": 1319,
+            "sha256": "3c6150d93b234e125b7e985e4b703d101ae9afb6cddec14b7b0bd8ef78f92c16"
+          },
+          "screenshot": {
+            "file": "route-1-1-desktop-baseline.png",
+            "bytes": 14934,
+            "sha256": "7cdfbfb1df2240a417e36b7df7c790f6dfdea976ff7c5679888f396d5f1e00ce"
+          },
+          "repeat": {
+            "file": "route-1-1-desktop-baseline-repeat.png",
+            "bytes": 14934,
+            "sha256": "7cdfbfb1df2240a417e36b7df7c790f6dfdea976ff7c5679888f396d5f1e00ce"
+          }
+        },
+        "expected": {
+          "httpStatus": 200,
+          "screenshotSha256": "7cdfbfb1df2240a417e36b7df7c790f6dfdea976ff7c5679888f396d5f1e00ce",
+          "structure": {
+            "title": "Browser organization fixture",
+            "headings": [
+              "Controlled delivery review"
+            ],
+            "controls": [
+              {
+                "path": "#menu-toggle",
+                "tag": "button",
+                "role": null,
+                "label": "Menu",
+                "type": null,
+                "disabled": false,
+                "expanded": "false",
+                "selected": null,
+                "hrefDisplay": null,
+                "hrefQueryPresent": false
+              }
+            ]
+          }
+        },
+        "capture": {
+          "captureScope": "full-page",
+          "captureLimited": false,
+          "documentSize": {
+            "width": 960,
+            "height": 640
+          }
+        },
+        "mask": {
+          "maskedRatio": 0,
+          "effectiveAreaPx": 614400,
+          "samplingCapped": false
+        },
+        "stability": 1
+      },
+      {
+        "slot": {
+          "routeDisplay": "/",
+          "queryPresent": false,
+          "viewport": {
+            "width": 375,
+            "height": 812
+          }
+        },
+        "viewportName": "mobile",
+        "plannedUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+        "plannedQueryPresent": true,
+        "observedFinalUrlDisplay": "http://127.0.0.1:54095/baseline?[redacted]",
+        "observedFinalQueryPresent": true,
+        "finalUrlProof": "redacted-observation-only",
+        "evidence": {
+          "details": {
+            "file": "route-1-2-mobile-baseline.json",
+            "bytes": 1316,
+            "sha256": "21baa1ddc172c3a3b7011cc703440b0825c1e55ce4ad48f4f7bfdc4cd034594a"
+          },
+          "screenshot": {
+            "file": "route-1-2-mobile-baseline.png",
+            "bytes": 13314,
+            "sha256": "b7fd587140d5962dc09cc0fd333e4d04f12363a146cd35abd859a0f7d15b71c2"
+          },
+          "repeat": {
+            "file": "route-1-2-mobile-baseline-repeat.png",
+            "bytes": 13314,
+            "sha256": "b7fd587140d5962dc09cc0fd333e4d04f12363a146cd35abd859a0f7d15b71c2"
+          }
+        },
+        "expected": {
+          "httpStatus": 200,
+          "screenshotSha256": "b7fd587140d5962dc09cc0fd333e4d04f12363a146cd35abd859a0f7d15b71c2",
+          "structure": {
+            "title": "Browser organization fixture",
+            "headings": [
+              "Controlled delivery review"
+            ],
+            "controls": [
+              {
+                "path": "#menu-toggle",
+                "tag": "button",
+                "role": null,
+                "label": "Menu",
+                "type": null,
+                "disabled": false,
+                "expanded": "false",
+                "selected": null,
+                "hrefDisplay": null,
+                "hrefQueryPresent": false
+              }
+            ]
+          }
+        },
+        "capture": {
+          "captureScope": "full-page",
+          "captureLimited": false,
+          "documentSize": {
+            "width": 375,
+            "height": 812
+          }
+        },
+        "mask": {
+          "maskedRatio": 0,
+          "effectiveAreaPx": 304500,
+          "samplingCapped": false
+        },
+        "stability": 1
+      }
+    ],
+    "executionReady": false,
+    "oracleStorage": "captured-side-evidence",
+    "environment": {
+      "platform": "win32",
+      "arch": "x64",
+      "nodeVersion": "v25.2.1",
+      "browser": "chromium",
+      "browserVersion": "153.0.8010.12",
+      "playwrightVersion": "1.63.0",
+      "locale": "zh-CN",
+      "timezoneId": "Asia/Hong_Kong",
+      "colorScheme": "light",
+      "reducedMotion": "reduce"
+    },
+    "verifierFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+    "urlProof": {
+      "planned": "server-verified-exact-entry; display-query-hidden",
+      "observedFinal": "redacted-observation-only; no complete redirect-chain or final-query proof"
+    },
+    "presentation": {
+      "kind": "organization-review",
+      "completeSourceProjection": false,
+      "omitted": [
+        "raw-query",
+        "step-values",
+        "assertion-literals",
+        "rules"
+      ]
+    },
+    "reviewNotice": "仅用于所选来源侧的组织核对。显示已隐藏整段查询参数、步骤值、断言字面量与规则；页面文字仍是不可信观察。此次核对不批准、选用或启动运行，也不证明部署冻结或最终完整查询参数。"
+  },
+  "diagnostics": {
+    "eligible": true,
+    "contentMatches": true,
+    "issues": []
+  },
+  "executionReady": false
+}

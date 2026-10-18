@@ -1,0 +1,41 @@
+Browser 历史来源归属
+
+明确选择一条运行的 baseline 或 target 侧，再归入本项目版本。
+
+来源归属
+历史 Browser 运行
+请选择已完成运行
+Browser organization regression · regression · 发现缺陷 · 839106b7
+Browser organization mirror · mirror · 发现缺陷 · f0052e62
+来源侧
+请明确选择来源侧
+baseline · 原比较基线侧
+target · 原比较目标侧
+归入版本
+请选择本项目版本
+baseline declared release · http://127.0.0.1:54095/baseline?[redacted]
+更早的运行：填写完整 ID
+
+所选侧入口：http://127.0.0.1:54095/baseline?[redacted]
+
+完整入口由服务端核对，包含查询参数。比较失败或阻塞不直接决定所选侧资格。
+
+该运行的 baseline 侧已有本项目归属记录，不能重复认领；另一侧可独立选择。
+
+我确认将以上运行的所选侧归入当前项目版本。此次记录不批准、选用或启动运行。
+确认归属所选侧
+
+baseline · 原比较基线侧已归属到「baseline declared release」。归属已完成，可按需核对保存来源。
+
+已归属来源 1
+
+这里只显示已存记录；点击单条“核对来源”才重读原件。
+
+baseline declared release · baseline
+核对来源
+
+mirror · ac-26891466-ded7-4298-8579-68def0052e62
+
+http://127.0.0.1:54095/baseline?[redacted]
+
+归属于 2026/10/18 11:12:53 · ax-16784ac9-58c2-4099-9627-644ef62053ab

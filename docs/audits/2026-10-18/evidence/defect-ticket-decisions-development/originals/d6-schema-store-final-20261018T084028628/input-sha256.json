@@ -1,0 +1,32 @@
+[
+  {
+    "path": "core/src/acceptance/defect-ticket-schema.mjs",
+    "bytes": 20999,
+    "sha256": "e531a8d37eb771d542aa2dc2478e2a3ab0213187f0b8a1f8458b2fa4c8b875e6"
+  },
+  {
+    "path": "core/src/acceptance/defect-ticket-store.mjs",
+    "bytes": 21173,
+    "sha256": "5efe3e33f3e85cd0b7cdaf18e6fd0f133791466298ca485bcd6645a4d3aebc32"
+  },
+  {
+    "path": "core/test/acceptance-defect-ticket-schema.test.mjs",
+    "bytes": 21225,
+    "sha256": "98a404ea8912da03a7f8f967c4c23535fc2a633ba0efaf01a7463ff0d1f7ac58"
+  },
+  {
+    "path": "core/test/acceptance-defect-ticket-store.test.mjs",
+    "bytes": 36607,
+    "sha256": "63c6aa2162d061d385164d17c456adb43e6cc41a66525f20b7f5f087cc672aff"
+  },
+  {
+    "path": "core/test/acceptance-defect-ticket-decision-crash.test.mjs",
+    "bytes": 7701,
+    "sha256": "903b15ddb545af501ef6741a8edcaafa78e90946bc7eb8a69e806dac2ef9ae91"
+  },
+  {
+    "path": "core/test/fixtures/acceptance-defect-ticket-decision-kill-child.mjs",
+    "bytes": 2510,
+    "sha256": "4ba2a7b14e60a2d47774618291a85c957e9b7b3d3a24dd74fffa86f3b0c80058"
+  }
+]

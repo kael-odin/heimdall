@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-eed71569-f624-4775-a2b7-5b369008d3cb",
+  "taskId": "a-48c746b7-0096-4aac-9976-ec57eaa1d1d4",
+  "name": "完整需求草稿 / 未发请求",
+  "mode": "spec",
+  "targetUrl": "http://127.0.0.1:50172/release?tenant=alpha",
+  "status": "completed",
+  "gate": "blocked",
+  "createdAt": "2026-10-18T03:08:06.714Z",
+  "updatedAt": "2026-10-18T03:08:07.263Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "完整需求草稿 / 未发请求",
+    "mode": "spec",
+    "targetUrl": "http://127.0.0.1:50172/release?tenant=alpha",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 262144,
+    "spec": {
+      "source": {
+        "id": "baseline-quota-requirement",
+        "revision": "v1",
+        "type": "manual",
+        "title": "额度与健康需求"
+      },
+      "approved": false,
+      "checks": [
+        {
+          "id": "QUOTA",
+          "title": "需求预期保持正确，即使目标额度失败",
+          "method": "GET",
+          "path": "/quota",
+          "severity": "high",
+          "expect": {
+            "status": 200,
+            "contentType": "application/json",
+            "json": [
+              {
+                "pointer": "/code",
+                "kind": "equals",
+                "value": 0
+              },
+              {
+                "pointer": "/enabled",
+                "kind": "equals",
+                "value": false
+              },
+              {
+                "pointer": "/name",
+                "kind": "equals",
+                "value": ""
+              }
+            ],
+            "schema": {
+              "type": "object",
+              "required": [
+                "code",
+                "quota",
+                "enabled",
+                "name"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "integer"
+                },
+                "quota": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "HEALTH",
+          "title": "只读HEAD健康合同",
+          "method": "HEAD",
+          "path": "/health",
+          "severity": "medium",
+          "expect": {
+            "status": 204
+          }
+        }
+      ],
+      "omissions": []
+    }
+  },
+  "summary": {
+    "total": 2,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 2,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 0,
+      "total": 2,
+      "ratio": 0
+    },
+    "dimensions": {
+      "visual": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 2,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-18T03:08:07.232Z",
+  "error": null,
+  "reportSha256": "7eba5e2f334b9f2f46008fa167d2657ebd3ad70634b74c8dd2e839137846274b"
+}

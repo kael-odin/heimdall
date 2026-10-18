@@ -1,0 +1,19 @@
+{
+  "command": [
+    "gh",
+    "api",
+    "repos/kael-odin/heimdall/actions/runs/39082419484/attempts/1"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\defect-ticket-closure-d5\\heimdall",
+  "startedAt": "2026-10-18T00:54:01.161098+00:00",
+  "endedAt": "2026-10-18T00:54:02.475158+00:00",
+  "exitCode": 0,
+  "timedOut": false,
+  "launchError": null,
+  "stdoutFile": "run.json",
+  "stdoutBytes": 12337,
+  "stdoutSha256": "2766aec127f1df4bc926cc5e5db33b18bc12680b3c74aebdecf114fe03a5b509",
+  "stderrFile": "run.stderr.log",
+  "stderrBytes": 0,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 import { createHash, randomUUID, webcrypto } from 'node:crypto';
 import * as helpers from '../../console/src/acceptance-defect-tickets.js';
 import { buildAcceptanceIdentity } from '../src/acceptance/identity.mjs';
-import { defectTicketDigest, defectTicketEventBytes } from '../src/acceptance/defect-ticket-schema.mjs';
+import { defectTicketDigest, defectTicketEventBytes, defectTicketRejectionBytes } from '../src/acceptance/defect-ticket-schema.mjs';
 import { createDefectTicketEvent, projectDefectTicket, previewDefectTicketClose, listDefectTicketSources } from '../src/acceptance/defect-ticket-model.mjs';
 
 let vue;
@@ -49,6 +49,22 @@ const listResponse = project => ({ schemaVersion: 1, kind: 'manual-defect-ticket
   ticketCount: 0, associatedCheckCount: 0, tickets: [] });
 const actionResponse = event => ({ schemaVersion: 1, kind: 'manual-defect-ticket-action', outcome: 'recorded', projectId, ticketId: event.ticketId,
   actionId: event.actionId, requestFingerprint: event.requestFingerprint, eventSha256: hash(defectTicketEventBytes(event)), event });
+const unresolvedResponse = original => ({ schemaVersion: 1, kind: 'manual-defect-ticket-action', projectId: original.projectId,
+  actionId: original.actionId, outcome: 'unresolved', reason: 'ABSENCE_IS_NOT_A_COMMIT_DECISION' });
+const rejectedResponse = original => {
+  const rejection = { actionDecisionVersion: 1, kind: 'manual-defect-ticket-action-rejection', original: clone(original),
+    effect: 'deny-late-manual-defect-ticket-action', decidedAt: at(5), actor: { kind: 'local-operator' } };
+  return { schemaVersion: 1, kind: 'manual-defect-ticket-action', outcome: 'rejected', projectId: original.projectId,
+    ticketId: original.ticketId, actionId: original.actionId, requestFingerprint: original.requestFingerprint,
+    rejectionSha256: hash(defectTicketRejectionBytes(rejection)), rejection };
+};
+async function originalFor(kind = 'create') {
+  const preview = previewDefectTicketClose({ records, facts: factsFor(), afterOperationId: healthy.operationId });
+  const input = kind === 'create' ? request : { actionId: uid('da', 2), afterOperationId: healthy.operationId,
+    expectedRevision: preview.expectedRevision, expectedHeadSha256: preview.expectedHeadSha256, memberSetDigest: preview.memberSetDigest,
+    factsDigest: preview.factsDigest, previewDigest: preview.previewDigest, resolution: 'Explicit close draft.', confirmed: true };
+  return helpers.defectTicketConfirmation({ projectId, ticketId: request.ticketId, kind, request: input }, { crypto: webcrypto });
+}
 const response = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 function locksFor() {
@@ -65,14 +81,15 @@ const script = fs.readFileSync(new URL('../../console/src/AcceptanceDefectTicket
 const evaluate = new Function('vue', 'helpers', 'environment', `
   const { computed, nextTick, reactive, ref, watch } = vue;
   const { defineProps, onBeforeUnmount, API, apiHeaders, location, window, localStorage, crypto } = environment;
-  const { DEFECT_HANDLING_LABELS, DEFECT_VERIFICATION_LABELS, defectTicketCreateInput, defectTicketCloseInput,
+  const { DEFECT_HANDLING_LABELS, DEFECT_VERIFICATION_LABELS, defectTicketCreateInput, defectTicketCloseInput, defectTicketDenyInput,
     defectTicketSources, defectTicketList, defectTicketDetail, defectTicketPreview, defectTicketConfirmation,
     defectTicketAction, createDefectTicketReadGuard, createDefectTicketReceipts, requestDefectTickets, fetchDefectTicketExport } = helpers;
   ${script}
   return { draft, candidates, sources, selectedTicket, preview, pending, writing, loading, error, notice,
-    createConfirmed, closeConfirmed, canCreate, canClose, canWrite, loadList, loadSources, openTicket, previewClose, submit, reconcile };
+    createConfirmed, closeConfirmed, denyConfirmed, canCreate, canClose, canWrite, canDecide, canDeny, confirmDeny,
+    loadList, loadSources, openTicket, previewClose, submit, reconcile, denyOriginal };
 `);
-function model(t, { storage = storageFor(), locks = locksFor(), transport = () => null, receiptAdapter } = {}) {
+function model(t, { storage = storageFor(), locks = locksFor(), transport = () => null, receiptAdapter, helperAdapter = value => value } = {}) {
   const detailFor = project => ({ project: { id: project }, browserCandidates: project === projectId ? [{ id: candidateId, contentDigest, releaseId: source.targetReleaseId }] : [], releases: [] });
   const props = vue.reactive({ projectId, detail: detailFor(projectId), active: true, ready: true, version: { generationId: 'test-generation', revision: 1 } });
   const calls = [], listeners = new Map(), scope = vue.effectScope(); let dispose;
@@ -84,11 +101,11 @@ function model(t, { storage = storageFor(), locks = locksFor(), transport = () =
     if (options.method === 'GET' && url.endsWith('/' + request.ticketId)) return response(detailResponse());
     assert.fail(`Unexpected offline transport: ${options.method} ${url}`);
   };
-  const adapted = { ...helpers,
+  const adapted = helperAdapter({ ...helpers,
     defectTicketConfirmation: (raw, options) => helpers.defectTicketConfirmation(raw, { ...options, crypto: webcrypto }),
     defectTicketAction: (raw, original, options) => helpers.defectTicketAction(raw, original, { ...options, crypto: webcrypto }),
     createDefectTicketReceipts: value => { const receipts = helpers.createDefectTicketReceipts({ ...value, locks }); return receiptAdapter ? receiptAdapter(receipts) : receipts; },
-    requestDefectTickets: (project, suffix, options) => helpers.requestDefectTickets(project, suffix, { ...options, timeoutMs: 30, fetcher }) };
+    requestDefectTickets: (project, suffix, options) => helpers.requestDefectTickets(project, suffix, { ...options, timeoutMs: 30, crypto: webcrypto, fetcher }) });
   const state = scope.run(() => evaluate(vue, adapted, { defineProps: () => props, onBeforeUnmount: callback => { dispose = callback; },
     API: '', apiHeaders: () => ({}), location: { origin, href: origin + '/' }, localStorage: storage, crypto: { subtle: webcrypto.subtle, randomUUID },
     window: { addEventListener: (type, callback) => listeners.set(type, callback), removeEventListener: type => listeners.delete(type) } }));
@@ -101,6 +118,10 @@ async function prepare(state) {
   state.draft.value.sourceOperationId = source.operationId; state.draft.value.memberCheckIds = ['desktop'];
   Object.assign(state.draft.value, { title: request.title, severity: request.severity, description: request.description, reproduction: request.reproduction });
   state.createConfirmed.value = true; assert.equal(state.canCreate.value, true);
+}
+function seedPending(state, original) {
+  state.storage.setItem(keyFor(original.projectId), JSON.stringify([original]));
+  state.listeners.get('storage')({ key: keyFor(original.projectId) });
 }
 
 test('project switches preserve each draft, abort stale source reads and clear every explicit confirmation', options, async t => {
@@ -194,4 +215,165 @@ test('storage changes invalidate explicit close confirmation and preserve unknow
   state.storage.setItem(keyFor(projectId), JSON.stringify([original])); state.listeners.get('storage')({ key: keyFor(projectId) });
   assert.equal(state.closeConfirmed.value, false); assert.deepEqual(clone(state.pending.value), [original]); assert.equal(state.canWrite.value, false);
   state.dispose(); assert.equal(state.listeners.size, 0); assert.equal(state.canWrite.value, false);
+});
+
+for (const kind of ['create', 'close']) test(`${kind} permanent denial requires an explicit exact confirmation, queries first and preserves the draft`, options, async t => {
+  const original = await originalFor(kind);
+  const state = model(t, { transport: (url, settings) => {
+    if (url.endsWith(`/actions/${original.actionId}`)) return response(unresolvedResponse(original));
+    if (url.endsWith(`/actions/${original.actionId}/deny`)) {
+      assert.equal(settings.method, 'POST'); assert.deepEqual(JSON.parse(settings.body), { schemaVersion: 1, confirmed: true, original });
+      return response(rejectedResponse(original));
+    }
+    return null;
+  } });
+  state.draft.value.title = 'Retained create draft'; state.draft.value.resolution = 'Retained close draft'; seedPending(state, original); await settle();
+  assert.equal(state.canWrite.value, false); assert.equal(state.canDecide.value, true); assert.equal(state.canDeny(original), false);
+  const before = state.calls.length; await state.denyOriginal(original); assert.equal(state.calls.length, before);
+  state.confirmDeny(original, true); assert.equal(state.canDeny(original), true); await state.denyOriginal(original);
+  assert.equal(state.pending.value.length, 0); assert.deepEqual(JSON.parse(state.storage.getItem(keyFor(projectId))), []);
+  assert.match(state.notice.value, /原动作已永久拒绝/); assert(!/已记录|已明确关闭/.test(state.notice.value));
+  assert.equal(state.draft.value.title, 'Retained create draft'); assert.equal(state.draft.value.resolution, 'Retained close draft');
+  assert.equal(state.selectedTicket.value, null); assert.equal(state.draft.value.selectedTicketId, ''); assert.equal(state.denyConfirmed.value.length, 0);
+  const mutations = state.calls.filter(call => call.method === 'POST'); assert.equal(mutations.length, 1); assert(mutations[0].url.endsWith('/deny'));
+  const actionCalls = state.calls.filter(call => call.url.includes('/actions/')); assert.deepEqual(actionCalls.map(call => call.method), ['GET', 'POST']);
+  assert(!state.calls.some(call => call.url.endsWith('/' + original.ticketId)));
+});
+
+test('recorded first wins the denial preflight and follows the existing ticket detail path without another POST', options, async t => {
+  const original = await originalFor(), event = createEvent(original.request);
+  const state = model(t, { transport: url => url.endsWith(`/actions/${original.actionId}`) ? response(actionResponse(event)) : null });
+  seedPending(state, original); state.confirmDeny(original, true); await state.denyOriginal(original);
+  assert.equal(state.pending.value.length, 0); assert.match(state.notice.value, /原动作已记录/);
+  assert.equal(state.selectedTicket.value.ticketId, original.ticketId); assert.equal(state.calls.filter(call => call.method === 'POST').length, 0);
+  assert(state.calls.some(call => call.url.endsWith('/' + original.ticketId)));
+});
+
+test('an accepted original arriving between GET and deny keeps the recorded path', options, async t => {
+  const original = await originalFor(), event = createEvent(original.request);
+  const state = model(t, { transport: url => url.endsWith('/deny') ? response(actionResponse(event))
+    : url.endsWith(`/actions/${original.actionId}`) ? response(unresolvedResponse(original)) : null });
+  seedPending(state, original); state.confirmDeny(original, true); await state.denyOriginal(original);
+  assert.equal(state.pending.value.length, 0); assert.equal(state.selectedTicket.value.ticketId, original.ticketId);
+  assert.match(state.notice.value, /原动作已记录/); assert(!state.notice.value.includes('永久拒绝'));
+  assert.equal(state.calls.filter(call => call.method === 'POST').length, 1);
+});
+
+test('a complete rejected preflight or read-only reconciliation never opens an absent ticket', options, async t => {
+  for (const method of ['denyOriginal', 'reconcile']) {
+    const original = await originalFor();
+    const state = model(t, { transport: url => url.endsWith(`/actions/${original.actionId}`) ? response(rejectedResponse(original)) : null });
+    seedPending(state, original); state.confirmDeny(original, true); await state[method](original);
+    assert.equal(state.pending.value.length, 0); assert.match(state.notice.value, /原动作已永久拒绝/);
+    assert.equal(state.selectedTicket.value, null); assert.equal(state.draft.value.selectedTicketId, '');
+    assert(state.calls.every(call => call.method === 'GET')); assert(!state.calls.some(call => call.url.endsWith('/' + original.ticketId)));
+  }
+});
+
+test('original create and close POST rejected receipts use neither accepted UI nor ticket detail requests', options, async t => {
+  for (const kind of ['create', 'close']) {
+    const state = model(t, { transport: (url, settings) => {
+      if (url.includes('/close-preview?')) return response({ schemaVersion: 1, projectId, ticketId: request.ticketId,
+        preview: previewDefectTicketClose({ records, facts: factsFor(), afterOperationId: healthy.operationId }) });
+      if (settings.method === 'POST') return helpers.defectTicketConfirmation({ projectId, ticketId: kind === 'create'
+        ? JSON.parse(settings.body).ticketId : request.ticketId, kind, request: JSON.parse(settings.body) }, { crypto: webcrypto })
+        .then(original => response(rejectedResponse(original)));
+      return null;
+    } });
+    if (kind === 'create') await prepare(state);
+    else { await state.openTicket(request.ticketId); await state.previewClose(); state.draft.value.resolution = 'Preserve this close draft'; state.closeConfirmed.value = true; assert.equal(state.canClose.value, true); }
+    const detailsBefore = state.calls.filter(call => call.url.endsWith('/' + request.ticketId)).length;
+    await state.submit(kind); assert.equal(state.pending.value.length, 0); assert.match(state.notice.value, /原动作已永久拒绝/);
+    assert.equal(state.calls.filter(call => call.url.endsWith('/' + request.ticketId)).length, detailsBefore);
+    assert(!/已记录|已明确关闭/.test(state.notice.value)); assert.equal(state.canClose.value, false);
+    assert.equal(kind === 'create' ? state.draft.value.title : state.draft.value.resolution, kind === 'create' ? request.title : 'Preserve this close draft');
+  }
+});
+
+test('unknown, malformed, digest-mismatched and 4xx deny responses preserve the original and only a later explicit GET resolves it', options, async t => {
+  for (const failure of ['network', 'malformed', 'digest', '4xx']) {
+    const original = await originalFor(); let sent = false;
+    const state = model(t, { transport: (url, settings) => {
+      if (url.endsWith('/deny')) {
+        assert.equal(settings.method, 'POST'); sent = true;
+        if (failure === 'network') throw new Error('simulated lost deny');
+        if (failure === 'malformed') return new Response('{broken', { headers: { 'content-type': 'application/json' } });
+        if (failure === '4xx') return response({ code: 'ACTION_CONFLICT', error: 'different original', outcomeUnknown: false }, 409);
+        return response({ ...rejectedResponse(original), rejectionSha256: hash('wrong digest') });
+      }
+      if (url.endsWith(`/actions/${original.actionId}`)) return response(sent ? rejectedResponse(original) : unresolvedResponse(original));
+      return null;
+    } });
+    seedPending(state, original); state.confirmDeny(original, true); await state.denyOriginal(original); await settle();
+    assert.deepEqual(clone(state.pending.value), [original]); assert.equal(state.denyConfirmed.value.length, 0); assert.equal(state.canDeny(original), false);
+    assert(state.error.value); assert.equal(state.calls.filter(call => call.method === 'POST').length, 1);
+    await state.reconcile(state.pending.value[0]); assert.equal(state.pending.value.length, 0); assert.match(state.notice.value, /永久拒绝/);
+    assert.equal(state.calls.filter(call => call.method === 'POST').length, 1); assert.equal(state.selectedTicket.value, null);
+  }
+});
+
+test('denial confirmation resets on context, project ABA, storage events and replacement of the complete original', options, async t => {
+  const original = await originalFor(), state = model(t); seedPending(state, original);
+  for (const change of [() => { state.props.version.revision++; }, () => { state.props.version.generationId += '-new'; },
+    () => { state.props.active = false; state.props.active = true; }, () => { state.switchProject(otherProjectId); state.switchProject(projectId); },
+    () => state.listeners.get('storage')({ key: keyFor(projectId) })]) {
+    state.confirmDeny(state.pending.value[0], true); assert.equal(state.canDeny(original), true); change(); await settle();
+    assert.equal(state.denyConfirmed.value.length, 0); assert.equal(state.canDeny(original), false); assert.deepEqual(clone(state.pending.value), [original]);
+  }
+  state.confirmDeny(original, true);
+  const replacement = await helpers.defectTicketConfirmation({ projectId, ticketId: original.ticketId, kind: original.kind,
+    request: { ...original.request, description: 'Different complete original with the same action id.' } }, { crypto: webcrypto });
+  seedPending(state, replacement); assert.equal(state.canDeny(original), false); assert.equal(state.canDeny(replacement), false);
+  await state.denyOriginal(original); assert(state.calls.every(call => call.method === 'GET'));
+});
+
+for (const boundary of ['preflight-fetch', 'preflight-proof', 'deny-fetch', 'decision-proof', 'exclusive-lock'])
+  test(`project ABA during ${boundary} preserves the original and cannot apply a stale denial result`, options, async t => {
+    const original = await originalFor(), entered = deferred(), release = deferred(), innerLocks = locksFor();
+    const pause = async value => { entered.resolve(); await release.promise; return value; };
+    const state = model(t, { locks: { request: (name, settings, action) => innerLocks.request(name, settings,
+      async () => { if (boundary === 'exclusive-lock') await pause(); return action(); }) },
+      helperAdapter: base => ({ ...base, defectTicketAction: async (raw, expected, settings) => {
+        if (boundary === 'preflight-proof' && raw.outcome === 'unresolved' || boundary === 'decision-proof' && raw.outcome === 'rejected') await pause();
+        return base.defectTicketAction(raw, expected, settings);
+      } }),
+      transport: url => {
+        if (url.endsWith(`/actions/${original.actionId}`)) {
+          const value = response(unresolvedResponse(original)); return boundary === 'preflight-fetch' ? pause(value) : value;
+        }
+        if (url.endsWith('/deny')) { const value = response(rejectedResponse(original)); return boundary === 'deny-fetch' ? pause(value) : value; }
+        return null;
+      } });
+    seedPending(state, original); state.confirmDeny(original, true); const deciding = state.denyOriginal(original); await entered.promise;
+    state.switchProject(otherProjectId); state.draft.value.title = 'Other project retained'; state.switchProject(projectId); release.resolve();
+    await deciding; await settle(); assert.deepEqual(JSON.parse(state.storage.getItem(keyFor(projectId))), [original]);
+    assert.deepEqual(clone(state.pending.value), [original]); assert.equal(state.selectedTicket.value, null); assert.equal(state.notice.value, '');
+    assert.equal(state.loading.deny, false); assert.equal(state.denyConfirmed.value.length, 0);
+    assert.equal(state.calls.filter(call => call.method === 'POST').length, ['preflight-fetch', 'preflight-proof'].includes(boundary) ? 0 : 1);
+  });
+
+test('a storage event at the exclusive decision lock invalidates the checked original even if its bytes return unchanged', options, async t => {
+  const original = await originalFor(), entered = deferred(), release = deferred();
+  const state = model(t, { locks: { request: async (_name, _settings, action) => { entered.resolve(); await release.promise; return action(); } },
+    transport: url => url.endsWith(`/actions/${original.actionId}`) ? response(rejectedResponse(original)) : null });
+  seedPending(state, original); state.confirmDeny(original, true); const deciding = state.denyOriginal(original); await entered.promise;
+  state.listeners.get('storage')({ key: keyFor(projectId) }); release.resolve(); await deciding;
+  assert.deepEqual(clone(state.pending.value), [original]); assert.equal(state.denyConfirmed.value.length, 0); assert.equal(state.notice.value, '');
+  assert(state.calls.every(call => call.method === 'GET'));
+});
+
+test('a failed local removal retains the visible original and disables all subsequent denial writes', options, async t => {
+  const original = await originalFor(), state = model(t, { transport: url => url.endsWith(`/actions/${original.actionId}`) ? response(rejectedResponse(original)) : null });
+  seedPending(state, original); state.storage.setItem = () => { throw new Error('storage quota'); };
+  state.confirmDeny(original, true); await state.denyOriginal(original);
+  assert.deepEqual(clone(state.pending.value), [original]); assert.equal(state.canDecide.value, false); assert.equal(state.canWrite.value, false);
+  assert(state.error.value); assert.equal(state.denyConfirmed.value.length, 0); assert(state.calls.every(call => call.method === 'GET'));
+});
+
+test('without Web Locks permanent denial is disabled while explicit read-only reconciliation remains available', options, async t => {
+  const original = await originalFor(), state = model(t, { locks: null,
+    transport: url => url.endsWith(`/actions/${original.actionId}`) ? response(unresolvedResponse(original)) : null });
+  seedPending(state, original); state.confirmDeny(original, true); assert.equal(state.canDeny(original), false);
+  await state.denyOriginal(original); await state.reconcile(original); assert.deepEqual(clone(state.pending.value), [original]);
+  assert.match(state.notice.value, /不代表确定未提交/); assert(state.calls.every(call => call.method === 'GET'));
 });

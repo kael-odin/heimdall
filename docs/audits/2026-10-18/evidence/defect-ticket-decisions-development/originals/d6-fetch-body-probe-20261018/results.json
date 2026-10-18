@@ -1,0 +1,156 @@
+[
+  {
+    "body": "empty",
+    "mode": "unread",
+    "value": {
+      "status": 502,
+      "bodyUsed": false
+    },
+    "pwFinished": false,
+    "cdpFinished": false,
+    "failed": [
+      {
+        "at": "2026-10-18T01:16:19.539Z",
+        "event": "pw-failed",
+        "url": "http://127.0.0.1:60024/case?body=empty&mode=unread",
+        "error": {
+          "errorText": "net::ERR_ABORTED"
+        }
+      },
+      {
+        "at": "2026-10-18T01:16:19.539Z",
+        "event": "cdp-failed",
+        "id": "41480.2",
+        "url": "http://127.0.0.1:60024/case?body=empty&mode=unread",
+        "error": "net::ERR_ABORTED",
+        "canceled": true
+      }
+    ]
+  },
+  {
+    "body": "empty",
+    "mode": "throw",
+    "value": {
+      "error": "MIME rejected"
+    },
+    "pwFinished": false,
+    "cdpFinished": false,
+    "failed": [
+      {
+        "at": "2026-10-18T01:16:20.748Z",
+        "event": "pw-failed",
+        "url": "http://127.0.0.1:60024/case?body=empty&mode=throw",
+        "error": {
+          "errorText": "net::ERR_ABORTED"
+        }
+      },
+      {
+        "at": "2026-10-18T01:16:20.748Z",
+        "event": "cdp-failed",
+        "id": "41480.3",
+        "url": "http://127.0.0.1:60024/case?body=empty&mode=throw",
+        "error": "net::ERR_ABORTED",
+        "canceled": true
+      }
+    ]
+  },
+  {
+    "body": "empty",
+    "mode": "consume",
+    "value": {
+      "status": 502,
+      "bodyUsed": true
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "body": "empty",
+    "mode": "cancel",
+    "value": {
+      "status": 502,
+      "bodyUsed": true
+    },
+    "pwFinished": false,
+    "cdpFinished": false,
+    "failed": [
+      {
+        "at": "2026-10-18T01:16:23.187Z",
+        "event": "pw-failed",
+        "url": "http://127.0.0.1:60024/case?body=empty&mode=cancel",
+        "error": {
+          "errorText": "net::ERR_ABORTED"
+        }
+      },
+      {
+        "at": "2026-10-18T01:16:23.187Z",
+        "event": "cdp-failed",
+        "id": "41480.5",
+        "url": "http://127.0.0.1:60024/case?body=empty&mode=cancel",
+        "error": "net::ERR_ABORTED",
+        "canceled": true
+      }
+    ]
+  },
+  {
+    "body": "html",
+    "mode": "unread",
+    "value": {
+      "status": 502,
+      "bodyUsed": false
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "body": "html",
+    "mode": "throw",
+    "value": {
+      "error": "MIME rejected"
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "body": "html",
+    "mode": "consume",
+    "value": {
+      "status": 502,
+      "bodyUsed": true
+    },
+    "pwFinished": true,
+    "cdpFinished": true,
+    "failed": []
+  },
+  {
+    "body": "html",
+    "mode": "cancel",
+    "value": {
+      "status": 502,
+      "bodyUsed": true
+    },
+    "pwFinished": false,
+    "cdpFinished": false,
+    "failed": [
+      {
+        "at": "2026-10-18T01:16:28.053Z",
+        "event": "pw-failed",
+        "url": "http://127.0.0.1:60024/case?body=html&mode=cancel",
+        "error": {
+          "errorText": "net::ERR_ABORTED"
+        }
+      },
+      {
+        "at": "2026-10-18T01:16:28.053Z",
+        "event": "cdp-failed",
+        "id": "41480.9",
+        "url": "http://127.0.0.1:60024/case?body=html&mode=cancel",
+        "error": "net::ERR_ABORTED",
+        "canceled": true
+      }
+    ]
+  }
+]

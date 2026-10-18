@@ -1,0 +1,627 @@
+[
+  {
+    "id": "ui-9653b267-fa1d-437b-9578-ac88f4ff4095",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-d4ade823-222c-4b55-a846-08fd03716271",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs/ac-050b5e7e-a02d-4639-ba68-36f5bbe8aa78",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs/ac-050b5e7e-a02d-4639-ba68-36f5bbe8aa78",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-a4a87232-8c68-44cd-a60e-490bb683808d",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects",
+    "url": "http://127.0.0.1:57752/api/acceptance/projects",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-87286e65-2d25-49ae-b7e0-67fe183b3c10",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs/ac-050b5e7e-a02d-4639-ba68-36f5bbe8aa78/report",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs/ac-050b5e7e-a02d-4639-ba68-36f5bbe8aa78/report",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-f89067e1-8ca1-4bb4-b8c8-3d08a695e55d",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef",
+    "url": "http://127.0.0.1:57752/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-25eccaa6-6d6a-404c-a38d-616db31bd9bb",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/browser-executions",
+    "url": "http://127.0.0.1:57752/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/browser-executions",
+    "finished": false,
+    "failed": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "id": "ui-b620b27b-eaa6-43a1-807d-5cc16a93d972",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-80989f9d-dcd3-430e-99ec-7af44dee6143",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/browser-executions",
+    "url": "http://127.0.0.1:57752/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/browser-executions",
+    "finished": false,
+    "failed": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "id": "ui-0683e4d4-5c22-4b89-8a2b-8bcdc6f97962",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/browser-executions",
+    "url": "http://127.0.0.1:57752/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/browser-executions",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-09c827fc-b458-41fb-ad44-3b15d868ae57",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets",
+    "url": "http://127.0.0.1:57752/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-d45fac97-145a-43a6-8268-58cf5cde1e17",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets/sources",
+    "url": "http://127.0.0.1:57752/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets/sources?candidateId=bc-e063287e-7e29-42df-8e5c-29aa703b2a62",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-039ad7c9-111d-4c1a-b436-14f3968e0414",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-9dfea886-43a0-48e4-a900-d06d01b9c3d7",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-f95ff282-79e6-4052-9a2c-97fe6f7aa54e",
+    "method": "POST",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets",
+    "url": "http://127.0.0.1:57752/api/acceptance/projects/ap-b9e832f6-23f1-421a-8693-6e57a328a4ef/defect-tickets",
+    "rawBody": "{\"actionId\":\"da-1c779d0f-87b8-4d85-81c7-091769bbb923\",\"description\":\"本机受控样例：固定来源、两项可靠失败、人工动作决定。\",\"memberCheckIds\":[\"route-1-1-desktop-point-1-menu\",\"route-1-1-desktop-visual\"],\"reproduction\":\"打开页面，展开菜单，核对布局及导航。\",\"severity\":\"high\",\"sourceOperationId\":\"bo-c7410244-0263-467b-b8d6-66c553ee0d18\",\"ticketId\":\"dt-a9073419-830b-47ff-a00f-cde2f7e5608f\",\"title\":\"菜单布局与展开行为的两个固定检查\"}",
+    "bytes": 492,
+    "bodySha256": "0aaed26b92b7c31315fdcc77876968202fcabe2614aff0f5f1cd79d9cf5a438a",
+    "body": {
+      "actionId": "da-1c779d0f-87b8-4d85-81c7-091769bbb923",
+      "description": "本机受控样例：固定来源、两项可靠失败、人工动作决定。",
+      "memberCheckIds": [
+        "route-1-1-desktop-point-1-menu",
+        "route-1-1-desktop-visual"
+      ],
+      "reproduction": "打开页面，展开菜单，核对布局及导航。",
+      "severity": "high",
+      "sourceOperationId": "bo-c7410244-0263-467b-b8d6-66c553ee0d18",
+      "ticketId": "dt-a9073419-830b-47ff-a00f-cde2f7e5608f",
+      "title": "菜单布局与展开行为的两个固定检查"
+    },
+    "finished": false,
+    "failed": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "id": "ui-bf1dc5d4-d93c-4612-9884-7a05cd802496",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-7f8c3360-aae3-461a-8a58-b10dd1fb442e",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-7797b78f-291d-406a-bdf8-90ff1f0c6219",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-b771db14-c9fd-4b3f-a3e4-bb3c8cb027ba",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-ce94cba0-8bc5-489f-b07d-4ef2188f5a5c",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-7346fd02-4be3-432a-8be4-6cbcfd6ca3b6",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-f25fdbd0-9958-4cdf-a14b-fce048e1bec7",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-cd4c4309-0c26-429e-9505-56ca8638cf08",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-f9ddc10e-44d2-4dc5-a36b-f2dbd8a5f51e",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-b95ea5b7-a758-45ac-a83e-e037b2e8a299",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-e342aa4a-071d-4c4f-ae61-8a98d903d03d",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-992aa41f-0ac4-4191-90a8-7dad33ae1403",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-cd9be10b-a4ba-44d2-bc45-a2fdad3556c1",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-6b258331-aa61-43f0-9bc7-dfbdf4bee1ea",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-62857d51-2ceb-45e8-a6d7-a34e93a24d8b",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-96e33883-c206-4a84-85b7-2d5649db5783",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-99162354-5c97-471c-a77a-e66326c48af3",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-993d17d6-25ca-4544-a53b-b7b5e515ca4f",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-a8f5842e-6cc2-460c-aa73-20ed52a0d6b5",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-831ce25a-2348-452f-82ff-23700bc62a72",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-7fbb1646-23c0-4a88-85b8-0fe37c649263",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-62f13b8a-751f-46f6-87c0-c28c904a1972",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-1b0aef26-2dc9-4e8c-abe3-67714a4b125f",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-e9e95043-9a1b-4e60-bbf1-cbdc0528e1f4",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-e6ec8018-38c5-431d-ae9f-510a27803a26",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-a53e03c4-e774-4e8e-87c0-663bb52eb1e3",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-cffbf224-8e3b-4e16-98e0-9dd227973abe",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-815632f1-99af-45a7-8a57-a6da47c872b5",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-10c55f6d-6552-4623-9fb4-13d43ee0686b",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-f60974e0-3225-4aa2-af65-e007c9a5b788",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-9b38a29a-64ef-45b3-b23a-8b5fb5474b78",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-f8e1ee41-b559-4820-a28d-ec14a8c151a8",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-d97eab99-2ecd-4416-865e-6ce49815422f",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-e9139602-2a3a-4f06-8734-94f3d4519304",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-149df78c-175f-4bd1-8a88-63fd3bde7ab9",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-4bacf91e-f27b-48e9-a914-6ab81dac5251",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-ae27b19c-9bea-4623-8d53-c4fca35317d0",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-5bf7b91b-d63a-4a2d-a47c-4211fb31357c",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-4704822f-2c60-4ae3-a07f-c34f61d41b5d",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-1c710abe-eb00-4e85-8b04-97795addfda6",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-09561a30-b4e1-42e1-b7f1-49773ff729c4",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-5d55edf2-b770-422b-9cd5-456f4f8f1866",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-4efda5cf-da58-4cc3-a5e4-7d80681fe75a",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-cd392832-45a8-4939-a117-1e887057f752",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-63162207-a4d1-4ed1-8f3a-8ae9f3d75e0c",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-57132bb5-ac01-4e23-a408-db624f83e07c",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-eefbfe0f-f565-4d9e-a377-3c0711dc0710",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-1057823a-2471-4ed3-99b5-66bb97078087",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-757b6ed7-91c8-4228-a405-61f9251fe5f2",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-03742e99-afb8-4b51-813d-a3b6f70f7642",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-e92d99b3-91af-4927-b729-92b67f5ca208",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-3a5cf7f9-46de-4c4b-9181-ddd235add088",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/execution",
+    "url": "http://127.0.0.1:57752/api/acceptance/execution",
+    "finished": true,
+    "failed": null
+  },
+  {
+    "id": "ui-8340db87-f604-47f5-9d09-22dd3f28c339",
+    "method": "GET",
+    "origin": "http://127.0.0.1:57752",
+    "path": "/api/acceptance/runs",
+    "url": "http://127.0.0.1:57752/api/acceptance/runs",
+    "finished": false,
+    "failed": null
+  }
+]

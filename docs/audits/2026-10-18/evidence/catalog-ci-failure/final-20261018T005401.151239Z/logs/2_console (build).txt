@@ -1,0 +1,263 @@
+﻿2026-10-18T00:20:50.3530236Z Current runner version: '2.337.0'
+2026-10-18T00:20:50.3554849Z ##[group]Runner Image Provisioner
+2026-10-18T00:20:50.3555748Z Hosted Compute Agent
+2026-10-18T00:20:50.3556286Z Version: 20261012.601
+2026-10-18T00:20:50.3556906Z Commit: f3dc54e1fb89da6852db922499a0233137369e1d
+2026-10-18T00:20:50.3557530Z Build Date: 2026-10-12T17:48:21Z
+2026-10-18T00:20:50.3558090Z Worker ID: {58e36084-d10c-4589-a36b-9bf395256625}
+2026-10-18T00:20:50.3558780Z Region: centralus
+2026-10-18T00:20:50.3559301Z Cloud: Azure
+2026-10-18T00:20:50.3559819Z ##[endgroup]
+2026-10-18T00:20:50.3560832Z ##[group]Operating System
+2026-10-18T00:20:50.3561334Z Ubuntu
+2026-10-18T00:20:50.3561870Z 24.04.5
+2026-10-18T00:20:50.3562347Z LTS
+2026-10-18T00:20:50.3563144Z ##[endgroup]
+2026-10-18T00:20:50.3563647Z ##[group]Runner Image
+2026-10-18T00:20:50.3564160Z Image: ubuntu-24.04
+2026-10-18T00:20:50.3564717Z Version: 20261012.334.1
+2026-10-18T00:20:50.3565876Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261012.334/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-18T00:20:50.3567325Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261012.334
+2026-10-18T00:20:50.3568153Z ##[endgroup]
+2026-10-18T00:20:50.3569162Z ##[group]GITHUB_TOKEN Permissions
+2026-10-18T00:20:50.3570995Z Contents: read
+2026-10-18T00:20:50.3571820Z Metadata: read
+2026-10-18T00:20:50.3572286Z ##[endgroup]
+2026-10-18T00:20:50.3574625Z Secret source: Actions
+2026-10-18T00:20:50.3575564Z Cache mode: write
+2026-10-18T00:20:50.3576467Z Prepare workflow directory
+2026-10-18T00:20:50.3858492Z Prepare all required actions
+2026-10-18T00:20:50.3889003Z Getting action download info
+2026-10-18T00:20:50.6241528Z Download action repository 'actions/checkout@v7' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-10-18T00:20:50.7354047Z Download action repository 'pnpm/action-setup@v6' (SHA:0977fd99725f1db4007ccb2928dbb4e90d06cc86)
+2026-10-18T00:20:51.0454660Z Download action repository 'actions/setup-node@v7' (SHA:949feb2413d6458794dcd2491c4babbbce0c15c1)
+2026-10-18T00:20:51.6535170Z Complete job name: console (build)
+2026-10-18T00:20:51.7078296Z ##[group]Run actions/checkout@v7
+2026-10-18T00:20:51.7079039Z with:
+2026-10-18T00:20:51.7079530Z   repository: kael-odin/heimdall
+2026-10-18T00:20:51.7085075Z   token: ***
+2026-10-18T00:20:51.7085546Z   ssh-strict: true
+2026-10-18T00:20:51.7086034Z   ssh-user: git
+2026-10-18T00:20:51.7086531Z   persist-credentials: true
+2026-10-18T00:20:51.7087092Z   clean: true
+2026-10-18T00:20:51.7087595Z   sparse-checkout-cone-mode: true
+2026-10-18T00:20:51.7088192Z   fetch-depth: 1
+2026-10-18T00:20:51.7088679Z   fetch-tags: false
+2026-10-18T00:20:51.7089183Z   show-progress: true
+2026-10-18T00:20:51.7089679Z   lfs: false
+2026-10-18T00:20:51.7090150Z   submodules: false
+2026-10-18T00:20:51.7090678Z   set-safe-directory: true
+2026-10-18T00:20:51.7091256Z   allow-unsafe-pr-checkout: false
+2026-10-18T00:20:51.7091923Z ##[endgroup]
+2026-10-18T00:20:51.7888223Z Syncing repository: kael-odin/heimdall
+2026-10-18T00:20:51.7952451Z ##[group]Getting Git version info
+2026-10-18T00:20:51.7954084Z Working directory is '/home/runner/work/heimdall/heimdall'
+2026-10-18T00:20:51.7976330Z [command]/usr/bin/git version
+2026-10-18T00:20:51.8019578Z git version 2.55.0
+2026-10-18T00:20:51.8069653Z ##[endgroup]
+2026-10-18T00:20:51.8098193Z Temporarily overriding HOME='/home/runner/work/_temp/82afa96e-77cd-482b-af37-0f01e905b339' before making global git config changes
+2026-10-18T00:20:51.8101649Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-18T00:20:51.8104210Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/heimdall/heimdall
+2026-10-18T00:20:51.8107423Z Deleting the contents of '/home/runner/work/heimdall/heimdall'
+2026-10-18T00:20:51.8109358Z ##[group]Determining repository object format
+2026-10-18T00:20:51.8110932Z ##[endgroup]
+2026-10-18T00:20:51.8112295Z ##[group]Initializing the repository
+2026-10-18T00:20:51.8113850Z [command]/usr/bin/git init /home/runner/work/heimdall/heimdall
+2026-10-18T00:20:51.8215492Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-18T00:20:51.8230940Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-18T00:20:51.8244462Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-18T00:20:51.8245907Z hint: call:
+2026-10-18T00:20:51.8246693Z hint:
+2026-10-18T00:20:51.8247731Z hint: 	git config --global init.defaultBranch <name>
+2026-10-18T00:20:51.8248903Z hint:
+2026-10-18T00:20:51.8249990Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-18T00:20:51.8251709Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-18T00:20:51.8253878Z hint:
+2026-10-18T00:20:51.8254692Z hint: 	git branch -m <name>
+2026-10-18T00:20:51.8255628Z hint:
+2026-10-18T00:20:51.8256868Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-18T00:20:51.8259025Z Initialized empty Git repository in /home/runner/work/heimdall/heimdall/.git/
+2026-10-18T00:20:51.8262571Z [command]/usr/bin/git remote add origin https://github.com/kael-odin/heimdall
+2026-10-18T00:20:51.8325362Z ##[endgroup]
+2026-10-18T00:20:51.8326913Z ##[group]Disabling automatic garbage collection
+2026-10-18T00:20:51.8345031Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-18T00:20:51.8415605Z ##[endgroup]
+2026-10-18T00:20:51.8416852Z ##[group]Setting up auth
+2026-10-18T00:20:51.8417755Z Removing SSH command configuration
+2026-10-18T00:20:51.8419033Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-18T00:20:51.8515429Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-18T00:20:51.8808331Z Removing HTTP extra header
+2026-10-18T00:20:51.8810180Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-18T00:20:51.8850610Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-18T00:20:51.9047909Z Removing includeIf entries pointing to credentials config files
+2026-10-18T00:20:51.9054157Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-18T00:20:51.9074471Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-18T00:20:51.9273180Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-18T00:20:51.9315159Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/heimdall/heimdall/.git.path /home/runner/work/_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config
+2026-10-18T00:20:51.9340380Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/heimdall/heimdall/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config
+2026-10-18T00:20:51.9413239Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config
+2026-10-18T00:20:51.9418674Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config
+2026-10-18T00:20:51.9450173Z ##[endgroup]
+2026-10-18T00:20:51.9451312Z ##[group]Fetching the repository
+2026-10-18T00:20:51.9453874Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +41c359a62ecbb67ac15f38c51c95fa983a7492d3:refs/remotes/origin/main
+2026-10-18T00:20:58.9402262Z From https://github.com/kael-odin/heimdall
+2026-10-18T00:20:58.9403722Z  * [new ref]         41c359a62ecbb67ac15f38c51c95fa983a7492d3 -> origin/main
+2026-10-18T00:20:58.9405771Z [command]/usr/bin/git branch --list --remote origin/main
+2026-10-18T00:20:58.9433779Z   origin/main
+2026-10-18T00:20:58.9458719Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-10-18T00:20:58.9463413Z 41c359a62ecbb67ac15f38c51c95fa983a7492d3
+2026-10-18T00:20:58.9464836Z ##[endgroup]
+2026-10-18T00:20:58.9465459Z ##[group]Determining the checkout info
+2026-10-18T00:20:58.9466289Z ##[endgroup]
+2026-10-18T00:20:58.9466721Z [command]/usr/bin/git sparse-checkout disable
+2026-10-18T00:20:58.9509636Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-18T00:20:58.9539958Z ##[group]Checking out the ref
+2026-10-18T00:20:58.9542728Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-10-18T00:20:59.7181213Z Switched to a new branch 'main'
+2026-10-18T00:20:59.7205116Z branch 'main' set up to track 'origin/main'.
+2026-10-18T00:20:59.7255362Z ##[endgroup]
+2026-10-18T00:20:59.7313858Z [command]/usr/bin/git log -1 --format=%H
+2026-10-18T00:20:59.7345450Z 41c359a62ecbb67ac15f38c51c95fa983a7492d3
+2026-10-18T00:20:59.7533059Z ##[group]Run pnpm/action-setup@v6
+2026-10-18T00:20:59.7533276Z with:
+2026-10-18T00:20:59.7533378Z   version: 11.7.0
+2026-10-18T00:20:59.7533511Z   dest: ~/setup-pnpm
+2026-10-18T00:20:59.7533621Z   run_install: null
+2026-10-18T00:20:59.7533727Z   cache: false
+2026-10-18T00:20:59.7533843Z   cache_dependency_path: pnpm-lock.yaml
+2026-10-18T00:20:59.7534009Z   package_json_file: package.json
+2026-10-18T00:20:59.7534138Z   standalone: false
+2026-10-18T00:20:59.7534249Z ##[endgroup]
+2026-10-18T00:20:59.8534473Z ##[group]Running self-installer...
+2026-10-18T00:21:01.3527934Z 
+2026-10-18T00:21:01.3528749Z added 1 package, and audited 2 packages in 1s
+2026-10-18T00:21:01.3529682Z 
+2026-10-18T00:21:01.3553783Z 1 package is looking for funding
+2026-10-18T00:21:01.3572165Z   run `npm fund` for details
+2026-10-18T00:21:01.3581526Z 
+2026-10-18T00:21:01.3581954Z found 0 vulnerabilities
+2026-10-18T00:21:01.7619411Z Checking for updates...
+2026-10-18T00:21:02.0170817Z Switching pnpm from v11.19.0 to v11.7.0...
+2026-10-18T00:21:02.6571740Z .../v11/7dc-1a14c6223ac-4745ae212cd31c1a | Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-10-18T00:21:02.6588357Z .../v11/7dc-1a14c6223ac-4745ae212cd31c1a |   +1 +
+2026-10-18T00:21:02.8644059Z .../v11/7dc-1a14c6223ac-4745ae212cd31c1a | Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-10-18T00:21:03.2706633Z [WARN] Detected a pnpm v10 installation layout at PNPM_HOME. The pnpm shims at PNPM_HOME have been refreshed so the new version is active, but pnpm v11 expects bins in PNPM_HOME/bin. Run "pnpm setup" to migrate your PATH to the v11 layout.
+2026-10-18T00:21:03.2743355Z Successfully updated pnpm to v11.7.0
+2026-10-18T00:21:03.3047794Z ##[endgroup]
+2026-10-18T00:21:03.3048485Z Installation Completed!
+2026-10-18T00:21:03.3192427Z ##[group]Run actions/setup-node@v7
+2026-10-18T00:21:03.3192596Z with:
+2026-10-18T00:21:03.3192707Z   node-version: 22
+2026-10-18T00:21:03.3193046Z   cache: pnpm
+2026-10-18T00:21:03.3193217Z   cache-dependency-path: console/pnpm-lock.yaml
+2026-10-18T00:21:03.3193382Z   check-latest: false
+2026-10-18T00:21:03.3194786Z   token: ***
+2026-10-18T00:21:03.3194908Z   package-manager-cache: true
+2026-10-18T00:21:03.3195046Z env:
+2026-10-18T00:21:03.3195182Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T00:21:03.3195354Z ##[endgroup]
+2026-10-18T00:21:03.4503660Z Found in cache @ /opt/hostedtoolcache/node/22.23.3/x64
+2026-10-18T00:21:03.5484293Z ##[group]Environment details
+2026-10-18T00:21:03.8315537Z node: v22.23.3
+2026-10-18T00:21:03.8316124Z npm: 10.9.9
+2026-10-18T00:21:03.8316545Z yarn: 1.22.22
+2026-10-18T00:21:03.8324168Z ##[endgroup]
+2026-10-18T00:21:03.8339092Z [command]/home/runner/setup-pnpm/node_modules/.bin/bin/pnpm store path --silent
+2026-10-18T00:21:04.1300707Z /home/runner/setup-pnpm/node_modules/.bin/store/v11
+2026-10-18T00:21:04.2763788Z Cache hit for: node-cache-Linux-x64-pnpm-074b71af5e4ff3e2510245266c7a8cebb0a2b5dfdbc71c22cd89560d32ee99ff
+2026-10-18T00:21:05.1613919Z Received 35837959 of 35837959 (100.0%), 48.1 MBs/sec
+2026-10-18T00:21:05.1616306Z Cache Size: ~34 MB (35837959 B)
+2026-10-18T00:21:05.1744987Z [command]/usr/bin/tar -xf /home/runner/work/_temp/98c8352f-61e1-4527-a889-dde80fbd15cd/cache.tzst -P -C /home/runner/work/heimdall/heimdall --use-compress-program unzstd
+2026-10-18T00:21:05.4482065Z Cache restored successfully
+2026-10-18T00:21:05.4503393Z Cache restored from key: node-cache-Linux-x64-pnpm-074b71af5e4ff3e2510245266c7a8cebb0a2b5dfdbc71c22cd89560d32ee99ff
+2026-10-18T00:21:05.4629214Z ##[group]Run pnpm install --frozen-lockfile
+2026-10-18T00:21:05.4629510Z [36;1mpnpm install --frozen-lockfile[0m
+2026-10-18T00:21:05.4854359Z shell: /usr/bin/bash -e {0}
+2026-10-18T00:21:05.4854517Z env:
+2026-10-18T00:21:05.4854670Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T00:21:05.4854865Z ##[endgroup]
+2026-10-18T00:21:06.3489788Z ? Verifying lockfile against supply-chain policies (95 entries)...
+2026-10-18T00:21:06.3577281Z Lockfile is up to date, resolution step is skipped
+2026-10-18T00:21:06.4177508Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-10-18T00:21:06.4273964Z Packages: +70
+2026-10-18T00:21:06.4274744Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-10-18T00:21:06.8997764Z Packages are hard linked from the content-addressable store to the virtual store.
+2026-10-18T00:21:06.8998569Z   Content-addressable store is at: /home/runner/setup-pnpm/node_modules/.bin/store/v11
+2026-10-18T00:21:06.9005564Z   Virtual store is at:             node_modules/.pnpm
+2026-10-18T00:21:07.0156448Z ✓ Lockfile passes supply-chain policies (95 entries in 668ms)
+2026-10-18T00:21:07.0634411Z Progress: resolved 70, reused 70, downloaded 0, added 70, done
+2026-10-18T00:21:07.1744644Z 
+2026-10-18T00:21:07.1745553Z dependencies:
+2026-10-18T00:21:07.1746046Z + 3d-force-graph 1.80.0
+2026-10-18T00:21:07.1746357Z + three 0.186.1
+2026-10-18T00:21:07.1746546Z + vue 3.5.43
+2026-10-18T00:21:07.1746662Z 
+2026-10-18T00:21:07.1746760Z devDependencies:
+2026-10-18T00:21:07.1747020Z + @vitejs/plugin-vue 6.0.9
+2026-10-18T00:21:07.1747241Z + vite 8.3.1
+2026-10-18T00:21:07.1747346Z 
+2026-10-18T00:21:07.1844669Z Done in 1.3s using pnpm v11.28.2
+2026-10-18T00:21:07.2202090Z ##[group]Run pnpm build
+2026-10-18T00:21:07.2202255Z [36;1mpnpm build[0m
+2026-10-18T00:21:07.2252761Z shell: /usr/bin/bash -e {0}
+2026-10-18T00:21:07.2253032Z env:
+2026-10-18T00:21:07.2253173Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-18T00:21:07.2253346Z ##[endgroup]
+2026-10-18T00:21:07.8743535Z $ vite build
+2026-10-18T00:21:08.1406205Z [36mvite v8.3.1 [32mbuilding client environment for production...[36m[39m
+2026-10-18T00:21:08.1475689Z transforming...
+2026-10-18T00:21:09.0101037Z ✓ 445 modules transformed.
+2026-10-18T00:21:09.0882660Z rendering chunks...
+2026-10-18T00:21:09.2584195Z computing gzip size...
+2026-10-18T00:21:09.2724803Z dist/index.html                       0.63 kB │ gzip:   0.41 kB
+2026-10-18T00:21:09.2730101Z [33m[plugin builtin:vite-reporter] 
+2026-10-18T00:21:09.2734945Z dist/assets/Graph3D-DkULweKj.css      0.10 kB │ gzip:   0.09 kB
+2026-10-18T00:21:09.2735554Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2026-10-18T00:21:09.2736125Z - Using dynamic import() to code-split the application
+2026-10-18T00:21:09.2736757Z - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+2026-10-18T00:21:09.2737353Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+2026-10-18T00:21:09.2738179Z dist/assets/index-Ci96Vj07.css       43.56 kB │ gzip:   8.59 kB
+2026-10-18T00:21:09.2773505Z dist/assets/Atlas-XaD7f5rj.css       83.78 kB │ gzip:  12.33 kB
+2026-10-18T00:21:09.2781953Z dist/assets/api-DBmNeZNu.js           2.07 kB │ gzip:   1.09 kB
+2026-10-18T00:21:09.2782696Z dist/assets/index-DXvcBTLR.js        71.05 kB │ gzip:  28.11 kB
+2026-10-18T00:21:09.2783715Z dist/assets/Atlas-CbgwjZKx.js       487.71 kB │ gzip: 153.03 kB
+2026-10-18T00:21:09.2788090Z dist/assets/Graph3D-FmNJmf-v.js   1,395.59 kB │ gzip: 373.00 kB
+2026-10-18T00:21:09.2788459Z 
+2026-10-18T00:21:09.2788799Z [32m✓ built in 1.13s[39m
+2026-10-18T00:21:09.3257484Z Post job cleanup.
+2026-10-18T00:21:09.4049723Z Cache hit occurred on the primary key node-cache-Linux-x64-pnpm-074b71af5e4ff3e2510245266c7a8cebb0a2b5dfdbc71c22cd89560d32ee99ff, not saving cache.
+2026-10-18T00:21:09.4135068Z Post job cleanup.
+2026-10-18T00:21:09.5044864Z Pruning is unnecessary.
+2026-10-18T00:21:09.5244007Z Post job cleanup.
+2026-10-18T00:21:09.5983551Z [command]/usr/bin/git version
+2026-10-18T00:21:09.6018137Z git version 2.55.0
+2026-10-18T00:21:09.6073510Z Temporarily overriding HOME='/home/runner/work/_temp/e6507ddb-aaaf-4659-beaa-280b706c07b8' before making global git config changes
+2026-10-18T00:21:09.6097914Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-18T00:21:09.6098757Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/heimdall/heimdall
+2026-10-18T00:21:09.6153986Z Removing SSH command configuration
+2026-10-18T00:21:09.6154590Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-18T00:21:09.6223951Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-18T00:21:09.6550684Z Removing HTTP extra header
+2026-10-18T00:21:09.6564218Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-18T00:21:09.6566335Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-18T00:21:09.6815457Z Removing includeIf entries pointing to credentials config files
+2026-10-18T00:21:09.6820959Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-18T00:21:09.6850341Z includeif.gitdir:/home/runner/work/heimdall/heimdall/.git.path
+2026-10-18T00:21:09.6852211Z includeif.gitdir:/home/runner/work/heimdall/heimdall/.git/worktrees/*.path
+2026-10-18T00:21:09.6853413Z includeif.gitdir:/github/workspace/.git.path
+2026-10-18T00:21:09.6853965Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-18T00:21:09.6858934Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/heimdall/heimdall/.git.path
+2026-10-18T00:21:09.6883944Z /home/runner/work/_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config
+2026-10-18T00:21:09.6904474Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/heimdall/heimdall/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-f330b8ff\-b9b1\-40de\-bfcc\-59ee63e9b87f\.config
+2026-10-18T00:21:09.6928006Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/heimdall/heimdall/.git/worktrees/*.path
+2026-10-18T00:21:09.6953014Z /home/runner/work/_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config
+2026-10-18T00:21:09.6964869Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/heimdall/heimdall/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-f330b8ff\-b9b1\-40de\-bfcc\-59ee63e9b87f\.config
+2026-10-18T00:21:09.7002285Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-18T00:21:09.7031133Z /github/runner_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config
+2026-10-18T00:21:09.7038894Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-f330b8ff\-b9b1\-40de\-bfcc\-59ee63e9b87f\.config
+2026-10-18T00:21:09.7070274Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-18T00:21:09.7092496Z /github/runner_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config
+2026-10-18T00:21:09.7099800Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-f330b8ff\-b9b1\-40de\-bfcc\-59ee63e9b87f\.config
+2026-10-18T00:21:09.7135354Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-18T00:21:09.7332652Z Removing credentials config '/home/runner/work/_temp/git-credentials-f330b8ff-b9b1-40de-bfcc-59ee63e9b87f.config'
+2026-10-18T00:21:09.7460339Z Cleaning up orphan processes

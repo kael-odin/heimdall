@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "runId": "ac-7f955228-09c2-4954-9009-d258019de41f",
+  "taskId": "a-e3747aeb-2029-437d-9264-ee1ee4b920d5",
+  "name": "D6 fixed manual decisions",
+  "mode": "regression",
+  "baselineUrl": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel",
+  "targetUrl": "http://127.0.0.1:61734/broken",
+  "status": "completed",
+  "gate": "failed",
+  "createdAt": "2026-10-18T03:31:03.494Z",
+  "updatedAt": "2026-10-18T03:31:07.537Z",
+  "plan": {
+    "schemaVersion": 1,
+    "name": "D6 fixed manual decisions",
+    "mode": "regression",
+    "baselineUrl": "http://127.0.0.1:61734/source?token=d6-source-url-sentinel",
+    "targetUrl": "http://127.0.0.1:61734/broken",
+    "routes": [
+      "/"
+    ],
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 960,
+        "height": 640
+      },
+      {
+        "name": "mobile",
+        "width": 375,
+        "height": 812
+      }
+    ],
+    "points": [
+      {
+        "id": "menu",
+        "title": "Expanded menu",
+        "route": "/",
+        "severity": "high",
+        "steps": [
+          {
+            "action": "fill",
+            "selector": "#entry",
+            "value": "d6-fill-sentinel"
+          },
+          {
+            "action": "click",
+            "selector": "#menu-toggle"
+          }
+        ],
+        "assertions": [
+          {
+            "kind": "visible",
+            "selector": "#menu"
+          },
+          {
+            "kind": "attribute",
+            "selector": "#menu-toggle",
+            "attribute": "aria-expanded",
+            "equals": "true"
+          },
+          {
+            "kind": "text",
+            "selector": "#literal",
+            "equals": "d6-captured-source-sentinel"
+          }
+        ]
+      }
+    ],
+    "thresholds": {
+      "visual": 0.97
+    },
+    "timeoutMs": 4000,
+    "settleMs": 50,
+    "normalization": {
+      "maskSelectors": []
+    }
+  },
+  "summary": {
+    "total": 14,
+    "passed": 10,
+    "failed": 4,
+    "blocked": 0,
+    "needsReview": 0,
+    "bugs": 4,
+    "baselineFailed": 0,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 14,
+      "total": 14,
+      "ratio": 1
+    },
+    "dimensions": {
+      "visual": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": 0.7236
+      },
+      "structure": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  },
+  "progress": {
+    "kind": "acceptance-complete"
+  },
+  "endedAt": "2026-10-18T03:31:07.456Z",
+  "error": null,
+  "reportSha256": "53ff8edfb553268cab2a343a944869bd30b928d1e0f72d30cac3f91ddaef070c"
+}

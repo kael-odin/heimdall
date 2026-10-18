@@ -42,11 +42,11 @@ D5 接续 [Browser 固定来源验收](acceptance-browser-execution.md)。检查
 
 浏览器协调限于同一前端 origin、相同 API origin 和项目的页面。锁内仅在待核对集合为空时保存新确认，保存成功后才派发原 POST。Web Locks 不可用或本机确认无法完整保存、回读时，提交入口暂停；列表与详情读取独立保留，原确认仍可完整读取时可只读核对。
 
-响应丢失、网络超时、5xx、正文无效或证明不完整时，保留完整原确认，只允许 GET 查询原动作。查不到记录的 `unresolved` 不代表提交失败，不能据此清空确认、换号重试或自动 POST。重载后，原确认仍可完整读取时同样只读核对。只有 GET 返回完整 `recorded` 原件，并与原确认、事件 SHA 和请求摘要逐项核对成功后，才在锁内解除对应本机确认。
+响应丢失、网络超时、5xx、正文无效或证明不完整时，保留完整原确认，通过 GET 查询原动作。查不到记录的 `unresolved` 不代表提交失败，不能据此清空确认、换号重试或自动 POST。重载后，原确认仍可完整读取时同样只读核对。完整 `recorded` 或 D6 的 `rejected` 原件必须与原确认、物理原件 SHA 和请求摘要逐项核对成功，才在锁内精确解除对应本机确认。
 
 只有原 POST 收到严格匹配的固定 4xx 错误和显式 `outcomeUnknown:false`，才可确认本次请求被拒绝，并在锁内解除这一条本机确认。当前组件中的草稿继续保留，错误保持到上下文重置；确认勾选和关闭预览会失效。后续提交需要操作者重新读取、预览并明确点击。
 
-草稿仅在当前组件内存中按项目保存，不保证刷新或卸载后恢复。持久化的是请求原确认，重载后显示为待核对记录，不自动回填成可再次发送的草稿。未知结果没有人工清空按钮；D5 尚未提供永久拒绝迟到人工动作的服务端决定。[D4 的永久拒绝](acceptance-browser-start-resolution.md)仅适用于 Browser 启动操作，不能用于此处的 `da-*` 人工动作。
+草稿仅在当前组件内存中按项目保存，不保证刷新或卸载后恢复。持久化的是请求原确认，重载后显示为待核对记录，不自动回填成可再次发送的草稿。未知结果没有人工清空按钮。D6 新增[人工动作永久拒绝](acceptance-defect-ticket-decisions.md)：逐条核对原确认、先读已有决定，仍未决定时可明确封住此动作号的迟到提交；已有成单或关闭不能被撤销。[D4 的永久拒绝](acceptance-browser-start-resolution.md)仅适用于 Browser 启动操作，不能用于此处的 `da-*` 人工动作。
 
 服务端接口已有同动作、同请求的原件时，精确重放优先于当前来源可用性并返回原回执，不重复写入。界面不会因此自动重发请求。不同请求使用同动作号返回冲突。正常重启保留原事件；备份回滚、复制数据根、删除原件和突然断电后的 exactly-once 不在本片保证范围。
 
@@ -60,6 +60,7 @@ D5 接续 [Browser 固定来源验收](acceptance-browser-execution.md)。检查
 | `POST /api/acceptance/projects/:projectId/defect-tickets` | 从一次登记的可靠失败创建固定成员缺陷单 |
 | `GET .../defect-tickets/sources?candidateId=bc-…` | 核验该候选的登记来源和可成单成员 |
 | `GET .../defect-tickets/actions/:actionId` | 只读核对原动作；absence 返回 unresolved |
+| `POST .../defect-tickets/actions/:actionId/deny` | D6 按完整旧确认明确拒绝迟到动作；已有任意完整决定优先重放 |
 | `GET .../defect-tickets/:ticketId` | 原事件历史和当前核验投影 |
 | `GET .../defect-tickets/:ticketId/close-preview?afterOperationId=bo-…` | 核对指定 after 是否为当前最新登记；旧 after 不具备关闭资格 |
 | `POST .../defect-tickets/:ticketId/close` | 按完整预览摘要、单据 head 与成员摘要明确关闭 |
@@ -68,13 +69,13 @@ D5 接续 [Browser 固定来源验收](acceptance-browser-execution.md)。检查
 
 成单 body 包含 `ticketId`、`actionId`、`sourceOperationId`、`memberCheckIds`、`title`、`severity`、`description`、`reproduction`。关闭 body 包含 `actionId`、`afterOperationId`、`expectedRevision`、`expectedHeadSha256`、`memberSetDigest`、`factsDigest`、`previewDigest`、`resolution`、`confirmed:true`。服务端独立重建来源、预览和事件，HTTP 不能传入 store、facts 或 owner。
 
-写请求正文必须为 application/json，最多 32 KiB，使用严格 UTF-8；未知字段、重复查询、未知查询、错误 ID 和错误方法均拒绝。创建新事件返回 201，同动作精确重放返回 200。错误只返回固定公开文本，不回传内部路径、底层消息或原始错误详情；写入后无法确认结果时返回 `outcomeUnknown:true`。
+写请求正文必须为 application/json，使用严格 UTF-8；原 create / close 最多 32 KiB，D6 deny 包含完整旧确认，独立上限 64 KiB。未知字段、重复查询、未知查询、错误 ID 和错误方法均拒绝。新事件或新拒绝返回 201，同动作精确重放任意一种决定返回 200。错误只返回固定公开文本，不回传内部路径、底层消息或原始错误详情；写入后无法确认结果时返回 `outcomeUnknown:true`。
 
 ## 存储、读取预算与导出
 
-事件位于真实验收根的 `defect-tickets/v1/events/da-*.json`。每个动作保存一个 canonical JSON 加 LF 原件；原字节 SHA 连接连续 revision，关闭固定此前事件 SHA。独占发布、全命名空间校验与提交前同步 guard 阻止覆盖、分叉、符号链接和部分现场修补。遗留临时文件或混合原件继续保留并阻断。
+动作决定位于真实验收根的 `defect-tickets/v1/events/da-*.json`。每个动作只保存一个 canonical JSON 加 LF 原件，accepted event 与 D6 rejection 竞争同一物理文件。accepted 原字节 SHA 连接连续 revision，关闭固定此前事件 SHA；rejection 不进入单据事件链或改变处理历史。独占发布、全命名空间校验与提交前同步 guard 阻止覆盖、分叉、符号链接和部分现场修补。遗留临时文件或混合原件继续保留并阻断。
 
-默认最多 256 张缺陷单、4096 条事件、单事件 64 KiB、事件总量 16 MiB、写队列 32。来源单次捕获默认最多 1024 个 Browser 操作、16384 个条目、32 MiB JSON、256 MiB 证据及 1 GiB payload 读取工作预算；预算只能降低。来源累计预检包含项目其他候选的 completed 原件，先检查元数据和累计预算，再读取证据。一次项目列表共享一个已核验批次，各候选在批次内选择，不重复读取整个账本。模型完整单次输入最多 32 MiB，列表累计模型输入最多 128 MiB，超限明确返回 CAPACITY，不截断成单成员或伪造通过。
+默认最多 256 张缺陷单、4096 条动作决定、单决定 64 KiB、决定总量 16 MiB、写队列 32。来源单次捕获默认最多 1024 个 Browser 操作、16384 个条目、32 MiB JSON、256 MiB 证据及 1 GiB payload 读取工作预算；预算只能降低。来源累计预检包含项目其他候选的 completed 原件，先检查元数据和累计预算，再读取证据。一次项目列表共享一个已核验批次，各候选在批次内选择，不重复读取整个账本。模型完整单次输入最多 32 MiB，列表累计模型输入最多 128 MiB，超限明确返回 CAPACITY，不截断成单成员或伪造通过。
 
 来源 fence 固定文件身份、名称集合、正向原字节及可选文件不存在状态，返回前和发布前重新核验；这是同步前后检查，不能称为多文件原子快照或回滚检测。一次 capture 的 `batchReadUpperBound` 只计算该次 payload 读取；owner 锁、目录和 stat 工作另有界，每次后续 guard 的 payload 另按 `guardPayloadReadUpperBound` 计算。
 

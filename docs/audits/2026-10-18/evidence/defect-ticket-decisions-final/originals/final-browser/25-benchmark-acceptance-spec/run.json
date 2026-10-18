@@ -1,0 +1,18 @@
+{
+  "name": "25-benchmark-acceptance-spec",
+  "argv": [
+    "node",
+    "core/scripts/benchmark-acceptance-spec.mjs",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\25-artifacts"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "environment": {},
+  "startedAt": "2026-10-18T03:34:54.868196+00:00",
+  "exitCode": 0,
+  "pid": 41488,
+  "endedAt": "2026-10-18T03:34:56.276410+00:00",
+  "durationSeconds": 1.4059999999881256,
+  "changedInputs": [],
+  "stdoutSha256": "67dc6877020dfe6f594f4f3378ffdbb543e1ee9d355a2d04af8625ead39fce76",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

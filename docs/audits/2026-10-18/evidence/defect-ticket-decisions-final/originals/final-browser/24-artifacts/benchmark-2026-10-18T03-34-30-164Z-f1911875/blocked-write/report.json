@@ -1,0 +1,549 @@
+{
+  "schemaVersion": 1,
+  "runId": "benchmark-2026-10-18T03-34-30-164Z-f1911875-blocked-write",
+  "name": "固定注入基准 · 依赖写请求的流程被只读策略阻断",
+  "mode": "mirror",
+  "baselineUrl": "http://127.0.0.1:55191/baseline",
+  "targetUrl": "http://127.0.0.1:55191/target",
+  "startedAt": "2026-10-18T03:34:53.157Z",
+  "endedAt": "2026-10-18T03:34:54.608Z",
+  "status": "completed",
+  "checks": [
+    {
+      "route": "/blocked-write",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-navigation",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "navigation",
+        "caseKey": "eeb219489ce4537b36be5b8cc07ded86942528482f9b41946fe2057a5fcdfd17",
+        "contextKey": "db84006304accf05ad5bfbdcecadd592823d2c316fa20bf85cdcc37713d5a9e5",
+        "ruleKey": "d706e861133281a146f0491278748b82a07cefaa6105283cf44a3537aebec030",
+        "oracleKey": "c6c7f7c6f936fb00f57636dc8bbd140566854c455369a361ab203afdc32819ff",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "页面导航与 HTTP 状态",
+      "dimension": "health",
+      "expected": 200,
+      "actual": 200,
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/blocked-write at 1280×800.",
+        "Open http://127.0.0.1:55191/target/blocked-write in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/blocked-write",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-console",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "console",
+        "caseKey": "6cddbd75d9a72e8d56a1be5df5d2e15972df05aa14cae06fae24ca94bbc74949",
+        "contextKey": "29dd491e74737864eb6a41c1fd651641696c98451ed6ca29c294b6dd1cf19919",
+        "ruleKey": "a5706a5f5ef569a8dbdfc33415fa8567c8b19d5fc428ec24705efbbc212ab8e5",
+        "oracleKey": "5a53c58d43b46845adb450ced43c473faf4080670e98ac4b04563f2b701cdf37",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "浏览器脚本与控制台错误",
+      "dimension": "health",
+      "expected": [
+        {
+          "kind": "console",
+          "message": "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+        }
+      ],
+      "actual": {
+        "observed": [
+          {
+            "kind": "console",
+            "message": "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+          }
+        ],
+        "added": [],
+        "policyAffected": true
+      },
+      "status": "blocked",
+      "verdict": "environment",
+      "severity": "high",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/blocked-write at 1280×800.",
+        "Open http://127.0.0.1:55191/target/blocked-write in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/blocked-write",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-network",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "network",
+        "caseKey": "0e5eac18f1a5f8c6c9cc436dcc594d6aafd1845464144383105618d2dad644e7",
+        "contextKey": "49ba1b5525b6df1b12bdb5c92b34eab8bfcd82fbaf13d3b46be1908131ab0fe4",
+        "ruleKey": "ba070ae538d61155374e8a219895a453fcdd045283d50e5c104641add69db35e",
+        "oracleKey": "67e8b4445b81d0f0500025e58638a734684274effaeafd78b1b5c08e9cec1d8d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "资源与只读网络请求",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": true
+      },
+      "status": "blocked",
+      "verdict": "environment",
+      "severity": "medium",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/blocked-write at 1280×800.",
+        "Open http://127.0.0.1:55191/target/blocked-write in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/blocked-write",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-overflow",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "overflow",
+        "caseKey": "c7418dde014a1670d6bac3471737b43b78ac1674b8372cfcb150dc20ca2b2cd3",
+        "contextKey": "e27a1fbf73b1ab6e40b96c451d35cbe9901354195006ee879c331d98e39640a6",
+        "ruleKey": "2bf7b948455071872d5f2b848a565dc067eaeea0950144b33afa9dbcfb83fa56",
+        "oracleKey": "67e8b4445b81d0f0500025e58638a734684274effaeafd78b1b5c08e9cec1d8d",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "视口水平溢出",
+      "dimension": "health",
+      "expected": [],
+      "actual": {
+        "observed": [],
+        "added": [],
+        "policyAffected": false
+      },
+      "status": "passed",
+      "verdict": "match",
+      "severity": "medium",
+      "evaluationLimited": false,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/blocked-write at 1280×800.",
+        "Open http://127.0.0.1:55191/target/blocked-write in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/blocked-write",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-readonly",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "readonly",
+        "caseKey": "d9e73ea974aa2e42c0af94eb9d271fbd97894f706edbdf02dea0e253c6d2b668",
+        "contextKey": "caae2ced1de8f86107da97f5020f918dba85715b32d3a99ce172f5f58755ee69",
+        "ruleKey": "e01019145e153c162c038bd12dde5996ce82ca2bf3391ce117505d113ca8904b",
+        "oracleKey": "715965c078bd652df29fa71a94417b2deda80a79852350bcd314482f16e3a5bf",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "只读执行安全边界",
+      "dimension": "health",
+      "expected": "GET, HEAD and OPTIONS only.",
+      "actual": {
+        "baseline": [
+          {
+            "kind": "write-blocked",
+            "method": "POST",
+            "url": "http://127.0.0.1:55191/baseline/write-endpoint",
+            "resourceType": "fetch"
+          }
+        ],
+        "target": [
+          {
+            "kind": "write-blocked",
+            "method": "POST",
+            "url": "http://127.0.0.1:55191/target/write-endpoint",
+            "resourceType": "fetch"
+          }
+        ]
+      },
+      "status": "blocked",
+      "verdict": "environment",
+      "severity": "medium",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/blocked-write at 1280×800.",
+        "Open http://127.0.0.1:55191/target/blocked-write in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/blocked-write",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-structure",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "structure",
+        "caseKey": "387468e3d12723ea3bf31c15160bc204938bf25ddcc3413725a8f056066eb586",
+        "contextKey": "e743dadce859f4f885316e8b8159b87810de3c3e90e998f98a1b1c83cde9d968",
+        "ruleKey": "2c500e299c252c4ecfc1f88a64a730467a32523ddc8610cb564a571c2ce5f5ff",
+        "oracleKey": "b07fb5f631e5d713ea67d2b0ec6216cf2db2d78f9cae9742b2668e1964f4302f",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "标题、主标题与关键控件语义",
+      "dimension": "structure",
+      "expected": {
+        "title": "Heimdall 验收演示",
+        "headings": [
+          "团队项目概览"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "菜单",
+            "type": "button",
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#details-link",
+            "tag": "a",
+            "role": null,
+            "label": "查看详情",
+            "type": null,
+            "href": "/details",
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ]
+      },
+      "actual": {
+        "title": "Heimdall 验收演示",
+        "headings": [
+          "团队项目概览"
+        ],
+        "controls": [
+          {
+            "path": "#menu-toggle",
+            "tag": "button",
+            "role": null,
+            "label": "菜单",
+            "type": "button",
+            "href": null,
+            "disabled": false,
+            "expanded": "false",
+            "selected": null
+          },
+          {
+            "path": "#details-link",
+            "tag": "a",
+            "role": null,
+            "label": "查看详情",
+            "type": null,
+            "href": "/details",
+            "disabled": false,
+            "expanded": null,
+            "selected": null
+          }
+        ],
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 1024000,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 1024000,
+            "samplingCapped": false
+          }
+        }
+      },
+      "status": "blocked",
+      "verdict": "baseline_failed",
+      "severity": "high",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/blocked-write at 1280×800.",
+        "Open http://127.0.0.1:55191/target/blocked-write in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png"
+      }
+    },
+    {
+      "route": "/blocked-write",
+      "viewport": "desktop",
+      "oracle": {
+        "kind": "approved-runtime",
+        "source": "http://127.0.0.1:55191/baseline"
+      },
+      "evidenceLevel": "offline-reproduced",
+      "id": "route-1-1-desktop-visual",
+      "identity": {
+        "version": 1,
+        "kind": "browser",
+        "facet": "visual",
+        "caseKey": "604493dab8e9125af4c5ed93f61311094ca21b57307a70d776b76372b7a3135e",
+        "contextKey": "4f778aa6fad7e3f63beccbf541ce585a593961f8bd294c4a3f974ba37df77d7d",
+        "ruleKey": "f2b00d7a0deeca13fbd0383e9f2ce670b6117ca38a4ea74edd6f112601247bdd",
+        "oracleKey": "e1acf3177094e1e0bcef63aa8657e9178a023664dac636e0ffecd39a21c667e4",
+        "environmentKey": "bdbcee0a5ac35413c873f7d8e0755ee7cacb02ed1e2bf24feef2daf4c4da8cbc",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        }
+      },
+      "title": "页面视觉还原度",
+      "dimension": "visual",
+      "expected": {
+        "minimumScore": 0.97,
+        "stabilityMinimum": 0.9995,
+        "maximumMaskedRatio": 0.8,
+        "captureBudget": {
+          "maxPixels": 12000000,
+          "maxHeight": 12000
+        }
+      },
+      "actual": {
+        "score": 1,
+        "baselineStability": 1,
+        "targetStability": 1,
+        "maskCoverage": {
+          "baseline": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 1024000,
+            "samplingCapped": false
+          },
+          "target": {
+            "maskedRatio": 0,
+            "effectiveAreaPx": 1024000,
+            "samplingCapped": false
+          }
+        },
+        "capture": {
+          "baseline": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 1280,
+              "height": 800
+            }
+          },
+          "target": {
+            "captureScope": "full-page",
+            "captureLimited": false,
+            "documentSize": {
+              "width": 1280,
+              "height": 800
+            }
+          }
+        },
+        "eligible": false
+      },
+      "status": "blocked",
+      "verdict": "baseline_failed",
+      "severity": "medium",
+      "evaluationLimited": true,
+      "reproduction": [
+        "Open http://127.0.0.1:55191/baseline/blocked-write at 1280×800.",
+        "Open http://127.0.0.1:55191/target/blocked-write in a fresh browser context at the same viewport."
+      ],
+      "evidence": {
+        "baselineScreenshot": "route-1-1-desktop-baseline.png",
+        "targetScreenshot": "route-1-1-desktop-target.png",
+        "baselineDetails": "route-1-1-desktop-baseline.json",
+        "targetDetails": "route-1-1-desktop-target.json",
+        "baselineRepeat": "route-1-1-desktop-baseline-repeat.png",
+        "targetRepeat": "route-1-1-desktop-target-repeat.png",
+        "diff": "route-1-1-desktop-diff.png"
+      },
+      "score": 1
+    }
+  ],
+  "coverage": {
+    "planned": 7,
+    "completed": 7,
+    "capped": false
+  },
+  "safety": {
+    "networkPolicy": "read-only",
+    "isolatedContexts": true,
+    "blockedRequests": 2
+  },
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v25.2.1",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "playwrightVersion": "1.63.0",
+    "locale": "zh-CN",
+    "timezoneId": "Asia/Hong_Kong",
+    "colorScheme": "light",
+    "reducedMotion": "reduce"
+  },
+  "scope": "离线复现：固定注入缺陷夹具，仅证明本基准中声明的案例与观察窗口；不代表真实站点业务验收或通用检出率。",
+  "gate": "blocked",
+  "summary": {
+    "total": 7,
+    "passed": 2,
+    "failed": 0,
+    "blocked": 5,
+    "needsReview": 0,
+    "bugs": 0,
+    "baselineFailed": 2,
+    "missing": 0,
+    "invalid": 0,
+    "coverage": {
+      "measured": 2,
+      "total": 7,
+      "ratio": 0.2857
+    },
+    "dimensions": {
+      "visual": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "structure": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 1,
+        "needsReview": 0,
+        "score": null
+      },
+      "behavior": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "blocked": 0,
+        "needsReview": 0,
+        "score": null
+      },
+      "health": {
+        "total": 5,
+        "passed": 2,
+        "failed": 0,
+        "blocked": 3,
+        "needsReview": 0,
+        "score": null
+      }
+    }
+  }
+}

@@ -2,7 +2,7 @@
  * verifies real ownership first; this router never executes or registers runs. */
 import { types } from 'node:util';
 import { DEFECT_TICKET_LIMITS, isDefectTicketId, isDefectTicketActionId,
-  validateDefectTicketCreateRequest, validateDefectTicketCloseRequest } from './defect-ticket-schema.mjs';
+  validateDefectTicketCreateRequest, validateDefectTicketCloseRequest, validateDefectTicketDenyRequest } from './defect-ticket-schema.mjs';
 
 const UUID = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
 const PROJECT = new RegExp(`^ap-${UUID}$`), CANDIDATE = new RegExp(`^bc-${UUID}$`), OPERATION = new RegExp(`^bo-${UUID}$`);
@@ -35,7 +35,7 @@ export function defectTicketError(cause) {
   return { status, payload };
 }
 
-function body(req) {
+function body(req, maximum = DEFECT_TICKET_LIMITS.requestBytes) {
   return new Promise((resolve, reject) => {
     req.once('aborted', () => reject(invalid()));
     req.once('error', () => reject(invalid()));
@@ -47,7 +47,7 @@ function body(req) {
     const chunks = [];
     req.on('data', chunk => {
       size += chunk.length;
-      if (size > DEFECT_TICKET_LIMITS.requestBytes) { oversized = true; chunks.length = 0; }
+      if (size > maximum) { oversized = true; chunks.length = 0; }
       else if (!oversized) chunks.push(chunk);
     });
     req.once('end', () => {
@@ -78,9 +78,9 @@ function route(segments) {
   if (ticketId === 'sources') return segments.length === 7 ? { kind: 'sources', methods: ['GET'] } : null;
   if (ticketId === 'actions') {
     if (segments.length === 7) throw invalid();
-    if (segments.length !== 8) return null;
+    if (segments.length !== 8 && !(segments.length === 9 && segments[8] === 'deny')) return null;
     if (!isDefectTicketActionId(suffix)) throw invalid();
-    return { kind: 'action', methods: ['GET'], actionId: suffix };
+    return { kind: segments.length === 9 ? 'deny' : 'action', methods: segments.length === 9 ? ['POST'] : ['GET'], actionId: suffix };
   }
   const kind = segments.length === 7 ? 'read' : segments.length !== 8 ? null
     : suffix === 'close-preview' ? 'preview' : suffix === 'close' ? 'close'
@@ -114,6 +114,12 @@ export async function handleDefectTicketRequest(req, res, url, { service, json }
     }
     if (kind === 'sources') return send(200, service.sources(projectId, selector));
     if (kind === 'action') return send(200, service.action(projectId, actionId));
+    if (kind === 'deny') {
+      const request = validateDefectTicketDenyRequest(await body(req, DEFECT_TICKET_LIMITS.denyRequestBytes));
+      if (request.original.projectId !== projectId || request.original.actionId !== actionId) throw invalid();
+      const result = await service.deny(projectId, actionId, request.original);
+      return send(result.status, result.payload);
+    }
     if (kind === 'read') return send(200, service.read(projectId, ticketId));
     if (kind === 'preview') return send(200, service.previewClose(projectId, ticketId, selector));
     if (kind === 'close') {

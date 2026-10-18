@@ -1,0 +1,20 @@
+{
+  "name": "27-real-cdp",
+  "argv": [
+    "node",
+    "core/scripts/smoke-console-cdp.mjs",
+    "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\27-cdp-artifacts"
+  ],
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall",
+  "environment": {
+    "HEIMDALL_E2E_CDP_SELF": "1"
+  },
+  "startedAt": "2026-10-18T03:35:38.191421+00:00",
+  "exitCode": 0,
+  "pid": 24560,
+  "endedAt": "2026-10-18T03:36:08.827159+00:00",
+  "durationSeconds": 30.625,
+  "changedInputs": [],
+  "stdoutSha256": "9ab1038cdb9def197e37d3efbf70dc1187d5128996e70b3f05e56e749c4fcb67",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

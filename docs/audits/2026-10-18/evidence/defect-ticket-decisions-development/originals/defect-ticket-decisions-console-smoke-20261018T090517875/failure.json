@@ -1,0 +1,5 @@
+{
+  "name": "Error",
+  "message": "controlled HTTP response finishes normally: state not reached",
+  "stack": "Error: controlled HTTP response finishes normally: state not reached\n    at waitFor (file:///C:/Users/44548/.codex/worktrees/ci-small-runner-concurrency/heimdall/core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs:50:9)\n    at async runCase (file:///C:/Users/44548/.codex/worktrees/ci-small-runner-concurrency/heimdall/core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs:235:30)\n    at async file:///C:/Users/44548/.codex/worktrees/ci-small-runner-concurrency/heimdall/core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs:353:84"
+}

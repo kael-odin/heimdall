@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "checkCount": 16,
+  "checks": {
+    "nativeRepeatedClickPersistsStrictInputAndCreatesOneRun": true,
+    "lateStartResponseAcrossProjectABACannotRestoreOldConfirmation": true,
+    "managedSlotBlocksOrdinaryButOriginalOperationLookupWorks": true,
+    "terminalLookupFailureRetainsCompletedStateAndReportEntry": true,
+    "bugCompletionTaskDoneAndReportEvidenceOpenedThroughButton": true,
+    "lateBusyCapabilityCannotOverwriteNewProjectCapability": true,
+    "lost202AndHtml502ReloadRecoverOriginalRunWithOnlyGet": true,
+    "ordinarySharedSlotDisablesFreshManagedStartAndRecovers": true,
+    "nativeStopClosesPendingTargetAndPreventsEveryLaterCheck": true,
+    "lateStopResponseCannotOverrideAnotherSelectedOperation": true,
+    "desktopAndBothMobileThemesHaveNoHorizontalOverflow": true,
+    "lateOperationLookupAcrossProjectABACannotChangeSelection": true,
+    "preparedReceiptReloadAndNativeLookupNeverStart": true,
+    "explicitTargetAndChangedTargetClearsConfirmation": true,
+    "receiptPersistedBeforeNativePostAndUnknown404ReloadOnlyGets": true,
+    "oldCasRejectionCreatesNoRunAndRefreshRequiresNewReview": true
+  },
+  "outputDirectory": "C:\\Users\\44548\\.codex\\worktrees\\ci-small-runner-concurrency\\heimdall\\core\\workspace\\_runs\\d6-implementation-20261018\\final-browser-20261018T030617.503422Z\\11-artifacts"
+}

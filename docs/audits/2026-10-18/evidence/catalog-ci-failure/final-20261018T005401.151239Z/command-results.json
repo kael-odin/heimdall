@@ -1,0 +1,16 @@
+[
+  {
+    "name": "run",
+    "exitCode": 0,
+    "timedOut": false,
+    "launchError": null,
+    "output": "run.json"
+  },
+  {
+    "name": "jobs",
+    "exitCode": 0,
+    "timedOut": false,
+    "launchError": null,
+    "output": "jobs.json"
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "method": "GET",
+    "path": "/target/healthy",
+    "closed": true,
+    "completed": true
+  },
+  {
+    "method": "GET",
+    "path": "/target/bug",
+    "closed": true,
+    "completed": true
+  },
+  {
+    "method": "GET",
+    "path": "/target/healthy",
+    "closed": true,
+    "completed": true
+  },
+  {
+    "method": "GET",
+    "path": "/target/bug",
+    "closed": true,
+    "completed": true
+  },
+  {
+    "method": "GET",
+    "path": "/target/healthy",
+    "closed": true,
+    "completed": true
+  },
+  {
+    "method": "GET",
+    "path": "/target/bug",
+    "closed": true,
+    "completed": true
+  },
+  {
+    "method": "GET",
+    "path": "/ordinary-hold",
+    "closed": true,
+    "completed": false
+  },
+  {
+    "method": "GET",
+    "path": "/target/healthy",
+    "closed": true,
+    "completed": false
+  }
+]

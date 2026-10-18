@@ -3,12 +3,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, webcrypto } from 'node:crypto';
 import { buildAcceptanceIdentity, canonicalAcceptanceJson } from '../src/acceptance/identity.mjs';
-import { defectTicketDigest, defectTicketRequestFingerprint, defectTicketEventBytes,
-  validateDefectTicketCreateRequest, validateDefectTicketCloseRequest } from '../src/acceptance/defect-ticket-schema.mjs';
+import { defectTicketDigest, defectTicketRequestFingerprint, defectTicketEventBytes, defectTicketRejectionBytes,
+  validateDefectTicketCreateRequest, validateDefectTicketCloseRequest, validateDefectTicketDenyRequest } from '../src/acceptance/defect-ticket-schema.mjs';
 import { createDefectTicketEvent, closeDefectTicketEvent, projectDefectTicket,
   previewDefectTicketClose, listDefectTicketSources } from '../src/acceptance/defect-ticket-model.mjs';
 import { renderDefectTicketExport } from '../src/acceptance/defect-ticket-report.mjs';
-import { defectTicketCreateInput, defectTicketCloseInput, defectTicketSources, defectTicketList,
+import { defectTicketCreateInput, defectTicketCloseInput, defectTicketDenyInput, defectTicketSources, defectTicketList,
   defectTicketDetail, defectTicketPreview, createDefectTicketReadGuard, defectTicketConfirmation,
   defectTicketAction, createDefectTicketReceipts, requestDefectTickets,
   fetchDefectTicketExport } from '../../console/src/acceptance-defect-tickets.js';
@@ -73,6 +73,13 @@ const actionResponse = (event = create) => ({ schemaVersion: 1, kind: 'manual-de
   eventSha256: sha(defectTicketEventBytes(event)), event: clone(event), replayed: false });
 const confirmation = (request = createRequest(), kind = 'create', selectedTicketId = request.ticketId ?? ticketId) =>
   defectTicketConfirmation({ projectId, ticketId: selectedTicketId, kind, request }, { crypto: webcrypto });
+const rejectedResponse = original => {
+  const rejection = { actionDecisionVersion: 1, kind: 'manual-defect-ticket-action-rejection', original: clone(original),
+    effect: 'deny-late-manual-defect-ticket-action', decidedAt: '2026-10-18T04:00:00.000Z', actor: { kind: 'local-operator' } };
+  return { schemaVersion: 1, kind: 'manual-defect-ticket-action', outcome: 'rejected', projectId: original.projectId,
+    ticketId: original.ticketId, actionId: original.actionId, requestFingerprint: original.requestFingerprint,
+    rejectionSha256: sha(defectTicketRejectionBytes(rejection)), rejection, replayed: false };
+};
 const jsonResponse = (value, status = 200, headers = {}) => new Response(JSON.stringify(value),
   { status, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } });
 const requestOptions = options => ({ baseUrl: origin, headers: { 'x-local-token': 'saved-local-token' }, ...options });
@@ -126,7 +133,7 @@ test('DTO/input copies reject accessors, toJSON and cycles before executing hook
   Object.defineProperty(getter, 'ticketId', { enumerable: true, get() { hooks++; return ticketId; } });
   const toJSON = { toJSON() { hooks++; return createRequest(); } }, cyclic = {}; cyclic.self = cyclic;
   for (const raw of [getter, toJSON, cyclic]) {
-    for (const fn of [defectTicketCreateInput, defectTicketCloseInput]) assert.throws(() => fn(raw), invalidResponse);
+    for (const fn of [defectTicketCreateInput, defectTicketCloseInput, defectTicketDenyInput]) assert.throws(() => fn(raw), invalidResponse);
     assert.throws(() => defectTicketSources(raw, projectId, candidateId, contentDigest), invalidResponse);
     assert.throws(() => defectTicketList(raw, projectId), invalidResponse);
     assert.throws(() => defectTicketDetail(raw, projectId, ticketId), invalidResponse);
@@ -224,6 +231,126 @@ test('unavailable WebCrypto cannot create confirmation or action success proof',
   await assert.rejects(defectTicketConfirmation({ projectId, ticketId, kind: 'create', request: createRequest() }, { crypto: null }), invalidResponse);
   const confirmed = await confirmation();
   await assert.rejects(defectTicketAction(actionResponse(), confirmed, { crypto: null }), invalidResponse);
+});
+
+test('deny envelopes retain exact canonical originals and keep their independent byte budget', async () => {
+  const request = { ...createRequest(), title: '界'.repeat(240), description: '界'.repeat(4000), reproduction: '界'.repeat(4000),
+    memberCheckIds: Array.from({ length: 24 }, (_, index) => `${String(index).padStart(2, '0')}-${'界'.repeat(237)}`) };
+  const bytes = () => Buffer.byteLength(canonicalAcceptanceJson(request));
+  while (bytes() > 32768) {
+    const last = request.memberCheckIds.at(-1);
+    if (last.length > 4) request.memberCheckIds[request.memberCheckIds.length - 1] = last.slice(0, -1);
+    else request.memberCheckIds.pop();
+  }
+  while (bytes() < 32768) request.memberCheckIds[request.memberCheckIds.length - 1] += 'x';
+  assert.equal(bytes(), 32768);
+  const original = await confirmation(request), input = { schemaVersion: 1, confirmed: true, original }, before = clone(input);
+  assert(Buffer.byteLength(canonicalAcceptanceJson(input)) >= 33104);
+  assert.deepEqual(defectTicketDenyInput(input), validateDefectTicketDenyRequest(input)); assert.deepEqual(input, before);
+  let sent;
+  await requestDefectTickets(projectId, `/actions/${original.actionId}/deny`, requestOptions({ method: 'POST', body: input, crypto: webcrypto,
+    fetcher: async (_url, options) => { sent = options.body; return jsonResponse(rejectedResponse(original)); } }));
+  assert(Buffer.byteLength(sent) > 32768 && Buffer.byteLength(sent) <= 65536);
+  const tooLarge = clone(request); tooLarge.memberCheckIds[tooLarge.memberCheckIds.length - 1] += 'x';
+  assert.throws(() => defectTicketCreateInput(tooLarge), invalidResponse);
+  assert.throws(() => defectTicketDenyInput({ ...input, original: { ...original, request: tooLarge } }), invalidResponse);
+  for (const patch of [{ schemaVersion: 2 }, { confirmed: false }, { confirmed: 'true' }, { extra: true }, { original: { ...original, generationId: 'new' } }])
+    assert.throws(() => defectTicketDenyInput({ ...input, ...patch }), invalidResponse);
+  for (const key of ['schemaVersion', 'confirmed', 'original']) { const missing = clone(input); delete missing[key]; assert.throws(() => defectTicketDenyInput(missing), invalidResponse); }
+  const unsorted = clone(await confirmation()); unsorted.request.memberCheckIds.reverse();
+  assert.throws(() => defectTicketDenyInput({ schemaVersion: 1, confirmed: true, original: unsorted }), invalidResponse);
+});
+
+test('complete rejected create and close proofs independently verify every field, exact original and canonical LF digest', async () => {
+  for (const [kind, request] of [['create', createRequest()], ['close', closeRequest()]]) {
+    const original = await confirmation(request, kind), raw = rejectedResponse(original), before = clone(raw);
+    const proof = await defectTicketAction(raw, original, { crypto: webcrypto });
+    assert.equal(proof.outcome, 'rejected'); assert(Object.isFrozen(proof.rejection.original.request)); assert.deepEqual(raw, before);
+    for (const mutate of [value => { value.schemaVersion++; }, value => { value.kind = 'other'; }, value => { value.outcome = 'recorded'; },
+      value => { value.projectId = otherProjectId; }, value => { value.ticketId = uid('dt', 99); }, value => { value.actionId = uid('da', 99); },
+      value => { value.requestFingerprint = sha('changed'); }, value => { value.rejectionSha256 = sha('bad digest'); }, value => { value.replayed = 'false'; },
+      value => { value.extra = true; }, value => { value.rejection.actionDecisionVersion = 2; }, value => { value.rejection.kind = 'manual-defect-ticket-action'; },
+      value => { value.rejection.effect = 'cancel-existing-ticket'; }, value => { value.rejection.decidedAt = '2026-10-18T04:00:00Z'; },
+      value => { value.rejection.actor.kind = 'automatic'; }, value => { value.rejection.actor.extra = true; }, value => { value.rejection.extra = true; },
+      value => { value.rejection.original.requestFingerprint = sha('another'); }, value => { value.rejection.original.projectId = otherProjectId; },
+      value => { value.rejection.original.request[kind === 'create' ? 'description' : 'resolution'] = 'different exact original'; },
+      value => { value.rejection.ticketContractVersion = 1; }, value => { delete value.rejection.original.version; }]) {
+      const changed = clone(raw); mutate(changed);
+      // Even an attacker-recomputed digest cannot turn a changed original or schema into a release proof.
+      if (changed.rejectionSha256 === raw.rejectionSha256) changed.rejectionSha256 = sha(canonicalAcceptanceJson(changed.rejection) + '\n');
+      await assert.rejects(defectTicketAction(changed, original, { crypto: webcrypto }), invalidResponse);
+    }
+    for (const key of Object.keys(raw).filter(key => key !== 'replayed')) {
+      const changed = clone(raw); delete changed[key]; await assert.rejects(defectTicketAction(changed, original, { crypto: webcrypto }), invalidResponse);
+    }
+    for (const key of Object.keys(raw.rejection)) {
+      const changed = clone(raw); delete changed.rejection[key]; await assert.rejects(defectTicketAction(changed, original, { crypto: webcrypto }), invalidResponse);
+    }
+    const noLf = clone(raw); noLf.rejectionSha256 = sha(canonicalAcceptanceJson(noLf.rejection));
+    await assert.rejects(defectTicketAction(noLf, original, { crypto: webcrypto }), invalidResponse);
+    const noReplay = clone(raw); delete noReplay.replayed; await defectTicketAction(noReplay, original, { crypto: webcrypto });
+  }
+  const original = await confirmation(), changed = rejectedResponse(original); changed.rejection.original.request.memberCheckIds.reverse();
+  changed.rejectionSha256 = sha(canonicalAcceptanceJson(changed.rejection) + '\n');
+  await assert.rejects(defectTicketAction(changed, original, { crypto: webcrypto }), invalidResponse);
+});
+
+test('rejected proofs are private exact-original capabilities and retain Web Lock CAS and complete readback checks', async () => {
+  const original = await confirmation(), another = await confirmation(createRequest(2)), storage = memoryStorage(), locks = memoryLocks();
+  const receipts = receiptsFor(storage, locks); await receipts.claimForSubmit(original);
+  const raw = rejectedResponse(original), proof = await defectTicketAction(raw, original, { crypto: webcrypto });
+  for (const forged of [raw, clone(proof), { outcome: 'rejected' }]) await assert.rejects(async () => receipts.resolveExact(original, forged), invalidResponse);
+  await assert.rejects(async () => receipts.resolveExact(another, proof), invalidResponse);
+  storage.values.set(receipts.key, JSON.stringify([{ ...original, request: { ...original.request, description: 'storage replacement' } }]));
+  await assert.rejects(receipts.resolveExact(original, proof), invalidResponse);
+  storage.values.set(receipts.key, JSON.stringify([original, another]));
+  await receipts.resolveExact(original, proof); assert.deepEqual(receipts.read(), [another]); assert(locks.calls.length >= 3);
+  const broken = memoryStorage(JSON.stringify([original, another])), brokenReceipts = receiptsFor(broken);
+  broken.setItem = key => broken.values.set(key, '[]');
+  await assert.rejects(brokenReceipts.resolveExact(original, proof), invalidResponse); assert.equal(brokenReceipts.canWrite, false);
+});
+
+test('a stale context at the exclusive decision lock cannot remove a completely proven original', async () => {
+  const original = await confirmation(), storage = memoryStorage(), waiting = deferred(), release = deferred(); let current = true;
+  const receipts = receiptsFor(storage, { request: async (_name, _options, action) => { waiting.resolve(); await release.promise; return action(); } });
+  storage.values.set(receipts.key, JSON.stringify([original]));
+  const proof = await defectTicketAction(rejectedResponse(original), original, { crypto: webcrypto });
+  const pending = receipts.resolveExact(original, proof, { current: () => current }); await waiting.promise; current = false; release.resolve();
+  assert.equal(await pending, false); assert.deepEqual(receipts.read(), [original]); assert.equal(storage.writes, 0);
+});
+
+test('deny transport binds project, action, full canonical original and recomputed fingerprint before sending', async () => {
+  const original = await confirmation(), input = { schemaVersion: 1, confirmed: true, original }; let fetched = 0;
+  const fetcher = async () => { fetched++; return jsonResponse(rejectedResponse(original)); };
+  const badFingerprint = clone(input); badFingerprint.original.requestFingerprint = sha('forged');
+  const unsorted = clone(input); unsorted.original.request.memberCheckIds.reverse();
+  for (const [project, suffix, body, crypto] of [[otherProjectId, `/actions/${original.actionId}/deny`, input, webcrypto],
+    [projectId, `/actions/${uid('da', 2)}/deny`, input, webcrypto], [projectId, `/actions/${original.actionId}/deny`, badFingerprint, webcrypto],
+    [projectId, `/actions/${original.actionId}/deny`, unsorted, webcrypto], [projectId, `/actions/${original.actionId}/deny`, input, null],
+    [projectId, `/actions/${original.actionId}/deny?force=true`, input, webcrypto]])
+    await assert.rejects(requestDefectTickets(project, suffix, requestOptions({ method: 'POST', body, crypto, fetcher })), invalidResponse);
+  assert.equal(fetched, 0);
+  await requestDefectTickets(projectId, `/actions/${original.actionId}/deny`, requestOptions({ method: 'POST', body: input, crypto: webcrypto,
+    fetcher: async (url, options) => { assert.equal(url, `${origin}/api/acceptance/projects/${projectId}/defect-tickets/actions/${original.actionId}/deny`);
+      assert.deepEqual(JSON.parse(options.body), input); assert.equal(options.cache, 'no-store'); assert.equal(options.credentials, 'omit');
+      assert.equal(options.redirect, 'error'); return jsonResponse(rejectedResponse(original)); } }));
+});
+
+test('deny 4xx and uncertain responses never grant original POST rejection-release capability', async () => {
+  const original = await confirmation(), receipts = receiptsFor(); await receipts.claimForSubmit(original);
+  const input = { schemaVersion: 1, confirmed: true, original }, suffix = `/actions/${original.actionId}/deny`;
+  for (const fetcher of [async () => jsonResponse({ code: 'INVALID_INPUT', error: 'invalid deny', outcomeUnknown: false }, 400),
+    async () => jsonResponse({ code: 'ACTION_CONFLICT', error: 'another original', outcomeUnknown: false }, 409),
+    async () => { throw new Error('lost deny'); }, async () => new Response('{broken', { headers: { 'content-type': 'application/json' } })]) {
+    let failure;
+    try { await requestDefectTickets(projectId, suffix, requestOptions({ method: 'POST', body: input, crypto: webcrypto, fetcher })); }
+    catch (error) { failure = error; }
+    assert.equal(failure.outcomeUnknown, true);
+    await assert.rejects(async () => receipts.releaseRejected(original, failure), invalidResponse); assert.deepEqual(receipts.read(), [original]);
+  }
+  for (const crypto of [null, { subtle: { digest() { throw new Error('digest unavailable'); } } }]) {
+    await assert.rejects(defectTicketAction(rejectedResponse(original), original, { crypto })); assert.deepEqual(receipts.read(), [original]);
+  }
 });
 
 test('two receipts managers sharing storage and Web Locks permit exactly one pending submission', async () => {

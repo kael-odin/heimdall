@@ -1,0 +1,22 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-943ecba6-9828-4a44-9e07-a6b596cf8e2a"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs/ac-cb55b9b9-cbfd-494d-a090-8fe1cd985386"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/runs"
+  }
+]

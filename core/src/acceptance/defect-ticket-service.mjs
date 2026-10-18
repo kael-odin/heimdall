@@ -1,11 +1,12 @@
 /** Manual ticket orchestration. This service cannot execute or register runs. */
+import { types } from 'node:util';
 import { assertAcceptanceOwner } from './owner.mjs';
 import { createAcceptanceCatalogStore } from './catalog.mjs';
 import { createDefectTicketSourceReader } from './defect-ticket-source.mjs';
 import { createDefectTicketStore } from './defect-ticket-store.mjs';
 import { DEFECT_TICKET_LIMITS, DefectTicketError, defectTicketFail as fail,
   isDefectTicketId, isDefectTicketActionId, validateDefectTicketCreateRequest, validateDefectTicketCloseRequest,
-  defectTicketRequestFingerprint } from './defect-ticket-schema.mjs';
+  defectTicketRequestFingerprint, validateDefectTicketConfirmation } from './defect-ticket-schema.mjs';
 import { createDefectTicketEvent, projectDefectTicket, previewDefectTicketClose,
   closeDefectTicketEvent, listDefectTicketSources } from './defect-ticket-model.mjs';
 import { renderDefectTicketExport } from './defect-ticket-report.mjs';
@@ -17,9 +18,22 @@ const candidateIdOf = value => { if (typeof value !== 'string'
 const ticketIdOf = value => { if (!isDefectTicketId(value)) fail('INVALID_TICKET_ID', 'INVALID_INPUT', 400); };
 const operationIdOf = value => { if (typeof value !== 'string'
   || !/^bo-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(value)) fail('INVALID_OPERATION_ID', 'INVALID_INPUT', 400); };
+const nativePromise = Promise, promisePrototype = Promise.prototype, promiseThen = Promise.prototype.then;
+const promiseSpecies = Object.getOwnPropertyDescriptor(Promise, Symbol.species).get;
+function consumePromise(value) {
+  if (!types.isProxy(value) && types.isPromise(value) && Object.getPrototypeOf(value) === promisePrototype
+    && !Object.getOwnPropertyDescriptor(value, 'constructor')
+    && Object.getOwnPropertyDescriptor(promisePrototype, 'constructor')?.value === nativePromise
+    && Object.getOwnPropertyDescriptor(nativePromise, Symbol.species)?.get === promiseSpecies)
+    promiseThen.call(value, undefined, () => {});
+}
 
-export function createDefectTicketService({ owner, sourceLimits = {}, storeLimits = {} } = {}) {
+export function createDefectTicketService({ owner, sourceLimits = {}, storeLimits = {}, assertReady = () => true } = {}) {
   assertAcceptanceOwner(owner);
+  if (typeof assertReady !== 'function' || types.isProxy(assertReady) || types.isAsyncFunction(assertReady) || types.isGeneratorFunction(assertReady)) {
+    consumePromise(assertReady);
+    fail('INVALID_READINESS_GUARD', 'INVALID_INPUT', 400);
+  }
   const catalog = createAcceptanceCatalogStore({ root: owner.root, owner });
   const source = createDefectTicketSourceReader({ owner, limits: sourceLimits });
   const store = createDefectTicketStore({ owner, limits: storeLimits });
@@ -28,6 +42,14 @@ export function createDefectTicketService({ owner, sourceLimits = {}, storeLimit
     const current = catalog.read();
     if (!current.projects[projectId]) fail('PROJECT_NOT_FOUND', 'NOT_FOUND', 404);
     assertAcceptanceOwner(owner); return current;
+  }
+  function newDecision(projectId) {
+    assertAcceptanceOwner(owner);
+    let ready;
+    try { ready = assertReady(); }
+    catch (cause) { consumePromise(cause); fail('ACCEPTANCE_NOT_READY'); }
+    if (ready !== true && ready !== undefined) { consumePromise(ready); fail('ACCEPTANCE_NOT_READY'); }
+    project(projectId);
   }
   function ticket(snapshot, ticketId) {
     ticketIdOf(ticketId);
@@ -119,44 +141,67 @@ export function createDefectTicketService({ owner, sourceLimits = {}, storeLimit
     return { schemaVersion: 1, projectId, ticketId, preview };
   }
   function receipt(projectId, record, replayed = undefined) {
+    if (record.rejection) {
+      const { original } = record.rejection;
+      return { schemaVersion: 1, kind: 'manual-defect-ticket-action', outcome: 'rejected', projectId,
+        ticketId: original.ticketId, actionId: original.actionId, requestFingerprint: original.requestFingerprint,
+        rejectionSha256: record.sha256, rejection: record.rejection,
+        ...(replayed === undefined ? {} : { replayed }) };
+    }
     return { schemaVersion: 1, kind: 'manual-defect-ticket-action', outcome: 'recorded', projectId,
       ticketId: record.event.ticketId, actionId: record.event.actionId,
       requestFingerprint: record.event.requestFingerprint, eventSha256: record.sha256, event: record.event,
       ...(replayed === undefined ? {} : { replayed }) };
   }
   function create(projectId, raw) {
-    project(projectId); const request = validateDefectTicketCreateRequest(raw);
+    projectIdOf(projectId); const request = validateDefectTicketCreateRequest(raw);
     const fingerprint = defectTicketRequestFingerprint({ projectId, ticketId: request.ticketId, kind: 'create', request });
     return store.append({ projectId, actionId: request.actionId, requestFingerprint: fingerprint, prepare(records) {
+      newDecision(projectId);
       if (records.some(record => record.event.ticketId === request.ticketId)) fail('TICKET_ALREADY_EXISTS', 'STALE_TICKET', 409);
       const captured = source.capture({ projectId, operationId: request.sourceOperationId });
       const input = { projectId, request, facts: captured.facts, createdAt: new Date().toISOString() }; boundedModel(input);
       const event = createDefectTicketEvent(input);
-      captured.assertCurrent(); return { event, assertCurrent: captured.assertCurrent };
+      const assertCurrent = () => { newDecision(projectId); captured.assertCurrent(); };
+      assertCurrent(); return { event, assertCurrent };
     } }).then(result => ({ status: result.replayed ? 200 : 201, payload: receipt(projectId, result.record, result.replayed) }));
   }
   function close(projectId, ticketId, raw) {
-    project(projectId); ticketIdOf(ticketId); const request = validateDefectTicketCloseRequest(raw);
+    projectIdOf(projectId); ticketIdOf(ticketId); const request = validateDefectTicketCloseRequest(raw);
     const fingerprint = defectTicketRequestFingerprint({ projectId, ticketId, kind: 'close', request });
     return store.append({ projectId, actionId: request.actionId, requestFingerprint: fingerprint, prepare(allRecords) {
+      newDecision(projectId);
       const records = allRecords.filter(record => record.event.ticketId === ticketId);
       if (!records.length) fail('TICKET_NOT_FOUND', 'NOT_FOUND', 404);
       const captured = source.capture(sourceScope(records));
       const input = { records, facts: captured.facts, request, createdAt: new Date().toISOString() }; boundedModel(input);
       const event = closeDefectTicketEvent(input);
-      captured.assertCurrent(); return { event, assertCurrent: captured.assertCurrent };
+      const assertCurrent = () => { newDecision(projectId); captured.assertCurrent(); };
+      assertCurrent(); return { event, assertCurrent };
     } }).then(result => ({ status: result.replayed ? 200 : 201, payload: receipt(projectId, result.record, result.replayed) }));
   }
   function action(projectId, actionId) {
-    project(projectId); if (!isDefectTicketActionId(actionId)) fail('INVALID_ACTION_ID', 'INVALID_INPUT', 400);
+    projectIdOf(projectId); if (!isDefectTicketActionId(actionId)) fail('INVALID_ACTION_ID', 'INVALID_INPUT', 400);
     const record = store.action(projectId, actionId); assertAcceptanceOwner(owner);
+    if (!record) project(projectId);
     return record ? receipt(projectId, record) : { schemaVersion: 1, kind: 'manual-defect-ticket-action', projectId, actionId,
       outcome: 'unresolved', reason: 'ABSENCE_IS_NOT_A_COMMIT_DECISION' };
+  }
+  function deny(projectId, actionId, raw) {
+    projectIdOf(projectId); if (!isDefectTicketActionId(actionId)) fail('INVALID_ACTION_ID', 'INVALID_INPUT', 400);
+    const original = validateDefectTicketConfirmation(raw);
+    if (original.projectId !== projectId || original.actionId !== actionId) fail('ORIGINAL_PATH_MISMATCH', 'INVALID_INPUT', 400);
+    return store.deny({ projectId, actionId, requestFingerprint: original.requestFingerprint, prepare() {
+      newDecision(projectId);
+      const rejection = { actionDecisionVersion: 1, kind: 'manual-defect-ticket-action-rejection', original,
+        effect: 'deny-late-manual-defect-ticket-action', decidedAt: new Date().toISOString(), actor: { kind: 'local-operator' } };
+      return { rejection, assertCurrent: () => newDecision(projectId) };
+    } }).then(result => ({ status: result.replayed ? 200 : 201, payload: receipt(projectId, result.record, result.replayed) }));
   }
   function exportTicket(projectId, ticketId, format) {
     const { records, projection, captured, snapshot } = detail(projectId, ticketId);
     const artifact = renderDefectTicketExport({ projection, records, format, exportedAt: new Date().toISOString() });
     captured?.assertCurrent(); snapshot.assertCurrent(); assertAcceptanceOwner(owner); return artifact;
   }
-  return Object.freeze({ list, sources, read, previewClose, create, close, action, exportTicket });
+  return Object.freeze({ list, sources, read, previewClose, create, close, action, deny, exportTicket });
 }

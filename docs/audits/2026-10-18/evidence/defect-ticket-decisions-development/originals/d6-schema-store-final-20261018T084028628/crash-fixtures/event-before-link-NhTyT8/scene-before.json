@@ -1,0 +1,14 @@
+{
+  "v1/": {
+    "directory": true
+  },
+  "v1/events/": {
+    "directory": true
+  },
+  "v1/events/.defect-ticket-40bac2a4-5dc4-4687-bcbf-c957c189898e.tmp": {
+    "bytes": 2068,
+    "sha256": "1b7636b63cb5660fef448beed50fe5113162a9c0c03f154e55cf74b3ddd6b397",
+    "nlink": 1,
+    "ino": 2533274792118140
+  }
+}

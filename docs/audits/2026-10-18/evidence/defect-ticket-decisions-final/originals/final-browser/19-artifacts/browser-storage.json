@@ -1,0 +1,10 @@
+{
+  "local": {
+    "heimdall-acceptance-run": "ac-a78ce5bd-6566-428d-86aa-c9fbb38d5366",
+    "heimdall-theme": "dark",
+    "heimdall:browser-operations:v1:http://127.0.0.1:53311:ap-b54483a0-df6e-48c7-b207-9b4402e569aa": "[]",
+    "heimdall:browser-operations:v1:http://127.0.0.1:53311:ap-72f9fcb7-3627-4bec-881c-a7c7e5433a9d": "[]"
+  },
+  "session": {},
+  "hrefs": []
+}
