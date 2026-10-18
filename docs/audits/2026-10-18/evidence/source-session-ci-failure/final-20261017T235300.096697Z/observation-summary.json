@@ -1,0 +1,32 @@
+{
+  "recordedAt": "2026-10-17T23:53:00.952173+00:00",
+  "runId": 39078795034,
+  "runAttempt": 1,
+  "headSha": "209cf405656628156952bb43f1188092b4089344",
+  "status": "completed",
+  "conclusion": "failure",
+  "runUrl": "https://github.com/kael-odin/heimdall/actions/runs/39078795034",
+  "jobs": [
+    {
+      "id": 117531346584,
+      "name": "core (e2e smoke, local fixture)",
+      "status": "completed",
+      "conclusion": "success",
+      "currentSteps": []
+    },
+    {
+      "id": 117531346741,
+      "name": "console (build)",
+      "status": "completed",
+      "conclusion": "success",
+      "currentSteps": []
+    },
+    {
+      "id": 117531346755,
+      "name": "core (lint + test)",
+      "status": "completed",
+      "conclusion": "failure",
+      "currentSteps": []
+    }
+  ]
+}

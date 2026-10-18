@@ -193,7 +193,7 @@ test('source capture separates named sessions per flow and fails closed on missi
   assert.equal(report.sessionUsed, true);
   assert.equal(report.flows[0].sessionName, 'admin');
   assert.equal(report.flows[0].sessionUsed, true);
-  assert.equal(report.flows[0].passed, true);
+  assert.equal(report.flows[0].passed, true, JSON.stringify(report.flows[0]));
   assert.equal(report.flows[1].sessionName, 'guest');
   assert.equal(report.flows[1].sessionUsed, true);
   assert.equal(report.flows[1].passed, false);

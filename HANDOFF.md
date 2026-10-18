@@ -24,6 +24,8 @@
 
 15. [运行展示读取竞态](docs/audits/2026-10-17/acceptance-display-head-race.md)：正常 legacy worker 原子发布时保留本请求已稳定捕获的展示版本；来源 / 证据 / 恢复仍严格核验，原工作台 CI 失败及放弃方案均保留。
 
+16. [来源会话 CI 断言失败与诊断](docs/audits/2026-10-18/acceptance-source-session-ci.md)：双核调度提交自身 CI 为明确 failure，完整 Core 唯一失败是 admin flow 的 `passed` 断言；20 项 smoke 和 Docker 未执行。受控高负载复现了短预算可见性超时，但旧 CI 未保存内部 report，不能认定同根因。原断言新增脱敏 flow 诊断，期望与 timeout 保持；间歇失败尚未标记修复。
+
 ## 代码路径
 
 - `core/src/engine-server.mjs`：引擎路由、任务编排与静态产物入口。

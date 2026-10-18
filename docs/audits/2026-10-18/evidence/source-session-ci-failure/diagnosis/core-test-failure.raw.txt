@@ -1,0 +1,22 @@
+2026-10-17T23:49:42.6077189Z # Subtest: source capture separates named sessions per flow and fails closed on missing sessions
+2026-10-17T23:49:42.6079131Z not ok 1975 - source capture separates named sessions per flow and fails closed on missing sessions
+2026-10-17T23:49:42.6080172Z   ---
+2026-10-17T23:49:42.6080696Z   duration_ms: 1481.954009
+2026-10-17T23:49:42.6081306Z   type: 'test'
+2026-10-17T23:49:42.6082289Z   location: '/home/runner/work/heimdall/heimdall/core/test/source-operations.test.mjs:169:1'
+2026-10-17T23:49:42.6083361Z   failureType: 'testCodeFailure'
+2026-10-17T23:49:42.6083996Z   error: |-
+2026-10-17T23:49:42.6084594Z     Expected values to be strictly equal:
+2026-10-17T23:49:42.6085228Z     
+2026-10-17T23:49:42.6085728Z     false !== true
+2026-10-17T23:49:42.6086254Z     
+2026-10-17T23:49:42.6086756Z   code: 'ERR_ASSERTION'
+2026-10-17T23:49:42.6087570Z   name: 'AssertionError'
+2026-10-17T23:49:42.6088165Z   expected: true
+2026-10-17T23:49:42.6088663Z   actual: false
+2026-10-17T23:49:42.6089189Z   operator: 'strictEqual'
+2026-10-17T23:49:42.6089721Z   stack: |-
+2026-10-17T23:49:42.6090781Z     TestContext.<anonymous> (file:///home/runner/work/heimdall/heimdall/core/test/source-operations.test.mjs:196:10)
+2026-10-17T23:49:42.6092023Z     async Test.run (node:internal/test_runner/test:1054:7)
+2026-10-17T23:49:42.6093012Z     async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+2026-10-17T23:49:42.6093828Z   ...

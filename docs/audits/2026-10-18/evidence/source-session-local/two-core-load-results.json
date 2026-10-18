@@ -1,0 +1,11 @@
+[
+  {
+    "index": 1,
+    "started": "2026-10-18T00:00:59.783458+00:00",
+    "exitCode": 1,
+    "affinityMask": 3,
+    "loadProcesses": 2,
+    "log": "two-core-load-01.log",
+    "sha256": "87bec1fcf6b5a905a03694f6fea8484c0ddb552013c4588b76ec41bc6b92d009"
+  }
+]

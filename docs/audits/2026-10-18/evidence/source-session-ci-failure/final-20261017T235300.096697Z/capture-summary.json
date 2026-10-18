@@ -1,0 +1,306 @@
+{
+  "captured": true,
+  "runId": 39078795034,
+  "runAttempt": 1,
+  "headSha": "209cf405656628156952bb43f1188092b4089344",
+  "status": "completed",
+  "conclusion": "failure",
+  "jobs": [
+    {
+      "id": 117531346584,
+      "name": "core (e2e smoke, local fixture)",
+      "status": "completed",
+      "conclusion": "success",
+      "currentSteps": []
+    },
+    {
+      "id": 117531346741,
+      "name": "console (build)",
+      "status": "completed",
+      "conclusion": "success",
+      "currentSteps": []
+    },
+    {
+      "id": 117531346755,
+      "name": "core (lint + test)",
+      "status": "completed",
+      "conclusion": "failure",
+      "currentSteps": []
+    }
+  ],
+  "zipCRC": true,
+  "zipBytes": 490644,
+  "zipSha256": "ec1abae9b7f60985ad625d206887ead7fc37bc89a7273cc279a1e44123961146",
+  "logFiles": [
+    {
+      "path": "0_console (build).txt",
+      "bytes": 21636,
+      "sha256": "6b64ed2e9a73a541e5948b06babaab036eee0e6321d3342e4d76a497d9c36177",
+      "crc32": "60fa22b0"
+    },
+    {
+      "path": "console (build)/system.txt",
+      "bytes": 569,
+      "sha256": "ca22004e55ae3e4ccf3c554ac3433e51d2995a198b78e5df3fb711af398e07c8",
+      "crc32": "594b0065"
+    },
+    {
+      "path": "console (build)/1_Set up job.txt",
+      "bytes": 2154,
+      "sha256": "78ede20f4c097f798f55521129d95b5616e46d348c191b8b84b2aaf8f3e1541c",
+      "crc32": "4afa07ab"
+    },
+    {
+      "path": "console (build)/2_Run actions_checkout@v7.txt",
+      "bytes": 7474,
+      "sha256": "1147c562b1f218be862e973a443eceeff6866be526f6765afa6e2efe3a48bf73",
+      "crc32": "75c22790"
+    },
+    {
+      "path": "console (build)/3_Run pnpm_action-setup@v6.txt",
+      "bytes": 1808,
+      "sha256": "669bac9c2c8ed6b4843a69f3c0bf8e68e45a6cc35165cf967047c8d023c9bbe4",
+      "crc32": "5f430703"
+    },
+    {
+      "path": "console (build)/4_Run actions_setup-node@v7.txt",
+      "bytes": 1835,
+      "sha256": "c8214d0c7b7d527dc56de6cb12ebfd5d3869ae7398f44f756b1180314920c725",
+      "crc32": "26b6f84e"
+    },
+    {
+      "path": "console (build)/5_Run pnpm install --frozen-lockfile.txt",
+      "bytes": 1823,
+      "sha256": "7f53c4ccdf7d45b5c8b50d568d6f86fc8b7177d6a01ebf2c814ec3a2625b7879",
+      "crc32": "72547e64"
+    },
+    {
+      "path": "console (build)/6_Run pnpm build.txt",
+      "bytes": 2040,
+      "sha256": "57901fff75e07af3d5616459b54c09900b1a4c01069107e3ea17c64460bb579d",
+      "crc32": "d8b4ec2f"
+    },
+    {
+      "path": "console (build)/10_Post Run actions_setup-node@v7.txt",
+      "bytes": 227,
+      "sha256": "e1ee17fe14b9fc1a6bfc9eec683643d6b4ef9f7fe7ace836af0efe874061f564",
+      "crc32": "27b2fbe2"
+    },
+    {
+      "path": "console (build)/11_Post Run pnpm_action-setup@v6.txt",
+      "bytes": 103,
+      "sha256": "d8ab00a8392ec496db3e0ac623e586e58416c2d75f6ffc6e6297bf015c63fc57",
+      "crc32": "f2db3038"
+    },
+    {
+      "path": "console (build)/12_Post Run actions_checkout@v7.txt",
+      "bytes": 4138,
+      "sha256": "b8a7083a46fa7646700054b19eb480b68c6b544edc093bc795c490c351241e01",
+      "crc32": "7a74fa63"
+    },
+    {
+      "path": "console (build)/13_Complete job.txt",
+      "bytes": 61,
+      "sha256": "92d06b8b7fc8bcdfa7d97ae351748b509fcd7a3843b078e25bdfe7d59d1d0e2f",
+      "crc32": "6f5d7111"
+    },
+    {
+      "path": "1_core (lint + test).txt",
+      "bytes": 1100138,
+      "sha256": "4adcb0000f0ee398825ea452515cbfc6103b6facce4c798f99bc98b78d683d26",
+      "crc32": "035d699b"
+    },
+    {
+      "path": "core (lint + test)/system.txt",
+      "bytes": 566,
+      "sha256": "d556e696a37a4d90a08432c71765d0832263cd90d98e662b9f512eca0b98e017",
+      "crc32": "ae67a2e9"
+    },
+    {
+      "path": "core (lint + test)/1_Set up job.txt",
+      "bytes": 2289,
+      "sha256": "f26ab41461259ae4a02d3d5811ed5512b3ddccf5361039fa26301c2d5f4aef4b",
+      "crc32": "aa844e0f"
+    },
+    {
+      "path": "core (lint + test)/2_Run actions_checkout@v7.txt",
+      "bytes": 7474,
+      "sha256": "ef296c904041a5c67916384b0e95824833c4ccce4e7f6959b9220c0b57733654",
+      "crc32": "73d99945"
+    },
+    {
+      "path": "core (lint + test)/3_Run pnpm_action-setup@v6.txt",
+      "bytes": 1808,
+      "sha256": "53bbae29ef19fd091f8f246b095b66c5fcaf493c676c964bde15bd7e54876c83",
+      "crc32": "b14f9bc8"
+    },
+    {
+      "path": "core (lint + test)/4_Run actions_setup-node@v7.txt",
+      "bytes": 1760,
+      "sha256": "253a31bb1475c66380976a76979b67735c0ea76dc5ecfe9673bf582dbe87d595",
+      "crc32": "503f54ec"
+    },
+    {
+      "path": "core (lint + test)/5_Run pnpm install --frozen-lockfile.txt",
+      "bytes": 1662,
+      "sha256": "85d6242715611f119e9857c5598c052071c2bb3846e37fe877a8475d9f27754b",
+      "crc32": "3eec6661"
+    },
+    {
+      "path": "core (lint + test)/6_Run pnpm lint.txt",
+      "bytes": 441,
+      "sha256": "29926d5ae1f7aa4f432e125217f94c811a869fcfd9e039a34de1daea7c44236a",
+      "crc32": "2ff7c606"
+    },
+    {
+      "path": "core (lint + test)/7_Run pnpm checkdocs.txt",
+      "bytes": 487,
+      "sha256": "f173ca98d076d309f8beeda2681b3ae875fc0d18d4b63546d4a9eddb27200026",
+      "crc32": "9794b899"
+    },
+    {
+      "path": "core (lint + test)/8_Run pnpm exec playwright install --with-deps chromium.txt",
+      "bytes": 22779,
+      "sha256": "df011d20a3c79cd0194a092929ec17b59d77c7f30d51024840b6e973f706d4db",
+      "crc32": "0df43cd4"
+    },
+    {
+      "path": "core (lint + test)/9_Run pnpm --dir .._console install --frozen-lockfile.txt",
+      "bytes": 1944,
+      "sha256": "dda5e57c75afcc4be6e5ef1a42b9399d38fb1175d2fba007dc984ddd66b97c07",
+      "crc32": "84d8c07f"
+    },
+    {
+      "path": "core (lint + test)/10_Run pnpm --dir .._console build.txt",
+      "bytes": 2074,
+      "sha256": "a961ad1ae737227fded46da377ce124a8514c5fb5d8d91ea0d909e77e7463547",
+      "crc32": "51539367"
+    },
+    {
+      "path": "core (lint + test)/11_Run pnpm test.txt",
+      "bytes": 1046392,
+      "sha256": "12398faaeeca77aaa9645699f85d8bf0bfbe1ce75903d032c0a164d00f59c847",
+      "crc32": "05ce51ce"
+    },
+    {
+      "path": "core (lint + test)/32_Preserve acceptance smoke failure diagnostics.txt",
+      "bytes": 6768,
+      "sha256": "062361b95846f92c1302369763461f0d03eb1ae2bfae2ce5b72e6bf7ebce3d6e",
+      "crc32": "4d86ae1c"
+    },
+    {
+      "path": "core (lint + test)/65_Post Run pnpm_action-setup@v6.txt",
+      "bytes": 103,
+      "sha256": "900c5d765547c4fed349d098da6cf6453c0c20a7d6420d0b22cee89b09a84c39",
+      "crc32": "efd7e678"
+    },
+    {
+      "path": "core (lint + test)/66_Post Run actions_checkout@v7.txt",
+      "bytes": 4138,
+      "sha256": "e59d026075eca0b576cf76abad38063f2fd8b567275e59cf80336424c3842b53",
+      "crc32": "947dc851"
+    },
+    {
+      "path": "core (lint + test)/67_Complete job.txt",
+      "bytes": 61,
+      "sha256": "dd31b804baa1aea9a34467a8f8a5633d4d44f34f7934edc286a33768a086b2cd",
+      "crc32": "3e5fbac8"
+    },
+    {
+      "path": "2_core (e2e smoke, local fixture).txt",
+      "bytes": 50211,
+      "sha256": "c12049d11401eaaff96f505a925e728643d767f56432db19320667f278560f67",
+      "crc32": "ab633873"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/system.txt",
+      "bytes": 567,
+      "sha256": "27b3d5b1c6c638a71f1805814552cff89df7b33a7d590a2351538f8995da975d",
+      "crc32": "956613ef"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/1_Set up job.txt",
+      "bytes": 2170,
+      "sha256": "08fd116af433242fd97ac4951b151a3a6fcbb9964b113d7f619a494d6679f6a0",
+      "crc32": "92d90277"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/2_Run actions_checkout@v7.txt",
+      "bytes": 7281,
+      "sha256": "815be75fa2417ee044e19b2951f13cddce8f5a06df82220169d87fc2900d0652",
+      "crc32": "a28e1585"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/3_Run pnpm_action-setup@v6.txt",
+      "bytes": 1808,
+      "sha256": "bb728c6d0a56934e995f6e45f3c8b90e2c53a8f26093ae71ce712abe16ab4aac",
+      "crc32": "f6c7e072"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/4_Run actions_setup-node@v7.txt",
+      "bytes": 1836,
+      "sha256": "b34ffdffb2c7e7e4f8bb2ee98e630ebbc24d41027fe86dc4ddee1c881cb04b96",
+      "crc32": "20ebba1d"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/5_Run pnpm install --frozen-lockfile.txt",
+      "bytes": 1665,
+      "sha256": "c096aaeb4c0b0e94d62aaf7beaaa5519576e186b0850448f5e38a1c3545015d2",
+      "crc32": "2408ae2b"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/6_Run pnpm exec playwright install --with-deps chromium.txt",
+      "bytes": 22779,
+      "sha256": "c5ffa9df3e2d91a2c2bb69542ce48b9ab45b453ec4fe4c979bcbd47b2a93d9d4",
+      "crc32": "747025b0"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/7_Run pnpm smoke.txt",
+      "bytes": 739,
+      "sha256": "fa1d68cc42e4ad111df3c91cfd5073f23197f7f8409c458e44828567de939445",
+      "crc32": "449833bd"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/8_Acceptance detection benchmark (known truth fixtures).txt",
+      "bytes": 2084,
+      "sha256": "f9fb4ce49788316baa3f43fbb3b14f54b4826a87e82109eb6282dd721ff3110c",
+      "crc32": "db96f0d8"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/9_Spec API benchmark (OpenAPI candidates and known truth).txt",
+      "bytes": 2129,
+      "sha256": "0967fa881d31091fe2f6a84a278a7099980322efd86135045812e3a42f6c48cb",
+      "crc32": "25edabc6"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/10_Acceptance comparison benchmark (known retest and false-closure cases).txt",
+      "bytes": 3230,
+      "sha256": "3ba8fe242220c9dbac52215b31fab25b90fce2ef4ebe0e7445f81c486bd745ad",
+      "crc32": "f0d5dc16"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/18_Post Run actions_setup-node@v7.txt",
+      "bytes": 227,
+      "sha256": "2bfeee42770d829f25e622a6c3cf4fd58db8da43ee72b91e3a2093f2083d33d4",
+      "crc32": "6e6d1e9d"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/19_Post Run pnpm_action-setup@v6.txt",
+      "bytes": 103,
+      "sha256": "d6cdbc591934615c85cb2bda4cc44a9d53cc3bb71b2fe7dd4be442c60540318c",
+      "crc32": "230a7081"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/20_Post Run actions_checkout@v7.txt",
+      "bytes": 4138,
+      "sha256": "dab42fd25505e9cb18350aa5df567d9a896fc78e7cd4c097d0e06519ea75e5d1",
+      "crc32": "a3a437f4"
+    },
+    {
+      "path": "core (e2e smoke, local fixture)/21_Complete job.txt",
+      "bytes": 61,
+      "sha256": "5351771f87d73be691b706c125ff59bde536827a578b2dadb4deded4dedb2a5e",
+      "crc32": "60752f70"
+    }
+  ]
+}

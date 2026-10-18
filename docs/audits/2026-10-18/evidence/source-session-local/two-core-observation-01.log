@@ -1,0 +1,18 @@
+TAP version 13
+# {"kind":"assertion-timeout-observation","errorType":"TimeoutError","elapsedMs":109,"snapshot":{"allowedPresent":true,"allowedHidden":true,"allowedHeight":0,"cookieAuthenticated":false,"sessionAuthenticated":false}}
+# {"kind":"assertion-timeout-observation","errorType":"TimeoutError","elapsedMs":110,"snapshot":{"allowedPresent":true,"allowedHidden":true,"allowedHeight":0,"cookieAuthenticated":false,"sessionAuthenticated":false}}
+# Subtest: source capture separates named sessions per flow and fails closed on missing sessions
+ok 1 - source capture separates named sessions per flow and fails closed on missing sessions
+  ---
+  duration_ms: 1700.6842
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2228.9895

@@ -1,0 +1,91 @@
+﻿2026-10-17T23:51:52.8272133Z ##[group]Run actions/upload-artifact@v7
+2026-10-17T23:51:52.8272532Z with:
+2026-10-17T23:51:52.8272896Z   name: acceptance-catalog-failure-1
+2026-10-17T23:51:52.8283416Z   path: core/workspace/_runs/acceptance-catalog-console/**/failure.json
+core/workspace/_runs/acceptance-catalog-console/**/failure-ui.json
+core/workspace/_runs/acceptance-catalog-console/**/catalog-failure.png
+core/workspace/_runs/acceptance-catalog-console/**/engine-*.log
+core/workspace/_runs/acceptance-catalog-migration/**
+core/workspace/_runs/acceptance-managed-preparation/**
+core/workspace/_runs/acceptance-console/acceptance-failure.json
+core/workspace/_runs/acceptance-console/acceptance-failure.png
+core/workspace/_runs/acceptance-console/engine-error.log
+core/workspace/_runs/managed-execution-*/failure.json
+core/workspace/_runs/managed-execution-*/failure.png
+core/workspace/_runs/managed-execution-*/engine-*.log
+core/workspace/_runs/execution-ui-*/failure.json
+core/workspace/_runs/execution-ui-*/failure*.png
+core/workspace/_runs/execution-ui-*/fixture-*-engine-*.log
+core/workspace/_runs/execution-ui-*/chromium.log
+core/workspace/_runs/browser-source-smoke-*/failure.json
+core/workspace/_runs/browser-source-smoke-*/materials/source-index.json
+core/workspace/_runs/browser-reading-smoke-*/failure.json
+core/workspace/_runs/browser-reading-smoke-*/materials/source-index.json
+core/workspace/_runs/browser-bindings-smoke-*/failure.json
+core/workspace/_runs/browser-bindings-smoke-*/summary.json
+core/workspace/_runs/browser-bindings-smoke-*/checks.json
+core/workspace/_runs/browser-bindings-console-smoke-*/failure.json
+core/workspace/_runs/browser-bindings-console-smoke-*/failure*.png
+core/workspace/_runs/browser-bindings-console-smoke-*/failure*.txt
+core/workspace/_runs/browser-bindings-console-smoke-*/engine.log
+core/workspace/_runs/browser-bindings-console-smoke-*/chromium.log
+core/workspace/_runs/browser-bindings-console-smoke-*/browser-requests.json
+core/workspace/_runs/browser-bindings-console-smoke-*/browser-errors.json
+core/workspace/_runs/browser-bindings-console-smoke-*/target-requests.json
+core/workspace/_runs/browser-bindings-console-smoke-*/browser-checks.json
+core/workspace/_runs/browser-bindings-console-smoke-*/source-file-digests.json
+core/workspace/_runs/browser-bindings-console-smoke-*/catalog-v4-*.json
+core/workspace/_runs/browser-bindings-console-smoke-*/runtime/**
+core/workspace/_runs/browser-candidates-console-smoke-*/**
+core/workspace/_runs/browser-execution-console-smoke-*/**
+core/workspace/_runs/browser-resolution-console-smoke-*/**
+core/workspace/_runs/defect-tickets-console-smoke-*/**
+
+2026-10-17T23:51:52.8294067Z   if-no-files-found: ignore
+2026-10-17T23:51:52.8294341Z   retention-days: 7
+2026-10-17T23:51:52.8294567Z   compression-level: 6
+2026-10-17T23:51:52.8294796Z   overwrite: false
+2026-10-17T23:51:52.8295025Z   include-hidden-files: false
+2026-10-17T23:51:52.8295277Z   archive: true
+2026-10-17T23:51:52.8295484Z env:
+2026-10-17T23:51:52.8295740Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T23:51:52.8296066Z ##[endgroup]
+2026-10-17T23:51:53.1840438Z No files were found with the provided path: core/workspace/_runs/acceptance-catalog-console/**/failure.json
+2026-10-17T23:51:53.1842142Z core/workspace/_runs/acceptance-catalog-console/**/failure-ui.json
+2026-10-17T23:51:53.1844754Z core/workspace/_runs/acceptance-catalog-console/**/catalog-failure.png
+2026-10-17T23:51:53.1860362Z core/workspace/_runs/acceptance-catalog-console/**/engine-*.log
+2026-10-17T23:51:53.1861510Z core/workspace/_runs/acceptance-catalog-migration/**
+2026-10-17T23:51:53.1862554Z core/workspace/_runs/acceptance-managed-preparation/**
+2026-10-17T23:51:53.1863546Z core/workspace/_runs/acceptance-console/acceptance-failure.json
+2026-10-17T23:51:53.1864708Z core/workspace/_runs/acceptance-console/acceptance-failure.png
+2026-10-17T23:51:53.1865805Z core/workspace/_runs/acceptance-console/engine-error.log
+2026-10-17T23:51:53.1866854Z core/workspace/_runs/managed-execution-*/failure.json
+2026-10-17T23:51:53.1868495Z core/workspace/_runs/managed-execution-*/failure.png
+2026-10-17T23:51:53.1869951Z core/workspace/_runs/managed-execution-*/engine-*.log
+2026-10-17T23:51:53.1870905Z core/workspace/_runs/execution-ui-*/failure.json
+2026-10-17T23:51:53.1871816Z core/workspace/_runs/execution-ui-*/failure*.png
+2026-10-17T23:51:53.1872786Z core/workspace/_runs/execution-ui-*/fixture-*-engine-*.log
+2026-10-17T23:51:53.1873752Z core/workspace/_runs/execution-ui-*/chromium.log
+2026-10-17T23:51:53.1874724Z core/workspace/_runs/browser-source-smoke-*/failure.json
+2026-10-17T23:51:53.1875861Z core/workspace/_runs/browser-source-smoke-*/materials/source-index.json
+2026-10-17T23:51:53.1876980Z core/workspace/_runs/browser-reading-smoke-*/failure.json
+2026-10-17T23:51:53.1878468Z core/workspace/_runs/browser-reading-smoke-*/materials/source-index.json
+2026-10-17T23:51:53.1879652Z core/workspace/_runs/browser-bindings-smoke-*/failure.json
+2026-10-17T23:51:53.1880697Z core/workspace/_runs/browser-bindings-smoke-*/summary.json
+2026-10-17T23:51:53.1881810Z core/workspace/_runs/browser-bindings-smoke-*/checks.json
+2026-10-17T23:51:53.1882990Z core/workspace/_runs/browser-bindings-console-smoke-*/failure.json
+2026-10-17T23:51:53.1884497Z core/workspace/_runs/browser-bindings-console-smoke-*/failure*.png
+2026-10-17T23:51:53.1885682Z core/workspace/_runs/browser-bindings-console-smoke-*/failure*.txt
+2026-10-17T23:51:53.1886815Z core/workspace/_runs/browser-bindings-console-smoke-*/engine.log
+2026-10-17T23:51:53.1888408Z core/workspace/_runs/browser-bindings-console-smoke-*/chromium.log
+2026-10-17T23:51:53.1889676Z core/workspace/_runs/browser-bindings-console-smoke-*/browser-requests.json
+2026-10-17T23:51:53.1890963Z core/workspace/_runs/browser-bindings-console-smoke-*/browser-errors.json
+2026-10-17T23:51:53.1893725Z core/workspace/_runs/browser-bindings-console-smoke-*/target-requests.json
+2026-10-17T23:51:53.1895445Z core/workspace/_runs/browser-bindings-console-smoke-*/browser-checks.json
+2026-10-17T23:51:53.1896872Z core/workspace/_runs/browser-bindings-console-smoke-*/source-file-digests.json
+2026-10-17T23:51:53.1898949Z core/workspace/_runs/browser-bindings-console-smoke-*/catalog-v4-*.json
+2026-10-17T23:51:53.1900216Z core/workspace/_runs/browser-bindings-console-smoke-*/runtime/**
+2026-10-17T23:51:53.1901464Z core/workspace/_runs/browser-candidates-console-smoke-*/**
+2026-10-17T23:51:53.1902680Z core/workspace/_runs/browser-execution-console-smoke-*/**
+2026-10-17T23:51:53.1903741Z core/workspace/_runs/browser-resolution-console-smoke-*/**
+2026-10-17T23:51:53.1905233Z core/workspace/_runs/defect-tickets-console-smoke-*/**. No artifacts will be uploaded.

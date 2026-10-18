@@ -1,0 +1,27 @@
+﻿2026-10-17T23:23:22.2471546Z ##[group]Run pnpm build
+2026-10-17T23:23:22.2471857Z [36;1mpnpm build[0m
+2026-10-17T23:23:22.2534665Z shell: /usr/bin/bash -e {0}
+2026-10-17T23:23:22.2534973Z env:
+2026-10-17T23:23:22.2535234Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-10-17T23:23:22.2535556Z ##[endgroup]
+2026-10-17T23:23:23.3588802Z $ vite build
+2026-10-17T23:23:23.8702209Z [36mvite v8.3.1 [32mbuilding client environment for production...[36m[39m
+2026-10-17T23:23:23.8822710Z transforming...
+2026-10-17T23:23:25.2081401Z ✓ 445 modules transformed.
+2026-10-17T23:23:25.3040380Z rendering chunks...
+2026-10-17T23:23:25.5351320Z computing gzip size...
+2026-10-17T23:23:25.5591282Z [33m[plugin builtin:vite-reporter] 
+2026-10-17T23:23:25.5592384Z dist/index.html                       0.63 kB │ gzip:   0.41 kB
+2026-10-17T23:23:25.5593362Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2026-10-17T23:23:25.5594468Z dist/assets/Graph3D-DkULweKj.css      0.10 kB │ gzip:   0.09 kB
+2026-10-17T23:23:25.5595347Z - Using dynamic import() to code-split the application
+2026-10-17T23:23:25.5596887Z - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+2026-10-17T23:23:25.5598032Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+2026-10-17T23:23:25.5598973Z dist/assets/index-Ci96Vj07.css       43.56 kB │ gzip:   8.59 kB
+2026-10-17T23:23:25.5599533Z dist/assets/Atlas-XaD7f5rj.css       83.78 kB │ gzip:  12.33 kB
+2026-10-17T23:23:25.5600852Z dist/assets/api-DBmNeZNu.js           2.07 kB │ gzip:   1.09 kB
+2026-10-17T23:23:25.5602717Z dist/assets/index-DXvcBTLR.js        71.05 kB │ gzip:  28.11 kB
+2026-10-17T23:23:25.5603631Z dist/assets/Atlas-CbgwjZKx.js       487.71 kB │ gzip: 153.03 kB
+2026-10-17T23:23:25.5604509Z dist/assets/Graph3D-FmNJmf-v.js   1,395.59 kB │ gzip: 373.00 kB
+2026-10-17T23:23:25.5604929Z 
+2026-10-17T23:23:25.5605195Z [32m✓ built in 1.69s[39m
