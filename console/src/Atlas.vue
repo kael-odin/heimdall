@@ -212,7 +212,9 @@ function attachStream(es, task, close, what) {
  * 控制台从来没调过。这里只发请求并置"正在停止"；**UI 的复位交给流上的 exit 事件**
  * （引擎会推 `status: 'cancelled'`）—— 不在这里抢先改状态，否则停止失败时界面已经骗人了。
  */
-async function cancelJob(task) {
+async function cancelJob(task = runningTask.value) {
+  // 轨道发出的 stop 事件不带参数（它只知道“当前在跑的那一个”），所以缺省取 runningTask。
+  // 模板里写成 cancelJob(runningTask) 会在渲染期就执行一次 —— 那是把这个调用当成了处理函数。
   if (!task?.taskId || task.stopping) return;
   task.stopping = true;
   try {
@@ -527,20 +529,20 @@ function runEditManifest() {
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-      const watch = attachStream(es, task, close, '改站清单');
+      const stream = attachStream(es, task, close, '改站清单');
       es.onmessage = (m) => {
-        watch.alive();
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'edit-manifest') {
           task.progress = `${ev.assets} 资源 · ${ev.remoteVisual} 外链视觉`;
           task.done = true; task.endedAt = Date.now();
           statusText.value = `改站清单完成 · ${ev.assets} 个资源 / ${ev.remoteVisual} 个仍是外链的视觉资产`;
-          watch.stop(); loadEditManifest(h);
+          stream.stop(); loadEditManifest(h);
           setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
           task.failed = true; task.done = true; task.error = '任务中断';
           fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
-          watch.stop();
+          stream.stop();
         }
       };
     } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '生成改站清单' }); task.error = errMsg.value; }
@@ -594,9 +596,9 @@ function runReplaceDomain(apply) {
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-      const watch = attachStream(es, task, close, '域名替换');
+      const stream = attachStream(es, task, close, '域名替换');
       es.onmessage = (m) => {
-        watch.alive();
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'replace-domain') {
           domainResult.value = ev;
@@ -605,12 +607,12 @@ function runReplaceDomain(apply) {
           statusText.value = ev.mode === 'apply'
             ? `已替换 ${ev.changed} 个文件（备份已生成）`
             : `预览：命中 ${ev.files} 个文件 / ${ev.occurrences} 处`;
-          watch.stop(); if (ev.mode === 'apply') loadEditManifest(h);
+          stream.stop(); if (ev.mode === 'apply') loadEditManifest(h);
           setTimeout(() => { statusText.value = ''; }, 5000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
           task.failed = true; task.done = true; task.error = '任务中断';
           fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
-          watch.stop();
+          stream.stop();
         }
       };
     } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '域名替换' }); task.error = errMsg.value; }
@@ -781,14 +783,14 @@ function listen(taskId, epoch) {
    * 用一个只带这两个字段的小对象喂给 watchStream（它只读 done/failed）。
    */
   const state = { done: false, failed: false };
-  const watch = watchStream(es, state, () => { try { es?.close(); } catch {} es = null; }, () => {
+  const stream = watchStream(es, state, () => { try { es?.close(); } catch {} es = null; }, () => {
     const t = streamBreakText({ what: '侦察' });
     live.value = false; statusText.value = '';
     fail(t.msg, t.hint, t.detail);
   });
   es.onmessage = (m) => {
-    watch.alive();
-    if (siteEpoch !== epoch) { watch.stop(); return; }
+    stream.alive();
+    if (siteEpoch !== epoch) { stream.stop(); return; }
     let ev; try { ev = JSON.parse(m.data); } catch { return; }
     if (ev.kind === 'calibrated') {
       if (ev.host) host.value = ev.host;
@@ -809,7 +811,7 @@ function listen(taskId, epoch) {
       fail('有一页没能抓下来（其余页面不受影响）。', '通常是这一页需要登录或加载超时；要整页排查就展开详情看引擎的原始报错。', ev.error);
     } else if (ev.kind === 'exit') {
       state.done = true;
-      watch.stop();
+      stream.stop();
       if (ev.status === 'done') finishRecon(taskId, epoch);
       else {
         live.value = false; statusText.value = '';
@@ -984,14 +986,14 @@ function runLogin() {
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-      const watch = attachStream(es, task, close, '登录窗口');
+      const stream = attachStream(es, task, close, '登录窗口');
       es.onmessage = (m) => {
-        watch.alive();
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind !== 'exit') return;
         task.done = true; task.endedAt = Date.now();
         if (ev.status !== 'done') task.failed = true;
-        watch.stop();
+        stream.stop();
         loadSession();
         statusText.value = '';
         okMsg.value = ev.status === 'done' ? '登录态已保存 —— 之后的抓取会自动带上它' : '登录窗口已结束，但可能没存下会话';
@@ -1192,7 +1194,7 @@ function startForge(node, opts = {}) {
         const closeTask = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
         // 断流必须置失败：否则 node.forgeState 永远停在 'running'，节点一直写"克隆中"，
         // 底部「进行中」轨道也下不来（它的判据就是"存在没 done 没 failed 的任务"）。
-        const watch = watchStream(es, task, closeTask, () => {
+        const stream = watchStream(es, task, closeTask, () => {
           const t = streamBreakText({ what: '克隆' });
           task.failed = true; task.done = true; task.endedAt = Date.now(); task.error = t.msg;
           setState('failed');                       // ← 这一句原先根本没有
@@ -1203,7 +1205,7 @@ function startForge(node, opts = {}) {
           resolve();
         });
         es.onmessage = (m) => {
-          watch.alive();
+          stream.alive();
           let ev; try { ev = JSON.parse(m.data); } catch { return; }
           // 阶段一变就把"第几步 / 当前阶段"写进 task.progress —— 任务中心、任务视图、
           // 页面清单和「进行中」轨道都读它。此前 forge 这条路上**从来没赋值过**，
@@ -1231,7 +1233,7 @@ function startForge(node, opts = {}) {
             if (task.done) {
               wsJson(host.value, 'pages/' + task.pageName + '/intel/intel.json').then(j => { if (j) task.intel = { headings: j.headings?.length ?? 0, prices: j.prices?.length ?? 0, cta: j.cta?.length ?? 0, links: j.links?.length ?? 0 }; });
             }
-            watch.stop();
+            stream.stop();
             bump();
             loadSites();
             setTimeout(loadPageStatus, 600);
@@ -1381,9 +1383,9 @@ function runMatrix() {
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-      const watch = attachStream(es, task, close, '对标矩阵');
+      const stream = attachStream(es, task, close, '对标矩阵');
       es.onmessage = (m) => {
-        watch.alive();
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'matrix-start') { task.progress = '0/' + ev.total; statusText.value = '对标矩阵 · 0/' + ev.total; }
         else if (ev.kind === 'matrix-site') { task.progress = ev.index + '/' + ev.total; task.doneCount = ev.index; task.totalCount = ev.total; statusText.value = '对标矩阵 · ' + ev.host + ' · ' + ev.index + '/' + ev.total; }
@@ -1392,11 +1394,11 @@ function runMatrix() {
           const rel = String(ev.path || '').split(/[\\/]workspace[\\/]/).pop() || '';
           matrixReport.value = { url: staticUrl('/static/' + rel.split('\\').join('/')), sites: [host.value, matrixPeer.value] };
           statusText.value = '对标矩阵完成';
-          watch.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
+          stream.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
           task.failed = true; task.done = true; task.error = '任务中断';
           fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
-          watch.stop();
+          stream.stop();
         }
       };
     } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '生成对标矩阵' }); task.error = errMsg.value; }
@@ -1422,9 +1424,9 @@ function runAssetsAudit() {
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-      const watch = attachStream(es, task, close, '资产扫描');
+      const stream = attachStream(es, task, close, '资产扫描');
       es.onmessage = (m) => {
-        watch.alive();
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'asset-gaps-start') { task.progress = '0/' + ev.total; statusText.value = '资产扫描 · 0/' + ev.total; }
         else if (ev.kind === 'asset-gaps-page') { task.progress = ev.index + '/' + ev.total; task.doneCount = ev.index; task.totalCount = ev.total; statusText.value = '资产扫描 · ' + ev.index + '/' + ev.total; }
@@ -1432,12 +1434,12 @@ function runAssetsAudit() {
           task.assetGaps = ev.visualGaps; task.done = true; task.endedAt = Date.now();
           assetAuditReport.value = { host: host.value, visualGaps: ev.visualGaps, visualOrigin: ev.visualOrigin, visualThird: ev.visualThird, pages: ev.pages };
           statusText.value = ev.visualGaps ? ('资产扫描完成 · ' + ev.visualGaps + ' 个视觉缺口') : '资产扫描完成 · 无视觉缺口';
-          watch.stop(); loadReports();
+          stream.stop(); loadReports();
           setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
           task.failed = true; task.done = true; task.error = '任务中断';
           fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
-          watch.stop();
+          stream.stop();
         }
       };
     } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '资产缺口扫描' }); task.error = errMsg.value; }
@@ -1464,24 +1466,24 @@ function runWatch() {
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-      const watch = attachStream(es, task, close, '变更监控');
+      const stream = attachStream(es, task, close, '变更监控');
       es.onmessage = (m) => {
-        watch.alive();
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'watch-page') statusText.value = '变更监控 · ' + ev.index + '/' + ev.total;
         else if (ev.kind === 'watch-done') {
           task.watchChanges = ev.changes; task.done = true; task.endedAt = Date.now();
           watchReport.value = { host: host.value, changes: ev.changes, bySeverity: ev.bySeverity };
           statusText.value = ev.changes ? '变更监控完成 · ' + ev.changes + ' 处变化' : '变更监控完成 · 无变化';
-          watch.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
+          stream.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'watch-error') {
           task.failed = true; task.done = true; task.error = ev.error;
           fail('变更监控没有跑完。', '重跑一次；反复失败就展开详情看引擎的原始报错。', ev.error);
-          watch.stop();
+          stream.stop();
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
           task.failed = true; task.done = true; task.error = '任务中断';
           fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
-          watch.stop();
+          stream.stop();
         }
       };
     } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '变更监控' }); task.error = errMsg.value; }
@@ -1523,7 +1525,11 @@ function runVerify(page) {
       taskSources.set(task.localId, es);
       const verifyIssues = [];
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      // 这段此前没有挂看门狗，却调用了 stream.stop()（当时叫 watch.stop()）—— 解析到的是 vue 的 watch，
+      // 于是每次体检完成都抛一次未捕获异常（控制台 E2E 抓到过）。这里补上标准的挂载。
+      const stream = attachStream(es, task, close, '全站体检');
       es.onmessage = (m) => {
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'verify-page') {
           if (ev.error) verifyIssues.push({ page: ev.page, error: ev.error });
@@ -1540,7 +1546,7 @@ function runVerify(page) {
             statusText.value = task.failed ? task.error
               : '体检完成 · ' + (ev.measured ?? 0) + '/' + (ev.targetTotal ?? ev.pages) + ' 页完整测量';
           }
-          watch.stop(); scheduleScoreLoad(); loadReports();
+          stream.stop(); scheduleScoreLoad(); loadReports();
           setTimeout(() => { statusText.value = ''; }, 5000);
         } else if (ev.kind === 'verify-error') {
           verifyIssues.push({ page: ev.page, error: ev.error });
@@ -1548,7 +1554,7 @@ function runVerify(page) {
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
           task.failed = true; task.done = true; task.error = '任务中断';
           fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
-          watch.stop();
+          stream.stop();
         }
       };
     } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '全站体检' }); task.error = errMsg.value; }
@@ -1572,16 +1578,16 @@ function runResponsiveUpgrade() {
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-      const watch = attachStream(es, task, close, '响应式升级');
+      const stream = attachStream(es, task, close, '响应式升级');
       es.onmessage = (m) => {
-        watch.alive();
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'upgrade-page') statusText.value = '响应式升级 · ' + ev.page + ' · ' + (ev.error ? '失败' : ev.kept ? '保留' : '未采用');
         else if (ev.kind === 'exit') {
           task.done = true; task.endedAt = Date.now();
           if (ev.status === 'done') { statusText.value = '响应式升级完成'; loadVerifySummary(); scheduleScoreLoad(); }
           else { task.failed = true; task.error = '升级任务失败'; fail('响应式升级没有跑完。', '看「任务」里这条的日志确认卡在哪一步；没有变好的页会自动保留原样。'); }
-          watch.stop(); setTimeout(() => { statusText.value = ''; }, 5000);
+          stream.stop(); setTimeout(() => { statusText.value = ''; }, 5000);
         }
       };
     } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '响应式升级' }); task.error = errMsg.value; }
@@ -1707,9 +1713,9 @@ function runLiveExport(hostArg) {
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-      const watch = attachStream(es, task, close, '交互镜像导出');
+      const stream = attachStream(es, task, close, '交互镜像导出');
       es.onmessage = (m) => {
-        watch.alive();
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'live-stage') {
           const label = liveStageCn(ev.stage);
@@ -1730,7 +1736,7 @@ function runLiveExport(hostArg) {
             task.error = '导出或严格离线验收失败';
             fail('交互镜像导出没通过验收，这一轮没有发布。', '旧包仍然保留、线上镜像不变；重跑一次，或到「任务」里展开详情看候选包 health.json 是哪个检查没过。', 'live-export exit status: failed');
           }
-          watch.stop(); setTimeout(() => { statusText.value = ''; }, 5000);
+          stream.stop(); setTimeout(() => { statusText.value = ''; }, 5000);
         }
       };
     } catch (e) {
@@ -1764,9 +1770,9 @@ function runAudit() {
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-      const watch = attachStream(es, task, close, 'SEO 审计');
+      const stream = attachStream(es, task, close, 'SEO 审计');
       es.onmessage = (m) => {
-        watch.alive();
+        stream.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'audit-start') statusText.value = `SEO 审计 · 0/${ev.targets}`;
         else if (ev.kind === 'audit-page') statusText.value = `SEO 审计 · ${ev.index}/${ev.total}`;
@@ -1776,11 +1782,11 @@ function runAudit() {
           loadAuditReport(host.value);                      // 报告卡切到最新一份（含真实用户指标）
           auditReport.value = { host: host.value, score: ev.score, pages: ev.pages, issues: ev.issues };
           statusText.value = `SEO 审计完成 · ${ev.score} 分`;
-          watch.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
+          stream.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'audit-error') {
           task.failed = true; task.done = true; task.error = ev.error; task.stopping = false;
           fail('SEO 审计没有跑完，这一轮没有出报告。', '重跑一次；同一站反复失败就展开详情，原始错误在下面。', ev.error);
-          watch.stop();
+          stream.stop();
         } else if (ev.kind === 'exit' && !task.done) {
           task.done = true; task.endedAt = Date.now(); task.stopping = false;
           if (ev.status === 'cancelled') {
@@ -1791,7 +1797,7 @@ function runAudit() {
             task.failed = true; task.error = '审计进程没有正常结束';
             fail('SEO 审计没有跑完，这一轮没有出报告。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
           }
-          watch.stop();
+          stream.stop();
         }
       };
     } catch (e) {
@@ -1892,9 +1898,9 @@ function startCloneSite({ incremental = false, allDiscovered = false } = {}) {  
         const es = new EventSource(sseUrl(body.taskId));
         taskSources.set(task.localId, es);
         const closeTask = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
-        const watch = attachStream(es, task, closeTask, '整站克隆');
+        const stream = attachStream(es, task, closeTask, '整站克隆');
         es.onmessage = (m) => {
-          watch.alive();
+          stream.alive();
           let ev; try { ev = JSON.parse(m.data); } catch { return; }
           // 带分子分母的任务同时记一份**数值**进度：轨道按真实计数画条，
           // 不去解析给用户看的那句文案（那是拿显示串当数据用）。
@@ -1912,7 +1918,7 @@ function startCloneSite({ incremental = false, allDiscovered = false } = {}) {  
             task.killed = ev.killed ?? null;
             task.failed = ev.status !== 'done' && ev.status !== 'cancelled';
             task.endedAt = Date.now();
-            watch.stop();
+            stream.stop();
             statusText.value = task.done ? `整站克隆完成${task.progress ? ' · ' + task.progress : ''}` : (ev.status === 'cancelled' ? '整站克隆已取消' : '整站克隆中断');
             if (ev.status === 'cancelled') toast(`整站克隆已停止${task.progress ? ' · 停在 ' + task.progress : ''}（已克隆的页面保留，下次可以「续跑」）`, 8000);
             loadPageStatus();                                  // 刷新页面清单上的铸造状态
@@ -2003,7 +2009,7 @@ onBeforeUnmount(() => {
   <div class="status status-global" v-if="statusText && view !== 'atlas' && !runningTask" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
 
   <ActivityRail v-if="railVisible" :task="runningTask" :median="forgeMedianSec"
-                :can-focus="canFocusTask" :can-stop="!!runningTask?.taskId" @focus="focusTask" @stop="cancelJob(runningTask)" />
+                :can-focus="canFocusTask" :can-stop="!!runningTask?.taskId" @focus="focusTask" @stop="cancelJob()" />
 
   <!-- 首启向导：一个站点都没有时，星图是空的，用户不知道该做什么。
        把"侦察 → 克隆 → 拿走"三步写在空态里，比让他对着空白星空猜要强。 -->

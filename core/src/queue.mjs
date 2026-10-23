@@ -10,13 +10,14 @@
  *
  * 用法: node src/queue.mjs <host> [--max 20|--all-discovered] [--force] [--incremental] [--missing-har] [--no-dedupe] [--json-events]
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { requireArg } from './args.mjs';
 import { loadProfile, queuePlan, sanitizeHost } from './site-profile.mjs';
 import { sourceFingerprint, incrementalDecision, decisionNote } from './fingerprint.mjs';
 import { appendHistory } from './seo/history.mjs';
 import { WORKSPACE } from './paths.mjs';
+import { writeFileAtomic } from './fsutil.mjs';
 import { readSiteOrigin } from './site-origin.mjs';
 import { emit as emitRaw } from './emit.mjs';
 import { canonUrl, createPageNameResolver } from './url-canon.mjs';
@@ -109,7 +110,7 @@ if (existsSync(queuePath)) {
   queue = atlasRows
     .filter(n => { if (seen.has(n.url)) return false; seen.add(n.url); return true; })
     .map(n => ({ url: n.url, name: engineName(n.url), type: n.type, status: 'pending' }));
-  writeFileSync(queuePath, JSON.stringify(queue, null, 2));
+  writeFileAtomic(queuePath, JSON.stringify(queue, null, 2) + String.fromCharCode(10));
   console.log(ALL_DISCOVERED
     ? `new queue: ${queue.length} pages (all-discovered; atlas ${atlas.nodes.length} nodes, ${discoveredTargets.size} valid same-origin URLs)`
     : `new queue: ${queue.length} pages (max ${MAX})`);
@@ -187,7 +188,7 @@ if (INCREMENTAL && !FORCE) {
     emit({ kind: 'queue-progress', phase: 'check-done', total: done.length, done: checked, changed, same, unknown });
   }
 }
-writeFileSync(queuePath, JSON.stringify(queue, null, 2));
+writeFileAtomic(queuePath, JSON.stringify(queue, null, 2) + String.fromCharCode(10));
 
 const pending = queue.filter(q => q.status === 'pending' || q.status === 'queued');
 if (!pending.length) {
@@ -245,7 +246,7 @@ async function awaitExit(taskId, timeoutMs = 15 * 60_000) {
   return { status: 'timeout', error: `等不到任务结束（${Math.round(timeoutMs / 1000)}s 超时）；任务可能仍在引擎运行` };
 }
 
-const save = () => writeFileSync(queuePath, JSON.stringify(queue, null, 2));
+const save = () => writeFileAtomic(queuePath, JSON.stringify(queue, null, 2) + String.fromCharCode(10));
 let doneCount = queue.filter(q => q.status === 'done').length;
 
 // 并发消费（worker 数来自配方，且不超过引擎槽位；引擎侧另有单页熔断兜底）

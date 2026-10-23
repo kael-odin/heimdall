@@ -92,7 +92,11 @@ button.rail-target:hover { color: var(--accent); text-decoration: underline; tex
    结构见 Atlas.vue 模板里的 .toast。 */
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); color: var(--bad); font-size: 13px; line-height: 1.6; z-index: 20;
   max-width: min(92vw, 560px); padding: 12px 14px; border-radius: var(--r);
-  background: var(--surface); border: var(--bw) solid color-mix(in srgb, var(--bad) 45%, transparent); box-shadow: var(--shadow); }
+  background: var(--surface); border: var(--bw) solid color-mix(in srgb, var(--bad) 45%, transparent); box-shadow: var(--shadow);
+  /* 浮层本身不接收鼠标：它是固定在底部的，会盖住导航按钮，导致点击被它吞掉
+     （控制台 E2E 就卡在这里）。只把关闭按钮和"详情"折叠重新打开。 */
+  pointer-events: none; }
+.toast-x, .toast-detail, .toast-detail summary { pointer-events: auto; }
 .toast-main { display: flex; align-items: flex-start; gap: 10px; }
 .toast-msg { font-weight: 600; }
 .toast-x { margin-left: auto; flex: none; background: none; border: 0; color: var(--text-dim); cursor: pointer;
