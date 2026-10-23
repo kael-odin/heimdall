@@ -10,6 +10,13 @@
   - 写**审查员报告**，是别人查的，我没逐条复现，动手前请先复现
 - 改动状态：**全部没提交**，都在工作区里，随时可以撤销（见文末附录）
 
+> **2026-10-23 更新**：这份审查之后，本分支又完成了一批修复与治理，下面的"待办"里已有多项落地。
+> 已完成的包括：CI 拆成 4 个 job 并分片、SEO 基线口径与门禁模式、引擎写操作统一守卫、
+> 采集链路 8 项修复（全部先复现再改）、9 个控制台体验与可靠性问题（主包 494→189 kB）、
+> 测试不再依赖 `docs/audits`（改用 `core/test/fixtures/audit-evidence/`）、
+> `docs/audits` 中 6 棵无代码引用的最大证据子树移到 `docs/archive/audits/`（见第 6 节）。
+> 下面各节保留当时的判断与证据，**未逐条回改**；以第 9 节"当前状态"为准。
+
 ## 一句话结论
 
 这是一个"演示能力很强、工程底子偏薄"的项目。
@@ -251,3 +258,30 @@ cd core && node --test test/seo-collect-empty-meta.test.mjs test/seo-i18n-jsrend
 - 5 个 codex 工作树，在 `C:/Users/44548/.codex/worktrees/` 下：`acceptance-demo-d7`、`browser-start-resolution-d4`、`ci-small-runner-concurrency`、`defect-ticket-closure-d5`、`managed-spec-provenance`
 - 17 个本地分支，其中 15 个已合并进 main（`git branch --merged main` 可列出）；`codex/acceptance-demo-d7` 没合并，且已推送到 origin
 - 仓库在 GitHub 上是私有的
+
+## 9. 当前状态（2026-10-23，本分支的新状态）
+
+这一节是唯一"现在为真"的部分；上面各节是审查当时的样子。
+
+**已经落地的（19 个提交，分支 `chore/review-sweep-2026-10-22`）**
+
+| 领域 | 做了什么 | 怎么验证的 |
+| --- | --- | --- |
+| CI | 拆成 `core-test`（2 片，各约 15 分钟）、`core-smoke`、`core-lint`、`console` 四个 job；补上 `docker build .`；失败证据上传路径补齐 | YAML 解析 + 逐 job 列步骤；分片参数本地实测被 `test-core.mjs` 透传 |
+| SEO | 站点稳定分改页均；普通审计不再因 4xx 退出且能落基线；基线页并入目标集，`page-missing` 只报真消失；seo-gate 更新模式不再自相矛盾 | 本地夹具实测（1/3/10/40 页都得到 88；plain exit 0、gated exit 1；真 404 仍报） |
+| 引擎 | 8 处写操作统一守卫；`replace-domain` 写反的条件修正；`llm/test`、`session/login`、`session DELETE` 补守卫 | 引擎绑 0.0.0.0：回环写 200、局域网写 403、读不受影响 |
+| 采集 | 8 项：CSS 注释重复输出、linker 子串替换、类型嗅探顺序、空剥离列表剥光脚本、data-URI 误判缺口、视频海报漏拷、多视口冻结样式泄漏、`fixes.css` 重建丢失 | 每项先本地复现再改，各带回归测试；反向验证旧代码会失败 |
+| 控制台 | 断流置失败、缓存 LRU、停止按钮、人话错误卡片、空状态、对比度与 ARIA、验收视图懒加载 | `vite build` 通过；主包 494→189 kB（gzip 155→63） |
+| 测试 | 3 个乱写目录的测试改为临时目录并清理；验收证据迁到 `core/test/fixtures/audit-evidence/`（58 文件 / 176 KB），带缺失即报错的守卫 | 相关 470 个测试通过，2 个 POSIX FIFO 跳过 |
+| 仓库 | 删空壳锁文件、两个零引用脚本、6 份旧周报；6 棵最大且无代码引用的证据子树移到 `docs/archive/audits/`；证据树标记 `-text` 保住原始字节 | `check:docs` 全绿；搬迁前后 620 个 blob 逐字节比对一致 |
+| 文档 | README 首屏改成"三件事 + 两步启动"；D1–D6 折叠；改正"53 条规则""≤3 轮""节流可配""/lm 备用"等与代码不符的说法 | 规则数守卫纳入 `DEMO-SCRIPT.md`；逐条读码核对 |
+
+**仍然待办的（按我现在的排序）**
+
+1. **等一次绿 CI 再合 main。** 第 1 节的 CI 红是审查当时的快照；本分支改完后需要一次真实 CI 确认。分片把单 job 从 39 分钟压到约 15 分钟，但仍需观察 2–3 次。
+2. **验收指纹清单不一致**（第 5 节"陷阱"）：三个清单互不一致，统一会让已有指纹全部作废。建议给这 10 个文件加"冻结"标记文件头，而不是现在去统一。
+3. **`resetContext()` 会在进行中的只读 GET 上 abort 响应体**（D6 冒烟的 CI `ERR_ABORTED` 根因）。属于权限/重连语义，改动面大，单独立项。
+4. **`docs/audits` 还剩约 270MB**：下一批候选是 `defect-ticket-decisions-final`（35MB、5 处 md 链接、0 代码引用）、`defect-tickets`（60MB）、`catalog-schema4`（19MB）等；它们仍被 md 引用，需要同时改链接。`.git` 体积要真正下降需要 `filter-repo`，是否做由你决定。
+5. **P2 重构**：`Atlas.vue` 仍有约 2,500 行（9 条任务流已统一挂载，但 `runAudit`/`runLiveExport`/`runCloneSite` 三个 runner 仍近乎重复）；`engine-server.mjs` 2,460 行；`catalog.mjs` 1,092 行。
+6. **工程底座**：LICENSE（仍为 UNLICENSED）、`dependabot.yml`、ESLint 的 `no-undef`/`no-unused-vars`、覆盖率、CHANGELOG。
+7. **演示稿重写**：第 7 节第 2 周的"加一幕验收"还没做；`DEMO-SCRIPT.md` 目前只改了两处与代码不符的说法。
