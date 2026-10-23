@@ -48,6 +48,8 @@ const MENTION_FILES = [
   join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'README.md'),
   join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'guide', 'README.md'),
   join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'guide', '03-features.md'),
+  // 演示稿是现场要念出来的话术，数字错了最尴尬；此前它写着 "53 条"（实际 66）却不在守卫里。
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'DEMO-SCRIPT.md'),
 ];
 
 test('规则数：CLI / MCP / 控制台里写的数字也必须与源码一致', () => {

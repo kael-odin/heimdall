@@ -7,6 +7,9 @@ export default defineConfig(() => ({
   publicDir: false,
   server: {
     port: 5173,
+    // 端口被占时 vite 默认悄悄换 5174；引擎的 CORS 白名单默认只认 5173，
+    // 换了端口所有请求都会被拒，表现是"页面能开但全是空的"。宁可直接报错。
+    strictPort: true,
     host: '127.0.0.1',
     // key 必须带尾斜杠：'/api' 前缀会误劫持 /apify.com/... 等以 /api 开头的静态资源路径
     //

@@ -175,7 +175,7 @@ HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
 > 我们不做的：关键词研究、外链分析、排名追踪 —— 那些是数据生意，需要买数据源。
 > 我们做的、而且它们不做的：把页面**真的搬下来**并证明搬对了。
 >
-> 顺带我们也有一份站内技术审计（53 条规则，六分类），够日常用，
+> 顺带我们也有一份站内技术审计（66 条规则，六分类），够日常用，
 > 但我不宣称它对标 Semrush。
 
 ### Q3：AI 用在哪了？听起来大部分是确定性流水线。
@@ -266,7 +266,7 @@ HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
 | 像素 99.96% / DOM 100% / 数据 100%（vitest.dev） | `workspace/vitest.dev/pages/home/score.json` |
 | 61 页已克隆（apify） | `workspace/apify.com/recon/atlas.json` + `pages/` |
 | 侦察页面数 / 站内链接数 | `atlas.json` 的 `meta.pages` / `meta.edges` |
-| 53 条 SEO 规则 | `src/seo/rules.mjs` |
+| 66 条 SEO 规则 | `src/seo/rules.mjs` |
 | 离线缺口 4 个（vitest.dev） | `deliverable/vitest.dev-live-*/health.json` |
 | 交付包形态 | `deliverable/<host>-<date>/` |
 

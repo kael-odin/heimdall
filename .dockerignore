@@ -10,3 +10,17 @@ core/assets-cas
 .github
 docs
 *.tmp.mjs
+
+# 密钥：core/.env 里有 LLM_API_KEY，引擎运行时会读它（见 core/src/env.mjs）；
+# 不排除的话 `COPY core ./core` 会把它烤进镜像层。容器配置请走环境变量或 HEIMDALL_ENV_FILE 挂载。
+**/.env
+**/.env.*
+!**/.env.example
+
+# 本机运行期状态：容器的数据目录是 /data，这些文件进镜像只会带入宿主机的任务历史
+core/jobs.db*
+core/storage.json
+core/deliver-plan.json
+core/trash
+core/_maintenance
+core/acceptance
