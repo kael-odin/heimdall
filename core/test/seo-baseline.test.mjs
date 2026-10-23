@@ -290,3 +290,16 @@ test('baseline: issueKey 归一化 page', () => {
   assert.equal(issueKey('https://example.com/a/', 'x'), 'https://example.com/a::x');
   assert.equal(issueKey(null, 'x'), '~site::x');
 });
+
+test('baseline: 站点稳定分按页均计算，不随页数放大（旧的求和口径会把多页站压成 0）', () => {
+  // 每页都触发同一条 high（-12）。旧实现把全站扣分相加再封底到 0：
+  // 1 页 88、3 页 64、10 页以上恒为 0，于是 --tolerance 门禁在多页站上形同虚设。
+  const issue = { id: 'content-title-missing', severity: 'high' };
+  const stable = n => buildBaseline({
+    host: 'x.test', origin: 'https://x.test', siteIssues: [],
+    pages: Array.from({ length: n }, (_, i) => ({ url: `https://x.test/${i}`, issues: [issue] })),
+  }).stable;
+  assert.deepEqual([stable(1), stable(3), stable(10), stable(40)], [88, 88, 88, 88]);
+  // 站点级问题也按页数摊；没有页面时定义为满分（与 audit 的页均口径一致）
+  assert.equal(buildBaseline({ host: 'x', origin: 'https://x.test', siteIssues: [issue], pages: [] }).stable, 100);
+});

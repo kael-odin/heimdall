@@ -51,10 +51,7 @@ const round1 = (n) => Math.round(Number(n) * 10) / 10;
  * 报告里的 `score` 是给人和趋势看的；门禁只认稳定分，否则 LCP 一抖就误报。
  */
 export function stableScore(issues = []) {
-  const penalty = (issues ?? [])
-    .filter(i => !isVolatile(i?.id))
-    .reduce((sum, i) => sum + (SEVERITY_PENALTY[i.severity] ?? 0), 0);
-  return Math.max(0, round1(100 - penalty));
+  return Math.max(0, round1(100 - stablePenalty(issues)));
 }
 
 /** 一条 issue 的稳定身份：page + ruleId（证据/文案会随内容变，不能进 key） */
@@ -71,6 +68,27 @@ export function issueKey(pageUrl, ruleId) {
  * 让快照自带严重度，比对时就不依赖外部传入的映射。
  * （早先版本靠 `severityOf` 回调，默认返回 medium —— 一条 critical 会被静默降级成放行。）
  */
+/**
+ * 站点稳定分：与 audit.mjs 的 siteScore 同口径 —— **页均**再减站点级扣分（站点扣分也按页数摊）。
+ *
+ * 以前这里是全站扣分直接求和：一页 12 分扣减，3 页的站就是 100-36=64，10 页以上恒为 0，
+ * 于是 `--tolerance` 的"总分跌幅"门禁在多页站上等于永远触发、在少页站上又偏松。
+ * 页均口径下"每页扣 12 分"在任何页数上都得到 88，和报告里展示的总分一致。
+ */
+export function stableSiteScore(pages = [], siteIssues = []) {
+  if (!pages.length) return 100;
+  const avgPage = pages.reduce((sum, p) => sum + stableScore(p.issues ?? []), 0) / pages.length;
+  const sitePenalty = stablePenalty(siteIssues) / pages.length;
+  return Math.max(0, round1(avgPage - sitePenalty));
+}
+
+/** 与 stableScore 共用同一套"忽略波动规则、按严重度扣分"的口径 */
+function stablePenalty(issues = []) {
+  return (issues ?? [])
+    .filter(i => !isVolatile(i?.id))
+    .reduce((sum, i) => sum + (SEVERITY_PENALTY[i.severity] ?? 0), 0);
+}
+
 export function buildBaseline(report, { capturedAt } = {}) {
   if (!report || typeof report !== 'object') throw new Error('buildBaseline: report required');
   const pages = {};
@@ -90,7 +108,7 @@ export function buildBaseline(report, { capturedAt } = {}) {
     origin: report.origin,
     capturedAt: capturedAt ?? report.generatedAt ?? new Date().toISOString(),
     score: report.score ?? null,
-    stable: stableScore([...(report.pages ?? []).flatMap(p => p.issues ?? []), ...(report.siteIssues ?? [])]),
+    stable: stableSiteScore(report.pages ?? [], report.siteIssues ?? []),
     categories: Object.fromEntries(
       Object.entries(report.categories ?? {}).map(([k, v]) => [k, v?.score ?? null]),
     ),

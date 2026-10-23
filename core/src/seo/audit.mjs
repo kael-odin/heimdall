@@ -130,6 +130,19 @@ try {
     seenTargets.add(key);
     return true;
   });
+  // 基线里记过的页面必须“真的被查过”才算消失。否则 --max 截断、或这次 atlas 恰好没扫到
+  // 某个老页面时，diff 会报 critical 的 "页面消失" —— 页面还在，只是这轮没去看它。
+  // 并入后仍受 MAX 约束，且不改变 source 口径（它只说明"目标从哪来"）。
+  const baselinePages = Object.keys(baseline?.pages ?? {});
+  let baselineOnly = 0;
+  for (const url of baselinePages) {
+    if (targets.length >= MAX) break;
+    if (!isSameOriginUrl(url, origin)) continue;
+    const key = url.replace(/\/$/, '');
+    if (seenTargets.has(key)) continue;
+    seenTargets.add(key); targets.push({ url, depth: 0 }); baselineOnly++;
+  }
+  if (baselineOnly) log(`+${baselineOnly} baseline page(s) added to this run so "page-missing" means really missing`);
   if (!targets.length) throw new Error('no pages discovered for ' + origin);
   emit({ kind: 'audit-start', host, origin, targets: targets.length });
   log(`auditing ${targets.length} pages of ${origin}`);
@@ -280,13 +293,17 @@ try {
     });
   }
 
+  // 有页面采集失败时**不写基线**：错误页的画面不该被记成"现状"。
   if ((UPDATE_BASELINE || diff.firstRun) && failedPages.length === 0) {
     writeFileSync(baselinePath, JSON.stringify(current, null, 2) + '\n');
     log(`${diff.firstRun ? '首次运行，已建立' : '已更新'}基线 -> ${baselinePath}`);
     emit({ kind: 'audit-baseline', path: baselinePath, created: diff.firstRun, version: BASELINE_VERSION });
   }
 
-  if (failedPages.length && (FAIL_ON_REGRESSION || REQUIRE_BASELINE || UPDATE_BASELINE || diff.firstRun)) {
+  // 采集失败只在**门禁模式**下才算失败。普通审计（引擎点"审计"、matrix 首次刷新）本来就该
+  // 把 404 当作发现报告出来 —— 以前这里带着 diff.firstRun，于是站点上只要有一个坏链接，
+  // 普通审计就 exit 1、基线也永远建不起来（每次都是"首次运行"）。
+  if (failedPages.length && (FAIL_ON_REGRESSION || REQUIRE_BASELINE || UPDATE_BASELINE)) {
     const sample = failedPages.slice(0, 3).map(p => `${p.status}: ${p.url}${isSameOriginUrl(p.finalUrl, origin) ? '' : ` -> ${p.finalUrl}`}`).join('; ');
     log(`FAIL: ${failedPages.length}/${pagesScored.length} 页未从目标来源成功采集，拒绝通过门禁或更新基线。${sample}`);
     process.exit(1);
