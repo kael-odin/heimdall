@@ -1,0 +1,169 @@
+[
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-candidates",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 5,
+      "mode": "spec",
+      "sourceRunId": "ac-1006a365-25cf-4264-83bd-2ef478f9d34f",
+      "sourceSide": "source"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-approvals",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 6,
+      "candidateId": "ab-c81b2056-3fb0-4643-bb35-805486f42fc3",
+      "contentDigest": "5d78ef291f731a0c3d177bccf41f50086d2a5f700173dc4e6f7a7709f21ce5d1",
+      "reason": "已核对完整草稿，批准需求合同"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-selections",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 7,
+      "mode": "spec",
+      "approvalId": "aa-34bcb2c7-e5b9-4bb7-996c-96fdfa8732bd",
+      "contentDigest": "5d78ef291f731a0c3d177bccf41f50086d2a5f700173dc4e6f7a7709f21ce5d1",
+      "reason": "单独选用完整草稿需求"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-candidates",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 8,
+      "mode": "spec",
+      "sourceRunId": "ac-a95ea84c-9c83-4e9d-a8ce-4eff6462aeb6",
+      "sourceSide": "source"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-approvals",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 9,
+      "candidateId": "ab-93500061-8ff3-496d-a77b-022cbd6c13b5",
+      "contentDigest": "3c12c7cd7e7e246ae6d4a55edb5ade169d1776484c25c979d3bf417cc70c4875",
+      "reason": "已核对需求，目标失败不改变正确预期"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-selections",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 10,
+      "mode": "spec",
+      "approvalId": "aa-ae7fd581-b2df-4735-8749-626b96451299",
+      "contentDigest": "3c12c7cd7e7e246ae6d4a55edb5ade169d1776484c25c979d3bf417cc70c4875",
+      "reason": "单独选用失败目标对应的正确需求"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-selections",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 11,
+      "mode": "spec",
+      "approvalId": "aa-34bcb2c7-e5b9-4bb7-996c-96fdfa8732bd",
+      "contentDigest": "5d78ef291f731a0c3d177bccf41f50086d2a5f700173dc4e6f7a7709f21ce5d1",
+      "reason": "显式回退到第一条需求批准"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-selections",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 12,
+      "mode": "spec",
+      "approvalId": null,
+      "contentDigest": null,
+      "reason": "独立取消当前选用，保留所有历史"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-selections",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 13,
+      "mode": "spec",
+      "approvalId": "aa-ae7fd581-b2df-4735-8749-626b96451299",
+      "contentDigest": "3c12c7cd7e7e246ae6d4a55edb5ade169d1776484c25c979d3bf417cc70c4875",
+      "reason": "重新选用，准备来源变化反例"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-approvals",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 14,
+      "candidateId": "ab-93500061-8ff3-496d-a77b-022cbd6c13b5",
+      "contentDigest": "3c12c7cd7e7e246ae6d4a55edb5ade169d1776484c25c979d3bf417cc70c4875",
+      "reason": "冲突后保留的批准理由"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-approvals",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 15,
+      "candidateId": "ab-93500061-8ff3-496d-a77b-022cbd6c13b5",
+      "contentDigest": "3c12c7cd7e7e246ae6d4a55edb5ade169d1776484c25c979d3bf417cc70c4875",
+      "reason": "网关HTML502但服务端可能已提交"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-approvals",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 16,
+      "candidateId": "ab-93500061-8ff3-496d-a77b-022cbd6c13b5",
+      "contentDigest": "3c12c7cd7e7e246ae6d4a55edb5ade169d1776484c25c979d3bf417cc70c4875",
+      "reason": "响应丢失但服务端可能已提交"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-approvals",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 17,
+      "candidateId": "ab-93500061-8ff3-496d-a77b-022cbd6c13b5",
+      "contentDigest": "3c12c7cd7e7e246ae6d4a55edb5ade169d1776484c25c979d3bf417cc70c4875",
+      "reason": "项目切换后的迟到批准仍属于 A"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-approvals",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 18,
+      "candidateId": "ab-93500061-8ff3-496d-a77b-022cbd6c13b5",
+      "contentDigest": "3c12c7cd7e7e246ae6d4a55edb5ade169d1776484c25c979d3bf417cc70c4875",
+      "reason": "预览后来源变更，不得批准旧摘要"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-selections",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 18,
+      "mode": "spec",
+      "approvalId": null,
+      "contentDigest": null,
+      "reason": "来源缺失仍能独立取消当前选用"
+    }
+  },
+  {
+    "url": "/api/acceptance/projects/ap-30ffeb0f-d792-48fa-a7a3-9ce706a403f3/baseline-selections",
+    "body": {
+      "expectedGenerationId": "ag-0979d436-51c1-4afd-a38a-290990e4443d",
+      "expectedRevision": 19,
+      "mode": "spec",
+      "approvalId": "aa-34bcb2c7-e5b9-4bb7-996c-96fdfa8732bd",
+      "contentDigest": "5d78ef291f731a0c3d177bccf41f50086d2a5f700173dc4e6f7a7709f21ce5d1",
+      "reason": "来源恢复后显式回退到完整草稿批准"
+    }
+  }
+]

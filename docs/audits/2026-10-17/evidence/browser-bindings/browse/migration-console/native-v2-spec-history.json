@@ -1,0 +1,40 @@
+{
+  "fixture": "docs/audits/2026-10-16/evidence/acceptance-baseline/console",
+  "originalSha256": "2fd75752916f7e93e136f86909467f4a681380cb3a076efcc86bd4d3666ca501",
+  "originalGenerationId": "ag-12740c8e-248e-4df3-bf00-b2b79e90bd18",
+  "originalRevision": 20,
+  "migratedGenerationId": "ag-18253ba4-e683-4dc5-adba-6e48bcdec91f",
+  "migratedRevision": 21,
+  "migration": {
+    "id": "am-961346d7-5913-4288-81fc-35b3dbdbbce8",
+    "fromSchemaVersion": 2,
+    "toSchemaVersion": 3,
+    "fromGenerationId": "ag-12740c8e-248e-4df3-bf00-b2b79e90bd18",
+    "fromRevision": 20,
+    "sourceHeadSha256": "2fd75752916f7e93e136f86909467f4a681380cb3a076efcc86bd4d3666ca501",
+    "sourcePreviousSha256": null,
+    "createdAt": "2026-10-17T03:35:44.209Z",
+    "actor": {
+      "kind": "local-operator"
+    }
+  },
+  "candidates": 2,
+  "approvals": 5,
+  "selections": 7,
+  "currentSelection": {
+    "id": "as-4f1f5ae2-5d20-44fe-9807-84ca3ca25f82",
+    "projectId": "ap-f89dfcfd-2754-41c2-abe9-97659868261b",
+    "mode": "spec",
+    "approvalId": "aa-acfd8f3e-0ea2-4fe3-bab2-b8303e24f3a6",
+    "previousSelectionId": "as-b674ea4b-13b9-41ba-8a10-916949a3db82",
+    "reason": "来源恢复后显式回退到完整草稿批准",
+    "selectedAt": "2026-10-16T14:30:39.597Z",
+    "actor": {
+      "kind": "local-operator"
+    }
+  },
+  "sourceRunFiles": 14,
+  "historyAndEntityDigestsPreserved": true,
+  "sourceAndCopyRunFilesPreserved": true,
+  "restartByteIdempotent": true
+}

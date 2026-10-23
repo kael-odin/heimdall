@@ -33,7 +33,7 @@ Store 首轮为 57 total / 54 pass / 3 fail；其中包含失败父分组，实�
 
 ## 完整证据与发布状态
 
-[本机证据包](../../archive/audits/2026-10-17/evidence/browser-bindings/README.md)共 **249 文件 / 10,750,555 字节**，13 个 tar 保存 440 份完整原件，217 份直接副本或日志 gzip 回环通过；11 份本次实现源码在完整门禁前后保持相同摘要。最终 fresh OUT 为 130 文件 / 2,116,169 字节，包含 runtime 原件与独立复制的两条 run 树；它们是同次采集的不同证据副本，不能算成四次运行。
+[本机证据包](evidence/browser-bindings/README.md)共 **249 文件 / 10,750,555 字节**，13 个 tar 保存 440 份完整原件，217 份直接副本或日志 gzip 回环通过；11 份本次实现源码在完整门禁前后保持相同摘要。最终 fresh OUT 为 130 文件 / 2,116,169 字节，包含 runtime 原件与独立复制的两条 run 树；它们是同次采集的不同证据副本，不能算成四次运行。
 
 包内保留专项首轮失败、纯 schema 两轮、store 最终重试、fresh 两轮及其命令/检查、六套兼容流程完整输出和 CDP 证据。打包器对每个 tar 解压核对完整集合、大小、SHA 和原字节，最后独占写入完成凭据。协调者另行核对来源、gzip、解包文件及 Git 暂存字节；[独立发布检查](evidence/browser-bindings-publication-checks/README.md)记录文档链接与强凭据模式扫描的实际结果。完整 Core、专项、UI 和 fresh 检查分别计数，不累加重叠覆盖。
 

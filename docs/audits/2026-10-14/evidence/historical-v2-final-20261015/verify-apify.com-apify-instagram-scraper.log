@@ -1,0 +1,7 @@
+[verify] page apify-instagram-scraper -> https://apify.com/apify/instagram-scraper
+@@EVENT@@{"kind":"verify-viewport","page":"apify-instagram-scraper","viewport":"375x812","score":0.8457}
+@@EVENT@@{"kind":"verify-viewport","page":"apify-instagram-scraper","viewport":"768x1024","score":0.875}
+@@EVENT@@{"kind":"verify-viewport","page":"apify-instagram-scraper","viewport":"1440x900","score":0.8993}
+[verify] apify-instagram-scraper overall 未完整测量  | 最低 375x812 84.6% | 交互 n/a
+@@EVENT@@{"kind":"verify-page","page":"apify-instagram-scraper","overall":null,"measured":false,"grade":null,"minViewport":{"name":"375x812","score":0.8457,"grade":"C","coverageRatio":0.9631,"sourceSize":{"width":375,"height":33465},"cloneSize":{"width":375,"height":32231},"heightDelta":1234,"missingPixels":462750},"functional":null,"error":"375x812: render did not settle"}
+@@EVENT@@{"kind":"verify-done","host":"apify.com","page":"apify-instagram-scraper","pages":1,"measured":0,"untested":1,"average":null,"threshold":0,"failedPages":[{"page":"apify-instagram-scraper","error":"375x812: render did not settle"}],"passed":false}

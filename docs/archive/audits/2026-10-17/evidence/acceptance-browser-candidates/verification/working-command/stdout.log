@@ -1,0 +1,3 @@
+{"event": "start", "mode": "working", "publicReadMethod": "working-tree exact bytes", "index": "docs/audits/2026-10-17/evidence/acceptance-browser-candidates/INDEX.json", "out": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d2-evidence-independent-working-20261017-01"}
+{"event": "archive-read", "entries": 1088, "inflatedBytes": 21938299}
+{"event": "finished", "status": "passed", "checkCount": 22829, "failedCheckCount": 0, "out": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d2-evidence-independent-working-20261017-01"}

@@ -1,6 +1,6 @@
 # Browser 完整复核、候选保存与历史重读
 
-日期：2026-10-17。D2 基于 `c170f503964601b7d125c2f902760c1235cc2e39`，实现“已有 ax → 完整来源复核 → 明确保存 bc → 刷新或重启读取同一 bc → 按需重核验来源”。操作和 API 说明见[使用指南](../../competition/acceptance-browser-candidates.md)，原件见[证据索引](../../archive/audits/2026-10-17/evidence/acceptance-browser-candidates/README.md)。
+日期：2026-10-17。D2 基于 `c170f503964601b7d125c2f902760c1235cc2e39`，实现“已有 ax → 完整来源复核 → 明确保存 bc → 刷新或重启读取同一 bc → 按需重核验来源”。操作和 API 说明见[使用指南](../../competition/acceptance-browser-candidates.md)，原件见[证据索引](evidence/acceptance-browser-candidates/README.md)。
 
 ## 实现范围
 

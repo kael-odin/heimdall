@@ -1,0 +1,36 @@
+{
+  "name": "heimdall",
+  "version": "2.0.0-dev",
+  "private": true,
+  "description": "Heimdall — site cloning, fidelity verification and SEO audit workbench",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "test": "pnpm -C core test",
+    "lint": "pnpm -C core lint",
+    "build": "pnpm -C console build",
+    "docs:links": "pnpm -C core check:docs",
+    "dev:core": "pnpm -C core dev",
+    "dev:console": "pnpm -C console dev",
+    "smoke": "pnpm -C core smoke",
+    "acceptance": "node core/src/acceptance/cli.mjs",
+    "acceptance:benchmark": "node core/scripts/benchmark-acceptance.mjs",
+    "acceptance:smoke": "node core/scripts/smoke-acceptance-console.mjs",
+    "acceptance:spec:benchmark": "node core/scripts/benchmark-acceptance-spec.mjs",
+    "acceptance:spec:smoke": "node core/scripts/smoke-acceptance-spec-console.mjs",
+    "acceptance:comparison:benchmark": "node core/scripts/benchmark-acceptance-comparison.mjs",
+    "acceptance:comparison:smoke": "node core/scripts/smoke-acceptance-comparison-console.mjs",
+    "acceptance:catalog:smoke": "node core/scripts/smoke-acceptance-catalog-console.mjs",
+    "acceptance:catalog:migration:smoke": "node core/scripts/smoke-acceptance-catalog-migration.mjs",
+    "acceptance:baseline:smoke": "node core/scripts/smoke-acceptance-baseline-console.mjs",
+    "acceptance:managed:prepare:smoke": "node core/scripts/smoke-acceptance-managed-preparation.mjs",
+    "acceptance:managed:read:smoke": "node core/scripts/smoke-acceptance-managed-reading.mjs",
+    "acceptance:owned:recovery:smoke": "node core/scripts/smoke-acceptance-owned-recovery.mjs",
+    "acceptance:managed:execute:smoke": "node core/scripts/smoke-acceptance-managed-execution.mjs",
+    "acceptance:execution:ui:smoke": "node core/scripts/smoke-acceptance-execution-ui.mjs",
+    "acceptance:browser:source:smoke": "node core/scripts/smoke-acceptance-browser-source.mjs",
+    "acceptance:browser:read:smoke": "node core/scripts/smoke-acceptance-browser-reading.mjs"
+  }
+}

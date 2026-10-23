@@ -1,0 +1,8 @@
+[
+  "python",
+  "core/workspace/_runs/d2-evidence-independent-verify.py",
+  "--mode",
+  "staged",
+  "--out",
+  "core/workspace/_runs/d2-evidence-independent-staged-20261017-01"
+]

@@ -1,0 +1,267 @@
+{
+  "page": "jobs",
+  "target": "https://apify.com/jobs",
+  "generatedAt": "2026-10-14T16:18:46.820Z",
+  "scoreVersion": 2,
+  "overall": null,
+  "provisionalOverall": 0.9075,
+  "measured": false,
+  "grade": null,
+  "minViewport": {
+    "name": "768x1024",
+    "score": 0.8629,
+    "grade": "B",
+    "coverageRatio": 0.9837,
+    "sourceSize": {
+      "width": 768,
+      "height": 10877
+    },
+    "cloneSize": {
+      "width": 768,
+      "height": 10700
+    },
+    "heightDelta": 177,
+    "missingPixels": 135936
+  },
+  "viewports": [
+    {
+      "name": "375x812",
+      "width": 375,
+      "score": 0.8866,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T16:16:33.809Z",
+        "finalUrl": "https://apify.com/jobs",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2521,
+            "pendingRequests": 4,
+            "height": 14662,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 21,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2502,
+            "pendingRequests": 4,
+            "height": 14766,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 5,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T16:16:59.923Z",
+        "finalUrl": "http://127.0.0.1:57733/static/apify.com/pages/jobs/clone/index-375.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1083,
+            "height": 14423,
+            "textLength": 7911,
+            "imageCount": 35,
+            "incompleteImages": 21,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1097,
+            "height": 14527,
+            "textLength": 7911,
+            "imageCount": 35,
+            "incompleteImages": 5,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "scrollConverged": true
+        }
+      },
+      "mismatched": 627742,
+      "missingPixels": 89625,
+      "coverageRatio": 0.9838,
+      "heightDelta": 239,
+      "sourceSize": {
+        "width": 375,
+        "height": 14766
+      },
+      "cloneSize": {
+        "width": 375,
+        "height": 14527
+      },
+      "sourceHeight": 14766,
+      "cloneHeight": 14527
+    },
+    {
+      "name": "768x1024",
+      "width": 768,
+      "score": 0.8629,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T16:17:27.535Z",
+        "finalUrl": "https://apify.com/jobs",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2527,
+            "pendingRequests": 6,
+            "height": 10877,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 5,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2509,
+            "pendingRequests": 6,
+            "height": 10877,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 5,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T16:17:51.119Z",
+        "finalUrl": "http://127.0.0.1:57733/static/apify.com/pages/jobs/clone/index-768.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1084,
+            "height": 10700,
+            "textLength": 7911,
+            "imageCount": 35,
+            "incompleteImages": 17,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1095,
+            "height": 10700,
+            "textLength": 7911,
+            "imageCount": 35,
+            "incompleteImages": 5,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "scrollConverged": true
+        }
+      },
+      "mismatched": 1145233,
+      "missingPixels": 135936,
+      "coverageRatio": 0.9837,
+      "heightDelta": 177,
+      "sourceSize": {
+        "width": 768,
+        "height": 10877
+      },
+      "cloneSize": {
+        "width": 768,
+        "height": 10700
+      },
+      "sourceHeight": 10877,
+      "cloneHeight": 10700
+    },
+    {
+      "name": "1440x900",
+      "width": 1440,
+      "score": 0.9402,
+      "grade": null,
+      "settleTimedOut": true,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T16:18:18.797Z",
+        "finalUrl": "https://apify.com/jobs",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2506,
+            "pendingRequests": 4,
+            "height": 9307,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 1,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2514,
+            "pendingRequests": 4,
+            "height": 9307,
+            "textLength": 203279,
+            "imageCount": 37,
+            "incompleteImages": 1,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 1
+          },
+          "scrollConverged": false
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T16:18:45.283Z",
+        "finalUrl": "http://127.0.0.1:57733/static/apify.com/pages/jobs/clone/index-1440.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": false,
+            "elapsedMs": 2505,
+            "pendingRequests": 3,
+            "height": 9194,
+            "textLength": 5833,
+            "imageCount": 40,
+            "incompleteImages": 13,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 2
+          },
+          "afterScroll": {
+            "stable": false,
+            "elapsedMs": 2605,
+            "pendingRequests": 3,
+            "height": 9194,
+            "textLength": 5833,
+            "imageCount": 40,
+            "incompleteImages": 1,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 2
+          },
+          "scrollConverged": false
+        }
+      },
+      "mismatched": 801853,
+      "missingPixels": 162720,
+      "coverageRatio": 0.9879,
+      "heightDelta": 113,
+      "sourceSize": {
+        "width": 1440,
+        "height": 9307
+      },
+      "cloneSize": {
+        "width": 1440,
+        "height": 9194
+      },
+      "sourceHeight": 9307,
+      "cloneHeight": 9194
+    }
+  ],
+  "functional": null,
+  "interactions": [],
+  "error": "375x812: render did not settle"
+}

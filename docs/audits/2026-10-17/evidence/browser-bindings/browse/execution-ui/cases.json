@@ -1,0 +1,857 @@
+[
+  {
+    "name": "native-completed-bug",
+    "operationId": "ao-e6193524-fd45-41e9-bbda-70f0502ece1f",
+    "operation": {
+      "schemaVersion": 1,
+      "operationId": "ao-e6193524-fd45-41e9-bbda-70f0502ece1f",
+      "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c",
+      "runId": "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+      "taskId": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+      "sourceRunId": "ac-2af8fefe-398f-4729-8956-312070d90eba",
+      "targetReleaseId": "ar-4afcaa6d-7222-451d-b3b0-d050bbbf0554",
+      "state": "running",
+      "runCreated": true,
+      "gate": "blocked",
+      "reasonCode": null,
+      "replayed": false
+    },
+    "report": {
+      "gate": "failed",
+      "summary": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "blocked": 0,
+        "needsReview": 0,
+        "bugs": 1,
+        "baselineFailed": 0,
+        "missing": 0,
+        "invalid": 0,
+        "coverage": {
+          "measured": 2,
+          "total": 2,
+          "ratio": 1
+        },
+        "dimensions": {
+          "visual": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "blocked": 0,
+            "needsReview": 0,
+            "score": null
+          },
+          "structure": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "blocked": 0,
+            "needsReview": 0,
+            "score": null
+          },
+          "behavior": {
+            "total": 2,
+            "passed": 1,
+            "failed": 1,
+            "blocked": 0,
+            "needsReview": 0,
+            "score": null
+          },
+          "health": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "blocked": 0,
+            "needsReview": 0,
+            "score": null
+          }
+        }
+      }
+    },
+    "sourceHashes": {
+      "manifest.json": {
+        "sha256": "5ce34f1ac01ceabce1fe33948d35bbed9fdd1d6f8e0c4d9488df8fb1b3b9e37a",
+        "nlink": 1
+      },
+      "report.json": {
+        "sha256": "10db331ad7e008c8ff2bdc4126a41e59007f0175730735d3fbdef34ffc0ee544",
+        "nlink": 1
+      },
+      "report.md": {
+        "sha256": "9c092e297e51b59e9d34e5ded4905f6eeb0f4ad6e869f45de13dd373b18a1d0a",
+        "nlink": 1
+      },
+      "spec-1-CHECK-0-contract.json": {
+        "sha256": "727accfe41ad7fcee670d3ebcd58cfee50b64a99492098a57948a1dae1da5214",
+        "nlink": 1
+      },
+      "spec-2-CHECK-1-contract.json": {
+        "sha256": "07edad164b74646e8941ceb619a479cb20ca9796ef2bb9179b366661ed9e253f",
+        "nlink": 1
+      }
+    },
+    "runIds": [
+      "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+      "ac-2af8fefe-398f-4729-8956-312070d90eba"
+    ],
+    "sidecarIds": [
+      "ao-e6193524-fd45-41e9-bbda-70f0502ece1f.json"
+    ],
+    "jobs": {
+      "store": "sqlite",
+      "jobs": [
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "events": 6,
+          "mirrorDegraded": false
+        }
+      ],
+      "history": [
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-e6193524-fd45-41e9-bbda-70f0502ece1f",
+              "runId": "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+              "taskId": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+              "dispatchSha256": "cc519612576fe29373b7d7e780288f5900ed06c302381df3e4135d2f3bd25f1f",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        }
+      ]
+    },
+    "targetRequestCount": 2,
+    "browserExecutionPostCount": 1
+  },
+  {
+    "name": "lost-response-reload-only-gets",
+    "operationId": "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16",
+    "operation": {
+      "schemaVersion": 1,
+      "operationId": "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16",
+      "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c",
+      "runId": "ac-66963f0f-5efc-42f3-9592-1b0a03bb6726",
+      "taskId": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+      "sourceRunId": "ac-2af8fefe-398f-4729-8956-312070d90eba",
+      "targetReleaseId": "ar-4afcaa6d-7222-451d-b3b0-d050bbbf0554",
+      "state": "running",
+      "runCreated": true,
+      "gate": "blocked",
+      "reasonCode": null,
+      "replayed": false
+    },
+    "runIds": [
+      "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+      "ac-2af8fefe-398f-4729-8956-312070d90eba",
+      "ac-66963f0f-5efc-42f3-9592-1b0a03bb6726"
+    ],
+    "sidecarIds": [
+      "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16.json",
+      "ao-e6193524-fd45-41e9-bbda-70f0502ece1f.json"
+    ],
+    "jobs": {
+      "store": "sqlite",
+      "jobs": [
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "events": 6,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208195664,
+          "endedAt": 1792208207223,
+          "events": 6,
+          "mirrorDegraded": false
+        }
+      ],
+      "history": [
+        {
+          "id": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208195664,
+          "endedAt": 1792208207223,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16",
+              "runId": "ac-66963f0f-5efc-42f3-9592-1b0a03bb6726",
+              "taskId": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+              "dispatchSha256": "625f125260b3c09a28ece172e4a681fa8908a333a91dea59d8ddbbbc5a9d75cd",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        },
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-e6193524-fd45-41e9-bbda-70f0502ece1f",
+              "runId": "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+              "taskId": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+              "dispatchSha256": "cc519612576fe29373b7d7e780288f5900ed06c302381df3e4135d2f3bd25f1f",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        }
+      ]
+    },
+    "targetRequestCount": 4,
+    "browserExecutionPostCount": 2
+  },
+  {
+    "name": "html502-reload-only-gets",
+    "operationId": "ao-7d981f8d-6e65-4f32-a1ad-e6a034ecd8ea",
+    "operation": {
+      "schemaVersion": 1,
+      "operationId": "ao-7d981f8d-6e65-4f32-a1ad-e6a034ecd8ea",
+      "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c",
+      "runId": "ac-ef87a26d-2ee3-4723-a130-3b92a61c516f",
+      "taskId": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+      "sourceRunId": "ac-2af8fefe-398f-4729-8956-312070d90eba",
+      "targetReleaseId": "ar-4afcaa6d-7222-451d-b3b0-d050bbbf0554",
+      "state": "running",
+      "runCreated": true,
+      "gate": "blocked",
+      "reasonCode": null,
+      "replayed": false
+    },
+    "runIds": [
+      "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+      "ac-2af8fefe-398f-4729-8956-312070d90eba",
+      "ac-66963f0f-5efc-42f3-9592-1b0a03bb6726",
+      "ac-ef87a26d-2ee3-4723-a130-3b92a61c516f"
+    ],
+    "sidecarIds": [
+      "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16.json",
+      "ao-7d981f8d-6e65-4f32-a1ad-e6a034ecd8ea.json",
+      "ao-e6193524-fd45-41e9-bbda-70f0502ece1f.json"
+    ],
+    "jobs": {
+      "store": "sqlite",
+      "jobs": [
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "events": 6,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208195664,
+          "endedAt": 1792208207223,
+          "events": 6,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208211071,
+          "endedAt": 1792208227084,
+          "events": 6,
+          "mirrorDegraded": false
+        }
+      ],
+      "history": [
+        {
+          "id": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208211071,
+          "endedAt": 1792208227084,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-7d981f8d-6e65-4f32-a1ad-e6a034ecd8ea",
+              "runId": "ac-ef87a26d-2ee3-4723-a130-3b92a61c516f",
+              "taskId": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+              "dispatchSha256": "2c076f196e3b7b5094a89c6d0fa866482a1d6f15dfef5fdc72259f40059949a1",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        },
+        {
+          "id": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208195664,
+          "endedAt": 1792208207223,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16",
+              "runId": "ac-66963f0f-5efc-42f3-9592-1b0a03bb6726",
+              "taskId": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+              "dispatchSha256": "625f125260b3c09a28ece172e4a681fa8908a333a91dea59d8ddbbbc5a9d75cd",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        },
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-e6193524-fd45-41e9-bbda-70f0502ece1f",
+              "runId": "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+              "taskId": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+              "dispatchSha256": "cc519612576fe29373b7d7e780288f5900ed06c302381df3e4135d2f3bd25f1f",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        }
+      ]
+    },
+    "targetRequestCount": 6,
+    "browserExecutionPostCount": 3
+  },
+  {
+    "name": "native-stop-interrupted",
+    "operationId": "ao-3b92cd1b-42ba-4afa-8016-44f491fcc340",
+    "operation": {
+      "schemaVersion": 1,
+      "operationId": "ao-3b92cd1b-42ba-4afa-8016-44f491fcc340",
+      "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c",
+      "runId": "ac-5ee6545e-942a-44a8-8fde-a9c45ac96ae2",
+      "taskId": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+      "sourceRunId": "ac-2af8fefe-398f-4729-8956-312070d90eba",
+      "targetReleaseId": "ar-4afcaa6d-7222-451d-b3b0-d050bbbf0554",
+      "state": "running",
+      "runCreated": true,
+      "gate": "blocked",
+      "reasonCode": null,
+      "replayed": false
+    },
+    "stopResponse": {
+      "status": 200,
+      "body": {
+        "id": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+        "status": "running",
+        "cancelRequested": true
+      }
+    },
+    "finalRun": {
+      "runId": "ac-5ee6545e-942a-44a8-8fde-a9c45ac96ae2",
+      "taskId": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+      "name": "托管 Spec · 明确待验收版本",
+      "mode": "spec",
+      "targetUrl": "http://127.0.0.1:56792/target?tenant=execution",
+      "status": "interrupted",
+      "gate": "blocked",
+      "createdAt": "2026-10-17T03:37:14.844Z",
+      "updatedAt": "2026-10-17T03:37:21.768Z",
+      "endedAt": "2026-10-17T03:37:21.768Z",
+      "summary": null,
+      "progress": {
+        "kind": "acceptance-started",
+        "message": "Starting approved read-only API contract acceptance.",
+        "completed": 0,
+        "total": 2,
+        "at": "2026-10-17T03:37:17.556Z"
+      },
+      "error": "验收已中断，现场已保留。",
+      "reasonCode": "CANCELLED",
+      "provenance": {
+        "kind": "managed-spec",
+        "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c",
+        "targetReleaseId": "ar-4afcaa6d-7222-451d-b3b0-d050bbbf0554",
+        "sourceRunId": "ac-2af8fefe-398f-4729-8956-312070d90eba"
+      },
+      "triageSupported": false,
+      "triageAvailable": false
+    },
+    "taskHistory": {
+      "id": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+      "kind": "acceptance",
+      "url": "http://127.0.0.1:56792/target?tenant=execution",
+      "status": "cancelled",
+      "pageName": null,
+      "createdAt": 1792208234844,
+      "endedAt": 1792208242573,
+      "payload": {
+        "managedAcceptance": {
+          "schemaVersion": 1,
+          "operationId": "ao-3b92cd1b-42ba-4afa-8016-44f491fcc340",
+          "runId": "ac-5ee6545e-942a-44a8-8fde-a9c45ac96ae2",
+          "taskId": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+          "dispatchSha256": "421dcb4726ffab3faed32c4a60435a9b718dc34680eb907545050463b79575e6",
+          "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+        }
+      },
+      "error": "CANCELLED"
+    },
+    "runIds": [
+      "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+      "ac-2af8fefe-398f-4729-8956-312070d90eba",
+      "ac-5ee6545e-942a-44a8-8fde-a9c45ac96ae2",
+      "ac-66963f0f-5efc-42f3-9592-1b0a03bb6726",
+      "ac-bf6435e7-ac91-4926-9f5c-934baf9c5dbc",
+      "ac-ef87a26d-2ee3-4723-a130-3b92a61c516f"
+    ],
+    "sidecarIds": [
+      "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16.json",
+      "ao-3b92cd1b-42ba-4afa-8016-44f491fcc340.json",
+      "ao-7d981f8d-6e65-4f32-a1ad-e6a034ecd8ea.json",
+      "ao-e6193524-fd45-41e9-bbda-70f0502ece1f.json"
+    ],
+    "jobs": {
+      "store": "sqlite",
+      "jobs": [
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "events": 6,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208195664,
+          "endedAt": 1792208207223,
+          "events": 6,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208211071,
+          "endedAt": 1792208227084,
+          "events": 6,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-9b581d38-ba28-4f29-87f7-9382a00e22a5",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/",
+          "status": "cancelled",
+          "pageName": null,
+          "createdAt": 1792208228140,
+          "endedAt": 1792208232933,
+          "events": 2,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "cancelled",
+          "pageName": null,
+          "createdAt": 1792208234844,
+          "endedAt": 1792208242573,
+          "events": 2,
+          "mirrorDegraded": false
+        }
+      ],
+      "history": [
+        {
+          "id": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "cancelled",
+          "pageName": null,
+          "createdAt": 1792208234844,
+          "endedAt": 1792208242573,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-3b92cd1b-42ba-4afa-8016-44f491fcc340",
+              "runId": "ac-5ee6545e-942a-44a8-8fde-a9c45ac96ae2",
+              "taskId": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+              "dispatchSha256": "421dcb4726ffab3faed32c4a60435a9b718dc34680eb907545050463b79575e6",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": "CANCELLED"
+        },
+        {
+          "id": "a-9b581d38-ba28-4f29-87f7-9382a00e22a5",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/",
+          "status": "cancelled",
+          "pageName": null,
+          "createdAt": 1792208228140,
+          "endedAt": 1792208232933,
+          "payload": null,
+          "error": null
+        },
+        {
+          "id": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208211071,
+          "endedAt": 1792208227084,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-7d981f8d-6e65-4f32-a1ad-e6a034ecd8ea",
+              "runId": "ac-ef87a26d-2ee3-4723-a130-3b92a61c516f",
+              "taskId": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+              "dispatchSha256": "2c076f196e3b7b5094a89c6d0fa866482a1d6f15dfef5fdc72259f40059949a1",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        },
+        {
+          "id": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208195664,
+          "endedAt": 1792208207223,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16",
+              "runId": "ac-66963f0f-5efc-42f3-9592-1b0a03bb6726",
+              "taskId": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+              "dispatchSha256": "625f125260b3c09a28ece172e4a681fa8908a333a91dea59d8ddbbbc5a9d75cd",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        },
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-e6193524-fd45-41e9-bbda-70f0502ece1f",
+              "runId": "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+              "taskId": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+              "dispatchSha256": "cc519612576fe29373b7d7e780288f5900ed06c302381df3e4135d2f3bd25f1f",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        }
+      ]
+    },
+    "targetRequestCount": 8,
+    "browserExecutionPostCount": 4
+  },
+  {
+    "name": "late-operation-lookup-aba",
+    "runIds": [
+      "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+      "ac-2af8fefe-398f-4729-8956-312070d90eba",
+      "ac-5ee6545e-942a-44a8-8fde-a9c45ac96ae2",
+      "ac-66963f0f-5efc-42f3-9592-1b0a03bb6726",
+      "ac-bf6435e7-ac91-4926-9f5c-934baf9c5dbc",
+      "ac-ef87a26d-2ee3-4723-a130-3b92a61c516f"
+    ],
+    "sidecarIds": [
+      "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16.json",
+      "ao-3b92cd1b-42ba-4afa-8016-44f491fcc340.json",
+      "ao-7d981f8d-6e65-4f32-a1ad-e6a034ecd8ea.json",
+      "ao-e6193524-fd45-41e9-bbda-70f0502ece1f.json"
+    ],
+    "jobs": {
+      "store": "sqlite",
+      "jobs": [
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "events": 6,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208195664,
+          "endedAt": 1792208207223,
+          "events": 6,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208211071,
+          "endedAt": 1792208227084,
+          "events": 6,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-9b581d38-ba28-4f29-87f7-9382a00e22a5",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/",
+          "status": "cancelled",
+          "pageName": null,
+          "createdAt": 1792208228140,
+          "endedAt": 1792208232933,
+          "events": 2,
+          "mirrorDegraded": false
+        },
+        {
+          "id": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "cancelled",
+          "pageName": null,
+          "createdAt": 1792208234844,
+          "endedAt": 1792208242573,
+          "events": 2,
+          "mirrorDegraded": false
+        }
+      ],
+      "history": [
+        {
+          "id": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "cancelled",
+          "pageName": null,
+          "createdAt": 1792208234844,
+          "endedAt": 1792208242573,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-3b92cd1b-42ba-4afa-8016-44f491fcc340",
+              "runId": "ac-5ee6545e-942a-44a8-8fde-a9c45ac96ae2",
+              "taskId": "a-eeff5c80-ccf3-494b-9e21-582fcf7bac30",
+              "dispatchSha256": "421dcb4726ffab3faed32c4a60435a9b718dc34680eb907545050463b79575e6",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": "CANCELLED"
+        },
+        {
+          "id": "a-9b581d38-ba28-4f29-87f7-9382a00e22a5",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/",
+          "status": "cancelled",
+          "pageName": null,
+          "createdAt": 1792208228140,
+          "endedAt": 1792208232933,
+          "payload": null,
+          "error": null
+        },
+        {
+          "id": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208211071,
+          "endedAt": 1792208227084,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-7d981f8d-6e65-4f32-a1ad-e6a034ecd8ea",
+              "runId": "ac-ef87a26d-2ee3-4723-a130-3b92a61c516f",
+              "taskId": "a-bb479f7e-f3f2-4f2c-b5ca-0eabdc0b0b4e",
+              "dispatchSha256": "2c076f196e3b7b5094a89c6d0fa866482a1d6f15dfef5fdc72259f40059949a1",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        },
+        {
+          "id": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208195664,
+          "endedAt": 1792208207223,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-2bf6e147-daae-4d3b-bf0f-ab01d1963d16",
+              "runId": "ac-66963f0f-5efc-42f3-9592-1b0a03bb6726",
+              "taskId": "a-52c777cb-e082-455c-a02a-4fd0afa6a405",
+              "dispatchSha256": "625f125260b3c09a28ece172e4a681fa8908a333a91dea59d8ddbbbc5a9d75cd",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        },
+        {
+          "id": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+          "kind": "acceptance",
+          "url": "http://127.0.0.1:56792/target?tenant=execution",
+          "status": "done",
+          "pageName": null,
+          "createdAt": 1792208181524,
+          "endedAt": 1792208189919,
+          "payload": {
+            "managedAcceptance": {
+              "schemaVersion": 1,
+              "operationId": "ao-e6193524-fd45-41e9-bbda-70f0502ece1f",
+              "runId": "ac-1dced5e4-63c7-4fb9-b96c-4d6123e8e190",
+              "taskId": "a-8d344c8a-50e6-49f3-ab91-46e6b479e621",
+              "dispatchSha256": "cc519612576fe29373b7d7e780288f5900ed06c302381df3e4135d2f3bd25f1f",
+              "projectId": "ap-291f8c31-5194-45b4-9392-ee8da0eeef6c"
+            }
+          },
+          "error": null
+        }
+      ]
+    },
+    "targetRequestCount": 8,
+    "browserExecutionPostCount": 4
+  },
+  {
+    "name": "prepared-query-only",
+    "operationId": "ao-14482b03-ec8a-4a6f-8961-d1a06fe70ac5",
+    "runIds": [
+      "ac-c634ce05-5e90-40fa-bcdc-96e9e18a6df8"
+    ],
+    "sidecarIds": [
+      "ao-14482b03-ec8a-4a6f-8961-d1a06fe70ac5.json"
+    ],
+    "jobs": {
+      "store": "sqlite",
+      "jobs": [],
+      "history": []
+    },
+    "targetRequestCount": 0,
+    "browserExecutionPostCount": 0
+  },
+  {
+    "name": "unknown-404-stays-unresolved",
+    "operationId": "ao-242d53c0-59b9-4606-b4ef-f35d2c4ca6b1",
+    "lookup": {
+      "status": 404,
+      "body": {
+        "code": "NOT_FOUND",
+        "error": "所选项目、版本或运行不存在。"
+      },
+      "headers": {
+        "access-control-allow-headers": "Content-Type,x-heimdall-token",
+        "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+        "cache-control": "no-store",
+        "connection": "keep-alive",
+        "content-type": "application/json",
+        "date": "Sat, 17 Oct 2026 03:37:48 GMT",
+        "keep-alive": "timeout=5",
+        "set-cookie": "heimdall_session=98662018-bbf4-4498-a693-7d9749e09033; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=43200",
+        "transfer-encoding": "chunked",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    "runIds": [
+      "ac-c634ce05-5e90-40fa-bcdc-96e9e18a6df8"
+    ],
+    "sidecarIds": [
+      "ao-14482b03-ec8a-4a6f-8961-d1a06fe70ac5.json"
+    ],
+    "jobs": {
+      "store": "sqlite",
+      "jobs": [],
+      "history": []
+    },
+    "targetRequestCount": 0,
+    "browserExecutionPostCount": 1
+  },
+  {
+    "name": "stale-cas-explicit-rejection",
+    "runIds": [
+      "ac-c634ce05-5e90-40fa-bcdc-96e9e18a6df8"
+    ],
+    "sidecarIds": [
+      "ao-14482b03-ec8a-4a6f-8961-d1a06fe70ac5.json"
+    ],
+    "jobs": {
+      "store": "sqlite",
+      "jobs": [],
+      "history": []
+    },
+    "targetRequestCount": 0,
+    "browserExecutionPostCount": 2
+  }
+]

@@ -1,0 +1,91 @@
+[
+  {
+    "label": "full-entry-url-query-value",
+    "code": "PROJECT_MISMATCH",
+    "status": 409,
+    "details": null
+  },
+  {
+    "label": "full-entry-url-query-order",
+    "code": "PROJECT_MISMATCH",
+    "status": 409,
+    "details": null
+  },
+  {
+    "label": "full-entry-url-missing-query",
+    "code": "PROJECT_MISMATCH",
+    "status": 409,
+    "details": null
+  },
+  {
+    "label": "browser-target-cannot-diverge-from-legacy-project",
+    "code": "PROJECT_MISMATCH",
+    "status": 409,
+    "details": null
+  },
+  {
+    "label": "legacy-target-cannot-follow-browser-into-different-project",
+    "code": "PROJECT_MISMATCH",
+    "status": 409,
+    "details": null
+  },
+  {
+    "label": "same-side-cannot-rebind-across-projects",
+    "code": "CONTEXT_ALREADY_BOUND",
+    "status": 409,
+    "details": null
+  },
+  {
+    "label": "stale-cas-before-side-rebinding",
+    "code": "STALE_REVISION",
+    "status": 409,
+    "details": {
+      "generationId": "ag-d4771962-8511-49c1-a2ff-559f9ac681d3",
+      "revision": 20
+    }
+  },
+  {
+    "label": "missing-side",
+    "code": "INVALID_INPUT",
+    "status": 400,
+    "details": null
+  },
+  {
+    "label": "implicit-source-side",
+    "code": "INVALID_INPUT",
+    "status": 400,
+    "details": null
+  },
+  {
+    "label": "forged-projection",
+    "code": "INVALID_INPUT",
+    "status": 400,
+    "details": null
+  },
+  {
+    "label": "browser-candidate-stays-disabled",
+    "code": "INVALID_INPUT",
+    "status": 400,
+    "details": null
+  },
+  {
+    "label": "binding-id-is-not-an-approval-candidate",
+    "code": "INVALID_INPUT",
+    "status": 400,
+    "details": null
+  },
+  {
+    "label": "browser-selection-stays-disabled",
+    "code": "INVALID_INPUT",
+    "status": 400,
+    "details": null
+  },
+  {
+    "label": "binding-is-not-managed-execution-authority",
+    "code": "BASELINE_CHANGED",
+    "status": 409,
+    "details": {
+      "reason": "CURRENT_SELECTION_CHANGED"
+    }
+  }
+]

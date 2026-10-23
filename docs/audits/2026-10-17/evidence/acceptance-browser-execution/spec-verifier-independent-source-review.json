@@ -1,0 +1,97 @@
+{
+  "passed": true,
+  "evidenceLevel": "independent-source-byte-comparison",
+  "browserLaunched": false,
+  "networkRequests": 0,
+  "changedVerifierInputs": [
+    "runner.mjs"
+  ],
+  "unchangedInputs": 9,
+  "exactEarlySpecDelegationUnchanged": true,
+  "manifest": "core/test/fixtures/browser-verifier-reviewed-d3.json",
+  "lfFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+  "crlfFingerprint": "270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2",
+  "actualFingerprint": "2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337",
+  "files": [
+    {
+      "path": "core/src/acceptance/schema.mjs",
+      "currentBytes": 5784,
+      "currentSha256": "d7fb1300e177128db9a9b99088e881edc0f3c10e2d79dc1bc476230bbae33660",
+      "headLfSha256": "d7fb1300e177128db9a9b99088e881edc0f3c10e2d79dc1bc476230bbae33660",
+      "currentLfSha256": "d7fb1300e177128db9a9b99088e881edc0f3c10e2d79dc1bc476230bbae33660",
+      "normalizedUnchanged": true
+    },
+    {
+      "path": "core/src/acceptance/urls.mjs",
+      "currentBytes": 1791,
+      "currentSha256": "1e1cd552b7020878526afe34cc2219a432ba9bc304fd6ae1f7bc4994d7a7a503",
+      "headLfSha256": "1e1cd552b7020878526afe34cc2219a432ba9bc304fd6ae1f7bc4994d7a7a503",
+      "currentLfSha256": "1e1cd552b7020878526afe34cc2219a432ba9bc304fd6ae1f7bc4994d7a7a503",
+      "normalizedUnchanged": true
+    },
+    {
+      "path": "core/src/acceptance/runner.mjs",
+      "currentBytes": 40165,
+      "currentSha256": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57",
+      "headLfSha256": "4db69f79ead0d3eff78d977f50bb0f7a4472f2638f0ca4d7049f7a2385d2f6e0",
+      "currentLfSha256": "c0f249bd45b1f3b5e42383297b332fa57f126605b809e09eac7b781ee058cc57",
+      "normalizedUnchanged": false
+    },
+    {
+      "path": "core/src/acceptance/report.mjs",
+      "currentBytes": 6191,
+      "currentSha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15",
+      "headLfSha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15",
+      "currentLfSha256": "8d244ff2209eaea5bb325cd56a58f42d8cc043a9316d01b3714c55ed9a044c15",
+      "normalizedUnchanged": true
+    },
+    {
+      "path": "core/src/acceptance/spec-schema.mjs",
+      "currentBytes": 8682,
+      "currentSha256": "2c652249fb80c725f1480c378a56e94f3296bb9a1ece19d0cc55c95302540919",
+      "headLfSha256": "2c652249fb80c725f1480c378a56e94f3296bb9a1ece19d0cc55c95302540919",
+      "currentLfSha256": "2c652249fb80c725f1480c378a56e94f3296bb9a1ece19d0cc55c95302540919",
+      "normalizedUnchanged": true
+    },
+    {
+      "path": "core/src/acceptance/spec-runner.mjs",
+      "currentBytes": 20510,
+      "currentSha256": "aa06081911341b9cad6df79088e1d631dc596d9ce59ffde40cab145b24855206",
+      "headLfSha256": "aa06081911341b9cad6df79088e1d631dc596d9ce59ffde40cab145b24855206",
+      "currentLfSha256": "aa06081911341b9cad6df79088e1d631dc596d9ce59ffde40cab145b24855206",
+      "normalizedUnchanged": true
+    },
+    {
+      "path": "core/src/acceptance/response-schema.mjs",
+      "currentBytes": 18139,
+      "currentSha256": "b386b5cd8991f52d187e1414ddd8178e99d5192bf1582446631c22d57235d255",
+      "headLfSha256": "b386b5cd8991f52d187e1414ddd8178e99d5192bf1582446631c22d57235d255",
+      "currentLfSha256": "b386b5cd8991f52d187e1414ddd8178e99d5192bf1582446631c22d57235d255",
+      "normalizedUnchanged": true
+    },
+    {
+      "path": "core/src/acceptance/openapi.mjs",
+      "currentBytes": 17246,
+      "currentSha256": "a1f94491cdbe219389a9b96bd078385f170699500d5c356fc9d5aee725ca4b7e",
+      "headLfSha256": "a1f94491cdbe219389a9b96bd078385f170699500d5c356fc9d5aee725ca4b7e",
+      "currentLfSha256": "a1f94491cdbe219389a9b96bd078385f170699500d5c356fc9d5aee725ca4b7e",
+      "normalizedUnchanged": true
+    },
+    {
+      "path": "core/src/acceptance/identity.mjs",
+      "currentBytes": 6601,
+      "currentSha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5",
+      "headLfSha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5",
+      "currentLfSha256": "3f4c7cedd8f12a8f752c1a4be0108d63f5f5ab9cd4c289d0ff555e131d1086e5",
+      "normalizedUnchanged": true
+    },
+    {
+      "path": "core/src/verify/compare.mjs",
+      "currentBytes": 3617,
+      "currentSha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68",
+      "headLfSha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68",
+      "currentLfSha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68",
+      "normalizedUnchanged": true
+    }
+  ]
+}

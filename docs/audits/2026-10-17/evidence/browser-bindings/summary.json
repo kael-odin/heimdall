@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "fullCore": {
+    "tests": 2204,
+    "suites": 0,
+    "pass": 2195,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 9,
+    "todo": 0,
+    "duration_ms": 540992.4815
+  },
+  "schemaFocused": {
+    "tests": 75,
+    "suites": 0,
+    "pass": 75,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 32888.115
+  },
+  "storeFocused": {
+    "tests": 58,
+    "suites": 0,
+    "pass": 58,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 62783.1023
+  },
+  "storeInitial": {
+    "tests": 57,
+    "suites": 0,
+    "pass": 54,
+    "fail": 3,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 62377.9654
+  },
+  "authoritativeFreshSmoke": {
+    "schemaVersion": 1,
+    "status": "passed",
+    "startedAt": "2026-10-17T03:23:05.492Z",
+    "finishedAt": "2026-10-17T03:23:33.380Z",
+    "evidenceLevel": "fresh-controlled-mirror-regression-browser-real-owner-store-binding",
+    "checkCount": 30,
+    "checks": {
+      "mirror:freshCompletedFailedComparison": true,
+      "mirror:completionDigestsMatchOriginalBytes": true,
+      "regression:freshCompletedFailedComparison": true,
+      "regression:completionDigestsMatchOriginalBytes": true,
+      "mirror:bothHealthySidesHaveIndependentOracle": true,
+      "mirror:plannedEntryQueryIdentityRetained": true,
+      "fullPlannedEntryUrlRejectsQueryValueOrderAndOmission": true,
+      "mirror:explicitSidesBindAcrossDifferentProjects": true,
+      "mirror:singleReadsRevalidateExactStoredProjection": true,
+      "mirror:previewsRebuildSelectedRawDetailsAndPngOracle": true,
+      "mirror:productPreservesOriginalRunBytesAndMetadata": true,
+      "regression:bothHealthySidesHaveIndependentOracle": true,
+      "regression:plannedEntryQueryIdentityRetained": true,
+      "regression:explicitSidesBindAcrossDifferentProjects": true,
+      "regression:singleReadsRevalidateExactStoredProjection": true,
+      "regression:previewsRebuildSelectedRawDetailsAndPngOracle": true,
+      "regression:productPreservesOriginalRunBytesAndMetadata": true,
+      "legacyTargetBothMutationOrdersKeepBaselineIndependent": true,
+      "sameRunAndSideGloballyUnique": true,
+      "staleCasDoesNotAdvanceCatalog": true,
+      "sideIsExplicitAndClientProjectionRejected": true,
+      "browserCandidateApprovalAndSelectionRemainClosed": true,
+      "browserBindingCannotPrepareOrCreateExecution": true,
+      "changedSourceReturnsSafeReadOnlyDiagnostics": true,
+      "sourceRestorationRevalidatesWithoutRewritingHistory": true,
+      "catalogStoresOnlyBindingsAndNoSpecAuthority": true,
+      "dtoDoesNotExposePrivatePlansBuffersOrMaps": true,
+      "zeroTargetRequestsAndFetchesAfterCapture": true,
+      "zeroProcessLaunchesDuringBindingAndReads": true,
+      "allOriginalAndArchivedRunBytesRemainIdentical": true
+    },
+    "browserRuns": 2,
+    "sourceRunIds": [
+      {
+        "mode": "mirror",
+        "runId": "ac-282dc27e-ae4e-40c6-93fc-91200586e1d3",
+        "gate": "failed"
+      },
+      {
+        "mode": "regression",
+        "runId": "ac-cc116150-c52b-44e8-89b6-3ad3d1b865df",
+        "gate": "failed"
+      }
+    ],
+    "bindings": 4,
+    "singleBindingReads": 6,
+    "captureTargetRequests": 16,
+    "bindingAndReadTargetRequests": 0,
+    "bindingFetchAttempts": 0,
+    "forbiddenProcessEvents": [],
+    "executionReady": false,
+    "candidateCount": 0,
+    "approvalCount": 0,
+    "selectionCount": 0,
+    "newExecutionRuns": 0,
+    "outputDirectory": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-bindings-smoke-f8f0978b-0da1-45eb-abf3-9a5c5f7429ee",
+    "scope": "Fresh local controlled capture, explicit side organization and private per-binding revalidation only. No Browser approval/selection/executor or HTTP/UI route; no external deployment, cross-call inode guarantee or reusable execution authorization. Runtime originals and copied full run trees are preserved; one source mutation is an explicit recorded test injection."
+  },
+  "stages": [
+    {
+      "stage": "01-lint",
+      "command": "pnpm -C core lint",
+      "startedAt": "2026-10-17T03:25:21.243Z",
+      "finishedAt": "2026-10-17T03:25:41.552Z",
+      "durationMs": 20308,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "02-console-build",
+      "command": "pnpm -C console build",
+      "startedAt": "2026-10-17T03:25:41.553Z",
+      "finishedAt": "2026-10-17T03:25:43.577Z",
+      "durationMs": 2024,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "03-core-test",
+      "command": "pnpm -C core test",
+      "startedAt": "2026-10-17T03:25:43.578Z",
+      "finishedAt": "2026-10-17T03:34:45.689Z",
+      "durationMs": 542110,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "04-core-smoke",
+      "command": "pnpm -C core smoke",
+      "startedAt": "2026-10-17T03:34:45.691Z",
+      "finishedAt": "2026-10-17T03:35:21.387Z",
+      "durationMs": 35696,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "05-catalog-browser",
+      "command": "pnpm acceptance:catalog:smoke",
+      "startedAt": "2026-10-17T03:35:21.388Z",
+      "finishedAt": "2026-10-17T03:35:35.965Z",
+      "durationMs": 14577,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "06-migration-browser",
+      "command": "pnpm acceptance:catalog:migration:smoke",
+      "startedAt": "2026-10-17T03:35:35.967Z",
+      "finishedAt": "2026-10-17T03:35:52.059Z",
+      "durationMs": 16092,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "07-baseline-browser",
+      "command": "pnpm acceptance:baseline:smoke",
+      "startedAt": "2026-10-17T03:35:52.061Z",
+      "finishedAt": "2026-10-17T03:36:14.726Z",
+      "durationMs": 22665,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "08-managed-prepare",
+      "command": "pnpm acceptance:managed:prepare:smoke",
+      "startedAt": "2026-10-17T03:36:14.728Z",
+      "finishedAt": "2026-10-17T03:36:16.477Z",
+      "durationMs": 1749,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "09-execution-ui",
+      "command": "pnpm acceptance:execution:ui:smoke",
+      "startedAt": "2026-10-17T03:36:16.479Z",
+      "finishedAt": "2026-10-17T03:37:51.771Z",
+      "durationMs": 95292,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "stage": "10-cdp-clone",
+      "command": "node core/scripts/smoke-console-cdp.mjs core/workspace/_runs/browser-bindings-final-gates-20261017/cdp-clone",
+      "startedAt": "2026-10-17T03:37:51.773Z",
+      "finishedAt": "2026-10-17T03:38:21.673Z",
+      "durationMs": 29900,
+      "exitCode": 0,
+      "signal": null
+    }
+  ],
+  "archiveRoundTrips": [
+    {
+      "id": "schema-initial",
+      "fileCount": 4,
+      "bytes": 8983,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "schema-final",
+      "fileCount": 4,
+      "bytes": 9095,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "store-initial-failure",
+      "fileCount": 3,
+      "bytes": 13414,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "store-final",
+      "fileCount": 3,
+      "bytes": 5571,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "fresh-smoke-commands",
+      "fileCount": 21,
+      "bytes": 54665,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "fresh-smoke-initial",
+      "fileCount": 130,
+      "bytes": 2116159,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "fresh-smoke-final",
+      "fileCount": 130,
+      "bytes": 2116169,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "catalog-console",
+      "fileCount": 38,
+      "bytes": 704175,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "migration-console",
+      "fileCount": 34,
+      "bytes": 1368576,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "baseline-console",
+      "fileCount": 29,
+      "bytes": 635096,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "managed-preparation",
+      "fileCount": 10,
+      "bytes": 14730,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "execution-ui",
+      "fileCount": 31,
+      "bytes": 838424,
+      "byteRoundTripPassed": true
+    },
+    {
+      "id": "cdp-clone",
+      "fileCount": 3,
+      "bytes": 99394,
+      "byteRoundTripPassed": true
+    }
+  ],
+  "countPolicy": "Full Core counted once; focused tests, initial attempts, fresh smoke checks and UI regression checks are separate and overlap."
+}

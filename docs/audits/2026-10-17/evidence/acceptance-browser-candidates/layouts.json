@@ -1,0 +1,78 @@
+[
+  {
+    "name": "browser-candidate-desktop-dark",
+    "width": 1440,
+    "height": 1000,
+    "theme": "dark",
+    "documentWidth": 1440,
+    "clientWidth": 964,
+    "scrollWidth": 964,
+    "rect": {
+      "x": 393,
+      "y": -118.859375,
+      "width": 964,
+      "height": 1618.578125,
+      "top": -118.859375,
+      "right": 1357,
+      "bottom": 1499.71875,
+      "left": 393
+    }
+  },
+  {
+    "name": "browser-candidate-mobile-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "documentWidth": 390,
+    "clientWidth": 296,
+    "scrollWidth": 296,
+    "rect": {
+      "x": 42,
+      "y": -173.703125,
+      "width": 296,
+      "height": 2259.609375,
+      "top": -173.703125,
+      "right": 338,
+      "bottom": 2085.90625,
+      "left": 42
+    }
+  },
+  {
+    "name": "browser-candidate-desktop-light",
+    "width": 1440,
+    "height": 1000,
+    "theme": "light",
+    "documentWidth": 1440,
+    "clientWidth": 964,
+    "scrollWidth": 964,
+    "rect": {
+      "x": 393,
+      "y": -238.21875,
+      "width": 964,
+      "height": 1654.171875,
+      "top": -238.21875,
+      "right": 1357,
+      "bottom": 1415.953125,
+      "left": 393
+    }
+  },
+  {
+    "name": "browser-candidate-mobile-dark",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "documentWidth": 390,
+    "clientWidth": 296,
+    "scrollWidth": 296,
+    "rect": {
+      "x": 42,
+      "y": -336.515625,
+      "width": 296,
+      "height": 2261.609375,
+      "top": -336.515625,
+      "right": 338,
+      "bottom": 1925.09375,
+      "left": 42
+    }
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "method": "GET",
+    "path": "/release/quota",
+    "code": 1
+  },
+  {
+    "method": "GET",
+    "path": "/release/quota",
+    "code": 0
+  },
+  {
+    "method": "GET",
+    "path": "/release/quota",
+    "code": 0
+  }
+]

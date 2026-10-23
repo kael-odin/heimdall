@@ -1,0 +1,7 @@
+[verify] page ai -> https://angular.dev/ai
+@@EVENT@@{"kind":"verify-viewport","page":"ai","viewport":"375x812","score":0.8661}
+@@EVENT@@{"kind":"verify-viewport","page":"ai","viewport":"768x1024","score":0.9004}
+@@EVENT@@{"kind":"verify-viewport","page":"ai","viewport":"1440x900","score":0.9277}
+[verify] ai overall 90.5% B | 最低 375x812 86.6% | 交互 n/a
+@@EVENT@@{"kind":"verify-page","page":"ai","overall":0.9055,"measured":true,"grade":"B","minViewport":{"name":"375x812","score":0.8661,"grade":"B","coverageRatio":0.9772,"sourceSize":{"width":375,"height":9584},"cloneSize":{"width":375,"height":9808},"heightDelta":224,"missingPixels":84000},"functional":null,"error":null}
+@@EVENT@@{"kind":"verify-done","host":"angular.dev","page":"ai","pages":1,"measured":1,"untested":0,"average":0.9055,"threshold":0,"failedPages":[],"passed":true}

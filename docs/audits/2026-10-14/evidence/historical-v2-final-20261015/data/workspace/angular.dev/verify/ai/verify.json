@@ -1,0 +1,258 @@
+{
+  "page": "ai",
+  "target": "https://angular.dev/ai",
+  "generatedAt": "2026-10-14T16:21:50.216Z",
+  "scoreVersion": 2,
+  "overall": 0.9055,
+  "provisionalOverall": null,
+  "measured": true,
+  "grade": "B",
+  "minViewport": {
+    "name": "375x812",
+    "score": 0.8661,
+    "grade": "B",
+    "coverageRatio": 0.9772,
+    "sourceSize": {
+      "width": 375,
+      "height": 9584
+    },
+    "cloneSize": {
+      "width": 375,
+      "height": 9808
+    },
+    "heightDelta": 224,
+    "missingPixels": 84000
+  },
+  "viewports": [
+    {
+      "name": "375x812",
+      "width": 375,
+      "score": 0.8661,
+      "grade": "B",
+      "settleTimedOut": false,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T16:21:33.293Z",
+        "finalUrl": "https://angular.dev/ai",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1042,
+            "height": 9584,
+            "textLength": 71267,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1025,
+            "height": 9584,
+            "textLength": 71267,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "scrollConverged": true
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T16:21:36.547Z",
+        "finalUrl": "http://127.0.0.1:60744/static/angular.dev/pages/ai/clone/index.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1046,
+            "height": 9808,
+            "textLength": 13561,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1018,
+            "height": 9808,
+            "textLength": 13561,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "scrollConverged": true
+        }
+      },
+      "mismatched": 492629,
+      "missingPixels": 84000,
+      "coverageRatio": 0.9772,
+      "heightDelta": 224,
+      "sourceSize": {
+        "width": 375,
+        "height": 9584
+      },
+      "cloneSize": {
+        "width": 375,
+        "height": 9808
+      },
+      "sourceHeight": 9584,
+      "cloneHeight": 9808
+    },
+    {
+      "name": "768x1024",
+      "width": 768,
+      "score": 0.9004,
+      "grade": "B",
+      "settleTimedOut": false,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T16:21:40.042Z",
+        "finalUrl": "https://angular.dev/ai",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1002,
+            "height": 6131,
+            "textLength": 71267,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1040,
+            "height": 6131,
+            "textLength": 71267,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "scrollConverged": true
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T16:21:42.857Z",
+        "finalUrl": "http://127.0.0.1:60744/static/angular.dev/pages/ai/clone/index.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1024,
+            "height": 6203,
+            "textLength": 13561,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1005,
+            "height": 6203,
+            "textLength": 13561,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "scrollConverged": true
+        }
+      },
+      "mismatched": 474560,
+      "missingPixels": 55296,
+      "coverageRatio": 0.9884,
+      "heightDelta": 72,
+      "sourceSize": {
+        "width": 768,
+        "height": 6131
+      },
+      "cloneSize": {
+        "width": 768,
+        "height": 6203
+      },
+      "sourceHeight": 6131,
+      "cloneHeight": 6203
+    },
+    {
+      "name": "1440x900",
+      "width": 1440,
+      "score": 0.9277,
+      "grade": "B",
+      "settleTimedOut": false,
+      "captureMode": "full",
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T16:21:46.433Z",
+        "finalUrl": "https://angular.dev/ai",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1039,
+            "height": 5584,
+            "textLength": 71267,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1024,
+            "height": 5584,
+            "textLength": 71267,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "scrollConverged": true
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T16:21:49.321Z",
+        "finalUrl": "http://127.0.0.1:60744/static/angular.dev/pages/ai/clone/index.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1031,
+            "height": 5707,
+            "textLength": 13561,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1006,
+            "height": 5707,
+            "textLength": 13561,
+            "imageCount": 1,
+            "incompleteImages": 0,
+            "visibleIncompleteImages": 0,
+            "brokenImages": 0
+          },
+          "scrollConverged": true
+        }
+      },
+      "mismatched": 594477,
+      "missingPixels": 177120,
+      "coverageRatio": 0.9784,
+      "heightDelta": 123,
+      "sourceSize": {
+        "width": 1440,
+        "height": 5584
+      },
+      "cloneSize": {
+        "width": 1440,
+        "height": 5707
+      },
+      "sourceHeight": 5584,
+      "cloneHeight": 5707
+    }
+  ],
+  "functional": null,
+  "interactions": []
+}
