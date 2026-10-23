@@ -10,7 +10,7 @@
 import SiteBar from './SiteBar.vue';
 import Icon from './Icon.vue';
 import { computed } from 'vue';
-import { taskState, taskLabel, fmtTime, fmtStamp, fmtDuration, kindCn } from './format.js';
+import { taskState, taskLabel, fmtTime, fmtStamp, fmtDuration, kindCn, jobStatusCn } from './format.js';
 import { canRetry, canExportLive, hostOfTask, RETRY_CN } from './tasks.js';
 
 const props = defineProps({
@@ -21,7 +21,7 @@ const props = defineProps({
   engine: { type: Object, default: () => ({}) },
   actions: { type: Array, default: () => [] },
 });
-defineEmits(['pick', 'action', 'close', 'retry', 'export-live']);
+defineEmits(['pick', 'action', 'close', 'retry', 'export-live', 'stop']);
 
 /**
  * 这批历史覆盖的时间跨度。
@@ -64,16 +64,24 @@ function readingOf(t) {
         <span class="wv-score">{{ readingOf(t) }}</span>
         <span class="job-time">{{ fmtTime(t.startedAt) }} · {{ fmtDuration(t) }}</span>
         <span class="job-error" :title="t.error">{{ t.error || '' }}</span>
+        <!-- 只有引擎侧真有进程（taskId）的任务才给「停止」：前端排队的批次没有可停的东西，
+             给一个点了没反应的按钮比不给更糟。 -->
+        <span class="job-stop"><button v-if="!t.done && !t.failed && t.taskId" :disabled="!!t.stopping"
+          @click="$emit('stop', t)" :title="t.stopping ? '已请求停止，等引擎收尾；已完成的页会保留' : '让引擎停下这个任务（已完成的产物保留）'">{{ t.stopping ? '停止中…' : '停止' }}</button></span>
         <span class="job-live"><button v-if="canExportLive(t)"
           @click="$emit('export-live', hostOfTask(t))"
           title="交互镜像：保留脚本、资源实时回源的另一种产物（与「静态镜像」不是一回事），导出后是一个可直接部署的离线包。首次生成 / 导出过则是增量更新">导出交互镜像</button></span>
       </div>
-      <div class="wv-empty" v-if="!tasks.length && !jobs.length">本次会话还没有任务：在「星图」点击页面，或在「页面」批量克隆 / 运行 SEO 审计。</div>
+      <div class="wv-empty" v-if="!tasks.length && !jobs.length">
+        <p>还没有任何任务。</p>
+        <p class="wv-empty-hint">先在星图顶部填一个网址并点「侦察」，看清全站有哪些页面；只想要一页就点「只克隆此页」。任务跑起来之后，这里会出现进度、耗时和停止按钮。</p>
+        <button class="wv-primary" @click="$emit('close')">回星图，粘一个网址开始</button>
+      </div>
       <div class="wv-sub" v-if="jobs.length">引擎持久化历史（最新 {{ jobs.length }} 条 · {{ historySpan }} · 重启后仍可查）</div>
       <div class="wv-row job-row history" v-for="h in jobs" :key="'h-' + h.id">
         <span class="job-name">{{ h.pageName || h.url }}</span>
-        <span class="job-kind">{{ h.kind }}</span>
-        <span class="wv-state" :class="h.status === 'done' ? 'done' : h.status === 'failed' ? 'failed' : h.status === 'running' ? 'running' : 'idle'">{{ h.status }}</span>
+        <span class="job-kind">{{ kindCn(h.kind) }}</span>
+        <span class="wv-state" :class="h.status === 'done' ? 'done' : h.status === 'failed' ? 'failed' : h.status === 'running' ? 'running' : 'idle'">{{ jobStatusCn(h.status) }}</span>
         <span class="wv-score">—</span>
         <span class="job-time">{{ fmtStamp(h.createdAt) }} · {{ h.endedAt ? Math.round((h.endedAt - h.createdAt) / 1000) + 's' : '' }}</span>
         <span class="job-error" :title="h.error || ''">{{ h.error || '' }}</span>

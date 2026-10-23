@@ -25,8 +25,10 @@ const props = defineProps({
   median: { type: Object, default: null },
   /** 点目标能不能跳过去（页不在当前站点/星图里时不给假按钮） */
   canFocus: { type: Boolean, default: false },
+  /** 这个任务能不能停（引擎侧有 taskId 才行 —— 只在前端排队的没有可取消的进程） */
+  canStop: { type: Boolean, default: false },
 });
-defineEmits(['focus']);
+defineEmits(['focus', 'stop']);
 
 const now = ref(Date.now());
 let timer = null;
@@ -79,6 +81,12 @@ const logLine = computed(() => {
       <span class="rail-clock" aria-hidden="true">
         <b>{{ elapsedText }}</b><i v-if="medianText" :title="'这一档的中位耗时来自真实历史'">{{ medianLabel }} {{ medianText }}</i>
       </span>
+      <!-- 「停止」放在轨道上而不是只放在任务行里：长任务跑起来以后，用户盯着的就是这条轨道。
+           停止要二次确认式的措辞（"停止"而不是"取消"），并且明确说不是立刻消失 ——
+           引擎要收尾，已完成的页会留下。 -->
+      <button v-if="canStop" class="rail-stop" type="button" :disabled="!!task.stopping"
+              :title="task.stopping ? '已请求停止，等引擎收尾' : '让引擎停下这个任务（已经完成的页会保留）'"
+              @click="$emit('stop')">{{ task.stopping ? '停止中…' : '停止' }}</button>
     </div>
 
     <div v-if="stages" class="rail-track" role="progressbar" :aria-valuemin="0"

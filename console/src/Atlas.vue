@@ -35,15 +35,34 @@ import JobsView from './JobsView.vue';
 import PagesView from './PagesView.vue';
 import StorageCard from './StorageCard.vue';
 import AssetTable from './AssetTable.vue';
-import AcceptanceSummary from './AcceptanceSummary.vue';
-import AcceptanceWorkbench from './AcceptanceWorkbench.vue';
+/**
+ * 验收相关的视图异步加载。
+ *
+ * Acceptance* 这十个组件加起来约 500KB 源码，原先静态 import 进 Atlas，
+ * 于是它们和星图挤在同一个 chunk 里 —— **打开控制台就是为了克隆一个站，
+ * 却要先下完一整套验收工作台**。而「项目验收」是一个独立的视图（view === 'acceptance'），
+ * 「报告」页里那张验收汇总卡也只是报告页的一部分。
+ * 拆成独立 chunk 之后：首屏只下外壳，点进去才拉。Graph3D 当初也是这么处理的。
+ *
+ * 沿用 Graph3D 的两个细节：120ms 内到货不闪占位；错误给一句人话而不是一片空白。
+ */
+const asyncView = (loader, label) => defineAsyncComponent({
+  loader,
+  loadingComponent: { render: () => h('div', { class: 'wv-empty', role: 'status' }, `正在加载${label}…`) },
+  errorComponent: { render: () => h('div', { class: 'wv-empty', role: 'alert' }, `${label}加载失败，请刷新页面重试。`) },
+  delay: 120,
+  timeout: 30000,
+});
+const AcceptanceSummary = asyncView(() => import('./AcceptanceSummary.vue'), '验收汇总');
+const AcceptanceWorkbench = asyncView(() => import('./AcceptanceWorkbench.vue'), '项目验收');
 import DetailDock from './DetailDock.vue';
 import ActivityRail from './ActivityRail.vue';
 import TrashDialog from './TrashDialog.vue';
 import { API, apiHeaders, wsUrl, wsOpenUrl, wsJson, tokenOf, staticUrl, artifactOpenUrl, staticBridgeNeeded, normalizeApiBase } from './api.js';
-import { taskState, taskLabel, liveStageCn, fmtBytes, forgeStageProgress, stageProgressText, verifyPageProgress } from './format.js';
+import { taskState, taskLabel, liveStageCn, fmtBytes, forgeStageProgress, stageProgressText, verifyPageProgress, userErrorText, streamBreakText } from './format.js';
 import { pageNameOf, pagePathOf, normalizeSiteUrl, normalizePageUrl, workspaceHostOf, mirrorBridgeNeeded, localEngineSupportsMirror } from './pages.js';
 import { hostOfTask, medianForgeSec } from './tasks.js';
+import { liveHealthPrefetch } from './prefetch-cache.js';
 
 import { PAGE_TYPES as PT, typeColor } from './types.js';
 const PAGE_TYPES = PT;
@@ -69,6 +88,24 @@ const atlas = ref(null);
 const live = ref(false);
 const statusText = ref('');
 const errMsg = ref('');
+/**
+ * 错误的三段式：一句人话 / 下一步 / 技术串。
+ *
+ * 以前只有 errMsg，而十几处调用传的是 `String(e)` —— 屏幕中间直接摆一行
+ * `TypeError: Failed to fetch`。技术信息不是不能给，而是不该占着最显眼的位置：
+ * 它进「详情」，要看的自己展开。文案的归类在 format.js 的 userErrorText 里。
+ */
+const errHint = ref('');
+const errDetail = ref('');
+function clearErr() { errMsg.value = ''; errHint.value = ''; errDetail.value = ''; }
+/** 所有面向用户的失败都从这里出 —— 不直接给 errMsg 赋值，免得多出一条"没人话"的路径 */
+function fail(message, hint = '', detail = '') {
+  errMsg.value = String(message ?? '').slice(0, 220);
+  errHint.value = hint || '';
+  errDetail.value = detail ? String(detail).slice(0, 600) : '';
+}
+/** 把一个原始错误翻成人话（引擎没开 / 5xx / 超时 / busy …） */
+function failFrom(raw, opts) { const t = userErrorText(raw, opts); fail(t.msg, t.hint, t.detail); }
 // 任务中心：每个 forge 任务独立对象 + 独立 EventSource（修复并发克隆单例覆盖）
 const tasks = reactive([]);
 const activeTaskId = ref(null);
@@ -118,6 +155,77 @@ const LLM_PRESETS = [
   { name: '自建中转', protocol: 'chat', baseUrl: '', model: '', fastModel: '' },
 ];
 function sseUrl(taskId) { const t = tokenOf(); return `${API}/api/events?task=${taskId}${t ? '&token=' + encodeURIComponent(t) : ''}`; }
+
+/**
+ * SSE 断流的看门狗 —— 每一条任务流都从这里挂 onerror。
+ *
+ * 原先各任务流自己写 `es.onerror = () => { close(); resolve(); }`，两种写法都不对：
+ *   · forge 那条**只关连接、不置失败** —— 引擎退出/网络一抖，节点就永远显示"克隆中"，
+ *     底部「进行中」轨道也一直挂着（它的判据就是"有任务没 done 没 failed"）；
+ *   · 另外几条一律当"事件流中断"记失败 —— 但浏览器在自动重连时**也会先调一次 onerror**，
+ *     于是一次 3 秒的抖动会被记成失败，而任务其实还在跑。
+ *
+ * 所以判据用 readyState：
+ *   CLOSED(2)    —— 浏览器放弃重连（4xx/5xx、CORS、引擎拒绝），立刻置失败；
+ *   CONNECTING(0) —— 正在自动重连，给 `graceMs` 宽限；这期间只要来一条消息就撤回。
+ * 宽限期不能短：整站克隆的引擎侧可能几分钟才推一条事件（正在跑的页没有进度事件）。
+ */
+const STREAM_GRACE_MS = 20000;
+function watchStream(es, task, close, onDrop) {
+  const drop = () => {
+    if (task._grace) { clearTimeout(task._grace); task._grace = null; }
+    if (!task?.done && !task?.failed) onDrop();
+  };
+  es.onerror = () => {
+    if (task.done || task.failed) {                     // 正常结束后浏览器也会报一次，忽略
+      if (task._grace) { clearTimeout(task._grace); task._grace = null; }
+      close(); return;
+    }
+    if (es.readyState === 2) { close(); drop(); return; }      // EventSource.CLOSED
+    if (task._grace) return;
+    task._grace = setTimeout(() => { task._grace = null; if (!task.done && !task.failed) { close(); drop(); } }, STREAM_GRACE_MS);
+  };
+  return {
+    /** 收到任何事件就撤回宽限计时 —— 流还活着 */
+    alive: () => { if (task._grace) { clearTimeout(task._grace); task._grace = null; } },
+    stop: () => { if (task._grace) { clearTimeout(task._grace); task._grace = null; } close(); },
+  };
+}
+
+/**
+ * 一条普通任务流的完整挂载：断流即置失败 + 一句人话 + 状态条复位。
+ * 任务流的调用点只用两件事 —— 收到消息时 `alive()`，收到 exit 时 `stop()`。
+ */
+function attachStream(es, task, close, what) {
+  return watchStream(es, task, close, () => {
+    if (task.done || task.failed) return;
+    const t = streamBreakText({ what });
+    task.failed = true; task.done = true; task.endedAt = Date.now(); task.stopping = false; task.error = t.msg;
+    fail(t.msg, t.hint, t.detail);
+  });
+}
+
+/**
+ * 「停止」—— 长任务（整站克隆 / 审计 / 交互镜像导出）此前只能等。
+ *
+ * 引擎侧早就有了 `POST /api/jobs/:id/cancel`（core/src/engine-server.mjs:1551），
+ * 控制台从来没调过。这里只发请求并置"正在停止"；**UI 的复位交给流上的 exit 事件**
+ * （引擎会推 `status: 'cancelled'`）—— 不在这里抢先改状态，否则停止失败时界面已经骗人了。
+ */
+async function cancelJob(task) {
+  if (!task?.taskId || task.stopping) return;
+  task.stopping = true;
+  try {
+    const r = await fetch(`${API}/api/jobs/${encodeURIComponent(task.taskId)}/cancel`, { method: 'POST', headers: apiHeaders() });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    // 引擎回的是"请求已受理"，进程收尾还要一两秒 —— 文案里别说成"已停止"
+    toast(`${task.label ?? '任务'}：已请求停止，等它收尾…`, 5000);
+  } catch (e) {
+    task.stopping = false;
+    failFrom(e, { what: '停止任务' });
+  }
+}
 const hudPages = ref(0);
 const hudEdges = ref(0);
 const hudEdgesRendered = ref(0);
@@ -238,7 +346,7 @@ async function deleteSite(s) {
   if (!s?.host) return;
   const typed = prompt('将站点 ' + s.host + ' 移入“最近删除”（持续保留，可在设置中恢复）。\n请输入站点名 ' + s.host + ' 确认：');
   if (typed !== s.host) {
-    if (typed !== null) errMsg.value = '站点名不一致，已取消删除';
+    if (typed !== null) fail('站点名不一致，没有删除。', '确认框里要一字不差地填站点名（' + s.host + '）才会删。');
     return;
   }
   try {
@@ -252,7 +360,7 @@ async function deleteSite(s) {
     }
     okMsg.value = '已移入最近删除：' + s.host + '（可在设置中恢复）';
     setTimeout(() => { okMsg.value = ''; }, 2500);
-  } catch (e) { errMsg.value = '删除失败：' + String(e).slice(0, 160); }
+  } catch (e) { failFrom(e, { what: '把站点移入最近删除' }); }
 }
 async function removePageNode(n) {
   const forHost = host.value;
@@ -277,7 +385,7 @@ async function deletePage(n) {
     okMsg.value = '已移入最近删除：' + name + '（可在设置中恢复）';
     setTimeout(() => { okMsg.value = ''; }, 2500);
     loadSites();
-  } catch (e) { errMsg.value = '删除失败：' + String(e).slice(0, 160); }
+  } catch (e) { failFrom(e, { what: '把页面移入最近删除' }); }
 }
 async function onTrashRestored(entry) {
   await loadSites();
@@ -303,9 +411,9 @@ async function removeChecked(ids) {
 function saveApiBase() {
   const v = apiBaseInput.value.trim() || 'http://127.0.0.1:8900';
   const base = normalizeApiBase(v);
-  if (!base) { errMsg.value = '引擎地址必须是完整的 http(s) 源地址，不能含路径、账号或查询参数'; return; }
+  if (!base) { fail('这个引擎地址不能用。', '只填到源地址为止，例如 http://127.0.0.1:8900 —— 不要带路径、账号或 ?query。'); return; }
   if (location.protocol === 'https:' && !base.startsWith('https:')) {
-    errMsg.value = 'HTTPS 控制台需要 HTTPS 引擎地址，否则浏览器会阻止请求';
+    fail('HTTPS 页面不能直连 HTTP 引擎。', '换成 https 开头的引擎地址，或者直接用 http://127.0.0.1:8900 打开控制台。');
     return;
   }
   localStorage.setItem('heimdall-api', base);
@@ -366,7 +474,7 @@ async function loadPageStatus() {
     loadQueue(forHost);
     loadEditManifest(forHost);
   } catch (e) {
-    if (host.value === forHost && siteEpoch === epoch && pageLoadSerial === serial) errMsg.value = '页面状态加载失败：' + String(e).slice(0, 120);
+    if (host.value === forHost && siteEpoch === epoch && pageLoadSerial === serial) failFrom(e, { what: '加载页面状态' });
   }
   finally { if (host.value === forHost && siteEpoch === epoch && pageLoadSerial === serial) pagesLoading.value = false; }
 }
@@ -406,7 +514,7 @@ function runEditManifest() {
   const task = reactive({
     localId: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     kind: 'editmanifest', label: '改站清单 · ' + h, url: 'https://' + h,
-    progress: '', done: false, failed: false, error: null, startedAt: Date.now(), endedAt: null,
+    taskId: null, progress: '', done: false, failed: false, stopping: false, error: null, startedAt: Date.now(), endedAt: null,
   });
   tasks.push(task);
   while (tasks.length > 20) tasks.shift();
@@ -415,24 +523,27 @@ function runEditManifest() {
     try {
       const r = await fetch(API + '/api/edit-manifest', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '改站清单失败：' + error; return; }
+      if (error) { task.failed = true; task.done = true; failFrom(error, { what: '生成改站清单' }); task.error = errMsg.value; return; }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      const watch = attachStream(es, task, close, '改站清单');
       es.onmessage = (m) => {
+        watch.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'edit-manifest') {
           task.progress = `${ev.assets} 资源 · ${ev.remoteVisual} 外链视觉`;
           task.done = true; task.endedAt = Date.now();
           statusText.value = `改站清单完成 · ${ev.assets} 个资源 / ${ev.remoteVisual} 个仍是外链的视觉资产`;
-          close(); loadEditManifest(h);
+          watch.stop(); loadEditManifest(h);
           setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
-          task.failed = true; task.done = true; task.error = '任务中断'; close();
+          task.failed = true; task.done = true; task.error = '任务中断';
+          fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
+          watch.stop();
         }
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
-    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+    } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '生成改站清单' }); task.error = errMsg.value; }
   })();
 }
 
@@ -445,21 +556,20 @@ function runEditManifest() {
  * 回的是 404 `not found`，和"路径非法""引擎没开"混在一起就分不出来。
  */
 async function revealPath(rel, what = '产物') {
-  if (!rel) { errMsg.value = `还不知道${what}在哪 —— 先跑一次`; return; }
+  if (!rel) { fail(`还不知道${what}在哪里。`, '先跑一次对应的任务；产物生成之后这里才有可定位的路径。'); return; }
   try {
     const r = await fetch(API + '/api/reveal', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ path: rel }) });
     if (r.ok) return;
     const j = await r.json().catch(() => ({}));
-    errMsg.value = j.error === 'not found'
-      ? `还没有这个${what}：${rel} —— 先跑一次再定位`
-      : '定位失败：' + (j.error ?? r.status);
-  } catch (e) { errMsg.value = String(e); }
+    if (j.error === 'not found') fail(`还没有这个${what}。`, `产物目录还不存在（${rel}）—— 先跑一次对应的任务，再回来定位。`, 'HTTP 404 not found');
+    else fail(`打不开${what}所在的文件夹。`, '引擎可能没有权限或已被关闭；重试一次，不行就重启引擎。', j.error ?? `HTTP ${r.status}`);
+  } catch (e) { failFrom(e, { what: `定位${what}` }); }
 }
 
 /** 在资源管理器里定位清单里的某个资源（换图时最常用的下一步） */
 async function revealManifestAsset(a) {
   const page = a.pages?.[0];
-  if (!page || !a.local) { errMsg.value = '这个资源没有本地副本（仍是外链），先处理缺口'; return; }
+  if (!page || !a.local) { fail('这个资源还没有本地副本，仍是外链。', '先到「报告 → 资产缺口」跑一次扫描并补齐，再回来定位。'); return; }
   return revealPath(`workspace/${host.value}/pages/${page}/clone/${a.local}`, '本地资源');
 }
 
@@ -467,11 +577,11 @@ async function revealManifestAsset(a) {
 function runReplaceDomain(apply) {
   const h = host.value;
   const to = newDomain.value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-  if (!to) { errMsg.value = '先填要换成的新域名'; return; }
+  if (!to) { fail('还没填要换成的新域名。', '在右边输入框里填新域名（例如 mysite.com），先点「预览」看清会改哪些地方。'); return; }
   const task = reactive({
     localId: 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     kind: 'replace-domain', label: (apply ? '替换域名 · ' : '预览替换 · ') + originHostOf() + ' → ' + to,
-    url: 'https://' + h, progress: '', done: false, failed: false, error: null, startedAt: Date.now(), endedAt: null,
+    url: 'https://' + h, taskId: null, progress: '', done: false, failed: false, stopping: false, error: null, startedAt: Date.now(), endedAt: null,
   });
   tasks.push(task);
   while (tasks.length > 20) tasks.shift();
@@ -480,11 +590,13 @@ function runReplaceDomain(apply) {
     try {
       const r = await fetch(API + '/api/replace-domain', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h, from: originHostOf(), to, apply }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '域名替换失败：' + error; return; }
+      if (error) { task.failed = true; task.done = true; failFrom(error, { what: '域名替换' }); task.error = errMsg.value; return; }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      const watch = attachStream(es, task, close, '域名替换');
       es.onmessage = (m) => {
+        watch.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'replace-domain') {
           domainResult.value = ev;
@@ -493,14 +605,15 @@ function runReplaceDomain(apply) {
           statusText.value = ev.mode === 'apply'
             ? `已替换 ${ev.changed} 个文件（备份已生成）`
             : `预览：命中 ${ev.files} 个文件 / ${ev.occurrences} 处`;
-          close(); if (ev.mode === 'apply') loadEditManifest(h);
+          watch.stop(); if (ev.mode === 'apply') loadEditManifest(h);
           setTimeout(() => { statusText.value = ''; }, 5000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
-          task.failed = true; task.done = true; task.error = '任务中断'; close();
+          task.failed = true; task.done = true; task.error = '任务中断';
+          fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
+          watch.stop();
         }
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
-    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+    } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '域名替换' }); task.error = errMsg.value; }
   })();
 }
 async function establishBrowserSession() {
@@ -527,7 +640,7 @@ async function saveToken() {
         ? localEngineSupportsMirror() ? 'Token 已保存，交互镜像将通过一次性授权打开' : 'Token 已保存；独立子域镜像需要本机引擎'
         : 'Token 已保存，浏览器产物访问已授权'
       : crossOrigin ? 'Token 已清除；已打开的镜像会话可能持续到 Cookie 过期' : 'Token 已清除';
-    errMsg.value = '';
+    clearErr();
     loadSites();
     if (host.value) loadPageStatus();
   } catch (e) {
@@ -535,7 +648,7 @@ async function saveToken() {
       if (previous) localStorage.setItem('heimdall-token', previous);
       else localStorage.removeItem('heimdall-token');
     }
-    errMsg.value = String(e);
+    failFrom(e, { what: '校验引擎 Token' });
   }
   setTimeout(() => { okMsg.value = ''; }, 2500);
 }
@@ -626,6 +739,9 @@ function resetSiteContext(nextHost) {
   auditReport.value = null; watchReport.value = null; assetAuditReport.value = null;
   matrixReport.value = null; sessionState.value = null; siteHistory.value = [];
   hudPages.value = 0; hudEdges.value = 0; hudEdgesRendered.value = 0; hudOrigin.value = nextHost;
+  // 切站时侦察必然已经不在跑了（换站会关掉那条流）—— 不复位的话「侦察」按钮
+  // 会一直停在 disabled 的"侦察中…"，用户只能刷新页面
+  live.value = false; statusText.value = '';
   pagesLoading.value = !!nextHost;
   bump(false);
   return siteEpoch;
@@ -634,27 +750,45 @@ function resetSiteContext(nextHost) {
 // ---------- live 侦察 ----------
 function startRecon() {
   const url = normalizeSiteUrl(targetInput.value);
-  if (!url) { errMsg.value = '网址无效'; return; }
+  if (!url) { fail('这个网址看不出来是什么站点。', '填完整域名，例如 apify.com 或 https://apify.com/store —— 带路径也行。'); return; }
   const epoch = resetSiteContext('');
   targetInput.value = url;
-  errMsg.value = ''; live.value = true; statusText.value = '光点出发';
+  clearErr(); live.value = true; statusText.value = '光点出发';
   hudOrigin.value = url.replace(/^https?:\/\//, '');
 
   fetch(`${API}/api/recon`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url, maxPages: 30 }) })
     .then(r => r.json())
     .then(({ taskId, error, siteId }) => {
       if (siteEpoch !== epoch) return;
-      if (error) { errMsg.value = error === 'busy' ? '引擎忙：有任务在跑' : error; live.value = false; return; }
+      if (error) {
+        live.value = false; statusText.value = '';
+        if (error === 'busy') fail('引擎正忙：已经有一个侦察在跑。', '等它跑完（看底部「进行中」轨道），再点一次「侦察」。', 'HTTP 409 busy');
+        else failFrom(error, { what: '侦察' });
+        return;
+      }
       host.value = siteId || workspaceHostOf(url);
       listen(taskId, epoch);
     })
-    .catch(e => { if (siteEpoch === epoch) { errMsg.value = String(e); live.value = false; } });
+    .catch(e => { if (siteEpoch === epoch) { live.value = false; statusText.value = ''; failFrom(e, { what: '侦察' }); } });
 }
 
 function listen(taskId, epoch) {
   es = new EventSource(sseUrl(taskId));
+  /**
+   * 侦察流的状态位。**断流要复位 live** —— 原先 onerror 只是关掉连接，
+   * 于是 `live` 永远是 true：顶部状态条带着 live 的呼吸动画停在"光点出发"，
+   * 「侦察」按钮也永远停在不可再点的样子，看起来像引擎还在跑。
+   * 用一个只带这两个字段的小对象喂给 watchStream（它只读 done/failed）。
+   */
+  const state = { done: false, failed: false };
+  const watch = watchStream(es, state, () => { try { es?.close(); } catch {} es = null; }, () => {
+    const t = streamBreakText({ what: '侦察' });
+    live.value = false; statusText.value = '';
+    fail(t.msg, t.hint, t.detail);
+  });
   es.onmessage = (m) => {
-    if (siteEpoch !== epoch) { es?.close(); es = null; return; }
+    watch.alive();
+    if (siteEpoch !== epoch) { watch.stop(); return; }
     let ev; try { ev = JSON.parse(m.data); } catch { return; }
     if (ev.kind === 'calibrated') {
       if (ev.host) host.value = ev.host;
@@ -671,14 +805,19 @@ function listen(taskId, epoch) {
     } else if (ev.kind === 'edges') {
       pendingEdges.push({ from: ev.from, tos: ev.tos });
     } else if (ev.kind === 'recon-error') {
-      errMsg.value = ev.error;
+      // 引擎单页失败：技术串原样保留在详情里，正文给一句人话
+      fail('有一页没能抓下来（其余页面不受影响）。', '通常是这一页需要登录或加载超时；要整页排查就展开详情看引擎的原始报错。', ev.error);
     } else if (ev.kind === 'exit') {
-      es.close(); es = null;
+      state.done = true;
+      watch.stop();
       if (ev.status === 'done') finishRecon(taskId, epoch);
-      else { errMsg.value ||= '侦察失败'; live.value = false; statusText.value = ''; }
+      else {
+        live.value = false; statusText.value = '';
+        if (ev.status === 'cancelled') fail('侦察已取消。', '想要全站视图就再点一次「侦察」；已经抓到的页面不会丢。');
+        else fail('侦察没有跑完。', '重跑一次；同一个站反复失败就展开详情，把原始错误和 engine.log 一起看。', `exit status: ${ev.status}`);
+      }
     }
   };
-  es.onerror = () => { es?.close(); es = null; };
 }
 
 async function finishRecon(taskId, epoch) {
@@ -742,7 +881,7 @@ async function loadSites() {
     const r = await fetch(`${API}/api/sites`, { headers: apiHeaders() });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     sites.value = (await r.json()).sites ?? [];
-  } catch (e) { errMsg.value = '站点列表加载失败：' + String(e).slice(0, 120); }
+  } catch (e) { failFrom(e, { what: '加载站点列表' }); }
   sitesLoaded.value = true;   // 首启向导只在**确认过**没有站点时才出现，避免加载中闪一下
 }
 async function pollEngine() {
@@ -826,7 +965,7 @@ function runLogin() {
   const task = reactive({
     localId: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     kind: 'session', label: '登录会话 · ' + host.value, url: 'https://' + host.value,
-    done: false, failed: false, error: null, startedAt: Date.now(), endedAt: null,
+    taskId: null, done: false, failed: false, stopping: false, error: null, startedAt: Date.now(), endedAt: null,
   });
   tasks.push(task);
   while (tasks.length > 20) tasks.shift();
@@ -837,27 +976,31 @@ function runLogin() {
       const { taskId, error } = await r.json();
       if (error) {
         task.failed = true; task.done = true;
-        task.error = error === 'busy' ? '已有一个登录窗口在等待中' : error;
-        errMsg.value = '无法开始登录：' + task.error;
+        if (error === 'busy') fail('已经有一个登录窗口开着了。', '先去那个窗口把登录做完并关掉标签页，再回这里点一次。', 'HTTP 409 busy');
+        else failFrom(error, { what: '打开登录窗口' });
+        task.error = errMsg.value;
         return;
       }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      const watch = attachStream(es, task, close, '登录窗口');
       es.onmessage = (m) => {
+        watch.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind !== 'exit') return;
         task.done = true; task.endedAt = Date.now();
         if (ev.status !== 'done') task.failed = true;
-        close();
+        watch.stop();
         loadSession();
         statusText.value = '';
         okMsg.value = ev.status === 'done' ? '登录态已保存 —— 之后的抓取会自动带上它' : '登录窗口已结束，但可能没存下会话';
         setTimeout(() => { okMsg.value = ''; }, 6000);
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
     } catch (e) {
-      task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e);
+      task.failed = true; task.done = true;
+      failFrom(e, { what: '打开登录窗口' });
+      task.error = errMsg.value;
     }
   })();
 }
@@ -912,7 +1055,7 @@ function onSiteAction(id) {
   if (id === 'clone-incremental') return startCloneSite({ incremental: doneCount.value > 0 });
   if (id === 'clone-all-discovered') {
     if (queueState.value?.scope?.status !== 'ok' || !atlas.value?.nodes?.length) {
-      errMsg.value = '侦察范围未确认，请刷新站点或重新侦察';
+      fail('还不确定这次要克隆哪些页。', '先对这个站跑一次侦察（或刷新站点列表），再点「克隆全部已发现页面」。');
       return;
     }
     return startCloneSite({ allDiscovered: true });
@@ -953,7 +1096,7 @@ function pickSite(s) {
       }
       setTimeout(() => { okMsg.value = ''; }, 6000);
     })
-    .catch(e => { if (siteEpoch === epoch) errMsg.value = String(e); });
+    .catch(e => { if (siteEpoch === epoch) failFrom(e, { what: '载入站点' }); });
 }
 
 /**
@@ -963,12 +1106,14 @@ function pickSite(s) {
  * 但界面上只有「侦察」一个入口，于是"我只是想要这一页"的人被迫先侦察整站。
  * 单页克隆出来的站点没有星图，只有页面清单 —— 控制台会直接把清单摆出来。
  */
-function forgeSingle() {
+/** 「只克隆此页」是否在跑 —— 只为了让那个按钮显示"克隆中…"（进行态的可见性） */
+const singleBusy = ref(false);
+async function forgeSingle() {
   // 页面级归一：**保留路径**。站点选择仍然只取 origin（站点栏与产物路径都按站点走），
   // 两者以前是同一个函数、同一条 origin，于是填 `apify.com/store` 会克隆成首页。
   const url = normalizePageUrl(targetInput.value);
-  if (!url) { errMsg.value = '网址无效'; return; }
-  errMsg.value = '';
+  if (!url) { fail('这个网址看不出来要克隆哪一页。', '填完整域名（可以带路径，例如 apify.com/store），再点一次。', String(targetInput.value || '')); return; }
+  clearErr();
   const nextHost = sites.value.find(s => s.origin === new URL(url).origin)?.host ?? workspaceHostOf(url);
   if (nextHost !== host.value) {
     const site = sites.value.find(s => s.host === nextHost);
@@ -980,7 +1125,10 @@ function forgeSingle() {
     view.value = 'pages';
   }
   targetInput.value = url;
-  startForge(null, { url });
+  // 这个按钮自己的进行态：任务进任务中心，但按钮也要立刻说"我在跑"
+  const busy = startForge(null, { url });
+  singleBusy.value = true;
+  try { await busy; } finally { singleBusy.value = false; }
 }
 
 // ---------- forge：单页还原流水线 ----------
@@ -989,7 +1137,7 @@ function forgeSingle() {
 function startForge(node, opts = {}) {
   return new Promise((resolve) => {
     if (node && (pagesLoading.value || node.siteHost !== host.value)) {
-      errMsg.value = '页面不属于当前站点，请等待页面清单刷新';
+      fail('这一页不属于当前站点。', '等页面清单刷新完再点一次；还不行就先在星图上切换回它所属的站点。');
       return resolve();
     }
     const url = node?.url ?? opts.url;
@@ -1005,9 +1153,9 @@ function startForge(node, opts = {}) {
     const setState = (s) => { if (node) node.forgeState = s; };
     const task = reactive({
       localId: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-      taskId: null, pageName, url, nodeId: node?.id ?? null,
+      pageName, url, nodeId: node?.id ?? null,
       stages: { capture: 'idle', build: 'idle', shot: 'idle', diff: 'idle', fixup: 'idle', harvest: 'idle' },
-      score: null, done: false, failed: false, intel: null, rounds: [], skipReason: null, error: null,
+      score: null, done: false, failed: false, cancelled: false, stopping: false, intel: null, rounds: [], skipReason: null, error: null,
       logs: [],   // 子进程的实时输出（引擎以 {kind:'log'} 推进来）——只保留尾部，见下面的裁剪
       startedAt: Date.now(), endedAt: null,
     });
@@ -1023,8 +1171,11 @@ function startForge(node, opts = {}) {
         const { taskId, error, pageName: storedPageName, siteId } = await r.json();
         if (error) {
           task.failed = true; task.done = true; task.endedAt = Date.now();
-          task.error = error === 'busy' ? '造物台忙：引擎并发槽已满（稍后重试）' : error;
-          setState('idle'); return resolve();
+          if (error === 'busy') {
+            fail('克隆槽已满，这一页没能开始。', '引擎同时在跑 2 个克隆；等手上那页跑完（底部「进行中」轨道），再点一次。', 'HTTP 409 busy');
+          } else failFrom(error, { what: '克隆这一页' });
+          task.error = errMsg.value;
+          setState('failed'); return resolve();      // 置 failed 而不是 idle：起步就失败也是一次失败
         }
         task.taskId = taskId;
         if (!node && siteId && host.value !== siteId && siteEpoch === requestEpoch) {
@@ -1039,7 +1190,20 @@ function startForge(node, opts = {}) {
         const es = new EventSource(sseUrl(taskId));
         taskSources.set(task.localId, es);
         const closeTask = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+        // 断流必须置失败：否则 node.forgeState 永远停在 'running'，节点一直写"克隆中"，
+        // 底部「进行中」轨道也下不来（它的判据就是"存在没 done 没 failed 的任务"）。
+        const watch = watchStream(es, task, closeTask, () => {
+          const t = streamBreakText({ what: '克隆' });
+          task.failed = true; task.done = true; task.endedAt = Date.now(); task.error = t.msg;
+          setState('failed');                       // ← 这一句原先根本没有
+          statusText.value = '克隆中断 · ' + pageName;
+          fail(t.msg, t.hint, t.detail);
+          bump(); loadPageStatus();
+          setTimeout(() => { if (statusText.value.startsWith('克隆中断')) statusText.value = ''; }, 6000);
+          resolve();
+        });
         es.onmessage = (m) => {
+          watch.alive();
           let ev; try { ev = JSON.parse(m.data); } catch { return; }
           // 阶段一变就把"第几步 / 当前阶段"写进 task.progress —— 任务中心、任务视图、
           // 页面清单和「进行中」轨道都读它。此前 forge 这条路上**从来没赋值过**，
@@ -1067,7 +1231,7 @@ function startForge(node, opts = {}) {
             if (task.done) {
               wsJson(host.value, 'pages/' + task.pageName + '/intel/intel.json').then(j => { if (j) task.intel = { headings: j.headings?.length ?? 0, prices: j.prices?.length ?? 0, cta: j.cta?.length ?? 0, links: j.links?.length ?? 0 }; });
             }
-            closeTask();
+            watch.stop();
             bump();
             loadSites();
             setTimeout(loadPageStatus, 600);
@@ -1075,11 +1239,11 @@ function startForge(node, opts = {}) {
             resolve();
           }
         };
-        es.onerror = () => { closeTask(); resolve(); };
       } catch (e) {
-        errMsg.value = String(e);
+        failFrom(e, { what: '克隆这一页' });
         task.failed = true; task.done = true; task.endedAt = Date.now();
-        setState('idle');
+        task.error = errMsg.value;
+        setState('failed');
         resolve();
       }
     })();
@@ -1153,8 +1317,13 @@ async function saveLlm() {
 async function loadLiveHealth() {
   const h = host.value;
   try {
-    const r = await fetch(API + '/api/live-health/' + encodeURIComponent(h), { headers: apiHeaders() });
-    const result = r.ok ? await r.json() : null;
+    // 每次都主动作废：这个函数只在"刚导出完 / 打开报告页"时调，要的就是最新那份。
+    // 详情面板读同一个缓存，于是它也不必为同一份结果再问一次引擎。
+    liveHealthPrefetch.drop(h);
+    const result = await liveHealthPrefetch.get(h, async () => {
+      const r = await fetch(API + '/api/live-health/' + encodeURIComponent(h), { headers: apiHeaders() });
+      return r.ok ? r.json() : null;
+    });
     if (host.value === h) liveHealth.value = result;
   } catch { if (host.value === h) liveHealth.value = null; }
 }
@@ -1208,11 +1377,13 @@ function runMatrix() {
     try {
       const r = await fetch(API + '/api/matrix', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ sites: [host.value, matrixPeer.value], maxPages: 15 }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '对标失败：' + error; return; }
+      if (error) { task.failed = true; task.done = true; failFrom(error, { what: '生成对标矩阵' }); task.error = errMsg.value; return; }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      const watch = attachStream(es, task, close, '对标矩阵');
       es.onmessage = (m) => {
+        watch.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'matrix-start') { task.progress = '0/' + ev.total; statusText.value = '对标矩阵 · 0/' + ev.total; }
         else if (ev.kind === 'matrix-site') { task.progress = ev.index + '/' + ev.total; task.doneCount = ev.index; task.totalCount = ev.total; statusText.value = '对标矩阵 · ' + ev.host + ' · ' + ev.index + '/' + ev.total; }
@@ -1221,13 +1392,14 @@ function runMatrix() {
           const rel = String(ev.path || '').split(/[\\/]workspace[\\/]/).pop() || '';
           matrixReport.value = { url: staticUrl('/static/' + rel.split('\\').join('/')), sites: [host.value, matrixPeer.value] };
           statusText.value = '对标矩阵完成';
-          close(); setTimeout(() => { statusText.value = ''; }, 4000);
+          watch.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
-          task.failed = true; task.done = true; task.error = '任务中断'; close();
+          task.failed = true; task.done = true; task.error = '任务中断';
+          fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
+          watch.stop();
         }
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
-    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+    } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '生成对标矩阵' }); task.error = errMsg.value; }
   })();
 }
 
@@ -1246,11 +1418,13 @@ function runAssetsAudit() {
     try {
       const r = await fetch(API + '/api/assets-audit', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, maxPages: 100 }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '资产扫描失败：' + error; return; }
+      if (error) { task.failed = true; task.done = true; failFrom(error, { what: '资产缺口扫描' }); task.error = errMsg.value; return; }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      const watch = attachStream(es, task, close, '资产扫描');
       es.onmessage = (m) => {
+        watch.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'asset-gaps-start') { task.progress = '0/' + ev.total; statusText.value = '资产扫描 · 0/' + ev.total; }
         else if (ev.kind === 'asset-gaps-page') { task.progress = ev.index + '/' + ev.total; task.doneCount = ev.index; task.totalCount = ev.total; statusText.value = '资产扫描 · ' + ev.index + '/' + ev.total; }
@@ -1258,14 +1432,15 @@ function runAssetsAudit() {
           task.assetGaps = ev.visualGaps; task.done = true; task.endedAt = Date.now();
           assetAuditReport.value = { host: host.value, visualGaps: ev.visualGaps, visualOrigin: ev.visualOrigin, visualThird: ev.visualThird, pages: ev.pages };
           statusText.value = ev.visualGaps ? ('资产扫描完成 · ' + ev.visualGaps + ' 个视觉缺口') : '资产扫描完成 · 无视觉缺口';
-          close(); loadReports();
+          watch.stop(); loadReports();
           setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
-          task.failed = true; task.done = true; task.error = '任务中断'; close();
+          task.failed = true; task.done = true; task.error = '任务中断';
+          fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
+          watch.stop();
         }
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
-    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+    } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '资产缺口扫描' }); task.error = errMsg.value; }
   })();
 }
 
@@ -1285,27 +1460,31 @@ function runWatch() {
     try {
       const r = await fetch(API + '/api/watch', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url: origin, maxPages: 30 }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '变更监控失败：' + error; return; }
+      if (error) { task.failed = true; task.done = true; failFrom(error, { what: '变更监控' }); task.error = errMsg.value; return; }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      const watch = attachStream(es, task, close, '变更监控');
       es.onmessage = (m) => {
+        watch.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'watch-page') statusText.value = '变更监控 · ' + ev.index + '/' + ev.total;
         else if (ev.kind === 'watch-done') {
           task.watchChanges = ev.changes; task.done = true; task.endedAt = Date.now();
           watchReport.value = { host: host.value, changes: ev.changes, bySeverity: ev.bySeverity };
           statusText.value = ev.changes ? '变更监控完成 · ' + ev.changes + ' 处变化' : '变更监控完成 · 无变化';
-          close(); setTimeout(() => { statusText.value = ''; }, 4000);
+          watch.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'watch-error') {
           task.failed = true; task.done = true; task.error = ev.error;
-          errMsg.value = '变更监控失败：' + ev.error; close();
+          fail('变更监控没有跑完。', '重跑一次；反复失败就展开详情看引擎的原始报错。', ev.error);
+          watch.stop();
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
-          task.failed = true; task.done = true; task.error = '任务中断'; close();
+          task.failed = true; task.done = true; task.error = '任务中断';
+          fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
+          watch.stop();
         }
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
-    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+    } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '变更监控' }); task.error = errMsg.value; }
   })();
 }
 
@@ -1339,7 +1518,7 @@ function runVerify(page) {
     try {
       const r = await fetch(API + '/api/verify', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h, page: page || undefined }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '体检失败：' + error; return; }
+      if (error) { task.failed = true; task.done = true; failFrom(error, { what: '全站体检' }); task.error = errMsg.value; return; }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const verifyIssues = [];
@@ -1361,17 +1540,18 @@ function runVerify(page) {
             statusText.value = task.failed ? task.error
               : '体检完成 · ' + (ev.measured ?? 0) + '/' + (ev.targetTotal ?? ev.pages) + ' 页完整测量';
           }
-          close(); scheduleScoreLoad(); loadReports();
+          watch.stop(); scheduleScoreLoad(); loadReports();
           setTimeout(() => { statusText.value = ''; }, 5000);
         } else if (ev.kind === 'verify-error') {
           verifyIssues.push({ page: ev.page, error: ev.error });
           statusText.value = '体检告警 · ' + ev.page + ' ' + (ev.error || '');
         } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
-          task.failed = true; task.done = true; task.error = '任务中断'; close();
+          task.failed = true; task.done = true; task.error = '任务中断';
+          fail('引擎那边的进程没有正常结束。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
+          watch.stop();
         }
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
-    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+    } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '全站体检' }); task.error = errMsg.value; }
   })();
 }
 function runResponsiveUpgrade() {
@@ -1388,22 +1568,23 @@ function runResponsiveUpgrade() {
     try {
       const r = await fetch(API + '/api/responsive-upgrade', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: host.value, threshold: 0.97, max: 8 }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '响应式升级失败：' + error; return; }
+      if (error) { task.failed = true; task.done = true; failFrom(error, { what: '响应式升级' }); task.error = errMsg.value; return; }
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      const watch = attachStream(es, task, close, '响应式升级');
       es.onmessage = (m) => {
+        watch.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'upgrade-page') statusText.value = '响应式升级 · ' + ev.page + ' · ' + (ev.error ? '失败' : ev.kept ? '保留' : '未采用');
         else if (ev.kind === 'exit') {
           task.done = true; task.endedAt = Date.now();
           if (ev.status === 'done') { statusText.value = '响应式升级完成'; loadVerifySummary(); scheduleScoreLoad(); }
-          else { task.failed = true; task.error = '升级任务失败'; errMsg.value = '响应式升级失败，见任务日志'; }
-          close(); setTimeout(() => { statusText.value = ''; }, 5000);
+          else { task.failed = true; task.error = '升级任务失败'; fail('响应式升级没有跑完。', '看「任务」里这条的日志确认卡在哪一步；没有变好的页会自动保留原样。'); }
+          watch.stop(); setTimeout(() => { statusText.value = ''; }, 5000);
         }
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
-    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+    } catch (e) { task.failed = true; task.done = true; failFrom(e, { what: '响应式升级' }); task.error = errMsg.value; }
   })();
 }
 function runVerifyAll() { runVerify(null); }
@@ -1414,7 +1595,7 @@ async function copyBundlePath() {
   const p = liveHealth.value?.bundlePath;
   if (!p) return;
   try { await navigator.clipboard.writeText(p); okMsg.value = '已复制交付包路径'; }
-  catch { errMsg.value = '浏览器拒绝了剪贴板，请手动选中那行路径'; }
+  catch { fail('浏览器不允许直接写剪贴板。', '手动选中那行路径再复制（Ctrl+C）即可。'); }
   setTimeout(() => { okMsg.value = ''; }, 4000);
 }
 
@@ -1428,6 +1609,14 @@ function revealBundle() { return revealPath(liveHealth.value?.bundlePath, '交�
  * "现在最该看的东西"，其余的去任务中心看（那里本来就列了全部）。
  */
 const runningTask = computed(() => [...tasks].reverse().find(t => !t.done && !t.failed) ?? null);
+/**
+ * 报告页那几张卡片自己的进行态。
+ * 此前点「运行审计」/「导出并验收」之后，按钮文字**一动不动** —— 只有底部状态条在变，
+ * 而用户的视线在按钮上。"点了没反应"的观感就是这么来的。
+ */
+const activeOfKind = (kind) => [...tasks].reverse().find(t => t.kind === kind && !t.done && !t.failed) ?? null;
+const auditTask = computed(() => activeOfKind('audit'));
+const liveTask = computed(() => activeOfKind('live'));
 
 /**
  * 参考耗时 `{ sec, scope }` —— 回答"还要等多久"。算法在 tasks.js（纯函数、有单测）：
@@ -1498,8 +1687,8 @@ function runLiveExport(hostArg) {
   const isCurrent = h === host.value;
   const task = reactive({
     localId: 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    kind: 'live', label: '交互镜像导出 · ' + h, url: 'https://' + h,
-    done: false, failed: false, error: null,
+    kind: 'live', label: '交互镜像导出 · ' + h, url: 'https://' + h, taskId: null,
+    done: false, failed: false, cancelled: false, stopping: false, error: null,
     startedAt: Date.now(), endedAt: null,
   });
   tasks.push(task);
@@ -1509,11 +1698,18 @@ function runLiveExport(hostArg) {
     try {
       const r = await fetch(API + '/api/live-export', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ host: h, root: 'mirror', rebuild: isCurrent && liveRebuild.value }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = '交互镜像导出失败：' + error; return; }
+      if (error) {
+        task.failed = true; task.done = true;
+        failFrom(error, { what: '交互镜像导出' });
+        task.error = errMsg.value; return;
+      }
+      task.taskId = taskId;
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      const watch = attachStream(es, task, close, '交互镜像导出');
       es.onmessage = (m) => {
+        watch.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'live-stage') {
           const label = liveStageCn(ev.stage);
@@ -1523,14 +1719,23 @@ function runLiveExport(hostArg) {
           statusText.value = '交互镜像导出 · ' + task.progress;
         }
         else if (ev.kind === 'exit') {
-          task.done = true; task.endedAt = Date.now();
+          task.done = true; task.endedAt = Date.now(); task.stopping = false;
+          task.cancelled = ev.status === 'cancelled';
           if (ev.status === 'done') { statusText.value = '交互镜像导出完成 · 严格离线验收通过'; if (isCurrent) { loadLiveHealth(); loadReports(); } }
-          else { task.failed = true; task.error = '导出或严格离线验收失败（查看任务日志及候选包 health.json；旧包保留）'; errMsg.value = task.error; }
-          close(); setTimeout(() => { statusText.value = ''; }, 5000);
+          else if (ev.status === 'cancelled') {
+            statusText.value = '交互镜像导出已停止（旧包保留）';
+            toast('交互镜像导出已停止 —— 候选包没通过验收时旧包会留着，线上镜像不受影响', 8000);
+          } else {
+            task.failed = true;
+            task.error = '导出或严格离线验收失败';
+            fail('交互镜像导出没通过验收，这一轮没有发布。', '旧包仍然保留、线上镜像不变；重跑一次，或到「任务」里展开详情看候选包 health.json 是哪个检查没过。', 'live-export exit status: failed');
+          }
+          watch.stop(); setTimeout(() => { statusText.value = ''; }, 5000);
         }
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
-    } catch (e) { task.failed = true; task.done = true; task.error = String(e); errMsg.value = String(e); }
+    } catch (e) {
+      task.failed = true; task.done = true; failFrom(e, { what: '交互镜像导出' }); task.error = errMsg.value;
+    }
   })();
 }
 
@@ -1539,8 +1744,8 @@ function runAudit() {
   const origin = atlas.value?.origin ?? `https://${host.value}`;
   const task = reactive({
     localId: `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-    kind: 'audit', label: 'SEO 审计 · ' + host.value, url: origin,
-    done: false, failed: false, error: null, auditScore: null,
+    kind: 'audit', label: 'SEO 审计 · ' + host.value, url: origin, taskId: null,
+    done: false, failed: false, cancelled: false, stopping: false, error: null, auditScore: null,
     startedAt: Date.now(), endedAt: null,
   });
   tasks.push(task);
@@ -1550,32 +1755,49 @@ function runAudit() {
     try {
       const r = await fetch(`${API}/api/audit`, { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url: origin, maxPages: 30 }) });
       const { taskId, error } = await r.json();
-      if (error) { task.failed = true; task.done = true; task.error = error; errMsg.value = 'SEO 审计失败：' + error; return; }
+      if (error) {
+        task.failed = true; task.done = true;
+        failFrom(error, { what: 'SEO 审计' });
+        task.error = errMsg.value; return;
+      }
+      task.taskId = taskId;
       const es = new EventSource(sseUrl(taskId));
       taskSources.set(task.localId, es);
       const close = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+      const watch = attachStream(es, task, close, 'SEO 审计');
       es.onmessage = (m) => {
+        watch.alive();
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'audit-start') statusText.value = `SEO 审计 · 0/${ev.targets}`;
         else if (ev.kind === 'audit-page') statusText.value = `SEO 审计 · ${ev.index}/${ev.total}`;
         else if (ev.kind === 'audit-done') {
-          task.auditScore = ev.score; task.done = true; task.endedAt = Date.now();
+          task.auditScore = ev.score; task.done = true; task.endedAt = Date.now(); task.stopping = false;
           loadHistory(host.value);                          // 审计刚落一条，走势图跟上
           loadAuditReport(host.value);                      // 报告卡切到最新一份（含真实用户指标）
           auditReport.value = { host: host.value, score: ev.score, pages: ev.pages, issues: ev.issues };
           statusText.value = `SEO 审计完成 · ${ev.score} 分`;
-          close(); setTimeout(() => { statusText.value = ''; }, 4000);
+          watch.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'audit-error') {
-          task.failed = true; task.done = true; task.error = ev.error;
-          errMsg.value = 'SEO 审计失败：' + ev.error; close();
-        } else if (ev.kind === 'exit' && ev.status !== 'done' && !task.done) {
-          task.failed = true; task.done = true; task.error = '任务中断'; close();
+          task.failed = true; task.done = true; task.error = ev.error; task.stopping = false;
+          fail('SEO 审计没有跑完，这一轮没有出报告。', '重跑一次；同一站反复失败就展开详情，原始错误在下面。', ev.error);
+          watch.stop();
+        } else if (ev.kind === 'exit' && !task.done) {
+          task.done = true; task.endedAt = Date.now(); task.stopping = false;
+          if (ev.status === 'cancelled') {
+            task.cancelled = true;
+            statusText.value = 'SEO 审计已停止（已跑完的页会留在报告里）';
+            toast('SEO 审计已停止', 6000);
+          } else {
+            task.failed = true; task.error = '审计进程没有正常结束';
+            fail('SEO 审计没有跑完，这一轮没有出报告。', '重跑一次；反复失败就看「任务」里的日志与 engine.log。', `exit status: ${ev.status}`);
+          }
+          watch.stop();
         }
       };
-      es.onerror = () => { close(); if (!task.done) { task.failed = true; task.error = '事件流中断'; } };
     } catch (e) {
-      task.failed = true; task.done = true; task.error = String(e);
-      errMsg.value = String(e);
+      task.failed = true; task.done = true;
+      failFrom(e, { what: 'SEO 审计' });
+      task.error = errMsg.value;
     }
   })();
 }
@@ -1626,7 +1848,7 @@ function retryJob(h) {
   if (h.kind === 'clone') {
     let target = '';
     try { target = new URL(h.url).hostname.replace(/^www\./, ''); } catch { target = ''; }
-    if (!target) { errMsg.value = '这条历史记录没有可用的站点地址，无法续跑'; return; }
+    if (!target) { fail('这条历史记录里没有可用的站点地址。', '刷新任务列表后再看一次；仍为空说明这条记录确实缺字段，直接回站点重新发起即可。'); return; }
     pickSiteByHost(target);
     startCloneSite({ incremental: true });
     return;
@@ -1635,7 +1857,7 @@ function retryJob(h) {
     startForge(null, { url: h.url });
     return;
   }
-  errMsg.value = '这类历史任务不支持一键续跑，请在站点里重新发起';
+  fail('这类历史任务不支持一键续跑。', '回站点里重新发起一次；已经跑完的页面会被跳过，不必从头来。');
 }
 
 function startCloneSite({ incremental = false, allDiscovered = false } = {}) {  return new Promise((resolve) => {
@@ -1644,7 +1866,7 @@ function startCloneSite({ incremental = false, allDiscovered = false } = {}) {  
       localId: `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
       kind: 'clone', taskId: null, host: h,
       label: (allDiscovered ? '克隆全部已发现页面 · ' : incremental ? '增量克隆 · ' : '整站克隆 · ') + h,
-      progress: '', done: false, failed: false, killed: null, error: null,
+      progress: '', done: false, failed: false, cancelled: false, stopping: false, killed: null, error: null,
       startedAt: Date.now(), endedAt: null,
     });
     tasks.push(task);
@@ -1659,8 +1881,10 @@ function startCloneSite({ incremental = false, allDiscovered = false } = {}) {  
         const body = await r.json();
         if (body.error) {
           task.failed = true; task.done = true; task.endedAt = Date.now();
-          task.error = body.error === 'busy' ? '已有整站克隆在运行' : body.error;
-          statusText.value = '整站克隆：' + task.error;
+          if (body.error === 'busy') fail('已经有一个整站克隆在跑了。', '等它跑完（底部「进行中」轨道会消失），再点一次。', 'HTTP 409 busy');
+          else failFrom(body.error, { what: '整站克隆' });
+          task.error = errMsg.value;
+          statusText.value = '整站克隆没有开始';
           setTimeout(() => { statusText.value = ''; }, 4000);
           return resolve();
         }
@@ -1668,7 +1892,9 @@ function startCloneSite({ incremental = false, allDiscovered = false } = {}) {  
         const es = new EventSource(sseUrl(body.taskId));
         taskSources.set(task.localId, es);
         const closeTask = () => { try { es.close(); } catch {} taskSources.delete(task.localId); };
+        const watch = attachStream(es, task, closeTask, '整站克隆');
         es.onmessage = (m) => {
+          watch.alive();
           let ev; try { ev = JSON.parse(m.data); } catch { return; }
           // 带分子分母的任务同时记一份**数值**进度：轨道按真实计数画条，
           // 不去解析给用户看的那句文案（那是拿显示串当数据用）。
@@ -1678,12 +1904,17 @@ function startCloneSite({ incremental = false, allDiscovered = false } = {}) {  
           else if (ev.kind === 'queue-page' && ev.status !== 'running') { task.progress = `${ev.done}/${ev.total}`; task.doneCount = ev.done; task.totalCount = ev.total; }
           else if (ev.kind === 'queue-complete') { task.progress = `${ev.done}/${ev.total}`; task.doneCount = ev.done; task.totalCount = ev.total; }
           else if (ev.kind === 'exit') {
-            task.done = ev.status === 'done';
+            // 取消也是一次"结束"：done 必须为 true，否则这个任务永远留在「进行中」轨道上
+            // —— 用户点了「停止」，界面反而多挂一条不动的进度条。
+            task.done = ev.status === 'done' || ev.status === 'cancelled';
+            task.cancelled = ev.status === 'cancelled';
+            task.stopping = false;
             task.killed = ev.killed ?? null;
             task.failed = ev.status !== 'done' && ev.status !== 'cancelled';
             task.endedAt = Date.now();
-            closeTask();
+            watch.stop();
             statusText.value = task.done ? `整站克隆完成${task.progress ? ' · ' + task.progress : ''}` : (ev.status === 'cancelled' ? '整站克隆已取消' : '整站克隆中断');
+            if (ev.status === 'cancelled') toast(`整站克隆已停止${task.progress ? ' · 停在 ' + task.progress : ''}（已克隆的页面保留，下次可以「续跑」）`, 8000);
             loadPageStatus();                                  // 刷新页面清单上的铸造状态
             loadQueue(h);                                      // 断点续跑的"还剩 N 页"也随之更新
             loadSites();                                       // 也要刷新站点列表：SiteBar 的"克隆 N 页"取的是它，
@@ -1693,10 +1924,12 @@ function startCloneSite({ incremental = false, allDiscovered = false } = {}) {  
             resolve();
           }
         };
-        es.onerror = () => { closeTask(); if (!task.done) { task.failed = true; task.done = true; task.error = '事件流中断'; resolve(); } };
       } catch (e) {
         task.failed = true; task.done = true; task.error = String(e);
-        statusText.value = String(e);
+        failFrom(e, { what: '整站克隆' });
+        task.error = errMsg.value;
+        statusText.value = '整站克隆没有开始';
+        setTimeout(() => { statusText.value = ''; }, 4000);
         resolve();
       }
     })();
@@ -1727,7 +1960,7 @@ onMounted(async () => {
   // 任务历史一开始就取一次：它此前只在切到「任务」视图时才拉，于是「进行中」轨道上的
   // "同类中位 0:38"在星图上永远是空的（实测：克隆 apify 页面时中位数不显示，
   // 而那站的历史里有 46 条样本）。顺手也让任务视图打开即是满的。
-  try { await establishBrowserSession(); } catch (e) { errMsg.value = String(e); }
+  try { await establishBrowserSession(); } catch (e) { failFrom(e, { what: '校验引擎 Token' }); }
   loadJobHistory();
   loadSites().then(() => {
     // 默认载入第一个「有侦察结果」的站点；没有则保持空态（引导用户输入域名侦察）
@@ -1741,6 +1974,8 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown);
   es?.close();
   for (const s of taskSources.values()) { try { s.close(); } catch {} }
+  // 看门狗的宽限计时器也要清：不然卸载后它还会到点触发一次 onDrop，往已经空的界面上写错误
+  for (const t of tasks) if (t._grace) { clearTimeout(t._grace); t._grace = null; }
   // 两个常驻定时器此前没人清理。今天不会观察到泄漏（Atlas 是根组件、不会卸载），
   // 但"根组件永远不卸载"不是一条能长期成立的假设，清掉是零成本的。
   clearInterval(edgeTick);
@@ -1768,7 +2003,7 @@ onBeforeUnmount(() => {
   <div class="status status-global" v-if="statusText && view !== 'atlas' && !runningTask" :class="{ live }" role="status" aria-live="polite">{{ statusText }}</div>
 
   <ActivityRail v-if="railVisible" :task="runningTask" :median="forgeMedianSec"
-                :can-focus="canFocusTask" @focus="focusTask" />
+                :can-focus="canFocusTask" :can-stop="!!runningTask?.taskId" @focus="focusTask" @stop="cancelJob(runningTask)" />
 
   <!-- 首启向导：一个站点都没有时，星图是空的，用户不知道该做什么。
        把"侦察 → 克隆 → 拿走"三步写在空态里，比让他对着空白星空猜要强。 -->
@@ -1780,6 +2015,14 @@ onBeforeUnmount(() => {
       <li><b>拿走</b>：「报告」页导出可独立部署的交付包；「改站起点」列出换成你的域名 / 图片 / 文案各要动哪些文件</li>
     </ol>
     <p class="fr-note">需要登录的站点：先「本站操作 → 登录并保存会话」，之后的侦察 / 克隆 / 审计会自动带上这份登录态。</p>
+    <!-- 空状态必须带一个**真的能点的下一步**：上面三步是说明，这里才是入口。
+         输入框与星图顶部那个是同一个 targetInput —— 不用教用户去哪找。 -->
+    <div class="fr-cta">
+      <input v-model="targetInput" aria-label="要克隆的站点网址" placeholder="贴一个网址，例如 apify.com" spellcheck="false"
+             @keyup.enter="startRecon" />
+      <button class="wv-primary" @click="startRecon" :disabled="live" :aria-busy="live">{{ live ? '侦察中…' : '开始侦察' }}</button>
+      <button @click="forgeSingle" :disabled="singleBusy" :aria-busy="singleBusy">{{ singleBusy ? '克隆中…' : '只克隆这一页' }}</button>
+    </div>
   </div>
 
   <!-- 左下角一列：仪表面板 + 任务中心。
@@ -1836,10 +2079,13 @@ onBeforeUnmount(() => {
     <button class="theme-btn" @click="toggleTheme" :aria-label="theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'" :title="theme === 'dark' ? '切换浅色' : '切换深色'"><Icon :name="theme === 'dark' ? 'moon' : 'sun'" decorative /></button>
     <input v-model="targetInput" aria-label="目标站点域名" placeholder="输入目标域名或页面地址 · apify.com 或 apify.com/store" spellcheck="false" @keyup.enter="startRecon"
       title="要分析的站点域名（可带 https://）。带路径时：侦察只认域名，克隆按整条地址走。回车或点「侦察」开始" />
-    <button @click="startRecon"
-      title="全站侦察：从 sitemap 与站内链接找出页面，逐页抓标题/类型/缩略图，产出星图与全站视图。页数上限由站点配方的 maxPages 决定，几十页通常 1-3 分钟">侦察</button>
-    <button class="seek-alt" @click="forgeSingle"
-      title="不侦察整站，只克隆输入框里这一个页面（带路径就按路径克隆，如 apify.com/store）：捕获 → 校准 → 评分，约 2-3 分钟。克隆产物照样能导出成可部署的离线包">只克隆此页</button>
+    <!-- 进行中的按钮要有进行态文案：只有一个 spinner（或干脆没变化）时，
+         用户不知道按钮是没点中、还是在跑。 -->
+    <button @click="startRecon" :disabled="live"
+      :aria-busy="live"
+      title="全站侦察：从 sitemap 与站内链接找出页面，逐页抓标题/类型/缩略图，产出星图与全站视图。页数上限由站点配方的 maxPages 决定，几十页通常 1-3 分钟">{{ live ? '侦察中…' : '侦察' }}</button>
+    <button class="seek-alt" @click="forgeSingle" :disabled="singleBusy" :aria-busy="singleBusy"
+      title="不侦察整站，只克隆输入框里这一个页面（带路径就按路径克隆，如 apify.com/store）：捕获 → 校准 → 评分，约 2-3 分钟。克隆产物照样能导出成可部署的离线包">{{ singleBusy ? '克隆中…' : '只克隆此页' }}</button>
   </div>
 
   <!-- 站点切换 + 本站操作（星图与工作视图现在共用 SiteBar；原先星图这里是把每个站点
@@ -1862,6 +2108,7 @@ onBeforeUnmount(() => {
     :tasks="tasks" :jobs="jobHistory" :sites="sites" :host="host" :engine="engine"
     :actions="workViewActions"
     @pick="pickSiteByHost" @action="onSiteAction" @close="view = 'atlas'" @retry="retryJob" @export-live="runLiveExport"
+    @stop="cancelJob"
   />
 
   <AcceptanceWorkbench v-if="view === 'acceptance'" @close="view = 'atlas'" />
@@ -1960,7 +2207,13 @@ onBeforeUnmount(() => {
         只有实验室数据（本机 Playwright 实测）：{{ auditReport.field.reason }}
       </p>
       <a v-if="auditReport" :href="wsOpenUrl(auditReport.host, 'seo/seo.html')" target="_blank" rel="noopener">打开报告</a>
-      <button v-else class="wv-primary" @click="runAudit">运行审计</button>
+      <div class="run-row" v-if="auditTask || !auditReport">
+        <button class="wv-primary" :disabled="!!auditTask" :aria-busy="!!auditTask" @click="runAudit">
+          {{ auditTask ? ('正在审计…' + (auditTask.progress ? ' ' + auditTask.progress : '')) : (auditReport ? '重新审计' : '运行审计') }}
+        </button>
+        <button v-if="auditTask" :disabled="!!auditTask.stopping" @click="cancelJob(auditTask)"
+                :title="'停下这次审计；已经跑完的页会留在报告里'">{{ auditTask.stopping ? '停止中…' : '停止' }}</button>
+      </div>
     </div>
     <div class="report-card surface">
       <h3>变更监控</h3>
@@ -2051,7 +2304,13 @@ onBeforeUnmount(() => {
       <label class="sw" style="margin-bottom:8px;display:flex"><input type="checkbox" v-model="liveRebuild" /><span>先重建 live 页面（站点改版后勾选）</span></label>
       <!-- 必须写成 runLiveExport()：直接写函数名时 Vue 会把 MouseEvent 当第一个参数传进来，
            而第一个参数现在是 host —— 于是导出目标会变成 "[object MouseEvent]" -->
-      <button class="wv-primary" @click="runLiveExport()">{{ liveHealth ? '重新导出并验收' : '导出并验收离线包' }}</button>
+      <div class="run-row">
+        <button class="wv-primary" :disabled="!!liveTask" :aria-busy="!!liveTask" @click="runLiveExport()">
+          {{ liveTask ? ('正在导出…' + (liveTask.progress ? ' ' + liveTask.progress : '')) : (liveHealth ? '重新导出并验收' : '导出并验收离线包') }}
+        </button>
+        <button v-if="liveTask" :disabled="!!liveTask.stopping" @click="cancelJob(liveTask)"
+                :title="'停下这次导出；旧包会保留，线上镜像不受影响'">{{ liveTask.stopping ? '停止中…' : '停止' }}</button>
+      </div>
     </div>
     <!-- 产物到底落在磁盘的哪里 —— 控制台里能看到分数、能打开镜像，但"那个目录在哪"
          此前只能靠人翻。不存在的产物按钮置灰并写明原因，不做"点了没反应"。 -->
@@ -2216,7 +2475,21 @@ onBeforeUnmount(() => {
   <div class="keys" v-if="view === 'atlas' && !forge">
     <span>拖拽 = 旋转</span><span>滚轮 = 缩放</span><span>Ctrl+拖拽 = 平移</span><span class="k-amber">点击星球 = 打开页面详情</span>
   </div>
-  <div class="toast" v-if="errMsg" role="alert" aria-live="assertive">{{ errMsg }}</div>
+  <!-- 错误提示：一句人话 + 下一步 + 可展开的技术详情。
+       此前这里只有一行 `{{ errMsg }}`，而多数调用方传的是 String(e) —— 屏幕上
+       直接摆 `TypeError: Failed to fetch`。技术信息照给，但收进 details：
+       想看的人在，不想看的人不必先绕过它才看得见"该怎么办"。 -->
+  <div class="toast" v-if="errMsg" role="alert" aria-live="assertive">
+    <div class="toast-main">
+      <span class="toast-msg">{{ errMsg }}</span>
+      <button class="toast-x" type="button" @click="clearErr()" aria-label="关闭这条提示">×</button>
+    </div>
+    <p class="toast-hint" v-if="errHint">{{ errHint }}</p>
+    <details class="toast-detail" v-if="errDetail">
+      <summary>技术详情</summary>
+      <pre>{{ errDetail }}</pre>
+    </details>
+  </div>
   <div class="toast ok" v-if="okMsg" role="status" aria-live="polite">{{ okMsg }}</div>
   <TrashDialog v-if="trashOpen" @close="trashOpen = false" @restored="onTrashRestored" />
   <div class="view-nav surface" style="max-width: calc(100vw - 16px); overflow-x: auto">
