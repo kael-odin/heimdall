@@ -111,6 +111,20 @@ const filteredNodes = computed(() => {
 });
 
 const doneCount = computed(() => props.nodes.filter(n => n.forgeState === 'done').length);
+/**
+ * 空列表有三种完全不同的意思，此前共用一句"没有匹配的页面"：
+ *   · 这个站点还没有任何页面 —— 该去侦察（或先克隆一页）
+ *   · 有页面但被筛选条件挡掉了 —— 该清筛选
+ *   · 筛选条件本身是对的，只是这一站确实没这一类页 —— 该换个筛选
+ * 三种给三个不同的下一步；用同一句话，用户只能自己去猜。
+ */
+const emptyKind = computed(() => {
+  if (props.loading) return 'loading';
+  if (!props.nodes.length) return props.host ? 'no-pages' : 'no-site';
+  if (filteredNodes.value.length) return '';
+  return (pageQuery.value.trim() || typeFilter.value || statusFilter.value) ? 'filtered' : 'none';
+});
+function clearFilters() { pageQuery.value = ''; typeFilter.value = ''; statusFilter.value = ''; }
 const statusCounts = computed(() => ({
   all: props.nodes.length,
   done: props.nodes.filter(n => n.forgeState === 'done').length,
@@ -187,8 +201,27 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
           <button v-if="n.forgeState === 'done' || n.forgeState === 'failed'" class="danger" :disabled="loading" @click="$emit('delete', n)" title="删除该页克隆产物并从星图移除">删除</button>
         </span>
       </div>
-      <div class="wv-empty" v-if="loading" role="status" aria-live="polite">正在载入本站页面…</div>
-      <div class="wv-empty" v-else-if="!filteredNodes.length">没有匹配的页面。</div>
+      <div class="wv-empty" v-if="emptyKind === 'loading'" role="status" aria-live="polite">正在载入本站页面…</div>
+      <div class="wv-empty" v-else-if="emptyKind === 'no-site'">
+        <p>还没有选择站点。</p>
+        <p class="wv-empty-hint">回星图，在顶部输入框里粘一个网址，点「侦察」就能看到全站有哪些页面。</p>
+        <button class="wv-primary" @click="$emit('close')">回星图</button>
+      </div>
+      <div class="wv-empty" v-else-if="emptyKind === 'no-pages'">
+        <p>这一站还没有任何页面。</p>
+        <p class="wv-empty-hint">先跑一次「侦察」拿到全站清单；只想要一页就回星图点「只克隆此页」——克隆完成的那页会自动出现在这里。</p>
+        <button class="wv-primary" @click="$emit('close')">回星图开始</button>
+      </div>
+      <div class="wv-empty" v-else-if="emptyKind === 'filtered'">
+        <p>当前筛选条件下没有页面。</p>
+        <p class="wv-empty-hint">清掉搜索词与两个下拉筛选，就能看到这一站的全部 {{ nodes.length }} 页。</p>
+        <button @click="clearFilters">清除筛选</button>
+      </div>
+      <div class="wv-empty" v-else-if="emptyKind === 'none'">
+        <p>这一站确实没有{{ typeFilter || statusFilter ? '符合条件' : '' }}页面。</p>
+        <p class="wv-empty-hint">换个类型或状态筛选看看；清单本身是空的就回星图重新侦察。</p>
+        <button @click="clearFilters">清除筛选</button>
+      </div>
     </div>
   </section>
 </template>

@@ -20,7 +20,7 @@ import { join, dirname, resolve } from 'node:path';
 import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { WORKSPACE, isInside } from '../paths.mjs';
-import { rewriteMappedHtmlRefs } from '../dom-refs.mjs';
+import { rewriteMappedHtmlRefs, relTokens } from '../dom-refs.mjs';
 import { prefixRootRelative } from '../live/live-html.mjs';
 import { liveSnapshotPath } from '../live/live-path.mjs';
 import { stripFreeze } from '../freeze.mjs';
@@ -40,9 +40,22 @@ const LIVE = profile.live ?? {};
 // 站点级目录（相对 URL 在镜像里必须归位到代理前缀）——通用兜底之后仍可能漏网的一层
 const ROOT_DIRS = ['src/', '_next/', '_nuxt/', 'assets/', 'media/', 'img/', 'api/', 'files/', 'dist/'];
 
-/** 挂件脚本剥除规则：站点配方可追加片段；默认值在 site-profile.mjs 的 DEFAULTS.live */
-const stripRe = new RegExp('<script[^>]*(?:' + (LIVE.stripScriptPatterns ?? []).join('|') + ')[^>]*></script>', 'gi');
-const inlineStripRe = new RegExp('<script[^>]*>[^<]*(?:' + (LIVE.inlineStripPatterns ?? []).join('|') + ')[^<]*</script>', 'gi');
+/**
+ * 挂件脚本剥除规则：站点配方可追加片段；默认值在 site-profile.mjs 的 DEFAULTS.live。
+ *
+ * 空列表必须**等于"不剥"**，不能退化成"全剥"：`(?:` + `[].join('|')` + `)` 是一个空组，
+ * 永远匹配 → `<script[^>]*(?:)[^>]*></script>` 命中**每一个外链脚本**，整站交互归零。
+ * 而 deepMerge 对数组是整体替换，配方里写 `"stripScriptPatterns": []`（"这个站我不用剥"）
+ * 就正好踩中 —— 一旦某站点配方这么写，整站脚本消失，且日志只说"构建完成"。
+ */
+const joinedPatterns = (list) => {
+  const pats = (Array.isArray(list) ? list : []).filter(p => typeof p === 'string' && p.length);
+  return pats.length ? pats.join('|') : null;
+};
+const STRIP_PATTERNS = joinedPatterns(LIVE.stripScriptPatterns);
+const INLINE_STRIP_PATTERNS = joinedPatterns(LIVE.inlineStripPatterns);
+const stripRe = STRIP_PATTERNS && new RegExp('<script[^>]*(?:' + STRIP_PATTERNS + ')[^>]*></script>', 'gi');
+const inlineStripRe = INLINE_STRIP_PATTERNS && new RegExp('<script[^>]*>[^<]*(?:' + INLINE_STRIP_PATTERNS + ')[^<]*</script>', 'gi');
 
 const pages = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'manifest.json')));
 const liveDir = join(BASE, 'live');
@@ -108,8 +121,8 @@ for (const name of pages) {
 
   // 1.5) 剥挂件脚本 —— **必须在 bootstrap 注入之前**：bootstrap 自身含 mixpanel/CookieConsent 等
   //      关键词，后剥会把 bootstrap 一起删掉。挂件在镜像环境不可达或必炸，由 bootstrap stub 兜住全局调用。
-  html = html.replace(stripRe, '<!-- heimdall: widget script stripped -->');
-  html = html.replace(inlineStripRe, '<!-- heimdall: widget inline stripped -->');
+  if (stripRe) html = html.replace(stripRe, '<!-- heimdall: widget script stripped -->');
+  if (inlineStripRe) html = html.replace(inlineStripRe, '<!-- heimdall: widget inline stripped -->');
 
   // 2) <base> 注入（相对资源/请求归位）+ bootstrap（JS 运行时硬编码绝对域兜底）
   const bootstrap = `<script>(function(){
@@ -160,7 +173,9 @@ for (const name of pages) {
   html = prefixRootRelative(html, lmPrefix, ROOT_DIRS);
 
   // 3) 原版 CSS 引用替换为本地校准版（cssom.css，静态镜像同款——视觉保真双保险）
-  html = html.replace(/<link[^>]*rel="stylesheet"[^>]*>/gi, '');
+  //    rel 是**空格分隔的 token 列表**：`rel="preload stylesheet"` 也是样式表。
+  //    精确匹配 `rel="stylesheet"` 会把它漏进镜像，指向原站根路径、本地 404。判定复用 dom-refs.relTokens。
+  html = html.replace(/<link\b[^>]*>/gi, tag => (relTokens(tag).includes('stylesheet') ? '' : tag));
   html = html.replace('</head>', '<link rel="stylesheet" href="/static/' + siteId + '/pages/' + name + '/clone/styles/cssom.css"></head>');
 
   // 4) chunk 预检剔除：快照里的 script 若原站已 404（部署时效），剥除避免 4xx 噪声。

@@ -1,0 +1,100 @@
+{
+  "page": "apify-instagram-scraper",
+  "target": "https://apify.com/apify/instagram-scraper",
+  "generatedAt": "2026-10-14T11:44:44.494Z",
+  "scoreVersion": 2,
+  "overall": null,
+  "provisionalOverall": 0.8993,
+  "measured": false,
+  "grade": null,
+  "minViewport": {
+    "name": "1440x900",
+    "score": 0.8993,
+    "grade": "B",
+    "coverageRatio": 0.9682,
+    "sourceSize": {
+      "width": 1440,
+      "height": 22966
+    },
+    "cloneSize": {
+      "width": 1440,
+      "height": 22236
+    },
+    "heightDelta": 730,
+    "missingPixels": 1051200
+  },
+  "viewports": [
+    {
+      "name": "375x812",
+      "skipped": "page too tall: 33465px"
+    },
+    {
+      "name": "768x1024",
+      "skipped": "page too tall: 26295px"
+    },
+    {
+      "name": "1440x900",
+      "width": 1440,
+      "score": 0.8993,
+      "grade": "B",
+      "settleTimedOut": false,
+      "sourceCapture": {
+        "capturedAt": "2026-10-14T11:44:34.615Z",
+        "finalUrl": "https://apify.com/apify/instagram-scraper",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1094,
+            "height": 22966,
+            "textLength": 322423,
+            "imageCount": 48
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1095,
+            "height": 22966,
+            "textLength": 322423,
+            "imageCount": 48
+          }
+        }
+      },
+      "cloneCapture": {
+        "capturedAt": "2026-10-14T11:44:40.158Z",
+        "finalUrl": "http://127.0.0.1:57607/static/apify.com/pages/apify-instagram-scraper/clone/index.html",
+        "settle": {
+          "beforeScroll": {
+            "stable": true,
+            "elapsedMs": 1105,
+            "height": 21733,
+            "textLength": 53258,
+            "imageCount": 51
+          },
+          "afterScroll": {
+            "stable": true,
+            "elapsedMs": 1097,
+            "height": 22236,
+            "textLength": 53258,
+            "imageCount": 51
+          }
+        }
+      },
+      "mismatched": 3329971,
+      "missingPixels": 1051200,
+      "coverageRatio": 0.9682,
+      "heightDelta": 730,
+      "sourceSize": {
+        "width": 1440,
+        "height": 22966
+      },
+      "cloneSize": {
+        "width": 1440,
+        "height": 22236
+      },
+      "sourceHeight": 22966,
+      "cloneHeight": 22236
+    }
+  ],
+  "functional": null,
+  "interactions": [],
+  "error": "page too tall: 33465px"
+}

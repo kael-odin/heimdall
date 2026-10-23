@@ -34,3 +34,25 @@ test('assets: legacy styles/styles/refNNN.woff2 path is a clone-broken visual ga
     assert.ok(r.gaps.some(g => g.status === 'clone-broken'), 'gap status must be clone-broken');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('assets: data-URI 内嵌的 mask url(%23f) 不算克隆缺口（否则孤儿回滚会误判）', () => {
+  // 复现：自写 url() 正则把 data URI 里的 `mask='url(%23f)'` 抽成 `%23f`，
+  // 解析成 https://x.test/%23f、落成 clone-broken 视觉缺口；而回收孤儿回滚判据读的正是 visualGaps。
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-assets-'));
+  try {
+    makePage(dir, '.i { background-image: url("data:image/svg+xml,%3Csvg%3E%3Cg mask=\'url(%23f)\'/%3E%3C/svg%3E"); }');
+    const r = scanPage(dir, { origin: 'https://x.test' });
+    assert.equal(r.visualGaps, 0, JSON.stringify(r.gaps.slice(0, 3)));
+    assert.ok(!r.gaps.some(g => g.url.endsWith('/%23f')), '内嵌 mask 引用不得被扫成外部引用');
+    assert.ok(!r.gaps.some(g => g.kind === 'css-url'), 'CSS 里除了 data URI 没有别的引用：' + JSON.stringify(r.gaps.slice(0, 3)));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('assets: 被注释掉的 url() 不算缺口', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-assets-'));
+  try {
+    makePage(dir, '/* .old { background: url(/legacy/gone.png) } */\nbody { color: red; }');
+    const r = scanPage(dir, { origin: 'https://x.test' });
+    assert.ok(!r.gaps.some(g => g.url.includes('/legacy/gone.png')), JSON.stringify(r.gaps.slice(0, 3)));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

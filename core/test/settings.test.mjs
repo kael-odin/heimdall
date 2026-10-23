@@ -132,3 +132,12 @@ test('settings: 文件不存在时 readEnvFile 返回 exists=false，不抛错',
 });
 
 test.after(() => { rmSync(dir, { recursive: true, force: true }); });
+
+test('settings: 落盘值不能含换行（否则会在 .env 里注入白名单之外的键）', () => {
+  const NL = String.fromCharCode(10), CR = String.fromCharCode(13);
+  for (const [field, value] of [['model', 'a' + NL + 'HEIMDALL_TOKEN=x'], ['apiKey', 'k' + CR + 'X=1'], ['baseUrl', 'https://x.test/v1' + NL + 'Y=2'], ['fastModel', 'm' + NL + 'Z=3']]) {
+    assert.throws(() => normalizePatch({ [field]: value }), /换行/, field + ' 应被拒');
+  }
+  // 普通值照旧，前后空白仍然裁掉
+  assert.deepEqual(normalizePatch({ model: ' gpt-5 ', baseUrl: 'https://x.test/v1/' }), { LLM_BASE_URL: 'https://x.test/v1', LLM_MODEL: 'gpt-5' });
+});

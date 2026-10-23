@@ -4,11 +4,39 @@
 </p>
 
 <p align="center">
-  <b>授权网站的可核验快照、差异与前端接手包</b><br>
-  <sub>采集页面结构与真实资产，生成镜像和可复核的验证结果。</sub>
+  <b>给它一个网址，还你一份能核对的复刻件</b><br>
+  <sub>把站点真实资产抓下来、量出和原站差多少、再把差异整理成能直接开工的接手包。</sub>
 </p>
 
 ---
+
+**三件事：**
+
+1. **克隆**——把页面结构和真实资产（CSS、图片、字体、脚本）抓到本地，生成可以打开看的镜像。
+2. **量差异**——渲染原站和克隆，按视口逐像素比对，给出**实测**还原度（不是估计），并列出缺口。
+3. **给结论**——一张全站星图看清结构，一份改站清单告诉你换域名/换图/换文案各要动哪些文件，外加 SEO 审计与竞品情报。
+
+跑起来只要两步（前提：Node ≥ 20.19、pnpm）：
+
+```bash
+cd core && pnpm install && cd ../console && pnpm install && cd ..
+```
+
+```bash
+./clone-heimdall.cmd
+```
+
+浏览器会打开 `http://127.0.0.1:5173`；把网址贴进左上角的输入框即可。完整步骤见 [USAGE.md](USAGE.md)，工程细节见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+
+---
+
+<details>
+<summary><b>进阶：项目验收（按固定清单自动验收一个改版/Mirror）</b>——点开看能力与当前边界</summary>
+
+> 这部分是给"改版完要证明没改坏"的场景准备的：先录一份基线运行，改完再跑一次，
+> 工具逐项核对三视口视觉、结构、运行健康与交互，并把结果分成"仍失败 / 复验通过 /
+> 新增失败 / 未复验 / 不可比"。AI 只负责**解释**，最终门禁由确定性检查决定。
+> 下列条目是内部里程碑记录，适合想了解实现细节的读者。
 
 新增 **项目验收**：Mirror / Regression 对照运行基线与目标项目，检查三视口视觉、结构、运行健康与交互；Spec 依据批准清单和 OpenAPI JSON 候选检查只读 API，检出 HTTP 200 中的业务错误与字段缺陷。可显式选择两次运行，核对仍失败、可靠复验通过、新增失败、未复验与不可比；每次比较重新校验报告与证据。本地项目支持不可变版本声明、历史运行归属，以及 Spec 需求候选的完整预览、显式批准和独立选用；写入受目录版本冲突与双引擎保护。托管 Spec 已接入[专用 HTTP 执行链](docs/competition/acceptance-managed-spec.md)：以完整新确认和明确目标版本启动真实检查，共享运行槽，支持取消、超时和保守重启恢复；控制台已提供明确目标版本的执行入口、原操作只读恢复和请求停止，可查看结果并下载核验原件。批准、选用和旧操作查询均不自动执行，也不改变原门禁。AI 按需解释，最终门禁由确定性检查决定。[工作台指南](docs/competition/acceptance-workbench.md) · [Spec / OpenAPI](docs/competition/acceptance-spec.md) · [跨运行复验](docs/competition/acceptance-comparison.md) · [项目与版本](docs/competition/acceptance-catalog.md) · [需求基线](docs/competition/acceptance-baseline.md) · [页面固定测试集](docs/competition/acceptance-demo.md)。
 
@@ -18,13 +46,17 @@ D3 已接入[固定来源 Browser 单次验收](docs/competition/acceptance-brow
 
 D5 已接入[固定成员人工缺陷单](docs/competition/acceptance-defect-tickets.md)：从同一次已登记操作的可靠失败中人工选择成员，固定来源与证据摘要，分别显示处理状态和当前核验。最新同范围登记必须在同次复验中可靠通过全部固定成员，再由操作者明确关闭；关闭后又发现可靠失败会重新打开，后续通过仍需再次明确关闭。支持处理历史及 Markdown / JSON 导出。人工动作的未知结果保留原确认，只 GET 核对，不自动重发原 POST。全局 Browser approval / selection 与操作归档继续独立建设。
 
-D6 已实现[人工动作的结果核对与永久拒绝](docs/competition/acceptance-defect-ticket-decisions.md)：操作者可明确封住同动作号的迟到成单或关闭，原事件与拒绝竞争同一个不可变决定；只有完整 `recorded` / `rejected` 原件、规范字节和请求身份均通过核验，页面才精确解除对应本机确认，草稿保留。当前片已通过本机完整 Core 和 27 阶段 Browser，[原提交 CI 已核验为 failure](docs/audits/2026-10-18/acceptance-defect-ticket-decision-ci.md)：完整 Core 与前端构建成功，独立四案的浏览器正文取证失败。[动作回复边界增强](docs/audits/2026-10-18/acceptance-defect-ticket-response-framing.md)已通过本机 Windows / Linux 专项，新提交自身的完整 CI 仍待核验。下一阶段 D7 先用本地固定示例，从全新界面实际走通采集、固定来源、发现 BUG、人工成单、修复复验、明确关闭与证据导出；真实浏览器执行和人工确认均保留，结论仅覆盖示例的声明检查。后续取得获授权的外部项目 URL 后，再拓展真实项目验收。
+D6 已实现[人工动作的结果核对与永久拒绝](docs/competition/acceptance-defect-ticket-decisions.md)：操作者可明确封住同动作号的迟到成单或关闭，原事件与拒绝竞争同一个不可变决定；只有完整 `recorded` / `rejected` 原件、规范字节和请求身份均通过核验，页面才精确解除对应本机确认，草稿保留。本机完整 Core 与 27 阶段 Browser 已通过；**CI 目前是红的**，原因见[本报告](docs/audits/2026-10-22/README.md) 第 1 节：D6 冒烟原先在点击后才读响应体，页面跳走时会丢；该问题已在本轮修复，待下一次 CI 确认。[动作回复边界增强](docs/audits/2026-10-18/acceptance-defect-ticket-response-framing.md)已通过本机 Windows / Linux 专项，新提交自身的完整 CI 仍待核验。下一阶段 D7 先用本地固定示例，从全新界面实际走通采集、固定来源、发现 BUG、人工成单、修复复验、明确关闭与证据导出；真实浏览器执行和人工确认均保留，结论仅覆盖示例的声明检查。后续取得获授权的外部项目 URL 后，再拓展真实项目验收。
 
 [Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md)已实现 D1 的纯格式、分步迁移与旧历史兼容，为 Browser 候选预留独立 `browserCandidates` 表。已有 Schema3 / Schema4 只打开并验证；旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，需先停止同根引擎，再显式预览并确认迁移。当前引擎为全新空目录明确创建 Schema3。D1 阶段的本机回归、旧数据真实迁移、Browser 混合历史及精确提交自身 CI 的证据见[实施验收](docs/audits/2026-10-17/acceptance-catalog-schema4.md)。
 
 D1 提交 `c170f50` 的[自身 Linux CI 复核](docs/audits/2026-10-17/acceptance-catalog-d1-ci.md)已完成：完整 Core 和原 Acceptance console 通过，后续旧 Managed Spec preparation smoke 因依赖隐式迁移失败。D2 已把该夹具 setup 改为真实 owner 下的显式维护；本机复验与下一轮精确提交 CI 分开记录。
 
 运行列表与详情已补充[原子发布期间的稳定展示读取](docs/audits/2026-10-17/acceptance-display-head-race.md)，避免正常 worker 更新进度时误报完整性冲突；来源与证据仍走严格核验。原工作台提交自身的 CI 失败与修复验证分别保留。
+
+</details>
+
+---
 
 ## 它实际长这样
 
@@ -246,6 +278,7 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |
 | [docs/audits/2026-10-16/project-cleanup.md](docs/audits/2026-10-16/project-cleanup.md) | 2026-10-16 中间产物清理、可恢复归档和 CAS 回收预览 | 查看本轮清理范围 |
+| [docs/audits/2026-10-22/README.md](docs/audits/2026-10-22/README.md) | 大白话仓库审查：成熟度打分、已修问题、待办清单与四周路线 | 想快速知道项目现在什么水平、下一步做什么 |
 
 `docs/archive/` 存放阶段性的验收报告与审查记录（历史证据，不再更新）。
 

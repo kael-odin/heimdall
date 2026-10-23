@@ -113,3 +113,17 @@ test('font-rules: 没有 @font-face 就整段不返回（别把普通 CSS 当字
   assert.equal(extractFontRules('body{color:red}', 'https://x.test/'), '');
   assert.equal(extractFontRules('', 'https://x.test/'), '');
 });
+
+test('font-rules: 注释后的 @font-face 只输出一次，且相对 url 已绝对化', () => {
+  // 复现：`/* latin */` 以 `/` 开头，被"顶层规则"正则当成选择器，紧跟的 @font-face 成了它的规则体 →
+  // 同一个 @font-face 输出两遍，第二份没过 absolutize，相对 url 指向克隆目录必然 404。
+  const css = `/* latin */
+@font-face { font-family: 'Syne'; src: url(./a.woff2) format('woff2'); }
+/* latin-ext */
+@font-face { font-family: 'Syne'; src: url(./b.woff2) format('woff2'); }`;
+  const out = extractFontRules(css, 'https://fonts.test/s/font.css');
+  assert.equal((out.match(/@font-face/g) ?? []).length, 2, out);
+  assert.equal((out.match(/url\("https:\/\/fonts\.test\/s\/a\.woff2"\)/g) ?? []).length, 1, out);
+  assert.ok(!/url\(\s*['"]?\.\//.test(out), '不得残留未绝对化的相对 url：' + out);
+  assert.ok(!out.includes('/*'), '注释不得作为选择器出现在输出里');
+});

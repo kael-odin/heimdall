@@ -591,3 +591,30 @@ test('live/heal: pixel omission refuses a symlinked directory', t => {
     assert.equal(readFileSync(externalHtml, 'utf8'), original);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('live/heal: 目标路径含 .. 或反斜杠时拒绝落盘，文件不得写到 liveDir 之外', async () => {
+  // 落盘位置直接取自页面里写的路径。fetch 把 `\` 当 `/` 取到文件，Windows 的 join 也把 `\` 当分隔符，
+  // 于是 `/..\..\x.js` 会从原站取回内容、再写到 liveDir 的上两级（health.mjs 的 posix.normalize 不认 `\`）。
+  const BS = String.fromCharCode(92);
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-heal-escape-'));
+  try {
+    const liveDir = join(root, 'inner', 'live');
+    mkdirSync(liveDir, { recursive: true });
+    const fetchImpl = async () => new Response('console.log(1)', { status: 200, headers: { 'content-type': 'application/javascript' } });
+    const targets = [
+      '/' + '..' + BS + '..' + BS + 'escaped-backslash.js',
+      '/../escaped-dotdot.js',
+      '/a/../../escaped-nested.js',
+      '/x%5c..%5c..%5cescaped-encoded.js',
+      '/ok/normal.js',
+    ];
+    const res = await healBundle({ liveDir, host: 'example.test', origin: 'http://example.test', targets, fetchImpl });
+    assert.equal(res.fetched, 1, '只有正常路径会被取回落盘');
+    assert.equal(res.reasons['unsafe-path'], 4);
+    assert.ok(existsSync(join(liveDir, 'ok', 'normal.js')), '正常路径照常写入');
+    for (const rel of ['escaped-backslash.js', 'escaped-dotdot.js', 'escaped-nested.js', 'escaped-encoded.js',
+      join('inner', 'escaped-dotdot.js'), join('inner', 'escaped-nested.js')]) {
+      assert.ok(!existsSync(join(root, rel)), `${rel} 不该出现在 liveDir 之外`);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

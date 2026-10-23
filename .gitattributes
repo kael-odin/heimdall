@@ -16,3 +16,8 @@
 *.xlsx binary
 pnpm-lock.yaml text eol=lf
 pnpm-workspace.yaml text eol=lf
+# 证据目录里的 .log 是逐字节采集的运行记录（含 stdout/stderr 原文与退出码），
+# 曾被 `* text=auto eol=lf` 规范化后写进索引，导致这些文件在检出/搬移时变成空文件。
+# 证据必须原样保存，不做行尾转换。
+docs/audits/** -text
+docs/archive/audits/** -text

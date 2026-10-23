@@ -11,9 +11,13 @@ import { fileURLToPath } from 'node:url';
 import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 import { createAcceptanceCatalogStore } from '../src/acceptance/catalog.mjs';
 import { currentSelectionsOf } from '../src/acceptance/catalog-schema.mjs';
+import { requiredDir } from '../test/fixtures/audit-evidence.mjs';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
-const FIXTURE = 'docs/audits/2026-10-16/evidence/acceptance-baseline/console';
+const FIXTURE = 'core/test/fixtures/audit-evidence/2026-10-16/evidence/acceptance-baseline/console';
+// Copied byte-for-byte from the archive; resolve through the shared test helper
+// so a pruned fixture reports "fixture missing" instead of an ENOENT deep inside.
+const FIXTURE_ROOT = requiredDir('2026-10-16/evidence/acceptance-baseline/console');
 // Provenance only: the smoke reads tracked files and works in a shallow checkout.
 const FIXTURE_COMMIT = '299304b01fb38ff7a933543c82d4aa996eff164f';
 const DRAFT = 'ac-1897dc22-0d21-4b6f-95c3-4dd72201063d';
@@ -27,7 +31,7 @@ async function main() {
   assert.ok(process.argv.length <= 3, 'Usage: node core/scripts/smoke-acceptance-managed-preparation.mjs [new-output-directory]');
   const out = resolve(process.argv[2] ?? join(REPO, 'core', 'workspace', '_runs', 'acceptance-managed-preparation',
     new Date().toISOString().replaceAll(':', '-') + '-' + randomUUID().slice(0, 8)));
-  assert.equal(inside(resolve(REPO, FIXTURE), out), false, 'Output must not modify the committed fixture tree.');
+  assert.equal(inside(resolve(FIXTURE_ROOT), out), false, 'Output must not modify the committed fixture tree.');
   assert.equal(existsSync(out), false, 'Output directory must be new; existing evidence is preserved.');
   mkdirSync(dirname(out), { recursive: true }); mkdirSync(out);
   const checks = {}, catalogCheckpoints = [], sourceCheckpoints = [], runCheckpoints = [], requests = [];
@@ -41,7 +45,7 @@ async function main() {
     catch (error) { checks[name] = false; throw error; }
   };
   try {
-    const digestBytes = readFileSync(join(REPO, FIXTURE, 'run-file-digests.json'));
+    const digestBytes = readFileSync(join(FIXTURE_ROOT, 'run-file-digests.json'));
     const archivedDigests = JSON.parse(digestBytes.toString('utf8'));
     assert.deepEqual(Object.keys(archivedDigests).sort(), RUNS);
     const committedFiles = new Map();
@@ -49,15 +53,15 @@ async function main() {
       for (const [name, expectedSha256] of Object.entries(archivedDigests[runId])) {
         assert.match(name, /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/);
         assert.match(expectedSha256, /^[a-f0-9]{64}$/);
-        const bytes = readFileSync(join(REPO, FIXTURE, 'run-evidence', runId, name));
+        const bytes = readFileSync(join(FIXTURE_ROOT, 'run-evidence', runId, name));
         assert.equal(sha(bytes), expectedSha256, runId + '/' + name + ': tracked bytes match archived digest');
         committedFiles.set(runId + '/' + name, bytes);
       }
     }
-    const catalogBytes = readFileSync(join(REPO, FIXTURE, 'catalog-storage.json'));
+    const catalogBytes = readFileSync(join(FIXTURE_ROOT, 'catalog-storage.json'));
     const expectedSources = Object.fromEntries([...committedFiles].map(([name, bytes]) => [name, { bytes: bytes.length, sha256: sha(bytes) }]));
     const fixtureSources = () => Object.fromEntries([...committedFiles].map(([name]) => {
-      const bytes = readFileSync(join(REPO, FIXTURE, 'run-evidence', name));
+      const bytes = readFileSync(join(FIXTURE_ROOT, 'run-evidence', name));
       return [name, { bytes: bytes.length, sha256: sha(bytes) }];
     }));
     check('trackedFixtureHasTwoRunsAnd14Files', () => {
@@ -66,7 +70,7 @@ async function main() {
     });
     check('trackedFixtureMatchesArchivedDigests', () => {
       assert.deepEqual(fixtureSources(), expectedSources);
-      assert.deepEqual(readFileSync(join(REPO, FIXTURE, 'catalog-storage.json')), catalogBytes);
+      assert.deepEqual(readFileSync(join(FIXTURE_ROOT, 'catalog-storage.json')), catalogBytes);
     });
     fixtureInfo = { evidenceLevel: 'tracked-real-B2.1-artifacts', commit: FIXTURE_COMMIT, path: FIXTURE,
       provenance: 'Historical source commit is recorded only; tracked files and the archived digest index are read directly.',
@@ -146,7 +150,7 @@ async function main() {
         assert.deepEqual(migrated.catalog[key], historicalCatalog[key]);
       }
       assert.deepEqual(migrated.catalog.events.slice(0, historicalCatalog.events.length), historicalCatalog.events);
-      assert.deepEqual(readFileSync(join(REPO, FIXTURE, 'catalog-storage.json')), catalogBytes);
+      assert.deepEqual(readFileSync(join(FIXTURE_ROOT, 'catalog-storage.json')), catalogBytes);
     });
     save('fixture-catalog-migration-result.json', { changed: migrated.changed, executionReady: migrated.executionReady,
       completedSteps: migrated.completedSteps, schemaVersion: migrated.catalog.schemaVersion,
@@ -254,7 +258,7 @@ async function main() {
       assert.deepEqual(readFileSync(join(acceptanceRoot, 'managed-spec-dispatches', 'v1', names[0])), first.record.bytes);
     });
     check('originalTrackedFixtureStillUnchanged', () => {
-      assert.deepEqual(fixtureSources(), expectedSources); assert.deepEqual(readFileSync(join(REPO, FIXTURE, 'catalog-storage.json')), catalogBytes);
+      assert.deepEqual(fixtureSources(), expectedSources); assert.deepEqual(readFileSync(join(FIXTURE_ROOT, 'catalog-storage.json')), catalogBytes);
     });
     check('allCopiedSource14FilesUnchangedIncludingMovedSource', () => assert.deepEqual(sourceDigests(), expectedSources));
     check('targetFixtureReceivedZeroRequests', () => assert.equal(requests.length, 0));

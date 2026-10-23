@@ -38,7 +38,7 @@
 **LLM 只出现在三个点位**（其余全部确定性代码）：
 1. 页面语义分类与组件 schema（星图打标 + builder 规格）
 2. L3 动效重写（原站闭源 JS → 新代码）
-3. diff 修复循环（differ 报差异 → LLM 改代码 → 重跑，≤3 轮）
+3. diff 修复循环（differ 报差异 → LLM 改代码 → 重跑，默认 2 轮，可用第二个参数指定）
 
 ---
 
@@ -87,7 +87,7 @@ workspace/apify.com/
 | --- | --- | --- |
 | 是什么 | 渲染结果冻结成的静态文件 | 页面照常运行脚本，资源与请求实时回原站 |
 | 脚本 | **全部剥离** | 保留（第三方挂件被 stub） |
-| 资源 | 尽量本地化 CSS/图片/字体；实际缺口需核对 | 本地快照优先，缺失时通过镜像域或 `/lm/` 回源 |
+| 资源 | 尽量本地化 CSS/图片/字体；实际缺口需核对 | 本地快照优先，缺失时通过镜像子域回源 |
 | 样式来源 | **CSSOM 最终态**（含脚本注入的样式） | 原站自己的 CSS |
 | 网络 | 页面文件本地可开；资源是否齐全要看缺口检查与断网验收 | 通常需要引擎在线和原站可达；独立包可对已收录资源做 HAR 回放 |
 | 视觉 | 多视口比较并记录尺寸、覆盖率与差异 | 未校准，会随原站当前内容变化 |
@@ -108,13 +108,15 @@ workspace/apify.com/
 | 入口 | 形如 | 何时用 |
 | --- | --- | --- |
 | 独立域名 | `http://<host>.localhost:<port>/<path>` | **首选**。pathname 就是站点自己的路径，CSR 路由、cookie、localStorage 全按站点隔离 |
-| 路径前缀 | `/lm/<host>/<path>` | 备用。不依赖 `*.localhost` 解析，但前缀会进 `location.pathname` |
+| 路径前缀 | `/lm/<host>/<path>` | **已停用**：引擎对该前缀返回 410，请用隔离的镜像子域（`<host>.localhost`）；原因见下一行 |
 
 **为什么要两个**：纯客户端渲染（SPA/CSR）站点的路由库读 `location.pathname` 决定渲染什么。
 前缀入口下它看到 `/lm/vitest.dev/`，匹配不到路由，于是渲染**它自己的 404 页**（实测
 vitest.dev / crawlee.dev / ant.design 均如此）。独立域名入口没有这个前缀，问题不存在。
-它依赖 `*.localhost` 解析到本机 —— Chrome/Firefox 原生支持，但本机 DNS 被代理接管时
-可能失败，那时用前缀入口。
+它依赖 `*.localhost` 解析到本机：Chrome/Firefox 原生支持。但本机 DNS 被代理接管、
+`*.localhost` 解析不到时，独立子域这条路就走不通 —— **而前缀入口已经停用**（它会让 CSR
+站点渲染自己的 404）。也就是说，在这类网络环境里交互镜像目前**打不开**，静态镜像不受影响。
+这属于已知限制，不是配置问题。
 
 设置 `HEIMDALL_TOKEN` 后，控制台先在引擎主机上申请短期、单次使用的票据，再进入独立镜像子域建立该子域的会话；控制台和 API 主机名不同时通过请求头领票。票据兑换后立即跳到不含票据的原站路径，避免 SPA 把 `/lm/` 当作路由。`/lm/` 仍是备用入口，不能据此承诺所有 SPA 正常运行。
 
@@ -248,8 +250,8 @@ core/src/
   store/    cas(内容寻址去重)   session/   watch/   sandbox/   mcp/   browser/   jobs/
   adapters/ index.mjs —— generic / nextjs / vueVite 三个适配器同文件（探测自动路由）
   pipeline.mjs（六阶段编排） engine-server.mjs（HTTP+SSE+队列+槽位） cli.mjs llm.mjs env.mjs
-console/    Atlas.vue（壳）+ DetailDock / PagesView / JobsView / Graph3D…（11 个组件）
+console/    Atlas.vue（壳）+ DetailDock / PagesView / JobsView / Graph3D…（23 个 .vue 组件，其中验收相关约一半）
 ```
 
-**关键端口/路径**：engine :8900（/api/* /static/* /lm/* /px/*，见 engine-server.mjs 顶部）·
+**关键端口/路径**：engine :8900（/api/* /static/* /px/* 与镜像子域；/lm/* 已停用，见 engine-server.mjs 顶部）·
 vite :5173（proxy `/api/` **与 `/static/`**）· 产物 workspace/<host>/

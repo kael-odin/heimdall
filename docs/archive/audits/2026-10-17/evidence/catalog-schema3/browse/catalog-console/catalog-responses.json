@@ -1,0 +1,147 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf/releases",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf/run-bindings",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects",
+    "status": 409
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "failure": "net::ERR_ABORTED"
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf/releases",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-ebb3916d-3736-49cb-8833-9ba72408b7cf",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/api/acceptance/projects",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects",
+    "status": 503
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/acceptance/projects/ap-298e7cb4-d273-4101-9022-1c785c8199d3",
+    "status": 200
+  }
+]

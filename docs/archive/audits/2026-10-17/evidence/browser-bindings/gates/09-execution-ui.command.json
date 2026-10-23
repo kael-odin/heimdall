@@ -1,0 +1,7 @@
+{
+  "stage": "09-execution-ui",
+  "command": "pnpm acceptance:execution:ui:smoke",
+  "startedAt": "2026-10-17T03:36:16.479Z",
+  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+  "environmentOverrides": {}
+}

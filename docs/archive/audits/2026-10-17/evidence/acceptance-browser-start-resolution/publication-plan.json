@@ -1,0 +1,395 @@
+{
+  "schemaVersion": 1,
+  "readyToPublish": true,
+  "draftNote": "Final round7 gates and final runtime roots are complete; early and interrupted rounds remain development evidence only.",
+  "baselineHead": "5d1de82ac31fa48ef45ed0746591fbd0c710d264",
+  "baselineSnapshot": "core/workspace/_runs/d4-validation-round7-20261018/source-snapshot.json",
+  "baselineSnapshotSha256": "f700d54a3bb10a55748818d68b6d33fe43724f8485ec72063e0a35d253c078d8",
+  "groups": [
+    {
+      "key": "design",
+      "source": "core/workspace/_runs/d4-unknown-operation-design-20261017.md"
+    },
+    {
+      "key": "integration",
+      "source": "core/workspace/_runs/d4-integration-slices-20261017.md"
+    },
+    {
+      "key": "development",
+      "source": "core/workspace/_runs/d4-development-20261017"
+    },
+    {
+      "key": "frontend",
+      "source": "core/workspace/_runs/d4-frontend-20261017"
+    },
+    {
+      "key": "implementation-review",
+      "source": "core/workspace/_runs/d4-implementation-review-20261017"
+    },
+    {
+      "key": "offline-review",
+      "source": "core/workspace/_runs/d4-validation-line-20261017"
+    },
+    {
+      "key": "service-before",
+      "source": "core/workspace/_runs/d4-service-independent-review-20261017-b5f3041b-ac98-4f37-9e79-dc5bfeb0b4cc"
+    },
+    {
+      "key": "service-recheck",
+      "source": "core/workspace/_runs/d4-service-independent-recheck-20261017-a5eaa018-f8a1-4712-8278-50364f8ee86a"
+    },
+    {
+      "key": "smoke-review",
+      "source": "core/workspace/_runs/d4-smoke-independent-review-20261017"
+    },
+    {
+      "key": "store-early-pass",
+      "source": "core/workspace/_runs/d4-store-schema-20261017-d953bf1e-0c28-4d49-af6a-01efbd1b0125"
+    },
+    {
+      "key": "store-fixture-failure",
+      "source": "core/workspace/_runs/d4-store-final-20261017-575c9034-e571-4846-a0f4-8808ba304c6d"
+    },
+    {
+      "key": "store-final",
+      "source": "core/workspace/_runs/d4-store-final-20261017-503a8825-b3f8-42b8-8fd5-aa6cd566c5bf"
+    },
+    {
+      "key": "validation-round1",
+      "source": "core/workspace/_runs/d4-validation-20261017"
+    },
+    {
+      "key": "validation-round2",
+      "source": "core/workspace/_runs/d4-validation-round2-20261017"
+    },
+    {
+      "key": "validation-round3",
+      "source": "core/workspace/_runs/d4-validation-round3-20261017"
+    },
+    {
+      "key": "validation-round4",
+      "source": "core/workspace/_runs/d4-validation-round4-20261017"
+    },
+    {
+      "key": "validation-round5",
+      "source": "core/workspace/_runs/d4-validation-round5-20261017"
+    },
+    {
+      "key": "ui-attempt1",
+      "source": "core/workspace/_runs/browser-resolution-console-smoke-4d64f127-bea6-4d9e-8ddb-8b3a4a0297b4"
+    },
+    {
+      "key": "ui-attempt2",
+      "source": "core/workspace/_runs/browser-resolution-console-smoke-28c823ae-12d0-4332-bb98-6ea57728c4c5"
+    },
+    {
+      "key": "ui-prior-pass",
+      "source": "core/workspace/_runs/browser-resolution-console-smoke-6f362c69-28ab-4455-ac69-4e3a2d4dae98"
+    },
+    {
+      "key": "catalog-before",
+      "source": "core/workspace/_runs/d4-catalog-last-fence-review-20261017-e4287e05-b494-4d34-8e08-bf94f56dcdb4"
+    },
+    {
+      "key": "catalog-fixed",
+      "source": "core/workspace/_runs/d4-catalog-last-fence-fixed-20261017-ec8e9a2b-de5d-4040-a55f-dedfe49ff2df"
+    },
+    {
+      "key": "validation-round6",
+      "source": "core/workspace/_runs/d4-validation-round6-20261017"
+    },
+    {
+      "key": "resolution-ui-round6",
+      "source": "core/workspace/_runs/browser-resolution-console-smoke-8476a773-f235-49c1-9f67-c00c4289bb71"
+    },
+    {
+      "key": "execution-ui-round6",
+      "source": "core/workspace/_runs/browser-execution-console-smoke-8c879693-0313-420a-865d-2fdcd64a1a85"
+    },
+    {
+      "key": "original-console-round6-preserved",
+      "source": "core/workspace/_runs/d4-round6-original-console-preserved-20261018"
+    },
+    {
+      "key": "owned-recovery-round6",
+      "source": "core/workspace/_runs/owned-recovery-ac02fd70-2638-4fe2-bd65-7a87e62388f6"
+    },
+    {
+      "key": "managed-ui-round6-interrupted",
+      "source": "core/workspace/_runs/execution-ui-ea456198-1e1f-4b32-8ecb-233133bd8761"
+    },
+    {
+      "key": "round6-intentional-stop",
+      "source": "core/workspace/_runs/d4-round6-intentional-stop-20261017"
+    },
+    {
+      "key": "round6-independent-review",
+      "source": "core/workspace/_runs/d4-round6-independent-review-20261017"
+    },
+    {
+      "key": "cross-page-start-fix",
+      "source": "core/workspace/_runs/d4-cross-page-start-fix-20261017"
+    },
+    {
+      "key": "final-gates",
+      "source": "core/workspace/_runs/d4-validation-round7-20261018"
+    },
+    {
+      "key": "resolution-ui-round7-preflight",
+      "source": "core/workspace/_runs/browser-resolution-console-smoke-1e399928-0f01-4308-b357-70bc71516aff"
+    },
+    {
+      "key": "final-browser-resolution-ui",
+      "source": "core/workspace/_runs/browser-resolution-console-smoke-177bb267-39ed-4123-bc5f-a07c91fd69c2"
+    },
+    {
+      "key": "final-browser-execution-ui",
+      "source": "core/workspace/_runs/browser-execution-console-smoke-a8db2b20-94a5-4226-9452-fb3b32ca5623"
+    },
+    {
+      "key": "final-owned-recovery",
+      "source": "core/workspace/_runs/owned-recovery-646244de-31f6-4667-88d5-568bae3dee18"
+    },
+    {
+      "key": "final-managed-execution-ui",
+      "source": "core/workspace/_runs/execution-ui-3e86d62e-3038-4166-8a2b-c72713f08540"
+    },
+    {
+      "key": "final-browser-candidates",
+      "source": "core/workspace/_runs/browser-candidates-console-smoke-f24b98d8-8b1f-4ba8-ab55-58b6d1d55b07"
+    },
+    {
+      "key": "final-browser-bindings-v4",
+      "source": "core/workspace/_runs/browser-bindings-console-smoke-02931924-3c29-4e92-859a-cae38015e61d"
+    },
+    {
+      "key": "round7-smoke-render-wait",
+      "source": "core/workspace/_runs/d4-round7-smoke-render-wait-20261018"
+    },
+    {
+      "key": "round7-independent-review",
+      "source": "core/workspace/_runs/d4-round7-independent-review-20261018"
+    },
+    {
+      "key": "ci-evidence-attributes",
+      "source": "core/workspace/_runs/d4-evidence-attrs-20261018"
+    }
+  ],
+  "requiredFinalGateLabels": [
+    "syntax",
+    "console-build",
+    "core-full",
+    "browser-resolution-ui",
+    "original-console",
+    "owned-recovery",
+    "managed-execution-ui",
+    "browser-candidates",
+    "browser-bindings-v4",
+    "browser-execution-ui",
+    "forge",
+    "console-cdp"
+  ],
+  "finalGates": [
+    {
+      "label": "syntax",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/syntax"
+    },
+    {
+      "label": "console-build",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/console-build"
+    },
+    {
+      "label": "core-full",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/core-full"
+    },
+    {
+      "label": "browser-resolution-ui",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/browser-resolution-ui"
+    },
+    {
+      "label": "original-console",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/original-console"
+    },
+    {
+      "label": "owned-recovery",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/owned-recovery"
+    },
+    {
+      "label": "managed-execution-ui",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/managed-execution-ui"
+    },
+    {
+      "label": "browser-candidates",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/browser-candidates"
+    },
+    {
+      "label": "browser-bindings-v4",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/browser-bindings-v4"
+    },
+    {
+      "label": "browser-execution-ui",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/browser-execution-ui"
+    },
+    {
+      "label": "forge",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/forge"
+    },
+    {
+      "label": "console-cdp",
+      "directory": "core/workspace/_runs/d4-validation-round7-20261018/console-cdp"
+    }
+  ],
+  "finalSmoke": {
+    "directory": "core/workspace/_runs/browser-resolution-console-smoke-177bb267-39ed-4123-bc5f-a07c91fd69c2",
+    "expectedChecks": [
+      "sameOriginalUnfinishedIngressLosesToDurableDeny",
+      "rejectedOriginalHasNoDispatchRunOrTargetNavigation",
+      "lostCommittedDenySurvivesSameRootOriginPortAndContextRestart",
+      "restartRecoveryUsesOnlyGetAndPreservesDecisionBytes",
+      "nativeTwoPagesSerializeAllReceiptWrites",
+      "noWebLocksAllowsReadAndRefusesWrite",
+      "explicitFreshReviewUsesNewBoAndRunsNormally",
+      "fullSourceRemainsMemoryOnlyAndOriginalCaptureUnchanged",
+      "renderedUiHasNoUnexpectedPageOrConsoleErrors"
+    ],
+    "gateLabel": "browser-resolution-ui"
+  },
+  "readableCopies": [
+    {
+      "file": "final-source-snapshot.json",
+      "sourcePath": "core/workspace/_runs/d4-validation-round7-20261018/source-snapshot.json"
+    },
+    {
+      "file": "store-implementation-review.md",
+      "sourcePath": "core/workspace/_runs/d4-store-final-20261017-503a8825-b3f8-42b8-8fd5-aa6cd566c5bf/implementation-review.md"
+    },
+    {
+      "file": "service-independent-review.md",
+      "sourcePath": "core/workspace/_runs/d4-service-independent-recheck-20261017-a5eaa018-f8a1-4712-8278-50364f8ee86a/review.md"
+    },
+    {
+      "file": "cross-page-start-fix-review.md",
+      "sourcePath": "core/workspace/_runs/d4-cross-page-start-fix-20261017/review.md"
+    },
+    {
+      "file": "cross-page-start-fix-tests.json",
+      "sourcePath": "core/workspace/_runs/d4-cross-page-start-fix-20261017/pure-tests.json"
+    },
+    {
+      "file": "round6-original-console-preservation.json",
+      "sourcePath": "core/workspace/_runs/d4-round6-original-console-preserved-20261018/preservation.json"
+    },
+    {
+      "file": "round7-final-browser-review.md",
+      "sourcePath": "core/workspace/_runs/d4-round7-independent-review-20261018/final/final-review.md"
+    },
+    {
+      "file": "resolution-A-desktop-light.png",
+      "sourcePath": "core/workspace/_runs/browser-resolution-console-smoke-177bb267-39ed-4123-bc5f-a07c91fd69c2/resolution-A-desktop-light.png"
+    },
+    {
+      "file": "resolution-B-mobile-dark.png",
+      "sourcePath": "core/workspace/_runs/browser-resolution-console-smoke-177bb267-39ed-4123-bc5f-a07c91fd69c2/resolution-B-mobile-dark.png"
+    },
+    {
+      "file": "resolution-recovered-desktop-dark.png",
+      "sourcePath": "core/workspace/_runs/browser-resolution-console-smoke-177bb267-39ed-4123-bc5f-a07c91fd69c2/resolution-recovered-desktop-dark.png"
+    },
+    {
+      "file": "resolution-fresh-mobile-light.png",
+      "sourcePath": "core/workspace/_runs/browser-resolution-console-smoke-177bb267-39ed-4123-bc5f-a07c91fd69c2/resolution-fresh-mobile-light.png"
+    }
+  ],
+  "priorEvidenceReferences": [
+    {
+      "kind": "D3-existing-public-package-reference-only",
+      "index": "docs/audits/2026-10-17/evidence/acceptance-browser-execution/INDEX.json",
+      "archive": "docs/audits/2026-10-17/evidence/acceptance-browser-execution/complete-evidence.zip",
+      "bytes": 69111818,
+      "sha256": "f77e154f829fb46a4a3d4b9f5fbe99b41d05198f41eabe758705a3765ee61e4c",
+      "includedInD4Zip": false
+    }
+  ],
+  "finalCompletionSummary": "core/workspace/_runs/d4-validation-round7-20261018/completed.json",
+  "draftTransition": {
+    "preparedAt": "2026-10-17T16:11:28.625893+00:00",
+    "predecessor": "core/workspace/_runs/d4-publication-20261017/plan.round6.draft.json",
+    "predecessorSha256": "ce16fa3a26ff8e6857f72f9de8ce02ebb8623017b864cd1860db998b76ac83b9",
+    "oldGroupsRetained": 23,
+    "sourceSnapshotPending": false,
+    "fixAfterEvidencePending": false,
+    "finalRuntimeSelectionPending": false,
+    "finalGateLabelsRequireRunnerRecheck": false,
+    "round6Classification": "development-only-intentionally-interrupted",
+    "round6Core": {
+      "total": 2525,
+      "passed": 2513,
+      "skipped": 12,
+      "failed": 0,
+      "cancelled": 0,
+      "source": "core/workspace/_runs/d4-validation-round6-20261017/core-full/stdout.log"
+    },
+    "round6ManagedUi": {
+      "status": "interrupted-no-summary",
+      "gateDirectory": "core/workspace/_runs/d4-validation-round6-20261017/managed-execution-ui",
+      "runtimeDirectory": "core/workspace/_runs/execution-ui-ea456198-1e1f-4b32-8ecb-233133bd8761"
+    },
+    "round6OriginalConsolePreservation": "core/workspace/_runs/d4-round6-original-console-preserved-20261018/preservation.json",
+    "excludedRunRoots": [
+      {
+        "source": "core/workspace/_runs/d3-fixed-runner-tests",
+        "reason": "Publisher and independent verifier explicitly refuse d3- root prefixes; not silently bypassed. The completed round6 execution UI runtime is selected separately."
+      }
+    ],
+    "frozenDraftPreparedAt": "2026-10-17T16:15:23.207974+00:00",
+    "unboundDraft": "core/workspace/_runs/d4-publication-20261017/plan.round7.draft.json",
+    "unboundDraftSha256": "28df2a7c76024a09545cde6b7c4499a253f101b72d57da6282774f54fd7a0ea7",
+    "sourceFileCountObserved": 600,
+    "finalGateResultsPending": false,
+    "preflight": {
+      "classification": "development-only",
+      "gateDirectory": "core/workspace/_runs/d4-validation-round7-20261018/preflight-resolution-ui",
+      "runtimeDirectory": "core/workspace/_runs/browser-resolution-console-smoke-1e399928-0f01-4308-b357-70bc71516aff",
+      "checks": 9,
+      "nativeInterleavings": 4,
+      "nativeStartClaimsExpectedResults": [
+        true,
+        false
+      ]
+    },
+    "finalBindings": [
+      {
+        "label": "browser-resolution-ui",
+        "source": "core/workspace/_runs/browser-resolution-console-smoke-177bb267-39ed-4123-bc5f-a07c91fd69c2"
+      },
+      {
+        "label": "browser-execution-ui",
+        "source": "core/workspace/_runs/browser-execution-console-smoke-a8db2b20-94a5-4226-9452-fb3b32ca5623"
+      },
+      {
+        "label": "owned-recovery",
+        "source": "core/workspace/_runs/owned-recovery-646244de-31f6-4667-88d5-568bae3dee18"
+      },
+      {
+        "label": "managed-execution-ui",
+        "source": "core/workspace/_runs/execution-ui-3e86d62e-3038-4166-8a2b-c72713f08540"
+      },
+      {
+        "label": "browser-candidates",
+        "source": "core/workspace/_runs/browser-candidates-console-smoke-f24b98d8-8b1f-4ba8-ab55-58b6d1d55b07"
+      },
+      {
+        "label": "browser-bindings-v4",
+        "source": "core/workspace/_runs/browser-bindings-console-smoke-02931924-3c29-4e92-859a-cae38015e61d"
+      }
+    ],
+    "finalPlanPreparedAt": "2026-10-17T16:49:44.064663+00:00",
+    "frozenDraftSha256": "5c5f80b69c35b0c27adb9eb7531083550d239563af80804db15d4397229ad62f"
+  },
+  "independentFinalReview": {
+    "summary": "core/workspace/_runs/d4-round7-independent-review-20261018/final/review-summary.json",
+    "visual": "core/workspace/_runs/d4-round7-independent-review-20261018/final/visual-review.json",
+    "manifest": "core/workspace/_runs/d4-round7-independent-review-20261018/final/artifact-manifest.json",
+    "text": "core/workspace/_runs/d4-round7-independent-review-20261018/final/final-review.md"
+  }
+}

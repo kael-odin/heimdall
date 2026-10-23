@@ -23,11 +23,17 @@ permissions:
   contents: read
 
 jobs:
-  core:
-    name: core (lint + test)
+  # Linux 上完整 Core 测试约 29 分钟，逼近 45 分钟 job 超时；分两片并行后约 15 分钟。
+  # 每个分片各自安装依赖、构建控制台（console/dist 是其中一条控制台 E2E 的前提）。
+  # 分片只切文件、不切用例：同一个文件里的用例仍在同一个进程里跑，测试内部的共享状态不受影响。
+  core-test:
+    name: core (test ${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
-    # Linux Core tests take about 18 minutes; serial real-browser smokes follow.
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     defaults:
       run:
         working-directory: core
@@ -42,17 +48,45 @@ jobs:
           cache: pnpm
           cache-dependency-path: core/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm check:docs
-      # 见文件头：测试集里有真浏览器用例，不装就会红
+      # 见下方 core 服务 job 的文件头说明：测试集里有真浏览器用例，不装就会红
       - run: pnpm exec playwright install --with-deps chromium
-      # core 与 console 是**两个独立 job，产物不互通** —— 而 core 的测试集里有一条
-      # 控制台 E2E，它需要 console/dist。不在这里构建的话，那条用例每次都走"跳过"分支，
-      # 等于在 CI 里根本不存在（本地有 dist，所以本地永远是绿的，看不出来）。
-      # 与其把两个 job 串起来，不如在这儿就地构建一次：多花一分钟，换一条真的会跑的守卫。
       - run: pnpm --dir ../console install --frozen-lockfile
       - run: pnpm --dir ../console build
-      - run: pnpm test
+      - run: pnpm test -- --test-shard=${{ matrix.shard }}/2
+      - name: Preserve core test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: core-test-${{ matrix.shard }}-failure-${{ github.run_attempt }}
+          path: |
+            core/workspace/_runs/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # 真浏览器冒烟。它们彼此独立（各自用 mkdtemp 临时目录与随机端口、各自起引擎），
+  # 所以整体从 core 服务 job 里拆出来并行跑；串行时它们合计约 11 分钟，且任何一条失败都会让
+  # 后面的 20 多条根本跑不到 —— 并行后一条红不影响其余诊断。
+  core-smoke:
+    name: core (e2e smoke, local fixture)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: core/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --dir ../console install --frozen-lockfile
+      - run: pnpm --dir ../console build
       - name: Acceptance console (real browser, local model stub)
         run: pnpm acceptance:smoke
       - name: Spec contract console (real browser, local API fixture)
@@ -93,11 +127,22 @@ jobs:
         run: pnpm acceptance:browser:resolution:smoke
       - name: Manual defect tickets (fixed source members, explicit closure, regression and read-only reconciliation)
         run: pnpm acceptance:defect:tickets:smoke
+      - name: Manual defect ticket decisions (four real UI races)
+        run: node scripts/smoke-acceptance-defect-ticket-decisions-console.mjs workspace/_runs/defect-ticket-decisions-ci
+      - name: Verify manual defect ticket decision evidence
+        run: node scripts/verify-acceptance-defect-ticket-decisions-console.mjs workspace/_runs/defect-ticket-decisions-ci
+      - run: pnpm smoke
+      - name: Acceptance detection benchmark (known truth fixtures)
+        run: pnpm acceptance:benchmark
+      - name: Spec API benchmark (OpenAPI candidates and known truth)
+        run: pnpm acceptance:spec:benchmark
+      - name: Acceptance comparison benchmark (known retest and false-closure cases)
+        run: pnpm acceptance:comparison:benchmark
       - name: Preserve acceptance smoke failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: acceptance-catalog-failure-${{ github.run_attempt }}
+          name: acceptance-smoke-failure-${{ github.run_attempt }}
           path: |
             core/workspace/_runs/acceptance-catalog-console/**/failure.json
             core/workspace/_runs/acceptance-catalog-console/**/failure-ui.json
@@ -138,13 +183,43 @@ jobs:
             core/workspace/_runs/browser-execution-console-smoke-*/**
             core/workspace/_runs/browser-resolution-console-smoke-*/**
             core/workspace/_runs/defect-tickets-console-smoke-*/**
+            core/workspace/_runs/defect-ticket-decisions-ci/**
+            core/workspace/_runs/defect-tickets-console-smoke-*/failure.json
           if-no-files-found: ignore
           retention-days: 7
+
+  # 只放“不跑浏览器、几秒到几分钟”的确定性检查。此前 lint / 文档 / docker 与 29 分钟测试
+  # 以及 11 分钟冒烟挤在同一个 45 分钟 job 里，任何一项超时都会把其它项一起取消，
+  # 上面的失败步骤本身就说明了这种互相牵连有多难诊断。
+  core-lint:
+    name: core (lint, docs, docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: core/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm check:docs
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。
       - name: Docker offline delivery (SSR + SPA + data SPA + adapter)
         run: node --test --test-name-pattern='Docker network-none delivery' test/live-deployment-matrix.test.mjs
         env:
           HEIMDALL_DOCKER_TEST: "1"
+      # 根 Dockerfile 是唯一一条“真的按用户文档部署”的路径，但此前没有任何 CI 守卫 ——
+      # 控制台里一个跨目录 import 就能让它构建失败而无人知晓。构建一次约一分半。
+      - name: Root image builds (Dockerfile is the documented deployment path)
+        run: docker build -t heimdall-ci-check ..
 
   console:
     name: console (build)
@@ -165,48 +240,3 @@ jobs:
           cache-dependency-path: console/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-
-  smoke:
-    name: core (e2e smoke, local fixture)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: core
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 11.7.0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: core/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-      # Keep the original twenty Core smokes and their deadline intact. D6 runs
-      # in the independent local-fixture job, followed by its byte/order verifier.
-      - run: pnpm --dir ../console install --frozen-lockfile
-      - run: pnpm --dir ../console build
-      - name: Manual defect ticket decisions (four real UI races)
-        run: node scripts/smoke-acceptance-defect-ticket-decisions-console.mjs workspace/_runs/defect-ticket-decisions-ci
-      - name: Verify manual defect ticket decision evidence
-        run: node scripts/verify-acceptance-defect-ticket-decisions-console.mjs workspace/_runs/defect-ticket-decisions-ci
-      - run: pnpm smoke
-      - name: Acceptance detection benchmark (known truth fixtures)
-        run: pnpm acceptance:benchmark
-      - name: Spec API benchmark (OpenAPI candidates and known truth)
-        run: pnpm acceptance:spec:benchmark
-      - name: Acceptance comparison benchmark (known retest and false-closure cases)
-        run: pnpm acceptance:comparison:benchmark
-      - name: Preserve manual defect ticket decision evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: manual-defect-ticket-decisions-${{ github.run_attempt }}
-          path: |
-            core/workspace/_runs/defect-ticket-decisions-ci/**
-            console/dist/**
-          if-no-files-found: error
-          retention-days: 7

@@ -4,7 +4,6 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
 import { prepareManagedSpecContract } from '../src/acceptance/managed-spec-plan.mjs';
 import { projectSpecBaselineCandidate, SUPPORTED_SPEC_VERIFIERS_V1 } from '../src/acceptance/candidate-projection.mjs';
 import { AcceptanceCatalogError, candidateProjectionOf } from '../src/acceptance/catalog-schema.mjs';
@@ -13,8 +12,9 @@ import { createAcceptanceRun, finishAcceptanceRun, acceptanceRunDir } from '../s
 import { normalizeSpecPlan } from '../src/acceptance/spec-schema.mjs';
 import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
 import { previewOpenApi } from '../src/acceptance/openapi.mjs';
+import { requiredDir } from './fixtures/audit-evidence.mjs';
 
-const archive = fileURLToPath(new URL('../../docs/audits/2026-10-16/evidence/acceptance-baseline/console/', import.meta.url));
+const archive = requiredDir('2026-10-16/evidence/acceptance-baseline/console');
 const archiveRoot = join(archive, 'run-evidence');
 const DRAFT = 'ac-1897dc22-0d21-4b6f-95c3-4dd72201063d';
 const BUG = 'ac-10afe248-c3f9-4b86-b3db-373a55025c05';

@@ -131,6 +131,19 @@ export function llmSettings() {
 /** 控制台可提交的字段（camelCase）。未知字段直接拒绝，避免"改了没反应"的哑失败 */
 const ALLOWED_FIELDS = new Set(['enabled', 'baseUrl', 'apiKey', 'model', 'fastModel', 'protocol', 'timeoutMs', 'retries']);
 
+/**
+ * 写进 .env 的值不能含换行：`LLM_MODEL=x
+HEIMDALL_TOKEN=...` 会在文件里开出**新的一行**，
+ * 下一次 getEnv() 读出来的就是白名单之外的键 —— 等于让调用方往配置里注入任意变量。
+ * 顺便挡掉 NUL。所有要落盘的字符串字段都过这里。
+ */
+const safeValue = (label, raw, { trim = true } = {}) => {
+  const v = String(raw ?? '');
+  // 换行/回车/NUL 会让 .env 里开出一行新键（= 注入任意配置），一律拒绝
+  if ([13, 10, 0].some(code => v.includes(String.fromCharCode(code)))) throw new Error(`${label} 不能包含换行或空字符`);
+  return trim ? v.trim() : v;
+};
+
 /** 校验 + 规范化来自控制台的补丁；抛错即拒绝 */
 export function normalizePatch(body = {}) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('请求体必须是 JSON 对象');
@@ -143,7 +156,7 @@ export function normalizePatch(body = {}) {
   if ('enabled' in body) patch.HEIMDALL_LLM = body.enabled ? '1' : '0';
 
   if ('baseUrl' in body) {
-    const v = String(body.baseUrl ?? '').trim().replace(/\/+$/, '');
+    const v = safeValue('Base URL', body.baseUrl).replace(/\/+$/, '');
     if (v) {
       let u;
       try { u = new URL(v); } catch { throw new Error('Base URL 不是合法地址（需形如 https://host/v1）'); }
@@ -153,16 +166,16 @@ export function normalizePatch(body = {}) {
   }
   // 省略 apiKey = 保持不变（控制台不回显 Key，因此不会把已存的 Key 覆盖成空）
   if ('apiKey' in body && body.apiKey !== null && body.apiKey !== undefined) {
-    patch.LLM_API_KEY = String(body.apiKey).trim();
+    patch.LLM_API_KEY = safeValue('API Key', body.apiKey);
   }
   if ('model' in body) {
-    const v = String(body.model ?? '').trim();
+    const v = safeValue('主模型', body.model);
     if (!v) throw new Error('主模型不能为空');
     patch.LLM_MODEL = v;
   }
-  if ('fastModel' in body) patch.LLM_MODEL_FAST = String(body.fastModel ?? '').trim();
+  if ('fastModel' in body) patch.LLM_MODEL_FAST = safeValue('快速模型', body.fastModel);
   if ('protocol' in body) {
-    const v = String(body.protocol ?? '').toLowerCase().trim();
+    const v = safeValue('协议', body.protocol).toLowerCase();
     if (!PROTOCOLS.includes(v)) throw new Error(`协议必须是 ${PROTOCOLS.join(' | ')}`);
     patch.LLM_PROTOCOL = v;
   }

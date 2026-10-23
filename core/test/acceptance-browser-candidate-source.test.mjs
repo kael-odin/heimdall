@@ -11,11 +11,12 @@ import { projectBrowserBaselineCandidate } from '../src/acceptance/browser-candi
 import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 import { AcceptanceCatalogError } from '../src/acceptance/catalog-schema.mjs';
 import { summarizeAcceptanceReport } from '../src/acceptance/report.mjs';
+import { required } from './fixtures/audit-evidence.mjs';
 
 const FIXTURES = fileURLToPath(new URL('./fixtures/acceptance-browser-source/', import.meta.url));
 const READER_URL = new URL('../src/acceptance/browser-candidate-source.mjs', import.meta.url).href;
 const OWNER_URL = new URL('../src/acceptance/owner.mjs', import.meta.url).href;
-const PREPARED = JSON.parse(fs.readFileSync(new URL('../../docs/audits/2026-10-16/evidence/acceptance-spec-execution-control/preparation/prepared-record.json', import.meta.url)));
+const PREPARED = JSON.parse(fs.readFileSync(required('2026-10-16/evidence/acceptance-spec-execution-control/preparation/prepared-record.json'), 'utf8'));
 const copy = value => JSON.parse(JSON.stringify(value));
 const sha = data => createHash('sha256').update(data).digest('hex');
 const parse = path => JSON.parse(fs.readFileSync(path));

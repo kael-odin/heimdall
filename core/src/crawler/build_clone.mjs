@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSy
 import { join, dirname, relative, sep } from 'node:path';
 import { pickAdapter, refRewriteCandidates } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
+import { ensureFixupLink } from '../differ/fixup.mjs';
 import { extFrom, isNonAssetRef, isSoftHtml } from '../asset-ext.mjs';
 import { scanCssRefs, rewriteCssRefs, extractFontRules } from '../css-refs.mjs';
 import { relTokens, stripAssetLinkTags, findStrayRefs, rasterizeCanvases, applyVideoPosters, materializeMediaPosters, dropCrossoriginOnLocalRefs, neutralizeBaseTag, replaceRefTable, rewriteMappedHtmlRefs } from '../dom-refs.mjs';
@@ -306,7 +307,7 @@ console.log('[1b] cross-origin @font-face (' + crossSheets.length + ' sheet)');
 let fontCss = '';
 for (const s of crossSheets) {
   try {
-    const res = await fetch(s.href, { headers: { 'User-Agent': UA } });
+    const res = await fetch(s.href, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20_000) });
     if (!res.ok) continue;
     fontCss += extractFontRules(await res.text(), s.href);
   } catch { /* 取不到就跳过 —— 不为一个图标字体让整页构建失败 */ }
@@ -373,17 +374,21 @@ for (const relPath of new Set(Object.values(resTable))) {
   writeFileAtomic(dest, buf);
   copied++;
 }
-// 画布光栅图（capture 阶段落的）：不在 imgMap 里，要单独拷
+// 画布光栅图（capture 阶段落的）：不在 imgMap 里，要单独拷。
+// 视频第 0 帧海报（assets/video-N.png）同理 —— applyVideoPosters 会把 poster 指过去，
+// 但 capture 是直接写盘的，resTable 里没有它们；只拷 canvas-* 的话，克隆里的 poster 全 404（纯黑块）。
 let copiedCanvases = 0;
+let copiedVideoPosters = 0;
 {
   const srcDir = join(PAGE, 'assets');
   if (existsSync(srcDir)) {
     for (const n of readdirSync(srcDir)) {
-      if (!/^canvas-\d+\.png$/.test(n)) continue;
+      if (!/^(canvas|video)-\d+\.png$/.test(n)) continue;
       const dest = join(CLONE, 'assets', n);
       mkdirSync(dirname(dest), { recursive: true });
       writeFileAtomic(dest, readFileSync(join(srcDir, n)));
-      copiedCanvases++;
+      if (n.startsWith('video-')) copiedVideoPosters++;
+      else copiedCanvases++;
     }
   }
 }
@@ -402,6 +407,7 @@ const gapReport = {
   crossOriginDropped,
   canvasRasterized: rasterizedCanvases,
   videoPosterized: videoPosters,
+  videoPostersCopied: copiedVideoPosters,
   // 自定义媒体组件换成 poster 静态图的个数；remote 那几个是 poster 没能本地化的
   // （镜像里会联网取原站图），离线不干净要看得见
   mediaPosterized: mediaPosters,
@@ -413,5 +419,9 @@ if (cssGaps.length) {
   console.log('\n  ⚠ CSS 引用缺口 ' + cssGaps.length + ' 处（详见 clone-gaps.json，多为原站已失效的引用）');
   for (const g of cssGaps.slice(0, 3)) console.log('     · ' + g.ref.slice(0, 80));
 }
+
+// 重建会重写整页 HTML：此前 AI 修复往页头注入的 styles/fixes.css 会一起丢失，
+// 而 fixup-history.json 仍记着 kept —— 产物与界面状态就对不上了。这里幂等补回。
+if (typeof PAGE === 'string') ensureFixupLink(PAGE);
 
 console.log('\nDONE clone -> ' + relative(process.cwd(), CLONE) + ' (assets copied: ' + copied + ', canvas rasters: ' + copiedCanvases + ', crossorigin dropped: ' + crossOriginDropped + ', media posters: ' + mediaPosters + (mediaPostersRemote ? ' (' + mediaPostersRemote + ' 张仍是远程)' : '') + ', variants: ' + VARIANTS.length + ', css gaps: ' + cssGaps.length + ')');

@@ -15,9 +15,10 @@ import { createAcceptanceCatalogStore } from '../../src/acceptance/catalog.mjs';
 import { managedSpecDispatchPlanFingerprint, validateManagedSpecDispatchEnvelope } from '../../src/acceptance/managed-dispatch-schema.mjs';
 import { createManagedAcceptanceRun } from '../../src/acceptance/managed-run-store.mjs';
 import { createAcceptanceRun } from '../../src/acceptance/store.mjs';
+import { required } from '../../test/fixtures/audit-evidence.mjs';
 
 export const CORE = fileURLToPath(new URL('../..', import.meta.url));
-const archived = JSON.parse(fs.readFileSync(new URL('../../../docs/audits/2026-10-16/evidence/acceptance-spec-execution-control/preparation/prepared-record.json', import.meta.url), 'utf8'));
+const archived = JSON.parse(fs.readFileSync(required('2026-10-16/evidence/acceptance-spec-execution-control/preparation/prepared-record.json'), 'utf8'));
 export const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export const json = path => JSON.parse(fs.readFileSync(path, 'utf8'));
 export const sleep = ms => new Promise(ready => setTimeout(ready, ms));

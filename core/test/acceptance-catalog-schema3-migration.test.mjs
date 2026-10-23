@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync, readdirSync, rmSync, cpSync, renameSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, basename } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { createAcceptanceCatalogStore, validateAcceptanceCatalog } from '../src/acceptance/catalog.mjs';
 import { buildCatalogMigration, buildCatalogMigrationV3, buildCatalogMigrationV4, currentSelectionsOf } from '../src/acceptance/catalog-schema.mjs';
@@ -12,6 +11,7 @@ import { writeAtomicFileSync } from '../src/acceptance/atomic-file.mjs';
 import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 import { readSpecCandidateSource } from '../src/acceptance/candidate-source.mjs';
 import { projectSpecBaselineCandidate } from '../src/acceptance/candidate-projection.mjs';
+import { requiredDir } from './fixtures/audit-evidence.mjs';
 
 const at = '2026-10-17T00:00:00.000Z', uid = prefix => prefix + '-' + randomUUID();
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -149,7 +149,7 @@ test('strict previous lineage rejects skips, reverse schemas, retired generation
 
 test('full native and migrated Spec history keeps entity/digest/source bytes and permits the original prepare contract after v4 migration', async t => {
   const archivedRun = 'ac-2424d160-cf8e-4991-8fba-c972a84becd1';
-  const archivedRoot = fileURLToPath(new URL('../../docs/audits/2026-10-16/evidence/acceptance-catalog/console/run-evidence/', import.meta.url));
+  const archivedRoot = requiredDir('2026-10-16/evidence/acceptance-catalog/console/run-evidence');
   for (const origin of ['native-v2', 'migrated-v2']) await t.test(origin, async t => {
     const f = fixture(t), runDir = join(f.root, archivedRun); cpSync(join(archivedRoot, archivedRun), runDir, { recursive: true });
     const originalFiles = Object.fromEntries(readdirSync(runDir).map(name => [name, readFileSync(join(runDir, name))]));

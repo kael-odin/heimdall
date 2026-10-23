@@ -80,6 +80,19 @@ test('hreflang: 相对地址 → medium', () => {
   assert.ok(has(p, 'index-hreflang-relative'));
 });
 
+test('hreflang: 采集层已把 href 绝对化时，按 rawHref（标签原值）判相对地址', () => {
+  const p = page({
+    hreflang: [
+      { lang: 'en', href: 'https://example.com/pricing', rawHref: 'https://example.com/pricing' },
+      { lang: 'zh-CN', href: 'https://example.com/zh/pricing', rawHref: '/zh/pricing' },
+    ],
+  });
+  const issue = evaluatePage(p, { host: 'example.com' }).find(i => i.id === 'index-hreflang-relative');
+  assert.ok(issue, '原值是相对地址，即使 href 已绝对化也要报');
+  assert.match(issue.message, /^1 条/, '只有一条是相对地址');
+  assert.match(issue.evidence, /zh-CN → \/zh\/pricing/, '证据展示标签原值而不是绝对化后的值');
+});
+
 test('hreflang: 非法语言码（下划线 / 单字母 / 空）→ low', () => {
   for (const bad of ['zh_CN', 'e', '', 'ZH-cn-extra-more']) {
     const p = page({ hreflang: [{ lang: bad, href: 'https://example.com/x' }] });

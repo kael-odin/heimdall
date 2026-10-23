@@ -18,10 +18,13 @@ import { currentSelectionsOf, validateAcceptanceCatalog, validateAcceptanceCatal
 
 const CORE = fileURLToPath(new URL('..', import.meta.url));
 const REPO = resolve(CORE, '..');
-const FIXTURE_RELATIVE = 'docs/audits/2026-10-16/evidence/acceptance-catalog/console';
+const FIXTURE_RELATIVE = 'core/test/fixtures/audit-evidence/2026-10-16/evidence/acceptance-catalog/console';
 const FIXTURE = join(REPO, FIXTURE_RELATIVE);
-const SPEC_FIXTURE_RELATIVE = 'docs/audits/2026-10-16/evidence/acceptance-baseline/console';
+const SPEC_FIXTURE_RELATIVE = 'core/test/fixtures/audit-evidence/2026-10-16/evidence/acceptance-baseline/console';
 const SPEC_FIXTURE = join(REPO, SPEC_FIXTURE_RELATIVE);
+for (const [path, relative] of [[FIXTURE, FIXTURE_RELATIVE], [SPEC_FIXTURE, SPEC_FIXTURE_RELATIVE]]) {
+  if (!existsSync(path)) throw new Error('fixture missing: ' + relative + ' (expected at ' + path + ')');
+}
 const OUT = resolve(process.argv[2] ?? join(CORE, 'workspace', '_runs', 'acceptance-catalog-migration',
   new Date().toISOString().replaceAll(':', '-') + '-' + randomUUID().slice(0, 8)));
 const TOKEN = 'acceptance-catalog-migration-local-fixture';

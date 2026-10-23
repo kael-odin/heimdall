@@ -17,6 +17,7 @@ import AuthImage from './AuthImage.vue';
 import { typeColor, typeCn } from './types.js';
 import { fmtBytes, fmtDate, FORGE_STAGES } from './format.js';
 import { pageNameOf, pagePathOf, liveUrl, localEngineSupportsMirror, mirrorBridgeNeeded, openMirrorWithTicket } from './pages.js';
+import { assetGapsPrefetch, liveHealthPrefetch } from './prefetch-cache.js';
 
 const props = defineProps({
   host: { type: String, default: '' },
@@ -44,7 +45,13 @@ const liveOpenError = ref('');
 async function openMirror(f) {
   liveOpenError.value = '';
   try { await openMirrorWithTicket(f); }
-  catch (error) { liveOpenError.value = '打开交互镜像失败：' + String(error?.message ?? error); }
+  catch (error) {
+    const raw = String(error?.message ?? error);
+    // 技术串保留，但先说人话：这个按钮失败几乎都是"本站还没导出过镜像"或"票据过期"
+    liveOpenError.value = /ticket|授权|unauthor|401/i.test(raw)
+      ? '打开交互镜像失败：授权票据过期了 —— 刷新页面再点一次。'
+      : '打开交互镜像失败：' + raw + ' —— 本站还没导出过镜像时先到「报告 → 交互镜像」导出一次。';
+  }
 }
 
 /** 阶段条：词表在 format.js —— 任务中心与「进行中」轨道用的是同一份，别在这里再写一遍 */
@@ -124,9 +131,17 @@ const shotStamp = computed(() => props.forge?.endedAt ?? props.pageMeta[props.se
 
 const detailTab = ref('overview');
 const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
-const assetGapsCache = ref(null);
-const assetGapsHost = ref(null);
-let liveHealth = null, liveHealthHost = '';
+/**
+ * 资产缺口与交互镜像体检**不放在组件里**。
+ *
+ * 父组件给本组件的键是 `'dock-' + selected.id` —— 换一颗星就是一次卸载 + 重挂，
+ * 组件内的缓存随之归零。asset-gaps.json 一份可达 300KB，于是"连点五颗星"= 重下五遍。
+ * 缓存挪到模块级（prefetch-cache.js：LRU 20 条 / 5 分钟），键按站点 ——
+ * 这些文件本来就是一站一份，逐页取用。
+ *
+ * 迟到的响应在这里丢弃：每一步 await 之后都重新比对 `props.selected`，
+ * 用户已经换页时旧结果不再写进面板（否则会出现"这页的缺口"配着上一页的数据）。
+ */
 
 const typeColorThemed = (t) => typeColor(t, props.theme);
 
@@ -172,25 +187,29 @@ async function loadQuality() {
   detailQuality.fixup = fu; detailQuality.history = hist; detailQuality.cloneGaps = cg;
   detailQuality.linker = lk?.pages?.find(p => p.name === name) ?? null;
 
-  // asset-gaps.json 可达数百 KB，按站点缓存；换站点才失效
-  if (!assetGapsCache.value || assetGapsHost.value !== h) {
-    assetGapsCache.value = null;
-    const gaps = artifacts.assetGaps === false ? null : await wsJson(h, 'audit/asset-gaps.json');
-    if (gaps) { assetGapsCache.value = gaps; assetGapsHost.value = h; }
-  }
-  detailQuality.gaps = assetGapsCache.value?.pages?.find(p => p.page === name) ?? null;
+  // asset-gaps.json 可达数百 KB：走模块级缓存，换页不再重下（见文件头注释与 prefetch-cache.js）
+  const gaps = artifacts.assetGaps === false ? null
+    : await assetGapsPrefetch.get(h, () => wsJson(h, 'audit/asset-gaps.json'));
+  if (props.selected !== n) return;
+  detailQuality.gaps = gaps?.pages?.find(p => p.page === name) ?? null;
 
   try {
-    if (!liveHealth || liveHealthHost !== h) {
+    // 体检结果同理：同一站点在同一分钟内反复打开详情，不必重问一次引擎
+    const health = await liveHealthPrefetch.get(h, async () => {
       const r = await fetch(API + '/api/live-health/' + encodeURIComponent(h), { headers: apiHeaders() });
-      liveHealth = r.ok ? await r.json() : null;
-      liveHealthHost = h;
-    }
+      // 404 = 没导出过。这是个**确定的结果**，也该缓存 —— 否则没导出过的站点每点一页问一次。
+      if (r.status === 404) return { details: [], strict: false };
+      return r.ok ? r.json() : null;
+    });
+    if (props.selected !== n) return;
     const p = (n.path || '/').replace(/\/+$/, '') || '/';
     const key = p === '/' ? '/' : p + '/';
-    detailQuality.liveGaps = liveHealth?.details?.find(d => d.page === key) ?? { page: key, unresolvedCount: 0, unresolved: [] };
+    detailQuality.liveGaps = health?.details?.find(d => d.page === key) ?? { page: key, unresolvedCount: 0, unresolved: [] };
   } catch { detailQuality.liveGaps = null; }
   detailQuality.loading = false;
+  // 注意：上面几个 `if (props.selected !== n) return;` 会跳过这一句 —— 那是**故意的**：
+  // 换页时下一次 loadQuality 会立刻把 loading 重新置 true，而旧请求的 false 不该落到新页上
+  // （会出现"加载完了"但其实新页的数据还没来）。
 }
 
 function switchTab(t) {
@@ -605,7 +624,12 @@ function onTablistKey(e) {
         </div>
       </div>
       <div class="verdict pending surface" v-else-if="!forge.done && !forge.error"><span class="scan"></span>克隆中 …</div>
-      <div class="dock-err surface" v-if="forge.error">{{ forge.error }}</div>
+      <!-- 失败原因：一句人话在上，原始技术串收进 details —— 不再整段糊在面板里 -->
+      <div class="dock-err surface" v-if="forge.error">
+        <p class="dock-err-msg">{{ forge.error }}</p>
+        <p class="dock-err-hint" v-if="forge.done">克隆没跑完：已生成的阶段产物都还在，重跑会从当前这页重新开始。原始报错与引擎日志可以帮助定位。</p>
+        <details><summary>技术详情</summary><pre>{{ forge.error }}&#10;日志目录：core/workspace/_runs/（最新的 engine.log）</pre></details>
+      </div>
       <div class="fixup-curve" v-if="forge.skipReason">
         <div class="curve-title">AI 校准</div>
         <div class="curve-row">{{ forge.skipReason }}</div>

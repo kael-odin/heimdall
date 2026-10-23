@@ -1,8 +1,9 @@
 /** Actual killed processes, preserved disk scenes, and a fresh owner/store per restart. */
-import test from 'node:test';
+import test, { after as afterAll } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, realpathSync, readFileSync, writeFileSync, readdirSync, lstatSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, realpathSync, readFileSync, writeFileSync, readdirSync, lstatSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -14,8 +15,12 @@ import { defectTicketRequestFingerprint, defectTicketMemberSetDigest, defectTick
 const uid = (prefix, n) => `${prefix}-00000000-0000-0000-0000-${n.toString(16).padStart(12, '0')}`;
 const sha = value => createHash('sha256').update(value).digest('hex'), h = value => sha(Buffer.from(value));
 const childFile = fileURLToPath(new URL('./fixtures/acceptance-defect-ticket-decision-kill-child.mjs', import.meta.url));
-const evidenceRoot = resolve(process.env.D6_CRASH_EVIDENCE_ROOT || 'core/workspace/_runs/d6-decision-crash-direct-20261018');
+// 默认放系统临时目录、跑完清掉；只有设了 D6_CRASH_EVIDENCE_ROOT 才留盘（收集证据用）。理由同 d5 store 测试：
+// 旧默认值相对「当前工作目录」，pnpm test 从 core/ 跑就会写出 core/core/workspace/。
+const keepEvidence = Boolean(process.env.D6_CRASH_EVIDENCE_ROOT);
+const evidenceRoot = keepEvidence ? resolve(process.env.D6_CRASH_EVIDENCE_ROOT) : mkdtempSync(join(tmpdir(), 'heimdall-d6-crash-'));
 mkdirSync(evidenceRoot, { recursive: true });
+if (!keepEvidence) afterAll(() => { try { rmSync(evidenceRoot, { recursive: true, force: true, maxRetries: 3 }); } catch { /* 清理失败不该让测试变红 */ } });
 function decisions() {
   const request = { ticketId: uid('dt', 1), actionId: uid('da', 1), sourceOperationId: uid('bo', 1), memberCheckIds: ['desktop'],
     title: 'Menu is missing', severity: 'high', description: 'Menu panel is absent.', reproduction: 'Open menu and observe.' };

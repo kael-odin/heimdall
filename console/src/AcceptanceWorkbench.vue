@@ -494,7 +494,7 @@ onBeforeUnmount(() => {
           </ol>
         </section>
       </aside>
-      <main id="aw-result-panel" ref="resultsElement" class="aw-results" aria-live="polite" aria-busy="loadingRun || currentRunning">
+      <main id="aw-result-panel" ref="resultsElement" class="aw-results" aria-live="polite" :aria-busy="loadingRun || currentRunning">
         <AcceptanceCatalog :runs="runs" @open-run="selectRun" @execution-run="observeExecution" />
         <AcceptanceComparison :runs="runs" :request="request" @open-run="selectRun" />
         <div v-if="!selectedId" class="aw-empty">

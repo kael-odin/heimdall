@@ -71,6 +71,22 @@ async function api(path, body, status = 200) {
 }
 const latest = () => api('projects'), ticketPath = () => 'projects/' + project.id + '/defect-tickets';
 const fullTicketPath = () => '/api/acceptance/' + ticketPath(), executionPath = () => 'projects/' + project.id + '/browser-executions';
+/**
+ * 读取某个 action 响应的 JSON 体。
+ *
+ * 体必须在 'response' 事件里就开始读（见 openConsole 里的 page.on('response')）：
+ * 以前是点击之后才 `await (await page.waitForResponse(...)).json()`，而点击会触发页面跳转/重渲染，
+ * 等到那一刻响应体可能已被 Playwright 丢弃，报 "Response body … navigated away"。
+ * D6 因此在 CI 上连红两次 —— 本机快、时序松，看不出来。
+ */
+async function actionResponsePayload(response) {
+  // page.waitForResponse 给的是 Response；requestRecords 的键是 Request，要先取回来。
+  const id = requestRecords.get(response.request())?.id;
+  assert.ok(id, 'action response was not recorded by the browser listener');
+  const item = await waitFor(() => browserResponses.find(value => value.requestId === id && (value.payload !== undefined || value.readFailure)));
+  assert.equal(item.readFailure, undefined, 'reading the action response body failed: ' + item.readFailure);
+  return item.payload;
+}
 const component = () => page.getByTestId('defect-tickets'), panel = () => page.getByTestId('acceptance-catalog');
 const uiPosts = () => browserRequests.filter(value => value.method === 'POST' && value.path.startsWith(fullTicketPath()));
 const lines = path => fs.readFileSync(path, 'utf8').split('\n').filter(Boolean).map(value => JSON.parse(value));
@@ -258,14 +274,23 @@ async function runCase({ caseId, kind, intendedWinner, ticketId }) {
   if (caseId === 'C') await capture('C-close-unknown-mobile-dark', 390, 844, 'dark', true);
   await page.setViewportSize({ width: 1440, height: 1000 });
   const actionUrl = uiBase + fullTicketPath() + '/actions/' + original.actionId;
+  const actionGets = () => browserRequests.filter(value => value.url === actionUrl && value.method === 'GET');
   const readOnly = page.waitForResponse(value => value.url() === actionUrl && value.request().method() === 'GET');
-  await pending.getByTestId('defect-ticket-reconcile').click(); const unresolved = await (await readOnly).json();
+  await pending.getByTestId('defect-ticket-reconcile').click(); const unresolved = await actionResponsePayload(await readOnly);
   assert.equal(unresolved.outcome, 'unresolved'); assert.equal(unresolved.reason, 'ABSENCE_IS_NOT_A_COMMIT_DECISION');
   await waitFor(async () => await component().getAttribute('aria-busy') === 'false', 'read-only unresolved settled');
   assert.deepEqual(await storage(), originalStorage); assert.equal(uiPosts().length, postCount + 1); write('read-only-unresolved.json', unresolved); item.checks.readOnlyUnresolvedPreservesOriginal = true;
+  // 点击前的 GET 计数：零增量才是"点击被丢弃"，否则是请求已发出但响应/响应体丢失。
+  // 必须在这里就绑定一个短超时等待，否则脚本只会挂在 60s 的 actionResponsePayload 上，
+  // 让两种完全不同的故障表现成同一个超时。
+  const getsBeforeDeny = actionGets().length;
   const preflight = page.waitForResponse(value => value.url() === actionUrl && value.request().method() === 'GET');
   await pending.getByTestId('defect-ticket-deny-confirm').check(); await pending.getByTestId('defect-ticket-deny').click();
-  const preflightPayload = await (await preflight).json(); assert.equal(preflightPayload.outcome, 'unresolved'); write('deny-preflight-unresolved.json', preflightPayload);
+  await waitFor(() => actionGets().length > getsBeforeDeny || browserRequests.some(value => value.path === fullTicketPath() + '/actions/' + original.actionId + '/deny'),
+    caseId + ' deny click issued an action request (zero means the UI dropped the click; state was ' + JSON.stringify({
+      pending: await pending.count(), checked: await pending.getByTestId('defect-ticket-deny-confirm').isChecked(),
+      denyEnabled: !(await pending.getByTestId('defect-ticket-deny').isDisabled()) }), 15000);
+  const preflightPayload = await actionResponsePayload(await preflight); assert.equal(preflightPayload.outcome, 'unresolved'); write('deny-preflight-unresolved.json', preflightPayload);
   await bounded(state.denyReady.promise, caseId + ' exact UI deny body received');
   const denyBody = JSON.parse(state.rawDeny); assert.deepEqual(denyBody, { schemaVersion: 1, confirmed: true, original });
   const browserDeny = uiPosts().filter(value => value.path === fullTicketPath() + '/actions/' + original.actionId + '/deny');

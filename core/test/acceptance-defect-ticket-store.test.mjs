@@ -1,9 +1,10 @@
 /** Offline persistence boundaries only. No Browser, engine, or external I/O. */
-import test from 'node:test';
+import test, { after as afterAll } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, realpathSync, existsSync, readFileSync, writeFileSync, readdirSync,
-  appendFileSync, renameSync, linkSync, symlinkSync } from 'node:fs';
+  appendFileSync, renameSync, linkSync, symlinkSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 import { DefectTicketError, defectTicketRequestFingerprint, defectTicketMemberSetDigest,
@@ -15,8 +16,13 @@ const h = value => createHash('sha256').update(String(value)).digest('hex');
 const hashBytes = bytes => createHash('sha256').update(bytes).digest('hex');
 const copy = value => JSON.parse(JSON.stringify(value));
 const projectId = uid('ap', 1), otherProject = uid('ap', 2);
-const evidenceRoot = resolve(process.env.D5_STORE_EVIDENCE_ROOT || 'core/workspace/_runs/d5-store-direct-20261018');
+// 默认放系统临时目录、跑完清掉；只有设了 D5_STORE_EVIDENCE_ROOT 才留盘（收集证据用）。
+// 以前的默认值是相对「当前工作目录」的 core/workspace/_runs/...：pnpm test 的 cwd 是 core/，
+// 于是每跑一次就在 core/core/workspace/ 下留一堆目录（被 gitignore 盖住，一直没人发现）。
+const keepEvidence = Boolean(process.env.D5_STORE_EVIDENCE_ROOT);
+const evidenceRoot = keepEvidence ? resolve(process.env.D5_STORE_EVIDENCE_ROOT) : mkdtempSync(join(tmpdir(), 'heimdall-d5-store-'));
 mkdirSync(evidenceRoot, { recursive: true });
+if (!keepEvidence) afterAll(() => { try { rmSync(evidenceRoot, { recursive: true, force: true, maxRetries: 3 }); } catch { /* 清理失败不该让测试变红 */ } });
 function createEvent(n = 1, project = projectId, ticket = n) {
   const request = { ticketId: uid('dt', ticket), actionId: uid('da', n), sourceOperationId: uid('bo', n), memberCheckIds: ['desktop'],
     title: 'Menu does not expand', severity: 'high', description: 'Panel is missing.', reproduction: '1. Open menu\n2. Observe panel' };

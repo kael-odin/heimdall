@@ -151,7 +151,9 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
     } catch { /* 取不到就不做对照，不算失败 */ }
 
     const dom = await page.evaluate(() => {
-      const abs = (u) => { try { return new URL(u, location.href).href; } catch { return u; } };
+      // 空值必须保持为空：new URL('', base) 会解析成页面自身地址，
+      // 于是没有 canonical / og:image 的页面看上去"都有"，对应的缺失类规则永远不会触发。
+      const abs = (u) => { if (!u || !String(u).trim()) return ''; try { return new URL(u, location.href).href; } catch { return u; } };
       const meta = (sel, attr = 'content') => document.querySelector(sel)?.getAttribute(attr) ?? '';
       const text = (document.body?.innerText ?? '').replace(/\s+/g, ' ').trim();
       const headings = [];
@@ -229,7 +231,8 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         .map(el => (el.innerText || el.getAttribute('aria-label') || '').trim())
         .filter(t => JS_PAGE_LABEL.test(t))
         .slice(0, 5);
-      const hreflang = [...document.querySelectorAll('link[rel="alternate"][hreflang]')].map(l => ({ lang: l.getAttribute('hreflang'), href: abs(l.getAttribute('href')) }));
+      // rawHref 保留标签上写的原值：href 已被绝对化，规则要判"是否写成了相对地址"只能看原值。
+      const hreflang = [...document.querySelectorAll('link[rel="alternate"][hreflang]')].map(l => ({ lang: l.getAttribute('hreflang'), href: abs(l.getAttribute('href')), rawHref: l.getAttribute('href') }));
       const res = performance.getEntriesByType('resource').map(r => ({ name: r.name, initiator: r.initiatorType, transfer: r.transferSize || 0, encoded: r.encodedBodySize || 0 }));
       const nav = performance.getEntriesByType('navigation')[0];
       const sum = (pred) => res.filter(pred).reduce((a, r) => a + Math.max(r.transfer, r.encoded), 0);

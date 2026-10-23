@@ -211,9 +211,10 @@ async function denyOriginal(original) {
   const ticket = guard.begin('deny'), captured = context(), exact = exactPending(original, captured, ticket, true);
   loading.deny = true; error.value = ''; notice.value = '';
   try {
-    if (!exact()) return;
+    // 入口处上下文已被改写时不要静默丢弃：让操作者看到"本次没有发送请求"。
+    if (!exact()) { if (current(ticket)) notice.value = '待核对记录已变化；本次没有发送永久拒绝请求，请重新核对原动作。'; return; }
     const raw = await captured.request(`/actions/${original.actionId}`, { signal: ticket.signal });
-    if (!exact()) return;
+    if (!exact()) { if (current(ticket)) notice.value = '核对期间原确认已变化；本次没有发送永久拒绝请求，请重新核对原动作。'; return; }
     let proof = await defectTicketAction(raw, original); if (!exact()) return;
     if (proof.outcome === 'unresolved') {
       const body = defectTicketDenyInput({ schemaVersion: 1, confirmed: true, original });
@@ -329,7 +330,7 @@ h3 { font-size:18px; line-height:1.5; } h4 { font-size:14px; line-height:1.6; ma
 p,label,li { font-size:13px; line-height:1.8; overflow-wrap:anywhere; } .eyebrow { color:var(--text-dim); font-size:11px; letter-spacing:.12em; margin-bottom:4px; }
 .muted,small { color:var(--text-dim); } small { font-size:12px; line-height:1.7; } code,pre { font:11px/1.8 var(--font-mono); overflow-wrap:anywhere; }
 code { display:inline; } pre { white-space:pre-wrap; max-height:340px; overflow:auto; } .prose { white-space:pre-wrap; margin:12px 0; }
-button,input,select,textarea { border:1px solid var(--border-strong); border-radius:var(--r-sm); background:var(--surface); color:var(--text); font:13px/1.6 var(--font); min-height:44px; padding:10px 12px; max-width:100%; }
+button,input,select,textarea { border:1px solid var(--border-strong); border-radius:var(--r-sm); background:var(--surface); color:var(--text); font:13px/1.6 var(--font-ui); min-height:44px; padding:10px 12px; max-width:100%; }
 input,select,textarea { width:100%; } textarea { resize:vertical; } button { cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; text-align:start; }
 button:disabled { opacity:.5; cursor:default; } button:hover:not(:disabled) { border-color:var(--accent); } button:active:not(:disabled) { transform:translateY(1px); }
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }

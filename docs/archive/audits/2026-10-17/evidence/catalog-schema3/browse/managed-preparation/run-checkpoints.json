@@ -1,0 +1,50 @@
+[
+  {
+    "phase": "before-prepare",
+    "activeSourceRunIds": [
+      "ac-10afe248-c3f9-4b86-b3db-373a55025c05",
+      "ac-1897dc22-0d21-4b6f-95c3-4dd72201063d"
+    ],
+    "totalSourceRunsIncludingMoved": 2,
+    "newRunCount": 0,
+    "reservedRunDirectoryExists": false
+  },
+  {
+    "phase": "after-prepare",
+    "activeSourceRunIds": [
+      "ac-10afe248-c3f9-4b86-b3db-373a55025c05",
+      "ac-1897dc22-0d21-4b6f-95c3-4dd72201063d"
+    ],
+    "totalSourceRunsIncludingMoved": 2,
+    "newRunCount": 0,
+    "reservedRunDirectoryExists": false
+  },
+  {
+    "phase": "after-replay",
+    "activeSourceRunIds": [
+      "ac-10afe248-c3f9-4b86-b3db-373a55025c05",
+      "ac-1897dc22-0d21-4b6f-95c3-4dd72201063d"
+    ],
+    "totalSourceRunsIncludingMoved": 2,
+    "newRunCount": 0,
+    "reservedRunDirectoryExists": false
+  },
+  {
+    "phase": "after-source-move",
+    "activeSourceRunIds": [
+      "ac-10afe248-c3f9-4b86-b3db-373a55025c05"
+    ],
+    "totalSourceRunsIncludingMoved": 2,
+    "newRunCount": 0,
+    "reservedRunDirectoryExists": false
+  },
+  {
+    "phase": "after-reopen-replay",
+    "activeSourceRunIds": [
+      "ac-10afe248-c3f9-4b86-b3db-373a55025c05"
+    ],
+    "totalSourceRunsIncludingMoved": 2,
+    "newRunCount": 0,
+    "reservedRunDirectoryExists": false
+  }
+]

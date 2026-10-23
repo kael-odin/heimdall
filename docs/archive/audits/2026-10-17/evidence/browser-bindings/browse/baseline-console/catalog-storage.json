@@ -1,0 +1,485 @@
+{
+  "schemaVersion": 3,
+  "generationId": "ag-ac3c9d4b-00da-4a1c-ab3b-6f4b3192504e",
+  "revision": 20,
+  "projects": {
+    "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd": {
+      "id": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "name": "需求合同验收项目 A",
+      "createdAt": "2026-10-17T03:35:54.569Z"
+    },
+    "ap-25380e8b-9a26-4bf9-b705-ced358b4473d": {
+      "id": "ap-25380e8b-9a26-4bf9-b705-ced358b4473d",
+      "name": "独立项目 B",
+      "createdAt": "2026-10-17T03:35:54.798Z"
+    },
+    "ap-26c1062b-d7fc-4444-af71-fa2267751eca": {
+      "id": "ap-26c1062b-d7fc-4444-af71-fa2267751eca",
+      "name": "另一个窗口更新目录",
+      "createdAt": "2026-10-17T03:36:02.935Z"
+    }
+  },
+  "releases": {
+    "ar-3c911a20-401c-48e0-a4bd-1638a89eb2e3": {
+      "id": "ar-3c911a20-401c-48e0-a4bd-1638a89eb2e3",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "label": "Spec 声明 v1",
+      "targetUrl": "http://127.0.0.1:53828/release?tenant=alpha",
+      "buildRef": "baseline-smoke-v1",
+      "createdAt": "2026-10-17T03:35:54.598Z"
+    }
+  },
+  "runBindings": {
+    "ac-333c9869-82de-4594-b32b-18cde7c5da81": {
+      "runId": "ac-333c9869-82de-4594-b32b-18cde7c5da81",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "releaseId": "ar-3c911a20-401c-48e0-a4bd-1638a89eb2e3",
+      "boundAt": "2026-10-17T03:35:54.629Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "ac-e2b5db6a-e9de-48b9-b5b3-8135aa3a2b73": {
+      "runId": "ac-e2b5db6a-e9de-48b9-b5b3-8135aa3a2b73",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "releaseId": "ar-3c911a20-401c-48e0-a4bd-1638a89eb2e3",
+      "boundAt": "2026-10-17T03:35:54.712Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    }
+  },
+  "candidates": {
+    "ab-19024ef3-17bb-4c11-b2fd-f804f0e52b8b": {
+      "id": "ab-19024ef3-17bb-4c11-b2fd-f804f0e52b8b",
+      "projectionVersion": 1,
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "mode": "spec",
+      "source": {
+        "runId": "ac-333c9869-82de-4594-b32b-18cde7c5da81",
+        "sourceMode": "spec",
+        "side": "source",
+        "releaseId": "ar-3c911a20-401c-48e0-a4bd-1638a89eb2e3"
+      },
+      "sourcePlanDigest": "9942563173f96467ce075d27247b3f875a1f74d21ab8ea30192e9c4536daf4ab",
+      "sourceReportDigest": "eefc6af4035e4b7891f264318f3d0a1a424897a03b7a78dff63b4e7118fd4794",
+      "evidenceManifestDigest": "c605779bbea2e5ec51ed6751ebcdfdbf230a442c0ca42206dbe55f19715ebf93",
+      "scopeKey": "7557b0d0f38576834c6d5cff6c3cbb4415a02cffe5b8047b253b31bcdcc2c5f5",
+      "ruleManifestKey": "3d4cc2fb104390a3479a19f93295fa20d0d9406079be744d4c163e4469fe864a",
+      "oracleManifestKey": "c9421f2f5f2c55197e869c803ad18b48a7da6e8278edbbb319ee88646c61940e",
+      "environmentKey": "a920fac644bab06ee032ec8df1c0452d2c94139c158ec89a00e708a9442a5d5e",
+      "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+      "contentDigest": "b750caabedb327686b11036959ff7cd766ce65fc9a19658daa2e5bf40f95929a",
+      "createdAt": "2026-10-17T03:35:56.113Z"
+    },
+    "ab-dcc7c486-2d7c-40fa-8466-1ca71582813e": {
+      "id": "ab-dcc7c486-2d7c-40fa-8466-1ca71582813e",
+      "projectionVersion": 1,
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "mode": "spec",
+      "source": {
+        "runId": "ac-e2b5db6a-e9de-48b9-b5b3-8135aa3a2b73",
+        "sourceMode": "spec",
+        "side": "source",
+        "releaseId": "ar-3c911a20-401c-48e0-a4bd-1638a89eb2e3"
+      },
+      "sourcePlanDigest": "0cb04302d5d3c326bce959159575fa418ed5a7e7ab1a8dee5e78c19875c54282",
+      "sourceReportDigest": "f322d04227a8ed62c82777f2a94c943c7c4d67f0d2ab8850f4caa6aa441d2c56",
+      "evidenceManifestDigest": "69e69c553fec437fe82b74a58001eca3cc4386e9b934b16904b9d1276acc7876",
+      "scopeKey": "7557b0d0f38576834c6d5cff6c3cbb4415a02cffe5b8047b253b31bcdcc2c5f5",
+      "ruleManifestKey": "3d4cc2fb104390a3479a19f93295fa20d0d9406079be744d4c163e4469fe864a",
+      "oracleManifestKey": "c9421f2f5f2c55197e869c803ad18b48a7da6e8278edbbb319ee88646c61940e",
+      "environmentKey": "a920fac644bab06ee032ec8df1c0452d2c94139c158ec89a00e708a9442a5d5e",
+      "verifierFingerprint": "e4214464d2fa64ee97ee957ec0777f329195251d7596a3fed0366bb188d5ece8",
+      "contentDigest": "3de57b67bbf2ef64a5537c5cf35dedfd2decff50727b0e45301fde6540ea7285",
+      "createdAt": "2026-10-17T03:35:57.828Z"
+    }
+  },
+  "approvals": {
+    "aa-5a12a680-5c65-4973-91c3-09ef341cfb7b": {
+      "id": "aa-5a12a680-5c65-4973-91c3-09ef341cfb7b",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "candidateId": "ab-19024ef3-17bb-4c11-b2fd-f804f0e52b8b",
+      "contentDigest": "b750caabedb327686b11036959ff7cd766ce65fc9a19658daa2e5bf40f95929a",
+      "reason": "已核对完整草稿，批准需求合同",
+      "approvedAt": "2026-10-17T03:35:56.863Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "aa-5dcb7602-945f-4ede-bc0e-612a62bc0eb6": {
+      "id": "aa-5dcb7602-945f-4ede-bc0e-612a62bc0eb6",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "candidateId": "ab-dcc7c486-2d7c-40fa-8466-1ca71582813e",
+      "contentDigest": "3de57b67bbf2ef64a5537c5cf35dedfd2decff50727b0e45301fde6540ea7285",
+      "reason": "已核对需求，目标失败不改变正确预期",
+      "approvedAt": "2026-10-17T03:35:58.796Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "aa-b9a7d28c-0c58-4289-8cae-bae71435bc97": {
+      "id": "aa-b9a7d28c-0c58-4289-8cae-bae71435bc97",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "candidateId": "ab-dcc7c486-2d7c-40fa-8466-1ca71582813e",
+      "contentDigest": "3de57b67bbf2ef64a5537c5cf35dedfd2decff50727b0e45301fde6540ea7285",
+      "reason": "网关HTML502但服务端可能已提交",
+      "approvedAt": "2026-10-17T03:36:03.700Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "aa-4c79b3a3-70aa-49e6-87cc-9381dca79483": {
+      "id": "aa-4c79b3a3-70aa-49e6-87cc-9381dca79483",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "candidateId": "ab-dcc7c486-2d7c-40fa-8466-1ca71582813e",
+      "contentDigest": "3de57b67bbf2ef64a5537c5cf35dedfd2decff50727b0e45301fde6540ea7285",
+      "reason": "响应丢失但服务端可能已提交",
+      "approvedAt": "2026-10-17T03:36:05.133Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "aa-8fca35bc-3ef6-4b01-9be3-b1664f788c7b": {
+      "id": "aa-8fca35bc-3ef6-4b01-9be3-b1664f788c7b",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "candidateId": "ab-dcc7c486-2d7c-40fa-8466-1ca71582813e",
+      "contentDigest": "3de57b67bbf2ef64a5537c5cf35dedfd2decff50727b0e45301fde6540ea7285",
+      "reason": "项目切换后的迟到批准仍属于 A",
+      "approvedAt": "2026-10-17T03:36:06.549Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    }
+  },
+  "selections": {
+    "as-ae71708c-5605-4d0d-93ec-049353cd9319": {
+      "id": "as-ae71708c-5605-4d0d-93ec-049353cd9319",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "mode": "spec",
+      "approvalId": "aa-5a12a680-5c65-4973-91c3-09ef341cfb7b",
+      "previousSelectionId": null,
+      "reason": "单独选用完整草稿需求",
+      "selectedAt": "2026-10-17T03:35:57.463Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "as-17f62758-6ab6-4617-8760-8796adbe9ec0": {
+      "id": "as-17f62758-6ab6-4617-8760-8796adbe9ec0",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "mode": "spec",
+      "approvalId": "aa-5dcb7602-945f-4ede-bc0e-612a62bc0eb6",
+      "previousSelectionId": "as-ae71708c-5605-4d0d-93ec-049353cd9319",
+      "reason": "单独选用失败目标对应的正确需求",
+      "selectedAt": "2026-10-17T03:35:59.580Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "as-ae9b8b7e-d45d-4e30-92a4-51bd38cc8b11": {
+      "id": "as-ae9b8b7e-d45d-4e30-92a4-51bd38cc8b11",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "mode": "spec",
+      "approvalId": "aa-5a12a680-5c65-4973-91c3-09ef341cfb7b",
+      "previousSelectionId": "as-17f62758-6ab6-4617-8760-8796adbe9ec0",
+      "reason": "显式回退到第一条需求批准",
+      "selectedAt": "2026-10-17T03:36:00.247Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "as-261986af-d800-48dd-9821-27b58ea894b8": {
+      "id": "as-261986af-d800-48dd-9821-27b58ea894b8",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "mode": "spec",
+      "approvalId": null,
+      "previousSelectionId": "as-ae9b8b7e-d45d-4e30-92a4-51bd38cc8b11",
+      "reason": "独立取消当前选用，保留所有历史",
+      "selectedAt": "2026-10-17T03:36:00.679Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "as-408242e9-0df3-479b-b049-f9e7eafac958": {
+      "id": "as-408242e9-0df3-479b-b049-f9e7eafac958",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "mode": "spec",
+      "approvalId": "aa-5dcb7602-945f-4ede-bc0e-612a62bc0eb6",
+      "previousSelectionId": "as-261986af-d800-48dd-9821-27b58ea894b8",
+      "reason": "重新选用，准备来源变化反例",
+      "selectedAt": "2026-10-17T03:36:01.096Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "as-ced3f6f6-ccae-49ae-a7a6-9e1d3bde11fc": {
+      "id": "as-ced3f6f6-ccae-49ae-a7a6-9e1d3bde11fc",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "mode": "spec",
+      "approvalId": null,
+      "previousSelectionId": "as-408242e9-0df3-479b-b049-f9e7eafac958",
+      "reason": "来源缺失仍能独立取消当前选用",
+      "selectedAt": "2026-10-17T03:36:08.344Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    "as-a815559b-b676-47ac-9daf-2fab61b61120": {
+      "id": "as-a815559b-b676-47ac-9daf-2fab61b61120",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "mode": "spec",
+      "approvalId": "aa-5a12a680-5c65-4973-91c3-09ef341cfb7b",
+      "previousSelectionId": "as-ced3f6f6-ccae-49ae-a7a6-9e1d3bde11fc",
+      "reason": "来源恢复后显式回退到完整草稿批准",
+      "selectedAt": "2026-10-17T03:36:08.812Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    }
+  },
+  "migrations": {},
+  "browserSourceBindings": {},
+  "events": [
+    {
+      "id": "ae-5fd0ca05-7c04-4460-a73b-2b55619cc1b6",
+      "revision": 1,
+      "kind": "project-created",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityDigest": "e2236e907c72eb44b4d6627f9ceeb899d6fa22cf37aa77e19cc22ec4a269f179",
+      "at": "2026-10-17T03:35:54.569Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-65d7280d-1ac2-488a-a817-1aeee90c487c",
+      "revision": 2,
+      "kind": "release-created",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "ar-3c911a20-401c-48e0-a4bd-1638a89eb2e3",
+      "entityDigest": "a719e78df2df6f18e47ae2b72845965b44a0ade48bfd138d1847149afebcf3ae",
+      "at": "2026-10-17T03:35:54.598Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-13cbd50d-0dfa-43be-bfd4-9245ce77cadb",
+      "revision": 3,
+      "kind": "run-bound",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "ac-333c9869-82de-4594-b32b-18cde7c5da81",
+      "entityDigest": "40548486b2ae9a20946af62f50bb7d564885be0813916ce73520997f8554d3aa",
+      "at": "2026-10-17T03:35:54.629Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-4a236001-854b-4862-98f7-b1a90fd4f13f",
+      "revision": 4,
+      "kind": "run-bound",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "ac-e2b5db6a-e9de-48b9-b5b3-8135aa3a2b73",
+      "entityDigest": "4db2393fbe24b806abaec592432878dc8237285d96302e7d8fce34c4c92ebe4e",
+      "at": "2026-10-17T03:35:54.712Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-46c6ac2e-ae35-446e-a9dc-c5d17ba3887e",
+      "revision": 5,
+      "kind": "project-created",
+      "projectId": "ap-25380e8b-9a26-4bf9-b705-ced358b4473d",
+      "entityId": "ap-25380e8b-9a26-4bf9-b705-ced358b4473d",
+      "entityDigest": "90b6932da61a4bf5874cf696a4c9ca7e11d1dff7e60d7c21913b794f794cc596",
+      "at": "2026-10-17T03:35:54.798Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-3cf649ba-c63e-443e-9e61-88cfe7a363a1",
+      "revision": 6,
+      "kind": "candidate-created",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "ab-19024ef3-17bb-4c11-b2fd-f804f0e52b8b",
+      "entityDigest": "dfb7fd65eb8be3564c3491d0f71ffb6fbafa7d7d4cb36ab409357d81b1c0b3e8",
+      "at": "2026-10-17T03:35:56.113Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-ffdcd6ed-1db1-42dc-90a2-655d0ab2fb64",
+      "revision": 7,
+      "kind": "baseline-approved",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "aa-5a12a680-5c65-4973-91c3-09ef341cfb7b",
+      "entityDigest": "d715ae65e98dc03e74a645981f3b47720e57dc3d7e86d4c5c50ac4a9289596c0",
+      "at": "2026-10-17T03:35:56.863Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-321ec4f6-69b8-4590-9b2b-fc1909290d5a",
+      "revision": 8,
+      "kind": "baseline-selected",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "as-ae71708c-5605-4d0d-93ec-049353cd9319",
+      "entityDigest": "6aee4d7e8afe103f3c22a348fb487e03f4dfbbf8771d1a67ea005292aa8ef9cf",
+      "at": "2026-10-17T03:35:57.463Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-15cbc68e-c15d-4513-a814-e3183d24dd04",
+      "revision": 9,
+      "kind": "candidate-created",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "ab-dcc7c486-2d7c-40fa-8466-1ca71582813e",
+      "entityDigest": "e7411f212cc56e106e74c6f2dd6893b660a3296a215b6d9a7c409979a80f2e57",
+      "at": "2026-10-17T03:35:57.828Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-850c270a-f393-4877-a9c5-0f551259f650",
+      "revision": 10,
+      "kind": "baseline-approved",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "aa-5dcb7602-945f-4ede-bc0e-612a62bc0eb6",
+      "entityDigest": "771bfb4ea6b3c6262f845c74f8143dd5dda73bf9d6187034e58b2cb71e5cd3df",
+      "at": "2026-10-17T03:35:58.796Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-ad2f6018-19fb-4b58-9164-a888dd34e948",
+      "revision": 11,
+      "kind": "baseline-selected",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "as-17f62758-6ab6-4617-8760-8796adbe9ec0",
+      "entityDigest": "e9840e2e78c0fd409ba15669d673803bfe10517ef8610bfd39304d413cf77bf1",
+      "at": "2026-10-17T03:35:59.580Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-f782f10e-46da-4236-a2a6-4e05d90cdd64",
+      "revision": 12,
+      "kind": "baseline-selected",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "as-ae9b8b7e-d45d-4e30-92a4-51bd38cc8b11",
+      "entityDigest": "da25fa1e6fe086fae46a60358819e839d243a95a8758ce8d2b514f2a8097ae0a",
+      "at": "2026-10-17T03:36:00.247Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-cebf628c-e614-4296-9dcb-5151840238b5",
+      "revision": 13,
+      "kind": "baseline-selected",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "as-261986af-d800-48dd-9821-27b58ea894b8",
+      "entityDigest": "ccca5345c564b83508019c44afc0a83a9639c1eff543a0f6f53eebf84d83bb7e",
+      "at": "2026-10-17T03:36:00.679Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-0ffff408-7153-448d-a09e-5239643aee07",
+      "revision": 14,
+      "kind": "baseline-selected",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "as-408242e9-0df3-479b-b049-f9e7eafac958",
+      "entityDigest": "dca3b7aeb71ba3c4a31a23784f2e98da2255ef8dbb335a90e58d79683a14a8b2",
+      "at": "2026-10-17T03:36:01.096Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-02f4142f-dccd-4e73-b190-df9e7186ffa4",
+      "revision": 15,
+      "kind": "project-created",
+      "projectId": "ap-26c1062b-d7fc-4444-af71-fa2267751eca",
+      "entityId": "ap-26c1062b-d7fc-4444-af71-fa2267751eca",
+      "entityDigest": "d56e7187f92606d44f1df926546a223501632bad6749ca2d1f868e239064fcd8",
+      "at": "2026-10-17T03:36:02.935Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-9fb506fb-331b-48bd-89c2-767105fcd1a8",
+      "revision": 16,
+      "kind": "baseline-approved",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "aa-b9a7d28c-0c58-4289-8cae-bae71435bc97",
+      "entityDigest": "5fdf09e626873d2651ad1a9d29d79ae6daa701dc3b8fe011a745616b89764c6f",
+      "at": "2026-10-17T03:36:03.700Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-4236fff4-aef2-49f9-88ef-540391799f73",
+      "revision": 17,
+      "kind": "baseline-approved",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "aa-4c79b3a3-70aa-49e6-87cc-9381dca79483",
+      "entityDigest": "052d351a43b52f98cd6562ae830edb32c66740821123708fa7051287204bf367",
+      "at": "2026-10-17T03:36:05.133Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-132f3b04-1bd9-446d-971d-a9989f8d4f3d",
+      "revision": 18,
+      "kind": "baseline-approved",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "aa-8fca35bc-3ef6-4b01-9be3-b1664f788c7b",
+      "entityDigest": "6a778d718f10cc43c6de6a2cd0632f9a8d3571b9087eaabab3bf67d2b0feaa69",
+      "at": "2026-10-17T03:36:06.549Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-4f51dff0-9fc0-40d2-8af2-4efc985e4a0a",
+      "revision": 19,
+      "kind": "baseline-selected",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "as-ced3f6f6-ccae-49ae-a7a6-9e1d3bde11fc",
+      "entityDigest": "97227065d53682f74afcd4ce390788eae226c6dd83ff6723288149f156cc23e3",
+      "at": "2026-10-17T03:36:08.344Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    },
+    {
+      "id": "ae-2ca1a541-e426-47ed-8614-ce2ee9769e53",
+      "revision": 20,
+      "kind": "baseline-selected",
+      "projectId": "ap-c381dcc9-05d0-4d43-8fc5-21ad5710b4fd",
+      "entityId": "as-a815559b-b676-47ac-9daf-2fab61b61120",
+      "entityDigest": "f13640fd133e7687f595ec99c1ebd9ff89739b7b608208d1a17620b3d1966806",
+      "at": "2026-10-17T03:36:08.812Z",
+      "actor": {
+        "kind": "local-operator"
+      }
+    }
+  ]
+}

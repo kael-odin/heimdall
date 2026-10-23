@@ -11,8 +11,9 @@ import { createAcceptanceRun, recoverAcceptanceRuns } from '../src/acceptance/st
 import { createManagedAcceptanceRun, finishManagedAcceptanceRun, settleManagedAcceptanceRun } from '../src/acceptance/managed-run-store.mjs';
 import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
 import { recoverOwnedAcceptanceRuns, ACCEPTANCE_RECOVERY_LIMITS } from '../src/acceptance/recovery.mjs';
+import { required } from './fixtures/audit-evidence.mjs';
 
-const fixtureRecord = JSON.parse(fs.readFileSync(new URL('../../docs/audits/2026-10-17/evidence/acceptance-managed-store/managed-preparation/prepared-record.json', import.meta.url), 'utf8'));
+const fixtureRecord = JSON.parse(fs.readFileSync(required('2026-10-17/evidence/acceptance-managed-store/managed-preparation/prepared-record.json'), 'utf8'));
 const encode = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const read = path => JSON.parse(fs.readFileSync(path, 'utf8'));

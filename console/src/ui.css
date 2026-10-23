@@ -66,7 +66,7 @@ button.rail-target:hover { color: var(--accent); text-decoration: underline; tex
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 85%, transparent), transparent);
   animation: rail-sweep 1.3s var(--ease) infinite; }
 @keyframes rail-sweep { from { transform: translateX(-100%); } to { transform: translateX(182%); } }
-@keyframes rail-sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+/* 这一份原先重复定义了 rail-sweep（to: 100%），把上面 182% 的覆盖掉，光带会停在半路 —— 已删。 */
 .rail-log { margin: 8px 0 0; font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; color: var(--text-faint);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: rail-log-in 200ms var(--ease); }
 @keyframes rail-log-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
@@ -87,12 +87,54 @@ button.rail-target:hover { color: var(--accent); text-decoration: underline; tex
 /* z-index 高于星空浮层：展开的操作菜单要能盖住下面的内容 */
 .sites { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; z-index: 30; align-items: center; max-width: min(92vw, 980px); }
 
-.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); color: var(--bad); letter-spacing: .08em; font-size: 13px; z-index: 20; }
-.toast.ok { color: var(--ok); }
+/* 错误提示从"一行红字"升级成一张卡：人话 + 下一步 + 可展开的技术详情。
+   一行字浮在星空上读不清（也没有底），一旦要放两段文字就必须有面。
+   结构见 Atlas.vue 模板里的 .toast。 */
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); color: var(--bad); font-size: 13px; line-height: 1.6; z-index: 20;
+  max-width: min(92vw, 560px); padding: 12px 14px; border-radius: var(--r);
+  background: var(--surface); border: var(--bw) solid color-mix(in srgb, var(--bad) 45%, transparent); box-shadow: var(--shadow);
+  /* 浮层本身不接收鼠标：它是固定在底部的，会盖住导航按钮，导致点击被它吞掉
+     （控制台 E2E 就卡在这里）。只把关闭按钮和"详情"折叠重新打开。 */
+  pointer-events: none; }
+.toast-x, .toast-detail, .toast-detail summary { pointer-events: auto; }
+.toast-main { display: flex; align-items: flex-start; gap: 10px; }
+.toast-msg { font-weight: 600; }
+.toast-x { margin-left: auto; flex: none; background: none; border: 0; color: var(--text-dim); cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: var(--r-sm); }
+.toast-x:hover { color: var(--text); }
+.toast-hint { margin: 6px 0 0; color: var(--text-dim); font-size: 12.5px; }
+.toast-detail { margin-top: 8px; }
+.toast-detail summary { cursor: pointer; color: var(--text-faint); font-size: 12px; }
+.toast-detail pre { margin: 6px 0 0; max-height: 160px; overflow: auto; padding: 8px 10px; border-radius: var(--r-sm);
+  background: var(--bg-2); color: var(--text-dim); font: 11px/1.6 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* 成功提示保持一行：它不需要下一步，也不该占掉半屏 */
+.toast.ok { color: var(--ok); font-weight: 500; letter-spacing: .02em; background: var(--surface);
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+
+/* 「停止」—— 长任务旁边那个按钮。高度比按钮略小，避免和主按钮抢视线 */
+.rail-stop { flex: none; background: none; border: none; color: var(--text-dim); cursor: pointer;
+  font-size: 11.5px; padding: 3px 8px; border-radius: var(--r-sm); border: 1px solid var(--border-strong); }
+.rail-stop:hover:not(:disabled) { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 55%, transparent); }
+.rail-stop:disabled { opacity: .6; cursor: default; }
+
+/* 报告页：主按钮 + 停止按钮并排 */
+.run-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+.wv-empty p { margin: 0 0 6px; }
+.wv-empty-hint { color: var(--text-dim); max-width: 46ch; margin-left: auto; margin-right: auto; }
+.wv-empty button { margin-top: 10px; }
 .wv-actions { flex-wrap: wrap; }
 
 /* 首启向导：没有站点时的空态。放在画面中心，不挡顶部输入框。 */
 .first-run { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92vw, 640px); padding: 22px 26px; z-index: 4; }
+/* 空态的入口：三步说明之上给一个真能点的动作，而不是"读完了自己去找输入框" */
+.fr-cta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.fr-cta input { flex: 1 1 220px; min-width: 0; padding: 10px 12px; border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong); background: var(--bg-2); color: var(--text); font-family: var(--font-mono); font-size: 13px; }
+.fr-cta button { padding: 0 16px; min-height: 42px; border-radius: var(--r-sm); border: 1px solid var(--border-strong);
+  background: transparent; color: var(--text-dim); cursor: pointer; font-size: 13px; }
+.fr-cta button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent-dim); }
+.fr-cta button:disabled { opacity: .6; cursor: default; }
+.fr-cta button.wv-primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 650; }
 .fr-title { font-size: 16px; color: var(--text); margin-bottom: 12px; letter-spacing: .04em; }
 .fr-steps { margin: 0 0 14px; padding-left: 20px; color: var(--text-dim); font-size: 13px; line-height: 2; }
 .fr-steps b { color: var(--accent); margin-right: 4px; }
@@ -132,6 +174,13 @@ button.rail-target:hover { color: var(--accent); text-decoration: underline; tex
 
 /* dock 内错误 */
 .dock-err { margin-top: 12px; padding: 11px 13px; border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent); border-radius: var(--r); color: var(--bad); font-size: 12.5px; background: color-mix(in srgb, var(--bad) 5%, transparent); }
+/* 一句人话在上，技术串折进 details —— 面板里不该整段糊一行机器话 */
+.dock-err-msg { font-weight: 600; line-height: 1.6; }
+.dock-err-hint { margin-top: 6px; color: var(--text-dim); line-height: 1.6; }
+.dock-err details { margin-top: 8px; }
+.dock-err summary { cursor: pointer; color: var(--text-faint); font-size: 12px; }
+.dock-err pre { margin-top: 6px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--bg-2); color: var(--text-dim);
+  font: 11px/1.6 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: auto; }
 
 /* 克隆进度 */
 /* 详情 tabs */

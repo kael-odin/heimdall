@@ -103,7 +103,12 @@ export function rewriteCssRefs(css, resolved) {
  */
 export function extractFontRules(css, base) {
   const text = String(css ?? '');
-  const faces = [...text.matchAll(/@font-face\s*\{([^}]*)\}/gi)];
+  // 注释必须先剥掉再按规则匹配。否则 `/* latin */` 会被下面那条"顶层规则"正则当成
+  // **选择器**（它以 `/` 开头，`[^{}@]` 放行），紧跟着的 `@font-face{…}` 就被算成它的
+  // 规则体 → 同一个 @font-face 输出两遍，第二份还**没过 absolutize**，相对 url 留在
+  // 镜像里指向克隆目录、必然 404。Google Fonts 的样式表每段都带 `/* latin */`，所以这是常态而非边角。
+  const stripped = text.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  const faces = [...stripped.matchAll(/@font-face\s*\{([^}]*)\}/gi)];
   if (!faces.length) return '';
 
   const absolutize = (body) => body.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (m, q, u) => {
@@ -120,10 +125,10 @@ export function extractFontRules(css, base) {
   }
 
   // 顶层规则里凡是把 font(-family) 指到上述字体族的，一并带上
-  for (const m of text.matchAll(/(?:^|[}\s])([^{}@][^{}]*?)\s*\{([^{}]*)\}/g)) {
+  for (const m of stripped.matchAll(/(?:^|[}\s])([^{}@][^{}]*?)\s*\{([^{}]*)\}/g)) {
     const sel = m[1].trim();
     const body = m[2].trim();
-    if (!sel || !body) continue;
+    if (!sel || !body || sel.startsWith('@')) continue;
     const hit = body.split(';').some(d => /^\s*font(-family)?\s*:/i.test(d)
       && [...families].some(f => d.toLowerCase().includes(f)));
     if (hit) parts.push(`${sel} { ${body} }`);

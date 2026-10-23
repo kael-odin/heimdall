@@ -1,0 +1,103 @@
+{
+  "captureRequests": 16,
+  "bindingAndReadRequests": 0,
+  "bindingFetchAttempts": 0,
+  "requests": [
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/baseline?build=approved&channel=stable",
+      "at": "2026-10-17T03:23:05.695Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/target?build=current&channel=development",
+      "at": "2026-10-17T03:23:06.047Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/baseline?build=approved&channel=stable",
+      "at": "2026-10-17T03:23:06.447Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/target?build=current&channel=development",
+      "at": "2026-10-17T03:23:06.854Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/baseline?build=approved&channel=stable",
+      "at": "2026-10-17T03:23:07.268Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/target?build=current&channel=development",
+      "at": "2026-10-17T03:23:07.585Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/baseline?build=approved&channel=stable",
+      "at": "2026-10-17T03:23:07.938Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/target?build=current&channel=development",
+      "at": "2026-10-17T03:23:08.332Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/baseline?build=approved&channel=stable",
+      "at": "2026-10-17T03:23:09.022Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/target?build=current&channel=development",
+      "at": "2026-10-17T03:23:09.372Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/baseline?build=approved&channel=stable",
+      "at": "2026-10-17T03:23:09.766Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/target?build=current&channel=development",
+      "at": "2026-10-17T03:23:10.186Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/baseline?build=approved&channel=stable",
+      "at": "2026-10-17T03:23:10.601Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/target?build=current&channel=development",
+      "at": "2026-10-17T03:23:10.903Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/baseline?build=approved&channel=stable",
+      "at": "2026-10-17T03:23:11.231Z"
+    },
+    {
+      "phase": "capture",
+      "method": "GET",
+      "url": "/target?build=current&channel=development",
+      "at": "2026-10-17T03:23:11.610Z"
+    }
+  ]
+}

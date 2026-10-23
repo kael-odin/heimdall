@@ -1,0 +1,11 @@
+{
+  "stage": "01-catalog-compatibility",
+  "command": "node --test core/test/acceptance-catalog.test.mjs core/test/acceptance-baseline-catalog.test.mjs core/test/acceptance-managed-catalog.test.mjs core/test/acceptance-catalog-api.test.mjs",
+  "startedAt": "2026-10-17T02:03:39.910Z",
+  "finishedAt": "2026-10-17T02:03:57.672Z",
+  "durationMs": 17760,
+  "stdoutPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\schema3-gates-20261017\\01-catalog-compatibility.stdout.log",
+  "stderrPath": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\schema3-gates-20261017\\01-catalog-compatibility.stderr.log",
+  "exitCode": 0,
+  "signal": null
+}

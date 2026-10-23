@@ -1,0 +1,17 @@
+[
+  {
+    "path": "cdp-clone-artifact.png",
+    "bytes": 30993,
+    "sha256": "44e5aadd877495a10fa0ecd1779beb1db359ac0a688781da48d62b7ea336da1f"
+  },
+  {
+    "path": "cdp-console-forge.png",
+    "bytes": 67937,
+    "sha256": "5d1b0e6dc4e1b75de8af571341958c70d5d1940b7d656845dc1f1336cfcab040"
+  },
+  {
+    "path": "cdp-real-forge.json",
+    "bytes": 464,
+    "sha256": "b99256ce07f2120930d4da504efe566b8822c1df6e94e33646d3d567cb588601"
+  }
+]

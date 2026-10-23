@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "verifiedAt": "2026-10-17T03:20:11.381Z",
+  "summaryCheckCount": 30,
+  "samples": [
+    {
+      "mode": "mirror",
+      "runId": "ac-2aff8d4d-a738-4a7a-b2c2-b12f1a218488",
+      "runFiles": 29,
+      "runBytes": 358539,
+      "reportChecks": 14,
+      "evidenceEntries": 26,
+      "reportSha256": "55ef1013febf069cd03a66abed1ea3f0a8fdd599d38918bfd0c006f6dd65b997"
+    },
+    {
+      "mode": "regression",
+      "runId": "ac-91149c0e-b699-4cb3-bfb9-a77a9e4eb29d",
+      "runFiles": 29,
+      "runBytes": 358571,
+      "reportChecks": 14,
+      "evidenceEntries": 26,
+      "reportSha256": "bc3ed713773f15bb1297ad662ec9343bb0c71039efc682d9e9777c04e3dcc4e1"
+    }
+  ],
+  "browserBindings": 4,
+  "legacyBindings": 2,
+  "rejectionCount": 14,
+  "catalogRevision": 20,
+  "catalogEvents": 20,
+  "catalogSha256": "ab3aa8e39c6145bbfd28211373bdc90eeadcb7f265559761055036c039570398",
+  "outputFiles": 130,
+  "outputBytes": 2116159,
+  "outputTreeSha256": "05c595657a56ab3efa26af5097d9db0aee26aacddf4b7eb267132dcbfbbae9e2",
+  "refuseOverwrite": {
+    "executable": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\scripts\\smoke-acceptance-browser-bindings.mjs",
+      "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\browser-bindings-smoke-e9c0f93e-73a6-4b98-b544-31f3fedde0a8"
+    ],
+    "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
+    "timeoutMs": 10000,
+    "startedAt": "2026-10-17T03:20:10.894Z",
+    "exitCode": 1,
+    "signal": null,
+    "observedError": "EEXIST",
+    "sourceTreeUnchanged": true
+  }
+}
