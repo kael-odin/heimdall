@@ -1,7 +1,7 @@
 /** Controlled execution tests: real runner/scoring and captured PNGs, no browser process or network. */
-import test from 'node:test';
+import test, { after as afterAll } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -15,6 +15,9 @@ import { browserFixedFixture } from './fixtures/acceptance-browser-fixed.mjs';
 import { copy } from './fixtures/acceptance-browser-organized-candidate.mjs';
 
 const OUTPUT = fileURLToPath(new URL('../workspace/_runs/d3-fixed-runner-tests/', import.meta.url));
+// 每个用例各建一个随机子目录却从不清理：每跑一次全量测试，真实 core/workspace/_runs/ 下就多几百个文件。
+// 跑完整体清掉；要留着排查失败现场，就设 D3_FIXED_RUNNER_KEEP_OUTPUT=1。
+afterAll(async () => { if (!process.env.D3_FIXED_RUNNER_KEEP_OUTPUT) await rm(OUTPUT, { recursive: true, force: true, maxRetries: 3 }).catch(() => {}); });
 async function output() { const dir = join(OUTPUT, randomUUID()); await mkdir(dir, { recursive: true }); return dir; }
 function fakeBrowser(t, fixture, options = {}) {
   const visited = [], handlers = new Map(), pending = new Set(); let closes = 0, contexts = 0;
