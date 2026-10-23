@@ -66,7 +66,7 @@ button.rail-target:hover { color: var(--accent); text-decoration: underline; tex
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 85%, transparent), transparent);
   animation: rail-sweep 1.3s var(--ease) infinite; }
 @keyframes rail-sweep { from { transform: translateX(-100%); } to { transform: translateX(182%); } }
-@keyframes rail-sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+/* 这一份原先重复定义了 rail-sweep（to: 100%），把上面 182% 的覆盖掉，光带会停在半路 —— 已删。 */
 .rail-log { margin: 8px 0 0; font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; color: var(--text-faint);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: rail-log-in 200ms var(--ease); }
 @keyframes rail-log-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
