@@ -1,0 +1,77 @@
+{
+  "source": {
+    "id": "manual-api-requirements",
+    "revision": "v2",
+    "type": "manual"
+  },
+  "approved": true,
+  "contract": {
+    "id": "MANUAL-2",
+    "title": "响应包含需求规定的名称",
+    "method": "GET",
+    "path": "/missing-field",
+    "severity": "high",
+    "expect": {
+      "status": 200,
+      "contentType": "application/json",
+      "json": [
+        {
+          "pointer": "/code",
+          "kind": "equals",
+          "value": 0
+        },
+        {
+          "pointer": "/data/name",
+          "kind": "required"
+        },
+        {
+          "pointer": "/data/id",
+          "kind": "type",
+          "type": "integer"
+        },
+        {
+          "pointer": "/data/active",
+          "kind": "enum",
+          "values": [
+            true
+          ]
+        }
+      ],
+      "schema": {
+        "type": "object",
+        "required": [
+          "code",
+          "data"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "integer",
+            "const": 0
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "active"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "active": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "contractFingerprint": "4e89f62b6e31c8602c919188300fcd05a35bf88b731ba4bb9b3a3d4f6b75f2d2"
+}

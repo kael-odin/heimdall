@@ -4,16 +4,16 @@ import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync, readdirSyn
   renameSync, symlinkSync, unlinkSync, realpathSync, lstatSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { readSpecCandidateSource, SPEC_CANDIDATE_SOURCE_LIMITS } from '../src/acceptance/candidate-source.mjs';
 import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 import { createAcceptanceRun, acceptanceRunDir, finishAcceptanceRun, readAcceptanceSnapshot } from '../src/acceptance/store.mjs';
 import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
 import { previewOpenApi } from '../src/acceptance/openapi.mjs';
+import { requiredDir } from './fixtures/audit-evidence.mjs';
 
-const archiveRoot = fileURLToPath(new URL('../../docs/audits/2026-10-16/evidence/acceptance-catalog/console/run-evidence/', import.meta.url));
-const legacyRoot = fileURLToPath(new URL('../../docs/audits/2026-10-16/evidence/acceptance-spec/console/run-evidence/', import.meta.url));
+const archiveRoot = requiredDir('2026-10-16/evidence/acceptance-catalog/console/run-evidence');
+const legacyRoot = requiredDir('2026-10-16/evidence/acceptance-spec/console/run-evidence');
 const archivedRuns = ['ac-2424d160-cf8e-4991-8fba-c972a84becd1', 'ac-4a58013b-af7f-498a-a9bb-258c81bd9b6d',
   'ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743'];
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -40,7 +40,7 @@ function fixture(t, runId = archivedRuns[0]) {
   const parent = temporary(t), root = join(parent, 'acceptance');
   mkdirSync(root);
   const dir = join(root, runId);
-  cpSync(join(archiveRoot, runId), dir, { recursive: true });
+  cpSync(requiredDir('2026-10-16/evidence/acceptance-catalog/console/run-evidence/' + runId), dir, { recursive: true });
   return { parent, root, dir, runId, owner: facade(root) };
 }
 const read = (fixture, overrides = {}) => readSpecCandidateSource(fixture.runId, { root: fixture.root, owner: fixture.owner, ...overrides });

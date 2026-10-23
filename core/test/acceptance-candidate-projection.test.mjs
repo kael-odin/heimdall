@@ -4,7 +4,6 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { projectSpecBaselineCandidate, SPEC_CANDIDATE_LIMITS_V1, SUPPORTED_SPEC_VERIFIERS_V1 } from '../src/acceptance/candidate-projection.mjs';
 import { AcceptanceCatalogError, candidateProjectionOf } from '../src/acceptance/catalog-schema.mjs';
@@ -17,6 +16,7 @@ import { summarizeAcceptanceReport } from '../src/acceptance/report.mjs';
 import { previewOpenApi } from '../src/acceptance/openapi.mjs';
 import { startAcceptanceApiFixture } from './fixtures/acceptance-api.mjs';
 import { readSpecCandidateSource } from '../src/acceptance/candidate-source.mjs';
+import { requiredDir } from './fixtures/audit-evidence.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -337,7 +337,7 @@ test('human approval preview is complete or explicitly rejected when full expect
 });
 
 test('archived real passing/BUG runs project through the source reader with every source byte unchanged and no request', async () => {
-  const root = fileURLToPath(new URL('../../docs/audits/2026-10-16/evidence/acceptance-catalog/console/run-evidence/', import.meta.url));
+  const root = requiredDir('2026-10-16/evidence/acceptance-catalog/console/run-evidence');
   const runIds = ['ac-2424d160-cf8e-4991-8fba-c972a84becd1', 'ac-4a58013b-af7f-498a-a9bb-258c81bd9b6d',
     'ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743'];
   const tree = async (dir, prefix = '') => {
@@ -370,7 +370,7 @@ test('archived real passing/BUG runs project through the source reader with ever
 });
 
 test('archived B2.1 draft and BUG candidates retain their golden projection and all 14 original files', async () => {
-  const archive = fileURLToPath(new URL('../../docs/audits/2026-10-16/evidence/acceptance-baseline/console/', import.meta.url));
+  const archive = requiredDir('2026-10-16/evidence/acceptance-baseline/console');
   const root = join(archive, 'run-evidence'), catalogBytes = await readFile(join(archive, 'catalog-storage.json'));
   const catalog = JSON.parse(catalogBytes), archivedDigests = JSON.parse(await readFile(join(archive, 'run-file-digests.json')));
   const cases = [

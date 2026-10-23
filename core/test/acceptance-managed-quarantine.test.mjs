@@ -13,9 +13,10 @@ import { createAcceptanceRun, readAcceptanceRun, updateAcceptanceRun, finishAcce
 import { createManagedSpecDispatchReadContext } from '../src/acceptance/managed-dispatch-reader.mjs';
 import { readSpecCandidateSource } from '../src/acceptance/candidate-source.mjs';
 import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
+import { required } from './fixtures/audit-evidence.mjs';
 
 const core = fileURLToPath(new URL('..', import.meta.url));
-const preparedBytes = readFileSync(new URL('../../docs/audits/2026-10-16/evidence/acceptance-spec-execution-control/preparation/prepared-record.json', import.meta.url));
+const preparedBytes = readFileSync(required('2026-10-16/evidence/acceptance-spec-execution-control/preparation/prepared-record.json'));
 const prepared = JSON.parse(preparedBytes);
 const input = { name: 'quarantine legacy', mode: 'spec', targetUrl: 'http://127.0.0.1:1', spec: {
   source: { id: 'quarantine', revision: 'v1' }, approved: false,
