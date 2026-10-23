@@ -211,9 +211,10 @@ async function denyOriginal(original) {
   const ticket = guard.begin('deny'), captured = context(), exact = exactPending(original, captured, ticket, true);
   loading.deny = true; error.value = ''; notice.value = '';
   try {
-    if (!exact()) return;
+    // 入口处上下文已被改写时不要静默丢弃：让操作者看到"本次没有发送请求"。
+    if (!exact()) { if (current(ticket)) notice.value = '待核对记录已变化；本次没有发送永久拒绝请求，请重新核对原动作。'; return; }
     const raw = await captured.request(`/actions/${original.actionId}`, { signal: ticket.signal });
-    if (!exact()) return;
+    if (!exact()) { if (current(ticket)) notice.value = '核对期间原确认已变化；本次没有发送永久拒绝请求，请重新核对原动作。'; return; }
     let proof = await defectTicketAction(raw, original); if (!exact()) return;
     if (proof.outcome === 'unresolved') {
       const body = defectTicketDenyInput({ schemaVersion: 1, confirmed: true, original });
