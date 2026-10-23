@@ -28,6 +28,6 @@ D1 的 first-fstat 修正有自身 Linux 用例与原 Console 通过证据。该
 
 ## 原件归档
 
-整轮 run metadata、1,667,632 字节原日志、artifact metadata、原 ZIP 及完整提取附件均已归档，随 [D2 证据索引](evidence/acceptance-browser-candidates/README.md)发布。
+整轮 run metadata、1,667,632 字节原日志、artifact metadata、原 ZIP 及完整提取附件均已归档，随 [D2 证据索引](../../archive/audits/2026-10-17/evidence/acceptance-browser-candidates/README.md)发布。
 
 GitHub 返回的 artifact 原 ZIP 为 1,447,004 字节、163 项，SHA-256 为 `54d1b9d708e9313d801ed3706257967f02dea32253feb83fcf8ef9267a71a6fc`，与远端 metadata.digest 完全相同，ZIP CRC 通过。原 CI artifact 未包含 preparation 的临时根，不能声称保留了远端失败的全部文件系统现场；远端原日志与本机确定性复现分别保留。

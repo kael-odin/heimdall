@@ -35,7 +35,7 @@
 
 ## 证据与范围
 
-[本机完整证据](evidence/catalog-schema3/README.md)保留最终门禁、首轮完整 Core 失败、专项各轮、真实流程输出、直接可浏览截图、冻结源码和 SHA 清单。日志 gzip 及完整材料 tar 均回环核对原始字节，提交前再独立核对清单和 Git 暂存字节。完整 Core 的 9 个 skip 保留为 skip，不计为已通过；此前 Browser reader 提交的独立 Linux CI 也不作为本片的 CI 结果。
+[本机完整证据](../../archive/audits/2026-10-17/evidence/catalog-schema3/README.md)保留最终门禁、首轮完整 Core 失败、专项各轮、真实流程输出、直接可浏览截图、冻结源码和 SHA 清单。日志 gzip 及完整材料 tar 均回环核对原始字节，提交前再独立核对清单和 Git 暂存字节。完整 Core 的 9 个 skip 保留为 skip，不计为已通过；此前 Browser reader 提交的独立 Linux CI 也不作为本片的 CI 结果。
 
 证据包实际为 249 文件、8,514,055 字节；8 个 tar 包含 179 份原件，225 份副本 / gzip 回环通过。协调者使用独立脚本再次检查 247 项清单、完整文件集合、225 份来源与副本及 8 包解压后的 179 份文件，结果一致；76 份源码快照、32 张 PNG 和 14 条布局记录均按实际集合计数。完成凭据为最后独占写入的 `COMPLETED.json`，包内清单明确排除自身和这份凭据。
 

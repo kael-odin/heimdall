@@ -66,7 +66,7 @@ Core 的 12 项跳过为 Windows 上不适用的 10 项 Linux / POSIX 文件、F
 | 来源与浏览器健康 | 29 份来源文件 SHA 不变，保存后未重访来源，storage / href 不含来源全文 sentinel；pageErrors 0，5 条 console errors 均逐条对应受控 503，不能称零 console errors。 |
 | 视口与目视 | 1440×1000 和 390×844、明暗主题四图均实际打开；采样 documentWidth 等于视口。B 手机首屏只覆盖回执上半部，下部说明由完整 DOM 证明。 |
 
-独立审查见[最终 Browser 复核](evidence/acceptance-browser-start-resolution/round7-final-browser-review.md)。四张本次截图可直接打开：[A 桌面亮色](evidence/acceptance-browser-start-resolution/resolution-A-desktop-light.png)、[B 手机暗色](evidence/acceptance-browser-start-resolution/resolution-B-mobile-dark.png)、[恢复后桌面暗色](evidence/acceptance-browser-start-resolution/resolution-recovered-desktop-dark.png)、[新批准手机亮色终态](evidence/acceptance-browser-start-resolution/resolution-fresh-mobile-light.png)。round4、round6 和 round7 增强预检的 9/9 继续只作开发证据。
+独立审查见[最终 Browser 复核](../../archive/audits/2026-10-17/evidence/acceptance-browser-start-resolution/round7-final-browser-review.md)。四张本次截图可直接打开：[A 桌面亮色](../../archive/audits/2026-10-17/evidence/acceptance-browser-start-resolution/resolution-A-desktop-light.png)、[B 手机暗色](../../archive/audits/2026-10-17/evidence/acceptance-browser-start-resolution/resolution-B-mobile-dark.png)、[恢复后桌面暗色](../../archive/audits/2026-10-17/evidence/acceptance-browser-start-resolution/resolution-recovered-desktop-dark.png)、[新批准手机亮色终态](../../archive/audits/2026-10-17/evidence/acceptance-browser-start-resolution/resolution-fresh-mobile-light.png)。round4、round6 和 round7 增强预检的 9/9 继续只作开发证据。
 <!-- /FINAL_BROWSER_RESULTS -->
 
 真实 smoke 的设计包含以下可核验边界：
@@ -92,9 +92,9 @@ Core 的 12 项跳过为 Windows 上不适用的 10 项 Linux / POSIX 文件、F
 ## 证据、发布与 CI
 
 <!-- PUBLICATION_RESULTS -->
-最终证据已发布到[证据目录](evidence/acceptance-browser-start-resolution/README.md)，[INDEX](evidence/acceptance-browser-start-resolution/INDEX.json)与[封存计划](evidence/acceptance-browser-start-resolution/publication-plan.json)固定输入、最终运行根、全部门禁及独立目视审查。42 组原件共 1608 文件，加 600 项冻结源码，ZIP 共 **2208 条目 / 41,301,374 bytes 展开内容**。公开目录共 16 文件，包含最终独立审查和四张截图的直接可读副本。
+最终证据已发布到[证据目录](../../archive/audits/2026-10-17/evidence/acceptance-browser-start-resolution/README.md)，[INDEX](../../archive/audits/2026-10-17/evidence/acceptance-browser-start-resolution/INDEX.json)与[封存计划](../../archive/audits/2026-10-17/evidence/acceptance-browser-start-resolution/publication-plan.json)固定输入、最终运行根、全部门禁及独立目视审查。42 组原件共 1608 文件，加 600 项冻结源码，ZIP 共 **2208 条目 / 41,301,374 bytes 展开内容**。公开目录共 16 文件，包含最终独立审查和四张截图的直接可读副本。
 
-[完整 ZIP](evidence/acceptance-browser-start-resolution/complete-evidence.zip) 为 **21,272,748 bytes**，SHA-256 `140a15f9759e2ddbdb390d14a80578719303329c990d6de618411937e2562128`。发布器逐项核验原件、重复读取全部输入，并回读 ZIP CRC / 每条 bytes 与 SHA。另一个不导入发布器的独立工具已通过工作区完整文件集、2208 条目、1608 原件、600 源码、12 门禁及四图目视记录核验；暂存时继续从 Git blob 核对同一源码与公开证据，不以工作区通过代替暂存字节验证。
+[完整 ZIP](../../archive/audits/2026-10-17/evidence/acceptance-browser-start-resolution/complete-evidence.zip) 为 **21,272,748 bytes**，SHA-256 `140a15f9759e2ddbdb390d14a80578719303329c990d6de618411937e2562128`。发布器逐项核验原件、重复读取全部输入，并回读 ZIP CRC / 每条 bytes 与 SHA。另一个不导入发布器的独立工具已通过工作区完整文件集、2208 条目、1608 原件、600 源码、12 门禁及四图目视记录核验；暂存时继续从 Git blob 核对同一源码与公开证据，不以工作区通过代替暂存字节验证。
 
 失败和中断现场均按原件归档，7 个精确 `chromium-profile` 子树排除出包但仍保留本机。D3 已公开的 69 MB 包只引用，未重复嵌套。可读副本与封存计划集合必须完全一致；仅有一份审查 Markdown、机器等待目视状态或旧预检截图均不能满足发布合同。工作区 / 暂存核验记录另保留于本机 `d4-publication-20261017/`，不回写已封存原件。
 <!-- /PUBLICATION_RESULTS -->

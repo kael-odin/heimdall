@@ -175,7 +175,7 @@ Heimdall 目前最有实用价值的方向是：**为自有或获授权的网站
 
 | 编号 | 当前状态 | 修复证据与未关闭部分 |
 | --- | --- | --- |
-| P1-01 | **代码修复，最新指纹完整复验 2 页；其余历史待重算** | 缺失高度/宽度计入像素差异；`verify.json` v2 记录尺寸、覆盖率和缺失像素。2026-10-15 隔离批处理仅 `angular.dev/ai` 90.55%（B）及 `home` 94.80%（B）完成三视口测量；`apify.com/ideas`、`jobs`、`apify-instagram-scraper` 均因渲染未收敛而没有有效总分。此前 Apify 的 79.81%、90.74% 和长页 88.0% 属于旧指纹阶段的历史测量，不能替代最新结果。另有 402 页未尝试，原工作区旧记录未改写。见[最新隔离复验](evidence/historical-v2-final-20261015/README.md)和[先前快照](evidence/historical-v2-batch/README.md)。 |
+| P1-01 | **代码修复，最新指纹完整复验 2 页；其余历史待重算** | 缺失高度/宽度计入像素差异；`verify.json` v2 记录尺寸、覆盖率和缺失像素。2026-10-15 隔离批处理仅 `angular.dev/ai` 90.55%（B）及 `home` 94.80%（B）完成三视口测量；`apify.com/ideas`、`jobs`、`apify-instagram-scraper` 均因渲染未收敛而没有有效总分。此前 Apify 的 79.81%、90.74% 和长页 88.0% 属于旧指纹阶段的历史测量，不能替代最新结果。另有 402 页未尝试，原工作区旧记录未改写。见[最新隔离复验](evidence/historical-v2-final-20261015/README.md)和[先前快照](../../archive/audits/2026-10-14/evidence/historical-v2-batch/README.md)。 |
 | P1-02 | **新任务修复，历史已只读盘点** | query、分隔符与长路径得到稳定不同页名；旧 manifest 的原目录仍可解析；队列、链接与控制台按新身份衔接。旧 atlas 中确认 apify 与 astro 各有一条 query URL 因旧同名规则没有对应克隆；缺失内容仍须隔离重锻。 |
 | P1-03 | **修复并经 CDP 复验** | 切站重置上下文、异步响应代次校验、跨站行操作守卫；跨站 fixture 与本轮带端口真克隆均显示正确清单。 |
 | P1-04 | **新任务修复，旧记录保留** | 任务 ID 改 UUID，存储层拒绝不同身份覆盖，跨重启测试通过。旧 `f001` 等曾混写的历史行未改写，不能用于精确历史统计。 |
@@ -224,7 +224,7 @@ Heimdall 目前最有实用价值的方向是：**为自有或获授权的网站
 
 隔离批处理脚本 `core/scripts/verify-historical-batch.mjs` 保持原件只读，按输入 SHA-256、验证器与运行依赖、Chromium 可执行文件 SHA-256、Node/平台信息生成指纹续跑；原子进度、运行锁、路径重解析点拒绝、预算与部分失败的非零退出均有定向测试。源会话缺失时不得复用旧有效分；续跑核对验证 JSON 与完整/分段差异图的尺寸和 SHA-256；`remaining` 包含未测页，只有全部测完才写 `complete`。指纹仍不涵盖所有操作系统环境差异。批处理固定传入 `--no-interactions`，因此这里的完整测量仅指三视口视觉验证。复制量限制针对单次选中输入，并非整个历史数据根的总容量限制。运行状态保存在被 Git 忽略的 `core/workspace/_runs/historical-v2-batch/`。
 
-[2026-10-14 旧批处理快照](evidence/historical-v2-batch/README.md)曾记录 4 页完整测量与 1 页未测，随后[收敛门禁诊断](evidence/historical-v2-settle-diagnostic/README.md)定位离屏原生懒图造成的误阻断；两份快照只供追溯。修正图片判定、保留多轮高度收敛与在途请求门禁后，[2026-10-15 最新快照](evidence/historical-v2-final-20261015/README.md)及其[页面 CSV](evidence/historical-v2-final-20261015/pages.csv)、[视口 CSV](evidence/historical-v2-final-20261015/viewports.csv)显示：`angular.dev/ai` **90.55%（B）**、`angular.dev/home` **94.80%（B）**完整测量；`apify.com/ideas`、`jobs`、`apify-instagram-scraper` 在采集窗口内未收敛，正式总分与评级均为空。长页手机源图 **33,465px**，已用分段截图比较，不再受旧 25,000px 单张截图限制；它当前未测的原因是渲染未稳定。407 页中另有 **402 页尚未尝试**，外加 1 条不计入分母的 `no_clone`；`remaining=405` 含这 3 个未测页。旧 atlas 还证实 apify 和 astro 的 query 页同名缺克隆，以及 apple 异源节点和 thordata 未完成目录，均保留现场。
+[2026-10-14 旧批处理快照](../../archive/audits/2026-10-14/evidence/historical-v2-batch/README.md)曾记录 4 页完整测量与 1 页未测，随后[收敛门禁诊断](evidence/historical-v2-settle-diagnostic/README.md)定位离屏原生懒图造成的误阻断；两份快照只供追溯。修正图片判定、保留多轮高度收敛与在途请求门禁后，[2026-10-15 最新快照](evidence/historical-v2-final-20261015/README.md)及其[页面 CSV](evidence/historical-v2-final-20261015/pages.csv)、[视口 CSV](evidence/historical-v2-final-20261015/viewports.csv)显示：`angular.dev/ai` **90.55%（B）**、`angular.dev/home` **94.80%（B）**完整测量；`apify.com/ideas`、`jobs`、`apify-instagram-scraper` 在采集窗口内未收敛，正式总分与评级均为空。长页手机源图 **33,465px**，已用分段截图比较，不再受旧 25,000px 单张截图限制；它当前未测的原因是渲染未稳定。407 页中另有 **402 页尚未尝试**，外加 1 条不计入分母的 `no_clone`；`remaining=405` 含这 3 个未测页。旧 atlas 还证实 apify 和 astro 的 query 页同名缺克隆，以及 apple 异源节点和 thordata 未完成目录，均保留现场。
 
 ### 7.5 尚未关闭的产品边界
 
