@@ -431,6 +431,22 @@ function authorized(req, u, res, scope = '') {
   if (cookie) { AUTH_SESSIONS.delete(cookie); AUTH_SESSION_SCOPES.delete(cookie); }
   return false;
 }
+/**
+ * 写操作（改配置、真删除、真回收、开浏览器登录、清登录态、拿已存的 Key 打外网）的统一守卫。
+ *
+ * 设置了 HEIMDALL_TOKEN 时它已经在前面把 /api/* 全拦了一遍，这里必然有合法凭据；
+ * 没设置时只允许本机回环 —— 否则把引擎绑到 0.0.0.0 共享出去的同事，任何内网人都能
+ * 替换你的模型端点、删你的产物。以前每个写接口各写一遍，其中一处还把条件写反
+ * （apply && !isLoopback && 有 token 才拒），于是"没设 Token + 非本机"反而放行。
+ */
+function requireLocalWrite(req) {
+  if (AUTH_TOKEN || isLoopback(req)) return true;
+  return false;
+}
+function refuseRemoteWrite(res, what) {
+  return json(res, 403, { error: `${what}需要 HEIMDALL_TOKEN；未设置时仅允许本机回环访问` });
+}
+
 function issueAuthSession(res, existing, scope = '') {
   const now = Date.now();
   for (const [id, expires] of AUTH_SESSIONS) if (expires <= now) { AUTH_SESSIONS.delete(id); AUTH_SESSION_SCOPES.delete(id); }
@@ -1473,9 +1489,7 @@ const handleRequest = async (req, res) => {
     if (req.method === 'PUT') {
       // 安全：未设 HEIMDALL_TOKEN 时只允许本机回环改写。
       // 否则把引擎绑到 0.0.0.0 共享出去后，任何内网同事都能替换你的模型端点与 Key。
-      if (!AUTH_TOKEN && !isLoopback(req)) {
-        return json(res, 403, { error: '写配置需要 HEIMDALL_TOKEN；未设置时仅允许本机回环访问' });
-      }
+      if (!requireLocalWrite(req)) return refuseRemoteWrite(res, '写配置');
       let body;
       try { body = JSON.parse((await readBody(req)) || '{}'); }
       catch { return json(res, 400, { error: 'invalid json' }); }
@@ -1492,6 +1506,8 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && u.pathname === '/api/llm/test') {
+    // 会用已保存的 Key 向请求里给的 baseUrl 发一次真实调用：不能让内网任意人借这个口子把 Key 发去自己的地址。
+    if (!requireLocalWrite(req)) return refuseRemoteWrite(res, '测试模型服务');
     // 支持「草稿配置」：传 baseUrl/apiKey/model/protocol 就按草稿测，不落盘 —— 先测通再保存
     let draft = null;
     try { draft = JSON.parse((await readBody(req)) || '{}'); } catch { draft = {}; }
@@ -1715,6 +1731,7 @@ const handleRequest = async (req, res) => {
 
   // 登录态：开一个可见浏览器让人手动登录一次，之后所有抓取复用（见 src/session/）
   if (req.method === 'POST' && u.pathname === '/api/session/login') {
+    if (!requireLocalWrite(req)) return refuseRemoteWrite(res, '打开登录浏览器');
     readJsonBody(req, res, (b) => {
       const host = String(b.host ?? '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/.*$/, '').toLowerCase();
       if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) return json(res, 400, { error: 'invalid host' });
@@ -1734,6 +1751,7 @@ const handleRequest = async (req, res) => {
     return json(res, 200, sessionInfo(host));
   }
   if (req.method === 'DELETE' && u.pathname.startsWith('/api/session/')) {
+    if (!requireLocalWrite(req)) return refuseRemoteWrite(res, '清除登录态');
     const host = decodeURIComponent(u.pathname.slice('/api/session/'.length));
     if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
     return json(res, 200, clearSession(host));
@@ -1982,7 +2000,7 @@ const handleRequest = async (req, res) => {
     const apply = body.apply === true;
     if (!/^[a-z0-9.-]+$/i.test(host) || !/^[a-z0-9.-]+$/.test(from) || !/^[a-z0-9.-]+$/.test(to)) return json(res, 400, { error: 'bad host/from/to' });
     if (from === to) return json(res, 400, { error: 'same' });
-    if (apply && !isLoopback(req) && AUTH_TOKEN && req.headers['x-heimdall-token'] !== AUTH_TOKEN) return json(res, 403, { error: 'forbidden' });
+    if (apply && !requireLocalWrite(req)) return refuseRemoteWrite(res, '域名替换');
     const t = makeTask('replace-domain', 'https://' + host);
     t.host = host;
     t.label = (apply ? '替换域名 · ' : '预览替换 · ') + from + ' → ' + to;
@@ -2000,10 +2018,7 @@ const handleRequest = async (req, res) => {
     let body = {};
     try { body = JSON.parse((await readBody(req)) || '{}'); } catch { return json(res, 400, { error: 'invalid json' }); }
     const apply = body.apply === true;
-    // 未设 token 时，写操作只允许本机回环。
-    if (apply && !AUTH_TOKEN && !isLoopback(req)) {
-      return json(res, 403, { error: '交付包隔离需要 HEIMDALL_TOKEN；未设置时仅允许本机回环访问' });
-    }
+    if (apply && !requireLocalWrite(req)) return refuseRemoteWrite(res, '交付包隔离');
     if (apply && body.confirm !== 'HEIMDALL_DELIVER_PRUNE') {
       return json(res, 400, { error: '交付包隔离需要 confirm=HEIMDALL_DELIVER_PRUNE' });
     }
@@ -2037,7 +2052,7 @@ const handleRequest = async (req, res) => {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
       return json(res, 400, { error: 'invalid quarantine id' });
     }
-    if (!AUTH_TOKEN && !isLoopback(req)) return json(res, 403, { error: 'forbidden' });
+    if (!requireLocalWrite(req)) return refuseRemoteWrite(res, '该写操作');
     if (deliverTask?.status === 'running' || deliverRestoreRunning) {
       return json(res, 409, { error: '另一项交付包操作正在进行，请稍后重试' });
     }
@@ -2054,9 +2069,7 @@ const handleRequest = async (req, res) => {
     let body = {};
     try { body = JSON.parse((await readBody(req)) || '{}'); } catch { return json(res, 400, { error: 'invalid json' }); }
     const apply = body.apply === true;
-    if (apply && !AUTH_TOKEN && !isLoopback(req)) {
-      return json(res, 403, { error: '真回收需要 HEIMDALL_TOKEN；未设置时仅允许本机回环访问' });
-    }
+    if (apply && !requireLocalWrite(req)) return refuseRemoteWrite(res, '真回收');
     if (apply && body.confirm !== 'HEIMDALL_CAS_GC') {
       return json(res, 400, { error: '真回收需要 confirm=HEIMDALL_CAS_GC' });
     }
