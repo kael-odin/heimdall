@@ -1,7 +1,0 @@
-[verify] page ideas -> https://apify.com/ideas
-@@EVENT@@{"kind":"verify-viewport","page":"ideas","viewport":"375x812","score":0.5841}
-@@EVENT@@{"kind":"verify-viewport","page":"ideas","viewport":"768x1024","score":0.634}
-@@EVENT@@{"kind":"verify-viewport","page":"ideas","viewport":"1440x900","score":0.4966}
-[verify] ideas overall 未完整测量  | 最低 1440x900 49.7% | 交互 n/a
-@@EVENT@@{"kind":"verify-page","page":"ideas","overall":null,"measured":false,"grade":null,"minViewport":{"name":"1440x900","score":0.4966,"grade":"D","coverageRatio":0.5041,"sourceSize":{"width":1440,"height":11326},"cloneSize":{"width":1440,"height":5710},"heightDelta":5616,"missingPixels":8087040},"functional":null,"error":"375x812: render did not settle"}
-@@EVENT@@{"kind":"verify-done","host":"apify.com","page":"ideas","pages":1,"measured":0,"untested":1,"average":null,"threshold":0,"failedPages":[{"page":"ideas","error":"375x812: render did not settle"}],"passed":false}

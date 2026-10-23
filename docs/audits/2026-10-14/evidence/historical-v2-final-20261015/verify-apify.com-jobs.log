@@ -1,7 +1,0 @@
-[verify] page jobs -> https://apify.com/jobs
-@@EVENT@@{"kind":"verify-viewport","page":"jobs","viewport":"375x812","score":0.8866}
-@@EVENT@@{"kind":"verify-viewport","page":"jobs","viewport":"768x1024","score":0.8629}
-@@EVENT@@{"kind":"verify-viewport","page":"jobs","viewport":"1440x900","score":0.9402}
-[verify] jobs overall 未完整测量  | 最低 768x1024 86.3% | 交互 n/a
-@@EVENT@@{"kind":"verify-page","page":"jobs","overall":null,"measured":false,"grade":null,"minViewport":{"name":"768x1024","score":0.8629,"grade":"B","coverageRatio":0.9837,"sourceSize":{"width":768,"height":10877},"cloneSize":{"width":768,"height":10700},"heightDelta":177,"missingPixels":135936},"functional":null,"error":"375x812: render did not settle"}
-@@EVENT@@{"kind":"verify-done","host":"apify.com","page":"jobs","pages":1,"measured":0,"untested":1,"average":null,"threshold":0,"failedPages":[{"page":"jobs","error":"375x812: render did not settle"}],"passed":false}

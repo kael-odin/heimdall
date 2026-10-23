@@ -1,7 +1,0 @@
-[verify] page home -> https://angular.dev/
-@@EVENT@@{"kind":"verify-viewport","page":"home","viewport":"375x812","score":0.9153}
-@@EVENT@@{"kind":"verify-viewport","page":"home","viewport":"768x1024","score":0.9461}
-@@EVENT@@{"kind":"verify-viewport","page":"home","viewport":"1440x900","score":0.9652}
-[verify] home overall 94.8% B | 最低 375x812 91.5% | 交互 n/a
-@@EVENT@@{"kind":"verify-page","page":"home","overall":0.948,"measured":true,"grade":"B","minViewport":{"name":"375x812","score":0.9153,"grade":"B","coverageRatio":0.9839,"sourceSize":{"width":375,"height":7565},"cloneSize":{"width":375,"height":7689},"heightDelta":124,"missingPixels":46500},"functional":null,"error":null}
-@@EVENT@@{"kind":"verify-done","host":"angular.dev","page":"home","pages":1,"measured":1,"untested":0,"average":0.948,"threshold":0,"failedPages":[],"passed":true}
