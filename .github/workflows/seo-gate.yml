@@ -91,11 +91,14 @@ jobs:
             fi
             extra=""
             if [ "${UPDATE_BASELINE:-false}" = "true" ]; then extra="--update-baseline"; fi
+            # 更新基线时不能再带 --fail-on-regression：刚覆盖完基线，diff 里"基准缺失/变化"
+            # 会把整轮判红，于是"更新"这个动作永远报失败。更新模式只要求：能采到页、能写文件。
+            gate="--require-baseline --fail-on-regression"
+            if [ "${UPDATE_BASELINE:-false}" = "true" ]; then gate=""; fi
             node src/seo/audit.mjs "$host" \
               --max "$SEO_MAX" \
               --baseline "../config/seo-baseline/$key.json" \
-              --require-baseline \
-              --fail-on-regression \
+              $gate \
               $extra || failed=1
             echo "::endgroup::"
           done < "$RUNNER_TEMP/targets.txt"
