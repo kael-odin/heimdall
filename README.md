@@ -246,6 +246,7 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
 | [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |
 | [docs/audits/2026-10-16/project-cleanup.md](docs/audits/2026-10-16/project-cleanup.md) | 2026-10-16 中间产物清理、可恢复归档和 CAS 回收预览 | 查看本轮清理范围 |
+| [docs/audits/2026-10-22/README.md](docs/audits/2026-10-22/README.md) | 大白话仓库审查：成熟度打分、已修问题、待办清单与四周路线 | 想快速知道项目现在什么水平、下一步做什么 |
 
 `docs/archive/` 存放阶段性的验收报告与审查记录（历史证据，不再更新）。
 
