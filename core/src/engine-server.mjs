@@ -67,6 +67,7 @@ import { createDefectTicketService } from './acceptance/defect-ticket-service.mj
 import { handleDefectTicketRequest } from './acceptance/defect-ticket-api.mjs';
 import { createManagedSpecDispatchReadContext } from './acceptance/managed-dispatch-reader.mjs';
 import { managedRunProvenanceOf } from './acceptance/managed-run-schema.mjs';
+import { explainError } from './errors.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 let acceptanceOwner;
@@ -230,7 +231,11 @@ const readJsonBody = (req, res, cb, limit = 64 * 1024) => {
       console.error('[engine] route handler failed:', e?.stack ?? e);
       if (!res.headersSent) {
         const refused = e?.code === 'origin-conflict';
-        json(res, refused ? 400 : 500, { error: refused ? String(e.message ?? e).slice(0, 200) : 'internal error' });
+        // 给前端一句人话 + 下一步；原始信息仍在 error 里（详情折叠里展示）。
+        const explained = explainError(e);
+        json(res, refused ? 400 : 500, refused
+          ? { error: String(e.message ?? e).slice(0, 200) }
+          : { error: 'internal error', hint: explained.hint, kind: explained.kind });
       } else { try { res.end(); } catch {} }
     }
   });
