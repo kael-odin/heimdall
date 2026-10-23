@@ -3,16 +3,24 @@ services:
     build: .
     image: heimdall:latest
     container_name: heimdall
+    # 默认只发布到本机回环：容器内部的 0.0.0.0 是给 Docker 网桥用的，
+    # 8080 之类暴露到局域网就等于把"改配置 / 删产物 / 真回收"一起交出去。
+    # 要共享给同事，请同时改这三处：
+    #   ports: "0.0.0.0:8900:8900"
+    #   environment.HEIMDALL_TOKEN: <一个够长的口令>
+    #   environment.HEIMDALL_TRUSTED_HOSTS: <对外域名或 IP>
+    # （只改端口不设 Token，远端写操作会被引擎以 403 拒绝——这是设计如此。）
     ports:
-      - "8900:8900"
+      - "127.0.0.1:8900:8900"
     environment:
       HEIMDALL_HOST: 0.0.0.0
       HEIMDALL_DATA_DIR: /data
       HEIMDALL_CONSOLE_DIR: /app/console/dist
       HEIMDALL_LLM: "0"
-      # 内网共享时建议开启鉴权（同时把地址填到控制台「设置 → 引擎 Token」）：
+      # 内网共享时取消注释，并把同样的值填到控制台「设置 → 引擎 Token」：
       # HEIMDALL_TOKEN: change-me
-      # HEIMDALL_CORS_ORIGIN: http://your-host:8900
+      # HEIMDALL_TRUSTED_HOSTS: heimdall.example.internal
+      # HEIMDALL_CORS_ORIGIN: http://heimdall.example.internal:8900
     volumes:
       - heimdall-data:/data
     restart: unless-stopped
