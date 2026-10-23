@@ -11,6 +11,7 @@
  *
  * 用法: node src/crawler/linker.mjs <host>
  */
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, basename, relative, sep } from 'node:path';
 import { sanitizeHar, indexHar, matchHar } from '../live/har.mjs';
@@ -47,7 +48,6 @@ for (const name of pages) {
 
 // ---------- 资产下载（跨页共享缓存） ----------
 const dlCache = new Map();       // absUrl → { rel, srcFile }（跨页共享内容，但每页都要落一份）
-let dlSeq = 0;
 let currentHar = null;           // 当前页的 HAR 索引（原站重部署后仍可回放字体/图片）
 let currentRefIndex = {};        // clone/ref-index.json：{ cssFile: { rawRef: { rel, candidates } } }
 function loadHarIndex(pageDir) {
@@ -71,6 +71,32 @@ function originalForRef(refName, pageOrigin) {
   return null;
 }
 const extOfCt = (ct, url = '', body = null) => extFrom(url, ct, body);
+
+/**
+ * 按**整个属性值**替换 src/href/srcset 里的引用，绝不按子串。
+ *
+ * 旧实现 `html.split(bad).join(good)`：`/a.png` 的修复会把 `/x/a.png` 也改掉
+ * （`/xassets/a.png`），把一条本来有效的引用改成坏链 —— 修一个坏链、造一个坏链。
+ * 子串匹配在整个 HTML 上更是无边界：属性值、正文文本、内联脚本字符串都会中招。
+ */
+function replaceAttrValue(html, bad, good) {
+  if (!bad) return html;
+  return html.replace(/\b(src|href)="([^"]*)"/gi, (tag, name, value) => (
+    value === bad ? `${name}="${good}"` : tag
+  ));
+}
+
+/**
+ * 下载资产的文件名：URL 的 hash，而不是进程内的自增序号。
+ *
+ * `dlSeq` 每个进程从 0 开始，重跑 linker 时 `linked-000.png` 会被另一个 URL 的同名文件
+ * 覆盖 —— 而旧轮的 HTML 里**还在引用** linked-000.png（跨页共享缓存也已失效，缓存键是 absUrl
+ * 不是文件名）。换成 hash 后，同一 URL 永远是同一个名字，重跑是幂等的。
+ */
+function linkedName(absUrl, ext, prefix = 'linked') {
+  return `${prefix}-${createHash('sha1').update(String(absUrl)).digest('hex').slice(0, 12)}.${ext}`;
+}
+
 async function fetchAsset(absUrl, dir) {
   const hit = dlCache.get(absUrl);
   if (hit) {
@@ -85,7 +111,7 @@ async function fetchAsset(absUrl, dir) {
   if (harHit?.body) {
     const body = Buffer.from(harHit.body, 'base64');
     if (body.length && !isSoftHtml(harHit.mimeType, absUrl)) {
-      const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extFrom(absUrl, harHit.mimeType, body)}`;
+      const name = linkedName(absUrl, extFrom(absUrl, harHit.mimeType, body));
       mkdirSync(join(dir, 'assets'), { recursive: true });
       const dest = join(dir, 'assets', name);
       writeFileAtomic(dest, body);
@@ -102,7 +128,7 @@ async function fetchAsset(absUrl, dir) {
     if (isSoftHtml(ct, absUrl)) throw new Error('soft-404 (text/html)');
     const buf = Buffer.from(await res.arrayBuffer());
     if (!buf.length) throw new Error('empty body');
-    const name = `linked-${String(dlSeq++).padStart(3, '0')}.${extFrom(absUrl, ct, buf)}`;
+    const name = linkedName(absUrl, extFrom(absUrl, ct, buf));
     mkdirSync(join(dir, 'assets'), { recursive: true });
     const dest = join(dir, 'assets', name);
     writeFileAtomic(dest, buf);
@@ -284,7 +310,7 @@ for (const name of pages) {
       const harHit = currentHar && matchHar(currentHar, 'GET', absForHar);
       if (harHit?.body) {
         const sub = /font|woff|ttf|otf/i.test(harHit.mimeType ?? '') || /\.(woff2?|ttf|otf|eot)($|\?)/i.test(ref) ? 'styles' : 'assets';
-        const name = 'har-' + String(dlSeq++).padStart(3, '0') + '.' + extOfCt(harHit.mimeType, ref, Buffer.from(harHit.body, 'base64'));
+        const name = linkedName(absForHar, extOfCt(harHit.mimeType, ref, Buffer.from(harHit.body, 'base64')), 'har');
         mkdirSync(join(dir, sub), { recursive: true });
         writeFileAtomic(join(dir, sub, name), Buffer.from(harHit.body, 'base64'));
         resolved.set(ref, '../' + sub + '/' + name);
@@ -344,7 +370,7 @@ for (const name of pages) {
     }
     if (fix) { fixes[v] = fix; stats.missingFixed++; } else stats.missingLocal.push(rel);
   }
-  for (const [bad, good] of Object.entries(fixes)) html = html.split(bad).join(good);
+  for (const [bad, good] of Object.entries(fixes)) html = replaceAttrValue(html, bad, good);
 
   // 4) CSS 资产收口：双前缀归一 + 缺失 ref 跨页借用
   const cssPath = join(dir, 'styles', 'cssom.css');

@@ -24,21 +24,68 @@ const ENV = getEnv();
 const MIN_STATIC = Number(ENV.FIXUP_MIN_STATIC ?? 0.002);      // 静态差异像素占视口比低于此 = 没有可修内容
 const MIN_REFINABLE = Number(ENV.FIXUP_MIN_REFINABLE ?? 0.3);  // 静态差异占全部差异比低于此 = 主要是动画噪声
 
-const DIR = requireArg(process.argv[2], 'node src/differ/fixup.mjs <pageDir> [rounds]', '页面目录');
-const MAX_ROUNDS = Number(process.argv[3] ?? 2);
-const CLONE_HTML = join(DIR, 'clone', 'index.html');
-const FIXES_CSS = join(DIR, 'clone', 'styles', 'fixes.css');
+const USAGE = 'node src/differ/fixup.mjs <pageDir> [rounds]';
+
+/** 页面目录下的各路径 —— 参数化是为了能导出 `ensureFixupLink(pageDir)`，不依赖 CLI 参数 */
+const cloneIndex = (dir) => join(dir, 'clone', 'index.html');
+const fixesCssPath = (dir) => join(dir, 'clone', 'styles', 'fixes.css');
 const FIXES_LINK = '<link rel="stylesheet" href="styles/fixes.css">';
+
+/**
+ * 多视口克隆里**真正被打开的那几页**。
+ *
+ * build_clone 有 375/768 快照时，`clone/index.html` 不是页面而是视口选择器
+ * （`location.replace(...index-375.html)`），内容全在 index-375/768/1440.html 里。
+ * 只往 index.html 里塞 link 等于什么都没修 —— 选择器一跳转就丢了。
+ */
+const VIEWPORT_ENTRIES = ['index-375.html', 'index-768.html', 'index-1440.html'];
+
+/**
+ * 把 `<link rel=stylesheet href=styles/fixes.css>` 补进克隆页。
+ *
+ * 为什么需要它：fixup 每轮把 AI 补丁写进 `clone/styles/fixes.css` 并给 index.html
+ * 注入 link，但 `build_clone` 是**整页重写** —— 重建（multi-snapshot --all、rescore、
+ * 任何一次重抓）之后 index.html 回到没有 link 的样子，fixes.css 还躺在磁盘上，
+ * `fixup-history.json` 也还记着 `kept:true`。于是界面上"AI 修复已保留"，产物里却
+ * 没有那条引用：补丁文件在，但没有任何页面加载它。
+ *
+ * 只在 `styles/fixes.css` 存在时才补（不存在的引用 = 一次 404，且会让"没跑过修复"
+ * 的页面看起来像跑过）。幂等：已有引用就跳过；每次 **build_clone 收尾**调用一次。
+ *
+ * @returns {{ linked: string[], missing: boolean }}
+ */
+export function ensureFixupLink(pageDir) {
+  const dir = String(pageDir ?? '');
+  if (!dir) throw new Error('ensureFixupLink(pageDir): pageDir is required');
+  if (!existsSync(fixesCssPath(dir))) return { linked: [], missing: true };
+  const targets = [cloneIndex(dir), ...VIEWPORT_ENTRIES.map(n => join(dir, 'clone', n))];
+  const linked = [];
+  for (const file of targets) {
+    if (!existsSync(file)) continue;
+    let html = readFileSync(file, 'utf8');
+    if (html.includes('styles/fixes.css')) continue;
+    // 选择器页没有 </head> 之外的锚点（无机身内容），所以只认 </head>；
+    // 找不到就退回 </body>，再找不到（异常产物）就跳过，绝不写出半截 HTML
+    const at = html.includes('</head>') ? '</head>' : (html.includes('</body>') ? '</body>' : null);
+    if (!at) continue;
+    html = html.replace(at, FIXES_LINK + at);
+    writeFileSync(file, html);
+    linked.push(file);
+  }
+  return { linked, missing: false };
+}
 // 基线备份：回滚时直接还原截图/分数/热图，避免"清补丁→重截"过程中再遇渲染/缓存异常
-const BASE_SHOT = join(DIR, 'shot-clone.png');
-const BASE_SHOT_BAK = join(DIR, 'shot-clone.base.png');
-const BASE_SCORE_BAK = join(DIR, 'score.base.json');
-const BASE_DIFF_BAK = join(DIR, 'diff.base.png');
+const basePaths = (dir) => ({
+  shot: join(dir, 'shot-clone.png'),
+  shotBak: join(dir, 'shot-clone.base.png'),
+  scoreBak: join(dir, 'score.base.json'),
+  diffBak: join(dir, 'diff.base.png'),
+});
 
 const log = (...a) => console.error(...a);
 
-const readScore = () => {
-  const s = JSON.parse(readFileSync(join(DIR, 'score.json'), 'utf8'));
+const readScore = (dir) => {
+  const s = JSON.parse(readFileSync(join(dir, 'score.json'), 'utf8'));
   const [w, h] = (s.viewport ?? '0x0').split('x').map(Number);
   return { total: s.total, pixel: +(s.pixel * 100).toFixed(1), score: s, viewportPx: w * h };
 };
@@ -50,17 +97,11 @@ const run = (script, args) => new Promise((resolve, reject) => {
 });
 
 /** 克隆页类名清单（供 LLM 选择器参考） */
-function classInventory() {
-  const html = readFileSync(CLONE_HTML, 'utf8');
+function classInventory(dir) {
+  const html = readFileSync(cloneIndex(dir), 'utf8');
   const tokens = new Set();
   for (const m of html.matchAll(/class="([^"]+)"/g)) for (const t of m[1].split(/\s+/)) if (t) tokens.add(t);
   return [...tokens].slice(0, 100).join(', ');
-}
-
-function injectFixLink() {
-  let html = readFileSync(CLONE_HTML, 'utf8');
-  if (!html.includes('styles/fixes.css')) html = html.replace('</head>', FIXES_LINK + '</head>');
-  writeFileSync(CLONE_HTML, html);
 }
 
 /**
@@ -70,23 +111,27 @@ function injectFixLink() {
  * 于是任务结束、页面刷新之后，界面上只剩一个空的"AI 校准"格子，
  * 用户没法区分"校准跑了但没改动"和"压根没跑"。日志里那句原因随进程一起没了。
  */
-const writeSkip = (skipped, extra = {}) => {
-  try { writeFileSync(join(DIR, 'fixup-history.json'), JSON.stringify({ skipped, at: new Date().toISOString(), rounds: [], ...extra }, null, 2)); } catch { /* 写不进去不影响克隆本身 */ }
+const writeSkip = (dir, skipped, extra = {}) => {
+  try { writeFileSync(join(dir, 'fixup-history.json'), JSON.stringify({ skipped, at: new Date().toISOString(), rounds: [], ...extra }, null, 2)); } catch { /* 写不进去不影响克隆本身 */ }
 };
 
-async function main() {
-  if (!llmEnabled()) { log('[fixup] LLM disabled (.env / HEIMDALL_LLM!=1) — skip'); writeSkip('llm-disabled', { detail: '没有启用模型服务（core/.env 的 HEIMDALL_LLM）' }); return; }
-  if (!existsSync(CLONE_HTML) || !existsSync(join(DIR, 'shot-clone.png'))) { log('[fixup] missing clone artifacts — skip'); writeSkip('no-artifacts', { detail: '缺少克隆产物（clone/index.html 或 shot-clone.png）' }); return; }
+async function main(DIR, MAX_ROUNDS) {
+  const CLONE_HTML = cloneIndex(DIR);
+  const FIXES_CSS = fixesCssPath(DIR);
+  const BASE = basePaths(DIR);
+  const injectFixLink = () => ensureFixupLink(DIR);   // 与 build_clone 收尾共用同一实现
+  if (!llmEnabled()) { log('[fixup] LLM disabled (.env / HEIMDALL_LLM!=1) — skip'); writeSkip(DIR, 'llm-disabled', { detail: '没有启用模型服务（core/.env 的 HEIMDALL_LLM）' }); return; }
+  if (!existsSync(CLONE_HTML) || !existsSync(join(DIR, 'shot-clone.png'))) { log('[fixup] missing clone artifacts — skip'); writeSkip(DIR, 'no-artifacts', { detail: '缺少克隆产物（clone/index.html 或 shot-clone.png）' }); return; }
 
   // 可修性门控（替代废弃的 pixel 单维门控）：静态差异太少 = 分数损失主要是动画噪声，AI 改 CSS 救不了
-  const sc0 = readScore();
+  const sc0 = readScore(DIR);
   const b0 = sc0.score.breakdown ?? {};
   const staticShare = sc0.viewportPx ? (b0.staticPx ?? 0) / sc0.viewportPx : 1;
   const refinable0 = b0.refinable ?? 1;
   if (staticShare < MIN_STATIC || refinable0 < MIN_REFINABLE) {
     log(`[fixup] skip: static ${(staticShare * 100).toFixed(2)}% of viewport (min ${(MIN_STATIC * 100).toFixed(2)}%), refinable ${(refinable0 * 100).toFixed(0)}% (min ${(MIN_REFINABLE * 100).toFixed(0)}%) — remaining diff is animation noise`);
     emit({ kind: 'fixup-skip', reason: 'noise', staticShare, refinable: refinable0 });
-    writeSkip('noise', {
+    writeSkip(DIR, 'noise', {
       staticShare: +(+staticShare).toFixed(4),
       refinable: +(+refinable0).toFixed(4),
       detail: `剩余差异里可修的静态部分只有 ${(staticShare * 100).toFixed(1)}%，其余是动画/时序噪声 —— 改 CSS 救不了`,
@@ -99,18 +144,18 @@ async function main() {
   try {
   const CLONE_URL = clonePreview.urlFor(CLONE_HTML);
   const history = [];
-  let best = readScore();
+  let best = readScore(DIR);
   let bestCss = '';
-  const inventory = classInventory();
+  const inventory = classInventory(DIR);
   // 保存基线（初始最佳状态）
   try {
-    copyFileSync(BASE_SHOT, BASE_SHOT_BAK);
-    copyFileSync(join(DIR, 'score.json'), BASE_SCORE_BAK);
-    if (existsSync(join(DIR, 'diff.png'))) copyFileSync(join(DIR, 'diff.png'), BASE_DIFF_BAK);
+    copyFileSync(BASE.shot, BASE.shotBak);
+    copyFileSync(join(DIR, 'score.json'), BASE.scoreBak);
+    if (existsSync(join(DIR, 'diff.png'))) copyFileSync(join(DIR, 'diff.png'), BASE.diffBak);
   } catch (e) { log('[fixup] baseline backup failed:', String(e).slice(0, 100)); }
 
   for (let round = 1; round <= MAX_ROUNDS; round++) {
-    const before = readScore();
+    const before = readScore(DIR);
     log(`\n[fixup] round ${round} (current ${before.total}%)`);
     let css = '';
     // computed style 精确差异（原站 vs 克隆逐元素 DOM 路径配对）——AI 补丁的弹药，不再猜选择器
@@ -153,7 +198,7 @@ async function main() {
       await run('differ/diff.mjs', [DIR]);
     } catch (e) { log('  rerun failed:', String(e).slice(0, 120)); break; }
 
-    const after = readScore();
+    const after = readScore(DIR);
     const kept = after.total > before.total;
     log(`  ${before.total}% -> ${after.total}%  ${kept ? 'KEEP' : 'ROLLBACK'}`);
     history.push({ round, before: before.total, after: after.total, kept, cssBytes: css.length, css });
@@ -163,17 +208,17 @@ async function main() {
       best = after; bestCss = css;
       // 保留状态即新基线：后续轮次回滚时还原到这里
       try {
-        copyFileSync(BASE_SHOT, BASE_SHOT_BAK);
-        copyFileSync(join(DIR, 'score.json'), BASE_SCORE_BAK);
-        if (existsSync(join(DIR, 'diff.png'))) copyFileSync(join(DIR, 'diff.png'), BASE_DIFF_BAK);
+        copyFileSync(BASE.shot, BASE.shotBak);
+        copyFileSync(join(DIR, 'score.json'), BASE.scoreBak);
+        if (existsSync(join(DIR, 'diff.png'))) copyFileSync(join(DIR, 'diff.png'), BASE.diffBak);
       } catch {}
     } else {
       writeFileSync(FIXES_CSS, '');
       // 直接还原基线产物（截图/分数/热图），比"重截"更确定
       try {
-        copyFileSync(BASE_SHOT_BAK, BASE_SHOT);
-        copyFileSync(BASE_SCORE_BAK, join(DIR, 'score.json'));
-        if (existsSync(BASE_DIFF_BAK)) copyFileSync(BASE_DIFF_BAK, join(DIR, 'diff.png'));
+        copyFileSync(BASE.shotBak, BASE.shot);
+        copyFileSync(BASE.scoreBak, join(DIR, 'score.json'));
+        if (existsSync(BASE.diffBak)) copyFileSync(BASE.diffBak, join(DIR, 'diff.png'));
       } catch {}
       break;
     }   // 回滚并停止
@@ -182,21 +227,27 @@ async function main() {
 
   writeFileSync(join(DIR, 'fixup-history.json'), JSON.stringify({ best, rounds: history }, null, 2));
   // 最终状态必须与 best 一致：优先还原基线产物（确定性），不再重截
-  const final = readScore();
+  const final = readScore(DIR);
   if (final.total < best.total) {
     writeFileSync(FIXES_CSS, bestCss);
     try {
-      copyFileSync(BASE_SHOT_BAK, BASE_SHOT);
-      copyFileSync(BASE_SCORE_BAK, join(DIR, 'score.json'));
-      if (existsSync(BASE_DIFF_BAK)) copyFileSync(BASE_DIFF_BAK, join(DIR, 'diff.png'));
+      copyFileSync(BASE.shotBak, BASE.shot);
+      copyFileSync(BASE.scoreBak, join(DIR, 'score.json'));
+      if (existsSync(BASE.diffBak)) copyFileSync(BASE.diffBak, join(DIR, 'diff.png'));
     } catch {}
   }
   // 清理基线备份（除非显式保留）
   if (process.env.HEIMDALL_KEEP_BASELINE !== '1') {
-    for (const f of [BASE_SHOT_BAK, BASE_SCORE_BAK, BASE_DIFF_BAK]) { try { if (existsSync(f)) unlinkSync(f); } catch {} }
+    for (const f of [BASE.shotBak, BASE.scoreBak, BASE.diffBak]) { try { if (existsSync(f)) unlinkSync(f); } catch {} }
   }
   log(`[fixup] best ${best.total}%`);
   } finally { await clonePreview.close(); }
 }
 
-main().catch(e => { log('[fixup] fatal', String(e)); process.exit(0); });   // 修复失败不阻塞流水线
+// 只在作为脚本运行时读 CLI —— 否则 import 这个模块（为了 ensureFixupLink）会因缺参数直接 exit(1)
+const isMain = process.argv[1] && /fixup\.mjs$/.test(process.argv[1].replace(/\\/g, '/'));
+if (isMain) {
+  const DIR = requireArg(process.argv[2], USAGE, '页面目录');
+  const MAX_ROUNDS = Number(process.argv[3] ?? 2);
+  main(DIR, MAX_ROUNDS).catch(e => { log('[fixup] fatal', String(e)); process.exit(0); });   // 修复失败不阻塞流水线
+}

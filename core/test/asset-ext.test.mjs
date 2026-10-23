@@ -85,3 +85,24 @@ test('isNonAssetRef: 页内锚点与伪协议仍然照旧；普通地址不受�
   assert.equal(isNonAssetRef('&quot;https://cdn.example.com/a.png&quot;'), false);
   assert.equal(isNonAssetRef('/assets/a.png'), false);
 });
+
+test('extFrom: Content-Type 优先于文本 sniff（[data-x]{color:red} 不是 json）', () => {
+  // 复现：文本 sniff 排在 CT 之前 → 属性选择器开头的 CSS 被抢判成 json，
+  // 浏览器拿 strict MIME 的 json 当样式表加载会被拒绝。
+  const css = Buffer.from('[data-x]{color:red}');
+  assert.equal(extFrom('https://x.test/s.css', 'text/css', css), 'css');
+  const css2 = Buffer.from('[data-x] { color: red; }');
+  assert.equal(extFrom('https://x.test/theme', 'text/css; charset=utf-8', css2), 'css');
+  assert.equal(extFrom('https://x.test/a.css', 'text/css', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>')), 'css',
+    'CT 明确时文本 sniff 不得抢答（连 svg 也不行）');
+});
+
+test('extFrom: 无 Content-Type 时文本 sniff 兜底，且只认真正的 JSON 结构前缀', () => {
+  assert.equal(extFrom('https://x.test/data', '', Buffer.from('{"a":1}')), 'json');
+  assert.equal(extFrom('https://x.test/data', '', Buffer.from('[{"a":1}]')), 'json');
+  assert.equal(extFrom('https://x.test/data', '', Buffer.from('[1,2,3]')), 'json');
+  assert.equal(extFrom('https://x.test/data', '', Buffer.from('[]')), 'json');
+  assert.equal(extFrom('https://x.test/s.css', '', Buffer.from('[data-x]{color:red}')), 'css',
+    '未命中文本 sniff 后按 URL 后缀走');
+  assert.equal(extFrom('https://x.test/x', '', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>')), 'svg');
+});

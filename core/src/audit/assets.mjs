@@ -16,6 +16,7 @@ import { join, basename } from 'node:path';
 import { parse } from 'parse5';
 import { WORKSPACE } from '../paths.mjs';
 import { emit } from '../emit.mjs';
+import { scanCssRefs } from '../css-refs.mjs';
 import { renderAssetGapsHtml } from './assets-report.mjs';
 
 const IGNORE = /^(data:|#|mailto:|javascript:|tel:|about:blank)/i;
@@ -25,10 +26,20 @@ const VISUAL_KINDS = /^(img|img-srcset|img-lazy|img-lazy-srcset|source-srcset|so
 
 const attr = (node, name) => node.attrs?.find(a => a.name === name)?.value ?? '';
 const splitSrcset = (v) => String(v ?? '').split(',').map(s => s.trim().split(/\s+/)[0]).filter(Boolean);
+const entityDecode = (s) => String(s ?? '')
+  .replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+  .replace(/&#0*39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+/**
+ * CSS 文本里的引用。url() 走 css-refs 的词法扫描器（**唯一实现**），不再自带正则：
+ * 自写 `/url\(\s*(?:'|")?([^'")]+)(?:'|")?\s*\)/g` 会把 data URI 里内嵌的
+ * `mask='url(%23f)'` 单独抽出来 → 解析成 `https://host/%23f` → 记成 clone-broken 视觉缺口。
+ * 而"回收孤儿回滚"的判据读的正是 visualGaps：假缺口会让它以为克隆坏了、把好好的产物回滚掉。
+ */
 const urlsInCssText = (text) => {
-  const out = [];
-  for (const m of String(text ?? '').matchAll(/url\(\s*(?:'|")?([^'")]+)(?:'|")?\s*\)/g)) out.push(m[1].trim());
-  for (const m of String(text ?? '').matchAll(/@import\s+(?:url\(\s*)?(?:'|")?([^'")\s;]+)/g)) out.push(m[1].trim());
+  const src = entityDecode(text);
+  // 注释里的 url() 不是引用；先抹掉，避免把被注释掉的规则算成缺口
+  const out = scanCssRefs(src.replace(/\/\*[\s\S]*?\*\//g, ' ')).map(t => t.raw.trim());
+  for (const m of src.matchAll(/@import\s+(?!url\s*\()(?:'|")?([^'")\s;]+)/gi)) out.push(m[1].trim());
   return out;
 };
 

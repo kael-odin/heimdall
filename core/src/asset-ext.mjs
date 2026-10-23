@@ -13,7 +13,11 @@
 const TEXT_EXT = [
   [/^\s*<(\?xml|svg)/i, 'svg'],
   [/^\s*(<!doctype html|<html)/i, 'html'],
-  [/^\s*[[{]/ , 'json'],
+  // JSON 的**结构**前缀：`[` / `{` 之后紧跟期望的 token。
+  // 只看"以 [ 或 { 开头"会把 `[data-x]{color:red}`（属性选择器开头的 CSS）判成 json ——
+  // 文件被命名成 .css 却按 .json 存，浏览器拿 strict MIME 的 json 去当样式表加载会被拒绝。
+  [/^\s*\{\s*(?:["}]|$)/, 'json'],
+  [/^\s*\[\s*(?:[\]{"\d-]|true\b|false\b|null\b|$)/, 'json'],
 ];
 
 const BINARY_MAGIC = [
@@ -108,9 +112,15 @@ export function isSoftHtml(contentType, url = '') {
  * @param {string} contentType      响应 Content-Type（可空）
  * @param {Buffer|Uint8Array|null} buf  响应体前若干字节（可空）
  * @returns {string} 扩展名（不含点）；无法判定时 'bin'
+ *
+ * 顺序（见文件头）是 **二进制 magic > Content-Type > 文本 magic > URL 后缀 > bin**。
+ * 文本 sniff 只能当**兜底**：它的特征太弱（"以 `[` 开头"），而 Content-Type 是服务端
+ * 明确给出的类型。旧实现把文本 sniff 放在 CT 之前，于是 `text/css` 的
+ * `[data-x]{color:red}` 被抢判成 json。
  */
 export function extFrom(url = '', contentType = '', buf = null) {
   const ct = String(contentType ?? '').toLowerCase();
+  let textHead = null;
 
   if (buf && buf.length >= 4) {
     for (const [magic, ext] of BINARY_MAGIC) if (bufStartsWith(buf, magic)) return ext;
@@ -120,14 +130,18 @@ export function extFrom(url = '', contentType = '', buf = null) {
       return brand.startsWith('avif') || brand.startsWith('avis') ? 'avif'
         : brand.startsWith('qt') ? 'mov' : 'mp4';
     }
-    if (ct.includes('image') || ct.includes('font')) { /* magic 未命中但类型已知，交给 CT */ }
-    else {
-      const head = Buffer.from(buf.slice(0, 64)).toString('latin1');
-      for (const [re, ext] of TEXT_EXT) if (re.test(head)) return ext;
-    }
+  }
+  // 文本头单独取：不设 4 字节门槛 —— `[]` 这类合法 JSON 只有 2 字节，
+  // 二进制 magic 的判断本身已按各 magic 的长度自行挡住过短的 buf。
+  if (buf && buf.length && !(ct.includes('image') || ct.includes('font'))) {
+    textHead = Buffer.from(buf.slice(0, 64)).toString('latin1');
   }
 
   for (const [re, ext] of CT_EXT) if (re.test(ct)) return ext;
+
+  // 文本 magic：只在 CT 没能给出类型时兜底。
+  // svg/html 仍然优先于 URL 后缀 —— `<svg>` 体配 `.php`/无后缀的地址很常见。
+  if (textHead !== null) for (const [re, ext] of TEXT_EXT) if (re.test(textHead)) return ext;
 
   if (url) {
     try {

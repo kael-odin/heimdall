@@ -48,3 +48,26 @@ test('linker routes pages by full URL including query', async () => {
     assert.equal(readFileSync(join(base, 'list-one', 'clone', 'index-375.html'), 'utf8'), mobile);
   } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });
+
+test('linker heals a broken ref by whole attribute value, never by substring', async () => {
+  // 复现：`html.split(bad).join(good)` 会把 `/x/a.png` 里的 `/a.png` 一起改掉
+  // （`/xassets/a.png`）—— 修好一条坏链、顺手造一条新的。
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-linker-'));
+  const base = join(dataDir, 'workspace', 'x.test', 'pages');
+  try {
+    const dir = join(base, 'home');
+    mkdirSync(join(dir, 'clone', 'assets'), { recursive: true });
+    mkdirSync(join(dir, 'clone', 'x'), { recursive: true });
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ target: 'https://x.test/' }));
+    writeFileSync(join(dir, 'clone', 'x', 'a.png'), 'NESTED');
+    writeFileSync(join(dir, 'clone', 'assets', 'a.png'), 'ROOT');
+    writeFileSync(join(dir, 'clone', 'index.html'), '<img src="/x/a.png"><img src="/a.png">');
+
+    const { code, output } = await runLinker(dataDir);
+    assert.equal(code, 0, output);
+    const html = readFileSync(join(dir, 'clone', 'index.html'), 'utf8');
+    assert.match(html, /<img src="\/x\/a\.png">/, '有效引用不得被子串替换波及：' + html);
+    assert.doesNotMatch(html, /xassets/);
+    assert.match(html, /<img src="assets\/a\.png">/, '坏链仍应被修好');
+  } finally { rmSync(dataDir, { recursive: true, force: true }); }
+});

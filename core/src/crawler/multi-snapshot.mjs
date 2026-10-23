@@ -14,7 +14,6 @@ import { collectCssRefs } from '../css-refs.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { emit } from '../emit.mjs';
 import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
-import { freezeCss } from '../freeze.mjs';
 import { UA } from '../ua.mjs';
 import { runScript } from '../child-run.mjs';
 import { resolveCloneUrl } from '../clone-doc.mjs';
@@ -31,7 +30,21 @@ const PAGES = pagesIdx > -1 ? String(argv[pagesIdx + 1] || '').split(',').filter
 const widthsIdx = argv.indexOf('--widths');
 const WIDTHS = (widthsIdx > -1 ? argv[widthsIdx + 1] : '375,768').split(',').map(Number).filter(Boolean);
 
-const FREEZE = freezeCss({ consent: true });
+/**
+ * 这里**不注入冻结样式**（`freezeCss`），一个可选叠加项都不带。
+ *
+ * 冻结样式是截图装置，不是产物内容（见 freeze.mjs 顶部）。桌面那份 cssom 是
+ * capture.mjs 在第 6 步读的，第 7 步才注入冻结 —— 读在前、注入在后。
+ * 而这里原先的顺序是反的：先 `addStyleTag(freezeCss({consent:true}))`，再读
+ * document.styleSheets。无论用 addStyleTag 还是 CSSOM.insertRule，注入的规则都会出现在
+ * document.styleSheets 里，于是 `animation-duration:0s !important` 与
+ * 「把所有 cookie/consent 元素 display:none」一起写进了 cssom-375.css / cssom-768.css：
+ * 同一个克隆里，移动端把同意弹窗藏掉、动画停掉，桌面端不会 —— 三个视口口径不一致，
+ * 而且这些规则只该用于**截图对比**，不该出现在交付产物里。
+ *
+ * 本脚本根本不出截图（截图在 shot_clone / verify 里，由它们各自注入），所以直接不注入。
+ * 需要在本函数里加截图时，请在读完 sheets **之后**再注入，与 capture.mjs 同序。
+ */
 
 export async function snapPage(browser, host, page, widths = WIDTHS, pageDir = null) {
   assertPageName(page);
@@ -42,12 +55,12 @@ export async function snapPage(browser, host, page, widths = WIDTHS, pageDir = n
   const out = [];
   for (const width of widths) {
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, userAgent: UA, ...sessionContext(host) });
+    try {
     await restoreSessionStorage(ctx, host);
     const p = await ctx.newPage();
     await p.goto(target, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await p.waitForLoadState('load', { timeout: 25000 }).catch(() => {});
     await p.evaluate(() => document.fonts?.ready).catch(() => {});
-    await p.addStyleTag({ content: FREEZE }).catch(() => {});
     await p.waitForTimeout(1500);
     const snap = await p.evaluate(() => {
       const sheets = [];
@@ -69,7 +82,11 @@ export async function snapPage(browser, host, page, widths = WIDTHS, pageDir = n
     writeFileSync(join(dir, 'cssom-refs-' + width + '.json'), JSON.stringify({ origin: new URL(target).origin, width, refs, refMap }, null, 2));
     const out2 = { width, html: snap.html.length, css: snap.sheets.reduce((n, s) => n + s.css.length, 0), refs: refs.length };
     out.push(out2);
-    await ctx.close();
+    } finally {
+      // 必须 finally：goto/waitForLoadState 超时会直接抛出，而 responsive-upgrade 的循环
+      // 复用同一个 browser —— 漏掉的 context 每个宽度挂一个，越跑越占内存直到整批失败。
+      await ctx.close().catch(() => {});
+    }
   }
   return out;
 }
