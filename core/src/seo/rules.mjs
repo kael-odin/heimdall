@@ -60,11 +60,12 @@ export function evaluatePage(page, site = {}) {
         hl.slice(0, 3).map(h => `${h.lang} → ${h.href}`).join('\n'),
         'hreflang 集合必须包含指向自身的条目，否则整组会被忽略');
     }
-    const rel = hl.filter(h => h.href && !/^https?:\/\//i.test(h.href));
+    // 采集层会把 href 绝对化，所以判"相对地址"要看标签原值 rawHref；没有 rawHref（原始 HTML 路径、手工构造）时退回 href。
+    const rel = hl.filter(h => { const v = h.rawHref ?? h.href; return v && !/^https?:\/\//i.test(v); });
     if (rel.length) {
       A('index-hreflang-relative', 'index', 'medium', 'hreflang 使用了相对地址',
         `${rel.length} 条不是绝对 URL`,
-        rel.slice(0, 3).map(h => `${h.lang} → ${h.href}`).join('\n'),
+        rel.slice(0, 3).map(h => `${h.lang} → ${h.rawHref ?? h.href}`).join('\n'),
         'hreflang 的 href 必须是完整的绝对 URL（含协议与域名）');
     }
     const bad = hl.filter(h => !isValidHreflang(h.lang));

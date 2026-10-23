@@ -18,6 +18,7 @@ import { dirname, join } from 'node:path';
 import { parse } from 'parse5';
 import { UA } from '../ua.mjs';
 import { regexEscape } from '../html.mjs';
+import { isInside } from '../paths.mjs';
 import { scanLiveBundle } from './health.mjs';
 
 const DYNAMIC_ENDPOINT = /^\/(?:_next\/image|_next\/data|api\/|cdn-cgi\/)/;
@@ -80,6 +81,10 @@ export async function healBundle({
     const path = t.split('?')[0].split('#')[0];
     if (!path || path.endsWith('/')) { results.skipped++; bump('not-a-file'); continue; }
     if (DYNAMIC_ENDPOINT.test(path)) { results.skipped++; bump('dynamic-endpoint'); continue; }
+    // 落盘位置直接取自页面里写的路径。fetch 会把 `\` 当 `/`，Windows 的 join 也是，
+    // 所以 `/..\..\x.js` 能从原站取到文件、再写到 liveDir 外面；`%5c`、NUL 同理。
+    // 在这里挡掉，下面落盘前还有一道包含性检查兜底。
+    if (/[\\\0]|%5c|%00|(^|\/)\.\.?(\/|$)/i.test(path)) { results.skipped++; bump('unsafe-path'); continue; }
     const list = byPath.get(path) ?? [];
     if (list.length < 4 && !list.includes(t)) list.push(t);
     byPath.set(path, list);
@@ -107,6 +112,7 @@ export async function healBundle({
           if (buf.length > maxBytes) { results.skipped++; bump('too-large'); done = true; break; }
           if (!extOk(path, res.headers.get('content-type'))) { results.skipped++; bump('mime-mismatch'); done = true; break; }
           const file = join(liveDir, path.replace(/^\/+/, ''));
+          if (!isInside(liveDir, file)) { results.skipped++; bump('unsafe-path'); done = true; break; }
           mkdirSync(dirname(file), { recursive: true });
           writeFileSync(file, buf);
           results.fetched++;

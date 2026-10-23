@@ -127,7 +127,9 @@ const EXTRA_PROXY_HOSTS = new Set((process.env.HEIMDALL_ALLOWED_HOSTS ?? '')
 const TRUSTED_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]',
   ...((BIND === '0.0.0.0' || BIND === '::') ? [] : [BIND.toLowerCase()]),
   ...(process.env.HEIMDALL_TRUSTED_HOSTS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)]);
-const CORS = { 'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,x-heimdall-token' };
+// PUT：控制台保存模型设置走 PUT /api/settings/llm；dev 下页面在 :5173、引擎在 :8900，是跨源请求，
+// 预检的 Allow-Methods 里没有 PUT 就会被浏览器直接拦掉（生产同源部署不受影响，所以一直没被发现）。
+const CORS = { 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,x-heimdall-token' };
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8',
   '.xhtml': 'application/xhtml+xml; charset=utf-8',
@@ -220,9 +222,31 @@ const readJsonBody = (req, res, cb, limit = 64 * 1024) => {
     done = true;
     let parsed = {};
     try { parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); } catch {}
-    cb(parsed);
+    // 回调跑在 'end' 事件里，抛出去不会被 createServer 的 .catch 接住，而是变成
+    // uncaughtException 直接带崩整个引擎（实测：POST /api/audit {"url":"file:///x"}）。
+    // 18 个启动路由共用这里，所以在这一处兜住，比每个路由各写一遍可靠。
+    try { cb(parsed); }
+    catch (e) {
+      console.error('[engine] route handler failed:', e?.stack ?? e);
+      if (!res.headersSent) {
+        const refused = e?.code === 'origin-conflict';
+        json(res, refused ? 400 : 500, { error: refused ? String(e.message ?? e).slice(0, 200) : 'internal error' });
+      } else { try { res.end(); } catch {} }
+    }
   });
   req.on('error', () => { done = true; });
+};
+
+/**
+ * 启动类路由的目标地址校验：能解析成 URL 且是 http(s)。
+ * 只校验"能解析"会放过 file: / javascript: 之类，后面落到站点目录归属检查时才抛错。
+ * 返回规范化后的 href；不合法返回 null。
+ */
+const parseHttpUrl = (value) => {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null;
+  } catch { return null; }
 };
 
 /**
@@ -1534,7 +1558,8 @@ const handleRequest = async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/api/recon') {
     readJsonBody(req, res, (b) => {
       let { url, maxPages = 40 } = b;
-      try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
+      url = parseHttpUrl(url);
+      if (!url) return json(res, 400, { error: 'invalid url' });
       if (runningRecon) return json(res, 409, { error: 'busy', taskId: runningRecon.id });
       try {
         const taskId = startRecon(url, Math.min(Math.max(maxPages ?? 40, 5), 80));
@@ -1549,7 +1574,8 @@ const handleRequest = async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/api/forge') {
     readJsonBody(req, res, (b) => {
       let { url, hostPost = true } = b;
-      try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
+      url = parseHttpUrl(url);
+      if (!url) return json(res, 400, { error: 'invalid url' });
       try {
         const { id, name } = startForge(url, { hostPost: hostPost !== false });
         json(res, 200, { taskId: id, pageName: name, url, siteId: tasks.get(id)?.siteId ?? null });
@@ -1586,7 +1612,8 @@ const handleRequest = async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/api/audit') {
     readJsonBody(req, res, (b) => {
       let { url, maxPages = 30 } = b;
-      try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
+      url = parseHttpUrl(url);
+      if (!url) return json(res, 400, { error: 'invalid url' });
       if (runningAudit) return json(res, 409, { error: 'busy', taskId: runningAudit.id });
       const id = startAudit(url, Math.min(Math.max(maxPages ?? 30, 1), 200));
       json(res, 200, { taskId: id, url });
@@ -1673,7 +1700,14 @@ const handleRequest = async (req, res) => {
       const cmd = process.platform === 'win32' ? ['explorer.exe', ['/select,' + abs]]
         : process.platform === 'darwin' ? ['open', ['-R', abs]]
           : ['xdg-open', [dirname(abs)]];
-      try { spawn(cmd[0], cmd[1], { detached: true, stdio: 'ignore' }).unref(); return json(res, 200, { ok: true, path: abs }); }
+      try {
+        // 缺少 xdg-open 等命令时 spawn 不会同步抛错，而是异步发 'error' 事件；
+        // 没人监听就是未捕获异常，会带崩整个引擎。
+        const child = spawn(cmd[0], cmd[1], { detached: true, stdio: 'ignore' });
+        child.on('error', () => {});
+        child.unref();
+        return json(res, 200, { ok: true, path: abs });
+      }
       catch (e) { return json(res, 500, { error: String(e).slice(0, 120) }); }
     });
     return;
@@ -1732,7 +1766,8 @@ const handleRequest = async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/api/watch') {
     readJsonBody(req, res, (b) => {
       let { url, maxPages = 20, accept = false } = b;
-      try { url = new URL(url).href; } catch { return json(res, 400, { error: 'invalid url' }); }
+      url = parseHttpUrl(url);
+      if (!url) return json(res, 400, { error: 'invalid url' });
       if (runningWatch) return json(res, 409, { error: 'busy', taskId: runningWatch.id });
       const id = startWatch(url, Math.min(Math.max(maxPages ?? 20, 1), 200), !!accept);
       json(res, 200, { taskId: id, url });

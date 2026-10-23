@@ -38,7 +38,9 @@ const FORCE = process.argv.includes('--force');       // 忽略已有产物，�
 const INCREMENTAL = process.argv.includes('--incremental');   // 只重跑源站变了的页
 const MISSING_HAR = process.argv.includes('--missing-har');   // 只重锻缺 network.har 的页（交互镜像离线补录）
 const JSON_EVENTS = process.argv.includes('--json-events');    // 输出 @@EVENT@@ 行，供引擎 SSE 转发
-const API = process.env.HEIMDALL_API ?? 'http://127.0.0.1:8900';
+// 引擎启动本进程时只传 HEIMDALL_PORT（engine-server spawnTask），不传 HEIMDALL_API；
+// 引擎换了端口时若仍写死 8900，整站克隆会连不上自己。显式的 HEIMDALL_API 优先。
+const API = process.env.HEIMDALL_API ?? `http://127.0.0.1:${process.env.HEIMDALL_PORT || 8900}`;
 const TOKEN = process.env.HEIMDALL_TOKEN ?? '';
 const HEADERS = { 'Content-Type': 'application/json', ...(TOKEN ? { 'x-heimdall-token': TOKEN } : {}) };
 const BASE = join(WORKSPACE, host);
