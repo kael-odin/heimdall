@@ -58,18 +58,25 @@ test('two tabs resolving and appending receipts under storage pressure never res
   for (const page of noise) await page.evaluate(() => { let n = 0; setInterval(() => { for (let i = 0; i < 10; i++) localStorage.setItem('noise-' + (n++ % 20), 'x'.repeat(1000)); }, 2); });
 
   const projectId = 'ap-' + randomUUID(), key = `heimdall:browser-operations:v1:${origin}:${projectId}`;
+  // `client.read()` is the localStorage mirror, which converges across renderer processes
+  // asynchronously and therefore cannot be asserted right after another tab writes.
+  // The invariant is about the authoritative IndexedDB value; the mirror is checked for
+  // convergence at the end of the loop.
   for (const page of [A, B]) {
-    await page.evaluate(async ({ projectId, origin }) => {
+    await page.evaluate(async ({ projectId, origin, key }) => {
       const module = await import('/acceptance-browser-execution.js');
+      const collections = await import('/receipt-collections.js');
+      const store = collections.createIdbCollections();
       window.__client = module.createBrowserExecutionReceipts({ projectId, origin, storage: localStorage });
-    }, { projectId, origin });
+      window.__authoritative = async () => JSON.parse((await store.get(key)) ?? '[]');
+    }, { projectId, origin, key });
   }
 
   const ROUNDS = 40;
   const lost = [];
   for (let round = 0; round < ROUNDS; round++) {
     const stale = request(), kept = request(), added = request();
-    await A.evaluate(async ({ stale, kept }) => { for (const value of await window.__client.read()) await window.__client.resolveExact(value);
+    await A.evaluate(async ({ stale, kept }) => { for (const value of await window.__authoritative()) await window.__client.resolveExact(value);
       await window.__client.save(stale); await window.__client.save(kept); }, { stale, kept });
     // Hold the lock from A so both writes queue, then release: A resolves, B appends.
     await A.evaluate(key => { window.__held = false;
@@ -80,14 +87,18 @@ test('two tabs resolving and appending receipts under storage pressure never res
     await A.waitForFunction(async key => (await navigator.locks.query()).pending.filter(item => item.name === key).length === 2, key);
     await A.evaluate(() => window.__release());
     await Promise.all([A.evaluate(() => window.__write), B.evaluate(() => window.__write)]);
-    const ids = await A.evaluate(() => window.__client.read().map(value => value.operationId));
+    const ids = (await A.evaluate(() => window.__authoritative())).map(value => value.operationId);
     if (ids.includes(stale.operationId) || !ids.includes(kept.operationId) || !ids.includes(added.operationId)) lost.push({ round, ids });
   }
   assert.deepEqual(lost, [], `${lost.length}/${ROUNDS} rounds lost or resurrected a receipt`);
 
-  // The mirror both tabs read synchronously agrees with the authoritative copy.
+  // The mirror both tabs read synchronously converges on the authoritative copy.
+  const expected = (await A.evaluate(() => window.__authoritative())).map(value => value.operationId).sort();
+  for (const page of [A, B]) await page.waitForFunction(async expectedIds => {
+    return JSON.stringify(window.__client.read().map(value => value.operationId).sort()) === JSON.stringify(expectedIds);
+  }, expected);
   const views = await Promise.all([A, B].map(page => page.evaluate(() => window.__client.read().map(value => value.operationId).sort())));
-  assert.deepEqual(views[0], views[1]);
+  assert.deepEqual(views[0], expected); assert.deepEqual(views[1], expected);
 });
 
 test('receipts written by the localStorage-only version are adopted, not dropped, on the first write', { timeout: 60_000 }, async t => {
@@ -116,11 +127,13 @@ test('defect tickets: two tabs claiming at once admit exactly one confirmation, 
   for (const page of [A, B, ...noise]) await page.goto(origin + '/');
   for (const page of noise) await page.evaluate(() => { let n = 0; setInterval(() => { for (let i = 0; i < 10; i++) localStorage.setItem('noise-' + (n++ % 20), 'x'.repeat(1000)); }, 2); });
   const projectId = 'ap-' + randomUUID(), key = `heimdall:defect-tickets:v1:${origin}:${projectId}`;
-  const install = ({ projectId, origin }) => import('/acceptance-defect-tickets.js').then(module => {
+  const install = ({ projectId, origin, key }) => Promise.all([import('/acceptance-defect-tickets.js'), import('/receipt-collections.js')]).then(([module, collections]) => {
+    const store = collections.createIdbCollections();
     window.__module = module;
     window.__client = module.createDefectTicketReceipts({ projectId, origin, storage: localStorage });
+    window.__authoritative = async () => JSON.parse((await store.get(key)) ?? '[]');
   });
-  for (const page of [A, B]) await page.evaluate(install, { projectId, origin });
+  for (const page of [A, B]) await page.evaluate(install, { projectId, origin, key });
   const confirmationFor = (page, n) => page.evaluate(async ({ projectId, n }) => {
     const uuid = () => crypto.randomUUID();
     const ticketId = 'dt-' + uuid();
@@ -140,7 +153,7 @@ test('defect tickets: two tabs claiming at once admit exactly one confirmation, 
     await A.waitForFunction(async key => (await navigator.locks.query()).pending.filter(item => item.name === key).length === 2, key);
     await A.evaluate(() => window.__release());
     const won = await Promise.all([A.evaluate(() => window.__claim), B.evaluate(() => window.__claim)]);
-    const held = await A.evaluate(() => window.__client.read().map(value => value.actionId));
+    const held = (await A.evaluate(() => window.__authoritative())).map(value => value.actionId);
     const winners = won.filter(Boolean).length, winner = won[0] ? a : b;
     // Zero winners means both tabs read a stale, non-empty collection; two means both read it empty.
     if (winners !== 1 || held.length !== 1 || held[0] !== winner.actionId) { broken.push({ round, won, held }); break; }

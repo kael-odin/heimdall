@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { chromium } from 'playwright';
 import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
 import { createAcceptanceCatalogStore } from '../src/acceptance/catalog.mjs';
@@ -191,7 +192,11 @@ async function nativeLocks() {
     await page.evaluate(() => window.__d4Release());
     const results = await Promise.all([page.evaluate(() => window.__d4Write), secondary.evaluate(() => window.__d4Write)]);
     if (expectedResults !== null) assert.deepEqual(results, expectedResults);
-    const primaryValue = await page.evaluate(() => window.__d4Client.read()), secondaryValue = await secondary.evaluate(() => window.__d4Client.read());
+    // read() is the localStorage mirror; another renderer process sees the last write only
+    // after its storage event, so wait for both mirrors before holding them to the collection.
+    const mirrors = () => Promise.all([page.evaluate(() => window.__d4Client.read()), secondary.evaluate(() => window.__d4Client.read())]);
+    await waitFor(async () => { const values = await mirrors(); return values.every(value => isDeepStrictEqual(value, expected)); }, name + ' mirrors converge');
+    const [primaryValue, secondaryValue] = await mirrors();
     assert.deepEqual(primaryValue, expected); assert.deepEqual(secondaryValue, expected);
     evidence.push({ name, key, before, queued, after: primaryValue, results });
   }
