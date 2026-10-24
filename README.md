@@ -28,6 +28,14 @@ cd core && pnpm install && cd ../console && pnpm install && cd ..
 
 浏览器会打开 `http://127.0.0.1:5173`；把网址贴进左上角的输入框即可。完整步骤见 [USAGE.md](USAGE.md)，工程细节见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
+不想点界面、想一条命令跑完（侦察 → 克隆 → 验证 → 资产 → 交付）：
+
+```bash
+node core/src/cli.mjs handoff https://example.org --max-pages 40
+```
+
+跑完在 `core/workspace/<站点>/handoff/README.md` 会有一份交接说明，第一段就写清"发现多少页、完整测到多少页、没测到的卡在哪"——没测到的地方不会藏起来。
+
 ---
 
 <details>
