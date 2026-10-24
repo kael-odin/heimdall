@@ -285,3 +285,31 @@ cd core && node --test test/seo-collect-empty-meta.test.mjs test/seo-i18n-jsrend
 5. **P2 重构**：`Atlas.vue` 仍有约 2,500 行（9 条任务流已统一挂载，但 `runAudit`/`runLiveExport`/`runCloneSite` 三个 runner 仍近乎重复）；`engine-server.mjs` 2,460 行；`catalog.mjs` 1,092 行。
 6. **工程底座**：LICENSE（仍为 UNLICENSED）、`dependabot.yml`、ESLint 的 `no-undef`/`no-unused-vars`、覆盖率、CHANGELOG。
 7. **演示稿重写**：第 7 节第 2 周的"加一幕验收"还没做；`DEMO-SCRIPT.md` 目前只改了两处与代码不符的说法。
+
+---
+
+## 10. 2026-10-24 追加：把"跑得完"这件事补上（5 个提交，已在 `main`）
+
+上一节列出的待办里，第 1 项（等绿 CI）之后真正卡住全站验证的是另一件事：**`verify --all` 没有断点续跑**。407 页按小时计，中断一次就归零 —— 这才是"402 页待测"一直推不动的根因。这一轮按顺序做了：
+
+| 改动 | 解决了什么 | 怎么验证的 |
+| --- | --- | --- |
+| `verify --resume`（`71af14d`） | 复用已完整测成、且 `manifest.json` / `clone/index.html` 都没比结果更新的页；未测成的页一律重跑；摘要里 `reused` 与 `measured` 分开计数，门禁仍要求全部页测到 | 5 条新用例：复用 / 未测成重跑 / 克隆更新后重跑 / 视口变化重跑 / 只能配 `--all` |
+| 有界置信度（`0b1a1ba`） | 超时不再只有一句 `render did not settle`：记录卡点（请求未结束 / 图片未加载 / 版面仍在动 / 滚动后仍增长），并分 `full` / `bounded` / `none` 三档；只有 `--allow-bounded` 才把 bounded 计入分数，**默认口径逐字未变** | 长轮询页默认仍判未测、开 `--allow-bounded` 后计入且单列 `bounded`；"版面还在动"的页开不开都拦下 |
+| `verify --jobs N`（同上） | 按页并行（默认 1，上限 8），结果按目录序重排保证可复现 | verify CLI 全部 20 项用例（含原有 15 项）通过 |
+| `heimdall handoff <url>`（同上） | 侦察→克隆（增量）→验证（断点续跑）→资产→交付一条命令；自起临时引擎（`queue` 走 HTTP 提交，没引擎整条链会死在 "engine unreachable"）；写 `handoff/README.md`，第一段先说"测到多少页、没测到的卡在哪" | 本地两页夹具站点全链路跑通（2/2 页完整测到、交付包生成、退出码 0）；交接说明渲染有 6 条单测 |
+| 控制台状态进 URL（`f36cbf6`） | `?site=&view=&page=`；切视图 push（后退能在视图间走），选页 / 切站 replace | 浏览器实测：刷新恢复视图与详情面板、后退回上一视图、切站 URL 跟随 |
+| 进度与"下一步"（同上） | 体检显示 `3/41 · 还剩约 N 分钟`（按本次会话速度估算，复用页不计入）；失败任务行给出最常见卡点与两条可执行命令 | `console/test/format.test.mjs` 5 条用例 |
+
+**这一轮新发现、值得记一笔的两个坑**（都已修，原因写在这里免得下次再踩）：
+
+1. `pickSite()` 没有返回它内部那条异步链，于是"按 URL 恢复选中页"永远在星图建好之前执行。
+2. 修了第 1 条之后还有一层：**找到节点 ≠ 恢复成功** —— `onNodeClick` 在页面状态加载期间会直接返回，而旧代码此时已经放开了地址栏同步，`page` 当场被抹掉。现在只有 `selected` 真被设上才算恢复完成。
+
+**仍然待办**（在上一节基础上更新）：
+
+1. 第 1 项未变：仍需观察 2–3 次真实 CI 全绿；本轮 5 个提交**尚未推送**。
+2. `core/scripts/verify-historical-batch.mjs` 仍是逐页独立子进程，**没有接入**新的有界置信度口径；那三个未测页要先用 `verify <host> <page> --allow-bounded` 单个复核，再决定是否改造脚本。
+3. `handoff` 只在本地夹具站点验证过，**尚未在任何授权真实站点上跑过**；真实站点的耗时、卡点分布、交付包体积都还是未知数。
+4. 本机全量回归：2796 项、2783 通过、1 失败、12 跳过。失败项是 `acceptance-managed-executor-engine` 的 fixture 在满负载下等引擎启动超时，**单跑 6/6 通过**，属已知的并发间歇项，与本轮改动无关。
+5. 验收指纹冻结标记、`resetContext()` abort、`docs/audits` 剩余 270MB、P2 重构、LICENSE / dependabot / ESLint 仍未动。
