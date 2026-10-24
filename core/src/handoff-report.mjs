@@ -10,7 +10,7 @@
 
 const pct = value => typeof value === 'number' ? (value * 100).toFixed(1) + '%' : '—';
 
-export function renderHandoff({ siteId, origin, target, summary, gaps, delivered, skippedVerify = false }) {
+export function renderHandoff({ siteId, origin, target, summary, gaps, delivered, skippedVerify = false, maxPages }) {
   const lines = [];
   const blockers = Object.entries(summary?.blockers ?? {}).sort((a, b) => b[1] - a[1]);
   lines.push(`# 交接说明 · ${siteId}`, '');
@@ -29,6 +29,9 @@ export function renderHandoff({ siteId, origin, target, summary, gaps, delivered
     const bounded = summary.bounded ?? 0;
     const untested = summary.untested ?? 0;
     lines.push(`- 已发现 ${total} 页，**完整测到 ${measured} 页**${bounded ? `，其中有界置信度 ${bounded} 页` : ''}，没测到 ${untested} 页。`);
+    if (Number.isFinite(maxPages) && total > maxPages) {
+      lines.push(`- 本次按 \`--max-pages ${maxPages}\` 截断：只覆盖了前 ${maxPages} 页，其余 ${total - maxPages} 页没克隆也没测。`);
+    }
     lines.push(`- 站均还原度：**${pct(summary.average)}**（只按真的测到的页算，没测到的不进分母）。`);
     if (summary.worst) {
       lines.push(`- 最差：\`${summary.worst.page}\` @ ${summary.worst.name} ${pct(summary.worst.score)}`);

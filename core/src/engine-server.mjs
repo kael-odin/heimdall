@@ -2234,6 +2234,9 @@ const handleRequest = async (req, res) => {
   if (u.pathname === '/api/status') {
     return json(res, 200, {
       ok: true,
+      // 数据根：调用方（如 handoff）据此判断"这个引擎写的目录和我读的是不是同一个"。
+      // 不是敏感路径 —— 它已经出现在 CLI 的报错与文档里；只返回根，不返回内容。
+      dataRoot: DATA_ROOT,
       recon: runningRecon ? { id: runningRecon.id, url: runningRecon.url } : null,
       audit: runningAudit ? { id: runningAudit.id, url: runningAudit.url } : null,
       watch: runningWatch ? { id: runningWatch.id, url: runningWatch.url } : null,

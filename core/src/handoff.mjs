@@ -20,7 +20,7 @@ import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { DELIVERABLE, WORKSPACE } from './paths.mjs';
+import { DATA_ROOT, DELIVERABLE, WORKSPACE } from './paths.mjs';
 import { findSiteIdentity } from './site-origin.mjs';
 import { asUrl } from './url-canon.mjs';
 import { writeFileAtomic } from './fsutil.mjs';
@@ -101,7 +101,11 @@ async function freePort() {
 }
 
 async function startEngine() {
-  // 已经有一个能应答的引擎（HEIMDALL_API 指向它，或者 8900 上正好开着）就直接用
+  // 已经有一个能应答的引擎（HEIMDALL_API 指向它，或者 8900 上正好开着）可以直接用 ——
+  // 但**只在数据根一致时**：任务写进引擎的数据根、产物也从同一个数据根读回来。
+  // 复用一个用着别的数据目录的引擎，结果是"引擎报告完成，但克隆产物缺失"——
+  // 21 世纪最让人抓狂的报错：每一步都返回成功，最后什么都没留下。
+  const wantedRoot = process.env.HEIMDALL_DATA_DIR ? resolve(process.env.HEIMDALL_DATA_DIR) : DATA_ROOT;
   const candidates = [process.env.HEIMDALL_API, 'http://127.0.0.1:8900'].filter(Boolean);
   for (const base of candidates) {
     try {
@@ -109,10 +113,20 @@ async function startEngine() {
         headers: process.env.HEIMDALL_TOKEN ? { 'x-heimdall-token': process.env.HEIMDALL_TOKEN } : {},
         signal: AbortSignal.timeout(2000),
       });
-      if (res.ok) {
-        log('复用在跑的引擎', base);
-        return { api: base, port: new URL(base).port, owned: false, stop() {} };
+      if (!res.ok) continue;
+      const status = await res.json().catch(() => ({}));
+      const engineRoot = status.dataRoot ? resolve(status.dataRoot) : null;
+      if (!engineRoot) {
+        // 老版本引擎不报数据根 —— 无从判断，宁可自己另起一台，也不要赌
+        log(`跳过 ${base}：该引擎没有报告数据根，无法确认它和本次写的是同一目录`);
+        continue;
       }
+      if (engineRoot !== wantedRoot) {
+        log(`跳过 ${base} 上的引擎：它的数据根是 ${engineRoot}，本次要写的是 ${wantedRoot}`);
+        continue;
+      }
+      log('复用在跑的引擎', base);
+      return { api: base, port: new URL(base).port, owned: false, stop() {} };
     } catch { /* 没开着，接着自己拉一个 */ }
   }
 
@@ -162,8 +176,10 @@ const host = identity.origin ? new URL(identity.origin).hostname.replace(/^www\.
 log('站点目录', siteId, '（origin', identity.origin ?? '未知', '）');
 
 // ---------- 2. 批量克隆 ----------
-log('2/5 批量克隆（增量：已克隆且源站没变的页会跳过）');
-const clone = await run('src/queue.mjs', [host, '--incremental']);
+// --max 必须跟侦察用同一个页数：queue 自己的默认上限来自站点配方（通常 20 页），
+// 只给侦察传 40 的话，用户以为克隆了 40 页、实际只克隆 20 页，而且没有任何提示。
+log('2/5 批量克隆（增量：已克隆且源站没变的页会跳过；上限', MAX_PAGES, '页）');
+const clone = await run('src/queue.mjs', [host, '--incremental', '--max', String(MAX_PAGES)]);
 const cloneFailed = clone.code !== 0;
 
 // ---------- 3. 多视口验证 ----------
@@ -203,6 +219,7 @@ mkdirSync(handoffDir, { recursive: true });
 const reportPath = join(handoffDir, 'README.md');
 writeFileAtomic(reportPath, renderHandoff({
   siteId, origin: identity.origin ?? TARGET, target: TARGET, summary, gaps, delivered, skippedVerify: SKIP_VERIFY,
+  maxPages: MAX_PAGES,
 }));
 
 const ok = !cloneFailed && (SKIP_VERIFY || (summary?.passed ?? false)) && deliver.code === 0;

@@ -82,3 +82,21 @@ test('handoff: 交付包缺失时不假装成功', () => {
   assert.match(md, /交付包没有生成成功/);
   assert.ok(!/deliverable\/example\.test-/.test(md));
 });
+
+test('handoff: 被 --max-pages 截断时说清只覆盖了前 N 页', () => {
+  const md = renderHandoff({
+    ...base, maxPages: 40,
+    summary: { targetTotal: 120, measured: 24, bounded: 0, untested: 96, average: 0.9, blockers: {} },
+  });
+  assert.match(md, /--max-pages 40/);
+  assert.match(md, /只覆盖了前 40 页/);
+  assert.match(md, /其余 80 页没克隆也没测/);
+});
+
+test('handoff: 没触到上限时不画蛇添足', () => {
+  const md = renderHandoff({
+    ...base, maxPages: 40,
+    summary: { targetTotal: 12, measured: 12, bounded: 0, untested: 0, average: 0.9, blockers: {} },
+  });
+  assert.ok(!/max-pages/.test(md), md);
+});
