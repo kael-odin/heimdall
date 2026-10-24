@@ -3,6 +3,11 @@ name: CI
 # 与 seo-gate.yml 的分工：
 #   ci.yml     —— 确定性检查（lint / 测试 / build / smoke），每次 push 与 PR 都跑，不访问被克隆源站
 #   seo-gate   —— 联网抓授权站点并与基线比对；当前仅手动触发，配置目标和基线后再考虑定时运行
+#   docs.yml   —— 纯文档提交的守卫（链接 + 文档里的规则数字）；本文件用 paths-ignore 跳过这类提交
+#
+# 一条 push 的计费分钟约为各 job 之和（实测一条约 65 分钟），私有仓库免费额度是 2000 分钟/月。
+# 纯文档改动跑完整流水线既慢又吃掉额度，所以这里忽略文档路径，交给 docs.yml 里秒级的检查；
+# 文档与代码混在一起提交时两个 workflow 都会跑，守卫不会漏。
 #
 # 本文件里的测试**需要真浏览器**：core 的测试集里有几条跑的是 capture → build_clone
 # 的真实流水线（CSS url() 解析基准、资产按真实类型落盘……），必须能起 Chromium。
@@ -13,7 +18,13 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 concurrency:
   group: ci-${{ github.ref }}

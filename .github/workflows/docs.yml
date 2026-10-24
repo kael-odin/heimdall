@@ -1,0 +1,43 @@
+name: Docs
+
+# 纯文档提交的守卫。ci.yml 用 paths-ignore 跳过了这些路径，这里补上文档真正需要的检查：
+#   1. 本地链接与图片目标存在（scripts/check-markdown-links.mjs）
+#   2. 文档里的「N 条规则」与源码一致（test/seo-rule-count.test.mjs 会读
+#      README.md / docs/guide/*.md / DEMO-SCRIPT.md，所以文档改错会让那条测试红）
+# 这两个脚本只用 Node 内置模块，不需要 pnpm install，整条 workflow 几秒完成。
+#
+# 与代码混在一起的提交两个 workflow 都会跑；只改文档时走这里，省下约 65 分钟额度。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    paths:
+      - '**.md'
+      - 'docs/**'
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: docs (links, rule counts)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node scripts/check-markdown-links.mjs
+      - run: node --test test/seo-rule-count.test.mjs
