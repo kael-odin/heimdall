@@ -209,6 +209,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: core/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # 严格导出会在候选包里跑断网浏览器探针（逐页加载、观察外联请求），
+      # 没装 Chromium 时探针失败 → browserFailed=1 → 导出被阻断。
+      # 本 job 原先只跑 lint/docs，加入 Docker 交付验收后必须自带浏览器。
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm lint
       - run: pnpm check:docs
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。

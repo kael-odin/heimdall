@@ -187,7 +187,10 @@ test('source capture separates named sessions per flow and fails closed on missi
     origin, flows,
     sessions: { admin, guest },
     settleMs: 50,
-    assertionTimeoutMs: 100,
+    // admin 这条要求断言"通过"：页面脚本先读 cookie 与 sessionStorage 再显示 #allowed。
+    // 100ms 在本机够用，在满载的 CI 机器上会偶发超时（2026-10-24 CI 实测 admin 判 failed）。
+    // 通过型断言给足 1s；失败型断言（guest / missing）本来就该失败，超时长短不改变结论。
+    assertionTimeoutMs: 1000,
   });
 
   assert.equal(report.sessionUsed, true);

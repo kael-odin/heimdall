@@ -155,6 +155,9 @@ try {
         assertions: [{ kind: 'visible', selector: '#menu' }, { kind: 'attribute', selector: '#menu-toggle', attribute: 'aria-expanded', equals: 'true' }] }] };
     const result = await api('runs', input, 202);
     const manifest = await waitFor(async () => { const value = await api('runs/' + result.runId); return value.status === 'completed' && value; }, 'fresh worker complete', 60000);
+    // manifest 写成 completed 与引擎释放执行槽不是同一刻：槽在 worker 子进程 exit 事件里才释放。
+    // 慢机器上下一次 POST runs 会落进这段窗口拿到 409 ACCEPTANCE_BUSY —— 等槽真正空出来再继续。
+    await waitFor(async () => (await (await fetch(base + '/api/status', { headers })).json()).acceptance === null, 'acceptance slot released', 30000);
     const report = await api('runs/' + result.runId + '/report'); assert.equal(report.gate, 'failed'); assert.equal(report.checks.length, 14);
     samples.push({ mode, runId: result.runId, input, manifest, reportGate: report.gate, originalFiles: runFiles(result.runId) });
   }
