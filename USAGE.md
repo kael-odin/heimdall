@@ -58,6 +58,14 @@ node core/src/cli.mjs deliver example.org
 
 `verify --all` 遍历全部目标页；有意抽样时显式传 `--max N`。结果里核对目标数、实测数、未测数及失败原因，不能只看平均分。页面结构、文字覆盖与像素是不同维度，分数不能替代断网浏览和人工检查。
 
+大站全量验证按小时计，中断了不必从头再来：
+
+```powershell
+node core/src/cli.mjs verify example.org --all --resume
+```
+
+`--resume` 只复用**上次完整测成**、且 `manifest.json` / `clone/index.html` 都没比结果更新的页（克隆过的页会自动重测）；未测成的页一律重跑。摘要里的 `reused` 与 `measured` 分开计数，整站门禁仍按"全部页都测到"判定 —— 复用不会把没测过的页算成通过。
+
 ## 交互镜像
 
 交互镜像适合有明确授权、需要分析前端行为的场景，不能等同于任意站点的完整离线副本。

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -517,4 +517,95 @@ test('verify measures a 26k page with bounded screenshot tiles', async () => {
     await new Promise(resolve => server.close(resolve));
     rmSync(dataDir, { recursive: true, force: true });
   }
+});
+
+// ---------- --resume ----------
+
+/**
+ * 断点续跑的意义：真实站点的 verify --all 按小时计（每页 3 视口 + 交互回放），
+ * 中途断掉就得从头再来。这组用例钉住三条契约：
+ *   1. 已完整测过、且克隆产物没变过的页，不重跑，直接复用；
+ *   2. 克隆产物变新了 / 上次没测成，就必须重跑；
+ *   3. 复用不是"假绿"：摘要里 reused 与 measured 分开计数，
+ *      整站门禁仍然按"全部页都测到"算。
+ */
+function seedPage(dataDir, name, { overall = 0.9, measured = true, scoreVersion = 2, viewports } = {}) {
+  const base = join(dataDir, 'workspace', 'x.test');
+  const dir = join(base, 'pages', name);
+  mkdirSync(join(dir, 'clone'), { recursive: true });
+  writeFileSync(join(dir, 'clone', 'index.html'), '<html><body>x</body></html>');
+  writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ target: 'https://x.test/' + name }));
+  mkdirSync(join(base, 'verify', name), { recursive: true });
+  const file = join(base, 'verify', name, 'verify.json');
+  writeFileSync(file, JSON.stringify({
+    page: name, scoreVersion, measured, overall: measured ? overall : null,
+    grade: measured ? 'A' : null, minViewport: measured ? { name: '10x10', score: overall } : null,
+    viewports: viewports ?? [{ name: '10x10', score: overall }],
+  }));
+  // verify.json 必须比克隆产物新，否则会被判成"克隆后没重测过"
+  const future = new Date(Date.now() + 60_000);
+  utimesSync(join(dir, 'manifest.json'), new Date(Date.now() - 120_000), new Date(Date.now() - 120_000));
+  utimesSync(join(dir, 'clone', 'index.html'), new Date(Date.now() - 120_000), new Date(Date.now() - 120_000));
+  utimesSync(file, future, future);
+  return { base, dir, file };
+}
+
+test('verify --resume 复用已完整测量的页，不重跑', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-'));
+  try {
+    const { base, file } = seedPage(dataDir, 'p1', { overall: 0.93 });
+    const before = statSync(file).mtimeMs;
+    const { code, output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
+    assert.equal(code, 0, output);   // 唯一一页被复用 → 整站都测到了，门禁应通过
+    const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(summary.reused, 1, output);
+    assert.equal(summary.measured, 1);
+    assert.equal(summary.average, 0.93);
+    assert.equal(statSync(file).mtimeMs, before, '复用不该重写 verify.json');
+    assert.match(output, /复用上次结果/);
+  } finally { rmSync(dataDir, { recursive: true, force: true }); }
+});
+
+test('verify --resume 对没测成的页仍然重跑', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-failed-'));
+  try {
+    seedPage(dataDir, 'p1', { measured: false });
+    const { output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
+    const summary = JSON.parse(readFileSync(join(dataDir, 'workspace', 'x.test', 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(summary.reused, 0, output);
+    assert.equal(summary.measured, 0);
+    assert.equal(summary.untested, 1);
+  } finally { rmSync(dataDir, { recursive: true, force: true }); }
+});
+
+test('verify --resume 遇到比结果更新的克隆产物时重跑', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-stale-'));
+  try {
+    const { base, dir } = seedPage(dataDir, 'p1', { overall: 0.5 });
+    // 克隆产物比 verify.json 更新 → 旧分数不再代表当前产物
+    const later = new Date(Date.now() + 300_000);
+    utimesSync(join(dir, 'clone', 'index.html'), later, later);
+    const { output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
+    const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(summary.reused, 0, output);
+  } finally { rmSync(dataDir, { recursive: true, force: true }); }
+});
+
+test('verify --resume 遇到视口集合变化时重跑', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-viewports-'));
+  try {
+    const { base } = seedPage(dataDir, 'p1', { viewports: [{ name: '375x812', score: 0.9 }] });
+    const { output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
+    const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(summary.reused, 0, output);
+  } finally { rmSync(dataDir, { recursive: true, force: true }); }
+});
+
+test('--resume 只能与 --all 一起用', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-single-'));
+  try {
+    const { code, output } = await runVerify(dataDir, ['x.test', 'p1', '--resume']);
+    assert.equal(code, 2, output);
+    assert.match(output, /--resume 只能与 --all/);
+  } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });

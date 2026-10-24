@@ -7,7 +7,7 @@
  *   heimdall queue <host> [--max N|--all-discovered]  全站批量克隆
  *   heimdall audit <host> [--max N]            SEO 审计
  *   heimdall watch <host> [--max N]            站点变更监控
- *   heimdall verify <host> <page>|--all        多视口保真验证
+ *   heimdall verify <host> <page>|--all        多视口保真验证（--resume 断点续跑）
  *   heimdall tokens <host> [--pages N]         设计 token 提取
  *   heimdall live <host> [--offline]           导出可部署交互镜像包
  *   heimdall dedupe <host> [--dry-run]         资产 CAS 去重
@@ -37,7 +37,7 @@ export const COMMANDS = {
   'motion-replay': { script: 'src/crawler/motion-replay.mjs', usage: 'motion-replay <host> --all [--dry]', desc: '把揭示类与脚本关键帧动效改写成纯 CSS 注入静态镜像（离线跑历史产物）' },
   assets:  { script: 'src/audit/assets.mjs', usage: 'assets <host> [--max N]', desc: '资产缺口扫描（视觉缺口 vs 元数据/追踪/设计替代）' },
   watch:   { script: 'src/watch/watch.mjs', usage: 'watch <host> [--max N] [--accept] [--fail-on-change]', desc: '站点变更监控（两次采样去噪 + 变更报告）' },
-  verify:  { script: 'src/verify/verify.mjs', usage: 'verify <host> <page>|--all [--max N] [--threshold N]', desc: '多视口（375/768/1440）全页保真验证' },
+  verify:  { script: 'src/verify/verify.mjs', usage: 'verify <host> <page>|--all [--max N] [--resume] [--threshold N]', desc: '多视口（375/768/1440）全页保真验证（--all --resume 断点续跑）' },
   tokens:  { script: 'src/extract/extract-tokens.mjs', usage: 'tokens <host> [--pages N] [--page name]', desc: '设计 token 提取（色板/字阶/间距/圆角/阴影）' },
   components: { script: 'src/extract/extract-components.mjs', usage: 'components <host> [--pages N] [--max N]', desc: '组件抽取（header/hero/pricing/faq/footer/cta → 独立预览）' },
   matrix:  { script: 'src/seo/matrix.mjs', usage: 'matrix <site1> <site2> [--max N] [--refresh]', desc: '竞品 SEO 对标矩阵（多站点聚合对比）' },

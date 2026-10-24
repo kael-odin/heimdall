@@ -15,7 +15,7 @@
  *
  * 说明：冻结动画/清空输入框后拍摄；超过 25000px 的页面分段截图并计分。
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync, statSync } from 'node:fs';
 import { join, relative, resolve, isAbsolute } from 'node:path';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
@@ -61,9 +61,15 @@ const THRESHOLD = thrIdx > -1 ? Number(argv[thrIdx + 1]) : 0;
 // 交互回放（功能保真）：单页默认开启；--all 需显式 --interactions；--no-interactions 关闭
 const RUN_IX = !argv.includes('--no-interactions') && (!all || argv.includes('--interactions'));
 const KEEP_SCREENSHOTS = argv.includes('--keep-screenshots');
+// 断点续跑：只有 --all 有意义（单页本来就是一次到底），见 cachedMeasurement
+const RESUME = argv.includes('--resume');
 
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host) || (!pageArg && !all)) {
-  console.error('usage: node src/verify/verify.mjs <host> <page>|--all [--max N] [--page-dir ABSOLUTE] [--viewports 375x812,768x1024,1440x900] [--threshold 85] [--keep-screenshots]');
+  console.error('usage: node src/verify/verify.mjs <host> <page>|--all [--max N] [--resume] [--page-dir ABSOLUTE] [--viewports 375x812,768x1024,1440x900] [--threshold 85] [--keep-screenshots]');
+  process.exit(2);
+}
+if (RESUME && !all) {
+  console.error('--resume 只能与 --all 一起用（单页本来就是一次跑完）');
   process.exit(2);
 }
 if (!all && !isSafePageName(pageArg)) {
@@ -101,6 +107,30 @@ const forgedUrls = new Set(pages.map(name => {
 const atlas = (() => { try { return JSON.parse(readFileSync(join(BASE, 'recon', 'atlas.json'), 'utf8')); } catch { return null; } })();
 const excluded = new Set(loadProfile(host).queue.excludeTypes);
 const missingAtlasUrls = all ? [...new Set((atlas?.nodes ?? []).filter(n => !excluded.has(n.type)).map(n => canonUrl(n.url)).filter(Boolean))].filter(u => !forgedUrls.has(u)) : [];
+
+/**
+ * 断点续跑：判断某页上一次的完整测量能不能直接复用。
+ *
+ * 只复用 `measured: true` 的结果 —— 那意味着每个视口都有分数、两侧渲染都收敛、
+ * 克隆侧没有额外的可见坏图。未测到的页恰恰是最该重跑的，不能用旧结论顶替。
+ *
+ * 判新：manifest.json 或 clone/index.html 比 verify.json 新，说明这页被重新克隆过，
+ * 旧分数不再代表当前产物；视口集合变了（换了 --viewports）同理不能复用。
+ */
+function cachedMeasurement(name, dir, outDir) {
+  const file = join(outDir, 'verify.json');
+  let prev;
+  try { prev = JSON.parse(readFileSync(file, 'utf8')); } catch { return null; }
+  if (prev?.scoreVersion !== 2 || prev.measured !== true || typeof prev.overall !== 'number') return null;
+  const names = (prev.viewports ?? []).map(v => v.name);
+  if (names.length !== VIEWPORTS.length || VIEWPORTS.some(vp => !names.includes(vp.name))) return null;
+  let stamp;
+  try { stamp = statSync(file).mtimeMs; } catch { return null; }
+  for (const artifact of [join(dir, 'manifest.json'), join(dir, 'clone', 'index.html')]) {
+    try { if (statSync(artifact).mtimeMs > stamp) return null; } catch { return null; }
+  }
+  return prev;
+}
 
 async function waitForStableRender(page, pendingRequests) {
   const start = Date.now();
@@ -246,12 +276,25 @@ async function shootTiles(page, file, width, height) {
 const clonePreview = await startClonePreviewServer();
 let browser;
 const results = [];
+let reused = 0;   // --resume 复用的页数，写进摘要，让"这次真测了几页"一眼可读
 try {
   browser = await chromium.launch();
   for (const name of targets) {
     const dir = PAGE_DIR ?? join(PAGES, name);
     const outDir = PAGE_DIR ? join(PAGE_DIR, 'verify') : join(BASE, 'verify', name);
     mkdirSync(outDir, { recursive: true });
+    if (RESUME) {
+      const prev = cachedMeasurement(name, dir, outDir);
+      if (prev) {
+        reused += 1;
+        results.push({ page: name, overall: prev.overall, measured: true, grade: prev.grade ?? null,
+          minViewport: prev.minViewport ?? null, functional: prev.functional ?? null, error: null, reused: true });
+        log(name, '已测过，复用上次结果', (prev.overall * 100).toFixed(1) + '%', prev.grade ?? '');
+        emit({ kind: 'verify-page', page: name, overall: prev.overall, measured: true, grade: prev.grade ?? null,
+          minViewport: prev.minViewport ?? null, functional: prev.functional ?? null, reused: true });
+        continue;
+      }
+    }
     if (!existsSync(join(dir, 'clone', 'index.html'))) {
       const result = { page: name, generatedAt: new Date().toISOString(), scoreVersion: 2, overall: null, measured: false, grade: null, error: 'clone/index.html missing', viewports: [] };
       writeFileSync(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
@@ -385,9 +428,9 @@ if (all) {
   const passed = untested === 0 && (!THRESHOLD || avg * 100 >= THRESHOLD);
   const failedPages = [...results.filter(r => !r.measured).map(r => ({ page: r.page, error: r.error ?? 'viewport measurement incomplete' })),
     ...missingAtlasUrls.map(url => ({ url, error: 'not cloned' }))];
-  writeFileSync(join(BASE, 'verify', 'verify-summary.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), scoreVersion: 2, mode: Number.isFinite(MAX) ? 'sample' : 'all', targetTotal, selected: targets.length, pages: results, measured: scored.length, unmeasured: results.length - scored.length, untested, missingAtlasUrls, failedPages, average: +avg.toFixed(4), worst, threshold: THRESHOLD, passed }, null, 2));
-  log('site average', (avg * 100).toFixed(1) + `%（${scored.length}/${targetTotal} 页完整测到）`, worst ? '| 最差 ' + worst.page + ' ' + worst.name + ' ' + (worst.score * 100).toFixed(1) + '%' : '');
-  emit({ kind: 'verify-done', host, pages: results.length, targetTotal, measured: scored.length, untested,
+  writeFileSync(join(BASE, 'verify', 'verify-summary.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), scoreVersion: 2, mode: Number.isFinite(MAX) ? 'sample' : 'all', targetTotal, selected: targets.length, pages: results, measured: scored.length, unmeasured: results.length - scored.length, untested, reused, missingAtlasUrls, failedPages, average: +avg.toFixed(4), worst, threshold: THRESHOLD, passed }, null, 2));
+  log('site average', (avg * 100).toFixed(1) + `%（${scored.length}/${targetTotal} 页完整测到）`, reused ? `| 复用 ${reused} 页（--resume）` : '', worst ? '| 最差 ' + worst.page + ' ' + worst.name + ' ' + (worst.score * 100).toFixed(1) + '%' : '');
+  emit({ kind: 'verify-done', host, pages: results.length, targetTotal, measured: scored.length, untested, reused,
     average: +avg.toFixed(4), threshold: THRESHOLD, failedPages, passed });
   if (!passed) process.exitCode = 1;
 } else {
