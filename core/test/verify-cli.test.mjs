@@ -609,3 +609,102 @@ test('--resume 只能与 --all 一起用', async () => {
     assert.match(output, /--resume 只能与 --all/);
   } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });
+
+// ---------- 有界置信度（--allow-bounded） ----------
+
+/**
+ * 402 页卡在"未测到"的根因不是像素算法不行，而是很多页面永远等不到完全收敛：
+ * 长轮询、埋点心跳、统计信标会让请求集合一直非空。但这类页的**版面早就定住了**，
+ * 截下来就是终态。--allow-bounded 把它们按"有界置信度"计入分数；
+ * 而版面还在动、滚动后还在长高的页，无论开不开都必须拦下 —— 那是中间态。
+ */
+function pollServer() {
+  return createServer((req, res) => {
+    if (req.url === '/poll') return;
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<!doctype html><html><body><div style="height:1000px"></div>
+      <script>fetch('/poll').catch(() => {})</script></body></html>`);
+  });
+}
+
+test('--allow-bounded 把"版面已定、请求未结束"的页按有界置信度计入', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-bounded-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  const page = join(base, 'pages', 'p1');
+  const server = pollServer();
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const port = server.address().port;
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><html><body><div style="height:1000px"></div></body></html>');
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `http://127.0.0.1:${port}/p1` }));
+
+    const { code, output } = await runVerify(dataDir,
+      ['x.test', '--all', '--allow-bounded', '--no-interactions', '--viewports', '100x100'],
+      { HEIMDALL_PORT: String(port) }, 30_000);
+    const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(summary.allowBounded, true, output);
+    assert.equal(summary.measured, 1, output);
+    assert.equal(summary.bounded, 1, output);
+    assert.equal(summary.untested, 0);
+    assert.equal(summary.passed, true, output);
+    assert.equal(code, 0, output);
+
+    const result = JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8'));
+    assert.equal(result.measured, true);
+    assert.equal(result.confidence, 'bounded');
+    assert.equal(typeof result.overall, 'number');
+    assert.ok(result.confidenceReasons.some(r => /长轮询|请求/.test(r)), JSON.stringify(result.confidenceReasons));
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('--allow-bounded 也不会放行"版面还在变"的页', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-bounded-growing-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  const page = join(base, 'pages', 'p1');
+  const server = createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    if (req.url?.startsWith('/static/')) {
+      res.end('<!doctype html><html><body><div style="height:3000px"></div></body></html>');
+      return;
+    }
+    res.end(`<!doctype html><html><body><div id="content" style="height:3000px"></div>
+      <script>
+        let height = 3000;
+        addEventListener('scroll', () => {
+          if (scrollY > height - 1200) {
+            height += 1000;
+            document.querySelector('#content').style.height = height + 'px';
+          }
+        });
+      </script></body></html>`);
+  });
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const port = server.address().port;
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><html><body><div style="height:3000px"></div></body></html>');
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `http://127.0.0.1:${port}/source` }));
+
+    const { code, output } = await runVerify(dataDir,
+      ['x.test', '--all', '--allow-bounded', '--no-interactions', '--viewports', '100x100'],
+      { HEIMDALL_PORT: String(port) }, 60_000);
+    assert.equal(code, 1, output, '版面还在动 → 门禁必须红');
+    const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(summary.measured, 0, output);
+    assert.equal(summary.bounded, 0);
+    assert.equal(summary.untested, 1);
+    const result = JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8'));
+    assert.equal(result.confidence, 'none');
+    assert.equal(result.measured, false);
+    assert.match(result.error, /scroll|增长|版面/);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});

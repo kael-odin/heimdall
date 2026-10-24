@@ -63,9 +63,14 @@ const RUN_IX = !argv.includes('--no-interactions') && (!all || argv.includes('--
 const KEEP_SCREENSHOTS = argv.includes('--keep-screenshots');
 // 断点续跑：只有 --all 有意义（单页本来就是一次到底），见 cachedMeasurement
 const RESUME = argv.includes('--resume');
+// 有界置信度：默认仍然只认"完全收敛"，显式开启才把"版面已定、只是还有请求挂着"计入分数
+const ALLOW_BOUNDED = argv.includes('--allow-bounded');
+// 并发页数。默认 1：像素比对对时序敏感，抢 CPU 会让同一页的分数漂移。
+const jobsIdx = argv.indexOf('--jobs');
+const JOBS = jobsIdx > -1 ? Number(argv[jobsIdx + 1]) : 1;
 
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host) || (!pageArg && !all)) {
-  console.error('usage: node src/verify/verify.mjs <host> <page>|--all [--max N] [--resume] [--page-dir ABSOLUTE] [--viewports 375x812,768x1024,1440x900] [--threshold 85] [--keep-screenshots]');
+  console.error('usage: node src/verify/verify.mjs <host> <page>|--all [--max N] [--resume] [--jobs N] [--allow-bounded] [--page-dir ABSOLUTE] [--viewports 375x812,768x1024,1440x900] [--threshold 85] [--keep-screenshots]');
   process.exit(2);
 }
 if (RESUME && !all) {
@@ -84,8 +89,9 @@ if (!VIEWPORTS.length || VIEWPORTS.length > 6 || new Set(VIEWPORTS.map(v => v.na
     || VIEWPORTS.some(v => !/^\d+x\d+$/.test(v.name) || !Number.isInteger(v.width)
       || !Number.isInteger(v.height) || v.width < 1 || v.width > 4096 || v.height < 1 || v.height > MAX_PAGE_HEIGHT)
     || !Number.isFinite(THRESHOLD) || THRESHOLD < 0 || THRESHOLD > 100
-    || !Number.isInteger(RENDER_SETTLE_TIMEOUT) || RENDER_SETTLE_TIMEOUT < 2500 || RENDER_SETTLE_TIMEOUT > 15000) {
-  console.error('--viewports must contain 1-6 unique WxH entries; --threshold must be between 0 and 100; HEIMDALL_VERIFY_SETTLE_TIMEOUT_MS must be 2500..15000');
+    || !Number.isInteger(RENDER_SETTLE_TIMEOUT) || RENDER_SETTLE_TIMEOUT < 2500 || RENDER_SETTLE_TIMEOUT > 15000
+    || !Number.isInteger(JOBS) || JOBS < 1 || JOBS > 8) {
+  console.error('--viewports must contain 1-6 unique WxH entries; --threshold must be between 0 and 100; HEIMDALL_VERIFY_SETTLE_TIMEOUT_MS must be 2500..15000; --jobs must be 1..8');
   process.exit(2);
 }
 
@@ -180,11 +186,57 @@ async function waitForStableRender(page, pendingRequests) {
       return { stable: true, elapsedMs, ...metrics };
     }
     if (elapsedMs >= RENDER_SETTLE_TIMEOUT) {
-      return { stable: false, elapsedMs, pendingRequests: pendingRequests.size, ...metrics };
+      // 只说"没收敛"没有用：402 页卡在这里，而每种卡法的含义完全不同。
+      // 请求一直挂着（长轮询 / 埋点）但版面早就定住了，和"滚动后高度还在涨"
+      // 不是一回事 —— 前者截图是终态，后者截图是中间态，不能同一口径处理。
+      const quietMs = Date.now() - lastChange;
+      const layoutStable = quietMs >= RENDER_SETTLE_STABLE_FOR;
+      const blockedBy = [];
+      if (pendingRequests.size > 0) blockedBy.push({ reason: 'pending-requests', count: pendingRequests.size });
+      if (metrics.visibleIncompleteImages > 0) blockedBy.push({ reason: 'incomplete-images', count: metrics.visibleIncompleteImages });
+      if (!layoutStable) blockedBy.push({ reason: 'layout-changing', count: 0 });
+      return { stable: false, elapsedMs, quietMs, layoutStable, blockedBy, pendingRequests: pendingRequests.size, ...metrics };
     }
     await page.waitForTimeout(100);
   }
 }
+
+/**
+ * 把一次 shoot 的收敛情况翻译成"这次截图能不能当数"。
+ *
+ *   full    —— 两侧都收敛（原有口径，默认仍然只认这个）
+ *   bounded —— 版面在最后 500ms 内没再变，只是还有请求挂着（长轮询、埋点、统计心跳）。
+ *              截图是终态，分数可信，但页面还在背地里跑东西。
+ *   none    —— 版面还在变，或者滚动后高度还在涨。截到的是中间态，分数不能用。
+ *
+ * 只有 `--allow-bounded` 时 bounded 才计入 measured；默认口径一个字都不改。
+ */
+export function settleAssessment(settle) {
+  const phases = [settle?.beforeScroll, settle?.afterScroll].filter(Boolean);
+  if (!phases.length) return { confidence: 'none', blocking: [{ reason: 'no-capture' }] };
+  const blocking = [];
+  for (const phase of phases) {
+    if (phase.stable) continue;
+    const reasons = phase.blockedBy?.length ? phase.blockedBy : [{ reason: 'unknown', count: 0 }];
+    for (const r of reasons) if (!blocking.some(b => b.reason === r.reason)) blocking.push(r);
+  }
+  if (!settle?.scrollConverged) blocking.push({ reason: 'scroll-growing', count: 0 });
+  // 版面还在动 / 滚动后还在长 —— 这两类是"截图本身不可信"，任何模式下都不放行
+  if (blocking.some(b => b.reason === 'layout-changing' || b.reason === 'scroll-growing')) {
+    return { confidence: 'none', blocking };
+  }
+  return { confidence: blocking.length ? 'bounded' : 'full', blocking };
+}
+
+const REASON_TEXT = {
+  'pending-requests': '还有请求一直没结束（长轮询 / 埋点 / 统计心跳）',
+  'incomplete-images': '还有可见图片没加载完',
+  'layout-changing': '版面在观察窗口内一直在变',
+  'scroll-growing': '滚动后页高还在增长（无限滚动 / 懒加载）',
+  'no-capture': '没有取得任何视口截图',
+  unknown: '未收敛原因未知',
+};
+const reasonText = r => REASON_TEXT[r.reason] ?? r.reason;
 
 async function shoot(page, url, viewport, file, { cloneBase = null } = {}) {
   const origin = new URL(url).origin;
@@ -230,8 +282,12 @@ async function shoot(page, url, viewport, file, { cloneBase = null } = {}) {
         window.scrollTo(0, 0);
       });
       afterScroll = await waitForStableRender(page, pendingRequests);
-      if (!afterScroll.stable) break;
-      if (afterScroll.height === beforeHeight && afterScroll.stable) { scrollConverged = true; break; }
+      // 收敛的判据是"版面定住 + 滚动后页高不再变"，不是"请求全部结束"。
+      // 长轮询永远不会有结束的那一刻，但版面早在第一秒就定住了 —— 把这两件事
+      // 混成一个 `stable` 布尔，就是 402 页永远等不到收敛的直接原因。
+      const layoutStill = afterScroll.layoutStable !== false;
+      if (afterScroll.height === beforeHeight && layoutStill) { scrollConverged = true; break; }
+      if (!afterScroll.stable || !layoutStill) break;
     }
     const height = await page.evaluate(() => Math.max(document.body?.scrollHeight ?? 0, document.documentElement?.scrollHeight ?? 0));
     if (height > MAX_PAGE_HEIGHT || viewport.height > SINGLE_CAPTURE_HEIGHT) {
@@ -240,9 +296,9 @@ async function shoot(page, url, viewport, file, { cloneBase = null } = {}) {
     const tiled = height > SINGLE_CAPTURE_HEIGHT;
     const parts = tiled ? await shootTiles(page, file, viewport.width, height) : null;
     if (!tiled) await page.screenshot({ path: file, fullPage: true, timeout: 90_000 });
+    const settle = { beforeScroll, afterScroll, scrollConverged };
     return { ok: true, height, width: viewport.width, tiled, parts,
-      capturedAt: new Date().toISOString(), finalUrl: page.url(),
-      settle: { beforeScroll, afterScroll, scrollConverged } };
+      capturedAt: new Date().toISOString(), finalUrl: page.url(), settle };
   } finally {
     page.off('request', onRequest);
     page.off('requestfinished', onRequestDone);
@@ -277,9 +333,12 @@ const clonePreview = await startClonePreviewServer();
 let browser;
 const results = [];
 let reused = 0;   // --resume 复用的页数，写进摘要，让"这次真测了几页"一眼可读
-try {
-  browser = await chromium.launch();
-  for (const name of targets) {
+
+/**
+ * 单页验证。抽成函数是为了并发（--jobs）：每页仍然独占自己的浏览器上下文，
+ * 页与页之间不共享任何状态，所以并发不改变结果，只改变耗时。
+ */
+async function verifyOne(name) {
     const dir = PAGE_DIR ?? join(PAGES, name);
     const outDir = PAGE_DIR ? join(PAGE_DIR, 'verify') : join(BASE, 'verify', name);
     mkdirSync(outDir, { recursive: true });
@@ -287,20 +346,19 @@ try {
       const prev = cachedMeasurement(name, dir, outDir);
       if (prev) {
         reused += 1;
-        results.push({ page: name, overall: prev.overall, measured: true, grade: prev.grade ?? null,
-          minViewport: prev.minViewport ?? null, functional: prev.functional ?? null, error: null, reused: true });
         log(name, '已测过，复用上次结果', (prev.overall * 100).toFixed(1) + '%', prev.grade ?? '');
         emit({ kind: 'verify-page', page: name, overall: prev.overall, measured: true, grade: prev.grade ?? null,
           minViewport: prev.minViewport ?? null, functional: prev.functional ?? null, reused: true });
-        continue;
+        return { page: name, overall: prev.overall, measured: true, confidence: prev.confidence ?? 'full',
+          grade: prev.grade ?? null, minViewport: prev.minViewport ?? null, functional: prev.functional ?? null,
+          error: null, reused: true };
       }
     }
     if (!existsSync(join(dir, 'clone', 'index.html'))) {
       const result = { page: name, generatedAt: new Date().toISOString(), scoreVersion: 2, overall: null, measured: false, grade: null, error: 'clone/index.html missing', viewports: [] };
       writeFileSync(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
-      results.push({ page: name, overall: null, measured: false, grade: null, error: result.error });
       emit({ kind: 'verify-page', page: name, overall: null, measured: false, error: result.error });
-      continue;
+      return { page: name, overall: null, measured: false, confidence: 'none', grade: null, error: result.error };
     }
     let target;
     try { target = JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')).target; new URL(target); }
@@ -310,9 +368,8 @@ try {
         overall: null, measured: false, grade: null, minViewport: null, viewports: [],
         functional: null, interactions: [], error };
       writeFileAtomic(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
-      results.push({ page: name, overall: null, measured: false, grade: null, error });
       emit({ kind: 'verify-page', page: name, overall: null, measured: false, error });
-      continue;
+      return { page: name, overall: null, measured: false, confidence: 'none', grade: null, error };
     }
     log('page', name, '->', target);
     const srcCtx = await browser.newContext({ userAgent: UA, ...sessionContext(new URL(target).hostname) });
@@ -343,9 +400,14 @@ try {
             },
           })
           : comparePngBuffers(readFileSync(srcFile), readFileSync(cloneFile));
-        const settleTimedOut = !s.settle.beforeScroll.stable || !s.settle.afterScroll?.stable
-          || !s.settle.scrollConverged || !c.settle.beforeScroll.stable
-          || !c.settle.afterScroll?.stable || !c.settle.scrollConverged;
+        // 两侧各自判一次，取更差的那个：源站收敛但克隆没收敛，同样说明像素不可比
+        const a = settleAssessment(s.settle), b = settleAssessment(c.settle);
+        const rank = { full: 0, bounded: 1, none: 2 };
+        const confidence = rank[a.confidence] >= rank[b.confidence] ? a.confidence : b.confidence;
+        const blocking = [...new Map([...a.blocking, ...b.blocking].map(x => [x.reason, x])).values()];
+        // settleTimedOut 保持原意"没有完全收敛"（bounded 也算），但"能不能当分数用"
+        // 交给 confidence；只有 none（版面还在动）才真的不给等级。
+        const settleTimedOut = confidence !== 'full';
         const additionalBrokenImages = Math.max(0,
           c.settle.beforeScroll.brokenImages - s.settle.beforeScroll.brokenImages,
           (c.settle.afterScroll?.brokenImages ?? 0) - (s.settle.afterScroll?.brokenImages ?? 0));
@@ -359,8 +421,9 @@ try {
             try { unlinkSync(path); } catch {}
           }
         }
-        viewports.push({ name: vp.name, width: vp.width, score: cmp.score,
-          grade: settleTimedOut || additionalVisibleBrokenImages ? null : gradeOf(cmp.score),
+        viewports.push({ name: vp.name, width: vp.width, score: cmp.score, confidence,
+          ...(blocking.length ? { blocking: blocking.map(x => ({ ...x, text: reasonText(x) })) } : {}),
+          grade: confidence === 'none' || additionalVisibleBrokenImages ? null : gradeOf(cmp.score),
           settleTimedOut, additionalBrokenImages, additionalVisibleBrokenImages,
           captureMode: tiled ? 'tiled' : 'full', ...(tiled ? { diffParts: cmp.diffParts } : {}),
           sourceCapture: { capturedAt: s.capturedAt, finalUrl: s.finalUrl, settle: s.settle },
@@ -377,18 +440,31 @@ try {
     // 以前这里写的是 `?? 0` —— 于是"没测到"被记成"测出来是 0 分 / D 级"，
     // 在 verify-summary.json 与 verify-done 事件里与真的 0 分完全无法区分，
     // 还把站点均值按 100/N 拉下去。**没测到就说没测到**，不进均值。
-    const measured = viewports.length === VIEWPORTS.length && viewports.every(v =>
-      typeof v.score === 'number' && !v.settleTimedOut && !v.additionalVisibleBrokenImages);
+    // 页面级置信度：取最差视口。任一视口是 none（版面还在动）整页就是 none。
+    const pageConfidence = viewports.length !== VIEWPORTS.length
+      || viewports.some(v => v.confidence !== 'full' && v.confidence !== 'bounded') ? 'none'
+      : viewports.some(v => v.confidence === 'bounded') ? 'bounded' : 'full';
+    // 有界置信度的页只有在显式 --allow-bounded 时才算数；默认口径与以前逐字相同。
+    const measured = viewports.length === VIEWPORTS.length
+      && viewports.every(v => typeof v.score === 'number' && !v.additionalVisibleBrokenImages)
+      && (pageConfidence === 'full' || (pageConfidence === 'bounded' && ALLOW_BOUNDED));
     const provisionalOverall = overallScore(viewports);
     const overall = measured ? provisionalOverall : null;
     const minViewport = worstViewport(viewports);
     if (!measured && minViewport) minViewport.grade = null;
     const incomplete = viewports.find(v => v.error || v.skipped || v.settleTimedOut || v.additionalVisibleBrokenImages);
+    // 每个没判定的视口都要说清卡在哪 —— 以前只有一句 "render did not settle"，
+    // 402 页卡在这里却没人知道是长轮询、还是一次懒加载没完。
+    const confidenceReasons = [...new Set(viewports.flatMap(v =>
+      (v.blocking ?? []).map(x => `${v.name}: ${x.text}`)))];
     const error = measured ? null : incomplete?.error ?? incomplete?.skipped
-      ?? (incomplete?.settleTimedOut ? `${incomplete.name}: render did not settle`
+      ?? (incomplete?.settleTimedOut
+        ? `${incomplete.name}: render did not settle${confidenceReasons.length ? ' — ' + confidenceReasons.join('；') : ''}`
         : incomplete?.additionalVisibleBrokenImages
           ? `${incomplete.name}: clone has ${incomplete.additionalVisibleBrokenImages} additional visible broken image(s)`
-          : 'viewport measurement incomplete');
+          : pageConfidence === 'bounded'
+            ? `${viewports[0]?.name ?? 'viewport'}: 版面已定住但请求未结束${confidenceReasons.length ? ' — ' + confidenceReasons.join('；') : ''}（加 --allow-bounded 可按有界置信度计入）`
+            : 'viewport measurement incomplete');
 
     // 功能保真：交互回放（按钮/折叠/标签页），状态签名 + 视口像素
     let interactions = [];
@@ -405,16 +481,35 @@ try {
     const functional = scoreInteractions(interactions);
 
     const result = { page: name, target, generatedAt: new Date().toISOString(), scoreVersion: 2,
-      overall, provisionalOverall: measured ? null : provisionalOverall,
+      overall, provisionalOverall: measured ? null : provisionalOverall, confidence: pageConfidence,
+      ...(confidenceReasons.length ? { confidenceReasons } : {}),
       measured, grade: measured ? gradeOf(overall) : null, minViewport, viewports, functional, interactions,
       ...(error ? { error } : {}) };
     writeFileSync(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
-    results.push({ page: name, overall, measured, grade: result.grade, minViewport, functional, error });
     const scoreText = measured ? (overall * 100).toFixed(1) + '%'
       : provisionalOverall === null ? '未测到（无有效视口）' : '未完整测量';
     log(name, 'overall', scoreText, result.grade ?? '', minViewport ? '| 最低 ' + minViewport.name + ' ' + (minViewport.score * 100).toFixed(1) + '%' : '', functional ? '| 交互 ' + functional.passed + '/' + functional.total : '| 交互 n/a');
     emit({ kind: 'verify-page', page: name, overall, measured, grade: result.grade, minViewport, functional, error });
-  }
+    return { page: name, overall, measured, confidence: pageConfidence, grade: result.grade,
+      minViewport, functional, error,
+      ...(confidenceReasons.length ? { confidenceReasons } : {}) };
+}
+
+try {
+  browser = await chromium.launch();
+  // 页与页之间没有共享状态，所以可以并发；顺序仍按目录名，结果才可复现。
+  // 默认 1：像素比对对时序敏感，并发抢 CPU 会让同一页的分数漂移，
+  // 快是使用者的选择，准是默认值。
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(JOBS, targets.length) }, async () => {
+    while (cursor < targets.length) {
+      const name = targets[cursor++];
+      results.push(await verifyOne(name));
+    }
+  }));
+  // 并发完成顺序不固定 —— 按目标顺序重排，摘要与以前逐行一致
+  const order = new Map(targets.map((n, i) => [n, i]));
+  results.sort((a, b) => order.get(a.page) - order.get(b.page));
 } finally { await browser?.close(); await clonePreview.close(); }
 
 if (all) {
@@ -428,9 +523,20 @@ if (all) {
   const passed = untested === 0 && (!THRESHOLD || avg * 100 >= THRESHOLD);
   const failedPages = [...results.filter(r => !r.measured).map(r => ({ page: r.page, error: r.error ?? 'viewport measurement incomplete' })),
     ...missingAtlasUrls.map(url => ({ url, error: 'not cloned' }))];
-  writeFileSync(join(BASE, 'verify', 'verify-summary.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), scoreVersion: 2, mode: Number.isFinite(MAX) ? 'sample' : 'all', targetTotal, selected: targets.length, pages: results, measured: scored.length, unmeasured: results.length - scored.length, untested, reused, missingAtlasUrls, failedPages, average: +avg.toFixed(4), worst, threshold: THRESHOLD, passed }, null, 2));
-  log('site average', (avg * 100).toFixed(1) + `%（${scored.length}/${targetTotal} 页完整测到）`, reused ? `| 复用 ${reused} 页（--resume）` : '', worst ? '| 最差 ' + worst.page + ' ' + worst.name + ' ' + (worst.score * 100).toFixed(1) + '%' : '');
-  emit({ kind: 'verify-done', host, pages: results.length, targetTotal, measured: scored.length, untested, reused,
+  // 卡点直方图：把 402 页那种"一片未测到"拆成可行动的几类，而不是一句 did not settle
+  const blockers = {};
+  for (const r of results) {
+    for (const line of r.confidenceReasons ?? []) {
+      const key = line.split(': ').slice(1).join(': ').replace(/\d+/g, 'N');
+      blockers[key] = (blockers[key] ?? 0) + 1;
+    }
+  }
+  const bounded = scored.filter(r => r.confidence === 'bounded').length;
+  writeFileSync(join(BASE, 'verify', 'verify-summary.json'), JSON.stringify({ host, generatedAt: new Date().toISOString(), scoreVersion: 2, mode: Number.isFinite(MAX) ? 'sample' : 'all', targetTotal, selected: targets.length, pages: results, measured: scored.length, bounded, unmeasured: results.length - scored.length, untested, reused, pendingAtlasUrls: missingAtlasUrls, missingAtlasUrls, blockers, allowBounded: ALLOW_BOUNDED, failedPages, average: +avg.toFixed(4), worst, threshold: THRESHOLD, passed }, null, 2));
+  log('site average', (avg * 100).toFixed(1) + `%（${scored.length}/${targetTotal} 页完整测到）`, bounded ? `| 其中 ${bounded} 页是有界置信度` : '', reused ? `| 复用 ${reused} 页（--resume）` : '', worst ? '| 最差 ' + worst.page + ' ' + worst.name + ' ' + (worst.score * 100).toFixed(1) + '%' : '');
+  const blocked = Object.entries(blockers).sort((a, b) => b[1] - a[1]);
+  if (blocked.length) log('未测到的卡点', blocked.map(([text, n]) => `${n} 视口 · ${text}`).join(' | '));
+  emit({ kind: 'verify-done', host, pages: results.length, targetTotal, measured: scored.length, bounded, untested, reused, blockers,
     average: +avg.toFixed(4), threshold: THRESHOLD, failedPages, passed });
   if (!passed) process.exitCode = 1;
 } else {
