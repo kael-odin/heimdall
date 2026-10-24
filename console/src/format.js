@@ -90,14 +90,43 @@ export function forgeStageProgress(stages) {
 /** 阶段轨的一行文案：`3/6 · 渲染校准`。任务行窄，不用"第…步"这种完整句式。 */
 export const stageProgressText = (p) => (p ? `${p.index}/${p.total} · ${p.label}` : '');
 
-export function verifyPageProgress(event) {
+/**
+ * 体检进度：`体检 3/41 checkout · 87.2% · 最低 375x812 71.0% · 还剩约 4 分钟`
+ *
+ * 长度是这里唯一的难题：全站体检按小时计，用户盯着日志滚却不知道还剩多久。
+ * 剩余时间只用"本次会话已完成的页"估算（`startedAt` 由调用方给），
+ * 因为历史中位数会被不同站点的页混在一起，反而更不准。
+ */
+export function verifyPageProgress(event, { startedAt } = {}) {
   const result = typeof event.overall === 'number' && Number.isFinite(event.overall)
     ? event.measured === false ? '未完整测量' : (event.overall * 100).toFixed(1) + '%'
     : '未测到';
   const score = event.minViewport?.score;
   const minimum = typeof score === 'number' && Number.isFinite(score)
     ? ` · 最低 ${event.minViewport.name} ${(score * 100).toFixed(1)}%` : '';
-  return `体检 ${event.page} · ${result}${minimum}`;
+  const total = Number(event.total);
+  const index = Number(event.index);
+  // --resume 复用的页也会发事件，但它不花时间 —— 不能拿它算平均页耗时
+  const counted = Number.isFinite(index) && index > 0 && !event.reused;
+  const counter = Number.isFinite(total) && total > 0 && Number.isFinite(index) && index > 0
+    ? ` ${index}/${total}` : '';
+  let eta = '';
+  if (counted && Number.isFinite(total) && total > index && Number.isFinite(startedAt)) {
+    const perPage = (Date.now() - startedAt) / index;
+    const remainMs = perPage * (total - index);
+    if (Number.isFinite(remainMs) && remainMs > 0) eta = ` · 还剩约 ${formatRemaining(remainMs)}`;
+  }
+  return `体检${counter} ${event.page} · ${result}${minimum}${eta}`;
+}
+
+/** 秒级剩余时间的人话写法：`40 秒` / `4 分钟` / `1 小时 20 分钟` */
+function formatRemaining(ms) {
+  const sec = Math.round(ms / 1000);
+  if (sec < 60) return `${Math.max(sec, 1)} 秒`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} 分钟`;
+  const h = Math.floor(min / 60);
+  return `${h} 小时 ${min % 60} 分钟`;
 }
 
 export const KIND_CN = {

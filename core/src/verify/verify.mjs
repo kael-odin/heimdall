@@ -338,7 +338,7 @@ let reused = 0;   // --resume 复用的页数，写进摘要，让"这次真测�
  * 单页验证。抽成函数是为了并发（--jobs）：每页仍然独占自己的浏览器上下文，
  * 页与页之间不共享任何状态，所以并发不改变结果，只改变耗时。
  */
-async function verifyOne(name) {
+async function verifyOne(name, index = 0, total = 1) {
     const dir = PAGE_DIR ?? join(PAGES, name);
     const outDir = PAGE_DIR ? join(PAGE_DIR, 'verify') : join(BASE, 'verify', name);
     mkdirSync(outDir, { recursive: true });
@@ -347,7 +347,7 @@ async function verifyOne(name) {
       if (prev) {
         reused += 1;
         log(name, '已测过，复用上次结果', (prev.overall * 100).toFixed(1) + '%', prev.grade ?? '');
-        emit({ kind: 'verify-page', page: name, overall: prev.overall, measured: true, grade: prev.grade ?? null,
+        emit({ kind: 'verify-page', index, total, page: name, overall: prev.overall, measured: true, grade: prev.grade ?? null,
           minViewport: prev.minViewport ?? null, functional: prev.functional ?? null, reused: true });
         return { page: name, overall: prev.overall, measured: true, confidence: prev.confidence ?? 'full',
           grade: prev.grade ?? null, minViewport: prev.minViewport ?? null, functional: prev.functional ?? null,
@@ -357,7 +357,7 @@ async function verifyOne(name) {
     if (!existsSync(join(dir, 'clone', 'index.html'))) {
       const result = { page: name, generatedAt: new Date().toISOString(), scoreVersion: 2, overall: null, measured: false, grade: null, error: 'clone/index.html missing', viewports: [] };
       writeFileSync(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
-      emit({ kind: 'verify-page', page: name, overall: null, measured: false, error: result.error });
+      emit({ kind: 'verify-page', index, total, page: name, overall: null, measured: false, error: result.error });
       return { page: name, overall: null, measured: false, confidence: 'none', grade: null, error: result.error };
     }
     let target;
@@ -368,7 +368,7 @@ async function verifyOne(name) {
         overall: null, measured: false, grade: null, minViewport: null, viewports: [],
         functional: null, interactions: [], error };
       writeFileAtomic(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
-      emit({ kind: 'verify-page', page: name, overall: null, measured: false, error });
+      emit({ kind: 'verify-page', index, total, page: name, overall: null, measured: false, error });
       return { page: name, overall: null, measured: false, confidence: 'none', grade: null, error };
     }
     log('page', name, '->', target);
@@ -489,7 +489,7 @@ async function verifyOne(name) {
     const scoreText = measured ? (overall * 100).toFixed(1) + '%'
       : provisionalOverall === null ? '未测到（无有效视口）' : '未完整测量';
     log(name, 'overall', scoreText, result.grade ?? '', minViewport ? '| 最低 ' + minViewport.name + ' ' + (minViewport.score * 100).toFixed(1) + '%' : '', functional ? '| 交互 ' + functional.passed + '/' + functional.total : '| 交互 n/a');
-    emit({ kind: 'verify-page', page: name, overall, measured, grade: result.grade, minViewport, functional, error });
+    emit({ kind: 'verify-page', index, total, page: name, overall, measured, grade: result.grade, minViewport, functional, error });
     return { page: name, overall, measured, confidence: pageConfidence, grade: result.grade,
       minViewport, functional, error,
       ...(confidenceReasons.length ? { confidenceReasons } : {}) };
@@ -504,7 +504,7 @@ try {
   await Promise.all(Array.from({ length: Math.min(JOBS, targets.length) }, async () => {
     while (cursor < targets.length) {
       const name = targets[cursor++];
-      results.push(await verifyOne(name));
+      results.push(await verifyOne(name, cursor, targets.length));
     }
   }));
   // 并发完成顺序不固定 —— 按目标顺序重排，摘要与以前逐行一致

@@ -289,6 +289,87 @@ const VIEWS = [
   { id: 'settings', icon: '⚙', label: '设置', hint: '模型服务、引擎地址与 Token、界面偏好' },
 ];
 const tableNodes = ref([]);                       // 页面表格的响应式快照（含孤儿已克隆页）
+
+/**
+ * 地址栏与界面状态同步：?site=host&view=pages&page=xxx
+ *
+ * 以前 view / 当前站点 / 选中的页面全在内存里 —— 刷新一下回到星图首页，
+ * 想"把某站某页的详情发给同事"也做不到。
+ * 切视图用 pushState（后退键能在视图之间回退，这是"浏览"），
+ * 选页 / 切站用 replaceState（那是同一个视图里的状态，不该刷历史）。
+ * `?artifact=` 先于 Atlas 在 main.js 里被消费，不会冲突。
+ */
+const VIEW_IDS = new Set(VIEWS.map(v => v.id));
+function readUrlState() {
+  const q = new URLSearchParams(location.search);
+  const v = q.get('view');
+  return { site: q.get('site') || '', view: VIEW_IDS.has(v) ? v : 'atlas', page: q.get('page') || '' };
+}
+const viewFromUrl = () => {
+  const v = new URLSearchParams(location.search).get('view');
+  return VIEW_IDS.has(v) ? v : 'atlas';
+};
+let urlSyncSuspended = false;
+function syncUrl() {
+  if (urlSyncSuspended) return;
+  const q = new URLSearchParams(location.search);
+  q.delete('artifact');    // 产物票据用完即弃，不该跟着地址栏活下去
+  if (host.value) q.set('site', host.value); else q.delete('site');
+  if (view.value && view.value !== 'atlas') q.set('view', view.value); else q.delete('view');
+  const page = selected.value ? pageNameOf(selected.value) : '';
+  if (page) q.set('page', page); else q.delete('page');
+  const next = location.pathname + (q.toString() ? '?' + q.toString() : '');
+  const current = location.pathname + location.search;
+  if (next === current) return;
+  // 切视图 = 一次浏览动作，进历史；选页 / 切站是同一视图内的状态，只替换当前条
+  if (viewFromUrl() !== view.value) history.pushState(null, '', next);
+  else history.replaceState(null, '', next);
+}
+watch([view, host, selected], syncUrl);
+
+/** 从地址栏恢复视图与选中页。站点本身由调用方（首次加载 / popstate）先切好。 */
+function applyUrlState(state = readUrlState()) {
+  // 恢复过程本身会改 view（触发 syncUrl），而这时 selected 还是空的 ——
+  // 不挂起的话地址栏里的 page 会被自己抹掉。恢复期间一律不写地址栏。
+  urlSyncSuspended = true;
+  const release = () => { urlSyncSuspended = false; syncUrl(); };
+  if (state.view && VIEW_IDS.has(state.view)) view.value = state.view;
+  if (!state.page) { release(); return; }
+  const wanted = state.page;
+  const find = () => nodes.find(n => pageNameOf(n) === wanted) ?? null;
+  const first = find();
+  // 找到节点 ≠ 恢复成功：onNodeClick 在 pagesLoading 期间会直接返回。
+  // 以前这里无条件 release()，于是"找到了但被拒收"照样把地址栏的 page 抹掉。
+  if (first) {
+    onNodeClick(first);
+    if (selected.value) { release(); return; }
+  }
+  // 星图可能还在路上（pickSite 的 atlas.json 是异步读的），页面状态也可能还在加载
+  // （onNodeClick 在 pagesLoading 时会直接返回）。有界重试：**只有真的选中了才算成功** ——
+  // 否则会把"找到了节点但被拒收"误判成恢复完成，地址栏里的 page 照样被抹掉。
+  let tries = 0;
+  const retry = () => {
+    const node = pagesLoading.value ? null : find();
+    if (node) {
+      onNodeClick(node);
+      if (selected.value) { release(); return; }
+    }
+    if (++tries <= 200) { setTimeout(retry, 100); return; }   // 最多等 20 秒：大站的页面状态加载不便宜
+    release();   // 确实恢复不了：放开同步，让地址栏回到真实状态
+  };
+  setTimeout(retry, 100);
+}
+function onPopState() {
+  const state = readUrlState();
+  urlSyncSuspended = true;
+  const target = sites.value.find(s => s.host === state.site) ?? null;
+  const settle = () => { applyUrlState(state); urlSyncSuspended = false; syncUrl(); };
+  if (target && target.host !== host.value) {
+    Promise.resolve(pickSite(target)).then(settle, settle);
+  } else {
+    settle();
+  }
+}
 /**
  * 逐页状态是否还在加载。
  * 数字没到之前**不能显示 0** ——"这站一页都没克隆"和"还没算完"是两件事，
@@ -1073,7 +1154,7 @@ function onSiteAction(id) {
 }
 
 function pickSite(s) {
-  if (!s) return;
+  if (!s) return Promise.resolve();
   const epoch = resetSiteContext(s.host);
   targetInput.value = s.origin ?? s.host;
   loadHistory(s.host);
@@ -1083,7 +1164,7 @@ function pickSite(s) {
   // 这正是"一次性便利"的主路径）。那种情况下没有 atlas.json 可读，
   // 但 /api/pages/<host> 仍然能列出已克隆的页面，所以退到"只有清单"而不是报错：
   // 站点出现在列表里却点不动，比不出现更让人困惑。
-  (s.pages ? wsJson(s.host, 'recon/atlas.json') : Promise.resolve(null))
+  const chain = (s.pages ? wsJson(s.host, 'recon/atlas.json') : Promise.resolve(null))
     .then(async (a) => {
       if (siteEpoch !== epoch) return;
       if (a) { buildStatic(a); return; }
@@ -1099,6 +1180,10 @@ function pickSite(s) {
       setTimeout(() => { okMsg.value = ''; }, 6000);
     })
     .catch(e => { if (siteEpoch === epoch) failFrom(e, { what: '载入站点' }); });
+  // 返回这条链本身：地址栏恢复（applyUrlState）要在星图建好之后才能按页名找到节点。
+  // 以前这里没有 return，调用方 await 到的是 undefined —— 于是刷新带 ?page= 时
+  // 永远找不到那颗星，地址栏里的 page 被 syncUrl 抹掉。
+  return chain;
 }
 
 /**
@@ -1533,11 +1618,22 @@ function runVerify(page) {
         let ev; try { ev = JSON.parse(m.data); } catch { return; }
         if (ev.kind === 'verify-page') {
           if (ev.error) verifyIssues.push({ page: ev.page, error: ev.error });
-          statusText.value = verifyPageProgress(ev);
+          statusText.value = verifyPageProgress(ev, { startedAt: task.startedAt });
         } else if (ev.kind === 'verify-done') {
           task.done = true; task.endedAt = Date.now(); task.verifyAverage = ev.average;
           task.failed = !ev.passed;
-          if (task.failed) task.error = verifyFailureMessage(ev, page, verifyIssues);
+          if (task.failed) {
+            task.error = verifyFailureMessage(ev, page, verifyIssues);
+            // 失败项要给出可执行的下一步，而不只是一句"未通过"。
+            // 卡点直方图来自 verify-summary（--resume 之后重跑只会补没测到的页）。
+            const topBlocker = Object.entries(ev.blockers ?? {}).sort((a, b) => b[1] - a[1])[0];
+            if ((ev.untested ?? 0) > 0) {
+              task.hint = (topBlocker ? `最常见的卡点：${topBlocker[0]}（${topBlocker[1]} 个视口）。` : '')
+                + '重跑会跳过已测过的页；如果卡点是长轮询/埋点，加 --allow-bounded 可让"版面已定、请求没完"的页按有界置信度计入。';
+            } else if (typeof ev.average === 'number' && Number.isFinite(ev.threshold) && ev.threshold > 0) {
+              task.hint = '先看最差的那页：点逐页清单按还原度排序，差异热图在对应页的体检目录里。';
+            }
+          }
           if (host.value === h) {
             if (!page) lastVerify.value = { host: h, pages: ev.pages,
               average: (ev.measured > 0 && typeof ev.average === 'number') ? (ev.average * 100).toFixed(1) : null,
@@ -1962,6 +2058,7 @@ function onKeydown(e) {
 }
 onMounted(async () => {
   document.addEventListener('keydown', onKeydown);
+  window.addEventListener('popstate', onPopState);
   applyTheme(theme.value);
   // 任务历史一开始就取一次：它此前只在切到「任务」视图时才拉，于是「进行中」轨道上的
   // "同类中位 0:38"在星图上永远是空的（实测：克隆 apify 页面时中位数不显示，
@@ -1969,15 +2066,23 @@ onMounted(async () => {
   try { await establishBrowserSession(); } catch (e) { failFrom(e, { what: '校验引擎 Token' }); }
   loadJobHistory();
   loadSites().then(() => {
-    // 默认载入第一个「有侦察结果」的站点；没有则保持空态（引导用户输入域名侦察）
-    const first = sites.value.find(s => s.pages) ?? sites.value[0];
-    if (first) pickSite(first);
-    else resetSiteContext('');
+    // 地址栏指定了站点就优先它（刷新 / 分享链接），否则载入第一个「有侦察结果」的站点
+    const state = readUrlState();
+    const wanted = state.site ? sites.value.find(s => s.host === state.site) : null;
+    const first = wanted ?? sites.value.find(s => s.pages) ?? sites.value[0];
+    if (first) {
+      // 切站会改 host（触发 syncUrl），而这时还没走到 applyUrlState ——
+      // 不先挂起的话，刷新带 ?page= 时地址栏会在恢复开始前就把 page 抹掉。
+      urlSyncSuspended = true;
+      const restore = () => { urlSyncSuspended = false; applyUrlState(state); };
+      Promise.resolve(pickSite(first)).then(restore, restore);
+    } else resetSiteContext('');
   });
   pollEngine();
 });
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('popstate', onPopState);
   es?.close();
   for (const s of taskSources.values()) { try { s.close(); } catch {} }
   // 看门狗的宽限计时器也要清：不然卸载后它还会到点触发一次 onDrop，往已经空的界面上写错误
@@ -2075,6 +2180,9 @@ onBeforeUnmount(() => {
         <span class="tc-state">{{ taskLabel(t) }}</span>
         <span class="tc-score" v-if="t.kind === 'audit' && t.auditScore != null">{{ t.auditScore }} 分</span>
         <span class="tc-score" v-else-if="t.score">{{ (t.score.pixel * 100).toFixed(1) }}%</span>
+        <!-- 失败项给一句可执行的下一步。塞进 title 只能靠悬停发现，
+             而"体检没通过"恰恰是用户最需要知道往哪走的时候。 -->
+        <span class="tc-hint" v-if="t.failed && t.hint">{{ t.hint }}</span>
       </div>
     </div>
   </div>

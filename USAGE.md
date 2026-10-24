@@ -66,6 +66,37 @@ node core/src/cli.mjs verify example.org --all --resume
 
 `--resume` 只复用**上次完整测成**、且 `manifest.json` / `clone/index.html` 都没比结果更新的页（克隆过的页会自动重测）；未测成的页一律重跑。摘要里的 `reused` 与 `measured` 分开计数，整站门禁仍按"全部页都测到"判定 —— 复用不会把没测过的页算成通过。
 
+有些页永远等不到"请求全部结束"（长轮询、埋点心跳、统计信标），但版面早就定住了 —— 截下来就是终态。这种页默认仍然算"未测到"，要计入分数得显式开口：
+
+```powershell
+node core/src/cli.mjs verify example.org --all --allow-bounded
+```
+
+开了之后，这类页按**有界置信度**计入：分数可信，但摘要里 `bounded` 会单独计数，交接说明也会提醒"这些页背地里还在跑东西"。版面还在变、滚动后页高还在长的页，开不开都会被拦下 —— 那是中间态。
+
+大站想快一点可以用 `--jobs N`（1–8，默认 1）：
+
+```powershell
+node core/src/cli.mjs verify example.org --all --resume --jobs 3
+```
+
+并发按页并行，每页仍独占自己的浏览器上下文。**默认是 1**：像素比对对时序敏感，抢 CPU 会让同一页的分数轻微漂移 —— 快是使用者的选择，准是默认值。
+
+### 一条命令走完全程
+
+不想手动串 `recon → queue → verify → assets → deliver` 时：
+
+```powershell
+node core/src/cli.mjs handoff https://example.org --max-pages 40
+```
+
+它会自己起一个临时引擎（用完关掉；本机已有引擎时直接复用），按顺序跑完五步，最后在
+`workspace/<站点>/handoff/README.md` 写一份**先说清楚覆盖到哪一步**的交接说明：
+发现多少页、完整测到多少页、没测到的卡在什么原因上、资产缺口有多少、交付包在哪里。
+没测到的部分会如实写出来 —— 一个写着"120 页里测到 96 页"的包，比一个假装全绿的包有用。
+
+可选：`--jobs N`（验证并发）、`--allow-bounded`（有界置信度）、`--skip-verify`（只要复刻件）。
+
 ## 交互镜像
 
 交互镜像适合有明确授权、需要分析前端行为的场景，不能等同于任意站点的完整离线副本。
