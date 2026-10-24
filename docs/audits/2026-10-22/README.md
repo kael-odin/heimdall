@@ -308,8 +308,11 @@ cd core && node --test test/seo-collect-empty-meta.test.mjs test/seo-i18n-jsrend
 
 **仍然待办**（在上一节基础上更新）：
 
-1. 第 1 项未变：仍需观察 2–3 次真实 CI 全绿；本轮 5 个提交**尚未推送**。
-2. `core/scripts/verify-historical-batch.mjs` 仍是逐页独立子进程，**没有接入**新的有界置信度口径；那三个未测页要先用 `verify <host> <page> --allow-bounded` 单个复核，再决定是否改造脚本。
-3. `handoff` 已在真实站点 `example.org` 上跑通一次（2026-10-24，`--max-pages 3`：侦察 1 页 → 克隆 1/1 → 验证 1/1 页完整测到 → 资产缺口 0 → 交付包生成，退出码 0，耗时约 45 秒）。但这只是一个单页静态站，**多页、SPA、带长轮询的站点仍未验证**；卡点分布与交付包体积仍无真实样本。
-4. 本机全量回归：2796 项、2783 通过、1 失败、12 跳过。失败项是 `acceptance-managed-executor-engine` 的 fixture 在满负载下等引擎启动超时，**单跑 6/6 通过**，属已知的并发间歇项，与本轮改动无关。
-5. 验收指纹冻结标记、`resetContext()` abort、`docs/audits` 剩余 270MB、P2 重构、LICENSE / dependabot / ESLint 仍未动。
+1. **已推送**（2026-10-24，`c47e946`、`d1af628`）。两次真实 CI 的结果：
+   - 第 1 次（`40073050122`）3 处失败：Docker 交付验收那一步是**本分支拆 CI 时引入的**（新加的 job 没装 Chromium，严格导出的断网浏览器探针直接失败）；另两处是计时竞态（Schema4 smoke 在验收执行槽释放前就发下一个 run → 409；named-session 用例的通过型断言只给了 100ms）。三处均已修（`d1af628`）。
+   - 第 2 次（`40080692099`）：core 两片测试、lint/docs/Docker、console 全绿；**e2e smoke 里 `Browser start resolution` 的 native-locks 段失败**。这一段本轮没有改动，历史上 3 次跑过都是绿的。
+2. **新发现的产品缺陷（未修，单独立项）**：`console/src/acceptance-browser-execution.js` 的本机操作记录靠 Web Locks 串行化"读 localStorage → 改 → 写回"，但**跨标签页的 localStorage 写入不保证在下一个持锁者读取前可见**。本机用完整 Chromium、两个独立标签做探针：400 次"A 在锁内删记录 → B 拿锁后读并追加"里，B 读到删除前旧值、把已删记录写回的次数为 18 次（另一次 4 次）。这正是 CI 失败里多出来的那条 `bo-74e1…`。加"版本号 + BroadcastChannel 等待追平"后降到 400 次 1 次 —— **能缓解、不能根除**。根治需要不依赖 localStorage 跨标签即时可见性的存储（例如把记录本身放进 IndexedDB 事务，或把权威状态放回引擎），这会动到 D4 的受冻结证据口径，需单独评估；`acceptance-defect-tickets.js` 用的是同一模式，风险相同。
+3. `core/scripts/verify-historical-batch.mjs` 仍是逐页独立子进程，**没有接入**新的有界置信度口径；那三个未测页要先用 `verify <host> <page> --allow-bounded` 单个复核，再决定是否改造脚本。
+4. `handoff` 已在真实站点 `example.org` 上跑通一次（2026-10-24，`--max-pages 3`：侦察 1 页 → 克隆 1/1 → 验证 1/1 页完整测到 → 资产缺口 0 → 交付包生成，退出码 0，耗时约 45 秒）。但这只是一个单页静态站，**多页、SPA、带长轮询的站点仍未验证**；卡点分布与交付包体积仍无真实样本。
+5. 本机全量回归：2796 项、2783 通过、1 失败、12 跳过。失败项是 `acceptance-managed-executor-engine` 的 fixture 在满负载下等引擎启动超时，**单跑 6/6 通过**，属已知的并发间歇项，与本轮改动无关。
+6. 验收指纹冻结标记、`resetContext()` abort、`docs/audits` 剩余 270MB、P2 重构、LICENSE / dependabot / ESLint 仍未动。
