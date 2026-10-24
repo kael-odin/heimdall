@@ -310,6 +310,6 @@ cd core && node --test test/seo-collect-empty-meta.test.mjs test/seo-i18n-jsrend
 
 1. 第 1 项未变：仍需观察 2–3 次真实 CI 全绿；本轮 5 个提交**尚未推送**。
 2. `core/scripts/verify-historical-batch.mjs` 仍是逐页独立子进程，**没有接入**新的有界置信度口径；那三个未测页要先用 `verify <host> <page> --allow-bounded` 单个复核，再决定是否改造脚本。
-3. `handoff` 只在本地夹具站点验证过，**尚未在任何授权真实站点上跑过**；真实站点的耗时、卡点分布、交付包体积都还是未知数。
+3. `handoff` 已在真实站点 `example.org` 上跑通一次（2026-10-24，`--max-pages 3`：侦察 1 页 → 克隆 1/1 → 验证 1/1 页完整测到 → 资产缺口 0 → 交付包生成，退出码 0，耗时约 45 秒）。但这只是一个单页静态站，**多页、SPA、带长轮询的站点仍未验证**；卡点分布与交付包体积仍无真实样本。
 4. 本机全量回归：2796 项、2783 通过、1 失败、12 跳过。失败项是 `acceptance-managed-executor-engine` 的 fixture 在满负载下等引擎启动超时，**单跑 6/6 通过**，属已知的并发间歇项，与本轮改动无关。
 5. 验收指纹冻结标记、`resetContext()` abort、`docs/audits` 剩余 270MB、P2 重构、LICENSE / dependabot / ESLint 仍未动。
