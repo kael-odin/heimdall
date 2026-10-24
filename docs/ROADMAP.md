@@ -71,8 +71,10 @@ D1 已实现 [Schema4 与显式维护](competition/acceptance-catalog-schema4.md
 ## 可信交付
 
 - [ ] 续跑 `core/scripts/verify-historical-batch.mjs` 的隔离多视口验证：先为 Apify 三个未测页定义有界、可复现的动态请求/布局完成条件，再测其余 402 页；`pages.csv`、`viewports.csv` 已记录状态、尺寸、覆盖率、缺口和失败原因，完成后复核全量对照表。
+  - 2026-10-24 进展：`verify` 已支持 `--resume`（断点续跑，复用已测且未变过的页）、`--allow-bounded`（版面已定、只剩长轮询/埋点的页按有界置信度计入，摘要单列 `bounded` 并给卡点直方图）与 `--jobs N`（默认 1）。批处理脚本本身仍是逐页独立子进程，尚未接入新的有界置信度口径；那三个未测页先用 `verify <host> <page> --allow-bounded` 单个复核，再决定是否需要脚本级改造。
 - [x] 新单页 `score.json` 在无可抽取字段时返回数据未测并归一剩余权重，多帧首帧完全一致时不再被差帧覆盖；`scoreFormulaVersion: 2` 区分新旧口径，旧产物只读保留。历史单页分数仍待批量重算。
 - [ ] 用一套有授权的真实站点完成“侦察 → 全页克隆 → 全站验证 → 离线 strict → 独立包断网浏览 → 接手”回归，记录每一步的目标数和通过数。
+  - 已提供入口：`node core/src/cli.mjs handoff <url>` 串完侦察→克隆（增量）→验证（断点续跑）→资产→交付，并写一份说清覆盖范围与卡点的 `handoff/README.md`；本机已用本地夹具站点跑通全链路（2/2 页完整测到、交付包生成），**真实授权站点尚未跑过**。
 - [ ] 用专门的认证测试站覆盖登录、Cookie 轮换、POST/API、重定向、登出及 HAR 清洗；明确哪些交互能离线回放，哪些必须回源。
 - [ ] 对带 query、长路径和分隔符碰撞的现存站点做覆盖率复核；旧目录保持可读，并给出必要时的显式迁移工具。
 - [x] 为同一 hostname 的多个 origin（协议或端口不同）提供稳定 sibling ID：旧目录保持，身份贯通侦察、克隆、API、静态 atlas、控制台选择、交互镜像、一次性票据与独立导出；受控双端口 fixture、最终整套门禁与[独立 CDP 真克隆](audits/2026-10-14/evidence/cdp-origin-final/cdp-real-forge.json)已通过，真实部署仍待复验。
