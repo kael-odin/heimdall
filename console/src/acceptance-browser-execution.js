@@ -1,4 +1,5 @@
 /** Strict durable identifiers, read DTOs and cancellable in-memory evidence. */
+import { defaultReceiptCollections } from './receipt-collections.js';
 const UUID = '[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}';
 const validId = (value, prefix) => typeof value === 'string' && new RegExp(`^${prefix}-${UUID}$`).test(value);
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -286,53 +287,79 @@ export async function fetchBrowserExecutionEvidence({ projectId, operationId, en
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   if (bytes.byteLength !== entry.bytes || digest !== entry.sha256 || ![137, 80, 78, 71, 13, 10, 26, 10].every((value, i) => new Uint8Array(bytes)[i] === value)) invalid('图片大小、格式或 SHA-256 不一致。'); return new Blob([bytes], { type: 'image/png' });
 }
-export function createBrowserExecutionReceipts({ projectId, origin, storage, locks = globalThis.navigator?.locks }) {
+export function createBrowserExecutionReceipts({ projectId, origin, storage, locks = globalThis.navigator?.locks, collections = defaultReceiptCollections() }) {
   let normalized; try { normalized = new URL(origin); } catch { invalid('执行记录上下文无效。'); }
   if (!validId(projectId, 'ap') || !['http:', 'https:'].includes(normalized.protocol) || normalized.origin !== origin || !storage || typeof storage.getItem !== 'function' || typeof storage.setItem !== 'function') invalid('执行记录上下文无效。');
   const key = `heimdall:browser-operations:v1:${origin}:${projectId}`;
-  function read() {
-    const raw = storage.getItem(key); if (raw === null) return [];
+  function parse(raw) {
+    if (raw === null) return [];
     if (typeof raw !== 'string' || raw.length > 32768) invalid('本机操作记录无法读取；尚未提交新请求。');
     let values; try { values = JSON.parse(raw); } catch { invalid('本机操作记录损坏；请先核对原操作。'); }
     if (!Array.isArray(values) || values.length > 32) invalid('本机待核对操作过多或记录损坏。');
     const result = values.map(browserExecutionRequest); if (new Set(result.map(value => value.operationId)).size !== result.length) invalid('本机操作记录重复。'); return result;
   }
+  // Synchronous display read: the localStorage mirror. Never used to decide a write.
+  function read() { return parse(storage.getItem(key)); }
   const canWrite = typeof locks?.request === 'function';
-  const exclusive = async action => {
+  /**
+   * One write = one decision against the authoritative copy.
+   * With IndexedDB (every real browser), `decide` runs inside a readwrite
+   * transaction on the committed value, so a write from another tab can never be
+   * overwritten by a stale collection; the result is then mirrored to
+   * localStorage for synchronous readers. Without IndexedDB (Node tests), the
+   * mirror itself is the store, as before. The Web Lock still serializes the
+   * whole step so the mirror is written in the same order as the transactions.
+   */
+  const commit = decide => {
     if (!canWrite) invalid('当前浏览器不支持安全保存或解除启动确认所需的 Web Locks；仅可只读查询。');
-    return locks.request(key, { mode: 'exclusive' }, action);
+    return locks.request(key, { mode: 'exclusive' }, async () => {
+      if (!collections) {
+        const planned = decide(read());
+        if (planned.write !== undefined) {
+          storage.setItem(key, JSON.stringify(planned.write));
+          if (!same(read(), planned.write)) invalid(planned.failure);
+        }
+        return planned.result;
+      }
+      let mirrored;
+      const result = await collections.update(key, raw => {
+        // The legacy mirror may hold receipts written before this store moved to IndexedDB;
+        // adopt them once so an upgrade never drops an unresolved original confirmation.
+        const planned = decide(raw === null ? read() : parse(raw));
+        if (planned.write === undefined) { mirrored = raw === null ? undefined : raw; return { result: planned.result }; }
+        mirrored = JSON.stringify(planned.write);
+        return { write: mirrored, result: planned.result };
+      });
+      if (mirrored !== undefined) {
+        storage.setItem(key, mirrored);
+        if (storage.getItem(key) !== mirrored) invalid('本机操作记录未能完整保存；尚未提交请求。');
+      }
+      return result;
+    });
   };
   return Object.freeze({ canWrite, read,
     async claimForStart(request) {
       const value = browserExecutionRequest(request);
-      return exclusive(() => {
-        if (read().length) return false;
-        const values = [value];
-        storage.setItem(key, JSON.stringify(values));
-        if (!same(read(), values)) invalid('本机操作记录未能完整保存；尚未提交请求。');
-        return true;
-      });
+      return commit(values => values.length ? { result: false }
+        : { write: [value], result: true, failure: '本机操作记录未能完整保存；尚未提交请求。' });
     },
     async save(request) {
       const value = browserExecutionRequest(request);
-      await exclusive(() => {
-        const values = read(), old = values.find(item => item.operationId === value.operationId);
+      await commit(values => {
+        const old = values.find(item => item.operationId === value.operationId);
         if (old && !same(old, value)) invalid('操作 ID 已用于其他确认。');
-        if (!old) values.push(value);
-        if (values.length > 32) invalid('请先核对原操作，再开始新的验收。');
-        storage.setItem(key, JSON.stringify(values));
-        if (!same(read(), values)) invalid('本机操作记录未能完整保存；尚未提交请求。');
+        const next = old ? values : [...values, value];
+        if (next.length > 32) invalid('请先核对原操作，再开始新的验收。');
+        return { write: next, failure: '本机操作记录未能完整保存；尚未提交请求。' };
       });
     },
     async resolveExact(request) {
       const expected = browserExecutionRequest(request);
-      await exclusive(() => {
-        const values = read(), old = values.find(value => value.operationId === expected.operationId);
+      await commit(values => {
+        const old = values.find(value => value.operationId === expected.operationId);
         if (old && !same(old, expected)) invalid('本机原确认已变化，不能解除另一条确认。');
-        if (!old) return;
-        const remaining = values.filter(value => value.operationId !== expected.operationId);
-        storage.setItem(key, JSON.stringify(remaining));
-        if (!same(read(), remaining)) invalid('本机操作记录尚未完整核对；不能报告已解除。');
+        if (!old) return {};
+        return { write: values.filter(value => value.operationId !== expected.operationId), failure: '本机操作记录尚未完整核对；不能报告已解除。' };
       });
     },
   });

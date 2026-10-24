@@ -156,7 +156,12 @@ async function denyUI(input) {
 }
 async function nativeLocks() {
   const secondary = await context.newPage(); observePage(secondary); await secondary.goto(base, { waitUntil: 'networkidle' });
-  const moduleUrl = 'data:text/javascript;base64,' + fs.readFileSync(resolve(CORE, '../console/src/acceptance-browser-execution.js')).toString('base64');
+  // A data: module cannot resolve relative imports, so its one dependency is inlined as a data: URL too.
+  const dataModule = text => 'data:text/javascript;base64,' + Buffer.from(text).toString('base64');
+  const collectionsUrl = dataModule(fs.readFileSync(resolve(CORE, '../console/src/receipt-collections.js'), 'utf8'));
+  const executionSource = fs.readFileSync(resolve(CORE, '../console/src/acceptance-browser-execution.js'), 'utf8');
+  assert.equal(executionSource.split("from './receipt-collections.js'").length, 2, 'Receipt module has exactly one relative import to inline.');
+  const moduleUrl = dataModule(executionSource.replace("from './receipt-collections.js'", 'from ' + JSON.stringify(collectionsUrl)));
   const lockProject = 'ap-' + randomUUID(), key = 'heimdall:browser-operations:v1:' + base + ':' + lockProject;
   const request = { operationId: 'bo-' + randomUUID(), ...cas(await latest()), candidateId: candidate.id,
     contentDigest: candidate.contentDigest, targetReleaseId: targetRelease.id };

@@ -1,4 +1,5 @@
 /** Manual ticket DTOs and exact browser confirmations. No execution endpoints. */
+import { defaultReceiptCollections } from './receipt-collections.js';
 const UUID = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
 const id = (value, prefix) => typeof value === 'string' && new RegExp(`^${prefix}-${UUID}$`).test(value);
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -282,38 +283,69 @@ export function createDefectTicketReadGuard() {
   }, current(ticket) { return !stopped && ticket.epoch === epoch && channels.get(ticket.channel) === ticket && !ticket.signal.aborted; },
   reset, stop() { stopped = true; reset(); } });
 }
-export function createDefectTicketReceipts({ projectId, origin, storage, locks = globalThis.navigator?.locks } = {}) {
+export function createDefectTicketReceipts({ projectId, origin, storage, locks = globalThis.navigator?.locks, collections = defaultReceiptCollections() } = {}) {
   let normalized; try { normalized = new URL(origin); } catch { fail(); }
   need(id(projectId, 'ap') && normalized.origin === origin && ['http:', 'https:'].includes(normalized.protocol)
     && typeof storage?.getItem === 'function' && typeof storage?.setItem === 'function');
   const key = `heimdall:defect-tickets:v1:${origin}:${projectId}`, claims = new Map(); let faulted = false;
-  function read() {
+  function parse(raw) {
     try {
-      if (faulted) fail(); const raw = storage.getItem(key); if (raw === null) return [];
+      if (faulted) fail(); if (raw === null) return [];
       need(typeof raw === 'string' && raw.length <= MAX_CONFIRMATIONS && new TextEncoder().encode(raw).length <= MAX_CONFIRMATIONS);
       const values = json(JSON.parse(raw), MAX_CONFIRMATIONS); need(Array.isArray(values) && values.length <= 32); const ids = new Set();
       for (const value of values) { confirmation(value); need(value.projectId === projectId && !ids.has(value.actionId)); ids.add(value.actionId); }
       return values;
     } catch { faulted = true; fail('本机原确认无法完整读取；请保留现场，当前项目已阻止提交。'); }
   }
+  // Synchronous display read: the localStorage mirror. Never used to decide a write.
+  function read() { return parse(faulted ? null : storage.getItem(key)); }
+  /**
+   * Inside the lock, the decision reads the authoritative copy. With IndexedDB
+   * that is a readwrite transaction on the committed value (a localStorage write
+   * from another tab is not guaranteed to be visible yet, which once let a stale
+   * collection resurrect a resolved confirmation); the result is mirrored to
+   * localStorage afterwards. Without IndexedDB (Node tests) the mirror is the store.
+   */
+  let staged = null;
   function write(expected) {
-    try { const bytes = canonical(expected, MAX_CONFIRMATIONS); storage.setItem(key, bytes);
-      need(equal(read(), expected));
+    try {
+      const bytes = canonical(expected, MAX_CONFIRMATIONS);
+      if (staged) { staged.bytes = bytes; staged.expected = expected; return; }
+      storage.setItem(key, bytes); need(equal(read(), expected));
     } catch { faulted = true; fail('本机原确认写入或完整回读失败；已阻止继续提交。'); }
   }
+  let committedValues = read;
   function lock(action) {
     if (faulted || typeof locks?.request !== 'function') return Promise.reject(Object.assign(new Error('无法独占保存本机确认，当前仅可只读核对。'), { code: 'INVALID_RESPONSE' }));
-    return locks.request(key, { mode: 'exclusive' }, action);
+    if (!collections) return locks.request(key, { mode: 'exclusive' }, action);
+    return locks.request(key, { mode: 'exclusive' }, async () => {
+      const step = { bytes: undefined, expected: undefined };
+      let outcome;
+      try {
+        outcome = await collections.update(key, raw => {
+          // Adopt receipts written by the localStorage-only version once, so an upgrade never drops them.
+          const committed = raw === null ? read() : parse(raw);
+          staged = step; committedValues = () => committed;
+          try { outcome = action(); } finally { staged = null; committedValues = read; }
+          return step.bytes === undefined ? { result: outcome } : { write: step.bytes, result: outcome };
+        });
+      } catch (cause) { if (cause?.code === 'INVALID_RESPONSE') throw cause; faulted = true; fail('本机原确认写入或完整回读失败；已阻止继续提交。'); }
+      if (step.bytes !== undefined) {
+        try { storage.setItem(key, step.bytes); need(equal(read(), step.expected)); }
+        catch { faulted = true; fail('本机原确认写入或完整回读失败；已阻止继续提交。'); }
+      }
+      return outcome;
+    });
   }
   function remove(original) {
-    const values = read(), found = values.find(value => value.actionId === original.actionId);
+    const values = committedValues(), found = values.find(value => value.actionId === original.actionId);
     if (!found) return false; need(equal(found, original)); write(values.filter(value => value.actionId !== original.actionId)); claims.delete(canonical(original)); return true;
   }
   return Object.freeze({ key, get canWrite() { return !faulted && typeof locks?.request === 'function'; }, read,
     async claimForSubmit(input) {
       const original = confirmation(input), verified = await defectTicketConfirmation({ projectId: original.projectId,
         ticketId: original.ticketId, kind: original.kind, request: original.request }); need(equal(original, verified) && original.projectId === projectId);
-      return lock(() => { const values = read(); if (values.length) return false; write([original]); claims.set(canonical(original), false); return true; });
+      return lock(() => { const values = committedValues(); if (values.length) return false; write([original]); claims.set(canonical(original), false); return true; });
     },
     markDispatched(input) { const original = confirmation(input), token = canonical(original); need(claims.has(token) && claims.get(token) === false); claims.set(token, true); },
     cancelUnsent(input) { const original = confirmation(input), token = canonical(original);

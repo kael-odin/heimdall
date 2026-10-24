@@ -183,7 +183,8 @@ try {
   const selected=[badChecks.find(check=>check.identity.facet==='visual'&&check.viewport==='desktop'&&check.verdict==='bug'),badChecks.find(check=>check.identity.facet==='behavior'&&check.viewport==='desktop'&&check.verdict==='bug')];
   assert.ok(selected.every(Boolean));assert.equal(new Set(selected.map(check=>check.id)).size,2);checks.realSourceAndRegisteredVisualBehaviorFailures=true;
   const initialOriginals=originals(),initialTargetCount=targetRequests.length;
-  await startBrowser();await openConsole();assert.equal(await page.url(),base+'/');assert.ok((await page.title()).length>0);assert.equal(await page.locator('vite-error-overlay').count(),0);
+  await startBrowser();await openConsole();// The console mirrors its view into the address bar (?view=acceptance); what matters is that it stayed on the console page.
+  {const opened=new URL(page.url());assert.equal(opened.origin+opened.pathname,base+'/');assert.equal(opened.searchParams.get('view'),'acceptance');}assert.ok((await page.title()).length>0);assert.equal(await page.locator('vite-error-overlay').count(),0);
   await component().getByTestId('defect-tickets-candidate').selectOption(candidate.id);
   await component().getByTestId('defect-tickets-source').selectOption(bad.input.operationId);
   for(const check of selected)await component().locator('[data-testid="defect-ticket-member"][data-check-id="'+check.id+'"]').check();
