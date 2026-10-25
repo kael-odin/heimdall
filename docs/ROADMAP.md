@@ -18,6 +18,10 @@
 
 同日[公开页面离线验收](audits/2026-10-16/public-page-offline-acceptance.md)确认 `example.com` 单页可完成 strict 导出、独立 Node 服务与浏览器访问；`vitest.dev` 单页在 heal / materialize 后同源与跨源静态资源缺口清零，剩余 16 个阻断均为未克隆站内链接。验收还修复了 `dns-prefetch` 被子串匹配误判为 `prefetch` 的 strict 假缺口。两个样本均为 `captured-only`，不能证明整站覆盖。
 
+## AI 原生接入（规划中）
+
+2026-10-25 起草的 [AI 接入层 PRD](prd/ai-native/README.md)：一个能力注册表生成 CLI / MCP / HTTP / 技能四个外壳，让外部代理调用 Heimdall；以「AI 提议、确定性门禁裁决、失败回落镜像」的闭环做前端重建，行为与后端只做被观察到的部分。Phase 0 的四个 spike 已于 10-25 完成并回写假设表（[结论](prd/ai-native/10-roadmap-risks.md)）：修复包原型过线，分段重建 6 次运行全部过 silver，但每段成本比估算高 3–6 倍；正式裁判须绕开验收的截图预算与健康前提。客户端界面手测完成后冻结为 v1.0，再按其路线图开工；spike 代码在 `core/spikes/ph0/`，不进主干。
+
 ## 比赛方向：项目还原度与 BUG 自动验收
 
 2026-10-16 已实现[项目验收工作台](competition/acceptance-workbench.md)：独立 baseline / target 输入、Mirror / Regression 模式、375 / 768 / 1440 三视口、页面结构与运行健康检查、click / fill / press 与可见性 / 文本 / 属性 / URL 断言；双方重复截图识别不稳定差异，遮罩覆盖过大与全页预算超限进入复核。输出明确的问题归因、复现步骤、截图 / 差异图 / DOM / 网络摘要、计划与验证器指纹、证据 SHA-256。AI 解读仅按需发送脱敏摘要，不能修改门禁。固定夹具的检出率、误报与门禁及控制台闭环接入 CI，实际结果见[实施验收记录](audits/2026-10-16/acceptance-workbench.md)。

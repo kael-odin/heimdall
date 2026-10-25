@@ -1,0 +1,27 @@
+{
+  "name": "@heimdall/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Heimdall MCP v2 server (Bifröst): tools, resources and prompts generated from the core capability registry",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "bin": {
+    "heimdall-mcp": "bin/heimdall-mcp.mjs"
+  },
+  "scripts": {
+    "start": "node bin/heimdall-mcp.mjs",
+    "start:http": "node bin/heimdall-mcp.mjs --http 8931",
+    "test": "node --test test/*.test.mjs",
+    "build:plugin": "node scripts/build-plugin.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "esbuild": "0.28.2"
+  },
+  "license": "UNLICENSED"
+}

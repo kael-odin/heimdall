@@ -1,0 +1,8 @@
+{
+  "name": "heimdall",
+  "version": "0.1.0",
+  "description": "让 AI 代理调用 Heimdall：取证、度量、判定，按分段闭环重建网页。",
+  "keywords": ["clone", "fidelity", "mcp", "rebuild", "visual-regression"],
+  "author": { "name": "Heimdall" },
+  "license": "UNLICENSED"
+}

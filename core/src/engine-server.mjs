@@ -68,6 +68,10 @@ import { handleDefectTicketRequest } from './acceptance/defect-ticket-api.mjs';
 import { createManagedSpecDispatchReadContext } from './acceptance/managed-dispatch-reader.mjs';
 import { managedRunProvenanceOf } from './acceptance/managed-run-schema.mjs';
 import { explainError } from './errors.mjs';
+// Bifröst（AI 接入层）：HTTP v1 门面与任务门面，只挂新路由，不改旧路由（PRD docs/prd/ai-native 附录 A §6）
+import { createJobManager } from './agent/jobs.mjs';
+import { handleV1 } from './agent/http-v1.mjs';
+import { clearEngineState, writeEngineState } from './agent/engine-client.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
 let acceptanceOwner;
@@ -427,7 +431,8 @@ function authorized(req, u, res, scope = '') {
   if (!AUTH_TOKEN) return true;
   const cookie = String(req.headers.cookie ?? '').split(';').map(part => part.trim())
     .find(part => part.startsWith('heimdall_session='))?.slice('heimdall_session='.length);
-  if (req.headers['x-heimdall-token'] === AUTH_TOKEN || u?.searchParams?.get('token') === AUTH_TOKEN) {
+  if (req.headers['x-heimdall-token'] === AUTH_TOKEN || u?.searchParams?.get('token') === AUTH_TOKEN
+      || req.headers.authorization === `Bearer ${AUTH_TOKEN}`) {
     issueAuthSession(res, cookie, scope);
     return true;
   }
@@ -1302,6 +1307,11 @@ const handleRequest = async (req, res) => {
       && (u.pathname.startsWith('/api/') || u.pathname.startsWith('/px/')
         || u.pathname.startsWith('/static/') || u.pathname === '/lm' || u.pathname.startsWith('/lm/'))) {
     return json(res, 401, { error: 'unauthorized' });
+  }
+
+  // AI 接入层 HTTP v1（新路由；旧 /api/* 行为不变）
+  if (u.pathname.startsWith('/api/v1/')) {
+    if (await handleV1(req, res, u, { jobs: agentJobs })) return;
   }
 
   // Independent project acceptance: persistent runs, protected evidence, bounded worker.
@@ -2473,7 +2483,23 @@ const handleRequest = async (req, res) => {
 // 兜底：任何路由里抛出的异常只让这一个请求变 500，**不带崩进程**。
 // 这不是假想的防御 —— 本文件里一次改动漏掉一个变量作用域就让整个引擎
 // 在收到一个 /api/assets 请求时直接退出（所有其它接口一起没），排查成本极高。
+// 任务门面：通过本引擎自己的旧路由发起底层任务（排队代替 409 busy；底层槽不动）
+const agentJobs = createJobManager({ selfBase: () => `http://127.0.0.1:${PORT}`, token: () => AUTH_TOKEN });
+
+// 空闲自退（只在设置了 HEIMDALL_IDLE_EXIT_MS 时生效）：CLI / MCP 自起的临时引擎用它收尾，
+// 没有请求、没有运行中的任务、没有未完成的门面任务持续超过这个时长就退出
+const IDLE_EXIT_MS = Number(process.env.HEIMDALL_IDLE_EXIT_MS) || 0;
+let lastActivity = Date.now();
+if (IDLE_EXIT_MS > 0) {
+  setInterval(() => {
+    const busy = agentJobs.running() > 0 || [...tasks.values()].some(t => t.status === 'running');
+    if (busy) { lastActivity = Date.now(); return; }
+    if (Date.now() - lastActivity > IDLE_EXIT_MS) { console.log('[engine] idle, exiting'); shutdown(); }
+  }, 5000).unref();
+}
+
 const server = createServer((req, res) => {
+  lastActivity = Date.now();
   Promise.resolve(handleRequest(req, res)).catch((err) => {
     console.error('[engine] request handler failed:', err);
     try {
@@ -2482,7 +2508,11 @@ const server = createServer((req, res) => {
     } catch { /* 响应已经废了，只能吞掉 */ }
   });
 });
-server.listen(PORT, BIND, () => console.log(`engine-server @ http://${BIND}:${PORT}`));
+server.listen(PORT, BIND, () => {
+  console.log(`engine-server @ http://${BIND}:${PORT}`);
+  // 记下地址与 pid，后续的 CLI / MCP 才找得到这台引擎（见 agent/engine-client.mjs 的状态文件）
+  writeEngineState({ base: `http://${BIND === '0.0.0.0' ? '127.0.0.1' : BIND}:${PORT}`, pid: process.pid, startedAt: new Date().toISOString() });
+});
 
 // 优雅退出：先停掉任务子进程，再关闭持久化存储（Docker stop / Ctrl-C）。
 // 存储盘点、克隆、导出都是子进程；只杀引擎会让它们继续写数据目录，
@@ -2508,6 +2538,7 @@ const shutdown = async () => {
     new Promise(resolve => { grace = setTimeout(resolve, 2500); })]);
   clearTimeout(grace);
   try { jobStore?.close(); } catch {}
+  clearEngineState(process.pid);
   process.exit(0);
 };
 process.on('SIGINT', shutdown);

@@ -15,6 +15,8 @@ core/_maintenance/
 core/trash/
 core/assets-cas/
 core/jobs.db*
+# AI 接入层运行时状态（引擎地址、门面任务快照）；不入库
+core/agent/
 core/*.db-shm
 core/*.db-wal
 core/deliverable/

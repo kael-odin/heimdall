@@ -1,0 +1,12 @@
+{
+  "name": "heimdall",
+  "owner": { "name": "Heimdall" },
+  "metadata": { "description": "Heimdall 的 Claude Code 插件：克隆、度量、重建网页。插件根是仓库内的 plugin/ 子目录，安装时只复制它。" },
+  "plugins": [
+    {
+      "name": "heimdall",
+      "source": "./plugin",
+      "description": "AI 代理调用 Heimdall：取证、度量、判定，按分段闭环重建网页。"
+    }
+  ]
+}

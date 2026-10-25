@@ -1,0 +1,25 @@
+{
+  "schema": "heimdall.bench-cases/1",
+  "fixture": "f1",
+  "note": "注入清单只给评分器读（PRD 09 §1.3）：Bench 驱动器运行代理时不把 truth/ 复制进代理的工作区。",
+  "cases": [
+    { "id": "f1-shift-hero-art", "cause": "shift", "selector": ".hero-art", "css": ".hero-art{transform:translate(12px,-8px)}", "viewports": [375, 768, 1440], "expected": { "dx": 12, "dy": -8 } },
+    { "id": "f1-shift-cta-button", "cause": "shift", "selector": ".cta-band .btn", "css": ".cta-band .btn{transform:translateX(-24px)}", "viewports": [375, 768, 1440], "expected": { "dx": -24, "dy": 0 } },
+    { "id": "f1-size-feature-icons", "cause": "size", "selector": ".feature-card .icon", "css": ".feature-card .icon{width:56px;height:56px}", "viewports": [375, 768, 1440], "expected": { "width": 44, "height": 44 } },
+    { "id": "f1-size-avatar", "cause": "size", "selector": ".avatar", "css": ".avatar{width:96px;height:96px}", "viewports": [375, 768, 1440], "expected": { "width": 120, "height": 120 } },
+    { "id": "f1-color-primary-button", "cause": "color", "selector": ".btn-primary", "css": ".btn-primary{background:#e63946}", "viewports": [375, 768, 1440], "expected": { "property": "background-color", "value": "#2f5bea" } },
+    { "id": "f1-color-lead-subtle", "cause": "color", "selector": ".lead", "css": ".lead{color:#7a859b}", "viewports": [375, 768, 1440], "expected": { "property": "color", "value": "#5c677d" } },
+    { "id": "f1-color-cta-band", "cause": "color", "selector": ".cta-band", "css": ".cta-band{background:#2a9d8f}", "viewports": [375, 768, 1440], "expected": { "property": "background-color", "value": "#2f5bea" } },
+    { "id": "f1-font-hero-title-size", "cause": "font", "selector": ".hero h1", "css": ".hero h1{font-size:46px}", "viewports": [1440], "expected": { "property": "font-size", "value": "52px" } },
+    { "id": "f1-font-section-title-family", "cause": "font", "selector": ".section-title", "css": ".section-title{font-family:Georgia,serif}", "viewports": [375, 768, 1440], "expected": { "property": "font-family", "value": "Source Code Pro" } },
+    { "id": "f1-spacing-features-padding", "cause": "spacing", "selector": ".features", "css": ".features{padding-top:128px}", "viewports": [768, 1440], "expected": { "property": "padding-top", "value": "96px" } },
+    { "id": "f1-spacing-card-padding", "cause": "spacing", "selector": ".feature-card", "css": ".feature-card{padding:40px}", "viewports": [375, 768, 1440], "expected": { "property": "padding", "value": "28px" } },
+    { "id": "f1-image-missing-hero", "cause": "image-missing", "selector": ".hero-art img", "rewrite": { "from": "/img/hero-art.png", "to": "/img/missing-hero.png" }, "viewports": [375, 768, 1440], "expected": { "src": "/img/hero-art.png" } },
+    { "id": "f1-image-missing-avatar", "cause": "image-missing", "selector": ".avatar", "css": ".avatar{visibility:hidden}", "viewports": [375, 768, 1440], "expected": { "src": "/img/avatar.png" } },
+    { "id": "f1-missing-content-stats", "cause": "missing-content", "selector": ".hero-stats", "css": ".hero-stats{display:none}", "viewports": [375, 768, 1440], "expected": { "present": true } },
+    { "id": "f1-missing-content-third-card", "cause": "missing-content", "selector": ".feature-card:nth-child(3)", "css": ".feature-card:nth-child(3){visibility:hidden}", "viewports": [375, 768, 1440], "expected": { "present": true } },
+    { "id": "f1-overflow-mobile-header", "cause": "overflow", "selector": ".header-inner", "css": "@media (max-width:640px){.header-inner{width:440px}}", "viewports": [375], "expected": { "scrollWidth": 375 } },
+    { "id": "f1-font-weight-feature-titles", "cause": "font", "selector": ".feature-card h3", "css": ".feature-card h3{font-weight:400}", "viewports": [375, 768, 1440], "expected": { "property": "font-weight", "value": "700" } },
+    { "id": "f1-spacing-hero-actions-gap", "cause": "spacing", "selector": ".hero-actions", "css": ".hero-actions{gap:40px}", "viewports": [768, 1440], "expected": { "property": "gap", "value": "16px" } }
+  ]
+}

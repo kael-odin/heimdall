@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "heimdall": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server/heimdall-mcp.mjs"],
+      "env": { "HEIMDALL_API": "http://127.0.0.1:8900" }
+    }
+  }
+}

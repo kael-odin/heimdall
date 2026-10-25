@@ -14,6 +14,11 @@
  *   heimdall deliver <host>                    打包交付物
  *   heimdall serve [port]                      启动引擎/控制台服务
  *
+ * AI 接入层（Bifröst，PRD docs/prd/ai-native）的代理命令由能力注册表生成，带 --json、统一退出码：
+ *   heimdall overview | site | brief | artifact | compare | jobs | clone | doctor
+ *   heimdall rebuild init | rebuild status | connect | probe | mcp [--http N] [--legacy]
+ *   heimdall --help --json                     机器可读的命令清单
+ *
  * 用法: node src/cli.mjs <command> [...args]   或   pnpm -C core cli <command> ...
  */
 import { spawn } from 'node:child_process';
@@ -41,7 +46,7 @@ export const COMMANDS = {
   tokens:  { script: 'src/extract/extract-tokens.mjs', usage: 'tokens <host> [--pages N] [--page name]', desc: '设计 token 提取（色板/字阶/间距/圆角/阴影）' },
   components: { script: 'src/extract/extract-components.mjs', usage: 'components <host> [--pages N] [--max N]', desc: '组件抽取（header/hero/pricing/faq/footer/cta → 独立预览）' },
   matrix:  { script: 'src/seo/matrix.mjs', usage: 'matrix <site1> <site2> [--max N] [--refresh]', desc: '竞品 SEO 对标矩阵（多站点聚合对比）' },
-  mcp:     { script: 'src/mcp/server.mjs', usage: 'mcp', desc: 'MCP stdio 服务器（把 Heimdall 能力暴露给 agent 客户端）' },
+  mcp:     { script: 'src/mcp/server.mjs', usage: 'mcp [--http <port>] [--legacy]', desc: 'MCP 服务器：默认 v2（packages/mcp，8 个工具 + 资源 + 提示词）；--legacy 起旧的 13 工具服务器' },
   browser: { script: 'src/browser/bookmarklet.mjs', usage: 'browser [--api URL] [--token T]', desc: '生成浏览器书签入口安装页（在任意页面一键送入 Heimdall）' },
   sandbox: { script: 'src/sandbox/serve.mjs', usage: 'sandbox <host> <page> [--port 8090] [--reset]', desc: '沙盒改造台（改 HTML/CSS + 与原版实时对比）' },
   live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <deliverable-subdir>] [--rebuild] [--root mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--public-text-links-max-targets N] [--cache-runtime-services <json-file>] [--browser-observe-ms N] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-adapter] [--include-api-har] [--allow-private-export]', desc: '导出可部署交互镜像包（静态 HAR 回放 + Docker + 离线门禁）' },
@@ -61,26 +66,51 @@ export function resolveCommand(argv) {
   return { name, ...COMMANDS[name], args: argv.slice(1) };
 }
 
-function help() {
-  const rows = Object.entries(COMMANDS).map(([name, c]) => `  ${c.usage.padEnd(58)} ${c.desc}`);
-  console.log(`Heimdall CLI\n\n${rows.join('\n')}\n\n示例:\n  heimdall recon apify.com 30\n  heimdall audit apify.com --max 20\n  heimdall live apify.com --offline\n  heimdall serve 8900\n`);
+async function help() {
+  const { describeCapabilities } = await import('./agent/registry/index.mjs');
+  const { CLI_ONLY } = await import('./agent/cli.mjs');
+  const agent = describeCapabilities().map(c => `  ${(c.cli?.usage ?? c.id).padEnd(58)} ${c.title}`);
+  const only = Object.values(CLI_ONLY).map(c => `  ${c.usage.padEnd(58)} ${c.desc}`);
+  const rows = Object.entries(COMMANDS).filter(([name]) => name !== 'mcp').map(([name, c]) => `  ${c.usage.padEnd(58)} ${c.desc}`);
+  console.log(`Heimdall CLI\n\nAI 代理命令（--json 输出、统一退出码；heimdall --help --json 看参数 schema）：\n${agent.join('\n')}\n${only.join('\n')}\n\n采集与交付：\n${rows.join('\n')}\n\n示例:\n  heimdall doctor\n  heimdall clone https://example.org/ --json\n  heimdall brief example.org home --detail sections\n  heimdall compare --project .\n  heimdall recon apify.com 30\n  heimdall serve 8900\n`);
 }
 
 // 仅在直接执行时运行（被 import 时只导出命令表，便于单测）
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const argv = process.argv.slice(2);
-  if (!argv.length || argv[0] === 'help' || argv[0] === '--help' || argv[0] === '-h') { help(); process.exit(argv.length ? 0 : 1); }
-  const cmd = resolveCommand(argv);
-  if (!cmd) { console.error(`unknown command: ${argv[0]}\n`); help(); process.exit(2); }
+  const { AGENT_COMMANDS, runAgentCommand, helpJson } = await import('./agent/cli.mjs');
+  if ((argv[0] === '--help' || argv[0] === 'help') && argv.includes('--json')) {
+    process.stdout.write(JSON.stringify(helpJson(COMMANDS)) + '\n');
+    process.exit(0);
+  }
+  if (!argv.length || argv[0] === 'help' || argv[0] === '--help' || argv[0] === '-h') { await help(); process.exit(argv.length ? 0 : 1); }
+  // 代理命令（能力注册表）：同进程执行，--json 时 stdout 只有 NDJSON 与最后一行信封
+  if (AGENT_COMMANDS.includes(argv[0])) process.exit(await runAgentCommand(argv[0], argv.slice(1)));
+  if (argv[0] === 'rebuild' || argv[0] === 'connect' || argv[0] === 'probe') {
+    const mod = await import(`./agent/commands/${argv[0]}.mjs`);
+    process.exit(await mod.run(argv.slice(1)));
+  }
+  // mcp：默认起 v2（packages/mcp），--legacy 保留旧服务器一个版本（E2-12）
+  const legacyMcp = argv[0] === 'mcp' && argv.includes('--legacy');
+  if (argv[0] === 'mcp' && !legacyMcp) {
+    const v2 = join(CORE, '..', 'packages', 'mcp', 'bin', 'heimdall-mcp.mjs');
+    const child = spawn(process.execPath, [v2, ...argv.slice(1)], { cwd: CORE, stdio: 'inherit', env: { ...process.env, HEIMDALL_INVOKE_CWD: process.cwd() } });
+    child.on('exit', (code) => process.exit(code ?? 1));
+    child.on('error', (e) => { console.error('[cli] failed to spawn MCP v2:', e.message); process.exit(1); });
+  } else {
+    if (legacyMcp) process.stderr.write('[heimdall] 旧版 MCP 服务器（13 个工具）将在下个版本移除；新客户端请用 heimdall mcp（v2）\n');
+    const cmd = resolveCommand(legacyMcp ? argv.filter(a => a !== '--legacy') : argv);
+    if (!cmd) { console.error(`unknown command: ${argv[0]}\n`); await help(); process.exit(2); }
 
-  // 子进程 cwd 固定为 core（脚本内部靠相对路径找自己），同时把调用方 cwd 传下去，
-  // 让 --out 这类用户路径相对“用户敲命令的目录”解析，而不是 core/。
-  const child = spawn(process.execPath, [join(CORE, cmd.script), ...cmd.args], {
-    cwd: CORE,
-    stdio: 'inherit',
-    env: { ...process.env, HEIMDALL_INVOKE_CWD: process.cwd() },
-  });
-  child.on('exit', (code) => process.exit(code ?? 1));
-  child.on('error', (e) => { console.error('[cli] failed to spawn:', e.message); process.exit(1); });
+    // 子进程 cwd 固定为 core（脚本内部靠相对路径找自己），同时把调用方 cwd 传下去，
+    // 让 --out 这类用户路径相对“用户敲命令的目录”解析，而不是 core/。
+    const child = spawn(process.execPath, [join(CORE, cmd.script), ...cmd.args], {
+      cwd: CORE,
+      stdio: 'inherit',
+      env: { ...process.env, HEIMDALL_INVOKE_CWD: process.cwd() },
+    });
+    child.on('exit', (code) => process.exit(code ?? 1));
+    child.on('error', (e) => { console.error('[cli] failed to spawn:', e.message); process.exit(1); });
+  }
 }
