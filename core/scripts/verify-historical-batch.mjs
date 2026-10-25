@@ -26,6 +26,10 @@ const VERIFIER_FILES = [
   'src/verify/compare.mjs',
   'src/verify/tiled-compare.mjs',
   'src/verify/interactions.mjs',
+  // The clone is rendered through this server; its response headers decide
+  // whether @font-face and CSS mask images load, so a change here changes
+  // scores. (2026-10-25: font assets went from blocked to served with CORS.)
+  'src/clone-preview-server.mjs',
   'src/freeze.mjs',
   'src/paths.mjs',
   'src/url-canon.mjs',

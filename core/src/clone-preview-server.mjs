@@ -1,6 +1,6 @@
 import { createReadStream, existsSync, lstatSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { WORKSPACE, isInside, isSecretFile } from './paths.mjs';
 
 const MIME = {
@@ -14,6 +14,13 @@ const MIME = {
   '.eot': 'application/vnd.ms-fontobject', '.mp4': 'video/mp4',
   '.webm': 'video/webm', '.mp3': 'audio/mpeg', '.pdf': 'application/pdf',
 };
+
+// The sandbox gives a clone document an opaque origin, so the browser requests
+// its @font-face files and CSS mask images in CORS mode; without this header
+// they fail and screenshots fall back to system fonts and lose masked shapes.
+// Only these rendering assets, under the directory of a document urlFor()
+// handed out, are opened; HTML, scripts and data stay unreadable to the clone.
+const CORS_ASSET = /^(?:font\/|image\/|text\/css;)|^application\/vnd\.ms-fontobject$/;
 
 function regularFileUnder(root, segments) {
   let file = root;
@@ -29,6 +36,7 @@ function regularFileUnder(root, segments) {
 /** A short-lived HTTP view of this process's workspace, independent of :8900. */
 export async function startClonePreviewServer({ workspace = WORKSPACE } = {}) {
   const root = resolve(workspace);
+  const documentDirs = new Set();
   const server = createServer((req, res) => {
     if (req.headers.host !== `127.0.0.1:${server.address().port}`) {
       res.writeHead(421); res.end(); return;
@@ -48,11 +56,13 @@ export async function startClonePreviewServer({ workspace = WORKSPACE } = {}) {
     if (!file || isSecretFile(file)) { res.writeHead(404); res.end(); return; }
     const stat = statSync(file);
     const mime = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream';
+    const corsAsset = CORS_ASSET.test(mime) && [...documentDirs].some(dir => isInside(dir, file));
     res.writeHead(200, {
       'Content-Type': mime,
       'Content-Length': stat.size,
       'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'no-store',
+      ...(corsAsset ? { 'Access-Control-Allow-Origin': '*' } : {}),
       ...(mime.startsWith('text/html') ? { 'Content-Security-Policy': 'sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox' } : {}),
       ...(mime === 'image/svg+xml' ? { 'Content-Security-Policy': 'sandbox' } : {}),
     });
@@ -70,6 +80,7 @@ export async function startClonePreviewServer({ workspace = WORKSPACE } = {}) {
       if (!isInside(root, path) || !existsSync(path)) throw new Error('clone file outside current workspace: ' + path);
       const rel = relative(root, path);
       if (isAbsolute(rel)) throw new Error('clone file outside current workspace: ' + path);
+      documentDirs.add(dirname(path));
       return `${origin}/static/${rel.split(sep).map(encodeURIComponent).join('/')}`;
     },
     async close() {
