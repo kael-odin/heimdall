@@ -84,6 +84,7 @@ Ph0 预研 ─→ Ph1 手眼 ─→ Ph2 闭环与剧场 ─→ Ph3 加固与彩�
 
 - E7-08 收敛控制器已落地（`core/src/agent/loops/converge.mjs`，纯函数，9 条单测），规则按 [03 §5.4](03-architecture.md)：迭代上限、回退到最好一次、停滞与振荡升级、升级阶梯、预算、固定终态枚举；`rebuild status` 每个分段给出下一步。Autopilot 与「AI 活动」视图后续直接复用。
 - E7-19 正式基线供给与体检已落地（`core/src/agent/gate/baseline.mjs`、CLI `heimdall gate baseline <siteId> <page>`，7 条单测）：回环只读服务（随机端口、无令牌、不加 CSP）供基线；体检不过就生成「正式基线副本」（去外部请求与断链引用，改动逐条入报告）再体检；仍不过记 `blocked`。**本机 8 页实测：6 页直接健康；thordata.com/home（3 个第三方 iframe）、apify.com/contact（doubleclick、断链资产）、stripe.com/home 清洗后健康，页高不变；0 页 blocked**——Ph0 时这三页的正式视觉是 100% `blocked`。
+- E7-10 Floor=Mirror 交付已落地（`core/src/agent/deliver/floor.mjs`、CLI `heimdall rebuild deliver`，4 条单测）：终态只取固定的五种，`passed` 只认正式裁判；未通过时交付 `mirror/` 为交付物、重建项目带 `DRAFT.md` 标为草稿；包内有 `REPORT.md`（人话）、`residuals.json`（每段停在哪、最好一次）、`delivery.json`、`MANIFEST.jsonl`（逐文件 SHA-256）。本机用 thordata.com/home 走了一遍：init → compare（fail）→ deliver，包 5.2MB（85 个项目文件 + 77 个镜像文件）。
 - 模型改档：默认 DeepSeek `deepseek-v4.1-flash-1017`（端点与 Key 只在 `.env`，见 [README D-2](README.md)）；`rebuild init` 写进 `heimdall.config.json` 的 `llm` 块只含端点与模型名。
 
 ### 1.5 Ph3 加固与彩排（11-11 → 11-17）

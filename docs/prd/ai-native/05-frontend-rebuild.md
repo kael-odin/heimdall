@@ -355,6 +355,8 @@ for 段 in 计划顺序:                       # 叠放层 / 共享组件 → �
 | `passed_with_residuals` | 同上 + 残差清单（接受的偏差及原因） |
 | `failed_with_residuals` / `budget_exhausted` / `cancelled` | **镜像 + 报告 + 残差清单**（Floor=Mirror），重建项目作为「未通过的草稿」附上并明确标注 |
 
+**实现（2026-10-26，E7-10）**：`heimdall rebuild deliver [--project .] [--out D]`。交付包 = `mirror/`（冻结镜像，双击即可看）+ `project/`（源码，不含依赖与构建产物；非 `passed` 时带 `DRAFT.md`）+ `REPORT.md` + `residuals.json` + `delivery.json` + `MANIFEST.jsonl`（逐文件 SHA-256）。终态只取上表五种；`passed` 只认正式裁判（E7-07），没有正式结果时按 `failed_with_residuals` 交付并把原因写成 `formal_gate_missing`——**不假装通过**。
+
 ---
 
 ## 6. 模型用法与成本

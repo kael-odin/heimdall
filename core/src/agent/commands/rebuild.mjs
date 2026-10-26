@@ -6,6 +6,7 @@
  *                         [--dir D] [--port 5199] [--model-class frontier|standard|economy]
  *                         [--no-git] [--no-install] [--registry URL] [--json]
  *   heimdall rebuild status [--project .] [--json]
+ *   heimdall rebuild deliver [--project .] [--out D] [--no-mirror] [--json]
  *
  * init 给的是 URL 且本机还没有镜像时，先走 clone（引擎排队执行）；给 siteId 时用已有镜像。
  */
@@ -21,6 +22,8 @@ import { initWorkspace } from '../rebuild/init.mjs';
 import { readProjectConfig } from '../evidence/compare.mjs';
 import { listPages } from '../workspace.mjs';
 import { decide } from '../loops/converge.mjs';
+import { groupBySection, readLedger } from '../loops/ledger.mjs';
+import { deliverFloor } from '../deliver/floor.mjs';
 
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
 
@@ -79,20 +82,9 @@ function status(flags) {
   const cfg = readProjectConfig(dir);
   const runsDir = join(dir, '.heimdall', 'runs');
   const runs = existsSync(runsDir) ? readdirSync(runsDir).filter(n => /^run_/.test(n)).sort() : [];
-  const ledger = existsSync(join(dir, '.heimdall', 'ledger.jsonl'))
-    ? readFileSync(join(dir, '.heimdall', 'ledger.jsonl'), 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean) : [];
+  const ledger = readLedger(dir);
   const sections = readJson(join(dir, '.heimdall', 'sections', `${cfg.pages[0].name}.json`))?.sections?.filter(s => !s.overlay) ?? [];
-  const bySection = new Map();
-  for (const e of ledger) {
-    const key = e.sectionIds?.length === 1 ? e.sectionIds[0] : (e.sectionIds ? e.sectionIds.join('+') : 'page');
-    const s = bySection.get(key) ?? { iterations: 0, last: null, best: null, entries: [] };
-    s.iterations++;
-    s.last = e;
-    s.entries.push(e);
-    const minPx = Math.min(...Object.values(e.pixel ?? {}));
-    if (!s.best || minPx > s.best.minPixel) s.best = { runId: e.runId, minPixel: minPx, verdict: e.verdict };
-    bySection.set(key, s);
-  }
+  const bySection = groupBySection(ledger);
   const rows = sections.map(s => {
     const st = bySection.get(s.id);
     // 收敛控制器（E7-08）给出这一段的下一步：继续 / 回退 / 升级 / 接受残差 / 完成
@@ -112,6 +104,16 @@ function status(flags) {
   });
 }
 
+function deliver(flags) {
+  const dir = resolve(String(flags.project === true || !flags.project ? '.' : flags.project));
+  const r = deliverFloor({ projectDir: dir, outDir: flags.out ? resolve(String(flags.out)) : null, mirror: flags['no-mirror'] !== true });
+  const passed = r.state === 'passed' || r.state === 'passed_with_residuals';
+  return ok({ ...r }, {
+    summary: `交付包：${r.outDir}\n状态 ${r.state}（${r.reasonText}）。${passed ? '重建项目为成品' : '镜像为交付物，重建项目是草稿'}；${r.contents.project.files} 个项目文件、${r.contents.mirror?.files ?? 0} 个镜像文件。`,
+    nextActions: [nextAction('cli:shell', { command: `open "${join(r.outDir, 'REPORT.md')}"`, cwd: r.outDir }, '打开人话报告')],
+  });
+}
+
 export async function run(argv) {
   const [sub, ...rest] = argv;
   const { flags, positional } = parseArgs(rest);
@@ -121,7 +123,8 @@ export async function run(argv) {
   try {
     if (sub === 'init') env = await init(flags, positional, log);
     else if (sub === 'status') env = status(flags);
-    else env = fail('invalid_args', '用法：heimdall rebuild init <url|siteId> … | heimdall rebuild status [--project .]');
+    else if (sub === 'deliver') env = deliver(flags);
+    else env = fail('invalid_args', '用法：heimdall rebuild init <url|siteId> … | rebuild status [--project .] | rebuild deliver [--project .] [--out D]');
   } catch (error) { env = fromError(error); }
   if (json) process.stdout.write(JSON.stringify(env) + '\n');
   else {
