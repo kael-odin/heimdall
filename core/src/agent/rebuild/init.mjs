@@ -23,6 +23,7 @@ import { launchBrowser } from '../evidence/capture.mjs';
 import { pageDir, readManifest, requireMirror } from '../workspace.mjs';
 import { STACKS, stackFiles, devCommand } from './templates.mjs';
 import { renderAgentsMd } from './agents-md.mjs';
+import { llmConfig } from '../llm.mjs';
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
@@ -165,6 +166,8 @@ export async function initWorkspace(opts) {
     devServer: { command: devCommand(stack, port), url: devUrl },
     pages: [{ name: page, route: '/', sections: 'auto' }],
     viewports: [375, 768, 1440], fidelity, modelClass,
+    // 模型档位只写端点与模型名；Key 一律从环境变量读（PRD 08 §8、10 §4 R17）
+    llm: llmConfig(),
     gate: { level: gateLevel }, offline: gateLevel !== 'bronze',
     budget: { maxIterationsPerSection: 4, maxIterationsPerPage: 8 },
     reference: { refId: ref.meta.refId, capturedAt: ref.meta.capturedAt, originalUrl: manifest?.target ?? null },

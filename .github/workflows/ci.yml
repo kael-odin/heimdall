@@ -5,6 +5,11 @@ name: CI
 #   seo-gate   —— 联网抓授权站点并与基线比对；当前仅手动触发，配置目标和基线后再考虑定时运行
 #   docs.yml   —— 纯文档提交的守卫（链接 + 文档里的规则数字）；本文件用 paths-ignore 跳过这类提交
 #
+# **2026-10-26 起两个 workflow 在 GitHub 上禁用**（`gh workflow disable CI/Docs`）：
+# 账号计费受限，每个 job 都因 "recent account payments have failed" 在 3 秒内失败；
+# 项目按闭源、单机开发推进，确定性检查改为本地跑 `pnpm test` / `pnpm lint` / `pnpm docs:links`。
+# 要恢复：`gh workflow enable CI` 并修好 Billing & plans。
+#
 # 一条 push 的计费分钟约为各 job 之和（实测一条约 65 分钟），私有仓库免费额度是 2000 分钟/月。
 # 纯文档改动跑完整流水线既慢又吃掉额度，所以这里忽略文档路径，交给 docs.yml 里秒级的检查；
 # 文档与代码混在一起提交时两个 workflow 都会跑，守卫不会漏。

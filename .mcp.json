@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "heimdall": {
+      "command": "node",
+      "args": ["packages/mcp/bin/heimdall-mcp.mjs"],
+      "env": {
+        "HEIMDALL_API": "http://127.0.0.1:8900"
+      }
+    }
+  }
+}

@@ -80,7 +80,11 @@ Ph0 预研 ─→ Ph1 手眼 ─→ Ph2 闭环与剧场 ─→ Ph3 加固与彩�
 | **退出条件** | Bench v0 出完整结果表（含 A0–A3）；演示彩排第一轮跑通；故意失败的页面交付物仍完整（Floor=Mirror） |
 | **演示增量** | 控制台实时显示代理动作与分数曲线；失败也有交代 |
 
-**Ph2 进度（2026-10-26）**：E7-08 收敛控制器已落地（`core/src/agent/loops/converge.mjs`，纯函数，9 条单测），规则按 [03 §5.4](03-architecture.md)：迭代上限、回退到最好一次、停滞与振荡升级、升级阶梯、预算、固定终态枚举；`rebuild status` 每个分段给出下一步。Autopilot 与「AI 活动」视图后续直接复用。
+**Ph2 进度（2026-10-26）**：
+
+- E7-08 收敛控制器已落地（`core/src/agent/loops/converge.mjs`，纯函数，9 条单测），规则按 [03 §5.4](03-architecture.md)：迭代上限、回退到最好一次、停滞与振荡升级、升级阶梯、预算、固定终态枚举；`rebuild status` 每个分段给出下一步。Autopilot 与「AI 活动」视图后续直接复用。
+- E7-19 正式基线供给与体检已落地（`core/src/agent/gate/baseline.mjs`、CLI `heimdall gate baseline <siteId> <page>`，7 条单测）：回环只读服务（随机端口、无令牌、不加 CSP）供基线；体检不过就生成「正式基线副本」（去外部请求与断链引用，改动逐条入报告）再体检；仍不过记 `blocked`。本机无镜像，尚未在 thordata / apify 上复跑。
+- 模型改档：默认 DeepSeek `deepseek-v4.1-flash-1017`（端点与 Key 只在 `.env`，见 [README D-2](README.md)）；`rebuild init` 写进 `heimdall.config.json` 的 `llm` 块只含端点与模型名。
 
 ### 1.5 Ph3 加固与彩排（11-11 → 11-17）
 
@@ -210,7 +214,7 @@ Ph0 预研 ─→ Ph1 手眼 ─→ Ph2 闭环与剧场 ─→ Ph3 加固与彩�
 | R14 | 模型安全分类器对「抓包 / 接口分析」措辞误判拒绝 | 低 | 中 | 处理 `refusal`；服务端降级；技能里写退路 | 换措辞 / 换模型 |
 | R15 | 新增代码拖慢或搅乱现有 CI | 中 | 中 | 新 job 独立；Bench 手动 / 夜间；只加不改 | 暂时禁用新 job |
 | R16 | 回放被误认为现场运行，伤害诚实性 | 低 | 高 | 持续徽标；导出物带标记；脚本要求口头说明 | — |
-| R17 | **模型别名被网关改写**（Ph0 实测：本机 Claude Desktop 经本地网关转发，子代理的 `opus` / `sonnet` / `haiku` 别名实际由 GLM-5.3-flash / DeepSeek-v4.1-flash / Kimi-K3 应答，`fable` 别名才是 Claude Opus 5.5；子代理对自己是哪个模型的自述不可靠） | 中 | 高 | Bench、Autopilot、花费统计一律以运行记录里每条消息的 `model` 字段为准，结果表写明实际模型；技能不假设模型身份 | 结果表按实际模型重排 |
+| R17 | **模型别名被网关改写**（Ph0 实测：本机 Claude Desktop 经本地网关转发，子代理的 `opus` / `sonnet` / `haiku` 别名实际由 GLM-5.3-flash / DeepSeek-v4.1-flash / Kimi-K3 应答，`fable` 别名才是 Claude Opus 5.5；子代理对自己是哪个模型的自述不可靠）。2026-10-26 起直连 OpenAI 兼容端点跑 `deepseek-v4.1-flash-1017`，但**仍是网关**，不能假设别名等于模型 | 中 | 高 | Bench、Autopilot、花费统计一律以运行记录里每条消息的 `model` 字段为准，结果表写明实际模型；技能不假设模型身份；端点与 Key 只从 `.env` 读（`core/src/agent/llm.mjs`） | 结果表按实际模型重排 |
 | R18 | **镜像预览服务拦 Web 字体**（`clone-preview-server` 给 HTML 加的 CSP `sandbox` 不含 `allow-same-origin`，字体按跨源被拦；Ph0 实测 thordata 首页的 IBM Plex Sans、Geist Mono 全部加载失败） | 高 | 中 | 正式基线与 Bench 用不加 sandbox 的回环服务（E7-19）；`verify` 克隆侧截图受同一问题影响，单独立项修复 | 同上 |
 | R19 | 正式裁判的冻结约束（截图预算 12,000px / 1,200 万像素、两侧都健康才判视觉）挡住真实镜像 | 高 | 高 | 评估器出整页视觉（E7-20）、基线体检（E7-19）；工作量计入 §1.6 | 正式门禁降为「验收健康 + 评估器视觉」 |
 | R20 | 无头 Claude Code 需要登录或 API Key（Ph0 实测本机命令行未登录），CI、Bench 自动化跑不起来 | 中 | 中 | CI 用 API Key（仓库 secrets）；本机演练用桌面应用；`doctor` 检查登录状态并给出下一步 | 演示改用桌面应用现场跑 |
