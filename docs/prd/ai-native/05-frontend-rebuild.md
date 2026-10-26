@@ -83,6 +83,7 @@
 | visual（整页像素、最大块、最大集中区域） | Heimdall 评估器：与快速裁判同一套代码和拍摄流程，灰度文字，超过 12,000px 的页面按 4096px 分块拍整页（沿用 `verify` 的 `tiled-compare`），像素口径同 `comparePngBuffers`。**Ph0 改**：验收 runner 的截图预算是高 12,000px、总量 1,200 万像素，thordata.com 首页三个视口全部超限，只拍首屏，视觉判 `needs_review`（S4）。这条预算在指纹冻结的 `runner.mjs` 里，不能改 |
 | visual（首屏交叉核对）、structure（粗）、health、behavior 步骤 | 验收 Mirror 报告（`POST /api/acceptance/runs`；基线 = 镜像的正式基线副本，目标 = 候选） |
 | structure（相似度）、style、assets | Heimdall 评估器（新代码，不在指纹冻结文件内） |
+| **anticheat**（反作弊，E7-18） | Heimdall 评估器：源码引用 `.heimdall/ref/` 直接拒；候选页里占视口 ≥ 60% 的位图与参考整页 / 每条视口高横带做 8×8 均值哈希比对（汉明 ≤ 6/64 判命中）；参考可见正文在候选里的覆盖率 < 30% 判缺失。命中即整体不过，像素分不作数。**不比分段裁片**：hero 这类大图占满分段时，合规复用原件会和参考裁片几乎一样，比了会误判 |
 | 合取与等级 | `Gate` 封装（新）：读取验收报告 + 评估器结果，写 `gate.json`，每项带证据引用和真值来源 |
 
 **正式基线怎么供给**（S4【实测】）：

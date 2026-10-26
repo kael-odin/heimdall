@@ -102,6 +102,14 @@ test('floor: a passed rebuild ships the project without the draft marker', () =>
   assert.match(readFileSync(join(r.outDir, 'REPORT.md'), 'utf8'), /门禁通过/);
 });
 
+test('floor: an anti-cheat hit blocks a passing delivery', () => {
+  const projectDir = makeProject('cheat', [{ ...iter('run_0301', 'sec-hero', 0.99, 'pass-candidate'), anticheat: 'suspect' }]);
+  const r = floor.deliverFloor({ projectDir, formal: { status: 'passed' } });
+  assert.equal(r.state, 'failed_with_residuals');
+  assert.equal(r.reason, 'anticheat');
+  assert.equal(r.floorIsMirror, true);
+});
+
 test('floor: the mirror copy can be left out for a pure project handoff', () => {
   const projectDir = makeProject('nomirror', [iter('run_0201', 'sec-hero', 0.9)]);
   const r = floor.deliverFloor({ projectDir, mirror: false });

@@ -93,6 +93,8 @@ const REASON_TEXT = {
   formal_gate_failed: '正式裁判判定未通过',
   formal_gate_missing: '还没跑正式裁判（E7-07），按 Floor=Mirror 交付',
   formal_gate: '正式裁判判定通过',
+  anticheat: '候选页命中了反作弊检查（把参考截图当内容），不按通过交付',
+  made_by_cli: '调用方指定了终态',
 };
 
 /** 残差清单：每个分段「停在哪、为什么停、最好的一次是哪次」 */
@@ -179,7 +181,11 @@ export function deliverFloor({ projectDir, state: forced = null, formal = null, 
 
   const entries = readLedger(dir);
   const decisions = decisionsFor(entries, cfg.budget);
-  const { state, reason } = forced ? { state: forced, reason: `made_by_cli` } : deliveryState({ decisions, formal, cancelled, budgetExhausted });
+  let { state, reason } = forced ? { state: forced, reason: 'made_by_cli' } : deliveryState({ decisions, formal, cancelled, budgetExhausted });
+  // 反作弊命中过就不按「通过」交付：像素分再高也不认（E7-18）
+  if (entries.some(e => e.anticheat === 'suspect') && (state === 'passed' || state === 'passed_with_residuals')) {
+    ({ state, reason } = { state: 'failed_with_residuals', reason: 'anticheat' });
+  }
   const residuals = residualsOf(decisions);
 
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');

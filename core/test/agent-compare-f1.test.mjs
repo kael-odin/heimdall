@@ -73,6 +73,7 @@ test('compare F1: the unmodified page is a pass-candidate at gold', { timeout: 1
   assert.ok(r.packet.perViewport[1440].pixelSimilarity >= 0.999);
   assert.equal(r.packet.schema, 'heimdall.fixpacket/1');
   assert.ok(r.fixpacketEvidence.sha256.length === 64);
+  assert.equal(r.packet.anticheat.status, 'clean', 'an honest page raises no anti-cheat finding');
 });
 
 for (const id of ['f1-shift-hero-art', 'f1-color-cta-band', 'f1-missing-content-stats', 'f1-image-missing-avatar', 'f1-spacing-features-padding']) {
@@ -89,3 +90,25 @@ for (const id of ['f1-shift-hero-art', 'f1-color-cta-band', 'f1-missing-content-
     }
   });
 }
+
+test('compare F1: pasting the reference screenshot is caught even though the pixels match', { timeout: 180_000 }, async () => {
+  const { ensureReference } = await import('../src/agent/evidence/reference.mjs');
+  const { startBaselineServer } = await import('../src/agent/gate/baseline.mjs');
+  const ref = await ensureReference(SITE, PAGE, { viewports: [1440], browser });
+  const cheatDir = mkdtempSync(join(tmpdir(), 'heimdall-cheat-'));
+  writeFileSync(join(cheatDir, 'ref.png'), readFileSync(join(ref.dir, '1440.png')));
+  writeFileSync(join(cheatDir, 'index.html'), '<!doctype html><html><body style="margin:0"><img src="/ref.png" style="display:block;width:100%"></body></html>');
+  const server = await startBaselineServer(cheatDir);
+  try {
+    const r = await fastCompare({ siteId: SITE, page: PAGE, candidate: { url: `${server.origin}/` }, viewports: [1440] }, { browser });
+    assert.ok(r.packet.perViewport[1440].pixelSimilarity >= 0.99, `the pixels ARE the reference (${r.packet.perViewport[1440].pixelSimilarity})`);
+    assert.equal(r.packet.anticheat.status, 'suspect');
+    assert.ok(r.packet.anticheat.findings.some(f => f.code === 'reference_screenshot_reused'), JSON.stringify(r.packet.anticheat.findings));
+    assert.equal(r.packet.verdict.status, 'fail', 'high pixels do not survive an anti-cheat hit');
+    assert.equal(r.packet.verdict.anticheat, true);
+    assert.match(r.text, /反作弊/);
+  } finally {
+    await server.close();
+    rmSync(cheatDir, { recursive: true, force: true });
+  }
+});

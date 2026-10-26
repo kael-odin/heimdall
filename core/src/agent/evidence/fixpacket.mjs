@@ -1063,7 +1063,12 @@ export function packetText(packet, { maxPerViewport = 6 } = {}) {
     }
     for (const note of v.notes ?? []) lines.push(`     说明: ${note}`);
   }
+  if (packet.anticheat?.findings?.length) {
+    lines.push('反作弊:');
+    for (const f of packet.anticheat.findings.slice(0, 6)) lines.push(`  ${f.severity === 'error' ? '✗' : '!'} ${f.code}: ${f.detail}`);
+  }
   lines.push(`判定: ${packet.verdict.status}（目标 ${packet.verdict.target}${packet.verdict.reached ? `，当前达到 ${packet.verdict.reached}` : ''}）`
+    + (packet.verdict.anticheat ? ' · 反作弊命中，像素分不作数' : '')
     + (packet.order.length ? ` · 下一步: 按顺序修 ${packet.order.slice(0, 3).join('、')}，然后重新 compare` : ''));
   return lines.join('\n') + '\n';
 }

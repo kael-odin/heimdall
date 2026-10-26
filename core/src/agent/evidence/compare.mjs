@@ -19,12 +19,13 @@ import { writeFileAtomic } from '../../fsutil.mjs';
 import { CapabilityError, nextAction } from '../envelope.mjs';
 import { createFence } from '../fence.mjs';
 import { newRunId, sha256, RUN_ID } from '../ids.mjs';
-import { agentDir, requireMirror } from '../workspace.mjs';
+import { agentDir, pageDir, requireMirror } from '../workspace.mjs';
 import { ensurePlan } from '../brief/brief.mjs';
 import { crop, readPng } from './image.mjs';
 import { analyzeViewport, writeCrop, verdictOf, packetText, GATES } from './fixpacket.mjs';
 import { ensureReference, readElements, readMask } from './reference.mjs';
 import { PROFILE, launchBrowser, openPage, shoot, sectionBox, viewportOf } from './capture.mjs';
+import { collectLargeBitmaps, evaluateAntiCheat, referenceShapes, textCoverage, visibleText } from '../gate/anticheat.mjs';
 
 const REGIONS_PER_VIEWPORT = 12;
 const CROPS_PER_VIEWPORT = 4;
@@ -158,12 +159,20 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
     if (sectionIds?.length && wanted.length !== sectionIds.length) {
       throw new CapabilityError('not_found', '有分段 ID 不在分段计划里', { nextActions: [nextAction('heimdall_brief', { siteId, page, detail: 'sections' }, '列出分段')] });
     }
-    const perViewport = {}, regions = [], evidence = [], skipped = [];
+    const perViewport = {}, regions = [], evidence = [], skipped = [], antiChecks = [], candidateTexts = [];
     let sectionMode = null;
+    // 参考正文只取一次：整页范围才判覆盖率（单段重建本来就不该有整页文本）
+    const referenceText = sectionIds?.length ? '' : (() => {
+      try { return visibleText(readFileSync(join(pageDir(siteId, page), 'dom.html'), 'utf8')); } catch { return ''; }
+    })();
     for (const [vi, width] of viewports.entries()) {
       onProgress?.({ stage: 'capture', pct: 10 + Math.round(vi / viewports.length * 70), message: `视口 ${width}` });
       const vp = viewportOf(width);
       let refImg = readPng(join(ref.dir, `${width}.png`));
+      // 反作弊要比对的参考形状：整页 + 每条视口高的横带。
+      // **不拿分段外接框去比**：一个大图占满的分段（hero 常见）本来就和参考裁片长得一样，
+      // 而合规地复用原件资产是要求（E7-11），比了会把好施工判成作弊。整页 / 整屏粘贴才是真作弊。
+      const shapes = referenceShapes(refImg, { viewportHeight: vp.height });
       let dyn = readMask(siteId, page, width);
       let elements = readElements(siteId, page, width);
       const opened = await openPage(browser, candUrl, vp);
@@ -204,6 +213,12 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
         offset = { x: 0, y: ry };
         elements = elements.filter(e => e.sectionId === s.id).map(e => ({ ...e, box: { ...e.box, y: e.box.y - ry } }));
       } else if (wanted) sectionMode = 'filtered';
+      // 反作弊（E7-18）：候选页里占大面积的位图 vs 参考截图；整页范围再算一次正文覆盖率
+      let bitmaps = [], candidateText = '';
+      try { bitmaps = await collectLargeBitmaps(opened.page, {}); } catch { bitmaps = []; }
+      if (referenceText) { try { candidateText = await opened.page.evaluate(() => (document.body?.innerText ?? '').slice(0, 200_000)); } catch { candidateText = ''; } }
+      antiChecks.push({ width, bitmaps, shapes });
+      if (candidateText) candidateTexts.push(candidateText);
       await opened.ctx.close();
       const a = analyzeViewport({ ref: refImg, cand: candImg, viewport: width, viewportHeight: vp.height, elements, dyn });
       let vpRegions = a.regions;
@@ -257,7 +272,23 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
     if (!Object.keys(perViewport).length) {
       throw new CapabilityError('invalid_args', '所选分段在这些视口的参考里都不可见，没有可比的内容', { details: { skipped } });
     }
-    const verdict = verdictOf(perViewport, level);
+    // 反作弊（E7-18）：命中即判不过——像素分再高也不算数
+    const findings = [];
+    for (const c of antiChecks) {
+      for (const f of evaluateAntiCheat({ bitmaps: c.bitmaps, referenceShapes: c.shapes }).findings) findings.push({ ...f, viewport: c.width });
+    }
+    const coverage = referenceText && candidateTexts.length ? textCoverage(referenceText, candidateTexts.join('\n')) : null;
+    if (coverage) for (const f of evaluateAntiCheat({ text: coverage }).findings) findings.push(f);
+    const anticheat = {
+      status: findings.some(f => f.severity === 'error') ? 'suspect' : 'clean',
+      findings,
+      stats: { bitmapsScanned: antiChecks.reduce((s, c) => s + c.bitmaps.length, 0), textCoverage: coverage?.ratio ?? null },
+    };
+    const verdictBase = verdictOf(perViewport, level);
+    const verdict = anticheat.status === 'suspect'
+      ? { ...verdictBase, status: 'fail', anticheat: true,
+        note: `反作弊命中：${findings.filter(f => f.severity === 'error').map(f => f.code).join('、')}。像素分不作数，先把这些内容换成真正的重建。` }
+      : verdictBase;
     const key = candidateKey(siteId, page, candidate ?? { dir: projectDir }, route);
     const history = readIndex(siteId).filter(h => h.candidateKey === key && h.mode === 'fast' && JSON.stringify(h.sectionIds ?? null) === JSON.stringify(sectionIds ?? null));
     const pixelNow = Object.fromEntries(Object.entries(perViewport).map(([k, v]) => [k, v.pixelSimilarity]));
@@ -271,7 +302,7 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
       candidate: candidate?.url ? { kind: 'url', ref: candidate.url, route: route ?? '/' } : { kind: 'dir', ref: projectDir, url: candUrl, route },
       reference: { refId: ref.meta.refId, capturedAt: ref.meta.capturedAt, profile: PROFILE },
       scope: wanted ? { sectionIds: wanted.map(s => s.id), mode: sectionMode } : { page: true },
-      viewports: viewports.filter(w => perViewport[w]), ...(skipped.length ? { skipped } : {}), perViewport, regions, order, trend, verdict,
+      viewports: viewports.filter(w => perViewport[w]), ...(skipped.length ? { skipped } : {}), perViewport, regions, order, trend, verdict, anticheat,
       evidence: evidence.filter(Boolean),
     };
     writeFileAtomic(join(outDir, 'fixpacket.json'), JSON.stringify(packet, null, 1));
@@ -288,7 +319,7 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
       for (const r of regions) if (r.crops?.composite) writeFileSync(join(projectRunDir, r.crops.composite), readFileSync(join(outDir, r.crops.composite)));
       // 飞行记录器的最小形态（E7-14 在 Ph2 补全）：每次对比一行，rebuild status 据此算进度
       appendFileSync(join(projectDir, '.heimdall', 'ledger.jsonl'), JSON.stringify({ schema: 'heimdall.ledger/1', type: 'iter', runId, at: packet.generatedAt, page,
-        sectionIds: sectionIds ?? null, pixel: pixelNow, verdict: verdict.status, reached: verdict.reached, trend: trend.state, elapsedMs: packet.elapsedMs }) + '\n');
+        sectionIds: sectionIds ?? null, pixel: pixelNow, verdict: verdict.status, reached: verdict.reached, trend: trend.state, anticheat: anticheat.status, elapsedMs: packet.elapsedMs }) + '\n');
     }
     const fixBytes = readFileSync(join(outDir, 'fixpacket.json'));
     return { packet, text, outDir, projectRunDir, fence, warnings,
