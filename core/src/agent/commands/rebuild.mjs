@@ -20,6 +20,7 @@ import { invoke } from '../registry/invoke.mjs';
 import { initWorkspace } from '../rebuild/init.mjs';
 import { readProjectConfig } from '../evidence/compare.mjs';
 import { listPages } from '../workspace.mjs';
+import { decide } from '../loops/converge.mjs';
 
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
 
@@ -84,17 +85,21 @@ function status(flags) {
   const bySection = new Map();
   for (const e of ledger) {
     const key = e.sectionIds?.length === 1 ? e.sectionIds[0] : (e.sectionIds ? e.sectionIds.join('+') : 'page');
-    const s = bySection.get(key) ?? { iterations: 0, last: null, best: null };
+    const s = bySection.get(key) ?? { iterations: 0, last: null, best: null, entries: [] };
     s.iterations++;
     s.last = e;
+    s.entries.push(e);
     const minPx = Math.min(...Object.values(e.pixel ?? {}));
     if (!s.best || minPx > s.best.minPixel) s.best = { runId: e.runId, minPixel: minPx, verdict: e.verdict };
     bySection.set(key, s);
   }
   const rows = sections.map(s => {
     const st = bySection.get(s.id);
+    // 收敛控制器（E7-08）给出这一段的下一步：继续 / 回退 / 升级 / 接受残差 / 完成
+    const d = decide(st?.entries ?? [], { scope: 'section', budget: cfg.budget });
     return { sectionId: s.id, role: s.role, iterations: st?.iterations ?? 0, verdict: st?.last?.verdict ?? 'not-started', reached: st?.last?.reached ?? null,
-      minPixel: st?.last ? Math.min(...Object.values(st.last.pixel ?? {})) : null };
+      minPixel: st?.last ? Math.min(...Object.values(st.last.pixel ?? {})) : null,
+      next: { action: d.action, reason: d.reason, ...(d.ladderStep ? { ladderStep: d.ladderStep } : {}), ...(d.revertTo ? { revertTo: d.revertTo } : {}) } };
   });
   const page = bySection.get('page');
   const done = rows.filter(r => r.verdict === 'pass-candidate').length;
@@ -123,7 +128,7 @@ export async function run(argv) {
     process.stdout.write(env.summary + '\n');
     if (!env.ok) process.stdout.write(`[${env.error.code}] ${env.error.message}\n下一步：${env.error.hint}\n`);
     for (const w of env.warnings ?? []) process.stdout.write(`! ${w.message}\n`);
-    if (env.ok && sub === 'status') for (const r of env.result.sections) process.stdout.write(`  ${r.sectionId}  ${r.role.padEnd(8)} ${String(r.iterations).padStart(2)} 次  ${r.verdict}${r.minPixel !== null ? `  最低 ${(r.minPixel * 100).toFixed(1)}%` : ''}\n`);
+    if (env.ok && sub === 'status') for (const r of env.result.sections) process.stdout.write(`  ${r.sectionId}  ${r.role.padEnd(8)} ${String(r.iterations).padStart(2)} 次  ${r.verdict}${r.minPixel !== null ? `  最低 ${(r.minPixel * 100).toFixed(1)}%` : ''}  → ${r.next.action}${r.next.ladderStep ? `(${r.next.ladderStep})` : ''}${r.next.revertTo ? ` 回到 ${r.next.revertTo}` : ''}\n`);
   }
   return exitCodeOf(env);
 }
