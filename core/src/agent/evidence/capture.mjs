@@ -65,11 +65,13 @@ async function settle(page, { minMs = 600, stableMs = 400, maxMs = 4000 } = {}) 
 }
 
 /** 打开一页并收敛；返回 { ctx, page, settled, loadMs } */
-export async function openPage(browser, url, viewport, { freeze = true, scrollPass = false } = {}) {
+export async function openPage(browser, url, viewport, { freeze = true, scrollPass = false, onPage = null } = {}) {
   const t0 = Date.now();
   const ctx = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: 1, userAgent: UA,
     serviceWorkers: 'block' });
   const page = await ctx.newPage();
+  // 采集型调用方（门禁的健康 / 资产维度）要在导航前挂监听，否则错过最早的请求与报错
+  if (onPage) onPage(page);
   let resp;
   // Windows 上资源很多的镜像偶发 ERR_NO_BUFFER_SPACE / 连接被重置：短暂等一下重试一次
   const transient = (e) => /ERR_NO_BUFFER_SPACE|ERR_CONNECTION_RESET|ERR_CONNECTION_REFUSED|ERR_EMPTY_RESPONSE/.test(String(e?.message));

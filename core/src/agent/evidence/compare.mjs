@@ -159,7 +159,7 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
     if (sectionIds?.length && wanted.length !== sectionIds.length) {
       throw new CapabilityError('not_found', '有分段 ID 不在分段计划里', { nextActions: [nextAction('heimdall_brief', { siteId, page, detail: 'sections' }, '列出分段')] });
     }
-    const perViewport = {}, regions = [], evidence = [], skipped = [], antiChecks = [], candidateTexts = [];
+    const perViewport = {}, regions = [], evidence = [], skipped = [], antiChecks = [], candidateTexts = [], vpHealth = [];
     let sectionMode = null;
     // 参考正文只取一次：整页范围才判覆盖率（单段重建本来就不该有整页文本）
     const referenceText = sectionIds?.length ? '' : (() => {
@@ -175,7 +175,19 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
       const shapes = referenceShapes(refImg, { viewportHeight: vp.height });
       let dyn = readMask(siteId, page, width);
       let elements = readElements(siteId, page, width);
-      const opened = await openPage(browser, candUrl, vp);
+      // 门禁的「资产 / 健康」维度要的现场数据：外部请求、失败请求、脚本报错、横向溢出
+      const candOrigin = new URL(candUrl).origin;
+      const health = { externalHosts: new Set(), failedRequests: 0, consoleErrors: 0, pageErrors: 0 };
+      const opened = await openPage(browser, candUrl, vp, { onPage: (p) => {
+        p.on('request', (req) => {
+          const u = req.url();
+          if (/^(?:data|blob|about):/i.test(u)) return;
+          try { const parsed = new URL(u); if (parsed.origin !== candOrigin) health.externalHosts.add(parsed.origin); } catch {}
+        });
+        p.on('requestfailed', () => { health.failedRequests += 1; });
+        p.on('console', (m) => { if (m.type() === 'error') health.consoleErrors += 1; });
+        p.on('pageerror', () => { health.pageErrors += 1; });
+      } });
       let candImg = await shoot(opened.page, { contentCrop: !!wanted });
       let offset = { x: 0, y: 0 }, candOffsetY = 0;
       if (wanted?.length === 1) {
@@ -218,7 +230,18 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
       try { bitmaps = await collectLargeBitmaps(opened.page, {}); } catch { bitmaps = []; }
       if (referenceText) { try { candidateText = await opened.page.evaluate(() => (document.body?.innerText ?? '').slice(0, 200_000)); } catch { candidateText = ''; } }
       antiChecks.push({ width, bitmaps, shapes });
-      if (candidateText) candidateTexts.push(candidateText);
+      if (referenceText) candidateTexts.push(candidateText);
+      let layout = null;
+      try {
+        layout = await opened.page.evaluate(() => ({
+          scrollWidth: Math.max(document.documentElement?.scrollWidth ?? 0, document.body?.scrollWidth ?? 0),
+          innerWidth: window.innerWidth || document.documentElement?.clientWidth || 0,
+          images: document.images.length,
+          brokenImages: [...document.images].filter(i => i.complete && i.naturalWidth === 0).length,
+        }));
+      } catch { layout = null; }
+      vpHealth.push({ width, externalHosts: [...health.externalHosts], failedRequests: health.failedRequests,
+        consoleErrors: health.consoleErrors, pageErrors: health.pageErrors, ...(layout ?? {}) });
       await opened.ctx.close();
       const a = analyzeViewport({ ref: refImg, cand: candImg, viewport: width, viewportHeight: vp.height, elements, dyn });
       let vpRegions = a.regions;
@@ -297,12 +320,21 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
     const byVp = viewports.filter(w => perViewport[w]).map(w => regions.filter(r => r.viewport === w));
     const order = [];
     for (let i = 0; i < REGIONS_PER_VIEWPORT; i++) for (const list of byVp) if (list[i]) order.push(list[i].id);
+    const pagehealth = vpHealth.length ? {
+      perViewport: vpHealth,
+      externalHosts: [...new Set(vpHealth.flatMap(h => h.externalHosts))],
+      failedRequests: Math.max(...vpHealth.map(h => h.failedRequests)),
+      consoleErrors: Math.max(...vpHealth.map(h => h.consoleErrors)),
+      pageErrors: Math.max(...vpHealth.map(h => h.pageErrors)),
+      brokenImages: Math.max(...vpHealth.map(h => h.brokenImages ?? 0)),
+      overflowPx: Math.max(...vpHealth.map(h => Math.max(0, (h.scrollWidth ?? 0) - (h.innerWidth ?? 0)))),
+    } : null;
     const packet = {
       schema: 'heimdall.fixpacket/1', runId, siteId, page, generatedAt: new Date().toISOString(), elapsedMs: Date.now() - t0, mode: 'fast',
       candidate: candidate?.url ? { kind: 'url', ref: candidate.url, route: route ?? '/' } : { kind: 'dir', ref: projectDir, url: candUrl, route },
       reference: { refId: ref.meta.refId, capturedAt: ref.meta.capturedAt, profile: PROFILE },
       scope: wanted ? { sectionIds: wanted.map(s => s.id), mode: sectionMode } : { page: true },
-      viewports: viewports.filter(w => perViewport[w]), ...(skipped.length ? { skipped } : {}), perViewport, regions, order, trend, verdict, anticheat,
+      viewports: viewports.filter(w => perViewport[w]), ...(skipped.length ? { skipped } : {}), perViewport, regions, order, trend, verdict, anticheat, ...(pagehealth ? { pagehealth } : {}),
       evidence: evidence.filter(Boolean),
     };
     writeFileAtomic(join(outDir, 'fixpacket.json'), JSON.stringify(packet, null, 1));

@@ -86,6 +86,8 @@
 | **anticheat**（反作弊，E7-18） | Heimdall 评估器：源码引用 `.heimdall/ref/` 直接拒；候选页里占视口 ≥ 60% 的位图与参考整页 / 每条视口高横带做 8×8 均值哈希比对（汉明 ≤ 6/64 判命中）；参考可见正文在候选里的覆盖率 < 30% 判缺失。命中即整体不过，像素分不作数。**不比分段裁片**：hero 这类大图占满分段时，合规复用原件会和参考裁片几乎一样，比了会误判 |
 | 合取与等级 | `Gate` 封装（新）：读取验收报告 + 评估器结果，写 `gate.json`，每项带证据引用和真值来源 |
 
+**实现（2026-10-26，E7-06）**：`heimdall gate report --project .` 跑一次快速对比后组合 `heimdall.gate/1`：六维逐项给 `pass` / `fail` / `not_measured` 与实测值、阈值、差距；整体 `passed` 只在六维全过时成立，采集不到（例如单段范围没有正文覆盖率）记 `incomplete`，不冒充通过。阈值按 bronze / silver / gold 三档内置，可在 `heimdall.config.json` 的 `gate.thresholds` 里逐项覆盖。未通过时退出码 1，供 CI 与代理判断。**这份报告的 `passed` 是快速裁判口径**，只代表「按确定性规则没发现不合格」；对外宣布通过仍只由正式裁判（E7-07）给出。
+
 **正式基线怎么供给**（S4【实测】）：
 
 - **不走引擎 `/static/`**。设了 `HEIMDALL_TOKEN` 时，验收 worker 在隔离的浏览器上下文里不带令牌，拿到 401，导航检查 `blocked / baseline_failed`。把令牌拼进 URL（`?token=`）能过，但只对路由 `/` 有效，而且令牌会原样写进 `report.json`。

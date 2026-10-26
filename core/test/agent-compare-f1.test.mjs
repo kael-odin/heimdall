@@ -74,6 +74,10 @@ test('compare F1: the unmodified page is a pass-candidate at gold', { timeout: 1
   assert.equal(r.packet.schema, 'heimdall.fixpacket/1');
   assert.ok(r.fixpacketEvidence.sha256.length === 64);
   assert.equal(r.packet.anticheat.status, 'clean', 'an honest page raises no anti-cheat finding');
+  const { composeGate } = await import('../src/agent/gate/report.mjs');
+  const g = composeGate(r.packet, { level: 'gold' });
+  assert.equal(g.status, 'passed', JSON.stringify(g.dimensions.map(d => [d.id, d.status, d.detail])));
+  assert.equal(g.reached, 'gold');
 });
 
 for (const id of ['f1-shift-hero-art', 'f1-color-cta-band', 'f1-missing-content-stats', 'f1-image-missing-avatar', 'f1-spacing-features-padding']) {
