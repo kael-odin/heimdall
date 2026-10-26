@@ -55,6 +55,8 @@ test('baseline: sanitizing drops external code and frames, keeps layout for imag
   const html = `<!doctype html><html><head>
     <link rel="stylesheet" href="ok.css">
     <link rel="stylesheet" href="https://fonts.example/x.css">
+    <link rel="icon" href="https://cdn.example/favicon.ico">
+    <link rel="alternate" hreflang="zh" href="https://www.example.com/zh">
     <script src="https://analytics.example/a.js"></script>
     <script src="missing.js"></script>
     </head><body>
@@ -69,6 +71,7 @@ test('baseline: sanitizing drops external code and frames, keeps layout for imag
   const r = baseline.sanitizeHtml(html, { root: dir, file: join(dir, 'index.html') });
   assert.doesNotMatch(r.html, /analytics\.example|fonts\.example|doubleclick\.example|cdn\.example|missing\.js|gone\.png|collector\.example/);
   assert.match(r.html, /example\.org\/page/, 'ordinary links are content, not requests');
+  assert.match(r.html, /rel="alternate"[^>]*zh/, 'non-fetching links to the original site stay: they cause no request');
   assert.match(r.html, /ok\.css/);
   assert.equal((r.html.match(/data:image\/gif;base64/g) ?? []).length, 4, 'three replaced images plus one background');
   assert.match(r.html, /width="20"/, 'the broken image keeps its box');

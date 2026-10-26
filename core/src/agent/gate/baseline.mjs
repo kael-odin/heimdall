@@ -94,6 +94,14 @@ const RESOURCE_ATTRS = {
 /** 资源元素：引用没了就该整个摘掉（iframe 尤其：第三方嵌入会拖垮健康判定） */
 const DROP_WHEN_EMPTY = new Set(['script', 'iframe', 'link']);
 
+/** 会触发请求的 rel：只有这些 <link> 需要为「外部」动手；canonical / alternate 之类不会发请求，留着 */
+const FETCHING_RELS = new Set(['stylesheet', 'icon', 'shortcut', 'apple-touch-icon', 'mask-icon', 'manifest',
+  'preload', 'modulepreload', 'prefetch', 'prerender', 'preconnect', 'dns-prefetch']);
+const fetches = (node) => {
+  const rel = attr(node, 'rel');
+  return rel ? String(rel).toLowerCase().split(/\s+/).some(t => FETCHING_RELS.has(t)) : false;
+};
+
 /** 递归清洗一个 HTML 文档；返回新 HTML 与改动清单 */
 export function sanitizeHtml(html, { root, file, log }) {
   const doc = parse(String(html));
@@ -115,7 +123,7 @@ export function sanitizeHtml(html, { root, file, log }) {
     if (!node.childNodes) return;
     const next = [];
     for (const child of node.childNodes) {
-      if (child.tagName === 'link') {
+      if (child.tagName === 'link' && fetches(child)) {
         const href = attr(child, 'href');
         const c = classifyRef(href);
         if (c.kind === 'external' || (c.kind === 'local' && !checkLocal(href))) {

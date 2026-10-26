@@ -91,6 +91,7 @@
 - **不走 `clone-preview-server`**。它给 HTML 加的 `Content-Security-Policy: sandbox` 不含 `allow-same-origin`：镜像页访问 `navigator.serviceWorker` 抛错，Web 字体按跨源被拦，读 `cssRules` 也被拒。验收要求两侧都健康才判视觉，于是镜像对它自己的拷贝也是 `blocked / baseline_failed`。
 - **做法**：`Gate` 封装每次运行起一个本机回环、随机端口、无令牌、不加 sandbox 的只读静态服务来供基线，运行结束即关。这个源上没有任何别的接口，放开 same-origin 的风险可控。
 - **镜像先体检**。apify.com/contact 的镜像仍残留第三方嵌入（doubleclick），还有本地 404，所以换了供给方式基线依然不健康。提交前先跑健康探针；不健康时生成「正式基线副本」，去掉外部请求、移除断链引用，改动写进证据。仍不健康的，该维度记 `blocked` 并写明原因，而不是 `failed`。
+- **实现（2026-10-26）**：`core/src/agent/gate/baseline.mjs` + `heimdall gate baseline <siteId> <page>`，报告写 `workspace/<siteId>/agent/gate/<page>/baseline.json`（`healthy` / `sanitized` / `blocked`，逐条改动与证据 SHA-256）。本机 8 页实测：6 页直接健康；thordata.com/home 只摘 3 个第三方 iframe（Google 登录、LiveChat、Cookiebot），页高 8861px 不变；apify.com/contact 摘 3 个 doubleclick iframe、替换 10 个外部图片与 2 个断链资产，页高 3389px 不变；stripe.com/home 2 处改动后健康；0 页 `blocked`。
 
 快速裁判与正式裁判的偏差（【A-11】）。S4 在三个视口都在预算内的 apify.com/contact 上实测：
 
