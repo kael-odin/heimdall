@@ -50,6 +50,20 @@ Ph0 预研 ─→ Ph1 手眼 ─→ Ph2 闭环与剧场 ─→ Ph3 加固与彩�
 | **退出条件** | 全新 Windows 机器：装插件 → `doctor` → `connect` → 在夹具 F1 上一句话，Claude Code 跑到**快速裁判给出 `pass-candidate`**；`pnpm test` 与新增测试全绿；旧演示路径不受影响 |
 | **演示增量** | 终端里代理调用 Heimdall 工具重建一页，能看到简报、修复包、分数曲线（命令行版） |
 
+**Ph1 竖线验收（2026-10-27，本机）**：用**同一套 CLI**（外部代理接入的入口）在夹具 F1 上从零跑通了一遍：
+
+```
+heimdall clone http://127.0.0.1:5090/            → 镜像 100 分（A）
+heimdall rebuild init <siteId> --page home        → 6 个分段、3 个原件资产、2 个字体
+heimdall brief --project . --detail sections      → 分段计划与大纲
+（写 index.html / styles.css，每段根元素加 data-heimdall-section）
+heimdall compare --project .                      → 375/768/1440 全部 100.00%，pass-candidate（gold），第 1 次对比
+heimdall gate report --project . --level gold     → 六维全过（正文覆盖 100%，外部来源 0，坏图 0，脚本错误 0，横向溢出 0）
+heimdall rebuild deliver --project .              → Floor=Mirror 交付包（正式裁判未上线，标 failed_with_residuals）
+```
+
+两点必须说清楚：①这次是**人（我）**按技能写的，不是 Claude Code 客户端自动跑的——它证明的是「入口 + 度量 + 门禁 + 交付」这条链路通，不证明 A-3 的客户端手测；②写页面时大量参考了镜像的 `cssom.css`（L4 原始文件），**不能据此认为简报已足够**，A-2 仍然是未决项。
+
 **Ph1 进度（2026-10-25，未提交）**：
 
 - **已做且有测试**：
