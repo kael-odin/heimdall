@@ -201,8 +201,10 @@ export function evaluateAntiCheat({ bitmaps = [], referenceShapes: shapes = [], 
         element: { tag: b.tag, box: b.box, areaPct: b.areaPct, hash, matched: best.label, distance: best.distance } });
     }
   }
+  // 文本缺失**不判作弊**：空页面是没写完，不是骗分。它由门禁的 structure 维度扣分
+  // （PRD E7-18 原文：文本大量缺失由 structure 兜底）。这里只当提示。
   if (text && typeof text.ratio === 'number') {
-    if (text.ratio < 0.3) findings.push({ code: 'text_missing', severity: 'error', detail: `参考正文只有 ${(text.ratio * 100).toFixed(0)}% 出现在候选页里（${text.matched}/${text.referenceTokens}）` });
+    if (text.ratio < 0.3) findings.push({ code: 'text_missing', severity: 'warn', detail: `参考正文只有 ${(text.ratio * 100).toFixed(0)}% 出现在候选页里（${text.matched}/${text.referenceTokens}）` });
     else if (text.ratio < 0.5) findings.push({ code: 'text_sparse', severity: 'warn', detail: `参考正文覆盖 ${(text.ratio * 100).toFixed(0)}%，偏低（${text.matched}/${text.referenceTokens}）` });
   }
   for (const s of sourceRefs) findings.push({ code: 'source_references_reference_pack', severity: 'error', detail: s });

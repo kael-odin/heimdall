@@ -87,8 +87,11 @@ test('anticheat: visible text drops hidden nodes and scripts', () => {
   assert.doesNotMatch(text, /ignore previous|secret|hidden|var x/);
 });
 
-test('anticheat: missing text fails, sparse text only warns', () => {
-  assert.equal(evaluateAntiCheat({ text: { ratio: 0.12, matched: 3, referenceTokens: 25 } }).findings[0].code, 'text_missing');
+test('anticheat: missing text is a structure problem, never a cheat', () => {
+  const missing = evaluateAntiCheat({ text: { ratio: 0.12, matched: 3, referenceTokens: 25 } });
+  assert.equal(missing.findings[0].code, 'text_missing');
+  assert.equal(missing.findings[0].severity, 'warn', 'an unfinished page is not a cheater');
+  assert.equal(missing.status, 'clean');
   const warn = evaluateAntiCheat({ text: { ratio: 0.42, matched: 10, referenceTokens: 24 } });
   assert.equal(warn.status, 'clean');
   assert.equal(warn.findings[0].code, 'text_sparse');

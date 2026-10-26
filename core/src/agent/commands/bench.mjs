@@ -1,0 +1,80 @@
+/**
+ * heimdall bench —— Heimdall-Bench 驱动（E14-01 ~ E14-03，PRD 09 §1–§2）
+ *
+ *   heimdall bench score --site <siteId> --page <page> --candidate 标签=目录 [--candidate …] [--level gold] [--json]
+ *   heimdall bench run   --site <siteId> --page <page> --project <dir> [--arm a1|a2|a3] [--iterations 2] [--model M] [--json]
+ *
+ * score：只测量已有候选（不调模型），适合把「人写的 / 脚手架 / 镜像自身」放在一张表里。
+ * run：用模型跑一个消融臂（A1 只给简报，A2 加标量反馈，A3 加完整修复包），每轮都对比并记分。
+ * 结果写 workspace/<siteId>/agent/bench/<时间>.json，同时打印一张 Markdown 表。
+ */
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { ok, fail, fromError, exitCodeOf, nextAction, CapabilityError } from '../envelope.mjs';
+import { parseArgs } from '../cli.mjs';
+import { agentDir } from '../workspace.mjs';
+import { runArm } from '../bench/agent.mjs';
+import { scoreCandidate, benchReport, benchTable } from '../bench/score.mjs';
+
+const pairs = (list) => String(list ?? '').split(',').map(s => s.trim()).filter(Boolean).map((s) => {
+  const i = String(s).indexOf('=');
+  return i > 0 ? { label: String(s).slice(0, i), dir: resolve(String(s).slice(i + 1)) } : { label: String(s), dir: resolve(String(s)) };
+});
+
+export async function run(argv) {
+  const { flags, positional } = parseArgs(argv);
+  const json = !!flags.json;
+  const sub = positional[0];
+  const siteId = flags.site, page = flags.page;
+  let env;
+  try {
+    if (!siteId || !page) throw new CapabilityError('invalid_args', '需要 --site 与 --page', { hint: '例：heimdall bench score --site S --page home --candidate 脚手架=工作区目录' });
+    const level = String(flags.level ?? 'silver');
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+    const outDir = join(agentDir(siteId), 'bench');
+    mkdirSync(outDir, { recursive: true });
+
+    if (sub === 'score') {
+      const candidates = pairs(flags.candidate);
+      if (!candidates.length) throw new CapabilityError('invalid_args', '至少给一个 --candidate 标签=目录');
+      const rows = [];
+      for (const c of candidates) {
+        process.stderr.write(`… 测量 ${c.label}\n`);
+        rows.push(await scoreCandidate({ siteId, page, candidateDir: c.dir, level, label: c.label }));
+      }
+      const report = benchReport({ fixture: { siteId, page }, level, rows });
+      const file = join(outDir, `score-${stamp}.json`);
+      writeFileSync(file, JSON.stringify(report, null, 1) + '\n');
+      env = ok({ ...report, reportPath: file }, { summary: benchTable(report) + `\n报告：${file}`, nextActions: [] });
+    } else if (sub === 'run') {
+      const projectDir = resolve(String(flags.project ?? '.'));
+      const arm = String(flags.arm ?? 'a3');
+      const iterations = Math.max(1, Math.min(8, Number(flags.iterations ?? 2)));
+      const res = await runArm({ projectDir, siteId, page, arm, iterations, model: flags.model ?? null,
+        ...(flags['max-tokens'] ? { maxTokens: Math.max(1000, Number(flags['max-tokens'])) } : {}),
+        onProgress: (p) => process.stderr.write(`… ${p.message}\n`) });
+      const last = res.rows.at(-1);
+      const row = { label: `${arm}${flags.model ? ` · ${flags.model}` : ''}`, dir: projectDir, runId: last?.runId ?? null,
+        pixel: last?.pixel ?? {}, minPixel: last?.pixel ? Math.min(...Object.values(last.pixel)) : null,
+        gate: { status: last?.verdict === 'pass-candidate' ? 'passed' : 'failed', reached: last?.reached ?? null, failed: [], notMeasured: [] },
+        antitheft: last?.anticheat ?? null, iterations: res.iterations, compareMs: res.rows.reduce((s, r) => s + r.ms, 0) };
+      const report = benchReport({ fixture: { siteId, page }, level: res.level, rows: [row], model: res.model,
+        note: `臂 ${arm}，${res.iterations} 轮；token 输入 ${res.usage.prompt} / 输出 ${res.usage.completion}。分数是快速裁判口径。` });
+      report.attempts = res.rows;
+      const file = join(outDir, `run-${arm}-${stamp}.json`);
+      writeFileSync(file, JSON.stringify(report, null, 1) + '\n');
+      env = ok({ ...report, reportPath: file, usage: res.usage }, { summary: benchTable(report) + `\n报告：${file}`,
+        nextActions: [nextAction('cli:shell', { command: `heimdall rebuild deliver --project "${projectDir}"` }, '按 Floor=Mirror 交付这次重建')] });
+    } else {
+      env = fail('invalid_args', '用法：heimdall bench score|run …', { hint: 'score：测量已有候选；run：用模型跑一个消融臂' });
+    }
+  } catch (error) {
+    env = fromError(error);
+  }
+  if (json) process.stdout.write(JSON.stringify(env) + '\n');
+  else {
+    process.stdout.write(env.summary + '\n');
+    if (!env.ok) process.stdout.write(`[${env.error.code}] ${env.error.message}\n下一步：${env.error.hint}\n`);
+  }
+  return exitCodeOf(env);
+}

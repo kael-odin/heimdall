@@ -112,7 +112,7 @@ async function reachable(url) {
  * @param {object} args { siteId, page, candidate:{url}|{dir}, route?, viewports?, sectionIds?, gate?, baselineRunId? }
  * @returns {Promise<{ result, evidence, fence, packetFile, summary, nextActions, warnings }>}
  */
-export async function fastCompare(args, { browser: sharedBrowser, onProgress } = {}) {
+export async function fastCompare(args, { browser: sharedBrowser, onProgress, record = true } = {}) {
   const t0 = Date.now();
   let { siteId, page, candidate, route, viewports, sectionIds, gate } = args;
   let projectDir = null, config = null;
@@ -340,10 +340,11 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress } =
     writeFileAtomic(join(outDir, 'fixpacket.json'), JSON.stringify(packet, null, 1));
     const text = packetText(packet);
     writeFileSync(join(outDir, 'packet.txt'), text);
-    appendFileSync(join(compareDir(siteId), 'index.jsonl'), JSON.stringify({ runId, at: packet.generatedAt, mode: 'fast', candidateKey: key, page,
+    // record=false：测量型调用方（Bench）不该往候选的账本里写自己这一笔
+    if (record) appendFileSync(join(compareDir(siteId), 'index.jsonl'), JSON.stringify({ runId, at: packet.generatedAt, mode: 'fast', candidateKey: key, page,
       sectionIds: sectionIds ?? null, pixel: pixelNow, verdict: verdict.status, reached: verdict.reached }) + '\n');
     let projectRunDir = null;
-    if (projectDir) {
+    if (projectDir && record) {
       projectRunDir = join(projectDir, '.heimdall', 'runs', runId);
       mkdirSync(join(projectRunDir, 'crops'), { recursive: true });
       writeFileSync(join(projectRunDir, 'fixpacket.json'), JSON.stringify(packet, null, 1));
