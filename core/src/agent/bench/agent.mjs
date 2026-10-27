@@ -158,10 +158,11 @@ function buildSectionPrompt({ section, outline, tokens, assets, sectionHtml, fee
  * 按分段循环：一次只比一段、只改一段（技能里推荐的做法）。
  * 与整页臂的区别只在「反馈与改动的粒度」，其余（起始页、模型、回退）一致。
  */
-export async function runSectionLoop({ projectDir, siteId, page, maxPerSection = 2, model = null, maxTokens = 8000, revert = true, onProgress = () => {}, completeFn = complete, browser = null }) {
+export async function runSectionLoop({ projectDir, siteId, page, maxPerSection = 2, model = null, maxTokens = 8000, revert = true, only = null, onProgress = () => {}, completeFn = complete, browser = null }) {
   const pageCfg = readJson(join(projectDir, 'heimdall.config.json'));
   const viewports = pageCfg?.viewports ?? [375, 768, 1440];
-  const sections = readJson(join(projectDir, '.heimdall', 'sections', `${page}.json`))?.sections?.filter(s => !s.overlay) ?? [];
+  const allSections = readJson(join(projectDir, '.heimdall', 'sections', `${page}.json`))?.sections?.filter(s => !s.overlay) ?? [];
+  const sections = only?.length ? allSections.filter(s => only.includes(s.id)) : allSections;
   const tokens = (() => { try { return readFileSync(join(projectDir, 'tokens.css'), 'utf8'); } catch { return ''; } })();
   const assetsDir = join(projectDir, 'public', 'assets');
   const assets = existsSync(assetsDir) ? readdirSync(assetsDir).filter(n => !n.endsWith('.json') && n !== 'fonts') : [];
@@ -173,39 +174,47 @@ export async function runSectionLoop({ projectDir, siteId, page, maxPerSection =
   for (const s of sections) {
     let best = null, feedback = null;
     for (let i = 1; i <= maxPerSection; i++) {
-      const html = readFileSync(join(projectDir, 'index.html'), 'utf8');
-      const sectionHtml = sectionHtmlOf(html, s.id);
-      if (!sectionHtml) { rows.push({ sectionId: s.id, iteration: i, skipped: 'unmarked' }); break; }
-      const prompt = buildSectionPrompt({ section: s, outline, tokens, assets, sectionHtml, feedback });
-      onProgress({ stage: 'model', sectionId: s.id, iteration: i, message: `${s.id} 第 ${i} 轮：调用模型` });
-      let out = await completeFn({ system: SYSTEM, user: prompt, model, maxTokens });
-      let parsed = null, retries = 0;
-      try { parsed = parseSurgical(out.text); } catch {
-        retries = 1;
-        out = await completeFn({ system: SYSTEM, user: `${prompt}\n\n上一轮没有按格式输出。请只输出 \`\`\`html ${s.id} 这一段与可选的 \`\`\`css add。`, model, maxTokens });
-        parsed = parseSurgical(out.text);
-      }
-      usage.calls += 1 + retries;
-      usage.prompt += out.usage?.prompt_tokens ?? 0;
-      usage.completion += out.usage?.completion_tokens ?? 0;
-      // 只应用这一段：模型多回的分段在这一轮里丢掉，免得顺手改坏别处
-      const applied = applySurgical(projectDir, { sections: parsed.sections.filter(x => x.id === s.id), cssAdd: parsed.cssAdd });
-      const r = await fastCompare({ siteId, page, candidate: { dir: projectDir }, sectionIds: [s.id], viewports }, { browser });
-      const pixel = Object.fromEntries(Object.entries(r.packet.perViewport).map(([w, v]) => [w, +(v.pixelSimilarity).toFixed(5)]));
-      const score = Math.min(...Object.values(pixel));
-      let reverted = false;
-      if (revert) {
-        if (!best || score > best.score) best = { score, html: readFileSync(join(projectDir, 'index.html'), 'utf8'), css: readFileSync(join(projectDir, 'styles.css'), 'utf8') };
-        else {
-          writeFileSync(join(projectDir, 'index.html'), best.html);
-          writeFileSync(join(projectDir, 'styles.css'), best.css);
-          reverted = true;
+      try {
+        const html = readFileSync(join(projectDir, 'index.html'), 'utf8');
+        const sectionHtml = sectionHtmlOf(html, s.id);
+        if (!sectionHtml) { rows.push({ sectionId: s.id, iteration: i, skipped: 'unmarked' }); break; }
+        const prompt = buildSectionPrompt({ section: s, outline, tokens, assets, sectionHtml, feedback });
+        onProgress({ stage: 'model', sectionId: s.id, iteration: i, message: `${s.id} 第 ${i} 轮：调用模型` });
+        let out = await completeFn({ system: SYSTEM, user: prompt, model, maxTokens });
+        let parsed = null, retries = 0;
+        try { parsed = parseSurgical(out.text); } catch {
+          retries = 1;
+          out = await completeFn({ system: SYSTEM, user: `${prompt}\n\n上一轮没有按格式输出。请只输出 \`\`\`html ${s.id} 这一段与可选的 \`\`\`css add。`, model, maxTokens });
+          parsed = parseSurgical(out.text);
         }
+        usage.calls += 1 + retries;
+        usage.prompt += out.usage?.prompt_tokens ?? 0;
+        usage.completion += out.usage?.completion_tokens ?? 0;
+        // 只应用这一段：模型多回的分段在这一轮里丢掉，免得顺手改坏别处
+        const applied = applySurgical(projectDir, { sections: parsed.sections.filter(x => x.id === s.id), cssAdd: parsed.cssAdd });
+        const r = await fastCompare({ siteId, page, candidate: { dir: projectDir }, sectionIds: [s.id], viewports }, { browser });
+        const pixel = Object.fromEntries(Object.entries(r.packet.perViewport).map(([w, v]) => [w, +(v.pixelSimilarity).toFixed(5)]));
+        const score = Math.min(...Object.values(pixel));
+        let reverted = false;
+        if (revert) {
+          if (!best || score > best.score) best = { score, html: readFileSync(join(projectDir, 'index.html'), 'utf8'), css: readFileSync(join(projectDir, 'styles.css'), 'utf8') };
+          else {
+            writeFileSync(join(projectDir, 'index.html'), best.html);
+            writeFileSync(join(projectDir, 'styles.css'), best.css);
+            reverted = true;
+          }
+        }
+        rows.push({ sectionId: s.id, iteration: i, score: +score.toFixed(5), kept: +(best?.score ?? score).toFixed(5), reverted,
+          pixel, verdict: r.packet.verdict.status, applied: { sections: applied.replaced.length, css: applied.cssAdded, missed: applied.missed.length }, retries });
+        if (r.packet.verdict.status === 'pass-candidate') break;
+        feedback = targetedFeedback(r.packet, { top: 3 });
+      } catch (error) {
+        // 一段出错不该让整轮评测停掉：记下来、进下一段
+        const message = String(error?.message ?? error).slice(0, 300);
+        rows.push({ sectionId: s.id, iteration: i, error: message });
+        onProgress({ stage: 'error', sectionId: s.id, message: `${s.id} 第 ${i} 轮出错：${message.slice(0, 120)}` });
+        break;
       }
-      rows.push({ sectionId: s.id, iteration: i, score: +score.toFixed(5), kept: +(best?.score ?? score).toFixed(5), reverted,
-        pixel, verdict: r.packet.verdict.status, applied: { sections: applied.replaced.length, css: applied.cssAdded, missed: applied.missed.length }, retries });
-      if (r.packet.verdict.status === 'pass-candidate') break;
-      feedback = targetedFeedback(r.packet, { top: 3 });
     }
   }
   onProgress({ stage: 'compare', message: '整页复核' });

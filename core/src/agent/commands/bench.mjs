@@ -83,6 +83,7 @@ export async function run(argv) {
       const maxPerSection = Math.max(1, Math.min(6, Number(flags.iterations ?? 2)));
       const res = await runSectionLoop({ projectDir, siteId, page, maxPerSection, model: flags.model ?? null,
         ...(flags['max-tokens'] ? { maxTokens: Math.max(1000, Number(flags['max-tokens'])) } : {}),
+        ...(flags['section-id'] ? { only: String(flags['section-id']).split(',').map(s => s.trim()).filter(Boolean) } : {}),
         revert: flags['no-revert'] !== true,
         onProgress: (p) => process.stderr.write(`… ${p.message}\n`) });
       const file = join(outDir, `sections-${stamp}.json`);
