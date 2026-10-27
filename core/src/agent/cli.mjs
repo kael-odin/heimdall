@@ -24,7 +24,7 @@ export const CLI_ONLY = Object.freeze({
   mcp: { usage: 'mcp [--http <port>] [--legacy]', desc: 'MCP 服务：默认 v2（stdio）；--legacy 起旧的 13 工具服务器' },
 });
 
-const BOOL_FLAGS = new Set(['json', 'wait', 'no-wait', 'quiet', 'yes', 'refresh', 'force', 'fix', 'remove', 'dry-run', 'help', 'all-discovered', 'recon-only', 'legacy', 'inline']);
+const BOOL_FLAGS = new Set(['json', 'wait', 'no-wait', 'quiet', 'yes', 'refresh', 'force', 'fix', 'remove', 'dry-run', 'help', 'all-discovered', 'recon-only', 'legacy', 'inline', 'no-revert', 'no-mirror']);
 const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 /** 解析 argv：--flag value / --flag=value / 布尔标志；其余是位置参数 */

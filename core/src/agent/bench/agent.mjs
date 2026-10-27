@@ -81,7 +81,7 @@ function buildPrompt({ sectionRows, tokens, assets, outline, files, feedback, ar
  * 跑一个臂。
  * @returns {Promise<{arm, model, iterations, rows, usage}>}
  */
-export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations = 2, model = null, maxTokens = 12000, feedbackMode = 'full', onProgress = () => {}, completeFn = complete, browser = null }) {
+export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations = 2, model = null, maxTokens = 12000, feedbackMode = 'full', revert = true, onProgress = () => {}, completeFn = complete, browser = null }) {
   if (!['a1', 'a2', 'a3'].includes(arm)) throw new Error(`未知的臂：${arm}`);
   const pageCfg = readJson(join(projectDir, 'heimdall.config.json'));
   const viewports = pageCfg?.viewports ?? [375, 768, 1440];
@@ -95,7 +95,7 @@ export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations 
 
   const rows = [];
   const usage = { prompt: 0, completion: 0, calls: 0 };
-  let feedback = null, files = null;
+  let feedback = null, files = null, best = null;
   const effectiveIterations = arm === 'a1' ? 1 : iterations;
 
   for (let i = 1; i <= effectiveIterations; i++) {
@@ -122,11 +122,25 @@ export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations 
     onProgress({ stage: 'compare', iteration: i, message: `第 ${i} 轮：对比中` });
     const r = await fastCompare({ siteId, page, candidate: { dir: projectDir }, viewports }, browser ? { browser } : {});
     const pixel = Object.fromEntries(Object.entries(r.packet.perViewport).map(([w, v]) => [w, +(v.pixelSimilarity).toFixed(5)]));
-    rows.push({ iteration: i, model: out.model, retries, pixel, verdict: r.packet.verdict.status, reached: r.packet.verdict.reached ?? null,
+    const score = Math.min(...Object.values(pixel));
+    let reverted = false;
+    // 变差即回退（PRD 03 §5.4）：回退到目前最好的一版，后面的轮次从那里继续
+    if (revert) {
+      if (!best || score > best.score) best = { score, html: readFileSync(join(projectDir, 'index.html'), 'utf8'), css: readFileSync(join(projectDir, 'styles.css'), 'utf8') };
+      else {
+        writeFileSync(join(projectDir, 'index.html'), best.html);
+        writeFileSync(join(projectDir, 'styles.css'), best.css);
+        reverted = true;
+        onProgress({ stage: 'revert', iteration: i, message: `第 ${i} 轮变差（${(score * 100).toFixed(2)}% < ${(best.score * 100).toFixed(2)}%），已回退` });
+      }
+    }
+    rows.push({ iteration: i, model: out.model, retries, pixel, score: +score.toFixed(5), kept: +(best?.score ?? score).toFixed(5), reverted,
+      verdict: r.packet.verdict.status, reached: r.packet.verdict.reached ?? null,
       anticheat: r.packet.anticheat?.status ?? null, ms: Date.now() - started, runId: r.packet.runId });
     if (r.packet.verdict.status === 'pass-candidate') break;
     files = { html: readFileSync(join(projectDir, 'index.html'), 'utf8'), css: readFileSync(join(projectDir, 'styles.css'), 'utf8') };
     feedback = arm === 'a2' ? scalarFeedback(r.packet) : arm === 'a3' ? (feedbackMode === 'targeted' ? targetedFeedback(r.packet) : r.text) : null;
+    if (reverted && feedback) feedback += `\n\n注意：你上一版比之前更差（${(score * 100).toFixed(2)}% < ${(best.score * 100).toFixed(2)}%），已经回退到最好的一版。这次只改上面指出的地方，不要重写整页。`;
   }
   return { arm, model: model ?? llmConfig().models.standard, level, viewports, iterations: rows.length, rows, usage };
 }
