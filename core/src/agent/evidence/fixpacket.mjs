@@ -715,7 +715,7 @@ export function elementHints(region, elements) {
   }
   scored.sort((a, b) => b[0] - a[0]);
   const fmt = (e, conf) => e && ({ ...(e.ref ? { ref: e.ref } : {}), anchor: safeAnchor(e.sel), ...(e.text ? { text: e.text } : {}), box: e.box,
-    ...(e.sectionId ? { sectionId: e.sectionId } : {}), ...(conf !== undefined ? { iou: +conf.toFixed(2) } : {}) });
+    ...(e.sectionId ? { sectionId: e.sectionId } : {}), ...(e.style ? { style: e.style } : {}), ...(conf !== undefined ? { iou: +conf.toFixed(2) } : {}) });
   return {
     best: scored.slice(0, 2).map(([u, e]) => fmt(e, u)),
     container: container ? fmt(container) : null,
@@ -1058,6 +1058,10 @@ export function packetText(packet, { maxPerViewport = 6 } = {}) {
         + (r.shift ? ` · d=(${r.shift.dx},${r.shift.dy})` : '') + (r.heightDelta ? ` · Δh=${r.heightDelta}` : '') + (r.sectionId ? ` · ${r.sectionId}` : ''));
       const e = r.element?.best?.[0];
       if (e?.ref || e?.anchor) lines.push(`     参考元素: ${[e.ref, e.anchor].filter(Boolean).join(' ')}`);
+      // 参考值要给出数字：只说「字号不对」等于没说（Bench 实测精确值能把同一模型从 68% 提到 95–98%）
+      if (e?.style && Object.keys(e.style).length) {
+        lines.push(`     参考样式: ${Object.entries(e.style).map(([k, v]) => `${k}: ${v}`).join('; ').slice(0, 320)}`);
+      }
       if (r.crops?.composite) lines.push(`     裁剪: ${r.crops.composite}（自上而下 / 自左而右：参考 · 候选 · 差异）`);
       lines.push(`     建议: ${r.hint}`);
     }
