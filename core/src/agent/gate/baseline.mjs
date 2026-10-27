@@ -103,7 +103,7 @@ const fetches = (node) => {
 };
 
 /** 递归清洗一个 HTML 文档；返回新 HTML 与改动清单 */
-export function sanitizeHtml(html, { root, file, log }) {
+export function sanitizeHtml(html, { root, file, log, normalizeLinks = false }) {
   const doc = parse(String(html));
   const docDir = resolve(file, '..');
   const changes = [];
@@ -129,6 +129,17 @@ export function sanitizeHtml(html, { root, file, log }) {
         if (c.kind === 'external' || (c.kind === 'local' && !checkLocal(href))) {
           note(c.kind === 'external' ? 'external_link_removed' : 'broken_link_removed', href);
           continue;
+        }
+      }
+      if (child.tagName === 'a' && normalizeLinks) {
+        const href = attr(child, 'href');
+        const c = classifyRef(href);
+        if (c.kind === 'external') {
+          try {
+            const u = new URL(c.url);
+            setAttr(child, 'href', u.pathname + u.search + u.hash);
+            note('anchor_normalized', href);
+          } catch { /* 解析不了就原样留着 */ }
         }
       }
       if (child.tagName === 'base' && classifyRef(attr(child, 'href')).kind === 'external') {
@@ -203,7 +214,7 @@ export function sanitizeCss(text) {
 const SKIP_DIRS = new Set(['node_modules', '.git']);
 
 /** 复制一份干净的基线副本：二进制原样拷，HTML/CSS 清洗；秘密文件不拷 */
-export function copySanitizedBaseline(srcDir, destDir, { log } = {}) {
+export function copySanitizedBaseline(srcDir, destDir, { log, normalizeLinks = false } = {}) {
   const root = resolve(srcDir);
   const all = [];
   const walk = (dir) => {
@@ -225,7 +236,7 @@ export function copySanitizedBaseline(srcDir, destDir, { log } = {}) {
     mkdirSync(resolve(dest, '..'), { recursive: true });
     const ext = extname(file).toLowerCase();
     if (ext === '.html' || ext === '.htm') {
-      const r = sanitizeHtml(readFileSync(file, 'utf8'), { root, file, log });
+      const r = sanitizeHtml(readFileSync(file, 'utf8'), { root, file, log, normalizeLinks });
       writeFileSync(dest, r.html);
       for (const c of r.changes) changes.push({ file: rel.replace(/\\/g, '/'), ...c });
     } else if (ext === '.css') {

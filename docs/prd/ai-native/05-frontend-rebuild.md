@@ -88,6 +88,8 @@
 
 **实现（2026-10-26，E7-06）**：`heimdall gate report --project .` 跑一次快速对比后组合 `heimdall.gate/1`：六维逐项给 `pass` / `fail` / `not_measured` 与实测值、阈值、差距；整体 `passed` 只在六维全过时成立，采集不到（例如单段范围没有正文覆盖率）记 `incomplete`，不冒充通过。阈值按 bronze / silver / gold 三档内置，可在 `heimdall.config.json` 的 `gate.thresholds` 里逐项覆盖。未通过时退出码 1，供 CI 与代理判断。**这份报告的 `passed` 是快速裁判口径**，只代表「按确定性规则没发现不合格」；对外宣布通过仍只由正式裁判（E7-07）给出。
 
+**实现（2026-10-27，E7-07）**：`heimdall gate formal --project .` 把上面的六维与验收 Mirror 合起来判：正式基线 → `POST /api/acceptance/runs` → 轮询 → 报告；`acceptance` 作为第七维参与合取（`passed` / `failed` / `not_measured`）。只有七维全过才写 `status: "passed"`。基线在供出去之前会把绝对 `href` 归一成站内路径——验收的结构检查按控件语义（含 href）严格比较，绝对与相对链接指同一目标却会被判成缺陷（实测：像素 100% 的页面因这一条 failed）。
+
 **正式基线怎么供给**（S4【实测】）：
 
 - **不走引擎 `/static/`**。设了 `HEIMDALL_TOKEN` 时，验收 worker 在隔离的浏览器上下文里不带令牌，拿到 401，导航检查 `blocked / baseline_failed`。把令牌拼进 URL（`?token=`）能过，但只对路由 `/` 有效，而且令牌会原样写进 `report.json`。
