@@ -40,6 +40,24 @@ export function scalarFeedback(packet) {
   return `本轮判定：${packet.verdict.status}（目标 ${packet.verdict.target}）\n${lines.join('\n')}\n你只拿得到分数，没有区域定位。`;
 }
 
+/**
+ * A3 的**定向**反馈：只给最要紧的几条区域，并明确要求别动其它已经对上的部分。
+ * 整份修复包有十几条，弱模型会把整页重写一遍、把已经对上的地方一起改坏；
+ * 定向反馈更贴近技能里「按顺序修前 1–3 个区域」的写法。
+ */
+export function targetedFeedback(packet, { top = 5 } = {}) {
+  const ids = (packet.order ?? []).slice(0, top);
+  const regions = ids.map(id => (packet.regions ?? []).find(r => r.id === id)).filter(Boolean);
+  const lines = [`本轮判定：${packet.verdict.status}（目标 ${packet.verdict.target}）`];
+  for (const [w, v] of Object.entries(packet.perViewport)) lines.push(`${w}px：像素 ${(v.pixelSimilarity * 100).toFixed(2)}%`);
+  lines.push('', '按顺序修下面这几处（每处都给了外接框与原因），**只改这些，别动其它已经对上的分段**：');
+  for (const r of regions) {
+    lines.push(`- [${r.id}]${r.sectionId ? ` ${r.sectionId}` : ''} bbox(${r.bbox.x},${r.bbox.y},${r.bbox.w},${r.bbox.h}) 面积 ${r.areaPct}% · cause=${r.cause}`);
+    lines.push(`  ${r.hint}`);
+  }
+  return lines.join('\n');
+}
+
 function outlineText(brief) {
   const o = brief?.outline;
   if (typeof o === 'string') return o;
@@ -63,7 +81,7 @@ function buildPrompt({ sectionRows, tokens, assets, outline, files, feedback, ar
  * 跑一个臂。
  * @returns {Promise<{arm, model, iterations, rows, usage}>}
  */
-export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations = 2, model = null, maxTokens = 12000, onProgress = () => {}, completeFn = complete, browser = null }) {
+export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations = 2, model = null, maxTokens = 12000, feedbackMode = 'full', onProgress = () => {}, completeFn = complete, browser = null }) {
   if (!['a1', 'a2', 'a3'].includes(arm)) throw new Error(`未知的臂：${arm}`);
   const pageCfg = readJson(join(projectDir, 'heimdall.config.json'));
   const viewports = pageCfg?.viewports ?? [375, 768, 1440];
@@ -84,28 +102,31 @@ export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations 
     const prompt = buildPrompt({ sectionRows: sections, tokens, assets, outline, files, feedback, arm });
     onProgress({ stage: 'model', iteration: i, message: `第 ${i} 轮：调用模型（${arm}）` });
     const started = Date.now();
-    const out = await completeFn({ system: SYSTEM, user: prompt, model, maxTokens });
-    usage.calls += 1;
+    // 格式没对上就重问一次并记下来：这是工具层的重试，不是挑好看的答案重跑
+    let out = await completeFn({ system: SYSTEM, user: prompt, model, maxTokens });
+    let parsed = null, retries = 0;
+    try { parsed = parseFiles(out.text); } catch (first) {
+      retries = 1;
+      onProgress({ stage: 'model', iteration: i, message: `第 ${i} 轮：输出格式不对，重问一次` });
+      out = await completeFn({ system: SYSTEM, user: `${prompt}\n\n上一轮没有按格式输出。请只输出两个代码块：\`\`\`html index.html 与 \`\`\`css styles.css，不要任何解释。`, model, maxTokens });
+      try { parsed = parseFiles(out.text); } catch { throw new Error(`模型两轮都没给出两个代码块：${first.message}`); }
+    }
+    usage.calls += 1 + retries;
     usage.prompt += out.usage?.prompt_tokens ?? 0;
     usage.completion += out.usage?.completion_tokens ?? 0;
     // 留下原文，解析失败时能直接看模型到底输出了什么（工作区里的 .heimdall 不入库）
     try { writeFileSync(join(projectDir, '.heimdall', `model-output-${i}.txt`), String(out.text)); } catch {}
     if (out.finishReason === 'length') process.stderr.write(`! 第 ${i} 轮输出被截断（finish_reason=length），提高 --max-tokens 或减小页面\n`);
-    parseFilesInto(projectDir, out.text);
+    writeFileSync(join(projectDir, 'index.html'), parsed.html);
+    writeFileSync(join(projectDir, 'styles.css'), parsed.css);
     onProgress({ stage: 'compare', iteration: i, message: `第 ${i} 轮：对比中` });
     const r = await fastCompare({ siteId, page, candidate: { dir: projectDir }, viewports }, browser ? { browser } : {});
     const pixel = Object.fromEntries(Object.entries(r.packet.perViewport).map(([w, v]) => [w, +(v.pixelSimilarity).toFixed(5)]));
-    rows.push({ iteration: i, model: out.model, pixel, verdict: r.packet.verdict.status, reached: r.packet.verdict.reached ?? null,
+    rows.push({ iteration: i, model: out.model, retries, pixel, verdict: r.packet.verdict.status, reached: r.packet.verdict.reached ?? null,
       anticheat: r.packet.anticheat?.status ?? null, ms: Date.now() - started, runId: r.packet.runId });
     if (r.packet.verdict.status === 'pass-candidate') break;
     files = { html: readFileSync(join(projectDir, 'index.html'), 'utf8'), css: readFileSync(join(projectDir, 'styles.css'), 'utf8') };
-    feedback = arm === 'a2' ? scalarFeedback(r.packet) : arm === 'a3' ? r.text : null;
+    feedback = arm === 'a2' ? scalarFeedback(r.packet) : arm === 'a3' ? (feedbackMode === 'targeted' ? targetedFeedback(r.packet) : r.text) : null;
   }
   return { arm, model: model ?? llmConfig().models.standard, level, viewports, iterations: rows.length, rows, usage };
-}
-
-function parseFilesInto(projectDir, text) {
-  const { html, css } = parseFiles(text);
-  writeFileSync(join(projectDir, 'index.html'), html);
-  writeFileSync(join(projectDir, 'styles.css'), css);
 }

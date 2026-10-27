@@ -3,8 +3,8 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFiles, scalarFeedback } from '../src/agent/bench/agent.mjs';
-import { benchReport, benchTable } from '../src/agent/bench/score.mjs';
+import { parseFiles, scalarFeedback, targetedFeedback } from '../src/agent/bench/agent.mjs';
+import { benchReport, benchTable, quantile, summarizeRuns, summaryTable } from '../src/agent/bench/score.mjs';
 
 test('bench: parses the two fenced files and refuses a partial answer', () => {
   const out = '好的：\n```html index.html\n<!doctype html><html><body><h1>x</h1></body></html>\n```\n```css styles.css\nh1{color:red}\n```\n';
@@ -23,6 +23,33 @@ test('bench: the A2 arm gets numbers but no location', () => {
   assert.match(text, /375px：像素 91\.23%/);
   assert.match(text, /needs-work/);
   assert.doesNotMatch(text, /bbox|裁剪|crops|sec-|建议/);
+});
+
+test('bench: targeted feedback keeps the top regions and forbids touching the rest', () => {
+  const region = (id, cause) => ({ id, sectionId: 'sec-hero', bbox: { x: 0, y: 10, w: 100, h: 20 }, areaPct: 2, cause, hint: `修 ${id}` });
+  const text = targetedFeedback({ verdict: { status: 'needs-work', target: 'silver' }, perViewport: { 1440: { pixelSimilarity: 0.8 } },
+    order: ['r1', 'r2', 'r3'], regions: [region('r1', 'shift'), region('r2', 'font'), region('r3', 'color')] }, { top: 2 });
+  assert.match(text, /\[r1\][^\n]*cause=shift/);
+  assert.match(text, /修 r1/);
+  assert.doesNotMatch(text, /\[r3\]/, 'only the top regions are handed back');
+  assert.match(text, /只改这些/);
+});
+
+test('bench: repeats are summarised with median and range, and n is stated', () => {
+  assert.equal(quantile([1, 2, 3], 0.5), 2);
+  assert.equal(quantile([1, 2, 3, 4], 0.5), 2.5);
+  const summary = summarizeRuns([
+    { label: 'a2', pixel: { 1440: 0.70 } }, { label: 'a2', pixel: { 1440: 0.74 } }, { label: 'a2', pixel: { 1440: 0.80 } },
+    { label: 'a3', pixel: { 1440: 0.75 } },
+  ]);
+  const a2 = summary.find(s => s.label === 'a2');
+  assert.equal(a2.n, 3);
+  assert.equal(a2.viewports['1440'].median, 0.74);
+  assert.equal(a2.viewports['1440'].min, 0.70);
+  assert.equal(a2.viewports['1440'].max, 0.80);
+  const table = summaryTable(summary);
+  assert.match(table, /\| a2 \| 3 \| 74\.00%（70\.00%–80\.00%） \|/);
+  assert.match(table, /\| a3 \| 1 \|/);
 });
 
 test('bench: the table shows every viewport, the gate and the iterations', () => {

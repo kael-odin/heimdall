@@ -41,6 +41,52 @@ export async function scoreCandidate({ siteId, page, candidateDir, level = 'silv
 
 const pct = (v) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(2)}%`);
 
+/** 分位数（线性插值）；PRD 09 §1.5 要求中位数与极值，n 小时 IQR 很粗，所以两个都给 */
+export function quantile(values, q) {
+  const s = [...values].sort((a, b) => a - b);
+  if (!s.length) return null;
+  const pos = (s.length - 1) * q;
+  const lo = Math.floor(pos), hi = Math.ceil(pos);
+  return lo === hi ? s[lo] : s[lo] + (s[hi] - s[lo]) * (pos - lo);
+}
+
+/**
+ * 同一臂多次重复 → 每个视口的中位数 / 最小 / 最大（n 小于 3 时报告里要写明）。
+ * @param {Array<{label, pixel}>} runs
+ */
+export function summarizeRuns(runs) {
+  const byLabel = new Map();
+  for (const r of runs) {
+    const entry = byLabel.get(r.label) ?? { label: r.label, n: 0, viewports: {} };
+    entry.n += 1;
+    for (const [w, v] of Object.entries(r.pixel ?? {})) {
+      if (typeof v !== 'number') continue;
+      (entry.viewports[w] ??= []).push(v);
+    }
+    byLabel.set(r.label, entry);
+  }
+  return [...byLabel.values()].map(e => ({
+    label: e.label, n: e.n,
+    viewports: Object.fromEntries(Object.entries(e.viewports).sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([w, vs]) => [w, { median: r5(quantile(vs, 0.5)), min: r5(Math.min(...vs)), max: r5(Math.max(...vs)) }])),
+  }));
+}
+
+/** 重复测量的表：中位数（最小–最大），并标注 n */
+export function summaryTable(summary) {
+  const viewports = [...new Set(summary.flatMap(s => Object.keys(s.viewports)))].sort((a, b) => Number(a) - Number(b));
+  const lines = ['| 臂 | n | ' + viewports.map(w => `${w}px 中位数（min–max）`).join(' | ') + ' |',
+    '| --- | --- | ' + viewports.map(() => '---').join(' | ') + ' |'];
+  for (const s of summary) {
+    const cells = viewports.map(w => {
+      const v = s.viewports[w];
+      return v ? `${pct(v.median)}（${pct(v.min)}–${pct(v.max)}）` : '—';
+    });
+    lines.push(`| ${s.label} | ${s.n} | ${cells.join(' | ')} |`);
+  }
+  return lines.join('\n') + '\n';
+}
+
 /** 报告对象 */
 export function benchReport({ fixture, level, rows, model = null, note = null }) {
   return {

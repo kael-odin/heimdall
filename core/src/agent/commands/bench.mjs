@@ -8,13 +8,13 @@
  * run：用模型跑一个消融臂（A1 只给简报，A2 加标量反馈，A3 加完整修复包），每轮都对比并记分。
  * 结果写 workspace/<siteId>/agent/bench/<时间>.json，同时打印一张 Markdown 表。
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ok, fail, fromError, exitCodeOf, nextAction, CapabilityError } from '../envelope.mjs';
 import { parseArgs } from '../cli.mjs';
 import { agentDir } from '../workspace.mjs';
 import { runArm } from '../bench/agent.mjs';
-import { scoreCandidate, benchReport, benchTable } from '../bench/score.mjs';
+import { scoreCandidate, benchReport, benchTable, summarizeRuns, summaryTable } from '../bench/score.mjs';
 
 const pairs = (list) => String(list ?? '').split(',').map(s => s.trim()).filter(Boolean).map((s) => {
   const i = String(s).indexOf('=');
@@ -49,22 +49,34 @@ export async function run(argv) {
     } else if (sub === 'run') {
       const projectDir = resolve(String(flags.project ?? '.'));
       const arm = String(flags.arm ?? 'a3');
+      const feedbackMode = String(flags.feedback ?? 'full');
       const iterations = Math.max(1, Math.min(8, Number(flags.iterations ?? 2)));
-      const res = await runArm({ projectDir, siteId, page, arm, iterations, model: flags.model ?? null,
+      const res = await runArm({ projectDir, siteId, page, arm, iterations, model: flags.model ?? null, feedbackMode,
         ...(flags['max-tokens'] ? { maxTokens: Math.max(1000, Number(flags['max-tokens'])) } : {}),
         onProgress: (p) => process.stderr.write(`… ${p.message}\n`) });
       const last = res.rows.at(-1);
-      const row = { label: `${arm}${flags.model ? ` · ${flags.model}` : ''}`, dir: projectDir, runId: last?.runId ?? null,
+      const row = { label: `${arm}${arm === 'a3' && feedbackMode === 'targeted' ? '-targeted' : ''}${flags.model ? ` · ${flags.model}` : ''}`, dir: projectDir, runId: last?.runId ?? null,
         pixel: last?.pixel ?? {}, minPixel: last?.pixel ? Math.min(...Object.values(last.pixel)) : null,
         gate: { status: last?.verdict === 'pass-candidate' ? 'passed' : 'failed', reached: last?.reached ?? null, failed: [], notMeasured: [] },
         antitheft: last?.anticheat ?? null, iterations: res.iterations, compareMs: res.rows.reduce((s, r) => s + r.ms, 0) };
       const report = benchReport({ fixture: { siteId, page }, level: res.level, rows: [row], model: res.model,
-        note: `臂 ${arm}，${res.iterations} 轮；token 输入 ${res.usage.prompt} / 输出 ${res.usage.completion}。分数是快速裁判口径。` });
+        note: `臂 ${arm}${feedbackMode === 'targeted' ? '（定向反馈）' : ''}，${res.iterations} 轮；token 输入 ${res.usage.prompt} / 输出 ${res.usage.completion}。分数是快速裁判口径。` });
       report.attempts = res.rows;
       const file = join(outDir, `run-${arm}-${stamp}.json`);
       writeFileSync(file, JSON.stringify(report, null, 1) + '\n');
       env = ok({ ...report, reportPath: file, usage: res.usage }, { summary: benchTable(report) + `\n报告：${file}`,
         nextActions: [nextAction('cli:shell', { command: `heimdall rebuild deliver --project "${projectDir}"` }, '按 Floor=Mirror 交付这次重建')] });
+    } else if (sub === 'summary') {
+      // 把 agent/bench 下所有模型臂报告按臂汇总：中位数与极值（PRD 09 §1.5）
+      const dir = join(agentDir(siteId), 'bench');
+      const runs = existsSync(dir) ? readdirSync(dir).filter(n => /^run-.*\.json$/.test(n)).map((n) => {
+        try { return JSON.parse(readFileSync(join(dir, n), 'utf8')); } catch { return null; }
+      }).filter(Boolean).flatMap(r => (r.rows ?? []).map(row => ({ label: row.label, pixel: row.pixel }))) : [];
+      if (!runs.length) throw new CapabilityError('not_found', '还没有模型臂的报告', { hint: '先跑 heimdall bench run --arm a3 …' });
+      const summary = summarizeRuns(runs);
+      const file = join(dir, `summary-${stamp}.json`);
+      writeFileSync(file, JSON.stringify({ schema: 'heimdall.bench.summary/1', generatedAt: new Date().toISOString(), siteId, page, summary }, null, 1) + '\n');
+      env = ok({ siteId, page, summary, reportPath: file }, { summary: summaryTable(summary) + `\n报告：${file}`, nextActions: [] });
     } else {
       env = fail('invalid_args', '用法：heimdall bench score|run …', { hint: 'score：测量已有候选；run：用模型跑一个消融臂' });
     }
