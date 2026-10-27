@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { applySurgical, parseFiles, parseSurgical, replaceSection, scalarFeedback, sectionHtmlOf, targetedFeedback } from '../src/agent/bench/agent.mjs';
+import { applySurgical, ensureSectionLinks, parseFiles, parseSurgical, replaceSection, scalarFeedback, sectionHtmlOf, targetedFeedback } from '../src/agent/bench/agent.mjs';
 import { benchReport, benchTable, quantile, summarizeRuns, summaryTable } from '../src/agent/bench/score.mjs';
 
 test('bench: parses the two fenced files and refuses a partial answer', () => {
@@ -104,6 +104,19 @@ test('bench: applying a surgical edit writes both files and reports misses', () 
     const css = readFileSync(join(dir, 'styles.css'), 'utf8');
     assert.match(css, /body\{margin:0\}/, 'existing css survives');
     assert.match(css, /surgical additions[\s\S]*font-size:52px/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('bench: the per-section stylesheets are wired back into the head, once', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-links-'));
+  try {
+    writeFileSync(join(dir, 'index.html'), '<html><head><link rel="stylesheet" href="/tokens.css">\n<link rel="stylesheet" href="/styles.css">\n</head><body></body></html>');
+    const first = ensureSectionLinks(dir, ['sec-hero-aaaaaa', 'sec-cta-bbbbbb']);
+    assert.deepEqual(first.added, ['sec-hero-aaaaaa', 'sec-cta-bbbbbb']);
+    const html = readFileSync(join(dir, 'index.html'), 'utf8');
+    assert.match(html, /styles\.css">\n<link rel="stylesheet" href="\/sections\/sec-hero-aaaaaa\.css">\n<link rel="stylesheet" href="\/sections\/sec-cta-bbbbbb\.css">\n<\/head>/,
+      'section sheets come after the global ones');
+    assert.deepEqual(ensureSectionLinks(dir, ['sec-hero-aaaaaa']).added, [], 'idempotent');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

@@ -172,7 +172,11 @@ export async function runSectionLoop({ projectDir, siteId, page, maxPerSection =
 
   const rows = [];
   const usage = { prompt: 0, completion: 0, calls: 0 };
-  // 精确证据：这一段每个元素的计算样式、伪元素、写死高度（skill 里叫「先量参考」）
+  // 模型整页重写可能丢掉分段的样式表链接：动手前补齐，否则每段一个 CSS 文件等于没接上
+  if (sections.length && existsSync(join(projectDir, 'sections'))) {
+    const fixed = ensureSectionLinks(projectDir, sections.map(s => s.id));
+    if (fixed.added.length) onProgress({ stage: 'links', message: `补回 ${fixed.added.length} 个分段样式表链接` });
+  }
   const sliceCache = new Map();
   const sliceFor = async (id) => {
     if (evidence !== 'slice') return '';
@@ -184,8 +188,31 @@ export async function runSectionLoop({ projectDir, siteId, page, maxPerSection =
     return sliceCache.get(id);
   };
   for (const s of sections) {
-    let best = null, feedback = null;
+    let feedback = null;
     const sliceText = await sliceFor(s.id);
+    // 动手之前先量一次这一段：模型的第一版可能比现状差得多，回退要能退回**改之前**，
+    // 而不是「已经改坏的第一轮」（实测：一次编辑把证言段从 97% 拉到 58%，回退却守着 58%）
+    const htmlRel = 'index.html';
+    const sectionCssRel = existsSync(join(projectDir, 'sections', `${s.id}.css`)) ? join('sections', `${s.id}.css`) : null;
+    const snapshot = () => ({
+      html: readFileSync(join(projectDir, htmlRel), 'utf8'),
+      css: readFileSync(join(projectDir, 'styles.css'), 'utf8'),
+      section: sectionCssRel ? readFileSync(join(projectDir, sectionCssRel), 'utf8') : null,
+    });
+    const restore = (snap) => {
+      writeFileSync(join(projectDir, htmlRel), snap.html);
+      writeFileSync(join(projectDir, 'styles.css'), snap.css);
+      if (sectionCssRel && snap.section !== null) writeFileSync(join(projectDir, sectionCssRel), snap.section);
+    };
+    let best = null;
+    if (revert) {
+      try {
+        const pre = await fastCompare({ siteId, page, candidate: { dir: projectDir }, sectionIds: [s.id], viewports }, { browser });
+        const px = Object.fromEntries(Object.entries(pre.packet.perViewport).map(([w, v]) => [w, +(v.pixelSimilarity).toFixed(5)]));
+        best = { score: Math.min(...Object.values(px)), ...snapshot() };
+        onProgress({ stage: 'measure', sectionId: s.id, message: `${s.id} 改动前 ${(best.score * 100).toFixed(2)}%` });
+      } catch { best = null; }
+    }
     for (let i = 1; i <= maxPerSection; i++) {
       try {
         const html = readFileSync(join(projectDir, 'index.html'), 'utf8');
@@ -212,12 +239,8 @@ export async function runSectionLoop({ projectDir, siteId, page, maxPerSection =
         const score = Math.min(...Object.values(pixel));
         let reverted = false;
         if (revert) {
-          if (!best || score > best.score) best = { score, html: readFileSync(join(projectDir, 'index.html'), 'utf8'), css: readFileSync(join(projectDir, 'styles.css'), 'utf8') };
-          else {
-            writeFileSync(join(projectDir, 'index.html'), best.html);
-            writeFileSync(join(projectDir, 'styles.css'), best.css);
-            reverted = true;
-          }
+          if (!best || score > best.score) best = { score, ...snapshot() };
+          else { restore(best); reverted = true; }
         }
         rows.push({ sectionId: s.id, iteration: i, score: +score.toFixed(5), kept: +(best?.score ?? score).toFixed(5), reverted,
           pixel, verdict: r.packet.verdict.status, applied: { sections: applied.replaced.length, css: applied.cssAdded, missed: applied.missed.length }, retries });
@@ -238,6 +261,26 @@ export async function runSectionLoop({ projectDir, siteId, page, maxPerSection =
   return { mode: 'sections', model: model ?? llmConfig().models.standard, viewports, rows, final,
     finalVerdict: full.packet.verdict.status, usage,
     sectionsDone: rows.filter(r => r.verdict === 'pass-candidate').length, sectionsTotal: sections.length };
+}
+
+/**
+ * 确保 index.html 里按顺序引入每段的样式表。
+ * 模型整页重写时常常把脚手架 `<head>` 里的 `<link>` 丢掉，那样「每段一个样式文件」就形同虚设——
+ * 追加到 sections/<id>.css 的规则根本不会被加载。这里在动手之前把缺的补回去（幂等）。
+ */
+export function ensureSectionLinks(projectDir, sectionIds) {
+  const file = join(projectDir, 'index.html');
+  let html = readFileSync(file, 'utf8');
+  const missing = sectionIds.filter(id => !new RegExp(`href=["']/sections/${id}\\.css["']`, 'i').test(html));
+  if (!missing.length) return { added: [] };
+  const links = missing.map(id => `<link rel="stylesheet" href="/sections/${id}.css">`).join('\n');
+  // 放在最后一个样式表之后（顺序：tokens → styles → sections），没有样式表就放到 </head> 前
+  const tail = /(<link[^>]+rel=["']stylesheet["'][^>]*>)(?![\s\S]*<link[^>]+rel=["']stylesheet["'])/i.exec(html);
+  if (tail) html = html.slice(0, tail.index + tail[0].length) + '\n' + links + html.slice(tail.index + tail[0].length);
+  else if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, `${links}\n</head>`);
+  else html = `${links}\n${html}`;
+  writeFileSync(file, html);
+  return { added: missing };
 }
 
 function outlineText(brief) {  const o = brief?.outline;
