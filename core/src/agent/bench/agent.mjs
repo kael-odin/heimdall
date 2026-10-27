@@ -296,11 +296,14 @@ export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations 
       ? '上一轮没有按格式输出。请只输出 ```html <分段 id> 改动块与 ```css add 追加块，不要输出整页。'
       : '上一轮没有按格式输出。请只输出两个代码块：```html index.html 与 ```css styles.css，不要任何解释。';
     let out = await completeFn({ system: SYSTEM, user: prompt, model, maxTokens });
+    const dump = (n, text) => { try { writeFileSync(join(projectDir, '.heimdall', `model-output-${i}-${n}.txt`), String(text)); } catch {} };
+    dump(1, out.text);
     let parsed = null, retries = 0, degraded = null;
     try { parsed = parse(out.text); } catch (first) {
       retries = 1;
       onProgress({ stage: 'model', iteration: i, message: `第 ${i} 轮：输出格式不对，重问一次` });
       out = await completeFn({ system: SYSTEM, user: `${prompt}\n\n${formatHint}`, model, maxTokens });
+      dump(2, out.text);
       try { parsed = parse(out.text); } catch {
         // 模型只给了局部改动（常见：只回一段 CSS）。当成外科式改动继续，别把整个评测判死
         try {
@@ -314,7 +317,6 @@ export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations 
     usage.prompt += out.usage?.prompt_tokens ?? 0;
     usage.completion += out.usage?.completion_tokens ?? 0;
     // 留下原文，解析失败时能直接看模型到底输出了什么（工作区里的 .heimdall 不入库）
-    try { writeFileSync(join(projectDir, '.heimdall', `model-output-${i}.txt`), String(out.text)); } catch {}
     if (out.finishReason === 'length') process.stderr.write(`! 第 ${i} 轮输出被截断（finish_reason=length），提高 --max-tokens 或减小页面\n`);
     let surgical = null;
     if (roundMode === 'surgical' || parsed.__surgical) {
