@@ -17,7 +17,7 @@
  *   mirror/          冻结镜像（自包含，双击 index.html 即可看）
  *   project/         重建项目源码（不含 node_modules / dist / .git）；非 passed 时带 DRAFT.md
  */
-import { cpSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { isSecretFile } from '../../paths.mjs';
 import { writeFileAtomic } from '../../fsutil.mjs';
@@ -84,6 +84,26 @@ export function deliveryState({ decisions = [], formal = null, cancelled = false
   if (formal?.status === 'passed') return { state: residuals.length ? 'passed_with_residuals' : 'passed', reason: 'formal_gate' };
   if (!decisions.length) return { state: 'failed_with_residuals', reason: 'no_iterations' };
   return { state: 'failed_with_residuals', reason: formal ? 'formal_gate_failed' : 'formal_gate_missing' };
+}
+
+/** 最近一次正式裁判的结果（`gate formal` 写在 agent/gate/<page>/formal-*.json）；没有就是 null */
+export function latestFormalGate(siteId, page, projectDir = null) {
+  const dir = join(agentDir(siteId), 'gate', page);
+  const want = projectDir ? resolve(projectDir).toLowerCase() : null;
+  try {
+    const files = readdirSync(dir).filter(n => /^formal-.*\.json$/.test(n))
+      .map(n => ({ n, mtime: statSync(join(dir, n)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);   // 按写入时间，不是文件名
+    for (const { n } of files) {
+      const path = join(dir, n);
+      const gate = JSON.parse(readFileSync(path, 'utf8'));
+      // 同一站点同一页可能有多个重建工作区：只认这份报告自己的项目目录。
+      // 早期报告没有 projectDir 字段，那就不认（宁可说没跑过，也不张冠李戴）。
+      if (want && (!gate.projectDir || resolve(gate.projectDir).toLowerCase() !== want)) continue;
+      return { status: gate.status === 'passed' ? 'passed' : 'failed', level: gate.level ?? null, path, runId: gate.acceptance?.runId ?? null };
+    }
+    return null;
+  } catch { return null; }
 }
 
 const REASON_TEXT = {
@@ -181,7 +201,9 @@ export function deliverFloor({ projectDir, state: forced = null, formal = null, 
 
   const entries = readLedger(dir);
   const decisions = decisionsFor(entries, cfg.budget);
-  let { state, reason } = forced ? { state: forced, reason: 'made_by_cli' } : deliveryState({ decisions, formal, cancelled, budgetExhausted });
+  // 正式裁判的结果自动带上：交付状态不能比它更乐观
+  const formalGate = formal ?? latestFormalGate(siteId, page, dir);
+  let { state, reason } = forced ? { state: forced, reason: 'made_by_cli' } : deliveryState({ decisions, formal: formalGate, cancelled, budgetExhausted });
   // 反作弊命中过就不按「通过」交付：像素分再高也不认（E7-18）
   if (entries.some(e => e.anticheat === 'suspect') && (state === 'passed' || state === 'passed_with_residuals')) {
     ({ state, reason } = { state: 'failed_with_residuals', reason: 'anticheat' });
@@ -212,7 +234,7 @@ export function deliverFloor({ projectDir, state: forced = null, formal = null, 
     ].join('\n'));
   }
 
-  const report = renderReport({ siteId, page, state, reason, residuals, mirror: { files: mirrorFiles.length }, project: { files: projectFiles.length }, formal, ledgerCount: entries.length });
+  const report = renderReport({ siteId, page, state, reason, residuals, mirror: { files: mirrorFiles.length }, project: { files: projectFiles.length }, formal: formalGate, ledgerCount: entries.length });
   writeFileSync(join(out, 'REPORT.md'), report);
   writeFileSync(join(out, 'residuals.json'), JSON.stringify({ schema: 'heimdall.residuals/1', siteId, page, generatedAt: new Date().toISOString(), residuals }, null, 1) + '\n');
 
@@ -228,7 +250,7 @@ export function deliverFloor({ projectDir, state: forced = null, formal = null, 
       report: 'REPORT.md', residuals: 'residuals.json', manifest: 'MANIFEST.jsonl',
     },
     residuals,
-    formal,
+    formal: formalGate,
     ledger: { iterations: entries.length, sections: decisions.length },
   };
   const body = JSON.stringify(delivery, null, 1) + '\n';

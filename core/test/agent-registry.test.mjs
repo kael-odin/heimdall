@@ -76,7 +76,8 @@ test('cli --json: stdout ends with one envelope line; exit codes follow the tabl
     const env = JSON.parse(lines.at(-1));
     assert.equal(env.ok, true);
     assert.deepEqual(env.result.sites.map(s => s.siteId), ['example.test']);
-    assert.equal(env.result.engine.status, 'unreachable', 'read commands work without an engine');
+    // 本机开着开发用的引擎时，它跑在别的工作区，读命令仍要能工作——状态是 data_root_mismatch
+    assert.ok(['unreachable', 'data_root_mismatch'].includes(env.result.engine.status), `read commands work without an engine (got ${env.result.engine.status})`);
     assert.ok(env.meta.requestId && env.summary && Array.isArray(env.nextActions));
 
     const missing = run(['site', 'nope.test', '--json'], root);

@@ -110,6 +110,25 @@ test('floor: an anti-cheat hit blocks a passing delivery', () => {
   assert.equal(r.floorIsMirror, true);
 });
 
+test('floor: the delivery only trusts a formal gate from the same project', () => {
+  const site = 'floor.test';
+  const dir = join(root, 'workspace', site, 'agent', 'gate', 'home');
+  mkdirSync(dir, { recursive: true });
+  const put = (name, gate) => writeFileSync(join(dir, name), JSON.stringify(gate));
+  put('formal-a.json', { status: 'passed', level: 'silver', projectDir: 'D:/elsewhere' });
+  assert.equal(floor.latestFormalGate(site, 'home', 'D:/mine'), null, 'another workspace’s gate is not ours');
+  put('formal-b.json', { status: 'passed', level: 'silver' });
+  assert.equal(floor.latestFormalGate(site, 'home', 'D:/mine'), null, 'a legacy gate without projectDir is not trusted');
+  put('formal-c.json', { status: 'passed', level: 'gold', projectDir: 'D:/mine' });
+  const hit = floor.latestFormalGate(site, 'home', 'D:/mine');
+  assert.equal(hit.status, 'passed');
+  assert.equal(hit.level, 'gold');
+  const gated = makeProject('gated', [iter('run_0401', 'sec-hero', 0.99, 'pass-candidate')]);
+  put('formal-d.json', { status: 'failed', level: 'silver', projectDir: gated });
+  const delivered = floor.deliverFloor({ projectDir: gated });
+  assert.equal(delivered.state, 'failed_with_residuals', 'a failed formal gate keeps the delivery at the floor');
+});
+
 test('floor: the mirror copy can be left out for a pure project handoff', () => {
   const projectDir = makeProject('nomirror', [iter('run_0201', 'sec-hero', 0.9)]);
   const r = floor.deliverFloor({ projectDir, mirror: false });

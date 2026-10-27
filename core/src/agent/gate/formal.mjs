@@ -13,7 +13,7 @@
  * 基线/目标都是本机回环，引擎必须已在跑（`heimdall serve 8900`）。
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { writeFileAtomic } from '../../fsutil.mjs';
 import { sha256 } from '../ids.mjs';
 import { agentDir } from '../workspace.mjs';
@@ -130,7 +130,7 @@ export async function formalGate({ siteId, page, projectDir, engine = process.en
 
     const gate = {
       schema: 'heimdall.gate/1', judge: 'formal', level,
-      siteId, page, generatedAt: new Date().toISOString(),
+      siteId, page, projectDir: resolve(projectDir), generatedAt: new Date().toISOString(),
       acceptance: { runId, gate: report?.gate ?? 'blocked', engine, baseline: baselineUrl, target: targetUrl },
       dimensions: dims, status,
       thresholds: fast.thresholds,
