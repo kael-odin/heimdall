@@ -155,6 +155,7 @@ export async function initWorkspace(opts) {
   const files = stackFiles(stack, {
     siteId, page, port, title: `${siteId} · ${page}（重建）`, lang: 'zh-CN', effectiveBg,
     tokensCss: tokensCssOf(join(pdir, 'cssom.css')),
+    sections: plan.sections,
   });
   for (const [rel, content] of Object.entries(files)) {
     mkdirSync(dirname(join(dir, rel)), { recursive: true });

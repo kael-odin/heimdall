@@ -107,8 +107,8 @@ export function replaceSection(html, id, replacementHtml) {
 }
 
 /** 应用一次外科式改动，返回做了什么 */
-export function applySurgical(projectDir, { sections, cssAdd }) {
-  const htmlFile = join(projectDir, 'index.html'), cssFile = join(projectDir, 'styles.css');
+export function applySurgical(projectDir, { sections, cssAdd, cssTarget = 'styles.css' }) {
+  const htmlFile = join(projectDir, 'index.html'), cssFile = join(projectDir, cssTarget);
   const replaced = [];
   if (sections.length) {
     let html = readFileSync(htmlFile, 'utf8');
@@ -203,8 +203,10 @@ export async function runSectionLoop({ projectDir, siteId, page, maxPerSection =
         usage.calls += 1 + retries;
         usage.prompt += out.usage?.prompt_tokens ?? 0;
         usage.completion += out.usage?.completion_tokens ?? 0;
-        // 只应用这一段：模型多回的分段在这一轮里丢掉，免得顺手改坏别处
-        const applied = applySurgical(projectDir, { sections: parsed.sections.filter(x => x.id === s.id), cssAdd: parsed.cssAdd });
+        // 只应用这一段：模型多回的分段在这一轮里丢掉，免得顺手改坏别处。
+        // 每段有自己的样式文件时，CSS 也只追加到那一个文件（分段隔离）。
+        const sectionCss = existsSync(join(projectDir, 'sections', `${s.id}.css`)) ? join('sections', `${s.id}.css`) : 'styles.css';
+        const applied = applySurgical(projectDir, { sections: parsed.sections.filter(x => x.id === s.id), cssAdd: parsed.cssAdd, cssTarget: sectionCss });
         const r = await fastCompare({ siteId, page, candidate: { dir: projectDir }, sectionIds: [s.id], viewports }, { browser });
         const pixel = Object.fromEntries(Object.entries(r.packet.perViewport).map(([w, v]) => [w, +(v.pixelSimilarity).toFixed(5)]));
         const score = Math.min(...Object.values(pixel));

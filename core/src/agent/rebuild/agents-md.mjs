@@ -13,7 +13,7 @@ export function renderAgentsMd(ctx) {
   const flow = sections.filter(s => !s.overlay);
   const sectionLines = flow.map((s, i) => `| ${i + 1} | \`${s.id}\` | ${s.role} | ${s.boxes[1440] ? `${Math.round(s.boxes[1440].y)}–${Math.round(s.boxes[1440].y + s.boxes[1440].h)}` : '—'} |`);
   const stackNotes = stack === 'html-css'
-    ? ['- 页面写在 `index.html`，样式写在 `styles.css`；设计令牌（CSS 变量）在 `tokens.css`。', '- 不需要安装依赖：`node serve.mjs` 就是 dev server。']
+    ? ['- 页面写在 `index.html`；**每段的样式写进 `sections/<sectionId>.css`**，全局的重置与容器才放 `styles.css`——这样改一段不会波及其它段；设计令牌（CSS 变量）在 `tokens.css`。', '- 不需要安装依赖：`node serve.mjs` 就是 dev server。']
     : ['- 每个分段一个组件：`src/sections/<Name>.tsx`，在 `src/App.tsx` 里按顺序拼装；令牌在 `src/tokens.css`，可以用 Tailwind 工具类，也可以写普通 CSS。', '- 首次运行前 `pnpm install --ignore-scripts`（init 已经装过就跳过）。'];
   const fidelityNote = {
     faithful: '保真旋钮 `faithful`：优先复用原站的 CSS 规则（`heimdall brief … --fidelity faithful` 会给出命中规则原文），按分段加作用域；DOM 尽量贴近原站。',

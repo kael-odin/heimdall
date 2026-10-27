@@ -68,13 +68,19 @@ createServer((req, res) => {
 export function stackFiles(stack, ctx) {
   const { port, title, lang, effectiveBg, tokensCss } = ctx;
   if (stack === 'html-css') {
+    // 每段一个样式文件：分段循环里改一段不会波及其它段（Bench 实测：全局 CSS 会让「按分段改」失效）
+    const sections = (ctx.sections ?? []).filter(s => !s.overlay);
+    const sectionFiles = Object.fromEntries(sections.map(s => [`sections/${s.id}.css`,
+      `/* ${s.id}（${s.role}）的样式。只写这一段用到的规则；全局的重置与容器放 styles.css。 */\n`]));
+    const sectionLinks = sections.map(s => `<link rel="stylesheet" href="/sections/${s.id}.css">`).join('\n');
     return {
       'package.json': JSON.stringify({ name: `rebuild-${ctx.siteId.replace(/[^a-z0-9-]+/gi, '-').toLowerCase()}`, private: true, type: 'module',
         scripts: { dev: `node serve.mjs --port ${port}` } }, null, 2) + '\n',
       'serve.mjs': SERVE_MJS(port),
-      'index.html': htmlShell({ title, lang }) + `<link rel="stylesheet" href="/tokens.css">\n<link rel="stylesheet" href="/styles.css">\n</head>\n<body>\n<!--\n  按分段计划自上而下重建（.heimdall/sections/${ctx.page}.json）。\n  每个分段的根元素加 data-heimdall-section="<sectionId>"，heimdall compare 才能单独度量它。\n-->\n</body>\n</html>\n`,
-      'styles.css': `/* 页面样式。令牌在 tokens.css；字体在 /fonts.css（原站字体文件，已本地化）。 */\nhtml, body { margin: 0; }\nbody { background: ${effectiveBg}; }\n`,
+      'index.html': htmlShell({ title, lang }) + `<link rel="stylesheet" href="/tokens.css">\n<link rel="stylesheet" href="/styles.css">\n${sectionLinks ? sectionLinks + '\n' : ''}</head>\n<body>\n<!--\n  按分段计划自上而下重建（.heimdall/sections/${ctx.page}.json）。\n  每个分段的根元素加 data-heimdall-section="<sectionId>"，heimdall compare 才能单独度量它。\n  每段的样式写在 sections/<sectionId>.css，改一段不会波及其它段。\n-->\n</body>\n</html>\n`,
+      'styles.css': `/* 全局样式。令牌在 tokens.css；字体在 /fonts.css（原站字体文件，已本地化）。 */\nhtml, body { margin: 0; }\nbody { background: ${effectiveBg}; }\n`,
       'tokens.css': tokensCss,
+      ...sectionFiles,
     };
   }
   if (stack === 'vite-react-ts-tailwind') {
