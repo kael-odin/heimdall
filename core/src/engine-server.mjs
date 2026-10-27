@@ -2461,6 +2461,26 @@ const handleRequest = async (req, res) => {
   }
 
   // 单端口部署：控制台静态资源 + SPA 回退（HEIMDALL_CONSOLE_DIR=console/dist）
+  // 「AI 活动」视图（E11-03）：自带页面 + 两个只读接口；只读工作区之内的重建目录
+  if (u.pathname === '/agent/activity' && req.method === 'GET') {
+    try {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+      return res.end(readFileSync(new URL('./agent/ui/activity.html', import.meta.url)));
+    } catch { return json(res, 500, { error: '活动页面缺失' }); }
+  }
+  if (u.pathname === '/api/agent/projects' && req.method === 'GET') {
+    try {
+      const { listProjects } = await import('./agent/activity.mjs');
+      return json(res, 200, { projects: listProjects() });
+    } catch (error) { return json(res, 500, { error: String(error.message).slice(0, 300) }); }
+  }
+  if (u.pathname === '/api/agent/activity' && req.method === 'GET') {
+    try {
+      const { activityOf } = await import('./agent/activity.mjs');
+      return json(res, 200, activityOf(u.searchParams.get('project')));
+    } catch (error) { return json(res, 400, { error: String(error.message).slice(0, 300) }); }
+  }
+
   if (CONSOLE_DIR && existsSync(CONSOLE_DIR) && u.pathname !== '/api') {
     const rel = decodeURIComponent(u.pathname.replace(/^\/+/, '')) || 'index.html';
     const candidates = [join(CONSOLE_DIR, rel), join(CONSOLE_DIR, rel, 'index.html')];

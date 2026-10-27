@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heimdall · AI 活动</title>
+<style>
+  :root { --ink:#14213d; --muted:#5c677d; --line:#e3e7ef; --bg:#f7f8fb; --brand:#2f5bea; --ok:#1a7f5a; --warn:#b26a00; --bad:#b3261e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.55 "Segoe UI","Microsoft YaHei","PingFang SC",Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  header { display:flex; align-items:center; gap:16px; padding:16px 24px; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:2; }
+  header h1 { font-size:17px; margin:0; font-weight:600; }
+  header .where { color:var(--muted); font-size:13px; }
+  select, button { font:inherit; padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); }
+  button { cursor:pointer; } button:hover { border-color:var(--brand); color:var(--brand); }
+  main { padding:20px 24px 40px; display:grid; gap:18px; max-width:1180px; }
+  .row { display:grid; gap:18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .card h2 { margin:0 0 10px; font-size:13px; font-weight:600; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; }
+  .big { font-size:34px; font-weight:600; line-height:1.1; }
+  .sub { color:var(--muted); font-size:13px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); font-size:13px; background:#fff; }
+  .chip.pass { border-color:#bfe3d3; background:#f0faf5; color:var(--ok); }
+  .chip.fail { border-color:#f2c9c5; background:#fdf3f2; color:var(--bad); }
+  .chip.unknown { color:var(--muted); }
+  svg { width:100%; height:120px; display:block; }
+  .sections { display:grid; gap:8px; }
+  .seg { display:grid; grid-template-columns: 1fr 74px 92px; gap:10px; align-items:center; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+  .seg .bar { height:8px; border-radius:999px; background:var(--line); overflow:hidden; }
+  .seg .bar > i { display:block; height:100%; background:var(--brand); }
+  .seg.ok .bar > i { background:var(--ok); } .seg.bad .bar > i { background:var(--bad); }
+  .seg code { font-size:12px; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; }
+  .empty { color:var(--muted); padding:24px 0; text-align:center; }
+  .pulse { width:8px; height:8px; border-radius:50%; background:var(--ok); animation:p 1.6s infinite; }
+  @keyframes p { 0%,100% { opacity:1 } 50% { opacity:.25 } }
+</style>
+</head>
+<body>
+<header>
+  <span class="pulse" title="每 2 秒自动刷新"></span>
+  <h1>AI 活动</h1>
+  <select id="project" aria-label="选择重建工作区"></select>
+  <button id="refresh" type="button">立即刷新</button>
+  <span class="where" id="where"></span>
+</header>
+
+<main>
+  <div class="row" id="charts"></div>
+
+  <section class="card">
+    <h2>分段</h2>
+    <div class="sections" id="sections"><div class="empty">还没有对比记录。</div></div>
+  </section>
+
+  <div class="row">
+    <section class="card">
+      <h2>门禁</h2>
+      <div class="chips" id="gate"><span class="chip unknown">未跑</span></div>
+    </section>
+    <section class="card">
+      <h2>交付</h2>
+      <div id="delivery"><span class="sub">还没有交付包。</span></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>最近的迭代</h2>
+    <table>
+      <thead><tr><th>时间</th><th>范围</th><th>判定</th><th>趋势</th><th>三视口</th></tr></thead>
+      <tbody id="recent"><tr><td colspan="5" class="empty">还没有对比记录。</td></tr></tbody>
+    </table>
+  </section>
+</main>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const fmtPct = (v) => (typeof v === 'number' ? v.toFixed(2) + '%' : '—');
+const fmtTime = (iso) => (iso ? new Date(iso).toLocaleTimeString('zh-CN', { hour12: false }) : '—');
+let current = null;
+
+async function json(url) {
+  const res = await fetch(url, { headers: { accept: 'application/json' } });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
+  return res.json();
+}
+
+function sparkline(values, label) {
+  const pts = values.filter(v => typeof v === 'number');
+  const w = 320, h = 90, pad = 6;
+  const min = Math.min(...pts, 0), max = Math.max(...pts, 100);
+  const span = Math.max(1, max - min);
+  const step = pts.length > 1 ? (w - pad * 2) / (pts.length - 1) : 0;
+  const xy = pts.map((v, i) => [pad + i * step, h - pad - ((v - min) / span) * (h - pad * 2)]);
+  const path = xy.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const last = pts.length ? pts.at(-1) : null;
+  return `<section class="card">
+    <h2>${label}px</h2>
+    <div class="big">${last === null ? '—' : fmtPct(last)}</div>
+    <div class="sub">${pts.length} 次对比 · 最低 ${pts.length ? fmtPct(Math.min(...pts)) : '—'}</div>
+    <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${label}px 分数曲线">${pts.length > 1 ? `<path d="${path}" fill="none" stroke="#2f5bea" stroke-width="2" />` : ''}</svg>
+  </section>`;
+}
+
+function renderCharts(snap) {
+  $('charts').innerHTML = snap ? snap.project.viewports.map(w => sparkline(snap.series[w] ?? [], w)).join('') : '';
+}
+
+function renderSections(snap) {
+  const box = $('sections');
+  if (!snap?.sections?.length) { box.innerHTML = '<div class="empty">还没有分段计划。</div>'; return; }
+  box.innerHTML = snap.sections.map(s => {
+    const pct = typeof s.minPixel === 'number' ? Math.max(0, Math.min(100, s.minPixel)) : 0;
+    const cls = typeof s.minPixel !== 'number' ? '' : s.minPixel >= 97 ? 'ok' : s.minPixel >= 90 ? 'warn' : 'bad';
+    return `<div class="seg ${cls}">
+      <div>
+        <div><strong>${s.role ?? s.id}</strong> <code>${s.id}</code></div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+      </div>
+      <div class="sub">${s.iterations} 次</div>
+      <div><strong>${typeof s.minPixel === 'number' ? fmtPct(s.minPixel) : '—'}</strong><div class="sub">${s.verdict}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function dimChips(gate) {
+  if (!gate?.dimensions) return '<span class="chip unknown">未跑</span>';
+  return gate.dimensions.map(d => `<span class="chip ${d.status === 'pass' ? 'pass' : d.status === 'fail' ? 'fail' : 'unknown'}">${d.id} · ${d.status}</span>`).join('');
+}
+
+function renderGate(snap) {
+  const formal = snap?.gate?.formal, fast = snap?.gate?.fast;
+  const active = formal ?? fast;
+  $('gate').innerHTML = active
+    ? `${dimChips(active)}<span class="chip ${active.status === 'passed' ? 'pass' : active.status === 'failed' ? 'fail' : 'unknown'}">整体 ${active.status}${active.level ? ` · ${active.level}` : ''}${formal ? ' · 正式' : ' · 快速'}</span>`
+    : '<span class="chip unknown">未跑</span>';
+}
+
+function renderDelivery(snap) {
+  const d = snap?.delivery;
+  $('delivery').innerHTML = d
+    ? `<div class="big" style="font-size:22px">${d.state}</div><div class="sub">${d.reason ?? ''}</div><div class="sub">${fmtTime(d.at)}</div>`
+    : '<span class="sub">还没有交付包。</span>';
+}
+
+function renderRecent(snap) {
+  const rows = (snap?.recent ?? []).slice().reverse();
+  $('recent').innerHTML = rows.length ? rows.map(r => `<tr>
+      <td>${fmtTime(r.at)}</td>
+      <td><code>${(r.sectionIds ?? ['整页']).join(' ')}</code></td>
+      <td>${r.verdict}${r.reached ? `（${r.reached}）` : ''}</td>
+      <td>${r.trend ?? '—'}</td>
+      <td>${Object.entries(r.pixel ?? {}).map(([w, v]) => `${w}: ${fmtPct(v)}`).join(' · ')}</td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">还没有对比记录。</td></tr>';
+}
+
+function render(snap) {
+  current = snap;
+  $('where').textContent = snap ? `${snap.project.siteId} / ${snap.project.page} · ${snap.totals.iterations} 次迭代 · 目标 ${snap.project.level}` : '';
+  renderCharts(snap); renderSections(snap); renderGate(snap); renderDelivery(snap); renderRecent(snap);
+}
+
+async function tick() {
+  const dir = $('project').value;
+  if (!dir) return;
+  try { render(await json('/api/agent/activity?project=' + encodeURIComponent(dir))); }
+  catch (error) { $('where').textContent = '读取失败：' + String(error.message ?? error); }
+}
+
+async function boot() {
+  const { projects } = await json('/api/agent/projects');
+  const sel = $('project');
+  sel.innerHTML = projects.map(p => `<option value="${p.dir}">${p.siteId} / ${p.page}</option>`).join('') || '<option value="">（工作区里没有重建目录）</option>';
+  const params = new URL(location.href).searchParams.get('project');
+  if (params && projects.some(p => p.dir === params)) sel.value = params;
+  sel.addEventListener('change', () => { tick(); });
+  $('refresh').addEventListener('click', tick);
+  await tick();
+  setInterval(tick, 2000);
+}
+boot().catch((error) => { $('where').textContent = '启动失败：' + String(error.message ?? error); });
+</script>
+</body>
+</html>
