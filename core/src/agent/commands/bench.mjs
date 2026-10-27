@@ -50,17 +50,18 @@ export async function run(argv) {
       const projectDir = resolve(String(flags.project ?? '.'));
       const arm = String(flags.arm ?? 'a3');
       const feedbackMode = String(flags.feedback ?? 'full');
+      const editMode = String(flags.edit ?? 'rewrite');
       const iterations = Math.max(1, Math.min(8, Number(flags.iterations ?? 2)));
-      const res = await runArm({ projectDir, siteId, page, arm, iterations, model: flags.model ?? null, feedbackMode, revert: flags['no-revert'] !== true,
+      const res = await runArm({ projectDir, siteId, page, arm, iterations, model: flags.model ?? null, feedbackMode, editMode, revert: flags['no-revert'] !== true,
         ...(flags['max-tokens'] ? { maxTokens: Math.max(1000, Number(flags['max-tokens'])) } : {}),
         onProgress: (p) => process.stderr.write(`… ${p.message}\n`) });
       const last = res.rows.at(-1);
-      const row = { label: `${arm}${arm === 'a3' && feedbackMode === 'targeted' ? '-targeted' : ''}${flags.model ? ` · ${flags.model}` : ''}`, dir: projectDir, runId: last?.runId ?? null,
+      const row = { label: `${arm}${arm === 'a3' && feedbackMode === 'targeted' ? '-targeted' : ''}${editMode === 'surgical' ? '-surgical' : ''}${flags.model ? ` · ${flags.model}` : ''}`, dir: projectDir, runId: last?.runId ?? null,
         pixel: last?.pixel ?? {}, minPixel: last?.pixel ? Math.min(...Object.values(last.pixel)) : null,
         gate: { status: last?.verdict === 'pass-candidate' ? 'passed' : 'failed', reached: last?.reached ?? null, failed: [], notMeasured: [] },
         antitheft: last?.anticheat ?? null, iterations: res.iterations, compareMs: res.rows.reduce((s, r) => s + r.ms, 0) };
       const report = benchReport({ fixture: { siteId, page }, level: res.level, rows: [row], model: res.model,
-        note: `臂 ${arm}${feedbackMode === 'targeted' ? '（定向反馈）' : ''}${flags['no-revert'] === true ? '（不回退）' : ''}，${res.iterations} 轮；token 输入 ${res.usage.prompt} / 输出 ${res.usage.completion}。分数是快速裁判口径。` });
+        note: `臂 ${arm}${feedbackMode === 'targeted' ? '（定向反馈）' : ''}${editMode === 'surgical' ? '（外科式改动）' : ''}${flags['no-revert'] === true ? '（不回退）' : ''}，${res.iterations} 轮；token 输入 ${res.usage.prompt} / 输出 ${res.usage.completion}。分数是快速裁判口径。` });
       report.attempts = res.rows;
       const file = join(outDir, `run-${arm}-${stamp}.json`);
       writeFileSync(file, JSON.stringify(report, null, 1) + '\n');

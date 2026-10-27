@@ -3,7 +3,10 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFiles, scalarFeedback, targetedFeedback } from '../src/agent/bench/agent.mjs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { applySurgical, parseFiles, parseSurgical, replaceSection, scalarFeedback, targetedFeedback } from '../src/agent/bench/agent.mjs';
 import { benchReport, benchTable, quantile, summarizeRuns, summaryTable } from '../src/agent/bench/score.mjs';
 
 test('bench: parses the two fenced files and refuses a partial answer', () => {
@@ -50,6 +53,44 @@ test('bench: repeats are summarised with median and range, and n is stated', () 
   const table = summaryTable(summary);
   assert.match(table, /\| a2 \| 3 \| 74\.00%（70\.00%–80\.00%） \|/);
   assert.match(table, /\| a3 \| 1 \|/);
+});
+
+test('bench: surgical edits touch only the named section and append css', () => {
+  const html = '<html><body><section data-heimdall-section="sec-hero-aaaaaa"><h1>old</h1></section>'
+    + '<section data-heimdall-section="sec-cta-bbbbbb"><h2>keep me</h2></section></body></html>';
+  const r = replaceSection(html, 'sec-hero-aaaaaa', '<section data-heimdall-section="sec-hero-aaaaaa"><h1>new</h1></section>');
+  assert.equal(r.replaced, true);
+  assert.match(r.html, /new/);
+  assert.doesNotMatch(r.html, /old/);
+  assert.match(r.html, /keep me/, 'the other section is untouched');
+
+  const miss = replaceSection(html, 'sec-hero-cccccc', '<section data-heimdall-section="sec-hero-cccccc">x</section>');
+  assert.equal(miss.replaced, false, 'a wrong id changes nothing');
+  assert.equal(miss.html, html);
+
+  const parsed = parseSurgical('```html sec-hero-aaaaaa\n<section data-heimdall-section="sec-hero-aaaaaa"><h1>n</h1></section>\n```\n```css add\n.hero h1{font-size:52px}\n```');
+  assert.equal(parsed.sections.length, 1);
+  assert.match(parsed.cssAdd, /font-size:52px/);
+  assert.throws(() => parseSurgical('这里什么都没有'), /没有给出任何分段改动/);
+});
+
+test('bench: applying a surgical edit writes both files and reports misses', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-surgical-'));
+  try {
+    writeFileSync(join(dir, 'index.html'), '<html><body><section data-heimdall-section="sec-hero-aaaaaa"><h1>old</h1></section></body></html>');
+    writeFileSync(join(dir, 'styles.css'), 'body{margin:0}\n');
+    const applied = applySurgical(dir, {
+      sections: [{ id: 'sec-hero-aaaaaa', html: '<section data-heimdall-section="sec-hero-aaaaaa"><h1>new</h1></section>' },
+        { id: 'sec-cta-bbbbbb', html: '<section data-heimdall-section="sec-cta-bbbbbb">x</section>' }],
+      cssAdd: '.hero h1{font-size:52px}',
+    });
+    assert.deepEqual(applied.replaced, ['sec-hero-aaaaaa']);
+    assert.deepEqual(applied.missed, ['sec-cta-bbbbbb']);
+    assert.match(readFileSync(join(dir, 'index.html'), 'utf8'), /new/);
+    const css = readFileSync(join(dir, 'styles.css'), 'utf8');
+    assert.match(css, /body\{margin:0\}/, 'existing css survives');
+    assert.match(css, /surgical additions[\s\S]*font-size:52px/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('bench: the table shows every viewport, the gate and the iterations', () => {
