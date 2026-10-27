@@ -47,7 +47,7 @@ argument-hint: "<url> [stack] [fidelity] [gate]"
 - c. 写这一段：根元素加 `data-heimdall-section="<id>"`（对比靠它单独裁出这一段）；资产只引用 `/assets/…`；文字被截断的（`textTruncated`）先向 `heimdall_artifact` 取原文，**不要自己补写**。
 - d. 启动 dev server（另一个终端 `node serve.mjs --port <端口>` 或 `pnpm dev`，保持运行；端口见配置）。
 - e. `heimdall compare --project . --section-id <id> --json`（`heimdall_compare {candidate:{dir}, sectionIds:[id]}`）。
-- f. 读修复包（规则见下），按顺序改。
+- f. 读修复包（规则见下），按顺序改。**只改前 1–3 条点名的分段 / 元素，不要整页重写**：Bench v0 实测，整页重写会把已经对上的地方一起改坏（第二轮平均 −0.88 个百分点），只有回退守卫挡住了损失。改完 `git diff` 看一眼改动范围，超出一个分段就先拆开。
 - g. `git add -A && git commit -m "heimdall: <id> iter <n> (<before>→<after>)"`。
 - h. 看 `trend.state`：`better` 继续；`same` 换思路；`worse` → `git restore` 回到上一次提交；`oscillating` / `stagnant` → 升级（照抄简报里的计算样式 → 拆更细 → 问人一次 → 记下残差）。
 - i. `pass-candidate` 只表示**本段暂时收敛，可以进入下一段**，不是通过。
