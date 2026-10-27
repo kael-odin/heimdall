@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { applySurgical, parseFiles, parseSurgical, replaceSection, scalarFeedback, targetedFeedback } from '../src/agent/bench/agent.mjs';
+import { applySurgical, parseFiles, parseSurgical, replaceSection, scalarFeedback, sectionHtmlOf, targetedFeedback } from '../src/agent/bench/agent.mjs';
 import { benchReport, benchTable, quantile, summarizeRuns, summaryTable } from '../src/agent/bench/score.mjs';
 
 test('bench: parses the two fenced files and refuses a partial answer', () => {
@@ -67,11 +67,25 @@ test('bench: surgical edits touch only the named section and append css', () => 
   const miss = replaceSection(html, 'sec-hero-cccccc', '<section data-heimdall-section="sec-hero-cccccc">x</section>');
   assert.equal(miss.replaced, false, 'a wrong id changes nothing');
   assert.equal(miss.html, html);
+  // 模型把别的分段回给这一段：不能替换，否则两段内容对调
+  const swapped = replaceSection(html, 'sec-hero-aaaaaa', '<section data-heimdall-section="sec-cta-bbbbbb"><h2>wrong</h2></section>');
+  assert.equal(swapped.replaced, false, 'the replacement must carry the same id');
+  assert.equal(swapped.html, html);
 
   const parsed = parseSurgical('```html sec-hero-aaaaaa\n<section data-heimdall-section="sec-hero-aaaaaa"><h1>n</h1></section>\n```\n```css add\n.hero h1{font-size:52px}\n```');
   assert.equal(parsed.sections.length, 1);
   assert.match(parsed.cssAdd, /font-size:52px/);
   assert.throws(() => parseSurgical('这里什么都没有'), /没有给出任何分段改动/);
+});
+
+test('bench: a section can be read back out of the current page', () => {
+  const html = '<html><body><section data-heimdall-section="sec-hero-aaaaaa"><h1>hero</h1></section>'
+    + '<section data-heimdall-section="sec-cta-bbbbbb"><h2>cta</h2></section></body></html>';
+  const hero = sectionHtmlOf(html, 'sec-hero-aaaaaa');
+  assert.match(hero, /^<section data-heimdall-section="sec-hero-aaaaaa">/);
+  assert.match(hero, /hero/);
+  assert.doesNotMatch(hero, /cta/, 'only one section comes back');
+  assert.equal(sectionHtmlOf(html, 'sec-x-cccccc'), null);
 });
 
 test('bench: applying a surgical edit writes both files and reports misses', () => {

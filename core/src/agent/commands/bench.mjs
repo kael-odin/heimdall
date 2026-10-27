@@ -13,7 +13,7 @@ import { join, resolve } from 'node:path';
 import { ok, fail, fromError, exitCodeOf, nextAction, CapabilityError } from '../envelope.mjs';
 import { parseArgs } from '../cli.mjs';
 import { agentDir } from '../workspace.mjs';
-import { runArm } from '../bench/agent.mjs';
+import { runArm, runSectionLoop } from '../bench/agent.mjs';
 import { scoreCandidate, benchReport, benchTable, summarizeRuns, summaryTable } from '../bench/score.mjs';
 
 const pairs = (list) => String(list ?? '').split(',').map(s => s.trim()).filter(Boolean).map((s) => {
@@ -78,6 +78,20 @@ export async function run(argv) {
       const file = join(dir, `summary-${stamp}.json`);
       writeFileSync(file, JSON.stringify({ schema: 'heimdall.bench.summary/1', generatedAt: new Date().toISOString(), siteId, page, summary }, null, 1) + '\n');
       env = ok({ siteId, page, summary, reportPath: file }, { summary: summaryTable(summary) + `\n报告：${file}`, nextActions: [] });
+    } else if (sub === 'sections') {
+      const projectDir = resolve(String(flags.project ?? '.'));
+      const maxPerSection = Math.max(1, Math.min(6, Number(flags.iterations ?? 2)));
+      const res = await runSectionLoop({ projectDir, siteId, page, maxPerSection, model: flags.model ?? null,
+        ...(flags['max-tokens'] ? { maxTokens: Math.max(1000, Number(flags['max-tokens'])) } : {}),
+        revert: flags['no-revert'] !== true,
+        onProgress: (p) => process.stderr.write(`… ${p.message}\n`) });
+      const file = join(outDir, `sections-${stamp}.json`);
+      writeFileSync(file, JSON.stringify({ schema: 'heimdall.bench.sections/1', generatedAt: new Date().toISOString(), siteId, page, ...res }, null, 1) + '\n');
+      const lines = [`分段循环：${res.sectionsDone}/${res.sectionsTotal} 段到 pass-candidate；整页 ${Object.entries(res.final).map(([w, v]) => `${w}:${(v * 100).toFixed(2)}%`).join(' ')}（${res.finalVerdict}）`];
+      for (const r of res.rows) {
+        lines.push(`  ${r.sectionId.padEnd(24)} ${r.skipped ? `跳过（${r.skipped}）` : `第 ${r.iteration} 轮 ${(r.score * 100).toFixed(2)}%（保留 ${(r.kept * 100).toFixed(2)}%）${r.reverted ? ' 回退' : ''} · ${r.verdict}`}`);
+      }
+      env = ok({ ...res, reportPath: file }, { summary: lines.join('\n'), nextActions: [nextAction('cli:shell', { command: `heimdall rebuild deliver --project "${projectDir}"` }, '按 Floor=Mirror 交付这次重建')] });
     } else {
       env = fail('invalid_args', '用法：heimdall bench score|run …', { hint: 'score：测量已有候选；run：用模型跑一个消融臂' });
     }
