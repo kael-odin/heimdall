@@ -1062,6 +1062,11 @@ export function packetText(packet, { maxPerViewport = 6 } = {}) {
       if (e?.style && Object.keys(e.style).length) {
         lines.push(`     参考样式: ${Object.entries(e.style).map(([k, v]) => `${k}: ${v}`).join('; ').slice(0, 320)}`);
       }
+      // 「最后一公里」的尺寸差：两侧的框都写出来，模型才可能想到「多了一个字所以换行了」
+      if (e?.box && r.candBbox) {
+        const d = (a, b) => { const v = +(b - a).toFixed(1); return `${v >= 0 ? '+' : ''}${v}`; };
+        lines.push(`     尺寸: 参考 ${Math.round(e.box.w)}×${Math.round(e.box.h)} · 候选 ${Math.round(r.candBbox.w)}×${Math.round(r.candBbox.h)}（宽 ${d(e.box.w, r.candBbox.w)}，高 ${d(e.box.h, r.candBbox.h)}）`);
+      }
       if (r.crops?.composite) lines.push(`     裁剪: ${r.crops.composite}（自上而下 / 自左而右：参考 · 候选 · 差异）`);
       lines.push(`     建议: ${r.hint}`);
     }

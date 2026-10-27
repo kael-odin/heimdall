@@ -54,6 +54,14 @@ export function targetedFeedback(packet, { top = 5 } = {}) {
   lines.push('', '按顺序修下面这几处（每处都给了外接框与原因），**只改这些，别动其它已经对上的分段**：');
   for (const r of regions) {
     lines.push(`- [${r.id}]${r.sectionId ? ` ${r.sectionId}` : ''} bbox(${r.bbox.x},${r.bbox.y},${r.bbox.w},${r.bbox.h}) 面积 ${r.areaPct}% · cause=${r.cause}`);
+    const e = r.element?.best?.[0];
+    if (e?.box && r.candBbox) {
+      const d = (a, b) => { const v = +(b - a).toFixed(1); return `${v >= 0 ? '+' : ''}${v}`; };
+      lines.push(`  尺寸: 参考 ${Math.round(e.box.w)}×${Math.round(e.box.h)} · 候选 ${Math.round(r.candBbox.w)}×${Math.round(r.candBbox.h)}（宽 ${d(e.box.w, r.candBbox.w)}，高 ${d(e.box.h, r.candBbox.h)}）`);
+    }
+    if (e?.style && Object.keys(e.style).length) {
+      lines.push(`  参考样式: ${Object.entries(e.style).map(([k, v]) => `${k}: ${v}`).join('; ').slice(0, 260)}`);
+    }
     lines.push(`  ${r.hint}`);
   }
   return lines.join('\n');
