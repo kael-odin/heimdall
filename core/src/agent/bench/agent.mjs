@@ -296,12 +296,19 @@ export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations 
       ? '上一轮没有按格式输出。请只输出 ```html <分段 id> 改动块与 ```css add 追加块，不要输出整页。'
       : '上一轮没有按格式输出。请只输出两个代码块：```html index.html 与 ```css styles.css，不要任何解释。';
     let out = await completeFn({ system: SYSTEM, user: prompt, model, maxTokens });
-    let parsed = null, retries = 0;
+    let parsed = null, retries = 0, degraded = null;
     try { parsed = parse(out.text); } catch (first) {
       retries = 1;
       onProgress({ stage: 'model', iteration: i, message: `第 ${i} 轮：输出格式不对，重问一次` });
       out = await completeFn({ system: SYSTEM, user: `${prompt}\n\n${formatHint}`, model, maxTokens });
-      try { parsed = parse(out.text); } catch { throw new Error(`模型两轮都没按格式输出：${first.message}`); }
+      try { parsed = parse(out.text); } catch {
+        // 模型只给了局部改动（常见：只回一段 CSS）。当成外科式改动继续，别把整个评测判死
+        try {
+          const surgicalOnly = parseSurgical(out.text);
+          parsed = { ...surgicalOnly, __surgical: true };
+          degraded = 'surgical';
+        } catch { throw new Error(`模型两轮都没按格式输出：${first.message}`); }
+      }
     }
     usage.calls += 1 + retries;
     usage.prompt += out.usage?.prompt_tokens ?? 0;
@@ -310,8 +317,8 @@ export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations 
     try { writeFileSync(join(projectDir, '.heimdall', `model-output-${i}.txt`), String(out.text)); } catch {}
     if (out.finishReason === 'length') process.stderr.write(`! 第 ${i} 轮输出被截断（finish_reason=length），提高 --max-tokens 或减小页面\n`);
     let surgical = null;
-    if (roundMode === 'surgical') {
-      surgical = applySurgical(projectDir, parsed);
+    if (roundMode === 'surgical' || parsed.__surgical) {
+      surgical = applySurgical(projectDir, { sections: parsed.sections, cssAdd: parsed.cssAdd });
       if (!surgical.replaced.length && !surgical.cssAdded) {
         onProgress({ stage: 'model', iteration: i, message: `第 ${i} 轮：没有命中任何分段（${surgical.missed.join(', ')}）` });
       }
@@ -336,6 +343,7 @@ export async function runArm({ projectDir, siteId, page, arm = 'a3', iterations 
     }
     rows.push({ iteration: i, model: out.model, retries, pixel, score: +score.toFixed(5), kept: +(best?.score ?? score).toFixed(5), reverted,
       ...(surgical ? { edited: { sections: surgical.replaced.length, css: surgical.cssAdded, missed: surgical.missed.length } } : {}),
+      ...(degraded ? { degraded } : {}),
       verdict: r.packet.verdict.status, reached: r.packet.verdict.reached ?? null,
       anticheat: r.packet.anticheat?.status ?? null, ms: Date.now() - started, runId: r.packet.runId });
     if (r.packet.verdict.status === 'pass-candidate') break;
