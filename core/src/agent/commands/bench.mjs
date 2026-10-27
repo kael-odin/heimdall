@@ -81,14 +81,14 @@ export async function run(argv) {
     } else if (sub === 'sections') {
       const projectDir = resolve(String(flags.project ?? '.'));
       const maxPerSection = Math.max(1, Math.min(6, Number(flags.iterations ?? 2)));
-      const res = await runSectionLoop({ projectDir, siteId, page, maxPerSection, model: flags.model ?? null,
+      const res = await runSectionLoop({ projectDir, siteId, page, maxPerSection, model: flags.model ?? null, evidence: String(flags.evidence ?? 'outline'),
         ...(flags['max-tokens'] ? { maxTokens: Math.max(1000, Number(flags['max-tokens'])) } : {}),
         ...(flags['section-id'] ? { only: String(flags['section-id']).split(',').map(s => s.trim()).filter(Boolean) } : {}),
         revert: flags['no-revert'] !== true,
         onProgress: (p) => process.stderr.write(`… ${p.message}\n`) });
       const file = join(outDir, `sections-${stamp}.json`);
-      writeFileSync(file, JSON.stringify({ schema: 'heimdall.bench.sections/1', generatedAt: new Date().toISOString(), siteId, page, ...res }, null, 1) + '\n');
-      const lines = [`分段循环：${res.sectionsDone}/${res.sectionsTotal} 段到 pass-candidate；整页 ${Object.entries(res.final).map(([w, v]) => `${w}:${(v * 100).toFixed(2)}%`).join(' ')}（${res.finalVerdict}）`];
+      writeFileSync(file, JSON.stringify({ schema: 'heimdall.bench.sections/1', generatedAt: new Date().toISOString(), siteId, page, evidence: String(flags.evidence ?? 'outline'), ...res }, null, 1) + '\n');
+      const lines = [`分段循环（证据 ${String(flags.evidence ?? 'outline')}）：${res.sectionsDone}/${res.sectionsTotal} 段到 pass-candidate；整页 ${Object.entries(res.final).map(([w, v]) => `${w}:${(v * 100).toFixed(2)}%`).join(' ')}（${res.finalVerdict}）`];
       for (const r of res.rows) {
         lines.push(`  ${r.sectionId.padEnd(24)} ${r.skipped ? `跳过（${r.skipped}）` : `第 ${r.iteration} 轮 ${(r.score * 100).toFixed(2)}%（保留 ${(r.kept * 100).toFixed(2)}%）${r.reverted ? ' 回退' : ''} · ${r.verdict}`}`);
       }
