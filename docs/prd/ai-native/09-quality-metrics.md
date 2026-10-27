@@ -27,7 +27,18 @@
 - 参考一律用**已冻结的镜像**，不对活站评测——活站会漂移（广告、实验分流、内容更新），数字没法比较。
 - Suite F 沿用仓库现成的夹具写法：[`acceptance-site.mjs`](../../../core/test/fixtures/acceptance-site.mjs) 导出冻结的 case 清单，并用同一个服务同时提供 baseline 与 target 两侧；[`smoke-forge.mjs`](../../../core/scripts/smoke-forge.mjs) 示范了「随机端口 + 临时数据根 + `HEIMDALL_LLM=0`」的无外网跑法。Bench 夹具照做。
 
-**驱动器（2026-10-27）**：`heimdall bench score|run`（源码 `core/src/agent/bench/`）。`score` 只测量已有候选，**不调模型、不写候选账本**（`record:false`），适合把脚手架 / 人写 / 镜像变体放进同一张表；`run` 复用同一测量口径跑模型臂，三臂的差别只在过程反馈（A1 无反馈、A2 只有标量、A3 完整修复包），起点快照统一由 `rebuild init` 生成。每次结果写 `workspace/<siteId>/agent/bench/*.json`。
+**驱动器（2026-10-27）**：`heimdall bench score|run|sections|summary`（源码 `core/src/agent/bench/`）。`score` 只测量已有候选，**不调模型、不写候选账本**（`record:false`），适合把脚手架 / 人写 / 镜像变体放进同一张表；`run` 复用同一测量口径跑模型臂，三臂的差别只在过程反馈（A1 无反馈、A2 只有标量、A3 完整修复包），起点快照统一由 `rebuild init` 生成；`sections` 按分段循环；`summary` 按臂汇总中位数与极值。每次结果写 `workspace/<siteId>/agent/bench/*.json`。
+
+复现一次整页臂（本机实测命令）：
+
+```bash
+heimdall rebuild init <siteId> --page home --dir <工作区> --stack html-css --no-install --port 5196
+cd <工作区> && node serve.mjs --port 5196 &          # 另一个终端，保持运行
+heimdall bench run --site <siteId> --page home --project <工作区> --arm a3 --iterations 2 --max-tokens 16000
+heimdall bench summary --site <siteId> --page home
+```
+
+模型臂的起点必须是同一份快照：每次跑之前重新 `rebuild init` 并删掉 `.heimdall/ledger.jsonl`。
 
 ### 1.2 Suite F 夹具
 

@@ -39,7 +39,8 @@ argument-hint: "<url> [stack] [fidelity] [gate]"
 
 **5. 分段循环**（每段最多 4 次对比）
 - a. 证据：`heimdall brief --project . --section-id <id> --json`。
-- b. **先量参考，再写第一版**（Phase 0 的经验）：
+- b. **先量参考，再写第一版**（Phase 0 的经验；Bench 实测：只给大纲时整页 60–68%，给这一段的精确证据后 94–98%）：
+  - **每个元素的计算样式直接抄进 CSS**（`slice.text` 里的 `S1/S2…` 签名与 `@768` / `@375` 的差异），不要凭感觉估字号、行高、内边距。
   - 看 `slice.text` 开头的五类事实：起点亚像素偏移、外层画进来的装饰（1px 边线、渐变）、伪元素样式、写死的高度（`height=fixed`）、分段自身的与外边距。
   - 简报里的外接框是取整的，「770 与 770.78 并存」这类矛盾以 `height=fixed` 与计算样式为准；需要时用 1px 的负外边距或 `overflow: hidden` 对齐，并在提交说明里写清。
   - 参考图（`.heimdall/ref/<page>/sections/<id>-<视口>.png`）**只能看**，不要引用到页面里。
