@@ -16,7 +16,7 @@ import { exitCodeOf, fail } from './envelope.mjs';
 
 export const AGENT_COMMANDS = Object.freeze(CAPABILITIES.map(c => c.id));
 export const CLI_ONLY = Object.freeze({
-  rebuild: { usage: 'rebuild init <url|siteId> [--page P] [--stack html-css|vite-react-ts-tailwind] [--fidelity …] [--gate …] [--dir D] [--model-class …] | rebuild status [--project .] | rebuild deliver [--project .] [--out D] [--no-mirror]', desc: '生成重建工作区；查看进度与下一步；按 Floor=Mirror 交付' },
+  rebuild: { usage: 'rebuild init <url|siteId> [--page P] [--stack html-css|vite-react-ts-tailwind] [--fidelity …] [--gate …] [--dir D] [--force] [--model-class …] | rebuild status [--project .] | rebuild deliver [--project .] [--out D] [--no-mirror]', desc: '生成重建工作区（--force 覆盖脚手架文件，评测用）；查看进度；按 Floor=Mirror 交付' },
   connect: { usage: 'connect <claude-code|claude-desktop|cursor|vscode> [--remove] [--dry-run] [--yes]', desc: '把 Heimdall MCP 写进客户端配置（先备份，再自测）' },
   probe: { usage: 'probe sizes|outline|har [--site S] [--max N]', desc: '复现 PRD 01 §1.4 的体量、大纲压缩与接口统计' },
   gate: { usage: 'gate baseline <siteId> <page> [--viewport 1440] | gate report [--project .] [--level bronze|silver|gold]', desc: '正式基线供给与体检（E7-19）；六维门禁报告（E7-06），未通过退出码 1' },

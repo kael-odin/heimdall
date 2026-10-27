@@ -60,6 +60,7 @@ async function init(flags, positional, log) {
   const result = await initWorkspace({
     siteId, page, stack: flags.stack ?? 'html-css', fidelity: flags.fidelity ?? 'balanced', gateLevel: flags.gate ?? 'silver', dir, port,
     modelClass: flags['model-class'] ?? 'standard', git: !flags['no-git'], install: !flags['no-install'], registry: flags.registry,
+    force: flags.force === true,
     onProgress: (p) => log(`… ${p.message ?? p.stage}`),
   });
   const warnings = [];

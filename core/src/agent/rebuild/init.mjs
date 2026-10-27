@@ -84,8 +84,9 @@ export async function initWorkspace(opts) {
   const { siteId, page, stack = 'html-css', fidelity = 'balanced', gateLevel = 'silver', port = 5199, modelClass = 'standard', onProgress = () => {} } = opts;
   if (!STACKS.includes(stack)) throw new CapabilityError('invalid_args', `技术栈只支持 ${STACKS.join(' / ')}（vite-vue3-ts-tailwind 在 Ph3）`);
   const dir = resolve(opts.dir);
-  if (existsSync(dir) && readdirSync(dir).some(f => f !== '.git')) {
-    throw new CapabilityError('invalid_args', `目录不是空的：${dir}`, { hint: '换一个新目录，或先清空它' });
+  // --force：评测要反复从同一份快照起步。默认仍然拒绝非空目录，免得覆盖用户的工作
+  if (!opts.force && existsSync(dir) && readdirSync(dir).some(f => f !== '.git')) {
+    throw new CapabilityError('invalid_args', `目录不是空的：${dir}`, { hint: '换一个新目录，先清空它，或加 --force 覆盖生成的脚手架文件' });
   }
   const pdir = requireMirror(siteId, page);
   const manifest = readManifest(siteId, page);

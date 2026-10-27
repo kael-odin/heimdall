@@ -32,13 +32,13 @@
 复现一次整页臂（本机实测命令）：
 
 ```bash
-heimdall rebuild init <siteId> --page home --dir <工作区> --stack html-css --no-install --port 5196
+heimdall rebuild init <siteId> --page home --dir <工作区> --stack html-css --no-install --port 5196 --force
 cd <工作区> && node serve.mjs --port 5196 &          # 另一个终端，保持运行
 heimdall bench run --site <siteId> --page home --project <工作区> --arm a3 --iterations 2 --max-tokens 16000
 heimdall bench summary --site <siteId> --page home
 ```
 
-模型臂的起点必须是同一份快照：每次跑之前重新 `rebuild init` 并删掉 `.heimdall/ledger.jsonl`。
+模型臂的起点必须是同一份快照：每次跑之前用 `--force` 重新 `rebuild init`（默认拒绝非空目录，不加 `--force` 会静默不重置）并删掉 `.heimdall/ledger.jsonl`。
 
 ### 1.2 Suite F 夹具
 
