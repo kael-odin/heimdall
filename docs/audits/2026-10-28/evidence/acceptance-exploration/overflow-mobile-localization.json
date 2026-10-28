@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "kind": "acceptance-localization",
+  "runId": "benchmark-2026-10-28T08-21-50-273Z-62a555ff-overflow-mobile",
+  "generatedAt": "2026-10-28T08:23:54.776Z",
+  "scope": "定位靠只读重新渲染基线与目标页面完成，不改变检查结论。源码位置指浏览器实际收到的 HTML、样式表与脚本；经构建工具转换的代码需借助 source map 回到工程文件。页面含时间、随机数或登录态内容时，重新渲染结果可能与运行时不同。",
+  "status": "completed",
+  "durationMs": 440,
+  "totals": {
+    "failed": 1,
+    "source": 1,
+    "element": 0,
+    "none": 0,
+    "errors": 0
+  },
+  "summary": "1 个可靠失败中，1 个定位到源码位置，0 个定位到元素或请求。",
+  "checks": [
+    {
+      "checkId": "route-1-1-mobile-overflow",
+      "title": "视口水平溢出",
+      "dimension": "health",
+      "route": "/overflow-mobile",
+      "viewport": "mobile",
+      "severity": "medium",
+      "status": "completed",
+      "level": "source",
+      "facet": "overflow",
+      "findings": [
+        {
+          "kind": "overflow",
+          "selector": "#wide",
+          "element": "div#wide.wide",
+          "box": {
+            "baseline": null,
+            "target": {
+              "x": 37,
+              "y": 365,
+              "width": 1600,
+              "height": 10
+            }
+          },
+          "declarations": {
+            "width": {
+              "origin": "author",
+              "property": "width",
+              "value": "1600px",
+              "important": false,
+              "selector": ".wide",
+              "media": [],
+              "declaration": "width:1600px;",
+              "kind": "inline-style",
+              "url": "http://127.0.0.1:60701/target/overflow-mobile",
+              "line": 11,
+              "column": 7,
+              "excerpt": ".wide{width:1600px;height:10px;background:#fca5a5}"
+            },
+            "min-width": null,
+            "margin-left": null,
+            "left": null,
+            "transform": null,
+            "white-space": null
+          },
+          "source": {
+            "origin": "author",
+            "property": "width",
+            "value": "1600px",
+            "important": false,
+            "selector": ".wide",
+            "media": [],
+            "declaration": "width:1600px;",
+            "kind": "inline-style",
+            "url": "http://127.0.0.1:60701/target/overflow-mobile",
+            "line": 11,
+            "column": 7,
+            "excerpt": ".wide{width:1600px;height:10px;background:#fca5a5}"
+          },
+          "detail": "div#wide.wide 右侧超出 1247px（视口 390px），相关声明 width:1600px;"
+        }
+      ],
+      "pages": {
+        "baseline": {
+          "url": "http://127.0.0.1:60701/baseline/overflow-mobile",
+          "documentUrl": "http://127.0.0.1:60701/baseline/overflow-mobile",
+          "httpStatus": 200,
+          "navigationError": null,
+          "blockedRequests": 0
+        },
+        "target": {
+          "url": "http://127.0.0.1:60701/target/overflow-mobile",
+          "documentUrl": "http://127.0.0.1:60701/target/overflow-mobile",
+          "httpStatus": 200,
+          "navigationError": null,
+          "blockedRequests": 0
+        }
+      },
+      "durationMs": 14
+    }
+  ]
+}

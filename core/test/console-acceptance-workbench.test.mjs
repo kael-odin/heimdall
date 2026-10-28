@@ -5,7 +5,30 @@ import {
   buildAcceptanceInput, filterAcceptanceChecks,
   acceptanceSpecFingerprint, buildOpenApiPreviewInput, SPEC_CHECK_EXAMPLE,
   acceptanceComparisonQuery, filterAcceptanceComparison,
+  acceptanceLocalizationResult, localizationWhere,
+  ACCEPTANCE_DEFAULT_VIEWPORTS, acceptanceRoutes, buildExplorationInput, mergeExploredPoints,
 } from '../../console/src/acceptance-workbench.js';
+import { DEFAULT_VIEWPORTS } from '../src/acceptance/schema.mjs';
+
+test('element localization payloads are validated before the panel renders them', () => {
+  const finding = { kind: 'hidden', detail: '目标页面隐藏了 #menu-toggle', source: { kind: 'inline-style', url: 'http://127.0.0.1/target/mobile-menu', line: 9, column: 23, excerpt: '#menu-toggle{display:none}' } };
+  const value = { status: 'completed', summary: '1 个可靠失败中，1 个定位到源码位置。', checks: [{ checkId: 'route-1-1-mobile-structure', status: 'completed', level: 'source', findings: [finding] }] };
+  assert.equal(acceptanceLocalizationResult(value), value);
+  for (const status of ['no_failures', 'unsupported']) assert.equal(acceptanceLocalizationResult({ status, summary: '无需定位', checks: [] }).status, status);
+  for (const broken of [null, [], { status: 'running', summary: '', checks: [] }, { status: 'completed', checks: [] },
+    { ...value, checks: [{ ...value.checks[0], level: 'guess' }] },
+    { ...value, checks: [{ ...value.checks[0], findings: [{ kind: 'hidden' }] }] },
+    { ...value, checks: [{ ...value.checks[0], findings: [{ ...finding, source: { ...finding.source, line: '9' } }] }] }])
+    assert.throws(() => acceptanceLocalizationResult(broken), /元素定位结果格式无效/);
+});
+
+test('localized sources render as path:line:column without leaking the origin', () => {
+  assert.equal(localizationWhere({ url: 'http://127.0.0.1:4000/target/mobile-menu?token=x', line: 9, column: 23 }), '/target/mobile-menu:9:23');
+  assert.equal(localizationWhere({ url: 'http://127.0.0.1:4000/app.js', file: '/target/app.js', line: 2 }), '/target/app.js:2:1');
+  assert.equal(localizationWhere({ origin: 'user-agent', property: 'display' }), '浏览器默认样式');
+  assert.equal(localizationWhere({ kind: 'stylesheet' }), '未知位置');
+  assert.equal(localizationWhere(null), '未知位置');
+});
 
 test('comparison selection requires an explicit distinct valid pair and an allowed export format', () => {
   const a = 'ac-00000000-0000-4000-8000-000000000001', b = 'ac-00000000-0000-4000-8000-000000000002';
@@ -178,4 +201,34 @@ test('explicit omissions can be reviewed while an empty contract cannot silently
   assert.equal(buildAcceptanceInput(draft).spec.checks.length, 0);
   assert.equal(buildAcceptanceInput(draft).spec.omissions.length, 1);
   assert.throws(() => buildAcceptanceInput(approve(specForm({ specChecks: '[]' }))), /至少声明/);
+});
+
+test('exploration uses the runner default viewports and the same route validation as a new run', () => {
+  assert.deepEqual(ACCEPTANCE_DEFAULT_VIEWPORTS.map(({ name, width, height }) => ({ name, width, height })),
+    DEFAULT_VIEWPORTS.map(({ name, width, height }) => ({ name, width, height })));
+  const input = buildExplorationInput({ baselineUrl: 'http://127.0.0.1:9087/baseline', routes: '/identical\n/menu-state' });
+  assert.deepEqual(input.routes, ['/identical', '/menu-state']);
+  assert.deepEqual(input.viewports, DEFAULT_VIEWPORTS.map(({ name, width, height }) => ({ name, width, height })));
+  assert.throws(() => buildExplorationInput({ baselineUrl: 'file:///etc/passwd', routes: '/' }), /HTTP/);
+  assert.throws(() => buildExplorationInput({ baselineUrl: 'http://127.0.0.1/', routes: '../up' }), /路由/);
+  assert.throws(() => acceptanceRoutes(''), /至少填写/);
+  assert.throws(() => acceptanceRoutes(Array.from({ length: 9 }, (_, i) => `/p${i}`).join('\n')), /最多/);
+});
+
+test('explored points merge without duplicating what the user already declared', () => {
+  const toggle = { id: 'a', title: '点击菜单', route: '/identical', severity: 'high',
+    steps: [{ action: 'click', selector: '#menu-toggle' }], assertions: [{ kind: 'visible', selector: '#menu' }] };
+  const quota = { id: 'b', title: '页面文案', route: '/identical', severity: 'medium',
+    assertions: [{ kind: 'text', selector: '#quota', equals: '剩余配额：128 个任务' }] };
+  const existing = JSON.stringify([toggle]);
+  const merged = mergeExploredPoints(existing, [toggle, quota, { id: 'bad' }, null]);
+  assert.equal(merged.added, 1);
+  assert.equal(merged.points.length, 2);
+  assert.equal(merged.points[1].id, 'b');
+  // Same steps but a different assertion is a different point; the same triple is not.
+  assert.equal(mergeExploredPoints('', [toggle, { ...toggle, id: 'c' }]).added, 1);
+  assert.deepEqual(mergeExploredPoints('', []), { points: [], added: 0 });
+  assert.throws(() => mergeExploredPoints('[not json', []), /不是有效 JSON/);
+  assert.throws(() => mergeExploredPoints('{}', []), /必须是 JSON 数组/);
+  assert.throws(() => mergeExploredPoints('', null), /探索结果格式无效/);
 });

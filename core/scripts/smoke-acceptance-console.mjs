@@ -104,7 +104,16 @@ try {
   await page.locator('[name="acceptance-target"]').fill(fixture.targetUrl);
   await page.locator('[name="acceptance-routes"]').fill('/menu-state\n/missing-field');
   await page.locator('.aw-advanced > summary').click();
-  await page.locator('[name="acceptance-points"]').fill(JSON.stringify([{ id: 'MENU-OPEN', title: '菜单点击后展开', route: '/menu-state', severity: 'high', steps: [{ action: 'click', selector: '#menu-toggle' }], assertions: [{ kind: 'attribute', selector: '#menu-toggle', attribute: 'aria-expanded', equals: 'true' }] }]));
+  // Baseline exploration fills the points field from the approved baseline before the operator edits it.
+  const pointsField = page.locator('[name="acceptance-points"]');
+  await page.locator('[data-testid="acceptance-explore"]').click();
+  await waitFor(async () => (await pointsField.inputValue()).includes('#menu-toggle'), 60000);
+  const exploredPoints = JSON.parse(await pointsField.inputValue());
+  assert.ok(exploredPoints.length >= 1, 'exploration should propose at least one point');
+  assert.ok(exploredPoints.some(point => point.steps?.[0]?.action === 'click' && point.steps[0].selector === '#menu-toggle'), 'menu toggle point');
+  assert.ok(exploredPoints.every(point => Array.isArray(point.assertions) && point.assertions.length > 0), 'every explored point has an assertion');
+  await page.getByText(/基线生成 \d+ 个候选验收点/).first().waitFor();
+  await pointsField.fill(JSON.stringify([{ id: 'MENU-OPEN', title: '菜单点击后展开', route: '/menu-state', severity: 'high', steps: [{ action: 'click', selector: '#menu-toggle' }], assertions: [{ kind: 'attribute', selector: '#menu-toggle', attribute: 'aria-expanded', equals: 'true' }] }]));
   await page.locator('[data-testid="acceptance-run"]').click();
   const run = await waitFor(async () => (await (await api()).json()).runs.find(x => x.name === '比赛演示 · 菜单与配额验收'));
   observedRunId = run.runId;
@@ -128,6 +137,23 @@ try {
   assert.equal(triage.gate, undefined);
   assert.equal((await (await api('/' + run.runId + '/report')).json()).gate, 'failed');
   await page.getByText('已依据菜单状态证据生成复验建议。', { exact: true }).waitFor();
+  // Element localization is explicit too, and only adds a sidecar: the report and gate stay as the run left them.
+  assert.equal((await api('/' + run.runId + '/localization')).status, 404);
+  await page.locator('[data-testid="acceptance-localization"]').click();
+  await waitFor(async () => (await (await api('/' + run.runId)).json()).localizationAvailable, 60000);
+  const localization = await (await api('/' + run.runId + '/localization')).json();
+  assert.equal(localization.status, 'completed');
+  assert.equal(localization.checks.length, report.checks.filter(c => c.verdict === 'bug' && c.status === 'failed').length);
+  const menuLocalized = localization.checks.find(c => c.checkId.endsWith('-MENU-OPEN'));
+  assert.equal(menuLocalized?.replay?.reproduced, true);
+  assert.ok(menuLocalized.findings.some(f => f.kind === 'handler' && f.source?.kind === 'inline-script' && f.source.line > 0), 'menu bug should point at its click handler');
+  assert.ok(localization.checks.every(c => c.status === 'completed' && c.level === 'source'), 'every reliable failure should reach a source position');
+  assert.match(menuLocalized.findings.find(f => f.kind === 'handler').delta?.baseline ?? '', /aria-expanded/, 'handler delta should name the missing state update');
+  assert.equal((await (await api('/' + run.runId + '/report')).json()).gate, 'failed');
+  await page.locator('.aw-localization-summary').waitFor();
+  assert.equal(await page.locator('.aw-localization-summary').innerText(), localization.summary);
+  await page.locator('.aw-localization').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: join(OUT, 'acceptance-localization.png'), fullPage: false });
   const bug = report.checks.find(c => c.dimension === 'behavior' && c.verdict === 'bug');
   const detail = page.locator(`details[data-check-id="${bug.id}"]`);
   await detail.locator('summary').click();
@@ -154,6 +180,7 @@ try {
   await page.locator('[data-testid="acceptance-view-results"]').click();
   await page.waitForFunction(() => document.querySelector('#aw-result-panel').getBoundingClientRect().top < 200);
   await page.getByText('已依据菜单状态证据生成复验建议。', { exact: true }).waitFor();
+  await page.locator('.aw-localization-summary').waitFor();
   await page.screenshot({ path: join(OUT, 'acceptance-mobile.png'), fullPage: false });
   const layout = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: innerWidth }));
   assert.ok(layout.scroll <= layout.client + 1, 'mobile console must not overflow');
@@ -161,7 +188,8 @@ try {
   assert.deepEqual(errors, []);
   writeFileSync(join(OUT, 'acceptance-report.json'), JSON.stringify(report, null, 2));
   writeFileSync(join(OUT, 'ai-triage-mock.json'), JSON.stringify(triage, null, 2));
-  const result = { status: 'passed', evidenceLevel: 'offline-reproduced', scope: '本地受控夹具，真实控制台→浏览器验收任务→证据与下载→刷新恢复；AI链路使用本地模型模拟器，不等于外部模型或真实业务站点验收。', runId: run.runId, gate: report.gate, summary: report.summary, checks: { auth: true, invalidInput: true, concurrencyLimit: true, restartRecovery: true, uiCreate: true, workerCompletion: true, behaviorFailureGate: true, authenticatedEvidence: true, pathBoundary: true, markdownDownload: true, refreshRestore: true, mobileNoOverflow: true, consoleHealthy: true, aiExplicitOnly: true, aiUnknownCheckDiscarded: true, aiCannotOverrideGate: true, aiRefreshRestore: true }, pageErrors: errors, viewports: ['1440x1000', '390x844'] };
+  writeFileSync(join(OUT, 'acceptance-localization.json'), JSON.stringify(localization, null, 2));
+  const result = { status: 'passed', evidenceLevel: 'offline-reproduced', scope: '本地受控夹具，真实控制台→基线探索候选验收点→浏览器验收任务→证据与下载→刷新恢复；AI链路使用本地模型模拟器，不等于外部模型或真实业务站点验收。', runId: run.runId, gate: report.gate, summary: report.summary, checks: { auth: true, invalidInput: true, concurrencyLimit: true, restartRecovery: true, uiCreate: true, workerCompletion: true, behaviorFailureGate: true, authenticatedEvidence: true, pathBoundary: true, markdownDownload: true, refreshRestore: true, mobileNoOverflow: true, consoleHealthy: true, aiExplicitOnly: true, aiUnknownCheckDiscarded: true, aiCannotOverrideGate: true, aiRefreshRestore: true, localizationExplicitOnly: true, localizationSourceLevel: true, localizationKeepsGate: true, localizationRefreshRestore: true, explorationFromBaseline: true, explorationPointsStable: true }, pageErrors: errors, viewports: ['1440x1000', '390x844'] };
   writeFileSync(join(OUT, 'browser-checks.json'), JSON.stringify(result, null, 2) + '\n');
   console.log(JSON.stringify(result, null, 2));
 } catch (error) {

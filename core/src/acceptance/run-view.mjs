@@ -2,7 +2,7 @@
  * complete provenance; the console only needs this explicit view. */
 const VIEW_FIELDS = ['runId', 'taskId', 'name', 'mode', 'baselineUrl', 'targetUrl', 'status', 'gate',
   'createdAt', 'updatedAt', 'endedAt', 'summary', 'progress', 'error', 'reasonCode', 'reportSha256',
-  'triageAvailable', 'code'];
+  'triageAvailable', 'localizationAvailable', 'code'];
 
 export function acceptanceRunView(manifest, { includePlan = false } = {}) {
   const view = {};
@@ -12,6 +12,7 @@ export function acceptanceRunView(manifest, { includePlan = false } = {}) {
       targetReleaseId: manifest.managed.target.releaseId, sourceRunId: manifest.managed.source.runId };
     view.triageSupported = false;
     view.triageAvailable = false;
+    view.localizationAvailable = false;
     // Stored infrastructure errors are preserved for local investigation, but
     // their raw paths or credentials must not reach the HTTP console view.
     if (Object.hasOwn(manifest, 'error')) view.error = manifest.status === 'interrupted' ? '验收已中断，现场已保留。'

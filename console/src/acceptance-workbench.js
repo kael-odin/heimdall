@@ -32,12 +32,8 @@ function jsonArray(value, label) {
   return parsed;
 }
 
-export function buildAcceptanceInput(form) {
-  if (form.mode === 'spec') return buildSpecInput(form);
-  const baselineUrl = httpUrl(form.baselineUrl, '基线 URL');
-  const targetUrl = httpUrl(form.targetUrl, '目标 URL');
-  if (baselineUrl === targetUrl) throw new Error('基线与目标需要使用不同的地址。');
-  const routes = [...new Set(String(form.routes ?? '').split(/\r?\n/).map(x => x.trim()).filter(Boolean))];
+export function acceptanceRoutes(value) {
+  const routes = [...new Set(String(value ?? '').split(/\r?\n/).map(x => x.trim()).filter(Boolean))];
   if (!routes.length) throw new Error('至少填写一条路由，例如 /。');
   if (routes.length > 8) throw new Error('每次验收最多填写 8 条路由，请拆分任务。');
   for (const route of routes) {
@@ -48,6 +44,50 @@ export function buildAcceptanceInput(form) {
       throw new Error(`路由「${route}」无效；请使用 / 开头的相对路径，一行一条。`);
     }
   }
+  return routes;
+}
+
+export const ACCEPTANCE_DEFAULT_VIEWPORTS = Object.freeze([
+  { name: 'mobile', width: 375, height: 812 },
+  { name: 'tablet', width: 768, height: 1024 },
+  { name: 'desktop', width: 1440, height: 900 },
+]);
+
+/** Input for baseline exploration; the same routes and the runner's default viewports a plan without viewports would use. */
+export function buildExplorationInput(form) {
+  const baselineUrl = httpUrl(form.baselineUrl, '基线 URL');
+  return { baselineUrl, routes: acceptanceRoutes(form.routes),
+    viewports: ACCEPTANCE_DEFAULT_VIEWPORTS.map(viewport => ({ ...viewport })) };
+}
+
+/** Merge explored points into the JSON the user already typed; identical route/step/assertion triples are not added twice. */
+export function mergeExploredPoints(existingJson, exploredPoints) {
+  let existing = [];
+  if (String(existingJson ?? '').trim()) {
+    try { existing = JSON.parse(existingJson); } catch { throw new Error('现有验收点 JSON 不是有效 JSON，请先修正再合并。'); }
+    if (!Array.isArray(existing)) throw new Error('现有验收点必须是 JSON 数组。');
+  }
+  if (!Array.isArray(exploredPoints)) throw new Error('探索结果格式无效，请重新生成。');
+  const signature = point => JSON.stringify([point?.route ?? '/', point?.steps ?? [], point?.assertions ?? []]);
+  const seen = new Set(existing.map(signature));
+  const added = [];
+  for (const point of exploredPoints) {
+    if (!point || typeof point !== 'object' || !Array.isArray(point.assertions) || !point.assertions.length
+      || typeof point.id !== 'string' || typeof point.route !== 'string' || typeof point.title !== 'string') continue;
+    const key = signature(point);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    added.push(point);
+  }
+  return { points: [...existing, ...added], added: added.length };
+}
+
+export function buildAcceptanceInput(form) {
+  if (form.mode === 'spec') return buildSpecInput(form);
+  const baselineUrl = httpUrl(form.baselineUrl, '基线 URL');
+  const targetUrl = httpUrl(form.targetUrl, '目标 URL');
+  if (baselineUrl === targetUrl) throw new Error('基线与目标需要使用不同的地址。');
+  const routes = acceptanceRoutes(form.routes);
   const points = jsonArray(form.points, '验收点');
   if (points.some(point => !point || typeof point !== 'object' || Array.isArray(point))) {
     throw new Error('每个验收点必须是 JSON 对象。');
@@ -182,6 +222,36 @@ export function acceptanceViewport(value) {
   if (typeof value === 'string') return value;
   if (value?.width && value?.height) return `${value.width} × ${value.height}`;
   return value?.name || '全部视口';
+}
+
+const LOCALIZATION_STATUSES = new Set(['completed', 'no_failures', 'unsupported']);
+const LOCALIZATION_LEVELS = new Set(['source', 'element', 'none']);
+const LOCALIZATION_CHECK_STATUSES = new Set(['completed', 'error', 'skipped']);
+const optionalText = value => value === undefined || value === null || typeof value === 'string';
+const validSource = source => source === undefined || source === null
+  || (typeof source === 'object' && !Array.isArray(source) && optionalText(source.url) && optionalText(source.file) && optionalText(source.excerpt)
+    && [source.line, source.column].every(value => value === undefined || value === null || Number.isInteger(value)));
+
+/** Element localization is a sidecar read; refuse a payload that would make the panel guess. */
+export function acceptanceLocalizationResult(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !LOCALIZATION_STATUSES.has(value.status)
+    || typeof value.summary !== 'string' || !Array.isArray(value.checks)) throw new Error('元素定位结果格式无效，请重新定位。');
+  for (const check of value.checks) {
+    if (!check || typeof check !== 'object' || typeof check.checkId !== 'string' || !LOCALIZATION_CHECK_STATUSES.has(check.status)
+      || !LOCALIZATION_LEVELS.has(check.level) || !Array.isArray(check.findings)
+      || check.findings.some(finding => !finding || typeof finding.detail !== 'string' || !validSource(finding.source) || !validSource(finding.baselineSource)))
+      throw new Error('元素定位结果格式无效，请重新定位。');
+  }
+  return value;
+}
+
+/** `path:line:column` of a localized source, or a plain label when no position is known. */
+export function localizationWhere(source) {
+  if (source?.origin === 'user-agent' || source?.kind === 'user-agent') return '浏览器默认样式';
+  if (!Number.isInteger(source?.line)) return '未知位置';
+  let file = source.file;
+  if (!file) { try { file = new URL(source.url).pathname; } catch { file = String(source.url ?? ''); } }
+  return `${file}:${source.line}:${source.column ?? 1}`;
 }
 
 export const COMPARISON_RELATIONS = [

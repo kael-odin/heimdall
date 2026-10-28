@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve, dirname, basename, relative, isAbsolute, sep } from 'node:path';
 import { emit } from '../emit.mjs';
 import { createAcceptanceRun, readLegacyAcceptanceRun, updateAcceptanceRun, finishAcceptanceRun, acceptanceRunDir, readAcceptanceSnapshots, ACCEPTANCE_ROOT } from './store.mjs';
+import { normalizeAcceptancePlan } from './schema.mjs';
 import { compareAcceptanceSnapshots, comparisonMarkdown } from './comparison.mjs';
 
 function protectAcceptanceOutput(output) {
@@ -46,6 +47,28 @@ export async function executeAcceptanceRun(runId) {
   }
 }
 export async function main(args = process.argv.slice(2)) {
+  if (args[0] === '--explore') {
+    if (!args[1]) throw new Error('Usage: --explore <plan.json> [--output path]');
+    const plan = normalizeAcceptancePlan(JSON.parse(readFileSync(resolve(args[1]), 'utf8')));
+    let output;
+    for (let i = 2; i < args.length; i += 2) {
+      if (args[i] !== '--output' || !args[i + 1] || output) throw new Error('Exploration supports a single --output path.');
+      output = resolve(args[i + 1]);
+    }
+    const { exploreAcceptanceBaseline } = await import('./explore.mjs');
+    const exploration = await exploreAcceptanceBaseline({ baselineUrl: plan.baselineUrl, routes: plan.routes,
+      viewports: plan.viewports, timeoutMs: plan.timeoutMs, settleMs: plan.settleMs, plan });
+    // The merged plan is what a later --plan run would execute: hand-written points first, then new candidates.
+    const signature = point => JSON.stringify([point.route ?? '/', point.steps ?? [], point.assertions ?? []]);
+    const seen = new Set(plan.points.map(signature));
+    const merged = [...plan.points, ...exploration.points.filter(point => { const key = signature(point); if (seen.has(key)) return false; seen.add(key); return true; })];
+    const content = JSON.stringify({ baselineUrl: plan.baselineUrl, routes: plan.routes, summary: exploration.summary,
+      points: exploration.points, plan: { ...plan, points: merged } }, null, 2) + '\n';
+    if (output) { protectAcceptanceOutput(output); mkdirSync(dirname(output), { recursive: true }); writeFileSync(output, content); }
+    else process.stdout.write(content);
+    if (exploration.routes.some(entry => entry.status === 'navigation-failed')) process.exitCode = 1;
+    return exploration;
+  }
   if (args[0] === '--compare') {
     if (!args[1] || !args[2] || args[1] === args[2]) throw new Error('Usage: --compare <beforeRunId> <afterRunId> [--format json|md] [--output path]');
     let format = 'json', output;
@@ -71,7 +94,7 @@ export async function main(args = process.argv.slice(2)) {
   if (args[0] === '--run' && args[1]) runId = args[1];
   else if (args[0] === '--plan' && args[1]) {
     runId = createAcceptanceRun(JSON.parse(readFileSync(resolve(args[1]), 'utf8'))).runId;
-  } else throw new Error('Usage: node core/src/acceptance/cli.mjs --plan plan.json [--gate] | --run <runId> | --compare <beforeRunId> <afterRunId> [--format json|md] [--output path]');
+  } else throw new Error('Usage: node core/src/acceptance/cli.mjs --plan plan.json [--gate] | --run <runId> | --explore plan.json [--output path] | --compare <beforeRunId> <afterRunId> [--format json|md] [--output path]');
   const report = await executeAcceptanceRun(runId);
   process.stdout.write(JSON.stringify({ runId, gate: report.gate, summary: report.summary, outputDir: acceptanceRunDir(runId) }, null, 2) + '\n');
   if (args.includes('--gate') && report.gate !== 'passed') process.exitCode = 1;

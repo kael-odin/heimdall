@@ -1,0 +1,1521 @@
+{
+  "schemaVersion": 1,
+  "runId": "benchmark-2026-10-28T08-21-50-273Z-62a555ff",
+  "generatedAt": "2026-10-28T08:25:05.688Z",
+  "scope": "离线复现：固定注入缺陷夹具，仅证明本基准中声明的案例与观察窗口；不代表真实站点业务验收或通用检出率。",
+  "outputDir": "D:\\Github-Star\\heimdall\\core\\workspace\\_runs\\acceptance-benchmark\\benchmark-2026-10-28T08-21-50-273Z-62a555ff",
+  "durationMs": 195415,
+  "passed": true,
+  "metrics": {
+    "unit": "case",
+    "totalCases": 18,
+    "knownBugCases": 13,
+    "nonBugCases": 5,
+    "truePositive": 13,
+    "falsePositive": 0,
+    "falseNegative": 0,
+    "trueNegative": 5,
+    "precision": 1,
+    "recall": 1,
+    "falsePositiveRate": 0,
+    "localization": {
+      "unit": "case",
+      "detectedBugCases": 13,
+      "sourceHits": 13,
+      "elementOnly": 0,
+      "misses": 0,
+      "sourceHitRate": 1
+    },
+    "timing": {
+      "unit": "ms",
+      "acceptance": {
+        "samples": 18,
+        "p50": 1484,
+        "p95": 5134,
+        "max": 5134
+      },
+      "localization": {
+        "samples": 13,
+        "p50": 470,
+        "p95": 1078,
+        "max": 1078
+      }
+    },
+    "auto": {
+      "arm": "auto-points-only",
+      "cases": 18,
+      "points": 48,
+      "detected": 13,
+      "falsePositives": 0,
+      "passed": 18
+    }
+  },
+  "cases": [
+    {
+      "id": "visual-shift",
+      "title": "目标主要内容布局偏移",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 6,
+      "bugChecks": [
+        "route-1-1-desktop-visual"
+      ],
+      "complete": true,
+      "durationMs": 1607,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "style",
+          "selector": "main",
+          "text": "translateY(160px)"
+        },
+        "matched": {
+          "checkId": "route-1-1-desktop-visual",
+          "kind": "style",
+          "selector": "body > main:nth-of-type(1)",
+          "detail": "main：transform: none → matrix(1, 0, 0, 1, 0, 160)",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/visual-shift",
+            "line": 11,
+            "column": 6,
+            "excerpt": "main{transform:translateY(160px)}.panel{background:#8f2500;border-color:#6d1b00;color:#fff}"
+          }
+        },
+        "checks": {
+          "failed": 1,
+          "source": 1,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 528,
+        "report": "visual-shift/localization.json",
+        "markdown": "visual-shift/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "visual-shift/report.json",
+      "markdown": "visual-shift/report.md",
+      "auto": {
+        "id": "visual-shift",
+        "title": "目标主要内容布局偏移",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-desktop-visual"
+        ],
+        "complete": true,
+        "durationMs": 9343,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/visual-shift/report.json",
+        "markdown": "auto/visual-shift/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/visual-shift",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/visual-shift/exploration.json"
+      }
+    },
+    {
+      "id": "mobile-menu",
+      "title": "移动端菜单按钮缺失",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 7,
+      "bugChecks": [
+        "route-1-1-mobile-structure",
+        "route-1-1-mobile-point-1-truth-mobile-menu"
+      ],
+      "complete": true,
+      "durationMs": 2645,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "hidden",
+          "selector": "#menu-toggle",
+          "text": "#menu-toggle{display:none}"
+        },
+        "matched": {
+          "checkId": "route-1-1-mobile-structure",
+          "kind": "hidden",
+          "selector": "#menu-toggle",
+          "detail": "#menu-toggle 在目标页面不可见：元素自身的 display 为 none，来自规则 @media (max-width: 600px) #menu-toggle",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/mobile-menu",
+            "line": 11,
+            "column": 38,
+            "excerpt": "@media(max-width:600px){#menu-toggle{display:none}}"
+          }
+        },
+        "checks": {
+          "failed": 2,
+          "source": 2,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 785,
+        "report": "mobile-menu/localization.json",
+        "markdown": "mobile-menu/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "mobile-menu/report.json",
+      "markdown": "mobile-menu/report.md",
+      "auto": {
+        "id": "mobile-menu",
+        "title": "移动端菜单按钮缺失",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-mobile-structure",
+          "route-1-1-mobile-point-1-mobile-menu-menu-toggle"
+        ],
+        "complete": true,
+        "durationMs": 10394,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/mobile-menu/report.json",
+        "markdown": "auto/mobile-menu/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/mobile-menu",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/mobile-menu/exploration.json"
+      }
+    },
+    {
+      "id": "menu-state",
+      "title": "菜单展开但 aria-expanded 未更新",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 7,
+      "bugChecks": [
+        "route-1-1-mobile-point-1-truth-menu-state"
+      ],
+      "complete": true,
+      "durationMs": 2820,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "handler",
+          "selector": "#menu-toggle",
+          "text": "addEventListener('click'"
+        },
+        "matched": {
+          "checkId": "route-1-1-mobile-point-1-truth-menu-state",
+          "kind": "handler",
+          "selector": "#menu-toggle",
+          "detail": "断言 attribute #menu-toggle [aria-expanded] 期望「true」，目标为「false」；操作前两侧状态一致，差异由「click #menu-toggle」触发的事件处理逻辑产生；目标处理函数缺少 this.setAttribute('aria-expanded',String(!menu.hidden));",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/menu-state",
+            "line": 15,
+            "column": 123,
+            "excerpt": "…ggle').addEventListener('click',function(){const menu=document.getElementById('menu');menu.hidden=!menu.hidden;});</script></body></html>"
+          }
+        },
+        "checks": {
+          "failed": 1,
+          "source": 1,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 786,
+        "report": "menu-state/localization.json",
+        "markdown": "menu-state/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "menu-state/report.json",
+      "markdown": "menu-state/report.md",
+      "auto": {
+        "id": "menu-state",
+        "title": "菜单展开但 aria-expanded 未更新",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-mobile-point-1-menu-state-menu-toggle"
+        ],
+        "complete": true,
+        "durationMs": 8596,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/menu-state/report.json",
+        "markdown": "auto/menu-state/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/menu-state",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/menu-state/exploration.json"
+      }
+    },
+    {
+      "id": "missing-field",
+      "title": "套餐配额文字字段缺失",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 7,
+      "bugChecks": [
+        "route-1-1-desktop-point-1-truth-missing-field"
+      ],
+      "complete": true,
+      "durationMs": 5134,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "missing",
+          "selector": "#quota",
+          "text": "class=\"metric\""
+        },
+        "matched": {
+          "checkId": "route-1-1-desktop-point-1-truth-missing-field",
+          "kind": "missing",
+          "selector": "#quota",
+          "detail": "断言 text #quota 期望「包含 128 个任务」，目标为无；目标页面不存在 #quota；基线中它位于 div.metric 之后",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/missing-field",
+            "line": 14,
+            "column": 55,
+            "excerpt": "…=\"panel\"><span class=\"badge\">运行正常</span><div class=\"metric\">128</div><a id=\"details-link\" class=\"cta\" href=\"details\">查看详情</a></section>"
+          }
+        },
+        "checks": {
+          "failed": 1,
+          "source": 1,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 485,
+        "report": "missing-field/localization.json",
+        "markdown": "missing-field/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "missing-field/report.json",
+      "markdown": "missing-field/report.md",
+      "auto": {
+        "id": "missing-field",
+        "title": "套餐配额文字字段缺失",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-desktop-point-3-missing-field-quota"
+        ],
+        "complete": true,
+        "durationMs": 11169,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/missing-field/report.json",
+        "markdown": "auto/missing-field/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/missing-field",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/missing-field/exploration.json"
+      }
+    },
+    {
+      "id": "wrong-link",
+      "title": "查看详情跳向错误页面",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 7,
+      "bugChecks": [
+        "route-1-1-desktop-structure",
+        "route-1-1-desktop-point-1-truth-wrong-link"
+      ],
+      "complete": true,
+      "durationMs": 3132,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "attribute",
+          "selector": "#details-link",
+          "text": "href=\"pricing\""
+        },
+        "matched": {
+          "checkId": "route-1-1-desktop-structure",
+          "kind": "attribute",
+          "selector": "#details-link",
+          "detail": "#details-link 的链接 「/details」 → 「/pricing」",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/wrong-link",
+            "line": 14,
+            "column": 161,
+            "excerpt": "…个任务</p><a id=\"details-link\" class=\"cta\" href=\"pricing\">查看详情</a></section>"
+          }
+        },
+        "checks": {
+          "failed": 2,
+          "source": 2,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 1053,
+        "report": "wrong-link/localization.json",
+        "markdown": "wrong-link/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "wrong-link/report.json",
+      "markdown": "wrong-link/report.md",
+      "auto": {
+        "id": "wrong-link",
+        "title": "查看详情跳向错误页面",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-desktop-structure",
+          "route-1-1-desktop-point-2-wrong-link-details-link"
+        ],
+        "complete": true,
+        "durationMs": 9080,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/wrong-link/report.json",
+        "markdown": "auto/wrong-link/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/wrong-link",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/wrong-link/exploration.json"
+      }
+    },
+    {
+      "id": "runtime-error",
+      "title": "目标脚本抛出异常",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug",
+        "environment"
+      ],
+      "checkCount": 6,
+      "bugChecks": [
+        "route-1-1-desktop-console"
+      ],
+      "complete": true,
+      "durationMs": 1469,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "script-error",
+          "text": "throw new Error"
+        },
+        "matched": {
+          "checkId": "route-1-1-desktop-console",
+          "kind": "script-error",
+          "selector": null,
+          "detail": "目标页面脚本抛出异常「fixture: approved runtime script failed」，位于 /target/runtime-error:15:275",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/runtime-error",
+            "line": 15,
+            "column": 275,
+            "excerpt": "…!menu.hidden));});setTimeout(()=>{throw new Error('fixture: approved runtime script failed')},20);</script></body></html>"
+          }
+        },
+        "checks": {
+          "failed": 1,
+          "source": 1,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 432,
+        "report": "runtime-error/localization.json",
+        "markdown": "runtime-error/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "runtime-error/report.json",
+      "markdown": "runtime-error/report.md",
+      "auto": {
+        "id": "runtime-error",
+        "title": "目标脚本抛出异常",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug",
+          "environment"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-desktop-console",
+          "route-1-1-desktop-point-1-runtime-error-menu-toggle",
+          "route-1-1-desktop-point-2-runtime-error-details-link",
+          "route-1-1-desktop-point-3-runtime-error-quota"
+        ],
+        "complete": true,
+        "durationMs": 9111,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/runtime-error/report.json",
+        "markdown": "auto/runtime-error/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/runtime-error",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/runtime-error/exploration.json"
+      }
+    },
+    {
+      "id": "missing-resource",
+      "title": "目标静态资源返回 404",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug",
+        "environment"
+      ],
+      "checkCount": 6,
+      "bugChecks": [
+        "route-1-1-desktop-console",
+        "route-1-1-desktop-network"
+      ],
+      "complete": true,
+      "durationMs": 1529,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "resource",
+          "text": "missing-widget.js"
+        },
+        "matched": {
+          "checkId": "route-1-1-desktop-console",
+          "kind": "resource",
+          "selector": null,
+          "detail": "请求 /target/missing-widget.js 返回 HTTP 404，发起方：页面标记 /target/missing-resource:15:43",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/missing-resource",
+            "line": 15,
+            "column": 43,
+            "excerpt": "…ooter>固定离线夹具 · 不包含真实客户数据</footer></main><script src=\"missing-widget.js\"></script><script>document.getElementById('menu-toggle').addEventListener('click',functio…"
+          }
+        },
+        "checks": {
+          "failed": 2,
+          "source": 2,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 419,
+        "report": "missing-resource/localization.json",
+        "markdown": "missing-resource/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "missing-resource/report.json",
+      "markdown": "missing-resource/report.md",
+      "auto": {
+        "id": "missing-resource",
+        "title": "目标静态资源返回 404",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug",
+          "environment"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-desktop-console",
+          "route-1-1-desktop-network",
+          "route-1-1-desktop-point-1-missing-resource-menu-toggle",
+          "route-1-1-desktop-point-2-missing-resource-details-link",
+          "route-1-1-desktop-point-3-missing-resource-quota"
+        ],
+        "complete": true,
+        "durationMs": 9285,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/missing-resource/report.json",
+        "markdown": "auto/missing-resource/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/missing-resource",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/missing-resource/exploration.json"
+      }
+    },
+    {
+      "id": "title-change",
+      "title": "页面标题与基线不一致",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 6,
+      "bugChecks": [
+        "route-1-1-desktop-structure"
+      ],
+      "complete": true,
+      "durationMs": 1488,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "text",
+          "selector": "title",
+          "text": "Heimdall 验收演示 · 新版"
+        },
+        "matched": {
+          "checkId": "route-1-1-desktop-structure",
+          "kind": "text",
+          "selector": "title",
+          "detail": "页面标题 「Heimdall 验收演示」 → 「Heimdall 验收演示 · 新版」",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/title-change",
+            "line": 1,
+            "column": 161,
+            "excerpt": "…scale=1\"><link rel=\"icon\" href=\"data:,\"><title>Heimdall 验收演示 · 新版</title><style>"
+          }
+        },
+        "checks": {
+          "failed": 1,
+          "source": 1,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 451,
+        "report": "title-change/localization.json",
+        "markdown": "title-change/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "title-change/report.json",
+      "markdown": "title-change/report.md",
+      "auto": {
+        "id": "title-change",
+        "title": "页面标题与基线不一致",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-desktop-structure"
+        ],
+        "complete": true,
+        "durationMs": 9118,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/title-change/report.json",
+        "markdown": "auto/title-change/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/title-change",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/title-change/exploration.json"
+      }
+    },
+    {
+      "id": "heading-change",
+      "title": "主标题文案被改写",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 6,
+      "bugChecks": [
+        "route-1-1-desktop-structure"
+      ],
+      "complete": true,
+      "durationMs": 1452,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "text",
+          "selector": "h1 #1",
+          "text": "团队项目总览"
+        },
+        "matched": {
+          "checkId": "route-1-1-desktop-structure",
+          "kind": "text",
+          "selector": "h1 #1",
+          "detail": "一级标题 1 「团队项目概览」 → 「团队项目总览」",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/heading-change",
+            "line": 13,
+            "column": 11,
+            "excerpt": "<main><h1>团队项目总览</h1><p class=\"subtitle\">面向团队的开发交付状态</p><nav id=\"menu\" class=\"menu\" hidden><a href=\"details\">项目详情</a> · <a href=\"p…"
+          }
+        },
+        "checks": {
+          "failed": 1,
+          "source": 1,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 426,
+        "report": "heading-change/localization.json",
+        "markdown": "heading-change/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "heading-change/report.json",
+      "markdown": "heading-change/report.md",
+      "auto": {
+        "id": "heading-change",
+        "title": "主标题文案被改写",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-desktop-structure"
+        ],
+        "complete": true,
+        "durationMs": 9115,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/heading-change/report.json",
+        "markdown": "auto/heading-change/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/heading-change",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/heading-change/exploration.json"
+      }
+    },
+    {
+      "id": "aria-label-change",
+      "title": "菜单按钮的无障碍名称改变",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 6,
+      "bugChecks": [
+        "route-1-1-desktop-structure"
+      ],
+      "complete": true,
+      "durationMs": 1465,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "attribute",
+          "selector": "#menu-toggle",
+          "text": "aria-label=\"主菜单\""
+        },
+        "matched": {
+          "checkId": "route-1-1-desktop-structure",
+          "kind": "attribute",
+          "selector": "#menu-toggle",
+          "detail": "#menu-toggle 的可访问名称 「菜单」 → 「主菜单」",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/aria-label-change",
+            "line": 12,
+            "column": 84,
+            "excerpt": "…><button id=\"menu-toggle\" type=\"button\" aria-label=\"主菜单\" aria-expanded=\"false\" aria-controls=\"menu\">菜单</button></header>"
+          }
+        },
+        "checks": {
+          "failed": 1,
+          "source": 1,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 441,
+        "report": "aria-label-change/localization.json",
+        "markdown": "aria-label-change/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "aria-label-change/report.json",
+      "markdown": "aria-label-change/report.md",
+      "auto": {
+        "id": "aria-label-change",
+        "title": "菜单按钮的无障碍名称改变",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-desktop-structure"
+        ],
+        "complete": true,
+        "durationMs": 9195,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/aria-label-change/report.json",
+        "markdown": "auto/aria-label-change/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/aria-label-change",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/aria-label-change/exploration.json"
+      }
+    },
+    {
+      "id": "overflow-mobile",
+      "title": "移动端出现水平溢出",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug",
+        "environment"
+      ],
+      "checkCount": 6,
+      "bugChecks": [
+        "route-1-1-mobile-overflow"
+      ],
+      "complete": true,
+      "durationMs": 1492,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "overflow",
+          "selector": "#wide",
+          "text": "width:1600px"
+        },
+        "matched": {
+          "checkId": "route-1-1-mobile-overflow",
+          "kind": "overflow",
+          "selector": "#wide",
+          "detail": "div#wide.wide 右侧超出 1247px（视口 390px），相关声明 width:1600px;",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/overflow-mobile",
+            "line": 11,
+            "column": 7,
+            "excerpt": ".wide{width:1600px;height:10px;background:#fca5a5}"
+          }
+        },
+        "checks": {
+          "failed": 1,
+          "source": 1,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 440,
+        "report": "overflow-mobile/localization.json",
+        "markdown": "overflow-mobile/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "overflow-mobile/report.json",
+      "markdown": "overflow-mobile/report.md",
+      "auto": {
+        "id": "overflow-mobile",
+        "title": "移动端出现水平溢出",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug",
+          "environment"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-mobile-overflow",
+          "route-1-1-mobile-point-1-overflow-mobile-menu-toggle",
+          "route-1-1-mobile-point-3-overflow-mobile-quota"
+        ],
+        "complete": true,
+        "durationMs": 8985,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/overflow-mobile/report.json",
+        "markdown": "auto/overflow-mobile/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/overflow-mobile",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/overflow-mobile/exploration.json"
+      }
+    },
+    {
+      "id": "broken-link",
+      "title": "详情链接指向不存在的页面",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 7,
+      "bugChecks": [
+        "route-1-1-desktop-structure",
+        "route-1-1-desktop-point-1-truth-broken-link"
+      ],
+      "complete": true,
+      "durationMs": 3184,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "attribute",
+          "selector": "#details-link",
+          "text": "href=\"gone\""
+        },
+        "matched": {
+          "checkId": "route-1-1-desktop-structure",
+          "kind": "attribute",
+          "selector": "#details-link",
+          "detail": "#details-link 的链接 「/details」 → 「/gone」",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/broken-link",
+            "line": 14,
+            "column": 161,
+            "excerpt": "…个任务</p><a id=\"details-link\" class=\"cta\" href=\"gone\">查看详情</a></section>"
+          }
+        },
+        "checks": {
+          "failed": 2,
+          "source": 2,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 1078,
+        "report": "broken-link/localization.json",
+        "markdown": "broken-link/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "broken-link/report.json",
+      "markdown": "broken-link/report.md",
+      "auto": {
+        "id": "broken-link",
+        "title": "详情链接指向不存在的页面",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-desktop-structure",
+          "route-1-1-desktop-point-2-broken-link-details-link"
+        ],
+        "complete": true,
+        "durationMs": 8894,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/broken-link/report.json",
+        "markdown": "auto/broken-link/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/broken-link",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/broken-link/exploration.json"
+      }
+    },
+    {
+      "id": "tablet-shift",
+      "title": "平板视口的内容布局偏移",
+      "targetBug": true,
+      "predictedBug": true,
+      "expectedVerdict": "bug",
+      "expectedGate": "failed",
+      "actualGate": "failed",
+      "verdicts": [
+        "match",
+        "bug"
+      ],
+      "checkCount": 6,
+      "bugChecks": [
+        "route-1-1-tablet-visual"
+      ],
+      "complete": true,
+      "durationMs": 1371,
+      "localization": {
+        "status": "completed",
+        "level": "source",
+        "expected": {
+          "kind": "style",
+          "selector": "main",
+          "text": "translateY(120px)"
+        },
+        "matched": {
+          "checkId": "route-1-1-tablet-visual",
+          "kind": "style",
+          "selector": "body > main:nth-of-type(1)",
+          "detail": "main：transform: none → matrix(1, 0, 0, 1, 0, 120)",
+          "source": {
+            "url": "http://127.0.0.1:60701/target/tablet-shift",
+            "line": 11,
+            "column": 6,
+            "excerpt": "main{transform:translateY(120px)}"
+          }
+        },
+        "checks": {
+          "failed": 1,
+          "source": 1,
+          "element": 0,
+          "none": 0,
+          "errors": 0
+        },
+        "durationMs": 470,
+        "report": "tablet-shift/localization.json",
+        "markdown": "tablet-shift/localization.md"
+      },
+      "passed": true,
+      "reasons": [],
+      "report": "tablet-shift/report.json",
+      "markdown": "tablet-shift/report.md",
+      "auto": {
+        "id": "tablet-shift",
+        "title": "平板视口的内容布局偏移",
+        "targetBug": true,
+        "predictedBug": true,
+        "expectedVerdict": "bug",
+        "expectedGate": "failed",
+        "actualGate": "failed",
+        "verdicts": [
+          "match",
+          "bug"
+        ],
+        "checkCount": 9,
+        "bugChecks": [
+          "route-1-1-tablet-visual"
+        ],
+        "complete": true,
+        "durationMs": 8696,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/tablet-shift/report.json",
+        "markdown": "auto/tablet-shift/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/tablet-shift",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/tablet-shift/exploration.json"
+      }
+    },
+    {
+      "id": "console-warning",
+      "title": "目标只输出控制台警告",
+      "targetBug": false,
+      "predictedBug": false,
+      "expectedVerdict": "match",
+      "expectedGate": "passed",
+      "actualGate": "passed",
+      "verdicts": [
+        "match"
+      ],
+      "checkCount": 6,
+      "bugChecks": [],
+      "complete": true,
+      "durationMs": 1457,
+      "localization": null,
+      "passed": true,
+      "reasons": [],
+      "report": "console-warning/report.json",
+      "markdown": "console-warning/report.md",
+      "auto": {
+        "id": "console-warning",
+        "title": "目标只输出控制台警告",
+        "targetBug": false,
+        "predictedBug": false,
+        "expectedVerdict": "match",
+        "expectedGate": "passed",
+        "actualGate": "passed",
+        "verdicts": [
+          "match"
+        ],
+        "checkCount": 9,
+        "bugChecks": [],
+        "complete": true,
+        "durationMs": 8904,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/console-warning/report.json",
+        "markdown": "auto/console-warning/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/console-warning",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/console-warning/exploration.json"
+      }
+    },
+    {
+      "id": "identical",
+      "title": "稳定一致页面",
+      "targetBug": false,
+      "predictedBug": false,
+      "expectedVerdict": "match",
+      "expectedGate": "passed",
+      "actualGate": "passed",
+      "verdicts": [
+        "match"
+      ],
+      "checkCount": 6,
+      "bugChecks": [],
+      "complete": true,
+      "durationMs": 1444,
+      "localization": null,
+      "passed": true,
+      "reasons": [],
+      "report": "identical/report.json",
+      "markdown": "identical/report.md",
+      "auto": {
+        "id": "identical",
+        "title": "稳定一致页面",
+        "targetBug": false,
+        "predictedBug": false,
+        "expectedVerdict": "match",
+        "expectedGate": "passed",
+        "actualGate": "passed",
+        "verdicts": [
+          "match"
+        ],
+        "checkCount": 9,
+        "bugChecks": [],
+        "complete": true,
+        "durationMs": 8952,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/identical/report.json",
+        "markdown": "auto/identical/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/identical",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/identical/exploration.json"
+      }
+    },
+    {
+      "id": "baseline-error",
+      "title": "基线与目标共有基线脚本异常",
+      "targetBug": false,
+      "predictedBug": false,
+      "expectedVerdict": "baseline_failed",
+      "expectedGate": "not_passed",
+      "actualGate": "blocked",
+      "verdicts": [
+        "match",
+        "baseline_failed"
+      ],
+      "checkCount": 6,
+      "bugChecks": [],
+      "complete": true,
+      "durationMs": 1435,
+      "localization": null,
+      "passed": true,
+      "reasons": [],
+      "report": "baseline-error/report.json",
+      "markdown": "baseline-error/report.md",
+      "auto": {
+        "id": "baseline-error",
+        "title": "基线与目标共有基线脚本异常",
+        "targetBug": false,
+        "predictedBug": false,
+        "expectedVerdict": "baseline_failed",
+        "expectedGate": "not_passed",
+        "actualGate": "blocked",
+        "verdicts": [
+          "match",
+          "baseline_failed"
+        ],
+        "checkCount": 6,
+        "bugChecks": [],
+        "complete": true,
+        "durationMs": 1804,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/baseline-error/report.json",
+        "markdown": "auto/baseline-error/report.md",
+        "points": 0,
+        "exploration": {
+          "candidates": 0,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/baseline-error",
+              "status": "baseline-unhealthy"
+            }
+          ]
+        },
+        "explorationReport": "auto/baseline-error/exploration.json"
+      }
+    },
+    {
+      "id": "masked-noise",
+      "title": "动态刷新区按已声明规则遮罩",
+      "targetBug": false,
+      "predictedBug": false,
+      "expectedVerdict": "match",
+      "expectedGate": "passed",
+      "actualGate": "passed",
+      "verdicts": [
+        "match"
+      ],
+      "checkCount": 6,
+      "bugChecks": [],
+      "complete": true,
+      "durationMs": 1484,
+      "localization": null,
+      "passed": true,
+      "reasons": [],
+      "report": "masked-noise/report.json",
+      "markdown": "masked-noise/report.md",
+      "auto": {
+        "id": "masked-noise",
+        "title": "动态刷新区按已声明规则遮罩",
+        "targetBug": false,
+        "predictedBug": false,
+        "expectedVerdict": "match",
+        "expectedGate": "passed",
+        "actualGate": "passed",
+        "verdicts": [
+          "match"
+        ],
+        "checkCount": 9,
+        "bugChecks": [],
+        "complete": true,
+        "durationMs": 9035,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/masked-noise/report.json",
+        "markdown": "auto/masked-noise/report.md",
+        "points": 3,
+        "exploration": {
+          "candidates": 3,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/masked-noise",
+              "status": "explored"
+            }
+          ]
+        },
+        "explorationReport": "auto/masked-noise/exploration.json"
+      }
+    },
+    {
+      "id": "blocked-write",
+      "title": "依赖写请求的流程被只读策略阻断",
+      "targetBug": false,
+      "predictedBug": false,
+      "expectedVerdict": "environment",
+      "expectedGate": "not_passed",
+      "actualGate": "blocked",
+      "verdicts": [
+        "match",
+        "environment",
+        "baseline_failed"
+      ],
+      "checkCount": 7,
+      "bugChecks": [],
+      "complete": true,
+      "durationMs": 1427,
+      "localization": null,
+      "passed": true,
+      "reasons": [],
+      "report": "blocked-write/report.json",
+      "markdown": "blocked-write/report.md",
+      "auto": {
+        "id": "blocked-write",
+        "title": "依赖写请求的流程被只读策略阻断",
+        "targetBug": false,
+        "predictedBug": false,
+        "expectedVerdict": "environment",
+        "expectedGate": "not_passed",
+        "actualGate": "blocked",
+        "verdicts": [
+          "match",
+          "environment",
+          "baseline_failed"
+        ],
+        "checkCount": 7,
+        "bugChecks": [],
+        "complete": true,
+        "durationMs": 1822,
+        "localization": null,
+        "passed": true,
+        "reasons": [],
+        "report": "auto/blocked-write/report.json",
+        "markdown": "auto/blocked-write/report.md",
+        "points": 0,
+        "exploration": {
+          "candidates": 0,
+          "skipped": {},
+          "routes": [
+            {
+              "route": "/blocked-write",
+              "status": "baseline-unhealthy"
+            }
+          ]
+        },
+        "explorationReport": "auto/blocked-write/exploration.json"
+      }
+    }
+  ]
+}

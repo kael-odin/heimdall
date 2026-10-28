@@ -279,7 +279,9 @@ test('opening managed readers leaves all legacy mutations, triage, path artifact
     () => store.acceptanceArtifact(runId, 'report.json', { root: f.root }),
     () => store.acceptanceArtifact(runId, 'report.md', { root: f.root }),
     () => store.saveAcceptanceTriage(runId, { status: 'completed', items: [] }, { root: f.root }),
-    () => store.readAcceptanceTriage(runId, { root: f.root })]) legacyRejected(action);
+    () => store.readAcceptanceTriage(runId, { root: f.root }),
+    () => store.saveAcceptanceLocalization(runId, { status: 'completed', checks: [] }, { root: f.root }),
+    () => store.readAcceptanceLocalization(runId, { root: f.root })]) legacyRejected(action);
   assert.equal(store.recoverAcceptanceRuns({ root: f.root }), 0);
   assert.deepEqual(tree(f.root), before); assert.equal(f.requests.length, 2);
 });
@@ -390,9 +392,9 @@ test('real HTTP managed consumers expose safe DTOs and exact bytes while triage 
       const detail = await response.json(); publicManagedDto(detail, ownerNonce);
       assert.equal(detail.status, status);
     }
-    for (const id of statuses.keys()) for (const method of ['GET', 'POST']) {
-      const response = await get('/api/acceptance/runs/' + id + '/triage', { method });
-      assert.equal(response.status, 503); assert.equal((await response.json()).code, 'MANAGED_EXECUTION_REQUIRED');
+    for (const id of statuses.keys()) for (const sidecar of ['triage', 'localization']) for (const method of ['GET', 'POST']) {
+      const response = await get('/api/acceptance/runs/' + id + '/' + sidecar, { method });
+      assert.equal(response.status, 503, sidecar); assert.equal((await response.json()).code, 'MANAGED_EXECUTION_REQUIRED');
     }
     assert.equal((await get('/api/acceptance/runs/' + running.envelope.runId + '/report')).status, 404);
     const response = await get('/api/acceptance/runs/' + runId + '/report');

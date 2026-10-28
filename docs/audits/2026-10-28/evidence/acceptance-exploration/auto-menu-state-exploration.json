@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "kind": "acceptance-exploration",
+  "generatedAt": "2026-10-28T08:22:22.007Z",
+  "baselineUrl": "http://127.0.0.1:60701/baseline",
+  "routes": [
+    {
+      "route": "/menu-state",
+      "status": "explored",
+      "candidates": [
+        {
+          "point": {
+            "id": "menu-state-menu-toggle",
+            "title": "点击「菜单」",
+            "route": "/menu-state",
+            "severity": "high",
+            "steps": [
+              {
+                "action": "click",
+                "selector": "#menu-toggle"
+              }
+            ],
+            "assertions": [
+              {
+                "kind": "attribute",
+                "selector": "#menu-toggle",
+                "attribute": "aria-expanded",
+                "equals": "true"
+              },
+              {
+                "kind": "visible",
+                "selector": "#menu"
+              }
+            ]
+          },
+          "control": "#menu-toggle",
+          "observed": {
+            "beforePath": "/menu-state",
+            "afterPath": "/menu-state",
+            "attributes": [
+              "#menu-toggle aria-expanded=true"
+            ]
+          }
+        },
+        {
+          "point": {
+            "id": "menu-state-details-link",
+            "title": "点击「查看详情」",
+            "route": "/menu-state",
+            "severity": "high",
+            "steps": [
+              {
+                "action": "click",
+                "selector": "#details-link"
+              }
+            ],
+            "assertions": [
+              {
+                "kind": "url",
+                "contains": "/details"
+              }
+            ]
+          },
+          "control": "#details-link",
+          "observed": {
+            "beforePath": "/menu-state",
+            "afterPath": "/details",
+            "attributes": []
+          }
+        },
+        {
+          "point": {
+            "id": "menu-state-quota",
+            "title": "页面文案「剩余配额：128 个任务」",
+            "route": "/menu-state",
+            "severity": "medium",
+            "assertions": [
+              {
+                "kind": "visible",
+                "selector": "#quota"
+              },
+              {
+                "kind": "text",
+                "selector": "#quota",
+                "equals": "剩余配额：128 个任务"
+              }
+            ]
+          },
+          "control": "#quota",
+          "observed": {
+            "text": "剩余配额：128 个任务"
+          }
+        }
+      ],
+      "skipped": {},
+      "examples": []
+    }
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "plan": null,
+  "scope": "候选验收点只从已批准的基线推导：在全新的只读上下文里逐个操作基线上带稳定选择器的可见控件，把操作前后执行器能观察到的变化（地址、可见性、文本、状态属性）写成断言，只保留操作前不成立、操作后成立的断言，再按执行器的方式在计划的每个视口上重放，全部成立才保留。结构检查不比较的短文本另组成每条路由一个内容验收点。探索只访问基线，不访问目标，不改变执行器与核验规则；只覆盖单步点击和填写，跳过破坏性名称、写请求、外链、下载与新窗口。基线行为就是验收预期，并入计划前请确认这些行为确实是需求。",
+  "summary": {
+    "candidates": 3,
+    "interactions": 2,
+    "content": 1,
+    "routesExplored": 1,
+    "routesFailed": 0,
+    "skipped": {},
+    "durationMs": 2805
+  },
+  "points": [
+    {
+      "id": "menu-state-menu-toggle",
+      "title": "点击「菜单」",
+      "route": "/menu-state",
+      "severity": "high",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "#menu-toggle"
+        }
+      ],
+      "assertions": [
+        {
+          "kind": "attribute",
+          "selector": "#menu-toggle",
+          "attribute": "aria-expanded",
+          "equals": "true"
+        },
+        {
+          "kind": "visible",
+          "selector": "#menu"
+        }
+      ]
+    },
+    {
+      "id": "menu-state-details-link",
+      "title": "点击「查看详情」",
+      "route": "/menu-state",
+      "severity": "high",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "#details-link"
+        }
+      ],
+      "assertions": [
+        {
+          "kind": "url",
+          "contains": "/details"
+        }
+      ]
+    },
+    {
+      "id": "menu-state-quota",
+      "title": "页面文案「剩余配额：128 个任务」",
+      "route": "/menu-state",
+      "severity": "medium",
+      "assertions": [
+        {
+          "kind": "visible",
+          "selector": "#quota"
+        },
+        {
+          "kind": "text",
+          "selector": "#quota",
+          "equals": "剩余配额：128 个任务"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

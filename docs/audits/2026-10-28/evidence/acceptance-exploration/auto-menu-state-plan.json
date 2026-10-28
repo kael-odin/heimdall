@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "name": "固定注入基准 · 菜单展开但 aria-expanded 未更新 · 自动生成验收点",
+  "mode": "mirror",
+  "baselineUrl": "http://127.0.0.1:60701/baseline",
+  "targetUrl": "http://127.0.0.1:60701/target",
+  "routes": [
+    "/menu-state"
+  ],
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "points": [
+    {
+      "id": "menu-state-menu-toggle",
+      "title": "点击「菜单」",
+      "route": "/menu-state",
+      "severity": "high",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "#menu-toggle"
+        }
+      ],
+      "assertions": [
+        {
+          "kind": "attribute",
+          "selector": "#menu-toggle",
+          "attribute": "aria-expanded",
+          "equals": "true"
+        },
+        {
+          "kind": "visible",
+          "selector": "#menu"
+        }
+      ]
+    },
+    {
+      "id": "menu-state-details-link",
+      "title": "点击「查看详情」",
+      "route": "/menu-state",
+      "severity": "high",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "#details-link"
+        }
+      ],
+      "assertions": [
+        {
+          "kind": "url",
+          "contains": "/details"
+        }
+      ]
+    },
+    {
+      "id": "menu-state-quota",
+      "title": "页面文案「剩余配额：128 个任务」",
+      "route": "/menu-state",
+      "severity": "medium",
+      "assertions": [
+        {
+          "kind": "visible",
+          "selector": "#quota"
+        },
+        {
+          "kind": "text",
+          "selector": "#quota",
+          "equals": "剩余配额：128 个任务"
+        }
+      ]
+    }
+  ],
+  "thresholds": {
+    "visual": 0.97
+  },
+  "timeoutMs": 2000,
+  "settleMs": 180,
+  "normalization": {
+    "maskSelectors": []
+  }
+}

@@ -1,0 +1,201 @@
+{
+  "scope": "离线复现：固定注入缺陷夹具，仅证明本基准中声明的案例与观察窗口；不代表真实站点业务验收或通用检出率。",
+  "cases": [
+    {
+      "id": "visual-shift",
+      "title": "目标主要内容布局偏移",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "mobile-menu",
+      "title": "移动端菜单按钮缺失",
+      "targetBug": true,
+      "viewport": "mobile",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "menu-state",
+      "title": "菜单展开但 aria-expanded 未更新",
+      "targetBug": true,
+      "viewport": "mobile",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "missing-field",
+      "title": "套餐配额文字字段缺失",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "wrong-link",
+      "title": "查看详情跳向错误页面",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "runtime-error",
+      "title": "目标脚本抛出异常",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "missing-resource",
+      "title": "目标静态资源返回 404",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "title-change",
+      "title": "页面标题与基线不一致",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "heading-change",
+      "title": "主标题文案被改写",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "aria-label-change",
+      "title": "菜单按钮的无障碍名称改变",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "overflow-mobile",
+      "title": "移动端出现水平溢出",
+      "targetBug": true,
+      "viewport": "mobile",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "broken-link",
+      "title": "详情链接指向不存在的页面",
+      "targetBug": true,
+      "viewport": "desktop",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "tablet-shift",
+      "title": "平板视口的内容布局偏移",
+      "targetBug": true,
+      "viewport": "tablet",
+      "expectedVerdict": "bug"
+    },
+    {
+      "id": "console-warning",
+      "title": "目标只输出控制台警告",
+      "targetBug": false,
+      "viewport": "desktop",
+      "expectedVerdict": "match",
+      "expectedGate": "passed"
+    },
+    {
+      "id": "identical",
+      "title": "稳定一致页面",
+      "targetBug": false,
+      "viewport": "desktop",
+      "expectedVerdict": "match",
+      "expectedGate": "passed"
+    },
+    {
+      "id": "baseline-error",
+      "title": "基线与目标共有基线脚本异常",
+      "targetBug": false,
+      "viewport": "desktop",
+      "expectedVerdict": "baseline_failed",
+      "expectedGate": "not_passed"
+    },
+    {
+      "id": "masked-noise",
+      "title": "动态刷新区按已声明规则遮罩",
+      "targetBug": false,
+      "viewport": "desktop",
+      "expectedVerdict": "match",
+      "expectedGate": "passed"
+    },
+    {
+      "id": "blocked-write",
+      "title": "依赖写请求的流程被只读策略阻断",
+      "targetBug": false,
+      "viewport": "desktop",
+      "expectedVerdict": "environment",
+      "expectedGate": "not_passed"
+    }
+  ],
+  "localization": {
+    "visual-shift": {
+      "kind": "style",
+      "selector": "main",
+      "text": "translateY(160px)"
+    },
+    "mobile-menu": {
+      "kind": "hidden",
+      "selector": "#menu-toggle",
+      "text": "#menu-toggle{display:none}"
+    },
+    "menu-state": {
+      "kind": "handler",
+      "selector": "#menu-toggle",
+      "text": "addEventListener('click'"
+    },
+    "missing-field": {
+      "kind": "missing",
+      "selector": "#quota",
+      "text": "class=\"metric\""
+    },
+    "wrong-link": {
+      "kind": "attribute",
+      "selector": "#details-link",
+      "text": "href=\"pricing\""
+    },
+    "runtime-error": {
+      "kind": "script-error",
+      "text": "throw new Error"
+    },
+    "missing-resource": {
+      "kind": "resource",
+      "text": "missing-widget.js"
+    },
+    "title-change": {
+      "kind": "text",
+      "selector": "title",
+      "text": "Heimdall 验收演示 · 新版"
+    },
+    "heading-change": {
+      "kind": "text",
+      "selector": "h1 #1",
+      "text": "团队项目总览"
+    },
+    "aria-label-change": {
+      "kind": "attribute",
+      "selector": "#menu-toggle",
+      "text": "aria-label=\"主菜单\""
+    },
+    "overflow-mobile": {
+      "kind": "overflow",
+      "selector": "#wide",
+      "text": "width:1600px"
+    },
+    "broken-link": {
+      "kind": "attribute",
+      "selector": "#details-link",
+      "text": "href=\"gone\""
+    },
+    "tablet-shift": {
+      "kind": "style",
+      "selector": "main",
+      "text": "translateY(120px)"
+    }
+  }
+}

@@ -14,7 +14,8 @@ test('managed console views retain lifecycle diagnostics without exposing stored
     assert.match(view.error, /现场已保留/); assert.equal(view.triageSupported, false);
     assert.deepEqual(view.provenance, { kind: 'managed-spec', projectId: 'ap-fixture', targetReleaseId: 'ar-target', sourceRunId: 'ac-source' });
     assert.doesNotMatch(JSON.stringify(view), /SECRET|PRIVATE|credentials|C:\\/);
-    assert.deepEqual(Object.keys(view).sort(), ['runId', 'status', 'gate', 'reasonCode', 'error', 'provenance', 'triageSupported', 'triageAvailable'].sort());
+    assert.equal(view.localizationAvailable, false);
+    assert.deepEqual(Object.keys(view).sort(), ['runId', 'status', 'gate', 'reasonCode', 'error', 'provenance', 'triageSupported', 'triageAvailable', 'localizationAvailable'].sort());
   }
 });
 

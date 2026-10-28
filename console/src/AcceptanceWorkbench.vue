@@ -8,6 +8,8 @@ import {
   DIMENSIONS, STATUS_LABELS, GATE_LABELS, VERDICT_LABELS, buildAcceptanceInput,
   filterAcceptanceChecks, acceptanceEvidenceEntries, acceptanceScore, acceptanceViewport,
   acceptanceSpecFingerprint, buildOpenApiPreviewInput, SPEC_CHECK_EXAMPLE,
+  acceptanceLocalizationResult, localizationWhere,
+  buildExplorationInput, mergeExploredPoints,
 } from './acceptance-workbench.js';
 
 defineEmits(['close']);
@@ -17,6 +19,10 @@ const form = reactive({ name: '', mode: 'mirror', baselineUrl: '', targetUrl: ''
 const previewLoading = ref(false);
 const previewResult = ref(null);
 const previewError = ref('');
+const explorationLoading = ref(false);
+const explorationNote = ref('');
+const explorationError = ref('');
+const EXPLORATION_STATUS = { explored: '已探索', 'navigation-failed': '打不开', 'baseline-unhealthy': '基线本身有脚本或资源错误', budget: '超出时间预算' };
 const approvalInvalidated = ref(false);
 const specOmissions = computed(() => {
   try { const values = JSON.parse(form.specOmissions); return Array.isArray(values) ? values : []; } catch { return []; }
@@ -65,6 +71,13 @@ const triageLoading = ref(false);
 const triageError = ref('');
 const triageEligible = computed(() => manifest.value?.triageSupported !== false
   && (report.value?.checks.some(check => check.status !== 'passed') ?? false));
+const localization = ref(null);
+const localizationLoading = ref(false);
+const localizationError = ref('');
+// Localization re-renders both sides, so it needs a browser run with a reliable failure; managed (fixed-baseline) runs are excluded.
+const localizationEligible = computed(() => manifest.value?.triageSupported !== false && !manifest.value?.provenance
+  && !['spec', 'browser-fixed'].includes(report.value?.mode)
+  && (report.value?.checks.some(check => check.verdict === 'bug' && check.status === 'failed') ?? false));
 const filters = reactive({ dimension: 'all', verdict: 'attention', query: '' });
 const evidence = reactive({});
 const resultsElement = ref(null);
@@ -78,12 +91,41 @@ function insertPointExample() {
     assertions: [{ kind: 'attribute', selector: 'button[aria-label="菜单"]', attribute: 'aria-expanded', equals: 'true' }],
   }], null, 2);
 }
+
+/** Proposes points from the approved baseline; nothing is reserved or run until the user reviews the JSON and starts acceptance. */
+async function exploreAcceptancePoints() {
+  if (explorationLoading.value || stopped) return;
+  explorationError.value = '';
+  explorationNote.value = '';
+  let input;
+  try { input = buildExplorationInput(form); } catch (error) { explorationError.value = error.message; return; }
+  explorationController?.abort();
+  const controller = new AbortController();
+  explorationController = controller;
+  explorationLoading.value = true;
+  try {
+    const result = await request('', { method: 'POST', body: input, signal: controller.signal, basePath: '/api/acceptance/explore' });
+    if (stopped || controller.signal.aborted) return;
+    if (!result || !Array.isArray(result.points) || !result.summary) throw new Error('探索结果格式无效，请更新引擎后重试。');
+    const merged = mergeExploredPoints(form.points, result.points);
+    form.points = merged.points.length ? JSON.stringify(merged.points, null, 2) : '';
+    const failed = (result.routes ?? []).filter(entry => entry.status !== 'explored');
+    explorationNote.value = `基线生成 ${result.points.length} 个候选验收点，新增 ${merged.added} 个；请审阅后再运行验收。`
+      + (failed.length ? ` ${failed.length} 条路由未能探索：${failed.map(entry => `${entry.route}（${EXPLORATION_STATUS[entry.status] ?? entry.status}）`).join('、')}。` : '');
+    if (!result.points.length) explorationError.value = failed.length ? '所有路由都未能探索，请检查基线地址是否可访问。' : '没有发现可稳定断言的交互或文案。';
+  } catch (error) {
+    if (!stopped && !controller.signal.aborted) explorationError.value = error.message;
+  } finally {
+    if (!stopped && !controller.signal.aborted) explorationLoading.value = false;
+  }
+}
 const currentRunning = computed(() => manifest.value?.status === 'running');
 const runningCount = computed(() => runs.value.filter(run => run.status === 'running').length);
 let stopped = false;
 let listTimer, runTimer;
-let listController, runController, createController, downloadController, triageController, previewController;
+let listController, runController, createController, downloadController, triageController, localizationController, previewController, explorationController;
 let triageRestoreAttempted = false;
+let localizationRestoreAttempted = false;
 let listEpoch = 0;
 let runEpoch = 0;
 const evidenceControllers = new Set();
@@ -220,7 +262,9 @@ function selectRun(id) {
   runController?.abort();
   downloadController?.abort();
   triageController?.abort();
+  localizationController?.abort();
   previewController?.abort();
+  explorationController?.abort();
   clearEvidence();
   runEpoch++;
   selectedId.value = id;
@@ -233,6 +277,10 @@ function selectRun(id) {
   triageError.value = '';
   triageLoading.value = false;
   triageRestoreAttempted = false;
+  localization.value = null;
+  localizationError.value = '';
+  localizationLoading.value = false;
+  localizationRestoreAttempted = false;
   filters.dimension = 'all';
   filters.verdict = 'attention';
   filters.query = '';
@@ -282,6 +330,10 @@ async function loadSelected(id = selectedId.value, epoch = runEpoch) {
     if (data.triageAvailable === true && triageEligible.value && !triageRestoreAttempted && !triageLoading.value) {
       triageRestoreAttempted = true;
       loadTriage('GET', id, epoch);
+    }
+    if (data.localizationAvailable === true && localizationEligible.value && !localizationRestoreAttempted && !localizationLoading.value) {
+      localizationRestoreAttempted = true;
+      loadLocalization('GET', id, epoch);
     }
   } catch (error) {
     if (!signal.aborted && !stopped && epoch === runEpoch) {
@@ -383,6 +435,30 @@ const triageCheckTitle = checkId => {
   return check ? `${check.title} · ${check.route} · ${acceptanceViewport(check.viewport)}` : checkId;
 };
 
+async function loadLocalization(method = 'POST', id = selectedId.value, epoch = runEpoch) {
+  if (!localizationEligible.value || localizationLoading.value || stopped) return;
+  localizationController?.abort();
+  const controller = new AbortController();
+  localizationController = controller;
+  localizationLoading.value = true;
+  localizationError.value = '';
+  try {
+    const result = await request(`/${encodeURIComponent(id)}/localization`, {
+      method, signal: controller.signal, ...(method === 'POST' ? { body: {} } : {}),
+    });
+    if (stopped || controller.signal.aborted || epoch !== runEpoch || id !== selectedId.value) return;
+    localization.value = acceptanceLocalizationResult(result);
+    if (manifest.value && result.status === 'completed') manifest.value.localizationAvailable = true;
+  } catch (error) {
+    if (!stopped && !controller.signal.aborted && epoch === runEpoch && id === selectedId.value) localizationError.value = error.message;
+  } finally {
+    if (!stopped && !controller.signal.aborted && epoch === runEpoch && id === selectedId.value) localizationLoading.value = false;
+  }
+}
+
+const localizationCheckTitle = checkId => triageCheckTitle(checkId);
+const whereText = localizationWhere;
+
 async function downloadReport(format) {
   if (!report.value || downloading.value) return;
   const id = selectedId.value;
@@ -422,7 +498,9 @@ onBeforeUnmount(() => {
   createController?.abort();
   downloadController?.abort();
   triageController?.abort();
+  localizationController?.abort();
   previewController?.abort();
+  explorationController?.abort();
   clearEvidence();
 });
 </script>
@@ -452,6 +530,9 @@ onBeforeUnmount(() => {
               <label>验收点 JSON<textarea v-model="form.points" name="acceptance-points" rows="5" placeholder='[]' spellcheck="false" aria-describedby="aw-points-note"></textarea></label>
               <p id="aw-points-note" class="aw-hint">填入验收点对象数组，支持可见、隐藏、文本、属性与 URL 断言。空白时执行页面默认检查。</p>
               <button type="button" class="aw-text-button aw-example" :disabled="!!form.points.trim()" @click="insertPointExample">填入菜单展开示例</button>
+              <button type="button" class="aw-text-button aw-example" data-testid="acceptance-explore" :disabled="explorationLoading" @click="exploreAcceptancePoints">{{ explorationLoading ? '正在探索基线…' : '从基线生成候选验收点' }}</button>
+              <p v-if="explorationNote" class="aw-hint" role="status">{{ explorationNote }}</p>
+              <p v-if="explorationError" class="aw-error" role="alert">{{ explorationError }}</p>
               <label>忽略区域 JSON<textarea v-model="form.maskSelectors" name="acceptance-masks" rows="2" placeholder='[".timestamp", "[data-dynamic]"]' spellcheck="false"></textarea></label>
               <p class="aw-hint">CSS 选择器数组，用于截图中的动态时间、广告等区域。</p>
             </details>
@@ -535,6 +616,18 @@ onBeforeUnmount(() => {
                   <p class="aw-triage-meta">{{ triage.model ? `模型 ${triage.model} · ` : '' }}{{ dateLabel(triage.generatedAt) }}</p>
                   <ol v-if="triage.items.length" class="aw-triage-items"><li v-for="(item, index) in triage.items" :key="`${item.checkId}:${index}`"><h4>{{ triageCheckTitle(item.checkId) }}</h4><p>{{ item.explanation }}</p><dl><div><dt>修复建议</dt><dd>{{ item.suggestedFix }}</dd></div><div v-if="item.verification?.length"><dt>复验步骤</dt><dd><ol><li v-for="(step, stepIndex) in item.verification" :key="stepIndex">{{ step }}</li></ol></dd></div></dl></li></ol>
                   <p class="aw-hint">{{ triage.disclaimer || 'AI 解读仅供辅助排查；验收结论以浏览器采集证据与检查结果为准。' }}</p>
+                </template>
+              </section>
+              <section v-if="localizationEligible" class="aw-localization" aria-labelledby="aw-localization-title" :aria-busy="localizationLoading">
+                <div class="aw-localization-head"><h3 id="aw-localization-title">元素定位</h3><button type="button" class="aw-button" :disabled="localizationLoading" data-testid="acceptance-localization" @click="loadLocalization('POST')"><Icon name="bolt" decorative />{{ localizationLoading ? '正在定位…' : localization?.status === 'completed' ? '重新定位' : '定位到源码' }}</button></div>
+                <p class="aw-hint">将失败检查重新打开并对比元素，定位到样式表、HTML 和脚本行。</p>
+                <p v-if="localizationLoading" class="aw-hint" role="status">正在重新渲染双方页面，解析样式、标签与脚本位置…</p>
+                <div v-if="localizationError || localization?.status === 'unsupported'" class="aw-localization-error" role="alert"><p :class="localizationError ? 'aw-error' : 'aw-hint'">{{ localizationError || localization.summary || '该模式暂不支持元素定位。' }}</p></div>
+                <template v-if="localization?.status === 'completed'">
+                  <p class="aw-localization-summary">{{ localization.summary }}</p>
+                  <p class="aw-localization-meta">{{ dateLabel(localization.generatedAt) }}</p>
+                  <ol v-if="localization.checks?.length" class="aw-localization-items"><li v-for="check in localization.checks" :key="check.checkId"><h4>{{ localizationCheckTitle(check.checkId) }}</h4><p v-if="check.note" class="aw-hint">{{ check.note }}</p><p v-else-if="check.error" class="aw-error">{{ check.error }}</p><ul v-if="check.findings?.length" class="aw-findings"><li v-for="(finding, index) in check.findings" :key="`${check.checkId}:${index}`"><span>{{ finding.detail }}</span><dl v-if="finding.source || finding.baselineSource"><div v-if="finding.source"><dt>目标</dt><dd><code>{{ whereText(finding.source) }}</code><pre v-if="finding.source.excerpt">{{ finding.source.excerpt }}</pre></dd></div><div v-if="finding.baselineSource"><dt>基线</dt><dd><code>{{ whereText(finding.baselineSource) }}</code><pre v-if="finding.baselineSource.excerpt">{{ finding.baselineSource.excerpt }}</pre></dd></div></dl></li></ul><p v-else-if="check.status === 'completed' && !check.note && !check.error" class="aw-hint">重新渲染未复现该失败，没有可定位的差异。</p></li></ol>
+                  <p class="aw-hint">{{ localization.scope || '定位靠只读重新渲染完成，源码位置指浏览器实际收到的文件。' }}</p>
                 </template>
               </section>
               <section class="aw-checks" aria-labelledby="aw-checks-title">
@@ -700,6 +793,22 @@ onBeforeUnmount(() => {
 .aw-triage-items dl > div { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 10px; margin-top: 7px; }
 .aw-triage-items dt { color: var(--text-faint); font-size: 11px; }
 .aw-triage-items dd ol { padding-left: 18px; }
+.aw-localization { margin-top: 20px; padding: 16px 17px; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-2); }
+.aw-localization-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.aw-localization h3 { font-size: 13px; font-weight: 600; }
+.aw-localization-error .aw-error { margin-top: 9px; }
+.aw-localization-summary { font-size: 12px; color: var(--text); line-height: 1.8; overflow-wrap: anywhere; margin-top: 16px; }
+.aw-localization-meta { font-size: 10px; color: var(--text-faint); margin-top: 6px; }
+.aw-localization-items { list-style: none; padding: 0; margin: 15px 0 0; }
+.aw-localization-items > li { border-top: 1px solid var(--border); padding: 13px 0; }
+.aw-localization-items h4 { font-size: 12px; font-weight: 550; overflow-wrap: anywhere; }
+.aw-localization-items > li > p { font-size: 11px; margin-top: 7px; }
+.aw-findings { list-style: none; padding: 0; margin: 8px 0 0; }
+.aw-findings > li { font-size: 11px; color: var(--text-dim); line-height: 1.8; padding: 7px 0 7px 12px; border-left: 2px solid var(--border-strong); margin-top: 6px; overflow-wrap: anywhere; }
+.aw-findings dl > div { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; margin-top: 5px; }
+.aw-findings dt { color: var(--text-faint); }
+.aw-findings code { font-family: var(--font-mono); font-size: 11px; color: var(--text); overflow-wrap: anywhere; }
+.aw-findings pre { margin: 4px 0 0; padding: 6px 8px; font-family: var(--font-mono); font-size: 10.5px; line-height: 1.6; color: var(--text-dim); background: var(--bg); border: 1px solid var(--border); border-radius: var(--r); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 7.5em; overflow: auto; }
 .aw-checks { margin-top: 22px; }
 .aw-checks-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .aw-checks h3 { font-size: 14px; font-weight: 600; }

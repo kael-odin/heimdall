@@ -103,6 +103,8 @@ export function readAcceptanceDisplayRun(runId, { root = ACCEPTANCE_ROOT, manage
   if (!existsSync(root)) return null;
   return displayHeads(root, managedRead, scope => captureAcceptanceRunHead(runId, { scope })?.manifest ?? null);
 }
+// Post-run sidecars (AI triage, element localization) may be attached to a terminal run; nothing else may change.
+const SIDECAR_FLAGS = new Set(['triageAvailable', 'localizationAvailable']);
 export function updateAcceptanceRun(runId, patch, { root = ACCEPTANCE_ROOT } = {}) {
   rejectManagedAcceptanceFields(patch);
   const current = readLegacyAcceptanceRun(runId, { root });
@@ -110,7 +112,7 @@ export function updateAcceptanceRun(runId, patch, { root = ACCEPTANCE_ROOT } = {
   if (patch.progress && current.status !== 'running') throw new Error('acceptance run is no longer running');
   if (patch.status && current.status !== 'running' && patch.status !== current.status) throw new Error('terminal acceptance status cannot be overwritten');
   if (current.status !== 'running') for (const key of Object.keys(patch)) {
-    if (key !== 'triageAvailable' && JSON.stringify(patch[key]) !== JSON.stringify(current[key])) {
+    if (!SIDECAR_FLAGS.has(key) && JSON.stringify(patch[key]) !== JSON.stringify(current[key])) {
       throw new Error('terminal acceptance facts are immutable');
     }
   }
@@ -405,6 +407,20 @@ export function readAcceptanceTriage(runId, { root = ACCEPTANCE_ROOT } = {}) {
   const manifest = readLegacyAcceptanceRun(runId, { root });
   if (!manifest?.triageAvailable) return null;
   const file = join(acceptanceRunDir(runId, root), 'triage.json');
+  if (!existsSync(file)) return null;
+  return JSON.parse(readFileSync(file, 'utf8'));
+}
+export function saveAcceptanceLocalization(runId, localization, { root = ACCEPTANCE_ROOT } = {}) {
+  const manifest = readLegacyAcceptanceRun(runId, { root });
+  if (manifest?.status !== 'completed') throw new Error('acceptance report is not complete');
+  atomic(join(acceptanceRunDir(runId, root), 'localization.json'), localization);
+  updateAcceptanceRun(runId, { localizationAvailable: true }, { root });
+  return localization;
+}
+export function readAcceptanceLocalization(runId, { root = ACCEPTANCE_ROOT } = {}) {
+  const manifest = readLegacyAcceptanceRun(runId, { root });
+  if (!manifest?.localizationAvailable) return null;
+  const file = join(acceptanceRunDir(runId, root), 'localization.json');
   if (!existsSync(file)) return null;
   return JSON.parse(readFileSync(file, 'utf8'));
 }

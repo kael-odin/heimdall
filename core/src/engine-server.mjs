@@ -51,7 +51,7 @@ import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
 import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './acceptance/managed-run-schema.mjs';
 import { createLegacyAcceptanceReadScope } from './acceptance/managed-access.mjs';
 import { previewOpenApi } from './acceptance/openapi.mjs';
-import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, readAcceptanceDisplayRun, updateAcceptanceRun, acceptanceArtifact, readAcceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceSnapshots } from './acceptance/store.mjs';
+import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, readAcceptanceDisplayRun, updateAcceptanceRun, acceptanceArtifact, readAcceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceLocalization, saveAcceptanceLocalization, readAcceptanceSnapshots } from './acceptance/store.mjs';
 import { recoverOwnedAcceptanceRuns } from './acceptance/recovery.mjs';
 import { acceptanceRunView } from './acceptance/run-view.mjs';
 import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/comparison.mjs';
@@ -610,6 +610,8 @@ let runningUpgrade = null;
 let runningClone = null;
 let runningAcceptance = null;
 let runningAcceptanceTriage = null;
+let runningAcceptanceLocalization = null;
+let runningAcceptanceExploration = false;
 const acceptanceRuntime = createAcceptanceExecutionRuntime();
 let shuttingDown = false;
 
@@ -1380,6 +1382,22 @@ const handleRequest = async (req, res) => {
       } catch (error) { return json(res, 400, { error: String(error.message).slice(0, 500) }); }
     }, 4 * 1024 * 1024 + 16 * 1024);
   }
+  if (u.pathname === '/api/acceptance/explore') {
+    if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
+    // Reserve before the body is read so two uploads cannot both start a browser; the response always releases it.
+    if (runningAcceptanceExploration) return json(res, 409, { error: '正在探索另一个基线页面，请稍后重试。' });
+    runningAcceptanceExploration = true;
+    res.once('finish', () => { runningAcceptanceExploration = false; });
+    res.once('close', () => { runningAcceptanceExploration = false; });
+    return readJsonBody(req, res, async input => {
+      try {
+        assertUnmanagedAcceptanceInput(input);
+        const { exploreAcceptanceBaseline } = await import('./acceptance/explore.mjs');
+        const exploration = await exploreAcceptanceBaseline(input);
+        return json(res, 200, exploration);
+      } catch (error) { return json(res, 400, { error: String(error?.message ?? error).slice(0, 500) }); }
+    }, 256 * 1024);
+  }
   if (u.pathname === '/api/acceptance/runs') {
     if (req.method === 'GET') {
       try { return json(res, 200, { runs: listAcceptanceRuns() }); }
@@ -1473,6 +1491,24 @@ const handleRequest = async (req, res) => {
           saveAcceptanceTriage(runId, triage);
           return json(res, 200, triage);
         } finally { runningAcceptanceTriage = null; }
+      }
+      if (segments.length === 2 && kind === 'localization') {
+        if (req.method === 'GET') {
+          const saved = readAcceptanceLocalization(runId);
+          return saved ? json(res, 200, saved) : json(res, 404, { error: '尚未生成元素定位' });
+        }
+        if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
+        if (runningAcceptanceLocalization) return json(res, 409, { error: '正在为另一份验收报告生成元素定位，请稍后重试。' });
+        const reportFile = acceptanceArtifact(runId, 'report.json');
+        if (!reportFile) return json(res, 409, { error: '请等待验收完成后再生成元素定位。' });
+        runningAcceptanceLocalization = runId;
+        try {
+          // Re-renders both sides under the read-only profile; only the localization.json sidecar is added, the report and evidence stay as the run left them.
+          const { localizeAcceptanceRun } = await import('./acceptance/localize.mjs');
+          const localization = await localizeAcceptanceRun(dirname(reportFile));
+          saveAcceptanceLocalization(runId, localization);
+          return json(res, 200, localization);
+        } finally { runningAcceptanceLocalization = null; }
       }
       if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
       if (segments.length === 1) return json(res, 200, acceptanceRunView(manifest, { includePlan: true }));

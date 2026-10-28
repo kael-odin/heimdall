@@ -12,6 +12,13 @@ export const ACCEPTANCE_FIXTURE_CASES = Object.freeze([
   { id: 'wrong-link', title: '查看详情跳向错误页面', targetBug: true, viewport: 'desktop', expectedVerdict: 'bug' },
   { id: 'runtime-error', title: '目标脚本抛出异常', targetBug: true, viewport: 'desktop', expectedVerdict: 'bug' },
   { id: 'missing-resource', title: '目标静态资源返回 404', targetBug: true, viewport: 'desktop', expectedVerdict: 'bug' },
+  { id: 'title-change', title: '页面标题与基线不一致', targetBug: true, viewport: 'desktop', expectedVerdict: 'bug' },
+  { id: 'heading-change', title: '主标题文案被改写', targetBug: true, viewport: 'desktop', expectedVerdict: 'bug' },
+  { id: 'aria-label-change', title: '菜单按钮的无障碍名称改变', targetBug: true, viewport: 'desktop', expectedVerdict: 'bug' },
+  { id: 'overflow-mobile', title: '移动端出现水平溢出', targetBug: true, viewport: 'mobile', expectedVerdict: 'bug' },
+  { id: 'broken-link', title: '详情链接指向不存在的页面', targetBug: true, viewport: 'desktop', expectedVerdict: 'bug' },
+  { id: 'tablet-shift', title: '平板视口的内容布局偏移', targetBug: true, viewport: 'tablet', expectedVerdict: 'bug' },
+  { id: 'console-warning', title: '目标只输出控制台警告', targetBug: false, viewport: 'desktop', expectedVerdict: 'match', expectedGate: 'passed' },
   { id: 'identical', title: '稳定一致页面', targetBug: false, viewport: 'desktop', expectedVerdict: 'match', expectedGate: 'passed' },
   { id: 'baseline-error', title: '基线与目标共有基线脚本异常', targetBug: false, viewport: 'desktop', expectedVerdict: 'baseline_failed', expectedGate: 'not_passed' },
   { id: 'masked-noise', title: '动态刷新区按已声明规则遮罩', targetBug: false, viewport: 'desktop', expectedVerdict: 'match', expectedGate: 'passed' },
@@ -37,21 +44,28 @@ function htmlFor(side, caseId) {
   const shifted = target && caseId === 'visual-shift';
   const menuMissing = target && caseId === 'mobile-menu';
   const fieldMissing = target && caseId === 'missing-field';
-  const link = target && caseId === 'wrong-link' ? 'pricing' : 'details';
+  const link = target && caseId === 'wrong-link' ? 'pricing' : target && caseId === 'broken-link' ? 'gone' : 'details';
   const scriptError = (target && caseId === 'runtime-error') || caseId === 'baseline-error';
   const noise = caseId === 'masked-noise';
-  const extraCss = `${shifted ? 'main{transform:translateY(160px)}.panel{background:#8f2500;border-color:#6d1b00;color:#fff}' : ''}${menuMissing ? '@media(max-width:600px){#menu-toggle{display:none}}' : ''}`;
+  const titleChange = target && caseId === 'title-change';
+  const headingChange = target && caseId === 'heading-change';
+  const labelChange = target && caseId === 'aria-label-change';
+  const wide = target && caseId === 'overflow-mobile';
+  const tabletShift = target && caseId === 'tablet-shift';
+  const warning = target && caseId === 'console-warning';
+  const extraCss = `${shifted ? 'main{transform:translateY(160px)}.panel{background:#8f2500;border-color:#6d1b00;color:#fff}' : ''}${menuMissing ? '@media(max-width:600px){#menu-toggle{display:none}}' : ''}${tabletShift ? 'main{transform:translateY(120px)}' : ''}${wide ? '.wide{width:1600px;height:10px;background:#fca5a5}' : ''}`;
   const menuScript = `document.getElementById('menu-toggle').addEventListener('click',function(){const menu=document.getElementById('menu');menu.hidden=!menu.hidden;${target && caseId === 'menu-state' ? '' : "this.setAttribute('aria-expanded',String(!menu.hidden));"}});`;
   const errorScript = scriptError ? "setTimeout(()=>{throw new Error('fixture: approved runtime script failed')},20);" : '';
   const noiseScript = noise ? `let tick=${target ? 3000 : 1000};setInterval(()=>{const el=document.getElementById('dynamic-noise');el.textContent='同步批次 '+String(++tick);el.style.backgroundColor='hsl('+(tick%360)+',70%,85%)'},40);` : '';
   const blockedScript = caseId === 'blocked-write' ? "fetch('write-endpoint',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).catch(()=>{});" : '';
+  const warnScript = warning ? "console.warn('fixture: deprecated API called');" : '';
   const missingResource = target && caseId === 'missing-resource' ? '<script src="missing-widget.js"></script>' : '';
   const detail = caseId === 'details' ? '详情页已打开' : caseId === 'pricing' ? '价格页已打开' : '团队项目概览';
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>Heimdall 验收演示</title><style>${CSS}${extraCss}</style></head><body>
-<header><span class="brand">NORTHSTAR</span><button id="menu-toggle" type="button" aria-label="菜单" aria-expanded="false" aria-controls="menu">菜单</button></header>
-<main><h1>${escapeHtml(detail)}</h1><p class="subtitle">面向团队的开发交付状态</p><nav id="menu" class="menu" hidden><a href="details">项目详情</a> · <a href="pricing">套餐价格</a></nav>
-<section class="panel"><span class="badge">运行正常</span><div class="metric">128</div>${fieldMissing ? '' : '<p id="quota" class="quota">剩余配额：128 个任务</p>'}<a id="details-link" class="cta" href="${link}">查看详情</a>${noise ? '<div id="dynamic-noise" class="noise">正在同步</div>' : ''}</section>
-<footer>固定离线夹具 · 不包含真实客户数据</footer></main>${missingResource}<script>${menuScript}${errorScript}${noiseScript}${blockedScript}</script></body></html>`;
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>${titleChange ? 'Heimdall 验收演示 · 新版' : 'Heimdall 验收演示'}</title><style>${CSS}${extraCss}</style></head><body>
+<header><span class="brand">NORTHSTAR</span><button id="menu-toggle" type="button" aria-label="${labelChange ? '主菜单' : '菜单'}" aria-expanded="false" aria-controls="menu">菜单</button></header>
+<main><h1>${escapeHtml(headingChange ? '团队项目总览' : detail)}</h1><p class="subtitle">面向团队的开发交付状态</p><nav id="menu" class="menu" hidden><a href="details">项目详情</a> · <a href="pricing">套餐价格</a></nav>
+<section class="panel"><span class="badge">运行正常</span><div class="metric">128</div>${fieldMissing ? '' : '<p id="quota" class="quota">剩余配额：128 个任务</p>'}${wide ? '<div id="wide" class="wide"></div>' : ''}<a id="details-link" class="cta" href="${link}">查看详情</a>${noise ? '<div id="dynamic-noise" class="noise">正在同步</div>' : ''}</section>
+<footer>固定离线夹具 · 不包含真实客户数据</footer></main>${missingResource}<script>${menuScript}${errorScript}${noiseScript}${blockedScript}${warnScript}</script></body></html>`;
 }
 
 /** Start one loopback server with separate baseline and target entry paths. */

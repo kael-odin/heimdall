@@ -26,6 +26,7 @@
 
 2026-10-16 已实现[项目验收工作台](competition/acceptance-workbench.md)：独立 baseline / target 输入、Mirror / Regression 模式、375 / 768 / 1440 三视口、页面结构与运行健康检查、click / fill / press 与可见性 / 文本 / 属性 / URL 断言；双方重复截图识别不稳定差异，遮罩覆盖过大与全页预算超限进入复核。输出明确的问题归因、复现步骤、截图 / 差异图 / DOM / 网络摘要、计划与验证器指纹、证据 SHA-256。AI 解读仅按需发送脱敏摘要，不能修改门禁。固定夹具的检出率、误报与门禁及控制台闭环接入 CI，实际结果见[实施验收记录](audits/2026-10-16/acceptance-workbench.md)。
 
+2026-10-28 在工作台上补了两层证据：失败检查的**元素定位**（样式规则、脚本行、标记位置与基线对照，结果存旁路 `localization.json`，不改报告与核验指纹）和**从基线自动生成候选验收点**（单步交互前后可观察变化的断言，按执行器语义在计划视口重放）。固定基准的第二个臂只使用自动生成的点，13 个已知 BUG 全部检出、0 误报、18/18 案例校验通过；定位 13/13 落到注入源码行。本机验证与证据见[实施记录](audits/2026-10-28/acceptance-exploration.md)。
 [D5 自身 CI 超时记录与调度修复](audits/2026-10-18/acceptance-defect-ticket-ci-timeout.md)单独保留 D5 精确提交的 cancelled 终态：全量 Core 与前 19 项 smoke 成功，第 20 项取消，Docker 未运行。双核默认文件并发由 1 调到 2，45 分钟时限与完整门禁保留；该提交自身 Linux CI 结果见下方来源会话诊断记录。
 
 调度提交 `209cf40` 自身 CI 已确认为[来源会话断言 failure](audits/2026-10-18/acceptance-source-session-ci.md)，Core 唯一失败，后续 20 项 smoke 与 Docker 均 skipped。本片仅补全原断言的脱敏失败报告；受控负载复现不能代替旧 CI 根因，也未放宽 timeout 或宣称修复。后续精确提交仍须完整 Linux 门禁，间歇失败风险继续跟踪。
