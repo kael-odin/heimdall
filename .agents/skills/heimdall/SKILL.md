@@ -17,6 +17,7 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 只要镜像和简报，不重写代码 | 先 `heimdall_clone`，再 `heimdall_brief` |
 | 对照参考验收一个已建好的项目 | `heimdall_compare`（`--project .`；不给分段就是整页） |
 | 装不上、连不上、不知道状态 | `heimdall_doctor`（`/heimdall:doctor`） |
+| 测试真实项目（可带登录），整理成可提单的问题 | 先 `heimdall_qa_status`，再 `heimdall_qa_run`；见下方「测试工作区」 |
 | 别的（行为补全、契约、SEO 审计） | 本版本未提供，如实告诉用户 |
 
 ## 速查
@@ -31,8 +32,27 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 度量候选，拿修复包 | `heimdall_compare` | `heimdall compare --project .` |
 | 等长任务 | `heimdall_jobs` | `heimdall jobs wait <jobId>` |
 | 体检 | `heimdall_doctor` | `heimdall doctor --json` |
+| 测试工作区：站点、登录档 | `heimdall_qa_status` | `heimdall qa status` |
+| 测试运行：巡检、找问题 | `heimdall_qa_run` | `heimdall qa run [站点] [--pages /a,/b]` |
+| 问题列表、类似、提交、裁决 | `heimdall_qa_findings` | `heimdall qa findings [--status fileable]` |
 
 CLI 一律有 `--json`：stdout 最后一行是 `{ok, result, summary, nextActions, evidence}`。退出码：0 成功、1 门禁未过、2 用法或前置条件、3 环境、4 排队或等待超时、5 无权限、7 内部错误。
+
+## 测试工作区
+
+给**真实项目**做测试，有没有镜像基线都行。配置在用户的测试工作区（`.heimdall/qa.json`），不在 Heimdall 仓库：
+
+- 站点、页面、环境，以及登录档。登录档只有声明式三种（storageState / localStorage / headers），不执行任意脚本；凭据只在运行时读进内存，输出里只有登录档的名字。
+- 测试须知（`heimdall_qa_status` 默认带上）：分诊规则、团队约定（哪些不报）、台账教训（以往被关闭或暂缓的条目和理由）、已记的裁决规则。**开始测试前和提交任何发现前都先读一遍**。
+- 分诊规则的要点：证据层级（basis）决定最高分级；cosmetic 最高只到可容忍；撞墙/受损必须写 loss，没有 loss 的最高可容忍；loss 里出现「可能」「疑似」一类推测词会被拒收。
+
+流程：
+
+1. `heimdall_qa_status`：站点、登录档是否可用（过期会标出来）、最近的运行、测试须知。
+2. `heimdall_qa_run`：按站点巡一遍（打不开、登录过期、控制台报错、4xx/5xx、坏链、坏图、横向溢出、被拦下的写请求），再跑你按 PRD 写的检查点（steps + expect，全是真实输入事件，`prd` 字段注明出处）。
+3. `heimdall_qa_findings`：`list` 看结果；`similar` 查重；`submit` 提交你自己测出的问题（会校验证据与 loss，并查重）；`verdict` 记人的裁决（精确到一条，或按模式；可带 `until` / `reopenIf`），以后同类发现自动过滤并写明理由。
+
+结果在工作区的 `.heimdall/qa/runs/<runId>/`：`bugs.md` 只列建议提单的，`report.md` 是全部（含被过滤的和理由）。需要人工登录的站点由用户在 CLI 跑 `heimdall qa login <登录档>`，你不要代输凭据。配置格式见 Heimdall 仓库的 `docs/TEST-WORKSPACE.md`。
 
 ## 四条不可违反的规则
 
