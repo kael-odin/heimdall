@@ -35,7 +35,7 @@ export const PROMPTS = [
       `2. 运行 \`heimdall rebuild init ${url} --stack ${stack} --fidelity ${fidelity} --gate ${gate} --dir ${dir}\` 生成重建工作区，先读其中的 AGENTS.md，按它的流程办。`,
       '3. 逐段循环：heimdall_brief(detail="full", sectionId) → 写这一段（分段根元素加 data-heimdall-section="<sectionId>"）→ 启动 dev server → heimdall_compare(candidate={dir}, sectionIds=[…]) → 按修复包的顺序修前 1–3 个区域 → 再对比。分数变差就回退这次修改；每次修改单独提交。',
       '4. 每段最多 4 次对比；到 pass-candidate 就进入下一段。最后整页对比一次。',
-      '5. 快速对比最多是 pass-candidate，不是「通过」；正式门禁在 Ph2。不要修改 heimdall.config.json 里的门禁设置。到预算或迭代上限就停，如实汇报残差。',
+      '5. 快速对比最多是 pass-candidate，不是「通过」；正式门禁用 `heimdall gate formal` 确认。不要修改 heimdall.config.json 里的门禁设置。到预算或迭代上限就停，如实汇报残差。',
       SAFETY,
     ].join('\n'),
   },

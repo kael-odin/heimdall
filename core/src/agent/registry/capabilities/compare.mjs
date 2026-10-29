@@ -44,7 +44,7 @@ export default {
     const c = args.candidate ?? {};
     if (!!c.url === !!c.dir) throw new CapabilityError('invalid_args', 'candidate 恰好给一个：{url} 或 {dir}');
     if (args.mode === 'formal') {
-      throw new CapabilityError('invalid_args', '正式门禁（mode="formal"）在 Ph2 交付', { hint: '现在用 mode="fast"；pass-candidate 之后由正式裁判确认（Ph2）' });
+      throw new CapabilityError('invalid_args', '正式门禁用 `heimdall gate formal`', { hint: '现在用 mode="fast"；pass-candidate 之后用正式门禁确认' });
     }
     const r = await fastCompare(args, { onProgress: ctx.onProgress });
     const p = r.packet;
