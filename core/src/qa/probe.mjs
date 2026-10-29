@@ -10,7 +10,8 @@
  *   · 点击一律走 Playwright 的真实鼠标事件，不用 element.click()：后者不算用户手势，复制按钮会假失败
  *   · 读剪贴板前先授予 clipboard-read/write 权限；文字从浏览器里读，不经过 shell（避免 GBK 乱码假象）
  *   · 断言 contains 是子串，equals 是全等；断言写错会在报告里显示「断言没对上」而不是「功能坏了」
- *   · 默认拦下所有写请求（POST/PUT/PATCH/DELETE），站点显式 writes: allow 才放行
+ *   · 默认拦下所有写请求（POST/PUT/PATCH/DELETE）；站点 writes: allow 全放行，
+ *     或 writes: { allow: [路径前缀] } 只放行读语义的 POST（如 /api/xxx/getList）
  */
 import { chromium } from 'playwright';
 import { scrubSecrets } from './workspace.mjs';
@@ -124,7 +125,7 @@ function pageFactsInPage({ loggedOutText }) {
   return { overflowPx, culprit, images, links, loggedOut, hasPassword, texts: [...new Set(texts)].slice(0, 1500), title: document.title };
 }
 
-async function openContext(browser, { login, viewport, origin, writes, health }) {
+async function openContext(browser, { login, viewport, origin, writes, writeAllow, health }) {
   const context = await browser.newContext({ ...BROWSER_PROFILE, viewport, serviceWorkers: 'block', acceptDownloads: false, ...login.contextOptions });
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin }).catch(() => {});
   if (login.storage.length) {
@@ -138,8 +139,13 @@ async function openContext(browser, { login, viewport, origin, writes, health })
   await context.route('**/*', async (route) => {
     const req = route.request();
     if (writes !== 'allow' && !READ_METHODS.has(req.method().toUpperCase())) {
-      health.blocked.push({ method: req.method(), url: safeUrl(req.url()) });
-      return route.abort('blockedbyclient').catch(() => {});
+      // writeAllow：读语义 POST 的路径前缀白名单（如 /api/xxx/getList）；前缀匹配 pathname
+      let path = null;
+      try { path = new URL(req.url()).pathname; } catch { /* 解析不了就按拦截算 */ }
+      if (!path || !(writeAllow ?? []).some(p => path === p || path.startsWith(p))) {
+        health.blocked.push({ method: req.method(), url: safeUrl(req.url()) });
+        return route.abort('blockedbyclient').catch(() => {});
+      }
     }
     return route.continue().catch(() => {});
   });
@@ -250,7 +256,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
     for (const viewport of viewports) {
       for (const p of pages) {
         const health = emptyHealth();
-        const context = await openContext(browser, { login, viewport, origin: site.origin, writes: site.writes, health });
+        const context = await openContext(browser, { login, viewport, origin: site.origin, writes: site.writes, writeAllow: site.writeAllow, health });
         const page = await context.newPage();
         watch(page, health, site.origin);
         const pageUrl = new URL(p.path, site.url).href;
@@ -280,7 +286,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
     for (const check of checks) {
       const viewport = check.viewport ?? viewports[0];
       const health = emptyHealth();
-      const context = await openContext(browser, { login, viewport, origin: site.origin, writes: site.writes, health });
+      const context = await openContext(browser, { login, viewport, origin: site.origin, writes: site.writes, writeAllow: site.writeAllow, health });
       onProgress({ message: `检查点 ${check.id}` });
       const r = await runCheck(context, site, check, { timeout: timeoutMs, settleMs, shoot });
       await context.close().catch(() => {});

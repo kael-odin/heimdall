@@ -253,6 +253,7 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 | --- | --- | --- |
 | **[docs/guide/README.md](docs/guide/README.md)** | **上手导览**：架构、控制台、功能全解（带类比，配图） | **第一次接触这个项目** |
 | [docs/DELIVERY.md](docs/DELIVERY.md) | 三种产物的区别、为什么不做补丁协议、认证站点怎么处理 | 想知道"我该拿哪一种走" |
+| [docs/TEST-WORKSPACE.md](docs/TEST-WORKSPACE.md) | 测试工作区：qa.json 配置、登录档、只读探测、裁决记忆与提单报告 | 用 Heimdall 测真实项目时 |
 | [PRD.md](PRD.md) | 产品定义：用户、定位、三件套、产品原则 | 想知道"为什么做这个" |
 | [docs/prd/ai-native/](docs/prd/ai-native/README.md) | **AI 接入层（Bifröst）PRD（草案）**：让外部 AI 代理调用 Heimdall，用前沿模型做可验证的前端重建与后端行为克隆 | 规划 AI 接入、自动化与演示叙事时 |
 | [USAGE.md](USAGE.md) | 完整使用指南（启动、克隆、查看、部署） | 上手时 |

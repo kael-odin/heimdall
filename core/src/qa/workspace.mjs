@@ -101,9 +101,21 @@ function normalizeSite(name, raw, profiles) {
     return { path, ...(typeof p === 'object' && p.name ? { name: String(p.name).slice(0, 60) } : {}) };
   });
   const writes = raw.writes ?? 'block';
-  if (!['block', 'allow'].includes(writes)) fail(`站点 ${name}.writes 只能是 block / allow`);
+  let writeMode = 'block', writeAllow = [];
+  if (typeof writes === 'string') {
+    if (!['block', 'allow'].includes(writes)) fail(`站点 ${name}.writes 只能是 block / allow / { allow: [路径] }`);
+    writeMode = writes;
+  } else if (object(writes)) {
+    // POST-for-query 的后端（如 /api/xxx/getList）在只读探测下会残：显式白名单这些「读语义」前缀
+    if (!Array.isArray(writes.allow) || !writes.allow.length) fail(`站点 ${name}.writes.allow 要是非空路径数组`);
+    writeAllow = writes.allow.slice(0, 40).map((p) => {
+      if (typeof p !== 'string' || !p.startsWith('/') || p.startsWith('//')) fail(`站点 ${name}.writes.allow 的 ${JSON.stringify(p)} 应以 / 开头`);
+      return p.replace(/\/+$/, '') || '/';
+    });
+  } else fail(`站点 ${name}.writes 只能是 block / allow / { allow: [路径] }`);
   return {
-    name, label: String(raw.label ?? name).slice(0, 60), url: url.href, origin: url.origin, login, pages, writes,
+    name, label: String(raw.label ?? name).slice(0, 60), url: url.href, origin: url.origin, login, pages, writes: writeMode,
+    ...(writeAllow.length ? { writeAllow } : {}),
     ...(raw.loginPath ? { loginPath: String(raw.loginPath) } : {}),
     ...(raw.loggedOutText ? { loggedOutText: [].concat(raw.loggedOutText).map(String).slice(0, 10) } : {}),
     environment: String(raw.environment ?? 'unknown').slice(0, 30),

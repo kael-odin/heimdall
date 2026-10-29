@@ -47,6 +47,13 @@ test('workspace: found upward, validated, logins resolved without leaking values
     assert.deepEqual(ws.sites.admin.pages.map(p => p.path), ['/admin/', '/admin/users']);
     assert.equal(ws.conventions.length, 2);
 
+    const allowRoot = workspace({ sites: { a: { url: 'http://x/', writes: { allow: ['/api/get/', '/api/getList'] } } } });
+    try {
+      const allowWs = loadWorkspace(allowRoot);
+      assert.deepEqual(allowWs.sites.a.writeAllow, ['/api/get', '/api/getList'], 'writes.allow prefixes normalize (trailing slash dropped)');
+      assert.equal(allowWs.sites.a.writes, 'block');
+    } finally { rmSync(allowRoot, { recursive: true, force: true }); }
+
     const admin = resolveLogin(ws, 'admin');
     const items = Object.fromEntries(admin.storage[0].items);
     assert.equal(items._token, token, 'JWT picked from the named section, not the first one in the file');
@@ -71,6 +78,9 @@ test('workspace: bad configs are rejected with a readable reason', () => {
     [{ sites: { a: { url: 'http://u:p@x/' } } }, /账号密码/],
     [{ sites: { a: { url: 'http://x/', login: 'nope' } } }, /不存在的登录档/],
     [{ sites: { a: { url: 'http://x/', pages: ['//evil.test/'] } } }, /以 \/ 开头/],
+    [{ sites: { a: { url: 'http://x/', writes: { allow: [] } } } }, /非空路径数组/],
+    [{ sites: { a: { url: 'http://x/', writes: { allow: ['api/x'] } } } }, /以 \/ 开头/],
+    [{ sites: { a: { url: 'http://x/', writes: 3 } } }, /block \/ allow/],
     [{ sites: { a: { url: 'http://x/' } }, logins: { b: { kind: 'script', code: 'alert(1)' } } }, /kind 只能是/],
   ]) {
     const root = workspace(config);

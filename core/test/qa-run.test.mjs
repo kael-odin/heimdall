@@ -29,13 +29,15 @@ const PAGES = {
 };
 
 function server() {
+  const hits = { trackPost: 0 };
   const srv = createServer((req, res) => {
     const path = new URL(req.url, 'http://x').pathname;
     if (path === '/api/stats') { res.writeHead(500, { 'content-type': 'application/json' }); return res.end('{"error":"x"}'); }
-    if (path === '/api/track') { res.writeHead(204); return res.end(); }
+    if (path === '/api/track') { if (req.method === 'POST') hits.trackPost++; res.writeHead(204); return res.end(); }
     if (PAGES[path]) { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(PAGES[path]); }
     res.writeHead(404, { 'content-type': 'text/plain' }); res.end('not found');
   });
+  srv.hits = hits;
   return new Promise(done => srv.listen(0, '127.0.0.1', () => done(srv)));
 }
 
@@ -63,6 +65,29 @@ function workspaceFor(origin) {
   ] }));
   return root;
 }
+
+test('qa e2e: writes.allow whitelists read-semantics POST endpoints (POST-for-query backends)', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const origin = `http://127.0.0.1:${srv.address().port}`;
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-allow-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
+    project: 'Allow',
+    sites: { web: { url: `${origin}/`, pages: ['/'], environment: 'test', writes: { allow: ['/api/track'] } } },
+    defaults: { settleMs: 300, timeoutMs: 15000 },
+  }));
+  try {
+    const ws = loadWorkspace(root);
+    assert.deepEqual(ws.sites.web.writeAllow, ['/api/track']);
+    const run = await runQa(ws, { site: 'web', viewports: [1280] });
+    assert.ok(!run.findings.some(f => f.kind === 'blocked-write'), 'allowlisted POST passes the read-only gate');
+    assert.ok(!run.findings.some(f => /BLOCKED_BY_CLIENT/.test(f.title ?? '')), 'no blocked-by-client console noise');
+    assert.ok(srv.hits.trackPost > 0, 'the whitelisted POST actually reached the server');
+  } finally {
+    srv.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('qa e2e: probe, login profile, real clipboard, verdict memory across runs, agent submissions', { timeout: 180_000 }, async () => {
   const srv = await server();

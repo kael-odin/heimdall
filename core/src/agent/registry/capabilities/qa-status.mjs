@@ -44,7 +44,7 @@ export default {
   cli: { usage: 'qa status [--workspace DIR]', positional: [] },
   async handler(args, ctx) {
     const ws = wsOrError(args, ctx);
-    const sites = Object.values(ws.sites).map(s => ({ name: s.name, label: s.label, url: s.url, environment: s.environment, pages: s.pages.map(p => p.path), login: s.login, writes: s.writes }));
+    const sites = Object.values(ws.sites).map(s => ({ name: s.name, label: s.label, url: s.url, environment: s.environment, pages: s.pages.map(p => p.path), login: s.login, writes: s.writes, ...(s.writeAllow?.length ? { writeAllow: s.writeAllow } : {}) }));
     const logins = Object.keys(ws.logins).map(n => loginHealth(ws, n));
     const runs = listRuns(ws, 5).map(r => ({ runId: r.runId, site: r.site, startedAt: r.startedAt, summary: r.summary }));
     const ledger = readLedger(ws);
