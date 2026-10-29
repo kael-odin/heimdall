@@ -59,7 +59,7 @@ argument-hint: "<url> [stack] [fidelity] [gate]"
 
 **7. 交付**
 - 写一份最终报告（模板见下），附复验命令。
-- 正式裁判（`mode:"formal"`）与 `heimdall deliver` 本版本未交付：如实告诉用户「快速裁判已达 pass-candidate，正式门禁待交付」，不要宣称通过。
+- 正式门禁用 `heimdall gate formal`，不要宣称通过。如实告诉用户「快速裁判已达 pass-candidate，正式门禁用 heimdall gate formal 确认」。
 
 ## 读修复包的规则
 

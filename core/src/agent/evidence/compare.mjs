@@ -2,7 +2,7 @@
  * agent/evidence/compare — 快速对比（E6-09、E6-10、E6-13，PRD 05 §3.1、附录 C §6）
  *
  * 把候选（AI 写的页面）对照冻结参考，返回判定 + 修复包 + 趋势。**快速裁判不能宣布 passed**，
- * 最好的结果是 pass-candidate，正式门禁在 Ph2 由验收 Mirror + 评估器给出。
+ * 最好的结果是 pass-candidate，正式门禁由 `heimdall gate formal` 给出。
  *
  * 两种范围：
  *   整页    参考整页截图 vs 候选整页截图
@@ -350,7 +350,7 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
       writeFileSync(join(projectRunDir, 'fixpacket.json'), JSON.stringify(packet, null, 1));
       writeFileSync(join(projectRunDir, 'packet.txt'), text);
       for (const r of regions) if (r.crops?.composite) writeFileSync(join(projectRunDir, r.crops.composite), readFileSync(join(outDir, r.crops.composite)));
-      // 飞行记录器的最小形态（E7-14 在 Ph2 补全）：每次对比一行，rebuild status 据此算进度
+      // 飞行记录器的最小形态：每次对比一行，rebuild status 据此算进度
       appendFileSync(join(projectDir, '.heimdall', 'ledger.jsonl'), JSON.stringify({ schema: 'heimdall.ledger/1', type: 'iter', runId, at: packet.generatedAt, page,
         sectionIds: sectionIds ?? null, pixel: pixelNow, verdict: verdict.status, reached: verdict.reached, trend: trend.state, anticheat: anticheat.status, elapsedMs: packet.elapsedMs }) + '\n');
     }

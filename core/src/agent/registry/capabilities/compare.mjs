@@ -2,7 +2,7 @@
  * capability: compare —— 候选对照冻结参考，返回判定与修复包（附录 A §2.5，E6-09 ~ E6-13）
  *
  * fast 模式（Ph1）同步执行，目标十几秒；**不能宣布 passed**，最好是 pass-candidate。
- * formal 模式（验收 Mirror + 评估器）在 Ph2 交付。
+ * formal 模式（验收 Mirror + 评估器）由 `heimdall gate formal` 给出。
  */
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { fastCompare } from '../../evidence/compare.mjs';
@@ -68,14 +68,14 @@ export default {
     const scores = p.viewports.map(w => `${w}：${pct(p.perViewport[w].pixelSimilarity)}`).join('，') + (p.skipped?.length ? `（${p.skipped.map(s => s.viewport).join('、')} 下参考里看不到这一段，未计入）` : '');
     const top = p.order.slice(0, 3).map(id => { const g = p.regions.find(x => x.id === id); return g ? `${g.id}（${g.cause}）` : id; }).join('、');
     const summary = `${scores}。判定 ${p.verdict.status}${p.verdict.reached ? `（已达 ${p.verdict.reached}）` : ''}；趋势 ${p.trend.state}。`
-      + (top ? `\n先修：${top}。` : '') + (p.verdict.status === 'pass-candidate' ? '\n快速裁判不能宣布通过，正式门禁在 Ph2。' : '');
+      + (top ? `\n先修：${top}。` : '') + (p.verdict.status === 'pass-candidate' ? '\n快速裁判不能宣布通过，用 `heimdall gate formal` 确认。' : '');
     const nextActions = [];
     const firstCrop = p.regions.find(g => g.crops?.uri);
     if (p.verdict.status !== 'pass-candidate') {
       if (firstCrop) nextActions.push(nextAction('heimdall_artifact', { uri: firstCrop.crops.uri }, `看 ${firstCrop.id} 的裁剪对比图`));
       nextActions.push(nextAction('heimdall_compare', { ...args, inlineCrops: undefined, tokenBudget: undefined }, '改完再对比一次'));
     } else {
-      const next = p.scope?.sectionIds ? '这一段可以收尾，开始下一段' : '整页已到 pass-candidate，等待正式门禁（Ph2）';
+      const next = p.scope?.sectionIds ? '这一段可以收尾，开始下一段' : '整页已到 pass-candidate，用 `heimdall gate formal` 确认正式通过';
       nextActions.push(nextAction('heimdall_brief', { siteId: p.siteId, page: p.page, detail: 'sections' }, next));
     }
     if (p.trend.state === 'worse') nextActions.unshift(nextAction('cli:git', { args: 'diff HEAD' }, '这次改动让分数变差了：对照修复包检查改动，必要时回到上一次提交'));
