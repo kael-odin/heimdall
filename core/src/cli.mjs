@@ -87,7 +87,7 @@ if (isMain) {
   if (!argv.length || argv[0] === 'help' || argv[0] === '--help' || argv[0] === '-h') { await help(); process.exit(argv.length ? 0 : 1); }
   // 代理命令（能力注册表）：同进程执行，--json 时 stdout 只有 NDJSON 与最后一行信封
   if (AGENT_COMMANDS.includes(argv[0])) process.exit(await runAgentCommand(argv[0], argv.slice(1)));
-  if (argv[0] === 'rebuild' || argv[0] === 'connect' || argv[0] === 'probe' || argv[0] === 'gate' || argv[0] === 'bench') {
+  if (argv[0] === 'rebuild' || argv[0] === 'connect' || argv[0] === 'probe' || argv[0] === 'gate' || argv[0] === 'bench' || argv[0] === 'qa') {
     const mod = await import(`./agent/commands/${argv[0]}.mjs`);
     process.exit(await mod.run(argv.slice(1)));
   }

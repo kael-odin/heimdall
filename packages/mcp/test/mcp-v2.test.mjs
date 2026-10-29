@@ -15,7 +15,8 @@ import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
 const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
-const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor'];
+const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
+  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings'];
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-mcp-'));
@@ -61,7 +62,8 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
       assert.equal(overview.isError, false);
       assert.equal(overview.structuredContent.ok, true);
       assert.deepEqual(overview.structuredContent.result.sites.map(s => s.siteId), ['example.test']);
-      assert.equal(overview.structuredContent.result.engine.status, 'unreachable');
+      // 开发机上 8900 常开着一台用自己数据目录的引擎：隔离数据根看到的是 data_root_mismatch，同样是「没有可用引擎」
+      assert.ok(['unreachable', 'data_root_mismatch'].includes(overview.structuredContent.result.engine.status));
       assert.ok(Array.isArray(overview.structuredContent.nextActions));
       assert.match(overview.content[0].text, /站点/);
 

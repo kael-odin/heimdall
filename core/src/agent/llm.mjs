@@ -11,8 +11,8 @@
 
 import { fileURLToPath } from 'node:url';
 
-export const DEFAULT_BASE_URL = 'https://pucn.lifesecretary.com:9000/v1';
-export const DEFAULT_MODEL = 'deepseek-v4.1-flash-1017';
+export const DEFAULT_BASE_URL = 'https://api.deepseek.com';
+export const DEFAULT_MODEL = 'deepseek-chat';
 export const CLASSES = Object.freeze(['frontier', 'standard', 'economy']);
 
 // 仓库根的 .env 自动加载一次（存在才加载，不覆盖已有环境变量）。Key 只在那里。

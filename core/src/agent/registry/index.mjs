@@ -16,6 +16,9 @@ import compare from './capabilities/compare.mjs';
 import jobs from './capabilities/jobs.mjs';
 import clone from './capabilities/clone.mjs';
 import doctor from './capabilities/doctor.mjs';
+import qaStatus from './capabilities/qa-status.mjs';
+import qaRun from './capabilities/qa-run.mjs';
+import qaFindings from './capabilities/qa-findings.mjs';
 
 export const EFFECTS = Object.freeze(['read', 'write-local', 'browser', 'source-network', 'destructive']);
 export const SCOPES = Object.freeze(['read', 'clone', 'build', 'admin']);
@@ -35,7 +38,7 @@ export function defineCapability(def) {
   return Object.freeze({ legacy: [], artifacts: [], longRunning: false, cli: {}, ...def });
 }
 
-export const CAPABILITIES = Object.freeze([overview, site, brief, artifact, compare, jobs, clone, doctor].map(defineCapability));
+export const CAPABILITIES = Object.freeze([overview, site, brief, artifact, compare, jobs, clone, doctor, qaStatus, qaRun, qaFindings].map(defineCapability));
 
 // 重复 id 或工具名直接拒绝（E1-01 的验收）
 {

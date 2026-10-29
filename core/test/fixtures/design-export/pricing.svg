@@ -1,0 +1,10 @@
+<svg width="375" height="812" viewBox="0 0 375 812" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Figma 导出，取消勾选 Outline text -->
+<rect width="375" height="812" fill="white"/>
+<rect x="16" y="120" width="343" height="200" rx="12" fill="#F5F7FA"/>
+<text fill="#1A334D" xml:space="preserve" style="white-space: pre" font-family="PingFang SC" font-size="24" font-weight="600" letter-spacing="0em"><tspan x="16" y="64.5">欢迎使用 Xspark</tspan></text>
+<text fill="#333333" xml:space="preserve" style="white-space: pre; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: bold" letter-spacing="0em"><tspan x="32" y="160">Terms &amp; Conditions &#8212; </tspan><tspan x="32" y="160">read&#x2026;</tspan><tspan x="32" y="180">第二行</tspan></text>
+<text fill="#FF5A00" xml:space="preserve" style="white-space: pre" font-family="PingFang SC" font-size="32" font-weight="bold" letter-spacing="0em"><tspan x="32" y="240">&#xa5;99/月</tspan></text>
+<path d="M16 400H359" stroke="#E5E5E5"/>
+<defs><clipPath id="c0"><rect width="375" height="812" fill="#123456"/></clipPath></defs>
+</svg>

@@ -14,7 +14,7 @@ import { CAPABILITIES, annotationsOf, defineCapability, describeCapabilities, ge
 import { parseArgs, argsFor } from '../src/agent/cli.mjs';
 
 const CLI = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
-const EXPECTED = ['overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor'];
+const EXPECTED = ['overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor', 'qa_status', 'qa_run', 'qa_findings'];
 
 function tempRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-agent-'));
@@ -29,7 +29,7 @@ const run = (args, root) => spawnSync(process.execPath, [CLI, ...args], {
   encoding: 'utf8', timeout: 60_000, env: { ...process.env, HEIMDALL_DATA_DIR: root, HEIMDALL_API: 'http://127.0.0.1:9' },
 });
 
-test('registry: the eight core capabilities, in a fixed order, each well formed', () => {
+test('registry: the core capabilities, in a fixed order, each well formed', () => {
   assert.deepEqual(CAPABILITIES.map(c => c.id), EXPECTED);
   for (const c of describeCapabilities()) {
     assert.equal(c.tool, `heimdall_${c.id}`);

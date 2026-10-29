@@ -9,6 +9,7 @@
  *   退出码        0 成功 · 1 门禁未过 · 2 用法 · 3 环境 · 4 排队 / 超时 · 5 无权限 · 6 预算 · 7 内部（E3-03）
  *   --help --json 机器可读的命令清单（E3-05）
  */
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CAPABILITIES, describeCapabilities, getCapability, toolName } from './registry/index.mjs';
 import { invoke } from './registry/invoke.mjs';
@@ -22,9 +23,10 @@ export const CLI_ONLY = Object.freeze({
   gate: { usage: 'gate baseline <siteId> <page> [--viewport 1440] | gate report [--project .] [--level bronze|silver|gold]', desc: '正式基线供给与体检（E7-19）；六维门禁报告（E7-06），未通过退出码 1' },
   bench: { usage: 'bench score --site S --page P --candidate 标签=目录,… | bench run --site S --page P --project D --arm a1|a2|a3 [--feedback full|targeted] [--edit rewrite|surgical] --iterations N | bench sections --site S --page P --project D | bench summary --site S --page P', desc: 'Heimdall-Bench：测量候选、跑模型消融臂、按分段循环、汇总重复测量（E14-01~03）' },
   mcp: { usage: 'mcp [--http <port>] [--legacy]', desc: 'MCP 服务：默认 v2（stdio）；--legacy 起旧的 13 工具服务器' },
+  qa: { usage: 'qa init | login <登录档> | status | run [站点] | findings | show <F编号> | similar "标题" | submit <文件> | verdict <F编号> <裁决> "理由" [--pattern] | rules', desc: '测试工作区：带登录态测试、按以往裁决过滤、只出该提单的问题' },
 });
 
-const BOOL_FLAGS = new Set(['json', 'wait', 'no-wait', 'quiet', 'yes', 'refresh', 'force', 'fix', 'remove', 'dry-run', 'help', 'all-discovered', 'recon-only', 'legacy', 'inline', 'no-revert', 'no-mirror']);
+const BOOL_FLAGS = new Set(['json', 'wait', 'no-wait', 'quiet', 'yes', 'refresh', 'force', 'fix', 'remove', 'dry-run', 'help', 'all-discovered', 'recon-only', 'legacy', 'inline', 'no-revert', 'no-mirror', 'pattern', 'no-links', 'texts']);
 const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 /** 解析 argv：--flag value / --flag=value / 布尔标志；其余是位置参数 */
@@ -81,6 +83,25 @@ export function argsFor(id, { flags, positional }) {
       set('reuse', flags.reuse); set('idempotencyKey', flags['idempotency-key']);
       break;
     case 'doctor': set('checks', list(flags.checks)); if (flags.fix) a.fix = true; break;
+    case 'qa_status': set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined); break;
+    case 'qa_run':
+      set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
+      set('site', positional[0] ?? flags.site); set('pages', list(flags.pages)); set('viewports', list(flags.viewports)?.map(Number));
+      set('checksFile', flags.checks ? resolve(String(flags.checks)) : undefined); set('login', flags.login); set('label', flags.label);
+      if (flags['no-links']) a.linkCheck = false; if (flags.texts) a.collectTexts = true;
+      break;
+    case 'qa_findings': {
+      set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
+      set('action', flags.action); set('runId', flags.run); set('id', flags.id); set('status', flags.status); set('limit', num(flags.limit));
+      set('title', flags.title); set('path', flags.path); set('verdict', flags.verdict); set('reason', flags.reason);
+      set('until', flags.until); set('reopenIf', flags['reopen-if']); set('ruleId', flags['rule-id']);
+      if (flags.pattern) a.pattern = true;
+      if (flags.file) {
+        const data = JSON.parse(readFileSync(resolve(String(flags.file)), 'utf8'));
+        a.findings = Array.isArray(data) ? data : data.findings;
+      }
+      break;
+    }
     default: break;
   }
   return a;
