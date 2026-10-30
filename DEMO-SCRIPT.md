@@ -5,9 +5,10 @@
 > 2026-10-31 重写。主线从「克隆 + 还原度」改为 **AI 重建 + 确定性裁判**：
 > AI 是建造者，Heimdall 是眼睛、尺子和裁判；写不过门禁就交付镜像。
 >
-> **诚实前提**：A-3 真客户端手测（Claude Code / Claude Desktop）尚未完成。
-> 手测通过前，第 2 幕只能标「回放」；通过后才可以现场跑。步骤见
-> [docs/guide/06-ai-integration.md](docs/guide/06-ai-integration.md)。
+> **2026-10-31 更新**：Claude Code 插件 MCP 已在本机会话完成 F1 重建——6/6 分段
+> `pass-candidate`，整页 375 99.89% / 768 99.91% / 1440 100%，正式门禁 `passed silver`。
+> 第 2 幕可以现场跑 Claude Code。Claude Desktop 配置与 stdio 已验证，界面打开确认还差一次；
+> Desktop 作为备用客户端。步骤见 [docs/guide/06-ai-integration.md](docs/guide/06-ai-integration.md)。
 >
 > 旧的「克隆主线」完整版保留在 git 历史（2026-10-31 之前的 `DEMO-SCRIPT.md`），
 > 现场需要时可以作为降级脚本；本文件不重复它。
@@ -70,8 +71,8 @@ heimdall rebuild deliver --project core/workspace/_demo/f1-defect
 
 | 准备项 | 动作 | 为什么 |
 | --- | --- | --- |
-| Claude Code 插件 | 按 [A-3 指南](docs/guide/06-ai-integration.md) 安装并确认工具可见 | 第 2 幕现场跑 |
-| Claude Desktop | 同指南，`heimdall connect claude-desktop` 后重启 | 第二个客户端；至少确认工具可见 |
+| Claude Code 插件 | 已安装并验证 `plugin:heimdall:heimdall ✔ Connected`（11 工具） | 第 2 幕现场跑 |
+| Claude Desktop | 配置已写入；打开应用确认一次即可 | 备用客户端 |
 | 录屏备份 | 完整跑一遍，U 盘 + 本机各一份 | 断网/模型服务挂掉直接放 |
 | 回放标识 | 准备一张「回放」角标 | 回放必须让评委看见 |
 | 通知 | 系统、微信、钉钉全部关闭 | 投影时弹窗是最大事故源 |
@@ -297,7 +298,7 @@ heimdall rebuild deliver --project core/workspace/_demo/f1-defect
 
 ## 5. 排练要求
 
-1. **A-3 手测完成前**，第 2 幕按「回放」排练；完成后各跑一次现场。
+1. **Claude Code 已跑通**；彩排时现场跑一次，Desktop 打开确认一次即可。
 2. **完整彩排 ≥ 3 次**，每次计时；5 分钟 ± 20 秒。
 3. **每段独立可触发**：现场出问题直接跳下一段。
 4. **降级路径演练过**：实时重建超时 → 切预跑项目 → 打「回放」角标。

@@ -181,14 +181,24 @@ VS Code 的键名是 `servers` 且每项要 `type: "stdio"`，`connect` 已按�
 
 ---
 
-## 5. 验收记录表
+## 5. 验收记录
+
+**2026-10-31 本机结果（Claude Code 插件 MCP，本会话）**
+
+- 插件安装后 `/mcp` 显示 `plugin:heimdall:heimdall ✔ Connected`，共 11 个工具；
+- F1 重建工作区 `core/workspace/_demo/f1-a3`：**6/6 分段 `pass-candidate`**，整页 375 99.89% / 768 99.91% / 1440 100.00%（达到 gold）；
+- 唯一需要修的差异：窄视口 footer-bottom 多了 20px 上内边距与分隔线；修复包用 `样式差` 直接指出 `paddingTop 参考 0px / 候选 20px`，一次改完；
+- 六维门禁：`passed`（gold）；正式裁判：**passed silver**，验收视觉 3/3、结构 3/3、健康 12/12；
+- 交付：`core/workspace/127.0.0.1--origin-5c84d1d15de129f0/agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed，25 个项目文件 + 8 个镜像文件）；
+- 记录：8 次 compare，约 3 分钟；本会话模型标识 `claude-fable-ccs-272433[1m]`（由运行环境报告）。
+- **Claude Desktop**：配置已指向 Heimdall，且用同一启动命令做过 stdio 验证（11 个工具、`heimdall_doctor` 正常）；界面还未打开，主界面确认待完成。
 
 跑完每个客户端填一行，作为 A-3 的证据：
 
 | 客户端 | 版本 | 实际模型 | 开始时间 | 迭代次数 | 墙钟 | 快速裁判 | 正式裁判 | 卡点 / 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Claude Code |  |  |  |  |  |  |  |  |
-| Claude Desktop |  |  |  |  |  |  |  |  |
+| Claude Code | 2.1.310 | `claude-fable-ccs-272433[1m]`（环境报告） | 2026-10-31 17:32Z | 8 次 compare | ~3 分钟 | pass-candidate（gold） | passed（silver） | 6/6 分段；一次 footer 窄视口间距修复 |
+| Claude Desktop |  |  |  |  |  |  |  | 配置与 stdio 已验证；界面待打开 |
 | Cursor（可选） |  |  |  |  |  |  |  |  |
 | VS Code（可选） |  |  |  |  |  |  |  |  |
 

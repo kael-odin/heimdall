@@ -93,6 +93,13 @@ pnpm check                 # lint + 文档链接 + 控制台构建 + 快速集
 - `packet.txt` 打印「候选样式 / 样式差」，例如 `fontSize 参考 52px / 候选 46px（−6）`；匹配依据与置信度写在 `match` 里，匹配不到时仍只给参考值，不猜。
 - F1 夹具验证：字号、背景色、间距三类注入缺陷都能在修复包里给出候选值与带符号差值。
 
+## 2026-10-31 A-3：Claude Code 插件闭环
+
+- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通，11 个工具可用。
+- 本会话用 MCP 工具完成 F1 重建：6/6 分段 `pass-candidate`，整页 375 99.89% / 768 99.91% / 1440 100%，正式门禁 `passed silver`（验收视觉 3/3、结构 3/3、健康 12/12）。
+- 交付包：`agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed）。
+- Claude Desktop 配置与 stdio 已验证；界面打开确认待完成。
+
 ## 历史归档
 
 - 逐日审计报告与证据：`docs/audits/README.md` 索引，原始文件在 `D:/Github-Star/heimdall-evidence-archive/2026-10-30/` 与 git 历史。
