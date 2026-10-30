@@ -6,6 +6,7 @@
  */
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { fastCompare } from '../../evidence/compare.mjs';
+import { describeStyleDiff, leadStyleDiffOf } from '../../evidence/element-style.mjs';
 
 const pct = (v) => `${(v * 100).toFixed(1)}%`;
 
@@ -69,8 +70,10 @@ export default {
     };
     const scores = p.viewports.map(w => `${w}：${pct(p.perViewport[w].pixelSimilarity)}`).join('，') + (p.skipped?.length ? `（${p.skipped.map(s => s.viewport).join('、')} 下参考里看不到这一段，未计入）` : '');
     const top = p.order.slice(0, 3).map(id => { const g = p.regions.find(x => x.id === id); return g ? `${g.id}（${g.cause}）` : id; }).join('、');
+    const lead = leadStyleDiffOf(p.regions);
+    const leadText = lead ? `\n首要差异 ${lead.ref ?? lead.region}: ${describeStyleDiff(lead.diffs)}` : '';
     const summary = `${scores}。判定 ${p.verdict.status}${p.verdict.reached ? `（已达 ${p.verdict.reached}）` : ''}；趋势 ${p.trend.state}。`
-      + (top ? `\n先修：${top}。` : '') + (p.verdict.status === 'pass-candidate' ? '\n快速裁判不能宣布通过，用 `heimdall gate formal` 确认。' : '');
+      + (top ? `\n先修：${top}。` : '') + leadText + (p.verdict.status === 'pass-candidate' ? '\n快速裁判不能宣布通过，用 `heimdall gate formal` 确认。' : '');
     const nextActions = [];
     const firstCrop = p.regions.find(g => g.crops?.uri);
     if (p.verdict.status !== 'pass-candidate') {

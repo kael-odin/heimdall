@@ -58,6 +58,33 @@ const CANDIDATE_DEFAULT = {
   boxShadow: 'none',
 };
 
+/** 旧参考索引只有 padding/margin/border 简写，没有逐边值；从简写推导，别把「没记录」当成 0。 */
+function sideFromShorthand(style, prop) {
+  const m = /^(padding|margin)(Top|Right|Bottom|Left)$/.exec(prop);
+  if (!m) return undefined;
+  const shorthand = style?.[m[1]];
+  if (!shorthand) return undefined;
+  const parts = String(shorthand).trim().split(/\s+/);
+  const map = { Top: parts[0], Right: parts[1] ?? parts[0], Bottom: parts[2] ?? parts[0], Left: parts[3] ?? parts[1] ?? parts[0] };
+  return map[m[2]];
+}
+
+function borderWidthFromShorthand(style, prop) {
+  if (!/^border(Top|Right|Bottom|Left)Width$/.test(prop)) return undefined;
+  const border = style?.border;
+  if (!border) return undefined;
+  const first = String(border).trim().split(/\s+/)[0];
+  return /^-?\d+(?:\.\d+)?px$/.test(first) ? first : undefined;
+}
+
+function gapFromShorthand(style, prop) {
+  if (prop !== 'rowGap' && prop !== 'columnGap') return undefined;
+  const gap = style?.gap;
+  if (!gap) return undefined;
+  const parts = String(gap).trim().split(/\s+/);
+  return prop === 'rowGap' ? parts[0] : (parts[1] ?? parts[0]);
+}
+
 /** 差异的展示顺序：先字体/颜色，再间距，再尺寸与布局 */
 const DIFF_ORDER = [
   'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'color', 'backgroundColor',
@@ -106,12 +133,16 @@ export function styleDiffOf(refStyle = {}, candStyle = {}) {
     const missingB = b === undefined || b === null || b === '';
     if (missingA && missingB) continue;
     if (missingA) {
-      if (ZERO_DEFAULT.has(prop)) a = '0px';
+      const derived = sideFromShorthand(refStyle, prop) ?? borderWidthFromShorthand(refStyle, prop) ?? gapFromShorthand(refStyle, prop);
+      if (derived !== undefined) a = derived;
+      else if (ZERO_DEFAULT.has(prop)) a = '0px';
       else if (DEFAULT_VALUE[prop]) a = DEFAULT_VALUE[prop];
       else continue;
     }
     if (missingB) {
-      if (ZERO_DEFAULT.has(prop)) b = '0px';
+      const derived = sideFromShorthand(candStyle, prop) ?? borderWidthFromShorthand(candStyle, prop) ?? gapFromShorthand(candStyle, prop);
+      if (derived !== undefined) b = derived;
+      else if (ZERO_DEFAULT.has(prop)) b = '0px';
       else if (CANDIDATE_DEFAULT[prop]) b = CANDIDATE_DEFAULT[prop];
       else continue;
     }
@@ -148,4 +179,14 @@ export const basename = (value) => {
 export function describeStyleDiff(diffs, limit = 6) {
   return (diffs ?? []).slice(0, limit).map(d =>
     `${d.prop} 参考 ${d.ref} / 候选 ${d.cand}${typeof d.delta === 'number' ? `（${d.delta > 0 ? '+' : ''}${d.delta}）` : ''}`).join('; ');
+}
+
+/** 从修复包区域里挑第一条「候选侧样式差」，供 compare 摘要与 UI 用。 */
+export function leadStyleDiffOf(regions = [], { max = 2 } = {}) {
+  for (const region of regions ?? []) {
+    for (const e of [...(region.element?.best ?? []), ...(region.element?.diffs ?? [])]) {
+      if (e?.styleDiff?.length) return { region: region.id, ref: e.ref, match: e.match ?? null, diffs: e.styleDiff.slice(0, max) };
+    }
+  }
+  return null;
 }

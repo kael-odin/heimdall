@@ -25,8 +25,7 @@ const latestBy = (dir, re) => {
 };
 
 /** 工作区里所有重建目录（含 heimdall.config.json），最多扫四层 */
-export function listProjects() {
-  const out = [];
+export function listProjects() {  const out = [];
   const walk = (dir, depth) => {
     if (depth > 4 || out.length >= 40) return;
     let names = [];
@@ -44,6 +43,33 @@ export function listProjects() {
   };
   walk(WORKSPACE, 0);
   return out;
+}
+
+/** 修复包 → 活动页用的精简摘要：只留前几条区域与样式差，避免把整包 JSON 塞进每 2 秒的轮询。 */
+export function compactFixPacket(packet, { maxRegions = 3, maxDiffs = 4 } = {}) {
+  if (!packet) return null;
+  const regions = [];
+  for (const id of (packet.order ?? []).slice(0, maxRegions)) {
+    const r = (packet.regions ?? []).find(x => x.id === id);
+    if (!r) continue;
+    const best = r.element?.best?.[0];
+    const diffs = [];
+    const seen = new Set();
+    for (const e of [best, ...(r.element?.diffs ?? [])]) {
+      for (const d of e?.styleDiff ?? []) {
+        if (seen.has(d.prop)) continue;
+        seen.add(d.prop);
+        diffs.push({ prop: d.prop, ref: d.ref, cand: d.cand, ...(typeof d.delta === 'number' ? { delta: d.delta } : {}) });
+        if (diffs.length >= maxDiffs) break;
+      }
+      if (diffs.length >= maxDiffs) break;
+    }
+    regions.push({
+      id: r.id, sectionId: r.sectionId ?? null, cause: r.cause ?? null, severity: r.severity ?? null,
+      bbox: r.bbox ?? null, hint: r.hint ?? null, ref: best?.ref ?? null, diffs,
+    });
+  }
+  return { runId: packet.runId ?? null, at: packet.generatedAt ?? null, verdict: packet.verdict?.status ?? null, regions };
 }
 
 /** 一个重建目录的活动快照；路径必须在工作区内 */
@@ -91,6 +117,23 @@ export function activityOf(projectDir) {
     } catch { return null; }
   })();
 
+  // 最近一次修复包与最近一次「有差异」的修复包：最新一次常常是干净的收尾 compare，
+  // 活动页要展示的是上一次真正指出问题的包，否则演示时只看到「没有区域」。
+  const { latest, lastActionable } = (() => {
+    let latest = null, lastActionable = null;
+    for (let i = ledger.length - 1; i >= Math.max(0, ledger.length - 10); i--) {
+      const runId = ledger[i]?.runId;
+      if (!runId) continue;
+      const packet = readJson(join(dir, '.heimdall', 'runs', runId, 'fixpacket.json'));
+      if (!packet) continue;
+      const compact = compactFixPacket(packet);
+      if (!latest) latest = compact;
+      if (!lastActionable && (packet.regions?.length || packet.order?.length)) lastActionable = compact;
+      if (latest && lastActionable) break;
+    }
+    return { latest, lastActionable };
+  })();
+
   return {
     schema: 'heimdall.activity/1',
     generatedAt: new Date().toISOString(),
@@ -113,5 +156,7 @@ export function activityOf(projectDir) {
       sectionIds: e.sectionIds ?? null, pixel: Object.fromEntries(Object.entries(e.pixel ?? {}).map(([w, v]) => [w, +(v * 100).toFixed(2)])) })),
     gate: { fast: latestBy(gateDir, /^gate-.*\.json$/), formal: latestBy(gateDir, /^formal-.*\.json$/) },
     delivery,
+    latest,
+    lastActionable,
   };
 }

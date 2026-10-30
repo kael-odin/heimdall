@@ -31,6 +31,9 @@
   .seg .bar > i { display:block; height:100%; background:var(--brand); }
   .seg.ok .bar > i { background:var(--ok); } .seg.warn .bar > i { background:var(--warn); } .seg.bad .bar > i { background:var(--bad); }
   .seg code { font-size:12px; color:var(--muted); }
+  .fix { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:8px; }
+  .fix .diff { font-size:12px; color:var(--muted); margin-top:4px; }
+  .fix .diff b { color:var(--bad); }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
   th { color:var(--muted); font-weight:600; }
@@ -54,6 +57,11 @@
   <section class="card">
     <h2>分段</h2>
     <div class="sections" id="sections"><div class="empty">还没有对比记录。</div></div>
+  </section>
+
+  <section class="card">
+    <h2>最近一次修复包</h2>
+    <div id="fixpacket"><span class="sub">还没有修复包。</span></div>
   </section>
 
   <div class="row">
@@ -80,6 +88,7 @@
 const $ = (id) => document.getElementById(id);
 const fmtPct = (v) => (typeof v === 'number' ? v.toFixed(2) + '%' : '—');
 const fmtTime = (iso) => (iso ? new Date(iso).toLocaleTimeString('zh-CN', { hour12: false }) : '—');
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let current = null;
 
 async function json(url) {
@@ -131,6 +140,23 @@ function dimChips(gate) {
   return gate.dimensions.map(d => `<span class="chip ${d.status === 'pass' ? 'pass' : d.status === 'fail' ? 'fail' : 'unknown'}">${d.id} · ${d.status}</span>`).join('');
 }
 
+function renderFixpacket(snap) {
+  const box = $('fixpacket');
+  const f = snap?.lastActionable ?? snap?.latest;
+  if (!f) { box.innerHTML = '<span class="sub">还没有修复包。</span>'; return; }
+  const latest = snap?.latest;
+  const fmtDiff = (d) => `<div class="diff"><code>${esc(d.prop)}</code> 参考 ${esc(d.ref)} / 候选 <b>${esc(d.cand)}</b>${typeof d.delta === 'number' ? `（${d.delta > 0 ? '+' : ''}${d.delta}）` : ''}</div>`;
+  const rows = (f.regions ?? []).map(r => `<div class="fix">
+      <div><strong>${esc(r.id)}</strong>${r.sectionId ? ` <code>${esc(r.sectionId)}</code>` : ''} <span class="chip unknown">${esc(r.cause ?? '—')}</span></div>
+      ${r.hint ? `<div class="sub">${esc(r.hint)}</div>` : ''}
+      ${(r.diffs ?? []).map(fmtDiff).join('')}
+    </div>`).join('');
+  const latestLine = latest && latest.runId !== f.runId
+    ? `<div class="sub">最新一次：${esc(latest.verdict ?? '—')} · ${fmtTime(latest.at)}（无差异）</div><div class="sub">最近一次有差异：${esc(f.verdict ?? '—')} · ${fmtTime(f.at)}</div>`
+    : `<div class="sub">${esc(f.verdict ?? '—')} · ${fmtTime(f.at)}</div>`;
+  box.innerHTML = `${latestLine}<div class="sub"><code>${esc(f.runId ?? '')}</code></div>${rows || '<div class="empty">这次对比没有区域。</div>'}`;
+}
+
 function renderGate(snap) {
   const formal = snap?.gate?.formal, fast = snap?.gate?.fast;
   const active = formal ?? fast;
@@ -160,7 +186,7 @@ function renderRecent(snap) {
 function render(snap) {
   current = snap;
   $('where').textContent = snap ? `${snap.project.siteId} / ${snap.project.page} · ${snap.totals.iterations} 次迭代 · 目标 ${snap.project.level}` : '';
-  renderCharts(snap); renderSections(snap); renderGate(snap); renderDelivery(snap); renderRecent(snap);
+  renderCharts(snap); renderSections(snap); renderFixpacket(snap); renderGate(snap); renderDelivery(snap); renderRecent(snap);
 }
 
 async function tick() {

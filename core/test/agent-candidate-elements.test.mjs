@@ -4,7 +4,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { styleDiffOf, boxDiffOf } from '../src/agent/evidence/element-style.mjs';
+import { leadStyleDiffOf } from '../src/agent/evidence/element-style.mjs';
 import { matchCandidateElement, enrichElementHints } from '../src/agent/evidence/candidate-elements.mjs';
+import { compactFixPacket } from '../src/agent/activity.mjs';
 
 test('styleDiff: reports numeric deltas and ignores equivalent colours', () => {
   const diffs = styleDiffOf(
@@ -29,6 +31,14 @@ test('styleDiff: missing reference padding means 0px, not silence', () => {
 test('styleDiff: equal styles produce no noise', () => {
   assert.deepEqual(styleDiffOf({ fontSize: '16px', color: 'rgb(1, 2, 3)' }, { fontSize: '16px', color: 'rgb(1, 2, 3)' }), []);
   assert.deepEqual(styleDiffOf({ padding: '0px 0px' }, { padding: '0px' }), [], 'zero shorthand spellings are equal');
+});
+
+test('styleDiff: old reference shorthand fills missing per-side values', () => {
+  const diffs = styleDiffOf(
+    { padding: '0px 40px', margin: '48px 0px 0px', border: '1px solid rgb(0, 0, 0)', gap: '48px' },
+    { padding: '0px 40px', margin: '48px 0px 0px', border: '1px solid rgb(0, 0, 0)', gap: '48px', paddingRight: '40px', paddingLeft: '40px', marginTop: '48px', borderTopWidth: '1px', borderLeftWidth: '1px', rowGap: '48px', columnGap: '48px' },
+  );
+  assert.deepEqual(diffs, [], 'shorthand-derived sides are not false differences');
 });
 
 test('styleDiff: a property missing on the candidate is a real difference', () => {
@@ -92,4 +102,30 @@ test('enrich: attaches cand, match and styleDiff without mutating the reference 
   assert.equal(out.best[0].cand.style.fontSize, '46px');
   assert.equal(out.best[0].match.by, 'text');
   assert.equal(out.best[0].styleDiff.find(d => d.prop === 'fontSize').delta, -6);
+});
+
+test('leadStyleDiff: picks the first region with a candidate-side diff', () => {
+  const regions = [
+    { id: 'r1', element: { best: [{ ref: 'sec-hero/e3', styleDiff: [] }] } },
+    { id: 'r2', element: { best: [{ ref: 'sec-hero/e4' }], diffs: [{ ref: 'sec-hero/e5', styleDiff: [{ prop: 'gap', ref: '16px', cand: '40px', delta: 24 }] }] } },
+  ];
+  const lead = leadStyleDiffOf(regions);
+  assert.equal(lead.ref, 'sec-hero/e5');
+  assert.equal(lead.diffs[0].prop, 'gap');
+});
+
+test('activity: compact fix packet keeps the top regions and their style diffs', () => {
+  const packet = {
+    runId: 'run_1', generatedAt: '2026-10-31T00:00:00.000Z', verdict: { status: 'needs-work' }, order: ['r1', 'r2'],
+    regions: [
+      { id: 'r1', sectionId: 'sec-hero', cause: 'font', severity: 'high', bbox: { x: 1, y: 2, w: 3, h: 4 }, hint: '字号',
+        element: { best: [{ ref: 'sec-hero/e3', styleDiff: [{ prop: 'fontSize', ref: '52px', cand: '46px', delta: -6 }] }] } },
+      { id: 'r2', sectionId: 'sec-hero', cause: 'spacing', element: { best: [{ ref: 'sec-hero/e4' }], diffs: [{ ref: 'sec-hero/e5', styleDiff: [{ prop: 'gap', ref: '16px', cand: '40px', delta: 24 }] }] } },
+    ],
+  };
+  const out = compactFixPacket(packet);
+  assert.equal(out.regions.length, 2);
+  assert.equal(out.regions[0].diffs[0].prop, 'fontSize');
+  assert.equal(out.regions[1].diffs[0].prop, 'gap');
+  assert.equal(out.verdict, 'needs-work');
 });

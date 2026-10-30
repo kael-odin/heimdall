@@ -19,6 +19,7 @@ import { ok, fail, fromError, exitCodeOf, nextAction, CapabilityError } from '..
 import { parseArgs } from '../cli.mjs';
 import { invoke } from '../registry/invoke.mjs';
 import { initWorkspace } from '../rebuild/init.mjs';
+import { findFreePort, portAvailable } from '../rebuild/ports.mjs';
 import { readProjectConfig } from '../evidence/compare.mjs';
 import { listPages } from '../workspace.mjs';
 import { decide } from '../loops/converge.mjs';
@@ -55,8 +56,13 @@ async function init(flags, positional, log) {
     if (!page) throw new CapabilityError('reference_missing', `${siteId} 下没有可用的镜像页面`);
   }
   const dir = resolve(String(flags.dir ?? `rebuild-${siteId}-${page}`.replace(/[^\w.-]+/g, '-')));
-  const port = Number(flags.port ?? 5199);
-  if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new CapabilityError('invalid_args', '--port 取 1024–65535');
+  const requestedPort = Number(flags.port ?? 5199);
+  if (!Number.isInteger(requestedPort) || requestedPort < 1024 || requestedPort > 65535) throw new CapabilityError('invalid_args', '--port 取 1024–65535');
+  // 不传 --port 时自动避让已占用的端口；显式传了就尊重调用者，占用时直接报错而不是偷偷换。
+  const port = flags.port === undefined ? await findFreePort(requestedPort) : requestedPort;
+  if (flags.port !== undefined && !(await portAvailable(requestedPort))) {
+    throw new CapabilityError('invalid_args', `端口 ${requestedPort} 已被占用`, { hint: '换一个 --port，或不传 --port 让 Heimdall 自动选' });
+  }
   const result = await initWorkspace({
     siteId, page, stack: flags.stack ?? 'html-css', fidelity: flags.fidelity ?? 'balanced', gateLevel: flags.gate ?? 'silver', dir, port,
     modelClass: flags['model-class'] ?? 'standard', git: !flags['no-git'], install: !flags['no-install'], registry: flags.registry,
