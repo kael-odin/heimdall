@@ -191,14 +191,14 @@ VS Code 的键名是 `servers` 且每项要 `type: "stdio"`，`connect` 已按�
 - 六维门禁：`passed`（gold）；正式裁判：**passed silver**，验收视觉 3/3、结构 3/3、健康 12/12；
 - 交付：`core/workspace/127.0.0.1--origin-5c84d1d15de129f0/agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed，25 个项目文件 + 8 个镜像文件）；
 - 记录：8 次 compare，约 3 分钟；本会话模型标识 `claude-fable-ccs-272433[1m]`（由运行环境报告）。
-- **Claude Desktop**：配置已指向 Heimdall，且用同一启动命令做过 stdio 验证（11 个工具、`heimdall_doctor` 正常）；界面还未打开，主界面确认待完成。
+- **Claude Desktop**：2026-10-31 界面 `heimdall_doctor` 返回 **9/9 通过**（操作者贴回结果，总体「环境就绪」）；配置与 stdio 也已验证（11 个工具）。一键重建的首次成功以 Claude Code 为准，Desktop 目前记录为「连通通过」。
 
 跑完每个客户端填一行，作为 A-3 的证据：
 
 | 客户端 | 版本 | 实际模型 | 开始时间 | 迭代次数 | 墙钟 | 快速裁判 | 正式裁判 | 卡点 / 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Claude Code | 2.1.310 | `claude-fable-ccs-272433[1m]`（环境报告） | 2026-10-31 17:32Z | 8 次 compare | ~3 分钟 | pass-candidate（gold） | passed（silver） | 6/6 分段；一次 footer 窄视口间距修复 |
-| Claude Desktop |  |  |  |  |  |  |  | 配置与 stdio 已验证；界面待打开 |
+| Claude Desktop |  |  | 2026-10-31 | — | — | — | — | 界面 doctor 9/9 通过；未跑重建提示词 |
 | Cursor（可选） |  |  |  |  |  |  |  |  |
 | VS Code（可选） |  |  |  |  |  |  |  |  |
 

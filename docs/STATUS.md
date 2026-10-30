@@ -98,7 +98,7 @@ pnpm check                 # lint + 文档链接 + 控制台构建 + 快速集
 - Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通，11 个工具可用。
 - 本会话用 MCP 工具完成 F1 重建：6/6 分段 `pass-candidate`，整页 375 99.89% / 768 99.91% / 1440 100%，正式门禁 `passed silver`（验收视觉 3/3、结构 3/3、健康 12/12）。
 - 交付包：`agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed）。
-- Claude Desktop 配置与 stdio 已验证；界面打开确认待完成。
+- Claude Desktop 界面 `heimdall_doctor` 9/9 通过（2026-10-31，操作者贴回结果）；配置与 stdio 也已验证。
 
 ## 历史归档
 
