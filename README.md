@@ -260,6 +260,7 @@ CI 配置见 `.github/workflows/`。**GitHub Actions 自 2026-10-26 起因账户
 | [PRD.md](PRD.md) | 产品定义：用户、定位、三件套、产品原则 | 想知道"为什么做这个" |
 | [docs/prd/ai-native/](docs/prd/ai-native/README.md) | AI 接入层（Bifröst）：能力注册表、MCP/CLI/HTTP、重建环与门禁 | 规划 AI 接入与演示叙事时 |
 | [docs/guide/01-architecture.md](docs/guide/01-architecture.md) | 当前架构：三层、适配器、还原度公式、产物规范 | 改代码前 |
+| [docs/guide/06-ai-integration.md](docs/guide/06-ai-integration.md) | 接入 Claude Code / Claude Desktop，跑通一句话重建（A-3 手测） | 演示前、接入代理时 |
 | [docs/DELIVERY.md](docs/DELIVERY.md) | 三种产物的区别、认证站点怎么处理 | 想知道"我该拿哪一种走" |
 | [docs/TEST-WORKSPACE.md](docs/TEST-WORKSPACE.md) | 测试工作区：登录档、只读探测、裁决记忆与提单报告 | 用 Heimdall 测真实项目时 |
 | [docs/competition/acceptance-workbench.md](docs/competition/acceptance-workbench.md) | 项目验收工作台：Mirror / Spec / Regression、断言与边界 | 运行验收或接 CI |

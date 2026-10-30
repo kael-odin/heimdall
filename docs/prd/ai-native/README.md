@@ -202,7 +202,7 @@ AI  heimdall_doctor        引擎在线，浏览器组件就绪
 
 **Phase 0 之后待你处理**：
 
-1. **A-3 界面手测**：Claude Code（命令行要先登录）、Claude Desktop、Cursor、VS Code 各连一次，步骤与配置片段在 `core/spikes/ph0/README.md`。
+1. **A-3 界面手测**：Claude Code（命令行要先登录）、Claude Desktop、Cursor、VS Code 各连一次，步骤与配置片段见 [docs/guide/06-ai-integration.md](../../guide/06-ai-integration.md)。
 2. **G4 成本目标**：Opus 5.5 实测每页约 15–30 美元。请决定是先按 [05 §6.4](05-frontend-rebuild.md) 的降本手段在 Bench v0 复测，还是现在就放宽目标。
 3. **Sonnet 5.5 的测试路径**：本机桌面应用的网关把子代理的 `sonnet` 别名转给了 DeepSeek（[10 §4](10-roadmap-risks.md) R17）。要测默认档，需要一个直连的 API Key 或调整网关映射。
 

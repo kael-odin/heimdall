@@ -76,6 +76,7 @@ pnpm check                 # lint + 文档链接 + 控制台构建 + 快速集
 | 5 分钟演示脚本 | [DEMO-SCRIPT](../DEMO-SCRIPT.md) |
 | 当前架构（对着代码维护） | [docs/guide/01-architecture.md](guide/01-architecture.md) |
 | AI 接入层方案与路线 | [docs/prd/ai-native/](prd/ai-native/README.md) |
+| 接入 Claude Code / Desktop 与 A-3 手测 | [docs/guide/06-ai-integration.md](guide/06-ai-integration.md) |
 | 验收工作台各专题 | [docs/competition/](competition/acceptance-workbench.md) |
 | 待办与长期维护 | [docs/ROADMAP.md](ROADMAP.md) |
 | 审计与实施记录 | [docs/audits/README.md](audits/README.md)（证据已外部归档） |
