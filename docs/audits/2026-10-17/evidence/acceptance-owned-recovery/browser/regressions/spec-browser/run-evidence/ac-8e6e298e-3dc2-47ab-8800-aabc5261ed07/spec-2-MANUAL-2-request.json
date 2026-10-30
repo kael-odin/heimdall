@@ -1,9 +1,0 @@
-{
-  "method": "GET",
-  "url": "http://127.0.0.1:64616/missing-field",
-  "redirect": "manual",
-  "credentials": "omit",
-  "headers": {
-    "Accept": "application/json"
-  }
-}

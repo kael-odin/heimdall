@@ -1,7 +1,0 @@
-{
-  "stage": "04-core-smoke",
-  "command": "pnpm -C core smoke",
-  "startedAt": "2026-10-17T03:34:45.691Z",
-  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
-  "environmentOverrides": {}
-}

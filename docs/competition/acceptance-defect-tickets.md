@@ -88,6 +88,6 @@ pnpm -C console build
 pnpm acceptance:defect:tickets:smoke
 ```
 
-该 smoke 入口检查真实本地 Chromium 中的新捕获来源、视觉与行为两成员成单、部分修复阻断、全量修复后的显式关闭、退化重开、响应丢失后的只读核对、正常重启和桌面 / 手机布局。[D5 提交前本机验收记录](../audits/2026-10-18/acceptance-defect-tickets.md)保存源码专项、历次失败与修复、本机 17 组门禁和完整 Chromium 10/10 结果；完整 Core 为 2661 项、2649 pass、12 skip。推送后的精确新 SHA Linux CI 由主任务另行采集并在下一片归档，D4 档案只证明 D4。
+该 smoke 入口检查真实本地 Chromium 中的新捕获来源、视觉与行为两成员成单、部分修复阻断、全量修复后的显式关闭、退化重开、响应丢失后的只读核对、正常重启和桌面 / 手机布局。[D5 提交前本机验收记录](../audits/README.md)保存源码专项、历次失败与修复、本机 17 组门禁和完整 Chromium 10/10 结果；完整 Core 为 2661 项、2649 pass、12 skip。推送后的精确新 SHA Linux CI 由主任务另行采集并在下一片归档，D4 档案只证明 D4。
 
-公开材料见[证据阅读说明](../audits/2026-10-18/evidence/defect-tickets/README.md)、[完整归档索引](../audits/2026-10-18/evidence/defect-tickets/archive-index.json)及[独立核验导航](../audits/2026-10-18/evidence/defect-ticket-publication/README.md)。重新采集后的包已完整独立核验 exit 0、`passed`，索引 SHA256 为 `40897db2e88dbf78419d2908e4fcdff421f6f925a674bc94c3e6933aed8822b4`；首次因 CRLF 属性字节失败的原包、报告和精确修正溯源继续保留。核验确认源报告 14 项检查，人工缺陷单固定其中 2 个成员；四图的字节、尺寸与 DOM/布局核验不等于人工目视验收，受控 502 响应丢失模拟不代表 TCP 中断或断电测试。请求日志限于已记录的验收 API，证据与平台边界按导航中的原始报告阅读。
+公开材料见[证据阅读说明](../audits/README.md)、[完整归档索引](../audits/README.md)及[独立核验导航](../audits/README.md)。重新采集后的包已完整独立核验 exit 0、`passed`，索引 SHA256 为 `40897db2e88dbf78419d2908e4fcdff421f6f925a674bc94c3e6933aed8822b4`；首次因 CRLF 属性字节失败的原包、报告和精确修正溯源继续保留。核验确认源报告 14 项检查，人工缺陷单固定其中 2 个成员；四图的字节、尺寸与 DOM/布局核验不等于人工目视验收，受控 502 响应丢失模拟不代表 TCP 中断或断电测试。请求日志限于已记录的验收 API，证据与平台边界按导航中的原始报告阅读。

@@ -1,7 +1,0 @@
-{
-  "stage": "01-lint",
-  "command": "pnpm -C core lint",
-  "startedAt": "2026-10-17T04:40:28.525Z",
-  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
-  "environmentOverrides": {}
-}

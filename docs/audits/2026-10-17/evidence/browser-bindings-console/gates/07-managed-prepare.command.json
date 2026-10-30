@@ -1,7 +1,0 @@
-{
-  "stage": "07-managed-prepare",
-  "command": "pnpm acceptance:managed:prepare:smoke",
-  "startedAt": "2026-10-17T04:51:23.357Z",
-  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
-  "environmentOverrides": {}
-}

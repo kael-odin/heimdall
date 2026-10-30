@@ -1,9 +1,0 @@
-{
-  "method": "GET",
-  "url": "http://127.0.0.1:52299/api/still/quota",
-  "redirect": "manual",
-  "credentials": "omit",
-  "headers": {
-    "Accept": "application/json"
-  }
-}

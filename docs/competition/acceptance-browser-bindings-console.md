@@ -49,7 +49,7 @@ POST JSON 严格只接受五个字段：
 
 原始采集详情是既有证据 API 返回的保存字节，可能包含页面文字、原始链接和断言观察；它按原始 SHA 核对后只作文本展示。这与显示 DTO 的字段裁剪是不同边界。旧 release、run、plan、report 和原始证据接口仍沿用各自合同；本片不声明全系统 URL 脱敏，也不改写历史证据。
 
-运行列表与单条运行详情 GET 在 worker 原子发布进度时，允许展示本请求已经稳定捕获的 legacy 版本，下一次请求再读取新版本。这只影响轮询展示；来源复核、证据下载、triage 和恢复继续严格核验，不能从展示版本取得来源或写权限。[读取竞态验收](../audits/2026-10-17/acceptance-display-head-race.md)记录实现边界与失败复现。
+运行列表与单条运行详情 GET 在 worker 原子发布进度时，允许展示本请求已经稳定捕获的 legacy 版本，下一次请求再读取新版本。这只影响轮询展示；来源复核、证据下载、triage 和恢复继续严格核验，不能从展示版本取得来源或写权限。[读取竞态验收](../audits/README.md)记录实现边界与失败复现。
 
 planned entry 的组织匹配不能证明远端部署内容冻结。观测地址沿用采集时的有限记录，不能证明完整重定向链或最终完整 query。受控本地流程和冻结反例只验证本文合同，不代表外部项目或认证业务已经验收。
 
@@ -68,4 +68,4 @@ node --test core/test/console-acceptance-browser-bindings.test.mjs
 pnpm acceptance:browser:bindings:ui:smoke
 ```
 
-实现验收、实际计数与证据路径见[工作台验收记录](../audits/2026-10-17/acceptance-browser-bindings-console.md)。Browser 完整批准预览、候选 / 批准 / 选用和固定来源执行继续作为后续能力独立建设。
+实现验收、实际计数与证据路径见[工作台验收记录](../audits/README.md)。Browser 完整批准预览、候选 / 批准 / 选用和固定来源执行继续作为后续能力独立建设。

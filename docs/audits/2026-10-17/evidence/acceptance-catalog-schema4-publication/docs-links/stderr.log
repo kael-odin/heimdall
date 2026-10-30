@@ -1,2 +1,0 @@
-$ pnpm -C core check:docs
-$ node scripts/check-markdown-links.mjs

@@ -1,9 +1,0 @@
-{
-  "stage": "01-lint",
-  "command": "pnpm -C core lint",
-  "startedAt": "2026-10-17T04:40:28.525Z",
-  "finishedAt": "2026-10-17T04:40:49.807Z",
-  "durationMs": 21280,
-  "exitCode": 0,
-  "signal": null
-}

@@ -1,2 +1,0 @@
-# Archive raw logs as evidence, overriding the repository runtime-log rule.
-!*.log

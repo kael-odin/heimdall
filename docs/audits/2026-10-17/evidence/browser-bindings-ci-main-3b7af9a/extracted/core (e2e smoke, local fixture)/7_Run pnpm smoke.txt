@@ -1,9 +1,0 @@
-﻿2026-10-17T03:52:03.4485360Z ##[group]Run pnpm smoke
-2026-10-17T03:52:03.4485862Z [36;1mpnpm smoke[0m
-2026-10-17T03:52:03.4579054Z shell: /usr/bin/bash -e {0}
-2026-10-17T03:52:03.4579325Z env:
-2026-10-17T03:52:03.4579605Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-2026-10-17T03:52:03.4580209Z ##[endgroup]
-2026-10-17T03:52:04.5225603Z $ node scripts/smoke-forge.mjs
-2026-10-17T03:52:04.6169076Z [smoke] fixture :46483 (页面) / 38475 (样式表，另一个 origin) | engine :38075 | data /tmp/heimdall-smoke-qKgxC3
-2026-10-17T03:52:39.6465482Z [smoke] PASS — recon pages = 2 | visual = 100.0% | dom = 100.0% | seo = 77 ( 13 issues ) | live bundle ok (health unresolved=0 externalAssets=0) | watch ok | jobs persistent

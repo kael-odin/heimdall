@@ -231,4 +231,4 @@ node core/src/cli.mjs audit example.org --max 30
 - 未生成的可选产物不会在报告里显示链接。已有产物打不开时先检查引擎鉴权，再看引擎日志与浏览器网络请求。
 - 测试入口：`pnpm -C core lint`、`pnpm -C core test`、`pnpm -C core smoke`、`pnpm -C console build`。
 
-架构、产品边界和当前待办分别见 [ARCHITECTURE.md](ARCHITECTURE.md)、[PRD.md](PRD.md) 与 [ROADMAP](docs/ROADMAP.md)。
+架构、产品边界和当前待办分别见 [当前架构](./docs/guide/01-architecture.md)、[PRD.md](PRD.md) 与 [ROADMAP](docs/ROADMAP.md)。

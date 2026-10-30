@@ -60,4 +60,4 @@ node --test core/test/acceptance-browser-candidate-source.test.mjs
 pnpm acceptance:browser:read:smoke
 ```
 
-smoke 新采集四次本地 Chromium 运行，取得 owner 后验证全部原件、两向 nullable、八个明确选侧案例、返回值隔离和 owner 拒绝，同时检查读取阶段没有同步写入、fetch 或进程启动，原文件字节和被观测 metadata 不变。结果与边界见[实施验收记录](../audits/2026-10-17/acceptance-browser-reading.md)。它不能代替真实外部项目、认证业务或目录批准 UI 的验收。
+smoke 新采集四次本地 Chromium 运行，取得 owner 后验证全部原件、两向 nullable、八个明确选侧案例、返回值隔离和 owner 拒绝，同时检查读取阶段没有同步写入、fetch 或进程启动，原文件字节和被观测 metadata 不变。结果与边界见[实施验收记录](../audits/README.md)。它不能代替真实外部项目、认证业务或目录批准 UI 的验收。

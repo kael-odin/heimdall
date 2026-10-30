@@ -1,3 +1,0 @@
-$ node scripts/smoke-forge.mjs
-[smoke] fixture :61820 (页面) / 61819 (样式表，另一个 origin) | engine :61821 | data <isolated-temp-data>
-[smoke] PASS — recon pages = 2 | visual = 100.0% | dom = 100.0% | seo = 77 ( 13 issues ) | live bundle ok (health unresolved=0 externalAssets=0) | watch ok | jobs persistent

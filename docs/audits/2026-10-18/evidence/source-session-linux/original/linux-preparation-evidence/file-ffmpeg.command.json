@@ -1,9 +1,0 @@
-{
-  "argv": [
-    "/usr/bin/file",
-    "/root/heimdall-node22-diagnosis-20261018/browsers/ffmpeg-1011/ffmpeg-linux"
-  ],
-  "startedAt": "2026-10-18T00:22:35.120429+00:00",
-  "completedAt": "2026-10-18T00:22:35.134086+00:00",
-  "exitCode": 0
-}

@@ -59,4 +59,4 @@ SEO 站内审计是独立辅线。交互镜像适合研究有授权的前端行�
 - 不提供外链情报、关键词排名等需要外部数据源的 SEO 产品能力。
 - 不把未获授权的第三方页面或认证数据直接作为可公开部署成品。
 
-操作见 [USAGE.md](USAGE.md)，工程边界见 [ARCHITECTURE.md](ARCHITECTURE.md)，当前问题与验证证据见 [全仓库审查](docs/audits/2026-10-14/README.md)。
+操作见 [USAGE.md](USAGE.md)，工程边界见 [当前架构](./docs/guide/01-architecture.md)，当前问题与验证证据见 [全仓库审查](./docs/audits/README.md)。

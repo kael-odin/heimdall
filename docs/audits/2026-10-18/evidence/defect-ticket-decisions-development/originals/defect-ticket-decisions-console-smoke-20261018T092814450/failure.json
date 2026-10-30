@@ -1,5 +1,0 @@
-{
-  "name": "AssertionError",
-  "message": "Expected values to be strictly equal:\n\n4 !== 0\n",
-  "stack": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n4 !== 0\n\n    at file:///C:/Users/44548/.codex/worktrees/ci-small-runner-concurrency/heimdall/core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs:383:75"
-}

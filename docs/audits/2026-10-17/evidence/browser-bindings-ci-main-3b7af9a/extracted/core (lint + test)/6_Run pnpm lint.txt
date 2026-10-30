@@ -1,8 +1,0 @@
-﻿2026-10-17T03:51:42.4216993Z ##[group]Run pnpm lint
-2026-10-17T03:51:42.4217346Z [36;1mpnpm lint[0m
-2026-10-17T03:51:42.4314235Z shell: /usr/bin/bash -e {0}
-2026-10-17T03:51:42.4314521Z env:
-2026-10-17T03:51:42.4314782Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-2026-10-17T03:51:42.4315435Z ##[endgroup]
-2026-10-17T03:51:43.5816401Z $ node scripts/check-syntax.mjs
-2026-10-17T03:51:53.8597815Z check-syntax: 444 file(s) OK

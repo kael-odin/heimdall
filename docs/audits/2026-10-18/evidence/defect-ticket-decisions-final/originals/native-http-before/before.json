@@ -1,8 +1,0 @@
-{
-  "path": "core/test/acceptance-defect-ticket-service.test.mjs",
-  "bytes": 28456,
-  "sha256": "3a47a810bf3c69fefe0a2f0c170e5d41a182e2e0af3c2fad454ab5ba2991ae72",
-  "failedRun": "final-core-20261018T020327.749384Z",
-  "failure": "late replay fetch ECONNRESET at line381; original winner/proof assertions completed",
-  "change": "Use a fresh native HTTP connection for each ordinary fixture POST, retain 30000ms absolute budget, no retry, no production change"
-}

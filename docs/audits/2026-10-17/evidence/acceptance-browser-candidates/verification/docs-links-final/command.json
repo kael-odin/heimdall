@@ -1,9 +1,0 @@
-{
-  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
-  "command": "node",
-  "args": [
-    "core/scripts/check-markdown-links.mjs"
-  ],
-  "startedAt": "2026-10-17T10:43:37.484Z",
-  "outputDirectory": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall\\core\\workspace\\_runs\\d2-publication-final-20261017\\docs-links-final-45a5711a-ccea-4458-b332-00627d101f2e"
-}

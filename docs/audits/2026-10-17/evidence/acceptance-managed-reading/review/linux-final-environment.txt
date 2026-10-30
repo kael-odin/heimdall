@@ -1,7 +1,0 @@
-2026-10-16T19:09:23Z
-v22.23.3
-{"platform":"linux","cwd":"/mnt/c/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core","execPath":"/tmp/heimdall-managed-linux-runtime-20261017/node-v22.23.3-linux-x64/bin/node","tmpdir":"/tmp"}
-source filesystem: v9fs
-fixture filesystem: ext2/ext3
-/mnt/c 9p     C:\
-/      ext4   /dev/sdd

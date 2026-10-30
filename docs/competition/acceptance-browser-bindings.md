@@ -52,4 +52,4 @@ node --test core/test/acceptance-browser-source-binding.test.mjs
 pnpm acceptance:browser:bindings:smoke
 ```
 
-纯 schema 与固定材料专项、真实 owner 的事务 / 来源变化回归、新采集 mirror / regression 受控流程及完整质量门见[实施验收记录](../audits/2026-10-17/acceptance-browser-bindings.md)。固定材料和受控站点用于验证声明的合同，不代表授权外部项目、认证业务或全部真实部署已经验收。
+纯 schema 与固定材料专项、真实 owner 的事务 / 来源变化回归、新采集 mirror / regression 受控流程及完整质量门见[实施验收记录](../audits/README.md)。固定材料和受控站点用于验证声明的合同，不代表授权外部项目、认证业务或全部真实部署已经验收。

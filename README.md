@@ -26,7 +26,7 @@ cd core && pnpm install && cd ../console && pnpm install && cd ..
 ./clone-heimdall.cmd
 ```
 
-浏览器会打开 `http://127.0.0.1:5173`；把网址贴进左上角的输入框即可。完整步骤见 [USAGE.md](USAGE.md)，工程细节见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+浏览器会打开 `http://127.0.0.1:5173`；把网址贴进左上角的输入框即可。完整步骤见 [USAGE.md](USAGE.md)，工程细节见 [当前架构](docs/guide/01-architecture.md)。
 
 不想点界面、想一条命令跑完（侦察 → 克隆 → 验证 → 资产 → 交付）：
 
@@ -54,13 +54,13 @@ D3 已接入[固定来源 Browser 单次验收](docs/competition/acceptance-brow
 
 D5 已接入[固定成员人工缺陷单](docs/competition/acceptance-defect-tickets.md)：从同一次已登记操作的可靠失败中人工选择成员，固定来源与证据摘要，分别显示处理状态和当前核验。最新同范围登记必须在同次复验中可靠通过全部固定成员，再由操作者明确关闭；关闭后又发现可靠失败会重新打开，后续通过仍需再次明确关闭。支持处理历史及 Markdown / JSON 导出。人工动作的未知结果保留原确认，只 GET 核对，不自动重发原 POST。全局 Browser approval / selection 与操作归档继续独立建设。
 
-D6 已实现[人工动作的结果核对与永久拒绝](docs/competition/acceptance-defect-ticket-decisions.md)：操作者可明确封住同动作号的迟到成单或关闭，原事件与拒绝竞争同一个不可变决定；只有完整 `recorded` / `rejected` 原件、规范字节和请求身份均通过核验，页面才精确解除对应本机确认，草稿保留。本机完整 Core 与 27 阶段 Browser 已通过；**CI 目前是红的**，原因见[本报告](docs/audits/2026-10-22/README.md) 第 1 节：D6 冒烟原先在点击后才读响应体，页面跳走时会丢；该问题已在本轮修复，待下一次 CI 确认。[动作回复边界增强](docs/audits/2026-10-18/acceptance-defect-ticket-response-framing.md)已通过本机 Windows / Linux 专项，新提交自身的完整 CI 仍待核验。下一阶段 D7 先用本地固定示例，从全新界面实际走通采集、固定来源、发现 BUG、人工成单、修复复验、明确关闭与证据导出；真实浏览器执行和人工确认均保留，结论仅覆盖示例的声明检查。后续取得获授权的外部项目 URL 后，再拓展真实项目验收。
+D6 已实现[人工动作的结果核对与永久拒绝](docs/competition/acceptance-defect-ticket-decisions.md)：操作者可明确封住同动作号的迟到成单或关闭，原事件与拒绝竞争同一个不可变决定；只有完整 `recorded` / `rejected` 原件、规范字节和请求身份均通过核验，页面才精确解除对应本机确认，草稿保留。本机完整 Core 与 27 阶段 Browser 已通过；**CI 目前是红的**，原因见[本报告](docs/audits/2026-10-22/README.md) 第 1 节：D6 冒烟原先在点击后才读响应体，页面跳走时会丢；该问题已在本轮修复，待下一次 CI 确认。[动作回复边界增强](./docs/audits/README.md)已通过本机 Windows / Linux 专项，新提交自身的完整 CI 仍待核验。下一阶段 D7 先用本地固定示例，从全新界面实际走通采集、固定来源、发现 BUG、人工成单、修复复验、明确关闭与证据导出；真实浏览器执行和人工确认均保留，结论仅覆盖示例的声明检查。后续取得获授权的外部项目 URL 后，再拓展真实项目验收。
 
-[Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md)已实现 D1 的纯格式、分步迁移与旧历史兼容，为 Browser 候选预留独立 `browserCandidates` 表。已有 Schema3 / Schema4 只打开并验证；旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，需先停止同根引擎，再显式预览并确认迁移。当前引擎为全新空目录明确创建 Schema3。D1 阶段的本机回归、旧数据真实迁移、Browser 混合历史及精确提交自身 CI 的证据见[实施验收](docs/audits/2026-10-17/acceptance-catalog-schema4.md)。
+[Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md)已实现 D1 的纯格式、分步迁移与旧历史兼容，为 Browser 候选预留独立 `browserCandidates` 表。已有 Schema3 / Schema4 只打开并验证；旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，需先停止同根引擎，再显式预览并确认迁移。当前引擎为全新空目录明确创建 Schema3。D1 阶段的本机回归、旧数据真实迁移、Browser 混合历史及精确提交自身 CI 的证据见[实施验收](./docs/audits/README.md)。
 
-D1 提交 `c170f50` 的[自身 Linux CI 复核](docs/audits/2026-10-17/acceptance-catalog-d1-ci.md)已完成：完整 Core 和原 Acceptance console 通过，后续旧 Managed Spec preparation smoke 因依赖隐式迁移失败。D2 已把该夹具 setup 改为真实 owner 下的显式维护；本机复验与下一轮精确提交 CI 分开记录。
+D1 提交 `c170f50` 的[自身 Linux CI 复核](./docs/audits/README.md)已完成：完整 Core 和原 Acceptance console 通过，后续旧 Managed Spec preparation smoke 因依赖隐式迁移失败。D2 已把该夹具 setup 改为真实 owner 下的显式维护；本机复验与下一轮精确提交 CI 分开记录。
 
-运行列表与详情已补充[原子发布期间的稳定展示读取](docs/audits/2026-10-17/acceptance-display-head-race.md)，避免正常 worker 更新进度时误报完整性冲突；来源与证据仍走严格核验。原工作台提交自身的 CI 失败与修复验证分别保留。
+运行列表与详情已补充[原子发布期间的稳定展示读取](./docs/audits/README.md)，避免正常 worker 更新进度时误报完整性冲突；来源与证据仍走严格核验。原工作台提交自身的 CI 失败与修复验证分别保留。
 
 </details>
 
@@ -228,9 +228,11 @@ docs/            路线图、交付说明、上手导览（docs/guide/）
 ```bash
 pnpm -C core exec playwright install chromium   # 先装浏览器，见下
 pnpm lint          # 语法检查（core 的 src / scripts / test）
-pnpm test          # 全部单测 + 真浏览器用例 + 控制台 E2E（条数看末行；别在文档里写死）
+pnpm test          # 快速集：无浏览器、无验收存储的单测与流程测试
+pnpm test:full     # 全量：含真浏览器、验收存储与控制台 E2E
 pnpm smoke         # 离线 E2E（本地 fixture，不联网）
 pnpm -C console build
+pnpm check         # 一键：lint + 文档链接 + 控制台构建 + 快速集
 ```
 
 > 文档里写死的数字会烂。这一页曾经写着"91 个模块""385 条测试"、"航线数 66"——
@@ -242,7 +244,8 @@ pnpm -C console build
 > `Executable doesn't exist`。CI 就在这上面栽过：`.github/workflows/ci.yml` 的 core job
 > 曾经从不装浏览器，于是长期全红 —— 而本地有浏览器的机器永远全绿，所以一直没被发现。
 
-CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / 测试 / build / smoke）。
+CI 配置见 `.github/workflows/`。**GitHub Actions 自 2026-10-26 起因账户计费失败被禁用**，
+当前以本地 `pnpm check`（快速门禁）与发布前 `pnpm test:full` 为准；恢复计费后再启用 workflow。
 `seo-gate.yml` 当前只手动触发；配置 `config/seo-targets.txt` 与受版本控制的基线后才适合启用回归门禁。
 
 ---
@@ -251,44 +254,21 @@ CI 见 `.github/workflows/`：`ci.yml` 每次推送跑确定性检查（lint / �
 
 | 文件 | 内容 | 什么时候读 |
 | --- | --- | --- |
-| **[docs/guide/README.md](docs/guide/README.md)** | **上手导览**：架构、控制台、功能全解（带类比，配图） | **第一次接触这个项目** |
-| [docs/DELIVERY.md](docs/DELIVERY.md) | 三种产物的区别、为什么不做补丁协议、认证站点怎么处理 | 想知道"我该拿哪一种走" |
-| [docs/TEST-WORKSPACE.md](docs/TEST-WORKSPACE.md) | 测试工作区：qa.json 配置、登录档、只读探测、裁决记忆与提单报告 | 用 Heimdall 测真实项目时 |
-| [PRD.md](PRD.md) | 产品定义：用户、定位、三件套、产品原则 | 想知道"为什么做这个" |
-| [docs/prd/ai-native/](docs/prd/ai-native/README.md) | **AI 接入层（Bifröst）PRD（草案）**：让外部 AI 代理调用 Heimdall，用前沿模型做可验证的前端重建与后端行为克隆 | 规划 AI 接入、自动化与演示叙事时 |
+| **[docs/STATUS.md](docs/STATUS.md)** | **当前状态**：主线、能跑的命令、验证口径、已知边界 | **每次接手先看这一页** |
+| [docs/guide/README.md](docs/guide/README.md) | 上手导览：架构、控制台、功能全解（带类比，配图） | 第一次接触这个项目 |
 | [USAGE.md](USAGE.md) | 完整使用指南（启动、克隆、查看、部署） | 上手时 |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 三层架构、栈适配器、还原度公式、产物规范 | 改代码前 |
+| [PRD.md](PRD.md) | 产品定义：用户、定位、三件套、产品原则 | 想知道"为什么做这个" |
+| [docs/prd/ai-native/](docs/prd/ai-native/README.md) | AI 接入层（Bifröst）：能力注册表、MCP/CLI/HTTP、重建环与门禁 | 规划 AI 接入与演示叙事时 |
+| [docs/guide/01-architecture.md](docs/guide/01-architecture.md) | 当前架构：三层、适配器、还原度公式、产物规范 | 改代码前 |
+| [docs/DELIVERY.md](docs/DELIVERY.md) | 三种产物的区别、认证站点怎么处理 | 想知道"我该拿哪一种走" |
+| [docs/TEST-WORKSPACE.md](docs/TEST-WORKSPACE.md) | 测试工作区：登录档、只读探测、裁决记忆与提单报告 | 用 Heimdall 测真实项目时 |
+| [docs/competition/acceptance-workbench.md](docs/competition/acceptance-workbench.md) | 项目验收工作台：Mirror / Spec / Regression、断言与边界 | 运行验收或接 CI |
+| [RISKS.md](RISKS.md) | 合规红线、技术风险预案、演示日 checklist | 每周对一遍 |
 | [DEMO-SCRIPT.md](DEMO-SCRIPT.md) | 演示脚本 + 评委问答预案 | 答辩前 |
 | [VISUAL-SYSTEM.md](VISUAL-SYSTEM.md) | 控制台设计系统（令牌、字体、3D 星图规范） | 改界面前 |
-| [RISKS.md](RISKS.md) | 合规红线、技术风险预案、演示日 checklist | 每周对一遍 |
-| [docs/competition/02-自动验收开发项目还原度BUG检测系统.md](docs/competition/02-自动验收开发项目还原度BUG检测系统.md) | 命题 02 方案：Mirror / Spec / Regression、Xspark 验收样例和 Figma 扩展路线 | 比赛方案与后续开发 |
-| [项目验收工作台](docs/competition/acceptance-workbench.md) | Mirror / Spec / Regression、断言、AI 解释、CLI / API 与边界 | 运行验收与接入 CI |
-| [Spec 实施验收记录](docs/audits/2026-10-16/acceptance-spec.md) | OpenAPI 来源快照、11 案例基准、17 项控制台检查与完整证据索引 | 复查本阶段能力与限制 |
-| [跨运行复验指南](docs/competition/acceptance-comparison.md) | 显式选择运行对、稳定身份、证据核验、关系解释与 JSON / Markdown 导出 | 核对修复与新增失败 |
-| [跨运行复验实施记录](docs/audits/2026-10-16/acceptance-comparison.md) | 固定反例基准、真实 API / CLI / 控制台验证和证据 | 复查复验结论与保守边界 |
-| [项目与版本指南](docs/competition/acceptance-catalog.md) | 不可变版本、历史运行归属、目录冲突及引擎所有权 | 组织多次开发验收 |
-| [项目与版本实施记录](docs/audits/2026-10-16/acceptance-catalog.md) | 真实 worker、API / 控制台、双引擎、重启及原始证据保护 | 复查目录可靠性 |
-| [Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md) | D1 纯格式、旧历史兼容、预览与确认迁移；本机完整回归与真实流程通过 | 维护旧 Schema1 / Schema2，明确升级到 Schema4 |
-| [Schema3 格式与历史迁移](docs/competition/acceptance-catalog-schema3.md) | Browser 来源表的格式沿革与原 Spec 历史兼容 | 理解历史切片；当前操作见 Schema4 指南 |
-| [验收目录格式升级历史验收](docs/audits/2026-10-16/acceptance-catalog-migration.md) | 保留旧原件的单次迁移、版本谱系和真实旧数据浏览器复验 | 复查原阶段升级兼容性 |
-| [Spec 需求基线](docs/competition/acceptance-baseline.md) | 完整候选预览、批准历史、独立选用、来源重新核验 | 管理明确认可的需求 |
-| [需求基线实施验收](docs/audits/2026-10-16/acceptance-baseline.md) | 真实 worker / 浏览器、来源篡改、冲突和历史保护 | 复查批准可靠性 |
-| [托管 Spec 合同与执行](docs/competition/acceptance-managed-spec.md) | 已选需求重建、明确目标版本、真实执行与核验快照 / 下载 / 比较 | 专用 HTTP 接纳、运行槽、取消及查询合同 |
-| [托管读取实施验收](docs/audits/2026-10-17/acceptance-managed-reading.md) | 安全 DTO、完成事实、真实浏览器、Linux 定向回归及 CI 诊断边界 | 复查读取能力与仍隔离的执行消费者 |
-| [验收启动恢复](docs/audits/2026-10-17/acceptance-owned-recovery.md) | 真实 owner、整批零写预检、保守中断、故障诊断和写入阻断 | 重启不重发请求；partial 现场保留；该切片的执行入口尚未开放 |
-| [托管 Spec 执行验收](docs/audits/2026-10-17/acceptance-managed-execution.md) | 新确认接纳、真实 runner、统一槽、取消、任务镜像与浏览器核验 | HTTP / CDP 实施证据；该报告对应后端切片 |
-| [执行工作台验收](docs/audits/2026-10-17/acceptance-execution-ui.md) | 明确版本的执行入口、原操作恢复、请求停止与浏览器故障验证 | Spec 执行 UI 与证据 |
-| [Browser 固定来源单次验收](docs/competition/acceptance-browser-execution.md) | 本次完整确认、固定来源原件、目标采集、检查问题登记与显式复验 | 从已存 Browser 候选验收新目标 |
-| [Browser 执行实施记录](docs/audits/2026-10-17/acceptance-browser-execution.md) | D3 操作、来源证据、问题记录、恢复与验证边界 | 复查本阶段实现与证据 |
-| [Browser 启动结果核对与永久拒绝](docs/competition/acceptance-browser-start-resolution.md) | D4 完整决定证明、原确认核对、迟到启动阻断与跨页写锁 | 处理响应未知的原启动 |
-| [Browser 启动结果实施验收](docs/audits/2026-10-17/acceptance-browser-start-resolution.md) | 冻结源码、决定互斥、真实 UI、失败原件与精确 CI | 复查 D4 的实现和证据范围 |
-| [固定成员人工缺陷单](docs/competition/acceptance-defect-tickets.md) | D5 同次可靠失败成单、双状态、全员复验后显式关闭、失败重开与只读动作核对；[本机验收记录](docs/audits/2026-10-18/acceptance-defect-tickets.md) | 管理固定检查的人工处理闭环与导出 |
-| [人工动作决定](docs/competition/acceptance-defect-ticket-decisions.md) | D6 完整证明核对、永久拒绝迟到动作和精确解除；[实施记录](docs/audits/2026-10-18/acceptance-defect-ticket-decisions.md)保存门禁状态与失败证据 | 核对未知成单 / 关闭，保留原决定与草稿 |
-| [docs/archive/HANDOFF-through-2026-10-13.md](docs/archive/HANDOFF-through-2026-10-13.md) | 截至 2026-10-13 的开发记录（历史证据） | 想知道"为什么这样写" |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事 | 排下一批 |
-| [docs/audits/2026-10-14/README.md](docs/audits/2026-10-14/README.md) | 全仓库价值、质量与文件治理审查（含修复复验和 CDP 证据） | 查看当前状态与剩余边界 |
-| [docs/audits/2026-10-16/project-cleanup.md](docs/audits/2026-10-16/project-cleanup.md) | 2026-10-16 中间产物清理、可恢复归档和 CAS 回收预览 | 查看本轮清理范围 |
-| [docs/audits/2026-10-22/README.md](docs/audits/2026-10-22/README.md) | 大白话仓库审查：成熟度打分、已修问题、待办清单与四周路线 | 想快速知道项目现在什么水平、下一步做什么 |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | 还没做的事与长期维护 | 排下一批 |
+| [docs/audits/README.md](docs/audits/README.md) | 审计与实施记录索引（逐日报告已外部归档） | 追溯历史结论 |
+| [docs/archive/](docs/archive/README.md) | 2026-10-13 前的开发记录与旧文档（历史证据） | 想知道"为什么这样写" |
 
 `docs/archive/` 存放阶段性的验收报告与审查记录（历史证据，不再更新）。
 

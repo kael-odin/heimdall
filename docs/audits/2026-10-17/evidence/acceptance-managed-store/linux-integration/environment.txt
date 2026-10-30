@@ -1,8 +1,0 @@
-2026-10-16T18:09:48Z
-Linux kael 6.6.114.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Mon Dec  1 20:46:23 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
-v22.23.3
-{"platform":"linux","arch":"x64","execPath":"/tmp/heimdall-managed-linux-runtime-20261017/node-v22.23.3-linux-x64/bin/node","cwd":"/mnt/c/Users/44548/.codex/worktrees/managed-spec-provenance/heimdall/core","node":"22.23.3"}
-source-filesystem: v9fs
-temporary-fixture-filesystem: ext2/ext3
-runtime-filesystem: ext2/ext3
-git-head:

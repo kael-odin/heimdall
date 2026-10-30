@@ -74,4 +74,4 @@ pnpm acceptance:browser:bindings:v4:smoke
 
 迁移 smoke 使用旧 B1 和完整 Spec V2 原件副本，通过真实 CLI、引擎和浏览器验证显式升级。Browser Schema4 smoke 先新采集真实 Browser 来源与原生归属操作，再明确建立 Spec 草稿、批准 / 取消 / 重选和派发生命周期夹具，检查混合历史迁移及旧来源重核验。生命周期夹具不调用 Spec executor，迁移也不发目标请求；它们不能作为 Browser 托管执行已完成的证明。
 
-实际门禁、保留的失败尝试、容量问题修复与证据边界见 [Schema4 实施验收](../audits/2026-10-17/acceptance-catalog-schema4.md)。
+实际门禁、保留的失败尝试、容量问题修复与证据边界见 [Schema4 实施验收](../audits/README.md)。

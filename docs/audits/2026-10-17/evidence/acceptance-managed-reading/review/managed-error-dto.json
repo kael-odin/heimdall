@@ -1,9 +1,0 @@
-{
-  "status": "failed",
-  "error": "ENOENT: C:\\private\\credentials.json SECRET_TOKEN",
-  "errorUnchanged": true,
-  "hasAbsolutePath": true,
-  "hasPrivatePlan": false,
-  "hasManagedEnvelope": false,
-  "targetRequests": 0
-}

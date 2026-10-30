@@ -1,9 +1,0 @@
-{
-  "passed": true,
-  "method": "direct new-tab navigation to href",
-  "bridgeUrl": "http://127.0.0.1:56028/?artifact=%2Fstatic%2Ffixture.test%2Findex.html",
-  "issuedStatus": 200,
-  "issuedPath": "/static/fixture.test/index.html",
-  "finalUrl": "http://localhost:56028/static/fixture.test/index.html",
-  "tokenAbsentFromUrls": true
-}

@@ -1,9 +1,0 @@
-{
-  "command": "node --test core/test/acceptance-owner.test.mjs",
-  "startedAt": "2026-10-17T01:11:05.822Z",
-  "finishedAt": "2026-10-17T01:11:06.179Z",
-  "durationMs": 357,
-  "exitCode": 0,
-  "signal": null,
-  "error": null
-}

@@ -62,4 +62,4 @@ pnpm acceptance:browser:source:smoke
 node core/scripts/freeze-acceptance-browser-source.mjs core/workspace/_runs/browser-source-new
 ```
 
-真实采集与离线反例的结果见[实施验收记录](../audits/2026-10-17/acceptance-browser-source.md)。固定夹具不能证明真实外部开发项目的通用覆盖；认证、写操作、数据库、完整状态机及持久 BUG 账本仍需独立建设。
+真实采集与离线反例的结果见[实施验收记录](../audits/README.md)。固定夹具不能证明真实外部开发项目的通用覆盖；认证、写操作、数据库、完整状态机及持久 BUG 账本仍需独立建设。

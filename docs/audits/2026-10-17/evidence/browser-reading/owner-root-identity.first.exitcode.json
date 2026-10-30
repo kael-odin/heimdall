@@ -1,9 +1,0 @@
-{
-  "command": "node --test core/test/acceptance-owner-root-identity.test.mjs",
-  "startedAt": "2026-10-17T01:09:14.909Z",
-  "finishedAt": "2026-10-17T01:09:15.344Z",
-  "durationMs": 434,
-  "exitCode": 1,
-  "signal": null,
-  "error": null
-}

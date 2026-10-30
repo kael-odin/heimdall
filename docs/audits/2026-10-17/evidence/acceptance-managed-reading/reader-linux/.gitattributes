@@ -1,2 +1,0 @@
-# Preserve the original evidence bytes across Git staging and checkout.
-* -text !eol

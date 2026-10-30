@@ -1,6 +1,6 @@
 # 跨运行复验：显式选择两次验收记录
 
-更新：2026-10-16。跨运行复验读取两次已有运行的报告和证据，判断相同检查是否可靠复验通过。支持 [Mirror / Regression](acceptance-workbench.md) 与 [Spec 契约验收](acceptance-spec.md)；实施结果见[本阶段验收记录](../audits/2026-10-16/acceptance-comparison.md)。
+更新：2026-10-16。跨运行复验读取两次已有运行的报告和证据，判断相同检查是否可靠复验通过。支持 [Mirror / Regression](acceptance-workbench.md) 与 [Spec 契约验收](acceptance-spec.md)；实施结果见[本阶段验收记录](../audits/README.md)。
 
 对比不会重新请求目标、改写原报告或原门禁，也不会自动批准基线。当前比较范围是用户明确选择的运行对 `explicit-pair`；[项目目录](acceptance-catalog.md)与 [Spec 需求基线](acceptance-baseline.md)另行保存版本归属及批准历史，比较结果不会替代这些记录。持久缺陷状态账本仍待实现。
 
@@ -108,4 +108,4 @@ pnpm acceptance:comparison:smoke
 
 控制台 smoke 会启动隔离的本地接口夹具与真实引擎，通过 API worker 执行 Spec，检查鉴权、输入保护、CLI、明确选择、错误恢复、筛选、重新核验导出、过期请求、窄屏布局和证据变化阻断。默认输出 `core/workspace/_runs/acceptance-comparison-console/`，含 `browser-checks.json`、对比文件和截图；脚本结束关闭临时服务。
 
-这两项是固定本地场景的离线复现。**12 项通过不代表真实项目检出率、通用误报率、根因识别或持久缺陷自动关闭能力**；实际执行结果与证据以[实施验收记录](../audits/2026-10-16/acceptance-comparison.md)为准。
+这两项是固定本地场景的离线复现。**12 项通过不代表真实项目检出率、通用误报率、根因识别或持久缺陷自动关闭能力**；实际执行结果与证据以[实施验收记录](../audits/README.md)为准。

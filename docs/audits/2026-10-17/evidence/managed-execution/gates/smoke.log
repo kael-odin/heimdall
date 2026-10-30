@@ -1,3 +1,0 @@
-$ node scripts/smoke-forge.mjs
-[smoke] fixture :54543 (页面) / 54542 (样式表，另一个 origin) | engine :54544 | data C:\Users\44548\AppData\Local\Temp\heimdall-smoke-4jQeE0
-[smoke] PASS — recon pages = 2 | visual = 100.0% | dom = 100.0% | seo = 77 ( 13 issues ) | live bundle ok (health unresolved=0 externalAssets=0) | watch ok | jobs persistent

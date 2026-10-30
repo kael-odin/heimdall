@@ -68,7 +68,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm --dir ../console install --frozen-lockfile
       - run: pnpm --dir ../console build
-      - run: pnpm test -- --test-shard=${{ matrix.shard }}/2
+      - run: pnpm test:full -- --test-shard=${{ matrix.shard }}/2
       - name: Preserve core test diagnostics
         if: failure()
         uses: actions/upload-artifact@v7

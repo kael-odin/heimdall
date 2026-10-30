@@ -1,5 +1,0 @@
-utc=2026-10-16T20:36:15Z
-workspace=/tmp/heimdall-owned-engine-review.3oIZO3/heimdall
-code_pin_check=pass
-dependency_pin_check=pass
-scope=7 previously failed engine cases only

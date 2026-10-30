@@ -1,4 +1,0 @@
-d4d341644a2a38b83d21bb9cb567c2091e3940730ecdf229b2758f3f49487c04  console/src/acceptance-defect-tickets.js
-bf65084e2b8785892f6ce7b729d0bc7d44bed8313d9826c9d795d418be5a5570  console/src/AcceptanceDefectTickets.vue
-d3223988791d5f1cdf4dbfcbb292a939f4dee09219b6c2cd3366201c6ea7f1b3  core/test/console-acceptance-defect-tickets.test.mjs
-7338d7f5911025d8fcec387afb32f724dc4337aa010368cfa51df4a9d51769c2  core/test/console-acceptance-defect-tickets-state.test.mjs

@@ -1,8 +1,0 @@
-[
-  "python",
-  "core/workspace/_runs/d2-evidence-independent-verify.py",
-  "--mode",
-  "working",
-  "--out",
-  "core/workspace/_runs/d2-evidence-independent-working-20261017-01"
-]

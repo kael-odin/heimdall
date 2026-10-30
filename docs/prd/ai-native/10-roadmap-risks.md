@@ -330,7 +330,7 @@ heimdall rebuild deliver --project .              → Floor=Mirror 交付包（�
 | [PRD](../../../PRD.md) | 加一行指向本 PRD | Ph1 |
 | [DEMO-SCRIPT](../../../DEMO-SCRIPT.md) | 按 §2 改写，保留原脚本为降级 | Ph3 |
 | [ROADMAP](../../ROADMAP.md) | 加「AI 原生接入」一节，指向本 PRD | Ph1 |
-| [HANDOFF](../../../HANDOFF.md) | 「先看」加一条 | Ph1 |
+| [HANDOFF](../../STATUS.md) | 「先看」加一条 | Ph1 |
 | `docs/guide/06-ai-integration.md` | 新写：用户向的接入指南 | Ph3 |
 | `.github/workflows/ci.yml` | 新增 job（一致性、生成物同步、注入 / 秘密扫描），不改既有 job | Ph2 |
 

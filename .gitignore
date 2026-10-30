@@ -1,6 +1,8 @@
 # dependencies
 node_modules/
 .pnpm-store/
+# root has no dependencies; pnpm regenerates this empty file on every run
+/pnpm-lock.yaml
 
 # build output
 dist/
@@ -32,6 +34,10 @@ logs/
 !.env.example
 *.pem
 *.key
+
+# local knowledge graph and one-off spikes (not part of the product)
+graphify-out/
+core/spikes/
 
 # editors / OS
 .DS_Store

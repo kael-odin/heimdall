@@ -63,4 +63,4 @@ pnpm -C console build
 pnpm acceptance:baseline:smoke
 ```
 
-真实 worker、浏览器、API、故障反例与文件指纹的结果见[实施验收记录](../audits/2026-10-16/acceptance-baseline.md)。
+真实 worker、浏览器、API、故障反例与文件指纹的结果见[实施验收记录](../audits/README.md)。

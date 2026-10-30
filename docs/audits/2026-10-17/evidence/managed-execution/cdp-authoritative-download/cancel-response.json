@@ -1,8 +1,0 @@
-{
-  "status": 200,
-  "body": {
-    "id": "a-3edb5b40-c874-49d1-a2cd-e1ffca0ca540",
-    "status": "running",
-    "cancelRequested": true
-  }
-}

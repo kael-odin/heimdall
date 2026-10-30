@@ -1,7 +1,0 @@
-{
-  "command": "node core/scripts/smoke-acceptance-browser-reading.mjs",
-  "startedAt": "2026-10-17T00:55:49.0880581+00:00",
-  "finishedAt": "2026-10-17T00:56:04.9759668+00:00",
-  "durationMs": 15887.9087,
-  "exitCode": 0
-}

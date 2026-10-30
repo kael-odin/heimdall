@@ -1,4 +1,0 @@
-{
-  "command": "impeccable detect --json console/src/AcceptanceDefectTickets.vue",
-  "exitCode": 0
-}

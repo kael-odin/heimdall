@@ -1,9 +1,0 @@
-{
-  "realCapturedSource": true,
-  "registeredTwoFixedFailures": true,
-  "registeredHealthyTwoMembers": true,
-  "fourUniqueOriginalActions": true,
-  "realUIOriginsAndReceiptScope": true,
-  "sameUniqueUpstreamBodyPerCase": true,
-  "denyAndAcceptedMutuallyExclusive": true
-}

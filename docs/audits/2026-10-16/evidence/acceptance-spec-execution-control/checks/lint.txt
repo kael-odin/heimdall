@@ -1,2 +1,0 @@
-$ node scripts/check-syntax.mjs
-check-syntax: 347 file(s) OK

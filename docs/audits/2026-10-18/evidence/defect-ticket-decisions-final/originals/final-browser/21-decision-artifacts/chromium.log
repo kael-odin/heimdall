@@ -1,7 +1,0 @@
-[40344:3884:1018/113136.249:ERROR:components\viz\host\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory "C:\Users\44548\.codex\worktrees\ci-small-runner-concurrency\heimdall\core\workspace\_runs\d6-implementation-20261018\final-browser-20261018T030617.503422Z\21-decision-artifacts\chromium-profile\GPUPersistentCache\GPUCache\RHCXOSBJ4JLQ5K6PCQ54YJEZ4LGSPDUQ", error: 2: 文件名或扩展名太长。 (0xCE)
-[40344:3884:1018/113136.250:ERROR:components\viz\host\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory "C:\Users\44548\.codex\worktrees\ci-small-runner-concurrency\heimdall\core\workspace\_runs\d6-implementation-20261018\final-browser-20261018T030617.503422Z\21-decision-artifacts\chromium-profile\GPUPersistentCache\DawnGraphiteCache\MEWXC45O3P3R4TOUNO3XIW6SYETDRVMU", error: 2: 系统找不到指定的路径。 (0x3)
-[40344:32832:1018/113136.308:ERROR:chrome\browser\extensions\external_registry_loader_win.cc:147] Missing value path for key Software\Google\Chrome\Extensions\dngcpimnedloihjnnfngkgjoidhnaolf.
-[40344:32832:1018/113136.308:ERROR:chrome\browser\extensions\external_registry_loader_win.cc:147] Missing value path for key Software\Google\Chrome\Extensions\fcoeoabgfenejglbffodgkkbkcdhcgfn.
-
-DevTools listening on ws://127.0.0.1:56008/devtools/browser/8014be89-1743-4360-9518-00118a99d4e4
-[40344:19840:1018/113140.269:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: QUOTA_EXCEEDED

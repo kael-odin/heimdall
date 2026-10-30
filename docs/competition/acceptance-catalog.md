@@ -15,7 +15,7 @@
 
 两个窗口可能同时修改同一目录。页面发送读取时的 generationId 和 revision；只有仍匹配的一次写入能够成功。遇到冲突时保留表单，刷新并核对已有记录后再明确提交。网络错误也可能发生在服务器已经提交之后，应先重新读取目录，不能自动重发写请求。
 
-目录请求默认以 60 秒覆盖响应头和完整 JSON 正文；不合作的读取或取消也不会永久占住界面。列表和详情是顺序的独立请求，各自有一个预算。已核验的写入确认会先显示，再刷新目录；刷新失败时保留“已提交、待核对”的事实并释放 busy，操作者需手动刷新。写入未取得完整确认时仍标为可能已提交，保留草稿并暂停新写，不自动重试。产品期限不代表原有 25 秒浏览器 smoke 的失败根因已经确定，历史结论见[精确 CI 记录](../audits/2026-10-18/acceptance-catalog-ci-failure.md)。
+目录请求默认以 60 秒覆盖响应头和完整 JSON 正文；不合作的读取或取消也不会永久占住界面。列表和详情是顺序的独立请求，各自有一个预算。已核验的写入确认会先显示，再刷新目录；刷新失败时保留“已提交、待核对”的事实并释放 busy，操作者需手动刷新。写入未取得完整确认时仍标为可能已提交，保留草稿并暂停新写，不自动重试。产品期限不代表原有 25 秒浏览器 smoke 的失败根因已经确定，历史结论见[精确 CI 记录](../audits/README.md)。
 
 ## API
 
@@ -59,7 +59,7 @@ owner 内的目录写入按队列顺序执行，覆盖 read → validate → rev
 
 当前支持打开并验证 Schema3 / Schema4；引擎为全新空目录明确创建 Schema3。Schema3 的 `browserSourceBindings` 按[来源侧归属合同](acceptance-browser-bindings.md)验证 Browser 来源关系，Schema4 再增加独立 `browserCandidates` 表与严格历史格式。Spec 的 candidates、approvals、selections 继续遵循[需求基线合同](acceptance-baseline.md)，迁移不扩展 Spec 的批准、选用或托管执行语义。
 
-现行操作见 [Schema4 与显式维护](acceptance-catalog-schema4.md)。旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，不会静默升级；未知版本拒绝打开并保留原件。先停止使用同一数据根的引擎，再用维护 CLI 的 `--preview --target-schema 4` 检查计划，核对后以全部身份执行 `--apply`。活动 owner 持锁时维护拒绝；CLI 不启动引擎恢复或 worker。D1 的本机完整 Core、旧数据真实迁移和 Browser 混合历史检查均通过，证据与自身 CI 待核验边界见[实施验收](../audits/2026-10-17/acceptance-catalog-schema4.md)。
+现行操作见 [Schema4 与显式维护](acceptance-catalog-schema4.md)。旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，不会静默升级；未知版本拒绝打开并保留原件。先停止使用同一数据根的引擎，再用维护 CLI 的 `--preview --target-schema 4` 检查计划，核对后以全部身份执行 `--apply`。活动 owner 持锁时维护拒绝；CLI 不启动引擎恢复或 worker。D1 的本机完整 Core、旧数据真实迁移和 Browser 混合历史检查均通过，证据与自身 CI 待核验边界见[实施验收](../audits/README.md)。
 
 Schema1 依次经过 `1→2→3→4`，Schema2 经过 `2→3→4`，Schema3 经过 `3→4`。每步保留旧实体和事件前缀、追加迁移实体与全局事件、增加一次 revision 并切换 generation，旧页面 CAS 因此失效。迁移不会生成 Browser 来源、候选或执行授权，已有 Schema4 的新预览可确认零步计划。
 
@@ -79,4 +79,4 @@ pnpm acceptance:catalog:smoke
 pnpm acceptance:catalog:migration:smoke
 ```
 
-目录 smoke 使用隔离数据目录和本地只读 API 夹具，覆盖真实 worker、目录冲突、第二引擎与路径别名、重启、控制台及原始证据不变。迁移 smoke 使用上一版真实目录与运行证据的副本，检查格式升级、旧请求冲突、连续重启、浏览器报告和所有来源字节不变。构建完成后再运行读取构建产物的浏览器检查。当前迁移命令已使用显式 Schema4 维护；本轮实际结果见[Schema4 实施验收](../audits/2026-10-17/acceptance-catalog-schema4.md)，历史结果和当时边界见[目录实施验收记录](../audits/2026-10-16/acceptance-catalog.md)及[格式升级验收记录](../audits/2026-10-16/acceptance-catalog-migration.md)。
+目录 smoke 使用隔离数据目录和本地只读 API 夹具，覆盖真实 worker、目录冲突、第二引擎与路径别名、重启、控制台及原始证据不变。迁移 smoke 使用上一版真实目录与运行证据的副本，检查格式升级、旧请求冲突、连续重启、浏览器报告和所有来源字节不变。构建完成后再运行读取构建产物的浏览器检查。当前迁移命令已使用显式 Schema4 维护；本轮实际结果见[Schema4 实施验收](../audits/README.md)，历史结果和当时边界见[目录实施验收记录](../audits/README.md)及[格式升级验收记录](../audits/README.md)。

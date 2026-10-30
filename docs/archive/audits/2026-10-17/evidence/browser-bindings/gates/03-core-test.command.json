@@ -1,7 +1,0 @@
-{
-  "stage": "03-core-test",
-  "command": "pnpm -C core test",
-  "startedAt": "2026-10-17T03:25:43.578Z",
-  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
-  "environmentOverrides": {}
-}

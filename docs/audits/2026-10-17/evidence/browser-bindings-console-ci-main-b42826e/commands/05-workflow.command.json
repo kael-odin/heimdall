@@ -1,9 +1,0 @@
-{
-  "executable": "gh",
-  "args": [
-    "api",
-    "repos/kael-odin/heimdall/contents/.github/workflows/ci.yml?ref=b42826e4956d491b461bbd00af3d18b2ad702ad5"
-  ],
-  "cwd": "C:\\Users\\44548\\.codex\\worktrees\\managed-spec-provenance\\heimdall",
-  "startedAt": "2026-10-17T05:38:21.498Z"
-}

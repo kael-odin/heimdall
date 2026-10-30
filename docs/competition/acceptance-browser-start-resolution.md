@@ -79,4 +79,4 @@ pnpm acceptance:browser:resolution:smoke
 
 该脚本保留同一未完成 HTTP body 的收包摘要、决定原件、同 origin / 端口 / Browser context 的重启恢复、两页原生锁并发和桌面 / 手机截图。原 Acceptance console、托管执行和 D3 固定来源执行门禁仍独立运行。
 
-冻结源码、修复经过、最终门禁与证据范围见[D4 实施验收](../audits/2026-10-17/acceptance-browser-start-resolution.md)。
+冻结源码、修复经过、最终门禁与证据范围见[D4 实施验收](../audits/README.md)。

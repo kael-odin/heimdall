@@ -1,5 +1,0 @@
-{
-  "name": "Error",
-  "message": "response.json: Protocol error (Network.getResponseBody): No data found for resource with given identifier\nResponse body is not available for a response that was navigated away from. Read response.body() before triggering any navigation.",
-  "stack": "response.json: Protocol error (Network.getResponseBody): No data found for resource with given identifier\nResponse body is not available for a response that was navigated away from. Read response.body() before triggering any navigation.\n    at runCase (/home/runner/work/heimdall/heimdall/core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs:262:107)\n    at async file:///home/runner/work/heimdall/heimdall/core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs:369:84"
-}

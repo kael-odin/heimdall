@@ -53,13 +53,13 @@ sidecar 使用独立 schemaVersion=1，位于 owner 根内的 `managed-spec-disp
 
 ## 固定身份存储与核验读取
 
-内部[固定身份存储层](../audits/2026-10-17/acceptance-managed-store.md)提供实际 owner 约束的 create / progress / finish / settle：只接 operationId 与原准备字节摘要，固定 run / task / plan / 来源与目标；报告交叉核对真实 runner 的合同和证据，再以 completed manifest 作为提交点。半份报告保留为 partial，不能补成成功。
+内部[固定身份存储层](../audits/README.md)提供实际 owner 约束的 create / progress / finish / settle：只接 operationId 与原准备字节摘要，固定 run / task / plan / 来源与目标；报告交叉核对真实 runner 的合同和证据，再以 completed manifest 作为提交点。半份报告保留为 partial，不能补成成功。
 
 新增读取层在同一读取范围内重新核对派发 namespace、准备记录、manifest、报告及引用证据。`readAcceptanceRun` / `listAcceptanceRuns` 可读取 managed 运行状态；`readAcceptanceSnapshot` / `readAcceptanceSnapshots` 只把严格完成且通过核验的报告作为可靠快照。`completed + failed` 的真实 BUG 与 `completed + blocked` 的超时或预算受阻仍是完成事实；running partial、failed / interrupted 收尾不能作为完成快照或下载依据。
 
 `readAcceptanceArtifact` 返回核验捕获的 bytes、SHA-256 和内容类型。JSON 下载保留原 bytes；Markdown 从同一份已核验 JSON 派生，不信任磁盘上的 `report.md`。证据下载只允许完成报告明确引用的文件，manifest、triage、sidecar、temporary 与未引用文件均不开放。比较通过批量快照在同一范围内读取双方，保留原有保守复验规则。
 
-HTTP 列表与详情只返回安全 DTO，managed 记录明确带 `triageSupported:false`；不暴露 plan、完整 envelope、私有 receipt 或 owner nonce，基础设施错误使用脱敏说明。控制台支持查看状态、原门禁、引用证据与下载；读取切片的真实浏览器与故障验证见[托管读取验收](../audits/2026-10-17/acceptance-managed-reading.md)。后续接入的明确版本启动、原操作恢复与停止见[执行工作台验收](../audits/2026-10-17/acceptance-execution-ui.md)。
+HTTP 列表与详情只返回安全 DTO，managed 记录明确带 `triageSupported:false`；不暴露 plan、完整 envelope、私有 receipt 或 owner nonce，基础设施错误使用脱敏说明。控制台支持查看状态、原门禁、引用证据与下载；读取切片的真实浏览器与故障验证见[托管读取验收](../audits/README.md)。后续接入的明确版本启动、原操作恢复与停止见[执行工作台验收](../audits/README.md)。
 
 ## 启动恢复与执行边界
 
@@ -69,13 +69,13 @@ reserved managed 的恢复只消费 dispatch 和 manifest，partial report / evi
 
 恢复固定原始 manifest 的比较写入令牌，不能采用预检之后改变的新 running。上限为 1024 个 run、4096 个 root entry、4096 份捕获文件、256 MiB 捕获 bytes、每份 JSON 8 MiB、128 次收束；调用方仅可收紧。可预见的数量与终态字节预算失败在首次写入前拒绝。多 run 发布不构成事务，中途故障会保留已经提交的中断事实、准确计数与可能提交标识，并停止后续处理。
 
-`GET /api/acceptance/recovery` 返回脱敏 readiness 和成功计数；这里的 ready 只表示启动恢复完成。执行接纳状态另由 `GET /api/acceptance/execution` 返回。恢复受阻时保留目录诊断读取，所有验收 HTTP 写操作返回 `503 / ACCEPTANCE_RECOVERY_BLOCKED`，修复现场后需重启，运行中不自动重试。旧 root-only `recoverAcceptanceRuns` 也执行严格完整预检，只处理 legacy，不能获得 managed 写权限。实现和实际证据见[启动恢复验收](../audits/2026-10-17/acceptance-owned-recovery.md)。
+`GET /api/acceptance/recovery` 返回脱敏 readiness 和成功计数；这里的 ready 只表示启动恢复完成。执行接纳状态另由 `GET /api/acceptance/execution` 返回。恢复受阻时保留目录诊断读取，所有验收 HTTP 写操作返回 `503 / ACCEPTANCE_RECOVERY_BLOCKED`，修复现场后需重启，运行中不自动重试。旧 root-only `recoverAcceptanceRuns` 也执行严格完整预检，只处理 legacy，不能获得 managed 写权限。实现和实际证据见[启动恢复验收](../audits/README.md)。
 
-执行控制基础已为私有 `runSpecAcceptance` 增加可选 `signal` 与同步 `assertActive`：控制失效停止当前请求及后续副作用，事件 callback 的等待也能取消，普通请求 timeout 保持原判定。私有 `catalog.readManagedSpecDispatch(projectId,input)` 则按完整原确认只读核对 record / null，不创建目录、不准备、不执行。null 不预留槽；新入口仍需在统一启动队列内再次核对。实现和限制见[执行控制验收](../audits/2026-10-16/acceptance-spec-execution-control.md)。
+执行控制基础已为私有 `runSpecAcceptance` 增加可选 `signal` 与同步 `assertActive`：控制失效停止当前请求及后续副作用，事件 callback 的等待也能取消，普通请求 timeout 保持原判定。私有 `catalog.readManagedSpecDispatch(projectId,input)` 则按完整原确认只读核对 record / null，不创建目录、不准备、不执行。null 不预留槽；新入口仍需在统一启动队列内再次核对。实现和限制见[执行控制验收](../audits/README.md)。
 
 重开本阶段的 prepared 记录只允许读取。升级、重启、同键重试、来源恢复或选用变化均不能自动创建 run 或发送请求。
 
-只读来源关联层保留严格原字节 provenance / linkage 校验。已迁移的读取入口可核验 managed 身份；普通 CLI、旧 mutation / finish / path artifact、candidate 与 triage 仍显式拒绝 managed / reserved 身份，删除 manifest / report 的托管标记也不能降级绕过。managed 完成运行仍不能经旧目录 bind 成新的需求来源。坏派发记录阻塞相关读取与恢复写入并保留原件，原隔离切片见[来源关联与隔离验收](../audits/2026-10-17/acceptance-managed-provenance.md)。
+只读来源关联层保留严格原字节 provenance / linkage 校验。已迁移的读取入口可核验 managed 身份；普通 CLI、旧 mutation / finish / path artifact、candidate 与 triage 仍显式拒绝 managed / reserved 身份，删除 manifest / report 的托管标记也不能降级绕过。managed 完成运行仍不能经旧目录 bind 成新的需求来源。坏派发记录阻塞相关读取与恢复写入并保留原件，原隔离切片见[来源关联与隔离验收](../audits/README.md)。
 
 B2.2-b 已接持有 owner 的进程内异步 Spec executor，与普通验收共用一个运行槽。只有新操作当次准备正常返回、且仍持有原接纳许可的调用链可以开始执行；旧 prepared、查询、重试和重启均不能启动。取消、总时限、无进展时限和 shutdown 共用停止通道；runner 的完成事件只是进展，严格 writer 发布 completed manifest 后才形成完成事实。BUG 报告仍保留 failed gate，同时任务正常结束为 done。
 
@@ -107,8 +107,8 @@ POST 只接以下确认，不接 plan、URL、expected、approved、runId / task
 
 不确定发布不重复 finish / settle，也不放行新验收。引擎先仅读 manifest，只有完整完成快照核验后才投影完成，blocked latch 保留到重启。owner 或原目录 / dispatch / head 身份丢失停止副作用；丢失 owner 不进行收尾写入。shutdown 先关闭接纳、停止请求与子进程，再等待同一 finished，最后关闭 jobs 与退出；超出宽限直接退出整个进程。
 
-完整请求 body 已被接纳后，HTTP 断连不会取消执行。响应丢失应携带原 operationId 查询；不完整 body 不接纳。此机制不承诺远端 exactly-once。实现与真实 HTTP / CDP 证据见[托管执行验收](../audits/2026-10-17/acceptance-managed-execution.md)。
+完整请求 body 已被接纳后，HTTP 断连不会取消执行。响应丢失应携带原 operationId 查询；不完整 body 不接纳。此机制不承诺远端 exactly-once。实现与真实 HTTP / CDP 证据见[托管执行验收](../audits/README.md)。
 
 B2.2-c 已接入明确目标版本的执行界面、原操作只读恢复与请求停止。Browser 基线、写请求、鉴权会话、持久 BUG 工单、操作归档管理和自动关闭缺陷继续后续实施；candidate / triage 仍隔离，原 source 草稿、报告和门禁保留。
 
-实现与定向故障证据见[准备内核验收](../audits/2026-10-16/acceptance-managed-spec-preparation.md)。
+实现与定向故障证据见[准备内核验收](../audits/README.md)。

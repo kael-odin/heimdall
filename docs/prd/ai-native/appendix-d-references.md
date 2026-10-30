@@ -44,7 +44,7 @@
 | [RISKS.md](../../../RISKS.md) | 边界与红线、「诚实性清单」；[02](02-strategy.md) 的 NG2 / NG10，[09 §2.6](09-quality-metrics.md) 的 H1–H8 |
 | [DEMO-SCRIPT.md](../../../DEMO-SCRIPT.md) | 现有演示脚本与问答预案；Q1 / Q3 / Q6 的改写见 [10 §2](10-roadmap-risks.md) |
 | [PRD.md](../../../PRD.md) | 现有产品定义，含「完整业务替代」等级——后端克隆的上限口径 |
-| [README.md](../../../README.md)、[ARCHITECTURE.md](../../../ARCHITECTURE.md)、[USAGE.md](../../../USAGE.md) | 现状能力、分层、`operation-plan` 语法与 `handoff` 用法 |
+| [README.md](../../../README.md)、[当前架构](../../guide/01-architecture.md)、[USAGE.md](../../../USAGE.md) | 现状能力、分层、`operation-plan` 语法与 `handoff` 用法 |
 | [docs/ROADMAP.md](../../ROADMAP.md) | 现有路线图与仍待验证的事项 |
 | [2026-10-22 仓库审查](../../audits/2026-10-22/README.md) | 成熟度打分、验收「指纹」陷阱（冻结的 10 个文件）、CI 现状、Node 口径、「主角不明」问题 |
 | [项目验收工作台](../../competition/acceptance-workbench.md) | 验收 Mirror 模式的输入输出、三视口、门禁——正式裁判的现有实现 |

@@ -1,4 +1,0 @@
-* -text
-complete-stdout.log -diff
-REPORT.md whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-independent-direct-zip-gh-review.json whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

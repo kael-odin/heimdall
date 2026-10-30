@@ -1,7 +1,0 @@
-[1500:36104:1018/111927.035:ERROR:components\viz\host\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory "C:\Users\44548\.codex\worktrees\ci-small-runner-concurrency\heimdall\core\workspace\_runs\d6-implementation-20261018\final-browser-20261018T030617.503422Z\19-artifacts\chromium-profile\GPUPersistentCache\DawnGraphiteCache\MEWXC45O3P3R4TOUNO3XIW6SYETDRVMU", error: 2: 文件名或扩展名太长。 (0xCE)
-[1500:40908:1018/111927.086:ERROR:chrome\browser\extensions\external_registry_loader_win.cc:147] Missing value path for key Software\Google\Chrome\Extensions\dngcpimnedloihjnnfngkgjoidhnaolf.
-[1500:40908:1018/111927.086:ERROR:chrome\browser\extensions\external_registry_loader_win.cc:147] Missing value path for key Software\Google\Chrome\Extensions\fcoeoabgfenejglbffodgkkbkcdhcgfn.
-
-DevTools listening on ws://127.0.0.1:59224/devtools/browser/9b415c02-6a79-4ebd-a540-55ff77c3cfaf
-[1500:16804:1018/111931.113:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: DEPRECATED_ENDPOINT
-[1500:16804:1018/111957.675:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: DEPRECATED_ENDPOINT

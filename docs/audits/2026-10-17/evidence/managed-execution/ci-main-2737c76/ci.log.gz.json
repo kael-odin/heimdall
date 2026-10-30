@@ -1,9 +1,0 @@
-{
-  "schemaVersion": 1,
-  "encoding": "gzip",
-  "originalBytes": 1361354,
-  "originalSha256": "7c7b3c5ea1084cc03d4858836ef3ecb9cc8aafe80120f63f98bddd10173fbd98",
-  "compressedBytes": 188726,
-  "compressedSha256": "b9a9b0db677b350f5dcc855d8e9809318c607667178ab5fe18120905c0c42195",
-  "roundTripVerified": true
-}
