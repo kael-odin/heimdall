@@ -55,7 +55,8 @@ import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, readAccepta
 import { recoverOwnedAcceptanceRuns } from './acceptance/recovery.mjs';
 import { acceptanceRunView } from './acceptance/run-view.mjs';
 import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/comparison.mjs';
-import { acquireAcceptanceOwner } from './acceptance/owner.mjs';
+import { acquireAcceptanceOwner, ACCEPTANCE_OWNER_FILE } from './acceptance/owner.mjs';
+import { ACCEPTANCE_ROOT } from './acceptance/constants.mjs';
 import { createAcceptanceCatalogStore } from './acceptance/catalog.mjs';
 import { handleAcceptanceCatalogRequest, acceptanceCatalogError } from './acceptance/catalog-api.mjs';
 import { createAcceptanceExecutionRuntime } from './acceptance/execution-runtime.mjs';
@@ -79,6 +80,8 @@ try { acceptanceOwner = acquireAcceptanceOwner(); }
 catch (error) {
   const failure = acceptanceCatalogError(error);
   console.error(`[acceptance] ${failure.payload.code}: ${failure.payload.error}`);
+  console.error(`[acceptance] 锁文件: ${join(ACCEPTANCE_ROOT, ACCEPTANCE_OWNER_FILE)}`);
+  console.error('[acceptance] 先确认没有其他 Heimdall 引擎在运行；确认后删除该锁文件再启动。不要删除其他验收数据。');
   process.exit(1);
 }
 // Registered immediately: failed startup and normal exit release only our nonce.

@@ -63,6 +63,7 @@ pnpm check                 # lint + 文档链接 + 控制台构建 + 快速集
 - 后端只能克隆“被观察到的行为”，不声称业务等价。
 - 验收目录默认 Schema3，Browser 链需要 Schema4；演示前先显式维护：
   `node core/src/acceptance/catalog-maintenance-cli.mjs --create --target-schema 4`。
+- 引擎启动时若验收目录锁被其他引擎占用，会打印锁文件路径；确认没有其他引擎后，删除该锁文件再启动，不要删除其他验收数据。
 
 ## 文档地图
 
