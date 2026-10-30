@@ -19,27 +19,7 @@ import { agentDir, mirrorEntry, readManifest, requireMirror } from '../workspace
 import { CHANNEL_T, readPng, writePng } from './image.mjs';
 import { PROFILE, launchBrowser, openPage, shoot, viewportOf } from './capture.mjs';
 import { sectionDetail } from '../brief/inspect.mjs';
-
-/**
- * 元素索引里顺带存的计算样式：修复包要「像编译器报错一样」说清楚差在哪，
- * 只给「字号不对」没有用，得给出参考值（Bench 实测：带精确值的分段证据能把同一模型从 68% 提到 95–98%）。
- * 只留布局与排版相关的键，够复刻、又不把索引撑大。
- */
-const INDEX_STYLE_PROPS = Object.freeze([
-  'display', 'width', 'height', 'maxWidth', 'padding', 'margin', 'gap', 'gridTemplateColumns', 'flexDirection',
-  'justifyContent', 'alignItems', 'fontSize', 'lineHeight', 'fontWeight', 'letterSpacing', 'textAlign', 'textTransform',
-  'color', 'backgroundColor', 'borderRadius', 'border', 'boxShadow', 'opacity', 'position',
-]);
-
-/** 只留下非默认、非空的值，省体积也省模型的注意力 */
-function compactStyle(style) {
-  const out = {};
-  for (const [k, v] of Object.entries(style ?? {})) {
-    if (v === undefined || v === null || v === '' || v === 'none' || v === 'normal' || v === 'auto' || v === '0px' || v === 'rgba(0, 0, 0, 0)') continue;
-    out[k] = String(v).slice(0, 120);
-  }
-  return Object.keys(out).length ? out : null;
-}
+import { INDEX_STYLE_PROPS, compactStyle } from './element-style.mjs';
 
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
 
@@ -137,7 +117,9 @@ export async function ensureReference(siteId, page, { viewports = [375, 768, 144
           const d = await first.page.evaluate(sectionDetail, { anchors: s.anchors, props: INDEX_STYLE_PROPS, pseudoProps: [], withStyle: true, maxElements: 600 });
           for (const it of d?.items ?? []) {
             if (!it.visible || !it.box) continue;
-            index.push({ ref: `${s.id}/e${it.i}`, sectionId: s.id, sel: it.tag, ...(it.text ? { text: it.text } : {}), textual: !!it.textual, img: !!it.img,
+            index.push({ ref: `${s.id}/e${it.i}`, sectionId: s.id, sel: it.tag, ...(it.text ? { text: it.text } : {}),
+              ...(it.cls ? { cls: it.cls } : {}), ...(it.id ? { id: it.id } : {}), depth: it.depth,
+              textual: !!it.textual, img: !!it.img,
               ...(it.src ? { src: it.src } : {}), box: { x: Math.round(it.box.x), y: Math.round(it.box.y), w: Math.round(it.box.w), h: Math.round(it.box.h) },
               ...(compactStyle(it.style) ? { style: compactStyle(it.style) } : {}) });
           }

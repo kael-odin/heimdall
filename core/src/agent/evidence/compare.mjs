@@ -24,6 +24,7 @@ import { ensurePlan } from '../brief/brief.mjs';
 import { crop, readPng } from './image.mjs';
 import { analyzeViewport, writeCrop, verdictOf, packetText, GATES } from './fixpacket.mjs';
 import { ensureReference, readElements, readMask } from './reference.mjs';
+import { readCandidateElements, enrichElementHints, styleEvidenceForRegion } from './candidate-elements.mjs';
 import { PROFILE, launchBrowser, openPage, shoot, sectionBox, viewportOf } from './capture.mjs';
 import { collectLargeBitmaps, evaluateAntiCheat, referenceShapes, textCoverage, visibleText } from '../gate/anticheat.mjs';
 
@@ -240,9 +241,16 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
           brokenImages: [...document.images].filter(i => i.complete && i.naturalWidth === 0).length,
         }));
       } catch { layout = null; }
+      // 候选侧的逐元素证据：修复包要给出「候选样式 vs 参考样式」，而不只是参考值。
+      // 只在参考索引非空时采集，页面模式与分段模式共用同一份索引。
+      const candElements = elements.length
+        ? await readCandidateElements(opened.page, { sectionIds: plan.sections.map(s => s.id) })
+        : [];
+      const sectionBoxes = Object.fromEntries(plan.sections.map(s => [s.id, s.boxes[width]]).filter(([, b]) => b));
       vpHealth.push({ width, externalHosts: [...health.externalHosts], failedRequests: health.failedRequests,
         consoleErrors: health.consoleErrors, pageErrors: health.pageErrors, ...(layout ?? {}) });
       await opened.ctx.close();
+      const pageElements = elements.map(e => ({ ...e, box: { ...e.box, y: e.box.y + offset.y } }));
       const a = analyzeViewport({ ref: refImg, cand: candImg, viewport: width, viewportHeight: vp.height, elements, dyn });
       let vpRegions = a.regions;
       // 区域 → 分段（按与参考侧分段外接框的重叠归属）
@@ -282,11 +290,24 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
           severity: r.severity, cause: r.cause, causeConfidence: r.causeConfidence,
           ...(r.heightDelta ? { heightDelta: r.heightDelta } : {}), ...(r.consequenceOf ? { consequenceOf: r.consequenceOf } : {}),
           ...(r.shift ? { shift: r.shift } : {}), ...(r.colors ? { colors: r.colors } : {}), ...(r.inkSize ? { inkSize: r.inkSize } : {}),
-          element: r.element ? {
-            best: (r.element.best ?? []).map(e => ({ ...e, ...(e.text ? { text: fence.inline(e.text, 60, 'element.text') } : {}),
-              box: { ...e.box, y: e.box.y + offset.y } })),
-            container: r.element.container ? { ...r.element.container, ...(r.element.container.text ? { text: fence.inline(r.element.container.text, 60, 'element.text') } : {}) } : null,
-          } : undefined,
+          element: (() => {
+            if (!r.element) return undefined;
+            const shifted = {
+              best: (r.element.best ?? []).map(e => ({ ...e, box: { ...e.box, y: e.box.y + offset.y } })),
+              container: r.element.container ? { ...r.element.container, box: { ...r.element.container.box, y: r.element.container.box.y + offset.y } } : null,
+            };
+            const enriched = enrichElementHints(shifted, candElements, { sectionBoxes });
+            const diffs = styleEvidenceForRegion(
+              { x: r.x + offset.x, y: r.y + offset.y, w: r.w, h: r.h },
+              pageElements, candElements, { sectionBoxes },
+            );
+            const fenceOne = (e) => e && ({ ...e, ...(e.text ? { text: fence.inline(e.text, 60, 'element.text') } : {}) });
+            return {
+              best: enriched.best.map(fenceOne),
+              container: fenceOne(enriched.container),
+              ...(diffs.length ? { diffs: diffs.map(fenceOne) } : {}),
+            };
+          })(),
           crops: r.crops, hint: r.hint, completeness: 'region',
         });
       }

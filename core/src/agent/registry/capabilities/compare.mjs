@@ -17,7 +17,9 @@ export default {
     + 'image-missing, extra-content, shift, spacing, size, font, color, unknown), size, the brief element they overlap (ref like '
     + '"sec-…/e12"), a hint and a crop image (reference / candidate / diff). Call after every edit. mode="fast" can at best return '
     + '"pass-candidate", never "passed". Pass sectionIds to compare one section; mark the section root in your page with '
-    + 'data-heimdall-section="<sectionId>" so it is measured in isolation. The dev server must already be running.',
+    + 'data-heimdall-section="<sectionId>" so it is measured in isolation. The dev server must already be running. '
+    + 'Each region also carries the candidate element box and computed style (element.cand), a signed styleDiff '
+    + '(prop/ref/cand/delta), element.boxDiff, and element.diffs for other elements in the region whose styles differ.',
   effects: ['browser', 'write-local'], scope: 'build', idempotent: true, cost: 'medium',
   input: {
     type: 'object', additionalProperties: false, required: ['candidate'],

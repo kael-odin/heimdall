@@ -95,6 +95,75 @@ for (const id of ['f1-shift-hero-art', 'f1-color-cta-band', 'f1-missing-content-
   });
 }
 
+test('compare F1: the fix packet carries the candidate value and a signed diff', { timeout: 240_000 }, async () => {
+  const checks = [
+    { id: 'f1-font-hero-title-size', prop: 'fontSize', ref: '52px', cand: '46px', delta: -6 },
+    { id: 'f1-color-primary-button', prop: 'backgroundColor', ref: /rgb\(47,\s*91,\s*234\)/, cand: /rgb\(230,\s*57,\s*70\)/ },
+    { id: 'f1-spacing-hero-actions-gap', prop: 'gap', ref: '16px', cand: '40px', delta: 24 },
+  ];
+  for (const check of checks) {
+    const r = await fastCompare({ siteId: SITE, page: PAGE, candidate: { url: `${fixture.url}?inject=${check.id}` }, viewports: [1440] }, { browser });
+    const elements = r.packet.regions.flatMap(g => [
+      ...(g.element?.best ?? []).map(e => ({ region: g.id, e })),
+      ...(g.element?.container ? [{ region: g.id, e: g.element.container }] : []),
+      ...(g.element?.diffs ?? []).map(e => ({ region: g.id, e })),
+    ]);
+    const hit = elements.find(({ e }) => (e.styleDiff ?? []).some(d => d.prop === check.prop));
+    assert.ok(hit, `${check.id}: no styleDiff for ${check.prop}; regions=${JSON.stringify(elements.map(({ region, e }) => ({ region, ref: e.ref, cand: e.cand?.style, diff: e.styleDiff })))}`);
+    const diff = hit.e.styleDiff.find(d => d.prop === check.prop);
+    if (check.ref instanceof RegExp) {
+      assert.match(diff.ref, check.ref, `${check.id}: reference value`);
+      assert.match(diff.cand, check.cand, `${check.id}: candidate value`);
+    } else {
+      assert.equal(diff.ref, check.ref, `${check.id}: reference value`);
+      assert.equal(diff.cand, check.cand, `${check.id}: candidate value`);
+    }
+    if (check.delta !== undefined) assert.equal(diff.delta, check.delta, `${check.id}: signed delta`);
+    assert.match(r.text, /样式差/, `${check.id}: packet.txt prints the diff`);
+  }
+});
+
+test('compare F1: section mode attaches candidate style evidence', { timeout: 240_000 }, async () => {
+  const { ensurePlan } = await import('../src/agent/brief/brief.mjs');
+  const { startBaselineServer } = await import('../src/agent/gate/baseline.mjs');
+  const plan = await ensurePlan(SITE, PAGE, { browser });
+  const hero = plan.sections.find(s => s.role === 'hero' && s.boxes[1440]) ?? plan.sections.find(s => s.boxes[1440]);
+  assert.ok(hero, 'the fixture plan has a measurable hero section');
+
+  // 候选页 = 原页 + 分段标记 + 一个字号缺陷；走 sectionIds 的单段路径。
+  const { page, ctx } = await openPage(browser, fixture.url, viewportOf(1440));
+  for (const s of plan.sections) {
+    const anchor = s.anchors?.[0];
+    if (!anchor) continue;
+    await page.evaluate(({ anchor, id }) => {
+      const el = document.querySelector(anchor);
+      if (el) el.setAttribute('data-heimdall-section', id);
+    }, { anchor, id: s.id });
+  }
+  let html = await page.content();
+  await ctx.close();
+  html = html.replace('</head>', '<style>.hero h1{font-size:46px}</style></head>');
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-f1-section-'));
+  cpSync(join(F1, 'public'), dir, { recursive: true });
+  writeFileSync(join(dir, 'index.html'), html);
+  const server = await startBaselineServer(dir);
+  try {
+    const r = await fastCompare({ siteId: SITE, page: PAGE, candidate: { url: server.origin + '/' }, sectionIds: [hero.id], viewports: [1440] }, { browser });
+    const all = r.packet.regions.flatMap(g => [
+      ...(g.element?.best ?? []),
+      ...(g.element?.container ? [g.element.container] : []),
+      ...(g.element?.diffs ?? []),
+    ]);
+    const hit = all.find(e => (e.styleDiff ?? []).some(d => d.prop === 'fontSize' && d.cand === '46px'));
+    assert.ok(hit, JSON.stringify(all.map(e => ({ ref: e.ref, cand: e.cand?.style?.fontSize, diff: e.styleDiff }))));
+    assert.equal(hit.cand?.sectionId, hero.id, 'candidate evidence is attributed to the marked section');
+    assert.match(r.text, /样式差/);
+  } finally {
+    await server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('compare F1: pasting the reference screenshot is caught even though the pixels match', { timeout: 180_000 }, async () => {
   const { ensureReference } = await import('../src/agent/evidence/reference.mjs');
   const { startBaselineServer } = await import('../src/agent/gate/baseline.mjs');

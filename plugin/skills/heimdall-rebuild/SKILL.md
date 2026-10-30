@@ -65,6 +65,8 @@ argument-hint: "<url> [stack] [fidelity] [gate]"
 
 - 按 `order` 取前 1–3 个区域，不要一次修全部。
 - 先看裁剪图（`heimdall_artifact` 取 `heimdall://run/<runId>/crop/<regionId>/composite.png`：上 / 左参考，中候选，下 / 右差异），再读 `element` 与数值。
+- **先看数值再动手**：`element.cand` / `element.styleDiff` 给出候选当前值与带符号差值（如 `fontSize 参考 52px / 候选 46px（−6）`）。按参考值改，不要只按 `cause` 猜；`element.diffs` 是本区域里其他有样式差的元素（字号、颜色常落在更小的子元素上），先修这些。`match.by` 是匹配依据（`text` / `image` / `section-root` / `structure`），`confidence` 低时以裁剪图为准。
+- 匹配不到候选元素时，修复包只给参考值；这时回到 `brief --section-id` 取这一段的精确证据，不要凭空估。
 - 按 `cause` 选动作：
   - `shift` → 外边距、内边距、定位、`transform`；亚像素（`subpixel: true`）最后再管。
   - `spacing` / `heightDelta` → 它上方那个块的 margin / padding / gap，或块高度。

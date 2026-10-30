@@ -1062,10 +1062,32 @@ export function packetText(packet, { maxPerViewport = 6 } = {}) {
       if (e?.style && Object.keys(e.style).length) {
         lines.push(`     参考样式: ${Object.entries(e.style).map(([k, v]) => `${k}: ${v}`).join('; ').slice(0, 320)}`);
       }
+      // 候选侧的数值：只说「参考是 52px」还不够，模型要看到「候选是 46px，差 −6」。
+      const diffText = (diffs) => diffs.slice(0, 6).map(d =>
+        `${d.prop} 参考 ${d.ref} / 候选 ${d.cand}${typeof d.delta === 'number' ? `（${d.delta > 0 ? '+' : ''}${d.delta}）` : ''}`).join('; ');
+      if (e?.cand?.style) {
+        const diffs = e.styleDiff ?? [];
+        if (diffs.length) {
+          lines.push(`     候选样式: ${diffs.slice(0, 6).map(d => `${d.prop}: ${d.cand}`).join('; ')}`);
+          lines.push(`     样式差: ${diffText(diffs)}`);
+        } else {
+          lines.push('     候选样式: 命中属性与参考一致');
+        }
+        if (e.match) lines.push(`     匹配: ${e.match.by}（置信 ${e.match.confidence}）`);
+      }
+      // 区域里还有别的元素在样式上对不上（字号、颜色常落在更小的子元素上）
+      const printedRefs = new Set([e?.ref].filter(Boolean));
+      for (const d of (r.element?.diffs ?? []).slice(0, 2)) {
+        if (!d.ref || printedRefs.has(d.ref) || !d.styleDiff?.length) continue;
+        printedRefs.add(d.ref);
+        lines.push(`     差异元素: ${[d.ref, d.anchor].filter(Boolean).join(' ')}${d.match ? `（匹配 ${d.match.by}，置信 ${d.match.confidence}）` : ''}`);
+        lines.push(`       样式差: ${diffText(d.styleDiff)}`);
+      }
       // 「最后一公里」的尺寸差：两侧的框都写出来，模型才可能想到「多了一个字所以换行了」
-      if (e?.box && r.candBbox) {
+      const candBox = e?.cand?.box ?? r.candBbox;
+      if (e?.box && candBox) {
         const d = (a, b) => { const v = +(b - a).toFixed(1); return `${v >= 0 ? '+' : ''}${v}`; };
-        lines.push(`     尺寸: 参考 ${Math.round(e.box.w)}×${Math.round(e.box.h)} · 候选 ${Math.round(r.candBbox.w)}×${Math.round(r.candBbox.h)}（宽 ${d(e.box.w, r.candBbox.w)}，高 ${d(e.box.h, r.candBbox.h)}）`);
+        lines.push(`     尺寸: 参考 ${Math.round(e.box.w)}×${Math.round(e.box.h)} · 候选 ${Math.round(candBox.w)}×${Math.round(candBox.h)}（宽 ${d(e.box.w, candBox.w)}，高 ${d(e.box.h, candBox.h)}）`);
       }
       if (r.crops?.composite) lines.push(`     裁剪: ${r.crops.composite}（自上而下 / 自左而右：参考 · 候选 · 差异）`);
       lines.push(`     建议: ${r.hint}`);
