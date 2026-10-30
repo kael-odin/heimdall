@@ -143,3 +143,9 @@ export const basename = (value) => {
     return s.split('/').filter(Boolean).at(-1) ?? '';
   } catch { return ''; }
 };
+
+/** 一行一条差异，供 packet.txt / Bench 反馈共用。 */
+export function describeStyleDiff(diffs, limit = 6) {
+  return (diffs ?? []).slice(0, limit).map(d =>
+    `${d.prop} 参考 ${d.ref} / 候选 ${d.cand}${typeof d.delta === 'number' ? `（${d.delta > 0 ? '+' : ''}${d.delta}）` : ''}`).join('; ');
+}

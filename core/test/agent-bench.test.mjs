@@ -38,6 +38,26 @@ test('bench: targeted feedback keeps the top regions and forbids touching the re
   assert.match(text, /只改这些/);
 });
 
+test('bench: targeted feedback carries the candidate value and style diff', () => {
+  const region = {
+    id: 'r1', sectionId: 'sec-hero', bbox: { x: 0, y: 10, w: 100, h: 20 }, areaPct: 2, cause: 'font', hint: '修字号',
+    candBbox: { x: 0, y: 10, w: 100, h: 20 },
+    element: {
+      best: [{
+        ref: 'sec-hero/e3', box: { x: 0, y: 10, w: 100, h: 20 }, style: { fontSize: '52px' },
+        cand: { box: { x: 0, y: 10, w: 100, h: 20 }, style: { fontSize: '46px' } },
+        styleDiff: [{ prop: 'fontSize', ref: '52px', cand: '46px', delta: -6 }],
+      }],
+      diffs: [{ ref: 'sec-hero/e4', styleDiff: [{ prop: 'color', ref: 'rgb(1, 2, 3)', cand: 'rgb(4, 5, 6)' }] }],
+    },
+  };
+  const text = targetedFeedback({ verdict: { status: 'needs-work', target: 'silver' }, perViewport: { 1440: { pixelSimilarity: 0.8 } },
+    order: ['r1'], regions: [region] }, { top: 1 });
+  assert.match(text, /候选样式: fontSize: 46px/);
+  assert.match(text, /样式差: fontSize 参考 52px \/ 候选 46px（-6）/);
+  assert.match(text, /差异元素 sec-hero\/e4: color 参考 rgb\(1, 2, 3\)/);
+});
+
 test('bench: repeats are summarised with median and range, and n is stated', () => {
   assert.equal(quantile([1, 2, 3], 0.5), 2);
   assert.equal(quantile([1, 2, 3, 4], 0.5), 2.5);

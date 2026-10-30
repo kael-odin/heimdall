@@ -18,6 +18,7 @@
 import pixelmatch from 'pixelmatch';
 import { analyzeDiffShape } from '../../differ/shape.mjs';
 import { CHANNEL_T, lum, hex, cropRows, diffOverlay, stack, downscale, writePng } from './image.mjs';
+import { describeStyleDiff } from './element-style.mjs';
 
 const differs = (a, i, b, j) => Math.abs(a[i] - b[j]) > CHANNEL_T
   || Math.abs(a[i + 1] - b[j + 1]) > CHANNEL_T || Math.abs(a[i + 2] - b[j + 2]) > CHANNEL_T;
@@ -1063,8 +1064,7 @@ export function packetText(packet, { maxPerViewport = 6 } = {}) {
         lines.push(`     参考样式: ${Object.entries(e.style).map(([k, v]) => `${k}: ${v}`).join('; ').slice(0, 320)}`);
       }
       // 候选侧的数值：只说「参考是 52px」还不够，模型要看到「候选是 46px，差 −6」。
-      const diffText = (diffs) => diffs.slice(0, 6).map(d =>
-        `${d.prop} 参考 ${d.ref} / 候选 ${d.cand}${typeof d.delta === 'number' ? `（${d.delta > 0 ? '+' : ''}${d.delta}）` : ''}`).join('; ');
+      const diffText = describeStyleDiff;
       if (e?.cand?.style) {
         const diffs = e.styleDiff ?? [];
         if (diffs.length) {

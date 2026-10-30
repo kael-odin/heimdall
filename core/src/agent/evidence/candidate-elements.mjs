@@ -104,6 +104,9 @@ function scoreCandidate(refEl, cand, { sectionBoxes, index }) {
   if (refEl.sectionId && cand.sectionId === refEl.sectionId) score += 3;
   if (refEl.id && cand.id === refEl.id) score += 2;
   if (refEl.cls && cand.cls && cand.cls.split('.').some(c => refEl.cls.split('.').includes(c))) score += 1;
+  if (typeof refEl.depth === 'number' && typeof cand.depth === 'number') {
+    score += Math.max(0, 1 - Math.abs(refEl.depth - cand.depth) / 4);
+  }
 
   const refSec = sectionBoxFor(refEl, sectionBoxes);
   const candSec = rootOf(refEl.sectionId, index);

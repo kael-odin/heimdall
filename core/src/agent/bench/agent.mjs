@@ -17,6 +17,7 @@ import { complete, llmConfig } from '../llm.mjs';
 import { buildBrief } from '../brief/brief.mjs';
 import { readJson } from '../../fsutil.mjs';
 import { fastCompare } from '../evidence/compare.mjs';
+import { describeStyleDiff } from '../evidence/element-style.mjs';
 
 const SYSTEM = [
   '你是前端工程师。你在一个 Heimdall 重建工作区里，把一页静态网站按分段重建成 HTML + CSS。',
@@ -55,12 +56,21 @@ export function targetedFeedback(packet, { top = 5 } = {}) {
   for (const r of regions) {
     lines.push(`- [${r.id}]${r.sectionId ? ` ${r.sectionId}` : ''} bbox(${r.bbox.x},${r.bbox.y},${r.bbox.w},${r.bbox.h}) 面积 ${r.areaPct}% · cause=${r.cause}`);
     const e = r.element?.best?.[0];
-    if (e?.box && r.candBbox) {
+    const candBox = e?.cand?.box ?? r.candBbox;
+    if (e?.box && candBox) {
       const d = (a, b) => { const v = +(b - a).toFixed(1); return `${v >= 0 ? '+' : ''}${v}`; };
-      lines.push(`  尺寸: 参考 ${Math.round(e.box.w)}×${Math.round(e.box.h)} · 候选 ${Math.round(r.candBbox.w)}×${Math.round(r.candBbox.h)}（宽 ${d(e.box.w, r.candBbox.w)}，高 ${d(e.box.h, r.candBbox.h)}）`);
+      lines.push(`  尺寸: 参考 ${Math.round(e.box.w)}×${Math.round(e.box.h)} · 候选 ${Math.round(candBox.w)}×${Math.round(candBox.h)}（宽 ${d(e.box.w, candBox.w)}，高 ${d(e.box.h, candBox.h)}）`);
     }
     if (e?.style && Object.keys(e.style).length) {
       lines.push(`  参考样式: ${Object.entries(e.style).map(([k, v]) => `${k}: ${v}`).join('; ').slice(0, 260)}`);
+    }
+    if (e?.styleDiff?.length) {
+      lines.push(`  候选样式: ${e.styleDiff.slice(0, 6).map(d => `${d.prop}: ${d.cand}`).join('; ')}`);
+      lines.push(`  样式差: ${describeStyleDiff(e.styleDiff)}`);
+    }
+    for (const d of (r.element?.diffs ?? []).slice(0, 2)) {
+      if (!d.styleDiff?.length) continue;
+      lines.push(`  差异元素 ${d.ref ?? ''}: ${describeStyleDiff(d.styleDiff)}`);
     }
     lines.push(`  ${r.hint}`);
   }
