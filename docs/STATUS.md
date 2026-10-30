@@ -44,6 +44,7 @@ GitHub Actions 自 2026-10-26 起因计费被禁用，**本地检查是唯一门
 ```bash
 pnpm -C core lint          # 语法 + JSON，672 个文件
 pnpm -C core check:docs    # 文档链接
+pnpm -C core check:frozen  # 验收指纹冻结文件（14 个源文件的字节哈希）
 pnpm -C core test          # 快速集：142 个文件 / 1,140 条，约 4–5 分钟
 pnpm -C core test:full     # 全量（含真浏览器与验收存储），约 25–30 分钟
 pnpm -C core test:acceptance  # 只跑验收套件

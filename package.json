@@ -12,7 +12,7 @@
     "test:full": "pnpm -C core test:full",
     "test:fast": "pnpm -C core test:fast",
     "test:acceptance": "pnpm -C core test:acceptance",
-    "check": "pnpm -C core lint && pnpm -C core check:docs && pnpm -C console build && pnpm -C core test:fast",
+    "check": "pnpm -C core lint && pnpm -C core check:docs && pnpm -C core check:frozen && pnpm -C console build && pnpm -C core test:fast",
     "lint": "pnpm -C core lint",
     "build": "pnpm -C console build",
     "docs:links": "pnpm -C core check:docs",
