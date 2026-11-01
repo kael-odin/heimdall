@@ -78,6 +78,7 @@ pnpm check                 # lint + 文档链接 + 控制台构建 + 快速集
 | AI 接入层方案与路线 | [docs/prd/ai-native/](prd/ai-native/README.md) |
 | 接入 Claude Code / Desktop 与 A-3 手测 | [docs/guide/06-ai-integration.md](guide/06-ai-integration.md) |
 | 验收工作台各专题 | [docs/competition/](competition/acceptance-workbench.md) |
+| 无参照物检测的固定基准 | [qa-detection-benchmark](competition/qa-detection-benchmark.md) |
 | 待办与长期维护 | [docs/ROADMAP.md](ROADMAP.md) |
 | 审计与实施记录 | [docs/audits/README.md](audits/README.md)（证据已外部归档） |
 
@@ -106,6 +107,14 @@ pnpm check                 # lint + 文档链接 + 控制台构建 + 快速集
 - `compare` 的摘要第一屏直接给「首要差异」，例如 `fontSize 参考 52px / 候选 46px（-6）`，代理不必先翻修复包全文。
 - AI 活动页新增「最近一次修复包」：显示最近一次**有差异**的区域与样式差；最新一次是干净收尾时，会同时标出「最新一次无差异」。
 - `styleDiff` 兼容旧参考索引：缺逐边值时从 `padding/margin/border/gap` 简写推导，避免把「没记录」误报成 0。
+
+## 2026-11-01 无参照物检测：QA 从“跑不通”扩到“跑得通但不对”
+
+- `qa run` 默认在每个页面跑 23 个页面内检测器，分六类：无障碍（`alt`、可访问名、表单标签、重复 `id`、标题层级、`lang`、`iframe title`、`tabindex`）、布局（文字裁切、图片拉伸、点击目标过小）、内容（占位/调试文案、模板变量、乱码、无效值）、安全（混合内容、`_blank` 缺 `noopener`、http 表单、疑似密钥）、性能（LCP、CLS、过大图片）、可用性（白屏）。发现走同一套指纹、证据门槛、裁决记忆与 `bugs.md`。
+- `qa run --explore` 显式开启有界交互探索：每页最多 6 个控件、60 秒预算，找“点击无反应 / 点出异常 / 点出 404”；跳过破坏性文案、表单提交、外链、下载，写请求仍按只读策略拦截。默认关闭，因为它会改变页面状态。
+- `qa baseline` 把一次运行登记为基线，之后每次运行对同站同页同视口截图做比对，低于阈值生成 `regression` 发现（附基线截图、本次截图、差异图）；`--no-baseline` 关闭。
+- 固定注入基准 `node core/scripts/benchmark-qa.mjs`：21 个缺陷案例 + 3 个健康案例，最近一次 21/21 检出、0 误报，单页静态检测约 2.1 秒、含交互段约 11 秒。夹具与口径见[基准说明](competition/qa-detection-benchmark.md)。
+- 验收子系统未改动：`FROZEN-VERIFIER.sha256` 的 14 个文件字节不变。
 
 ## 历史归档
 

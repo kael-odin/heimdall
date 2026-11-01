@@ -95,6 +95,8 @@ export function guidance(ws, { maxLessons = 40 } = {}) {
       '页面上找不到某样东西时，先全页搜索、看页脚和其它入口，再报「不存在」。',
       '测试环境的数据和开关（例如某个防护模式被手动打开）不能代表正式环境；涉及配置的现象先做开关对照。',
       '统计、报表类结论先确认数据前提（历史数据有没有回填、聚合从哪天开始）。',
+      '无参照物检测（a11y / layout / content / security / perf / blank）是启发式的：每条都带选择器和实测值，先打开页面复核；动态内容、第三方组件造成的误报用 `verdict <编号> false-positive "理由" --pattern` 记成规则，不要重复提交。',
+      '交互探索（--explore）只覆盖单步点击且跳过破坏性与提交控件；它报「点击没有反应」时，先确认不是需要输入、hover 或滚动后才出现的状态。',
     ],
     conventions: ws.conventions.map(c => c.text),
     lessons,

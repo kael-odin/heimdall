@@ -8,6 +8,7 @@ import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { openWorkspace, listRuns } from '../../../qa/run.mjs';
 import { describeLogin, resolveLogin } from '../../../qa/workspace.mjs';
 import { guidance, readLedger } from '../../../qa/ledger.mjs';
+import { describeBaseline } from '../../../qa/baseline.mjs';
 
 export const WORKSPACE_ARG = { type: 'string', minLength: 1, maxLength: 1000, description: 'Test workspace directory containing .heimdall/qa.json. Defaults to HEIMDALL_QA_WORKSPACE, then the directory the command was run from (searching upward).' };
 
@@ -48,7 +49,7 @@ export default {
     const logins = Object.keys(ws.logins).map(n => loginHealth(ws, n));
     const runs = listRuns(ws, 5).map(r => ({ runId: r.runId, site: r.site, startedAt: r.startedAt, summary: r.summary }));
     const ledger = readLedger(ws);
-    const result = { project: ws.project, root: ws.root, sites, logins, runs,
+    const result = { project: ws.project, root: ws.root, sites, logins, runs, baseline: describeBaseline(ws),
       ledger: ws.ledger?.file ? { file: ws.ledger.file, entries: ledger.length, open: ledger.filter(e => e.status === 'open').length } : null,
       ...(args.guidance ? { guidance: guidance(ws) } : {}) };
     const broken = logins.filter(l => !l.ready);

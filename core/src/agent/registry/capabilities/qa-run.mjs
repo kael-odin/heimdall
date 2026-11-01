@@ -40,11 +40,13 @@ export default {
   title: '测试：对一个站点跑只读检查',
   description: 'Run a read-only test of one site from the test workspace, using its login profile. Every page is opened at each viewport and '
     + 'checked for: page not opening, login expired, console errors and page exceptions, 4xx/5xx responses and failed requests, broken same-origin '
-    + 'links, broken images, horizontal overflow, and write requests (blocked unless the site allows writes). Then optional checks run: declarative '
-    + 'steps (click/fill/press/hover/select/check/wait/goto, all real input events) and expectations (visible/hidden/text/url/count/attribute/'
-    + 'clipboard/title). Write checks from the PRD and cite the PRD in "prd". Findings are fingerprinted and matched against past verdicts, so '
-    + 'issues a human already dismissed are filtered with the reason shown. Returns the findings worth filing, counts, and paths to report.md '
-    + '(everything) and bugs.md (only what to file). A check whose element was not found is reported as "check needs fixing", not as a bug.',
+    + 'links, broken images, horizontal overflow, and blocked write requests. It also runs reference-free detectors (alt text, control names, form '
+    + 'labels, duplicate ids, heading order, clipped text, stretched images, tap targets, placeholder text, unreplaced templates, mojibake, invalid '
+    + 'dates, mixed content, unsafe _blank links, leaked keys, LCP/CLS, oversized images, blank pages) and compares screenshots with the registered '
+    + 'baseline. Optional checks add declarative steps (click/fill/press/hover/select/check/wait/goto, real input events) and expectations '
+    + '(visible/hidden/text/url/count/attribute/clipboard/title); cite the PRD in "prd". explore=true clicks up to exploreMax controls per page to '
+    + 'find dead buttons, click-triggered errors and 404s; off by default because it changes page state. Findings are fingerprinted and matched '
+    + 'against past verdicts; returns what is worth filing plus paths to report.md and bugs.md.',
   effects: ['browser', 'source-network', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy',
   input: {
     type: 'object', additionalProperties: false,
@@ -56,6 +58,11 @@ export default {
       checks: { type: 'array', items: CHECK_SCHEMA, maxItems: 40 },
       checksFile: { type: 'string', maxLength: 500, description: 'Workspace-relative JSON file with { checks: [...] }' },
       login: { type: 'string', maxLength: 64, description: 'Override the site login profile' },
+      explore: { type: 'boolean', default: false, description: 'Click up to exploreMax controls per page to find dead buttons, click-triggered errors and 404s. Off by default because it changes page state.' },
+      exploreMax: { type: 'integer', minimum: 0, maximum: 20, description: 'Controls to click per page when explore=true (default 6)' },
+      exploreBudgetMs: { type: 'integer', minimum: 1_000, maximum: 300_000, description: 'Total exploration budget in ms (default 60000)' },
+      baseline: { type: 'boolean', default: true, description: 'Compare screenshots with the registered baseline when one exists for this site' },
+      detect: { type: 'boolean', default: true, description: 'Run the reference-free detectors (alt text, labels, clipped text, mixed content, LCP/CLS, …)' },
       linkCheck: { type: 'boolean', default: true },
       collectTexts: { type: 'boolean', default: false, description: 'Save visible texts to texts.json (used for design-text comparison)' },
       label: { type: 'string', maxLength: 120 },
@@ -76,10 +83,15 @@ export default {
     const file = r.findings.filter(fileable).map(f => ({ id: f.id, fingerprint: f.fingerprint, tier: f.tier, basis: f.basis, kind: f.kind, path: f.path,
       title: f.title, observed: f.observed, ...(f.loss ? { loss: f.loss } : {}), ...(f.evidence?.screenshot ? { screenshot: f.evidence.screenshot } : {}), triage: f.triage.status }));
     const env = r.findings.filter(f => f.kind === 'login-expired').map(f => f.title);
+    const detection = r.run.coverage.detection;
+    const detectionByKind = r.findings.filter(f => f.detector).reduce((acc, f) => { acc[f.kind] = (acc[f.kind] ?? 0) + 1; return acc; }, {});
     const result = { runId: r.run.runId, site: r.run.site, summary: s, fileable: file,
       environment: env, checks: r.run.coverage.checks,
+      detection: { ...detection, byKind: detectionByKind }, explore: r.run.coverage.explore, baseline: r.run.coverage.baseline,
       report: relPath(ws, r.files.report), bugs: relPath(ws, r.files.bugs), runDir: relPath(ws, r.dir) };
     const summary = `${r.run.site}：建议提单 ${s.fileable} 条，按以往裁决过滤 ${s.suppressed} 条，可容忍 ${s.tolerable} 条`
+      + (detection?.enabled ? `，无参照物检测 ${detection.findings} 条` : '')
+      + (r.run.coverage.explore?.enabled ? `，交互探索点开 ${r.run.coverage.explore.pages.reduce((n, p) => n + p.clicked, 0)} 个控件` : '')
       + (s.checkNeedsFix ? `，${s.checkNeedsFix} 个检查点没对上` : '') + (env.length ? `；登录态有问题：${env[0]}` : '') + `。报告：${result.report}`;
     const nextActions = [];
     if (env.length) nextActions.push(nextAction('cli:shell', { command: `heimdall qa login ${r.run.login?.name ?? ''}`.trim() }, '先重新登录，再重跑'));

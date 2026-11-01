@@ -46,6 +46,7 @@
     "acceptance:defect:tickets:smoke": "node core/scripts/smoke-acceptance-defect-tickets-console.mjs",
     "acceptance:defect:decisions:smoke": "node core/scripts/smoke-acceptance-defect-ticket-decisions-console.mjs",
     "acceptance:defect:decisions:verify": "node core/scripts/verify-acceptance-defect-ticket-decisions-console.mjs",
+    "qa:benchmark": "node core/scripts/benchmark-qa.mjs",
     "mcp:build": "pnpm -C packages/mcp build:plugin",
     "skills:sync": "node scripts/sync-skills.mjs",
     "skills:check": "node scripts/sync-skills.mjs --check"

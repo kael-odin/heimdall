@@ -35,7 +35,7 @@ const FINDING = {
 };
 
 const brief = (f) => ({ id: f.id, fingerprint: f.fingerprint, tier: f.tier, basis: f.basis, kind: f.kind, path: f.path, title: f.title,
-  triage: f.triage?.status, ...(f.triage?.reason ? { reason: f.triage.reason } : {}), fileable: fileable(f), source: f.source });
+  triage: f.triage?.status, ...(f.triage?.reason ? { reason: f.triage.reason } : {}), ...(f.detector ? { detector: f.detector } : {}), fileable: fileable(f), source: f.source });
 
 export default {
   id: 'qa_findings',

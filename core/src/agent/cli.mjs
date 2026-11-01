@@ -26,7 +26,7 @@ export const CLI_ONLY = Object.freeze({
   qa: { usage: 'qa init | login <登录档> | status | run [站点] | findings | show <F编号> | similar "标题" | submit <文件> | verdict <F编号> <裁决> "理由" [--pattern] | rules', desc: '测试工作区：带登录态测试、按以往裁决过滤、只出该提单的问题' },
 });
 
-const BOOL_FLAGS = new Set(['json', 'wait', 'no-wait', 'quiet', 'yes', 'refresh', 'force', 'fix', 'remove', 'dry-run', 'help', 'all-discovered', 'recon-only', 'legacy', 'inline', 'no-revert', 'no-mirror', 'pattern', 'no-links', 'texts']);
+const BOOL_FLAGS = new Set(['json', 'wait', 'no-wait', 'quiet', 'yes', 'refresh', 'force', 'fix', 'remove', 'dry-run', 'help', 'all-discovered', 'recon-only', 'legacy', 'inline', 'no-revert', 'no-mirror', 'pattern', 'no-links', 'texts', 'explore', 'no-baseline', 'no-detect', 'off']);
 const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 /** 解析 argv：--flag value / --flag=value / 布尔标志；其余是位置参数 */
@@ -89,6 +89,8 @@ export function argsFor(id, { flags, positional }) {
       set('site', positional[0] ?? flags.site); set('pages', list(flags.pages)); set('viewports', list(flags.viewports)?.map(Number));
       set('checksFile', flags.checks ? resolve(String(flags.checks)) : undefined); set('login', flags.login); set('label', flags.label);
       if (flags['no-links']) a.linkCheck = false; if (flags.texts) a.collectTexts = true;
+      if (flags.explore) a.explore = true; if (flags['no-baseline']) a.baseline = false; if (flags['no-detect']) a.detect = false;
+      set('exploreMax', num(flags['explore-max'])); set('exploreBudgetMs', num(flags['explore-budget']));
       break;
     case 'qa_findings': {
       set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);

@@ -33,7 +33,7 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 等长任务 | `heimdall_jobs` | `heimdall jobs wait <jobId>` |
 | 体检 | `heimdall_doctor` | `heimdall doctor --json` |
 | 测试工作区：站点、登录档 | `heimdall_qa_status` | `heimdall qa status` |
-| 测试运行：巡检、找问题 | `heimdall_qa_run` | `heimdall qa run [站点] [--pages /a,/b]` |
+| 测试运行：巡检、找问题 | `heimdall_qa_run` | `heimdall qa run [站点] [--pages /a,/b] [--explore]` |
 | 问题列表、类似、提交、裁决 | `heimdall_qa_findings` | `heimdall qa findings [--status fileable]` |
 
 CLI 一律有 `--json`：stdout 最后一行是 `{ok, result, summary, nextActions, evidence}`。退出码：0 成功、1 门禁未过、2 用法或前置条件、3 环境、4 排队或等待超时、5 无权限、7 内部错误。
@@ -49,7 +49,7 @@ CLI 一律有 `--json`：stdout 最后一行是 `{ok, result, summary, nextActio
 流程：
 
 1. `heimdall_qa_status`：站点、登录档是否可用（过期会标出来）、最近的运行、测试须知。
-2. `heimdall_qa_run`：按站点巡一遍（打不开、登录过期、控制台报错、4xx/5xx、坏链、坏图、横向溢出、被拦下的写请求），再跑你按 PRD 写的检查点（steps + expect，全是真实输入事件，`prd` 字段注明出处）。
+2. `heimdall_qa_run`：按站点巡一遍（打不开、登录过期、控制台报错、4xx/5xx、坏链、坏图、横向溢出、被拦下的写请求），同时跑无参照物检测（无障碍、布局裁切、占位文案、混合内容、LCP/CLS、白屏等），再跑你按 PRD 写的检查点（steps + expect，全是真实输入事件，`prd` 字段注明出处）。需要找“点了没反应”这类问题时加 `explore: true`——它会点页面，默认关闭。
 3. `heimdall_qa_findings`：`list` 看结果；`similar` 查重；`submit` 提交你自己测出的问题（会校验证据与 loss，并查重）；`verdict` 记人的裁决（精确到一条，或按模式；可带 `until` / `reopenIf`），以后同类发现自动过滤并写明理由。
 
 结果在工作区的 `.heimdall/qa/runs/<runId>/`：`bugs.md` 只列建议提单的，`report.md` 是全部（含被过滤的和理由）。需要人工登录的站点由用户在 CLI 跑 `heimdall qa login <登录档>`，你不要代输凭据。配置格式见 Heimdall 仓库的 `docs/TEST-WORKSPACE.md`。

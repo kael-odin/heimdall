@@ -14,7 +14,11 @@ const BASIS = { failed: '实测失败', wrong: '结果错误', promise: '与承�
 const KIND = {
   console: '控制台', network: '网络', 'broken-link': '坏链', 'broken-image': '坏图', overflow: '横向溢出', 'login-expired': '登录态',
   assertion: '检查点', text: '文案', 'design-text': '设计稿文案', agent: 'AI 提交', 'blocked-write': '写请求', navigation: '打不开',
+  a11y: '无障碍', layout: '布局', content: '内容', security: '安全', perf: '性能', blank: '白屏',
+  interaction: '交互', regression: '回归',
 };
+/** 检测器类别的中文名，报告分组用 */
+const GROUP = { a11y: '无障碍', layout: '布局与响应式', content: '内容正确性', security: '安全', perf: '性能', blank: '页面可用性', interaction: '交互', regression: '版本回归' };
 const esc = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 
 /** 该不该进提单清单 */
@@ -30,7 +34,7 @@ const where = (f) => `${f.path}${f.viewports?.length ? `（${f.viewports.join('�
 function card(f, { withVerdictHint = true } = {}) {
   const lines = [`### ${f.id} ${f.title}`, ''];
   lines.push(`- 位置：${where(f)}${f.target ? ` · \`${esc(f.target).slice(0, 120)}\`` : ''}`);
-  lines.push(`- 分级：${TIER[f.tier] ?? f.tier}${f.basis ? ` · ${BASIS[f.basis] ?? f.basis}` : ''} · 来源：${f.source === 'agent' ? 'AI 提交' : '自动检查'}（${KIND[f.kind] ?? f.kind}）`);
+  lines.push(`- 分级：${TIER[f.tier] ?? f.tier}${f.basis ? ` · ${BASIS[f.basis] ?? f.basis}` : ''} · 来源：${f.source === 'agent' ? 'AI 提交' : '自动检查'}（${KIND[f.kind] ?? f.kind}${f.detector ? ` · ${f.detector}` : ''}）`);
   if (f.loss) lines.push(`- 影响：${f.loss}`);
   if (f.prd) lines.push(`- 依据：${f.prd}`);
   if (f.expected) lines.push(`- 预期：${f.expected}`);
@@ -81,6 +85,26 @@ export function renderReport({ ws, run, findings, hits }) {
   out.push('## 建议提单', '');
   if (!groups.file.length) out.push('无。', '');
   for (const f of groups.file.sort((a, b) => (a.tier === 'wall' ? 0 : 1) - (b.tier === 'wall' ? 0 : 1))) out.push(card(f));
+
+  const detected = findings.filter(f => f.detector);
+  if (detected.length) {
+    const byKind = new Map();
+    for (const f of detected) {
+      const row = byKind.get(f.kind) ?? { total: 0, fileable: 0 };
+      row.total++;
+      if (fileable(f)) row.fileable++;
+      byKind.set(f.kind, row);
+    }
+    out.push(`## 无参照物检测（${detected.length} 条）`, '');
+    out.push('这些检查不需要参照站：只读页面自身的 DOM、计算样式、性能条目与页面文字，判断「页面能跑但看起来/用起来不对」。'
+      + '每条都带定位与实测值；按类别汇总如下，明细在「建议提单 / 可容忍」两节里。', '');
+    out.push('| 类别 | 命中 | 其中建议提单 |', '| --- | ---: | ---: |');
+    for (const [kind, row] of [...byKind.entries()].sort((a, b) => b[1].total - a[1].total)) {
+      out.push(`| ${GROUP[kind] ?? KIND[kind] ?? kind} | ${row.total} | ${row.fileable} |`);
+    }
+    out.push('');
+  }
+
   if (groups.checks.length) {
     out.push('## 检查点没对上（先确认检查点写对了，再判断是不是问题）', '');
     out.push('这些检查点要么执行出错，要么找不到要检查的元素。常见原因是选择器或预期文字写得太死（例如页面写「30s」，检查点却在找「秒」）。', '');

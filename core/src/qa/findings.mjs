@@ -15,7 +15,9 @@
 import { createHash } from 'node:crypto';
 
 export const KINDS = Object.freeze(['console', 'network', 'broken-link', 'broken-image', 'overflow', 'login-expired',
-  'assertion', 'text', 'design-text', 'agent', 'blocked-write', 'navigation']);
+  'assertion', 'text', 'design-text', 'agent', 'blocked-write', 'navigation',
+  // 无参照物检测（qa/detect）与探索/回归（qa/explore、qa/baseline）
+  'a11y', 'layout', 'content', 'security', 'perf', 'blank', 'interaction', 'regression']);
 export const BASIS = Object.freeze(['failed', 'wrong', 'promise', 'friction', 'cosmetic']);
 export const TIERS = Object.freeze(['wall', 'degrade', 'tolerable']);
 export const VERDICTS = Object.freeze(['bug', 'false-positive', 'convention', 'deferred', 'by-design', 'wont-fix', 'env']);
@@ -88,6 +90,7 @@ export function normalizeFinding(raw, { site, runId, source = 'check' } = {}) {
     ...(raw.prd ? { prd: String(raw.prd).slice(0, 300) } : {}),
     ...(raw.repro ? { repro: [].concat(raw.repro).map(String).slice(0, 12) } : {}),
     evidence: raw.evidence ?? {},
+    ...(raw.detector ? { detector: String(raw.detector).slice(0, 60) } : {}),
     confidence: raw.confidence ?? (source === 'agent' ? 'reported' : 'observed'),
     source, runId: runId ?? null, at: raw.at ?? new Date().toISOString(),
   };

@@ -44,6 +44,7 @@
     "acceptance:defect:tickets:smoke": "node scripts/smoke-acceptance-defect-tickets-console.mjs",
     "acceptance:defect:decisions:smoke": "node scripts/smoke-acceptance-defect-ticket-decisions-console.mjs",
     "acceptance:defect:decisions:verify": "node scripts/verify-acceptance-defect-ticket-decisions-console.mjs",
+    "qa:benchmark": "node scripts/benchmark-qa.mjs",
     "test": "node scripts/test-core.mjs --fast",
     "test:full": "node scripts/test-core.mjs",
     "test:fast": "node scripts/test-core.mjs --fast",

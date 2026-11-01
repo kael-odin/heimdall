@@ -15,6 +15,7 @@
  */
 import { chromium } from 'playwright';
 import { scrubSecrets } from './workspace.mjs';
+import { detectInPage, readVitalsInPage, DETECT_DEFAULTS } from './detect.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export const BROWSER_PROFILE = Object.freeze({ locale: 'zh-CN', timezoneId: 'Asia/Shanghai', colorScheme: 'light', reducedMotion: 'reduce' });
@@ -186,6 +187,41 @@ async function checkLinks(context, links, origin, { limit = 60, timeout = 8000 }
 }
 const emptyHealth = () => ({ console: [], pageErrors: [], http: [], failed: [], blocked: [] });
 
+/**
+ * 跑一遍无参照物检测：先读 Web Vitals，再把检测器注入页面执行。
+ * 任何一步失败都只返回空数组——检测是增强，不能把一次探测拖垮。
+ */
+async function runDetectors(page, { viewport, loginName, options }) {
+  try { await page.evaluate(readVitalsInPage); } catch { /* 老页面/被 CSP 拦截时不读 */ }
+  try {
+    const raw = await page.evaluate(detectInPage, {
+      viewportWidth: viewport.width,
+      mobile: viewport.width < 600,
+      maskSelectors: options.maskSelectors ?? [],
+      thresholds: options.thresholds ?? {},
+      loginProfile: loginName ?? null,
+      maxPerDetector: options.maxPerDetector ?? DETECT_DEFAULTS.maxPerDetector,
+    });
+    return Array.isArray(raw) ? raw : [];
+  } catch { return []; }
+}
+
+/** 检测器的原始结果 → 统一发现形状（path / 证据 / 视口在调用方补齐） */
+function findingFromDetection(detected, { path, pageUrl, viewport, screenshot }) {
+  return {
+    kind: detected.kind, path, title: detected.title, target: detected.target, match: detected.title,
+    basis: detected.basis, tier: detected.tier,
+    ...(detected.loss ? { loss: detected.loss } : {}),
+    observed: detected.observed,
+    ...(detected.repro ? { repro: detected.repro } : {}),
+    viewport: detected.viewport ?? `${viewport.width}x${viewport.height}`,
+    confidence: 'observed',
+    detector: detected.detector,
+    evidence: { url: safeUrl(pageUrl), viewport: `${viewport.width}x${viewport.height}`, detector: detected.detector,
+      ...(detected.evidence?.count ? { count: detected.evidence.count } : {}), ...(screenshot ? { screenshot } : {}) },
+  };
+}
+
 /** 把一页的事实翻译成发现（检查器产出：observed 级证据，tier 保守） */
 function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo, viewport, navError, screenshot }) {
   const out = [];
@@ -248,7 +284,7 @@ async function runCheck(context, site, check, { timeout, settleMs, screenshotDir
  * 探测一个站点。返回 { pages: [...], checks: [...], findings: [原始发现] }。
  * 原始发现还没套裁决；run.mjs 负责指纹、裁决和报告。
  */
-export async function probeSite({ site, login, pages, checks = [], viewports, settleMs = 1500, timeoutMs = 30_000, linkCheck = true, linkLimit = 60, collectTexts = false, shoot, browser: given, headless = true, onProgress = () => {} }) {
+export async function probeSite({ site, login, pages, checks = [], viewports, settleMs = 1500, timeoutMs = 30_000, linkCheck = true, linkLimit = 60, collectTexts = false, detect = true, detectOptions = {}, shoot, browser: given, headless = true, onProgress = () => {} }) {
   const browser = given ?? await chromium.launch({ headless });
   const loggedOutText = site.loggedOutText ?? LOGGED_OUT;
   const out = { pages: [], checks: [], findings: [], texts: {} };
@@ -260,7 +296,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
         const page = await context.newPage();
         watch(page, health, site.origin);
         const pageUrl = new URL(p.path, site.url).href;
-        let navError = null, facts = null, links = null;
+        let navError = null, facts = null, links = null, detected = [];
         onProgress({ message: `打开 ${p.path}（${viewport.width}px）` });
         try {
           const res = await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
@@ -271,16 +307,19 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
           facts = await page.evaluate(pageFactsInPage, { loggedOutText });
           facts.images = facts.images.map(img => ({ ...img, src: safeUrl(img.src) }));
           if (linkCheck && viewport === viewports[0]) links = await checkLinks(context, facts.links, site.origin, { limit: linkLimit });
+          if (detect && !navError) detected = await runDetectors(page, { viewport, loginName: login?.name, options: detectOptions });
         } catch (e) { navError = navError ?? clip(e.message, 200); }
         const screenshot = shoot ? await shoot(page, `page-${p.path}-${viewport.width}`) : null;
         const finalUrl = page.url();
         await context.close().catch(() => {});
         out.pages.push({ path: p.path, name: p.name ?? null, url: safeUrl(pageUrl), finalUrl: safeUrl(finalUrl), viewport, navError, title: facts?.title ?? null,
           counts: { console: health.console.length, pageErrors: health.pageErrors.length, http: health.http.length, failed: health.failed.length, blocked: health.blocked.length,
-            brokenImages: facts?.images?.length ?? 0, brokenLinks: links?.broken?.length ?? 0, linksChecked: links?.checked ?? 0 },
+            brokenImages: facts?.images?.length ?? 0, brokenLinks: links?.broken?.length ?? 0, linksChecked: links?.checked ?? 0,
+            detected: detected.length, detectors: [...new Set(detected.map(d => d.detector))] },
           overflowPx: facts?.overflowPx ?? null, screenshot });
         if (collectTexts && facts && viewport === viewports[0]) out.texts[p.path] = facts.texts;
         out.findings.push(...findingsForPage({ site, pageUrl, path: p.path, health, facts, links, loginInfo: login, viewport, navError, screenshot }));
+        out.findings.push(...detected.map(d => findingFromDetection(d, { path: p.path, pageUrl, viewport, screenshot })));
       }
     }
     for (const check of checks) {

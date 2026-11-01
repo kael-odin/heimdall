@@ -4,7 +4,8 @@
  *   qa init [--project 名称] [--url URL]     在当前目录建 .heimdall/qa.json 模板
  *   qa login <登录档>                         打开有界面的浏览器，人工登录一次，保存 storageState
  *   qa status                                 站点、登录档、最近运行、测试须知
- *   qa run [站点] [--pages /a,/b] [--viewports 1440,390] [--checks 文件] [--no-links] [--texts]
+ *   qa run [站点] [--pages /a,/b] [--viewports 1440,390] [--checks 文件] [--no-links] [--texts] [--explore]
+ *   qa baseline [--run ID] [--off]            把某次运行登记为跨运行视觉基线 / 清除基线
  *   qa findings [--status fileable|new|suppressed|known-bug|all] [--run ID]
  *   qa show <F编号>    qa similar "问题标题"    qa submit <文件.json>
  *   qa verdict <F编号> <裁决> "理由" [--pattern] [--until 日期] [--reopen-if 条件]
@@ -17,7 +18,8 @@ import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { runAgentCommand, parseArgs } from '../cli.mjs';
 import { CONFIG_DIR, CONFIG_FILE, QA_SCHEMA, inWorkspace } from '../../qa/workspace.mjs';
-import { openWorkspace } from '../../qa/run.mjs';
+import { openWorkspace, readRun } from '../../qa/run.mjs';
+import { writeBaseline, clearBaseline } from '../../qa/baseline.mjs';
 import { BROWSER_PROFILE } from '../../qa/probe.mjs';
 
 const USAGE = `heimdall qa <子命令>
@@ -25,7 +27,9 @@ const USAGE = `heimdall qa <子命令>
   init [--project 名称] [--url URL]   在当前目录建 .heimdall/qa.json
   login <登录档>                      人工登录一次，保存登录态
   status                              站点、登录档、最近运行、测试须知
-  run [站点] [--pages /a,/b] [--viewports 1440,390] [--checks 文件] [--no-links] [--texts]
+  run [站点] [--pages /a,/b] [--viewports 1440,390] [--checks 文件] [--no-links] [--texts] [--explore] [--no-baseline]
+      --explore                       显式开启交互探索：每页点最多 6 个控件，找「点了没反应 / 点出异常 / 点出 404」
+  baseline [--run ID] [--off]         把某次运行登记为跨运行视觉基线；--off 清除
   findings [--status all] [--run ID]  列出发现（默认只列建议提单的）
   show <F编号>                        一条发现的全部证据
   similar "标题"                      在台账和以往运行里查相似问题
@@ -107,8 +111,24 @@ async function login(name, flags) {
   }
 }
 
-export async function run(argv) {
-  const sub = argv[0];
+/** 把一次运行登记为跨运行视觉基线；之后每次 qa run 都会与它比对同页同视口截图。 */
+async function baseline(flags) {
+  const ws = openWorkspace(flags.workspace);
+  if (flags.off) {
+    clearBaseline(ws);
+    process.stdout.write('已清除跨运行视觉基线。\n');
+    return 0;
+  }
+  const { run } = readRun(ws, flags.run);
+  const result = writeBaseline(ws, run, run.coverage.pages);
+  process.stdout.write(`已把 ${run.runId} 登记为基线：${result.pages.length} 个页面/视口截图。\n`);
+  if (result.missing?.length) {
+    process.stdout.write(`未登记 ${result.missing.length} 个：${result.missing.map(m => `${m.path}（${m.viewport}）${m.reason}`).join('；')}\n`);
+  }
+  return 0;
+}
+
+export async function run(argv) {  const sub = argv[0];
   const rest = argv.slice(1);
   const { flags, positional } = parseArgs(rest);
   if (!sub || sub === 'help' || sub === '--help') { process.stdout.write(USAGE + '\n'); return sub ? 0 : 2; }
@@ -117,7 +137,8 @@ export async function run(argv) {
       case 'init': return await init(flags);
       case 'login': return await login(positional[0], flags);
       case 'status': return runAgentCommand('qa_status', passthrough(flags, COMMON));
-      case 'run': return runAgentCommand('qa_run', [...positional.slice(0, 1).flatMap(s => ['--site', s]), ...passthrough(flags, [...COMMON, 'site', 'pages', 'viewports', 'checks', 'no-links', 'texts', 'login', 'label', 'link-limit'])]);
+      case 'run': return runAgentCommand('qa_run', [...positional.slice(0, 1).flatMap(s => ['--site', s]), ...passthrough(flags, [...COMMON, 'site', 'pages', 'viewports', 'checks', 'no-links', 'texts', 'login', 'label', 'link-limit', 'explore', 'no-baseline', 'no-detect', 'explore-max', 'explore-budget'])]);
+      case 'baseline': return await baseline(flags);;
       case 'findings': case 'list': return runAgentCommand('qa_findings', ['--action', 'list', ...passthrough(flags, [...COMMON, 'status', 'run', 'limit'])]);
       case 'show': return runAgentCommand('qa_findings', ['--action', 'show', '--id', String(positional[0] ?? ''), ...passthrough(flags, [...COMMON, 'run'])]);
       case 'similar': return runAgentCommand('qa_findings', ['--action', 'similar', '--title', positional.join(' '), ...passthrough(flags, [...COMMON, 'path', 'limit'])]);

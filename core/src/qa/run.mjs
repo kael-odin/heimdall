@@ -10,9 +10,11 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { loadWorkspace, findWorkspace, resolveLogin, describeLogin, inWorkspace, scrubSecrets } from './workspace.mjs';
 import { probeSite, normalizeCheck } from './probe.mjs';
+import { exploreSite, EXPLORE_DEFAULTS } from './explore.mjs';
+import { compareWithBaseline, readBaseline, DEFAULT_BASELINE_THRESHOLD } from './baseline.mjs';
 import { normalizeFinding, VERDICT_LABEL } from './findings.mjs';
 import { readRules, applyVerdicts, ruleHits } from './memory.mjs';
 import { renderReport, renderBugs, fileable } from './report.mjs';
@@ -136,14 +138,30 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
   const dir = join(runsDir(ws), runId);
   mkdirSync(join(dir, 'shots'), { recursive: true });
   const startedAt = new Date().toISOString();
-  let shotN = 0;
+  // 截图按「名字的稳定哈希」命名：跨运行同名同文件，基线比对与报告链接才稳定。
   const shoot = async (page, name) => {
-    const file = `shots/${String(++shotN).padStart(3, '0')}-${String(name).replace(/[^a-z0-9_-]+/gi, '_').slice(0, 50)}.png`;
+    const safe = String(name).replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60);
+    const stamp = createHash('sha1').update(String(name)).digest('hex').slice(0, 6);
+    const file = `shots/${safe}-${stamp}.png`;
     try { await page.screenshot({ path: join(dir, file), timeout: 10_000 }); return file; } catch { return null; }
   };
   const probe = await probeSite({ site, login, pages, checks, viewports, settleMs: ws.defaults.settleMs, timeoutMs: ws.defaults.timeoutMs,
-    linkCheck: args.linkCheck !== false, linkLimit: args.linkLimit ?? 60, collectTexts: !!args.collectTexts, shoot, browser, onProgress });
-  const raw = probe.findings.map((f) => {
+    linkCheck: args.linkCheck !== false, linkLimit: args.linkLimit ?? 60, collectTexts: !!args.collectTexts,
+    detect: detectEnabled(ws, args), detectOptions: detectOptionsOf(ws, args), shoot, browser, onProgress });
+  // 交互探索会改变页面状态，默认关闭；显式开启后只点声明页面里的有限控件。
+  const exploreOptions = exploreOptionsOf(ws, args);
+  const exploration = exploreEnabled(ws, args)
+    ? await exploreSite({ site, login, pages, viewport: viewports[0], maxPerPage: exploreOptions.maxPerPage,
+        budgetMs: exploreOptions.budgetMs, settleMs: ws.defaults.settleMs, browser, onProgress })
+    : null;
+  const pageEntries = probe.pages.map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}`, screenshot: p.screenshot, url: p.url }));
+  // 跨运行回归：只有显式登记过基线且站点一致时才比对；动态内容会带来噪声，结果按可裁决的发现输出。
+  const baselineCfg = ws.defaults?.baseline && typeof ws.defaults.baseline === 'object' ? ws.defaults.baseline : {};
+  const regression = args.baseline === false
+    ? { findings: [], compared: 0, skipped: [{ reason: '本次显式关闭' }], scope: '本次运行关闭了跨运行回归比对。' }
+    : compareWithBaseline(ws, { site: siteName, runId, environment: site.environment }, pageEntries,
+      { threshold: baselineCfg.threshold ?? DEFAULT_BASELINE_THRESHOLD, diffDir: join(dir, 'shots') });
+  const raw = [...probe.findings, ...(exploration?.findings ?? []), ...regression.findings].map((f) => {
     const notFound = f.kind === 'assertion' && f.confidence === 'observed' && /实际：null/.test(f.observed ?? '');
     const confidence = f.kind === 'login-expired' ? 'environment' : f.confidence === 'check-error' ? 'check-error' : notFound ? 'check-unverified' : f.confidence;
     return normalizeFinding({ ...f, confidence }, { site: siteName, runId, source: 'check' }).finding;
@@ -157,6 +175,25 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
       pages: probe.pages.map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}`, navError: p.navError, title: p.title ? scrubSecrets(p.title, login.secrets) : null, counts: p.counts, screenshot: p.screenshot })),
       checks: probe.checks.map(c => ({ id: c.id, title: c.title, pass: c.pass, error: c.error, screenshot: c.screenshot })),
       viewports: viewports.map(v => `${v.width}x${v.height}`),
+      detection: {
+        enabled: detectEnabled(ws, args),
+        pages: probe.pages.length,
+        findings: probe.findings.filter(f => f.detector).length,
+        detectors: [...new Set(probe.pages.flatMap(p => p.counts?.detectors ?? []))].sort(),
+      },
+      explore: exploration
+        ? {
+          enabled: true,
+          pages: exploration.pages.map(p => ({ path: p.path, controls: p.controls, clicked: p.clicked, skipped: p.skipped, findings: p.findings, budgetExhausted: p.budgetExhausted })),
+          scope: exploration.scope,
+        }
+        : { enabled: false },
+      baseline: {
+        enabled: readBaseline(ws) !== null && args.baseline !== false,
+        compared: regression.compared,
+        skipped: regression.skipped,
+        scope: regression.scope,
+      },
     },
     summary: summarize(findings),
   };
@@ -196,6 +233,37 @@ export function retriageRun(ws, runId) {
 
 export function relPath(ws, file) {
   return relative(ws.root, file).replace(/\\/g, '/');
+}
+
+/** 无参照物检测的开关：args.detect > qa.json defaults.detect.enabled > 默认开 */
+export function detectEnabled(ws, args = {}) {
+  if (args.detect === false) return false;
+  if (args.detect === true) return true;
+  const cfg = ws.defaults?.detect;
+  if (cfg && typeof cfg === 'object' && cfg.enabled === false) return false;
+  return true;
+}
+
+/** 检测阈值：qa.json defaults.detect 与本次参数合并（数值型覆盖） */
+export function detectOptionsOf(ws, args = {}) {
+  const cfg = ws.defaults?.detect && typeof ws.defaults.detect === 'object' ? ws.defaults.detect : {};
+  const { enabled: _enabled, thresholds: cfgThresholds = {}, ...rest } = cfg;
+  return { ...rest, thresholds: { ...cfgThresholds, ...(args.detectThresholds ?? {}) } };
+}
+
+/** 交互探索默认关闭：它会点击页面，必须由操作者显式开启。 */
+export function exploreEnabled(ws, args = {}) {
+  if (args.explore === true) return true;
+  if (args.explore === false) return false;
+  return ws.defaults?.explore === true;
+}
+
+export function exploreOptionsOf(ws, args = {}) {
+  const cfg = ws.defaults?.explore && typeof ws.defaults.explore === 'object' ? ws.defaults.explore : {};
+  return {
+    maxPerPage: args.exploreMax ?? cfg.maxPerPage ?? EXPLORE_DEFAULTS.maxPerPage,
+    budgetMs: args.exploreBudgetMs ?? cfg.budgetMs ?? EXPLORE_DEFAULTS.budgetMs,
+  };
 }
 
 export { VERDICT_LABEL };
