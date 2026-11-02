@@ -4,6 +4,7 @@ import Icon from './Icon.vue';
 import AcceptanceCatalog from './AcceptanceCatalog.vue';
 import AcceptanceComparison from './AcceptanceComparison.vue';
 import { API, apiHeaders } from './api.js';
+import { acceptanceDemoContext, acceptanceDemoDraft } from './acceptance-demo.js';
 import {
   DIMENSIONS, STATUS_LABELS, GATE_LABELS, VERDICT_LABELS, buildAcceptanceInput,
   filterAcceptanceChecks, acceptanceEvidenceEntries, acceptanceScore, acceptanceViewport,
@@ -16,6 +17,14 @@ defineEmits(['close']);
 const form = reactive({ name: '', mode: 'mirror', baselineUrl: '', targetUrl: '', routes: '/', points: '', maskSelectors: '',
   specSourceId: '', specRevision: '', specSourceTitle: '', specSourceType: 'manual', specSourceSha256: '',
   specChecks: '', specOmissions: '[]', specApproved: false, specApprovedFingerprint: '', openApiDocument: '' });
+const demoContext = acceptanceDemoContext(typeof location === 'undefined' ? '' : location.href);
+const demoLoaded = ref(false);
+function insertDemoPlan() {
+  if (!demoContext || creating.value || previewLoading.value || stopped) return;
+  Object.assign(form, acceptanceDemoDraft(demoContext));
+  formError.value = '';
+  demoLoaded.value = true;
+}
 const previewLoading = ref(false);
 const previewResult = ref(null);
 const previewError = ref('');
@@ -515,6 +524,13 @@ onBeforeUnmount(() => {
       <aside class="aw-sidebar">
         <form class="aw-form" @submit.prevent="createRun" aria-label="新建项目验收">
           <h2>新建验收</h2>
+          <section v-if="demoContext" class="aw-demo" aria-labelledby="aw-demo-title" data-testid="acceptance-demo">
+            <h3 id="aw-demo-title">本地固定示例</h3>
+            <p>真实浏览器执行，来源、候选、成单与关闭均需人工确认。结果仅覆盖示例声明的检查。</p>
+            <button type="button" class="aw-button" :disabled="creating || previewLoading" aria-describedby="aw-demo-note" data-testid="acceptance-demo-prefill" @click="insertDemoPlan">载入本地演示计划</button>
+            <p id="aw-demo-note">替换下方表单，填入参考来源与已知缺陷。核对后仍需点击“运行验收”。</p>
+            <p v-if="demoLoaded" class="aw-demo-notice" role="status" data-testid="acceptance-demo-filled">本地计划已填入，请核对下方表单与声明范围。</p>
+          </section>
           <label>任务名称 <span class="aw-optional">选填</span><input v-model="form.name" name="acceptance-name" placeholder="例如：首页与商品列表验收" maxlength="120" /></label>
           <fieldset class="aw-modes"><legend>验收方式</legend>
             <label :class="{ selected: form.mode === 'mirror' }"><input v-model="form.mode" type="radio" name="acceptance-mode" value="mirror" /><span>还原验收<small>原站与开发项目对照</small></span></label>
@@ -672,6 +688,12 @@ onBeforeUnmount(() => {
 .aw-form input:not([type='radio']):not([type='checkbox']), .aw-form textarea, .aw-filters input, .aw-filters select { display: block; width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--bg); color: var(--text); font-size: 12px; margin-top: 6px; caret-color: var(--accent); }
 .aw-form input[type='url'], .aw-form textarea { font-family: var(--font-mono); font-size: 11.5px; }
 .aw-form textarea { resize: vertical; min-height: 64px; max-height: 350px; line-height: 1.65; }
+.aw-demo { margin-block: 16px 20px; padding: 14px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-2); }
+.aw-demo h3 { font-size: 13px; line-height: 1.6; }
+.aw-demo p { margin-top: 8px; color: var(--text-dim); font-size: 12px; line-height: 1.75; overflow-wrap: anywhere; }
+.aw-demo .aw-button { width: 100%; min-height: 44px; margin-top: 12px; white-space: normal; text-align: center; line-height: 1.6; }
+.aw-demo .aw-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.aw-demo p.aw-demo-notice { color: var(--ok); }
 .aw-form input:focus, .aw-form textarea:focus { border-color: var(--accent); }
 .aw-hint { color: var(--text-faint); line-height: 1.7; font-size: 11px; margin-top: 7px; }
 .aw-modes { border: 0; padding: 0; margin: 17px 0 3px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
