@@ -216,7 +216,27 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
     await page.waitForSelector('.hud', { timeout: 20_000 });
 
     // ① 星图有可访问名（canvas 本身进不去，靠 role=img 说明）
-    const mapLabel = await page.locator('.g3d').first().getAttribute('aria-label');
+    const graphRoot = page.locator('.g3d').first();
+    await graphRoot.waitFor({ timeout: 20_000 }).catch(() => {
+      assert.fail('星图组件未挂载。页面错误：' + JSON.stringify(pageErrors)
+        + '；控制台错误：' + JSON.stringify(consoleErrors)
+        + '；失败请求：' + JSON.stringify(failedRequests));
+    });
+    const graphCanvas = graphRoot.locator('canvas').first();
+    await graphCanvas.waitFor({ timeout: 10_000 });
+    const webgl = await graphCanvas.evaluate(canvas => {
+      const context = canvas.getContext('webgl2');
+      return {
+        width: canvas.width,
+        height: canvas.height,
+        available: !!context,
+        lost: context?.isContextLost() ?? true,
+      };
+    });
+    assert.ok(webgl.width > 0 && webgl.height > 0, '星图 canvas 必须有可绘制尺寸：' + JSON.stringify(webgl));
+    assert.equal(webgl.available, true, '星图必须拿到 WebGL2 上下文：' + JSON.stringify(webgl));
+    assert.equal(webgl.lost, false, '星图 WebGL 上下文不能是丢失状态：' + JSON.stringify(webgl));
+    const mapLabel = await graphRoot.getAttribute('aria-label');
     assert.match(mapLabel ?? '', /站点星图/, '星图应带 role=img 的可读说明');
 
     // ② 站点清单里有 fixture 站（说明 /api/sites 与静态产物通了）

@@ -4,13 +4,14 @@
   "description": "Heimdall deterministic core: capture, build, diff, harvest, audit",
   "type": "module",
   "private": true,
+  "license": "MIT",
   "engines": {
     "node": ">=20.19.0"
   },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^11.7.0",
+      "version": "11.28.10",
       "onFail": "download"
     }
   },
@@ -19,6 +20,7 @@
     "verify": "node src/verify/verify.mjs",
     "acceptance": "node src/acceptance/cli.mjs",
     "acceptance:benchmark": "node scripts/benchmark-acceptance.mjs",
+    "acceptance:demo:smoke": "node scripts/smoke-acceptance-demo-console.mjs",
     "acceptance:smoke": "node scripts/smoke-acceptance-console.mjs",
     "acceptance:spec:benchmark": "node scripts/benchmark-acceptance-spec.mjs",
     "acceptance:spec:smoke": "node scripts/smoke-acceptance-spec-console.mjs",
@@ -75,8 +77,7 @@
     "probe:shift": "node scripts/diff-shift.mjs"
   },
   "keywords": [],
-  "author": "",
-  "license": "UNLICENSED",
+  "author": "kael-odin",
   "dependencies": {
     "exceljs": "^4.4.0",
     "parse5": "^8.0.1",

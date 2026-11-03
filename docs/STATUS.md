@@ -1,6 +1,6 @@
 # Heimdall 当前状态（STATUS）
 
-> 更新：2026-10-30 · **本页是“当前为真”的唯一入口**。历史接手记录与逐日审计已归档，见文末。
+> 更新：2026-11-03 · **本页是“当前为真”的唯一入口**。历史接手记录与逐日审计已归档，见文末。
 
 ## 一句话
 
@@ -37,22 +37,28 @@ heimdall gate report --project . --level gold
 heimdall rebuild deliver --project .
 ```
 
-## 怎么验（2026-10-30 起）
+## 怎么验（2026-11-03 起）
 
-GitHub Actions 自 2026-10-26 起因计费被禁用，**本地检查是唯一门禁**：
+仓库已经公开；`CI` 与 `Docs` 已重新启用，本地和 Hosted Node 22 都按同一套确定性门禁收口：
 
 ```bash
-pnpm -C core lint          # 语法 + JSON，672 个文件
+pnpm -C core lint          # 语法 + JSON，701 个文件
 pnpm -C core check:docs    # 文档链接
 pnpm -C core check:frozen  # 验收指纹冻结文件（14 个源文件的字节哈希）
-pnpm -C core test          # 快速集：142 个文件 / 1,140 条，约 4–5 分钟
-pnpm -C core test:full     # 全量（含真浏览器与验收存储），约 25–30 分钟
+pnpm -C core test:full     # 全量（含真浏览器、验收存储与控制台 E2E），约 28 分钟
 pnpm -C core test:acceptance  # 只跑验收套件
 pnpm -C console build
-pnpm check                 # lint + 文档链接 + 控制台构建 + 快速集
+pnpm acceptance:demo:smoke # D7 全链路真实 UI
+pnpm -C packages/mcp test  # MCP 协议测试
+pnpm run audit             # core / console / MCP 三套依赖审计
+pnpm check                 # 本地总门禁
 ```
 
-2026-10-30 实测：`lint` 672 文件通过；快速集 1,140 条全过（4 分 30 秒）。全量套件本轮未跑完，不能据此宣称全绿。
+2026-11-03 实测：全量 **2,998 / 3,010 通过，0 失败，12 跳过**；耗时
+**28 分 16 秒**。`lint` 701 文件、文档 668 个目标 / 126 个文件、冻结验收 14 个文件均通过。
+验收基准 18/18、13 个已知 BUG 全检出且 13/13 定位到注入源码；QA 基准 21/21、0 误报。
+Console 最大生产 chunk 为 477.84 kB，无超过 500 kB 的警告；三套官方 registry 审计均无已知漏洞。
+本轮本机 Node 为 26.12.1；Node 22 的权威结果由 Hosted CI 单独给出。
 
 ## 已知边界（不藏）
 
@@ -61,6 +67,8 @@ pnpm check                 # lint + 文档链接 + 控制台构建 + 快速集
 - WebGL、运行时画布、视频、滚动编排：只做降级或明确标不支持。
 - 大站（>500 页）受并发与页数上限约束；当前并发 2。
 - 后端只能克隆“被观察到的行为”，不声称业务等价。
+- 固定夹具成绩很强，但尚未取得获授权、持续可复现的外部项目数据集；不能把 18/18 或 21/21
+  直接外推成“任意真实网站都能通过”。
 - 验收目录默认 Schema3，Browser 链需要 Schema4；演示前先显式维护：
   `node core/src/acceptance/catalog-maintenance-cli.mjs --create --target-schema 4`。
 - 引擎启动时若验收目录锁被其他引擎占用，会打印锁文件路径；确认没有其他引擎后，删除该锁文件再启动，不要删除其他验收数据。
@@ -81,6 +89,17 @@ pnpm check                 # lint + 文档链接 + 控制台构建 + 快速集
 | 无参照物检测的固定基准 | [qa-detection-benchmark](competition/qa-detection-benchmark.md) |
 | 待办与长期维护 | [docs/ROADMAP.md](ROADMAP.md) |
 | 审计与实施记录 | [docs/audits/README.md](audits/README.md)（证据已外部归档） |
+
+## 2026-11-03 审查修复收口
+
+- D7 真实 UI 全链路通过：采集、来源归属、候选、已知 BUG、两项人工成员、部分修复禁关、
+  完全修复后明确关闭、Markdown 下载；最终结果 `accepted:true`，普通控制台错误为 0。
+- 取消整站克隆会级联取消仍在运行的页面 forge；`/px/` 只允许有限同源跳转并剥离 Cookie；
+  克隆渲染资产按目录与 MIME 开放只读 CORS。
+- 恢复 MCP 干净安装、插件产物检查、Windows `pnpm` 参数白名单、原子写文件与 POSIX 目录
+  `fsync`、Console WebGL 星图拆包，并把依赖审计接进总门禁与 CI。
+- 开源治理补齐 MIT、SECURITY、CONTRIBUTING、CHANGELOG、Dependabot，pnpm 固定到
+  `11.28.10`。当前结论仍是“可认真试用和内部验收”，不是“任意站点开箱即成熟产品”。
 
 ## 2026-10-30 仓库瘦身
 

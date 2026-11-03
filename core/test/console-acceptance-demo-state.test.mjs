@@ -27,6 +27,7 @@ const evaluate = new Function('vue', 'helpers', 'demo', 'environment', `
 const origin = 'http://127.0.0.1:8902';
 const fixtureOrigin = 'http://127.0.0.1:39137';
 const href = origin + '/?' + new URLSearchParams({ acceptanceDemo: 'local-fixed-v1', fixtureOrigin });
+const acceptanceHref = href + '&view=acceptance';
 const runId = 'ac-00000000-0000-4000-8000-000000000001';
 const response = value => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
 function model(t, url = href) {
@@ -67,6 +68,16 @@ test('valid local demo is inert until the operator loads the fixed form, and loa
   assert.equal(state.formError.value, ''); assert.equal(state.demoLoaded.value, true);
   assert.equal(state.form.specApproved, false); assert.equal(state.form.specApprovedFingerprint, '');
   assert.deepEqual(helpers.buildAcceptanceInput(state.form), helpers.buildAcceptanceInput(demo.acceptanceDemoDraft(state.demoContext)));
+  assert.deepEqual(state.calls, []);
+});
+
+test('the routed acceptance view keeps the local demo available after navigation', options, async t => {
+  const state = model(t, acceptanceHref);
+  assert(state.demoContext);
+  state.insertDemoPlan(); await vue.nextTick();
+  assert.equal(state.form.mode, 'regression');
+  assert.equal(state.form.targetUrl, fixtureOrigin + '/bug');
+  assert.equal(state.demoLoaded.value, true);
   assert.deepEqual(state.calls, []);
 });
 

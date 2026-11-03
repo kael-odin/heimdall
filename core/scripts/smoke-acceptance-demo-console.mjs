@@ -438,7 +438,14 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
     stage = 'prefill-and-capture'; await startBrowser();
     await page.goto(demo.session.consoleUrl, { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: '项目验收', exact: true }).click();
-    await workbench().waitFor(); assert.equal(page.url(), demo.session.consoleUrl); assert.ok((await page.title()).length > 0);
+    await workbench().waitFor();
+    {
+      const expected = new URL(demo.session.consoleUrl), actual = new URL(page.url());
+      assert.equal(actual.origin, expected.origin);
+      assert.equal(actual.pathname, expected.pathname);
+      for (const [name, value] of expected.searchParams) assert.equal(actual.searchParams.get(name), value);
+    }
+    assert.ok((await page.title()).length > 0);
     assert.equal(await page.locator('vite-error-overlay, #webpack-dev-server-client-overlay').count(), 0);
     const beforePrefill = posts().length;
     await workbench().getByTestId('acceptance-demo-prefill').click();

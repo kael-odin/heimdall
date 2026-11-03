@@ -10,6 +10,9 @@
 > 第 2 幕可以现场跑 Claude Code。Claude Desktop 也已完成界面 doctor 9/9 确认，作为备用客户端。
 > 步骤见 [docs/guide/06-ai-integration.md](docs/guide/06-ai-integration.md)。
 >
+> **2026-11-03 更新**：D7 本地固定示例已在最终构建上从全新会话真实跑通，
+> 覆盖采集、候选、人工成单、1/2 禁关、2/2 复验后明确关闭与 Markdown 下载，结果 `accepted:true`。
+>
 > 旧的「克隆主线」完整版保留在 git 历史（2026-10-31 之前的 `DEMO-SCRIPT.md`），
 > 现场需要时可以作为降级脚本；本文件不重复它。
 
@@ -312,7 +315,7 @@ heimdall qa run web --explore
 
 | 短板 | 怎么说 |
 | --- | --- |
-| **A-3 尚未手测** | Claude Code / Desktop 的界面连通还没由人确认；手测前第 2 幕只放回放 |
+| **外部泛化尚未验收** | A-3 的 Claude Code / Desktop 连通已手测；但还没有一套获授权、稳定可复现的外部项目数据集，固定夹具不能证明任意网站都适用 |
 | **成本账本未接** | token 有用量记录，美元单价表与预算闸门还没接；现场不承诺「这一页多少钱」 |
 | **跑不动超大站** | 并发 2、页数上限；定位是几百页量级 |
 | **WebGL / 视频 / 滚动编排** | 只做降级或明确标不支持；镜像里的动态内容会定格 |
@@ -344,7 +347,7 @@ heimdall qa run web --explore
 | 六维门禁 | `agent/gate/<page>/gate-*.json` |
 | 正式裁判 | `agent/gate/<page>/formal-*.json` 与验收报告 |
 | 交付与残差 | `agent/deliver/<run>/delivery.json`、`REPORT.md`、`residuals.json` |
-| 全量测试 | 2,955 条，0 失败（2026-10-30/31 本机） |
+| 全量测试 | 2,998 / 3,010 通过，0 失败，12 跳过，约 28 分 16 秒（2026-11-03 本机） |
 
 ---
 

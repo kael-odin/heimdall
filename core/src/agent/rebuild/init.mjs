@@ -24,6 +24,7 @@ import { pageDir, readManifest, requireMirror } from '../workspace.mjs';
 import { STACKS, stackFiles, devCommand } from './templates.mjs';
 import { renderAgentsMd } from './agents-md.mjs';
 import { llmConfig } from '../llm.mjs';
+import { normalizeRegistry, runPnpm } from './pnpm.mjs';
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
@@ -82,6 +83,7 @@ function git(dir, args) {
  */
 export async function initWorkspace(opts) {
   const { siteId, page, stack = 'html-css', fidelity = 'balanced', gateLevel = 'silver', port = 5199, modelClass = 'standard', onProgress = () => {} } = opts;
+  const registry = normalizeRegistry(opts.registry);
   if (!STACKS.includes(stack)) throw new CapabilityError('invalid_args', `技术栈只支持 ${STACKS.join(' / ')}（vite-vue3-ts-tailwind 在 Ph3）`);
   const dir = resolve(opts.dir);
   // --force：评测要反复从同一份快照起步。默认仍然拒绝非空目录，免得覆盖用户的工作
@@ -190,10 +192,8 @@ export async function initWorkspace(opts) {
   let install = null;
   if (stack === 'vite-react-ts-tailwind' && opts.install !== false) {
     onProgress({ stage: 'install', message: 'pnpm install --ignore-scripts（首次约 30–90 秒）' });
-    const args = ['install', '--ignore-scripts', ...(opts.registry ? ['--registry', opts.registry] : [])];
-    const r = process.platform === 'win32'
-      ? spawnSync(`pnpm ${args.join(' ')}`, { cwd: dir, encoding: 'utf8', shell: true, windowsHide: true, timeout: 600_000 })
-      : spawnSync('pnpm', args, { cwd: dir, encoding: 'utf8', timeout: 600_000 });
+    const args = ['install', '--ignore-scripts', ...(registry ? ['--registry', registry] : [])];
+    const r = runPnpm(args, { cwd: dir, timeoutMs: 600_000 });
     install = { ok: r.status === 0, ...(r.status === 0 ? {} : { error: String(r.stderr || r.stdout || r.error?.message || '').split('\n').slice(-5).join('\n').slice(0, 500) }) };
   }
 

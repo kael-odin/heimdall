@@ -2,8 +2,10 @@
   "name": "heimdall",
   "version": "2.0.0-dev",
   "private": true,
+  "license": "MIT",
   "description": "Heimdall — site cloning, fidelity verification and SEO audit workbench",
   "type": "module",
+  "packageManager": "pnpm@11.28.10",
   "engines": {
     "node": ">=20.19.0"
   },
@@ -12,7 +14,7 @@
     "test:full": "pnpm -C core test:full",
     "test:fast": "pnpm -C core test:fast",
     "test:acceptance": "pnpm -C core test:acceptance",
-    "check": "pnpm -C core lint && pnpm -C core check:docs && pnpm -C core check:frozen && pnpm -C console build && pnpm -C core test:fast",
+    "check": "pnpm -C core lint && pnpm -C core check:docs && pnpm -C core check:frozen && pnpm -C console build && pnpm -C core test:fast && pnpm -C packages/mcp test && pnpm -C packages/mcp check:plugin && pnpm skills:check && pnpm run audit && pnpm acceptance:demo:smoke",
     "lint": "pnpm -C core lint",
     "build": "pnpm -C console build",
     "docs:links": "pnpm -C core check:docs",
@@ -21,6 +23,7 @@
     "smoke": "pnpm -C core smoke",
     "acceptance": "node core/src/acceptance/cli.mjs",
     "acceptance:demo": "node core/scripts/start-acceptance-demo.mjs",
+    "acceptance:demo:smoke": "node core/scripts/smoke-acceptance-demo-console.mjs",
     "acceptance:benchmark": "node core/scripts/benchmark-acceptance.mjs",
     "acceptance:smoke": "node core/scripts/smoke-acceptance-console.mjs",
     "acceptance:spec:benchmark": "node core/scripts/benchmark-acceptance-spec.mjs",
@@ -50,7 +53,8 @@
     "qa:benchmark": "node core/scripts/benchmark-qa.mjs",
     "mcp:build": "pnpm -C packages/mcp build:plugin",
     "skills:sync": "node scripts/sync-skills.mjs",
-    "skills:check": "node scripts/sync-skills.mjs --check"
+    "skills:check": "node scripts/sync-skills.mjs --check",
+    "audit": "pnpm -C core audit --prod --audit-level=moderate --registry=https://registry.npmjs.org && pnpm -C console audit --audit-level=moderate --registry=https://registry.npmjs.org && pnpm -C packages/mcp audit --audit-level=moderate --registry=https://registry.npmjs.org"
   },
   "bin": {
     "heimdall": "bin/heimdall.mjs"

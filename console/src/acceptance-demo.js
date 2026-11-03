@@ -12,7 +12,9 @@ function fixtureOrigin(value) {
   } catch { return null; }
 }
 
-/** Only the launcher's two named parameters on a plain loopback page are read. */
+const NAVIGATION_PARAMS = new Set(['view']);
+
+/** Only the launcher's named parameters and non-secret console navigation state are read. */
 export function acceptanceDemoContext(href) {
   if (typeof href !== 'string' || href.length > 2048 || /[\s\\#]/.test(href)) return null;
   const originMatch = /^(http:\/\/127\.0\.0\.1:[1-9]\d{0,4})\/\?/.exec(href);
@@ -21,9 +23,11 @@ export function acceptanceDemoContext(href) {
   try { url = new URL(href); } catch { return null; }
   if (url.pathname !== '/' || url.username || url.password || url.hash) return null;
   const entries = [...url.searchParams];
-  if (entries.length !== 2 || url.searchParams.getAll('acceptanceDemo').length !== 1
+  if (entries.length < 2 || entries.length > 3 || url.searchParams.getAll('acceptanceDemo').length !== 1
     || url.searchParams.getAll('fixtureOrigin').length !== 1
-    || entries.some(([name]) => !['acceptanceDemo', 'fixtureOrigin'].includes(name))
+    || entries.some(([name]) => name !== 'acceptanceDemo' && name !== 'fixtureOrigin' && !NAVIGATION_PARAMS.has(name))
+    || url.searchParams.getAll('view').length > 1
+    || (url.searchParams.has('view') && url.searchParams.get('view') !== 'acceptance')
     || url.searchParams.get('acceptanceDemo') !== MARKER) return null;
   const origin = fixtureOrigin(url.searchParams.get('fixtureOrigin'));
   return origin ? Object.freeze({ kind: MARKER, fixtureOrigin: origin }) : null;

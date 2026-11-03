@@ -30,10 +30,14 @@ test('原子写会切断硬链接：写一个不影响另一个', () => {
     writeFileSync(a, 'ORIGINAL');
     linkSync(a, b);                        // b 与 a 同一个 inode
     assert.equal(statSync(a).ino, statSync(b).ino, '前置条件：两者确实被硬链接了');
+    assert.equal(statSync(a).nlink, 2, '前置条件：目标有两个硬链接');
     writeFileAtomic(b, 'BUILT');           // 构建产物写自己
     assert.equal(readFileSync(a, 'utf8'), 'ORIGINAL', '源文件必须原封不动');
     assert.equal(readFileSync(b, 'utf8'), 'BUILT');
-    assert.notEqual(statSync(a).ino, statSync(b).ino, '写完就不再是同一个 inode');
+    // Windows 的 stat.ino 在并发文件活动下不保证跨路径唯一；nlink 才直接表达
+    // “目标目录项是否仍与原文件共享 inode”。旧目录项必须是 1，源文件也必须是 1。
+    assert.equal(statSync(a).nlink, 1, '源文件写完只保留自己的目录项');
+    assert.equal(statSync(b).nlink, 1, '构建产物必须切断原硬链接');
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
 

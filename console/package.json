@@ -3,6 +3,7 @@
   "version": "2.0.0-dev",
   "description": "Heimdall workbench console",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"
@@ -10,7 +11,7 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^11.7.0",
+      "version": "11.28.10",
       "onFail": "download"
     }
   },
@@ -21,8 +22,7 @@
     "design": "node scripts/gen-design-json.mjs"
   },
   "keywords": [],
-  "author": "",
-  "license": "UNLICENSED",
+  "author": "kael-odin",
   "dependencies": {
     "3d-force-graph": "^1.80.0",
     "three": "^0.186.1",
@@ -30,6 +30,6 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.9",
-    "vite": "^8.3.1"
+    "vite": "^8.3.5"
   }
 }

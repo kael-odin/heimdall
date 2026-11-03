@@ -11,7 +11,7 @@
  */
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import ForceGraph3D from '3d-force-graph';
-import * as THREE from 'three';
+import { Vector3 } from 'three';
 
 const props = defineProps({
   nodes: { type: Array, default: () => [] },
@@ -74,8 +74,8 @@ function spin(t) {
   const ctr = graph.controls();
   const cam = graph.camera();
   if (!ctr?.target || !cam) return;
-  const v = new THREE.Vector3().subVectors(cam.position, ctr.target);
-  v.applyAxisAngle(new THREE.Vector3(0, 1, 0), (dt / 1000) * SPIN_DEG_PER_SEC * Math.PI / 180);
+  const v = new Vector3().subVectors(cam.position, ctr.target);
+  v.applyAxisAngle(new Vector3(0, 1, 0), (dt / 1000) * SPIN_DEG_PER_SEC * Math.PI / 180);
   cam.position.copy(ctr.target).add(v);
   cam.lookAt(ctr.target);
   try { ctr.update?.(); } catch { /* fly 控制器没有 update，忽略 */ }
@@ -148,10 +148,10 @@ function onPointerMove(e) {
   lastX = e.clientX; lastY = e.clientY;
   const cam = graph.camera();
   const ctr = graph.controls();
-  const dist = cam.position.distanceTo(ctr.target ?? new THREE.Vector3());
+  const dist = cam.position.distanceTo(ctr.target ?? new Vector3());
   const k = dist * 0.0013;
-  const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
-  const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
+  const right = new Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+  const up = new Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
   cam.position.addScaledVector(right, -dx * k).addScaledVector(up, dy * k);
   if (ctr.target) ctr.target.addScaledVector(right, -dx * k).addScaledVector(up, dy * k);
 }

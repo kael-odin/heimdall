@@ -37,6 +37,8 @@ import { llmInfo, llmChat, llmChatWith, llmConfig } from './llm.mjs';
 import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
 import { createWatchdog } from './task-watchdog.mjs';
 import { writeProxyHead, mirrorHostOf } from './proxy-headers.mjs';
+import { PX_PROXY_LIMITS, fetchPxUpstream, pxResponseHeaders, readPxResponseBody } from './px-proxy.mjs';
+import { isCloneRenderingAsset } from './clone-asset-cors.mjs';
 import { unmirroredBanner } from './live/live-html.mjs';
 import { liveSnapshotCandidates } from './live/live-path.mjs';
 import { rewriteSnapshotMount } from './live/site-routing.mjs';
@@ -268,6 +270,8 @@ const parseHttpUrl = (value) => {
  */
 function sendFile(req, res, file, extraHeaders = {}, source = 'workspace') {
   const workspaceRel = source === 'workspace' ? relative(WORKSPACE, file).replaceAll('\\', '/').toLowerCase() : '';
+  const mime = mimeOf(file);
+  const cloneAssetCors = source === 'workspace' && isCloneRenderingAsset(workspaceRel, mime);
   const compareView = source === 'workspace' && new URL(req.url, 'http://x').searchParams.get('compare') === '1'
     && /^[^/]+\/pages\/[^/]+\/clone\/[^/]+\.html?$/.test(workspaceRel);
   if (compareView && workspaceRel.endsWith('/clone/index.html')) {
@@ -278,8 +282,9 @@ function sendFile(req, res, file, extraHeaders = {}, source = 'workspace') {
   if (!st.isFile()) return json(res, 404, { error: 'nf' });
   const headers = {
     ...CORS,
-    'Content-Type': mimeOf(file),
-    ...activeDocumentHeaders(req, mimeOf(file), { source, file, compareView }),
+    'Content-Type': mime,
+    ...(cloneAssetCors ? { 'Access-Control-Allow-Origin': '*' } : {}),
+    ...activeDocumentHeaders(req, mime, { source, file, compareView }),
     'Content-Length': String(st.size),
     'Accept-Ranges': 'bytes',
     'Last-Modified': st.mtime.toUTCString(),
@@ -723,9 +728,40 @@ function killTask(t, reason) {
   killTree(t.child);
 }
 
+/** Cancel a task and every task it owns. Children are attempted even if the parent already exited. */
+function cancelTaskTree(t, reason = 'CANCELLED', seen = new Set()) {
+  if (!t || seen.has(t.id)) return [];
+  seen.add(t.id);
+  const cancelled = [];
+  for (const childId of [...(t.childTaskIds ?? [])]) {
+    cancelled.push(...cancelTaskTree(tasks.get(childId), reason, seen));
+  }
+  if (t.status !== 'running' || t.cancelRequested) return cancelled;
+  t.cancelRequested = true;
+  if (t.requestStop) {
+    t.requestStop(reason);
+  } else {
+    t.error = reason;
+    killTree(t.child, 'SIGTERM');
+    try {
+      jobStore?.upsert({
+        id: t.id, kind: t.kind, url: t.url, status: 'cancelled',
+        pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: Date.now(),
+      });
+    } catch { t.mirrorDegraded = true; }
+    push(t, { kind: 'cancel-requested', reason });
+  }
+  cancelled.push(t.id);
+  return cancelled;
+}
+
 function makeTask(kind, url) {
   const id = `${kind[0]}-${randomUUID()}`;
-  const t = { id, kind, url, status: 'running', events: [], logs: [], subs: new Set(), child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false, killed: null, timeoutMs: 0, stallMs: 0 };
+  const t = {
+    id, kind, url, status: 'running', events: [], logs: [], subs: new Set(),
+    child: null, atlasPath: null, createdAt: Date.now(), cancelRequested: false,
+    killed: null, timeoutMs: 0, stallMs: 0, parentId: null, childTaskIds: new Set(),
+  };
   tasks.set(id, t);
   try { jobStore?.upsert({ id, kind, url, status: 'running', createdAt: t.createdAt }); }
   catch { t.mirrorDegraded = true; }
@@ -745,7 +781,7 @@ function makeTask(kind, url) {
 function spawnTask(t, script, args, opts = {}) {
   const child = spawn(process.execPath, [...(opts.nodeArgs ?? []), script, ...args], {
     cwd: join(HERE, '..'),
-    env: { ...process.env, HEIMDALL_PORT: String(PORT), ...(opts.env ?? {}) },
+    env: { ...process.env, HEIMDALL_PORT: String(PORT), HEIMDALL_PARENT_TASK_ID: t.id, ...(opts.env ?? {}) },
   });
   t.child = child;
   // 熔断：硬超时（这页跑太久）+ 无进展（这页卡死了）。判据与计时见 task-watchdog.mjs。
@@ -777,6 +813,13 @@ function spawnTask(t, script, args, opts = {}) {
     t.watchdog?.stop();
     t.status = t.cancelRequested ? 'cancelled' : code === 0 ? 'done' : 'failed';
     t.endedAt = Date.now();
+    if (t.parentId) tasks.get(t.parentId)?.childTaskIds?.delete(t.id);
+    if (t.status !== 'done') {
+      for (const childId of [...(t.childTaskIds ?? [])]) {
+        const child = tasks.get(childId);
+        if (child) cancelTaskTree(child, t.status === 'cancelled' ? 'CANCELLED' : 'PARENT_FAILED');
+      }
+    }
     // 收尾：先记一条"任务结束"再挂断所有订阅者。push 内部已逐订阅者 try（见 writeSubs）。
     // 这里的 res.end() 同样逐个 try —— 它在子进程 'exit' 回调里，抛出去就是未捕获异常。
     push(t, { kind: 'exit', code, status: t.status, killed: t.killed ?? undefined });
@@ -1120,8 +1163,12 @@ function startEditManifest(host) {
   return spawnTask(t, join('src', 'deliver', 'edit-manifest.mjs'), [host]).id;
 }
 
-function startForge(url, { hostPost = true } = {}) {
+function startForge(url, { hostPost = true, parentTaskId = null } = {}) {
   const u = new URL(url);
+  const parent = parentTaskId ? tasks.get(parentTaskId) : null;
+  if (parentTaskId && (!parent || parent.kind !== 'clone' || parent.status !== 'running' || parent.cancelRequested)) {
+    throw Object.assign(new Error('parent clone is not running'), { code: 'parent-not-running' });
+  }
   const siteId = siteIdForOrigin(WORKSPACE, url);
   const siteDir = join(WORKSPACE, siteId);
   const name = assertPageName(resolvePageNameOfUrl(u, siteDir));
@@ -1137,6 +1184,10 @@ function startForge(url, { hostPost = true } = {}) {
   t.host = siteId;
   t.siteId = siteId;
   t.origin = u.origin;
+  if (parent) {
+    t.parentId = parent.id;
+    parent.childTaskIds.add(t.id);
+  }
   const env = hostPost ? {} : { HEIMDALL_SKIP_HOST_POST: '1' };
   // 单页熔断参数来自站点配方（大站可以给更长的上限，挂死页统一在 8 分钟内判死）
   const plan = queuePlan(loadProfile(u.hostname.replace(/^www\./, '')));
@@ -1606,23 +1657,16 @@ const handleRequest = async (req, res) => {
     const id = u.pathname.split('/')[3];
     const t = tasks.get(id);
     if (!t) return json(res, 404, { error: 'no such task' });
-    if (t.requestStop) {
-      if (t.status === 'running') {
-        // Aborting local work is safe even if ownership was lost. The writer
-        // independently refuses settlement without the original owner fence.
-        t.cancelRequested = true;
-        try { t.requestStop('CANCELLED'); }
-        catch (cause) { const failure = acceptanceExecutionError(cause); return json(res, failure.status, failure.payload); }
-      }
-      return json(res, 200, { id, status: t.status, cancelRequested: t.cancelRequested });
-    }
     if (t.status === 'running') {
-      t.cancelRequested = true;
-      killTree(t.child, 'SIGTERM');      // 取消时先给个优雅退出的机会（win32 上仍是整树杀）
-      jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: 'cancelled', pageName: t.pageName ?? null, createdAt: t.createdAt, endedAt: Date.now() });
-      push(t, { kind: 'cancel-requested' });
+      try {
+        const cancelled = cancelTaskTree(t, 'CANCELLED');
+        return json(res, 200, { id, status: t.status, cancelRequested: t.cancelRequested, cancelledTaskIds: cancelled });
+      } catch (cause) {
+        const failure = acceptanceExecutionError(cause);
+        return json(res, failure.status, failure.payload);
+      }
     }
-    return json(res, 200, { id, status: t.status });
+    return json(res, 200, { id, status: t.status, cancelRequested: t.cancelRequested, cancelledTaskIds: [] });
   }
 
   if (req.method === 'POST' && u.pathname === '/api/recon') {
@@ -1643,15 +1687,18 @@ const handleRequest = async (req, res) => {
 
   if (req.method === 'POST' && u.pathname === '/api/forge') {
     readJsonBody(req, res, (b) => {
-      let { url, hostPost = true } = b;
+      let { url, hostPost = true, parentTaskId = null } = b;
       url = parseHttpUrl(url);
       if (!url) return json(res, 400, { error: 'invalid url' });
+      if (parentTaskId !== null && (typeof parentTaskId !== 'string' || !/^[a-z]-[0-9a-f-]{36}$/i.test(parentTaskId))) {
+        return json(res, 400, { error: 'invalid parentTaskId' });
+      }
       try {
-        const { id, name } = startForge(url, { hostPost: hostPost !== false });
+        const { id, name } = startForge(url, { hostPost: hostPost !== false, parentTaskId });
         json(res, 200, { taskId: id, pageName: name, url, siteId: tasks.get(id)?.siteId ?? null });
       } catch (e) {
         // 满槽由 startForge 抛 busy —— 那是 409（可以等会儿再来），不是 500
-        json(res, e?.code === 'invalid-page-name' ? 400 : ['busy', 'origin-conflict'].includes(e?.code) ? 409 : 500,
+        json(res, e?.code === 'invalid-page-name' ? 400 : ['busy', 'origin-conflict', 'parent-not-running'].includes(e?.code) ? 409 : 500,
           { error: e?.code === 'busy' ? 'busy' : String(e.message ?? e).slice(0, 300) });
       }
     });
@@ -2258,19 +2305,27 @@ const handleRequest = async (req, res) => {
     const identity = mirrorIdentity(m[1]);
     if (!identity) return json(res, 403, { error: 'host not allowed (recon it first or set HEIMDALL_ALLOWED_HOSTS)' });
     const target = identity.origin + (m[2] ?? '/') + u.search;
+    const signal = AbortSignal.timeout(PX_PROXY_LIMITS.timeoutMs);
     try {
-      const upstream = await fetch(target, { headers: { 'User-Agent': UA, Accept: req.headers.accept ?? '*/*', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' }, redirect: 'follow' });
-      const headers = new Headers();
-      for (const [k, v] of upstream.headers) {
-        if (['content-encoding', 'content-length', 'transfer-encoding', 'x-frame-options', 'content-security-policy'].includes(k.toLowerCase())) continue;
-        headers.set(k, v);
-      }
+      const { response: upstream } = await fetchPxUpstream(target, {
+        origin: identity.origin,
+        headers: { 'User-Agent': UA, Accept: req.headers.accept ?? '*/*', 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' },
+        signal,
+      });
+      const headers = pxResponseHeaders(upstream);
+      for (const name of ['x-frame-options', 'content-security-policy']) headers.delete(name);
       for (const [k, v] of Object.entries(activeDocumentHeaders(req, headers.get('content-type'), { source: 'proxy' }))) {
         headers.set(k, v);
       }
+      const body = await readPxResponseBody(upstream, { maxBytes: PX_PROXY_LIMITS.maxResponseBytes, signal });
       writeProxyHead(res, upstream.status, headers);
-      res.end(Buffer.from(await upstream.arrayBuffer()));
-    } catch (e) { json(res, 502, { error: String(e).slice(0, 120) }); }
+      res.end(body);
+    } catch (e) {
+      json(res, Number.isInteger(e?.status) ? e.status : 502, {
+        error: String(e?.message ?? e).slice(0, 160),
+        ...(e?.code ? { code: e.code } : {}),
+      });
+    }
     return;
   }
 

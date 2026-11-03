@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, readdirSync, renameSync, closeSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, renameSync, openSync, closeSync, fsyncSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
@@ -21,6 +21,49 @@ test('atomic writes replace the destination with a complete file and leave no te
   assert.deepEqual(result, { attempts: 1, retries: 0, waitedMs: 0 });
   assert.equal(readFileSync(file, 'utf8'), '{"status":"new"}');
   assert.deepEqual(readdirSync(directory), ['manifest.json']);
+});
+
+test('atomic writes flush the temporary file before closing and renaming it', t => {
+  const { file } = fixture(t);
+  const order = [];
+  writeAtomicFileSync(file, '{"status":"new"}', {
+    platform: 'win32',
+    io: {
+      write: (descriptor, data) => { order.push('write'); writeFileSync(descriptor, data); },
+      fsync: descriptor => { order.push('fsync'); fsyncSync(descriptor); },
+      close: descriptor => { order.push('close'); closeSync(descriptor); },
+      rename: (source, destination) => { order.push('rename'); renameSync(source, destination); },
+    },
+  });
+  assert.deepEqual(order, ['write', 'fsync', 'close', 'rename']);
+});
+
+test('POSIX atomic writes flush the parent directory after rename', t => {
+  const { file } = fixture(t);
+  const order = [];
+  let opens = 0;
+  writeAtomicFileSync(file, '{"status":"new"}', {
+    platform: 'linux',
+    io: {
+      open: (...args) => {
+        opens += 1;
+        if (opens === 2) { order.push('open-directory'); return 'directory'; }
+        order.push('open-temporary');
+        return openSync(...args);
+      },
+      write: (descriptor, data) => { order.push('write'); writeFileSync(descriptor, data); },
+      fsync: descriptor => {
+        if (descriptor === 'directory') order.push('fsync-directory');
+        else { order.push('fsync-temporary'); fsyncSync(descriptor); }
+      },
+      close: descriptor => {
+        if (descriptor === 'directory') order.push('close-directory');
+        else { order.push('close-temporary'); closeSync(descriptor); }
+      },
+      rename: (source, destination) => { order.push('rename'); renameSync(source, destination); },
+    },
+  });
+  assert.deepEqual(order, ['open-temporary', 'write', 'fsync-temporary', 'close-temporary', 'rename', 'open-directory', 'fsync-directory', 'close-directory']);
 });
 
 test('Windows sharing failures retry while readers continue to see the intact old manifest', t => {

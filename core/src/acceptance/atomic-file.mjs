@@ -1,12 +1,13 @@
-import { openSync, closeSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
+import { openSync, closeSync, writeFileSync, renameSync, unlinkSync, fsyncSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
+import { dirname } from 'node:path';
 
 const WINDOWS_BUSY = new Set(['EPERM', 'EBUSY', 'EACCES']);
 const DELAYS_MS = [10, 20, 40, 80, 120, 160, 200];
 const sleepWord = new Int32Array(new SharedArrayBuffer(4));
 const sleepSync = milliseconds => Atomics.wait(sleepWord, 0, 0, milliseconds);
-const nativeIo = { open: openSync, close: closeSync, write: writeFileSync, rename: renameSync, unlink: unlinkSync };
+const nativeIo = { open: openSync, close: closeSync, write: writeFileSync, fsync: fsyncSync, rename: renameSync, unlink: unlinkSync };
 
 /**
  * Replace a file with one same-directory rename. Windows read handles can briefly
@@ -27,6 +28,8 @@ export function writeAtomicFileSync(path, data, {
     ownedTemporary = true;
     stage = 'write temporary file';
     io.write(descriptor, data);
+    stage = 'flush temporary file';
+    io.fsync(descriptor);
     stage = 'close temporary file';
     io.close(descriptor);
     descriptor = undefined;
@@ -37,6 +40,16 @@ export function writeAtomicFileSync(path, data, {
       try {
         io.rename(temporary, path);
         ownedTemporary = false;
+        if (platform !== 'win32') {
+          stage = 'flush parent directory';
+          let directory;
+          try {
+            directory = io.open(dirname(path), 'r');
+            io.fsync(directory);
+          } finally {
+            if (directory !== undefined) io.close(directory);
+          }
+        }
         return { attempts, retries: attempts - 1, waitedMs };
       } catch (error) {
         const remaining = maxRetryMs - Math.max(waitedMs, now() - started);

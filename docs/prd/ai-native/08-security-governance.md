@@ -16,7 +16,7 @@
 | 登录由操作者在可见浏览器里亲手完成，我们只保存他本来就有的会话；**不自动填表、不猜口令、不绕验证码或 2FA** | RISKS §1.1（硬性，**不是可配项**） | `heimdall_journey` 的登录步骤由人完成；代理不能代输凭据，没有「自动登录」工具 |
 | 产物不公网部署；自家站优先 | RISKS §1.2–1.3 | 重建项目与交付包的使用说明沿用这一口径（T9） |
 | **不内置 robots 强制、不加默认节流**；并发数可配（`HEIMDALL_QUEUE_WORKERS`、`HEIMDALL_FORGE_SLOTS`） | RISKS §1.4，用户既有决定 | 本章**不引入** robots 检查、crawl-delay 或默认限速。§5 的「预算」是**成本护栏**，用来防止循环失控，不是爬取礼仪；节流如需要，仍只是可配项、默认关 |
-| `/px/` 代理的 host 白名单是防 SSRF，不是合规限制 | RISKS §1.5 | 沿用，并在 §4 补上重定向与 `set-cookie` 的缺口 |
+| `/px/` 代理的 host 白名单是防 SSRF，不是合规限制 | RISKS §1.5 | 沿用；重定向与 `set-cookie` 缺口已于 2026-11-03 补齐，解析后 IP 策略仍按非本机模式建设 |
 | 引擎默认只监听 `127.0.0.1`，对外需 `HEIMDALL_TOKEN` | RISKS §1.6；`engine-server.mjs` 的 `BIND` 默认值【读码】 | 「本机模式」保持今天的行为；§4 的更严策略只在非本机模式启用 |
 | 验收「指纹」冻结的 10 个文件不得修改；另有两份互不一致的清单**不要统一** | [2026-10-22 审查 §4](../../audits/2026-10-22/README.md) | 本章所有新代码以组合调用方式使用验收子系统 |
 
@@ -47,7 +47,7 @@
 | --- | --- | --- | --- | --- |
 | T1 | 随机 nonce 围栏 + 字段级标记；字符清理；长度上限；不可见文本不进正文；指令式文本告警；技能里的「不可信内容」指令块（[附录 B §4](appendix-b-playbooks.md)）；技能 `allowed-tools` 最小化；Heimdall 自身不提供 shell 或任意文件读写 | E6-15、E12-08、E4-09 | Ph1（围栏）/ Ph3（回归集） | 围栏对模型只是**软约束**，不能保证模型不被说服。最后一道防线是客户端的权限提示和最小权限 |
 | T2 | 秘密级文件不进任何工具与资源通道（继承并扩展 `isSecretFile`）；统一脱敏器；「给 AI 看的 HAR」视图；令牌不入日志；LLM Key 不回显（已有） | E12-02、E12-03、E9-01 | Ph1 | 脱敏靠模式匹配，会漏掉没见过的格式。所以第一道是「根本不让秘密级文件进通道」，脱敏只是第二道 |
-| T3 | 本机模式不变；非本机模式强制令牌 + 目标策略（解析后 IP 校验、重定向逐跳、防 rebinding）；`/px/` 前置修复；可选策略文件 | E12-05、E12-06、E12-09 | Ph3（比赛为本机模式；任何非本机部署之前必须完成） | 本机模式下，代理能让 Heimdall 访问本机其他服务——这是为了夹具与本地开发**有意保留**的行为，靠客户端的联网提示与令牌作用域兜底 |
+| T3 | 本机模式不变；非本机模式强制令牌 + 目标策略（解析后 IP 校验、重定向逐跳、防 rebinding）；`/px/` 已完成同源有限跳转、Cookie 剥离与响应预算；可选策略文件 | E12-05、E12-06、E12-09 | Ph3（比赛为本机模式；任何非本机部署之前必须完成解析后 IP 与连接时校验） | 本机模式下，代理能让 Heimdall 访问本机其他服务——这是为了夹具与本地开发**有意保留**的行为，靠客户端的联网提示与令牌作用域兜底 |
 | T4 | 预算（页数、时长、工具调用、美元）；排队 + 幂等；任务取消；「停止代理」 | E1-08、E1-09、E1-13、E12-04、E11-03 | Ph1–Ph2 | 预算是估算口径，实际账单以服务商为准；外部代理自己的模型花费不在 Heimdall 预算内 |
 | T5 | 默认代理档不暴露 destructive 能力；`admin` 令牌 + 本机确认；沿用「预览先行」 | E12-01、E2-15 | Ph2 | `admin` 令牌被滥用——令牌分发由使用者负责 |
 | T6 | 脚手架锁版本；首次 `install` 加 `--ignore-scripts`；不继承秘密环境变量；限定在重建工作区；可选 Docker；门禁含「零外链」与 health | E7-02、E10-06 | Ph1（锁版本）/ Ph4（沙箱） | 外部代理模式（E0）下命令由代理自己执行，Heimdall 无法沙箱，只能靠客户端权限模型 |
@@ -271,20 +271,23 @@ body
 
 **两条出站路径都要覆盖**：
 
-- Node `fetch`：侦察的 sitemap、`fingerprint.mjs`（`redirect:'follow'`）、`live/heal.mjs`（`redirect:'follow'`）、`/px/`（`redirect:'follow'`）等；其中几处已经是 `redirect:'manual'`【读码】。
+- Node `fetch`：侦察的 sitemap、`fingerprint.mjs`（`redirect:'follow'`）、`live/heal.mjs`（`redirect:'follow'`）等仍需在非本机模式统一目标策略；`/px/` 已于 2026-11-03 改为 `redirect:'manual'` 并逐跳校验。
 - Chromium：`capture`、`verify`、`live` 探针。部分模块已用 `context.route` 拦截（`live/probe.mjs`、`crawler/source-operations.mjs` 等），但 `capture.mjs` 没有请求拦截【读码】。非本机模式需要 `context.route('**/*')` 逐请求校验 URL 与方法，**并**让 Chromium 走一个本进程内的出站过滤代理，在连接时校验 IP——只在 `route` 里比字符串，挡不住 DNS rebinding。
 
 验收（E12-05）：SSRF 测试集全部被拦（用例来自上表：内网段、元数据、IP 各种写法、IPv4 映射 IPv6、userinfo、重定向到内网、rebinding 脚本），**且本机模式行为不变**。
 
 ### 4.3 `/px/` 代理的前置修复（E12-06）
 
-| 项 | 现状【读码】 | 要求 |
+| 项 | 当前实现（2026-11-03） | 证据 |
 | --- | --- | --- |
-| 重定向 | `fetch(target, { redirect:'follow' })`，上游可把它引到任意地址 | `redirect:'manual'`，仅允许同 origin 的有限次跳转 |
-| `set-cookie` | 转发头时只剔除 `content-encoding`、`content-length`、`transfer-encoding`、`x-frame-options`、`content-security-policy`，`set-cookie` **被原样透传** | 剔除 `set-cookie` / `set-cookie2` |
-| 目标 | 已限定为 `mirrorIdentity` 登记的 origin 或 `HEIMDALL_ALLOWED_HOSTS` | 保持，并叠加 §4.2 的 IP 策略 |
+| 重定向 | `redirect:'manual'`；每跳重新校验 HTTP(S)、同 origin、无 userinfo，最多 5 跳；跨源跳转在发请求前拒绝 | `core/src/px-proxy.mjs`、`core/test/px-proxy.test.mjs` |
+| `set-cookie` | 转发头剔除 `set-cookie` / `set-cookie2`，同时剥离 hop-by-hop、压缩与长度头 | `core/test/px-proxy.test.mjs` |
+| 资源预算 | 单次总时限 30 秒；响应体上限 32 MiB；超限或超时取消读取 | `core/test/px-proxy.test.mjs` |
+| 目标 | 仍限定为 `mirrorIdentity` 登记的 origin 或 `HEIMDALL_ALLOWED_HOSTS`；解析后 IP、端口与 DNS rebinding 策略属于 §4.2 的非本机模式工作 | `core/test/px-proxy-integration.test.mjs` |
 
-回归测试：上游 302 到 `169.254.169.254` → 502；上游 `Set-Cookie` 不出现在响应里。这两处是 [2026-10-22 审查](../../audits/2026-10-22/README.md) 列出的未修项，本次读码复核仍成立。
+真实回环集成测试已验证：白名单站点的跨源 302 返回 502，目标服务零命中；
+同源 302 可完成；首跳与终跳的 `Set-Cookie` 都不出现在客户端响应里。
+这只关闭了 `/px/` 的代理逃逸与 Cookie 回传，不代表任意公网部署已经具备完整 SSRF 防护。
 
 ### 4.4 可选策略文件 `HEIMDALL_POLICY_FILE`
 

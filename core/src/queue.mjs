@@ -43,6 +43,7 @@ const JSON_EVENTS = process.argv.includes('--json-events');    // 输出 @@EVENT
 // 引擎换了端口时若仍写死 8900，整站克隆会连不上自己。显式的 HEIMDALL_API 优先。
 const API = process.env.HEIMDALL_API ?? `http://127.0.0.1:${process.env.HEIMDALL_PORT || 8900}`;
 const TOKEN = process.env.HEIMDALL_TOKEN ?? '';
+const PARENT_TASK_ID = process.env.HEIMDALL_PARENT_TASK_ID ?? null;
 const HEADERS = { 'Content-Type': 'application/json', ...(TOKEN ? { 'x-heimdall-token': TOKEN } : {}) };
 const BASE = join(WORKSPACE, host);
 const queuePath = join(BASE, 'queue.json');
@@ -260,7 +261,12 @@ async function worker(id) {
     const admissionDeadline = Date.now() + Math.max(1000, Number(process.env.HEIMDALL_QUEUE_ADMISSION_MS) || 120_000);
     for (let attempt = 0; !taskId && Date.now() < admissionDeadline; attempt++) {
       try {
-        const r = await fetch(`${API}/api/forge`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ url: job.url, hostPost: false }), signal: AbortSignal.timeout(10_000) });
+        const r = await fetch(`${API}/api/forge`, {
+          method: 'POST',
+          headers: HEADERS,
+          body: JSON.stringify({ url: job.url, hostPost: false, parentTaskId: PARENT_TASK_ID }),
+          signal: AbortSignal.timeout(10_000),
+        });
         const body = await r.json().catch(() => ({}));
         if (r.ok && body.taskId) { taskId = body.taskId; break; }
         if (![409, 429, 502, 503, 504].includes(r.status)) { admissionError = `forge HTTP ${r.status}: ${String(body.error ?? '').slice(0, 160)}`; break; }

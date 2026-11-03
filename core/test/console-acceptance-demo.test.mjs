@@ -11,6 +11,8 @@ test('demo context accepts only the launcher marker and a plain explicit-port lo
   assert.deepEqual(acceptanceDemoContext(link()), { kind: 'local-fixed-v1', fixtureOrigin });
   const reversed = consoleOrigin + '/?' + new URLSearchParams({ fixtureOrigin, acceptanceDemo: 'local-fixed-v1' });
   assert.deepEqual(acceptanceDemoContext(reversed), acceptanceDemoContext(link()));
+  const acceptanceView = link() + '&view=acceptance';
+  assert.deepEqual(acceptanceDemoContext(acceptanceView), acceptanceDemoContext(link()));
   for (const fixture of ['http://127.0.0.1:1', 'http://127.0.0.1:65535']) assert.equal(acceptanceDemoContext(link(fixture)).fixtureOrigin, fixture);
   assert(Object.isFrozen(acceptanceDemoContext(link())));
 });
@@ -32,6 +34,7 @@ test('unknown, duplicate, secret and payload parameters do not create a demo con
     consoleOrigin + '/', consoleOrigin + '/?acceptanceDemo=local-fixed-v1', link(fixtureOrigin, 'other'),
     link() + '&acceptanceDemo=local-fixed-v1', link() + '&fixtureOrigin=' + encodeURIComponent(fixtureOrigin),
     link() + '&token=secret', link() + '&apiKey=secret', link() + '&projectId=ap-anything', link() + '&plan=%7B%7D',
+    link() + '&view=atlas', link() + '&view=acceptance&view=acceptance', link() + '&view=acceptance&site=fixture.test',
     link() + '#fragment', link() + '#', link().replace(consoleOrigin, 'https://example.com'),
     link().replace(consoleOrigin, 'https://127.0.0.1:8902'), link().replace(consoleOrigin, 'http://localhost:8902'),
     link().replace(consoleOrigin, 'http://2130706433:8902'), link().replace('/?', '/other?'),

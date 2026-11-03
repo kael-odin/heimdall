@@ -54,7 +54,7 @@ D3 已接入[固定来源 Browser 单次验收](docs/competition/acceptance-brow
 
 D5 已接入[固定成员人工缺陷单](docs/competition/acceptance-defect-tickets.md)：从同一次已登记操作的可靠失败中人工选择成员，固定来源与证据摘要，分别显示处理状态和当前核验。最新同范围登记必须在同次复验中可靠通过全部固定成员，再由操作者明确关闭；关闭后又发现可靠失败会重新打开，后续通过仍需再次明确关闭。支持处理历史及 Markdown / JSON 导出。人工动作的未知结果保留原确认，只 GET 核对，不自动重发原 POST。全局 Browser approval / selection 与操作归档继续独立建设。
 
-D6 已实现[人工动作的结果核对与永久拒绝](docs/competition/acceptance-defect-ticket-decisions.md)：操作者可明确封住同动作号的迟到成单或关闭，原事件与拒绝竞争同一个不可变决定；只有完整 `recorded` / `rejected` 原件、规范字节和请求身份均通过核验，页面才精确解除对应本机确认，草稿保留。本机完整 Core 与 27 阶段 Browser 已通过；**CI 目前是红的**，原因见[本报告](docs/audits/2026-10-22/README.md) 第 1 节：D6 冒烟原先在点击后才读响应体，页面跳走时会丢；该问题已在本轮修复，待下一次 CI 确认。[动作回复边界增强](./docs/audits/README.md)已通过本机 Windows / Linux 专项，新提交自身的完整 CI 仍待核验。下一阶段 D7 先用本地固定示例，从全新界面实际走通采集、固定来源、发现 BUG、人工成单、修复复验、明确关闭与证据导出；真实浏览器执行和人工确认均保留，结论仅覆盖示例的声明检查。后续取得获授权的外部项目 URL 后，再拓展真实项目验收。
+D6 已实现[人工动作的结果核对与永久拒绝](docs/competition/acceptance-defect-ticket-decisions.md)：操作者可明确封住同动作号的迟到成单或关闭，原事件与拒绝竞争同一个不可变决定；只有完整 `recorded` / `rejected` 原件、规范字节和请求身份均通过核验，页面才精确解除对应本机确认，草稿保留。D7 已在最终控制台构建上用真实浏览器从全新会话走完采集、明确来源归属、候选保存、已知 BUG、两项人工成员成单、1/2 禁关、2/2 复验后明确关闭，以及 Markdown 下载；结果是 `accepted:true`，普通控制台错误为 0。CI 与 Docs 已在仓库公开后重新启用，代码推送会重新接受 Hosted Node 22 质量门。D7 结论仍只覆盖本地固定示例的声明检查；获得授权的外部项目 URL 与明确版本后，再拓展真实项目验收。
 
 [Schema4 与显式维护](docs/competition/acceptance-catalog-schema4.md)已实现 D1 的纯格式、分步迁移与旧历史兼容，为 Browser 候选预留独立 `browserCandidates` 表。已有 Schema3 / Schema4 只打开并验证；旧 Schema1 / Schema2 普通启动返回 `MIGRATION_REQUIRED`，需先停止同根引擎，再显式预览并确认迁移。当前引擎为全新空目录明确创建 Schema3。D1 阶段的本机回归、旧数据真实迁移、Browser 混合历史及精确提交自身 CI 的证据见[实施验收](./docs/audits/README.md)。
 
@@ -206,6 +206,9 @@ node src/cli.mjs deliver example.com                   # 打包成前端可接�
 ```
 core/            确定性引擎（运行时不依赖外部服务）
   src/crawler/     捕获、构建、链接接线、站点配方
+  src/acceptance/  项目验收、Browser 执行、证据、人工缺陷单
+  src/agent/       AI 重建、Fix Packet、正式门禁与交付兜底
+  src/qa/          无参照物巡查、有限探索、基线与发现台账
   src/seo/         SEO 规则引擎、采集、报告、回归基线
   src/live/        交互镜像导出、健康检查、自愈
   src/differ/      像素与 DOM 差异
@@ -214,6 +217,9 @@ core/            确定性引擎（运行时不依赖外部服务）
   src/deliver/     改站起点清单、域名替换
   sites/           人工整理的站点配方（进 git）
 console/         Vue 3 控制台（组件与全局 UI 样式表）
+packages/mcp/    MCP v2 服务、协议测试与单文件插件构建
+plugin/          Claude 插件与生成后的 MCP 单文件入口
+bin/             heimdall CLI 入口
 config/          SEO 门禁的目标站点与基线（进 git）
 docs/            路线图、交付说明、上手导览（docs/guide/）
 ```
@@ -231,8 +237,11 @@ pnpm lint          # 语法检查（core 的 src / scripts / test）
 pnpm test          # 快速集：无浏览器、无验收存储的单测与流程测试
 pnpm test:full     # 全量：含真浏览器、验收存储与控制台 E2E
 pnpm smoke         # 离线 E2E（本地 fixture，不联网）
+pnpm acceptance:demo:smoke  # D7 全链路：采集、成单、部分修复禁关、复验关闭、下载
+pnpm -C packages/mcp test  # MCP 协议与插件单文件检查
 pnpm -C console build
-pnpm check         # 一键：lint + 文档链接 + 控制台构建 + 快速集
+pnpm run audit     # core / console / MCP 三套官方 registry 依赖审计
+pnpm check         # lint + 文档 + 冻结哈希 + 构建 + 快速集 + MCP + D7 + 依赖审计
 ```
 
 > 文档里写死的数字会烂。这一页曾经写着"91 个模块""385 条测试"、"航线数 66"——
@@ -244,9 +253,10 @@ pnpm check         # 一键：lint + 文档链接 + 控制台构建 + 快速集
 > `Executable doesn't exist`。CI 就在这上面栽过：`.github/workflows/ci.yml` 的 core job
 > 曾经从不装浏览器，于是长期全红 —— 而本地有浏览器的机器永远全绿，所以一直没被发现。
 
-CI 配置见 `.github/workflows/`。**GitHub Actions 自 2026-10-26 起因账户计费失败被禁用**，
-当前以本地 `pnpm check`（快速门禁）与发布前 `pnpm test:full` 为准；恢复计费后再启用 workflow。
-`seo-gate.yml` 当前只手动触发；配置 `config/seo-targets.txt` 与受版本控制的基线后才适合启用回归门禁。
+CI 配置见 `.github/workflows/`。`CI` 与 `Docs` 已在仓库公开后于 2026-11-03 重新启用：
+代码推送在 Hosted Node 22 上跑 Core 两分片、浏览器 smoke、Docker、Console、MCP 与依赖审计，
+纯文档提交走秒级的链接与规则数字检查。`seo-gate.yml` 仍只手动触发；配置
+`config/seo-targets.txt` 与受版本控制的基线后才适合启用自动回归门禁。
 
 ---
 

@@ -2,10 +2,18 @@
   "name": "@heimdall/mcp",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Heimdall MCP v2 server (Bifröst): tools, resources and prompts generated from the core capability registry",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.28.10",
+      "onFail": "download"
+    }
   },
   "bin": {
     "heimdall-mcp": "bin/heimdall-mcp.mjs"
@@ -14,7 +22,8 @@
     "start": "node bin/heimdall-mcp.mjs",
     "start:http": "node bin/heimdall-mcp.mjs --http 8931",
     "test": "node --test test/*.test.mjs",
-    "build:plugin": "node scripts/build-plugin.mjs"
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "check:plugin": "node scripts/build-plugin.mjs --check"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.4.0"
@@ -22,6 +31,5 @@
   "devDependencies": {
     "@modelcontextprotocol/client": "2.4.0",
     "esbuild": "0.28.2"
-  },
-  "license": "UNLICENSED"
+  }
 }
