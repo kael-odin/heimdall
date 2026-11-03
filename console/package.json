@@ -24,12 +24,12 @@
   "keywords": [],
   "author": "kael-odin",
   "dependencies": {
-    "3d-force-graph": "^1.80.0",
-    "three": "^0.186.1",
-    "vue": "^3.5.43"
+    "3d-force-graph": "^1.80.1",
+    "three": "^0.187.0",
+    "vue": "^3.5.44"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.9",
+    "@vitejs/plugin-vue": "^6.0.10",
     "vite": "^8.3.5"
   }
 }
