@@ -2,7 +2,7 @@
 FROM node:22-bookworm-slim AS console-build
 WORKDIR /app
 RUN corepack enable
-COPY console/package.json console/pnpm-lock.yaml ./console/
+COPY console/package.json console/pnpm-lock.yaml console/pnpm-workspace.yaml ./console/
 RUN cd console && pnpm install --frozen-lockfile
 COPY console ./console
 # AcceptanceComparison.vue 直接 import 了 ../../core/src/acceptance/comparison.mjs（零依赖的纯函数文件）。
@@ -19,7 +19,7 @@ ENV NODE_ENV=production \
     HEIMDALL_LLM=0
 WORKDIR /app
 RUN corepack enable
-COPY core/package.json core/pnpm-lock.yaml ./core/
+COPY core/package.json core/pnpm-lock.yaml core/pnpm-workspace.yaml ./core/
 RUN cd core && pnpm install --frozen-lockfile
 # recon/forge/diff 需要 Chromium（控制台浏览历史产物不需要，但完整能力需要）
 RUN cd core && pnpm exec playwright install --with-deps chromium
