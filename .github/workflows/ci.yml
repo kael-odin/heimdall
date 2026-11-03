@@ -271,7 +271,12 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: packages/mcp/pnpm-lock.yaml
+          cache-dependency-path: |
+            core/pnpm-lock.yaml
+            packages/mcp/pnpm-lock.yaml
+      # MCP tests load the Core capability registry, which imports Playwright.
+      # Keep the MCP install fresh while providing that real cross-package runtime.
+      - run: pnpm -C core install --frozen-lockfile
       - run: pnpm -C packages/mcp install --frozen-lockfile
       - run: pnpm -C packages/mcp test
       - run: pnpm -C packages/mcp check:plugin
