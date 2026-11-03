@@ -94,6 +94,7 @@ Console 最大生产 chunk 为 477.84 kB，无超过 500 kB 的警告；三套�
 
 - D7 真实 UI 全链路通过：采集、来源归属、候选、已知 BUG、两项人工成员、部分修复禁关、
   完全修复后明确关闭、Markdown 下载；最终结果 `accepted:true`，普通控制台错误为 0。
+  同源验收响应在页面 `fetch` 时保留 canonical 字节，不再依赖导航后仍能通过 CDP 回读。
 - 取消整站克隆会级联取消仍在运行的页面 forge；`/px/` 只允许有限同源跳转并剥离 Cookie；
   克隆渲染资产按目录与 MIME 开放只读 CORS。
 - 恢复 MCP 干净安装、插件产物检查、Windows `pnpm` 参数白名单、原子写文件与 POSIX 目录

@@ -973,6 +973,7 @@ if (STRICT) {
         status: 'probe-error', planned: operationPlan.flows.length, checked: 0,
         failed: 1, untested: operationPlan.flows.length,
         error: error?.name === 'Error' ? 'probe error' : 'browser unavailable',
+        errorType: ['Error', 'TimeoutError', 'TypeError'].includes(error?.name) ? error.name : 'Error',
       };
       health.strictBlockers.operationFailed = 1;
     }

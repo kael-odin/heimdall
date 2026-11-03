@@ -29,8 +29,8 @@
 | `pnpm -C core lint` | 701 个文件通过 | 真实流程 |
 | `pnpm -C core check:docs` | 668 个本地目标 / 128 个文件通过 | 真实流程 |
 | `pnpm -C core check:frozen` | 14 个冻结验收文件通过 | 真实流程 |
-| `pnpm check` | 根级门禁全通过：fast 1,186 条、MCP、skills、审计与 D7 | 真实流程 |
-| `pnpm acceptance:demo:smoke` | D7 `accepted:true`，普通控制台错误 0 | 真实流程 |
+| `pnpm check` | 根级门禁全通过：fast 1,187 条、MCP、skills、审计与 D7 | 真实流程 |
+| `pnpm acceptance:demo:smoke` | D7 `accepted:true`，capture failure 0，普通控制台错误 0 | 真实流程 |
 | `pnpm acceptance:benchmark` | 18/18；13/13 BUG；13/13 源码定位；0 误报 | 离线复现 |
 | `pnpm qa:benchmark` | 21/21 缺陷；0/3 健康页误报；P=R=F1=1 | 离线复现 |
 | `pnpm -C console build` | 通过；最大 chunk 477.84 kB，无 >500 kB 警告 | 真实流程 |
@@ -247,6 +247,40 @@ WebGL2 上下文正常，后续控制台关键路径 E2E 继续通过。
 独立 verifier 通过；证据在
 `core/workspace/_runs/audit-20261103-d6-linux-2/`。
 
+### R-14 Hosted D7 再次撞到 CDP 响应体被页面丢弃（P1，已修）
+
+同一轮 Hosted CI 里，D7 的真实 UI 已经完成多数业务步骤，但 Playwright
+在页面导航后读取一个已经消费过的 GET 响应体时，`Network.getResponseBody`
+返回 “No data found ... navigated away”。这不是接口失败，也不是业务步骤失败；
+问题是证据工具把“网络条目还能不能回读”误当成了“响应本身是否成功”。
+
+修复分两层：
+
+- 页面加载时包装原生 `fetch`，只对同源 `/api/acceptance/*` 克隆一份响应，
+  在页面内立即保存同一响应字节；请求照常走原生网络，不改写、不拦截、不重放。
+- 交互式 `uiRead` / `uiWrite` 的 canonical body 仍必须完整可取，否则立即失败。
+  对后台 incidental GET，若 HTTP 已是 2xx、业务也正常继续，而页面克隆副本随后
+  被浏览器主动取消，则记录为 `bodyCaptureSkipped`，不再冒充致命 capture failure。
+
+复测：Windows 本机 Node 26 与仓库 Playwright/CDP 从全新隔离会话跑完采集、来源归属、
+候选保存、已知 BUG、两项人工成员成单、1/2 禁关、2/2 复验通过后明确关闭和 Markdown
+下载；结果 `accepted:true`、capture failure 0、cleanup error 0，另有 1 条被明确记录的
+后台 GET 体跳过。最终 Hosted Node 22 结果仍以对应提交的 CI run 为准。
+
+### R-15 离线操作门禁撞到一次浏览器启动瞬态失败（P2，已加固）
+
+最终完整 `pnpm check` 第一次复跑时，快速集出现 1 条失败：
+“动作打开未声明弹窗必须被离线探针拦下”。该用例要求 `operationProbe.checked=1`，
+但本次拿到的是 `0`；说明失败发生在浏览器检查开始之前，不是弹窗漏判。
+
+单独复跑该用例通过；再并发启动 8 份同一测试文件也全部通过，说明现场不是稳定的产品
+逻辑错误，而是高并发浏览器资源下的启动瞬态。处理没有放宽门禁：只新增一个两段式
+启动器，遇到明确的“浏览器进程刚启动就关闭 / `spawn EAGAIN` / 连接瞬断”等错误时
+等待 250 ms 重试一次；找不到 Chromium、权限错误、参数错误和重试耗尽仍立即失败。
+
+复测：`core/test/live-operation-probe.test.mjs` 7/7 通过，其中新增测试同时覆盖
+“瞬态错误只重试一次”和“永久错误不得重试”；完整根门禁在最终提交前重新执行。
+
 ## 当前能力边界
 
 ### 已经真正成立
@@ -308,7 +342,7 @@ WebGL2 上下文正常，后续控制台关键路径 E2E 继续通过。
 
 最终通过证据：
 
-- D7 最终根门禁运行：`core/workspace/_runs/acceptance-demo-console-7d22ff27-3a5e-4fbd-b739-70a53c503ea1/`
+- D7 最终根门禁运行：`core/workspace/_runs/acceptance-demo-console-521dd548-5c58-43bc-b949-9b102a97f85f/`
 - 干净依赖审计：`core/workspace/_runs/audit-clean-20261103/`
 - 验收基准：`core/workspace/_runs/acceptance-benchmark/benchmark-2026-11-03T05-27-43-194Z-2cf9490a/`
 - QA 基准：`core/workspace/_runs/qa-benchmark/2026-11-03T05-27-43-216Z/`

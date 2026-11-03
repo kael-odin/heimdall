@@ -13,9 +13,29 @@ export const DEFAULT_BROWSER_OBSERVE_MS = 3_000;
 export const MAX_BROWSER_OBSERVE_MS = 15_000;
 const PRIVATE_PATH_PARENT = /^(?:users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|reset-password|password-reset|verify-email|email-verification|magic-link|invites?|invitations?|tokens?|secrets?)$/i;
 const PUBLIC_ERROR_TYPES = new Set(['Error', 'TimeoutError', 'TypeError', 'ReferenceError', 'SyntaxError', 'RangeError', 'URIError', 'EvalError', 'AggregateError']);
+const TRANSIENT_BROWSER_LAUNCH = /Target page, context or browser has been closed|Browser (?:has been )?closed|browser process.*(?:closed|killed|failed)|spawn (?:UNKNOWN|EAGAIN|ENOMEM|EBUSY)|Failed to launch|Cannot connect to the browser|ECONNRESET|EPIPE/i;
 
 function boundedInteger(value, fallback, upperBound) {
   return Number.isInteger(value) && value >= 0 ? Math.min(value, upperBound) : fallback;
+}
+
+export async function launchOfflineBrowser(launch = () => chromium.launch({ headless: true, timeout: 30_000 }),
+  { attempts = 2, retryDelayMs = 250, sleep = ms => new Promise(ready => setTimeout(ready, ms)) } = {}) {
+  if (!Number.isInteger(attempts) || attempts < 1 || attempts > 3) throw new RangeError('attempts must be between 1 and 3');
+  if (!Number.isFinite(retryDelayMs) || retryDelayMs < 0 || retryDelayMs > 1_000) {
+    throw new RangeError('retryDelayMs must be between 0 and 1000');
+  }
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return { browser: await launch(), attempts: attempt };
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts || !TRANSIENT_BROWSER_LAUNCH.test(String(error?.message ?? error))) throw error;
+      await sleep(retryDelayMs);
+    }
+  }
+  throw lastError;
 }
 
 export function browserObservationState({ elapsedMs, idleMs, pendingRequests, settleMs, maxObservationMs, quietMs }) {
@@ -161,7 +181,9 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
   const { child, base } = await startOfflineServer(bundleDir);
   let browser;
   try {
-    browser = await chromium.launch({ headless: true });
+    const launched = await launchOfflineBrowser();
+    browser = launched.browser;
+    report.browserLaunchAttempts = launched.attempts;
     const failuresByPage = new Array(selected.length);
     async function probeRoute(routePath, pageIndex) {
       report.checked++;
@@ -473,7 +495,9 @@ export async function probeOfflineOperations(bundleDir, flows, options = {}) {
         options.onReadOnlyObservation?.(sourceUrl, entry, flowIndex);
       },
     });
-    browser = await chromium.launch({ headless: true });
+    const launched = await launchOfflineBrowser();
+    browser = launched.browser;
+    report.browserLaunchAttempts = launched.attempts;
     for (const [flowIndex, flow] of flows.entries()) {
       const issues = [];
       const addIssue = issue => {

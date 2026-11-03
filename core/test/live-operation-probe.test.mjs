@@ -6,9 +6,37 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readOperationPlan } from '../src/live/operation-plan.mjs';
+import { launchOfflineBrowser } from '../src/live/probe.mjs';
 
 const CORE = fileURLToPath(new URL('..', import.meta.url));
 const EXPORT = fileURLToPath(new URL('../src/live/export.mjs', import.meta.url));
+
+test('offline browser launch retries transient closure without hiding permanent failures', async () => {
+  let calls = 0;
+  const browser = { marker: 'browser' };
+  const launched = await launchOfflineBrowser(async () => {
+    calls++;
+    if (calls === 1) throw new Error('browserType.launch: Target page, context or browser has been closed');
+    return browser;
+  }, { sleep: async () => {} });
+  assert.equal(launched.browser, browser);
+  assert.equal(launched.attempts, 2);
+  assert.equal(calls, 2);
+
+  calls = 0;
+  await assert.rejects(launchOfflineBrowser(async () => {
+    calls++;
+    throw new Error("browserType.launch: Executable doesn't exist");
+  }, { sleep: async () => {} }), /Executable doesn't exist/);
+  assert.equal(calls, 1, 'permanent launch failures must fail closed without a retry');
+
+  calls = 0;
+  await assert.rejects(launchOfflineBrowser(async () => {
+    calls++;
+    throw new Error('browserType.launch: Browser closed');
+  }, { sleep: async () => {} }), /Browser closed/);
+  assert.equal(calls, 2, 'the retry budget is bounded');
+});
 
 test('operation plan requires bundled paths and observable postconditions', () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-operation-plan-'));

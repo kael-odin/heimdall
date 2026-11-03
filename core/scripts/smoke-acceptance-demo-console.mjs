@@ -2,6 +2,8 @@
 /** D7 fresh launcher -> native UI capture, fixed executions and manual closure.
  * Browser plugin not available; use the repository Playwright/CDP path.
  * No request interception, fabricated GETs, injected failures or prepared results.
+ * A page-side fetch wrapper clones same-origin API responses so exact bytes survive
+ * Chromium discarding an already-consumed network entry.
  */
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
@@ -161,12 +163,24 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
     await capture(name + '-mobile', anchor, 390, 844);
     await page.setViewportSize({ width: 1440, height: 1000 });
   }
+  async function capturedResponse(response, label) {
+    const id = requestMap.get(response.request())?.entry.captureId;
+    assert.ok(id, label + ': page-side response capture was not registered');
+    const captured = await waitFor(() => page.evaluate(value => {
+      const item = globalThis.__heimdallSmokeResponses?.find(entry => entry.id === value && entry.done);
+      return item || null;
+    }, id), label + ': page-side response body');
+    if (captured.error) throw new Error(label + ': page-side response capture failed: ' + captured.error);
+    return { capture: captured, bytes: Buffer.from(captured.bodyBase64, 'base64') };
+  }
   async function responseValue(name, response, expectedStatus) {
-    const bytes = Buffer.from(await response.body());
+    const captured = await capturedResponse(response, name);
+    const bytes = captured.bytes;
     const body = save('actions/' + name + '-response.bin', bytes);
     const value = JSON.parse(bytes.toString('utf8'));
+    assert.equal(captured.capture.status, expectedStatus, name + ': captured response status');
     assert.equal(response.status(), expectedStatus, name + ': ' + bytes.toString('utf8'));
-    return { response, value, raw: body };
+    return { response, value, raw: body, bodySource: 'page-fetch-clone' };
   }
   async function uiWrite(name, path, click, expectedStatus) {
     const previous = posts().filter(request => request.path === path).length;
@@ -178,7 +192,7 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
     const requestBody = save('actions/' + name + '-request.bin', raw), body = JSON.parse(raw.toString('utf8'));
     assert.equal(posts().filter(item => item.path === path).length, previous + 1, name + ' must issue exactly one explicit POST');
     const action = { name, at: new Date().toISOString(), stage, method: 'POST', path, body, status: expectedStatus,
-      requestRaw: requestBody, responseRaw: value.raw, payload: value.value };
+      requestRaw: requestBody, responseRaw: value.raw, bodySource: value.bodySource, payload: value.value };
     actions.push(action); save('actions/' + name + '.json', action); event('ui-write', { name, path, status: expectedStatus });
     return action;
   }
@@ -187,7 +201,7 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
       { timeout: 120000 });
     const [response] = await Promise.all([awaited, click()]);
     const value = await responseValue(name, response, 200);
-    save('actions/' + name + '.json', { method: 'GET', path, raw: value.raw, payload: value.value }); return value.value;
+    save('actions/' + name + '.json', { method: 'GET', path, raw: value.raw, bodySource: value.bodySource, payload: value.value }); return value.value;
   }
   async function readApi(name, path) {
     // Read-only verification is real HTTP. This helper cannot issue mutations.
@@ -225,6 +239,39 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
     const version = await fetch(cdp + '/json/version', { signal: AbortSignal.timeout(10000) });
     save('cdp-version.json', await version.json()); browser = await chromium.connectOverCDP(cdp);
     context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce', acceptDownloads: true });
+    await context.addInitScript(() => {
+      const nativeFetch = globalThis.fetch.bind(globalThis);
+      const captures = [];
+      globalThis.__heimdallSmokeResponses = captures;
+      const base64 = bytes => {
+        let text = '';
+        for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+          text += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+        }
+        return btoa(text);
+      };
+      globalThis.fetch = async (input, init) => {
+        let request;
+        try { request = input instanceof Request ? input.clone() : new Request(input, init); }
+        catch { return nativeFetch(input, init); }
+        const url = new URL(request.url, location.href);
+        if (url.origin !== location.origin || !url.pathname.startsWith('/api/acceptance/')) return nativeFetch(input, init);
+        const id = crypto.randomUUID(), headers = new Headers(request.headers);
+        headers.set('x-heimdall-smoke-request-id', id);
+        const record = { id, method: request.method, url: request.url, path: url.pathname };
+        captures.push(record);
+        try {
+          const response = await nativeFetch(new Request(request, { headers }));
+          record.status = response.status;
+          response.clone().arrayBuffer().then(bytes => {
+            record.bytes = bytes.byteLength; record.bodyBase64 = base64(new Uint8Array(bytes)); record.done = true;
+          }, error => { record.error = error?.message || String(error); record.done = true; });
+          return response;
+        } catch (error) {
+          record.error = error?.message || String(error); record.done = true; throw error;
+        }
+      };
+    });
     page = await context.newPage(); page.setDefaultTimeout(90000);
     page.on('pageerror', error => { pageErrors.push({ at: new Date().toISOString(), stage, error: errorOf(error) }); });
     page.on('console', message => {
@@ -236,7 +283,8 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
       const index = browserRequests.length + 1, prefix = 'network/' + String(index).padStart(5, '0');
       const body = request.postDataBuffer();
       const entry = { sequence: index, at: new Date().toISOString(), stage, method: request.method(), url: request.url(),
-        path: url.pathname, query: url.search, headers: request.headers(), ...(body ? { raw: save(prefix + '-request.bin', body) } : {}) };
+        path: url.pathname, query: url.search, headers: request.headers(),
+        captureId: request.headers()['x-heimdall-smoke-request-id'] ?? null, ...(body ? { raw: save(prefix + '-request.bin', body) } : {}) };
       if (body) { try { entry.body = JSON.parse(body.toString('utf8')); } catch { entry.bodyIsJson = false; } }
       browserRequests.push(entry); requestMap.set(request, { entry, prefix });
     });
@@ -245,11 +293,24 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
       track((async () => {
         const entry = { requestSequence: known.entry.sequence, at: new Date().toISOString(), stage,
           status: response.status(), headers: await response.allHeaders(), url: response.url() };
-        try { entry.raw = save(known.prefix + '-response.bin', Buffer.from(await response.body())); }
+        try {
+          const captured = await capturedResponse(response, 'network ' + known.entry.sequence);
+          entry.raw = save(known.prefix + '-response.bin', captured.bytes);
+          entry.bodySource = 'page-fetch-clone';
+        }
         catch (error) {
           entry.bodyCaptureError = errorOf(error);
-          captureFailures.push({ at: new Date().toISOString(), stage, requestSequence: known.entry.sequence,
-            kind: 'response-body', error: entry.bodyCaptureError });
+          const pageAbortedSuccessfulGet = known.entry.method === 'GET' && response.status() >= 200
+            && response.status() < 300 && /aborted a request/i.test(error?.message ?? '');
+          if (pageAbortedSuccessfulGet) {
+            entry.bodyCaptureSkipped = {
+              reason: 'page-side clone aborted after an HTTP 2xx response',
+              error: entry.bodyCaptureError,
+            };
+          } else {
+            captureFailures.push({ at: new Date().toISOString(), stage, requestSequence: known.entry.sequence,
+              kind: 'response-body', error: entry.bodyCaptureError });
+          }
         }
         responses.push(entry); save(known.prefix + '.json', { request: known.entry, response: entry });
       })());
@@ -689,6 +750,7 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
       ticketId: ticketId ?? null, closedTicket: closedTicket?.ticket ?? null, download: downloadFact ?? null,
       explicitConfirmations: confirmations, browserPostCount: posts().length, pageErrors, consoleMessages,
       requestFailureCount: requestFailures.length, captureFailureCount: captureFailures.length,
+      bodyCaptureSkipCount: responses.filter(response => response.bodyCaptureSkipped).length,
       httpFailureCount: responses.filter(response => response.status >= 400).length, layouts,
       maintainedInputUnchanged: !!inputBefore && !!inputAfter && JSON.stringify(inputBefore) === JSON.stringify(inputAfter),
       readOnlyUnchanged: !!fixedReadOnlyBefore && !!fixedReadOnlyAfter && JSON.stringify(fixedReadOnlyBefore) === JSON.stringify(fixedReadOnlyAfter) };

@@ -26,6 +26,14 @@ All notable changes to Heimdall are recorded here.
   frozen installation.
 - Manual defect-ticket action evidence now uses the complete same-origin relay
   response frame when Chromium reports an already-consumed GET as aborted.
+- D7 now clones same-origin acceptance responses at page-fetch time, so a
+  completed UI flow no longer depends on Playwright's CDP response body still
+  being available. Interactive reads and writes still fail closed when their
+  canonical bytes are missing; only an incidental 2xx GET clone abort is
+  retained explicitly as `bodyCaptureSkipped`.
+- Offline browser probes retry once only when Chromium reports a transient
+  launch-process closure or resource failure. Missing executables, invalid
+  configuration and exhausted retries still fail the strict gate immediately.
 
 ### Security
 
@@ -49,7 +57,8 @@ All notable changes to Heimdall are recorded here.
 - Full core suite: 3,010 tests, 2,998 passed, 0 failed, 12 skipped.
 - Acceptance benchmark: 18/18 cases and 13/13 source localizations.
 - QA benchmark: 21/21 defects, 0 false positives.
-- D7 real-browser acceptance demo: `accepted:true`.
+- D7 real-browser acceptance demo: `accepted:true`, 0 capture failures, and
+  1 explicitly recorded incidental GET body skip.
 
 ## [2.0.0-dev] - 2026-09-01
 
