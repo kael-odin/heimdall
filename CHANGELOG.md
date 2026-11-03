@@ -34,6 +34,9 @@ All notable changes to Heimdall are recorded here.
 - Offline browser probes retry once only when Chromium reports a transient
   launch-process closure or resource failure. Missing executables, invalid
   configuration and exhausted retries still fail the strict gate immediately.
+- The core test runner now removes the extra pnpm `--` separator before
+  forwarding Node test options, so Hosted CI's two jobs actually shard the
+  full suite instead of each running all 3,011 tests.
 
 ### Security
 
@@ -54,7 +57,8 @@ All notable changes to Heimdall are recorded here.
 
 ### Verification
 
-- Full core suite: 3,010 tests, 2,998 passed, 0 failed, 12 skipped.
+- Full core suite on Hosted Node 22, after real sharding: 3,012 tests,
+  3,008 passed, 0 failed, 4 skipped.
 - Acceptance benchmark: 18/18 cases and 13/13 source localizations.
 - QA benchmark: 21/21 defects, 0 false positives.
 - D7 real-browser acceptance demo: `accepted:true`, 0 capture failures, and

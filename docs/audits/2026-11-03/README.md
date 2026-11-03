@@ -25,11 +25,11 @@
 
 | 检查 | 最终结果 | 证据级 |
 | --- | --- | --- |
-| `pnpm -C core test:full` | **3,010 条，2,998 pass，0 fail，12 skip，约 28 分 16 秒** | 真实流程 |
-| `pnpm -C core lint` | 701 个文件通过 | 真实流程 |
+| Hosted `pnpm test:full -- --test-shard=1/2` + `2/2` | **合计 3,012 条，3,008 pass，0 fail，4 skip；两分片各执一半** | 真实流程 |
+| `pnpm -C core lint` | 702 个文件通过 | 真实流程 |
 | `pnpm -C core check:docs` | 668 个本地目标 / 128 个文件通过 | 真实流程 |
 | `pnpm -C core check:frozen` | 14 个冻结验收文件通过 | 真实流程 |
-| `pnpm check` | 根级门禁全通过：fast 1,187 条、MCP、skills、审计与 D7 | 真实流程 |
+| `pnpm check` | 根级门禁全通过：fast 1,188 条、MCP、skills、审计与 D7 | 真实流程 |
 | `pnpm acceptance:demo:smoke` | D7 `accepted:true`，capture failure 0，普通控制台错误 0 | 真实流程 |
 | `pnpm acceptance:benchmark` | 18/18；13/13 BUG；13/13 源码定位；0 误报 | 离线复现 |
 | `pnpm qa:benchmark` | 21/21 缺陷；0/3 健康页误报；P=R=F1=1 | 离线复现 |
@@ -203,7 +203,7 @@ WebGL2 上下文正常，后续控制台关键路径 E2E 继续通过。
 
 - README 的 CI 红状态、仓库结构与总门禁。
 - STATUS 的全量数字、Hosted 边界和剩余短板。
-- DEMO 的 A-3 手测状态与 3,010 条测试口径。
+- DEMO 的 A-3 手测状态与 3,012 条测试口径。
 - ROADMAP 的 D7 完成状态与字体 CORS 历史口径。
 - 安全 PRD 的 `/px/` 当前实现与仍待做的非本机策略。
 - 审计索引与 CHANGELOG。
@@ -281,6 +281,17 @@ WebGL2 上下文正常，后续控制台关键路径 E2E 继续通过。
 复测：`core/test/live-operation-probe.test.mjs` 7/7 通过，其中新增测试同时覆盖
 “瞬态错误只重试一次”和“永久错误不得重试”；完整根门禁在最终提交前重新执行。
 
+### R-16 CI 两个分片实际各跑全量，分片参数被多余的 `--` 截断（P2，已修）
+
+Hosted 日志显示 `1/2` 与 `2/2` 两个 job 都报告 3,011 条测试、各耗时约 18 分钟。
+追查命令发现实际调用是 `node scripts/test-core.mjs -- --test-shard=1/2`；
+Node 将第一个 `--` 视为选项结束，后面的分片参数不再生效，于是两份 job 都跑完整集。
+
+修复：测试入口先剥掉 pnpm 自动追加的单层 `--`，再原样转发
+`--test-shard`、`--test-concurrency` 等 Node 参数，并新增参数归一化回归测试。
+这不是改门禁内容，而是让原来的分片设计真正生效；修复后的 Hosted 结果必须显示两个
+分片分别完成各自一半，并保持 0 失败。
+
 ## 当前能力边界
 
 ### 已经真正成立
@@ -342,7 +353,7 @@ WebGL2 上下文正常，后续控制台关键路径 E2E 继续通过。
 
 最终通过证据：
 
-- D7 最终根门禁运行：`core/workspace/_runs/acceptance-demo-console-521dd548-5c58-43bc-b949-9b102a97f85f/`
+- D7 最终根门禁运行：`core/workspace/_runs/acceptance-demo-console-41af5da1-9dff-4ced-8f04-44ea08c5125d/`
 - 干净依赖审计：`core/workspace/_runs/audit-clean-20261103/`
 - 验收基准：`core/workspace/_runs/acceptance-benchmark/benchmark-2026-11-03T05-27-43-194Z-2cf9490a/`
 - QA 基准：`core/workspace/_runs/qa-benchmark/2026-11-03T05-27-43-216Z/`
