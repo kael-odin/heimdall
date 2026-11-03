@@ -86,6 +86,16 @@ const cdp = json('cdp-network.json'), completions = json('playwright-completions
 assert(requests.length > 0); assert(requests.every(value => value.origin === summary.uiBase));
 assert.equal(relay.filter(value => ['fixture-error', 'proxy-error', 'original-upstream-error'].includes(value.event)).length, 0);
 assert(responses.every(value => !value.readFailure));
+for (const response of responses.filter(value => value.browserBodyReadFailure)) {
+  assert.match(response.browserBodyReadFailure, /Network\.getResponseBody|navigated away/);
+  assert.equal(response.bodySource, 'relay-complete-action-response');
+  assert(relay.some(value => value.event === 'action-response-end' && value.method === response.method && value.path === response.path
+    && value.status === response.status && value.bodySha256 === response.bodySha256));
+}
+for (const response of responses.filter(value => value.bodySource === 'relay-complete-action-response')) {
+  assert(relay.some(value => value.event === 'action-response-end' && value.method === response.method && value.path === response.path
+    && value.status === response.status && value.bodySha256 === response.bodySha256));
+}
 const originals = [], outcomes = [];
 for (const [index, [caseId, kind, winner]] of expected.entries()) {
   const prefix = 'case-' + caseId + '/', item = json(prefix + 'case.json'); assert.deepEqual(item, summary.cases[index]);

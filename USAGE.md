@@ -5,7 +5,9 @@
 
 ## 准备
 
-- Node.js 20.19+、pnpm 11.7+；抓取与测试需要 Playwright Chromium。
+- Node.js 22.13+、pnpm 11.28.10；抓取与测试需要 Playwright Chromium。
+  如果系统自带的 Corepack 无法验签，先升级 Corepack 或运行
+  `npm install -g pnpm@11.28.10`。
 - 仅处理自有站点或取得明确授权的内容。登录会话、导出包和代理访问分别按授权范围控制。
 - 新机要分别安装两个子包。根目录没有 pnpm workspace 配置。
 

@@ -20,6 +20,12 @@ All notable changes to Heimdall are recorded here.
   parent directory on POSIX.
 - The console keeps Three's circular core/WebGL module groups intact, verifies
   a live WebGL2 star map in Chromium, and no longer emits a chunk over 500 kB.
+- Package engines now require Node 22.13, matching the pinned pnpm 11.28.10
+  runtime instead of advertising an unsupported Node 20 setup.
+- The root Docker image now includes the pnpm override policy files required by
+  frozen installation.
+- Manual defect-ticket action evidence now uses the complete same-origin relay
+  response frame when Chromium reports an already-consumed GET as aborted.
 
 ### Security
 

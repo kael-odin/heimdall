@@ -28,8 +28,8 @@ export async function runChecks(names = CHECKS) {
   for (const id of names) {
     if (id === 'node') {
       const [maj, min] = process.versions.node.split('.').map(Number);
-      const good = maj > 20 || (maj === 20 && min >= 19);
-      add('node', good ? 'ok' : 'fail', `Node ${process.versions.node}${good ? '' : '，需要 ≥ 20.19'}`, good ? null : { command: '安装 Node 20.19 或更新版本', auto: false });
+      const good = maj > 22 || (maj === 22 && min >= 13);
+      add('node', good ? 'ok' : 'fail', `Node ${process.versions.node}${good ? '' : '，需要 ≥ 22.13'}`, good ? null : { command: '安装 Node 22.13 或更新版本', auto: false });
     } else if (id === 'pnpm') {
       // Windows 上 pnpm 是 .cmd，需要经 shell；把整条命令写成一个字符串，避免「带参数的 shell 调用」告警
       const r = process.platform === 'win32'

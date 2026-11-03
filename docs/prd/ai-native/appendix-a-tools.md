@@ -364,7 +364,7 @@
 
 | 检查 id | 内容 | 失败时的修复 |
 | --- | --- | --- |
-| `node` | Node ≥ 20.19 | 安装符合 `engines` 的 Node |
+| `node` | Node ≥ 22.13 | 安装符合 `engines` 的 Node |
 | `pnpm` | pnpm ^11.7 | `corepack enable` 或装对应版本 |
 | `chromium` | Playwright Chromium 已安装 | `pnpm -C core exec playwright install chromium` |
 | `engine` | 能连上引擎（`HEIMDALL_API`，默认 `http://127.0.0.1:8900`） | `heimdall serve` |

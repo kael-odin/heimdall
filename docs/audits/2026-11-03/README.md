@@ -27,7 +27,7 @@
 | --- | --- | --- |
 | `pnpm -C core test:full` | **3,010 条，2,998 pass，0 fail，12 skip，约 28 分 16 秒** | 真实流程 |
 | `pnpm -C core lint` | 701 个文件通过 | 真实流程 |
-| `pnpm -C core check:docs` | 668 个本地目标 / 126 个文件通过 | 真实流程 |
+| `pnpm -C core check:docs` | 668 个本地目标 / 128 个文件通过 | 真实流程 |
 | `pnpm -C core check:frozen` | 14 个冻结验收文件通过 | 真实流程 |
 | `pnpm check` | 根级门禁全通过：fast 1,186 条、MCP、skills、审计与 D7 | 真实流程 |
 | `pnpm acceptance:demo:smoke` | D7 `accepted:true`，普通控制台错误 0 | 真实流程 |
@@ -207,6 +207,45 @@ WebGL2 上下文正常，后续控制台关键路径 E2E 继续通过。
 - ROADMAP 的 D7 完成状态与字体 CORS 历史口径。
 - 安全 PRD 的 `/px/` 当前实现与仍待做的非本机策略。
 - 审计索引与 CHANGELOG。
+
+### R-12 Node 运行前提与固定 pnpm 不一致（P2，已修）
+
+文档、`engines` 和 `doctor` 原先都声明 Node ≥20.19，但固定的 pnpm 11.28.10
+自身要求 Node ≥22.13。用干净 Node 20.19 容器实测时，Corepack 拉取 pnpm 后直接
+以 `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING` 崩溃；这不是“旧版本仍能勉强跑”的提示。
+
+修复：
+
+- 根、core、console、MCP 的 `engines.node` 统一为 `>=22.13.0`。
+- README、USAGE、CONTRIBUTING、AI 原生 PRD 与 `doctor` 提示同步到 Node 22.13。
+- 文档明确：旧 Corepack 若无法验签，要先升级 Corepack 或全局安装固定版本。
+
+复测：Node 22.13 容器中全局安装 pnpm 11.28.10 后，core、console、MCP 三套冻结
+安装全部通过；Node 20.19 已明确列为不支持。
+
+### R-13 Hosted CI 又抓到发布镜像与 D6 证据时序问题（P1，已修）
+
+第一次恢复 Hosted CI 后，MCP 因缺少 Core 的 Playwright 运行时依赖失败，已单独修复。
+第二次运行又暴露两处仅 Hosted 环境稳定触发的问题：
+
+1. 根 Dockerfile 只复制了 `package.json` 与锁文件，漏掉
+   `core/pnpm-workspace.yaml`、`console/pnpm-workspace.yaml` 中的安全覆盖配置，
+   导致 `--frozen-lockfile` 判定 overrides 不一致。
+2. D6 人工缺陷单 D 场景中，动作只读 GET 已返回 200，应用也已消费 JSON 并继续
+   发出永久拒绝 POST，但 Chromium 随后把网络条目标记为 `ERR_ABORTED`；
+   Playwright `Response.body()` 因 `Network.getResponseBody` 拿不到体而误判失败。
+
+修复：
+
+- 根镜像复制两份 pnpm workspace 策略文件；本机构建后容器
+  `/api/status` 实际启动通过，Hosted root-image job 也通过。
+- D6 的动作 GET 改用同源 Relay 已收齐的完整响应帧作为 canonical body，同时核对
+  浏览器实际请求、状态码、可读时的 body，以及后续永久拒绝或记录行为；
+  验证器会再次对照 Relay 日志中的方法、路径、状态和 SHA-256。
+
+复测：Linux Node 22 Docker 容器中，D6 四个真实 UI 竞态 A/B/C/D 全过，
+独立 verifier 通过；证据在
+`core/workspace/_runs/audit-20261103-d6-linux-2/`。
 
 ## 当前能力边界
 

@@ -6,7 +6,7 @@
   "description": "Heimdall MCP v2 server (Bifröst): tools, resources and prompts generated from the core capability registry",
   "type": "module",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.13.0"
   },
   "devEngines": {
     "packageManager": {

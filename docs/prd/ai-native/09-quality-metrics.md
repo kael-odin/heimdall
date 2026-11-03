@@ -374,7 +374,7 @@ Tier-2（Gemini CLI、OpenCode、Windsurf、Cline / Roo Code、Cherry Studio、C
 | --- | --- |
 | 现有 `ci.yml` 只跑 Linux（`ubuntu-latest`，Node 22）【读码】 | 新能力的测试在 Linux 全跑，复用现有 job 的做法 |
 | 开发机是 Windows 原生；审查报告记录本机有 12 个用例因平台条件被跳过，要到 Linux CI 才会跑【读码：2026-10-22 审查 §8】 | 另加一个**窄的 Windows job**：只跑 CLI 契约、`connect` 配置生成、MCP 连通子集、路径含空格与中文用例；不跑全量 |
-| Node 口径不统一：CI 用 22，Dockerfile 用 24，`engines` 写 ≥ 20.19，本机是 25【读码：同一份审查】 | 新 package 的 `engines` 与仓库一致（≥ 20.19.0）；新增 job 用 Node 22（同现有 job），`ai (gen-check)` 另在 20.19 上跑一次 CLI `--help --json` 冒烟，兑现 `engines` 的承诺 |
+| Node 口径曾不统一：CI 用 22，Dockerfile 用 24，`engines` 写 ≥ 20.19，本机是 25【读码：同一份审查】 | 已统一为 Node ≥ 22.13.0；CI 与 Dockerfile 使用 Node 22，根、core、console、MCP 的 `engines` 与固定 pnpm 11.28.10 的实际要求一致 |
 
 ---
 
@@ -457,7 +457,7 @@ Tier-2（Gemini CLI、OpenCode、Windsurf、Cline / Roo Code、Cherry Studio、C
 | `core-lint` | `core (lint, docs, docker)` | `lint`、`check:docs`、Docker 离线交付验收、根镜像构建 | 20 分钟 |
 | `console` | `console (build)` | 控制台构建 | 10 分钟 |
 
-触发：推送到 `main` 与所有 `pull_request`；同分支新运行取消旧运行；`permissions: contents: read`；Node 22、pnpm 11.7.0、`ubuntu-latest`。`seo-gate.yml` 只手动触发。
+触发：推送到 `main` 与所有 `pull_request`；同分支新运行取消旧运行；`permissions: contents: read`；Node 22、pnpm 11.28.10、`ubuntu-latest`。`seo-gate.yml` 只手动触发。
 
 ### 5.2 分层
 

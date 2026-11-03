@@ -11,8 +11,9 @@ pnpm -C packages/mcp install --frozen-lockfile
 pnpm -C core exec playwright install chromium
 ```
 
-Use Node 22 as recorded in `.node-version` and the pinned pnpm version from
-`package.json`.
+Use Node 22.13 or newer as recorded in `.node-version` and the pinned pnpm
+version from `package.json`. If the bundled Corepack cannot verify the pnpm
+release, upgrade Corepack or install pnpm 11.28.10 globally.
 
 ## Before opening a pull request
 

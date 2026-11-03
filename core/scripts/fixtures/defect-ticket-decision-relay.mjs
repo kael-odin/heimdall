@@ -25,7 +25,7 @@ const actionReplyPath = new RegExp(`^/api/acceptance/projects/ap-${UUID}/defect-
 export function createDefectTicketDecisionRelay({ engineBase, scopeFile, logFile }) {
   const upstreamBase = new URL(engineBase); assert.equal(upstreamBase.hostname, '127.0.0.1');
   assert.equal(upstreamBase.protocol, 'http:'); assert.equal(upstreamBase.pathname, '/');
-  const cases = [], pendingRequests = new Set(); let armed;
+  const cases = [], replies = [], pendingRequests = new Set(); let armed;
   const record = value => { const event = { at: new Date().toISOString(), ...value }; appendFileSync(logFile, JSON.stringify(event) + '\n'); return event; };
   const destination = path => { assert(path.startsWith('/') && !path.startsWith('//')); const url = new URL(path, upstreamBase);
     assert.equal(url.origin, upstreamBase.origin, 'The relay has one fixed loopback upstream.'); return url; };
@@ -82,8 +82,9 @@ export function createDefectTicketDecisionRelay({ engineBase, scopeFile, logFile
             assert(!res.destroyed && !res.writableEnded && !res.headersSent, 'A framed action reply has one fresh downstream response.');
             const body = Buffer.concat(framedChunks, size), replyHeaders = headersOf(reply.headers);
             replyHeaders['content-length'] = body.length;
-            record({ event: 'action-response-end', frontRequestId, method: req.method, path: req.url,
+            const replyEvent = record({ event: 'action-response-end', frontRequestId, method: req.method, path: req.url,
               status: reply.statusCode, bytes: body.length, bodySha256: browserResolutionSha(body), upstreamComplete: reply.complete });
+            replies.push({ ...replyEvent, rawBody: body, payload: payloadOf(body) });
             res.writeHead(reply.statusCode, replyHeaders); res.end(body); pendingRequests.delete(upstream);
             if (deny) {
               const result = { status: reply.statusCode, payload: payloadOf(body), bytes: body };
@@ -179,7 +180,7 @@ export function createDefectTicketDecisionRelay({ engineBase, scopeFile, logFile
     };
     armed = state; cases.push(state); return state;
   }
-  return { server, arm, cases,
+  return { server, arm, cases, replies,
     async drain(timeoutMs = 10000) {
       const until = Date.now() + timeoutMs;
       while (pendingRequests.size && Date.now() < until) await new Promise(resolve => setTimeout(resolve, 25));
