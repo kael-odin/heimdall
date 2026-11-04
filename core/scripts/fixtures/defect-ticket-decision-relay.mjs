@@ -85,6 +85,12 @@ export function createDefectTicketDecisionRelay({ engineBase, scopeFile, logFile
             const replyEvent = record({ event: 'action-response-end', frontRequestId, method: req.method, path: req.url,
               status: reply.statusCode, bytes: body.length, bodySha256: browserResolutionSha(body), upstreamComplete: reply.complete });
             replies.push({ ...replyEvent, rawBody: body, payload: payloadOf(body) });
+            res.once('finish', () => {
+              const event = record({ event: 'action-response-downstream-finish', frontRequestId, method: req.method, path: req.url,
+                status: reply.statusCode, bytes: body.length, bodySha256: browserResolutionSha(body),
+                writableEnded: res.writableEnded, writableFinished: res.writableFinished });
+              if (deny) state.events.push(event);
+            });
             res.writeHead(reply.statusCode, replyHeaders); res.end(body); pendingRequests.delete(upstream);
             if (deny) {
               const result = { status: reply.statusCode, payload: payloadOf(body), bytes: body };

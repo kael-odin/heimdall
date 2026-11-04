@@ -83,6 +83,30 @@ for (const base of [summary.engineBase, summary.uiBase, summary.targetBase]) { c
 assert(!['5173', '5174', '5175'].includes(new URL(summary.uiBase).port));
 const requests = json('browser-requests.json'), responses = json('browser-responses.json'), allIngress = lines('ingress.jsonl'), relay = lines('relay.jsonl');
 const cdp = json('cdp-network.json'), completions = json('playwright-completions.json');
+function assertActionRequestCompleted(request, expectedStatus, expectedRaw, downstream) {
+  const response = responses.filter(value => value.requestId === request.id); assert.equal(response.length, 1);
+  assert.equal(response[0].status, expectedStatus); assert.equal(response[0].bodySha256, sha(expectedRaw));
+  assert.deepEqual(Buffer.from(response[0].rawBody), expectedRaw);
+  if (response[0].bodySource === 'relay-complete-action-response') assert.equal(response[0].downstreamResponseFinished, true);
+  const completion = completions.filter(value => value.requestId === request.id); assert.equal(completion.length, 1);
+  assert.equal(downstream.length, 1); assert.equal(downstream[0].writableEnded, true); assert.equal(downstream[0].writableFinished, true);
+  const nativeRequest = cdp.filter(value => value.event === 'request' && value.method === request.method && value.url === request.url
+    && value.bodySha256 === request.bodySha256); assert.equal(nativeRequest.length, 1);
+  const nativeEvents = cdp.filter(value => value.requestId === nativeRequest[0].requestId);
+  const nativeResponse = nativeEvents.filter(value => value.event === 'response'); assert.equal(nativeResponse.length, 1); assert.equal(nativeResponse[0].status, expectedStatus);
+  if (request.finished === true) {
+    assert.equal(request.failed, null); assert.equal(completion[0].event, 'finished');
+    assert.equal(nativeEvents.filter(value => value.event === 'finished').length, 1);
+    assert.equal(nativeEvents.filter(value => value.event === 'failed').length, 0);
+    return;
+  }
+  assert.equal(request.finished, false); assert.deepEqual(request.failed, { errorText: 'net::ERR_ABORTED' });
+  assert.equal(completion[0].event, 'failed'); assert.deepEqual(completion[0].failure, request.failed);
+  assert.equal(response[0].bodySource, 'relay-complete-action-response');
+  const nativeFailure = nativeEvents.filter(value => value.event === 'failed'); assert.equal(nativeFailure.length, 1);
+  assert.equal(nativeFailure[0].errorText, 'net::ERR_ABORTED'); assert.equal(nativeFailure[0].canceled, true);
+  assert.equal(nativeEvents.filter(value => value.event === 'finished').length, 0);
+}
 assert(requests.length > 0); assert(requests.every(value => value.origin === summary.uiBase));
 assert.equal(relay.filter(value => ['fixture-error', 'proxy-error', 'original-upstream-error'].includes(value.event)).length, 0);
 assert(responses.every(value => !value.readFailure));
@@ -91,6 +115,8 @@ for (const response of responses.filter(value => value.browserBodyReadFailure)) 
   assert.equal(response.bodySource, 'relay-complete-action-response');
   assert(relay.some(value => value.event === 'action-response-end' && value.method === response.method && value.path === response.path
     && value.status === response.status && value.bodySha256 === response.bodySha256));
+  assert(relay.some(value => value.event === 'action-response-downstream-finish' && value.method === response.method && value.path === response.path
+    && value.status === response.status && value.bodySha256 === response.bodySha256 && value.writableFinished === true));
 }
 for (const response of responses.filter(value => value.bodySource === 'relay-complete-action-response')) {
   assert(relay.some(value => value.event === 'action-response-end' && value.method === response.method && value.path === response.path
@@ -115,11 +141,13 @@ for (const [index, [caseId, kind, winner]] of expected.entries()) {
   assert.deepEqual(originalStorage.values, [original]); assert.equal(originalStorage.raw, canonical([original]));
   assert.deepEqual(json(prefix + 'original-storage-after.json').values, []);
   const basePath = '/api/acceptance/projects/' + original.projectId + '/defect-tickets', path = basePath + (kind === 'close' ? '/' + original.ticketId + '/close' : '');
+  const events = json(prefix + 'relay-events.json');
   const uiOriginal = requests.filter(value => value.method === 'POST' && value.path === path && value.body?.actionId === original.actionId);
-  assert.equal(uiOriginal.length, 1); assert.equal(uiOriginal[0].finished, true); assert.equal(uiOriginal[0].failed, null);
+  assert.equal(uiOriginal.length, 1);
   assert.equal(uiOriginal[0].rawBody, body.toString('utf8')); assert.equal(uiOriginal[0].bodySha256, sha(body)); assert.equal(uiOriginal[0].bytes, body.length); assert.equal(item.rawBodySha256, sha(body));
   const originalReplies = responses.filter(value => value.requestId === uiOriginal[0].id); assert.equal(originalReplies.length, 1); assert.equal(originalReplies[0].status, 502);
   const controlledRaw = raw(prefix + 'controlled-http-502.raw.json'), controlledPayload = JSON.parse(controlledRaw);
+  assertActionRequestCompleted(uiOriginal[0], 502, controlledRaw, events.filter(value => value.event === 'original-downstream-finish'));
   assert.deepEqual(controlledPayload, { code: 'D6_CONTROLLED_HTTP_502', error: 'Controlled relay response; original action remains unknown.', outcomeUnknown: true });
   assert.equal(originalReplies[0].rawBody, controlledRaw.toString('utf8')); assert.equal(originalReplies[0].bodySha256, sha(controlledRaw)); assert.deepEqual(originalReplies[0].payload, controlledPayload);
   const nativeRequest = cdp.filter(value => value.event === 'request' && value.method === 'POST' && value.url === summary.uiBase + path && value.bodySha256 === sha(body));
@@ -133,7 +161,7 @@ for (const [index, [caseId, kind, winner]] of expected.entries()) {
   assert.equal(originalCompletions.length, 1); assert.equal(originalCompletions[0].event, 'finished'); assert.equal(originalCompletions[0].mapped, true);
   const deny = raw(prefix + 'deny-ui-body.raw.json'); exactOriginal(JSON.parse(deny), { schemaVersion: 1, confirmed: true, original });
   const uiDeny = requests.filter(value => value.method === 'POST' && value.path === basePath + '/actions/' + original.actionId + '/deny'); assert.equal(uiDeny.length, 1);
-  assert.equal(uiDeny[0].rawBody, deny.toString('utf8')); assert.equal(uiDeny[0].bodySha256, sha(deny)); assert.equal(uiDeny[0].finished, true); assert.equal(uiDeny[0].failed, null);
+  assert.equal(uiDeny[0].rawBody, deny.toString('utf8')); assert.equal(uiDeny[0].bodySha256, sha(deny));
   const uiGets = requests.filter(value => value.method === 'GET' && value.url === summary.uiBase + basePath + '/actions/' + original.actionId);
   assert.equal(uiGets.length, 2, 'One explicit read-only check and one real deny preflight.');
   for (const get of uiGets) { const values = responses.filter(value => value.requestId === get.id); assert.equal(values.length, 1); assert.equal(values[0].status, 200); assert.equal(values[0].payload.outcome, 'unresolved'); }
@@ -144,8 +172,11 @@ for (const [index, [caseId, kind, winner]] of expected.entries()) {
   const decisionRaw = raw(prefix + 'decision.raw.json'), decision = JSON.parse(decisionRaw); assert.equal(decisionRaw.toString('utf8'), canonical(decision) + '\n');
   assert.equal(item.decisionSha256, sha(decisionRaw)); assert.deepEqual(readFileSync(join(ROOT, 'defect-tickets/v1/events', original.actionId + '.json')), decisionRaw);
   assert.deepEqual(after.decisions, { ...before.decisions, ['v1/events/' + original.actionId + '.json']: { bytes: decisionRaw.length, sha256: sha(decisionRaw) } });
-  const replies = { original: JSON.parse(raw(prefix + 'original-upstream-response.raw.json')), deny: JSON.parse(raw(prefix + 'deny-response.raw.json')), get: json(prefix + 'action-get.json') };
+  const denyReplyRaw = raw(prefix + 'deny-response.raw.json');
+  const replies = { original: JSON.parse(raw(prefix + 'original-upstream-response.raw.json')), deny: JSON.parse(denyReplyRaw), get: json(prefix + 'action-get.json') };
   const statuses = json(prefix + 'reply-statuses.json'); assert.equal(statuses.original, winner === 'rejected' ? 200 : 201); assert.equal(statuses.deny, winner === 'rejected' ? 201 : 200);
+  assertActionRequestCompleted(uiDeny[0], statuses.deny, denyReplyRaw, relay.filter(value => value.event === 'action-response-downstream-finish'
+    && value.method === 'POST' && value.path === uiDeny[0].path && value.bodySha256 === sha(denyReplyRaw)));
   const uiDenyReplies = responses.filter(value => value.requestId === uiDeny[0].id); assert.equal(uiDenyReplies.length, 1); assert.equal(uiDenyReplies[0].status, statuses.deny); assert.deepEqual(uiDenyReplies[0].payload, replies.deny);
   for (const proof of Object.values(replies)) {
     assert.equal(proof.schemaVersion, 1); assert.equal(proof.kind, 'manual-defect-ticket-action'); assert.equal(proof.outcome, winner);
@@ -182,7 +213,7 @@ for (const [index, [caseId, kind, winner]] of expected.entries()) {
   const heldIngress = json(prefix + (winner === 'rejected' ? 'ingress-at-deny-ack.json' : 'ingress-at-held-deny.json'));
   assert.deepEqual(heldIngress, live.slice(0, heldIngress.length)); assert.equal(heldIngress.at(-1).bytes, splitAt);
   assert.equal(heldIngress.filter(value => ['end', 'aborted', 'close'].includes(value.event)).length, 0);
-  const events = json(prefix + 'relay-events.json'), position = kind => events.findIndex(value => value.event === kind);
+  const position = kind => events.findIndex(value => value.event === kind);
   orderedTimes(events, caseId + ' relay'); orderedTimes(nativeEvents, caseId + ' native network'); orderedTimes(originalCompletions, caseId + ' original completion');
   for (const kind of ['original-body', 'controlled-http-502', 'deny-body', 'deny-forward', 'deny-response', 'original-tail-release', 'original-upstream-response'])
     assert.equal(events.filter(value => value.event === kind).length, 1, caseId + '.' + kind);

@@ -85,11 +85,16 @@ async function reconcileActionResponseBody(item, relayed) {
   assert.equal(item.path, new URL(relayed.path, 'http://relay.invalid').pathname);
   assert.equal(item.status, relayed.status);
   await responseReadPromises.get(item.requestId);
+  const downstream = await waitFor(() => lines(relayLog).find(value => value.event === 'action-response-downstream-finish'
+    && value.method === relayed.method && value.path === relayed.path && value.status === relayed.status
+    && value.bodySha256 === relayed.bodySha256));
+  assert.equal(downstream.writableEnded, true); assert.equal(downstream.writableFinished, true);
   if (item.rawBody !== undefined) {
     assert.equal(item.bodySha256, relayed.bodySha256);
     assert.deepEqual(Buffer.from(item.rawBody), relayed.rawBody);
   }
   if (item.readFailure) item.browserBodyReadFailure = item.readFailure;
+  item.downstreamResponseFinished = true;
   item.bodySource = 'relay-complete-action-response';
   item.rawBody = relayed.rawBody.toString('utf8');
   item.bodySha256 = relayed.bodySha256;
