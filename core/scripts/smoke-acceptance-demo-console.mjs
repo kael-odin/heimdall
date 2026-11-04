@@ -83,7 +83,7 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
   const startedAt = new Date().toISOString(), timeline = [], checks = {}, browserRequests = [], responses = [],
     requestFailures = [], captureFailures = [], pageErrors = [], consoleMessages = [], layouts = [], actions = [],
     confirmations = [], pending = new Set(), requestMap = new WeakMap(), cleanupErrors = [];
-  let stage = 'prepare', demo, browser, context, page, chromiumProcess, failure, source, sourceReport,
+  let stage = 'prepare', demo, browser, context, page, pageCdp, chromiumProcess, failure, source, sourceReport,
     sourceBefore, sourceAfter, candidate, fullReview, plan, totalChecks, desktop, ticketId, closedTicket,
     fixedReadOnlyBefore, fixedReadOnlyAfter, inputBefore, inputAfter, downloadFact, demoTerminal, root, base;
   const operations = [], sourceSnapshots = [];
@@ -149,10 +149,19 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
     const layout = await anchor.evaluate(element => ({ documentWidth: document.documentElement.scrollWidth,
       clientWidth: element.clientWidth, scrollWidth: element.scrollWidth, rect: element.getBoundingClientRect().toJSON(),
       text: element.innerText }));
+    const fonts = await page.evaluate(async () => {
+      await new Promise(ready => requestAnimationFrame(() => requestAnimationFrame(ready)));
+      return { fontFaceCount: document.fonts.size, fontStatus: document.fonts.status };
+    });
+    assert.equal(fonts.fontFaceCount, 0, 'The D7 console must not depend on downloadable fonts.');
     const screenshotPath = 'screenshots/' + name + '.png';
-    await page.screenshot({ path: join(OUT, screenshotPath), fullPage: false });
+    // Playwright waits on document.fonts before capture; use the same browser's viewport capture
+    // so a runner-side font wait cannot turn a rendered page into a false failure.
+    const screenshot = await pageCdp.send('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false });
+    save(screenshotPath, Buffer.from(screenshot.data, 'base64'));
     save('screenshots/' + name + '-dom.txt', layout.text);
-    const value = { name, width, height, screenshot: { path: screenshotPath, ...fileFact(join(OUT, screenshotPath)) }, ...layout };
+    const value = { name, width, height, screenshot: { path: screenshotPath, ...fileFact(join(OUT, screenshotPath)) },
+      screenshotCapture: 'cdp-page-capture-screenshot', ...fonts, ...layout };
     layouts.push(value); save('screenshots/' + name + '-layout.json', value);
     assert.ok(layout.clientWidth > 0 && layout.documentWidth <= width + 1
       && layout.scrollWidth <= layout.clientWidth + 1, 'Horizontal layout overflow: ' + JSON.stringify(value));
@@ -272,7 +281,7 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
         }
       };
     });
-    page = await context.newPage(); page.setDefaultTimeout(90000);
+    page = await context.newPage(); page.setDefaultTimeout(90000); pageCdp = await context.newCDPSession(page);
     page.on('pageerror', error => { pageErrors.push({ at: new Date().toISOString(), stage, error: errorOf(error) }); });
     page.on('console', message => {
       if (['error', 'warning'].includes(message.type())) consoleMessages.push({ at: new Date().toISOString(), stage,
