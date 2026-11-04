@@ -75,9 +75,28 @@ const fullTicketPath = () => '/api/acceptance/' + ticketPath(), executionPath = 
  * 读取某个 action 响应的 JSON 体。
  *
  * Chromium 偶尔会在应用已经消费完整 JSON 后把网络条目标记为 ERR_ABORTED，此时 Playwright
- * 的 getResponseBody 会报 "navigated away"。动作 GET 的 canonical body 因此取自同源 Relay
- * 的完整响应帧，再用浏览器请求记录、状态码和响应体（若仍可读）交叉核对。
+ * 的 getResponseBody 会报 "navigated away"。动作 GET 和人工 deny POST 的 canonical body
+ * 因此取自同源 Relay 的完整响应帧，再用浏览器请求记录、状态码和响应体（若仍可读）交叉核对。
  */
+async function reconcileActionResponseBody(item, relayed) {
+  assert(Buffer.isBuffer(relayed.rawBody) && relayed.payload !== null, 'relay action response has a complete body');
+  assert.equal(relayed.bodySha256, hash(relayed.rawBody));
+  assert.equal(item.method, relayed.method);
+  assert.equal(item.path, new URL(relayed.path, 'http://relay.invalid').pathname);
+  assert.equal(item.status, relayed.status);
+  await responseReadPromises.get(item.requestId);
+  if (item.rawBody !== undefined) {
+    assert.equal(item.bodySha256, relayed.bodySha256);
+    assert.deepEqual(Buffer.from(item.rawBody), relayed.rawBody);
+  }
+  if (item.readFailure) item.browserBodyReadFailure = item.readFailure;
+  item.bodySource = 'relay-complete-action-response';
+  item.rawBody = relayed.rawBody.toString('utf8');
+  item.bodySha256 = relayed.bodySha256;
+  item.payload = relayed.payload;
+  delete item.readFailure;
+  return item.payload;
+}
 async function actionResponsePayload(response, relayStart) {
   // page.waitForResponse 给的是 Response；requestRecords 的键是 Request，要先取回来。
   const id = requestRecords.get(response.request())?.id;
@@ -87,15 +106,7 @@ async function actionResponsePayload(response, relayStart) {
   const relayed = await waitFor(() => relay.replies.slice(relayStart).find(value => value.method === response.request().method()
     && value.path === url.pathname && value.status === response.status() && value.payload !== null));
   assert.equal(relayed.bodySha256, hash(relayed.rawBody));
-  await responseReadPromises.get(id);
-  if (item.payload !== undefined) assert.deepEqual(item.payload, relayed.payload);
-  if (item.readFailure) item.browserBodyReadFailure = item.readFailure;
-  item.bodySource = 'relay-complete-action-response';
-  item.rawBody = relayed.rawBody.toString('utf8');
-  item.bodySha256 = relayed.bodySha256;
-  item.payload = relayed.payload;
-  delete item.readFailure;
-  return item.payload;
+  return reconcileActionResponseBody(item, relayed);
 }
 const component = () => page.getByTestId('defect-tickets'), panel = () => page.getByTestId('acceptance-catalog');
 const uiPosts = () => browserRequests.filter(value => value.method === 'POST' && value.path.startsWith(fullTicketPath()));
@@ -332,6 +343,12 @@ async function runCase({ caseId, kind, intendedWinner, ticketId }) {
   assertProof(denyReply.payload, original, diskAtWinner); assertProof(originalReply.payload, original, diskAtWinner);
   assert.deepEqual(fs.readFileSync(decisionPath), diskAtWinner); write('decision.raw.json', diskAtWinner);
   write('original-upstream-response.raw.json', originalReply.bytes); write('deny-response.raw.json', denyReply.bytes);
+  const browserDenyResponse = await waitFor(() => browserResponses.find(value => value.requestId === browserDeny[0].id
+    && value.method === 'POST' && value.status === denyReply.status), caseId + ' deny browser response recorded');
+  const relayedDenyResponse = await waitFor(() => relay.replies.find(value => value.method === 'POST'
+    && new URL(value.path, 'http://relay.invalid').pathname === browserDeny[0].path
+    && value.status === denyReply.status && value.rawBody?.equals?.(denyReply.bytes)), caseId + ' deny relay body available');
+  assert.deepEqual(await reconcileActionResponseBody(browserDenyResponse, relayedDenyResponse), denyReply.payload);
   write('reply-statuses.json', { original: originalReply.status, deny: denyReply.status }); item.checks.completeProofMatchesDisk = true; item.checks.lateOriginalMatchesWinningDecision = true;
   await waitFor(() => ingress().some(value => value.event === 'end'), 'unique complete ingress body'); const completeIngress = ingress();
   assert.equal(completeIngress.filter(value => value.event === 'request').length, 1); assert.equal(completeIngress.filter(value => value.event === 'end').length, 1);
@@ -426,7 +443,8 @@ try {
     assert.equal(message.text, 'Failed to load resource: the server responded with a status of 502 (Bad Gateway)');
     assert(controlled.some(value => value.caseId === message.caseId && value.status === 502 && value.path === url.pathname && !url.search && !url.hash), JSON.stringify(message));
   }
-  assert.equal(browserResponses.filter(value => value.readFailure).length, 0);
+  const unreconciledReadFailures = browserResponses.filter(value => value.readFailure);
+  assert.equal(unreconciledReadFailures.length, 0, JSON.stringify(unreconciledReadFailures));
   assert.equal(pageErrors.length, 0); assert.equal(await page.locator('vite-error-overlay').count(), 0); check('onlyExactControlledHttp502Errors');
   const inputsAfter = inputSnapshot(); save('implementation-inputs-after.json', inputsAfter); assert.deepEqual(inputsAfter, implementationInputs); check('implementationInputsUnchanged');
   assert.deepEqual(cases.map(value => [value.caseId, value.kind, value.actualOutcome, value.completed]), [['A', 'create', 'rejected', true], ['B', 'create', 'recorded', true], ['C', 'close', 'rejected', true], ['D', 'close', 'recorded', true]]); check('fourCompleteCases');
