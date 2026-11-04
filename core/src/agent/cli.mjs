@@ -18,7 +18,7 @@ import { exitCodeOf, fail } from './envelope.mjs';
 export const AGENT_COMMANDS = Object.freeze(CAPABILITIES.map(c => c.id));
 export const CLI_ONLY = Object.freeze({
   rebuild: { usage: 'rebuild init <url|siteId> [--page P] [--stack html-css|vite-react-ts-tailwind] [--fidelity …] [--gate …] [--dir D] [--force] [--model-class …] | rebuild status [--project .] | rebuild deliver [--project .] [--out D] [--no-mirror]', desc: '生成重建工作区（--force 覆盖脚手架文件，评测用）；查看进度；按 Floor=Mirror 交付' },
-  connect: { usage: 'connect <claude-code|claude-desktop|cursor|vscode> [--remove] [--dry-run] [--yes]', desc: '把 Heimdall MCP 写进客户端配置（先备份，再自测）' },
+  connect: { usage: 'connect <claude-code|claude-desktop|cursor|vscode|codex> [--remove] [--dry-run] [--yes]', desc: '把 Heimdall MCP 写进客户端配置（先备份，再自测）' },
   probe: { usage: 'probe sizes|outline|har [--site S] [--max N]', desc: '复现 PRD 01 §1.4 的体量、大纲压缩与接口统计' },
   gate: { usage: 'gate baseline <siteId> <page> [--viewport 1440] | gate report [--project .] [--level bronze|silver|gold]', desc: '正式基线供给与体检（E7-19）；六维门禁报告（E7-06），未通过退出码 1' },
   bench: { usage: 'bench score --site S --page P --candidate 标签=目录,… | bench run --site S --page P --project D --arm a1|a2|a3 [--feedback full|targeted] [--edit rewrite|surgical] --iterations N | bench sections --site S --page P --project D | bench summary --site S --page P', desc: 'Heimdall-Bench：测量候选、跑模型消融臂、按分段循环、汇总重复测量（E14-01~03）' },
@@ -26,7 +26,7 @@ export const CLI_ONLY = Object.freeze({
   qa: { usage: 'qa init | login <登录档> | status | run [站点] | findings | show <F编号> | similar "标题" | submit <文件> | verdict <F编号> <裁决> "理由" [--pattern] | rules', desc: '测试工作区：带登录态测试、按以往裁决过滤、只出该提单的问题' },
 });
 
-const BOOL_FLAGS = new Set(['json', 'wait', 'no-wait', 'quiet', 'yes', 'refresh', 'force', 'fix', 'remove', 'dry-run', 'help', 'all-discovered', 'recon-only', 'legacy', 'inline', 'no-revert', 'no-mirror', 'pattern', 'no-links', 'texts', 'explore', 'no-baseline', 'no-detect', 'off']);
+const BOOL_FLAGS = new Set(['json', 'wait', 'no-wait', 'quiet', 'yes', 'refresh', 'force', 'fix', 'remove', 'dry-run', 'help', 'all-discovered', 'recon-only', 'legacy', 'inline', 'no-revert', 'no-mirror', 'pattern', 'no-links', 'texts', 'explore', 'no-baseline', 'no-detect', 'accept', 'github', 'no-github', 'off']);
 const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 /** 解析 argv：--flag value / --flag=value / 布尔标志；其余是位置参数 */
@@ -104,6 +104,19 @@ export function argsFor(id, { flags, positional }) {
       }
       break;
     }
+    case 'seo_audit':
+      set('url', positional[0] ?? flags.url);
+      set('maxPages', num(flags['max-pages'] ?? flags.max));
+      break;
+    case 'seo_matrix':
+      set('sites', positional.length ? positional : list(flags.sites));
+      set('maxPages', num(flags['max-pages'] ?? flags.max));
+      break;
+    case 'site_watch':
+      set('url', positional[0] ?? flags.url);
+      set('maxPages', num(flags['max-pages'] ?? flags.max));
+      if (flags.accept) a.accept = true;
+      break;
     default: break;
   }
   return a;
@@ -125,6 +138,18 @@ function human(env, id, quiet) {
   if (id === 'overview' && env.ok && env.result.sites) lines.push('', ...env.result.sites.map(s => `${s.siteId.padEnd(40)} ${String(s.cloned).padStart(4)} 页有镜像`));
   if (id === 'site' && env.ok && env.result.pages) lines.push('', ...env.result.pages.map(p => `${p.page.padEnd(40)} ${p.mirror ? '镜像✓' : '      '} ${p.score ? p.score.grade + ' ' + p.score.total : ''}`));
   if (id === 'artifact' && env.ok) { if (env.result.text) lines.push('', env.result.text); else if (env.result.json) lines.push('', JSON.stringify(env.result.json, null, 2).slice(0, 20000)); if (env.result.savedTo) lines.push(`已保存：${env.result.savedTo}`); }
+  if (id === 'seo_audit' && env.ok && env.result?.result) {
+    const r = env.result.result;
+    lines.push(`分数：${r.score}（${r.grade}）`, `页面：${r.summary?.pages ?? '-'}，问题：${r.summary?.issues ?? '-'}`, `报告：${r.reports?.html ?? '-'}`);
+  }
+  if (id === 'seo_matrix' && env.ok && env.result?.result) {
+    const r = env.result.result;
+    lines.push(`站点：${(r.sites ?? []).join(' vs ')}`, `报告：${r.reports?.html ?? '-'}`);
+  }
+  if (id === 'site_watch' && env.ok && env.result?.result) {
+    const r = env.result.result;
+    lines.push(`变化：新增 ${r.changes?.added ?? 0} / 删除 ${r.changes?.removed ?? 0} / 修改 ${r.changes?.changed ?? 0}`, `报告：${r.reports?.html ?? '-'}`);
+  }
   if ((id === 'jobs' || id === 'clone') && env.ok && env.result?.jobs) lines.push('', ...env.result.jobs.map(j => `${j.jobId} ${j.capability} ${j.status} ${j.createdAt}`));
   const next = (env.nextActions ?? []).slice(0, 3);
   if (next.length) lines.push('', '下一步：', ...next.map(n => `  ${n.tool}${n.args ? ' ' + JSON.stringify(n.args) : ''} — ${n.reason}`));

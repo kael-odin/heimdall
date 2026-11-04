@@ -22,6 +22,15 @@ export function nextForJob(job) {
     return page ? [nextAction('heimdall_brief', { siteId: job.result.siteId, page, detail: 'sections' }, '取简报与分段，开始重建')]
       : [nextAction('heimdall_site', { siteId: job.result.siteId }, '查看站点')];
   }
+  if (job.status === 'succeeded' && job.capability === 'seo_audit' && job.result?.siteId) {
+    return [nextAction('heimdall_artifact', { uri: job.result.reports?.uri ?? `heimdall://site/${encodeURIComponent(job.result.siteId)}/seo` }, '读取结构化 SEO 报告')];
+  }
+  if (job.status === 'succeeded' && job.capability === 'seo_matrix' && job.result?.slug) {
+    return [nextAction('heimdall_artifact', { uri: job.result.reports?.uri ?? `heimdall://matrix/${encodeURIComponent(job.result.slug)}` }, '读取竞品矩阵')];
+  }
+  if (job.status === 'succeeded' && job.capability === 'site_watch' && job.result?.siteId) {
+    return [nextAction('heimdall_artifact', { uri: job.result.reports?.uri ?? `heimdall://site/${encodeURIComponent(job.result.siteId)}/watch` }, '读取站点变更证据')];
+  }
   if (job.status === 'failed') return [nextAction('heimdall_jobs', { action: 'events', jobId: job.jobId }, '看事件找原因'), nextAction('heimdall_doctor', null, '自检')];
   return [];
 }

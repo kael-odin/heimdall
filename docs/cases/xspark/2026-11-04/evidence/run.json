@@ -1,0 +1,273 @@
+{
+  "schema": "heimdall.qa-run/1",
+  "runId": "qa-20261104-205755-ddbc",
+  "project": "Xspark 验收工作区",
+  "site": "web",
+  "siteUrl": "https://www.xspark.cn/",
+  "environment": "production",
+  "label": null,
+  "startedAt": "2026-11-04T12:57:55.547Z",
+  "endedAt": "2026-11-04T12:58:37.721Z",
+  "login": null,
+  "coverage": {
+    "pages": [
+      {
+        "path": "/",
+        "viewport": "1440x900",
+        "navError": null,
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 10,
+          "detected": 9,
+          "detectors": [
+            "layout-text-clipped",
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_-1440-a9a664.png"
+      },
+      {
+        "path": "/product/isp-proxies",
+        "viewport": "1440x900",
+        "navError": null,
+        "title": "静态ISP代理｜独享住宅IP与固定出口 - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 9,
+          "detected": 6,
+          "detectors": [
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_product_isp-proxies-1440-40d194.png"
+      },
+      {
+        "path": "/product/datacenter-proxies",
+        "viewport": "1440x900",
+        "navError": null,
+        "title": "静态数据中心代理｜独享固定IP与高并发代理 - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 9,
+          "detected": 6,
+          "detectors": [
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_product_datacenter-proxies-1440-f54bd5.png"
+      },
+      {
+        "path": "/pricing/isp-proxies",
+        "viewport": "1440x900",
+        "navError": null,
+        "title": "静态ISP代理价格｜住宅IP套餐与购买 - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 8,
+          "detected": 6,
+          "detectors": [
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_pricing_isp-proxies-1440-3fe395.png"
+      },
+      {
+        "path": "/pricing/datacenter-proxies",
+        "viewport": "1440x900",
+        "navError": null,
+        "title": "静态数据中心代理价格｜固定IP套餐与批量采购 - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 8,
+          "detected": 6,
+          "detectors": [
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_pricing_datacenter-proxies-1440-4b3143.png"
+      },
+      {
+        "path": "/",
+        "viewport": "390x844",
+        "navError": null,
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 0,
+          "detected": 6,
+          "detectors": [
+            "layout-text-clipped",
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_-390-cb5011.png"
+      },
+      {
+        "path": "/product/isp-proxies",
+        "viewport": "390x844",
+        "navError": null,
+        "title": "静态ISP代理｜独享住宅IP与固定出口 - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 0,
+          "detected": 5,
+          "detectors": [
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_product_isp-proxies-390-f524a7.png"
+      },
+      {
+        "path": "/product/datacenter-proxies",
+        "viewport": "390x844",
+        "navError": null,
+        "title": "静态数据中心代理｜独享固定IP与高并发代理 - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 0,
+          "detected": 5,
+          "detectors": [
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_product_datacenter-proxies-390-6523cd.png"
+      },
+      {
+        "path": "/pricing/isp-proxies",
+        "viewport": "390x844",
+        "navError": null,
+        "title": "静态ISP代理价格｜住宅IP套餐与购买 - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 0,
+          "detected": 8,
+          "detectors": [
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_pricing_isp-proxies-390-593119.png"
+      },
+      {
+        "path": "/pricing/datacenter-proxies",
+        "viewport": "390x844",
+        "navError": null,
+        "title": "静态数据中心代理价格｜固定IP套餐与批量采购 - Xspark",
+        "counts": {
+          "console": 0,
+          "pageErrors": 0,
+          "http": 0,
+          "failed": 0,
+          "blocked": 0,
+          "brokenImages": 0,
+          "brokenLinks": 0,
+          "linksChecked": 0,
+          "detected": 8,
+          "detectors": [
+            "layout-tap-target",
+            "perf-oversized-image"
+          ]
+        },
+        "screenshot": "shots/page-_pricing_datacenter-proxies-390-d8f7d5.png"
+      }
+    ],
+    "checks": [],
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "detection": {
+      "enabled": true,
+      "pages": 10,
+      "findings": 65,
+      "detectors": [
+        "layout-tap-target",
+        "layout-text-clipped",
+        "perf-oversized-image"
+      ]
+    },
+    "explore": {
+      "enabled": false
+    },
+    "baseline": {
+      "enabled": true,
+      "compared": 10,
+      "skipped": [],
+      "scope": "基线与本次同站同页同视口比对 10 对；低于 98% 的记一条回归发现。动态内容会对相似度有影响，请结合差异图复核。"
+    }
+  },
+  "summary": {
+    "total": 57,
+    "fileable": 0,
+    "new": 55,
+    "knownBug": 0,
+    "suppressed": 2,
+    "reopened": 0,
+    "tolerable": 55,
+    "environment": 0,
+    "checkNeedsFix": 0
+  }
+}

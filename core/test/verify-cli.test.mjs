@@ -529,12 +529,12 @@ test('verify measures a 26k page with bounded screenshot tiles', async () => {
  *   3. 复用不是"假绿"：摘要里 reused 与 measured 分开计数，
  *      整站门禁仍然按"全部页都测到"算。
  */
-function seedPage(dataDir, name, { overall = 0.9, measured = true, scoreVersion = 2, viewports } = {}) {
+function seedPage(dataDir, name, { overall = 0.9, measured = true, scoreVersion = 2, viewports, target = `https://x.test/${name}` } = {}) {
   const base = join(dataDir, 'workspace', 'x.test');
   const dir = join(base, 'pages', name);
   mkdirSync(join(dir, 'clone'), { recursive: true });
   writeFileSync(join(dir, 'clone', 'index.html'), '<html><body>x</body></html>');
-  writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ target: 'https://x.test/' + name }));
+  writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ target }));
   mkdirSync(join(base, 'verify', name), { recursive: true });
   const file = join(base, 'verify', name, 'verify.json');
   writeFileSync(file, JSON.stringify({
@@ -568,14 +568,27 @@ test('verify --resume 复用已完整测量的页，不重跑', async () => {
 
 test('verify --resume 对没测成的页仍然重跑', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-failed-'));
+  const server = createServer((_req, res) => {
+    res.writeHead(503, { 'content-type': 'text/html' });
+    res.end('<h1>source unavailable</h1>');
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
   try {
-    seedPage(dataDir, 'p1', { measured: false });
-    const { output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
+    seedPage(dataDir, 'p1', {
+      measured: false,
+      target: `http://127.0.0.1:${port}/p1`,
+    });
+    const { output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10'], {}, 60_000);
     const summary = JSON.parse(readFileSync(join(dataDir, 'workspace', 'x.test', 'verify', 'verify-summary.json'), 'utf8'));
     assert.equal(summary.reused, 0, output);
     assert.equal(summary.measured, 0);
     assert.equal(summary.untested, 1);
-  } finally { rmSync(dataDir, { recursive: true, force: true }); }
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
 });
 
 test('verify --resume 遇到比结果更新的克隆产物时重跑', async () => {

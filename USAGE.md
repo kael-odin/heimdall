@@ -39,6 +39,25 @@ pnpm -C core dev
 
 此时打开 `http://127.0.0.1:8900`。若引擎设置了 `HEIMDALL_TOKEN`，先在控制台「设置 → 引擎 Token」保存同一口令；工作区产物与 API 都由引擎校验。控制台开发服务器不直接发布 `core/workspace/`。
 
+### 只给 AI 用，不需要打开控制台
+
+看控制台时，双击 `clone-heimdall.cmd` 就够了：它会同时启动引擎 `:8900` 和控制台 `:5173`，再打开浏览器。
+
+如果只是让 Codex、Claude Desktop 或 Claude Code 调用 MCP，不需要打开 `:5173`。最稳的做法仍是单独留一台引擎：
+
+```powershell
+cd D:\Github-Star\heimdall\core
+node src\engine-server.mjs 8900
+```
+
+然后重新打开客户端或新开一个会话，先让它调用 `heimdall_doctor`。MCP 服务本身由客户端拉起，不需要手工再跑一条 MCP 命令。
+
+- Codex：全局 `config.toml` 里的 `[mcp_servers.heimdall]`
+- Claude Desktop：`claude_desktop_config.json`
+- Claude Code：`heimdall@heimdall` 插件
+
+三个入口当前都应能看到 14 个 Heimdall 工具。Claude Code 的插件代理依赖 `:8900` 引擎；Codex 和 Claude Desktop 使用完整 MCP 服务，任务类工具在引擎没开时可以按需拉起临时引擎，但演示时建议统一先开 `:8900`，避免工作区或进程来源不一致。
+
 ## 克隆与验收
 
 1. 在顶部输入完整 URL 或域名，点「侦察」生成站内页面星图。点星球只打开详情，不自动克隆。
@@ -224,6 +243,16 @@ node core/src/cli.mjs audit example.org --max 30
 ```
 
 仓库的 SEO 回归工作流当前仅手动触发，`config/seo-targets.txt` 没有已授权目标或受版本控制的基线。正式启用门禁前，先录入目标并审核基线；损坏或缺失的基线不能当成回归通过。
+
+## QA CI
+
+把已有的 QA 工作区接进 CI 时，用：
+
+```powershell
+heimdall qa ci --site web --viewports 1440,390 --fail-on all --github
+```
+
+它会运行同一套只读 QA，并在本次运行目录下写 `qa-ci.json` / `qa-ci.md`，同时向 GitHub Actions 写摘要和注解。`--fail-on wall|degrade|all|none` 控制什么级别会让流水线变红。完整模板见 [QA CI 指南](docs/guide/07-qa-ci.md)。
 
 ## 产物与排障
 

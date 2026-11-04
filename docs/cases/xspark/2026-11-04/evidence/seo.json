@@ -1,0 +1,1452 @@
+{
+  "host": "xspark.cn",
+  "origin": "https://www.xspark.cn",
+  "generatedAt": "2026-11-04T13:08:03.501Z",
+  "config": {
+    "max": 5,
+    "viewport": "1440x900",
+    "concurrency": 2,
+    "source": "sitemap/bfs"
+  },
+  "score": 90.8,
+  "summary": {
+    "pages": 5,
+    "issues": 16,
+    "bySeverity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 6,
+      "low": 5,
+      "info": 5
+    },
+    "pagesScored": 5
+  },
+  "categories": {
+    "index": {
+      "score": 100,
+      "issues": 0
+    },
+    "content": {
+      "score": 98,
+      "issues": 5
+    },
+    "structured": {
+      "score": 100,
+      "issues": 4
+    },
+    "perf": {
+      "score": 92.8,
+      "issues": 7
+    },
+    "links": {
+      "score": 100,
+      "issues": 0
+    },
+    "security": {
+      "score": 100,
+      "issues": 0
+    }
+  },
+  "siteIssues": [],
+  "pages": [
+    {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "finalUrl": "https://www.xspark.cn/product/datacenter-proxies",
+      "status": 200,
+      "ok": true,
+      "redirectCount": 0,
+      "responseTimeMs": 2833,
+      "title": "静态数据中心代理｜独享固定IP与高并发代理 - Xspark",
+      "titleLength": 30,
+      "description": "Xspark静态数据中心代理提供独享固定IP、低延迟响应和高并发连接，支持多地区节点、HTTP(S)/SOCKS5及API管理，适合SEO监测、价格监控、接口测试和批量任务，支持免费实测。",
+      "descriptionLength": 94,
+      "canonical": "https://www.xspark.cn/product/datacenter-proxies",
+      "robotsMeta": "index, follow",
+      "xRobots": "",
+      "meta": {
+        "noindex": false,
+        "nofollow": false
+      },
+      "lang": "zh-CN",
+      "viewport": "width=device-width, initial-scale=1",
+      "textHash": "c8d9be6d",
+      "textSample": "产品 定价 使用场景 资源 企业服务 免费试用 静态数据中心代理 为企业提供独享、固定的高性能静态数据中心 ip，具备充足带宽与稳定响应，适用于 api 调用、系统连接、seo 监测及自动化任务。 独享静态出口 ≤0.5s 极速响应 大规模任务友好 即时激活 查看定价 企业免费测试 核心能力亮点 为企业用户的批量任务与自动化流程提供独享、稳定的网络出口。 100% 独享静态出口 每个节点独立分配，",
+      "h1": [
+        "静态数据中心代理"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "静态数据中心代理"
+        },
+        {
+          "level": 2,
+          "text": "核心能力亮点"
+        },
+        {
+          "level": 3,
+          "text": "100% 独享静态出口"
+        },
+        {
+          "level": 3,
+          "text": "极速响应"
+        },
+        {
+          "level": 3,
+          "text": "大规模任务友好"
+        },
+        {
+          "level": 3,
+          "text": "多地区资源覆盖"
+        },
+        {
+          "level": 3,
+          "text": "多协议快速接入"
+        },
+        {
+          "level": 3,
+          "text": "完整自动化 API 管控"
+        },
+        {
+          "level": 2,
+          "text": "全球重要节点覆盖"
+        },
+        {
+          "level": 2,
+          "text": "快速集成"
+        },
+        {
+          "level": 2,
+          "text": "产品快速对比"
+        },
+        {
+          "level": 2,
+          "text": "业务适用场景"
+        },
+        {
+          "level": 3,
+          "text": "APP/网站全球兼容性测试"
+        },
+        {
+          "level": 3,
+          "text": "市场调研与价格监测"
+        },
+        {
+          "level": 3,
+          "text": "品牌保护与公开信息监测"
+        },
+        {
+          "level": 3,
+          "text": "接口与业务灰度验证"
+        },
+        {
+          "level": 2,
+          "text": "真实用户口碑评价"
+        },
+        {
+          "level": 3,
+          "text": "跑量业务"
+        },
+        {
+          "level": 3,
+          "text": "APP 测试"
+        },
+        {
+          "level": 3,
+          "text": "页面监测"
+        },
+        {
+          "level": 3,
+          "text": "区域广告效果校验"
+        },
+        {
+          "level": 2,
+          "text": "常见问题"
+        },
+        {
+          "level": 2,
+          "text": "不确定资源是否匹配业务？"
+        }
+      ],
+      "headingLevels": [
+        1,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        2,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2
+      ],
+      "headingSkips": 0,
+      "wordCount": 2137,
+      "textRatio": 0.05448310194147907,
+      "htmlBytes": 54237,
+      "imgTotal": 48,
+      "imgMissingAlt": 0,
+      "imgEmptyAlt": 45,
+      "imgBroken": 0,
+      "imgLegacy": 12,
+      "imgLazy": 11,
+      "links": {
+        "total": 21,
+        "internal": 10,
+        "external": 11,
+        "emptyAnchor": 0,
+        "hashOnly": 0,
+        "nofollowExternal": 0
+      },
+      "internalHrefs": [
+        "https://www.xspark.cn/",
+        "https://www.xspark.cn/pricing/datacenter-proxies",
+        "https://www.xspark.cn/product/isp-proxies",
+        "https://www.xspark.cn/product/datacenter-proxies",
+        "https://www.xspark.cn/blog/",
+        "https://www.xspark.cn/compliance-policy",
+        "https://www.xspark.cn/service-agreement",
+        "https://www.xspark.cn/privacy-policy",
+        "https://www.xspark.cn/refund-policy"
+      ],
+      "externalSample": [
+        "https://dashboard.xspark.cn/login/",
+        "https://dashboard.xspark.cn/login/",
+        "https://doc.xspark.cn/integration",
+        "https://dashboard.xspark.cn/login/",
+        "https://work.weixin.qq.com/kfid/kfc96ba4afccdeeeb62",
+        "mailto:help@xspark.cn",
+        "https://doc.xspark.cn/faq/product-usage",
+        "https://doc.xspark.cn/api",
+        "https://doc.xspark.cn/",
+        "https://beian.miit.gov.cn/?spm=5176.164126b6.J_9220772140.J_4NWEMkQ5nDwOgLi8EJmHs.62#/Integrated/index",
+        "https://beian.mps.gov.cn/#/query/webSearch"
+      ],
+      "jsonld": [],
+      "microdataCount": 0,
+      "og": {
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "description": "Xspark面向中国出海企业提供静态ISP代理和静态数据中心代理，支持独享固定IP、全球地区选择、HTTP(S)/SOCKS5及API管理，适用于跨境电商、海外社媒、直播、SEO监测、养号及账号管理。",
+        "image": "https://www.xspark.cn/og/og-home.png",
+        "type": "website"
+      },
+      "twitter": {
+        "card": "summary_large_image",
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "image": "https://www.xspark.cn/og/og-home.png"
+      },
+      "hreflang": [],
+      "jsPagination": [],
+      "raw": {
+        "bytes": 53626,
+        "ok": true,
+        "title": "静态数据中心代理｜独享固定IP与高并发代理 - Xspark",
+        "description": "Xspark静态数据中心代理提供独享固定IP、低延迟响应和高并发连接，支持多地区节点、HTTP(S)/SOCKS5及API管理，适合SEO监测、价格监控、接口测试和批量任务，支持免费实测。",
+        "canonical": "https://www.xspark.cn/product/datacenter-proxies",
+        "lang": "zh-CN",
+        "viewport": "width=device-width, initial-scale=1",
+        "h1Count": 1,
+        "headingCount": 22,
+        "imgCount": 48,
+        "imgMissingAlt": 0,
+        "anchorCount": 21,
+        "internalLinkCount": 10,
+        "jsonLdCount": 0,
+        "microdataCount": 0,
+        "hreflang": [],
+        "wordCount": 2157,
+        "textLength": 2987,
+        "scriptCount": 18,
+        "hasNoscript": false,
+        "ogTitle": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark"
+      },
+      "resources": {
+        "requests": 58,
+        "transferBytes": 4520983,
+        "jsBytes": 1299639,
+        "cssBytes": 3103687,
+        "imgBytes": 2770486,
+        "fontBytes": 185612,
+        "renderBlocking": 3
+      },
+      "vitals": {
+        "lcp": 388,
+        "cls": 0,
+        "fcp": 388,
+        "domContentLoaded": 163.59999999403954,
+        "load": 1221.2999999970198
+      },
+      "security": {
+        "https": true,
+        "mixedContent": [],
+        "headers": {
+          "hsts": "max-age=31536000; includeSubDomains",
+          "xcto": "nosniff"
+        }
+      },
+      "depth": 99,
+      "issues": [
+        {
+          "page": "https://www.xspark.cn/product/datacenter-proxies",
+          "id": "content-text-ratio",
+          "category": "content",
+          "severity": "low",
+          "title": "文本/HTML 比例偏低",
+          "message": "5.4%",
+          "evidence": "HTML 53KB",
+          "suggestion": "减少无效标记，提高正文占比"
+        },
+        {
+          "page": "https://www.xspark.cn/product/datacenter-proxies",
+          "id": "structured-none",
+          "category": "structured",
+          "severity": "info",
+          "title": "未发现结构化数据",
+          "message": "",
+          "evidence": "",
+          "suggestion": "按页面类型补充 Organization / Product / FAQ / Breadcrumb 等 Schema"
+        },
+        {
+          "page": "https://www.xspark.cn/product/datacenter-proxies",
+          "id": "perf-weight-large",
+          "category": "perf",
+          "severity": "medium",
+          "title": "页面体积过大",
+          "message": "4.31MB",
+          "evidence": "58 个请求",
+          "suggestion": "压缩/懒加载/按需加载资源"
+        },
+        {
+          "page": "https://www.xspark.cn/product/datacenter-proxies",
+          "id": "perf-js-large",
+          "category": "perf",
+          "severity": "medium",
+          "title": "JS 体积过大",
+          "message": "1269KB",
+          "evidence": "",
+          "suggestion": "代码分割、移除未使用依赖"
+        }
+      ],
+      "score": 86,
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      }
+    },
+    {
+      "url": "https://www.xspark.cn/",
+      "finalUrl": "https://www.xspark.cn/",
+      "status": 200,
+      "ok": true,
+      "redirectCount": 0,
+      "responseTimeMs": 3066,
+      "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+      "titleLength": 31,
+      "description": "Xspark面向中国出海企业提供静态ISP代理和静态数据中心代理，支持独享固定IP、全球地区选择、HTTP(S)/SOCKS5及API管理，适用于跨境电商、海外社媒、直播、SEO监测、养号及账号管理。",
+      "descriptionLength": 100,
+      "canonical": "https://www.xspark.cn/",
+      "robotsMeta": "index, follow",
+      "xRobots": "",
+      "meta": {
+        "noindex": false,
+        "nofollow": false
+      },
+      "lang": "zh-CN",
+      "viewport": "width=device-width, initial-scale=1",
+      "textHash": "122764b8",
+      "textSample": "xspark星火启幕 · 静态isp限时半价 [5折开通+免费测试] 快速领取 产品 定价 使用场景 资源 企业服务 免费试用 xspark星火静态 业务优选原生家宽isp服务商 高纯净高稳定 · 业务隔离 · 定位精准 · 本土核心供应商 免费测试 获取定制方案 100 + 国家/地区 50 万 纯净 ip 15 + 主流asn 99.9 % 稳定在线 选择您的专属代理解决方案 按地区、节点数量",
+      "h1": [
+        "Xspark星火静态 业务优选原生家宽ISP服务商"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Xspark星火静态 业务优选原生家宽ISP服务商"
+        },
+        {
+          "level": 2,
+          "text": "选择您的专属代理解决方案"
+        },
+        {
+          "level": 3,
+          "text": "静态ISP代理"
+        },
+        {
+          "level": 3,
+          "text": "静态数据中心代理"
+        },
+        {
+          "level": 2,
+          "text": "为什么选择Xspark"
+        },
+        {
+          "level": 3,
+          "text": "精准定位"
+        },
+        {
+          "level": 3,
+          "text": "高响应"
+        },
+        {
+          "level": 3,
+          "text": "灵活采购"
+        },
+        {
+          "level": 3,
+          "text": "多协议兼容"
+        },
+        {
+          "level": 3,
+          "text": "高可用"
+        },
+        {
+          "level": 3,
+          "text": "合规资质"
+        },
+        {
+          "level": 2,
+          "text": "核心产品能力"
+        },
+        {
+          "level": 3,
+          "text": "真实ISP纯净IP，降低账号风控风险"
+        },
+        {
+          "level": 3,
+          "text": "100%独享，无共用牵连"
+        },
+        {
+          "level": 3,
+          "text": "多维网络覆盖，保障访问稳定性"
+        },
+        {
+          "level": 3,
+          "text": "企业级定制，业务级分池管理"
+        },
+        {
+          "level": 2,
+          "text": "覆盖全球的 静态代理ISP资源"
+        },
+        {
+          "level": 2,
+          "text": "出海企业适用场景"
+        },
+        {
+          "level": 3,
+          "text": "跨境电商"
+        },
+        {
+          "level": 3,
+          "text": "出海多平台直播"
+        },
+        {
+          "level": 3,
+          "text": "社媒矩阵"
+        },
+        {
+          "level": 3,
+          "text": "多账号管理"
+        },
+        {
+          "level": 2,
+          "text": "快速集成"
+        },
+        {
+          "level": 2,
+          "text": "真实用户口碑评价"
+        },
+        {
+          "level": 3,
+          "text": "页面监测"
+        },
+        {
+          "level": 3,
+          "text": "独享静态ISP代理长期合作"
+        },
+        {
+          "level": 3,
+          "text": "批量IP采购"
+        },
+        {
+          "level": 3,
+          "text": "多店铺矩阵管理"
+        },
+        {
+          "level": 2,
+          "text": "常见问题"
+        },
+        {
+          "level": 2,
+          "text": "企业免费实测"
+        }
+      ],
+      "headingLevels": [
+        1,
+        2,
+        3,
+        3,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2
+      ],
+      "headingSkips": 0,
+      "wordCount": 1973,
+      "textRatio": 0.031778656126482216,
+      "htmlBytes": 82225,
+      "imgTotal": 76,
+      "imgMissingAlt": 0,
+      "imgEmptyAlt": 47,
+      "imgBroken": 0,
+      "imgLegacy": 12,
+      "imgLazy": 10,
+      "links": {
+        "total": 25,
+        "internal": 15,
+        "external": 10,
+        "emptyAnchor": 0,
+        "hashOnly": 0,
+        "nofollowExternal": 0
+      },
+      "internalHrefs": [
+        "https://www.xspark.cn/pricing/isp-proxies",
+        "https://www.xspark.cn/",
+        "https://www.xspark.cn/product/isp-proxies",
+        "https://www.xspark.cn/product/datacenter-proxies",
+        "https://www.xspark.cn/pricing/datacenter-proxies",
+        "https://www.xspark.cn/blog/",
+        "https://www.xspark.cn/compliance-policy",
+        "https://www.xspark.cn/service-agreement",
+        "https://www.xspark.cn/privacy-policy",
+        "https://www.xspark.cn/refund-policy"
+      ],
+      "externalSample": [
+        "https://dashboard.xspark.cn/login/",
+        "https://dashboard.xspark.cn/login/",
+        "https://dashboard.xspark.cn/login/",
+        "https://work.weixin.qq.com/kfid/kfc96ba4afccdeeeb62",
+        "mailto:help@xspark.cn",
+        "https://doc.xspark.cn/faq/product-usage",
+        "https://doc.xspark.cn/api",
+        "https://doc.xspark.cn/",
+        "https://beian.miit.gov.cn/?spm=5176.164126b6.J_9220772140.J_4NWEMkQ5nDwOgLi8EJmHs.62#/Integrated/index",
+        "https://beian.mps.gov.cn/#/query/webSearch"
+      ],
+      "jsonld": [
+        {
+          "ok": true,
+          "types": [
+            "Organization",
+            "Service"
+          ],
+          "items": [
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "name": "Xspark",
+              "url": "https://www.xspark.cn",
+              "description": "Xspark面向中国出海企业提供静态ISP代理和静态数据中心代理，支持独享固定IP、全球地区选择、HTTP(S)/SOCKS5及API管理，适用于跨境电商、海外社媒、直播、SEO监测、养号及账号管理。"
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "Service",
+              "name": "Xspark 静态代理",
+              "description": "Xspark面向中国出海企业提供静态ISP代理和静态数据中心代理，支持独享固定IP、全球地区选择、HTTP(S)/SOCKS5及API管理，适用于跨境电商、海外社媒、直播、SEO监测、养号及账号管理。",
+              "provider": {
+                "@type": "Organization",
+                "name": "Xspark",
+                "url": "https://www.xspark.cn"
+              }
+            }
+          ]
+        }
+      ],
+      "microdataCount": 0,
+      "og": {
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "description": "Xspark面向中国出海企业提供静态ISP代理和静态数据中心代理，支持独享固定IP、全球地区选择、HTTP(S)/SOCKS5及API管理，适用于跨境电商、海外社媒、直播、SEO监测、养号及账号管理。",
+        "image": "https://www.xspark.cn/og/og-home.png",
+        "type": "website"
+      },
+      "twitter": {
+        "card": "summary_large_image",
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "image": "https://www.xspark.cn/og/og-home.png"
+      },
+      "hreflang": [],
+      "jsPagination": [],
+      "raw": {
+        "bytes": 81570,
+        "ok": true,
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "description": "Xspark面向中国出海企业提供静态ISP代理和静态数据中心代理，支持独享固定IP、全球地区选择、HTTP(S)/SOCKS5及API管理，适用于跨境电商、海外社媒、直播、SEO监测、养号及账号管理。",
+        "canonical": "https://www.xspark.cn",
+        "lang": "zh-CN",
+        "viewport": "width=device-width, initial-scale=1",
+        "h1Count": 1,
+        "headingCount": 29,
+        "imgCount": 76,
+        "imgMissingAlt": 0,
+        "anchorCount": 25,
+        "internalLinkCount": 15,
+        "jsonLdCount": 1,
+        "microdataCount": 0,
+        "hreflang": [],
+        "wordCount": 1992,
+        "textLength": 2650,
+        "scriptCount": 21,
+        "hasNoscript": false,
+        "ogTitle": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark"
+      },
+      "resources": {
+        "requests": 74,
+        "transferBytes": 6122832,
+        "jsBytes": 1275118,
+        "cssBytes": 4592970,
+        "imgBytes": 4365210,
+        "fontBytes": 185612,
+        "renderBlocking": 3
+      },
+      "vitals": {
+        "lcp": 380,
+        "cls": 0,
+        "fcp": 380,
+        "domContentLoaded": 185.5,
+        "load": 1332.2000000029802
+      },
+      "security": {
+        "https": true,
+        "mixedContent": [],
+        "headers": {
+          "hsts": "max-age=31536000; includeSubDomains",
+          "xcto": "nosniff"
+        }
+      },
+      "depth": 99,
+      "issues": [
+        {
+          "page": "https://www.xspark.cn/",
+          "id": "content-text-ratio",
+          "category": "content",
+          "severity": "low",
+          "title": "文本/HTML 比例偏低",
+          "message": "3.2%",
+          "evidence": "HTML 80KB",
+          "suggestion": "减少无效标记，提高正文占比"
+        },
+        {
+          "page": "https://www.xspark.cn/",
+          "id": "perf-weight-large",
+          "category": "perf",
+          "severity": "medium",
+          "title": "页面体积过大",
+          "message": "5.84MB",
+          "evidence": "74 个请求",
+          "suggestion": "压缩/懒加载/按需加载资源"
+        },
+        {
+          "page": "https://www.xspark.cn/",
+          "id": "perf-js-large",
+          "category": "perf",
+          "severity": "medium",
+          "title": "JS 体积过大",
+          "message": "1245KB",
+          "evidence": "",
+          "suggestion": "代码分割、移除未使用依赖"
+        }
+      ],
+      "score": 86,
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 0
+      }
+    },
+    {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "finalUrl": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "status": 200,
+      "ok": true,
+      "redirectCount": 0,
+      "responseTimeMs": 2369,
+      "title": "静态数据中心代理价格｜固定IP套餐与批量采购 - Xspark",
+      "titleLength": 31,
+      "description": "查看Xspark静态数据中心代理价格，支持7天、30天、60天周期和多地区节点选择，提供独享固定IP、不限并发、批量采购及企业定制方案，适合测试和持续任务部署，需自备海外网络环境。",
+      "descriptionLength": 90,
+      "canonical": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "robotsMeta": "index, follow",
+      "xRobots": "",
+      "meta": {
+        "noindex": false,
+        "nofollow": false
+      },
+      "lang": "zh-CN",
+      "viewport": "width=device-width, initial-scale=1",
+      "textHash": "effe9cfd",
+      "textSample": "产品 定价 使用场景 资源 企业服务 免费试用 静态数据中心代理 http(s) / socks5 高速稳定连接 独享ip 白名单/账密认证 不限流量 全部地区 搜索地区名称 购买时长 7天 30天 60天 目标业务用途 不限业务 欧洲 (5) 西班牙 · 巴塞罗那 ¥8.00/ip 英国 · 伦敦 ¥8.00/ip 法国 · 巴黎 ¥8.00/ip 德国 · 法兰克福 ¥8.00/ip 俄罗斯 ",
+      "h1": [
+        "静态数据中心代理"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "静态数据中心代理"
+        },
+        {
+          "level": 2,
+          "text": "全部地区"
+        },
+        {
+          "level": 2,
+          "text": "订单摘要"
+        },
+        {
+          "level": 2,
+          "text": "需要定制方案？"
+        },
+        {
+          "level": 2,
+          "text": "静态数据中心代理的核心优势"
+        },
+        {
+          "level": 3,
+          "text": "高速稳定"
+        },
+        {
+          "level": 3,
+          "text": "无限并发会话"
+        },
+        {
+          "level": 3,
+          "text": "成本更优"
+        },
+        {
+          "level": 2,
+          "text": "常见问题"
+        },
+        {
+          "level": 2,
+          "text": "企业免费实测"
+        }
+      ],
+      "headingLevels": [
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        2,
+        2
+      ],
+      "headingSkips": 0,
+      "wordCount": 1162,
+      "textRatio": 0.030590270422932993,
+      "htmlBytes": 56652,
+      "imgTotal": 66,
+      "imgMissingAlt": 0,
+      "imgEmptyAlt": 63,
+      "imgBroken": 0,
+      "imgLegacy": 37,
+      "imgLazy": 26,
+      "links": {
+        "total": 19,
+        "internal": 9,
+        "external": 10,
+        "emptyAnchor": 0,
+        "hashOnly": 0,
+        "nofollowExternal": 0
+      },
+      "internalHrefs": [
+        "https://www.xspark.cn/",
+        "https://www.xspark.cn/product/isp-proxies",
+        "https://www.xspark.cn/product/datacenter-proxies",
+        "https://www.xspark.cn/blog/",
+        "https://www.xspark.cn/compliance-policy",
+        "https://www.xspark.cn/service-agreement",
+        "https://www.xspark.cn/privacy-policy",
+        "https://www.xspark.cn/refund-policy"
+      ],
+      "externalSample": [
+        "https://dashboard.xspark.cn/login/",
+        "https://work.weixin.qq.com/kfid/kfc96ba4afccdeeeb62",
+        "https://dashboard.xspark.cn/login/",
+        "https://work.weixin.qq.com/kfid/kfc96ba4afccdeeeb62",
+        "mailto:help@xspark.cn",
+        "https://doc.xspark.cn/faq/product-usage",
+        "https://doc.xspark.cn/api",
+        "https://doc.xspark.cn/",
+        "https://beian.miit.gov.cn/?spm=5176.164126b6.J_9220772140.J_4NWEMkQ5nDwOgLi8EJmHs.62#/Integrated/index",
+        "https://beian.mps.gov.cn/#/query/webSearch"
+      ],
+      "jsonld": [],
+      "microdataCount": 0,
+      "og": {
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "description": "Xspark面向中国出海企业提供静态ISP代理和静态数据中心代理，支持独享固定IP、全球地区选择、HTTP(S)/SOCKS5及API管理，适用于跨境电商、海外社媒、直播、SEO监测、养号及账号管理。",
+        "image": "https://www.xspark.cn/og/og-home.png",
+        "type": "website"
+      },
+      "twitter": {
+        "card": "summary_large_image",
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "image": "https://www.xspark.cn/og/og-home.png"
+      },
+      "hreflang": [],
+      "jsPagination": [],
+      "raw": {
+        "bytes": 45240,
+        "ok": true,
+        "title": "静态数据中心代理价格｜固定IP套餐与批量采购 - Xspark",
+        "description": "查看Xspark静态数据中心代理价格，支持7天、30天、60天周期和多地区节点选择，提供独享固定IP、不限并发、批量采购及企业定制方案，适合测试和持续任务部署，需自备海外网络环境。",
+        "canonical": "https://www.xspark.cn/pricing/datacenter-proxies",
+        "lang": "zh-CN",
+        "viewport": "width=device-width, initial-scale=1",
+        "h1Count": 1,
+        "headingCount": 9,
+        "imgCount": 32,
+        "imgMissingAlt": 0,
+        "anchorCount": 19,
+        "internalLinkCount": 9,
+        "jsonLdCount": 0,
+        "microdataCount": 0,
+        "hreflang": [],
+        "wordCount": 934,
+        "textLength": 1210,
+        "scriptCount": 18,
+        "hasNoscript": false,
+        "ogTitle": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark"
+      },
+      "resources": {
+        "requests": 67,
+        "transferBytes": 2717240,
+        "jsBytes": 731245,
+        "cssBytes": 525114,
+        "imgBytes": 1583282,
+        "fontBytes": 185612,
+        "renderBlocking": 3
+      },
+      "vitals": {
+        "lcp": 352,
+        "cls": 0,
+        "fcp": 352,
+        "domContentLoaded": 212.10000000149012,
+        "load": 800.1000000014901
+      },
+      "security": {
+        "https": true,
+        "mixedContent": [],
+        "headers": {
+          "hsts": "max-age=31536000; includeSubDomains",
+          "xcto": "nosniff"
+        }
+      },
+      "depth": 99,
+      "issues": [
+        {
+          "page": "https://www.xspark.cn/pricing/datacenter-proxies",
+          "id": "content-text-ratio",
+          "category": "content",
+          "severity": "low",
+          "title": "文本/HTML 比例偏低",
+          "message": "3.1%",
+          "evidence": "HTML 55KB",
+          "suggestion": "减少无效标记，提高正文占比"
+        },
+        {
+          "page": "https://www.xspark.cn/pricing/datacenter-proxies",
+          "id": "structured-none",
+          "category": "structured",
+          "severity": "info",
+          "title": "未发现结构化数据",
+          "message": "",
+          "evidence": "",
+          "suggestion": "按页面类型补充 Organization / Product / FAQ / Breadcrumb 等 Schema"
+        },
+        {
+          "page": "https://www.xspark.cn/pricing/datacenter-proxies",
+          "id": "perf-img-format",
+          "category": "perf",
+          "severity": "info",
+          "title": "图片格式偏旧",
+          "message": "37/66 张为 jpg/png",
+          "evidence": "",
+          "suggestion": "优先 WebP/AVIF，保留兼容回退"
+        }
+      ],
+      "score": 98,
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 1,
+        "info": 2
+      }
+    },
+    {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "finalUrl": "https://www.xspark.cn/product/isp-proxies",
+      "status": 200,
+      "ok": true,
+      "redirectCount": 0,
+      "responseTimeMs": 2639,
+      "title": "静态ISP代理｜独享住宅IP与固定出口 - Xspark",
+      "titleLength": 28,
+      "description": "Xspark静态ISP代理提供真实运营商网络、独享固定住宅IP和长期稳定出口，支持国家及城市定位、HTTP(S)/SOCKS5和API管理，适合跨境店铺、海外社媒、直播、养号及账号运营，支持企业免费实测。",
+      "descriptionLength": 102,
+      "canonical": "https://www.xspark.cn/product/isp-proxies",
+      "robotsMeta": "index, follow",
+      "xRobots": "",
+      "meta": {
+        "noindex": false,
+        "nofollow": false
+      },
+      "lang": "zh-CN",
+      "viewport": "width=device-width, initial-scale=1",
+      "textHash": "38d5d014",
+      "textSample": "产品 定价 使用场景 资源 企业服务 免费试用 静态isp代理 专为账号管理、直播矩阵等长期业务场景，提供稳定的住宅网络环境；租期内出口永久固定，适配长会话、高风控企业出海业务 并发会话不限制 http(s) & socks5 城市级定位 即时激活 查看定价 企业免费测试 核心能力亮点 为企业长周期跨境业务提供出口归属固定，具有真人属性的ip代理。 顶级asn供应商 从at&t、ntt、cogen",
+      "h1": [
+        "静态ISP代理"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "静态ISP代理"
+        },
+        {
+          "level": 2,
+          "text": "核心能力亮点"
+        },
+        {
+          "level": 3,
+          "text": "顶级ASN供应商"
+        },
+        {
+          "level": 3,
+          "text": "无额外流量计费"
+        },
+        {
+          "level": 3,
+          "text": "稳定有保障"
+        },
+        {
+          "level": 3,
+          "text": "国家/城市级地理筛选"
+        },
+        {
+          "level": 3,
+          "text": "主流协议+双重鉴权"
+        },
+        {
+          "level": 3,
+          "text": "企业级API服务"
+        },
+        {
+          "level": 2,
+          "text": "全球重要节点覆盖"
+        },
+        {
+          "level": 2,
+          "text": "快速集成"
+        },
+        {
+          "level": 2,
+          "text": "产品快速对比"
+        },
+        {
+          "level": 2,
+          "text": "业务适用场景"
+        },
+        {
+          "level": 3,
+          "text": "跨境电商"
+        },
+        {
+          "level": 3,
+          "text": "出海高清直播"
+        },
+        {
+          "level": 3,
+          "text": "社媒矩阵"
+        },
+        {
+          "level": 3,
+          "text": "多账号管理"
+        },
+        {
+          "level": 2,
+          "text": "真实用户口碑评价"
+        },
+        {
+          "level": 3,
+          "text": "跨境电商长期合作"
+        },
+        {
+          "level": 3,
+          "text": "广告代理合作"
+        },
+        {
+          "level": 3,
+          "text": "多店铺矩阵管理"
+        },
+        {
+          "level": 3,
+          "text": "社媒矩阵账号运营"
+        },
+        {
+          "level": 2,
+          "text": "常见问题"
+        },
+        {
+          "level": 2,
+          "text": "想要验证跑量业务适配效果？"
+        }
+      ],
+      "headingLevels": [
+        1,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        2,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2
+      ],
+      "headingSkips": 0,
+      "wordCount": 2206,
+      "textRatio": 0.0559986613865804,
+      "htmlBytes": 53787,
+      "imgTotal": 47,
+      "imgMissingAlt": 0,
+      "imgEmptyAlt": 44,
+      "imgBroken": 0,
+      "imgLegacy": 12,
+      "imgLazy": 10,
+      "links": {
+        "total": 21,
+        "internal": 10,
+        "external": 11,
+        "emptyAnchor": 0,
+        "hashOnly": 0,
+        "nofollowExternal": 0
+      },
+      "internalHrefs": [
+        "https://www.xspark.cn/",
+        "https://www.xspark.cn/pricing/isp-proxies",
+        "https://www.xspark.cn/product/isp-proxies",
+        "https://www.xspark.cn/product/datacenter-proxies",
+        "https://www.xspark.cn/blog/",
+        "https://www.xspark.cn/compliance-policy",
+        "https://www.xspark.cn/service-agreement",
+        "https://www.xspark.cn/privacy-policy",
+        "https://www.xspark.cn/refund-policy"
+      ],
+      "externalSample": [
+        "https://dashboard.xspark.cn/login/",
+        "https://dashboard.xspark.cn/login/",
+        "https://doc.xspark.cn/integration",
+        "https://dashboard.xspark.cn/login/",
+        "https://work.weixin.qq.com/kfid/kfc96ba4afccdeeeb62",
+        "mailto:help@xspark.cn",
+        "https://doc.xspark.cn/faq/product-usage",
+        "https://doc.xspark.cn/api",
+        "https://doc.xspark.cn/",
+        "https://beian.miit.gov.cn/?spm=5176.164126b6.J_9220772140.J_4NWEMkQ5nDwOgLi8EJmHs.62#/Integrated/index",
+        "https://beian.mps.gov.cn/#/query/webSearch"
+      ],
+      "jsonld": [],
+      "microdataCount": 0,
+      "og": {
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "description": "Xspark面向中国出海企业提供静态ISP代理和静态数据中心代理，支持独享固定IP、全球地区选择、HTTP(S)/SOCKS5及API管理，适用于跨境电商、海外社媒、直播、SEO监测、养号及账号管理。",
+        "image": "https://www.xspark.cn/og/og-home.png",
+        "type": "website"
+      },
+      "twitter": {
+        "card": "summary_large_image",
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "image": "https://www.xspark.cn/og/og-home.png"
+      },
+      "hreflang": [],
+      "jsPagination": [],
+      "raw": {
+        "bytes": 53175,
+        "ok": true,
+        "title": "静态ISP代理｜独享住宅IP与固定出口 - Xspark",
+        "description": "Xspark静态ISP代理提供真实运营商网络、独享固定住宅IP和长期稳定出口，支持国家及城市定位、HTTP(S)/SOCKS5和API管理，适合跨境店铺、海外社媒、直播、养号及账号运营，支持企业免费实测。",
+        "canonical": "https://www.xspark.cn/product/isp-proxies",
+        "lang": "zh-CN",
+        "viewport": "width=device-width, initial-scale=1",
+        "h1Count": 1,
+        "headingCount": 22,
+        "imgCount": 47,
+        "imgMissingAlt": 0,
+        "anchorCount": 21,
+        "internalLinkCount": 10,
+        "jsonLdCount": 0,
+        "microdataCount": 0,
+        "hreflang": [],
+        "wordCount": 2222,
+        "textLength": 3044,
+        "scriptCount": 18,
+        "hasNoscript": false,
+        "ogTitle": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark"
+      },
+      "resources": {
+        "requests": 58,
+        "transferBytes": 3990998,
+        "jsBytes": 1299639,
+        "cssBytes": 2574251,
+        "imgBytes": 2240858,
+        "fontBytes": 185612,
+        "renderBlocking": 3
+      },
+      "vitals": {
+        "lcp": 348,
+        "cls": 0,
+        "fcp": 348,
+        "domContentLoaded": 157.70000000298023,
+        "load": 1059.3000000044703
+      },
+      "security": {
+        "https": true,
+        "mixedContent": [],
+        "headers": {
+          "hsts": "max-age=31536000; includeSubDomains",
+          "xcto": "nosniff"
+        }
+      },
+      "depth": 99,
+      "issues": [
+        {
+          "page": "https://www.xspark.cn/product/isp-proxies",
+          "id": "content-text-ratio",
+          "category": "content",
+          "severity": "low",
+          "title": "文本/HTML 比例偏低",
+          "message": "5.6%",
+          "evidence": "HTML 53KB",
+          "suggestion": "减少无效标记，提高正文占比"
+        },
+        {
+          "page": "https://www.xspark.cn/product/isp-proxies",
+          "id": "structured-none",
+          "category": "structured",
+          "severity": "info",
+          "title": "未发现结构化数据",
+          "message": "",
+          "evidence": "",
+          "suggestion": "按页面类型补充 Organization / Product / FAQ / Breadcrumb 等 Schema"
+        },
+        {
+          "page": "https://www.xspark.cn/product/isp-proxies",
+          "id": "perf-weight-large",
+          "category": "perf",
+          "severity": "medium",
+          "title": "页面体积过大",
+          "message": "3.81MB",
+          "evidence": "58 个请求",
+          "suggestion": "压缩/懒加载/按需加载资源"
+        },
+        {
+          "page": "https://www.xspark.cn/product/isp-proxies",
+          "id": "perf-js-large",
+          "category": "perf",
+          "severity": "medium",
+          "title": "JS 体积过大",
+          "message": "1269KB",
+          "evidence": "",
+          "suggestion": "代码分割、移除未使用依赖"
+        }
+      ],
+      "score": 86,
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      }
+    },
+    {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "finalUrl": "https://www.xspark.cn/pricing/isp-proxies",
+      "status": 200,
+      "ok": true,
+      "redirectCount": 0,
+      "responseTimeMs": 2042,
+      "title": "静态ISP代理价格｜住宅IP套餐与购买 - Xspark",
+      "titleLength": 28,
+      "description": "查看Xspark静态ISP代理价格与套餐，支持7天、30天、60天周期，按地区和IP数量选购，提供独享住宅IP、HTTP(S)/SOCKS5、企业报价和免费实测方案，需自备海外网络环境。",
+      "descriptionLength": 93,
+      "canonical": "https://www.xspark.cn/pricing/isp-proxies",
+      "robotsMeta": "index, follow",
+      "xRobots": "",
+      "meta": {
+        "noindex": false,
+        "nofollow": false
+      },
+      "lang": "zh-CN",
+      "viewport": "width=device-width, initial-scale=1",
+      "textHash": "22ec17ad",
+      "textSample": "产品 定价 使用场景 资源 企业服务 免费试用 静态isp代理 http(s) / socks5 真实住宅 isp 独享ip 长期稳定在线 不限流量 全部地区 搜索地区名称 购买时长 3天 试用 7天 30天 60天 目标业务用途 不限业务 正在加载可售地区… 如果您需要其他国家的 ip，请联系我们的专属客服经理获取定制的代理解决方案。 订单摘要 清空 尚未选择地区 原价： ¥0.00 星火启幕专",
+      "h1": [
+        "静态ISP代理"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "静态ISP代理"
+        },
+        {
+          "level": 2,
+          "text": "全部地区"
+        },
+        {
+          "level": 2,
+          "text": "订单摘要"
+        },
+        {
+          "level": 2,
+          "text": "需要定制方案？"
+        },
+        {
+          "level": 2,
+          "text": "静态 ISP 代理的核心优势"
+        },
+        {
+          "level": 3,
+          "text": "优质ISP资源"
+        },
+        {
+          "level": 3,
+          "text": "多账号独立配置"
+        },
+        {
+          "level": 3,
+          "text": "独享 IP 长期稳定"
+        },
+        {
+          "level": 2,
+          "text": "常见问题"
+        },
+        {
+          "level": 2,
+          "text": "企业免费实测"
+        }
+      ],
+      "headingLevels": [
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        2,
+        2
+      ],
+      "headingSkips": 0,
+      "wordCount": 865,
+      "textRatio": 0.023935116652419573,
+      "htmlBytes": 47963,
+      "imgTotal": 39,
+      "imgMissingAlt": 0,
+      "imgEmptyAlt": 35,
+      "imgBroken": 0,
+      "imgLegacy": 7,
+      "imgLazy": 22,
+      "links": {
+        "total": 19,
+        "internal": 9,
+        "external": 10,
+        "emptyAnchor": 0,
+        "hashOnly": 0,
+        "nofollowExternal": 0
+      },
+      "internalHrefs": [
+        "https://www.xspark.cn/",
+        "https://www.xspark.cn/product/isp-proxies",
+        "https://www.xspark.cn/product/datacenter-proxies",
+        "https://www.xspark.cn/blog/",
+        "https://www.xspark.cn/compliance-policy",
+        "https://www.xspark.cn/service-agreement",
+        "https://www.xspark.cn/privacy-policy",
+        "https://www.xspark.cn/refund-policy"
+      ],
+      "externalSample": [
+        "https://dashboard.xspark.cn/login/",
+        "https://work.weixin.qq.com/kfid/kfc96ba4afccdeeeb62",
+        "https://dashboard.xspark.cn/login/",
+        "https://work.weixin.qq.com/kfid/kfc96ba4afccdeeeb62",
+        "mailto:help@xspark.cn",
+        "https://doc.xspark.cn/faq/product-usage",
+        "https://doc.xspark.cn/api",
+        "https://doc.xspark.cn/",
+        "https://beian.miit.gov.cn/?spm=5176.164126b6.J_9220772140.J_4NWEMkQ5nDwOgLi8EJmHs.62#/Integrated/index",
+        "https://beian.mps.gov.cn/#/query/webSearch"
+      ],
+      "jsonld": [],
+      "microdataCount": 0,
+      "og": {
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "description": "Xspark面向中国出海企业提供静态ISP代理和静态数据中心代理，支持独享固定IP、全球地区选择、HTTP(S)/SOCKS5及API管理，适用于跨境电商、海外社媒、直播、SEO监测、养号及账号管理。",
+        "image": "https://www.xspark.cn/og/og-home.png",
+        "type": "website"
+      },
+      "twitter": {
+        "card": "summary_large_image",
+        "title": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark",
+        "image": "https://www.xspark.cn/og/og-home.png"
+      },
+      "hreflang": [],
+      "jsPagination": [],
+      "raw": {
+        "bytes": 46632,
+        "ok": true,
+        "title": "静态ISP代理价格｜住宅IP套餐与购买 - Xspark",
+        "description": "查看Xspark静态ISP代理价格与套餐，支持7天、30天、60天周期，按地区和IP数量选购，提供独享住宅IP、HTTP(S)/SOCKS5、企业报价和免费实测方案，需自备海外网络环境。",
+        "canonical": "https://www.xspark.cn/pricing/isp-proxies",
+        "lang": "zh-CN",
+        "viewport": "width=device-width, initial-scale=1",
+        "h1Count": 1,
+        "headingCount": 9,
+        "imgCount": 39,
+        "imgMissingAlt": 0,
+        "anchorCount": 19,
+        "internalLinkCount": 9,
+        "jsonLdCount": 0,
+        "microdataCount": 0,
+        "hreflang": [],
+        "wordCount": 873,
+        "textLength": 1178,
+        "scriptCount": 18,
+        "hasNoscript": false,
+        "ogTitle": "静态代理IP服务｜独享住宅IP与数据中心IP - Xspark"
+      },
+      "resources": {
+        "requests": 50,
+        "transferBytes": 2363499,
+        "jsBytes": 731245,
+        "cssBytes": 654428,
+        "imgBytes": 1245126,
+        "fontBytes": 185612,
+        "renderBlocking": 3
+      },
+      "vitals": {
+        "lcp": 296,
+        "cls": 0,
+        "fcp": 284,
+        "domContentLoaded": 150.30000000447035,
+        "load": 470.8999999985099
+      },
+      "security": {
+        "https": true,
+        "mixedContent": [],
+        "headers": {
+          "hsts": "max-age=31536000; includeSubDomains",
+          "xcto": "nosniff"
+        }
+      },
+      "depth": 99,
+      "issues": [
+        {
+          "page": "https://www.xspark.cn/pricing/isp-proxies",
+          "id": "content-text-ratio",
+          "category": "content",
+          "severity": "low",
+          "title": "文本/HTML 比例偏低",
+          "message": "2.4%",
+          "evidence": "HTML 47KB",
+          "suggestion": "减少无效标记，提高正文占比"
+        },
+        {
+          "page": "https://www.xspark.cn/pricing/isp-proxies",
+          "id": "structured-none",
+          "category": "structured",
+          "severity": "info",
+          "title": "未发现结构化数据",
+          "message": "",
+          "evidence": "",
+          "suggestion": "按页面类型补充 Organization / Product / FAQ / Breadcrumb 等 Schema"
+        }
+      ],
+      "score": 98,
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 1,
+        "info": 1
+      }
+    }
+  ],
+  "field": {
+    "ok": false,
+    "available": false,
+    "reason": "未配置 HEIMDALL_PSI_KEY（无 Key 的匿名配额是全局共享的，实测 429）",
+    "lab": {
+      "lcp": 352,
+      "cls": 0
+    },
+    "compare": null
+  }
+}

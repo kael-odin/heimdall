@@ -227,6 +227,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm lint
       - run: pnpm check:docs
+      - run: pnpm check:cases
       - run: pnpm check:frozen
       # 交付包需脱离源工作区，在无外联网络的容器中实际启动。
       - name: Docker offline delivery (SSR + SPA + data SPA + adapter)

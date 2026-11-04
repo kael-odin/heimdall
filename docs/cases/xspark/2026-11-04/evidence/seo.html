@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Heimdall SEO 审计 · xspark.cn</title>
+<style>
+:root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; --cyan:#0891b2; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font-family:'Segoe UI',system-ui,-apple-system,'Noto Sans SC','Microsoft YaHei',sans-serif; line-height:1.55; }
+.wrap { max-width:1180px; margin:0 auto; padding:36px 28px 80px; }
+header { display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+.brand { font-size:13px; letter-spacing:.28em; color:var(--cyan); font-weight:700; }
+h1 { margin:4px 0 0; font-size:30px; }
+.meta { color:var(--muted); font-size:13px; }
+.score-ring { margin-left:auto; width:132px; height:132px; border-radius:50%; display:grid; place-items:center; background:conic-gradient(#059669 90.8%, #e2e8f0 0); }
+.score-ring > div { width:106px; height:106px; border-radius:50%; background:#fff; display:grid; place-items:center; text-align:center; }
+.score-ring b { font-size:34px; display:block; line-height:1; }
+.score-ring span { font-size:11px; color:var(--muted); }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:28px 0; }
+.kpi { background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.kpi b { font-size:24px; display:block; }
+.kpi span { color:var(--muted); font-size:12px; }
+.cats { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin:20px 0 34px; }
+.cat { background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.cat-top { display:flex; justify-content:space-between; font-size:14px; }
+.bar { height:6px; background:#eef2f7; border-radius:4px; margin:10px 0 6px; overflow:hidden; }
+.bar i { display:block; height:100%; border-radius:4px; }
+.cat-sub { font-size:12px; color:var(--muted); }
+h2 { margin:36px 0 12px; font-size:20px; }
+table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+th, td { text-align:left; padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top; font-size:13px; }
+th { background:#f1f5f9; font-size:12px; color:var(--muted); letter-spacing:.04em; }
+td.num { font-variant-numeric:tabular-nums; font-weight:700; }
+a.url { color:var(--cyan); text-decoration:none; font-weight:600; }
+.subtitle { color:var(--muted); font-size:12px; }
+.pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; margin:1px 2px; }
+.pill.critical { background:#fee2e2; color:#b91c1c; }
+.pill.high { background:#ffedd5; color:#c2410c; }
+.pill.medium { background:#fef9c3; color:#a16207; }
+.pill.low { background:#e0f2fe; color:#0369a1; }
+.pill.info { background:#f1f5f9; color:#475569; }
+.ok-text { color:#059669; font-size:13px; }
+.page-detail { background:#fff; border:1px solid var(--line); border-radius:10px; margin:10px 0; padding:12px 16px; }
+.page-detail summary { cursor:pointer; font-weight:600; }
+.page-meta { color:var(--muted); font-size:12px; margin:8px 0 12px; word-break:break-all; }
+.issue { border-left:4px solid #cbd5e1; padding:10px 12px; margin:10px 0; background:#f8fafc; border-radius:0 8px 8px 0; }
+.issue.critical { border-color:#dc2626; } .issue.high { border-color:#ea580c; } .issue.medium { border-color:#ca8a04; } .issue.low { border-color:#0284c7; } .issue.info { border-color:#94a3b8; }
+.issue-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.issue-head code { color:var(--muted); font-size:11px; }
+.issue-msg { font-size:13px; margin-top:4px; }
+.evidence { background:#0f172a; color:#e2e8f0; padding:8px 10px; border-radius:6px; font-size:12px; overflow:auto; white-space:pre-wrap; }
+.suggestion { color:#0369a1; font-size:12px; margin-top:6px; }
+footer { margin-top:44px; color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="brand">HEIMDALL · SEO AUDIT</div>
+      <h1>xspark.cn SEO 审计报告</h1>
+      <div class="meta">https://www.xspark.cn · 2026-11-04T13:08:03.501Z · 采集 5 页上限 · 视口 1440x900</div>
+    </div>
+    <div class="score-ring"><div><b style="color:#059669">90.8</b><span>站点分</span></div></div>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><b>5</b><span>采集页面</span></div>
+    <div class="kpi"><b style="color:#b91c1c">0</b><span>严重问题</span></div>
+    <div class="kpi"><b style="color:#c2410c">0</b><span>高优先级</span></div>
+    <div class="kpi"><b style="color:#a16207">6</b><span>中优先级</span></div>
+    <div class="kpi"><b>16</b><span>问题总数</span></div>
+  </div>
+
+  <h2>分类得分</h2>
+  <div class="cats"><div class="cat">
+      <div class="cat-top"><span>抓取与索引</span><b style="color:#059669">100</b></div>
+      <div class="bar"><i style="width:100%;background:#059669"></i></div>
+      <div class="cat-sub">0 条问题</div>
+    </div>
+<div class="cat">
+      <div class="cat-top"><span>内容与语义</span><b style="color:#059669">98</b></div>
+      <div class="bar"><i style="width:98%;background:#059669"></i></div>
+      <div class="cat-sub">5 条问题</div>
+    </div>
+<div class="cat">
+      <div class="cat-top"><span>结构化数据与社交</span><b style="color:#059669">100</b></div>
+      <div class="bar"><i style="width:100%;background:#059669"></i></div>
+      <div class="cat-sub">4 条问题</div>
+    </div>
+<div class="cat">
+      <div class="cat-top"><span>性能与体验</span><b style="color:#059669">92.8</b></div>
+      <div class="bar"><i style="width:92.8%;background:#059669"></i></div>
+      <div class="cat-sub">7 条问题</div>
+    </div>
+<div class="cat">
+      <div class="cat-top"><span>链接与架构</span><b style="color:#059669">100</b></div>
+      <div class="bar"><i style="width:100%;background:#059669"></i></div>
+      <div class="cat-sub">0 条问题</div>
+    </div>
+<div class="cat">
+      <div class="cat-top"><span>安全与合规</span><b style="color:#059669">100</b></div>
+      <div class="bar"><i style="width:100%;background:#059669"></i></div>
+      <div class="cat-sub">0 条问题</div>
+    </div></div>
+
+  <h2>站点级问题</h2>
+  <div class="ok-text">✓ 站点级未发现问题</div>
+
+  <h2>页面概览</h2>
+  <table>
+    <thead><tr><th>分数</th><th>页面</th><th>状态</th><th>问题</th><th>主要问题</th></tr></thead>
+    <tbody><tr data-score="86">
+      <td class="num" style="color:#b45309">86</td>
+      <td><a class="url" href="https://www.xspark.cn/product/datacenter-proxies" target="_blank" rel="noopener">/product/datacenter-proxies</a><div class="subtitle">静态数据中心代理｜独享固定IP与高并发代理 - Xspark</div></td>
+      <td class="num">200</td>
+      <td class="num">4</td>
+      <td><span class="pill medium">页面体积过大</span> <span class="pill medium">JS 体积过大</span> <span class="pill low">文本/HTML 比例偏低</span></td>
+    </tr>
+<tr data-score="86">
+      <td class="num" style="color:#b45309">86</td>
+      <td><a class="url" href="https://www.xspark.cn/" target="_blank" rel="noopener">/</a><div class="subtitle">静态代理IP服务｜独享住宅IP与数据中心IP - Xspark</div></td>
+      <td class="num">200</td>
+      <td class="num">3</td>
+      <td><span class="pill medium">页面体积过大</span> <span class="pill medium">JS 体积过大</span> <span class="pill low">文本/HTML 比例偏低</span></td>
+    </tr>
+<tr data-score="98">
+      <td class="num" style="color:#059669">98</td>
+      <td><a class="url" href="https://www.xspark.cn/pricing/datacenter-proxies" target="_blank" rel="noopener">/pricing/datacenter-proxies</a><div class="subtitle">静态数据中心代理价格｜固定IP套餐与批量采购 - Xspark</div></td>
+      <td class="num">200</td>
+      <td class="num">3</td>
+      <td><span class="pill low">文本/HTML 比例偏低</span> <span class="pill info">未发现结构化数据</span> <span class="pill info">图片格式偏旧</span></td>
+    </tr>
+<tr data-score="86">
+      <td class="num" style="color:#b45309">86</td>
+      <td><a class="url" href="https://www.xspark.cn/product/isp-proxies" target="_blank" rel="noopener">/product/isp-proxies</a><div class="subtitle">静态ISP代理｜独享住宅IP与固定出口 - Xspark</div></td>
+      <td class="num">200</td>
+      <td class="num">4</td>
+      <td><span class="pill medium">页面体积过大</span> <span class="pill medium">JS 体积过大</span> <span class="pill low">文本/HTML 比例偏低</span></td>
+    </tr>
+<tr data-score="98">
+      <td class="num" style="color:#059669">98</td>
+      <td><a class="url" href="https://www.xspark.cn/pricing/isp-proxies" target="_blank" rel="noopener">/pricing/isp-proxies</a><div class="subtitle">静态ISP代理价格｜住宅IP套餐与购买 - Xspark</div></td>
+      <td class="num">200</td>
+      <td class="num">2</td>
+      <td><span class="pill low">文本/HTML 比例偏低</span> <span class="pill info">未发现结构化数据</span></td>
+    </tr></tbody>
+  </table>
+
+  <h2>逐页明细</h2>
+  <details class="page-detail" id="p-https://www.xspark.cn/product/datacenter-proxies">
+      <summary><span class="num" style="color:#b45309">86</span> /product/datacenter-proxies <span class="subtitle">静态数据中心代理｜独享固定IP与高并发代理 - Xspark</span></summary>
+      <div class="page-meta">https://www.xspark.cn/product/datacenter-proxies · HTTP 200 · 2137 词 · LCP 0.39s · CLS 0.000</div>
+      
+      <div class="issue medium">
+        <div class="issue-head"><span class="pill medium">中</span><b>页面体积过大</b><code>perf-weight-large</code></div>
+        <div class="issue-msg">4.31MB</div>
+        <pre class="evidence">58 个请求</pre>
+        <div class="suggestion">建议：压缩/懒加载/按需加载资源</div>
+      </div>
+      <div class="issue medium">
+        <div class="issue-head"><span class="pill medium">中</span><b>JS 体积过大</b><code>perf-js-large</code></div>
+        <div class="issue-msg">1269KB</div>
+        
+        <div class="suggestion">建议：代码分割、移除未使用依赖</div>
+      </div>
+      <div class="issue low">
+        <div class="issue-head"><span class="pill low">低</span><b>文本/HTML 比例偏低</b><code>content-text-ratio</code></div>
+        <div class="issue-msg">5.4%</div>
+        <pre class="evidence">HTML 53KB</pre>
+        <div class="suggestion">建议：减少无效标记，提高正文占比</div>
+      </div>
+      <div class="issue info">
+        <div class="issue-head"><span class="pill info">提示</span><b>未发现结构化数据</b><code>structured-none</code></div>
+        <div class="issue-msg"></div>
+        
+        <div class="suggestion">建议：按页面类型补充 Organization / Product / FAQ / Breadcrumb 等 Schema</div>
+      </div>
+    </details>
+<details class="page-detail" id="p-https://www.xspark.cn/">
+      <summary><span class="num" style="color:#b45309">86</span> / <span class="subtitle">静态代理IP服务｜独享住宅IP与数据中心IP - Xspark</span></summary>
+      <div class="page-meta">https://www.xspark.cn/ · HTTP 200 · 1973 词 · LCP 0.38s · CLS 0.000</div>
+      
+      <div class="issue medium">
+        <div class="issue-head"><span class="pill medium">中</span><b>页面体积过大</b><code>perf-weight-large</code></div>
+        <div class="issue-msg">5.84MB</div>
+        <pre class="evidence">74 个请求</pre>
+        <div class="suggestion">建议：压缩/懒加载/按需加载资源</div>
+      </div>
+      <div class="issue medium">
+        <div class="issue-head"><span class="pill medium">中</span><b>JS 体积过大</b><code>perf-js-large</code></div>
+        <div class="issue-msg">1245KB</div>
+        
+        <div class="suggestion">建议：代码分割、移除未使用依赖</div>
+      </div>
+      <div class="issue low">
+        <div class="issue-head"><span class="pill low">低</span><b>文本/HTML 比例偏低</b><code>content-text-ratio</code></div>
+        <div class="issue-msg">3.2%</div>
+        <pre class="evidence">HTML 80KB</pre>
+        <div class="suggestion">建议：减少无效标记，提高正文占比</div>
+      </div>
+    </details>
+<details class="page-detail" id="p-https://www.xspark.cn/pricing/datacenter-proxies">
+      <summary><span class="num" style="color:#059669">98</span> /pricing/datacenter-proxies <span class="subtitle">静态数据中心代理价格｜固定IP套餐与批量采购 - Xspark</span></summary>
+      <div class="page-meta">https://www.xspark.cn/pricing/datacenter-proxies · HTTP 200 · 1162 词 · LCP 0.35s · CLS 0.000</div>
+      
+      <div class="issue low">
+        <div class="issue-head"><span class="pill low">低</span><b>文本/HTML 比例偏低</b><code>content-text-ratio</code></div>
+        <div class="issue-msg">3.1%</div>
+        <pre class="evidence">HTML 55KB</pre>
+        <div class="suggestion">建议：减少无效标记，提高正文占比</div>
+      </div>
+      <div class="issue info">
+        <div class="issue-head"><span class="pill info">提示</span><b>未发现结构化数据</b><code>structured-none</code></div>
+        <div class="issue-msg"></div>
+        
+        <div class="suggestion">建议：按页面类型补充 Organization / Product / FAQ / Breadcrumb 等 Schema</div>
+      </div>
+      <div class="issue info">
+        <div class="issue-head"><span class="pill info">提示</span><b>图片格式偏旧</b><code>perf-img-format</code></div>
+        <div class="issue-msg">37/66 张为 jpg/png</div>
+        
+        <div class="suggestion">建议：优先 WebP/AVIF，保留兼容回退</div>
+      </div>
+    </details>
+<details class="page-detail" id="p-https://www.xspark.cn/product/isp-proxies">
+      <summary><span class="num" style="color:#b45309">86</span> /product/isp-proxies <span class="subtitle">静态ISP代理｜独享住宅IP与固定出口 - Xspark</span></summary>
+      <div class="page-meta">https://www.xspark.cn/product/isp-proxies · HTTP 200 · 2206 词 · LCP 0.35s · CLS 0.000</div>
+      
+      <div class="issue medium">
+        <div class="issue-head"><span class="pill medium">中</span><b>页面体积过大</b><code>perf-weight-large</code></div>
+        <div class="issue-msg">3.81MB</div>
+        <pre class="evidence">58 个请求</pre>
+        <div class="suggestion">建议：压缩/懒加载/按需加载资源</div>
+      </div>
+      <div class="issue medium">
+        <div class="issue-head"><span class="pill medium">中</span><b>JS 体积过大</b><code>perf-js-large</code></div>
+        <div class="issue-msg">1269KB</div>
+        
+        <div class="suggestion">建议：代码分割、移除未使用依赖</div>
+      </div>
+      <div class="issue low">
+        <div class="issue-head"><span class="pill low">低</span><b>文本/HTML 比例偏低</b><code>content-text-ratio</code></div>
+        <div class="issue-msg">5.6%</div>
+        <pre class="evidence">HTML 53KB</pre>
+        <div class="suggestion">建议：减少无效标记，提高正文占比</div>
+      </div>
+      <div class="issue info">
+        <div class="issue-head"><span class="pill info">提示</span><b>未发现结构化数据</b><code>structured-none</code></div>
+        <div class="issue-msg"></div>
+        
+        <div class="suggestion">建议：按页面类型补充 Organization / Product / FAQ / Breadcrumb 等 Schema</div>
+      </div>
+    </details>
+<details class="page-detail" id="p-https://www.xspark.cn/pricing/isp-proxies">
+      <summary><span class="num" style="color:#059669">98</span> /pricing/isp-proxies <span class="subtitle">静态ISP代理价格｜住宅IP套餐与购买 - Xspark</span></summary>
+      <div class="page-meta">https://www.xspark.cn/pricing/isp-proxies · HTTP 200 · 865 词 · LCP 0.30s · CLS 0.000</div>
+      
+      <div class="issue low">
+        <div class="issue-head"><span class="pill low">低</span><b>文本/HTML 比例偏低</b><code>content-text-ratio</code></div>
+        <div class="issue-msg">2.4%</div>
+        <pre class="evidence">HTML 47KB</pre>
+        <div class="suggestion">建议：减少无效标记，提高正文占比</div>
+      </div>
+      <div class="issue info">
+        <div class="issue-head"><span class="pill info">提示</span><b>未发现结构化数据</b><code>structured-none</code></div>
+        <div class="issue-msg"></div>
+        
+        <div class="suggestion">建议：按页面类型补充 Organization / Product / FAQ / Breadcrumb 等 Schema</div>
+      </div>
+    </details>
+
+  <footer>由 Heimdall SEO 审计生成 · 规则引擎 v1 · 分数 = 100 − 严重度扣分（严重25/高12/中6/低2）· 本报告仅用于内部分析</footer>
+</div>
+</body>
+</html>

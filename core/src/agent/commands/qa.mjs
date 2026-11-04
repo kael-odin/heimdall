@@ -16,7 +16,8 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
-import { runAgentCommand, parseArgs } from '../cli.mjs';
+import { runAgentCommand, parseArgs, argsFor } from '../cli.mjs';
+import { runQaCi } from '../../qa/ci.mjs';
 import { CONFIG_DIR, CONFIG_FILE, QA_SCHEMA, inWorkspace } from '../../qa/workspace.mjs';
 import { openWorkspace, readRun } from '../../qa/run.mjs';
 import { writeBaseline, clearBaseline } from '../../qa/baseline.mjs';
@@ -29,6 +30,8 @@ const USAGE = `heimdall qa <子命令>
   status                              站点、登录档、最近运行、测试须知
   run [站点] [--pages /a,/b] [--viewports 1440,390] [--checks 文件] [--no-links] [--texts] [--explore] [--no-baseline]
       --explore                       显式开启交互探索：每页点最多 6 个控件，找「点了没反应 / 点出异常 / 点出 404」
+  ci [站点] [--fail-on all|wall|degrade|none] [--max-findings N] [--github|--no-github]
+      在 CI 中运行同一套只读 QA，写 qa-ci.json / qa-ci.md，并输出 GitHub Actions 注解
   baseline [--run ID] [--off]         把某次运行登记为跨运行视觉基线；--off 清除
   findings [--status all] [--run ID]  列出发现（默认只列建议提单的）
   show <F编号>                        一条发现的全部证据
@@ -128,6 +131,31 @@ async function baseline(flags) {
   return 0;
 }
 
+async function ci(flags, positional) {
+  const args = argsFor('qa_run', { flags, positional });
+  const github = flags.github === true || (process.env.GITHUB_ACTIONS === 'true' && flags['no-github'] !== true);
+  const maxFindings = Number(flags['max-findings'] ?? 0);
+  if (!Number.isInteger(maxFindings) || maxFindings < 0) {
+    process.stderr.write('--max-findings 必须是非负整数\n');
+    return 2;
+  }
+  const result = await runQaCi({
+    args,
+    failOn: String(flags['fail-on'] ?? 'all'),
+    maxFindings,
+    github,
+    onProgress: p => process.stderr.write(`… ${p.message ?? p.stage ?? 'progress'}\n`),
+  });
+  if (flags.json) {
+    process.stdout.write(JSON.stringify(result.env) + '\n');
+  } else {
+    process.stdout.write(result.env.summary + '\n');
+    if (!result.env.ok) process.stdout.write(`[${result.env.error.code}] ${result.env.error.message}\n下一步：${result.env.error.hint}\n`);
+    if (github && result.annotations) process.stdout.write(result.annotations + '\n');
+  }
+  return result.exitCode;
+}
+
 export async function run(argv) {  const sub = argv[0];
   const rest = argv.slice(1);
   const { flags, positional } = parseArgs(rest);
@@ -138,6 +166,7 @@ export async function run(argv) {  const sub = argv[0];
       case 'login': return await login(positional[0], flags);
       case 'status': return runAgentCommand('qa_status', passthrough(flags, COMMON));
       case 'run': return runAgentCommand('qa_run', [...positional.slice(0, 1).flatMap(s => ['--site', s]), ...passthrough(flags, [...COMMON, 'site', 'pages', 'viewports', 'checks', 'no-links', 'texts', 'login', 'label', 'link-limit', 'explore', 'no-baseline', 'no-detect', 'explore-max', 'explore-budget'])]);
+      case 'ci': return await ci(flags, positional);
       case 'baseline': return await baseline(flags);;
       case 'findings': case 'list': return runAgentCommand('qa_findings', ['--action', 'list', ...passthrough(flags, [...COMMON, 'status', 'run', 'limit'])]);
       case 'show': return runAgentCommand('qa_findings', ['--action', 'show', '--id', String(positional[0] ?? ''), ...passthrough(flags, [...COMMON, 'run'])]);

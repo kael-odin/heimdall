@@ -37,6 +37,15 @@ node core/src/cli.mjs handoff https://example.org --max-pages 40
 
 跑完在 `core/workspace/<站点>/handoff/README.md` 会有一份交接说明，第一段就写清"发现多少页、完整测到多少页、没测到的卡在哪"——没测到的地方不会藏起来。
 
+要把已有 QA 工作区接进 CI，可运行：
+
+```bash
+heimdall qa ci --site web --viewports 1440,390 --fail-on all --github
+```
+
+它会生成机器可读的 `qa-ci.json`、GitHub Actions 注解和证据目录。模板见
+[QA CI 指南](docs/guide/07-qa-ci.md)，真实授权案例见 [Xspark 公开案例](docs/cases/xspark/2026-11-04/README.md)。
+
 ---
 
 <details>
@@ -271,9 +280,12 @@ CI 配置见 `.github/workflows/`。`CI` 与 `Docs` 已在仓库公开后于 202
 | [PRD.md](PRD.md) | 产品定义：用户、定位、三件套、产品原则 | 想知道"为什么做这个" |
 | [docs/prd/ai-native/](docs/prd/ai-native/README.md) | AI 接入层（Bifröst）：能力注册表、MCP/CLI/HTTP、重建环与门禁 | 规划 AI 接入与演示叙事时 |
 | [docs/guide/01-architecture.md](docs/guide/01-architecture.md) | 当前架构：三层、适配器、还原度公式、产物规范 | 改代码前 |
-| [docs/guide/06-ai-integration.md](docs/guide/06-ai-integration.md) | 接入 Claude Code / Claude Desktop，跑通一句话重建（A-3 手测） | 演示前、接入代理时 |
+| [docs/guide/06-ai-integration.md](docs/guide/06-ai-integration.md) | 接入 Claude Code / Claude Desktop / Codex，跑通一句话重建（A-3 手测） | 演示前、接入代理时 |
+| [docs/guide/07-qa-ci.md](docs/guide/07-qa-ci.md) | 把 `qa ci` 接进 GitHub Actions，使用稳定退出码、注解和证据 | 给项目加自动 QA 时 |
+| [docs/guide/08-ai-workflows.md](docs/guide/08-ai-workflows.md) | Claude Code / Codex 的克隆、重建、SEO、监控和 QA 标准提示词 | 已经接通 MCP 时 |
 | [docs/DELIVERY.md](docs/DELIVERY.md) | 三种产物的区别、认证站点怎么处理 | 想知道"我该拿哪一种走" |
 | [docs/TEST-WORKSPACE.md](docs/TEST-WORKSPACE.md) | 测试工作区：登录档、只读探测、裁决记忆与提单报告 | 用 Heimdall 测真实项目时 |
+| [docs/cases/README.md](docs/cases/README.md) | 真实授权公开案例索引、证据规则与未覆盖边界 | 想看真实站点证据时 |
 | [docs/competition/acceptance-workbench.md](docs/competition/acceptance-workbench.md) | 项目验收工作台：Mirror / Spec / Regression、断言与边界 | 运行验收或接 CI |
 | [RISKS.md](RISKS.md) | 合规红线、技术风险预案、演示日 checklist | 每周对一遍 |
 | [DEMO-SCRIPT.md](DEMO-SCRIPT.md) | 演示脚本 + 评委问答预案 | 答辩前 |

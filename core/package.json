@@ -53,6 +53,7 @@
     "test:acceptance": "node scripts/test-core.mjs --acceptance",
     "lint": "node scripts/check-syntax.mjs",
     "check:docs": "node scripts/check-markdown-links.mjs",
+    "check:cases": "node scripts/check-public-cases.mjs",
     "check:frozen": "node scripts/check-frozen-verifier.mjs",
     "smoke": "node scripts/smoke-forge.mjs",
     "queue": "node src/queue.mjs",

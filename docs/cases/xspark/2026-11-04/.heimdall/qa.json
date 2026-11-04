@@ -1,0 +1,45 @@
+{
+  "schema": "heimdall.qa/1",
+  "project": "Xspark public QA case",
+  "sites": {
+    "web": {
+      "label": "Xspark 官网",
+      "url": "https://www.xspark.cn/",
+      "environment": "production",
+      "pages": [
+        "/",
+        "/product/isp-proxies",
+        "/product/datacenter-proxies",
+        "/pricing/isp-proxies",
+        "/pricing/datacenter-proxies"
+      ],
+      "login": null,
+      "writes": "block"
+    }
+  },
+  "logins": {},
+  "conventions": [
+    {
+      "id": "star-alias",
+      "text": "评价卡片使用「星火」昵称是可接受的团队约定",
+      "match": {
+        "text": "星火"
+      }
+    }
+  ],
+  "ledger": {
+    "file": null
+  },
+  "knowledge": {
+    "prd": [],
+    "notes": []
+  },
+  "defaults": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "settleMs": 2000,
+    "timeoutMs": 35000
+  }
+}

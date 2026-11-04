@@ -9,6 +9,9 @@
  *   heimdall://site/{siteId}/page/{page}/brief{?detail,sectionId}
  *   heimdall://site/{siteId}/page/{page}/sections
  *   heimdall://site/{siteId}/page/{page}/ref/{viewport}.png{?y,h}
+ *   heimdall://site/{siteId}/seo{?,/html,/csv,/diff}
+ *   heimdall://site/{siteId}/watch{?,/html}
+ *   heimdall://matrix/{slug}{?,/html,/csv}
  *   heimdall://run/{runId}/fixpacket          修复包 JSON
  *   heimdall://run/{runId}/packet             修复包文本视图
  *   heimdall://run/{runId}/crop/{regionId}/composite.png
@@ -16,7 +19,7 @@
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { DATA_ROOT, isInside } from '../paths.mjs';
+import { DATA_ROOT, WORKSPACE, isInside } from '../paths.mjs';
 import { CapabilityError, nextAction } from './envelope.mjs';
 import { sha256, RUN_ID, JOB_ID } from './ids.mjs';
 import { isSecretPath } from './secrets.mjs';
@@ -31,6 +34,9 @@ export const RESOURCE_TEMPLATES = Object.freeze([
   { uriTemplate: 'heimdall://site/{siteId}/page/{page}/brief{?detail,sectionId}', name: 'brief', title: '页面简报（默认 outline）', mimeType: 'application/json' },
   { uriTemplate: 'heimdall://site/{siteId}/page/{page}/sections', name: 'sections', title: '分段计划', mimeType: 'application/json' },
   { uriTemplate: 'heimdall://site/{siteId}/page/{page}/ref/{viewport}.png{?y,h}', name: 'ref-shot', title: '参考截图（可纵向裁剪）', mimeType: 'image/png' },
+  { uriTemplate: 'heimdall://site/{siteId}/seo/{format}', name: 'seo-report', title: 'SEO 审计报告（json / html / csv / diff）', mimeType: 'application/json' },
+  { uriTemplate: 'heimdall://site/{siteId}/watch/{format}', name: 'watch-report', title: '站点变更报告（json / html）', mimeType: 'application/json' },
+  { uriTemplate: 'heimdall://matrix/{slug}/{format}', name: 'seo-matrix', title: '竞品 SEO 矩阵（json / html / csv）', mimeType: 'application/json' },
   { uriTemplate: 'heimdall://run/{runId}/fixpacket', name: 'fixpacket', title: '修复包', mimeType: 'application/json' },
   { uriTemplate: 'heimdall://run/{runId}/packet', name: 'packet-text', title: '修复包文本视图', mimeType: 'text/plain' },
   { uriTemplate: 'heimdall://run/{runId}/crop/{regionId}/composite.png', name: 'crop', title: '区域裁剪对比图（参考 · 候选 · 差异）', mimeType: 'image/png' },
@@ -63,6 +69,38 @@ export function resolveUri(uri) {
       return { kind: 'ref-shot', mime: 'image/png', siteId, page, viewport: Number(m[1]), file: SAFE_FILE(DATA_ROOT, join(referenceDir(siteId, page), `${m[1]}.png`)),
         params: { y: q.y !== undefined ? Number(q.y) : undefined, h: q.h !== undefined ? Number(q.h) : undefined } };
     }
+  }
+  if (parts[0] === 'site' && parts.length >= 3) {
+    const siteId = assertSiteId(parts[1]);
+    const format = parts[3] ?? 'json';
+    if (parts[2] === 'seo' && parts.length <= 4) {
+      const files = {
+        json: ['seo.json', 'application/json'],
+        html: ['seo.html', 'text/html; charset=utf-8'],
+        csv: ['seo.csv', 'text/csv; charset=utf-8'],
+        diff: ['diff.md', 'text/markdown; charset=utf-8'],
+      };
+      const selected = files[format];
+      if (selected) return { kind: 'seo-report', mime: selected[1], siteId, format, file: SAFE_FILE(DATA_ROOT, join(WORKSPACE, siteId, 'seo', selected[0])) };
+    }
+    if (parts[2] === 'watch' && parts.length <= 4) {
+      const files = {
+        json: ['watch.json', 'application/json'],
+        html: ['watch.html', 'text/html; charset=utf-8'],
+      };
+      const selected = files[format];
+      if (selected) return { kind: 'watch-report', mime: selected[1], siteId, format, file: SAFE_FILE(DATA_ROOT, join(WORKSPACE, siteId, 'watch', selected[0])) };
+    }
+  }
+  if (parts[0] === 'matrix' && parts.length >= 2 && parts.length <= 3 && /^[A-Za-z0-9._-]{1,180}$/.test(parts[1] ?? '')) {
+    const format = parts[2] ?? 'json';
+    const files = {
+      json: ['matrix.json', 'application/json'],
+      html: ['matrix.html', 'text/html; charset=utf-8'],
+      csv: ['matrix.csv', 'text/csv; charset=utf-8'],
+    };
+    const selected = files[format];
+    if (selected) return { kind: 'seo-matrix', mime: selected[1], slug: parts[1], format, file: SAFE_FILE(DATA_ROOT, join(WORKSPACE, '_matrix', parts[1], selected[0])) };
   }
   if (parts[0] === 'run' && RUN_ID.test(parts[1] ?? '')) {
     const loc = locateRun(parts[1]);

@@ -1,0 +1,58 @@
+{
+  "schema": "heimdall.qa-ci/1",
+  "generatedAt": "2026-11-04T12:58:37.730Z",
+  "failOn": "all",
+  "maxFindings": 0,
+  "result": {
+    "runId": "qa-20261104-205755-ddbc",
+    "site": "web",
+    "summary": {
+      "total": 57,
+      "fileable": 0,
+      "new": 55,
+      "knownBug": 0,
+      "suppressed": 2,
+      "reopened": 0,
+      "tolerable": 55,
+      "environment": 0,
+      "checkNeedsFix": 0
+    },
+    "fileable": [],
+    "environment": [],
+    "checks": [],
+    "detection": {
+      "enabled": true,
+      "pages": 10,
+      "findings": 65,
+      "detectors": [
+        "layout-tap-target",
+        "layout-text-clipped",
+        "perf-oversized-image"
+      ],
+      "byKind": {
+        "layout": 40,
+        "perf": 17
+      }
+    },
+    "explore": {
+      "enabled": false
+    },
+    "baseline": {
+      "enabled": true,
+      "compared": 10,
+      "skipped": [],
+      "scope": "基线与本次同站同页同视口比对 10 对；低于 98% 的记一条回归发现。动态内容会对相似度有影响，请结合差异图复核。"
+    },
+    "report": ".heimdall/qa/runs/qa-20261104-205755-ddbc/report.md",
+    "bugs": ".heimdall/qa/runs/qa-20261104-205755-ddbc/bugs.md",
+    "runDir": ".heimdall/qa/runs/qa-20261104-205755-ddbc"
+  },
+  "gate": {
+    "status": "passed",
+    "failOn": "all",
+    "maxFindings": 0,
+    "fileable": 0,
+    "findings": []
+  },
+  "annotations": ""
+}

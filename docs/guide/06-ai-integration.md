@@ -179,19 +179,36 @@ heimdall connect vscode     # 全局 %APPDATA%\Code\User\mcp.json，键名是 se
 VS Code 的键名是 `servers` 且每项要 `type: "stdio"`，`connect` 已按客户端分别生成。
 改完重启客户端，验证方式同上。
 
+## 4.1 Codex App / Codex CLI
+
+Codex 使用 TOML 配置，不需要手改。先启动引擎，再运行：
+
+```bash
+heimdall connect codex --dry-run
+heimdall connect codex
+```
+
+写入位置是 `%USERPROFILE%\.codex\config.toml`，只维护
+`[mcp_servers.heimdall]` 和它的 `env` 子表，不会重写其它 MCP 服务器。
+重新打开 Codex 后，让它先调用 `heimdall_doctor`。
+
+当前 MCP 能力包括：环境检查、站点总览、克隆、简报、比对、任务、QA、
+SEO 审计、竞品 SEO 矩阵和站点变更监控。完整控制台能力仍然比 MCP 多，
+例如交付包、人工验收和完整教学界面。
+
 ---
 
 ## 5. 验收记录
 
 **2026-10-31 本机结果（Claude Code 插件 MCP，本会话）**
 
-- 插件安装后 `/mcp` 显示 `plugin:heimdall:heimdall ✔ Connected`，共 11 个工具；
+- 历史记录：插件安装后 `/mcp` 显示 `plugin:heimdall:heimdall ✔ Connected`，当时共 11 个工具；当前新增 SEO 审计、SEO 矩阵和站点监控后为 14 个；
 - F1 重建工作区 `core/workspace/_demo/f1-a3`：**6/6 分段 `pass-candidate`**，整页 375 99.89% / 768 99.91% / 1440 100.00%（达到 gold）；
 - 唯一需要修的差异：窄视口 footer-bottom 多了 20px 上内边距与分隔线；修复包用 `样式差` 直接指出 `paddingTop 参考 0px / 候选 20px`，一次改完；
 - 六维门禁：`passed`（gold）；正式裁判：**passed silver**，验收视觉 3/3、结构 3/3、健康 12/12；
 - 交付：`core/workspace/127.0.0.1--origin-5c84d1d15de129f0/agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed，25 个项目文件 + 8 个镜像文件）；
 - 记录：8 次 compare，约 3 分钟；本会话模型标识 `claude-fable-ccs-272433[1m]`（由运行环境报告）。
-- **Claude Desktop**：2026-10-31 界面 `heimdall_doctor` 返回 **9/9 通过**（操作者贴回结果，总体「环境就绪」）；配置与 stdio 也已验证（11 个工具）。一键重建的首次成功以 Claude Code 为准，Desktop 目前记录为「连通通过」。
+- **Claude Desktop**：2026-10-31 界面 `heimdall_doctor` 返回 **9/9 通过**（操作者贴回结果，总体「环境就绪」）；配置与 stdio 也已验证。当前连接支持和 Codex TOML 支持已补入 `heimdall connect`。
 
 跑完每个客户端填一行，作为 A-3 的证据：
 

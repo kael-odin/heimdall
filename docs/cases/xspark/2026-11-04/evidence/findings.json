@@ -1,0 +1,2110 @@
+[
+  {
+    "id": "F1",
+    "fingerprint": "fp_51a13f235566",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "layout",
+    "title": "文字被裁切：Xspark星火启幕 · 静态ISP限时半价 [5折开通+免费测试] 快速领取",
+    "basis": "wrong",
+    "tier": "degrade",
+    "loss": "访客看不全这段话（被省略号或容器截断），关键信息可能正好在截掉的部分",
+    "observed": "显示宽度 1px / 内容宽度 455px，只露出约 0%",
+    "target": "a:nth-of-type(1) > span:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "打开 /（1440px）",
+      "定位 a:nth-of-type(1) > span:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "1440x900",
+      "detector": "layout-text-clipped",
+      "count": 1,
+      "screenshot": "shots/page-_-1440-a9a664.png"
+    },
+    "detector": "layout-text-clipped",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.717Z",
+    "seen": 2,
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "triage": {
+      "status": "suppressed",
+      "rule": "conv:star-alias",
+      "verdict": "convention",
+      "reason": "评价卡片用「星火」昵称可接受",
+      "at": "1970-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "id": "F2",
+    "fingerprint": "fp_00373ae8dc89",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：产品",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_-1440-a9a664.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F3",
+    "fingerprint": "fp_dee5528d1fa2",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 76×21：使用场景",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 76×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_-1440-a9a664.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F4",
+    "fingerprint": "fp_79d2fe0caf86",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：资源",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_-1440-a9a664.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F5",
+    "fingerprint": "fp_184526bdfb76",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 84×19：企业测试申请",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 84×19px，低于 24px",
+    "target": "div:nth-of-type(1) > nav:nth-of-type(1) > div:nth-of-type(1) > ul:nth-of-type(1) > li:nth-of-type(2) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /",
+      "定位 div:nth-of-type(1) > nav:nth-of-type(1) > div:nth-of-type(1) > ul:nth-of-type(1) > li:nth-of-type(2) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_-1440-a9a664.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F6",
+    "fingerprint": "fp_8aac024ccbbf",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/home/integration/logo-adspower.webp",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 347px，显示宽 110px（3.2 倍）",
+    "target": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 9,
+      "screenshot": "shots/page-_-1440-a9a664.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F7",
+    "fingerprint": "fp_2eaa27e14e3a",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/home/integration/logo-hubstudio.webp",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 383px，显示宽 119px（3.2 倍）",
+    "target": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 9,
+      "screenshot": "shots/page-_-1440-a9a664.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F8",
+    "fingerprint": "fp_16a51ab26654",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/home/integration/logo-dolphin.webp",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 365px，显示宽 116px（3.2 倍）",
+    "target": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 9,
+      "screenshot": "shots/page-_-1440-a9a664.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F9",
+    "fingerprint": "fp_248110c9d447",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/home/integration/logo-bitbrowser.webp",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 323px，显示宽 102px（3.2 倍）",
+    "target": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(5) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 9,
+      "screenshot": "shots/page-_-1440-a9a664.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F10",
+    "fingerprint": "fp_04a7ffd60a0d",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：产品",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_product_isp-proxies-1440-40d194.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F11",
+    "fingerprint": "fp_9dc530839289",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 76×21：使用场景",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 76×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_product_isp-proxies-1440-40d194.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F12",
+    "fingerprint": "fp_fe0409c3a006",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：资源",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_product_isp-proxies-1440-40d194.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F13",
+    "fingerprint": "fp_29deeba35653",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 84×19：企业测试申请",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 84×19px，低于 24px",
+    "target": "div:nth-of-type(1) > nav:nth-of-type(1) > div:nth-of-type(1) > ul:nth-of-type(1) > li:nth-of-type(2) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/isp-proxies",
+      "定位 div:nth-of-type(1) > nav:nth-of-type(1) > div:nth-of-type(1) > ul:nth-of-type(1) > li:nth-of-type(2) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_product_isp-proxies-1440-40d194.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F14",
+    "fingerprint": "fp_87c775535640",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/product/hero/hero-visual.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 1200px，显示宽 600px（2.0 倍）",
+    "target": "main:nth-of-type(1) > section:nth-of-type(1) > div:nth-of-type(1) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/isp-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 2,
+      "screenshot": "shots/page-_product_isp-proxies-1440-40d194.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F15",
+    "fingerprint": "fp_744251d2c33c",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/home/footer/qr-wechat.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 627px，显示宽 160px（3.9 倍）",
+    "target": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/isp-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 2,
+      "screenshot": "shots/page-_product_isp-proxies-1440-40d194.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 2,
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F16",
+    "fingerprint": "fp_d960703a8ed6",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：产品",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_product_datacenter-proxies-1440-f54bd5.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F17",
+    "fingerprint": "fp_1df706978bd9",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 76×21：使用场景",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 76×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_product_datacenter-proxies-1440-f54bd5.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F18",
+    "fingerprint": "fp_c98eeea3f8bc",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：资源",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_product_datacenter-proxies-1440-f54bd5.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F19",
+    "fingerprint": "fp_e8ade3d43a2e",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 84×19：企业测试申请",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 84×19px，低于 24px",
+    "target": "div:nth-of-type(1) > nav:nth-of-type(1) > div:nth-of-type(1) > ul:nth-of-type(1) > li:nth-of-type(2) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/datacenter-proxies",
+      "定位 div:nth-of-type(1) > nav:nth-of-type(1) > div:nth-of-type(1) > ul:nth-of-type(1) > li:nth-of-type(2) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 5,
+      "screenshot": "shots/page-_product_datacenter-proxies-1440-f54bd5.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F20",
+    "fingerprint": "fp_17d2edaa065f",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/product/hero/dc-hero-visual.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 1200px，显示宽 600px（2.0 倍）",
+    "target": "main:nth-of-type(1) > section:nth-of-type(1) > div:nth-of-type(1) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/datacenter-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 2,
+      "screenshot": "shots/page-_product_datacenter-proxies-1440-f54bd5.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F21",
+    "fingerprint": "fp_74af8eb1bd28",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/home/footer/qr-wechat.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 627px，显示宽 160px（3.9 倍）",
+    "target": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /product/datacenter-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 2,
+      "screenshot": "shots/page-_product_datacenter-proxies-1440-f54bd5.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 2,
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F22",
+    "fingerprint": "fp_0a6bfad91eb7",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：产品",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_pricing_isp-proxies-1440-3fe395.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F23",
+    "fingerprint": "fp_496d11dcad04",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 76×21：使用场景",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 76×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_pricing_isp-proxies-1440-3fe395.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F24",
+    "fingerprint": "fp_adcf1892821a",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：资源",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_pricing_isp-proxies-1440-3fe395.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F25",
+    "fingerprint": "fp_8b35f5a4a5c1",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 20×20：目标业务用途说明",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 20×20px，低于 24px",
+    "target": "div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > span:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/isp-proxies",
+      "定位 div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > span:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_pricing_isp-proxies-1440-3fe395.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F26",
+    "fingerprint": "fp_49185bc8f602",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/why/isp-resource.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 838px，显示宽 419px（2.0 倍）",
+    "target": "main:nth-of-type(1) > section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > article:nth-of-type(1) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/isp-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 2,
+      "screenshot": "shots/page-_pricing_isp-proxies-1440-3fe395.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 2,
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F27",
+    "fingerprint": "fp_58804e9b3385",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/home/footer/qr-wechat.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 627px，显示宽 160px（3.9 倍）",
+    "target": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/isp-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 2,
+      "screenshot": "shots/page-_pricing_isp-proxies-1440-3fe395.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 2,
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F28",
+    "fingerprint": "fp_a29ceffd8b5a",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：产品",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-1440-4b3143.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F29",
+    "fingerprint": "fp_fec435fd1233",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 76×21：使用场景",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 76×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(3)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-1440-4b3143.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F30",
+    "fingerprint": "fp_e89021e27b33",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 48×21：资源",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 48×21px，低于 24px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > nav:nth-of-type(1) > button:nth-of-type(4)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-1440-4b3143.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F31",
+    "fingerprint": "fp_d67c82f984b1",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 20×20：目标业务用途说明",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 1440px 宽下可点区域 20×20px，低于 24px",
+    "target": "div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > span:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/datacenter-proxies",
+      "定位 div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > span:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-1440-4b3143.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 1,
+    "viewports": [
+      "1440x900"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F32",
+    "fingerprint": "fp_94a53fb0f27b",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/why/dc-speed.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 838px，显示宽 419px（2.0 倍）",
+    "target": "main:nth-of-type(1) > section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > article:nth-of-type(1) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/datacenter-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 2,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-1440-4b3143.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 2,
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F33",
+    "fingerprint": "fp_9315240f9732",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/home/footer/qr-wechat.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 627px，显示宽 160px（3.9 倍）",
+    "target": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > img:nth-of-type(1)",
+    "viewport": "1440x900",
+    "repro": [
+      "在 1440px 宽下打开 /pricing/datacenter-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "1440x900",
+      "detector": "perf-oversized-image",
+      "count": 2,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-1440-4b3143.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.718Z",
+    "seen": 2,
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F34",
+    "fingerprint": "fp_933d98aee73d",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 390×27：Xspark星火启幕 · 静态ISP限时半价 [5折开通+免费测试] 快速领取",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 390×27px，低于 44px",
+    "target": "a:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /",
+      "定位 a:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_-390-cb5011.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "suppressed",
+      "rule": "conv:star-alias",
+      "verdict": "convention",
+      "reason": "评价卡片用「星火」昵称可接受",
+      "at": "1970-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "id": "F35",
+    "fingerprint": "fp_c795aea3f3a9",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 72×36：免费试用",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 72×36px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_-390-cb5011.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F36",
+    "fingerprint": "fp_b533432a778b",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 38×38：打开菜单",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 38×38px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_-390-cb5011.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F37",
+    "fingerprint": "fp_edf5a76d3f92",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 120×40：查看详情",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 120×40px，低于 44px",
+    "target": "section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > article:nth-of-type(1) > div:nth-of-type(2) > a:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /",
+      "定位 section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > article:nth-of-type(1) > div:nth-of-type(2) > a:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 7,
+      "screenshot": "shots/page-_-390-cb5011.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F38",
+    "fingerprint": "fp_268a5f68c59b",
+    "site": "web",
+    "path": "/",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/home/footer/qr-wechat.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 627px，显示宽 160px（3.9 倍）",
+    "target": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > img:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/",
+      "viewport": "390x844",
+      "detector": "perf-oversized-image",
+      "count": 1,
+      "screenshot": "shots/page-_-390-cb5011.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F39",
+    "fingerprint": "fp_7046eb4fad0d",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 72×36：免费试用",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 72×36px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /product/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 11,
+      "screenshot": "shots/page-_product_isp-proxies-390-f524a7.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F40",
+    "fingerprint": "fp_0b0ca5714a91",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 38×38：打开菜单",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 38×38px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /product/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 11,
+      "screenshot": "shots/page-_product_isp-proxies-390-f524a7.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F41",
+    "fingerprint": "fp_45b98c19406f",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 73×40：cURL",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 73×40px，低于 44px",
+    "target": "main:nth-of-type(1) > section:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /product/isp-proxies",
+      "定位 main:nth-of-type(1) > section:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 11,
+      "screenshot": "shots/page-_product_isp-proxies-390-f524a7.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F42",
+    "fingerprint": "fp_ea42750731ee",
+    "site": "web",
+    "path": "/product/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 88×40：Python",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 88×40px，低于 44px",
+    "target": "main:nth-of-type(1) > section:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(2)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /product/isp-proxies",
+      "定位 main:nth-of-type(1) > section:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(2)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/isp-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 11,
+      "screenshot": "shots/page-_product_isp-proxies-390-f524a7.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F43",
+    "fingerprint": "fp_c6cf52c436e0",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 72×36：免费试用",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 72×36px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /product/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 11,
+      "screenshot": "shots/page-_product_datacenter-proxies-390-6523cd.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F44",
+    "fingerprint": "fp_cfcb2320b1fe",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 38×38：打开菜单",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 38×38px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /product/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 11,
+      "screenshot": "shots/page-_product_datacenter-proxies-390-6523cd.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F45",
+    "fingerprint": "fp_fb6a1de30610",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 73×40：cURL",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 73×40px，低于 44px",
+    "target": "main:nth-of-type(1) > section:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /product/datacenter-proxies",
+      "定位 main:nth-of-type(1) > section:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 11,
+      "screenshot": "shots/page-_product_datacenter-proxies-390-6523cd.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F46",
+    "fingerprint": "fp_a060500d4c29",
+    "site": "web",
+    "path": "/product/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 88×40：Python",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 88×40px，低于 44px",
+    "target": "main:nth-of-type(1) > section:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(2)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /product/datacenter-proxies",
+      "定位 main:nth-of-type(1) > section:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > button:nth-of-type(2)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/product/datacenter-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 11,
+      "screenshot": "shots/page-_product_datacenter-proxies-390-6523cd.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F47",
+    "fingerprint": "fp_a48c356466fe",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 72×36：免费试用",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 72×36px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 9,
+      "screenshot": "shots/page-_pricing_isp-proxies-390-593119.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F48",
+    "fingerprint": "fp_940629b1f81e",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 38×38：打开菜单",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 38×38px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/isp-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 9,
+      "screenshot": "shots/page-_pricing_isp-proxies-390-593119.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F49",
+    "fingerprint": "fp_4c172f314d3d",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 70×40：3天 试用",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 70×40px，低于 44px",
+    "target": "div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/isp-proxies",
+      "定位 div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 9,
+      "screenshot": "shots/page-_pricing_isp-proxies-390-593119.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F50",
+    "fingerprint": "fp_b5478977d95d",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 70×40：7天",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 70×40px，低于 44px",
+    "target": "div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/isp-proxies",
+      "定位 div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 9,
+      "screenshot": "shots/page-_pricing_isp-proxies-390-593119.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F51",
+    "fingerprint": "fp_290dfb9fbe4d",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/why/isp-tools.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 836px，显示宽 350px（2.4 倍）",
+    "target": "main:nth-of-type(1) > section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > article:nth-of-type(2) > img:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/isp-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "390x844",
+      "detector": "perf-oversized-image",
+      "count": 4,
+      "screenshot": "shots/page-_pricing_isp-proxies-390-593119.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F52",
+    "fingerprint": "fp_da60c83777fc",
+    "site": "web",
+    "path": "/pricing/isp-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/why/isp-stability.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 836px，显示宽 350px（2.4 倍）",
+    "target": "main:nth-of-type(1) > section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > article:nth-of-type(3) > img:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/isp-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/isp-proxies",
+      "viewport": "390x844",
+      "detector": "perf-oversized-image",
+      "count": 4,
+      "screenshot": "shots/page-_pricing_isp-proxies-390-593119.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F53",
+    "fingerprint": "fp_8f9381af761b",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 72×36：免费试用",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 72×36px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 8,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-390-d8f7d5.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F54",
+    "fingerprint": "fp_f21c7d88a971",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 38×38：打开菜单",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 38×38px，低于 44px",
+    "target": "header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/datacenter-proxies",
+      "定位 header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 8,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-390-d8f7d5.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F55",
+    "fingerprint": "fp_e6757e058319",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "layout",
+    "title": "点击目标过小 97×40：7天",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "在 390px 宽下可点区域 97×40px，低于 44px",
+    "target": "div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/datacenter-proxies",
+      "定位 div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(1)"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "390x844",
+      "detector": "layout-tap-target",
+      "count": 8,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-390-d8f7d5.png"
+    },
+    "detector": "layout-tap-target",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 2,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F56",
+    "fingerprint": "fp_2a1fba7f638e",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/why/dc-sessions.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 836px，显示宽 350px（2.4 倍）",
+    "target": "main:nth-of-type(1) > section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > article:nth-of-type(2) > img:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/datacenter-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "390x844",
+      "detector": "perf-oversized-image",
+      "count": 4,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-390-d8f7d5.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  },
+  {
+    "id": "F57",
+    "fingerprint": "fp_8c03ec703ba5",
+    "site": "web",
+    "path": "/pricing/datacenter-proxies",
+    "url": null,
+    "kind": "perf",
+    "title": "图片分辨率远大于显示尺寸：/figma/why/dc-cost.png",
+    "basis": "friction",
+    "tier": "tolerable",
+    "observed": "原图宽 836px，显示宽 350px（2.4 倍）",
+    "target": "main:nth-of-type(1) > section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > article:nth-of-type(3) > img:nth-of-type(1)",
+    "viewport": "390x844",
+    "repro": [
+      "在 390px 宽下打开 /pricing/datacenter-proxies"
+    ],
+    "evidence": {
+      "url": "https://www.xspark.cn/pricing/datacenter-proxies",
+      "viewport": "390x844",
+      "detector": "perf-oversized-image",
+      "count": 4,
+      "screenshot": "shots/page-_pricing_datacenter-proxies-390-d8f7d5.png"
+    },
+    "detector": "perf-oversized-image",
+    "confidence": "observed",
+    "source": "check",
+    "runId": "qa-20261104-205755-ddbc",
+    "at": "2026-11-04T12:58:37.719Z",
+    "seen": 1,
+    "viewports": [
+      "390x844"
+    ],
+    "triage": {
+      "status": "new"
+    }
+  }
+]

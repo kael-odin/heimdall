@@ -19,6 +19,9 @@ import doctor from './capabilities/doctor.mjs';
 import qaStatus from './capabilities/qa-status.mjs';
 import qaRun from './capabilities/qa-run.mjs';
 import qaFindings from './capabilities/qa-findings.mjs';
+import seoAudit from './capabilities/seo-audit.mjs';
+import seoMatrix from './capabilities/seo-matrix.mjs';
+import siteWatch from './capabilities/site-watch.mjs';
 
 export const EFFECTS = Object.freeze(['read', 'write-local', 'browser', 'source-network', 'destructive']);
 export const SCOPES = Object.freeze(['read', 'clone', 'build', 'admin']);
@@ -38,7 +41,10 @@ export function defineCapability(def) {
   return Object.freeze({ legacy: [], artifacts: [], longRunning: false, cli: {}, ...def });
 }
 
-export const CAPABILITIES = Object.freeze([overview, site, brief, artifact, compare, jobs, clone, doctor, qaStatus, qaRun, qaFindings].map(defineCapability));
+export const CAPABILITIES = Object.freeze([
+  overview, site, brief, artifact, compare, jobs, clone, doctor, qaStatus, qaRun, qaFindings,
+  seoAudit, seoMatrix, siteWatch,
+].map(defineCapability));
 
 // 重复 id 或工具名直接拒绝（E1-01 的验收）
 {

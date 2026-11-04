@@ -4,7 +4,7 @@
  *   heimdall connect <client> [--dry-run] [--yes] [--project]
  *   heimdall connect <client> --remove
  *
- * 客户端：claude-code | claude-desktop | cursor | vscode（Ph1）；codex 配置是 TOML，Ph2 再做。
+ * 客户端：claude-code | claude-desktop | cursor | vscode | codex。
  * 流程：检测 → 展示将写入的差异 → 备份 → 写入 → **自测**（用同一份启动命令拉起 stdio 服务，
  * 走 tools/list 与一次 overview）→ 失败时还原备份。
  * 配置里写 node 的绝对路径与 MCP 服务的绝对路径（Windows 原生可用，路径含空格也不怕）。
@@ -23,13 +23,18 @@ const REPO = resolve(CORE_ROOT, '..');
 const SERVER = join(REPO, 'packages', 'mcp', 'bin', 'heimdall-mcp.mjs');
 const NODE = process.execPath;
 const NAME = 'heimdall';
+const APPDATA = process.env.APPDATA ?? join(HOME, 'AppData', 'Roaming');
+const LOCALAPPDATA = process.env.LOCALAPPDATA ?? join(HOME, 'AppData', 'Local');
+const CLAUDE_DESKTOP_DIR = join(APPDATA, 'Claude');
+const CODEX_HOME = process.env.CODEX_HOME ?? join(HOME, '.codex');
 
 /** 各客户端的配置位置与格式（Ph0 S3 在本机逐个查过；写盘格式以能读回为准） */
 export const CLIENTS = Object.freeze({
   'claude-code': { label: 'Claude Code', kind: 'claude-json', file: join(HOME, '.claude.json'), projectFile: '.mcp.json', detect: () => existsSync(join(HOME, '.claude.json')) },
-  'claude-desktop': { label: 'Claude Desktop', kind: 'mcpServers', file: join(process.env.APPDATA ?? join(HOME, 'AppData', 'Roaming'), 'Claude', 'claude_desktop_config.json'), detect: () => existsSync(join(process.env.APPDATA ?? join(HOME, 'AppData', 'Roaming'), 'Claude', 'claude_desktop_config.json')) },
+  'claude-desktop': { label: 'Claude Desktop', kind: 'mcpServers', file: join(CLAUDE_DESKTOP_DIR, 'claude_desktop_config.json'), detect: () => existsSync(CLAUDE_DESKTOP_DIR) || existsSync(join(LOCALAPPDATA, 'Claude')) },
   cursor: { label: 'Cursor', kind: 'mcpServers', file: join(HOME, '.cursor', 'mcp.json'), projectFile: '.cursor/mcp.json', detect: () => existsSync(join(HOME, '.cursor')) },
-  vscode: { label: 'VS Code', kind: 'vscode', file: join(process.env.APPDATA ?? join(HOME, 'AppData', 'Roaming'), 'Code', 'User', 'mcp.json'), projectFile: '.vscode/mcp.json', detect: () => existsSync(join(process.env.APPDATA ?? join(HOME, 'AppData', 'Roaming'), 'Code', 'User')) },
+  vscode: { label: 'VS Code', kind: 'vscode', file: join(APPDATA, 'Code', 'User', 'mcp.json'), projectFile: '.vscode/mcp.json', detect: () => existsSync(join(APPDATA, 'Code', 'User')) },
+  codex: { label: 'Codex', kind: 'codex-toml', file: join(CODEX_HOME, 'config.toml'), detect: () => existsSync(CODEX_HOME) },
 });
 
 const readJsonLoose = (file) => {
@@ -39,8 +44,10 @@ const readJsonLoose = (file) => {
   try { return JSON.parse(text); } catch { throw new CapabilityError('invalid_args', `配置文件不是合法 JSON，先手工修好：${file}`); }
 };
 
+const readText = (file) => existsSync(file) ? readFileSync(file, 'utf8') : '';
+
 /** 按客户端格式，把 heimdall 这一项放进文档；返回 { 新文档, 移除后的文档 } */
-function withServer(client, doc, entry) {
+export function withServer(client, doc, entry) {
   const c = CLIENTS[client];
   const next = structuredClone(doc);
   if (c.kind === 'vscode') {
@@ -53,6 +60,39 @@ function withServer(client, doc, entry) {
     else delete next.mcpServers[NAME];
   }
   return next;
+}
+
+/** 只移除 Heimdall 自己的 TOML 表，保留 Codex 的其它 MCP 服务器和注释。 */
+export function stripCodexServer(text) {
+  const out = [];
+  let skipping = false;
+  for (const line of String(text ?? '').split(/\r?\n/)) {
+    const header = line.match(/^\s*\[([^\]]+)\]\s*(?:#.*)?$/);
+    if (header) skipping = header[1] === 'mcp_servers.heimdall' || header[1].startsWith('mcp_servers.heimdall.');
+    if (!skipping) out.push(line);
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
+function codexServerBlock({ node = NODE, server = SERVER, api = process.env.HEIMDALL_API ?? 'http://127.0.0.1:8900' } = {}) {
+  return [
+    '[mcp_servers.heimdall]',
+    `command = ${JSON.stringify(node)}`,
+    `args = [${JSON.stringify(server.replace(/\\/g, '/'))}]`,
+    'startup_timeout_sec = 30',
+    'tool_timeout_sec = 300',
+    '',
+    '[mcp_servers.heimdall.env]',
+    `HEIMDALL_API = ${JSON.stringify(api)}`,
+  ].join('\n');
+}
+
+/** Codex 使用 TOML；这里只维护一个独立表，避免重写用户其它配置。 */
+export function withCodexServer(text, entry, options = {}) {
+  const base = stripCodexServer(text);
+  if (!entry) return base ? base + '\n' : '';
+  const block = codexServerBlock(options);
+  return (base ? base + '\n\n' : '') + block + '\n';
 }
 
 /** 自测：按写入的启动命令拉起 stdio 服务，tools/list + overview */
@@ -87,7 +127,14 @@ async function selfTest() {
   });
 }
 
-function diffText(before, after, file) {
+function diffText(before, after, file, kind) {
+  if (kind === 'codex-toml') {
+    const beforeHas = /^\s*\[mcp_servers\.heimdall\]\s*$/m.test(String(before ?? ''));
+    const afterHas = /^\s*\[mcp_servers\.heimdall\]\s*$/m.test(String(after ?? ''));
+    return [`文件：${file}`, '节：[mcp_servers.heimdall]',
+      beforeHas ? '- 已有 Heimdall MCP 配置' : '- （无）',
+      afterHas ? '+ 写入 Heimdall MCP 配置（stdio，HEIMDALL_API=http://127.0.0.1:8900）' : '+ （移除）'].join('\n');
+  }
   const keys = new Set([...Object.keys(before.mcpServers ?? before.servers ?? {}), ...Object.keys(after.mcpServers ?? after.servers ?? {})]);
   const lines = [`文件：${file}`, `键：${'mcpServers' in after || 'mcpServers' in before ? 'mcpServers' : 'servers'}`];
   for (const k of keys) {
@@ -105,24 +152,26 @@ async function runConnect(argv) {
   try {
     if (!client || !CLIENTS[client]) throw new CapabilityError('invalid_args', `客户端取 ${Object.keys(CLIENTS).join(' / ')}`, { hint: '例：heimdall connect claude-desktop' });
     const c = CLIENTS[client];
-    const file = flags.project ? resolve(c.projectFile ?? (client === 'claude-code' ? '.mcp.json' : '.cursor/mcp.json')) : c.file;
+    if (flags.project && !c.projectFile) throw new CapabilityError('invalid_args', `${c.label} 只有全局配置，不支持 --project`);
+    const file = flags.project ? resolve(c.projectFile) : c.file;
     if (!existsSync(SERVER)) throw new CapabilityError('internal', `MCP 服务不存在：${SERVER}`, { hint: '在仓库里运行 `pnpm mcp:build` 或 `pnpm -C packages/mcp install`' });
     if (!c.detect() && !flags.project) throw new CapabilityError('not_found', `没检测到 ${c.label}`, { hint: `装好 ${c.label} 再试；或加 --project 写进当前项目` });
-    const before = readJsonLoose(file);
-    const after = withServer(client, before, !flags.remove);
-    if (JSON.stringify(before) === JSON.stringify(after)) return ok({ client, file, changed: false }, { summary: `${c.label} 已经是这个配置，没有改动。` });
-    const diff = diffText(before, after, file);
+    const before = c.kind === 'codex-toml' ? readText(file) : readJsonLoose(file);
+    const after = c.kind === 'codex-toml' ? withCodexServer(before, !flags.remove) : withServer(client, before, !flags.remove);
+    const unchanged = c.kind === 'codex-toml' ? before === after : JSON.stringify(before) === JSON.stringify(after);
+    if (unchanged) return ok({ client, file, changed: false }, { summary: `${c.label} 已经是这个配置，没有改动。` });
+    const diff = diffText(before, after, file, c.kind);
     if (flags['dry-run']) return ok({ client, file, dryRun: true, diff }, { summary: `将写入：\n${diff}` });
     let backup = null;
     mkdirSync(dirname(file), { recursive: true });
     if (existsSync(file)) { backup = `${file}.heimdall-bak`; copyFileSync(file, backup); }
     const tmp = `${file}.tmp-${process.pid}`;
-    writeFileSync(tmp, JSON.stringify(after, null, 2) + '\n');
+    writeFileSync(tmp, typeof after === 'string' ? after : JSON.stringify(after, null, 2) + '\n');
     renameSync(tmp, file);
     // 没移除时才自测（移除之后服务不在了，自测没有意义）
     const test = flags.remove ? null : await selfTest();
     if (test && !test.ok) {
-      if (backup) renameSync(backup, file); else writeFileSync(file, JSON.stringify(before, null, 2) + '\n');
+      if (backup) copyFileSync(backup, file); else writeFileSync(file, typeof before === 'string' ? before : JSON.stringify(before, null, 2) + '\n');
       return fail('internal', `写入后自测失败，已还原：${test.error}`, { hint: '`heimdall doctor` 自检；或手工检查 MCP 服务能否用 node 启动' });
     }
     const warnings = test && test.engine !== 'ok' ? [{ code: 'engine_unreachable', message: 'MCP 服务已连通，但引擎没在跑：克隆类工具会提示先 `heimdall serve`' }] : [];

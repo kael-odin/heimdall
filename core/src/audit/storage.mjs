@@ -35,16 +35,19 @@ function walk(root, seen, localSeen = null) {
       if (e.isDirectory()) { go(p); continue; }
       if (!e.isFile()) continue;
       let st;
-      try { st = statSync(p); } catch { continue; }
+      // NTFS inode/dev values can exceed Number.MAX_SAFE_INTEGER. Asking for
+      // BigInt avoids two distinct files rounding to the same dedupe key.
+      try { st = statSync(p, { bigint: true }); } catch { continue; }
       out.files++;
-      out.logicalBytes += st.size;
-      if (!seen) { out.uniqueBytes += st.size; continue; }
+      const size = Number(st.size);
+      out.logicalBytes += size;
+      if (!seen) { out.uniqueBytes += size; continue; }
       const key = st.dev + ':' + st.ino;
       if (localSeen && !localSeen.has(key)) {
         localSeen.add(key);
-        out.containedUniqueBytes += st.size;
+        out.containedUniqueBytes += size;
       }
-      if (!seen.has(key)) { seen.add(key); out.uniqueBytes += st.size; }
+      if (!seen.has(key)) { seen.add(key); out.uniqueBytes += size; }
     }
   };
   go(root);
@@ -98,12 +101,13 @@ export function computeStorage(opts = {}) {
     for (const e of readdirSync(WORKSPACE, { withFileTypes: true })) {
       if (!e.isFile()) continue;
       let st;
-      try { st = statSync(join(WORKSPACE, e.name)); } catch { continue; }
+      try { st = statSync(join(WORKSPACE, e.name), { bigint: true }); } catch { continue; }
       rootFiles.files++;
-      rootFiles.logicalBytes += st.size;
+      const size = Number(st.size);
+      rootFiles.logicalBytes += size;
       const key = st.dev + ':' + st.ino;
-      if (!seen.has(key)) { seen.add(key); rootFiles.uniqueBytes += st.size; }
-      rootFiles.names.push({ name: e.name, bytes: st.size });
+      if (!seen.has(key)) { seen.add(key); rootFiles.uniqueBytes += size; }
+      rootFiles.names.push({ name: e.name, bytes: size });
     }
     rootFiles.names.sort((a, b) => b.bytes - a.bytes);
   }

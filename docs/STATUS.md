@@ -42,7 +42,7 @@ heimdall rebuild deliver --project .
 仓库已经公开；`CI` 与 `Docs` 已重新启用，本地和 Hosted Node 22 都按同一套确定性门禁收口：
 
 ```bash
-pnpm -C core lint          # 语法 + JSON，701 个文件
+pnpm -C core lint          # 语法 + JSON，710 个文件
 pnpm -C core check:docs    # 文档链接
 pnpm -C core check:frozen  # 验收指纹冻结文件（14 个源文件的字节哈希）
 pnpm -C core test:full     # 全量（含真浏览器、验收存储与控制台 E2E），约 28 分钟
@@ -55,10 +55,10 @@ pnpm check                 # 本地总门禁
 ```
 
 2026-11-03 Hosted Node 22 两分片合计：全量 **3,008 / 3,012 通过，0 失败，4 跳过**。
-`lint` 702 文件、文档 668 个目标 / 128 个文件、冻结验收 14 个文件均通过。
+`lint` 710 文件、文档 691 个目标 / 134 个文件、冻结验收 14 个文件均通过。
 验收基准 18/18、13 个已知 BUG 全检出且 13/13 定位到注入源码；QA 基准 21/21、0 误报。
 Console 最大生产 chunk 为 477.84 kB，无超过 500 kB 的警告；三套官方 registry 审计均无已知漏洞。
-Node 22 的权威结果由 Hosted CI 的两份真实分片共同组成；本机快速集为 1,188/1,188。
+Node 22 的权威结果由 Hosted CI 的两份真实分片共同组成；本轮本机快速集为 1,194/1,194（新增 MCP、QA CI 和案例校验后）。
 
 ## 已知边界（不藏）
 
@@ -116,10 +116,17 @@ Node 22 的权威结果由 Hosted CI 的两份真实分片共同组成；本机�
 
 ## 2026-10-31 A-3：Claude Code 插件闭环
 
-- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通，11 个工具可用。
+- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通；当前能力注册表有 14 个工具，新增 SEO 审计、SEO 矩阵和站点变更监控。
 - 本会话用 MCP 工具完成 F1 重建：6/6 分段 `pass-candidate`，整页 375 99.89% / 768 99.91% / 1440 100%，正式门禁 `passed silver`（验收视觉 3/3、结构 3/3、健康 12/12）。
 - 交付包：`agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed）。
 - Claude Desktop 界面 `heimdall_doctor` 9/9 通过（2026-10-31，操作者贴回结果）；配置与 stdio 也已验证。
+
+## 2026-11-04 MCP 扩展与 QA CI
+
+- `heimdall connect` 新增 Codex TOML 目标；Claude Desktop 的检测不再要求配置文件预先存在。
+- MCP 新增 `heimdall_seo_audit`、`heimdall_seo_matrix`、`heimdall_site_watch`，并支持读取 SEO、监控和矩阵证据资源。
+- 新增 `heimdall qa ci`：保留人工 QA 报告，同时输出机器可读门禁文件、GitHub Actions 注解和步骤摘要。
+- 新增可复制的 GitHub Actions QA 模板和 Claude Code / Codex 标准工作流文档。
 
 ## 2026-10-31 产品打磨
 

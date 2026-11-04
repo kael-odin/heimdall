@@ -14,7 +14,10 @@ import { CAPABILITIES, annotationsOf, defineCapability, describeCapabilities, ge
 import { parseArgs, argsFor } from '../src/agent/cli.mjs';
 
 const CLI = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
-const EXPECTED = ['overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor', 'qa_status', 'qa_run', 'qa_findings'];
+const EXPECTED = [
+  'overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor', 'qa_status', 'qa_run', 'qa_findings',
+  'seo_audit', 'seo_matrix', 'site_watch',
+];
 
 function tempRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-agent-'));
@@ -65,6 +68,15 @@ test('cli: argument parsing maps flags to capability inputs', () => {
   assert.deepEqual(c.viewports, [375, 1440]);
   assert.equal(c.requireGate, true);
   assert.deepEqual(argsFor('jobs', parseArgs(['wait', 'job_abcdefgh', '--wait-ms', '5000'])), { action: 'wait', jobId: 'job_abcdefgh', waitMs: 5000 });
+  assert.deepEqual(argsFor('seo_audit', parseArgs(['https://example.test/', '--max-pages', '12'])), {
+    url: 'https://example.test/', maxPages: 12,
+  });
+  assert.deepEqual(argsFor('seo_matrix', parseArgs(['https://a.test/', 'https://b.test/', '--max-pages', '8'])), {
+    sites: ['https://a.test/', 'https://b.test/'], maxPages: 8,
+  });
+  assert.deepEqual(argsFor('site_watch', parseArgs(['https://example.test/', '--accept', '--max-pages', '5'])), {
+    url: 'https://example.test/', accept: true, maxPages: 5,
+  });
 });
 
 test('cli --json: stdout ends with one envelope line; exit codes follow the table', () => {
@@ -105,4 +117,12 @@ test('cli: --help --json lists agent, cli-only and legacy commands', () => {
   assert.ok(env.result.cliOnly.some(c => c.command === 'rebuild'));
   assert.ok(env.result.legacyCommands.some(c => c.command === 'forge'), 'old commands stay available (E3-06)');
   assert.equal(env.result.exitCodes['4'], 'queued, busy or wait timed out');
+});
+
+test('cli: hyphenated source commands resolve to registry ids', () => {
+  const r = spawnSync(process.execPath, [CLI, 'seo-audit', '--help', '--json'], { encoding: 'utf8', timeout: 30_000 });
+  assert.equal(r.status, 0, r.stderr);
+  const env = JSON.parse(r.stdout.trim());
+  assert.equal(env.result.id, 'seo_audit');
+  assert.equal(env.result.tool, 'heimdall_seo_audit');
 });

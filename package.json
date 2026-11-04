@@ -14,7 +14,7 @@
     "test:full": "pnpm -C core test:full",
     "test:fast": "pnpm -C core test:fast",
     "test:acceptance": "pnpm -C core test:acceptance",
-    "check": "pnpm -C core lint && pnpm -C core check:docs && pnpm -C core check:frozen && pnpm -C console build && pnpm -C core test:fast && pnpm -C packages/mcp test && pnpm -C packages/mcp check:plugin && pnpm skills:check && pnpm run audit && pnpm acceptance:demo:smoke",
+    "check": "pnpm -C core lint && pnpm -C core check:docs && pnpm -C core check:cases && pnpm -C core check:frozen && pnpm -C console build && pnpm -C core test:fast && pnpm -C packages/mcp test && pnpm -C packages/mcp check:plugin && pnpm skills:check && pnpm run audit && pnpm acceptance:demo:smoke",
     "lint": "pnpm -C core lint",
     "build": "pnpm -C console build",
     "docs:links": "pnpm -C core check:docs",

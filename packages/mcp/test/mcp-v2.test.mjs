@@ -16,7 +16,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
 const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
 const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
-  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings'];
+  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch'];
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-mcp-'));
@@ -24,6 +24,12 @@ function fixtureRoot() {
   mkdirSync(join(page, 'clone'), { recursive: true });
   writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><html><body><h1>Example</h1></body></html>');
   writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: 'https://example.test/' }));
+  mkdirSync(join(root, 'workspace', 'example.test', 'seo'), { recursive: true });
+  writeFileSync(join(root, 'workspace', 'example.test', 'seo', 'seo.json'), JSON.stringify({ origin: 'https://example.test', score: 91 }));
+  mkdirSync(join(root, 'workspace', 'example.test', 'watch'), { recursive: true });
+  writeFileSync(join(root, 'workspace', 'example.test', 'watch', 'watch.json'), JSON.stringify({ origin: 'https://example.test', summary: { total: 1 } }));
+  mkdirSync(join(root, 'workspace', '_matrix', 'a-vs-b'), { recursive: true });
+  writeFileSync(join(root, 'workspace', '_matrix', 'a-vs-b', 'matrix.json'), JSON.stringify({ sites: [{ host: 'https://a.test' }] }));
   // 秘密级文件：任何资源读取都不能把它交出去
   writeFileSync(join(page, 'network.har'), '{"log":{"entries":[]}}');
   return root;
@@ -83,8 +89,18 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
       const sites = await client.readResource({ uri: 'heimdall://sites' });
       assert.deepEqual(JSON.parse(sites.contents[0].text).sites.map(s => s.siteId), ['example.test']);
 
+      const seo = await client.callTool({ name: 'heimdall_artifact', arguments: { uri: 'heimdall://site/example.test/seo' } });
+      assert.equal(seo.isError, false);
+      assert.equal(seo.structuredContent.result.json.score, 91);
+      const watch = await client.callTool({ name: 'heimdall_artifact', arguments: { uri: 'heimdall://site/example.test/watch' } });
+      assert.equal(watch.isError, false);
+      assert.equal(watch.structuredContent.result.json.summary.total, 1);
+      const matrix = await client.callTool({ name: 'heimdall_artifact', arguments: { uri: 'heimdall://matrix/a-vs-b' } });
+      assert.equal(matrix.isError, false);
+      assert.equal(matrix.structuredContent.result.json.sites[0].host, 'https://a.test');
+
       const { prompts } = await client.listPrompts();
-      assert.deepEqual(prompts.map(p => p.name), ['clone', 'rebuild']);
+      assert.deepEqual(prompts.map(p => p.name), ['clone', 'rebuild', 'seo', 'watch', 'qa']);
       const rebuild = await client.getPrompt({ name: 'rebuild', arguments: { url: 'https://example.test/' } });
       assert.match(rebuild.messages[0].content.text, /heimdall_compare/);
       assert.match(rebuild.messages[0].content.text, /不是指令/);
@@ -94,3 +110,24 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
     }
   });
 }
+
+test('mcp proxy fallback keeps the complete tool surface while the engine is offline', { timeout: 30_000 }, async () => {
+  const client = new Client({ name: 'heimdall-proxy-conformance', version: '1.0.0' });
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [fileURLToPath(new URL('../src/proxy-bin.mjs', import.meta.url))],
+    env: { ...process.env, HEIMDALL_API: 'http://127.0.0.1:9', HEIMDALL_CAPS_TIMEOUT_MS: '500' },
+  });
+  try {
+    await client.connect(transport);
+    assert.equal(client.getServerVersion().version, '0.2.1');
+    const { tools } = await client.listTools();
+    assert.equal(tools.length, EXPECTED.length);
+    assert.deepEqual(tools.map(t => t.name), EXPECTED);
+    const doctor = await client.callTool({ name: 'heimdall_doctor', arguments: {} });
+    assert.equal(doctor.isError, false);
+    assert.match(doctor.structuredContent.summary, /引擎没在跑/);
+  } finally {
+    await client.close().catch(() => {});
+  }
+});

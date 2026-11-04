@@ -1,0 +1,170 @@
+{
+  "schema": "heimdall.public-case/1",
+  "case": "xspark-public-web-qa",
+  "project": "Xspark",
+  "capturedAt": "2026-11-04T12:58:37.721Z",
+  "authorization": "Owner-approved public production pages",
+  "tool": {
+    "name": "Heimdall",
+    "version": "2.0.0-dev",
+    "sourceCommit": "70c5a493db4077a080ac288b37a8e65fd80b0187",
+    "workingTreeAtRun": true
+  },
+  "target": {
+    "site": "web",
+    "origin": "https://www.xspark.cn/",
+    "pages": [
+      "/",
+      "/product/isp-proxies",
+      "/product/datacenter-proxies",
+      "/pricing/isp-proxies",
+      "/pricing/datacenter-proxies"
+    ],
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "login": null,
+    "writes": "block"
+  },
+  "run": {
+    "id": "qa-20261104-205755-ddbc",
+    "renders": 10,
+    "findings": 57,
+    "fileable": 0,
+    "suppressed": 2,
+    "tolerable": 55,
+    "detectorHits": 65,
+    "baselinePairs": 10,
+    "regressions": 0,
+    "ciGate": "passed"
+  },
+  "seo": {
+    "jobId": "job_6acjahp2",
+    "pages": 5,
+    "score": 90.8,
+    "grade": "A",
+    "issues": 16,
+    "bySeverity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 6,
+      "low": 5,
+      "info": 5
+    },
+    "fieldData": "unavailable: HEIMDALL_PSI_KEY not configured"
+  },
+  "limitations": [
+    "No authenticated dashboard or admin pages",
+    "No write flows, checkout, payment, or account mutations",
+    "No business-rule assertions beyond the declared QA checks",
+    "This is one production sample, not a claim that every site reproduces identically"
+  ],
+  "files": [
+    {
+      "path": ".heimdall/qa.json",
+      "bytes": 868,
+      "sha256": "39170349d17e2fed07ce13e6df30a46acdaa8a7f163b4538ce6be9d9a5894586"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3429,
+      "sha256": "892a83dd412aefe7ea35ef1ca0af6c066edcde26d70e507469fff250e7f527ab"
+    },
+    {
+      "path": "evidence/findings.json",
+      "bytes": 67240,
+      "sha256": "75e1ab47ff13b753e85e73de676a392de01d79070d1ab5e36eecb4fc5470f07d"
+    },
+    {
+      "path": "evidence/qa-ci.json",
+      "bytes": 1401,
+      "sha256": "05b3d8cb8ec6b3d8dd6e0d43da06751b3193d76bdcbb5a3b206433d438d46662"
+    },
+    {
+      "path": "evidence/qa-ci.md",
+      "bytes": 618,
+      "sha256": "1373b1ba3e26a4c6d1ad004b7f61185c35d96f410f05c2645ecd728333dafe62"
+    },
+    {
+      "path": "evidence/report.md",
+      "bytes": 12173,
+      "sha256": "899efb1f19d74fcab321cf903dd3f06d1c1cf47f5e544d44dae39f863f74b4f7"
+    },
+    {
+      "path": "evidence/run.json",
+      "bytes": 7563,
+      "sha256": "c7368a2ab42520e5972e511649539204098f1815927ad3dd096ca36d351ba3b6"
+    },
+    {
+      "path": "evidence/seo.json",
+      "bytes": 44990,
+      "sha256": "9a7cb68f25f42afe9199abd26d7522e80a3fefb7a69bf146bc6ac050e1f51543"
+    },
+    {
+      "path": "evidence/seo.csv",
+      "bytes": 3135,
+      "sha256": "2cdd630b862bb77fd7b77adaedbb2fbbd0c3038a271a1b972dadae6a5b6c29fb"
+    },
+    {
+      "path": "evidence/seo.html",
+      "bytes": 17023,
+      "sha256": "f1e506a7148f36ee5fc9d85ede8caf62c808016ef48c344286d655017a4afcd8"
+    },
+    {
+      "path": "evidence/seo-baseline.json",
+      "bytes": 1573,
+      "sha256": "797e9a551f70fcd034a3b1166a3b93956efde569fb794f6da058738a8beb90a8"
+    },
+    {
+      "path": "shots/page-_-1440-a9a664.png",
+      "bytes": 225322,
+      "sha256": "92fe70d84341765918a2f2f444b6b1212b9f17df83fd78cb776de5f6216d378e"
+    },
+    {
+      "path": "shots/page-_-390-cb5011.png",
+      "bytes": 81067,
+      "sha256": "c0ad5392ce0f27b8fb551826b4677833b2788214a71a38f467f135ccf54f7c39"
+    },
+    {
+      "path": "shots/page-_pricing_datacenter-proxies-1440-4b3143.png",
+      "bytes": 96896,
+      "sha256": "24428199d38e2a7288aad00740a9cf5d059e05742c781abcac0f122b86a4b12b"
+    },
+    {
+      "path": "shots/page-_pricing_datacenter-proxies-390-d8f7d5.png",
+      "bytes": 56163,
+      "sha256": "4dc4ea8f1b13d225479292f1a563fe152988ea2382b65fe2f1375041809b0d12"
+    },
+    {
+      "path": "shots/page-_pricing_isp-proxies-1440-3fe395.png",
+      "bytes": 111205,
+      "sha256": "daff9ad1a2972cd941544f6911f7713b28ea7355036c0cfbdd3e23197125f196"
+    },
+    {
+      "path": "shots/page-_pricing_isp-proxies-390-593119.png",
+      "bytes": 59220,
+      "sha256": "d3fcd2a3979f88bc060035b2775a9c6762953fab8c21fa6e25c85f51afe77cd7"
+    },
+    {
+      "path": "shots/page-_product_datacenter-proxies-1440-f54bd5.png",
+      "bytes": 300910,
+      "sha256": "54d9f43c2fad5448894ddca9c22171ed63741277480402101baf375067fe19b8"
+    },
+    {
+      "path": "shots/page-_product_datacenter-proxies-390-6523cd.png",
+      "bytes": 65557,
+      "sha256": "4f5533e4d53871a07fa3e135c18674a62540737fc5283a83ac5695d619d929ca"
+    },
+    {
+      "path": "shots/page-_product_isp-proxies-1440-40d194.png",
+      "bytes": 282266,
+      "sha256": "7a289eea0f3d97e31a01a45eb51a3abbe3e18d37353ec9ad1f1da5a4663a8344"
+    },
+    {
+      "path": "shots/page-_product_isp-proxies-390-f524a7.png",
+      "bytes": 62091,
+      "sha256": "5df39122ae019728ed73481a59eaf2796e59c818a04bfaa2b3742229d310472b"
+    }
+  ]
+}

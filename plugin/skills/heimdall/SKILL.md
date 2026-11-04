@@ -2,7 +2,7 @@
 name: heimdall
 description: "Drive Heimdall (site capture, fidelity measurement, SEO audit) from an AI agent: route requests to clone or rebuild a web page or site, verify a rebuilt project against a reference, or diagnose setup problems. 把网页克隆、重建成 HTML/CSS 或 React 项目、验收还原度、对比新旧版本这类请求路由到合适的 Heimdall 剧本，并给出工具速查。"
 when_to_use: "克隆/复刻/重建网站或页面、还原度、像素对比、新旧版本差异、迁移到 React 或 Vue、设计令牌、回归验收、Heimdall 连不上; clone a website, rebuild a page, pixel-perfect, fidelity score, visual regression, migrate to React."
-allowed-tools: "mcp__plugin_heimdall_heimdall__heimdall_overview mcp__plugin_heimdall_heimdall__heimdall_doctor Read Grep Bash(heimdall overview *) Bash(heimdall doctor *)"
+allowed-tools: "mcp__plugin_heimdall_heimdall__heimdall_overview mcp__plugin_heimdall_heimdall__heimdall_doctor mcp__plugin_heimdall_heimdall__heimdall_qa_status mcp__plugin_heimdall_heimdall__heimdall_qa_run mcp__plugin_heimdall_heimdall__heimdall_qa_findings mcp__plugin_heimdall_heimdall__heimdall_seo_audit mcp__plugin_heimdall_heimdall__heimdall_seo_matrix mcp__plugin_heimdall_heimdall__heimdall_site_watch Read Grep Bash(heimdall overview *) Bash(heimdall doctor *) Bash(heimdall qa status *) Bash(heimdall qa run *) Bash(heimdall qa ci *) Bash(heimdall seo-audit *) Bash(heimdall seo-matrix *) Bash(heimdall site-watch *)"
 ---
 
 # Heimdall 路由
@@ -18,7 +18,9 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 对照参考验收一个已建好的项目 | `heimdall_compare`（`--project .`；不给分段就是整页） |
 | 装不上、连不上、不知道状态 | `heimdall_doctor`（`/heimdall:doctor`） |
 | 测试真实项目（可带登录），整理成可提单的问题 | 先 `heimdall_qa_status`，再 `heimdall_qa_run`；见下方「测试工作区」 |
-| 别的（行为补全、契约、SEO 审计） | 本版本未提供，如实告诉用户 |
+| 只读 SEO 审计、竞品 SEO 对比 | `heimdall_seo_audit` / `heimdall_seo_matrix` |
+| 站点变更监控、已审阅基线更新 | `heimdall_site_watch` |
+| 行为补全、契约验收 | 本版本未提供，如实告诉用户 |
 
 ## 速查
 
@@ -35,6 +37,9 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 测试工作区：站点、登录档 | `heimdall_qa_status` | `heimdall qa status` |
 | 测试运行：巡检、找问题 | `heimdall_qa_run` | `heimdall qa run [站点] [--pages /a,/b] [--explore]` |
 | 问题列表、类似、提交、裁决 | `heimdall_qa_findings` | `heimdall qa findings [--status fileable]` |
+| 只读 SEO 审计 | `heimdall_seo_audit` | `heimdall seo-audit <url> [--max-pages N]` |
+| 竞品 SEO 矩阵 | `heimdall_seo_matrix` | `heimdall seo-matrix <url> <url>` |
+| 站点变更监控 | `heimdall_site_watch` | `heimdall site-watch <url> [--accept]` |
 
 CLI 一律有 `--json`：stdout 最后一行是 `{ok, result, summary, nextActions, evidence}`。退出码：0 成功、1 门禁未过、2 用法或前置条件、3 环境、4 排队或等待超时、5 无权限、7 内部错误。
 

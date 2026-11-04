@@ -120,6 +120,7 @@ heimdall qa login <登录档>                       # 人工登录一次，保�
 heimdall qa status                               # 站点、登录档健康、最近运行、测试须知
 heimdall qa run [站点] [--pages /a,/b] [--viewports 1440,390] [--checks 检查点.json] [--no-links] [--texts] [--explore] [--no-baseline] [--no-detect]
 heimdall qa baseline [--run ID] [--off]   # 登记 / 清除跨运行视觉基线
+heimdall qa ci [站点] [--fail-on all|wall|degrade|none] [--github]
 heimdall qa findings [--status fileable|all] [--run ID]
 heimdall qa show <F编号>          # 一条发现的全部证据
 heimdall qa similar "问题标题"    # 台账 + 以往运行里查相似
@@ -172,6 +173,10 @@ heimdall qa baseline --off        # 清除基线
 
 只有同一站点、同一页面、同一视口才比对；新增页面不算回归。动态内容（广告、时间、随机图）会拉低相似度，报告里会给出相似度与差异图，由人裁决；`qa run --no-baseline` 可跳过比对。基线只引用运行目录里的截图，运行目录被清理后会明确报「基线截图缺失」，不会静默通过。
 
+## CI 门禁
+
+`heimdall qa ci` 复用同一套 QA 运行，但会额外写 `qa-ci.json` / `qa-ci.md`，输出 GitHub Actions 注解，并按 `--fail-on` 返回稳定退出码。它适合定时巡检和发布前门禁，不替代人工验收。模板见 [QA CI 指南](guide/07-qa-ci.md)。
+
 
 
 分级照搬人工分诊：证据层级（basis）决定最高分级——`failed` 实测失败、`wrong` 结果错误、`promise` 与承诺/PRD 不符、`friction` 能用但费劲、`cosmetic` 措辞/视觉小瑕疵（最高只能可容忍）。撞墙/受损必须写 `loss`（谁、做什么、损失了什么）；`loss` 里出现「可能/疑似/或许」这类推测词会被拒收。agent 提交的发现必须有证据（observed / steps / screenshot 至少一项）。
@@ -192,6 +197,8 @@ heimdall qa baseline --off        # 清除基线
 - `findings.json` / `run.json` / `shots/` 截图；`--texts` 时另存 `texts.json`（各页可见文字，供设计稿文案对照用）。
 
 ## 真实工作区示例（Xspark）
+
+可公开、已脱敏的真实运行记录见 [Xspark 公开案例](cases/xspark/2026-11-04/README.md)。
 
 ```
 Xspark接手测试/

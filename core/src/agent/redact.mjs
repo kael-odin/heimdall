@@ -41,7 +41,15 @@ export function redactText(value, { profile = 'secrets', counts = {} } = {}) {
   for (const { key, re, to } of rules) {
     s = s.replace(re, (...args) => { counts[key] = (counts[key] ?? 0) + 1; return typeof to === 'function' ? to(...args) : to; });
   }
-  s = s.replace(/(?<!\d)(?:\d[ -]?){13,19}(?!\d)/g, (m) => {
+  s = s.replace(/(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)/g, (m, offset, whole) => {
+    // 时间戳/运行 ID（例如 qa-20261104-205558-d921）里的数字串不按银行卡处理。
+    // 只跳过与字母或标识符相连的 token；正常文本里的卡号仍按 Luhn 判定。
+    const before = whole.slice(Math.max(0, offset - 48), offset);
+    const after = whole.slice(offset + m.length, offset + m.length + 48);
+    const tokenBefore = before.match(/[A-Za-z0-9_-]+$/)?.[0] ?? '';
+    const tokenAfter = after.match(/^[A-Za-z0-9_-]+/)?.[0] ?? '';
+    if (/[A-Za-z]/.test(tokenBefore) || /[A-Za-z]/.test(tokenAfter)) return m;
+    if (/^\d{8}[_-]\d{6}(?:[_-]|$)/.test(m)) return m;
     const digits = m.replace(/\D/g, '');
     if (digits.length < 13 || digits.length > 19 || !luhn(digits)) return m;
     counts.card = (counts.card ?? 0) + 1;

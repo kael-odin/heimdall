@@ -4,6 +4,17 @@ All notable changes to Heimdall are recorded here.
 
 ## [Unreleased]
 
+### Added
+
+- `heimdall connect codex` now writes a bounded `[mcp_servers.heimdall]` TOML
+  section after backing up the Codex config.
+- MCP now exposes deterministic SEO audit, SEO comparison matrix and site-watch
+  capabilities, with matching `heimdall://` evidence resources.
+- `heimdall qa ci` adds machine-readable CI sidecars, GitHub Actions annotations,
+  configurable failure tiers and stable exit codes.
+- Added a reproducible GitHub Actions QA template, AI workflow guide and a
+  public Xspark production QA case with hashes and limitations.
+
 ### Fixed
 
 - The D7 local acceptance demo now survives the console's `view=acceptance`
@@ -37,6 +48,11 @@ All notable changes to Heimdall are recorded here.
 - The core test runner now removes the extra pnpm `--` separator before
   forwarding Node test options, so Hosted CI's two jobs actually shard the
   full suite instead of each running all 3,011 tests.
+- Redaction no longer mistakes timestamp/run-id digit sequences for payment
+  card numbers, and CI report paths are now workspace-relative.
+- Storage accounting uses BigInt device/inode keys on Windows, so distinct
+  NTFS files cannot collide after `Stats.ino` exceeds JavaScript's safe integer
+  range.
 
 ### Security
 

@@ -73,6 +73,7 @@ test('redact: credentials are removed; public page copy is kept by default', () 
   assert.ok(r.counts.bearer && r.counts.jwt && r.counts.cloudKey && r.counts.card);
   assert.doesNotMatch(redactText(s, { profile: 'strict' }).text, /hello@example/);
   assert.match(redactText('order 1234 5678 9012 3456').text, /1234 5678/, 'non-Luhn digits are not cards');
+  assert.equal(redactText('qa-20261104-205558-d921').text, 'qa-20261104-205558-d921', 'run ids and timestamps stay intact');
   const pk = '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----';
   assert.equal(redactText(pk).text, '[私钥已移除]');
 });

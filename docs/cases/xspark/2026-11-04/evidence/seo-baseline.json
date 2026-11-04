@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "host": "xspark.cn",
+  "origin": "https://www.xspark.cn",
+  "capturedAt": "2026-11-04T13:08:03.501Z",
+  "score": 90.8,
+  "stable": 90.8,
+  "categories": {
+    "index": 100,
+    "content": 98,
+    "structured": 100,
+    "perf": 92.8,
+    "links": 100,
+    "security": 100
+  },
+  "pages": {
+    "https://www.xspark.cn/product/datacenter-proxies": {
+      "score": 86,
+      "stable": 86,
+      "issues": {
+        "content-text-ratio": "low",
+        "perf-js-large": "medium",
+        "perf-weight-large": "medium",
+        "structured-none": "info"
+      }
+    },
+    "https://www.xspark.cn": {
+      "score": 86,
+      "stable": 86,
+      "issues": {
+        "content-text-ratio": "low",
+        "perf-js-large": "medium",
+        "perf-weight-large": "medium"
+      }
+    },
+    "https://www.xspark.cn/pricing/datacenter-proxies": {
+      "score": 98,
+      "stable": 98,
+      "issues": {
+        "content-text-ratio": "low",
+        "perf-img-format": "info",
+        "structured-none": "info"
+      }
+    },
+    "https://www.xspark.cn/product/isp-proxies": {
+      "score": 86,
+      "stable": 86,
+      "issues": {
+        "content-text-ratio": "low",
+        "perf-js-large": "medium",
+        "perf-weight-large": "medium",
+        "structured-none": "info"
+      }
+    },
+    "https://www.xspark.cn/pricing/isp-proxies": {
+      "score": 98,
+      "stable": 98,
+      "issues": {
+        "content-text-ratio": "low",
+        "structured-none": "info"
+      }
+    }
+  },
+  "siteIssues": {},
+  "summary": {
+    "pages": 5,
+    "issues": 16
+  }
+}
