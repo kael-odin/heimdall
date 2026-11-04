@@ -92,6 +92,18 @@ export function argsFor(id, { flags, positional }) {
       if (flags.explore) a.explore = true; if (flags['no-baseline']) a.baseline = false; if (flags['no-detect']) a.detect = false;
       set('exploreMax', num(flags['explore-max'])); set('exploreBudgetMs', num(flags['explore-budget']));
       break;
+    case 'qa_ci':
+      set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
+      set('site', positional[0] ?? flags.site); set('pages', list(flags.pages)); set('viewports', list(flags.viewports)?.map(Number));
+      set('checksFile', flags.checks ? resolve(String(flags.checks)) : undefined); set('login', flags.login); set('label', flags.label);
+      if (flags['no-links']) a.linkCheck = false; if (flags.texts) a.collectTexts = true;
+      if (flags.explore) a.explore = true; if (flags['no-baseline']) a.baseline = false; if (flags['no-detect']) a.detect = false;
+      set('exploreMax', num(flags['explore-max'])); set('exploreBudgetMs', num(flags['explore-budget']));
+      set('failOn', flags['fail-on']);
+      set('maxFindings', num(flags['max-findings']));
+      if (flags.github) a.github = true;
+      if (flags['no-github']) a.github = false;
+      break;
     case 'qa_findings': {
       set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
       set('action', flags.action); set('runId', flags.run); set('id', flags.id); set('status', flags.status); set('limit', num(flags.limit));
@@ -149,6 +161,12 @@ function human(env, id, quiet) {
   if (id === 'site_watch' && env.ok && env.result?.result) {
     const r = env.result.result;
     lines.push(`变化：新增 ${r.changes?.added ?? 0} / 删除 ${r.changes?.removed ?? 0} / 修改 ${r.changes?.changed ?? 0}`, `报告：${r.reports?.html ?? '-'}`);
+  }
+  if (id === 'qa_ci' && env.result?.ci) {
+    const r = env.result;
+    lines.push(`CI：${r.ci.status === 'passed' ? '通过' : '失败'}；门槛 ${r.ci.failOn}；达到门槛 ${r.ci.findings?.length ?? 0} 条`,
+      `报告：${r.ci.report ?? '-'}`, `摘要：${r.ci.files?.markdown ?? '-'}`);
+    if (r.ci.annotations) lines.push('', r.ci.annotations);
   }
   if ((id === 'jobs' || id === 'clone') && env.ok && env.result?.jobs) lines.push('', ...env.result.jobs.map(j => `${j.jobId} ${j.capability} ${j.status} ${j.createdAt}`));
   const next = (env.nextActions ?? []).slice(0, 3);

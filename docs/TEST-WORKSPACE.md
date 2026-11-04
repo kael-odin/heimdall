@@ -130,7 +130,7 @@ heimdall qa revoke <规则编号>     # 撤销一条裁决规则
 heimdall qa rules                 # 列出已记的裁决规则
 ```
 
-MCP / HTTP 同样可用：`heimdall_qa_status`、`heimdall_qa_run`、`heimdall_qa_findings`（一个工具七个动作：list / show / similar / submit / verdict / revoke / rules）。`qa_run` 的 `checks` 参数直接收检查点数组（steps + expect，全是真实输入事件；`prd` 字段注明出处）。
+MCP / HTTP 同样可用：`heimdall_qa_status`、`heimdall_qa_run`、`heimdall_qa_findings`、`heimdall_qa_ci`（`qa_findings` 一个工具七个动作：list / show / similar / submit / verdict / revoke / rules）。`qa_run` 的 `checks` 参数直接收检查点数组（steps + expect，全是真实输入事件；`prd` 字段注明出处）。
 
 ## 无参照物检测（默认开启）
 

@@ -16,7 +16,7 @@ import { parseArgs, argsFor } from '../src/agent/cli.mjs';
 const CLI = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
 const EXPECTED = [
   'overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor', 'qa_status', 'qa_run', 'qa_findings',
-  'seo_audit', 'seo_matrix', 'site_watch',
+  'qa_ci', 'seo_audit', 'seo_matrix', 'site_watch',
 ];
 
 function tempRoot() {
@@ -76,6 +76,9 @@ test('cli: argument parsing maps flags to capability inputs', () => {
   });
   assert.deepEqual(argsFor('site_watch', parseArgs(['https://example.test/', '--accept', '--max-pages', '5'])), {
     url: 'https://example.test/', accept: true, maxPages: 5,
+  });
+  assert.deepEqual(argsFor('qa_ci', parseArgs(['web', '--fail-on', 'degrade', '--max-findings', '3', '--github'])), {
+    site: 'web', failOn: 'degrade', maxFindings: 3, github: true,
   });
 });
 

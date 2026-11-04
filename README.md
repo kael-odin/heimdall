@@ -283,6 +283,8 @@ CI 配置见 `.github/workflows/`。`CI` 与 `Docs` 已在仓库公开后于 202
 | [docs/guide/06-ai-integration.md](docs/guide/06-ai-integration.md) | 接入 Claude Code / Claude Desktop / Codex，跑通一句话重建（A-3 手测） | 演示前、接入代理时 |
 | [docs/guide/07-qa-ci.md](docs/guide/07-qa-ci.md) | 把 `qa ci` 接进 GitHub Actions，使用稳定退出码、注解和证据 | 给项目加自动 QA 时 |
 | [docs/guide/08-ai-workflows.md](docs/guide/08-ai-workflows.md) | Claude Code / Codex 的克隆、重建、SEO、监控和 QA 标准提示词 | 已经接通 MCP 时 |
+| [docs/guide/09-beginner-demo.md](docs/guide/09-beginner-demo.md) | 小白启动、完整主流程演示、AI 接入真实边界与常见坑 | 第一次上手或准备本机演示时 |
+| [actions/qa-ci](actions/qa-ci/README.md) | 目标项目可直接调用的 Heimdall QA 复合 Action | 不想手写安装与运行步骤时 |
 | [docs/DELIVERY.md](docs/DELIVERY.md) | 三种产物的区别、认证站点怎么处理 | 想知道"我该拿哪一种走" |
 | [docs/TEST-WORKSPACE.md](docs/TEST-WORKSPACE.md) | 测试工作区：登录档、只读探测、裁决记忆与提单报告 | 用 Heimdall 测真实项目时 |
 | [docs/cases/README.md](docs/cases/README.md) | 真实授权公开案例索引、证据规则与未覆盖边界 | 想看真实站点证据时 |

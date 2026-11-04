@@ -202,7 +202,7 @@ SEO 审计、竞品 SEO 矩阵和站点变更监控。完整控制台能力仍�
 
 **2026-10-31 本机结果（Claude Code 插件 MCP，本会话）**
 
-- 历史记录：插件安装后 `/mcp` 显示 `plugin:heimdall:heimdall ✔ Connected`，当时共 11 个工具；当前新增 SEO 审计、SEO 矩阵和站点监控后为 14 个；
+- 历史记录：插件安装后 `/mcp` 显示 `plugin:heimdall:heimdall ✔ Connected`，当时共 11 个工具；当前新增 QA CI、SEO 审计、SEO 矩阵和站点监控后为 15 个；
 - F1 重建工作区 `core/workspace/_demo/f1-a3`：**6/6 分段 `pass-candidate`**，整页 375 99.89% / 768 99.91% / 1440 100.00%（达到 gold）；
 - 唯一需要修的差异：窄视口 footer-bottom 多了 20px 上内边距与分隔线；修复包用 `样式差` 直接指出 `paddingTop 参考 0px / 候选 20px`，一次改完；
 - 六维门禁：`passed`（gold）；正式裁判：**passed silver**，验收视觉 3/3、结构 3/3、健康 12/12；

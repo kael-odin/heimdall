@@ -283,6 +283,37 @@ jobs:
       - run: pnpm -C packages/mcp check:plugin
       - run: node scripts/sync-skills.mjs --check
 
+  qa-action:
+    name: qa (composite action self-test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start local QA fixture
+        shell: bash
+        run: |
+          node .github/action-fixture/server.mjs --port 5090 > /tmp/qa-action-fixture.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:5090/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/qa-action-fixture.log
+          exit 1
+      - uses: ./actions/qa-ci
+        with:
+          workspace: .github/action-fixture
+          site: web
+          pages: /
+          viewports: 375
+          checks: checks.json
+          failOn: none
+          linkCheck: "false"
+          baseline: "false"
+          detect: "false"
+          comment: "false"
+
   security:
     name: dependency audit
     runs-on: ubuntu-latest

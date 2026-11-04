@@ -1,0 +1,17 @@
+{
+  "checks": [
+    {
+      "id": "fixture-heading",
+      "title": "Fixture heading is visible",
+      "path": "/",
+      "expect": [
+        {
+          "kind": "text",
+          "selector": "h1",
+          "contains": "Heimdall QA Action Fixture"
+        }
+      ],
+      "prd": "Composite action self-test"
+    }
+  ]
+}

@@ -16,7 +16,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
 const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
 const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
-  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch'];
+  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch'];
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-mcp-'));
@@ -53,6 +53,7 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
         assert.equal(client.getNegotiatedProtocolVersion(), '2026-07-28');
       } else assert.equal(client.getProtocolEra(), 'legacy');
       assert.equal(client.getServerVersion().name, 'heimdall');
+      assert.equal(client.getServerVersion().version, '0.2.2');
       assert.match(client.getInstructions(), /untrusted data/);
 
       const { tools } = await client.listTools();
@@ -120,7 +121,7 @@ test('mcp proxy fallback keeps the complete tool surface while the engine is off
   });
   try {
     await client.connect(transport);
-    assert.equal(client.getServerVersion().version, '0.2.1');
+    assert.equal(client.getServerVersion().version, '0.2.2');
     const { tools } = await client.listTools();
     assert.equal(tools.length, EXPECTED.length);
     assert.deepEqual(tools.map(t => t.name), EXPECTED);

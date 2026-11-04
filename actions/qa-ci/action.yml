@@ -1,0 +1,149 @@
+# Usage: uses: kael-odin/heimdall/actions/qa-ci@main
+name: Heimdall QA CI
+description: Run an authorized read-only QA workspace and apply a deterministic CI gate
+inputs:
+  site:
+    description: Site name from .heimdall/qa.json
+    required: false
+    default: web
+  workspace:
+    description: Test workspace directory; defaults to the caller repository root
+    required: false
+    default: ""
+  pages:
+    description: Comma-separated page paths; empty uses the site configuration
+    required: false
+    default: ""
+  viewports:
+    description: Comma-separated viewport widths
+    required: false
+    default: 1440,390
+  checks:
+    description: Optional workspace-relative checks JSON file
+    required: false
+    default: ""
+  failOn:
+    description: Failure tier (all, wall, degrade, none)
+    required: false
+    default: all
+  maxFindings:
+    description: Number of findings allowed before the gate fails
+    required: false
+    default: "0"
+  linkCheck:
+    description: Check same-origin links
+    required: false
+    default: "true"
+  baseline:
+    description: Compare screenshots with a registered baseline
+    required: false
+    default: "true"
+  detect:
+    description: Run reference-free detectors
+    required: false
+    default: "true"
+  explore:
+    description: Explicitly enable bounded interaction exploration
+    required: false
+    default: "false"
+  comment:
+    description: Post the latest qa-ci.md to a pull request
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v6
+      with:
+        version: 11.28.10
+
+    - name: Set up Node
+      uses: actions/setup-node@v7
+      with:
+        node-version: 22
+
+    - name: Install Heimdall QA dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../core
+      run: pnpm install --frozen-lockfile
+
+    - name: Install Chromium
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../core
+      run: pnpm exec playwright install --with-deps chromium
+
+    - name: Run Heimdall QA gate
+      shell: bash
+      env:
+        QA_WORKSPACE: ${{ inputs.workspace || github.workspace }}
+        QA_SITE: ${{ inputs.site }}
+        QA_PAGES: ${{ inputs.pages }}
+        QA_VIEWPORTS: ${{ inputs.viewports }}
+        QA_CHECKS: ${{ inputs.checks }}
+        QA_FAIL_ON: ${{ inputs.failOn }}
+        QA_MAX_FINDINGS: ${{ inputs.maxFindings }}
+        QA_LINK_CHECK: ${{ inputs.linkCheck }}
+        QA_BASELINE: ${{ inputs.baseline }}
+        QA_DETECT: ${{ inputs.detect }}
+        QA_EXPLORE: ${{ inputs.explore }}
+      run: |
+        args=(
+          --workspace "$QA_WORKSPACE"
+          --site "$QA_SITE"
+          --viewports "$QA_VIEWPORTS"
+          --fail-on "$QA_FAIL_ON"
+          --max-findings "$QA_MAX_FINDINGS"
+          --github
+        )
+        [ -n "$QA_PAGES" ] && args+=(--pages "$QA_PAGES")
+        if [ -n "$QA_CHECKS" ]; then
+          case "$QA_CHECKS" in
+            /*) args+=(--checks "$QA_CHECKS") ;;
+            *) args+=(--checks "$QA_WORKSPACE/$QA_CHECKS") ;;
+          esac
+        fi
+        [ "$QA_LINK_CHECK" = "true" ] || args+=(--no-links)
+        [ "$QA_BASELINE" = "true" ] || args+=(--no-baseline)
+        [ "$QA_DETECT" = "true" ] || args+=(--no-detect)
+        [ "$QA_EXPLORE" = "true" ] && args+=(--explore)
+        node "$GITHUB_ACTION_PATH/../../core/src/cli.mjs" qa ci "${args[@]}"
+
+    - name: Upload QA evidence
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: heimdall-qa-${{ github.run_id }}
+        path: ${{ inputs.workspace || github.workspace }}/.heimdall/qa/runs/**
+        if-no-files-found: ignore
+
+    - name: Comment QA summary on pull request
+      if: always() && inputs.comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      env:
+        QA_WORKSPACE: ${{ inputs.workspace || github.workspace }}
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          const runs = path.join(process.env.QA_WORKSPACE, '.heimdall', 'qa', 'runs');
+          if (!fs.existsSync(runs)) return;
+          const reports = fs.readdirSync(runs)
+            .filter(name => name.startsWith('qa-'))
+            .sort()
+            .reverse()
+            .map(name => path.join(runs, name, 'qa-ci.md'))
+            .filter(file => fs.existsSync(file));
+          if (!reports.length) return;
+          const body = fs.readFileSync(reports[0], 'utf8');
+          try {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+          } catch (error) {
+            core.warning(`QA result is valid, but this token cannot comment on the pull request: ${error.message}`);
+          }

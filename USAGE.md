@@ -56,7 +56,7 @@ node src\engine-server.mjs 8900
 - Claude Desktop：`claude_desktop_config.json`
 - Claude Code：`heimdall@heimdall` 插件
 
-三个入口当前都应能看到 14 个 Heimdall 工具。Claude Code 的插件代理依赖 `:8900` 引擎；Codex 和 Claude Desktop 使用完整 MCP 服务，任务类工具在引擎没开时可以按需拉起临时引擎，但演示时建议统一先开 `:8900`，避免工作区或进程来源不一致。
+三个入口当前都应能看到 15 个 Heimdall 工具。Claude Code 的插件代理依赖 `:8900` 引擎；Codex 和 Claude Desktop 使用完整 MCP 服务，任务类工具在引擎没开时可以按需拉起临时引擎，但演示时建议统一先开 `:8900`，避免工作区或进程来源不一致。
 
 ## 克隆与验收
 

@@ -2,7 +2,7 @@
 name: heimdall
 description: "Drive Heimdall (site capture, fidelity measurement, SEO audit) from an AI agent: route requests to clone or rebuild a web page or site, verify a rebuilt project against a reference, or diagnose setup problems. 把网页克隆、重建成 HTML/CSS 或 React 项目、验收还原度、对比新旧版本这类请求路由到合适的 Heimdall 剧本，并给出工具速查。"
 when_to_use: "克隆/复刻/重建网站或页面、还原度、像素对比、新旧版本差异、迁移到 React 或 Vue、设计令牌、回归验收、Heimdall 连不上; clone a website, rebuild a page, pixel-perfect, fidelity score, visual regression, migrate to React."
-allowed-tools: "mcp__plugin_heimdall_heimdall__heimdall_overview mcp__plugin_heimdall_heimdall__heimdall_doctor mcp__plugin_heimdall_heimdall__heimdall_qa_status mcp__plugin_heimdall_heimdall__heimdall_qa_run mcp__plugin_heimdall_heimdall__heimdall_qa_findings mcp__plugin_heimdall_heimdall__heimdall_seo_audit mcp__plugin_heimdall_heimdall__heimdall_seo_matrix mcp__plugin_heimdall_heimdall__heimdall_site_watch Read Grep Bash(heimdall overview *) Bash(heimdall doctor *) Bash(heimdall qa status *) Bash(heimdall qa run *) Bash(heimdall qa ci *) Bash(heimdall seo-audit *) Bash(heimdall seo-matrix *) Bash(heimdall site-watch *)"
+allowed-tools: "mcp__plugin_heimdall_heimdall__heimdall_overview mcp__plugin_heimdall_heimdall__heimdall_doctor mcp__plugin_heimdall_heimdall__heimdall_qa_status mcp__plugin_heimdall_heimdall__heimdall_qa_run mcp__plugin_heimdall_heimdall__heimdall_qa_findings mcp__plugin_heimdall_heimdall__heimdall_qa_ci mcp__plugin_heimdall_heimdall__heimdall_seo_audit mcp__plugin_heimdall_heimdall__heimdall_seo_matrix mcp__plugin_heimdall_heimdall__heimdall_site_watch Read Grep Bash(heimdall overview *) Bash(heimdall doctor *) Bash(heimdall qa status *) Bash(heimdall qa run *) Bash(heimdall qa ci *) Bash(heimdall seo-audit *) Bash(heimdall seo-matrix *) Bash(heimdall site-watch *)"
 ---
 
 # Heimdall 路由
@@ -37,6 +37,7 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 测试工作区：站点、登录档 | `heimdall_qa_status` | `heimdall qa status` |
 | 测试运行：巡检、找问题 | `heimdall_qa_run` | `heimdall qa run [站点] [--pages /a,/b] [--explore]` |
 | 问题列表、类似、提交、裁决 | `heimdall_qa_findings` | `heimdall qa findings [--status fileable]` |
+| 跑 QA 并给 CI 门禁 | `heimdall_qa_ci` | `heimdall qa ci [站点] --fail-on all` |
 | 只读 SEO 审计 | `heimdall_seo_audit` | `heimdall seo-audit <url> [--max-pages N]` |
 | 竞品 SEO 矩阵 | `heimdall_seo_matrix` | `heimdall seo-matrix <url> <url>` |
 | 站点变更监控 | `heimdall_site_watch` | `heimdall site-watch <url> [--accept]` |
@@ -56,6 +57,7 @@ CLI 一律有 `--json`：stdout 最后一行是 `{ok, result, summary, nextActio
 1. `heimdall_qa_status`：站点、登录档是否可用（过期会标出来）、最近的运行、测试须知。
 2. `heimdall_qa_run`：按站点巡一遍（打不开、登录过期、控制台报错、4xx/5xx、坏链、坏图、横向溢出、被拦下的写请求），同时跑无参照物检测（无障碍、布局裁切、占位文案、混合内容、LCP/CLS、白屏等），再跑你按 PRD 写的检查点（steps + expect，全是真实输入事件，`prd` 字段注明出处）。需要找“点了没反应”这类问题时加 `explore: true`——它会点页面，默认关闭。
 3. `heimdall_qa_findings`：`list` 看结果；`similar` 查重；`submit` 提交你自己测出的问题（会校验证据与 loss，并查重）；`verdict` 记人的裁决（精确到一条，或按模式；可带 `until` / `reopenIf`），以后同类发现自动过滤并写明理由。
+4. 需要流水线红绿结果时调用 `heimdall_qa_ci`；先读测试须知，再跑同一套 QA。失败只代表本次声明的页面和门槛未通过，不代表整个产品验收失败。
 
 结果在工作区的 `.heimdall/qa/runs/<runId>/`：`bugs.md` 只列建议提单的，`report.md` 是全部（含被过滤的和理由）。需要人工登录的站点由用户在 CLI 跑 `heimdall qa login <登录档>`，你不要代输凭据。配置格式见 Heimdall 仓库的 `docs/TEST-WORKSPACE.md`。
 

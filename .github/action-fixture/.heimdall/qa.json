@@ -1,0 +1,33 @@
+{
+  "schema": "heimdall.qa/1",
+  "project": "QA Action Self Test",
+  "sites": {
+    "web": {
+      "label": "Local F1",
+      "url": "http://127.0.0.1:5090/",
+      "environment": "test",
+      "pages": [
+        "/"
+      ],
+      "login": null,
+      "writes": "block"
+    }
+  },
+  "logins": {},
+  "conventions": [],
+  "ledger": {
+    "file": null
+  },
+  "knowledge": {
+    "prd": [],
+    "notes": []
+  },
+  "defaults": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "settleMs": 500,
+    "timeoutMs": 30000
+  }
+}

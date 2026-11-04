@@ -74,7 +74,7 @@ heimdall rebuild deliver --project core/workspace/_demo/f1-defect
 
 | 准备项 | 动作 | 为什么 |
 | --- | --- | --- |
-| Claude Code 插件 | 已安装并验证 `plugin:heimdall:heimdall ✔ Connected`（11 工具） | 第 2 幕现场跑 |
+| Claude Code 插件 | 已安装并验证 `plugin:heimdall:heimdall ✔ Connected`（15 工具） | 第 2 幕现场跑 |
 | Claude Desktop | 界面 doctor 9/9 已确认；作为备用客户端 | 备用 |
 | 录屏备份 | 完整跑一遍，U 盘 + 本机各一份 | 断网/模型服务挂掉直接放 |
 | 回放标识 | 准备一张「回放」角标 | 回放必须让评委看见 |

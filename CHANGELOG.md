@@ -10,10 +10,14 @@ All notable changes to Heimdall are recorded here.
   section after backing up the Codex config.
 - MCP now exposes deterministic SEO audit, SEO comparison matrix and site-watch
   capabilities, with matching `heimdall://` evidence resources.
+- MCP now exposes `heimdall_qa_ci`, so an agent can run the same deterministic
+  QA gate as the CLI and receive `qa-ci.json`, `qa-ci.md` and annotations.
 - `heimdall qa ci` adds machine-readable CI sidecars, GitHub Actions annotations,
   configurable failure tiers and stable exit codes.
 - Added a reproducible GitHub Actions QA template, AI workflow guide and a
   public Xspark production QA case with hashes and limitations.
+- Added a composite GitHub Action at `actions/qa-ci` for target
+  repositories that do not want to hand-write the checkout/install/run steps.
 
 ### Fixed
 
@@ -50,6 +54,15 @@ All notable changes to Heimdall are recorded here.
   full suite instead of each running all 3,011 tests.
 - Redaction no longer mistakes timestamp/run-id digit sequences for payment
   card numbers, and CI report paths are now workspace-relative.
+- The composite QA Action now resolves `core/` relative to its own checked-out
+  action directory, resolves workspace-relative check files correctly, and is
+  exercised by a zero-dependency Hosted self-test.
+- QA CI no longer claims sidecar files exist after a write failure, and
+  user-visible fields are escaped before being posted to GitHub comments.
+- The full MCP server now reports the same `0.2.2` package version as the
+  Claude plugin proxy.
+- The Windows launcher now reuses already-running Heimdall services instead of
+  starting duplicate processes.
 - Storage accounting uses BigInt device/inode keys on Windows, so distinct
   NTFS files cannot collide after `Stats.ino` exceeds JavaScript's safe integer
   range.

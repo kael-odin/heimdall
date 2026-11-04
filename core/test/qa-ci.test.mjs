@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { renderCiMarkdown, renderGithubAnnotations, runQaCi, selectGateFindings } from '../src/qa/ci.mjs';
 
 const FINDINGS = [
@@ -25,11 +26,13 @@ test('qa ci: GitHub annotations and Markdown escape user-visible content', () =>
   assert.match(annotations, /a\|b%2Cc/);
   const md = renderCiMarkdown({
     result: { runId: 'qa-1', site: 'web', summary: { fileable: 1 }, report: '.heimdall/report.md', bugs: '.heimdall/bugs.md' },
-    gate: { status: 'failed', failOn: 'all', findings: [{ ...FINDINGS[0], title: 'a|b' }] },
+    gate: { status: 'failed', failOn: 'all', findings: [{ ...FINDINGS[0], title: '@team [x](https://bad.test) <script> a|b' }] },
     generatedAt: '2026-11-04T00:00:00.000Z',
   });
   assert.match(md, /Heimdall QA CI/);
-  assert.match(md, /a\\\|b/);
+  assert.match(md, /&#64;team &#91;x&#93;/);
+  assert.match(md, /&lt;script&gt; a&#124;b/);
+  assert.doesNotMatch(md, /@team \[x\]\(https:\/\/bad\.test\) <script>/);
   assert.match(md, /结果：\*\*失败\*\*/);
 });
 
@@ -77,4 +80,52 @@ test('qa ci: writes sidecars and returns exit code 1 when the gate fails', async
     else process.env.GITHUB_STEP_SUMMARY = oldSummary;
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('qa ci: reports a sidecar write failure without claiming files exist', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-ci-write-fail-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
+    schema: 'heimdall.qa/1',
+    project: 'ci-write-fail',
+    sites: { web: { url: 'https://example.test/', pages: ['/'] } },
+  }));
+  writeFileSync(join(root, 'blocked-run-dir'), 'not a directory');
+  try {
+    const result = await runQaCi({
+      args: { workspace: root, site: 'web', viewports: [390], linkCheck: false },
+      failOn: 'none',
+      execute: async () => ({
+        ok: true,
+        result: {
+          runId: 'qa-write-fail', site: 'web', runDir: 'blocked-run-dir',
+          report: '.heimdall/qa/runs/qa-write-fail/report.md', bugs: '.heimdall/qa/runs/qa-write-fail/bugs.md',
+          summary: { fileable: 0 }, fileable: [],
+        },
+        summary: 'QA finished.',
+        nextActions: [],
+        evidence: [],
+      }),
+    });
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.env.result.ci.files, null);
+    assert.ok(result.env.result.ci.sidecarError);
+    assert.match(result.env.summary, /CI 附件未写成/);
+    assert.ok(result.env.warnings?.length);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('qa ci: reusable composite action keeps the documented entrypoint', () => {
+  const action = readFileSync(fileURLToPath(new URL('../../actions/qa-ci/action.yml', import.meta.url)), 'utf8');
+  const readme = readFileSync(fileURLToPath(new URL('../../actions/qa-ci/README.md', import.meta.url)), 'utf8');
+  assert.match(action, /using: composite/);
+  assert.match(action, /kael-odin\/heimdall\/actions\/qa-ci@main/);
+  assert.match(action, /github\.action_path \}\}\/\.\.\/\.\.\/core/);
+  assert.match(action, /GITHUB_ACTION_PATH\/\.\.\/\.\.\/core\/src\/cli\.mjs/);
+  assert.match(action, /args\+=\(--checks "\$QA_WORKSPACE\/\$QA_CHECKS"\)/);
+  assert.match(action, /QA result is valid/);
+  assert.match(action, /qa ci/);
+  assert.match(readme, /kael-odin\/heimdall\/actions\/qa-ci@main/);
 });

@@ -24,7 +24,7 @@ heimdall connect codex
 
 `heimdall connect` 会先备份配置，再启动一次 stdio 服务自测 `tools/list` 和 `overview`。引擎没跑时，连接本身可能成功，但克隆类工具会返回 `engine_unreachable`。
 
-Claude Code 插件是轻量代理，明确依赖 `:8900` 引擎。Codex 和 Claude Desktop 的完整 MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳定、工作区一致，仍建议先开 `:8900`。当前三种入口都应列出 14 个工具；重启客户端或新开会话后才会加载新配置。
+Claude Code 插件是轻量代理，明确依赖 `:8900` 引擎。Codex 和 Claude Desktop 的完整 MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳定、工作区一致，仍建议先开 `:8900`。当前三种入口都应列出 15 个工具；重启客户端或新开会话后才会加载新配置。
 
 ## 克隆和重建
 
@@ -80,6 +80,14 @@ heimdall qa ci --site web --viewports 1440,390 --fail-on all --github
 ```
 
 MCP 里的 QA 工具适合让 AI 解释问题；`qa ci` 适合让流水线做确定性判断。两者共用同一个 `qa.json` 和同一批运行产物。
+
+如果代理需要直接触发门禁，调用 `heimdall_qa_ci`，并明确传 `failOn`：
+
+```text
+调用 heimdall_qa_ci 对当前测试工作区运行只读 QA，
+站点使用 web，视口 1440 和 390，failOn=all。
+报告 qa-ci.json、qa-ci.md、达到门槛的发现和未测到的页面。
+```
 
 ## 安全边界
 

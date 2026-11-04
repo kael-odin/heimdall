@@ -42,9 +42,35 @@ heimdall qa ci --site web --fail-on none
 
 `--max-findings N` 可以容忍少量问题，但建议只在有明确清理计划时使用。被容忍的问题仍会以 warning 注解显示，不会消失。
 
-## GitHub Actions
+## GitHub Actions 复合 Action
 
-复制 [模板](../../examples/github-actions/heimdall-qa.yml) 到目标项目。模板不假设 Heimdall 已经安装，可以从公开仓库拉取工具后运行；它支持手动、定时和 `pull_request` 三种触发，PR 运行后会把最新 `qa-ci.md` 作为评论贴回（fork PR 没有评论权限时只保留 artifact 和日志）。
+目标项目可以直接调用仓库里的复合 Action：
+
+```yaml
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: kael-odin/heimdall/actions/qa-ci@main
+        with:
+          site: web
+          viewports: 1440,390
+          failOn: all
+          comment: "true"
+```
+
+它负责安装 Heimdall、运行 QA、写注解、上传证据，并可按需把最新 `qa-ci.md` 评论到 PR。完整输入见 [Action 文档](../../actions/qa-ci/README.md)。
+
+示例使用 `@main` 便于跟进最新版；长期生产流水线应改用团队审核过的 release tag 或完整 commit SHA。该 Action 目前面向 Ubuntu runner。
+
+## 手写模板
+
+复制 [模板](../../examples/github-actions/heimdall-qa.yml) 到目标项目时，默认只启用手动和定时触发，适合先观察生产站点动态噪声。需要接入 PR 时，用上面的复合 Action 或仿照它增加 `pull_request` 触发、评论权限和评论步骤（fork PR 没有权限时只保留 artifact 和日志）。
 
 建议先只在 `workflow_dispatch` 和定时任务上运行外部网站，再逐步接入 PR。生产站点会受到网络、登录态、风控和动态内容影响；外部网络失败不能被说成产品 BUG。
 

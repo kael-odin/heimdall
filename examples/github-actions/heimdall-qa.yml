@@ -2,13 +2,11 @@ name: Heimdall QA
 
 on:
   workflow_dispatch:
-  pull_request:
   schedule:
     - cron: '17 2 * * 1'
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   qa:
@@ -16,44 +14,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: kael-odin/heimdall/actions/qa-ci@main
         with:
-          version: 11.28.10
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-      - name: Checkout Heimdall
-        uses: actions/checkout@v7
-        with:
-          repository: kael-odin/heimdall
-          path: .heimdall-tool
-      - name: Install Heimdall
-        run: |
-          pnpm -C .heimdall-tool/core install --frozen-lockfile
-          pnpm -C .heimdall-tool/core exec playwright install --with-deps chromium
-      - name: Run QA gate
-        run: |
-          node .heimdall-tool/core/src/cli.mjs qa ci \
-            --workspace "$GITHUB_WORKSPACE" \
-            --site web \
-            --viewports 1440,390 \
-            --fail-on all \
-            --github
-      - name: Upload QA evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: heimdall-qa-${{ github.run_id }}
-          path: .heimdall/qa/runs/**
-          if-no-files-found: ignore
-      - name: Comment QA summary on pull request
-        if: always() && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: |
-          SUMMARY=$(find .heimdall/qa/runs -name qa-ci.md -type f 2>/dev/null | sort | tail -n 1)
-          if [ -n "$SUMMARY" ]; then
-            gh pr comment "$PR_URL" --body-file "$SUMMARY"
-          fi
+          site: web
+          viewports: 1440,390
+          failOn: all
+          comment: "false"

@@ -89,6 +89,29 @@ test('qa e2e: writes.allow whitelists read-semantics POST endpoints (POST-for-qu
   }
 });
 
+test('qa ci MCP capability runs the workspace and writes gate sidecars', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const origin = `http://127.0.0.1:${srv.address().port}`;
+  const root = workspaceFor(origin);
+  try {
+    const env = await invoke('qa_ci', {
+      workspace: root,
+      site: 'web',
+      pages: ['/'],
+      viewports: [1280],
+      linkCheck: false,
+      failOn: 'none',
+    }, { client: 'mcp' });
+    assert.equal(env.ok, true, JSON.stringify(env.error));
+    assert.equal(env.result.ci.status, 'passed');
+    assert.ok(existsSync(join(root, '.heimdall', 'qa', 'runs', env.result.runId, 'qa-ci.json')));
+    assert.ok(existsSync(join(root, '.heimdall', 'qa', 'runs', env.result.runId, 'qa-ci.md')));
+  } finally {
+    srv.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('qa e2e: probe, login profile, real clipboard, verdict memory across runs, agent submissions', { timeout: 180_000 }, async () => {
   const srv = await server();
   const origin = `http://127.0.0.1:${srv.address().port}`;

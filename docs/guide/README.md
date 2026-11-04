@@ -77,6 +77,7 @@
 | [06 · 接入 AI 与 A-3 手测](06-ai-integration.md) | 安装插件/连接 Claude Code、Claude Desktop，跑通「一句话重建」并记录验收 | 演示前、接入代理时 |
 | [07 · QA CI](07-qa-ci.md) | 用 `qa ci` 接入 GitHub Actions、稳定退出码、注解和证据 | 想把 QA 接进流水线时 |
 | [08 · AI 标准工作流](08-ai-workflows.md) | Claude Code / Codex 的克隆、重建、SEO、监控与 QA 提示词 | 已经接通 MCP，想知道怎么让 AI 干活时 |
+| [09 · 小白一站式演示](09-beginner-demo.md) | 本机启动、主流程演示、MCP 真实依赖与常见坑 | 想最快看懂并演示全部主流程时 |
 | [测试工作区](../TEST-WORKSPACE.md) | 用 qa.json 配置真实项目测试：登录档、只读探测、无参照物检测、交互探索、跨运行回归、裁决记忆、提单报告 | 拿 Heimdall 测自己的项目时 |
 
 ---
