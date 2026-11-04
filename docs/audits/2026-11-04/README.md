@@ -30,6 +30,27 @@
 | P1 | 源码 MCP 报 `2.0.0-dev`，插件报 `0.2.2` | 同一服务两个版本号，排障时容易误判 | 统一使用 MCP 包版本 `0.2.2` |
 | P2 | fork PR 没有评论权限时，附带的 PR 评论步骤可能把 QA 门禁拖红 | 评论失败不应改写 QA 结论 | 降级为 warning，artifact 和门禁结果保留 |
 | P2 | `clone-heimdall.cmd` 重复双击会重复拉起进程 | 第二次打开可能命中旧服务或制造混乱 | 先探测已有引擎/控制台，只补启动缺的那一个 |
+| P2 | D6 里 Chromium 偶发把已收到的完整响应事后标成 `ERR_ABORTED` | 测试会把真实完成的动作误判成传输失败 | 用 Relay 完整字节、CDP 响应和下游 `finish` 三层证据精确对账，未对账的失败仍阻断 |
+| P2 | D7 的 Playwright 截图在 Hosted 高负载下卡在 `fonts to load` | 控制台已经不用下载字体，却可能让真浏览器演示假红 | 改用同源 Chromium CDP 视口截图，并显式确认页面没有 `@font-face` |
+
+## Hosted CI 回归和最终结果
+
+本轮不是“本地绿了就直接交付”。首次推送后，Hosted CI 连续暴露了三层问题：
+
+1. `41864671787`：D6 case D 的 deny 响应实际完整返回，但 Playwright 延迟读取响应体时报 `navigated away`。
+2. `41871552620`：响应体对账已通过，独立 verifier 又因为 Playwright 把同一请求事后标成 `ERR_ABORTED` 而拒绝。
+3. `41876697791`：D6 本体和 verifier 都已通过；后续 D7 在 Hosted 高负载下等待字体加载 90 秒后截图超时。
+
+最终处理原则都是保留原始异常，再做可核验的补充证据，而不是直接放宽容错：
+
+- D6 保留 `browserBodyReadFailure` 和 Playwright `ERR_ABORTED`，只有在方法、路径、状态码、完整响应字节、SHA-256、CDP 响应和 Relay 下游 `writableFinished` 全部一致时才认定传输完成。
+- D7 确认控制台 `fontFaceCount = 0`，仍由真实 Chromium 截取当前视口；截图记录现在明确写出 `cdp-page-capture-screenshot`、字体状态和 1440x1000 / 390x844 实际尺寸。
+
+最终 Hosted 结果：
+
+- 提交：`5560de7c7f171499e8098be848d9231bbfa2de42`
+- CI：[`41883522164`](https://github.com/kael-odin/heimdall/actions/runs/41883522164)
+- 结果：8 个 job 全部成功，包括 lint/docs/docker、两片全量测试、MCP、依赖审计、QA Action 自测和完整真浏览器 e2e smoke。
 
 ## 仍然需要正视的问题
 
@@ -165,9 +186,10 @@ core fast: 1,197 / 1,197 passed
 MCP: 3 / 3 passed
 lint: 711 files OK
 Markdown links: 698 targets / 140 files OK
-D7 real browser acceptance: accepted:true, ordinary console errors 0
+D6 real browser decisions: 4 / 4 cases, 13 / 13 required checks, independent verifier passed
+D7 real browser acceptance: accepted:true, 17 screenshots, fontFaceCount 0, ordinary console errors 0
 dependency audit: no known vulnerabilities
 Windows launcher: started :8900 + :5173, route check 34 / 34, second run reused both
 ```
 
-Hosted CI 结果在推送后用精确 commit SHA 跟进；本地绿灯不能替代 Hosted 终态。
+Hosted CI 已在精确提交 `5560de7c` 上确认全绿；本地与远端证据一致。
