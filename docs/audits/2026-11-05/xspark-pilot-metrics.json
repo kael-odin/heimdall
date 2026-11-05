@@ -1,0 +1,1274 @@
+{
+  "schema": "xspark.heimdall-pilot-metrics/1",
+  "generatedAt": "2026-11-05T12:51:55.298Z",
+  "measurementCommit": "230e34ecbbd293981af8342e39edb6df8693afcc",
+  "dataLevel": "sanitized-aggregate",
+  "adjudicator": "Codex browser review; no human sign-off",
+  "scope": {
+    "sites": 5,
+    "pagesPerCompleteRound": 23,
+    "viewports": [
+      1440,
+      390
+    ],
+    "writes": "Queries explicitly allowlisted; mutations blocked; exploration disabled."
+  },
+  "runs": [
+    {
+      "cohort": "default",
+      "site": "admin-production",
+      "runId": "qa-20261105-195709-d620",
+      "round": "initial",
+      "startedAt": "2026-11-05T11:57:09.032Z",
+      "endedAt": "2026-11-05T11:57:57.492Z",
+      "elapsedMs": 48460,
+      "pageViews": 6,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 36,
+        "fileable": 4,
+        "new": 36,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 32,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 7,
+        "blocked-write": 6,
+        "a11y-lang": 3,
+        "layout-text-clipped": 1,
+        "layout-tap-target": 11,
+        "a11y-control-name": 1,
+        "a11y-form-label": 2,
+        "perf-lcp": 1,
+        "a11y-heading": 3,
+        "perf-cls": 1
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 2,
+        "falsePositive": 2,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 2,
+          "denominator": 4,
+          "percent": 50
+        },
+        "falsePositiveRate": {
+          "numerator": 2,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "default",
+      "site": "admin-production",
+      "runId": "qa-20261105-201011-e8b9",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:10:11.111Z",
+      "endedAt": "2026-11-05T12:10:52.825Z",
+      "elapsedMs": 41714,
+      "pageViews": 6,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 35,
+        "fileable": 4,
+        "new": 35,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 31,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 7,
+        "blocked-write": 6,
+        "a11y-lang": 3,
+        "layout-text-clipped": 1,
+        "layout-tap-target": 11,
+        "a11y-control-name": 1,
+        "a11y-form-label": 2,
+        "a11y-heading": 3,
+        "perf-cls": 1
+      },
+      "baselinePairs": 6,
+      "baselineSkipped": [],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 2,
+        "falsePositive": 2,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 2,
+          "denominator": 4,
+          "percent": 50
+        },
+        "falsePositiveRate": {
+          "numerator": 2,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "default",
+      "site": "admin-test",
+      "runId": "qa-20261105-201843-acf9",
+      "round": "initial",
+      "startedAt": "2026-11-05T12:18:43.088Z",
+      "endedAt": "2026-11-05T12:19:24.873Z",
+      "elapsedMs": 41785,
+      "pageViews": 6,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 36,
+        "fileable": 4,
+        "new": 36,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 32,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 7,
+        "blocked-write": 6,
+        "a11y-lang": 3,
+        "layout-text-clipped": 1,
+        "layout-tap-target": 11,
+        "perf-lcp": 1,
+        "a11y-control-name": 1,
+        "a11y-form-label": 2,
+        "a11y-heading": 3,
+        "perf-cls": 1
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 2,
+        "falsePositive": 2,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 2,
+          "denominator": 4,
+          "percent": 50
+        },
+        "falsePositiveRate": {
+          "numerator": 2,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "default",
+      "site": "admin-test",
+      "runId": "qa-20261105-201925-fdb7",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:19:25.662Z",
+      "endedAt": "2026-11-05T12:20:09.045Z",
+      "elapsedMs": 43383,
+      "pageViews": 6,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 37,
+        "fileable": 4,
+        "new": 37,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 33,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 7,
+        "blocked-write": 6,
+        "a11y-lang": 3,
+        "layout-text-clipped": 1,
+        "layout-tap-target": 11,
+        "perf-lcp": 2,
+        "a11y-control-name": 1,
+        "a11y-form-label": 2,
+        "a11y-heading": 3,
+        "perf-cls": 1
+      },
+      "baselinePairs": 6,
+      "baselineSkipped": [],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 2,
+        "falsePositive": 2,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 2,
+          "denominator": 4,
+          "percent": 50
+        },
+        "falsePositiveRate": {
+          "numerator": 2,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "default",
+      "site": "dashboard-production",
+      "runId": "qa-20261105-195428-e539",
+      "round": "initial",
+      "startedAt": "2026-11-05T11:54:28.710Z",
+      "endedAt": "2026-11-05T11:55:22.579Z",
+      "elapsedMs": 53869,
+      "pageViews": 12,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 71,
+        "fileable": 1,
+        "new": 71,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 70,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 13,
+        "blocked-write": 12,
+        "a11y-heading": 6,
+        "layout-tap-target": 37,
+        "network": 1,
+        "broken-image": 1,
+        "layout-text-clipped": 1
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 1,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 1,
+          "denominator": 1,
+          "percent": 100
+        },
+        "falsePositiveRate": {
+          "numerator": 1,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "default",
+      "site": "dashboard-production",
+      "runId": "qa-20261105-200801-dbba",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:08:01.727Z",
+      "endedAt": "2026-11-05T12:08:57.753Z",
+      "elapsedMs": 56026,
+      "pageViews": 12,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 68,
+        "fileable": 1,
+        "new": 68,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 67,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 12,
+        "blocked-write": 12,
+        "a11y-heading": 6,
+        "layout-tap-target": 37,
+        "layout-text-clipped": 1
+      },
+      "baselinePairs": 12,
+      "baselineSkipped": [],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 1,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 1,
+          "denominator": 1,
+          "percent": 100
+        },
+        "falsePositiveRate": {
+          "numerator": 1,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "default",
+      "site": "dashboard-test",
+      "runId": "qa-20261105-195709-a5ef",
+      "round": "initial",
+      "startedAt": "2026-11-05T11:57:09.036Z",
+      "endedAt": "2026-11-05T11:58:22.529Z",
+      "elapsedMs": 73493,
+      "pageViews": 12,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 69,
+        "fileable": 1,
+        "new": 69,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 68,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 12,
+        "blocked-write": 12,
+        "a11y-heading": 6,
+        "layout-tap-target": 37,
+        "layout-text-clipped": 1,
+        "perf-lcp": 1
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 1,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 1,
+          "denominator": 1,
+          "percent": 100
+        },
+        "falsePositiveRate": {
+          "numerator": 1,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "default",
+      "site": "dashboard-test",
+      "runId": "qa-20261105-200858-ef50",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:08:58.218Z",
+      "endedAt": "2026-11-05T12:10:10.713Z",
+      "elapsedMs": 72495,
+      "pageViews": 12,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 68,
+        "fileable": 1,
+        "new": 68,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 67,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 12,
+        "blocked-write": 12,
+        "a11y-heading": 6,
+        "layout-tap-target": 37,
+        "layout-text-clipped": 1
+      },
+      "baselinePairs": 12,
+      "baselineSkipped": [],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 1,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 1,
+          "denominator": 1,
+          "percent": 100
+        },
+        "falsePositiveRate": {
+          "numerator": 1,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "default",
+      "site": "web-production",
+      "runId": "qa-20261105-195319-b7d8",
+      "round": "initial",
+      "startedAt": "2026-11-05T11:53:19.640Z",
+      "endedAt": "2026-11-05T11:54:02.331Z",
+      "elapsedMs": 42691,
+      "pageViews": 10,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 57,
+        "fileable": 0,
+        "new": 55,
+        "knownBug": 0,
+        "suppressed": 2,
+        "reopened": 0,
+        "tolerable": 55,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "layout-text-clipped": 1,
+        "layout-tap-target": 39,
+        "perf-oversized-image": 17
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "passed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 0,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 0,
+          "denominator": 0,
+          "percent": null
+        },
+        "falsePositiveRate": {
+          "numerator": 0,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "default",
+      "site": "web-production",
+      "runId": "qa-20261105-200715-6694",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:07:15.089Z",
+      "endedAt": "2026-11-05T12:08:01.328Z",
+      "elapsedMs": 46239,
+      "pageViews": 10,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 57,
+        "fileable": 0,
+        "new": 55,
+        "knownBug": 0,
+        "suppressed": 2,
+        "reopened": 0,
+        "tolerable": 55,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "layout-text-clipped": 1,
+        "layout-tap-target": 39,
+        "perf-oversized-image": 17
+      },
+      "baselinePairs": 10,
+      "baselineSkipped": [],
+      "ciStatus": "passed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 0,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 0,
+          "denominator": 0,
+          "percent": null
+        },
+        "falsePositiveRate": {
+          "numerator": 0,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "admin-production",
+      "runId": "qa-20261105-202138-0ad3",
+      "round": "initial",
+      "startedAt": "2026-11-05T12:21:38.936Z",
+      "endedAt": "2026-11-05T12:22:20.756Z",
+      "elapsedMs": 41820,
+      "pageViews": 6,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 32,
+        "fileable": 12,
+        "new": 32,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 20,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "a11y-control-name": 4,
+        "a11y-lang": 3,
+        "layout-text-clipped": 1,
+        "layout-tap-target": 12,
+        "a11y-form-label": 7,
+        "perf-lcp": 1,
+        "a11y-heading": 3,
+        "perf-cls": 1
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 7,
+        "falsePositive": 5,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 5,
+          "denominator": 12,
+          "percent": 41.67
+        },
+        "falsePositiveRate": {
+          "numerator": 5,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "admin-production",
+      "runId": "qa-20261105-202559-09d0",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:25:59.677Z",
+      "endedAt": "2026-11-05T12:26:46.158Z",
+      "elapsedMs": 46481,
+      "pageViews": 6,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 31,
+        "fileable": 11,
+        "new": 31,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 20,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "a11y-control-name": 4,
+        "a11y-lang": 3,
+        "layout-text-clipped": 1,
+        "layout-tap-target": 12,
+        "a11y-form-label": 6,
+        "perf-lcp": 1,
+        "a11y-heading": 3,
+        "perf-cls": 1
+      },
+      "baselinePairs": 6,
+      "baselineSkipped": [],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 6,
+        "falsePositive": 5,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 5,
+          "denominator": 11,
+          "percent": 45.45
+        },
+        "falsePositiveRate": {
+          "numerator": 5,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "admin-test",
+      "runId": "qa-20261105-202221-0b65",
+      "round": "initial",
+      "startedAt": "2026-11-05T12:22:21.520Z",
+      "endedAt": "2026-11-05T12:22:54.990Z",
+      "elapsedMs": 33470,
+      "pageViews": 6,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 31,
+        "fileable": 11,
+        "new": 31,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 20,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "a11y-control-name": 4,
+        "a11y-lang": 3,
+        "layout-text-clipped": 1,
+        "layout-tap-target": 12,
+        "perf-lcp": 1,
+        "a11y-form-label": 6,
+        "a11y-heading": 3,
+        "perf-cls": 1
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 6,
+        "falsePositive": 5,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 5,
+          "denominator": 11,
+          "percent": 45.45
+        },
+        "falsePositiveRate": {
+          "numerator": 5,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "admin-test",
+      "runId": "qa-20261105-202646-cf13",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:26:46.623Z",
+      "endedAt": "2026-11-05T12:27:33.576Z",
+      "elapsedMs": 46953,
+      "pageViews": 6,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 33,
+        "fileable": 11,
+        "new": 33,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 22,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "a11y-control-name": 4,
+        "a11y-lang": 3,
+        "layout-text-clipped": 1,
+        "layout-tap-target": 12,
+        "perf-lcp": 3,
+        "a11y-form-label": 6,
+        "a11y-heading": 3,
+        "perf-cls": 1
+      },
+      "baselinePairs": 6,
+      "baselineSkipped": [],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 6,
+        "falsePositive": 5,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 5,
+          "denominator": 11,
+          "percent": 45.45
+        },
+        "falsePositiveRate": {
+          "numerator": 5,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "dashboard-production",
+      "runId": "qa-20261105-201926-937e",
+      "round": "initial",
+      "startedAt": "2026-11-05T12:19:26.943Z",
+      "endedAt": "2026-11-05T12:20:24.399Z",
+      "elapsedMs": 57456,
+      "pageViews": 12,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 65,
+        "fileable": 2,
+        "new": 65,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 63,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 10,
+        "blocked-write": 6,
+        "a11y-heading": 6,
+        "layout-tap-target": 41,
+        "layout-text-clipped": 2
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 2,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 2,
+          "denominator": 2,
+          "percent": 100
+        },
+        "falsePositiveRate": {
+          "numerator": 2,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "dashboard-production",
+      "runId": "qa-20261105-202342-44ef",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:23:42.336Z",
+      "endedAt": "2026-11-05T12:24:45.303Z",
+      "elapsedMs": 62967,
+      "pageViews": 12,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 65,
+        "fileable": 2,
+        "new": 65,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 63,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 10,
+        "blocked-write": 6,
+        "a11y-heading": 6,
+        "layout-tap-target": 41,
+        "layout-text-clipped": 2
+      },
+      "baselinePairs": 12,
+      "baselineSkipped": [],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 2,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 2,
+          "denominator": 2,
+          "percent": 100
+        },
+        "falsePositiveRate": {
+          "numerator": 2,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "dashboard-test",
+      "runId": "qa-20261105-202025-4156",
+      "round": "initial",
+      "startedAt": "2026-11-05T12:20:25.178Z",
+      "endedAt": "2026-11-05T12:21:38.153Z",
+      "elapsedMs": 72975,
+      "pageViews": 12,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 64,
+        "fileable": 1,
+        "new": 64,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 63,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 10,
+        "blocked-write": 8,
+        "a11y-heading": 6,
+        "layout-tap-target": 39,
+        "layout-text-clipped": 1
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 1,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 1,
+          "denominator": 1,
+          "percent": 100
+        },
+        "falsePositiveRate": {
+          "numerator": 1,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "dashboard-test",
+      "runId": "qa-20261105-202445-885f",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:24:45.698Z",
+      "endedAt": "2026-11-05T12:25:59.001Z",
+      "elapsedMs": 73303,
+      "pageViews": 12,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 64,
+        "fileable": 1,
+        "new": 64,
+        "knownBug": 0,
+        "suppressed": 0,
+        "reopened": 0,
+        "tolerable": 63,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "console": 10,
+        "blocked-write": 8,
+        "a11y-heading": 6,
+        "layout-tap-target": 39,
+        "layout-text-clipped": 1
+      },
+      "baselinePairs": 12,
+      "baselineSkipped": [],
+      "ciStatus": "failed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 1,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 1,
+          "denominator": 1,
+          "percent": 100
+        },
+        "falsePositiveRate": {
+          "numerator": 1,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "web-production",
+      "runId": "qa-20261105-201843-0332",
+      "round": "initial",
+      "startedAt": "2026-11-05T12:18:43.140Z",
+      "endedAt": "2026-11-05T12:19:26.149Z",
+      "elapsedMs": 43009,
+      "pageViews": 10,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 57,
+        "fileable": 0,
+        "new": 55,
+        "knownBug": 0,
+        "suppressed": 2,
+        "reopened": 0,
+        "tolerable": 55,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "layout-text-clipped": 1,
+        "layout-tap-target": 39,
+        "perf-oversized-image": 17
+      },
+      "baselinePairs": 0,
+      "baselineSkipped": [
+        {
+          "reason": "没有登记基线"
+        }
+      ],
+      "ciStatus": "passed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 0,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 0,
+          "denominator": 0,
+          "percent": null
+        },
+        "falsePositiveRate": {
+          "numerator": 0,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    },
+    {
+      "cohort": "read-post-v1",
+      "site": "web-production",
+      "runId": "qa-20261105-202255-8333",
+      "round": "repeat",
+      "startedAt": "2026-11-05T12:22:55.891Z",
+      "endedAt": "2026-11-05T12:23:41.875Z",
+      "elapsedMs": 45984,
+      "pageViews": 10,
+      "navigationFailures": 0,
+      "summary": {
+        "total": 57,
+        "fileable": 0,
+        "new": 55,
+        "knownBug": 0,
+        "suppressed": 2,
+        "reopened": 0,
+        "tolerable": 55,
+        "environment": 0,
+        "checkNeedsFix": 0
+      },
+      "counts": {
+        "layout-text-clipped": 1,
+        "layout-tap-target": 39,
+        "perf-oversized-image": 17
+      },
+      "baselinePairs": 10,
+      "baselineSkipped": [],
+      "ciStatus": "passed",
+      "labels": {
+        "truePositive": 0,
+        "falsePositive": 0,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 0,
+          "denominator": 0,
+          "percent": null
+        },
+        "falsePositiveRate": {
+          "numerator": 0,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      }
+    }
+  ],
+  "cohorts": [
+    {
+      "cohort": "default",
+      "runs": 10,
+      "pageViews": 92,
+      "durationMs": {
+        "count": 10,
+        "min": 41714,
+        "median": 46239,
+        "p95": 73493,
+        "max": 73493,
+        "total": 520155
+      },
+      "labels": {
+        "truePositive": 8,
+        "falsePositive": 12,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 12,
+          "denominator": 20,
+          "percent": 60
+        },
+        "falsePositiveRate": {
+          "numerator": 12,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      },
+      "fileable": 20,
+      "blockedWriteFindings": 72,
+      "consoleFindings": 77,
+      "navigationFailures": 0,
+      "baselinePairs": 46,
+      "rounds": [
+        {
+          "round": "initial",
+          "truePositive": 4,
+          "falsePositive": 6,
+          "unknown": 0,
+          "falseDiscoveryRate": {
+            "numerator": 6,
+            "denominator": 10,
+            "percent": 60
+          },
+          "falsePositiveRate": {
+            "numerator": 6,
+            "denominator": null,
+            "percent": null,
+            "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+          }
+        },
+        {
+          "round": "repeat",
+          "truePositive": 4,
+          "falsePositive": 6,
+          "unknown": 0,
+          "falseDiscoveryRate": {
+            "numerator": 6,
+            "denominator": 10,
+            "percent": 60
+          },
+          "falsePositiveRate": {
+            "numerator": 6,
+            "denominator": null,
+            "percent": null,
+            "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "read-post-v1",
+      "runs": 10,
+      "pageViews": 92,
+      "durationMs": {
+        "count": 10,
+        "min": 33470,
+        "median": 46481,
+        "p95": 73303,
+        "max": 73303,
+        "total": 524418
+      },
+      "labels": {
+        "truePositive": 25,
+        "falsePositive": 26,
+        "unknown": 0,
+        "falseDiscoveryRate": {
+          "numerator": 26,
+          "denominator": 51,
+          "percent": 50.98
+        },
+        "falsePositiveRate": {
+          "numerator": 26,
+          "denominator": null,
+          "percent": null,
+          "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+        }
+      },
+      "fileable": 51,
+      "blockedWriteFindings": 28,
+      "consoleFindings": 40,
+      "navigationFailures": 0,
+      "baselinePairs": 46,
+      "rounds": [
+        {
+          "round": "initial",
+          "truePositive": 13,
+          "falsePositive": 13,
+          "unknown": 0,
+          "falseDiscoveryRate": {
+            "numerator": 13,
+            "denominator": 26,
+            "percent": 50
+          },
+          "falsePositiveRate": {
+            "numerator": 13,
+            "denominator": null,
+            "percent": null,
+            "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+          }
+        },
+        {
+          "round": "repeat",
+          "truePositive": 12,
+          "falsePositive": 13,
+          "unknown": 0,
+          "falseDiscoveryRate": {
+            "numerator": 13,
+            "denominator": 25,
+            "percent": 52
+          },
+          "falsePositiveRate": {
+            "numerator": 13,
+            "denominator": null,
+            "percent": null,
+            "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+          }
+        }
+      ]
+    }
+  ],
+  "labels": {
+    "truePositive": 33,
+    "falsePositive": 38,
+    "unknown": 0,
+    "falseDiscoveryRate": {
+      "numerator": 38,
+      "denominator": 71,
+      "percent": 53.52
+    },
+    "falsePositiveRate": {
+      "numerator": 38,
+      "denominator": null,
+      "percent": null,
+      "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
+    }
+  },
+  "oracle": {
+    "cases": [
+      {
+        "id": "admin-production-unnamed-category",
+        "site": "admin-production",
+        "family": "generic-accessible-name",
+        "expected": true,
+        "detected": true,
+        "evidenceCount": 21
+      },
+      {
+        "id": "admin-production-D13-date-format",
+        "site": "admin-production",
+        "family": "business-display-rule",
+        "expected": true,
+        "detected": false,
+        "evidenceCount": 40,
+        "source": "Existing issue ledger D13; valid raw ISO timestamps must be displayed as readable dates."
+      },
+      {
+        "id": "admin-test-unnamed-category",
+        "site": "admin-test",
+        "family": "generic-accessible-name",
+        "expected": true,
+        "detected": true,
+        "evidenceCount": 21
+      },
+      {
+        "id": "admin-test-D13-date-format",
+        "site": "admin-test",
+        "family": "business-display-rule",
+        "expected": true,
+        "detected": false,
+        "evidenceCount": 40,
+        "source": "Existing issue ledger D13; valid raw ISO timestamps must be displayed as readable dates."
+      }
+    ],
+    "challenge": {
+      "truePositive": 2,
+      "falseNegative": 2,
+      "falsePositive": 0,
+      "trueNegative": 0,
+      "excluded": 0,
+      "falseNegativeRate": {
+        "numerator": 2,
+        "denominator": 4,
+        "percent": 50
+      }
+    },
+    "genericOnly": {
+      "truePositive": 2,
+      "falseNegative": 0,
+      "falsePositive": 0,
+      "trueNegative": 0,
+      "excluded": 0,
+      "falseNegativeRate": {
+        "numerator": 0,
+        "denominator": 2,
+        "percent": 0
+      }
+    },
+    "limitation": "Four directed cases in two repeated environments cover only two issue families. Not a blind/random sample and not an estimate of site-wide false-negative rate."
+  },
+  "overallFalseNegativeRate": null,
+  "overallFalsePositiveRate": null,
+  "limitations": [
+    "Known normal elements were not exhaustively labelled; classic FPR is unavailable.",
+    "Repeated runs and environments are not independent projects.",
+    "Per-detector caps and fingerprint deduplication affect item counts.",
+    "No release was deployed during the repeat runs.",
+    "Elapsed time is QA run.json start-to-end, excluding login preparation and reviewer time."
+  ]
+}
