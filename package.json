@@ -10,6 +10,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "setup": "node bin/heimdall.mjs setup",
     "test": "pnpm -C core test",
     "test:full": "pnpm -C core test:full",
     "test:fast": "pnpm -C core test:fast",

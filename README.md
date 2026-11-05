@@ -16,18 +16,21 @@
 2. **量差异**——渲染原站和克隆，按视口逐像素比对，给出**实测**还原度（不是估计），并列出缺口。
 3. **给结论**——一张全站星图看清结构，一份改站清单告诉你换域名/换图/换文案各要动哪些文件，外加 SEO 审计与竞品情报。
 
-跑起来只要两步（前提：Node ≥ 22.13、pnpm 11.28.10；旧版 Corepack
-若无法验签，请先升级 Corepack 或全局安装该版本）：
+Windows 双击根目录的 `clone-heimdall.cmd` 即可。第一次运行会自动检查 Node/pnpm、
+安装缺的依赖与 Chromium、构建控制台和 MCP、启动单端口引擎，然后打开
+`http://127.0.0.1:8900`；以后再次双击会复用已经就绪的部分。
 
-```bash
-cd core && pnpm install && cd ../console && pnpm install && cd ..
+也可以从终端运行：
+
+```powershell
+node bin/heimdall.mjs setup
 ```
 
-```bash
-./clone-heimdall.cmd
-```
-
-浏览器会打开 `http://127.0.0.1:5173`；把网址贴进左上角的输入框即可。完整步骤见 [USAGE.md](USAGE.md)，工程细节见 [当前架构](docs/guide/01-architecture.md)。
+`setup` 默认把 MCP 写进检测到的 Claude Code / Claude Desktop / Codex。
+只想打开界面、不改客户端配置时，运行 `node bin/heimdall.mjs setup --no-connect`。
+完整步骤见 [USAGE.md](USAGE.md)，小白演示见
+[09 · 小白一站式启动](docs/guide/09-beginner-demo.md)，工程细节见
+[当前架构](docs/guide/01-architecture.md)。
 
 不想点界面、想一条命令跑完（侦察 → 克隆 → 验证 → 资产 → 交付）：
 

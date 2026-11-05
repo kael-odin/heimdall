@@ -1,40 +1,39 @@
 /**
- * agent/doctor-fix —— doctor 的安全修复（E11-01：`heimdall doctor --fix`）
+ * agent/doctor-fix —— `heimdall doctor --fix` 的安全修复。
  *
- * 只做两类不会改变用户环境语义的事：
- *   · Chromium 没装：`pnpm exec playwright install chromium`（装到 Playwright 的缓存目录）
- *   · 引擎没在跑：后台起一台（空闲自退，见 engine-client 的 detached 模式）
- * 其余检查（Node、pnpm、数据根、磁盘）只给命令，不动手。修复后重跑检查，如实写进 detail。
+ * 修复动作与 `heimdall setup --no-connect --no-open` 共用一条实现：
+ * 只补缺的依赖 / Chromium，重建需要的产物，并复用或启动同数据根引擎。
+ * Node、数据根、磁盘和客户端配置文件不会被擅自改动。
  */
-import { spawnSync } from 'node:child_process';
-import { CORE_ROOT, DATA_ROOT } from '../paths.mjs';
-import { connectEngine } from './engine-client.mjs';
+import { DATA_ROOT } from '../paths.mjs';
+import { executeSetup } from './commands/setup.mjs';
 
 export async function applyFixes(checks) {
-  const out = [];
-  for (const c of checks) {
-    if (c.status === 'ok') { out.push(c); continue; }
-    if (c.id === 'chromium' && c.fix?.auto) {
-      const r = process.platform === 'win32'
-        ? spawnSync('pnpm exec playwright install chromium', { cwd: CORE_ROOT, encoding: 'utf8', shell: true, windowsHide: true, timeout: 600_000 })
-        : spawnSync('pnpm', ['exec', 'playwright', 'install', 'chromium'], { cwd: CORE_ROOT, encoding: 'utf8', timeout: 600_000 });
-      if (r.status === 0) out.push({ ...c, status: 'ok', detail: 'Chromium 已安装（doctor --fix 完成）', fix: undefined });
-      else out.push({ ...c, detail: `${c.detail}；自动安装失败：${String(r.stderr || r.stdout || '').split('\n').slice(-3).join(' ').slice(0, 200)}` });
-      continue;
-    }
-    if (c.id === 'engine' && c.fix?.auto) {
-      try {
-        const e = await connectEngine({ start: true, detached: true, idleExitMs: 30 * 60_000 });
-        out.push({ ...c, status: 'ok', detail: `引擎已启动：${e.base}（空闲 30 分钟后自退）`, fix: undefined });
-      } catch (error) {
-        out.push({ ...c, detail: `${c.detail}；自动启动失败：${String(error.message ?? error).slice(0, 200)}` });
-      }
-      continue;
-    }
-    out.push(c);
+  const needsFix = checks.filter(check => check.status !== 'ok' && check.fix?.auto);
+  if (!needsFix.length) return checks;
+
+  const setup = await executeSetup(
+    { noConnect: true, open: false },
+    { log: () => {} },
+  );
+  if (!setup.ok) {
+    const reason = setup.error?.message ?? 'setup 修复失败';
+    return checks.map(check => check.fix?.auto && check.status !== 'ok'
+      ? { ...check, detail: `${check.detail}；自动修复失败：${reason}` }
+      : check);
   }
-  return out;
+
+  // 依赖装好后再做一次真实检查，而不是根据安装命令退出码猜“应该好了”。
+  const { runChecks } = await import('./registry/capabilities/doctor.mjs');
+  const after = await runChecks(checks.map(check => check.id));
+  return after.map(check => {
+    const before = checks.find(item => item.id === check.id);
+    if (before?.status !== 'ok' && check.status === 'ok' && before.fix?.auto) {
+      return { ...check, detail: `${check.detail}（doctor --fix 完成）`, fix: undefined };
+    }
+    return check;
+  });
 }
 
-export const FIXABLE = Object.freeze(['chromium', 'engine']);
+export const FIXABLE = Object.freeze(['dependencies', 'chromium', 'console', 'mcp', 'engine']);
 export const DATA_ROOT_USED = DATA_ROOT;

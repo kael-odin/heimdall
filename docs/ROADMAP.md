@@ -18,9 +18,14 @@
 
 同日[公开页面离线验收](./audits/README.md)确认 `example.com` 单页可完成 strict 导出、独立 Node 服务与浏览器访问；`vitest.dev` 单页在 heal / materialize 后同源与跨源静态资源缺口清零，剩余 16 个阻断均为未克隆站内链接。验收还修复了 `dns-prefetch` 被子串匹配误判为 `prefetch` 的 strict 假缺口。两个样本均为 `captured-only`，不能证明整站覆盖。
 
-## AI 原生接入（规划中）
+## AI 原生接入（已进入交付加固）
 
 2026-10-25 起草的 [AI 接入层 PRD](prd/ai-native/README.md)：一个能力注册表生成 CLI / MCP / HTTP / 技能四个外壳，让外部代理调用 Heimdall；以「AI 提议、确定性门禁裁决、失败回落镜像」的闭环做前端重建，行为与后端只做被观察到的部分。Phase 0 的四个 spike 已于 10-25 完成并回写假设表（[结论](prd/ai-native/10-roadmap-risks.md)）：修复包原型过线，分段重建 6 次运行全部过 silver，但每段成本比估算高 3–6 倍；正式裁判须绕开验收的截图预算与健康前提。客户端界面手测完成后冻结为 v1.0，再按其路线图开工；spike 代码在 `core/spikes/ph0/`，不进主干。
+
+2026-11-05 已补齐第一版统一安装体验：`heimdall setup` 和 `clone-heimdall.cmd`
+按需安装依赖与 Chromium、构建控制台/MCP、启动 `:8900` 单端口并配置 AI 客户端；
+`doctor --fix` 复用同一安全实现。下一步不是继续加工具，而是在干净 Windows / Linux
+上做安装回归、发布不可变版本，并把 QA CI 接到真实授权项目。
 
 ## 比赛方向：项目还原度与 BUG 自动验收
 

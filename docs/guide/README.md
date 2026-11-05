@@ -84,34 +84,26 @@
 
 ## 最短路径
 
-```bash
+Windows 直接双击根目录 `clone-heimdall.cmd`。终端等价命令：
+
+```powershell
 git clone <repo> && cd heimdall
-pnpm -C core install --frozen-lockfile
-pnpm -C console install --frozen-lockfile
-pnpm -C core exec playwright install chromium
+node bin/heimdall.mjs setup
 ```
+
+安装器会按需补依赖、Chromium、控制台、MCP 和 `:8900` 引擎，不需要手工逐个执行。
 
 **只想先看一眼**（不启动引擎，一页而已）：
 
-```bash
+```powershell
 node core/src/cli.mjs forge https://example.com home
 # 产物：core/workspace/example.com/pages/home/ —— 打开 clone/index.html 就是复刻
 ```
 
 **想用控制台**：
 
-```bash
-pnpm -C console build
-cd core && HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
-```
-
-Windows PowerShell：
-
 ```powershell
-pnpm -C console build
-Set-Location core
-$env:HEIMDALL_CONSOLE_DIR = (Resolve-Path ../console/dist).Path
-node src/engine-server.mjs 8900
+node bin/heimdall.mjs setup --no-connect
 ```
 
 打开 `http://127.0.0.1:8900`。第一次进来是一片空白星图，页面上会写清接下来三步：

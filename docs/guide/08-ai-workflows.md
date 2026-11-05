@@ -6,25 +6,29 @@ Claude Code 还提供 `heimdall:clone`、`heimdall:rebuild`、`heimdall:seo`、`
 
 ## 连接检查
 
-只让 AI 调用时不需要打开控制台 `:5173`。先单独启动引擎，再在客户端里调用：
+先准备单端口引擎，不需要启动 Vite 的 `:5173`：
 
 ```powershell
-cd D:\Github-Star\heimdall\core
-node src\engine-server.mjs 8900
+node bin/heimdall.mjs setup --no-open
 ```
 
-如果已经双击根目录的 `clone-heimdall.cmd`，引擎 `:8900` 和控制台 `:5173` 都已启动，可以跳过这一步。然后连接客户端：
+如果已经双击根目录的 `clone-heimdall.cmd`，`:8900` 引擎和控制台都已启动，可以跳过这一步。
+默认安装器会自动配置 Claude Code 插件、Claude Desktop 和 Codex；需要单独重写时：
 
 ```powershell
-heimdall connect claude-desktop --dry-run
-heimdall connect claude-desktop
-heimdall connect codex --dry-run
-heimdall connect codex
+node bin/heimdall.mjs connect claude-desktop --dry-run
+node bin/heimdall.mjs connect claude-desktop
+node bin/heimdall.mjs connect codex --dry-run
+node bin/heimdall.mjs connect codex
 ```
 
-`heimdall connect` 会先备份配置，再启动一次 stdio 服务自测 `tools/list` 和 `overview`。引擎没跑时，连接本身可能成功，但克隆类工具会返回 `engine_unreachable`。
+`heimdall connect` 会先备份配置，再用与写入配置完全相同的 `HEIMDALL_API` 启动 stdio
+服务，自测 `tools/list` 和 `overview`。引擎没跑时，连接本身可能成功，但克隆类工具会返回
+`engine_unreachable`。
 
-Claude Code 插件是轻量代理，明确依赖 `:8900` 引擎。Codex 和 Claude Desktop 的完整 MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳定、工作区一致，仍建议先开 `:8900`。当前三种入口都应列出 15 个工具；重启客户端或新开会话后才会加载新配置。
+Claude Code 插件是轻量代理，明确依赖 `:8900` 引擎。Codex 和 Claude Desktop 的完整
+MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳定、工作区一致，仍建议先开
+`:8900`。当前三种入口都应列出 15 个工具；重启客户端或新开会话后才会加载新配置。
 
 ## 克隆和重建
 

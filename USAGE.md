@@ -3,60 +3,79 @@
 本指南说明当前控制台与命令行的操作。旧版逐日说明已移至
 [历史使用手册](docs/archive/USAGE-through-2026-10-13.md)，其中的示例分数与页面数量不能当成当前验收结果。
 
-## 准备
+## 准备与启动
 
-- Node.js 22.13+、pnpm 11.28.10；抓取与测试需要 Playwright Chromium。
-  如果系统自带的 Corepack 无法验签，先升级 Corepack 或运行
-  `npm install -g pnpm@11.28.10`。
-- 仅处理自有站点或取得明确授权的内容。登录会话、导出包和代理访问分别按授权范围控制。
-- 新机要分别安装两个子包。根目录没有 pnpm workspace 配置。
+前提只有两个：Node.js 22.13+，以及可用的 pnpm 11.28.10。
+如果系统自带的 Corepack 无法验签，先升级 Corepack 或运行
+`npm install -g pnpm@11.28.10`。
+
+Windows 小白路径：双击根目录 `clone-heimdall.cmd`。第一次运行会自动：
+
+1. 检查 Node / pnpm；
+2. 只安装缺失的 `core`、`console`、`packages/mcp` 依赖；
+3. 缺 Chromium 时安装 Playwright Chromium；
+4. 控制台源码有变化时重新构建；
+5. 缺失时构建自包含 MCP 插件入口；
+6. 复用或启动 `http://127.0.0.1:8900` 单端口引擎；
+7. 打开 `http://127.0.0.1:8900`。
+
+终端等价命令：
 
 ```powershell
-pnpm -C core install --frozen-lockfile
-pnpm -C console install --frozen-lockfile
-pnpm -C core exec playwright install chromium
+node bin/heimdall.mjs setup --no-connect
 ```
 
-## 启动
+要让安装器同时配置并自测 Claude Code / Claude Desktop / Codex：
 
-开发时开两个终端：
+```powershell
+node bin/heimdall.mjs setup
+```
+
+只想覆盖指定客户端：
+
+```powershell
+node bin/heimdall.mjs setup --connect codex,claude-desktop
+```
+
+`setup` 默认打开浏览器；脚本/CI 用 `--no-open`，只做检查不启动服务可以先用
+`node bin/heimdall.mjs doctor --json`。npm 镜像用
+`--registry https://registry.npmmirror.com`，Playwright 下载镜像沿用其官方环境变量
+`PLAYWRIGHT_DOWNLOAD_HOST`。
+
+> `:8900` 才是完整入口，同时提供控制台、API 和 MCP 执行引擎。
+> `:5173` 只用于前端开发者单独跑 Vite；普通使用和 AI 调用都不需要它。
+
+开发模式仍可开两个终端：
 
 ```powershell
 pnpm -C core dev
 pnpm -C console dev
 ```
 
-控制台为 `http://127.0.0.1:5173`，引擎为 `http://127.0.0.1:8900`。
-Windows 也可运行根目录的 `clone-heimdall.cmd`，脚本会检查两个服务均返回成功后再打开控制台。
-
-单端口运行：
-
-```powershell
-pnpm -C console build
-$env:HEIMDALL_CONSOLE_DIR = (Resolve-Path console/dist).Path
-pnpm -C core dev
-```
-
-此时打开 `http://127.0.0.1:8900`。若引擎设置了 `HEIMDALL_TOKEN`，先在控制台「设置 → 引擎 Token」保存同一口令；工作区产物与 API 都由引擎校验。控制台开发服务器不直接发布 `core/workspace/`。
+此时只把 `:5173` 当 Vite 开发页，引擎仍是 `:8900`。若引擎设置了
+`HEIMDALL_TOKEN`，先在控制台「设置 → 引擎 Token」保存同一口令；工作区产物与 API
+都由引擎校验。
 
 ### 只给 AI 用，不需要打开控制台
 
-看控制台时，双击 `clone-heimdall.cmd` 就够了：它会同时启动引擎 `:8900` 和控制台 `:5173`，再打开浏览器。
-
-如果只是让 Codex、Claude Desktop 或 Claude Code 调用 MCP，不需要打开 `:5173`。最稳的做法仍是单独留一台引擎：
+如果只让 Codex、Claude Desktop 或 Claude Code 调用 MCP，可以不打开浏览器，但仍要有
+本机执行引擎：
 
 ```powershell
-cd D:\Github-Star\heimdall\core
-node src\engine-server.mjs 8900
+node bin/heimdall.mjs setup --no-open
 ```
 
-然后重新打开客户端或新开一个会话，先让它调用 `heimdall_doctor`。MCP 服务本身由客户端拉起，不需要手工再跑一条 MCP 命令。
+然后重新打开客户端或新开一个会话，先让它调用 `heimdall_doctor`。MCP 服务本身由客户端
+拉起，不需要手工再跑一条 MCP 命令。`engine_unreachable` 只查
+`http://127.0.0.1:8900/api/status`，不要查 `:5173`。
 
 - Codex：全局 `config.toml` 里的 `[mcp_servers.heimdall]`
 - Claude Desktop：`claude_desktop_config.json`
 - Claude Code：`heimdall@heimdall` 插件
 
-三个入口当前都应能看到 15 个 Heimdall 工具。Claude Code 的插件代理依赖 `:8900` 引擎；Codex 和 Claude Desktop 使用完整 MCP 服务，任务类工具在引擎没开时可以按需拉起临时引擎，但演示时建议统一先开 `:8900`，避免工作区或进程来源不一致。
+三个入口当前都应能看到 15 个 Heimdall 工具。Claude Code 的插件代理依赖 `:8900`
+引擎；Codex 和 Claude Desktop 使用完整 MCP 服务，任务类工具在引擎没开时可以按需拉起
+临时引擎，但演示时建议统一先开 `:8900`，避免工作区或进程来源不一致。
 
 ## 克隆与验收
 
@@ -258,7 +277,9 @@ heimdall qa ci --site web --viewports 1440,390 --fail-on all --github
 
 - 工作区：`core/workspace/<host>/`；交付包：`core/deliverable/`。默认均不进 Git，可通过 `HEIMDALL_DATA_DIR` 改数据根目录。`health.coverage` 用同一批已发现 URL 统计按当前默认配方估算的队列排除、实际入队、克隆、有效 v2 验证及交付数量；侦察页数或深度触顶、sitemap 预算耗尽、声明的 sitemap 读取失败、出现站外 sitemap 或页面采集失败时，`discovery.scopeLimited` 标记范围受限。即使它为 `false`，仍不能证明整站所有页面都已发现。
 - 页面目录名由引擎的 URL 映射决定。不要根据路径手写目录名；从「页面」清单、报告索引或 `manifest.json` 查实际路径。
-- 打不开控制台时检查 `:8900/api/status` 与 `:5173/`；有 Token 时在设置中保存后刷新。启动脚本超时会报错，不代表服务已就绪。
+- 打不开控制台时先运行 `node core/src/cli.mjs doctor --json`，再检查
+  `http://127.0.0.1:8900/api/status` 与 `http://127.0.0.1:8900/`。`:5173`
+  只属于 Vite 开发模式，不是 MCP 或日常使用入口。有 Token 时在设置中保存后刷新。
 - 未生成的可选产物不会在报告里显示链接。已有产物打不开时先检查引擎鉴权，再看引擎日志与浏览器网络请求。
 - 测试入口：`pnpm -C core lint`、`pnpm -C core test`、`pnpm -C core smoke`、`pnpm -C console build`。
 

@@ -16,6 +16,7 @@
     }
   },
   "scripts": {
+    "setup": "node src/cli.mjs setup",
     "dev": "node src/engine-server.mjs 8900",
     "verify": "node src/verify/verify.mjs",
     "acceptance": "node src/acceptance/cli.mjs",

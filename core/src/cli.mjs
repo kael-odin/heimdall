@@ -16,7 +16,7 @@
  *
  * AI 接入层（Bifröst，PRD docs/prd/ai-native）的代理命令由能力注册表生成，带 --json、统一退出码：
  *   heimdall overview | site | brief | artifact | compare | jobs | clone | doctor
- *   heimdall rebuild init | rebuild status | connect | probe | mcp [--http N] [--legacy]
+ *   heimdall setup | rebuild init | rebuild status | connect | probe | mcp [--http N] [--legacy]
  *   heimdall --help --json                     机器可读的命令清单
  *
  * 用法: node src/cli.mjs <command> [...args]   或   pnpm -C core cli <command> ...
@@ -72,13 +72,24 @@ async function help() {
   const agent = describeCapabilities().map(c => `  ${(c.cli?.usage ?? c.id).padEnd(58)} ${c.title}`);
   const only = Object.values(CLI_ONLY).map(c => `  ${c.usage.padEnd(58)} ${c.desc}`);
   const rows = Object.entries(COMMANDS).filter(([name]) => name !== 'mcp').map(([name, c]) => `  ${c.usage.padEnd(58)} ${c.desc}`);
-  console.log(`Heimdall CLI\n\nAI 代理命令（--json 输出、统一退出码；heimdall --help --json 看参数 schema）：\n${agent.join('\n')}\n${only.join('\n')}\n\n采集与交付：\n${rows.join('\n')}\n\n示例:\n  heimdall doctor\n  heimdall clone https://example.org/ --json\n  heimdall brief example.org home --detail sections\n  heimdall compare --project .\n  heimdall recon apify.com 30\n  heimdall serve 8900\n`);
+  console.log(`Heimdall CLI\n\nAI 代理命令（--json 输出、统一退出码；heimdall --help --json 看参数 schema）：\n${agent.join('\n')}\n${only.join('\n')}\n\n采集与交付：\n${rows.join('\n')}\n\n示例:\n  heimdall setup\n  heimdall doctor\n  heimdall clone https://example.org/ --json\n  heimdall brief example.org home --detail sections\n  heimdall compare --project .\n  heimdall recon apify.com 30\n  heimdall serve 8900\n`);
 }
 
 // 仅在直接执行时运行（被 import 时只导出命令表，便于单测）
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const argv = process.argv.slice(2);
+  // setup 在导入能力注册表之前分派；否则全新机器还没装 node_modules 时，
+  // 注册表里 compare / QA 的静态依赖会先失败，安装器根本跑不起来。
+  if (argv[0] === 'setup') {
+    const mod = await import('./agent/commands/setup.mjs');
+    process.exit(await mod.run(argv.slice(1)));
+  }
+  // doctor 同样走轻量入口：依赖坏了的时候，正是最需要 doctor 的时候。
+  if (argv[0] === 'doctor') {
+    const mod = await import('./agent/registry/capabilities/doctor.mjs');
+    process.exit(await mod.runDoctorCli(argv.slice(1)));
+  }
   const { AGENT_COMMANDS, runAgentCommand, helpJson } = await import('./agent/cli.mjs');
   if ((argv[0] === '--help' || argv[0] === 'help') && argv.includes('--json')) {
     process.stdout.write(JSON.stringify(helpJson(COMMANDS)) + '\n');

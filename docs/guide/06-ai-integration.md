@@ -9,43 +9,51 @@
 
 ## 0. 一次性准备
 
-前提：Node 22+、pnpm、仓库已 clone。
+前提：Node 22.13+、pnpm 11.28.10、仓库已 clone。
 
-```bash
-pnpm -C core install --frozen-lockfile
-pnpm -C console install --frozen-lockfile
-pnpm -C packages/mcp install --frozen-lockfile
-pnpm -C core exec playwright install chromium
-pnpm mcp:build          # 生成 plugin/server/heimdall-mcp.mjs（自包含单文件）
-pnpm -C console build   # 只有要看控制台/星图时才需要
+推荐直接运行统一安装器：
+
+```powershell
+node bin/heimdall.mjs setup
 ```
 
-把 `heimdall` 命令放到 PATH（技能里的 `Bash(heimdall *)` 依赖它）：
+它会按需完成依赖、Chromium、控制台、自包含 MCP、`:8900` 引擎和已检测客户端的连接，
+不会重复安装已经就绪的部分。只想自己指定客户端时：
 
-```bash
-cd <仓库根> && pnpm link --global
-heimdall --help
+```powershell
+node bin/heimdall.mjs setup --connect codex,claude-desktop
 ```
 
-如果 `heimdall` 仍找不到，运行 `pnpm bin -g` 把输出目录加进 PATH，或临时用 `node bin/heimdall.mjs <命令>`。
+安装器默认打开单端口控制台 `http://127.0.0.1:8900`。`:5173` 只用于单独开发
+Vite 前端，不是 MCP 入口。
+
+需要把 `heimdall` 命令放到 PATH 时再执行：
+
+```powershell
+pnpm link --global
+heimdall --version
+```
+
+如果 `heimdall` 仍找不到，运行 `pnpm bin -g` 把输出目录加进 PATH，或临时使用
+`node bin/heimdall.mjs <命令>`。
 
 ---
 
 ## 1. 起靶子与引擎
 
-```bash
+```powershell
 # 终端 A：F1 夹具（完全离线）
-node core/test/fixtures/bench/f1/server.mjs --port 5090   # 打印 http://127.0.0.1:5090/
+node core/test/fixtures/bench/f1/server.mjs --port 5090
 
-# 终端 B：引擎（MCP 的 HTTP v1 与 AI 活动页都靠它）
-cd core && HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
+# 终端 B：单端口引擎 + 控制台
+node bin/heimdall.mjs setup --no-open
 ```
 
 另开一个终端确认：
 
-```bash
-heimdall doctor --json
-heimdall overview --json
+```powershell
+node bin/heimdall.mjs doctor --json
+node bin/heimdall.mjs overview --json
 ```
 
 `doctor` 里不应有 `fail`；`overview` 应能看到引擎与站点清单。

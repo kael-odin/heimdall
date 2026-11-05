@@ -1,6 +1,6 @@
 # Heimdall 当前状态（STATUS）
 
-> 更新：2026-11-04 · **本页是“当前为真”的唯一入口**。历史接手记录与逐日审计已归档，见文末。
+> 更新：2026-11-05 · **本页是“当前为真”的唯一入口**。历史接手记录与逐日审计已归档，见文末。
 
 ## 一句话
 
@@ -18,12 +18,14 @@
 ## 现在能跑什么
 
 ```bash
+# 幂等安装 / 启动 / 可选的 AI 客户端配置
+node bin/heimdall.mjs setup
+
 # 单页克隆（不需要先起引擎）
 node core/src/cli.mjs forge https://example.com home
 
-# 全流程：控制台 + 引擎
-pnpm -C console build
-cd core && HEIMDALL_CONSOLE_DIR=../console/dist node src/engine-server.mjs 8900
+# 全流程：控制台 + 引擎（幂等）
+node bin/heimdall.mjs setup --no-connect
 
 # 一条命令跑完侦察→克隆→验证→资产→交付
 node core/src/cli.mjs handoff https://example.org --max-pages 40
@@ -58,7 +60,10 @@ pnpm check                 # 本地总门禁
 `lint` 711 文件、文档 698 个目标 / 140 个文件、冻结验收 14 个文件均通过。
 验收基准 18/18、13 个已知 BUG 全检出且 13/13 定位到注入源码；QA 基准 21/21、0 误报。
 Console 最大生产 chunk 为 477.84 kB，无超过 500 kB 的警告；三套官方 registry 审计均无已知漏洞。
-Node 22 的权威结果由 Hosted CI 的两份真实分片共同组成；当前本机快速集为 1,197/1,197（新增 MCP、QA CI、Action 自测和小白演示文档后）。
+Node 22 的权威结果由 Hosted CI 的两份真实分片共同组成；2026-11-05 本机完整
+`pnpm check` 通过，快速集为 **1,210 / 1,210**，lint 718 文件，文档 701 个目标 /
+141 个文件，D7 真实浏览器验收 `accepted:true`。新增安装测试后仍以精确提交的
+Hosted CI 结果为最终依据。
 
 ## 已知边界（不藏）
 
@@ -101,6 +106,20 @@ Node 22 的权威结果由 Hosted CI 的两份真实分片共同组成；当前�
   `fsync`、Console WebGL 星图拆包，并把依赖审计接进总门禁与 CI。
 - 开源治理补齐 MIT、SECURITY、CONTRIBUTING、CHANGELOG、Dependabot，pnpm 固定到
   `11.28.10`。当前结论仍是“可认真试用和内部验收”，不是“任意站点开箱即成熟产品”。
+
+## 2026-11-05 一键安装与 AI 接入收口
+
+- 新增 `heimdall setup`：按需检查 Node/pnpm、安装三套缺失依赖、Chromium、构建控制台和
+  MCP、复用或启动 `:8900` 单端口引擎、打开 UI，并配置检测到的 Claude Code / Claude
+  Desktop / Codex。
+- `clone-heimdall.cmd` 已改为真正的首次安装器 + 启动器。双击后打开
+  `http://127.0.0.1:8900`，不再依赖 `:5173`；重复双击只复用已就绪部分。
+- `doctor` 扩充为 13 项，增加依赖、控制台、MCP 和客户端检查；`doctor --fix` 与
+  `setup --no-connect --no-open` 共用安全修复实现。
+- `connect` 的自测现在使用与实际写入配置完全相同的 `HEIMDALL_API`；dry-run 不启动
+  MCP，已有配置也会先备份再改，失败仍回滚。
+- 本机实测识别到 Claude Code 插件 `0.2.2`、Claude Desktop 与 Codex；三者均通过
+  `doctor`，完整 MCP 客户端各拉起 15 个工具。
 
 ## 2026-10-30 仓库瘦身
 

@@ -96,7 +96,7 @@
 | E3-08 | Windows 原生（无 WSL）全部通过：路径含空格与中文、不依赖 bash | P0 | Ph1 | Windows 与 Linux CI 均过 |
 | E3-09 | 根目录 `bin/heimdall.mjs` 与 `package.json` 的 `bin`；发布前用 `node bin/heimdall.mjs` | P1 | Ph2 | 本地一条命令可调用 |
 | E3-10 | 遵守 `NO_COLOR`；`--quiet`、`--yes`；仅 TTY 下出现交互提示 | P1 | Ph2 | 非 TTY 下永不阻塞等待输入 |
-| E3-11 | `heimdall setup`：一条命令完成 Node 检查 → 依赖 → Chromium（镜像源可配）→ 构建控制台 → 起引擎 → 打开浏览器 → 引导「连接 AI」（[07 §1.2](07-ux.md)） | P1 | Ph2 | 全新 Windows 机器一条命令走通；每步失败都有人话提示 |
+| E3-11 | `heimdall setup`：一条命令完成 Node 检查 → 依赖 → Chromium（镜像源可配）→ 构建控制台 → 起引擎 → 打开浏览器 → 引导「连接 AI」（[07 §1.2](07-ux.md)） | P1 | Ph2 | **2026-11-05 已实现**：Windows 本机实测走通；每步输出人话结果，已有组件复用，干净机器仍需持续回归 |
 
 ---
 
