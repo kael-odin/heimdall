@@ -120,6 +120,9 @@ Hosted CI 结果为最终依据。
   MCP，已有配置也会先备份再改，失败仍回滚。
 - 本机实测识别到 Claude Code 插件 `0.2.2`、Claude Desktop 与 Codex；三者均通过
   `doctor`，完整 MCP 客户端各拉起 15 个工具。
+- Hosted 精确提交 `1dff01cb14d3878f102fc964485b0b8eaa05bf76`：
+  [CI `42016376206`](https://github.com/kael-odin/heimdall/actions/runs/42016376206)
+  8 / 8 job 成功，Docs `42016376116` 成功。
 
 ## 2026-10-30 仓库瘦身
 

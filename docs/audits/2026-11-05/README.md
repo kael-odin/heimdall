@@ -117,6 +117,16 @@ D7 real browser acceptance: accepted:true
 - connect 配置与自测使用同一个 `HEIMDALL_API`；
 - doctor 轻量入口在注册表之前可运行。
 
+## Hosted 门禁
+
+代码提交：`1dff01cb14d3878f102fc964485b0b8eaa05bf76`
+
+- CI：[`42016376206`](https://github.com/kael-odin/heimdall/actions/runs/42016376206)
+  - 8 / 8 job 成功；
+  - Core 两片全量测试、真实浏览器 e2e smoke、Console、MCP、Docker、依赖审计和 QA Action 全部通过。
+- Docs：[`42016376116`](https://github.com/kael-odin/heimdall/actions/runs/42016376116)
+  - 文档链接与规则数字检查成功。
+
 ## 仍未解决
 
 1. 还没有在真正空的 Windows 机器和空 Linux runner 上跑“从零安装”；
