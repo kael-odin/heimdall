@@ -164,11 +164,7 @@ async function readVisibleTextMatches(page, a) {
 
 async function performStep(page, s, baseUrl, timeout) {
   if (s.action === 'wait') return page.waitForTimeout(s.ms ?? 500);
-  if (s.action === 'goto') {
-    const response = await page.goto(new URL(s.path, baseUrl).href, { waitUntil: 'domcontentloaded', timeout });
-    if (response?.status() >= 400) throw new Error(`检查点跳转 HTTP ${response.status()}`);
-    return response;
-  }
+  if (s.action === 'goto') return page.goto(new URL(s.path, baseUrl).href, { waitUntil: 'domcontentloaded', timeout });
   const loc = page.locator(s.selector).first();
   if (s.action === 'waitFor') return loc.waitFor({ state: s.state ?? 'visible', timeout });
   if (s.action === 'click') return loc.click({ timeout });
@@ -367,15 +363,16 @@ async function runCheck(context, site, check, { timeout, settleMs, screenshotDir
   try {
     const response = await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout });
     if (!response) throw new Error('检查点页面没有响应');
-    if (response.status() >= 400) throw new Error(`检查点页面 HTTP ${response.status()}`);
     await page.waitForTimeout(settleMs);
     loginIssue = await loginProblemAtPage(page, { site, login, path: check.path });
+    if (!loginIssue && response.status() >= 400) throw new Error(`检查点页面 HTTP ${response.status()}`);
     if (!loginIssue) {
       for (const s of check.steps) {
-        await performStep(page, s, site.url, Math.min(timeout, 10_000));
+        const stepResponse = await performStep(page, s, site.url, Math.min(timeout, 10_000));
         await page.waitForTimeout(Math.min(settleMs, 800));
         loginIssue = await loginProblemAtPage(page, { site, login, path: check.path });
         if (loginIssue) break;
+        if (s.action === 'goto' && stepResponse?.status() >= 400) throw new Error(`检查点跳转 HTTP ${stepResponse.status()}`);
       }
       if (!loginIssue) {
         for (const a of check.expect) {

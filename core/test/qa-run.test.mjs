@@ -54,6 +54,7 @@ const PAGES = {
   </body></html>`,
   '/user/login': `<!doctype html><html lang="zh-CN"><title>登录</title><h1>扫码登录</h1>
     <button id="login-retry" type="button" onclick="fetch('/api/login-click')">刷新二维码</button></html>`,
+  '/guarded-401': `<!doctype html><html lang="zh-CN"><title>登录</title><h1>请登录</h1></html>`,
   '/guarded-after': `<!doctype html><html lang="zh-CN"><title>业务页</title><h1>业务页</h1>
     <button id="expire-session" type="button" onclick="location.href='/user/login'">查看内容</button></html>`,
   '/detector-failure': `<!doctype html><html lang="zh-CN"><title>检测异常对照</title><h1>检测异常对照</h1>
@@ -83,6 +84,7 @@ function server() {
   const srv = createServer((req, res) => {
     const path = new URL(req.url, 'http://x').pathname;
     if (path === '/guarded') { res.writeHead(302, { location: '/user/login?return=%2Fguarded' }); return res.end(); }
+    if (path === '/guarded-401') { res.writeHead(401, { 'content-type': 'text/html; charset=utf-8' }); return res.end(PAGES[path]); }
     if (path === '/api/login-click') { hits.loginClick++; res.writeHead(204); return res.end(); }
     if (path === '/api/stats') { res.writeHead(500, { 'content-type': 'application/json' }); return res.end('{"error":"x"}'); }
     if (path === '/api/track') { if (req.method === 'POST') hits.trackPost++; res.writeHead(204); return res.end(); }
@@ -209,6 +211,8 @@ test('qa login redirect: do not inspect, click or baseline a login page as busin
       checks: [
         { id: 'guarded-check', path: '/guarded', steps: [{ action: 'click', selector: '#login-retry' }], expect: [{ kind: 'visible', selector: '#login-retry' }] },
         { id: 'expires-during-check', path: '/guarded-after', steps: [{ action: 'click', selector: '#expire-session' }, { action: 'click', selector: '#login-retry' }], expect: [{ kind: 'visible', selector: '#login-retry' }] },
+        { id: 'unauthorized-check', path: '/guarded-401', expect: [{ kind: 'text', selector: 'h1', contains: '请登录' }] },
+        { id: 'unauthorized-goto', path: '/pricing', steps: [{ action: 'goto', path: '/guarded-401' }], expect: [{ kind: 'text', selector: 'h1', contains: '请登录' }] },
       ],
     });
     assert.ok(run.findings.some(f => f.kind === 'login-expired' && f.confidence === 'environment'));
@@ -217,6 +221,8 @@ test('qa login redirect: do not inspect, click or baseline a login page as busin
     assert.equal(run.run.coverage.baseline.compared, 0);
     assert.equal(run.run.coverage.checks[0].blockedReason, 'login-expired');
     assert.equal(run.run.coverage.checks[1].blockedReason, 'login-expired');
+    assert.equal(run.run.coverage.checks[2].blockedReason, 'login-expired');
+    assert.equal(run.run.coverage.checks[3].blockedReason, 'login-expired');
     assert.equal(srv.hits.loginClick, 0, 'neither checks nor exploration click the login page');
     assert.throws(() => writeBaseline(ws, run.run, run.run.coverage.pages), /登录/);
     assert.deepEqual(readBaseline(ws), before, 'an unusable run cannot replace the approved baseline');
