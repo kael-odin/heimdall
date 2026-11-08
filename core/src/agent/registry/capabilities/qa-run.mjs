@@ -84,18 +84,22 @@ export default {
       title: f.title, observed: f.observed, ...(f.loss ? { loss: f.loss } : {}), ...(f.evidence?.screenshot ? { screenshot: f.evidence.screenshot } : {}), triage: f.triage.status }));
     const env = r.findings.filter(f => f.kind === 'login-expired').map(f => f.title);
     const detection = r.run.coverage.detection;
+    const navigation = { pages: r.run.coverage.pages.length, failedPages: r.run.coverage.pages.filter(p => p.navError)
+      .map(p => ({ path: p.path, viewport: p.viewport, error: p.navError })) };
     const detectionByKind = r.findings.filter(f => f.detector).reduce((acc, f) => { acc[f.kind] = (acc[f.kind] ?? 0) + 1; return acc; }, {});
     const result = { runId: r.run.runId, site: r.run.site, summary: s, fileable: file,
-      environment: env, checks: r.run.coverage.checks,
+      environment: env, checks: r.run.coverage.checks, navigation,
       detection: { ...detection, byKind: detectionByKind }, explore: r.run.coverage.explore, baseline: r.run.coverage.baseline,
       report: relPath(ws, r.files.report), bugs: relPath(ws, r.files.bugs), runDir: relPath(ws, r.dir) };
     const summary = `${r.run.site}：建议提单 ${s.fileable} 条，按以往裁决过滤 ${s.suppressed} 条，可容忍 ${s.tolerable} 条`
       + (detection?.enabled ? `，无参照物检测 ${detection.findings} 条` : '')
       + (detection?.failedPages?.length ? `，${detection.failedPages.length} 个页面视口的检测器执行失败` : '')
+      + (navigation.failedPages.length ? `，${navigation.failedPages.length} 个页面视口未能打开` : '')
       + (r.run.coverage.explore?.enabled ? `，交互探索点开 ${r.run.coverage.explore.pages.reduce((n, p) => n + p.clicked, 0)} 个控件` : '')
       + (s.checkNeedsFix ? `，${s.checkNeedsFix} 个检查点没对上` : '') + (env.length ? `；登录态有问题：${env[0]}` : '') + `。报告：${result.report}`;
     const nextActions = [];
     if (env.length) nextActions.push(nextAction('cli:shell', { command: `heimdall qa login ${r.run.login?.name ?? ''}`.trim() }, '先重新登录，再重跑'));
+    if (navigation.failedPages.length) nextActions.push(nextAction('heimdall_qa_run', { workspace: ws.root, site: r.run.site }, '排查无法打开的页面后重跑'));
     if (detection?.failedPages?.length) nextActions.push(nextAction('heimdall_qa_run', { workspace: ws.root, site: r.run.site }, '检测器未完成，排查后重跑'));
     if (file.length) nextActions.push(nextAction('heimdall_qa_findings', { action: 'show', runId: r.run.runId, id: file[0].id }, '逐条复核建议提单的问题'));
     nextActions.push(nextAction('heimdall_qa_findings', { action: 'submit', runId: r.run.runId }, '把你自己测出的问题提交进这次运行（会校验证据并查重）'));

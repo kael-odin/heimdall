@@ -125,6 +125,7 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = 
     (result.environment?.length ?? 0) > 0 || (result.summary?.environment ?? 0) > 0 ? '登录状态失效，业务页面未全部检查' : null,
     (result.summary?.checkNeedsFix ?? 0) > 0 ? '检查点执行出错或未核实' : null,
     (result.detection?.failedPages?.length ?? 0) > 0 ? '页面检测器执行失败' : null,
+    (result.navigation?.failedPages?.length ?? 0) > 0 ? '页面导航失败，未完成检查' : null,
   ].filter(Boolean);
   const incomplete = incompleteReasons.length > 0;
   const gate = {
@@ -185,7 +186,7 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = 
     return {
       env: fail('qa_incomplete', summary, {
         summary, result: ciResult, nextActions, warnings,
-        hint: '恢复登录态、修复检查点或排查检测器失败后重新运行 heimdall qa ci',
+        hint: '恢复页面访问或登录态，修复检查点或检测器失败后重新运行 heimdall qa ci',
       }),
       exitCode: 3,
       annotations,

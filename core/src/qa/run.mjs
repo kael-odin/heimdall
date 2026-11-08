@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
-import { loadWorkspace, findWorkspace, resolveLogin, describeLogin, inWorkspace, scrubSecrets } from './workspace.mjs';
+import { loadWorkspace, findWorkspace, resolveLogin, describeLogin, inWorkspace, scrubSecrets, scrubValues } from './workspace.mjs';
 import { probeSite, normalizeCheck } from './probe.mjs';
 import { exploreSite, EXPLORE_DEFAULTS } from './explore.mjs';
 import { compareWithBaseline, readBaseline, DEFAULT_BASELINE_THRESHOLD } from './baseline.mjs';
@@ -162,12 +162,12 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
     ? { findings: [], compared: 0, skipped: [{ reason: '本次显式关闭' }], scope: '本次运行关闭了跨运行回归比对。' }
     : compareWithBaseline(ws, { site: siteName, runId, environment: site.environment }, pageEntries,
       { threshold: baselineCfg.threshold ?? DEFAULT_BASELINE_THRESHOLD, diffDir: join(dir, 'shots') });
-  const raw = [...probe.findings, ...(exploration?.findings ?? []), ...regression.findings].map((f) => {
+  const raw = scrubValues([...probe.findings, ...(exploration?.findings ?? []), ...regression.findings], login.secrets).map((f) => {
     const notFound = f.kind === 'assertion' && f.confidence === 'observed' && /实际：null/.test(f.observed ?? '');
     const confidence = f.kind === 'login-expired' ? 'environment' : f.confidence === 'check-error' ? 'check-error' : notFound ? 'check-unverified' : f.confidence;
     return normalizeFinding({ ...f, confidence }, { site: siteName, runId, source: 'check' }).finding;
   });
-  const findings = triage(ws, dedupe(raw), { environment: site.environment });
+  const findings = scrubValues(triage(ws, dedupe(raw), { environment: site.environment }), login.secrets);
   const run = {
     schema: 'heimdall.qa-run/1', runId, project: ws.project, site: siteName, siteUrl: site.url, environment: site.environment,
     label: args.label ?? null, startedAt, endedAt: new Date().toISOString(),
@@ -202,9 +202,10 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
     },
     summary: summarize(findings),
   };
-  if (args.collectTexts) writeFileSync(join(dir, 'texts.json'), JSON.stringify(probe.texts, null, 1));
-  const files = writeRunFiles(ws, dir, run, findings);
-  return { run, findings, files, dir };
+  const safeRun = scrubValues(run, login.secrets);
+  if (args.collectTexts) writeFileSync(join(dir, 'texts.json'), JSON.stringify(scrubValues(probe.texts, login.secrets), null, 1));
+  const files = writeRunFiles(ws, dir, safeRun, findings);
+  return { run: safeRun, findings, files, dir };
 }
 
 /** agent 提交发现：校验证据门槛，套裁决，写回运行并重出报告 */

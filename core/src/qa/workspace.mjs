@@ -210,11 +210,14 @@ export function resolveLogin(ws, name, env = process.env) {
     const state = JSON.parse(readFileSync(file, 'utf8'));
     const { sessionStorage, ...storageState } = state;
     const cookieExpiry = (state.cookies ?? []).map(c => c.expires).filter(x => Number.isFinite(x) && x > 0);
+    const secrets = [...(state.cookies ?? []).map(c => c.value),
+      ...(state.origins ?? []).flatMap(origin => (origin.localStorage ?? []).map(item => item.value))]
+      .filter(value => typeof value === 'string' && value.length >= 8);
     return {
       name, kind: p.kind, contextOptions: { storageState }, storage: [],
       savedAt: statSync(file).mtime.toISOString(),
       expiresAt: cookieExpiry.length ? new Date(Math.min(...cookieExpiry) * 1000).toISOString() : null,
-      secrets: (state.cookies ?? []).map(c => c.value).filter(v => String(v).length >= 12),
+      secrets,
     };
   }
   if (p.kind === 'headers') {
@@ -230,7 +233,7 @@ export function resolveLogin(ws, name, env = process.env) {
   const expiresAt = Object.values(values).map(jwtExpiry).filter(Boolean).sort()[0] ?? null;
   return {
     name, kind: p.kind, contextOptions: {}, storage: [{ origin: p.origin, items: Object.entries(values) }], expiresAt,
-    secrets: Object.values(values).filter(v => String(v).length >= 12),
+    secrets: Object.values(values).filter(v => String(v).length >= 8),
   };
 }
 
@@ -252,4 +255,12 @@ export function scrubSecrets(text, secrets = []) {
   let out = String(text ?? '');
   for (const s of secrets) if (s && String(s).length >= 8) out = out.split(String(s)).join('[凭据已移除]');
   return out;
+}
+
+export function scrubValues(value, secrets = []) {
+  if (typeof value === 'string') return scrubSecrets(value, secrets);
+  if (Array.isArray(value)) return value.map(item => scrubValues(item, secrets));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value)
+    .map(([key, item]) => [scrubSecrets(key, secrets), scrubValues(item, secrets)]));
+  return value;
 }

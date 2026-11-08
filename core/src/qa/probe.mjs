@@ -14,8 +14,9 @@
  *     或 writes: { allow: [路径前缀] } 只放行读语义的 POST（如 /api/xxx/getList）
  */
 import { chromium } from 'playwright';
-import { scrubSecrets } from './workspace.mjs';
+import { scrubValues } from './workspace.mjs';
 import { detectInPage, readVitalsInPage, DETECT_DEFAULTS, QA_CONTROL_SELECTOR } from './detect.mjs';
+import { browserContextOptions, newQaPage, qaBrowserLaunchOptions, requestQaLink, routeQaRequest } from './http-policy.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export const BROWSER_PROFILE = Object.freeze({ locale: 'zh-CN', timezoneId: 'Asia/Shanghai', colorScheme: 'light', reducedMotion: 'reduce' });
@@ -150,7 +151,7 @@ function pageFactsInPage({ loggedOutText }) {
 }
 
 async function openContext(browser, { login, viewport, origin, writes, writeAllow, health }) {
-  const context = await browser.newContext({ ...BROWSER_PROFILE, viewport, serviceWorkers: 'block', acceptDownloads: false, ...login.contextOptions });
+  const context = await browser.newContext({ ...BROWSER_PROFILE, viewport, serviceWorkers: 'block', acceptDownloads: false, ...browserContextOptions(login) });
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin }).catch(() => {});
   if (login.storage.length) {
     await context.addInitScript((entries) => {
@@ -160,19 +161,8 @@ async function openContext(browser, { login, viewport, origin, writes, writeAllo
       }
     }, login.storage);
   }
-  await context.route('**/*', async (route) => {
-    const req = route.request();
-    if (writes !== 'allow' && !READ_METHODS.has(req.method().toUpperCase())) {
-      // writeAllow：读语义 POST 的路径前缀白名单（如 /api/xxx/getList）；前缀匹配 pathname
-      let path = null;
-      try { path = new URL(req.url()).pathname; } catch { /* 解析不了就按拦截算 */ }
-      if (!path || !(writeAllow ?? []).some(p => path === p || path.startsWith(p))) {
-        health.blocked.push({ method: req.method(), url: safeUrl(req.url()) });
-        return route.abort('blockedbyclient').catch(() => {});
-      }
-    }
-    return route.continue().catch(() => {});
-  });
+  await context.route('**/*', route => routeQaRequest(route, { site: { origin, writes, writeAllow }, login,
+    onBlocked: req => health.blocked.push({ method: req.method(), url: safeUrl(req.url()) }) }));
   return context;
 }
 
@@ -189,7 +179,7 @@ function watch(page, health, origin) {
   page.on('dialog', d => d.dismiss().catch(() => {}));
 }
 
-async function checkLinks(context, links, origin, { limit = 60, timeout = 8000 } = {}) {
+async function checkLinks(context, links, origin, { site, login, limit = 60, timeout = 8000 } = {}) {
   const seen = new Map();
   for (const l of links) {
     let u;
@@ -201,10 +191,14 @@ async function checkLinks(context, links, origin, { limit = 60, timeout = 8000 }
   }
   const broken = [];
   for (const [href, text] of seen) {
-    let res = await context.request.head(href, { timeout, maxRedirects: 5 }).catch(() => null);
-    if (!res || res.status() === 405 || res.status() === 501) res = await context.request.get(href, { timeout, maxRedirects: 5 }).catch(() => null);
+    let res = await requestQaLink(context, 'head', href, { site, login, timeout });
+    if (!res || res.status() === 405 || res.status() === 501) {
+      await res?.dispose().catch(() => {});
+      res = await requestQaLink(context, 'get', href, { site, login, timeout });
+    }
     if (!res) broken.push({ href: safeUrl(href), text, status: 0 });
     else if (res.status() >= 400) broken.push({ href: safeUrl(href), text, status: res.status() });
+    await res?.dispose().catch(() => {});
   }
   return { checked: seen.size, broken };
 }
@@ -298,7 +292,7 @@ function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo,
 
 async function runCheck(context, site, check, { timeout, settleMs, screenshotDir, shoot, login }) {
   const health = emptyHealth();
-  const page = await context.newPage();
+  const page = await newQaPage(context, { site, login });
   watch(page, health, site.origin);
   const startUrl = new URL(check.path, site.url).href;
   const results = [];
@@ -335,7 +329,7 @@ async function runCheck(context, site, check, { timeout, settleMs, screenshotDir
  * 原始发现还没套裁决；run.mjs 负责指纹、裁决和报告。
  */
 export async function probeSite({ site, login, pages, checks = [], viewports, settleMs = 1500, timeoutMs = 30_000, linkCheck = true, linkLimit = 60, collectTexts = false, detect = true, detectOptions = {}, shoot, browser: given, headless = true, onProgress = () => {} }) {
-  const browser = given ?? await chromium.launch({ headless });
+  const browser = given ?? await chromium.launch(qaBrowserLaunchOptions(login, headless));
   const loggedOutText = site.loggedOutText ?? LOGGED_OUT;
   const out = { pages: [], checks: [], findings: [], texts: {} };
   try {
@@ -343,7 +337,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
       for (const p of pages) {
         const health = emptyHealth();
         const context = await openContext(browser, { login, viewport, origin: site.origin, writes: site.writes, writeAllow: site.writeAllow, health });
-        const page = await context.newPage();
+        const page = await newQaPage(context, { site, login });
         watch(page, health, site.origin);
         const pageUrl = new URL(p.path, site.url).href;
         let navError = null, facts = null, links = null, detected = [], loginIssue = null, detectorError = null;
@@ -357,7 +351,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
           facts = await page.evaluate(pageFactsInPage, { loggedOutText });
           facts.images = facts.images.map(img => ({ ...img, src: safeUrl(img.src) }));
           loginIssue = loginProblem({ site, login, path: p.path, finalUrl: page.url(), facts });
-          if (linkCheck && !loginIssue && viewport === viewports[0]) links = await checkLinks(context, facts.links, site.origin, { limit: linkLimit });
+          if (linkCheck && !loginIssue && viewport === viewports[0]) links = await checkLinks(context, facts.links, site.origin, { site, login, limit: linkLimit });
           if (detect && !navError && !loginIssue) {
             const result = await runDetectors(page, { viewport, loginName: login?.name, options: detectOptions });
             detected = result.detections;
@@ -404,8 +398,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
     if (!given) await browser.close().catch(() => {});
   }
   if (login?.secrets?.length) {
-    const scrub = (v) => scrubSecrets(v, login.secrets);
-    out.findings = out.findings.map(f => JSON.parse(scrub(JSON.stringify(f))));
+    out.findings = scrubValues(out.findings, login.secrets);
   }
   return out;
 }

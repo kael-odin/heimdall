@@ -18,6 +18,7 @@
  * defaults.explore = true 显式开启；结果与静态检测一样进入发现、指纹与裁决记忆。
  */
 import { chromium } from 'playwright';
+import { browserContextOptions, newQaPage, qaBrowserLaunchOptions, routeQaRequest } from './http-policy.mjs';
 import { createHash } from 'node:crypto';
 import { BROWSER_PROFILE, loginProblemAtPage } from './probe.mjs';
 
@@ -157,7 +158,7 @@ export function skipReason(control, origin) {
 
 /** 用站点的只读策略开一个上下文：写请求拦截，登录档注入，与 probe 一致。 */
 async function openContext(browser, { site, login, viewport, health }) {
-  const context = await browser.newContext({ ...BROWSER_PROFILE, viewport, serviceWorkers: 'block', acceptDownloads: false, ...login.contextOptions });
+  const context = await browser.newContext({ ...BROWSER_PROFILE, viewport, serviceWorkers: 'block', acceptDownloads: false, ...browserContextOptions(login) });
   if (login.storage.length) {
     await context.addInitScript((entries) => {
       for (const { origin, items } of entries) {
@@ -166,19 +167,8 @@ async function openContext(browser, { site, login, viewport, health }) {
       }
     }, login.storage);
   }
-  await context.route('**/*', async (route) => {
-    const request = route.request();
-    if (site.writes !== 'allow' && !['GET', 'HEAD', 'OPTIONS'].includes(request.method().toUpperCase())) {
-      let path = null;
-      try { path = new URL(request.url()).pathname; } catch { /* 按拦截算 */ }
-      const allowed = (site.writeAllow ?? []).some(prefix => path && (path === prefix || path.startsWith(prefix)));
-      if (!allowed) {
-        health.blocked.push({ method: request.method(), url: request.url() });
-        return route.abort('blockedbyclient').catch(() => {});
-      }
-    }
-    return route.continue().catch(() => {});
-  });
+  await context.route('**/*', route => routeQaRequest(route, { site, login,
+    onBlocked: request => health.blocked.push({ method: request.method(), url: request.url() }) }));
   return context;
 }
 
@@ -197,7 +187,7 @@ const emptyHealth = () => ({ pageErrors: [], console: [], http: [], blocked: [] 
  */
 export async function exploreSite({ site, login, pages, viewport, maxPerPage = EXPLORE_DEFAULTS.maxPerPage,
   budgetMs = EXPLORE_DEFAULTS.budgetMs, settleMs = EXPLORE_DEFAULTS.settleMs, browser: given, onProgress = () => {} }) {
-  const browser = given ?? await chromium.launch({ headless: true });
+  const browser = given ?? await chromium.launch(qaBrowserLaunchOptions(login));
   const deadline = Date.now() + budgetMs;
   const findings = [];
   const pagesOut = [];
@@ -206,7 +196,7 @@ export async function exploreSite({ site, login, pages, viewport, maxPerPage = E
       const pageUrl = new URL(target.path, site.url).href;
       const health = emptyHealth();
       const context = await openContext(browser, { site, login, viewport, health });
-      const page = await context.newPage();
+      const page = await newQaPage(context, { site, login });
       watchPage(page, health);
       const explored = { path: target.path, controls: 0, clicked: 0, skipped: {}, findings: 0, budgetExhausted: false };
       onProgress({ message: `探索 ${target.path}（${viewport.width}px）` });

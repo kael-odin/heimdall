@@ -13,12 +13,14 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 import { loadWorkspace } from '../src/qa/workspace.mjs';
 import { runQa, submitFindings, retriageRun, readRun } from '../src/qa/run.mjs';
 import { recordVerdict } from '../src/qa/memory.mjs';
 import { fileable } from '../src/qa/report.mjs';
 import { writeBaseline, readBaseline } from '../src/qa/baseline.mjs';
 import { invoke } from '../src/agent/registry/invoke.mjs';
+import { newQaPage, qaBrowserLaunchOptions, routeQaRequest } from '../src/qa/http-policy.mjs';
 
 const PAGES = {
   '/': `<!doctype html><meta charset="utf-8"><title>首页</title>
@@ -175,6 +177,35 @@ test('qa detector failure: report incomplete coverage and prevent a passing CI r
   }
 });
 
+test('qa ci: a failed page navigation is incomplete even with fail-on none', { timeout: 120_000 }, async () => {
+  const srv = createServer((req, res) => {
+    if (req.url === '/disconnect') return req.socket.destroy();
+    res.writeHead(503, { 'content-type': 'text/html' }); res.end('<title>Unavailable</title>');
+  });
+  await new Promise(done => srv.listen(0, '127.0.0.1', done));
+  const origin = `http://127.0.0.1:${srv.address().port}`;
+  const root = workspaceFor(origin);
+  try {
+    const ci = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/', '/disconnect'], viewports: [1280], linkCheck: false, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(ci.error?.code, 'qa_incomplete', 'unavailable pages cannot produce a green gate');
+    assert.equal(ci.result.ci.status, 'incomplete');
+    assert.equal(ci.result.navigation.failedPages[0].error, 'HTTP 503');
+    assert.equal(ci.result.navigation.failedPages.length, 2);
+    assert.match(ci.result.ci.incompleteReasons.join(' '), /页面/);
+    const cli = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [fileURLToPath(new URL('../src/cli.mjs', import.meta.url)), 'qa', 'ci', 'web',
+        '--workspace', root, '--pages', '/', '--viewports', '1280', '--no-links', '--fail-on', 'none', '--json'], { windowsHide: true });
+      let stdout = '';
+      child.stdout.on('data', chunk => { stdout += chunk; });
+      child.on('error', reject);
+      child.on('close', code => resolve({ code, envelope: JSON.parse(stdout.trim().split(/\r?\n/).at(-1)) }));
+    });
+    assert.equal(cli.code, 3);
+    assert.equal(cli.envelope.error.code, 'qa_incomplete');
+    assert.equal(cli.envelope.result.navigation.failedPages[0].error, 'HTTP 503');
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
 function workspaceFor(origin) {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-e2e-'));
   mkdirSync(join(root, '.heimdall'), { recursive: true });
@@ -199,6 +230,165 @@ function workspaceFor(origin) {
   ] }));
   return root;
 }
+
+test('qa header login: credentials stay on the configured origin across assets, redirects and exploration', { timeout: 120_000 }, async () => {
+  const seen = { trusted: [], other: [] };
+  let origin;
+  const untrusted = createServer((req, res) => {
+    seen.other.push({ path: req.url, method: req.method, authorization: req.headers.authorization, apiKey: req.headers['x-api-key'] });
+    if (req.url === '/back') { res.writeHead(302, { location: `${origin}/returned` }); return res.end(); }
+    if (req.url === '/frame') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      return res.end(`<img src="${origin}/from-foreign-frame"><script>fetch('${origin}/query-foreign', {method:'POST', mode:'no-cors'}).catch(()=>{})</script>`);
+    }
+    res.writeHead(200, { 'content-type': 'image/png' }); res.end();
+  });
+  await new Promise(done => untrusted.listen(0, '127.0.0.1', done));
+  const other = `http://localhost:${untrusted.address().port}`;
+  const trusted = createServer((req, res) => {
+    seen.trusted.push({ path: req.url, method: req.method, authorization: req.headers.authorization, apiKey: req.headers['x-api-key'] });
+    if (req.url === '/redirect') { res.writeHead(302, { location: `${other}/redirected` }); return res.end(); }
+    if (req.url === '/return') { res.writeHead(302, { location: `${other}/back` }); return res.end(); }
+    if (req.url === '/query-redirect') { res.writeHead(307, { location: '/forbidden' }); return res.end(); }
+    if (req.url === '/own-frame') { res.writeHead(200, { 'content-type': 'text/html' }); return res.end('<img src="/from-own-frame">'); }
+    if (req.url !== '/') { res.writeHead(200, { 'content-type': 'image/png' }); return res.end(); }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    return res.end(`<html lang="zh-CN"><title>Fixture</title><h1>Fixture</h1><img src="${other}/asset" alt="asset"><img src="/redirect" alt="redirect"><img src="/return" alt="return"><iframe src="${other}/frame"></iframe><iframe src="/own-frame"></iframe><a href="/redirect">link</a><a href="/return">return</a><script>fetch('/query-ok',{method:'POST'}).catch(()=>{}); fetch('/query-redirect',{method:'POST'}).catch(()=>{}); window.open('${other}/popup'); window.open('/popup-own')</script></html>`);
+  });
+  await new Promise(done => trusted.listen(0, '127.0.0.1', done));
+  origin = `http://127.0.0.1:${trusted.address().port}`;
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-header-origin-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  const authorization = 'Bearer fixture-authorization-value';
+  const apiKey = 'fixture-api-key-value';
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
+    project: 'Header origin fixture', sites: { web: { url: origin, pages: ['/'], login: 'headers', writes: { allow: ['/query-'] } } },
+    logins: { headers: { kind: 'headers', headers: { Authorization: authorization, 'X-Api-Key': apiKey } } },
+    defaults: { settleMs: 100, timeoutMs: 15000 },
+  }));
+  try {
+    const ws = loadWorkspace(root);
+    const result = await runQa(ws, { site: 'web', pages: ['/'], viewports: [1280], linkCheck: true, detect: false, baseline: false, explore: true, exploreMax: 0,
+      checks: [{ id: 'title', path: '/', expect: [{ kind: 'title', equals: 'Fixture' }] }] });
+    assert.ok(seen.trusted.some(r => r.authorization === authorization && r.apiKey === apiKey), 'configured origin receives the login headers');
+    assert.ok(seen.other.some(r => r.path === '/asset'), `cross-origin asset was requested: ${JSON.stringify({ pages: result.run.coverage.pages, paths: seen.trusted.map(r => r.path), errors: result.findings.filter(f => ['network', 'console'].includes(f.kind)).map(f => f.observed) })}`);
+    assert.ok(seen.other.some(r => r.path === '/redirected'), 'cross-origin redirect was followed');
+    assert.ok(seen.other.some(r => r.path === '/popup'), 'cross-origin popup was opened');
+    assert.ok(seen.trusted.some(r => r.path === '/popup-own'), 'same-origin popup was opened');
+    assert.ok(seen.trusted.filter(r => r.path === '/popup-own').every(r => !r.authorization && !r.apiKey), 'new popups do not inherit credentials');
+    assert.ok(seen.trusted.some(r => r.path === '/from-own-frame' && r.authorization === authorization), 'same-origin frame receives credentials');
+    assert.ok(seen.trusted.some(r => r.path === '/from-foreign-frame'), 'cross-origin frame reached the configured origin');
+    assert.ok(!seen.trusted.some(r => r.path === '/query-foreign'), 'cross-origin frame cannot use the write whitelist');
+    assert.ok(seen.trusted.filter(r => r.path === '/from-foreign-frame' || r.path === '/query-foreign').every(r => !r.authorization && !r.apiKey), 'cross-origin frame cannot cause header injection');
+    assert.ok(seen.trusted.some(r => r.path === '/returned'), 'cross-origin redirect returned to the configured origin');
+    assert.ok(seen.trusted.filter(r => r.path === '/returned').every(r => !r.authorization && !r.apiKey), 'redirect chains that leave trusted origins do not regain credentials');
+    assert.ok(seen.trusted.some(r => r.path === '/query-ok' && r.authorization === authorization), 'allowlisted query retains credentials');
+    assert.ok(seen.trusted.some(r => r.path === '/query-redirect'), 'allowlisted redirecting query was sent');
+    assert.ok(!seen.trusted.some(r => r.path === '/forbidden'), '307 redirect cannot bypass the write whitelist');
+    assert.ok(result.run.coverage.checks.some(c => c.id === 'title' && c.pass), 'checks retain authenticated navigation');
+    assert.deepEqual(seen.other.filter(r => r.authorization || r.apiKey).map(r => ({ path: r.path, method: r.method,
+      authorization: !!r.authorization, apiKey: !!r.apiKey })), [], 'no configured login header reaches another origin');
+    for (const output of [JSON.stringify(result.run), JSON.stringify(result.findings), readFileSync(result.files.report, 'utf8'), readFileSync(result.files.bugs, 'utf8')]) {
+      assert.ok(!output.includes(authorization) && !output.includes(apiKey), 'reports do not contain credentials');
+    }
+    const login = { contextOptions: { extraHTTPHeaders: { Authorization: authorization } } };
+    const browser = await chromium.launch(qaBrowserLaunchOptions(login));
+    try {
+      const context = await browser.newContext({ serviceWorkers: 'block' });
+      const site = { origin, writes: 'block', writeAllow: ['/query-'] };
+      await context.route('**/*', route => routeQaRequest(route, { site, login }));
+      const page = await newQaPage(context, { site, login });
+      await page.goto(origin, { waitUntil: 'networkidle', timeout: 10000 });
+      await context.close();
+    } finally { await browser.close(); }
+  } finally {
+    trusted.close(); untrusted.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('qa header login: an explicit API origin receives credentials instead of the site origin', { timeout: 120_000 }, async () => {
+  const seen = { site: [], api: [] };
+  const api = createServer((req, res) => {
+    seen.api.push(req.headers['x-api-key']);
+    res.writeHead(200, { 'content-type': 'image/png' }); res.end();
+  });
+  await new Promise(done => api.listen(0, '127.0.0.1', done));
+  const apiOrigin = `http://localhost:${api.address().port}`;
+  const site = createServer((req, res) => {
+    seen.site.push(req.headers['x-api-key']);
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end(`<title>Different origin</title><img src="${apiOrigin}/api">`);
+  });
+  await new Promise(done => site.listen(0, '127.0.0.1', done));
+  const siteOrigin = `http://127.0.0.1:${site.address().port}`;
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-header-api-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  const key = 'fixture-explicit-api-key';
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
+    project: 'API origin fixture', sites: { web: { url: siteOrigin, pages: ['/'], login: 'headers' } },
+    logins: { headers: { kind: 'headers', origin: apiOrigin, headers: { 'X-Api-Key': key } } },
+    defaults: { settleMs: 100, timeoutMs: 15000 },
+  }));
+  try {
+    const result = await runQa(loadWorkspace(root), { site: 'web', viewports: [1280], linkCheck: false, detect: false, baseline: false });
+    assert.equal(result.run.coverage.pages[0].navError, null);
+    assert.ok(seen.site.length && seen.site.every(value => !value), 'site origin does not receive API credentials');
+    assert.ok(seen.api.includes(key), 'explicit API origin receives credentials');
+  } finally {
+    site.close(); api.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('qa header login: interception setup fails closed', async () => {
+  let closed = false;
+  const browser = { newBrowserCDPSession: async () => ({ send: async () => ({ arguments: ['--site-per-process'] }), detach: async () => {} }) };
+  const context = { browser: () => browser, newPage: async () => ({}), newCDPSession: async () => { throw new Error('fixture setup failure'); },
+    close: async () => { closed = true; } };
+  await assert.rejects(newQaPage(context, { site: { origin: 'http://example.test' },
+    login: { contextOptions: { extraHTTPHeaders: { Authorization: 'fixture-secret' } } } }), /凭据隔离/);
+  assert.equal(closed, true);
+});
+
+test('qa header login: an externally supplied browser without site isolation fails closed', { timeout: 30000 }, async () => {
+  const browser = await chromium.launch({ headless: true, args: ['--enable-automation'] });
+  try {
+    const context = await browser.newContext();
+    await assert.rejects(newQaPage(context, { site: { origin: 'http://example.test' },
+      login: { contextOptions: { extraHTTPHeaders: { Authorization: 'fixture-secret' } } } }), /凭据隔离/);
+    assert.equal(context.pages().length, 0, 'context is closed on an unsafe setup');
+  } finally { await browser.close(); }
+});
+
+test('qa run: text artifacts and exploration redact login secrets', { timeout: 120_000 }, async () => {
+  const secret = 'fixture-visible-credential-value';
+  const srv = createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<html lang="en"><title>Fixture</title><p>${secret}</p><button id="inspect" type="button" onclick="throw new Error('${secret}')">Inspect</button></html>`);
+  });
+  await new Promise(done => srv.listen(0, '127.0.0.1', done));
+  const origin = `http://127.0.0.1:${srv.address().port}`;
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-secret-output-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(join(root, 'session.json'), JSON.stringify({ cookies: [], origins: [{ origin, localStorage: [{ name: 'token', value: secret }] }] }));
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
+    project: 'Secret fixture', sites: { web: { url: origin, pages: ['/'], login: 'headers' } },
+    logins: { headers: { kind: 'headers', headers: { 'X-Api-Key': secret } }, state: { kind: 'storageState', file: 'session.json' } },
+    defaults: { settleMs: 100, timeoutMs: 15000 },
+  }));
+  try {
+    for (const login of ['headers', 'state']) {
+      const result = await runQa(loadWorkspace(root), { site: 'web', login, viewports: [1280], linkCheck: false, detect: false, baseline: false,
+        collectTexts: true, explore: true, exploreMax: 1, checks: [{ id: 'label', title: secret, path: '/', expect: [{ kind: 'title', equals: 'Fixture' }] }] });
+      assert.ok(result.findings.some(f => f.kind === 'interaction'), 'exploration captured the page error');
+      for (const file of ['texts.json', 'run.json', 'findings.json', 'report.md', 'bugs.md']) {
+        assert.ok(!readFileSync(join(result.dir, file), 'utf8').includes(secret), `${login}: ${file} does not contain the credential`);
+      }
+      assert.ok(!JSON.stringify(result.run).includes(secret) && !JSON.stringify(result.findings).includes(secret));
+    }
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
 
 test('qa e2e: writes.allow whitelists read-semantics POST endpoints (POST-for-query backends)', { timeout: 120_000 }, async () => {
   const srv = await server();
