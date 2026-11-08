@@ -18,7 +18,7 @@ const QA_CI_INPUT = {
       type: 'string',
       enum: FAIL_ON,
       default: 'all',
-      description: 'Findings at or above this tier fail the gate: all | wall | degrade | none. Expired login, an unverified check, or a detector failure makes the run incomplete even with none.',
+      description: 'Findings at or above this tier fail the gate: all | wall | degrade | none. Expired login, client-blocked resources, an unverified check, or a detector failure makes the run incomplete even with none.',
     },
     maxFindings: {
       type: 'integer',
@@ -47,7 +47,7 @@ export default {
     + 'It writes qa-ci.json and qa-ci.md beside the normal report, returns GitHub Actions annotations, '
     + 'and uses stable exit codes for CI. failOn controls whether all fileable findings, wall/degrade only, '
     + 'or a limited number of findings fail the gate. This does not replace human acceptance and never turns '
-    + 'an expired login, an unverified check, or a detector failure into a product bug or a passing run; it returns qa_incomplete instead.',
+    + 'an expired login, client-blocked resources, an unverified check, or a detector failure into a product bug or a passing run; it returns qa_incomplete instead.',
   effects: ['browser', 'source-network', 'write-local'],
   scope: 'clone',
   idempotent: false,

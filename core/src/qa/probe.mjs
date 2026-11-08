@@ -257,6 +257,8 @@ async function openContext(browser, { login, viewport, origin, writes, writeAllo
   return context;
 }
 
+const isClientBlocked = value => /blockedbyclient|ERR_BLOCKED_BY_CLIENT/i.test(value);
+
 function watch(page, health, origin) {
   page.on('console', m => { if (m.type() === 'error') health.console.push(clip(m.text())); });
   page.on('pageerror', e => health.pageErrors.push(clip(e.message)));
@@ -265,7 +267,9 @@ function watch(page, health, origin) {
   });
   page.on('requestfailed', req => {
     const why = req.failure()?.errorText ?? '';
-    if (READ_METHODS.has(req.method().toUpperCase()) && !/blockedbyclient|ERR_ABORTED/i.test(why)) health.failed.push({ url: safeUrl(req.url()), why: clip(why, 80) });
+    if (!READ_METHODS.has(req.method().toUpperCase())) return;
+    if (isClientBlocked(why)) health.clientBlocked.push({ url: safeUrl(req.url()), why: clip(why, 80), type: req.resourceType() });
+    else if (!/ERR_ABORTED/i.test(why)) health.failed.push({ url: safeUrl(req.url()), why: clip(why, 80) });
   });
   page.on('dialog', d => d.dismiss().catch(() => {}));
 }
@@ -293,7 +297,7 @@ async function checkLinks(context, links, origin, { site, login, limit = 60, tim
   }
   return { checked: seen.size, broken };
 }
-const emptyHealth = () => ({ console: [], pageErrors: [], http: [], failed: [], blocked: [] });
+const emptyHealth = () => ({ console: [], pageErrors: [], http: [], failed: [], blocked: [], clientBlocked: [] });
 
 /**
  * 跑一遍无参照物检测：先读 Web Vitals，再把检测器注入页面执行。
@@ -344,6 +348,20 @@ function findingFromDetection(detected, { path, pageUrl, viewport, screenshot })
   };
 }
 
+function clientBlockedFindings(health, { path, ev }) {
+  const findings = [], seen = new Set();
+  for (const request of health.clientBlocked) {
+    const target = request.url.split('?')[0];
+    if (seen.has(target)) continue;
+    seen.add(target);
+    if (seen.size > 5) break;
+    findings.push({ kind: 'network', path, title: `资源被客户端拦截：${target.slice(-80)}`, target,
+      basis: 'friction', tier: 'tolerable', confidence: 'environment',
+      observed: `${request.why}；拦截来源未确认，不能据此认定站点资源故障`, evidence: ev({ type: request.type }) });
+  }
+  return findings;
+}
+
 /** 把一页的事实翻译成发现（检查器产出：observed 级证据，tier 保守） */
 function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo, viewport, navError, screenshot, loginIssue }) {
   const out = [];
@@ -358,7 +376,9 @@ function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo,
   }
   for (const msg of health.pageErrors.slice(0, 5)) out.push({ kind: 'console', path, title: `页面脚本异常：${clip(msg, 90)}`, target: 'pageerror', match: msg, basis: 'failed', tier: 'tolerable', observed: msg, evidence: ev() });
   // 浏览器给每个 4xx/5xx 自动打一条 "Failed to load resource"，网络记录已经覆盖，再报一次就是重复
-  const consoleMsgs = [...new Set(health.console)].filter(msg => !(health.http.length && /^Failed to load resource: the server responded with a status of \d{3}/.test(msg)));
+  const consoleMsgs = [...new Set(health.console)].filter(msg =>
+    !(health.http.length && /^Failed to load resource: the server responded with a status of \d{3}/.test(msg))
+    && !(health.clientBlocked.length && /^Failed to load resource:/i.test(msg) && isClientBlocked(msg)));
   for (const msg of consoleMsgs.slice(0, 5)) out.push({ kind: 'console', path, title: `控制台报错：${clip(msg, 90)}`, target: 'console', match: msg, basis: 'friction', tier: 'tolerable', observed: msg, evidence: ev() });
   const brokenImages = new Set((facts?.images ?? []).map(img => img.src.split('?')[0]));
   const seenHttp = new Set();
@@ -372,9 +392,13 @@ function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo,
       target: r.url.split('?')[0], basis: r.status >= 500 ? 'failed' : 'wrong', tier: isDoc ? 'wall' : 'tolerable', observed: key, evidence: ev({ status: r.status, type: r.type }) });
   }
   for (const f of health.failed.slice(0, 5)) out.push({ kind: 'network', path, title: `请求失败：${f.url.split('?')[0].slice(-80)}`, target: f.url.split('?')[0], basis: 'failed', tier: 'tolerable', observed: f.why, evidence: ev() });
+  out.push(...clientBlockedFindings(health, { path, ev }));
   for (const b of links?.broken ?? []) out.push({ kind: 'broken-link', path, title: `链接打不开（${b.status || '无响应'}）：「${b.text || b.href.slice(-40)}」`,
     target: b.href.split('?')[0], basis: 'failed', tier: 'degrade', loss: `访客点「${b.text || '这个链接'}」到达错误页`, observed: `${b.status} ${b.href}`, evidence: ev() });
-  for (const img of facts?.images ?? []) out.push({ kind: 'broken-image', path, title: `图片没加载出来：${img.alt || img.src.split('/').pop().slice(0, 60)}`, target: img.src.split('?')[0], basis: 'cosmetic', tier: 'tolerable', observed: img.src, evidence: ev() });
+  for (const img of facts?.images ?? []) {
+    if (health.clientBlocked.some(f => f.url.split('?')[0] === img.src.split('?')[0])) continue;
+    out.push({ kind: 'broken-image', path, title: `图片没加载出来：${img.alt || img.src.split('/').pop().slice(0, 60)}`, target: img.src.split('?')[0], basis: 'cosmetic', tier: 'tolerable', observed: img.src, evidence: ev() });
+  }
   if (facts && facts.overflowPx > 2) out.push({ kind: 'overflow', path, title: `横向溢出 ${Math.round(facts.overflowPx)}px（${viewport.width} 宽）`, target: facts.culprit ?? 'body',
     basis: viewport.width < 500 ? 'friction' : 'cosmetic', tier: 'tolerable', observed: `最先越界的元素：${facts.culprit ?? '未定位'}`, viewport: `${viewport.width}x${viewport.height}`, evidence: ev() });
   for (const b of health.blocked.slice(0, 3)) {
@@ -479,6 +503,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
         out.pages.push({ path: p.path, name: p.name ?? null, url: safeUrl(pageUrl), finalUrl: safeUrl(finalUrl), viewport, navError, title: facts?.title ?? null,
           ...(loginIssue ? { unavailableReason: 'login-expired' } : {}), ...(detectorError ? { detectorError } : {}),
           counts: { console: health.console.length, pageErrors: health.pageErrors.length, http: health.http.length, failed: health.failed.length, blocked: health.blocked.length,
+            clientBlocked: health.clientBlocked.length,
             brokenImages: facts?.images?.length ?? 0, brokenLinks: links?.broken?.length ?? 0, linksChecked: links?.checked ?? 0,
             detected: detected.length, detectors: [...new Set(detected.map(d => d.detector))] },
           overflowPx: facts?.overflowPx ?? null, screenshot });
@@ -495,6 +520,9 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
       const r = await runCheck(context, site, check, { timeout: timeoutMs, settleMs, shoot, login });
       await context.close().catch(() => {});
       out.checks.push(r);
+      const ev = extra => ({ url: safeUrl(new URL(check.path, site.url).href), viewport: `${viewport.width}x${viewport.height}`,
+        ...(r.screenshot ? { screenshot: r.screenshot } : {}), ...extra });
+      out.findings.push(...clientBlockedFindings(r.health, { path: check.path, ev }));
       if (r.blockedReason === 'login-expired') {
         out.findings.push(...findingsForPage({ site, pageUrl: new URL(check.path, site.url).href, path: check.path, health, facts: null,
           links: null, loginInfo: login, viewport, navError: null, screenshot: r.screenshot, loginIssue: r.loginIssue }));

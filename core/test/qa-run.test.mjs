@@ -63,6 +63,9 @@ const PAGES = {
       if (selector.startsWith('button, a[href]')) throw new Error('fixture secret must not be recorded');
       return query(selector);
     };</script></html>`,
+  '/client-blocked': `<!doctype html><html lang="zh-CN"><title>请求分类对照</title><h1>请求分类对照</h1>
+    <img src="/blocked-image.png" alt="blocked image"><script src="/blocked-script.js"></script>
+    <script>fetch('/real-failure').catch(() => {}); console.error('fixture actual error');</script></html>`,
   '/check-rows': `<!doctype html><html lang="zh-CN"><title>表格检查对照</title><h1>表格检查对照</h1>
     <div id="bad"><span class="date">2026-11-08</span><span class="date">2026-11-09T08:09:10Z</span></div>
     <div id="good"><span class="date" style="visibility:hidden">measurement</span><span class="date">2026-11-08</span><span class="date">2026-11-09</span></div>
@@ -96,6 +99,49 @@ function server() {
   srv.hits = hits;
   return new Promise(done => srv.listen(0, '127.0.0.1', () => done(srv)));
 }
+
+test('qa distinguishes client-blocked resources from real network and script failures', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const newContext = browser.newContext.bind(browser);
+    browser.newContext = async options => {
+      const context = await newContext(options);
+      const route = context.route.bind(context);
+      context.route = (pattern, handler, ...rest) => route(pattern, (r, ...args) => {
+        const path = new URL(r.request().url()).pathname;
+        if (['/blocked-image.png', '/blocked-script.js'].includes(path)) return r.abort('blockedbyclient');
+        if (path === '/real-failure') return r.abort('failed');
+        return handler(r, ...args);
+      }, ...rest);
+      return context;
+    };
+    const output = await runQa(loadWorkspace(root), { site: 'web', pages: ['/client-blocked'], viewports: [1280],
+      linkCheck: false, detect: false, baseline: false }, { browser });
+    const findings = output.findings;
+    const environment = findings.filter(f => f.kind === 'network' && f.confidence === 'environment');
+    assert.equal(output.run.coverage.pages[0].counts.clientBlocked, 2);
+    assert.equal(environment.length, 2);
+    assert.ok(environment.every(f => /blocked-(image|script)/.test(f.target)));
+    assert.ok(!findings.some(f => f.kind === 'broken-image' && f.target.includes('blocked-image.png')));
+    assert.ok(!findings.some(f => f.kind === 'network' && f.confidence !== 'environment' && /blocked-(image|script)/.test(f.target)));
+    assert.ok(!findings.some(f => f.kind === 'console' && /ERR_BLOCKED_BY_CLIENT/i.test(f.observed)));
+    assert.ok(findings.some(f => f.kind === 'network' && f.confidence !== 'environment' && f.target.endsWith('/real-failure')));
+    assert.ok(findings.some(f => f.kind === 'console' && f.observed.includes('fixture actual error')));
+    assert.match(readFileSync(output.files.report, 'utf8'), /存在环境问题/);
+    assert.doesNotMatch(readFileSync(output.files.report, 'utf8'), /登录状态失效/);
+    assert.match(readFileSync(output.files.bugs, 'utf8'), /受环境拦截影响的资源/);
+    const checkOnly = await runQa(loadWorkspace(root), { site: 'web', pages: ['/pricing'], viewports: [1280],
+      checks: [{ id: 'check-blocked', title: '检查点资源', path: '/client-blocked', expect: [{ kind: 'title', contains: '请求分类对照' }] }],
+      linkCheck: false, detect: false, baseline: false }, { browser });
+    assert.equal(checkOnly.run.coverage.pages[0].counts.clientBlocked, 0);
+    assert.equal(checkOnly.run.coverage.checks[0].pass, true);
+    assert.equal(checkOnly.run.coverage.checks[0].clientBlocked, 2);
+    assert.equal(checkOnly.run.summary.environment, 2);
+    assert.equal(checkOnly.findings.filter(f => f.confidence === 'environment').length, 2);
+  } finally { await browser.close(); srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
 
 test('qa ci: a checks file cannot silently discard its 21st assertion', { timeout: 120_000 }, async () => {
   const srv = await server();

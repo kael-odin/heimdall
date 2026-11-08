@@ -128,7 +128,10 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, requireBa
   const findings = selectGateFindings(result.fileable ?? [], failOn);
   const overLimit = findings.length > allowed;
   const incompleteReasons = [
-    (result.environment?.length ?? 0) > 0 || (result.summary?.environment ?? 0) > 0 ? '登录状态失效，业务页面未全部检查' : null,
+    (result.environment?.length ?? 0) > 0 ? '登录状态失效，业务页面未全部检查' : null,
+    (result.clientBlocked ?? 0) > 0 ? '资源请求被客户端拦截，页面检查可能不完整' : null,
+    (result.summary?.environment ?? 0) > 0 && !(result.environment?.length ?? 0) && !(result.clientBlocked ?? 0)
+      ? '环境问题导致检查未完成' : null,
     (result.summary?.checkNeedsFix ?? 0) > 0 ? '检查点执行出错或未核实' : null,
     (result.detection?.failedPages?.length ?? 0) > 0 ? '页面检测器执行失败' : null,
     (result.navigation?.failedPages?.length ?? 0) > 0 ? '页面导航失败，未完成检查' : null,

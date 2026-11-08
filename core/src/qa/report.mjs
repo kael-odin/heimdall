@@ -67,7 +67,8 @@ export function renderReport({ ws, run, findings, hits }) {
   out.push(`> 运行 \`${run.runId}\` · ${date} · ${run.siteUrl} · 环境：${run.environment}${run.login ? ` · 登录档：${run.login.name}` : ' · 未登录'}`, '');
   const lead = groups.file.length
     ? `建议提单 ${groups.file.length} 条${groups.file.some(f => f.tier === 'wall') ? `，其中撞墙 ${groups.file.filter(f => f.tier === 'wall').length} 条` : ''}。`
-    : groups.env.length ? '登录状态失效，业务页面未完整检查。'
+    : groups.env.some(f => f.kind === 'login-expired') ? '登录状态失效，业务页面未完整检查。'
+      : groups.env.length ? '存在环境问题，本次结果需结合环境复核。'
       : run.coverage.detection?.failedPages?.length ? '页面检测器执行失败，本次检查未完成。'
         : visual?.status === 'incomplete' ? '视觉基线比对未完成，不能判断是否存在视觉回归。' : '这次没有需要提单的问题。';
   const extra = [
@@ -173,6 +174,7 @@ export function renderBugs({ ws, run, findings }) {
   if (!list.length) {
     const incomplete = [];
     if (findings.some(f => f.kind === 'login-expired')) incomplete.push('登录失效的业务页面');
+    if (findings.some(f => f.confidence === 'environment' && f.kind !== 'login-expired')) incomplete.push('受环境拦截影响的资源');
     if (run.coverage.detection?.failedPages?.length) incomplete.push('检测器执行失败的页面');
     if (findings.some(f => ['check-error', 'check-unverified'].includes(f.confidence))) incomplete.push('未能核实的检查点');
     if (run.coverage.baseline?.status === 'incomplete') incomplete.push('视觉基线比对');

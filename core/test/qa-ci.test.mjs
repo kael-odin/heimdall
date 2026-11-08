@@ -42,6 +42,26 @@ test('qa ci: an expired login is incomplete even with fail-on none', async () =>
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('qa ci: client-blocked resources are incomplete, not an expired login', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-ci-client-blocked-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({ sites: { web: { url: 'https://example.test/' } } }));
+  try {
+    const result = await runQaCi({ args: { workspace: root }, failOn: 'none', execute: async () => ({
+      ok: true, summary: 'QA finished.', nextActions: [], result: {
+        runId: 'qa-client-blocked', site: 'web', runDir: '.heimdall/qa/runs/qa-client-blocked',
+        report: 'report.md', bugs: 'bugs.md', summary: { fileable: 0, environment: 1 },
+        fileable: [], environment: [], clientBlocked: 2,
+      },
+    }) });
+    assert.equal(result.exitCode, 3);
+    assert.equal(result.env.error.code, 'qa_incomplete');
+    assert.equal(result.env.result.ci.status, 'incomplete');
+    assert.match(result.env.result.ci.incompleteReasons.join(' '), /客户端拦截/);
+    assert.doesNotMatch(result.env.result.ci.incompleteReasons.join(' '), /登录/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('qa ci: an unverified check is incomplete even without fileable findings', async () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-ci-unverified-'));
   mkdirSync(join(root, '.heimdall'), { recursive: true });
