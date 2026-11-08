@@ -206,6 +206,10 @@ jobs:
             core/workspace/_runs/acceptance-demo-console-*/page-errors.json
             core/workspace/_runs/acceptance-demo-console-*/console-messages.json
             core/workspace/_runs/acceptance-demo-console-*/screenshots/failure.png
+            core/workspace/_runs/acceptance-benchmark/**/benchmark.json
+            core/workspace/_runs/acceptance-benchmark/**/plan.json
+            core/workspace/_runs/acceptance-benchmark/**/report.json
+            core/workspace/_runs/acceptance-benchmark/**/exploration.json
           if-no-files-found: ignore
           retention-days: 7
 
