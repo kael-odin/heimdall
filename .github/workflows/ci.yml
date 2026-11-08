@@ -341,11 +341,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: |
-            core/pnpm-lock.yaml
-            console/pnpm-lock.yaml
-            packages/mcp/pnpm-lock.yaml
+          # Audit reads lockfiles without creating a pnpm store to cache.
+          package-manager-cache: false
       - run: pnpm -C core audit --prod --audit-level=moderate --registry=https://registry.npmjs.org
       - run: pnpm -C console audit --audit-level=moderate --registry=https://registry.npmjs.org
       - run: pnpm -C packages/mcp audit --audit-level=moderate --registry=https://registry.npmjs.org
