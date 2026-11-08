@@ -197,6 +197,15 @@ jobs:
             core/workspace/_runs/defect-tickets-console-smoke-*/**
             core/workspace/_runs/defect-ticket-decisions-ci/**
             core/workspace/_runs/defect-tickets-console-smoke-*/failure.json
+            core/workspace/_runs/acceptance-demo-console-*/summary.json
+            core/workspace/_runs/acceptance-demo-console-*/events.jsonl
+            core/workspace/_runs/acceptance-demo-console-*/capture-failures.json
+            core/workspace/_runs/acceptance-demo-console-*/request-failures.json
+            core/workspace/_runs/acceptance-demo-console-*/ui-requests.json
+            core/workspace/_runs/acceptance-demo-console-*/ui-responses.json
+            core/workspace/_runs/acceptance-demo-console-*/page-errors.json
+            core/workspace/_runs/acceptance-demo-console-*/console-messages.json
+            core/workspace/_runs/acceptance-demo-console-*/screenshots/failure.png
           if-no-files-found: ignore
           retention-days: 7
 

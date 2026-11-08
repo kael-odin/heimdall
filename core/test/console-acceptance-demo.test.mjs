@@ -1,11 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { acceptanceDemoContext, acceptanceDemoDraft } from '../../console/src/acceptance-demo.js';
 import { buildAcceptanceInput } from '../../console/src/acceptance-workbench.js';
 
 const consoleOrigin = 'http://127.0.0.1:8902';
 const fixtureOrigin = 'http://127.0.0.1:39137';
 const link = (fixture = fixtureOrigin, marker = 'local-fixed-v1') => consoleOrigin + '/?' + new URLSearchParams({ acceptanceDemo: marker, fixtureOrigin: fixture });
+
+test('CI preserves D7 failure diagnostics without the browser profile or full runtime', () => {
+  const workflow = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const prefix = 'core/workspace/_runs/acceptance-demo-console-*/';
+  const paths = workflow.split(/\r?\n/).map(line => line.trim()).filter(line => line.startsWith(prefix));
+  for (const name of ['summary.json', 'capture-failures.json', 'ui-requests.json', 'ui-responses.json']) {
+    assert.ok(paths.includes(prefix + name), name + ' must be preserved after a CI failure');
+  }
+  assert.ok(paths.every(path => !path.includes('chromium-profile') && !path.includes('session/runtime') && !path.includes('**')));
+});
 
 test('demo context accepts only the launcher marker and a plain explicit-port loopback origin', () => {
   assert.deepEqual(acceptanceDemoContext(link()), { kind: 'local-fixed-v1', fixtureOrigin });
