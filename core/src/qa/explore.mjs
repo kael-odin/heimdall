@@ -19,7 +19,7 @@
  */
 import { chromium } from 'playwright';
 import { createHash } from 'node:crypto';
-import { BROWSER_PROFILE } from './probe.mjs';
+import { BROWSER_PROFILE, loginProblemAtPage } from './probe.mjs';
 
 export const EXPLORE_VERSION = 1;
 
@@ -48,6 +48,7 @@ export const SKIP_REASONS = Object.freeze({
   duplicate: '与前面的控件重复',
   'step-failed': '点击动作本身失败（控件被遮挡或已消失）',
   'left-origin': '点击后跳到了站外',
+  'login-expired': '登录状态失效，未点击登录页面',
   'budget-exhausted': '超出探索时间预算',
 });
 
@@ -213,10 +214,18 @@ export async function exploreSite({ site, login, pages, viewport, maxPerPage = E
         await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 20_000 });
         await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
         await page.waitForTimeout(settleMs);
+        if (await loginProblemAtPage(page, { site, login, path: target.path })) {
+          explored.skipped['login-expired'] = 1;
+          continue;
+        }
         const scanned = await page.evaluate(exploreScanInPage, { controlSelector: CONTROL_SELECTOR, limit: maxPerPage * 3 });
         explored.controls = scanned.controls.length;
         for (const control of scanned.controls.slice(0, maxPerPage)) {
           if (Date.now() >= deadline) { explored.budgetExhausted = true; break; }
+          if (await loginProblemAtPage(page, { site, login, path: target.path })) {
+            explored.skipped['login-expired'] = (explored.skipped['login-expired'] ?? 0) + 1;
+            break;
+          }
           const reason = skipReason(control, site.origin);
           if (reason) { explored.skipped[reason] = (explored.skipped[reason] ?? 0) + 1; continue; }
           const before = scanned.snapshot;

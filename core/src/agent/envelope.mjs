@@ -25,6 +25,7 @@ export const ERRORS = Object.freeze({
   candidate_unreachable: { http: 502, exit: 2, hint: '启动 heimdall.config.json 里的 devServer.command，确认 devServer.url 能打开' },
   reference_missing: { http: 412, exit: 2, hint: '先 `heimdall clone <url>` 取得镜像，再重试' },
   gate_failed: { http: 422, exit: 1, hint: '按修复包修复后重新 compare' },
+  qa_incomplete: { http: 412, exit: 3, hint: '恢复测试登录态或修复检查点后重新运行 heimdall qa ci' },
   timeout: { http: 504, exit: 4, hint: '用 --no-wait 拿 jobId，再 `heimdall jobs wait <jobId>`' },
   internal: { http: 500, exit: 7, hint: '附上 meta.requestId 反馈；先运行 `heimdall doctor` 自检' },
 });

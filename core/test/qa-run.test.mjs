@@ -8,13 +8,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadWorkspace } from '../src/qa/workspace.mjs';
 import { runQa, submitFindings, retriageRun, readRun } from '../src/qa/run.mjs';
 import { recordVerdict } from '../src/qa/memory.mjs';
 import { fileable } from '../src/qa/report.mjs';
+import { writeBaseline, readBaseline } from '../src/qa/baseline.mjs';
 import { invoke } from '../src/agent/registry/invoke.mjs';
 
 const PAGES = {
@@ -26,12 +29,42 @@ const PAGES = {
   '/pricing': `<!doctype html><meta charset="utf-8"><title>定价</title><h1>定价</h1><div style="width:2400px">宽表格</div><p id="price">¥95/月</p>`,
   '/console': `<!doctype html><meta charset="utf-8"><title>控制台</title><div id="app"></div>
     <script>document.getElementById('app').textContent = localStorage.getItem('_token') ? '欢迎回来 tester' : '请登录';</script>`,
+  '/detector-regression': `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>检测对照</title>
+    <style>
+      .clip { display:block; width:65px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis }
+      .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap }
+      .table-outer { width:160px; overflow:hidden }
+      .table-scroll { width:100%; overflow-x:auto }
+      table { width:600px }
+    </style></head><body><h1>检测对照页面</h1>
+    <button id="named-icon"><svg role="img" aria-label="search" width="20" height="20"></svg></button>
+    <button id="unlabeled-icon"><svg aria-hidden="true" aria-label="hidden" width="20" height="20"></svg></button>
+    <button id="hidden-child-text"><span aria-hidden="true">隐藏的图标说明</span></button>
+    <span id="label-text" hidden>通过隐藏标签引用命名</span><button id="labelled" aria-labelledby="label-text"></button>
+    <h2 id="sr-only" class="sr-only">供读屏使用的完整标题</h2>
+    <p id="real-clip" class="clip">这是一段被裁切并且无法恢复的完整文字。</p>
+    <p id="title-clip" class="clip" title="这是可以通过标题提示看到的完整文字。">这是可以通过标题提示看到的完整文字。</p>
+    <p id="wrong-title" class="clip" title="提示不完整">这是一段标题提示并没有覆盖的完整文字。</p>
+    <div id="table-outer" class="table-outer"><div id="table-header" style="overflow:hidden"><table><thead><tr><th>可以左右滚动查看的完整表头</th></tr></thead></table></div>
+      <div class="table-scroll"><table><tbody><tr><td>可以左右滚动查看的完整表格内容</td></tr></tbody></table></div></div>
+  </body></html>`,
+  '/user/login': `<!doctype html><html lang="zh-CN"><title>登录</title><h1>扫码登录</h1>
+    <button id="login-retry" type="button" onclick="fetch('/api/login-click')">刷新二维码</button></html>`,
+  '/guarded-after': `<!doctype html><html lang="zh-CN"><title>业务页</title><h1>业务页</h1>
+    <button id="expire-session" type="button" onclick="location.href='/user/login'">查看内容</button></html>`,
+  '/detector-failure': `<!doctype html><html lang="zh-CN"><title>检测异常对照</title><h1>检测异常对照</h1>
+    <script>const query = document.querySelectorAll.bind(document); document.querySelectorAll = function(selector) {
+      if (selector.startsWith('button, a[href]')) throw new Error('fixture secret must not be recorded');
+      return query(selector);
+    };</script></html>`,
 };
 
 function server() {
-  const hits = { trackPost: 0 };
+  const hits = { trackPost: 0, loginClick: 0 };
   const srv = createServer((req, res) => {
     const path = new URL(req.url, 'http://x').pathname;
+    if (path === '/guarded') { res.writeHead(302, { location: '/user/login?return=%2Fguarded' }); return res.end(); }
+    if (path === '/api/login-click') { hits.loginClick++; res.writeHead(204); return res.end(); }
     if (path === '/api/stats') { res.writeHead(500, { 'content-type': 'application/json' }); return res.end('{"error":"x"}'); }
     if (path === '/api/track') { if (req.method === 'POST') hits.trackPost++; res.writeHead(204); return res.end(); }
     if (PAGES[path]) { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(PAGES[path]); }
@@ -40,6 +73,107 @@ function server() {
   srv.hits = hits;
   return new Promise(done => srv.listen(0, '127.0.0.1', () => done(srv)));
 }
+
+test('qa detectors: browser names and recoverable clipping retain real defects', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const origin = `http://127.0.0.1:${srv.address().port}`;
+  const root = workspaceFor(origin);
+  try {
+    const ws = loadWorkspace(root);
+    ws.defaults.detect = { maxPerDetector: 30 };
+    const run = await runQa(ws, { site: 'web', pages: ['/detector-regression'], viewports: [1280, 390], linkCheck: false });
+    const by = (detector, target) => run.findings.filter(f => f.detector === detector && f.target === target);
+    assert.equal(by('a11y-control-name', '#named-icon').length, 0, 'named descendant contributes to the button name');
+    assert.equal(by('a11y-control-name', '#labelled').length, 0, 'aria-labelledby can reference hidden text');
+    assert.equal(by('a11y-control-name', '#unlabeled-icon').length, 1, 'aria-hidden icon does not name its button');
+    assert.equal(by('a11y-control-name', '#hidden-child-text').length, 1, 'aria-hidden text does not name its button');
+    assert.equal(by('layout-text-clipped', '#sr-only').length, 0, 'screen-reader-only text is intentionally clipped');
+    assert.equal(by('layout-text-clipped', '#real-clip').length, 1, 'unrecoverable clipping remains reportable');
+    assert.equal(by('layout-text-clipped', '#wrong-title').length, 1, 'an unrelated title does not restore clipped text');
+    assert.equal(by('layout-text-clipped', '#table-outer').length, 0, 'a scrollable table is not lost text');
+    const tableHeader = by('layout-text-clipped', '#table-header');
+    assert.equal(tableHeader.length, 1);
+    assert.equal(tableHeader[0].tier, 'tolerable', 'a matching table scroller needs review, not an automatic bug');
+    const tooltip = by('layout-text-clipped', '#title-clip');
+    assert.equal(tooltip.length, 1);
+    assert.ok(tooltip.every(f => f.tier === 'tolerable'), 'a matching title is a usability observation, not lost text');
+  } finally {
+    srv.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('qa login redirect: do not inspect, click or baseline a login page as business content', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const origin = `http://127.0.0.1:${srv.address().port}`;
+  const root = workspaceFor(origin);
+  try {
+    const configFile = join(root, '.heimdall', 'qa.json');
+    const config = JSON.parse(readFileSync(configFile, 'utf8'));
+    config.sites.web.login = 'user';
+    config.sites.web.loginPath = '/login';
+    writeFileSync(configFile, JSON.stringify(config));
+    const ws = loadWorkspace(root);
+    const good = await runQa(ws, { site: 'web', pages: ['/pricing'], viewports: [1280], linkCheck: false });
+    writeBaseline(ws, good.run, good.run.coverage.pages);
+    const before = readBaseline(ws);
+    const run = await runQa(ws, {
+      site: 'web', pages: ['/guarded'], viewports: [1280], linkCheck: false, explore: true,
+      checks: [
+        { id: 'guarded-check', path: '/guarded', steps: [{ action: 'click', selector: '#login-retry' }], expect: [{ kind: 'visible', selector: '#login-retry' }] },
+        { id: 'expires-during-check', path: '/guarded-after', steps: [{ action: 'click', selector: '#expire-session' }, { action: 'click', selector: '#login-retry' }], expect: [{ kind: 'visible', selector: '#login-retry' }] },
+      ],
+    });
+    assert.ok(run.findings.some(f => f.kind === 'login-expired' && f.confidence === 'environment'));
+    assert.ok(!run.findings.some(f => f.detector || f.kind === 'regression' || f.kind === 'assertion'));
+    assert.equal(run.run.coverage.pages[0].unavailableReason, 'login-expired');
+    assert.equal(run.run.coverage.baseline.compared, 0);
+    assert.equal(run.run.coverage.checks[0].blockedReason, 'login-expired');
+    assert.equal(run.run.coverage.checks[1].blockedReason, 'login-expired');
+    assert.equal(srv.hits.loginClick, 0, 'neither checks nor exploration click the login page');
+    assert.throws(() => writeBaseline(ws, run.run, run.run.coverage.pages), /登录/);
+    assert.deepEqual(readBaseline(ws), before, 'an unusable run cannot replace the approved baseline');
+    const ci = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/guarded'], viewports: [1280], linkCheck: false, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(ci.error.code, 'qa_incomplete');
+    assert.equal(ci.result.ci.status, 'incomplete');
+    const cli = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [fileURLToPath(new URL('../src/cli.mjs', import.meta.url)), 'qa', 'ci', 'web',
+        '--workspace', root, '--pages', '/guarded', '--viewports', '1280', '--fail-on', 'none', '--json'], { windowsHide: true });
+      let stdout = '';
+      child.stdout.on('data', chunk => { stdout += chunk; });
+      child.on('error', reject);
+      child.on('close', code => resolve({ code, envelope: JSON.parse(stdout.trim().split(/\r?\n/).at(-1)) }));
+    });
+    assert.equal(cli.code, 3);
+    assert.equal(cli.envelope.error.code, 'qa_incomplete');
+  } finally {
+    srv.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('qa detector failure: report incomplete coverage and prevent a passing CI result', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const origin = `http://127.0.0.1:${srv.address().port}`;
+  const root = workspaceFor(origin);
+  try {
+    const ws = loadWorkspace(root);
+    const run = await runQa(ws, { site: 'web', pages: ['/detector-failure'], viewports: [1280], linkCheck: false });
+    assert.equal(run.run.coverage.pages[0].detectorError, 'detector-failed');
+    assert.equal(run.run.coverage.detection.pages, 0);
+    assert.deepEqual(run.run.coverage.detection.failedPages, [{ path: '/detector-failure', viewport: '1280x900' }]);
+    assert.match(readFileSync(run.files.report, 'utf8'), /检测器执行失败/);
+    assert.match(readFileSync(run.files.bugs, 'utf8'), /未完成检查/);
+    assert.doesNotMatch(readFileSync(run.files.report, 'utf8'), /fixture secret/);
+    const ci = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/detector-failure'], viewports: [1280], linkCheck: false, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(ci.error.code, 'qa_incomplete');
+    assert.equal(ci.result.ci.status, 'incomplete');
+    assert.match(ci.result.ci.incompleteReasons.join(' '), /检测器/);
+  } finally {
+    srv.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 function workspaceFor(origin) {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-e2e-'));

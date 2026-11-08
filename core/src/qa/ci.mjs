@@ -67,7 +67,8 @@ export function renderCiMarkdown({ result, gate, generatedAt }) {
     `- 失败门槛：\`${mdCode(gate.failOn)}\``,
     `- 建议提单：${result.summary?.fileable ?? 0}`,
     `- 达到门槛：${gate.findings.length}`,
-    `- 结果：**${gate.status === 'passed' ? '通过' : '失败'}**`,
+    `- 结果：**${gate.status === 'passed' ? '通过' : gate.status === 'incomplete' ? '未完成' : '失败'}**`,
+    ...(gate.incompleteReasons?.length ? [`- 未完成原因：${gate.incompleteReasons.map(mdCell).join('；')}`] : []),
     '',
     '| ID | Tier | Basis | 页面 | 问题 | 观测 |',
     '| --- | --- | --- | --- | --- | --- |',
@@ -120,8 +121,15 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = 
   const result = env.result;
   const findings = selectGateFindings(result.fileable ?? [], failOn);
   const overLimit = findings.length > allowed;
+  const incompleteReasons = [
+    (result.environment?.length ?? 0) > 0 || (result.summary?.environment ?? 0) > 0 ? '登录状态失效，业务页面未全部检查' : null,
+    (result.summary?.checkNeedsFix ?? 0) > 0 ? '检查点执行出错或未核实' : null,
+    (result.detection?.failedPages?.length ?? 0) > 0 ? '页面检测器执行失败' : null,
+  ].filter(Boolean);
+  const incomplete = incompleteReasons.length > 0;
   const gate = {
-    status: overLimit ? 'failed' : 'passed',
+    status: incomplete ? 'incomplete' : overLimit ? 'failed' : 'passed',
+    ...(incomplete ? { incompleteReasons } : {}),
     failOn,
     maxFindings: allowed,
     fileable: result.fileable?.length ?? 0,
@@ -129,7 +137,7 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = 
   };
   const generatedAt = new Date().toISOString();
   const markdown = renderCiMarkdown({ result, gate, generatedAt });
-  const annotations = renderGithubAnnotations(findings, overLimit ? 'error' : 'warning');
+  const annotations = renderGithubAnnotations(findings, overLimit || incomplete ? 'error' : 'warning');
   const ws = loadWorkspace(qaArgs.workspace);
   const displayRoot = ws?.root || null;
   const runDir = ws ? resolve(ws.root, result.runDir ?? '.') : resolve(result.runDir ?? '.');
@@ -170,7 +178,19 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = 
   };
   const sidecarNote = sidecarError ? '；CI 附件未写成，正文报告仍可用' : '';
   const warnings = sidecarError ? [`QA CI sidecar write failed: ${sidecarError}`] : undefined;
-  const summary = `${env.summary} CI ${gate.status === 'passed' ? '通过' : `失败（${findings.length} 条达到 ${failOn}）`}${sidecarNote}。`;
+  const outcome = incomplete ? `未完成（${incompleteReasons.join('；')}）`
+    : overLimit ? `失败（${findings.length} 条达到 ${failOn}）` : '通过';
+  const summary = `${env.summary} CI ${outcome}${sidecarNote}。`;
+  if (incomplete) {
+    return {
+      env: fail('qa_incomplete', summary, {
+        summary, result: ciResult, nextActions, warnings,
+        hint: '恢复登录态、修复检查点或排查检测器失败后重新运行 heimdall qa ci',
+      }),
+      exitCode: 3,
+      annotations,
+    };
+  }
   if (overLimit) {
     return {
       env: fail('gate_failed', summary, {

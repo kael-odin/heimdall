@@ -23,7 +23,7 @@ heimdall qa ci --site web --pages /,/pricing,/product --viewports 1440,390 --fai
 - `0`：门禁通过
 - `1`：达到失败门槛
 - `2`：配置或参数错误
-- `3`：浏览器 / 环境不可用
+- `3`：浏览器或测试环境不可用、登录态失效、检查点未能核实，或页面检测器执行失败
 - `7`：内部错误
 
 ## 门槛
@@ -38,9 +38,13 @@ heimdall qa ci --site web --fail-on none
 - `all`：任何建议提单的问题都失败，默认值
 - `wall`：只有 `wall` 级问题失败
 - `degrade`：`wall` 和 `degrade` 级问题失败
-- `none`：只生成报告，不让任务失败
+- `none`：不因建议提单问题让任务失败；登录失效、检查点未能核实或检测器执行失败时仍返回退出码 `3`
 
 `--max-findings N` 可以容忍少量问题，但建议只在有明确清理计划时使用。被容忍的问题仍会以 warning 注解显示，不会消失。
+
+登录失效或检查点执行出错、未能核实时，`qa-ci.json` 的 `gate.status` 和信封里的 `ci.status` 都是 `incomplete`，错误码是 `qa_incomplete`；`incompleteReasons` 说明原因。恢复相应登录档或修复检查点后再重跑。工具会保留登录页截图作为环境证据，但不会把它当作业务页比较或登记视觉基线。登录识别依赖登录路径、配置的退出登录提示和密码框，不能保证识别所有身份失效场景。
+
+页面检测器执行失败时也会标记为 `incomplete`，不能把未执行完的检测当成通过。
 
 ## GitHub Actions 复合 Action
 

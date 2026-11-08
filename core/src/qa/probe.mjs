@@ -15,7 +15,7 @@
  */
 import { chromium } from 'playwright';
 import { scrubSecrets } from './workspace.mjs';
-import { detectInPage, readVitalsInPage, DETECT_DEFAULTS } from './detect.mjs';
+import { detectInPage, readVitalsInPage, DETECT_DEFAULTS, QA_CONTROL_SELECTOR } from './detect.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export const BROWSER_PROFILE = Object.freeze({ locale: 'zh-CN', timezoneId: 'Asia/Shanghai', colorScheme: 'light', reducedMotion: 'reduce' });
@@ -24,6 +24,29 @@ const EXPECT_KINDS = new Set(['visible', 'hidden', 'text', 'url', 'count', 'attr
 const LOGGED_OUT = ['请登录', '登录后', '立即登录', '账号登录', 'Sign in', 'Log in'];
 const clip = (v, n = 300) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const fail = (message) => { const e = new Error(message); e.code = 'invalid_args'; throw e; };
+
+export function loginProblem({ site, login, path, finalUrl, facts }) {
+  if (!login?.name) return null;
+  const configured = String(site.loginPath ?? '').split('?')[0].replace(/\/+$/, '');
+  const matchesLogin = value => !!configured && configured !== '/' && (value === configured || value.endsWith(configured));
+  let requested = '', final = '';
+  try { requested = new URL(path, site.url).pathname.replace(/\/+$/, ''); } catch { /* no path evidence */ }
+  try { final = new URL(finalUrl).pathname.replace(/\/+$/, ''); } catch { /* no redirect evidence */ }
+  if (matchesLogin(requested)) return null;
+  if (matchesLogin(final)) return '页面跳转到了登录入口';
+  if (facts?.loggedOut?.length) return `页面出现登录提示：${facts.loggedOut.join('、')}`;
+  if (facts?.hasPassword && configured) return '页面出现密码输入框';
+  return null;
+}
+
+export async function loginProblemAtPage(page, { site, login, path }) {
+  if (!login?.name) return null;
+  const facts = await page.evaluate((messages) => {
+    const text = document.body?.innerText ?? '';
+    return { loggedOut: messages.filter(message => text.includes(message)), hasPassword: !!document.querySelector('input[type="password"]') };
+  }, site.loggedOutText ?? LOGGED_OUT);
+  return loginProblem({ site, login, path, finalUrl: page.url(), facts });
+}
 
 export function safeUrl(value) {
   try {
@@ -193,17 +216,31 @@ const emptyHealth = () => ({ console: [], pageErrors: [], http: [], failed: [], 
  */
 async function runDetectors(page, { viewport, loginName, options }) {
   try { await page.evaluate(readVitalsInPage); } catch { /* 老页面/被 CSP 拦截时不读 */ }
+  const named = [];
+  let useBrowserNames = true;
   try {
-    const raw = await page.evaluate(detectInPage, {
-      viewportWidth: viewport.width,
-      mobile: viewport.width < 600,
-      maskSelectors: options.maskSelectors ?? [],
-      thresholds: options.thresholds ?? {},
-      loginProfile: loginName ?? null,
-      maxPerDetector: options.maxPerDetector ?? DETECT_DEFAULTS.maxPerDetector,
-    });
-    return Array.isArray(raw) ? raw : [];
-  } catch { return []; }
+    for (const role of ['button', 'link', 'tab', 'menuitem']) {
+      const matches = page.getByRole(role, { name: /\S/ }).and(page.locator(QA_CONTROL_SELECTOR));
+      named.push(...await matches.elementHandles());
+    }
+  } catch { useBrowserNames = false; }
+  const detectOptions = {
+    viewportWidth: viewport.width,
+    mobile: viewport.width < 600,
+    maskSelectors: options.maskSelectors ?? [],
+    thresholds: options.thresholds ?? {},
+    loginProfile: loginName ?? null,
+    maxPerDetector: options.maxPerDetector ?? DETECT_DEFAULTS.maxPerDetector,
+    controlSelector: QA_CONTROL_SELECTOR,
+  };
+  try {
+    let raw;
+    try { raw = await page.evaluate(detectInPage, { ...detectOptions, namedControls: useBrowserNames ? named : null }); }
+    catch { raw = await page.evaluate(detectInPage, detectOptions); }
+    if (!Array.isArray(raw)) throw new Error('invalid detector result');
+    return { detections: raw, error: null };
+  } catch { return { detections: [], error: 'detector-failed' }; }
+  finally { await Promise.all(named.map(handle => handle.dispose().catch(() => {}))); }
 }
 
 /** 检测器的原始结果 → 统一发现形状（path / 证据 / 视口在调用方补齐） */
@@ -223,15 +260,16 @@ function findingFromDetection(detected, { path, pageUrl, viewport, screenshot })
 }
 
 /** 把一页的事实翻译成发现（检查器产出：observed 级证据，tier 保守） */
-function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo, viewport, navError, screenshot }) {
+function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo, viewport, navError, screenshot, loginIssue }) {
   const out = [];
   const ev = (extra = {}) => ({ url: safeUrl(pageUrl), viewport: `${viewport.width}x${viewport.height}`, ...(screenshot ? { screenshot } : {}), ...extra });
   if (navError) out.push({ kind: 'navigation', path, title: `页面打不开：${navError}`, target: path, basis: 'failed', tier: 'wall', loss: '访客打开这个地址看不到页面', observed: navError, evidence: ev() });
   const login = loginInfo?.name ? { profile: loginInfo.name } : null;
-  if (login && (facts?.loggedOut?.length || (facts?.hasPassword && site.loginPath && path !== site.loginPath))) {
+  if (login && loginIssue) {
     out.push({ kind: 'login-expired', path, title: '登录档没生效或已过期，页面要求重新登录', target: login.profile, basis: 'failed', tier: 'wall',
-      observed: `页面出现：${(facts.loggedOut ?? []).join('、') || '密码输入框'}`, evidence: ev({ login: login.profile, expiresAt: loginInfo.expiresAt }),
+      observed: loginIssue, evidence: ev({ login: login.profile, expiresAt: loginInfo.expiresAt }),
       note: '这是测试环境问题，不是产品问题：重新登录后再跑' });
+    return out;
   }
   for (const msg of health.pageErrors.slice(0, 5)) out.push({ kind: 'console', path, title: `页面脚本异常：${clip(msg, 90)}`, target: 'pageerror', match: msg, basis: 'failed', tier: 'tolerable', observed: msg, evidence: ev() });
   // 浏览器给每个 4xx/5xx 自动打一条 "Failed to load resource"，网络记录已经覆盖，再报一次就是重复
@@ -258,26 +296,38 @@ function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo,
   return out;
 }
 
-async function runCheck(context, site, check, { timeout, settleMs, screenshotDir, shoot }) {
+async function runCheck(context, site, check, { timeout, settleMs, screenshotDir, shoot, login }) {
   const health = emptyHealth();
   const page = await context.newPage();
   watch(page, health, site.origin);
   const startUrl = new URL(check.path, site.url).href;
   const results = [];
   let error = null;
+  let loginIssue = null;
   try {
     await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout });
     await page.waitForTimeout(settleMs);
-    for (const s of check.steps) { await performStep(page, s, site.url, Math.min(timeout, 10_000)); await page.waitForTimeout(Math.min(settleMs, 800)); }
-    for (const a of check.expect) {
-      const actual = await readExpect(page, a, site.origin);
-      results.push({ ...a, actual: typeof actual === 'string' ? clip(actual, 300) : actual, pass: predicate(a, actual) });
+    loginIssue = await loginProblemAtPage(page, { site, login, path: check.path });
+    if (!loginIssue) {
+      for (const s of check.steps) {
+        await performStep(page, s, site.url, Math.min(timeout, 10_000));
+        await page.waitForTimeout(Math.min(settleMs, 800));
+        loginIssue = await loginProblemAtPage(page, { site, login, path: check.path });
+        if (loginIssue) break;
+      }
+      if (!loginIssue) {
+        for (const a of check.expect) {
+          const actual = await readExpect(page, a, site.origin);
+          results.push({ ...a, actual: typeof actual === 'string' ? clip(actual, 300) : actual, pass: predicate(a, actual) });
+        }
+      }
     }
   } catch (e) { error = clip(e.message, 300); }
-  const failed = error || results.some(r => !r.pass);
+  const failed = error || loginIssue || results.some(r => !r.pass);
   const shot = failed && shoot ? await shoot(page, `check-${check.id}`) : null;
   await page.close().catch(() => {});
-  return { id: check.id, title: check.title, path: check.path, pass: !failed, error, results, screenshot: shot, health };
+  return { id: check.id, title: check.title, path: check.path, pass: !failed, error, results, screenshot: shot, health,
+    ...(loginIssue ? { blockedReason: 'login-expired', loginIssue } : {}) };
 }
 
 /**
@@ -296,7 +346,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
         const page = await context.newPage();
         watch(page, health, site.origin);
         const pageUrl = new URL(p.path, site.url).href;
-        let navError = null, facts = null, links = null, detected = [];
+        let navError = null, facts = null, links = null, detected = [], loginIssue = null, detectorError = null;
         onProgress({ message: `打开 ${p.path}（${viewport.width}px）` });
         try {
           const res = await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
@@ -306,19 +356,25 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
           await page.waitForTimeout(settleMs);
           facts = await page.evaluate(pageFactsInPage, { loggedOutText });
           facts.images = facts.images.map(img => ({ ...img, src: safeUrl(img.src) }));
-          if (linkCheck && viewport === viewports[0]) links = await checkLinks(context, facts.links, site.origin, { limit: linkLimit });
-          if (detect && !navError) detected = await runDetectors(page, { viewport, loginName: login?.name, options: detectOptions });
+          loginIssue = loginProblem({ site, login, path: p.path, finalUrl: page.url(), facts });
+          if (linkCheck && !loginIssue && viewport === viewports[0]) links = await checkLinks(context, facts.links, site.origin, { limit: linkLimit });
+          if (detect && !navError && !loginIssue) {
+            const result = await runDetectors(page, { viewport, loginName: login?.name, options: detectOptions });
+            detected = result.detections;
+            detectorError = result.error;
+          }
         } catch (e) { navError = navError ?? clip(e.message, 200); }
         const screenshot = shoot ? await shoot(page, `page-${p.path}-${viewport.width}`) : null;
         const finalUrl = page.url();
         await context.close().catch(() => {});
         out.pages.push({ path: p.path, name: p.name ?? null, url: safeUrl(pageUrl), finalUrl: safeUrl(finalUrl), viewport, navError, title: facts?.title ?? null,
+          ...(loginIssue ? { unavailableReason: 'login-expired' } : {}), ...(detectorError ? { detectorError } : {}),
           counts: { console: health.console.length, pageErrors: health.pageErrors.length, http: health.http.length, failed: health.failed.length, blocked: health.blocked.length,
             brokenImages: facts?.images?.length ?? 0, brokenLinks: links?.broken?.length ?? 0, linksChecked: links?.checked ?? 0,
             detected: detected.length, detectors: [...new Set(detected.map(d => d.detector))] },
           overflowPx: facts?.overflowPx ?? null, screenshot });
-        if (collectTexts && facts && viewport === viewports[0]) out.texts[p.path] = facts.texts;
-        out.findings.push(...findingsForPage({ site, pageUrl, path: p.path, health, facts, links, loginInfo: login, viewport, navError, screenshot }));
+        if (collectTexts && facts && !loginIssue && viewport === viewports[0]) out.texts[p.path] = facts.texts;
+        out.findings.push(...findingsForPage({ site, pageUrl, path: p.path, health, facts, links, loginInfo: login, viewport, navError, screenshot, loginIssue }));
         out.findings.push(...detected.map(d => findingFromDetection(d, { path: p.path, pageUrl, viewport, screenshot })));
       }
     }
@@ -327,10 +383,13 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
       const health = emptyHealth();
       const context = await openContext(browser, { login, viewport, origin: site.origin, writes: site.writes, writeAllow: site.writeAllow, health });
       onProgress({ message: `检查点 ${check.id}` });
-      const r = await runCheck(context, site, check, { timeout: timeoutMs, settleMs, shoot });
+      const r = await runCheck(context, site, check, { timeout: timeoutMs, settleMs, shoot, login });
       await context.close().catch(() => {});
       out.checks.push(r);
-      if (!r.pass) {
+      if (r.blockedReason === 'login-expired') {
+        out.findings.push(...findingsForPage({ site, pageUrl: new URL(check.path, site.url).href, path: check.path, health, facts: null,
+          links: null, loginInfo: login, viewport, navError: null, screenshot: r.screenshot, loginIssue: r.loginIssue }));
+      } else if (!r.pass) {
         const failedExpect = r.results.filter(x => !x.pass);
         out.findings.push({ kind: 'assertion', path: check.path, title: check.title, target: check.id, match: check.id,
           basis: check.basis, tier: check.tier, ...(check.loss ? { loss: check.loss } : {}), ...(check.prd ? { prd: check.prd } : {}),

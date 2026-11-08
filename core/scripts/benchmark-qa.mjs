@@ -26,6 +26,14 @@ const ratio = (a, b) => b ? +(a / b).toFixed(4) : null;
 const pct = (v) => v === null ? '无分母' : `${(v * 100).toFixed(1)}%`;
 const cell = (v) => String(v ?? '').replaceAll('|', '\\|').replace(/[\r\n]/g, ' ');
 
+export function assertBenchmarkCoverage(coverage) {
+  const detection = coverage?.detection;
+  if (!detection?.enabled || detection.failedPages?.length || !coverage.pages?.length
+    || detection.pages !== coverage.pages.length) {
+    throw new Error('固定夹具检测未完成，不能计算检出率或误报率');
+  }
+}
+
 function percentiles(values) {
   const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
   const rank = (p) => sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)] ?? null;
@@ -51,6 +59,7 @@ async function runPage(origin, path, extraArgs = {}) {
   try {
     const ws = loadWorkspace(root);
     const result = await runQa(ws, { site: 'web', viewports: [1440], linkCheck: false, ...extraArgs });
+    assertBenchmarkCoverage(result.run.coverage);
     return {
       durationMs: Date.now() - started,
       findings: result.findings,

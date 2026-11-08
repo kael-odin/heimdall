@@ -66,10 +66,12 @@ export function renderReport({ ws, run, findings, hits }) {
   out.push(`> 运行 \`${run.runId}\` · ${date} · ${run.siteUrl} · 环境：${run.environment}${run.login ? ` · 登录档：${run.login.name}` : ' · 未登录'}`, '');
   const lead = groups.file.length
     ? `建议提单 ${groups.file.length} 条${groups.file.some(f => f.tier === 'wall') ? `，其中撞墙 ${groups.file.filter(f => f.tier === 'wall').length} 条` : ''}。`
-    : '这次没有需要提单的问题。';
+    : groups.env.length ? '登录状态失效，业务页面未完整检查。'
+      : run.coverage.detection?.failedPages?.length ? '页面检测器执行失败，本次检查未完成。' : '这次没有需要提单的问题。';
   const extra = [
     s.suppressed ? `按以往裁决过滤 ${s.suppressed} 条` : null,
     groups.tolerable.length ? `可容忍 ${groups.tolerable.length} 条未入单` : null,
+    run.coverage.detection?.failedPages?.length ? `检测器在 ${run.coverage.detection.failedPages.length} 个页面视口执行失败` : null,
     groups.env.length ? `${groups.env.length} 条是环境问题` : null,
     groups.checks.length ? `${groups.checks.length} 个检查点没对上，需要先确认检查点本身` : null,
   ].filter(Boolean);
@@ -130,11 +132,11 @@ export function renderReport({ ws, run, findings, hits }) {
   out.push(`视口：${run.coverage.viewports.join('、')}。页面 ${run.coverage.pages.length} 次打开，检查点 ${run.coverage.checks.length} 个。`, '');
   out.push('| 页面 | 视口 | 结果 | 控制台 | 4xx/5xx | 坏链/已查 | 坏图 |', '| --- | --- | --- | ---: | ---: | ---: | ---: |');
   for (const p of run.coverage.pages) {
-    out.push(`| ${p.path} | ${p.viewport} | ${p.navError ? '打不开：' + esc(p.navError) : '已打开'} | ${p.counts.console + p.counts.pageErrors} | ${p.counts.http} | ${p.counts.brokenLinks}/${p.counts.linksChecked} | ${p.counts.brokenImages} |`);
+    out.push(`| ${p.path} | ${p.viewport} | ${p.unavailableReason === 'login-expired' ? '登录失效' : p.navError ? '打不开：' + esc(p.navError) : p.detectorError ? '检测器执行失败' : '已打开'} | ${p.counts.console + p.counts.pageErrors} | ${p.counts.http} | ${p.counts.brokenLinks}/${p.counts.linksChecked} | ${p.counts.brokenImages} |`);
   }
   if (run.coverage.checks.length) {
     out.push('', '| 检查点 | 结果 |', '| --- | --- |');
-    for (const c of run.coverage.checks) out.push(`| ${esc(c.title)} | ${c.pass ? '通过' : c.error ? '执行出错' : '未通过'} |`);
+    for (const c of run.coverage.checks) out.push(`| ${esc(c.title)} | ${c.blockedReason === 'login-expired' ? '登录失效，未完成' : c.pass ? '通过' : c.error ? '执行出错' : '未通过'} |`);
   }
   out.push('', '## 没测到的', '');
   out.push('- 只读探测拦下了所有写请求：下单、支付、提交表单这类流程没有走到底。');
@@ -150,7 +152,13 @@ export function renderBugs({ ws, run, findings }) {
   const list = findings.filter(fileable).sort((a, b) => (a.tier === 'wall' ? 0 : 1) - (b.tier === 'wall' ? 0 : 1));
   const out = [`# 待提单 · ${ws.project} · ${run.site} · ${run.startedAt.slice(0, 10)}`, ''];
   out.push(`> 来自运行 \`${run.runId}\`（${run.siteUrl}，环境 ${run.environment}）。已排除：以往裁决为误报/约定/暂缓的、可容忍的、环境问题、没对上的检查点。`, '');
-  if (!list.length) { out.push('没有需要提单的问题。', ''); return out.join('\n'); }
+  if (!list.length) {
+    const incomplete = [];
+    if (findings.some(f => f.kind === 'login-expired')) incomplete.push('登录失效的业务页面');
+    if (run.coverage.detection?.failedPages?.length) incomplete.push('检测器执行失败的页面');
+    out.push(incomplete.length ? `没有建议提单的问题；${incomplete.join('、')}未完成检查。` : '没有需要提单的问题。', '');
+    return out.join('\n');
+  }
   for (const f of list) out.push(card(f, { withVerdictHint: false }));
   return out.join('\n');
 }

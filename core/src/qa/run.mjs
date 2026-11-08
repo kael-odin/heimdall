@@ -154,7 +154,8 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
     ? await exploreSite({ site, login, pages, viewport: viewports[0], maxPerPage: exploreOptions.maxPerPage,
         budgetMs: exploreOptions.budgetMs, settleMs: ws.defaults.settleMs, browser, onProgress })
     : null;
-  const pageEntries = probe.pages.map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}`, screenshot: p.screenshot, url: p.url }));
+  const pageEntries = probe.pages.map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}`, screenshot: p.screenshot, url: p.url,
+    navError: p.navError, ...(p.unavailableReason ? { unavailableReason: p.unavailableReason } : {}) }));
   // 跨运行回归：只有显式登记过基线且站点一致时才比对；动态内容会带来噪声，结果按可裁决的发现输出。
   const baselineCfg = ws.defaults?.baseline && typeof ws.defaults.baseline === 'object' ? ws.defaults.baseline : {};
   const regression = args.baseline === false
@@ -172,12 +173,16 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
     label: args.label ?? null, startedAt, endedAt: new Date().toISOString(),
     login: login.name ? { ...describeLogin(ws, login.name), expiresAt: login.expiresAt } : null,
     coverage: {
-      pages: probe.pages.map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}`, navError: p.navError, title: p.title ? scrubSecrets(p.title, login.secrets) : null, counts: p.counts, screenshot: p.screenshot })),
-      checks: probe.checks.map(c => ({ id: c.id, title: c.title, pass: c.pass, error: c.error, screenshot: c.screenshot })),
+      pages: probe.pages.map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}`, navError: p.navError,
+        ...(p.unavailableReason ? { unavailableReason: p.unavailableReason } : {}), ...(p.detectorError ? { detectorError: p.detectorError } : {}),
+        title: p.title ? scrubSecrets(p.title, login.secrets) : null, counts: p.counts, screenshot: p.screenshot })),
+      checks: probe.checks.map(c => ({ id: c.id, title: c.title, pass: c.pass, error: c.error, screenshot: c.screenshot,
+        ...(c.blockedReason ? { blockedReason: c.blockedReason } : {}) })),
       viewports: viewports.map(v => `${v.width}x${v.height}`),
       detection: {
         enabled: detectEnabled(ws, args),
-        pages: probe.pages.length,
+        pages: detectEnabled(ws, args) ? probe.pages.filter(p => !p.navError && !p.unavailableReason && !p.detectorError).length : 0,
+        failedPages: probe.pages.filter(p => p.detectorError).map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}` })),
         findings: probe.findings.filter(f => f.detector).length,
         detectors: [...new Set(probe.pages.flatMap(p => p.counts?.detectors ?? []))].sort(),
       },

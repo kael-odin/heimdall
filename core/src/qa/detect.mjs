@@ -18,6 +18,7 @@
 import { KINDS } from './findings.mjs';
 
 export const DETECT_VERSION = 1;
+export const QA_CONTROL_SELECTOR = 'button, a[href], [role="button"], [role="link"], [role="tab"], [role="menuitem"], input[type="submit"], input[type="button"], input[type="reset"]';
 
 /** 检测器清单：id → 输出 kind 与说明。报告与基准都从这里取名字。 */
 export const DETECTOR_META = Object.freeze({
@@ -75,6 +76,8 @@ export function detectInPage(options = {}) {
     thresholds = {},
     loginProfile = null,
     maxPerDetector = 4,
+    controlSelector = 'button, a[href], [role="button"], [role="link"], [role="tab"], [role="menuitem"], input[type="submit"], input[type="button"], input[type="reset"]',
+    namedControls = null,
   } = options;
   const t = {
     tapTargetPx: 24, mobileTapTargetPx: 44, oversizedImageRatio: 2, textClippedRatio: 0.3, ...thresholds,
@@ -100,7 +103,7 @@ export function detectInPage(options = {}) {
     if (r.width <= 0 || r.height <= 0) return false;
     const s = cs(el);
     return s.display !== 'none' && s.visibility !== 'hidden' && Number(s.opacity) > 0.01
-      && !el.closest('[hidden], [aria-hidden="true"]');
+      && !el.closest('[hidden], [inert], [aria-hidden="true"]');
   };
   const isMasked = (el) => maskSelectors.some(sel => { try { return !!el.closest(sel); } catch { return false; } });
   const unique = (sel) => { try { return doc.querySelectorAll(sel).length === 1; } catch { return false; } };
@@ -157,18 +160,27 @@ export function detectInPage(options = {}) {
     }
     return '';
   };
-  const controls = [...doc.querySelectorAll('button, a[href], [role="button"], [role="link"], [role="tab"], [role="menuitem"], input[type="submit"], input[type="button"], input[type="reset"]')];
+  const controls = [...doc.querySelectorAll(controlSelector)];
+  const browserNamed = Array.isArray(namedControls) ? new Set(namedControls) : null;
+  const supportedRoles = new Set(['button', 'link', 'tab', 'menuitem']);
   for (const el of controls) {
     if (!isVisible(el) || isMasked(el)) continue;
     if (el.getAttribute('role') === 'presentation' || el.getAttribute('aria-hidden') === 'true') continue;
-    if (controlName(el)) continue;
-    // 纯图标按钮常见写法：内部 svg 带 <title>
-    const svgTitle = el.querySelector('svg > title')?.textContent;
-    if (svgTitle && svgTitle.trim()) continue;
+    const explicitRole = el.getAttribute('role')?.trim().split(/\s+/)[0];
+    const role = explicitRole || (el.tagName === 'A' ? 'link' : 'button');
+    if (browserNamed && supportedRoles.has(role)) {
+      if (browserNamed.has(el)) continue;
+    } else {
+      if (controlName(el)) continue;
+      const svgTitle = el.querySelector('svg > title')?.textContent;
+      if (svgTitle && svgTitle.trim()) continue;
+    }
     push('a11y-control-name', {
       kind: 'a11y', basis: 'wrong', tier: 'degrade', target: selectorOf(el),
       title: `控件没有可访问名称：<${el.tagName.toLowerCase()}>`,
-      observed: `${selectorOf(el)} 的文本、aria-label、title、内部图片替代文字都为空`,
+      observed: browserNamed && supportedRoles.has(role)
+        ? `${selectorOf(el)} 的浏览器无障碍名称为空`
+        : `${selectorOf(el)} 的文本、aria-label、title、内部图片替代文字都为空`,
       loss: `用读屏或键盘导航的人不知道 ${selectorOf(el)} 是做什么的`,
       repro: [`打开 ${location.pathname}`, `定位 ${selectorOf(el)}`],
     });
@@ -282,6 +294,8 @@ export function detectInPage(options = {}) {
 
   const textEls = [...doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, label, li, td, th, dt, dd, div')]
     .filter(el => isVisible(el) && !isMasked(el) && el.children.length <= 2);
+  const normalText = value => String(value ?? '').replace(/\s+/g, ' ').trim();
+  const horizontalScroller = el => ['auto', 'scroll'].includes(cs(el).overflowX) && el.scrollWidth > el.clientWidth + 2;
   for (const el of textEls) {
     const content = text(el);
     if (content.length < 8) continue;
@@ -294,11 +308,26 @@ export function detectInPage(options = {}) {
     if (client <= 0 || scroll <= client + 2) continue;
     const visibleRatio = client / scroll;
     if (visibleRatio > 1 - t.textClippedRatio) continue;
+    const rect = el.getBoundingClientRect();
+    const screenReaderOnly = rect.width <= 2 && rect.height <= 2 && ['absolute', 'fixed'].includes(style.position)
+      && (style.clipPath === 'inset(50%)' || /^rect\(0px,? 0px,? 0px,? 0px\)$/.test(style.clip));
+    if (screenReaderOnly) continue;
+    const fullText = normalText(el.innerText);
+    const scrollableContent = [...el.querySelectorAll('*')].some(child => horizontalScroller(child)
+      && fullText && normalText(child.innerText) === fullText);
+    if (scrollableContent) continue;
+    const title = normalText(el.closest('[title]')?.getAttribute('title'));
+    const fullTitle = fullText && title === fullText;
+    const tableHeader = !!el.querySelector('thead') && [...(el.parentElement?.children ?? [])]
+      .filter(sibling => sibling !== el)
+      .some(sibling => [sibling, ...sibling.querySelectorAll('*')].some(child => horizontalScroller(child)
+        && child.querySelector('tbody') && Math.abs(child.clientWidth - client) <= 3 && Math.abs(child.scrollWidth - scroll) <= 3));
     push('layout-text-clipped', {
-      kind: 'layout', basis: 'wrong', tier: 'degrade', target: selectorOf(el),
+      kind: 'layout', basis: fullTitle || tableHeader ? 'friction' : 'wrong', tier: fullTitle || tableHeader ? 'tolerable' : 'degrade', target: selectorOf(el),
       title: `文字被裁切：${clip(content, 50)}`,
-      observed: `显示宽度 ${client}px / 内容宽度 ${scroll}px，只露出约 ${Math.round(visibleRatio * 100)}%`,
-      loss: '访客看不全这段话（被省略号或容器截断），关键信息可能正好在截掉的部分',
+      observed: `显示宽度 ${client}px / 内容宽度 ${scroll}px，只露出约 ${Math.round(visibleRatio * 100)}%`
+        + (fullTitle ? '；原生 title 包含完整文字，触屏和键盘使用仍需复核' : tableHeader ? '；同表格正文可横向滚动，需复核表头是否同步' : ''),
+      ...(!fullTitle && !tableHeader ? { loss: '访客看不全这段被截断的文字' } : {}),
       repro: [`打开 ${location.pathname}（${innerWidth}px）`, `定位 ${selectorOf(el)}`],
     });
   }

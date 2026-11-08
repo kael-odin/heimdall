@@ -19,6 +19,49 @@ test('qa ci: fail-on selects only the configured tier', () => {
   assert.deepEqual(selectGateFindings(FINDINGS, 'none'), []);
 });
 
+test('qa ci: an expired login is incomplete even with fail-on none', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-ci-incomplete-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
+    project: 'ci-incomplete', sites: { web: { url: 'https://example.test/', pages: ['/'] } },
+  }));
+  try {
+    const result = await runQaCi({
+      args: { workspace: root, site: 'web' }, failOn: 'none',
+      execute: async () => ({ ok: true, summary: 'QA finished.', nextActions: [], result: {
+        runId: 'qa-incomplete', site: 'web', runDir: '.heimdall/qa/runs/qa-incomplete',
+        report: 'report.md', bugs: 'bugs.md', summary: { fileable: 0, environment: 1 },
+        fileable: [], environment: ['登录档没生效或已过期'],
+      } }),
+    });
+    assert.equal(result.exitCode, 3);
+    assert.equal(result.env.ok, false);
+    assert.equal(result.env.error.code, 'qa_incomplete');
+    assert.equal(result.env.result.ci.status, 'incomplete');
+    assert.match(readFileSync(join(root, '.heimdall/qa/runs/qa-incomplete/qa-ci.md'), 'utf8'), /未完成/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('qa ci: an unverified check is incomplete even without fileable findings', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-ci-unverified-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
+    project: 'ci-unverified', sites: { web: { url: 'https://example.test/', pages: ['/'] } },
+  }));
+  try {
+    const result = await runQaCi({ args: { workspace: root }, failOn: 'none', execute: async () => ({
+      ok: true, summary: 'QA finished.', nextActions: [], result: {
+        runId: 'qa-unverified', site: 'web', runDir: '.heimdall/qa/runs/qa-unverified',
+        report: 'report.md', bugs: 'bugs.md', summary: { fileable: 0, checkNeedsFix: 1 }, fileable: [], environment: [],
+      },
+    }) });
+    assert.equal(result.exitCode, 3);
+    assert.equal(result.env.error.code, 'qa_incomplete');
+    assert.equal(result.env.result.ci.status, 'incomplete');
+    assert.match(result.env.result.ci.markdown, /检查点/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('qa ci: GitHub annotations and Markdown escape user-visible content', () => {
   const annotations = renderGithubAnnotations([{ ...FINDINGS[0], title: 'bad%:\nline', observed: 'a|b,c' }]);
   assert.match(annotations, /^::error title=/);

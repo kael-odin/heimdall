@@ -38,11 +38,23 @@ export function writeBaseline(ws, run, pages) {
   const entries = [];
   const missing = [];
   for (const page of pages) {
+    if (page.unavailableReason === 'login-expired') { missing.push({ path: page.path, viewport: page.viewport, reason: '登录失效' }); continue; }
+    if (page.navError) { missing.push({ path: page.path, viewport: page.viewport, reason: '页面打不开' }); continue; }
     if (!page.screenshot) { missing.push({ path: page.path, viewport: page.viewport, reason: '没有截图' }); continue; }
     const file = join(ws.dataDir, 'runs', run.runId, page.screenshot);
     if (!existsSync(file)) { missing.push({ path: page.path, viewport: page.viewport, reason: '截图文件不存在' }); continue; }
     const stat = statSync(file);
     entries.push({ path: page.path, viewport: page.viewport, screenshot: page.screenshot, bytes: stat.size, runId: run.runId });
+  }
+  if (pages.some(page => page.unavailableReason === 'login-expired' || page.navError)) {
+    const error = new Error('页面登录失效或打不开，不能登记不完整基线；原基线未更改');
+    error.code = 'invalid_args';
+    throw error;
+  }
+  if (!entries.length) {
+    const error = new Error(`${missing.some(page => page.reason === '登录失效') ? '登录失效，' : ''}没有可登记的业务页面截图；原基线未更改`);
+    error.code = 'invalid_args';
+    throw error;
   }
   const baseline = {
     schema: BASELINE_SCHEMA,
@@ -70,7 +82,7 @@ const viewportKey = (page) => `${page.viewport}`;
 export function comparablePairs(baseline, pages) {
   const byKey = new Map();
   for (const page of pages) {
-    if (!page.screenshot) continue;
+    if (!page.screenshot || page.unavailableReason || page.navError) continue;
     byKey.set(`${page.path}|${viewportKey(page)}`, page);
   }
   const pairs = [];
@@ -94,7 +106,10 @@ export function compareWithBaseline(ws, run, pages, { threshold = DEFAULT_BASELI
   }
   const pairs = comparablePairs(baseline, pages);
   const findings = [];
-  const skipped = [];
+  let compared = 0;
+  const skipped = pages.filter(page => page.unavailableReason || page.navError).map(page => ({
+    path: page.path, viewport: page.viewport, reason: page.unavailableReason === 'login-expired' ? '登录失效' : '页面打不开',
+  }));
   if (diffDir) mkdirSync(diffDir, { recursive: true });
   for (const { base, page } of pairs) {
     const baseFile = join(ws.dataDir, 'runs', base.runId, base.screenshot);
@@ -108,6 +123,7 @@ export function compareWithBaseline(ws, run, pages, { threshold = DEFAULT_BASELI
       skipped.push({ path: page.path, viewport: page.viewport, reason: `截图无法读取：${String(error?.message ?? error).slice(0, 80)}` });
       continue;
     }
+    compared++;
     const score = round(result.score);
     if (score >= threshold) continue;
     let diffFile = null;
@@ -135,9 +151,9 @@ export function compareWithBaseline(ws, run, pages, { threshold = DEFAULT_BASELI
   }
   return {
     findings,
-    compared: pairs.length,
+    compared,
     skipped,
-    scope: `基线与本次同站同页同视口比对 ${pairs.length} 对；低于 ${(threshold * 100).toFixed(0)}% 的记一条回归发现。动态内容会对相似度有影响，请结合差异图复核。`,
+    scope: `基线与本次同站同页同视口比对 ${compared} 对；低于 ${(threshold * 100).toFixed(0)}% 的记一条回归发现。动态内容会对相似度有影响，请结合差异图复核。`,
   };
 }
 

@@ -16,12 +16,21 @@ import { diffSnapshots, skipReason } from '../src/qa/explore.mjs';
 import { writeBaseline, readBaseline, compareWithBaseline, comparablePairs, describeBaseline, baselineFile } from '../src/qa/baseline.mjs';
 import { renderReport, renderBugs, fileable } from '../src/qa/report.mjs';
 import { loadWorkspace } from '../src/qa/workspace.mjs';
+import { assertBenchmarkCoverage } from '../scripts/benchmark-qa.mjs';
 
 const png = (width, height, [r, g, b]) => {
   const image = new PNG({ width, height });
   for (let i = 0; i < image.data.length; i += 4) { image.data[i] = r; image.data[i + 1] = g; image.data[i + 2] = b; image.data[i + 3] = 255; }
   return PNG.sync.write(image);
 };
+
+test('qa benchmark: incomplete detection cannot count as a clean result', () => {
+  const coverage = { pages: [{}], detection: { enabled: true, pages: 1, failedPages: [] } };
+  assert.doesNotThrow(() => assertBenchmarkCoverage(coverage));
+  assert.throws(() => assertBenchmarkCoverage({ ...coverage, detection: { ...coverage.detection, pages: 0, failedPages: [{}] } }), /检测未完成/);
+  assert.throws(() => assertBenchmarkCoverage({ ...coverage, detection: { ...coverage.detection, enabled: false } }), /检测未完成/);
+  assert.throws(() => assertBenchmarkCoverage({ ...coverage, detection: { ...coverage.detection, pages: 0 } }), /检测未完成/);
+});
 
 function workspace(config = {}) {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-detect-'));
@@ -105,11 +114,18 @@ test('baseline: register, compare identical and changed screenshots, respect sit
     assert.equal(registered.pages.length, 1);
     assert.equal(readBaseline(ws).runId, baseRunId);
     assert.equal(describeBaseline(ws).exists, true);
+    assert.throws(() => writeBaseline(ws, nowRun, [{ path: '/', viewport: '1440x900', screenshot: null }]), /没有可登记/);
+    assert.equal(readBaseline(ws).runId, baseRunId, 'an empty run cannot erase a valid baseline');
+    assert.throws(() => writeBaseline(ws, nowRun, [...pages, { ...pages[0], path: '/private', unavailableReason: 'login-expired' }]), /不完整基线/);
+    assert.equal(readBaseline(ws).runId, baseRunId, 'one failed page cannot erase the existing baseline');
 
     // 同一张图：相似度 100%，不产生发现
     const identical = compareWithBaseline(ws, nowRun, pages, { threshold: 0.98 });
     assert.equal(identical.compared, 1);
     assert.equal(identical.findings.length, 0);
+    const missingShot = compareWithBaseline(ws, nowRun, [{ ...pages[0], screenshot: 'shots/missing.png' }]);
+    assert.equal(missingShot.compared, 0, 'missing screenshots are not counted as comparisons');
+    assert.match(missingShot.skipped[0].reason, /截图缺失/);
 
     // 不同站点：跳过并说明原因
     const otherSite = compareWithBaseline(ws, { ...nowRun, site: 'app' }, pages, { threshold: 0.98 });
