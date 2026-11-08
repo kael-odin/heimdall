@@ -14,6 +14,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { loadWorkspace } from '../../../core/src/qa/workspace.mjs';
+import { baselineFile, writeBaseline } from '../../../core/src/qa/baseline.mjs';
 
 const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
 const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
@@ -208,6 +210,36 @@ test('fresh direct MCP enforces exact QA query rules without an available engine
     assert.equal(oversized.isError, true);
     assert.equal(oversized.structuredContent.error.code, 'invalid_args');
     assert.equal(hits.length, hitCount, 'invalid file is rejected before browser traffic');
+
+    const ws = loadWorkspace(root);
+    const recorded = JSON.parse(readFileSync(join(root, rows.structuredContent.result.runDir, 'run.json'), 'utf8'));
+    const baseline = writeBaseline(ws, recorded, recorded.coverage.pages);
+    const visualArgs = { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280], linkCheck: false, detect: false, failOn: 'none' };
+    const strictVisual = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...visualArgs, requireBaseline: true } });
+    assert.equal(strictVisual.isError, false);
+    assert.equal(strictVisual.structuredContent.result.baseline.compared, 1);
+    assert.equal(strictVisual.structuredContent.result.ci.requireBaseline, true);
+    rmSync(join(ws.dataDir, 'runs', baseline.runId, baseline.pages[0].screenshot));
+    const missingVisual = await client.callTool({ name: 'heimdall_qa_ci', arguments: visualArgs });
+    assert.equal(missingVisual.isError, true);
+    assert.equal(missingVisual.structuredContent.error.code, 'qa_incomplete');
+    assert.match(missingVisual.structuredContent.result.ci.markdown, /基线截图缺失/);
+    const disabledVisual = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...visualArgs, baseline: false } });
+    assert.equal(disabledVisual.isError, false);
+    assert.equal(disabledVisual.structuredContent.result.baseline.status, 'disabled');
+    writeFileSync(baselineFile(ws), '{invalid-json');
+    const corruptVisual = await client.callTool({ name: 'heimdall_qa_ci', arguments: visualArgs });
+    assert.equal(corruptVisual.isError, true);
+    assert.equal(corruptVisual.structuredContent.error.code, 'qa_incomplete');
+    assert.equal(corruptVisual.structuredContent.result.ci.status, 'incomplete');
+    rmSync(baselineFile(ws));
+    const requiredMissing = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...visualArgs, requireBaseline: true } });
+    assert.equal(requiredMissing.isError, true);
+    assert.equal(requiredMissing.structuredContent.error.code, 'qa_incomplete');
+    assert.equal(requiredMissing.structuredContent.result.baseline.status, 'unconfigured');
+    const contradictory = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...visualArgs, baseline: false, requireBaseline: true } });
+    assert.equal(contradictory.isError, true);
+    assert.equal(contradictory.structuredContent.error.code, 'invalid_args');
 
     config.sites.web.writes.allow = ['/api/query'];
     writeFileSync(file, JSON.stringify(config));

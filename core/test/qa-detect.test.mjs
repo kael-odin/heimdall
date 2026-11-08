@@ -13,7 +13,7 @@ import { PNG } from 'pngjs';
 import { DETECTOR_META, DETECTOR_IDS, DETECT_DEFAULTS, detectInPage } from '../src/qa/detect.mjs';
 import { KINDS, normalizeFinding, fingerprintOf } from '../src/qa/findings.mjs';
 import { diffSnapshots, skipReason } from '../src/qa/explore.mjs';
-import { writeBaseline, readBaseline, compareWithBaseline, comparablePairs, describeBaseline, baselineFile } from '../src/qa/baseline.mjs';
+import { writeBaseline, readBaseline, compareWithBaseline, comparablePairs, describeBaseline, baselineFile, clearBaseline } from '../src/qa/baseline.mjs';
 import { renderReport, renderBugs, fileable } from '../src/qa/report.mjs';
 import { loadWorkspace } from '../src/qa/workspace.mjs';
 import { assertBenchmarkCoverage } from '../scripts/benchmark-qa.mjs';
@@ -107,8 +107,8 @@ test('baseline: register, compare identical and changed screenshots, respect sit
     writeFileSync(join(baseDir, 'run.json'), JSON.stringify({ runId: baseRunId, site: 'web', environment: 'test' }));
     writeFileSync(join(nowDir, 'run.json'), JSON.stringify({ runId: nowRunId, site: 'web', environment: 'test' }));
 
-    const baseRun = { runId: baseRunId, site: 'web', environment: 'test' };
-    const nowRun = { runId: nowRunId, site: 'web', environment: 'test' };
+    const baseRun = { runId: baseRunId, site: 'web', environment: 'test', siteUrl: 'http://127.0.0.1:1/' };
+    const nowRun = { runId: nowRunId, site: 'web', environment: 'test', siteUrl: 'http://127.0.0.1:1/' };
     const pages = [{ path: '/', viewport: '1440x900', screenshot: 'shots/home-1440x900.png', url: 'http://127.0.0.1:1/' }];
     const registered = writeBaseline(ws, baseRun, pages);
     assert.equal(registered.pages.length, 1);
@@ -118,19 +118,43 @@ test('baseline: register, compare identical and changed screenshots, respect sit
     assert.equal(readBaseline(ws).runId, baseRunId, 'an empty run cannot erase a valid baseline');
     assert.throws(() => writeBaseline(ws, nowRun, [...pages, { ...pages[0], path: '/private', unavailableReason: 'login-expired' }]), /不完整基线/);
     assert.equal(readBaseline(ws).runId, baseRunId, 'one failed page cannot erase the existing baseline');
+    const before = readFileSync(baselineFile(ws), 'utf8');
+    assert.throws(() => writeBaseline(ws, nowRun, [...pages, { ...pages[0], path: '/missing', screenshot: null }]), /不完整基线/);
+    assert.equal(readFileSync(baselineFile(ws), 'utf8'), before, 'a partially captured run cannot replace an approved baseline');
+    writeFileSync(join(nowDir, 'shots', 'broken.png'), 'not a PNG');
+    assert.throws(() => writeBaseline(ws, nowRun, [...pages, { ...pages[0], path: '/broken', screenshot: 'shots/broken.png' }]), /不完整基线/);
+    assert.equal(readFileSync(baselineFile(ws), 'utf8'), before, 'a corrupt capture cannot replace an approved baseline');
 
     // 同一张图：相似度 100%，不产生发现
     const identical = compareWithBaseline(ws, nowRun, pages, { threshold: 0.98 });
     assert.equal(identical.compared, 1);
+    assert.equal(identical.status, 'compared');
     assert.equal(identical.findings.length, 0);
     const missingShot = compareWithBaseline(ws, nowRun, [{ ...pages[0], screenshot: 'shots/missing.png' }]);
     assert.equal(missingShot.compared, 0, 'missing screenshots are not counted as comparisons');
+    assert.equal(missingShot.status, 'incomplete');
     assert.match(missingShot.skipped[0].reason, /截图缺失/);
+    const noShot = compareWithBaseline(ws, nowRun, [{ ...pages[0], screenshot: null }]);
+    assert.equal(noShot.status, 'incomplete');
+    assert.match(noShot.skipped[0].reason, /截图/);
 
     // 不同站点：跳过并说明原因
     const otherSite = compareWithBaseline(ws, { ...nowRun, site: 'app' }, pages, { threshold: 0.98 });
     assert.equal(otherSite.findings.length, 0);
+    assert.equal(otherSite.status, 'not_applicable');
     assert.match(otherSite.skipped[0].reason, /站点/);
+    for (const changed of [{ environment: 'production' }, { siteUrl: 'http://127.0.0.1:2/' }]) {
+      const mismatch = compareWithBaseline(ws, { ...nowRun, ...changed }, pages);
+      assert.equal(mismatch.status, 'incomplete', 'the same site name cannot hide an environment or origin change');
+      assert.equal(mismatch.compared, 0);
+    }
+    const newPage = compareWithBaseline(ws, nowRun, [...pages, { ...pages[0], path: '/new' }]);
+    assert.equal(newPage.status, 'partial');
+    assert.equal(newPage.compared, 1);
+    assert.ok(newPage.skipped.some(item => /未登记/.test(item.reason)));
+    const onlyNew = compareWithBaseline(ws, nowRun, [{ ...pages[0], path: '/new' }]);
+    assert.equal(onlyNew.status, 'unmatched');
+    assert.equal(onlyNew.compared, 0);
 
     // 本次截图变了：产生一条回归发现，带证据与差异图
     writeFileSync(join(nowDir, 'shots', 'home-1440x900.png'), png(40, 40, [10, 10, 10]));
@@ -147,9 +171,41 @@ test('baseline: register, compare identical and changed screenshots, respect sit
     // 基线与本次页面/视口对不上时，不算回归
     assert.equal(comparablePairs(readBaseline(ws), []).length, 0);
 
-    // 清除基线
+    // 空文件既可能是旧版清除，也可能是损坏；不应当作已明确清除。
     writeFileSync(baselineFile(ws), '');
+    assert.equal(describeBaseline(ws).status, 'invalid');
+    assert.equal(compareWithBaseline(ws, nowRun, pages).status, 'incomplete');
+    clearBaseline(ws);
     assert.equal(readBaseline(ws), null);
+    assert.equal(describeBaseline(ws).status, 'cleared');
+    assert.equal(compareWithBaseline(ws, nowRun, pages).status, 'unconfigured');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('baseline: legacy source metadata and partially registered pages must remain auditable', () => {
+  const root = workspace();
+  try {
+    const ws = loadWorkspace(root);
+    const runId = 'qa-20260101-000000-aaaa';
+    const current = { runId: 'qa-20260102-000000-bbbb', site: 'web', environment: 'test', siteUrl: 'http://127.0.0.1:1/' };
+    const page = { path: '/', viewport: '1440x900', screenshot: 'shots/home.png' };
+    for (const id of [runId, current.runId]) {
+      mkdirSync(join(ws.dataDir, 'runs', id, 'shots'), { recursive: true });
+      writeFileSync(join(ws.dataDir, 'runs', id, page.screenshot), png(2, 2, [255, 255, 255]));
+    }
+    const legacy = { schema: 'heimdall.qa-baseline/1', runId, site: 'web', environment: 'test',
+      pages: [{ ...page, runId }], missing: [{ path: '/missing', viewport: '1440x900', reason: '没有截图' }] };
+    writeFileSync(baselineFile(ws), JSON.stringify(legacy));
+    assert.equal(compareWithBaseline(ws, current, [page]).status, 'incomplete', 'missing historical source cannot be guessed');
+    writeFileSync(join(ws.dataDir, 'runs', runId, 'run.json'), JSON.stringify({ runId, site: 'web', environment: 'test', siteUrl: current.siteUrl }));
+    assert.equal(compareWithBaseline(ws, current, [page]).status, 'compared');
+    const partial = compareWithBaseline(ws, current, [page, { ...page, path: '/missing' }]);
+    assert.equal(partial.status, 'incomplete', 'a known previously missing baseline image cannot masquerade as a new page');
+    assert.ok(partial.skipped.some(item => item.path === '/missing' && item.incomplete));
+    legacy.pages.push({ ...legacy.pages[0], screenshot: '../private.png' });
+    writeFileSync(baselineFile(ws), JSON.stringify(legacy));
+    assert.equal(describeBaseline(ws).status, 'invalid');
+    assert.equal(compareWithBaseline(ws, current, [page]).status, 'incomplete');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

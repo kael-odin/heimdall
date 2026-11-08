@@ -23,7 +23,7 @@ heimdall qa ci --site web --pages /,/pricing,/product --viewports 1440,390 --fai
 - `0`：门禁通过
 - `1`：达到失败门槛
 - `2`：配置或参数错误
-- `3`：浏览器或测试环境不可用、登录态失效、检查点未能核实，或页面检测器执行失败
+- `3`：浏览器或测试环境不可用、登录态失效、检查点未能核实、页面检测器执行失败，或要求的视觉基线比较未完成
 - `7`：内部错误
 
 ## 门槛
@@ -45,6 +45,8 @@ heimdall qa ci --site web --fail-on none
 登录失效或检查点执行出错、未能核实时，`qa-ci.json` 的 `gate.status` 和信封里的 `ci.status` 都是 `incomplete`，错误码是 `qa_incomplete`；`incompleteReasons` 说明原因。恢复相应登录档或修复检查点后再重跑。工具会保留登录页截图作为环境证据，但不会把它当作业务页比较或登记视觉基线。登录识别依赖登录路径、配置的退出登录提示和密码框，不能保证识别所有身份失效场景。
 
 页面检测器执行失败时也会标记为 `incomplete`，不能把未执行完的检测当成通过。
+
+需要把视觉回归纳入门禁时，先登记并保留完整基线，再使用 `heimdall qa ci --site web --require-baseline`。本次每个页面和视口都必须完成比较；缺少基线文件或截图、新页面未登记、环境或来源不匹配时返回 `incomplete`。MCP 使用 `requireBaseline: true`，复合 Action 使用 `requireBaseline: "true"`。不启用时，尚未登记基线的普通 QA 可以通过，报告会说明没有进行视觉比较。
 
 ## GitHub Actions 复合 Action
 

@@ -88,6 +88,7 @@ export function argsFor(id, { flags, positional }) {
       set('exploreMax', num(flags['explore-max'])); set('exploreBudgetMs', num(flags['explore-budget']));
       set('failOn', flags['fail-on']);
       set('maxFindings', num(flags['max-findings']));
+      if (flags['require-baseline']) a.requireBaseline = true;
       if (flags.github) a.github = true;
       if (flags['no-github']) a.github = false;
       break;
@@ -151,7 +152,7 @@ function human(env, id, quiet) {
   }
   if (id === 'qa_ci' && env.result?.ci) {
     const r = env.result;
-    lines.push(`CI：${r.ci.status === 'passed' ? '通过' : '失败'}；门槛 ${r.ci.failOn}；达到门槛 ${r.ci.findings?.length ?? 0} 条`,
+    lines.push(`CI：${r.ci.status === 'passed' ? '通过' : r.ci.status === 'incomplete' ? '未完成' : '失败'}；门槛 ${r.ci.failOn}；达到门槛 ${r.ci.findings?.length ?? 0} 条`,
       `报告：${r.ci.report ?? '-'}`, `摘要：${r.ci.files?.markdown ?? '-'}`);
     if (r.ci.annotations) lines.push('', r.ci.annotations);
   }

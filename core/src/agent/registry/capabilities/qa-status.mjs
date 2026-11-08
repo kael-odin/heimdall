@@ -59,6 +59,7 @@ export default {
       ...(args.guidance ? { guidance: guidance(ws) } : {}) };
     const broken = logins.filter(l => !l.ready);
     const summary = `${ws.project}：${sites.length} 个站点，${logins.length} 个登录档${broken.length ? `（${broken.map(l => `${l.name} ${l.problem}`).join('；')}）` : ''}，最近运行 ${runs.length} 次`
+      + (['invalid', 'incomplete'].includes(result.baseline.status) ? `，视觉基线不可用：${result.baseline.reason}` : '')
       + (result.ledger ? `，台账 ${result.ledger.entries} 条（未解决 ${result.ledger.open}）` : '') + '。';
     const nextActions = [
       ...broken.filter(l => l.kind === 'storageState').map(l => nextAction('cli:shell', { command: `heimdall qa login ${l.name}` }, `登录档 ${l.name} 需要人工登录一次`)),

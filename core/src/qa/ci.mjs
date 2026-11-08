@@ -65,10 +65,13 @@ export function renderCiMarkdown({ result, gate, generatedAt }) {
     `- 站点：\`${mdCode(result.site)}\``,
     `- 时间：${mdCell(generatedAt)}`,
     `- 失败门槛：\`${mdCode(gate.failOn)}\``,
+    `- 视觉基线要求：${gate.requireBaseline ? '本次页面和视口必须全部比较' : '未强制要求'}`,
     `- 建议提单：${result.summary?.fileable ?? 0}`,
     `- 达到门槛：${gate.findings.length}`,
     `- 结果：**${gate.status === 'passed' ? '通过' : gate.status === 'incomplete' ? '未完成' : '失败'}**`,
     ...(gate.incompleteReasons?.length ? [`- 未完成原因：${gate.incompleteReasons.map(mdCell).join('；')}`] : []),
+    ...(result.baseline ? [`- 视觉基线：${mdCell(result.baseline.scope)}`,
+      ...(result.baseline.skipped ?? []).map(item => `  - ${mdCell(item.path ?? '整体')} ${mdCell(item.viewport ?? '')}：${mdCell(item.reason)}`)] : []),
     '',
     '| ID | Tier | Basis | 页面 | 问题 | 观测 |',
     '| --- | --- | --- | --- | --- | --- |',
@@ -105,7 +108,7 @@ function appendGithubSummary(markdown) {
  * Run qa_run once, evaluate a policy, persist CI artifacts and return a normal envelope.
  * The caller owns stdout/stderr formatting so --json remains one envelope.
  */
-export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = false, onProgress, client = 'cli', execute } = {}) {
+export async function runQaCi({ args, failOn = 'all', maxFindings = 0, requireBaseline = false, github = false, onProgress, client = 'cli', execute } = {}) {
   if (!FAIL_ON.includes(failOn)) {
     return {
       env: fail('invalid_args', `--fail-on 只能是 ${FAIL_ON.join(' / ')}`),
@@ -115,6 +118,9 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = 
   }
   const allowed = Number.isInteger(maxFindings) && maxFindings >= 0 ? maxFindings : 0;
   const qaArgs = args ?? {};
+  if (requireBaseline && qaArgs.baseline === false) {
+    return { env: fail('invalid_args', '不能同时要求视觉基线并关闭基线比对'), exitCode: 2, annotations: '' };
+  }
   const runner = execute ?? (await import('../agent/registry/invoke.mjs')).invoke;
   const env = await runner('qa_run', qaArgs, { client, onProgress });
   if (!env.ok) return { env, exitCode: exitCodeOf(env), annotations: '' };
@@ -126,19 +132,27 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = 
     (result.summary?.checkNeedsFix ?? 0) > 0 ? '检查点执行出错或未核实' : null,
     (result.detection?.failedPages?.length ?? 0) > 0 ? '页面检测器执行失败' : null,
     (result.navigation?.failedPages?.length ?? 0) > 0 ? '页面导航失败，未完成检查' : null,
+    result.baseline?.status === 'incomplete'
+      ? `视觉基线比对未完成：${(result.baseline.skipped ?? []).filter(item => item.incomplete).map(item => item.reason).join('；') || '证据不可用'}` : null,
+    requireBaseline && result.baseline?.status !== 'incomplete' && (result.baseline?.status !== 'compared'
+      || !Number.isInteger(result.baseline?.compared) || result.baseline.compared < 1
+      || result.baseline.compared !== result.navigation?.pages || (result.baseline.skipped?.length ?? 0) > 0)
+      ? '已要求视觉基线，但本次页面和视口未全部完成比对' : null,
   ].filter(Boolean);
   const incomplete = incompleteReasons.length > 0;
   const gate = {
     status: incomplete ? 'incomplete' : overLimit ? 'failed' : 'passed',
     ...(incomplete ? { incompleteReasons } : {}),
     failOn,
+    requireBaseline,
     maxFindings: allowed,
     fileable: result.fileable?.length ?? 0,
     findings,
   };
   const generatedAt = new Date().toISOString();
   const markdown = renderCiMarkdown({ result, gate, generatedAt });
-  const annotations = renderGithubAnnotations(findings, overLimit || incomplete ? 'error' : 'warning');
+  const annotations = [renderGithubAnnotations(findings, overLimit || incomplete ? 'error' : 'warning'),
+    ...incompleteReasons.map(reason => `::error title=Heimdall QA incomplete::${ghaEscape(reason)}`)].filter(Boolean).join('\n');
   const ws = loadWorkspace(qaArgs.workspace);
   const displayRoot = ws?.root || null;
   const runDir = ws ? resolve(ws.root, result.runDir ?? '.') : resolve(result.runDir ?? '.');
@@ -147,7 +161,7 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = 
   try {
     mkdirSync(runDir, { recursive: true });
     writeFileSync(join(runDir, 'qa-ci.json'), JSON.stringify({
-      schema: 'heimdall.qa-ci/1', generatedAt, failOn, maxFindings: allowed,
+      schema: 'heimdall.qa-ci/1', generatedAt, failOn, maxFindings: allowed, requireBaseline,
       result, gate: { ...gate, findings }, annotations,
     }, null, 2) + '\n');
     writeFileSync(join(runDir, 'qa-ci.md'), markdown);
@@ -186,7 +200,7 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, github = 
     return {
       env: fail('qa_incomplete', summary, {
         summary, result: ciResult, nextActions, warnings,
-        hint: '恢复页面访问或登录态，修复检查点或检测器失败后重新运行 heimdall qa ci',
+        hint: '恢复页面访问、登录态或基线证据，修复检查点或检测器失败后重新运行 heimdall qa ci',
       }),
       exitCode: 3,
       annotations,

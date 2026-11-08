@@ -13,9 +13,12 @@
  *   · 基线只引用运行目录里的截图；运行目录被清理后，比对会明确报「基线截图缺失」，
  *     不会静默通过。
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { join, relative } from 'node:path';
+import { PNG } from 'pngjs';
 import { comparePngBuffers } from '../verify/compare.mjs';
+import { isSitePath } from './workspace.mjs';
 
 export const BASELINE_SCHEMA = 'heimdall.qa-baseline/1';
 export const DEFAULT_BASELINE_THRESHOLD = 0.98;
@@ -24,30 +27,97 @@ export const baselineFile = (ws) => join(ws.dataDir, 'baseline.json');
 
 const readJson = (file) => { try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return null; } };
 const round = (value) => Math.round(value * 10000) / 10000;
+const runIdValid = value => typeof value === 'string' && /^qa-\d{8}-\d{6}-[0-9a-f]{4}$/.test(value);
+const viewportValid = value => typeof value === 'string' && /^\d+x\d+$/.test(value);
+const screenshotValid = value => typeof value === 'string' && /^shots\/[a-z0-9_.-]+\.png$/i.test(value);
+const pageKey = page => JSON.stringify([page.path, page.viewport]);
+const originOf = value => {
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password ? url.origin : null;
+  } catch { return null; }
+};
+
+function baselineState(ws) {
+  let text;
+  try { text = readFileSync(baselineFile(ws), 'utf8'); }
+  catch (error) {
+    return error.code === 'ENOENT' ? { status: 'unconfigured' } : { status: 'invalid', reason: '基线文件无法读取' };
+  }
+  let data;
+  try { data = JSON.parse(text); } catch { return { status: 'invalid', reason: '基线文件为空或不是合法 JSON' }; }
+  if (data?.schema === BASELINE_SCHEMA && data.cleared === true) return { status: 'cleared' };
+  if (data?.schema !== BASELINE_SCHEMA || !runIdValid(data.runId) || typeof data.site !== 'string' || !data.site
+    || typeof data.environment !== 'string' || !data.environment || !Array.isArray(data.pages) || !data.pages.length
+    || (data.missing != null && !Array.isArray(data.missing))) {
+    return { status: 'invalid', reason: '基线格式或必填信息不完整' };
+  }
+  const keys = new Set();
+  for (const page of [...data.pages, ...(data.missing ?? [])]) {
+    if (!page || !isSitePath(page.path) || !viewportValid(page.viewport) || keys.has(pageKey(page))) {
+      return { status: 'invalid', reason: '基线页面或视口无效或重复' };
+    }
+    keys.add(pageKey(page));
+  }
+  if (data.pages.some(page => !runIdValid(page.runId) || page.runId !== data.runId || !screenshotValid(page.screenshot))
+    || (data.origin != null && !originOf(data.origin))) {
+    return { status: 'invalid', reason: '基线截图路径或来源无效' };
+  }
+  return { status: 'ready', baseline: data };
+}
+
+function saveBaseline(ws, data) {
+  mkdirSync(ws.dataDir, { recursive: true });
+  const file = baselineFile(ws);
+  const temp = `${file}.${process.pid}-${randomBytes(4).toString('hex')}.tmp`;
+  let owned = false;
+  try {
+    const fd = openSync(temp, 'wx');
+    owned = true;
+    try { writeFileSync(fd, JSON.stringify(data, null, 2) + '\n'); } finally { closeSync(fd); }
+    renameSync(temp, file);
+  } finally {
+    if (owned) { try { unlinkSync(temp); } catch (error) { if (error.code !== 'ENOENT') throw error; } }
+  }
+}
 
 export function readBaseline(ws) {
-  const data = readJson(baselineFile(ws));
-  return data?.schema === BASELINE_SCHEMA && Array.isArray(data.pages) ? data : null;
+  return baselineState(ws).baseline ?? null;
 }
 
 /**
  * 把一次运行登记为基线。pages 来自 run.coverage.pages（path / viewport / screenshot）。
- * 截图缺失的页面不登记，并在结果里列出，避免基线里出现读不到的引用。
+ * 任何页面或截图不完整时保留原基线，不用部分结果替换。
  */
 export function writeBaseline(ws, run, pages) {
+  if (!runIdValid(run?.runId) || typeof run.site !== 'string' || !run.site || typeof run.environment !== 'string' || !run.environment
+    || !originOf(run.siteUrl) || !Array.isArray(pages)) {
+    const error = new Error('运行的站点、环境或来源不完整，不能登记基线；原基线未更改');
+    error.code = 'invalid_args';
+    throw error;
+  }
   const entries = [];
   const missing = [];
+  const keys = new Set();
   for (const page of pages) {
-    if (page.unavailableReason === 'login-expired') { missing.push({ path: page.path, viewport: page.viewport, reason: '登录失效' }); continue; }
+    if (!page || !isSitePath(page.path) || !viewportValid(page.viewport) || keys.has(pageKey(page))) {
+      missing.push({ path: page?.path ?? '', viewport: page?.viewport ?? '', reason: '页面或视口无效或重复' });
+      continue;
+    }
+    keys.add(pageKey(page));
+    if (page.unavailableReason) { missing.push({ path: page.path, viewport: page.viewport, reason: page.unavailableReason === 'login-expired' ? '登录失效' : '页面不可用' }); continue; }
     if (page.navError) { missing.push({ path: page.path, viewport: page.viewport, reason: '页面打不开' }); continue; }
     if (!page.screenshot) { missing.push({ path: page.path, viewport: page.viewport, reason: '没有截图' }); continue; }
+    if (!screenshotValid(page.screenshot)) { missing.push({ path: page.path, viewport: page.viewport, reason: '截图路径无效' }); continue; }
     const file = join(ws.dataDir, 'runs', run.runId, page.screenshot);
-    if (!existsSync(file)) { missing.push({ path: page.path, viewport: page.viewport, reason: '截图文件不存在' }); continue; }
-    const stat = statSync(file);
-    entries.push({ path: page.path, viewport: page.viewport, screenshot: page.screenshot, bytes: stat.size, runId: run.runId });
+    try {
+      const image = PNG.sync.read(readFileSync(file));
+      if (!image.width || !image.height) throw new Error('empty image');
+      entries.push({ path: page.path, viewport: page.viewport, screenshot: page.screenshot, bytes: statSync(file).size, runId: run.runId });
+    } catch { missing.push({ path: page.path, viewport: page.viewport, reason: '截图缺失或无法读取' }); }
   }
-  if (pages.some(page => page.unavailableReason === 'login-expired' || page.navError)) {
-    const error = new Error('页面登录失效或打不开，不能登记不完整基线；原基线未更改');
+  if (missing.length && (entries.length || missing.some(page => ['登录失效', '页面不可用', '页面打不开'].includes(page.reason)))) {
+    const error = new Error(`不能登记不完整基线；原基线未更改：${missing.map(page => `${page.path}（${page.viewport}）${page.reason}`).join('；')}`);
     error.code = 'invalid_args';
     throw error;
   }
@@ -61,18 +131,16 @@ export function writeBaseline(ws, run, pages) {
     runId: run.runId,
     site: run.site,
     environment: run.environment,
+    origin: originOf(run.siteUrl),
     labelledAt: new Date().toISOString(),
     pages: entries,
-    ...(missing.length ? { missing } : {}),
   };
-  mkdirSync(ws.dataDir, { recursive: true });
-  writeFileSync(baselineFile(ws), JSON.stringify(baseline, null, 2) + '\n');
+  saveBaseline(ws, baseline);
   return baseline;
 }
 
 export function clearBaseline(ws) {
-  const file = baselineFile(ws);
-  if (existsSync(file)) writeFileSync(file, '');
+  saveBaseline(ws, { schema: BASELINE_SCHEMA, cleared: true });
   return { cleared: true };
 }
 
@@ -98,29 +166,46 @@ export function comparablePairs(baseline, pages) {
  * 每对页面产生至多一条发现；相似度与差异图都写进证据。
  */
 export function compareWithBaseline(ws, run, pages, { threshold = DEFAULT_BASELINE_THRESHOLD, diffDir } = {}) {
-  const baseline = readBaseline(ws);
-  if (!baseline) return { findings: [], compared: 0, skipped: [{ reason: '没有登记基线' }], scope: '未登记基线，跳过跨运行回归比对。' };
+  const state = baselineState(ws);
+  const empty = (status, reason, enabled = false) => ({ status, enabled, findings: [], compared: 0,
+    skipped: [{ reason, ...(status === 'incomplete' ? { incomplete: true } : {}) }], scope: `${reason}，未进行跨运行视觉比对。` });
+  if (state.status === 'invalid') return empty('incomplete', state.reason, true);
+  const baseline = state.baseline;
+  if (!baseline) return empty('unconfigured', state.status === 'cleared' ? '基线已清除' : '没有登记基线');
   if (baseline.site !== run.site) {
-    return { findings: [], compared: 0, skipped: [{ reason: `基线属于站点 ${baseline.site}，本次是 ${run.site}` }],
-      scope: '基线与本次运行的站点不同，跳过回归比对。' };
+    return empty('not_applicable', `基线属于站点 ${baseline.site}，本次是 ${run.site}`);
   }
-  const pairs = comparablePairs(baseline, pages);
+  if (baseline.environment !== run.environment) return empty('incomplete', '基线与本次运行的环境不同', true);
+  const original = baseline.origin ? null : readJson(join(ws.dataDir, 'runs', baseline.runId, 'run.json'));
+  const baseOrigin = baseline.origin ? originOf(baseline.origin)
+    : original?.runId === baseline.runId && original.site === baseline.site && original.environment === baseline.environment ? originOf(original.siteUrl) : null;
+  const currentOrigin = originOf(run.siteUrl);
+  if (!baseOrigin || !currentOrigin) return empty('incomplete', '无法确认基线或本次运行的站点来源', true);
+  if (baseOrigin !== currentOrigin) return empty('incomplete', '基线与本次运行的站点来源不同', true);
+  const byKey = new Map(baseline.pages.map(base => [pageKey(base), base]));
+  const formerlyMissing = new Set((baseline.missing ?? []).map(pageKey));
   const findings = [];
   let compared = 0;
-  const skipped = pages.filter(page => page.unavailableReason || page.navError).map(page => ({
-    path: page.path, viewport: page.viewport, reason: page.unavailableReason === 'login-expired' ? '登录失效' : '页面打不开',
-  }));
+  const skipped = [];
+  const skip = (page, reason, incomplete = true) => skipped.push({ path: page.path, viewport: page.viewport, reason, ...(incomplete ? { incomplete: true } : {}) });
   if (diffDir) mkdirSync(diffDir, { recursive: true });
-  for (const { base, page } of pairs) {
+  for (const page of pages) {
+    const base = byKey.get(pageKey(page));
+    if (!base) {
+      skip(page, formerlyMissing.has(pageKey(page)) ? '历史基线登记时截图缺失' : '该页面或视口未登记基线', formerlyMissing.has(pageKey(page)));
+      continue;
+    }
+    if (page.unavailableReason || page.navError) { skip(page, page.unavailableReason === 'login-expired' ? '登录失效' : '页面打不开'); continue; }
+    if (!screenshotValid(page.screenshot)) { skip(page, page.screenshot ? '本次截图路径无效' : '本次截图缺失'); continue; }
     const baseFile = join(ws.dataDir, 'runs', base.runId, base.screenshot);
     const nowFile = join(ws.dataDir, 'runs', run.runId, page.screenshot);
-    if (!existsSync(baseFile)) { skipped.push({ path: base.path, viewport: base.viewport, reason: '基线截图缺失' }); continue; }
-    if (!existsSync(nowFile)) { skipped.push({ path: page.path, viewport: page.viewport, reason: '本次截图缺失' }); continue; }
+    if (!existsSync(baseFile)) { skip(page, '基线截图缺失'); continue; }
+    if (!existsSync(nowFile)) { skip(page, '本次截图缺失'); continue; }
     let result;
     try {
       result = comparePngBuffers(readFileSync(baseFile), readFileSync(nowFile));
     } catch (error) {
-      skipped.push({ path: page.path, viewport: page.viewport, reason: `截图无法读取：${String(error?.message ?? error).slice(0, 80)}` });
+      skip(page, `截图无法读取：${String(error?.message ?? error).slice(0, 80)}`);
       continue;
     }
     compared++;
@@ -150,18 +235,26 @@ export function compareWithBaseline(ws, run, pages, { threshold = DEFAULT_BASELI
     });
   }
   return {
+    status: skipped.some(item => item.incomplete) ? 'incomplete' : !compared ? 'unmatched' : skipped.length ? 'partial' : 'compared',
+    enabled: true,
     findings,
     compared,
     skipped,
-    scope: `基线与本次同站同页同视口比对 ${compared} 对；低于 ${(threshold * 100).toFixed(0)}% 的记一条回归发现。动态内容会对相似度有影响，请结合差异图复核。`,
+    scope: `本次同站、同环境、同来源、同页同视口比对 ${compared} 对；${skipped.length} 项未比对。低于 ${(threshold * 100).toFixed(0)}% 的记一条回归发现，动态内容需人工复核。`,
   };
 }
 
 /** 基线摘要：给 qa status / 报告用 */
 export function describeBaseline(ws) {
-  const baseline = readBaseline(ws);
-  if (!baseline) return { exists: false };
-  return { exists: true, runId: baseline.runId, site: baseline.site, labelledAt: baseline.labelledAt, pages: baseline.pages.length,
+  const state = baselineState(ws);
+  const baseline = state.baseline;
+  if (!baseline) return { exists: state.status === 'invalid', status: state.status, ...(state.reason ? { reason: state.reason } : {}) };
+  const missingScreenshots = baseline.pages.filter(page => {
+    try { return !statSync(join(ws.dataDir, 'runs', page.runId, page.screenshot)).isFile(); } catch { return true; }
+  }).length;
+  return { exists: true, status: missingScreenshots ? 'incomplete' : 'registered',
+    ...(missingScreenshots ? { missingScreenshots, reason: `${missingScreenshots} 张基线截图缺失或无法读取` } : {}),
+    runId: baseline.runId, site: baseline.site, labelledAt: baseline.labelledAt, pages: baseline.pages.length,
     ...(baseline.missing?.length ? { missing: baseline.missing.length } : {}) };
 }
 

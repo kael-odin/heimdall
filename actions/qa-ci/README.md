@@ -48,8 +48,11 @@ Action 会安装 Heimdall 自己的 QA 依赖和 Chromium，运行只读巡检�
 | `maxFindings` | `0` | 允许放行的问题数，默认不放行 |
 | `linkCheck` | `true` | 是否检查同源坏链 |
 | `baseline` | `true` | 是否与已登记基线比较 |
+| `requireBaseline` | `false` | 设为 `true` 时，本次每个页面和视口都必须完成视觉基线比较；不可与 `baseline: "false"` 同用 |
 | `detect` | `true` | 是否跑无参照物检测 |
 | `explore` | `false` | 是否显式开启有界交互探索 |
 | `comment` | `false` | 是否把 `qa-ci.md` 评论到 PR |
 
 生产站点先建议只跑 `workflow_dispatch` 或定时任务，再逐步接入 PR。网络、登录态、风控和动态内容造成的失败，必须在报告里与环境问题分开。
+
+如果视觉回归是门禁的一部分，设 `requireBaseline: "true"`，并在运行环境准备已审核的基线文件、原运行记录和截图。基线未提供、新页面未登记或证据不可用时，门禁返回未完成；默认不强制基线，未比较时普通 QA 仍可能通过。此选项只保证完成比较，发现的差异仍按 `failOn`、`maxFindings` 和已有裁决处理。上传的截图可能包含敏感业务内容，需按团队策略控制 artifact 访问。

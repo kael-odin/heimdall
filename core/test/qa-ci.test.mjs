@@ -62,6 +62,31 @@ test('qa ci: an unverified check is incomplete even without fileable findings', 
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('qa ci: an explicit visual requirement needs every requested page and viewport compared', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-ci-visual-required-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({ sites: { web: { url: 'https://example.test/' } } }));
+  try {
+    const execute = status => async () => ({ ok: true, summary: 'QA finished.', result: {
+      runId: 'qa-visual', site: 'web', runDir: '.heimdall/qa/runs/qa-visual', report: 'report.md', bugs: 'bugs.md',
+      summary: {}, fileable: [], navigation: { pages: 2, failedPages: [] },
+      baseline: { status, compared: status === 'compared' ? 2 : 1, skipped: [], scope: status },
+    } });
+    for (const status of ['unconfigured', 'disabled', 'not_applicable', 'unmatched', 'partial', 'incomplete']) {
+      const result = await runQaCi({ args: { workspace: root }, requireBaseline: true, failOn: 'none', execute: execute(status) });
+      assert.equal(result.env.error?.code, 'qa_incomplete', `${status} cannot satisfy a strict visual gate`);
+      assert.equal(result.exitCode, 3);
+    }
+    const good = await runQaCi({ args: { workspace: root }, requireBaseline: true, failOn: 'none', execute: execute('compared') });
+    assert.equal(good.env.result.ci.status, 'passed');
+    assert.equal(good.env.result.ci.requireBaseline, true);
+    assert.match(good.env.result.ci.markdown, /必须全部比较/);
+    const conflicting = await runQaCi({ args: { workspace: root, baseline: false }, requireBaseline: true, execute: execute('compared') });
+    assert.equal(conflicting.env.error?.code, 'invalid_args');
+    assert.equal(conflicting.exitCode, 2);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('qa ci: GitHub annotations and Markdown escape user-visible content', () => {
   const annotations = renderGithubAnnotations([{ ...FINDINGS[0], title: 'bad%:\nline', observed: 'a|b,c' }]);
   assert.match(annotations, /^::error title=/);
@@ -168,7 +193,10 @@ test('qa ci: reusable composite action keeps the documented entrypoint', () => {
   assert.match(action, /github\.action_path \}\}\/\.\.\/\.\.\/core/);
   assert.match(action, /GITHUB_ACTION_PATH\/\.\.\/\.\.\/core\/src\/cli\.mjs/);
   assert.match(action, /args\+=\(--checks "\$QA_WORKSPACE\/\$QA_CHECKS"\)/);
+  assert.match(action, /QA_REQUIRE_BASELINE/);
+  assert.match(action, /args\+=\(--require-baseline\)/);
   assert.match(action, /QA result is valid/);
   assert.match(action, /qa ci/);
   assert.match(readme, /kael-odin\/heimdall\/actions\/qa-ci@main/);
+  assert.match(readme, /requireBaseline/);
 });

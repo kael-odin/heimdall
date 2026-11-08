@@ -30,7 +30,7 @@ const USAGE = `heimdall qa <子命令>
   status                              站点、登录档、最近运行、测试须知
   run [站点] [--pages /a,/b] [--viewports 1440,390] [--checks 文件] [--no-links] [--texts] [--explore] [--no-baseline]
       --explore                       显式开启交互探索：每页点最多 6 个控件，找「点了没反应 / 点出异常 / 点出 404」
-  ci [站点] [--fail-on all|wall|degrade|none] [--max-findings N] [--github|--no-github]
+  ci [站点] [--fail-on all|wall|degrade|none] [--max-findings N] [--require-baseline] [--github|--no-github]
       在 CI 中运行同一套只读 QA，写 qa-ci.json / qa-ci.md，并输出 GitHub Actions 注解
   baseline [--run ID] [--off]         把某次运行登记为跨运行视觉基线；--off 清除
   findings [--status all] [--run ID]  列出发现（默认只列建议提单的）
@@ -125,9 +125,6 @@ async function baseline(flags) {
   const { run } = readRun(ws, flags.run);
   const result = writeBaseline(ws, run, run.coverage.pages);
   process.stdout.write(`已把 ${run.runId} 登记为基线：${result.pages.length} 个页面/视口截图。\n`);
-  if (result.missing?.length) {
-    process.stdout.write(`未登记 ${result.missing.length} 个：${result.missing.map(m => `${m.path}（${m.viewport}）${m.reason}`).join('；')}\n`);
-  }
   return 0;
 }
 
@@ -143,6 +140,7 @@ async function ci(flags, positional) {
     args,
     failOn: String(flags['fail-on'] ?? 'all'),
     maxFindings,
+    requireBaseline: flags['require-baseline'] === true,
     github,
     onProgress: p => process.stderr.write(`… ${p.message ?? p.stage ?? 'progress'}\n`),
   });

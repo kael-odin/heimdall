@@ -14,7 +14,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { loadWorkspace, findWorkspace, resolveLogin, describeLogin, inWorkspace, scrubSecrets, scrubValues, isSitePath, QA_SCOPE_LIMITS } from './workspace.mjs';
 import { probeSite, normalizeCheck } from './probe.mjs';
 import { exploreSite, EXPLORE_DEFAULTS } from './explore.mjs';
-import { compareWithBaseline, readBaseline, DEFAULT_BASELINE_THRESHOLD } from './baseline.mjs';
+import { compareWithBaseline, DEFAULT_BASELINE_THRESHOLD } from './baseline.mjs';
 import { normalizeFinding, VERDICT_LABEL } from './findings.mjs';
 import { readRules, applyVerdicts, ruleHits } from './memory.mjs';
 import { renderReport, renderBugs, fileable } from './report.mjs';
@@ -182,8 +182,8 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
   // 跨运行回归：只有显式登记过基线且站点一致时才比对；动态内容会带来噪声，结果按可裁决的发现输出。
   const baselineCfg = ws.defaults?.baseline && typeof ws.defaults.baseline === 'object' ? ws.defaults.baseline : {};
   const regression = args.baseline === false
-    ? { findings: [], compared: 0, skipped: [{ reason: '本次显式关闭' }], scope: '本次运行关闭了跨运行回归比对。' }
-    : compareWithBaseline(ws, { site: siteName, runId, environment: site.environment }, pageEntries,
+    ? { status: 'disabled', enabled: false, findings: [], compared: 0, skipped: [{ reason: '本次显式关闭' }], scope: '本次运行关闭了跨运行回归比对。' }
+    : compareWithBaseline(ws, { site: siteName, runId, environment: site.environment, siteUrl: site.url }, pageEntries,
       { threshold: baselineCfg.threshold ?? DEFAULT_BASELINE_THRESHOLD, diffDir: join(dir, 'shots') });
   const raw = scrubValues([...probe.findings, ...(exploration?.findings ?? []), ...regression.findings], login.secrets).map((f) => {
     const notFound = f.kind === 'assertion' && f.confidence === 'observed' && /实际：null/.test(f.observed ?? '');
@@ -221,7 +221,8 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
         }
         : { enabled: false },
       baseline: {
-        enabled: readBaseline(ws) !== null && args.baseline !== false,
+        status: regression.status,
+        enabled: regression.enabled,
         compared: regression.compared,
         skipped: regression.skipped,
         scope: regression.scope,

@@ -38,6 +38,10 @@ inputs:
     description: Compare screenshots with a registered baseline
     required: false
     default: "true"
+  requireBaseline:
+    description: Require a baseline for every requested page and viewport
+    required: false
+    default: "false"
   detect:
     description: Run reference-free detectors
     required: false
@@ -86,6 +90,7 @@ runs:
         QA_MAX_FINDINGS: ${{ inputs.maxFindings }}
         QA_LINK_CHECK: ${{ inputs.linkCheck }}
         QA_BASELINE: ${{ inputs.baseline }}
+        QA_REQUIRE_BASELINE: ${{ inputs.requireBaseline }}
         QA_DETECT: ${{ inputs.detect }}
         QA_EXPLORE: ${{ inputs.explore }}
       run: |
@@ -106,6 +111,7 @@ runs:
         fi
         [ "$QA_LINK_CHECK" = "true" ] || args+=(--no-links)
         [ "$QA_BASELINE" = "true" ] || args+=(--no-baseline)
+        [ "$QA_REQUIRE_BASELINE" = "true" ] && args+=(--require-baseline)
         [ "$QA_DETECT" = "true" ] || args+=(--no-detect)
         [ "$QA_EXPLORE" = "true" ] && args+=(--explore)
         node "$GITHUB_ACTION_PATH/../../core/src/cli.mjs" qa ci "${args[@]}"

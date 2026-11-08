@@ -96,12 +96,14 @@ export default {
       + (detection?.enabled ? `，无参照物检测 ${detection.findings} 条` : '')
       + (detection?.failedPages?.length ? `，${detection.failedPages.length} 个页面视口的检测器执行失败` : '')
       + (navigation.failedPages.length ? `，${navigation.failedPages.length} 个页面视口未能打开` : '')
+      + (r.run.coverage.baseline?.status === 'incomplete' ? '，视觉基线比对未完成' : '')
       + (r.run.coverage.explore?.enabled ? `，交互探索点开 ${r.run.coverage.explore.pages.reduce((n, p) => n + p.clicked, 0)} 个控件` : '')
       + (s.checkNeedsFix ? `，${s.checkNeedsFix} 个检查点没对上` : '') + (env.length ? `；登录态有问题：${env[0]}` : '') + `。报告：${result.report}`;
     const nextActions = [];
     if (env.length) nextActions.push(nextAction('cli:shell', { command: `heimdall qa login ${r.run.login?.name ?? ''}`.trim() }, '先重新登录，再重跑'));
     if (navigation.failedPages.length) nextActions.push(nextAction('heimdall_qa_run', { workspace: ws.root, site: r.run.site }, '排查无法打开的页面后重跑'));
     if (detection?.failedPages?.length) nextActions.push(nextAction('heimdall_qa_run', { workspace: ws.root, site: r.run.site }, '检测器未完成，排查后重跑'));
+    if (r.run.coverage.baseline?.status === 'incomplete') nextActions.push(nextAction('heimdall_qa_status', { workspace: ws.root }, '检查基线及截图，再重跑'));
     if (file.length) nextActions.push(nextAction('heimdall_qa_findings', { action: 'show', runId: r.run.runId, id: file[0].id }, '逐条复核建议提单的问题'));
     nextActions.push(nextAction('heimdall_qa_findings', { action: 'submit', runId: r.run.runId }, '把你自己测出的问题提交进这次运行（会校验证据并查重）'));
     return ok(result, { summary, nextActions, evidence: [{ kind: 'file', path: result.report }, { kind: 'file', path: result.bugs }] });

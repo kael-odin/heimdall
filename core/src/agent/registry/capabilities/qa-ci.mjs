@@ -27,6 +27,11 @@ const QA_CI_INPUT = {
       default: 0,
       description: 'Allow at most this many findings through the gate; the default allows none',
     },
+    requireBaseline: {
+      type: 'boolean',
+      default: false,
+      description: 'Require an approved baseline comparison for every requested page and viewport. Missing, mismatched or disabled baselines make the gate incomplete.',
+    },
     github: {
       type: 'boolean',
       default: false,
@@ -48,13 +53,14 @@ export default {
   idempotent: false,
   cost: 'heavy',
   input: QA_CI_INPUT,
-  cli: { usage: 'qa-ci [site] [--pages /a,/b] [--viewports 1440,390] [--fail-on all|wall|degrade|none] [--max-findings N] [--github]', positional: ['site'] },
+  cli: { usage: 'qa-ci [site] [--pages /a,/b] [--viewports 1440,390] [--require-baseline] [--fail-on all|wall|degrade|none] [--max-findings N] [--github]', positional: ['site'] },
   async handler(args, ctx) {
-    const { failOn = 'all', maxFindings = 0, github = false, ...qaArgs } = args ?? {};
+    const { failOn = 'all', maxFindings = 0, requireBaseline = false, github = false, ...qaArgs } = args ?? {};
     const result = await runQaCi({
       args: qaArgs,
       failOn: String(failOn),
       maxFindings: Number(maxFindings),
+      requireBaseline: requireBaseline === true,
       github: github === true,
       client: ctx.client ?? 'cli',
       onProgress: ctx.onProgress,

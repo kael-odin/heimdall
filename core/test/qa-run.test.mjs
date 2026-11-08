@@ -14,11 +14,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { PNG } from 'pngjs';
 import { loadWorkspace } from '../src/qa/workspace.mjs';
 import { runQa, loadChecks, submitFindings, retriageRun, readRun } from '../src/qa/run.mjs';
 import { recordVerdict } from '../src/qa/memory.mjs';
 import { fileable } from '../src/qa/report.mjs';
-import { writeBaseline, readBaseline } from '../src/qa/baseline.mjs';
+import { writeBaseline, readBaseline, baselineFile } from '../src/qa/baseline.mjs';
 import { invoke } from '../src/agent/registry/invoke.mjs';
 import { fingerprintOf } from '../src/qa/findings.mjs';
 import { newQaPage, qaBrowserLaunchOptions, routeQaRequest } from '../src/qa/http-policy.mjs';
@@ -205,6 +206,81 @@ test('qa ci: an invalid hidden selector cannot appear successful', { timeout: 12
     assert.ok(byId['invalid-selector'].error);
     assert.equal(byId['invalid-visible'].pass, false);
     assert.ok(byId['invalid-visible'].error);
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
+test('qa ci: missing or corrupt visual baseline evidence cannot produce a passing gate', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
+  try {
+    const ws = loadWorkspace(root);
+    const options = { site: 'web', pages: ['/pricing'], viewports: [1280], linkCheck: false, detect: false };
+    const recorded = await runQa(ws, { ...options, baseline: false });
+    const cli = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [fileURLToPath(new URL('../src/cli.mjs', import.meta.url)), 'qa', 'ci', 'web',
+        '--workspace', root, '--pages', '/pricing', '--viewports', '1280', '--no-links', '--no-detect', '--fail-on', 'none', '--require-baseline', '--json'], { windowsHide: true });
+      let stdout = '';
+      child.stdout.on('data', chunk => { stdout += chunk; });
+      child.on('error', reject);
+      child.on('close', code => resolve({ code, envelope: JSON.parse(stdout.trim().split(/\r?\n/).at(-1)) }));
+    });
+    assert.equal(cli.code, 3);
+    assert.equal(cli.envelope.error.code, 'qa_incomplete');
+    assert.equal(cli.envelope.result.ci.requireBaseline, true);
+    assert.equal(cli.envelope.result.baseline.status, 'unconfigured');
+    const baseline = writeBaseline(ws, recorded.run, recorded.run.coverage.pages);
+    assert.equal(baseline.pages.length, 1);
+    const good = await invoke('qa_ci', { workspace: root, ...options, failOn: 'none', requireBaseline: true }, { client: 'mcp' });
+    assert.equal(good.result.ci.status, 'passed');
+    assert.equal(good.result.baseline.status, 'compared');
+    assert.equal(good.result.baseline.compared, 1);
+    const approvedFile = join(ws.dataDir, 'runs', baseline.runId, baseline.pages[0].screenshot);
+    const approvedImage = readFileSync(approvedFile);
+    const alteredImage = PNG.sync.read(approvedImage);
+    for (let i = 0; i < alteredImage.data.length; i += 4) {
+      alteredImage.data[i] = 0; alteredImage.data[i + 1] = 0; alteredImage.data[i + 2] = 0; alteredImage.data[i + 3] = 255;
+    }
+    writeFileSync(approvedFile, PNG.sync.write(alteredImage));
+    const changed = await invoke('qa_ci', { workspace: root, ...options, failOn: 'all', requireBaseline: true }, { client: 'mcp' });
+    assert.equal(changed.error?.code, 'gate_failed');
+    assert.ok(changed.result.ci.findings.some(item => item.kind === 'regression'));
+    const ignoredChange = await invoke('qa_ci', { workspace: root, ...options, failOn: 'none', requireBaseline: true }, { client: 'mcp' });
+    assert.equal(ignoredChange.result.ci.status, 'passed', 'strict coverage does not override the finding policy');
+    assert.equal(ignoredChange.result.baseline.status, 'compared');
+    writeFileSync(approvedFile, approvedImage);
+    const partial = await invoke('qa_ci', { workspace: root, ...options, pages: ['/pricing', '/console'], failOn: 'none' }, { client: 'mcp' });
+    assert.equal(partial.result.ci.status, 'passed');
+    assert.equal(partial.result.baseline.status, 'partial');
+    assert.ok(partial.result.baseline.skipped.some(item => item.path === '/console' && /未登记/.test(item.reason)));
+    const requiredPartial = await invoke('qa_ci', { workspace: root, ...options, pages: ['/pricing', '/console'], failOn: 'none', requireBaseline: true }, { client: 'mcp' });
+    assert.equal(requiredPartial.error?.code, 'qa_incomplete');
+    rmSync(join(ws.dataDir, 'runs', baseline.runId, baseline.pages[0].screenshot));
+    const missingStatus = await invoke('qa_status', { workspace: root, guidance: false }, { client: 'mcp' });
+    assert.equal(missingStatus.result.baseline.status, 'incomplete');
+    assert.equal(missingStatus.result.baseline.missingScreenshots, 1);
+    assert.match(missingStatus.summary, /基线截图缺失/);
+    const missing = await invoke('qa_ci', { workspace: root, ...options, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(missing.error?.code, 'qa_incomplete', 'a missing baseline image must not make CI green');
+    assert.equal(missing.result.ci.status, 'incomplete');
+    assert.ok(missing.result.baseline.skipped.some(item => /基线截图缺失/.test(item.reason)));
+    assert.match(missing.result.ci.incompleteReasons.join(' '), /视觉基线/);
+    assert.match(missing.result.ci.markdown, /基线截图缺失/);
+    assert.match(missing.result.ci.annotations, /::error/);
+    assert.match(readFileSync(join(root, missing.result.report), 'utf8'), /视觉基线比对未完成/);
+    assert.match(readFileSync(join(root, missing.result.bugs), 'utf8'), /视觉基线/);
+    const disabled = await invoke('qa_ci', { workspace: root, ...options, baseline: false, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(disabled.result.ci.status, 'passed', 'explicitly disabling baseline remains distinct from a failed comparison');
+    assert.equal(disabled.result.baseline.status, 'disabled');
+    assert.match(disabled.result.ci.markdown, /关闭/);
+
+    writeFileSync(baselineFile(ws), '{invalid-json');
+    const corrupt = await invoke('qa_ci', { workspace: root, ...options, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(corrupt.error?.code, 'qa_incomplete', 'a corrupt registered baseline must not look unconfigured');
+    assert.equal(corrupt.result.ci.status, 'incomplete');
+    assert.equal(corrupt.result.baseline.status, 'incomplete');
+    const status = await invoke('qa_status', { workspace: root, guidance: false }, { client: 'mcp' });
+    assert.equal(status.result.baseline.status, 'invalid');
+    assert.match(status.summary, /视觉基线不可用/);
   } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
 });
 

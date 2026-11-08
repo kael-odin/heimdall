@@ -61,17 +61,20 @@ export function renderReport({ ws, run, findings, hits }) {
   };
   groups.tolerable = findings.filter(f => !groups.file.includes(f) && !groups.suppressed.includes(f) && !groups.env.includes(f) && !groups.checks.includes(f));
   const date = run.startedAt.slice(0, 16).replace('T', ' ');
+  const visual = run.coverage.baseline;
   const out = [];
   out.push(`# 测试报告 · ${ws.project} · ${run.site}`, '');
   out.push(`> 运行 \`${run.runId}\` · ${date} · ${run.siteUrl} · 环境：${run.environment}${run.login ? ` · 登录档：${run.login.name}` : ' · 未登录'}`, '');
   const lead = groups.file.length
     ? `建议提单 ${groups.file.length} 条${groups.file.some(f => f.tier === 'wall') ? `，其中撞墙 ${groups.file.filter(f => f.tier === 'wall').length} 条` : ''}。`
     : groups.env.length ? '登录状态失效，业务页面未完整检查。'
-      : run.coverage.detection?.failedPages?.length ? '页面检测器执行失败，本次检查未完成。' : '这次没有需要提单的问题。';
+      : run.coverage.detection?.failedPages?.length ? '页面检测器执行失败，本次检查未完成。'
+        : visual?.status === 'incomplete' ? '视觉基线比对未完成，不能判断是否存在视觉回归。' : '这次没有需要提单的问题。';
   const extra = [
     s.suppressed ? `按以往裁决过滤 ${s.suppressed} 条` : null,
     groups.tolerable.length ? `可容忍 ${groups.tolerable.length} 条未入单` : null,
     run.coverage.detection?.failedPages?.length ? `检测器在 ${run.coverage.detection.failedPages.length} 个页面视口执行失败` : null,
+    visual?.status === 'incomplete' && groups.file.length ? '视觉基线比对未完成' : null,
     groups.env.length ? `${groups.env.length} 条是环境问题` : null,
     groups.checks.length ? `${groups.checks.length} 个检查点没对上，需要先确认检查点本身` : null,
   ].filter(Boolean);
@@ -141,6 +144,12 @@ export function renderReport({ ws, run, findings, hits }) {
       out.push(`| ${esc(c.title)} | ${c.blockedReason === 'login-expired' ? '登录失效，未完成' : c.pass ? '通过' : c.error ? '执行出错' : '未通过'} | ${coverage} |`);
     }
   }
+  out.push('', '## 视觉基线', '');
+  if (!visual?.scope) out.push('历史运行没有记录视觉基线比对范围。');
+  else {
+    out.push(visual.scope);
+    for (const item of visual.skipped ?? []) out.push(`- ${item.path ? `${esc(item.path)}（${esc(item.viewport)}）：` : ''}${esc(item.reason)}${item.incomplete ? '（未完成）' : ''}`);
+  }
   out.push('', '## 请求策略', '');
   if (!run.requestPolicy) out.push('- 历史运行未记录请求策略；请核对当时的配置和证据。');
   else if (run.requestPolicy.mode === 'allow') out.push('- 本次配置放行所有 HTTP 方法，可能修改数据。');
@@ -160,11 +169,13 @@ export function renderBugs({ ws, run, findings }) {
   const list = findings.filter(fileable).sort((a, b) => (a.tier === 'wall' ? 0 : 1) - (b.tier === 'wall' ? 0 : 1));
   const out = [`# 待提单 · ${ws.project} · ${run.site} · ${run.startedAt.slice(0, 10)}`, ''];
   out.push(`> 来自运行 \`${run.runId}\`（${run.siteUrl}，环境 ${run.environment}）。已排除：以往裁决为误报/约定/暂缓的、可容忍的、环境问题、没对上的检查点。`, '');
+  if (run.coverage.baseline?.status === 'incomplete') out.push('> 视觉基线比对未完成，不能据此判断视觉回归；详情见完整报告。', '');
   if (!list.length) {
     const incomplete = [];
     if (findings.some(f => f.kind === 'login-expired')) incomplete.push('登录失效的业务页面');
     if (run.coverage.detection?.failedPages?.length) incomplete.push('检测器执行失败的页面');
     if (findings.some(f => ['check-error', 'check-unverified'].includes(f.confidence))) incomplete.push('未能核实的检查点');
+    if (run.coverage.baseline?.status === 'incomplete') incomplete.push('视觉基线比对');
     out.push(incomplete.length ? `没有建议提单的问题；${incomplete.join('、')}未完成检查。` : '没有需要提单的问题。', '');
     return out.join('\n');
   }
