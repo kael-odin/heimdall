@@ -135,8 +135,11 @@ export function renderReport({ ws, run, findings, hits }) {
     out.push(`| ${p.path} | ${p.viewport} | ${p.unavailableReason === 'login-expired' ? '登录失效' : p.navError ? '打不开：' + esc(p.navError) : p.detectorError ? '检测器执行失败' : '已打开'} | ${p.counts.console + p.counts.pageErrors} | ${p.counts.http} | ${p.counts.brokenLinks}/${p.counts.linksChecked} | ${p.counts.brokenImages} |`);
   }
   if (run.coverage.checks.length) {
-    out.push('', '| 检查点 | 结果 |', '| --- | --- |');
-    for (const c of run.coverage.checks) out.push(`| ${esc(c.title)} | ${c.blockedReason === 'login-expired' ? '登录失效，未完成' : c.pass ? '通过' : c.error ? '执行出错' : '未通过'} |`);
+    out.push('', '| 检查点 | 结果 | 覆盖 |', '| --- | --- | --- |');
+    for (const c of run.coverage.checks) {
+      const coverage = (c.assertions ?? []).map(a => `${esc(a.selector)}：可见 ${a.matched} 项，不符 ${a.failed} 项`).join('<br>') || '-';
+      out.push(`| ${esc(c.title)} | ${c.blockedReason === 'login-expired' ? '登录失效，未完成' : c.pass ? '通过' : c.error ? '执行出错' : '未通过'} | ${coverage} |`);
+    }
   }
   out.push('', '## 请求策略', '');
   if (!run.requestPolicy) out.push('- 历史运行未记录请求策略；请核对当时的配置和证据。');
@@ -161,6 +164,7 @@ export function renderBugs({ ws, run, findings }) {
     const incomplete = [];
     if (findings.some(f => f.kind === 'login-expired')) incomplete.push('登录失效的业务页面');
     if (run.coverage.detection?.failedPages?.length) incomplete.push('检测器执行失败的页面');
+    if (findings.some(f => ['check-error', 'check-unverified'].includes(f.confidence))) incomplete.push('未能核实的检查点');
     out.push(incomplete.length ? `没有建议提单的问题；${incomplete.join('、')}未完成检查。` : '没有需要提单的问题。', '');
     return out.join('\n');
   }

@@ -22,6 +22,7 @@ import { writeBaseline, readBaseline } from '../src/qa/baseline.mjs';
 import { invoke } from '../src/agent/registry/invoke.mjs';
 import { fingerprintOf } from '../src/qa/findings.mjs';
 import { newQaPage, qaBrowserLaunchOptions, routeQaRequest } from '../src/qa/http-policy.mjs';
+import { normalizeCheck } from '../src/qa/probe.mjs';
 
 const PAGES = {
   '/': `<!doctype html><meta charset="utf-8"><title>首页</title>
@@ -60,6 +61,21 @@ const PAGES = {
       if (selector.startsWith('button, a[href]')) throw new Error('fixture secret must not be recorded');
       return query(selector);
     };</script></html>`,
+  '/check-rows': `<!doctype html><html lang="zh-CN"><title>表格检查对照</title><h1>表格检查对照</h1>
+    <div id="bad"><span class="date">2026-11-08</span><span class="date">2026-11-09T08:09:10Z</span></div>
+    <div id="good"><span class="date" style="visibility:hidden">measurement</span><span class="date">2026-11-08</span><span class="date">2026-11-09</span></div>
+    <div id="hidden"><span class="date" style="display:none">measurement</span></div>
+    <div id="late"></div><div id="ready" hidden>已加载</div><div id="loading">加载中</div><div id="many"></div><div id="long"></div><div id="slow-regex"></div>
+    <script>
+      document.getElementById('many').innerHTML = '<span class="date">2026-11-08</span>'.repeat(1001);
+      document.getElementById('long').textContent = 'x'.repeat(4001);
+      document.getElementById('slow-regex').textContent = 'a'.repeat(100) + '!';
+    </script>
+    <script>setTimeout(() => {
+      document.getElementById('late').innerHTML = '<span class="date">2026-11-08</span><span class="date">2026-11-09</span>';
+      document.getElementById('ready').hidden = false;
+      document.getElementById('loading').remove();
+    }, 500);</script></html>`,
 };
 
 function server() {
@@ -76,6 +92,74 @@ function server() {
   srv.hits = hits;
   return new Promise(done => srv.listen(0, '127.0.0.1', () => done(srv)));
 }
+
+test('qa checks: all visible rows, readiness and empty results remain explicit', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
+  try {
+    const ws = loadWorkspace(root);
+    ws.defaults.settleMs = 0;
+    ws.defaults.timeoutMs = 2000;
+    const date = selector => ({ kind: 'text', selector, matches: '^\\d{4}-\\d{2}-\\d{2}$' });
+    const each = selector => ({ ...date(selector), scope: 'all-visible' });
+    const checks = [
+      { id: 'legacy-first', title: '旧版首条行为', path: '/check-rows', expect: [date('#bad .date')] },
+      { id: 'bad-second', title: '第二行格式异常', path: '/check-rows', expect: [each('#bad .date')] },
+      { id: 'hidden-measurement', title: '排除隐藏测量行', path: '/check-rows', expect: [each('#good .date')] },
+      { id: 'empty', title: '没有匹配结果', path: '/check-rows', expect: [each('#empty .date')] },
+      { id: 'hidden-only', title: '只有隐藏结果', path: '/check-rows', expect: [each('#hidden .date')] },
+      { id: 'short-list', title: '数据条数不足', path: '/check-rows', expect: [{ ...each('#good .date'), minMatches: 3 }] },
+      { id: 'wait-ready', title: '等待数据就绪', path: '/check-rows', steps: [{ action: 'waitFor', selector: '#ready' }], expect: [{ ...each('#late .date'), minMatches: 2 }] },
+      { id: 'never-ready', title: '数据没有就绪', path: '/check-rows', steps: [{ action: 'waitFor', selector: '#never' }], expect: [each('#late .date')] },
+      { id: 'too-many', title: '匹配项超过上限', path: '/check-rows', expect: [each('#many .date')] },
+      { id: 'too-long', title: '文本超过上限', path: '/check-rows', expect: [each('#long')] },
+      { id: 'slow-regex', title: '正则匹配超时', path: '/check-rows', expect: [{ ...each('#slow-regex'), matches: '^(a+)+$' }] },
+      { id: 'bad-navigation', title: '检查点页面不存在', path: '/missing', expect: [{ kind: 'text', selector: 'body', contains: 'not found' }] },
+      { id: 'bad-goto', title: '检查点跳转失败', path: '/check-rows', steps: [{ action: 'goto', path: '/missing' }], expect: [{ kind: 'text', selector: 'body', contains: 'not found' }] },
+      { id: 'contains', title: '逐项包含文本', path: '/check-rows', expect: [{ kind: 'text', selector: '#good .date', scope: 'all-visible', contains: '2026-11' }] },
+      { id: 'equals', title: '逐项完全相等', path: '/check-rows', expect: [{ kind: 'text', selector: '#good .date:nth-child(2)', scope: 'all-visible', equals: '2026-11-08' }] },
+      { id: 'wait-hidden', title: '等待加载提示消失', path: '/check-rows', steps: [{ action: 'waitFor', selector: '#loading', state: 'hidden' }], expect: [{ ...each('#late .date'), minMatches: 2 }] },
+    ];
+    const options = { site: 'web', pages: ['/check-rows'], viewports: [1280], linkCheck: false, detect: false, baseline: false };
+    const run = await runQa(ws, { ...options, checks: checks.slice(0, 3) });
+    const byId = Object.fromEntries(run.run.coverage.checks.map(c => [c.id, c]));
+    assert.equal(byId['legacy-first'].pass, true, 'the default remains a first-match check');
+    assert.equal(byId['bad-second'].pass, false, 'a bad later row must not be missed');
+    assert.deepEqual(byId['bad-second'].assertions[0], { scope: 'all-visible', selector: '#bad .date', matched: 2, failed: 1 });
+    assert.match(run.findings.find(f => f.target === 'bad-second').observed, /2026-11-09T08:09:10Z/);
+    assert.equal(byId['hidden-measurement'].pass, true, 'hidden measurement nodes are not business rows');
+    assert.deepEqual(byId['hidden-measurement'].assertions[0], { scope: 'all-visible', selector: '#good .date', matched: 2, failed: 0 });
+    assert.match(readFileSync(run.files.report, 'utf8'), /可见 2 项，不符 1 项/);
+    const pending = await runQa(ws, { ...options, checks: checks.slice(3) });
+    Object.assign(byId, Object.fromEntries(pending.run.coverage.checks.map(c => [c.id, c])));
+    assert.match(readFileSync(pending.files.bugs, 'utf8'), /未能核实的检查点未完成检查/);
+    for (const id of ['empty', 'hidden-only', 'short-list', 'never-ready', 'too-many', 'too-long', 'slow-regex', 'bad-navigation', 'bad-goto']) {
+      assert.equal(byId[id].pass, false, `${id} cannot pass`);
+      assert.ok(byId[id].error, `${id} must be classified as an incomplete check`);
+      assert.equal(pending.findings.find(f => f.target === id).confidence, 'check-error');
+    }
+    assert.match(byId['slow-regex'].error, /正则匹配超时/);
+    assert.equal(byId['wait-ready'].pass, true);
+    assert.deepEqual(byId['wait-ready'].assertions[0], { scope: 'all-visible', selector: '#late .date', matched: 2, failed: 0 });
+    assert.equal(byId.contains.pass, true);
+    assert.equal(byId.equals.pass, true);
+    assert.equal(byId['wait-hidden'].pass, true);
+    const ci = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/check-rows'], viewports: [1280],
+      checks: [checks[3]], linkCheck: false, detect: false, baseline: false, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(ci.error?.code, 'qa_incomplete', 'no matches cannot make CI green');
+    assert.equal(ci.result.ci.status, 'incomplete');
+    const readyCi = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/check-rows'], viewports: [1280],
+      checks: [checks[6]], linkCheck: false, detect: false, baseline: false, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(readyCi.ok, true, 'MCP accepts and executes waitFor, all-visible and minMatches');
+    assert.equal(readyCi.result.ci.status, 'passed');
+    const invalid = expect => () => normalizeCheck({ id: 'invalid', expect: [expect] });
+    assert.throws(invalid({ ...each('#good .date'), matches: '[' }), /正则/);
+    assert.throws(invalid({ ...each('#good .date'), minMatches: 0 }), /minMatches/);
+    assert.throws(invalid({ kind: 'attribute', selector: '#good', attribute: 'id', scope: 'all-visible' }), /scope/);
+    assert.throws(invalid({ ...each('#good .date'), contains: '2026' }), /只能指定/);
+    assert.throws(() => normalizeCheck({ id: 'invalid', steps: [{ action: 'waitFor', selector: '#ready', state: 'missing' }], expect: [each('#late .date')] }), /state/);
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
 
 test('qa detectors: browser names and recoverable clipping retain real defects', { timeout: 120_000 }, async () => {
   const srv = await server();

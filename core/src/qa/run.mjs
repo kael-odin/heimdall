@@ -178,6 +178,9 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
         ...(p.unavailableReason ? { unavailableReason: p.unavailableReason } : {}), ...(p.detectorError ? { detectorError: p.detectorError } : {}),
         title: p.title ? scrubSecrets(p.title, login.secrets) : null, counts: p.counts, screenshot: p.screenshot })),
       checks: probe.checks.map(c => ({ id: c.id, title: c.title, pass: c.pass, error: c.error, screenshot: c.screenshot,
+        ...(c.results.some(r => r.scope === 'all-visible') ? { assertions: c.results.filter(r => r.scope === 'all-visible').map(r => ({
+          scope: r.scope, selector: r.selector, matched: r.actual.matched, failed: r.actual.failed,
+        })) } : {}),
         ...(c.blockedReason ? { blockedReason: c.blockedReason } : {}) })),
       viewports: viewports.map(v => `${v.width}x${v.height}`),
       detection: {

@@ -9,9 +9,10 @@ import { WORKSPACE_ARG, wsOrError } from './qa-status.mjs';
 const STEP = {
   type: 'object', additionalProperties: false, required: ['action'],
   properties: {
-    action: { type: 'string', enum: ['click', 'fill', 'press', 'hover', 'wait', 'goto', 'select', 'check'] },
+    action: { type: 'string', enum: ['click', 'fill', 'press', 'hover', 'wait', 'waitFor', 'goto', 'select', 'check'] },
     selector: { type: 'string', maxLength: 500 }, value: { type: 'string', maxLength: 2000 },
     path: { type: 'string', maxLength: 500 }, ms: { type: 'integer', minimum: 0, maximum: 10000 },
+    state: { type: 'string', enum: ['visible', 'hidden'], description: 'waitFor state; defaults to visible' },
   },
 };
 const EXPECT = {
@@ -21,6 +22,8 @@ const EXPECT = {
     selector: { type: 'string', maxLength: 500 }, attribute: { type: 'string', maxLength: 100 },
     equals: { type: ['string', 'number', 'boolean'] }, contains: { type: 'string', maxLength: 2000 }, matches: { type: 'string', maxLength: 500 },
     min: { type: 'number' }, max: { type: 'number' },
+    scope: { type: 'string', enum: ['all-visible'], description: 'For text only: require every visible match to satisfy the predicate' },
+    minMatches: { type: 'integer', minimum: 1, maximum: 1000, description: 'Minimum visible matches for all-visible; default 1' },
   },
 };
 export const CHECK_SCHEMA = {
@@ -38,15 +41,12 @@ export const CHECK_SCHEMA = {
 export default {
   id: 'qa_run',
   title: '测试：对一个站点跑只读检查',
-  description: 'Run a read-only test of one site from the test workspace, using its login profile. Every page is opened at each viewport and '
-    + 'checked for: page not opening, login expired, console errors and page exceptions, 4xx/5xx responses and failed requests, broken same-origin '
-    + 'links, broken images, horizontal overflow, and blocked write requests. It also runs reference-free detectors (alt text, control names, form '
-    + 'labels, duplicate ids, heading order, clipped text, stretched images, tap targets, placeholder text, unreplaced templates, mojibake, invalid '
-    + 'dates, mixed content, unsafe _blank links, leaked keys, LCP/CLS, oversized images, blank pages) and compares screenshots with the registered '
-    + 'baseline. Optional checks add declarative steps (click/fill/press/hover/select/check/wait/goto, real input events) and expectations '
-    + '(visible/hidden/text/url/count/attribute/clipboard/title); cite the PRD in "prd". explore=true clicks up to exploreMax controls per page to '
-    + 'find dead buttons, click-triggered errors and 404s; off by default because it changes page state. Findings are fingerprinted and matched '
-    + 'against past verdicts; returns what is worth filing plus paths to report.md and bugs.md.',
+  description: 'Test a workspace site using its login profile. Inspect pages at each viewport for navigation, login, console, network, link, image, '
+    + 'overflow and blocked-request problems. Run reference-free accessibility, layout, content, security and performance detectors, and compare '
+    + 'screenshots with an approved baseline. Optional declarative checks support real input steps and visible/hidden/text/url/count/attribute/'
+    + 'clipboard/title expectations; cite the PRD in "prd". Text scope all-visible checks each visible match; none is incomplete. Use waitFor and '
+    + 'minMatches to specify readiness. explore=true clicks limited controls to find interaction failures; it is off by default because it can '
+    + 'change state. Findings are matched against past verdicts; returns report and issue paths.',
   effects: ['browser', 'source-network', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy',
   input: {
     type: 'object', additionalProperties: false,

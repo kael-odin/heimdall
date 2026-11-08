@@ -14,14 +14,16 @@
  *     或 writes: { allow: [规则] } 放行经人工确认的特定来源与路径的 POST
  */
 import { chromium } from 'playwright';
+import { Worker } from 'node:worker_threads';
 import { scrubValues } from './workspace.mjs';
 import { detectInPage, readVitalsInPage, DETECT_DEFAULTS, QA_CONTROL_SELECTOR } from './detect.mjs';
 import { browserContextOptions, newQaPage, qaBrowserLaunchOptions, requestQaLink, routeQaRequest } from './http-policy.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export const BROWSER_PROFILE = Object.freeze({ locale: 'zh-CN', timezoneId: 'Asia/Shanghai', colorScheme: 'light', reducedMotion: 'reduce' });
-const STEP_ACTIONS = new Set(['click', 'fill', 'press', 'hover', 'wait', 'goto', 'select', 'check']);
+const STEP_ACTIONS = new Set(['click', 'fill', 'press', 'hover', 'wait', 'waitFor', 'goto', 'select', 'check']);
 const EXPECT_KINDS = new Set(['visible', 'hidden', 'text', 'url', 'count', 'attribute', 'clipboard', 'title']);
+const MAX_VISIBLE_MATCHES = 1000;
 const LOGGED_OUT = ['请登录', '登录后', '立即登录', '账号登录', 'Sign in', 'Log in'];
 const clip = (v, n = 300) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const fail = (message) => { const e = new Error(message); e.code = 'invalid_args'; throw e; };
@@ -68,16 +70,24 @@ export function normalizeCheck(raw, index = 0) {
     if (!['wait', 'goto'].includes(s.action) && typeof s.selector !== 'string') fail(`${id}.steps[${i}] 缺 selector`);
     if (s.action === 'goto' && (typeof s.path !== 'string' || !s.path.startsWith('/'))) fail(`${id}.steps[${i}] goto 要写以 / 开头的 path`);
     if (['fill', 'press', 'select'].includes(s.action) && typeof s.value !== 'string') fail(`${id}.steps[${i}] 缺 value`);
+    if (s.state !== undefined && (s.action !== 'waitFor' || !['visible', 'hidden'].includes(s.state))) fail(`${id}.steps[${i}] state 只能用于 waitFor，且只能是 visible / hidden`);
     return { action: s.action, ...(s.selector ? { selector: s.selector } : {}), ...(s.value !== undefined ? { value: String(s.value) } : {}),
-      ...(s.path ? { path: s.path } : {}), ...(s.ms ? { ms: Math.min(10_000, Math.max(0, Number(s.ms))) } : {}) };
+      ...(s.path ? { path: s.path } : {}), ...(s.state ? { state: s.state } : {}), ...(s.ms ? { ms: Math.min(10_000, Math.max(0, Number(s.ms))) } : {}) };
   });
   const expect = (raw.expect ?? []).slice(0, 20).map((a, i) => {
     if (!EXPECT_KINDS.has(a?.kind)) fail(`${id}.expect[${i}].kind 只能是 ${[...EXPECT_KINDS].join(' / ')}`);
     if (['visible', 'hidden', 'text', 'count', 'attribute'].includes(a.kind) && typeof a.selector !== 'string') fail(`${id}.expect[${i}] 缺 selector`);
     if (a.kind === 'attribute' && typeof a.attribute !== 'string') fail(`${id}.expect[${i}] 缺 attribute`);
+    if (a.scope !== undefined && (a.scope !== 'all-visible' || a.kind !== 'text')) fail(`${id}.expect[${i}] scope 只支持文本断言的 all-visible`);
+    if (a.minMatches !== undefined && (a.scope !== 'all-visible' || !Number.isInteger(a.minMatches) || a.minMatches < 1 || a.minMatches > MAX_VISIBLE_MATCHES)) fail(`${id}.expect[${i}] minMatches 须为 all-visible 的 1 至 ${MAX_VISIBLE_MATCHES} 整数`);
+    if (a.scope === 'all-visible') {
+      if ([a.equals !== undefined, a.contains !== undefined, !!a.matches].filter(Boolean).length !== 1 || a.min !== undefined || a.max !== undefined) fail(`${id}.expect[${i}] all-visible 须且只能指定 equals / contains / matches 中的一项`);
+      if (a.matches) { try { new RegExp(a.matches); } catch { fail(`${id}.expect[${i}] matches 不是有效正则表达式`); } }
+    }
     return { kind: a.kind, ...(a.selector ? { selector: a.selector } : {}), ...(a.attribute ? { attribute: a.attribute } : {}),
       ...(a.equals !== undefined ? { equals: a.equals } : {}), ...(a.contains !== undefined ? { contains: String(a.contains) } : {}),
-      ...(a.matches ? { matches: String(a.matches) } : {}), ...(a.min !== undefined ? { min: Number(a.min) } : {}), ...(a.max !== undefined ? { max: Number(a.max) } : {}) };
+      ...(a.matches ? { matches: String(a.matches) } : {}), ...(a.min !== undefined ? { min: Number(a.min) } : {}), ...(a.max !== undefined ? { max: Number(a.max) } : {}),
+      ...(a.scope ? { scope: a.scope } : {}), ...(a.minMatches !== undefined ? { minMatches: a.minMatches } : {}) };
   });
   if (!expect.length) fail(`检查点 ${id} 至少要有一条 expect`);
   const tier = ['wall', 'degrade', 'tolerable'].includes(raw.tier) ? raw.tier : 'degrade';
@@ -109,10 +119,58 @@ async function readExpect(page, a, origin) {
   return null;
 }
 
+async function matchTextPattern(values, pattern) {
+  const worker = new Worker(new URL('./text-match-worker.mjs', import.meta.url), { workerData: { values, pattern } });
+  let timer;
+  try {
+    return await new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (error, result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (error) reject(error); else resolve(result);
+      };
+      timer = setTimeout(() => finish(new Error('正则匹配超时，未完成检查')), 3000);
+      worker.once('message', result => finish(null, result));
+      worker.once('error', () => finish(new Error('正则匹配执行失败，未完成检查')));
+      worker.once('exit', () => finish(new Error('正则匹配提前结束，未完成检查')));
+    });
+  } finally {
+    clearTimeout(timer);
+    await worker.terminate().catch(() => {});
+  }
+}
+
+async function readVisibleTextMatches(page, a) {
+  const snapshot = await page.locator(a.selector).filter({ visible: true }).evaluateAll((elements, limit) => {
+    if (elements.length > limit) return { count: elements.length, tooMany: true };
+    const values = [];
+    for (const element of elements) {
+      const value = String(element.innerText ?? element.textContent ?? '').replace(/\s+/g, ' ').trim();
+      if (value.length > 4000) return { count: elements.length, tooLong: true };
+      values.push(value);
+    }
+    return { count: elements.length, values };
+  }, MAX_VISIBLE_MATCHES);
+  if (snapshot.tooMany) throw new Error(`可见匹配项 ${snapshot.count} 个，超过上限 ${MAX_VISIBLE_MATCHES}`);
+  if (snapshot.tooLong) throw new Error('可见匹配项的文字超过 4000 字，未完成检查');
+  if (snapshot.count < (a.minMatches ?? 1)) throw new Error(`可见匹配项 ${snapshot.count} 个，少于要求的 ${a.minMatches ?? 1} 个`);
+  const failed = a.matches ? await matchTextPattern(snapshot.values, a.matches)
+    : snapshot.values.flatMap((value, index) => predicate(a, value) ? [] : [index]);
+  return { matched: snapshot.count, failed: failed.length,
+    examples: failed.slice(0, 3).map(index => ({ index: index + 1, text: clip(snapshot.values[index], 300) })) };
+}
+
 async function performStep(page, s, baseUrl, timeout) {
   if (s.action === 'wait') return page.waitForTimeout(s.ms ?? 500);
-  if (s.action === 'goto') return page.goto(new URL(s.path, baseUrl).href, { waitUntil: 'domcontentloaded', timeout });
+  if (s.action === 'goto') {
+    const response = await page.goto(new URL(s.path, baseUrl).href, { waitUntil: 'domcontentloaded', timeout });
+    if (response?.status() >= 400) throw new Error(`检查点跳转 HTTP ${response.status()}`);
+    return response;
+  }
   const loc = page.locator(s.selector).first();
+  if (s.action === 'waitFor') return loc.waitFor({ state: s.state ?? 'visible', timeout });
   if (s.action === 'click') return loc.click({ timeout });
   if (s.action === 'hover') return loc.hover({ timeout });
   if (s.action === 'fill') return loc.fill(s.value, { timeout });
@@ -307,7 +365,9 @@ async function runCheck(context, site, check, { timeout, settleMs, screenshotDir
   let error = null;
   let loginIssue = null;
   try {
-    await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout });
+    const response = await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout });
+    if (!response) throw new Error('检查点页面没有响应');
+    if (response.status() >= 400) throw new Error(`检查点页面 HTTP ${response.status()}`);
     await page.waitForTimeout(settleMs);
     loginIssue = await loginProblemAtPage(page, { site, login, path: check.path });
     if (!loginIssue) {
@@ -319,8 +379,13 @@ async function runCheck(context, site, check, { timeout, settleMs, screenshotDir
       }
       if (!loginIssue) {
         for (const a of check.expect) {
-          const actual = await readExpect(page, a, site.origin);
-          results.push({ ...a, actual: typeof actual === 'string' ? clip(actual, 300) : actual, pass: predicate(a, actual) });
+          if (a.scope === 'all-visible') {
+            const actual = await readVisibleTextMatches(page, a);
+            results.push({ ...a, actual, pass: actual.failed === 0 });
+          } else {
+            const actual = await readExpect(page, a, site.origin);
+            results.push({ ...a, actual: typeof actual === 'string' ? clip(actual, 300) : actual, pass: predicate(a, actual) });
+          }
         }
       }
     }

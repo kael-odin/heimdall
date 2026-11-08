@@ -139,6 +139,10 @@ test('fresh direct MCP enforces exact QA query rules without an available engine
   const hits = [];
   const fixture = createServer((req, res) => {
     hits.push({ method: req.method, path: req.url });
+    if (req.url === '/rows') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      return res.end('<title>Rows</title><div id="ready">Ready</div><span class="date" hidden>measure</span><span class="date">2026-11-08</span><span class="date">bad</span>');
+    }
     if (req.url === '/') {
       res.writeHead(200, { 'content-type': 'text/html' });
       return res.end(`<title>Fixture</title><script>
@@ -170,6 +174,20 @@ test('fresh direct MCP enforces exact QA query rules without an available engine
     assert.deepEqual(run.structuredContent.result.navigation.failedPages, []);
     assert.deepEqual(hits.filter(hit => hit.method !== 'GET'), [{ method: 'POST', path: '/api/query' }]);
     assert.equal(existsSync(join(root, 'agent', 'engine.json')), false, 'the QA run did not start an engine for this data root');
+
+    const dateCheck = { id: 'rows', title: 'Check all rows', path: '/rows', steps: [{ action: 'waitFor', selector: '#ready' }],
+      expect: [{ kind: 'text', selector: '.date', scope: 'all-visible', minMatches: 2, matches: '^\\d{4}-\\d{2}-\\d{2}$' }] };
+    const rows = await client.callTool({ name: 'heimdall_qa_run', arguments: { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280],
+      linkCheck: false, detect: false, baseline: false, checks: [dateCheck] } });
+    assert.equal(rows.isError, false, JSON.stringify(rows.structuredContent.error));
+    assert.equal(rows.structuredContent.result.checks[0].pass, false);
+    assert.deepEqual(rows.structuredContent.result.checks[0].assertions[0], { scope: 'all-visible', selector: '.date', matched: 2, failed: 1 });
+    const missing = { ...dateCheck, id: 'missing-rows', title: 'Missing rows', expect: [{ ...dateCheck.expect[0], selector: '.missing' }] };
+    const incomplete = await client.callTool({ name: 'heimdall_qa_ci', arguments: { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280],
+      linkCheck: false, detect: false, baseline: false, checks: [missing], failOn: 'none' } });
+    assert.equal(incomplete.isError, true);
+    assert.equal(incomplete.structuredContent.error.code, 'qa_incomplete');
+    assert.equal(incomplete.structuredContent.result.ci.status, 'incomplete');
 
     config.sites.web.writes.allow = ['/api/query'];
     writeFileSync(file, JSON.stringify(config));
