@@ -12,6 +12,7 @@ import { isStructuralUrl } from './pagination.mjs';
 import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { canonUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { UA } from '../ua.mjs';
+import { discoverSitemapUrls } from '../crawler/sitemap-discovery.mjs';
 
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
 
@@ -74,44 +75,9 @@ try {
 `;
 
 /** robots.txt + sitemap 探测（Node fetch，不经过浏览器） */
-export async function fetchRobotsAndSitemaps(origin) {
-  const result = { robots: { ok: false, status: null, sitemaps: [] }, sitemapUrls: new Set(), checked: false, errors: [] };
-  try {
-    const res = await fetch(origin + '/robots.txt', { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10_000) });
-    result.robots.status = res.status;
-    if (res.ok) {
-      result.robots.ok = true;
-      const text = await res.text();
-      for (const m of text.matchAll(/^\s*sitemap:\s*(\S+)/gim)) result.robots.sitemaps.push(m[1].trim());
-    }
-  } catch (e) { result.errors.push('robots: ' + String(e).slice(0, 100)); }
-
-  const candidates = [...new Set([...result.robots.sitemaps, origin + '/sitemap.xml', origin + '/sitemap_index.xml'])];
-  for (const sm of candidates) {
-    try {
-      const res = await fetch(sm, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
-      result.checked = true;
-      if (!res.ok) continue;
-      const text = await res.text();
-      const locs = [...text.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1].trim());
-      if (/<sitemapindex/i.test(text)) {
-        for (const child of locs.slice(0, 5)) {
-          try {
-            const r2 = await fetch(child, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
-            if (!r2.ok) continue;
-            const t2 = await r2.text();
-            for (const m of t2.matchAll(/<loc>([^<]+)<\/loc>/g)) {
-              const u = m[1].trim();
-              if (isSameOriginUrl(u, origin)) result.sitemapUrls.add(u);
-            }
-          } catch {}
-        }
-      } else {
-        for (const u of locs) if (isSameOriginUrl(u, origin)) result.sitemapUrls.add(u);
-      }
-    } catch {}
-  }
-  return result;
+export async function fetchRobotsAndSitemaps(origin, options = {}) {
+  const result = await discoverSitemapUrls(origin, options);
+  return { ...result, sitemapUrls: new Set(result.urls) };
 }
 
 /** 目标 URL 解析：优先 sitemap，其次轻量 BFS 爬取 */

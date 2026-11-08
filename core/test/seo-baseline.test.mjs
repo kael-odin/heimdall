@@ -66,6 +66,14 @@ test('baseline: 快照自带严重度（比对不依赖外部映射，避免静�
   assert.ok(size < 700, `快照应保持紧凑，实际 ${size} 字节`);
 });
 
+test('baseline: records sitemap provenance only for an eligible audit', () => {
+  const input = report({ pages: [{ url: 'https://example.com/a' }] });
+  assert.equal(buildBaseline(input).collection, undefined);
+  input.summary.baselineEligible = true;
+  input.summary.sitemapCoverage = 'complete';
+  assert.deepEqual(buildBaseline(input).collection, { version: 1, sitemapCoverage: 'complete' });
+});
+
 test('baseline: 同一规则多次触发取最严重的一次', () => {
   const b = buildBaseline(report({ pages: [{ url: 'https://example.com/a', issues: [iss('content-img-alt', 'medium'), iss('content-img-alt', 'high')] }] }));
   assert.equal(b.pages['https://example.com/a'].issues['content-img-alt'], 'high');

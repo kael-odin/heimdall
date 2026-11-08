@@ -118,6 +118,9 @@ export function buildBaseline(report, { capturedAt } = {}) {
       pages: Object.keys(pages).length,
       issues: (report.summary?.issues ?? null),
     },
+    ...(report.summary?.baselineEligible === true ? {
+      collection: { version: 1, sitemapCoverage: report.summary.sitemapCoverage },
+    } : {}),
   };
 }
 

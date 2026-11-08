@@ -23,9 +23,12 @@ const siteLabel = (audit) => audit.origin ?? audit.host;
 export function siteAggregate(audit) {
   const pages = audit.pages ?? [];
   const withSignals = pages.filter(p => p.status > 0);
+  const baselineEligible = audit.summary?.baselineEligible === true;
   return {
     host: siteLabel(audit),
-    score: audit.score ?? null,
+    score: baselineEligible ? (audit.score ?? null) : null,
+    baselineEligible,
+    sitemapCoverage: audit.summary?.sitemapCoverage ?? 'unknown',
     pages: pages.length,
     avgTitleLen: round(avg(withSignals.map(p => p.titleLength ?? 0)), 0),
     descRate: pct(withSignals.filter(p => (p.descriptionLength ?? 0) > 0).length, withSignals.length),
@@ -33,7 +36,7 @@ export function siteAggregate(audit) {
     jsonldRate: pct(withSignals.filter(p => (p.jsonld ?? []).some(j => j.ok && (j.types ?? []).length)).length, withSignals.length),
     avgLcp: round(avg(withSignals.map(p => p.vitals?.lcp).filter(v => typeof v === 'number')) , 0),
     avgWords: round(avg(withSignals.map(p => p.wordCount ?? 0)), 0),
-    issuesPerPage: round((audit.summary?.issues ?? 0) / Math.max(pages.length, 1), 1),
+    issuesPerPage: baselineEligible ? round((audit.summary?.issues ?? 0) / Math.max(pages.length, 1), 1) : null,
     bySeverity: audit.summary?.bySeverity ?? {},
   };
 }
@@ -48,7 +51,7 @@ export function buildMatrix(audits) {
       return {
         host: siteLabel(a),
         pages: pages.length,
-        avgScore: round(avg(pages.map(p => p.score)), 1),
+        avgScore: a.summary?.baselineEligible === true ? round(avg(pages.map(p => p.score)), 1) : null,
         avgWords: round(avg(pages.map(p => p.wordCount ?? 0)), 0),
         avgLcp: round(avg(pages.map(p => p.vitals?.lcp).filter(v => typeof v === 'number')), 0),
       };
@@ -72,6 +75,8 @@ export function renderMatrixCsv(matrix) {
   const rows = [
     header,
     ['site_score', ...matrix.sites.map(s => fmt(s.aggregate.score))],
+    ['baseline_eligible', ...matrix.sites.map(s => String(s.aggregate.baselineEligible))],
+    ['sitemap_coverage', ...matrix.sites.map(s => s.aggregate.sitemapCoverage)],
     ['pages', ...matrix.sites.map(s => fmt(s.aggregate.pages))],
     ['avg_title_len', ...matrix.sites.map(s => fmt(s.aggregate.avgTitleLen))],
     ['description_rate_%', ...matrix.sites.map(s => fmt(s.aggregate.descRate))],
@@ -141,6 +146,7 @@ footer{margin-top:36px;color:#64748b;font-size:12px}
 </style></head><body><div class="wrap">
 <div class="brand">HEIMDALL · SEO BENCHMARK</div><h1>竞品 SEO 对标矩阵</h1>
 <div class="meta">${matrix.sites.map(s => esc(s.host)).join(' vs ')} · ${esc(matrix.generatedAt)} · 绿色 = 该指标最优 · 样本量不同时优先对比比率/均值</div>
+<div class="meta">采集不完整或旧报告未记录采集状态时，不比较分数和每页问题数。其他指标仅描述本次采集样本。</div>
 <h2>总体指标</h2><table><tbody><tr><th>指标</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${metricRows}</tbody></table>
 <h2>页面类型分布</h2><table><tbody><tr><th>页面类型</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${typeRows || '<tr><td>—</td></tr>'}</tbody></table>
 <h2>各站高频问题</h2><table><tbody>${issues}</tbody></table>

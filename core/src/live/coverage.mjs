@@ -66,13 +66,17 @@ function atlasSource(baseDir, origin) {
     ? atlas.meta.sitemap.offOriginSitemaps : null;
   const offOriginPages = Number.isInteger(atlas.meta?.sitemap?.offOriginPages)
     ? atlas.meta.sitemap.offOriginPages : null;
+  const sitemapCoverage = ['complete', 'not_found', 'partial', 'unavailable'].includes(atlas.meta?.sitemap?.coverage)
+    ? atlas.meta.sitemap.coverage : 'unknown';
+  const sitemapReasons = Array.isArray(atlas.meta?.sitemap?.reasons)
+    ? atlas.meta.sitemap.reasons.filter(reason => typeof reason === 'string').slice(0, 20) : [];
   const invalid = atlas.status === 'failed' || urls.size === 0 || foreignNodes > 0 || invalidNodes > 0;
   return {
     state: invalid ? 'invalid' : 'ok',
     issue: invalid ? (atlas.status === 'failed' ? 'recon-failed' : foreignNodes ? 'foreign-nodes' : invalidNodes ? 'invalid-nodes' : 'empty-atlas') : null,
     urls: [...urls].sort(), types, invalidNodes, foreignNodes, failures, maxPages, maxDepth,
     limitReached, depthLimitReached, depthLimitUrls, sitemapTruncated, sitemapUnknownFormats,
-    declaredSitemapFailures, offOriginSitemaps, offOriginPages,
+    declaredSitemapFailures, offOriginSitemaps, offOriginPages, sitemapCoverage, sitemapReasons,
     generatedAt: typeof atlas.generatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(atlas.generatedAt)
       ? atlas.generatedAt : null,
   };
@@ -238,9 +242,12 @@ export function buildCoverageLedger({ baseDir, bundleDir, host, origin, pageName
       declaredSitemapFailures: source.declaredSitemapFailures ?? null,
       offOriginSitemaps: source.offOriginSitemaps ?? null,
       offOriginPages: source.offOriginPages ?? null,
+      sitemapCoverage: source.sitemapCoverage ?? 'unknown',
+      sitemapReasons: source.sitemapReasons ?? [],
       scopeLimited: !!source.limitReached || !!source.depthLimitReached || !!source.sitemapTruncated?.length
         || (source.sitemapUnknownFormats ?? 0) > 0 || (source.declaredSitemapFailures ?? 0) > 0
-        || (source.offOriginSitemaps ?? 0) > 0 || (source.failures ?? 0) > 0,
+        || (source.offOriginSitemaps ?? 0) > 0 || (source.failures ?? 0) > 0
+        || !['complete', 'not_found'].includes(source.sitemapCoverage),
       generatedAt: source.generatedAt ?? null,
     } : null,
     missingPaths: missing.slice(0, MAX_PATHS),

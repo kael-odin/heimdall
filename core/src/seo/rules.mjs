@@ -8,6 +8,7 @@
  */
 import { validateStructuredData } from './structured.mjs';
 import { paginationPageIssues, paginationSiteIssues } from './pagination.mjs';
+import { canonUrl } from '../url-canon.mjs';
 
 export const CATEGORIES = {
   index: '抓取与索引',
@@ -176,10 +177,11 @@ export function evaluateSite(site = {}) {
   const dupDesc = Object.entries(site.duplicates?.description ?? {}).filter(([, urls]) => urls.length > 1);
   for (const [, urls] of dupDesc) S('content-description-duplicate', 'content', 'medium', 'description 重复', `${urls.length} 个页面使用同一 description`, urls.slice(0, 5).join('\n'), '为每个页面编写独立描述');
 
-  const pagesWithoutSitemap = (site.pages || []).filter(p => p.status < 400 && !p.meta.noindex && site.sitemapUrls?.size && !site.sitemapUrls.has(p.finalUrl) && !site.sitemapUrls.has(p.url));
-  if (pagesWithoutSitemap.length) S('index-sitemap-missing-page', 'index', 'low', '可索引页面未出现在 sitemap', `${pagesWithoutSitemap.length} 个页面`, pagesWithoutSitemap.slice(0, 5).map(p => p.url).join('\n'), '更新 sitemap 或确认页面是否应被索引');
+  const pagesWithoutSitemap = site.sitemapCoverage === 'complete'
+    ? (site.pages || []).filter(p => p.status >= 200 && p.status < 400 && !p.meta.noindex && !site.sitemapUrls?.has(canonUrl(p.finalUrl)) && !site.sitemapUrls?.has(canonUrl(p.url))) : [];
+  if (pagesWithoutSitemap.length) S('index-sitemap-missing-page', 'index', 'low', '页面未出现在已检查的 sitemap', `${pagesWithoutSitemap.length} 个页面`, pagesWithoutSitemap.slice(0, 5).map(p => p.url).join('\n'), '核对已检查的 sitemap，确认页面是否应被列入');
   if (site.robots && site.robots.status === 404) S('index-robots-missing', 'index', 'low', '缺少 robots.txt', 'robots.txt 返回 404', '', '提供 robots.txt 并声明 sitemap');
-  if (site.sitemapChecked && site.sitemapUrls?.size === 0) S('index-sitemap-missing', 'index', 'medium', '未发现 sitemap', '已请求 sitemap 地址但未得到有效 XML', '', '提供 XML sitemap 并在 robots.txt 中声明');
+  if (site.sitemapCoverage === 'not_found') S('index-sitemap-missing', 'index', 'medium', '已检查的位置未发现 sitemap', '已检查 robots.txt 声明及常见地址；其他位置未检查', '', '确认 sitemap 地址并在 robots.txt 中声明');
 
   for (const url of site.orphans ?? []) S('links-orphan', 'links', 'low', '孤儿页（无站内入链）', url, '', '从导航/相关页添加内链，提升发现与权重传递');
 

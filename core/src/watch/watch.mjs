@@ -53,6 +53,9 @@ try {
   }
   if (targets.length < 2) {
     const sitemap = await fetchRobotsAndSitemaps(origin);
+    if (!['complete', 'not_found'].includes(sitemap.coverage)) {
+      throw new Error(`sitemap discovery incomplete (${sitemap.coverage}: ${sitemap.reasons.join(', ')}); watch comparison and baseline update skipped`);
+    }
     const browser = await chromium.launch();
     try { targets = await discoverTargets(browser, origin, { max: MAX, sitemapUrls: sitemap.sitemapUrls }); }
     finally { await browser.close(); }

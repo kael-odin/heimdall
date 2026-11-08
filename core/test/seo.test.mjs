@@ -86,7 +86,7 @@ test('seo: site-level duplicates, sitemap gaps and orphans are flagged', () => {
     pages: [a, b],
     sitemapUrls: new Set(['https://example.com/a']),
     robots: { ok: false, status: 404, sitemaps: [] },
-    sitemapChecked: true,
+    sitemapCoverage: 'complete',
     duplicates: { title: { Same: [a.url, b.url] }, description: {}, h1: {} },
     orphans: [b.url],
   };

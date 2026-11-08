@@ -20,6 +20,7 @@ export function renderCsv(report) {
 
 export function renderHtml(report) {
   const { host, origin, generatedAt, score, pages, siteIssues, summary, categories, config } = report;
+  const sitemapLabel = { complete: '已完成声明项和常见地址的受限检查', not_found: '已检查的位置未发现', partial: '采集不完整', unavailable: '采集不可用' }[summary.sitemapCoverage] ?? '采集状态未知';
   const pageRows = pages.map(p => {
     const top = [...(p.issues ?? [])].sort((a, b) => sevOrder[a.severity] - sevOrder[b.severity]).slice(0, 3);
     return `<tr data-score="${p.score}">
@@ -129,10 +130,11 @@ footer { margin-top:44px; color:var(--muted); font-size:12px; }
       <h1>${esc(host)} SEO 审计报告</h1>
       <div class="meta">${esc(origin)} · ${esc(generatedAt)} · 采集 ${config.max} 页上限 · 视口 ${esc(config.viewport)}</div>
     </div>
-    <div class="score-ring"><div><b style="color:${scoreColor(score)}">${score}</b><span>站点分</span></div></div>
+    <div class="score-ring"><div><b style="color:${scoreColor(score)}">${score}</b><span>${summary.baselineEligible === false ? '暂算分' : '站点分'}</span></div></div>
   </header>
 
   <p class="meta">收录指令按本次浏览器收到的通用与 Googlebot 指令解释；不代表搜索引擎实际收录、排名或 AI 引用。初始 HTML 未核对的页面仍有漏检风险。</p>
+  <p class="meta">sitemap：${esc(sitemapLabel)}。仅限同来源的声明项与常见地址，不能证明其他位置不存在地图。${summary.baselineEligible === false ? '采集存在缺口，分数仅供参考，不能作为基线或门禁依据。' : ''}${summary.legacyBaseline ? '旧基线未记录采集完整性，本次未比对。' : ''}</p>
 
   <div class="kpis">
     <div class="kpi"><b>${summary.pages}</b><span>采集页面</span></div>

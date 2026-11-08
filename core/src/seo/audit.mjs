@@ -39,7 +39,7 @@ import { fetchFieldData, compareLabToField } from './field-data.mjs';
 import { renderHtml, renderCsv } from './report.mjs';
 import { buildBaseline, snapshotOf, diffBaseline, renderDiffText, renderDiffMarkdown, BASELINE_VERSION } from './baseline.mjs';
 import { readBaselineFile } from './baseline-file.mjs';
-import { isSameOriginUrl } from '../url-canon.mjs';
+import { canonUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
 import { parseAuditArgs } from './cli-args.mjs';
 
@@ -91,6 +91,14 @@ try {
     emit({ kind: 'audit-error', error: error.message });
     process.exit(1);
   }
+  const legacyBaseline = !!baseline && !(baseline.collection?.version === 1
+    && ['complete', 'not_found'].includes(baseline.collection?.sitemapCoverage));
+  if (legacyBaseline && (REQUIRE_BASELINE || FAIL_ON_REGRESSION || UPDATE_BASELINE)) {
+    const message = '旧基线未记录采集完整性；保留原文件，使用新的 --baseline 路径重新建立基线';
+    log(`FATAL ${message}`);
+    emit({ kind: 'audit-error', error: message });
+    process.exit(1);
+  }
 
   // ---------- 目标页面：优先复用 atlas，否则 sitemap/BFS ----------
   const atlasPath = join(base, 'recon', 'atlas.json');
@@ -125,8 +133,8 @@ try {
   // 去重：/ 与无尾斜杠、以及 sitemap 中的重复 URL 只审计一次
   const seenTargets = new Set();
   targets = targets.filter(t => {
-    const key = t.url.replace(/\/$/, '');
-    if (seenTargets.has(key)) return false;
+    const key = canonUrl(t.url);
+    if (!key || seenTargets.has(key)) return false;
     seenTargets.add(key);
     return true;
   });
@@ -138,11 +146,12 @@ try {
   for (const url of baselinePages) {
     if (targets.length >= MAX) break;
     if (!isSameOriginUrl(url, origin)) continue;
-    const key = url.replace(/\/$/, '');
+    const key = canonUrl(url);
     if (seenTargets.has(key)) continue;
     seenTargets.add(key); targets.push({ url, depth: 0 }); baselineOnly++;
   }
   if (baselineOnly) log(`+${baselineOnly} baseline page(s) added to this run so "page-missing" means really missing`);
+  const baselinePagesUnchecked = legacyBaseline ? 0 : baselinePages.filter(url => !seenTargets.has(canonUrl(url))).length;
   if (!targets.length) throw new Error('no pages discovered for ' + origin);
   emit({ kind: 'audit-start', host, origin, targets: targets.length });
   log(`auditing ${targets.length} pages of ${origin}`);
@@ -153,7 +162,7 @@ try {
   // 分头写就会漂移 —— 以前进度流多传了 `noindexIntent: true`，于是 noindex 页
   // 在进度里比报告里高最多 12 分（那是条 high 级规则），同一个页面两个分数。
   // 下面 site 用 `...pageCtx` 展开，两处因此不可能不一致。
-  const pageCtx = { host, sitemapUrls: sitemap.sitemapUrls };
+  const pageCtx = { host, sitemapUrls: sitemap.sitemapUrls, sitemapCoverage: sitemap.coverage };
 
   let pages;
   try {
@@ -193,7 +202,6 @@ try {
     ...pageCtx,          // host / sitemapUrls 与进度流同源，见 pageCtx 的注释
     origin,
     pages,
-    sitemapChecked: sitemap.checked,
     robots: sitemap.robots,
     duplicates: { title: group(p => p.title), description: group(p => p.description), h1: group(p => (p.h1 ?? []).join('|')) },
     orphans,
@@ -214,6 +222,8 @@ try {
     !Number.isInteger(p.status) || p.status < 200 || p.status >= 400
     || !isSameOriginUrl(p.finalUrl, origin));
   const uncheckedInitialHtml = pagesScored.filter(p => p.robotsEvidence?.initialHtml !== 'checked');
+  const sitemapIncomplete = !['complete', 'not_found'].includes(sitemap.coverage);
+  const baselineEligible = !failedPages.length && !uncheckedInitialHtml.length && !sitemapIncomplete && !baselinePagesUnchecked;
   const gateRequested = FAIL_ON_REGRESSION || REQUIRE_BASELINE || UPDATE_BASELINE || THRESHOLD > 0;
 
   const avgPage = pagesScored.length ? pagesScored.reduce((a, p) => a + p.score, 0) / pagesScored.length : 100;
@@ -229,7 +239,7 @@ try {
   }
 
   // 分数走势：追加一条（原子写）。历史是增强项，失败不影响本次审计。
-  if (!failedPages.length && !uncheckedInitialHtml.length) {
+  if (baselineEligible) {
     appendHistory(siteId, {
       kind: 'audit', score: siteScore,
       grade: siteScore >= 90 ? 'A' : siteScore >= 75 ? 'B' : 'C',
@@ -243,7 +253,8 @@ try {
     generatedAt: new Date().toISOString(),
     config: { max: MAX, viewport: '1440x900', concurrency: 2, source: discoverySource },
     score: siteScore,
-    summary: { pages: pages.length, issues: allIssues.length, bySeverity, pagesScored: pages.length, initialHtmlUnchecked: uncheckedInitialHtml.length },
+    summary: { pages: pages.length, issues: allIssues.length, bySeverity, pagesScored: pages.length, initialHtmlUnchecked: uncheckedInitialHtml.length, failedPages: failedPages.length, sitemapCoverage: sitemap.coverage, baselinePagesUnchecked, legacyBaseline, baselineEligible, baselineCompared: !!baseline && !legacyBaseline && baselineEligible },
+    sitemap: { coverage: sitemap.coverage, reasons: sitemap.reasons, stats: sitemap.stats },
     categories,
     siteIssues: allSiteIssues,
     pages: pagesScored,
@@ -271,15 +282,36 @@ try {
 
   log(`score ${siteScore} | pages ${pages.length} | issues ${allIssues.length} (critical ${bySeverity.critical}, high ${bySeverity.high})`);
   log(`report -> ${htmlPath}`);
-  emit({ kind: 'audit-done', host, score: siteScore, pages: pages.length, issues: allIssues.length, bySeverity, reportPath: htmlPath, initialHtmlUnchecked: uncheckedInitialHtml.length });
+  emit({ kind: 'audit-done', host, score: siteScore, baselineEligible, pages: pages.length, issues: allIssues.length, bySeverity, reportPath: htmlPath, initialHtmlUnchecked: uncheckedInitialHtml.length, sitemapCoverage: sitemap.coverage });
 
   // A refetch can differ from the navigation response, so it cannot prove that an initial noindex disappeared.
-  if (uncheckedInitialHtml.length) {
-    const sample = uncheckedInitialHtml.slice(0, 3).map(p => p.url).join('; ');
-    log(`INCOMPLETE: ${uncheckedInitialHtml.length}/${pagesScored.length} 页未核对初始 HTML，跳过基线比对和更新。${sample}`);
-    emit({ kind: 'audit-incomplete', reason: 'initial-html-unavailable', pages: uncheckedInitialHtml.length });
-    if (failedPages.length && gateRequested) log(`FAIL: ${failedPages.length}/${pagesScored.length} 页未从目标来源成功采集。`);
+  if (uncheckedInitialHtml.length || sitemapIncomplete || failedPages.length || baselinePagesUnchecked) {
+    if (uncheckedInitialHtml.length) {
+      const sample = uncheckedInitialHtml.slice(0, 3).map(p => p.url).join('; ');
+      log(`INCOMPLETE: ${uncheckedInitialHtml.length}/${pagesScored.length} 页未核对初始 HTML，跳过基线比对和更新。${sample}`);
+      emit({ kind: 'audit-incomplete', reason: 'initial-html-unavailable', pages: uncheckedInitialHtml.length });
+    }
+    if (sitemapIncomplete) {
+      log(`INCOMPLETE: sitemap 采集${sitemap.coverage === 'partial' ? '不完整' : '不可用'}，跳过基线比对和更新。原因：${sitemap.reasons.join(', ')}`);
+      emit({ kind: 'audit-incomplete', reason: 'sitemap-incomplete', coverage: sitemap.coverage, details: sitemap.reasons });
+    }
+    if (failedPages.length) {
+      const sample = failedPages.slice(0, 3).map(p => `${p.status}: ${p.url}${isSameOriginUrl(p.finalUrl, origin) ? '' : ` -> ${p.finalUrl}`}`).join('; ');
+      log(`INCOMPLETE: ${failedPages.length}/${pagesScored.length} 页未从目标来源成功采集，跳过基线比对和更新。${sample}`);
+      emit({ kind: 'audit-incomplete', reason: 'page-unavailable', pages: failedPages.length });
+    }
+    if (baselinePagesUnchecked) {
+      log(`INCOMPLETE: ${baselinePagesUnchecked} 个基线页面超过本次 --max，未检查；跳过基线比对和更新。`);
+      emit({ kind: 'audit-incomplete', reason: 'baseline-pages-unchecked', pages: baselinePagesUnchecked });
+    }
     if (gateRequested) process.exit(1);
+    process.exit(0);
+  }
+
+  if (legacyBaseline) {
+    log('INCOMPLETE: 旧基线未记录采集完整性，本次不进行基线比对；请保留旧文件并建立新基线。');
+    emit({ kind: 'audit-incomplete', reason: 'legacy-baseline-unverified' });
+    if (THRESHOLD > 0 && siteScore < THRESHOLD) process.exit(1);
     process.exit(0);
   }
 
@@ -312,15 +344,6 @@ try {
     writeFileSync(baselinePath, JSON.stringify(current, null, 2) + '\n');
     log(`${diff.firstRun ? '首次运行，已建立' : '已更新'}基线 -> ${baselinePath}`);
     emit({ kind: 'audit-baseline', path: baselinePath, created: diff.firstRun, version: BASELINE_VERSION });
-  }
-
-  // 采集失败只在**门禁模式**下才算失败。普通审计（引擎点"审计"、matrix 首次刷新）本来就该
-  // 把 404 当作发现报告出来 —— 以前这里带着 diff.firstRun，于是站点上只要有一个坏链接，
-  // 普通审计就 exit 1、基线也永远建不起来（每次都是"首次运行"）。
-  if (failedPages.length && gateRequested) {
-    const sample = failedPages.slice(0, 3).map(p => `${p.status}: ${p.url}${isSameOriginUrl(p.finalUrl, origin) ? '' : ` -> ${p.finalUrl}`}`).join('; ');
-    log(`FAIL: ${failedPages.length}/${pagesScored.length} 页未从目标来源成功采集，拒绝通过门禁或更新基线。${sample}`);
-    process.exit(1);
   }
 
   if (THRESHOLD > 0 && siteScore < THRESHOLD) {

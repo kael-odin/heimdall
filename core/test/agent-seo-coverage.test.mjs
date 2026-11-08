@@ -24,4 +24,18 @@ test('SEO agent reports incomplete coverage without linking a stale diff', async
   assert.match(response.summary, /部分完成.*1 页未核对初始 HTML/);
   assert.equal(response.result.result.summary.initialHtmlUnchecked, 1);
   assert.equal(response.result.result.reports.diff, null);
+  writeFileSync(join(directory, 'seo.json'), JSON.stringify({
+    origin: 'https://example.test', score: 100,
+    summary: { initialHtmlUnchecked: 0, sitemapCoverage: 'partial', baselineEligible: false }, categories: {},
+  }));
+  const partial = await capability.handler({ url: 'https://example.test/', maxPages: 1, waitMs: 0 }, { jobs });
+  assert.match(partial.summary, /sitemap 采集不完整/);
+  assert.equal(partial.result.result.reports.diff, null);
+  assert.equal(partial.result.result.grade, null);
+  writeFileSync(join(directory, 'seo.json'), JSON.stringify({
+    origin: 'https://example.test', score: 100,
+    summary: { sitemapCoverage: 'complete', baselineEligible: true, baselineCompared: false }, categories: {},
+  }));
+  const firstRun = await capability.handler({ url: 'https://example.test/', maxPages: 1, waitMs: 0 }, { jobs });
+  assert.equal(firstRun.result.result.reports.diff, null, 'first run must not link a stale diff');
 });

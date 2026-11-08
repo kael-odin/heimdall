@@ -263,6 +263,18 @@ node core/src/cli.mjs audit example.org --max 30
 
 仓库的 SEO 回归工作流当前仅手动触发，`config/seo-targets.txt` 没有已授权目标或受版本控制的基线。正式启用门禁前，先录入目标并审核基线；损坏或缺失的基线不能当成回归通过。
 
+站点地图只读取目标来源的 `robots.txt` 声明、递归子地图及常见地址，跨来源声明和跳转不会跟随。报告的 `sitemap.coverage` 仅说明这个有预算的检查范围：`complete` 表示声明项及常见地址没有已知采集缺口；`not_found` 表示已检查位置没有找到，不代表其他位置不存在；`partial` 表示只采到一部分；`unavailable` 表示不能取得有效地图。XML 检查包含格式良构性，不等于完整的 sitemap 规范或搜索引擎验证。
+
+`partial` 或 `unavailable` 时，普通审计仍生成报告，但分数只是暂算，不写趋势、不比对或更新基线；基线及分数门禁返回失败。依赖地图发现页面的变更监控也会停止比较和更新基线。AI 返回和竞品矩阵不会把旧对比或不完整分数当作有效结果；旧报告未记录采集状态时需重新审计。即使地图状态为 `complete`，也不代表已经发现全站页面、搜索引擎已收录或 AI 已引用。
+
+旧版基线没有记录地图采集状态，不能直接用于回归或原地更新；保留旧文件，并指定新路径重新采集、人工审核。例如：
+
+```powershell
+node core/src/seo/audit.mjs https://example.org --max 30 --baseline .\seo-baseline-new.json --update-baseline
+```
+
+后续用同一路径启用 `--require-baseline --fail-on-regression`。若 `--max` 太小而没有检查完旧基线中的页面，本次不会把它们说成消失，也不会更新基线；应提高上限后重跑。页面本身采集失败时同样跳过基线比较，普通报告保留 HTTP 状态供排查。
+
 ## QA CI
 
 把已有的 QA 工作区接进 CI 时，用：

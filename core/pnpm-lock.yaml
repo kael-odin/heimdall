@@ -216,6 +216,9 @@ importers:
       pngjs:
         specifier: ^7.0.0
         version: 7.0.0
+      saxes:
+        specifier: 5.0.1
+        version: 5.0.1
 
 packages:
 

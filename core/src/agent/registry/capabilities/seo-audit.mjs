@@ -11,7 +11,7 @@ function finishAudit(siteId) {
       siteId,
       origin: report.origin,
       score: report.score,
-      grade: report.score >= 90 ? 'A' : report.score >= 75 ? 'B' : 'C',
+      grade: report.summary?.baselineEligible === true ? (report.score >= 90 ? 'A' : report.score >= 75 ? 'B' : 'C') : null,
       summary: report.summary,
       categories: report.categories,
       field: report.field ?? null,
@@ -19,7 +19,7 @@ function finishAudit(siteId) {
         json: `workspace/${siteId}/seo/seo.json`,
         html: `workspace/${siteId}/seo/seo.html`,
         csv: `workspace/${siteId}/seo/seo.csv`,
-        diff: report.summary?.initialHtmlUnchecked > 0 ? null : `workspace/${siteId}/seo/diff.md`,
+        diff: report.summary?.baselineCompared === true ? `workspace/${siteId}/seo/diff.md` : null,
         uri: `heimdall://site/${encodeURIComponent(siteId)}/seo`,
       },
     };
@@ -54,6 +54,12 @@ export default {
         ? `SEO 审计结束：${job.status}。`
         : job.result?.summary?.initialHtmlUnchecked > 0
           ? `SEO 审计部分完成：${job.result.summary.initialHtmlUnchecked} 页未核对初始 HTML，未进行基线比对。`
+          : ['partial', 'unavailable'].includes(job.result?.summary?.sitemapCoverage)
+            ? 'SEO 审计部分完成：sitemap 采集不完整，分数仅供参考，未进行基线比对。'
+            : job.result?.summary?.failedPages > 0 || job.result?.summary?.baselinePagesUnchecked > 0
+              ? 'SEO 审计部分完成：存在未成功采集或未检查的页面，未进行基线比对。'
+              : job.result?.summary?.legacyBaseline
+                ? 'SEO 审计完成，但旧基线未记录采集完整性，本次未进行基线比对。'
           : `SEO 审计完成：${siteId}。`,
       nextActions: job => job.status === 'succeeded'
         ? [nextAction('heimdall_artifact', { uri: `heimdall://site/${encodeURIComponent(siteId)}/seo` }, '读取结构化 SEO 报告')]

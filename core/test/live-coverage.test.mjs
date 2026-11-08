@@ -158,12 +158,34 @@ test('off-origin sitemap pages are visible without enlarging the same-origin den
     clone(base, bundle, 'home', ORIGIN + '/');
     put(join(base, 'recon', 'atlas.json'), JSON.stringify({
       origin: ORIGIN, status: 'ok', nodes: [{ url: ORIGIN + '/' }],
-      meta: { maxPages: 3, maxDepth: 2, sitemap: { offOriginPages: 2, truncated: [] } },
+      meta: { maxPages: 3, maxDepth: 2, sitemap: { coverage: 'complete', offOriginPages: 2, truncated: [] } },
     }));
     const ledger = buildCoverageLedger({ baseDir: base, bundleDir: bundle, host: HOST, origin: ORIGIN, pageNames: ['home'] });
     assert.equal(ledger.denominator, 1);
     assert.equal(ledger.discovery.offOriginPages, 2);
     assert.equal(ledger.discovery.scopeLimited, false, 'foreign pages are outside the declared same-origin scope');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('incomplete and older unknown sitemap coverage limit the discovered scope', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-coverage-sitemap-state-'));
+  const base = join(dir, 'workspace', HOST);
+  const bundle = join(dir, 'bundle');
+  try {
+    clone(base, bundle, 'home', ORIGIN + '/');
+    const file = join(base, 'recon', 'atlas.json');
+    const atlas = { origin: ORIGIN, status: 'ok', nodes: [{ url: ORIGIN + '/' }],
+      meta: { maxPages: 3, sitemap: { coverage: 'unavailable', reasons: ['robots-unavailable'], truncated: [] } } };
+    put(file, JSON.stringify(atlas));
+    let ledger = buildCoverageLedger({ baseDir: base, bundleDir: bundle, host: HOST, origin: ORIGIN, pageNames: ['home'] });
+    assert.equal(ledger.discovery.scopeLimited, true);
+    assert.equal(ledger.discovery.sitemapCoverage, 'unavailable');
+    assert.deepEqual(ledger.discovery.sitemapReasons, ['robots-unavailable']);
+    delete atlas.meta.sitemap.coverage;
+    put(file, JSON.stringify(atlas));
+    ledger = buildCoverageLedger({ baseDir: base, bundleDir: bundle, host: HOST, origin: ORIGIN, pageNames: ['home'] });
+    assert.equal(ledger.discovery.sitemapCoverage, 'unknown');
+    assert.equal(ledger.discovery.scopeLimited, true);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

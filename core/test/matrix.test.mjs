@@ -18,7 +18,7 @@ const ENGINE = fileURLToPath(new URL('../src/engine-server.mjs', import.meta.url
 
 const audit = (host, specs) => ({
   host, score: 80,
-  summary: { issues: specs.length * 3, bySeverity: { high: 1, medium: 1, low: 1, info: 0 } },
+  summary: { issues: specs.length * 3, baselineEligible: true, sitemapCoverage: 'complete', bySeverity: { high: 1, medium: 1, low: 1, info: 0 } },
   pages: specs.map(s => ({
     url: `https://${host}${s.path}`, status: 200,
     titleLength: s.titleLen ?? 40, descriptionLength: s.descLen ?? 90,
@@ -71,6 +71,23 @@ test('matrix: html and csv render all sites', () => {
   assert.ok(csv.includes('a.test'));
 });
 
+test('matrix: incomplete and legacy audits do not compete using unverified scores', () => {
+  const complete = audit('complete.test', [{ path: '/' }]);
+  complete.pages[0].score = 90;
+  const partial = audit('partial.test', [{ path: '/' }]);
+  partial.summary.sitemapCoverage = 'partial';
+  partial.summary.baselineEligible = false;
+  const legacy = audit('legacy.test', [{ path: '/' }]);
+  delete legacy.summary.baselineEligible;
+  delete legacy.summary.sitemapCoverage;
+  const matrix = buildMatrix([complete, partial, legacy]);
+  assert.deepEqual(matrix.sites.map(site => site.aggregate.score), [80, null, null]);
+  assert.deepEqual(matrix.sites.map(site => site.aggregate.issuesPerPage), [3, null, null]);
+  assert.deepEqual(matrix.rows[0].cells.map(cell => cell.avgScore), [90, null, null]);
+  assert.match(renderMatrixHtml(matrix), /旧报告未记录采集状态/);
+  assert.match(renderMatrixCsv(matrix), /sitemap_coverage/);
+});
+
 test('matrix: CLI and API keep same-host HTTP and HTTPS origins separate', { timeout: 30_000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-matrix-origin-'));
   const workspace = join(root, 'workspace');
@@ -84,7 +101,7 @@ test('matrix: CLI and API keep same-host HTTP and HTTPS origins separate', { tim
       writeFileSync(join(dir, 'site-origin.json'), JSON.stringify({ origin }));
       writeFileSync(join(dir, 'seo', 'seo.json'), JSON.stringify({
         host: 'example.com', origin, score: 90 - index * 10,
-        pages: [], siteIssues: [], summary: { issues: 0 },
+        pages: [], siteIssues: [], summary: { issues: 0, baselineEligible: true, sitemapCoverage: 'complete' },
       }));
       return siteId;
     });
