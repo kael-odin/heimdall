@@ -162,6 +162,12 @@ try {
         assertions: [{ kind: 'visible', selector: '#menu' }, { kind: 'attribute', selector: '#menu-toggle', attribute: 'aria-expanded', equals: 'true' }, { kind: 'text', selector: '#literal', equals: 'assertion-literal-review-sentinel' }] }] };
     const launched = await api('runs', input, 202);
     const manifest = await waitFor(async () => { const value = await api('runs/' + launched.runId); return value.status === 'completed' && value; }, 'fresh worker complete', 60000);
+    // The manifest can be completed before the worker exits and releases its execution slot.
+    await waitFor(async () => {
+      const response = await fetch(base + '/api/status', { headers });
+      assert.equal(response.status, 200);
+      return (await response.json()).acceptance === null;
+    }, 'acceptance slot released', 30000);
     const report = await api('runs/' + launched.runId + '/report'); assert.equal(report.gate, 'failed'); assert.equal(report.checks.length, 14);
     samples.push({ runId: launched.runId, mode, input, manifest, originalFiles: runFiles(launched.runId) });
   }
