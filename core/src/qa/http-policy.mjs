@@ -1,6 +1,7 @@
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const verifiedBrowsers = new WeakSet();
+const ownedPages = new WeakSet();
 const originOf = value => { try { return new URL(value).origin; } catch { return null; } };
 
 function trustedOrigins(site, login) {
@@ -40,6 +41,7 @@ function trustedRequestFrame(request, site, login) {
   const origins = trustedOrigins(site, login);
   try {
     let frame = request.frame();
+    if (!ownedPages.has(frame.page())) return false;
     while (frame) {
       if (!origins.has(originOf(frame.url()))) return false;
       frame = frame.parentFrame();
@@ -51,6 +53,7 @@ function trustedRequestFrame(request, site, login) {
 /** Header credentials are added per request, never to the browser context. */
 export async function newQaPage(context, { site, login }) {
   const page = await context.newPage();
+  ownedPages.add(page);
   const configured = login?.contextOptions?.extraHTTPHeaders;
   if (!configured) return page;
   try {
@@ -126,15 +129,16 @@ export async function routeQaRequest(route, { site, login, onBlocked = () => {} 
   let url;
   try { url = new URL(request.url()); } catch { /* reject non-read requests without a URL */ }
   const allow = site.writeAllow ?? [];
-  const allowedWrite = site.writes === 'allow' || allow.some(prefix => url && (url.pathname === prefix || url.pathname.startsWith(prefix)));
+  const allowedWrite = site.writes === 'allow' || (method === 'POST' && url && allow.some(rule =>
+    rule && typeof rule === 'object' && rule.method === method && rule.origin === url.origin && rule.path === url.pathname));
   if (!isRead && !allowedWrite) {
-    onBlocked(request);
+    onBlocked(request, 'not-allowed');
     return route.abort('blockedbyclient').catch(() => {});
   }
   const checkWriteRedirect = !isRead && site.writes !== 'allow';
   if (!checkWriteRedirect) return route.continue().catch(() => {});
   if (!trustedRequestFrame(request, site, login)) {
-    onBlocked(request);
+    onBlocked(request, 'untrusted-page');
     return route.abort('blockedbyclient').catch(() => {});
   }
   const scoped = scopedHeaders(login, site, request.url());
@@ -145,7 +149,7 @@ export async function routeQaRequest(route, { site, login, onBlocked = () => {} 
     // A fulfilled response keeps browser redirects from inheriting injected credentials.
     response = await route.fetch({ ...(headers ? { headers } : {}), maxRedirects: 0 });
     if (checkWriteRedirect && REDIRECTS.has(response.status())) {
-      onBlocked(request);
+      onBlocked(request, 'redirect');
       return await route.abort('blockedbyclient').catch(() => {});
     }
     return await route.fulfill({ response });

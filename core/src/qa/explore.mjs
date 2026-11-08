@@ -11,7 +11,7 @@
  * 安全默认（这是工具自身的执行安全，不是对站点的合规限制）：
  *   · 只点 button / a[href] / summary / [role=button|tab|menuitem|switch|checkbox]；
  *   · 跳过表单提交、破坏性文案（删除/退出/支付…）、外链、下载、mailto/tel/javascript；
- *   · 所有写请求仍走站点的只读策略（默认拦截），点击不会真的下单/删除；
+ *   · HTTP 请求仍走站点策略；方法和文案过滤不能保证业务操作没有副作用；
  *   · 每个页面最多 N 个控件、整轮有预算，超时就停并如实报告未探索数。
  *
  * 探索会改变页面状态，所以**默认关闭**，由 `qa run --explore` 或 qa.json 的
@@ -156,7 +156,7 @@ export function skipReason(control, origin) {
   return null;
 }
 
-/** 用站点的只读策略开一个上下文：写请求拦截，登录档注入，与 probe 一致。 */
+/** 按站点的 HTTP 请求策略和登录档开上下文，与 probe 一致。 */
 async function openContext(browser, { site, login, viewport, health }) {
   const context = await browser.newContext({ ...BROWSER_PROFILE, viewport, serviceWorkers: 'block', acceptDownloads: false, ...browserContextOptions(login) });
   if (login.storage.length) {

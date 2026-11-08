@@ -14,7 +14,12 @@ export const WORKSPACE_ARG = { type: 'string', minLength: 1, maxLength: 1000, de
 
 export function wsOrError(args, ctx) {
   try { return openWorkspace(args.workspace, ctx); }
-  catch (e) { throw new CapabilityError(e.code === 'not_found' ? 'not_found' : 'invalid_args', e.message, { hint: '在测试工作区运行 `heimdall qa init`，或在 MCP 配置里设置 HEIMDALL_QA_WORKSPACE' }); }
+  catch (e) {
+    const missing = e.code === 'not_found';
+    const hint = missing ? '在测试工作区运行 `heimdall qa init`，或在 MCP 配置里设置 HEIMDALL_QA_WORKSPACE'
+      : '保留原工作区，按错误信息检查 .heimdall/qa.json；旧版放行规则的迁移见 docs/TEST-WORKSPACE.md。';
+    throw new CapabilityError(missing ? 'not_found' : 'invalid_args', e.message, { hint });
+  }
 }
 
 function loginHealth(ws, name) {

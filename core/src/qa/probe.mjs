@@ -10,8 +10,8 @@
  *   · 点击一律走 Playwright 的真实鼠标事件，不用 element.click()：后者不算用户手势，复制按钮会假失败
  *   · 读剪贴板前先授予 clipboard-read/write 权限；文字从浏览器里读，不经过 shell（避免 GBK 乱码假象）
  *   · 断言 contains 是子串，equals 是全等；断言写错会在报告里显示「断言没对上」而不是「功能坏了」
- *   · 默认拦下所有写请求（POST/PUT/PATCH/DELETE）；站点 writes: allow 全放行，
- *     或 writes: { allow: [路径前缀] } 只放行读语义的 POST（如 /api/xxx/getList）
+ *   · 默认拦下非 GET/HEAD/OPTIONS 的 HTTP 请求；站点 writes: allow 全放行，
+ *     或 writes: { allow: [规则] } 放行经人工确认的特定来源与路径的 POST
  */
 import { chromium } from 'playwright';
 import { scrubValues } from './workspace.mjs';
@@ -162,7 +162,7 @@ async function openContext(browser, { login, viewport, origin, writes, writeAllo
     }, login.storage);
   }
   await context.route('**/*', route => routeQaRequest(route, { site: { origin, writes, writeAllow }, login,
-    onBlocked: req => health.blocked.push({ method: req.method(), url: safeUrl(req.url()) }) }));
+    onBlocked: (req, reason) => health.blocked.push({ method: req.method(), url: safeUrl(req.url()), reason }) }));
   return context;
 }
 
@@ -286,7 +286,15 @@ function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo,
   for (const img of facts?.images ?? []) out.push({ kind: 'broken-image', path, title: `图片没加载出来：${img.alt || img.src.split('/').pop().slice(0, 60)}`, target: img.src.split('?')[0], basis: 'cosmetic', tier: 'tolerable', observed: img.src, evidence: ev() });
   if (facts && facts.overflowPx > 2) out.push({ kind: 'overflow', path, title: `横向溢出 ${Math.round(facts.overflowPx)}px（${viewport.width} 宽）`, target: facts.culprit ?? 'body',
     basis: viewport.width < 500 ? 'friction' : 'cosmetic', tier: 'tolerable', observed: `最先越界的元素：${facts.culprit ?? '未定位'}`, viewport: `${viewport.width}x${viewport.height}`, evidence: ev() });
-  for (const b of health.blocked.slice(0, 3)) out.push({ kind: 'blocked-write', path, title: `打开页面就发了写请求，已拦下：${b.method} ${b.url.split('?')[0].slice(-60)}`, target: b.url.split('?')[0], basis: 'friction', tier: 'tolerable', observed: `${b.method} ${b.url}`, evidence: ev(), note: '只读探测拦下所有写请求；如果这是正常埋点，用裁决记一条「设计如此」' });
+  for (const b of health.blocked.slice(0, 3)) {
+    const target = b.url.split('?')[0], shortTarget = target.slice(-60);
+    out.push({ kind: 'blocked-write', path,
+      title: `${b.reason === 'redirect' ? '请求的重定向已中止（原请求已发送）' : '请求被策略拦截'}：${b.method} ${shortTarget}`,
+      // Keep fingerprints compatible with verdicts recorded before the wording changed.
+      match: `打开页面就发了写请求，已拦下：${b.method} ${shortTarget}`,
+      target, basis: 'friction', tier: 'tolerable',
+      observed: `${b.method} ${b.url}；${b.reason === 'redirect' ? '原请求已到达服务器，后续跳转被中止' : '业务语义未确认'}`, evidence: ev() });
+  }
   return out;
 }
 

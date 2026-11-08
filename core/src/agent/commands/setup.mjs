@@ -352,7 +352,7 @@ export async function executeSetup(options = {}, io = {}) {
       clients: connectedClients,
       clientFailures,
       dataRoot: DATA_ROOT,
-      note: 'MCP 是 AI 客户端与 Heimdall 之间的插头；克隆、QA、SEO 等服务仍需要本机 :' + port + ' 引擎。',
+      note: '直连 MCP 可在没有常驻引擎时执行 QA；代理式 MCP 和控制台需要本机 :' + port + ' 引擎。克隆等任务可能按需启动临时引擎。',
     }, {
       summary: `Heimdall 已就绪：${base}\n${aiLine}\n看到 engine_unreachable 时检查 ${base}/api/status，不要检查 :5173。`,
       nextActions: [

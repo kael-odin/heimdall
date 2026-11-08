@@ -20,6 +20,7 @@ import { recordVerdict } from '../src/qa/memory.mjs';
 import { fileable } from '../src/qa/report.mjs';
 import { writeBaseline, readBaseline } from '../src/qa/baseline.mjs';
 import { invoke } from '../src/agent/registry/invoke.mjs';
+import { fingerprintOf } from '../src/qa/findings.mjs';
 import { newQaPage, qaBrowserLaunchOptions, routeQaRequest } from '../src/qa/http-policy.mjs';
 
 const PAGES = {
@@ -262,7 +263,8 @@ test('qa header login: credentials stay on the configured origin across assets, 
   const authorization = 'Bearer fixture-authorization-value';
   const apiKey = 'fixture-api-key-value';
   writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
-    project: 'Header origin fixture', sites: { web: { url: origin, pages: ['/'], login: 'headers', writes: { allow: ['/query-'] } } },
+    project: 'Header origin fixture', sites: { web: { url: origin, pages: ['/'], login: 'headers', writes: { allow:
+      ['/query-ok', '/query-redirect', '/query-foreign'].map(path => ({ method: 'POST', origin, path })) } } },
     logins: { headers: { kind: 'headers', headers: { Authorization: authorization, 'X-Api-Key': apiKey } } },
     defaults: { settleMs: 100, timeoutMs: 15000 },
   }));
@@ -295,7 +297,7 @@ test('qa header login: credentials stay on the configured origin across assets, 
     const browser = await chromium.launch(qaBrowserLaunchOptions(login));
     try {
       const context = await browser.newContext({ serviceWorkers: 'block' });
-      const site = { origin, writes: 'block', writeAllow: ['/query-'] };
+      const site = { origin, writes: 'block', writeAllow: ['/query-ok', '/query-redirect', '/query-foreign'].map(path => ({ method: 'POST', origin, path })) };
       await context.route('**/*', route => routeQaRequest(route, { site, login }));
       const page = await newQaPage(context, { site, login });
       await page.goto(origin, { waitUntil: 'networkidle', timeout: 10000 });
@@ -397,13 +399,15 @@ test('qa e2e: writes.allow whitelists read-semantics POST endpoints (POST-for-qu
   mkdirSync(join(root, '.heimdall'), { recursive: true });
   writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
     project: 'Allow',
-    sites: { web: { url: `${origin}/`, pages: ['/'], environment: 'test', writes: { allow: ['/api/track'] } } },
+    sites: { web: { url: `${origin}/`, pages: ['/'], environment: 'test', writes: { allow: [{ method: 'POST', origin, path: '/api/track' }] } } },
     defaults: { settleMs: 300, timeoutMs: 15000 },
   }));
   try {
     const ws = loadWorkspace(root);
-    assert.deepEqual(ws.sites.web.writeAllow, ['/api/track']);
+    assert.deepEqual(ws.sites.web.writeAllow, [{ method: 'POST', origin, path: '/api/track' }]);
     const run = await runQa(ws, { site: 'web', viewports: [1280] });
+    assert.deepEqual(run.run.requestPolicy, { mode: 'block', allowedQueries: [{ method: 'POST', origin, path: '/api/track' }] });
+    assert.match(readFileSync(run.files.report, 'utf8'), /1 条精确 POST 例外/);
     assert.ok(!run.findings.some(f => f.kind === 'blocked-write'), 'allowlisted POST passes the read-only gate');
     assert.ok(!run.findings.some(f => /BLOCKED_BY_CLIENT/.test(f.title ?? '')), 'no blocked-by-client console noise');
     assert.ok(srv.hits.trackPost > 0, 'the whitelisted POST actually reached the server');
@@ -445,6 +449,10 @@ test('qa e2e: probe, login profile, real clipboard, verdict memory across runs, 
     const first = await runQa(ws, { site: 'web', checksFile: 'checks.json', viewports: [1280] });
     const kinds = new Set(first.findings.map(f => f.kind));
     for (const k of ['broken-link', 'broken-image', 'overflow', 'console', 'network', 'blocked-write']) assert.ok(kinds.has(k), `detects ${k}`);
+    const blocked = first.findings.find(f => f.kind === 'blocked-write');
+    const target = `${origin}/api/track`;
+    assert.equal(blocked.fingerprint, fingerprintOf({ site: 'web', path: '/', kind: 'blocked-write', target,
+      text: `打开页面就发了写请求，已拦下：POST ${target.slice(-60)}` }), 'existing verdict fingerprints are retained');
     const checks = Object.fromEntries(first.run.coverage.checks.map(c => [c.id, c.pass]));
     assert.equal(checks['copy-ip'], true, 'clipboard check passes with a real click and granted permission');
     assert.equal(checks.price, true);

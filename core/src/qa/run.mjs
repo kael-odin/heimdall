@@ -172,6 +172,7 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
     schema: 'heimdall.qa-run/1', runId, project: ws.project, site: siteName, siteUrl: site.url, environment: site.environment,
     label: args.label ?? null, startedAt, endedAt: new Date().toISOString(),
     login: login.name ? { ...describeLogin(ws, login.name), expiresAt: login.expiresAt } : null,
+    requestPolicy: { mode: site.writes, allowedQueries: site.writeAllow ?? [] },
     coverage: {
       pages: probe.pages.map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}`, navError: p.navError,
         ...(p.unavailableReason ? { unavailableReason: p.unavailableReason } : {}), ...(p.detectorError ? { detectorError: p.detectorError } : {}),

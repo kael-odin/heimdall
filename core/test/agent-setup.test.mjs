@@ -113,6 +113,8 @@ test('setup is idempotent when every component is healthy', async () => {
   assert.equal(second.ok, true);
   assert.equal(first.result.engine.status, 'reused');
   assert.equal(second.result.engine.status, 'reused');
+  assert.match(first.result.note, /直连 MCP 可在没有常驻引擎时执行 QA/);
+  assert.match(first.result.note, /代理式 MCP 和控制台需要本机 :8912 引擎/);
   assert.deepEqual(calls, [['--version'], ['--version']]);
   assert.ok(first.result.steps.every(step => step.status === 'reused' || step.status === 'skipped'));
 });

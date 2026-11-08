@@ -2,12 +2,13 @@
  * MCP v2 一致性测试（E2-10）：用官方 client SDK 2.4.0 连 stdio 服务，
  * 两个协议时代（2025 握手 / 钉死 2026-07-28）都要通。
  *
- * 只测协议面与读类工具（不开浏览器、不需要引擎）：
- *   discover、tools/list 的顺序与注解、参数校验错误、overview / doctor 的信封、资源、提示词。
+ * 协议测试覆盖工具、参数校验、信封、资源和提示词。
+ * 直连 QA 集成测试另用真实 Chromium 和本地夹具，不需要常驻引擎。
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -130,5 +131,57 @@ test('mcp proxy fallback keeps the complete tool surface while the engine is off
     assert.match(doctor.structuredContent.summary, /引擎没在跑/);
   } finally {
     await client.close().catch(() => {});
+  }
+});
+
+test('fresh direct MCP enforces exact QA query rules without an available engine', { timeout: 60_000 }, async () => {
+  const root = fixtureRoot();
+  const hits = [];
+  const fixture = createServer((req, res) => {
+    hits.push({ method: req.method, path: req.url });
+    if (req.url === '/') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      return res.end(`<title>Fixture</title><script>
+        fetch('/api/query', {method:'POST'}).catch(()=>{});
+        fetch('/api/query/delete', {method:'POST'}).catch(()=>{});
+        fetch('/api/query', {method:'DELETE'}).catch(()=>{});
+      </script>`);
+    }
+    res.writeHead(204); res.end();
+  });
+  await new Promise(done => fixture.listen(0, '127.0.0.1', done));
+  const origin = `http://127.0.0.1:${fixture.address().port}`;
+  const rule = { method: 'POST', origin, path: '/api/query' };
+  const config = { sites: { web: { url: origin, writes: { allow: [rule] } } }, defaults: { settleMs: 100, timeoutMs: 15000 } };
+  const file = join(root, '.heimdall', 'qa.json');
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(file, JSON.stringify(config));
+  let client;
+  try {
+    client = await connect(root);
+    const overview = await client.callTool({ name: 'heimdall_overview', arguments: { include: ['engine'] } });
+    assert.ok(['unreachable', 'data_root_mismatch'].includes(overview.structuredContent.result.engine.status));
+    const status = await client.callTool({ name: 'heimdall_qa_status', arguments: { workspace: root, guidance: false } });
+    assert.equal(status.isError, false);
+    assert.deepEqual(status.structuredContent.result.sites[0].writeAllow, [rule]);
+    const run = await client.callTool({ name: 'heimdall_qa_run', arguments: { workspace: root, site: 'web', viewports: [1280],
+      linkCheck: false, detect: false, baseline: false } });
+    assert.equal(run.isError, false, JSON.stringify(run.structuredContent.error));
+    assert.deepEqual(run.structuredContent.result.navigation.failedPages, []);
+    assert.deepEqual(hits.filter(hit => hit.method !== 'GET'), [{ method: 'POST', path: '/api/query' }]);
+    assert.equal(existsSync(join(root, 'agent', 'engine.json')), false, 'the QA run did not start an engine for this data root');
+
+    config.sites.web.writes.allow = ['/api/query'];
+    writeFileSync(file, JSON.stringify(config));
+    const before = readFileSync(file, 'utf8');
+    const legacy = await client.callTool({ name: 'heimdall_qa_status', arguments: { workspace: root, guidance: false } });
+    assert.equal(legacy.isError, true);
+    assert.equal(legacy.structuredContent.error.code, 'invalid_args');
+    assert.match(legacy.structuredContent.error.hint, /保留原工作区/);
+    assert.equal(readFileSync(file, 'utf8'), before);
+  } finally {
+    await client?.close().catch(() => {});
+    fixture.close();
+    rmSync(root, { recursive: true, force: true });
   }
 });

@@ -3,13 +3,17 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadWorkspace, findWorkspace, resolveLogin, describeLogin, scrubSecrets, jwtExpiry } from '../src/qa/workspace.mjs';
 import { fingerprintOf, normalizeFinding, stablePath, stableText } from '../src/qa/findings.mjs';
 import { recordVerdict, readRules, revokeVerdict, applyVerdicts, normalizeMatch } from '../src/qa/memory.mjs';
 import { dice, findSimilar, guidance, readLedger } from '../src/qa/ledger.mjs';
+import { renderReport } from '../src/qa/report.mjs';
+import { invoke } from '../src/agent/registry/invoke.mjs';
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 export const fakeJwt = (payload) => `eyJhbGciOiJIUzI1NiJ9.${b64(payload)}.c2lnbmF0dXJlLXNpZ25hdHVyZQ`;
@@ -47,10 +51,12 @@ test('workspace: found upward, validated, logins resolved without leaking values
     assert.deepEqual(ws.sites.admin.pages.map(p => p.path), ['/admin/', '/admin/users']);
     assert.equal(ws.conventions.length, 2);
 
-    const allowRoot = workspace({ sites: { a: { url: 'http://x/', writes: { allow: ['/api/get/', '/api/getList'] } } } });
+    const rules = [{ method: 'POST', origin: 'http://x', path: '/api/get/' },
+      { method: 'POST', origin: 'https://api.example.test:8443', path: '/api/getList' }];
+    const allowRoot = workspace({ sites: { a: { url: 'http://x/', writes: { allow: rules } } } });
     try {
       const allowWs = loadWorkspace(allowRoot);
-      assert.deepEqual(allowWs.sites.a.writeAllow, ['/api/get', '/api/getList'], 'writes.allow prefixes normalize (trailing slash dropped)');
+      assert.deepEqual(allowWs.sites.a.writeAllow, rules, 'the origin and exact trailing slash are retained');
       assert.equal(allowWs.sites.a.writes, 'block');
     } finally { rmSync(allowRoot, { recursive: true, force: true }); }
 
@@ -78,14 +84,52 @@ test('workspace: bad configs are rejected with a readable reason', () => {
     [{ sites: { a: { url: 'http://u:p@x/' } } }, /账号密码/],
     [{ sites: { a: { url: 'http://x/', login: 'nope' } } }, /不存在的登录档/],
     [{ sites: { a: { url: 'http://x/', pages: ['//evil.test/'] } } }, /以 \/ 开头/],
-    [{ sites: { a: { url: 'http://x/', writes: { allow: [] } } } }, /非空路径数组/],
-    [{ sites: { a: { url: 'http://x/', writes: { allow: ['api/x'] } } } }, /以 \/ 开头/],
+    [{ sites: { a: { url: 'http://x/', writes: { allow: [] } } } }, /1 到 40 条/],
+    [{ sites: { a: { url: 'http://x/', writes: { allow: ['/api/x'] } } } }, /不再支持路径前缀/],
+    [{ sites: { a: { url: 'http://x/', writes: { allow: [{ method: 'DELETE', origin: 'http://x', path: '/api/x' }] } } } }, /只能是 POST/],
+    [{ sites: { a: { url: 'http://x/', writes: { allow: [{ method: 'POST', path: '/api/x' }] } } } }, /完整来源/],
+    [{ sites: { a: { url: 'http://x/', writes: { allow: [{ method: 'POST', origin: 'http://x/api', path: '/api/x' }] } } } }, /协议、主机和端口/],
+    [{ sites: { a: { url: 'http://x/', writes: { allow: [{ method: 'POST', origin: 'http://x?token=x', path: '/api/x' }] } } } }, /协议、主机和端口/],
+    ...['//api/x', '/api/x?foo=1', '/api/x#fragment', '/api/%2fdelete', '/api/../x', '/api\\delete', '/api/x y'].map(path =>
+      [{ sites: { a: { url: 'http://x/', writes: { allow: [{ method: 'POST', origin: 'http://x', path }] } } } }, /精确路径/]),
+    [{ sites: { a: { url: 'http://x/', writes: { allow: [{ method: 'POST', origin: 'http://x', path: '/api/x', prefix: true }] } } } }, /只包含/],
+    [{ sites: { a: { url: 'http://x/', writes: { allow: Array(41).fill({ method: 'POST', origin: 'http://x', path: '/api/x' }) } } } }, /1 到 40 条/],
     [{ sites: { a: { url: 'http://x/', writes: 3 } } }, /block \/ allow/],
     [{ sites: { a: { url: 'http://x/' } }, logins: { b: { kind: 'script', code: 'alert(1)' } } }, /kind 只能是/],
   ]) {
     const root = workspace(config);
     try { assert.throws(() => loadWorkspace(root), pattern); } finally { rmSync(root, { recursive: true, force: true }); }
   }
+});
+
+test('reports describe the actual request policy without promising read-only behavior', () => {
+  const base = { runId: 'qa-fixture', site: 'web', siteUrl: 'http://x', environment: 'test', startedAt: '2026-01-01T00:00:00Z',
+    login: null, summary: { suppressed: 0, knownBug: 0 }, coverage: { viewports: [], pages: [], checks: [] } };
+  const report = policy => renderReport({ ws: { project: 'fixture' }, run: { ...base, ...(policy ? { requestPolicy: policy } : {}) }, findings: [], hits: [] });
+  assert.match(report({ mode: 'block', allowedQueries: [] }), /0 条精确 POST 例外/);
+  assert.match(report({ mode: 'block', allowedQueries: [{}] }), /1 条精确 POST 例外/);
+  assert.match(report({ mode: 'allow', allowedQueries: [] }), /放行所有 HTTP 方法，可能修改数据/);
+  assert.match(report(null), /历史运行未记录请求策略/);
+  assert.doesNotMatch(report({ mode: 'block', allowedQueries: [] }), /拦下了所有写请求/);
+});
+
+test('legacy allowlists fail closed in MCP and CLI with a migration hint and no edits', async () => {
+  const root = workspace({ sites: { web: { url: 'http://x/', writes: { allow: ['/api/query'] } } } });
+  const file = join(root, '.heimdall', 'qa.json');
+  try {
+    const before = readFileSync(file, 'utf8');
+    const mcp = await invoke('qa_status', { workspace: root, guidance: false }, { client: 'mcp' });
+    assert.equal(mcp.error.code, 'invalid_args');
+    assert.match(mcp.error.message, /不再支持路径前缀/);
+    assert.match(mcp.error.hint, /保留原工作区/);
+    const cli = spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli.mjs', import.meta.url)),
+      'qa', 'status', '--workspace', root, '--json'], { encoding: 'utf8', windowsHide: true });
+    assert.notEqual(cli.status, 0);
+    const envelope = JSON.parse(cli.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(envelope.error.code, 'invalid_args');
+    assert.match(envelope.error.hint, /保留原工作区/);
+    assert.equal(readFileSync(file, 'utf8'), before);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('findings: fingerprint ignores numbers, hashes and queries; evidence gate', () => {

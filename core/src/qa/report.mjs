@@ -13,7 +13,7 @@ const TIER = { wall: '撞墙', degrade: '受损', tolerable: '可容忍' };
 const BASIS = { failed: '实测失败', wrong: '结果错误', promise: '与承诺/PRD 不符', friction: '能用但费劲', cosmetic: '措辞/视觉小瑕疵' };
 const KIND = {
   console: '控制台', network: '网络', 'broken-link': '坏链', 'broken-image': '坏图', overflow: '横向溢出', 'login-expired': '登录态',
-  assertion: '检查点', text: '文案', 'design-text': '设计稿文案', agent: 'AI 提交', 'blocked-write': '写请求', navigation: '打不开',
+  assertion: '检查点', text: '文案', 'design-text': '设计稿文案', agent: 'AI 提交', 'blocked-write': '请求策略', navigation: '打不开',
   a11y: '无障碍', layout: '布局', content: '内容', security: '安全', perf: '性能', blank: '白屏',
   interaction: '交互', regression: '回归',
 };
@@ -138,8 +138,13 @@ export function renderReport({ ws, run, findings, hits }) {
     out.push('', '| 检查点 | 结果 |', '| --- | --- |');
     for (const c of run.coverage.checks) out.push(`| ${esc(c.title)} | ${c.blockedReason === 'login-expired' ? '登录失效，未完成' : c.pass ? '通过' : c.error ? '执行出错' : '未通过'} |`);
   }
+  out.push('', '## 请求策略', '');
+  if (!run.requestPolicy) out.push('- 历史运行未记录请求策略；请核对当时的配置和证据。');
+  else if (run.requestPolicy.mode === 'allow') out.push('- 本次配置放行所有 HTTP 方法，可能修改数据。');
+  else out.push(`- 默认拦截非 GET/HEAD/OPTIONS 的 HTTP 请求；另配置 ${run.requestPolicy.allowedQueries?.length ?? 0} 条精确 POST 例外。`);
+  out.push('- HTTP 方法和路径不能证明业务只读，查询参数、请求体及非 HTTP 操作也不受该规则完整约束。');
   out.push('', '## 没测到的', '');
-  out.push('- 只读探测拦下了所有写请求：下单、支付、提交表单这类流程没有走到底。');
+  out.push('- 本报告列出的页面、检查点与探索之外，不代表已验证下单、支付或其他业务流程。');
   out.push('- 检查点之外的业务规则（价格计算、权限、数据口径）需要按 PRD 写检查点，或由 AI 测试后用 `heimdall qa submit` 提交。');
   if (!run.login) out.push('- 这次没带登录档，需要登录的页面没测。');
   out.push('', '## 怎么处理这份报告', '');

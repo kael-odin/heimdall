@@ -25,7 +25,10 @@
       "login": "user",
       "loginPath": "/login",
       "loggedOutText": ["请登录", "登录后"],
-      "writes": { "allow": ["/api/getList", "/api/query"] }
+      "writes": { "allow": [
+        { "method": "POST", "origin": "https://api.example.com", "path": "/api/getList" },
+        { "method": "POST", "origin": "https://app.example.com", "path": "/api/query" }
+      ] }
     }
   },
   "logins": {
@@ -70,13 +73,17 @@
 | `login` | 引用 `logins` 里的登录档；`null` = 不登录 |
 | `loginPath` | 登录页路径；登录过期判定会排除它 |
 | `loggedOutText` | 页面上出现这些文字就判「登录态失效」（默认有一组常见文案） |
-| `writes` | 只读探测的写请求策略，见下 |
+| `writes` | HTTP 请求策略，见下；不保证业务只读 |
 
-**`writes`（写请求策略）**——探测默认拦下所有 POST/PUT/PATCH/DELETE，保护正式环境：
+**`writes`（HTTP 请求策略）**——探测默认拦下非 GET/HEAD/OPTIONS 的 HTTP 请求：
 
 - `"block"`（默认）：全部拦下，被拦的记成「可容忍」发现；
-- `"allow"`：全部放行（只建议对测试环境用）；
-- `{ "allow": ["/api/getList", …] }`：**路径前缀白名单**。国内后端普遍用 POST 传查询参数（`/api/web_package/getStaticPackageList` 这类「读语义 POST」），全拦会让页面残掉、报告全是噪声——把这些前缀放进来，页面正常渲染，探测照样拦住真正的写操作。前缀按 pathname 匹配：`/api/get` 同时放行 `/api/getList` 和 `/api/get/xxx`。
+- `"allow"`：所有 HTTP 方法全部放行，包含真正的写操作；只在明确允许修改数据的隔离测试环境中使用；
+- `{ "allow": [{ "method": "POST", "origin": "https://api.example.com", "path": "/api/getList" }] }`：只放行人工确认过的 POST 查询。来源必须写协议、主机和端口；路径逐字匹配，末尾 `/` 也有区别。只允许 `POST`，不放行同路径的 `PUT`、`PATCH`、`DELETE`，也不放行其他来源、子路径或相似路径。最多配置 40 条。路径不能含查询字符串、`%` 编码或 `..` 等特殊路径段。
+
+**旧配置迁移：** 原先的字符串前缀（例如 `"/api/get"`）现在会使工作区配置报错，不能继续运行。逐项查明实际请求的完整来源、方法和路径，确认接口没有副作用后，分别改写成上述对象；不能把一个前缀直接猜成多个接口，也不能用 `"allow"` 绕过错误。历史配置和旧运行记录不会自动改写。
+
+例外只校验方法、来源和路径，**不限制查询参数或请求体**，也不证明接口真的只读。GET/HEAD/OPTIONS 同样可能被业务后端设计成修改数据；WebSocket 消息和其他非 HTTP 操作不受这条策略完整约束。测试前须由业务负责人确认接口语义、账号权限和环境，并准备必要的数据保护措施。请求即使最终被重定向拦截，原始请求也已到达服务器，无法撤销服务端副作用。
 
 ### logins（登录档，只声明式，不执行任意脚本）
 
@@ -88,7 +95,7 @@
 
 `fromFile` 的 `section` 先截取段落（到下一个 `##` 为止），再按 `match` 取值——一个凭据文件里放多套环境时用。已知且长度至少为 8 的凭据原文，会从运行结果、报告和 `texts.json` 中替换为 `[凭据已移除]`。这不能识别截断、编码或变形后的凭据；截图也不会自动打码。运行目录可能包含业务数据和敏感画面，分享前须人工检查。
 
-`headers` 登录档只向指定 `origin` 发送凭据；不填时使用站点自身的来源。来源包含协议、主机和端口，必须完全一致。跳转一旦离开站点或登录来源，即使再跳回来也不会重新附加凭据。第三方嵌入页面不能借用凭据；新弹窗和部分独立进程的嵌入页面不会自动获得登录头，需要单独配置站点检查。此模式自动启动启用站点进程隔离的 Chromium；代码调用时如自行传入浏览器，也必须同时使用 `--site-per-process` 和 `--enable-automation`，否则无法验证隔离状态。隔离机制无法启用时，本次运行直接停止，不会退回全局请求头。受限的 `writes.allow` 查询如来自第三方嵌入页面或返回重定向，将被拦截，避免绕过白名单；确需该查询时应检查后端接口或调整测试方案。
+`headers` 登录档只向指定 `origin` 发送凭据；不填时使用站点自身的来源。来源包含协议、主机和端口，必须完全一致。跳转一旦离开站点或登录来源，即使再跳回来也不会重新附加凭据。第三方嵌入页面不能借用凭据；新弹窗和部分独立进程的嵌入页面不会自动获得登录头，需要单独配置站点检查。此模式自动启动启用站点进程隔离的 Chromium；代码调用时如自行传入浏览器，也必须同时使用 `--site-per-process` 和 `--enable-automation`，否则无法验证隔离状态。隔离机制无法启用时，本次运行直接停止，不会退回全局请求头。受限的 `writes.allow` 查询只接受 Heimdall 主动创建的测试页及其可信子框架；来自弹窗、第三方嵌入页面或返回重定向的查询将被拦截。被拦截的重定向指后续请求，不代表原请求未送达。
 
 ### conventions（团队约定）
 
@@ -134,6 +141,8 @@ heimdall qa rules                 # 列出已记的裁决规则
 
 MCP / HTTP 同样可用：`heimdall_qa_status`、`heimdall_qa_run`、`heimdall_qa_findings`、`heimdall_qa_ci`（`qa_findings` 一个工具七个动作：list / show / similar / submit / verdict / revoke / rules）。`qa_run` 的 `checks` 参数直接收检查点数组（steps + expect，全是真实输入事件；`prd` 字段注明出处）。
 
+完整的直连 MCP 是由 AI 客户端启动的本机进程；它可以不依赖常驻 `:8900` 引擎直接执行 QA，但仍需要测试工作区、Chromium 和目标网络。代理式 MCP 则把调用转发给引擎，需要引擎可用。升级代码后，直连 MCP 进程不会自动重新加载，须重启该 MCP 进程或 AI 客户端；仅重启引擎不能更新仍在运行的直连 MCP。代理式接入应重启引擎，并确认客户端实际连接的是新引擎。
+
 ## 无参照物检测（默认开启）
 
 没有参照站也能看出的问题：页面能跑，但看起来或读起来不对。每次 `qa run` 会在每个页面、每个视口执行一组页面内检测，结果进入同一个发现流（同样的指纹、裁决、证据门槛与报告）：
@@ -161,7 +170,7 @@ MCP / HTTP 同样可用：`heimdall_qa_status`、`heimdall_qa_run`、`heimdall_q
 - **点击触发异常**：点击后新增页面异常；
 - **点击后请求失败**：点击后新增 4xx/5xx。
 
-安全默认：只点 `button` / `a[href]` / `summary` / `role=button|tab|menuitem|switch|checkbox`；跳过删除、退出、支付等破坏性文案、表单提交、站外链接、下载、`mailto`/`tel`/`javascript:`；写请求仍按站点的 `writes` 只读策略拦截，点击不会真的下单或删除。每页默认最多 6 个控件、整轮 60 秒预算，超出会如实写进覆盖范围（`coverage.explore`）。
+安全默认：只点 `button` / `a[href]` / `summary` / `role=button|tab|menuitem|switch|checkbox`；跳过删除、退出、支付等破坏性文案、表单提交、站外链接、下载、`mailto`/`tel`/`javascript:`；HTTP 请求按站点的 `writes` 策略处理。文案过滤和 HTTP 方法不能保证点击没有副作用；必须结合业务语义和账号权限判断。每页默认最多 6 个控件、整轮 60 秒预算，超出会如实写进覆盖范围（`coverage.explore`）。
 
 探索会改变页面状态，所以**默认关闭**；对正式环境建议先在测试环境跑，或把 `defaults.explore.maxPerPage` 调小。
 
@@ -220,4 +229,4 @@ Xspark接手测试/
 └─ 09-全局问题总报告/data/issues.json   # ledger.file 指向的台账（54 条，含 close/accepted 理由）
 ```
 
-要点：admin 后台 JWT 注入 localStorage 用 `jwtClaims` 从 token 拼出 `_user_info`/`_permission`，不用手抄；官网定价页配了 `writes: { "allow": ["/api/web_package/getStatic"] }`，读语义 POST 放行、写请求照拦。
+要点：admin 后台 JWT 注入 localStorage 用 `jwtClaims` 从 token 拼出 `_user_info`/`_permission`，不用手抄；读语义 POST 必须逐条配置准确的 `method`、`origin` 和 `path`，并先确认业务语义。

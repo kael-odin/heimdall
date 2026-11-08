@@ -89,6 +89,24 @@ function normalizeClaims(name, raw) {
   });
 }
 
+function normalizeWriteRule(name, rule, index) {
+  const label = `站点 ${name}.writes.allow[${index}]`;
+  if (typeof rule === 'string') fail(`${label} 不再支持路径前缀；请改为明确的 { method: "POST", origin, path }，并逐项确认接口只读`);
+  if (!object(rule) || Object.keys(rule).some(key => !['method', 'origin', 'path'].includes(key))) {
+    fail(`${label} 应只包含 method、origin 和 path`);
+  }
+  if (rule.method !== 'POST') fail(`${label}.method 只能是 POST`);
+  if (typeof rule.origin !== 'string') fail(`${label}.origin 应为完整来源`);
+  const origin = httpUrl(rule.origin, `${label}.origin`);
+  if (origin.pathname !== '/' || /[?#]/.test(rule.origin)) fail(`${label}.origin 只能包含协议、主机和端口`);
+  const path = rule.path;
+  if (typeof path !== 'string' || !path.startsWith('/') || path.includes('//') || /[\\?#%\x00-\x20\x7f]/.test(path)
+    || new URL(path, 'http://example.invalid').pathname !== path) {
+    fail(`${label}.path 应为不含查询、编码或特殊路径段的精确路径`);
+  }
+  return { method: 'POST', origin: origin.origin, path };
+}
+
 function normalizeSite(name, raw, profiles) {
   if (!NAME.test(name)) fail(`站点名 ${name} 只能用字母、数字、_、-`);
   if (!object(raw)) fail(`站点 ${name} 应为对象`);
@@ -103,16 +121,13 @@ function normalizeSite(name, raw, profiles) {
   const writes = raw.writes ?? 'block';
   let writeMode = 'block', writeAllow = [];
   if (typeof writes === 'string') {
-    if (!['block', 'allow'].includes(writes)) fail(`站点 ${name}.writes 只能是 block / allow / { allow: [路径] }`);
+    if (!['block', 'allow'].includes(writes)) fail(`站点 ${name}.writes 只能是 block / allow / { allow: [规则] }`);
     writeMode = writes;
   } else if (object(writes)) {
-    // POST-for-query 的后端（如 /api/xxx/getList）在只读探测下会残：显式白名单这些「读语义」前缀
-    if (!Array.isArray(writes.allow) || !writes.allow.length) fail(`站点 ${name}.writes.allow 要是非空路径数组`);
-    writeAllow = writes.allow.slice(0, 40).map((p) => {
-      if (typeof p !== 'string' || !p.startsWith('/') || p.startsWith('//')) fail(`站点 ${name}.writes.allow 的 ${JSON.stringify(p)} 应以 / 开头`);
-      return p.replace(/\/+$/, '') || '/';
-    });
-  } else fail(`站点 ${name}.writes 只能是 block / allow / { allow: [路径] }`);
+    if (Object.keys(writes).some(key => key !== 'allow')) fail(`站点 ${name}.writes 只能包含 allow`);
+    if (!Array.isArray(writes.allow) || !writes.allow.length || writes.allow.length > 40) fail(`站点 ${name}.writes.allow 应为 1 到 40 条规则`);
+    writeAllow = writes.allow.map((rule, index) => normalizeWriteRule(name, rule, index));
+  } else fail(`站点 ${name}.writes 只能是 block / allow / { allow: [规则] }`);
   return {
     name, label: String(raw.label ?? name).slice(0, 60), url: url.href, origin: url.origin, login, pages, writes: writeMode,
     ...(writeAllow.length ? { writeAllow } : {}),

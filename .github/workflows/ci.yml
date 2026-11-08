@@ -291,6 +291,8 @@ jobs:
       # MCP tests load the Core capability registry, which imports Playwright.
       # Keep the MCP install fresh while providing that real cross-package runtime.
       - run: pnpm -C core install --frozen-lockfile
+      # The direct MCP QA integration test exercises a real browser against a local fixture.
+      - run: pnpm -C core exec playwright install --with-deps chromium
       - run: pnpm -C packages/mcp install --frozen-lockfile
       - run: pnpm -C packages/mcp test
       - run: pnpm -C packages/mcp check:plugin
