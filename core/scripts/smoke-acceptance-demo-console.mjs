@@ -48,6 +48,23 @@ const delay = ms => new Promise(ready => setTimeout(ready, ms));
 const errorOf = error => ({ name: error?.name, message: error?.message, code: error?.code, stack: error?.stack,
   ...(error?.cause ? { cause: { name: error.cause.name, message: error.cause.message, code: error.cause.code } } : {}) });
 
+export function isAbortedGetCapture({ method, status, captureError, requestFailure, requestFinished, signalAborted }) {
+  return method === 'GET' && status >= 200 && status < 300
+    && /\babort(?:ed|error)?\b/i.test(captureError?.message ?? '')
+    && (requestFailure?.errorText === 'net::ERR_ABORTED'
+      || (!requestFailure && requestFinished === true && signalAborted === true));
+}
+
+export async function waitForRequestOutcome(request, state, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  let failure = request.failure();
+  while (!failure && !state.finished && Date.now() < deadline) {
+    await delay(Math.min(25, Math.max(1, deadline - Date.now())));
+    failure = request.failure();
+  }
+  return { requestFailure: failure, requestFinished: state.finished === true };
+}
+
 function fileFact(path) {
   const stat = fs.lstatSync(path);
   assert.equal(stat.isSymbolicLink(), false, 'No linked evidence: ' + path);
@@ -179,7 +196,11 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
       const item = globalThis.__heimdallSmokeResponses?.find(entry => entry.id === value && entry.done);
       return item || null;
     }, id), label + ': page-side response body');
-    if (captured.error) throw new Error(label + ': page-side response capture failed: ' + captured.error);
+    if (captured.error) {
+      const error = new Error(label + ': page-side response capture failed: ' + captured.error);
+      error.pageCapture = { signalAborted: captured.signalAborted === true, errorName: captured.errorName ?? null };
+      throw error;
+    }
     return { capture: captured, bytes: Buffer.from(captured.bodyBase64, 'base64') };
   }
   async function responseValue(name, response, expectedStatus) {
@@ -274,10 +295,14 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
           record.status = response.status;
           response.clone().arrayBuffer().then(bytes => {
             record.bytes = bytes.byteLength; record.bodyBase64 = base64(new Uint8Array(bytes)); record.done = true;
-          }, error => { record.error = error?.message || String(error); record.done = true; });
+          }, error => {
+            record.error = error?.message || String(error); record.errorName = error?.name ?? null;
+            record.signalAborted = request.signal.aborted; record.done = true;
+          });
           return response;
         } catch (error) {
-          record.error = error?.message || String(error); record.done = true; throw error;
+          record.error = error?.message || String(error); record.errorName = error?.name ?? null;
+          record.signalAborted = request.signal.aborted; record.done = true; throw error;
         }
       };
     });
@@ -295,8 +320,9 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
         path: url.pathname, query: url.search, headers: request.headers(),
         captureId: request.headers()['x-heimdall-smoke-request-id'] ?? null, ...(body ? { raw: save(prefix + '-request.bin', body) } : {}) };
       if (body) { try { entry.body = JSON.parse(body.toString('utf8')); } catch { entry.bodyIsJson = false; } }
-      browserRequests.push(entry); requestMap.set(request, { entry, prefix });
+      browserRequests.push(entry); requestMap.set(request, { entry, prefix, finished: false });
     });
+    page.on('requestfinished', request => { const known = requestMap.get(request); if (known) known.finished = true; });
     page.on('response', response => {
       const known = requestMap.get(response.request()); if (!known) return;
       track((async () => {
@@ -309,12 +335,17 @@ export async function runAcceptanceDemoConsoleSmoke({ outDir } = {}) {
         }
         catch (error) {
           entry.bodyCaptureError = errorOf(error);
-          const pageAbortedSuccessfulGet = known.entry.method === 'GET' && response.status() >= 200
-            && response.status() < 300 && /aborted a request/i.test(error?.message ?? '');
-          if (pageAbortedSuccessfulGet) {
+          let outcome = { requestFailure: response.request().failure(), requestFinished: known.finished };
+          if (known.entry.method === 'GET' && response.status() >= 200 && response.status() < 300
+            && /\babort(?:ed|error)?\b/i.test(error?.message ?? '')) {
+            outcome = await waitForRequestOutcome(response.request(), known);
+          }
+          const signalAborted = error.pageCapture?.signalAborted === true;
+          if (isAbortedGetCapture({ method: known.entry.method, status: response.status(), captureError: error, ...outcome, signalAborted })) {
             entry.bodyCaptureSkipped = {
               reason: 'page-side clone aborted after an HTTP 2xx response',
               error: entry.bodyCaptureError,
+              ...outcome, signalAborted,
             };
           } else {
             captureFailures.push({ at: new Date().toISOString(), stage, requestSequence: known.entry.sequence,
