@@ -65,7 +65,9 @@ const PAGES = {
     };</script></html>`,
   '/client-blocked': `<!doctype html><html lang="zh-CN"><title>请求分类对照</title><h1>请求分类对照</h1>
     <img src="/blocked-image.png" alt="blocked image"><script src="/blocked-script.js"></script>
-    <script>fetch('/real-failure').catch(() => {}); console.error('fixture actual error');</script></html>`,
+    <script>fetch('/real-failure').catch(() => {}); fetch('/blocked-query', { method: 'POST' }).catch(() => {});
+      fetch('/policy-write', { method: 'POST' }).catch(() => {}).then(() => fetch('/policy-write', { method: 'POST' }).catch(() => {}));
+      console.error('fixture actual error');</script></html>`,
   '/check-rows': `<!doctype html><html lang="zh-CN"><title>表格检查对照</title><h1>表格检查对照</h1>
     <div id="bad"><span class="date">2026-11-08</span><span class="date">2026-11-09T08:09:10Z</span></div>
     <div id="good"><span class="date" style="visibility:hidden">measurement</span><span class="date">2026-11-08</span><span class="date">2026-11-09</span></div>
@@ -109,9 +111,11 @@ test('qa distinguishes client-blocked resources from real network and script fai
     browser.newContext = async options => {
       const context = await newContext(options);
       const route = context.route.bind(context);
+      let policyWrites = 0;
       context.route = (pattern, handler, ...rest) => route(pattern, (r, ...args) => {
         const path = new URL(r.request().url()).pathname;
-        if (['/blocked-image.png', '/blocked-script.js'].includes(path)) return r.abort('blockedbyclient');
+        if (['/blocked-image.png', '/blocked-script.js', '/blocked-query'].includes(path)) return r.abort('blockedbyclient');
+        if (path === '/policy-write' && ++policyWrites === 2) return r.abort('blockedbyclient');
         if (path === '/real-failure') return r.abort('failed');
         return handler(r, ...args);
       }, ...rest);
@@ -121,11 +125,14 @@ test('qa distinguishes client-blocked resources from real network and script fai
       linkCheck: false, detect: false, baseline: false }, { browser });
     const findings = output.findings;
     const environment = findings.filter(f => f.kind === 'network' && f.confidence === 'environment');
-    assert.equal(output.run.coverage.pages[0].counts.clientBlocked, 2);
-    assert.equal(environment.length, 2);
-    assert.ok(environment.every(f => /blocked-(image|script)/.test(f.target)));
+    assert.equal(output.run.coverage.pages[0].counts.clientBlocked, 4);
+    assert.equal(output.run.coverage.pages[0].counts.blocked, 1);
+    assert.equal(environment.length, 4);
+    assert.ok(environment.some(f => f.target.endsWith('/blocked-query')));
+    assert.ok(findings.some(f => f.kind === 'blocked-write' && f.target.endsWith('/policy-write')));
+    assert.equal(environment.filter(f => f.target.endsWith('/policy-write')).length, 1);
     assert.ok(!findings.some(f => f.kind === 'broken-image' && f.target.includes('blocked-image.png')));
-    assert.ok(!findings.some(f => f.kind === 'network' && f.confidence !== 'environment' && /blocked-(image|script)/.test(f.target)));
+    assert.ok(!findings.some(f => f.kind === 'network' && f.confidence !== 'environment' && /blocked-(image|script|query)/.test(f.target)));
     assert.ok(!findings.some(f => f.kind === 'console' && /ERR_BLOCKED_BY_CLIENT/i.test(f.observed)));
     assert.ok(findings.some(f => f.kind === 'network' && f.confidence !== 'environment' && f.target.endsWith('/real-failure')));
     assert.ok(findings.some(f => f.kind === 'console' && f.observed.includes('fixture actual error')));
@@ -137,9 +144,25 @@ test('qa distinguishes client-blocked resources from real network and script fai
       linkCheck: false, detect: false, baseline: false }, { browser });
     assert.equal(checkOnly.run.coverage.pages[0].counts.clientBlocked, 0);
     assert.equal(checkOnly.run.coverage.checks[0].pass, true);
-    assert.equal(checkOnly.run.coverage.checks[0].clientBlocked, 2);
-    assert.equal(checkOnly.run.summary.environment, 2);
-    assert.equal(checkOnly.findings.filter(f => f.confidence === 'environment').length, 2);
+    assert.equal(checkOnly.run.coverage.checks[0].blocked, 1);
+    assert.equal(checkOnly.run.coverage.checks[0].clientBlocked, 4);
+    assert.equal(checkOnly.run.summary.environment, 4);
+    assert.equal(checkOnly.findings.filter(f => f.confidence === 'environment').length, 4);
+    assert.ok(checkOnly.findings.some(f => f.kind === 'blocked-write' && f.target.endsWith('/policy-write')));
+
+    const expiredWorkspace = loadWorkspace(root);
+    expiredWorkspace.sites.web.loggedOutText = ['请求分类对照'];
+    const expiredCheck = await runQa(expiredWorkspace, { site: 'web', login: 'stale', pages: ['/pricing'], viewports: [1280],
+      checks: [{ id: 'expired-blocked', title: '失效登录和请求拦截', path: '/client-blocked', expect: [{ kind: 'title', contains: '请求分类对照' }] }],
+      linkCheck: false, detect: false, baseline: false }, { browser });
+    assert.equal(expiredCheck.run.coverage.checks[0].blockedReason, 'login-expired');
+    assert.equal(expiredCheck.run.coverage.checks[0].blocked, 1);
+    assert.equal(expiredCheck.run.coverage.checks[0].clientBlocked, 4);
+    assert.equal(expiredCheck.findings.filter(f => f.kind === 'login-expired').length, 1);
+    const expiredEnvironment = expiredCheck.findings.filter(f => f.kind === 'network' && f.confidence === 'environment');
+    assert.equal(expiredEnvironment.length, 4);
+    assert.ok(expiredEnvironment.every(f => f.seen === 1));
+    assert.equal(expiredCheck.findings.find(f => f.kind === 'blocked-write')?.seen, 1);
   } finally { await browser.close(); srv.close(); rmSync(root, { recursive: true, force: true }); }
 });
 

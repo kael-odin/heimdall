@@ -253,7 +253,10 @@ async function openContext(browser, { login, viewport, origin, writes, writeAllo
     }, login.storage);
   }
   await context.route('**/*', route => routeQaRequest(route, { site: { origin, writes, writeAllow }, login,
-    onBlocked: (req, reason) => health.blocked.push({ method: req.method(), url: safeUrl(req.url()), reason }) }));
+    onBlocked: (req, reason) => {
+      health.blockedRequests.add(req);
+      health.blocked.push({ method: req.method(), url: safeUrl(req.url()), reason });
+    } }));
   return context;
 }
 
@@ -267,9 +270,12 @@ function watch(page, health, origin) {
   });
   page.on('requestfailed', req => {
     const why = req.failure()?.errorText ?? '';
-    if (!READ_METHODS.has(req.method().toUpperCase())) return;
-    if (isClientBlocked(why)) health.clientBlocked.push({ url: safeUrl(req.url()), why: clip(why, 80), type: req.resourceType() });
-    else if (!/ERR_ABORTED/i.test(why)) health.failed.push({ url: safeUrl(req.url()), why: clip(why, 80) });
+    const method = req.method().toUpperCase(), url = safeUrl(req.url());
+    if (isClientBlocked(why)) {
+      if (!health.blockedRequests.has(req)) {
+        health.clientBlocked.push({ method, url, why: clip(why, 80), type: req.resourceType() });
+      }
+    } else if (READ_METHODS.has(method) && !/ERR_ABORTED/i.test(why)) health.failed.push({ url, why: clip(why, 80) });
   });
   page.on('dialog', d => d.dismiss().catch(() => {}));
 }
@@ -297,7 +303,7 @@ async function checkLinks(context, links, origin, { site, login, limit = 60, tim
   }
   return { checked: seen.size, broken };
 }
-const emptyHealth = () => ({ console: [], pageErrors: [], http: [], failed: [], blocked: [], clientBlocked: [] });
+const emptyHealth = () => ({ console: [], pageErrors: [], http: [], failed: [], blocked: [], blockedRequests: new WeakSet(), clientBlocked: [] });
 
 /**
  * 跑一遍无参照物检测：先读 Web Vitals，再把检测器注入页面执行。
@@ -352,14 +358,27 @@ function clientBlockedFindings(health, { path, ev }) {
   const findings = [], seen = new Set();
   for (const request of health.clientBlocked) {
     const target = request.url.split('?')[0];
-    if (seen.has(target)) continue;
-    seen.add(target);
+    const key = `${request.method} ${target}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     if (seen.size > 5) break;
-    findings.push({ kind: 'network', path, title: `资源被客户端拦截：${target.slice(-80)}`, target,
+    findings.push({ kind: 'network', path, title: `请求被客户端拦截：${request.method} ${target.slice(-80)}`, target,
       basis: 'friction', tier: 'tolerable', confidence: 'environment',
-      observed: `${request.why}；拦截来源未确认，不能据此认定站点资源故障`, evidence: ev({ type: request.type }) });
+      observed: `${request.method} ${request.why}；拦截来源未确认，不能据此认定站点资源故障`, evidence: ev({ type: request.type }) });
   }
   return findings;
+}
+
+function blockedWriteFindings(health, { path, ev }) {
+  return health.blocked.slice(0, 3).map(b => {
+    const target = b.url.split('?')[0], shortTarget = target.slice(-60);
+    return { kind: 'blocked-write', path,
+      title: `${b.reason === 'redirect' ? '请求的重定向已中止（原请求已发送）' : '请求被策略拦截'}：${b.method} ${shortTarget}`,
+      // Keep fingerprints compatible with verdicts recorded before the wording changed.
+      match: `打开页面就发了写请求，已拦下：${b.method} ${shortTarget}`,
+      target, basis: 'friction', tier: 'tolerable',
+      observed: `${b.method} ${b.url}；${b.reason === 'redirect' ? '原请求已到达服务器，后续跳转被中止' : '业务语义未确认'}`, evidence: ev() };
+  });
 }
 
 /** 把一页的事实翻译成发现（检查器产出：observed 级证据，tier 保守） */
@@ -396,25 +415,16 @@ function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo,
   for (const b of links?.broken ?? []) out.push({ kind: 'broken-link', path, title: `链接打不开（${b.status || '无响应'}）：「${b.text || b.href.slice(-40)}」`,
     target: b.href.split('?')[0], basis: 'failed', tier: 'degrade', loss: `访客点「${b.text || '这个链接'}」到达错误页`, observed: `${b.status} ${b.href}`, evidence: ev() });
   for (const img of facts?.images ?? []) {
-    if (health.clientBlocked.some(f => f.url.split('?')[0] === img.src.split('?')[0])) continue;
+    if (health.clientBlocked.some(f => f.method === 'GET' && f.url.split('?')[0] === img.src.split('?')[0])) continue;
     out.push({ kind: 'broken-image', path, title: `图片没加载出来：${img.alt || img.src.split('/').pop().slice(0, 60)}`, target: img.src.split('?')[0], basis: 'cosmetic', tier: 'tolerable', observed: img.src, evidence: ev() });
   }
   if (facts && facts.overflowPx > 2) out.push({ kind: 'overflow', path, title: `横向溢出 ${Math.round(facts.overflowPx)}px（${viewport.width} 宽）`, target: facts.culprit ?? 'body',
     basis: viewport.width < 500 ? 'friction' : 'cosmetic', tier: 'tolerable', observed: `最先越界的元素：${facts.culprit ?? '未定位'}`, viewport: `${viewport.width}x${viewport.height}`, evidence: ev() });
-  for (const b of health.blocked.slice(0, 3)) {
-    const target = b.url.split('?')[0], shortTarget = target.slice(-60);
-    out.push({ kind: 'blocked-write', path,
-      title: `${b.reason === 'redirect' ? '请求的重定向已中止（原请求已发送）' : '请求被策略拦截'}：${b.method} ${shortTarget}`,
-      // Keep fingerprints compatible with verdicts recorded before the wording changed.
-      match: `打开页面就发了写请求，已拦下：${b.method} ${shortTarget}`,
-      target, basis: 'friction', tier: 'tolerable',
-      observed: `${b.method} ${b.url}；${b.reason === 'redirect' ? '原请求已到达服务器，后续跳转被中止' : '业务语义未确认'}`, evidence: ev() });
-  }
+  out.push(...blockedWriteFindings(health, { path, ev }));
   return out;
 }
 
-async function runCheck(context, site, check, { timeout, settleMs, screenshotDir, shoot, login }) {
-  const health = emptyHealth();
+async function runCheck(context, site, check, { timeout, settleMs, screenshotDir, shoot, login, health }) {
   const page = await newQaPage(context, { site, login });
   watch(page, health, site.origin);
   const startUrl = new URL(check.path, site.url).href;
@@ -517,12 +527,13 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
       const health = emptyHealth();
       const context = await openContext(browser, { login, viewport, origin: site.origin, writes: site.writes, writeAllow: site.writeAllow, health });
       onProgress({ message: `检查点 ${check.id}` });
-      const r = await runCheck(context, site, check, { timeout: timeoutMs, settleMs, shoot, login });
+      const r = await runCheck(context, site, check, { timeout: timeoutMs, settleMs, shoot, login, health });
       await context.close().catch(() => {});
       out.checks.push(r);
       const ev = extra => ({ url: safeUrl(new URL(check.path, site.url).href), viewport: `${viewport.width}x${viewport.height}`,
         ...(r.screenshot ? { screenshot: r.screenshot } : {}), ...extra });
       out.findings.push(...clientBlockedFindings(r.health, { path: check.path, ev }));
+      out.findings.push(...blockedWriteFindings(r.health, { path: check.path, ev }));
       if (r.blockedReason === 'login-expired') {
         out.findings.push(...findingsForPage({ site, pageUrl: new URL(check.path, site.url).href, path: check.path, health, facts: null,
           links: null, loginInfo: login, viewport, navError: null, screenshot: r.screenshot, loginIssue: r.loginIssue }));
