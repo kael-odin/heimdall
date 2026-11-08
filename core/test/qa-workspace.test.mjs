@@ -102,6 +102,35 @@ test('workspace: bad configs are rejected with a readable reason', () => {
   }
 });
 
+test('workspace: declared coverage and login checks are never silently truncated', () => {
+  const entries = n => Object.fromEntries(Array.from({ length: n }, (_, i) => [`key${i}`, 'fixture']));
+  const claims = n => Object.fromEntries(Array.from({ length: n }, (_, i) => [`claim${i}`, { from: 'token', claim: 'sub' }]));
+  const invalid = [
+    [{ sites: { web: { url: 'http://x/', pages: Array(41).fill('/') } } }, /40/],
+    [{ sites: { web: { url: 'http://x/', pages: '/' } } }, /pages/],
+    [{ sites: { web: { url: 'http://x/', pages: ['/\\other.test/'] } } }, /同源/],
+    [{ sites: { web: { url: 'http://x/', loggedOutText: Array(11).fill('expired') } } }, /10/],
+    [{ sites: { web: { url: 'http://x/' } }, conventions: Array(201).fill('rule') }, /200/],
+    [{ sites: { web: { url: 'http://x/' } }, logins: { user: { kind: 'localStorage', origin: 'http://x', items: entries(41) } } }, /40/],
+    [{ sites: { web: { url: 'http://x/' } }, logins: { user: { kind: 'headers', headers: entries(21) } } }, /20/],
+    [{ sites: { web: { url: 'http://x/' } }, logins: { user: { kind: 'localStorage', origin: 'http://x', items: entries(1), jwtClaims: claims(21) } } }, /20/],
+    [{ sites: { web: { url: 'http://x/' } }, logins: { user: { kind: 'localStorage', origin: 'http://x', items: entries(1), jwtClaims: { info: { from: 'token', pick: Array(31).fill('sub') } } } } }, /30/],
+  ];
+  for (const [config, pattern] of invalid) {
+    const root = workspace(config);
+    try { assert.throws(() => loadWorkspace(root), pattern); } finally { rmSync(root, { recursive: true, force: true }); }
+  }
+  const root = workspace({ sites: { web: { url: 'http://x/', pages: Array(40).fill('/'), loggedOutText: Array(10).fill('expired') } },
+    conventions: Array(200).fill('rule'), logins: { user: { kind: 'localStorage', origin: 'http://x', items: entries(40) } } });
+  try {
+    const ws = loadWorkspace(root);
+    assert.equal(ws.sites.web.pages.length, 40);
+    assert.equal(ws.sites.web.loggedOutText.length, 10);
+    assert.equal(ws.logins.user.items.length, 40);
+    assert.equal(ws.conventions.length, 200);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('reports describe the actual request policy without promising read-only behavior', () => {
   const base = { runId: 'qa-fixture', site: 'web', siteUrl: 'http://x', environment: 'test', startedAt: '2026-01-01T00:00:00Z',
     login: null, summary: { suppressed: 0, knownBug: 0 }, coverage: { viewports: [], pages: [], checks: [] } };

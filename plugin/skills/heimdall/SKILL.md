@@ -59,6 +59,8 @@ CLI 一律有 `--json`：stdout 最后一行是 `{ok, result, summary, nextActio
 3. `heimdall_qa_findings`：`list` 看结果；`similar` 查重；`submit` 提交你自己测出的问题（会校验证据与 loss，并查重）；`verdict` 记人的裁决（精确到一条，或按模式；可带 `until` / `reopenIf`），以后同类发现自动过滤并写明理由。
 4. 需要流水线红绿结果时调用 `heimdall_qa_ci`；先读测试须知，再跑同一套 QA。失败只代表本次声明的页面和门槛未通过，不代表整个产品验收失败。
 
+单次最多 40 页、3 个视口、40 个检查点，每个检查点最多 20 个步骤和 20 条断言。超限、字段写错或指定的检查点文件没有当前站点的检查点时，修正配置并分批重跑；`invalid_args` 不是通过。缺失的文本或属性不能用空字符串断言冒充检查通过；这类情况是未核实，不自动当作产品缺陷。数据加载、分页和业务接口结果仍需单独确认。
+
 结果在工作区的 `.heimdall/qa/runs/<runId>/`：`bugs.md` 只列建议提单的，`report.md` 是全部（含被过滤的和理由）。需要人工登录的站点由用户在 CLI 跑 `heimdall qa login <登录档>`，你不要代输凭据。配置格式见 Heimdall 仓库的 `docs/TEST-WORKSPACE.md`。
 
 ## 四条不可违反的规则

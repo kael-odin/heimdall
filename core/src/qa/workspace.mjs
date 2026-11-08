@@ -14,10 +14,16 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 export const CONFIG_DIR = '.heimdall';
 export const CONFIG_FILE = 'qa.json';
 export const QA_SCHEMA = 'heimdall.qa/1';
+export const QA_SCOPE_LIMITS = Object.freeze({ pages: 40, viewports: 3, checks: 40, steps: 20, expectations: 20 });
 
 const NAME = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
 const object = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const fail = (message) => { const e = new Error(message); e.code = 'invalid_args'; throw e; };
+
+export function isSitePath(value) {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || /[\\\x00-\x1f\x7f]/.test(value)) return false;
+  try { return new URL(value, 'http://heimdall.invalid').origin === 'http://heimdall.invalid'; } catch { return false; }
+}
 
 /** 从 start 向上找 `.heimdall/qa.json`，最多 8 层；找不到返回 null */
 export function findWorkspace(start = process.env.HEIMDALL_INVOKE_CWD ?? process.cwd()) {
@@ -62,12 +68,16 @@ function normalizeProfile(name, raw) {
   if (kind === 'localStorage') {
     const origin = httpUrl(raw.origin, `登录档 ${name}.origin`).origin;
     if (!object(raw.items) || !Object.keys(raw.items).length) fail(`登录档 ${name} 缺 items`);
-    const items = Object.entries(raw.items).slice(0, 40).map(([key, v]) => ({ key, source: valueSource(v, `登录档 ${name}.items.${key}`) }));
+    const entries = Object.entries(raw.items);
+    if (entries.length > 40) fail(`登录档 ${name}.items 最多 40 项`);
+    const items = entries.map(([key, v]) => ({ key, source: valueSource(v, `登录档 ${name}.items.${key}`) }));
     return { name, kind, origin, items, ...(raw.jwtClaims ? { jwtClaims: normalizeClaims(name, raw.jwtClaims) } : {}) };
   }
   if (kind === 'headers') {
     if (!object(raw.headers) || !Object.keys(raw.headers).length) fail(`登录档 ${name} 缺 headers`);
-    const headers = Object.entries(raw.headers).slice(0, 20).map(([key, v]) => {
+    const entries = Object.entries(raw.headers);
+    if (entries.length > 20) fail(`登录档 ${name}.headers 最多 20 项`);
+    const headers = entries.map(([key, v]) => {
       if (!/^[A-Za-z0-9-]{1,64}$/.test(key)) fail(`登录档 ${name} 的请求头 ${key} 不合法`);
       return { key, source: valueSource(v, `登录档 ${name}.headers.${key}`) };
     });
@@ -82,10 +92,14 @@ function normalizeProfile(name, raw) {
  */
 function normalizeClaims(name, raw) {
   if (!object(raw)) fail(`登录档 ${name}.jwtClaims 应为对象`);
-  return Object.entries(raw).slice(0, 20).map(([key, v]) => {
+  const entries = Object.entries(raw);
+  if (entries.length > 20) fail(`登录档 ${name}.jwtClaims 最多 20 项`);
+  return entries.map(([key, v]) => {
     if (!object(v) || typeof v.from !== 'string') fail(`登录档 ${name}.jwtClaims.${key} 缺 from`);
     if (!v.pick && !v.claim) fail(`登录档 ${name}.jwtClaims.${key} 缺 pick 或 claim`);
-    return { key, from: v.from, ...(v.pick ? { pick: [].concat(v.pick).map(String).slice(0, 30) } : {}), ...(v.claim ? { claim: String(v.claim) } : {}) };
+    const pick = v.pick ? [].concat(v.pick).map(String) : null;
+    if (pick && pick.length > 30) fail(`登录档 ${name}.jwtClaims.${key}.pick 最多 30 项`);
+    return { key, from: v.from, ...(pick ? { pick } : {}), ...(v.claim ? { claim: String(v.claim) } : {}) };
   });
 }
 
@@ -113,9 +127,11 @@ function normalizeSite(name, raw, profiles) {
   const url = httpUrl(raw.url, `站点 ${name}.url`);
   const login = raw.login ?? null;
   if (login !== null && !profiles[login]) fail(`站点 ${name} 引用了不存在的登录档 ${login}`);
-  const pages = (raw.pages ?? ['/']).slice(0, 40).map((p) => {
+  const declaredPages = raw.pages ?? ['/'];
+  if (!Array.isArray(declaredPages) || declaredPages.length > QA_SCOPE_LIMITS.pages) fail(`站点 ${name}.pages 应为不超过 ${QA_SCOPE_LIMITS.pages} 项的数组`);
+  const pages = declaredPages.map((p) => {
     const path = typeof p === 'string' ? p : p?.path;
-    if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) fail(`站点 ${name} 的页面 ${JSON.stringify(p)} 应以 / 开头`);
+    if (!isSitePath(path)) fail(`站点 ${name} 的页面路径应以 / 开头且指向同源路径`);
     return { path, ...(typeof p === 'object' && p.name ? { name: String(p.name).slice(0, 60) } : {}) };
   });
   const writes = raw.writes ?? 'block';
@@ -128,11 +144,13 @@ function normalizeSite(name, raw, profiles) {
     if (!Array.isArray(writes.allow) || !writes.allow.length || writes.allow.length > 40) fail(`站点 ${name}.writes.allow 应为 1 到 40 条规则`);
     writeAllow = writes.allow.map((rule, index) => normalizeWriteRule(name, rule, index));
   } else fail(`站点 ${name}.writes 只能是 block / allow / { allow: [规则] }`);
+  const loggedOutText = raw.loggedOutText ? [].concat(raw.loggedOutText).map(String) : null;
+  if (loggedOutText && loggedOutText.length > 10) fail(`站点 ${name}.loggedOutText 最多 10 项`);
   return {
     name, label: String(raw.label ?? name).slice(0, 60), url: url.href, origin: url.origin, login, pages, writes: writeMode,
     ...(writeAllow.length ? { writeAllow } : {}),
     ...(raw.loginPath ? { loginPath: String(raw.loginPath) } : {}),
-    ...(raw.loggedOutText ? { loggedOutText: [].concat(raw.loggedOutText).map(String).slice(0, 10) } : {}),
+    ...(loggedOutText ? { loggedOutText } : {}),
     environment: String(raw.environment ?? 'unknown').slice(0, 30),
   };
 }
@@ -150,7 +168,9 @@ export function loadWorkspace(start) {
   const sites = {};
   for (const [name, s] of Object.entries(raw.sites ?? {})) sites[name] = normalizeSite(name, s, profiles);
   if (!Object.keys(sites).length) fail('qa.json 至少声明一个站点（sites）');
-  const conventions = (raw.conventions ?? []).slice(0, 200).map((c, i) => {
+  const declaredConventions = raw.conventions ?? [];
+  if (!Array.isArray(declaredConventions) || declaredConventions.length > 200) fail('conventions 应为不超过 200 项的数组');
+  const conventions = declaredConventions.map((c, i) => {
     if (typeof c === 'string') return { id: `conv-${i + 1}`, text: c };
     if (!object(c) || typeof c.text !== 'string') fail(`conventions[${i}] 应为字符串或 { text }`);
     return { id: String(c.id ?? `conv-${i + 1}`), text: c.text, ...(c.match ? { match: c.match } : {}) };

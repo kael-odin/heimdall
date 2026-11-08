@@ -15,7 +15,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { loadWorkspace } from '../src/qa/workspace.mjs';
-import { runQa, submitFindings, retriageRun, readRun } from '../src/qa/run.mjs';
+import { runQa, loadChecks, submitFindings, retriageRun, readRun } from '../src/qa/run.mjs';
 import { recordVerdict } from '../src/qa/memory.mjs';
 import { fileable } from '../src/qa/report.mjs';
 import { writeBaseline, readBaseline } from '../src/qa/baseline.mjs';
@@ -66,10 +66,11 @@ const PAGES = {
     <div id="bad"><span class="date">2026-11-08</span><span class="date">2026-11-09T08:09:10Z</span></div>
     <div id="good"><span class="date" style="visibility:hidden">measurement</span><span class="date">2026-11-08</span><span class="date">2026-11-09</span></div>
     <div id="hidden"><span class="date" style="display:none">measurement</span></div>
-    <div id="late"></div><div id="ready" hidden>已加载</div><div id="loading">加载中</div><div id="many"></div><div id="long"></div><div id="slow-regex"></div>
+    <div id="late"></div><div id="ready" hidden>已加载</div><div id="loading">加载中</div><div id="many"></div><div id="long"></div><div id="long-readable"></div><div id="slow-regex"></div>
     <script>
       document.getElementById('many').innerHTML = '<span class="date">2026-11-08</span>'.repeat(1001);
       document.getElementById('long').textContent = 'x'.repeat(4001);
+      document.getElementById('long-readable').textContent = 'x'.repeat(500) + 'target at the end';
       document.getElementById('slow-regex').textContent = 'a'.repeat(100) + '!';
     </script>
     <script>setTimeout(() => {
@@ -95,6 +96,135 @@ function server() {
   return new Promise(done => srv.listen(0, '127.0.0.1', () => done(srv)));
 }
 
+test('qa ci: a checks file cannot silently discard its 21st assertion', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
+  try {
+    const expect = Array.from({ length: 20 }, () => ({ kind: 'title', contains: '表格检查对照' }));
+    expect.push({ kind: 'title', contains: 'this assertion must not be ignored' });
+    writeFileSync(join(root, 'overflow-checks.json'), JSON.stringify({ checks: [
+      { id: 'overflow', title: '检查完整的断言列表', path: '/check-rows', expect },
+    ] }));
+    const ci = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/check-rows'], viewports: [1280],
+      checksFile: 'overflow-checks.json', linkCheck: false, detect: false, baseline: false, failOn: 'all' }, { client: 'mcp' });
+    assert.equal(ci.error?.code, 'invalid_args', `oversized file must not produce CI status ${ci.result?.ci?.status}`);
+    assert.match(ci.error.message, /20/);
+    const cli = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [fileURLToPath(new URL('../src/cli.mjs', import.meta.url)), 'qa', 'ci', 'web',
+        '--workspace', root, '--pages', '/check-rows', '--viewports', '1280', '--checks', 'overflow-checks.json',
+        '--no-links', '--no-detect', '--no-baseline', '--json'], { windowsHide: true });
+      let stdout = '';
+      child.stdout.on('data', chunk => { stdout += chunk; });
+      child.on('error', reject);
+      child.on('close', code => resolve({ code, envelope: JSON.parse(stdout.trim().split(/\r?\n/).at(-1)) }));
+    });
+    assert.equal(cli.code, 2);
+    assert.equal(cli.envelope.error.code, 'invalid_args');
+    assert.equal(existsSync(join(root, '.heimdall', 'qa', 'runs')), false, 'invalid input does not create a run');
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
+test('qa declarations reject skipped checks, invalid scope and ambiguous assertions', { timeout: 120_000 }, async () => {
+  const root = workspaceFor('http://127.0.0.1:1');
+  try {
+    const ws = loadWorkspace(root);
+    const item = { id: 'one', title: '正常检查', path: '/', expect: [{ kind: 'visible', selector: 'body' }] };
+    const step = { action: 'wait', ms: 0 };
+    const expected = { kind: 'title', contains: 'Title' };
+    const boundary = normalizeCheck({ ...item, steps: Array(20).fill(step), expect: Array(20).fill(expected) });
+    assert.equal(boundary.steps.length, 20);
+    assert.equal(boundary.steps[0].ms, 0);
+    assert.equal(boundary.expect.length, 20);
+    assert.throws(() => normalizeCheck({ ...item, steps: Array(21).fill(step) }), /20/);
+    assert.throws(() => normalizeCheck({ ...item, expect: Array(21).fill(expected) }), /20/);
+    assert.throws(() => normalizeCheck({ ...item, steps: { action: 'wait' } }), /steps/);
+    assert.throws(() => normalizeCheck({ ...item, expect: [] }), /expect/);
+    assert.throws(() => normalizeCheck({ ...item, steps: [{ action: 'wait', ms: 10001 }] }), /10000/);
+    assert.throws(() => normalizeCheck({ ...item, steps: [{ action: 'wait', selector: '#ignored' }] }), /selector/);
+    assert.throws(() => normalizeCheck({ ...item, expect: [{ kind: 'text', selector: 'body', contians: 'x' }] }), /contians/);
+    assert.throws(() => normalizeCheck({ ...item, expect: [{ kind: 'text', selector: 'body', contains: 'a', equals: 'b' }] }), /只能指定/);
+    assert.throws(() => normalizeCheck({ ...item, expect: [{ kind: 'title', selector: '#ignored', contains: 'a' }] }), /不使用 selector/);
+    assert.throws(() => normalizeCheck({ ...item, expect: [{ kind: 'title', matches: '[' }] }), /正则/);
+    assert.throws(() => normalizeCheck({ ...item, expect: [{ kind: 'count', selector: 'p', min: 3, max: 1 }] }), /有效范围/);
+    for (const path of ['//other.test/', '/\\other.test/', '/\n/other.test/']) {
+      assert.throws(() => normalizeCheck({ ...item, path }), /同源/);
+      assert.throws(() => normalizeCheck({ ...item, steps: [{ action: 'goto', path }] }), /同源/);
+    }
+    const fixture = (name, data) => writeFileSync(join(root, name), JSON.stringify(data));
+    fixture('bad-shape.json', {});
+    fixture('empty.json', { checks: [] });
+    fixture('other-site.json', { checks: [{ ...item, site: 'other' }] });
+    fixture('selected.json', [{ ...item, id: 'other', site: 'other' }, { ...item, site: 'web' }]);
+    fixture('duplicate.json', { checks: [item, item] });
+    fixture('too-many.json', { checks: Array.from({ length: 41 }, (_, i) => ({ ...item, id: `c${i}` })) });
+    assert.throws(() => loadChecks(ws, { site: 'web', checksFile: 'bad-shape.json' }), /checks 数组/);
+    assert.throws(() => loadChecks(ws, { site: 'web', checksFile: 'empty.json' }), /没有适用于/);
+    assert.throws(() => loadChecks(ws, { site: 'web', checksFile: 'other-site.json' }), /没有适用于/);
+    assert.deepEqual(loadChecks(ws, { site: 'web', checksFile: 'selected.json' }).map(c => c.id), ['one']);
+    assert.throws(() => loadChecks(ws, { site: 'web', checksFile: 'duplicate.json' }), /重复/);
+    assert.throws(() => loadChecks(ws, { site: 'web', checksFile: 'too-many.json' }), /40/);
+    assert.throws(() => loadChecks(ws, { site: 'web', checks: [{ ...item, site: 'other' }] }), /不一致/);
+    await assert.rejects(runQa(ws, { site: 'web', pages: ['/', '//other.test/'] }), /同源/);
+    await assert.rejects(runQa(ws, { site: 'web', pages: Array(41).fill('/') }), /40/);
+    await assert.rejects(runQa(ws, { site: 'web', viewports: [320, 390, 768, 1440] }), /3/);
+    assert.equal(existsSync(join(root, '.heimdall', 'qa', 'runs')), false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('qa ci: missing text cannot satisfy an empty-value predicate', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
+  try {
+    const checks = ['matches', 'contains'].map((key, index) => ({ id: `missing-${index}`, title: '缺失文字不能通过',
+      path: '/check-rows', expect: [{ kind: 'text', selector: '#missing', [key]: key === 'matches' ? '^$' : '' }] }));
+    const ci = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/check-rows'], viewports: [1280],
+      checks, linkCheck: false, detect: false, baseline: false, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(ci.error?.code, 'qa_incomplete', `missing element must not produce CI status ${ci.result?.ci?.status}`);
+    assert.equal(ci.result.ci.status, 'incomplete');
+    assert.ok(ci.result.checks.every(check => !check.pass));
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
+test('qa ci: an invalid hidden selector cannot appear successful', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
+  try {
+    const checks = [
+      { id: 'actually-hidden', title: '隐藏元素', path: '/check-rows', expect: [{ kind: 'hidden', selector: '#hidden .date' }] },
+      { id: 'absent', title: '不存在元素', path: '/check-rows', expect: [{ kind: 'hidden', selector: '#not-present' }] },
+      { id: 'invalid-selector', title: '无效选择器', path: '/check-rows', expect: [{ kind: 'hidden', selector: '[' }] },
+      { id: 'invalid-visible', title: '无效可见选择器', path: '/check-rows', expect: [{ kind: 'visible', selector: '[' }] },
+    ];
+    const ci = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/check-rows'], viewports: [1280],
+      checks, linkCheck: false, detect: false, baseline: false, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(ci.error?.code, 'qa_incomplete', 'an invalid selector must not make CI green');
+    const byId = Object.fromEntries(ci.result.checks.map(check => [check.id, check]));
+    assert.equal(byId['actually-hidden'].pass, true);
+    assert.equal(byId.absent.pass, true);
+    assert.equal(byId['invalid-selector'].pass, false);
+    assert.ok(byId['invalid-selector'].error);
+    assert.equal(byId['invalid-visible'].pass, false);
+    assert.ok(byId['invalid-visible'].error);
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
+test('qa checks: long first-match text is checked completely or marked incomplete', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
+  try {
+    const checks = [
+      { id: 'within-limit', title: '末尾文字需要被检查', path: '/check-rows', expect: [{ kind: 'text', selector: '#long-readable', contains: 'target at the end' }] },
+      { id: 'over-limit', title: '超长文字不能被截断后通过', path: '/check-rows', expect: [{ kind: 'text', selector: '#long', contains: 'x' }] },
+    ];
+    const ci = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/check-rows'], viewports: [1280],
+      checks, linkCheck: false, detect: false, baseline: false, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(ci.result.checks[0].pass, true, 'the text after character 400 must be checked');
+    assert.equal(ci.error?.code, 'qa_incomplete');
+    assert.equal(ci.result.checks[1].pass, false);
+    assert.match(ci.result.checks[1].error, /4000/);
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
 test('qa checks: all visible rows, readiness and empty results remain explicit', { timeout: 120_000 }, async () => {
   const srv = await server();
   const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
@@ -116,6 +246,7 @@ test('qa checks: all visible rows, readiness and empty results remain explicit',
       { id: 'too-many', title: '匹配项超过上限', path: '/check-rows', expect: [each('#many .date')] },
       { id: 'too-long', title: '文本超过上限', path: '/check-rows', expect: [each('#long')] },
       { id: 'slow-regex', title: '正则匹配超时', path: '/check-rows', expect: [{ ...each('#slow-regex'), matches: '^(a+)+$' }] },
+      { id: 'slow-single-regex', title: '首项正则匹配超时', path: '/check-rows', expect: [{ kind: 'text', selector: '#slow-regex', matches: '^(a+)+$' }] },
       { id: 'bad-navigation', title: '检查点页面不存在', path: '/missing', expect: [{ kind: 'text', selector: 'body', contains: 'not found' }] },
       { id: 'bad-goto', title: '检查点跳转失败', path: '/check-rows', steps: [{ action: 'goto', path: '/missing' }], expect: [{ kind: 'text', selector: 'body', contains: 'not found' }] },
       { id: 'contains', title: '逐项包含文本', path: '/check-rows', expect: [{ kind: 'text', selector: '#good .date', scope: 'all-visible', contains: '2026-11' }] },
@@ -135,12 +266,13 @@ test('qa checks: all visible rows, readiness and empty results remain explicit',
     const pending = await runQa(ws, { ...options, checks: checks.slice(3) });
     Object.assign(byId, Object.fromEntries(pending.run.coverage.checks.map(c => [c.id, c])));
     assert.match(readFileSync(pending.files.bugs, 'utf8'), /未能核实的检查点未完成检查/);
-    for (const id of ['empty', 'hidden-only', 'short-list', 'never-ready', 'too-many', 'too-long', 'slow-regex', 'bad-navigation', 'bad-goto']) {
+    for (const id of ['empty', 'hidden-only', 'short-list', 'never-ready', 'too-many', 'too-long', 'slow-regex', 'slow-single-regex', 'bad-navigation', 'bad-goto']) {
       assert.equal(byId[id].pass, false, `${id} cannot pass`);
       assert.ok(byId[id].error, `${id} must be classified as an incomplete check`);
       assert.equal(pending.findings.find(f => f.target === id).confidence, 'check-error');
     }
     assert.match(byId['slow-regex'].error, /正则匹配超时/);
+    assert.match(byId['slow-single-regex'].error, /正则匹配超时/);
     assert.equal(byId['wait-ready'].pass, true);
     assert.deepEqual(byId['wait-ready'].assertions[0], { scope: 'all-visible', selector: '#late .date', matched: 2, failed: 0 });
     assert.equal(byId.contains.pass, true);

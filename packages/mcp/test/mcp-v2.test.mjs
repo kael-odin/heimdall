@@ -189,6 +189,26 @@ test('fresh direct MCP enforces exact QA query rules without an available engine
     assert.equal(incomplete.structuredContent.error.code, 'qa_incomplete');
     assert.equal(incomplete.structuredContent.result.ci.status, 'incomplete');
 
+    const invalidSelector = { id: 'invalid-selector', title: 'Invalid hidden selector', path: '/rows',
+      expect: [{ kind: 'hidden', selector: '[' }] };
+    const invalidHidden = await client.callTool({ name: 'heimdall_qa_ci', arguments: { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280],
+      linkCheck: false, detect: false, baseline: false, checks: [invalidSelector], failOn: 'none' } });
+    assert.equal(invalidHidden.isError, true);
+    assert.equal(invalidHidden.structuredContent.error.code, 'qa_incomplete');
+    assert.equal(invalidHidden.structuredContent.result.ci.status, 'incomplete');
+
+    const overlong = { ...dateCheck, id: 'oversized', expect: [
+      ...Array.from({ length: 20 }, () => ({ kind: 'title', contains: 'Rows' })),
+      { kind: 'title', contains: 'must not be skipped' },
+    ] };
+    writeFileSync(join(root, 'oversized-checks.json'), JSON.stringify({ checks: [overlong] }));
+    const hitCount = hits.length;
+    const oversized = await client.callTool({ name: 'heimdall_qa_ci', arguments: { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280],
+      linkCheck: false, detect: false, baseline: false, checksFile: 'oversized-checks.json', failOn: 'all' } });
+    assert.equal(oversized.isError, true);
+    assert.equal(oversized.structuredContent.error.code, 'invalid_args');
+    assert.equal(hits.length, hitCount, 'invalid file is rejected before browser traffic');
+
     config.sites.web.writes.allow = ['/api/query'];
     writeFileSync(file, JSON.stringify(config));
     const before = readFileSync(file, 'utf8');

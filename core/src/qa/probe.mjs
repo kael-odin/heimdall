@@ -15,7 +15,7 @@
  */
 import { chromium } from 'playwright';
 import { Worker } from 'node:worker_threads';
-import { scrubValues } from './workspace.mjs';
+import { scrubValues, isSitePath, QA_SCOPE_LIMITS } from './workspace.mjs';
 import { detectInPage, readVitalsInPage, DETECT_DEFAULTS, QA_CONTROL_SELECTOR } from './detect.mjs';
 import { browserContextOptions, newQaPage, qaBrowserLaunchOptions, requestQaLink, routeQaRequest } from './http-policy.mjs';
 
@@ -27,6 +27,11 @@ const MAX_VISIBLE_MATCHES = 1000;
 const LOGGED_OUT = ['请登录', '登录后', '立即登录', '账号登录', 'Sign in', 'Log in'];
 const clip = (v, n = 300) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const fail = (message) => { const e = new Error(message); e.code = 'invalid_args'; throw e; };
+const isObject = value => value && typeof value === 'object' && !Array.isArray(value);
+const checkKeys = (value, allowed, label) => {
+  const unknown = Object.keys(value).find(key => !allowed.includes(key));
+  if (unknown !== undefined) fail(`${label} 不支持字段 ${unknown}`);
+};
 
 export function loginProblem({ site, login, path, finalUrl, facts }) {
   if (!login?.name) return null;
@@ -62,34 +67,63 @@ export function safeUrl(value) {
 
 /** 检查点校验：只接受声明式步骤与断言 */
 export function normalizeCheck(raw, index = 0) {
-  if (!raw || typeof raw !== 'object') fail(`checks[${index}] 应为对象`);
+  if (!isObject(raw)) fail(`checks[${index}] 应为对象`);
+  checkKeys(raw, ['id', 'title', 'path', 'steps', 'expect', 'tier', 'basis', 'loss', 'prd', 'viewport', 'site'], `checks[${index}]`);
   const id = String(raw.id ?? `check-${index + 1}`);
   if (!/^[a-z0-9][a-z0-9_.-]{0,63}$/i.test(id)) fail(`检查点 id ${id} 只能用字母、数字、_ . -`);
-  const steps = (raw.steps ?? []).slice(0, 20).map((s, i) => {
+  if (raw.path !== undefined && !isSitePath(raw.path)) fail(`${id}.path 应以 / 开头且指向同源路径`);
+  const inputSteps = raw.steps ?? [];
+  if (!Array.isArray(inputSteps) || inputSteps.length > QA_SCOPE_LIMITS.steps) fail(`${id}.steps 应为不超过 ${QA_SCOPE_LIMITS.steps} 项的数组`);
+  const steps = inputSteps.map((s, i) => {
+    if (!isObject(s)) fail(`${id}.steps[${i}] 应为对象`);
+    checkKeys(s, ['action', 'selector', 'value', 'path', 'state', 'ms'], `${id}.steps[${i}]`);
     if (!STEP_ACTIONS.has(s?.action)) fail(`${id}.steps[${i}].action 只能是 ${[...STEP_ACTIONS].join(' / ')}`);
+    const allowed = s.action === 'wait' ? ['action', 'ms'] : s.action === 'goto' ? ['action', 'path']
+      : s.action === 'waitFor' ? ['action', 'selector', 'state']
+        : ['fill', 'press', 'select'].includes(s.action) ? ['action', 'selector', 'value'] : ['action', 'selector'];
+    checkKeys(s, allowed, `${id}.steps[${i}]`);
     if (!['wait', 'goto'].includes(s.action) && typeof s.selector !== 'string') fail(`${id}.steps[${i}] 缺 selector`);
-    if (s.action === 'goto' && (typeof s.path !== 'string' || !s.path.startsWith('/'))) fail(`${id}.steps[${i}] goto 要写以 / 开头的 path`);
+    if (s.action === 'goto' && !isSitePath(s.path)) fail(`${id}.steps[${i}] goto 要写以 / 开头的同源 path`);
     if (['fill', 'press', 'select'].includes(s.action) && typeof s.value !== 'string') fail(`${id}.steps[${i}] 缺 value`);
     if (s.state !== undefined && (s.action !== 'waitFor' || !['visible', 'hidden'].includes(s.state))) fail(`${id}.steps[${i}] state 只能用于 waitFor，且只能是 visible / hidden`);
+    if (s.ms !== undefined && (!Number.isInteger(s.ms) || s.ms < 0 || s.ms > 10_000)) fail(`${id}.steps[${i}] ms 应为 0 到 10000 的整数`);
     return { action: s.action, ...(s.selector ? { selector: s.selector } : {}), ...(s.value !== undefined ? { value: String(s.value) } : {}),
-      ...(s.path ? { path: s.path } : {}), ...(s.state ? { state: s.state } : {}), ...(s.ms ? { ms: Math.min(10_000, Math.max(0, Number(s.ms))) } : {}) };
+      ...(s.path ? { path: s.path } : {}), ...(s.state ? { state: s.state } : {}), ...(s.ms !== undefined ? { ms: s.ms } : {}) };
   });
-  const expect = (raw.expect ?? []).slice(0, 20).map((a, i) => {
+  const inputExpect = raw.expect ?? [];
+  if (!Array.isArray(inputExpect) || !inputExpect.length || inputExpect.length > QA_SCOPE_LIMITS.expectations) fail(`${id}.expect 应为 1 到 ${QA_SCOPE_LIMITS.expectations} 项的数组`);
+  const expect = inputExpect.map((a, i) => {
+    if (!isObject(a)) fail(`${id}.expect[${i}] 应为对象`);
+    checkKeys(a, ['kind', 'selector', 'attribute', 'equals', 'contains', 'matches', 'min', 'max', 'scope', 'minMatches'], `${id}.expect[${i}]`);
     if (!EXPECT_KINDS.has(a?.kind)) fail(`${id}.expect[${i}].kind 只能是 ${[...EXPECT_KINDS].join(' / ')}`);
     if (['visible', 'hidden', 'text', 'count', 'attribute'].includes(a.kind) && typeof a.selector !== 'string') fail(`${id}.expect[${i}] 缺 selector`);
     if (a.kind === 'attribute' && typeof a.attribute !== 'string') fail(`${id}.expect[${i}] 缺 attribute`);
+    if (a.selector !== undefined && !['visible', 'hidden', 'text', 'count', 'attribute'].includes(a.kind)) fail(`${id}.expect[${i}] ${a.kind} 不使用 selector`);
+    if (a.attribute !== undefined && a.kind !== 'attribute') fail(`${id}.expect[${i}] ${a.kind} 不使用 attribute`);
     if (a.scope !== undefined && (a.scope !== 'all-visible' || a.kind !== 'text')) fail(`${id}.expect[${i}] scope 只支持文本断言的 all-visible`);
     if (a.minMatches !== undefined && (a.scope !== 'all-visible' || !Number.isInteger(a.minMatches) || a.minMatches < 1 || a.minMatches > MAX_VISIBLE_MATCHES)) fail(`${id}.expect[${i}] minMatches 须为 all-visible 的 1 至 ${MAX_VISIBLE_MATCHES} 整数`);
+    if (a.equals !== undefined && !['string', 'number', 'boolean'].includes(typeof a.equals)) fail(`${id}.expect[${i}] equals 应为字符串、数字或布尔值`);
+    if (a.contains !== undefined && typeof a.contains !== 'string') fail(`${id}.expect[${i}] contains 应为字符串`);
+    if (a.matches !== undefined) {
+      if (typeof a.matches !== 'string' || !a.matches || a.matches.length > 500) fail(`${id}.expect[${i}] matches 应为 1 到 500 字的正则表达式`);
+      try { new RegExp(a.matches); } catch { fail(`${id}.expect[${i}] matches 不是有效正则表达式`); }
+    }
+    if ((a.min !== undefined && (typeof a.min !== 'number' || !Number.isFinite(a.min))) || (a.max !== undefined && (typeof a.max !== 'number' || !Number.isFinite(a.max))) || (a.min !== undefined && a.max !== undefined && a.min > a.max)) fail(`${id}.expect[${i}] min / max 应为有效范围`);
+    const predicates = [a.equals !== undefined, a.contains !== undefined, a.matches !== undefined, a.min !== undefined || a.max !== undefined].filter(Boolean).length;
+    if (predicates > 1) fail(`${id}.expect[${i}] 只能指定一组断言条件`);
+    if (!predicates && !['visible', 'hidden'].includes(a.kind)) fail(`${id}.expect[${i}] 缺断言条件`);
     if (a.scope === 'all-visible') {
-      if ([a.equals !== undefined, a.contains !== undefined, !!a.matches].filter(Boolean).length !== 1 || a.min !== undefined || a.max !== undefined) fail(`${id}.expect[${i}] all-visible 须且只能指定 equals / contains / matches 中的一项`);
-      if (a.matches) { try { new RegExp(a.matches); } catch { fail(`${id}.expect[${i}] matches 不是有效正则表达式`); } }
+      if (predicates !== 1 || a.min !== undefined || a.max !== undefined) fail(`${id}.expect[${i}] all-visible 须且只能指定 equals / contains / matches 中的一项`);
     }
     return { kind: a.kind, ...(a.selector ? { selector: a.selector } : {}), ...(a.attribute ? { attribute: a.attribute } : {}),
       ...(a.equals !== undefined ? { equals: a.equals } : {}), ...(a.contains !== undefined ? { contains: String(a.contains) } : {}),
       ...(a.matches ? { matches: String(a.matches) } : {}), ...(a.min !== undefined ? { min: Number(a.min) } : {}), ...(a.max !== undefined ? { max: Number(a.max) } : {}),
       ...(a.scope ? { scope: a.scope } : {}), ...(a.minMatches !== undefined ? { minMatches: a.minMatches } : {}) };
   });
-  if (!expect.length) fail(`检查点 ${id} 至少要有一条 expect`);
+  if (raw.viewport !== undefined && (!isObject(raw.viewport) || !Number.isInteger(raw.viewport.width) || !Number.isInteger(raw.viewport.height) || raw.viewport.width < 320 || raw.viewport.width > 1920 || raw.viewport.height < 320 || raw.viewport.height > 2000)) fail(`${id}.viewport 应包含合法的宽和高`);
+  if (raw.viewport !== undefined) checkKeys(raw.viewport, ['width', 'height'], `${id}.viewport`);
+  if (raw.tier !== undefined && !['wall', 'degrade', 'tolerable'].includes(raw.tier)) fail(`${id}.tier 不合法`);
+  if (raw.basis !== undefined && !['failed', 'wrong', 'promise', 'friction', 'cosmetic'].includes(raw.basis)) fail(`${id}.basis 不合法`);
   const tier = ['wall', 'degrade', 'tolerable'].includes(raw.tier) ? raw.tier : 'degrade';
   return { id, title: clip(raw.title ?? id, 160), path: raw.path ?? '/', steps, expect, tier,
     basis: raw.basis ?? 'failed', ...(raw.loss ? { loss: String(raw.loss) } : {}), ...(raw.prd ? { prd: String(raw.prd) } : {}),
@@ -99,7 +133,6 @@ export function normalizeCheck(raw, index = 0) {
 function predicate(a, actual) {
   if (a.equals !== undefined) return actual === a.equals || String(actual) === String(a.equals);
   if (a.contains !== undefined) return String(actual ?? '').includes(a.contains);
-  if (a.matches) { try { return new RegExp(a.matches).test(String(actual ?? '')); } catch { return false; } }
   if (a.min !== undefined || a.max !== undefined) return Number(actual) >= (a.min ?? -Infinity) && Number(actual) <= (a.max ?? Infinity);
   return actual === true;
 }
@@ -111,10 +144,14 @@ async function readExpect(page, a, origin) {
   const loc = page.locator(a.selector);
   if (a.kind === 'count') return loc.count();
   const first = loc.first();
-  if (a.kind === 'visible') return first.isVisible().catch(() => false);
-  if (a.kind === 'hidden') return !(await first.isVisible().catch(() => false));
+  if (a.kind === 'visible') return first.isVisible();
+  if (a.kind === 'hidden') return !(await first.isVisible());
   if (!(await loc.count())) return null;
-  if (a.kind === 'text') return clip(await first.innerText().catch(() => first.textContent()), 400);
+  if (a.kind === 'text') {
+    const text = clip(await first.innerText().catch(() => first.textContent()), 4001);
+    if (text.length > 4000) throw new Error('匹配项的文字超过 4000 字，未完成检查');
+    return text;
+  }
   if (a.kind === 'attribute') return first.getAttribute(a.attribute);
   return null;
 }
@@ -381,7 +418,15 @@ async function runCheck(context, site, check, { timeout, settleMs, screenshotDir
             results.push({ ...a, actual, pass: actual.failed === 0 });
           } else {
             const actual = await readExpect(page, a, site.origin);
-            results.push({ ...a, actual: typeof actual === 'string' ? clip(actual, 300) : actual, pass: predicate(a, actual) });
+            let pass = false;
+            if (actual !== null) {
+              if (a.matches) {
+                const value = String(actual);
+                if (value.length > 4000) throw new Error('正则匹配的文字超过 4000 字，未完成检查');
+                pass = (await matchTextPattern([value], a.matches)).length === 0;
+              } else pass = predicate(a, actual);
+            }
+            results.push({ ...a, actual: typeof actual === 'string' ? clip(actual, 300) : actual, pass });
           }
         }
       }

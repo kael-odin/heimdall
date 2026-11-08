@@ -4,6 +4,7 @@
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { runQa, relPath } from '../../../qa/run.mjs';
 import { fileable } from '../../../qa/report.mjs';
+import { QA_SCOPE_LIMITS } from '../../../qa/workspace.mjs';
 import { WORKSPACE_ARG, wsOrError } from './qa-status.mjs';
 
 const STEP = {
@@ -30,11 +31,11 @@ export const CHECK_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['title', 'expect'],
   properties: {
     id: { type: 'string', pattern: '^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$' }, title: { type: 'string', minLength: 2, maxLength: 160 },
-    path: { type: 'string', pattern: '^/', maxLength: 500 }, steps: { type: 'array', items: STEP, maxItems: 20 },
-    expect: { type: 'array', items: EXPECT, minItems: 1, maxItems: 20 },
+    path: { type: 'string', pattern: '^/', maxLength: 500 }, steps: { type: 'array', items: STEP, maxItems: QA_SCOPE_LIMITS.steps },
+    expect: { type: 'array', items: EXPECT, minItems: 1, maxItems: QA_SCOPE_LIMITS.expectations },
     tier: { type: 'string', enum: ['wall', 'degrade', 'tolerable'] }, basis: { type: 'string', enum: ['failed', 'wrong', 'promise', 'friction', 'cosmetic'] },
     loss: { type: 'string', maxLength: 300 }, prd: { type: 'string', maxLength: 300, description: 'Where this expectation comes from, e.g. "PRD 优惠券 §3.2: 无效券码提示「券码无效」"' },
-    viewport: { type: 'object', additionalProperties: false, properties: { width: { type: 'integer', minimum: 320, maximum: 1920 }, height: { type: 'integer', minimum: 320, maximum: 2000 } } },
+    viewport: { type: 'object', additionalProperties: false, required: ['width', 'height'], properties: { width: { type: 'integer', minimum: 320, maximum: 1920 }, height: { type: 'integer', minimum: 320, maximum: 2000 } } },
   },
 };
 
@@ -53,10 +54,10 @@ export default {
     properties: {
       workspace: WORKSPACE_ARG,
       site: { type: 'string', maxLength: 64, description: 'Site name from qa.json; defaults to the first site' },
-      pages: { type: 'array', items: { type: 'string', pattern: '^/', maxLength: 500 }, maxItems: 40, description: 'Paths to test; defaults to the site pages in qa.json' },
-      viewports: { type: 'array', items: { type: 'integer', minimum: 320, maximum: 1920 }, maxItems: 3, description: 'Widths, e.g. [1440, 390]' },
-      checks: { type: 'array', items: CHECK_SCHEMA, maxItems: 40 },
-      checksFile: { type: 'string', maxLength: 500, description: 'Workspace-relative JSON file with { checks: [...] }' },
+      pages: { type: 'array', items: { type: 'string', pattern: '^/', maxLength: 500 }, maxItems: QA_SCOPE_LIMITS.pages, description: 'Paths to test; defaults to the site pages in qa.json' },
+      viewports: { type: 'array', items: { type: 'integer', minimum: 320, maximum: 1920 }, maxItems: QA_SCOPE_LIMITS.viewports, description: 'Widths, e.g. [1440, 390]' },
+      checks: { type: 'array', items: CHECK_SCHEMA, maxItems: QA_SCOPE_LIMITS.checks },
+      checksFile: { type: 'string', maxLength: 500, description: 'Workspace-relative JSON array or { checks: [...] }; it must contain checks for this site' },
       login: { type: 'string', maxLength: 64, description: 'Override the site login profile' },
       explore: { type: 'boolean', default: false, description: 'Click up to exploreMax controls per page to find dead buttons, click-triggered errors and 404s. Off by default because it changes page state.' },
       exploreMax: { type: 'integer', minimum: 0, maximum: 20, description: 'Controls to click per page when explore=true (default 6)' },

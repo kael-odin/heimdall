@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
-import { loadWorkspace, findWorkspace, resolveLogin, describeLogin, inWorkspace, scrubSecrets, scrubValues } from './workspace.mjs';
+import { loadWorkspace, findWorkspace, resolveLogin, describeLogin, inWorkspace, scrubSecrets, scrubValues, isSitePath, QA_SCOPE_LIMITS } from './workspace.mjs';
 import { probeSite, normalizeCheck } from './probe.mjs';
 import { exploreSite, EXPLORE_DEFAULTS } from './explore.mjs';
 import { compareWithBaseline, readBaseline, DEFAULT_BASELINE_THRESHOLD } from './baseline.mjs';
@@ -56,13 +56,30 @@ export function readRun(ws, runId) {
 /** 读检查点：内联数组，或工作区里的 JSON 文件（{ checks: [...] } 或数组） */
 export function loadChecks(ws, { checks, checksFile, site }) {
   let raw = checks ?? [];
-  if (checksFile) {
+  if (!Array.isArray(raw)) fail('checks 应为检查点数组');
+  if (raw.some(c => c?.site !== undefined && c.site !== site)) fail('内联检查点的 site 与当前站点不一致');
+  if (checksFile !== undefined && checksFile !== null) {
+    if (typeof checksFile !== 'string' || !checksFile.trim()) fail('检查点文件路径不能为空');
     const file = inWorkspace(ws, checksFile);
     const data = readJson(file);
     if (!data) fail(`检查点文件读不出来：${checksFile}`);
-    raw = raw.concat(Array.isArray(data) ? data : (data.checks ?? []).filter(c => !c.site || c.site === site));
+    const items = Array.isArray(data) ? data : data.checks;
+    if (!Array.isArray(items)) fail(`检查点文件 ${checksFile} 应为数组或包含 checks 数组的对象`);
+    if (items.some(c => !c || typeof c !== 'object' || Array.isArray(c) || (c.site !== undefined && (typeof c.site !== 'string' || !c.site)))) {
+      fail(`检查点文件 ${checksFile} 中的检查点或 site 不合法`);
+    }
+    const selected = items.filter(c => !c.site || c.site === site);
+    if (!selected.length) fail(`检查点文件 ${checksFile} 没有适用于站点 ${site} 的检查点`);
+    raw = raw.concat(selected);
   }
-  return raw.map((c, i) => normalizeCheck(c, i));
+  if (raw.length > QA_SCOPE_LIMITS.checks) fail(`一次最多执行 ${QA_SCOPE_LIMITS.checks} 个检查点，请拆分运行`);
+  const normalized = raw.map((c, i) => normalizeCheck(c, i));
+  const ids = new Set();
+  for (const check of normalized) {
+    if (ids.has(check.id)) fail(`检查点 id 重复：${check.id}`);
+    ids.add(check.id);
+  }
+  return normalized;
 }
 
 /** qa.json 里带 match 的约定 → 「团队约定」规则 */
@@ -127,12 +144,18 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
   const siteName = args.site ?? Object.keys(ws.sites)[0];
   const site = ws.sites[siteName];
   if (!site) fail(`qa.json 里没有站点 ${siteName}；有：${Object.keys(ws.sites).join('、')}`, 'not_found');
-  const pages = (args.pages?.length ? args.pages.map(p => (typeof p === 'string' ? { path: p } : p)) : site.pages)
-    .filter(p => typeof p.path === 'string' && p.path.startsWith('/') && !p.path.startsWith('//')).slice(0, 40);
+  if (args.pages != null && !Array.isArray(args.pages)) fail('pages 应为页面路径数组');
+  const requestedPages = args.pages?.length ? args.pages : site.pages;
+  if (!Array.isArray(requestedPages) || requestedPages.length > QA_SCOPE_LIMITS.pages) fail(`一次最多检查 ${QA_SCOPE_LIMITS.pages} 个页面，请拆分运行`);
+  const pages = requestedPages.map(p => (typeof p === 'string' ? { path: p } : p));
+  if (pages.some(p => !p || !isSitePath(p.path))) fail('页面路径应以 / 开头且指向同源路径');
   if (!pages.length) fail('没有要测的页面');
   const checks = loadChecks(ws, { checks: args.checks, checksFile: args.checksFile, site: siteName });
-  const viewports = (args.viewports?.length ? args.viewports : [ws.defaults.viewport.width ?? 1440])
-    .slice(0, 3).map(w => (typeof w === 'object' ? w : { width: Number(w), height: Number(w) < 500 ? 844 : Number(w) < 1000 ? 1024 : 900 }));
+  if (args.viewports != null && !Array.isArray(args.viewports)) fail('viewports 应为视口数组');
+  const requestedViewports = args.viewports?.length ? args.viewports : [ws.defaults.viewport.width ?? 1440];
+  if (requestedViewports.length > QA_SCOPE_LIMITS.viewports) fail(`一次最多检查 ${QA_SCOPE_LIMITS.viewports} 个视口，请拆分运行`);
+  const viewports = requestedViewports.map(w => (typeof w === 'object' && w !== null ? w : { width: Number(w), height: Number(w) < 500 ? 844 : Number(w) < 1000 ? 1024 : 900 }));
+  if (viewports.some(v => !Number.isInteger(v.width) || !Number.isInteger(v.height) || v.width < 1 || v.height < 1)) fail('视口宽高应为正整数');
   const login = resolveLogin(ws, args.login ?? site.login);
   const runId = newRunId();
   const dir = join(runsDir(ws), runId);
