@@ -19,7 +19,7 @@ function finishAudit(siteId) {
         json: `workspace/${siteId}/seo/seo.json`,
         html: `workspace/${siteId}/seo/seo.html`,
         csv: `workspace/${siteId}/seo/seo.csv`,
-        diff: `workspace/${siteId}/seo/diff.md`,
+        diff: report.summary?.initialHtmlUnchecked > 0 ? null : `workspace/${siteId}/seo/diff.md`,
         uri: `heimdall://site/${encodeURIComponent(siteId)}/seo`,
       },
     };
@@ -50,9 +50,11 @@ export default {
       plan: [{ name: 'seo-audit', route: '/api/audit', body: { url: origin, maxPages: args.maxPages } }],
       finish: finishAudit(siteId),
       runningSummary: `已开始 SEO 审计 ${origin}（最多 ${args.maxPages} 页）。`,
-      doneSummary: job => job.status === 'succeeded'
-        ? `SEO 审计完成：${siteId}。`
-        : `SEO 审计结束：${job.status}。`,
+      doneSummary: job => job.status !== 'succeeded'
+        ? `SEO 审计结束：${job.status}。`
+        : job.result?.summary?.initialHtmlUnchecked > 0
+          ? `SEO 审计部分完成：${job.result.summary.initialHtmlUnchecked} 页未核对初始 HTML，未进行基线比对。`
+          : `SEO 审计完成：${siteId}。`,
       nextActions: job => job.status === 'succeeded'
         ? [nextAction('heimdall_artifact', { uri: `heimdall://site/${encodeURIComponent(siteId)}/seo` }, '读取结构化 SEO 报告')]
         : [],

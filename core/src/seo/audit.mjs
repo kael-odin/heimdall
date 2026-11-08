@@ -213,6 +213,8 @@ try {
   const failedPages = pagesScored.filter(p =>
     !Number.isInteger(p.status) || p.status < 200 || p.status >= 400
     || !isSameOriginUrl(p.finalUrl, origin));
+  const uncheckedInitialHtml = pagesScored.filter(p => p.robotsEvidence?.initialHtml !== 'checked');
+  const gateRequested = FAIL_ON_REGRESSION || REQUIRE_BASELINE || UPDATE_BASELINE || THRESHOLD > 0;
 
   const avgPage = pagesScored.length ? pagesScored.reduce((a, p) => a + p.score, 0) / pagesScored.length : 100;
   const sitePenalty = allSiteIssues.reduce((a, i) => a + (SEVERITY_PENALTY[i.severity] ?? 0), 0) / Math.max(pages.length, 1);
@@ -227,19 +229,21 @@ try {
   }
 
   // 分数走势：追加一条（原子写）。历史是增强项，失败不影响本次审计。
-  appendHistory(siteId, {
-    kind: 'audit', score: siteScore,
-    grade: siteScore >= 90 ? 'A' : siteScore >= 75 ? 'B' : 'C',
-    pages: pages.length, issues: allIssues.length,
-    critical: bySeverity.critical ?? 0, high: bySeverity.high ?? 0,
-  });
+  if (!failedPages.length && !uncheckedInitialHtml.length) {
+    appendHistory(siteId, {
+      kind: 'audit', score: siteScore,
+      grade: siteScore >= 90 ? 'A' : siteScore >= 75 ? 'B' : 'C',
+      pages: pages.length, issues: allIssues.length,
+      critical: bySeverity.critical ?? 0, high: bySeverity.high ?? 0,
+    });
+  }
 
   const report = {
     host, origin,
     generatedAt: new Date().toISOString(),
     config: { max: MAX, viewport: '1440x900', concurrency: 2, source: discoverySource },
     score: siteScore,
-    summary: { pages: pages.length, issues: allIssues.length, bySeverity, pagesScored: pages.length },
+    summary: { pages: pages.length, issues: allIssues.length, bySeverity, pagesScored: pages.length, initialHtmlUnchecked: uncheckedInitialHtml.length },
     categories,
     siteIssues: allSiteIssues,
     pages: pagesScored,
@@ -267,7 +271,17 @@ try {
 
   log(`score ${siteScore} | pages ${pages.length} | issues ${allIssues.length} (critical ${bySeverity.critical}, high ${bySeverity.high})`);
   log(`report -> ${htmlPath}`);
-  emit({ kind: 'audit-done', host, score: siteScore, pages: pages.length, issues: allIssues.length, bySeverity, reportPath: htmlPath });
+  emit({ kind: 'audit-done', host, score: siteScore, pages: pages.length, issues: allIssues.length, bySeverity, reportPath: htmlPath, initialHtmlUnchecked: uncheckedInitialHtml.length });
+
+  // A refetch can differ from the navigation response, so it cannot prove that an initial noindex disappeared.
+  if (uncheckedInitialHtml.length) {
+    const sample = uncheckedInitialHtml.slice(0, 3).map(p => p.url).join('; ');
+    log(`INCOMPLETE: ${uncheckedInitialHtml.length}/${pagesScored.length} 页未核对初始 HTML，跳过基线比对和更新。${sample}`);
+    emit({ kind: 'audit-incomplete', reason: 'initial-html-unavailable', pages: uncheckedInitialHtml.length });
+    if (failedPages.length && gateRequested) log(`FAIL: ${failedPages.length}/${pagesScored.length} 页未从目标来源成功采集。`);
+    if (gateRequested) process.exit(1);
+    process.exit(0);
+  }
 
   // ---------- 回归基线 ----------
   const current = snapshotOf(report);
@@ -303,7 +317,7 @@ try {
   // 采集失败只在**门禁模式**下才算失败。普通审计（引擎点"审计"、matrix 首次刷新）本来就该
   // 把 404 当作发现报告出来 —— 以前这里带着 diff.firstRun，于是站点上只要有一个坏链接，
   // 普通审计就 exit 1、基线也永远建不起来（每次都是"首次运行"）。
-  if (failedPages.length && (FAIL_ON_REGRESSION || REQUIRE_BASELINE || UPDATE_BASELINE)) {
+  if (failedPages.length && gateRequested) {
     const sample = failedPages.slice(0, 3).map(p => `${p.status}: ${p.url}${isSameOriginUrl(p.finalUrl, origin) ? '' : ` -> ${p.finalUrl}`}`).join('; ');
     log(`FAIL: ${failedPages.length}/${pagesScored.length} 页未从目标来源成功采集，拒绝通过门禁或更新基线。${sample}`);
     process.exit(1);

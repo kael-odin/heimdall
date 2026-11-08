@@ -27,7 +27,7 @@ export function renderHtml(report) {
       <td><a class="url" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(new URL(p.url).pathname || '/')}</a><div class="subtitle">${esc(p.title || '(无 title)')}</div></td>
       <td class="num">${p.status || 'ERR'}</td>
       <td class="num">${(p.issues ?? []).length}</td>
-      <td>${top.map(i => `<span class="pill ${i.severity}">${esc(i.title)}</span>`).join(' ') || '<span class="ok-text">通过</span>'}</td>
+      <td>${top.map(i => `<span class="pill ${i.severity}">${esc(i.title)}</span>`).join(' ') || '<span class="ok-text">未命中规则</span>'}</td>
     </tr>`;
   }).join('\n');
 
@@ -42,7 +42,7 @@ export function renderHtml(report) {
       </div>`).join('') : '<div class="ok-text">✓ 未发现规则命中</div>';
     return `<details class="page-detail" id="p-${esc(p.url)}">
       <summary><span class="num" style="color:${scoreColor(p.score)}">${p.score}</span> ${esc(new URL(p.url).pathname || '/')} <span class="subtitle">${esc(p.title || '')}</span></summary>
-      <div class="page-meta">${esc(p.url)} · HTTP ${p.status || 'ERR'} · ${p.wordCount} 词 · LCP ${p.vitals?.lcp != null ? (p.vitals.lcp / 1000).toFixed(2) + 's' : 'n/a'} · CLS ${p.vitals?.cls != null ? p.vitals.cls.toFixed(3) : 'n/a'}</div>
+      <div class="page-meta">${esc(p.url)} · HTTP ${p.status || 'ERR'} · 初始 HTML ${p.robotsEvidence?.initialHtml === 'checked' ? '已核对' : '未核对'} · ${p.wordCount} 词 · LCP ${p.vitals?.lcp != null ? (p.vitals.lcp / 1000).toFixed(2) + 's' : 'n/a'} · CLS ${p.vitals?.cls != null ? p.vitals.cls.toFixed(3) : 'n/a'}</div>
       ${body}
     </details>`;
   }).join('\n');
@@ -53,7 +53,7 @@ export function renderHtml(report) {
       <div class="issue-msg">${esc(i.message)}</div>
       ${i.evidence ? `<pre class="evidence">${esc(i.evidence)}</pre>` : ''}
       ${i.suggestion ? `<div class="suggestion">建议：${esc(i.suggestion)}</div>` : ''}
-    </div>`).join('') || '<div class="ok-text">✓ 站点级未发现问题</div>';
+    </div>`).join('') || '<div class="ok-text">✓ 站点级未命中规则</div>';
 
   const catRows = Object.entries(CATEGORIES).map(([key, label]) => {
     const c = categories?.[key] ?? { score: 100, issues: 0 };
@@ -131,6 +131,8 @@ footer { margin-top:44px; color:var(--muted); font-size:12px; }
     </div>
     <div class="score-ring"><div><b style="color:${scoreColor(score)}">${score}</b><span>站点分</span></div></div>
   </header>
+
+  <p class="meta">收录指令按本次浏览器收到的通用与 Googlebot 指令解释；不代表搜索引擎实际收录、排名或 AI 引用。初始 HTML 未核对的页面仍有漏检风险。</p>
 
   <div class="kpis">
     <div class="kpi"><b>${summary.pages}</b><span>采集页面</span></div>

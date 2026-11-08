@@ -48,7 +48,7 @@ export function analyzeRawHtml(html) {
     imgCount: 0, imgMissingAlt: 0,
     anchorCount: 0, internalLinkCount: 0,
     jsonLdCount: 0, microdataCount: 0,
-    hreflang: [],
+    hreflang: [], robotsTags: [],
     wordCount: 0, textLength: 0,
     scriptCount: 0, hasNoscript: false,
   };
@@ -92,7 +92,7 @@ export function analyzeRawHtml(html) {
       const content = attr(n, 'content');
       if (name === 'description' && !out.description) out.description = content;
       else if (name === 'viewport' && !out.viewport) out.viewport = content;
-      else if (name === 'robots') { /* 渲染侧已有 robotsMeta，这里不重复 */ }
+      else if (name === 'robots' || name === 'googlebot') out.robotsTags.push({ name, content });
       else if (prop === 'og:title' && !out.ogTitle) out.ogTitle = content;
     }
   });

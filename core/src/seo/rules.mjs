@@ -35,7 +35,7 @@ export function evaluatePage(page, site = {}) {
   // ---------- 抓取与索引 ----------
   if (page.status >= 400) A('index-http-error', 'index', 'critical', '页面返回错误状态', `HTTP ${page.status}`, page.finalUrl, '修复服务端错误或从站点移除该链接');
   if (page.redirectCount > 0) A('index-redirect', 'index', page.redirectCount > 1 ? 'medium' : 'low', '页面存在重定向', `重定向 ${page.redirectCount} 次`, `${page.url} → ${page.finalUrl}`, '将链接直接指向最终 URL，减少跳转损耗');
-  if (site.noindexIntent !== true && page.meta.noindex) A('index-noindex', 'index', 'high', '页面被标记 noindex', 'meta robots / X-Robots-Tag 含 noindex', page.robotsMeta || page.xRobots, '若页面需要收录，移除 noindex；若有意为之，请在报告中标注为豁免');
+  if (site.noindexIntent !== true && page.meta.noindex) A('index-noindex', 'index', 'high', '页面被标记 noindex', '通用或 Googlebot 指令含 noindex / none（Google 网页搜索口径）', page.robotsEvidence?.noindex?.join('\n') || page.robotsMeta || page.xRobots, '若页面需要收录，移除相关限制；若有意为之，请在报告中标注为豁免');
   if (!page.canonical) A('index-canonical-missing', 'index', 'medium', '缺少 canonical', '未找到 rel=canonical', '', '为每个可索引页面添加自指 canonical');
   else {
     const canonicalHost = safeHost(page.canonical);

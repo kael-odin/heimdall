@@ -15,6 +15,52 @@ import { UA } from '../ua.mjs';
 
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
 
+const ROBOTS_VALUE_DIRECTIVES = new Set(['max-snippet', 'max-image-preview', 'max-video-preview', 'unavailable_after']);
+
+/** Restriction evidence for Google web search; other crawler-specific rules stay out of this verdict. */
+function googleRobotsEvidence(tags, headers, raw) {
+  const evidence = { target: 'googlebot', initialHtml: raw?.source === 'navigation' ? 'checked' : 'unavailable', noindex: [], nofollow: [] };
+  const apply = (scope, value, source) => {
+    if (scope !== 'robots' && scope !== 'googlebot') return;
+    for (const part of value.split(',')) {
+      const directive = part.trim().toLowerCase();
+      if (!directive || directive.includes(':')) continue;
+      for (const token of directive.split(/\s+/)) {
+        const match = `${source} [${scope}: ${token}]`;
+        if (token === 'none' || token === 'noindex') evidence.noindex.push(match);
+        if (token === 'none' || token === 'nofollow') evidence.nofollow.push(match);
+      }
+    }
+  };
+
+  for (const { name, content } of tags) {
+    apply(name, content, `meta name="${name}" content="${content.slice(0, 200)}"`);
+  }
+  if (raw?.source === 'navigation') {
+    for (const { name, content } of raw.robotsTags ?? []) {
+      apply(name, content, `initial HTML meta name="${name}" content="${content.slice(0, 200)}"`);
+    }
+  }
+  for (const header of headers) {
+    let scope = 'robots';
+    const source = `X-Robots-Tag: ${header.slice(0, 200)}`;
+    for (const part of header.split(',')) {
+      let value = part.trim();
+      const prefix = value.match(/^([a-z][a-z0-9_-]*)\s*:\s*(.*)$/i);
+      if (prefix) {
+        const name = prefix[1].toLowerCase();
+        if (ROBOTS_VALUE_DIRECTIVES.has(name)) continue;
+        scope = name;
+        value = prefix[2];
+      }
+      apply(scope, value, source);
+    }
+  }
+  evidence.noindex = [...new Set(evidence.noindex)];
+  evidence.nofollow = [...new Set(evidence.nofollow)];
+  return evidence;
+}
+
 const VITALS_INIT = `
 window.__heimdallVitals = { lcp: null, cls: 0, fcp: null };
 try {
@@ -127,18 +173,33 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
     await page.waitForTimeout(settleMs);
 
     const headers = response ? response.headers() : {};
+    let robotsHeaders = headers['x-robots-tag'] ? [headers['x-robots-tag']] : [];
+    try {
+      const values = (await response?.headersArray() ?? [])
+        .filter(h => h.name.toLowerCase() === 'x-robots-tag')
+        .map(h => h.value);
+      if (values.length) robotsHeaders = values;
+    } catch { /* Keep the combined header when individual values are unavailable. */ }
     const finalUrl = page.url();
     const status = response ? response.status() : 0;
     let redirectCount = 0;
     try { let req = response?.request(); while (req?.redirectedFrom?.()) { redirectCount++; req = req.redirectedFrom(); } } catch {}
 
-    // 服务端原始 HTML（未执行 JS）。用页内 fetch 取同一 URL：
-    // 走浏览器网络栈（带 cookie/UA），但不执行脚本 —— 拿到的是
-    // "爬虫第一遍看到的"那份。用来和渲染后的 DOM 对照，
-    // 判断这个站的内容到底依赖不依赖 JS。
+    // Prefer the actual navigation response: a later fetch may see changed cookies or content.
     let raw = null;
+    let rawTimer;
     try {
-      const r = await page.evaluate(async (u) => {
+      if (response && response.url().split('#')[0] === finalUrl.split('#')[0]) {
+        const html = await Promise.race([
+          response.text(),
+          new Promise(resolve => { rawTimer = setTimeout(() => resolve(null), 2000); }),
+        ]);
+        if (html) raw = { ...analyzeRawHtml(html), source: 'navigation' };
+      }
+    } catch { /* Some browser navigations no longer expose their response body. */ }
+    finally { clearTimeout(rawTimer); }
+    try {
+      const r = raw?.ok ? null : await page.evaluate(async (u) => {
         const ac = new AbortController();
         const timer = setTimeout(() => ac.abort(), 20_000);
         try {
@@ -147,7 +208,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         } catch (e) { return { status: 0, html: '', error: String(e).slice(0, 120) }; }
         finally { clearTimeout(timer); }
       }, finalUrl).catch(() => null);
-      if (r?.html) raw = analyzeRawHtml(r.html);
+      if (r?.html) raw = { ...analyzeRawHtml(r.html), source: 'refetch' };
     } catch { /* 取不到就不做对照，不算失败 */ }
 
     const dom = await page.evaluate(() => {
@@ -238,7 +299,10 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       const sum = (pred) => res.filter(pred).reduce((a, r) => a + Math.max(r.transfer, r.encoded), 0);
       const renderBlocking = [...document.querySelectorAll('head link[rel="stylesheet"]')].length
         + [...document.querySelectorAll('head script[src]')].filter(s => !s.async && !s.defer).length;
-      const robotsMeta = meta('meta[name="robots"]').toLowerCase();
+      const robotsTags = [...document.querySelectorAll('meta[name]')]
+        .map(el => ({ name: (el.getAttribute('name') || '').trim().toLowerCase(), content: el.getAttribute('content') || '' }))
+        .filter(el => el.name === 'robots' || el.name === 'googlebot');
+      const robotsMeta = robotsTags.filter(el => el.name === 'robots').map(el => el.content.toLowerCase()).join(', ');
       // 内容指纹（FNV-1a）：用于变更监控判断"正文是否变化"
       const normText = text.toLowerCase().slice(0, 200000);
       let th = 0x811c9dc5;
@@ -249,7 +313,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         title: (document.title || '').trim(),
         description: meta('meta[name="description"]').trim(),
         canonical: abs(meta('link[rel="canonical"]', 'href')),
-        robotsMeta,
+        robotsMeta, robotsTags,
         lang: document.documentElement.lang || '',
         viewport: meta('meta[name="viewport"]'),
         h1: headings.filter(h => h.level === 1).map(h => h.text),
@@ -283,7 +347,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       };
     });
 
-    const noindex = /noindex/.test(dom.robotsMeta) || /noindex/i.test(headers['x-robots-tag'] ?? '');
+    const robotsEvidence = googleRobotsEvidence(dom.robotsTags, robotsHeaders, raw);
     return {
       url,
       finalUrl,
@@ -296,7 +360,8 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       canonical: dom.canonical,
       robotsMeta: dom.robotsMeta,
       xRobots: headers['x-robots-tag'] ?? '',
-      meta: { noindex, nofollow: /nofollow/.test(dom.robotsMeta) || /nofollow/i.test(headers['x-robots-tag'] ?? '') },
+      robotsEvidence,
+      meta: { noindex: robotsEvidence.noindex.length > 0, nofollow: robotsEvidence.nofollow.length > 0 },
       lang: dom.lang, viewport: dom.viewport, textHash: dom.textHash, textSample: dom.textSample,
       h1: dom.h1, headings: dom.headings, headingLevels: dom.headingLevels, headingSkips: dom.headingSkips,
       wordCount: dom.wordCount, textRatio: dom.htmlBytes ? Math.min(1, dom.textLength / dom.htmlBytes) : 0, htmlBytes: dom.htmlBytes,
