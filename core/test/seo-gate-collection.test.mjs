@@ -6,6 +6,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from '../src/seo/method.mjs';
 
 const AUDIT = fileURLToPath(new URL('../src/seo/audit.mjs', import.meta.url));
 
@@ -21,6 +22,44 @@ function runAudit(origin, baseline, dataDir, flags = ['--update-baseline']) {
     child.once('close', code => resolve({ code, output }));
   });
 }
+
+test('seo audit: optional robots and sitemap observations do not lower the site score', { timeout: 60_000 }, async () => {
+  const server = createServer((req, res) => {
+    if (req.url === '/') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.end('<!doctype html><html lang="en"><head><title>Example page</title></head><body><h1>Example page</h1></body></html>');
+    }
+    res.writeHead(404); res.end();
+  });
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-seo-optional-files-'));
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const baseline = join(dataDir, 'baseline.json');
+    const run = await runAudit(origin, baseline, dataDir);
+    assert.equal(run.code, 0, run.output);
+    const directory = join(dataDir, 'workspace', '127.0.0.1', 'seo');
+    const report = JSON.parse(readFileSync(join(directory, 'seo.json'), 'utf8'));
+    assert.equal(report.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
+    assert.equal(report.summary.sitemapCoverage, 'not_found');
+    assert.equal(report.summary.baselineEligible, true);
+    assert.deepEqual(report.siteIssues.map(issue => [issue.id, issue.severity]), [
+      ['index-robots-missing', 'info'], ['index-sitemap-missing', 'info'],
+    ]);
+    assert.equal(report.score, report.pages[0].score);
+    assert.match(readFileSync(join(directory, 'seo.html'), 'utf8'), /待核查提示，不单独扣分/);
+    const saved = JSON.parse(readFileSync(baseline, 'utf8'));
+    assert.equal(saved.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
+    assert.equal(saved.siteIssues['index-robots-missing'], 'info');
+    assert.equal(saved.siteIssues['index-sitemap-missing'], 'info');
+    const compared = await runAudit(origin, baseline, dataDir, ['--fail-on-regression']);
+    assert.equal(compared.code, 0, compared.output);
+    assert.match(compared.output, /audit-regression/);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
 
 test('seo gate: an HTTP error page cannot become a baseline', { timeout: 60_000 }, async () => {
   let origin;
@@ -52,7 +91,7 @@ test('seo gate: an HTTP error page cannot become a baseline', { timeout: 60_000 
     assert.equal(thresholdRun.code, 1, thresholdRun.output);
     assert.match(thresholdRun.output, /未从目标来源成功采集/);
     assert.equal(existsSync(baseline), false);
-    const initial = JSON.stringify({ version: 1, scoreMethodVersion: 2, measurementVersion: 3, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
+    const initial = JSON.stringify({ version: 1, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
       collection: { version: 1, sitemapCoverage: 'complete' },
       pages: { [`${origin}/bad`]: { score: 88, stable: 88, issues: { 'index-noindex': 'high' } } } });
     writeFileSync(baseline, initial);
@@ -90,7 +129,7 @@ test('seo gate: unavailable initial HTML cannot resolve findings or overwrite a 
     origin = `http://127.0.0.1:${server.address().port}`;
     const baseline = join(dataDir, 'baseline.json');
     const initial = JSON.stringify({
-      version: 1, scoreMethodVersion: 2, measurementVersion: 3, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
+      version: 1, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
       collection: { version: 1, sitemapCoverage: 'complete' },
       pages: { [`${origin}/spa`]: { score: 88, stable: 88, issues: { 'index-noindex': 'high' } } },
     });
@@ -179,7 +218,7 @@ test('seo gate: incomplete sitemap cannot resolve issues or overwrite history an
     origin = `http://127.0.0.1:${server.address().port}`;
     const baseline = join(dataDir, 'baseline.json');
     const initial = JSON.stringify({
-      version: 1, scoreMethodVersion: 2, measurementVersion: 3, host: '127.0.0.1', origin, score: 88, stable: 88,
+      version: 1, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION, host: '127.0.0.1', origin, score: 88, stable: 88,
       collection: { version: 1, sitemapCoverage: 'complete' },
       siteIssues: { 'index-sitemap-missing-page': 'low' },
       pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: {} } },
@@ -273,7 +312,7 @@ test('seo gate: a baseline page omitted by the page limit is unchecked, not remo
     origin = `http://127.0.0.1:${server.address().port}`;
     const baseline = join(dataDir, 'baseline.json');
     const page = { score: 88, stable: 88, issues: {} };
-    const initial = JSON.stringify({ version: 1, scoreMethodVersion: 2, measurementVersion: 3, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
+    const initial = JSON.stringify({ version: 1, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
       collection: { version: 1, sitemapCoverage: 'complete' }, pages: { [`${origin}/page`]: page, [`${origin}/other`]: page } });
     writeFileSync(baseline, initial);
     for (const [flags, expected] of [[[], 0], [['--fail-on-regression'], 1], [['--update-baseline'], 1]]) {
@@ -308,7 +347,7 @@ test('seo gate: a legacy score method is preserved, never compared or overwritte
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     origin = `http://127.0.0.1:${server.address().port}`;
     const baseline = join(dataDir, 'legacy.json');
-    const original = JSON.stringify({ version: 1, host: '127.0.0.1', origin, score: 88, stable: 88,
+    const original = JSON.stringify({ version: 1, scoreMethodVersion: 2, measurementVersion: SEO_MEASUREMENT_VERSION, host: '127.0.0.1', origin, score: 88, stable: 88,
       collection: { version: 1, sitemapCoverage: 'complete' }, siteIssues: {},
       pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: { 'content-text-ratio': 'low' } } } });
     writeFileSync(baseline, original);
@@ -326,15 +365,15 @@ test('seo gate: a legacy score method is preserved, never compared or overwritte
     assert.equal(readFileSync(baseline, 'utf8'), original);
     const directory = join(dataDir, 'workspace', '127.0.0.1', 'seo');
     const report = JSON.parse(readFileSync(join(directory, 'seo.json'), 'utf8'));
-    assert.equal(report.scoreMethodVersion, 2);
-    assert.equal(report.measurementVersion, 3);
+    assert.equal(report.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
+    assert.equal(report.measurementVersion, SEO_MEASUREMENT_VERSION);
     assert.equal(report.summary.baselineMethodMismatch, true);
     assert.equal(report.summary.baselineCompared, false);
     assert.match(readFileSync(join(directory, 'seo.html'), 'utf8'), /评分或测量口径缺失或不兼容/);
 
     const legacyMeasurement = join(dataDir, 'legacy-measurement.json');
     const measurementOriginal = JSON.stringify({
-      version: 1, scoreMethodVersion: 2, measurementVersion: 2, host: '127.0.0.1', origin, score: 88, stable: 88,
+      version: 1, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: 2, host: '127.0.0.1', origin, score: 88, stable: 88,
       collection: { version: 1, sitemapCoverage: 'complete' }, siteIssues: {},
       pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: { 'structured-none': 'info' } } },
     });
@@ -356,8 +395,8 @@ test('seo gate: a legacy score method is preserved, never compared or overwritte
     const fresh = join(dataDir, 'current.json');
     const created = await runAudit(origin, fresh, dataDir, ['--update-baseline']);
     assert.equal(created.code, 0, created.output);
-    assert.equal(JSON.parse(readFileSync(fresh, 'utf8')).scoreMethodVersion, 2);
-    assert.equal(JSON.parse(readFileSync(fresh, 'utf8')).measurementVersion, 3);
+    assert.equal(JSON.parse(readFileSync(fresh, 'utf8')).scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
+    assert.equal(JSON.parse(readFileSync(fresh, 'utf8')).measurementVersion, SEO_MEASUREMENT_VERSION);
     const compared = await runAudit(origin, fresh, dataDir, ['--fail-on-regression', '--tolerance', '1']);
     assert.equal(compared.code, 0, compared.output);
     assert.match(compared.output, /audit-regression/);

@@ -134,7 +134,8 @@ footer { margin-top:44px; color:var(--muted); font-size:12px; }
   </header>
 
   <p class="meta">收录指令按本次浏览器收到的通用与 Googlebot 指令解释；不代表搜索引擎实际收录、排名或 AI 引用。初始 HTML 未核对的页面仍有漏检风险。</p>
-  <p class="meta">评分口径：${esc(report.scoreMethodVersion ?? '未记录')}；测量口径：${esc(report.measurementVersion ?? '未记录')}。${report.scoreMethodVersion === 2 ? '文本/DOM 比例仅供观察，不扣分；两者按 UTF-16 代码单元计算。' : '历史或未知口径不能与当前分数直接比较。'}${report.measurementVersion === 2 || report.measurementVersion === 3 ? 'HTML 字节数是解码内容重新编码为 UTF-8 的大小，不是网络传输量。' : '历史或未知口径的 HTML 字节数不可按当前单位解释。'}</p>
+  <p class="meta">评分口径：${esc(report.scoreMethodVersion ?? '未记录')}；测量口径：${esc(report.measurementVersion ?? '未记录')}。${[2, 3].includes(report.scoreMethodVersion) ? '文本/DOM 比例仅供观察，不扣分；两者按 UTF-16 代码单元计算。' : '历史或未知口径不能与当前分数直接比较。'}${report.measurementVersion === 2 || report.measurementVersion === 3 ? 'HTML 字节数是解码内容重新编码为 UTF-8 的大小，不是网络传输量。' : '历史或未知口径的 HTML 字节数不可按当前单位解释。'}</p>
+  ${report.scoreMethodVersion === 3 ? '<p class="meta">robots.txt 返回 404/410 或已检查的位置未发现 sitemap，仅为待核查提示，不单独扣分；本次采集不代表搜索引擎实际抓取或收录。</p>' : ''}
   <p class="meta">${report.measurementVersion === 3 ? '结构化数据提示仅检查 JSON-LD 顶层及 @graph 类型和 microdata 标记，不检查 RDFa；发现类型不代表搜索引擎认可或富结果合格。' : '历史或未知测量口径可能遗漏 @graph 类型，不能据此认定没有结构化数据；RDFa 未核实。'}</p>
   <p class="meta">资源体积取本次浏览器可见子资源的传输或编码大小估算，不含主文档；缓存、跨源限制和条目上限可能影响完整性，不等同于完整网络流量。</p>
   <p class="meta">图片格式提示仅匹配图片地址后缀，不能证明响应类型或实际编码；旧报告中的“张为 jpg/png”也只表示后缀匹配。</p>

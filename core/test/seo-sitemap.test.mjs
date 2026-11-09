@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchRobotsAndSitemaps } from '../src/seo/collect.mjs';
-import { evaluateSite } from '../src/seo/rules.mjs';
+import { evaluateSite, scoreIssues } from '../src/seo/rules.mjs';
 
 async function serverFor(handler) {
   const server = createServer(handler);
@@ -122,6 +122,31 @@ test('absent, inaccessible, malformed and empty sitemaps have distinct evidence 
     assert.equal(result.coverage, 'complete');
     assert.ok(!siteIssues(result, url).includes('index-sitemap-missing'));
     assert.ok(siteIssues(result, url).includes('index-sitemap-missing-page'));
+  } finally { await site.close(); }
+});
+
+test('robots 404 and 410 with no discovered sitemap remain non-penalizing observations', async () => {
+  let robotsStatus = 404;
+  const site = await serverFor((req, res) => {
+    res.writeHead(req.url === '/robots.txt' ? robotsStatus : 404);
+    res.end();
+  });
+  try {
+    for (robotsStatus of [404, 410]) {
+      const result = await fetchRobotsAndSitemaps(site.origin);
+      assert.equal(result.robots.status, robotsStatus);
+      assert.equal(result.coverage, 'not_found');
+      const issues = evaluateSite({ robots: result.robots, sitemapCoverage: result.coverage });
+      assert.deepEqual(issues.map(issue => [issue.id, issue.severity]), [
+        ['index-robots-missing', 'info'], ['index-sitemap-missing', 'info'],
+      ]);
+      assert.equal(scoreIssues(issues), 100);
+    }
+    robotsStatus = 503;
+    const failed = await fetchRobotsAndSitemaps(site.origin);
+    assert.equal(failed.coverage, 'unavailable');
+    assert.ok(failed.reasons.includes('robots-unavailable'));
+    assert.ok(!siteIssues(failed, site.origin).includes('index-sitemap-missing'));
   } finally { await site.close(); }
 });
 

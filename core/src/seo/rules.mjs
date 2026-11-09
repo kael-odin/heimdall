@@ -183,8 +183,8 @@ export function evaluateSite(site = {}) {
   const pagesWithoutSitemap = site.sitemapCoverage === 'complete'
     ? (site.pages || []).filter(p => p.status >= 200 && p.status < 400 && !p.meta.noindex && !site.sitemapUrls?.has(canonUrl(p.finalUrl)) && !site.sitemapUrls?.has(canonUrl(p.url))) : [];
   if (pagesWithoutSitemap.length) S('index-sitemap-missing-page', 'index', 'low', '页面未出现在已检查的 sitemap', `${pagesWithoutSitemap.length} 个页面`, pagesWithoutSitemap.slice(0, 5).map(p => p.url).join('\n'), '核对已检查的 sitemap，确认页面是否应被列入');
-  if (site.robots && site.robots.status === 404) S('index-robots-missing', 'index', 'low', '缺少 robots.txt', 'robots.txt 返回 404', '', '提供 robots.txt 并声明 sitemap');
-  if (site.sitemapCoverage === 'not_found') S('index-sitemap-missing', 'index', 'medium', '已检查的位置未发现 sitemap', '已检查 robots.txt 声明及常见地址；其他位置未检查', '', '确认 sitemap 地址并在 robots.txt 中声明');
+  if ([404, 410].includes(site.robots?.status)) S('index-robots-missing', 'index', 'info', '本次未找到 robots.txt', `本次采集返回 HTTP ${site.robots.status}`, '未模拟 Googlebot；不存在 robots.txt 本身不表示页面不能被收录', '如需控制抓取或声明 sitemap，先确认站点需求，再决定是否配置');
+  if (site.sitemapCoverage === 'not_found') S('index-sitemap-missing', 'index', 'info', '已检查的位置未发现 sitemap', '已检查 robots.txt 声明及常见地址', '其他位置或提交途径未检查；未发现 sitemap 不等于页面未被收录', '按页面规模和发现情况判断是否需要 sitemap；已有地图可通过 robots.txt 或搜索平台提交');
 
   for (const url of site.orphans ?? []) S('links-orphan', 'links', 'low', '孤儿页（无站内入链）', url, '', '从导航/相关页添加内链，提升发现与权重传递');
 

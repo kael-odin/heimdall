@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from '../../../core/src/seo/method.mjs';
 
 const MCP = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
 const ENGINE = fileURLToPath(new URL('../../../core/src/engine-server.mjs', import.meta.url));
@@ -69,7 +70,7 @@ test('fresh MCP exposes incomplete collection and incompatible score methods wit
 
     partial = false;
     const baseline = join(seoDir, 'baseline.json');
-    const old = JSON.stringify({ version: 1, host: '127.0.0.1', origin, score: 88, stable: 88,
+    const old = JSON.stringify({ version: 1, scoreMethodVersion: 2, measurementVersion: SEO_MEASUREMENT_VERSION, host: '127.0.0.1', origin, score: 88, stable: 88,
       collection: { version: 1, sitemapCoverage: 'complete' }, siteIssues: {},
       pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: { 'content-text-ratio': 'low' } } } });
     writeFileSync(baseline, old);
@@ -77,14 +78,14 @@ test('fresh MCP exposes incomplete collection and incompatible score methods wit
     assert.equal(second.isError, false, JSON.stringify(second.structuredContent));
     assert.match(second.structuredContent.summary, /评分或测量口径不兼容/);
     const incompatible = second.structuredContent.result.result;
-    assert.equal(incompatible.scoreMethodVersion, 2);
-    assert.equal(incompatible.measurementVersion, 3);
+    assert.equal(incompatible.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
+    assert.equal(incompatible.measurementVersion, SEO_MEASUREMENT_VERSION);
     assert.equal(incompatible.summary.baselineMethodMismatch, true);
     assert.equal(incompatible.reports.diff, null);
     assert.equal(readFileSync(baseline, 'utf8'), old);
     assert.equal(readFileSync(join(seoDir, 'diff.md'), 'utf8'), 'old comparison');
 
-    const oldMeasurement = JSON.stringify({ version: 1, scoreMethodVersion: 2, measurementVersion: 2,
+    const oldMeasurement = JSON.stringify({ version: 1, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: 2,
       host: '127.0.0.1', origin, score: 88, stable: 88, collection: { version: 1, sitemapCoverage: 'complete' }, siteIssues: {},
       pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: { 'structured-none': 'info' } } } });
     writeFileSync(baseline, oldMeasurement);

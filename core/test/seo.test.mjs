@@ -113,6 +113,24 @@ test('seo: site-level duplicates, sitemap gaps and orphans are flagged', () => {
   assert.ok(ids.includes('index-robots-missing'));
 });
 
+test('seo: missing robots and unlocated sitemap are observations, not automatic score penalties', () => {
+  for (const status of [404, 410]) {
+    const issues = evaluateSite({ robots: { status }, sitemapCoverage: 'not_found' });
+    const robots = issues.find(i => i.id === 'index-robots-missing');
+    const sitemap = issues.find(i => i.id === 'index-sitemap-missing');
+    assert.equal(robots?.severity, 'info');
+    assert.match(robots.message, new RegExp(String(status)));
+    assert.match(robots.evidence, /Googlebot/);
+    assert.equal(sitemap?.severity, 'info');
+    assert.match(sitemap.evidence, /其他位置|其他途径/);
+    assert.equal(scoreIssues(issues), 100);
+  }
+  for (const status of [200, 401, 403, 429, 500, null]) {
+    const issues = evaluateSite({ robots: { status }, sitemapCoverage: 'unavailable' });
+    assert.ok(!issues.some(i => i.id === 'index-robots-missing' || i.id === 'index-sitemap-missing'), String(status));
+  }
+});
+
 test('seo: severity counting and score math', () => {
   const issues = [{ severity: 'critical' }, { severity: 'high' }, { severity: 'medium' }, { severity: 'info' }];
   assert.deepEqual(countBySeverity(issues), { critical: 1, high: 1, medium: 1, low: 0, info: 1 });
