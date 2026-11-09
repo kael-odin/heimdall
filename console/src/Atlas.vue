@@ -2326,7 +2326,7 @@ onBeforeUnmount(() => {
       <p v-if="auditReport">{{ auditReport.score }} 分 · {{ auditReport.pages }} 页 · {{ auditReport.issues }} 条问题 · 评分口径 {{ auditReport.scoreMethodVersion ?? '未记录' }}</p>
       <p v-else>尚未运行（66 条规则 / 六分类评分）</p>
       <p class="trend-hint" v-if="auditReport && auditReport.baselineEligible === false">采集不完整，分数仅供参考。</p>
-      <p class="trend-hint" v-if="auditReport?.baselineMethodMismatch">旧基线评分口径不兼容，本次未进行基线对比；原文件仍保留。</p>
+      <p class="trend-hint" v-if="auditReport?.baselineMethodMismatch">旧基线评分或测量口径不兼容，本次未进行基线对比；原文件仍保留。</p>
       <p class="trend-hint" v-else-if="auditReport?.legacyBaseline">旧基线未记录采集完整性，本次未进行基线对比。</p>
       <p class="trend-hint" v-if="auditReport?.field?.compare">{{ auditReport.field.compare.note }}</p>
       <p class="trend-hint" v-else-if="auditReport?.field && !auditReport.field.available">

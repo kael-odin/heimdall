@@ -30,7 +30,7 @@ test('fresh MCP exposes incomplete collection and incompatible score methods wit
       return res.end(`<urlset><url><loc>${origin}/page</loc></url></urlset>`);
     }
     if (req.url === '/failed.xml') { res.writeHead(503); return res.end(); }
-    if (req.url === '/page') return res.end('<!doctype html><title>Page</title><h1>Page</h1>');
+    if (req.url === '/page') return res.end('<!doctype html><title>Page</title><script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Fixture"}]}</script><h1>Page</h1>');
     res.writeHead(404); res.end();
   });
   await new Promise(resolve => fixture.listen(0, '127.0.0.1', resolve));
@@ -75,14 +75,27 @@ test('fresh MCP exposes incomplete collection and incompatible score methods wit
     writeFileSync(baseline, old);
     const second = await client.callTool({ name: 'heimdall_seo_audit', arguments: { url: origin, maxPages: 1, waitMs: 60_000 } });
     assert.equal(second.isError, false, JSON.stringify(second.structuredContent));
-    assert.match(second.structuredContent.summary, /评分口径不兼容/);
+    assert.match(second.structuredContent.summary, /评分或测量口径不兼容/);
     const incompatible = second.structuredContent.result.result;
     assert.equal(incompatible.scoreMethodVersion, 2);
-    assert.equal(incompatible.measurementVersion, 2);
+    assert.equal(incompatible.measurementVersion, 3);
     assert.equal(incompatible.summary.baselineMethodMismatch, true);
     assert.equal(incompatible.reports.diff, null);
     assert.equal(readFileSync(baseline, 'utf8'), old);
     assert.equal(readFileSync(join(seoDir, 'diff.md'), 'utf8'), 'old comparison');
+
+    const oldMeasurement = JSON.stringify({ version: 1, scoreMethodVersion: 2, measurementVersion: 2,
+      host: '127.0.0.1', origin, score: 88, stable: 88, collection: { version: 1, sitemapCoverage: 'complete' }, siteIssues: {},
+      pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: { 'structured-none': 'info' } } } });
+    writeFileSync(baseline, oldMeasurement);
+    const third = await client.callTool({ name: 'heimdall_seo_audit', arguments: { url: origin, maxPages: 1, waitMs: 60_000 } });
+    assert.equal(third.isError, false, JSON.stringify(third.structuredContent));
+    assert.match(third.structuredContent.summary, /评分或测量口径不兼容/);
+    assert.equal(third.structuredContent.result.result.reports.diff, null);
+    assert.equal(readFileSync(baseline, 'utf8'), oldMeasurement);
+    const current = JSON.parse(readFileSync(join(seoDir, 'seo.json'), 'utf8'));
+    assert.deepEqual(current.pages[0].jsonld[0].types, ['Organization']);
+    assert.equal(current.pages[0].issues.some(issue => issue.id === 'structured-none'), false);
   } finally {
     await client?.close().catch(() => {});
     if (engine.exitCode === null && engine.signalCode === null) {

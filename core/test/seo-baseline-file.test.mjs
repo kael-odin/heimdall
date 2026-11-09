@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { baselineFileKey, versionedBaselineFileKey, readBaselineFile } from '../src/seo/baseline-file.mjs';
-import { SEO_SCORE_METHOD_VERSION } from '../src/seo/method.mjs';
+import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from '../src/seo/method.mjs';
 import { buildBaseline } from '../src/seo/baseline.mjs';
 
 const CORE = fileURLToPath(new URL('..', import.meta.url));
@@ -125,7 +125,7 @@ test('baseline file rejects empty or semantically damaged snapshots', () => {
 test('baseline file key is stable and cannot collide on origin protocol or port', () => {
   const apex = baselineFileKey('https://example.com/path');
   assert.match(apex, /^example\.com--origin-[a-f0-9]{24}$/);
-  assert.equal(versionedBaselineFileKey('https://example.com/path'), `${apex}--score-v${SEO_SCORE_METHOD_VERSION}`);
+  assert.equal(versionedBaselineFileKey('https://example.com/path'), `${apex}--score-v${SEO_SCORE_METHOD_VERSION}--measure-v${SEO_MEASUREMENT_VERSION}`);
   assert.notEqual(versionedBaselineFileKey('https://example.com/path'), apex);
   assert.equal(baselineFileKey('https://example.com/other'), apex);
   assert.notEqual(baselineFileKey('https://www.example.com/path'), apex);

@@ -105,6 +105,7 @@ export function buildBaseline(report, { capturedAt } = {}) {
   return {
     version: BASELINE_VERSION,
     scoreMethodVersion: report.scoreMethodVersion ?? null,
+    measurementVersion: report.measurementVersion ?? null,
     host: report.host,
     origin: report.origin,
     capturedAt: capturedAt ?? report.generatedAt ?? new Date().toISOString(),
@@ -164,6 +165,10 @@ export function diffBaseline(baseline, current, opts = {}) {
   if (!Number.isSafeInteger(baseline.scoreMethodVersion) || baseline.scoreMethodVersion < 1
       || baseline.scoreMethodVersion !== current?.scoreMethodVersion) {
     throw new Error('baseline score method is missing or incompatible; preserve it and establish a new baseline');
+  }
+  if (!Number.isSafeInteger(baseline.measurementVersion) || baseline.measurementVersion < 1
+      || baseline.measurementVersion !== current?.measurementVersion) {
+    throw new Error('baseline measurement method is missing or incompatible; preserve it and establish a new baseline');
   }
 
   const regressions = [];

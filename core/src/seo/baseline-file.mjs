@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { BASELINE_VERSION } from './baseline.mjs';
 import { SEVERITY_PENALTY } from './rules.mjs';
-import { SEO_SCORE_METHOD_VERSION } from './method.mjs';
+import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from './method.mjs';
 
 const SEVERITIES = new Set(Object.keys(SEVERITY_PENALTY));
 
@@ -43,9 +43,9 @@ export function baselineFileKey(target) {
   return `${hostLabel}--origin-${fingerprint}`;
 }
 
-/** Keep each scoring method's CI baseline separate from older snapshots. */
+/** Keep each score and measurement method's CI baseline separate from older snapshots. */
 export function versionedBaselineFileKey(target) {
-  return `${baselineFileKey(target)}--score-v${SEO_SCORE_METHOD_VERSION}`;
+  return `${baselineFileKey(target)}--score-v${SEO_SCORE_METHOD_VERSION}--measure-v${SEO_MEASUREMENT_VERSION}`;
 }
 
 function validateIssueMap(value, label) {
@@ -85,6 +85,10 @@ export function readBaselineFile(path, { required = false, expectedOrigin = null
   if (baseline.scoreMethodVersion != null
       && (!Number.isSafeInteger(baseline.scoreMethodVersion) || baseline.scoreMethodVersion < 1)) {
     throw new Error(`baseline score method version is invalid: ${path}`);
+  }
+  if (baseline.measurementVersion != null
+      && (!Number.isSafeInteger(baseline.measurementVersion) || baseline.measurementVersion < 1)) {
+    throw new Error(`baseline measurement method version is invalid: ${path}`);
   }
   if (Object.keys(baseline.pages).length === 0) {
     throw new Error(`baseline has invalid structure: ${path} (pages is empty)`);

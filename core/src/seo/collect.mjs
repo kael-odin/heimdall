@@ -245,8 +245,18 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         try {
           const data = JSON.parse(s.textContent);
           const arr = Array.isArray(data) ? data : [data];
-          const types = arr.flatMap(x => [].concat(x?.['@type'] ?? [])).filter(Boolean);
-          return { ok: true, types, items: arr.slice(0, 12).map(x => pickLd(x)).filter(Boolean) };
+          const pending = [...arr];
+          const types = new Set();
+          while (pending.length) {
+            const node = pending.pop();
+            if (Array.isArray(node)) { for (const item of node) pending.push(item); continue; }
+            if (!node || typeof node !== 'object') continue;
+            for (const type of [].concat(node['@type'] ?? [])) {
+              if (typeof type === 'string' && type.trim()) types.add(type.trim());
+            }
+            if (node['@graph'] && typeof node['@graph'] === 'object') pending.push(node['@graph']);
+          }
+          return { ok: true, types: [...types], items: arr.slice(0, 12).map(x => pickLd(x)).filter(Boolean) };
         } catch (e) { return { ok: false, types: [], items: [], error: String(e).slice(0, 120) }; }
       });
       // 「加载更多 / 下一页」这类按钮：分页如果用 JS 做，爬虫拿不到下一页的 URL ——

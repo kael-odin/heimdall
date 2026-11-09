@@ -17,7 +17,7 @@ const CORE = fileURLToPath(new URL('..', import.meta.url));
 const ENGINE = fileURLToPath(new URL('../src/engine-server.mjs', import.meta.url));
 
 const audit = (host, specs) => ({
-  host, score: 80, scoreMethodVersion: 2,
+  host, score: 80, scoreMethodVersion: 2, measurementVersion: 3,
   summary: { issues: specs.length * 3, baselineEligible: true, sitemapCoverage: 'complete', bySeverity: { high: 1, medium: 1, low: 1, info: 0 } },
   pages: specs.map(s => ({
     url: `https://${host}${s.path}`, status: 200,
@@ -184,4 +184,24 @@ test('matrix: different or unknown scoring methods cannot be compared', () => {
   const incomplete = buildMatrix([current, old]);
   assert.equal(incomplete.scoreComparison.reason, 'insufficient-eligible-audits');
   assert.match(renderMatrixHtml(incomplete), /完整审计不足两份/);
+});
+
+test('matrix: JSON-LD coverage is hidden when measurement methods are old, unknown or mixed', () => {
+  const current = audit('current.test', [{ path: '/' }]);
+  const other = audit('other.test', [{ path: '/', jsonld: false }]);
+  for (const version of [null, 2, 4]) {
+    other.measurementVersion = version;
+    const matrix = buildMatrix([current, other]);
+    assert.equal(matrix.scoreComparison.comparable, true);
+    assert.equal(matrix.jsonldComparison.comparable, false);
+    assert.deepEqual(matrix.sites.map(s => s.aggregate.jsonldRate), [null, null]);
+    assert.deepEqual(matrix.sites.map(s => s.aggregate.issuesPerPage), [null, null]);
+    assert.ok(matrix.topIssues.every(site => site.top.length === 0));
+    assert.match(renderMatrixHtml(matrix), /JSON-LD 测量口径缺失/);
+  }
+  other.measurementVersion = 3;
+  const matrix = buildMatrix([current, other]);
+  assert.equal(matrix.jsonldComparison.comparable, true);
+  assert.deepEqual(matrix.sites.map(s => s.aggregate.jsonldRate), [100, 0]);
+  assert.match(renderMatrixHtml(matrix), /不包括 microdata 或 RDFa/);
 });

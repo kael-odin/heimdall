@@ -16,6 +16,7 @@ import { chromium } from 'playwright';
 import { collectPage } from '../src/seo/collect.mjs';
 import { evaluatePage } from '../src/seo/rules.mjs';
 import { scoreIssues } from '../src/seo/rules.mjs';
+import { siteAggregate } from '../src/seo/matrix-core.mjs';
 
 const BARE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Bare page without social or canonical tags</title>
 <meta name="description" content="A page that deliberately omits canonical, og:image and twitter:image, and uses a relative hreflang.">
@@ -166,4 +167,47 @@ test('采集：中文和表情的 DOM 与初始 HTML 区分代码单元、UTF-8 
   assert.equal(observation.severity, 'info');
   assert.match(observation.evidence, /UTF-16/);
   assert.equal(scoreIssues(issues), scoreIssues(issues.filter(i => i.id !== observation.id)));
+});
+
+test('采集：JSON-LD 的顶层和 @graph 类型进入规则与矩阵，不把未检查的 RDFa 说成不存在', { timeout: 30_000 }, async t => {
+  const cases = {
+    direct: { ld: { '@context': 'https://schema.org', '@type': 'Organization', name: 'Fixture' }, types: ['Organization'] },
+    graph: { ld: { '@context': 'https://schema.org', '@graph': [{ '@type': ['Organization', 'LocalBusiness'], name: 'Fixture' }] }, types: ['Organization', 'LocalBusiness'] },
+    nested: { ld: [{ '@graph': { '@graph': [{ '@type': 'WebSite' }] } }], types: ['WebSite'] },
+    both: { ld: { '@type': 'WebPage', '@graph': [{ '@type': 'Organization' }] }, types: ['WebPage', 'Organization'] },
+    large: { ld: { '@graph': [...Array(100_001).fill({}), { '@type': 'WebSite' }] }, types: ['WebSite'] },
+    empty: { ld: {}, types: [], missing: true },
+    invalidType: { ld: { '@type': [null, 5, '', '  '] }, types: [], missing: true },
+    broken: { raw: '{not json', types: [], missing: true, broken: true },
+    microdata: { markup: '<div itemscope itemtype="https://schema.org/Organization"></div>', types: [] },
+    rdfa: { markup: '<div vocab="https://schema.org/" typeof="Organization"></div>', types: [], missing: true },
+  };
+  const server = createServer((req, res) => {
+    const fixture = cases[req.url.slice(1)];
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    const script = fixture.ld !== undefined || fixture.raw !== undefined
+      ? `<script type="application/ld+json">${fixture.raw ?? JSON.stringify(fixture.ld)}</script>` : '';
+    res.end(`<!doctype html><title>Fixture</title>${script}<h1>Fixture</h1>${fixture.markup ?? ''}`);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const browser = await chromium.launch();
+  t.after(async () => { await browser.close(); await new Promise(resolve => server.close(resolve)); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+
+  for (const [name, fixture] of Object.entries(cases)) {
+    const page = await collectPage(browser, `${origin}/${name}`, { settleMs: 25 });
+    assert.equal(page.ok, true, name);
+    assert.deepEqual((page.jsonld[0]?.types ?? []).slice().sort(), fixture.types.slice().sort(), name);
+    const issues = evaluatePage(page, { host: new URL(origin).host });
+    const missing = issues.find(issue => issue.id === 'structured-none');
+    assert.equal(Boolean(missing), Boolean(fixture.missing), name);
+    assert.equal(issues.some(issue => issue.id === 'structured-jsonld-error'), Boolean(fixture.broken), name);
+    if (name === 'rdfa') {
+      assert.match(missing.title, /JSON-LD.*microdata/i);
+      assert.match(missing.evidence, /RDFa/i);
+    }
+    const aggregate = siteAggregate({ pages: [page], measurementVersion: 3, summary: { baselineEligible: true } });
+    assert.equal(aggregate.jsonldRate, fixture.types.length ? 100 : 0, name);
+  }
 });

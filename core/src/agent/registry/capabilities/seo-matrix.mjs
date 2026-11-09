@@ -36,13 +36,16 @@ function finishMatrix(sites) {
     if (!latest) throw new Error('SEO matrix finished without a matching matrix.json');
     const report = existingWorkspaceJson(latest.file);
     const scoreComparison = latest.matrix.scoreComparison ?? { comparable: false, methodVersion: null, reason: 'unknown-method' };
+    const jsonldComparison = latest.matrix.jsonldComparison ?? { comparable: false, measurementVersion: null, reason: 'unknown-method' };
     return {
       sites,
       slug: latest.slug,
       generatedAt: latest.matrix.generatedAt,
       scoreComparison,
+      jsonldComparison,
       aggregates: latest.matrix.sites.map(site => ({ host: site.host, ...site.aggregate,
-        ...(scoreComparison.comparable === true ? {} : { score: null, issuesPerPage: null }) })),
+        ...(scoreComparison.comparable === true ? {} : { score: null, issuesPerPage: null }),
+        ...(jsonldComparison.comparable === true ? {} : { jsonldRate: null, issuesPerPage: null }) })),
       reports: {
         json: report.relative,
         html: `workspace/_matrix/${latest.slug}/matrix.html`,
@@ -80,6 +83,7 @@ export default {
       doneSummary: job => job.status !== 'succeeded' ? `SEO 对标矩阵结束：${job.status}。`
         : job.result?.scoreComparison?.reason === 'insufficient-eligible-audits' ? 'SEO 对标矩阵已生成，但完整审计不足两份，分数不可比。'
         : job.result?.scoreComparison?.comparable === false ? 'SEO 对标矩阵已生成，但评分口径不兼容或未记录，分数不可比。'
+        : job.result?.jsonldComparison?.comparable === false ? 'SEO 对标矩阵已生成，但 JSON-LD 测量口径不兼容或样本不足，覆盖率及问题数不可比。'
           : 'SEO 对标矩阵完成。',
       nextActions: job => {
         const slug = job.result?.slug;

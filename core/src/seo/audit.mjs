@@ -100,9 +100,12 @@ try {
     emit({ kind: 'audit-error', error: message });
     process.exit(1);
   }
-  const baselineMethodMismatch = !!baseline && baseline.scoreMethodVersion !== SEO_SCORE_METHOD_VERSION;
+  const baselineScoreMethodMismatch = !!baseline && baseline.scoreMethodVersion !== SEO_SCORE_METHOD_VERSION;
+  const baselineMeasurementMismatch = !!baseline && baseline.measurementVersion !== SEO_MEASUREMENT_VERSION;
+  const baselineMethodMismatch = baselineScoreMethodMismatch || baselineMeasurementMismatch;
   if (baselineMethodMismatch && (REQUIRE_BASELINE || FAIL_ON_REGRESSION || UPDATE_BASELINE)) {
-    const message = '基线评分口径缺失或不兼容；保留原文件，使用新的 --baseline 路径重新建立基线';
+    const kind = baselineScoreMethodMismatch ? '评分' : '测量';
+    const message = `基线${kind}口径缺失或不兼容；保留原文件，使用新的 --baseline 路径重新建立基线`;
     log(`FATAL ${message}`);
     emit({ kind: 'audit-error', error: message });
     process.exit(1);
@@ -324,8 +327,9 @@ try {
     process.exit(0);
   }
   if (baselineMethodMismatch) {
-    log('INCOMPLETE: 基线评分口径缺失或不兼容，本次不进行基线比对；请保留旧文件并建立新基线。');
-    emit({ kind: 'audit-incomplete', reason: 'baseline-score-method-mismatch' });
+    const kind = baselineScoreMethodMismatch ? '评分' : '测量';
+    log(`INCOMPLETE: 基线${kind}口径缺失或不兼容，本次不进行基线比对；请保留旧文件并建立新基线。`);
+    emit({ kind: 'audit-incomplete', reason: baselineScoreMethodMismatch ? 'baseline-score-method-mismatch' : 'baseline-measurement-method-mismatch' });
     if (THRESHOLD > 0 && siteScore < THRESHOLD) process.exit(1);
     process.exit(0);
   }

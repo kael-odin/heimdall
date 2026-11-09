@@ -379,7 +379,7 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
     await trend.getByText(/已隐藏 1 条不同或未记录口径的旧分数/).waitFor({ timeout: 10_000 });
     assert.equal(await trend.getByRole('img', { name: 'SEO 审计分 走势：90.0 到 92.0' }).count(), 1);
     const seoCard = page.locator('.report-card', { hasText: 'SEO 审计报告' });
-    await seoCard.getByText(/旧基线评分口径不兼容/).waitFor({ timeout: 10_000 });
+    await seoCard.getByText(/旧基线评分或测量口径不兼容/).waitFor({ timeout: 10_000 });
     assert.match(await seoCard.innerText(), /采集不完整，分数仅供参考/);
     assert.match(await seoCard.innerText(), /评分口径 2/);
     const card = page.locator('.report-card', { hasText: '改站起点' });

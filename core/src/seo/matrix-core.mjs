@@ -28,6 +28,7 @@ export function siteAggregate(audit) {
     host: siteLabel(audit),
     score: baselineEligible ? (audit.score ?? null) : null,
     scoreMethodVersion: audit.scoreMethodVersion ?? null,
+    measurementVersion: audit.measurementVersion ?? null,
     baselineEligible,
     sitemapCoverage: audit.summary?.sitemapCoverage ?? 'unknown',
     pages: pages.length,
@@ -49,9 +50,15 @@ export function buildMatrix(audits) {
     : versions.some(v => !Number.isSafeInteger(v) || v < 1) ? 'unknown-method'
       : versions.some(v => v !== versions[0]) ? 'method-mismatch' : null;
   const comparable = reason === null;
+  const measurements = audits.map(a => a.measurementVersion);
+  const jsonldReason = measurements.length < 2 ? 'insufficient-audits'
+    : measurements.some(v => !Number.isSafeInteger(v) || v < 3) ? 'legacy-or-unknown-method'
+      : measurements.some(v => v !== measurements[0]) ? 'method-mismatch' : null;
+  const jsonldComparable = jsonldReason === null;
   const sites = audits.map(a => {
     const aggregate = siteAggregate(a);
     if (!comparable) { aggregate.score = null; aggregate.issuesPerPage = null; }
+    if (!jsonldComparable) { aggregate.jsonldRate = null; aggregate.issuesPerPage = null; }
     return { host: siteLabel(a), aggregate };
   });
   const types = ['home', 'pricing', 'product', 'listing', 'docs', 'blog', 'company', 'other'];
@@ -72,11 +79,13 @@ export function buildMatrix(audits) {
   // 各站 Top 问题
   const topIssues = audits.map(a => {
     const counts = {};
-    for (const p of a.pages ?? []) for (const i of p.issues ?? []) counts[i.id] = (counts[i.id] ?? 0) + 1;
-    for (const i of a.siteIssues ?? []) counts[i.id] = (counts[i.id] ?? 0) + 1;
+    if (jsonldComparable) {
+      for (const p of a.pages ?? []) for (const i of p.issues ?? []) counts[i.id] = (counts[i.id] ?? 0) + 1;
+      for (const i of a.siteIssues ?? []) counts[i.id] = (counts[i.id] ?? 0) + 1;
+    }
     return { host: siteLabel(a), top: Object.entries(counts).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([id, count]) => ({ id, count })) };
   });
-  return { generatedAt: new Date().toISOString(), scoreComparison: { comparable, methodVersion: comparable ? versions[0] : null, reason }, sites, rows, topIssues };
+  return { generatedAt: new Date().toISOString(), scoreComparison: { comparable, methodVersion: comparable ? versions[0] : null, reason }, jsonldComparison: { comparable: jsonldComparable, measurementVersion: jsonldComparable ? measurements[0] : null, reason: jsonldReason }, sites, rows, topIssues };
 }
 
 const fmt = (v, suffix = '') => (v == null ? '—' : String(v) + suffix);
@@ -87,6 +96,8 @@ export function renderMatrixCsv(matrix) {
     header,
     ['site_score', ...matrix.sites.map(s => fmt(s.aggregate.score))],
     ['score_method_version', ...matrix.sites.map(s => fmt(s.aggregate.scoreMethodVersion))],
+    ['measurement_version', ...matrix.sites.map(s => fmt(s.aggregate.measurementVersion))],
+    ['jsonld_comparable', ...matrix.sites.map(() => String(matrix.jsonldComparison?.comparable === true))],
     ['score_comparable', ...matrix.sites.map(() => String(matrix.scoreComparison?.comparable === true))],
     ['baseline_eligible', ...matrix.sites.map(s => String(s.aggregate.baselineEligible))],
     ['sitemap_coverage', ...matrix.sites.map(s => s.aggregate.sitemapCoverage)],
@@ -122,7 +133,7 @@ export function renderMatrixHtml(matrix) {
     ['平均 title 长度', 'avgTitleLen', '', false],
     ['description 覆盖率', 'descRate', '%', true],
     ['H1 规范率', 'h1Rate', '%', true],
-    ['结构化数据覆盖率', 'jsonldRate', '%', true],
+    ['JSON-LD 类型覆盖率', 'jsonldRate', '%', true],
     ['平均 LCP', 'avgLcp', 'ms', false],
     ['平均字数', 'avgWords', '', true],
     ['每页问题数', 'issuesPerPage', '', false],
@@ -161,6 +172,7 @@ footer{margin-top:36px;color:#64748b;font-size:12px}
 <div class="meta">${matrix.sites.map(s => esc(s.host)).join(' vs ')} · ${esc(matrix.generatedAt)} · 绿色 = 该指标最优 · 样本量不同时优先对比比率/均值</div>
 <div class="meta">采集不完整或旧报告未记录采集状态时，不比较分数和每页问题数。其他指标仅描述本次采集样本。</div>
 <div class="meta">${matrix.scoreComparison?.comparable ? `评分口径 ${esc(matrix.scoreComparison.methodVersion)}；页面集合不同时分数仍需谨慎解释。` : matrix.scoreComparison?.reason === 'insufficient-eligible-audits' ? '完整审计不足两份，已隐藏分数和每页问题数。' : '评分口径缺失或不一致，已隐藏分数和每页问题数；请重新采集同口径报告。'}</div>
+<div class="meta">${matrix.jsonldComparison?.comparable ? `JSON-LD 类型覆盖率只描述采集样本，测量口径 ${esc(matrix.jsonldComparison.measurementVersion)}；不包括 microdata 或 RDFa，也不代表搜索引擎认可。` : 'JSON-LD 测量口径缺失、过旧、不一致或样本不足，已隐藏覆盖率和问题统计；请重新采集同口径报告。'}</div>
 <h2>总体指标</h2><table><tbody><tr><th>指标</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${metricRows}</tbody></table>
 <h2>页面类型分布</h2><table><tbody><tr><th>页面类型</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${typeRows || '<tr><td>—</td></tr>'}</tbody></table>
 <h2>各站高频问题</h2><table><tbody>${issues}</tbody></table>

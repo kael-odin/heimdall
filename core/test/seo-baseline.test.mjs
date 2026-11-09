@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SEO_SCORE_METHOD_VERSION } from '../src/seo/method.mjs';
+import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from '../src/seo/method.mjs';
 
 const {
   buildBaseline, snapshotOf, diffBaseline, stableScore, isVolatile,
@@ -27,6 +27,7 @@ function report({ pages, siteIssues = [], score = null, categories = {} }) {
   return {
     host: 'example.com', origin: 'https://example.com',
     scoreMethodVersion: SEO_SCORE_METHOD_VERSION,
+    measurementVersion: SEO_MEASUREMENT_VERSION,
     generatedAt: '2026-10-10T00:00:00.000Z',
     score: score ?? 0,
     categories,
@@ -259,6 +260,15 @@ test('baseline: unknown or changed score methods cannot resolve findings or ente
   delete legacyReport.scoreMethodVersion;
   assert.equal(buildBaseline(legacyReport).scoreMethodVersion, null);
   assert.throws(() => diffBaseline(buildBaseline(legacyReport), current), /score method/);
+});
+
+test('baseline: incompatible measurements cannot turn a former structured-data warning into a website improvement', () => {
+  const current = snapshotOf(report({ pages: [{ url: 'https://example.com/a' }] }));
+  const old = buildBaseline(report({ pages: [{ url: 'https://example.com/a', issues: [iss('structured-none', 'info')] }] }));
+  for (const version of [null, 2, 4]) {
+    assert.throws(() => diffBaseline({ ...old, measurementVersion: version }, current), /measurement method/);
+  }
+  assert.equal(diffBaseline(old, current).improvements[0].ruleId, 'structured-none');
 });
 
 test('baseline: 回归排序 —— 页面消失最前，严重度优先', () => {
