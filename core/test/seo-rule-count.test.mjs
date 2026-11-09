@@ -70,6 +70,12 @@ test('规则数：id 不重复（重复的 id 会让报告筛选与基线对比�
   assert.deepEqual([...new Set(dup)], [], '同一 id 被多处发出：基线按 id 对比，会互相覆盖');
 });
 
+test('SEO 使用手册的评分和测量口径与当前实现一致', async () => {
+  const { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } = await import('../src/seo/method.mjs');
+  const guide = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'guide', '03-features.md'), 'utf8');
+  assert.ok(guide.includes(`当前评分口径为 ${SEO_SCORE_METHOD_VERSION}，测量口径为 ${SEO_MEASUREMENT_VERSION}`));
+});
+
 test('规则数：id 用 <分类>-<slug> 形式，分类都在 CATEGORIES 里', async () => {
   const { CATEGORIES } = await import('../src/seo/rules.mjs');
   const cats = new Set(Object.keys(CATEGORIES));

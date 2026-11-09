@@ -5,8 +5,9 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, linkSync, rmSync, existsSync, renameSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, linkSync, rmSync, existsSync, renameSync, symlinkSync, lstatSync, readdirSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -124,6 +125,24 @@ test('renderText: 预览时明确说明还没删', () => {
 // ---------- 真实文件系统 ----------
 const root = mkdtempSync(join(tmpdir(), 'hd-prune-'));
 
+function oldFingerprint(dir) {
+  const hash = createHash('sha256');
+  const rootStat = lstatSync(dir);
+  hash.update(JSON.stringify([rootStat.dev, rootStat.ino, rootStat.mode]));
+  const walk = (d, prefix = '') => {
+    for (const name of readdirSync(d).sort()) {
+      const path = join(d, name);
+      const st = lstatSync(path);
+      const relative = prefix ? `${prefix}/${name}` : name;
+      hash.update(JSON.stringify([relative, st.dev, st.ino, st.mode, st.size, st.mtimeMs, st.nlink]));
+      if (st.isDirectory()) walk(path, relative);
+      else if (st.isFile()) hash.update(readFileSync(path));
+    }
+  };
+  walk(dir);
+  return hash.digest('hex');
+}
+
 function makeBundle(name, files) {
   const dir = join(root, name);
   mkdirSync(dir, { recursive: true });
@@ -141,6 +160,206 @@ test('fs: measureDir 统计文件数与字节', () => {
   assert.equal(m.files, 2);
   assert.equal(m.bytes, 150);
   assert.equal(m.exclusive, 150, '无外部链接时全部是独占');
+});
+
+test('fs: exclusive byte count does not merge distinct files with rounded inode numbers', () => {
+  const files = Object.fromEntries(Array.from({ length: 512 }, (_, index) => [`f${index}`, 'x']));
+  const m = measureDir(makeBundle('many-files.test', files));
+  assert.equal(m.files, 512);
+  assert.equal(m.bytes, 512);
+  assert.equal(m.exclusive, 512);
+  assert.equal(m.unsafe, false);
+});
+
+test('fs: hard links inside one bundle remain excluded from exclusive bytes', () => {
+  const d = makeBundle('internal-links.test', { 'a.bin': 'a'.repeat(20) });
+  linkSync(join(d, 'a.bin'), join(d, 'b.bin'));
+  const m = measureDir(d);
+  assert.equal(m.files, 2);
+  assert.equal(m.bytes, 40);
+  assert.equal(m.exclusive, 0);
+});
+
+test('fs: exact identity notices same-content file swaps, including rounded inode collisions', t => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-exact-'));
+  try {
+    const bundle = join(dataRoot, 'a.test-2026-10-01');
+    mkdirSync(bundle);
+    mkdirSync(join(dataRoot, 'a.test-2026-10-02'));
+    const ids = new Map();
+    let collision;
+    const names = [];
+    for (let index = 0; index < 512; index++) {
+      const name = `f${index}`;
+      const path = join(bundle, name);
+      writeFileSync(path, 'x');
+      utimesSync(path, 1600000000, 1600000000);
+      const ino = lstatSync(path, { bigint: true }).ino;
+      const rounded = Number(ino);
+      if (!collision && ids.has(rounded) && ids.get(rounded).ino !== ino) collision = [ids.get(rounded).name, name];
+      ids.set(rounded, { ino, name });
+      names.push(name);
+    }
+    const plan = planPrune(scanBundles(dataRoot), { keep: 1 });
+    const before = measureDir(bundle, { legacyFingerprint: true });
+    const [a, b] = collision ?? names;
+    renameSync(join(bundle, a), join(bundle, 'temporary-swap'));
+    renameSync(join(bundle, b), join(bundle, a));
+    renameSync(join(bundle, 'temporary-swap'), join(bundle, b));
+    const after = measureDir(bundle, { legacyFingerprint: true });
+    assert.equal(before.unsafe, false);
+    assert.equal(after.unsafe, false);
+    assert.notEqual(after.fingerprint, before.fingerprint);
+    if (collision) {
+      assert.equal(after.legacyFingerprint, before.legacyFingerprint);
+      assert.equal(before.legacyIdentityPrecise, false);
+      t.diagnostic('Reproduced two distinct file IDs with the same rounded number');
+    } else {
+      t.diagnostic('This filesystem did not allocate a rounded-ID collision in 512 files');
+    }
+    const result = applyPrune(plan);
+    assert.equal(result.removed.length, 0);
+    assert.equal(result.failed.length, 1);
+    assert.equal(existsSync(bundle), true);
+    if (collision) {
+      const id = '01234567-89ab-4cde-8f01-23456789abd0';
+      const entry = join(dataRoot, '.prune-trash', id);
+      mkdirSync(entry, { recursive: true });
+      const record = { id, root: dataRoot, name: 'a.test-2026-10-01',
+        fingerprint: before.legacyFingerprint, state: 'ready' };
+      writeFileSync(join(entry, 'record.json'), JSON.stringify(record));
+      renameSync(bundle, join(entry, 'bundle'));
+      assert.throws(() => restorePrunedBundle(id, { root: dataRoot }), /manual recovery required/);
+      writeFileSync(join(entry, 'record.json'), JSON.stringify({ ...record, state: 'prepared' }));
+      assert.equal(listPrunedBundles(dataRoot).find(row => row.id === id).state, 'needs-review');
+      assert.equal(existsSync(join(entry, 'bundle', a)), true);
+    }
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('fs: replacing a file between lstat and open makes the scan unsafe', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-open-race-'));
+  try {
+    const a = join(dataRoot, 'a');
+    const b = join(dataRoot, 'b');
+    writeFileSync(a, 'same');
+    writeFileSync(b, 'same');
+    utimesSync(a, 1600000000, 1600000000);
+    utimesSync(b, 1600000000, 1600000000);
+    const script = `
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      import { pathToFileURL } from 'node:url';
+      const original = fs.openSync;
+      let swapped = false;
+      fs.openSync = function(path, ...args) {
+        if (!swapped && path === process.env.TARGET) {
+          swapped = true;
+          fs.renameSync(path, process.env.TEMPORARY);
+          fs.renameSync(process.env.OTHER, path);
+          fs.renameSync(process.env.TEMPORARY, process.env.OTHER);
+        }
+        return original.call(fs, path, ...args);
+      };
+      syncBuiltinESMExports();
+      const { measureDir } = await import(pathToFileURL(process.env.MODULE).href);
+      const measured = measureDir(process.env.DATA_ROOT);
+      if (!swapped || !measured.unsafe) process.exitCode = 1;
+    `;
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8', env: { ...process.env, DATA_ROOT: dataRoot, TARGET: a, OTHER: b,
+        TEMPORARY: join(dataRoot, 'swap'), MODULE: fileURLToPath(new URL('../src/audit/deliver-prune.mjs', import.meta.url)) },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(readFileSync(a, 'utf8'), 'same');
+    assert.equal(readFileSync(b, 'utf8'), 'same');
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('fs: a changed bundle is returned and marked for review after quarantine move', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-move-race-'));
+  try {
+    const name = 'a.test-2026-10-01';
+    const source = join(dataRoot, name);
+    mkdirSync(source);
+    mkdirSync(join(dataRoot, 'a.test-2026-10-02'));
+    writeFileSync(join(source, 'index.html'), 'original');
+    const script = `
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      import { pathToFileURL } from 'node:url';
+      import { join } from 'node:path';
+      const original = fs.renameSync;
+      let changed = false;
+      fs.renameSync = function(from, to) {
+        const result = original.call(fs, from, to);
+        if (!changed && from === process.env.SOURCE && to.endsWith('bundle')) {
+          changed = true;
+          fs.writeFileSync(join(to, 'index.html'), 'changed during move');
+        }
+        return result;
+      };
+      syncBuiltinESMExports();
+      const { scanBundles, planPrune, applyPrune } = await import(pathToFileURL(process.env.MODULE).href);
+      const result = applyPrune(planPrune(scanBundles(process.env.DATA_ROOT), { keep: 1 }));
+      if (!changed || result.removed.length !== 0 || result.failed.length !== 1) process.exitCode = 1;
+      else process.stdout.write(JSON.stringify(result.failed[0]));
+    `;
+    const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8', env: { ...process.env, DATA_ROOT: dataRoot, SOURCE: source,
+        MODULE: fileURLToPath(new URL('../src/audit/deliver-prune.mjs', import.meta.url)) },
+    });
+    assert.equal(run.status, 0, run.stderr);
+    const failed = JSON.parse(run.stdout);
+    assert.match(failed.error, /changed during quarantine move/);
+    assert.equal(readFileSync(join(source, 'index.html'), 'utf8'), 'changed during move');
+    const receipt = JSON.parse(readFileSync(join(dataRoot, '.prune-trash', failed.trashId, 'record.json'), 'utf8'));
+    assert.equal(receipt.state, 'needs-review');
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('fs: rollback does not move a substituted quarantine directory', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-folder-race-'));
+  try {
+    const source = join(dataRoot, 'a.test-2026-10-01');
+    mkdirSync(source);
+    mkdirSync(join(dataRoot, 'a.test-2026-10-02'));
+    writeFileSync(join(source, 'index.html'), 'original');
+    const script = `
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      import { pathToFileURL } from 'node:url';
+      import { join, dirname } from 'node:path';
+      const original = fs.renameSync;
+      let substituted = false;
+      fs.renameSync = function(from, to) {
+        const result = original.call(fs, from, to);
+        if (!substituted && from === process.env.SOURCE && to.endsWith('bundle')) {
+          substituted = true;
+          original.call(fs, to, join(dirname(to), 'original-held'));
+          fs.mkdirSync(to);
+          fs.writeFileSync(join(to, 'index.html'), 'substitute');
+        }
+        return result;
+      };
+      syncBuiltinESMExports();
+      const { scanBundles, planPrune, applyPrune } = await import(pathToFileURL(process.env.MODULE).href);
+      const result = applyPrune(planPrune(scanBundles(process.env.DATA_ROOT), { keep: 1 }));
+      if (!substituted || result.removed.length !== 0 || result.failed.length !== 1) process.exitCode = 1;
+      else process.stdout.write(JSON.stringify(result.failed[0]));
+    `;
+    const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8', env: { ...process.env, DATA_ROOT: dataRoot, SOURCE: source,
+        MODULE: fileURLToPath(new URL('../src/audit/deliver-prune.mjs', import.meta.url)) },
+    });
+    assert.equal(run.status, 0, run.stderr);
+    const failed = JSON.parse(run.stdout);
+    const entry = join(dataRoot, '.prune-trash', failed.trashId);
+    assert.equal(existsSync(source), false);
+    assert.equal(readFileSync(join(entry, 'bundle', 'index.html'), 'utf8'), 'substitute');
+    assert.equal(readFileSync(join(entry, 'original-held', 'index.html'), 'utf8'), 'original');
+    assert.equal(JSON.parse(readFileSync(join(entry, 'record.json'), 'utf8')).state, 'needs-review');
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
 test('fs: 与外部共享 inode 的部分不计入 exclusive', () => {
@@ -166,6 +385,37 @@ test('fs: scanBundles 从真实目录读出并归类', () => {
   assert.ok(got.find(b => b.name === 'a.com-2026-10-01')?.dated);
   assert.equal(got.find(b => b.name === 'weird-name')?.dated, false);
   rmSync(r2, { recursive: true, force: true });
+});
+
+test('fs: an unavailable deliverable root identity blocks automatic quarantine', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-no-root-id-'));
+  try {
+    for (const name of ['a.test-2026-10-01', 'a.test-2026-10-02']) {
+      mkdirSync(join(dataRoot, name));
+      writeFileSync(join(dataRoot, name, 'index.html'), name);
+    }
+    const script = `
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      import { pathToFileURL } from 'node:url';
+      const original = fs.lstatSync;
+      fs.lstatSync = function(path, options) {
+        const stat = original.call(fs, path, options);
+        if (path === process.env.DATA_ROOT && options?.bigint) stat.ino = 0n;
+        return stat;
+      };
+      syncBuiltinESMExports();
+      const { scanBundles, planPrune } = await import(pathToFileURL(process.env.MODULE).href);
+      const plan = planPrune(scanBundles(process.env.DATA_ROOT), { keep: 1 });
+      if (plan.remove.length || !plan.groups[0].blocked) process.exitCode = 1;
+    `;
+    const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8', env: { ...process.env, DATA_ROOT: dataRoot,
+        MODULE: fileURLToPath(new URL('../src/audit/deliver-prune.mjs', import.meta.url)) },
+    });
+    assert.equal(run.status, 0, run.stderr);
+    assert.equal(existsSync(join(dataRoot, 'a.test-2026-10-01', 'index.html')), true);
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
 test('fs: applyPrune 隔离候选，可恢复且当前释放量为零', () => {
@@ -267,12 +517,107 @@ test('fs: prepared 收据在中断后根据内容对账，坏收据可见', () =
     const entry = join(dataRoot, '.prune-trash', id);
     mkdirSync(entry, { recursive: true });
     writeFileSync(join(entry, 'record.json'), JSON.stringify({ id, root: dataRoot, name: candidate.name,
-      fingerprint: candidate.fingerprint, state: 'prepared', createdAt: new Date().toISOString() }));
+      fingerprint: candidate.fingerprint, fingerprintVersion: candidate.fingerprintVersion,
+      state: 'prepared', createdAt: new Date().toISOString() }));
     renameSync(join(dataRoot, candidate.name), join(entry, 'bundle'));
     assert.equal(listPrunedBundles(dataRoot).find(row => row.id === id)?.state, 'ready');
     const invalidId = '01234567-89ab-4cde-8f01-23456789abce';
     mkdirSync(join(dataRoot, '.prune-trash', invalidId));
     assert.equal(listPrunedBundles(dataRoot).find(row => row.id === invalidId)?.state, 'needs-review');
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('fs: old receipts restore only when their rounded identities are exact', t => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-old-receipt-'));
+  try {
+    const name = 'a.test-2026-10-01';
+    const source = join(dataRoot, name);
+    mkdirSync(source);
+    mkdirSync(join(source, 'nested'));
+    writeFileSync(join(source, 'nested', 'index.html'), 'legacy evidence');
+    const original = oldFingerprint(source);
+    const measured = measureDir(source, { legacyFingerprint: true });
+    assert.equal(measured.legacyFingerprint, original);
+    const id = '01234567-89ab-4cde-8f01-23456789abcf';
+    const entry = join(dataRoot, '.prune-trash', id);
+    mkdirSync(entry, { recursive: true });
+    writeFileSync(join(entry, 'record.json'), JSON.stringify({ id, root: dataRoot, name,
+      fingerprint: original, state: 'ready', createdAt: new Date().toISOString() }));
+    renameSync(source, join(entry, 'bundle'));
+    if (measured.legacyIdentityPrecise) {
+      assert.equal(restorePrunedBundle(id, { root: dataRoot }).restored, true);
+      assert.equal(readFileSync(join(source, 'nested', 'index.html'), 'utf8'), 'legacy evidence');
+      t.diagnostic('Legacy receipt with exact numeric identities was restored');
+    } else {
+      assert.throws(() => restorePrunedBundle(id, { root: dataRoot }), /manual recovery required/);
+      assert.equal(readFileSync(join(entry, 'bundle', 'nested', 'index.html'), 'utf8'), 'legacy evidence');
+      t.diagnostic('Legacy receipt with rounded identities was retained for manual recovery');
+    }
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('fs: a legacy receipt with exact numeric IDs can still be restored', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-old-exact-'));
+  try {
+    const source = join(dataRoot, 'a.test-2026-10-01');
+    mkdirSync(source);
+    writeFileSync(join(source, 'index.html'), 'legacy evidence');
+    const script = `
+      import fs from 'node:fs';
+      import assert from 'node:assert/strict';
+      import { createHash } from 'node:crypto';
+      import { syncBuiltinESMExports } from 'node:module';
+      import { pathToFileURL } from 'node:url';
+      import { join } from 'node:path';
+      const lstat = fs.lstatSync, fstat = fs.fstatSync, ids = new Map();
+      const mapId = (stat, exact) => {
+        const key = String(exact.dev) + ':' + String(exact.ino);
+        if (!ids.has(key)) ids.set(key, BigInt(ids.size + 1));
+        stat.dev = typeof stat.dev === 'bigint' ? 1n : 1;
+        stat.ino = typeof stat.ino === 'bigint' ? ids.get(key) : Number(ids.get(key));
+        return stat;
+      };
+      fs.lstatSync = (path, options) => mapId(lstat(path, options), lstat(path, { bigint: true }));
+      fs.fstatSync = (fd, options) => mapId(fstat(fd, options), fstat(fd, { bigint: true }));
+      syncBuiltinESMExports();
+      const root = process.env.DATA_ROOT, source = process.env.SOURCE;
+      const rootStat = fs.lstatSync(source), file = join(source, 'index.html'), st = fs.lstatSync(file);
+      const hash = createHash('sha256');
+      hash.update(JSON.stringify([rootStat.dev, rootStat.ino, rootStat.mode]));
+      hash.update(JSON.stringify(['index.html', st.dev, st.ino, st.mode, st.size, st.mtimeMs, st.nlink]));
+      hash.update(fs.readFileSync(file));
+      const id = '01234567-89ab-4cde-8f01-23456789abd1', entry = join(root, '.prune-trash', id);
+      fs.mkdirSync(entry, { recursive: true });
+      fs.writeFileSync(join(entry, 'record.json'), JSON.stringify({ id, root, name: 'a.test-2026-10-01',
+        fingerprint: hash.digest('hex'), state: 'ready' }));
+      fs.renameSync(source, join(entry, 'bundle'));
+      const { restorePrunedBundle } = await import(pathToFileURL(process.env.MODULE).href);
+      assert.equal(restorePrunedBundle(id, { root }).restored, true);
+      assert.equal(fs.readFileSync(join(source, 'index.html'), 'utf8'), 'legacy evidence');
+    `;
+    const run = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8', env: { ...process.env, DATA_ROOT: dataRoot, SOURCE: source,
+        MODULE: fileURLToPath(new URL('../src/audit/deliver-prune.mjs', import.meta.url)) },
+    });
+    assert.equal(run.status, 0, run.stderr);
+  } finally { rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('fs: restoring changed quarantine contents preserves both receipt and payload', () => {
+  const dataRoot = mkdtempSync(join(tmpdir(), 'hd-prune-changed-receipt-'));
+  try {
+    for (const name of ['a.test-2026-10-01', 'a.test-2026-10-02']) {
+      mkdirSync(join(dataRoot, name));
+      writeFileSync(join(dataRoot, name, 'index.html'), name);
+    }
+    const result = applyPrune(planPrune(scanBundles(dataRoot), { keep: 1 }));
+    assert.equal(result.failed.length, 0);
+    const { trashId, name } = result.removed[0];
+    const payload = join(dataRoot, '.prune-trash', trashId, 'bundle');
+    writeFileSync(join(payload, 'index.html'), 'changed after quarantine');
+    assert.throws(() => restorePrunedBundle(trashId, { root: dataRoot }), /quarantine content changed/);
+    assert.equal(existsSync(join(dataRoot, name)), false);
+    assert.equal(readFileSync(join(payload, 'index.html'), 'utf8'), 'changed after quarantine');
   } finally { rmSync(dataRoot, { recursive: true, force: true }); }
 });
 

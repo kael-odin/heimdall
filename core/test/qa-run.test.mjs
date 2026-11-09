@@ -907,6 +907,92 @@ test('qa run: text artifacts and exploration redact login secrets', { timeout: 1
   } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
 });
 
+test('qa run: detector URL evidence excludes dynamically signed query values', { timeout: 30_000 }, async () => {
+  const imageSecret = 'fixture-image-signature-private';
+  const linkSecret = 'fixture-link-signature-private';
+  const frameSecret = 'fixture-frame-signature-private';
+  const inlineSecret = 'fixture-inline-resource-private';
+  const password = 'fixture-link-password-private';
+  const png = PNG.sync.write(new PNG({ width: 1, height: 1 }));
+  const srv = createServer((req, res) => {
+    if (req.url.startsWith('/asset.png')) {
+      res.writeHead(200, { 'content-type': 'image/png' });
+      return res.end(png);
+    }
+    if (req.url.startsWith('/frame')) {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      return res.end('<title>Frame</title>');
+    }
+    const inlineImage = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><desc>${inlineSecret}</desc></svg>`);
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    return res.end(`<!doctype html><html lang="en"><title>Fixture</title><h1>Fixture</h1>
+      <img id="signed-image" src="/asset.png?x=${imageSecret}" width="40" height="40">
+      <img id="inline-image" src="data:image/svg+xml,${inlineImage}" width="40" height="40">
+      <iframe id="signed-frame" src="/frame?x=${frameSecret}"></iframe>
+      <a id="signed-link" target="_blank" href="http://fixture-user:${password}@127.0.0.1:${srv.address().port}/target?x=${linkSecret}">Open details</a></html>`);
+  });
+  await new Promise(done => srv.listen(0, '127.0.0.1', done));
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-signed-url-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
+    project: 'Signed URL fixture',
+    sites: { web: { url: `http://127.0.0.1:${srv.address().port}`, pages: ['/'] } },
+    defaults: { settleMs: 100, timeoutMs: 15000 },
+  }));
+  try {
+    const result = await runQa(loadWorkspace(root), { site: 'web', viewports: [1280], linkCheck: false, baseline: false });
+    assert.ok(result.findings.some(f => f.detector === 'a11y-image-alt' && f.target === '#signed-image'));
+    assert.ok(result.findings.some(f => f.detector === 'a11y-image-alt' && f.target === '#inline-image'));
+    assert.ok(result.findings.some(f => f.detector === 'a11y-iframe-title' && f.target === '#signed-frame'));
+    assert.ok(result.findings.some(f => f.detector === 'security-blank-target' && f.target === '#signed-link'));
+    assert.ok(result.findings.some(f => f.detector === 'a11y-image-alt' && f.observed.includes('/asset.png')));
+    for (const file of ['run.json', 'findings.json', 'report.md', 'bugs.md']) {
+      const content = readFileSync(join(result.dir, file), 'utf8');
+      for (const secret of [imageSecret, linkSecret, frameSecret, inlineSecret, password]) {
+        assert.equal(content.includes(secret), false, `${file} must not contain resource credentials or inline content`);
+      }
+    }
+    for (const secret of [imageSecret, linkSecret, frameSecret, inlineSecret, password]) {
+      assert.equal(JSON.stringify(result.findings).includes(secret), false);
+    }
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
+test('qa run: mixed-content and form evidence exclude URL credentials and query values', { timeout: 30_000 }, async () => {
+  const secrets = ['fixture-resource-password-private', 'fixture-resource-query-private', 'fixture-resource-fragment-private',
+    'fixture-form-password-private', 'fixture-form-query-private', 'fixture-form-fragment-private'];
+  const [resourcePassword, resourceQuery, resourceFragment, formPassword, formQuery, formFragment] = secrets;
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-qa-insecure-url-'));
+  mkdirSync(join(root, '.heimdall'), { recursive: true });
+  writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
+    project: 'Insecure URL fixture', sites: { web: { url: 'https://fixture.invalid', pages: ['/'] } },
+    defaults: { settleMs: 100, timeoutMs: 15000 },
+  }));
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const newContext = browser.newContext.bind(browser);
+    browser.newContext = async options => {
+      const context = await newContext(options);
+      const route = context.route.bind(context);
+      context.route = (pattern, handler, ...rest) => route(pattern, (r, ...args) => {
+        if (r.request().url() === 'https://fixture.invalid/') return r.fulfill({ status: 200, contentType: 'text/html', body:
+          `<!doctype html><html lang="en"><title>Fixture</title><h1>Fixture</h1>
+          <link rel="alternate" href="http://user:${resourcePassword}@resource.invalid/style.css?x=${resourceQuery}#${resourceFragment}">
+          <form id="insecure-form" action="http://user:${formPassword}@submit.invalid/send?x=${formQuery}#${formFragment}"></form></html>` });
+        return r.abort('blockedbyclient').catch(() => {});
+      }, ...rest);
+      return context;
+    };
+    const result = await runQa(loadWorkspace(root), { site: 'web', viewports: [1280], linkCheck: false, baseline: false }, { browser });
+    assert.ok(result.findings.some(f => f.detector === 'security-mixed-content' && f.target.includes('/style.css')));
+    assert.ok(result.findings.some(f => f.detector === 'security-insecure-form' && f.target === '#insecure-form'));
+    for (const file of ['run.json', 'findings.json', 'report.md', 'bugs.md']) {
+      const content = readFileSync(join(result.dir, file), 'utf8');
+      for (const secret of secrets) assert.equal(content.includes(secret), false, `${file} must not contain URL credentials or query values`);
+    }
+  } finally { await browser.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
 test('qa e2e: writes.allow whitelists read-semantics POST endpoints (POST-for-query backends)', { timeout: 120_000 }, async () => {
   const srv = await server();
   const origin = `http://127.0.0.1:${srv.address().port}`;

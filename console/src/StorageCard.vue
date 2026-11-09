@@ -377,7 +377,7 @@ onBeforeUnmount(() => {
         <div v-for="entry in trashEntries" :key="entry.id" class="deliver-trash-row">
           <span :title="entry.name || entry.id">{{ entry.name || entry.id }}</span>
           <small>{{ entry.bytes == null ? '' : fmtBytes(entry.bytes) }}</small>
-          <small>{{ entry.state === 'ready' ? '可恢复' : entry.state === 'restored' ? '已恢复' : entry.state === 'aborted' ? '未隔离' : '需人工检查' }}</small>
+          <small>{{ entry.state === 'ready' ? '待核验' : entry.state === 'restored' ? '已恢复' : entry.state === 'aborted' ? '未隔离' : '需人工检查' }}</small>
           <button v-if="entry.state === 'ready'" @click="restorePruned(entry)" :disabled="!!restoringId || planLoading || planGcing">{{ restoringId === entry.id ? '恢复中…' : '恢复' }}</button>
         </div>
       </div>

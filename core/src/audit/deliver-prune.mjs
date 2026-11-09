@@ -49,6 +49,7 @@ const RESTORE_ID = argOf('restore', null);
 const LIST_TRASH = has('list-trash');
 const TRASH_NAME = '.prune-trash';
 const ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const FINGERPRINT_VERSION = 2;
 const digest = value => createHash('sha256').update(value).digest('hex');
 
 /** 目录名 → { host, kind, dated, date }。认不出返回 null。 */
@@ -67,83 +68,128 @@ export function parseBundleName(name) {
   return null;
 }
 
-function hashFile(path, expected, hash) {
+const exactStat = path => lstatSync(path, { bigint: true });
+const statIdentity = stat => [stat.dev, stat.ino, stat.mode, stat.size, stat.mtimeNs, stat.nlink];
+const sameStat = (a, b) => statIdentity(a).every((value, index) => value === statIdentity(b)[index]);
+const preciseIdentity = stat => Number.isSafeInteger(Number(stat.dev)) && Number.isSafeInteger(Number(stat.ino));
+
+function legacyStat(path, expected) {
+  const legacy = lstatSync(path);
+  if (!sameStat(expected, exactStat(path)) || legacy.dev !== Number(expected.dev)
+      || legacy.ino !== Number(expected.ino) || legacy.mode !== Number(expected.mode)
+      || legacy.size !== Number(expected.size) || legacy.nlink !== Number(expected.nlink)) {
+    throw new Error('path changed during scan');
+  }
+  return legacy;
+}
+
+function hashFile(path, expected, hashes) {
   const fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   const buffer = Buffer.allocUnsafe(1024 * 1024);
   try {
-    const opened = fstatSync(fd);
-    if (!opened.isFile() || opened.dev !== expected.dev || opened.ino !== expected.ino) {
+    const opened = fstatSync(fd, { bigint: true });
+    if (!opened.isFile() || !sameStat(opened, expected)) {
       throw new Error('file changed during scan');
     }
     let read;
-    while ((read = readSync(fd, buffer, 0, buffer.length, null)) > 0) hash.update(buffer.subarray(0, read));
-    const finished = fstatSync(fd);
-    if (finished.size !== expected.size || finished.mtimeMs !== expected.mtimeMs
-        || finished.nlink !== expected.nlink) throw new Error('file changed during scan');
+    while ((read = readSync(fd, buffer, 0, buffer.length, null)) > 0) {
+      for (const hash of hashes) hash.update(buffer.subarray(0, read));
+    }
+    if (!sameStat(fstatSync(fd, { bigint: true }), expected) || !sameStat(exactStat(path), expected)) {
+      throw new Error('file changed during scan');
+    }
   } finally { closeSync(fd); }
 }
 
 /** 一次遍历计算大小与内容指纹；不跟随符号链接或特殊文件。 */
-export function measureDir(dir) {
+export function measureDir(dir, { legacyFingerprint = false } = {}) {
   let files = 0, bytes = 0, exclusive = 0;
-  const seen = new Set();
   const hash = createHash('sha256');
+  const legacyHash = legacyFingerprint ? createHash('sha256') : null;
   let unsafe = false;
-  const rootStat = lstatSync(dir);
+  let legacyIdentityPrecise = true;
+  const rootStat = exactStat(dir);
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error('bundle is not a regular directory');
-  hash.update(JSON.stringify([rootStat.dev, rootStat.ino, rootStat.mode]));
-  const walk = (d, prefix = '') => {
+  const checkIdentity = st => {
+    if (st.ino === 0n || st.dev < 0n) unsafe = true;
+    if (!preciseIdentity(st)) legacyIdentityPrecise = false;
+  };
+  checkIdentity(rootStat);
+  hash.update(JSON.stringify([rootStat.dev, rootStat.ino, rootStat.mode].map(String)));
+  if (legacyHash) {
+    const st = legacyStat(dir, rootStat);
+    legacyHash.update(JSON.stringify([st.dev, st.ino, st.mode]));
+  }
+  const walk = (d, expectedDir, prefix = '') => {
     let entries;
-    try { entries = readdirSync(d).sort(); }
+    try {
+      if (!sameStat(expectedDir, exactStat(d))) throw new Error('directory changed during scan');
+      entries = readdirSync(d).sort();
+    }
     catch { unsafe = true; return; }
     for (const n of entries) {
       const p = join(d, n);
       let st;
-      try { st = lstatSync(p); } catch { unsafe = true; continue; }
+      try { st = exactStat(p); } catch { unsafe = true; continue; }
       const relativePath = prefix ? `${prefix}/${n}` : n;
-      hash.update(JSON.stringify([relativePath, st.dev, st.ino, st.mode, st.size, st.mtimeMs, st.nlink]));
+      checkIdentity(st);
+      hash.update(JSON.stringify([relativePath, ...statIdentity(st).map(String)]));
+      if (legacyHash) {
+        try {
+          const old = legacyStat(p, st);
+          legacyHash.update(JSON.stringify([relativePath, old.dev, old.ino, old.mode, old.size, old.mtimeMs, old.nlink]));
+        } catch { unsafe = true; }
+      }
       if (st.isSymbolicLink() || (!st.isDirectory() && !st.isFile())) { unsafe = true; continue; }
-      if (st.isDirectory()) { walk(p, relativePath); continue; }
+      if (st.isDirectory()) { walk(p, st, relativePath); continue; }
       files++;
-      bytes += st.size;
-      try { hashFile(p, st, hash); } catch { unsafe = true; }
-      // 同一个 inode 只算一次（硬链接在包内重复出现时别重复计）
-      const key = st.dev + ':' + st.ino;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (st.nlink === 1) exclusive += st.size;
+      const size = Number(st.size);
+      bytes += size;
+      if (!Number.isSafeInteger(size) || !Number.isSafeInteger(bytes)) unsafe = true;
+      try { hashFile(p, st, legacyHash ? [hash, legacyHash] : [hash]); } catch { unsafe = true; }
+      // A single-link file cannot appear twice as a hard link. Avoid numeric
+      // inode deduplication, which can merge distinct Windows file IDs.
+      if (st.nlink === 1n) exclusive += size;
     }
+    try { if (!sameStat(expectedDir, exactStat(d))) unsafe = true; } catch { unsafe = true; }
   };
-  walk(dir);
-  return { files, bytes, exclusive, unsafe, fingerprint: hash.digest('hex') };
+  walk(dir, rootStat);
+  return { files, bytes, exclusive, unsafe, fingerprintVersion: FINGERPRINT_VERSION,
+    fingerprint: hash.digest('hex'),
+    ...(legacyHash ? { legacyFingerprint: legacyHash.digest('hex'), legacyIdentityPrecise } : {}) };
 }
 
 /** 扫描 deliverable/ 下的全部包 */
 export function scanBundles(root = DELIVERABLE) {
   if (!existsSync(root)) return [];
   const resolvedRoot = resolve(root);
-  const rootStat = lstatSync(resolvedRoot);
+  const rootStat = exactStat(resolvedRoot);
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error('deliverable root is not a regular directory');
+  const rootIdentityUnsafe = rootStat.ino === 0n || rootStat.dev < 0n;
   const out = [];
   for (const name of readdirSync(resolvedRoot)) {
     if (name === TRASH_NAME) continue;
     const dir = join(resolvedRoot, name);
     let st;
-    try { st = lstatSync(dir); } catch { continue; }
+    try { st = exactStat(dir); } catch { continue; }
     if (!st.isDirectory() || st.isSymbolicLink()) continue;
     const parsed = parseBundleName(name);
     const m = measureDir(dir);
+    try { if (rootIdentityUnsafe || !sameStat(st, exactStat(dir))) m.unsafe = true; } catch { m.unsafe = true; }
     out.push({
-      name, dir, root: resolvedRoot, dev: st.dev, ino: st.ino,
-      rootDev: rootStat.dev, rootIno: rootStat.ino,
+      name, dir, root: resolvedRoot, dev: String(st.dev), ino: String(st.ino),
+      rootDev: String(rootStat.dev), rootIno: String(rootStat.ino),
       host: parsed?.host ?? null,
       kind: parsed?.kind ?? null,
       dated: !!parsed?.dated,
       date: parsed?.date ?? null,
-      mtime: st.mtimeMs,
+      mtime: Number(st.mtimeNs) / 1e6,
       ...m,
     });
   }
+  try {
+    if (!sameStat(rootStat, exactStat(resolvedRoot))) for (const bundle of out) bundle.unsafe = true;
+  } catch { for (const bundle of out) bundle.unsafe = true; }
   return out.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '') || b.mtime - a.mtime || a.name.localeCompare(b.name));
 }
 
@@ -205,7 +251,7 @@ function pathExists(path) {
 }
 
 function regularDirectory(path) {
-  const stat = lstatSync(path);
+  const stat = exactStat(path);
   if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('path is not a regular directory');
   return stat;
 }
@@ -241,6 +287,17 @@ function saveReceipt(entry, record) {
   writeFileAtomic(entry.recordPath, JSON.stringify(record, null, 2));
 }
 
+function measureForReceipt(path, record) {
+  const legacy = record.fingerprintVersion === undefined || record.fingerprintVersion === 1;
+  if (!legacy && record.fingerprintVersion !== FINGERPRINT_VERSION) throw new Error('unknown fingerprint version');
+  const measured = measureDir(path, { legacyFingerprint: legacy });
+  if (legacy && !measured.legacyIdentityPrecise) {
+    throw new Error('旧收据的文件编号精度不足，请保留隔离区并人工核验（manual recovery required）');
+  }
+  return { measured, matches: !measured.unsafe
+    && (legacy ? measured.legacyFingerprint : measured.fingerprint) === record.fingerprint };
+}
+
 function reconcileReceipt(root, id) {
   const entry = receiptEntry(root, id);
   if (entry.record.state !== 'prepared' && entry.record.state !== 'ready') return entry.record;
@@ -253,8 +310,7 @@ function reconcileReceipt(root, id) {
   if (sourcePresent !== payloadPresent) {
     const present = sourcePresent ? source : payload;
     try {
-      const measured = measureDir(present);
-      if (!measured.unsafe && measured.fingerprint === entry.record.fingerprint) {
+      if (measureForReceipt(present, entry.record).matches) {
         state = sourcePresent
           ? (entry.record.state === 'ready' ? 'restored' : 'aborted') : 'ready';
       }
@@ -286,12 +342,19 @@ export function restorePrunedBundle(id, { root = DELIVERABLE } = {}) {
   const source = join(resolve(root), record.name);
   const payload = join(entry.dir, 'bundle');
   if (pathExists(source)) throw new Error('bundle name already exists');
-  const measured = measureDir(payload);
-  if (measured.unsafe || measured.fingerprint !== record.fingerprint) throw new Error('quarantine content changed');
+  if (!measureForReceipt(payload, record).matches) throw new Error('quarantine content changed');
   renameSync(payload, source);
-  try { saveReceipt(entry, { ...record, state: 'restored', restoredAt: new Date().toISOString() }); }
+  try {
+    if (!measureForReceipt(source, record).matches) throw new Error('quarantine content changed during restore');
+    saveReceipt(entry, { ...record, state: 'restored', restoredAt: new Date().toISOString() });
+  }
   catch (error) {
-    try { renameSync(source, payload); } catch (rollbackError) { error.rollbackError = rollbackError; }
+    try {
+      if (pathExists(payload) || !pathExists(source) || !measureForReceipt(source, record).matches) {
+        throw new Error('restore rollback needs manual review');
+      }
+      renameSync(source, payload);
+    } catch (rollbackError) { error.rollbackError = rollbackError; }
     throw error;
   }
   return { id, name: record.name, restored: true };
@@ -331,21 +394,26 @@ export function applyPrune(plan, { expectedRevision = plan.revision } = {}) {
     try {
       if (!live || planned.root !== root || planned.dir !== join(root, planned.name)
           || live.dir !== planned.dir || live.fingerprint !== planned.fingerprint
+          || live.fingerprintVersion !== planned.fingerprintVersion
           || live.dev !== planned.dev || live.ino !== planned.ino) {
         throw new Error('candidate path or identity changed');
       }
       mkdirSync(entry.dir);
       record = { id, root, name: live.name, host: live.host, kind: live.kind,
         createdAt: new Date().toISOString(), state: 'prepared',
-        fingerprint: live.fingerprint, bytes: live.bytes, exclusive: live.exclusive,
+        fingerprint: live.fingerprint, fingerprintVersion: live.fingerprintVersion,
+        bundleDev: live.dev, bundleIno: live.ino,
+        bytes: live.bytes, exclusive: live.exclusive,
         previewRevision: expectedRevision };
       try { saveReceipt(entry, record); }
       catch (error) { try { rmdirSync(entry.dir); } catch {} throw error; }
       const source = join(root, live.name);
       const payload = join(entry.dir, 'bundle');
+      const rootStat = regularDirectory(root);
       const stat = regularDirectory(source);
       const measured = measureDir(source);
-      if (stat.dev !== live.dev || stat.ino !== live.ino || measured.unsafe
+      if (String(rootStat.dev) !== live.rootDev || String(rootStat.ino) !== live.rootIno
+          || String(stat.dev) !== live.dev || String(stat.ino) !== live.ino || measured.unsafe
           || measured.fingerprint !== live.fingerprint) throw new Error('candidate changed after preview');
       renameSync(source, payload);
       const moved = measureDir(payload);
@@ -360,10 +428,14 @@ export function applyPrune(plan, { expectedRevision = plan.revision } = {}) {
         const source = join(root, record.name);
         const payload = join(entry.dir, 'bundle');
         try {
-          if (pathExists(payload) && !pathExists(source)) renameSync(payload, source);
+          if (pathExists(payload) && !pathExists(source)) {
+            const stat = regularDirectory(payload);
+            if (String(stat.dev) === record.bundleDev && String(stat.ino) === record.bundleIno) {
+              renameSync(payload, source);
+            }
+          }
           if (!pathExists(payload) && pathExists(source)) {
-            const measured = measureDir(source);
-            if (!measured.unsafe && measured.fingerprint === record.fingerprint) state = 'aborted';
+            if (measureForReceipt(source, record).matches) state = 'aborted';
           }
         } catch {}
         try { saveReceipt(entry, { ...record, state, failedAt: new Date().toISOString(),

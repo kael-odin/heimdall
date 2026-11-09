@@ -129,7 +129,20 @@ export function detectInPage(options = {}) {
     }
     return parts.length ? parts.join(' > ') : el.tagName.toLowerCase();
   };
-  const tail = (src, n = 60) => { try { return decodeURIComponent(new URL(src, location.href).pathname).slice(-n); } catch { return String(src ?? '').slice(-n); } };
+  const tail = (src, n = 60) => {
+    try {
+      const url = new URL(src, location.href);
+      return ['http:', 'https:'].includes(url.protocol) ? decodeURIComponent(url.pathname).slice(-n) : '[non-http resource]';
+    } catch { return '[invalid resource URL]'; }
+  };
+  const publicResourceUrl = value => {
+    try {
+      const url = new URL(value, location.href);
+      if (!['http:', 'https:'].includes(url.protocol)) return '[non-http resource]';
+      url.username = ''; url.password = ''; url.search = ''; url.hash = '';
+      return url.href;
+    } catch { return '[invalid resource URL]'; }
+  };
 
   /* ---------------- 可访问性 ---------------- */
 
@@ -139,7 +152,7 @@ export function detectInPage(options = {}) {
     push('a11y-image-alt', {
       kind: 'a11y', basis: 'wrong', tier: 'degrade', target: selectorOf(img),
       title: `图片缺少替代文字（alt）：${tail(img.currentSrc || img.src)}`,
-      observed: `<img src="${clip(img.currentSrc || img.src, 160)}"> 没有 alt 属性`,
+      observed: `<img src="${clip(publicResourceUrl(img.currentSrc || img.src), 160)}"> 没有 alt 属性`,
       loss: '读屏用户与图片加载失败的访客都无法知道这张图的内容',
       repro: [`打开 ${location.pathname}`, `定位 ${selectorOf(img)}`],
     });
@@ -281,7 +294,7 @@ export function detectInPage(options = {}) {
     push('a11y-iframe-title', {
       kind: 'a11y', basis: 'wrong', tier: 'tolerable', target: selectorOf(frame),
       title: `iframe 缺少 title：${tail(frame.src, 50)}`,
-      observed: `<iframe src="${clip(frame.src, 160)}"> 没有 title`,
+      observed: `<iframe src="${clip(publicResourceUrl(frame.src), 160)}"> 没有 title`,
       repro: [`打开 ${location.pathname}`],
     });
   }
@@ -452,7 +465,7 @@ export function detectInPage(options = {}) {
     }
     const seen = new Set();
     for (const url of insecure) {
-      const clean = url.split('?')[0];
+      const clean = publicResourceUrl(url);
       if (seen.has(clean)) continue;
       seen.add(clean);
       push('security-mixed-content', {
@@ -472,7 +485,7 @@ export function detectInPage(options = {}) {
     push('security-blank-target', {
       kind: 'security', basis: 'wrong', tier: 'tolerable', target: selectorOf(el),
       title: `新窗口链接缺少 rel="noopener"：${tail(el.href, 50)}`,
-      observed: `<a target="_blank" href="${clip(el.href, 160)}"> 的 rel="${clip(rel, 40)}"`,
+      observed: `<a target="_blank" href="${clip(publicResourceUrl(el.href), 160)}"> 的 rel="${clip(rel, 40)}"`,
       repro: [`打开 ${location.pathname}`, '点击该链接'],
     });
   }
@@ -483,7 +496,7 @@ export function detectInPage(options = {}) {
     push('security-insecure-form', {
       kind: 'security', basis: 'failed', tier: 'wall', target: selectorOf(form),
       title: 'https 页面的表单提交到 http',
-      observed: `<form action="${clip(form.getAttribute('action'), 160)}">`,
+      observed: `<form action="${clip(publicResourceUrl(form.getAttribute('action')), 160)}">`,
       loss: '用户填写的表单内容会以明文传输',
       repro: [`打开 ${location.pathname}`, `定位 ${selectorOf(form)}`],
     });
