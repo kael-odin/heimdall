@@ -8,7 +8,7 @@ const BOOL_FLAGS = new Set([
   'json', 'wait', 'no-wait', 'quiet', 'yes', 'refresh', 'force', 'fix', 'remove', 'dry-run', 'help',
   'all-discovered', 'recon-only', 'legacy', 'inline', 'no-revert', 'no-mirror', 'pattern', 'no-links',
   'texts', 'explore', 'no-baseline', 'no-detect', 'accept', 'github', 'no-github', 'off', 'no-open',
-  'no-connect', 'force-install',
+  'no-connect', 'force-install', 'allow-insecure-http',
 ]);
 
 /** 解析 argv：--flag value / --flag=value / 布尔标志；其余是位置参数。 */

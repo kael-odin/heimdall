@@ -65,7 +65,7 @@ CLI 一律有 `--json`：stdout 最后一行是 `{ok, result, summary, nextActio
 
 已知业务约定时，检查点可以用 `responses` 被动核对主页面自然发出的精确 GET/POST 响应，比较 HTTP 状态及可选的 JSON 标量；这不会新增请求，也不会放宽请求策略。只支持无查询串的精确来源和路径；重复、跳转、不可读或不符都属于未完成或待核实，不自动提单。JSON 读取上限 256 KiB，不读取压缩响应。它不覆盖 iframe、观察结束后的请求或其他页面；请求策略、字段格式、超时和截图隐私见 `docs/TEST-WORKSPACE.md`。
 
-结果在工作区的 `.heimdall/qa/runs/<runId>/`：`bugs.md` 只列建议提单的，`report.md` 是全部（含被过滤的和理由）。需要人工登录的站点由用户在 CLI 跑 `heimdall qa login <登录档>`，你不要代输凭据。配置格式见 Heimdall 仓库的 `docs/TEST-WORKSPACE.md`。
+结果在工作区的 `.heimdall/qa/runs/<runId>/`：`bugs.md` 只列建议提单的，`report.md` 是全部（含被过滤的和理由）。需要人工登录的站点由用户在 CLI 跑 `heimdall qa login <登录档>`，你不要代输凭据。已有登录档需要用户输入 `REPLACE` 才能替换；非回环 HTTP 入口默认不打开，应先确认可信 HTTPS 或安全登录方式，不替用户启用明文例外。保存登录态不等于验证登录成功。配置格式和安全边界见 Heimdall 仓库的 `docs/TEST-WORKSPACE.md`。
 
 ## 四条不可违反的规则
 

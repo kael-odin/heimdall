@@ -13,8 +13,9 @@
  *
  * status / run / findings 系列是注册表能力（MCP、HTTP 同样可用）；init 和 login 要人在场，只在 CLI。
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
+import { closeSync, existsSync, fstatSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { runAgentCommand, parseArgs, argsFor } from '../cli.mjs';
 import { runQaCi } from '../../qa/ci.mjs';
@@ -26,7 +27,7 @@ import { BROWSER_PROFILE } from '../../qa/probe.mjs';
 const USAGE = `heimdall qa <子命令>
 
   init [--project 名称] [--url URL]   在当前目录建 .heimdall/qa.json
-  login <登录档>                      人工登录一次，保存登录态
+  login <登录档> [--allow-insecure-http]  人工登录一次，保存登录态
   status                              站点、登录档、最近运行、测试须知
   run [站点] [--pages /a,/b] [--viewports 1440,390] [--checks 文件] [--no-links] [--texts] [--explore] [--no-baseline]
       --explore                       显式开启交互探索：每页点最多 6 个控件，找「点了没反应 / 点出异常 / 点出 404」
@@ -84,30 +85,135 @@ async function init(flags) {
   return 0;
 }
 
-async function login(name, flags) {
-  if (!name) { process.stderr.write('用法：heimdall qa login <登录档>\n'); return 2; }
+function loginFileFingerprint(file) {
+  let stat;
+  try { stat = lstatSync(file); } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('登录态路径不是普通文件');
+  return createHash('sha256').update(readFileSync(file)).digest('hex');
+}
+
+function loginUrl(value) {
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+    return url;
+  } catch { return null; }
+}
+
+function insecureRemote(url) {
+  return url.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+}
+
+function readLoginConfirmation(input, browser, context) {
+  return new Promise(done => {
+    const rl = createInterface({ input });
+    const pages = new Set();
+    let finished = false;
+    const finish = value => {
+      if (finished) return;
+      finished = true;
+      browser.off('disconnected', cancelled);
+      context.off('page', watchPage);
+      for (const page of pages) page.off('close', pageClosed);
+      rl.close();
+      done(value);
+    };
+    const cancelled = () => finish(null);
+    const pageClosed = () => { if (!context.pages().some(page => !page.isClosed())) cancelled(); };
+    const watchPage = page => { pages.add(page); page.once('close', pageClosed); };
+    rl.once('line', line => finish(line));
+    rl.once('close', cancelled);
+    rl.once('SIGINT', cancelled);
+    browser.once('disconnected', cancelled);
+    context.on('page', watchPage);
+    for (const page of context.pages()) watchPage(page);
+    if (input.readableEnded || input.destroyed || !browser.isConnected()) cancelled();
+    else pageClosed();
+  });
+}
+
+export async function login(name, flags, io = {}) {
+  const out = io.stdout ?? process.stdout;
+  const err = io.stderr ?? process.stderr;
+  if (!name) { err.write('用法：heimdall qa login <登录档>\n'); return 2; }
   const ws = openWorkspace(flags.workspace);
   const profile = ws.logins[name];
-  if (!profile) { process.stderr.write(`qa.json 里没有登录档 ${name}；有：${Object.keys(ws.logins).join('、') || '（无）'}\n`); return 2; }
+  if (!profile) { err.write(`qa.json 里没有登录档 ${name}；有：${Object.keys(ws.logins).join('、') || '（无）'}\n`); return 2; }
   if (profile.kind !== 'storageState') {
-    process.stderr.write(`登录档 ${name} 是 ${profile.kind}，值来自配置里写的环境变量或文件，不需要人工登录\n`);
+    err.write(`登录档 ${name} 是 ${profile.kind}，值来自配置里写的环境变量或文件，不需要人工登录\n`);
     return 0;
   }
   const site = Object.values(ws.sites).find(s => s.login === name);
   const startUrl = flags.url ? String(flags.url) : site ? new URL(site.loginPath ?? '/', site.url).href : profile.origin;
-  if (!startUrl) { process.stderr.write(`不知道从哪里登录：给登录档 ${name} 写 origin，或加 --url\n`); return 2; }
+  if (!startUrl) { err.write(`不知道从哪里登录：给登录档 ${name} 写 origin，或加 --url\n`); return 2; }
+  const start = loginUrl(startUrl);
+  if (!start) { err.write('登录地址必须是 http(s)，且不能包含账号密码。\n'); return 2; }
+  if (insecureRemote(start) && flags['allow-insecure-http'] !== true) {
+    err.write('登录入口使用未加密的 HTTP，未打开浏览器。请优先使用可信 HTTPS；确认风险后可加 --allow-insecure-http。\n');
+    return 2;
+  }
+  if (start.protocol === 'http:') err.write('注意：HTTP 不加密，后续跳转和表单提交也需要自行确认安全。\n');
   const file = inWorkspace(ws, profile.file);
-  mkdirSync(resolve(file, '..'), { recursive: true });
-  const { chromium } = await import('playwright');
+  const initial = loginFileFingerprint(file);
+  const chromium = io.chromium ?? (await import('playwright')).chromium;
   const browser = await chromium.launch({ headless: false });
   try {
-    const context = await browser.newContext({ ...BROWSER_PROFILE, viewport: null, ...(existsSync(file) ? { storageState: file } : {}) });
+    const context = await browser.newContext({ ...BROWSER_PROFILE, viewport: null });
     const page = await context.newPage();
-    await page.goto(startUrl, { waitUntil: 'domcontentloaded' }).catch(() => {});
-    process.stdout.write(`已打开 ${startUrl}\n在浏览器里登录（验证码、扫码都可以），登录成功、能看到登录后的页面后，回到这里按回车保存。\n`);
-    await new Promise((done) => { const rl = createInterface({ input: process.stdin }); rl.once('line', () => { rl.close(); done(); }); });
-    await context.storageState({ path: file });
-    process.stdout.write(`登录态已保存到 ${profile.file}（不要提交到仓库，.heimdall/.gitignore 已忽略 logins/）\n`);
+    let response;
+    try { response = await page.goto(start.href, { waitUntil: 'domcontentloaded' }); }
+    catch { err.write('无法打开登录页，未保存登录态。请检查地址、网络和证书。\n'); return 3; }
+    if (!response || response.status() >= 400) {
+      err.write('登录页没有成功加载，未保存登录态。请检查地址、网络和站点状态。\n');
+      return 3;
+    }
+    const landed = loginUrl(page.url());
+    if (!landed || (insecureRemote(landed) && flags['allow-insecure-http'] !== true)) {
+      err.write('登录页跳转到不受支持或未加密的地址，未保存登录态；跳转请求可能已经发出。\n');
+      return 3;
+    }
+    out.write(`已打开登录页（${start.origin}）。在浏览器里完成登录。\n`);
+    out.write(initial === null
+      ? '确认已登录后回到终端按回车保存；输入其他内容取消。\n'
+      : '此登录档已有文件。确认已登录后输入 REPLACE 并回车替换；其他输入取消。\n');
+    const answer = await readLoginConfirmation(io.stdin ?? process.stdin, browser, context);
+    if (answer === null || (initial === null ? answer.trim() !== '' : answer.trim() !== 'REPLACE')) {
+      err.write('已取消，原登录态未修改。\n');
+      return 2;
+    }
+    const openPages = context.pages().filter(current => !current.isClosed());
+    if (!browser.isConnected() || !openPages.length) { err.write('浏览器已关闭，未保存登录态。\n'); return 3; }
+    const locations = openPages.map(current => loginUrl(current.url()));
+    if (locations.some(current => !current || (insecureRemote(current) && flags['allow-insecure-http'] !== true))) {
+      err.write('打开的页面包含不允许的登录地址，未保存登录态；页面请求可能已经发出。\n');
+      return 3;
+    }
+    const state = await context.storageState();
+    if (loginFileFingerprint(file) !== initial) { err.write('登录档在等待期间已变化，未覆盖。\n'); return 3; }
+    mkdirSync(dirname(file), { recursive: true });
+    const temporary = join(dirname(file), `.${basename(file)}.${(io.randomUUID ?? randomUUID)()}.tmp`);
+    let created = false, identity = null;
+    try {
+      const fd = openSync(temporary, 'wx', 0o600);
+      created = true;
+      try {
+        const stat = fstatSync(fd);
+        identity = { dev: stat.dev, ino: stat.ino };
+        writeFileSync(fd, JSON.stringify(state, null, 2) + '\n');
+      } finally { closeSync(fd); }
+      if (loginFileFingerprint(file) !== initial) { err.write('登录档在保存期间已变化，未覆盖。\n'); return 3; }
+      if (initial === null) linkSync(temporary, file);
+      else renameSync(temporary, file);
+    } finally {
+      if (created) {
+        try {
+          const stat = lstatSync(temporary);
+          if (identity?.ino && stat.isFile() && stat.dev === identity.dev && stat.ino === identity.ino) unlinkSync(temporary);
+          else err.write(`无法确认临时文件归属，未清除：${temporary}\n`);
+        } catch (error) { if (error.code !== 'ENOENT') err.write(`无法清除临时登录态文件：${temporary}\n`); }
+      }
+    }
+    out.write(`登录态已保存到 ${profile.file}；是否仍有业务权限需要另行验证，不要提交到仓库。\n`);
     return 0;
   } finally {
     await browser.close().catch(() => {});
