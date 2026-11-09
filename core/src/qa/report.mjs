@@ -8,6 +8,7 @@
  * 报告不替人做这个判断，但把可以按以往裁决自动挡掉的先挡掉，并写清楚依据，方便人复核。
  */
 import { VERDICT_LABEL } from './findings.mjs';
+import { QA_FORM_NAME_LIMIT } from './detect.mjs';
 
 const TIER = { wall: '撞墙', degrade: '受损', tolerable: '可容忍' };
 const BASIS = { failed: '实测失败', wrong: '结果错误', promise: '与承诺/PRD 不符', friction: '能用但费劲', cosmetic: '措辞/视觉小瑕疵' };
@@ -136,7 +137,15 @@ export function renderReport({ ws, run, findings, hits }) {
   out.push(`视口：${run.coverage.viewports.join('、')}。页面 ${run.coverage.pages.length} 次打开，检查点 ${run.coverage.checks.length} 个。`, '');
   out.push('| 页面 | 视口 | 结果 | 控制台 | 4xx/5xx | 坏链/已查 | 坏图 |', '| --- | --- | --- | ---: | ---: | ---: | ---: |');
   for (const p of run.coverage.pages) {
-    out.push(`| ${p.path} | ${p.viewport} | ${p.unavailableReason === 'login-expired' ? '登录失效' : p.navError ? '打不开：' + esc(p.navError) : p.detectorError ? '检测器执行失败' : '已打开'} | ${p.counts.console + p.counts.pageErrors} | ${p.counts.http} | ${p.counts.brokenLinks}/${p.counts.linksChecked} | ${p.counts.brokenImages} |`);
+    const formErrors = {
+      'detector-form-limit': `表单控件超过 ${QA_FORM_NAME_LIMIT} 个`,
+      'detector-form-timeout': '表单名称读取超时',
+      'detector-form-changed': '表单快照不可用或页面发生变化',
+      'detector-form-unavailable': '浏览器未提供完整的表单名称证据',
+    };
+    const result = p.unavailableReason === 'login-expired' ? '登录失效' : p.navError ? '打不开：' + esc(p.navError)
+      : p.detectorError ? `检测器执行失败${formErrors[p.detectorError] ? `（${formErrors[p.detectorError]}）` : ''}` : '已打开';
+    out.push(`| ${p.path} | ${p.viewport} | ${result} | ${p.counts.console + p.counts.pageErrors} | ${p.counts.http} | ${p.counts.brokenLinks}/${p.counts.linksChecked} | ${p.counts.brokenImages} |`);
   }
   if (run.coverage.checks.length) {
     out.push('', '| 检查点 | 结果 | 覆盖 |', '| --- | --- | --- |');

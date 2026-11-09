@@ -16,7 +16,7 @@
 import { chromium } from 'playwright';
 import { Worker } from 'node:worker_threads';
 import { scrubValues, isSitePath, QA_SCOPE_LIMITS } from './workspace.mjs';
-import { detectInPage, readVitalsInPage, DETECT_DEFAULTS, QA_CONTROL_SELECTOR } from './detect.mjs';
+import { detectInPage, readVitalsInPage, DETECT_DEFAULTS, QA_CONTROL_SELECTOR, QA_FORM_SELECTOR, QA_FORM_NAME_LIMIT } from './detect.mjs';
 import { browserContextOptions, newQaPage, qaBrowserLaunchOptions, requestQaLink, routeQaRequest } from './http-policy.mjs';
 import { normalizeResponses, observeResponses } from './response-check.mjs';
 
@@ -309,35 +309,92 @@ const emptyHealth = () => ({ console: [], pageErrors: [], http: [], failed: [], 
 
 /**
  * 跑一遍无参照物检测：先读 Web Vitals，再把检测器注入页面执行。
- * 任何一步失败都只返回空数组——检测是增强，不能把一次探测拖垮。
+ * 失败时记录未完成，不能把缺少名称证据当作检测通过。
  */
 async function runDetectors(page, { viewport, loginName, options }) {
   try { await page.evaluate(readVitalsInPage); } catch { /* 老页面/被 CSP 拦截时不读 */ }
   const named = [];
-  let useBrowserNames = true;
+  let snapshot, session, timer;
   try {
     for (const role of ['button', 'link', 'tab', 'menuitem']) {
       const matches = page.getByRole(role, { name: /\S/ }).and(page.locator(QA_CONTROL_SELECTOR));
       named.push(...await matches.elementHandles());
     }
-  } catch { useBrowserNames = false; }
-  const detectOptions = {
-    viewportWidth: viewport.width,
-    mobile: viewport.width < 600,
-    maskSelectors: options.maskSelectors ?? [],
-    thresholds: options.thresholds ?? {},
-    loginProfile: loginName ?? null,
-    maxPerDetector: options.maxPerDetector ?? DETECT_DEFAULTS.maxPerDetector,
-    controlSelector: QA_CONTROL_SELECTOR,
-  };
-  try {
-    let raw;
-    try { raw = await page.evaluate(detectInPage, { ...detectOptions, namedControls: useBrowserNames ? named : null }); }
-    catch { raw = await page.evaluate(detectInPage, detectOptions); }
+    snapshot = await page.evaluateHandle((selector) => {
+      const state = { changed: false };
+      const observer = new MutationObserver(() => { state.changed = true; });
+      observer.observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+      return { state, observer, fields: [...document.querySelectorAll(selector)] };
+    }, QA_FORM_SELECTOR);
+    const count = await snapshot.evaluate(value => value.fields.length);
+    if (count > QA_FORM_NAME_LIMIT) return { detections: [], error: 'detector-form-limit' };
+    let formNames = [];
+    if (count) {
+      session = await page.context().newCDPSession(page);
+      const { root } = await session.send('DOM.getDocument');
+      const { nodeIds } = await session.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: QA_FORM_SELECTOR });
+      if (nodeIds.length !== count) throw new Error('form count changed');
+      const collect = (async () => {
+        const names = [];
+        for (let i = 0; i < nodeIds.length; i += 16) {
+          names.push(...await Promise.all(nodeIds.slice(i, i + 16).map(async nodeId => {
+            const [{ node: domNode }, { nodes }] = await Promise.all([
+              session.send('DOM.describeNode', { nodeId }),
+              session.send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false }),
+            ]);
+            const matches = Number.isInteger(domNode?.backendNodeId)
+              ? nodes?.filter(item => item.backendDOMNodeId === domNode.backendNodeId) : [];
+            const node = matches?.length === 1 ? matches[0] : null, name = node?.name;
+            const available = !node?.ignored && typeof name?.value === 'string';
+            return {
+              available,
+              hasName: available && !!name.value.trim(),
+              sourcesAvailable: Array.isArray(name?.sources),
+              defaultFileName: available && name.sources?.some(source => source.type === 'contents' && source.attribute === 'value'
+                && !source.superseded && !!String(source.value?.value ?? '').trim()) === true,
+            };
+          })));
+        }
+        return names;
+      })();
+      formNames = await Promise.race([collect, new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Object.assign(new Error('form name collection timed out'), { code: 'detector-form-timeout' })), 10_000);
+      })]);
+      clearTimeout(timer);
+      timer = undefined;
+    }
+    const raw = await page.evaluate(detectInPage, {
+      viewportWidth: viewport.width,
+      mobile: viewport.width < 600,
+      maskSelectors: options.maskSelectors ?? [],
+      thresholds: options.thresholds ?? {},
+      loginProfile: loginName ?? null,
+      maxPerDetector: options.maxPerDetector ?? DETECT_DEFAULTS.maxPerDetector,
+      controlSelector: QA_CONTROL_SELECTOR,
+      namedControls: named,
+      formSelector: QA_FORM_SELECTOR,
+      formSnapshot: snapshot,
+      formNames,
+    });
     if (!Array.isArray(raw)) throw new Error('invalid detector result');
     return { detections: raw, error: null };
-  } catch { return { detections: [], error: 'detector-failed' }; }
-  finally { await Promise.all(named.map(handle => handle.dispose().catch(() => {}))); }
+  } catch (error) {
+    const message = String(error?.message ?? '');
+    const reason = error?.code === 'detector-form-timeout' ? error.code
+      : message.includes('form name snapshot unavailable or changed') ? 'detector-form-changed'
+        : /form name unavailable|file name source unavailable/.test(message) ? 'detector-form-unavailable'
+          : 'detector-failed';
+    return { detections: [], error: reason };
+  }
+  finally {
+    clearTimeout(timer);
+    await session?.detach().catch(() => {});
+    if (snapshot) {
+      await snapshot.evaluate(value => value.observer.disconnect()).catch(() => {});
+      await snapshot.dispose().catch(() => {});
+    }
+    await Promise.all(named.map(handle => handle.dispose().catch(() => {})));
+  }
 }
 
 /** 检测器的原始结果 → 统一发现形状（path / 证据 / 视口在调用方补齐） */

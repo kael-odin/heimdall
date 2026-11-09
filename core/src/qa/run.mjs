@@ -211,7 +211,8 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
       detection: {
         enabled: detectEnabled(ws, args),
         pages: detectEnabled(ws, args) ? probe.pages.filter(p => !p.navError && !p.unavailableReason && !p.detectorError).length : 0,
-        failedPages: probe.pages.filter(p => p.detectorError).map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}` })),
+        failedPages: probe.pages.filter(p => p.detectorError).map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}`,
+          ...(p.detectorError !== 'detector-failed' ? { reason: p.detectorError } : {}) })),
         findings: probe.findings.filter(f => f.detector).length,
         detectors: [...new Set(probe.pages.flatMap(p => p.counts?.detectors ?? []))].sort(),
       },

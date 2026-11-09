@@ -53,6 +53,30 @@ const PAGES = {
     <div id="table-outer" class="table-outer"><div id="table-header" style="overflow:hidden"><table><thead><tr><th>可以左右滚动查看的完整表头</th></tr></thead></table></div>
       <div class="table-scroll"><table><tbody><tr><td>可以左右滚动查看的完整表格内容</td></tr></tbody></table></div></div>
   </body></html>`,
+  '/form-name-regression': `<!doctype html><html lang="en"><head><title>Form names</title></head><body>
+    <h1>Form names</h1>
+    <input id="missing-ref" aria-labelledby="missing">
+    <span id="empty-label-text"></span><input id="empty-ref" aria-labelledby="empty-label-text">
+    <label for="empty-label"></label><input id="empty-label">
+    <input id="password-missing-ref" type="password" aria-labelledby="missing">
+    <input id="combo-missing-ref" role="combobox" aria-expanded="false" aria-labelledby="missing">
+    <select id="unnamed-select"><option>Option</option></select>
+    <textarea id="unnamed-textarea"></textarea>
+    <label><input id="empty-wrapped"><span aria-hidden="true">Not a name</span></label>
+    <input id="unnamed-checkbox" type="checkbox" aria-labelledby="missing">
+    <label for="named-label">Valid field</label><input id="named-label">
+    <span id="hidden-label" hidden>Hidden reference</span><input id="named-ref" aria-labelledby="hidden-label">
+    <input id="named-fallback" aria-labelledby="missing" aria-label="Fallback name">
+    <input id="named-empty-ref" aria-labelledby="empty-label-text" aria-label="Fallback name">
+    <input id="named-placeholder" placeholder="Find">
+    <label for="named-select">Choose an option</label><select id="named-select"><option>Option</option></select>
+    <textarea id="named-textarea" aria-label="Message"></textarea>
+    <input id="file-default" type="file"><input id="file-named" type="file" aria-label="Upload invoice">
+    <input id="file-title" type="file" title="Upload invoice">
+    <input id="hidden-field" hidden><input id="aria-hidden-field" aria-hidden="true">
+  </body></html>`,
+  '/form-name-boundary': `<!doctype html><html lang="en"><title>Many fields</title><h1>Many fields</h1>${'<input>'.repeat(500)}</html>`,
+  '/form-name-limit': `<!doctype html><html lang="en"><title>Many fields</title><h1>Many fields</h1>${'<input>'.repeat(501)}</html>`,
   '/user/login': `<!doctype html><html lang="zh-CN"><title>登录</title><h1>扫码登录</h1>
     <button id="login-retry" type="button" onclick="fetch('/api/login-click')">刷新二维码</button></html>`,
   '/guarded-401': `<!doctype html><html lang="zh-CN"><title>登录</title><h1>请登录</h1></html>`,
@@ -467,6 +491,130 @@ test('qa detectors: browser names and recoverable clipping retain real defects',
     srv.close();
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('qa detectors: form name findings match Chromium for invalid and valid labels', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const origin = `http://127.0.0.1:${srv.address().port}`;
+  const root = workspaceFor(origin);
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.goto(`${origin}/form-name-regression`);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('DOM.enable');
+    const doc = await cdp.send('DOM.getDocument');
+    const unnamed = ['missing-ref', 'empty-ref', 'empty-label', 'password-missing-ref', 'combo-missing-ref',
+      'unnamed-select', 'unnamed-textarea', 'empty-wrapped', 'unnamed-checkbox'];
+    const named = ['named-label', 'named-ref', 'named-fallback', 'named-empty-ref', 'named-placeholder',
+      'named-select', 'named-textarea', 'file-named', 'file-title', 'file-default'];
+    for (const id of [...unnamed, ...named]) {
+      const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: doc.root.nodeId, selector: `#${id}` });
+      const { nodes } = await cdp.send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false });
+      assert.equal(Boolean(nodes[0].name?.value?.trim()), named.includes(id), `Chromium name: ${id}`);
+    }
+    await page.close();
+
+    const ws = loadWorkspace(root);
+    ws.defaults.detect = { maxPerDetector: 30 };
+    const run = await runQa(ws, { site: 'web', pages: ['/form-name-regression'], viewports: [1280], linkCheck: false });
+    const targets = new Set(run.findings.filter(f => f.detector === 'a11y-form-label').map(f => f.target));
+    for (const id of unnamed) assert.ok(targets.has(`#${id}`), `unnamed field must be found: ${id}`);
+    for (const id of named.filter(id => id !== 'file-default')) assert.ok(!targets.has(`#${id}`), `named field must not be reported: ${id}`);
+    const defaultFile = run.findings.find(f => f.detector === 'a11y-form-label' && f.target === '#file-default');
+    assert.equal(defaultFile?.tier, 'tolerable', 'the browser default file label only needs review');
+    assert.match(defaultFile.observed, /浏览器默认/);
+    assert.ok(!targets.has('#hidden-field') && !targets.has('#aria-hidden-field'));
+    assert.equal(run.run.coverage.detection.failedPages.length, 0);
+  } finally {
+    await browser.close();
+    srv.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('qa form name limit reports incomplete and cannot pass CI', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
+  try {
+    const boundary = await runQa(loadWorkspace(root), { site: 'web', pages: ['/form-name-boundary'], viewports: [1280], linkCheck: false });
+    assert.equal(boundary.run.coverage.detection.pages, 1, '500 fields remain within the supported limit');
+    assert.equal(boundary.run.coverage.detection.failedPages.length, 0);
+    assert.equal(boundary.findings.find(f => f.detector === 'a11y-form-label')?.evidence.count, 500);
+    const args = { site: 'web', pages: ['/form-name-limit'], viewports: [1280], linkCheck: false };
+    const run = await runQa(loadWorkspace(root), args);
+    assert.equal(run.run.coverage.pages[0].detectorError, 'detector-form-limit');
+    assert.equal(run.run.coverage.detection.pages, 0);
+    assert.equal(run.run.coverage.detection.failedPages[0].reason, 'detector-form-limit');
+    assert.match(readFileSync(run.files.report, 'utf8'), /表单控件超过 500 个/);
+    const ci = await invoke('qa_ci', { workspace: root, ...args, failOn: 'none' }, { client: 'mcp' });
+    assert.equal(ci.error?.code, 'qa_incomplete');
+    assert.equal(ci.result.ci.status, 'incomplete');
+  } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
+test('qa form name collection failures and DOM changes release resources and stay incomplete', { timeout: 120_000 }, async () => {
+  const srv = await server();
+  const root = workspaceFor(`http://127.0.0.1:${srv.address().port}`);
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const newContext = browser.newContext.bind(browser);
+    let mode, detached = 0, disposed = 0;
+    browser.newContext = async options => {
+      const context = await newContext(options);
+      const newPage = context.newPage.bind(context);
+      context.newPage = async () => {
+        const page = await newPage();
+        const evaluateHandle = page.evaluateHandle.bind(page);
+        page.evaluateHandle = async (...args) => {
+          const handle = await evaluateHandle(...args);
+          const dispose = handle.dispose.bind(handle);
+          handle.dispose = async () => { disposed++; return dispose(); };
+          return handle;
+        };
+        return page;
+      };
+      const newCDPSession = context.newCDPSession.bind(context);
+      context.newCDPSession = async page => {
+        const session = await newCDPSession(page);
+        const send = session.send.bind(session), detach = session.detach.bind(session);
+        let injected = false;
+        session.send = async (method, params) => {
+          if (method === 'DOM.describeNode' && mode === 'missing-backend' && !injected) {
+            injected = true;
+            return { node: {} };
+          }
+          if (method === 'Accessibility.getPartialAXTree' && !injected) {
+            injected = true;
+            if (mode === 'failed') throw new Error('fixture secret must not be reported');
+            if (mode === 'timeout') return new Promise(() => {});
+            if (mode === 'wrong-node') return { nodes: [{ backendDOMNodeId: -1, ignored: false, name: { value: 'wrong node' } }] };
+            if (mode === 'duplicate-node') {
+              const value = await send(method, params);
+              return { nodes: [...value.nodes, value.nodes[0]] };
+            }
+            if (mode === 'changed') await page.evaluate(() => document.querySelector('#missing-ref').setAttribute('aria-label', 'changed'));
+          }
+          return send(method, params);
+        };
+        session.detach = async () => { detached++; return detach(); };
+        return session;
+      };
+      return context;
+    };
+    for (mode of ['failed', 'changed', 'wrong-node', 'missing-backend', 'duplicate-node', 'timeout']) {
+      const run = await runQa(loadWorkspace(root), { site: 'web', pages: ['/form-name-regression'], viewports: [1280], linkCheck: false }, { browser });
+      const expected = { failed: 'detector-failed', changed: 'detector-form-changed', 'wrong-node': 'detector-form-unavailable',
+        'missing-backend': 'detector-form-unavailable', 'duplicate-node': 'detector-form-unavailable', timeout: 'detector-form-timeout' };
+      assert.equal(run.run.coverage.pages[0].detectorError, expected[mode], mode);
+      assert.equal(run.run.coverage.detection.pages, 0, mode);
+      assert.equal(run.run.coverage.detection.failedPages.length, 1, mode);
+      if (mode !== 'failed') assert.equal(run.run.coverage.detection.failedPages[0].reason, expected[mode]);
+      assert.doesNotMatch(readFileSync(run.files.report, 'utf8'), /fixture secret/);
+    }
+    assert.equal(detached, 6, 'all CDP sessions are detached');
+    assert.equal(disposed, 6, 'all form snapshots are disposed');
+  } finally { await browser.close(); srv.close(); rmSync(root, { recursive: true, force: true }); }
 });
 
 test('qa login redirect: do not inspect, click or baseline a login page as business content', { timeout: 120_000 }, async () => {

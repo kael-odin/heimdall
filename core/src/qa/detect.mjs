@@ -19,6 +19,8 @@ import { KINDS } from './findings.mjs';
 
 export const DETECT_VERSION = 1;
 export const QA_CONTROL_SELECTOR = 'button, a[href], [role="button"], [role="link"], [role="tab"], [role="menuitem"], input[type="submit"], input[type="button"], input[type="reset"]';
+export const QA_FORM_SELECTOR = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), select, textarea';
+export const QA_FORM_NAME_LIMIT = 500;
 
 /** 检测器清单：id → 输出 kind 与说明。报告与基准都从这里取名字。 */
 export const DETECTOR_META = Object.freeze({
@@ -78,6 +80,9 @@ export function detectInPage(options = {}) {
     maxPerDetector = 4,
     controlSelector = 'button, a[href], [role="button"], [role="link"], [role="tab"], [role="menuitem"], input[type="submit"], input[type="button"], input[type="reset"]',
     namedControls = null,
+    formSelector = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), select, textarea',
+    formSnapshot = null,
+    formNames = null,
   } = options;
   const t = {
     tapTargetPx: 24, mobileTapTargetPx: 44, oversizedImageRatio: 2, textClippedRatio: 0.3, ...thresholds,
@@ -186,24 +191,27 @@ export function detectInPage(options = {}) {
     });
   }
 
-  const fieldLabels = [...doc.querySelectorAll('input:not([type="hidden"]), select, textarea')];
-  for (const el of fieldLabels) {
+  const fieldLabels = [...doc.querySelectorAll(formSelector)];
+  if (!formSnapshot || !Array.isArray(formNames) || fieldLabels.length !== formNames.length
+    || fieldLabels.length !== formSnapshot.fields.length || formSnapshot.state.changed
+    || formSnapshot.observer.takeRecords().length || fieldLabels.some((el, i) => el !== formSnapshot.fields[i])) {
+    throw new Error('form name snapshot unavailable or changed');
+  }
+  for (const [index, el] of fieldLabels.entries()) {
     const type = (el.getAttribute('type') || '').toLowerCase();
-    if (['submit', 'button', 'reset', 'image'].includes(type)) continue;
     if (!isVisible(el) || isMasked(el)) continue;
-    if (el.getAttribute('aria-label')?.trim()) continue;
-    if (el.getAttribute('aria-labelledby')) continue;
-    if (el.getAttribute('title')?.trim()) continue;
-    if (el.getAttribute('placeholder')?.trim()) continue;
-    if (el.id) {
-      try { if (doc.querySelector(`label[for="${quote(el.id).replace(/"/g, '\\"')}"]`)) continue; } catch { /* 继续判定 */ }
-    }
-    if (el.closest('label')) continue;
+    const name = formNames[index];
+    if (!name?.available) throw new Error('form name unavailable');
+    if (type === 'file' && name.hasName && !name.sourcesAvailable) throw new Error('file name source unavailable');
+    const defaultFileName = type === 'file' && name.defaultFileName && !el.getAttribute('title')?.trim();
+    if (name.hasName && !defaultFileName) continue;
     push('a11y-form-label', {
-      kind: 'a11y', basis: 'wrong', tier: 'degrade', target: selectorOf(el),
+      kind: 'a11y', basis: 'wrong', tier: defaultFileName ? 'tolerable' : 'degrade', target: selectorOf(el),
       title: `表单控件没有标签：<${el.tagName.toLowerCase()}${type ? ' type=' + type : ''}>`,
-      observed: `${selectorOf(el)} 没有关联的 label、aria-label、title 或 placeholder`,
-      loss: '读屏用户听不到这个输入框要填什么，只能看到空白输入区',
+      observed: defaultFileName
+        ? `${selectorOf(el)} 使用浏览器默认的文件选择名称，未发现说明上传用途的标签`
+        : `${selectorOf(el)} 的浏览器无障碍名称为空`,
+      ...(defaultFileName ? {} : { loss: '读屏用户听不到这个控件要填什么或选择什么' }),
       repro: [`打开 ${location.pathname}`, `定位 ${selectorOf(el)}`],
     });
   }
