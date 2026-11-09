@@ -136,6 +136,42 @@ test('采集：资源体积按用途分类，预加载图片不能算成 CSS', {
   assert.ok(jsBytes + cssBytes + imgBytes + fontBytes <= transferBytes, 'these resources must not be double counted');
 });
 
+test('采集：图片 URL 后缀与真实响应不一致时只报告后缀线索', { timeout: 30_000 }, async t => {
+  const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==', 'base64');
+  const requests = [];
+  const server = createServer((req, res) => {
+    requests.push(req.url);
+    if (req.url === '/actually-gif.png') {
+      res.setHeader('content-type', 'image/gif');
+      return res.end(gif);
+    }
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    return res.end('<!doctype html><link rel="icon" href="data:,"><title>Image format fixture</title><h1>Fixture</h1><img src="/actually-gif.png" alt="fixture">');
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const browser = await chromium.launch();
+  t.after(async () => { await browser.close(); await new Promise(resolve => server.close(resolve)); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const collected = await collectPage(browser, origin, { settleMs: 50 });
+  const observation = evaluatePage(collected, { host: new URL(origin).host }).find(i => i.id === 'perf-img-format');
+  const reference = await browser.newPage();
+  const imageResponse = reference.waitForResponse(response => response.url() === `${origin}/actually-gif.png`);
+  await reference.goto(origin);
+  assert.equal((await imageResponse).headers()['content-type'], 'image/gif');
+  assert.deepEqual(await reference.locator('img').evaluate(img => ({ complete: img.complete, width: img.naturalWidth })), { complete: true, width: 1 });
+  await reference.close();
+
+  assert.ok(requests.includes('/actually-gif.png'));
+  assert.equal(gif.subarray(0, 6).toString('ascii'), 'GIF89a');
+  assert.equal(collected.imgTotal, 1);
+  assert.equal(collected.imgLegacy, 1);
+  assert.equal(collected.imgBroken, 0);
+  assert.match(observation.title, /地址后缀/);
+  assert.match(observation.evidence, /未核验响应类型或图片编码/);
+  assert.doesNotMatch(observation.message, /张为/);
+});
+
 test('采集：中文和表情的 DOM 与初始 HTML 区分代码单元、UTF-8 字节和网络大小', { timeout: 30_000 }, async t => {
   const source = `<!doctype html><html><head><meta charset="utf-8"><title>Unicode</title></head><body>汉字🙂<script>document.body.append(' 动态')</script><!--${'x'.repeat(21_000)}--></body></html>`;
   const server = createServer((_req, res) => {

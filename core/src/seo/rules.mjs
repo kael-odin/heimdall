@@ -160,7 +160,7 @@ export function evaluatePage(page, site = {}) {
   if (page.resources.requests > 120) A('perf-requests-many', 'perf', 'low', '请求数过多', `${page.resources.requests} 个`, '', '合并请求、延迟非关键资源');
   if (page.resources.renderBlocking > 6) A('perf-render-blocking', 'perf', 'low', '阻塞渲染资源偏多', `${page.resources.renderBlocking} 个`, '', '内联关键 CSS、异步加载非关键 JS');
   if (!page.viewport) A('perf-viewport-missing', 'perf', 'high', '缺少 viewport', '', '', '添加 <meta name="viewport" content="width=device-width, initial-scale=1">');
-  if (page.imgLegacy > 0 && page.imgLegacy > page.imgTotal * 0.5) A('perf-img-format', 'perf', 'info', '图片格式偏旧', `${page.imgLegacy}/${page.imgTotal} 张为 jpg/png`, '', '优先 WebP/AVIF，保留兼容回退');
+  if (page.imgLegacy > 0 && page.imgLegacy > page.imgTotal * 0.5) A('perf-img-format', 'perf', 'info', '图片地址后缀以 JPG/PNG 为主', `${page.imgLegacy}/${page.imgTotal} 个图片元素的地址匹配 jpg/png 后缀`, '仅按 currentSrc 或 src 的地址匹配；可能包含重复或未加载的元素，未核验响应类型或图片编码', '先核对实际响应格式、体积与兼容性，再决定是否转换');
 
   // ---------- 安全与合规 ----------
   if (page.security.https && !page.security.headers.hsts) A('security-hsts', 'security', 'low', '缺少 HSTS', 'Strict-Transport-Security 未设置', '', '启用 HSTS（确认全站 HTTPS 后）');

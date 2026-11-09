@@ -149,5 +149,6 @@ test('SEO report shows whether initial HTML was inspected and explains the score
   assert.match(html, /初始 HTML 已核对/);
   assert.match(html, /初始 HTML 未核对/);
   assert.match(html, /不代表搜索引擎实际收录、排名或 AI 引用/);
+  assert.match(html, /旧报告中的“张为 jpg\/png”也只表示后缀匹配/);
   assert.match(html, /未命中规则/);
 });

@@ -80,6 +80,19 @@ test('seo: slow vitals and heavy resources are flagged', () => {
   assert.match(issues.find(i => i.id === 'perf-js-large').evidence, /可能不完整/);
 });
 
+test('seo: image format observation describes URL suffixes, not decoded formats', () => {
+  const input = page({ imgTotal: 3, imgLegacy: 2 });
+  const issues = evaluatePage(input, site);
+  const observation = issues.find(i => i.id === 'perf-img-format');
+  assert.equal(observation.severity, 'info');
+  assert.match(observation.title, /地址后缀/);
+  assert.match(observation.message, /2\/3.*图片元素.*地址/);
+  assert.match(observation.evidence, /未核验响应类型或图片编码/);
+  assert.match(observation.evidence, /重复或未加载/);
+  assert.equal(scoreIssues(issues), scoreIssues(issues.filter(i => i !== observation)));
+  assert.equal(evaluatePage(page({ imgTotal: 4, imgLegacy: 2 }), site).some(i => i.id === 'perf-img-format'), false);
+});
+
 test('seo: site-level duplicates, sitemap gaps and orphans are flagged', () => {
   const a = page({ url: 'https://example.com/a', finalUrl: 'https://example.com/a', title: 'Same', canonical: 'https://example.com/a' });
   const b = page({ url: 'https://example.com/b', finalUrl: 'https://example.com/b', title: 'Same', canonical: 'https://example.com/b', depth: 1, internalHrefs: [] });

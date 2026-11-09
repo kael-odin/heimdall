@@ -201,6 +201,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
           const rect = i.getBoundingClientRect();
           return rect.width > 4 || rect.height > 4 || i.width > 4 || i.height > 4;
         }).length,
+        // URL suffix is only a hint; it does not prove the response or decoded format.
         legacy: imgs.filter(i => /\.(jpe?g|png)(\?|$)/i.test(i.currentSrc || i.src || '')).length,
         lazy: imgs.filter(i => i.loading === 'lazy').length,
       };
