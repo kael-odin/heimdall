@@ -12,22 +12,23 @@
  *   /api/state /api/save /api/diff
  */
 import { createServer } from 'node:http';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, lstatSync, statSync } from 'node:fs';
 import { join, relative, isAbsolute, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { WORKSPACE } from '../paths.mjs';
+import { WORKSPACE, isSecretFile } from '../paths.mjs';
 import { sandboxPaths, injectSandboxEdits, renderEditorPage } from './core.mjs';
 import { comparePngBuffers } from '../verify/compare.mjs';
 import { makeArgs } from '../args.mjs';
 import { freezeCss } from '../freeze.mjs';
 import { isSafePageName } from '../page-name.mjs';
+import { isCloneRenderingAsset } from '../clone-asset-cors.mjs';
 
 const argv = process.argv.slice(2);
 const { argOf } = makeArgs(argv);
 const host = argv[0];
 const page = argv[1];
-const PORT = Number(argOf('port', 8090));
+let PORT = Number(argOf('port', 8090));
 const RESET = argv.includes('--reset');
 if (!host || !page) { console.error('usage: node src/sandbox/serve.mjs <host> <page> [--port 8090] [--reset]'); process.exit(2); }
 if (!isSafePageName(page)) { console.error('页名无效：必须是单个安全目录名'); process.exit(2); }
@@ -41,36 +42,72 @@ if (!existsSync(P.css)) writeFileSync(P.css, '');
 writeFileSync(P.meta, JSON.stringify({ host, page, cloneDir: CLONE, createdAt: new Date().toISOString() }, null, 2));
 const ORIGINAL_HTML = readFileSync(join(CLONE, 'index.html'), 'utf8');
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.mp4': 'video/mp4' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.mp4': 'video/mp4' };
 const mimeOf = (f) => MIME[extname(f).toLowerCase()] ?? 'application/octet-stream';
-const send = (res, code, body, type = 'text/plain; charset=utf-8') => { const buf = Buffer.isBuffer(body) ? body : Buffer.from(String(body)); res.writeHead(code, { 'Content-Type': type, 'Content-Length': buf.length, 'Cache-Control': 'no-cache' }); res.end(buf); };
-const sendFile = (res, file) => { if (!file || !existsSync(file)) return false; try { if (!statSync(file).isFile()) return false; } catch { return false; } send(res, 200, readFileSync(file), mimeOf(file)); return true; };
-const safeJoin = (root, rel) => { const f = normalize(join(root, rel)); const r = relative(root, f); return r && !r.startsWith('..') && !isAbsolute(r) ? f : null; };
+const send = (res, code, body, type = 'text/plain; charset=utf-8', headers = {}) => { const buf = Buffer.isBuffer(body) ? body : Buffer.from(String(body)); res.writeHead(code, { 'Content-Type': type, 'Content-Length': buf.length, 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', ...headers }); res.end(buf); };
+const sendFile = (res, file, clone = false) => {
+  if (!file || !existsSync(file)) return false;
+  try { if (!statSync(file).isFile()) return false; } catch { return false; }
+  const mime = mimeOf(file);
+  const headers = {};
+  if (clone && mime.startsWith('text/html')) headers['Content-Security-Policy'] = 'sandbox allow-scripts';
+  if (clone && mime === 'image/svg+xml') headers['Content-Security-Policy'] = 'sandbox';
+  if (clone && isCloneRenderingAsset(relative(WORKSPACE, file), mime)) headers['Access-Control-Allow-Origin'] = '*';
+  send(res, 200, readFileSync(file), mime, headers);
+  return true;
+};
+const safeJoin = (root, rel) => {
+  const file = normalize(join(root, rel));
+  const path = relative(root, file);
+  if (!path || path.startsWith('..') || isAbsolute(path) || isSecretFile(file)) return null;
+  try {
+    let current = root;
+    if (lstatSync(current).isSymbolicLink()) return null;
+    for (const segment of path.split(/[\\/]/)) {
+      current = join(current, segment);
+      if (lstatSync(current).isSymbolicLink()) return null;
+    }
+    return file;
+  } catch { return null; }
+};
 const FREEZE = freezeCss();
 
 async function shoot(browser, url) {
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const p = await ctx.newPage();
+  let tlsFailure = false;
+  p.on('requestfailed', request => {
+    if (/ERR_(?:CERT|SSL)_/i.test(request.failure()?.errorText ?? '')) tlsFailure = true;
+  });
   try {
     await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
     await p.waitForLoadState('load', { timeout: 15_000 }).catch(() => {});
     await p.evaluate(() => document.fonts?.ready).catch(() => {});
     await p.addStyleTag({ content: FREEZE });
     await p.waitForTimeout(800);
-    try { return await p.screenshot({ fullPage: true, timeout: 60_000 }); }
-    catch { return await p.screenshot({ timeout: 30_000 }); }
+    if (tlsFailure) throw new Error('TLS certificate or connection validation failed during sandbox comparison');
+    let image;
+    try { image = await p.screenshot({ fullPage: true, timeout: 60_000 }); }
+    catch { image = await p.screenshot({ timeout: 30_000 }); }
+    if (tlsFailure) throw new Error('TLS certificate or connection validation failed during sandbox comparison');
+    return image;
   } finally { await ctx.close().catch(() => {}); }
 }
 
 let diffBusy = false;
-createServer(async (req, res) => {
-  const u = new URL(req.url, 'http://x');
-  const pathname = decodeURIComponent(u.pathname);
-  if (pathname === '/') return send(res, 200, renderEditorPage({ host, page, port: PORT }), 'text/html; charset=utf-8');
+const server = createServer(async (req, res) => {
+  if (req.headers.host !== `127.0.0.1:${PORT}`) return send(res, 421, 'untrusted host');
+  let pathname;
+  try { pathname = decodeURIComponent(new URL(req.url, 'http://x').pathname); }
+  catch { return send(res, 400, 'invalid path'); }
+  if (pathname.startsWith('/api/') && !['GET', 'HEAD'].includes(req.method)
+      && req.headers.origin !== `http://127.0.0.1:${PORT}`) return send(res, 403, 'origin not allowed');
+  if (pathname === '/') return send(res, 200, renderEditorPage({ host, page, port: PORT }), 'text/html; charset=utf-8', { 'Content-Security-Policy': "frame-ancestors 'none'", 'X-Frame-Options': 'DENY' });
   if (pathname === '/api/state') {
     return send(res, 200, JSON.stringify({ host, page, originalHtml: ORIGINAL_HTML, html: readFileSync(P.html, 'utf8'), css: readFileSync(P.css, 'utf8') }), 'application/json; charset=utf-8');
   }
   if (pathname === '/api/save' && req.method === 'POST') {
+    if (String(req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase() !== 'application/json') return send(res, 415, 'application/json required');
     let body = ''; req.on('data', c => body += c);
     req.on('end', () => {
       try {
@@ -85,11 +122,11 @@ createServer(async (req, res) => {
   if (pathname === '/preview') {
     const html = readFileSync(P.html, 'utf8');
     const css = readFileSync(P.css, 'utf8');
-    return send(res, 200, injectSandboxEdits(html, css), 'text/html; charset=utf-8');
+    return send(res, 200, injectSandboxEdits(html, css), 'text/html; charset=utf-8', { 'Content-Security-Policy': 'sandbox allow-scripts' });
   }
   if (pathname.startsWith('/clone/')) {
     const file = safeJoin(CLONE, pathname.slice('/clone/'.length));
-    if (sendFile(res, file)) return;
+    if (sendFile(res, file, true)) return;
     return send(res, 404, 'not found');
   }
   if (pathname === '/api/diff' && req.method === 'POST') {
@@ -114,4 +151,8 @@ createServer(async (req, res) => {
   if (pathname === '/diff.png') { if (sendFile(res, P.diff)) return; return send(res, 404, 'no diff yet'); }
   if (pathname === '/score.json') { if (sendFile(res, P.score)) return; return send(res, 404, 'no score yet'); }
   return send(res, 404, 'not found');
-}).listen(PORT, '127.0.0.1', () => console.log(`[sandbox] ${host}/${page} -> http://127.0.0.1:${PORT}`));
+});
+server.listen(PORT, '127.0.0.1', () => {
+  PORT = server.address().port;
+  console.log(`[sandbox] ${host}/${page} -> http://127.0.0.1:${PORT}`);
+});

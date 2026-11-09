@@ -5,24 +5,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
-
-// Public, self-signed test certificate and key, never used outside this fixture.
-const certificate = `-----BEGIN CERTIFICATE-----
-MIIBfjCCASOgAwIBAgIUW5VSgBLDKW3z0XlEuCKvQB5VivkwCgYIKoZIzj0EAwIw
-FDESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI2MTEwOTIxNTgzOVoXDTM2MTEwNjIx
-NTgzOVowFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0D
-AQcDQgAEdx95QGN9Keup7u6kJ0eSXb4W1MMOLfIfXrecWU1k8bwG39RujIWuTE4X
-U8AzW9G5ysCGiOTsGkUSXtKDpPJsMaNTMFEwHQYDVR0OBBYEFL98UGb51YInv8hT
-k5+bufNDjPmTMB8GA1UdIwQYMBaAFL98UGb51YInv8hTk5+bufNDjPmTMA8GA1Ud
-EwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAOVXTsNSfmZqoRYomIPr37K2
-lbjIttQZ4SMe/LRHrxh8AiEA3dAKdtLwicTXzfnzZ+OwZH57aJ+km5YZnXQzA0BH
-zj4=
------END CERTIFICATE-----`;
-const key = `-----BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg8SXuHLwPjsR651av
-L2IcCmrorE3J4K/HwIhhT+nNucKhRANCAAR3H3lAY30p66nu7qQnR5JdvhbUww4t
-8h9et5xZTWTxvAbf1G6Mha5MThdTwDNb0bnKwIaI5OwaRRJe0oOk8mwx
------END PRIVATE KEY-----`;
+import { certificate, key } from './fixtures/self-signed-certificate.mjs';
 
 test('invalid HTTPS certificates block session reuse in SEO and interaction verification', { timeout: 45_000 }, async t => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-certificate-'));

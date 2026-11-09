@@ -75,7 +75,7 @@ a{color:var(--cyan)}
       <span>预览（/preview）</span>
       <span class="diff"><span class="score" id="score">—</span><button id="diff">与原始对比</button><a id="diffLink" href="/diff.png" target="_blank" rel="noopener" style="display:none">打开差异图</a></span>
     </div>
-    <iframe id="preview" src="/preview"></iframe>
+    <iframe id="preview" src="/preview" sandbox="allow-scripts"></iframe>
   </div>
 </div>
 <script>
@@ -96,6 +96,8 @@ async function save() {
 }
 async function diff() {
   $('status').textContent = '对比中…';
+  $('score').textContent = '—';
+  $('diffLink').style.display = 'none';
   const r = await fetch('/api/diff', { method: 'POST' });
   const j = await r.json();
   if (j.error) { $('status').textContent = '对比失败：' + j.error; return; }
