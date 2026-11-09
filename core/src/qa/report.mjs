@@ -141,7 +141,8 @@ export function renderReport({ ws, run, findings, hits }) {
   if (run.coverage.checks.length) {
     out.push('', '| 检查点 | 结果 | 覆盖 |', '| --- | --- | --- |');
     for (const c of run.coverage.checks) {
-      const coverage = (c.assertions ?? []).map(a => `${esc(a.selector)}：可见 ${a.matched} 项，不符 ${a.failed} 项`).join('<br>') || '-';
+      const coverage = [...(c.assertions ?? []).map(a => `${esc(a.selector)}：可见 ${a.matched} 项，不符 ${a.failed} 项`),
+        ...(c.responses ?? []).map(r => `${esc(r.method)} ${esc(r.origin)}${esc(r.path)}：${esc(r.detail)}${r.http === null ? '' : `（HTTP ${r.http}）`}`)].join('<br>') || '-';
       out.push(`| ${esc(c.title)} | ${c.blockedReason === 'login-expired' ? '登录失效，未完成' : c.pass ? '通过' : c.error ? '执行出错' : '未通过'} | ${coverage} |`);
     }
   }

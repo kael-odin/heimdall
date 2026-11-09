@@ -18,6 +18,7 @@ import { Worker } from 'node:worker_threads';
 import { scrubValues, isSitePath, QA_SCOPE_LIMITS } from './workspace.mjs';
 import { detectInPage, readVitalsInPage, DETECT_DEFAULTS, QA_CONTROL_SELECTOR } from './detect.mjs';
 import { browserContextOptions, newQaPage, qaBrowserLaunchOptions, requestQaLink, routeQaRequest } from './http-policy.mjs';
+import { normalizeResponses, observeResponses } from './response-check.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export const BROWSER_PROFILE = Object.freeze({ locale: 'zh-CN', timezoneId: 'Asia/Shanghai', colorScheme: 'light', reducedMotion: 'reduce' });
@@ -68,7 +69,7 @@ export function safeUrl(value) {
 /** 检查点校验：只接受声明式步骤与断言 */
 export function normalizeCheck(raw, index = 0) {
   if (!isObject(raw)) fail(`checks[${index}] 应为对象`);
-  checkKeys(raw, ['id', 'title', 'path', 'steps', 'expect', 'tier', 'basis', 'loss', 'prd', 'viewport', 'site'], `checks[${index}]`);
+  checkKeys(raw, ['id', 'title', 'path', 'steps', 'expect', 'responses', 'tier', 'basis', 'loss', 'prd', 'viewport', 'site'], `checks[${index}]`);
   const id = String(raw.id ?? `check-${index + 1}`);
   if (!/^[a-z0-9][a-z0-9_.-]{0,63}$/i.test(id)) fail(`检查点 id ${id} 只能用字母、数字、_ . -`);
   if (raw.path !== undefined && !isSitePath(raw.path)) fail(`${id}.path 应以 / 开头且指向同源路径`);
@@ -125,9 +126,10 @@ export function normalizeCheck(raw, index = 0) {
   if (raw.tier !== undefined && !['wall', 'degrade', 'tolerable'].includes(raw.tier)) fail(`${id}.tier 不合法`);
   if (raw.basis !== undefined && !['failed', 'wrong', 'promise', 'friction', 'cosmetic'].includes(raw.basis)) fail(`${id}.basis 不合法`);
   const tier = ['wall', 'degrade', 'tolerable'].includes(raw.tier) ? raw.tier : 'degrade';
+  const responses = normalizeResponses(raw.responses, id);
   return { id, title: clip(raw.title ?? id, 160), path: raw.path ?? '/', steps, expect, tier,
     basis: raw.basis ?? 'failed', ...(raw.loss ? { loss: String(raw.loss) } : {}), ...(raw.prd ? { prd: String(raw.prd) } : {}),
-    ...(raw.viewport ? { viewport: raw.viewport } : {}) };
+    ...(raw.viewport ? { viewport: raw.viewport } : {}), ...(responses.length ? { responses } : {}) };
 }
 
 function predicate(a, actual) {
@@ -429,9 +431,10 @@ async function runCheck(context, site, check, { timeout, settleMs, screenshotDir
   watch(page, health, site.origin);
   const startUrl = new URL(check.path, site.url).href;
   const results = [];
-  let error = null;
+  let error = null, observer = null, responses = [];
   let loginIssue = null;
   try {
+    if (check.responses?.length) observer = await observeResponses(page, check.responses);
     const response = await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout });
     if (!response) throw new Error('检查点页面没有响应');
     await page.waitForTimeout(settleMs);
@@ -465,11 +468,16 @@ async function runCheck(context, site, check, { timeout, settleMs, screenshotDir
         }
       }
     }
+    if (observer && !loginIssue) responses = await observer.finish(timeout);
   } catch (e) { error = clip(e.message, 300); }
-  const failed = error || loginIssue || results.some(r => !r.pass);
+  if (observer) {
+    if (!responses.length) responses = await observer.finish(0);
+    await observer.close();
+  }
+  const failed = error || loginIssue || results.some(r => !r.pass) || responses.some(r => r.state !== 'matched');
   const shot = failed && shoot ? await shoot(page, `check-${check.id}`) : null;
   await page.close().catch(() => {});
-  return { id: check.id, title: check.title, path: check.path, pass: !failed, error, results, screenshot: shot, health,
+  return { id: check.id, title: check.title, path: check.path, pass: !failed, error, results, responses, screenshot: shot, health,
     ...(loginIssue ? { blockedReason: 'login-expired', loginIssue } : {}) };
 }
 
@@ -539,13 +547,19 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
           links: null, loginInfo: login, viewport, navError: null, screenshot: r.screenshot, loginIssue: r.loginIssue }));
       } else if (!r.pass) {
         const failedExpect = r.results.filter(x => !x.pass);
-        out.findings.push({ kind: 'assertion', path: check.path, title: check.title, target: check.id, match: check.id,
-          basis: check.basis, tier: check.tier, ...(check.loss ? { loss: check.loss } : {}), ...(check.prd ? { prd: check.prd } : {}),
+        const failedResponses = r.responses.filter(x => x.state !== 'matched');
+        const shared = { kind: 'assertion', path: check.path, basis: check.basis, tier: check.tier,
+          ...(check.loss ? { loss: check.loss } : {}), ...(check.prd ? { prd: check.prd } : {}),
+          repro: [`打开 ${check.path}`, ...check.steps.map(s => `${s.action} ${s.selector ?? s.path ?? ''}${s.value ? ' ' + s.value : ''}`)],
+          evidence: { url: safeUrl(new URL(check.path, site.url).href), viewport: `${viewport.width}x${viewport.height}`, ...(r.screenshot ? { screenshot: r.screenshot } : {}) } };
+        if (r.error || failedExpect.length) out.findings.push({ ...shared, title: check.title, target: check.id, match: check.id,
           expected: failedExpect.map(x => `${x.kind}${x.selector ? ' ' + x.selector : ''} ${x.equals !== undefined ? '= ' + x.equals : x.contains !== undefined ? '含 ' + x.contains : x.matches ? '~ ' + x.matches : ''}`).join('；') || null,
           observed: r.error ? `执行出错：${r.error}` : failedExpect.map(x => `${x.kind} 实际：${JSON.stringify(x.actual)}`).join('；'),
-          repro: [`打开 ${check.path}`, ...check.steps.map(s => `${s.action} ${s.selector ?? s.path ?? ''}${s.value ? ' ' + s.value : ''}`)],
-          confidence: r.error ? 'check-error' : 'observed',
-          evidence: { url: safeUrl(new URL(check.path, site.url).href), viewport: `${viewport.width}x${viewport.height}`, ...(r.screenshot ? { screenshot: r.screenshot } : {}) } });
+          confidence: r.error ? 'check-error' : 'observed' });
+        if (failedResponses.length) out.findings.push({ ...shared, title: `${check.title}：接口待核实`, target: `${check.id}:responses`, match: `${check.id}:responses`,
+          expected: failedResponses.map(x => `${x.method} ${x.origin}${x.path} 响应符合声明`).join('；'),
+          observed: failedResponses.map(x => `${x.method} ${x.origin}${x.path}：${x.detail}${x.http === null ? '' : `（HTTP ${x.http}）`}`).join('；'),
+          confidence: 'check-unverified' });
       }
     }
   } finally {

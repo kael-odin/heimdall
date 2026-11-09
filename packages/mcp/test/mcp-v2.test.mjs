@@ -145,6 +145,14 @@ test('fresh direct MCP enforces exact QA query rules without an available engine
       res.writeHead(200, { 'content-type': 'text/html' });
       return res.end('<title>Rows</title><div id="ready">Ready</div><span class="date" hidden>measure</span><span class="date">2026-11-08</span><span class="date">bad</span>');
     }
+    if (req.url === '/response') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      return res.end('<title>Response</title><div id="ready" hidden>Ready</div><script>fetch("/api/query", {method:"POST"}).then(() => { document.querySelector("#ready").hidden = false; })</script>');
+    }
+    if (req.url === '/api/query' && req.method === 'POST') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ code: 0, private: 'mcp-fixture-private-do-not-record' }));
+    }
     if (req.url === '/') {
       res.writeHead(200, { 'content-type': 'text/html' });
       return res.end(`<title>Fixture</title><script>
@@ -190,6 +198,22 @@ test('fresh direct MCP enforces exact QA query rules without an available engine
     assert.equal(incomplete.isError, true);
     assert.equal(incomplete.structuredContent.error.code, 'qa_incomplete');
     assert.equal(incomplete.structuredContent.result.ci.status, 'incomplete');
+
+    const responseCheck = { id: 'response', title: 'Check response', path: '/response',
+      steps: [{ action: 'waitFor', selector: '#ready' }], expect: [{ kind: 'visible', selector: '#ready' }],
+      responses: [{ method: 'POST', origin, path: '/api/query', status: 200, json: { path: ['code'], equals: 0 } }] };
+    const responseArgs = { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280], linkCheck: false, detect: false, baseline: false };
+    const beforeResponse = hits.filter(hit => hit.method === 'POST' && hit.path === '/api/query').length;
+    const responseOk = await client.callTool({ name: 'heimdall_qa_run', arguments: { ...responseArgs, checks: [responseCheck] } });
+    assert.equal(responseOk.isError, false, JSON.stringify(responseOk.structuredContent.error));
+    assert.equal(responseOk.structuredContent.result.checks[0].responses[0].state, 'matched');
+    assert.doesNotMatch(JSON.stringify(responseOk.structuredContent), /mcp-fixture-private-do-not-record/);
+    const responseMismatch = { ...responseCheck, responses: [{ ...responseCheck.responses[0], json: { path: ['code'], equals: 1 } }] };
+    const responseCi = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...responseArgs, checks: [responseMismatch], failOn: 'none' } });
+    assert.equal(responseCi.isError, true);
+    assert.equal(responseCi.structuredContent.error.code, 'qa_incomplete');
+    assert.equal(responseCi.structuredContent.result.checks[0].responses[0].state, 'json-mismatch');
+    assert.equal(hits.filter(hit => hit.method === 'POST' && hit.path === '/api/query').length - beforeResponse, 2);
 
     const invalidSelector = { id: 'invalid-selector', title: 'Invalid hidden selector', path: '/rows',
       expect: [{ kind: 'hidden', selector: '[' }] };

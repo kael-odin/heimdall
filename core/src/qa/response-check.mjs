@@ -1,0 +1,155 @@
+/** Passive, bounded observation of explicitly declared main-frame responses. */
+const MAX_BODY_BYTES = 256 * 1024;
+const MAX_RESPONSES = 10;
+const STATES = {
+  matched: '符合声明', missing: '未观察到请求', ambiguous: '观察到多个同名请求',
+  pending: '请求未完成', 'request-failed': '请求失败或被拦截', redirect: '请求发生重定向',
+  'response-unavailable': '没有可核实的响应', 'http-mismatch': 'HTTP 状态不符合声明',
+  cached: '缓存响应无法核实大小', encoded: '压缩响应未读取', 'not-json': '响应不是 JSON',
+  'size-unavailable': '无法核实响应大小', 'too-large': '响应超过读取上限',
+  'body-unavailable': '响应正文无法读取', 'invalid-json': '响应不是有效 JSON',
+  'field-missing': '声明的字段不存在或不是标量', 'json-mismatch': '字段值不符合声明',
+};
+const object = value => value && typeof value === 'object' && !Array.isArray(value);
+const fail = message => { const error = new Error(message); error.code = 'invalid_args'; throw error; };
+const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
+
+function keys(value, allowed, label) {
+  const unknown = Object.keys(value).find(key => !allowed.includes(key));
+  if (unknown !== undefined) fail(`${label} 不支持字段 ${unknown}`);
+}
+
+export function normalizeResponses(raw, label) {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw) || !raw.length || raw.length > MAX_RESPONSES) fail(`${label}.responses 应为 1 到 ${MAX_RESPONSES} 项`);
+  const seen = new Set();
+  return raw.map((response, index) => {
+    const item = `${label}.responses[${index}]`;
+    if (!object(response)) fail(`${item} 应为对象`);
+    keys(response, ['method', 'origin', 'path', 'status', 'json'], item);
+    if (!['GET', 'POST'].includes(response.method)) fail(`${item}.method 只能是 GET / POST`);
+    let url;
+    try { url = new URL(response.origin); } catch { fail(`${item}.origin 应为完整 HTTP 来源`); }
+    if (typeof response.origin !== 'string' || response.origin.length > 500 || !['http:', 'https:'].includes(url.protocol) || url.username || url.password
+      || url.pathname !== '/' || url.search || url.hash || /[?#]/.test(response.origin)) fail(`${item}.origin 只能包含协议、主机和端口`);
+    const path = response.path;
+    if (typeof path !== 'string' || path.length > 500 || !path.startsWith('/') || path.includes('//') || /[\\?#%\x00-\x20\x7f]/.test(path)
+      || new URL(path, 'http://example.invalid').pathname !== path) fail(`${item}.path 应为不含查询、编码或特殊路径段的精确路径`);
+    const status = response.status === undefined ? 200 : response.status;
+    if (!Number.isInteger(status) || status < 100 || status > 599) fail(`${item}.status 应为 HTTP 状态码`);
+    let json;
+    if (response.json !== undefined) {
+      if (!object(response.json)) fail(`${item}.json 应为对象`);
+      keys(response.json, ['path', 'equals'], `${item}.json`);
+      if (!Array.isArray(response.json.path) || !response.json.path.length || response.json.path.length > 8
+        || response.json.path.some(key => typeof key !== 'string' || !key || key.length > 100 || /[\x00-\x1f\x7f]/.test(key))) {
+        fail(`${item}.json.path 应为 1 到 8 个字段名`);
+      }
+      const value = response.json.equals;
+      if (!own(response.json, 'equals') || !(value === null || ['string', 'number', 'boolean'].includes(typeof value))
+        || (typeof value === 'number' && !Number.isFinite(value)) || (typeof value === 'string' && value.length > 200)) {
+        fail(`${item}.json.equals 应为有限的标量值`);
+      }
+      json = { path: response.json.path, equals: value };
+    }
+    const key = `${response.method} ${url.origin}${path}`;
+    if (seen.has(key)) fail(`${item} 与其他 responses 重复`);
+    seen.add(key);
+    return { method: response.method, origin: url.origin, path, status, ...(json ? { json } : {}) };
+  });
+}
+
+function headersOf(headers) {
+  return Object.fromEntries(Object.entries(headers ?? {}).map(([key, value]) => [key.toLowerCase(), String(value)]));
+}
+
+function resultOf(entry) {
+  const state = entry.count > 1 ? 'ambiguous' : !entry.count ? 'missing' : entry.request.state;
+  return { method: entry.spec.method, origin: entry.spec.origin, path: entry.spec.path,
+    state, http: entry.request?.http ?? null, detail: STATES[state] ?? STATES.pending };
+}
+
+export async function observeResponses(page, specs) {
+  let session;
+  try {
+    session = await page.context().newCDPSession(page);
+    await session.send('Network.enable', { maxTotalBufferSize: MAX_BODY_BYTES * MAX_RESPONSES, maxResourceBufferSize: MAX_BODY_BYTES });
+    await session.send('Page.enable');
+  } catch {
+    await session?.detach().catch(() => {});
+    throw new Error('无法启用接口响应观察');
+  }
+  let mainFrame;
+  try { mainFrame = (await session.send('Page.getFrameTree')).frameTree.frame.id; }
+  catch { await session.detach().catch(() => {}); throw new Error('无法确认主页面'); }
+  const entries = specs.map(spec => ({ spec, count: 0, request: null }));
+  const byKey = new Map(entries.map(entry => [`${entry.spec.method} ${entry.spec.origin}${entry.spec.path}`, entry]));
+  const requests = new Map();
+  session.on('Page.frameNavigated', event => { if (!event.frame.parentId) mainFrame = event.frame.id; });
+  session.on('Network.requestWillBeSent', event => {
+    const previous = requests.get(event.requestId);
+    if (previous && event.redirectResponse) previous.request.state = 'redirect';
+    if (event.frameId !== mainFrame) return;
+    let url;
+    try { url = new URL(event.request.url); } catch { return; }
+    if (/[?#]/.test(event.request.url)) return;
+    const entry = byKey.get(`${event.request.method} ${url.origin}${url.pathname}`);
+    if (!entry) return;
+    entry.count = Math.min(2, entry.count + 1);
+    if (entry.count > 1) return;
+    entry.request = { state: event.redirectResponse ? 'redirect' : 'pending', http: null, headers: {}, cached: false };
+    requests.set(event.requestId, entry);
+  });
+  session.on('Network.requestServedFromCache', event => {
+    const entry = requests.get(event.requestId);
+    if (entry) entry.request.cached = true;
+  });
+  session.on('Network.responseReceived', event => {
+    const entry = requests.get(event.requestId);
+    if (!entry || entry.request.state !== 'pending') return;
+    entry.request.http = event.response.status;
+    entry.request.headers = headersOf(event.response.headers);
+    entry.request.cached ||= !!(event.response.fromDiskCache || event.response.fromServiceWorker || event.response.fromPrefetchCache);
+    if (event.response.status >= 300 && event.response.status < 400) entry.request.state = 'redirect';
+  });
+  session.on('Network.loadingFailed', event => {
+    const entry = requests.get(event.requestId);
+    if (entry && entry.request.state === 'pending') entry.request.state = 'request-failed';
+  });
+  session.on('Network.loadingFinished', event => {
+    const entry = requests.get(event.requestId);
+    if (!entry || entry.request.state !== 'pending') return;
+    const req = entry.request, spec = entry.spec;
+    if (req.http === null) { req.state = 'response-unavailable'; return; }
+    if (req.cached) { req.state = 'cached'; return; }
+    if (req.http !== spec.status) { req.state = 'http-mismatch'; return; }
+    if (!spec.json) { req.state = 'matched'; return; }
+    if (req.headers['content-encoding'] && req.headers['content-encoding'].toLowerCase() !== 'identity') { req.state = 'encoded'; return; }
+    if (!/^(?:application\/json|application\/[^;\s]+\+json)(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')) { req.state = 'not-json'; return; }
+    if (!Number.isFinite(event.encodedDataLength) || event.encodedDataLength <= 0) { req.state = 'size-unavailable'; return; }
+    if (event.encodedDataLength > MAX_BODY_BYTES) { req.state = 'too-large'; return; }
+    session.send('Network.getResponseBody', { requestId: event.requestId }).then(result => {
+      const length = result.base64Encoded ? Buffer.byteLength(result.body, 'base64') : Buffer.byteLength(result.body, 'utf8');
+      if (length > MAX_BODY_BYTES) { req.state = 'too-large'; return; }
+      const bytes = Buffer.from(result.body, result.base64Encoded ? 'base64' : 'utf8');
+      let value;
+      try { value = JSON.parse(bytes.toString('utf8')); } catch { req.state = 'invalid-json'; return; }
+      for (const key of spec.json.path) {
+        if (!value || typeof value !== 'object' || !own(value, key)) { req.state = 'field-missing'; return; }
+        value = value[key];
+      }
+      if (!(value === null || ['string', 'number', 'boolean'].includes(typeof value))) { req.state = 'field-missing'; return; }
+      req.state = value === spec.json.equals ? 'matched' : 'json-mismatch';
+    }).catch(() => { req.state = 'body-unavailable'; });
+  });
+  return {
+    async finish(timeout) {
+      const deadline = Date.now() + Math.max(0, Math.min(Number(timeout) || 0, 10_000));
+      while (Date.now() < deadline && entries.some(entry => !entry.count || (entry.count === 1 && entry.request.state === 'pending'))) {
+        await new Promise(resolve => setTimeout(resolve, 25));
+      }
+      return entries.map(resultOf);
+    },
+    async close() { await session.detach().catch(() => {}); },
+  };
+}

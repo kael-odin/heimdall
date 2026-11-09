@@ -27,12 +27,27 @@ const EXPECT = {
     minMatches: { type: 'integer', minimum: 1, maximum: 1000, description: 'Minimum visible matches for all-visible; default 1' },
   },
 };
+const RESPONSE = {
+  type: 'object', additionalProperties: false, required: ['method', 'origin', 'path'],
+  properties: {
+    method: { type: 'string', enum: ['GET', 'POST'] },
+    origin: { type: 'string', maxLength: 500, description: 'Exact HTTP origin, with no credentials, path or query' },
+    path: { type: 'string', maxLength: 500, description: 'Exact unencoded path with no query' },
+    status: { type: 'integer', minimum: 100, maximum: 599, description: 'Expected HTTP status; defaults to 200' },
+    json: { type: 'object', additionalProperties: false, required: ['path', 'equals'], properties: {
+      path: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'string', minLength: 1, maxLength: 100 } },
+      equals: { type: ['string', 'number', 'boolean', 'null'] },
+    } },
+  },
+};
 export const CHECK_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['title', 'expect'],
   properties: {
     id: { type: 'string', pattern: '^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$' }, title: { type: 'string', minLength: 2, maxLength: 160 },
     path: { type: 'string', pattern: '^/', maxLength: 500 }, steps: { type: 'array', items: STEP, maxItems: QA_SCOPE_LIMITS.steps },
     expect: { type: 'array', items: EXPECT, minItems: 1, maxItems: QA_SCOPE_LIMITS.expectations },
+    responses: { type: 'array', items: RESPONSE, minItems: 1, maxItems: 10,
+      description: 'Observe exact main-frame GET/POST responses without sending extra requests; unmatched or unreadable evidence is incomplete' },
     tier: { type: 'string', enum: ['wall', 'degrade', 'tolerable'] }, basis: { type: 'string', enum: ['failed', 'wrong', 'promise', 'friction', 'cosmetic'] },
     loss: { type: 'string', maxLength: 300 }, prd: { type: 'string', maxLength: 300, description: 'Where this expectation comes from, e.g. "PRD 优惠券 §3.2: 无效券码提示「券码无效」"' },
     viewport: { type: 'object', additionalProperties: false, required: ['width', 'height'], properties: { width: { type: 'integer', minimum: 320, maximum: 1920 }, height: { type: 'integer', minimum: 320, maximum: 2000 } } },
@@ -46,7 +61,8 @@ export default {
     + 'overflow and blocked-request problems. Run reference-free accessibility, layout, content, security and performance detectors, and compare '
     + 'screenshots with an approved baseline. Optional declarative checks support real input steps and visible/hidden/text/url/count/attribute/'
     + 'clipboard/title expectations; cite the PRD in "prd". Text scope all-visible checks each visible match; none is incomplete. Use waitFor and '
-    + 'minMatches to specify readiness. explore=true clicks limited controls to find interaction failures; it is off by default because it can '
+    + 'minMatches to specify readiness. Optional response declarations observe an exact main-frame GET/POST and compare HTTP status and a bounded JSON scalar; '
+    + 'missing, ambiguous or unreadable responses are incomplete and bodies are not recorded. explore=true clicks limited controls to find interaction failures; it is off by default because it can '
     + 'change state. Findings are matched against past verdicts; returns report and issue paths.',
   effects: ['browser', 'source-network', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy',
   input: {
