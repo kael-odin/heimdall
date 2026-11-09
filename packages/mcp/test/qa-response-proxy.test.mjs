@@ -53,6 +53,13 @@ test('bundled MCP proxy forwards response checks to a fresh isolated engine', { 
     assert.equal(ready, true, 'isolated engine should start');
     client = new Client({ name: 'heimdall-response-proxy', version: '1.0.0' });
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [PROXY], env }));
+    assert.match(client.getInstructions(), /state-changing/);
+    const { tools } = await client.listTools();
+    for (const id of ['clone', 'seo_audit', 'seo_matrix', 'site_watch', 'qa_run', 'qa_ci']) {
+      const tool = tools.find(item => item.name === `heimdall_${id}`);
+      assert.equal(tool?.annotations.destructiveHint, true, id);
+      assert.equal(tool.annotations.idempotentHint, false, id);
+    }
     const check = { title: 'List response', path: '/page', steps: [{ action: 'waitFor', selector: '#ready' }],
       expect: [{ kind: 'visible', selector: '#ready' }],
       responses: [{ method: 'POST', origin, path: '/api/list', json: { path: ['code'], equals: 0 } }] };

@@ -56,14 +56,15 @@ export const CHECK_SCHEMA = {
 
 export default {
   id: 'qa_run',
-  title: '测试：对一个站点跑只读检查',
+  title: '测试：对一个站点跑检查',
   description: 'Test a workspace site using its login profile. Inspect pages at each viewport for navigation, login, console, network, link, image, '
     + 'overflow and blocked-request problems. Run reference-free accessibility, layout, content, security and performance detectors, and compare '
     + 'screenshots with an approved baseline. Optional declarative checks support real input steps and visible/hidden/text/url/count/attribute/'
     + 'clipboard/title expectations; cite the PRD in "prd". Text scope all-visible checks each visible match; none is incomplete. Use waitFor and '
     + 'minMatches to specify readiness. Optional response declarations observe an exact main-frame GET/POST and compare HTTP status and a bounded JSON scalar; '
     + 'missing, ambiguous or unreadable responses are incomplete and bodies are not recorded. explore=true clicks limited controls to find interaction failures; it is off by default because it can '
-    + 'change state. Findings are matched against past verdicts; returns report and issue paths.',
+    + 'change state. HTTP policy may permit writes; GET and WebSocket may also cause side effects. '
+    + 'Findings are matched against past verdicts; returns report and issue paths.',
   effects: ['browser', 'source-network', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy',
   input: {
     type: 'object', additionalProperties: false,

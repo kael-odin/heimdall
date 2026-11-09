@@ -424,7 +424,8 @@ function onTablistKey(e) {
             <span class="q-v" :class="ix.pass ? 'ok' : 'bad'">{{ ix.pass ? '通过' : '失败' }}<i v-if="ix.visualScore != null"> · 像素 {{ (ix.visualScore * 100).toFixed(1) }}%</i></span>
           </div>
         </div>
-        <div v-else class="seo-note">未运行交互回放（单页 verify 默认开启，可用 --no-interactions 关闭）</div>
+        <div v-else-if="detailQuality.verify?.interactions?.some(ix => ix.unverified)" class="seo-note">交互回放未核实，请查看本地验证记录中的错误。</div>
+        <div v-else class="seo-note">未运行交互回放或未发现可回放交互。</div>
       </div>
       <div class="ov-sec">
         <div class="panel-sec-name">资产缺口</div>

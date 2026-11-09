@@ -30,9 +30,10 @@ function finishAudit(siteId) {
 
 export default {
   id: 'seo_audit',
-  title: 'SEO：全站只读审计',
+  title: 'SEO：站点审计',
   description: 'Run Heimdall\'s deterministic 66-rule SEO audit against an authorized HTTP(S) site. The source is read with Chromium; '
-    + 'the capability writes local JSON/CSV/HTML reports, never submits forms or mutates the source. It is long-running and returns a jobId; '
+    + 'the capability writes local JSON/CSV/HTML reports. Page scripts may send state-changing or third-party requests; existing sessions may be used. '
+    + 'It is long-running and returns a jobId; '
     + 'wait with heimdall_jobs, then read the evidence through heimdall://site/<siteId>/seo. This is a current-state audit, not a visual clone.',
   effects: ['source-network', 'browser', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy', longRunning: true,
   input: {

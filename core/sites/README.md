@@ -29,7 +29,7 @@
                                       // 持续轮询/长连接的站点用 networkidle 会永不达成
     "settleMs": 3000,                 // 懒加载扫掠后的静置时间
     "scrollSweep": true,              // 截全页前先滚一遍触发懒加载
-    "consentButton": null,            // 覆盖"接受 Cookie"按钮的文案正则
+    "consentButton": null,            // 默认不点；显式设置按钮名正则才点击，点击可能产生副作用
     "removeSelectors": []             // 抓 DOM 前直接删掉的元素（选择器数组）
   },
 

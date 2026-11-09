@@ -6,6 +6,7 @@ import { scoreInteractions, discoverFn } from '../src/verify/interactions.mjs';
 test('verify: interaction score aggregation', () => {
   assert.equal(scoreInteractions([]), null);
   assert.deepEqual(scoreInteractions([{ pass: true }, { pass: false }]), { total: 2, passed: 1, score: 0.5 });
+  assert.equal(scoreInteractions([{ pass: true }, { pass: null, unverified: true }]), null);
 });
 
 /**

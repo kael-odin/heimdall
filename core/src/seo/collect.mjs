@@ -4,7 +4,7 @@
  * 采集维度：状态/重定向、title/description、标题层级、图片、链接、
  * 结构化数据、OG/Twitter、hreflang、性能（FCP/LCP/CLS + 资源体积）、安全头。
  *
- * 与 clone 捕获不同：这里只读信号，不写资产，不修改页面。
+ * 采集信号而不主动操作控件，但网页脚本仍可能发送写请求或访问第三方。
  */
 import { chromium } from 'playwright';
 import { analyzeRawHtml } from './raw-html.mjs';
@@ -127,7 +127,7 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
 
 /** 单页采集 */
 export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1500 } = {}) {
-  const ctx = await browser.newContext({ viewport: DEFAULT_VIEWPORT, userAgent: UA, ignoreHTTPSErrors: true, ...sessionContext(new URL(url).hostname) });
+  const ctx = await browser.newContext({ viewport: DEFAULT_VIEWPORT, userAgent: UA, ...sessionContext(new URL(url).hostname) });
   await restoreSessionStorage(ctx, new URL(url).hostname);
   const page = await ctx.newPage();
   await page.addInitScript(VITALS_INIT);

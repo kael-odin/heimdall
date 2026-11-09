@@ -18,7 +18,7 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 对照参考验收一个已建好的项目 | `heimdall_compare`（`--project .`；不给分段就是整页） |
 | 装不上、连不上、不知道状态 | `heimdall_doctor`（`/heimdall:doctor`） |
 | 测试真实项目（可带登录），整理成可提单的问题 | 先 `heimdall_qa_status`，再 `heimdall_qa_run`；见下方「测试工作区」 |
-| 只读 SEO 审计、竞品 SEO 对比 | `heimdall_seo_audit` / `heimdall_seo_matrix` |
+| SEO 审计、竞品 SEO 对比 | `heimdall_seo_audit` / `heimdall_seo_matrix` |
 | 站点变更监控、已审阅基线更新 | `heimdall_site_watch` |
 | 行为补全、契约验收 | 本版本未提供，如实告诉用户 |
 
@@ -38,11 +38,13 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 测试运行：巡检、找问题 | `heimdall_qa_run` | `heimdall qa run [站点] [--pages /a,/b] [--explore]` |
 | 问题列表、类似、提交、裁决 | `heimdall_qa_findings` | `heimdall qa findings [--status fileable]` |
 | 跑 QA 并给 CI 门禁 | `heimdall_qa_ci` | `heimdall qa ci [站点] --fail-on all` |
-| 只读 SEO 审计 | `heimdall_seo_audit` | `heimdall seo-audit <url> [--max-pages N]` |
+| SEO 审计 | `heimdall_seo_audit` | `heimdall seo-audit <url> [--max-pages N]` |
 | 竞品 SEO 矩阵 | `heimdall_seo_matrix` | `heimdall seo-matrix <url> <url>` |
 | 站点变更监控 | `heimdall_site_watch` | `heimdall site-watch <url> [--accept]` |
 
 CLI 一律有 `--json`：stdout 最后一行是 `{ok, result, summary, nextActions, evidence}`。退出码：0 成功、1 门禁未过、2 用法或前置条件、3 环境、4 排队或等待超时、5 无权限、7 内部错误。
+
+克隆、侦察、SEO 和监控会执行网页脚本，可能使用已有登录态、发出写请求或访问第三方；没有统一只读边界。先确认站点授权、账号和环境，优先使用测试环境。QA 的方法拦截按配置执行，GET、WebSocket 或放行的请求仍可能产生业务副作用。不要把风险注解当作请求拦截。
 
 ## 测试工作区
 

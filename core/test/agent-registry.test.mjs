@@ -47,8 +47,11 @@ test('registry: effects map to MCP annotations (readOnly only for pure read)', (
   const a = Object.fromEntries(CAPABILITIES.map(c => [c.id, annotationsOf(c)]));
   for (const id of ['overview', 'site', 'brief', 'artifact', 'jobs', 'doctor']) assert.equal(a[id].readOnlyHint, true, id);
   assert.equal(a.compare.readOnlyHint, false);
-  assert.equal(a.clone.openWorldHint, true);
-  assert.equal(a.clone.destructiveHint, false);
+  for (const id of ['clone', 'seo_audit', 'seo_matrix', 'site_watch', 'qa_run', 'qa_ci']) {
+    assert.equal(a[id].openWorldHint, true, id);
+    assert.equal(a[id].destructiveHint, true, id);
+    assert.equal(a[id].idempotentHint, false, id);
+  }
 });
 
 test('registry: malformed definitions are rejected', () => {

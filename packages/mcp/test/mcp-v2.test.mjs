@@ -58,13 +58,20 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
       assert.equal(client.getServerVersion().name, 'heimdall');
       assert.equal(client.getServerVersion().version, '0.2.2');
       assert.match(client.getInstructions(), /untrusted data/);
+      assert.match(client.getInstructions(), /state-changing/);
 
       const { tools } = await client.listTools();
       assert.deepEqual(tools.map(t => t.name), EXPECTED, 'tools/list order is deterministic and complete');
       const byName = Object.fromEntries(tools.map(t => [t.name, t]));
       assert.equal(byName.heimdall_overview.annotations.readOnlyHint, true);
       assert.equal(byName.heimdall_compare.annotations.readOnlyHint, false);
-      assert.equal(byName.heimdall_clone.annotations.openWorldHint, true);
+      for (const id of ['clone', 'seo_audit', 'seo_matrix', 'site_watch', 'qa_run', 'qa_ci']) {
+        const tool = byName[`heimdall_${id}`];
+        assert.equal(tool.annotations.openWorldHint, true, id);
+        assert.equal(tool.annotations.destructiveHint, true, id);
+        assert.equal(tool.annotations.idempotentHint, false, id);
+        assert.match(tool.description, /state-changing|side effects/, id);
+      }
       assert.equal(byName.heimdall_brief.inputSchema.properties.detail.enum.join(','), 'outline,sections,full');
       for (const t of tools) assert.ok(t.description.length > 80 && t.title, `${t.name} has a model-facing description and a title`);
 
@@ -125,6 +132,7 @@ test('mcp proxy fallback keeps the complete tool surface while the engine is off
   try {
     await client.connect(transport);
     assert.equal(client.getServerVersion().version, '0.2.2');
+    assert.match(client.getInstructions(), /state-changing/);
     const { tools } = await client.listTools();
     assert.equal(tools.length, EXPECTED.length);
     assert.deepEqual(tools.map(t => t.name), EXPECTED);

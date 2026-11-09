@@ -66,13 +66,13 @@ export function getCapability(name) {
   return CAPABILITIES.find(c => c.id === id) ?? null;
 }
 
-/** effects → MCP 注解（附录 A §1.3）：readOnlyHint 仅在 effects 恰为 read 时为 true */
+/** Source pages may themselves send state-changing requests, so flag network tools conservatively. */
 export function annotationsOf(cap) {
   const fx = new Set(cap.effects);
   return {
     title: cap.title,
     readOnlyHint: fx.size === 1 && fx.has('read'),
-    destructiveHint: fx.has('destructive'),
+    destructiveHint: fx.has('destructive') || fx.has('source-network'),
     idempotentHint: !!cap.idempotent,
     openWorldHint: fx.has('source-network'),
   };

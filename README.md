@@ -126,6 +126,8 @@ D1 提交 `c170f50` 的[自身 Linux CI 复核](./docs/audits/README.md)已完�
 
 ## 快速开始
 
+**运行前先确认授权和环境：** 克隆、侦察、SEO 与监控会打开真实网页，页面脚本可能发送写请求、连接第三方或使用已保存的登录态；它们不是只读沙箱。QA 的 HTTP 拦截和例外按工作区配置生效，GET 与 WebSocket 仍可能有副作用。优先在测试环境验证，生产数据应先做好保护。详细边界见 [使用说明](USAGE.md)。
+
 ```bash
 git clone <repo> && cd heimdall
 pnpm -C core install --frozen-lockfile

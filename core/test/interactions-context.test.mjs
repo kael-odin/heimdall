@@ -8,7 +8,7 @@ const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-interactions-'));
 const previousDataDir = process.env.HEIMDALL_DATA_DIR;
 process.env.HEIMDALL_DATA_DIR = dataDir;
 const { saveSession } = await import('../src/session/store.mjs');
-const { verifyInteractions, discoverFn } = await import('../src/verify/interactions.mjs');
+const { verifyInteractions, discoverFn, scoreInteractions } = await import('../src/verify/interactions.mjs');
 const { UA } = await import('../src/ua.mjs');
 
 test.after(() => {
@@ -62,6 +62,7 @@ test('interaction discovery and replay reuse source session; clone replay sends 
       assert.equal(options.userAgent, UA);
     }
     assert.equal(contexts[2].storageState, undefined, 'source session must not leak to clone');
+    assert.ok(contexts.every(options => options.ignoreHTTPSErrors !== true), 'all interaction contexts must validate certificates');
     assert.deepEqual(initScripts, [0, 1].map(index => ({
       index,
       values: { 'https://private.example.test': [{ name: 'auth', value: 'browser-secret' }] },
@@ -72,4 +73,39 @@ test('interaction discovery and replay reuse source session; clone replay sends 
     if (previousToken === undefined) delete process.env.HEIMDALL_TOKEN;
     else process.env.HEIMDALL_TOKEN = previousToken;
   }
+});
+
+test('interaction discovery errors are unverified rather than an empty successful discovery', async () => {
+  let closed = false;
+  const browser = { newContext: async () => ({
+    newPage: async () => ({ goto: async () => { throw new Error('navigation failed'); } }),
+    close: async () => { closed = true; },
+  }) };
+  const results = await verifyInteractions(browser, { sourceUrl: 'https://other.example.test/', cloneUrl: 'http://127.0.0.1/' });
+  assert.equal(results.length, 1);
+  assert.equal(results[0].unverified, true);
+  assert.match(results[0].error, /navigation failed/);
+  assert.equal(scoreInteractions(results), null);
+  assert.equal(closed, true);
+});
+
+test('a replay navigation error cannot be included in an interaction score', async () => {
+  let count = 0;
+  let closed = 0;
+  const browser = { newContext: async () => {
+    const discovery = count++ === 0;
+    return {
+      newPage: async () => ({
+        goto: async () => { if (!discovery) throw new Error('replay navigation failed'); },
+        waitForTimeout: async () => {},
+        evaluate: async () => [{ selector: 'button', label: 'Open' }],
+      }),
+      close: async () => { closed++; },
+    };
+  } };
+  const results = await verifyInteractions(browser, { sourceUrl: 'https://other.example.test/', cloneUrl: 'http://127.0.0.1/' });
+  assert.equal(results[0].unverified, true);
+  assert.match(results[0].error, /replay navigation failed/);
+  assert.equal(scoreInteractions(results), null);
+  assert.equal(closed, 2);
 });

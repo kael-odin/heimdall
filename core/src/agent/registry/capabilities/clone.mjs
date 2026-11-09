@@ -7,7 +7,7 @@
  *   site · mirror    recon → clone-site（增量）
  *   site · verified  recon → clone-site → verify（全站）
  * 门面在引擎里排队执行（旧槽不动）；CLI / MCP 里转发给引擎，引擎没在跑就自起一台。
- * reuse:"auto" 时页面已有镜像就直接复用，不重新抓取。只发 GET 类请求取证，不写源站（E12-10）。
+ * reuse:"auto" 时页面已有镜像就直接复用，不重新抓取。源站脚本、登录态与资源请求可能产生副作用。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -84,8 +84,9 @@ export default {
     + 'multi-viewport verification. scope="page" (default) clones one URL; scope="site" crawls the site then clones up to maxPages pages. '
     + 'level="mirror" captures and builds; "verified" also runs 375/768/1440 verification. With reuse="auto" an existing mirror is reused. '
     + 'Long-running: returns a jobId immediately (or the result if it finishes within waitMs); then call heimdall_jobs with action="wait". '
-    + 'Only fetches pages from the source site (read-only); never submits forms or logs in.',
-  effects: ['source-network', 'browser', 'write-local'], scope: 'clone', idempotent: true, cost: 'heavy', longRunning: true,
+    + 'Source pages execute scripts and may send state-changing or third-party requests; existing site sessions may be used. '
+    + 'Obtain authorization and verify the environment before running.',
+  effects: ['source-network', 'browser', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy', longRunning: true,
   input: {
     type: 'object', additionalProperties: false,
     properties: {

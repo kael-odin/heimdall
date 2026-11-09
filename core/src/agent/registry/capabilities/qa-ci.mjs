@@ -42,8 +42,9 @@ const QA_CI_INPUT = {
 
 export default {
   id: 'qa_ci',
-  title: 'QA CI：运行只读巡检并执行门禁',
-  description: 'Run the same read-only QA workspace as qa_run, then apply a deterministic CI gate. '
+  title: 'QA CI：运行巡检并执行门禁',
+  description: 'Run the same QA workspace as qa_run, then apply a deterministic CI gate. '
+    + 'Its HTTP policy may permit writes; GET and WebSocket may also cause side effects. '
     + 'It writes qa-ci.json and qa-ci.md beside the normal report, returns GitHub Actions annotations, '
     + 'and uses stable exit codes for CI. failOn controls whether all fileable findings, wall/degrade only, '
     + 'or a limited number of findings fail the gate. This does not replace human acceptance and never turns '

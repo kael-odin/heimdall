@@ -53,10 +53,10 @@
 | `read` | true | false | false | `read` |
 | `write-local` | false | false | false | `clone` / `build` |
 | `browser` | false | false | false | `build` |
-| `source-network` | false | false | true | `clone` |
+| `source-network` | false | true（保守风险提示） | true | `clone` |
 | `destructive` | false | true | 视能力 | `admin` |
 
-一个能力有多个 effects 时取并集（`readOnlyHint` 仅在 effects 恰为 `read` 时为 true）；`idempotentHint` 取注册表的 `idempotent`。工具 `description` 用英文，`title` 用中文（[02 §6.4](02-strategy.md)）。
+一个能力有多个 effects 时取并集（`readOnlyHint` 仅在 effects 恰为 `read` 时为 true）；`idempotentHint` 取注册表的 `idempotent`。`source-network` 的 `destructiveHint` 是保守提示：网页脚本、登录态或 GET 可能产生源站副作用；它不表示工具主动删除数据，也不改变作用域，更不是请求拦截。工具 `description` 用英文，`title` 用中文（[02 §6.4](02-strategy.md)）。
 
 ### 1.4 公共入参
 
@@ -303,7 +303,7 @@
 | 何时用 | 重建前没有参考包；要整站侦察；要全站验证；要严格离线导出 |
 | 何时不用 | 已有新鲜镜像且只想看 → `heimdall_site` / `heimdall_brief`（`reuse:auto` 也会直接复用） |
 | effects / scope / cost | `source-network`、`browser`、`write-local` / `clone` / heavy |
-| 注解 | readOnlyHint false · destructiveHint false · idempotentHint true（有幂等键或复用时）· openWorldHint true |
+| 注解 | readOnlyHint false · destructiveHint true（源站副作用风险）· idempotentHint false · openWorldHint true |
 | 长任务 | 是；返回 `jobId`，可设 `waitMs`（≤ 60000）等短任务直接出结果 |
 | CLI / HTTP | `heimdall clone <url> --scope site --level verified` / `POST /api/v1/tools/clone` |
 | 需求 / 阶段 | E2-02、E7-01 / Ph1 |

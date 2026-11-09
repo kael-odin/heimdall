@@ -49,7 +49,7 @@ export function discoverFn() {
 }
 
 function replayContextOptions(url, viewport, source) {
-  const options = { viewport: viewport ?? { width: 1440, height: 900 }, ignoreHTTPSErrors: true, userAgent: UA };
+  const options = { viewport: viewport ?? { width: 1440, height: 900 }, userAgent: UA };
   if (source) return { ...options, ...sessionContext(new URL(url).hostname) };
   if (process.env.HEIMDALL_TOKEN) options.extraHTTPHeaders = { 'x-heimdall-token': process.env.HEIMDALL_TOKEN };
   return options;
@@ -93,7 +93,9 @@ export async function verifyInteractions(browser, { sourceUrl, cloneUrl, max = 3
     await page.goto(sourceUrl, { waitUntil: 'domcontentloaded', timeout: 45_000 });
     await page.waitForTimeout(800);
     candidates = await page.evaluate(discoverFn);
-  } catch { candidates = []; } finally { await ctx.close().catch(() => {}); }
+  } catch (e) {
+    return [{ pass: null, unverified: true, error: `source discovery failed: ${String(e).slice(0, 160)}` }];
+  } finally { await ctx.close().catch(() => {}); }
 
   const results = [];
   for (const c of candidates.slice(0, max)) {
@@ -102,7 +104,7 @@ export async function verifyInteractions(browser, { sourceUrl, cloneUrl, max = 3
       src = await clickAndCapture(browser, sourceUrl, c.selector, { viewport, source: true });
       clone = await clickAndCapture(browser, cloneUrl, c.selector, { viewport });
     } catch (e) {
-      results.push({ label: c.label, selector: c.selector, pass: false, error: String(e).slice(0, 160) });
+      results.push({ label: c.label, selector: c.selector, pass: null, unverified: true, error: String(e).slice(0, 160) });
       continue;
     }
     const stateMatch = src.state.ariaExpanded === clone.state.ariaExpanded
@@ -119,8 +121,8 @@ export async function verifyInteractions(browser, { sourceUrl, cloneUrl, max = 3
   return results;
 }
 
-/** 功能得分（通过数 / 交互数），无交互时返回 null */
+/** 功能得分（通过数 / 交互数），无交互或存在未核实结果时返回 null */
 export function scoreInteractions(results) {
-  if (!results?.length) return null;
+  if (!results?.length || results.some(result => result.unverified)) return null;
   return { total: results.length, passed: results.filter(r => r.pass).length, score: +(results.filter(r => r.pass).length / results.length).toFixed(4) };
 }

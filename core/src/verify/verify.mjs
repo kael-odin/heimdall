@@ -472,9 +472,11 @@ async function verifyOne(name, index = 0, total = 1) {
       try {
         interactions = await verifyInteractions(browser, { sourceUrl: target, cloneUrl, max: 3 });
         interactions.forEach((r, i) => { if (r.diffPng) { try { writeFileSync(join(outDir, 'ix-' + (i + 1) + '.png'), r.diffPng); } catch {} delete r.diffPng; } });
-        emit({ kind: 'verify-interactions', page: name, ...(scoreInteractions(interactions) ?? { total: 0, passed: 0, score: null }) });
+        const unverified = interactions.find(r => r.unverified);
+        if (unverified) emit({ kind: 'verify-error', page: name, viewport: 'interactions', error: unverified.error });
+        else emit({ kind: 'verify-interactions', page: name, ...(scoreInteractions(interactions) ?? { total: 0, passed: 0, score: null }) });
       } catch (e) {
-        interactions = [{ pass: false, error: String(e).slice(0, 160) }];
+        interactions = [{ pass: null, unverified: true, error: String(e).slice(0, 160) }];
         emit({ kind: 'verify-error', page: name, viewport: 'interactions', error: String(e).slice(0, 160) });
       }
     }

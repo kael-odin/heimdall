@@ -60,7 +60,8 @@ export default {
   id: 'seo_matrix',
   title: 'SEO：竞品对标矩阵',
   description: 'Compare the deterministic SEO audit of 2-6 authorized HTTP(S) sites. Missing or stale reports are refreshed through the same '
-    + 'read-only SEO pipeline; the tool writes local JSON/CSV/HTML matrices and returns a durable jobId. Aggregate scores are not marketing '
+    + 'SEO pipeline; page scripts may send state-changing or third-party requests, and existing sessions may be used. '
+    + 'The tool writes local JSON/CSV/HTML matrices and returns a durable jobId. Aggregate scores are not marketing '
     + 'claims and sample sizes can differ, so compare page-type coverage and per-site summaries before drawing conclusions.',
   effects: ['source-network', 'browser', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy', longRunning: true,
   input: {

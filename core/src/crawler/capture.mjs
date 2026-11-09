@@ -110,11 +110,15 @@ try {
 }
 
 console.log('[2/7] cookie banner');
-try {
-  const consent = CAP.consentButton ? new RegExp(CAP.consentButton, 'i') : /accept|agree|allow all|consent|dismiss|接受|同意/i;
-  await page.getByRole('button', { name: consent }).first().click({ timeout: 5000 });
-  await page.waitForTimeout(1000);
-} catch { /* 无 banner，跳过 */ }
+if (typeof CAP.consentButton === 'string' && CAP.consentButton.trim()) {
+  try {
+    const consent = new RegExp(CAP.consentButton, 'i');
+    await page.getByRole('button', { name: consent }).first().click({ timeout: 5000 });
+    await page.waitForTimeout(1000);
+  } catch { /* 指定的按钮不存在或不可点击 */ }
+} else {
+  console.log('    skipped (no consent button explicitly configured)');
+}
 
 console.log('[3/7] lazy-load sweep');
 /**

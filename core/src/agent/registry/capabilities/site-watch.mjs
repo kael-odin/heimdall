@@ -34,7 +34,8 @@ function finishWatch(siteId) {
 export default {
   id: 'site_watch',
   title: '监控：站点变更快照',
-  description: 'Take a deterministic read-only snapshot of an authorized site and compare it with the stored watch baseline. First run creates '
+  description: 'Take a snapshot of an authorized site and compare it with the stored watch baseline. Page scripts may send state-changing or '
+    + 'third-party requests, and existing sessions may be used. First run creates '
     + 'the baseline; accept=true explicitly updates it after review. The tool reports added/removed/changed pages, severity counts and local '
     + 'JSON/HTML evidence through a durable job. It is not a pixel-perfect clone and dynamic fields are sampled for stability.',
   effects: ['source-network', 'browser', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy', longRunning: true,

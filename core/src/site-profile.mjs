@@ -36,7 +36,7 @@ export const DEFAULTS = {
     scrollStep: 800,
     scrollDelayMs: 120,
     settleMs: 3_000,
-    consentButton: null,          // null = 用通用正则 /accept|agree|allow all|consent|dismiss/i
+    consentButton: null,          // 显式提供按钮名称正则才点击；点击可能产生业务副作用
     removeSelectors: [],
   },
   css: {
