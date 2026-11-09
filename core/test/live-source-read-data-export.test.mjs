@@ -64,15 +64,24 @@ function startBundle(dir) {
 test('source-only clicked GET is captured once, guarded, and replayed after relocation', { timeout: 180_000 }, async t => {
   let mode = 'public';
   let dataRequests = 0;
+  let emptyRequests = 0;
   const source = createServer((request, response) => {
     if (request.url === DATA_PATH) {
       dataRequests++;
       response.setHeader('content-type', 'application/json');
+      if (mode === 'empty-script' && ++emptyRequests === 1) {
+        response.setHeader('cache-control', 'no-store');
+        response.writeHead(204, { 'content-length': '25' });
+        return response.end();
+      }
       return response.end('{"items":["Public item"]}');
     }
     response.setHeader('content-type', 'text/html');
     const action = mode === 'missing'
       ? `result.textContent = 'No request'; result.hidden = false;`
+      : mode === 'empty-script'
+        ? `const script = document.createElement('script'); script.src = '${DATA_PATH}';
+          document.head.append(script); result.textContent = 'No data'; result.hidden = false;`
       : `fetch('${DATA_PATH}'${mode === 'authenticated' ? ", { headers: { Authorization: 'Bearer private-source-token' } }" : ''})
           .then(response => response.json()).then(data => {
             result.textContent = data.items[0]; result.hidden = false;
@@ -172,7 +181,30 @@ test('source-only clicked GET is captured once, guarded, and replayed after relo
   assert.equal(staleHealth.strictBlockers.sourceReadOnlyCurrentMissing, 1);
   assert.doesNotMatch(readFileSync(join(staleCandidate, 'health.json'), 'utf8'), /api\/items\?page=1/);
 
+  mode = 'empty-script';
+  const emptyCandidate = await failure();
+  const emptyHealth = JSON.parse(readFileSync(join(emptyCandidate, 'health.json'), 'utf8'));
+  assert.equal(emptyRequests, 1, 'reading an empty script response must not refetch it');
+  assert.equal(emptyHealth.readOnlyData.sourceCapture.accepted, 0);
+  assert.equal(emptyHealth.readOnlyData.sourceCurrentMissing, 1);
+  assert.ok(emptyHealth.strictBlockers.sourceReadOnlyCaptureFailed > 0);
+
   mode = 'public';
+  put(join(site, 'live', 'index.html'), `<!doctype html><button id="load" type="button">Load</button>
+    <output id="result" hidden></output><script>
+    document.querySelector('#load').onclick = () => fetch('${DATA_PATH}', { headers: { Authorization: 'Bearer fixture-offline-secret' } })
+      .then(response => response.json()).then(data => {
+        const result = document.querySelector('#result'); result.textContent = data.items[0]; result.hidden = false;
+      });</script>`);
+  const offlineAuthCandidate = await failure();
+  const offlineAuthText = readFileSync(join(offlineAuthCandidate, 'health.json'), 'utf8');
+  const offlineAuthHealth = JSON.parse(offlineAuthText);
+  assert.equal(offlineAuthHealth.operationProbe.failed, 0);
+  assert.equal(offlineAuthHealth.readOnlyData.offlineCapture.rejected, 1);
+  assert.equal(offlineAuthHealth.readOnlyData.flowParity.status, 'not-tested');
+  assert.equal(offlineAuthHealth.strictBlockers.readOnlyFlowUntested, 1);
+  assert.doesNotMatch(offlineAuthText, /fixture-offline-secret/);
+
   put(join(site, 'live', 'index.html'), `<!doctype html><button id="load" type="button">Load</button>
     <output id="result" hidden></output><script>
     document.querySelector('#load').onclick = () => {

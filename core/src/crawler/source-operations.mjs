@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import { exploreOperationStates, sanitizeObservedUrl } from './state-graph.mjs';
-import { sourceReadDataCollector } from './source-read-data.mjs';
+import { observeReadOnlyPage, sourceReadDataCollector } from './source-read-data.mjs';
 import { operationSessionSegments } from './operation-sessions.mjs';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -129,10 +129,11 @@ async function checkAssertion(page, assertion, origin, timeoutMs) {
   } catch { return false; }
 }
 
-async function runSourceSegment({ browser, base, segment, startUrl, session, sessions, readData, flowIndex,
+async function runSourceSegment({ browser, base, segment, startUrl, session, sessions, readData, readOnlyGetUrls, flowIndex,
   onObservedRequest, settleMs, lateMs, timeoutMs, addIssue }) {
   let context;
   let onResponse;
+  let readOnlyObserver;
   let closing = false;
   const sessionName = segment.sessionName;
   const segmentSession = sessionName != null ? sessions?.[sessionName] : session;
@@ -168,7 +169,6 @@ async function runSourceSegment({ browser, base, segment, startUrl, session, ses
       if (response.status() >= 400) {
         addIssue({ kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()) });
       }
-      readData.observe(response, flowIndex);
     };
     context.on('response', onResponse);
     context.on('requestfailed', request => {
@@ -186,6 +186,7 @@ async function runSourceSegment({ browser, base, segment, startUrl, session, ses
     });
     const page = await context.newPage();
     openedPages.add(page);
+    readOnlyObserver = await observeReadOnlyPage(page, { collector: readData, urls: readOnlyGetUrls, flowIndex });
     const graph = await exploreOperationStates({
       page, baseUrl: base, allowedOrigins: [base], allowUnsafeRequests: false,
       actions: [{ type: 'navigate', url: startUrl }, ...segment.actions],
@@ -203,12 +204,14 @@ async function runSourceSegment({ browser, base, segment, startUrl, session, ses
       close: async () => {
         closing = true;
         if (context && onResponse) context.off('response', onResponse);
+        await readOnlyObserver?.close();
         await context.close().catch(() => {});
       },
     };
   } catch (error) {
     closing = true;
     if (context && onResponse) context.off('response', onResponse);
+    await readOnlyObserver?.close();
     await context.close().catch(() => {});
     throw error;
   }
@@ -294,7 +297,7 @@ export async function captureSourceOperations({ origin, flows, session = null, b
           const actionOffset = plannedActions;
           const stateOffset = states.length;
           const captured = await runSourceSegment({
-            browser, base, segment, startUrl: rawUrl, session, sessions, readData, flowIndex,
+            browser, base, segment, startUrl: rawUrl, session, sessions, readData, readOnlyGetUrls, flowIndex,
             onObservedRequest, settleMs, lateMs, timeoutMs, addIssue,
           });
           activeClose = captured.close;

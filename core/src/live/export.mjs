@@ -1058,10 +1058,12 @@ if (STRICT) {
     }
   }
   if (COMPARE_SOURCE && INCLUDE_READONLY_DATA) {
+    const captureComplete = summary => summary
+      && ['rejected', 'oversized', 'failed'].every(key => summary[key] === 0);
     const comparable = earlySource?.status === 'checked' && earlySource.failed === 0
       && earlySource.untested === 0 && health.operationProbe.status === 'checked'
       && health.operationProbe.failed === 0 && health.operationProbe.untested === 0
-      && health.operationProbe.readOnlyData;
+      && captureComplete(earlySource.readOnlyData) && captureComplete(health.operationProbe.readOnlyData);
     if (comparable) {
       health.readOnlyData.flowParity = compareReadOnlyFlowEvidence(
         sourceFlowReadOnlyEvidence, offlineFlowReadOnlyEvidence, operationPlan.flows.length,

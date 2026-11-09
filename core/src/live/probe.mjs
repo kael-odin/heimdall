@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { chromium } from 'playwright';
 import { exploreOperationStates, sanitizeObservedUrl } from '../crawler/state-graph.mjs';
-import { sourceReadDataCollector } from '../crawler/source-read-data.mjs';
+import { observeReadOnlyPage, sourceReadDataCollector } from '../crawler/source-read-data.mjs';
 import { operationSessionSegments } from '../crawler/operation-sessions.mjs';
 
 const MAX_BROWSER_FAILURES = 100;
@@ -386,6 +386,7 @@ async function initializeAdapterSession({ base, sessionName, route, flowIndex, o
 async function runOfflineSegment({ browser, base, bundleDir, segment, startUrl, readData, flowIndex,
   options, readOnlyRequests, cookies, addIssue, settleMs, lateMs, timeoutMs }) {
   let context;
+  let readOnlyObserver;
   try {
     context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: false });
     if (cookies?.length) await context.addCookies(cookies);
@@ -408,9 +409,9 @@ async function runOfflineSegment({ browser, base, bundleDir, segment, startUrl, 
       if (response.status() >= 400) addIssue({
         kind: 'http', status: response.status(), target: sanitizeObservedUrl(response.url()),
       });
-      readData.observe(response, flowIndex);
     });
     const page = await context.newPage();
+    readOnlyObserver = await observeReadOnlyPage(page, { collector: readData, urls: [...readOnlyRequests.keys()], flowIndex });
     page.on('download', () => addIssue({ kind: 'downloadUnsupported' }));
     context.on('page', opened => {
       if (opened === page) return;
@@ -434,9 +435,10 @@ async function runOfflineSegment({ browser, base, bundleDir, segment, startUrl, 
       page,
       graph,
       rawUrl: page.url(),
-      close: async () => { await context.close().catch(() => {}); },
+      close: async () => { await readOnlyObserver?.close(); await context.close().catch(() => {}); },
     };
   } catch (error) {
+    await readOnlyObserver?.close();
     await context?.close().catch(() => {});
     throw error;
   }

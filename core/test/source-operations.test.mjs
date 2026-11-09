@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { once } from 'node:events';
+import { EventEmitter, once } from 'node:events';
 import { captureSourceOperations } from '../src/crawler/source-operations.mjs';
 import {
-  addReadOnlyFlowEvidence, compareReadOnlyFlowEvidence, sourceReadDataCollector,
+  addReadOnlyFlowEvidence, compareReadOnlyFlowEvidence, observeReadOnlyPage, sourceReadDataCollector,
 } from '../src/crawler/source-read-data.mjs';
 import { isReplayableReadOnlyDataEntry } from '../src/live/har.mjs';
 
@@ -389,6 +389,160 @@ test('source read-only capture emits changed bodies for the same approved URL', 
   assert.deepEqual(entries.map(entry => JSON.parse(Buffer.from(entry.body, 'base64').toString()).version), [1, 2]);
   assert.deepEqual(report.readOnlyData, { observed: 2, accepted: 2, rejected: 0, oversized: 0, failed: 0 });
   assert.equal(report.flows[0].assertions[0].status, 'passed');
+});
+
+test('source read-only capture does not refetch an empty script response', { timeout: 30_000 }, async t => {
+  let dataRequests = 0;
+  const server = createServer((request, response) => {
+    if (request.url === '/api/public') {
+      dataRequests++;
+      response.setHeader('content-type', 'application/json');
+      response.setHeader('cache-control', 'no-store');
+      if (dataRequests === 1) {
+        response.writeHead(204, { 'content-length': '13' });
+        return response.end();
+      }
+      return response.end('{"version":2}');
+    }
+    response.setHeader('content-type', 'text/html');
+    return response.end('<!doctype html><script src="/api/public"></script><div id="ready">Ready</div>');
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => { server.close(); await once(server, 'close'); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const entries = [];
+  const report = await captureSourceOperations({
+    origin,
+    flows: [{ path: '/', actions: [], expect: [{ type: 'visible', selector: '#ready' }] }],
+    readOnlyGetUrls: [origin + '/api/public'],
+    onReadOnlyData: entry => entries.push(entry),
+    settleMs: 100,
+  });
+  assert.equal(dataRequests, 1, 'observing a response must not send another request');
+  assert.equal(entries.length, 0, 'an empty response must not become replayable data');
+  assert.notEqual(report.readOnlyData.accepted, 1);
+});
+
+function protocolFixture() {
+  const session = new EventEmitter();
+  const context = new EventEmitter();
+  const calls = [];
+  const bodies = new Map();
+  session.send = async (method, options) => {
+    calls.push({ method, options });
+    if (method === 'Network.getResponseBody') return { body: bodies.get(options.requestId), base64Encoded: false };
+    return {};
+  };
+  session.detach = async () => {};
+  context.newCDPSession = async () => session;
+  return { session, context, page: { context: () => context }, calls, bodies };
+}
+
+test('read-only CDP capture binds concurrent responses by request id and accepts reordered headers', async () => {
+  const { session, context, page, calls, bodies } = protocolFixture();
+  const url = 'https://source.test/api/public';
+  const entries = [];
+  const collector = sourceReadDataCollector({ origin: 'https://source.test', urls: [url], onEntry: entry => entries.push(entry) });
+  const observer = await observeReadOnlyPage(page, { collector, urls: ['HTTPS://SOURCE.TEST:443/api/public'], flowIndex: 0 });
+  for (const id of ['first', 'second']) {
+    session.emit('Network.requestWillBeSentExtraInfo', { requestId: id, headers: { accept: 'application/json' } });
+    session.emit('Network.requestWillBeSent', { requestId: id, request: { method: 'GET', url, headers: {} } });
+    session.emit('Network.responseReceivedExtraInfo', { requestId: id, statusCode: 200, headers: { 'Content-Type': 'application/json' } });
+    session.emit('Network.responseReceived', { requestId: id, hasExtraInfo: true, response: { url, status: 200, headers: {} } });
+    context.emit('response', { url: () => url, request: () => ({ method: () => 'GET' }) });
+  }
+  bodies.set('first', '{"version":1}');
+  bodies.set('second', '{"version":2}');
+  session.emit('Network.loadingFinished', { requestId: 'second' });
+  session.emit('Network.loadingFinished', { requestId: 'first' });
+  await observer.close();
+  assert.deepEqual(entries.map(entry => JSON.parse(Buffer.from(entry.body, 'base64').toString()).version), [2, 1]);
+  assert.deepEqual(calls.filter(call => call.method === 'Network.getResponseBody').map(call => call.options.requestId), ['second', 'first']);
+  assert.deepEqual(collector.summary(), { observed: 2, accepted: 2, rejected: 0, oversized: 0, failed: 0 });
+});
+
+test('read-only CDP capture fails closed when provenance or an observation is missing', async () => {
+  const { session, context, page, calls } = protocolFixture();
+  const url = 'https://source.test/api/public';
+  const entries = [];
+  const collector = sourceReadDataCollector({ origin: 'https://source.test', urls: [url], onEntry: entry => entries.push(entry) });
+  const observer = await observeReadOnlyPage(page, { collector, urls: [url], flowIndex: 0 });
+  session.emit('Network.requestWillBeSent', { requestId: 'without-headers', request: { method: 'GET', url, headers: {} } });
+  session.emit('Network.responseReceived', { requestId: 'without-headers', hasExtraInfo: false, response: { url, status: 200, headers: {} } });
+  context.emit('response', { url: () => url, request: () => ({ method: () => 'GET' }) });
+  session.emit('Network.loadingFinished', { requestId: 'without-headers' });
+  context.emit('response', { url: () => url, request: () => ({ method: () => 'GET' }) });
+  await observer.close();
+  assert.equal(entries.length, 0);
+  assert.equal(calls.filter(call => call.method === 'Network.getResponseBody').length, 0);
+  assert.deepEqual(collector.summary(), { observed: 2, accepted: 0, rejected: 0, oversized: 0, failed: 2 });
+});
+
+test('read-only CDP capture fails closed when protocol tracking exceeds its limit', async () => {
+  const { session, page } = protocolFixture();
+  const url = 'https://source.test/api/public';
+  const collector = sourceReadDataCollector({ origin: 'https://source.test', urls: [url], onEntry() {} });
+  const observer = await observeReadOnlyPage(page, { collector, urls: [url], flowIndex: 0 });
+  for (let index = 0; index < 801; index++) {
+    session.emit('Network.requestWillBeSentExtraInfo', { requestId: String(index), headers: {} });
+  }
+  await observer.close();
+  assert.deepEqual(collector.summary(), { observed: 0, accepted: 0, rejected: 0, oversized: 0, failed: 1 });
+});
+
+test('read-only CDP capture rejects private headers from either protocol event', async () => {
+  const { session, context, page, bodies } = protocolFixture();
+  const url = 'https://source.test/api/public';
+  const entries = [];
+  const collector = sourceReadDataCollector({ origin: 'https://source.test', urls: [url], onEntry: entry => entries.push(entry) });
+  const observer = await observeReadOnlyPage(page, { collector, urls: [url], flowIndex: 0 });
+  const cases = [
+    { id: 'cookie', requestExtra: { Cookie: 'fixture-private-cookie' } },
+    { id: 'set-cookie', responseExtra: { 'Set-Cookie': 'fixture-private-cookie' } },
+    { id: 'vary', responseHeaders: { Vary: 'Cookie' }, responseExtra: { Vary: 'Accept' } },
+    { id: 'cache', responseHeaders: { 'Cache-Control': 'private' }, responseExtra: { 'Cache-Control': 'public' } },
+  ];
+  for (const item of cases) {
+    session.emit('Network.requestWillBeSent', { requestId: item.id, request: { method: 'GET', url, headers: {} } });
+    session.emit('Network.requestWillBeSentExtraInfo', { requestId: item.id, headers: item.requestExtra ?? {} });
+    session.emit('Network.responseReceived', { requestId: item.id, hasExtraInfo: true,
+      response: { url, status: 200, headers: { 'Content-Type': 'application/json', ...item.responseHeaders } } });
+    session.emit('Network.responseReceivedExtraInfo', { requestId: item.id, statusCode: 200,
+      headers: { 'Content-Type': 'application/json', ...item.responseExtra } });
+    context.emit('response', { url: () => url, request: () => ({ method: () => 'GET' }) });
+    bodies.set(item.id, '{"items":["public"]}');
+    session.emit('Network.loadingFinished', { requestId: item.id });
+  }
+  await observer.close();
+  assert.deepEqual(entries, []);
+  assert.deepEqual(collector.summary(), { observed: 4, accepted: 0, rejected: 4, oversized: 0, failed: 0 });
+  assert.doesNotMatch(JSON.stringify(collector.summary()), /fixture-private-cookie/);
+});
+
+test('read-only CDP capture rejects cached, redirected and inconsistent responses', async () => {
+  const { session, context, page, calls } = protocolFixture();
+  const url = 'https://source.test/api/public';
+  const entries = [];
+  const collector = sourceReadDataCollector({ origin: 'https://source.test', urls: [url], onEntry: entry => entries.push(entry) });
+  const observer = await observeReadOnlyPage(page, { collector, urls: [url], flowIndex: 0 });
+  for (const id of ['cached', 'redirected', 'different-url', 'different-status']) {
+    session.emit('Network.requestWillBeSent', { requestId: id, request: { method: 'GET', url, headers: {} } });
+    if (id === 'redirected') {
+      session.emit('Network.requestWillBeSent', { requestId: id, redirectResponse: { status: 302 }, request: { method: 'GET', url, headers: {} } });
+    }
+    session.emit('Network.requestWillBeSentExtraInfo', { requestId: id, headers: {} });
+    session.emit('Network.responseReceived', { requestId: id, hasExtraInfo: true,
+      response: { url: id === 'different-url' ? url + '-other' : url, status: 200, headers: {}, fromDiskCache: id === 'cached' } });
+    session.emit('Network.responseReceivedExtraInfo', { requestId: id, statusCode: id === 'different-status' ? 304 : 200,
+      headers: { 'Content-Type': 'application/json' } });
+    context.emit('response', { url: () => url, request: () => ({ method: () => 'GET' }) });
+    session.emit('Network.loadingFinished', { requestId: id });
+  }
+  await observer.close();
+  assert.deepEqual(entries, []);
+  assert.equal(calls.filter(call => call.method === 'Network.getResponseBody').length, 0);
+  assert.deepEqual(collector.summary(), { observed: 4, accepted: 0, rejected: 0, oversized: 0, failed: 4 });
 });
 
 test('read-only flow comparison distinguishes per-flow URLs and sanitized response changes', () => {

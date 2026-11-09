@@ -21,6 +21,10 @@ All notable changes to Heimdall are recorded here.
 
 ### Fixed
 
+- Source and offline read-only data comparison now reads the observed CDP
+  response directly instead of allowing Playwright to refetch an empty body.
+  Missing provenance and mismatched browser/protocol observations block strict
+  export; historical HAR files are not retroactively verified.
 - The D7 local acceptance demo now survives the console's `view=acceptance`
   navigation and is covered by the normal quality gate and Hosted CI.
 - Cancelling a whole-site clone now cancels the page forge tasks it owns.

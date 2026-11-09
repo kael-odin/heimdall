@@ -13,6 +13,161 @@ function headersArray(headers) {
   return Object.entries(headers).map(([name, value]) => ({ name, value }));
 }
 
+function projectedHeaders(headers, response = false) {
+  const result = {};
+  for (const [name, value] of Object.entries(headers ?? {})) {
+    const key = name.toLowerCase();
+    if (!response) result[key] = '';
+    else if (['content-type', 'content-length', 'content-encoding', 'cache-control', 'vary'].includes(key)) result[key] = String(value);
+    else if (key === 'set-cookie') result[key] = '';
+  }
+  return result;
+}
+
+function responseHeaders(item) {
+  const headers = { ...item.responseHeaders, ...item.responseExtra };
+  for (const name of ['cache-control', 'vary']) {
+    headers[name] = [item.responseHeaders?.[name], item.responseExtra?.[name]].filter(Boolean).join(', ');
+  }
+  return headers;
+}
+
+/** Read only the CDP response tied to an observed request, never Playwright's refetch fallback. */
+export async function observeReadOnlyPage(page, { collector, urls, flowIndex }) {
+  if (!urls.length) return null;
+  const approved = new Set(urls.map(url => new URL(url).href));
+  const session = await page.context().newCDPSession(page);
+  try {
+    await session.send('Network.enable', { maxTotalBufferSize: MAX_TOTAL_BYTES, maxResourceBufferSize: MAX_BODY_BYTES });
+  } catch (error) {
+    await session.detach().catch(() => {});
+    throw error;
+  }
+  const records = new Map();
+  const ignored = new Set();
+  const redirects = new Set();
+  const browserCounts = new Map();
+  const protocolCounts = new Map();
+  let closed = false;
+  let trackingOverflow = false;
+  const count = (map, url) => map.set(url, (map.get(url) ?? 0) + 1);
+  const track = (set, id) => {
+    if (set.size >= MAX_RESPONSES * 4 && !set.has(id)) trackingOverflow = true;
+    else set.add(id);
+  };
+  const onResponse = response => {
+    if (approved.has(response.url()) && response.request().method() === 'GET') count(browserCounts, response.url());
+  };
+  page.context().on('response', onResponse);
+  const record = id => {
+    if (!records.has(id)) {
+      if (records.size >= MAX_RESPONSES * 4) { trackingOverflow = true; return null; }
+      records.set(id, {});
+    }
+    return records.get(id);
+  };
+  const notify = item => { if (item?.notify) item.notify(); };
+  session.on('Network.requestWillBeSent', event => {
+    const id = event.requestId;
+    if (event.redirectResponse) track(redirects, id);
+    const request = event.request;
+    if (request.method !== 'GET' || !approved.has(request.url)) {
+      records.delete(id);
+      track(ignored, id);
+      return;
+    }
+    ignored.delete(id);
+    const item = record(id);
+    if (!item) return;
+    item.url = request.url;
+    item.requestHeaders = projectedHeaders(request.headers);
+    item.hasPostData = !!(request.hasPostData || request.postData);
+    item.redirected = redirects.has(id);
+    notify(item);
+  });
+  session.on('Network.requestWillBeSentExtraInfo', event => {
+    if (ignored.has(event.requestId)) return;
+    const item = record(event.requestId);
+    if (!item) return;
+    item.requestExtra = projectedHeaders(event.headers);
+    notify(item);
+  });
+  session.on('Network.requestServedFromCache', event => {
+    if (ignored.has(event.requestId)) return;
+    const item = record(event.requestId);
+    if (item) item.cached = true;
+  });
+  session.on('Network.responseReceived', event => {
+    const item = records.get(event.requestId);
+    if (!item?.url) return;
+    item.status = event.response.status;
+    item.responseUrl = event.response.url;
+    item.responseHeaders = projectedHeaders(event.response.headers, true);
+    item.hasExtraInfo = event.hasExtraInfo;
+    item.cached ||= !!(event.response.fromDiskCache || event.response.fromServiceWorker || event.response.fromPrefetchCache);
+    notify(item);
+  });
+  session.on('Network.responseReceivedExtraInfo', event => {
+    if (ignored.has(event.requestId)) return;
+    const item = record(event.requestId);
+    if (!item) return;
+    item.responseExtra = projectedHeaders(event.headers, true);
+    item.extraStatus = event.statusCode;
+    notify(item);
+  });
+  const forget = id => { records.delete(id); ignored.delete(id); redirects.delete(id); };
+  session.on('Network.loadingFailed', event => forget(event.requestId));
+  session.on('Network.loadingFinished', event => {
+    if (closed) return;
+    const id = event.requestId;
+    const item = records.get(id);
+    if (!item?.url || !Number.isInteger(item.status)) { forget(id); return; }
+    count(protocolCounts, item.url);
+    const ready = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('response headers unavailable')), BODY_TIMEOUT_MS);
+      item.notify = () => {
+        if (item.redirected || item.cached || item.hasExtraInfo === false || item.responseUrl !== item.url) {
+          clearTimeout(timer);
+          reject(new Error('response provenance unavailable'));
+        } else if (item.requestExtra && item.responseExtra) {
+          clearTimeout(timer);
+          if (item.extraStatus !== item.status) reject(new Error('response status unavailable'));
+          else resolve();
+        }
+      };
+      item.notify();
+    });
+    const request = {
+      method: () => 'GET',
+      postData: () => item.hasPostData ? '[redacted]' : null,
+      allHeaders: async () => { await ready; return { ...item.requestHeaders, ...item.requestExtra }; },
+    };
+    collector.observe({
+      url: () => item.url,
+      status: () => item.status,
+      request: () => request,
+      allHeaders: async () => { await ready; return responseHeaders(item); },
+      body: async () => {
+        await ready;
+        const body = await session.send('Network.getResponseBody', { requestId: id });
+        return Buffer.from(body.body, body.base64Encoded ? 'base64' : 'utf8');
+      },
+    }, flowIndex);
+    void ready.then(() => forget(id), () => forget(id));
+  });
+  return {
+    async close() {
+      if (closed) return;
+      await collector.drain();
+      closed = true;
+      page.context().off('response', onResponse);
+      for (const url of approved) collector.noteObservationMismatch(browserCounts.get(url) ?? 0, protocolCounts.get(url) ?? 0);
+      if (trackingOverflow) collector.noteObservationMismatch(0, 1);
+      await session.detach().catch(() => {});
+    },
+  };
+}
+
 async function timedBody(response, timeoutMs) {
   let timer;
   try {
@@ -194,7 +349,12 @@ export function sourceReadDataCollector({ origin, urls = [], onEntry,
     return { ...counts };
   }
 
-  return { observe, drain, summary };
+  function noteObservationMismatch(browserCount, protocolCount) {
+    counts.observed += Math.max(0, browserCount - protocolCount);
+    counts.failed += Math.abs(browserCount - protocolCount);
+  }
+
+  return { observe, drain, summary, noteObservationMismatch };
 }
 
 /** Exact URLs and fingerprints stay in memory; comparison returns counts only. */
