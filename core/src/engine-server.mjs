@@ -2246,7 +2246,8 @@ const handleRequest = async (req, res) => {
         if (hasAudit) {
           try {
             const j = JSON.parse(readFileSync(seoJson, 'utf8'));
-            audit = { score: j.score ?? null, pages: j.summary?.pages ?? j.pages?.length ?? 0, at: j.generatedAt ?? null };
+            audit = { score: j.score ?? null, scoreMethodVersion: j.scoreMethodVersion ?? null,
+              baselineEligible: j.summary?.baselineEligible ?? null, pages: j.summary?.pages ?? j.pages?.length ?? 0, at: j.generatedAt ?? null };
             if (!origin && j.origin) origin = j.origin;
           } catch { /* 报告坏了不影响站点出现 */ }
         }

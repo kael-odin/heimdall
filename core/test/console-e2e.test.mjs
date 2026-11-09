@@ -99,6 +99,13 @@ function writeFixture(dataRoot) {
   put('live/index.html', '<html><body><h1 id="spa-result"></h1><script>document.querySelector("#spa-result").textContent = location.pathname === "/" ? "fixture live home" : "fixture SPA 404"</script></body></html>');
   put('live/docs/index.html', '<html><body><h1 id="spa-result"></h1><script>document.querySelector("#spa-result").textContent = location.pathname === "/docs/" ? "fixture live docs" : "fixture SPA 404"</script></body></html>');
   put('intel/fixture.test-intel.xlsx', Buffer.from('fixture download bytes')); // 仅验证受保护文件的浏览器下载路径
+  put('history.json', JSON.stringify([
+    { at: '2026-11-01T00:00:00Z', kind: 'audit', score: 80, pages: 2 },
+    { at: '2026-11-02T00:00:00Z', kind: 'audit', score: 90, scoreMethodVersion: 2, pages: 2 },
+    { at: '2026-11-03T00:00:00Z', kind: 'audit', score: 92, scoreMethodVersion: 2, pages: 2 },
+  ]));
+  put('seo/seo.json', JSON.stringify({ host: 'fixture.test', score: 92, scoreMethodVersion: 2, pages: [],
+    summary: { pages: 2, issues: 1, baselineEligible: false, baselineMethodMismatch: true } }));
   put('pages/home/asset-map.json', JSON.stringify({ imgMap: { 'https://cdns.fixture.test/logo.png': 'assets/image000.png' } }));
   put('recon/atlas.json', JSON.stringify({
     origin: 'https://fixture.test', status: 'ok', failures: [], generatedAt: new Date().toISOString(),
@@ -368,6 +375,13 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
 
     // ⑤ 报告页：改站起点卡片读到了引擎产物
     await page.getByRole('button', { name: '报告' }).click();
+    const trend = page.locator('.report-card', { hasText: '分数走势' });
+    await trend.getByText(/已隐藏 1 条不同或未记录口径的旧分数/).waitFor({ timeout: 10_000 });
+    assert.equal(await trend.getByRole('img', { name: 'SEO 审计分 走势：90.0 到 92.0' }).count(), 1);
+    const seoCard = page.locator('.report-card', { hasText: 'SEO 审计报告' });
+    await seoCard.getByText(/旧基线评分口径不兼容/).waitFor({ timeout: 10_000 });
+    assert.match(await seoCard.innerText(), /采集不完整，分数仅供参考/);
+    assert.match(await seoCard.innerText(), /评分口径 2/);
     const card = page.locator('.report-card', { hasText: '改站起点' });
     await card.waitFor({ timeout: 10_000 });
     assert.match(await card.innerText(), /个资源/, '改站起点卡片应显示清单统计');
@@ -634,7 +648,8 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
     const restoredResponse = page.waitForResponse(response => response.request().method() === 'POST'
       && new URL(response.url()).pathname === `/api/trash/${trashId}/restore`);
     await trashRow.getByRole('button', { name: '恢复', exact: true }).click();
-    assert.equal((await restoredResponse).status(), 200);
+    const restored = await restoredResponse;
+    assert.equal(restored.status(), 200, `restore failed: ${await restored.text()}`);
     await trashRow.getByText('已结束', { exact: false }).waitFor();
     assert.equal(await trashRow.getByRole('button', { name: '恢复', exact: true }).count(), 0);
     assert.equal(existsSync(targetPage), true);

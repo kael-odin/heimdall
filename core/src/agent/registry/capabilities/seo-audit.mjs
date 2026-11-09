@@ -11,6 +11,8 @@ function finishAudit(siteId) {
       siteId,
       origin: report.origin,
       score: report.score,
+      scoreMethodVersion: report.scoreMethodVersion ?? null,
+      measurementVersion: report.measurementVersion ?? null,
       grade: report.summary?.baselineEligible === true ? (report.score >= 90 ? 'A' : report.score >= 75 ? 'B' : 'C') : null,
       summary: report.summary,
       categories: report.categories,
@@ -60,6 +62,8 @@ export default {
               ? 'SEO 审计部分完成：存在未成功采集或未检查的页面，未进行基线比对。'
               : job.result?.summary?.legacyBaseline
                 ? 'SEO 审计完成，但旧基线未记录采集完整性，本次未进行基线比对。'
+                : job.result?.summary?.baselineMethodMismatch
+                  ? 'SEO 审计完成，但旧基线评分口径不兼容，本次未进行基线比对。'
           : `SEO 审计完成：${siteId}。`,
       nextActions: job => job.status === 'succeeded'
         ? [nextAction('heimdall_artifact', { uri: `heimdall://site/${encodeURIComponent(siteId)}/seo` }, '读取结构化 SEO 报告')]

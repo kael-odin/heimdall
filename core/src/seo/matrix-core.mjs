@@ -27,6 +27,7 @@ export function siteAggregate(audit) {
   return {
     host: siteLabel(audit),
     score: baselineEligible ? (audit.score ?? null) : null,
+    scoreMethodVersion: audit.scoreMethodVersion ?? null,
     baselineEligible,
     sitemapCoverage: audit.summary?.sitemapCoverage ?? 'unknown',
     pages: pages.length,
@@ -42,7 +43,17 @@ export function siteAggregate(audit) {
 }
 
 export function buildMatrix(audits) {
-  const sites = audits.map(a => ({ host: siteLabel(a), aggregate: siteAggregate(a) }));
+  const eligible = audits.filter(a => a.summary?.baselineEligible === true);
+  const versions = eligible.map(a => a.scoreMethodVersion);
+  const reason = versions.length < 2 ? 'insufficient-eligible-audits'
+    : versions.some(v => !Number.isSafeInteger(v) || v < 1) ? 'unknown-method'
+      : versions.some(v => v !== versions[0]) ? 'method-mismatch' : null;
+  const comparable = reason === null;
+  const sites = audits.map(a => {
+    const aggregate = siteAggregate(a);
+    if (!comparable) { aggregate.score = null; aggregate.issuesPerPage = null; }
+    return { host: siteLabel(a), aggregate };
+  });
   const types = ['home', 'pricing', 'product', 'listing', 'docs', 'blog', 'company', 'other'];
   const rows = [];
   for (const type of types) {
@@ -51,7 +62,7 @@ export function buildMatrix(audits) {
       return {
         host: siteLabel(a),
         pages: pages.length,
-        avgScore: a.summary?.baselineEligible === true ? round(avg(pages.map(p => p.score)), 1) : null,
+        avgScore: comparable && a.summary?.baselineEligible === true ? round(avg(pages.map(p => p.score)), 1) : null,
         avgWords: round(avg(pages.map(p => p.wordCount ?? 0)), 0),
         avgLcp: round(avg(pages.map(p => p.vitals?.lcp).filter(v => typeof v === 'number')), 0),
       };
@@ -65,7 +76,7 @@ export function buildMatrix(audits) {
     for (const i of a.siteIssues ?? []) counts[i.id] = (counts[i.id] ?? 0) + 1;
     return { host: siteLabel(a), top: Object.entries(counts).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([id, count]) => ({ id, count })) };
   });
-  return { generatedAt: new Date().toISOString(), sites, rows, topIssues };
+  return { generatedAt: new Date().toISOString(), scoreComparison: { comparable, methodVersion: comparable ? versions[0] : null, reason }, sites, rows, topIssues };
 }
 
 const fmt = (v, suffix = '') => (v == null ? '—' : String(v) + suffix);
@@ -75,6 +86,8 @@ export function renderMatrixCsv(matrix) {
   const rows = [
     header,
     ['site_score', ...matrix.sites.map(s => fmt(s.aggregate.score))],
+    ['score_method_version', ...matrix.sites.map(s => fmt(s.aggregate.scoreMethodVersion))],
+    ['score_comparable', ...matrix.sites.map(() => String(matrix.scoreComparison?.comparable === true))],
     ['baseline_eligible', ...matrix.sites.map(s => String(s.aggregate.baselineEligible))],
     ['sitemap_coverage', ...matrix.sites.map(s => s.aggregate.sitemapCoverage)],
     ['pages', ...matrix.sites.map(s => fmt(s.aggregate.pages))],
@@ -147,6 +160,7 @@ footer{margin-top:36px;color:#64748b;font-size:12px}
 <div class="brand">HEIMDALL · SEO BENCHMARK</div><h1>竞品 SEO 对标矩阵</h1>
 <div class="meta">${matrix.sites.map(s => esc(s.host)).join(' vs ')} · ${esc(matrix.generatedAt)} · 绿色 = 该指标最优 · 样本量不同时优先对比比率/均值</div>
 <div class="meta">采集不完整或旧报告未记录采集状态时，不比较分数和每页问题数。其他指标仅描述本次采集样本。</div>
+<div class="meta">${matrix.scoreComparison?.comparable ? `评分口径 ${esc(matrix.scoreComparison.methodVersion)}；页面集合不同时分数仍需谨慎解释。` : matrix.scoreComparison?.reason === 'insufficient-eligible-audits' ? '完整审计不足两份，已隐藏分数和每页问题数。' : '评分口径缺失或不一致，已隐藏分数和每页问题数；请重新采集同口径报告。'}</div>
 <h2>总体指标</h2><table><tbody><tr><th>指标</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${metricRows}</tbody></table>
 <h2>页面类型分布</h2><table><tbody><tr><th>页面类型</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${typeRows || '<tr><td>—</td></tr>'}</tbody></table>
 <h2>各站高频问题</h2><table><tbody>${issues}</tbody></table>

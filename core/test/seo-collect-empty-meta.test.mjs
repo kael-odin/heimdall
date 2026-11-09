@@ -15,6 +15,7 @@ import { once } from 'node:events';
 import { chromium } from 'playwright';
 import { collectPage } from '../src/seo/collect.mjs';
 import { evaluatePage } from '../src/seo/rules.mjs';
+import { scoreIssues } from '../src/seo/rules.mjs';
 
 const BARE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Bare page without social or canonical tags</title>
 <meta name="description" content="A page that deliberately omits canonical, og:image and twitter:image, and uses a relative hreflang.">
@@ -132,4 +133,37 @@ test('采集：资源体积按用途分类，预加载图片不能算成 CSS', {
   assert.ok(cssBytes > 0, 'extensionless stylesheet should be counted as CSS');
   assert.ok(imgBytes > 0, 'image preload should be counted as an image');
   assert.ok(jsBytes + cssBytes + imgBytes + fontBytes <= transferBytes, 'these resources must not be double counted');
+});
+
+test('采集：中文和表情的 DOM 与初始 HTML 区分代码单元、UTF-8 字节和网络大小', { timeout: 30_000 }, async t => {
+  const source = `<!doctype html><html><head><meta charset="utf-8"><title>Unicode</title></head><body>汉字🙂<script>document.body.append(' 动态')</script><!--${'x'.repeat(21_000)}--></body></html>`;
+  const server = createServer((_req, res) => {
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    res.end(source);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const browser = await chromium.launch();
+  t.after(async () => { await browser.close(); await new Promise(resolve => server.close(resolve)); });
+  const url = `http://127.0.0.1:${server.address().port}/`;
+  const collected = await collectPage(browser, url, { settleMs: 50 });
+  const reference = await browser.newPage();
+  await reference.goto(url);
+  const dom = await reference.evaluate(() => ({ html: document.documentElement.outerHTML, text: document.body.innerText.replace(/\s+/g, ' ').trim() }));
+  await reference.close();
+
+  assert.equal(collected.htmlCodeUnits, dom.html.length);
+  assert.equal(collected.htmlBytes, Buffer.byteLength(dom.html, 'utf8'));
+  assert.ok(collected.htmlBytes > collected.htmlCodeUnits);
+  assert.equal(collected.textRatio, dom.text.length / dom.html.length);
+  assert.equal(collected.raw.source, 'navigation');
+  assert.equal(collected.raw.codeUnits, source.length);
+  assert.equal(collected.raw.bytes, Buffer.byteLength(source, 'utf8'));
+  assert.notEqual(collected.raw.bytes, collected.htmlBytes, 'initial HTML and rendered DOM are distinct');
+
+  const issues = evaluatePage(collected, { host: '127.0.0.1' });
+  const observation = issues.find(i => i.id === 'content-text-ratio');
+  assert.equal(observation.severity, 'info');
+  assert.match(observation.evidence, /UTF-16/);
+  assert.equal(scoreIssues(issues), scoreIssues(issues.filter(i => i.id !== observation.id)));
 });

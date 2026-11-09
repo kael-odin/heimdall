@@ -17,7 +17,7 @@ const CORE = fileURLToPath(new URL('..', import.meta.url));
 const ENGINE = fileURLToPath(new URL('../src/engine-server.mjs', import.meta.url));
 
 const audit = (host, specs) => ({
-  host, score: 80,
+  host, score: 80, scoreMethodVersion: 2,
   summary: { issues: specs.length * 3, baselineEligible: true, sitemapCoverage: 'complete', bySeverity: { high: 1, medium: 1, low: 1, info: 0 } },
   pages: specs.map(s => ({
     url: `https://${host}${s.path}`, status: 200,
@@ -81,9 +81,10 @@ test('matrix: incomplete and legacy audits do not compete using unverified score
   delete legacy.summary.baselineEligible;
   delete legacy.summary.sitemapCoverage;
   const matrix = buildMatrix([complete, partial, legacy]);
-  assert.deepEqual(matrix.sites.map(site => site.aggregate.score), [80, null, null]);
-  assert.deepEqual(matrix.sites.map(site => site.aggregate.issuesPerPage), [3, null, null]);
-  assert.deepEqual(matrix.rows[0].cells.map(cell => cell.avgScore), [90, null, null]);
+  assert.deepEqual(matrix.sites.map(site => site.aggregate.score), [null, null, null]);
+  assert.deepEqual(matrix.sites.map(site => site.aggregate.issuesPerPage), [null, null, null]);
+  assert.deepEqual(matrix.rows[0].cells.map(cell => cell.avgScore), [null, null, null]);
+  assert.equal(matrix.scoreComparison.reason, 'insufficient-eligible-audits');
   assert.match(renderMatrixHtml(matrix), /旧报告未记录采集状态/);
   assert.match(renderMatrixCsv(matrix), /sitemap_coverage/);
 });
@@ -100,7 +101,7 @@ test('matrix: CLI and API keep same-host HTTP and HTTPS origins separate', { tim
       mkdirSync(join(dir, 'seo'), { recursive: true });
       writeFileSync(join(dir, 'site-origin.json'), JSON.stringify({ origin }));
       writeFileSync(join(dir, 'seo', 'seo.json'), JSON.stringify({
-        host: 'example.com', origin, score: 90 - index * 10,
+        host: 'example.com', origin, score: 90 - index * 10, scoreMethodVersion: 2,
         pages: [], siteIssues: [], summary: { issues: 0, baselineEligible: true, sitemapCoverage: 'complete' },
       }));
       return siteId;
@@ -157,4 +158,30 @@ test('matrix: CLI and API keep same-host HTTP and HTTPS origins separate', { tim
     }
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('matrix: different or unknown scoring methods cannot be compared', () => {
+  const current = audit('current.test', [{ path: '/' }]);
+  current.pages[0].score = 90;
+  const old = audit('old.test', [{ path: '/' }]);
+  old.pages[0].score = 88;
+  for (const version of [null, 1]) {
+    old.scoreMethodVersion = version;
+    const matrix = buildMatrix([current, old]);
+    assert.equal(matrix.scoreComparison.comparable, false);
+    assert.deepEqual(matrix.sites.map(s => s.aggregate.score), [null, null]);
+    assert.deepEqual(matrix.sites.map(s => s.aggregate.issuesPerPage), [null, null]);
+    assert.deepEqual(matrix.rows[0].cells.map(c => c.avgScore), [null, null]);
+    assert.match(renderMatrixHtml(matrix), /评分口径缺失或不一致/);
+  }
+  old.scoreMethodVersion = 2;
+  const comparable = buildMatrix([current, old]);
+  assert.equal(comparable.scoreComparison.comparable, true);
+  assert.deepEqual(comparable.sites.map(s => s.aggregate.score), [80, 80]);
+  assert.deepEqual(comparable.rows[0].cells.map(c => c.avgScore), [90, 88]);
+  current.summary.baselineEligible = false;
+  old.summary.baselineEligible = false;
+  const incomplete = buildMatrix([current, old]);
+  assert.equal(incomplete.scoreComparison.reason, 'insufficient-eligible-audits');
+  assert.match(renderMatrixHtml(incomplete), /完整审计不足两份/);
 });

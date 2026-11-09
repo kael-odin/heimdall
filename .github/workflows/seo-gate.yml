@@ -83,7 +83,7 @@ jobs:
             echo "::group::SEO — $host"
             # 目标可能是完整 URL、非默认端口或 http；与 audit 共用同一套
             # path-safe key，避免 sed 截断后把两个 origin 写进同一个基线文件。
-            if ! key=$(node --input-type=module -e 'import("./src/seo/baseline-file.mjs").then(({baselineFileKey}) => process.stdout.write(baselineFileKey(process.argv[1]))).catch(error => { console.error(error.message); process.exit(1); })' "$host"); then
+            if ! key=$(node --input-type=module -e 'import("./src/seo/baseline-file.mjs").then(({versionedBaselineFileKey}) => process.stdout.write(versionedBaselineFileKey(process.argv[1]))).catch(error => { console.error(error.message); process.exit(1); })' "$host"); then
               echo "::error::SEO 目标无效：$host"
               failed=1
               echo "::endgroup::"

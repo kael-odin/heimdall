@@ -40,6 +40,7 @@ export function appendHistory(host, rec) {
     at: new Date().toISOString(),
     kind: rec.kind,
     ...('score' in rec ? { score: rec.score } : {}),
+    ...(Number.isSafeInteger(rec.scoreMethodVersion) && rec.scoreMethodVersion > 0 ? { scoreMethodVersion: rec.scoreMethodVersion } : {}),
     ...('grade' in rec ? { grade: rec.grade } : {}),
     ...('pages' in rec ? { pages: rec.pages } : {}),
     ...('issues' in rec ? { issues: rec.issues } : {}),
@@ -65,9 +66,12 @@ export function appendHistory(host, rec) {
  * @param {'score'|'avgPixel'} field
  */
 export function series(history, kind, field = 'score') {
-  return (history ?? [])
-    .filter(h => h.kind === kind && typeof h[field] === 'number')
-    .map(h => ({ at: h.at, v: h[field] }));
+  const records = (history ?? []).filter(h => h.kind === kind && typeof h[field] === 'number');
+  if (kind !== 'audit' || field !== 'score' || !records.length) return records.map(h => ({ at: h.at, v: h[field] }));
+  const version = records.at(-1).scoreMethodVersion;
+  const compatible = Number.isSafeInteger(version) && version > 0
+    ? records.filter(h => h.scoreMethodVersion === version) : records.slice(-1);
+  return compatible.map(h => ({ at: h.at, v: h[field] }));
 }
 
 /** 走势的一句话结论：只比首尾，避免"一直在动"的错觉 */

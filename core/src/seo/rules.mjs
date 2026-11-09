@@ -91,10 +91,11 @@ export function evaluatePage(page, site = {}) {
   // 渲染后审计对 SPA 一律给满分，因为它量的是浏览器里的样子。
   const raw = page.raw;
   if (raw?.ok) {
+    const rawLabel = raw.source === 'navigation' ? '初始响应' : raw.source === 'refetch' ? '后续回取' : '服务端';
     if (page.title && !raw.title) {
       A('index-raw-title-missing', 'index', 'high', 'title 只存在于渲染后',
         '服务端 HTML 无 <title>，执行脚本后才出现',
-        `原始 HTML ${Math.round(raw.bytes / 1024)}KB`,
+        `${rawLabel} HTML 重编码 UTF-8 约 ${Math.round(raw.bytes / 1024)} KiB`,
         'title 应由服务端直出；依赖 JS 会让不执行脚本的抓取者读到空标题');
     }
     if (page.description && !raw.description) {
@@ -108,7 +109,7 @@ export function evaluatePage(page, site = {}) {
       const pct = Math.round((raw.wordCount / Math.max(1, page.wordCount)) * 100);
       A('content-js-dependent', 'content', 'high', '正文依赖 JS 渲染',
         `服务端 HTML 约 ${raw.wordCount} 词，渲染后 ${page.wordCount} 词（${pct}%）`,
-        `原始 HTML ${Math.round(raw.bytes / 1024)}KB，脚本 ${page.resources.requests} 个请求`,
+        `${rawLabel} HTML 重编码 UTF-8 约 ${Math.round(raw.bytes / 1024)} KiB，子资源 ${page.resources.requests} 个请求`,
         '正文应服务端直出（SSR/SSG）。只靠客户端渲染时，AI 爬虫与不执行脚本的抓取者读不到内容');
     }
   }
@@ -124,7 +125,9 @@ export function evaluatePage(page, site = {}) {
   else if (page.h1.length > 1) A('content-h1-multiple', 'content', 'medium', '存在多个 H1', `${page.h1.length} 个`, page.h1.slice(0, 3).join(' | '), '合并为单一 H1，其余降级为 H2/H3');
   if (page.headingSkips > 0) A('content-heading-skip', 'content', 'low', '标题层级跳跃', `${page.headingSkips} 处`, (page.headingLevels || []).join(' → '), '保持 H1→H2→H3 的层级顺序');
   if (page.wordCount < 300) A('content-thin', 'content', 'medium', '内容偏薄', `可见正文约 ${page.wordCount} 词`, '', '补充对用户有价值的内容（≥300 词为参考线）');
-  if (page.textRatio < 0.08 && page.htmlBytes > 20_000) A('content-text-ratio', 'content', 'low', '文本/HTML 比例偏低', `${(page.textRatio * 100).toFixed(1)}%`, `HTML ${Math.round(page.htmlBytes / 1024)}KB`, '减少无效标记，提高正文占比');
+  // 旧样本的 htmlBytes 实际是代码单元；保留阈值口径，但不把经验比例视作 SEO 缺陷。
+  const htmlCodeUnits = page.htmlCodeUnits ?? page.htmlBytes;
+  if (page.textRatio < 0.08 && htmlCodeUnits > 20_000) A('content-text-ratio', 'content', 'info', '文本/DOM 比例观察', `${(page.textRatio * 100).toFixed(1)}%`, `渲染后 DOM ${htmlCodeUnits} 个 UTF-16 代码单元`, '仅供排查内容和标记结构，不代表搜索排名问题');
   if (!page.lang) A('content-lang-missing', 'content', 'medium', '缺少 html lang', '', '', '设置 <html lang="zh-CN"> 等语言属性');
   if (page.imgMissingAlt > 0) A('content-img-alt', 'content', 'medium', '图片缺少 alt', `${page.imgMissingAlt}/${page.imgTotal} 张`, '', '为内容图片补充 alt，装饰图使用 alt=""');
   if (page.imgBroken > 0) A('content-img-broken', 'content', 'high', '图片加载失败', `${page.imgBroken} 张`, '', '修复图片地址或移除坏链');

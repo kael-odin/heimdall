@@ -46,7 +46,7 @@ function optionText(s) {
 const statusText = computed(() => {
   const s = current.value;
   if (!s) return '';
-  if (!s.forged && s.audit) return `只做过 SEO 审计（${s.audit.score ?? '—'} 分 · ${s.audit.pages ?? 0} 页）· 没有侦察与克隆产物`;
+  if (!s.forged && s.audit) return `只做过 SEO 审计（${s.audit.score ?? '—'} 分 · ${s.audit.pages ?? 0} 页 · 评分口径 ${s.audit.scoreMethodVersion ?? '未记录'}${s.audit.baselineEligible === false ? ' · 采集不完整' : ''}）· 没有侦察与克隆产物`;
   if (s.status === 'partial') return `克隆 ${s.forged} 页 · 未做全站侦察（侦察后才有星图与全站视图）`;
   const parts = [`侦察发现 ${s.discovered} 页`, `已克隆 ${s.cloned} 页`];
   if (s.clonedInAtlas) parts.push(`其中 ${s.clonedInAtlas} 页在侦察集合内`);

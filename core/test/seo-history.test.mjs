@@ -14,6 +14,7 @@ const dataDir = mkdtempSync(join(tmpdir(), 'hd-history-'));
 process.env.HEIMDALL_DATA_DIR = dataDir;
 
 const { appendHistory, readHistory, series, trendNote, historyPath } = await import('../src/seo/history.mjs');
+const { auditScoreTrend } = await import('../../console/src/seo-trend.js');
 
 test.after(() => { rmSync(dataDir, { recursive: true, force: true }); });
 
@@ -65,17 +66,36 @@ test('history: 缺 kind 的记录直接拒绝（避免半截数据混进来）',
 });
 
 test('series: 按 kind 与字段取序列', () => {
-  appendHistory('e.test', { kind: 'audit', score: 90 });
+  appendHistory('e.test', { kind: 'audit', score: 90, scoreMethodVersion: 2 });
   appendHistory('e.test', { kind: 'clone', avgPixel: 98.2, pages: 10 });
-  appendHistory('e.test', { kind: 'audit', score: 93 });
+  appendHistory('e.test', { kind: 'audit', score: 93, scoreMethodVersion: 2 });
   const h = readHistory('e.test');
   assert.deepEqual(series(h, 'audit', 'score').map(x => x.v), [90, 93]);
   assert.deepEqual(series(h, 'clone', 'avgPixel').map(x => x.v), [98.2]);
 });
 
 test('series: 缺字段的点被跳过（半截记录不该在曲线上戳一个洞）', () => {
-  const h = [{ kind: 'audit', score: 90 }, { kind: 'audit' }, { kind: 'audit', score: 92 }];
+  const h = [{ kind: 'audit', score: 90, scoreMethodVersion: 2 }, { kind: 'audit' }, { kind: 'audit', score: 92, scoreMethodVersion: 2 }];
   assert.deepEqual(series(h, 'audit', 'score').map(x => x.v), [90, 92]);
+});
+
+test('series: core and console never connect unknown or different scoring methods', () => {
+  const h = [
+    { kind: 'audit', score: 80 },
+    { kind: 'audit', score: 82, scoreMethodVersion: 1 },
+    { kind: 'audit', score: 90, scoreMethodVersion: 2 },
+    { kind: 'clone', avgPixel: 99 },
+    { kind: 'audit', score: 92, scoreMethodVersion: 2 },
+  ];
+  assert.deepEqual(series(h, 'audit', 'score').map(p => p.v), [90, 92]);
+  assert.deepEqual(auditScoreTrend(h).points.map(p => p.v), [90, 92]);
+  assert.equal(auditScoreTrend(h).excluded, 2);
+  const unversioned = [...h, { kind: 'audit', score: 94 }];
+  assert.deepEqual(series(unversioned, 'audit', 'score').map(p => p.v), [94]);
+  assert.equal(auditScoreTrend(unversioned).legacy, true);
+  assert.deepEqual(auditScoreTrend(unversioned).points.map(p => p.v), [94]);
+  appendHistory('version.test', { kind: 'audit', score: 91, scoreMethodVersion: 2 });
+  assert.equal(readHistory('version.test')[0].scoreMethodVersion, 2);
 });
 
 test('trendNote: 只比首尾，且小波动算持平', () => {

@@ -42,6 +42,7 @@ import { readBaselineFile } from './baseline-file.mjs';
 import { canonUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
 import { parseAuditArgs } from './cli-args.mjs';
+import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from './method.mjs';
 
 const log = (...a) => console.error('[seo]', ...a);
 
@@ -99,6 +100,13 @@ try {
     emit({ kind: 'audit-error', error: message });
     process.exit(1);
   }
+  const baselineMethodMismatch = !!baseline && baseline.scoreMethodVersion !== SEO_SCORE_METHOD_VERSION;
+  if (baselineMethodMismatch && (REQUIRE_BASELINE || FAIL_ON_REGRESSION || UPDATE_BASELINE)) {
+    const message = '基线评分口径缺失或不兼容；保留原文件，使用新的 --baseline 路径重新建立基线';
+    log(`FATAL ${message}`);
+    emit({ kind: 'audit-error', error: message });
+    process.exit(1);
+  }
 
   // ---------- 目标页面：优先复用 atlas，否则 sitemap/BFS ----------
   const atlasPath = join(base, 'recon', 'atlas.json');
@@ -141,7 +149,7 @@ try {
   // 基线里记过的页面必须“真的被查过”才算消失。否则 --max 截断、或这次 atlas 恰好没扫到
   // 某个老页面时，diff 会报 critical 的 "页面消失" —— 页面还在，只是这轮没去看它。
   // 并入后仍受 MAX 约束，且不改变 source 口径（它只说明"目标从哪来"）。
-  const baselinePages = Object.keys(baseline?.pages ?? {});
+  const baselinePages = Object.keys(!legacyBaseline && !baselineMethodMismatch ? baseline?.pages ?? {} : {});
   let baselineOnly = 0;
   for (const url of baselinePages) {
     if (targets.length >= MAX) break;
@@ -241,7 +249,7 @@ try {
   // 分数走势：追加一条（原子写）。历史是增强项，失败不影响本次审计。
   if (baselineEligible) {
     appendHistory(siteId, {
-      kind: 'audit', score: siteScore,
+      kind: 'audit', score: siteScore, scoreMethodVersion: SEO_SCORE_METHOD_VERSION,
       grade: siteScore >= 90 ? 'A' : siteScore >= 75 ? 'B' : 'C',
       pages: pages.length, issues: allIssues.length,
       critical: bySeverity.critical ?? 0, high: bySeverity.high ?? 0,
@@ -251,9 +259,10 @@ try {
   const report = {
     host, origin,
     generatedAt: new Date().toISOString(),
+    scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
     config: { max: MAX, viewport: '1440x900', concurrency: 2, source: discoverySource },
     score: siteScore,
-    summary: { pages: pages.length, issues: allIssues.length, bySeverity, pagesScored: pages.length, initialHtmlUnchecked: uncheckedInitialHtml.length, failedPages: failedPages.length, sitemapCoverage: sitemap.coverage, baselinePagesUnchecked, legacyBaseline, baselineEligible, baselineCompared: !!baseline && !legacyBaseline && baselineEligible },
+    summary: { pages: pages.length, issues: allIssues.length, bySeverity, pagesScored: pages.length, initialHtmlUnchecked: uncheckedInitialHtml.length, failedPages: failedPages.length, sitemapCoverage: sitemap.coverage, baselinePagesUnchecked, legacyBaseline, baselineMethodMismatch, baselineEligible, baselineCompared: !!baseline && !legacyBaseline && !baselineMethodMismatch && baselineEligible },
     sitemap: { coverage: sitemap.coverage, reasons: sitemap.reasons, stats: sitemap.stats },
     categories,
     siteIssues: allSiteIssues,
@@ -282,7 +291,7 @@ try {
 
   log(`score ${siteScore} | pages ${pages.length} | issues ${allIssues.length} (critical ${bySeverity.critical}, high ${bySeverity.high})`);
   log(`report -> ${htmlPath}`);
-  emit({ kind: 'audit-done', host, score: siteScore, baselineEligible, pages: pages.length, issues: allIssues.length, bySeverity, reportPath: htmlPath, initialHtmlUnchecked: uncheckedInitialHtml.length, sitemapCoverage: sitemap.coverage });
+  emit({ kind: 'audit-done', host, score: siteScore, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, baselineEligible, legacyBaseline, baselineMethodMismatch, pages: pages.length, issues: allIssues.length, bySeverity, reportPath: htmlPath, initialHtmlUnchecked: uncheckedInitialHtml.length, sitemapCoverage: sitemap.coverage });
 
   // A refetch can differ from the navigation response, so it cannot prove that an initial noindex disappeared.
   if (uncheckedInitialHtml.length || sitemapIncomplete || failedPages.length || baselinePagesUnchecked) {
@@ -311,6 +320,12 @@ try {
   if (legacyBaseline) {
     log('INCOMPLETE: 旧基线未记录采集完整性，本次不进行基线比对；请保留旧文件并建立新基线。');
     emit({ kind: 'audit-incomplete', reason: 'legacy-baseline-unverified' });
+    if (THRESHOLD > 0 && siteScore < THRESHOLD) process.exit(1);
+    process.exit(0);
+  }
+  if (baselineMethodMismatch) {
+    log('INCOMPLETE: 基线评分口径缺失或不兼容，本次不进行基线比对；请保留旧文件并建立新基线。');
+    emit({ kind: 'audit-incomplete', reason: 'baseline-score-method-mismatch' });
     if (THRESHOLD > 0 && siteScore < THRESHOLD) process.exit(1);
     process.exit(0);
   }

@@ -289,6 +289,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       const normText = text.toLowerCase().slice(0, 200000);
       let th = 0x811c9dc5;
       for (let i = 0; i < normText.length; i++) { th ^= normText.charCodeAt(i); th = (th * 0x01000193) >>> 0; }
+      const html = document.documentElement.outerHTML || '';
       return {
         textHash: th.toString(16).padStart(8, '0'),
         textSample: normText.slice(0, 200),
@@ -304,7 +305,8 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         headingSkips: skips,
         wordCount: ((text.match(/[\u4e00-\u9fff]/g) || []).length) + ((text.match(/[A-Za-z0-9]+/g) || []).length),
         textLength: text.length,
-        htmlBytes: (document.documentElement.outerHTML || '').length,
+        htmlCodeUnits: html.length,
+        htmlBytes: new TextEncoder().encode(html).byteLength,
         imgTotal: imgStats.total, imgMissingAlt: imgStats.missingAlt, imgEmptyAlt: imgStats.emptyAlt,
         imgBroken: imgStats.broken, imgLegacy: imgStats.legacy, imgLazy: imgStats.lazy,
         links: { total: anchors.length, internal: internalHrefs.length, external: externalHrefs.length, emptyAnchor, hashOnly, nofollowExternal },
@@ -346,7 +348,8 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       meta: { noindex: robotsEvidence.noindex.length > 0, nofollow: robotsEvidence.nofollow.length > 0 },
       lang: dom.lang, viewport: dom.viewport, textHash: dom.textHash, textSample: dom.textSample,
       h1: dom.h1, headings: dom.headings, headingLevels: dom.headingLevels, headingSkips: dom.headingSkips,
-      wordCount: dom.wordCount, textRatio: dom.htmlBytes ? Math.min(1, dom.textLength / dom.htmlBytes) : 0, htmlBytes: dom.htmlBytes,
+      wordCount: dom.wordCount, textRatio: dom.htmlCodeUnits ? Math.min(1, dom.textLength / dom.htmlCodeUnits) : 0,
+      htmlCodeUnits: dom.htmlCodeUnits, htmlBytes: dom.htmlBytes,
       imgTotal: dom.imgTotal, imgMissingAlt: dom.imgMissingAlt, imgEmptyAlt: dom.imgEmptyAlt, imgBroken: dom.imgBroken, imgLegacy: dom.imgLegacy, imgLazy: dom.imgLazy,
       links: dom.links, internalHrefs: dom.internalHrefs, externalSample: dom.externalSample,
       jsonld: dom.jsonld, microdataCount: dom.microdataCount,
@@ -361,7 +364,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
     return {
       url, finalUrl: url, status: 0, ok: false, error: String(e).slice(0, 200), redirectCount: 0, responseTimeMs: Date.now() - started,
       title: '', titleLength: 0, description: '', descriptionLength: 0, canonical: '', robotsMeta: '', xRobots: '', meta: { noindex: false, nofollow: false },
-      lang: '', viewport: '', h1: [], headings: [], headingLevels: [], headingSkips: 0, wordCount: 0, textRatio: 0, htmlBytes: 0, textHash: '', textSample: '',
+      lang: '', viewport: '', h1: [], headings: [], headingLevels: [], headingSkips: 0, wordCount: 0, textRatio: 0, htmlCodeUnits: 0, htmlBytes: 0, textHash: '', textSample: '',
       imgTotal: 0, imgMissingAlt: 0, imgEmptyAlt: 0, imgBroken: 0, imgLegacy: 0, imgLazy: 0,
       links: { total: 0, internal: 0, external: 0, emptyAnchor: 0, hashOnly: 0, nofollowExternal: 0 }, internalHrefs: [], externalSample: [],
       jsonld: [], microdataCount: 0, og: {}, twitter: {}, hreflang: [], jsPagination: [], raw: null, resources: { requests: 0, transferBytes: 0, jsBytes: 0, cssBytes: 0, imgBytes: 0, fontBytes: 0, renderBlocking: 0 },

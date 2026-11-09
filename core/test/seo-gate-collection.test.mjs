@@ -52,7 +52,7 @@ test('seo gate: an HTTP error page cannot become a baseline', { timeout: 60_000 
     assert.equal(thresholdRun.code, 1, thresholdRun.output);
     assert.match(thresholdRun.output, /未从目标来源成功采集/);
     assert.equal(existsSync(baseline), false);
-    const initial = JSON.stringify({ version: 1, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
+    const initial = JSON.stringify({ version: 1, scoreMethodVersion: 2, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
       collection: { version: 1, sitemapCoverage: 'complete' },
       pages: { [`${origin}/bad`]: { score: 88, stable: 88, issues: { 'index-noindex': 'high' } } } });
     writeFileSync(baseline, initial);
@@ -90,7 +90,7 @@ test('seo gate: unavailable initial HTML cannot resolve findings or overwrite a 
     origin = `http://127.0.0.1:${server.address().port}`;
     const baseline = join(dataDir, 'baseline.json');
     const initial = JSON.stringify({
-      version: 1, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
+      version: 1, scoreMethodVersion: 2, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
       collection: { version: 1, sitemapCoverage: 'complete' },
       pages: { [`${origin}/spa`]: { score: 88, stable: 88, issues: { 'index-noindex': 'high' } } },
     });
@@ -179,7 +179,7 @@ test('seo gate: incomplete sitemap cannot resolve issues or overwrite history an
     origin = `http://127.0.0.1:${server.address().port}`;
     const baseline = join(dataDir, 'baseline.json');
     const initial = JSON.stringify({
-      version: 1, host: '127.0.0.1', origin, score: 88, stable: 88,
+      version: 1, scoreMethodVersion: 2, host: '127.0.0.1', origin, score: 88, stable: 88,
       collection: { version: 1, sitemapCoverage: 'complete' },
       siteIssues: { 'index-sitemap-missing-page': 'low' },
       pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: {} } },
@@ -273,7 +273,7 @@ test('seo gate: a baseline page omitted by the page limit is unchecked, not remo
     origin = `http://127.0.0.1:${server.address().port}`;
     const baseline = join(dataDir, 'baseline.json');
     const page = { score: 88, stable: 88, issues: {} };
-    const initial = JSON.stringify({ version: 1, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
+    const initial = JSON.stringify({ version: 1, scoreMethodVersion: 2, host: '127.0.0.1', origin, score: 88, stable: 88, siteIssues: {},
       collection: { version: 1, sitemapCoverage: 'complete' }, pages: { [`${origin}/page`]: page, [`${origin}/other`]: page } });
     writeFileSync(baseline, initial);
     for (const [flags, expected] of [[[], 0], [['--fail-on-regression'], 1], [['--update-baseline'], 1]]) {
@@ -286,6 +286,59 @@ test('seo gate: a baseline page omitted by the page limit is unchecked, not remo
       assert.equal(report.summary.baselinePagesUnchecked, 1);
       assert.equal(report.summary.baselineEligible, false);
     }
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('seo gate: a legacy score method is preserved, never compared or overwritten', { timeout: 60_000 }, async () => {
+  let origin, hits = 0;
+  const server = createServer((req, res) => {
+    hits++;
+    if (req.url === '/sitemap.xml') {
+      res.setHeader('Content-Type', 'application/xml');
+      return res.end(`<urlset><url><loc>${origin}/page</loc></url></urlset>`);
+    }
+    if (req.url === '/page') return res.end('<!doctype html><title>Page</title><h1>Page</h1>');
+    res.writeHead(404); res.end();
+  });
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-seo-method-'));
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    origin = `http://127.0.0.1:${server.address().port}`;
+    const baseline = join(dataDir, 'legacy.json');
+    const original = JSON.stringify({ version: 1, host: '127.0.0.1', origin, score: 88, stable: 88,
+      collection: { version: 1, sitemapCoverage: 'complete' }, siteIssues: {},
+      pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: { 'content-text-ratio': 'low' } } } });
+    writeFileSync(baseline, original);
+    for (const flags of [['--require-baseline'], ['--fail-on-regression'], ['--update-baseline']]) {
+      const run = await runAudit(origin, baseline, dataDir, flags);
+      assert.equal(run.code, 1, run.output);
+      assert.match(run.output, /评分口径缺失或不兼容/);
+      assert.equal(hits, 0);
+      assert.equal(readFileSync(baseline, 'utf8'), original);
+    }
+    const ordinary = await runAudit(origin, baseline, dataDir, []);
+    assert.equal(ordinary.code, 0, ordinary.output);
+    assert.match(ordinary.output, /baseline-score-method-mismatch/);
+    assert.doesNotMatch(ordinary.output, /audit-regression/);
+    assert.equal(readFileSync(baseline, 'utf8'), original);
+    const directory = join(dataDir, 'workspace', '127.0.0.1', 'seo');
+    const report = JSON.parse(readFileSync(join(directory, 'seo.json'), 'utf8'));
+    assert.equal(report.scoreMethodVersion, 2);
+    assert.equal(report.measurementVersion, 2);
+    assert.equal(report.summary.baselineMethodMismatch, true);
+    assert.equal(report.summary.baselineCompared, false);
+    assert.match(readFileSync(join(directory, 'seo.html'), 'utf8'), /评分口径缺失或不兼容/);
+    const fresh = join(dataDir, 'current.json');
+    const created = await runAudit(origin, fresh, dataDir, ['--update-baseline']);
+    assert.equal(created.code, 0, created.output);
+    assert.equal(JSON.parse(readFileSync(fresh, 'utf8')).scoreMethodVersion, 2);
+    const compared = await runAudit(origin, fresh, dataDir, ['--fail-on-regression', '--tolerance', '1']);
+    assert.equal(compared.code, 0, compared.output);
+    assert.match(compared.output, /audit-regression/);
+    assert.equal(readFileSync(baseline, 'utf8'), original);
   } finally {
     await new Promise(resolve => server.close(resolve));
     rmSync(dataDir, { recursive: true, force: true });

@@ -134,8 +134,9 @@ footer { margin-top:44px; color:var(--muted); font-size:12px; }
   </header>
 
   <p class="meta">收录指令按本次浏览器收到的通用与 Googlebot 指令解释；不代表搜索引擎实际收录、排名或 AI 引用。初始 HTML 未核对的页面仍有漏检风险。</p>
+  <p class="meta">评分口径：${esc(report.scoreMethodVersion ?? '未记录')}。${report.scoreMethodVersion === 2 ? '文本/DOM 比例仅供观察，不扣分；两者按 UTF-16 代码单元计算。' : '历史或未知口径不能与当前分数直接比较。'}${report.measurementVersion === 2 ? 'HTML 字节数是解码内容重新编码为 UTF-8 的大小，不是网络传输量。' : '历史或未知口径的 HTML 字节数不可按当前单位解释。'}</p>
   <p class="meta">资源体积取本次浏览器可见子资源的传输或编码大小估算，不含主文档；缓存、跨源限制和条目上限可能影响完整性，不等同于完整网络流量。</p>
-  <p class="meta">sitemap：${esc(sitemapLabel)}。仅限同来源的声明项与常见地址，不能证明其他位置不存在地图。${summary.baselineEligible === false ? '采集存在缺口，分数仅供参考，不能作为基线或门禁依据。' : ''}${summary.legacyBaseline ? '旧基线未记录采集完整性，本次未比对。' : ''}</p>
+  <p class="meta">sitemap：${esc(sitemapLabel)}。仅限同来源的声明项与常见地址，不能证明其他位置不存在地图。${summary.baselineEligible === false ? '采集存在缺口，分数仅供参考，不能作为基线或门禁依据。' : ''}${summary.legacyBaseline ? '旧基线未记录采集完整性，本次未比对。' : ''}${summary.baselineMethodMismatch ? '基线评分口径缺失或不兼容，本次未比对。' : ''}</p>
 
   <div class="kpis">
     <div class="kpi"><b>${summary.pages}</b><span>采集页面</span></div>

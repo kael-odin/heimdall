@@ -7,6 +7,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { SEO_SCORE_METHOD_VERSION } from '../src/seo/method.mjs';
 
 const {
   buildBaseline, snapshotOf, diffBaseline, stableScore, isVolatile,
@@ -25,6 +26,7 @@ function report({ pages, siteIssues = [], score = null, categories = {} }) {
   const all = [...pagesOut.flatMap(p => p.issues), ...siteIssues];
   return {
     host: 'example.com', origin: 'https://example.com',
+    scoreMethodVersion: SEO_SCORE_METHOD_VERSION,
     generatedAt: '2026-10-10T00:00:00.000Z',
     score: score ?? 0,
     categories,
@@ -244,6 +246,19 @@ test('baseline: 版本不符要抛错，不得静默当首次运行放过', () =
     () => diffBaseline(stale, snapshotOf(report({ pages: [{ url: 'https://example.com/a' }] })), {}),
     /baseline version/,
   );
+});
+
+test('baseline: unknown or changed score methods cannot resolve findings or enter the tolerance gate', () => {
+  const current = snapshotOf(report({ pages: [{ url: 'https://example.com/a' }] }));
+  const old = buildBaseline(report({ pages: [{ url: 'https://example.com/a', issues: [iss('content-text-ratio', 'low')] }] }));
+  for (const version of [null, 1, 3]) {
+    const incompatible = { ...old, scoreMethodVersion: version };
+    assert.throws(() => diffBaseline(incompatible, current, { tolerance: 1 }), /score method/);
+  }
+  const legacyReport = report({ pages: [{ url: 'https://example.com/a' }] });
+  delete legacyReport.scoreMethodVersion;
+  assert.equal(buildBaseline(legacyReport).scoreMethodVersion, null);
+  assert.throws(() => diffBaseline(buildBaseline(legacyReport), current), /score method/);
 });
 
 test('baseline: 回归排序 —— 页面消失最前，严重度优先', () => {

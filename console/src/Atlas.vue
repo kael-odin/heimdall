@@ -63,6 +63,7 @@ import { taskState, taskLabel, liveStageCn, fmtBytes, forgeStageProgress, stageP
 import { pageNameOf, pagePathOf, normalizeSiteUrl, normalizePageUrl, workspaceHostOf, mirrorBridgeNeeded, localEngineSupportsMirror } from './pages.js';
 import { hostOfTask, medianForgeSec } from './tasks.js';
 import { liveHealthPrefetch } from './prefetch-cache.js';
+import { auditScoreTrend } from './seo-trend.js';
 
 import { PAGE_TYPES as PT, typeColor } from './types.js';
 const PAGE_TYPES = PT;
@@ -987,6 +988,10 @@ function loadAuditReport(h) {
       host: h, score: j.score,
       pages: j.summary?.pages ?? j.pages?.length ?? 0,
       issues: j.summary?.issues ?? 0,
+      baselineEligible: j.summary?.baselineEligible,
+      baselineMethodMismatch: j.summary?.baselineMethodMismatch,
+      legacyBaseline: j.summary?.legacyBaseline,
+      scoreMethodVersion: j.scoreMethodVersion ?? null,
       generatedAt: j.generatedAt, field: j.field ?? null,
     };
   });
@@ -1003,7 +1008,8 @@ function loadHistory(h) {
 const trendOf = (kind, field) => siteHistory.value
   .filter(x => x?.kind === kind && typeof x[field] === 'number')
   .map(x => ({ at: x.at, v: x[field] }));
-const auditTrend = computed(() => trendOf('audit', 'score'));
+const auditTrendInfo = computed(() => auditScoreTrend(siteHistory.value));
+const auditTrend = computed(() => auditTrendInfo.value.points);
 /** 最近一次审计覆盖的页数 —— 页数不同的两次分数不可直接比，图上要点出来 */
 const lastAuditPages = computed(() => [...siteHistory.value].reverse().find(x => x.kind === 'audit' && x.pages)?.pages ?? null);
 const cloneTrend = computed(() => trendOf('clone', 'avgPixel'));
@@ -1876,8 +1882,9 @@ function runAudit() {
           task.auditScore = ev.score; task.done = true; task.endedAt = Date.now(); task.stopping = false;
           loadHistory(host.value);                          // 审计刚落一条，走势图跟上
           loadAuditReport(host.value);                      // 报告卡切到最新一份（含真实用户指标）
-          auditReport.value = { host: host.value, score: ev.score, pages: ev.pages, issues: ev.issues };
-          statusText.value = `SEO 审计完成 · ${ev.score} 分`;
+          auditReport.value = { host: host.value, score: ev.score, pages: ev.pages, issues: ev.issues, baselineEligible: ev.baselineEligible, baselineMethodMismatch: ev.baselineMethodMismatch, legacyBaseline: ev.legacyBaseline, scoreMethodVersion: ev.scoreMethodVersion };
+          statusText.value = ev.baselineEligible === false ? 'SEO 审计采集不完整，分数仅供参考'
+            : ev.baselineMethodMismatch ? 'SEO 审计完成，基线口径不兼容，未对比' : `SEO 审计完成 · ${ev.score} 分`;
           stream.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
         } else if (ev.kind === 'audit-error') {
           task.failed = true; task.done = true; task.error = ev.error; task.stopping = false;
@@ -2310,12 +2317,17 @@ onBeforeUnmount(() => {
       <p class="trend-hint" v-else>
         数据来自本站历史（每次审计与每批整站克隆各记一笔）
         <template v-if="lastAuditPages">；最近一次审计覆盖 {{ lastAuditPages }} 页 —— 页数不同的两次分数不能直接比</template>
+        <template v-if="auditTrendInfo.legacy">；旧评分口径未记录，只显示最近一点</template>
+        <template v-else-if="auditTrendInfo.excluded">；已隐藏 {{ auditTrendInfo.excluded }} 条不同或未记录口径的旧分数，原记录仍保留</template>
       </p>
     </div>
     <div class="report-card surface">
       <h3>SEO 审计报告</h3>
-      <p v-if="auditReport">{{ auditReport.score }} 分 · {{ auditReport.pages }} 页 · {{ auditReport.issues }} 条问题</p>
+      <p v-if="auditReport">{{ auditReport.score }} 分 · {{ auditReport.pages }} 页 · {{ auditReport.issues }} 条问题 · 评分口径 {{ auditReport.scoreMethodVersion ?? '未记录' }}</p>
       <p v-else>尚未运行（66 条规则 / 六分类评分）</p>
+      <p class="trend-hint" v-if="auditReport && auditReport.baselineEligible === false">采集不完整，分数仅供参考。</p>
+      <p class="trend-hint" v-if="auditReport?.baselineMethodMismatch">旧基线评分口径不兼容，本次未进行基线对比；原文件仍保留。</p>
+      <p class="trend-hint" v-else-if="auditReport?.legacyBaseline">旧基线未记录采集完整性，本次未进行基线对比。</p>
       <p class="trend-hint" v-if="auditReport?.field?.compare">{{ auditReport.field.compare.note }}</p>
       <p class="trend-hint" v-else-if="auditReport?.field && !auditReport.field.available">
         只有实验室数据（本机 Playwright 实测）：{{ auditReport.field.reason }}

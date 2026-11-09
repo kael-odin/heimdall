@@ -104,6 +104,7 @@ export function buildBaseline(report, { capturedAt } = {}) {
   const siteIssues = severityMap(report.siteIssues ?? []);
   return {
     version: BASELINE_VERSION,
+    scoreMethodVersion: report.scoreMethodVersion ?? null,
     host: report.host,
     origin: report.origin,
     capturedAt: capturedAt ?? report.generatedAt ?? new Date().toISOString(),
@@ -159,6 +160,10 @@ export function diffBaseline(baseline, current, opts = {}) {
   if (Number(baseline.version) !== BASELINE_VERSION) {
     // 版本不认就**不要**拿旧数据判新代码 —— 报错比误判安全
     throw new Error(`baseline version ${baseline.version} != ${BASELINE_VERSION}，请重新生成基线`);
+  }
+  if (!Number.isSafeInteger(baseline.scoreMethodVersion) || baseline.scoreMethodVersion < 1
+      || baseline.scoreMethodVersion !== current?.scoreMethodVersion) {
+    throw new Error('baseline score method is missing or incompatible; preserve it and establish a new baseline');
   }
 
   const regressions = [];

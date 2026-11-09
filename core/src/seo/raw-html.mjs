@@ -41,7 +41,8 @@ function textOf(node, out = []) {
 export function analyzeRawHtml(html) {
   const src = String(html ?? '');
   const out = {
-    bytes: src.length,
+    bytes: Buffer.byteLength(src, 'utf8'),
+    codeUnits: src.length,
     ok: true,
     title: '', description: '', canonical: '', lang: '', viewport: '',
     h1Count: 0, headingCount: 0,
