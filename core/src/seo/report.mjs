@@ -134,6 +134,7 @@ footer { margin-top:44px; color:var(--muted); font-size:12px; }
   </header>
 
   <p class="meta">收录指令按本次浏览器收到的通用与 Googlebot 指令解释；不代表搜索引擎实际收录、排名或 AI 引用。初始 HTML 未核对的页面仍有漏检风险。</p>
+  <p class="meta">资源体积取本次浏览器可见子资源的传输或编码大小估算，不含主文档；缓存、跨源限制和条目上限可能影响完整性，不等同于完整网络流量。</p>
   <p class="meta">sitemap：${esc(sitemapLabel)}。仅限同来源的声明项与常见地址，不能证明其他位置不存在地图。${summary.baselineEligible === false ? '采集存在缺口，分数仅供参考，不能作为基线或门禁依据。' : ''}${summary.legacyBaseline ? '旧基线未记录采集完整性，本次未比对。' : ''}</p>
 
   <div class="kpis">

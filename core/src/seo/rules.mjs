@@ -152,8 +152,8 @@ export function evaluatePage(page, site = {}) {
   if (page.vitals.cls != null && page.vitals.cls > 0.25) A('perf-cls-poor', 'perf', 'high', 'CLS 严重', `${page.vitals.cls.toFixed(3)}（目标 ≤0.1）`, '', '为媒体设置尺寸、避免内容注入跳动');
   else if (page.vitals.cls != null && page.vitals.cls > 0.1) A('perf-cls-warn', 'perf', 'medium', 'CLS 偏高', `${page.vitals.cls.toFixed(3)}（目标 ≤0.1）`, '', '预留广告/图片/字体占位空间');
   if (page.vitals.fcp != null && page.vitals.fcp > 3000) A('perf-fcp-slow', 'perf', 'low', 'FCP 偏慢', `${(page.vitals.fcp / 1000).toFixed(2)}s`, '', '减少首屏阻塞资源');
-  if (page.resources.transferBytes > 3 * 1024 * 1024) A('perf-weight-large', 'perf', 'medium', '页面体积过大', `${(page.resources.transferBytes / 1024 / 1024).toFixed(2)}MB`, `${page.resources.requests} 个请求`, '压缩/懒加载/按需加载资源');
-  if (page.resources.jsBytes > 1024 * 1024) A('perf-js-large', 'perf', 'medium', 'JS 体积过大', `${(page.resources.jsBytes / 1024).toFixed(0)}KB`, '', '代码分割、移除未使用依赖');
+  if (page.resources.transferBytes > 3 * 1024 * 1024) A('perf-weight-large', 'perf', 'medium', '已观测子资源体积较大', `${(page.resources.transferBytes / 1024 / 1024).toFixed(2)}MB`, `${page.resources.requests} 个资源条目；估算不含主文档，缓存及跨源资源可能影响结果`, '结合网络面板核实后，按需压缩或延迟加载资源');
+  if (page.resources.jsBytes > 1024 * 1024) A('perf-js-large', 'perf', 'medium', '已识别 JS 资源体积较大', `${(page.resources.jsBytes / 1024).toFixed(0)}KB`, '根据本次浏览器可见资源估算，可能不完整', '核实资源后考虑代码分割、移除未使用依赖');
   if (page.resources.requests > 120) A('perf-requests-many', 'perf', 'low', '请求数过多', `${page.resources.requests} 个`, '', '合并请求、延迟非关键资源');
   if (page.resources.renderBlocking > 6) A('perf-render-blocking', 'perf', 'low', '阻塞渲染资源偏多', `${page.resources.renderBlocking} 个`, '', '内联关键 CSS、异步加载非关键 JS');
   if (!page.viewport) A('perf-viewport-missing', 'perf', 'high', '缺少 viewport', '', '', '添加 <meta name="viewport" content="width=device-width, initial-scale=1">');

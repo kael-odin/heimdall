@@ -263,6 +263,22 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       const res = performance.getEntriesByType('resource').map(r => ({ name: r.name, initiator: r.initiatorType, transfer: r.transferSize || 0, encoded: r.encodedBodySize || 0 }));
       const nav = performance.getEntriesByType('navigation')[0];
       const sum = (pred) => res.filter(pred).reduce((a, r) => a + Math.max(r.transfer, r.encoded), 0);
+      const stylesheetHints = new Map();
+      for (const link of document.querySelectorAll('link[href]')) {
+        const rel = new Set(link.rel.toLowerCase().split(/\s+/));
+        const as = link.as.toLowerCase();
+        const hint = rel.has('stylesheet') || (rel.has('preload') && as === 'style') ? 'style'
+          : (rel.has('preload') && as) || rel.has('modulepreload') || rel.has('icon') ? 'other' : null;
+        if (!hint) continue;
+        const key = link.href.split('#')[0], prior = stylesheetHints.get(key);
+        stylesheetHints.set(key, prior && prior !== hint ? 'ambiguous' : hint);
+      }
+      const isStylesheet = r => {
+        const hint = stylesheetHints.get(r.name.split('#')[0]);
+        if (hint) return hint === 'style';
+        if (r.initiator === 'img' || r.initiator === 'script') return false;
+        return /\.css(?:[?#]|$)/i.test(r.name);
+      };
       const renderBlocking = [...document.querySelectorAll('head link[rel="stylesheet"]')].length
         + [...document.querySelectorAll('head script[src]')].filter(s => !s.async && !s.defer).length;
       const robotsTags = [...document.querySelectorAll('meta[name]')]
@@ -303,7 +319,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
           requests: res.length,
           transferBytes: res.reduce((a, r) => a + Math.max(r.transfer, r.encoded), 0),
           jsBytes: sum(r => r.initiator === 'script' || /\.m?js($|\?)/.test(r.name)),
-          cssBytes: sum(r => r.initiator === 'link' || /\.css($|\?)/.test(r.name)),
+          cssBytes: sum(isStylesheet),
           imgBytes: sum(r => r.initiator === 'img' || /\.(png|jpe?g|webp|avif|gif|svg)($|\?)/.test(r.name)),
           fontBytes: sum(r => /\.(woff2?|ttf|otf|eot)($|\?)/.test(r.name)),
           renderBlocking,

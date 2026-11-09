@@ -78,3 +78,58 @@ test('采集：hreflang 的 href 绝对化，同时保留标签原值，使"相�
     assert.ok(!idsOf(ok).includes('index-hreflang-relative'));
   });
 });
+
+test('采集：资源体积按用途分类，预加载图片不能算成 CSS', { timeout: 30_000 }, async t => {
+  const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aX8AAAAASUVORK5CYII=', 'base64');
+  const server = createServer((req, res) => {
+    if (req.url === '/pixel.png' || req.url === '/pixel.css') {
+      res.setHeader('content-type', 'image/png');
+      return res.end(pixel);
+    }
+    if (req.url === '/style') {
+      res.setHeader('content-type', 'text/css');
+      return res.end('body { color: black; }');
+    }
+    if (req.url === '/script.js') {
+      res.setHeader('content-type', 'text/javascript');
+      return res.end("fetch('/data').catch(() => {});");
+    }
+    if (req.url === '/data') {
+      res.setHeader('content-type', 'application/json');
+      return res.end('{"ok":true}');
+    }
+    if (req.url === '/style-preload') {
+      res.setHeader('content-type', 'text/html; charset=utf-8');
+      return res.end('<!doctype html><link rel="preload" as="style" href="/style">');
+    }
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    const extra = req.url === '/mixed'
+      ? '<link rel="StyleSheet" href="/style"><link rel="preload" as="script" href="/script.js"><script src="/script.js"></script>'
+      : '';
+    const img = req.url === '/image-with-css-extension' ? '/pixel.css' : '/pixel.png';
+    res.end(`<!doctype html><html><head><link rel="icon" href="data:,"><link rel="preload" as="image" href="${img}">${extra}</head><body><img src="${img}"></body></html>`);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const browser = await chromium.launch();
+  t.after(async () => { await browser.close(); await new Promise(resolve => server.close(resolve)); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+
+  const imageOnly = await collectPage(browser, `${origin}/image-only`, { settleMs: 150 });
+  assert.ok(imageOnly.resources.imgBytes > 0);
+  assert.equal(imageOnly.resources.cssBytes, 0, 'image preload must not be counted as CSS');
+
+  const misleadingName = await collectPage(browser, `${origin}/image-with-css-extension`, { settleMs: 150 });
+  assert.ok(misleadingName.resources.transferBytes > 0);
+  assert.equal(misleadingName.resources.cssBytes, 0, 'explicit image use takes precedence over a CSS extension');
+
+  const stylePreload = await collectPage(browser, `${origin}/style-preload`, { settleMs: 150 });
+  assert.ok(stylePreload.resources.cssBytes > 0, 'extensionless style preload should be counted as CSS');
+
+  const mixed = await collectPage(browser, `${origin}/mixed`, { settleMs: 150 });
+  const { transferBytes, jsBytes, cssBytes, imgBytes, fontBytes } = mixed.resources;
+  assert.ok(jsBytes > 0, 'script preload should be counted as JavaScript');
+  assert.ok(cssBytes > 0, 'extensionless stylesheet should be counted as CSS');
+  assert.ok(imgBytes > 0, 'image preload should be counted as an image');
+  assert.ok(jsBytes + cssBytes + imgBytes + fontBytes <= transferBytes, 'these resources must not be double counted');
+});

@@ -76,6 +76,8 @@ test('seo: slow vitals and heavy resources are flagged', () => {
   assert.ok(ids.includes('perf-cls-poor'));
   assert.ok(ids.includes('perf-weight-large'));
   assert.ok(ids.includes('perf-js-large'));
+  assert.match(issues.find(i => i.id === 'perf-weight-large').evidence, /不含主文档/);
+  assert.match(issues.find(i => i.id === 'perf-js-large').evidence, /可能不完整/);
 });
 
 test('seo: site-level duplicates, sitemap gaps and orphans are flagged', () => {
