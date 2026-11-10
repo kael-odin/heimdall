@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { decideDetectorExpansion, matchesFrozenBatch } from '../scripts/xspark-pilot-decision.mjs';
 
 const verified = { true: 1, false: 0, unknown: 0 };
-const complete = { runCount: 1, verified, measurementComplete: verified };
+const complete = { runCount: 1, verified, measurementComplete: verified, failureKinds: {} };
 const labels = { truePositive: 18, falsePositive: 2, unknown: 0 };
 const missed = projectId => ({ family: 'generic-accessible-name', projectId, expected: true, detected: false });
 const cases = [missed('one'), missed('two'), missed('three')];
@@ -42,7 +42,14 @@ test('missing, incomplete, unknown or inconsistent supplemental evidence blocks 
     { ...complete, measurementComplete: { true: 0, false: 0, unknown: 1 } },
     { ...complete, measurementComplete: { true: 1, false: 0 } },
     { ...complete, measurementComplete: { true: 2, false: 0, unknown: 0 } },
+    { ...complete, failureKinds: undefined }, { ...complete, failureKinds: [] },
+    { ...complete, failureKinds: { network: 1 } },
+    { ...complete, failureKinds: { 'network:unclassified': 1 } },
+    { ...complete, failureKinds: { 'network:unknown': 1 } },
+    { ...complete, failureKinds: { 'network:environment': -1 } },
+    { ...complete, failureKinds: { 'network:environment': '1' } },
   ]) assert.equal(decide({ evidence }).detectorExpansion, 'blocked');
+  assert.equal(decide({ evidence: { ...complete, failureKinds: { 'network:environment': 1, 'network:unclassified': 0 } } }).detectorExpansion, 'consider');
 });
 
 test('unknown or malformed labels and oracle cases cannot justify expansion', () => {

@@ -25,8 +25,12 @@ export function decideDetectorExpansion({ labels, oracle, evidence } = {}) {
     && typeof item.expected === 'boolean' && typeof item.detected === 'boolean');
   const allTrue = group => Number.isSafeInteger(evidence?.runCount) && evidence.runCount > 0
     && group?.true === evidence.runCount && group?.false === 0 && group?.unknown === 0;
+  const failures = evidence?.failureKinds;
+  const failuresClassified = failures && typeof failures === 'object' && !Array.isArray(failures)
+    && Object.entries(failures).every(([kind, count]) => Number.isSafeInteger(count) && count >= 0
+      && (count === 0 || (kind !== 'network' && !/(?:^|:)(?:unknown|unclassified)$/.test(kind))));
   const evidenceComplete = (evidence?.complete === undefined || evidence?.complete === true)
-    && allTrue(evidence?.verified) && allTrue(evidence?.measurementComplete);
+    && allTrue(evidence?.verified) && allTrue(evidence?.measurementComplete) && failuresClassified;
   const business = cases.filter(item => item?.family === 'business-display-rule' && item.expected === true && typeof item.detected === 'boolean');
   const generic = cases.filter(item => item?.family === 'generic-accessible-name' && item.expected === true && typeof item.detected === 'boolean');
   const businessMisses = business.filter(item => item.detected === false).length;
