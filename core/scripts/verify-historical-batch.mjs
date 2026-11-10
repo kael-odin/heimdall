@@ -8,44 +8,21 @@ import { createServer } from 'node:net';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { chromium } from 'playwright';
 import { auditHistoricalVerification } from '../src/audit/historical-verification.mjs';
 import { writeFileAtomic } from '../src/fsutil.mjs';
 import { WORKSPACE } from '../src/paths.mjs';
 import { hostKey } from '../src/session/store.mjs';
 import { gradeOf, overallScore } from '../src/verify/compare.mjs';
 import { TILE_HEIGHT } from '../src/verify/tiled-compare.mjs';
+import { verifierSha256 } from '../src/verify/verifier-fingerprint.mjs';
+
+export { verifierSha256 };
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CORE = resolve(HERE, '..');
 const ROOT = resolve(CORE, '..');
 const DEFAULT_RUN = join(WORKSPACE, '_runs', 'historical-v2-batch');
 const REQUIRED_VIEWPORTS = ['375x812', '768x1024', '1440x900'];
-const VERIFIER_FILES = [
-  'src/verify/verify.mjs',
-  'src/verify/compare.mjs',
-  'src/verify/tiled-compare.mjs',
-  'src/verify/interactions.mjs',
-  // The clone is rendered through this server; its response headers decide
-  // whether @font-face and CSS mask images load, so a change here changes
-  // scores. (2026-10-25: font assets went from blocked to served with CORS.)
-  'src/clone-preview-server.mjs',
-  'src/freeze.mjs',
-  'src/paths.mjs',
-  'src/url-canon.mjs',
-  'src/site-profile.mjs',
-  'src/session/store.mjs',
-  'src/ua.mjs',
-  'src/page-name.mjs',
-  'src/fsutil.mjs',
-  'src/emit.mjs',
-  'package.json',
-  'node_modules/playwright/package.json',
-  'node_modules/playwright-core/package.json',
-  'node_modules/playwright-core/browsers.json',
-  'node_modules/pixelmatch/package.json',
-  'node_modules/pngjs/package.json',
-];
 const FIELDS = ['host', 'page', 'targetPath', 'verifyState', 'oldOverall', 'oldGrade', 'estimatedV2',
   'status', 'newOverall', 'newGrade', 'measured', 'viewportsMeasured', 'worstCoverage', 'missingPixels',
   'error', 'inputBytes', 'inputSha256', 'verifierSha256', 'startedAt', 'finishedAt', 'evidence',
@@ -77,36 +54,6 @@ const insideOrEqual = (root, target) => {
   return !rel || (rel !== '..' && !rel.startsWith('..' + sep) && !isAbsolute(rel));
 };
 const samePath = (a, b) => process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
-export const verifierSha256 = () => {
-  const hash = createHash('sha256');
-  hash.update('node-version').update('\0').update(process.version).update('\0');
-  hash.update('platform').update('\0').update(process.platform + '/' + process.arch).update('\0');
-  for (const file of VERIFIER_FILES) {
-    const path = join(CORE, file);
-    hash.update(file).update('\0');
-    if (existsSync(path)) hash.update(readFileSync(path));
-    else hash.update('<missing>');
-    hash.update('\0');
-  }
-  const sitesDir = join(CORE, 'sites');
-  for (const file of (existsSync(sitesDir) ? readdirSync(sitesDir).filter(name => name.endsWith('.json')).sort() : [])) {
-    const rel = 'sites/' + file;
-    hash.update(rel).update('\0').update(readFileSync(join(sitesDir, file))).update('\0');
-  }
-  const browserPath = chromium.executablePath();
-  if (!existsSync(browserPath)) throw new Error('Chromium executable missing: ' + browserPath);
-  hash.update('chromium-executable').update('\0');
-  const browserFd = openSync(browserPath, 'r');
-  try {
-    const buffer = Buffer.allocUnsafe(4 * 1024 * 1024);
-    let bytes;
-    while ((bytes = readSync(browserFd, buffer, 0, buffer.length, null)) > 0) {
-      hash.update(buffer.subarray(0, bytes));
-    }
-  } finally { closeSync(browserFd); }
-  hash.update('\0');
-  return hash.digest('hex');
-};
 function readProgress(runDir) {
   const file = join(runDir, 'progress.json');
   if (!existsSync(file)) return { records: {} };

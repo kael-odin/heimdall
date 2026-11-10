@@ -15,7 +15,7 @@
  *
  * 说明：冻结动画/清空输入框后拍摄；超过 25000px 的页面分段截图并计分。
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { join, relative, resolve, isAbsolute } from 'node:path';
 import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
@@ -31,6 +31,8 @@ import { freezeCss } from '../freeze.mjs';
 import { UA } from '../ua.mjs';
 import { isSafePageName } from '../page-name.mjs';
 import { startClonePreviewServer } from '../clone-preview-server.mjs';
+import { verifierSha256 } from './verifier-fingerprint.mjs';
+import { archiveVerifyArtifacts, archiveVerifySummary, evidenceSha256, resumeIdentity } from './resume-cache.mjs';
 
 const log = (...a) => console.error('[verify]', ...a);
 const SINGLE_CAPTURE_HEIGHT = 25_000;
@@ -107,6 +109,15 @@ const pages = existsSync(PAGES) ? readdirSync(PAGES, { withFileTypes: true })
 const targets = PAGE_DIR ? [pageArg] : all ? pages.slice(0, MAX) : pages.filter(n => n === pageArg);
 if (!targets.length) { console.error('no matching forged pages under', PAGES); process.exit(1); }
 
+let verifier = null;
+if (all) {
+  try { verifier = verifierSha256(); }
+  catch { log('无法核验验证器指纹，本次不复用或生成续跑缓存'); }
+}
+const cacheOptions = { viewports: VIEWPORTS.map(v => v.name), interactions: RUN_IX,
+  keepScreenshots: KEEP_SCREENSHOTS, allowBounded: ALLOW_BOUNDED, settleTimeout: RENDER_SETTLE_TIMEOUT, jobs: JOBS };
+if (RESUME) archiveVerifySummary(join(BASE, 'verify'));
+
 const forgedUrls = new Set(pages.map(name => {
   try { return canonUrl(JSON.parse(readFileSync(join(PAGES, name, 'manifest.json'), 'utf8')).target); } catch { return null; }
 }).filter(Boolean));
@@ -120,21 +131,19 @@ const missingAtlasUrls = all ? [...new Set((atlas?.nodes ?? []).filter(n => !exc
  * 只复用 `measured: true` 的结果 —— 那意味着每个视口都有分数、两侧渲染都收敛、
  * 克隆侧没有额外的可见坏图。未测到的页恰恰是最该重跑的，不能用旧结论顶替。
  *
- * 判新：manifest.json 或 clone/index.html 比 verify.json 新，说明这页被重新克隆过，
- * 旧分数不再代表当前产物；视口集合变了（换了 --viewports）同理不能复用。
+ * 本地输入、验证器、选项和输出证据都要一致；这不证明在线参考站没有变化。
  */
-function cachedMeasurement(name, dir, outDir) {
+function cachedMeasurement(outDir, identity) {
   const file = join(outDir, 'verify.json');
   let prev;
   try { prev = JSON.parse(readFileSync(file, 'utf8')); } catch { return null; }
-  if (prev?.scoreVersion !== 2 || prev.measured !== true || typeof prev.overall !== 'number') return null;
+  if (!identity || prev?.scoreVersion !== 2 || prev.measured !== true || !Number.isFinite(prev.overall)
+      || !Array.isArray(prev.viewports) || prev.viewports.some(v => !v || typeof v !== 'object')) return null;
   const names = (prev.viewports ?? []).map(v => v.name);
-  if (names.length !== VIEWPORTS.length || VIEWPORTS.some(vp => !names.includes(vp.name))) return null;
-  let stamp;
-  try { stamp = statSync(file).mtimeMs; } catch { return null; }
-  for (const artifact of [join(dir, 'manifest.json'), join(dir, 'clone', 'index.html')]) {
-    try { if (statSync(artifact).mtimeMs > stamp) return null; } catch { return null; }
-  }
+  if (JSON.stringify(names) !== JSON.stringify(cacheOptions.viewports)) return null;
+  const { evidence, ...previousIdentity } = prev.resumeCache ?? {};
+  if (JSON.stringify(previousIdentity) !== JSON.stringify(identity) || !evidence
+      || evidenceSha256(prev, outDir, KEEP_SCREENSHOTS) !== evidence) return null;
   return prev;
 }
 
@@ -342,16 +351,23 @@ async function verifyOne(name, index = 0, total = 1) {
     const dir = PAGE_DIR ?? join(PAGES, name);
     const outDir = PAGE_DIR ? join(PAGE_DIR, 'verify') : join(BASE, 'verify', name);
     mkdirSync(outDir, { recursive: true });
+    const identity = all ? resumeIdentity(dir, cacheOptions, verifier) : null;
     if (RESUME) {
-      const prev = cachedMeasurement(name, dir, outDir);
+      const prev = cachedMeasurement(outDir, identity);
       if (prev) {
         reused += 1;
-        log(name, '已测过，复用上次结果', (prev.overall * 100).toFixed(1) + '%', prev.grade ?? '');
+        log(name, '已测过，复用上次结果', (prev.overall * 100).toFixed(1) + '%', prev.grade ?? '', prev.generatedAt ?? '');
         emit({ kind: 'verify-page', index, total, page: name, overall: prev.overall, measured: true, grade: prev.grade ?? null,
           minViewport: prev.minViewport ?? null, functional: prev.functional ?? null, reused: true });
         return { page: name, overall: prev.overall, measured: true, confidence: prev.confidence ?? 'full',
           grade: prev.grade ?? null, minViewport: prev.minViewport ?? null, functional: prev.functional ?? null,
-          error: null, reused: true };
+          error: null, reused: true, measuredAt: prev.generatedAt ?? null };
+      }
+      try { archiveVerifyArtifacts(outDir); }
+      catch {
+        const error = 'previous verification evidence could not be archived';
+        emit({ kind: 'verify-error', page: name, error });
+        return { page: name, overall: null, measured: false, confidence: 'none', grade: null, error };
       }
     }
     if (!existsSync(join(dir, 'clone', 'index.html'))) {
@@ -378,13 +394,18 @@ async function verifyOne(name, index = 0, total = 1) {
     const srcPage = await srcCtx.newPage();
     const clonePage = await cloneCtx.newPage();
     const cloneUrl = clonePreview.urlFor(join(dir, 'clone', 'index.html'));
+    const cloneBase = new URL('.', cloneUrl).href;
+    let externalCloneRequest = false;
+    clonePage.on('request', request => {
+      if (/^https?:\/\//i.test(request.url()) && !request.url().startsWith(cloneBase)) externalCloneRequest = true;
+    });
     const viewports = [];
     for (const vp of VIEWPORTS) {
       const srcFile = join(outDir, 'src-' + vp.name + '.png');
       const cloneFile = join(outDir, 'clone-' + vp.name + '.png');
       try {
         const s = await shoot(srcPage, target, vp, srcFile);
-        const c = await shoot(clonePage, cloneUrl, vp, cloneFile, { cloneBase: new URL('.', cloneUrl).href });
+        const c = await shoot(clonePage, cloneUrl, vp, cloneFile, { cloneBase });
         if (s.skipped) { viewports.push({ name: vp.name, skipped: s.skipped }); continue; }
         if (c.skipped) { viewports.push({ name: vp.name, skipped: c.skipped }); continue; }
         if (s.tiled && !c.tiled) c.parts = await shootTiles(clonePage, cloneFile, c.width, c.height);
@@ -487,12 +508,17 @@ async function verifyOne(name, index = 0, total = 1) {
       ...(confidenceReasons.length ? { confidenceReasons } : {}),
       measured, grade: measured ? gradeOf(overall) : null, minViewport, viewports, functional, interactions,
       ...(error ? { error } : {}) };
+    if (measured && identity && !externalCloneRequest
+        && JSON.stringify(identity) === JSON.stringify(resumeIdentity(dir, cacheOptions, verifier))) {
+      const evidence = evidenceSha256(result, outDir, KEEP_SCREENSHOTS);
+      if (evidence) result.resumeCache = { ...identity, evidence };
+    }
     writeFileSync(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
     const scoreText = measured ? (overall * 100).toFixed(1) + '%'
       : provisionalOverall === null ? '未测到（无有效视口）' : '未完整测量';
     log(name, 'overall', scoreText, result.grade ?? '', minViewport ? '| 最低 ' + minViewport.name + ' ' + (minViewport.score * 100).toFixed(1) + '%' : '', functional ? '| 交互 ' + functional.passed + '/' + functional.total : '| 交互 n/a');
     emit({ kind: 'verify-page', index, total, page: name, overall, measured, grade: result.grade, minViewport, functional, error });
-    return { page: name, overall, measured, confidence: pageConfidence, grade: result.grade,
+    return { page: name, overall, measured, confidence: pageConfidence, grade: result.grade, measuredAt: result.generatedAt,
       minViewport, functional, error,
       ...(confidenceReasons.length ? { confidenceReasons } : {}) };
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -524,8 +524,8 @@ test('verify measures a 26k page with bounded screenshot tiles', async () => {
 /**
  * 断点续跑的意义：真实站点的 verify --all 按小时计（每页 3 视口 + 交互回放），
  * 中途断掉就得从头再来。这组用例钉住三条契约：
- *   1. 已完整测过、且克隆产物没变过的页，不重跑，直接复用；
- *   2. 克隆产物变新了 / 上次没测成，就必须重跑；
+ *   1. 已完整测过、输入和证据没变过的页，不重跑，直接复用；
+ *   2. 输入或选项变化、旧缓存无指纹、上次没测成时必须重跑；
  *   3. 复用不是"假绿"：摘要里 reused 与 measured 分开计数，
  *      整站门禁仍然按"全部页都测到"算。
  */
@@ -550,19 +550,236 @@ function seedPage(dataDir, name, { overall = 0.9, measured = true, scoreVersion 
   return { base, dir, file };
 }
 
-test('verify --resume 复用已完整测量的页，不重跑', async () => {
-  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-'));
+test('verify --resume remeasures when a clone stylesheet changes', { timeout: 90_000 }, async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-css-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  const page = join(base, 'pages', 'p1');
+  const html = '<!doctype html><html><head><link rel="stylesheet" href="style.css"></head><body></body></html>';
+  const server = createServer((req, res) => {
+    res.writeHead(200, { 'content-type': req.url === '/style.css' ? 'text/css' : 'text/html' });
+    res.end(req.url === '/style.css' ? 'body { margin: 0; background: red; }' : html);
+  });
   try {
-    const { base, file } = seedPage(dataDir, 'p1', { overall: 0.93 });
-    const before = statSync(file).mtimeMs;
-    const { code, output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
-    assert.equal(code, 0, output);   // 唯一一页被复用 → 整站都测到了，门禁应通过
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `http://127.0.0.1:${server.address().port}/` }));
+    writeFileSync(join(page, 'clone', 'index.html'), html);
+    writeFileSync(join(page, 'clone', 'style.css'), 'body { margin: 0; background: red; }');
+    const args = ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '100x100'];
+    const first = await runVerify(dataDir, args, {}, 30_000);
+    assert.equal(first.code, 0, first.output);
+    const resultFile = join(base, 'verify', 'p1', 'verify.json');
+    const firstBytes = readFileSync(resultFile);
+    const firstResult = JSON.parse(firstBytes);
+    assert.equal(firstResult.overall, 1);
+    assert.ok(firstResult.resumeCache?.inputs);
+    const before = statSync(resultFile).mtimeMs;
+    const future = new Date(Date.now() + 60_000);
+    utimesSync(join(page, 'clone', 'index.html'), future, future);
+    const reused = await runVerify(dataDir, args, {}, 30_000);
+    assert.equal(reused.code, 0, reused.output);
+    const reusedSummary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(reusedSummary.reused, 1, reused.output);
+    assert.equal(reusedSummary.pages[0].measuredAt, firstResult.generatedAt);
+    assert.equal(statSync(resultFile).mtimeMs, before);
+
+    const oldStyle = statSync(join(page, 'clone', 'style.css'));
+    writeFileSync(join(page, 'clone', 'style.css'), 'body { margin: 0; background: blue; }');
+    utimesSync(join(page, 'clone', 'style.css'), oldStyle.atime, oldStyle.mtime);
+    const second = await runVerify(dataDir, args, {}, 30_000);
+    assert.equal(second.code, 0, second.output);
     const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
-    assert.equal(summary.reused, 1, output);
-    assert.equal(summary.measured, 1);
-    assert.equal(summary.average, 0.93);
-    assert.equal(statSync(file).mtimeMs, before, '复用不该重写 verify.json');
-    assert.match(output, /复用上次结果/);
+    assert.equal(summary.reused, 0, second.output);
+    assert.ok(summary.average < 1, second.output);
+    const gated = await runVerify(dataDir, [...args, '--threshold', '100'], {}, 30_000);
+    assert.equal(gated.code, 1, gated.output);
+    const gatedSummary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(gatedSummary.reused, 1, gated.output);
+    assert.equal(gatedSummary.passed, false, gated.output);
+    const history = join(base, 'verify', '.resume-history');
+    const archivedPage = readdirSync(history).find(name => name.startsWith('page-'));
+    assert.deepEqual(readFileSync(join(history, archivedPage, 'verify.json')), firstBytes);
+    assert.ok(existsSync(join(history, archivedPage, 'diff-100x100.png')));
+    assert.ok(readdirSync(history).some(name => name.startsWith('summary-')));
+
+    const kept = await runVerify(dataDir, [...args, '--keep-screenshots'], {}, 30_000);
+    assert.equal(kept.code, 0, kept.output);
+    assert.equal(JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8')).reused, 0);
+    const screenshot = join(base, 'verify', 'p1', 'src-100x100.png');
+    assert.ok(existsSync(screenshot));
+    rmSync(screenshot);
+    const missing = await runVerify(dataDir, [...args, '--keep-screenshots'], {}, 30_000);
+    assert.equal(missing.code, 0, missing.output);
+    assert.equal(JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8')).reused, 0);
+    assert.ok(existsSync(screenshot));
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('verify --resume remeasures legacy results instead of reporting a stale pass', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-legacy-'));
+  const server = createServer((_req, res) => { res.writeHead(503); res.end(); });
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const { base, file } = seedPage(dataDir, 'p1', { overall: 0.93,
+      target: `http://127.0.0.1:${server.address().port}/p1` });
+    const previous = readFileSync(file);
+    const { code, output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
+    assert.equal(code, 1, output);
+    const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(summary.reused, 0, output);
+    assert.equal(summary.measured, 0);
+    assert.equal(summary.passed, false);
+    const history = join(base, 'verify', '.resume-history');
+    const archive = readdirSync(history).find(name => name.startsWith('page-'));
+    assert.deepEqual(readFileSync(join(history, archive, 'verify.json')), previous);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('verify --resume rejects changed settings, verifier, evidence and session state', { timeout: 90_000 }, async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-settings-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  const page = join(base, 'pages', 'p1');
+  const html = '<!doctype html><html><body>local fixture</body></html>';
+  let unavailable = false;
+  const server = createServer((_req, res) => {
+    res.writeHead(unavailable ? 503 : 200, { 'content-type': 'text/html' });
+    res.end(html);
+  });
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), html);
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `http://127.0.0.1:${server.address().port}/` }));
+    const args = ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '100x100'];
+    const first = await runVerify(dataDir, args, {}, 30_000);
+    assert.equal(first.code, 0, first.output);
+    const file = join(base, 'verify', 'p1', 'verify.json');
+    const diff = join(base, 'verify', 'p1', 'diff-100x100.png');
+    const original = readFileSync(file);
+    const originalDiff = readFileSync(diff);
+    unavailable = true;
+    const cases = [
+      { name: 'allow-bounded', args: [...args, '--allow-bounded'] },
+      { name: 'keep-screenshots', args: [...args, '--keep-screenshots'] },
+      { name: 'interactions', args: ['x.test', '--all', '--resume', '--interactions', '--viewports', '100x100'] },
+      { name: 'viewport', args: ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '120x100'] },
+      { name: 'jobs', args: [...args, '--jobs', '2'] },
+      { name: 'settle timeout', args, env: { HEIMDALL_VERIFY_SETTLE_TIMEOUT_MS: '3000' } },
+      { name: 'verifier', args, change: () => {
+        const record = JSON.parse(original);
+        record.resumeCache.verifier = 'outdated';
+        writeFileSync(file, JSON.stringify(record));
+      } },
+      { name: 'evidence', args, change: () => writeFileSync(diff, 'changed') },
+      { name: 'damaged record', args, change: () => {
+        const record = JSON.parse(original);
+        record.viewports = {};
+        writeFileSync(file, JSON.stringify(record));
+      } },
+      { name: 'session', args, change: () => {
+        mkdirSync(join(dataDir, 'workspace', '127.0.0.1'), { recursive: true });
+        writeFileSync(join(dataDir, 'workspace', '127.0.0.1', 'session.json'), '{"cookies":[],"origins":[]}');
+      } },
+    ];
+    for (const item of cases) {
+      writeFileSync(file, original);
+      writeFileSync(diff, originalDiff);
+      item.change?.();
+      const result = await runVerify(dataDir, item.args, item.env ?? {}, 30_000);
+      assert.equal(result.code, 1, `${item.name}: ${result.output}`);
+      const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+      assert.equal(summary.reused, 0, `${item.name}: ${result.output}`);
+      assert.equal(summary.measured, 0, item.name);
+    }
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('verify --resume does not cache clones that request outside their directory', { timeout: 45_000 }, async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-external-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  const page = join(base, 'pages', 'p1');
+  let html = '';
+  let unavailable = false;
+  const server = createServer((req, res) => {
+    if (req.url === '/image.svg') {
+      res.writeHead(200, { 'content-type': 'image/svg+xml' });
+      res.end('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>');
+    } else {
+      res.writeHead(unavailable ? 503 : 200, { 'content-type': 'text/html' });
+      res.end(html);
+    }
+  });
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    html = `<!doctype html><html><body><img src="${origin}/image.svg" width="10" height="10"></body></html>`;
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), html);
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: origin + '/' }));
+    const args = ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '100x100'];
+    const first = await runVerify(dataDir, args, {}, 30_000);
+    assert.equal(first.code, 0, first.output);
+    assert.equal(JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8')).resumeCache, undefined);
+    unavailable = true;
+    const second = await runVerify(dataDir, args, {}, 30_000);
+    assert.equal(second.code, 1, second.output);
+    assert.equal(JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8')).reused, 0);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('verify --resume reruns interaction checks instead of reusing untracked replay dependencies', { timeout: 45_000 }, async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-interactions-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  const page = join(base, 'pages', 'p1');
+  const html = '<!doctype html><html><body>local fixture</body></html>';
+  const server = createServer((_req, res) => { res.writeHead(200, { 'content-type': 'text/html' }); res.end(html); });
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), html);
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `http://127.0.0.1:${server.address().port}/` }));
+    const args = ['x.test', '--all', '--resume', '--interactions', '--viewports', '100x100'];
+    for (let i = 0; i < 2; i++) {
+      const result = await runVerify(dataDir, args, {}, 30_000);
+      assert.equal(result.code, 0, result.output);
+      assert.equal(JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8')).reused, 0);
+      assert.equal(JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8')).resumeCache, undefined);
+    }
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('verify --resume leaves previous evidence intact when archiving fails', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-archive-fail-'));
+  try {
+    const { base, file } = seedPage(dataDir, 'p1', { target: 'http://127.0.0.1:1/p1' });
+    const previous = readFileSync(file);
+    mkdirSync(join(base, 'verify', 'p1', 'diff-invalid.png'));
+    const result = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
+    assert.equal(result.code, 1, result.output);
+    assert.deepEqual(readFileSync(file), previous);
+    const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.match(summary.failedPages[0].error, /could not be archived/);
+    assert.equal(summary.passed, false);
   } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });
 
@@ -589,29 +806,6 @@ test('verify --resume 对没测成的页仍然重跑', async () => {
     await new Promise(resolve => server.close(resolve));
     rmSync(dataDir, { recursive: true, force: true });
   }
-});
-
-test('verify --resume 遇到比结果更新的克隆产物时重跑', async () => {
-  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-stale-'));
-  try {
-    const { base, dir } = seedPage(dataDir, 'p1', { overall: 0.5 });
-    // 克隆产物比 verify.json 更新 → 旧分数不再代表当前产物
-    const later = new Date(Date.now() + 300_000);
-    utimesSync(join(dir, 'clone', 'index.html'), later, later);
-    const { output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
-    const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
-    assert.equal(summary.reused, 0, output);
-  } finally { rmSync(dataDir, { recursive: true, force: true }); }
-});
-
-test('verify --resume 遇到视口集合变化时重跑', async () => {
-  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-resume-viewports-'));
-  try {
-    const { base } = seedPage(dataDir, 'p1', { viewports: [{ name: '375x812', score: 0.9 }] });
-    const { output } = await runVerify(dataDir, ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '10x10']);
-    const summary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
-    assert.equal(summary.reused, 0, output);
-  } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });
 
 test('--resume 只能与 --all 一起用', async () => {
@@ -668,6 +862,16 @@ test('--allow-bounded 把"版面已定、请求未结束"的页按有界置信�
     assert.equal(result.confidence, 'bounded');
     assert.equal(typeof result.overall, 'number');
     assert.ok(result.confidenceReasons.some(r => /长轮询|请求/.test(r)), JSON.stringify(result.confidenceReasons));
+    assert.equal(result.resumeCache?.options.allowBounded, true);
+
+    const strict = await runVerify(dataDir,
+      ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '100x100'],
+      { HEIMDALL_PORT: String(port) }, 30_000);
+    assert.equal(strict.code, 1, strict.output);
+    const strictSummary = JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8'));
+    assert.equal(strictSummary.reused, 0, strict.output);
+    assert.equal(strictSummary.measured, 0, strict.output);
+    assert.equal(strictSummary.passed, false);
   } finally {
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));
