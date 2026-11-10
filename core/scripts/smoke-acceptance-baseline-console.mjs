@@ -130,7 +130,12 @@ try {
   assert.match(await page.title(), /Heimdall/i); assert.equal(new URL(page.url()).origin, base);
   await page.getByRole('button', { name: '项目验收', exact: true }).click();
   const panel = page.getByTestId('acceptance-catalog'); await panel.getByTestId('catalog-toggle').click();
-  await panel.locator('[name="catalog-project"]').selectOption(projectA.id);
+  const projectSelect = panel.locator('[name="catalog-project"]');
+  const selectProject = async id => {
+    await waitFor(async () => !(await projectSelect.isDisabled()) && await projectSelect.locator('option').count() > 1, 'project selector ready');
+    await projectSelect.selectOption(id);
+  };
+  await selectProject(projectA.id);
   const baseline = panel.getByTestId('acceptance-baseline');
   const waitReady = () => waitFor(async () => !(await panel.getByTestId('catalog-refresh').isDisabled())
     && (await baseline.getByTestId('baseline-source').count()) && !(await baseline.getByTestId('baseline-source').isDisabled()), 'ready baseline');
@@ -206,9 +211,9 @@ try {
   }, { times: 1 });
   await baseline.locator(`[data-testid="baseline-preview-candidate"][data-candidate-id="${draftRun.candidateId}"]`).click();
   await waitFor(() => heldPreview, 'held preview');
-  await panel.locator('[name="catalog-project"]').selectOption(projectB.id);
+  await selectProject(projectB.id);
   await waitFor(async () => (await baseline.innerText()).includes('还没有已归属'), 'project B detail');
-  await panel.locator('[name="catalog-project"]').selectOption(projectA.id); await waitReady();
+  await selectProject(projectA.id); await waitReady();
   releasePreview(); await delay(180);
   assert.equal(await baseline.getByTestId('baseline-full-expect').count(), 0);
   assert.equal(await panel.locator('[name="catalog-project"]').inputValue(), projectA.id);
@@ -260,12 +265,12 @@ try {
   }, { times: 1 });
   await baseline.getByTestId('baseline-approval-reason').fill('项目切换后的迟到批准仍属于 A'); await baseline.getByTestId('baseline-approval-confirm').check();
   await baseline.getByTestId('baseline-approve').click(); await waitFor(() => heldPost, 'held approval');
-  await panel.locator('[name="catalog-project"]').selectOption(projectB.id);
+  await selectProject(projectB.id);
   await waitFor(async () => (await baseline.innerText()).includes('还没有已归属'), 'project B while posting');
   releasePost(); await waitFor(async () => (await panel.getByTestId('catalog-notice').innerText()).includes('合同批准已记录'), 'captured project completion');
-  assert.equal(await panel.locator('[name="catalog-project"]').inputValue(), projectB.id);
+  assert.equal(await projectSelect.inputValue(), projectB.id);
   assert.equal((await detailOf(projectB.id)).approvals.length, 0);
-  await panel.locator('[name="catalog-project"]').selectOption(projectA.id); await waitReady();
+  await selectProject(projectA.id); await waitReady();
   checks.lateApprovalDoesNotSwitchProjectOrAutoSelect = true;
 
   // Modifying a source after preview is caught by the final approval operation.
