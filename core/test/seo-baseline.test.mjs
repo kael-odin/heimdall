@@ -252,7 +252,7 @@ test('baseline: 版本不符要抛错，不得静默当首次运行放过', () =
 test('baseline: unknown or changed score methods cannot resolve findings or enter the tolerance gate', () => {
   const current = snapshotOf(report({ pages: [{ url: 'https://example.com/a' }] }));
   const old = buildBaseline(report({ pages: [{ url: 'https://example.com/a', issues: [iss('content-text-ratio', 'low')] }] }));
-  for (const version of [null, 1, 2, 4]) {
+  for (const version of [null, 1, 2, 3, SEO_SCORE_METHOD_VERSION + 1]) {
     const incompatible = { ...old, scoreMethodVersion: version };
     assert.throws(() => diffBaseline(incompatible, current, { tolerance: 1 }), /score method/);
   }
@@ -265,7 +265,7 @@ test('baseline: unknown or changed score methods cannot resolve findings or ente
 test('baseline: incompatible measurements cannot turn a former structured-data warning into a website improvement', () => {
   const current = snapshotOf(report({ pages: [{ url: 'https://example.com/a' }] }));
   const old = buildBaseline(report({ pages: [{ url: 'https://example.com/a', issues: [iss('structured-none', 'info')] }] }));
-  for (const version of [null, 2, 4]) {
+  for (const version of [null, 2, 3, SEO_MEASUREMENT_VERSION + 1]) {
     assert.throws(() => diffBaseline({ ...old, measurementVersion: version }, current), /measurement method/);
   }
   assert.equal(diffBaseline(old, current).improvements[0].ruleId, 'structured-none');

@@ -74,6 +74,8 @@ test('SEO 使用手册的评分和测量口径与当前实现一致', async () =
   const { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } = await import('../src/seo/method.mjs');
   const guide = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'guide', '03-features.md'), 'utf8');
   assert.ok(guide.includes(`当前评分口径为 ${SEO_SCORE_METHOD_VERSION}，测量口径为 ${SEO_MEASUREMENT_VERSION}`));
+  const baselineGuide = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'config', 'seo-baseline', 'README.md'), 'utf8');
+  assert.ok(baselineGuide.includes(`--score-v${SEO_SCORE_METHOD_VERSION}--measure-v${SEO_MEASUREMENT_VERSION}.json`));
 });
 
 test('规则数：id 用 <分类>-<slug> 形式，分类都在 CATEGORIES 里', async () => {

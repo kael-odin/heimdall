@@ -61,6 +61,64 @@ test('seo audit: optional robots and sitemap observations do not lower the site 
   }
 });
 
+test('seo audit: misleading resource names do not pollute the report or baseline', { timeout: 60_000 }, async () => {
+  const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aX8AAAAASUVORK5CYII=', 'base64');
+  const largeImage = Buffer.concat([pixel, Buffer.alloc(1_100_000)]);
+  const largeScript = `/*${'x'.repeat(1_100_000)}*/window.fixtureLoaded = true;`;
+  let useScript = false;
+  const server = createServer((req, res) => {
+    if (req.url === '/image.js') {
+      res.setHeader('content-type', 'image/png');
+      return res.end(largeImage);
+    }
+    if (req.url === '/script.png') {
+      res.setHeader('content-type', 'text/javascript');
+      return res.end(largeScript);
+    }
+    if (req.url === '/') {
+      res.setHeader('content-type', 'text/html; charset=utf-8');
+      const resource = useScript ? '<script src="/script.png"></script>' : '<img src="/image.js" alt="fixture">';
+      return res.end(`<!doctype html><html lang="en"><head><title>Resource fixture</title><link rel="icon" href="data:,"></head><body><h1>Fixture</h1>${resource}</body></html>`);
+    }
+    res.writeHead(404); res.end();
+  });
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-seo-resources-'));
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const baseline = join(dataDir, 'baseline.json');
+    const first = await runAudit(origin, baseline, dataDir);
+    assert.equal(first.code, 0, first.output);
+    const directory = join(dataDir, 'workspace', '127.0.0.1', 'seo');
+    const imageReport = JSON.parse(readFileSync(join(directory, 'seo.json'), 'utf8'));
+    const original = readFileSync(baseline, 'utf8');
+    const saved = JSON.parse(original);
+    assert.equal(imageReport.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
+    assert.equal(imageReport.measurementVersion, SEO_MEASUREMENT_VERSION);
+    assert.ok(imageReport.pages[0].resources.imgBytes > 1_048_576);
+    assert.equal(imageReport.pages[0].resources.jsBytes, 0);
+    assert.ok(!imageReport.pages[0].issues.some(issue => issue.id === 'perf-js-large'));
+    assert.ok(!Object.values(saved.pages)[0].issues['perf-js-large']);
+    const html = readFileSync(join(directory, 'seo.html'), 'utf8');
+    assert.match(html, /未分类、缓存及跨源限制/);
+    assert.match(html, /文本\/DOM 比例仅供观察/);
+    assert.match(html, /结构化数据提示仅检查 JSON-LD 顶层及 @graph 类型/);
+    assert.doesNotMatch(html, /历史或未知测量口径可能遗漏 @graph/);
+
+    useScript = true;
+    const second = await runAudit(origin, baseline, dataDir, []);
+    assert.equal(second.code, 0, second.output);
+    const scriptReport = JSON.parse(readFileSync(join(directory, 'seo.json'), 'utf8'));
+    assert.ok(scriptReport.pages[0].resources.jsBytes > 1_048_576);
+    assert.equal(scriptReport.pages[0].resources.imgBytes, 0);
+    assert.ok(scriptReport.pages[0].issues.some(issue => issue.id === 'perf-js-large'));
+    assert.equal(readFileSync(baseline, 'utf8'), original, 'ordinary audits must not overwrite the baseline');
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('seo gate: an HTTP error page cannot become a baseline', { timeout: 60_000 }, async () => {
   let origin;
   const server = createServer((req, res) => {
@@ -347,7 +405,7 @@ test('seo gate: a legacy score method is preserved, never compared or overwritte
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     origin = `http://127.0.0.1:${server.address().port}`;
     const baseline = join(dataDir, 'legacy.json');
-    const original = JSON.stringify({ version: 1, scoreMethodVersion: 2, measurementVersion: SEO_MEASUREMENT_VERSION, host: '127.0.0.1', origin, score: 88, stable: 88,
+    const original = JSON.stringify({ version: 1, scoreMethodVersion: SEO_SCORE_METHOD_VERSION - 1, measurementVersion: SEO_MEASUREMENT_VERSION, host: '127.0.0.1', origin, score: 88, stable: 88,
       collection: { version: 1, sitemapCoverage: 'complete' }, siteIssues: {},
       pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: { 'content-text-ratio': 'low' } } } });
     writeFileSync(baseline, original);
@@ -373,7 +431,7 @@ test('seo gate: a legacy score method is preserved, never compared or overwritte
 
     const legacyMeasurement = join(dataDir, 'legacy-measurement.json');
     const measurementOriginal = JSON.stringify({
-      version: 1, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: 2, host: '127.0.0.1', origin, score: 88, stable: 88,
+      version: 1, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION - 1, host: '127.0.0.1', origin, score: 88, stable: 88,
       collection: { version: 1, sitemapCoverage: 'complete' }, siteIssues: {},
       pages: { [`${origin}/page`]: { score: 88, stable: 88, issues: { 'structured-none': 'info' } } },
     });

@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { categorize, siteAggregate, buildMatrix, renderMatrixHtml, renderMatrixCsv } from '../src/seo/matrix-core.mjs';
 import { resolveMatrixTarget } from '../src/seo/matrix-target.mjs';
 import { siteIdForOrigin } from '../src/site-origin.mjs';
+import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from '../src/seo/method.mjs';
 
 const CORE = fileURLToPath(new URL('..', import.meta.url));
 const ENGINE = fileURLToPath(new URL('../src/engine-server.mjs', import.meta.url));
@@ -204,4 +205,22 @@ test('matrix: JSON-LD coverage is hidden when measurement methods are old, unkno
   assert.equal(matrix.jsonldComparison.comparable, true);
   assert.deepEqual(matrix.sites.map(s => s.aggregate.jsonldRate), [100, 0]);
   assert.match(renderMatrixHtml(matrix), /不包括 microdata 或 RDFa/);
+});
+
+test('matrix: the current resource-classification method is not compared with version 3', () => {
+  const current = audit('current.test', [{ path: '/' }]);
+  const previous = audit('previous.test', [{ path: '/' }]);
+  current.scoreMethodVersion = SEO_SCORE_METHOD_VERSION;
+  current.measurementVersion = SEO_MEASUREMENT_VERSION;
+  previous.scoreMethodVersion = SEO_SCORE_METHOD_VERSION - 1;
+  previous.measurementVersion = SEO_MEASUREMENT_VERSION - 1;
+  const mixed = buildMatrix([current, previous]);
+  assert.equal(mixed.scoreComparison.comparable, false);
+  assert.equal(mixed.jsonldComparison.comparable, false);
+  assert.deepEqual(mixed.sites.map(s => s.aggregate.score), [null, null]);
+  previous.scoreMethodVersion = SEO_SCORE_METHOD_VERSION;
+  previous.measurementVersion = SEO_MEASUREMENT_VERSION;
+  const same = buildMatrix([current, previous]);
+  assert.equal(same.scoreComparison.comparable, true);
+  assert.equal(same.jsonldComparison.comparable, true);
 });

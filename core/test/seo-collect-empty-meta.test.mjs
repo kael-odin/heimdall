@@ -17,6 +17,7 @@ import { collectPage } from '../src/seo/collect.mjs';
 import { evaluatePage } from '../src/seo/rules.mjs';
 import { scoreIssues } from '../src/seo/rules.mjs';
 import { siteAggregate } from '../src/seo/matrix-core.mjs';
+import { SEO_MEASUREMENT_VERSION } from '../src/seo/method.mjs';
 
 const BARE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Bare page without social or canonical tags</title>
 <meta name="description" content="A page that deliberately omits canonical, og:image and twitter:image, and uses a relative hreflang.">
@@ -136,6 +137,80 @@ test('采集：资源体积按用途分类，预加载图片不能算成 CSS', {
   assert.ok(jsBytes + cssBytes + imgBytes + fontBytes <= transferBytes, 'these resources must not be double counted');
 });
 
+test('采集：不能仅因地址后缀把非脚本算成 JavaScript', { timeout: 30_000 }, async t => {
+  const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aX8AAAAASUVORK5CYII=', 'base64');
+  const largeImage = Buffer.concat([pixel, Buffer.alloc(1_100_000)]);
+  const largeComment = `/*${'x'.repeat(1_100_000)}*/`;
+  const pages = {
+    image: '<img src="/image.js" alt="fixture">',
+    preloadImage: '<link rel="preload" as="image" href="/image.js"><img src="/image.js" alt="fixture">',
+    background: '<style>body { background-image: url("/image.js") }</style>',
+    style: '<link rel="stylesheet" href="/style.js">',
+    data: '<script>fetch("/data.js").catch(() => {})</script>',
+    preloadData: '<link rel="preload" as="fetch" href="/data.js" crossorigin>',
+    script: '<script src="/script.png"></script>',
+    preloadScript: '<link rel="preload" as="script" href="/large-script">',
+    moduleScript: '<link rel="modulepreload" href="/large-module">',
+    ambiguousModule: '<link rel="modulepreload" href="/large-module"><link rel="preload" as="image" href="/large-module">',
+  };
+  const server = createServer((req, res) => {
+    if (req.url === '/image.js') {
+      res.setHeader('content-type', 'image/png');
+      return res.end(largeImage);
+    }
+    if (req.url === '/style.js') {
+      res.setHeader('content-type', 'text/css');
+      return res.end(`${largeComment}body { color: black }`);
+    }
+    if (req.url === '/data.js') {
+      res.setHeader('content-type', 'application/json');
+      return res.end(JSON.stringify({ data: 'x'.repeat(1_100_000) }));
+    }
+    if (req.url === '/script.png' || req.url === '/large-script' || req.url === '/large-module') {
+      res.setHeader('content-type', 'text/javascript');
+      return res.end(`${largeComment}window.fixtureLoaded = true;`);
+    }
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    res.end(`<!doctype html><link rel="icon" href="data:,"><title>Fixture</title><h1>Fixture</h1>${pages[req.url.slice(1)] ?? ''}`);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const browser = await chromium.launch();
+  t.after(async () => { await browser.close(); await new Promise(resolve => server.close(resolve)); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+
+  for (const name of ['image', 'preloadImage', 'background', 'style', 'data', 'preloadData']) {
+    await t.test(name, async () => {
+      const page = await collectPage(browser, `${origin}/${name}`, { settleMs: 150 });
+      assert.ok(page.resources.transferBytes > 1_048_576, 'the large resource must have loaded');
+      if (name.includes('Image') || name === 'image') assert.equal(page.imgBroken, 0);
+      assert.equal(page.resources.jsBytes, 0, `${name} is not a JavaScript resource`);
+      assert.ok(!idsOf(page).includes('perf-js-large'), `${name} must not trigger the JavaScript warning`);
+      if (name === 'image' || name === 'preloadImage') assert.ok(page.resources.imgBytes > 1_048_576);
+      if (name === 'style') assert.ok(page.resources.cssBytes > 1_048_576);
+      if (['background', 'data', 'preloadData'].includes(name)) assert.ok(page.resources.otherBytes > 1_048_576);
+    });
+  }
+  for (const name of ['script', 'preloadScript', 'moduleScript']) {
+    await t.test(name, async () => {
+      const page = await collectPage(browser, `${origin}/${name}`, { settleMs: 150 });
+      assert.ok(page.resources.jsBytes > 1_048_576, `${name} must be counted as JavaScript`);
+      assert.ok(idsOf(page).includes('perf-js-large'));
+      assert.equal(page.resources.imgBytes, 0, 'the script must not also be counted as an image');
+    });
+  }
+  await t.test('ambiguousModule', async () => {
+    const page = await collectPage(browser, `${origin}/ambiguousModule`, { settleMs: 150 });
+    assert.ok(page.resources.otherBytes > 1_048_576);
+    assert.equal(page.resources.jsBytes, 0, 'conflicting link uses must remain unclassified');
+    assert.ok(!idsOf(page).includes('perf-js-large'));
+  });
+  const reference = await browser.newPage();
+  await reference.goto(`${origin}/script`);
+  assert.equal(await reference.evaluate(() => window.fixtureLoaded), true, 'the script with an image suffix executed');
+  await reference.close();
+});
+
 test('采集：图片 URL 后缀与真实响应不一致时只报告后缀线索', { timeout: 30_000 }, async t => {
   const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==', 'base64');
   const requests = [];
@@ -243,7 +318,7 @@ test('采集：JSON-LD 的顶层和 @graph 类型进入规则与矩阵，不把�
       assert.match(missing.title, /JSON-LD.*microdata/i);
       assert.match(missing.evidence, /RDFa/i);
     }
-    const aggregate = siteAggregate({ pages: [page], measurementVersion: 3, summary: { baselineEligible: true } });
+    const aggregate = siteAggregate({ pages: [page], measurementVersion: SEO_MEASUREMENT_VERSION, summary: { baselineEligible: true } });
     assert.equal(aggregate.jsonldRate, fixture.types.length ? 100 : 0, name);
   }
 });

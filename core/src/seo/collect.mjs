@@ -273,23 +273,39 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       const hreflang = [...document.querySelectorAll('link[rel="alternate"][hreflang]')].map(l => ({ lang: l.getAttribute('hreflang'), href: abs(l.getAttribute('href')), rawHref: l.getAttribute('href') }));
       const res = performance.getEntriesByType('resource').map(r => ({ name: r.name, initiator: r.initiatorType, transfer: r.transferSize || 0, encoded: r.encodedBodySize || 0 }));
       const nav = performance.getEntriesByType('navigation')[0];
-      const sum = (pred) => res.filter(pred).reduce((a, r) => a + Math.max(r.transfer, r.encoded), 0);
-      const stylesheetHints = new Map();
+      const linkHints = new Map();
+      const modulePreloads = new Set();
       for (const link of document.querySelectorAll('link[href]')) {
         const rel = new Set(link.rel.toLowerCase().split(/\s+/));
         const as = link.as.toLowerCase();
-        const hint = rel.has('stylesheet') || (rel.has('preload') && as === 'style') ? 'style'
-          : (rel.has('preload') && as) || rel.has('modulepreload') || rel.has('icon') ? 'other' : null;
-        if (!hint) continue;
-        const key = link.href.split('#')[0], prior = stylesheetHints.get(key);
-        stylesheetHints.set(key, prior && prior !== hint ? 'ambiguous' : hint);
+        const hints = new Set();
+        if (rel.has('stylesheet')) hints.add('css');
+        if (rel.has('modulepreload')) hints.add('js');
+        if (rel.has('preload')) hints.add(({ style: 'css', script: 'js', image: 'img', font: 'font' }[as] ?? 'other'));
+        if (rel.has('icon')) hints.add('img');
+        if (!hints.size) continue;
+        const hint = hints.size === 1 ? [...hints][0] : 'other';
+        const key = link.href.split('#')[0], prior = linkHints.get(key);
+        linkHints.set(key, prior && prior !== hint ? 'other' : hint);
+        if (rel.has('modulepreload')) modulePreloads.add(key);
       }
-      const isStylesheet = r => {
-        const hint = stylesheetHints.get(r.name.split('#')[0]);
-        if (hint) return hint === 'style';
-        if (r.initiator === 'img' || r.initiator === 'script') return false;
-        return /\.css(?:[?#]|$)/i.test(r.name);
+      const resourceKind = r => {
+        if (r.initiator === 'script') return 'js';
+        if (r.initiator === 'img' || r.initiator === 'image') return 'img';
+        if (r.initiator === 'link') return linkHints.get(r.name.split('#')[0]) ?? 'other';
+        // Chromium may record modulepreload as "other", so require an unambiguous matching link.
+        if (r.initiator === 'other' && modulePreloads.has(r.name.split('#')[0]) && linkHints.get(r.name.split('#')[0]) === 'js') return 'js';
+        // CSS can initiate imports, images and fonts; suffixes there remain hints only.
+        if (r.initiator === 'css') {
+          const path = (() => { try { return new URL(r.name).pathname; } catch { return ''; } })();
+          if (/\.css$/i.test(path)) return 'css';
+          if (/\.(png|jpe?g|webp|avif|gif|svg)$/i.test(path)) return 'img';
+          if (/\.(woff2?|ttf|otf|eot)$/i.test(path)) return 'font';
+        }
+        return 'other';
       };
+      const resourceBytes = { js: 0, css: 0, img: 0, font: 0, other: 0 };
+      for (const r of res) resourceBytes[resourceKind(r)] += Math.max(r.transfer, r.encoded);
       const renderBlocking = [...document.querySelectorAll('head link[rel="stylesheet"]')].length
         + [...document.querySelectorAll('head script[src]')].filter(s => !s.async && !s.defer).length;
       const robotsTags = [...document.querySelectorAll('meta[name]')]
@@ -330,11 +346,12 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         jsPagination,
         resources: {
           requests: res.length,
-          transferBytes: res.reduce((a, r) => a + Math.max(r.transfer, r.encoded), 0),
-          jsBytes: sum(r => r.initiator === 'script' || /\.m?js($|\?)/.test(r.name)),
-          cssBytes: sum(isStylesheet),
-          imgBytes: sum(r => r.initiator === 'img' || /\.(png|jpe?g|webp|avif|gif|svg)($|\?)/.test(r.name)),
-          fontBytes: sum(r => /\.(woff2?|ttf|otf|eot)($|\?)/.test(r.name)),
+          transferBytes: Object.values(resourceBytes).reduce((a, n) => a + n, 0),
+          jsBytes: resourceBytes.js,
+          cssBytes: resourceBytes.css,
+          imgBytes: resourceBytes.img,
+          fontBytes: resourceBytes.font,
+          otherBytes: resourceBytes.other,
           renderBlocking,
         },
         vitals: { ...(window.__heimdallVitals || { lcp: null, cls: 0, fcp: null }), domContentLoaded: nav?.domContentLoadedEventEnd ?? null, load: nav?.loadEventEnd ?? null },
@@ -378,7 +395,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       lang: '', viewport: '', h1: [], headings: [], headingLevels: [], headingSkips: 0, wordCount: 0, textRatio: 0, htmlCodeUnits: 0, htmlBytes: 0, textHash: '', textSample: '',
       imgTotal: 0, imgMissingAlt: 0, imgEmptyAlt: 0, imgBroken: 0, imgLegacy: 0, imgLazy: 0,
       links: { total: 0, internal: 0, external: 0, emptyAnchor: 0, hashOnly: 0, nofollowExternal: 0 }, internalHrefs: [], externalSample: [],
-      jsonld: [], microdataCount: 0, og: {}, twitter: {}, hreflang: [], jsPagination: [], raw: null, resources: { requests: 0, transferBytes: 0, jsBytes: 0, cssBytes: 0, imgBytes: 0, fontBytes: 0, renderBlocking: 0 },
+      jsonld: [], microdataCount: 0, og: {}, twitter: {}, hreflang: [], jsPagination: [], raw: null, resources: { requests: 0, transferBytes: 0, jsBytes: 0, cssBytes: 0, imgBytes: 0, fontBytes: 0, otherBytes: 0, renderBlocking: 0 },
       vitals: { lcp: null, cls: 0, fcp: null }, security: { https: url.startsWith('https://'), mixedContent: [], headers: {} },
     };
   } finally {
