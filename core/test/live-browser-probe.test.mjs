@@ -26,7 +26,7 @@ test('browser probe executes local JS and reports uncovered pages', { timeout: 3
     writeFileSync(join(dir, 'site', 'live', 'api', 'data'), 'ok');
     writeFileSync(join(dir, 'heimdall-live.json'), JSON.stringify({ host: 'fixture.test', origin: 'https://fixture.test', root: 'mirror', offline: true }));
     writeFileSync(join(dir, 'har.json'), JSON.stringify({ entries: [] }));
-    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
+    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
 
     const report = await probeOfflineBrowserBundle(dir, ['/good/', '/unvisited/'], { maxPages: 1, settleMs: 150 });
     assert.equal(report.checked, 1);
@@ -86,7 +86,7 @@ test('browser probe checks every declared page beyond the former 100-page limit'
       host: 'fixture.test', origin: 'https://fixture.test', root: 'mirror', offline: true,
     }));
     writeFileSync(join(dir, 'har.json'), JSON.stringify({ entries: [] }));
-    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
+    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
 
     const report = await probeOfflineBrowserBundle(dir, routes, { settleMs: 0 });
     assert.equal(report.totalPages, 102);
@@ -117,7 +117,7 @@ test('browser probe observes requests scheduled two seconds after the former 500
       host: 'fixture.test', origin: 'https://fixture.test', root: 'mirror', offline: true,
     }));
     writeFileSync(join(dir, 'har.json'), JSON.stringify({ entries: [] }));
-    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
+    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
 
     const report = await probeOfflineBrowserBundle(dir, ['/']);
     assert.equal(report.failed, 1, JSON.stringify(report));
@@ -202,7 +202,7 @@ test('parallel browser probe keeps bounded failure evidence in declared page ord
       host: 'fixture.test', origin: 'https://fixture.test', root: 'mirror', offline: true,
     }));
     writeFileSync(join(dir, 'har.json'), JSON.stringify({ entries: [] }));
-    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
+    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
 
     const report = await probeOfflineBrowserBundle(dir, ['/first/', '/second/'], {
       settleMs: 800, maxObservationMs: 2_000, maxFailures: 1,

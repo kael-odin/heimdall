@@ -6,7 +6,7 @@
  *   node src/live/export.mjs <host> [--out <dir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>]
  *
  * 产物（默认 DATA_ROOT/deliverable/<host>-live-<date>/）:
- *   serve.mjs / har.mjs / live-path.mjs   零依赖 Node 服务器
+ *   serve.mjs / har.mjs / live-path.mjs / clone-asset-cors.mjs   零依赖 Node 服务器
  *   heimdall-live.json         配置（host/origin/port/offline/replayApi）
  *   har.json                   清洗后的 HAR（本地资源与 API 回放）
  *   site/live/**               build_live 的交互镜像页面
@@ -507,6 +507,7 @@ const liveSrc = fileURLToPath(new URL('.', import.meta.url));
 copyFileSync(join(liveSrc, 'serve.mjs'), join(OUT, 'serve.mjs'));
 copyFileSync(join(liveSrc, 'har.mjs'), join(OUT, 'har.mjs'));
 copyFileSync(join(liveSrc, 'live-path.mjs'), join(OUT, 'live-path.mjs'));
+copyFileSync(join(liveSrc, 'clone-asset-cors.mjs'), join(OUT, 'clone-asset-cors.mjs'));
 if (INCLUDE_ADAPTER) {
   const source = join(BASE, 'runtime-adapter');
   const target = join(OUT, 'runtime-adapter');
@@ -1159,7 +1160,7 @@ carbonAdsRemoval         --remove-carbonads 时删除候选包中已识别的 Ca
 youtubePlaceholder       --replace-youtube 时把候选包中已识别的 YouTube iframe 换成本地占位；这是显式降级，不表示视频内容可离线播放
 externalRedirectPolicy   --allow-unsupported-external-redirects 时显式接受已探测出的跨域跳转缺口；报告保留 accepted 数，不静默抓取目标站
 strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器有界加载探测）
-coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；verifiedV2 只数本次导出时克隆内容、验证器、测量结果与差异图均匹配的页面。旧验证记录或导出净化改写内容会记为未验证；此计数不等于 live 页面视觉或交互验收，也不会单独阻断 strict。缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
+coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；verifiedV2 只数本次导出时克隆内容、验证器、测量结果与差异图均匹配的页面。旧验证记录或导出净化改写内容会记为未验证；此计数不等于最终服务器的静态页、live 页面或交互验收，也不会单独阻断 strict。缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
 browserProbe             逐页断外网首载结果；observation 写明最短窗口、安静期、总上限和逐页实测时间。上限前未安静会阻断发布；窗口外触发的请求及未声明操作仍未验证
 operationPlan            操作脚本声明数；missing 表示没有交互验收，脚本本身不进入交付包
 operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
@@ -1192,6 +1193,7 @@ ${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实�
 - 资产与克隆页按独立副本复制，构建通过后才替换目标目录；上一个版本保留为 \`.backup-*\`。
 - HAR 默认只保留静态资源；API/HTML 正文不进入分发包。排除统计见 \`har-privacy.json\`。
 - 原始 \`recon/atlas.json\` 不进入分发包；已发现页面的覆盖摘要见 \`health.json\`。
+- 静态克隆目录内的字体、图片和 CSS 允许跨来源读取，以便隔离页面显示；不要把私密内容放进这些素材。HTML、脚本、JSON 和克隆目录外的文件不因此开放跨来源读取。指向其他位置的符号链接不获得此许可，但普通请求仍可能读取其目标；并发替换和硬链接未作安全保证。
 - 如确需公开只读 GET 数据回放，先在工作区配置 \`read-data-plan.json\`，再用 \`--include-readonly-data --offline --strict\` 精确许可；同时加 \`--compare-source\` 与已审核的操作计划，可受控采集点击后出现的响应。冲突、缺失与被拒响应会阻断发布，数据分发范围仍需人工审核。
 - 宽泛的 \`--include-api-har\` 不允许与 \`--strict\` 同用，也不能让 POST 等写入型业务离线运行。
 - 保存过登录会话的站点默认拒绝导出；受控环境里须显式加 \`--allow-private-export\`，且原始 \`session.json\` 仍不会复制进包。

@@ -33,7 +33,7 @@ function fixture() {
   mkdirSync(join(bundle, 'runtime-adapter'), { recursive: true });
   mkdirSync(join(bundle, 'site', 'live', 'api'), { recursive: true });
   mkdirSync(state);
-  for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'adapter-runtime.mjs']) {
+  for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs', 'adapter-runtime.mjs']) {
     copyFileSync(join(SOURCE, name), join(bundle, name));
   }
   writeFileSync(join(bundle, 'heimdall-live.json'), JSON.stringify({

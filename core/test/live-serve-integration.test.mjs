@@ -74,6 +74,7 @@ test('independent live bundle completes cookie login, redirect and POST/API roun
   copyFileSync(join(SOURCE, 'serve.mjs'), join(dir, 'serve.mjs'));
   copyFileSync(join(SOURCE, 'har.mjs'), join(dir, 'har.mjs'));
   copyFileSync(join(SOURCE, 'live-path.mjs'), join(dir, 'live-path.mjs'));
+  copyFileSync(join(SOURCE, 'clone-asset-cors.mjs'), join(dir, 'clone-asset-cors.mjs'));
   const child = spawn(process.execPath, [join(dir, 'serve.mjs')], { stdio: 'ignore' });
   let browser;
   try {
@@ -165,7 +166,7 @@ test('root mirror keeps relative navigation on the original pathname', { timeout
   writeFileSync(join(dir, 'site', 'live', 'saved', 'index.html'), '<html><head><base href="/lm/fixture.test/saved/"></head><body><a href="next">Saved next</a></body></html>');
   writeFileSync(join(dir, 'heimdall-live.json'), JSON.stringify({ host: 'fixture.test', origin: `http://127.0.0.1:${upstream.address().port}`, port: livePort, bind: '127.0.0.1', root: 'mirror' }));
   writeFileSync(join(dir, 'har.json'), JSON.stringify({ entries: [] }));
-  for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
+  for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
   const child = spawn(process.execPath, [join(dir, 'serve.mjs')], { stdio: 'ignore' });
   let browser;
   try {

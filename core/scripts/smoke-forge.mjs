@@ -253,7 +253,7 @@ async function main() {
       encoding: 'utf8',
     });
     assert.equal(exp.status, 0, 'live export failed: ' + String(exp.stderr || exp.stdout).slice(-500));
-    for (const name of ['serve.mjs', 'har.mjs', 'har.json', 'heimdall-live.json', 'landing.html', 'health.json', 'Dockerfile', 'docker-compose.yml', 'checksums.json']) {
+    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs', 'har.json', 'heimdall-live.json', 'landing.html', 'health.json', 'Dockerfile', 'docker-compose.yml', 'checksums.json']) {
       assert.ok(existsSync(join(bundleDir, name)), 'bundle must contain ' + name);
     }
     const healthJson = JSON.parse(readFileSync(join(bundleDir, 'health.json'), 'utf8'));

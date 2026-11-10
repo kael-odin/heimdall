@@ -89,7 +89,7 @@ test('offline server resolves localized query assets to hashed bodies', async ()
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-runtime-query-serve-'));
   let child;
   try {
-    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs']) {
+    for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs']) {
       copyFileSync(join('src/live', name), join(dir, name));
     }
     const sourceUrl = 'https://api.iconify.design/lucide.json?icons=languages%2Csearch%2Cx';

@@ -22,7 +22,7 @@ import { comparePngBuffers } from '../verify/compare.mjs';
 import { makeArgs } from '../args.mjs';
 import { freezeCss } from '../freeze.mjs';
 import { isSafePageName } from '../page-name.mjs';
-import { isCloneRenderingAsset } from '../clone-asset-cors.mjs';
+import { isCloneRenderingAsset } from '../live/clone-asset-cors.mjs';
 
 const argv = process.argv.slice(2);
 const { argOf } = makeArgs(argv);

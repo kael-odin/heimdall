@@ -123,7 +123,7 @@ test('standalone offline bundle replays approved GET data exactly, without an up
   writeFileSync(join(dir, 'heimdall-live.json'), JSON.stringify({
     host: 'origin.test', origin: ORIGIN, port, bind: '127.0.0.1', offline: true, root: 'mirror',
   }));
-  for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
+  for (const name of ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs']) copyFileSync(join(SOURCE, name), join(dir, name));
   const child = spawn(process.execPath, [join(dir, 'serve.mjs')], { cwd: dir, stdio: 'ignore' });
   const base = `http://127.0.0.1:${port}`;
   try {

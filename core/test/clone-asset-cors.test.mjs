@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isCloneRenderingAsset } from '../src/clone-asset-cors.mjs';
+import { isCloneRenderingAsset } from '../src/live/clone-asset-cors.mjs';
 
 test('clone asset CORS policy covers rendering assets inside clone directories only', () => {
   for (const [path, mime] of [

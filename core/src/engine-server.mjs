@@ -38,7 +38,7 @@ import { llmSettings, normalizePatch, writeEnvKeys } from './settings.mjs';
 import { createWatchdog } from './task-watchdog.mjs';
 import { writeProxyHead, mirrorHostOf } from './proxy-headers.mjs';
 import { PX_PROXY_LIMITS, fetchPxUpstream, pxResponseHeaders, readPxResponseBody } from './px-proxy.mjs';
-import { isCloneRenderingAsset } from './clone-asset-cors.mjs';
+import { isCloneRenderingAsset } from './live/clone-asset-cors.mjs';
 import { unmirroredBanner } from './live/live-html.mjs';
 import { liveSnapshotCandidates } from './live/live-path.mjs';
 import { rewriteSnapshotMount } from './live/site-routing.mjs';

@@ -17,11 +17,12 @@
  */
 import { createServer } from 'node:http';
 import { createHash, randomBytes } from 'node:crypto';
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, realpathSync, statSync } from 'node:fs';
 import { join, dirname, extname, normalize, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { indexHar, isReplayableReadOnlyDataEntry, matchHar } from './har.mjs';
 import { liveSnapshotCandidates } from './live-path.mjs';
+import { isCloneRenderingAsset } from './clone-asset-cors.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -29,7 +30,7 @@ const argv = process.argv.slice(2);
 /**
  * 参数解析**故意在本文件里自带一份，不从 ../args.mjs 导入**。
  *
- * 这个文件会被 export.mjs 原样拷进交付包，而包里只有 serve.mjs 与 har.mjs ——
+ * 这个文件会被 export.mjs 原样拷进交付包，所有相对依赖也必须一同复制 ——
  * 任何指向包外的 import 都会让部署出去的服务直接起不来
  * （`Cannot find module .../args.mjs`，实测踩到过）。交付包里的文件必须零外部依赖。
  */
@@ -146,19 +147,30 @@ const sendFile = (res, file, extra = {}) => {
   return true;
 };
 function staticDocumentHeaders(req, file, compareView = false) {
-  const type = mimeOf(file).split(';', 1)[0];
-  if (type === 'text/html') return { 'Content-Security-Policy': compareView
+  const mime = mimeOf(file);
+  const type = mime.split(';', 1)[0];
+  const path = relative(STATIC, file);
+  let cloneAssetCors = false;
+  if (isCloneRenderingAsset(path, mime)) {
+    // shortcut: concurrent replacement can bypass this check; use descriptor-relative reads for untrusted writers.
+    try {
+      const real = relative(realpathSync(STATIC), realpathSync(file));
+      cloneAssetCors = process.platform === 'win32' ? real.toLowerCase() === path.toLowerCase() : real === path;
+    } catch { /* An unresolved asset cannot gain cross-origin access. */ }
+  }
+  const headers = cloneAssetCors ? { 'Access-Control-Allow-Origin': '*' } : {};
+  if (type === 'text/html') return { ...headers, 'Content-Security-Policy': compareView
     ? "script-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'"
     : 'sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation' };
   if (type === 'image/svg+xml' || type === 'application/xml' || type === 'application/xhtml+xml') {
-    const headers = { 'Content-Security-Policy': 'sandbox' };
+    headers['Content-Security-Policy'] = 'sandbox';
     const dest = req.headers['sec-fetch-dest'];
     if (dest === 'document' || (!dest && String(req.headers.accept ?? '').includes('text/html'))) {
       headers['Content-Disposition'] = 'attachment';
     }
     return headers;
   }
-  return {};
+  return headers;
 }
 function sendCompare(req, res, file) {
   const nonce = randomBytes(16).toString('base64');

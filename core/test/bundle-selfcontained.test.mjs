@@ -1,7 +1,7 @@
 /**
  * 交付包里的脚本必须自包含
  *
- * `live/serve.mjs`、`live/har.mjs` 与 `live/live-path.mjs` 会被 export.mjs **原样拷进交付包**，部署到别人的机器上运行。
+ * `live/serve.mjs` 与它的同目录依赖会被 export.mjs **原样拷进交付包**，部署到别人的机器上运行。
  * 包里只有这些脚本 —— 任何指向上级目录（或包外任何位置）的 import 都会让
  * 部署出去的服务一启动就 `Cannot find module`。
  *
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const LIVE = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'live');
 /** 会被拷进交付包的脚本（与 live/export.mjs 的 copyFileSync 一致） */
-const BUNDLED = ['serve.mjs', 'har.mjs', 'live-path.mjs'];
+const BUNDLED = ['serve.mjs', 'har.mjs', 'live-path.mjs', 'clone-asset-cors.mjs'];
 
 /** 从源码里抽出所有 import 的说明符（`from '...'` 与裸 `import '...'`） */
 function importsOf(text) {
@@ -34,7 +34,7 @@ test('交付包脚本的 import 只能是 node: 内建或同目录文件', () =>
     for (const spec of importsOf(readFileSync(p, 'utf8'))) {
       if (spec.startsWith('node:')) continue;
       // 同目录相对路径（./x.mjs）可以：export 时一起拷过去
-      if (/^\.\/[^/]+$/.test(spec)) continue;
+      if (/^\.\/[^/]+$/.test(spec) && BUNDLED.includes(spec.slice(2))) continue;
       offenders.push(`${f}: import '${spec}'`);
     }
   }

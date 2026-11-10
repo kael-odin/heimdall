@@ -1,0 +1,14 @@
+{
+  "origin": "null",
+  "fonts": [
+    "HeimdallProbe:loaded"
+  ],
+  "textWidth": 80,
+  "shared": "rgb(1, 2, 3)",
+  "dataReadable": false,
+  "mask": [
+    255,
+    0,
+    0
+  ]
+}
