@@ -43,6 +43,7 @@ import { canonUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
 import { parseAuditArgs } from './cli-args.mjs';
 import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from './method.mjs';
+import { evaluateGeoSite } from './geo.mjs';
 
 const log = (...a) => console.error('[seo]', ...a);
 
@@ -270,6 +271,7 @@ try {
     categories,
     siteIssues: allSiteIssues,
     pages: pagesScored,
+    geo: evaluateGeoSite(site),
   };
 
   // 真实用户指标（可选）：需自备 HEIMDALL_PSI_KEY。没配就如实记下"只有实验室数据"，

@@ -16,6 +16,7 @@ function finishAudit(siteId) {
       grade: report.summary?.baselineEligible === true ? (report.score >= 90 ? 'A' : report.score >= 75 ? 'B' : 'C') : null,
       summary: report.summary,
       categories: report.categories,
+      geo: report.geo ?? null,
       field: report.field ?? null,
       reports: {
         json: `workspace/${siteId}/seo/seo.json`,
@@ -31,7 +32,7 @@ function finishAudit(siteId) {
 export default {
   id: 'seo_audit',
   title: 'SEO：站点审计',
-  description: 'Run Heimdall\'s deterministic 66-rule SEO audit against an authorized HTTP(S) site. The source is read with Chromium; '
+  description: 'Run Heimdall\'s deterministic 66-rule SEO audit plus an evidence-backed GEO readiness heuristic against an authorized HTTP(S) site. The source is read with Chromium; '
     + 'the capability writes local JSON/CSV/HTML reports. Page scripts may send state-changing or third-party requests; existing sessions may be used. '
     + 'It is long-running and returns a jobId; '
     + 'wait with heimdall_jobs, then read the evidence through heimdall://site/<siteId>/seo. This is a current-state audit, not a visual clone.',

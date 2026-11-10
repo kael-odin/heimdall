@@ -5,7 +5,10 @@ import { CATEGORIES, SEVERITY_LABEL, SEVERITY_PENALTY } from './rules.mjs';
 import { esc } from '../html.mjs';
 
 const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-const scoreColor = (n) => n >= 90 ? '#059669' : n >= 75 ? '#b45309' : '#dc2626';
+const scoreColor = (n) => n == null ? '#64748b' : n >= 90 ? '#059669' : n >= 75 ? '#b45309' : '#dc2626';
+const scoreText = (n) => n == null ? '未计算' : String(n);
+const geoConfidenceLabel = { high: '高', medium: '中', low: '低' };
+const geoStatusLabel = { complete: '完整', partial: '部分', unknown: '未知' };
 
 export function renderCsv(report) {
   const rows = [['page', 'score', 'status', 'severity', 'rule', 'category', 'title', 'message', 'evidence', 'suggestion']];
@@ -20,6 +23,7 @@ export function renderCsv(report) {
 
 export function renderHtml(report) {
   const { host, origin, generatedAt, score, pages, siteIssues, summary, categories, config } = report;
+  const geo = report.geo && typeof report.geo === 'object' ? report.geo : null;
   const sitemapLabel = { complete: '已完成声明项和常见地址的受限检查', not_found: '已检查的位置未发现', partial: '采集不完整', unavailable: '采集不可用' }[summary.sitemapCoverage] ?? '采集状态未知';
   const pageRows = pages.map(p => {
     const top = [...(p.issues ?? [])].sort((a, b) => sevOrder[a.severity] - sevOrder[b.severity]).slice(0, 3);
@@ -65,6 +69,30 @@ export function renderHtml(report) {
     </div>`;
   }).join('\n');
 
+  const geoDimensions = Object.entries(geo?.dimensions ?? {}).map(([key, dimension]) => `
+    <div class="geo-dim">
+      <div class="geo-dim-top"><span>${esc(dimension.label ?? key)}</span><b style="color:${scoreColor(dimension.score)}">${esc(scoreText(dimension.score))}</b></div>
+      <div class="bar"><i style="width:${dimension.score == null ? 0 : dimension.score}%;background:${scoreColor(dimension.score)}"></i></div>
+      <div class="cat-sub">${esc(geoStatusLabel[dimension.status] ?? '未知')} · ${dimension.pages ?? 0} 页有观测</div>
+    </div>`).join('\n');
+  const geoRecommendations = (geo?.recommendations ?? []).map(item => `<li>${esc(item)}</li>`).join('') || '<li>当前没有可执行建议。</li>';
+  const geoCaveats = (geo?.caveats ?? []).map(item => `<li>${esc(item)}</li>`).join('');
+  const geoHtml = geo ? `
+  <section class="geo-panel">
+    <div class="geo-head">
+      <div>
+        <h2>GEO 准备度</h2>
+        <p class="meta">${esc(geo.label ?? 'AI 可回答与可引用准备度')} · 方法 v${esc(geo.methodVersion ?? '未记录')} · 证据置信度 ${esc(geoConfidenceLabel[geo.confidence] ?? '未知')} · 覆盖 ${geo.coverage?.pagesScored ?? 0}/${geo.coverage?.pages ?? 0} 页</p>
+      </div>
+      <div class="geo-score"><b style="color:${scoreColor(geo.score)}">${esc(scoreText(geo.score))}</b><span>GEO ${esc(geo.grade ?? '未定级')}</span></div>
+    </div>
+    <div class="geo-dims">${geoDimensions || '<div class="meta">没有足够页面证据生成维度分数。</div>'}</div>
+    <div class="geo-columns">
+      <div><b>优先建议</b><ul>${geoRecommendations}</ul></div>
+      <div><b>边界说明</b><ul>${geoCaveats}</ul></div>
+    </div>
+  </section>` : '';
+
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -95,6 +123,19 @@ h1 { margin:4px 0 0; font-size:30px; }
 .bar { height:6px; background:#eef2f7; border-radius:4px; margin:10px 0 6px; overflow:hidden; }
 .bar i { display:block; height:100%; border-radius:4px; }
 .cat-sub { font-size:12px; color:var(--muted); }
+  .geo-panel { background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin:28px 0 34px; }
+  .geo-head { display:flex; align-items:center; gap:18px; justify-content:space-between; }
+  .geo-head h2 { margin:0 0 4px; }
+  .geo-score { min-width:92px; text-align:center; border-left:1px solid var(--line); padding-left:18px; }
+  .geo-score b { display:block; font-size:30px; line-height:1.1; }
+  .geo-score span { color:var(--muted); font-size:11px; }
+  .geo-dims { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin:18px 0; }
+  .geo-dim { border-top:1px solid var(--line); padding-top:10px; }
+  .geo-dim-top { display:flex; justify-content:space-between; font-size:13px; }
+  .geo-columns { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px; color:var(--muted); font-size:12px; }
+  .geo-columns b { color:var(--ink); }
+  .geo-columns ul { margin:8px 0 0; padding-left:18px; }
+  .geo-columns li { margin:4px 0; }
 h2 { margin:36px 0 12px; font-size:20px; }
 table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
 th, td { text-align:left; padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top; font-size:13px; }
@@ -152,6 +193,8 @@ footer { margin-top:44px; color:var(--muted); font-size:12px; }
 
   <h2>分类得分</h2>
   <div class="cats">${catRows}</div>
+
+  ${geoHtml}
 
   <h2>站点级问题</h2>
   ${siteIssueHtml}

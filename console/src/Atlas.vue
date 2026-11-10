@@ -992,7 +992,7 @@ function loadAuditReport(h) {
       baselineMethodMismatch: j.summary?.baselineMethodMismatch,
       legacyBaseline: j.summary?.legacyBaseline,
       scoreMethodVersion: j.scoreMethodVersion ?? null,
-      generatedAt: j.generatedAt, field: j.field ?? null,
+      generatedAt: j.generatedAt, field: j.field ?? null, geo: j.geo ?? null,
     };
   });
 }
@@ -1882,7 +1882,7 @@ function runAudit() {
           task.auditScore = ev.score; task.done = true; task.endedAt = Date.now(); task.stopping = false;
           loadHistory(host.value);                          // 审计刚落一条，走势图跟上
           loadAuditReport(host.value);                      // 报告卡切到最新一份（含真实用户指标）
-          auditReport.value = { host: host.value, score: ev.score, pages: ev.pages, issues: ev.issues, baselineEligible: ev.baselineEligible, baselineMethodMismatch: ev.baselineMethodMismatch, legacyBaseline: ev.legacyBaseline, scoreMethodVersion: ev.scoreMethodVersion };
+          auditReport.value = { host: host.value, score: ev.score, pages: ev.pages, issues: ev.issues, baselineEligible: ev.baselineEligible, baselineMethodMismatch: ev.baselineMethodMismatch, legacyBaseline: ev.legacyBaseline, scoreMethodVersion: ev.scoreMethodVersion, geo: null };
           statusText.value = ev.baselineEligible === false ? 'SEO 审计采集不完整，分数仅供参考'
             : ev.baselineMethodMismatch ? 'SEO 审计完成，基线口径不兼容，未对比' : `SEO 审计完成 · ${ev.score} 分`;
           stream.stop(); setTimeout(() => { statusText.value = ''; }, 4000);
@@ -2323,8 +2323,9 @@ onBeforeUnmount(() => {
     </div>
     <div class="report-card surface">
       <h3>SEO 审计报告</h3>
-      <p v-if="auditReport">{{ auditReport.score }} 分 · {{ auditReport.pages }} 页 · {{ auditReport.issues }} 条问题 · 评分口径 {{ auditReport.scoreMethodVersion ?? '未记录' }}</p>
+      <p v-if="auditReport">{{ auditReport.score }} 分<span v-if="auditReport.geo"> · GEO {{ auditReport.geo.score ?? '未计算' }} 分</span> · {{ auditReport.pages }} 页 · {{ auditReport.issues }} 条问题 · 评分口径 {{ auditReport.scoreMethodVersion ?? '未记录' }}</p>
       <p v-else>尚未运行（66 条规则 / 六分类评分）</p>
+      <p class="trend-hint" v-if="auditReport?.geo">GEO 是基于已采集证据的 AI 可回答/可抽取准备度启发式，不是搜索排名或模型引用保证；证据覆盖 {{ auditReport.geo.coverage?.pagesScored ?? 0 }}/{{ auditReport.geo.coverage?.pages ?? 0 }} 页。</p>
       <p class="trend-hint" v-if="auditReport && auditReport.baselineEligible === false">采集不完整，分数仅供参考。</p>
       <p class="trend-hint" v-if="auditReport?.baselineMethodMismatch">旧基线评分或测量口径不兼容，本次未进行基线对比；原文件仍保留。</p>
       <p class="trend-hint" v-else-if="auditReport?.legacyBaseline">旧基线未记录采集完整性，本次未进行基线对比。</p>

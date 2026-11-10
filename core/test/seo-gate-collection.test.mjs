@@ -6,7 +6,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from '../src/seo/method.mjs';
+import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION, GEO_METHOD_VERSION } from '../src/seo/method.mjs';
 
 const AUDIT = fileURLToPath(new URL('../src/seo/audit.mjs', import.meta.url));
 
@@ -41,13 +41,20 @@ test('seo audit: optional robots and sitemap observations do not lower the site 
     const directory = join(dataDir, 'workspace', '127.0.0.1', 'seo');
     const report = JSON.parse(readFileSync(join(directory, 'seo.json'), 'utf8'));
     assert.equal(report.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
+    assert.equal(report.geo.methodVersion, GEO_METHOD_VERSION);
+    assert.equal(typeof report.geo.score, 'number');
+    assert.equal(typeof report.geo.dimensions.answerability.score, 'number');
     assert.equal(report.summary.sitemapCoverage, 'not_found');
     assert.equal(report.summary.baselineEligible, true);
     assert.deepEqual(report.siteIssues.map(issue => [issue.id, issue.severity]), [
       ['index-robots-missing', 'info'], ['index-sitemap-missing', 'info'],
     ]);
     assert.equal(report.score, report.pages[0].score);
-    assert.match(readFileSync(join(directory, 'seo.html'), 'utf8'), /待核查提示，不单独扣分/);
+    const html = readFileSync(join(directory, 'seo.html'), 'utf8');
+    assert.match(html, /待核查提示，不单独扣分/);
+    assert.match(html, /GEO 准备度/);
+    assert.match(html, /AI 可回答与可引用准备度/);
+    assert.match(html, /不是搜索排名或模型引用概率预测/);
     const saved = JSON.parse(readFileSync(baseline, 'utf8'));
     assert.equal(saved.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
     assert.equal(saved.siteIssues['index-robots-missing'], 'info');

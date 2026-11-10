@@ -105,6 +105,7 @@ function writeFixture(dataRoot) {
     { at: '2026-11-03T00:00:00Z', kind: 'audit', score: 92, scoreMethodVersion: 2, pages: 2 },
   ]));
   put('seo/seo.json', JSON.stringify({ host: 'fixture.test', score: 92, scoreMethodVersion: 2, pages: [],
+    geo: { methodVersion: 1, score: 78, grade: 'B', confidence: 'medium', coverage: { pages: 2, pagesScored: 2 } },
     summary: { pages: 2, issues: 1, baselineEligible: false, baselineMethodMismatch: true } }));
   put('pages/home/asset-map.json', JSON.stringify({ imgMap: { 'https://cdns.fixture.test/logo.png': 'assets/image000.png' } }));
   put('recon/atlas.json', JSON.stringify({
@@ -382,6 +383,7 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
     await seoCard.getByText(/旧基线评分或测量口径不兼容/).waitFor({ timeout: 10_000 });
     assert.match(await seoCard.innerText(), /采集不完整，分数仅供参考/);
     assert.match(await seoCard.innerText(), /评分口径 2/);
+    assert.match(await seoCard.innerText(), /GEO 78 分/);
     const card = page.locator('.report-card', { hasText: '改站起点' });
     await card.waitFor({ timeout: 10_000 });
     assert.match(await card.innerText(), /个资源/, '改站起点卡片应显示清单统计');
