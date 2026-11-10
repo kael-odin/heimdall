@@ -367,7 +367,8 @@ function onTablistKey(e) {
         <tbody>
         <tr><td>差异形态</td><td>每次克隆自动算（像素定谳阶段）</td></tr>
         <tr><td>AI 校准曲线</td><td>每次克隆自动（校准阶段，无静态差异时自动豁免）</td></tr>
-        <tr><td>多视口视觉 / 交互回放</td><td><b>按需</b>跑到才跑 —— 点下面的「运行本页体检」或星图的「全站体检」</td></tr>
+        <tr><td>多视口视觉</td><td><b>按需</b>运行本页体检或全站体检</td></tr>
+        <tr><td>交互回放</td><td>控制台体检不自动运行；命令行显式开启会点击原站</td></tr>
         <tr><td>资产缺口</td><td><b>按需</b> —— 报告 → 资产缺口 → 运行扫描</td></tr>
         <tr><td>交互镜像离线资源</td><td><b>按需</b> —— 导出交互镜像时加 <code>--heal --strict</code></td></tr>
         <tr><td>动效驱动画像</td><td>每次克隆自动（捕获阶段，滚动扫掠之后采样）</td></tr>
@@ -418,12 +419,12 @@ function onTablistKey(e) {
         </div>
       </div>
       <div class="ov-sec">
-        <div class="panel-sec-name">交互回放（功能保真）</div>
+        <div class="panel-sec-name">交互回放（可观察状态）</div>
         <div v-if="verifiedQuality?.functional" class="q-list">
-          <div class="q-row"><span class="q-k">通过</span><span class="q-v" :class="verifiedQuality.functional.passed === verifiedQuality.functional.total ? 'ok' : 'bad'">{{ verifiedQuality.functional.passed }}/{{ verifiedQuality.functional.total }}</span></div>
+          <div class="q-row"><span class="q-k">状态相符</span><span class="q-v" :class="verifiedQuality.functional.passed === verifiedQuality.functional.total ? 'ok' : 'bad'">{{ verifiedQuality.functional.passed }}/{{ verifiedQuality.functional.total }}</span></div>
           <div class="q-row" v-for="(ix, i) in (verifiedQuality.interactions || [])" :key="i">
             <span class="q-k">{{ ix.label || ('交互 ' + (i + 1)) }}</span>
-            <span class="q-v" :class="ix.pass ? 'ok' : 'bad'">{{ ix.pass ? '通过' : '失败' }}<i v-if="ix.visualScore != null"> · 像素 {{ (ix.visualScore * 100).toFixed(1) }}%</i></span>
+            <span class="q-v" :class="ix.pass ? 'ok' : 'bad'">{{ ix.pass ? '状态相符' : '状态不符' }}<i v-if="ix.visualScore != null"> · 像素 {{ (ix.visualScore * 100).toFixed(1) }}%</i></span>
           </div>
         </div>
         <div v-else-if="verifiedQuality?.interactions?.some(ix => ix.unverified)" class="seo-note">交互回放未核实，请查看本地验证记录中的错误。</div>

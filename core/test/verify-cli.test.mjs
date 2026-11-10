@@ -23,6 +23,54 @@ function runVerify(dataDir, args, env = {}, timeout = 20_000) {
   });
 }
 
+test('single-page verification only clicks the source when explicitly enabled', { timeout: 120_000 }, async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-verify-click-'));
+  const page = join(dataDir, 'workspace', 'x.test', 'pages', 'p1');
+  const html = `<!doctype html><html><body><form><button type="submit">Wait</button></form><script>
+    document.querySelector('form').addEventListener('submit', event => {
+      event.preventDefault();
+      document.querySelector('button').textContent = 'Done';
+      fetch('/submit', { method: 'POST' }).catch(() => {});
+    });
+  </script></body></html>`;
+  let posts = 0;
+  const server = createServer((req, res) => {
+    if (req.method === 'POST' && req.url === '/submit') {
+      posts++;
+      res.writeHead(204).end();
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(html);
+  });
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), html);
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `http://127.0.0.1:${server.address().port}/` }));
+    const args = ['x.test', 'p1', '--viewports', '100x100'];
+    const resultFile = join(dataDir, 'workspace', 'x.test', 'verify', 'p1', 'verify.json');
+    const initial = await runVerify(dataDir, args, { HEIMDALL_TOKEN: '' }, 40_000);
+    assert.equal(initial.code, 0, initial.output);
+    assert.equal(posts, 0);
+    assert.deepEqual(JSON.parse(readFileSync(resultFile, 'utf8')).interactions, []);
+
+    const enabled = await runVerify(dataDir, [...args, '--interactions'], { HEIMDALL_TOKEN: '' }, 40_000);
+    assert.equal(enabled.code, 0, enabled.output);
+    assert.equal(posts, 1);
+    assert.equal(JSON.parse(readFileSync(resultFile, 'utf8')).interactions.length, 1);
+
+    const disabled = await runVerify(dataDir, [...args, '--interactions', '--no-interactions'], { HEIMDALL_TOKEN: '' }, 40_000);
+    assert.equal(disabled.code, 0, disabled.output);
+    assert.equal(posts, 1, '--no-interactions must still override the opt-in');
+    assert.deepEqual(JSON.parse(readFileSync(resultFile, 'utf8')).interactions, []);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('verify --all considers all 11 pages and fails the gate for missing clones', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-verify-'));
   const base = join(dataDir, 'workspace', 'x.test');

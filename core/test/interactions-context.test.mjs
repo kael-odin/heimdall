@@ -31,18 +31,25 @@ test('interaction discovery and replay reuse source session; clone replay sends 
 
   const contexts = [];
   const initScripts = [];
-  const state = { ariaExpanded: 'true', textLength: 40, visibleCount: 10 };
-  const page = () => ({
-    goto: async () => {},
-    waitForLoadState: async () => {},
-    waitForTimeout: async () => {},
-    addStyleTag: async () => {},
-    evaluate: async fn => fn === discoverFn
-      ? [{ selector: 'body > button:nth-of-type(1)', label: 'Open menu' }]
-      : state,
-    locator: () => ({ first: () => ({ click: async () => {} }) }),
-    screenshot: async () => null,
-  });
+  const page = () => {
+    let clicked = false;
+    return {
+      goto: async () => {},
+      waitForLoadState: async () => {},
+      waitForTimeout: async () => {},
+      addStyleTag: async () => {},
+      evaluate: async fn => fn === discoverFn
+        ? [{ selector: 'body > button:nth-of-type(1)', label: 'Open menu', tag: 'button' }]
+        : { element: { tag: 'button', label: 'Open menu' }, state: {
+          ariaExpanded: String(clicked), textHash: clicked ? 'after' : 'before', textLength: 40,
+          textTruncated: false, scrollHeight: 900, visibleCount: 10,
+        } },
+      url: () => 'https://fixture.test/',
+      on: () => {},
+      locator: () => ({ first: () => ({ click: async () => { clicked = true; } }) }),
+      screenshot: async () => null,
+    };
+  };
   const browser = {
     newContext: async options => {
       contexts.push(options);

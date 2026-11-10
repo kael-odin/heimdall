@@ -132,7 +132,7 @@ test('real verification and export stop counting a clone after its stylesheet ch
     const single = await run(fileURLToPath(new URL('../src/verify/verify.mjs', import.meta.url)),
       [HOST, 'home', '--viewports', '100x100'], dataDir);
     assert.equal(single.code, 0, single.output);
-    assert.equal(JSON.parse(readFileSync(resultFile, 'utf8')).measurementProof.options.interactions, true);
+    assert.equal(JSON.parse(readFileSync(resultFile, 'utf8')).measurementProof.options.interactions, false);
     assert.equal(buildCoverageLedger({ baseDir: base, bundleDir: secondOut, host: HOST, origin, pageNames: ['home'] }).verifiedV2, 1,
       'single-page verification can establish new proof');
 

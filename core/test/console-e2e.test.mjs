@@ -319,6 +319,7 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
     assert.match(await page.locator('#panel-quality').innerText(), /覆盖 90\.0%.*原图 375×1000 \/ 镜像 375×900/);
     assert.match(await page.locator('#panel-quality').innerText(), /90\.0% B/,
       'detail must use the checked snapshot, not a separately modified raw result');
+    assert.match(await page.locator('#panel-quality').innerText(), /控制台体检不自动运行；命令行显式开启会点击原站/);
     writeFileSync(verifyPath, verifiedFile);
 
     // ④b 「克隆」tab 的校准结论必须真的渲染出来 —— 不能只断言"没抛异常"。

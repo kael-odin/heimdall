@@ -8,6 +8,7 @@
  *   node src/verify/verify.mjs <host> <page> --page-dir <absolute>
  *   可选: --viewports 375x812,768x1024,1440x900  --threshold 85
  *         --keep-screenshots  保留源站与克隆的全页截图，供取证复核
+ *         --interactions  显式允许点击原站和克隆页，可能产生业务副作用
  *
  * 产物: workspace/<host>/verify/<page>/
  *   verify.json         每个视口的 score/grade/heightDelta + 综合分
@@ -60,8 +61,8 @@ const VIEWPORTS = typeof viewportArg === 'string' ? viewportArg
   : [];
 const thrIdx = argv.indexOf('--threshold');
 const THRESHOLD = thrIdx > -1 ? Number(argv[thrIdx + 1]) : 0;
-// 交互回放（功能保真）：单页默认开启；--all 需显式 --interactions；--no-interactions 关闭
-const RUN_IX = !argv.includes('--no-interactions') && (!all || argv.includes('--interactions'));
+// 回放会点击原站，必须显式开启；旧的 --no-interactions 保留为关闭开关。
+const RUN_IX = argv.includes('--interactions') && !argv.includes('--no-interactions');
 const KEEP_SCREENSHOTS = argv.includes('--keep-screenshots');
 // 断点续跑：只有 --all 有意义（单页本来就是一次到底），见 cachedMeasurement
 const RESUME = argv.includes('--resume');
@@ -72,7 +73,7 @@ const jobsIdx = argv.indexOf('--jobs');
 const JOBS = jobsIdx > -1 ? Number(argv[jobsIdx + 1]) : 1;
 
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host) || (!pageArg && !all)) {
-  console.error('usage: node src/verify/verify.mjs <host> <page>|--all [--max N] [--resume] [--jobs N] [--allow-bounded] [--page-dir ABSOLUTE] [--viewports 375x812,768x1024,1440x900] [--threshold 85] [--keep-screenshots]');
+  console.error('usage: node src/verify/verify.mjs <host> <page>|--all [--max N] [--resume] [--jobs N] [--allow-bounded] [--page-dir ABSOLUTE] [--viewports 375x812,768x1024,1440x900] [--threshold 85] [--keep-screenshots] [--interactions]');
   process.exit(2);
 }
 if (RESUME && !all) {
@@ -488,7 +489,7 @@ async function verifyOne(name, index = 0, total = 1) {
             ? `${viewports[0]?.name ?? 'viewport'}: 版面已定住但请求未结束${confidenceReasons.length ? ' — ' + confidenceReasons.join('；') : ''}（加 --allow-bounded 可按有界置信度计入）`
             : 'viewport measurement incomplete');
 
-    // 功能保真：交互回放（按钮/折叠/标签页），状态签名 + 视口像素
+    // 交互回放比较可观察状态；视口像素仅供辅助查看。
     let interactions = [];
     if (RUN_IX) {
       try {
