@@ -24,6 +24,7 @@ import { invoke } from '../src/agent/registry/invoke.mjs';
 import { fingerprintOf } from '../src/qa/findings.mjs';
 import { newQaPage, qaBrowserLaunchOptions, routeQaRequest } from '../src/qa/http-policy.mjs';
 import { normalizeCheck } from '../src/qa/probe.mjs';
+import { matchBenchmarkFinding } from '../scripts/benchmark-qa.mjs';
 
 const PAGES = {
   '/': `<!doctype html><meta charset="utf-8"><title>首页</title>
@@ -521,6 +522,9 @@ test('qa detectors: form name findings match Chromium for invalid and valid labe
     const targets = new Set(run.findings.filter(f => f.detector === 'a11y-form-label').map(f => f.target));
     for (const id of unnamed) assert.ok(targets.has(`#${id}`), `unnamed field must be found: ${id}`);
     for (const id of named.filter(id => id !== 'file-default')) assert.ok(!targets.has(`#${id}`), `named field must not be reported: ${id}`);
+    const healthyTarget = { detector: 'a11y-form-label', kind: 'a11y', target: '#named-label' };
+    assert.ok(run.findings.some(f => f.detector === healthyTarget.detector), 'the former detector-only match would count a hit');
+    assert.equal(matchBenchmarkFinding(healthyTarget, run.findings), undefined, 'a finding on another field must not count as a hit');
     const defaultFile = run.findings.find(f => f.detector === 'a11y-form-label' && f.target === '#file-default');
     assert.equal(defaultFile?.tier, 'tolerable', 'the browser default file label only needs review');
     assert.match(defaultFile.observed, /浏览器默认/);

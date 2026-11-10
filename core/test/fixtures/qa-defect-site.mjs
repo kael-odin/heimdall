@@ -16,24 +16,24 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const DEFECT_CASES = Object.freeze([
-  { id: 'image-alt', detector: 'a11y-image-alt', kind: 'a11y', title: '图片缺少 alt' },
-  { id: 'control-name', detector: 'a11y-control-name', kind: 'a11y', title: '图标按钮没有可访问名' },
-  { id: 'form-label', detector: 'a11y-form-label', kind: 'a11y', title: '输入框没有标签' },
-  { id: 'duplicate-id', detector: 'a11y-duplicate-id', kind: 'a11y', title: 'id 重复' },
-  { id: 'heading', detector: 'a11y-heading', kind: 'a11y', title: '没有 h1' },
-  { id: 'lang', detector: 'a11y-lang', kind: 'a11y', title: '缺少 lang' },
-  { id: 'iframe-title', detector: 'a11y-iframe-title', kind: 'a11y', title: 'iframe 缺少 title' },
-  { id: 'text-clipped', detector: 'layout-text-clipped', kind: 'layout', title: '文字被裁切' },
-  { id: 'image-ratio', detector: 'layout-image-ratio', kind: 'layout', title: '图片被拉伸' },
-  { id: 'tap-target', detector: 'layout-tap-target', kind: 'layout', title: '点击目标过小' },
-  { id: 'placeholder', detector: 'content-placeholder', kind: 'content', title: '占位文案残留' },
-  { id: 'template', detector: 'content-template', kind: 'content', title: '模板变量未替换' },
-  { id: 'mojibake', detector: 'content-mojibake', kind: 'content', title: '乱码' },
-  { id: 'invalid-value', detector: 'content-invalid-value', kind: 'content', title: 'Invalid Date' },
-  { id: 'blank-target', detector: 'security-blank-target', kind: 'security', title: '新窗口缺 noopener' },
-  { id: 'secret', detector: 'security-secret', kind: 'security', title: '页面里泄露密钥' },
-  { id: 'oversized-image', detector: 'perf-oversized-image', kind: 'perf', title: '图片分辨率过大' },
-  { id: 'layout-shift', detector: 'perf-cls', kind: 'perf', title: '布局偏移过大' },
+  { id: 'image-alt', detector: 'a11y-image-alt', kind: 'a11y', target: '#missing-alt', title: '图片缺少 alt' },
+  { id: 'control-name', detector: 'a11y-control-name', kind: 'a11y', target: '#icon-only', title: '图标按钮没有可访问名' },
+  { id: 'form-label', detector: 'a11y-form-label', kind: 'a11y', target: '#no-label', title: '输入框没有标签' },
+  { id: 'duplicate-id', detector: 'a11y-duplicate-id', kind: 'a11y', target: '#dup-id', title: 'id 重复' },
+  { id: 'heading', detector: 'a11y-heading', kind: 'a11y', target: 'h1', observedIncludes: '没有 h1', title: '没有 h1' },
+  { id: 'lang', detector: 'a11y-lang', kind: 'a11y', target: 'html', title: '缺少 lang' },
+  { id: 'iframe-title', detector: 'a11y-iframe-title', kind: 'a11y', target: '#missing-title', title: 'iframe 缺少 title' },
+  { id: 'text-clipped', detector: 'layout-text-clipped', kind: 'layout', target: '#clipped', title: '文字被裁切' },
+  { id: 'image-ratio', detector: 'layout-image-ratio', kind: 'layout', target: '#stretched', title: '图片被拉伸' },
+  { id: 'tap-target', detector: 'layout-tap-target', kind: 'layout', target: '#tiny-btn', title: '点击目标过小' },
+  { id: 'placeholder', detector: 'content-placeholder', kind: 'content', target: '#todo-text', title: '占位文案残留' },
+  { id: 'template', detector: 'content-template', kind: 'content', target: '#template-text', title: '模板变量未替换' },
+  { id: 'mojibake', detector: 'content-mojibake', kind: 'content', target: '#mojibake-text', title: '乱码' },
+  { id: 'invalid-value', detector: 'content-invalid-value', kind: 'content', target: '#invalid-date', title: 'Invalid Date' },
+  { id: 'blank-target', detector: 'security-blank-target', kind: 'security', target: '#blank-link', title: '新窗口缺 noopener' },
+  { id: 'secret', detector: 'security-secret', kind: 'security', target: 'sk- 密钥', title: '页面里泄露密钥' },
+  { id: 'oversized-image', detector: 'perf-oversized-image', kind: 'perf', target: '#oversized', title: '图片分辨率过大' },
+  { id: 'layout-shift', detector: 'perf-cls', kind: 'perf', target: 'cumulative-layout-shift', title: '布局偏移过大' },
 ]);
 
 /** 不应报缺陷的页面（误报分母） */
@@ -44,9 +44,9 @@ export const CLEAN_CASES = Object.freeze([
 
 /** 交互探索的注入案例：必须显式开启 --explore 才会被检测 */
 export const INTERACTION_CASES = Object.freeze([
-  { id: 'noop-click', target: '#noop-btn', kind: 'interaction', title: '点击没有反应' },
-  { id: 'throw-click', target: '#throws-btn', kind: 'interaction', title: '点击触发脚本异常' },
-  { id: 'gone-click', target: '#gone-link', kind: 'interaction', title: '点击跳到 404' },
+  { id: 'noop-click', target: '#noop-btn', kind: 'interaction', basis: 'wrong', evidenceType: 'unchanged', title: '点击没有反应' },
+  { id: 'throw-click', target: '#throws-btn', kind: 'interaction', basis: 'failed', evidenceType: 'error', errorIncludes: 'fixture: detail panel failed to open', title: '点击触发脚本异常' },
+  { id: 'gone-click', target: '#gone-link', kind: 'interaction', basis: 'failed', evidenceType: 'http', status: 404, failedPath: '/gone', title: '点击跳到 404' },
 ]);
 
 /** 交互探索的健康对照：点击有变化就不应报 */
@@ -94,11 +94,11 @@ function cleanPage() {
 function defectPage() {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>QA 缺陷夹具</title><style>${CSS}</style></head><body><main>
 <h2>任务概览</h2>
-<section class="card" id="sec-image"><img src="/img/32-red.png" width="32" height="32"></section>
+<section class="card" id="sec-image"><img id="missing-alt" src="/img/32-red.png" width="32" height="32"></section>
 <section class="card"><button id="icon-only" class="btn"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect width="14" height="14" fill="#244bb5"/></svg></button></section>
 <section class="card field"><input id="no-label" type="text"></section>
 <section class="card"><div id="dup-id">第一块</div><div id="dup-id">第二块</div></section>
-<section class="card"><iframe src="/frame" width="200" height="40"></iframe></section>
+<section class="card"><iframe id="missing-title" src="/frame" width="200" height="40"></iframe></section>
 <section class="card"><p class="clip" id="clipped">这是一段很长的说明文字，本来应该完整显示给访客看，但现在被容器裁掉了大半内容。</p></section>
 <section class="card"><img id="stretched" src="/img/64-square.png" width="256" height="64"></section>
 <section class="card"><button id="tiny-btn" class="tiny" aria-label="关闭"></button></section>
@@ -133,6 +133,10 @@ function interactPage() {
 <section class="card"><button id="works-btn" class="btn">显示提示</button><p id="hint" hidden>已经显示</p></section>
 <footer>固定离线夹具 · 不含真实数据</footer></main>
 <script>
+document.addEventListener('click', function (event) {
+  var control = event.target.closest('button[id], a[id]');
+  if (control) fetch('/__qa_fixture/click?target=' + encodeURIComponent(control.id), { keepalive: true }).catch(function () {});
+}, true);
 document.getElementById('throws-btn').addEventListener('click', function () {
   setTimeout(function () { throw new Error('fixture: detail panel failed to open'); }, 10);
 });
@@ -143,9 +147,16 @@ document.getElementById('works-btn').addEventListener('click', function () {
 }
 
 export async function startQaDefectFixture({ port = 0 } = {}) {
+  const clicks = [];
   const server = createServer((req, res) => {
     const url = new URL(req.url, 'http://fixture.local');
     const path = url.pathname;
+    if (path === '/__qa_fixture/click' && req.method === 'GET') {
+      clicks.push(`#${url.searchParams.get('target') ?? ''}`);
+      res.writeHead(204, { 'Cache-Control': 'no-store' });
+      res.end();
+      return;
+    }
     if (path === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ fixture: 'qa-defects', ok: true, cases: DEFECT_CASES.length }));
@@ -176,6 +187,7 @@ export async function startQaDefectFixture({ port = 0 } = {}) {
   return {
     origin,
     url: (path) => `${origin}${path}`,
+    recordedClicks: () => [...clicks],
     close: () => new Promise((ready, reject) => {
       if (closed) { ready(); return; }
       closed = true;

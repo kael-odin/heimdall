@@ -13,7 +13,9 @@ node core/scripts/benchmark-qa.mjs
 node core/scripts/benchmark-qa.mjs core/workspace/_runs/my-qa-benchmark
 ```
 
-脚本自启只绑定 `127.0.0.1` 的随机端口服务器，跑完即关。每次结果写入独立时间戳目录（默认 `core/workspace/_runs/qa-benchmark/`），`latest.json` 指向最近一次。有漏检或误报时退出码为 `1`。
+脚本自启只绑定 `127.0.0.1` 的随机端口服务器，跑完即关。每次结果写入独立时间戳目录（默认 `core/workspace/_runs/qa-benchmark/`）。`latest.json` 在运行中为 `running`、异常未完成为 `incomplete`、完成后为 `complete`；前两种状态的 `passed` 是 `null`，不能沿用上一次的通过结论。进程被强制结束后可能停留在 `running`，这同样不是通过。有漏检、误报或运行异常时退出码为 `1`。
+
+同一个输出目录暂不支持并行运行；同时运行多份时，请为每份指定不同的输出目录，否则 `latest.json` 可能互相覆盖。
 
 ## 固定真值
 
@@ -45,20 +47,24 @@ node core/scripts/benchmark-qa.mjs core/workspace/_runs/my-qa-benchmark
 
 健康分母：`clean`（每一项都合规的页面）与 `warn`（只输出 `console.warn`），任何检测发现都算误报；交互段另有 `works-click`（点击正常显示内容）作为误报对照。
 
+自结果格式 `schemaVersion: 2` 起，静态缺陷必须同时匹配预设检测器、类别与目标；“没有 h1”还必须匹配问题语义。交互缺陷还要匹配问题类型及相应证据，例如预期异常或指定路径的 404。夹具单独记录四个按钮或链接的点击；控件数、点击数、跳过情况、预算和独立记录不一致时，停止统计。无反应案例需要完整的前后快照，不能把快照读取失败当作无反应。
+
+`perf-cls` 是页面级指标，本基准只验证页面出现 CLS 报警，不能证明由夹具横幅造成。`security-secret` 按页面内的密钥类型匹配，不定位到指定 DOM 元素。旧版结果只按检测器或目标匹配，不应与新版结果当作同一种口径直接比较；旧结果不会自动改写。
+
 `mixed-content` 与 `insecure-form` 只在 https 页面触发，离线 http 夹具无法覆盖，所以**不在**本基准的缺陷分母里；这两项只有代码级单测与真实站点人工复核。
 
 ## 指标
 
 - **Recall** = 检出的缺陷案例 / 缺陷案例总数；
-- **Precision** = TP / (TP + FP)，FP 是健康页面上的检测发现；
+- **案例级 Precision** = TP / (TP + FP)，FP 是出现报警的健康案例数，不是健康页的报警条数；
 - **误报率** = FP / 健康案例数；
-- **耗时**：一次页面运行的墙钟时间，取 P50 / P95。
+- **耗时**：缺陷页、健康页和交互页各一次运行的墙钟时间，合并后取 P50 / P95；样本只有 4 次，不是稳定的性能评估。
 
-`benchmark.md` 按案例列出预期检测器、是否检出、命中证据（选择器与实测值）和失败原因。
+`benchmark.md` 按案例列出预期检测器、是否检出、命中证据（选择器与实测值）和失败原因。`benchmark.json` 的 `unmatchedDefectFindings` 和 `unmatchedInteractionFindings` 保留未匹配缺陷真值的其他报警；它们需要另行复核。健康案例以外的报警不进入健康案例 FP，因此案例级 Precision 不是所有报警的准确率。
 
 ## 最近一次结果
 
-以输出目录里的 `latest.json` 为准，不在此处抄写会漂的数字。本机最近一次运行：缺陷案例 21、健康案例 3，检出 21、误报 0，单页耗时约 2.1 秒（不含交互段约 11 秒）。
+先看输出目录里的 `latest.json` 是否为 `complete`，再查看该次目录的 `benchmark.md` 和 `benchmark.json`；不在此处抄写会变化的数字。
 
 ## 范围与边界
 

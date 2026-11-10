@@ -16,7 +16,7 @@ import { diffSnapshots, skipReason } from '../src/qa/explore.mjs';
 import { writeBaseline, readBaseline, compareWithBaseline, comparablePairs, describeBaseline, baselineFile, clearBaseline } from '../src/qa/baseline.mjs';
 import { renderReport, renderBugs, fileable } from '../src/qa/report.mjs';
 import { loadWorkspace } from '../src/qa/workspace.mjs';
-import { assertBenchmarkCoverage } from '../scripts/benchmark-qa.mjs';
+import { assertBenchmarkCoverage, assertInteractionBenchmarkCoverage, benchmarkQa, matchBenchmarkFinding } from '../scripts/benchmark-qa.mjs';
 
 const png = (width, height, [r, g, b]) => {
   const image = new PNG({ width, height });
@@ -25,11 +25,73 @@ const png = (width, height, [r, g, b]) => {
 };
 
 test('qa benchmark: incomplete detection cannot count as a clean result', () => {
-  const coverage = { pages: [{}], detection: { enabled: true, pages: 1, failedPages: [] } };
-  assert.doesNotThrow(() => assertBenchmarkCoverage(coverage));
+  const coverage = { pages: [{ path: '/clean' }], detection: { enabled: true, pages: 1, failedPages: [] } };
+  assert.doesNotThrow(() => assertBenchmarkCoverage(coverage, '/clean'));
   assert.throws(() => assertBenchmarkCoverage({ ...coverage, detection: { ...coverage.detection, pages: 0, failedPages: [{}] } }), /检测未完成/);
   assert.throws(() => assertBenchmarkCoverage({ ...coverage, detection: { ...coverage.detection, enabled: false } }), /检测未完成/);
   assert.throws(() => assertBenchmarkCoverage({ ...coverage, detection: { ...coverage.detection, pages: 0 } }), /检测未完成/);
+  assert.throws(() => assertBenchmarkCoverage({ ...coverage, detection: { enabled: true, pages: 1 } }), /检测未完成/);
+  assert.throws(() => assertBenchmarkCoverage({ ...coverage, pages: [{ path: '/clean', navError: 'failed' }] }), /检测未完成/);
+  assert.throws(() => assertBenchmarkCoverage(coverage, '/other'), /检测未完成/);
+});
+
+test('qa benchmark: matching requires the expected target, kind and problem evidence', () => {
+  const target = { detector: 'a11y-form-label', kind: 'a11y', target: '#expected' };
+  const other = { detector: target.detector, kind: target.kind, target: '#other' };
+  const right = { ...other, target: target.target };
+  assert.equal(matchBenchmarkFinding(target, [other]), undefined);
+  assert.equal(matchBenchmarkFinding(target, [{ ...right, kind: 'layout' }]), undefined);
+  assert.equal(matchBenchmarkFinding(target, [other, right]), right);
+  const heading = { detector: 'a11y-heading', kind: 'a11y', target: 'h1', observedIncludes: '没有 h1' };
+  assert.equal(matchBenchmarkFinding(heading, [{ ...heading, observed: '两个 h1' }]), undefined);
+  assert.ok(matchBenchmarkFinding(heading, [{ ...heading, observed: '其中没有 h1' }]));
+
+  const noOp = { kind: 'interaction', target: '#button', basis: 'wrong', evidenceType: 'unchanged' };
+  assert.equal(matchBenchmarkFinding(noOp, [{ kind: 'interaction', target: '#button', basis: 'failed', evidence: { status: 404 } }]), undefined);
+  assert.equal(matchBenchmarkFinding(noOp, [{ kind: 'interaction', target: '#button', basis: 'wrong', evidence: { before: {}, after: null } }]), undefined);
+  const snapshot = { url: 'http://fixture/', title: 'fixture', textLength: 1, textHash: 1, visibleElements: 1, bodyHeight: 1, overlays: 0, expanded: '' };
+  assert.equal(matchBenchmarkFinding(noOp, [{ kind: 'interaction', target: '#button', basis: 'wrong', evidence: { before: {}, after: {} } }]), undefined);
+  assert.ok(matchBenchmarkFinding(noOp, [{ kind: 'interaction', target: '#button', basis: 'wrong', evidence: { before: snapshot, after: snapshot } }]));
+  const brokenLink = { kind: 'interaction', target: '#link', basis: 'failed', evidenceType: 'http', status: 404, failedPath: '/gone' };
+  assert.equal(matchBenchmarkFinding(brokenLink, [{ kind: 'interaction', target: '#link', basis: 'failed', evidence: { status: 500, failedUrl: 'http://localhost/gone' } }]), undefined);
+  assert.ok(matchBenchmarkFinding(brokenLink, [{ kind: 'interaction', target: '#link', basis: 'failed', evidence: { status: 404, failedUrl: 'http://localhost/gone' } }]));
+  const error = { kind: 'interaction', target: '#throw', basis: 'failed', evidenceType: 'error', errorIncludes: 'fixture failure' };
+  assert.equal(matchBenchmarkFinding(error, [{ kind: 'interaction', target: '#throw', basis: 'failed', evidence: { errors: ['different error'] } }]), undefined);
+  assert.ok(matchBenchmarkFinding(error, [{ kind: 'interaction', target: '#throw', basis: 'failed', evidence: { errors: ['fixture failure'] } }]));
+});
+
+test('qa benchmark: interaction coverage requires every declared fixture click', () => {
+  const coverage = { explore: { enabled: true, pages: [{ path: '/interact', controls: 2, clicked: 2, skipped: {}, budgetExhausted: false }] } };
+  const targets = ['#bad', '#good'];
+  assert.doesNotThrow(() => assertInteractionBenchmarkCoverage(coverage, ['#bad', '#good'], targets));
+  assert.throws(() => assertInteractionBenchmarkCoverage(coverage, ['#bad', '#bad'], targets), /探索未完成/);
+  assert.throws(() => assertInteractionBenchmarkCoverage(coverage, ['#bad', '#other'], targets), /探索未完成/);
+  assert.throws(() => assertInteractionBenchmarkCoverage({ explore: { ...coverage.explore, enabled: false } }, targets, targets), /探索未完成/);
+  assert.throws(() => assertInteractionBenchmarkCoverage({ explore: { ...coverage.explore, pages: [{ ...coverage.explore.pages[0], budgetExhausted: true }] } }, targets, targets), /探索未完成/);
+  assert.throws(() => assertInteractionBenchmarkCoverage({ explore: { ...coverage.explore, pages: [{ ...coverage.explore.pages[0], skipped: { 'step-failed': 1 } }] } }, targets, targets), /探索未完成/);
+});
+
+test('qa benchmark: an interrupted run cannot leave an older pass as latest', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-benchmark-status-'));
+  try {
+    mkdirSync(join(root, 'earlier'));
+    writeFileSync(join(root, 'earlier', 'benchmark.json'), '{"passed":true}');
+    writeFileSync(join(root, 'latest.json'), '{"runDir":"earlier","passed":true}');
+    let rejectFixture;
+    const pending = benchmarkQa({ outputDir: root, startFixture: () => new Promise((resolve, reject) => { rejectFixture = reject; }) });
+    const running = JSON.parse(readFileSync(join(root, 'latest.json'), 'utf8'));
+    assert.equal(running.status, 'running');
+    assert.equal(running.passed, null);
+    rejectFixture(new Error('fixture failed'));
+    await assert.rejects(pending, /fixture failed/);
+    const latest = JSON.parse(readFileSync(join(root, 'latest.json'), 'utf8'));
+    assert.equal(latest.status, 'incomplete');
+    assert.equal(latest.passed, null);
+    assert.notEqual(latest.runDir, 'earlier');
+    assert.equal(JSON.parse(readFileSync(join(root, 'earlier', 'benchmark.json'), 'utf8')).passed, true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function workspace(config = {}) {
