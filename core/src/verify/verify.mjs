@@ -32,7 +32,7 @@ import { UA } from '../ua.mjs';
 import { isSafePageName } from '../page-name.mjs';
 import { startClonePreviewServer } from '../clone-preview-server.mjs';
 import { verifierSha256 } from './verifier-fingerprint.mjs';
-import { archiveVerifyArtifacts, archiveVerifySummary, evidenceSha256, resumeIdentity } from './resume-cache.mjs';
+import { archiveVerifyArtifacts, archiveVerifySummary, evidenceSha256, measurementIdentity, resultSha256, resumeEligible, resumeIdentity } from './resume-cache.mjs';
 
 const log = (...a) => console.error('[verify]', ...a);
 const SINGLE_CAPTURE_HEIGHT = 25_000;
@@ -110,10 +110,8 @@ const targets = PAGE_DIR ? [pageArg] : all ? pages.slice(0, MAX) : pages.filter(
 if (!targets.length) { console.error('no matching forged pages under', PAGES); process.exit(1); }
 
 let verifier = null;
-if (all) {
-  try { verifier = verifierSha256(); }
-  catch { log('无法核验验证器指纹，本次不复用或生成续跑缓存'); }
-}
+try { verifier = verifierSha256(); }
+catch { log('无法核验验证器指纹，本次不复用或生成验证指纹'); }
 const cacheOptions = { viewports: VIEWPORTS.map(v => v.name), interactions: RUN_IX,
   keepScreenshots: KEEP_SCREENSHOTS, allowBounded: ALLOW_BOUNDED, settleTimeout: RENDER_SETTLE_TIMEOUT, jobs: JOBS };
 if (RESUME) archiveVerifySummary(join(BASE, 'verify'));
@@ -141,8 +139,10 @@ function cachedMeasurement(outDir, identity) {
       || !Array.isArray(prev.viewports) || prev.viewports.some(v => !v || typeof v !== 'object')) return null;
   const names = (prev.viewports ?? []).map(v => v.name);
   if (JSON.stringify(names) !== JSON.stringify(cacheOptions.viewports)) return null;
-  const { evidence, ...previousIdentity } = prev.resumeCache ?? {};
-  if (JSON.stringify(previousIdentity) !== JSON.stringify(identity) || !evidence
+  const { evidence, resultSha256: previousResult, ...previousIdentity } = prev.resumeCache ?? {};
+  if (JSON.stringify(previousIdentity) !== JSON.stringify(identity) || !evidence || !previousResult
+      || JSON.stringify(prev.measurementProof) !== JSON.stringify(prev.resumeCache)
+      || resultSha256(prev) !== previousResult
       || evidenceSha256(prev, outDir, KEEP_SCREENSHOTS) !== evidence) return null;
   return prev;
 }
@@ -352,6 +352,7 @@ async function verifyOne(name, index = 0, total = 1) {
     const outDir = PAGE_DIR ? join(PAGE_DIR, 'verify') : join(BASE, 'verify', name);
     mkdirSync(outDir, { recursive: true });
     const identity = all ? resumeIdentity(dir, cacheOptions, verifier) : null;
+    const measurement = identity ?? measurementIdentity(dir, cacheOptions, verifier);
     if (RESUME) {
       const prev = cachedMeasurement(outDir, identity);
       if (prev) {
@@ -508,10 +509,16 @@ async function verifyOne(name, index = 0, total = 1) {
       ...(confidenceReasons.length ? { confidenceReasons } : {}),
       measured, grade: measured ? gradeOf(overall) : null, minViewport, viewports, functional, interactions,
       ...(error ? { error } : {}) };
-    if (measured && identity && !externalCloneRequest
-        && JSON.stringify(identity) === JSON.stringify(resumeIdentity(dir, cacheOptions, verifier))) {
+    if (measured && measurement && !externalCloneRequest
+        && JSON.stringify(measurement) === JSON.stringify(measurementIdentity(dir, cacheOptions, verifier))) {
       const evidence = evidenceSha256(result, outDir, KEEP_SCREENSHOTS);
-      if (evidence) result.resumeCache = { ...identity, evidence };
+      const digest = resultSha256(result);
+      if (evidence && digest) {
+        result.measurementProof = { ...measurement, evidence, resultSha256: digest };
+        if (identity && resumeEligible(dir, cacheOptions)) {
+          result.resumeCache = { ...identity, evidence, resultSha256: digest };
+        }
+      }
     }
     writeFileSync(join(outDir, 'verify.json'), JSON.stringify(result, null, 2));
     const scoreText = measured ? (overall * 100).toFixed(1) + '%'

@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { canonUrl } from '../url-canon.mjs';
 import { sanitizeObservedUrl } from '../crawler/state-graph.mjs';
 import { loadProfile, queuePlan } from '../site-profile.mjs';
+import { evidenceSha256, measurementIdentity, resultSha256 } from '../verify/resume-cache.mjs';
+import { verifierSha256 } from '../verify/verifier-fingerprint.mjs';
 import { liveSnapshotPath } from './live-path.mjs';
 
 const MAX_PATHS = 2000;
@@ -133,20 +135,38 @@ function invalidatedVerifications(baseDir) {
     .map(page => [page.page, at]));
 }
 
-function verificationCoverage(baseDir, name, target, invalidated) {
+function verificationCoverage(baseDir, bundleDir, host, name, target, invalidated, currentVerifier) {
   const file = join(baseDir, 'verify', name, 'verify.json');
   try {
-    const cloneTime = statSync(join(baseDir, 'pages', name, 'clone', 'index.html')).mtimeMs;
-    const verifyTime = statSync(file).mtimeMs;
-    if (verifyTime < cloneTime) return { measured: false, standard: false };
     const verify = JSON.parse(readFileSync(file, 'utf8'));
     const stamp = Date.parse(verify.generatedAt ?? '');
-    const measuredAt = Number.isFinite(stamp) ? stamp : verifyTime;
-    if (measuredAt < cloneTime || measuredAt <= (invalidated.get(name) ?? -Infinity)
+    const proof = verify.measurementProof;
+    const options = proof?.options;
+    if (!Number.isFinite(stamp) || stamp <= (invalidated.get(name) ?? -Infinity)
       || verify.scoreVersion !== 2 || verify.measured !== true
+      || !Number.isFinite(verify.overall) || verify.overall < 0 || verify.overall > 1
       || canonUrl(verify.target) !== target || !Array.isArray(verify.viewports)
       || !verify.viewports.length || verify.viewports.some(viewport =>
-        !Number.isFinite(viewport?.score) || viewport.settleTimedOut)) {
+        !Number.isFinite(viewport?.score) || viewport.score < 0 || viewport.score > 1
+          || viewport.settleTimedOut !== false || viewport.additionalVisibleBrokenImages !== 0)
+      || proof?.version !== 1 || !/^[a-f0-9]{64}$/.test(proof.inputs ?? '')
+      || !/^[a-f0-9]{64}$/.test(proof.evidence ?? '') || !/^[a-f0-9]{64}$/.test(proof.resultSha256 ?? '')
+      || resultSha256(verify) !== proof.resultSha256 || typeof options?.keepScreenshots !== 'boolean'
+      || typeof options.interactions !== 'boolean' || typeof options.allowBounded !== 'boolean'
+      || !Number.isInteger(options.settleTimeout) || options.settleTimeout < 2500 || options.settleTimeout > 15000
+      || !Number.isInteger(options.jobs) || options.jobs < 1 || options.jobs > 8
+      || !Array.isArray(options.viewports)
+      || new Set(options.viewports).size !== options.viewports.length
+      || JSON.stringify(options.viewports) !== JSON.stringify(verify.viewports.map(viewport => viewport.name))) {
+      return { measured: false, standard: false };
+    }
+    const verifier = currentVerifier();
+    const pageDir = join(baseDir, 'pages', name);
+    const bundleClone = join(bundleDir, 'site', 'static', host, 'pages', name, 'clone');
+    if (!verifier || proof.verifier !== verifier
+      || measurementIdentity(pageDir, options, verifier)?.inputs !== proof.inputs
+      || measurementIdentity(pageDir, options, verifier, bundleClone)?.inputs !== proof.inputs
+      || evidenceSha256(verify, join(baseDir, 'verify', name), options.keepScreenshots) !== proof.evidence) {
       return { measured: false, standard: false };
     }
     const names = new Set(verify.viewports.map(viewport => viewport.name));
@@ -158,6 +178,13 @@ function verificationCoverage(baseDir, name, target, invalidated) {
 export function buildCoverageLedger({ baseDir, bundleDir, host, origin, pageNames }) {
   const source = atlasSource(baseDir, origin);
   const invalidated = invalidatedVerifications(baseDir);
+  let verifier;
+  const currentVerifier = () => {
+    if (verifier === undefined) {
+      try { verifier = verifierSha256(); } catch { verifier = null; }
+    }
+    return verifier;
+  };
   const clones = new Map();
   let unmappedClones = 0;
   for (const name of pageNames) {
@@ -168,7 +195,7 @@ export function buildCoverageLedger({ baseDir, bundleDir, host, origin, pageName
     const target = new URL(key);
     const clone = isFile(join(bundleDir, 'site', 'static', host, 'pages', name, 'clone', 'index.html'));
     const live = isFile(join(bundleDir, 'site', 'live', liveSnapshotPath(target.pathname, target.search)));
-    const verification = clone ? verificationCoverage(baseDir, name, key, invalidated)
+    const verification = clone ? verificationCoverage(baseDir, bundleDir, host, name, key, invalidated, currentVerifier)
       : { measured: false, standard: false };
     const previous = clones.get(key);
     clones.set(key, {

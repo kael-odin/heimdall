@@ -30,17 +30,36 @@ function hashTree(hash, dir, name) {
   }
 }
 
-export function resumeIdentity(dir, options, verifier) {
-  if (!verifier || options.interactions) return null;
+export function measurementIdentity(dir, options, verifier, cloneDir = join(dir, 'clone')) {
+  if (!verifier) return null;
   try {
     const manifest = join(dir, 'manifest.json');
     const target = new URL(JSON.parse(readFileSync(manifest, 'utf8')).target);
-    if (!['http:', 'https:'].includes(target.protocol) || existsSync(sessionPath(target.hostname))) return null;
+    if (!['http:', 'https:'].includes(target.protocol)) return null;
     const hash = createHash('sha256');
     hashFile(hash, manifest, 'manifest.json');
-    hashTree(hash, join(dir, 'clone'), 'clone');
+    hashTree(hash, cloneDir, 'clone');
     return { version: 1, verifier, inputs: hash.digest('hex'), options };
   } catch { return null; }
+}
+
+export function resumeEligible(dir, options) {
+  if (options.interactions) return false;
+  try {
+    const target = new URL(JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')).target);
+    return ['http:', 'https:'].includes(target.protocol) && !existsSync(sessionPath(target.hostname));
+  } catch { return false; }
+}
+
+export function resumeIdentity(dir, options, verifier) {
+  return verifier && resumeEligible(dir, options) ? measurementIdentity(dir, options, verifier) : null;
+}
+
+export function resultSha256(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return null;
+  const { measurementProof, resumeCache, ...measurement } = result;
+  try { return createHash('sha256').update(JSON.stringify(measurement)).digest('hex'); }
+  catch { return null; }
 }
 
 export function evidenceSha256(result, outDir, keepScreenshots) {

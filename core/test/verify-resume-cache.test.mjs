@@ -3,7 +3,17 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { archiveVerifyArtifacts, evidenceSha256, resumeIdentity } from '../src/verify/resume-cache.mjs';
+import { archiveVerifyArtifacts, evidenceSha256, resultSha256, resumeIdentity } from '../src/verify/resume-cache.mjs';
+
+test('result digest detects changed scores without hashing its own proof', () => {
+  const result = { measured: true, overall: 1, viewports: [{ name: '100x100', score: 1 }] };
+  const digest = resultSha256(result);
+  assert.ok(digest);
+  assert.equal(resultSha256({ ...result, measurementProof: { resultSha256: digest }, resumeCache: {} }), digest);
+  assert.notEqual(resultSha256({ ...result, overall: 0.5 }), digest);
+  assert.notEqual(resultSha256({ ...result, viewports: [{ name: '100x100', score: 0.5 }] }), digest);
+  assert.equal(resultSha256(null), null);
+});
 
 test('resume identity follows file contents, settings and verifier, not modification times', () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-cache-identity-'));

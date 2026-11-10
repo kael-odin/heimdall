@@ -678,6 +678,16 @@ test('verify --resume rejects changed settings, verifier, evidence and session s
         record.resumeCache.verifier = 'outdated';
         writeFileSync(file, JSON.stringify(record));
       } },
+      { name: 'measurement proof', args, change: () => {
+        const record = JSON.parse(original);
+        delete record.measurementProof;
+        writeFileSync(file, JSON.stringify(record));
+      } },
+      { name: 'score changed', args, change: () => {
+        const record = JSON.parse(original);
+        record.overall = 0.5;
+        writeFileSync(file, JSON.stringify(record));
+      } },
       { name: 'evidence', args, change: () => writeFileSync(diff, 'changed') },
       { name: 'damaged record', args, change: () => {
         const record = JSON.parse(original);
@@ -731,7 +741,9 @@ test('verify --resume does not cache clones that request outside their directory
     const args = ['x.test', '--all', '--resume', '--no-interactions', '--viewports', '100x100'];
     const first = await runVerify(dataDir, args, {}, 30_000);
     assert.equal(first.code, 0, first.output);
-    assert.equal(JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8')).resumeCache, undefined);
+    const record = JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8'));
+    assert.equal(record.resumeCache, undefined);
+    assert.equal(record.measurementProof, undefined);
     unavailable = true;
     const second = await runVerify(dataDir, args, {}, 30_000);
     assert.equal(second.code, 1, second.output);
@@ -759,7 +771,9 @@ test('verify --resume reruns interaction checks instead of reusing untracked rep
       const result = await runVerify(dataDir, args, {}, 30_000);
       assert.equal(result.code, 0, result.output);
       assert.equal(JSON.parse(readFileSync(join(base, 'verify', 'verify-summary.json'), 'utf8')).reused, 0);
-      assert.equal(JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8')).resumeCache, undefined);
+      const record = JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8'));
+      assert.equal(record.resumeCache, undefined);
+      assert.ok(record.measurementProof?.inputs, 'visual proof remains available when replay cannot be cached');
     }
   } finally {
     server.closeAllConnections();

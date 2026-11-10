@@ -1159,7 +1159,7 @@ carbonAdsRemoval         --remove-carbonads 时删除候选包中已识别的 Ca
 youtubePlaceholder       --replace-youtube 时把候选包中已识别的 YouTube iframe 换成本地占位；这是显式降级，不表示视频内容可离线播放
 externalRedirectPolicy   --allow-unsupported-external-redirects 时显式接受已探测出的跨域跳转缺口；报告保留 accepted 数，不静默抓取目标站
 strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器有界加载探测）
-coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
+coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；verifiedV2 只数本次导出时克隆内容、验证器、测量结果与差异图均匹配的页面。旧验证记录或导出净化改写内容会记为未验证；此计数不等于 live 页面视觉或交互验收，也不会单独阻断 strict。缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
 browserProbe             逐页断外网首载结果；observation 写明最短窗口、安静期、总上限和逐页实测时间。上限前未安静会阻断发布；窗口外触发的请求及未声明操作仍未验证
 operationPlan            操作脚本声明数；missing 表示没有交互验收，脚本本身不进入交付包
 operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
