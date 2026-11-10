@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const CORE = fileURLToPath(new URL('..', import.meta.url));
 const SCRIPT = fileURLToPath(new URL('../src/crawler/responsive-upgrade.mjs', import.meta.url));
 
-test('responsive upgrade refuses a verification summary older than the clone', () => {
+test('responsive upgrade refuses a verification summary without current proof', () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-upgrade-stale-'));
   const base = join(dataDir, 'workspace', 'fixture.test');
   const page = join(base, 'pages', 'home');
@@ -28,7 +28,7 @@ test('responsive upgrade refuses a verification summary older than the clone', (
       cwd: CORE, env: { ...process.env, HEIMDALL_DATA_DIR: dataDir }, encoding: 'utf8', timeout: 15_000,
     });
     assert.equal(run.status, 1, run.stderr);
-    assert.match(run.stderr, /summary predates cloned pages/);
+    assert.match(run.stderr, /summary or evidence is stale/);
     assert.equal(readFileSync(join(page, 'clone', 'index.html'), 'utf8'), original);
 
     const secondPage = join(base, 'pages', 'other');

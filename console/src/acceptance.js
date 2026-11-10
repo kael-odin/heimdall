@@ -10,7 +10,7 @@ export const ACCEPTANCE_SOURCES = {
   linker: { label: '站内接线', path: 'linker-report.json' },
 };
 export const VERIFICATION_LABELS = {
-  missing: '未生成全站验证', error: '验证证据读取失败', stale: '全站验证早于克隆产物',
+  missing: '未生成全站验证', error: '验证证据读取失败', stale: '全站摘要与当前证据不一致',
   legacy: '历史评分口径', sample: '仅抽样验证', failed: '已验证失败',
   passed: '多视口验证通过', incomplete: '验证覆盖不完整',
 };
@@ -70,10 +70,20 @@ export function buildAcceptanceSummary({ site = null, sources = {} } = {}) {
   const pages = pagesData?.pages ?? [];
   const latestCloneAt = Math.max(0, ...pages.map(p => numberOrNull(p?.updatedAt) ?? 0));
   const cloneNames = new Set(pages.map(p => p.name));
+  const pageByName = new Map(pages.map(p => [p.name, p]));
   const coversClones = rows => !!pagesData && rows.length === cloneNames.size
+    && new Set(rows.map(row => row.page ?? row.name)).size === cloneNames.size
     && rows.every(row => cloneNames.has(row.page ?? row.name));
+  const summaryMismatch = !!pagesData && !!verify && verify.scoreVersion === 2 && verify.mode === 'all'
+    && ((verify.passed === true && !coversClones(verify.pages)) || verify.pages.some(row => {
+      const page = pageByName.get(row.page);
+      if (row.measured !== true) return verify.passed === true || page?.verifyFresh === true;
+      return !page || page.verifyFresh !== true || row.measuredAt !== page.verifyMeasuredAt
+        || !row.measuredAt || row.overall !== page.verifyOverall
+        || row.minViewport?.name !== page.minViewport?.name || row.minViewport?.score !== page.minViewport?.score;
+    }));
   const stale = {
-    verify: !!verify && isStale(sources.verify, latestCloneAt),
+    verify: !!verify && (isStale(sources.verify, latestCloneAt) || summaryMismatch),
     assets: !!assets && (isStale(sources.assets, latestCloneAt) || !coversClones(assets.pages)
       || assets.summary.truncated === true),
     linker: !!linker && (isStale(sources.linker, latestCloneAt) || !coversClones(linker.pages)),
@@ -98,9 +108,10 @@ export function buildAcceptanceSummary({ site = null, sources = {} } = {}) {
   const verifiedRows = pages.filter(p => p.verifyFresh === true && p.verifyMeasured === true
     && p.verifyScoreVersion === 2 && Number.isFinite(p.minViewport?.score));
   const verifiedKeys = new Set(verifiedRows.map((p, i) => pageKey(p?.target, `verified:${p?.name ?? i}`)));
-  const legacyRows = pages.filter(p => p.verifyFresh === true && p.verifyScoreVersion !== null
-    && p.verifyScoreVersion !== 2);
-  const partialRows = pages.filter(p => p.verifyFresh === true && p.verifyScoreVersion === 2 && p.verifyMeasured !== true);
+  const legacyRows = pages.filter(p => p.verifyStatus === 'legacy' || (p.verifyFresh === true
+    && p.verifyScoreVersion !== null && p.verifyScoreVersion !== 2));
+  const partialRows = pages.filter(p => p.verifyStatus === 'incomplete'
+    || (p.verifyFresh === true && p.verifyScoreVersion === 2 && p.verifyMeasured !== true));
   const missingProducts = queue?.filter(q => q?.status === 'done' && !clonedKeys.has(pageKey(q?.url))) ?? [];
   const queuedFailures = queue?.filter(q => q?.status === 'failed') ?? [];
   const plannedCloned = queue && pagesData ? [...plannedKeys].filter(key => clonedKeys.has(key)).length : null;

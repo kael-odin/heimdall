@@ -49,6 +49,7 @@ import { canonUrl, resolvePageNameOfUrl } from './url-canon.mjs';
 import { makeSlotBox } from './forge-slots.mjs';
 import { cloneDocFile } from './clone-doc.mjs';
 import { readCloneScope } from './clone-scope.mjs';
+import { scanMeasurementsAsync } from './verify/measurement-status.mjs';
 import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
 import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './acceptance/managed-run-schema.mjs';
 import { createLegacyAcceptanceReadScope } from './acceptance/managed-access.mjs';
@@ -1933,20 +1934,6 @@ const handleRequest = async (req, res) => {
     if (!/^[a-z0-9.-]+$/i.test(host)) return json(res, 400, { error: 'bad host' });
     const pagesDir = join(WORKSPACE, host, 'pages');
     const out = [];
-    const invalidatedVerifyPages = new Map();
-    try {
-      const summaryPath = join(WORKSPACE, host, 'verify', 'verify-summary.json');
-      const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));
-      const generatedAt = Date.parse(summary.generatedAt ?? '');
-      const summaryAt = Number.isFinite(generatedAt) ? generatedAt : statSync(summaryPath).mtimeMs;
-      if (summary.mode === 'all' && Array.isArray(summary.pages)) {
-        for (const page of summary.pages) {
-          if (typeof page?.page === 'string' && (page.measured === false || page.invalidated)) {
-            invalidatedVerifyPages.set(page.page, summaryAt);
-          }
-        }
-      }
-    } catch {}
     // 资产缺口（若已跑过扫描）
     const gapMap = {};
     const siteArtifacts = {
@@ -1971,39 +1958,12 @@ const handleRequest = async (req, res) => {
         // updatedAt = 这一页克隆产物的构建时间。控制台拿它当截图的 cache-buster
         // （重新克隆后两张图必须刷新）。只需要**一次 stat**，不走资产树遍历。
         let mtime = 0; try { mtime = statSync(cloneHtml).mtimeMs; } catch {}
-        // verify 结果：interactions（交互列）与 minViewport（视觉列的最差值）同源，
-        // 一次读文件一起给。控制台此前为这两列逐页发 2 个请求（80 页 = 160 个），
-        // 而这里本来就已经在读同一个文件了。
-        let interactions = null, minViewport = null, verifyScoreVersion = null;
         const artifacts = {
           verify: existsSync(join(WORKSPACE, host, 'verify', name, 'verify.json')),
           fixup: existsSync(join(pagesDir, name, 'fixup-history.json')),
           cloneGaps: existsSync(join(pagesDir, name, 'clone-gaps.json')),
           ...siteArtifacts,
         };
-        let verifyMeasured = invalidatedVerifyPages.has(name) ? false : null;
-        let verifyFresh = false;
-        try {
-          const verifyPath = join(WORKSPACE, host, 'verify', name, 'verify.json');
-          const verifyMtime = statSync(verifyPath).mtimeMs;
-          if (verifyMtime >= mtime) {
-            const v = JSON.parse(readFileSync(verifyPath, 'utf8'));
-            const generatedAt = Date.parse(v.generatedAt ?? '');
-            const verifyAt = Number.isFinite(generatedAt) ? generatedAt : verifyMtime;
-            if (!invalidatedVerifyPages.has(name) || verifyAt > invalidatedVerifyPages.get(name)) {
-              verifyFresh = true;
-              interactions = v.functional ?? null;
-              verifyScoreVersion = v.scoreVersion ?? 1;
-              verifyMeasured = v.measured === true;
-              minViewport = v.minViewport
-                ? { name: v.minViewport.name, score: v.minViewport.score, grade: v.minViewport.grade,
-                    coverageRatio: v.minViewport.coverageRatio ?? null,
-                    sourceSize: v.minViewport.sourceSize ?? null, cloneSize: v.minViewport.cloneSize ?? null,
-                    heightDelta: v.minViewport.heightDelta ?? null, missingPixels: v.minViewport.missingPixels ?? null }
-                : null;
-            }
-          }
-        } catch {}
         // 动效驱动画像（capture 阶段采，见 crawler/motion.mjs）——旧产物没有这个文件
         let motion = null;
         try { motion = JSON.parse(readFileSync(join(pagesDir, name, 'motion.json'), 'utf8')); } catch {}
@@ -2012,16 +1972,26 @@ const handleRequest = async (req, res) => {
           score: score ? { total: score.total, pixel: score.pixel, grade: score.grade } : null,
           assets,
           visualGaps: gapMap[name] ?? null,
-          interactions,
-          minViewport,
-          verifyScoreVersion,
-          verifyMeasured,
-          verifyFresh,
           artifacts,
           motion,
           updatedAt: mtime,
         });
       }
+    }
+    const scan = await scanMeasurementsAsync(join(WORKSPACE, host), out.map(page => page.name));
+    const measurements = new Map(scan.pages.map(row => [row.page, row]));
+    for (const page of out) {
+      const measurement = measurements.get(page.name);
+      const status = scan.status === 'ok' ? measurement?.status ?? 'unavailable' : scan.status;
+      const v = status === 'verified' ? measurement.result : null;
+      Object.assign(page, { verifyStatus: status, verifyFresh: !!v,
+        verifyScoreVersion: v?.scoreVersion ?? null, verifyMeasured: v ? true : status === 'incomplete' ? false : null,
+        verifyMeasuredAt: v?.generatedAt ?? null, verifyOverall: v?.overall ?? null,
+        verifyConfidence: v?.confidence ?? null, verifyDetails: v, interactions: v?.functional ?? null,
+        minViewport: v?.minViewport ? { name: v.minViewport.name, score: v.minViewport.score, grade: v.minViewport.grade,
+          coverageRatio: v.minViewport.coverageRatio ?? null, sourceSize: v.minViewport.sourceSize ?? null,
+          cloneSize: v.minViewport.cloneSize ?? null, heightDelta: v.minViewport.heightDelta ?? null,
+          missingPixels: v.minViewport.missingPixels ?? null } : null });
     }
     return json(res, 200, { host, pages: out });
   }

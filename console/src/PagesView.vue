@@ -157,7 +157,7 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
     <div class="wv-head">
       <b>页面清单 · {{ host || '未选择站点' }}</b>
       <span class="wv-stat" role="status" aria-live="polite" v-if="loading">正在载入 {{ host }} 的页面…</span>
-      <span class="wv-stat" v-else>{{ doneCount }}/{{ nodes.length }} 已克隆 · 平均单页像素 {{ avgVisual }}<template v-if="avgWorst"> · v2 完整测量 {{ avgWorst.count }} 页最差视口均值 {{ avgWorst.value }}</template></span>
+      <span class="wv-stat" v-else>{{ doneCount }}/{{ nodes.length }} 已克隆 · 克隆时平均像素 {{ avgVisual }}<template v-if="avgWorst"> · v2 完整测量 {{ avgWorst.count }} 页最差视口均值 {{ avgWorst.value }}</template></span>
       <SiteBar :sites="sites" :host="host" :actions="actions" @pick="$emit('pick', $event)" @action="$emit('action', $event)" />
       <input class="wv-search" v-model="pageQuery" :disabled="loading" aria-label="搜索页面 URL 或标题" placeholder="搜索 URL / 标题" spellcheck="false" />
       <select v-model="typeFilter" :disabled="loading" aria-label="按页面类型筛选"><option value="">全部类型</option><option v-for="(t, k) in PAGE_TYPES" :key="k" :value="k">{{ t.cn }}</option></select>
@@ -176,7 +176,7 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
         <span class="c-title sortable" role="button" tabindex="0" :aria-label="sortAria('title', '标题')" @click="toggleSort('title')" @keydown.enter.prevent="toggleSort('title')" @keydown.space.prevent="toggleSort('title')">标题 {{ sortKey === 'title' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
         <span class="c-type">类型</span>
         <span class="c-state sortable" role="button" tabindex="0" :aria-label="sortAria('state', '状态')" @click="toggleSort('state')" @keydown.enter.prevent="toggleSort('state')" @keydown.space.prevent="toggleSort('state')">状态 {{ sortKey === 'state' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
-        <span class="c-score sortable" role="button" tabindex="0" title="单页像素为克隆时旧口径；箭头为另跑的多视口最差分数" :aria-label="sortAria('score', '单页像素')" @click="toggleSort('score')" @keydown.enter.prevent="toggleSort('score')" @keydown.space.prevent="toggleSort('score')">单页像素 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
+        <span class="c-score sortable" role="button" tabindex="0" title="单页像素为克隆时旧口径；箭头为另跑的多视口最差分数" :aria-label="sortAria('score', '克隆时像素')" @click="toggleSort('score')" @keydown.enter.prevent="toggleSort('score')" @keydown.space.prevent="toggleSort('score')">克隆时像素 {{ sortKey === 'score' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
         <span class="c-assets sortable" role="button" tabindex="0" :aria-label="sortAria('assets', '资产体积')" @click="toggleSort('assets')" @keydown.enter.prevent="toggleSort('assets')" @keydown.space.prevent="toggleSort('assets')">资产 {{ sortKey === 'assets' ? (sortDir > 0 ? '▲' : '▼') : '' }}</span>
         <span class="c-gaps">缺口</span>
         <span class="c-ix">交互</span>
@@ -189,7 +189,7 @@ const stateLabel = (s) => (s === 'done' ? '已克隆' : s === 'running' ? '克�
         <span class="wv-title c-title" :title="n.title">{{ n.title }}</span>
         <span class="wv-type c-type" :style="{ color: typeColorThemed(n.type) }">{{ typeCn(n.type) }}</span>
         <span class="wv-state c-state" :class="n.forgeState">{{ stateLabel(n.forgeState) }}</span>
-        <span class="wv-score c-score" :title="viewportTitle(verify[n.id])">{{ scores[n.id]?.pixel != null ? (scores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}<i v-if="verify[n.id]?.measured === false" class="min-mid partial">未完整测量</i><i v-else-if="verify[n.id]?.minViewport && verify[n.id].minViewport.score < 0.95" :class="verify[n.id].minViewport.score < 0.85 ? 'min-bad' : 'min-mid'"> ↓{{ (verify[n.id].minViewport.score * 100).toFixed(0) }}{{ verify[n.id].scoreVersion === 2 ? ' v2' : ' 旧' }}</i></span>
+        <span class="wv-score c-score" :title="viewportTitle(verify[n.id])">{{ scores[n.id]?.pixel != null ? (scores[n.id].pixel * 100).toFixed(1) + '%' : '—' }}<i v-if="meta[n.id]?.verifyStatus === 'incomplete'" class="min-mid partial">未完整测量</i><i v-else-if="verify[n.id]?.minViewport && verify[n.id].minViewport.score < 0.95" :class="verify[n.id].minViewport.score < 0.85 ? 'min-bad' : 'min-mid'"> ↓{{ (verify[n.id].minViewport.score * 100).toFixed(0) }}{{ verify[n.id].scoreVersion === 2 ? ' v2' : ' 旧' }}</i></span>
         <span class="wv-meta c-assets" :title="meta[n.id]?.assets ? (meta[n.id].assets.count + ' 个文件') : ''">{{ meta[n.id]?.assets ? fmtBytes(meta[n.id].assets.bytes) : '—' }}<i v-if="meta[n.id]?.assets"> · {{ meta[n.id].assets.count }}</i></span>
         <span class="wv-meta c-gaps" :class="{ bad: (meta[n.id]?.visualGaps?.visual ?? 0) > 0 }" :title="meta[n.id]?.visualGaps ? ('原站 ' + meta[n.id].visualGaps.origin + ' / 第三方 ' + meta[n.id].visualGaps.third) : ''">{{ meta[n.id]?.visualGaps == null ? '—' : meta[n.id].visualGaps.visual }}</span>
         <span class="wv-meta c-ix">{{ meta[n.id]?.interactions ? (meta[n.id].interactions.passed + '/' + meta[n.id].interactions.total) : '—' }}</span>

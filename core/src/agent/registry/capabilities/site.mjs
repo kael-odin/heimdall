@@ -10,20 +10,22 @@ import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { createFence } from '../../fence.mjs';
 import { redactText } from '../../redact.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
+import { measurementCoverage, scanMeasurementsAsync } from '../../../verify/measurement-status.mjs';
 
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
 
-function pageRow(siteId, page, fence) {
+function pageRow(siteId, page, fence, measurement, scanStatus) {
   const dir = pageDir(siteId, page);
   const manifest = readJson(join(dir, 'manifest.json'));
   const score = readJson(join(dir, 'score.json'));
-  const verify = readJson(join(siteDir(siteId), 'verify', page, 'verify.json'));
+  const verify = measurement?.status === 'verified' ? measurement.result : null;
   return {
     page,
     target: manifest?.target ? fence.inline(redactText(manifest.target).text, 300, 'target') : null,
     mirror: existsSync(join(dir, 'clone', 'index.html')),
     score: score ? { total: score.total ?? null, grade: score.grade ?? null, pixel: score.pixel ?? null } : null,
     verify: verify ? { measured: !!verify.measured, overall: verify.overall ?? null, minViewport: verify.minViewport ? { name: verify.minViewport.name, score: verify.minViewport.score } : null } : null,
+    verifyStatus: scanStatus === 'ok' ? measurement?.status ?? 'unavailable' : scanStatus,
   };
 }
 
@@ -48,17 +50,20 @@ export default {
     const { siteId, view, limit, cursor } = args;
     const pages = listPages(siteId);
     const fence = createFence();
-    const verifySummary = readJson(join(siteDir(siteId), 'verify', 'verify-summary.json'));
     const atlas = readJson(join(siteDir(siteId), 'recon', 'atlas.json'));
     const mirrors = pages.filter(p => existsSync(join(pageDir(siteId, p), 'clone', 'index.html')));
+    const selected = view === 'pages' ? pages.slice(cursor, cursor + limit) : view === 'gaps' ? [] : pages;
+    const scan = await scanMeasurementsAsync(siteDir(siteId), selected);
+    const measurements = new Map(scan.pages.map(row => [row.page, row]));
+    const verification = measurementCoverage(scan, selected.length);
     const coverage = {
       discovered: atlas?.nodes?.length ?? null, pages: pages.length, cloned: mirrors.length,
-      verified: verifySummary?.measured ?? null, unmeasured: verifySummary ? (verifySummary.unmeasured ?? null) : null,
-      verifyAverage: verifySummary?.average ?? null,
+      verified: verification.verified, unmeasured: verification.unmeasured,
+      verifyAverage: verification.average, verificationStatus: verification.status,
     };
     let result, summary, meta;
     if (view === 'pages') {
-      const rows = pages.slice(cursor, cursor + limit).map(p => pageRow(siteId, p, fence));
+      const rows = selected.map(p => pageRow(siteId, p, fence, measurements.get(p), scan.status));
       const next = cursor + limit < pages.length ? cursor + limit : null;
       result = { siteId, pages: rows, total: pages.length };
       meta = next !== null ? { nextCursor: next, truncated: true } : undefined;

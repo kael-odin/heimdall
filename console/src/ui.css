@@ -578,7 +578,7 @@ button.rail-target:hover { color: var(--accent); text-decoration: underline; tex
   .wv-row .c-type { order: 7; display: block; }
   .wv-row .c-assets { order: 8; display: block; }
   .wv-row .c-actions { order: 9; flex: 1 1 100%; margin-top: 2px; }
-  .wv-row .c-score::before { content: '单页像素 '; color: var(--text-faint); }
+  .wv-row .c-score::before { content: '克隆时像素 '; color: var(--text-faint); }
   .wv-row .c-gaps::before { content: '缺口 '; color: var(--text-faint); }
   .wv-row .c-assets::before { content: '资产 '; color: var(--text-faint); }
   .wv-row .c-type::before { content: '类型 '; color: var(--text-faint); }

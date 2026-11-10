@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request } from 'node:http';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -57,6 +57,98 @@ function requestWithHost(port, path, host, { method = 'GET', headers = {}, body 
 function getWithHost(port, path, host, headers = {}) {
   return requestWithHost(port, path, host, { headers });
 }
+
+function runNode(args, dir) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, args, { cwd: CORE,
+      env: { ...process.env, HEIMDALL_DATA_DIR: dir, HEIMDALL_API: 'http://127.0.0.1:9' } });
+    let output = '';
+    child.stdout.on('data', chunk => { output += chunk; });
+    child.stderr.on('data', chunk => { output += chunk; });
+    const timer = setTimeout(() => { child.kill(); reject(new Error('child timed out: ' + output)); }, 60_000);
+    child.once('error', error => { clearTimeout(timer); reject(error); });
+    child.once('close', code => { clearTimeout(timer); resolve({ code, output }); });
+  });
+}
+
+test('current page and agent results reject a real measurement after CSS changes', { timeout: 120_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-current-verify-'));
+  const fixture = createServer((req, res) => {
+    res.writeHead(200, { 'content-type': req.url === '/style.css' ? 'text/css' : 'text/html' });
+    res.end(req.url === '/style.css' ? 'body { background: red; }'
+      : '<!doctype html><link rel="stylesheet" href="/style.css"><h1>Fixture</h1>');
+  });
+  let engine;
+  try {
+    await new Promise(resolve => fixture.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${fixture.address().port}`;
+    const page = join(dir, 'workspace', '127.0.0.1', 'pages', 'home');
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: origin + '/' }));
+    writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><link rel="stylesheet" href="style.css"><h1>Fixture</h1>');
+    const css = join(page, 'clone', 'style.css');
+    writeFileSync(css, 'body { background: red; }');
+    const verify = await runNode(['src/verify/verify.mjs', '127.0.0.1', '--all', '--no-interactions', '--viewports', '100x100'], dir);
+    assert.equal(verify.code, 0, verify.output);
+    const resultFile = join(dir, 'workspace', '127.0.0.1', 'verify', 'home', 'verify.json');
+    assert.ok(JSON.parse(readFileSync(resultFile, 'utf8')).measurementProof);
+
+    engine = await startEngine(dir, await freePort());
+    const readPages = async () => (await (await fetch(engine.base + '/api/pages/127.0.0.1', {
+      headers: { 'x-heimdall-token': 'test-token' },
+    })).json()).pages[0];
+    const runAgent = async args => {
+      const result = await runNode(['src/cli.mjs', ...args, '--json'], dir);
+      assert.equal(result.code, 0, result.output);
+      return JSON.parse(result.output.trim().split('\n').findLast(line => line.startsWith('{'))).result;
+    };
+    const current = await readPages();
+    assert.equal(current.verifyFresh, true);
+    assert.equal(current.verifyDetails.viewports[0].score, 1);
+    assert.equal((await runAgent(['site', '127.0.0.1', '--view', 'pages'])).pages[0].verify.measured, true);
+    assert.equal((await runAgent(['site', '127.0.0.1', '--view', 'coverage'])).coverage.verified, 1);
+    assert.equal((await runAgent(['clone', origin + '/'])).pages[0].verify.measured, true);
+
+    const summaryFile = join(dir, 'workspace', '127.0.0.1', 'verify', 'verify-summary.json');
+    const originalSummary = readFileSync(summaryFile, 'utf8');
+    const summary = JSON.parse(originalSummary);
+    const measuredAt = Date.parse(JSON.parse(readFileSync(resultFile, 'utf8')).generatedAt);
+    writeFileSync(summaryFile, JSON.stringify({ ...summary, generatedAt: new Date(measuredAt + 1000).toISOString(),
+      pages: [{ page: 'home', measured: false }] }));
+    assert.equal((await readPages()).verifyFresh, false, 'a newer site failure invalidates a verified page');
+    writeFileSync(summaryFile, JSON.stringify({ ...summary, generatedAt: new Date(measuredAt - 1000).toISOString(),
+      pages: [{ page: 'home', measured: false }] }));
+    assert.equal((await readPages()).verifyFresh, true, 'a later page measurement supersedes the site failure');
+    writeFileSync(summaryFile, originalSummary);
+    const upgradeArgs = ['src/crawler/responsive-upgrade.mjs', '127.0.0.1', '--threshold', '0.1'];
+    assert.equal((await runNode(upgradeArgs, dir)).code, 0, 'a current baseline is accepted');
+    writeFileSync(summaryFile, JSON.stringify({ ...summary, pages: summary.pages.map(row => ({ ...row,
+      measuredAt: new Date(measuredAt - 1000).toISOString() })) }));
+    const mismatchedUpgrade = await runNode(upgradeArgs, dir);
+    assert.equal(mismatchedUpgrade.code, 1, 'a baseline from a different measurement is rejected');
+    assert.match(mismatchedUpgrade.output, /summary or evidence is stale/);
+    writeFileSync(summaryFile, originalSummary);
+
+    const old = statSync(css);
+    writeFileSync(css, 'body { background: blue; }');
+    utimesSync(css, old.atime, old.mtime);
+    const staleUpgrade = await runNode(upgradeArgs, dir);
+    assert.equal(staleUpgrade.code, 1, 'a changed stylesheet invalidates the upgrade baseline');
+    const stale = await readPages();
+    assert.equal(stale.verifyDetails, null, 'detail must not receive an unchecked historical result');
+    const siteVerify = (await runAgent(['site', '127.0.0.1', '--view', 'pages'])).pages[0].verify;
+    const coverage = (await runAgent(['site', '127.0.0.1', '--view', 'coverage'])).coverage;
+    const cloneVerify = (await runAgent(['clone', origin + '/'])).pages[0].verify;
+    assert.deepEqual({ fresh: stale.verifyFresh, viewport: stale.minViewport, siteVerify,
+      verified: coverage.verified, average: coverage.verifyAverage, cloneVerify },
+    { fresh: false, viewport: null, siteVerify: null, verified: 0, average: null, cloneVerify: null });
+  } finally {
+    if (engine) await stopEngine(engine.proc);
+    fixture.closeAllConnections();
+    await new Promise(resolve => fixture.close(resolve));
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('engine protects workspace, revokes cookie and routes mirror hosts before engine API', { timeout: 30_000 }, async () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-engine-boundary-'));
@@ -413,25 +505,24 @@ test('site coverage distinguishes query pages and page API hides stale verify re
     });
     utimesSync(verify, new Date(now + 5_000), new Date(now + 5_000));
     const fresh = (await (await fetch(pageUrl, { headers })).json()).pages[0];
-    assert.equal(fresh.verifyFresh, true);
-    assert.equal(fresh.verifyMeasured, true);
-    assert.equal(fresh.minViewport.score, 0.94);
-    assert.equal(fresh.interactions.passed, 2);
+    assert.equal(fresh.verifyFresh, false, 'a newer timestamp is not measurement proof');
+    assert.equal(fresh.verifyStatus, 'stale');
+    assert.equal(fresh.minViewport, null);
+    assert.equal(fresh.interactions, null);
     const summaryPath = put('fresh.test', 'verify/verify-summary.json', JSON.stringify({
       generatedAt: new Date(now).toISOString(), mode: 'all', pages: [{ page: 'home', measured: false }],
     }));
     const invalidated = (await (await fetch(pageUrl, { headers })).json()).pages[0];
     assert.equal(invalidated.verifyFresh, false, 'site summary must veto a still-green page verify file');
-    assert.equal(invalidated.verifyMeasured, false);
+    assert.equal(invalidated.verifyMeasured, null);
     assert.equal(invalidated.minViewport, null);
     assert.equal(invalidated.interactions, null);
     writeFileSync(verify, JSON.stringify({ generatedAt: new Date(now + 1000).toISOString(),
       scoreVersion: 2, measured: true, minViewport: { name: 'mobile', score: 0.96 },
       functional: { passed: 3, total: 3 } }));
     const reverified = (await (await fetch(pageUrl, { headers })).json()).pages[0];
-    assert.equal(reverified.verifyFresh, true, 'new single-page verification supersedes old full-site failure');
-    assert.equal(reverified.verifyMeasured, true);
-    assert.equal(reverified.minViewport.score, 0.96);
+    assert.equal(reverified.verifyFresh, false, 'a fabricated later record still has no proof');
+    assert.equal(reverified.minViewport, null);
     writeFileSync(summaryPath, JSON.stringify({ generatedAt: new Date(now + 2000).toISOString(),
       mode: 'all', pages: [{ page: 'home', measured: true,
       invalidated: { reason: 'postprocess changed clone' } }] }));
@@ -440,14 +531,15 @@ test('site coverage distinguishes query pages and page API hides stale verify re
     writeFileSync(summaryPath, JSON.stringify({ generatedAt: new Date(now + 2000).toISOString(),
       mode: 'all', pages: [{ page: 'home', measured: true }] }));
     const approved = (await (await fetch(pageUrl, { headers })).json()).pages[0];
-    assert.equal(approved.verifyFresh, true);
-    assert.equal(approved.minViewport.score, 0.96);
+    assert.equal(approved.verifyFresh, false);
+    assert.equal(approved.minViewport, null);
     writeFileSync(verify, JSON.stringify({ scoreVersion: 2, measured: false,
       minViewport: { name: 'desktop', score: 1 }, viewports: [{ name: 'desktop', score: 1 }] }));
     const partial = (await (await fetch(pageUrl, { headers })).json()).pages[0];
-    assert.equal(partial.verifyFresh, true);
+    assert.equal(partial.verifyFresh, false);
     assert.equal(partial.verifyMeasured, false);
-    assert.equal(partial.minViewport.score, 1, 'partial result remains inspectable but must not count as complete');
+    assert.equal(partial.verifyStatus, 'incomplete');
+    assert.equal(partial.minViewport, null, 'partial evidence cannot be shown as a complete current result');
   } finally {
     if (engine) await stopEngine(engine.proc);
     rmSync(dir, { recursive: true, force: true });

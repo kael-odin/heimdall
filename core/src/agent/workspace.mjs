@@ -41,10 +41,11 @@ export function listSites() {
     const cloned = names.filter(p => isFile(join(pages, p, 'clone', 'index.html')));
     let lastActivity = 0;
     for (const p of cloned) { try { lastActivity = Math.max(lastActivity, statSync(join(pages, p, 'clone', 'index.html')).mtimeMs); } catch {} }
-    const verified = (() => {
+    const historicalVerified = (() => {
       try { return JSON.parse(readFileSync(join(WORKSPACE, name, 'verify', 'verify-summary.json'), 'utf8')).measured ?? null; } catch { return null; }
     })();
-    out.push({ siteId: name, pages: names.length, cloned: cloned.length, verified, lastActivityAt: lastActivity ? new Date(lastActivity).toISOString() : null });
+    out.push({ siteId: name, pages: names.length, cloned: cloned.length, verified: null, historicalVerified,
+      verificationStatus: 'not_checked', lastActivityAt: lastActivity ? new Date(lastActivity).toISOString() : null });
   }
   return out.sort((a, b) => b.cloned - a.cloned || a.siteId.localeCompare(b.siteId));
 }

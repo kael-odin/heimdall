@@ -37,6 +37,8 @@ function writeVerification(base, name, result) {
   const out = join(base, 'verify', name);
   result.viewports = result.viewports.map(viewport => ({ ...viewport, captureMode: 'full',
     settleTimedOut: false, additionalVisibleBrokenImages: 0 }));
+  result.minViewport ??= result.viewports.reduce((worst, viewport) => !worst || viewport.score < worst.score
+    ? { name: viewport.name, score: viewport.score } : worst, null);
   const options = { viewports: result.viewports.map(viewport => viewport.name), interactions: false,
     keepScreenshots: false, allowBounded: false, settleTimeout: 5000, jobs: 1 };
   for (const viewport of result.viewports) put(join(out, `diff-${viewport.name}.png`), 'fixture evidence');

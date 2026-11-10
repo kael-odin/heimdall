@@ -25,6 +25,7 @@ import { findSiteIdentity } from './site-origin.mjs';
 import { asUrl } from './url-canon.mjs';
 import { writeFileAtomic } from './fsutil.mjs';
 import { renderHandoff } from './handoff-report.mjs';
+import { createMeasurementReader, summaryMatchesMeasurement } from './verify/measurement-status.mjs';
 
 const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const log = (...a) => console.error('[handoff]', ...a);
@@ -183,6 +184,9 @@ const clone = await run('src/queue.mjs', [host, '--incremental', '--max', String
 const cloneFailed = clone.code !== 0;
 
 // ---------- 3. 多视口验证 ----------
+const summaryPath = join(BASE, 'verify', 'verify-summary.json');
+const readSummaryText = () => { try { return readFileSync(summaryPath, 'utf8'); } catch { return null; } };
+const previousSummary = readSummaryText();
 let verify = { code: 0, ms: 0, skipped: false };
 if (SKIP_VERIFY) {
   log('3/5 验证 已按 --skip-verify 跳过');
@@ -203,14 +207,26 @@ log('5/5 打包交付');
 const deliver = await run('src/deliver.mjs', [host, siteId]);
 
 // ---------- 交接说明 ----------
-const summary = readJson(join(BASE, 'verify', 'verify-summary.json'));
-const gaps = readJson(join(BASE, 'audit', 'asset-gaps.json'));
+const summaryText = readSummaryText();
+let summary = !SKIP_VERIFY && summaryText && summaryText !== previousSummary ? readJson(summaryPath) : null;
+if (summary) {
+  const reader = createMeasurementReader(BASE);
+  if (summary.mode !== 'all' || summary.scoreVersion !== 2 || !Array.isArray(summary.pages)
+    || (summary.passed === true && (summary.untested !== 0 || summary.measured !== summary.targetTotal
+      || summary.measured !== summary.pages.length || new Set(summary.pages.map(page => page.page)).size !== summary.pages.length
+      || summary.pages.some(page => page.measured !== true)))
+    || summary.pages.some(page => page.measured === true && (() => {
+      const measurement = reader.read(page.page);
+      return measurement.status !== 'verified' || !summaryMatchesMeasurement(page, measurement.result);
+    })())) summary = null;
+}
+const gaps = assets.code === 0 ? readJson(join(BASE, 'audit', 'asset-gaps.json')) : null;
 // 交付包目录名带日期，取最新那个；文件夹 mtime 在 Windows 上不可靠，按名字排即可
 const delivered = (() => {
   try {
-    return readdirSync(DELIVERABLE)
+    return deliver.code === 0 ? readdirSync(DELIVERABLE)
       .filter(name => name.startsWith(siteId + '-'))
-      .sort((a, b) => b.localeCompare(a))[0] ?? null;
+      .sort((a, b) => b.localeCompare(a))[0] ?? null : null;
   } catch { return null; }
 })();
 
@@ -219,11 +235,13 @@ mkdirSync(handoffDir, { recursive: true });
 const reportPath = join(handoffDir, 'README.md');
 writeFileAtomic(reportPath, renderHandoff({
   siteId, origin: identity.origin ?? TARGET, target: TARGET, summary, gaps, delivered, skippedVerify: SKIP_VERIFY,
-  maxPages: MAX_PAGES,
+  verifyFailed: !SKIP_VERIFY && (verify.code !== 0 || !summary), maxPages: MAX_PAGES,
 }));
 
-const ok = !cloneFailed && (SKIP_VERIFY || (summary?.passed ?? false)) && deliver.code === 0;
+const ok = !cloneFailed && (SKIP_VERIFY || (verify.code === 0 && summary?.passed === true))
+  && assets.code === 0 && deliver.code === 0;
 log('交接说明 ->', reportPath);
-log(ok ? '全流程完成，验证门禁通过' : '全流程跑完，但门禁没通过 —— 原因见交接说明第 1 节');
+log(ok ? (SKIP_VERIFY ? '流程完成，本次跳过验证' : '全流程完成，验证门禁通过')
+  : '流程未全部通过，检查交接说明和步骤日志');
 console.log(reportPath);
 process.exit(ok ? 0 : 1);

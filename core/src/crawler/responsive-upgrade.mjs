@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Build responsive variants in a candidate page, then switch only after verification. */
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -12,6 +12,7 @@ import { emit } from '../emit.mjs';
 import { snapPage } from './multi-snapshot.mjs';
 import { prepareCandidate, publishCandidate, discardCandidate, snapshotCloneArtifacts, recalculateVerificationSummary, invalidatePublishedVerification } from './upgrade-stage.mjs';
 import { makeArgs } from '../args.mjs';
+import { createMeasurementReader, summaryMatchesMeasurement } from '../verify/measurement-status.mjs';
 
 const argv = process.argv.slice(2);
 const { argOf } = makeArgs(argv);
@@ -52,14 +53,13 @@ if (!Number.isFinite(verifiedAt)) {
   console.error('verify summary has no valid generatedAt; rerun verify ' + host + ' --all');
   process.exit(1);
 }
+const reader = createMeasurementReader(BASE);
 const stalePages = summaryPages.filter(p => {
-  if (!available.has(p.page)) return false;
-  // NTFS records sub-millisecond mtimes; generatedAt is an ISO timestamp rounded to milliseconds.
-  try { return Math.floor(statSync(join(PAGES, p.page, 'clone', 'index.html')).mtimeMs) > verifiedAt; }
-  catch { return true; }
+  const measurement = reader.read(p.page);
+  return measurement.status !== 'verified' || !summaryMatchesMeasurement(p, measurement.result);
 });
 if (stalePages.length) {
-  console.error('verify summary predates cloned pages (' + stalePages.slice(0, 5).map(p => p.page).join(', ') + '); rerun verify ' + host + ' --all');
+  console.error('verify summary or evidence is stale (' + stalePages.slice(0, 5).map(p => p.page).join(', ') + '); rerun verify ' + host + ' --all');
   process.exit(1);
 }
 const candidates = summaryPages
@@ -83,7 +83,9 @@ function verifyCandidate(page, dir) {
   const line = String(r.stdout || '').split(/\r?\n/).findLast(l => l.startsWith('@@EVENT@@') && l.includes('"kind":"verify-page"'));
   const result = line ? JSON.parse(line.slice('@@EVENT@@'.length)) : null;
   if (!result?.measured || typeof result.overall !== 'number' || !result.minViewport) throw new Error('candidate verification did not measure every viewport');
-  return result;
+  const measurement = JSON.parse(readFileSync(join(dir, 'verify', 'verify.json'), 'utf8'));
+  if (!measurement.measurementProof || !measurement.generatedAt) throw new Error('candidate verification has no measurement proof');
+  return { ...result, measuredAt: measurement.generatedAt };
 }
 
 function rebindCandidateMetadata(dir, pageDir, page) {

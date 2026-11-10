@@ -66,16 +66,23 @@ test('stale gap scan and old or incomplete verification cannot produce a green v
 
 test('whole-site v2 pass requires every target measured; explicit verification failure stays failed', () => {
   const time = Date.parse('2026-10-14T10:00:00.000Z');
+  const measuredAt = '2026-10-14T11:00:00.000Z';
+  const summaryPages = [
+    { page: 'home', measured: true, measuredAt, overall: 0.95, minViewport: { name: 'mobile', score: 0.94 } },
+    { page: 'docs', measured: true, measuredAt, overall: 0.97, minViewport: { name: 'mobile', score: 0.96 } },
+  ];
   const sources = {
     atlas: artifact({ nodes: [{ url: 'https://site.test/' }, { url: 'https://site.test/docs' }] }),
     queue: artifact([{ name: 'home', url: 'https://site.test/', status: 'done' },
       { name: 'docs', url: 'https://site.test/docs', status: 'done' }]),
     pages: artifact({ pages: [page('home', 'https://site.test/', time, {
-      verifyFresh: true, verifyMeasured: true, verifyScoreVersion: 2, minViewport: { score: 0.94 },
+      verifyFresh: true, verifyMeasured: true, verifyScoreVersion: 2, verifyMeasuredAt: measuredAt,
+      verifyOverall: 0.95, minViewport: { name: 'mobile', score: 0.94 },
     }), page('docs', 'https://site.test/docs', time, {
-      verifyFresh: true, verifyMeasured: true, verifyScoreVersion: 2, minViewport: { score: 0.96 },
+      verifyFresh: true, verifyMeasured: true, verifyScoreVersion: 2, verifyMeasuredAt: measuredAt,
+      verifyOverall: 0.97, minViewport: { name: 'mobile', score: 0.96 },
     })] }),
-    verify: artifact({ generatedAt: '2026-10-14T12:00:00.000Z', scoreVersion: 2, mode: 'all', passed: true, pages: [] }),
+    verify: artifact({ generatedAt: '2026-10-14T12:00:00.000Z', scoreVersion: 2, mode: 'all', passed: true, pages: summaryPages }),
     assets: artifact({ summary: { visual: 0, gaps: 0 }, pages: [{ page: 'home' }, { page: 'docs' }] }),
     linker: artifact({ pages: [{ name: 'home', assetFailed: 0, missingLocal: [], linksToLive: 0 },
       { name: 'docs', assetFailed: 0, missingLocal: [], linksToLive: 0 }] }),
@@ -86,9 +93,18 @@ test('whole-site v2 pass requires every target measured; explicit verification f
   assert.equal(buildAcceptanceSummary({ sources }).verificationState, 'sample');
   sources.verify = artifact({ scoreVersion: 2, mode: 'all', passed: false, pages: [] });
   assert.equal(buildAcceptanceSummary({ sources }).verificationState, 'failed');
-  sources.verify = artifact({ scoreVersion: 2, mode: 'all', passed: true, pages: [] });
+  sources.verify = artifact({ scoreVersion: 2, mode: 'all', passed: false,
+    pages: [{ page: 'home', measured: false }] });
+  assert.equal(buildAcceptanceSummary({ sources }).verificationState, 'stale', 'a later single-page success supersedes the old failure');
+  sources.verify = artifact({ scoreVersion: 2, mode: 'all', passed: true, pages: summaryPages });
+  sources.pages.data.pages[1].verifyMeasuredAt = '2026-10-14T12:01:00.000Z';
+  assert.equal(buildAcceptanceSummary({ sources }).verificationState, 'stale', 'a later single-page measurement cannot reuse the old verdict');
+  sources.pages.data.pages[1].verifyMeasuredAt = measuredAt;
+  sources.pages.data.pages[1].verifyOverall = 0.80;
+  assert.equal(buildAcceptanceSummary({ sources }).verificationState, 'stale', 'a changed score cannot reuse the old verdict');
+  sources.pages.data.pages[1].verifyOverall = 0.97;
   sources.pages.data.pages[1].verifyFresh = false;
-  assert.equal(buildAcceptanceSummary({ sources }).verificationState, 'incomplete');
+  assert.equal(buildAcceptanceSummary({ sources }).verificationState, 'stale');
 });
 
 test('failed evidence is carried into downloadable Markdown with source path', () => {

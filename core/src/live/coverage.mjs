@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { canonUrl } from '../url-canon.mjs';
 import { sanitizeObservedUrl } from '../crawler/state-graph.mjs';
 import { loadProfile, queuePlan } from '../site-profile.mjs';
-import { evidenceSha256, measurementIdentity, resultSha256 } from '../verify/resume-cache.mjs';
-import { verifierSha256 } from '../verify/verifier-fingerprint.mjs';
+import { measurementIdentity } from '../verify/resume-cache.mjs';
+import { createMeasurementReader } from '../verify/measurement-status.mjs';
 import { liveSnapshotPath } from './live-path.mjs';
 
 const MAX_PATHS = 2000;
@@ -122,51 +122,16 @@ function defaultQueueCoverage(source, origin) {
   };
 }
 
-function invalidatedVerifications(baseDir) {
-  const file = join(baseDir, 'verify', 'verify-summary.json');
-  let summary;
-  try { summary = JSON.parse(readFileSync(file, 'utf8')); }
-  catch { return new Map(); }
-  if (summary.mode !== 'all' || !Array.isArray(summary.pages)) return new Map();
-  const stamp = Date.parse(summary.generatedAt ?? '');
-  const at = Number.isFinite(stamp) ? stamp : statSync(file).mtimeMs;
-  return new Map(summary.pages
-    .filter(page => typeof page?.page === 'string' && (page.measured === false || page.invalidated))
-    .map(page => [page.page, at]));
-}
-
-function verificationCoverage(baseDir, bundleDir, host, name, target, invalidated, currentVerifier) {
-  const file = join(baseDir, 'verify', name, 'verify.json');
+function verificationCoverage(baseDir, bundleDir, host, name, target, reader) {
   try {
-    const verify = JSON.parse(readFileSync(file, 'utf8'));
-    const stamp = Date.parse(verify.generatedAt ?? '');
+    const { status, result: verify } = reader.read(name);
+    if (status !== 'verified' || canonUrl(verify.target) !== target
+      || verify.viewports.some(viewport => viewport.settleTimedOut !== false)) return { measured: false, standard: false };
     const proof = verify.measurementProof;
-    const options = proof?.options;
-    if (!Number.isFinite(stamp) || stamp <= (invalidated.get(name) ?? -Infinity)
-      || verify.scoreVersion !== 2 || verify.measured !== true
-      || !Number.isFinite(verify.overall) || verify.overall < 0 || verify.overall > 1
-      || canonUrl(verify.target) !== target || !Array.isArray(verify.viewports)
-      || !verify.viewports.length || verify.viewports.some(viewport =>
-        !Number.isFinite(viewport?.score) || viewport.score < 0 || viewport.score > 1
-          || viewport.settleTimedOut !== false || viewport.additionalVisibleBrokenImages !== 0)
-      || proof?.version !== 1 || !/^[a-f0-9]{64}$/.test(proof.inputs ?? '')
-      || !/^[a-f0-9]{64}$/.test(proof.evidence ?? '') || !/^[a-f0-9]{64}$/.test(proof.resultSha256 ?? '')
-      || resultSha256(verify) !== proof.resultSha256 || typeof options?.keepScreenshots !== 'boolean'
-      || typeof options.interactions !== 'boolean' || typeof options.allowBounded !== 'boolean'
-      || !Number.isInteger(options.settleTimeout) || options.settleTimeout < 2500 || options.settleTimeout > 15000
-      || !Number.isInteger(options.jobs) || options.jobs < 1 || options.jobs > 8
-      || !Array.isArray(options.viewports)
-      || new Set(options.viewports).size !== options.viewports.length
-      || JSON.stringify(options.viewports) !== JSON.stringify(verify.viewports.map(viewport => viewport.name))) {
-      return { measured: false, standard: false };
-    }
-    const verifier = currentVerifier();
+    const verifier = reader.currentVerifier();
     const pageDir = join(baseDir, 'pages', name);
     const bundleClone = join(bundleDir, 'site', 'static', host, 'pages', name, 'clone');
-    if (!verifier || proof.verifier !== verifier
-      || measurementIdentity(pageDir, options, verifier)?.inputs !== proof.inputs
-      || measurementIdentity(pageDir, options, verifier, bundleClone)?.inputs !== proof.inputs
-      || evidenceSha256(verify, join(baseDir, 'verify', name), options.keepScreenshots) !== proof.evidence) {
+    if (measurementIdentity(pageDir, proof.options, verifier, bundleClone)?.inputs !== proof.inputs) {
       return { measured: false, standard: false };
     }
     const names = new Set(verify.viewports.map(viewport => viewport.name));
@@ -177,14 +142,7 @@ function verificationCoverage(baseDir, bundleDir, host, name, target, invalidate
 /** Match discovered URLs to files in the candidate bundle, never to stale workspace live files. */
 export function buildCoverageLedger({ baseDir, bundleDir, host, origin, pageNames }) {
   const source = atlasSource(baseDir, origin);
-  const invalidated = invalidatedVerifications(baseDir);
-  let verifier;
-  const currentVerifier = () => {
-    if (verifier === undefined) {
-      try { verifier = verifierSha256(); } catch { verifier = null; }
-    }
-    return verifier;
-  };
+  const reader = createMeasurementReader(baseDir);
   const clones = new Map();
   let unmappedClones = 0;
   for (const name of pageNames) {
@@ -195,7 +153,7 @@ export function buildCoverageLedger({ baseDir, bundleDir, host, origin, pageName
     const target = new URL(key);
     const clone = isFile(join(bundleDir, 'site', 'static', host, 'pages', name, 'clone', 'index.html'));
     const live = isFile(join(bundleDir, 'site', 'live', liveSnapshotPath(target.pathname, target.search)));
-    const verification = clone ? verificationCoverage(baseDir, bundleDir, host, name, key, invalidated, currentVerifier)
+    const verification = clone ? verificationCoverage(baseDir, bundleDir, host, name, key, reader)
       : { measured: false, standard: false };
     const previous = clones.get(key);
     clones.set(key, {

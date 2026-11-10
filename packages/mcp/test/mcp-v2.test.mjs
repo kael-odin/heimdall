@@ -7,7 +7,8 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,6 +19,7 @@ import { loadWorkspace } from '../../../core/src/qa/workspace.mjs';
 import { baselineFile, writeBaseline } from '../../../core/src/qa/baseline.mjs';
 
 const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
+const CORE = fileURLToPath(new URL('../../../core/', import.meta.url));
 const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
   'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch'];
 
@@ -45,6 +47,65 @@ async function connect(root, mode) {
   await client.connect(transport);
   return client;
 }
+
+test('MCP rejects visual measurements after clone CSS changes without changing timestamps', { timeout: 120_000 }, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-mcp-measurement-'));
+  const fixture = createServer((req, res) => {
+    res.writeHead(200, { 'content-type': req.url === '/style.css' ? 'text/css' : 'text/html' });
+    res.end(req.url === '/style.css' ? 'body { background: red; }'
+      : '<!doctype html><link rel="stylesheet" href="/style.css"><h1>Fixture</h1>');
+  });
+  let client;
+  try {
+    await new Promise(resolve => fixture.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${fixture.address().port}`;
+    const page = join(root, 'workspace', '127.0.0.1', 'pages', 'home');
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: origin + '/' }));
+    writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><link rel="stylesheet" href="style.css"><h1>Fixture</h1>');
+    const css = join(page, 'clone', 'style.css');
+    writeFileSync(css, 'body { background: red; }');
+    const verified = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, ['src/verify/verify.mjs', '127.0.0.1', '--all', '--no-interactions', '--viewports', '100x100'],
+        { cwd: CORE, env: { ...process.env, HEIMDALL_DATA_DIR: root } });
+      let output = '';
+      child.stdout.on('data', chunk => { output += chunk; });
+      child.stderr.on('data', chunk => { output += chunk; });
+      const timer = setTimeout(() => child.kill(), 60_000);
+      child.once('error', error => { clearTimeout(timer); reject(error); });
+      child.once('close', code => { clearTimeout(timer); resolve({ code, output }); });
+    });
+    assert.equal(verified.code, 0, verified.output);
+    client = await connect(root);
+    const call = async (name, args) => {
+      const response = await client.callTool({ name, arguments: args });
+      assert.equal(response.isError, false, JSON.stringify(response.structuredContent));
+      return response.structuredContent.result;
+    };
+    const siteArgs = { siteId: '127.0.0.1', view: 'pages' };
+    assert.equal((await call('heimdall_site', siteArgs)).pages[0].verify.measured, true);
+    assert.equal((await call('heimdall_site', { ...siteArgs, view: 'coverage' })).coverage.verified, 1);
+    assert.equal((await call('heimdall_clone', { url: origin + '/' })).pages[0].verify.measured, true);
+    const old = statSync(css);
+    writeFileSync(css, 'body { background: blue; }');
+    utimesSync(css, old.atime, old.mtime);
+    const stale = (await call('heimdall_site', siteArgs)).pages[0];
+    assert.equal(stale.verify, null);
+    assert.equal(stale.verifyStatus, 'stale');
+    const coverage = (await call('heimdall_site', { ...siteArgs, view: 'coverage' })).coverage;
+    assert.equal(coverage.verified, 0);
+    assert.equal(coverage.verifyAverage, null);
+    assert.equal((await call('heimdall_clone', { url: origin + '/' })).pages[0].verify, null);
+    const overview = await call('heimdall_overview', { include: ['sites'] });
+    assert.equal(overview.sites[0].verified, null);
+    assert.equal(overview.sites[0].historicalVerified, 1);
+  } finally {
+    if (client) await client.close().catch(() => {});
+    fixture.closeAllConnections();
+    await new Promise(resolve => fixture.close(resolve));
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned', { pin: '2026-07-28' }]]) {
   test(`mcp v2 (${label}): tools, schema validation, envelopes, resources and prompts`, { timeout: 90_000 }, async () => {

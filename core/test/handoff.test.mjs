@@ -7,6 +7,12 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { renderHandoff } from '../src/handoff-report.mjs';
 
 const base = {
@@ -62,6 +68,63 @@ test('handoff: 验证结果缺失但没标 skip 时，也说清数字不存在',
   const md = renderHandoff({ ...base, summary: null });
   assert.match(md, /没有验证结果/);
   assert.ok(!/站均还原度：\*\*—/.test(md), '缺少结果时不该伪造一个破折号分数');
+  assert.doesNotMatch(md, /覆盖完整，可以直接进人工检查/);
+});
+
+test('handoff: 失败步骤不能把旧的通过摘要当成本次结果', { timeout: 30_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-handoff-stale-'));
+  const site = join(dir, 'workspace', 'fixture.test');
+  mkdirSync(join(site, 'verify'), { recursive: true });
+  writeFileSync(join(site, 'site-origin.json'), JSON.stringify({ origin: 'https://fixture.test' }));
+  const old = JSON.stringify({ mode: 'all', scoreVersion: 2, passed: true, targetTotal: 1,
+    measured: 1, untested: 0, average: 0.99, pages: [] });
+  writeFileSync(join(site, 'verify', 'verify-summary.json'), old);
+  const server = createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ dataRoot: dir }));
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const preload = `import cp from 'node:child_process';
+    import { syncBuiltinESMExports } from 'node:module';
+    const original = cp.spawn;
+    cp.spawn = (cmd, args, opts) => original(cmd, ['-e', 'process.exit(' +
+      (String(args[0]).replaceAll('\\\\', '/').endsWith('/verify/verify.mjs') ? '1' : '0') + ')'], opts);
+    syncBuiltinESMExports();`;
+  const script = fileURLToPath(new URL('../src/handoff.mjs', import.meta.url));
+  const run = args => new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['--import', 'data:text/javascript,' + encodeURIComponent(preload), script,
+      'https://fixture.test/', ...args], { env: { ...process.env, HEIMDALL_DATA_DIR: dir,
+      HEIMDALL_API: `http://127.0.0.1:${server.address().port}` } });
+    let output = '';
+    child.stdout.on('data', chunk => { output += chunk; });
+    child.stderr.on('data', chunk => { output += chunk; });
+    child.once('error', reject);
+    child.once('close', code => resolve({ code, output }));
+  });
+  try {
+    const failed = await run([]);
+    assert.equal(failed.code, 1, failed.output);
+    const report = readFileSync(join(site, 'handoff', 'README.md'), 'utf8');
+    assert.match(report, /没有验证结果/);
+    assert.doesNotMatch(report, /99\.0%|覆盖完整，可以直接进人工检查/);
+    assert.equal(readFileSync(join(site, 'verify', 'verify-summary.json'), 'utf8'), old);
+    const skipped = await run(['--skip-verify']);
+    assert.equal(skipped.code, 0, skipped.output);
+    assert.match(skipped.output, /本次跳过验证/);
+    assert.doesNotMatch(skipped.output, /验证门禁通过/);
+    assert.match(readFileSync(join(site, 'handoff', 'README.md'), 'utf8'), /没有跑验证/);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('handoff: 失败时即使有部分结果也不能声称覆盖完整', () => {
+  const md = renderHandoff({ ...base, verifyFailed: true,
+    summary: { targetTotal: 1, measured: 1, untested: 0, average: 1 } });
+  assert.match(md, /本次验证未通过或执行失败/);
+  assert.doesNotMatch(md, /覆盖完整，可以直接进人工检查/);
 });
 
 test('handoff: 资产报告被截断时必须写明扫了多少页', () => {

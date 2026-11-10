@@ -3,7 +3,7 @@
  * DetailDock — 单页详情面板（概览 / SEO 剖析 / 质检 / 克隆 四个标签页）
  *
  * 质检那一页的数据加载（loadQuality）**属于本组件**，不下发到父组件：
- * 它要读 5 个按页产物文件，且只在切到该标签页时才有意义。
+ * 它要读按页产物文件，且只在切到该标签页时才有意义。
  * 放父组件的话，每次打开详情都会白拉一遍 —— 而其中 asset-gaps.json 有 300KB。
  * （asset-gaps.json 按站点缓存：逐页切换时不重复下载，换站点才失效。）
  *
@@ -130,7 +130,11 @@ const elapsedText = computed(() => {
 const shotStamp = computed(() => props.forge?.endedAt ?? props.pageMeta[props.selected?.id]?.updatedAt ?? '');
 
 const detailTab = ref('overview');
-const detailQuality = reactive({ loading: false, verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
+const detailQuality = reactive({ loading: false, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
+const verifiedQuality = computed(() => {
+  const page = props.pageMeta[props.selected?.id];
+  return page?.verifyFresh === true ? page.verifyDetails ?? null : null;
+});
 /**
  * 资产缺口与交互镜像体检**不放在组件里**。
  *
@@ -171,19 +175,17 @@ async function loadQuality() {
   const n = props.selected;
   if (!n) return;
   detailQuality.loading = true;
-  Object.assign(detailQuality, { verify: null, fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
+  Object.assign(detailQuality, { fixup: null, gaps: null, history: null, liveGaps: null, cloneGaps: null, linker: null });
   const name = pageNameOf(n);
   const h = props.host;
   const artifacts = props.pageMeta[n.id]?.artifacts ?? {};
-  const [v, fu, hist, cg, lk] = await Promise.all([
-    artifacts.verify === false ? null : wsJson(h, 'verify/' + name + '/verify.json'),
+  const [fu, hist, cg, lk] = await Promise.all([
     artifacts.fixup === false ? null : wsJson(h, 'pages/' + name + '/fixup-history.json'),
     fetch(API + '/api/history/' + encodeURIComponent(h) + '/' + encodeURIComponent(name), { headers: apiHeaders() }).then(r => r.ok ? r.json() : null).catch(() => null),
     artifacts.cloneGaps === false ? null : wsJson(h, 'pages/' + name + '/clone-gaps.json'),
     artifacts.linker === false ? null : wsJson(h, 'linker-report.json'),
   ]);
   if (props.selected !== n) return;
-  detailQuality.verify = props.pageMeta[n.id]?.verifyFresh === false ? null : v;
   detailQuality.fixup = fu; detailQuality.history = hist; detailQuality.cloneGaps = cg;
   detailQuality.linker = lk?.pages?.find(p => p.name === name) ?? null;
 
@@ -376,17 +378,17 @@ function onTablistKey(e) {
     <template v-else>
       <div class="ov-sec">
         <div class="panel-sec-name">视觉保真（多视口）</div>
-        <div v-if="detailQuality.verify" class="q-list">
-          <div class="q-row"><span class="q-k">评分口径</span><span class="q-v">{{ detailQuality.verify.scoreVersion === 2 ? 'v2 · 缺失区域计入差异' : '历史旧口径 · 缺失区域可能未计入差异' }}</span></div>
-          <div class="q-row" v-for="v in detailQuality.verify.viewports" :key="v.name">
+        <div v-if="verifiedQuality" class="q-list">
+          <div class="q-row"><span class="q-k">评分口径</span><span class="q-v">{{ verifiedQuality.scoreVersion === 2 ? 'v2 · 缺失区域计入差异' : '历史旧口径 · 缺失区域可能未计入差异' }}</span></div>
+          <div class="q-row" v-for="v in verifiedQuality.viewports" :key="v.name">
             <span class="q-k">{{ v.name }}</span>
             <span class="q-v" :class="v.grade === 'A' ? 'ok' : v.grade === 'B' ? 'mid' : 'bad'">{{ v.score != null ? ((v.score * 100).toFixed(1) + '% ' + v.grade) : (v.skipped || v.error || '—') }}<i class="q-file" v-if="v.sourceSize && v.cloneSize">覆盖 {{ typeof v.coverageRatio === 'number' ? (v.coverageRatio * 100).toFixed(1) + '%' : '未知' }} · 原图 {{ v.sourceSize.width }}×{{ v.sourceSize.height }} / 镜像 {{ v.cloneSize.width }}×{{ v.cloneSize.height }}</i></span>
           </div>
-          <div class="q-row"><span class="q-k">综合</span><span class="q-v">{{ detailQuality.verify.measured === false || detailQuality.verify.overall == null ? '未完整测量' : (detailQuality.verify.overall * 100).toFixed(1) + '% ' + (detailQuality.verify.grade ?? '') }}</span></div>
-          <div class="q-row" v-if="detailQuality.verify.minViewport"><span class="q-k">最差视口</span><span class="q-v" :class="detailQuality.verify.minViewport.score >= 0.95 ? 'ok' : detailQuality.verify.minViewport.score >= 0.85 ? 'mid' : 'bad'">{{ detailQuality.verify.minViewport.name }} {{ (detailQuality.verify.minViewport.score * 100).toFixed(1) }}% {{ detailQuality.verify.minViewport.grade }}</span></div>
-          <div class="q-row" v-if="detailQuality.verify.minViewport && detailQuality.verify.minViewport.score < 0.9"><span class="q-k">建议</span><span class="q-v mid">该视口差异较大（多为客户端响应式变体/JS 渲染），优先使用交互镜像</span></div>
+          <div class="q-row"><span class="q-k">综合</span><span class="q-v">{{ verifiedQuality.measured === false || verifiedQuality.overall == null ? '未完整测量' : (verifiedQuality.overall * 100).toFixed(1) + '% ' + (verifiedQuality.grade ?? '') }}</span></div>
+          <div class="q-row" v-if="verifiedQuality.minViewport"><span class="q-k">最差视口</span><span class="q-v" :class="verifiedQuality.minViewport.score >= 0.95 ? 'ok' : verifiedQuality.minViewport.score >= 0.85 ? 'mid' : 'bad'">{{ verifiedQuality.minViewport.name }} {{ (verifiedQuality.minViewport.score * 100).toFixed(1) }}% {{ verifiedQuality.minViewport.grade }}</span></div>
+          <div class="q-row" v-if="verifiedQuality.minViewport && verifiedQuality.minViewport.score < 0.9"><span class="q-k">建议</span><span class="q-v mid">该视口差异较大（多为客户端响应式变体/JS 渲染），优先使用交互镜像</span></div>
         </div>
-        <div v-else class="seo-note">{{ pageMeta[selected.id]?.verifyFresh === false ? '重新克隆后，旧体检结果已失效' : '未运行多视口验证' }} <button class="wv-primary" style="margin-left:8px" @click="$emit('verify')">运行本页体检</button>（等价命令：<code>verify {{ host }} {{ pageNameOf(selected) }}</code>）</div>
+        <div v-else class="seo-note">{{ pageMeta[selected.id]?.verifyStatus === 'missing' ? '未运行多视口验证' : ['busy', 'timeout', 'unavailable'].includes(pageMeta[selected.id]?.verifyStatus) ? '当前无法核验体检结果，请稍后重试' : '体检结果不完整或已失效，请重新验证' }} <button class="wv-primary" style="margin-left:8px" @click="$emit('verify')">运行本页体检</button>（等价命令：<code>verify {{ host }} {{ pageNameOf(selected) }}</code>）</div>
         <!-- 差异**形态**：只给百分比的话，用户分不清"少了一张图"（集中）和"文字抗锯齿略不同"（弥散） -->
         <div v-if="detailScore?.diffShape" class="q-list" style="margin-top:8px">
           <div class="q-row">
@@ -417,14 +419,14 @@ function onTablistKey(e) {
       </div>
       <div class="ov-sec">
         <div class="panel-sec-name">交互回放（功能保真）</div>
-        <div v-if="detailQuality.verify?.functional" class="q-list">
-          <div class="q-row"><span class="q-k">通过</span><span class="q-v" :class="detailQuality.verify.functional.passed === detailQuality.verify.functional.total ? 'ok' : 'bad'">{{ detailQuality.verify.functional.passed }}/{{ detailQuality.verify.functional.total }}</span></div>
-          <div class="q-row" v-for="(ix, i) in (detailQuality.verify.interactions || [])" :key="i">
+        <div v-if="verifiedQuality?.functional" class="q-list">
+          <div class="q-row"><span class="q-k">通过</span><span class="q-v" :class="verifiedQuality.functional.passed === verifiedQuality.functional.total ? 'ok' : 'bad'">{{ verifiedQuality.functional.passed }}/{{ verifiedQuality.functional.total }}</span></div>
+          <div class="q-row" v-for="(ix, i) in (verifiedQuality.interactions || [])" :key="i">
             <span class="q-k">{{ ix.label || ('交互 ' + (i + 1)) }}</span>
             <span class="q-v" :class="ix.pass ? 'ok' : 'bad'">{{ ix.pass ? '通过' : '失败' }}<i v-if="ix.visualScore != null"> · 像素 {{ (ix.visualScore * 100).toFixed(1) }}%</i></span>
           </div>
         </div>
-        <div v-else-if="detailQuality.verify?.interactions?.some(ix => ix.unverified)" class="seo-note">交互回放未核实，请查看本地验证记录中的错误。</div>
+        <div v-else-if="verifiedQuality?.interactions?.some(ix => ix.unverified)" class="seo-note">交互回放未核实，请查看本地验证记录中的错误。</div>
         <div v-else class="seo-note">未运行交互回放或未发现可回放交互。</div>
       </div>
       <div class="ov-sec">

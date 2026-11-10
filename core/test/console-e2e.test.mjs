@@ -28,6 +28,8 @@ import { createServer } from 'node:net';
 import { createServer as createHttpServer } from 'node:http';
 import { chromium } from 'playwright';
 import { PNG } from 'pngjs';
+import { evidenceSha256, measurementIdentity, resultSha256 } from '../src/verify/resume-cache.mjs';
+import { verifierSha256 } from '../src/verify/verifier-fingerprint.mjs';
 
 const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(CORE, '..', 'console', 'dist');
@@ -80,6 +82,7 @@ function writeFixture(dataRoot) {
   const png = new PNG({ width: 2, height: 2 });
   png.data.fill(255);
   const image = PNG.sync.write(png);
+  const verifier = verifierSha256();
   const pages = [{ name: 'home', path: '/' }, { name: 'docs', path: '/docs' }];
   for (const { name, path } of pages) {
     put(`pages/${name}/clone/index.html`, `<html><head><link rel="canonical" href="https://fixture.test${path}"></head><body><h1>${name}</h1></body></html>`);
@@ -88,10 +91,19 @@ function writeFixture(dataRoot) {
     put(`pages/${name}/shot-clone.png`, image);
     put(`pages/${name}/manifest.json`, JSON.stringify({ target: `https://fixture.test${path}` }));
     put(`pages/${name}/score.json`, JSON.stringify({ total: 98, pixel: 0.98, grade: 'A' }));
-    const viewport = { name: 'mobile', width: 375, score: name === 'home' ? 0.9 : 1, grade: 'B', coverageRatio: 0.9,
-      sourceSize: { width: 375, height: 1000 }, cloneSize: { width: 375, height: 900 }, heightDelta: 100, missingPixels: 37_500 };
-    put(`verify/${name}/verify.json`, JSON.stringify({ scoreVersion: 2, overall: viewport.score, measured: name === 'home',
-      grade: 'B', minViewport: viewport, viewports: [viewport] }));
+    const viewport = { name: '375x812', width: 375, score: name === 'home' ? 0.9 : 1, grade: 'B', coverageRatio: 0.9,
+      sourceSize: { width: 375, height: 1000 }, cloneSize: { width: 375, height: 900 }, heightDelta: 100,
+      missingPixels: 37_500, captureMode: 'full', settleTimedOut: false, additionalVisibleBrokenImages: 0 };
+    const result = { page: name, target: `https://fixture.test${path}`, generatedAt: new Date().toISOString(),
+      scoreVersion: 2, overall: viewport.score, measured: name === 'home', grade: 'B', minViewport: viewport, viewports: [viewport] };
+    if (name === 'home') {
+      const options = { viewports: [viewport.name], interactions: false, keepScreenshots: false,
+        allowBounded: false, settleTimeout: 5000, jobs: 1 };
+      put(`verify/${name}/diff-${viewport.name}.png`, image);
+      result.measurementProof = { ...measurementIdentity(join(ws, 'pages', name), options, verifier),
+        evidence: evidenceSha256(result, join(ws, 'verify', name), false), resultSha256: resultSha256(result) };
+    }
+    put(`verify/${name}/verify.json`, JSON.stringify(result));
     // rounds 故意留空：这就是把「AI 校准」块推进 v-else 分支的真实形状（见 FIXUP_DETAIL 注释）
     put(`pages/${name}/fixup-history.json`, JSON.stringify({ at: '2026-10-13T00:00:00.000Z', rounds: [], skipped: 'noise', detail: FIXUP_DETAIL }));
     put(`pages/${name}/intel/intel.json`, JSON.stringify({ meta: { title: name + ' 标题' }, headings: [{ level: 'h1', text: name }], cta: ['开始'], prices: [] }));
@@ -263,10 +275,10 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
     // ③ 页面视图：排序表头可键盘操作，回车后 aria-label 的方向随之翻转
     await page.getByRole('button', { name: '页面' }).click();
     await page.waitForSelector('.wv-th .c-path.sortable', { timeout: 15_000 });
+    await page.waitForFunction(() => !document.querySelector('.wv-head .wv-stat')?.textContent?.includes('正在载入'));
     const scoreTitle = await page.locator('.wv-rows .wv-row:not(.wv-th) .wv-score').first().getAttribute('title');
     assert.match(scoreTitle ?? '', /多视口 v2.*覆盖 90\.0%.*原图 375×1000 \/ 镜像 375×900/,
       '清单需区分单页旧分数和多视口 v2，并给出覆盖率及尺寸');
-    await page.waitForFunction(() => !document.querySelector('.wv-head .wv-stat')?.textContent?.includes('正在载入'));
     assert.match(await page.locator('.wv-head .wv-stat').first().innerText(), /完整测量 1 页最差视口均值 90\.0%/,
       '部分视口 100% 不能混入 v2 最差视口均值');
     const partialDocs = page.locator('.wv-rows .wv-row:not(.wv-th)')
@@ -287,6 +299,11 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
     assert.notEqual(after, before, '回车应切换排序方向（aria-label 里的"升序/降序"要变）');
 
     // ④ 详情面板：对话框语义 + 打开即聚焦关闭按钮 + Esc 关闭
+    const verifyPath = join(dataRoot, 'workspace', 'fixture.test', 'verify', 'home', 'verify.json');
+    const verifiedFile = readFileSync(verifyPath, 'utf8');
+    const changedFile = JSON.parse(verifiedFile);
+    changedFile.viewports[0].score = 0.01;
+    writeFileSync(verifyPath, JSON.stringify(changedFile));
     await page.locator('.wv-rows .wv-row:not(.wv-th) .c-path[role="button"]')
       .filter({ hasText: /^\/$/ }).click();
     // 面板打不开时给出指向，别让下一个人从 "waiting for locator('.dock')" 猜起：
@@ -300,6 +317,9 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
     await page.locator('#tab-quality').click();
     await page.waitForFunction(() => document.querySelector('#panel-quality')?.textContent?.includes('缺失区域计入差异'));
     assert.match(await page.locator('#panel-quality').innerText(), /覆盖 90\.0%.*原图 375×1000 \/ 镜像 375×900/);
+    assert.match(await page.locator('#panel-quality').innerText(), /90\.0% B/,
+      'detail must use the checked snapshot, not a separately modified raw result');
+    writeFileSync(verifyPath, verifiedFile);
 
     // ④b 「克隆」tab 的校准结论必须真的渲染出来 —— 不能只断言"没抛异常"。
     //     那个块一度读错了数据源（detailQuality.fixup 只有切到「质检」标签才加载），

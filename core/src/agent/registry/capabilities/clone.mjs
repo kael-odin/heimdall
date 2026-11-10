@@ -17,6 +17,8 @@ import { resolvePageNameOfUrl } from '../../../url-canon.mjs';
 import { ok, fail, nextAction, CapabilityError } from '../../envelope.mjs';
 import { connectEngine, engineFetch } from '../../engine-client.mjs';
 import { publicJob } from '../../jobs.mjs';
+import { listPages } from '../../workspace.mjs';
+import { measurementCoverage, scanMeasurementsAsync } from '../../../verify/measurement-status.mjs';
 import { nextForJob } from './jobs.mjs';
 
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
@@ -28,12 +30,13 @@ function parseTarget(url) {
   return u;
 }
 
-function pageResult(siteId, page) {
+function pageResult(siteId, page, measurement, scanStatus) {
   const dir = join(WORKSPACE, siteId, 'pages', page);
   const score = readJson(join(dir, 'score.json'));
-  const verify = readJson(join(WORKSPACE, siteId, 'verify', page, 'verify.json'));
+  const verify = measurement?.status === 'verified' ? measurement.result : null;
   return { page, mirror: existsSync(join(dir, 'clone', 'index.html')), score: score ? { total: score.total, grade: score.grade } : null,
-    verify: verify ? { measured: !!verify.measured, overall: verify.overall ?? null, minViewport: verify.minViewport?.name ? { name: verify.minViewport.name, score: verify.minViewport.score } : null } : null };
+    verify: verify ? { measured: true, overall: verify.overall ?? null, minViewport: verify.minViewport?.name ? { name: verify.minViewport.name, score: verify.minViewport.score } : null } : null,
+    verifyStatus: scanStatus === 'ok' ? measurement?.status ?? 'unavailable' : scanStatus };
 }
 
 /** 在引擎进程里：生成阶段计划，交给任务门面 */
@@ -66,14 +69,17 @@ export function planClone(args) {
 }
 
 export function finishClone(siteId, scope, pageName) {
-  return (job) => {
+  return async (job) => {
     const page = job.stages[0]?.response?.pageName ?? pageName;
-    if (scope === 'page' && page) return { siteId, scope, pages: [pageResult(siteId, page)] };
     const pagesDir = join(WORKSPACE, siteId, 'pages');
-    const names = existsSync(pagesDir) ? (readJson(join(WORKSPACE, siteId, 'verify', 'verify-summary.json'))?.pages ?? []).map(p => p.page) : [];
-    const summary = readJson(join(WORKSPACE, siteId, 'verify', 'verify-summary.json'));
-    return { siteId, scope, pages: names.slice(0, 50).map(n => pageResult(siteId, n)),
-      coverage: summary ? { measured: summary.measured, unmeasured: summary.unmeasured, average: summary.average } : null };
+    const names = scope === 'page' && page ? [page] : existsSync(pagesDir) ? listPages(siteId) : [];
+    const scan = await scanMeasurementsAsync(join(WORKSPACE, siteId), names);
+    const measurements = new Map(scan.pages.map(row => [row.page, row]));
+    const pages = names.slice(0, 50).map(n => pageResult(siteId, n, measurements.get(n), scan.status));
+    if (scope === 'page' && page) return { siteId, scope, pages };
+    const coverage = measurementCoverage(scan, names.length);
+    return { siteId, scope, pages, coverage: { measured: coverage.verified, unmeasured: coverage.unmeasured,
+      average: coverage.average, verificationStatus: coverage.status } };
   };
 }
 
@@ -117,7 +123,8 @@ export default {
         const siteId = siteIdForOrigin(WORKSPACE, u.href);
         const page = args.pageName ?? resolvePageNameOfUrl(u.href, join(WORKSPACE, siteId));
         if (existsSync(join(WORKSPACE, siteId, 'pages', page, 'clone', 'index.html'))) {
-          return ok({ status: 'succeeded', reused: true, siteId, scope: 'page', pages: [pageResult(siteId, page)] }, {
+          const scan = await scanMeasurementsAsync(join(WORKSPACE, siteId), [page]);
+          return ok({ status: 'succeeded', reused: true, siteId, scope: 'page', pages: [pageResult(siteId, page, scan.pages[0], scan.status)] }, {
             summary: `${siteId}/${page} 已有镜像，直接复用（要重新抓取用 reuse:"never"）。`,
             nextActions: [nextAction('heimdall_brief', { siteId, page, detail: 'sections' }, '取简报与分段，开始重建')],
           });

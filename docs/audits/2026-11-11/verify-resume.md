@@ -43,10 +43,33 @@ node --test core/test/historical-v2-batch.test.mjs
 
 `health.json` 是导出时的快照，交付后手工修改文件不会自动刷新。原始验证证据留在工作区，不能只凭交付包重新核验该计数。`--strict` 目前不因 `unverifiedV2` 非零而单独失败。指纹不证明在线参考站、远程资源、系统字体或后续动态请求没有变化，也不是防止本机恶意篡改的签名。需要确认当前还原度时须重新测量；交付期间不要并发修改工作区或候选包。
 
-**其他入口仍有待办**：另用本机 Chromium 实际生成带新指纹的 100% 测量，再改 CSS 并保留其修改时间；引擎 `/api/pages` 仍返回 `verifyFresh: true` 和旧的 100% 视口分数。控制台验收摘要会使用该字段。源码还显示 `heimdall_site` 和 `heimdall_clone` 的部分结果直接读取旧验证记录或汇总；本次没有对 MCP 调用做同样的实测，也没有修复这些入口。它们目前不能证明克隆内容仍与旧分数匹配，需后续统一校验并评估大站扫描开销。
+## 控制台和 AI 的当前结果
+
+**本机真实浏览器反例**：先对红色夹具测得 100%；仅把克隆 CSS 改成蓝色，再把修改时间改回原值。修复前，页面接口、`site` 和复用镜像的 `clone` 都仍返回旧分数；修复后不再返回该分数，站点当前已验证数由 1 变为 0。相同反例也通过真实 MCP stdio 协议测试了 `heimdall_site` 与 `heimdall_clone`。这些测试只使用本机虚构站点，不是 Xspark 新验收。
+
+- `/api/pages`、AI 站点和克隆结果统一核对测量证明。内容或证据变化显示 `stale`；旧格式、未完成、忙碌、超时和不可用分别显示状态。旧记录不删除。
+- 全站覆盖从当前逐页校验结果计算。扫描无法完成时，数量与平均分为未知，不冒充 0 或通过。AI 总览不扫描全部大站：`verified` 为未知，`historicalVerified` 明确只是旧摘要中的数量；需要当前数量时调用 `heimdall_site` 的 `coverage`。
+- 控制台只有在全站摘要逐页对应当前测量时间、总分和最差视口时，才沿用摘要的通过结论。单页重新测量后应重跑全站验证。
+- 响应式升级在使用基准前核对证明和逐页摘要。交接命令检查本次验证退出码和新摘要，不能把旧摘要当成本次通过；`--skip-verify` 仍可跳过，但不宣称通过验证。
+- 页面最初克隆时生成的 `score.json` 是另一份历史快照，不是本次多视口证明；原站可能变化时应重新测量。显式允许的有界测量仍保留原有口径；独立导出覆盖只统计完全收敛的视口。
+
+校验在工作线程执行，每个进程最多同时处理两个扫描，超过时返回忙碌，超过 60 秒返回超时。本机虚拟性能试验构造 120 页、每页逻辑大小 16 MiB，数据通过硬链接复用同一文件；两次并发扫描约 1.9 秒，期间健康接口响应 2 毫秒，第三次扫描报告忙碌。该结果只说明本机该夹具的情况，不保证其他机器或实际站点的速度。
+
+内容指纹只反映扫描时读到的文件，不锁定文件，也不是防篡改签名。校验期间仍应避免并发修改；它不能证明在线原站、远程服务、系统字体或之后加载的内容未变。历史记录不带证明时须重测；没有重新访问 Xspark，也没有改变试点误报或漏报的分母。
 
 覆盖回归可在仓库根目录运行：
 
 ```powershell
 node --test core/test/live-coverage.test.mjs core/test/verify-resume-cache.test.mjs
+node --test core/test/engine-boundary-integration.test.mjs core/test/acceptance-summary.test.mjs core/test/responsive-upgrade-freshness.test.mjs core/test/handoff.test.mjs core/test/measurement-status.test.mjs
+pnpm -C packages/mcp test
 ```
+
+## 2026-11-11 本机回归
+
+- Windows / Node 26 上，`pnpm check` 退出码为 0：核心快速测试 1291 项、MCP 测试 7 项通过，三处依赖审计未报告已知漏洞；检查还包含本机固定样例的 Chromium/CDP 验收演示。
+- 控制台、导出、交接、续跑、响应式升级及线程并发专项共 38 项通过。工作线程曾因继承测试进程的不兼容参数而无法启动；修正后，并发限制与创建失败恢复测试通过。另用本机探针确认线程运行中出错后返回 `unavailable`，随后可以恢复扫描；未单独等待 60 秒实测超时。
+- `pnpm -C core smoke` 使用本机虚构站点，侦察到 2 页，克隆、SEO、离线包、监控和任务历史检查通过。这些样例结果不代表真实站点质量。
+- 使用仓库历史脚本 `e1dd67fa^:core/scripts/smoke-console-cdp.mjs`，仅将工作目录指向当前 `core` 后运行：真实 Chromium 通过 CDP 点击“只克隆此页”，任务完成，克隆产物返回 200，浏览器未出现未捕获异常。该脚本已从当前仓库移除，本次没有恢复为产品入口。[脱敏结果](evidence/local-cdp-20261111/cdp-real-forge.json)、[控制台截图](evidence/local-cdp-20261111/cdp-console-forge.png)和[产物截图](evidence/local-cdp-20261111/cdp-clone-artifact.png)仅含本机夹具。
+
+本轮不重新访问 Xspark、不重算试点指标，也没有增加检测器。历史试点结果和后续自动决策的依据见 [Xspark 试点报告](../2026-11-05/xspark-pilot.md)；真实环境现状和全站误报、漏报仍不能由本轮本机夹具推断。
