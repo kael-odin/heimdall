@@ -4,6 +4,7 @@ const ACTIVE_ELEMENTS = new Set(['script', 'object', 'embed', 'applet', 'frame',
 const URL_ATTRIBUTES = new Set([
   'href', 'xlink:href', 'src', 'srcset', 'action', 'formaction', 'data', 'poster', 'background',
 ]);
+const FORM_OVERRIDE_ATTRIBUTES = new Set(['formaction', 'formmethod', 'formtarget']);
 
 function activeUrl(value, tag, attribute) {
   const compact = String(value).replace(/[\u0000-\u0020\u007f]/g, '').toLowerCase();
@@ -27,19 +28,29 @@ function cleanChildren(parent) {
   for (const node of parent.childNodes) {
     if (node.attrs) {
       const tag = node.tagName?.toLowerCase() ?? '';
+      const hasFormOwner = node.attrs.some(attr => !attr.prefix && attr.name.toLowerCase() === 'form');
       node.attrs = node.attrs.filter((attr) => {
         const name = (attr.prefix ? attr.prefix + ':' : '') + attr.name.toLowerCase();
         if (/^on[a-z]/i.test(name) || name === 'srcdoc' || (tag === 'iframe' && name === 'sandbox')) return false;
+        if (FORM_OVERRIDE_ATTRIBUTES.has(name)
+          || (tag === 'form' && ['action', 'method', 'target'].includes(name))) return false;
         return !URL_ATTRIBUTES.has(name) || !activeUrl(attr.value, tag, name);
       });
       if (tag === 'iframe') node.attrs.push({ name: 'sandbox', value: '' });
+      if ((tag === 'form' || hasFormOwner)
+        && !node.attrs.some(attr => !attr.prefix && attr.name.toLowerCase() === 'inert')) {
+        node.attrs.push({ name: 'inert', value: '' });
+      }
+      if (tag === 'form') {
+        node.attrs.push({ name: 'action', value: 'about:blank' }, { name: 'method', value: 'dialog' });
+      }
     }
     cleanChildren(node);
     cleanChildren(node.content);
   }
 }
 
-/** Remove source-site script entry points while retaining static layout and local assets. */
+/** Remove source-site script and native form entry points while retaining static layout. */
 export function sanitizeStaticHtml(html) {
   const document = parse(String(html));
   cleanChildren(document);

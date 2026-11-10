@@ -23,6 +23,10 @@ const sourceHtml = (label) => `<!doctype html><html><head>
   <svg onload="window.__svgRan=true"><a xlink:href="java&#x73;cript:window.__svgLinkRan=true">SVG link</a></svg>
   <a id="active-link" href="java&#x73;cript:window.__linkRan=true">Active link</a>
   <iframe id="embedded" sandbox="allow-scripts allow-same-origin" srcdoc="&lt;script&gt;parent.__frameRan=true&lt;/script&gt;"></iframe>
+  <form id="fixture-form" method="post" action="https://fixture.test/write">
+    <input name="fixture"><button type="submit">Submit</button>
+  </form>
+  <button id="external-form-button" form="fixture-form" formaction="https://fixture.test/other">External</button>
   <canvas data-heimdall-canvas="0" onerror="window.__canvasRan=true"></canvas>
   <mux-player poster="poster.png" onerror="window.__mediaRan=true"></mux-player>
   <script>window.__scriptRan=true</script>
@@ -60,7 +64,7 @@ function writeCapture(site, name, label, { variants = [] } = {}) {
   return page;
 }
 
-function assertStaticDocument(html, { expectIframe = true } = {}) {
+function assertStaticDocument(html, { expectIframe = true, expectForm = expectIframe } = {}) {
   assert.match(html, /<h1>/i, 'the captured content remains visible');
   assert.doesNotMatch(html, /\son[a-z]+\s*=/i, 'event handler attributes are removed');
   assert.doesNotMatch(html, /\bsrcdoc\s*=/i, 'iframe srcdoc is removed');
@@ -69,6 +73,11 @@ function assertStaticDocument(html, { expectIframe = true } = {}) {
   assert.doesNotMatch(html, /http-equiv\s*=\s*["']?refresh/i, 'meta refresh is removed');
   if (expectIframe) assert.match(html, /<iframe\b[^>]*\bsandbox=""/i,
     'retained iframe has a restrictive sandbox');
+  if (expectForm) {
+    assert.match(html, /<form\b(?=[^>]*\baction="about:blank")(?=[^>]*\bmethod="dialog")(?=[^>]*\binert="")/i);
+    assert.match(html, /<button\b(?=[^>]*\bid="external-form-button")(?=[^>]*\binert="")/i);
+    assert.doesNotMatch(html, /\bformaction\s*=/i);
+  }
 }
 
 async function freePort() {
@@ -227,6 +236,8 @@ test('static clone build and offline export isolate source HTML while live HAR r
       await page.goto(`${base}/static/${HOST}/pages/responsive/clone/index.html`);
       await page.waitForURL('**/index-375.html');
       assert.equal(await page.locator('h1').textContent(), 'Responsive clone 375');
+      assert.equal(await page.locator('#fixture-form').evaluate(form => form.inert && form.method === 'dialog'), true);
+      assert.equal(await page.locator('#external-form-button').evaluate(button => button.inert), true);
       assert.equal(await page.evaluate(() => window.origin), 'null');
       assert.equal(await page.evaluate(() => window.__cloneRan), undefined);
       assert.equal(await page.evaluate(() => window.__tamperedChooserRan), undefined);

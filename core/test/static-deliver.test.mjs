@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -10,6 +11,7 @@ import { chromium } from 'playwright';
 const CORE = fileURLToPath(new URL('..', import.meta.url));
 const DELIVER = fileURLToPath(new URL('../src/deliver.mjs', import.meta.url));
 const HOST = 'fixture.test';
+const EVIDENCE_DIR = process.env.HEIMDALL_AUDIT_EVIDENCE_DIR;
 
 function put(root, rel, content) {
   const file = join(root, rel);
@@ -90,6 +92,120 @@ test('static deliver sanitizes only its candidate clone and retains the previous
     assert.ok(existsSync(join(deliverable, backup, 'keep.txt')));
   } finally {
     await browser?.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('static delivery neutralizes native form submissions from disk and plain HTTP', { timeout: 30_000 }, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-static-form-'));
+  const site = join(root, 'workspace', HOST);
+  const requests = [];
+  let exported;
+  const server = createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/mirror') {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(readFileSync(exported));
+      return;
+    }
+    if (req.url === '/favicon.ico') { res.writeHead(204); res.end(); return; }
+    requests.push({ method: req.method, path: req.url });
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end('<!doctype html><title>fixture response</title>');
+  });
+  let browser;
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const target = `http://127.0.0.1:${server.address().port}`;
+    const original = `<!doctype html><html><body>
+      <form id="main-form" method="post" action="${target}/inner" target="_blank">
+        <input id="inner-input" name="value" value="fixture">
+        <button id="inner-submit" type="submit">Submit</button>
+        <button id="inner-override" type="submit" formaction="${target}/inner-override"
+          formmethod="get" formtarget="_blank">Override</button>
+      </form>
+      <input id="external-input" form="main-form" name="external" value="fixture">
+      <button id="external-submit" form="main-form" type="submit"
+        formaction="${target}/override" formmethod="post">External submit</button>
+      <input id="external-image" form="main-form" type="image" alt="Image submit"
+        formaction="${target}/image" style="width:80px;height:24px">
+      <form id="enter-form" action="${target}/enter" method="post">
+        <input id="enter-input" name="value" value="fixture">
+      </form>
+      <input id="unrelated-input" value="unrelated">
+      <a id="ordinary-link" href="/other">Other page</a>
+    </body></html>`;
+    const source = put(site, 'pages/home/clone/index.html', original);
+    put(site, 'pages/home/manifest.json', JSON.stringify({ target: `https://${HOST}/` }));
+    const result = run(root);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.equal(readFileSync(source, 'utf8'), original, 'the historical workspace copy remains unchanged');
+
+    exported = join(output(root), 'site/pages/home/clone/index.html');
+    browser = await chromium.launch();
+    const page = await browser.newPage();
+    const screenshots = [];
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await page.setContent(original);
+      const before = await page.screenshot();
+      await page.goto(pathToFileURL(exported).href);
+      const after = await page.screenshot();
+      assert.equal(after.equals(before), true, `fixture appearance differs at width ${viewport.width}`);
+      screenshots.push({ viewport, before, after });
+    }
+    assert.deepEqual(await page.locator('#main-form').evaluate(form => ({
+      action: form.getAttribute('action'), method: form.method, inert: form.inert,
+    })), { action: 'about:blank', method: 'dialog', inert: true });
+    assert.equal(await page.locator('#external-submit').getAttribute('formaction'), null);
+    assert.equal(await page.locator('#external-submit').getAttribute('formmethod'), null);
+    assert.equal(await page.locator('#external-submit').evaluate(button => button.inert), true);
+    assert.equal(await page.locator('#unrelated-input').evaluate(input => input.inert), false);
+    assert.equal(await page.locator('[formaction], [formmethod], [formtarget]').count(), 0);
+    const click = async selector => {
+      const box = await page.locator(selector).boundingBox();
+      assert.ok(box, `${selector} remains visible`);
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    };
+    const actions = [
+      ['inside submit', () => click('#inner-submit')],
+      ['inside form override', () => click('#inner-override')],
+      ['outside form override', () => click('#external-submit')],
+      ['outside image submit', () => click('#external-image')],
+      ['inside enter', async () => { await click('#enter-input'); await page.keyboard.press('Enter'); }],
+      ['outside enter', async () => { await click('#external-input'); await page.keyboard.press('Enter'); }],
+      ['requestSubmit', () => page.evaluate(() => document.querySelector('#main-form').requestSubmit())],
+      ['requestSubmit with outside override', () => page.evaluate(() => {
+        document.querySelector('#main-form').requestSubmit(document.querySelector('#external-submit'));
+      })],
+      ['submit', () => page.evaluate(() => document.querySelector('#main-form').submit())],
+    ];
+    for (const entry of [pathToFileURL(exported).href, `${target}/mirror`]) {
+      for (const [label, action] of actions) {
+        await page.goto(entry);
+        await action();
+        await page.waitForTimeout(300);
+        assert.deepEqual(requests, [], `${label} sent a request to the fixture server`);
+        assert.equal(page.url(), entry, `${label} navigated away from the mirror`);
+      }
+    }
+    assert.equal(await page.locator('#ordinary-link').getAttribute('href'), '/other');
+    if (EVIDENCE_DIR) {
+      mkdirSync(EVIDENCE_DIR, { recursive: true });
+      for (const { viewport, before, after } of screenshots) {
+        writeFileSync(join(EVIDENCE_DIR, `before-${viewport.width}.png`), before);
+        writeFileSync(join(EVIDENCE_DIR, `after-${viewport.width}.png`), after);
+      }
+      writeFileSync(join(EVIDENCE_DIR, 'result.json'), JSON.stringify({
+        kind: 'local-synthetic-fixture', browser: browser.version(),
+        entryModes: ['file', 'plain-http'], actions: actions.map(([label]) => label),
+        attempts: actions.length * 2, unexpectedRequestsToFixture: requests.length,
+        screenshotWidths: screenshots.map(item => item.viewport.width), screenshotsIdentical: true,
+      }, null, 2));
+    }
+  } finally {
+    await browser?.close();
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
     rmSync(root, { recursive: true, force: true });
   }
 });

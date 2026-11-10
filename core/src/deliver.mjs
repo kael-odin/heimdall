@@ -285,7 +285,9 @@ cd site && npx serve .
   ${manifest.gapCoverage?.truncated ? `\n  ⚠ 这张表**只覆盖 ${manifest.gapCoverage.scanned} / ${manifest.gapCoverage.cloned} 页**（资产扫描有 --max 上限，默认 60 页）。\n  剩下的页里可能还有外链视觉资产没被列出来 —— 要完整名单就重跑：\`node core/src/audit/assets.mjs ${manifest.host} --max ${manifest.gapCoverage.cloned}\`` : ''}
 - **换文案**：${manifest.counts.copyPages} 页的标题 / H1 / CTA / 价格
 
-这些产物仍包含捕获时的站点内容。迁移和交付时应核对授权范围、资源来源及个人信息。
+这些产物仍包含捕获时的站点内容，截图和原始材料可能包含个人信息或凭据。
+\`raw/<page>/dom.html\` 保留捕获到的原始内容，可能含脚本，不能当作安全页面直接打开或公开。
+迁移和交付前应逐项核对授权范围、资源来源、截图与个人信息。
 
 ## 三类接手材料
 
@@ -382,7 +384,8 @@ README.md                     本文件
 
 ## 诚实边界
 
-- **静态复刻**：无登录、无后端交互、无搜索。表单能看出结构但不会真的提交。
+- **静态复刻**：无登录、无后端交互、无搜索。新构建或重新导出的静态镜像保留表单元素，但禁用表单与通过 \`form\` 关联的控件；表单属性和可访问性变化可能影响外观，须逐页检查。旧的工作区文件与已交付包不会自动更新。
+- **网络边界**：禁用表单不是断网沙箱；链接、图片、样式、字体和嵌入内容仍可能访问外部地址，分享前须另行检查。
 - **动效**：保留的 CSS 动画与过渡可能运行；依赖脚本、运行时状态或远程资源的动效需逐页检查。
   若生成了 \`motion-replay.css\`，它重演的是捕获到的形态，不保证原脚本行为一致。
   \`motion.md\`、\`motion.json\` 和 \`score.json\` 的 \`breakdown.dynamicShare\`（若存在）
