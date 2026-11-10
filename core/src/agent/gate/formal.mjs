@@ -12,15 +12,16 @@
  * 验收子系统有 10 个「指纹冻结」文件不能改（PRD README §3），所以这里只调用公开接口，不碰内部实现。
  * 基线/目标都是本机回环，引擎必须已在跑（`heimdall serve 8900`）。
  */
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { writeFileAtomic } from '../../fsutil.mjs';
 import { sha256 } from '../ids.mjs';
 import { agentDir } from '../workspace.mjs';
+import { projectFingerprint } from '../deliver/project.mjs';
 import { launchBrowser } from '../evidence/capture.mjs';
 import { fastCompare, readProjectConfig } from '../evidence/compare.mjs';
 import { prepareBaseline, startBaselineServer, copySanitizedBaseline } from './baseline.mjs';
 import { composeGate } from './report.mjs';
+import { startFormalAttempt, writeFormalAttempt } from './attempt.mjs';
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -54,6 +55,9 @@ async function fetchJson(url, init = {}) {
 /** 把验收报告的维度拍平成门禁能读的形状 */
 export function acceptanceDimension(report, status) {
   if (!report) return { id: 'acceptance', status: 'not_measured', detail: `验收没有给出报告（任务状态 ${status}）`, gate: status };
+  if (status !== 'completed' || report.status !== 'completed') {
+    return { id: 'acceptance', status: 'not_measured', detail: `验收任务或报告未完成（任务状态 ${status}）`, gate: report.gate ?? 'blocked' };
+  }
   const d = report.summary?.dimensions ?? {};
   const pick = (k) => (d[k] ? `${d[k].passed}/${d[k].total}` : '—');
   const gate = report.gate ?? 'blocked';
@@ -71,21 +75,22 @@ export function acceptanceDimension(report, status) {
  * @returns {Promise<{status:'passed'|'failed'|'incomplete', reportPath, acceptance:{runId,gate,summary}, fast, report}>}
  */
 export async function formalGate({ siteId, page, projectDir, engine = process.env.HEIMDALL_API ?? 'http://127.0.0.1:8900', level = 'silver', timeoutMs = 8 * 60_000, pollMs = 3000, browser = null, onProgress = () => {} } = {}) {
-  const cfg = readProjectConfig(projectDir);
-  const targetUrl = cfg.devServer.url;
-  if (!targetUrl) throw new Error('heimdall.config.json 缺 devServer.url');
-  const viewports = cfg.viewports ?? [375, 768, 1440];
-
+  const attempt = startFormalAttempt({ siteId, page, projectDir, level });
   const own = !browser;
-  browser ??= await launchBrowser();
   let server = null;
   try {
+    const snapshot = { schema: 'heimdall.project-snapshot/1', sha256: projectFingerprint(projectDir) };
+    const cfg = readProjectConfig(projectDir);
+    const targetUrl = cfg.devServer?.url;
+    if (!targetUrl) throw new Error('heimdall.config.json 缺 devServer.url');
+    const viewports = cfg.viewports ?? [375, 768, 1440];
+    browser ??= await launchBrowser();
     onProgress({ stage: 'baseline', message: '准备正式基线（E7-19）' });
     const base = await prepareBaseline(browser, { siteId, page });
     // 验收的结构检查比的是控件语义（含 href）：基线里的绝对链接（http://原站/signup）与重建页里的
     // 相对链接（/signup）指同一个站内目标，却会被判成结构缺陷。供基线前把绝对 href 归一成站内路径，
     // 视觉不受影响（链接不参与渲染），结构才比得公平。
-    const formalDir = join(agentDir(siteId), 'gate', page, 'baseline-formal');
+    const formalDir = join(agentDir(siteId), 'gate', page, `baseline-formal-${sha256(attempt.file).slice(0, 16)}`);
     const normalized = copySanitizedBaseline(base.dir, formalDir, { normalizeLinks: true });
     onProgress({ stage: 'baseline', message: `正式基线：归一化 ${normalized.changes.filter(c => c.kind === 'anchor_normalized').length} 个链接` });
     server = await startBaselineServer(formalDir);
@@ -113,7 +118,9 @@ export async function formalGate({ siteId, page, projectDir, engine = process.en
       await sleep(pollMs);
     }
     if (!view || view.status === 'running') {
-      return { status: 'incomplete', reason: 'acceptance_timeout', runId, acceptance: { runId, gate: 'blocked' }, reportPath: null };
+      const gate = { ...attempt.gate, generatedAt: new Date().toISOString(), reason: 'acceptance_timeout', projectSnapshot: snapshot, acceptance: { runId, gate: 'blocked' } };
+      writeFormalAttempt(attempt.file, gate);
+      return { status: 'incomplete', reason: 'acceptance_timeout', runId, gate, acceptance: gate.acceptance, reportPath: attempt.file };
     }
     let report = null;
     try { report = await fetchJson(`${engine}/api/acceptance/runs/${runId}/report`); } catch { report = null; }
@@ -126,29 +133,28 @@ export async function formalGate({ siteId, page, projectDir, engine = process.en
     const dims = [...fast.dimensions, acceptance];
     const anyFail = dims.some(d => d.status === 'fail');
     const anyUnknown = dims.some(d => d.status === 'not_measured');
-    const status = anyFail ? 'failed' : anyUnknown ? 'incomplete' : 'passed';
+    const changed = projectFingerprint(projectDir) !== snapshot.sha256;
+    const status = changed ? 'incomplete' : anyFail ? 'failed' : anyUnknown ? 'incomplete' : 'passed';
 
     const gate = {
-      schema: 'heimdall.gate/1', judge: 'formal', level,
-      siteId, page, projectDir: resolve(projectDir), generatedAt: new Date().toISOString(),
+      ...attempt.gate, level, projectDir: resolve(projectDir), generatedAt: new Date().toISOString(), projectSnapshot: snapshot,
       acceptance: { runId, gate: report?.gate ?? 'blocked', engine, baseline: baselineUrl, target: targetUrl },
-      dimensions: dims, status,
+      dimensions: dims, status, ...(changed ? { reason: 'project_changed_during_gate' } : { reason: null }),
       thresholds: fast.thresholds,
       note: status === 'passed'
         ? '正式裁判通过：验收与评估器每一维都过了。'
         : status === 'incomplete'
-          ? '有维度没测到（基线被 blocked 或验收未出报告），不当作通过。'
+          ? '有维度没测到或项目在测量期间变化，不当作通过。'
           : '至少一维没过；按 dimensions 与验收报告定位。',
     };
-    const outDir = join(agentDir(siteId), 'gate', page);
-    mkdirSync(outDir, { recursive: true });
-    const file = join(outDir, `formal-${runId}.json`);
-    const body = JSON.stringify(gate, null, 1) + '\n';
-    writeFileAtomic(file, body);
-    if (report) writeFileSync(join(outDir, `${runId}.acceptance.md`), JSON.stringify(report.summary ?? {}, null, 1));
-    return { status, gate, fast, report, acceptance: { runId, gate: report?.gate ?? 'blocked', summary: report?.summary ?? null }, reportPath: file, evidence: { sha256: sha256(body), bytes: body.length } };
+    const body = writeFormalAttempt(attempt.file, gate);
+    if (report) writeFileSync(join(agentDir(siteId), 'gate', page, `${runId}.acceptance.md`), JSON.stringify(report.summary ?? {}, null, 1));
+    return { status, gate, fast, report, acceptance: { runId, gate: report?.gate ?? 'blocked', summary: report?.summary ?? null }, reportPath: attempt.file, evidence: { sha256: sha256(body), bytes: Buffer.byteLength(body) } };
+  } catch (error) {
+    try { writeFormalAttempt(attempt.file, { ...attempt.gate, generatedAt: new Date().toISOString(), reason: 'formal_gate_error' }); } catch {}
+    throw error;
   } finally {
     if (server) await server.close().catch(() => {});
-    if (own) await browser.close().catch(() => {});
+    if (own) await browser?.close().catch(() => {});
   }
 }

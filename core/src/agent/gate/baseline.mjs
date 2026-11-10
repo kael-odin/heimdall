@@ -10,13 +10,14 @@
  * 去掉外部请求与断链引用，改动逐条写进报告；副本仍不健康就记 `blocked` 并写明原因。
  * blocked 不是失败：它明确告诉调用方这一维没法判，而不是判成不过。
  */
-import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { createReadStream, lstatSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { extname, join, resolve } from 'node:path';
+import { extname, join, relative, resolve, sep } from 'node:path';
 import { parse, serialize } from 'parse5';
-import { isInside, isSecretFile } from '../../paths.mjs';
+import { isInside } from '../../paths.mjs';
 import { writeFileAtomic } from '../../fsutil.mjs';
 import { sha256 } from '../ids.mjs';
+import { isSecretPath } from '../secrets.mjs';
 import { agentDir, mirrorEntry, requireMirror } from '../workspace.mjs';
 
 const MIME = {
@@ -34,27 +35,44 @@ const MIME = {
 /** 1×1 透明 GIF：用在被摘掉的外部图片/背景上，保持盒子尺寸，但不发请求 */
 export const BLANK_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
+function safeStat(root, file) {
+  const rel = relative(root, file);
+  if ((rel && !isInside(root, file)) || isSecretPath(rel)) return null;
+  try {
+    let current = root;
+    let stat = lstatSync(current);
+    if (stat.isSymbolicLink()) return null;
+    for (const part of rel.split(sep).filter(Boolean)) {
+      current = join(current, part);
+      stat = lstatSync(current);
+      if (stat.isSymbolicLink()) return null;
+    }
+    return stat;
+  } catch { return null; }
+}
+
 /** 只读静态服务：根目录下任何普通文件都能读，秘密文件与目录穿越一律 404 */
 export async function startBaselineServer(root, { host = '127.0.0.1' } = {}) {
   const base = resolve(root);
   const server = createServer((req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
-    let file;
+    let file, stat;
     try {
       const pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://127.0.0.1').pathname);
       let candidate = resolve(base, '.' + (pathname === '/' ? '/index.html' : pathname));
       if (!isInside(base, candidate) && candidate !== base) { res.writeHead(404); res.end(); return; }
-      let stat;
-      try { stat = statSync(candidate); } catch { res.writeHead(404); res.end(); return; }
-      if (stat.isDirectory()) { candidate = join(candidate, 'index.html'); try { stat = statSync(candidate); } catch { res.writeHead(404); res.end(); return; } }
-      if (!stat.isFile() || isSecretFile(candidate)) { res.writeHead(404); res.end(); return; }
+      stat = safeStat(base, candidate);
+      if (stat?.isDirectory()) { candidate = join(candidate, 'index.html'); stat = safeStat(base, candidate); }
+      if (!stat?.isFile()) { res.writeHead(404); res.end(); return; }
       file = candidate;
     } catch { res.writeHead(400); res.end(); return; }
     const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream';
     // 不写 Content-Security-Policy：sandbox 会让字体、worker、cssRules 全部失效（PRD 05 §1.5）
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': statSync(file).size, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' });
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': stat.size, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' });
     if (req.method === 'HEAD') { res.end(); return; }
-    createReadStream(file).pipe(res);
+    const stream = createReadStream(file);
+    stream.on('error', () => res.destroy());
+    stream.pipe(res);
   });
   await new Promise((resolveListen, reject) => { server.once('error', reject); server.listen(0, host, resolveListen); });
   const origin = `http://${host}:${server.address().port}`;
@@ -79,7 +97,7 @@ function localFile(root, docDir, value) {
   if (!pathPart) return null;
   try {
     const file = resolve(docDir, decodeURIComponent(pathPart));
-    return isInside(root, file) && existsSync(file) && !isSecretFile(file) ? file : null;
+    return isInside(root, file) && safeStat(root, file) ? file : null;
   } catch { return null; }
 }
 
@@ -221,10 +239,12 @@ export function copySanitizedBaseline(srcDir, destDir, { log, normalizeLinks = f
     for (const name of readdirSync(dir)) {
       if (SKIP_DIRS.has(name)) continue;
       const p = join(dir, name);
-      const st = statSync(p);
+      const rel = relative(root, p);
+      if (isSecretPath(rel)) continue;
+      const st = lstatSync(p);
+      if (st.isSymbolicLink()) continue;
       if (st.isDirectory()) { walk(p); continue; }
-      if (isSecretFile(p)) continue;
-      all.push(p);
+      if (st.isFile()) all.push(p);
     }
   };
   walk(root);

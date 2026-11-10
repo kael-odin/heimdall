@@ -160,8 +160,14 @@ function renderFixpacket(snap) {
 function renderGate(snap) {
   const formal = snap?.gate?.formal, fast = snap?.gate?.fast;
   const active = formal ?? fast;
+  const statusText = { passed: '通过', failed: '未通过', incomplete: '未完成' };
+  const incompleteReason = {
+    formal_gate_running: '验收尚未结束', acceptance_timeout: '验收超时', formal_gate_error: '验收中断',
+    formal_gate_unreadable: '记录损坏或无法读取', project_changed_or_unbound: '项目变化或旧记录无法核验',
+    project_unreadable: '项目文件无法读取', project_changed_during_gate: '验收期间项目发生变化',
+  };
   $('gate').innerHTML = active
-    ? `${dimChips(active)}<span class="chip ${active.status === 'passed' ? 'pass' : active.status === 'failed' ? 'fail' : 'unknown'}">整体 ${active.status}${active.level ? ` · ${active.level}` : ''}${formal ? ' · 正式' : ' · 快速'}</span>`
+    ? `${dimChips(active)}<span class="chip ${active.status === 'passed' ? 'pass' : active.status === 'failed' ? 'fail' : 'unknown'}">整体 ${esc(statusText[active.status] ?? active.status)}${active.level ? ` · ${esc(active.level)}` : ''}${formal ? ' · 正式' : ' · 快速'}</span>${formal && active.status === 'incomplete' ? `<div class="sub">${esc(incompleteReason[active.reason] ?? '证据不足，请重新验收')}</div>` : ''}`
     : '<span class="chip unknown">未跑</span>';
 }
 

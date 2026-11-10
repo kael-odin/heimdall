@@ -60,6 +60,7 @@ async function report(flags) {
     const viewports = flags.viewports ? String(flags.viewports).split(',').map(Number) : cfg.viewports;
     const r = await fastCompare({ candidate: { dir }, siteId: cfg.siteId, page, viewports }, {});
     const gate = composeGate(r.packet, { level, thresholds: cfg.gate?.thresholds ?? null });
+    gate.projectDir = dir;
     const outDir = join(agentDir(cfg.siteId), 'gate', page);
     mkdirSync(outDir, { recursive: true });
     const file = join(outDir, `gate-${r.packet.runId}.json`);
@@ -102,7 +103,7 @@ async function formal(flags) {
       nextActions: r.status === 'passed'
         ? [nextAction('cli:shell', { command: `heimdall rebuild deliver --project "${dir}"` }, '正式通过：按 Floor=Mirror 交付')]
         : [nextAction('heimdall_compare', { candidate: { dir } }, '看修复包定位未通过的维度')],
-      ...(r.status === 'passed' ? {} : { warnings: [{ code: 'gate_not_passed', message: `正式门禁未通过：${r.status}` }] }),
+      ...(r.status === 'passed' ? {} : { warnings: [{ code: 'gate_not_passed', message: r.status === 'incomplete' ? '正式门禁未完成或证据不足，不能判定通过或失败' : `正式门禁未通过：${r.status}` }] }),
     });
   } catch (error) {
     if (error?.code === 'engine_unreachable') {

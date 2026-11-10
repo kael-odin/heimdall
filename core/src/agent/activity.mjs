@@ -14,13 +14,18 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { WORKSPACE, isInside } from '../paths.mjs';
 import { isSafePageName } from '../page-name.mjs';
+import { latestFormalGate } from './gate/attempt.mjs';
 
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
 const readLines = (f) => (existsSync(f) ? readFileSync(f, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean) : []);
-const latestBy = (dir, re) => {
+const latestBy = (dir, re, projectDir) => {
   try {
     const files = readdirSync(dir).filter(n => re.test(n)).map(n => ({ n, mtime: statSync(join(dir, n)).mtimeMs })).sort((a, b) => b.mtime - a.mtime);
-    return files.length ? readJson(join(dir, files[0].n)) : null;
+    for (const file of files) {
+      const gate = readJson(join(dir, file.n));
+      if (gate?.projectDir && resolve(gate.projectDir) === projectDir) return gate;
+    }
+    return null;
   } catch { return null; }
 };
 
@@ -111,7 +116,7 @@ export function activityOf(projectDir) {
       const dirs = readdirSync(deliverDir).map(n => ({ n, mtime: statSync(join(deliverDir, n)).mtimeMs })).sort((a, b) => b.mtime - a.mtime);
       for (const { n } of dirs) {
         const d = readJson(join(deliverDir, n, 'delivery.json'));
-        if (d && (!d.projectDir || resolve(d.projectDir) === dir)) return { state: d.state, reason: d.reasonText ?? d.reason, at: d.generatedAt, dir: join(deliverDir, n) };
+        if (d?.projectDir && resolve(d.projectDir) === dir) return { state: d.state, reason: d.reasonText ?? d.reason, at: d.generatedAt, dir: join(deliverDir, n) };
       }
       return null;
     } catch { return null; }
@@ -154,7 +159,7 @@ export function activityOf(projectDir) {
     }),
     recent: ledger.slice(-40).map(e => ({ runId: e.runId, at: e.at, verdict: e.verdict, reached: e.reached ?? null, trend: e.trend ?? null, anticheat: e.anticheat ?? null,
       sectionIds: e.sectionIds ?? null, pixel: Object.fromEntries(Object.entries(e.pixel ?? {}).map(([w, v]) => [w, +(v * 100).toFixed(2)])) })),
-    gate: { fast: latestBy(gateDir, /^gate-.*\.json$/), formal: latestBy(gateDir, /^formal-.*\.json$/) },
+    gate: { fast: latestBy(gateDir, /^gate-.*\.json$/, dir), formal: latestFormalGate(cfg.siteId, page, dir) },
     delivery,
     latest,
     lastActionable,

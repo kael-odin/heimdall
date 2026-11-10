@@ -17,18 +17,19 @@
  *   mirror/          冻结镜像（自包含，双击 index.html 即可看）
  *   project/         重建项目源码（不含 node_modules / dist / .git）；非 passed 时带 DRAFT.md
  */
-import { cpSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { isSecretFile } from '../../paths.mjs';
+import { isInside } from '../../paths.mjs';
 import { writeFileAtomic } from '../../fsutil.mjs';
 import { sha256 } from '../ids.mjs';
+import { isSecretPath } from '../secrets.mjs';
 import { agentDir, requireMirror } from '../workspace.mjs';
 import { readProjectConfig } from '../evidence/compare.mjs';
 import { decisionsFor, readLedger } from '../loops/ledger.mjs';
+import { latestFormalGate } from '../gate/attempt.mjs';
+import { projectFiles, projectFingerprint } from './project.mjs';
 
-/** 不进交付包的项目目录：依赖、构建产物、版本库、参考截图与逐次运行的原始证据 */
-const PROJECT_SKIP = new Set(['node_modules', '.git', 'dist', '.vite', 'coverage', '.turbo']);
-const PROJECT_SKIP_PATHS = new Set(['.heimdall/ref', '.heimdall/runs']);
+export { latestFormalGate } from '../gate/attempt.mjs';
 
 const relOf = (root, file) => file.slice(root.length + 1).replace(/\\/g, '/');
 
@@ -39,10 +40,11 @@ function copyTree(src, dest, { skipDir = () => false, skipRel = () => false } = 
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
       const rel = relOf(root, p);
+      if (isSecretPath(rel)) continue;
       const st = lstatSync(p);
       if (st.isSymbolicLink()) continue;           // 交付包不做符号链接：换台机器就断
       if (st.isDirectory()) { if (!skipDir(name, rel)) walk(p); continue; }
-      if (!st.isFile() || isSecretFile(p) || skipRel(rel)) continue;
+      if (!st.isFile() || skipRel(rel)) continue;
       const out = join(dest, rel);
       mkdirSync(resolve(out, '..'), { recursive: true });
       writeFileSync(out, readFileSync(p));
@@ -82,28 +84,10 @@ export function deliveryState({ decisions = [], formal = null, cancelled = false
   if (budgetExhausted || decisions.some(d => d.reason === 'budget_exhausted')) return { state: 'budget_exhausted', reason: 'budget_exhausted' };
   const residuals = decisions.filter(d => d.action === 'accept-residual');
   if (formal?.status === 'passed') return { state: residuals.length ? 'passed_with_residuals' : 'passed', reason: 'formal_gate' };
+  if (formal?.status === 'incomplete') return { state: 'failed_with_residuals', reason: 'formal_gate_incomplete' };
+  if (formal?.status === 'failed') return { state: 'failed_with_residuals', reason: 'formal_gate_failed' };
   if (!decisions.length) return { state: 'failed_with_residuals', reason: 'no_iterations' };
-  return { state: 'failed_with_residuals', reason: formal ? 'formal_gate_failed' : 'formal_gate_missing' };
-}
-
-/** 最近一次正式裁判的结果（`gate formal` 写在 agent/gate/<page>/formal-*.json）；没有就是 null */
-export function latestFormalGate(siteId, page, projectDir = null) {
-  const dir = join(agentDir(siteId), 'gate', page);
-  const want = projectDir ? resolve(projectDir).toLowerCase() : null;
-  try {
-    const files = readdirSync(dir).filter(n => /^formal-.*\.json$/.test(n))
-      .map(n => ({ n, mtime: statSync(join(dir, n)).mtimeMs }))
-      .sort((a, b) => b.mtime - a.mtime);   // 按写入时间，不是文件名
-    for (const { n } of files) {
-      const path = join(dir, n);
-      const gate = JSON.parse(readFileSync(path, 'utf8'));
-      // 同一站点同一页可能有多个重建工作区：只认这份报告自己的项目目录。
-      // 早期报告没有 projectDir 字段，那就不认（宁可说没跑过，也不张冠李戴）。
-      if (want && (!gate.projectDir || resolve(gate.projectDir).toLowerCase() !== want)) continue;
-      return { status: gate.status === 'passed' ? 'passed' : 'failed', level: gate.level ?? null, path, runId: gate.acceptance?.runId ?? null };
-    }
-    return null;
-  } catch { return null; }
+  return { state: 'failed_with_residuals', reason: 'formal_gate_missing' };
 }
 
 const REASON_TEXT = {
@@ -111,6 +95,7 @@ const REASON_TEXT = {
   budget_exhausted: '预算（金额 / 时长 / 工具调用）用尽',
   no_iterations: '一次对比都没跑过，没有可交付的重建',
   formal_gate_failed: '正式裁判判定未通过',
+  formal_gate_incomplete: '正式裁判未完成，或项目与门禁记录不一致，不能判定通过',
   formal_gate_missing: '还没跑正式裁判（E7-07），按 Floor=Mirror 交付',
   formal_gate: '正式裁判判定通过',
   anticheat: '候选页命中了反作弊检查（把参考截图当内容），不按通过交付',
@@ -137,6 +122,7 @@ export function residualsOf(decisions) {
 
 function renderReport({ siteId, page, state, reason, residuals, mirror, project, formal, ledgerCount }) {
   const passed = state === 'passed' || state === 'passed_with_residuals';
+  const draft = reason === 'formal_gate_incomplete' ? '尚未完成验收的草稿' : '未通过的草稿';
   const lines = [
     `# Heimdall 交付 · ${siteId}/${page}`,
     '',
@@ -144,14 +130,14 @@ function renderReport({ siteId, page, state, reason, residuals, mirror, project,
     '',
     passed
       ? '门禁通过：重建项目是成品，镜像作为附件一起给你（想对照随时能开）。'
-      : '按 **Floor=Mirror**：交付的是**冻结镜像**——它就是今天的真值，不会比原来的更差。重建项目作为**未通过的草稿**附上，能看到做到哪一步。',
+      : `按 **Floor=Mirror**：交付的是**冻结镜像**。重建项目作为**${draft}**附上；未完成不等于已证实产品存在缺陷。`,
     '',
     '## 包里有什么',
     '',
     '| 路径 | 内容 |',
     '| --- | --- |',
     `| \`mirror/\` | 冻结镜像（${mirror.files} 个文件）。直接双击 \`mirror/index.html\` 就能看，不需要服务器 |`,
-    `| \`project/\` | 重建项目源码（${project.files} 个文件，不含依赖与构建产物）${passed ? '' : '，带 \`DRAFT.md\` 标明未通过'} |`,
+    `| \`project/\` | 重建项目源码（${project.files} 个文件，不含依赖与构建产物）${passed ? '' : `，带 \`DRAFT.md\` 标明${draft}`} |`,
     '| `REPORT.md` | 本文件 |',
     '| `residuals.json` | 残差清单：每个分段停在哪、为什么停 |',
     '| `delivery.json` | 机器可读的交付清单与哈希 |',
@@ -188,9 +174,9 @@ function renderReport({ siteId, page, state, reason, residuals, mirror, project,
 
 /**
  * 生成交付包。
- * @param {object} p { projectDir, state?, formal?, cancelled?, budgetExhausted?, outDir?, mirror?:boolean }
+ * @param {object} p { projectDir, state?, cancelled?, budgetExhausted?, outDir?, mirror?:boolean }
  */
-export function deliverFloor({ projectDir, state: forced = null, formal = null, cancelled = false, budgetExhausted = false, outDir = null, mirror: withMirror = true } = {}) {
+export function deliverFloor({ projectDir, state: forced = null, cancelled = false, budgetExhausted = false, outDir = null, mirror: withMirror = true } = {}) {
   const dir = resolve(projectDir);
   if (!existsSync(dir)) throw new Error(`项目目录不存在：${dir}`);
   const cfg = readProjectConfig(dir);
@@ -202,29 +188,40 @@ export function deliverFloor({ projectDir, state: forced = null, formal = null, 
   const entries = readLedger(dir);
   const decisions = decisionsFor(entries, cfg.budget);
   // 正式裁判的结果自动带上：交付状态不能比它更乐观
-  const formalGate = formal ?? latestFormalGate(siteId, page, dir);
-  let { state, reason } = forced ? { state: forced, reason: 'made_by_cli' } : deliveryState({ decisions, formal: formalGate, cancelled, budgetExhausted });
-  // 反作弊命中过就不按「通过」交付：像素分再高也不认（E7-18）
-  if (entries.some(e => e.anticheat === 'suspect') && (state === 'passed' || state === 'passed_with_residuals')) {
-    ({ state, reason } = { state: 'failed_with_residuals', reason: 'anticheat' });
-  }
+  if (forced && !['passed', 'passed_with_residuals', 'failed_with_residuals', 'budget_exhausted', 'cancelled'].includes(forced)) throw new Error('交付状态不合法');
+  let formalGate = latestFormalGate(siteId, page, dir);
+  let { state, reason } = deliveryState({ decisions, formal: formalGate, cancelled, budgetExhausted });
   const residuals = residualsOf(decisions);
 
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   const out = outDir ? resolve(outDir) : join(agentDir(siteId), 'deliver', `${page}-${stamp}-${sha256(String(Date.now()) + siteId + page).slice(0, 6)}`);
+  if (out === dir || isInside(dir, out)) throw new Error('交付目录不能位于项目目录内');
+  if (existsSync(out) && readdirSync(out).length) throw new Error('交付目录必须为空，避免混入旧文件');
   mkdirSync(out, { recursive: true });
 
   const mirrorDir = join(out, 'mirror');
   const mirrorFiles = withMirror ? copyTree(cloneDir, mirrorDir) : [];
   const projectDirOut = join(out, 'project');
-  const projectFiles = copyTree(dir, projectDirOut, {
-    skipDir: (name) => PROJECT_SKIP.has(name),
-    skipRel: (rel) => [...PROJECT_SKIP_PATHS].some(p => rel === p || rel.startsWith(p + '/')),
-  });
+  const copiedProject = projectFiles(dir);
+  for (const file of copiedProject) {
+    const target = join(projectDirOut, file.path);
+    mkdirSync(resolve(target, '..'), { recursive: true });
+    writeFileSync(target, readFileSync(join(dir, file.path)));
+  }
+  formalGate = latestFormalGate(siteId, page, dir);
+  if (formalGate?.status === 'passed' && projectFingerprint(projectDirOut) !== formalGate.projectSnapshot.sha256) {
+    formalGate = { ...formalGate, status: 'incomplete', reason: 'copied_project_changed', dimensions: [] };
+  }
+  ({ state, reason } = deliveryState({ decisions, formal: formalGate, cancelled, budgetExhausted }));
+  if (forced && !['passed', 'passed_with_residuals'].includes(forced)) ({ state, reason } = { state: forced, reason: 'made_by_cli' });
+  // 反作弊命中过就不按「通过」交付：像素分再高也不认（E7-18）
+  if (entries.some(e => e.anticheat === 'suspect') && (state === 'passed' || state === 'passed_with_residuals')) {
+    ({ state, reason } = { state: 'failed_with_residuals', reason: 'anticheat' });
+  }
   const passed = state === 'passed' || state === 'passed_with_residuals';
   if (!passed) {
     writeFileSync(join(projectDirOut, 'DRAFT.md'), [
-      '# 未通过的草稿',
+      reason === 'formal_gate_incomplete' ? '# 尚未完成验收的草稿' : '# 未通过的草稿',
       '',
       `这份重建在 Heimdall 的 ${state}（${REASON_TEXT[reason] ?? reason}）下交付，**不要直接上线**。`,
       '能用的版本是同一个交付包里的 `mirror/`。',
@@ -234,19 +231,20 @@ export function deliverFloor({ projectDir, state: forced = null, formal = null, 
     ].join('\n'));
   }
 
-  const report = renderReport({ siteId, page, state, reason, residuals, mirror: { files: mirrorFiles.length }, project: { files: projectFiles.length }, formal: formalGate, ledgerCount: entries.length });
+  const report = renderReport({ siteId, page, state, reason, residuals, mirror: { files: mirrorFiles.length }, project: { files: copiedProject.length }, formal: formalGate, ledgerCount: entries.length });
   writeFileSync(join(out, 'REPORT.md'), report);
   writeFileSync(join(out, 'residuals.json'), JSON.stringify({ schema: 'heimdall.residuals/1', siteId, page, generatedAt: new Date().toISOString(), residuals }, null, 1) + '\n');
 
   const delivery = {
     schema: 'heimdall.delivery/1',
-    siteId, page, generatedAt: new Date().toISOString(),
+    siteId, page, projectDir: dir, generatedAt: new Date().toISOString(),
     state, reason, reasonText: REASON_TEXT[reason] ?? reason,
     floorIsMirror: !passed,
-    notice: passed ? '门禁通过：重建项目为成品，镜像作为附件。' : '未通过门禁：镜像是交付物，重建项目是草稿。',
+    notice: passed ? '门禁通过：重建项目为成品，镜像作为附件。' : reason === 'formal_gate_incomplete'
+      ? '验收尚未完成：不能判定通过或产品失败；重建项目是草稿。' : '未通过门禁：镜像是交付物，重建项目是草稿。',
     contents: {
       mirror: withMirror ? { dir: 'mirror', files: mirrorFiles.length } : null,
-      project: { dir: 'project', files: projectFiles.length, passed },
+      project: { dir: 'project', files: copiedProject.length, passed },
       report: 'REPORT.md', residuals: 'residuals.json', manifest: 'MANIFEST.jsonl',
     },
     residuals,

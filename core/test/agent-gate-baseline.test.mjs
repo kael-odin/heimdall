@@ -5,7 +5,7 @@
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -89,11 +89,21 @@ test('baseline: css external urls and imports become blank pixels', () => {
   assert.equal(baseline.sanitizeCss('.b{color:red}').changed, false);
 });
 
-test('baseline: the server is read-only, has no CSP, and never serves secrets', async () => {
+test('baseline: the server and copied baseline exclude secrets and links', async (t) => {
   const dir = join(root, 'srv');
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'index.html'), '<h1>hi</h1>');
   writeFileSync(join(dir, 'session.json'), '{"token":"x"}');
+  writeFileSync(join(dir, '.env'), 'fixture');
+  writeFileSync(join(dir, 'private.key'), 'fixture');
+  mkdirSync(join(dir, '.auth'));
+  writeFileSync(join(dir, '.auth', 'state.json'), 'fixture');
+  const outside = join(root, 'outside');
+  mkdirSync(outside);
+  writeFileSync(join(outside, 'private.txt'), 'fixture');
+  let linked = false;
+  try { symlinkSync(outside, join(dir, 'external'), process.platform === 'win32' ? 'junction' : 'dir'); linked = true; }
+  catch (error) { t.diagnostic(`link fixture unavailable: ${error.code}`); }
   const server = await baseline.startBaselineServer(dir);
   try {
     const home = await fetch(`${server.origin}/`);
@@ -101,9 +111,15 @@ test('baseline: the server is read-only, has no CSP, and never serves secrets', 
     assert.match(home.headers.get('content-type'), /text\/html/);
     assert.equal(home.headers.get('content-security-policy'), null, 'no sandbox header: fonts and workers must work');
     assert.equal(await (await fetch(`${server.origin}/session.json`)).status, 404);
+    for (const path of ['/.env', '/private.key', '/.auth/state.json']) assert.equal((await fetch(`${server.origin}${path}`)).status, 404, path);
+    if (linked) assert.equal((await fetch(`${server.origin}/external/private.txt`)).status, 404);
     assert.equal(await (await fetch(`${server.origin}/%2e%2e/%2e%2e/etc/passwd`)).status, 404);
     assert.equal((await fetch(`${server.origin}/`, { method: 'POST' })).status, 405);
   } finally { await server.close(); }
+  const copy = join(root, 'baseline-copy');
+  baseline.copySanitizedBaseline(dir, copy);
+  assert.equal(existsSync(join(copy, 'index.html')), true);
+  for (const path of ['session.json', '.env', 'private.key', '.auth', 'external']) assert.equal(existsSync(join(copy, path)), false, path);
 });
 
 test('baseline: a clean mirror is healthy and needs no copy', { timeout: 120_000 }, async () => {
