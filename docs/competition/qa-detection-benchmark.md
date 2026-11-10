@@ -66,6 +66,12 @@ node core/scripts/benchmark-qa.mjs core/workspace/_runs/my-qa-benchmark
 
 先看输出目录里的 `latest.json` 是否为 `complete`，再查看该次目录的 `benchmark.md` 和 `benchmark.json`；不在此处抄写会变化的数字。
 
+## 真实项目校准
+
+固定夹具只说明检测器在已知注入上的行为。Xspark 真实试点的脱敏聚合指标另见 [试点统计](../audits/2026-11-05/xspark-pilot-metrics.json)，历史批次为 20 次运行、184 次页面/视口检查、71 条已复核报警，误报占比 `38/71 = 53.52%`；经典 FPR 仍无法计算，定向漏报集只有 `2/4`，不能外推为全站准确率。
+
+补充复测中存在不完整测量，机器决策会将“新增通用检测器”置为阻断，先要求补齐环境和接口证据，再处理已有规则误报和业务检查点。真实项目统计与固定夹具结果必须分开阅读。
+
 ## 范围与边界
 
 - 检测器是启发式的：动态水印、虚拟滚动、第三方组件都可能造成误报；报告给出 `target` 与 `observed`，由人裁决，`qa verdict ... --pattern` 可把一类误报记成规则。

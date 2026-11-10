@@ -1,7 +1,8 @@
 {
   "schema": "xspark.heimdall-pilot-metrics/1",
-  "generatedAt": "2026-11-05T12:51:55.298Z",
+  "generatedAt": "2026-11-10T11:54:23.964Z",
   "measurementCommit": "230e34ecbbd293981af8342e39edb6df8693afcc",
+  "measurementCommitScope": "20-run historical batch",
   "dataLevel": "sanitized-aggregate",
   "adjudicator": "Codex browser review; no human sign-off",
   "scope": {
@@ -1199,6 +1200,7 @@
       "reason": "Normal elements were not exhaustively labelled; TN is unavailable."
     }
   },
+  "excludedRuns": 16,
   "oracle": {
     "cases": [
       {
@@ -1261,6 +1263,60 @@
       }
     },
     "limitation": "Four directed cases in two repeated environments cover only two issue families. Not a blind/random sample and not an estimate of site-wide false-negative rate."
+  },
+  "supplementalEvidence": {
+    "files": [
+      "evidence/qa-detectors-review-2026-11-08T21-57-30-634Z.json",
+      "evidence/qa-detectors-review-2026-11-08T22-21-01-778Z.json",
+      "evidence/qa-detectors-review-2026-11-08T22-50-23-150Z.json",
+      "evidence/qa-detectors-review-2026-11-10T10-45-34-193Z.json"
+    ],
+    "runCount": 4,
+    "failureKinds": {
+      "console:observed": 4,
+      "network:environment": 13
+    },
+    "verified": {
+      "true": 3,
+      "false": 1,
+      "unknown": 0
+    },
+    "measurementComplete": {
+      "true": 0,
+      "false": 3,
+      "unknown": 1
+    },
+    "apiReads": {
+      "observed": 3,
+      "empty": 1,
+      "unknown": 0,
+      "successful": 3
+    }
+  },
+  "decision": {
+    "schema": "xspark.detector-decision/1",
+    "primaryAction": "collect-more-evidence",
+    "detectorExpansion": "blocked",
+    "confidence": "low",
+    "secondaryActions": [
+      "add-business-check",
+      "fix-existing-detectors"
+    ],
+    "reasons": [
+      "至少一份补充复测证据未完成，不能用不完整测量决定扩展检测器。"
+    ],
+    "metrics": {
+      "reviewedAlarms": 71,
+      "falseDiscoveryRate": 53.52,
+      "business": {
+        "cases": 2,
+        "falseNegative": 2
+      },
+      "generic": {
+        "cases": 2,
+        "falseNegative": 0
+      }
+    }
   },
   "overallFalseNegativeRate": null,
   "overallFalsePositiveRate": null,
