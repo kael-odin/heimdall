@@ -21,7 +21,7 @@ import { baselineFile, writeBaseline } from '../../../core/src/qa/baseline.mjs';
 const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
 const CORE = fileURLToPath(new URL('../../../core/', import.meta.url));
 const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
-  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch', 'heimdall_site_assessment'];
+  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_qa_metrics', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch', 'heimdall_site_assessment'];
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-mcp-'));
@@ -144,6 +144,12 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
       assert.ok(['unreachable', 'data_root_mismatch'].includes(overview.structuredContent.result.engine.status));
       assert.ok(Array.isArray(overview.structuredContent.nextActions));
       assert.match(overview.content[0].text, /站点/);
+
+      const metrics = await client.callTool({ name: 'heimdall_qa_metrics', arguments: {
+        data: { labels: { truePositive: 1, falsePositive: 1, unknown: 0 }, runs: [{ runId: 'r1', elapsedMs: 1000 }] },
+      } });
+      assert.equal(metrics.isError, false);
+      assert.equal(metrics.structuredContent.result.alarms.falseDiscoveryRate.percent, 50);
 
       const bad = await client.callTool({ name: 'heimdall_brief', arguments: { siteId: 'example.test', page: 'home', detail: 'everything' } });
       assert.equal(bad.isError, true, 'schema violations are tool errors, not protocol crashes');

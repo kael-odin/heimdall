@@ -97,6 +97,12 @@ export function argsFor(id, { flags, positional }) {
       if (flags.github) a.github = true;
       if (flags['no-github']) a.github = false;
       break;
+    case 'qa_metrics':
+      set('file', flags.file ? resolve(String(flags.file)) : undefined);
+      set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
+      set('site', flags.site);
+      set('limit', num(flags.limit));
+      break;
     case 'qa_findings': {
       set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
       set('action', flags.action); set('runId', flags.run); set('id', flags.id); set('status', flags.status); set('limit', num(flags.limit));

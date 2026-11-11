@@ -24,6 +24,7 @@ import seoAudit from './capabilities/seo-audit.mjs';
 import seoMatrix from './capabilities/seo-matrix.mjs';
 import siteWatch from './capabilities/site-watch.mjs';
 import siteAssessment from './capabilities/site-assessment.mjs';
+import qaMetrics from './capabilities/qa-metrics.mjs';
 
 export const EFFECTS = Object.freeze(['read', 'write-local', 'browser', 'source-network', 'destructive']);
 export const SCOPES = Object.freeze(['read', 'clone', 'build', 'admin']);
@@ -45,7 +46,7 @@ export function defineCapability(def) {
 
 export const CAPABILITIES = Object.freeze([
   overview, site, brief, artifact, compare, jobs, clone, doctor, qaStatus, qaRun, qaFindings,
-  qaCi,
+  qaCi, qaMetrics,
   seoAudit, seoMatrix, siteWatch, siteAssessment,
 ].map(defineCapability));
 

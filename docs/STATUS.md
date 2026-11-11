@@ -119,7 +119,7 @@ Hosted CI 结果为最终依据。
 - `connect` 的自测现在使用与实际写入配置完全相同的 `HEIMDALL_API`；dry-run 不启动
   MCP，已有配置也会先备份再改，失败仍回滚。
 - 本机实测识别到 Claude Code 插件 `0.2.2`、Claude Desktop 与 Codex；三者均通过
-  `doctor`，完整 MCP 客户端各拉起 16 个工具。
+  `doctor`，完整 MCP 客户端各拉起 17 个工具。
 - Hosted 精确提交 `1dff01cb14d3878f102fc964485b0b8eaa05bf76`：
   [CI `42016376206`](https://github.com/kael-odin/heimdall/actions/runs/42016376206)
   8 / 8 job 成功，Docs `42016376116` 成功。
@@ -138,7 +138,7 @@ Hosted CI 结果为最终依据。
 
 ## 2026-10-31 A-3：Claude Code 插件闭环
 
-- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通；当前能力注册表有 16 个工具，新增 QA CI、SEO 审计、SEO 矩阵、站点变更监控和站点评估。
+- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通；当前能力注册表有 17 个工具；本阶段新增 QA CI、SEO 审计、SEO 矩阵、站点变更监控和站点评估。
 - 本会话用 MCP 工具完成 F1 重建：6/6 分段 `pass-candidate`，整页 375 99.89% / 768 99.91% / 1440 100%，正式门禁 `passed silver`（验收视觉 3/3、结构 3/3、健康 12/12）。
 - 交付包：`agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed）。
 - Claude Desktop 界面 `heimdall_doctor` 9/9 通过（2026-10-31，操作者贴回结果）；配置与 stdio 也已验证。
@@ -189,6 +189,13 @@ Hosted CI 结果为最终依据。
 - 运行包含适配器的包时，未声明请求会按 `method + pathname + query parameter names` 聚合写入包外 `HEIMDALL_RUNTIME_DATA_DIR/adapter-gap-ledger.json`；重复请求只增加 `count`。
 - `/__heimdall/adapter-gaps` 返回账本，`/__heimdall/health` 返回摘要；账本会给出最近似已知路由，并把缺响应体、未验证写入、认证/权限未知保留为未决项。
 - `adapter-report.json.gapLedger` 记录训练/留出阶段的离线缺口；`heimdall_site_assessment` 读取它或同级 `adapter-gap-ledger.json`，把缺口变成 `api-adapter-gap-ledger` 待办。它仍不证明真实后端业务等价。
+
+## 2026-11-12 QA 实战指标总线
+
+- 新增只读能力 `heimdall_qa_metrics`，CLI 别名为 `heimdall qa metrics`；它可读取脱敏聚合 JSON、单个 `run.json` 或 QA 工作区运行摘要。
+- 结果统一给出复核报警、误报占比、经典 FPR 可用性、定向 oracle 漏报率、运行时长 p50/p95、失败分类和覆盖量；百分比从分子分母重算，不信任输入里的旧百分比。
+- 经典 FPR 只有在正常样本穷举且有 TN 时才计算；没有这个条件就明确显示不可计算。Xspark 现有证据仍为误报占已复核报警 `38/71 = 53.52%`，定向漏报 `2/4 = 50%`，不是全站 FPR 或全站漏报率。
+- `detectorExpansion` 复用冻结的保守决策规则，并自动暴露给 CLI、MCP 和 HTTP；当前 Xspark 离线重算仍是 `blocked`，下一步是补完整证据、压已有规则误报和增加业务检查点。
 
 ## 2026-10-31 产品打磨
 

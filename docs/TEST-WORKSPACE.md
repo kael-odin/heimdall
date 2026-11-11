@@ -149,7 +149,7 @@ heimdall qa revoke <规则编号>     # 撤销一条裁决规则
 heimdall qa rules                 # 列出已记的裁决规则
 ```
 
-MCP / HTTP 同样可用：`heimdall_qa_status`、`heimdall_qa_run`、`heimdall_qa_findings`、`heimdall_qa_ci`（`qa_findings` 一个工具七个动作：list / show / similar / submit / verdict / revoke / rules）。`qa_run` 的 `checks` 参数直接收检查点数组（steps + expect，全是真实输入事件；`prd` 字段注明出处）。
+MCP / HTTP 同样可用：`heimdall_qa_status`、`heimdall_qa_run`、`heimdall_qa_findings`、`heimdall_qa_ci`、`heimdall_qa_metrics`（`qa_findings` 一个工具七个动作：list / show / similar / submit / verdict / revoke / rules）。`qa_run` 的 `checks` 参数直接收检查点数组（steps + expect，全是真实输入事件；`prd` 字段注明出处）。`qa_metrics` 只读脱敏聚合或 `run.json` 摘要，不读取原始发现、Cookie、Token 或请求体。
 
 完整的直连 MCP 是由 AI 客户端启动的本机进程；它可以不依赖常驻 `:8900` 引擎直接执行 QA，但仍需要测试工作区、Chromium 和目标网络。代理式 MCP 则把调用转发给引擎，需要引擎可用。升级代码后，直连 MCP 进程不会自动重新加载，须重启该 MCP 进程或 AI 客户端；仅重启引擎不能更新仍在运行的直连 MCP。代理式接入应重启引擎，并确认客户端实际连接的是新引擎。
 

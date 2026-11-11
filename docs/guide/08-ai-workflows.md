@@ -28,7 +28,7 @@ node bin/heimdall.mjs connect codex
 
 Claude Code 插件是轻量代理，明确依赖 `:8900` 引擎。Codex 和 Claude Desktop 的完整
 MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳定、工作区一致，仍建议先开
-`:8900`。当前三种入口都应列出 16 个工具；重启客户端或新开会话后才会加载新配置。
+`:8900`。当前三种入口都应列出 17 个工具；重启客户端或新开会话后才会加载新配置。
 
 ## 一次看清站点现状
 
@@ -133,6 +133,24 @@ MCP 里的 QA 工具适合让 AI 解释问题；`qa ci` 适合让流水线做确
 站点使用 web，视口 1440 和 390，failOn=all。
 报告 qa-ci.json、qa-ci.md、达到门槛的发现和未测到的页面。
 ```
+
+### QA 实战指标
+
+检测器是否值得扩展，不看固定夹具的单次通过，而看真实项目的脱敏聚合数据。CLI 可以直接读取 Xspark 这类指标文件：
+
+```powershell
+heimdall qa metrics --file .\docs\audits\2026-11-05\xspark-pilot-metrics.json --json
+```
+
+AI 调用同一个注册能力：
+
+```text
+调用 heimdall_qa_metrics，读取已脱敏的 QA 聚合指标。
+汇报报警误报占比、经典 FPR 是否可计算、定向漏报率、运行时长 p50/p95、失败分类和 detectorExpansion。
+不要把 falseDiscoveryRate 当经典 FPR，也不要把小型 oracle 漏报率当全站漏报率。
+```
+
+没有完整正常样本时，经典 FPR 会明确返回不可计算；没有完整标签、测量不完整或定向 oracle 不充分时，新增通用检测器会保持 `blocked`。对 Xspark 当前冻结证据，结论仍是先补证据、修已有检测器、增加业务检查点，暂不新增通用检测器。
 
 ## 安全边界
 

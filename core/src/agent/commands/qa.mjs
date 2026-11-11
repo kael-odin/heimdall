@@ -33,6 +33,8 @@ const USAGE = `heimdall qa <子命令>
       --explore                       显式开启交互探索：每页点最多 6 个控件，找「点了没反应 / 点出异常 / 点出 404」
   ci [站点] [--fail-on all|wall|degrade|none] [--max-findings N] [--require-baseline] [--github|--no-github]
       在 CI 中运行同一套只读 QA，写 qa-ci.json / qa-ci.md，并输出 GitHub Actions 注解
+  metrics [--file metrics.json] [--workspace DIR] [--site NAME] [--limit N]
+      统计脱敏 QA 指标，并判断是否有证据新增通用检测器
   baseline [--run ID] [--off]         把某次运行登记为跨运行视觉基线；--off 清除
   findings [--status all] [--run ID]  列出发现（默认只列建议提单的）
   show <F编号>                        一条发现的全部证据
@@ -271,6 +273,7 @@ export async function run(argv) {  const sub = argv[0];
       case 'status': return runAgentCommand('qa_status', passthrough(flags, COMMON));
       case 'run': return runAgentCommand('qa_run', [...positional.slice(0, 1).flatMap(s => ['--site', s]), ...passthrough(flags, [...COMMON, 'site', 'pages', 'viewports', 'checks', 'no-links', 'texts', 'login', 'label', 'link-limit', 'explore', 'no-baseline', 'no-detect', 'explore-max', 'explore-budget'])]);
       case 'ci': return await ci(flags, positional);
+      case 'metrics': return runAgentCommand('qa_metrics', [...passthrough(flags, [...COMMON, 'file', 'site', 'limit'])]);
       case 'baseline': return await baseline(flags);;
       case 'findings': case 'list': return runAgentCommand('qa_findings', ['--action', 'list', ...passthrough(flags, [...COMMON, 'status', 'run', 'limit'])]);
       case 'show': return runAgentCommand('qa_findings', ['--action', 'show', '--id', String(positional[0] ?? ''), ...passthrough(flags, [...COMMON, 'run'])]);
