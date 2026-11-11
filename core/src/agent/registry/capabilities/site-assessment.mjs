@@ -24,6 +24,46 @@ function readJson(file) {
   } catch { return null; }
 }
 
+function gapLedgerSummary(root, siteId, report) {
+  const sidecar = readJson(join(root, 'adapter-gap-ledger.json'));
+  const source = sidecar?.schema === 'heimdall.adapter-gap-ledger/1' ? sidecar
+    : report?.gapLedger?.schema === 'heimdall.adapter-gap-ledger/1' ? report.gapLedger : null;
+  if (!source) return null;
+  const safePath = value => {
+    let pathname;
+    try { pathname = new URL(String(value ?? '/'), 'http://adapter.local').pathname; } catch { return '/[invalid]'; }
+    return '/' + pathname.split('/').filter(Boolean).map(segment => {
+      let decoded = segment;
+      try { decoded = decodeURIComponent(segment); } catch {}
+      if (/^\d+$/.test(decoded)) return '{n}';
+      if (decoded.length > 64 || /@/.test(decoded) || /^[a-z0-9_-]{24,}$/i.test(decoded)) return '{value}';
+      return decoded.slice(0, 128);
+    }).join('/');
+  };
+  const safeNames = value => Array.isArray(value) ? [...new Set(value.map(name => String(name).trim().toLowerCase())
+    .filter(name => /^[a-z0-9_.:[\]~-]{1,128}$/i.test(name)).slice(0, 50))].sort() : [];
+  const safeLabels = value => Array.isArray(value) ? value.map(label => String(label)).filter(label => /^[a-z0-9:_-]{1,80}$/i.test(label)).slice(0, 10) : [];
+  const safeRoute = item => item && typeof item === 'object' ? {
+    method: String(item.method ?? '').toUpperCase().slice(0, 10), path: safePath(item.path),
+    queryParams: safeNames(item.queryParams), responseBody: item.responseBody === 'observed' ? 'observed' : 'unavailable',
+    writeVerification: item.writeVerification === 'unverified' ? 'unverified' : 'not_applicable',
+  } : null;
+  const summary = source.summary && typeof source.summary === 'object' ? source.summary : {};
+  return {
+    schema: 'heimdall.adapter-gap-ledger/1', source: source.source ?? 'unknown', status: source.status ?? 'unknown',
+    summary: Object.fromEntries(['runtimeRequests', 'uniqueGaps', 'unobservedPaths', 'uncoveredQueryParameters', 'missingResponseBodies', 'unverifiedWrites']
+      .map(key => [key, Number(summary[key] ?? 0)])),
+    knownRoutes: Array.isArray(source.knownRoutes) ? source.knownRoutes.slice(0, MAX_BACKEND_TASK_ENDPOINTS).map(safeRoute).filter(Boolean) : [],
+    gaps: Array.isArray(source.gaps) ? source.gaps.slice(0, 50).map(item => ({
+      method: String(item.method ?? '').toUpperCase().slice(0, 10), path: safePath(item.path), queryParams: safeNames(item.queryParams),
+      count: Number(item.count ?? 0), categories: safeLabels(item.categories),
+      nearestRoutes: Array.isArray(item.nearestRoutes) ? item.nearestRoutes.slice(0, 3).map(safeRoute).filter(Boolean) : [],
+    })) : [],
+    unknowns: safeLabels(source.unknowns).slice(0, 20),
+    report: source === report?.gapLedger ? reportPath(siteId, 'adapter-report.json') : reportPath(siteId, 'adapter-gap-ledger.json'),
+  };
+}
+
 function observedEndpointSummaries(contract) {
   const paths = contract?.openapi?.paths;
   if (!paths || typeof paths !== 'object') return [];
@@ -181,6 +221,7 @@ function adapterSummary(root, siteId) {
   const manifest = readJson(manifestFile);
   const reportFile = join(root, 'adapter-report.json');
   const report = existsSync(reportFile) ? readJson(reportFile) : null;
+  const gapLedger = gapLedgerSummary(root, siteId, report);
   const validation = report?.results && typeof report.results === 'object' ? {
     status: report.results.status ?? 'not_validated',
     equivalence: typeof report.results.equivalence === 'number' ? report.results.equivalence : null,
@@ -195,6 +236,7 @@ function adapterSummary(root, siteId) {
     routes: Array.isArray(manifest?.routes) ? manifest.routes.length : null,
     sessions: manifest?.sessions && typeof manifest.sessions === 'object' ? Object.keys(manifest.sessions).length : 0,
     validation,
+    gapLedger,
     report: existsSync(reportFile) ? reportPath(siteId, 'adapter-report.json') : null,
   };
 }
@@ -210,6 +252,9 @@ function apiSummary(root, siteId) {
   }
   if (adapter.present && !adapter.validation) unknowns.push('adapter-validation-missing');
   if (adapter.present && adapter.validation?.status !== 'passed') unknowns.push('adapter-not-validated');
+  if (adapter.gapLedger?.summary?.uniqueGaps > 0) unknowns.push(`adapter-runtime-gaps:${adapter.gapLedger.summary.uniqueGaps}`);
+  if (adapter.gapLedger?.summary?.missingResponseBodies > 0) unknowns.push('adapter-response-body-missing');
+  if (adapter.gapLedger?.summary?.unverifiedWrites > 0) unknowns.push('adapter-writes-unverified');
   return {
     status: adapter.status === 'validated' ? 'adapter_validated'
       : adapter.present ? 'adapter_observed'
@@ -290,6 +335,7 @@ function buildBackendCompletionTask(siteId, api) {
   const shapedResponses = responseShapes.filter(shape => shape.withSchema);
   const hasWrite = endpoints.some(endpoint => endpoint.method !== 'GET');
   const validationStatus = api.adapter.validation?.status ?? 'not-validated';
+  const gapLedger = api.adapter.gapLedger;
   const humanJourneys = observed ? [
     {
       id: 'anonymous-read', basis: 'inferred', status: 'required', requiresHumanApproval: true,
@@ -327,12 +373,16 @@ function buildBackendCompletionTask(siteId, api) {
       verificationStatus: validationStatus === 'passed' ? 'replay_holdout_passed' : 'observation_only',
       basis: 'observed',
     },
+    gapLedger,
     unknowns: [
       { id: 'authentication', basis: 'unknown', detail: '哪些端点强制认证、凭据如何刷新和失效，尚未由摘要证明。' },
       { id: 'permissions', basis: 'unknown', detail: '不同账号、角色或资源边界的允许/拒绝矩阵尚未验证。' },
       { id: 'state-machine', basis: 'unknown', detail: '创建、更新、删除、回滚和刷新后的状态转换尚未验证。' },
       { id: 'business-rules', basis: 'unknown', detail: '边界条件、幂等、限流、排序和业务校验规则尚未验证。' },
       { id: 'side-effects', basis: 'unknown', detail: '持久化、消息、邮件、支付、Webhook 等副作用尚未验证。' },
+      ...(gapLedger?.summary?.uniqueGaps > 0 ? [{ id: 'runtime-gaps', basis: 'observed', detail: `运行时记录了 ${gapLedger.summary.uniqueGaps} 个脱敏请求缺口，需要补路由或补录制。` }] : []),
+      ...(gapLedger?.summary?.missingResponseBodies > 0 ? [{ id: 'missing-response-body', basis: 'observed', detail: `${gapLedger.summary.missingResponseBodies} 条已声明路由没有可回放的响应体。` }] : []),
+      ...(gapLedger?.summary?.unverifiedWrites > 0 ? [{ id: 'unverified-write', basis: 'unknown', detail: `${gapLedger.summary.unverifiedWrites} 条写入路由只有回放证据，尚未证明真实写入和清理。` }] : []),
     ],
     humanJourneys,
     suggestedLocalFiles: [
@@ -355,6 +405,7 @@ function buildBackendCompletionTask(siteId, api) {
       deterministicChecks: [
         { id: 'response-shape', status: observed ? 'observed' : 'blocked', basis: observed ? 'observed' : 'unknown', condition: '契约中的响应状态码、MIME 和脱敏 JSON 形状可被本地适配器复现。' },
         { id: 'adapter-holdout', status: validationStatus, basis: validationStatus === 'passed' ? 'verified' : 'unknown', condition: 'adapter-report.json 的留出集等价度达到阈值且无未验证项。' },
+        { id: 'adapter-gap-ledger', status: gapLedger ? (gapLedger.summary.uniqueGaps ? 'open' : 'observed') : 'blocked', basis: gapLedger ? 'observed' : 'unknown', condition: '运行适配器并读取 /__heimdall/adapter-gaps，确认没有新的未声明路径或未覆盖查询参数。' },
         { id: 'state-consistency', status: 'blocked', basis: 'unknown', condition: '同一业务流程中操作后再次读取/刷新仍保持预期状态。' },
         { id: 'offline-egress', status: 'blocked', basis: 'unknown', condition: '最终适配器在无外联部署中通过断网浏览器验收。' },
       ],
@@ -461,6 +512,17 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       evidence: api.adapter.report ? [api.adapter.report] : [],
       action: plannedAction('cli:shell', { command: `heimdall probe adapter --site ${siteId} --include-api-bodies --force` }, '重新生成并验证观察回放适配器', { requiresHumanApproval: false }),
       verify: planVerification(siteId, 'api.adapter.validation.status === "passed"'),
+    });
+  }
+  if (api.adapter.gapLedger && (api.adapter.gapLedger.summary.uniqueGaps > 0
+    || api.adapter.gapLedger.summary.missingResponseBodies > 0)) {
+    add({
+      id: 'api-adapter-gap-ledger', kind: 'b2_adapter_gap', basis: 'observed', status: 'open',
+      title: '适配器缺口账本还有待处理项',
+      detail: `未声明/未覆盖请求 ${api.adapter.gapLedger.summary.uniqueGaps} 个；缺响应体 ${api.adapter.gapLedger.summary.missingResponseBodies} 条。`,
+      evidence: [api.adapter.gapLedger.report].filter(Boolean),
+      action: plannedAction('cli:shell', { command: `heimdall probe adapter --site ${siteId} --include-api-bodies --force` }, '按最新脱敏观察重新生成适配器，再复核缺口账本', { requiresHumanApproval: false }),
+      verify: planVerification(siteId, 'api.adapter.gapLedger.summary.uniqueGaps === 0 && api.adapter.gapLedger.summary.missingResponseBodies === 0'),
     });
   }
 

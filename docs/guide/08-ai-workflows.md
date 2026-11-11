@@ -50,7 +50,16 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `items[].basis` 只能按 `verified / observed / inferred / unknown` 解释，`items[].action` 是建议动作，不代表已经执行；
 - `items[].verify` 是完成动作后的确定性复测条件。适配器留出集通过，也不能把 `auth_permission_state_unknown` 说成后端等价。
 - `deliveryPlan.backendCompletion` 是后端补全任务包：看 `observedEndpoints` 和 `verifiedResponseShapes` 了解已观察内容，看 `humanJourneys`、`testData` 和 `unknowns` 了解还缺什么；其中 `inferred` 只是 AI 草稿输入，`invented` 必须单列，不能当证据。
+- 如果存在 `api.adapter.gapLedger`，先看 `summary` 和 `gaps`：它告诉你本地适配器遇到了多少未声明路径、未覆盖查询参数、缺响应体或未验证写入；`nearestRoutes` 只是排查线索，不是路由等价证明。
 - AI 可以按 `suggestedLocalFiles` 生成本地适配器、状态规则和检查脚本，但最终要按 `verification.commands` 重跑；认证、权限、状态机、写入和副作用仍要人工授权后验证。
+
+适配器运行后可以直接读取脱敏缺口：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8080/__heimdall/adapter-gaps | ConvertTo-Json -Depth 8
+```
+
+只把 `method`、`path`、查询参数名、次数和最近路由交给 AI。不要把运行状态卷里的其它文件当成接口契约，也不要把 `uniqueGaps=0` 解释成真实后端通过。
 
 推荐的 AI 指令：
 

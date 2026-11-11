@@ -137,6 +137,61 @@ function sortEntries(entries) {
   return [...entries].sort((a, b) => entryFingerprint(a).localeCompare(entryFingerprint(b)));
 }
 
+function routeCoverage(entries) {
+  const routes = new Map();
+  for (const entry of entries) {
+    const endpoint = endpointKey(entry);
+    if (!endpoint) continue;
+    const [method, ...pathParts] = endpoint.split(' ');
+    const current = routes.get(endpoint) ?? {
+      method, path: pathParts.join(' '), queryParams: [], responseBody: 'unavailable',
+      writeVerification: ['GET', 'HEAD'].includes(method) ? 'not_applicable' : 'unverified',
+    };
+    current.queryParams = [...new Set([...current.queryParams, ...queryNames(entry)])].sort();
+    if (bodyValue(entry).readable) current.responseBody = 'observed';
+    routes.set(endpoint, current);
+  }
+  return [...routes.values()].sort((a, b) => `${a.method} ${a.path}`.localeCompare(`${b.method} ${b.path}`));
+}
+
+function offlineGapLedger(trainingEntries, heldoutEntries) {
+  const knownRoutes = routeCoverage(trainingEntries);
+  const knownParams = new Map(knownRoutes.map(route => [`${route.method} ${route.path}`, new Set(route.queryParams)]));
+  const gaps = new Map();
+  for (const entry of heldoutEntries) {
+    const url = entryUrl(entry);
+    const endpoint = endpointKey(entry);
+    if (!url || !endpoint) continue;
+    const [method, ...pathParts] = endpoint.split(' ');
+    const path = pathParts.join(' ');
+    const params = [...queryNames(entry)];
+    const uncovered = params.filter(name => !knownParams.get(endpoint)?.has(name));
+    if (!uncovered.length) continue;
+    const key = `${method} ${path}|${uncovered.join(',')}`;
+    const current = gaps.get(key) ?? {
+      method, path, queryParams: uncovered, count: 0,
+      categories: ['uncovered-query-parameter'], nearestRoutes: [],
+    };
+    current.count++;
+    gaps.set(key, current);
+  }
+  const missingResponseBodies = knownRoutes.filter(route => route.responseBody !== 'observed').length;
+  const unverifiedWrites = knownRoutes.filter(route => route.writeVerification === 'unverified').length;
+  const gapItems = [...gaps.values()].sort((a, b) => `${a.method} ${a.path}`.localeCompare(`${b.method} ${b.path}`));
+  return {
+    schema: 'heimdall.adapter-gap-ledger/1', source: 'offline-observation', status: 'offline-observed',
+    summary: {
+      runtimeRequests: 0, uniqueGaps: gapItems.length, unobservedPaths: 0,
+      uncoveredQueryParameters: gapItems.length, missingResponseBodies, unverifiedWrites,
+    },
+    knownRoutes, gaps: gapItems,
+    unknowns: ['authentication-permission-unknown', 'business-state-unknown',
+      ...(missingResponseBodies ? ['missing-response-body'] : []),
+      ...(unverifiedWrites ? ['unverified-write'] : []),
+      ...(gapItems.length ? ['uncovered-query-parameter'] : [])],
+  };
+}
+
 /** Split eligible API observations by endpoint, reserving 20% for held-out validation. */
 export function splitObservedApiEntries(entries, { origin = '', holdoutRatio = DEFAULT_HOLDOUT_RATIO } = {}) {
   if (!(holdoutRatio > 0 && holdoutRatio < 1)) throw new TypeError('holdoutRatio must be between 0 and 1');
@@ -295,6 +350,7 @@ export async function validateObservedReplayAdapter(adapter, { trainingEntries =
           : results.length ? 'failed' : 'not-validated' },
     byEndpoint: [...byEndpoint.values()].map(item => ({ ...item, status: item.failed || item.unverified ? 'failed' : 'passed' })),
     failures: results.filter(item => !item.passed),
+    gapLedger: offlineGapLedger(split.train, split.heldout),
     unknowns,
     limitation: 'B2 只验证已观察端点的脱敏响应形状，不证明认证、权限、状态机、业务规则或真实副作用等价。',
   };

@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { lstatSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -17,6 +17,11 @@ const BODY_TIMEOUT_MS = 10_000;
 const ADAPTER_TIMEOUT_MS = 15_000;
 const MAX_MANIFEST_BYTES = 1024 * 1024;
 const MAX_MODULE_BYTES = 2 * 1024 * 1024;
+const GAP_LEDGER_FILE = 'adapter-gap-ledger.json';
+const MAX_GAP_ENTRIES = 200;
+const MAX_GAP_BYTES = 256 * 1024;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LONG_HASH = /^[0-9a-f]{16,}$/i;
 
 function regularFile(path, maxBytes) {
   const stat = lstatSync(path);
@@ -109,7 +114,154 @@ export async function loadRuntimeAdapter(bundleDir, dataDirValue) {
   const { routes, moduleFile } = inspectRuntimeAdapter(bundle);
   const module = await import(pathToFileURL(moduleFile).href);
   if (typeof module.handle !== 'function') throw new Error('adapter handle function is missing');
-  return { routes, handle: module.handle, dataDir };
+  const gapLedger = createGapLedger(dataDir, routes, module.__heimdallAdapter);
+  return { routes, handle: module.handle, dataDir, gapLedger };
+}
+
+function safePath(path) {
+  let pathname;
+  try { pathname = new URL(String(path ?? '/'), 'http://adapter.local').pathname; }
+  catch { return '/[invalid]'; }
+  const segments = pathname.split('/').filter(Boolean).map(segment => {
+    let decoded = segment;
+    try { decoded = decodeURIComponent(segment); } catch {}
+    if (/^\d+$/.test(decoded)) return '{n}';
+    if (UUID.test(decoded)) return '{uuid}';
+    if (LONG_HASH.test(decoded) || decoded.length > 64 || /@/.test(decoded) || /^[a-z0-9_-]{24,}$/i.test(decoded)) return '{value}';
+    return decoded.slice(0, 128);
+  });
+  return '/' + segments.join('/');
+}
+
+function safeQueryNames(value) {
+  const names = Array.isArray(value) ? value : [...new URLSearchParams(String(value ?? '')).keys()];
+  return [...new Set(names.map(name => String(name).trim().toLowerCase())
+    .filter(name => /^[a-z0-9_.:[\]~-]{1,128}$/i.test(name)).slice(0, 50))].sort();
+}
+
+function routeParts(route) {
+  const split = String(route).indexOf(' ');
+  return split < 1 ? { method: '', path: '/' } : { method: String(route).slice(0, split), path: String(route).slice(split + 1) };
+}
+
+function nearestRoutes(routes, method, path) {
+  const target = path.split('/').filter(Boolean);
+  return [...routes].map(route => {
+    const item = routeParts(route);
+    const parts = item.path.split('/').filter(Boolean);
+    let common = 0;
+    while (common < target.length && common < parts.length && target[common] === parts[common]) common++;
+    const score = (item.method === method ? 100 : 0) + common * 10 - Math.abs(target.length - parts.length);
+    return { method: item.method, path: safePath(item.path), score };
+  }).sort((a, b) => b.score - a.score || `${a.method} ${a.path}`.localeCompare(`${b.method} ${b.path}`)).slice(0, 3);
+}
+
+function metadataRoutes(metadata, routes) {
+  const declared = new Set(routes);
+  const source = Array.isArray(metadata?.routes) ? metadata.routes : [];
+  const known = source.filter(item => item && declared.has(`${item.method} ${item.path}`)).map(item => ({
+    method: item.method, path: safePath(item.path), queryParams: safeQueryNames(item.queryParams),
+    responseBody: item.responseBody === 'observed' ? 'observed' : 'unavailable',
+    writeVerification: item.writeVerification === 'unverified' ? 'unverified' : ['GET', 'HEAD'].includes(item.method) ? 'not_applicable' : 'unverified',
+  }));
+  const present = new Set(known.map(item => `${item.method} ${item.path}`));
+  for (const route of routes) {
+    const item = routeParts(route);
+    const key = `${item.method} ${safePath(item.path)}`;
+    if (!present.has(key)) known.push({
+      method: item.method, path: safePath(item.path), queryParams: [], responseBody: 'unavailable',
+      writeVerification: ['GET', 'HEAD'].includes(item.method) ? 'not_applicable' : 'unverified',
+    });
+  }
+  return known.sort((a, b) => `${a.method} ${a.path}`.localeCompare(`${b.method} ${b.path}`));
+}
+
+function storedGaps(value, routes) {
+  if (!Array.isArray(value)) return [];
+  const allowed = new Set(['unobserved-path', 'uncovered-query-parameter', 'unobserved-query-variant']);
+  const output = new Map();
+  for (const item of value) {
+    const method = String(item?.method ?? '').toUpperCase();
+    if (!METHODS.has(method)) continue;
+    const path = safePath(item?.path);
+    const queryParams = safeQueryNames(item?.queryParams);
+    const category = (Array.isArray(item?.categories) && item.categories.find(name => allowed.has(name))) || 'unobserved-path';
+    const count = Number.isSafeInteger(item?.count) && item.count > 0 ? Math.min(item.count, 1_000_000_000) : 0;
+    if (!count) continue;
+    const key = `${method} ${path}|${queryParams.join(',')}|${category}`;
+    const current = output.get(key) ?? {
+      key, method, path, queryParams, count: 0, categories: [category],
+      nearestRoutes: nearestRoutes(routes, method, path),
+    };
+    current.count = Math.min(1_000_000_000, current.count + count);
+    output.set(key, current);
+  }
+  return [...output.values()].slice(-MAX_GAP_ENTRIES);
+}
+
+function createGapLedger(dataDir, routes, metadata) {
+  const path = join(dataDir, GAP_LEDGER_FILE);
+  const knownRoutes = metadataRoutes(metadata, routes);
+  const missingResponseBodies = knownRoutes.filter(route => route.responseBody !== 'observed').length;
+  const unverifiedWrites = knownRoutes.filter(route => route.writeVerification === 'unverified').length;
+  let state = {
+    schema: 'heimdall.adapter-gap-ledger/1', source: 'runtime', status: 'not-run',
+    updatedAt: null,
+    summary: { runtimeRequests: 0, uniqueGaps: 0, unobservedPaths: 0, uncoveredQueryParameters: 0, missingResponseBodies, unverifiedWrites },
+    knownRoutes, gaps: [],
+    unknowns: ['authentication-permission-unknown', 'business-state-unknown',
+      ...(missingResponseBodies ? ['missing-response-body'] : []), ...(unverifiedWrites ? ['unverified-write'] : [])],
+  };
+  try {
+    const existing = JSON.parse(readFileSync(path, 'utf8'));
+    if (existing?.schema === state.schema && Array.isArray(existing.gaps)) {
+      state.gaps = storedGaps(existing.gaps, routes);
+      state.updatedAt = typeof existing.updatedAt === 'string' ? existing.updatedAt : null;
+    }
+  } catch {}
+
+  const refresh = () => {
+    const runtimeRequests = state.gaps.reduce((sum, item) => sum + item.count, 0);
+    const hasCategory = category => state.gaps.filter(item => item.categories.includes(category)).length;
+    state.summary = {
+      ...state.summary, runtimeRequests, uniqueGaps: state.gaps.length,
+      unobservedPaths: hasCategory('unobserved-path'),
+      uncoveredQueryParameters: hasCategory('uncovered-query-parameter'),
+      missingResponseBodies, unverifiedWrites,
+    };
+    state.status = runtimeRequests === 0 ? 'not-run' : state.gaps.length ? 'needs-review' : 'no-gaps-observed';
+    state.updatedAt = new Date().toISOString();
+    state.unknowns = ['authentication-permission-unknown', 'business-state-unknown',
+      ...(missingResponseBodies ? ['missing-response-body'] : []), ...(unverifiedWrites ? ['unverified-write'] : []),
+      ...(state.gaps.length ? ['runtime-gap-observed'] : [])];
+  };
+  const persist = () => {
+    refresh();
+    while (state.gaps.length > MAX_GAP_ENTRIES || Buffer.byteLength(JSON.stringify(state)) > MAX_GAP_BYTES) state.gaps.shift();
+    refresh();
+    const text = JSON.stringify(state, null, 2);
+    try {
+      writeFileSync(path + '.tmp', text);
+      renameSync(path + '.tmp', path);
+    } catch { /* A read-only state volume must not break the mirrored page. */ }
+  };
+  const record = ({ method, path: requestPath, search = '', queryParams, category = 'unobserved-path' }) => {
+    const upperMethod = String(method ?? 'GET').toUpperCase();
+    const safe = safePath(requestPath);
+    const params = safeQueryNames(queryParams ?? search);
+    const allowed = new Set(['unobserved-path', 'uncovered-query-parameter', 'unobserved-query-variant']);
+    const normalizedCategory = allowed.has(category) ? category : 'unobserved-path';
+    const key = `${upperMethod} ${safe}|${params.join(',')}|${normalizedCategory}`;
+    const current = state.gaps.find(item => item.key === key);
+    if (current) current.count++;
+    else {
+      state.gaps.push({ key, method: upperMethod, path: safe, queryParams: params, count: 1,
+        categories: [normalizedCategory], nearestRoutes: nearestRoutes(routes, upperMethod, safe) });
+    }
+    persist();
+  };
+  refresh();
+  return { path, record, snapshot: () => JSON.parse(JSON.stringify(state)) };
 }
 
 function boundedBody(req) {
@@ -192,7 +344,10 @@ function responseHeaders(response) {
 }
 
 export async function dispatchRuntimeAdapter(adapter, req, res, path, search) {
-  if (!adapter.routes.has(req.method + ' ' + path)) return false;
+  if (!adapter.routes.has(req.method + ' ' + path)) {
+    adapter.gapLedger?.record({ method: req.method, path, search, category: 'unobserved-path' });
+    return false;
+  }
   let timeout;
   let timedOut = false;
   const controller = new AbortController();
@@ -214,7 +369,9 @@ export async function dispatchRuntimeAdapter(adapter, req, res, path, search) {
         reject(new Error('adapter timed out'));
       }, ADAPTER_TIMEOUT_MS);
     });
-    const response = await Promise.race([adapter.handle(request, { dataDir: adapter.dataDir }), deadline]);
+    const response = await Promise.race([adapter.handle(request, {
+      dataDir: adapter.dataDir, recordGap: details => adapter.gapLedger?.record({ ...details, search }),
+    }), deadline]);
     if (!(response instanceof Response)) throw new TypeError('adapter must return Response');
     if (controller.signal.aborted) throw new Error('adapter timed out');
     res.writeHead(response.status, responseHeaders(response));

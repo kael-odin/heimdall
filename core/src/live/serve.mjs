@@ -356,7 +356,12 @@ createServer(async (req, res) => {
   if (pathname === '/__heimdall/health') {
     return send(res, 200, JSON.stringify({
       ok: true, host: HOST, origin: ORIGIN, offline: OFFLINE, replay: REPLAY, root: ROOT_MODE ? 'mirror' : 'landing', harEntries: HAR_ENTRIES, uptime: Math.round(process.uptime()),
+      ...(adapterRuntime ? { adapterGaps: adapterRuntime.adapter.gapLedger.snapshot().summary } : {}),
     }), 'application/json; charset=utf-8');
+  }
+  if (pathname === '/__heimdall/adapter-gaps') {
+    if (!adapterRuntime) return send(res, 404, JSON.stringify({ error: 'adapter-not-enabled' }), 'application/json; charset=utf-8');
+    return send(res, 200, JSON.stringify(adapterRuntime.adapter.gapLedger.snapshot()), 'application/json; charset=utf-8', { 'Cache-Control': 'no-store' });
   }
   if (pathname === '/') {
     if (ROOT_MODE) return serveLive(req, res, '/', u.search);

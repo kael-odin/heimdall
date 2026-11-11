@@ -62,16 +62,70 @@ function safeAdapterPath(path) {
 const fixtureKey = fixture => `${fixture.method} ${fixture.path}${fixture.search}`;
 const routeKey = fixture => `${fixture.method} ${fixture.path}`;
 
-function moduleSource(fixtures, fallbacks) {
+function queryNames(search) {
+  try { return [...new Set([...new URL('http://adapter.local' + search).searchParams.keys()].map(name => name.toLowerCase()))].sort(); }
+  catch { return []; }
+}
+
+function routeMetadata(fixtures) {
+  const routes = new Map();
+  for (const fixture of fixtures) {
+    const key = routeKey(fixture);
+    const current = routes.get(key) ?? {
+      method: fixture.method, path: fixture.path, queryParams: [],
+      responseBody: 'unavailable',
+      writeVerification: ['GET', 'HEAD'].includes(fixture.method) ? 'not_applicable' : 'unverified',
+    };
+    current.queryParams = [...new Set([...current.queryParams, ...queryNames(fixture.search)])].sort();
+    if (fixture.body != null) current.responseBody = 'observed';
+    routes.set(key, current);
+  }
+  return [...routes.values()].sort((a, b) => `${a.method} ${a.path}`.localeCompare(`${b.method} ${b.path}`));
+}
+
+function initialGapLedger(routes) {
+  const missingResponseBodies = routes.filter(route => route.responseBody !== 'observed').length;
+  const unverifiedWrites = routes.filter(route => route.writeVerification === 'unverified').length;
+  return {
+    schema: 'heimdall.adapter-gap-ledger/1', source: 'training-only', status: 'not-run',
+    summary: {
+      runtimeRequests: 0, uniqueGaps: 0, unobservedPaths: 0, uncoveredQueryParameters: 0,
+      missingResponseBodies, unverifiedWrites,
+    },
+    knownRoutes: routes, gaps: [],
+    unknowns: ['authentication-permission-unknown', 'business-state-unknown',
+      ...(missingResponseBodies ? ['missing-response-body'] : []),
+      ...(unverifiedWrites ? ['unverified-write'] : [])],
+  };
+}
+
+function moduleSource(fixtures, fallbacks, metadata) {
   return `// Generated from sanitized API HAR. Observed replay only; not backend equivalence.\n` +
     `const fixtures = ${JSON.stringify(fixtures)};\n` +
     `const exact = new Map(fixtures.map(item => [item.key, item]));\n` +
     `const fallbacks = new Map(${JSON.stringify(fallbacks)});\n` +
-    `export async function handle(request) {\n` +
+    `const routeMetadata = ${JSON.stringify(metadata)};\n` +
+    `const routeMeta = new Map(routeMetadata.routes.map(item => [item.method + ' ' + item.path, item]));\n` +
+    `export const __heimdallAdapter = routeMetadata;\n` +
+    `function queryNames(url) { return [...new Set([...url.searchParams.keys()].map(name => name.toLowerCase()))].sort(); }\n` +
+    `async function recordGap(context, url, category) {\n` +
+    `  if (typeof context?.recordGap !== 'function') return;\n` +
+    `  const method = requestMethod(context);\n` +
+    `  const known = routeMeta.get(method + ' ' + url.pathname);\n` +
+    `  const params = queryNames(url);\n` +
+    `  await context.recordGap({ method, path: url.pathname, queryParams: params, category, knownQueryParams: known?.queryParams ?? [] });\n` +
+    `}\n` +
+    `function requestMethod(context) { return context?.method ?? 'GET'; }\n` +
+    `export async function handle(request, context = {}) {\n` +
     `  const url = new URL(request.url);\n` +
     `  const key = request.method + ' ' + url.pathname + url.search;\n` +
-    `  const fixture = exact.get(key) || fallbacks.get(request.method + ' ' + url.pathname);\n` +
-    `  if (!fixture) return Response.json({ error: 'unobserved-route' }, { status: 404 });\n` +
+    `  const exactFixture = exact.get(key);\n` +
+    `  const fixture = exactFixture || fallbacks.get(request.method + ' ' + url.pathname);\n` +
+    `  const known = routeMeta.get(request.method + ' ' + url.pathname);\n` +
+    `  const params = queryNames(url);\n` +
+    `  const uncovered = known ? params.filter(name => !known.queryParams.includes(name)) : [];\n` +
+    `  if (!fixture) { await recordGap({ ...context, method: request.method }, url, known ? (uncovered.length ? 'uncovered-query-parameter' : 'unobserved-query-variant') : 'unobserved-path'); return Response.json({ error: 'unobserved-route' }, { status: 404 }); }\n` +
+    `  if (!exactFixture && url.search) await recordGap({ ...context, method: request.method }, url, uncovered.length ? 'uncovered-query-parameter' : 'unobserved-query-variant');\n` +
     `  const headers = { 'content-type': fixture.mimeType, 'x-heimdall-provenance': 'observed-replay' };\n` +
     `  const body = fixture.body == null ? undefined : Buffer.from(fixture.body, 'base64');\n` +
     `  return new Response(body, { status: fixture.status, headers });\n` +
@@ -107,7 +161,8 @@ export function buildObservedReplayAdapter(entries, { siteId = '', origin = '', 
     .filter(([, items]) => items.length === 1 && !items[0].search)
     .map(([key, items]) => [key, items[0]])
     .sort(([a], [b]) => a.localeCompare(b));
-  const source = moduleSource(fixtures, fallbacks);
+  const metadata = { version: 1, routes: routeMetadata(fixtures) };
+  const source = moduleSource(fixtures, fallbacks, metadata);
   const moduleBytes = Buffer.byteLength(source);
   if (moduleBytes > MAX_MODULE_BYTES) throw new Error(`generated adapter exceeds ${MAX_MODULE_BYTES} bytes`);
   return {
@@ -122,6 +177,7 @@ export function buildObservedReplayAdapter(entries, { siteId = '', origin = '', 
       tier: 'B1-replay', pages, entries: fixtures.length, routes: routes.length,
       moduleBytes, excluded, ambiguous, redactedBodies, status: 'observed-only',
       unknowns: ['认证要求', '参数校验', '权限', '状态机', '副作用', '未观察路径'],
+      gapLedger: initialGapLedger(metadata.routes),
     },
   };
 }

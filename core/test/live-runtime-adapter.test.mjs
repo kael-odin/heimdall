@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { request as httpRequest } from 'node:http';
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -129,6 +129,38 @@ test('offline adapter owns exact routes and persists writes after restart', { ti
     const persisted = await fetch(base + '/api/items?view=all');
     assert.equal(persisted.status, 200);
     assert.deepEqual(await persisted.json(), [{ name: 'saved' }]);
+  } finally {
+    await stop(child);
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test('runtime adapter records only sanitized unknown requests and persists the gap ledger', { timeout: 30_000 }, async () => {
+  const f = fixture();
+  let child;
+  try {
+    let running = launch(f.bundle, f.state);
+    child = running.child;
+    let { base } = await running.outcome;
+    assert.equal((await fetch(base + '/api/missing?token=secret-value')).status, 404);
+    assert.equal((await fetch(base + '/api/missing?token=secret-value')).status, 404);
+    const response = await fetch(base + '/__heimdall/adapter-gaps');
+    assert.equal(response.status, 200);
+    const ledger = await response.json();
+    assert.equal(ledger.summary.runtimeRequests, 2);
+    assert.equal(ledger.summary.uniqueGaps, 1);
+    assert.equal(ledger.gaps[0].path, '/api/missing');
+    assert.deepEqual(ledger.gaps[0].queryParams, ['token']);
+    assert.deepEqual(ledger.gaps[0].categories, ['unobserved-path']);
+    assert.ok(ledger.gaps[0].nearestRoutes.some(route => route.path === '/api/items'));
+    assert.doesNotMatch(JSON.stringify(ledger), /secret-value/);
+    assert.equal(existsSync(join(f.state, 'adapter-gap-ledger.json')), true);
+    await stop(child);
+    running = launch(f.bundle, f.state);
+    child = running.child;
+    ({ base } = await running.outcome);
+    const persisted = await (await fetch(base + '/__heimdall/adapter-gaps')).json();
+    assert.equal(persisted.gaps[0].count, 2);
   } finally {
     await stop(child);
     rmSync(f.root, { recursive: true, force: true });

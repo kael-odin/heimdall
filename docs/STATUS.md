@@ -183,6 +183,13 @@ Hosted CI 结果为最终依据。
 - `inferred` 是 AI 可以据此起草的内容，`invented` 单独计数且当前为空；没有观察型契约时任务包明确为 `blocked_on_observation`，不会自动发明业务 API。
 - MCP 提示词已要求 AI 同时读取 `deliveryPlan.backendCompletion`，继续沿用 `requiresHumanApproval` 和确定性复测边界；本轮没有新增独立 MCP 工具。
 
+## 2026-11-12 适配器缺口账本
+
+- 生成的观察回放适配器现在携带脱敏路由元数据；它能区分已声明路由、未覆盖查询参数和未观察查询变体，但不会保存查询值或请求体。
+- 运行包含适配器的包时，未声明请求会按 `method + pathname + query parameter names` 聚合写入包外 `HEIMDALL_RUNTIME_DATA_DIR/adapter-gap-ledger.json`；重复请求只增加 `count`。
+- `/__heimdall/adapter-gaps` 返回账本，`/__heimdall/health` 返回摘要；账本会给出最近似已知路由，并把缺响应体、未验证写入、认证/权限未知保留为未决项。
+- `adapter-report.json.gapLedger` 记录训练/留出阶段的离线缺口；`heimdall_site_assessment` 读取它或同级 `adapter-gap-ledger.json`，把缺口变成 `api-adapter-gap-ledger` 待办。它仍不证明真实后端业务等价。
+
 ## 2026-10-31 产品打磨
 
 - `rebuild init` 不再固定抢 5199：不传 `--port` 时自动找空闲端口；显式传了而端口被占用则直接报错，不偷偷换。

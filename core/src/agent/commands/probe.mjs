@@ -167,9 +167,9 @@ async function adapter(sample, siteId, { includeApiBodies, out, force }) {
     observed: { total: split.total, eligible: split.eligible, excluded: split.excluded, duplicateEntries: split.duplicateEntries },
     endpoints: split.endpoints,
   }, null, 2));
-  return { ...generated.report, out: target, reportPath, origin, files: ['manifest.json', 'index.mjs'],
+  return { ...generated.report, gapLedger: report.gapLedger, out: target, reportPath, origin, files: ['manifest.json', 'index.mjs'],
     observedEntries: split.total, trainEntries: split.train.length, heldoutEntries: split.heldout.length,
-    validation: report.results };
+    validation: report.results, unknowns: [...new Set([...(report.unknowns ?? []), ...(report.gapLedger?.unknowns ?? [])])] };
 }
 
 const summarise = (label, rows) => `${label}：${rows.length} 页。`;

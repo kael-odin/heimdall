@@ -32,11 +32,20 @@ test('live/adapter-generator: creates a privacy-filtered observed replay module'
     const post = await module.handle(new Request('http://adapter.local/api/items', { method: 'POST', body: '{}' }));
     assert.equal(post.status, 201);
     assert.deepEqual(await post.json(), { ok: true });
-    assert.equal((await module.handle(new Request('http://adapter.local/api/items?page=2'))).status, 404);
+    const gaps = [];
+    assert.equal((await module.handle(new Request('http://adapter.local/api/items?page=2&token=secret-value'), {
+      recordGap: gap => gaps.push(gap), method: 'GET',
+    })).status, 404);
+    assert.deepEqual(gaps[0], {
+      method: 'GET', path: '/api/items', queryParams: ['page', 'token'], category: 'uncovered-query-parameter',
+      knownQueryParams: ['page'],
+    });
+    assert.doesNotMatch(JSON.stringify(gaps), /secret-value/);
     assert.doesNotMatch(readFileSync(join(root, 'index.mjs'), 'utf8'), /private@example\.com|secret-value|user_id/);
     assert.equal(adapter.report.tier, 'B1-replay');
     assert.equal(adapter.report.routes, 2);
     assert.equal(adapter.report.redactedBodies, 2);
+    assert.equal(adapter.report.gapLedger.summary.unverifiedWrites, 1);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

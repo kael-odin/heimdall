@@ -1136,7 +1136,7 @@ node serve.mjs --port ${PORT} --host 127.0.0.1  # 只监听本机（默认监听
 docker compose up -d                   # Docker 部署
 \`\`\`
 
-${INCLUDE_ADAPTER ? '适配器仅处理 manifest.json 中精确声明的路由；未捕获请求在离线模式下返回 404。Node 运行时须把 HEIMDALL_RUNTIME_DATA_DIR 指向包外目录。Docker Compose 用 heimdall-runtime-data 命名卷保存状态，容器重建后继续使用；单独 docker run 时须挂载持久卷到 /data。适配器是可信的逐站 Node 代码，并非沙箱；--compare-source 不证明写入业务与源站等价。严格探针未隔离适配器进程的网络，health.adapter.serverEgress=not-tested；逐站交付前仍须把实际候选包放入无外联容器，重跑已声明的操作并核对业务状态。\n\n' : ''}- **监听地址默认 0.0.0.0**（所有网卡）—— 交付包是拿去部署的，绑回环外面就访问不到。
+${INCLUDE_ADAPTER ? '适配器仅处理 manifest.json 中精确声明的路由；未捕获请求在离线模式下返回 404，并按脱敏的 method/path/查询参数名写入包外 adapter-gap-ledger.json。Node 运行时须把 HEIMDALL_RUNTIME_DATA_DIR 指向包外目录。Docker Compose 用 heimdall-runtime-data 命名卷保存状态，容器重建后继续使用；单独 docker run 时须挂载持久卷到 /data。适配器是可信的逐站 Node 代码，并非沙箱；--compare-source 不证明写入业务与源站等价。严格探针未隔离适配器进程的网络，health.adapter.serverEgress=not-tested；逐站交付前仍须把实际候选包放入无外联容器，重跑已声明的操作并核对业务状态。\n\n' : ''}- **监听地址默认 0.0.0.0**（所有网卡）—— 交付包是拿去部署的，绑回环外面就访问不到。
   只在本机预览请加 \`--host 127.0.0.1\`。引擎本身默认绑回环，两者不同是有意的
 
 - 镜像入口：http://127.0.0.1:${PORT}/lm/${host}/
@@ -1176,7 +1176,7 @@ sourceOperationProbe     显式 --compare-source 时，源站同流程只读采�
 dependencyParity         显式 --compare-source 时，按操作流程核对脚本、样式、媒体、文档和 API 的精确请求、状态与 MIME；仅报告类别和数量，不写入私有 URL。它不比较静态资源内容，也不证明业务等价
 readOnlyData             显式许可的 GET 数据声明数、纳入数、缺口和冲突；源站操作采集需同时使用 --compare-source
 privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布。默认累计扫描 128MB，可用 --privacy-max-total-bytes 134217728..1073741824 调整
-${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实际触达路由数、未测路由数与 sessionRoutes 的 declared/initialized/failed；未测或失败均阻断发布；serverEgress=not-tested 表示服务端外联尚未验证\n' : ''}
+${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实际触达路由数、未测路由数与 sessionRoutes 的 declared/initialized/failed；未测或失败均阻断发布；serverEgress=not-tested 表示服务端外联尚未验证；adapter-gap-ledger.json 记录运行时未声明请求\n' : ''}
 \`\`\`
 
 在线部署时，站外引用是否可加载还取决于第三方服务、跨域规则和访问权限。
@@ -1189,6 +1189,7 @@ ${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实�
 | \`/lm/${host}/**\` | 本地 live 快照 → HAR 回放 → 原站代理（离线时 404） |
 | \`/static/${host}/**\` | 克隆页 / CSS / 资产 / 档案 / SEO 报告 |
 | \`/__heimdall/health\` | 健康检查 |
+| \`/__heimdall/adapter-gaps\` | 适配器脱敏缺口账本（仅含路由、参数名、次数和最近路由） |
 
 ## 换成自己的站
 
