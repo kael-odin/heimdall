@@ -21,7 +21,7 @@ import { baselineFile, writeBaseline } from '../../../core/src/qa/baseline.mjs';
 const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
 const CORE = fileURLToPath(new URL('../../../core/', import.meta.url));
 const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
-  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch'];
+  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch', 'heimdall_site_assessment'];
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-mcp-'));

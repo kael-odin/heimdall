@@ -28,7 +28,19 @@ node bin/heimdall.mjs connect codex
 
 Claude Code 插件是轻量代理，明确依赖 `:8900` 引擎。Codex 和 Claude Desktop 的完整
 MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳定、工作区一致，仍建议先开
-`:8900`。当前三种入口都应列出 15 个工具；重启客户端或新开会话后才会加载新配置。
+`:8900`。当前三种入口都应列出 16 个工具；重启客户端或新开会话后才会加载新配置。
+
+## 一次看清站点现状
+
+不知道某个站点已经做到哪一步时，先调用 `heimdall_site_assessment`：
+
+```text
+调用 heimdall_site_assessment，siteId=example.com。
+如果有 QA 工作区，再传 qaWorkspace；只汇报镜像覆盖、多视口验证、SEO/GEO、公开 API 契约、适配器留出验证、最近一次 QA 和未知项。
+不要把观察型契约说成后端等价；根据 nextActions 决定下一步。
+```
+
+它只读已经清洗的摘要，不打开原始 HAR、登录档、操作计划或适配器源码。`claims.verified`、`claims.observed` 和 `unknowns` 必须分开解释。
 
 ## 克隆和重建
 

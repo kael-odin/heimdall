@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CAPABILITIES, annotationsOf, defineCapability, describeCapabilities, getCapability } from '../src/agent/registry/index.mjs';
 import { parseArgs, argsFor } from '../src/agent/cli.mjs';
@@ -16,7 +16,7 @@ import { parseArgs, argsFor } from '../src/agent/cli.mjs';
 const CLI = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
 const EXPECTED = [
   'overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor', 'qa_status', 'qa_run', 'qa_findings',
-  'qa_ci', 'seo_audit', 'seo_matrix', 'site_watch',
+  'qa_ci', 'seo_audit', 'seo_matrix', 'site_watch', 'site_assessment',
 ];
 
 function tempRoot() {
@@ -45,7 +45,7 @@ test('registry: the core capabilities, in a fixed order, each well formed', () =
 
 test('registry: effects map to MCP annotations (readOnly only for pure read)', () => {
   const a = Object.fromEntries(CAPABILITIES.map(c => [c.id, annotationsOf(c)]));
-  for (const id of ['overview', 'site', 'brief', 'artifact', 'jobs', 'doctor']) assert.equal(a[id].readOnlyHint, true, id);
+  for (const id of ['overview', 'site', 'brief', 'artifact', 'jobs', 'doctor', 'site_assessment']) assert.equal(a[id].readOnlyHint, true, id);
   assert.equal(a.compare.readOnlyHint, false);
   for (const id of ['clone', 'seo_audit', 'seo_matrix', 'site_watch', 'qa_run', 'qa_ci']) {
     assert.equal(a[id].openWorldHint, true, id);
@@ -79,6 +79,9 @@ test('cli: argument parsing maps flags to capability inputs', () => {
   });
   assert.deepEqual(argsFor('site_watch', parseArgs(['https://example.test/', '--accept', '--max-pages', '5'])), {
     url: 'https://example.test/', accept: true, maxPages: 5,
+  });
+  assert.deepEqual(argsFor('site_assessment', parseArgs(['example.test', '--qa-workspace', '.\\qa', '--limit', '5'])), {
+    siteId: 'example.test', qaWorkspace: resolve('.\\qa'), limit: 5,
   });
   assert.deepEqual(argsFor('qa_ci', parseArgs(['web', '--fail-on', 'degrade', '--max-findings', '3', '--github'])), {
     site: 'web', failOn: 'degrade', maxFindings: 3, github: true,

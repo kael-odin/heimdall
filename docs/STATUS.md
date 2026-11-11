@@ -119,7 +119,7 @@ Hosted CI 结果为最终依据。
 - `connect` 的自测现在使用与实际写入配置完全相同的 `HEIMDALL_API`；dry-run 不启动
   MCP，已有配置也会先备份再改，失败仍回滚。
 - 本机实测识别到 Claude Code 插件 `0.2.2`、Claude Desktop 与 Codex；三者均通过
-  `doctor`，完整 MCP 客户端各拉起 15 个工具。
+  `doctor`，完整 MCP 客户端各拉起 16 个工具。
 - Hosted 精确提交 `1dff01cb14d3878f102fc964485b0b8eaa05bf76`：
   [CI `42016376206`](https://github.com/kael-odin/heimdall/actions/runs/42016376206)
   8 / 8 job 成功，Docs `42016376116` 成功。
@@ -138,7 +138,7 @@ Hosted CI 结果为最终依据。
 
 ## 2026-10-31 A-3：Claude Code 插件闭环
 
-- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通；当前能力注册表有 15 个工具，新增 QA CI、SEO 审计、SEO 矩阵和站点变更监控。
+- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通；当前能力注册表有 16 个工具，新增 QA CI、SEO 审计、SEO 矩阵、站点变更监控和站点评估。
 - 本会话用 MCP 工具完成 F1 重建：6/6 分段 `pass-candidate`，整页 375 99.89% / 768 99.91% / 1440 100%，正式门禁 `passed silver`（验收视觉 3/3、结构 3/3、健康 12/12）。
 - 交付包：`agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed）。
 - Claude Desktop 界面 `heimdall_doctor` 9/9 通过（2026-10-31，操作者贴回结果）；配置与 stdio 也已验证。
@@ -168,6 +168,12 @@ Hosted CI 结果为最终依据。
 - 观察回放适配器只从训练集生成；适配器目录仍只含 `manifest.json` 和 `index.mjs`，验证结果写在上级的 `adapter-report.json`，不会破坏可部署适配器的两文件约束。
 - `adapter-report.json` 对留出请求核对状态码、MIME、脱敏 JSON 形状和训练集中稳定字段，并单列未观察路径、未覆盖参数、样本不足和留出集为空。通过阈值为留出等价度至少 90%；没有留出样本时是 `not-validated`，不是通过。
 - 该环只证明观察数据上的有限泛化，不证明认证、权限、状态机、业务规则、持久化或真实副作用。Xspark 试点目前只有脱敏 QA 聚合证据，没有可作为 API 留出样本的公开 HAR，因此不把 Xspark 的 38/71、2/4 统计硬塞进 B2 API 结论。
+
+## 2026-11-11 站点评估包
+
+- 新增只读 `heimdall_site_assessment`：一次返回镜像页数、多视口验证、SEO/GEO 摘要、公开 API 契约、适配器留出验证、可选 QA 最近运行、证据分类和下一步。
+- 它只读取清洗后的公开报告与 manifest，不读取原始 HAR、登录档、操作计划或适配器源码；`verified`、`observed`、`unknown` 分开输出。
+- 该能力是 AI 的导航层，不替代克隆、SEO、QA 或后端实现；没有镜像时总体状态仍是 `needs_capture`，适配器通过也只表示观察样本的有限验证。
 
 ## 2026-10-31 产品打磨
 

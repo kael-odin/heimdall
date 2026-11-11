@@ -1,7 +1,7 @@
 /**
  * agent/cli — CLI 代理模式（E3-01 ~ E3-08，PRD 附录 A §5）
  *
- * 注册表里的每个能力都是一个子命令（overview / site / brief / artifact / compare / jobs / clone / doctor），
+ * 注册表里的每个能力都是一个子命令（overview / site / site-assessment / brief / artifact / compare / jobs / clone / doctor），
  * 外加 CLI 专属命令（rebuild、connect、probe、mcp）。旧命令照旧由 cli.mjs 的命令表处理（E3-06）。
  *
  *   --json        stdout 只有 NDJSON 进度事件与**最后一行**信封；日志一律走 stderr（E3-01）
@@ -42,6 +42,11 @@ export function argsFor(id, { flags, positional }) {
   switch (id) {
     case 'overview': set('limit', num(flags.limit)); set('include', list(flags.include)); break;
     case 'site': set('siteId', positional[0] ?? flags['site-id']); set('view', flags.view); set('limit', num(flags.limit)); set('cursor', num(flags.cursor)); break;
+    case 'site_assessment':
+      set('siteId', positional[0] ?? flags['site-id']);
+      set('qaWorkspace', flags['qa-workspace'] ? resolve(String(flags['qa-workspace'])) : undefined);
+      set('limit', num(flags.limit));
+      break;
     case 'brief':
       if (flags.project) set('project', resolve(String(flags.project === true ? '.' : flags.project)));
       set('siteId', positional[0] ?? flags['site-id']); set('page', positional[1] ?? flags.page);
@@ -137,6 +142,11 @@ function human(env, id, quiet) {
   if (id === 'doctor' && env.ok) for (const c of env.result.checks) lines.push(`${c.status === 'ok' ? '✓' : c.status === 'warn' ? '!' : '✗'} ${c.id.padEnd(9)} ${c.detail}${c.fix ? `  → ${c.fix.command}` : ''}`);
   if (id === 'overview' && env.ok && env.result.sites) lines.push('', ...env.result.sites.map(s => `${s.siteId.padEnd(40)} ${String(s.cloned).padStart(4)} 页有镜像`));
   if (id === 'site' && env.ok && env.result.pages) lines.push('', ...env.result.pages.map(p => `${p.page.padEnd(40)} ${p.mirror ? '镜像✓' : '      '} ${p.score ? p.score.grade + ' ' + p.score.total : ''}`));
+  if (id === 'site_assessment' && env.ok) {
+    const r = env.result;
+    lines.push(`镜像：${r.clone.mirrors}/${r.clone.pages}；多视口验证：${r.clone.verified ?? 0}；SEO：${r.seo.status}；API：${r.api.status}；QA：${r.qa.status}`);
+    if (r.unknowns?.length) lines.push(`未知项：${r.unknowns.slice(0, 8).map(item => item.id).join('、')}`);
+  }
   if (id === 'artifact' && env.ok) { if (env.result.text) lines.push('', env.result.text); else if (env.result.json) lines.push('', JSON.stringify(env.result.json, null, 2).slice(0, 20000)); if (env.result.savedTo) lines.push(`已保存：${env.result.savedTo}`); }
   if (id === 'seo_audit' && env.ok && env.result?.result) {
     const r = env.result.result;

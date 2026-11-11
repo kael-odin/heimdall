@@ -95,7 +95,7 @@ node core/src/cli.mjs doctor --json
 
 - `setup --json` 退出码 0；
 - `:8900/` 和 `/api/status` 返回 HTTP 200；
-- Codex 与 Claude Desktop 各自都能拉起 15 个 MCP 工具；
+- Codex 与 Claude Desktop 各自都能拉起 16 个 MCP 工具；
 - Claude Code 插件版本被识别为 `0.2.2`；
 - `doctor` 显示三者均已配置，引擎正常。
 
@@ -184,7 +184,8 @@ node core/src/cli.mjs site-watch https://example.org/
 再跑 QA：
 
 ```text
-先调用 heimdall_qa_status，读测试须知和团队约定。
+先调用 heimdall_site_assessment，siteId=example.test；如果要纳入 QA，再传 qaWorkspace。
+先读它的未知项和 nextActions，再调用 heimdall_qa_status 读取测试须知和团队约定。
 再调用 heimdall_qa_run，站点 web，视口 1440 和 390。
 只列达到提单门槛的问题；环境问题单列，不要猜产品 BUG。
 ```
@@ -307,7 +308,7 @@ Xspark 已有的公开官网 QA / SEO 证据在
 2. **稳定发行**：不可变版本号 / tag，让客户端不再依赖当前工作树绝对路径。
 3. **QA 降噪**：统计误报率、漏报率、运行时长，再决定加不加检测器。
 4. **安装回归**：在干净 Windows 和 Hosted Linux 上持续验证 `setup`，而不是只在本机复用已装环境。
-5. **少加工具**：继续维持 15 个 MCP 工具，不把已有能力拆成更多上下文负担。
+5. **少加工具**：维持 16 个 MCP 工具；新增能力先证明不能合并，避免把已有能力拆成更多上下文负担。
 
 当前定位最实在：
 
