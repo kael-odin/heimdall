@@ -9,6 +9,7 @@
  *   serve.mjs / har.mjs / live-path.mjs / clone-asset-cors.mjs   零依赖 Node 服务器
  *   heimdall-live.json         配置（host/origin/port/offline/replayApi）
  *   har.json                   清洗后的 HAR（本地资源与 API 回放）
+ *   api-contract.json          仅由清洗 HAR 生成的观察型 B0/B1 接口契约
  *   site/live/**               build_live 的交互镜像页面
  *   site/static/<host>/**      克隆页 / CSS / 资产 / 档案 / 对比
  *   landing.html               落地页（镜像/档案/报告入口）
@@ -28,6 +29,7 @@ import { WORKSPACE, DELIVERABLE, localDateStamp } from '../paths.mjs';
 import { emit } from '../emit.mjs';
 import { buildEditManifest, renderEditManifestMd } from '../deliver/edit-manifest.mjs';
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
+import { buildObservedApiContract } from './contract.mjs';
 import { listLivePageRoutes, scanLiveBundle } from './health.mjs';
 import { healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, removeNonvisualExternalPixels, isStaticAsset } from './heal.mjs';
 import { localizeApprovedExternalStaticAssets } from './external-static.mjs';
@@ -757,6 +759,9 @@ health.thirdPartyServices = buildThirdPartyServicesReport({
   policies: runtimeServicePolicies,
 });
 writeFileSync(join(OUT, 'har.json'), JSON.stringify(har));   // 瘦身后的 HAR（materialize 时仅剩必要回放体）
+const apiContract = buildObservedApiContract(har.entries, { siteId: host, origin, pages: harPages });
+writeFileSync(join(OUT, 'api-contract.json'), JSON.stringify(apiContract, null, 2));
+health.apiContract = apiContract.summary;
 
 health.assetsBefore = assetsBefore;
 health.forgedPages = pageNames.length;
@@ -1110,6 +1115,7 @@ a.card:hover{border-color:rgba(34,211,238,.6)}a.card b{display:block;color:#22d3
 ${hasArchive ? `<a class="card" href="/static/${host}/index.html"><b>克隆档案</b><span>逐页还原度与卡片墙</span></a>` : ''}
 ${hasCompare ? `<a class="card" href="/static/${host}/compare.html"><b>同步滚动对比</b><span>原站快照 vs 镜像</span></a>` : ''}
 ${hasSeo ? `<a class="card" href="/static/${host}/seo/seo.html"><b>SEO 审计报告</b><span>六分类评分与逐页问题</span></a>` : ''}
+<a class="card" href="/api-contract.json"><b>AI 接口契约</b><span>观察到的接口形状与未知项，不含请求值和响应示例</span></a>
 </div>
 <div class="note">本产物仅供内部分析使用，请勿公开部署或商用。启动方式：<code>node serve.mjs --port ${PORT}</code> 或 <code>docker compose up -d</code>。<br/>drop-in 部署（镜像直接占据站点根路径）：export 时加 <code>--root mirror</code>，或部署后 <code>node serve.mjs --root mirror</code>。<br/>健康检查：<code>/__heimdall/health</code></div>
 </div></body></html>`;
@@ -1141,6 +1147,8 @@ ${INCLUDE_ADAPTER ? '适配器仅处理 manifest.json 中精确声明的路由�
   会被它自己的路由当成真实路径，页面会渲染成该站自己的 404。静态站/多页站两种都行。
 - 健康检查：http://127.0.0.1:${PORT}/__heimdall/health
 - 模式：\`offline: ${OFFLINE}\`（\`heimdall-live.json\`）+ HAR ${stats.entries} 条回放\n- 离线体检：health.json（资源 local/har/unresolved、未镜像链接、站外资产清单${HEAL ? '；本次已执行 --heal 自愈' : ''}）
+- 离线体检：health.json（资源 local/har/unresolved、未镜像链接、站外资产清单${HEAL ? '；本次已执行 --heal 自愈' : ''}）
+- AI 接口契约：\`api-contract.json\`（B0=没有观察到 API；B1=观察到方法、路径模板、状态码、MIME、JSON 结构与未知项）
 
 ### 离线时会缺什么（读 health.json）
 
@@ -1192,6 +1200,7 @@ ${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实�
 
 - 资产与克隆页按独立副本复制，构建通过后才替换目标目录；上一个版本保留为 \`.backup-*\`。
 - HAR 默认只保留静态资源；API/HTML 正文不进入分发包。排除统计见 \`har-privacy.json\`。
+- \`api-contract.json\` 只由清洗后的 HAR 生成；它不含原始请求、认证头、查询值、响应示例或未经验证的业务规则。要观察宽泛 API 响应形状，需显式使用 \`--include-api-har\`；该选项仍不能与 \`--strict\` 同用。
 - 原始 \`recon/atlas.json\` 不进入分发包；已发现页面的覆盖摘要见 \`health.json\`。
 - 静态克隆目录内的字体、图片和 CSS 允许跨来源读取，以便隔离页面显示；不要把私密内容放进这些素材。HTML、脚本、JSON 和克隆目录外的文件不因此开放跨来源读取。指向其他位置的符号链接不获得此许可，但普通请求仍可能读取其目标；并发替换和硬链接未作安全保证。
 - 如确需公开只读 GET 数据回放，先在工作区配置 \`read-data-plan.json\`，再用 \`--include-readonly-data --offline --strict\` 精确许可；同时加 \`--compare-source\` 与已审核的操作计划，可受控采集点击后出现的响应。冲突、缺失与被拒响应会阻断发布，数据分发范围仍需人工审核。

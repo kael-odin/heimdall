@@ -23,7 +23,7 @@ export const CLI_ONLY = Object.freeze({
   setup: { usage: 'setup [--registry URL] [--port 8900] [--no-open] [--no-connect] [--connect codex,claude-desktop] [--force-install] [--json]', desc: '按需安装依赖与 Chromium，构建控制台/MCP，启动单端口引擎并连接 AI 客户端' },
   rebuild: { usage: 'rebuild init <url|siteId> [--page P] [--stack html-css|vite-react-ts-tailwind] [--fidelity …] [--gate …] [--dir D] [--force] [--model-class …] | rebuild status [--project .] | rebuild deliver [--project .] [--out D] [--no-mirror]', desc: '生成重建工作区（--force 覆盖脚手架文件，评测用）；查看进度；按 Floor=Mirror 交付' },
   connect: { usage: 'connect <claude-code|claude-desktop|cursor|vscode|codex> [--api URL] [--remove] [--dry-run] [--yes]', desc: '把 Heimdall MCP 写进客户端配置（先备份，再用同一份配置自测）' },
-  probe: { usage: 'probe sizes|outline|har [--site S] [--max N]', desc: '复现 PRD 01 §1.4 的体量、大纲压缩与接口统计' },
+  probe: { usage: 'probe sizes|outline|har|contract [--site S] [--max N]', desc: '复现体量、大纲、接口统计，并从清洗 HAR 生成观察型契约' },
   gate: { usage: 'gate baseline <siteId> <page> [--viewport 1440] | gate report [--project .] [--level bronze|silver|gold]', desc: '正式基线供给与体检（E7-19）；六维门禁报告（E7-06），未通过退出码 1' },
   bench: { usage: 'bench score --site S --page P --candidate 标签=目录,… | bench run --site S --page P --project D --arm a1|a2|a3 [--feedback full|targeted] [--edit rewrite|surgical] --iterations N | bench sections --site S --page P --project D | bench summary --site S --page P', desc: 'Heimdall-Bench：测量候选、跑模型消融臂、按分段循环、汇总重复测量（E14-01~03）' },
   mcp: { usage: 'mcp [--http <port>] [--legacy]', desc: 'MCP 服务：默认 v2（stdio）；--legacy 起旧的 13 工具服务器' },

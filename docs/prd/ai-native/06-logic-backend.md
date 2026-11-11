@@ -128,6 +128,8 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/ItemPage" } } }
 ```
 
+当前最小落地形态是交付包内的 `api-contract.json`：它把同一份清洗 HAR 生成的 OpenAPI 3.1、观察统计、未知项和 B0/B1 摘要放在一个文件里，供 AI 直接读取。它只保留方法、路径模板、查询参数名、状态码、MIME 和 JSON 结构；不保留请求值、认证头、响应示例或业务规则。`--include-api-har` 才会把可推断的 API 响应纳入输入，但它仍不能与 `--strict` 同用；没有观察到接口时契约明确标为 B0 / `no-observed-api`。
+
 ---
 
 ## 4. 后端验证与分级

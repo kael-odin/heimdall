@@ -19,7 +19,7 @@ const PRIVATE_DATA_HEADER = /(?:cookie|authorization|api[_-]?key|auth[_-]?token|
 const PRIVATE_DATA_KEY = /^(?:auth(?:orization)?|api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|password|passwd|secret|session(?:[_-]?id)?|cookie|csrf|xsrf|email|phone|mobile|address|birth(?:day|date)?|dob|ssn|credit(?:[_-]?card)?|card(?:[_-]?number)?|bank(?:[_-]?account)?|iban|customer(?:[_-]?id)?|patient(?:[_-]?id)?|account(?:[_-]?id)?|profile(?:[_-]?id)?|user(?:[_-]?id|name)?)$|(?:^|[_-])(?:auth|token|key|secret|password|session|cookie|csrf|xsrf|email|phone|address|account|customer|patient|user)(?:$|[_-])/i;
 const PRIVATE_QUERY_KEY = /(?:auth|token|key|password|passwd|secret|session|cookie|csrf|xsrf|email|phone|address|user|account|customer|patient)/i;
 const DATA_MIME = /^(?:application\/(?:[a-z0-9.+-]+\+)?json|text\/plain)(?:\s*;|$)/i;
-const MAX_PUBLIC_DATA_BYTES = 1024 * 1024;
+export const MAX_PUBLIC_DATA_BYTES = 1024 * 1024;
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 
 function normalizedDataMime(value) {
@@ -102,6 +102,11 @@ function publicDataBody(raw, mimeType) {
     }
   }
   return true;
+}
+
+/** Shared by the contract view so schema generation keeps the HAR privacy boundary. */
+export function isPrivateDataKey(value) {
+  return PRIVATE_DATA_KEY.test(String(value ?? ''));
 }
 
 function publicDataOrigin(value) {

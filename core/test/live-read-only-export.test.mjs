@@ -96,6 +96,13 @@ test('strict export packages only declared public GET data and replays it after 
     const good = runExport(source, goodOut);
     assert.equal(good.status, 0, good.stderr + good.stdout);
     const goodHealth = JSON.parse(readFileSync(join(goodOut, 'health.json'), 'utf8'));
+    const contract = JSON.parse(readFileSync(join(goodOut, 'api-contract.json'), 'utf8'));
+    assert.equal(contract.tier, 'B1');
+    assert.equal(contract.summary.endpoints, 2);
+    assert.equal(goodHealth.apiContract.endpoints, 2);
+    assert.equal(goodHealth.apiContract.withResponseSchema, 2);
+    assert.ok(JSON.parse(readFileSync(join(goodOut, 'checksums.json'), 'utf8')).files.some(file => file.p === 'api-contract.json'));
+    assert.doesNotMatch(JSON.stringify(contract), /Public item|session-only|private@example/);
     assert.deepEqual(goodHealth.readOnlyData, { status: 'ok', declared: 2, included: 2, missing: 0 });
     assert.equal(goodHealth.strictBlockers.readOnlyDataMissing, 0);
     assert.equal(goodHealth.browserProbe.failed, 0);

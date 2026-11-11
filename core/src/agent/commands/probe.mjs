@@ -4,6 +4,7 @@
  *   heimdall probe sizes   [--site S] [--max N]   产物体量：页面目录、镜像、交付包
  *   heimdall probe outline [--site S] [--max N]   大纲压缩：dom.html → 结构大纲
  *   heimdall probe har     [--site S] [--max N]   第一方端点：只报方法与路径模板的计数，不含查询串与正文
+ *   heimdall probe contract [--site S] [--max N]  清洗 HAR → 观察型 B0/B1 接口契约
  *
  * 全部读工作区，不需要引擎；outline 用与 heimdall_brief 完全相同的算法（buildOutline），
  * 所以探针数字与简报数字同源。
@@ -15,6 +16,8 @@ import { ok, fromError, exitCodeOf, CapabilityError } from '../envelope.mjs';
 import { parseArgs } from '../cli.mjs';
 import { buildOutline } from '../brief/outline.mjs';
 import { listSites } from '../workspace.mjs';
+import { sanitizeHar } from '../../live/har.mjs';
+import { buildObservedApiContract } from '../../live/contract.mjs';
 
 const dirSize = (dir) => {
   let bytes = 0, files = 0;
@@ -89,6 +92,26 @@ function har(sample) {
   return rows;
 }
 
+function contracts(sample) {
+  const groups = new Map();
+  for (const { siteId, page, dir } of sample) {
+    const file = join(dir, 'network.har');
+    if (!existsSync(file)) continue;
+    let raw;
+    try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch { continue; }
+    let target;
+    try { target = new URL(JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')).target); } catch { continue; }
+    const key = `${siteId} ${target.origin}`;
+    const group = groups.get(key) ?? { siteId, origin: target.origin, pages: 0, entries: [] };
+    const sanitized = sanitizeHar(raw, { includeApiBodies: true });
+    group.pages++;
+    group.entries.push(...sanitized.entries);
+    groups.set(key, group);
+    void page;
+  }
+  return [...groups.values()].map(group => buildObservedApiContract(group.entries, group));
+}
+
 const summarise = (label, rows) => `${label}：${rows.length} 页。`;
 
 export async function run(argv) {
@@ -114,8 +137,13 @@ export async function run(argv) {
     } else if (what === 'har') {
       const rows = har(sample);
       env = ok({ rows }, { summary: `${summarise('接口', rows)} 第一方请求合计 ${rows.reduce((s, r) => s + r.firstParty, 0)} 条；只统计方法与路径模板，不含查询串与正文。` });
+    } else if (what === 'contract') {
+      const rows = contracts(sample);
+      const endpoints = rows.reduce((sum, row) => sum + row.summary.endpoints, 0);
+      const b1 = rows.filter(row => row.tier === 'B1').length;
+      env = ok({ rows }, { summary: `${summarise('契约', rows)} ${b1} 个站点达到 B1，观察到 ${endpoints} 个接口；输出只含接口形状和未知项，不含请求值与响应示例。` });
     } else {
-      throw new CapabilityError('invalid_args', '用法：heimdall probe sizes|outline|har [--site S] [--max N]');
+      throw new CapabilityError('invalid_args', '用法：heimdall probe sizes|outline|har|contract [--site S] [--max N]');
     }
   } catch (error) { env = fromError(error); }
   if (json) process.stdout.write(JSON.stringify(env) + '\n');
@@ -124,6 +152,7 @@ export async function run(argv) {
     if (env.ok && what === 'sizes') for (const r of env.result.rows) process.stdout.write(`  ${(r.siteId + '/' + r.page).padEnd(44)} 镜像 ${String(r.cloneMB).padStart(7)} MB  ${String(r.files).padStart(3)} 个文件  dom ${r.domKB} KB\n`);
     if (env.ok && what === 'outline') for (const r of env.result.rows) process.stdout.write(`  ${(r.siteId + '/' + r.page).padEnd(44)} 原始 ${String(r.rawKB).padStart(7)} KB → 大纲 ${String(r.outlineKB).padStart(6)} KB（${r.ratio}×）  ~${r.tokens} tok\n`);
     if (env.ok && what === 'har') for (const r of env.result.rows) process.stdout.write(`  ${(r.siteId + '/' + r.page).padEnd(44)} 第一方 ${String(r.firstParty).padStart(3)}/${r.entries} 条，${r.endpoints.length} 个端点\n`);
+    if (env.ok && what === 'contract') for (const r of env.result.rows) process.stdout.write(`  ${(r.siteId || '-').padEnd(36)} ${r.tier} 端点 ${String(r.summary.endpoints).padStart(3)}  schema ${String(r.summary.withResponseSchema).padStart(3)}  未知 ${String(r.summary.unknowns).padStart(3)}\n`);
     if (!env.ok) process.stdout.write(`[${env.error.code}] ${env.error.message}\n下一步：${env.error.hint}\n`);
   }
   return exitCodeOf(env);
