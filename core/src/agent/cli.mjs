@@ -141,6 +141,8 @@ function human(env, id, quiet) {
   if (id === 'seo_audit' && env.ok && env.result?.result) {
     const r = env.result.result;
     lines.push(`分数：${r.score}（${r.grade}）`, `页面：${r.summary?.pages ?? '-'}，问题：${r.summary?.issues ?? '-'}`, `报告：${r.reports?.html ?? '-'}`);
+    const plan = r.geo?.actionPlan ?? [];
+    if (plan.length) lines.push(`GEO 待办：${plan.slice(0, 3).map(item => `${item.priority ?? 'P2'} ${item.title}（${item.impact?.affectedPages ?? 0} 页）`).join('；')}`);
   }
   if (id === 'seo_matrix' && env.ok && env.result?.result) {
     const r = env.result.result;

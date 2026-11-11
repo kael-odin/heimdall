@@ -9,6 +9,7 @@ const scoreColor = (n) => n == null ? '#64748b' : n >= 90 ? '#059669' : n >= 75 
 const scoreText = (n) => n == null ? '未计算' : String(n);
 const geoConfidenceLabel = { high: '高', medium: '中', low: '低' };
 const geoStatusLabel = { complete: '完整', partial: '部分', unknown: '未知' };
+const geoEffortLabel = { small: '小', medium: '中', large: '大' };
 
 export function renderCsv(report) {
   const rows = [['page', 'score', 'status', 'severity', 'rule', 'category', 'title', 'message', 'evidence', 'suggestion']];
@@ -75,7 +76,25 @@ export function renderHtml(report) {
       <div class="bar"><i style="width:${dimension.score == null ? 0 : dimension.score}%;background:${scoreColor(dimension.score)}"></i></div>
       <div class="cat-sub">${esc(geoStatusLabel[dimension.status] ?? '未知')} · ${dimension.pages ?? 0} 页有观测</div>
     </div>`).join('\n');
-  const geoRecommendations = (geo?.recommendations ?? []).map(item => `<li>${esc(item)}</li>`).join('') || '<li>当前没有可执行建议。</li>';
+  const geoRecommendations = (geo?.actionPlan ?? []).slice(0, 5).map(item => `<li><b>${esc(item.priority ?? 'P2')}</b> ${esc(item.action)}</li>`).join('')
+    || (geo?.recommendations ?? []).slice(0, 5).map(item => `<li>${esc(item)}</li>`).join('')
+    || '<li>当前没有可执行建议。</li>';
+  const geoActionRows = (geo?.actionPlan ?? []).map(item => {
+    const pages = (item.affectedPages ?? []).slice(0, 5).map(url => `<div class="geo-action-page">${esc(url)}</div>`).join('');
+    const evidence = (item.evidence ?? []).slice(0, 2).map(row => `<div class="geo-action-evidence"><b>${esc(row.url ?? '站点级')}</b><br>${esc(row.message ?? '')}${row.detail ? `<br>${esc(row.detail)}` : ''}</div>`).join('');
+    return `<tr>
+      <td class="num">${esc(item.rank)}</td>
+      <td><span class="pill ${esc(item.severity ?? 'info')}">${esc(item.priority ?? 'P2')}</span><br><code>${esc(item.id)}</code></td>
+      <td><b>${esc(item.title)}</b><div class="geo-action-text">${esc(item.action)}</div></td>
+      <td class="num">${esc(item.impact?.affectedPages ?? 0)} 页<br><span class="subtitle">影响分 ${esc(item.impactScore ?? 0)}</span></td>
+      <td>${esc(geoEffortLabel[item.estimatedEffort] ?? item.estimatedEffort ?? '未知')}</td>
+      <td>${pages || '<span class="subtitle">未记录页面</span>'}<details><summary>证据与复测</summary>${evidence || '<span class="subtitle">无额外证据</span>'}<div class="geo-action-verify">复测：${esc(item.validation?.method ?? '重新审计')} · ${esc(item.validation?.checkId ?? item.id)} → ${esc(item.validation?.expectedStatus ?? 'pass')}</div></details></td>
+    </tr>`;
+  }).join('\n');
+  const geoActionHtml = geo ? `
+    <h3>GEO 行动计划</h3>
+    ${geoActionRows ? `<table class="geo-actions"><thead><tr><th>#</th><th>优先级</th><th>要改什么</th><th>影响</th><th>预计成本</th><th>受影响页面 / 证据</th></tr></thead><tbody>${geoActionRows}</tbody></table>` : '<div class="meta">当前没有已观察到的 GEO 失败项。</div>'}
+    <p class="meta">影响分 = 检查权重 × 受影响页面数；行动计划只聚合 fail，不把 unknown 当成缺陷。${geo.actionPlanMeta?.truncated ? `当前显示 ${geo.actionPlanMeta.returned}/${geo.actionPlanMeta.total} 项。` : ''}</p>` : '';
   const geoCaveats = (geo?.caveats ?? []).map(item => `<li>${esc(item)}</li>`).join('');
   const geoHtml = geo ? `
   <section class="geo-panel">
@@ -91,6 +110,7 @@ export function renderHtml(report) {
       <div><b>优先建议</b><ul>${geoRecommendations}</ul></div>
       <div><b>边界说明</b><ul>${geoCaveats}</ul></div>
     </div>
+    ${geoActionHtml}
   </section>` : '';
 
   return `<!doctype html>
@@ -136,6 +156,15 @@ h1 { margin:4px 0 0; font-size:30px; }
   .geo-columns b { color:var(--ink); }
   .geo-columns ul { margin:8px 0 0; padding-left:18px; }
   .geo-columns li { margin:4px 0; }
+  .geo-actions { margin:12px 0 0; font-size:12px; }
+  .geo-actions th, .geo-actions td { padding:8px 9px; }
+  .geo-actions code { color:var(--muted); font-size:10px; }
+  .geo-action-text { color:var(--muted); margin-top:3px; }
+  .geo-action-page { max-width:330px; overflow-wrap:anywhere; }
+  .geo-actions details { margin-top:5px; }
+  .geo-actions summary { color:var(--cyan); cursor:pointer; }
+  .geo-action-evidence { margin:6px 0; color:var(--muted); overflow-wrap:anywhere; }
+  .geo-action-verify { color:var(--cyan); margin-top:6px; }
 h2 { margin:36px 0 12px; font-size:20px; }
 table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
 th, td { text-align:left; padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top; font-size:13px; }

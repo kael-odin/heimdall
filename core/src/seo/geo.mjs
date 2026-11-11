@@ -31,6 +31,84 @@ const nonEmpty = value => {
 const hasField = (items, keys) => items.some(item => keys.some(key => nonEmpty(item?.[key])));
 const round = value => Math.round(value * 10) / 10;
 const gradeOf = score => score == null ? null : score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : 'D';
+const SEVERITY_ORDER = Object.freeze({ critical: 0, high: 1, medium: 2, low: 3, info: 4 });
+const EFFORT_BY_CHECK = Object.freeze({
+  'geo-answer-body': 'large',
+  'geo-answer-server-visible': 'large',
+  'geo-answer-headings': 'medium',
+  'geo-extract-structure': 'medium',
+  'geo-entity-type': 'medium',
+  'geo-entity-ownership': 'medium',
+  'geo-citation-attribution': 'medium',
+  'geo-citation-links': 'medium',
+});
+
+function priorityBand(severity) {
+  return severity === 'critical' || severity === 'high' ? 'P0' : severity === 'medium' ? 'P1' : 'P2';
+}
+
+function estimatedEffort(id) {
+  return EFFORT_BY_CHECK[id] ?? 'small';
+}
+
+/** 把失败检查聚合成 AI 可以直接执行和复测的待办，不把 unknown 当成缺陷。 */
+export function buildGeoActionPlan(issues = [], { limit = 12 } = {}) {
+  const grouped = new Map();
+  for (const issue of issues) {
+    if (!issue || !issue.id) continue;
+    const current = grouped.get(issue.id) ?? {
+      id: issue.id,
+      dimension: issue.dimension ?? null,
+      severity: issue.severity ?? 'medium',
+      title: issue.title ?? issue.id,
+      action: issue.suggestion ?? '',
+      weight: Number.isFinite(issue.weight) ? issue.weight : 0,
+      occurrences: 0,
+      pages: new Set(),
+      evidence: [],
+    };
+    current.occurrences++;
+    if (issue.page) current.pages.add(issue.page);
+    current.evidence.push({
+      url: issue.page ?? null,
+      message: issue.message ?? '',
+      detail: issue.evidence ?? '',
+    });
+    grouped.set(issue.id, current);
+  }
+
+  const rows = [...grouped.values()].map(item => {
+    const affectedPages = [...item.pages];
+    const impactScore = item.weight * affectedPages.length;
+    return {
+      ...item,
+      priority: priorityBand(item.severity),
+      impactScore,
+      impact: {
+        checkWeight: item.weight,
+        affectedPages: affectedPages.length,
+        occurrences: item.occurrences,
+      },
+      affectedPages,
+      evidenceLevel: 'observed',
+      evidence: item.evidence.slice(0, 5),
+      estimatedEffort: estimatedEffort(item.id),
+      validation: {
+        method: 'rerun-geo-audit',
+        checkId: item.id,
+        expectedStatus: 'pass',
+      },
+    };
+  }).sort((a, b) =>
+    (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9)
+    || b.impactScore - a.impactScore
+    || a.id.localeCompare(b.id));
+
+  return rows.slice(0, Math.max(0, limit)).map((item, index) => {
+    const { pages: _pages, ...publicItem } = item;
+    return { rank: index + 1, ...publicItem };
+  });
+}
 
 function schemaInfo(page) {
   const types = new Set((page.jsonld ?? []).flatMap(entry => entry.types ?? []).filter(Boolean));
@@ -155,10 +233,11 @@ export function evaluateGeoPage(page = {}) {
   const totalWeight = Object.values(GEO_DIMENSIONS).reduce((sum, dimension) => sum + dimension.weight, 0);
   const issues = Object.values(checks).flat().filter(item => item.status === 'fail').map(item => ({
     page: page.url, id: item.id, dimension: Object.keys(checks).find(key => checks[key].includes(item)), severity: item.severity,
-    title: item.title, message: item.message, evidence: item.evidence, suggestion: item.suggestion,
+    title: item.title, message: item.message, evidence: item.evidence, suggestion: item.suggestion, weight: item.weight,
   }));
   const unknown = Object.values(checks).flat().filter(item => item.status === 'unknown').map(item => ({ id: item.id, title: item.title, message: item.message }));
-  const recommendations = [...new Set(issues.map(issue => issue.suggestion).filter(Boolean))].slice(0, 8);
+  const actionPlan = buildGeoActionPlan(issues, { limit: 8 });
+  const recommendations = actionPlan.map(item => item.action).filter(Boolean);
   const score = observedWeight ? round(earned / observedWeight * 100) : null;
   return {
     methodVersion: GEO_METHOD_VERSION,
@@ -169,6 +248,7 @@ export function evaluateGeoPage(page = {}) {
     dimensions,
     issues,
     unknown,
+    actionPlan,
     recommendations,
   };
 }
@@ -195,7 +275,9 @@ export function evaluateGeoSite(site = {}) {
   const score = overallObserved ? round(overallWeighted / overallObserved) : null;
   const issueCounts = new Map();
   for (const entry of pageResults) for (const issue of entry.result.issues) issueCounts.set(issue.id, (issueCounts.get(issue.id) ?? 0) + 1);
-  const recommendations = [...new Set(pageResults.flatMap(entry => entry.result.recommendations))].slice(0, 10);
+  const allIssues = pageResults.flatMap(entry => entry.result.issues);
+  const actionPlan = buildGeoActionPlan(allIssues);
+  const recommendations = actionPlan.map(item => item.action).filter(Boolean);
   return {
     methodVersion: GEO_METHOD_VERSION,
     model: 'deterministic-readiness-heuristic',
@@ -205,13 +287,16 @@ export function evaluateGeoSite(site = {}) {
     confidence: overallObserved / Math.max(totalWeight, 1) >= 0.8 ? 'high' : overallObserved / Math.max(totalWeight, 1) >= 0.5 ? 'medium' : 'low',
     coverage: { pages: pages.length, pagesScored: pageResults.filter(entry => entry.result.score != null).length, observedWeight: overallObserved, totalWeight },
     dimensions,
-    pages: pageResults.map(({ page, result }) => ({ url: page.url, score: result.score, grade: result.grade, confidence: result.confidence, dimensions: result.dimensions, issues: result.issues, unknown: result.unknown })),
+    pages: pageResults.map(({ page, result }) => ({ url: page.url, score: result.score, grade: result.grade, confidence: result.confidence, dimensions: result.dimensions, issues: result.issues, unknown: result.unknown, actionPlan: result.actionPlan })),
     issues: [...issueCounts.entries()].sort((a, b) => b[1] - a[1]).map(([id, count]) => ({ id, count })),
+    actionPlan,
+    actionPlanMeta: { total: new Set(allIssues.map(issue => issue.id)).size, returned: actionPlan.length, truncated: actionPlan.length < new Set(allIssues.map(issue => issue.id)).size },
     recommendations,
     caveats: [
       '这是基于已采集页面的可解释启发式，不是搜索排名或模型引用概率预测。',
       '没有执行真实模型问答、引用命中率实验或跨模型对照。',
       '未采集页面、登录后内容和未核实的初始 HTML 不进入本次 GEO 结论。',
+      '预计成本是按改动面给出的 small / medium / large 启发式，不是工时报价。',
     ],
   };
 }

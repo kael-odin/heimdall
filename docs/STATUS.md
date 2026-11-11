@@ -150,6 +150,12 @@ Hosted CI 结果为最终依据。
 - 新增 `heimdall qa ci`：保留人工 QA 报告，同时输出机器可读门禁文件、GitHub Actions 注解和步骤摘要。
 - 新增可复制的 GitHub Actions QA 模板和 Claude Code / Codex 标准工作流文档。
 
+## 2026-11-11 GEO 行动计划
+
+- SEO JSON 和 HTML 报告继续保留原有 GEO 分数与 `recommendations` 兼容字段，同时新增 `geo.actionPlan[]`。
+- 每项 GEO 待办带优先级、严重度、影响页数、检查权重、脱敏证据、预计改动面和固定复测方式，Agent 摘要会显示前三项。
+- 已用仓库内 Xspark 官网脱敏 SEO 证据做离线回归；这不是重新访问官网，也不改变 Xspark 原历史报告和检测器决策。
+
 ## 2026-10-31 产品打磨
 
 - `rebuild init` 不再固定抢 5199：不传 `--port` 时自动找空闲端口；显式传了而端口被占用则直接报错，不偷偷换。

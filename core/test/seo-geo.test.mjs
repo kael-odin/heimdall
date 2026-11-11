@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { evaluateGeoPage, evaluateGeoSite, GEO_DIMENSIONS } from '../src/seo/geo.mjs';
 
 const page = (over = {}) => ({
@@ -37,6 +38,7 @@ test('GEO 健康页面得分高且四个维度都有证据', () => {
   assert.equal(result.grade, 'A');
   assert.equal(result.confidence, 'high');
   assert.equal(result.issues.length, 0);
+  assert.deepEqual(result.actionPlan, []);
   assert.deepEqual(Object.keys(result.dimensions), ['answerability', 'extractability', 'entity', 'citation']);
   assert.ok(Object.values(result.dimensions).every(dimension => dimension.score === 100));
 });
@@ -53,6 +55,12 @@ test('GEO 缺陷页面保留具体问题，na 和 unknown 不误报成失败', (
   assert.ok(ids.includes('geo-citation-discoverable'));
   assert.ok(result.unknown.some(item => item.id === 'geo-citation-links'));
   assert.ok(!ids.includes('geo-citation-freshness'), '非文章页面的时间检查应为 na，不应误报');
+  const firstAction = result.actionPlan[0];
+  assert.equal(firstAction.priority, 'P0');
+  assert.equal(firstAction.impact.affectedPages, 1);
+  assert.equal(firstAction.evidenceLevel, 'observed');
+  assert.equal(firstAction.validation.method, 'rerun-geo-audit');
+  assert.ok(['small', 'medium', 'large'].includes(firstAction.estimatedEffort));
 });
 
 test('GEO 初始 HTML 未核实时标记 unknown，不把缺证据当失败', () => {
@@ -71,5 +79,17 @@ test('GEO 站点聚合覆盖页面和维度建议', () => {
   assert.equal(result.dimensions.answerability.pages, 2);
   assert.ok(result.score < 100);
   assert.ok(result.recommendations.length > 0);
-  assert.equal(result.methodVersion, 1);
+  assert.ok(result.actionPlan.length > 0);
+  assert.equal(result.actionPlanMeta.total, result.actionPlan.length);
+  assert.equal(result.methodVersion, 2);
+});
+
+test('Xspark 脱敏 SEO 证据可以离线生成带页面和复测方式的 GEO 待办', () => {
+  const saved = JSON.parse(readFileSync(new URL('../../docs/cases/xspark/2026-11-04/evidence/seo.json', import.meta.url), 'utf8'));
+  const result = evaluateGeoSite({ pages: saved.pages });
+  assert.equal(result.coverage.pages, 5);
+  assert.ok(result.actionPlan.some(item => item.id === 'geo-extract-structure'));
+  assert.ok(result.actionPlan.every(item => item.affectedPages.length > 0));
+  assert.ok(result.actionPlan.every(item => item.validation.expectedStatus === 'pass'));
+  assert.doesNotMatch(JSON.stringify(result.actionPlan), /eyJ[a-zA-Z0-9_-]{20,}/);
 });

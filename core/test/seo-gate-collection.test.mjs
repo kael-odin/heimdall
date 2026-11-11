@@ -54,6 +54,8 @@ test('seo audit: optional robots and sitemap observations do not lower the site 
     assert.match(html, /待核查提示，不单独扣分/);
     assert.match(html, /GEO 准备度/);
     assert.match(html, /AI 可回答与可引用准备度/);
+    assert.match(html, /GEO 行动计划/);
+    assert.match(html, /预计成本/);
     assert.match(html, /不是搜索排名或模型引用概率预测/);
     const saved = JSON.parse(readFileSync(baseline, 'utf8'));
     assert.equal(saved.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
