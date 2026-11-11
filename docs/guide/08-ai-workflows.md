@@ -44,6 +44,15 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 
 现在结果里还会带 `deliveryPlan`。它不是“自动验收通过”按钮，而是一张给 AI 用的分诊表：
 
+顶层 `overall` 会跟随这张分诊表，不再只要有一页镜像就报“可以继续”：
+
+- `needs_capture`：还没有足够镜像，先抓取；
+- `needs_human_review`：存在认证、权限、状态机、业务副作用或 QA 这类必须由人授权的阻塞项；
+- `ready_for_ai_review`：没有人工阻塞，可以让 AI 处理明确的补证、修复或复测动作；
+- `ready`：当前摘要没有开放动作，但仍只代表摘要范围内完成。
+
+同时看 `readiness.clone`、`readiness.seo`、`readiness.geo`、`readiness.backend` 和 `readiness.qa`。每项都有 `status`、`basis`、`evidence` 和 `nextAction`，方便代码小白直接判断“缺什么、证据在哪、下一步做什么”。真正的阶段来源仍是 `deliveryPlan.decision.stage`。
+
 - `decision.stage=capture`：先补镜像，不能直接进入重建或交付；
 - `decision.stage=ai_review_with_open_actions`：已有证据，可以让 AI 处理明确的补证、修复或复测动作；
 - `decision.stage=human_review`：认证、权限、状态机、业务副作用或 QA 前置条件不能由摘要自动证明，必须由有授权的人补测；

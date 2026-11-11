@@ -67,7 +67,10 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(run.status, 0, run.stderr + run.stdout);
     const env = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
     assert.equal(env.ok, true);
-    assert.equal(env.result.overall, 'ready_for_ai_review');
+    assert.equal(env.result.overall, 'needs_human_review');
+    assert.equal(env.result.readiness.stage, 'human_review');
+    assert.equal(env.result.readiness.backend.status, 'needs_human_review');
+    assert.equal(env.result.readiness.qa.status, 'needs_human_review');
     assert.equal(env.result.clone.mirrors, 1);
     assert.equal(env.result.seo.score, 92.8);
     assert.equal(env.result.api.contract.summary.endpoints, 1);
@@ -117,5 +120,43 @@ test('site-assessment: delivery plan keeps capture and missing evidence separate
     assert.equal(env.result.deliveryPlan.backendCompletion.observedEndpoints.length, 0);
     assert.ok(env.result.deliveryPlan.backendCompletion.suggestedLocalFiles.some(item => item.path.endsWith('backend-state-rules.json')));
     assert.doesNotMatch(run.stdout, /super-secret|network\.har|operation-plan\.json/i);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('site-assessment: exposes AI-ready status when only non-blocking actions remain', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-ai-review-'));
+  const page = join(root, 'workspace', 'example.test', 'pages', 'home');
+  const qa = join(root, 'qa-project');
+  try {
+    put(join(page, 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(page, 'manifest.json'), { target: 'https://example.test/' });
+    put(join(root, 'workspace', 'example.test', 'seo', 'seo.json'), {
+      origin: 'https://example.test', generatedAt: '2026-11-11T00:00:00.000Z', score: 100,
+      summary: { pages: 1, issues: 0, bySeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 }, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
+      categories: {}, geo: { score: 100, actionPlan: [] },
+    });
+    put(join(qa, '.heimdall', 'qa.json'), {
+      schema: 'heimdall.qa/1', project: 'assessment-test',
+      sites: { web: { url: 'https://example.test/', pages: ['/'], environment: 'test' } },
+      dataDir: '.heimdall/qa',
+    });
+    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-20261111-130000-abcd', 'run.json'), {
+      runId: 'qa-20261111-130000-abcd', site: 'web', startedAt: '2026-11-11T02:00:00.000Z',
+      summary: { total: 1, fileable: 0, environment: 0, checkNeedsFix: 0, tolerable: 0, suppressed: 0 },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const env = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(env.result.overall, 'ready_for_ai_review');
+    assert.equal(env.result.readiness.stage, 'ai_review_with_open_actions');
+    assert.equal(env.result.readiness.clone.status, 'needs_verification');
+    assert.equal(env.result.readiness.seo.status, 'ready');
+    assert.equal(env.result.readiness.geo.status, 'ready');
+    assert.equal(env.result.readiness.backend.status, 'needs_observation');
+    assert.equal(env.result.readiness.qa.status, 'ready');
+    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.status === 'open'));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

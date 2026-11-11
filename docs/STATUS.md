@@ -175,6 +175,7 @@ Hosted CI 结果为最终依据。
 - 它只读取清洗后的公开报告与 manifest，不读取原始 HAR、登录档、操作计划或适配器源码；`verified`、`observed`、`inferred`、`unknown` 分开输出。
 - 评估结果新增 `deliveryPlan`：按页面/资产、视觉验证、SEO/GEO、API 契约、B2 适配器、QA 检查点和认证/权限/状态未知项分组，给出 `capture`、`ai_review_with_open_actions`、`human_review` 或 `ready` 阶段；动作和复测条件都带安全属性，不把建议动作冒充已执行。
 - 该能力是 AI 的导航层，不替代克隆、SEO、QA 或后端实现；没有镜像时总体状态仍是 `needs_capture`，适配器通过也只表示观察样本的有限验证。
+- 修正站点评估的总体状态：`overall` 现在跟随 `deliveryPlan.decision.stage`，区分 `needs_capture`、`needs_human_review`、`ready_for_ai_review` 和 `ready`；新增 `readiness` 摘要，按 clone/SEO/GEO/backend/QA 给出状态、证据和下一步，避免“有一页镜像就看起来已经准备好”的误导。
 
 ## 2026-11-12 后端补全任务包
 

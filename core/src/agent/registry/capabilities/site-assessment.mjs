@@ -581,6 +581,50 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   };
 }
 
+function overallForStage(stage) {
+  return {
+    capture: 'needs_capture',
+    human_review: 'needs_human_review',
+    ai_review_with_open_actions: 'ready_for_ai_review',
+    ready: 'ready',
+  }[stage] ?? 'needs_human_review';
+}
+
+function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
+  const item = (...ids) => ids.map(id => deliveryPlan.items.find(candidate => candidate.id === id)).find(Boolean);
+  const entry = (status, basis, evidence, actionItem) => ({
+    status, basis, evidence: evidence.filter(Boolean), nextAction: actionItem?.action ?? null,
+  });
+  const cloneComplete = clone.pages > 0 && clone.mirrors === clone.pages
+    && clone.unmeasured === 0 && clone.verificationStatus === 'checked';
+  const cloneStatus = !clone.pages || !clone.mirrors ? 'needs_capture' : cloneComplete ? 'ready' : 'needs_verification';
+  const cloneItem = item('clone-capture', 'clone-mirror-coverage', 'clone-visual-verification');
+  const seoComplete = seo.status === 'observed'
+    && seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0
+    && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0 && seo.geo.actionItems === 0;
+  const seoStatus = seo.status !== 'observed' ? 'needs_report' : seoComplete ? 'ready' : 'needs_follow_up';
+  const seoItem = item('seo-report', 'seo-geo-follow-up');
+  const geoStatus = seo.status !== 'observed' ? 'needs_report' : seo.geo.actionItems ? 'needs_follow_up' : 'ready';
+  const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
+  const backendItem = item('api-contract', 'api-adapter', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
+  const qaItem = item('qa-workspace', 'qa-first-run', 'qa-findings');
+  const qaReady = qa.status === 'observed' && !(qa.latest?.summary?.fileable > 0);
+  return {
+    schema: 'heimdall.site-readiness/1',
+    stage: deliveryPlan.decision.stage,
+    overall: overallForStage(deliveryPlan.decision.stage),
+    clone: entry(cloneStatus, cloneStatus === 'ready' ? 'verified' : clone.pages || clone.mirrors ? 'observed' : 'unknown',
+      [`clone.mirrors:${clone.mirrors}/${clone.pages}`, `clone.verification:${clone.verificationStatus}`], cloneItem),
+    seo: entry(seoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
+    geo: entry(geoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
+    backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
+      [api.contract.path, api.adapter.report], backendItem),
+    qa: entry(qaReady ? 'ready' : qa.status === 'no_runs' ? 'needs_run' : 'needs_human_review',
+      qa.status === 'observed' || qa.status === 'no_runs' ? 'observed' : 'unknown',
+      [qa.latest?.report, qa.latest?.bugs], qaItem),
+  };
+}
+
 export default {
   id: 'site_assessment',
   title: '站点评估：证据、能力与下一步',
@@ -619,8 +663,9 @@ export default {
     if (qa.status === 'not_configured') unknowns.push({ id: 'qa-not-configured', detail: '没有提供 QA 工作区，最近一次 QA 运行未知。' });
     if (qa.status === 'no_runs') unknowns.push({ id: 'qa-not-run', detail: 'QA 工作区存在，但还没有匹配站点的运行记录。' });
     if (qa.status === 'unavailable') unknowns.push({ id: 'qa-workspace-unavailable', detail: '提供的 QA 工作区无法读取。' });
-    const overall = clone.mirrors > 0 ? 'ready_for_ai_review' : 'needs_capture';
     const deliveryPlan = buildDeliveryPlan({ siteId: args.siteId, origin, clone, seo, api, qa, qaWorkspace: args.qaWorkspace });
+    const readiness = buildReadiness({ clone, seo, api, qa, deliveryPlan });
+    const overall = readiness.overall;
     const nextActions = deliveryPlan.items
       .filter(item => item.action)
       .map(item => nextAction(item.action.tool, item.action.args, item.action.reason))
@@ -629,7 +674,7 @@ export default {
     if (seo.status === 'observed') evidence.push({ kind: 'file', path: seo.reports.json });
     if (api.contract.path) evidence.push({ kind: 'file', path: api.contract.path });
     if (api.adapter.report) evidence.push({ kind: 'file', path: api.adapter.report });
-    return ok({ siteId: args.siteId, origin, overall, clone: { ...clone, samplePages: clone.samplePages.slice(0, args.limit) }, seo, api, qa,
+    return ok({ siteId: args.siteId, origin, overall, readiness, clone: { ...clone, samplePages: clone.samplePages.slice(0, args.limit) }, seo, api, qa,
       deliveryPlan, claims: claimsOf(args.siteId, clone, seo, api, qa, unknowns), unknowns }, {
       summary: `${args.siteId}：${clone.mirrors}/${clone.pages} 页有镜像；多视口验证 ${clone.verified ?? 0} 页；SEO ${seo.status}；API ${api.status}；QA ${qa.status}。`,
       nextActions: nextActions.slice(0, 5), evidence,
