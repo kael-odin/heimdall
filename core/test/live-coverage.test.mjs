@@ -372,7 +372,12 @@ test('strict export blocks every discovered but un-cloned URL, including nodes b
     assert.equal(health.coverage.missingClone, 44);
     assert.equal(health.coverage.missingPaths.length, 44);
     assert.equal(health.strictBlockers.discoveredUncloned, 44);
-    assert.equal(health.browserProbe.untested, 1);
+    assert.ok(health.runtimeProbe.checked > 0);
+    assert.equal(health.runtimeProbe.failed, 0);
+    assert.equal(health.browserProbe.checked, 1);
+    assert.equal(health.browserProbe.failed, 0);
+    assert.equal(health.browserProbe.untested, 0);
+    assert.equal(health.strictBlockers.browserUntested, 0);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

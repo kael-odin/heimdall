@@ -148,13 +148,16 @@ globalThis.fetch = (input, options) => {
     assert.deepEqual(rejected.externalStatic.failures, [{ index: 1, reason: 'prohibited-service' }]);
     assert.ok(rejected.strictBlockers.externalAssets >= 2);
     assert.equal(rejected.strictBlockers.externalStaticFailed, 1);
-    assert.equal(rejected.strictBlockers.unsupportedRuntimeServices, 1);
+    assert.equal(rejected.strictBlockers.unsupportedRuntimeServices, 2);
     assert.equal(rejected.thirdPartyServices.status, 'unsupported-runtime-detected');
     assert.deepEqual(rejected.thirdPartyServices.services.map(service => ({
       id: service.id,
       kind: service.kind,
       disposition: service.disposition,
-    })), [{ id: 'carbonads', kind: 'advertising', disposition: 'unsupported-runtime' }]);
+    })), [
+      { id: 'carbonads', kind: 'advertising', disposition: 'unsupported-runtime' },
+      { id: 'external-images-example-org', kind: 'external-runtime', disposition: 'unsupported-runtime' },
+    ]);
     assert.deepEqual(readFileSync(join(out, 'health.json')), acceptedHealth);
     assert.deepEqual(readFileSync(fetchLog, 'utf8').trim().split('\n'), [SCRIPT, SCRIPT, SCRIPT, SCRIPT, SCRIPT]);
     assert.doesNotMatch(JSON.stringify(rejected.externalStatic), /carbonads|public-test/);

@@ -908,30 +908,30 @@ try {
 if (STRICT) {
   health.browserProbe = {
     checked: 0, failed: 0, totalPages: health.pageRoutes.length,
-    untested: health.pageRoutes.length, skipped: 'earlier strict blockers',
+    untested: health.pageRoutes.length,
   };
-  if (!Object.values(health.strictBlockers).some(Boolean)) {
+  try {
+    health.runtimeProbe = await probeOfflineBundle(probeBundleDir, health.probePaths);
+    health.strictBlockers.runtimeMissing = health.runtimeProbe.failed;
+  } catch (e) {
+    health.runtimeProbe = { checked: 0, failed: 1, error: String(e?.message ?? e) };
+    health.strictBlockers.runtimeMissing = 1;
+  }
+  if (!health.strictBlockers.runtimeMissing) {
     try {
-      health.runtimeProbe = await probeOfflineBundle(probeBundleDir, health.probePaths);
-      health.strictBlockers.runtimeMissing = health.runtimeProbe.failed;
+      health.browserProbe = await probeOfflineBrowserBundle(probeBundleDir, health.pageRoutes, {
+        settleMs: BROWSER_OBSERVE_MS,
+      });
+      health.strictBlockers.browserFailed = health.browserProbe.failed;
     } catch (e) {
-      health.runtimeProbe = { checked: 0, failed: 1, error: String(e?.message ?? e) };
-      health.strictBlockers.runtimeMissing = 1;
+      health.browserProbe = {
+        checked: 0, failed: 1, totalPages: health.pageRoutes.length,
+        untested: health.pageRoutes.length, error: e?.name === 'Error' ? 'probe error' : 'browser unavailable',
+      };
+      health.strictBlockers.browserFailed = 1;
     }
-    if (!health.strictBlockers.runtimeMissing) {
-      try {
-        health.browserProbe = await probeOfflineBrowserBundle(probeBundleDir, health.pageRoutes, {
-          settleMs: BROWSER_OBSERVE_MS,
-        });
-        health.strictBlockers.browserFailed = health.browserProbe.failed;
-      } catch (e) {
-        health.browserProbe = {
-          checked: 0, failed: 1, totalPages: health.pageRoutes.length,
-          untested: health.pageRoutes.length, error: e?.name === 'Error' ? 'probe error' : 'browser unavailable',
-        };
-        health.strictBlockers.browserFailed = 1;
-      }
-    } else health.browserProbe.skipped = 'HTTP probe failed';
+  } else {
+    health.browserProbe.skipped = 'HTTP probe failed';
   }
   health.thirdPartyServices = buildThirdPartyServicesReport({
     externalRefs: health.externalRefsTop,
