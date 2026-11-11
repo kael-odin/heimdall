@@ -66,6 +66,12 @@ function isApiEntry(entry, url) {
     || (isJsonMime(mime) && !STATIC_MIME.test(mime) && !STATIC_EXT.test(url.pathname));
 }
 
+export function isObservedApiEntry(entry, origin = '') {
+  let url;
+  try { url = new URL(entry?.url); } catch { return false; }
+  return (!origin || url.origin === origin) && safePath(url) && isApiEntry(entry, url);
+}
+
 function typeOf(value) {
   if (value === null) return 'null';
   if (Array.isArray(value)) return 'array';
@@ -178,8 +184,7 @@ function collectEntries(entries, origin) {
   for (const entry of entries ?? []) {
     let url;
     try { url = new URL(entry?.url); } catch { excluded++; continue; }
-    if (origin && url.origin !== origin) continue;
-    if (!safePath(url) || !isApiEntry(entry, url)) continue;
+    if (!isObservedApiEntry(entry, origin)) continue;
     apiEntries++;
     const method = String(entry.method ?? 'GET').toUpperCase();
     const path = pathTemplate(url.pathname);

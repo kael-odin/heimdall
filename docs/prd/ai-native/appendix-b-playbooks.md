@@ -322,6 +322,8 @@ allowed-tools: "<H-ext> Read Edit Write Glob Grep Bash(heimdall *) Bash(pnpm ins
 **最终输出**：覆盖矩阵 + 出处统计 + 未知清单 + 等价度 + 固定声明。
 **关系**：在 `heimdall-behavior` 之后；契约与适配器回到 `heimdall-rebuild` 的联调。
 
+当前可直接使用的桥接命令是 `heimdall probe adapter --site S --include-api-bodies`。它生成 `B1-replay`，只回放已观察到的清洗响应；它不是完整 B2，也不能证明源站后端等价。要进入完整 B2，仍需人工旅程、请求体 / 状态规则和留出集验证。
+
 ### 2.5 `heimdall-regress`（CI 用法）
 
 **目的**：把正式对比当 PR 门禁；输出 Markdown 摘要；退出码反映结果。

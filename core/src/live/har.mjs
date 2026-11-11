@@ -22,6 +22,10 @@ const DATA_MIME = /^(?:application\/(?:[a-z0-9.+-]+\+)?json|text\/plain)(?:\s*;|
 export const MAX_PUBLIC_DATA_BYTES = 1024 * 1024;
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 
+export function isPrivateText(value) {
+  return PRIVATE_TEXT.test(String(value ?? ''));
+}
+
 function normalizedDataMime(value) {
   const mime = String(value ?? '').split(';', 1)[0].trim().toLowerCase();
   return DATA_MIME.test(mime) && mime.length <= 80 ? mime + '; charset=utf-8' : null;
@@ -107,6 +111,22 @@ function publicDataBody(raw, mimeType) {
 /** Shared by the contract view so schema generation keeps the HAR privacy boundary. */
 export function isPrivateDataKey(value) {
   return PRIVATE_DATA_KEY.test(String(value ?? ''));
+}
+
+/** Remove sensitive keys and values before an explicitly requested API replay export. */
+export function scrubPublicJsonValue(value) {
+  if (Array.isArray(value)) return value.map(scrubPublicJsonValue).filter(item => item !== undefined);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [key, child] of Object.entries(value)) {
+      if (isPrivateDataKey(key) || isPrivateText(key)) continue;
+      const safe = scrubPublicJsonValue(child);
+      if (safe !== undefined) out[key] = safe;
+    }
+    return out;
+  }
+  if (typeof value === 'string' && isPrivateText(value)) return undefined;
+  return value;
 }
 
 function publicDataOrigin(value) {
