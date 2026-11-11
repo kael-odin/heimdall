@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -60,5 +60,7 @@ test('probe adapter: writes a deployable two-file adapter from a sanitized works
     assert.equal(run.status, 0, run.stderr + run.stdout);
     assert.deepEqual(JSON.parse(readFileSync(join(outDir, 'manifest.json'), 'utf8')).routes, [{ method: 'GET', path: '/api/items' }]);
     assert.doesNotMatch(readFileSync(join(outDir, 'index.mjs'), 'utf8'), /private@example\.com/);
+    assert.equal(existsSync(join(root, 'adapter-report.json')), true);
+    assert.equal(JSON.parse(readFileSync(join(root, 'adapter-report.json'), 'utf8')).results.status, 'not-validated');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

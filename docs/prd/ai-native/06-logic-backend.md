@@ -183,7 +183,7 @@ paths:
 传播规则：由 `invented` 派生的条目仍是 `invented`；`observed` 与 `inferred` 混合得到 `inferred`。展示规范：每份简报、行为规格、契约、适配器 README 的第一屏必须给出三类计数。示意：
 
 ```
-契约 B2：端点 18（observed 14 · inferred 3 · invented 1）
+当前最小实现：`heimdall probe adapter --site S --include-api-bodies` 会按端点确定性拆分训练/留出样本，只用训练集生成观察回放适配器，并在适配器目录旁输出 `adapter-report.json`。验证报告核对状态码、MIME、脱敏 JSON 形状和训练集中稳定字段；未知路径、未覆盖参数和样本不足都显式记录。它是 B1 到 B2 的验证桥，不是完整 B2 业务实现，也不改变 `--include-api-har` 不能与 `--strict` 同用的隐私边界。
 覆盖：训练重放 17/18 通过 · 留出 5/6 通过 · 未覆盖 3（见 unknowns）
 声明：这不是源站后端的等价物，只覆盖被观察到的请求。
 ```

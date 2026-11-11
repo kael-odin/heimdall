@@ -6,12 +6,12 @@
  *   heimdall probe har     [--site S] [--max N]   第一方端点：只报方法与路径模板的计数，不含查询串与正文
  *   heimdall probe contract [--site S] [--max N]  清洗 HAR → 观察型 B0/B1 接口契约
  *   heimdall probe adapter [--site S] [--max N] [--out D] --include-api-bodies [--force]
- *                                                    生成观察回放适配器（不等价于真实后端）
+ *                                                    训练集生成适配器 + 留出集验证报告
  *
  * 全部读工作区，不需要引擎；outline 用与 heimdall_brief 完全相同的算法（buildOutline），
- * 所以探针数字与简报数字同源。
+ * 所以探针数字与简报数字同源。adapter 仍只生成观察回放，不等价于真实后端。
  */
-import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { WORKSPACE } from '../../paths.mjs';
 import { ok, fromError, exitCodeOf, CapabilityError } from '../envelope.mjs';
@@ -21,6 +21,7 @@ import { listSites } from '../workspace.mjs';
 import { sanitizeHar } from '../../live/har.mjs';
 import { buildObservedApiContract } from '../../live/contract.mjs';
 import { buildObservedReplayAdapter, writeObservedReplayAdapter } from '../../live/adapter-generator.mjs';
+import { splitObservedApiEntries, validateObservedReplayAdapter } from '../../live/adapter-validation.mjs';
 
 const dirSize = (dir) => {
   let bytes = 0, files = 0;
@@ -115,7 +116,7 @@ function contracts(sample) {
   return [...groups.values()].map(group => buildObservedApiContract(group.entries, group));
 }
 
-function adapter(sample, siteId, { includeApiBodies, out, force }) {
+async function adapter(sample, siteId, { includeApiBodies, out, force }) {
   const pages = sample.filter(item => item.siteId === siteId);
   if (!pages.length) throw new CapabilityError('not_found', `没有站点页面 ${siteId}`, { hint: '`heimdall overview` 列出已有站点。' });
   if (!includeApiBodies) throw new CapabilityError('invalid_args', '生成观察回放适配器需要显式加 --include-api-bodies', { hint: '确认允许把已清洗的 API 响应用于本地回放，再重试。' });
@@ -132,8 +133,9 @@ function adapter(sample, siteId, { includeApiBodies, out, force }) {
     if (target.origin !== origin) continue;
     entries.push(...sanitizeHar(raw, { includeApiBodies }).entries);
   }
+  const split = splitObservedApiEntries(entries, { origin });
   let generated;
-  try { generated = buildObservedReplayAdapter(entries, { siteId, origin, pages: pages.length }); }
+  try { generated = buildObservedReplayAdapter(split.train, { siteId, origin, pages: pages.length }); }
   catch (error) { throw new CapabilityError('invalid_args', `无法生成观察回放适配器：${String(error?.message ?? error)}`, { hint: '先补充同源业务 API 录制，或减少响应体和路由数量后重试。' }); }
   if (out === true) throw new CapabilityError('invalid_args', '--out 需要目录路径', { hint: '例如 `--out .\\runtime-adapter-draft`。' });
   const base = process.env.HEIMDALL_INVOKE_CWD ?? process.cwd();
@@ -151,8 +153,23 @@ function adapter(sample, siteId, { includeApiBodies, out, force }) {
   if (existing.some(name => !['index.mjs', 'manifest.json'].includes(name))) {
     throw new CapabilityError('invalid_args', `适配器目录含有不受支持的文件：${target}`, { hint: '清理或换一个空目录；不会自动删除额外文件。' });
   }
+  const report = await validateObservedReplayAdapter(generated, {
+    trainingEntries: split.train,
+    heldoutEntries: split.heldout,
+  });
+  const reportPath = join(resolve(target, '..'), 'adapter-report.json');
+  if (existsSync(reportPath) && !force) {
+    throw new CapabilityError('invalid_args', `已有适配器验证报告：${reportPath}`, { hint: '确认要覆盖后加 --force，或用 --out 指向新目录。' });
+  }
   writeObservedReplayAdapter(target, generated);
-  return { ...generated.report, out: target, origin, files: ['manifest.json', 'index.mjs'] };
+  writeFileSync(reportPath, JSON.stringify({
+    ...report,
+    observed: { total: split.total, eligible: split.eligible, excluded: split.excluded, duplicateEntries: split.duplicateEntries },
+    endpoints: split.endpoints,
+  }, null, 2));
+  return { ...generated.report, out: target, reportPath, origin, files: ['manifest.json', 'index.mjs'],
+    observedEntries: split.total, trainEntries: split.train.length, heldoutEntries: split.heldout.length,
+    validation: report.results };
 }
 
 const summarise = (label, rows) => `${label}：${rows.length} 页。`;
@@ -187,7 +204,7 @@ export async function run(argv) {
       env = ok({ rows }, { summary: `${summarise('契约', rows)} ${b1} 个站点达到 B1，观察到 ${endpoints} 个接口；输出只含接口形状和未知项，不含请求值与响应示例。` });
     } else if (what === 'adapter') {
       if (!flags.site) throw new CapabilityError('invalid_args', 'probe adapter 必须指定 --site S', { hint: '`heimdall overview` 列出已有站点。' });
-      const result = adapter(sample, flags.site, { includeApiBodies: !!flags['include-api-bodies'], out: flags.out, force: !!flags.force });
+      const result = await adapter(sample, flags.site, { includeApiBodies: !!flags['include-api-bodies'], out: flags.out, force: !!flags.force });
       env = ok(result, { summary: `已生成观察回放适配器：${result.routes} 条路由、${result.entries} 个响应；这不是与源站等价的后端。` });
     } else {
       throw new CapabilityError('invalid_args', '用法：heimdall probe sizes|outline|har|contract|adapter [--site S] [--max N]');
@@ -200,7 +217,7 @@ export async function run(argv) {
     if (env.ok && what === 'outline') for (const r of env.result.rows) process.stdout.write(`  ${(r.siteId + '/' + r.page).padEnd(44)} 原始 ${String(r.rawKB).padStart(7)} KB → 大纲 ${String(r.outlineKB).padStart(6)} KB（${r.ratio}×）  ~${r.tokens} tok\n`);
     if (env.ok && what === 'har') for (const r of env.result.rows) process.stdout.write(`  ${(r.siteId + '/' + r.page).padEnd(44)} 第一方 ${String(r.firstParty).padStart(3)}/${r.entries} 条，${r.endpoints.length} 个端点\n`);
     if (env.ok && what === 'contract') for (const r of env.result.rows) process.stdout.write(`  ${(r.siteId || '-').padEnd(36)} ${r.tier} 端点 ${String(r.summary.endpoints).padStart(3)}  schema ${String(r.summary.withResponseSchema).padStart(3)}  未知 ${String(r.summary.unknowns).padStart(3)}\n`);
-    if (env.ok && what === 'adapter') process.stdout.write(`  输出 ${env.result.out}\n  路由 ${env.result.routes}  响应 ${env.result.entries}  脱敏响应 ${env.result.redactedBodies}  未知 ${env.result.unknowns.join('、')}\n`);
+    if (env.ok && what === 'adapter') process.stdout.write(`  输出 ${env.result.out}\n  报告 ${env.result.reportPath}\n  训练 ${env.result.trainEntries}  留出 ${env.result.heldoutEntries}  留出状态 ${env.result.validation.status}\n  路由 ${env.result.routes}  响应 ${env.result.entries}  脱敏响应 ${env.result.redactedBodies}  未知 ${env.result.unknowns.join('、')}\n`);
     if (!env.ok) process.stdout.write(`[${env.error.code}] ${env.error.message}\n下一步：${env.error.hint}\n`);
   }
   return exitCodeOf(env);
