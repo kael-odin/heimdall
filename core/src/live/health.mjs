@@ -28,11 +28,17 @@ const MAX_MISSING_LINK_DETAILS = 5000;
 const MAX_EXTERNAL_REF_DETAILS = 5000;
 
 const stripHash = (u) => String(u ?? '').split('#')[0].trim();
-const decodeEntities = (u) => String(u).replace(/&amp;/gi, '&');
+const decodeEntities = (u) => String(u)
+  .replace(/&amp;/gi, '&')
+  .replace(/&quot;|&#0*34;|&#x22;/gi, '"')
+  .replace(/&#0*39;|&#x27;|&apos;/gi, "'")
+  .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>');
+const normalizeRef = (u) => decodeEntities(stripHash(u))
+  .trim().replace(/^["']+|["']+$/g, '').trim();
 
 /** 把一条引用解析成站内路径 / 站外标记 / null（跳过） */
 export function resolveRefPath(raw, { host, origin, basePath = '/' } = {}) {
-  const clean = decodeEntities(stripHash(raw));
+  const clean = normalizeRef(raw);
   if (!clean || SKIP_REF.test(clean)) return null;
   // URL 编码的片段标识符（%23 = #）：它会绕过上面的 SKIP_REF（那里只认字面 #），
   // 然后被当成相对路径，生成一个永远不存在的目标。
@@ -191,7 +197,7 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir, onMiss
       if (r.external) {
         if (ref.kind !== 'asset') continue;
         out.assets.external++;
-        const raw = decodeEntities(stripHash(ref.url));
+        const raw = normalizeRef(ref.url);
         const externalUrl = new URL(raw.startsWith('//') ? 'https:' + raw : raw);
         externalUrl.username = '';
         externalUrl.password = '';

@@ -55,6 +55,23 @@ test('live/health: URL 编码的片段标识 %23 按片段处理，不当作路�
   assert.deepEqual(resolveRefPath('/a%20b.png', { host: 'x.test' }), { path: '/a%20b.png', search: '' });
 });
 
+test('live/health: HTML 实体编码的 CSS 引用按真实资源解析', () => {
+  assert.deepEqual(resolveRefPath('&quot;/assets/image001.png&quot;', { host: 'x.test', origin: 'https://x.test' }), {
+    path: '/assets/image001.png', search: '',
+  });
+
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-entities-'));
+  try {
+    const liveDir = join(dir, 'live');
+    mkdirSync(join(liveDir, 'assets'), { recursive: true });
+    writeFileSync(join(liveDir, 'assets', 'image001.png'), 'png');
+    writeFileSync(join(liveDir, 'index.html'), '<input style="background:url(&quot;/assets/image001.png&quot;)">');
+    const report = scanLiveBundle({ liveDir, host: 'x.test', origin: 'https://x.test' });
+    assert.equal(report.assets.local, 1);
+    assert.equal(report.assets.unresolved, 0);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('live/health: extractRefs separates assets from links', () => {
   const html = '<link rel="stylesheet" href="/a.css"><link rel="canonical" href="/canon"><link rel="dns-prefetch" href="https://fonts.example"><link rel="preconnect" href="https://fonts.example"><script src="/s.js"></script><img src="/i.png" srcset="/i2.png 2x"><a href="/page/">go</a>';
   const refs = extractRefs(html, 'html');
