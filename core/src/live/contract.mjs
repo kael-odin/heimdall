@@ -1,7 +1,7 @@
 /**
  * live/contract — 从已清洗 HAR 生成观察型 B0/B1 接口契约。
  *
- * 这里只输出接口形状，不输出请求值、响应值、示例数据或业务规则。
+ * 这里只输出接口形状、请求体 Schema 和鉴权形态摘要，不输出请求值、响应值、示例数据或业务规则。
  */
 import { isPrivateDataKey, MAX_PUBLIC_DATA_BYTES } from './har.mjs';
 
@@ -189,9 +189,25 @@ function collectEntries(entries, origin) {
     const method = String(entry.method ?? 'GET').toUpperCase();
     const path = pathTemplate(url.pathname);
     const key = `${method} ${path}`;
-    const group = groups.get(key) ?? { method, path, samples: 0, pages: new Set(), queryParams: new Map(), responses: new Map() };
+    const group = groups.get(key) ?? {
+      method, path, samples: 0, pages: new Set(), queryParams: new Map(), responses: new Map(),
+      requestBodies: new Map(), authSchemes: new Map(),
+    };
     group.samples++;
     for (const [name, count] of safeQueryParams(url)) group.queryParams.set(name, (group.queryParams.get(name) ?? 0) + count);
+    if (entry.requestBody) {
+      const mime = String(entry.requestBody.mimeType ?? 'application/octet-stream');
+      const bucket = group.requestBodies.get(mime) ?? { samples: 0, schemas: 0, schema: null };
+      bucket.samples++;
+      if (entry.requestBody.schema) {
+        bucket.schemas++;
+        bucket.schema = mergeSchemas(bucket.schema, entry.requestBody.schema);
+      }
+      group.requestBodies.set(mime, bucket);
+    }
+    for (const scheme of entry.requestAuth ?? []) {
+      group.authSchemes.set(scheme, (group.authSchemes.get(scheme) ?? 0) + 1);
+    }
     const status = String(Number.isInteger(entry.status) ? entry.status : Number(entry.status) || 0);
     const mime = mimeOf(entry.mimeType);
     const response = group.responses.get(status) ?? new Map();
@@ -224,6 +240,20 @@ function openApiResponse(status, mimeBuckets) {
   };
 }
 
+function openApiRequestBody(mimeBuckets) {
+  const content = {};
+  let samples = 0;
+  for (const [mime, bucket] of mimeBuckets) {
+    samples += bucket.samples;
+    content[mime] = {
+      'x-heimdall-samples': bucket.samples,
+      'x-heimdall-parseable': bucket.schemas > 0,
+      ...(bucket.schema ? { schema: bucket.schema } : {}),
+    };
+  }
+  return { 'x-heimdall-provenance': 'observed', 'x-heimdall-samples': samples, content };
+}
+
 function buildOperation(group) {
   const parameters = [];
   for (const name of group.path.matchAll(/\{([^}]+)\}/g)) {
@@ -234,6 +264,8 @@ function buildOperation(group) {
   }
   const responses = {};
   for (const status of sortStatusCodes(group.responses.keys())) responses[status] = openApiResponse(status, group.responses.get(status));
+  const requestBody = group.requestBodies.size ? openApiRequestBody(group.requestBodies) : null;
+  const authSchemes = [...group.authSchemes.keys()].sort();
   return {
     operationId: operationId(group.method, group.path),
     summary: `Observed ${group.method} ${group.path}`,
@@ -242,8 +274,20 @@ function buildOperation(group) {
       samples: group.samples,
       statusCodes: sortStatusCodes(group.responses.keys()).map(Number),
       queryParams: [...group.queryParams.keys()].sort(),
+      ...(group.requestBodies.size ? {
+        requestBodyMimes: [...group.requestBodies.keys()].sort(),
+        withRequestSchema: [...group.requestBodies.values()].some(bucket => bucket.schemas > 0),
+      } : {}),
+      ...(authSchemes.length ? { authSchemes } : {}),
     },
     ...(parameters.length ? { parameters } : {}),
+    ...(requestBody ? { requestBody } : {}),
+    ...(authSchemes.length ? {
+      'x-heimdall-auth': {
+        schemes: authSchemes,
+        observations: [...group.authSchemes.values()].reduce((sum, count) => sum + count, 0),
+      },
+    } : {}),
     responses,
   };
 }
@@ -251,11 +295,16 @@ function buildOperation(group) {
 function buildUnknowns(groups) {
   const unknowns = [];
   if (!groups.length) return [{ kind: 'no-observed-api', detail: '清洗 HAR 中没有可判定的同源接口条目。' }];
-  unknowns.push({ kind: 'auth-unknown', detail: '清洗视图不保留认证头，不能判断接口是否要求登录。' });
+  const authSchemes = [...new Set(groups.flatMap(group => [...group.authSchemes.keys()]))].sort();
+  unknowns.push({ kind: 'auth-unknown', ...(authSchemes.length ? { observedSchemes: authSchemes } : {}),
+    detail: authSchemes.length
+      ? '观察到请求带鉴权形态，但没有验证哪些接口强制鉴权、凭据如何刷新或权限如何变化。'
+      : '清洗视图没有观察到可判定的鉴权形态，不能判断接口是否要求登录。' });
   let hasWrite = false;
   for (const group of groups) {
     if (group.method !== 'GET') hasWrite = true;
     if (group.samples === 1) unknowns.push({ kind: 'single-sample', op: `${group.method} ${group.path}`, detail: '该端点只有一个观察样本。' });
+    if (group.method !== 'GET' && !group.requestBodies.size) unknowns.push({ kind: 'request-body-unknown', op: `${group.method} ${group.path}`, detail: '非 GET 端点没有观察到请求体。' });
     const statuses = [...group.responses.keys()].map(Number);
     if (!statuses.some(status => status >= 400)) unknowns.push({ kind: 'error-shape-unknown', op: `${group.method} ${group.path}`, detail: '没有观察到 4xx 或 5xx 响应形状。' });
     if (group.queryParams.size && group.samples < 2) unknowns.push({ kind: 'unexercised-param', op: `${group.method} ${group.path}`, detail: '查询参数只在一个样本中出现，未观察到参数变化。' });
@@ -267,11 +316,14 @@ function buildUnknowns(groups) {
 export function summarizeObservedApiContract(contract) {
   const endpoints = Object.keys(contract?.openapi?.paths ?? {}).reduce((sum, path) => sum + Object.keys(contract.openapi.paths[path]).filter(key => !key.startsWith('x-')).length, 0);
   const observations = contract?.observations ?? [];
+  const authSchemes = [...new Set(observations.flatMap(item => item.authSchemes ?? []))].sort();
   return {
     path: 'api-contract.json',
     tier: contract?.tier ?? 'B0',
     endpoints,
     withResponseSchema: observations.filter(item => item.withResponseSchema).length,
+    withRequestSchema: observations.filter(item => item.withRequestSchema).length,
+    authSchemes,
     errorSamples: observations.reduce((sum, item) => sum + item.errorSamples, 0),
     unknowns: contract?.unknowns?.length ?? 0,
     status: endpoints ? 'observed' : 'no-observed-api',
@@ -292,6 +344,8 @@ export function buildObservedApiContract(entries, { siteId = '', origin = '', pa
     const errorSamples = [...group.responses.entries()].filter(([status]) => Number(status) >= 400)
       .reduce((sum, [, buckets]) => sum + [...buckets.values()].reduce((n, bucket) => n + bucket.samples, 0), 0);
     const withSchema = [...group.responses.values()].some(buckets => [...buckets.values()].some(bucket => bucket.schemas > 0));
+    const withRequestSchema = [...group.requestBodies.values()].some(bucket => bucket.schemas > 0);
+    const authSchemes = [...group.authSchemes.keys()].sort();
     if (errorSamples) withErrorSample++;
     if (group.method !== 'GET') withWriteSample++;
     observations.push({
@@ -300,6 +354,9 @@ export function buildObservedApiContract(entries, { siteId = '', origin = '', pa
       statusCodes: [...group.responses.keys()].map(Number).sort((a, b) => a - b),
       queryParams: [...group.queryParams.keys()].sort(),
       withResponseSchema: withSchema,
+      requestBodyMimes: [...group.requestBodies.keys()].sort(),
+      withRequestSchema,
+      authSchemes,
       errorSamples,
       provenance: 'observed',
     });
@@ -318,7 +375,11 @@ export function buildObservedApiContract(entries, { siteId = '', origin = '', pa
     sources: { pages, journeys: [], harEntries: entries?.length ?? 0, apiEntries, excluded },
     openapi, observations, fixtures: [], unknowns,
     coverage: {
-      endpoints: { observed: sortedGroups.length, withErrorSample, withWriteSample },
+      endpoints: {
+        observed: sortedGroups.length, withErrorSample, withWriteSample,
+        withRequestSchema: observations.filter(item => item.withRequestSchema).length,
+        authObserved: observations.filter(item => item.authSchemes.length > 0).length,
+      },
       fixtures: { train: 0, heldout: 0, excluded: 0 },
       unknowns: unknowns.length, invented: 0,
     },

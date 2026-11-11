@@ -32,6 +32,46 @@ test('live/har: index/match works by method+url with hash normalization', () => 
   assert.equal(matchHar(idx, 'GET', 'https://x.test/nope'), null);
 });
 
+test('live/har: API bodies retain only request schema and auth shape', () => {
+  const result = sanitizeHar({ log: { entries: [{
+    request: {
+      method: 'POST', url: 'https://x.test/api/profile',
+      headers: [
+        { name: 'Content-Type', value: 'application/json' },
+        { name: 'Authorization', value: 'Bearer fixture-secret' },
+        { name: 'X-CSRF-Token', value: 'csrf-secret' },
+      ],
+      postData: { mimeType: 'application/json', text: JSON.stringify({ name: 'Ada', email: 'ada@example.com', count: 2 }) },
+    },
+    response: { status: 200, content: { mimeType: 'application/json', text: '{"ok":true}' } },
+  }] } }, { includeApiBodies: true });
+  const entry = result.entries[0];
+  assert.deepEqual(entry.requestAuth, ['bearer', 'csrf']);
+  assert.equal(entry.requestBody.mimeType, 'application/json');
+  assert.equal(entry.requestBody.schema.properties.name.type, 'string');
+  assert.equal(entry.requestBody.schema.properties.count.type, 'integer');
+  assert.ok(!('email' in entry.requestBody.schema.properties));
+  assert.doesNotMatch(JSON.stringify(entry), /fixture-secret|csrf-secret|ada@example\.com|Ada/);
+});
+
+test('live/har: request schema and auth shape stay opt-in', () => {
+  const result = sanitizeHar({ log: { entries: [{
+    request: {
+      method: 'GET', url: 'https://x.test/assets/app.js',
+      headers: [
+        { name: 'Content-Type', value: 'application/json' },
+        { name: 'X-Trace-Token', value: 'fixture-secret' },
+      ],
+      postData: { mimeType: 'application/json', text: '{"name":"Ada"}' },
+    },
+    response: { status: 200, content: { mimeType: 'application/javascript', text: 'export const ok = true;' } },
+  }] } });
+  const entry = result.entries[0];
+  assert.ok(!('requestBody' in entry));
+  assert.ok(!('requestAuth' in entry));
+  assert.equal(result.privacy.includeApiBodies, false);
+});
+
 test('live/har: merge dedupes by key and stats count bodies', () => {
   const m = mergeHar([sanitizeHar(HAR, { includeApiBodies: true }), sanitizeHar(HAR, { includeApiBodies: true })]);
   assert.equal(m.entries.length, 3);

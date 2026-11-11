@@ -1148,7 +1148,7 @@ ${INCLUDE_ADAPTER ? '适配器仅处理 manifest.json 中精确声明的路由�
 - 健康检查：http://127.0.0.1:${PORT}/__heimdall/health
 - 模式：\`offline: ${OFFLINE}\`（\`heimdall-live.json\`）+ HAR ${stats.entries} 条回放\n- 离线体检：health.json（资源 local/har/unresolved、未镜像链接、站外资产清单${HEAL ? '；本次已执行 --heal 自愈' : ''}）
 - 离线体检：health.json（资源 local/har/unresolved、未镜像链接、站外资产清单${HEAL ? '；本次已执行 --heal 自愈' : ''}）
-- AI 接口契约：\`api-contract.json\`（B0=没有观察到 API；B1=观察到方法、路径模板、状态码、MIME、JSON 结构与未知项）
+- AI 接口契约：\`api-contract.json\`（B0=没有观察到 API；B1=观察到方法、路径模板、请求体 / 响应 Schema、状态码、MIME、鉴权形态摘要与未知项）
 
 ### 离线时会缺什么（读 health.json）
 
@@ -1200,7 +1200,7 @@ ${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实�
 
 - 资产与克隆页按独立副本复制，构建通过后才替换目标目录；上一个版本保留为 \`.backup-*\`。
 - HAR 默认只保留静态资源；API/HTML 正文不进入分发包。排除统计见 \`har-privacy.json\`。
-- \`api-contract.json\` 只由清洗后的 HAR 生成；它不含原始请求、认证头、查询值、响应示例或未经验证的业务规则。要观察宽泛 API 响应形状，需显式使用 \`--include-api-har\`；该选项仍不能与 \`--strict\` 同用。
+- \`api-contract.json\` 只由清洗后的 HAR 生成；它不含原始请求、请求值、认证头和值、查询值、响应示例或未经验证的业务规则。请求体只输出 Schema，鉴权只输出观察到的形态。要观察宽泛 API 请求 / 响应形状，需显式使用 \`--include-api-har\`；该选项仍不能与 \`--strict\` 同用。
 - 原始 \`recon/atlas.json\` 不进入分发包；已发现页面的覆盖摘要见 \`health.json\`。
 - 静态克隆目录内的字体、图片和 CSS 允许跨来源读取，以便隔离页面显示；不要把私密内容放进这些素材。HTML、脚本、JSON 和克隆目录外的文件不因此开放跨来源读取。指向其他位置的符号链接不获得此许可，但普通请求仍可能读取其目标；并发替换和硬链接未作安全保证。
 - 如确需公开只读 GET 数据回放，先在工作区配置 \`read-data-plan.json\`，再用 \`--include-readonly-data --offline --strict\` 精确许可；同时加 \`--compare-source\` 与已审核的操作计划，可受控采集点击后出现的响应。冲突、缺失与被拒响应会阻断发布，数据分发范围仍需人工审核。

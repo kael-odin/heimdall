@@ -19,6 +19,8 @@ const PRIVATE_DATA_HEADER = /(?:cookie|authorization|api[_-]?key|auth[_-]?token|
 const PRIVATE_DATA_KEY = /^(?:auth(?:orization)?|api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|password|passwd|secret|session(?:[_-]?id)?|cookie|csrf|xsrf|email|phone|mobile|address|birth(?:day|date)?|dob|ssn|credit(?:[_-]?card)?|card(?:[_-]?number)?|bank(?:[_-]?account)?|iban|customer(?:[_-]?id)?|patient(?:[_-]?id)?|account(?:[_-]?id)?|profile(?:[_-]?id)?|user(?:[_-]?id|name)?)$|(?:^|[_-])(?:auth|token|key|secret|password|session|cookie|csrf|xsrf|email|phone|address|account|customer|patient|user)(?:$|[_-])/i;
 const PRIVATE_QUERY_KEY = /(?:auth|token|key|password|passwd|secret|session|cookie|csrf|xsrf|email|phone|address|user|account|customer|patient)/i;
 const DATA_MIME = /^(?:application\/(?:[a-z0-9.+-]+\+)?json|text\/plain)(?:\s*;|$)/i;
+const JSON_BODY_MIME = /^application\/(?:[a-z0-9.+-]+\+)?json(?:\s*;|$)|^text\/json(?:\s*;|$)/i;
+const FORM_BODY_MIME = /^application\/x-www-form-urlencoded(?:\s*;|$)/i;
 export const MAX_PUBLIC_DATA_BYTES = 1024 * 1024;
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 
@@ -129,6 +131,62 @@ export function scrubPublicJsonValue(value) {
   return value;
 }
 
+function observedSchema(value) {
+  if (value === null) return { type: 'null', 'x-heimdall-provenance': 'observed' };
+  if (Array.isArray(value)) {
+    return {
+      type: 'array', 'x-heimdall-provenance': 'observed',
+      items: value.length ? observedSchema(value[0]) : {},
+    };
+  }
+  if (value && typeof value === 'object') {
+    const properties = {};
+    for (const [key, child] of Object.entries(value)) properties[key] = observedSchema(child);
+    return { type: 'object', 'x-heimdall-provenance': 'observed', properties, additionalProperties: true };
+  }
+  if (typeof value === 'number') return { type: Number.isInteger(value) ? 'integer' : 'number', 'x-heimdall-provenance': 'observed' };
+  if (typeof value === 'boolean') return { type: 'boolean', 'x-heimdall-provenance': 'observed' };
+  return { type: 'string', 'x-heimdall-provenance': 'observed' };
+}
+
+function observedRequestBody(req) {
+  const postData = req?.postData;
+  const bodyText = typeof postData === 'string' ? postData : postData?.text;
+  if (typeof bodyText !== 'string' || !bodyText.length || bodyText.length > MAX_PUBLIC_DATA_BYTES) return null;
+  const headerMime = (req.headers ?? []).find(h => /^content-type$/i.test(String(h.name)))?.value;
+  const mimeType = String(postData?.mimeType ?? headerMime ?? '').split(';', 1)[0].trim().toLowerCase();
+  if (JSON_BODY_MIME.test(mimeType)) {
+    let value;
+    try { value = JSON.parse(bodyText); } catch { return { mimeType, parseable: false }; }
+    const safe = scrubPublicJsonValue(value);
+    return { mimeType, parseable: true, schema: observedSchema(safe ?? '') };
+  }
+  if (FORM_BODY_MIME.test(mimeType)) {
+    const properties = {};
+    for (const [key] of new URLSearchParams(bodyText)) {
+      if (!isPrivateDataKey(key)) properties[key] = { type: 'string', 'x-heimdall-provenance': 'observed' };
+    }
+    return { mimeType, parseable: true, schema: { type: 'object', 'x-heimdall-provenance': 'observed', properties, additionalProperties: true } };
+  }
+  return { mimeType: mimeType || 'application/octet-stream', parseable: false };
+}
+
+function observedRequestAuth(req) {
+  const schemes = new Set();
+  for (const header of req?.headers ?? []) {
+    const name = String(header.name ?? '').toLowerCase();
+    if (name === 'authorization') {
+      const scheme = String(header.value ?? '').trim().split(/\s+/, 1)[0].toLowerCase();
+      schemes.add(scheme === 'bearer' || scheme === 'basic' || scheme === 'digest' ? scheme : 'authorization');
+    } else if (name === 'cookie' || name === 'set-cookie' || name === 'proxy-authorization') schemes.add('cookie');
+    else if (/^(?:x-)?api-key$/.test(name)) schemes.add('api-key');
+    else if (/(?:csrf|xsrf)/.test(name)) schemes.add('csrf');
+    else if (/(?:auth|token|session|secret|key)/.test(name)) schemes.add('token-like-header');
+  }
+  if ((req?.cookies ?? []).length) schemes.add('cookie');
+  return [...schemes].sort();
+}
+
 function publicDataOrigin(value) {
   if (!value) return null;
   let url;
@@ -225,6 +283,8 @@ export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [
       if (examples.length < 20) examples.push({ reason: 'nonStatic', path: reportPath(parsed) });
       continue;
     }
+    const requestBody = includeApiBodies ? observedRequestBody(req) : null;
+    const requestAuth = includeApiBodies ? observedRequestAuth(req) : [];
     const headers = {};
     for (const h of res.headers ?? []) {
       const name = String(h.name ?? '').toLowerCase();
@@ -234,6 +294,8 @@ export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [
       method, url: parsed.href, status,
       mimeType: publicData ? dataMime : mimeType,
       headers, body, bodyEncoding: body ? 'base64' : null,
+      ...(requestBody ? { requestBody } : {}),
+      ...(requestAuth.length ? { requestAuth } : {}),
       ...(publicData ? { kind: 'public-read-only-data' } : {}),
     });
   }

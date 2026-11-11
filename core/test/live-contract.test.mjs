@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildObservedApiContract } from '../src/live/contract.mjs';
+import { sanitizeHar } from '../src/live/har.mjs';
 
 const body = value => ({ body: Buffer.from(JSON.stringify(value), 'utf8').toString('base64'), bodyEncoding: 'base64' });
 
@@ -24,8 +25,38 @@ test('live/contract: groups observed API shapes and templates identifiers', () =
   assert.ok(!('email' in operation.responses['200'].content['application/json'].schema.properties));
   assert.equal(operation.responses['200'].content['application/json'].schema.required.includes('next'), false,
     'fields missing from one sample are not marked required');
-  assert.deepEqual(contract.coverage.endpoints, { observed: 1, withErrorSample: 1, withWriteSample: 0 });
+  assert.deepEqual(contract.coverage.endpoints, {
+    observed: 1, withErrorSample: 1, withWriteSample: 0, withRequestSchema: 0, authObserved: 0,
+  });
   assert.doesNotMatch(JSON.stringify(contract), /Alice|Bob|alice@example\.com|do-not-copy/);
+});
+
+test('live/contract: exposes observed request schema and auth shape without values', () => {
+  const sanitized = sanitizeHar({ log: { entries: [{
+    request: {
+      method: 'POST', url: 'https://x.test/api/items',
+      headers: [
+        { name: 'Content-Type', value: 'application/json' },
+        { name: 'Authorization', value: 'Bearer fixture-secret' },
+      ],
+      postData: { mimeType: 'application/json', text: JSON.stringify({ title: 'Draft', secret: 'do-not-copy', count: 1 }) },
+    },
+    response: { status: 201, content: { mimeType: 'application/json', text: '{"id":1}' } },
+  }] } }, { includeApiBodies: true });
+  const contract = buildObservedApiContract(sanitized.entries, { origin: 'https://x.test' });
+  const operation = contract.openapi.paths['/api/items'].post;
+
+  assert.deepEqual(operation['x-heimdall-auth'], { schemes: ['bearer'], observations: 1 });
+  assert.equal(operation.requestBody.content['application/json'].schema.properties.title.type, 'string');
+  assert.equal(operation.requestBody.content['application/json'].schema.properties.count.type, 'integer');
+  assert.ok(!('secret' in operation.requestBody.content['application/json'].schema.properties));
+  assert.deepEqual(contract.summary.authSchemes, ['bearer']);
+  assert.equal(contract.summary.withRequestSchema, 1);
+  assert.deepEqual(contract.coverage.endpoints, {
+    observed: 1, withErrorSample: 0, withWriteSample: 1, withRequestSchema: 1, authObserved: 1,
+  });
+  assert.ok(contract.unknowns.some(item => item.kind === 'auth-unknown' && item.observedSchemes?.includes('bearer')));
+  assert.doesNotMatch(JSON.stringify(contract), /fixture-secret|do-not-copy|Draft/);
 });
 
 test('live/contract: keeps UUID and long hash templates while separating MIME responses', () => {
