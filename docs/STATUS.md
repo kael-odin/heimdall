@@ -176,6 +176,13 @@ Hosted CI 结果为最终依据。
 - 评估结果新增 `deliveryPlan`：按页面/资产、视觉验证、SEO/GEO、API 契约、B2 适配器、QA 检查点和认证/权限/状态未知项分组，给出 `capture`、`ai_review_with_open_actions`、`human_review` 或 `ready` 阶段；动作和复测条件都带安全属性，不把建议动作冒充已执行。
 - 该能力是 AI 的导航层，不替代克隆、SEO、QA 或后端实现；没有镜像时总体状态仍是 `needs_capture`，适配器通过也只表示观察样本的有限验证。
 
+## 2026-11-12 后端补全任务包
+
+- `deliveryPlan.backendCompletion` 现在把 B1/B2 之间的下一步压成一个只读任务包：已观察端点、响应形状证据、认证/权限/状态/副作用未知项、需要人工授权的业务旅程、建议生成的本地文件、测试数据和验证命令。
+- 端点和响应形状只来自清洗后的 `api-contract.json`；适配器留出验证通过时只标记回放证据，仍不声称真实后端等价。
+- `inferred` 是 AI 可以据此起草的内容，`invented` 单独计数且当前为空；没有观察型契约时任务包明确为 `blocked_on_observation`，不会自动发明业务 API。
+- MCP 提示词已要求 AI 同时读取 `deliveryPlan.backendCompletion`，继续沿用 `requiresHumanApproval` 和确定性复测边界；本轮没有新增独立 MCP 工具。
+
 ## 2026-10-31 产品打磨
 
 - `rebuild init` 不再固定抢 5199：不传 `--port` 时自动找空闲端口；显式传了而端口被占用则直接报错，不偷偷换。

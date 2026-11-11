@@ -32,7 +32,10 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       categories: { index: { score: 100, issues: 0 } }, geo: { score: 80, actionPlan: [{ priority: 'P1' }] },
     });
     put(join(site, 'api-contract.json'), {
-      tier: 'B1', openapi: { servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: {} } } },
+      tier: 'B1', openapi: { servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: {
+        'x-heimdall-observations': { samples: 2, queryParams: ['page'] },
+        responses: { '200': { 'x-heimdall-samples': 2, content: { 'application/json': { schema: { type: 'object' } } } } },
+      } } } },
       observations: [{ withResponseSchema: true, withRequestSchema: false, authSchemes: ['bearer'], errorSamples: 1 }],
       unknowns: [{ kind: 'auth-unknown' }],
     });
@@ -69,6 +72,12 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'seo-geo-follow-up'));
     assert.equal(env.result.deliveryPlan.items.find(item => item.id === 'api-behavior-unknown').status, 'blocked');
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
+    assert.equal(env.result.deliveryPlan.backendCompletion.schema, 'heimdall.backend-completion-task/1');
+    assert.equal(env.result.deliveryPlan.backendCompletion.observedEndpoints[0].path, '/api/items');
+    assert.equal(env.result.deliveryPlan.backendCompletion.verifiedResponseShapes.count, 1);
+    assert.equal(env.result.deliveryPlan.backendCompletion.verifiedResponseShapes.verificationStatus, 'replay_holdout_passed');
+    assert.ok(env.result.deliveryPlan.backendCompletion.humanJourneys.some(item => item.id === 'authentication-and-permission'));
+    assert.equal(env.result.deliveryPlan.backendCompletion.provenance.invented.length, 0);
     assert.doesNotMatch(run.stdout, /super-secret/);
     assert.equal(existsSync(join(page, 'network.har')), true);
   } finally { rmSync(root, { recursive: true, force: true }); }
@@ -92,6 +101,9 @@ test('site-assessment: delivery plan keeps capture and missing evidence separate
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'seo-report' && item.basis === 'unknown'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.basis === 'unknown'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'qa-workspace' && item.status === 'blocked'));
+    assert.equal(env.result.deliveryPlan.backendCompletion.status, 'blocked_on_observation');
+    assert.equal(env.result.deliveryPlan.backendCompletion.observedEndpoints.length, 0);
+    assert.ok(env.result.deliveryPlan.backendCompletion.suggestedLocalFiles.some(item => item.path.endsWith('backend-state-rules.json')));
     assert.doesNotMatch(run.stdout, /super-secret|network\.har|operation-plan\.json/i);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

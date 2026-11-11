@@ -49,12 +49,15 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `decision.stage=human_review`：认证、权限、状态机、业务副作用或 QA 前置条件不能由摘要自动证明，必须由有授权的人补测；
 - `items[].basis` 只能按 `verified / observed / inferred / unknown` 解释，`items[].action` 是建议动作，不代表已经执行；
 - `items[].verify` 是完成动作后的确定性复测条件。适配器留出集通过，也不能把 `auth_permission_state_unknown` 说成后端等价。
+- `deliveryPlan.backendCompletion` 是后端补全任务包：看 `observedEndpoints` 和 `verifiedResponseShapes` 了解已观察内容，看 `humanJourneys`、`testData` 和 `unknowns` 了解还缺什么；其中 `inferred` 只是 AI 草稿输入，`invented` 必须单列，不能当证据。
+- AI 可以按 `suggestedLocalFiles` 生成本地适配器、状态规则和检查脚本，但最终要按 `verification.commands` 重跑；认证、权限、状态机、写入和副作用仍要人工授权后验证。
 
 推荐的 AI 指令：
 
 ```text
 先调用 heimdall_site_assessment。
 先读 deliveryPlan.decision 和 deliveryPlan.items，再按 action 的安全属性决定下一步。
+如果要补后端，继续读取 deliveryPlan.backendCompletion：先使用 observedEndpoints 和 verifiedResponseShapes 生成草稿，再补齐 humanJourneys 和 testData；不要把 inferred 或 invented 当成真实业务规则。
 不要自动执行 requiresHumanApproval=true 的源站、登录、写入或业务副作用检查。
 完成一个动作后重新调用 heimdall_site_assessment，用 verify 条件复核；把 verified、observed、inferred、unknown 分开汇报。
 ```

@@ -185,7 +185,7 @@ node core/src/cli.mjs site-watch https://example.org/
 
 ```text
 先调用 heimdall_site_assessment，siteId=example.test；如果要纳入 QA，再传 qaWorkspace。
-先读它的 deliveryPlan.decision.stage、deliveryPlan.items、未知项和 nextActions：看到 capture 先补镜像，看到 human_review 不要把观察型契约当成后端已完成，再调用 heimdall_qa_status 读取测试须知和团队约定。
+先读它的 deliveryPlan.decision.stage、deliveryPlan.items、deliveryPlan.backendCompletion、未知项和 nextActions：看到 capture 先补镜像，看到 human_review 不要把观察型契约当成后端已完成；要补后端时，按 backendCompletion 的 observedEndpoints、humanJourneys 和 verification.commands 继续，再调用 heimdall_qa_status 读取测试须知和团队约定。
 再调用 heimdall_qa_run，站点 web，视口 1440 和 390。
 只列达到提单门槛的问题；环境问题单列，不要猜产品 BUG。
 ```

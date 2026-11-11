@@ -13,13 +13,56 @@ import { listPages, pageDir, siteDir } from '../../workspace.mjs';
 import { listRuns, openWorkspace, relPath } from '../../../qa/run.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
+const MAX_BACKEND_TASK_ENDPOINTS = 200;
 const SEO_SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
+const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 
 function readJson(file) {
   try {
     if (statSync(file).size > MAX_PUBLIC_REPORT_BYTES) return null;
     return JSON.parse(readFileSync(file, 'utf8'));
   } catch { return null; }
+}
+
+function observedEndpointSummaries(contract) {
+  const paths = contract?.openapi?.paths;
+  if (!paths || typeof paths !== 'object') return [];
+  return Object.entries(paths).flatMap(([path, pathItem]) => Object.entries(pathItem ?? {})
+    .filter(([method]) => HTTP_METHODS.has(method.toLowerCase()))
+    .map(([method, operation]) => {
+      const observations = operation?.['x-heimdall-observations'] ?? {};
+      const content = (value) => value && typeof value === 'object' ? value.content ?? {} : {};
+      const responseShapes = Object.entries(operation?.responses ?? {})
+        .filter(([status]) => /^\d+$/.test(status))
+        .map(([status, response]) => {
+          const responseContent = content(response);
+          return {
+            status: Number(status),
+            mimeTypes: Object.keys(responseContent).sort(),
+            withSchema: Object.values(responseContent).some(item => item && typeof item.schema === 'object'),
+            samples: Number.isFinite(Number(response?.['x-heimdall-samples'])) ? Number(response['x-heimdall-samples']) : null,
+            basis: 'observed',
+          };
+        });
+      const requestContent = content(operation?.requestBody);
+      return {
+        method: method.toUpperCase(),
+        path,
+        samples: Number.isFinite(Number(observations.samples)) ? Number(observations.samples) : null,
+        queryParams: Array.isArray(observations.queryParams) ? [...observations.queryParams].sort() : [],
+        authSchemes: Array.isArray(observations.authSchemes) ? [...observations.authSchemes].sort() : [],
+        requestBody: operation?.requestBody ? {
+          observed: true,
+          mimeTypes: Object.keys(requestContent).sort(),
+          withSchema: Object.values(requestContent).some(item => item && typeof item.schema === 'object'),
+          basis: 'observed',
+        } : { observed: false, mimeTypes: [], withSchema: false, basis: 'unknown' },
+        responseShapes,
+        basis: 'observed',
+      };
+    }))
+    .sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`))
+    .slice(0, MAX_BACKEND_TASK_ENDPOINTS);
 }
 
 function reportPath(siteId, suffix) {
@@ -120,10 +163,11 @@ function publicContract(root, siteId) {
     if (!contract || typeof contract !== 'object') return { status: 'invalid', path: reportPath(siteId, suffix) };
     const summary = summarizeObservedApiContract(contract);
     const origin = originOf(contract.origin) ?? originOf(contract.openapi?.servers?.[0]?.url);
+    const observedEndpoints = observedEndpointSummaries(contract);
     return { status: summary.endpoints ? 'observed' : 'no_observed_api', path: reportPath(siteId, suffix), origin,
       summary: { tier: summary.tier, endpoints: summary.endpoints, withResponseSchema: summary.withResponseSchema,
         withRequestSchema: summary.withRequestSchema, authSchemes: summary.authSchemes, errorSamples: summary.errorSamples,
-        unknowns: summary.unknowns } };
+        unknowns: summary.unknowns }, observedEndpoints };
   }
   return { status: 'missing', path: null, origin: null, summary: null };
 }
@@ -239,8 +283,98 @@ function planVerification(siteId, condition) {
   return { tool: 'heimdall_site_assessment', args: { siteId }, condition };
 }
 
+function buildBackendCompletionTask(siteId, api) {
+  const observed = api.contract.status === 'observed';
+  const endpoints = api.contract.observedEndpoints ?? [];
+  const responseShapes = endpoints.flatMap(endpoint => endpoint.responseShapes);
+  const shapedResponses = responseShapes.filter(shape => shape.withSchema);
+  const hasWrite = endpoints.some(endpoint => endpoint.method !== 'GET');
+  const validationStatus = api.adapter.validation?.status ?? 'not-validated';
+  const humanJourneys = observed ? [
+    {
+      id: 'anonymous-read', basis: 'inferred', status: 'required', requiresHumanApproval: true,
+      goal: '用匿名或明确的只读身份走通一个真实读取流程，并记录页面结果与 API 结果如何对应。',
+      checkpoints: ['请求成功与失败状态', '分页/筛选参数', '刷新或重新进入后的结果是否一致'],
+    },
+    {
+      id: 'authentication-and-permission', basis: 'inferred', status: 'required', requiresHumanApproval: true,
+      goal: '用独立测试账号验证登录、退出、凭据失效和至少两种权限边界。',
+      checkpoints: ['未登录访问', '已登录访问', '无权限访问', '凭据刷新或失效后的行为'],
+    },
+    {
+      id: 'state-and-side-effects', basis: 'inferred', status: 'required', requiresHumanApproval: true,
+      goal: '确认一次业务操作前后状态如何变化，以及是否产生可观察副作用。',
+      checkpoints: ['操作前状态', '提交后的响应', '再次读取或刷新后的状态', '失败时是否回滚'],
+    },
+  ] : [];
+  if (hasWrite) humanJourneys.push({
+    id: 'write-and-cleanup', basis: 'inferred', status: 'required', requiresHumanApproval: true,
+    goal: '在明确许可的测试数据范围内验证写入、重复提交、异常输入和清理路径。',
+    checkpoints: ['请求体校验', '重复/幂等行为', '持久化后读取', '测试数据清理'],
+  });
+
+  return {
+    schema: 'heimdall.backend-completion-task/1',
+    status: observed ? 'needs_human_journey' : 'blocked_on_observation',
+    target: {
+      requestedLevel: 'B2',
+      currentLevel: observed ? (api.adapter.present ? 'B1_to_B2_bridge' : 'B1_observed_contract') : 'B0_or_lower',
+    },
+    observedEndpoints: endpoints,
+    verifiedResponseShapes: {
+      count: shapedResponses.length,
+      items: shapedResponses,
+      verificationStatus: validationStatus === 'passed' ? 'replay_holdout_passed' : 'observation_only',
+      basis: 'observed',
+    },
+    unknowns: [
+      { id: 'authentication', basis: 'unknown', detail: '哪些端点强制认证、凭据如何刷新和失效，尚未由摘要证明。' },
+      { id: 'permissions', basis: 'unknown', detail: '不同账号、角色或资源边界的允许/拒绝矩阵尚未验证。' },
+      { id: 'state-machine', basis: 'unknown', detail: '创建、更新、删除、回滚和刷新后的状态转换尚未验证。' },
+      { id: 'business-rules', basis: 'unknown', detail: '边界条件、幂等、限流、排序和业务校验规则尚未验证。' },
+      { id: 'side-effects', basis: 'unknown', detail: '持久化、消息、邮件、支付、Webhook 等副作用尚未验证。' },
+    ],
+    humanJourneys,
+    suggestedLocalFiles: [
+      { path: `workspace/${siteId}/runtime-adapter/index.mjs`, purpose: 'AI 生成的本地路由与状态实现草稿。', status: api.adapter.present ? 'observed_adapter_exists' : 'suggested', basis: api.adapter.present ? 'observed' : 'inferred' },
+      { path: `workspace/${siteId}/runtime-adapter/manifest.json`, purpose: '适配器路由、会话和协议边界。', status: api.adapter.present ? 'observed_manifest_exists' : 'suggested', basis: api.adapter.present ? 'observed' : 'inferred' },
+      { path: `workspace/${siteId}/backend-state-rules.json`, purpose: '记录状态转换、前置条件、回滚和副作用的 AI 草稿。', status: 'suggested', basis: 'inferred' },
+      { path: `workspace/${siteId}/backend-checks.mjs`, purpose: '把旅程检查点转成可重复的本地验证。', status: 'suggested', basis: 'inferred' },
+    ],
+    testData: [
+      { id: 'observed-contract', status: observed ? 'available' : 'missing', basis: observed ? 'observed' : 'unknown', source: api.contract.path ?? 'api-contract.json', detail: '只含脱敏接口形状、状态码、MIME 和 Schema 摘要。' },
+      { id: 'independent-test-account', status: 'required', basis: 'unknown', source: 'human_authorized_test', detail: '需要独立、可回收的测试账号和明确授权范围。' },
+      { id: 'state-transition-fixtures', status: 'required', basis: 'inferred', source: 'human_authorized_test', detail: '需要操作前/后状态、异常输入和清理方案；不能从观察型契约自动发明。' },
+    ],
+    verification: {
+      commands: [
+        `heimdall probe contract --site ${siteId}`,
+        `heimdall probe adapter --site ${siteId} --include-api-bodies --force`,
+        `heimdall site-assessment ${siteId} --json`,
+      ],
+      deterministicChecks: [
+        { id: 'response-shape', status: observed ? 'observed' : 'blocked', basis: observed ? 'observed' : 'unknown', condition: '契约中的响应状态码、MIME 和脱敏 JSON 形状可被本地适配器复现。' },
+        { id: 'adapter-holdout', status: validationStatus, basis: validationStatus === 'passed' ? 'verified' : 'unknown', condition: 'adapter-report.json 的留出集等价度达到阈值且无未验证项。' },
+        { id: 'state-consistency', status: 'blocked', basis: 'unknown', condition: '同一业务流程中操作后再次读取/刷新仍保持预期状态。' },
+        { id: 'offline-egress', status: 'blocked', basis: 'unknown', condition: '最终适配器在无外联部署中通过断网浏览器验收。' },
+      ],
+      humanChecks: humanJourneys.map(journey => ({ id: journey.id, basis: journey.basis, requiresHumanApproval: true, condition: journey.goal })),
+    },
+    provenance: {
+      observed: observed ? ['api-contract.json', ...(api.adapter.present ? ['runtime-adapter/manifest.json', 'adapter-report.json'] : [])] : [],
+      inferred: ['B2 目标', '业务旅程清单', '本地状态规则文件', '检查脚本和测试数据需求'],
+      invented: [],
+    },
+    limitations: [
+      '观察到的接口形状不等于认证、权限、状态机、业务规则或真实副作用。',
+      '建议文件只是任务包，不代表这些文件已经生成或通过验证。',
+    ],
+  };
+}
+
 function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace }) {
   const items = [];
+  const backendCompletion = buildBackendCompletionTask(siteId, api);
   const add = (item) => items.push({
     evidence: [],
     ...(item.action ? { action: item.action } : {}),
@@ -381,6 +515,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     },
     counts,
     items,
+    backendCompletion,
   };
 }
 

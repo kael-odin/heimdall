@@ -184,6 +184,8 @@ paths:
 
 ```
 当前最小实现：`heimdall probe adapter --site S --include-api-bodies` 会按端点确定性拆分训练/留出样本，只用训练集生成观察回放适配器，并在适配器目录旁输出 `adapter-report.json`。验证报告核对状态码、MIME、脱敏 JSON 形状和训练集中稳定字段；未知路径、未覆盖参数和样本不足都显式记录。它是 B1 到 B2 的验证桥，不是完整 B2 业务实现，也不改变 `--include-api-har` 不能与 `--strict` 同用的隐私边界。
+
+站点评估的 `deliveryPlan.backendCompletion` 是这个桥的任务包入口。它只读取 `api-contract.json`、适配器 manifest 和验证报告，向 AI 提供 `observedEndpoints`、`verifiedResponseShapes`、`humanJourneys`、`testData`、`suggestedLocalFiles` 与 `verification.commands`。其中端点和响应形状是 `observed`，业务旅程、状态规则和检查脚本是 `inferred` 草稿输入，当前不产生 `invented` 证据。没有契约时状态为 `blocked_on_observation`；有契约时也必须由授权的人补测认证、权限、状态机、写操作、持久化和副作用，再把结果交回确定性验证器。
 覆盖：训练重放 17/18 通过 · 留出 5/6 通过 · 未覆盖 3（见 unknowns）
 声明：这不是源站后端的等价物，只覆盖被观察到的请求。
 ```
