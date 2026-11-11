@@ -63,7 +63,35 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.qa.latest.runId, runId);
     assert.ok(env.result.claims.verified.includes('api.adapter_holdout:1'));
     assert.ok(env.result.unknowns.some(item => item.id === 'auth-permissions-state-unknown'));
+    assert.equal(env.result.deliveryPlan.schema, 'heimdall.site-delivery-plan/1');
+    assert.equal(env.result.deliveryPlan.decision.basis, 'inferred');
+    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'clone-visual-verification'));
+    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'seo-geo-follow-up'));
+    assert.equal(env.result.deliveryPlan.items.find(item => item.id === 'api-behavior-unknown').status, 'blocked');
+    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
     assert.doesNotMatch(run.stdout, /super-secret/);
     assert.equal(existsSync(join(page, 'network.har')), true);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('site-assessment: delivery plan keeps capture and missing evidence separate', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-plan-'));
+  const page = join(root, 'workspace', 'example.test', 'pages', 'home');
+  try {
+    put(join(page, 'manifest.json'), { target: 'https://example.test/' });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const env = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(env.ok, true);
+    assert.equal(env.result.overall, 'needs_capture');
+    assert.equal(env.result.deliveryPlan.decision.stage, 'capture');
+    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'clone-mirror-coverage' && item.basis === 'observed'));
+    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'seo-report' && item.basis === 'unknown'));
+    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.basis === 'unknown'));
+    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'qa-workspace' && item.status === 'blocked'));
+    assert.doesNotMatch(run.stdout, /super-secret|network\.har|operation-plan\.json/i);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

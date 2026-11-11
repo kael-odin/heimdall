@@ -42,6 +42,23 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 
 它只读已经清洗的摘要，不打开原始 HAR、登录档、操作计划或适配器源码。`claims.verified`、`claims.observed` 和 `unknowns` 必须分开解释。
 
+现在结果里还会带 `deliveryPlan`。它不是“自动验收通过”按钮，而是一张给 AI 用的分诊表：
+
+- `decision.stage=capture`：先补镜像，不能直接进入重建或交付；
+- `decision.stage=ai_review_with_open_actions`：已有证据，可以让 AI 处理明确的补证、修复或复测动作；
+- `decision.stage=human_review`：认证、权限、状态机、业务副作用或 QA 前置条件不能由摘要自动证明，必须由有授权的人补测；
+- `items[].basis` 只能按 `verified / observed / inferred / unknown` 解释，`items[].action` 是建议动作，不代表已经执行；
+- `items[].verify` 是完成动作后的确定性复测条件。适配器留出集通过，也不能把 `auth_permission_state_unknown` 说成后端等价。
+
+推荐的 AI 指令：
+
+```text
+先调用 heimdall_site_assessment。
+先读 deliveryPlan.decision 和 deliveryPlan.items，再按 action 的安全属性决定下一步。
+不要自动执行 requiresHumanApproval=true 的源站、登录、写入或业务副作用检查。
+完成一个动作后重新调用 heimdall_site_assessment，用 verify 条件复核；把 verified、observed、inferred、unknown 分开汇报。
+```
+
 ## 克隆和重建
 
 对 Claude Code 或 Codex 说：

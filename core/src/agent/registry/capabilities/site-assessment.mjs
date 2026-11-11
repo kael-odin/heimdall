@@ -231,10 +231,163 @@ function claimsOf(siteId, clone, seo, api, qa, unknowns) {
   return { verified, observed, unknown: unknowns.map(item => item.id), siteId };
 }
 
+function plannedAction(tool, args, reason, { canAutoRun = false, requiresHumanApproval = true } = {}) {
+  return { tool, ...(args ? { args } : {}), reason, canAutoRun, requiresHumanApproval };
+}
+
+function planVerification(siteId, condition) {
+  return { tool: 'heimdall_site_assessment', args: { siteId }, condition };
+}
+
+function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace }) {
+  const items = [];
+  const add = (item) => items.push({
+    evidence: [],
+    ...(item.action ? { action: item.action } : {}),
+    ...(item.verify ? { verify: item.verify } : {}),
+    ...item,
+  });
+  const capture = origin
+    ? plannedAction('heimdall_clone', { url: `${origin}/`, scope: 'site', level: 'verified' }, '先取得参考镜像并做多视口验证')
+    : plannedAction('heimdall_clone', { siteId, scope: 'site', level: 'verified' }, '先取得参考镜像并做多视口验证');
+
+  if (!clone.pages) {
+    add({
+      id: 'clone-capture', kind: 'page_asset_gap', basis: 'unknown', status: 'blocked',
+      title: '没有页面目录，无法开始站点交付', detail: '当前没有已发现页面，镜像、资源和视觉证据都未知。',
+      action: capture, verify: planVerification(siteId, 'clone.mirrors > 0'),
+    });
+  } else if (clone.mirrors < clone.pages) {
+    add({
+      id: 'clone-mirror-coverage', kind: 'page_asset_gap', basis: 'observed', status: 'open',
+      title: '镜像覆盖不完整', detail: `${clone.pages - clone.mirrors} 页已发现但没有镜像入口。`,
+      evidence: [`clone.mirrors:${clone.mirrors}/${clone.pages}`], action: capture,
+      verify: planVerification(siteId, 'clone.mirrors === clone.pages'),
+    });
+  }
+  if (clone.pages && (clone.unmeasured > 0 || clone.verificationStatus !== 'checked')) {
+    add({
+      id: 'clone-visual-verification', kind: 'visual_verification_gap', basis: 'unknown', status: 'open',
+      title: '多视口验证不完整', detail: clone.unmeasured > 0
+        ? `${clone.unmeasured} 页没有当前有效的多视口验证。`
+        : `验证扫描状态为 ${clone.verificationStatus}。`,
+      evidence: [`clone.verification:${clone.verificationStatus}`, `clone.unmeasured:${clone.unmeasured}`],
+      action: plannedAction('heimdall_clone', { siteId, scope: 'site', level: 'verified' }, '补齐页面的当前多视口验证'),
+      verify: planVerification(siteId, 'clone.unmeasured === 0 && clone.verificationStatus === "checked"'),
+    });
+  }
+
+  const seoIncomplete = seo.status === 'observed'
+    && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0);
+  const seoHasIssues = seo.status === 'observed'
+    && (seo.bySeverity.critical > 0 || seo.bySeverity.high > 0 || seo.geo.actionItems > 0);
+  if (seo.status !== 'observed') {
+    add({
+      id: 'seo-report', kind: 'seo_geo_gap', basis: 'unknown', status: 'open',
+      title: '没有可用的 SEO/GEO 报告', detail: seo.status === 'invalid' ? '报告存在但无法读取。' : '当前站点还没有本地 SEO/GEO 证据。',
+      evidence: [], action: origin ? plannedAction('heimdall_seo_audit', { url: `${origin}/` }, '补一份 SEO/GEO 报告') : null,
+      verify: planVerification(siteId, 'seo.status === "observed"'),
+    });
+  } else if (seoIncomplete || seoHasIssues) {
+    add({
+      id: 'seo-geo-follow-up', kind: 'seo_geo_gap', basis: 'observed', status: 'open',
+      title: seoIncomplete ? 'SEO/GEO 采集不完整' : 'SEO/GEO 报告还有待处理项',
+      detail: seoIncomplete
+        ? '报告包含未成功采集或未核对页面，分数不能当成完整站点结论。'
+        : `发现 critical=${seo.bySeverity.critical}、high=${seo.bySeverity.high}，GEO 待办 ${seo.geo.actionItems} 项。`,
+      evidence: [seo.reports.json],
+      action: origin ? plannedAction('heimdall_seo_audit', { url: `${origin}/` }, '补采完整报告并复核 SEO/GEO 待办') : null,
+      verify: planVerification(siteId, 'seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0'),
+    });
+  }
+
+  if (api.contract.status === 'missing' || api.contract.status === 'invalid' || api.contract.status === 'no_observed_api') {
+    add({
+      id: 'api-contract', kind: 'api_contract_gap', basis: 'unknown', status: 'open',
+      title: 'API 契约证据不足', detail: api.contract.status === 'missing'
+        ? '没有观察型 API 契约，后端边界和响应口径未知。'
+        : '契约文件存在，但没有可用的端点观察摘要。',
+      evidence: api.contract.path ? [api.contract.path] : [],
+      action: plannedAction('cli:shell', { command: `heimdall probe contract --site ${siteId}` }, '先生成观察型 API 契约草稿', { requiresHumanApproval: false }),
+      verify: planVerification(siteId, 'api.contract.status === "observed"'),
+    });
+  }
+  if (api.contract.status === 'observed' && !api.adapter.present) {
+    add({
+      id: 'api-adapter', kind: 'b2_adapter_gap', basis: 'observed', status: 'open',
+      title: '有 API 契约但没有观察回放适配器', detail: '可以开始生成适配器草稿，但它仍不能代表认证、权限、状态机或真实副作用。',
+      evidence: [api.contract.path],
+      action: plannedAction('cli:shell', { command: `heimdall probe adapter --site ${siteId} --include-api-bodies` }, '按观察样本生成适配器草稿', { requiresHumanApproval: false }),
+      verify: planVerification(siteId, 'api.adapter.present === true && api.adapter.validation.status === "passed"'),
+    });
+  } else if (api.adapter.present && api.adapter.validation?.status !== 'passed') {
+    add({
+      id: 'api-adapter-validation', kind: 'b2_adapter_gap', basis: 'observed', status: 'open',
+      title: '适配器还没有通过留出验证', detail: '当前适配器只能算已观察到，留出集未通过或未完成。',
+      evidence: api.adapter.report ? [api.adapter.report] : [],
+      action: plannedAction('cli:shell', { command: `heimdall probe adapter --site ${siteId} --include-api-bodies --force` }, '重新生成并验证观察回放适配器', { requiresHumanApproval: false }),
+      verify: planVerification(siteId, 'api.adapter.validation.status === "passed"'),
+    });
+  }
+
+  if (api.contract.status !== 'missing' || api.adapter.present) {
+    add({
+      id: 'api-behavior-unknown', kind: 'auth_permission_state_unknown', basis: 'unknown', status: 'blocked',
+      title: '认证、权限、状态机和副作用仍未证明', detail: '观察型契约或适配器只说明捕获到的样本，不能证明真实用户权限、写入业务、持久化和状态转换。',
+      evidence: [api.contract.path, api.adapter.report].filter(Boolean),
+      verify: { method: 'human_authorized_test', condition: '用独立测试账号和明确许可的检查点验证认证、权限、状态机与副作用' },
+    });
+  }
+
+  if (qa.status === 'not_configured' || qa.status === 'unavailable' || qa.status === 'configured') {
+    add({
+      id: 'qa-workspace', kind: 'qa_business_checkpoint_gap', basis: 'unknown', status: 'blocked',
+      title: '没有可用的 QA 工作区', detail: '页面能否打开不等于业务流程和无参照物问题已经检查。',
+      evidence: [], action: plannedAction('heimdall_qa_status', qaWorkspace ? { workspace: qaWorkspace } : null, '先准备 QA 工作区并读取测试须知'),
+      verify: { tool: 'heimdall_qa_status', condition: 'workspace contains matching site and guidance' },
+    });
+  } else if (qa.status === 'no_runs') {
+    add({
+      id: 'qa-first-run', kind: 'qa_business_checkpoint_gap', basis: 'observed', status: 'open',
+      title: 'QA 工作区还没有运行记录', detail: '当前没有巡检、检查点或无参照物检测结果。',
+      evidence: [], action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, '运行一次只读 QA'),
+      verify: { tool: 'heimdall_qa_run', condition: 'matching site has a completed run' },
+    });
+  } else if (qa.latest?.summary?.fileable > 0) {
+    add({
+      id: 'qa-findings', kind: 'qa_business_checkpoint_gap', basis: 'observed', status: 'open',
+      title: 'QA 有待人工复核的问题', detail: `最近一次运行有 ${qa.latest.summary.fileable} 条达到提单门槛的发现。`,
+      evidence: [qa.latest.bugs, qa.latest.report].filter(Boolean),
+      action: plannedAction('heimdall_qa_findings', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), action: 'show', runId: qa.latest.runId }, '逐条复核 QA 建议提单的问题'),
+      verify: { tool: 'heimdall_qa_findings', condition: 'each finding has a human verdict' },
+    });
+  }
+
+  const counts = {
+    total: items.length,
+    open: items.filter(item => item.status === 'open').length,
+    blocked: items.filter(item => item.status === 'blocked').length,
+    unknown: items.filter(item => item.basis === 'unknown').length,
+    canAutoRun: items.filter(item => item.action?.canAutoRun === true).length,
+    requiresHumanApproval: items.filter(item => item.action?.requiresHumanApproval === true || item.status === 'blocked').length,
+  };
+  const nextStage = !clone.mirrors ? 'capture' : counts.blocked ? 'human_review' : counts.open ? 'ai_review_with_open_actions' : 'ready';
+  return {
+    schema: 'heimdall.site-delivery-plan/1',
+    decision: {
+      basis: 'inferred',
+      stage: nextStage,
+      reason: nextStage === 'capture' ? '先补齐参考镜像。' : nextStage === 'human_review' ? '存在不能由摘要自动证明的认证、权限、状态或 QA 前置条件。' : counts.open ? '已有足够证据进入 AI 处理，但仍有明确的补证或复核动作。' : '现有摘要覆盖了已声明的交付能力，可进入实现或复测。',
+    },
+    counts,
+    items,
+  };
+}
+
 export default {
   id: 'site_assessment',
   title: '站点评估：证据、能力与下一步',
-  description: 'Read one site workspace and return a conservative assessment for an AI agent: clone coverage and multi-viewport evidence, the latest SEO/GEO report, public API contract and replay-adapter validation, and an optional QA workspace run. It reads only sanitized public summaries; it never reads raw HAR, sessions, operation plans or adapter source. Verified, observed and unknown claims stay separate. Read-only and works without the engine.',
+  description: 'Read one site workspace and return a conservative assessment for an AI agent: clone coverage and multi-viewport evidence, the latest SEO/GEO report, public API contract and replay-adapter validation, an optional QA workspace run, and a structured delivery plan. It reads only sanitized public summaries; it never reads raw HAR, sessions, operation plans or adapter source. Verified, observed, inferred and unknown claims stay separate. Read-only and works without the engine.',
   effects: ['read'], scope: 'read', idempotent: true, cost: 'cheap',
   input: {
     type: 'object', additionalProperties: false, required: ['siteId'],
@@ -270,19 +423,17 @@ export default {
     if (qa.status === 'no_runs') unknowns.push({ id: 'qa-not-run', detail: 'QA 工作区存在，但还没有匹配站点的运行记录。' });
     if (qa.status === 'unavailable') unknowns.push({ id: 'qa-workspace-unavailable', detail: '提供的 QA 工作区无法读取。' });
     const overall = clone.mirrors > 0 ? 'ready_for_ai_review' : 'needs_capture';
-    const nextActions = [];
-    if (!clone.mirrors) nextActions.push(nextAction('heimdall_clone', origin ? { url: `${origin}/`, scope: 'site', level: 'verified' } : { siteId: args.siteId, scope: 'site', level: 'verified' }, '先取得参考镜像并做多视口验证'));
-    else if (clone.unmeasured > 0) nextActions.push(nextAction('heimdall_clone', { siteId: args.siteId, scope: 'site', level: 'verified' }, '补齐未测页面的当前验证证据'));
-    if (seo.status !== 'observed' && origin) nextActions.push(nextAction('heimdall_seo_audit', { url: `${origin}/` }, '补一份 SEO/GEO 报告'));
-    if (api.contract.status === 'observed' && !api.adapter.present) nextActions.push(nextAction('cli:shell', { command: `heimdall probe adapter --site ${args.siteId} --include-api-bodies` }, '契约存在但还没有本地适配器，先显式生成观察回放草稿'));
-    if (qa.status === 'no_runs') nextActions.push(nextAction('heimdall_qa_run', { workspace: args.qaWorkspace, site: qa.site?.name }, '运行一次只读 QA'));
-    if (qa.latest?.summary?.fileable > 0) nextActions.push(nextAction('heimdall_qa_findings', { workspace: args.qaWorkspace, action: 'show', runId: qa.latest.runId }, '逐条复核最近一次 QA 建议提单'));
+    const deliveryPlan = buildDeliveryPlan({ siteId: args.siteId, origin, clone, seo, api, qa, qaWorkspace: args.qaWorkspace });
+    const nextActions = deliveryPlan.items
+      .filter(item => item.action)
+      .map(item => nextAction(item.action.tool, item.action.args, item.action.reason))
+      .slice(0, 5);
     const evidence = [];
     if (seo.status === 'observed') evidence.push({ kind: 'file', path: seo.reports.json });
     if (api.contract.path) evidence.push({ kind: 'file', path: api.contract.path });
     if (api.adapter.report) evidence.push({ kind: 'file', path: api.adapter.report });
     return ok({ siteId: args.siteId, origin, overall, clone: { ...clone, samplePages: clone.samplePages.slice(0, args.limit) }, seo, api, qa,
-      claims: claimsOf(args.siteId, clone, seo, api, qa, unknowns), unknowns }, {
+      deliveryPlan, claims: claimsOf(args.siteId, clone, seo, api, qa, unknowns), unknowns }, {
       summary: `${args.siteId}：${clone.mirrors}/${clone.pages} 页有镜像；多视口验证 ${clone.verified ?? 0} 页；SEO ${seo.status}；API ${api.status}；QA ${qa.status}。`,
       nextActions: nextActions.slice(0, 5), evidence,
     });

@@ -145,6 +145,7 @@ function human(env, id, quiet) {
   if (id === 'site_assessment' && env.ok) {
     const r = env.result;
     lines.push(`镜像：${r.clone.mirrors}/${r.clone.pages}；多视口验证：${r.clone.verified ?? 0}；SEO：${r.seo.status}；API：${r.api.status}；QA：${r.qa.status}`);
+    if (r.deliveryPlan) lines.push(`交付计划：${r.deliveryPlan.decision.stage}；开放 ${r.deliveryPlan.counts.open}；阻塞 ${r.deliveryPlan.counts.blocked}；未知 ${r.deliveryPlan.counts.unknown}`);
     if (r.unknowns?.length) lines.push(`未知项：${r.unknowns.slice(0, 8).map(item => item.id).join('、')}`);
   }
   if (id === 'artifact' && env.ok) { if (env.result.text) lines.push('', env.result.text); else if (env.result.json) lines.push('', JSON.stringify(env.result.json, null, 2).slice(0, 20000)); if (env.result.savedTo) lines.push(`已保存：${env.result.savedTo}`); }

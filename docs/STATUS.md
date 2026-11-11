@@ -172,7 +172,8 @@ Hosted CI 结果为最终依据。
 ## 2026-11-11 站点评估包
 
 - 新增只读 `heimdall_site_assessment`：一次返回镜像页数、多视口验证、SEO/GEO 摘要、公开 API 契约、适配器留出验证、可选 QA 最近运行、证据分类和下一步。
-- 它只读取清洗后的公开报告与 manifest，不读取原始 HAR、登录档、操作计划或适配器源码；`verified`、`observed`、`unknown` 分开输出。
+- 它只读取清洗后的公开报告与 manifest，不读取原始 HAR、登录档、操作计划或适配器源码；`verified`、`observed`、`inferred`、`unknown` 分开输出。
+- 评估结果新增 `deliveryPlan`：按页面/资产、视觉验证、SEO/GEO、API 契约、B2 适配器、QA 检查点和认证/权限/状态未知项分组，给出 `capture`、`ai_review_with_open_actions`、`human_review` 或 `ready` 阶段；动作和复测条件都带安全属性，不把建议动作冒充已执行。
 - 该能力是 AI 的导航层，不替代克隆、SEO、QA 或后端实现；没有镜像时总体状态仍是 `needs_capture`，适配器通过也只表示观察样本的有限验证。
 
 ## 2026-10-31 产品打磨
