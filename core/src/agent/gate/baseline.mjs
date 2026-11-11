@@ -52,16 +52,23 @@ function safeStat(root, file) {
 }
 
 /** 只读静态服务：根目录下任何普通文件都能读，秘密文件与目录穿越一律 404 */
-export async function startBaselineServer(root, { host = '127.0.0.1' } = {}) {
+export async function startBaselineServer(root, { host = '127.0.0.1', entry = 'index.html', fallbackPaths = [] } = {}) {
   const base = resolve(root);
+  const defaultEntry = String(entry || 'index.html').replace(/^\/+/, '');
+  const defaultFile = resolve(base, defaultEntry);
+  const defaultStat = safeStat(base, defaultFile);
+  const fallbacks = new Set(fallbackPaths.map(path => {
+    try { return new URL(String(path), 'http://127.0.0.1').pathname || '/'; } catch { return null; }
+  }).filter(Boolean));
   const server = createServer((req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
     let file, stat;
     try {
       const pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://127.0.0.1').pathname);
-      let candidate = resolve(base, '.' + (pathname === '/' ? '/index.html' : pathname));
+      let candidate = resolve(base, '.' + (pathname === '/' ? `/${defaultEntry}` : pathname));
       if (!isInside(base, candidate) && candidate !== base) { res.writeHead(404); res.end(); return; }
       stat = safeStat(base, candidate);
+      if (!stat && fallbacks.has(pathname) && defaultStat?.isFile()) { candidate = defaultFile; stat = defaultStat; }
       if (stat?.isDirectory()) { candidate = join(candidate, 'index.html'); stat = safeStat(base, candidate); }
       if (!stat?.isFile()) { res.writeHead(404); res.end(); return; }
       file = candidate;
@@ -78,6 +85,7 @@ export async function startBaselineServer(root, { host = '127.0.0.1' } = {}) {
   const origin = `http://${host}:${server.address().port}`;
   return {
     origin,
+    entry: defaultEntry,
     async close() { server.closeAllConnections(); await new Promise(done => server.close(done)); },
   };
 }
@@ -277,8 +285,8 @@ const localTo = (url, origin) => String(url).startsWith(origin + '/') || String(
  * 体检：打开基线，记录外部请求、同源失败与脚本错误。
  * healthy = 导航成功 + 没有外部请求 + 没有同源 4xx/5xx 或请求失败。控制台错误只记警告。
  */
-export async function probeBaseline(browser, url, { origin, settleMs = 1200, timeoutMs = 30_000 } = {}) {
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+export async function probeBaseline(browser, url, { origin, viewport = { width: 1440, height: 900 }, settleMs = 1200, timeoutMs = 30_000 } = {}) {
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const external = new Map(), failed = [], consoleErrors = [], pageErrors = [];
   let requests = 0;
@@ -329,7 +337,10 @@ export async function prepareBaseline(browser, { siteId, page, viewport = 1440, 
   const outDir = stateDir ?? join(agentDir(siteId), 'gate', page);
   mkdirSync(outDir, { recursive: true });
 
-  const first = await withServer(cloneDir, (origin) => probeBaseline(browser, `${origin}/${entryRel}`, { origin }));
+  const width = Number(viewport);
+  const height = width === 375 ? 812 : width === 768 ? 1024 : 900;
+  const probeViewport = { width: Number.isFinite(width) && width > 0 ? width : 1440, height };
+  const first = await withServer(cloneDir, (origin) => probeBaseline(browser, `${origin}/${entryRel}`, { origin, viewport: probeViewport }));
   const report = {
     schema: 'heimdall.baseline/1', siteId, page, generatedAt: new Date().toISOString(), viewport,
     source: { dir: cloneDir, entry: entryRel },
@@ -344,7 +355,7 @@ export async function prepareBaseline(browser, { siteId, page, viewport = 1440, 
   // 不健康：生成正式基线副本（去掉外部请求与断链引用），再体检一次
   const copyDir = join(outDir, 'baseline');
   const copy = copySanitizedBaseline(cloneDir, copyDir);
-  const second = await withServer(copyDir, (origin) => probeBaseline(browser, `${origin}/${entryRel}`, { origin }));
+  const second = await withServer(copyDir, (origin) => probeBaseline(browser, `${origin}/${entryRel}`, { origin, viewport: probeViewport }));
   report.sanitized = { dir: copyDir, files: copy.copied, changes: copy.changes };
   report.sanitizedProbe = second;
   report.status = second.healthy ? 'sanitized' : 'blocked';

@@ -168,7 +168,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `schema`、`refId`、`siteId`、`page`、`capturedAt` | — | 是 | — |
-| `source` | object | 是 | `mirrorPath`（工作区内相对路径）、`formalBaseline`?（正式基线副本：`{path, healthProbe, changes[]}`，去掉外部请求与断链引用后的镜像拷贝，由 `Gate` 封装每次运行起临时回环服务供给，[05 §1.5](05-frontend-rebuild.md)）、`viewportEntries`?（视口 → 入口文件；当前正式门禁不自动按视口切换入口，选择器跳转可能被验收阻断，见[工作台边界](../../competition/acceptance-workbench.md)）、`originalUrl`〔网页〕 |
+| `source` | object | 是 | `mirrorPath`（工作区内相对路径）、`formalBaseline`?（正式基线副本：`{path, healthProbe, changes[]}`，去掉外部请求与断链引用后的镜像拷贝，由 `Gate` 按视口封装临时回环服务供给，[05 §1.5](05-frontend-rebuild.md)）、`viewportEntries`?（视口 → 入口文件；正式门禁按配置视口分别验收，缺少实际入口时阻断，见[工作台边界](../../competition/acceptance-workbench.md)）、`originalUrl`〔网页〕 |
 | `scoreVersion` | integer | 是 | 验证器评分口径版本（沿用 `verify.json` 的 `scoreVersion`【读码】） |
 | `viewports` | map | 是 | 视口 → `{fullPageSize{w,h}, screenshot: EvidenceRef, frames: EvidenceRef[]}`（`frames` 是原站多帧采样，用来算动态区域） |
 | `masks` | Mask[] | 是（可空） | `{viewport, bbox, kind: dynamic/declared, source: frame-diff/motion/config, areaPct}` |

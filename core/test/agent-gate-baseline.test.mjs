@@ -93,6 +93,7 @@ test('baseline: the server and copied baseline exclude secrets and links', async
   const dir = join(root, 'srv');
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'index.html'), '<h1>hi</h1>');
+  writeFileSync(join(dir, 'index-375.html'), '<h1>mobile</h1>');
   writeFileSync(join(dir, 'session.json'), '{"token":"x"}');
   writeFileSync(join(dir, '.env'), 'fixture');
   writeFileSync(join(dir, 'private.key'), 'fixture');
@@ -116,6 +117,12 @@ test('baseline: the server and copied baseline exclude secrets and links', async
     assert.equal(await (await fetch(`${server.origin}/%2e%2e/%2e%2e/etc/passwd`)).status, 404);
     assert.equal((await fetch(`${server.origin}/`, { method: 'POST' })).status, 405);
   } finally { await server.close(); }
+  const viewportServer = await baseline.startBaselineServer(dir, { entry: 'index-375.html', fallbackPaths: ['/overview'] });
+  try {
+    assert.match(await (await fetch(`${viewportServer.origin}/`)).text(), /mobile/);
+    assert.match(await (await fetch(`${viewportServer.origin}/overview`)).text(), /mobile/);
+    assert.equal((await fetch(`${viewportServer.origin}/api/data`)).status, 404, 'only declared page routes may use the fallback');
+  } finally { await viewportServer.close(); }
   const copy = join(root, 'baseline-copy');
   baseline.copySanitizedBaseline(dir, copy);
   assert.equal(existsSync(join(copy, 'index.html')), true);

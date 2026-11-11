@@ -97,6 +97,7 @@ async function formal(flags) {
     const lines = [`正式门禁 ${level}：${r.status} · ${cfg.siteId}/${page}`];
     for (const d of r.gate?.dimensions ?? []) lines.push(` ${d.status === 'pass' ? '✓' : d.status === 'fail' ? '✗' : '—'} ${d.id.padEnd(11)} ${d.detail ?? ''}`);
     if (r.acceptance?.runId) lines.push(` 验收任务：${r.acceptance.runId}（${r.acceptance.gate}）`);
+    else if (r.acceptance?.runIds?.length) lines.push(` 验收任务：${r.acceptance.runIds.join('、')}（${r.acceptance.gate}）`);
     if (r.reportPath) lines.push(`报告：${r.reportPath}`);
     return ok({ ...r }, {
       summary: lines.join('\n'),

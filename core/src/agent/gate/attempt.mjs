@@ -55,7 +55,7 @@ export function latestFormalGate(siteId, page, projectDir) {
             || gate.projectSnapshot.sha256 !== projectFingerprint(projectDir)) return incomplete(path, 'project_changed_or_unbound');
       } catch { return incomplete(path, 'project_unreadable'); }
     }
-    return { ...gate, path, runId: gate.acceptance?.runId ?? null };
+    return { ...gate, path, runId: gate.acceptance?.runId ?? null, runIds: gate.acceptance?.runIds ?? [] };
   }
   // Legacy reports were never bound to project contents; they are history, not a current verdict.
   const legacy = names.filter(n => /^formal-(?!attempt-).*\.json$/.test(n));
