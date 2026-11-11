@@ -7,6 +7,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
+import { normalizeAcceptancePlan } from '../src/acceptance/schema.mjs';
+import { runAcceptance } from '../src/acceptance/runner.mjs';
+import { summarizeAcceptanceReport } from '../src/acceptance/report.mjs';
 
 const CORE = fileURLToPath(new URL('..', import.meta.url));
 const DELIVER = fileURLToPath(new URL('../src/deliver.mjs', import.meta.url));
@@ -92,6 +95,43 @@ test('static deliver sanitizes only its candidate clone and retains the previous
     assert.ok(existsSync(join(deliverable, backup, 'keep.txt')));
   } finally {
     await browser?.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('exported static bundle can be accepted at its actual document URL; chooser redirects stay blocked', { timeout: 30_000 }, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-static-acceptance-'));
+  const site = join(root, 'workspace', HOST), clone = join(site, 'pages/home/clone');
+  const html = '<!doctype html><html><head><title>Fixture</title><style>body{font-family:Arial;color:#222;background:white}</style></head><body><h1>Exported fixture</h1><p>Local content</p></body></html>';
+  const chooser = '<!doctype html><script>location.replace(innerWidth<=600?"index-375.html":innerWidth<=1100?"index-768.html":"index-1440.html")</script>';
+  let exported;
+  const server = createServer((req, res) => {
+    if (req.url === '/favicon.ico') { res.writeHead(204); res.end(); return; }
+    const source = req.url === '/reference' ? html : req.url === '/bundle/index.html'
+      ? readFileSync(join(exported, 'index.html')) : req.url === '/bundle/index-375.html'
+        ? readFileSync(join(exported, 'index-375.html')) : null;
+    res.writeHead(source ? 200 : 404, { 'content-type': 'text/html; charset=utf-8' }); res.end(source ?? 'Not found');
+  });
+  try {
+    put(clone, 'index.html', chooser);
+    put(clone, 'index-375.html', html);
+    put(site, 'pages/home/manifest.json', JSON.stringify({ target: `https://${HOST}/` }));
+    const result = run(root);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    exported = join(output(root), 'site/pages/home/clone');
+    server.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const plan = targetUrl => normalizeAcceptancePlan({ name: 'Exported static fixture', baselineUrl: `${origin}/reference`, targetUrl,
+      routes: ['/'], viewports: [{ name: 'mobile', width: 375, height: 812 }], timeoutMs: 5000, settleMs: 50 });
+    const direct = summarizeAcceptanceReport(await runAcceptance(plan(`${origin}/bundle/index-375.html`), { outputDir: join(root, 'direct') }));
+    assert.equal(direct.gate, 'passed', JSON.stringify(direct.checks));
+    assert.equal(direct.checks.find(check => check.dimension === 'visual').score, 1);
+    const redirected = summarizeAcceptanceReport(await runAcceptance(plan(`${origin}/bundle/index.html`), { outputDir: join(root, 'chooser') }));
+    assert.equal(redirected.gate, 'blocked', JSON.stringify(redirected.checks));
+    assert.ok(redirected.checks.every(check => check.status === 'blocked' && check.verdict !== 'bug'));
+  } finally {
+    server.closeAllConnections();
+    if (server.listening) await new Promise(resolve => server.close(resolve));
     rmSync(root, { recursive: true, force: true });
   }
 });

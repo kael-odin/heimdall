@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "parent": "78be297e2730ecbaf524fc863c688f647e2b3d49",
+  "review": "locally tested; independent review outstanding",
+  "lfFingerprint": "7066c543d13122ca37cd28aa061fbd7ba5f0dcecf4c4f67959759aaef2bf47a0",
+  "crlfFingerprint": "3fa0303bfc4813bbddae1744ba8675a809fbc12003decdc76304d0cf0b45b5f5",
+  "runner": {
+    "name": "runner.mjs",
+    "lfSha256": "fb3d551f7da4762bd444021be5f22954c91c39ee2293b3f8c26dca740f3bc8df",
+    "crlfSha256": "b5be552c842cb2536972fde5250c49f03cb27826502f98b52d462f70e5996911"
+  }
+}

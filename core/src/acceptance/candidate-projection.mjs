@@ -49,6 +49,9 @@ export const SUPPORTED_SPEC_VERIFIERS_V1 = Object.freeze([
   '2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337',
   // Same reviewed D3 source set with CRLF contents; separators remain LF.
   '270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2',
+  // Initial-navigation guard; Spec still delegates first. Independent review is outstanding.
+  '7066c543d13122ca37cd28aa061fbd7ba5f0dcecf4c4f67959759aaef2bf47a0',
+  '3fa0303bfc4813bbddae1744ba8675a809fbc12003decdc76304d0cf0b45b5f5',
 ]);
 const HASH = /^[a-f0-9]{64}$/;
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';

@@ -263,7 +263,9 @@ function readLegacyAcceptanceSnapshotInScope(runId, { root, limits }, scope) {
           indexed.set(entry.file, entry);
         }
         const references = new Set();
-        for (const check of checks) for (const file of Object.values(check.evidence ?? {})) {
+        for (const check of checks) for (const [role, file] of Object.entries(check.evidence ?? {})) {
+          if (file === null && ['mirror', 'regression'].includes(report.mode) && ['blocked', 'needs_review'].includes(check.status)
+            && ['baselineScreenshot', 'targetScreenshot', 'baselineRepeat', 'targetRepeat'].includes(role)) continue;
           if (typeof file !== 'string' || !EVIDENCE_NAME.test(file)) { fail('INVALID_EVIDENCE_REFERENCE', '检查包含无效证据引用。'); continue; }
           references.add(file);
         }

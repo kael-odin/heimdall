@@ -28,6 +28,8 @@ export const BROWSER_CANDIDATE_LIMITS_V1 = Object.freeze({
  * D3 adds the reviewed fixed-source execution branch; legacy capture rules are
  * unchanged and the original runner suite remains a required regression gate.
  * Its ten-file LF / CRLF manifests are pinned in browser-verifier-reviewed-d3.json.
+ * The initial-navigation guard pair is separately pinned and locally tested;
+ * independent review of that newer pair remains outstanding.
  * Never derive this allowlist from the running checkout or a source assertion.
  */
 export const SUPPORTED_BROWSER_VERIFIERS_V1 = Object.freeze([
@@ -35,6 +37,8 @@ export const SUPPORTED_BROWSER_VERIFIERS_V1 = Object.freeze([
   '8d1b75da7efad4f18b279a466ebdf880b1e24bb641ca80070cd03d0700376e9f',
   '2e59d9d52a22a146e32c0cf3db32c4644c8e977d40ef927d365d4def4644b337',
   '270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2',
+  '7066c543d13122ca37cd28aa061fbd7ba5f0dcecf4c4f67959759aaef2bf47a0',
+  '3fa0303bfc4813bbddae1744ba8675a809fbc12003decdc76304d0cf0b45b5f5',
 ]);
 
 const L = BROWSER_CANDIDATE_LIMITS_V1;

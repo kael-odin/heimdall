@@ -36,6 +36,7 @@ function fakeBrowser(t, fixture, options = {}) {
       const side = () => JSON.parse(fixture.sourceFiles.get(selected().evidence.details.file).toString());
       const locator = selector => ({
         first() { return this; },
+        async elementHandle() { return this; },
         async click() { if (options.stepError) throw options.stepError; point = fixture.contract.plan.points.find(value => value.route === route && value.steps.some(step => step.selector === selector)); },
         async fill() {}, async press() {},
         async isVisible() { if (options.assertionError) throw options.assertionError; return true; },

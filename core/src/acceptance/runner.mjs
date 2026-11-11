@@ -22,13 +22,15 @@ const PLAYWRIGHT_VERSION = (() => {
 })();
 const bounded = (value, fallback, min, max) => Math.min(max, Math.max(min, Number(value) || fallback));
 const messageOf = error => String(error?.message ?? error).slice(0, 800);
+const INITIAL_NAVIGATION_MESSAGE = 'Initial document navigated or left the declared URL; verify and declare the intended entry.';
 // Browser/driver exceptions can contain executable, profile and temporary paths.
 // Fixed-operation HTTP evidence uses stage diagnostics; page observations stay intact.
 const fixedDiagnostic = stage => ({
   code: { execution: 'BROWSER_EXECUTION_ENVIRONMENT', navigation: 'BROWSER_NAVIGATION_FAILED',
-    capture: 'BROWSER_CAPTURE_FAILED', step: 'BROWSER_STEP_FAILED', assertion: 'BROWSER_ASSERTION_UNAVAILABLE' }[stage],
+    initialNavigation: 'BROWSER_INITIAL_URL_CHANGED', capture: 'BROWSER_CAPTURE_FAILED', step: 'BROWSER_STEP_FAILED', assertion: 'BROWSER_ASSERTION_UNAVAILABLE' }[stage],
   message: { execution: 'Browser acceptance could not complete in the current environment.',
     navigation: 'Target navigation could not complete.', capture: 'Target browser observation could not complete.',
+    initialNavigation: INITIAL_NAVIGATION_MESSAGE,
     step: 'The declared target step could not complete.', assertion: 'The declared target assertion could not be observed.' }[stage],
 });
 const safeName = value => String(value).replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 70);
@@ -178,6 +180,22 @@ async function observe(browser, url, entryUrl, viewport, prefix, settings, point
       socket.close();
     });
     const page = await context.newPage();
+    let checkingInitialUrl = true, initialUrlChanged = false, navigationRequests = 0;
+    const checkInitialUrl = () => {
+      if (checkingInitialUrl && (initialUrlChanged || (!result.navigationError && page.url() !== url))) {
+        result.navigationError = diagnostic('initialNavigation', INITIAL_NAVIGATION_MESSAGE);
+        if (point?.steps?.length) result.stepError = result.navigationError;
+        return false;
+      }
+      return true;
+    };
+    page.on('request', request => {
+      if (checkingInitialUrl && request.isNavigationRequest() && request.frame() === page.mainFrame()
+        && (++navigationRequests > 1 || request.url() !== url)) initialUrlChanged = true;
+    });
+    page.on('framenavigated', frame => {
+      if (checkingInitialUrl && frame === page.mainFrame() && frame.url() !== url) initialUrlChanged = true;
+    });
     page.on('console', message => { if (message.type() === 'error') append(result.errors, { kind: 'console', message: clip(message.text()) }); });
     page.on('pageerror', error => append(result.errors, { kind: 'pageerror', message: clip(error.message) }));
     page.on('response', response => { if (response.status() >= 400) append(result.network, { kind: 'http', status: response.status(), method: response.request().method(), url: safeUrl(response.url()) }); });
@@ -190,26 +208,34 @@ async function observe(browser, url, entryUrl, viewport, prefix, settings, point
       const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: settings.timeoutMs });
       await settings.assertActive?.();
       result.httpStatus = response?.status() ?? null;
+      if (response?.request?.()?.redirectedFrom?.()) initialUrlChanged = true;
       await page.waitForTimeout(settings.settleMs);
     } catch (error) { result.navigationError = diagnostic('navigation', error); }
-    if (!result.navigationError) {
-      if (point) {
-        for (const step of point.steps ?? []) {
-          try {
-            await settings.assertActive?.();
-            const timeout = Math.min(settings.timeoutMs, settings.deadline - Date.now());
-            if (timeout <= 0) throw new Error('Acceptance execution time budget exhausted.');
-            const locator = page.locator(step.selector).first();
-            if (step.action === 'click') await locator.click({ timeout });
-            else if (step.action === 'fill') await locator.fill(String(step.value ?? ''), { timeout });
-            else if (step.action === 'press') await locator.press(String(step.value ?? ''), { timeout });
-            else throw new Error(`Unsupported step action: ${step.action}`);
-          } catch (error) { result.stepError = diagnostic('step', error); break; }
-        }
+    checkInitialUrl();
+    if (!result.navigationError && point) {
+      for (const step of point.steps ?? []) {
+        try {
+          await settings.assertActive?.();
+          if (!checkInitialUrl()) break;
+          const timeout = Math.min(settings.timeoutMs, settings.deadline - Date.now());
+          if (timeout <= 0) throw new Error('Acceptance execution time budget exhausted.');
+          const locator = page.locator(step.selector).first();
+          // Pin the first action to the initial document, even if the locator waits across a navigation.
+          const target = checkingInitialUrl ? await locator.elementHandle({ timeout }) : locator;
+          if (!checkInitialUrl()) break;
+          if (step.action === 'click') await target.click({ timeout });
+          else if (step.action === 'fill') await target.fill(String(step.value ?? ''), { timeout });
+          else if (step.action === 'press') await target.press(String(step.value ?? ''), { timeout });
+          else throw new Error(`Unsupported step action: ${step.action}`);
+          checkingInitialUrl = false;
+        } catch (error) { if (checkInitialUrl()) result.stepError = diagnostic('step', error); break; }
+      }
+      if (!result.navigationError) {
         await page.waitForTimeout(settings.settleMs);
         for (const assertion of point.assertions ?? []) {
           try {
             await settings.assertActive?.();
+            if (!checkInitialUrl()) break;
             const timeout = Math.min(settings.timeoutMs, settings.deadline - Date.now());
             if (timeout <= 0) throw new Error('Acceptance execution time budget exhausted.');
             page.setDefaultTimeout(timeout);
@@ -217,7 +243,10 @@ async function observe(browser, url, entryUrl, viewport, prefix, settings, point
           }
           catch (error) { result.assertions.push({ kind: assertion.kind, selector: assertion.selector, passed: false, error: diagnostic('assertion', error) }); }
         }
+        if (!checkInitialUrl()) result.assertions.length = 0;
       }
+    }
+    if (!result.navigationError) {
       result.snapshot = await page.evaluate(semanticSnapshot, { entryUrl, maskSelectors: settings.maskSelectors });
       await settings.assertActive?.();
       result.snapshot.url = safeUrl(result.snapshot.url);
@@ -238,6 +267,7 @@ async function observe(browser, url, entryUrl, viewport, prefix, settings, point
       if (settings.writeEvidence) await settings.writeEvidence(result.repeatedScreenshot, repeated);
       result.stability = comparePngBuffers(first, repeated).score;
       result.image = first;
+      if (!checkInitialUrl()) result.assertions.length = 0;
     }
   } catch (error) {
     result.captureError = diagnostic('capture', error);

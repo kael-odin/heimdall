@@ -168,7 +168,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `schema`、`refId`、`siteId`、`page`、`capturedAt` | — | 是 | — |
-| `source` | object | 是 | `mirrorPath`（工作区内相对路径）、`formalBaseline`?（正式基线副本：`{path, healthProbe, changes[]}`，去掉外部请求与断链引用后的镜像拷贝，由 `Gate` 封装每次运行起临时回环服务供给，[05 §1.5](05-frontend-rebuild.md)）、`viewportEntries`?（视口 → 入口文件；多视口克隆时 `index.html` 是选择器，Ph0 S4 实测验收会自动落到对应变体，所以正式基线直接用 `index.html`【读码：`differ/fixup.mjs`；实测】）、`originalUrl`〔网页〕 |
+| `source` | object | 是 | `mirrorPath`（工作区内相对路径）、`formalBaseline`?（正式基线副本：`{path, healthProbe, changes[]}`，去掉外部请求与断链引用后的镜像拷贝，由 `Gate` 封装每次运行起临时回环服务供给，[05 §1.5](05-frontend-rebuild.md)）、`viewportEntries`?（视口 → 入口文件；当前正式门禁不自动按视口切换入口，选择器跳转可能被验收阻断，见[工作台边界](../../competition/acceptance-workbench.md)）、`originalUrl`〔网页〕 |
 | `scoreVersion` | integer | 是 | 验证器评分口径版本（沿用 `verify.json` 的 `scoreVersion`【读码】） |
 | `viewports` | map | 是 | 视口 → `{fullPageSize{w,h}, screenshot: EvidenceRef, frames: EvidenceRef[]}`（`frames` 是原站多帧采样，用来算动态区域） |
 | `masks` | Mask[] | 是（可空） | `{viewport, bbox, kind: dynamic/declared, source: frame-diff/motion/config, areaPct}` |

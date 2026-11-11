@@ -103,6 +103,30 @@ test('malformed, duplicated and unindexed evidence entries produce structured in
   assert.ok(codes(snapshot).includes('EVIDENCE_NOT_INDEXED'));
 }));
 
+test('only blocked or review Browser screenshots may be explicitly absent', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-acceptance-missing-image-'));
+  try {
+    for (const [mode, status, role, valid] of [
+      ['mirror', 'blocked', 'targetScreenshot', true], ['regression', 'needs_review', 'baselineRepeat', true],
+      ['mirror', 'passed', 'targetScreenshot', false], ['mirror', 'failed', 'baselineRepeat', false],
+      ['mirror', 'blocked', 'targetDetails', false], ['mirror', 'blocked', 'unknown', false],
+      ['spec', 'blocked', 'targetScreenshot', false],
+    ]) {
+      const input = mode === 'spec' ? plan : { mode, baselineUrl: 'http://127.0.0.1:3087', targetUrl: 'http://127.0.0.1:3088' };
+      const run = createAcceptanceRun(input, { root }), dir = acceptanceRunDir(run.runId, root);
+      writeFileSync(join(dir, 'detail.json'), '{}');
+      finishAcceptanceRun(run.runId, { runId: run.runId, mode, name: run.name, baselineUrl: run.baselineUrl,
+        targetUrl: run.targetUrl, startedAt: run.createdAt, endedAt: new Date().toISOString(), status: 'completed',
+        coverage: { planned: 1, completed: 1, capped: false }, checks: [{ id: 'fixture', title: 'Fixture',
+          dimension: 'health', status, verdict: status === 'passed' ? 'match' : status === 'failed' ? 'bug' : 'environment',
+          evidence: { details: 'detail.json', [role]: null } }] }, { root });
+      const snapshot = readAcceptanceSnapshot(run.runId, { root });
+      assert.equal(snapshot.integrity.valid, valid, `${mode} ${status} ${role}: ${JSON.stringify(snapshot.integrity)}`);
+      if (!valid) assert.ok(codes(snapshot).includes('INVALID_EVIDENCE_REFERENCE'));
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('damaged JSON is returned as a bounded diagnostic without echoing its payload', () => fixture(({ root, run, dir }) => {
   writeFileSync(join(dir, 'report.json'), '{secret_payload=do-not-echo');
   const snapshot = readAcceptanceSnapshot(run.runId, { root });
