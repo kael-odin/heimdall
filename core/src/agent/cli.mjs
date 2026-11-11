@@ -103,6 +103,9 @@ export function argsFor(id, { flags, positional }) {
       set('site', flags.site);
       set('limit', num(flags.limit));
       break;
+    case 'public_case_summary':
+      set('casePath', positional[0] ?? (flags['case-path'] ? String(flags['case-path']) : undefined));
+      break;
     case 'qa_findings': {
       set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
       set('action', flags.action); set('runId', flags.run); set('id', flags.id); set('status', flags.status); set('limit', num(flags.limit));

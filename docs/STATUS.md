@@ -119,7 +119,7 @@ Hosted CI 结果为最终依据。
 - `connect` 的自测现在使用与实际写入配置完全相同的 `HEIMDALL_API`；dry-run 不启动
   MCP，已有配置也会先备份再改，失败仍回滚。
 - 本机实测识别到 Claude Code 插件 `0.2.2`、Claude Desktop 与 Codex；三者均通过
-  `doctor`，完整 MCP 客户端各拉起 17 个工具。
+  `doctor`，完整 MCP 客户端各拉起 18 个工具。
 - Hosted 精确提交 `1dff01cb14d3878f102fc964485b0b8eaa05bf76`：
   [CI `42016376206`](https://github.com/kael-odin/heimdall/actions/runs/42016376206)
   8 / 8 job 成功，Docs `42016376116` 成功。
@@ -138,7 +138,7 @@ Hosted CI 结果为最终依据。
 
 ## 2026-10-31 A-3：Claude Code 插件闭环
 
-- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通；当前能力注册表有 17 个工具；本阶段新增 QA CI、SEO 审计、SEO 矩阵、站点变更监控和站点评估。
+- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通；当前能力注册表有 18 个工具；本阶段新增 QA CI、SEO 审计、SEO 矩阵、站点变更监控和站点评估。
 - 本会话用 MCP 工具完成 F1 重建：6/6 分段 `pass-candidate`，整页 375 99.89% / 768 99.91% / 1440 100%，正式门禁 `passed silver`（验收视觉 3/3、结构 3/3、健康 12/12）。
 - 交付包：`agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed）。
 - Claude Desktop 界面 `heimdall_doctor` 9/9 通过（2026-10-31，操作者贴回结果）；配置与 stdio 也已验证。
@@ -149,6 +149,13 @@ Hosted CI 结果为最终依据。
 - MCP 新增 `heimdall_seo_audit`、`heimdall_seo_matrix`、`heimdall_site_watch`，并支持读取 SEO、监控和矩阵证据资源。
 - 新增 `heimdall qa ci`：保留人工 QA 报告，同时输出机器可读门禁文件、GitHub Actions 注解和步骤摘要。
 - 新增可复制的 GitHub Actions QA 模板和 Claude Code / Codex 标准工作流文档。
+
+## 2026-11-12 公开案例摘要
+
+- 新增只读 `heimdall_public_case_summary`，CLI、MCP、HTTP 共用同一能力定义。
+- 它只读 `docs/cases/<case>/manifest.json` 和三份脱敏证据摘要，返回页面/视口覆盖、QA 门禁、基线回归、SEO 结果、已证明能力、未覆盖范围和一致性问题。
+- Xspark 公开案例已加入 MCP 回归：5 个页面、10 次页面/视口检查、QA 门禁 `passed`、0 条可提单发现、SEO `90.8 / A`。
+- 这仍是单个公开案例摘要，不代表任意站点的通用准确率；原始 findings、HAR、会话和 Token 不进入工具输出。
 
 ## 2026-11-11 GEO 行动计划
 

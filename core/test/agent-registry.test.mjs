@@ -16,7 +16,7 @@ import { parseArgs, argsFor } from '../src/agent/cli.mjs';
 const CLI = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
 const EXPECTED = [
   'overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor', 'qa_status', 'qa_run', 'qa_findings',
-  'qa_ci', 'qa_metrics', 'seo_audit', 'seo_matrix', 'site_watch', 'site_assessment',
+  'qa_ci', 'qa_metrics', 'seo_audit', 'seo_matrix', 'site_watch', 'site_assessment', 'public_case_summary',
 ];
 
 function tempRoot() {
@@ -88,6 +88,9 @@ test('cli: argument parsing maps flags to capability inputs', () => {
   });
   assert.deepEqual(argsFor('qa_metrics', parseArgs(['--file', 'metrics.json', '--site', 'web', '--limit', '4'])), {
     file: resolve('metrics.json'), site: 'web', limit: 4,
+  });
+  assert.deepEqual(argsFor('public_case_summary', parseArgs(['--case-path', 'docs/cases/xspark/2026-11-04'])), {
+    casePath: 'docs/cases/xspark/2026-11-04',
   });
 });
 

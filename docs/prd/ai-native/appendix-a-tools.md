@@ -11,7 +11,7 @@
 ### 1.1 命名与总览
 
 - MCP 工具名 `heimdall_<id>`；CLI 为 `heimdall <id>`（下划线改连字符，如 `verify_backend` → `verify-backend`）；HTTP 为 `POST /api/v1/tools/<id>`（同时接受带前缀的 `heimdall_<id>`）。
-- 核心 8 个从 Ph1 起可用（`compare` 的 `formal` 模式、`artifact` 的图片内容与 `budget` 为 Ph2）；当前注册表另有 8 个扩展能力。
+- 核心 8 个从 Ph1 起可用（`compare` 的 `formal` 模式、`artifact` 的图片内容与 `budget` 为 Ph2）；当前注册表另有 9 个扩展能力。
 
 | 能力 id | effects | scope | cost | 长任务 | 阶段 | 主要需求 |
 | --- | --- | --- | --- | --- | --- | --- |

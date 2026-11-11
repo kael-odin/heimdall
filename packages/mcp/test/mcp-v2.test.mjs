@@ -20,8 +20,9 @@ import { baselineFile, writeBaseline } from '../../../core/src/qa/baseline.mjs';
 
 const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
 const CORE = fileURLToPath(new URL('../../../core/', import.meta.url));
+const PUBLIC_CASE = join(CORE, '..', 'docs', 'cases', 'xspark', '2026-11-04');
 const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
-  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_qa_metrics', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch', 'heimdall_site_assessment'];
+  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_qa_metrics', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_site_watch', 'heimdall_site_assessment', 'heimdall_public_case_summary'];
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-mcp-'));
@@ -150,6 +151,14 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
       } });
       assert.equal(metrics.isError, false);
       assert.equal(metrics.structuredContent.result.alarms.falseDiscoveryRate.percent, 50);
+
+      const publicCase = await client.callTool({ name: 'heimdall_public_case_summary', arguments: { casePath: PUBLIC_CASE } });
+      assert.equal(publicCase.isError, false);
+      assert.equal(publicCase.structuredContent.result.case.id, 'xspark-public-web-qa');
+      assert.equal(publicCase.structuredContent.result.qa.baseline.gate, 'passed');
+      assert.equal(publicCase.structuredContent.result.seo.score, 90.8);
+      assert.equal(publicCase.structuredContent.result.integrity.status, 'consistent');
+      assert.equal(JSON.stringify(publicCase).includes('network.har'), false);
 
       const bad = await client.callTool({ name: 'heimdall_brief', arguments: { siteId: 'example.test', page: 'home', detail: 'everything' } });
       assert.equal(bad.isError, true, 'schema violations are tool errors, not protocol crashes');

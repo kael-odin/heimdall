@@ -28,7 +28,7 @@ node bin/heimdall.mjs connect codex
 
 Claude Code 插件是轻量代理，明确依赖 `:8900` 引擎。Codex 和 Claude Desktop 的完整
 MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳定、工作区一致，仍建议先开
-`:8900`。当前三种入口都应列出 17 个工具；重启客户端或新开会话后才会加载新配置。
+`:8900`。当前三种入口都应列出 18 个工具；重启客户端或新开会话后才会加载新配置。
 
 ## 一次看清站点现状
 
@@ -160,6 +160,22 @@ AI 调用同一个注册能力：
 ```
 
 没有完整正常样本时，经典 FPR 会明确返回不可计算；没有完整标签、测量不完整或定向 oracle 不充分时，新增通用检测器会保持 `blocked`。对 Xspark 当前冻结证据，结论仍是先补证据、修已有检测器、增加业务检查点，暂不新增通用检测器。
+
+### 读取真实案例摘要
+
+AI 需要先了解一个已经落盘的真实案例时，调用只读的 `heimdall_public_case_summary`：
+
+```text
+调用 heimdall_public_case_summary，casePath=docs/cases/xspark/2026-11-04。
+只读取公开案例摘要；汇报页面/视口覆盖、QA 门禁、可提单数量、基线回归、SEO 分数、已证明能力和未覆盖范围。
+不要读取或索取原始 findings、HAR、Cookie、Token、登录态，也不要把一个案例外推成通用准确率。
+```
+
+CLI 等价命令：
+
+```powershell
+heimdall public-case-summary --case-path .\docs\cases\xspark\2026-11-04 --json
+```
 
 ## 安全边界
 

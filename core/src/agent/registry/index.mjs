@@ -25,6 +25,7 @@ import seoMatrix from './capabilities/seo-matrix.mjs';
 import siteWatch from './capabilities/site-watch.mjs';
 import siteAssessment from './capabilities/site-assessment.mjs';
 import qaMetrics from './capabilities/qa-metrics.mjs';
+import publicCaseSummary from './capabilities/public-case-summary.mjs';
 
 export const EFFECTS = Object.freeze(['read', 'write-local', 'browser', 'source-network', 'destructive']);
 export const SCOPES = Object.freeze(['read', 'clone', 'build', 'admin']);
@@ -47,7 +48,7 @@ export function defineCapability(def) {
 export const CAPABILITIES = Object.freeze([
   overview, site, brief, artifact, compare, jobs, clone, doctor, qaStatus, qaRun, qaFindings,
   qaCi, qaMetrics,
-  seoAudit, seoMatrix, siteWatch, siteAssessment,
+  seoAudit, seoMatrix, siteWatch, siteAssessment, publicCaseSummary,
 ].map(defineCapability));
 
 // 重复 id 或工具名直接拒绝（E1-01 的验收）
