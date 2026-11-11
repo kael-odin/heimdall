@@ -21,6 +21,7 @@ export { parseArgs } from './parse-args.mjs';
 export const AGENT_COMMANDS = Object.freeze(CAPABILITIES.map(c => c.id));
 export const CLI_ONLY = Object.freeze({
   setup: { usage: 'setup [--registry URL] [--port 8900] [--no-open] [--no-connect] [--connect codex,claude-desktop] [--force-install] [--json]', desc: '按需安装依赖与 Chromium，构建控制台/MCP，启动单端口引擎并连接 AI 客户端' },
+  backend: { usage: 'backend scaffold <siteId> [--out D] [--force] [--json]', desc: '把观察型 API 契约和可选适配器生成一个可启动的 B3 后端脚手架' },
   rebuild: { usage: 'rebuild init <url|siteId> [--page P] [--stack html-css|vite-react-ts-tailwind] [--fidelity …] [--gate …] [--dir D] [--force] [--model-class …] | rebuild status [--project .] | rebuild deliver [--project .] [--out D] [--no-mirror]', desc: '生成重建工作区（--force 覆盖脚手架文件，评测用）；查看进度；按 Floor=Mirror 交付' },
   connect: { usage: 'connect <claude-code|claude-desktop|cursor|vscode|codex> [--api URL] [--remove] [--dry-run] [--yes]', desc: '把 Heimdall MCP 写进客户端配置（先备份，再用同一份配置自测）' },
   probe: { usage: 'probe sizes|outline|har|contract|adapter [--site S] [--max N]', desc: '复现体量、大纲、接口统计；生成观察型契约或本地回放适配器' },

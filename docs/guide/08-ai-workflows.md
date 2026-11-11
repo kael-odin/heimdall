@@ -62,6 +62,14 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - 如果存在 `api.adapter.gapLedger`，先看 `summary` 和 `gaps`：它告诉你本地适配器遇到了多少未声明路径、未覆盖查询参数、缺响应体或未验证写入；`nearestRoutes` 只是排查线索，不是路由等价证明。
 - AI 可以按 `suggestedLocalFiles` 生成本地适配器、状态规则和检查脚本，但最终要按 `verification.commands` 重跑；认证、权限、状态机、写入和副作用仍要人工授权后验证。
 
+如果已经有脱敏契约，想先得到一个能启动的后端起点，可以让 AI 执行：
+
+```powershell
+heimdall backend scaffold example.com
+```
+
+生成目录里的 README.md 会写明当前是 B3-scaffold、哪些路由已观察、哪些路由还没有实现。先启动 npm start，再运行 npm run check；没有适配器的观察路由返回 501 是预期的未完成状态，不是后端通过。这个命令是 CLI-only，不增加 MCP 工具数量。
+
 适配器运行后可以直接读取脱敏缺口：
 
 ```powershell

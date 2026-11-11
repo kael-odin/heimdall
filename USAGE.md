@@ -215,6 +215,19 @@ YouTube 嵌入同样默认阻断。只有明确接受"视频不可离线播放"�
 
 加 `--compare-source` 会在获授权的源站运行同一操作计划，并把脱敏的源站结果与离线包结果写入 `health.sourceOperationProbe`。该开关要求 `--offline --strict`；源站不可达、源站流程失败或计划缺失都会阻断发布。`health.dependencyParity` 还按声明流程逐项核对源站与离线包的请求路径及查询、请求次数、响应状态、MIME，以及请求来自主 frame 还是 iframe/subframe；报告仅公开类别和计数。Shadow DOM 内发起的请求按网络层归入主 frame。最后一个状态捕获之后仍出现的请求会计入 `lateRequests`，并让源站采集或离线探针失败，不会静默并入前一个状态。它不比较静态资源正文，也不证明业务结果相同。源站采集阻断非只读 HTTP 方法与 WebSocket，因此不能用它证明提交、登录等写入业务等价；GET 在个别站点仍可能有业务副作用，只对已审阅的流程使用。没有该开关时，离线通过不代表已与源站交互对照。
 
+### B3 后端脚手架
+
+如果要把契约和可选的 B2 适配器包装成一个可启动的后端起点：
+
+```powershell
+node core/src/cli.mjs backend scaffold example.org
+cd core/workspace/example.org/backend-scaffold
+npm start
+npm run check
+```
+
+这是 B3-scaffold，不是源站后端等价物。没有适配器的观察路由会返回 501；认证、权限、状态机、持久化和副作用仍需授权旅程与人工规则。
+
 ### 本地业务适配器
 
 #### 先用观察数据做 B2 小验收

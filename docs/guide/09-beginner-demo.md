@@ -197,6 +197,16 @@ node core/src/cli.mjs site-watch https://example.org/
 汇报 qa-ci.json、qa-ci.md、达到门槛的发现和所有未测范围。
 ```
 
+如果要把观察到的 API 先落成一个能启动的本地后端起点：
+
+```powershell
+heimdall backend scaffold example.test
+cd core/workspace/example.test/backend-scaffold
+npm start
+```
+
+浏览器或前端先指向 http://127.0.0.1:8080。打开 /__heimdall/health 看当前覆盖，运行 npm run check 看哪些只读路由已经能回放。没有观察到的登录、权限、写入、持久化和副作用不会被自动编造。
+
 ### 第六步：完整项目验收演示
 
 这条命令会跑固定示例的采集、缺陷单、部分修复禁关、完全修复后关闭和下载：

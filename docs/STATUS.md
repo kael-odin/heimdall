@@ -198,6 +198,13 @@ Hosted CI 结果为最终依据。
 - `/__heimdall/adapter-gaps` 返回账本，`/__heimdall/health` 返回摘要；账本会给出最近似已知路由，并把缺响应体、未验证写入、认证/权限未知保留为未决项。
 - `adapter-report.json.gapLedger` 记录训练/留出阶段的离线缺口；`heimdall_site_assessment` 读取它或同级 `adapter-gap-ledger.json`，把缺口变成 `api-adapter-gap-ledger` 待办。它仍不证明真实后端业务等价。
 
+## 2026-11-12 B3 最小服务脚手架
+
+- 新增 CLI-only 命令 heimdall backend scaffold <siteId> [--out D] [--force]；它不进入能力注册表，因此 MCP 工具仍保持 18 个。
+- 生成物包括 package.json、server.mjs、checks.mjs、脱敏 api-contract.json、state-rules.json、Dockerfile 和人话 README；有合法 B2 适配器时只复制 runtime-adapter/manifest.json 与 index.mjs。
+- 生成服务提供 GET /__heimdall/health、GET /__heimdall/contract 和 GET /__heimdall/adapter-gaps。没有适配器的已观察路由返回 501，避免把空壳误报成完成；适配器仍只是观察样本回放。
+- state-rules.json 的认证、权限、状态机、持久化和副作用规则默认留空，invented 数量为 0；AI 或开发者必须在授权旅程后补规则，再用 npm run check 和既有验证套件复测。
+
 ## 2026-11-12 QA 实战指标总线
 
 - 新增只读能力 `heimdall_qa_metrics`，CLI 别名为 `heimdall qa metrics`；它可读取脱敏聚合 JSON、单个 `run.json` 或 QA 工作区运行摘要。

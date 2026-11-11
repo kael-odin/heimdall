@@ -130,6 +130,7 @@ test('cli: --help --json lists agent, cli-only and legacy commands', () => {
   const env = JSON.parse(r.stdout.trim());
   assert.deepEqual(env.result.agentCommands.map(c => c.command), EXPECTED);
   assert.ok(env.result.cliOnly.some(c => c.command === 'setup'));
+  assert.ok(env.result.cliOnly.some(c => c.command === 'backend'));
   assert.ok(env.result.cliOnly.some(c => c.command === 'rebuild'));
   assert.ok(env.result.legacyCommands.some(c => c.command === 'forge'), 'old commands stay available (E3-06)');
   assert.equal(env.result.exitCodes['4'], 'queued, busy or wait timed out');

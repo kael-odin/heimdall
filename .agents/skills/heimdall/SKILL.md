@@ -2,7 +2,7 @@
 name: heimdall
 description: "Drive Heimdall (site capture, fidelity measurement, SEO audit) from an AI agent: route requests to clone or rebuild a web page or site, verify a rebuilt project against a reference, or diagnose setup problems. 把网页克隆、重建成 HTML/CSS 或 React 项目、验收还原度、对比新旧版本这类请求路由到合适的 Heimdall 剧本，并给出工具速查。"
 when_to_use: "克隆/复刻/重建网站或页面、还原度、像素对比、新旧版本差异、迁移到 React 或 Vue、设计令牌、回归验收、Heimdall 连不上; clone a website, rebuild a page, pixel-perfect, fidelity score, visual regression, migrate to React."
-allowed-tools: "mcp__plugin_heimdall_heimdall__heimdall_overview mcp__plugin_heimdall_heimdall__heimdall_doctor mcp__plugin_heimdall_heimdall__heimdall_qa_status mcp__plugin_heimdall_heimdall__heimdall_qa_run mcp__plugin_heimdall_heimdall__heimdall_qa_findings mcp__plugin_heimdall_heimdall__heimdall_qa_ci mcp__plugin_heimdall_heimdall__heimdall_qa_metrics mcp__plugin_heimdall_heimdall__heimdall_public_case_summary mcp__plugin_heimdall_heimdall__heimdall_seo_audit mcp__plugin_heimdall_heimdall__heimdall_seo_matrix mcp__plugin_heimdall_heimdall__heimdall_site_watch Read Grep Bash(heimdall overview *) Bash(heimdall doctor *) Bash(heimdall qa status *) Bash(heimdall qa run *) Bash(heimdall qa ci *) Bash(heimdall qa metrics *) Bash(heimdall public-case-summary *) Bash(heimdall seo-audit *) Bash(heimdall seo-matrix *) Bash(heimdall site-watch *)"
+allowed-tools: "mcp__plugin_heimdall_heimdall__heimdall_overview mcp__plugin_heimdall_heimdall__heimdall_doctor mcp__plugin_heimdall_heimdall__heimdall_qa_status mcp__plugin_heimdall_heimdall__heimdall_qa_run mcp__plugin_heimdall_heimdall__heimdall_qa_findings mcp__plugin_heimdall_heimdall__heimdall_qa_ci mcp__plugin_heimdall_heimdall__heimdall_qa_metrics mcp__plugin_heimdall_heimdall__heimdall_public_case_summary mcp__plugin_heimdall_heimdall__heimdall_seo_audit mcp__plugin_heimdall_heimdall__heimdall_seo_matrix mcp__plugin_heimdall_heimdall__heimdall_site_watch Read Grep Bash(heimdall overview *) Bash(heimdall doctor *) Bash(heimdall backend scaffold *) Bash(heimdall qa status *) Bash(heimdall qa run *) Bash(heimdall qa ci *) Bash(heimdall qa metrics *) Bash(heimdall public-case-summary *) Bash(heimdall seo-audit *) Bash(heimdall seo-matrix *) Bash(heimdall site-watch *)"
 ---
 
 # Heimdall 路由
@@ -20,7 +20,7 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 测试真实项目（可带登录），整理成可提单的问题 | 先 `heimdall_qa_status`，再 `heimdall_qa_run`；见下方「测试工作区」 |
 | SEO 审计、竞品 SEO 对比 | `heimdall_seo_audit` / `heimdall_seo_matrix` |
 | 站点变更监控、已审阅基线更新 | `heimdall_site_watch` |
-| 行为补全、契约验收 | 本版本未提供，如实告诉用户 |
+| 行为补全、契约验收 | 先读 `heimdall_site_assessment`，再按授权范围运行 heimdall backend scaffold |
 
 ## 速查
 
@@ -42,8 +42,11 @@ Heimdall 是**眼睛、尺子和裁判**，你是手。它采集镜像（真值�
 | 竞品 SEO 矩阵 | `heimdall_seo_matrix` | `heimdall seo-matrix <url> <url>` |
 | 站点变更监控 | `heimdall_site_watch` | `heimdall site-watch <url> [--accept]` |
 | 读取公开案例摘要 | `heimdall_public_case_summary` | `heimdall public-case-summary --case-path docs/cases/xspark/2026-11-04` |
+| 生成 B3 后端起点 | CLI-only | heimdall backend scaffold <siteId> |
 
 CLI 一律有 `--json`：stdout 最后一行是 `{ok, result, summary, nextActions, evidence}`。退出码：0 成功、1 门禁未过、2 用法或前置条件、3 环境、4 排队或等待超时、5 无权限、7 内部错误。
+
+backend scaffold 不会增加 MCP 工具，也不会自动读取原始 HAR、Cookie、Token 或登录态；它只把已落盘的脱敏契约和受约束的 B2 适配器包装成可启动的本地服务。
 
 克隆、侦察、SEO 和监控会执行网页脚本，可能使用已有登录态、发出写请求或访问第三方；没有统一只读边界。先确认站点授权、账号和环境，优先使用测试环境。QA 的方法拦截按配置执行，GET、WebSocket 或放行的请求仍可能产生业务副作用。不要把风险注解当作请求拦截。
 
