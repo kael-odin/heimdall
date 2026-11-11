@@ -119,6 +119,27 @@ test('setup is idempotent when every component is healthy', async () => {
   assert.ok(first.result.steps.every(step => step.status === 'reused' || step.status === 'skipped'));
 });
 
+test('setup opens the single-port console by default', async () => {
+  const opened = [];
+  const io = {
+    runPnpm: fakePnpm([]),
+    inspectDependencies: readyDependencies,
+    inspectChromium: async () => ({ ready: true, reason: 'ready', executable: 'C:/chrome.exe' }),
+    inspectConsole: () => readyConsole,
+    inspectMcp: () => readyMcp,
+    exists: () => true,
+    probeEngine: readyEngineProbe,
+    fetch: readyUi,
+    readEngineState: () => null,
+    openExternal: async url => { opened.push(url); },
+    log: () => {},
+  };
+  const env = await executeSetup({ port: 8912, noConnect: true, open: true }, io);
+  assert.equal(env.ok, true);
+  assert.deepEqual(opened, ['http://127.0.0.1:8912']);
+  assert.equal(env.result.steps.find(step => step.id === 'browser').status, 'opened');
+});
+
 test('setup installs only the dependency tree reported missing', async () => {
   const calls = [];
   let checks = 0;
