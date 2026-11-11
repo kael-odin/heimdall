@@ -75,6 +75,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.seo.score, 92.8);
     assert.equal(env.result.api.contract.summary.endpoints, 1);
     assert.equal(env.result.api.adapter.status, 'validated');
+    assert.equal(env.result.api.scaffold.present, false);
     assert.equal(env.result.api.adapter.gapLedger.summary.uniqueGaps, 1);
     assert.equal(env.result.qa.latest.runId, runId);
     assert.ok(env.result.claims.verified.includes('api.adapter_holdout:1'));
@@ -89,12 +90,41 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.deliveryPlan.backendCompletion.observedEndpoints[0].path, '/api/items');
     assert.equal(env.result.deliveryPlan.backendCompletion.verifiedResponseShapes.count, 1);
     assert.equal(env.result.deliveryPlan.backendCompletion.verifiedResponseShapes.verificationStatus, 'replay_holdout_passed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'available');
+    assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action.args.command, 'heimdall backend scaffold example.test');
     assert.equal(env.result.deliveryPlan.backendCompletion.gapLedger.summary.missingResponseBodies, 1);
+    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'backend-scaffold'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-adapter-gap-ledger'));
     assert.ok(env.result.deliveryPlan.backendCompletion.humanJourneys.some(item => item.id === 'authentication-and-permission'));
     assert.equal(env.result.deliveryPlan.backendCompletion.provenance.invented.length, 0);
     assert.doesNotMatch(run.stdout, /super-secret/);
     assert.equal(existsSync(join(page, 'network.har')), true);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('site-assessment: recognizes a complete default B3 scaffold', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-scaffold-'));
+  const page = join(root, 'workspace', 'example.test', 'pages', 'home');
+  const scaffold = join(root, 'workspace', 'example.test', 'backend-scaffold');
+  try {
+    put(join(page, 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(page, 'manifest.json'), { target: 'https://example.test/' });
+    put(join(root, 'workspace', 'example.test', 'api-contract.json'), {
+      schema: 'heimdall.contract/1',
+      openapi: { servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: { responses: { '200': {} } } } } },
+    });
+    for (const name of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json']) put(join(scaffold, name), '{}');
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const env = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(env.ok, true);
+    assert.equal(env.result.api.scaffold.status, 'present');
+    assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'present');
+    assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action, null);
+    assert.equal(env.result.deliveryPlan.items.some(item => item.id === 'backend-scaffold'), false);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

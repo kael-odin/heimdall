@@ -241,9 +241,26 @@ function adapterSummary(root, siteId) {
   };
 }
 
+function backendScaffoldSummary(root, siteId) {
+  const dir = join(root, 'backend-scaffold');
+  const required = ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json'];
+  const files = required.filter(name => {
+    try { return statSync(join(dir, name)).isFile(); } catch { return false; }
+  });
+  const status = files.length === required.length ? 'present' : files.length ? 'incomplete' : 'missing';
+  return {
+    status,
+    present: status === 'present',
+    files: files.length,
+    requiredFiles: required.length,
+    path: status === 'missing' ? null : reportPath(siteId, 'backend-scaffold'),
+  };
+}
+
 function apiSummary(root, siteId) {
   const contract = publicContract(root, siteId);
   const adapter = adapterSummary(root, siteId);
+  const scaffold = backendScaffoldSummary(root, siteId);
   const unknowns = [];
   if (contract.status === 'missing') unknowns.push('api-contract-missing');
   if (contract.status === 'observed' || contract.status === 'no_observed_api') {
@@ -262,6 +279,7 @@ function apiSummary(root, siteId) {
           : contract.status,
     contract,
     adapter,
+    scaffold,
     unknowns,
   };
 }
@@ -316,6 +334,7 @@ function claimsOf(siteId, clone, seo, api, qa, unknowns) {
   if (seo.status === 'observed') observed.push(`seo.report:${seo.score ?? 'n/a'}`);
   if (api.contract.status === 'observed') observed.push(`api.contract:${api.contract.summary?.endpoints ?? 0}`);
   if (api.adapter.present) observed.push(`api.adapter:${api.adapter.routes ?? 'n/a'} routes`);
+  if (api.scaffold?.present) observed.push('api.backend_scaffold:B3');
   if (qa.status === 'observed') observed.push(`qa.latest_run:${qa.latest.runId}`);
   return { verified, observed, unknown: unknowns.map(item => item.id), siteId };
 }
@@ -336,6 +355,12 @@ function buildBackendCompletionTask(siteId, api) {
   const hasWrite = endpoints.some(endpoint => endpoint.method !== 'GET');
   const validationStatus = api.adapter.validation?.status ?? 'not-validated';
   const gapLedger = api.adapter.gapLedger;
+  const scaffold = api.scaffold ?? { status: 'missing', present: false, path: null };
+  const scaffoldAction = observed && !scaffold.present
+    ? plannedAction('cli:shell', {
+      command: `heimdall backend scaffold ${siteId}${scaffold.status === 'incomplete' ? ' --force' : ''}`,
+    }, '把观察型契约落成可启动的 B3 后端起点', { requiresHumanApproval: true })
+    : null;
   const humanJourneys = observed ? [
     {
       id: 'anonymous-read', basis: 'inferred', status: 'required', requiresHumanApproval: true,
@@ -373,6 +398,13 @@ function buildBackendCompletionTask(siteId, api) {
       verificationStatus: validationStatus === 'passed' ? 'replay_holdout_passed' : 'observation_only',
       basis: 'observed',
     },
+    scaffold: {
+      level: 'B3-scaffold',
+      status: scaffold.present ? 'present' : observed ? 'available' : 'blocked_on_observation',
+      basis: scaffold.present ? 'observed' : observed ? 'inferred' : 'unknown',
+      path: scaffold.path,
+      action: scaffoldAction,
+    },
     gapLedger,
     unknowns: [
       { id: 'authentication', basis: 'unknown', detail: '哪些端点强制认证、凭据如何刷新和失效，尚未由摘要证明。' },
@@ -400,6 +432,7 @@ function buildBackendCompletionTask(siteId, api) {
       commands: [
         `heimdall probe contract --site ${siteId}`,
         `heimdall probe adapter --site ${siteId} --include-api-bodies --force`,
+        ...(observed ? [`heimdall backend scaffold ${siteId}`, 'npm start', 'npm run check'] : []),
         `heimdall site-assessment ${siteId} --json`,
       ],
       deterministicChecks: [
@@ -514,6 +547,20 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       verify: planVerification(siteId, 'api.adapter.validation.status === "passed"'),
     });
   }
+  if (api.contract.status === 'observed' && api.scaffold?.present !== true) {
+    const action = plannedAction('cli:shell', {
+      command: `heimdall backend scaffold ${siteId}${api.scaffold?.status === 'incomplete' ? ' --force' : ''}`,
+    }, '把观察型契约落成可启动的 B3 后端起点', { requiresHumanApproval: true });
+    add({
+      id: 'backend-scaffold', kind: 'b3_scaffold_gap', basis: 'observed', status: 'open',
+      title: '还没有可启动的后端起点',
+      detail: api.scaffold?.status === 'incomplete'
+        ? '默认 B3 输出目录只有部分文件，需要确认后用 --force 补齐。'
+        : '已有观察型 API 契约，可以先生成 B3 脚手架；它不会自动编造认证、权限或业务副作用。',
+      evidence: [api.contract.path, api.scaffold?.path].filter(Boolean), action,
+      verify: planVerification(siteId, 'api.scaffold.present === true'),
+    });
+  }
   if (api.adapter.gapLedger && (api.adapter.gapLedger.summary.uniqueGaps > 0
     || api.adapter.gapLedger.summary.missingResponseBodies > 0)) {
     add({
@@ -606,7 +653,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
   const seoItem = item('seo-report', 'seo-geo-follow-up');
   const geoStatus = seo.status !== 'observed' ? 'needs_report' : seo.geo.actionItems ? 'needs_follow_up' : 'ready';
   const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
-  const backendItem = item('api-contract', 'api-adapter', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
+  const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
   const qaItem = item('qa-workspace', 'qa-first-run', 'qa-findings');
   const qaReady = qa.status === 'observed' && !(qa.latest?.summary?.fileable > 0);
   return {
@@ -618,7 +665,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     seo: entry(seoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     geo: entry(geoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
-      [api.contract.path, api.adapter.report], backendItem),
+      [api.contract.path, api.adapter.report, api.scaffold?.path], backendItem),
     qa: entry(qaReady ? 'ready' : qa.status === 'no_runs' ? 'needs_run' : 'needs_human_review',
       qa.status === 'observed' || qa.status === 'no_runs' ? 'observed' : 'unknown',
       [qa.latest?.report, qa.latest?.bugs], qaItem),
