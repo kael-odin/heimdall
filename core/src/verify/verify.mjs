@@ -205,7 +205,8 @@ async function waitForStableRender(page, pendingRequests) {
       if (pendingRequests.size > 0) blockedBy.push({ reason: 'pending-requests', count: pendingRequests.size });
       if (metrics.visibleIncompleteImages > 0) blockedBy.push({ reason: 'incomplete-images', count: metrics.visibleIncompleteImages });
       if (!layoutStable) blockedBy.push({ reason: 'layout-changing', count: 0 });
-      return { stable: false, elapsedMs, quietMs, layoutStable, blockedBy, pendingRequests: pendingRequests.size, ...metrics };
+      return { stable: false, elapsedMs, quietMs, layoutStable, blockedBy, pendingRequests: pendingRequests.size,
+        pendingRequestDetails: pendingRequestDetails(pendingRequests), ...metrics };
     }
     await page.waitForTimeout(100);
   }
@@ -248,19 +249,48 @@ const REASON_TEXT = {
 };
 const reasonText = r => REASON_TEXT[r.reason] ?? r.reason;
 
+function pendingRequestDetails(pendingRequests) {
+  const now = Date.now();
+  return [...pendingRequests.values()]
+    .map(item => ({
+      url: item.url,
+      resourceType: item.resourceType,
+      method: item.method,
+      sameOrigin: item.sameOrigin,
+      status: item.status,
+      ageMs: Math.max(0, now - item.startedAt),
+    }))
+    .sort((a, b) => b.ageMs - a.ageMs);
+}
+
 async function shoot(page, url, viewport, file, { cloneBase = null } = {}) {
   const origin = new URL(url).origin;
-  const pendingRequests = new Set();
+  const pendingRequests = new Map();
   let documentResponse = null;
+  // Responsive CSS can request assets while resizing the old document; only track the capture navigation.
+  await page.setViewportSize({ width: viewport.width, height: viewport.height });
   const onResponse = response => {
-    if (response.request().isNavigationRequest() && response.frame() === page.mainFrame()) documentResponse = response;
+    const request = response.request();
+    const pending = pendingRequests.get(request);
+    if (pending) pending.status = response.status();
+    if (request.isNavigationRequest() && response.frame() === page.mainFrame()) documentResponse = response;
   };
   const onRequest = request => {
     if (!['fetch', 'xhr', 'image'].includes(request.resourceType())) return;
     const headers = request.headers();
     if (headers['next-router-prefetch'] || /prefetch/i.test(`${headers.purpose ?? ''} ${headers['sec-purpose'] ?? ''}`)) return;
-    if (request.resourceType() === 'image') { pendingRequests.add(request); return; }
-    try { if (new URL(request.url()).origin === origin) pendingRequests.add(request); } catch {}
+    let parsed;
+    try { parsed = new URL(request.url()); } catch { return; }
+    const sameOrigin = parsed.origin === origin;
+    if (request.resourceType() !== 'image' && !sameOrigin) return;
+    pendingRequests.set(request, {
+      url: `${parsed.origin}${parsed.pathname}`,
+      resourceType: request.resourceType(),
+      method: request.method(),
+      sameOrigin,
+      status: null,
+      startedAt: Date.now(),
+    });
   };
   const onRequestDone = request => pendingRequests.delete(request);
   page.on('request', onRequest);
@@ -268,7 +298,6 @@ async function shoot(page, url, viewport, file, { cloneBase = null } = {}) {
   page.on('requestfailed', onRequestDone);
   page.on('response', onResponse);
   try {
-    await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
     if (!documentResponse?.ok()) throw new Error(`page HTTP ${documentResponse?.status() ?? 'no response'}: ${url}`);
     await page.waitForLoadState('load', { timeout: 20_000 }).catch(() => {});

@@ -359,6 +359,52 @@ test('verify waits for the first async batch before triggering scroll pagination
   }
 });
 
+test('verify ignores responsive requests from the previous viewport before navigation', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-verify-viewport-resize-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  const page = join(base, 'pages', 'p1');
+  let desktopRequests = 0;
+  const server = createServer((req, res) => {
+    if (req.url === '/desktop-image') {
+      desktopRequests++;
+      if (desktopRequests === 1) return;
+      res.writeHead(200, { 'content-type': 'image/svg+xml' });
+      res.end('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"></svg>');
+      return;
+    }
+    if (req.url === '/mobile-image') {
+      res.writeHead(200, { 'content-type': 'image/svg+xml' });
+      res.end('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"></svg>');
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<!doctype html><html><head><style>
+      #logo { width:20px; height:20px; background:url('/mobile-image'); }
+      @media (min-width: 1000px) { #logo { background-image:url('/desktop-image'); } }
+    </style></head><body><div id="logo"></div></body></html>`);
+  });
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const port = server.address().port;
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><html><body><div style="height:20px"></div></body></html>');
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `http://127.0.0.1:${port}/source` }));
+
+    const { code, output } = await runVerify(dataDir,
+      ['x.test', 'p1', '--no-interactions', '--viewports', '100x100,1440x100'],
+      { HEIMDALL_PORT: String(port) }, 30_000);
+    assert.equal(code, 0, output);
+    assert.ok(desktopRequests >= 2, `expected the resize and navigation requests, got ${desktopRequests}`);
+    const result = JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8'));
+    assert.equal(result.measured, true);
+    assert.equal(result.viewports[1].sourceCapture.settle.beforeScroll.pendingRequests ?? 0, 0);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('verify bounds long polling and marks the result unmeasured', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-verify-poll-'));
   const base = join(dataDir, 'workspace', 'x.test');
@@ -478,6 +524,13 @@ test('an image request started by scrolling still blocks measurement until it se
     assert.equal(result.viewports[0].sourceCapture.settle.beforeScroll.stable, true);
     assert.equal(result.viewports[0].sourceCapture.settle.afterScroll.stable, false);
     assert.ok(result.viewports[0].sourceCapture.settle.afterScroll.pendingRequests >= 1);
+    const pending = result.viewports[0].sourceCapture.settle.afterScroll.pendingRequestDetails[0];
+    assert.equal(pending.url, `http://127.0.0.1:${port}/slow-image`);
+    assert.equal(pending.resourceType, 'image');
+    assert.equal(pending.method, 'GET');
+    assert.equal(pending.sameOrigin, true);
+    assert.equal(pending.status, null);
+    assert.equal(typeof pending.ageMs, 'number');
     assert.equal(result.viewports[0].sourceCapture.settle.afterScroll.visibleIncompleteImages, 0);
   } finally {
     server.closeAllConnections();
