@@ -52,3 +52,11 @@
 实际打开证据入口又发现站点评估拼接运行目录时遗漏 `runs/`。修正为复用现有 `runsDir()`，在同一测试中补实际文件存在断言；原六个案例的报告与缺陷单引用由 **0/12** 可解析改为 **12/12**，原 `run.json` 哈希不变。`assessment-paths-before.json`、`assessment-after-paths.json` 与 `assessment-report-path-red.log` 保留前后对照及红灯；路径修正后相关套件仍为 **16/16**（`assessment-path-tests-final.log`）。
 
 仍不覆盖 iframe、观察结束后的请求、压缩或无法核实大小的 JSON；接口不符仍需结合业务契约人工核实。未知后端业务规则与真实模型引用率未在本轮验证。
+
+## 远端验证
+
+多字段源码 `4e7c27585c7295fc76b5851d07f2fa46396c5d03` 的 [CI 43291842258](https://github.com/kael-odin/heimdall/actions/runs/43291842258) 首次 **8/8 作业成功**，同提交 Docs `43291842152` 成功。两片 Core 为 3,293 通过、4 项条件跳过；其中两项 Docker 检查另在独立作业 **2/2** 通过，另两项为 Windows 专用句柄检查，不计为 Hosted Linux 通过。逐作业终态、完整日志及统计保存在 `ci-4e7c2758-completed.json`、`ci-4e7c2758-core-*.log`、`ci-4e7c2758-docker.log` 和 `ci-4e7c2758-test-summary.json`。
+
+中间修正 `8f75806f` 的 Docs 成功；其 CI `43294529791` 被后续证据路径修正的推送按并发策略取消，未视作完整通过。运行中快照与取消终态分别保留为 `ci-8f75806f-before-followup.json` 和 `ci-8f75806f-cancelled.json`，对应观察日志保留。
+
+最终源码 `626fd8f42de5c99eaba2decd97e266d6807d88bf` 的 [CI 43296480365](https://github.com/kael-odin/heimdall/actions/runs/43296480365) 首次 **8/8 作业成功**，包括完整浏览器 smoke、独立 Docker 交付、根镜像构建及 MCP；对应 Docs `43296480428` 成功。两片 Core 共 3,298 项：**3,294 通过、4 项条件跳过、0 失败**，跳过范围同上，独立 Docker 仍为 **2/2** 通过。本轮只新增一个含 13 分支的父测试，没有新增测试文件。精确终态、完整日志与统计保存在 `ci-626fd8f4-completed.json`、`docs-626fd8f4-completed.json`、`ci-626fd8f4-core-*.log`、`ci-626fd8f4-docker.log` 和 `ci-626fd8f4-test-summary.json`，未用被取消的中间运行替代最终验证。
