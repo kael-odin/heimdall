@@ -153,3 +153,26 @@ Windows 与 Linux 的独立写进程压力试验复现了读取竞态。定位�
 核心快速回归 1,334/1,334 通过。收尾将来源与许可读取复用于同一次多页处理，避免逐页扫描整个站点；最终 Windows 与 Linux 的契约、适配器测试各 12/12 通过，多页边界、许可拒绝后产物不变均有覆盖。
 
 本轮证据位于仓库外 `D:/Github-Star/heimdall-evidence-archive/2026-11-12/backend-approved-query-probe/`：`summary.json`、`pilot.log` 和各站 CLI 日志保留默认/许可两种路径；`final/`、`pilot-final.log` 是收尾后的实际 CLI 复测，批准模式的 `adapter-report.json` 明确保留失败；各测试日志保留本机与 Linux 结果。原始数据副本与批准计划也在外部目录。未来仍需补写逐站查询行为，并用未参与实现的请求、独立部署和业务规则复验。
+
+查询许可修复提交 `dc0dece99662b5dbd5566f7e2aaf66091e9b12a3` 的完整 CI `43237642743` 已完成，8/8 任务成功，包含两片完整 Core 测试与控制台 smoke；同提交 Docs `43237642734` 也通过。精确提交的结果保存在 `ci-dc0dece9.json` 与 `ci-dc0dece9-watch.log`。
+
+## 后续 AI 补写：独立的商品读取后端
+
+继续用真实公开 GET 验证“契约 → AI 补写 → 独立服务”。三次训练请求分别提供完整的 194 条脱敏商品快照、分页与字段选择、末页边界。本会话代理据此编写站点专用只读适配器，支持 `/products` 的默认读取、`limit`、`skip`、`select`；它按数据切片计算响应，不再逐 URL 查找旧响应。模块含数据共 306,744 字节，仅保存在外部案例目录，没有向 Heimdall 添加专用实现或测试文件。
+
+六个留出请求在训练前已声明；适配器的 SHA-256 于 22:35:04（Asia/Shanghai）冻结后才抓取源站预期，随后实现哈希不变。它们覆盖新的页长、偏移、字段组合、`limit=0`、超出数据范围及默认读取。数据来自已观察的完整商品快照，这是查询行为泛化，不是预测新商品或验证实时同步。
+
+| 同样 3 次训练、6 次留出 | 实际结果 |
+| --- | --- |
+| 现有生成器使用全部训练数据的观察回放 | 共享 B2 验证 0/6，failed |
+| AI 补写的只读查询实现 | 共享 B2 验证 6/6，passed |
+| 原采集工作区缺席时，Windows 独立包 | 6/6 脱敏 JSON 逐值一致；4 项结构检查通过 |
+| Linux Node 22，`--network none` | 6/6 脱敏 JSON 逐值一致；4 项结构检查通过 |
+
+Linux 只挂载生成包、独立比较脚本和冻结后的预期，不挂载 Heimdall 源码或采集工作区，也未安装依赖。复制入容器前后以及执行后，服务、检查器、契约和两个适配器文件的 SHA-256 一致。这验证了包在现有 Node 镜像内运行；没有构建生成的 Dockerfile。
+
+另复制独立包，仅在本地把切片起点错移一位：结构检查仍 `passed`，外部逐值比较检出 5/6 不一致。继续复用现有 `qa/response-check.mjs`，在真实 Chromium 中为默认 GET 声明源站首条商品 ID：健康包为 `matched`，错误副本为 `json-mismatch`，HTTP 都是 200。没有新增检测器；这次直接验证了既有 QA 响应观察模块，未运行完整 QA CLI 或前端业务旅程。后续应把声明值断言和独立预期接入交付验收，不能将结构通过当成业务正确。
+
+独立包关键文件哈希一致后回填工作区，`site-assessment` 同时读到适配器留出和脚手架检查 `passed`，而后端就绪仍为 `needs_human_review`。本例没有验证认证、权限、写入、状态机、持久化、排序、搜索、实时更新或完整源站后端。
+
+外部证据与可运行包：`D:/Github-Star/heimdall-evidence-archive/2026-11-12/backend-products-implementation/`。`declared-holdout.json`、`frozen-implementation.json` 与 `holdout-provenance.json` 保留先声明、冻结、后取预期的顺序；`replay-heldout-report.json` 和 `implemented-heldout-report.json` 比较同一批输入；`healthy-standalone.json`、`off-by-one-standalone.json`、`qa-value-assertion.json` 和 `linux-output/` 保存健康、注入故障及双平台结果；`deployment/` 为可独立启动的包，训练数据与所有生成物均未纳入 Git。
