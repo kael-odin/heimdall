@@ -24,7 +24,7 @@ test('bundled MCP proxy forwards response checks to a fresh isolated engine', { 
     if (req.url === '/api/list' && req.method === 'POST') {
       queries++;
       res.setHeader('content-type', 'application/json');
-      return res.end(JSON.stringify({ code: 0, private: 'proxy-fixture-private-do-not-record' }));
+      return res.end(JSON.stringify({ code: 0, total: 2, private: 'proxy-fixture-private-do-not-record' }));
     }
     res.writeHead(404); res.end();
   });
@@ -62,18 +62,20 @@ test('bundled MCP proxy forwards response checks to a fresh isolated engine', { 
     }
     const check = { title: 'List response', path: '/page', steps: [{ action: 'waitFor', selector: '#ready' }],
       expect: [{ kind: 'visible', selector: '#ready' }],
-      responses: [{ method: 'POST', origin, path: '/api/list', json: { path: ['code'], equals: 0 } }] };
+      responses: [{ method: 'POST', origin, path: '/api/list', json: [{ path: ['code'], equals: 0 }, { path: ['total'], equals: 2 }] }] };
     const args = { workspace: root, site: 'web', pages: ['/blank'], viewports: [1280], linkCheck: false,
       detect: false, baseline: false, checks: [check] };
     const ok = await client.callTool({ name: 'heimdall_qa_run', arguments: args });
     assert.equal(ok.isError, false, JSON.stringify(ok.structuredContent.error));
     assert.equal(ok.structuredContent.result.checks[0].responses[0].state, 'matched');
     assert.doesNotMatch(JSON.stringify(ok.structuredContent), /proxy-fixture-private-do-not-record/);
-    const mismatch = { ...check, responses: [{ ...check.responses[0], json: { path: ['code'], equals: 401 } }] };
+    const mismatch = { ...check, responses: [{ ...check.responses[0], json: [{ path: ['code'], equals: 0 }, { path: ['total'], equals: 3 }] }] };
     const failed = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...args, checks: [mismatch], failOn: 'none' } });
     assert.equal(failed.isError, true);
     assert.equal(failed.structuredContent.error.code, 'qa_incomplete');
     assert.equal(failed.structuredContent.result.checks[0].responses[0].state, 'json-mismatch');
+    assert.equal(failed.structuredContent.result.checks[0].responses[0].failedJsonIndex, 1);
+    assert.match(failed.structuredContent.result.checks[0].responses[0].detail, /JSON 断言 2/);
     assert.equal(queries, 2);
   } finally {
     await client?.close().catch(() => {});

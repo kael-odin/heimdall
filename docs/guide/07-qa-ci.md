@@ -50,7 +50,9 @@ heimdall qa ci --site web --fail-on none
 
 ## 声明页面与接口预期
 
-在工作区 `checks.json` 中保存业务检查，再通过 `--checks checks.json` 传给 `qa run` 或 `qa ci`。例如，已确认某个分页应显示 10 条、首条编号为 11 时：
+在工作区 `checks.json` 中保存业务检查，再通过 `--checks checks.json` 传给 `qa run` 或 `qa ci`。例如，已确认某个分页应显示 10 条、首条编号为 11、响应总数为 100 时：
+
+`--checks` 的相对路径按命令当前目录解析；从其他目录使用 `--workspace` 时，请传入检查文件的绝对路径。
 
 ```json
 [
@@ -65,13 +67,18 @@ heimdall qa ci --site web --fail-on none
     "responses": [{
       "method": "GET", "origin": "https://example.org", "path": "/products",
       "query": { "limit": "10", "skip": "10" },
-      "json": { "path": ["products", "0", "id"], "equals": 11 }
+      "json": [
+        { "path": ["products", "0", "id"], "equals": 11 },
+        { "path": ["total"], "equals": 100 }
+      ]
     }]
   }
 ]
 ```
 
 替换站点来源、选择器和独立核实的预期值。接口观察只读取页面原有的主框架 GET/POST 响应，不主动发送请求；读取状态和可选 JSON 标量不证明整个响应正确。请求缺失、多次匹配、正文无法核实或值不符时，该检查仍为未完成，CI 返回 `3`，不会自动将接口不符判成产品缺陷。
+
+`json` 仍兼容 `{ "path": ["code"], "equals": 0 }`；数组形式限 1–20 项且路径互不重复，全部字段必须在同一个响应中符合预期。正文只读取和解析一次，不因字段增加而重发请求。字段缺失或值不符时，`failedJsonIndex` 是首个失败项的从 0 开始索引，说明文字按第 1 项起显示，不记录实际值。读取仍限未压缩、传输量和正文均不超过 256 KiB 的 JSON；其余观察边界见[测试工作区](../TEST-WORKSPACE.md#核对页面自然发出的接口响应)。
 
 每条声明检查点只执行一次，默认使用第一个巡检视口。要在多视口重复业务检查，为每个检查点配置不同 `id` 与明确的 `viewport: { "width": 375, "height": 812 }`；页面巡检的多个 `--viewports` 不会自动复制这些声明。
 

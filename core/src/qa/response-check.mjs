@@ -63,18 +63,28 @@ export function normalizeResponses(raw, label) {
     if (!Number.isInteger(status) || status < 100 || status > 599) fail(`${item}.status 应为 HTTP 状态码`);
     let json;
     if (response.json !== undefined) {
-      if (!object(response.json)) fail(`${item}.json 应为对象`);
-      keys(response.json, ['path', 'equals'], `${item}.json`);
-      if (!Array.isArray(response.json.path) || !response.json.path.length || response.json.path.length > 8
-        || response.json.path.some(key => typeof key !== 'string' || !key || key.length > 100 || /[\x00-\x1f\x7f]/.test(key))) {
-        fail(`${item}.json.path 应为 1 到 8 个字段名`);
-      }
-      const value = response.json.equals;
-      if (!own(response.json, 'equals') || !(value === null || ['string', 'number', 'boolean'].includes(typeof value))
-        || (typeof value === 'number' && !Number.isFinite(value)) || (typeof value === 'string' && value.length > 200)) {
-        fail(`${item}.json.equals 应为有限的标量值`);
-      }
-      json = { path: response.json.path, equals: value };
+      const checks = Array.isArray(response.json) ? response.json : [response.json];
+      if (!checks.length || checks.length > 20) fail(`${item}.json 应为一个对象或 1 到 20 项断言数组`);
+      const paths = new Set();
+      const normalized = Array.from(checks, (check, index) => {
+        const label = `${item}.json[${index}]`;
+        if (!object(check)) fail(`${label} 应为对象`);
+        keys(check, ['path', 'equals'], label);
+        if (!Array.isArray(check.path) || !check.path.length || check.path.length > 8
+          || Array.from(check.path).some(key => typeof key !== 'string' || !key || key.length > 100 || /[\x00-\x1f\x7f]/.test(key))) {
+          fail(`${label}.path 应为 1 到 8 个字段名`);
+        }
+        const value = check.equals;
+        if (!own(check, 'equals') || !(value === null || ['string', 'number', 'boolean'].includes(typeof value))
+          || (typeof value === 'number' && !Number.isFinite(value)) || (typeof value === 'string' && value.length > 200)) {
+          fail(`${label}.equals 应为有限的标量值`);
+        }
+        const key = JSON.stringify(check.path);
+        if (paths.has(key)) fail(`${label}.path 与其他 JSON 断言重复`);
+        paths.add(key);
+        return { path: check.path, equals: value };
+      });
+      json = Array.isArray(response.json) ? normalized : normalized[0];
     }
     const key = requestKey(response.method, responseUrl({ origin: url.origin, path, query }));
     if (seen.has(key)) fail(`${item} 与其他 responses 重复`);
@@ -89,9 +99,12 @@ function headersOf(headers) {
 
 function resultOf(entry) {
   const state = entry.count > 1 ? 'ambiguous' : !entry.count ? 'missing' : entry.request.state;
+  const failedJsonIndex = ['field-missing', 'json-mismatch'].includes(state) ? entry.request.failedJsonIndex : null;
   return { method: entry.spec.method, origin: entry.spec.origin, path: entry.spec.path,
     ...(entry.spec.query ? { queryParams: Object.keys(entry.spec.query).sort() } : {}),
-    state, http: entry.request?.http ?? null, detail: STATES[state] ?? STATES.pending };
+    state, http: entry.request?.http ?? null,
+    detail: (STATES[state] ?? STATES.pending) + (Number.isInteger(failedJsonIndex) ? `（JSON 断言 ${failedJsonIndex + 1}）` : ''),
+    ...(Number.isInteger(failedJsonIndex) ? { failedJsonIndex } : {}) };
 }
 
 export async function observeResponses(page, specs) {
@@ -157,14 +170,21 @@ export async function observeResponses(page, specs) {
       const length = result.base64Encoded ? Buffer.byteLength(result.body, 'base64') : Buffer.byteLength(result.body, 'utf8');
       if (length > MAX_BODY_BYTES) { req.state = 'too-large'; return; }
       const bytes = Buffer.from(result.body, result.base64Encoded ? 'base64' : 'utf8');
-      let value;
-      try { value = JSON.parse(bytes.toString('utf8')); } catch { req.state = 'invalid-json'; return; }
-      for (const key of spec.json.path) {
-        if (!value || typeof value !== 'object' || !own(value, key)) { req.state = 'field-missing'; return; }
-        value = value[key];
+      let body;
+      try { body = JSON.parse(bytes.toString('utf8')); } catch { req.state = 'invalid-json'; return; }
+      const checks = Array.isArray(spec.json) ? spec.json : [spec.json];
+      for (const [index, check] of checks.entries()) {
+        req.failedJsonIndex = index;
+        let value = body;
+        for (const key of check.path) {
+          if (!value || typeof value !== 'object' || !own(value, key)) { req.state = 'field-missing'; return; }
+          value = value[key];
+        }
+        if (!(value === null || ['string', 'number', 'boolean'].includes(typeof value))) { req.state = 'field-missing'; return; }
+        if (value !== check.equals) { req.state = 'json-mismatch'; return; }
       }
-      if (!(value === null || ['string', 'number', 'boolean'].includes(typeof value))) { req.state = 'field-missing'; return; }
-      req.state = value === spec.json.equals ? 'matched' : 'json-mismatch';
+      delete req.failedJsonIndex;
+      req.state = 'matched';
     }).catch(() => { req.state = 'body-unavailable'; });
   });
   return {

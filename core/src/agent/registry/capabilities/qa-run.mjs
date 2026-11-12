@@ -27,6 +27,12 @@ const EXPECT = {
     minMatches: { type: 'integer', minimum: 1, maximum: 1000, description: 'Minimum visible matches for all-visible; default 1' },
   },
 };
+const RESPONSE_JSON = {
+  type: 'object', additionalProperties: false, required: ['path', 'equals'], properties: {
+    path: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'string', minLength: 1, maxLength: 100 } },
+    equals: { type: ['string', 'number', 'boolean', 'null'] },
+  },
+};
 const RESPONSE = {
   type: 'object', additionalProperties: false, required: ['method', 'origin', 'path'],
   properties: {
@@ -36,10 +42,8 @@ const RESPONSE = {
     query: { type: 'object', minProperties: 1, maxProperties: 20, additionalProperties: { type: 'string', maxLength: 200 },
       description: 'Explicit public GET query names and values; exact matching ignores parameter order. Sensitive queries are rejected; values are not recorded in reports' },
     status: { type: 'integer', minimum: 100, maximum: 599, description: 'Expected HTTP status; defaults to 200' },
-    json: { type: 'object', additionalProperties: false, required: ['path', 'equals'], properties: {
-      path: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'string', minLength: 1, maxLength: 100 } },
-      equals: { type: ['string', 'number', 'boolean', 'null'] },
-    } },
+    json: { ...RESPONSE_JSON, type: ['object', 'array'], minItems: 1, maxItems: 20, items: RESPONSE_JSON,
+      description: 'One scalar assertion or 1-20 distinct-path assertions against the same response body; all must match' },
   },
 };
 export const CHECK_SCHEMA = {
@@ -64,7 +68,7 @@ export default {
     + 'overflow and blocked-request problems. Run reference-free accessibility, layout, content, security and performance detectors, and compare '
     + 'screenshots with an approved baseline. Optional declarative checks support real input steps and visible/hidden/text/url/count/attribute/'
     + 'clipboard/title expectations; cite the PRD in "prd". Text scope all-visible checks each visible match; none is incomplete. Use waitFor and '
-    + 'minMatches to specify readiness. Optional response declarations observe an exact main-frame GET/POST and compare HTTP status and a bounded JSON scalar; '
+    + 'minMatches to specify readiness. Optional response declarations observe an exact main-frame GET/POST and compare HTTP status and up to 20 JSON scalars in one body read; '
     + 'GET may declare an exact public query; query values and bodies are not recorded. Missing, ambiguous or unreadable responses are incomplete. explore=true clicks limited controls to find interaction failures; it is off by default because it can '
     + 'change state. HTTP policy may permit writes; GET and WebSocket may also cause side effects. '
     + 'Findings are matched against past verdicts; returns report and issue paths.',

@@ -60,7 +60,7 @@ function startServer() {
       const code = name === 'bad-code' ? 401 : ['wrong-type', 'string-code'].includes(name) ? '0'
         : name === 'null-field' ? null : name === 'nonscalar' ? { nested: true } : 0;
       const payload = name === 'invalid-json' ? '{bad' : name === 'status-only' ? PRIVATE.repeat(30000)
-        : JSON.stringify({ ...(name === 'missing-field' ? {} : { code }), private: PRIVATE,
+        : JSON.stringify({ ...(name === 'missing-field' ? {} : { code }), count: 2, private: PRIVATE,
           ...(name === 'oversize' ? { padding: 'x'.repeat(300_000) } : {}) });
       if (name === 'compressed') {
         res.writeHead(200, { 'content-type': 'application/json', 'content-encoding': 'gzip' });
@@ -93,13 +93,17 @@ function check(origin, name) {
     responses: [{ method: GET_CASES.has(name) ? 'GET' : 'POST', origin, path: `/api/${name}`, status: 200,
       ...(['approved-query', 'reordered-query'].includes(name) ? { query: { page: '2', q: QUERY_MARKER } }
         : name === 'empty-value-query' ? { query: { q: '' } } : ['wrong-query', 'extra-query', 'repeated-query'].includes(name) ? { query: { page: '2' } } : {}),
-      ...(name === 'status-only' ? {} : { json: { path: ['code'], equals: name === 'string-code' ? '0' : name === 'null-field' ? null : 0 } }) }] };
+      ...(name === 'status-only' ? {} : { json: ['ok', 'wrong-type', 'missing-field'].includes(name)
+        ? [{ path: ['count'], equals: 2 }, { path: ['code'], equals: 0 }]
+        : { path: ['code'], equals: name === 'string-code' ? '0' : name === 'null-field' ? null : 0 } }) }] };
 }
 
 test('response checks reject ambiguous or unsafe declarations', () => {
   const base = { title: 'response', path: '/', expect: [{ kind: 'title', equals: 'fixture' }] };
   const response = { method: 'POST', origin: 'http://127.0.0.1:1234', path: '/api/list', status: 200, json: { path: ['code'], equals: 0 } };
   assert.deepEqual(normalizeCheck({ ...base, responses: [response] }).responses, [response]);
+  const multiple = { ...response, json: [response.json, { path: ['total'], equals: 2 }] };
+  assert.deepEqual(normalizeCheck({ ...base, responses: [multiple] }).responses, [multiple]);
   for (const invalid of [
     { ...response, origin: 'http://user:pass@127.0.0.1:1234' },
     { ...response, origin: 'http://127.0.0.1:1234/path' },
@@ -108,7 +112,11 @@ test('response checks reject ambiguous or unsafe declarations', () => {
     { ...response, method: 'DELETE' },
     { ...response, status: null },
     { ...response, json: { path: [], equals: 0 } },
+    { ...response, json: { path: Array(1), equals: 0 } },
     { ...response, json: { path: ['code'], equals: { nested: true } } },
+    ...[[], [null], [response.json, response.json], Array(1),
+      Array.from({ length: 21 }, (_, index) => ({ path: ['field' + index], equals: 0 }))]
+      .map(json => ({ ...response, json })),
     { ...response, query: { page: '2' } },
     ...[{}, [], { page: 2 }, { q: '\n' }, { token: PRIVATE }, { q: 'https://other.test/' },
       Object.fromEntries(Array.from({ length: 21 }, (_, index) => ['p' + index, 'x']))]
@@ -197,6 +205,7 @@ test('unavailable or ambiguous response evidence cannot produce a passing check 
       assert.equal(observed.pass, false, `${name} must not pass`);
       assert.equal(observed.error, null, `${name}: ${observed.error}`);
       assert.equal(observed.responses[0].state, states[name], `${name} must report the actual evidence boundary`);
+      if (name === 'wrong-type' || name === 'missing-field') assert.equal(observed.responses[0].failedJsonIndex, 1);
       assert.ok(run.findings.some(f => f.confidence === 'check-unverified' || f.confidence === 'check-error'), name);
       for (const file of ['run.json', 'findings.json', 'report.md', 'bugs.md']) {
         assert.doesNotMatch(readFileSync(join(run.dir, file), 'utf8'), new RegExp(PRIVATE), `${name}: ${file}`);

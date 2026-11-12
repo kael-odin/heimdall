@@ -39,3 +39,5 @@ Mozilla 的分数变化只来自 `x-default` 不再扣分，不代表该站排�
 复用现有运行文件与测试文件，未新增依赖、运行模块或测试文件；规则实现减少代码。765 个语法文件和 14 个冻结验证器检查通过。未验证语言代码表成员、HTTP Link/sitemap 语言声明、目标内容、Google 实际抓取与索引或模型引用。
 
 外部证据：`D:/Github-Star/heimdall-evidence-archive/2026-11-13/seo-hreflang/`。`official-source.json` 与官方 HTML 保留机制来源；`*-source.json` 保存请求、最终地址、HTTP 状态与哈希；`real-cases.json`、`controlled.json`、`*-collected.json` 和 `report-check.json` 保存对照；`regression-red.log`、`tests.log`、`tests-final.log` 保留失败和最终回归。可重跑的检查脚本及原始页面都在仓库外。
+
+远端收口：源码提交 `191fdda10cbb1384f1586a92744f0ae20506cdc4` 的 [CI 43287044672](https://github.com/kael-odin/heimdall/actions/runs/43287044672) 首次运行 **8/8 作业成功**，对应 Docs 也成功；上下文更正文档 `23fe7cea` 的 Docs 成功。完整终态与逐作业结果保存为外部证据 `ci-191fdda1-completed.json`，此前运行中快照保留。
