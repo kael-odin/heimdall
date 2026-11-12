@@ -12,6 +12,7 @@ import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
 import { listRuns, openWorkspace, relPath } from '../../../qa/run.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
+import { GEO_METHOD_VERSION } from '../../../seo/method.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
@@ -180,6 +181,11 @@ function seoSummary(siteId, root) {
     bySeverity,
     categories,
     geo: {
+      methodVersion: report.geo?.methodVersion ?? null,
+      status: report.geo?.methodVersion === GEO_METHOD_VERSION && ['complete', 'partial', 'unavailable'].includes(report.geo?.status)
+        ? report.geo.status : 'unknown',
+      confidence: report.geo?.confidence ?? null,
+      coverage: report.geo?.coverage ?? null,
       actionItems: actionPlan.length,
       priorities,
       score: typeof report.geo?.score === 'number' ? report.geo.score : null,
@@ -562,7 +568,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   }
 
   const seoIncomplete = seo.status === 'observed'
-    && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0);
+    && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0 || seo.geo.status !== 'complete');
   const seoHasIssues = seo.status === 'observed'
     && (seo.bySeverity.critical > 0 || seo.bySeverity.high > 0 || seo.geo.actionItems > 0);
   if (seo.status !== 'observed') {
@@ -581,7 +587,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
         : `发现 critical=${seo.bySeverity.critical}、high=${seo.bySeverity.high}，GEO 待办 ${seo.geo.actionItems} 项。`,
       evidence: [seo.reports.json],
       action: origin ? plannedAction('heimdall_seo_audit', { url: `${origin}/` }, '补采完整报告并复核 SEO/GEO 待办') : null,
-      verify: planVerification(siteId, 'seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0'),
+      verify: planVerification(siteId, 'seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0 && seo.geo.status === "complete" && seo.geo.actionItems === 0 && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0'),
     });
   }
 
@@ -727,10 +733,11 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
   const cloneItem = item('clone-capture', 'clone-mirror-coverage', 'clone-visual-verification');
   const seoComplete = seo.status === 'observed'
     && seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0
-    && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0 && seo.geo.actionItems === 0;
+    && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0 && seo.geo.status === 'complete' && seo.geo.actionItems === 0;
   const seoStatus = seo.status !== 'observed' ? 'needs_report' : seoComplete ? 'ready' : 'needs_follow_up';
   const seoItem = item('seo-report', 'seo-geo-follow-up');
-  const geoStatus = seo.status !== 'observed' ? 'needs_report' : seo.geo.actionItems ? 'needs_follow_up' : 'ready';
+  const geoStatus = seo.status !== 'observed' || seo.geo.status === 'unknown' ? 'needs_report'
+    : seo.geo.status !== 'complete' || seo.geo.actionItems ? 'needs_follow_up' : 'ready';
   const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
   const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'backend-scaffold-check', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
   const qaItem = item('qa-workspace', 'qa-first-run', 'qa-findings');
@@ -742,7 +749,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     clone: entry(cloneStatus, cloneStatus === 'ready' ? 'verified' : clone.pages || clone.mirrors ? 'observed' : 'unknown',
       [`clone.mirrors:${clone.mirrors}/${clone.pages}`, `clone.verification:${clone.verificationStatus}`], cloneItem),
     seo: entry(seoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
-    geo: entry(geoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
+    geo: entry(geoStatus, seo.status === 'observed' && seo.geo.status !== 'unknown' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
       [api.contract.path, api.adapter.report, api.scaffold?.path], backendItem),
     qa: entry(qaReady ? 'ready' : qa.status === 'no_runs' ? 'needs_run' : 'needs_human_review',

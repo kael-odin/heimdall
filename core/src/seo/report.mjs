@@ -8,7 +8,7 @@ const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 const scoreColor = (n) => n == null ? '#64748b' : n >= 90 ? '#059669' : n >= 75 ? '#b45309' : '#dc2626';
 const scoreText = (n) => n == null ? '未计算' : String(n);
 const geoConfidenceLabel = { high: '高', medium: '中', low: '低' };
-const geoStatusLabel = { complete: '完整', partial: '部分', unknown: '未知' };
+const geoStatusLabel = { complete: '完整', partial: '部分', unavailable: '不可用', unknown: '未知' };
 const geoEffortLabel = { small: '小', medium: '中', large: '大' };
 
 export function renderCsv(report) {
@@ -102,6 +102,7 @@ export function renderHtml(report) {
       <div>
         <h2>GEO 准备度</h2>
         <p class="meta">${esc(geo.label ?? 'AI 可回答与可引用准备度')} · 方法 v${esc(geo.methodVersion ?? '未记录')} · 证据置信度 ${esc(geoConfidenceLabel[geo.confidence] ?? '未知')} · 覆盖 ${geo.coverage?.pagesScored ?? 0}/${geo.coverage?.pages ?? 0} 页</p>
+        <p class="meta">证据状态 ${esc(geoStatusLabel[geo.status] ?? '未知')} · 检查权重覆盖 ${esc(geo.coverage?.observedWeight ?? '未知')}/${esc(geo.coverage?.totalWeight ?? '未知')}；部分分数只代表已观测检查。</p>
       </div>
       <div class="geo-score"><b style="color:${scoreColor(geo.score)}">${esc(scoreText(geo.score))}</b><span>GEO ${esc(geo.grade ?? '未定级')}</span></div>
     </div>

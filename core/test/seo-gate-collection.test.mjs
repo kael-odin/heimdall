@@ -153,6 +153,13 @@ test('seo gate: an HTTP error page cannot become a baseline', { timeout: 60_000 
     assert.equal(existsSync(baseline), false);
     const report = JSON.parse(readFileSync(join(dataDir, 'workspace', '127.0.0.1', 'seo', 'seo.json'), 'utf8'));
     assert.equal(report.pages[0].status, 503);
+    assert.equal(report.geo.score, null);
+    assert.equal(report.geo.status, 'unavailable');
+    assert.equal(report.geo.coverage.pagesScored, 0);
+    assert.deepEqual(report.geo.actionPlan, []);
+    const html = readFileSync(join(dataDir, 'workspace', '127.0.0.1', 'seo', 'seo.html'), 'utf8');
+    assert.match(html, /证据状态 不可用/);
+    assert.match(html, /检查权重覆盖 0\/100/);
     assert.equal(existsSync(join(dataDir, 'workspace', '127.0.0.1', 'history.json')), false);
     const thresholdRun = await runAudit(origin, baseline, dataDir, ['--threshold', '1']);
     assert.equal(thresholdRun.code, 1, thresholdRun.output);
@@ -211,6 +218,9 @@ test('seo gate: unavailable initial HTML cannot resolve findings or overwrite a 
       const report = JSON.parse(readFileSync(join(dataDir, 'workspace', '127.0.0.1', 'seo', 'seo.json'), 'utf8'));
       assert.equal(report.summary.initialHtmlUnchecked, 1);
       assert.equal(report.pages[0].robotsEvidence.initialHtml, 'unavailable');
+      assert.equal(report.geo.status, 'partial');
+      assert.equal(report.geo.dimensions.answerability.status, 'partial');
+      assert.equal(report.geo.pages[0].dimensions.answerability.checks.find(item => item.id === 'geo-answer-server-visible').status, 'unknown');
       assert.equal(existsSync(join(dataDir, 'workspace', '127.0.0.1', 'history.json')), false);
     }
 

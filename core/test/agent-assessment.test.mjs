@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { GEO_METHOD_VERSION } from '../src/seo/method.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const BIN = join(ROOT, 'bin', 'heimdall.mjs');
@@ -214,11 +215,13 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
   try {
     put(join(page, 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
     put(join(page, 'manifest.json'), { target: 'https://example.test/' });
-    put(join(root, 'workspace', 'example.test', 'seo', 'seo.json'), {
+    const seoReport = {
       origin: 'https://example.test', generatedAt: '2026-11-11T00:00:00.000Z', score: 100,
       summary: { pages: 1, issues: 0, bySeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 }, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
-      categories: {}, geo: { score: 100, actionPlan: [] },
-    });
+      categories: {}, geo: { methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 100, actionPlan: [], coverage: { pages: 1, pagesScored: 1, ratio: 1 } },
+    };
+    const seoPath = join(root, 'workspace', 'example.test', 'seo', 'seo.json');
+    put(seoPath, seoReport);
     put(join(qa, '.heimdall', 'qa.json'), {
       schema: 'heimdall.qa/1', project: 'assessment-test',
       sites: { web: { url: 'https://example.test/', pages: ['/'], environment: 'test' } },
@@ -242,5 +245,24 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     assert.equal(env.result.readiness.backend.status, 'needs_observation');
     assert.equal(env.result.readiness.qa.status, 'ready');
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.status === 'open'));
+    for (const geo of [
+      undefined,
+      { score: 100, actionPlan: [] },
+      { ...seoReport.geo, methodVersion: GEO_METHOD_VERSION - 1 },
+      { ...seoReport.geo, status: 'partial', coverage: { pages: 1, pagesScored: 1, ratio: 0.92 } },
+      { ...seoReport.geo, status: 'unavailable', score: null, coverage: { pages: 1, pagesScored: 0, ratio: 0 } },
+    ]) {
+      put(seoPath, { ...seoReport, geo });
+      const rerun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+        cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+      });
+      assert.equal(rerun.status, 0, rerun.stderr + rerun.stdout);
+      const result = JSON.parse(rerun.stdout.trim().split(/\r?\n/).at(-1)).result;
+      assert.notEqual(result.readiness.geo.status, 'ready');
+      assert.equal(result.readiness.geo.basis, result.seo.geo.status === 'unknown' ? 'unknown' : 'observed');
+      assert.equal(result.readiness.seo.status, 'needs_follow_up');
+      assert.deepEqual(result.seo.geo.coverage, geo?.coverage ?? null);
+      assert.ok(result.deliveryPlan.items.some(item => item.id === 'seo-geo-follow-up'));
+    }
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

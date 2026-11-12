@@ -38,6 +38,7 @@ logs/
 # local knowledge graph and one-off spikes (not part of the product)
 graphify-out/
 core/spikes/
+/.tmp/
 
 # editors / OS
 .DS_Store

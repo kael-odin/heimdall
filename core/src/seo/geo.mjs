@@ -143,6 +143,7 @@ function observedChecks(checks) {
 function dimensionResult(key, checks) {
   const observed = observedChecks(checks);
   const observedWeight = observed.reduce((sum, item) => sum + item.weight, 0);
+  const totalWeight = checks.filter(item => item.status !== 'na').reduce((sum, item) => sum + item.weight, 0);
   const earned = observed.filter(item => item.status === 'pass').reduce((sum, item) => sum + item.weight, 0);
   const definition = GEO_DIMENSIONS[key];
   return {
@@ -150,7 +151,8 @@ function dimensionResult(key, checks) {
     weight: definition.weight,
     score: observedWeight ? round(earned / observedWeight * 100) : null,
     observedWeight,
-    status: observedWeight === 0 ? 'unknown' : observedWeight < definition.weight ? 'partial' : 'complete',
+    totalWeight,
+    status: observedWeight === 0 ? 'unknown' : observedWeight < totalWeight ? 'partial' : 'complete',
     checks,
   };
 }
@@ -161,7 +163,7 @@ export function evaluateGeoPage(page = {}) {
   const headings = Array.isArray(page.headings) ? page.headings : [];
   const wordCount = Number.isFinite(page.wordCount) ? page.wordCount : null;
   const raw = page.raw;
-  const rawKnown = raw?.ok === true && Number.isFinite(raw.wordCount);
+  const rawKnown = raw?.ok === true && raw.source === 'navigation' && Number.isFinite(raw.wordCount);
   const meta = page.meta ?? {};
   const links = page.links ?? {};
 
@@ -176,7 +178,7 @@ export function evaluateGeoPage(page = {}) {
       check('geo-answer-headings', 6, headings.length >= 2 ? 'pass' : 'fail', '内容有可导航分段',
         headings.length >= 2 ? '页面有多个带文字的标题。' : '页面缺少足够的分段标题。',
         `${headings.length} 个标题`, '用描述性 H2/H3 拆分主题，不要只用视觉样式模拟标题。', 'medium'),
-      check('geo-answer-server-visible', 8, rawKnown ? ((wordCount ?? 0) === 0 || raw.wordCount >= Math.max(40, (wordCount ?? 0) * 0.3) ? 'pass' : 'fail') : 'unknown', '服务端可直接读到正文',
+      check('geo-answer-server-visible', 8, rawKnown ? (raw.wordCount >= Math.max(40, (wordCount ?? 0) * 0.3) ? 'pass' : 'fail') : 'unknown', '服务端可直接读到正文',
         !rawKnown ? '初始 HTML 正文未核实。' : raw.wordCount >= Math.max(40, (wordCount ?? 0) * 0.3) ? '初始 HTML 包含足够正文。' : '初始 HTML 正文明显少于渲染后正文。',
         rawKnown ? `初始 HTML 约 ${raw.wordCount} 词，渲染后约 ${wordCount ?? 0} 词` : '', '让核心答案在 SSR/SSG 初始 HTML 中可见。', 'high'),
     ],
@@ -226,11 +228,21 @@ export function evaluateGeoPage(page = {}) {
     ],
   };
 
+  // 采集失败时的空字段是占位值，不能据此建议用户修改页面内容。
+  if (page.ok === false || !(page.status >= 200 && page.status < 400)) {
+    for (const item of Object.values(checks).flat()) {
+      item.status = 'unknown';
+      item.message = '页面未成功采集，需先恢复访问并重新采集。';
+      item.evidence = Number.isFinite(page.status) ? `HTTP ${page.status}` : 'HTTP 状态未核实';
+      item.suggestion = '';
+    }
+  }
+
   const dimensions = Object.fromEntries(Object.entries(checks).map(([key, values]) => [key, dimensionResult(key, values)]));
   const all = Object.values(dimensions);
   const observedWeight = all.reduce((sum, dimension) => sum + dimension.observedWeight, 0);
   const earned = all.reduce((sum, dimension) => sum + (dimension.score == null ? 0 : dimension.score * dimension.observedWeight / 100), 0);
-  const totalWeight = Object.values(GEO_DIMENSIONS).reduce((sum, dimension) => sum + dimension.weight, 0);
+  const totalWeight = all.reduce((sum, dimension) => sum + dimension.totalWeight, 0);
   const issues = Object.values(checks).flat().filter(item => item.status === 'fail').map(item => ({
     page: page.url, id: item.id, dimension: Object.keys(checks).find(key => checks[key].includes(item)), severity: item.severity,
     title: item.title, message: item.message, evidence: item.evidence, suggestion: item.suggestion, weight: item.weight,
@@ -241,10 +253,11 @@ export function evaluateGeoPage(page = {}) {
   const score = observedWeight ? round(earned / observedWeight * 100) : null;
   return {
     methodVersion: GEO_METHOD_VERSION,
+    status: !observedWeight ? 'unavailable' : observedWeight < totalWeight ? 'partial' : 'complete',
     score,
     grade: gradeOf(score),
     confidence: observedWeight / totalWeight >= 0.8 ? 'high' : observedWeight / totalWeight >= 0.5 ? 'medium' : 'low',
-    coverage: { observedWeight, totalWeight, ratio: round(observedWeight / totalWeight) },
+    coverage: { observedWeight, totalWeight, ratio: Math.round(observedWeight / totalWeight * 1000) / 1000 },
     dimensions,
     issues,
     unknown,
@@ -260,18 +273,20 @@ export function evaluateGeoSite(site = {}) {
   for (const key of Object.keys(GEO_DIMENSIONS)) {
     const results = pageResults.map(entry => entry.result.dimensions[key]).filter(dimension => dimension.score != null);
     const observedWeight = results.reduce((sum, dimension) => sum + dimension.observedWeight, 0);
+    const totalWeight = pageResults.reduce((sum, entry) => sum + entry.result.dimensions[key].totalWeight, 0);
     const weightedScore = results.reduce((sum, dimension) => sum + dimension.score * dimension.observedWeight, 0);
     const definition = GEO_DIMENSIONS[key];
     dimensions[key] = {
       label: definition.label, weight: definition.weight, pages: results.length,
       score: observedWeight ? round(weightedScore / observedWeight) : null,
       observedWeight,
-      status: results.length === 0 ? 'unknown' : results.length < pages.length ? 'partial' : 'complete',
+      totalWeight,
+      status: observedWeight === 0 ? 'unknown' : observedWeight < totalWeight ? 'partial' : 'complete',
     };
   }
   const overallObserved = Object.values(dimensions).reduce((sum, dimension) => sum + dimension.observedWeight, 0);
   const overallWeighted = Object.values(dimensions).reduce((sum, dimension) => sum + (dimension.score == null ? 0 : dimension.score * dimension.observedWeight), 0);
-  const totalWeight = Object.values(GEO_DIMENSIONS).reduce((sum, dimension) => sum + dimension.weight, 0) * pages.length;
+  const totalWeight = Object.values(dimensions).reduce((sum, dimension) => sum + dimension.totalWeight, 0);
   const score = overallObserved ? round(overallWeighted / overallObserved) : null;
   const issueCounts = new Map();
   for (const entry of pageResults) for (const issue of entry.result.issues) issueCounts.set(issue.id, (issueCounts.get(issue.id) ?? 0) + 1);
@@ -280,14 +295,20 @@ export function evaluateGeoSite(site = {}) {
   const recommendations = actionPlan.map(item => item.action).filter(Boolean);
   return {
     methodVersion: GEO_METHOD_VERSION,
+    status: !overallObserved ? 'unavailable' : overallObserved < totalWeight ? 'partial' : 'complete',
     model: 'deterministic-readiness-heuristic',
     label: 'AI 可回答与可引用准备度',
     score,
     grade: gradeOf(score),
     confidence: overallObserved / Math.max(totalWeight, 1) >= 0.8 ? 'high' : overallObserved / Math.max(totalWeight, 1) >= 0.5 ? 'medium' : 'low',
-    coverage: { pages: pages.length, pagesScored: pageResults.filter(entry => entry.result.score != null).length, observedWeight: overallObserved, totalWeight },
+    coverage: {
+      pages: pages.length, pagesScored: pageResults.filter(entry => entry.result.score != null).length,
+      pagesUnavailable: pageResults.filter(entry => entry.result.status === 'unavailable').length,
+      observedWeight: overallObserved, totalWeight,
+      ratio: totalWeight ? Math.round(overallObserved / totalWeight * 1000) / 1000 : 0,
+    },
     dimensions,
-    pages: pageResults.map(({ page, result }) => ({ url: page.url, score: result.score, grade: result.grade, confidence: result.confidence, dimensions: result.dimensions, issues: result.issues, unknown: result.unknown, actionPlan: result.actionPlan })),
+    pages: pageResults.map(({ page, result }) => ({ url: page.url, status: result.status, coverage: result.coverage, score: result.score, grade: result.grade, confidence: result.confidence, dimensions: result.dimensions, issues: result.issues, unknown: result.unknown, actionPlan: result.actionPlan })),
     issues: [...issueCounts.entries()].sort((a, b) => b[1] - a[1]).map(([id, count]) => ({ id, count })),
     actionPlan,
     actionPlanMeta: { total: new Set(allIssues.map(issue => issue.id)).size, returned: actionPlan.length, truncated: actionPlan.length < new Set(allIssues.map(issue => issue.id)).size },

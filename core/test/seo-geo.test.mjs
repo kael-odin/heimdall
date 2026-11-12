@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { evaluateGeoPage, evaluateGeoSite, GEO_DIMENSIONS } from '../src/seo/geo.mjs';
+import { evaluateGeoPage, evaluateGeoSite, GEO_DIMENSIONS, GEO_METHOD_VERSION } from '../src/seo/geo.mjs';
 
 const page = (over = {}) => ({
   url: 'https://example.com/guide',
+  status: 200, ok: true,
   title: 'Proxy guide',
   description: 'A factual guide that explains the proxy workflow, limits, setup steps, and expected results.',
   canonical: 'https://example.com/guide',
@@ -22,7 +23,7 @@ const page = (over = {}) => ({
       author: { name: 'Example team' }, datePublished: '2026-11-01',
     }],
   }],
-  raw: { ok: true, wordCount: 360 },
+  raw: { ok: true, wordCount: 360, source: 'navigation' },
   ...over,
 });
 
@@ -41,6 +42,8 @@ test('GEO 健康页面得分高且四个维度都有证据', () => {
   assert.deepEqual(result.actionPlan, []);
   assert.deepEqual(Object.keys(result.dimensions), ['answerability', 'extractability', 'entity', 'citation']);
   assert.ok(Object.values(result.dimensions).every(dimension => dimension.score === 100));
+  const empty = evaluateGeoPage(page({ wordCount: 0, raw: { ok: true, wordCount: 0, source: 'navigation' } }));
+  assert.equal(empty.dimensions.answerability.checks.find(item => item.id === 'geo-answer-server-visible').status, 'fail');
 });
 
 test('GEO 缺陷页面保留具体问题，na 和 unknown 不误报成失败', () => {
@@ -63,12 +66,57 @@ test('GEO 缺陷页面保留具体问题，na 和 unknown 不误报成失败', (
   assert.ok(['small', 'medium', 'large'].includes(firstAction.estimatedEffort));
 });
 
-test('GEO 初始 HTML 未核实时标记 unknown，不把缺证据当失败', () => {
-  const result = evaluateGeoPage(page({ raw: null }));
-  const check = result.dimensions.answerability.checks.find(item => item.id === 'geo-answer-server-visible');
-  assert.equal(check.status, 'unknown');
-  assert.ok(!result.issues.some(issue => issue.id === 'geo-answer-server-visible'));
-  assert.ok(result.coverage.ratio < 1);
+test('GEO 仅首次导航响应能证明初始 HTML，未知证据贯通站点维度', () => {
+  for (const raw of [null, { ok: true, wordCount: 360 }, { ok: true, wordCount: 360, source: 'refetch' }]) {
+    const result = evaluateGeoSite({ pages: [page({ raw })] });
+    const dimension = result.pages[0].dimensions.answerability;
+    assert.equal(dimension.checks.find(item => item.id === 'geo-answer-server-visible').status, 'unknown');
+    assert.equal(result.status, 'partial');
+    assert.equal(result.dimensions.answerability.status, 'partial');
+    assert.equal(result.coverage.ratio, 0.92);
+    assert.deepEqual(result.actionPlan, []);
+  }
+});
+
+test('GEO 采集失败和 HTTP 错误页不生成内容整改，混合站点保留缺口', () => {
+  for (const status of [0, 401, 403, 404, 429, 500]) {
+    const failed = page({ url: 'https://example.com/failed', status, ok: false });
+    const result = evaluateGeoPage(failed);
+    assert.equal(result.status, 'unavailable');
+    assert.equal(result.score, null);
+    assert.equal(result.grade, null);
+    assert.equal(result.confidence, 'low');
+    assert.equal(result.coverage.observedWeight, 0);
+    assert.deepEqual(result.actionPlan, []);
+    assert.ok(Object.values(result.dimensions).every(d => d.status === 'unknown'));
+    assert.ok(Object.values(result.dimensions).flatMap(d => d.checks).every(c => !c.suggestion));
+    const site = evaluateGeoSite({ pages: [page(), failed] });
+    assert.equal(site.score, 100);
+    assert.equal(site.status, 'partial');
+    assert.equal(site.coverage.pagesScored, 1);
+    assert.equal(site.coverage.pagesUnavailable, 1);
+    assert.equal(site.coverage.ratio, 0.5);
+    assert.ok(Object.values(site.dimensions).every(d => d.status === 'partial'));
+    assert.deepEqual(site.actionPlan, []);
+  }
+  for (const pages of [[], [{}]]) {
+    const result = evaluateGeoSite({ pages });
+    assert.equal(result.status, 'unavailable');
+    assert.equal(result.score, null);
+  }
+});
+
+test('GEO 不适用检查不降低覆盖率，部分未知也不能四舍五入成完整', () => {
+  const input = page({ jsonld: [{ types: ['Organization'], items: [{ name: 'Example', author: 'Team' }] }] });
+  const result = evaluateGeoSite({ pages: [input] });
+  assert.equal(result.status, 'complete');
+  assert.equal(result.coverage.totalWeight, 96);
+  assert.equal(result.coverage.ratio, 1);
+  assert.equal(result.dimensions.citation.status, 'complete');
+  const partial = evaluateGeoSite({ pages: [{ ...input, links: { external: 0 } }] });
+  assert.equal(partial.status, 'partial');
+  assert.equal(partial.coverage.ratio, 0.958);
+  assert.equal(partial.dimensions.citation.status, 'partial');
 });
 
 test('GEO 站点聚合覆盖页面和维度建议', () => {
@@ -81,7 +129,7 @@ test('GEO 站点聚合覆盖页面和维度建议', () => {
   assert.ok(result.recommendations.length > 0);
   assert.ok(result.actionPlan.length > 0);
   assert.equal(result.actionPlanMeta.total, result.actionPlan.length);
-  assert.equal(result.methodVersion, 2);
+  assert.equal(result.methodVersion, GEO_METHOD_VERSION);
 });
 
 test('Xspark 脱敏 SEO 证据可以离线生成带页面和复测方式的 GEO 待办', () => {
