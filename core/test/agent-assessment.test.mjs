@@ -131,7 +131,46 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'present');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action, null);
+    assert.deepEqual(env.result.deliveryPlan.backendCompletion.repairTasks, []);
     assert.equal(env.result.deliveryPlan.items.some(item => item.id === 'backend-scaffold'), false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-repair-tasks-'));
+  const scaffold = join(root, 'workspace', 'example.test', 'backend-scaffold');
+  try {
+    put(join(root, 'workspace', 'example.test', 'api-contract.json'), {
+      schema: 'heimdall.contract/1',
+      openapi: { paths: { '/api/items': { get: { responses: { '200': {} } } } } },
+    });
+    for (const name of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json']) put(join(scaffold, name), '{}');
+    put(join(scaffold, 'backend-check.json'), {
+      schema: 'heimdall.backend-check/1', generatedAt: '2026-11-12T00:00:00.000Z', overall: 'failed',
+      results: [
+        {
+          id: 'GET /api/items', status: 'failed', reason: '响应 MIME 不一致',
+          repairTask: { id: 'repair-get-api-items', kind: 'response-contract', target: 'GET /api/items', instruction: '修正响应 MIME', requiresHumanApproval: false, evidence: { actualMimeType: 'text/plain', secret: 'private-value' } },
+        },
+        {
+          id: 'adapter-gap-ledger', status: 'failed', uniqueGaps: 1, uncoveredQueryParameters: 1, unverifiedWrites: 0,
+          repairTask: { id: 'repair-query-parameter-gap', kind: 'query-parameter-gap', target: 'runtime-adapter/index.mjs', instruction: '补齐查询参数分支', requiresHumanApproval: false, evidence: { uniqueGaps: 1, uncoveredQueryParameters: 1 } },
+        },
+      ],
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const env = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    const tasks = env.result.deliveryPlan.backendCompletion.repairTasks;
+    assert.equal(tasks.length, 2);
+    assert.equal(tasks[0].target, 'GET /api/items');
+    assert.equal(tasks[0].kind, 'response-contract');
+    assert.equal(tasks[1].kind, 'query-parameter-gap');
+    assert.equal(tasks[1].evidence.uncoveredQueryParameters, 1);
+    assert.doesNotMatch(run.stdout, /private-value/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

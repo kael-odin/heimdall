@@ -551,6 +551,61 @@ async function inspectResponse(route, response) {
   }
   return { status: response.status >= 500 ? 'failed' : 'implemented', httpStatus: response.status, expectedStatuses, expectedMimeTypes, actualMimeType };
 }
+function repairTaskFor(item) {
+  const id = String(item?.id || '');
+  if (id === 'health') return {
+    id: 'repair-service-health', kind: 'service-health', target: 'server.mjs',
+    instruction: '先修复服务启动或健康端点，再运行 npm run check。', requiresHumanApproval: false,
+  };
+  if (id === 'adapter-coverage') return {
+    id: 'repair-route-coverage', kind: 'route-coverage', target: 'runtime-adapter/index.mjs',
+    instruction: '补齐观察到但适配器未覆盖的路由；证据不足时先补观察契约。', requiresHumanApproval: false,
+    evidence: { missingObservedRoutes: Array.isArray(item.missingObservedRoutes) ? item.missingObservedRoutes.length : 0 },
+  };
+  if (id === 'adapter-gap-ledger') {
+    const uniqueGaps = Number(item.uniqueGaps || 0);
+    const uncoveredQueryParameters = Number(item.uncoveredQueryParameters || 0);
+    const unverifiedWrites = Number(item.unverifiedWrites || 0);
+    const kind = unverifiedWrites > 0 ? 'write-verification' : uncoveredQueryParameters > 0 ? 'query-parameter-gap' : 'runtime-gap';
+    const instruction = unverifiedWrites > 0
+      ? '先用授权测试旅程验证写入、回读和清理，再修改适配器。'
+      : uncoveredQueryParameters > 0
+        ? '补齐查询参数名对应的路由分支，再运行 npm run check。'
+        : '补齐运行时发现但契约未声明的路由，再运行 npm run check。';
+    return {
+      id: 'repair-' + kind, kind, target: 'runtime-adapter/index.mjs', instruction,
+      requiresHumanApproval: unverifiedWrites > 0,
+      evidence: { uniqueGaps, uncoveredQueryParameters, unverifiedWrites },
+    };
+  }
+  if (!/^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) /.test(id)) return null;
+  const target = id.slice(0, 256);
+  const taskId = 'repair-' + target.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 96);
+  if (item.status === 'not_implemented') return {
+    id: taskId || 'repair-route-implementation', kind: 'route-implementation', target,
+    instruction: '根据观察到的契约实现这个路由；不要臆造认证、权限或业务副作用。', requiresHumanApproval: false,
+  };
+  if (item.status === 'skipped') return {
+    id: taskId || 'repair-authorized-journey', kind: 'authorized-journey', target,
+    instruction: '先补明确授权的测试数据和业务旅程，再实现该路由并复测。', requiresHumanApproval: true,
+  };
+  return {
+    id: taskId || 'repair-response-contract', kind: 'response-contract', target,
+    instruction: '按观察契约修正响应状态码、MIME 或有限 JSON 结构，再运行 npm run check。', requiresHumanApproval: false,
+    evidence: {
+      httpStatus: item.httpStatus,
+      expectedStatuses: Array.isArray(item.expectedStatuses) ? item.expectedStatuses.slice(0, 30) : [],
+      expectedMimeTypes: Array.isArray(item.expectedMimeTypes) ? item.expectedMimeTypes.slice(0, 20) : [],
+      actualMimeType: typeof item.actualMimeType === 'string' ? item.actualMimeType.slice(0, 128) : undefined,
+      schemaPath: typeof item.schemaError?.path === 'string' ? item.schemaError.path.slice(0, 128) : undefined,
+    },
+  };
+}
+function attachRepairTask(item) {
+  if (!['failed', 'incomplete', 'not_implemented', 'skipped'].includes(item?.status)) return item;
+  const repairTask = repairTaskFor(item);
+  return repairTask ? { ...item, repairTask } : item;
+}
 function overallOf(items) {
   if (items.some(item => item.status === 'failed')) return 'failed';
   if (items.some(item => ['incomplete', 'not_implemented', 'skipped'].includes(item.status))) return 'incomplete';
@@ -602,8 +657,10 @@ try {
 } catch (error) {
   results.push({ id: 'server', status: 'failed', reason: String(error.message || error) });
 }
+for (let index = 0; index < results.length; index += 1) results[index] = attachRepairTask(results[index]);
 let overall = overallOf(results);
-const report = { schema: 'heimdall.backend-check/1', generatedAt: new Date().toISOString(), base, overall, results, note: '通过只表示脚手架能启动并完成当前检查，不代表业务正确。' };
+const repairTasks = results.map(item => item.repairTask).filter(Boolean);
+const report = { schema: 'heimdall.backend-check/1', generatedAt: new Date().toISOString(), base, overall, results, repairTasks, note: '通过只表示脚手架能启动并完成当前检查，不代表业务正确。' };
 try {
   writeFileSync(join(ROOT, 'backend-check.json.tmp'), JSON.stringify(report, null, 2) + String.fromCharCode(10), 'utf8');
   renameSync(join(ROOT, 'backend-check.json.tmp'), join(ROOT, 'backend-check.json'));

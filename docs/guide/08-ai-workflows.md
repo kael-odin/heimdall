@@ -60,6 +60,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `items[].verify` 是完成动作后的确定性复测条件。适配器留出集通过，也不能把 `auth_permission_state_unknown` 说成后端等价。
 - `deliveryPlan.backendCompletion` 是后端补全任务包：看 `observedEndpoints` 和 `verifiedResponseShapes` 了解已观察内容，看 `humanJourneys`、`testData` 和 `unknowns` 了解还缺什么；其中 `inferred` 只是 AI 草稿输入，`invented` 必须单列，不能当证据。
 - `deliveryPlan.backendCompletion.scaffold` 会直接说明默认 B3 脚手架是 `present`、`incomplete` 还是还可生成，并给出对应的 CLI 动作；动作会写本地文件，所以仍需人工确认。
+- `deliveryPlan.backendCompletion.repairTasks` 会把 `backend-check.json` 的失败项映射成目标文件、修复类型、脱敏证据和人工授权边界；先按任务修复，再运行 `npm run check`。
 - 如果存在 `api.adapter.gapLedger`，先看 `summary` 和 `gaps`：它告诉你本地适配器遇到了多少未声明路径、未覆盖查询参数、缺响应体或未验证写入；`nearestRoutes` 只是排查线索，不是路由等价证明。
 - AI 可以按 `suggestedLocalFiles` 生成本地适配器、状态规则和检查脚本，但最终要按 `verification.commands` 重跑；认证、权限、状态机、写入和副作用仍要人工授权后验证。
 

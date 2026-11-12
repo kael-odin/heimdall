@@ -252,14 +252,32 @@ function backendScaffoldSummary(root, siteId) {
   const checkReport = existsSync(checkFile) ? readJson(checkFile) : null;
   const checkResults = Array.isArray(checkReport?.results) ? checkReport.results : [];
   const checkStatus = ['passed', 'incomplete', 'failed'].includes(checkReport?.overall) ? checkReport.overall : checkReport ? 'invalid' : 'not_run';
-  const check = {
-    status: checkStatus,
-    overall: checkStatus === 'invalid' || checkStatus === 'not_run' ? null : checkStatus,
-    generatedAt: typeof checkReport?.generatedAt === 'string' ? checkReport.generatedAt : null,
-    resultCount: checkResults.length,
-    failed: checkResults.filter(item => item?.status === 'failed').length,
-    incomplete: checkResults.filter(item => ['incomplete', 'not_implemented', 'skipped'].includes(item?.status)).length,
-    issues: checkResults.filter(item => ['failed', 'incomplete', 'not_implemented', 'skipped'].includes(item?.status)).slice(0, 50).map(item => ({
+  const safeRepairTask = task => {
+    if (!task || typeof task !== 'object' || Array.isArray(task)) return null;
+    const value = {
+      id: typeof task.id === 'string' ? task.id.slice(0, 128) : 'backend-repair',
+      kind: typeof task.kind === 'string' ? task.kind.slice(0, 64) : 'backend-repair',
+      target: typeof task.target === 'string' ? task.target.slice(0, 256) : 'backend-scaffold',
+      instruction: typeof task.instruction === 'string' ? task.instruction.slice(0, 300) : '修复该检查项后重新运行 npm run check。',
+      requiresHumanApproval: task.requiresHumanApproval === true,
+    };
+    const evidence = task.evidence && typeof task.evidence === 'object' && !Array.isArray(task.evidence) ? {} : null;
+    if (evidence) {
+      for (const key of ['httpStatus', 'missingObservedRoutes', 'schemaPath', 'actualMimeType', 'uniqueGaps', 'uncoveredQueryParameters', 'unverifiedWrites']) {
+        const source = task.evidence[key];
+        if (typeof source === 'string') evidence[key] = source.slice(0, 128);
+        else if (Number.isFinite(Number(source))) evidence[key] = Number(source);
+      }
+      for (const key of ['expectedStatuses', 'expectedMimeTypes']) {
+        if (Array.isArray(task.evidence[key])) evidence[key] = task.evidence[key].slice(0, 30).map(item => String(item).slice(0, 128));
+      }
+      if (Object.keys(evidence).length) value.evidence = evidence;
+    }
+    return value;
+  };
+  const issueRows = checkResults.filter(item => ['failed', 'incomplete', 'not_implemented', 'skipped'].includes(item?.status)).slice(0, 50).map(item => {
+    const repairTask = safeRepairTask(item?.repairTask);
+    return {
       id: typeof item?.id === 'string' ? item.id.slice(0, 128) : 'unknown',
       status: typeof item?.status === 'string' ? item.status.slice(0, 32) : 'unknown',
       ...(typeof item?.reason === 'string' ? { reason: item.reason.slice(0, 256) } : {}),
@@ -268,7 +286,18 @@ function backendScaffoldSummary(root, siteId) {
       ...(Number.isFinite(Number(item?.uncoveredQueryParameters)) ? { uncoveredQueryParameters: Number(item.uncoveredQueryParameters) } : {}),
       ...(Number.isFinite(Number(item?.unverifiedWrites)) ? { unverifiedWrites: Number(item.unverifiedWrites) } : {}),
       ...(typeof item?.schemaError?.path === 'string' ? { schemaPath: item.schemaError.path.slice(0, 128) } : {}),
-    })),
+      ...(repairTask ? { repairTask } : {}),
+    };
+  });
+  const check = {
+    status: checkStatus,
+    overall: checkStatus === 'invalid' || checkStatus === 'not_run' ? null : checkStatus,
+    generatedAt: typeof checkReport?.generatedAt === 'string' ? checkReport.generatedAt : null,
+    resultCount: checkResults.length,
+    failed: checkResults.filter(item => item?.status === 'failed').length,
+    incomplete: checkResults.filter(item => ['incomplete', 'not_implemented', 'skipped'].includes(item?.status)).length,
+    issues: issueRows,
+    repairTasks: issueRows.map(item => item.repairTask).filter(Boolean),
     path: existsSync(checkFile) ? reportPath(siteId, 'backend-scaffold/backend-check.json') : null,
   };
   return {
@@ -384,6 +413,7 @@ function buildBackendCompletionTask(siteId, api) {
   const validationStatus = api.adapter.validation?.status ?? 'not-validated';
   const gapLedger = api.adapter.gapLedger;
   const scaffold = api.scaffold ?? { status: 'missing', present: false, path: null };
+  const repairTasks = Array.isArray(scaffold.check?.repairTasks) ? scaffold.check.repairTasks : [];
   const scaffoldAction = observed && !scaffold.present
     ? plannedAction('cli:shell', {
       command: `heimdall backend scaffold ${siteId}${scaffold.status === 'incomplete' ? ' --force' : ''}`,
@@ -434,6 +464,7 @@ function buildBackendCompletionTask(siteId, api) {
       action: scaffoldAction,
       check: scaffold.check,
     },
+    repairTasks,
     gapLedger,
     unknowns: [
       { id: 'authentication', basis: 'unknown', detail: '哪些端点强制认证、凭据如何刷新和失效，尚未由摘要证明。' },
@@ -598,7 +629,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       title: check?.status === 'not_run' ? '后端脚手架还没有跑本地检查' : '后端脚手架检查没有完成',
       detail: check?.status === 'not_run'
         ? '脚手架已经生成，但还没有运行 npm run check；当前不能确认路由覆盖、响应结构和缺口账本。'
-        : `最近一次检查状态为 ${check?.status}，失败 ${check?.failed ?? 0} 项，未完成 ${check?.incomplete ?? 0} 项。`,
+        : `最近一次检查状态为 ${check?.status}，失败 ${check?.failed ?? 0} 项，未完成 ${check?.incomplete ?? 0} 项。${check?.repairTasks?.length ? ` 已生成 ${check.repairTasks.length} 个可执行修复任务。` : ''}`,
       evidence: [check?.path].filter(Boolean),
       action: plannedAction('cli:shell', { command: 'npm run check', cwd: `workspace/${siteId}/backend-scaffold` }, '运行脚手架自带的确定性检查并回写 backend-check.json', { requiresHumanApproval: true }),
       verify: planVerification(siteId, 'api.scaffold.check.status === "passed"'),

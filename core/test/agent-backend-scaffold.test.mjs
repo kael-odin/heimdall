@@ -121,6 +121,7 @@ test('backend scaffold generates and starts a B3 service from sanitized contract
     assert.equal(checkReport.results.find(item => item.id === 'adapter-coverage').status, 'passed');
     assert.equal(checkReport.results.find(item => item.id === 'GET /api/items').status, 'implemented');
     assert.equal(checkReport.results.find(item => item.id === 'adapter-gap-ledger').status, 'passed');
+    assert.deepEqual(checkReport.repairTasks, []);
   } finally {
     await stop(child);
     rmSync(root, { recursive: true, force: true });
@@ -220,6 +221,10 @@ test('backend scaffold check catches observed response mismatches and runtime ga
     assert.equal(report.results.find(item => item.id === 'GET /api/items').status, 'failed');
     assert.match(report.results.find(item => item.id === 'GET /api/items').reason, /MIME/, JSON.stringify(report));
     assert.equal(report.results.find(item => item.id === 'adapter-gap-ledger').uniqueGaps, 1);
+    assert.equal(report.results.find(item => item.id === 'GET /api/items').repairTask.kind, 'response-contract');
+    assert.equal(report.results.find(item => item.id === 'GET /api/items').repairTask.target, 'GET /api/items');
+    assert.equal(report.results.find(item => item.id === 'adapter-gap-ledger').repairTask.kind, 'runtime-gap');
+    assert.equal(report.repairTasks.length, 2);
     assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /private-value/);
   } finally {
     await stop(child);
