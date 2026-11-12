@@ -7,6 +7,7 @@
  * 纯函数、无 IO。返回不带 page 字段的 issue 描述，由 rules.mjs 套上页面/站点上下文，
  * 这样这一模块不依赖规则引擎，单测直接喂 URL 与页面数组。
  */
+import { httpResourceUrl } from '../url-canon.mjs';
 
 /** 常见分页参数名（同一站通常只用一种，这里求全） */
 const PAGE_PARAM = ['page', 'p', 'pg', 'paged', 'pagenum', 'pagenumber', 'page_num', 'pageNumber'];
@@ -38,6 +39,24 @@ export function parsePagination(url) {
   return { isPaginated: false, param: null, num: null };
 }
 
+/** A title exception applies only to one numeric sequence, with every other URL component retained. */
+export function samePaginationSeries(urls) {
+  let series;
+  for (const url of urls) {
+    const u = parse(httpResourceUrl(url)), pg = parsePagination(url);
+    if (!u || !Number.isSafeInteger(pg.num) || pg.num < 1) return false;
+    if (pg.param === '(路径)') u.pathname = u.pathname.replace(/\d+\/?$/, '');
+    else {
+      if (u.searchParams.getAll(pg.param).length !== 1 || !/^\d+$/.test(u.searchParams.get(pg.param))) return false;
+      u.searchParams.delete(pg.param);
+    }
+    const key = pg.param + ' ' + u.href;
+    if (series !== undefined && key !== series) return false;
+    series = key;
+  }
+  return urls.length > 1;
+}
+
 /** 这一页 URL 上带的分面参数 */
 export function facetParams(url) {
   const u = parse(url);
@@ -57,7 +76,7 @@ export function trackingParams(url) {
  * @param {object} page collect.mjs 的页面信号
  * @returns {Array<{id,severity,title,message,evidence,suggestion}>}
  */
-export function paginationPageIssues(page) {
+export function paginationPageIssues(page, site = {}) {
   const out = [];
   const pg = parsePagination(page.url);
 
@@ -75,14 +94,13 @@ export function paginationPageIssues(page) {
     });
   }
 
-  // 分页页被 noindex：后续页的内容与内链都进不了索引，是这套做法里代价最大的一种
-  if (pg.isPaginated && page.meta?.noindex) {
+  if (pg.isPaginated && page.meta?.noindex && site.noindexIntent !== true) {
     out.push({
       id: 'index-pagination-noindex', severity: 'high',
       title: '分页页被标记 noindex',
       message: `第 ${pg.num ?? '?'} 页（参数 ${pg.param}）不允许索引`,
       evidence: page.url,
-      suggestion: '分页页不要用 noindex：后续页的内容与链接会一并消失。要收敛重复内容请用 canonical 指向自身，或只对无价值的排序/筛选组合加 robots 规则',
+      suggestion: 'noindex 限制此页收录，不等于链接必然消失；只有期望收录此分页时才调整。排序或筛选组合是否收录、是否与其他页面重复，需按内容与发布意图分别确认',
     });
   }
 
@@ -126,7 +144,7 @@ export function paginationSiteIssues(site) {
   }
 
   if (paged.length >= 2) {
-    // title 全都一样：用户与搜索引擎都无法区分第几页
+    // Google permits shared titles and descriptions within a pagination sequence.
     const byTitle = new Map();
     for (const p of paged) {
       const t = (p.title ?? '').trim();
@@ -137,17 +155,17 @@ export function paginationSiteIssues(site) {
     const dups = [...byTitle.entries()].filter(([, urls]) => urls.length >= 2);
     if (dups.length) {
       out.push({
-        id: 'links-pagination-title-duplicate', severity: 'medium',
+        id: 'links-pagination-title-duplicate', severity: 'info',
         title: '分页页共用同一个 title',
         message: `${dups.length} 组分页页 title 完全相同`,
         evidence: dups.slice(0, 3).map(([t, urls]) => `「${t.slice(0, 50)}」× ${urls.length} 页`).join('\n'),
-        suggestion: '在 title 里带页码或范围（如「博客 – 第 3 页」），让每页可区分',
+        suggestion: 'Google 允许同一分页序列共用标题和描述，不据此扣分；可按读者区分页码的需求调整标题，不作为强制 SEO 修复',
       });
     }
 
-    // canonical 用法不一致：一半自指、一半指向列表页 —— 搜索引擎无法判断意图
-    const selfCanon = paged.filter(p => p.canonical && sameUrl(p.canonical, p.finalUrl ?? p.url)).length;
-    const baseCanon = paged.filter(p => p.canonical && !sameUrl(p.canonical, p.finalUrl ?? p.url)).length;
+    // Compare declared targets without assuming that different addresses serve equivalent content.
+    const selfCanon = paged.filter(p => sameUrl(p.canonical, p.finalUrl || p.url)).length;
+    const baseCanon = paged.filter(p => httpResourceUrl(p.canonical) && !sameUrl(p.canonical, p.finalUrl || p.url)).length;
     if (selfCanon && baseCanon) {
       out.push({
         id: 'links-pagination-canonical-mixed', severity: 'low',
@@ -162,37 +180,26 @@ export function paginationSiteIssues(site) {
   // 分面导航：参数组合会指数级放大可抓 URL，是列表类站点最常见的问题
   const faceted = pages.filter(p => facetParams(p.url).length);
   if (faceted.length >= 3) {
-    const facetedNoCanon = faceted.filter(p => !p.canonical).length;
-    const facetedSelf = faceted.filter(p => p.canonical && sameUrl(p.canonical, p.finalUrl ?? p.url)).length;
-    const controlled = faceted.length - facetedNoCanon - facetedSelf;   // canonical 指向了别处 = 有收敛策略
+    const nonSelfCanon = faceted.filter(p => httpResourceUrl(p.canonical) && !sameUrl(p.canonical, p.finalUrl || p.url)).length;
     const groups = new Map();
     for (const p of faceted) for (const k of facetParams(p.url)) groups.set(k, (groups.get(k) ?? 0) + 1);
     const topKeys = [...groups.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
     out.push({
-      id: 'links-faceted-params', severity: controlled ? 'info' : 'medium',
+      id: 'links-faceted-params', severity: nonSelfCanon === faceted.length ? 'info' : 'medium',
       title: '分面参数生成了大量可抓 URL',
-      message: `${faceted.length} 个 URL 带筛选/排序参数${controlled ? `，其中 ${controlled} 个已用 canonical 收敛` : '，且都没有收敛策略'}`,
+      message: `${faceted.length} 个 URL 带筛选/排序参数，${nonSelfCanon} 个声明了可解析的非自指 canonical；未验证内容等价或抓取效果`,
       evidence: `参数出现次数：${topKeys.map(([k, n]) => `${k}×${n}`).join('、')}
 ${faceted.slice(0, 5).map(p => p.url).join('\n')}`,
-      suggestion: '分面页各自 canonical 到主列表页（或加 robots 规则只放行有价值的组合），否则组合数会吃掉抓取预算',
+      suggestion: '先区分需收录的筛选页与不需抓取的组合；按重复或高度相似的内容及发布意图评估 canonical，不因存在筛选参数就统一归并到主列表。无需抓取时再评估 robots.txt，并单独验证抓取与索引意图',
     });
   }
 
   return out;
 }
 
-/**
- * 归一化成 host+path+**query** 比较，忽略尾斜杠与 www。
- * 必须带上 query：分面页 canonical 到主列表页时，两者 path 相同、只有参数不同 ——
- * 只看 path 会把"已收敛"误判成"自指"，severity 就降不下来。
- */
 function sameUrl(a, b) {
-  try {
-    const A = new URL(a), B = new URL(b);
-    return A.hostname.replace(/^www\./, '') === B.hostname.replace(/^www\./, '')
-      && A.pathname.replace(/\/$/, '') === B.pathname.replace(/\/$/, '')
-      && A.search === B.search;
-  } catch { return false; }
+  const left = httpResourceUrl(a);
+  return !!left && left === httpResourceUrl(b);
 }
 
 /**

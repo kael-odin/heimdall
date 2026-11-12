@@ -7,8 +7,8 @@
  * 规则命名：<category>-<slug>，便于报告筛选与 CI 基线对比。
  */
 import { validateStructuredData } from './structured.mjs';
-import { paginationPageIssues, paginationSiteIssues } from './pagination.mjs';
-import { canonUrl } from '../url-canon.mjs';
+import { paginationPageIssues, paginationSiteIssues, samePaginationSeries } from './pagination.mjs';
+import { canonUrl, httpResourceUrl } from '../url-canon.mjs';
 
 export const CATEGORIES = {
   index: '抓取与索引',
@@ -53,8 +53,8 @@ export function evaluatePage(page, site = {}) {
   // hreflang 地址、Google 标记形式与可选回退提示。
   const hl = page.hreflang ?? [];
   if (hl.length) {
-    const selfUrls = new Set([page.finalUrl, page.url, page.canonical].map(hreflangUrl).filter(Boolean));
-    const hasSelf = hl.some(h => selfUrls.has(hreflangUrl(h.href)));
+    const selfUrls = new Set([page.finalUrl, page.url, page.canonical].map(httpResourceUrl).filter(Boolean));
+    const hasSelf = hl.some(h => selfUrls.has(httpResourceUrl(h.href)));
     if (!hasSelf) {
       A('index-hreflang-no-self', 'index', 'medium', 'hreflang 缺少自指条目',
         `${hl.length} 条 hreflang，没有一条指回本页`,
@@ -135,7 +135,7 @@ export function evaluatePage(page, site = {}) {
 
   // ---------- 结构化数据与社交 ----------
   // 分页 / 分面：天生跨页的一类问题，单看一页看不出来
-  for (const s of paginationPageIssues(page)) A(s.id, 'links', s.severity, s.title, s.message, s.evidence, s.suggestion);
+  for (const s of paginationPageIssues(page, site)) A(s.id, 'links', s.severity, s.title, s.message, s.evidence, s.suggestion);
 
   const badJsonLd = (page.jsonld || []).filter(j => j.ok === false);
   if (badJsonLd.length) A('structured-jsonld-error', 'structured', 'medium', 'JSON-LD 解析失败', `${badJsonLd.length} 段`, badJsonLd[0].error, '修复 JSON 语法或 JSON-LD 语义格式并重新校验');
@@ -178,9 +178,17 @@ export function evaluateSite(site = {}) {
     out.push(mk(null, id, category, severity, title, message, evidence, suggestion));
 
   const dupTitle = Object.entries(site.duplicates?.title ?? {}).filter(([, urls]) => urls.length > 1);
-  for (const [value, urls] of dupTitle) S('content-title-duplicate', 'content', 'medium', 'title 重复', `${urls.length} 个页面使用同一 title`, `${trim(value, 70)}\n${urls.slice(0, 5).join('\n')}`, '为每个页面编写独立 title');
+  for (const [value, urls] of dupTitle) {
+    const pagination = samePaginationSeries(urls);
+    S('content-title-duplicate', 'content', pagination ? 'info' : 'medium', 'title 重复', `${urls.length} 个页面使用同一 title`, `${trim(value, 70)}\n${urls.slice(0, 5).join('\n')}`,
+      pagination ? '同一分页序列允许共用标题；可按读者区分页码的需求调整，不作为强制 SEO 修复' : '为每个页面编写独立 title');
+  }
   const dupDesc = Object.entries(site.duplicates?.description ?? {}).filter(([, urls]) => urls.length > 1);
-  for (const [, urls] of dupDesc) S('content-description-duplicate', 'content', 'medium', 'description 重复', `${urls.length} 个页面使用同一 description`, urls.slice(0, 5).join('\n'), '为每个页面编写独立描述');
+  for (const [, urls] of dupDesc) {
+    const pagination = samePaginationSeries(urls);
+    S('content-description-duplicate', 'content', pagination ? 'info' : 'medium', 'description 重复', `${urls.length} 个页面使用同一 description`, urls.slice(0, 5).join('\n'),
+      pagination ? '同一分页序列允许共用描述；按内容和展示需求决定是否细分' : '为每个页面编写独立描述');
+  }
 
   const pagesWithoutSitemap = site.sitemapCoverage === 'complete'
     ? (site.pages || []).filter(p => p.status >= 200 && p.status < 400 && !p.meta.noindex && !site.sitemapUrls?.has(canonUrl(p.finalUrl)) && !site.sitemapUrls?.has(canonUrl(p.url))) : [];
@@ -208,16 +216,6 @@ export function countBySeverity(issues) {
 
 function safeHost(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } }
 function samePath(a, b) { try { const A = new URL(a, b), B = new URL(b); return A.hostname.replace(/^www\./, '') === B.hostname.replace(/^www\./, '') && A.pathname.replace(/\/$/, '') === B.pathname.replace(/\/$/, ''); } catch { return false; } }
-
-/** Keep distinct resources distinct; aliases require evidence beyond similar host/path strings. */
-function hreflangUrl(u) {
-  try {
-    const x = new URL(u);
-    if (!/^https?:$/.test(x.protocol) || x.username || x.password) return null;
-    x.hash = '';
-    return x.href;
-  } catch { return null; }
-}
 
 /** Google annotation syntax only, not BCP 47 validity or ISO code-table membership. */
 function hasGoogleHreflangSyntax(code) {

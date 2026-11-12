@@ -27,6 +27,16 @@ export function canonUrl(u) {
   } catch { return null; }
 }
 
+/** Keep resource identities distinct; redirects or equivalent content need separate evidence. */
+export function httpResourceUrl(u) {
+  try {
+    const x = new URL(u);
+    if (!/^https?:$/.test(x.protocol) || x.username || x.password) return null;
+    x.hash = '';
+    return x.href;
+  } catch { return null; }
+}
+
 /**
  * 用户手写的地址 → 可解析的 URL 字符串（补协议）。
  *

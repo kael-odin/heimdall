@@ -39,6 +39,9 @@ test('单页：分页页被 noindex → 报高危', () => {
   assert.ok(hit);
   assert.equal(hit.severity, 'high');
   assert.match(hit.message, /第 3 页/);
+  assert.doesNotMatch(hit.suggestion, /一并消失/);
+  assert.ok(!paginationPageIssues(page({ url: 'https://s.test/blog?page=3', meta: { noindex: true } }), { noindexIntent: true })
+    .some(i => i.id === 'index-pagination-noindex'));
 });
 
 test('单页：非分页页 noindex 不归这条规则管', () => {
@@ -55,12 +58,12 @@ test('单页：内链带跟踪参数 → 报提醒', () => {
 // ---------- 站点级 ----------
 const siteOf = (pages) => ({ pages });
 
-test('站点：分页页共用 title → 报重复', () => {
+test('站点：分页页允许共用 title，只给不扣分建议', () => {
   const issues = paginationSiteIssues(siteOf([
     page({ url: 'https://s.test/blog?page=1', title: '博客' }),
     page({ url: 'https://s.test/blog?page=2', title: '博客' }),
   ]));
-  assert.ok(issues.some(i => i.id === 'links-pagination-title-duplicate'));
+  assert.equal(issues.find(i => i.id === 'links-pagination-title-duplicate')?.severity, 'info');
 });
 
 test('站点：分页页各带页码 title → 不报重复', () => {
@@ -77,6 +80,13 @@ test('站点：canonical 一半自指一半归并 → 报不一致', () => {
     page({ url: 'https://s.test/blog?page=2', finalUrl: 'https://s.test/blog?page=2', canonical: 'https://s.test/blog' }),
   ]));
   assert.ok(issues.some(i => i.id === 'links-pagination-canonical-mixed'));
+  for (const canonical of ['http://s.test/blog?page=2', 'https://s.test:444/blog?page=2', 'https://www.s.test/blog?page=2', 'https://s.test/blog/?page=2']) {
+    const mixed = paginationSiteIssues(siteOf([
+      page({ url: 'https://s.test/blog?page=1', finalUrl: 'https://s.test/blog?page=1', canonical: 'https://s.test/blog?page=1' }),
+      page({ url: 'https://s.test/blog?page=2', finalUrl: 'https://s.test/blog?page=2', canonical }),
+    ]));
+    assert.ok(mixed.some(i => i.id === 'links-pagination-canonical-mixed'), canonical);
+  }
 });
 
 test('站点：分面页没有收敛策略 → 报 medium；已收敛 → 降为 info', () => {
@@ -86,13 +96,22 @@ test('站点：分面页没有收敛策略 → 报 medium；已收敛 → 降为
   ])).find(i => i.id === 'links-faceted-params');
   assert.ok(uncontrolled);
   assert.equal(uncontrolled.severity, 'medium');
-  assert.match(uncontrolled.message, /都没有收敛策略/);
+  assert.match(uncontrolled.message, /0 个.*非自指 canonical/);
 
   const controlled = paginationSiteIssues(siteOf([
     mk('https://s.test/list?color=red', 'https://s.test/list'), mk('https://s.test/list?size=40', 'https://s.test/list'), mk('https://s.test/list?color=blue', 'https://s.test/list'),
   ])).find(i => i.id === 'links-faceted-params');
   assert.equal(controlled.severity, 'info');
-  assert.match(controlled.message, /3 个已用 canonical 收敛/);
+  assert.match(controlled.message, /3 个.*非自指 canonical/);
+  assert.match(controlled.message, /未验证/);
+  assert.doesNotMatch(controlled.suggestion, /各自 canonical 到主列表页/);
+  for (const canonical of ['', 'not-a-url', 'file:///list', 'javascript:void(0)']) {
+    const partial = paginationSiteIssues(siteOf([
+      mk('https://s.test/list?color=red', 'https://s.test/list'),
+      mk('https://s.test/list?color=blue', canonical), mk('https://s.test/list?color=green', canonical),
+    ])).find(i => i.id === 'links-faceted-params');
+    assert.equal(partial.severity, 'medium', canonical);
+  }
 });
 
 test('站点：只有一两个参数页不报（别把偶发当问题）', () => {

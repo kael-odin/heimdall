@@ -2,7 +2,7 @@
 
 每个文件对应 `../seo-targets.txt` 里的一个来源（协议、主机名、端口）。
 文件名由 `core/src/seo/baseline-file.mjs` 的 `versionedBaselineFileKey()` 计算。
-例如 `https://example.com` → `example.com--origin-100680ad546ce6a577f42f52--score-v8--measure-v6.json`。
+例如 `https://example.com` → `example.com--origin-100680ad546ce6a577f42f52--score-v9--measure-v6.json`。
 来源 URL 的 SHA-256 前 24 位区分协议、端口和主机名；末尾分别区分评分与测量口径。
 CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件保留，不自动覆盖。
 
@@ -16,7 +16,7 @@ CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件�
 ```json
 {
   "version": 1,
-  "scoreMethodVersion": 8,
+  "scoreMethodVersion": 9,
   "measurementVersion": 6,
   "host": "example.com",
   "origin": "https://example.com",
@@ -38,13 +38,13 @@ CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件�
 首次建立当前口径基线（选择新路径并审核；同口径的 `--update-baseline` 会覆盖目标文件）：
 
 ```bash
-cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v8--measure-v6.json --update-baseline
+cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v9--measure-v6.json --update-baseline
 ```
 
 按基线判回归（CI 用的就是这个，有阻断级回归则 exit 1）：
 
 ```bash
-cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v8--measure-v6.json --require-baseline --fail-on-regression
+cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v9--measure-v6.json --require-baseline --fail-on-regression
 ```
 
 门禁命令会在抓取前校验基线结构及 origin，缺失、损坏、空页面、错误严重度或来源不一致都会失败。建立基线的命令允许文件尚不存在，但已存在的坏基线仍需先人工处理。
@@ -60,7 +60,7 @@ cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/
 额外启用「总分跌幅」门禁（默认关闭，因为分数是问题列表的派生量）：
 
 ```bash
-cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v8--measure-v6.json --fail-on-regression --tolerance 3
+cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v9--measure-v6.json --fail-on-regression --tolerance 3
 ```
 
 ## 判定口径

@@ -46,6 +46,28 @@ function page(over = {}) {
 }
 const site = { host: 'example.com', sitemapUrls: new Set(['https://example.com/pricing']), robots: { ok: true }, duplicates: {}, orphans: [] };
 
+test('seo: duplicate titles and descriptions are optional only within one valid pagination series', () => {
+  for (const [urls, severity] of [
+    [['https://s.test/blog?page=2', 'https://s.test/blog?page=3'], 'info'],
+    [['https://s.test/blog/page/2/', 'https://s.test/blog/page/3/'], 'info'],
+    [['https://s.test/blog?page=2#top', 'https://s.test/blog?page=3'], 'info'],
+    [['https://s.test/blog?page=2', 'https://s.test/other?page=3'], 'medium'],
+    [['https://s.test/blog?page=2', 'https://s.test/blog?page=3&sort=new'], 'medium'],
+    [['https://s.test/blog?page=2', 'http://s.test/blog?page=3'], 'medium'],
+    [['https://s.test/blog?page=2', 'https://www.s.test/blog?page=3'], 'medium'],
+    [['https://s.test/blog?page=2', 'https://s.test/blog?page=invalid'], 'medium'],
+    [['https://s.test/blog?page=2', 'https://s.test/blog?page=1e2'], 'medium'],
+    [['https://s.test/blog?page=2', 'https://s.test/blog?page=3&page=4'], 'medium'],
+    [['https://s.test/blog', 'https://s.test/other'], 'medium'],
+  ]) {
+    const issues = evaluateSite({ duplicates: { title: { shared: urls }, description: { shared: urls } } });
+    assert.equal(issues.find(issue => issue.id === 'content-title-duplicate').severity, severity, urls.join(' '));
+    assert.equal(issues.find(issue => issue.id === 'content-description-duplicate').severity, severity, urls.join(' '));
+  }
+  assert.ok(!evaluatePage(page({ url: 'https://example.com/blog?page=2', meta: { noindex: true } }), { ...site, noindexIntent: true })
+    .some(issue => issue.id === 'index-pagination-noindex'));
+});
+
 test('seo: a healthy page has no high/critical issues and scores high', () => {
   const issues = evaluatePage(page(), site);
   assert.equal(issues.filter(i => i.severity === 'critical' || i.severity === 'high').length, 0, JSON.stringify(issues));
