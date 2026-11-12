@@ -130,6 +130,19 @@ test('strict adapter export is relocatable and keeps runtime state outside the b
     assert.match(readFileSync(join(f.out, 'docker-compose.yml'), 'utf8'), /heimdall-runtime-data:\/data/);
     assert.match(readFileSync(join(f.out, 'README.md'), 'utf8'), /HEIMDALL_RUNTIME_DATA_DIR/);
 
+    const acceptedHealth = readFileSync(join(f.out, 'health.json'), 'utf8');
+    put(join(f.site, 'live', 'index.html'), HTML + '<a href="/uncaptured/">Uncaptured page</a>');
+    const blocked = runExport(f);
+    assert.equal(blocked.status, 1, blocked.stderr + blocked.stdout);
+    const candidateName = readdirSync(join(f.source, 'deliverable')).find(name => name.startsWith('.candidate-'));
+    const partial = JSON.parse(readFileSync(join(f.source, 'deliverable', candidateName, 'health.json'), 'utf8'));
+    assert.ok(partial.strictBlockers.missingLinks > 0);
+    assert.equal(partial.operationProbe.checked, 1, 'missing navigation must not hide declared bundled flow diagnostics');
+    assert.equal(partial.operationProbe.failed, 0);
+    assert.equal(partial.strictBlockers.adapterRoutesUntested, 0);
+    assert.equal(readFileSync(join(f.out, 'health.json'), 'utf8'), acceptedHealth, 'blocked diagnostics must preserve the accepted bundle');
+    put(join(f.site, 'live', 'index.html'), HTML);
+
     const deployed = join(f.root, 'deployed');
     const state = join(f.root, 'runtime-state');
     cpSync(f.out, deployed, { recursive: true });

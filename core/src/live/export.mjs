@@ -949,7 +949,7 @@ if (STRICT) {
   if (operationPlan.flows.length && !health.strictBlockers.browserFailed
     && !health.strictBlockers.browserUntested
     && !Object.entries(health.strictBlockers).some(([key, value]) =>
-      key !== 'operationUntested' && key !== 'operationFailed' && !!value)) {
+      !['operationUntested', 'operationFailed', 'missingLinks'].includes(key) && !!value)) {
     try {
       health.operationProbe = await probeOfflineOperations(probeBundleDir, operationPlan.flows, {
         readOnlyGetUrls: COMPARE_SOURCE && INCLUDE_READONLY_DATA ? dataPlan.urls : [],

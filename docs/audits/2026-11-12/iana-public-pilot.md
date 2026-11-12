@@ -147,3 +147,25 @@ node core/src/cli.mjs live iana.org --offline --strict --root mirror --rebuild -
 复测证据位于 `D:/Github-Star/heimdall-evidence-archive/2026-11-12/iana-delivery-recheck/`：`final-feedback.log`、`final-assessment.log`、`data/workspace/iana.org/live-export.json` 与失败候选包记录最终结果；`original-inventory.json` 和 `archive-original.log` 记录原件迁移校验。原始未启用补抓的结果与早期失败日志也保留，不能把模式差异当成产品回归。
 
 交付反馈提交 `1fe9d802575c19f17e2bfc66f5821153876edd4d` 的完整 CI `43221215562` 已完成，8/8 任务成功，含两片完整 Core 测试与控制台 smoke；这不改变 IANA 严格交付仍未通过的结论。
+
+## 2026-11-13：AI 补写范围明确的本地搜索
+
+继续使用同批 8 页的独立工作区副本，为首页补写本地全文搜索。索引取自已捕获页面的标题与正文，标题匹配优先；页面明确说明只搜索这 8 页，Google 搜索离线不可用。本例不声称还原 Google 的排名、广告或全站搜索覆盖。
+
+实现复用既有两文件运行时适配器，模块含索引为 11,577 字节；首页移除 4 个 Google 搜索脚本，替换一个搜索容器。jQuery 等 3 个脚本复用之前已补抓候选包中的相同字节，记录来源和 SHA-256。本次未使用 `--heal`、源站流程对照或新的公开资源补抓；原始采集不改，索引、实现与生成包均在仓库外。
+
+接口检查 12/12 通过，覆盖 4 个已知标题、无结果、空输入、重复或额外参数、超长/控制字符/过多词项及不支持的方法。正式导出入口的当前结果：
+
+| 检查 | 结果 |
+| --- | --- |
+| 8 页离线浏览器 | 8/8 通过，无未测页及外联来源 |
+| 7 条声明旅程 | 7/7 通过，含搜索、空结果、空输入及结果跳转 |
+| 运行时适配器路由 | 1/1 已执行 |
+| 静态资源与运行时服务缺口 | 未解析、站外资源、未支持服务均为 0 |
+| 严格发布 | blocked，退出码 1，保留 248 个未捕获链接 |
+
+首轮导出虽然浏览器 8/8 通过，仍因这些未捕获链接跳过全部已声明旅程。现在导出器允许在已捕获页面上继续诊断这些旅程，其他前置阻断条件保留；最终发布依旧检查全部缺失链接。既有导出测试增加同一反例，确认旅程已执行、路由覆盖完成、退出码仍为 1，且旧正式包内容不变。相关导出与路径测试 7/7 通过，没有新增运行模块、依赖或测试文件。
+
+本次结果针对修改后的交互镜像，不能复用旧静态克隆的 8/8 视觉结论。原先带 `--heal` 的别名探测与本次未启用补抓的模式不同，不能将 223 与 248 的链接计数差异当作产品回归。搜索准备度及这些通过的旅程也不证明原站后端等价。
+
+外部证据：`D:/Github-Star/heimdall-evidence-archive/2026-11-12/iana-local-search/`，案例从 11 月 12 日晚持续到 13 日凌晨。`source-index.json`、`original-live-hashes.json`、`declared-cases.json`、`implementation.json` 和 `reused-asset-provenance.json` 保存范围与来源；`export.log` 为首轮跳过诊断的结果，`final-export.log` 及复制工作区的 `live-export.json` 指向当前候选；`endpoint-checks.json`、`diagnostics-red.log` 和 `diagnostics-green.log` 保留接口与回归结果。
