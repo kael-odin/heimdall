@@ -21,6 +21,7 @@ const PROMPTS = join(PKG, 'src', 'prompts.mjs');
 const PROMPTS_COPY = join(PKG, 'src', 'mcp-prompts.mjs');
 
 const options = {
+  absWorkingDir: PKG,
   entryPoints: [join(PKG, 'src', 'proxy-bin.mjs')],
   bundle: true, platform: 'node', format: 'esm', target: 'node20', outfile: OUT,
   // 入口自己带 shebang，esbuild 会放在第 1 行；banner 里不能再放一个（否则第 2 行的 #! 不是注释，Node 直接语法错误）

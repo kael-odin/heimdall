@@ -23,11 +23,12 @@
 | Windows 独立 B3 包 | 24/24 HTTP，一次进程重启 | Node 26；九个冻结文件保持原字节 |
 | 实际生成的 Dockerfile | 24/24 HTTP，一次替换容器 | Node 22.23.5，network=none，根文件系统只读，/data 命名卷，/tmp 临时盘 |
 | 容器输入独立性 | 7/7 被 COPY 的运行文件哈希一致 | 另外两个宿主冻结文件为 Dockerfile/README；无原工作区、参考依赖或预期语料挂载 |
+| 严格 live 导出后迁移运行 | 24/24 HTTP，一次重启；6/6 声明路由已执行 | 受控页面壳在留出采集后编写，原冻结适配器未改；不声称真实页面还原度 |
 | 相关现有测试 | 26/26，零失败、零跳过 | 动态数值/字符串/Unicode ID、编码边界、会话、独立导出、未覆盖阻断 |
 
 留出检查包含未见标量、null 和嵌套创建数据；PATCH 浅合并与保留未修改字段；PUT 替换与省略字段移除；拒绝通过更新重指派 ID；删除后 404；缺失资源的 PATCH/PUT/DELETE；创建后列表、同卷重启后的资源与列表一致。随机 ID 不要求逐字相同，但后续请求必须使用各自实际返回的 ID。
 
-Docker 使用实际生成文件构建，构建及运行均断网。HTTP 请求通过 `docker exec` 仅发送当前方法、路径与请求体，预期比较始终在宿主进行；替换容器复用同一卷。容器和状态卷已清理，镜像与证据留在仓库外。
+Docker 使用实际生成文件构建，构建及运行均断网。HTTP 请求通过 `docker exec` 仅发送当前方法、路径与请求体，预期比较始终在宿主进行；替换容器复用同一卷。容器和状态卷已清理，镜像与证据留在仓库外。live 补验先通过真实严格导出流程，再迁移整个交付目录，以独立状态目录运行同一旅程；运行时仍离线。它验证跨封装一致性，不算新一轮盲测。
 
 ## Heimdall 自身 QA 的故障检出
 
@@ -46,10 +47,10 @@ Docker 使用实际生成文件构建，构建及运行均断网。HTTP 请求�
 
 ## 证据、失败记录与未验证范围
 
-本机外部证据根：`D:/Github-Star/heimdall-evidence-archive/2026-11-13/json-server-stateful/`。主要文件为 `training-provenance.json`、`adapter-freeze.json`、`implementation-freeze.json`、`heldout-reference.json`、`journey-windows.json`、`journey-docker.json`、`qa-stateful.json`、对应驱动及各轮日志；安装依赖、原始语料与候选均未进 Git。
+本机外部证据根：`D:/Github-Star/heimdall-evidence-archive/2026-11-13/json-server-stateful/`。主要文件为 `training-provenance.json`、`adapter-freeze.json`、`implementation-freeze.json`、`heldout-reference.json`、`journey-windows.json`、`journey-docker.json`、`journey-live.json`、`qa-stateful.json`、对应驱动及各轮日志；安装依赖、原始语料与候选均未进 Git。
 
 初次训练驱动错误地沿用提交 ID、冻结时误要求 manifest 空白一致、测试误把静态回退当 404，以及重复编码路径的第一版实现，均保留失败证据并分别修正。严格导出覆盖统计先复现失败再修复。参考采集曾错误标成 24 个通过，已更正为 null 并保留原元数据；参考响应与候选冻结文件均未改写。
 
 本次证明的是有限单进程资源协议与落盘行为。并发、事务、崩溃恢复、幂等、认证、权限、生产数据库、多租户与外部副作用均未验证；生成包保持 B3-scaffold 和写路由未核实状态。没有把局部案例外推为任意网站后端等价，也没有新增依赖、模块或测试文件。
 
-Hosted CI 的精确提交与终态结果在推送后追加。
+首个源提交 `56e2e92c` 的 Hosted CI 在 MCP 产物检查失败，MCP 7 条功能测试通过。根因是 esbuild 默认使用调用目录生成源码路径注释，根目录构建与包目录检查字节不同；用一行 `absWorkingDir: PKG` 固定构建基准，两个入口检查均通过，产物恢复原稳定路径。失败日志与本机复现保留；没有修改门禁去忽略差异。其余长任务若被后续推送取消，不计为通过。最终精确提交与终态结果另行追加。
