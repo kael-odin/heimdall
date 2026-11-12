@@ -26,15 +26,25 @@ W3C 类型从空集合变为 `TechArticle` 和其完整的 W3C REC 类型 IRI。
 
 本轮另一次直接浏览器访问 W3C 返回 **403**，已保存 `w3c-live.json`，不计为在线验收通过，也不把错误页用于上述对照。
 
+web.dev 与 Chrome 的另外两次新鲜联网浏览器采集均返回 200，所有 JSON-LD 段均成功展开，证据在 `fresh.json`；不将联网时的资源与性能波动混入冻结分数对照。W3C 原始别名写法与完整展开 IRI 写法生成完全相同的受限证据；追加 `type: null` 后类型被正确移除，见 `equivalence.json`。
+
+另用真实 W3C 元数据派生本地“健康→故障→修复”夹具，只将一个上下文映射改为非法数字，JSON 语法仍有效。标准处理器检出语义格式错误；在明确声明 `--tolerance 1` 的同口径回归门禁中，分数 **88→82→88**，退出码 **0→1→0**，原基线哈希始终不变。该项为受控故障注入，不是公共 W3C 站点的缺陷，证据见 `defect-cycle/result.json`。已测格式缺陷与无法核实上下文的证据缺口分开处理；中级缺陷默认不会单独触发高严重度门禁，本次红灯使用了显式分数容差。
+
 ## 核验、版本与体积
 
 - 本地 SEO/GEO、采集、基线、历史、矩阵及代理相关回归 **223/223** 通过；后续针对代理摘要、规则数字和字段缺口的 **40/40** 检查通过。
 - 真实浏览器与 CLI 回归确认：未配置上下文的请求计数为 **0**，旧基线不覆盖，JSON-LD 未核实会阻断基线更新，GEO 不生成对应缺陷任务，HTML/CSV/代理保留缺口。
+- 三份真实重放报告与一份“语义未知”控制报告，在 375/768/1440 三视口共 **12/12** 次检查中，无整页横向溢出、脚本错误或运行时外联；未做站点 sitemap 核验，报告仍不能用于基线。
+- Linux Node **22.13.1** 在只读、`--network none` 的容器中，解析 W3C 样本并保留未配置上下文为未知。挂载的是解析模块、上下文、九个与生产锁文件版本一致的包和样本，不挂载 Heimdall 仓库；此项验证解析模块，不是整站独立部署验收。
 - SEO 评分口径 **7**、测量口径 **6**、GEO 方法 **5**；旧报告和基线保留，必须选新路径重新采集和审核。
 - 新增一个解析模块、一份约 153 KB 的官方上下文及其归属说明；增加一个直接依赖以替代自制上下文解析器。复用现有测试文件，无新测试文件；14 个冻结验证器未修改。
 - `pnpm install --frozen-lockfile`、生产依赖审计、插件生成检查和技能同步通过。运行日志、原始页面和对照脚本留在仓库外。
 
-外部证据：`D:/Github-Star/heimdall-evidence-archive/2026-11-13/jsonld-semantics/`，包括 `real-cases.json`、`*-before.json`、`*-after.json`、`w3c-live.json`、`tests.log`、`targeted-tests.log` 和可重跑脚本。
+代码提交 `0c64c3f1` 的首次完整 CI `43273085267` 为 **7/8 成功**。两个完整 Core 测试分片通过；浏览器基准的手工 `tablet-shift` 分支在目标截图阶段报 `Page.captureScreenshot: Unable to capture screenshot`，重复截图未生成，六项检查均为 `environment` / `blocked`。首次已知 BUG 统计为 12/13，保留原始分母与失败结论；同轮自动探索为 13/13，本地同计划三次复验均检出该视觉缺陷。失败日志、下载的作业证据和 `tablet-recheck.json` 均保存在外部证据目录。
+
+同一 SHA 仅复跑失败作业一次，第二次于北京时间 **2026-11-13 02:29:54** 完成，CI 汇总 **8/8 成功**。该次检测基准 18 例中，手工与自动分支均检出 13/13 个已知缺陷，5 个非缺陷例零误报；`tablet-shift` 成功检出。接口基准 11 例通过，其中 7 个已知缺陷全部检出；复验与防误关闭基准 12/12 通过。以上均为受控基准，不代表任意站点召回率。未修改验证器、视觉阈值、超时或基准计划；重跑成功不能证明首次 Chromium 截图故障的完整根因。原始失败记录 `ci-0c64c3f1.json` 保留，第二次结果与日志另存 `ci-0c64c3f1-attempt2.json` 和 `ci-0c64c3f1-attempt2-smoke.log`。同一源码 SHA 的 Docs `43273085268` 通过。
+
+外部证据：`D:/Github-Star/heimdall-evidence-archive/2026-11-13/jsonld-semantics/`，包括 `real-cases.json`、`*-before.json`、`*-after.json`、`w3c-live.json`、`fresh.json`、`equivalence.json`、`report-smoke.json`、`linux-offline.json`、`tests.log`、`targeted-tests.log` 和可重跑脚本。
 
 ## 上下文来源与边界
 
