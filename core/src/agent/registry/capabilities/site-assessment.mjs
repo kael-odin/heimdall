@@ -11,6 +11,7 @@ import { summarizeObservedApiContract } from '../../../live/contract.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
 import { listRuns, openWorkspace, relPath } from '../../../qa/run.mjs';
+import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
@@ -349,18 +350,22 @@ function runSummary(run) {
 }
 
 function qaSummary(args, ctx, siteId, origin) {
-  if (!args.qaWorkspace) return { status: 'not_configured', latest: null, site: null };
+  if (!args.qaWorkspace) return { status: 'not_configured', latest: null, metrics: null, site: null };
   let ws;
-  try { ws = openWorkspace(args.qaWorkspace, ctx); } catch { return { status: 'unavailable', latest: null, site: null }; }
+  try { ws = openWorkspace(args.qaWorkspace, ctx); } catch { return { status: 'unavailable', latest: null, metrics: null, site: null }; }
   const sites = Object.values(ws.sites);
   const qaSite = sites.find(site => site.name === siteId || site.origin === origin || originOf(site.url) === origin) ?? sites[0] ?? null;
-  if (!qaSite) return { status: 'configured', latest: null, site: null };
-  const run = listRuns(ws, 100).find(item => item.site === qaSite.name) ?? null;
-  if (!run) return { status: 'no_runs', latest: null, site: { name: qaSite.name, environment: qaSite.environment, pages: qaSite.pages.length } };
+  if (!qaSite) return { status: 'configured', latest: null, metrics: null, site: null };
+  const runs = listRuns(ws, 100).filter(item => item.site === qaSite.name);
+  const run = runs[0] ?? null;
+  if (!run) return { status: 'no_runs', latest: null, metrics: null, site: { name: qaSite.name, environment: qaSite.environment, pages: qaSite.pages.length } };
   const runDir = join(ws.dataDir, run.runId);
+  let metrics = null;
+  try { metrics = analyzeQaMetrics({ runs }); } catch { /* malformed run summaries stay unavailable */ }
   return {
     status: 'observed',
     site: { name: qaSite.name, environment: qaSite.environment, pages: qaSite.pages.length },
+    metrics,
     latest: {
       runId: run.runId,
       startedAt: run.startedAt ?? null,
@@ -749,7 +754,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
 export default {
   id: 'site_assessment',
   title: '站点评估：证据、能力与下一步',
-  description: 'Read one site workspace and return a conservative assessment for an AI agent: clone coverage and multi-viewport evidence, the latest SEO/GEO report, public API contract and replay-adapter validation, an optional QA workspace run, and a structured delivery plan. It reads only sanitized public summaries; it never reads raw HAR, sessions, operation plans or adapter source. Verified, observed, inferred and unknown claims stay separate. Read-only and works without the engine.',
+  description: 'Read one site workspace and return a conservative assessment for an AI agent: clone coverage and multi-viewport evidence, the latest SEO/GEO report, public API contract and replay-adapter validation, an optional QA workspace run with derived coverage/runtime/failure metrics, and a structured delivery plan. It reads only sanitized public summaries; it never reads raw HAR, sessions, operation plans or adapter source. Verified, observed, inferred and unknown claims stay separate. Read-only and works without the engine.',
   effects: ['read'], scope: 'read', idempotent: true, cost: 'cheap',
   input: {
     type: 'object', additionalProperties: false, required: ['siteId'],

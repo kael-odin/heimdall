@@ -36,7 +36,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 
 ```text
 调用 heimdall_site_assessment，siteId=example.com。
-如果有 QA 工作区，再传 qaWorkspace；只汇报镜像覆盖、多视口验证、SEO/GEO、公开 API 契约、适配器留出验证、最近一次 QA 和未知项。
+如果有 QA 工作区，再传 qaWorkspace；除了镜像覆盖、多视口验证、SEO/GEO、公开 API 契约和适配器留出验证，还读取 `qa.metrics` 里的运行覆盖、运行时长、失败分类和检测器决策。
 不要把观察型契约说成后端等价；根据 nextActions 决定下一步。
 ```
 
@@ -52,6 +52,8 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `ready`：当前摘要没有开放动作，但仍只代表摘要范围内完成。
 
 同时看 `readiness.clone`、`readiness.seo`、`readiness.geo`、`readiness.backend` 和 `readiness.qa`。每项都有 `status`、`basis`、`evidence` 和 `nextAction`，方便代码小白直接判断“缺什么、证据在哪、下一步做什么”。真正的阶段来源仍是 `deliveryPlan.decision.stage`。
+
+`qa.metrics` 只是对脱敏运行摘要的再计算：`runtime` 是 QA 运行本身的耗时，`failures` 是导航、检测器、检查点和环境阻断等分类；没有完整报警标签时，`alarms.falsePositiveRate` 和误报占比会明确不可计算，没有定向 oracle 时 `oracle` 也不会被假造。`decision.detectorExpansion=blocked` 表示证据不够，不表示检测器已经通过。
 
 - `decision.stage=capture`：先补镜像，不能直接进入重建或交付；
 - `decision.stage=ai_review_with_open_actions`：已有证据，可以让 AI 处理明确的补证、修复或复测动作；

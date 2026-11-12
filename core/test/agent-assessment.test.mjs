@@ -57,7 +57,8 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       dataDir: '.heimdall/qa',
     });
     put(join(qa, '.heimdall', 'qa', 'runs', runId, 'run.json'), {
-      runId, site: 'web', startedAt: '2026-11-11T01:00:00.000Z',
+      runId, site: 'web', startedAt: '2026-11-11T01:00:00.000Z', endedAt: '2026-11-11T01:00:12.500Z',
+      coverage: { pages: [{ path: '/', viewport: '1440x900' }], viewports: ['1440x900'], checks: [] },
       summary: { total: 2, fileable: 1, environment: 0, checkNeedsFix: 0, tolerable: 0, suppressed: 1 },
     });
 
@@ -78,6 +79,13 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.api.scaffold.present, false);
     assert.equal(env.result.api.adapter.gapLedger.summary.uniqueGaps, 1);
     assert.equal(env.result.qa.latest.runId, runId);
+    assert.equal(env.result.qa.metrics.coverage.runs, 1);
+    assert.equal(env.result.qa.metrics.coverage.pageViewportChecks, 1);
+    assert.equal(env.result.qa.metrics.runtime.count, 1);
+    assert.equal(env.result.qa.metrics.runtime.p50Ms, 12500);
+    assert.deepEqual(env.result.qa.metrics.failures.byKind, {});
+    assert.equal(env.result.qa.metrics.oracle.status, 'not_provided');
+    assert.equal(env.result.qa.metrics.decision.primaryAction, 'collect-more-evidence');
     assert.ok(env.result.claims.verified.includes('api.adapter_holdout:1'));
     assert.ok(env.result.unknowns.some(item => item.id === 'auth-permissions-state-unknown'));
     assert.equal(env.result.deliveryPlan.schema, 'heimdall.site-delivery-plan/1');
