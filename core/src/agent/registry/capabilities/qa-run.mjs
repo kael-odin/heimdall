@@ -33,6 +33,8 @@ const RESPONSE = {
     method: { type: 'string', enum: ['GET', 'POST'] },
     origin: { type: 'string', maxLength: 500, description: 'Exact HTTP origin, with no credentials, path or query' },
     path: { type: 'string', maxLength: 500, description: 'Exact unencoded path with no query' },
+    query: { type: 'object', minProperties: 1, maxProperties: 20, additionalProperties: { type: 'string', maxLength: 200 },
+      description: 'Explicit public GET query names and values; exact matching ignores parameter order. Sensitive queries are rejected; values are not recorded in reports' },
     status: { type: 'integer', minimum: 100, maximum: 599, description: 'Expected HTTP status; defaults to 200' },
     json: { type: 'object', additionalProperties: false, required: ['path', 'equals'], properties: {
       path: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'string', minLength: 1, maxLength: 100 } },
@@ -49,7 +51,8 @@ export const CHECK_SCHEMA = {
     responses: { type: 'array', items: RESPONSE, minItems: 1, maxItems: 10,
       description: 'Observe exact main-frame GET/POST responses without sending extra requests; unmatched or unreadable evidence is incomplete' },
     tier: { type: 'string', enum: ['wall', 'degrade', 'tolerable'] }, basis: { type: 'string', enum: ['failed', 'wrong', 'promise', 'friction', 'cosmetic'] },
-    loss: { type: 'string', maxLength: 300 }, prd: { type: 'string', maxLength: 300, description: 'Where this expectation comes from, e.g. "PRD 优惠券 §3.2: 无效券码提示「券码无效」"' },
+    loss: { type: 'string', maxLength: 300, description: 'Observed user impact. Without this, a finding is downgraded to tolerable and does not enter CI blocking findings' },
+    prd: { type: 'string', maxLength: 300, description: 'Where this expectation comes from, e.g. "PRD 优惠券 §3.2: 无效券码提示「券码无效」"' },
     viewport: { type: 'object', additionalProperties: false, required: ['width', 'height'], properties: { width: { type: 'integer', minimum: 320, maximum: 1920 }, height: { type: 'integer', minimum: 320, maximum: 2000 } } },
   },
 };
@@ -62,7 +65,7 @@ export default {
     + 'screenshots with an approved baseline. Optional declarative checks support real input steps and visible/hidden/text/url/count/attribute/'
     + 'clipboard/title expectations; cite the PRD in "prd". Text scope all-visible checks each visible match; none is incomplete. Use waitFor and '
     + 'minMatches to specify readiness. Optional response declarations observe an exact main-frame GET/POST and compare HTTP status and a bounded JSON scalar; '
-    + 'missing, ambiguous or unreadable responses are incomplete and bodies are not recorded. explore=true clicks limited controls to find interaction failures; it is off by default because it can '
+    + 'GET may declare an exact public query; query values and bodies are not recorded. Missing, ambiguous or unreadable responses are incomplete. explore=true clicks limited controls to find interaction failures; it is off by default because it can '
     + 'change state. HTTP policy may permit writes; GET and WebSocket may also cause side effects. '
     + 'Findings are matched against past verdicts; returns report and issue paths.',
   effects: ['browser', 'source-network', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy',

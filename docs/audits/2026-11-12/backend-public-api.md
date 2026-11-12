@@ -160,7 +160,7 @@ Windows 与 Linux 的独立写进程压力试验复现了读取竞态。定位�
 
 继续用真实公开 GET 验证“契约 → AI 补写 → 独立服务”。三次训练请求分别提供完整的 194 条脱敏商品快照、分页与字段选择、末页边界。本会话代理据此编写站点专用只读适配器，支持 `/products` 的默认读取、`limit`、`skip`、`select`；它按数据切片计算响应，不再逐 URL 查找旧响应。模块含数据共 306,744 字节，仅保存在外部案例目录，没有向 Heimdall 添加专用实现或测试文件。
 
-六个留出请求在训练前已声明；适配器的 SHA-256 于 22:35:04（Asia/Shanghai）冻结后才抓取源站预期，随后实现哈希不变。它们覆盖新的页长、偏移、字段组合、`limit=0`、超出数据范围及默认读取。数据来自已观察的完整商品快照，这是查询行为泛化，不是预测新商品或验证实时同步。
+六个留出请求于 22:32:46 声明；适配器的 SHA-256 于 22:35:04（Asia/Shanghai）冻结后才抓取源站预期，随后实现哈希不变。它们覆盖新的页长、偏移、字段组合、`limit=0`、超出数据范围及默认读取。数据来自已观察的完整商品快照，这是查询行为泛化，不是预测新商品或验证实时同步。
 
 | 同样 3 次训练、6 次留出 | 实际结果 |
 | --- | --- |
@@ -171,8 +171,28 @@ Windows 与 Linux 的独立写进程压力试验复现了读取竞态。定位�
 
 Linux 只挂载生成包、独立比较脚本和冻结后的预期，不挂载 Heimdall 源码或采集工作区，也未安装依赖。复制入容器前后以及执行后，服务、检查器、契约和两个适配器文件的 SHA-256 一致。这验证了包在现有 Node 镜像内运行；没有构建生成的 Dockerfile。
 
-另复制独立包，仅在本地把切片起点错移一位：结构检查仍 `passed`，外部逐值比较检出 5/6 不一致。继续复用现有 `qa/response-check.mjs`，在真实 Chromium 中为默认 GET 声明源站首条商品 ID：健康包为 `matched`，错误副本为 `json-mismatch`，HTTP 都是 200。没有新增检测器；这次直接验证了既有 QA 响应观察模块，未运行完整 QA CLI 或前端业务旅程。后续应把声明值断言和独立预期接入交付验收，不能将结构通过当成业务正确。
+另复制独立包，仅在本地把切片起点错移一位：结构检查仍 `passed`，外部逐值比较检出 5/6 不一致。继续复用现有 `qa/response-check.mjs`，在真实 Chromium 中为默认 GET 声明源站首条商品 ID：健康包为 `matched`，错误副本为 `json-mismatch`，HTTP 都是 200。没有新增检测器；这一阶段直接验证既有 QA 响应观察模块，完整 CLI 与前端业务旅程的后续结果见下节。结构通过仍不能代表业务正确。
 
 独立包关键文件哈希一致后回填工作区，`site-assessment` 同时读到适配器留出和脚手架检查 `passed`，而后端就绪仍为 `needs_human_review`。本例没有验证认证、权限、写入、状态机、持久化、排序、搜索、实时更新或完整源站后端。
 
 外部证据与可运行包：`D:/Github-Star/heimdall-evidence-archive/2026-11-12/backend-products-implementation/`。`declared-holdout.json`、`frozen-implementation.json` 与 `holdout-provenance.json` 保留先声明、冻结、后取预期的顺序；`replay-heldout-report.json` 和 `implemented-heldout-report.json` 比较同一批输入；`healthy-standalone.json`、`off-by-one-standalone.json`、`qa-value-assertion.json` 和 `linux-output/` 保存健康、注入故障及双平台结果；`deployment/` 为可独立启动的包，训练数据与所有生成物均未纳入 Git。
+
+## 分页查询贯通 QA CLI 与前后端复验
+
+既有响应检查忽略全部带查询 URL，无法核对上述分页。现为公开 GET 增加可选 `responses[].query`，复用现有公开 URL 校验，只匹配明确声明的参数和值；顺序可不同，额外或重复参数不匹配。裸路径默认仍不匹配查询，POST 不接受查询声明。报告只输出参数名，仍被动观察原请求，不额外请求后端。具体配置见 [QA CI 指南](../../guide/07-qa-ci.md)。
+
+在原独立包前接一个受控本地页面，按钮加载分页商品并显示条数及首条编号；预期直接来自此前冻结的源站留出样本。健康、后端切片错位、前端丢弃首条、修复四种场景分别执行实际 `qa run` 与 `qa ci`，另执行一次不声明查询的 CI，共 9 次真实 CLI 调用。各调用只产生 1 次后端 GET，未启用通用检测、坏链和视觉基线，以隔离声明的页面及接口断言。
+
+| 场景 | `qa run` 退出码 | `qa ci` 退出码与结果 | 响应状态 |
+| --- | --- | --- | --- |
+| 未声明查询 | 未执行 | 3，`qa_incomplete` | `missing` |
+| 健康 | 0 | 0，`passed` | `matched` |
+| 后端分页错位 | 0 | 3，`qa_incomplete` | `json-mismatch` |
+| 前端显示错位 | 0 | 1，`gate_failed` | `matched`，页面断言失败 |
+| 修复后 | 0 | 0，`passed` | `matched` |
+
+`qa run` 的 0 表示运行完成，不是所有业务检查通过。后端不符保留为待核实，CI 因证据不完整阻断；前端场景有已声明的实际用户损失，生成阻断发现。最初前端配置漏写 `loss`，按既有政策降为可容忍，CI 为 0；补齐实际损失后重新执行全部场景，未改动门禁分级。初次外部脚本还误把带进度行的 stdout 全文当 JSON；改为解析协议最后一行后复测，原失败日志保留。
+
+外部证据：`D:/Github-Star/heimdall-evidence-archive/2026-11-12/backend-query-qa-cli/`。`final-pilot.log`、`final/summary.json`、逐命令日志和 `final/workspaces/` 中的运行原件为最终结果；早期根目录运行保留配置与脚本问题。`summary.json` 的旧 `coverage` 字段为 null，实际断言核对 CLI 的 `result.checks`，完整检查见各运行 `run.json`。本例是真实公开数据与受控本地页面/故障的组合，没有发现源站前端缺陷，也没有验证完整前端克隆或认证、写入等后端行为。
+
+本机核心快速回归 1,334/1,334、响应/CI/HTTP 策略定向回归 17/17、最终响应回归 5/5、MCP 7/7 均通过。语法检查 763 个文件、插件生成检查、14 个冻结验证器文件及文档/公开案例检查通过；没有新增运行模块、依赖或测试文件。测试日志保存在仓库外 `D:/Github-Star/heimdall-evidence-archive/2026-11-12/qa-exact-query/`。

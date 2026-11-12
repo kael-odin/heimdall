@@ -331,6 +331,8 @@ heimdall qa ci --site web --viewports 1440,390 --fail-on all --github
 
 它会运行同一套只读 QA，并在本次运行目录下写 `qa-ci.json` / `qa-ci.md`，同时向 GitHub Actions 写摘要和注解。`--fail-on wall|degrade|all|none` 控制什么级别会让流水线变红。完整模板见 [QA CI 指南](docs/guide/07-qa-ci.md)。
 
+声明接口响应时，`responses[].path` 保持裸路径；公开 GET 的精确查询用可选 `query` 字符串对象声明。未声明查询不会匹配带参数请求，观察响应不会重发请求。业务断言还应写清已观察的用户损失 `loss`；缺少它的发现会降为可容忍，不进入 CI 阻断问题。
+
 ## 产物与排障
 
 - 工作区：`core/workspace/<host>/`；交付包：`core/deliverable/`。默认均不进 Git，可通过 `HEIMDALL_DATA_DIR` 改数据根目录。`health.coverage` 用同一批已发现 URL 统计按当前默认配方估算的队列排除、实际入队、克隆、有效 v2 验证及交付数量；侦察页数或深度触顶、sitemap 预算耗尽、声明的 sitemap 读取失败、出现站外 sitemap 或页面采集失败时，`discovery.scopeLimited` 标记范围受限。即使它为 `false`，仍不能证明整站所有页面都已发现。

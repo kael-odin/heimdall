@@ -17,6 +17,8 @@ const PRIVATE = 'fixture-private-value-do-not-record';
 const cases = ['ok', 'ok-get', 'string-code', 'null-field', 'status-only', 'bad-code', 'bad-http', 'wrong-type',
   'missing-field', 'nonscalar', 'not-json', 'duplicate', 'missing', 'blocked', 'oversize', 'compressed', 'invalid-json', 'query', 'iframe',
   'redirect-in', 'empty-query'];
+const QUERY_MARKER = 'public-query-value-do-not-record';
+const GET_CASES = new Set(['ok-get', 'redirect-in', 'approved-query', 'reordered-query', 'empty-value-query', 'wrong-query', 'extra-query', 'repeated-query']);
 
 function startServer() {
   const hits = [];
@@ -31,11 +33,14 @@ function startServer() {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       if (name === 'iframe') return res.end('<!doctype html><title>fixture</title><iframe src="/frame"></iframe>');
       const count = name === 'missing' ? 0 : name === 'duplicate' ? 2 : 1;
-      const path = name === 'redirect-in' ? '/redirect-in' : `/api/${name}${name === 'query' ? '?different=1' : name === 'empty-query' ? '?' : ''}`;
+      const query = name === 'approved-query' ? `?page=2&q=${QUERY_MARKER}` : name === 'reordered-query' ? `?q=${QUERY_MARKER}&page=2`
+        : name === 'empty-value-query' ? '?q=' : name === 'wrong-query' ? '?page=3' : name === 'extra-query' ? '?page=2&extra=1' : name === 'repeated-query' ? '?page=2&page=2'
+          : name === 'query' ? '?different=1' : name === 'empty-query' ? '?' : '';
+      const path = name === 'redirect-in' ? '/redirect-in' : `/api/${name}${query}`;
       return res.end(`<!doctype html><title>fixture</title><div id="ready">ready</div><script>
         let left = ${count};
         for (let i = 0; i < ${count}; i++) {
-          const xhr = new XMLHttpRequest(); xhr.open(${JSON.stringify(['ok-get', 'redirect-in'].includes(name) ? 'GET' : 'POST')}, ${JSON.stringify(path)});
+          const xhr = new XMLHttpRequest(); xhr.open(${JSON.stringify(GET_CASES.has(name) ? 'GET' : 'POST')}, ${JSON.stringify(path)});
           xhr.onloadend = () => { if (!--left) document.querySelector('#ready').dataset.done = '1'; };
           xhr.send('{}');
         }
@@ -85,7 +90,9 @@ function check(origin, name) {
   return { id: name, title: `response ${name}`, path: `/page/${name}`,
     ...(name === 'missing' || name === 'iframe' ? {} : { steps: [{ action: 'waitFor', selector: '#ready[data-done]' }] }),
     expect: [{ kind: 'title', equals: 'fixture' }],
-    responses: [{ method: ['ok-get', 'redirect-in'].includes(name) ? 'GET' : 'POST', origin, path: `/api/${name}`, status: 200,
+    responses: [{ method: GET_CASES.has(name) ? 'GET' : 'POST', origin, path: `/api/${name}`, status: 200,
+      ...(['approved-query', 'reordered-query'].includes(name) ? { query: { page: '2', q: QUERY_MARKER } }
+        : name === 'empty-value-query' ? { query: { q: '' } } : ['wrong-query', 'extra-query', 'repeated-query'].includes(name) ? { query: { page: '2' } } : {}),
       ...(name === 'status-only' ? {} : { json: { path: ['code'], equals: name === 'string-code' ? '0' : name === 'null-field' ? null : 0 } }) }] };
 }
 
@@ -102,8 +109,15 @@ test('response checks reject ambiguous or unsafe declarations', () => {
     { ...response, status: null },
     { ...response, json: { path: [], equals: 0 } },
     { ...response, json: { path: ['code'], equals: { nested: true } } },
+    { ...response, query: { page: '2' } },
+    ...[{}, [], { page: 2 }, { q: '\n' }, { token: PRIVATE }, { q: 'https://other.test/' },
+      Object.fromEntries(Array.from({ length: 21 }, (_, index) => ['p' + index, 'x']))]
+      .map(query => ({ ...response, method: 'GET', query })),
   ]) assert.throws(() => normalizeCheck({ ...base, responses: [invalid] }), /response/i);
   assert.throws(() => normalizeCheck({ ...base, responses: [response, response] }), /response/i);
+  const queried = { ...response, method: 'GET', query: { page: '2', q: 'public' } };
+  assert.deepEqual(normalizeCheck({ ...base, responses: [queried] }).responses, [queried]);
+  assert.throws(() => normalizeCheck({ ...base, responses: [queried, { ...queried, query: { q: 'public', page: '2' } }] }), /response/i);
 });
 
 test('unavailable CDP evidence stays incomplete without fetching a body unnecessarily', async () => {
@@ -141,7 +155,7 @@ test('response readiness observes the original XHR without exposing body or issu
   const root = workspace(origin);
   const browser = await chromium.launch({ headless: true });
   try {
-    const positive = ['ok', 'ok-get', 'string-code', 'null-field', 'status-only'];
+    const positive = ['ok', 'ok-get', 'string-code', 'null-field', 'status-only', 'approved-query', 'reordered-query', 'empty-value-query'];
     const run = await runQa(loadWorkspace(root), { site: 'web', pages: ['/blank'], viewports: [1280],
       checks: positive.map(name => check(origin, name)), linkCheck: false, detect: false, baseline: false }, { browser });
     for (const observed of run.run.coverage.checks) {
@@ -150,9 +164,18 @@ test('response readiness observes the original XHR without exposing body or issu
     }
     assert.equal(server.hits.filter(hit => hit.path === '/api/ok' && hit.method === 'POST').length, 1);
     assert.equal(server.hits.filter(hit => hit.path === '/api/ok-get' && hit.method === 'GET').length, 1);
+    for (const name of ['approved-query', 'reordered-query', 'empty-value-query']) {
+      assert.equal(server.hits.filter(hit => hit.path === '/api/' + name).length, 1);
+      assert.ok(run.run.coverage.checks.find(item => item.id === name).responses[0].queryParams.length > 0);
+    }
     for (const file of ['run.json', 'findings.json', 'report.md', 'bugs.md']) {
       assert.doesNotMatch(readFileSync(join(run.dir, file), 'utf8'), new RegExp(PRIVATE));
+      assert.doesNotMatch(readFileSync(join(run.dir, file), 'utf8'), new RegExp(QUERY_MARKER));
     }
+    const ci = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/blank'], viewports: [1280],
+      checks: [check(origin, 'approved-query')], linkCheck: false, detect: false, baseline: false, failOn: 'none', github: false });
+    assert.equal(ci.ok, true, JSON.stringify(ci));
+    assert.doesNotMatch(JSON.stringify(ci), new RegExp(QUERY_MARKER));
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -165,7 +188,8 @@ test('unavailable or ambiguous response evidence cannot produce a passing check 
     const states = { 'bad-code': 'json-mismatch', 'bad-http': 'http-mismatch', 'wrong-type': 'json-mismatch',
       'missing-field': 'field-missing', nonscalar: 'field-missing', 'not-json': 'not-json', duplicate: 'ambiguous',
       missing: 'missing', blocked: 'request-failed', oversize: 'too-large', compressed: 'encoded',
-      'invalid-json': 'invalid-json', query: 'missing', iframe: 'missing', 'redirect-in': 'redirect', 'empty-query': 'missing' };
+      'invalid-json': 'invalid-json', query: 'missing', iframe: 'missing', 'redirect-in': 'redirect', 'empty-query': 'missing',
+      'wrong-query': 'missing', 'extra-query': 'missing', 'repeated-query': 'missing' };
     for (const name of Object.keys(states)) {
       const run = await runQa(loadWorkspace(root), { site: 'web', pages: ['/blank'], viewports: [1280],
         checks: [check(origin, name)], linkCheck: false, detect: false, baseline: false }, { browser });

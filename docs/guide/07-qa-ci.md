@@ -48,6 +48,35 @@ heimdall qa ci --site web --fail-on none
 
 需要把视觉回归纳入门禁时，先登记并保留完整基线，再使用 `heimdall qa ci --site web --require-baseline`。本次每个页面和视口都必须完成比较；缺少基线文件或截图、新页面未登记、环境或来源不匹配时返回 `incomplete`。MCP 使用 `requireBaseline: true`，复合 Action 使用 `requireBaseline: "true"`。不启用时，尚未登记基线的普通 QA 可以通过，报告会说明没有进行视觉比较。
 
+## 声明页面与接口预期
+
+在工作区 `checks.json` 中保存业务检查，再通过 `--checks checks.json` 传给 `qa run` 或 `qa ci`。例如，已确认某个分页应显示 10 条、首条编号为 11 时：
+
+```json
+[
+  {
+    "id": "product-page", "title": "商品分页符合已核实预期", "path": "/",
+    "basis": "promise", "loss": "用户看到商品数量减少且首条错位，无法得到声明的分页结果。",
+    "steps": [
+      { "action": "click", "selector": "#load" },
+      { "action": "waitFor", "selector": "#ready[data-done]" }
+    ],
+    "expect": [{ "kind": "text", "selector": "#count", "equals": "10" }],
+    "responses": [{
+      "method": "GET", "origin": "https://example.org", "path": "/products",
+      "query": { "limit": "10", "skip": "10" },
+      "json": { "path": ["products", "0", "id"], "equals": 11 }
+    }]
+  }
+]
+```
+
+替换站点来源、选择器和独立核实的预期值。接口观察只读取页面原有的主框架 GET/POST 响应，不主动发送请求；读取状态和可选 JSON 标量不证明整个响应正确。请求缺失、多次匹配、正文无法核实或值不符时，该检查仍为未完成，CI 返回 `3`，不会自动将接口不符判成产品缺陷。
+
+`path` 不接受查询、编码或片段。只有 GET 可以使用 `query`：1–20 个参数，键名限 40 个字母、数字、点、下划线或连字符且以字母开头，值必须是最长 200 字符的字符串；完整 URL 最长 2,048 字符。敏感字段、控制字符、嵌套 URL 和不安全编码会被拒绝。参数顺序不影响匹配；不同值、额外参数或重复参数不匹配。未提供 `query` 时只匹配裸 URL。响应摘要只输出参数名，不记录查询值或正文；输入配置仍须自行审阅。
+
+页面业务断言失败后能否阻断，还取决于发现级别、判定记录、`--fail-on` 和容忍数量。`loss` 应写已观察的用户损失；缺少它的发现最高为 `tolerable`，不会进入建议提单及 CI 阻断列表。不要为了让流水线变红而编造损失。
+
 ## GitHub Actions 复合 Action
 
 目标项目可以直接调用仓库里的复合 Action：
@@ -84,4 +113,4 @@ jobs:
 
 - `qa ci` 适合日常巡检、发布前健康检查、跨版本截图回归和坏链 / 控制台 / 接口错误检查。
 - 固定清单验收适合改版前后有明确基线、需要证据核验和人工关闭的场景。
-- 两者都不替代人工判断；CI 通过只表示本次声明的检查通过。
+- 两者都不替代人工判断；CI 通过表示符合本次配置的门禁政策，可能仍有可容忍、已抑制或未达到门槛的问题。
