@@ -220,7 +220,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         } catch {}
       }
       // 结构化数据：除了 @type，还要把**实体本身**带回去做字段级校验
-      // （只判断「有没有 Product 这个词」是不够的 —— 决定能否出富结果的是 name/image/offers）。
+      // 字段信号用于浅层检查和完善提示，不代表富结果资格。
       // 对象可能很大（商品目录），所以按白名单裁剪并限制深度与条数。
       const LD_KEYS = new Set(['@context', '@type', '@id', '@graph', 'name', 'headline', 'description', 'title',
         'image', 'logo', 'url', 'datePublished', 'dateModified', 'datePosted', 'uploadDate', 'startDate', 'endDate',

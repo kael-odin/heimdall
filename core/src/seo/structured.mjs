@@ -1,22 +1,13 @@
 /**
- * seo/structured — JSON-LD 深度校验（字段级）
- *
- * 此前只做两件事：能不能解析、@type 在不在。但结构化数据实际失效的原因
- * 几乎都是**字段级**的 —— Google 判断一个 Product 能不能出富结果，
- * 看的是 name + image + (offers|review|aggregateRating)，不是「有没有 Product 这个词」。
- * 一个只写了 `{"@type":"Product"}` 的脚本，在旧实现的眼里和一份完整 Product 等价。
- *
- * 纯函数、无 IO —— 规则表可以对照 Google 的富结果文档逐条核，单测直接喂对象。
- *
- * 边界：这里只做**必填字段存在性**与基本格式（日期可解析、图片是绝对地址），
- * 不做业务正确性（价格是否真实、评分是否来自真实评价）—— 那需要站点自己的数据。
+ * seo/structured — JSON-LD 浅层格式检查与常见字段提示。
+ * 字段表不代表特定搜索功能的资格要求；不解析完整上下文、实体引用或业务真实性。
  */
 
 /**
- * 各类型的必填字段（对照 Google 富结果文档）。
- * 内层数组表示「至少其一」—— 例如 Product 必须有 offers / review / aggregateRating 之一。
+ * 各类型常见字段，仅作不扣分的完善提示；按目标搜索功能另行核实。
+ * 内层数组表示替代项，任一有内容就不提示该组。
  */
-export const REQUIRED_FIELDS = {
+export const COMMON_FIELDS = {
   Product: [['name'], ['image'], ['offers', 'review', 'aggregateRating']],
   Article: [['headline'], ['image'], ['datePublished'], ['author']],
   BlogPosting: [['headline'], ['image'], ['datePublished'], ['author']],
@@ -66,7 +57,6 @@ export function flattenNodes(items) {
 /** 缺失字段的人话描述：`image、offers|review|aggregateRating（至少其一）` */
 const describeGroup = (g) => (g.length === 1 ? g[0] : `${g.join(' / ')}（至少其一）`);
 
-const isAbsUrl = (v) => typeof v === 'string' && /^https?:\/\//i.test(v);
 const isIsoDate = (v) => typeof v === 'string' && !Number.isNaN(Date.parse(v)) && /\d{4}-\d{2}-\d{2}/.test(v);
 const DATE_KEYS = ['datePublished', 'dateModified', 'datePosted', 'uploadDate', 'startDate', 'endDate'];
 
@@ -104,12 +94,12 @@ export function validateStructuredData(items) {
     });
   }
 
-  // 必填字段：按类型聚合，一个类型一条，避免每个实体刷一条
+  // shortcut: 不展开 JSON-LD 上下文或 @id 引用；需要判定搜索功能资格时接入对应验证器。
   const byType = new Map();
   for (const n of nodes) {
     for (const t of typesOf(n)) {
-      if (!REQUIRED_FIELDS[t]) continue;
-      const missing = REQUIRED_FIELDS[t].filter(group => !group.some(k => has(n[k])));
+      if (!Object.hasOwn(COMMON_FIELDS, t)) continue;
+      const missing = COMMON_FIELDS[t].filter(group => !group.some(k => has(n[k])));
       if (!missing.length) continue;
       if (!byType.has(t)) byType.set(t, { missing: new Set(), count: 0 });
       const rec = byType.get(t);
@@ -119,11 +109,11 @@ export function validateStructuredData(items) {
   }
   for (const [type, rec] of byType) {
     out.push({
-      id: 'structured-required-missing', severity: 'medium',
-      title: `${type} 缺少必填字段`,
-      message: `${rec.count} 个 ${type} 实体缺 ${[...rec.missing].join('、')}`,
-      evidence: `Google 依据这些字段决定是否展示富结果；缺了通常等于白写。类型 ${type} 的必填：${REQUIRED_FIELDS[type].map(describeGroup).join('、')}`,
-      suggestion: `补齐：${[...rec.missing].join('、')}`,
+      id: 'structured-common-fields', severity: 'info',
+      title: `${type} 常见字段待核查`,
+      message: `${rec.count} 个 ${type} 实体未直接提供 ${[...rec.missing].join('、')}`,
+      evidence: `浅层字段提示，不是必填或富结果资格判定；未解析上下文和实体引用。${type} 的参考字段：${COMMON_FIELDS[type].map(describeGroup).join('、')}`,
+      suggestion: `按目标搜索功能的官方指南和 Rich Results Test 复核；仅在与可见内容一致时补充 ${[...rec.missing].join('、')}，勿虚构数据`,
     });
   }
 
@@ -141,22 +131,6 @@ export function validateStructuredData(items) {
       message: `${badDates.length} 处日期不是 ISO 8601`,
       evidence: badDates.slice(0, 5).join('\n'),
       suggestion: '用 ISO 8601（如 2026-10-11 或 2026-10-11T09:00:00+08:00）',
-    });
-  }
-
-  // 图片：相对地址在富结果里取不到图
-  const relImgs = [];
-  for (const n of nodes) {
-    const imgs = [].concat(n.image ?? []).flatMap(x => (typeof x === 'string' ? [x] : (x && typeof x === 'object' ? [x.url] : [])));
-    for (const u of imgs) if (has(u) && !isAbsUrl(u)) relImgs.push(String(u).slice(0, 60));
-  }
-  if (relImgs.length) {
-    out.push({
-      id: 'structured-image-relative', severity: 'low',
-      title: '结构化数据的图片用了相对地址',
-      message: `${relImgs.length} 处 image 不是绝对 URL`,
-      evidence: relImgs.slice(0, 5).join('\n'),
-      suggestion: '改为绝对地址（含 https:// 与域名），富结果抓取时不解析相对路径',
     });
   }
 

@@ -18,7 +18,7 @@ const SEO_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'seo'
 const FILES = ['rules.mjs', 'pagination.mjs', 'structured.mjs'];
 
 /** 规则总数 —— 改了规则就改这里，同时改 README / PRD / HANDOFF / 控制台里的同一句话 */
-export const RULE_COUNT = 66;
+export const RULE_COUNT = 65;
 
 function listRuleIds() {
   const ids = [];

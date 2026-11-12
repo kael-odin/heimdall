@@ -113,6 +113,9 @@ test('seo audit: misleading resource names do not pollute the report or baseline
     assert.match(html, /文本\/DOM 比例仅供观察/);
     assert.match(html, /结构化数据提示仅检查 JSON-LD 顶层及 @graph 类型/);
     assert.doesNotMatch(html, /历史或未知测量口径可能遗漏 @graph/);
+    assert.match(html, /常见字段仅作不扣分的待核查提示/);
+    assert.match(html, /文本\/DOM 比例仅供观察，不扣分/);
+    assert.match(html, /robots\.txt 返回 404\/410/);
 
     useScript = true;
     const second = await runAudit(origin, baseline, dataDir, []);

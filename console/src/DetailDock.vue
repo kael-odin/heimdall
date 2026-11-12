@@ -341,7 +341,7 @@ function onTablistKey(e) {
     <div class="seo-note">
       <b>侦察时的轻量体检</b>（6 项：title / description / H1 / 图片 alt / OG / lang）。
       侦察一次就把全站每页都过一遍，用来快速找出问题页。
-      完整的 <b>66 条规则、六分类评分</b>在站点级的「SEO 审计」报告里出 —— 那是另一件事。
+      完整的 <b>65 条规则、六分类评分</b>在站点级的「SEO 审计」报告里出 —— 那是另一件事。
     </div>
     <div class="seo-list" v-if="selected.seoLite">
       <div class="seo-row" :class="seoChecks.title.ok ? 'ok' : 'warn'"><span class="seo-k">Title</span><span>{{ seoChecks.title.msg }}</span></div>

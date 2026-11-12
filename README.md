@@ -100,7 +100,7 @@ D1 提交 `c170f50` 的[自身 Linux CI 复核](./docs/audits/README.md)已完�
 | **静态镜像** | `deliverable/<host>-<date>/`：镜像页 + 原站 CSSOM + 渲染后 DOM + 差异热图 + 还原度 CSV + 接手 README | 前端：照着写自己的第一版 |
 | **交互镜像** | `deliverable/<host>-live-<date>/`：Dockerfile + `serve.mjs` + HAR 回放 + 健康报告 | 运维/前端：`docker compose up -d` 直接对着它写代码 |
 | **改站起点** | `edit-manifest.md`：换域名 / 换图片 / 换文案各要动哪些文件，按"被多少页用到"排序 | 拿去做竞品站的人：从哪下手 |
-| **SEO 审计** | `workspace/<host>/seo/`：HTML 报告 + CSV + JSON，66 条规则六分类，并附 GEO 准备度与带证据、页面、成本和复测方式的行动计划 | SEO / 增长 |
+| **SEO 审计** | `workspace/<host>/seo/`：HTML 报告 + CSV + JSON，65 条规则六分类，并附 GEO 准备度与带证据、页面、成本和复测方式的行动计划 | SEO / 增长 |
 | **竞品情报** | `intel/<host>-intel.xlsx`：概览 / 语义情报 / 定价与 CTA | 产品 / 市场 |
 | **全站星图** | `workspace/<host>/recon/atlas.json` + 控制台 3D 视图 | 所有人：先看清这个站的结构 |
 | **项目验收** | `acceptance/<runId>/`：检查报告、双方截图、差异图、DOM / 网络摘要与证据校验和 | 产品 / 测试 / 开发：确认差异、复现问题、阻断失败交付 |
@@ -198,7 +198,7 @@ node src/cli.mjs deliver example.com                   # 打包成前端可接�
 - 原站 ↔ 镜像同步滚动对比工具；资产缺口扫描（视觉缺口与元数据噪声分开统计）
 
 **审计**
-- SEO 66 条规则 / 六分类：抓取索引、内容语义、结构化数据、性能体验、链接架构、安全合规
+- SEO 65 条规则 / 六分类：抓取索引、内容语义、结构化数据、性能体验、链接架构、安全合规
 - GEO 准备度：基于已采集证据评估 AI 可回答、可抽取、实体清晰和引用准备；不预测排名或模型引用率
 - 服务端 HTML vs 渲染后对比（识别 JS 渲染依赖，含 hreflang 校验）
 - 变更监控（基线快照 + 去噪）+ **SEO 回归门禁**（可接 CI，回归自动红）
@@ -262,7 +262,7 @@ pnpm check         # lint + 文档 + 冻结哈希 + 构建 + 快速集 + MCP + D
 ```
 
 > 文档里写死的数字会烂。这一页曾经写着"91 个模块""385 条测试"、"航线数 66"——
-> 66 那条至今是对的，因为它有测试钉着（`seo-rule-count.test.mjs`）；
+> 规则数至今是对的，因为它有测试钉着（`seo-rule-count.test.mjs`）；
 > 前两个没人钉，于是各自漂了。**能跑命令就别抄数字。**
 
 > **装浏览器不是可选项。** 测试集里有几条跑的是 `capture → build_clone` 的真实流水线

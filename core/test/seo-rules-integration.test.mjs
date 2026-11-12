@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluatePage, evaluateSite } from '../src/seo/rules.mjs';
+import { evaluatePage, evaluateSite, scoreIssues } from '../src/seo/rules.mjs';
 
 /** collect.mjs 的页面信号最小形状（只放规则会碰的字段） */
 const page = (over = {}) => ({
@@ -41,11 +41,20 @@ test('接线：JS 分页按钮会从 evaluatePage 里出来', () => {
   assert.ok(ids.includes('links-pagination-js-only'));
 });
 
-test('接线：结构化数据缺必填字段会从 evaluatePage 里出来', () => {
-  const ids = idsOf(page({
+test('接线：结构化数据字段建议进入报告，但不扣分；解析与日期错误仍扣分', () => {
+  const base = page();
+  const items = evaluatePage(page({
     jsonld: [{ ok: true, types: ['Product'], items: [{ '@context': 'https://schema.org', '@type': 'Product' }] }],
-  }));
-  assert.ok(ids.includes('structured-required-missing'), '只有 @type 的 Product 必须被拦下');
+  }), { host: 's.test' });
+  assert.equal(items.find(i => i.id === 'structured-common-fields').severity, 'info');
+  assert.equal(scoreIssues(items), scoreIssues(evaluatePage(base, { host: 's.test' })));
+  const broken = evaluatePage(page({ jsonld: [
+    { ok: false, error: 'invalid JSON' },
+    { ok: true, types: ['Article'], items: [{ '@context': 'https://schema.org', '@type': 'Article', datePublished: 'yesterday' }] },
+  ] }), { host: 's.test' });
+  assert.equal(broken.find(i => i.id === 'structured-jsonld-error').severity, 'medium');
+  assert.equal(broken.find(i => i.id === 'structured-date-format').severity, 'low');
+  assert.equal(scoreIssues(broken), scoreIssues(items) - 8);
 });
 
 test('接线：站点级分页规则会从 evaluateSite 里出来（只采到一个分页 URL 也要生效）', () => {
@@ -72,7 +81,7 @@ test('接线：干净的页面不产生分页/结构化问题（不误报）', (
     jsonld: [{ ok: true, types: ['Organization'], items: [{ '@context': 'https://schema.org', '@type': 'Organization', name: 'S', url: 'https://s.test' }] }],
   });
   const ids = idsOf(clean);
-  assert.ok(!ids.some(id => /pagination|faceted|structured-required|structured-context/.test(id)), `不该报：${ids.join(',')}`);
+  assert.ok(!ids.some(id => /pagination|faceted|structured-common|structured-context/.test(id)), `不该报：${ids.join(',')}`);
 });
 
 /**

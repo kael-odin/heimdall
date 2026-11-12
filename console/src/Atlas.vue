@@ -1100,7 +1100,7 @@ const siteActions = computed(() => {
   const scope = queueState.value?.scope;
   const hasAtlas = Array.isArray(atlas.value?.nodes) && atlas.value.nodes.length > 0;
   return [
-    { id: 'audit', label: 'SEO 审计', hint: '66 条规则 · 六分类评分 · 输出 HTML/CSV/JSON 报告', disabled: !has || !!engine.value.audit },
+    { id: 'audit', label: 'SEO 审计', hint: '65 条规则 · 六分类评分 · 输出 HTML/CSV/JSON 报告', disabled: !has || !!engine.value.audit },
     {
       id: 'clone-incremental',
       label: cloned ? '增量克隆' : '整站克隆',
@@ -2324,7 +2324,7 @@ onBeforeUnmount(() => {
     <div class="report-card surface">
       <h3>SEO 审计报告</h3>
       <p v-if="auditReport">{{ auditReport.score }} 分<span v-if="auditReport.geo"> · GEO {{ auditReport.geo.score ?? '未计算' }} 分</span> · {{ auditReport.pages }} 页 · {{ auditReport.issues }} 条问题 · 评分口径 {{ auditReport.scoreMethodVersion ?? '未记录' }}</p>
-      <p v-else>尚未运行（66 条规则 / 六分类评分）</p>
+      <p v-else>尚未运行（65 条规则 / 六分类评分）</p>
       <p class="trend-hint" v-if="auditReport?.geo">GEO 是基于已采集证据的 AI 可回答/可抽取准备度启发式，不是搜索排名或模型引用保证；证据覆盖 {{ auditReport.geo.coverage?.pagesScored ?? 0 }}/{{ auditReport.geo.coverage?.pages ?? 0 }} 页。</p>
       <p class="trend-hint" v-if="auditReport && auditReport.baselineEligible === false">采集不完整，分数仅供参考。</p>
       <p class="trend-hint" v-if="auditReport?.baselineMethodMismatch">旧基线评分或测量口径不兼容，本次未进行基线对比；原文件仍保留。</p>

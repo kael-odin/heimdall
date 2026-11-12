@@ -141,7 +141,7 @@ export function evaluatePage(page, site = {}) {
   if (badJsonLd.length) A('structured-jsonld-error', 'structured', 'medium', 'JSON-LD 解析失败', `${badJsonLd.length} 段`, badJsonLd[0].error, '修复 JSON 语法并重新校验');
   const types = [...new Set((page.jsonld || []).flatMap(j => j.types || []))];
   if (!types.length && !page.microdataCount) A('structured-none', 'structured', 'info', '未检测到 JSON-LD 类型或 microdata 标记', '', '仅检查 JSON-LD 顶层和 @graph 的类型及 microdata 标记；未检查 RDFa。', '先人工核对页面的结构化数据，再按页面需求补充 Schema');
-  // 字段级校验：能解析、有 @type 只说明"写了"，不说明"能用"
+  // 浅层格式检查与字段提示，不判定搜索功能资格。
   for (const s of validateStructuredData((page.jsonld || []).flatMap(j => j.items ?? []))) {
     A(s.id, 'structured', s.severity, s.title, s.message, s.evidence, s.suggestion);
   }
