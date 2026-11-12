@@ -15,6 +15,45 @@ function put(file, value) {
   writeFileSync(file, typeof value === 'string' ? value : JSON.stringify(value, null, 2));
 }
 
+test('site-assessment: zero fileable findings do not hide incomplete QA evidence', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-qa-'));
+  const qa = join(root, 'qa-project');
+  const summary = { total: 0, fileable: 0, environment: 0, checkNeedsFix: 0 };
+  const coverage = { pages: [{ path: '/', viewport: '1440x900', counts: {} }], checks: [], detection: { failedPages: [] }, baseline: { status: 'disabled' } };
+  try {
+    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(qa, '.heimdall', 'qa.json'), { sites: { web: { url: 'https://example.test/', pages: ['/'] } } });
+    const runId = 'qa-20261113-120000-abcd';
+    for (const [name, patch, status] of [
+      ['unverified check', { summary: { ...summary, checkNeedsFix: 1 } }, 'incomplete'],
+      ['complete', {}, 'complete'],
+      ['environment', { summary: { ...summary, environment: 1 } }, 'incomplete'],
+      ['page request blocked', { coverage: { ...coverage, pages: [{ counts: { clientBlocked: 1 } }] } }, 'incomplete'],
+      ['check request blocked', { coverage: { ...coverage, checks: [{ clientBlocked: 1 }] } }, 'incomplete'],
+      ['navigation failed', { coverage: { ...coverage, pages: [{ navError: 'assessment-private-marker' }] } }, 'incomplete'],
+      ['detector failed', { coverage: { ...coverage, detection: { failedPages: [{}] } } }, 'incomplete'],
+      ['baseline unavailable', { coverage: { ...coverage, baseline: { status: 'incomplete', skipped: [{ incomplete: true, reason: 'assessment-private-marker' }] } } }, 'incomplete'],
+      ['summary only', { coverage: undefined }, 'unknown'],
+      ['malformed coverage', { coverage: { ...coverage, pages: [null] } }, 'unknown'],
+      ['missing counters', { summary: { fileable: 0 } }, 'unknown'],
+      ['negative counter', { summary: { ...summary, environment: -1 } }, 'unknown'],
+      ['findings and incomplete', { summary: { ...summary, fileable: 1, checkNeedsFix: 1 } }, 'incomplete'],
+    ]) {
+      put(join(qa, '.heimdall', 'qa', 'runs', runId, 'run.json'), { runId, site: 'web', summary, coverage, ...patch });
+      const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+        cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+      });
+      assert.equal(run.status, 0, run.stderr + run.stdout);
+      const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+      assert.equal(result.readiness.qa.status, status === 'complete' ? 'ready' : 'needs_human_review', name);
+      assert.equal(result.qa.latest.completeness.status, status, name);
+      assert.equal(result.deliveryPlan.items.some(item => item.id === 'qa-incomplete' && item.status === 'blocked'), status !== 'complete', name);
+      if (name === 'findings and incomplete') assert.ok(result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
+      assert.doesNotMatch(run.stdout, /assessment-private-marker/);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
@@ -290,6 +329,7 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     });
     put(join(qa, '.heimdall', 'qa', 'runs', 'qa-20261111-130000-abcd', 'run.json'), {
       runId: 'qa-20261111-130000-abcd', site: 'web', startedAt: '2026-11-11T02:00:00.000Z',
+      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [] },
       summary: { total: 1, fileable: 0, environment: 0, checkNeedsFix: 0, tolerable: 0, suppressed: 0 },
     });
 

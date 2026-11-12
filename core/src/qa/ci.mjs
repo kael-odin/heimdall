@@ -15,6 +15,24 @@ export function selectGateFindings(findings, failOn = 'all') {
   return findings.filter(item => (TIER_RANK[item.tier] ?? 0) >= minimum);
 }
 
+export function qaIncompleteReasons(result, requireBaseline = false) {
+  return [
+    (result.environment?.length ?? 0) > 0 ? '登录状态失效，业务页面未全部检查' : null,
+    (result.clientBlocked ?? 0) > 0 ? '资源请求被客户端拦截，页面检查可能不完整' : null,
+    (result.summary?.environment ?? 0) > 0 && !(result.environment?.length ?? 0) && !(result.clientBlocked ?? 0)
+      ? '环境问题导致检查未完成' : null,
+    (result.summary?.checkNeedsFix ?? 0) > 0 ? '检查点执行出错或未核实' : null,
+    (result.detection?.failedPages?.length ?? 0) > 0 ? '页面检测器执行失败' : null,
+    (result.navigation?.failedPages?.length ?? 0) > 0 ? '页面导航失败，未完成检查' : null,
+    result.baseline?.status === 'incomplete'
+      ? `视觉基线比对未完成：${(result.baseline.skipped ?? []).filter(item => item.incomplete).map(item => item.reason).join('；') || '证据不可用'}` : null,
+    requireBaseline && result.baseline?.status !== 'incomplete' && (result.baseline?.status !== 'compared'
+      || !Number.isInteger(result.baseline?.compared) || result.baseline.compared < 1
+      || result.baseline.compared !== result.navigation?.pages || (result.baseline.skipped?.length ?? 0) > 0)
+      ? '已要求视觉基线，但本次页面和视口未全部完成比对' : null,
+  ].filter(Boolean);
+}
+
 function ghaEscape(value) {
   return String(value ?? '')
     .replaceAll('%', '%25')
@@ -127,21 +145,7 @@ export async function runQaCi({ args, failOn = 'all', maxFindings = 0, requireBa
   const result = env.result;
   const findings = selectGateFindings(result.fileable ?? [], failOn);
   const overLimit = findings.length > allowed;
-  const incompleteReasons = [
-    (result.environment?.length ?? 0) > 0 ? '登录状态失效，业务页面未全部检查' : null,
-    (result.clientBlocked ?? 0) > 0 ? '资源请求被客户端拦截，页面检查可能不完整' : null,
-    (result.summary?.environment ?? 0) > 0 && !(result.environment?.length ?? 0) && !(result.clientBlocked ?? 0)
-      ? '环境问题导致检查未完成' : null,
-    (result.summary?.checkNeedsFix ?? 0) > 0 ? '检查点执行出错或未核实' : null,
-    (result.detection?.failedPages?.length ?? 0) > 0 ? '页面检测器执行失败' : null,
-    (result.navigation?.failedPages?.length ?? 0) > 0 ? '页面导航失败，未完成检查' : null,
-    result.baseline?.status === 'incomplete'
-      ? `视觉基线比对未完成：${(result.baseline.skipped ?? []).filter(item => item.incomplete).map(item => item.reason).join('；') || '证据不可用'}` : null,
-    requireBaseline && result.baseline?.status !== 'incomplete' && (result.baseline?.status !== 'compared'
-      || !Number.isInteger(result.baseline?.compared) || result.baseline.compared < 1
-      || result.baseline.compared !== result.navigation?.pages || (result.baseline.skipped?.length ?? 0) > 0)
-      ? '已要求视觉基线，但本次页面和视口未全部完成比对' : null,
-  ].filter(Boolean);
+  const incompleteReasons = qaIncompleteReasons(result, requireBaseline);
   const incomplete = incompleteReasons.length > 0;
   const gate = {
     status: incomplete ? 'incomplete' : overLimit ? 'failed' : 'passed',

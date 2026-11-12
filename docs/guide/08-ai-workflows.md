@@ -53,6 +53,8 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 
 同时看 `readiness.clone`、`readiness.seo`、`readiness.geo`、`readiness.backend` 和 `readiness.qa`。每项都有 `status`、`basis`、`evidence` 和 `nextAction`，方便代码小白直接判断“缺什么、证据在哪、下一步做什么”。真正的阶段来源仍是 `deliveryPlan.decision.stage`。
 
+`qa.latest.completeness.status` 区分 `complete`、`incomplete` 和 `unknown`，`incompleteReasonCount` 只给原因类别数，不返回原始错误。站点评估复用默认 QA CI 的完整性判断：环境、检查点、导航、检测器、资源拦截或已有基线未完成时，QA 不能就绪；旧记录缺少覆盖或必要计数时保留未知并建议重跑。只有完整且可提单数为 0 才标 `readiness.qa=ready`。这不强制视觉基线，也不证明未声明业务规则正确。
+
 `qa.metrics` 只是对脱敏运行摘要的再计算：`runtime` 是 QA 运行本身的耗时，`failures` 是导航、检测器、检查点和环境阻断等分类；没有完整报警标签时，`alarms.falsePositiveRate` 和误报占比会明确不可计算，没有定向 oracle 时 `oracle` 也不会被假造。`decision.detectorExpansion=blocked` 表示证据不够，不表示检测器已经通过。
 
 - `decision.stage=capture`：先补镜像，不能直接进入重建或交付；

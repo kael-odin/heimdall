@@ -12,6 +12,7 @@ import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
 import { listRuns, openWorkspace, relPath } from '../../../qa/run.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
+import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { GEO_METHOD_VERSION } from '../../../seo/method.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
@@ -416,6 +417,17 @@ function qaSummary(args, ctx, siteId, origin) {
   const runDir = join(ws.dataDir, run.runId);
   let metrics = null;
   try { metrics = analyzeQaMetrics({ runs }); } catch { /* malformed run summaries stay unavailable */ }
+  const summary = runSummary(run);
+  const coverage = run.coverage;
+  const pages = Array.isArray(coverage?.pages) ? coverage.pages : [];
+  const checks = Array.isArray(coverage?.checks) ? coverage.checks : [];
+  const incompleteReasons = qaIncompleteReasons({ summary,
+    clientBlocked: pages.reduce((n, p) => n + (p?.counts?.clientBlocked ?? 0), 0) + checks.reduce((n, c) => n + (c?.clientBlocked ?? 0), 0),
+    detection: coverage?.detection, navigation: { failedPages: pages.filter(p => p?.navError) }, baseline: { status: coverage?.baseline?.status },
+  });
+  const known = summary && ['fileable', 'environment', 'checkNeedsFix'].every(key => Number.isInteger(summary[key]) && summary[key] >= 0)
+    && pages.length > 0 && pages.every(p => typeof p?.path === 'string' && typeof p?.viewport === 'string')
+    && Array.isArray(coverage?.checks) && checks.every(c => typeof c?.pass === 'boolean');
   return {
     status: 'observed',
     site: { name: qaSite.name, environment: qaSite.environment, pages: qaSite.pages.length },
@@ -423,7 +435,8 @@ function qaSummary(args, ctx, siteId, origin) {
     latest: {
       runId: run.runId,
       startedAt: run.startedAt ?? null,
-      summary: runSummary(run),
+      summary,
+      completeness: { status: incompleteReasons.length ? 'incomplete' : known ? 'complete' : 'unknown', incompleteReasonCount: incompleteReasons.length },
       report: relPath(ws, join(runDir, 'report.md')),
       bugs: relPath(ws, join(runDir, 'bugs.md')),
     },
@@ -744,7 +757,16 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       evidence: [], action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, '运行一次只读 QA'),
       verify: { tool: 'heimdall_qa_run', condition: 'matching site has a completed run' },
     });
-  } else if (qa.latest?.summary?.fileable > 0) {
+  } else if (qa.latest?.completeness?.status !== 'complete') {
+    add({
+      id: 'qa-incomplete', kind: 'qa_business_checkpoint_gap', basis: qa.latest?.completeness?.status === 'incomplete' ? 'observed' : 'unknown', status: 'blocked',
+      title: 'QA 检查未完成或完整性证据不足', detail: '先核实环境、检查点、导航、检测器与基线证据；没有可提单问题不代表检查已完成。',
+      evidence: [qa.latest?.report].filter(Boolean),
+      action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, '修复未完成原因并重跑 QA'),
+      verify: { tool: 'heimdall_qa_run', condition: 'matching run has complete QA evidence' },
+    });
+  }
+  if (qa.latest?.summary?.fileable > 0) {
     add({
       id: 'qa-findings', kind: 'qa_business_checkpoint_gap', basis: 'observed', status: 'open',
       title: 'QA 有待人工复核的问题', detail: `最近一次运行有 ${qa.latest.summary.fileable} 条达到提单门槛的发现。`,
@@ -803,8 +825,8 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     : seo.geo.status !== 'complete' || seo.geo.actionItems ? 'needs_follow_up' : 'ready';
   const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
   const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'backend-scaffold-check', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
-  const qaItem = item('qa-workspace', 'qa-first-run', 'qa-findings');
-  const qaReady = qa.status === 'observed' && !(qa.latest?.summary?.fileable > 0);
+  const qaItem = item('qa-workspace', 'qa-first-run', 'qa-incomplete', 'qa-findings');
+  const qaReady = qa.status === 'observed' && qa.latest?.completeness?.status === 'complete' && qa.latest.summary.fileable === 0;
   return {
     schema: 'heimdall.site-readiness/1',
     stage: deliveryPlan.decision.stage,
@@ -864,6 +886,9 @@ export default {
     if (qa.status === 'not_configured') unknowns.push({ id: 'qa-not-configured', detail: '没有提供 QA 工作区，最近一次 QA 运行未知。' });
     if (qa.status === 'no_runs') unknowns.push({ id: 'qa-not-run', detail: 'QA 工作区存在，但还没有匹配站点的运行记录。' });
     if (qa.status === 'unavailable') unknowns.push({ id: 'qa-workspace-unavailable', detail: '提供的 QA 工作区无法读取。' });
+    if (qa.status === 'observed' && qa.latest.completeness.status !== 'complete') {
+      unknowns.push({ id: 'qa-run-incomplete', detail: '最近一次 QA 运行存在未完成检查，或缺少完整性证据。' });
+    }
     const deliveryPlan = buildDeliveryPlan({ siteId: args.siteId, origin, clone, seo, api, qa, qaWorkspace: args.qaWorkspace });
     const readiness = buildReadiness({ clone, seo, api, qa, deliveryPlan });
     const overall = readiness.overall;

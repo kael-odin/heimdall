@@ -73,6 +73,8 @@ backend scaffold 不会增加 MCP 工具，也不会自动读取原始 HAR、Coo
 
 已知业务约定时，检查点可以用 `responses` 被动核对主页面自然发出的精确 GET/POST 响应，比较 HTTP 状态及可选的 JSON 标量；这不会新增请求，也不会放宽请求策略。`json` 兼容单个 `{path, equals}` 对象，也可为 1–20 项、路径互不重复的数组；同一次响应须全部符合，正文只读取和解析一次。字段缺失或值不符时，`failedJsonIndex` 从 0 开始，说明文字按第 1 项起显示，不输出实际值。`path` 保持裸路径；公开 GET 可另用 `query` 字符串对象声明精确参数和值，参数顺序不影响匹配，额外或重复参数不匹配。未声明查询时只匹配裸 URL，POST 不接受查询声明；报告只记录查询参数名。重复请求、跳转、不可读或不符都属于未完成或待核实，不自动提单。JSON 读取上限 256 KiB，不读取压缩响应。它不覆盖 iframe、观察结束后的请求或其他页面；请求策略、字段格式、超时和截图隐私见 `docs/TEST-WORKSPACE.md`。
 
+站点评估的 `qa.latest.completeness.status` 为 `complete/incomplete/unknown`；完整且可提单数为 0 才标 QA 就绪。未完成或旧记录证据不足时先核实原因并重跑，不能把“零可提单”解释为验收通过；默认不强制视觉基线。
+
 结果在工作区的 `.heimdall/qa/runs/<runId>/`：`bugs.md` 只列建议提单的，`report.md` 是全部（含被过滤的和理由）。需要人工登录的站点由用户在 CLI 跑 `heimdall qa login <登录档>`，你不要代输凭据。已有登录档需要用户输入 `REPLACE` 才能替换；非回环 HTTP 入口默认不打开，应先确认可信 HTTPS 或安全登录方式，不替用户启用明文例外。保存登录态不等于验证登录成功。配置格式和安全边界见 Heimdall 仓库的 `docs/TEST-WORKSPACE.md`。
 
 ## 四条不可违反的规则
