@@ -90,3 +90,5 @@ GEO 分数仍是结构信号准备度，不是排名或模型引用概率。正�
 证据目录：`D:/Github-Star/heimdall-evidence-archive/2026-11-12/geo-snippet-controls/`。`live-final/` 保存评分 5、采集 5、GEO 4 的实际报告和新基线；`summary.json`、`comparison.log` 保存同批前后对照、本地注入和基线隔离；`vitest-assessment.json` 保存 AI 站点评估；各测试日志和早期失败记录继续保留。门禁脚本曾误把拒绝旧基线的退出码预期为 2，现已按既有协议校正为 1，错误日志为 `harness-exit-code-mismatch.log`。
 
 机制依据（核对日期：2026-11-12）：[Google AI 搜索功能](https://developers.google.com/search/docs/appearance/ai-features)、[robots 元指令与 X-Robots-Tag](https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag)、[重复页面与 canonical](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls)。真实模型引用、robots.txt 与各 AI 爬虫的实际访问策略、跨语言内容质量和授权业务旅程继续保留为未完成范围。
+
+提交 `08aaa850` 的远端 Docs `43231037070` 抓到使用手册和基线示例仍写旧版本，原始失败日志保存在同一证据目录的 `docs-guide-version-failure.log`。后续同步两份指南的口径、文件名和 JSON 示例，并扩展原有版本守卫核对所有示例；不把本地早期通过结果代替最终版本检查。

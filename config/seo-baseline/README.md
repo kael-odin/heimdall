@@ -2,7 +2,7 @@
 
 每个文件对应 `../seo-targets.txt` 里的一个来源（协议、主机名、端口）。
 文件名由 `core/src/seo/baseline-file.mjs` 的 `versionedBaselineFileKey()` 计算。
-例如 `https://example.com` → `example.com--origin-100680ad546ce6a577f42f52--score-v4--measure-v4.json`。
+例如 `https://example.com` → `example.com--origin-100680ad546ce6a577f42f52--score-v5--measure-v5.json`。
 来源 URL 的 SHA-256 前 24 位区分协议、端口和主机名；末尾分别区分评分与测量口径。
 CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件保留，不自动覆盖。
 
@@ -16,8 +16,8 @@ CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件�
 ```json
 {
   "version": 1,
-  "scoreMethodVersion": 4,
-  "measurementVersion": 4,
+  "scoreMethodVersion": 5,
+  "measurementVersion": 5,
   "host": "example.com",
   "origin": "https://example.com",
   "score": 92.4,
@@ -38,26 +38,27 @@ CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件�
 首次建立当前口径基线（选择新路径并审核；同口径的 `--update-baseline` 会覆盖目标文件）：
 
 ```bash
-cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v4--measure-v4.json --update-baseline
+cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v5--measure-v5.json --update-baseline
 ```
 
 按基线判回归（CI 用的就是这个，有阻断级回归则 exit 1）：
 
 ```bash
-cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v4--measure-v4.json --require-baseline --fail-on-regression
+cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v5--measure-v5.json --require-baseline --fail-on-regression
 ```
 
 门禁命令会在抓取前校验基线结构及 origin，缺失、损坏、空页面、错误严重度或来源不一致都会失败。建立基线的命令允许文件尚不存在，但已存在的坏基线仍需先人工处理。
 评分或测量口径缺失、不兼容时，普通审计会保留旧文件并跳过对比；门禁和原路径更新会失败。应使用新路径建立并审核基线，不能把算法变化当成网站问题修复。工作流会自动选择当前版本的文件名，但仍需先创建并审核该文件。
 评分口径 3 将 robots.txt 返回 404/410 和已检查的位置未发现 sitemap 改为不扣分的观察；这不证明搜索引擎实际抓取或收录情况。旧口径 2 的基线保留原样，不能与口径 3 直接比较。
 评分与测量口径 4 调整了子资源分类，可能改变 JavaScript 体积报警和得分；口径 3 的基线同样保留，不能与口径 4 直接比较。
+评分与测量口径 5 保留摘要限制证据，并修复值指令后空格连接的 noindex 解析；口径 4 的基线保留，须改用新路径重新采集并审核。GEO 方法 4 的变化不计入 SEO 基线。
 门禁或基线更新遇到未成功采集的页面（HTTP 错误、导航失败或跨来源重定向）也会失败，不把错误页更新为基线。
 仓库目前没有已授权的真实目标与审核过的基线，因此工作流只支持手动触发；接入后先审核首份基线，再启用定时任务。
 
 额外启用「总分跌幅」门禁（默认关闭，因为分数是问题列表的派生量）：
 
 ```bash
-cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v4--measure-v4.json --fail-on-regression --tolerance 3
+cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v5--measure-v5.json --fail-on-regression --tolerance 3
 ```
 
 ## 判定口径
