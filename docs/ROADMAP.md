@@ -1,8 +1,8 @@
 # Heimdall 路线图
 
-更新：2026-11-12。这里记录当前仍需完成或长期维护的工作。2026-10-13 前的逐项历史与已完成条目在 [归档路线图](archive/ROADMAP-through-2026-10-13.md)；本轮修复前证据、复验及剩余边界见 [审查报告](./audits/README.md)。
+更新：2026-11-13。这里记录当前仍需完成或长期维护的工作。2026-10-13 前的逐项历史与已完成条目在 [归档路线图](archive/ROADMAP-through-2026-10-13.md)；本轮修复前证据、复验及剩余边界见 [审查报告](./audits/README.md)。
 
-持续目标为站点重建与独立交付、SEO/GEO 诊断优化、基于充分业务信息的前后端缺陷检测，优先级和边界见 [当前主线](STATUS.md#现在的主线)。2026-11-12 已用三个公开站点、五页样本修正 [GEO 证据完整性及 Google 摘要指令](audits/2026-11-12/geo-evidence-integrity.md)，当前为 SEO 评分/采集 5、GEO 4；真实模型引用、爬虫访问策略与授权业务旅程继续保留为未完成工作。
+持续目标为站点重建与独立交付、SEO/GEO 诊断优化、基于充分业务信息的前后端缺陷检测，优先级、当前口径和边界见 [当前主线](STATUS.md#现在的主线)。[GEO 证据完整性及 Google 摘要指令](audits/2026-11-12/geo-evidence-integrity.md)和 [JSON-LD 标准语义实测](audits/2026-11-13/jsonld-semantics.md)已修正真实样本的误报；真实模型引用、爬虫访问策略与授权业务旅程继续保留为未完成工作。
 
 本机旧产物已做[只读盘点](./audits/README.md)：历史 atlas 可比较的 641 个 URL 中 397 个有对应克隆，62 份原工作区多视口验证均为旧口径。按 2026-10-15 最新验证器指纹的[隔离批处理快照](./audits/README.md)，407 个带克隆页中 **2 页完整测量**（`angular.dev/ai` 90.55% B、`home` 94.80% B）、**3 页未测成**（`apify.com/ideas`、`jobs`、`apify-instagram-scraper` 渲染未收敛）、**402 页待测**；另有 1 页 `no_clone`，不计入分母。旧的[四页已测快照](./audits/README.md)只供追溯，不能沿用 Apify 旧分数。新批处理已支持超长页分段截图，但该页仍须解决采集完成条件。批处理只做三视口视觉验证，不包含交互；原件保持只读，运行状态在被 Git 忽略的 `core/workspace/_runs/historical-v2-batch/`。以下任务不得原地覆盖旧证据。
 
@@ -94,7 +94,7 @@ D1 已实现 [Schema4 与显式维护](competition/acceptance-catalog-schema4.md
 
 侦察已从导航后固定等待 400 毫秒、读取一次链接，改为观察渲染链接最少 1200 毫秒、静默 350 毫秒、最多 3000 毫秒；晚出现的同源 query 链接会进入 BFS。HTTP 错误、非 HTML 和跨源落地不建页面节点；同源重定向使用最终 URL。客户端 `history` 改址先标为 `directNavigation=unverified-client-route`，只有该 URL 实际直访取得 HTML 才清除。`atlas.meta.renderedLinks` 记录观察预算和触顶页数。安静页可能在 1200 毫秒结束，之后出现的链接仍会漏；已发现的客户端路由也不等于独立直访可用。Vite 在同一 57 URL、深度 1 预算下重跑新版侦察，结果与旧 atlas 完全一致，57 页均完成观察且无客户端路由未验证；这只能说明本预算下未发现新增链接，不能证明整站全集。
 
-严格导出已支持 CLI 和控制台的 `--all-discovered` 入队、对声明流程的源站只读对照、精确许可的 GET 回放、候选包凭据特征扫描，以及受控 SSR/SPA 包在移走源工作区后的 Node 断网浏览。侦察新增 robots 声明、递归及压缩 sitemap，并在 atlas 里记录页面数、深度与 sitemap 扫描预算；`health.coverage` 用同一已发现 URL 分母列出按当前默认配方估算的排除、实际入队、克隆、v2 验证和交付数量。预算触顶与扫描失败仍标为范围受限。`--compare-source` 逐流程核对请求的精确路径及查询、次数、状态与 MIME；许可 GET 另核对清洗后正文指纹。`--include-adapter` 为逐站有状态业务提供显式接管入口，只有已声明、已在离线操作计划中触达的路由才允许严格交付。本机严格探针不隔离适配器 Node 进程外联，`health.adapter.serverEgress=not-tested`；实际适配器必须另做无外联部署验收。Linux CI 已通过受控 SSR、SPA、数据驱动 SPA 和适配器卷持久化的 Docker 无外联网络验收（主分支提交 `75dceeb`）；本机已于 2026-11-13 用现有 Node 22 镜像完成 IANA 局部搜索包的无外联运行，尚未构建该生成包的 Dockerfile。上述夹具与门禁仍不构成任意站点完整复刻。下一批按依赖顺序推进：
+严格导出已支持 CLI 和控制台的 `--all-discovered` 入队、对声明流程的源站只读对照、精确许可的 GET 回放、候选包凭据特征扫描，以及受控 SSR/SPA 包在移走源工作区后的 Node 断网浏览。侦察新增 robots 声明、递归及压缩 sitemap，并在 atlas 里记录页面数、深度与 sitemap 扫描预算；`health.coverage` 用同一已发现 URL 分母列出按当前默认配方估算的排除、实际入队、克隆、v2 验证和交付数量。预算触顶与扫描失败仍标为范围受限。`--compare-source` 逐流程核对请求的精确路径及查询、次数、状态与 MIME；许可 GET 另核对清洗后正文指纹。`--include-adapter` 为逐站有状态业务提供显式接管入口，只有已声明、已在离线操作计划中触达的路由才允许严格交付。本机严格探针不隔离适配器 Node 进程外联，`health.adapter.serverEgress=not-tested`；实际适配器必须另做无外联部署验收。Linux CI 已通过受控 SSR、SPA、数据驱动 SPA 和适配器卷持久化的 Docker 无外联网络验收（主分支提交 `75dceeb`）；2026-11-13 已用商品后端与 IANA 本地搜索包自带 Dockerfile 构建真实镜像，断网只读根运行分别通过 6/6 冻结留出与 21/21 HTTP 检查，并修复 B3 容器监听和状态卷；仍须扩大业务持久化与授权站点验收，见[生成包实测](audits/2026-11-13/generated-docker.md)。上述夹具与门禁仍不构成任意站点完整复刻。下一批按依赖顺序推进：
 
 1. 将现有按声明流程的请求依赖对照扩展到 iframe、Shadow DOM、延迟请求和多会话状态。2026-10-16 已覆盖 iframe/subframe 归属、Shadow DOM 请求捕获、最后一个状态后的延迟请求阻断、按 flow 声明的命名登录态，以及同一 flow 内的 `useSession` 上下文切换（见[操作依赖审计](./audits/README.md)、[会话切换审计](./audits/README.md)与[适配器会话引导审计](./audits/README.md)）。源站可切换匿名 / 命名登录态；离线包支持匿名切换，并可通过本地适配器的 `sessions` 清单显式引导命名会话。缺失路由、失败响应或无 `Set-Cookie` 都以 `sessionUnsupported` fail-closed；本地引导不参与源站/离线依赖等价。独立登录、会话延续与写入业务仍需逐站适配器。视觉相似、请求匹配和只读响应相同都不等于业务结果一致。
 2. 为登录、账户状态、写入型 API 和实时连接逐站实现适配器及契约验收；现有适配器只是接入协议，没有通用业务实现。`--include-api-har` 不能替代有状态业务实现。

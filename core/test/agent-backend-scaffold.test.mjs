@@ -88,6 +88,10 @@ test('backend scaffold generates and starts a B3 service from sanitized contract
     for (const file of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json', 'Dockerfile', 'README.md', 'runtime-adapter/index.mjs', 'runtime-adapter/manifest.json']) {
       assert.equal(existsSync(join(out, file)), true, file);
     }
+    const dockerfile = readFileSync(join(out, 'Dockerfile'), 'utf8');
+    assert.match(dockerfile, /\bHOST=0\.0\.0\.0\b/);
+    assert.match(dockerfile, /\bHEIMDALL_RUNTIME_DATA_DIR=\/data\b/);
+    assert.match(dockerfile, /^VOLUME \["\/data"\]$/m);
     const projected = JSON.parse(readFileSync(join(out, 'api-contract.json'), 'utf8'));
     assert.equal(projected.secret, undefined);
     assert.doesNotMatch(readFileSync(join(out, 'README.md'), 'utf8'), /super-secret/);

@@ -207,6 +207,16 @@ npm start
 
 浏览器或前端先指向 http://127.0.0.1:8080。打开 /__heimdall/health 看当前覆盖，运行 npm run check 看哪些只读路由已经能回放。没有观察到的登录、权限、写入、持久化和副作用不会被自动编造。
 
+需要容器交付时，在生成目录执行：
+
+```powershell
+docker build -t site-backend .
+docker volume create site-backend-data
+docker run --rm --publish 127.0.0.1:8080:8080 --mount type=volume,source=site-backend-data,target=/data site-backend
+```
+
+镜像内监听所有容器网卡，发布端口默认只供宿主机本地访问；直接运行 Node 仍默认监听回环地址。每个项目使用自己的命名卷，重建容器时复用该卷以保留 `/data` 中的本地状态。旧生成包须重新生成并检查差异，再纳入已有业务实现；这不补齐原站的持久化规则。
+
 ### 第六步：完整项目验收演示
 
 这条命令会跑固定示例的采集、缺陷单、部分修复禁关、完全修复后关闭和下载：
