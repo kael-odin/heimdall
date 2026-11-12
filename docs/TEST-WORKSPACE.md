@@ -193,6 +193,8 @@ MCP / HTTP 同样可用：`heimdall_qa_status`、`heimdall_qa_run`、`heimdall_q
 
 ### 核对页面自然发出的接口响应
 
+`viewports` 控制页面巡检；每条声明检查点只执行一次，默认使用第一个视口。需要在手机、平板和桌面都核对业务步骤时，显式配置各检查点的 `viewport: { "width": 375, "height": 812 }`，使用不同 `id`，并计入每次最多 40 条的总数。
+
 HTTP 200 不一定表示业务成功。已知接口和业务约定时，可以给检查点加 `responses`，同时保留原有 `expect`。下面只是示例，来源、路径和字段必须换成被测系统实际约定：
 
 ```json

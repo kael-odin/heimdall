@@ -150,7 +150,7 @@ node core/src/cli.mjs live iana.org --offline --strict --root mirror --rebuild -
 
 ## 2026-11-13：AI 补写范围明确的本地搜索
 
-继续使用同批 8 页的独立工作区副本，为首页补写本地全文搜索。索引取自已捕获页面的标题与正文，标题匹配优先；页面明确说明只搜索这 8 页，Google 搜索离线不可用。本例不声称还原 Google 的排名、广告或全站搜索覆盖。
+继续使用同批 8 页的独立工作区副本，为首页补写本地全文搜索。索引取自已捕获页面的标题与正文，标题匹配优先；页面明确标注这 8 页的本地搜索范围。本例不声称还原 Google 的排名、广告或全站搜索覆盖。
 
 实现复用既有两文件运行时适配器，模块含索引为 11,577 字节；首页移除 4 个 Google 搜索脚本，替换一个搜索容器。jQuery 等 3 个脚本复用之前已补抓候选包中的相同字节，记录来源和 SHA-256。本次未使用 `--heal`、源站流程对照或新的公开资源补抓；原始采集不改，索引、实现与生成包均在仓库外。
 
@@ -166,6 +166,28 @@ node core/src/cli.mjs live iana.org --offline --strict --root mirror --rebuild -
 
 首轮导出虽然浏览器 8/8 通过，仍因这些未捕获链接跳过全部已声明旅程。现在导出器允许在已捕获页面上继续诊断这些旅程，其他前置阻断条件保留；最终发布依旧检查全部缺失链接。既有导出测试增加同一反例，确认旅程已执行、路由覆盖完成、退出码仍为 1，且旧正式包内容不变。相关导出与路径测试 7/7 通过，没有新增运行模块、依赖或测试文件。
 
-本次结果针对修改后的交互镜像，不能复用旧静态克隆的 8/8 视觉结论。原先带 `--heal` 的别名探测与本次未启用补抓的模式不同，不能将 223 与 248 的链接计数差异当作产品回归。搜索准备度及这些通过的旅程也不证明原站后端等价。
+本次结果针对修改后的交互镜像，另行执行了三视口快速视觉对照，不复用旧静态克隆的 8/8 视觉结论。原先带 `--heal` 的别名探测与本次未启用补抓的模式不同，不能将 223 与 248 的链接计数差异当作产品回归。搜索准备度及这些通过的旅程也不证明原站后端等价。
 
 外部证据：`D:/Github-Star/heimdall-evidence-archive/2026-11-12/iana-local-search/`，案例从 11 月 12 日晚持续到 13 日凌晨。`source-index.json`、`original-live-hashes.json`、`declared-cases.json`、`implementation.json` 和 `reused-asset-provenance.json` 保存范围与来源；`export.log` 为首轮跳过诊断的结果，`final-export.log` 及复制工作区的 `live-export.json` 指向当前候选；`endpoint-checks.json`、`diagnostics-red.log` 和 `diagnostics-green.log` 保留接口与回归结果。
+
+### 三视口、独立部署及视觉迭代
+
+当前可运行包为 `data/deliverable/.candidate-iana.org-0SoXLJ/`，对应 `layout-export.log` 和复制工作区最新的 `live-export.json`。Windows Node 26.12.1 与 Linux Node 22.13.1 各通过 21 项 HTTP 检查；Linux 使用现有镜像、`--network none`，只挂载只读包和两个验证输入，未挂载 Heimdall 源码或采集工作区。五个关键文件哈希前后不变，没有构建包内生成的 Dockerfile。
+
+实际 `qa ci` 按 375×812、768×1024、1440×900 显式声明 7×3 个检查点，21/21 通过，退出码 0。页面视口配置不会自动复制声明检查点；第一次只执行首视口 7 条的结果独立保留，未计为三视口通过。脚本最初误用 `includes` 字段并漏写 JSON 输出开关，配置错误同样保留，不列为产品 BUG。
+
+首次局部实现增加标题和说明，撑高了搜索区域。随后根据修复包复用参考的 92px 外框、58px 表单及对应计算样式，保留原有页面布局，将本地范围说明放入原控件底部空间。相同冻结静态克隆参考、相同三个视口的快速对比如下：
+
+| 视口 | 首次像素相似度 | 收紧布局后 | 页面高度差 |
+| --- | --- | --- | --- |
+| 375 | 90.954% | 99.842% | 93 → 0 px |
+| 768 | 92.331% | 99.909% | 71 → 0 px |
+| 1440 | 93.402% | 99.946% | 58 → 0 px |
+
+最终快速裁判为 `near`、达到 `bronze`，未达到目标 `silver`。像素分和连通块已满足 silver，但 375 与 768 的最大差异区域占比分别为 0.37%、0.143%，仍高于 silver 的 0.1% 阈值；局部差异包括替换 Google 图形及新增可见本地范围标注。反作弊结果 `clean`，文本覆盖率 0.954；没有修改门槛或隐藏标注来凑分。未运行正式门禁，严格发布依然被 248 个链接阻断。
+
+`windows-standalone.json`、`linux-standalone.log`、`qa-cli-result.json`、`visual-comparison.json` 与 `layout-export.log` 记录最终结果；`visual-comparison-v1.json` 和带 `v1` 的记录保留首次布局。`original-unchanged.json` 确认原采集 8 个 live 文件哈希未变。两份旧候选包的删除命令被自动审批以 `blocked by policy` 拒绝，未执行清理，详见 `cleanup-not-run.json`。
+
+本例借鉴了 REA 从已记录行为限定环境能力、Craft Anything 逐轮核对网站页面与声明行为的思路，只在现有扩展点补写本地业务实现，没有引入其代码、依赖或新的执行框架。
+
+源码提交 `c5059eaa9d5a8d860375b7795b9666b4417007a6` 的完整 CI `43256120789` 已完成，8/8 任务成功，包含两片完整 Core、浏览器 smoke 和原有基准；同提交 Docs `43256120894` 通过。精确状态与日志保存在 `ci-c5059eaa.json`、`ci-c5059eaa-watch.log`、`docs-c5059eaa.json`。14 个冻结验证器文件保持不变。
