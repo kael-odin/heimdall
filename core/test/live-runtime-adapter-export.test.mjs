@@ -23,7 +23,8 @@ export async function handle(request, { dataDir }) {
     await writeFile(file, JSON.stringify(items));
     return Response.json({ count: items.length }, { status: 201 });
   }
-  return Response.json(items);
+  const path = new URL(request.url).pathname;
+  return Response.json(path === '/api/items' ? items : items.find(item => item.name === decodeURIComponent(path.split('/').at(-1))) ?? null);
 }
 `;
 const HTML = `<!doctype html><title>Adapter fixture</title>
@@ -36,7 +37,8 @@ document.querySelector('#save').onclick = async () => {
   });
   if (saved.status !== 201) throw Error('save failed');
   const items = await (await fetch('/api/items')).json();
-  document.querySelector('#result').textContent = items[0]?.name ?? 'missing';
+  const item = await (await fetch('/api/items/' + encodeURIComponent(items[0]?.name))).json();
+  document.querySelector('#result').textContent = item?.name ?? 'missing';
 };
 </script>`;
 
@@ -68,6 +70,7 @@ function fixture() {
     version: 1, routes: [
       { method: 'POST', path: '/api/items' },
       { method: 'GET', path: '/api/items' },
+      { method: 'GET', path: '/api/items/{itemId}' },
     ],
   }));
   put(join(adapterDir, 'index.mjs'), ADAPTER);
@@ -117,7 +120,7 @@ test('strict adapter export is relocatable and keeps runtime state outside the b
     assert.equal(run.status, 0, run.stderr + run.stdout);
     const health = JSON.parse(readFileSync(join(f.out, 'health.json'), 'utf8'));
     assert.deepEqual(health.adapter, {
-      status: 'included', declaredRoutes: 2, exercisedRoutes: 2, untestedRoutes: 0,
+      status: 'included', declaredRoutes: 3, exercisedRoutes: 3, untestedRoutes: 0,
       serverEgress: 'not-tested',
       sessionRoutes: { declared: 0, initialized: 0, failed: 0 },
     });
@@ -167,6 +170,7 @@ test('strict adapter export is relocatable and keeps runtime state outside the b
     server = await startBundle(deployed, state);
     child = server.child;
     assert.deepEqual(await (await fetch(server.base + '/api/items')).json(), [{ name: 'persisted' }]);
+    assert.deepEqual(await (await fetch(server.base + '/api/items/persisted')).json(), { name: 'persisted' });
     assert.equal(existsSync(join(state, 'items.json')), true);
     assert.equal(existsSync(join(deployed, 'items.json')), false);
   } finally {
@@ -205,7 +209,7 @@ test('adapter export rejects missing flags, unexpected files, invalid code and u
     put(modulePath, ADAPTER);
 
     const expanded = JSON.parse(validManifest);
-    expanded.routes.push({ method: 'GET', path: '/api/never-used' });
+    expanded.routes.push({ method: 'GET', path: '/api/never-used/{itemId}' });
     put(manifestPath, JSON.stringify(expanded));
     const uncovered = runExport(f);
     assert.equal(uncovered.status, 1, uncovered.stderr + uncovered.stdout);

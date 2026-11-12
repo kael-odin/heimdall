@@ -7,7 +7,7 @@
  */
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { inspectRuntimeAdapter } from '../../live/adapter-runtime.mjs';
+import { inspectRuntimeAdapter, isRuntimeAdapterPath, matchesRuntimeAdapterRoute } from '../../live/adapter-runtime.mjs';
 import { CapabilityError, exitCodeOf, fromError, ok } from '../envelope.mjs';
 import { parseArgs } from '../parse-args.mjs';
 import { assertSiteId, siteDir } from '../workspace.mjs';
@@ -44,18 +44,7 @@ function text(value, max = 256) {
 }
 
 function safePath(value) {
-  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')
-    || value.includes('\\') || /[?#]/.test(value) || /%(?:2f|5c)/i.test(value)) return null;
-  try {
-    const decoded = decodeURIComponent(value);
-    if (decoded === '/' || decoded === '/static' || decoded.startsWith('/static/')
-      || decoded === '/__heimdall' || decoded.startsWith('/__heimdall/')
-      || decoded === '/lm' || decoded.startsWith('/lm/')) return null;
-    const url = new URL(value, 'http://heimdall.local');
-    return url.pathname === value && !url.search && !url.hash ? value : null;
-  } catch {
-    return null;
-  }
+  return isRuntimeAdapterPath(value) ? value : null;
 }
 
 function names(value, max = 50) {
@@ -290,6 +279,8 @@ const PORT = Number(process.env.PORT || (portArg >= 0 ? process.argv[portArg + 1
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const ADAPTER_TIMEOUT_MS = 15_000;
 const HOP_HEADERS = new Set(['connection', 'content-length', 'host', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade']);
+${isRuntimeAdapterPath.toString()}
+${matchesRuntimeAdapterRoute.toString()}
 const contract = readJson(join(ROOT, 'api-contract.json'), { openapi: { paths: {} }, status: 'missing' });
 const contractRoutes = routeRows(contract);
 const adapterManifest = readJson(join(ROOT, 'runtime-adapter', 'manifest.json'), null);
@@ -372,7 +363,7 @@ function jsonResponse(res, status, value, extra = {}) {
   res.end(body);
 }
 function health() {
-  const missing = contractRoutes.filter(item => !adapterRouteSet.has(key(item)));
+  const missing = contractRoutes.filter(item => !matchesRuntimeAdapterRoute(adapterRouteSet, item.method, item.path));
   return {
     schema: 'heimdall.backend-health/1',
     level: 'B3-scaffold',
@@ -729,6 +720,9 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     '打开 http://127.0.0.1:8080/__heimdall/health 查看当前状态。',
     '运行 npm run check 做健康、只读路由和未实现项检查。',
     '需要外置状态目录时设置 HEIMDALL_RUNTIME_DATA_DIR；默认目录在脚手架目录旁边。',
+    'AI 补写有状态处理器时使用 handle(request, { dataDir }) 的包外目录保存数据；读回、重启和删除都要用独立预期另行核验，不能只看写请求返回成功。',
+    'manifest 路由支持完整路径段参数，例如 /posts/{postId}；每个参数只匹配一个非空段，方法仍须逐项声明，会话初始化路由只接受固定路径。',
+    'npm run check 不会自动构造参数值或执行写操作；缺少具体测试数据的参数路由仍标为未完成。',
     '',
     'Docker 部署：',
     '',

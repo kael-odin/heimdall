@@ -126,6 +126,31 @@ test('backend scaffold generates and starts a B3 service from sanitized contract
     assert.equal(checkReport.results.find(item => item.id === 'GET /api/items').status, 'implemented');
     assert.equal(checkReport.results.find(item => item.id === 'adapter-gap-ledger').status, 'passed');
     assert.deepEqual(checkReport.repairTasks, []);
+    await stop(child);
+    const item = projected.openapi.paths['/api/items'];
+    projected.openapi.paths['/api/items/{itemId}'] = item;
+    projected.openapi.paths['/api/items/42'] = item;
+    put(join(site, 'api-contract.json'), projected);
+    put(join(adapter, 'manifest.json'), { version: 1, routes: [
+      { method: 'GET', path: '/api/items' }, { method: 'GET', path: '/api/items/{itemId}' },
+    ] });
+    const templated = spawnSync(process.execPath, [CLI, 'backend', 'scaffold', 'example.test', '--out', join(root, 'templated'), '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(templated.status, 0, templated.stderr + templated.stdout);
+    const next = JSON.parse(templated.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(next.result.contract.observedRoutes, 3, 'parameterized observed paths must not disappear');
+    child = spawn(process.execPath, [join(next.result.outDir, 'server.mjs'), '--port', '0'], {
+      cwd: next.result.outDir, env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const nextBase = await ready(child);
+    assert.deepEqual((await (await fetch(nextBase + '/__heimdall/health')).json()).missingObservedRoutes, []);
+    assert.equal((await fetch(nextBase + '/api/items/42')).status, 200);
+    const nextChecks = spawnSync(process.execPath, [join(next.result.outDir, 'checks.mjs'), nextBase], {
+      cwd: next.result.outDir, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(nextChecks.status, 1, 'a parameterized check without test data stays incomplete');
+    assert.equal(JSON.parse(nextChecks.stdout).results.find(result => result.id === 'GET /api/items/{itemId}').status, 'skipped');
   } finally {
     await stop(child);
     rmSync(root, { recursive: true, force: true });

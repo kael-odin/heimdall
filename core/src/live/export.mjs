@@ -52,7 +52,7 @@ import { sanitizeStaticHtml, isStaticCloneChooserHtml, staticCloneChooserHtml } 
 import { availableCloneVariantWidths } from '../clone-doc.mjs';
 import { readSiteIdentity, assertSiteOrigin } from '../site-origin.mjs';
 import { rewriteSnapshotMount } from './site-routing.mjs';
-import { inspectRuntimeAdapter } from './adapter-runtime.mjs';
+import { inspectRuntimeAdapter, matchesRuntimeAdapterRoute } from './adapter-runtime.mjs';
 import { capturePublicTextLinks } from './public-text-links.mjs';
 import { removeCarbonAds } from './carbonads-removal.mjs';
 import { replaceYouTubeEmbeds } from './youtube-placeholder.mjs';
@@ -967,8 +967,11 @@ if (STRICT) {
           if (INCLUDE_ADAPTER) {
             try {
               const target = new URL(request.url);
-              const key = request.method + ' ' + target.pathname;
-              if (target.origin === base && adapterRoutes.has(key)) exercisedAdapterRoutes.add(key);
+              if (target.origin === base) {
+                for (const route of adapterRoutes) {
+                  if (matchesRuntimeAdapterRoute(new Set([route]), request.method, target.pathname)) exercisedAdapterRoutes.add(route);
+                }
+              }
             } catch { /* An invalid request cannot prove adapter route coverage. */ }
           }
         },

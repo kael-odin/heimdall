@@ -30,6 +30,42 @@ function regularFile(path, maxBytes) {
   }
 }
 
+export function isRuntimeAdapterPath(value) {
+  if (typeof value !== 'string' || value.length > 2048 || !value.startsWith('/') || value.startsWith('//')
+    || value.includes('\\') || /[?#]/.test(value) || /%(?:2f|5c)/i.test(value)) return false;
+  let decoded;
+  try { decoded = decodeURIComponent(value); } catch { return false; }
+  if (['/', '/static', '/__heimdall', '/lm'].some(root => decoded === root || (root !== '/' && decoded.startsWith(root + '/')))) return false;
+  const names = new Set();
+  let invalid = false;
+  const canonical = value.split('/').map(part => {
+    if (!/[{}]/.test(part)) return part;
+    const match = /^\{([A-Za-z_][A-Za-z0-9_.-]{0,63})\}$/.exec(part);
+    if (!match || names.has(match[1])) { invalid = true; return part; }
+    names.add(match[1]);
+    return 'parameter';
+  }).join('/');
+  return !invalid && new URL(canonical, 'http://adapter.invalid').pathname === canonical;
+}
+
+export function matchesRuntimeAdapterRoute(routes, method, path) {
+  if (!isRuntimeAdapterPath(path)) return false;
+  if (routes.has(method + ' ' + path)) return true;
+  const actual = path.split('/');
+  for (const route of routes) {
+    if (!route.startsWith(method + ' ') || !route.includes('{')) continue;
+    const parts = route.slice(method.length + 1).split('/');
+    if (parts.length !== actual.length) continue;
+    if (parts.every((part, index) => {
+      if (!part.startsWith('{')) return part === actual[index];
+      let value;
+      try { value = decodeURIComponent(actual[index]); } catch { return false; }
+      return value.length > 0 && !/[\/\\\x00-\x1f\x7f]/.test(value);
+    })) return true;
+  }
+  return false;
+}
+
 function validateManifest(manifest) {
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
     || !['routes,version', 'routes,sessions,version'].includes(Object.keys(manifest).sort().join(','))
@@ -39,23 +75,10 @@ function validateManifest(manifest) {
   }
   const routes = new Set();
   for (const route of manifest.routes) {
-    let decodedPath;
-    try { decodedPath = decodeURIComponent(route?.path); }
-    catch { throw new Error('invalid adapter route'); }
     if (!route || typeof route !== 'object' || Array.isArray(route)
       || Object.keys(route).sort().join(',') !== 'method,path'
-      || !METHODS.has(route.method) || typeof route.path !== 'string'
-      || route.path.length > 2048 || !route.path.startsWith('/')
-      || route.path.startsWith('//') || route.path.includes('\\')
-      || /[?#]/.test(route.path) || /%(?:2f|5c)/i.test(route.path)
-      || decodedPath === '/' || decodedPath === '/static' || decodedPath.startsWith('/static/')
-      || decodedPath === '/__heimdall' || decodedPath.startsWith('/__heimdall/')
-      || decodedPath === '/lm' || decodedPath.startsWith('/lm/')) {
+      || !METHODS.has(route.method) || !isRuntimeAdapterPath(route.path)) {
       throw new Error('invalid adapter route');
-    }
-    const normalized = new URL(route.path, 'http://adapter.invalid');
-    if (normalized.pathname !== route.path || normalized.search || normalized.hash) {
-      throw new Error('noncanonical adapter route');
     }
     const key = route.method + ' ' + route.path;
     if (routes.has(key)) throw new Error('duplicate adapter route');
@@ -70,9 +93,7 @@ function validateManifest(manifest) {
     for (const [name, route] of Object.entries(manifest.sessions)) {
       if (!SESSION_NAME.test(name) || !route || typeof route !== 'object' || Array.isArray(route)
         || Object.keys(route).sort().join(',') !== 'method,path' || route.method !== 'POST'
-        || typeof route.path !== 'string' || route.path.length > 2048 || !route.path.startsWith('/')
-        || route.path.startsWith('//') || route.path.includes('\\') || /[?#]/.test(route.path)
-        || /%(?:2f|5c)/i.test(route.path)) {
+        || !isRuntimeAdapterPath(route.path) || route.path.includes('{')) {
         throw new Error('invalid adapter session route');
       }
       const key = 'POST ' + route.path;
@@ -344,7 +365,7 @@ function responseHeaders(response) {
 }
 
 export async function dispatchRuntimeAdapter(adapter, req, res, path, search) {
-  if (!adapter.routes.has(req.method + ' ' + path)) {
+  if (!matchesRuntimeAdapterRoute(adapter.routes, req.method, path)) {
     adapter.gapLedger?.record({ method: req.method, path, search, category: 'unobserved-path' });
     return false;
   }

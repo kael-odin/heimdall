@@ -6,6 +6,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inspectRuntimeAdapter } from '../src/live/adapter-runtime.mjs';
 
 const SOURCE = fileURLToPath(new URL('../src/live/', import.meta.url));
 const ADAPTER_CODE = `
@@ -104,6 +105,39 @@ function streamingPost(base, body) {
   outgoing.write(body);
   return { outgoing, response };
 }
+
+test('offline adapter binds declared resource parameters without expanding methods or path segments', async () => {
+  const f = fixture();
+  let child;
+  const manifest = routes => writeFileSync(join(f.bundle, 'runtime-adapter/manifest.json'), JSON.stringify({ version: 1, routes }));
+  try {
+    for (const path of ['/api/pre{id}', '/api/{bad name}', '/api/{id', '/api/{id}/{id}', '/static/{id}', '/__heimdall/{id}', '/lm/{id}', '/api/%2f']) {
+      manifest([{ method: 'GET', path }]);
+      assert.throws(() => inspectRuntimeAdapter(f.bundle), /adapter route/, path);
+    }
+    const routes = [{ method: 'GET', path: '/api/items/{itemId}' }, { method: 'PATCH', path: '/api/items/{itemId}' }];
+    manifest(routes);
+    assert.equal(inspectRuntimeAdapter(f.bundle).routes.size, 2);
+    writeFileSync(join(f.bundle, 'runtime-adapter/manifest.json'), JSON.stringify({ version: 1,
+      routes: [{ method: 'POST', path: '/api/items/{itemId}' }], sessions: { user: { method: 'POST', path: '/api/items/{itemId}' } } }));
+    assert.throws(() => inspectRuntimeAdapter(f.bundle), /invalid adapter session route/);
+    manifest(routes);
+    writeFileSync(join(f.bundle, 'runtime-adapter/index.mjs'), 'export async function handle(request) { return Response.json({ path: new URL(request.url).pathname }, { headers: { "x-template-adapter": "1" } }); }');
+    const running = launch(f.bundle, f.state);
+    child = running.child;
+    const { base } = await running.outcome;
+    for (const id of ['73', 'new-id', '%E4%B8%AD%E6%96%87', 'a%3Fb', 'a%23b', 'a%252fb']) {
+      const response = await fetch(base + '/api/items/' + id);
+      assert.equal(response.status, 200, id);
+      assert.equal(decodeURIComponent((await response.json()).path.split('/').at(-1)), decodeURIComponent(id));
+    }
+    assert.equal((await fetch(base + '/api/items/fresh', { method: 'PATCH', body: '{}' })).status, 200);
+    assert.equal((await fetch(base + '/api/items/fresh', { method: 'POST' })).status, 404);
+    for (const path of ['/api/other/fresh', '/api/items/', '/api/items/a/b', '/api/items/a%2fb', '/api/items/a%5cb', '/api/items/a%00b']) {
+      assert.equal((await fetch(base + path)).headers.has('x-template-adapter'), false, path);
+    }
+  } finally { if (child) await stop(child); rmSync(f.root, { recursive: true, force: true }); }
+});
 
 test('offline adapter owns exact routes and persists writes after restart', { timeout: 30_000 }, async () => {
   const f = fixture();
