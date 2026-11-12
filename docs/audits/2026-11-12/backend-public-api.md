@@ -196,3 +196,5 @@ Linux 只挂载生成包、独立比较脚本和冻结后的预期，不挂载 H
 外部证据：`D:/Github-Star/heimdall-evidence-archive/2026-11-12/backend-query-qa-cli/`。`final-pilot.log`、`final/summary.json`、逐命令日志和 `final/workspaces/` 保留完整结果；空查询边界加固后的相同九次 CLI 复测单独保存在 `final-exact-pilot.log`、`final-exact/`。早期根目录运行保留配置与脚本问题。`summary.json` 的旧 `coverage` 字段为 null，实际断言核对 CLI 的 `result.checks`，完整检查见各运行 `run.json`；`final/verified-summary.json` 还独立核对了保存的检查与门禁原件。本例是真实公开数据与受控本地页面/故障的组合，没有发现源站前端缺陷，也没有验证完整前端克隆或认证、写入等后端行为。
 
 本机核心快速回归 1,334/1,334、响应/CI/HTTP 策略定向回归 17/17、最终响应回归 5/5、MCP 7/7 均通过。语法检查 763 个文件、插件生成检查、14 个冻结验证器文件及文档/公开案例检查通过；没有新增运行模块、依赖或测试文件。测试日志保存在仓库外 `D:/Github-Star/heimdall-evidence-archive/2026-11-12/qa-exact-query/`。
+
+最终源码提交 `e4691cc7334969d774200f57f0fb7338c940d22e` 的完整 CI `43248232442` 已完成，8/8 任务成功，包含两片完整 Core 测试和完整浏览器 smoke；同提交 Docs `43248232424` 也通过。精确结果保存在 `ci-e4691cc7.json`、`ci-e4691cc7-watch.log` 与 `docs-e4691cc7.json`。此前 `497368d8` 的 CI 被后续边界修复推送按并发策略取消，取消记录独立保留，不代替最终源码的验证。
