@@ -38,9 +38,18 @@
 
 证据目录：`D:\Github-Star\heimdall-evidence-archive\2026-11-13\seo-multilingual\`。`sources.json` 记录时间、原始 HTML SHA-256、采集前提交；`before-results.json` / `after-results.json` 保留最初上下文误差，`production-results.json` 与 `*-production-signals.json` 是正式对照；逐字正文用于复核，`docker-node22-production.json` 记录最终隔离复算，失败与通过日志均保留。来源驱动及孤立旧规则副本只在外部证据目录，不进项目。
 
-## 一手机制依据
-
 同轮仓库清理：归档证据清单是只读索引，唯一引用是审计首页。将 1,614,675 字节原文无损压缩为 331,411 字节 `.gz`，解压逐字节与已提交原文及外部备份一致，8,350 条记录全部保留。审计首页更新链接、原文 SHA-256 和无需新依赖的 Node 解压命令；不改测试夹具或冻结验收文件。
+
+## 最终 Hosted 验收
+
+- 源码提交 [`82d21982`](https://github.com/kael-odin/heimdall/commit/82d219822c1387cd69672ba94d2d5c8514521b67) 的 [CI 43324736456](https://github.com/kael-odin/heimdall/actions/runs/43324736456) **8/8 job 成功**；同提交 [Docs 43324736453](https://github.com/kael-odin/heimdall/actions/runs/43324736453) 成功。
+- 两片完整 Core：**3,300 通过、0 失败、4 条件跳过**，共 3,304 条。两条 Docker 用例在服务 job 独立 **2/2 通过**，另外两条为 Hosted Linux 不适用的 Windows 文件句柄用例；不与本地 235 条重叠累加。
+- 语法 765 文件、冻结验收 14 文件、浏览器全链、构建、干净安装 MCP/插件、QA Action 和依赖审计全部成功。源码提交后只有文档与清单压缩变更，证据上下文校正的 [Docs 43325136096](https://github.com/kael-odin/heimdall/actions/runs/43325136096) 和清单压缩的 [Docs 43326009140](https://github.com/kael-odin/heimdall/actions/runs/43326009140) 均成功。
+- 对照起点 `caec2bc4`，到清单压缩提交 `6559c96f`，全部受版本管理文件合计 19,192,660→17,921,832 字节，净减少 1,270,828 字节；源码模块与测试文件数均未增加。
+
+最终逐 job JSON、两片 TAP 汇总、服务和浏览器日志见外部证据中的 `ci-source-completed.json`、`ci-test-totals.json`、`ci-*.log`；`acceptance-summary.json` 汇总正式对照、跨平台复算和无损压缩校验。
+
+## 一手机制依据
 
 - [Google SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)：内容长度没有决定排名的固定最低或最高字数；应围绕用户需要写作。
 - [ECMA-402 Segmenter](https://tc39.es/ecma402/#segmenter-objects)：原生单词分段和 `isWordLike`。
