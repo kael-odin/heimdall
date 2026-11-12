@@ -16,11 +16,11 @@ export const GEO_DIMENSIONS = Object.freeze({
 });
 
 const ENTITY_TYPES = new Set([
-  'Article', 'BlogPosting', 'NewsArticle', 'Report', 'Book', 'FAQPage', 'HowTo',
+  'Article', 'BlogPosting', 'NewsArticle', 'TechArticle', 'Report', 'Book', 'FAQPage', 'HowTo',
   'Organization', 'Corporation', 'LocalBusiness', 'Person', 'Product', 'Service',
   'SoftwareApplication', 'WebPage', 'WebSite', 'Event',
 ]);
-const ARTICLE_TYPES = new Set(['Article', 'BlogPosting', 'NewsArticle', 'Report']);
+const ARTICLE_TYPES = new Set(['Article', 'BlogPosting', 'NewsArticle', 'TechArticle', 'Report']);
 
 const text = value => typeof value === 'string' ? value.trim() : '';
 const nonEmpty = value => {
@@ -111,7 +111,9 @@ export function buildGeoActionPlan(issues = [], { limit = 12 } = {}) {
 }
 
 function schemaInfo(page) {
-  const types = new Set((page.jsonld ?? []).flatMap(entry => entry.types ?? []).filter(Boolean));
+  const entries = page.jsonld ?? [];
+  const resolved = entries.filter(entry => entry.semanticStatus === 'complete');
+  const types = new Set(resolved.flatMap(entry => entry.types ?? []).filter(Boolean));
   const items = [];
   const visit = value => {
     if (Array.isArray(value)) return value.forEach(visit);
@@ -119,10 +121,12 @@ function schemaInfo(page) {
     items.push(value);
     if (value['@graph']) visit(value['@graph']);
   };
-  for (const entry of page.jsonld ?? []) for (const item of entry.items ?? []) visit(item);
+  for (const entry of resolved) for (const item of entry.items ?? []) visit(item);
   return {
     types,
     items,
+    typesKnown: resolved.length === entries.length && !resolved.some(entry => entry.typesTruncated),
+    fieldsKnown: resolved.length === entries.length && !resolved.some(entry => entry.truncated),
     hasEntityType: [...types].some(type => ENTITY_TYPES.has(type)),
     articleLike: [...types].some(type => ARTICLE_TYPES.has(type)),
     hasName: hasField(items, ['name', 'headline', 'title']),
@@ -237,6 +241,24 @@ export function evaluateGeoPage(page = {}) {
     ],
   };
 
+  const schemaKnown = {
+    'geo-extract-structure': schema.typesKnown,
+    'geo-entity-type': schema.typesKnown,
+    'geo-entity-name': schema.fieldsKnown,
+    'geo-entity-ownership': schema.fieldsKnown,
+    'geo-entity-social': schema.fieldsKnown,
+    'geo-citation-attribution': schema.fieldsKnown,
+    'geo-citation-freshness': schema.typesKnown && (!schema.articleLike || schema.fieldsKnown),
+  };
+  for (const item of Object.values(checks).flat()) {
+    if (Object.hasOwn(schemaKnown, item.id) && !schemaKnown[item.id] && item.status !== 'pass') {
+      item.status = 'unknown';
+      item.message = 'JSON-LD 语义或字段投影未完整核实，不能据此判定缺失。';
+      item.evidence = '';
+      item.suggestion = '';
+    }
+  }
+
   // 采集失败时的空字段是占位值，不能据此建议用户修改页面内容。
   if (page.ok === false || !(page.status >= 200 && page.status < 400)) {
     for (const item of Object.values(checks).flat()) {
@@ -327,6 +349,7 @@ export function evaluateGeoSite(site = {}) {
       '没有执行真实模型问答、引用命中率实验或跨模型对照。',
       'Google 页面级指令检查不覆盖 robots.txt、实际收录、data-nosnippet 或单独授权例外，也不推断其他 AI 爬虫的策略。',
       'canonical 与结构化数据作为结构线索计分，不是 Google AI 搜索的特殊必备标记。',
+      'JSON-LD 未成功展开或字段投影受限时，未观察到的相关信号保留未知；旧采集也需重新核实语义。',
       '未采集页面、登录后内容和未核实的初始 HTML 不进入本次 GEO 结论。',
       '预计成本是按改动面给出的 small / medium / large 启发式，不是工时报价。',
     ],

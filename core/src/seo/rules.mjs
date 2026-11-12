@@ -137,10 +137,12 @@ export function evaluatePage(page, site = {}) {
   // 分页 / 分面：天生跨页的一类问题，单看一页看不出来
   for (const s of paginationPageIssues(page)) A(s.id, 'links', s.severity, s.title, s.message, s.evidence, s.suggestion);
 
-  const badJsonLd = (page.jsonld || []).filter(j => !j.ok);
-  if (badJsonLd.length) A('structured-jsonld-error', 'structured', 'medium', 'JSON-LD 解析失败', `${badJsonLd.length} 段`, badJsonLd[0].error, '修复 JSON 语法并重新校验');
+  const badJsonLd = (page.jsonld || []).filter(j => j.ok === false);
+  if (badJsonLd.length) A('structured-jsonld-error', 'structured', 'medium', 'JSON-LD 解析失败', `${badJsonLd.length} 段`, badJsonLd[0].error, '修复 JSON 语法或 JSON-LD 语义格式并重新校验');
+  const uncheckedJsonLd = (page.jsonld || []).filter(j => j.semanticStatus === 'unknown');
+  if (uncheckedJsonLd.some(j => j.ok !== false)) A('structured-unchecked', 'structured', 'info', 'JSON-LD 语义尚未核实', `${uncheckedJsonLd.length} 段未能使用本地上下文展开`, '未自动访问其他远程上下文；超出采集限制时也保留未知。', '先核对上下文与采集限制，再重新审计；不能据此认定缺少结构化数据');
   const types = [...new Set((page.jsonld || []).flatMap(j => j.types || []))];
-  if (!types.length && !page.microdataCount) A('structured-none', 'structured', 'info', '未检测到 JSON-LD 类型或 microdata 标记', '', '仅检查 JSON-LD 顶层和 @graph 的类型及 microdata 标记；未检查 RDFa。', '先人工核对页面的结构化数据，再按页面需求补充 Schema');
+  if (!types.length && !page.microdataCount && !uncheckedJsonLd.length) A('structured-none', 'structured', 'info', '未检测到 JSON-LD 类型或 microdata 标记', '', '仅检查 JSON-LD 顶层和 @graph 的类型及 microdata 标记；未检查 RDFa。', '先人工核对页面的结构化数据，再按页面需求补充 Schema');
   // 浅层格式检查与字段提示，不判定搜索功能资格。
   for (const s of validateStructuredData((page.jsonld || []).flatMap(j => j.items ?? []))) {
     A(s.id, 'structured', s.severity, s.title, s.message, s.evidence, s.suggestion);

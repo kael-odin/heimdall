@@ -5,11 +5,19 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { validateStructuredData, flattenNodes, COMMON_FIELDS } from '../src/seo/structured.mjs';
 import { scoreIssues } from '../src/seo/rules.mjs';
+import { parseJsonLdScripts, JSONLD_LIMITS } from '../src/seo/jsonld.mjs';
 
 const ids = (items) => validateStructuredData(items).map(i => i.id);
 const find = (items, id) => validateStructuredData(items).find(i => i.id === id);
+
+test('结构化：固定官方上下文，更新时须审核评分与采集口径', () => {
+  const content = readFileSync(new URL('../src/seo/schemaorg-context.json', import.meta.url));
+  assert.equal(createHash('sha256').update(content).digest('hex'), '83bf7671ae77e28322c6ef4006f0109ecd2ec41db76879fe3860ab043b9b966f');
+});
 
 test('结构化：完整的 Product 不报问题', () => {
   const items = [{
@@ -45,13 +53,40 @@ test('结构化：@graph 里的实体也要校验', () => {
   assert.match(issue.title, /Article/);
 });
 
-test('结构化：缺 @context 单独报一条（且 @graph 内层不算）', () => {
-  assert.ok(ids([{ '@type': 'Organization', name: 'x', url: 'https://a.test' }]).includes('structured-context-missing'));
-  assert.ok(!ids([{ '@context': 'https://schema.org', '@graph': [{ '@type': 'Organization', name: 'x', url: 'https://a.test' }] }]).includes('structured-context-missing'));
+test('结构化：字面 @context 和 @type 缺失不能判定 JSON-LD 无效', async () => {
+  const input = { '@type': 'https://schema.org/Person', 'https://schema.org/name': 'Example' };
+  const [entry] = await parseJsonLdScripts([{ text: JSON.stringify(input) }], 'https://example.test/');
+  assert.equal(entry.semanticStatus, 'complete');
+  assert.deepEqual(entry.types, ['Person']);
+  assert.deepEqual(ids(entry.items), []);
+  assert.deepEqual(ids([{ '@id': 'https://example.test/entity' }]), []);
 });
 
-test('结构化：缺 @type 报一条', () => {
-  assert.ok(ids([{ '@context': 'https://schema.org', name: 'x' }]).includes('structured-type-missing'));
+test('结构化：标准上下文处理别名、覆盖、reset、scoped 和未配置远程上下文', async () => {
+  const parse = async input => (await parseJsonLdScripts([{ text: JSON.stringify(input) }], 'https://example.test/'))[0];
+  const aliased = await parse({ '@context': ['https://schema.org', { kind: '@type', label: 'name' }], kind: 'Person', label: 'Example' });
+  assert.deepEqual(aliased.types, ['Person']);
+  assert.equal(aliased.items[0].name, 'Example');
+  const reset = await parse({ '@context': ['https://schema.org', null], type: 'Article', name: 'No mapping' });
+  assert.deepEqual(reset.types, []);
+  const scoped = await parse({ '@context': ['https://schema.org', { author: { '@context': { type: null } } }], type: 'Article', author: { type: 'Person', name: 'Example' } });
+  assert.equal(scoped.items[0].author.name, 'Example');
+  assert.equal(scoped.items[0].author['@type'], undefined);
+  const foreign = await parse({ '@context': { '@vocab': 'https://foreign.test/' }, '@type': 'Article', headline: 'Other vocabulary' });
+  assert.deepEqual(foreign.types, ['https://foreign.test/Article']);
+  assert.equal(foreign.items[0].headline, undefined);
+  const remote = await parse({ '@context': 'https://schema.org.evil.test/?token=private', '@type': 'Article' });
+  assert.equal(remote.semanticStatus, 'unknown');
+  assert.deepEqual(remote.items, []);
+  assert.doesNotMatch(JSON.stringify(remote), /private|evil\.test/);
+  const invalid = await parse({ '@context': 5 });
+  assert.equal(invalid.ok, false);
+  assert.match(invalid.error, /语义格式错误/);
+  const [limited] = await parseJsonLdScripts([{ text: ' '.repeat(JSONLD_LIMITS.codeUnits + 1) }], 'https://example.test/');
+  assert.equal(limited.ok, null);
+  assert.equal(limited.semanticStatus, 'unknown');
+  const many = await parseJsonLdScripts(Array(17).fill({ text: '{}' }), 'https://example.test/');
+  assert.equal(many.at(-1).semanticStatus, 'unknown');
 });
 
 test('结构化：日期必须是 ISO 8601', () => {

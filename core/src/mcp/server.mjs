@@ -34,7 +34,7 @@ export const TOOLS = [
   { name: 'heimdall_jobs', description: '任务列表 + 持久化历史', inputSchema: { type: 'object', properties: {} } },
   { name: 'heimdall_recon', description: '启动全站侦察（sitemap+BFS → atlas.json）', inputSchema: { type: 'object', properties: { url: str('目标 URL'), maxPages: num('最大页数，默认 40') }, required: ['url'] } },
   { name: 'heimdall_forge', description: '启动单页完整克隆流水线', inputSchema: { type: 'object', properties: { url: str('目标页面 URL'), hostPost: { type: 'boolean', description: '是否运行站点级汇总（默认 true）' } }, required: ['url'] } },
-  { name: 'heimdall_audit', description: '启动 SEO 审计（65 条规则）', inputSchema: { type: 'object', properties: { url: str('站点 URL 或域名'), maxPages: num('最大页数，默认 30') }, required: ['url'] } },
+  { name: 'heimdall_audit', description: '启动 SEO 审计（64 条规则）', inputSchema: { type: 'object', properties: { url: str('站点 URL 或域名'), maxPages: num('最大页数，默认 30') }, required: ['url'] } },
   { name: 'heimdall_watch', description: '启动站点变更监控', inputSchema: { type: 'object', properties: { url: str('站点 URL 或域名'), maxPages: num('最大页数，默认 20'), accept: { type: 'boolean', description: '确认变化并更新基线' } }, required: ['url'] } },
   { name: 'heimdall_verify', description: '多视口保真验证（375/768/1440）', inputSchema: { type: 'object', properties: { host: str('站点 host'), page: str('页面名；省略则 --all'), max: num('--all 时最多页数') }, required: ['host'] } },
   { name: 'heimdall_tokens', description: '设计 token 提取', inputSchema: { type: 'object', properties: { host: str('站点 host'), pages: num('采样页数，默认 5') }, required: ['host'] } },

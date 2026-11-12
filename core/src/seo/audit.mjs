@@ -234,8 +234,9 @@ try {
     !Number.isInteger(p.status) || p.status < 200 || p.status >= 400
     || !isSameOriginUrl(p.finalUrl, origin));
   const uncheckedInitialHtml = pagesScored.filter(p => p.robotsEvidence?.initialHtml !== 'checked');
+  const structuredUnchecked = pagesScored.filter(p => (p.jsonld ?? []).some(j => j.ok !== false && j.semanticStatus === 'unknown'));
   const sitemapIncomplete = !['complete', 'not_found'].includes(sitemap.coverage);
-  const baselineEligible = !failedPages.length && !uncheckedInitialHtml.length && !sitemapIncomplete && !baselinePagesUnchecked;
+  const baselineEligible = !failedPages.length && !uncheckedInitialHtml.length && !structuredUnchecked.length && !sitemapIncomplete && !baselinePagesUnchecked;
   const gateRequested = FAIL_ON_REGRESSION || REQUIRE_BASELINE || UPDATE_BASELINE || THRESHOLD > 0;
 
   const avgPage = pagesScored.length ? pagesScored.reduce((a, p) => a + p.score, 0) / pagesScored.length : 100;
@@ -266,7 +267,7 @@ try {
     scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
     config: { max: MAX, viewport: '1440x900', concurrency: 2, source: discoverySource },
     score: siteScore,
-    summary: { pages: pages.length, issues: allIssues.length, bySeverity, pagesScored: pages.length, initialHtmlUnchecked: uncheckedInitialHtml.length, failedPages: failedPages.length, sitemapCoverage: sitemap.coverage, baselinePagesUnchecked, legacyBaseline, baselineMethodMismatch, baselineEligible, baselineCompared: !!baseline && !legacyBaseline && !baselineMethodMismatch && baselineEligible },
+    summary: { pages: pages.length, issues: allIssues.length, bySeverity, pagesScored: pages.length, initialHtmlUnchecked: uncheckedInitialHtml.length, structuredUnchecked: structuredUnchecked.length, failedPages: failedPages.length, sitemapCoverage: sitemap.coverage, baselinePagesUnchecked, legacyBaseline, baselineMethodMismatch, baselineEligible, baselineCompared: !!baseline && !legacyBaseline && !baselineMethodMismatch && baselineEligible },
     sitemap: { coverage: sitemap.coverage, reasons: sitemap.reasons, stats: sitemap.stats },
     categories,
     siteIssues: allSiteIssues,
@@ -299,7 +300,11 @@ try {
   emit({ kind: 'audit-done', host, score: siteScore, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, baselineEligible, legacyBaseline, baselineMethodMismatch, pages: pages.length, issues: allIssues.length, bySeverity, reportPath: htmlPath, initialHtmlUnchecked: uncheckedInitialHtml.length, sitemapCoverage: sitemap.coverage });
 
   // A refetch can differ from the navigation response, so it cannot prove that an initial noindex disappeared.
-  if (uncheckedInitialHtml.length || sitemapIncomplete || failedPages.length || baselinePagesUnchecked) {
+  if (uncheckedInitialHtml.length || structuredUnchecked.length || sitemapIncomplete || failedPages.length || baselinePagesUnchecked) {
+    if (structuredUnchecked.length) {
+      log(`INCOMPLETE: ${structuredUnchecked.length}/${pagesScored.length} 页 JSON-LD 语义未核实，跳过基线比对和更新。`);
+      emit({ kind: 'audit-incomplete', reason: 'structured-data-unchecked', pages: structuredUnchecked.length });
+    }
     if (uncheckedInitialHtml.length) {
       const sample = uncheckedInitialHtml.slice(0, 3).map(p => p.url).join('; ');
       log(`INCOMPLETE: ${uncheckedInitialHtml.length}/${pagesScored.length} 页未核对初始 HTML，跳过基线比对和更新。${sample}`);

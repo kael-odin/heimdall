@@ -18,6 +18,7 @@ const page = (over = {}) => ({
   links: { external: 2 },
   microdataCount: 0,
   jsonld: [{
+    semanticStatus: 'complete',
     types: ['Article'],
     items: [{
       '@type': 'Article', name: 'Proxy guide',
@@ -118,7 +119,7 @@ test('GEO 采集失败和 HTTP 错误页不生成内容整改，混合站点保�
 });
 
 test('GEO 不适用检查不降低覆盖率，部分未知也不能四舍五入成完整', () => {
-  const input = page({ jsonld: [{ types: ['Organization'], items: [{ name: 'Example', author: 'Team' }] }] });
+  const input = page({ jsonld: [{ semanticStatus: 'complete', types: ['Organization'], items: [{ name: 'Example', author: 'Team' }] }] });
   const result = evaluateGeoSite({ pages: [input] });
   assert.equal(result.status, 'complete');
   assert.equal(result.coverage.totalWeight, 96);
@@ -141,6 +142,22 @@ test('GEO 站点聚合覆盖页面和维度建议', () => {
   assert.ok(result.actionPlan.length > 0);
   assert.equal(result.actionPlanMeta.total, result.actionPlan.length);
   assert.equal(result.methodVersion, GEO_METHOD_VERSION);
+});
+
+test('GEO 未解析上下文与受限字段不能变成缺陷或通过，已观测证据仍可使用', () => {
+  const check = (result, id) => Object.values(result.dimensions).flatMap(d => d.checks).find(c => c.id === id);
+  for (const semanticStatus of ['unknown', undefined]) {
+    const result = evaluateGeoPage(page({ jsonld: [{ semanticStatus, types: ['Article'], items: [{ author: 'Unverified' }] }] }));
+    assert.equal(check(result, 'geo-entity-type').status, 'unknown');
+    assert.equal(check(result, 'geo-extract-structure').status, 'unknown');
+    assert.equal(check(result, 'geo-citation-attribution').status, 'unknown');
+    assert.equal(check(result, 'geo-citation-freshness').status, 'unknown');
+    assert.ok(!result.actionPlan.some(i => /geo-entity-type|geo-citation-attribution/.test(i.id)));
+  }
+  const limited = evaluateGeoPage(page({ jsonld: [{ semanticStatus: 'complete', types: ['TechArticle'], truncated: true, items: [{ name: 'Example', datePublished: '2026-11-13' }] }] }));
+  assert.equal(check(limited, 'geo-entity-type').status, 'pass');
+  assert.equal(check(limited, 'geo-citation-freshness').status, 'pass');
+  assert.equal(check(limited, 'geo-citation-attribution').status, 'unknown');
 });
 
 test('Xspark 脱敏 SEO 证据可以离线生成带页面和复测方式的 GEO 待办', () => {

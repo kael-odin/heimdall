@@ -18,7 +18,7 @@ const SEO_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'seo'
 const FILES = ['rules.mjs', 'pagination.mjs', 'structured.mjs'];
 
 /** 规则总数 —— 改了规则就改这里，同时改 README / PRD / HANDOFF / 控制台里的同一句话 */
-export const RULE_COUNT = 65;
+export const RULE_COUNT = 64;
 
 function listRuleIds() {
   const ids = [];
@@ -41,6 +41,7 @@ test('规则数：与源码一致（不一致就说明文档里的数字又过�
 const MENTION_FILES = [
   join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli.mjs'),
   join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'mcp', 'server.mjs'),
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'agent', 'registry', 'capabilities', 'seo-audit.mjs'),
   join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'console', 'src', 'Atlas.vue'),
   join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'console', 'src', 'DetailDock.vue'),
   // 仓库首页与上手导览也是"用户可见处"。此前守卫只覆盖代码与界面，
@@ -57,8 +58,8 @@ test('规则数：CLI / MCP / 控制台里写的数字也必须与源码一致',
   for (const f of MENTION_FILES) {
     assert.ok(existsSync(f), `规则数守卫的用户可见文件缺失：${f}`);
     const text = readFileSync(f, 'utf8');
-    for (const m of text.matchAll(/(\d+)\s*条规则/g)) {
-      if (Number(m[1]) !== RULE_COUNT) stale.push(`${f.split(/[\\/]/).slice(-2).join('/')}: ${m[0]}`);
+    for (const m of text.matchAll(/(\d+)\s*条规则|(\d+)-rule\b/g)) {
+      if (Number(m[1] ?? m[2]) !== RULE_COUNT) stale.push(`${f.split(/[\\/]/).slice(-2).join('/')}: ${m[0]}`);
     }
   }
   assert.deepEqual(stale, [], `这些地方还在写旧数字：\n${stale.join('\n')}`);

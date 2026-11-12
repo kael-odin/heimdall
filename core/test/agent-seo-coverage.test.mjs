@@ -35,6 +35,14 @@ test('SEO agent reports incomplete coverage without linking a stale diff', async
   assert.equal(partial.result.result.grade, null);
   writeFileSync(join(directory, 'seo.json'), JSON.stringify({
     origin: 'https://example.test', score: 100,
+    summary: { structuredUnchecked: 1, sitemapCoverage: 'complete', baselineEligible: false }, categories: {},
+  }));
+  const semantic = await capability.handler({ url: 'https://example.test/', maxPages: 1, waitMs: 0 }, { jobs });
+  assert.match(semantic.summary, /部分完成.*1 页 JSON-LD 语义未核实/);
+  assert.equal(semantic.result.result.grade, null);
+  assert.equal(semantic.result.result.reports.diff, null);
+  writeFileSync(join(directory, 'seo.json'), JSON.stringify({
+    origin: 'https://example.test', score: 100,
     summary: { sitemapCoverage: 'complete', baselineEligible: true, baselineCompared: false }, categories: {},
   }));
   const firstRun = await capability.handler({ url: 'https://example.test/', maxPages: 1, waitMs: 0 }, { jobs });

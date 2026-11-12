@@ -23,6 +23,48 @@ function runAudit(origin, baseline, dataDir, flags = ['--update-baseline']) {
   });
 }
 
+test('seo gate: unresolved JSON-LD is unknown, never fetched or saved as a baseline', { timeout: 60_000 }, async () => {
+  let origin, unknown = false, contextHits = 0;
+  const server = createServer((req, res) => {
+    if (req.url === '/context') { contextHits++; return res.end('{}'); }
+    if (req.url === '/') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      const ld = unknown ? { '@context': `${origin}/context`, '@type': 'Article' }
+        : { '@context': 'https://schema.org', type: 'Article', headline: 'Fixture', datePublished: '2026-11-13' };
+      return res.end(`<!doctype html><title>Semantic fixture</title><h1>Fixture</h1><script type="application/ld+json">${JSON.stringify(ld)}</script>`);
+    }
+    res.writeHead(404); res.end();
+  });
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-seo-jsonld-'));
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    origin = `http://127.0.0.1:${server.address().port}`;
+    const baseline = join(dataDir, 'baseline.json');
+    const initial = await runAudit(origin, baseline, dataDir);
+    assert.equal(initial.code, 0, initial.output);
+    const original = readFileSync(baseline, 'utf8');
+    unknown = true;
+    const blocked = await runAudit(origin, baseline, dataDir);
+    assert.equal(blocked.code, 1, blocked.output);
+    assert.match(blocked.output, /structured-data-unchecked/);
+    assert.equal(readFileSync(baseline, 'utf8'), original);
+    assert.equal(contextHits, 0, 'processor must never fetch arbitrary context URLs');
+    const directory = join(dataDir, 'workspace', '127.0.0.1', 'seo');
+    const report = JSON.parse(readFileSync(join(directory, 'seo.json'), 'utf8'));
+    assert.equal(report.summary.baselineEligible, false);
+    assert.equal(report.summary.structuredUnchecked, 1);
+    assert.ok(report.pages[0].issues.some(i => i.id === 'structured-unchecked'));
+    assert.ok(!report.pages[0].issues.some(i => i.id === 'structured-none'));
+    assert.ok(report.geo.pages[0].unknown.some(i => i.id === 'geo-entity-type'));
+    assert.ok(!report.geo.actionPlan.some(i => i.id === 'geo-entity-type'));
+    assert.match(readFileSync(join(directory, 'seo.html'), 'utf8'), /未自动访问其他远程上下文/);
+    assert.match(readFileSync(join(directory, 'seo.csv'), 'utf8'), /"info","structured-unchecked"/);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('seo audit: optional robots and sitemap observations do not lower the site score', { timeout: 60_000 }, async () => {
   const server = createServer((req, res) => {
     if (req.url === '/') {

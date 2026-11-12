@@ -1,6 +1,6 @@
 /**
  * seo/structured — JSON-LD 浅层格式检查与常见字段提示。
- * 字段表不代表特定搜索功能的资格要求；不解析完整上下文、实体引用或业务真实性。
+ * 采集器先展开上下文再传入受限字段投影；这里不判定搜索功能资格、实体引用或业务真实性。
  */
 
 /**
@@ -70,31 +70,9 @@ export function validateStructuredData(items) {
   const list = (items ?? []).filter(x => x && typeof x === 'object');
   if (!list.length) return out;
 
-  // @context：只有顶层的需要（@graph 内的节点继承）
-  const missingContext = list.filter(x => !has(x['@context']) && !Array.isArray(x['@graph']));
-  if (missingContext.length) {
-    out.push({
-      id: 'structured-context-missing', severity: 'low',
-      title: 'JSON-LD 缺 @context',
-      message: `${missingContext.length} 段脚本没有 @context`,
-      evidence: '缺少 @context 的脚本不会被视为 schema.org 数据，等于没写',
-      suggestion: '在顶层对象加 "@context": "https://schema.org"',
-    });
-  }
-
   const nodes = flattenNodes(list);
-  const noType = nodes.filter(n => typesOf(n).length === 0);
-  if (noType.length) {
-    out.push({
-      id: 'structured-type-missing', severity: 'low',
-      title: 'JSON-LD 节点缺 @type',
-      message: `${noType.length} 个节点没有可识别的 @type`,
-      evidence: '',
-      suggestion: '为每个实体补上 @type（Product / Article / FAQPage …）',
-    });
-  }
 
-  // shortcut: 不展开 JSON-LD 上下文或 @id 引用；需要判定搜索功能资格时接入对应验证器。
+  // shortcut: 不合并 @id 引用；需要判定搜索功能资格时接入对应验证器。
   const byType = new Map();
   for (const n of nodes) {
     for (const t of typesOf(n)) {
@@ -112,7 +90,7 @@ export function validateStructuredData(items) {
       id: 'structured-common-fields', severity: 'info',
       title: `${type} 常见字段待核查`,
       message: `${rec.count} 个 ${type} 实体未直接提供 ${[...rec.missing].join('、')}`,
-      evidence: `浅层字段提示，不是必填或富结果资格判定；未解析上下文和实体引用。${type} 的参考字段：${COMMON_FIELDS[type].map(describeGroup).join('、')}`,
+      evidence: `浅层字段提示，不是必填或富结果资格判定；未合并实体引用。${type} 的参考字段：${COMMON_FIELDS[type].map(describeGroup).join('、')}`,
       suggestion: `按目标搜索功能的官方指南和 Rich Results Test 复核；仅在与可见内容一致时补充 ${[...rec.missing].join('、')}，勿虚构数据`,
     });
   }

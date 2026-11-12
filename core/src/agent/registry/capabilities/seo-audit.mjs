@@ -32,7 +32,7 @@ function finishAudit(siteId) {
 export default {
   id: 'seo_audit',
   title: 'SEO：站点审计',
-  description: 'Run Heimdall\'s deterministic 66-rule SEO audit plus an evidence-backed GEO readiness heuristic against an authorized HTTP(S) site. The source is read with Chromium; '
+  description: 'Run Heimdall\'s deterministic SEO audit plus an evidence-backed GEO readiness heuristic against an authorized HTTP(S) site. The source is read with Chromium; '
     + 'the capability writes local JSON/CSV/HTML reports. Page scripts may send state-changing or third-party requests; existing sessions may be used. '
     + 'It is long-running and returns a jobId; '
     + 'wait with heimdall_jobs, then read the evidence through heimdall://site/<siteId>/seo. This is a current-state audit, not a visual clone.',
@@ -58,6 +58,8 @@ export default {
         ? `SEO 审计结束：${job.status}。`
         : job.result?.summary?.initialHtmlUnchecked > 0
           ? `SEO 审计部分完成：${job.result.summary.initialHtmlUnchecked} 页未核对初始 HTML，未进行基线比对。`
+          : job.result?.summary?.structuredUnchecked > 0
+            ? `SEO 审计部分完成：${job.result.summary.structuredUnchecked} 页 JSON-LD 语义未核实，未进行基线比对。`
           : ['partial', 'unavailable'].includes(job.result?.summary?.sitemapCoverage)
             ? 'SEO 审计部分完成：sitemap 采集不完整，分数仅供参考，未进行基线比对。'
             : job.result?.summary?.failedPages > 0 || job.result?.summary?.baselinePagesUnchecked > 0

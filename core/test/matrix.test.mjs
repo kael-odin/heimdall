@@ -205,6 +205,12 @@ test('matrix: JSON-LD coverage is hidden when measurement methods are old, unkno
   assert.equal(matrix.jsonldComparison.comparable, true);
   assert.deepEqual(matrix.sites.map(s => s.aggregate.jsonldRate), [100, 0]);
   assert.match(renderMatrixHtml(matrix), /不包括 microdata 或 RDFa/);
+  current.pages[0].jsonld = [{ ok: true, types: [], semanticStatus: 'unknown' }];
+  const unknown = buildMatrix([current, other]);
+  assert.equal(unknown.sites[0].aggregate.jsonldRate, null);
+  assert.equal(unknown.sites[0].aggregate.jsonldUnknownPages, 1);
+  assert.match(renderMatrixHtml(unknown), /语义未核实/);
+  assert.match(renderMatrixCsv(unknown), /jsonld_unknown_pages/);
 });
 
 test('matrix: the current resource-classification method is not compared with version 3', () => {

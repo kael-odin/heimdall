@@ -13,6 +13,7 @@ import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { canonUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { UA } from '../ua.mjs';
 import { discoverSitemapUrls } from '../crawler/sitemap-discovery.mjs';
+import { parseJsonLdScripts, JSONLD_LIMITS } from './jsonld.mjs';
 
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
 
@@ -173,7 +174,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       if (r?.html) raw = { ...analyzeRawHtml(r.html), source: 'refetch' };
     } catch { /* 取不到就不做对照，不算失败 */ }
 
-    const dom = await page.evaluate(() => {
+    const dom = await page.evaluate((jsonldLimits) => {
       // 空值必须保持为空：new URL('', base) 会解析成页面自身地址，
       // 于是没有 canonical / og:image 的页面看上去"都有"，对应的缺失类规则永远不会触发。
       const abs = (u) => { if (!u || !String(u).trim()) return ''; try { return new URL(u, location.href).href; } catch { return u; } };
@@ -219,43 +220,10 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
           }
         } catch {}
       }
-      // 结构化数据：除了 @type，还要把**实体本身**带回去做字段级校验
-      // 字段信号用于浅层检查和完善提示，不代表富结果资格。
-      // 对象可能很大（商品目录），所以按白名单裁剪并限制深度与条数。
-      const LD_KEYS = new Set(['@context', '@type', '@id', '@graph', 'name', 'headline', 'description', 'title',
-        'image', 'logo', 'url', 'datePublished', 'dateModified', 'datePosted', 'uploadDate', 'startDate', 'endDate',
-        'author', 'publisher', 'provider', 'offers', 'aggregateRating', 'review', 'reviewRating', 'itemReviewed',
-        'itemListElement', 'mainEntity', 'acceptedAnswer', 'address', 'telephone', 'priceRange', 'location',
-        'thumbnailUrl', 'contentUrl', 'price', 'priceCurrency', 'availability', 'brand', 'sku', 'position', 'item',
-        'mainEntityOfPage', 'sameAs', 'hiringOrganization', 'ratingValue', 'ratingCount', 'reviewCount', 'step']);
-      const pickLd = (v, depth = 0) => {
-        if (depth > 3 || v == null) return v == null ? v : undefined;
-        if (Array.isArray(v)) return v.slice(0, 20).map(x => pickLd(x, depth + 1)).filter(x => x !== undefined);
-        if (typeof v === 'object') {
-          const o = {};
-          for (const k of Object.keys(v)) if (LD_KEYS.has(k)) { const p = pickLd(v[k], depth + 1); if (p !== undefined) o[k] = p; }
-          return o;
-        }
-        return typeof v === 'string' ? v.slice(0, 200) : v;
-      };
-      const jsonld = [...document.querySelectorAll('script[type="application/ld+json"]')].map(s => {
-        try {
-          const data = JSON.parse(s.textContent);
-          const arr = Array.isArray(data) ? data : [data];
-          const pending = [...arr];
-          const types = new Set();
-          while (pending.length) {
-            const node = pending.pop();
-            if (Array.isArray(node)) { for (const item of node) pending.push(item); continue; }
-            if (!node || typeof node !== 'object') continue;
-            for (const type of [].concat(node['@type'] ?? [])) {
-              if (typeof type === 'string' && type.trim()) types.add(type.trim());
-            }
-            if (node['@graph'] && typeof node['@graph'] === 'object') pending.push(node['@graph']);
-          }
-          return { ok: true, types: [...types], items: arr.slice(0, 12).map(x => pickLd(x)).filter(Boolean) };
-        } catch (e) { return { ok: false, types: [], items: [], error: String(e).slice(0, 120) }; }
-      });
+      const scripts = [...document.querySelectorAll('script[type="application/ld+json"]')];
+      const jsonld = scripts.slice(0, jsonldLimits.scripts).map(s => s.textContent.length > jsonldLimits.codeUnits
+        ? { unavailable: 'JSON-LD 脚本超过采集大小限制' } : { text: s.textContent });
+      if (scripts.length > jsonldLimits.scripts) jsonld.push({ unavailable: 'JSON-LD 脚本超过采集数量限制' });
       // 「加载更多 / 下一页」这类按钮：分页如果用 JS 做，爬虫拿不到下一页的 URL ——
       // 这是列表页最常见也最容易被忽略的问题，而它在 HTML 里只留下一个可点的按钮。
       // 只认强特征文案（"更多" 单独出现太容易误判成导航菜单，不收）。
@@ -353,9 +321,10 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         vitals: { ...(window.__heimdallVitals || { lcp: null, cls: 0, fcp: null }), domContentLoaded: nav?.domContentLoadedEventEnd ?? null, load: nav?.loadEventEnd ?? null },
         mixedContent: location.protocol === 'https:' ? res.map(r => r.name).filter(n => n.startsWith('http:')).slice(0, 10) : [],
       };
-    });
+    }, JSONLD_LIMITS);
 
     const robotsEvidence = googleRobotsEvidence(dom.robotsTags, robotsHeaders, raw);
+    const jsonld = await parseJsonLdScripts(dom.jsonld, finalUrl);
     return {
       url,
       finalUrl,
@@ -376,7 +345,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       htmlCodeUnits: dom.htmlCodeUnits, htmlBytes: dom.htmlBytes,
       imgTotal: dom.imgTotal, imgMissingAlt: dom.imgMissingAlt, imgEmptyAlt: dom.imgEmptyAlt, imgBroken: dom.imgBroken, imgLegacy: dom.imgLegacy, imgLazy: dom.imgLazy,
       links: dom.links, internalHrefs: dom.internalHrefs, externalSample: dom.externalSample,
-      jsonld: dom.jsonld, microdataCount: dom.microdataCount,
+      jsonld, microdataCount: dom.microdataCount,
       og: dom.og, twitter: dom.twitter, hreflang: dom.hreflang, jsPagination: dom.jsPagination,
       // 服务端原始 HTML 的同名信号（未经 JS）。两者并排才能回答
       // "这个站的内容依赖不依赖 JS"。取不到时为 null，规则里要判空。

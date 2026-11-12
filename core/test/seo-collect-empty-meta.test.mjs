@@ -284,12 +284,16 @@ test('采集：JSON-LD 的顶层和 @graph 类型进入规则与矩阵，不把�
   const cases = {
     direct: { ld: { '@context': 'https://schema.org', '@type': 'Organization', name: 'Fixture' }, types: ['Organization'] },
     graph: { ld: { '@context': 'https://schema.org', '@graph': [{ '@type': ['Organization', 'LocalBusiness'], name: 'Fixture' }] }, types: ['Organization', 'LocalBusiness'] },
-    nested: { ld: [{ '@graph': { '@graph': [{ '@type': 'WebSite' }] } }], types: ['WebSite'] },
-    both: { ld: { '@type': 'WebPage', '@graph': [{ '@type': 'Organization' }] }, types: ['WebPage', 'Organization'] },
-    large: { ld: { '@graph': [...Array(100_001).fill({}), { '@type': 'WebSite' }] }, types: ['WebSite'] },
+    nested: { ld: { '@context': 'https://schema.org', '@graph': { '@graph': [{ '@type': 'WebSite' }] } }, types: ['WebSite'] },
+    both: { ld: { '@context': 'https://schema.org', '@type': 'WebPage', '@graph': [{ '@type': 'Organization' }] }, types: ['WebPage', 'Organization'] },
+    large: { ld: { '@context': 'https://schema.org', '@graph': [...Array(100_001).fill({}), { '@type': 'WebSite' }] }, types: ['WebSite'] },
+    aliases: { ld: { '@context': ['https://schema.org', { kind: '@type', label: 'name' }], kind: 'TechArticle', label: 'Fixture' }, types: ['TechArticle'] },
+    fullIri: { ld: { '@type': 'https://schema.org/Organization', 'https://schema.org/name': 'Fixture' }, types: ['Organization'] },
+    foreign: { ld: { '@context': { '@vocab': 'https://foreign.test/' }, '@type': 'Article' }, types: ['https://foreign.test/Article'] },
+    remote: { ld: { '@context': 'https://unconfigured.invalid/context', '@type': 'Article' }, types: [], unchecked: true },
     empty: { ld: {}, types: [], missing: true },
-    invalidType: { ld: { '@type': [null, 5, '', '  '] }, types: [], missing: true },
-    broken: { raw: '{not json', types: [], missing: true, broken: true },
+    invalidType: { ld: { '@type': [null, 5, '', '  '] }, types: [], broken: true },
+    broken: { raw: '{not json', types: [], broken: true },
     microdata: { markup: '<div itemscope itemtype="https://schema.org/Organization"></div>', types: [] },
     rdfa: { markup: '<div vocab="https://schema.org/" typeof="Organization"></div>', types: [], missing: true },
   };
@@ -314,11 +318,14 @@ test('采集：JSON-LD 的顶层和 @graph 类型进入规则与矩阵，不把�
     const missing = issues.find(issue => issue.id === 'structured-none');
     assert.equal(Boolean(missing), Boolean(fixture.missing), name);
     assert.equal(issues.some(issue => issue.id === 'structured-jsonld-error'), Boolean(fixture.broken), name);
+    assert.equal(issues.some(issue => issue.id === 'structured-unchecked'), Boolean(fixture.unchecked), name);
+    assert.ok(!issues.some(issue => /structured-type-missing|structured-context-missing/.test(issue.id)), name);
+    if (name === 'aliases') assert.equal(page.jsonld[0].items[0].name, 'Fixture');
     if (name === 'rdfa') {
       assert.match(missing.title, /JSON-LD.*microdata/i);
       assert.match(missing.evidence, /RDFa/i);
     }
     const aggregate = siteAggregate({ pages: [page], measurementVersion: SEO_MEASUREMENT_VERSION, summary: { baselineEligible: true } });
-    assert.equal(aggregate.jsonldRate, fixture.types.length ? 100 : 0, name);
+    assert.equal(aggregate.jsonldRate, fixture.unchecked ? null : fixture.types.length ? 100 : 0, name);
   }
 });

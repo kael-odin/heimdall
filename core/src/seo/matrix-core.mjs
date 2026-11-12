@@ -24,6 +24,8 @@ export function siteAggregate(audit) {
   const pages = audit.pages ?? [];
   const withSignals = pages.filter(p => p.status > 0);
   const baselineEligible = audit.summary?.baselineEligible === true;
+  const jsonldUnknownPages = withSignals.filter(p => !(p.jsonld ?? []).some(j => j.ok && j.types?.length)
+    && (p.jsonld ?? []).some(j => j.ok !== false && j.semanticStatus === 'unknown')).length;
   return {
     host: siteLabel(audit),
     score: baselineEligible ? (audit.score ?? null) : null,
@@ -35,7 +37,8 @@ export function siteAggregate(audit) {
     avgTitleLen: round(avg(withSignals.map(p => p.titleLength ?? 0)), 0),
     descRate: pct(withSignals.filter(p => (p.descriptionLength ?? 0) > 0).length, withSignals.length),
     h1Rate: pct(withSignals.filter(p => (p.h1 ?? []).length === 1).length, withSignals.length),
-    jsonldRate: pct(withSignals.filter(p => (p.jsonld ?? []).some(j => j.ok && (j.types ?? []).length)).length, withSignals.length),
+    jsonldRate: jsonldUnknownPages ? null : pct(withSignals.filter(p => (p.jsonld ?? []).some(j => j.ok && (j.types ?? []).length)).length, withSignals.length),
+    jsonldUnknownPages,
     avgLcp: round(avg(withSignals.map(p => p.vitals?.lcp).filter(v => typeof v === 'number')) , 0),
     avgWords: round(avg(withSignals.map(p => p.wordCount ?? 0)), 0),
     issuesPerPage: baselineEligible ? round((audit.summary?.issues ?? 0) / Math.max(pages.length, 1), 1) : null,
@@ -106,6 +109,7 @@ export function renderMatrixCsv(matrix) {
     ['description_rate_%', ...matrix.sites.map(s => fmt(s.aggregate.descRate))],
     ['h1_rate_%', ...matrix.sites.map(s => fmt(s.aggregate.h1Rate))],
     ['jsonld_rate_%', ...matrix.sites.map(s => fmt(s.aggregate.jsonldRate))],
+    ['jsonld_unknown_pages', ...matrix.sites.map(s => s.aggregate.jsonldUnknownPages)],
     ['avg_lcp_ms', ...matrix.sites.map(s => fmt(s.aggregate.avgLcp))],
     ['avg_words', ...matrix.sites.map(s => fmt(s.aggregate.avgWords))],
     ['issues_per_page', ...matrix.sites.map(s => fmt(s.aggregate.issuesPerPage))],
@@ -173,6 +177,7 @@ footer{margin-top:36px;color:#64748b;font-size:12px}
 <div class="meta">采集不完整或旧报告未记录采集状态时，不比较分数和每页问题数。其他指标仅描述本次采集样本。</div>
 <div class="meta">${matrix.scoreComparison?.comparable ? `评分口径 ${esc(matrix.scoreComparison.methodVersion)}；页面集合不同时分数仍需谨慎解释。` : matrix.scoreComparison?.reason === 'insufficient-eligible-audits' ? '完整审计不足两份，已隐藏分数和每页问题数。' : '评分口径缺失或不一致，已隐藏分数和每页问题数；请重新采集同口径报告。'}</div>
 <div class="meta">${matrix.jsonldComparison?.comparable ? `JSON-LD 类型覆盖率只描述采集样本，测量口径 ${esc(matrix.jsonldComparison.measurementVersion)}；不包括 microdata 或 RDFa，也不代表搜索引擎认可。` : 'JSON-LD 测量口径缺失、过旧、不一致或样本不足，已隐藏覆盖率和问题统计；请重新采集同口径报告。'}</div>
+${matrix.sites.some(s => s.aggregate.jsonldUnknownPages > 0) ? '<div class="meta">部分页面的 JSON-LD 语义未核实，相关覆盖率保留为空，不能解释为 0%。</div>' : ''}
 <h2>总体指标</h2><table><tbody><tr><th>指标</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${metricRows}</tbody></table>
 <h2>页面类型分布</h2><table><tbody><tr><th>页面类型</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${typeRows || '<tr><td>—</td></tr>'}</tbody></table>
 <h2>各站高频问题</h2><table><tbody>${issues}</tbody></table>
