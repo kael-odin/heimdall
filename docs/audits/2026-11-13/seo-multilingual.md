@@ -13,13 +13,15 @@
 
 ## 同一批冻结页面
 
-| 页面 | 旧计数→分词数 | SEO 10→11 | GEO 5→6 |
+| 页面 | 旧计数→分词数 | 单页 SEO 10→11 | GEO 5→6 |
 |---|---:|---:|---:|
-| [Mozilla 宣言·韩文](https://www.mozilla.org/ko/about/manifesto/) | 206→1,048 | 64→70 | 67.7→67.7 |
-| [Mozilla 宣言·日文](https://www.mozilla.org/ja/about/manifesto/) | 1,107→1,701 | 72→72 | 71.9→71.9 |
-| [Mozilla 宣言·中文](https://www.mozilla.org/zh-CN/about/manifesto/) | 2,073→1,335 | 70→70 | 67.7→67.7 |
-| [Mozilla 宣言·英文](https://www.mozilla.org/en-US/about/manifesto/) | 1,289→1,275 | 72→72 | 71.9→71.9 |
+| [Mozilla 宣言·韩文](https://www.mozilla.org/ko/about/manifesto/) | 206→1,048 | 76→82 | 67.7→67.7 |
+| [Mozilla 宣言·日文](https://www.mozilla.org/ja/about/manifesto/) | 1,107→1,701 | 84→84 | 71.9→71.9 |
+| [Mozilla 宣言·中文](https://www.mozilla.org/zh-CN/about/manifesto/) | 2,073→1,335 | 82→82 | 67.7→67.7 |
+| [Mozilla 宣言·英文](https://www.mozilla.org/en-US/about/manifesto/) | 1,289→1,275 | 84→84 | 71.9→71.9 |
 | [Example Domain](https://example.org/) | 25→25 | 58→64 | 14.1→22.8 |
+
+正式对照严格沿用生产 CLI 的 `pageCtx.host`（移除 www），只算已采集的单页规则，不是完整站点总分。最初脚本没有移除 www，Mozilla 被额外扣 12 分；错误结果保留，正式分数以 `production-results.json` 为准。
 
 韩文与 Example Domain 的 SEO 变化来自取消固定字数扣分。Example Domain 初始 HTML 27、可见正文 25，旧 GEO 却因低于 40 判正文不可见；新逻辑保留“短正文参考”，只纠正服务端长度覆盖结论。其余四页 GEO 分数不变。
 
@@ -34,7 +36,7 @@
 - 未验证排名、收录、真实 AI 问答或引用命中率。未把页面各语言分数差异归因为语言质量。短页 GEO 仍受其他准备度启发式影响。
 - 分词边界可能随 ICU 版本变化；版本边界附近应固定运行时重放。原始 HTML 文本与可见文本的覆盖范围也不完全相同，长度比例不代替正文语义对比。
 
-证据目录：`D:\Github-Star\heimdall-evidence-archive\2026-11-13\seo-multilingual\`。`sources.json` 记录时间、原始 HTML SHA-256、采集前提交；`before-results.json` / `after-results.json`、逐页信号和逐字正文用于复核，`docker-node22.json` 记录隔离复算，失败与通过日志均保留。来源驱动及孤立旧规则副本只在外部证据目录，不进项目。
+证据目录：`D:\Github-Star\heimdall-evidence-archive\2026-11-13\seo-multilingual\`。`sources.json` 记录时间、原始 HTML SHA-256、采集前提交；`before-results.json` / `after-results.json` 保留最初上下文误差，`production-results.json` 与 `*-production-signals.json` 是正式对照；逐字正文用于复核，`docker-node22-production.json` 记录最终隔离复算，失败与通过日志均保留。来源驱动及孤立旧规则副本只在外部证据目录，不进项目。
 
 ## 一手机制依据
 
