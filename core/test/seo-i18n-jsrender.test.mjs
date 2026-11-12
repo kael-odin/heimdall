@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluatePage } from '../src/seo/rules.mjs';
+import { evaluatePage, scoreIssues } from '../src/seo/rules.mjs';
 import { analyzeRawHtml } from '../src/seo/raw-html.mjs';
 
 function page(over = {}) {
@@ -66,13 +66,20 @@ test('hreflang: 缺少自指条目 → medium', () => {
   assert.equal(issue.severity, 'medium');
 });
 
-test('hreflang: 自指可由 canonical 满足（不必等于当前 URL）', () => {
+test('hreflang: 声明的 canonical 完整地址可匹配，不推断其他 URL 等价', () => {
   const p = page({
+    url: 'https://example.com/pricing?ref=public',
+    finalUrl: 'https://example.com/pricing?ref=public',
     canonical: 'https://example.com/pricing',
-    hreflang: [{ lang: 'en', href: 'https://www.example.com/pricing/' }],   // 去 www / 尾斜杠后同页
-    hreflangNote: null,
+    hreflang: [{ lang: 'en', href: 'https://example.com/pricing' }],
   });
-  assert.ok(!has(p, 'index-hreflang-no-self'), 'www 与尾斜杠差异不该判为缺少自指');
+  assert.ok(!has(p, 'index-hreflang-no-self'));
+  for (const href of ['https://example.com/pricing?locale=fr', 'http://example.com/pricing',
+    'https://example.com:8443/pricing', 'https://www.example.com/pricing', 'https://example.com/pricing/']) {
+    assert.ok(has(page({ hreflang: [{ lang: 'en', href }] }), 'index-hreflang-no-self'), href);
+  }
+  assert.ok(!has(page({ hreflang: [{ lang: 'en', href: 'https://EXAMPLE.com:443/pricing#content' }] }), 'index-hreflang-no-self'));
+  assert.ok(has(page({ canonical: '', hreflang: [{ lang: 'en', href: '' }] }), 'index-hreflang-no-self'));
 });
 
 test('hreflang: 相对地址 → medium', () => {
@@ -93,23 +100,26 @@ test('hreflang: 采集层已把 href 绝对化时，按 rawHref（标签原值�
   assert.match(issue.evidence, /zh-CN → \/zh\/pricing/, '证据展示标签原值而不是绝对化后的值');
 });
 
-test('hreflang: 非法语言码（下划线 / 单字母 / 空）→ low', () => {
-  for (const bad of ['zh_CN', 'e', '', 'ZH-cn-extra-more']) {
+test('hreflang: Google 不支持的标记形式 → low，不混同 BCP 47 合法性', () => {
+  for (const bad of ['zh_CN', 'e', '', 'ZH-cn-extra-more', 'eng', 'es-419', 'en-US-Latn']) {
     const p = page({ hreflang: [{ lang: bad, href: 'https://example.com/x' }] });
-    assert.ok(has(p, 'index-hreflang-invalid-code'), `${JSON.stringify(bad)} 应被判非法`);
+    assert.ok(has(p, 'index-hreflang-invalid-code'), `${JSON.stringify(bad)} 应提示 Google 不支持的形式`);
   }
 });
 
-test('hreflang: 合法语言码不误报', () => {
-  for (const good of ['en', 'zh-CN', 'pt-BR', 'sr-Latn', 'zh-Hant-HK', 'es-419', 'x-default']) {
+test('hreflang: Google 支持的语言、脚本、地区形式不误报', () => {
+  for (const good of ['en', 'zh-CN', 'pt-BR', 'sr-Latn', 'zh-Hant-HK', 'x-default']) {
     const p = page({ hreflang: [{ lang: good, href: 'https://example.com/' }] });
     assert.ok(!has(p, 'index-hreflang-invalid-code'), `${good} 不该被判非法`);
   }
 });
 
-test('hreflang: 多条但无 x-default → low；单条不报', () => {
+test('hreflang: x-default 是不扣分的可选建议，单条不报', () => {
   const two = page({ hreflang: [{ lang: 'en', href: 'https://example.com/' }, { lang: 'zh-CN', href: 'https://example.com/zh' }] });
-  assert.ok(has(two, 'index-hreflang-xdefault-missing'));
+  const issues = evaluatePage(two, { host: 'example.com' });
+  assert.equal(issues.find(i => i.id === 'index-hreflang-xdefault-missing').severity, 'info');
+  const withDefault = page({ hreflang: [...two.hreflang, { lang: 'x-default', href: 'https://example.com/' }] });
+  assert.equal(scoreIssues(issues), scoreIssues(evaluatePage(withDefault, { host: 'example.com' })));
   const one = page({ hreflang: [{ lang: 'en', href: 'https://example.com/' }] });
   assert.ok(!has(one, 'index-hreflang-xdefault-missing'), '只有一条时不要求 x-default');
 });

@@ -94,6 +94,7 @@ test('seo audit: optional robots and sitemap observations do not lower the site 
     assert.equal(report.score, report.pages[0].score);
     const html = readFileSync(join(directory, 'seo.html'), 'utf8');
     assert.match(html, /待核查提示，不单独扣分/);
+    assert.match(html, /hreflang.*x-default.*不扣分/);
     assert.match(html, /GEO 准备度/);
     assert.match(html, /AI 可回答与可引用准备度/);
     assert.match(html, /GEO 行动计划/);

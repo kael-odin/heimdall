@@ -37,3 +37,5 @@ IANA 仍是原来的候选包，248 个未捕获链接继续阻断严格发布�
 证据目录：`D:/Github-Star/heimdall-evidence-archive/2026-11-13/generated-docker/`。`before-container.json`、`after-container.json` 保留对照；`products-offline.json`、`iana-offline.json` 保留真实镜像、网络、只读根、文件哈希及逐项结果；`*-build.log` 保留 Dockerfile 实际构建过程；`regression-red.log` 和 `tests.log` 保存回归结果。测试容器、命名卷和专用 bridge 在检查后清理，镜像保留供复验。
 
 本轮继续借鉴 REA 以已记录行为限定环境能力、Craft Anything 构建后逐项核对结果的思路；没有引入它们的实现或依赖。
+
+源码提交 `f02b7f6e158117b96ba2abf1083d68cd2b245071` 的完整 CI `43283323126` 第一次运行 **8/8 成功**，包括两个完整 Core 分片、浏览器 smoke、独立 Docker 交付、MCP、控制台、QA Action 和依赖审计；同一提交的 Docs `43283323117` 成功。精确终态保存在 `ci-f02b7f6e.json` 与 `docs-f02b7f6e.json`，没有用后续提交或本机检查替代该结果。

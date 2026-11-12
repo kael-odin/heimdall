@@ -50,16 +50,16 @@ export function evaluatePage(page, site = {}) {
 
   // ---------- 国际定向（hreflang） ----------
   // 采集层一直在收 link[rel=alternate][hreflang]，但此前没有任何规则用它。
-  // 多语言站点最常见的三类错误都在这里。
+  // hreflang 地址、Google 标记形式与可选回退提示。
   const hl = page.hreflang ?? [];
   if (hl.length) {
-    const selfPaths = new Set([normPath(page.finalUrl), normPath(page.url), normPath(page.canonical)]);
-    const hasSelf = hl.some(h => selfPaths.has(normPath(h.href)));
+    const selfUrls = new Set([page.finalUrl, page.url, page.canonical].map(hreflangUrl).filter(Boolean));
+    const hasSelf = hl.some(h => selfUrls.has(hreflangUrl(h.href)));
     if (!hasSelf) {
       A('index-hreflang-no-self', 'index', 'medium', 'hreflang 缺少自指条目',
         `${hl.length} 条 hreflang，没有一条指回本页`,
         hl.slice(0, 3).map(h => `${h.lang} → ${h.href}`).join('\n'),
-        'hreflang 集合必须包含指向自身的条目，否则整组会被忽略');
+        '核对各语言版本的自指与双向链接；当前按访问地址和声明的 canonical 匹配，未验证目标或其他 URL 的等价关系');
     }
     // 采集层会把 href 绝对化，所以判"相对地址"要看标签原值 rawHref；没有 rawHref（原始 HTML 路径、手工构造）时退回 href。
     const rel = hl.filter(h => { const v = h.rawHref ?? h.href; return v && !/^https?:\/\//i.test(v); });
@@ -69,18 +69,18 @@ export function evaluatePage(page, site = {}) {
         rel.slice(0, 3).map(h => `${h.lang} → ${h.rawHref ?? h.href}`).join('\n'),
         'hreflang 的 href 必须是完整的绝对 URL（含协议与域名）');
     }
-    const bad = hl.filter(h => !isValidHreflang(h.lang));
+    const bad = hl.filter(h => !hasGoogleHreflangSyntax(h.lang));
     if (bad.length) {
-      A('index-hreflang-invalid-code', 'index', 'low', 'hreflang 语言代码不合法',
-        `${bad.length} 条无法解析为语言或语言-地区`,
+      A('index-hreflang-invalid-code', 'index', 'low', 'hreflang 标记形式不受 Google 支持',
+        `${bad.length} 条不符合 Google 的语言、脚本、地区形式；不代表 BCP 47 非法`,
         bad.slice(0, 5).map(h => h.lang).join(', '),
-        '用 ISO 639-1 语言码，可选叠加 ISO 3166-1 alpha-2 地区（如 zh-CN、en），或多语言用 x-default');
+        '按 Google 指南使用 ISO 639-1 语言、可选脚本及 ISO 3166-1 alpha-2 地区，回退页可用 x-default；本检查不核对代码表成员');
     }
     if (hl.length > 1 && !hl.some(h => String(h.lang).toLowerCase() === 'x-default')) {
-      A('index-hreflang-xdefault-missing', 'index', 'low', 'hreflang 缺少 x-default',
+      A('index-hreflang-xdefault-missing', 'index', 'info', '可按回退需求配置 hreflang x-default',
         `${hl.length} 条 hreflang 未提供默认版本`,
         '',
-        'x-default 用于"语言都没匹配上"的访客，通常是语言选择页或英文版');
+        'x-default 是未匹配语言的回退建议，不是通用必填项；先核对语言选择和跳转需求，再决定是否添加');
     }
   }
 
@@ -209,31 +209,19 @@ export function countBySeverity(issues) {
 function safeHost(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } }
 function samePath(a, b) { try { const A = new URL(a, b), B = new URL(b); return A.hostname.replace(/^www\./, '') === B.hostname.replace(/^www\./, '') && A.pathname.replace(/\/$/, '') === B.pathname.replace(/\/$/, ''); } catch { return false; } }
 
-/** 归一化成可比较的 "host/path"（去 www、去尾斜杠），用于 hreflang 自指判定 */
-function normPath(u) {
-  if (!u) return '';
+/** Keep distinct resources distinct; aliases require evidence beyond similar host/path strings. */
+function hreflangUrl(u) {
   try {
     const x = new URL(u);
-    return x.hostname.replace(/^www\./, '') + x.pathname.replace(/\/+$/, '');
-  } catch { return ''; }
+    if (!/^https?:$/.test(x.protocol) || x.username || x.password) return null;
+    x.hash = '';
+    return x.href;
+  } catch { return null; }
 }
 
-/**
- * hreflang 取值是否合法。
- * 允许：x-default；ISO 639-1/2/3 语言码，可选叠加地区或文字系统
- * （en、zh-CN、pt-BR、sr-Latn、zh-Hant-HK）。
- * 不接受：空值、下划线分隔（zh_CN 是常见笔误）、单字母、地区在前。
- */
-function isValidHreflang(code) {
+/** Google annotation syntax only, not BCP 47 validity or ISO code-table membership. */
+function hasGoogleHreflangSyntax(code) {
   const s = String(code ?? '').trim();
-  if (!s) return false;
   if (s.toLowerCase() === 'x-default') return true;
-  if (s.includes('_')) return false;                 // 必须是连字符
-  const parts = s.split('-');
-  if (!/^[a-z]{2,3}$/i.test(parts[0])) return false; // 语言码
-  for (const p of parts.slice(1)) {
-    // 地区（两位字母 / 三位数字）或文字系统（四位字母，首字母大写）
-    if (!/^([a-z]{2}|[0-9]{3}|[a-z]{4})$/i.test(p)) return false;
-  }
-  return parts.length <= 3;
+  return /^[a-z]{2}(?:-[a-z]{4})?(?:-[a-z]{2})?$/i.test(s);
 }

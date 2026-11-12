@@ -30,6 +30,7 @@
 | 2026-11-13 | **[结构化数据评分实测](2026-11-13/structured-data-scoring.md)** | 七页同批对照，修复 web.dev Article 推荐字段误扣分及相对图片误判；SEO 评分 6 与旧基线隔离，测量仍为 5、GEO 仍为 4 |
 | 2026-11-13 | **[JSON-LD 标准语义实测](2026-11-13/jsonld-semantics.md)** | W3C 冻结页面别名误报修复，未配置上下文不外联且保留未知；评分 7 / 测量 6 / GEO 5，直接浏览器访问 403 单独保留 |
 | 2026-11-13 | **[生成包 Dockerfile 实测](2026-11-13/generated-docker.md)** | 修复 B3 容器监听与状态卷；商品留出 6/6、IANA HTTP 21/21 在实际生成镜像的断网只读容器中通过；IANA 链接缺口仍阻断发布 |
+| 2026-11-13 | **[hreflang 机制与真实页面实测](2026-11-13/seo-hreflang.md)** | Mozilla 同批冻结页 70→72，Rust/Python 不变；完整 URL 匹配、Google 标记形式及可选 x-default，评分口径 8，测量 6 / GEO 5 不变 |
 
 ## 为什么归档
 
