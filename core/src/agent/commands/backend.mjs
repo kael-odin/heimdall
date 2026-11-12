@@ -69,7 +69,7 @@ function schema(value, depth = 0) {
   for (const key of ['type', 'format', 'nullable', 'additionalProperties']) {
     if (typeof value[key] === 'string' || typeof value[key] === 'boolean') output[key] = value[key];
   }
-  if (Array.isArray(value.required)) output.required = names(value.required, 100);
+  if (Array.isArray(value.required)) output.required = value.required.filter(name => typeof name === 'string').slice(0, 100);
   if (value.properties && typeof value.properties === 'object' && !Array.isArray(value.properties)) {
     output.properties = {};
     for (const [name, item] of Object.entries(value.properties).slice(0, 100)) {
@@ -502,9 +502,8 @@ function schemaError(value, schema, path = '$') {
   if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return null;
   if (value === null) return schema.nullable === true || schema.type === 'null' ? null : { path, expected: schema.type || 'non-null', actual: 'null' };
   const expected = schema.type || (schema.properties ? 'object' : null);
-  if (expected && expected !== 'number' && expected !== actualType(value)
-    && !(expected === 'number' && (actualType(value) === 'integer'))
-    && !(expected === 'integer' && actualType(value) === 'integer')) {
+  if (expected && expected !== actualType(value)
+    && !(expected === 'number' && actualType(value) === 'integer')) {
     return { path, expected, actual: actualType(value) };
   }
   if (expected === 'object') {

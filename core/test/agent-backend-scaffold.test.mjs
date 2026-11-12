@@ -166,6 +166,57 @@ test('backend scaffold does not copy a missing runtime adapter into Docker', () 
   }
 });
 
+test('backend scaffold preserves required JSON names and rejects non-numeric number values', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-backend-json-schema-'));
+  const site = join(root, 'workspace', 'schema.test');
+  const fields = { unitPrice: { type: 'number' }, '显示名称': { type: 'string' }, 'display name': { type: 'string' }, '': { type: 'boolean' } };
+  const healthy = { unitPrice: 12.5, '显示名称': 'Product', 'display name': 'Product', '': true };
+  let child;
+  try {
+    put(join(site, 'api-contract.json'), { openapi: { paths: { '/api/product': { get: {
+      responses: { 200: { content: { 'application/json': { schema: { type: 'object', properties: fields, required: Object.keys(fields) } } } } },
+    } } } } });
+    put(join(site, 'runtime-adapter', 'manifest.json'), { version: 1, routes: [{ method: 'GET', path: '/api/product' }] });
+    put(join(site, 'runtime-adapter', 'index.mjs'), [
+      "import { readFileSync } from 'node:fs';",
+      "export async function handle() { return Response.json(JSON.parse(readFileSync(new URL('../response.json', import.meta.url), 'utf8'))); }",
+    ].join('\n'));
+    const generated = spawnSync(process.execPath, [CLI, 'backend', 'scaffold', 'schema.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(generated.status, 0, generated.stderr + generated.stdout);
+    const out = JSON.parse(generated.stdout.trim().split(/\r?\n/).at(-1)).result.outDir;
+    const projected = JSON.parse(readFileSync(join(out, 'api-contract.json'), 'utf8'));
+    assert.deepEqual(projected.openapi.paths['/api/product'].get.responses[200].content['application/json'].schema.required, Object.keys(fields));
+    put(join(out, 'response.json'), healthy);
+    child = spawn(process.execPath, [join(out, 'server.mjs'), '--port', '0'], { cwd: out, stdio: ['ignore', 'pipe', 'pipe'] });
+    const base = await ready(child);
+    const check = value => {
+      put(join(out, 'response.json'), value);
+      const run = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], { cwd: out, encoding: 'utf8', timeout: 30_000 });
+      assert.equal(run.error, undefined);
+      return JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    };
+    assert.equal(check(healthy).overall, 'passed');
+    assert.equal(check({ ...healthy, unitPrice: 12 }).overall, 'passed', 'JSON number includes integers');
+    for (const value of ['12.5', true, {}, []]) {
+      const result = check({ ...healthy, unitPrice: value });
+      assert.equal(result.overall, 'failed', JSON.stringify(value));
+      assert.equal(result.results.find(item => item.id === 'GET /api/product').schemaError.path, '$.unitPrice');
+      assert.equal(result.repairTasks[0].kind, 'response-contract');
+    }
+    for (const name of Object.keys(fields)) {
+      const broken = { ...healthy };
+      delete broken[name];
+      assert.equal(check(broken).overall, 'failed', 'required: ' + name);
+    }
+    assert.equal(check(healthy).overall, 'passed', 'restored response must pass');
+  } finally {
+    await stop(child);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('backend scaffold check catches observed response mismatches and runtime gaps', async () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-backend-scaffold-check-failure-'));
   const site = join(root, 'workspace', 'example-check.test');
