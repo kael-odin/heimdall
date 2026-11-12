@@ -32,10 +32,13 @@
 
 - SEO 评分口径升至 **6**；采集信号未改，测量口径保持 **5**；GEO 保持 **4**。
 - 旧评分口径 5 基线继续保留。新门禁拒绝混比或覆盖，基线文件名改用 `--score-v6--measure-v5.json`；历史走势和跨站矩阵保持版本隔离。
+- 用 IANA 原基线实跑三种门禁或更新命令，均在抓取前拒绝旧口径，SHA-256 未变。真实 IANA 信号构成的 v5/v6 混合矩阵隐藏分数和每页问题数；测量仍为 5，因此类型覆盖率仍可比较。
 - 删除一条错误规则，当前 **65 条规则**。CLI、MCP、控制台、手册和数字守卫同步；历史审计与存档不改写。
 - 本地 SEO、GEO、基线、历史、矩阵和代理入口相关测试 **220/220** 通过，其中包含真实浏览器采集、旧基线拒绝、普通审计跳过不兼容对比、原件保护和报告口径说明。
+- 代码提交 `1605901b67d77c8ff8b5c39f74f47721f1702f55` 的[完整 CI 43263634562](https://github.com/kael-odin/heimdall/actions/runs/43263634562) **8/8 成功**，包含两个完整 Core 测试分片、完整浏览器冒烟、Docker、MCP、控制台、QA Action 和依赖审计；同提交 Docs 运行 `43263634641` 成功。
 - 使用现有测试文件，无新依赖、运行模块或测试文件。14 个冻结验证器文件未修改。
+- 两份真实页面的重放 HTML/CSV 报告均显示新提示。375/768/1440 三视口共 6 次浏览器检查无整页横向溢出、脚本错误或运行时外联；未执行站点 sitemap 核验，报告明确保留不能建立基线的状态。
 
-外部证据目录：`D:/Github-Star/heimdall-evidence-archive/2026-11-13/structured-data/`。关键文件为 `comparison.json`、`*-collected.json`、`structured-v5.mjs`、`compare.mjs`、`tests.log` 及保存的官方文档 HTML。原始页面与运行日志不进入 Git。
+外部证据目录：`D:/Github-Star/heimdall-evidence-archive/2026-11-13/structured-data/`。关键文件为 `comparison.json`、`*-collected.json`、`structured-v5.mjs`、`compare.mjs`、`tests.log`、`migration.json`、`matrix-method-isolation.json`、`report-smoke.json`、`official-sources.json` 及保存的官方文档 HTML。原始页面与运行日志不进入 Git。
 
-仍未核实完整上下文展开、别名、跨脚本实体引用、特定功能的全部资格要求或 Google 实际展示。分数变化是工具纠偏，不能作为网站优化效果。
+仍未核实完整上下文展开、别名、跨脚本实体引用、特定功能的全部资格要求或 Google 实际展示。另用 W3C 规范页初始 HTML 中的 JSON-LD 复现了一个待修问题：文档使用 `type` 别名，当前字面检查仍输出 `structured-type-missing` / `low`。证据在 `remaining-alias-evidence.json`，不计入上述七页验收，也不能据此否定该页的 JSON-LD。分数变化是工具纠偏，不能作为网站优化效果。
