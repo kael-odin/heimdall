@@ -115,6 +115,12 @@ test('backend scaffold generates and starts a B3 service from sanitized contract
     });
     assert.equal(checks.status, 0, checks.stderr + checks.stdout);
     assert.match(checks.stdout, /"overall": "passed"/);
+    const checkReport = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(checkReport.schema, 'heimdall.backend-check/1');
+    assert.equal(checkReport.overall, 'passed');
+    assert.equal(checkReport.results.find(item => item.id === 'adapter-coverage').status, 'passed');
+    assert.equal(checkReport.results.find(item => item.id === 'GET /api/items').status, 'implemented');
+    assert.equal(checkReport.results.find(item => item.id === 'adapter-gap-ledger').status, 'passed');
   } finally {
     await stop(child);
     rmSync(root, { recursive: true, force: true });
@@ -155,6 +161,68 @@ test('backend scaffold does not copy a missing runtime adapter into Docker', () 
     assert.doesNotMatch(dockerfile, /^COPY runtime-adapter /m);
     assert.equal(existsSync(join(out, 'runtime-adapter')), false);
   } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('backend scaffold check catches observed response mismatches and runtime gaps', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-backend-scaffold-check-failure-'));
+  const site = join(root, 'workspace', 'example-check.test');
+  const adapter = join(site, 'runtime-adapter');
+  let child;
+  try {
+    put(join(site, 'api-contract.json'), {
+      schema: 'heimdall.contract/1',
+      siteId: 'example-check.test',
+      openapi: {
+        paths: {
+          '/api/items': {
+            get: {
+              responses: { 200: { content: { 'application/json': { schema: { type: 'object', required: ['ok'], properties: { ok: { type: 'boolean' } } } } } } },
+            },
+          },
+        },
+      },
+    });
+    put(join(adapter, 'manifest.json'), { version: 1, routes: [{ method: 'GET', path: '/api/items' }] });
+    put(join(adapter, 'index.mjs'), [
+      "export const __heimdallAdapter = { routes: [{ method: 'GET', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'not_applicable' }] };",
+      "export async function handle(request, context = {}) { const url = new URL(request.url); if (url.pathname !== '/api/items') { await context.recordGap?.({ method: request.method, path: url.pathname, queryParams: ['token'], category: 'unobserved-path' }); return Response.json({ error: 'unobserved-route' }, { status: 404 }); } return new Response(JSON.stringify({ ok: 'wrong-type' }), { status: 200, headers: { 'content-type': 'text/plain' } }); }",
+      '',
+    ].join('\n'));
+
+    const generated = spawnSync(process.execPath, [CLI, 'backend', 'scaffold', 'example-check.test', '--json'], {
+      cwd: root,
+      env: { ...process.env, HEIMDALL_DATA_DIR: root },
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+    assert.equal(generated.status, 0, generated.stderr + generated.stdout);
+    const envelope = JSON.parse(generated.stdout.trim().split(/\r?\n/).at(-1));
+    const out = envelope.result.outDir;
+    child = spawn(process.execPath, [join(out, 'server.mjs'), '--port', '0'], {
+      cwd: out,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const base = await ready(child);
+    await fetch(base + '/api/missing?token=private-value');
+
+    const checks = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out,
+      env: { ...process.env },
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+    assert.equal(checks.status, 1);
+    const report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.overall, 'failed');
+    assert.equal(report.results.find(item => item.id === 'GET /api/items').status, 'failed');
+    assert.match(report.results.find(item => item.id === 'GET /api/items').reason, /MIME/, JSON.stringify(report));
+    assert.equal(report.results.find(item => item.id === 'adapter-gap-ledger').uniqueGaps, 1);
+    assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /private-value/);
+  } finally {
+    await stop(child);
     rmSync(root, { recursive: true, force: true });
   }
 });

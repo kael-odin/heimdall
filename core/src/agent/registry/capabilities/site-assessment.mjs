@@ -248,12 +248,36 @@ function backendScaffoldSummary(root, siteId) {
     try { return statSync(join(dir, name)).isFile(); } catch { return false; }
   });
   const status = files.length === required.length ? 'present' : files.length ? 'incomplete' : 'missing';
+  const checkFile = join(dir, 'backend-check.json');
+  const checkReport = existsSync(checkFile) ? readJson(checkFile) : null;
+  const checkResults = Array.isArray(checkReport?.results) ? checkReport.results : [];
+  const checkStatus = ['passed', 'incomplete', 'failed'].includes(checkReport?.overall) ? checkReport.overall : checkReport ? 'invalid' : 'not_run';
+  const check = {
+    status: checkStatus,
+    overall: checkStatus === 'invalid' || checkStatus === 'not_run' ? null : checkStatus,
+    generatedAt: typeof checkReport?.generatedAt === 'string' ? checkReport.generatedAt : null,
+    resultCount: checkResults.length,
+    failed: checkResults.filter(item => item?.status === 'failed').length,
+    incomplete: checkResults.filter(item => ['incomplete', 'not_implemented', 'skipped'].includes(item?.status)).length,
+    issues: checkResults.filter(item => ['failed', 'incomplete', 'not_implemented', 'skipped'].includes(item?.status)).slice(0, 50).map(item => ({
+      id: typeof item?.id === 'string' ? item.id.slice(0, 128) : 'unknown',
+      status: typeof item?.status === 'string' ? item.status.slice(0, 32) : 'unknown',
+      ...(typeof item?.reason === 'string' ? { reason: item.reason.slice(0, 256) } : {}),
+      ...(Number.isInteger(item?.httpStatus) ? { httpStatus: item.httpStatus } : {}),
+      ...(Number.isFinite(Number(item?.uniqueGaps)) ? { uniqueGaps: Number(item.uniqueGaps) } : {}),
+      ...(Number.isFinite(Number(item?.uncoveredQueryParameters)) ? { uncoveredQueryParameters: Number(item.uncoveredQueryParameters) } : {}),
+      ...(Number.isFinite(Number(item?.unverifiedWrites)) ? { unverifiedWrites: Number(item.unverifiedWrites) } : {}),
+      ...(typeof item?.schemaError?.path === 'string' ? { schemaPath: item.schemaError.path.slice(0, 128) } : {}),
+    })),
+    path: existsSync(checkFile) ? reportPath(siteId, 'backend-scaffold/backend-check.json') : null,
+  };
   return {
     status,
     present: status === 'present',
     files: files.length,
     requiredFiles: required.length,
     path: status === 'missing' ? null : reportPath(siteId, 'backend-scaffold'),
+    check,
   };
 }
 
@@ -272,6 +296,10 @@ function apiSummary(root, siteId) {
   if (adapter.gapLedger?.summary?.uniqueGaps > 0) unknowns.push(`adapter-runtime-gaps:${adapter.gapLedger.summary.uniqueGaps}`);
   if (adapter.gapLedger?.summary?.missingResponseBodies > 0) unknowns.push('adapter-response-body-missing');
   if (adapter.gapLedger?.summary?.unverifiedWrites > 0) unknowns.push('adapter-writes-unverified');
+  if (scaffold.present && scaffold.check.status === 'not_run') unknowns.push('backend-check-not-run');
+  if (scaffold.present && scaffold.check.status === 'invalid') unknowns.push('backend-check-invalid');
+  if (scaffold.present && scaffold.check.status === 'failed') unknowns.push('backend-check-failed');
+  if (scaffold.present && scaffold.check.status === 'incomplete') unknowns.push('backend-check-incomplete');
   return {
     status: adapter.status === 'validated' ? 'adapter_validated'
       : adapter.present ? 'adapter_observed'
@@ -404,6 +432,7 @@ function buildBackendCompletionTask(siteId, api) {
       basis: scaffold.present ? 'observed' : observed ? 'inferred' : 'unknown',
       path: scaffold.path,
       action: scaffoldAction,
+      check: scaffold.check,
     },
     gapLedger,
     unknowns: [
@@ -439,6 +468,7 @@ function buildBackendCompletionTask(siteId, api) {
         { id: 'response-shape', status: observed ? 'observed' : 'blocked', basis: observed ? 'observed' : 'unknown', condition: '契约中的响应状态码、MIME 和脱敏 JSON 形状可被本地适配器复现。' },
         { id: 'adapter-holdout', status: validationStatus, basis: validationStatus === 'passed' ? 'verified' : 'unknown', condition: 'adapter-report.json 的留出集等价度达到阈值且无未验证项。' },
         { id: 'adapter-gap-ledger', status: gapLedger ? (gapLedger.summary.uniqueGaps ? 'open' : 'observed') : 'blocked', basis: gapLedger ? 'observed' : 'unknown', condition: '运行适配器并读取 /__heimdall/adapter-gaps，确认没有新的未声明路径或未覆盖查询参数。' },
+        { id: 'backend-scaffold-check', status: api.scaffold?.check?.status ?? 'not_run', basis: api.scaffold?.check?.status && api.scaffold.check.status !== 'not_run' ? 'observed' : 'unknown', condition: '运行脚手架 npm run check，确认观察路由覆盖、状态码、MIME、响应结构和缺口账本都没有未完成项。' },
         { id: 'state-consistency', status: 'blocked', basis: 'unknown', condition: '同一业务流程中操作后再次读取/刷新仍保持预期状态。' },
         { id: 'offline-egress', status: 'blocked', basis: 'unknown', condition: '最终适配器在无外联部署中通过断网浏览器验收。' },
       ],
@@ -561,6 +591,19 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       verify: planVerification(siteId, 'api.scaffold.present === true'),
     });
   }
+  if (api.scaffold?.present === true && api.scaffold.check?.status !== 'passed') {
+    const check = api.scaffold.check;
+    add({
+      id: 'backend-scaffold-check', kind: 'b3_scaffold_gap', basis: check?.status === 'not_run' ? 'unknown' : 'observed', status: 'open',
+      title: check?.status === 'not_run' ? '后端脚手架还没有跑本地检查' : '后端脚手架检查没有完成',
+      detail: check?.status === 'not_run'
+        ? '脚手架已经生成，但还没有运行 npm run check；当前不能确认路由覆盖、响应结构和缺口账本。'
+        : `最近一次检查状态为 ${check?.status}，失败 ${check?.failed ?? 0} 项，未完成 ${check?.incomplete ?? 0} 项。`,
+      evidence: [check?.path].filter(Boolean),
+      action: plannedAction('cli:shell', { command: 'npm run check', cwd: `workspace/${siteId}/backend-scaffold` }, '运行脚手架自带的确定性检查并回写 backend-check.json', { requiresHumanApproval: true }),
+      verify: planVerification(siteId, 'api.scaffold.check.status === "passed"'),
+    });
+  }
   if (api.adapter.gapLedger && (api.adapter.gapLedger.summary.uniqueGaps > 0
     || api.adapter.gapLedger.summary.missingResponseBodies > 0)) {
     add({
@@ -653,7 +696,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
   const seoItem = item('seo-report', 'seo-geo-follow-up');
   const geoStatus = seo.status !== 'observed' ? 'needs_report' : seo.geo.actionItems ? 'needs_follow_up' : 'ready';
   const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
-  const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
+  const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'backend-scaffold-check', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
   const qaItem = item('qa-workspace', 'qa-first-run', 'qa-findings');
   const qaReady = qa.status === 'observed' && !(qa.latest?.summary?.fileable > 0);
   return {

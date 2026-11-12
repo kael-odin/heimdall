@@ -114,6 +114,10 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
       openapi: { servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: { responses: { '200': {} } } } } },
     });
     for (const name of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json']) put(join(scaffold, name), '{}');
+    put(join(scaffold, 'backend-check.json'), {
+      schema: 'heimdall.backend-check/1', generatedAt: '2026-11-12T00:00:00.000Z', overall: 'passed',
+      results: [{ id: 'health', status: 'passed' }, { id: 'adapter-coverage', status: 'passed' }],
+    });
 
     const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
@@ -122,6 +126,9 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     const env = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
     assert.equal(env.ok, true);
     assert.equal(env.result.api.scaffold.status, 'present');
+    assert.equal(env.result.api.scaffold.check.status, 'passed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.check.overall, 'passed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'present');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action, null);
     assert.equal(env.result.deliveryPlan.items.some(item => item.id === 'backend-scaffold'), false);

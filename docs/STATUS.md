@@ -203,6 +203,8 @@ Hosted CI 结果为最终依据。
 - 新增 CLI-only 命令 heimdall backend scaffold <siteId> [--out D] [--force]；它不进入能力注册表，因此 MCP 工具仍保持 18 个。
 - 生成物包括 package.json、server.mjs、checks.mjs、脱敏 api-contract.json、state-rules.json、Dockerfile 和人话 README；有合法 B2 适配器时只复制 runtime-adapter/manifest.json 与 index.mjs。
 - 生成服务提供 GET /__heimdall/health、GET /__heimdall/contract 和 GET /__heimdall/adapter-gaps。没有适配器的已观察路由返回 501，避免把空壳误报成完成；适配器仍只是观察样本回放。
+- `checks.mjs` 不再只看服务能否启动：会逐条检查观察路由覆盖、已观察状态码、MIME 和有限 JSON 字段结构，并读取运行时缺口账本；结果落盘为脚手架目录内的脱敏 `backend-check.json`。
+- `heimdall_site_assessment` 会读取 `backend-check.json` 的安全摘要，把未运行、失败、未完成和通过分开返回，并在 `deliveryPlan.backendCompletion.verification.deterministicChecks` 中告诉 AI 下一步；这仍不证明认证、权限、状态机或真实副作用。
 - state-rules.json 的认证、权限、状态机、持久化和副作用规则默认留空，invented 数量为 0；AI 或开发者必须在授权旅程后补规则，再用 npm run check 和既有验证套件复测。
 - `heimdall_site_assessment` 现在会识别默认 `backend-scaffold` 是否已完整生成，并把缺失或半成品转成一个带人工确认边界的下一步动作，避免 AI 只看到抽象的建议文件。
 

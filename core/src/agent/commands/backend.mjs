@@ -446,7 +446,7 @@ process.on('SIGINT', () => server.close(() => process.exit(0)));
 
 function checksSource() {
   return String.raw`#!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -454,16 +454,123 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
 const base = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:8080').replace(new RegExp('/$'), '');
 const contract = JSON.parse(readFileSync(join(ROOT, 'api-contract.json'), 'utf8'));
 const rows = [];
+function responseRows(operation) {
+  return Object.entries(operation?.responses || {})
+    .filter(([status]) => /^[0-9]{3}$/.test(status))
+    .map(([status, response]) => {
+      const content = response && typeof response === 'object' && !Array.isArray(response) ? response.content || {} : {};
+      return {
+        status: Number(status),
+        mimeTypes: Object.keys(content).map(value => String(value).split(';', 1)[0].trim().toLowerCase()).filter(Boolean).sort(),
+        schemas: Object.entries(content).map(([mimeType, item]) => ({
+          mimeType: String(mimeType).split(';', 1)[0].trim().toLowerCase(),
+          schema: item && typeof item.schema === 'object' && !Array.isArray(item.schema) ? item.schema : null,
+        })).filter(item => item.schema),
+      };
+    });
+}
 for (const [path, item] of Object.entries(contract.openapi?.paths || {})) {
   for (const method of Object.keys(item || {})) {
-    if (/^(get|head|post|put|patch|delete|options)$/i.test(method)) rows.push({ method: method.toUpperCase(), path });
+    if (!/^(get|head|post|put|patch|delete|options)$/i.test(method)) continue;
+    const operation = item[method] || {};
+    const observations = operation['x-heimdall-observations'] || {};
+    rows.push({
+      method: method.toUpperCase(),
+      path,
+      queryParams: Array.isArray(observations.queryParams) ? [...new Set(observations.queryParams.map(String))].sort() : [],
+      responses: responseRows(operation),
+    });
   }
+}
+function normalizeMime(value) { return String(value || '').split(';', 1)[0].trim().toLowerCase(); }
+function mimeMatches(actual, expected) {
+  const left = normalizeMime(actual);
+  const right = normalizeMime(expected);
+  if (!left || !right) return false;
+  if (right === '*/*' || left === right) return true;
+  const [leftType] = left.split('/');
+  const [rightType, rightSubtype] = right.split('/');
+  return rightSubtype === '*' && leftType === rightType;
+}
+function actualType(value) {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  if (typeof value === 'number') return Number.isInteger(value) ? 'integer' : 'number';
+  return typeof value;
+}
+function schemaError(value, schema, path = '$') {
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return null;
+  if (value === null) return schema.nullable === true || schema.type === 'null' ? null : { path, expected: schema.type || 'non-null', actual: 'null' };
+  const expected = schema.type || (schema.properties ? 'object' : null);
+  if (expected && expected !== 'number' && expected !== actualType(value)
+    && !(expected === 'number' && (actualType(value) === 'integer'))
+    && !(expected === 'integer' && actualType(value) === 'integer')) {
+    return { path, expected, actual: actualType(value) };
+  }
+  if (expected === 'object') {
+    if (schema.required && schema.required.some(name => !Object.prototype.hasOwnProperty.call(value, name))) {
+      return { path, expected: 'required property', actual: 'missing' };
+    }
+    for (const [name, child] of Object.entries(schema.properties || {})) {
+      if (!Object.prototype.hasOwnProperty.call(value, name)) continue;
+      const error = schemaError(value[name], child, path + '.' + name);
+      if (error) return error;
+    }
+  }
+  if (expected === 'array' && schema.items) {
+    for (let index = 0; index < value.length; index += 1) {
+      const error = schemaError(value[index], schema.items, path + '[' + index + ']');
+      if (error) return error;
+    }
+  }
+  return null;
+}
+async function inspectResponse(route, response) {
+  const expectedStatuses = route.responses.map(item => item.status);
+  const expected = route.responses.find(item => item.status === response.status);
+  const actualMimeType = normalizeMime(response.headers.get('content-type'));
+  if (response.status === 501) return { status: 'not_implemented', httpStatus: response.status, expectedStatuses, actualMimeType };
+  if (expectedStatuses.length && !expectedStatuses.includes(response.status)) {
+    return { status: 'failed', httpStatus: response.status, expectedStatuses, actualMimeType, reason: '响应状态码没有出现在观察契约中' };
+  }
+  const expectedMimeTypes = expected?.mimeTypes || [];
+  if (expectedMimeTypes.length && !expectedMimeTypes.some(item => mimeMatches(actualMimeType, item))) {
+    return { status: 'failed', httpStatus: response.status, expectedStatuses, expectedMimeTypes, actualMimeType, reason: '响应 MIME 没有出现在观察契约中' };
+  }
+  const schemaCandidates = (expected?.schemas || []).filter(item => !item.mimeType || mimeMatches(actualMimeType, item.mimeType));
+  if (schemaCandidates.length && route.method !== 'HEAD' && response.status !== 204 && response.status !== 304) {
+    const raw = await response.text();
+    if (!raw.trim()) return { status: 'failed', httpStatus: response.status, expectedStatuses, actualMimeType, reason: '契约声明了响应结构，但实际响应没有响应体' };
+    let value;
+    try { value = JSON.parse(raw); }
+    catch { return { status: 'failed', httpStatus: response.status, expectedStatuses, actualMimeType, reason: '契约声明 JSON 结构，但实际响应不是合法 JSON' }; }
+    const errors = schemaCandidates.map(item => schemaError(value, item.schema)).filter(Boolean);
+    if (errors.length === schemaCandidates.length) {
+      return { status: 'failed', httpStatus: response.status, expectedStatuses, actualMimeType, schemaError: errors[0], reason: '响应 JSON 不满足观察到的字段结构' };
+    }
+  }
+  return { status: response.status >= 500 ? 'failed' : 'implemented', httpStatus: response.status, expectedStatuses, expectedMimeTypes, actualMimeType };
+}
+function overallOf(items) {
+  if (items.some(item => item.status === 'failed')) return 'failed';
+  if (items.some(item => ['incomplete', 'not_implemented', 'skipped'].includes(item.status))) return 'incomplete';
+  return 'passed';
 }
 const results = [];
 try {
   const health = await fetch(base + '/__heimdall/health');
+  let healthJson = null;
+  try { healthJson = await health.json(); } catch {}
   results.push({ id: 'health', status: health.ok ? 'passed' : 'failed', httpStatus: health.status });
-  if (!health.ok) throw new Error('health check failed');
+  if (!health.ok || !healthJson) throw new Error('health check failed');
+  const missingObservedRoutes = Array.isArray(healthJson.missingObservedRoutes) ? healthJson.missingObservedRoutes : null;
+  results.push({
+    id: 'adapter-coverage',
+    status: missingObservedRoutes?.length ? 'incomplete' : missingObservedRoutes ? 'passed' : 'incomplete',
+    adapterPresent: healthJson.adapter?.present === true,
+    missingObservedRoutes: missingObservedRoutes || [],
+    reason: missingObservedRoutes?.length ? '适配器没有覆盖全部观察到的路由' : missingObservedRoutes ? undefined : '健康端点没有提供观察路由覆盖结果',
+  });
   for (const route of rows) {
     if (route.method !== 'GET' && route.method !== 'HEAD') {
       results.push({ id: route.method + ' ' + route.path, status: 'skipped', reason: '写入路由需要人工授权和业务规则' });
@@ -474,15 +581,37 @@ try {
       continue;
     }
     const response = await fetch(base + route.path, { method: route.method });
-    results.push({ id: route.method + ' ' + route.path, status: response.status === 501 ? 'not_implemented' : response.status >= 500 ? 'failed' : 'implemented', httpStatus: response.status });
+    results.push({ id: route.method + ' ' + route.path, queryParams: route.queryParams, ...(await inspectResponse(route, response)) });
+  }
+  try {
+    const gapResponse = await fetch(base + '/__heimdall/adapter-gaps');
+    const gapLedger = await gapResponse.json();
+    const summary = gapLedger?.summary || {};
+    results.push({
+      id: 'adapter-gap-ledger',
+      status: !gapResponse.ok ? 'failed' : Number(summary.uniqueGaps || 0) > 0 ? 'failed' : Number(summary.unverifiedWrites || 0) > 0 ? 'incomplete' : 'passed',
+      ledgerStatus: gapLedger?.status || 'unknown',
+      uniqueGaps: Number(summary.uniqueGaps || 0),
+      uncoveredQueryParameters: Number(summary.uncoveredQueryParameters || 0),
+      unverifiedWrites: Number(summary.unverifiedWrites || 0),
+      reason: Number(summary.uniqueGaps || 0) > 0 ? '运行时发现未观察路径或未覆盖查询参数' : Number(summary.unverifiedWrites || 0) > 0 ? '写入路由仍只有回放证据，尚未完成业务验证' : undefined,
+    });
+  } catch (error) {
+    results.push({ id: 'adapter-gap-ledger', status: 'failed', reason: '无法读取适配器缺口账本：' + String(error.message || error).slice(0, 180) });
   }
 } catch (error) {
   results.push({ id: 'server', status: 'failed', reason: String(error.message || error) });
 }
-const failed = results.some(item => item.status === 'failed');
-const incomplete = results.some(item => item.status === 'not_implemented' || item.status === 'skipped');
-const overall = failed ? 'failed' : incomplete ? 'incomplete' : 'passed';
-console.log(JSON.stringify({ schema: 'heimdall.backend-check/1', base, overall, results, note: '通过只表示脚手架能启动并完成当前检查，不代表业务正确。' }, null, 2));
+let overall = overallOf(results);
+const report = { schema: 'heimdall.backend-check/1', generatedAt: new Date().toISOString(), base, overall, results, note: '通过只表示脚手架能启动并完成当前检查，不代表业务正确。' };
+try {
+  writeFileSync(join(ROOT, 'backend-check.json.tmp'), JSON.stringify(report, null, 2) + String.fromCharCode(10), 'utf8');
+  renameSync(join(ROOT, 'backend-check.json.tmp'), join(ROOT, 'backend-check.json'));
+} catch (error) {
+  results.push({ id: 'report', status: 'failed', reason: '检查结果无法落盘：' + String(error.message || error).slice(0, 180) });
+  overall = overallOf(results);
+}
+console.log(JSON.stringify({ ...report, overall, results }, null, 2));
 process.exitCode = overall === 'passed' ? 0 : 1;
 `;
 }
@@ -521,7 +650,7 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     'api-contract.json：脱敏的观察型接口形状。',
     'state-rules.json：待人工确认的状态规则草稿，当前没有自动编造规则。',
     'runtime-adapter/：如果纳入，只有 manifest.json 和 index.mjs。',
-    'checks.mjs：本地可重复检查。',
+    'checks.mjs：本地可重复检查，并把最近一次结果写入 backend-check.json。',
     '',
     '## 未完成且不能猜的事情',
     '',
