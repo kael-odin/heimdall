@@ -120,7 +120,13 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     put(join(page, 'manifest.json'), { target: 'https://example.test/' });
     put(join(root, 'workspace', 'example.test', 'api-contract.json'), {
       schema: 'heimdall.contract/1',
-      openapi: { servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: { responses: { '200': {} } } } } },
+      openapi: { servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: {
+        requestBody: { content: { 'application/json': { schema: true } } },
+        responses: {
+          '200': { content: { 'application/json': { schema: false } } },
+          '400': { content: { 'application/json': { schema: null } } },
+        },
+      } } } },
     });
     for (const name of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json']) put(join(scaffold, name), '{}');
     put(join(scaffold, 'backend-check.json'), {
@@ -140,6 +146,9 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'present');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action, null);
+    const [endpoint] = env.result.deliveryPlan.backendCompletion.observedEndpoints;
+    assert.equal(endpoint.requestBody.withSchema, true);
+    assert.deepEqual(endpoint.responseShapes.map(shape => shape.withSchema), [true, false]);
     assert.deepEqual(env.result.deliveryPlan.backendCompletion.repairTasks, []);
     assert.equal(env.result.deliveryPlan.items.some(item => item.id === 'backend-scaffold'), false);
   } finally { rmSync(root, { recursive: true, force: true }); }

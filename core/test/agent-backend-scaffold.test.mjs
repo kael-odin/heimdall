@@ -166,11 +166,23 @@ test('backend scaffold does not copy a missing runtime adapter into Docker', () 
   }
 });
 
-test('backend scaffold preserves required JSON names and rejects non-numeric number values', async () => {
+test('backend scaffold validates literal names, numeric and composite response schemas', async () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-backend-json-schema-'));
   const site = join(root, 'workspace', 'schema.test');
   const fields = { unitPrice: { type: 'number' }, '显示名称': { type: 'string' }, 'display name': { type: 'string' }, '': { type: 'boolean' } };
   const healthy = { unitPrice: 12.5, '显示名称': 'Product', 'display name': 'Product', '': true };
+  Object.assign(fields, {
+    nullable: { type: ['object', 'null'], required: ['count'], properties: { count: { type: 'number' } } },
+    variant: { oneOf: [{ type: 'number' }, { type: 'string' }] },
+    exclusive: { oneOf: [{ type: 'number' }, { type: 'integer' }] },
+    combined: { allOf: [{ type: 'object' }, { required: ['count'], properties: { count: { type: 'number' } } }] },
+    either: { anyOf: [false, { type: 'boolean' }] },
+    empty: {},
+    list: { type: 'array', items: false },
+  });
+  Object.assign(healthy, { nullable: null, variant: 'free', exclusive: 1.5, combined: { count: 2.5 }, either: true, empty: null, list: [] });
+  Object.defineProperty(fields, '__proto__', { value: { type: 'boolean' }, enumerable: true });
+  Object.defineProperty(healthy, '__proto__', { value: true, enumerable: true });
   let child;
   try {
     put(join(site, 'api-contract.json'), { openapi: { paths: { '/api/product': { get: {
@@ -199,6 +211,12 @@ test('backend scaffold preserves required JSON names and rejects non-numeric num
     };
     assert.equal(check(healthy).overall, 'passed');
     assert.equal(check({ ...healthy, unitPrice: 12 }).overall, 'passed', 'JSON number includes integers');
+    for (const nullable of [null, { count: 1 }, { count: 2.5 }]) assert.equal(check({ ...healthy, nullable }).overall, 'passed');
+    assert.equal(check({ ...healthy, variant: 1 }).overall, 'passed');
+    for (const patch of [{ nullable: {} }, { nullable: { count: '1' } }, { variant: true }, { exclusive: 1 },
+      { combined: { count: '1' } }, { either: 1 }, { list: [1] }, JSON.parse('{"__proto__":"wrong"}')]) {
+      assert.equal(check({ ...healthy, ...patch }).overall, 'failed', JSON.stringify(patch));
+    }
     for (const value of ['12.5', true, {}, []]) {
       const result = check({ ...healthy, unitPrice: value });
       assert.equal(result.overall, 'failed', JSON.stringify(value));
@@ -211,6 +229,28 @@ test('backend scaffold preserves required JSON names and rejects non-numeric num
       assert.equal(check(broken).overall, 'failed', 'required: ' + name);
     }
     assert.equal(check(healthy).overall, 'passed', 'restored response must pass');
+    const source = JSON.parse(readFileSync(join(site, 'api-contract.json'), 'utf8'));
+    let deep = { type: 'string' };
+    for (let i = 0; i < 9; i++) deep = { type: 'array', items: deep };
+    for (const invalid of [{ type: [] }, { oneOf: Array(21).fill({ type: 'string' }) }, { anyOf: [null] }, deep]) {
+      source.openapi.paths['/api/product'].get.responses[200].content['application/json'].schema = invalid;
+      put(join(site, 'api-contract.json'), source);
+      const refused = spawnSync(process.execPath, [CLI, 'backend', 'scaffold', 'schema.test', '--out', join(root, 'refused'), '--json'], {
+        cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+      });
+      assert.equal(JSON.parse(refused.stdout.trim().split(/\r?\n/).at(-1)).error.code, 'invalid_args');
+    }
+    source.openapi.paths['/api/product'].get.responses[200].content['application/json'].schema = false;
+    put(join(site, 'api-contract.json'), source);
+    const falseRoot = join(root, 'false-schema');
+    const generatedFalse = spawnSync(process.execPath, [CLI, 'backend', 'scaffold', 'schema.test', '--out', falseRoot, '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(generatedFalse.status, 0, generatedFalse.stderr + generatedFalse.stdout);
+    const checkedFalse = spawnSync(process.execPath, [join(falseRoot, 'checks.mjs'), base], { cwd: falseRoot, encoding: 'utf8', timeout: 30_000 });
+    assert.equal(checkedFalse.status, 1, checkedFalse.stderr + checkedFalse.stdout);
+    const falseReport = JSON.parse(readFileSync(join(falseRoot, 'backend-check.json'), 'utf8'));
+    assert.equal(falseReport.results.find(item => item.id === 'GET /api/product').schemaError.expected, 'false schema');
   } finally {
     await stop(child);
     rmSync(root, { recursive: true, force: true });

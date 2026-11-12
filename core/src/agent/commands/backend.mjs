@@ -15,6 +15,7 @@ import { assertSiteId, siteDir } from '../workspace.mjs';
 const CONTRACT_FILES = ['api-contract.json', 'deliver/api-contract.json', 'deliverable/api-contract.json'];
 const METHODS = new Set(['get', 'head', 'post', 'put', 'patch', 'delete', 'options']);
 const HTTP_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
+const SCHEMA_TYPES = new Set(['null', 'boolean', 'object', 'array', 'number', 'integer', 'string']);
 
 function readJson(file, maxBytes = 4 * 1024 * 1024) {
   try {
@@ -64,22 +65,40 @@ function names(value, max = 50) {
 }
 
 function schema(value, depth = 0) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || depth > 8) return undefined;
+  if (typeof value === 'boolean') return value;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  if (depth > 8) throw new CapabilityError('invalid_args', '后端契约结构超过 8 层，不能省略约束后继续生成。');
   const output = {};
-  for (const key of ['type', 'format', 'nullable', 'additionalProperties']) {
+  if (value.type !== undefined) {
+    const types = Array.isArray(value.type) ? value.type : [value.type];
+    if (!types.length || types.length > 7 || types.some(type => !SCHEMA_TYPES.has(type))) {
+      throw new CapabilityError('invalid_args', '后端契约包含无效的 JSON 类型。');
+    }
+    output.type = Array.isArray(value.type) ? [...new Set(types)] : value.type;
+  }
+  for (const key of ['format', 'nullable', 'additionalProperties']) {
     if (typeof value[key] === 'string' || typeof value[key] === 'boolean') output[key] = value[key];
+  }
+  for (const key of ['oneOf', 'anyOf', 'allOf']) {
+    if (value[key] === undefined) continue;
+    if (!Array.isArray(value[key]) || !value[key].length || value[key].length > 20) {
+      throw new CapabilityError('invalid_args', '后端契约每个组合必须包含 1 至 20 个分支。');
+    }
+    const children = value[key].map(item => schema(item, depth + 1));
+    if (children.some(item => item === undefined)) throw new CapabilityError('invalid_args', '后端契约包含无效的响应分支。');
+    output[key] = children;
   }
   if (Array.isArray(value.required)) output.required = value.required.filter(name => typeof name === 'string').slice(0, 100);
   if (value.properties && typeof value.properties === 'object' && !Array.isArray(value.properties)) {
-    output.properties = {};
+    output.properties = Object.create(null);
     for (const [name, item] of Object.entries(value.properties).slice(0, 100)) {
       const child = schema(item, depth + 1);
-      if (child) output.properties[text(name, 128)] = child;
+      if (child !== undefined) output.properties[text(name, 128)] = child;
     }
   }
-  if (value.items && typeof value.items === 'object') {
+  if (value.items !== undefined) {
     const child = schema(value.items, depth + 1);
-    if (child) output.items = child;
+    if (child !== undefined) output.items = child;
   }
   return output;
 }
@@ -90,7 +109,7 @@ function content(value) {
   for (const [mime, item] of Object.entries(value).slice(0, 20)) {
     if (!item || typeof item !== 'object') continue;
     const child = schema(item.schema);
-    output[text(mime, 128)] = child ? { schema: child } : {};
+    output[text(mime, 128)] = child !== undefined ? { schema: child } : {};
   }
   return output;
 }
@@ -464,8 +483,8 @@ function responseRows(operation) {
         mimeTypes: Object.keys(content).map(value => String(value).split(';', 1)[0].trim().toLowerCase()).filter(Boolean).sort(),
         schemas: Object.entries(content).map(([mimeType, item]) => ({
           mimeType: String(mimeType).split(';', 1)[0].trim().toLowerCase(),
-          schema: item && typeof item.schema === 'object' && !Array.isArray(item.schema) ? item.schema : null,
-        })).filter(item => item.schema),
+          schema: item && (typeof item.schema === 'boolean' || (item.schema && typeof item.schema === 'object' && !Array.isArray(item.schema))) ? item.schema : null,
+        })).filter(item => item.schema !== null),
       };
     });
 }
@@ -499,14 +518,24 @@ function actualType(value) {
   return typeof value;
 }
 function schemaError(value, schema, path = '$') {
+  if (schema === false) return { path, expected: 'false schema', actual: actualType(value) };
   if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return null;
-  if (value === null) return schema.nullable === true || schema.type === 'null' ? null : { path, expected: schema.type || 'non-null', actual: 'null' };
-  const expected = schema.type || (schema.properties ? 'object' : null);
-  if (expected && expected !== actualType(value)
-    && !(expected === 'number' && actualType(value) === 'integer')) {
-    return { path, expected, actual: actualType(value) };
+  const actual = actualType(value);
+  const types = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : [];
+  if (types.length && !types.some(type => type === actual || (type === 'number' && actual === 'integer'))
+    && !(value === null && schema.nullable === true)) {
+    return { path, expected: types.join('|'), actual };
   }
-  if (expected === 'object') {
+  for (const key of ['oneOf', 'anyOf', 'allOf']) {
+    if (!Array.isArray(schema[key])) continue;
+    const errors = schema[key].map(branch => schemaError(value, branch, path));
+    const matches = errors.filter(error => error === null).length;
+    if ((key === 'oneOf' && matches !== 1) || (key === 'anyOf' && !matches)
+      || (key === 'allOf' && matches !== errors.length)) {
+      return key === 'allOf' ? errors.find(Boolean) : { path, expected: key, actual, matchedBranches: matches };
+    }
+  }
+  if (actual === 'object') {
     if (schema.required && schema.required.some(name => !Object.prototype.hasOwnProperty.call(value, name))) {
       return { path, expected: 'required property', actual: 'missing' };
     }
@@ -516,7 +545,7 @@ function schemaError(value, schema, path = '$') {
       if (error) return error;
     }
   }
-  if (expected === 'array' && schema.items) {
+  if (actual === 'array' && schema.items !== undefined) {
     for (let index = 0; index < value.length; index += 1) {
       const error = schemaError(value[index], schema.items, path + '[' + index + ']');
       if (error) return error;
@@ -707,6 +736,8 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     'state-rules.json：待人工确认的状态规则草稿，当前没有自动编造规则。',
     'runtime-adapter/：如果纳入，只有 manifest.json 和 index.mjs。',
     'checks.mjs：本地可重复检查，并把最近一次结果写入 backend-check.json。',
+    'JSON 检查覆盖类型（含可空）、必填字段、数组项和 oneOf / anyOf / allOf；组合最多 20 个分支、结构深度最多 8 层，超限拒绝生成。',
+    '这不是完整 JSON Schema 验证器；引用、枚举、数值范围和格式需要另行验证。',
     '',
     '## 未完成且不能猜的事情',
     '',

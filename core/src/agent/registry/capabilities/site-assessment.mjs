@@ -69,6 +69,8 @@ function gapLedgerSummary(root, siteId, report) {
 function observedEndpointSummaries(contract) {
   const paths = contract?.openapi?.paths;
   if (!paths || typeof paths !== 'object') return [];
+  const hasSchema = item => typeof item?.schema === 'boolean'
+    || (item?.schema !== null && typeof item?.schema === 'object' && !Array.isArray(item.schema));
   return Object.entries(paths).flatMap(([path, pathItem]) => Object.entries(pathItem ?? {})
     .filter(([method]) => HTTP_METHODS.has(method.toLowerCase()))
     .map(([method, operation]) => {
@@ -81,7 +83,7 @@ function observedEndpointSummaries(contract) {
           return {
             status: Number(status),
             mimeTypes: Object.keys(responseContent).sort(),
-            withSchema: Object.values(responseContent).some(item => item && typeof item.schema === 'object'),
+            withSchema: Object.values(responseContent).some(hasSchema),
             samples: Number.isFinite(Number(response?.['x-heimdall-samples'])) ? Number(response['x-heimdall-samples']) : null,
             basis: 'observed',
           };
@@ -96,7 +98,7 @@ function observedEndpointSummaries(contract) {
         requestBody: operation?.requestBody ? {
           observed: true,
           mimeTypes: Object.keys(requestContent).sort(),
-          withSchema: Object.values(requestContent).some(item => item && typeof item.schema === 'object'),
+          withSchema: Object.values(requestContent).some(hasSchema),
           basis: 'observed',
         } : { observed: false, mimeTypes: [], withSchema: false, basis: 'unknown' },
         responseShapes,

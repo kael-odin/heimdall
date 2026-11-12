@@ -5,6 +5,33 @@ import { sanitizeHar } from '../src/live/har.mjs';
 
 const body = value => ({ body: Buffer.from(JSON.stringify(value), 'utf8').toString('base64'), bodyEncoding: 'base64' });
 
+test('live/contract: mixed observations retain every type and merge nullable object fields', () => {
+  const values = [
+    { amount: 1, detail: null },
+    { amount: 2.5, detail: { count: 1 } },
+    { amount: null, detail: { count: 2.5, unit: 'piece' } },
+    { amount: 'free', detail: null },
+    { amount: 3, detail: { count: 4 } },
+  ];
+  const infer = items => buildObservedApiContract([
+    { method: 'GET', url: 'https://x.test/api/mixed', status: 200, mimeType: 'application/json', ...body(items) },
+    { method: 'GET', url: 'https://x.test/api/null', status: 200, mimeType: 'application/json', ...body(null) },
+  ], { origin: 'https://x.test' });
+  const contract = infer(values);
+  const items = contract.openapi.paths['/api/mixed'].get.responses[200].content['application/json'].schema.items;
+  assert.deepEqual(items.properties.amount.oneOf.map(item => item.type), ['null', 'number', 'string']);
+  assert.deepEqual(items.properties.detail.oneOf.map(item => item.type), ['null', 'object']);
+  const detail = items.properties.detail.oneOf.find(item => item.type === 'object');
+  assert.equal(detail.properties.count.type, 'number');
+  assert.deepEqual(detail.required, ['count']);
+  assert.equal(detail.properties.unit.type, 'string');
+  assert.deepEqual(infer([...values].reverse()).openapi.paths['/api/mixed'].get.responses[200].content['application/json'].schema.items, items);
+  assert.equal(contract.openapi.paths['/api/null'].get.responses[200].content['application/json'].schema.type, 'null');
+  const literal = infer([JSON.parse('{"__proto__":null}')]).openapi.paths['/api/mixed'].get.responses[200].content['application/json'].schema.items;
+  assert.equal(Object.hasOwn(literal.properties, '__proto__'), true);
+  assert.equal(literal.properties.__proto__.type, 'null');
+});
+
 test('live/contract: groups observed API shapes and templates identifiers', () => {
   const entries = [
     { method: 'GET', url: 'https://x.test/api/items/123?page=1&token=do-not-copy', status: 200, mimeType: 'application/json', ...body({ items: [{ id: '1', name: 'Alice', email: 'alice@example.com' }], next: null }) },

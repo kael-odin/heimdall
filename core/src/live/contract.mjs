@@ -93,7 +93,7 @@ function stringFormat(value) {
 function schemaForValue(value) {
   const type = typeOf(value);
   if (type === 'object') {
-    const properties = {};
+    const properties = Object.create(null);
     const required = [];
     for (const [key, child] of Object.entries(value)) {
       if (isPrivateDataKey(key)) continue;
@@ -120,19 +120,31 @@ function schemaForValue(value) {
   };
 }
 
-function schemaTypes(schema) {
-  if (Array.isArray(schema?.type)) return schema.type;
-  return schema?.type ? [schema.type] : [];
+function schemaVariants(schema) {
+  if (schema.oneOf) return schema.oneOf.flatMap(schemaVariants);
+  return Array.isArray(schema.type) ? schema.type.map(type => ({ ...schema, type })) : [schema];
 }
 
 function mergeSchemas(left, right) {
-  if (!left) return right;
-  if (!right) return left;
-  const leftTypes = schemaTypes(left);
-  const rightTypes = schemaTypes(right);
-  const types = [...new Set([...leftTypes, ...rightTypes])].sort();
-  if (types.length === 1 && types[0] === 'object') {
-    const properties = {};
+  if (!left || (!left.type && !left.oneOf)) return right;
+  if (!right || (!right.type && !right.oneOf)) return left;
+  if (left.oneOf || right.oneOf || Array.isArray(left.type) || Array.isArray(right.type)) {
+    const byType = new Map();
+    for (const variant of [...schemaVariants(left), ...schemaVariants(right)]) {
+      const type = variant.type === 'integer' ? 'number' : variant.type;
+      byType.set(type, mergeSchemas(byType.get(type), variant));
+    }
+    const variants = [...byType.values()].sort((a, b) => a.type.localeCompare(b.type));
+    return variants.length === 1 ? variants[0] : { oneOf: variants, 'x-heimdall-provenance': 'inferred' };
+  }
+  if (left.type !== right.type) {
+    if ([left.type, right.type].every(type => type === 'integer' || type === 'number')) {
+      return { type: 'number', 'x-heimdall-provenance': 'observed' };
+    }
+    return { oneOf: [left, right].sort((a, b) => a.type.localeCompare(b.type)), 'x-heimdall-provenance': 'inferred' };
+  }
+  if (left.type === 'object') {
+    const properties = Object.create(null);
     for (const key of new Set([...Object.keys(left.properties ?? {}), ...Object.keys(right.properties ?? {})])) {
       properties[key] = mergeSchemas(left.properties?.[key], right.properties?.[key]);
     }
@@ -141,27 +153,19 @@ function mergeSchemas(left, right) {
     return { type: 'object', 'x-heimdall-provenance': 'observed', properties,
       ...(required.length ? { required } : {}), additionalProperties: true };
   }
-  if (types.length === 1 && types[0] === 'array') {
+  if (left.type === 'array') {
     return { type: 'array', 'x-heimdall-provenance': 'observed', items: mergeSchemas(left.items, right.items) ?? {} };
   }
-  if (types.length === 1) {
-    const format = left.format && left.format === right.format ? left.format : undefined;
-    return { type: types[0], 'x-heimdall-provenance': 'observed', ...(format ? { format } : {}) };
-  }
-  if (types.length === 2 && types.includes('null')) {
-    const nonNull = leftTypes.includes('null') ? right : left;
-    return { ...nonNull, type: types };
-  }
-  const variants = [left, right].filter((schema, index, all) => all.findIndex(item => JSON.stringify(item) === JSON.stringify(schema)) === index);
-  return { oneOf: variants, 'x-heimdall-provenance': 'inferred' };
+  const format = left.format && left.format === right.format ? left.format : undefined;
+  return { type: left.type, 'x-heimdall-provenance': 'observed', ...(format ? { format } : {}) };
 }
 
 function parseJsonBody(entry) {
-  if (!isJsonMime(entry?.mimeType) || typeof entry?.body !== 'string' || entry.bodyEncoding !== 'base64') return null;
+  if (!isJsonMime(entry?.mimeType) || typeof entry?.body !== 'string' || entry.bodyEncoding !== 'base64') return undefined;
   let raw;
-  try { raw = Buffer.from(entry.body, 'base64'); } catch { return null; }
-  if (raw.length > MAX_PUBLIC_DATA_BYTES) return null;
-  try { return JSON.parse(new TextDecoder('utf8', { fatal: true }).decode(raw)); } catch { return null; }
+  try { raw = Buffer.from(entry.body, 'base64'); } catch { return undefined; }
+  if (raw.length > MAX_PUBLIC_DATA_BYTES) return undefined;
+  try { return JSON.parse(new TextDecoder('utf8', { fatal: true }).decode(raw)); } catch { return undefined; }
 }
 
 function parameterSchema(name) {
@@ -214,7 +218,7 @@ function collectEntries(entries, origin) {
     const bucket = response.get(mime) ?? { samples: 0, schemas: 0, schema: null };
     bucket.samples++;
     const value = parseJsonBody(entry);
-    if (value !== null) { bucket.schemas++; bucket.schema = mergeSchemas(bucket.schema, schemaForValue(value)); }
+    if (value !== undefined) { bucket.schemas++; bucket.schema = mergeSchemas(bucket.schema, schemaForValue(value)); }
     response.set(mime, bucket);
     group.responses.set(status, response);
     groups.set(key, group);
