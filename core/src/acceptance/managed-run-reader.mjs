@@ -21,6 +21,8 @@ const samePath = (a, b) => process.platform === 'win32' ? a.toLowerCase() === b.
 const sameIdentity = (a, b) => a.dev === b.dev && a.ino === b.ino && a.birthtimeNs === b.birthtimeNs && a.mode === b.mode;
 const sameFile = (a, b) => sameIdentity(a, b) && a.size === b.size && a.nlink === b.nlink
   && a.mtimeNs === b.mtimeNs && a.ctimeNs === b.ctimeNs;
+const unlinkedVersion = (before, after) => sameIdentity(before, after) && before.size === after.size
+  && before.mtimeNs === after.mtimeNs && before.nlink === 1n && after.nlink === 0n;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = (reason = 'INVALID_INPUT') => { throw new ManagedAcceptanceRunError('MANAGED_RUN_INTEGRITY_FAILED', reason); };
 const invalid = () => { throw new ManagedAcceptanceRunError('INVALID_INPUT', 'INVALID_INPUT'); };
@@ -60,11 +62,12 @@ function jsonObject(bytes) {
 const recordCopy = record => record ? { bytes: Buffer.from(record.bytes), sha256: record.sha256,
   envelope: JSON.parse(record.bytes.toString('utf8')) } : null;
 
-function identity(path, directory, optional = false, allowHardlinks = false) {
+function identity(path, directory, optional = false, allowHardlinks = false, allowUnlinked = false) {
   let stat;
   try { stat = fs.lstatSync(path, { bigint: true }); }
   catch (cause) { if (optional && cause?.code === 'ENOENT') return null; throw cause; }
-  if (stat.isSymbolicLink() || (directory ? !stat.isDirectory() : !stat.isFile() || (!allowHardlinks && stat.nlink !== 1n))
+  if (stat.isSymbolicLink() || (directory ? !stat.isDirectory() : !stat.isFile()
+    || (!allowHardlinks && stat.nlink !== 1n && !(allowUnlinked && stat.nlink === 0n)))
     || !samePath(fs.realpathSync(path), path)) fail();
   return stat;
 }
@@ -119,14 +122,14 @@ function createScope(options, display) {
       if (run.stat ? !current || !sameIdentity(run.stat, current) : current !== null) changed();
     };
     const publishedHead = (run, name, previous, current) => display && !records.has(run.runId)
-      && (name === 'manifest.json' || name === 'report.json') && current?.isFile() && current.nlink === 1n
+      && (name === 'manifest.json' || name === 'report.json') && current?.isFile() && (current.nlink === 1n || current.nlink === 0n)
       && (!previous || previous.dev !== current.dev || previous.ino !== current.ino || previous.birthtimeNs !== current.birthtimeNs);
     const rememberPublication = (path, current) => {
       const pinned = publicationPins.get(path);
       // Newer bytes are not adopted. Still reject a later in-place change to
       // the replacement inode after its metadata was first observed.
       if (pinned && pinned.dev === current.dev && pinned.ino === current.ino && pinned.birthtimeNs === current.birthtimeNs
-        && !sameFile(pinned, current)) changed();
+        && !sameFile(pinned, current) && !unlinkedVersion(pinned, current)) changed();
       publicationPins.set(path, current);
     };
     const run = runId => {
@@ -141,14 +144,16 @@ function createScope(options, display) {
     const safeRead = (run, name, maxBytes, expected, allowHardlinks = false) => {
       runFence(run);
       const path = join(run.dir, name); let before;
-      try { before = identity(path, false, true, allowHardlinks); }
+      const displayHead = display && !records.has(run.runId) && (name === 'manifest.json' || name === 'report.json');
+      try { before = identity(path, false, true, allowHardlinks, displayHead); }
       catch (cause) { if (expected) invalidated = true; throw cause; }
       if (!before) {
         if (expected?.stat) changed();
         runFence(run); return null;
       }
       if (expected && (!expected.stat || !sameFile(expected.stat, before))) {
-        if (!publishedHead(run, name, expected.stat, before)) changed();
+        if (!publishedHead(run, name, expected.stat, before)
+          && !(displayHead && expected.stat && unlinkedVersion(expected.stat, before))) changed();
         rememberPublication(path, before);
         runFence(run); return expected.stat ? expected : null;
       }
@@ -163,13 +168,20 @@ function createScope(options, display) {
           // Pin the safe replacement path without adopting its bytes. The fd
           // must either be the unchanged pre-open inode, or an intervening
           // publication opened after that pathname observation.
-          const current = identity(path, false, false, allowHardlinks);
+          const current = identity(path, false, false, allowHardlinks, displayHead);
           const intervening = before.dev !== opened.dev || before.ino !== opened.ino || before.birthtimeNs !== opened.birthtimeNs;
-          const detached = opened.nlink === 0n && publishedHead(run, name, opened, current)
+          const detached = opened.nlink === 0n && (publishedHead(run, name, opened, current)
+            || (displayHead && unlinkedVersion(before, current)))
             && (intervening || (sameIdentity(before, opened) && before.nlink === 1n
               && before.size === opened.size && before.mtimeNs === opened.mtimeNs));
           if (!detached) changed();
           rememberPublication(path, current);
+        }
+        if (expected && (!expected.stat || !sameFile(expected.stat, opened))) {
+          if (!publishedHead(run, name, expected.stat, opened)
+            && !(displayHead && expected.stat && unlinkedVersion(expected.stat, opened))) changed();
+          rememberPublication(path, opened);
+          runFence(run); return expected.stat ? expected : null;
         }
         if (opened.size < 0n || opened.size > BigInt(maxBytes)) fail('JSON_BYTES_EXCEEDED');
         const bytes = Buffer.alloc(Number(opened.size)); let offset = 0;
@@ -180,15 +192,15 @@ function createScope(options, display) {
         }
         if (fs.readSync(descriptor, Buffer.alloc(1), 0, 1, bytes.length) !== 0) changed();
         const finished = fs.fstatSync(descriptor, { bigint: true });
-        const current = identity(path, false, false, allowHardlinks);
+        const current = identity(path, false, false, allowHardlinks, displayHead);
         const replaced = publishedHead(run, name, opened, current);
         // Linux may unlink the old inode while this descriptor still pins its
         // bytes. Only link/ctime changes from replacement are tolerated here.
-        const released = replaced && sameIdentity(opened, finished) && opened.size === finished.size
-          && opened.mtimeNs === finished.mtimeNs && opened.nlink === 1n && finished.nlink === 0n;
+        const released = displayHead && unlinkedVersion(opened, finished);
+        const retiredLookup = displayHead && unlinkedVersion(opened, current);
         if (!sameFile(opened, finished) && !released) changed();
-        if (!sameFile(opened, current) && !replaced) changed();
-        if (replaced) rememberPublication(path, current);
+        if (!sameFile(opened, current) && !replaced && !retiredLookup) changed();
+        if (replaced || retiredLookup) rememberPublication(path, current);
         runFence(run);
         return { run, name, path, stat: opened, bytes, maxBytes, allowHardlinks };
       } finally { if (descriptor !== undefined) fs.closeSync(descriptor); }

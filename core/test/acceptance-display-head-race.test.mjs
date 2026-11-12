@@ -182,6 +182,60 @@ test('replacement before the first open captures the new stable descriptor bytes
   } finally { nativeFs.openSync = open; syncBuiltinESMExports(); }
 });
 
+test('a detached pathname lookup opens the replacement only for display heads', t => {
+  for (const kind of ['initial', 'final', 'captured', 'fixed', 'in-place']) {
+    const f = fixture(t), lstat = nativeFs.lstatSync, fstat = nativeFs.fstatSync;
+    const scope = kind === 'captured' || kind === 'in-place' ? createAcceptanceDisplayReadScope({ root: f.root })
+      : kind === 'fixed' ? createAcceptanceReadScope({ root: f.root }) : null;
+    const captured = scope ? captureAcceptanceRunHead(f.runId, { scope }) : null;
+    const virtualPublication = kind === 'final' && process.platform === 'win32';
+    let published = false, descriptorStats = 0;
+    nativeFs.fstatSync = (...args) => { const stat = fstat(...args); descriptorStats++; return stat; };
+    nativeFs.lstatSync = (path, ...args) => {
+      const stat = lstat(path, ...args);
+      if (String(path) !== f.path) return stat;
+      if (published) return virtualPublication ? Object.assign(Object.create(stat), { ino: stat.ino + 1n, birthtimeNs: stat.birthtimeNs + 1n }) : stat;
+      if (kind === 'final' && descriptorStats < 2) return stat;
+      published = true;
+      const next = encode({ ...f.manifest, progress: { kind: 'after-unlinked-lookup' } });
+      if (kind === 'in-place') fs.writeFileSync(f.path, next);
+      // Windows pins the open descriptor; model Linux's final pathname stat.
+      else if (!virtualPublication) writeAtomicFileSync(f.path, next);
+      // Linux can finish a pathname stat after rename has unlinked its inode.
+      return Object.assign(Object.create(stat), { nlink: 0n, ctimeNs: stat.ctimeNs + 1n });
+    };
+    syncBuiltinESMExports();
+    try {
+      const read = () => scope ? scope.assertCurrent() : readAcceptanceDisplayRun(f.runId, { root: f.root });
+      if (kind === 'fixed' || kind === 'in-place') assert.throws(read, integrity);
+      else if (kind === 'captured') {
+        assert.equal(read(), true);
+        assert.deepEqual(captured.manifest, f.manifest);
+      } else if (kind === 'final') assert.deepEqual(read(), f.manifest);
+      else assert.deepEqual(read().progress, { kind: 'after-unlinked-lookup' });
+      assert.equal(published, true);
+    } finally { nativeFs.lstatSync = lstat; nativeFs.fstatSync = fstat; syncBuiltinESMExports(); }
+  }
+});
+
+test('publication between a captured pathname check and open never replaces displayed bytes', t => {
+  const f = fixture(t), scope = createAcceptanceDisplayReadScope({ root: f.root });
+  const captured = captureAcceptanceRunHead(f.runId, { scope });
+  const open = nativeFs.openSync; let published = false;
+  nativeFs.openSync = (path, ...args) => {
+    if (String(path) === f.path && !published) {
+      published = true;
+      writeAtomicFileSync(f.path, encode({ ...f.manifest, progress: { kind: 'before-fence-open' } }));
+    }
+    return open(path, ...args);
+  };
+  syncBuiltinESMExports();
+  try { assert.equal(scope.assertCurrent(), true); assert.deepEqual(captured.manifest, f.manifest); }
+  finally { nativeFs.openSync = open; syncBuiltinESMExports(); }
+  assert.equal(published, true);
+  assert.deepEqual(readAcceptanceDisplayRun(f.runId, { root: f.root }).progress, { kind: 'before-fence-open' });
+});
+
 test('a larger replacement before open cannot exceed the configured JSON allocation limit', t => {
   const f = fixture(t), open = nativeFs.openSync, maxBytes = fs.statSync(f.path).size;
   const scope = createAcceptanceDisplayReadScope({ root: f.root, limits: { jsonBytes: maxBytes } }); let publications = 0;
