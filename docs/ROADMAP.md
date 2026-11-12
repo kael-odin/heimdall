@@ -20,7 +20,7 @@
 
 同日[公开页面离线验收](./audits/README.md)确认 `example.com` 单页可完成 strict 导出、独立 Node 服务与浏览器访问；`vitest.dev` 单页在 heal / materialize 后同源与跨源静态资源缺口清零，剩余 16 个阻断均为未克隆站内链接。验收还修复了 `dns-prefetch` 被子串匹配误判为 `prefetch` 的 strict 假缺口。两个样本均为 `captured-only`，不能证明整站覆盖。
 
-2026-11-12 修正 strict 导出的诊断顺序：静态缺口存在时仍先执行 HTTP 探针，再执行浏览器离线探针；只有 HTTP 探针自身失败才跳过浏览器探针。这个改动只补齐失败证据，不降低任何发布门禁；既有 IANA 候选包未按新逻辑重跑，因此仍不能写成 strict 通过。
+2026-11-12 修正 strict 导出的诊断顺序后，已在 [IANA 副本](audits/2026-11-12/iana-public-pilot.md)执行 8/8 页浏览器探针；补抓 jQuery 后 7 页通过，0 页未测，动态搜索、未捕获链接和跨域跳转仍阻断严格交付。导出结果现经 `live-export.json` 进入站点评估与 AI 修复待办；下一步仍需解决运行时行为和明确交付范围，不降低发布门禁。
 
 ## AI 原生接入（已进入交付加固）
 

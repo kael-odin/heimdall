@@ -129,6 +129,51 @@ function scoreRows(siteId, pages) {
     .filter(score => typeof score?.total === 'number' && Number.isFinite(score.total));
 }
 
+function liveExportSummary(root, siteId) {
+  const file = join(root, 'live-export.json');
+  if (!existsSync(file)) return { status: 'not_recorded', report: null };
+  const report = reportPath(siteId, 'live-export.json');
+  const invalid = { status: 'invalid', report };
+  const source = readJson(file);
+  const count = value => Number.isSafeInteger(value) && value >= 0;
+  if (source?.schema !== 'heimdall.live-export/1' || source.siteId !== siteId
+    || !['blocked', 'passed', 'unverified'].includes(source.status)
+    || !['published', 'offline', 'strict'].every(key => typeof source[key] === 'boolean')
+    || !count(source.pages) || !count(source.blockingCount)
+    || typeof source.generatedAt !== 'string' || source.generatedAt.length > 40 || !Number.isFinite(Date.parse(source.generatedAt))
+    || !source.blockers || typeof source.blockers !== 'object' || Array.isArray(source.blockers)) return invalid;
+  const entries = Object.entries(source.blockers);
+  if (entries.length > 100 || entries.some(([, value]) => !count(value))
+    || entries.reduce((sum, [, value]) => sum + value, 0) !== source.blockingCount) return invalid;
+  const browser = source.browser && ['checked', 'failed', 'untested', 'totalPages'].every(key => count(source.browser[key]))
+    ? Object.fromEntries(['checked', 'failed', 'untested', 'totalPages'].map(key => [key, source.browser[key]])) : null;
+  if ((source.browser !== null && !browser) || (source.strict && !source.offline)
+    || (source.status === 'blocked' && (source.published || !source.strict || !source.blockingCount))
+    || (source.status === 'unverified' && (!source.published || source.strict))
+    || (source.status === 'passed' && (!source.published || !source.offline || !source.strict || source.blockingCount
+      || !source.pages || !browser || browser.failed || browser.untested || browser.checked !== source.pages || browser.totalPages !== source.pages))) return invalid;
+  const names = new Set(['unresolved', 'dynamic', 'externalAssets', 'unsupportedRuntimeServices', 'missingLinks',
+    'runtimeMissing', 'browserFailed', 'browserUntested', 'missingLivePages', 'discoveredUncloned', 'discoveredUndelivered',
+    'privacyIssues', 'privacyIncomplete', 'coverageInvalid', 'scanTruncated', 'operationFailed', 'operationUntested',
+    'unsupportedExternalRedirects', 'unsupportedExternalRedirectReferences']);
+  const blockers = Object.fromEntries(entries.filter(([name]) => names.has(name)));
+  const candidatePrefix = `deliverable/.candidate-${siteId}-`;
+  const healthReport = typeof source.healthReport === 'string' && source.healthReport.startsWith(candidatePrefix)
+    && /^[a-z0-9]{6}\/health\.json$/i.test(source.healthReport.slice(candidatePrefix.length)) ? source.healthReport : null;
+  return {
+    status: source.status, generatedAt: new Date(source.generatedAt).toISOString(), report, healthReport,
+    offline: source.offline, strict: source.strict, root: source.root === 'mirror' ? 'mirror' : 'landing',
+    published: source.published, pages: source.pages,
+    blockingCount: source.blockingCount, blockers,
+    otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
+    browser, coverage: {
+      scope: ['captured-only', 'recon-discovered', 'untrusted-recon'].includes(source.coverage?.scope) ? source.coverage.scope : 'unknown',
+      scopeLimited: source.coverage?.scope !== 'recon-discovered' || source.coverage?.scopeLimited !== false,
+    },
+    freshness: 'last_completed_export',
+  };
+}
+
 function cloneSummary(siteId, pages, scan) {
   const mirrors = pages.filter(page => existsSync(join(pageDir(siteId, page), 'clone', 'index.html')));
   const coverage = measurementCoverage(scan, pages.length);
@@ -149,6 +194,7 @@ function cloneSummary(siteId, pages, scan) {
     averageScore: scores.length ? +(scores.reduce((sum, score) => sum + score.total, 0) / scores.length).toFixed(2) : null,
     averageOverall: coverage.average,
     worstViewport: worst,
+    delivery: liveExportSummary(siteDir(siteId), siteId),
     samplePages: mirrors.slice(0, 10),
   };
 }
@@ -401,6 +447,7 @@ function claimsOf(siteId, clone, seo, api, qa, unknowns) {
   if (clone.verified > 0) verified.push(`clone.multi_viewport:${clone.verified}`);
   if (api.adapter.validation?.status === 'passed') verified.push(`api.adapter_holdout:${api.adapter.validation.equivalence ?? 'n/a'}`);
   if (clone.mirrors > 0) observed.push(`clone.mirrors:${clone.mirrors}/${clone.pages}`);
+  if (clone.delivery.report) observed.push(`clone.offline_export:${clone.delivery.status}`);
   if (seo.status === 'observed') observed.push(`seo.report:${seo.score ?? 'n/a'}`);
   if (api.contract.status === 'observed') observed.push(`api.contract:${api.contract.summary?.endpoints ?? 0}`);
   if (api.adapter.present) observed.push(`api.adapter:${api.adapter.routes ?? 'n/a'} routes`);
@@ -569,6 +616,20 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     });
   }
 
+  if (clone.mirrors && clone.delivery.status !== 'passed') {
+    const blocked = clone.delivery.status === 'blocked';
+    add({
+      id: 'clone-offline-delivery', kind: 'offline_delivery_gap', basis: clone.delivery.report ? 'observed' : 'unknown',
+      status: blocked ? 'blocked' : 'open', title: blocked ? '最近严格离线交付被阻断' : '严格离线交付证据待补齐',
+      detail: blocked ? `上次完成的导出有 ${clone.delivery.blockingCount} 个阻断计数；修复后须重新严格导出。`
+        : '当前没有可用的严格离线通过记录；多视口测量只覆盖视觉证据。',
+      evidence: [clone.delivery.report, clone.delivery.healthReport].filter(Boolean),
+      action: plannedAction('cli:shell', { command: `heimdall live ${siteId} --offline --strict${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}` },
+        '按已审核的资源策略修复候选包 health.json 阻断，再用同一根路径严格导出', { canAutoRun: true, requiresHumanApproval: false }),
+      verify: planVerification(siteId, 'rerun strict offline export for current inputs; clone.delivery.status === "passed"'),
+    });
+  }
+
   const seoIncomplete = seo.status === 'observed'
     && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0 || seo.geo.status !== 'complete');
   const seoHasIssues = seo.status === 'observed'
@@ -707,7 +768,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     decision: {
       basis: 'inferred',
       stage: nextStage,
-      reason: nextStage === 'capture' ? '先补齐参考镜像。' : nextStage === 'human_review' ? '存在不能由摘要自动证明的认证、权限、状态或 QA 前置条件。' : counts.open ? '已有足够证据进入 AI 处理，但仍有明确的补证或复核动作。' : '现有摘要覆盖了已声明的交付能力，可进入实现或复测。',
+      reason: nextStage === 'capture' ? '先补齐参考镜像。' : nextStage === 'human_review' ? '存在尚未通过的交付门禁，或需要人工确认的业务与 QA 前置条件。' : counts.open ? '已有足够证据进入 AI 处理，但仍有明确的补证或复核动作。' : '现有摘要覆盖了已声明的交付能力，可进入实现或复测。',
     },
     counts,
     items,
@@ -750,6 +811,9 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     overall: overallForStage(deliveryPlan.decision.stage),
     clone: entry(cloneStatus, cloneStatus === 'ready' ? 'verified' : clone.pages || clone.mirrors ? 'observed' : 'unknown',
       [`clone.mirrors:${clone.mirrors}/${clone.pages}`, `clone.verification:${clone.verificationStatus}`], cloneItem),
+    delivery: entry(clone.delivery.status === 'passed' ? 'last_check_passed'
+      : clone.delivery.status === 'blocked' ? 'blocked' : clone.delivery.status === 'unverified' ? 'needs_strict_verification' : 'needs_export',
+      clone.delivery.report ? 'observed' : 'unknown', [clone.delivery.report, clone.delivery.healthReport], item('clone-offline-delivery')),
     seo: entry(seoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     geo: entry(geoStatus, seo.status === 'observed' && seo.geo.status !== 'unknown' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
@@ -789,6 +853,8 @@ export default {
     else if (!clone.mirrors) unknowns.push({ id: 'clone-mirror-missing', detail: '发现页面但没有镜像入口。' });
     if (clone.unmeasured > 0) unknowns.push({ id: 'clone-unmeasured-pages', detail: `${clone.unmeasured} 页没有当前有效的多视口验证。` });
     if (clone.verificationStatus !== 'checked') unknowns.push({ id: 'clone-verification-unavailable', detail: `验证扫描状态为 ${clone.verificationStatus}。` });
+    if (clone.delivery.status !== 'passed') unknowns.push({ id: 'offline-delivery-' + clone.delivery.status,
+      detail: '严格离线交付尚未通过；旧版本缺少结果记录时须重新导出。' });
     if (seo.status === 'missing') unknowns.push({ id: 'seo-report-missing', detail: '没有本地 SEO/GEO 报告。' });
     if (seo.status === 'invalid') unknowns.push({ id: 'seo-report-invalid', detail: 'SEO 报告存在但无法读取。' });
     if (seo.status === 'observed' && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0)) {
@@ -809,9 +875,10 @@ export default {
     if (seo.status === 'observed') evidence.push({ kind: 'file', path: seo.reports.json });
     if (api.contract.path) evidence.push({ kind: 'file', path: api.contract.path });
     if (api.adapter.report) evidence.push({ kind: 'file', path: api.adapter.report });
+    if (clone.delivery.report) evidence.push({ kind: 'file', path: clone.delivery.report });
     return ok({ siteId: args.siteId, origin, overall, readiness, clone: { ...clone, samplePages: clone.samplePages.slice(0, args.limit) }, seo, api, qa,
       deliveryPlan, claims: claimsOf(args.siteId, clone, seo, api, qa, unknowns), unknowns }, {
-      summary: `${args.siteId}：${clone.mirrors}/${clone.pages} 页有镜像；多视口验证 ${clone.verified ?? 0} 页；SEO ${seo.status}；API ${api.status}；QA ${qa.status}。`,
+      summary: `${args.siteId}：${clone.mirrors}/${clone.pages} 页有镜像；多视口验证 ${clone.verified ?? 0} 页；离线交付 ${clone.delivery.status}；SEO ${seo.status}；API ${api.status}；QA ${qa.status}。`,
       nextActions: nextActions.slice(0, 5), evidence,
     });
   },

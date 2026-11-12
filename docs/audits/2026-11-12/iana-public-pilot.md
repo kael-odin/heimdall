@@ -6,6 +6,8 @@
 
 但这不等于“整站离线复制成功”。同一次 `live --offline --strict` 导出仍因动态第三方资源、未捕获页面路径和浏览器离线探针未执行而失败。候选包已保留，正式旧包没有被覆盖。
 
+原始证据已完整迁至 `D:/Github-Star/heimdall-evidence-archive/2026-11-12/iana-original-pilot/`；下文 `.tmp/public-pilot-iana-data/` 是执行当时的历史位置。迁移前后 1,213 个文件的 SHA-256 全部一致，共 425,446,298 字节，工作树减少约 406 MiB。原引擎记录对应的进程已确认退出，没有删除原始采集或失败候选包。
+
 证据分级：
 
 - **真实流程**：真实 Chromium 访问 IANA、侦察、克隆、三视口视觉验证、严格导出命令。
@@ -117,4 +119,29 @@ node core/src/cli.mjs live iana.org --offline --strict --root mirror --rebuild -
 3. 修复 HTML 实体污染的资源路径，并为路径别名建立分批补抓策略。
 4. 只有候选包的 `strictBlockers` 清零、逐页浏览器离线探针完成后，才可以把离线交付称为通过。
 
-原始浏览器、导出和候选包证据只留在本机 `.tmp/`，不提交到仓库。
+原始浏览器、导出和候选包证据保留在上述仓库外归档，不提交到仓库。
+
+## 复测：浏览器诊断与 AI 交付反馈
+
+在原始数据副本上执行当前导出器，保持 8 页范围，不重新抓取源页面。原有视觉证据经当前扫描仍为 8/8 页有效；本节执行的是离线包复验，未重新测量源站三视口。
+
+| 复测模式 | 静态资源缺口 | 浏览器离线结果 | 严格交付 |
+| --- | --- | --- | --- |
+| 未启用 `--heal` | 9 个未解析引用，含缺失 jQuery | 执行 8/8，失败 8，未测 0 | blocked |
+| 启用 `--heal` | 补抓 jQuery，余 1 个未解析引用 | 执行 8/8，通过 7，失败 1，未测 0 | blocked |
+
+最终对照运行于 2026-11-12 20:39:13（Asia/Shanghai）完成，使用 `--offline --strict --root mirror --rebuild --heal --materialize-har`。补抓公开资源不等于导出过程断网；浏览器离线探针会拦截包运行时的外联。
+
+剩余失败页为首页，记录到 `http://cse.google.com` 与 `https://cse.google.com` 外联，以及一个 Google 搜索运行时脚本的本地 404。严格门禁另保留 2 个站外静态资源引用、223 个未捕获链接引用、19 个未接受的跨域别名跳转及其 23 处引用。各门禁计数合计 270，可重复计入相关证据，不是 270 个独立 BUG，也不是整站覆盖证明；未开启接受跨域跳转的策略。
+
+本次真实复测还暴露了 AI 反馈缺口：原 `site-assessment` 能看到 8 页视觉通过，却没有读取失败导出的结果，交付计划也没有离线修复任务。现在每次完成导出，会原子保存脱敏 `workspace/<siteId>/live-export.json`，记录是否发布、严格与离线模式、门禁计数、浏览器覆盖和范围限制。
+
+站点评估通过 `clone.delivery` 与 `readiness.delivery` 同时呈现这份结果，并生成 `clone-offline-delivery` 待办；失败候选包的 `health.json` 引用只允许该站点生成的受限路径，不输出原始 HAR、查询值或任意报告内容。IANA 复测现返回 `blocked`、8 页浏览器已执行、1 页失败，保留 `root=mirror` 的复测命令，并能直接定位诊断候选包。
+
+`passed` 只表示上次完成的严格导出通过，readiness 显示 `last_check_passed`、依据为 `observed`；输入变更后仍须重跑。旧导出缺少该记录时为 `not_recorded`，不推断过去从未导出；非严格发布为 `unverified`，错误、矛盾或跨站记录为 `invalid`，均不会冒充严格通过。失败导出继续保留旧正式包。
+
+本轮首次复测曾把 `--out` 当作目录短名，按现有边界正确拒绝。CLI 帮助已改为 `path-inside-deliverable`，明确须提供位于数据目录 `deliverable/` 内的路径；未改变原有输出路径限制。
+
+核心快速回归 1,332/1,332 通过；最终 CLI、控制台与评估定向测试 11/11 通过，Linux Node 22 评估测试 6/6 通过；语法检查 763 文件和 14 个冻结验证器检查通过。新增逻辑复用两个现有测试文件，没有新增依赖或测试文件。
+
+复测证据位于 `D:/Github-Star/heimdall-evidence-archive/2026-11-12/iana-delivery-recheck/`：`final-feedback.log`、`final-assessment.log`、`data/workspace/iana.org/live-export.json` 与失败候选包记录最终结果；`original-inventory.json` 和 `archive-original.log` 记录原件迁移校验。原始未启用补抓的结果与早期失败日志也保留，不能把模式差异当成产品回归。

@@ -34,7 +34,7 @@ import { listLivePageRoutes, scanLiveBundle } from './health.mjs';
 import { healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, removeNonvisualExternalPixels, isStaticAsset } from './heal.mjs';
 import { localizeApprovedExternalStaticAssets } from './external-static.mjs';
 import { diffChecksums, changesLine } from './changes.mjs';
-import { mb } from '../fsutil.mjs';
+import { mb, writeFileAtomic } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
 import { assertExportTarget, promoteCandidate } from './export-path.mjs';
 import { probeOfflineBundle, probeOfflineBrowserBundle, probeOfflineOperations,
@@ -70,7 +70,7 @@ const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <deliverable-subdir>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--cache-runtime-services <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--public-text-links-max-wall-ms 60000..900000] [--privacy-max-total-bytes 134217728..1073741824] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <path-inside-deliverable>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--cache-runtime-services <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--public-text-links-max-wall-ms 60000..900000] [--privacy-max-total-bytes 134217728..1073741824] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -1252,7 +1252,8 @@ const changes = packageMetadata();
 console.log(`[export] ${changesLine(changes)}`);
 emit({ kind: 'live-stage', stage: 'package', status: 'done', files: manifestFiles.length, bytes });
 console.log(`[export] pages=${pageNames.length} liveFiles=${files} (copied=${copied}) bytes=${mb(bytes)} | bundleFiles=${manifestFiles.length} | root=${ROOT} | unresolved=${health.assets.unresolved}`);
-if (STRICT && Object.values(health.strictBlockers).some(Boolean)) {
+const blocked = STRICT && Object.values(health.strictBlockers).some(Boolean);
+if (blocked) {
   console.error('[export] strict: offline gaps ' + JSON.stringify(health.strictBlockers) + ' (see health.json); prior bundle preserved, candidate=' + OUT);
   process.exitCode = 1;
 } else {
@@ -1260,5 +1261,17 @@ if (STRICT && Object.values(health.strictBlockers).some(Boolean)) {
   console.log(`[export] bundle -> ${committed.out}`);
   if (committed.backup) console.log(`[export] previous bundle retained -> ${committed.backup}`);
 }
+// shortcut: this records the last completed export, rerun strict export after inputs change.
+const blockers = Object.fromEntries(Object.entries(health.strictBlockers).filter(([, count]) => count > 0));
+writeFileAtomic(join(BASE, 'live-export.json'), JSON.stringify({
+  schema: 'heimdall.live-export/1', siteId: host, generatedAt: new Date().toISOString(),
+  status: blocked ? 'blocked' : STRICT && OFFLINE ? 'passed' : 'unverified',
+  published: !blocked, offline: OFFLINE, strict: STRICT, root: ROOT, pages: health.pages,
+  blockingCount: Object.values(blockers).reduce((sum, count) => sum + count, 0), blockers,
+  healthReport: blocked ? 'deliverable/' + relative(DELIVERABLE, join(OUT, 'health.json')).split('\\').join('/') : null,
+  browser: health.browserProbe ? Object.fromEntries(['checked', 'failed', 'untested', 'totalPages']
+    .map(key => [key, health.browserProbe[key]])) : null,
+  coverage: { scope: health.coverage.scope, scopeLimited: health.coverage.discovery?.scopeLimited ?? true },
+}, null, 2));
 if (!process.exitCode) console.log(`[export] run: cd "${FINAL_OUT}" && node serve.mjs --port ${PORT}${OFFLINE ? ' --offline' : ''}`);
 if (ROOT === 'mirror') console.log(`[export] root=mirror：部署后 / 即镜像（drop-in），/lm/${host}/ 为别名`);

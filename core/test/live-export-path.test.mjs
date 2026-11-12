@@ -104,12 +104,24 @@ test('offline strict rejects dynamic, external and missing pages while preservin
     assert.ok(health.strictBlockers.dynamic > 0);
     assert.ok(health.strictBlockers.externalAssets > 0);
     assert.ok(health.strictBlockers.missingLinks > 0);
+    const outcomeFile = join(site, 'live-export.json');
+    const outcome = () => JSON.parse(readFileSync(outcomeFile, 'utf8'));
+    const blocked = outcome();
+    assert.equal(blocked.schema, 'heimdall.live-export/1');
+    assert.equal(blocked.status, 'blocked');
+    assert.equal(blocked.published, false);
+    assert.equal(blocked.healthReport, `deliverable/${candidate}/health.json`);
+    assert.equal(blocked.blockingCount, Object.values(health.strictBlockers).reduce((sum, count) => sum + count, 0));
+    assert.doesNotMatch(JSON.stringify(blocked), /alice|private-image|atlas-secret|network\.har/);
     assert.equal(run('--out', join(dir, 'deliverable')).status, 2);
     assert.equal(run('--out', join(dir, 'deliverable-old')).status, 2);
     assert.equal(run('--strict', '--out', out).status, 2, 'strict must not publish an online fallback bundle');
+    assert.deepEqual(outcome(), blocked, 'invalid arguments do not replace the last completed outcome');
     assert.equal(readFileSync(join(out, 'keep.txt'), 'utf8'), 'last-good');
     const promoted = run('--out', out);
     assert.equal(promoted.status, 0, promoted.stderr + promoted.stdout);
+    assert.equal(outcome().status, 'unverified');
+    assert.equal(outcome().published, true);
     assert.ok(existsSync(join(out, 'health.json')));
     assert.doesNotMatch(readFileSync(join(out, 'har.json'), 'utf8'), /alice|private-image|cHJpdmF0ZS1pbWFnZQ==/);
     const privacy = JSON.parse(readFileSync(join(out, 'har-privacy.json'), 'utf8'));
@@ -130,6 +142,9 @@ test('offline strict rejects dynamic, external and missing pages while preservin
     assert.equal(goodHealth.browserProbe.observation.minimumMs, 3_000);
     assert.equal(goodHealth.browserProbe.observation.observedPages, 1);
     assert.equal(goodHealth.coverage.delivered, 1);
+    assert.equal(outcome().status, 'passed');
+    assert.equal(outcome().blockingCount, 0);
+    assert.deepEqual(outcome().browser, { checked: 1, failed: 0, untested: 0, totalPages: 1 });
     assert.equal(existsSync(join(out, 'site', 'static', host, 'recon', 'atlas.json')), false);
     assert.doesNotMatch(readFileSync(join(out, 'health.json'), 'utf8'), /atlas-secret-title|atlas-secret-token/);
     const configured = run('--offline', '--strict', '--browser-observe-ms', '3500', '--out', out);
@@ -148,6 +163,7 @@ test('offline strict rejects dynamic, external and missing pages while preservin
       assert.ok(candidate, 'failed candidate remains for diagnosis');
       assert.deepEqual(readFileSync(join(out, 'health.json')), acceptedHealth,
         'failed strict export must preserve the accepted bundle');
+      assert.equal(outcome().status, 'blocked', 'the latest failed attempt must not be hidden by the accepted bundle');
       return JSON.parse(readFileSync(join(dir, 'deliverable', candidate, 'health.json'), 'utf8'));
     };
 

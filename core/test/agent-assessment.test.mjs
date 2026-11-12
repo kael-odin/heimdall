@@ -192,6 +192,58 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: keeps offline delivery outcomes separate from visual and business evidence', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-assessment-delivery-'));
+  const site = join(root, 'workspace', 'example.test');
+  const outcome = {
+    schema: 'heimdall.live-export/1', siteId: 'example.test', generatedAt: '2026-11-12T00:00:00.000Z',
+    status: 'blocked', published: false, offline: true, strict: true, root: 'mirror', pages: 1,
+    blockingCount: 4, blockers: { unresolved: 1, browserFailed: 1, 'super-secret': 2 },
+    healthReport: 'deliverable/.candidate-example.test-Ab1234/health.json',
+    browser: { checked: 1, failed: 1, untested: 0, totalPages: 1 },
+    coverage: { scope: 'recon-discovered', scopeLimited: true }, note: 'super-secret',
+  };
+  const assess = value => {
+    if (value) put(join(site, 'live-export.json'), value);
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    assert.doesNotMatch(run.stdout, /super-secret/);
+    return JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)).result;
+  };
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<html>mirror</html>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    assert.equal(assess().readiness.delivery.status, 'needs_export');
+    const blocked = assess(outcome);
+    assert.equal(blocked.clone.delivery.status, 'blocked');
+    assert.equal(blocked.clone.delivery.blockingCount, 4);
+    assert.equal(blocked.clone.delivery.otherBlockers, 2);
+    assert.deepEqual(blocked.clone.delivery.blockers, { unresolved: 1, browserFailed: 1 });
+    assert.equal(blocked.clone.delivery.healthReport, outcome.healthReport);
+    assert.equal(assess({ ...outcome, healthReport: '/super-secret/health.json' }).clone.delivery.healthReport, null);
+    assert.equal(blocked.readiness.delivery.status, 'blocked');
+    assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-offline-delivery').status, 'blocked');
+    assert.match(blocked.readiness.delivery.nextAction.args.command, /--root mirror$/);
+    const passed = { ...outcome, status: 'passed', published: true, blockingCount: 0, blockers: {},
+      browser: { checked: 1, failed: 0, untested: 0, totalPages: 1 } };
+    const accepted = assess(passed);
+    assert.equal(accepted.readiness.delivery.status, 'last_check_passed');
+    assert.equal(accepted.readiness.delivery.basis, 'observed');
+    assert.equal(accepted.clone.delivery.coverage.scopeLimited, true);
+    assert.equal(accepted.claims.observed.includes('clone.offline_export:passed'), true);
+    assert.equal(accepted.claims.verified.some(claim => claim.includes('offline')), false);
+    assert.equal(accepted.deliveryPlan.items.some(item => item.id === 'clone-offline-delivery'), false);
+    assert.equal(assess({ ...passed, status: 'unverified', strict: false, browser: null }).readiness.delivery.status, 'needs_strict_verification');
+    for (const invalid of [
+      { ...passed, siteId: 'other.test' }, { ...passed, strict: false }, { ...passed, published: false },
+      { ...passed, blockers: { unresolved: 1 } }, { ...passed, browser: null },
+      { ...passed, browser: { ...passed.browser, checked: 0 } },
+    ]) assert.equal(assess(invalid).clone.delivery.status, 'invalid');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: delivery plan keeps capture and missing evidence separate', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-plan-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
