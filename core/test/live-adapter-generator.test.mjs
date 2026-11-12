@@ -73,3 +73,69 @@ test('probe adapter: writes a deployable two-file adapter from a sanitized works
     assert.equal(JSON.parse(readFileSync(join(root, 'adapter-report.json'), 'utf8')).results.status, 'not-validated');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('API probes use explicit public GET approvals without widening default or authenticated capture', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-probe-approved-'));
+  const site = join(root, 'workspace', 'x.test');
+  const page = join(site, 'pages', 'home');
+  const paths = [1, 2, 3, 4, 5].map(page => `/api/items?page=${page}`);
+  const planFile = join(site, 'read-data-plan.json');
+  const run = (command, approved = true) => {
+    const result = spawnSync(process.execPath, [BIN, 'probe', command, '--site', 'x.test', '--json',
+      ...(command === 'adapter' ? ['--include-api-bodies', '--out', join(root, 'adapter-output', 'adapter')] : []),
+      ...(approved ? ['--include-readonly-data'] : [])], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 15_000,
+    });
+    assert.equal(result.error, undefined);
+    return { status: result.status, ...JSON.parse(result.stdout.trim()) };
+  };
+  try {
+    mkdirSync(page, { recursive: true });
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: 'https://x.test/' }));
+    const entries = [...paths, '/api/items?page=6', '/api/items?page=99'].map(path => ({
+      request: { method: 'GET', url: 'https://x.test' + path,
+        headers: path.endsWith('=6') ? [{ name: 'Authorization', value: 'Bearer private-secret' }] : [] },
+      response: { status: 200, content: { mimeType: 'application/json', text: JSON.stringify({ items: [path.endsWith('=6') ? 'session-only' : 'public-item'] }) } },
+    }));
+    entries.push({ ...entries[0], request: { method: 'GET', url: 'https://other.test' + paths[0] } });
+    writeFileSync(join(page, 'network.har'), JSON.stringify({ log: { entries: entries.slice(0, 4) } }));
+    const next = join(site, 'pages', 'next');
+    mkdirSync(next);
+    writeFileSync(join(next, 'manifest.json'), JSON.stringify({ target: 'https://x.test/next' }));
+    writeFileSync(join(next, 'network.har'), JSON.stringify({ log: { entries: entries.slice(4) } }));
+    for (const command of ['contract', 'adapter']) {
+      const missing = run(command);
+      assert.equal(missing.status, 2);
+      assert.equal(missing.error.code, 'invalid_args');
+      assert.match(missing.error.hint, /read-data-plan.json/);
+    }
+    writeFileSync(planFile, JSON.stringify({ version: 1, paths: [...paths, '/api/items?page=6'] }));
+    assert.equal(run('contract', false).result.rows[0].tier, 'B0');
+    assert.equal(run('adapter', false).status, 2);
+    const contract = run('contract');
+    assert.equal(contract.status, 0);
+    assert.equal(contract.result.rows[0].tier, 'B1');
+    assert.equal(contract.result.rows[0].observations[0].samples, 5);
+    assert.doesNotMatch(JSON.stringify(contract), /session-only|private-secret|public-item/);
+    const adapter = run('adapter');
+    assert.equal(adapter.status, 0);
+    assert.equal(adapter.result.observedEntries, 5);
+    assert.equal(adapter.result.trainEntries, 4);
+    assert.equal(adapter.result.heldoutEntries, 1);
+    assert.equal(adapter.result.validation.status, 'failed');
+    assert.match(adapter.summary, /留出验证 failed/);
+    const outputFile = join(root, 'adapter-output', 'adapter', 'index.mjs');
+    const output = readFileSync(outputFile, 'utf8');
+    assert.doesNotMatch(output, /session-only|private-secret|page=99|other.test/);
+    for (const invalid of [{ version: 0, paths }, { version: 1, paths: ['//other.test/api/items'] }, { version: 1, paths: ['/api/items?token=private-secret'] }]) {
+      writeFileSync(planFile, JSON.stringify(invalid));
+      for (const command of ['contract', 'adapter']) assert.equal(run(command).error.code, 'invalid_args');
+    }
+    writeFileSync(planFile, JSON.stringify({ version: 1, paths }));
+    const other = join(site, 'pages', 'other');
+    mkdirSync(other);
+    writeFileSync(join(other, 'manifest.json'), JSON.stringify({ target: 'https://other.test/' }));
+    for (const command of ['contract', 'adapter']) assert.equal(run(command).error.code, 'origin_conflict');
+    assert.equal(readFileSync(outputFile, 'utf8'), output);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

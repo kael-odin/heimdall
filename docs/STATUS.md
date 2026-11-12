@@ -170,6 +170,8 @@ Hosted CI 结果为最终依据。
 
 ## 2026-11-11 B1 契约增强
 
+2026-11-12 根据真实分页留出失败，补齐 `probe contract` 与 `probe adapter` 的公开只读查询许可：复用 `read-data-plan.json`，通过 `--include-readonly-data` 显式启用。商品和作品两组原件在实际 CLI 中由 B0 / 无法生成变为 B1 / 可生成，但各自留出仍失败，未宣称分页业务已实现。来源混杂、无效计划和带认证的公开候选继续拒绝，详见[真实 API 报告](audits/2026-11-12/backend-public-api.md)。
+
 - 显式使用 `--include-api-har` 或 `--include-api-bodies` 时，清洗 HAR 会为 API 请求保留请求体 Schema 和鉴权形态摘要；默认模式仍不扩大隐私范围。
 - `api-contract.json` 与 `health.apiContract` 现在能告诉 AI 哪些端点观察到请求 Schema、出现过哪类鉴权，以及哪些结论仍未知。
 - 请求值、认证值、响应示例、刷新规则、权限、状态机和真实副作用仍不会进入契约；当前仍是观察型 B1，不是后端替代。

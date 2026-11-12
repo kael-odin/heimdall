@@ -240,6 +240,15 @@ node core/src/cli.mjs probe adapter --site example.org --include-api-bodies --ou
 
 这条命令会把样本按端点拆成训练集和留出集，只用训练集写入 `adapter-draft\manifest.json`、`adapter-draft\index.mjs`；验证报告写在 `adapter-report.json`。报告里的 `passed` 只表示脱敏观察样本的有限泛化，`not-validated` 表示样本不够，不能当作“后端已经复刻”。路径变化、新查询参数、状态码/MIME/JSON 形状或稳定字段不一致都会列为失败。若报告和输出目录已存在，需显式加 `--force` 才覆盖。
 
+分页或字段选择查询需要逐条批准：复用下文的 `read-data-plan.json`，再为契约或适配器探针显式加 `--include-readonly-data`。这只读取已有 HAR，不会重新访问源站。站点来源须唯一且与记录一致；缺失或无效的计划会拒绝执行，批准的公开 GET 仍不能含认证信息或私密正文。
+
+```powershell
+node core/src/cli.mjs probe contract --site example.org --include-readonly-data
+node core/src/cli.mjs probe adapter --site example.org --include-api-bodies --include-readonly-data --out .\approved-adapter-draft
+```
+
+适配器命令退出码 0 表示已生成草稿和报告。留出失败时摘要会明确显示 `failed`；应检查 `adapter-report.json` 的 `results.status`，不能将生成成功当作行为验证通过。
+
 它不会自动生成登录、权限、状态机、支付、实时连接或真实副作用；也不要把 Xspark 的 QA 误报/漏报聚合数字当成 API HAR。Xspark 当前脱敏材料能支持检测器决策审查，但不足以证明某个 API 适配器的留出泛化。
 
 需要在离线包内处理表单或有状态 API 时，可为**一个已授权站点**编写本地适配器。在 `core/workspace/<host>/runtime-adapter/` 放入 `manifest.json` 和 `index.mjs` 两个文件。清单只声明要接管的精确方法与路径，不含查询参数：

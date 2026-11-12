@@ -4,8 +4,8 @@
  *   heimdall probe sizes   [--site S] [--max N]   产物体量：页面目录、镜像、交付包
  *   heimdall probe outline [--site S] [--max N]   大纲压缩：dom.html → 结构大纲
  *   heimdall probe har     [--site S] [--max N]   第一方端点：只报方法与路径模板的计数，不含查询串与正文
- *   heimdall probe contract [--site S] [--max N]  清洗 HAR → 观察型 B0/B1 接口契约
- *   heimdall probe adapter [--site S] [--max N] [--out D] --include-api-bodies [--force]
+ *   heimdall probe contract [--site S] [--max N] [--include-readonly-data]  清洗 HAR → 观察型 B0/B1 接口契约
+ *   heimdall probe adapter [--site S] [--max N] [--out D] --include-api-bodies [--include-readonly-data] [--force]
  *                                                    训练集生成适配器 + 留出集验证报告
  *
  * 全部读工作区，不需要引擎；outline 用与 heimdall_brief 完全相同的算法（buildOutline），
@@ -22,6 +22,8 @@ import { sanitizeHar } from '../../live/har.mjs';
 import { buildObservedApiContract } from '../../live/contract.mjs';
 import { buildObservedReplayAdapter, writeObservedReplayAdapter } from '../../live/adapter-generator.mjs';
 import { splitObservedApiEntries, validateObservedReplayAdapter } from '../../live/adapter-validation.mjs';
+import { readDataPlan } from '../../live/read-data-plan.mjs';
+import { readSiteOrigin } from '../../site-origin.mjs';
 
 const dirSize = (dir) => {
   let bytes = 0, files = 0;
@@ -96,7 +98,18 @@ function har(sample) {
   return rows;
 }
 
-function contracts(sample) {
+function readOnlyOptions(siteId, origin, enabled) {
+  if (!enabled) return {};
+  const base = join(WORKSPACE, siteId);
+  if (readSiteOrigin(base) !== origin) throw new CapabilityError('origin_conflict', `只读接口许可的站点来源不一致或不唯一：${siteId}`);
+  const plan = readDataPlan(base, origin);
+  if (plan.status !== 'ok') throw new CapabilityError('invalid_args', `只读接口许可计划不可用：${siteId}（${plan.status}）`, {
+    hint: '先在站点工作区配置有效的 read-data-plan.json，只列出已批准的同源公开 GET 路径与查询。',
+  });
+  return { readOnlyOrigin: origin, readOnlyGetUrls: plan.urls };
+}
+
+function contracts(sample, includeReadOnlyData) {
   const groups = new Map();
   for (const { siteId, page, dir } of sample) {
     const file = join(dir, 'network.har');
@@ -106,8 +119,9 @@ function contracts(sample) {
     let target;
     try { target = new URL(JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')).target); } catch { continue; }
     const key = `${siteId} ${target.origin}`;
-    const group = groups.get(key) ?? { siteId, origin: target.origin, pages: 0, entries: [] };
-    const sanitized = sanitizeHar(raw, { includeApiBodies: true });
+    const group = groups.get(key) ?? { siteId, origin: target.origin, pages: 0, entries: [],
+      readOnly: readOnlyOptions(siteId, target.origin, includeReadOnlyData) };
+    const sanitized = sanitizeHar(raw, { includeApiBodies: true, ...group.readOnly });
     group.pages++;
     group.entries.push(...sanitized.entries);
     groups.set(key, group);
@@ -116,11 +130,12 @@ function contracts(sample) {
   return [...groups.values()].map(group => buildObservedApiContract(group.entries, group));
 }
 
-async function adapter(sample, siteId, { includeApiBodies, out, force }) {
+async function adapter(sample, siteId, { includeApiBodies, includeReadOnlyData, out, force }) {
   const pages = sample.filter(item => item.siteId === siteId);
   if (!pages.length) throw new CapabilityError('not_found', `没有站点页面 ${siteId}`, { hint: '`heimdall overview` 列出已有站点。' });
   if (!includeApiBodies) throw new CapabilityError('invalid_args', '生成观察回放适配器需要显式加 --include-api-bodies', { hint: '确认允许把已清洗的 API 响应用于本地回放，再重试。' });
   let origin = '';
+  let readOnly = {};
   const entries = [];
   for (const { dir } of pages) {
     const file = join(dir, 'network.har');
@@ -129,14 +144,17 @@ async function adapter(sample, siteId, { includeApiBodies, out, force }) {
     try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch { continue; }
     let target;
     try { target = new URL(JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')).target); } catch { continue; }
-    origin ||= target.origin;
+    if (!origin) {
+      origin = target.origin;
+      readOnly = readOnlyOptions(siteId, origin, includeReadOnlyData);
+    }
     if (target.origin !== origin) continue;
-    entries.push(...sanitizeHar(raw, { includeApiBodies }).entries);
+    entries.push(...sanitizeHar(raw, { includeApiBodies, ...readOnly }).entries);
   }
   const split = splitObservedApiEntries(entries, { origin });
   let generated;
   try { generated = buildObservedReplayAdapter(split.train, { siteId, origin, pages: pages.length }); }
-  catch (error) { throw new CapabilityError('invalid_args', `无法生成观察回放适配器：${String(error?.message ?? error)}`, { hint: '先补充同源业务 API 录制，或减少响应体和路由数量后重试。' }); }
+  catch (error) { throw new CapabilityError('invalid_args', `无法生成观察回放适配器：${String(error?.message ?? error)}`, { hint: '若需使用已批准的只读查询，配置 read-data-plan.json 并加 --include-readonly-data；否则补充同源 API 录制，或减少响应体和路由数量后重试。' }); }
   if (out === true) throw new CapabilityError('invalid_args', '--out 需要目录路径', { hint: '例如 `--out .\\runtime-adapter-draft`。' });
   const base = process.env.HEIMDALL_INVOKE_CWD ?? process.cwd();
   const target = resolve(base, out || join(WORKSPACE, siteId, 'runtime-adapter'));
@@ -198,16 +216,16 @@ export async function run(argv) {
       const rows = har(sample);
       env = ok({ rows }, { summary: `${summarise('接口', rows)} 第一方请求合计 ${rows.reduce((s, r) => s + r.firstParty, 0)} 条；只统计方法与路径模板，不含查询串与正文。` });
     } else if (what === 'contract') {
-      const rows = contracts(sample);
+      const rows = contracts(sample, !!flags['include-readonly-data']);
       const endpoints = rows.reduce((sum, row) => sum + row.summary.endpoints, 0);
       const b1 = rows.filter(row => row.tier === 'B1').length;
       env = ok({ rows }, { summary: `${summarise('契约', rows)} ${b1} 个站点达到 B1，观察到 ${endpoints} 个接口；输出只含接口形状和未知项，不含请求值与响应示例。` });
     } else if (what === 'adapter') {
       if (!flags.site) throw new CapabilityError('invalid_args', 'probe adapter 必须指定 --site S', { hint: '`heimdall overview` 列出已有站点。' });
-      const result = await adapter(sample, flags.site, { includeApiBodies: !!flags['include-api-bodies'], out: flags.out, force: !!flags.force });
-      env = ok(result, { summary: `已生成观察回放适配器：${result.routes} 条路由、${result.entries} 个响应；这不是与源站等价的后端。` });
+      const result = await adapter(sample, flags.site, { includeApiBodies: !!flags['include-api-bodies'], includeReadOnlyData: !!flags['include-readonly-data'], out: flags.out, force: !!flags.force });
+      env = ok(result, { summary: `已生成观察回放适配器：${result.routes} 条路由、${result.entries} 个响应；留出验证 ${result.validation.status}，这不是与源站等价的后端。` });
     } else {
-      throw new CapabilityError('invalid_args', '用法：heimdall probe sizes|outline|har|contract|adapter [--site S] [--max N]');
+      throw new CapabilityError('invalid_args', '用法：heimdall probe sizes|outline|har|contract|adapter [--site S] [--max N] [--include-readonly-data]');
     }
   } catch (error) { env = fromError(error); }
   if (json) process.stdout.write(JSON.stringify(env) + '\n');
