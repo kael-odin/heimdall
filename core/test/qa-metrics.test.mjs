@@ -18,6 +18,10 @@ test('qa metrics recomputes the sanitized Xspark pilot without trusting stored p
   assert.equal(result.alarms.falsePositiveRate.percent, null);
   assert.match(result.alarms.falsePositiveRate.reason, /经典 FPR/);
   assert.equal(result.oracle.falseNegativeRate.percent, 50);
+  assert.deepEqual(result.oracle.byFamily.map(item => ({ family: item.family, cases: item.cases, falseNegative: item.falseNegative })), [
+    { family: 'business-display-rule', cases: 2, falseNegative: 2 },
+    { family: 'generic-accessible-name', cases: 2, falseNegative: 0 },
+  ]);
   assert.equal(result.runtime.p50Ms, 46717);
   assert.equal(result.runtime.p95Ms, 73313);
   assert.deepEqual(result.failures.byKind, { 'console:observed': 4, 'network:environment': 13 });
@@ -62,6 +66,9 @@ test('qa metrics accepts named domain oracles beyond the Xspark families', () =>
   });
   assert.equal(result.oracle.status, 'complete');
   assert.equal(result.oracle.falseNegativeRate.percent, 100);
+  assert.deepEqual(result.oracle.byFamily.map(item => ({ family: item.family, cases: item.cases, falseNegative: item.falseNegative })), [
+    { family: 'api-response-contract', cases: 1, falseNegative: 1 },
+  ]);
   assert.equal(result.decision.primaryAction, 'add-business-check');
   assert.equal(result.decision.detectorExpansion, 'do-not-add');
   assert.deepEqual(result.decision.metrics.targeted, { cases: 1, falseNegative: 1 });

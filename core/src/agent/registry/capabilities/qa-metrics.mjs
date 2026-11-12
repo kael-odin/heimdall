@@ -46,7 +46,7 @@ const WORKSPACE = { type: 'string', minLength: 1, maxLength: 2000, description: 
 export default {
   id: 'qa_metrics',
   title: 'QA 实战指标：统计误报、漏报、耗时与失败分类',
-  description: 'Read a sanitized QA aggregate or QA run summaries and recompute reviewed alarms, false-discovery rate, classic false-positive rate when exhaustive normal samples exist, oracle false-negative rate, runtime p50/p95, failure categories and coverage. Then apply the conservative detector-expansion rule used by the Xspark pilot. This is an evidence summary, not a browser run; missing labels, incomplete measurements and a non-exhaustive oracle keep generic detector expansion blocked. Raw findings, cookies, tokens and request bodies are never returned.',
+  description: 'Read a sanitized QA aggregate or QA run summaries and recompute reviewed alarms, false-discovery rate, classic false-positive rate when exhaustive normal samples exist, oracle false-negative rate by domain family, runtime p50/p95, failure categories and coverage. Then apply the conservative detector-expansion rule used by the Xspark pilot. This is an evidence summary, not a browser run; missing labels, incomplete measurements and a non-exhaustive oracle keep generic detector expansion blocked. Raw findings, cookies, tokens and request bodies are never returned.',
   effects: ['read'], scope: 'read', idempotent: true, cost: 'cheap',
   input: {
     type: 'object', additionalProperties: false,

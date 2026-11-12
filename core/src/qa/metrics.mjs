@@ -216,12 +216,18 @@ function alarmMetrics(labels, input) {
   };
 }
 
-function oracleMetrics(oracle) {
-  if (oracle === undefined) return { status: 'not_provided', cases: 0, falseNegativeRate: null };
-  const cases = Array.isArray(oracle?.cases) ? oracle.cases : [];
-  const complete = cases.length > 0 && cases.every(item => isRecord(item)
-    && typeof item.expected === 'boolean' && typeof item.detected === 'boolean');
-  if (!complete) return { status: 'incomplete', cases: cases.length, falseNegativeRate: null };
+function oracleFamilyOf(item) {
+  const value = typeof item?.family === 'string'
+    ? item.family.trim().replace(/[\u0000-\u001f\u007f]/g, '')
+    : '';
+  return value ? value.slice(0, 80) : null;
+}
+
+function validOracleFamily(value) {
+  return typeof value === 'string' && value.length > 0 && !/^(?:unknown|unclassified)$/i.test(value);
+}
+
+function oracleCounts(cases) {
   const counts = { truePositive: 0, falsePositive: 0, falseNegative: 0, trueNegative: 0 };
   for (const item of cases) {
     if (item.expected && item.detected) counts.truePositive++;
@@ -229,16 +235,43 @@ function oracleMetrics(oracle) {
     else if (item.expected && !item.detected) counts.falseNegative++;
     else counts.trueNegative++;
   }
+  return counts;
+}
+
+function oracleStats(cases) {
+  const counts = oracleCounts(cases);
   const positives = counts.truePositive + counts.falseNegative;
   const predictedPositive = counts.truePositive + counts.falsePositive;
   return {
-    status: 'complete',
     cases: cases.length,
     ...counts,
     falseNegativeRate: rate(counts.falseNegative, positives),
     recall: rate(counts.truePositive, positives),
     precision: rate(counts.truePositive, predictedPositive),
     falsePositiveRate: rate(counts.falsePositive, counts.falsePositive + counts.trueNegative),
+  };
+}
+
+function oracleMetrics(oracle) {
+  if (oracle === undefined) return { status: 'not_provided', cases: 0, falseNegativeRate: null };
+  const cases = Array.isArray(oracle?.cases) ? oracle.cases : [];
+  const complete = cases.length > 0 && cases.every(item => isRecord(item)
+    && typeof item.expected === 'boolean' && typeof item.detected === 'boolean');
+  if (!complete) return { status: 'incomplete', cases: cases.length, falseNegativeRate: null };
+  const groups = new Map();
+  for (const item of cases) {
+    const family = oracleFamilyOf(item) ?? 'unknown';
+    const group = groups.get(family) ?? [];
+    group.push(item);
+    groups.set(family, group);
+  }
+  const stats = oracleStats(cases);
+  return {
+    status: 'complete',
+    ...stats,
+    byFamily: [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([family, items]) => ({
+      family, ...oracleStats(items),
+    })),
   };
 }
 
@@ -256,8 +289,7 @@ export function decideDetectorExpansion({ labels, oracle, evidence } = {}) {
   const labelsComplete = validCounts && labels.unknown === 0;
   const cases = Array.isArray(oracle?.cases) ? oracle.cases : [];
   const genericFamilies = new Set(['generic-accessible-name']);
-  const oracleComplete = cases.length > 0 && cases.every(item => item && typeof item.family === 'string'
-    && item.family.trim() && !/^(?:unknown|unclassified)$/i.test(item.family.trim())
+  const oracleComplete = cases.length > 0 && cases.every(item => validOracleFamily(oracleFamilyOf(item))
     && typeof item.expected === 'boolean' && typeof item.detected === 'boolean');
   const allTrue = group => Number.isSafeInteger(evidence?.runCount) && evidence.runCount > 0
     && group?.true === evidence.runCount && group?.false === 0 && group?.unknown === 0;
@@ -267,10 +299,10 @@ export function decideDetectorExpansion({ labels, oracle, evidence } = {}) {
       && (count === 0 || (kind !== 'network' && !/(?:^|:)(?:unknown|unclassified)$/.test(kind))));
   const evidenceComplete = (evidence?.complete === undefined || evidence.complete === true)
     && allTrue(evidence?.verified) && allTrue(evidence?.measurementComplete) && failuresClassified;
-  const business = cases.filter(item => item?.family === 'business-display-rule' && item.expected === true && typeof item.detected === 'boolean');
-  const generic = cases.filter(item => item?.family === 'generic-accessible-name' && item.expected === true && typeof item.detected === 'boolean');
+  const business = cases.filter(item => oracleFamilyOf(item) === 'business-display-rule' && item.expected === true && typeof item.detected === 'boolean');
+  const generic = cases.filter(item => oracleFamilyOf(item) === 'generic-accessible-name' && item.expected === true && typeof item.detected === 'boolean');
   const targeted = cases.filter(item => item?.expected === true && typeof item.detected === 'boolean'
-    && !genericFamilies.has(item.family));
+    && !genericFamilies.has(oracleFamilyOf(item)));
   const businessMisses = business.filter(item => item.detected === false).length;
   const targetedMisses = targeted.filter(item => item.detected === false).length;
   const genericMisses = generic.filter(item => item.detected === false);

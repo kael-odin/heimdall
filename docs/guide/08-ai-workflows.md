@@ -166,7 +166,7 @@ AI 调用同一个注册能力：
 ```text
 调用 heimdall_qa_metrics，读取已脱敏的 QA 聚合指标。
 汇报报警误报占比、经典 FPR 是否可计算、定向漏报率、运行时长 p50/p95、失败分类和 detectorExpansion。
-不要把 falseDiscoveryRate 当经典 FPR，也不要把小型 oracle 漏报率当全站漏报率。
+不要把 falseDiscoveryRate 当经典 FPR，也不要把小型 oracle 漏报率当全站漏报率。优先读取 `oracle.byFamily`，按领域拆开漏报，再决定是补业务检查点还是继续收集通用样本。
 ```
 
 没有完整正常样本时，经典 FPR 会明确返回不可计算；没有完整标签、测量不完整或定向 oracle 不充分时，新增通用检测器会保持 `blocked`。定向 oracle 的 `family` 可以是接口、权限、表单、安全或其他明确领域；领域漏报优先转成声明式检查点，不直接扩展通用检测器。对 Xspark 当前冻结证据，结论仍是先补证据、修已有检测器、增加业务检查点，暂不新增通用检测器。
