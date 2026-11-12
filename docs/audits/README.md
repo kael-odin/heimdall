@@ -6,7 +6,13 @@
 > 1. git 历史（本目录删除前的提交）；
 > 2. 本机外部归档 `D:/Github-Star/heimdall-evidence-archive/2026-10-30/docs/audits/`（按日期保存）。
 >
-> 证据文件的 SHA-256 清单见 [`ARCHIVED-EVIDENCE.sha256`](ARCHIVED-EVIDENCE.sha256)。测试与代码已不读取这些文件；测试夹具在 `core/test/fixtures/audit-evidence/`。
+> 证据文件的 SHA-256 清单见 [`ARCHIVED-EVIDENCE.sha256.gz`](ARCHIVED-EVIDENCE.sha256.gz)。测试与代码已不读取这些文件；测试夹具在 `core/test/fixtures/audit-evidence/`。
+>
+> 2026-11-13 无损压缩清单：1,614,675→331,411 字节，8,350 条记录全部保留；解压后 SHA-256 为 `e8821092fa85fd7ff3c3dee93f476c2c4bea64a1a37804e92cbd9fa3a4d5b5f7`。在仓库根目录运行下列命令，可用项目已有的 Node 将原文解压到系统临时目录，命令会打印输出路径：
+
+```bash
+node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs'; import {gunzipSync} from 'node:zlib'; import {tmpdir} from 'node:os'; import {join} from 'node:path'; const p=join(tmpdir(),'heimdall-archived-evidence.sha256'); writeFileSync(p,gunzipSync(readFileSync('docs/audits/ARCHIVED-EVIDENCE.sha256.gz'))); console.log(p);"
+```
 
 ## 归档日期
 

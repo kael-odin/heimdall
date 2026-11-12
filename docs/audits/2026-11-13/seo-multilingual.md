@@ -40,6 +40,8 @@
 
 ## 一手机制依据
 
+同轮仓库清理：归档证据清单是只读索引，唯一引用是审计首页。将 1,614,675 字节原文无损压缩为 331,411 字节 `.gz`，解压逐字节与已提交原文及外部备份一致，8,350 条记录全部保留。审计首页更新链接、原文 SHA-256 和无需新依赖的 Node 解压命令；不改测试夹具或冻结验收文件。
+
 - [Google SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)：内容长度没有决定排名的固定最低或最高字数；应围绕用户需要写作。
 - [ECMA-402 Segmenter](https://tc39.es/ecma402/#segmenter-objects)：原生单词分段和 `isWordLike`。
 - [Unicode Text Segmentation](https://www.unicode.org/reports/tr29/)：词边界与语言定制，不是答案质量标准。三份原文均 HTTP 200，HTML 与 SHA-256 留在外部证据。
