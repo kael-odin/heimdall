@@ -33,9 +33,18 @@
 
 - 现有响应、QA CI、HTTP 策略测试 **18/18** 通过；其中新浏览器父测试含六个方法/策略组合，允许时每次只收到一个请求、阻断时零请求，接口正文不泄漏到结果。
 - 已有打包 MCP 代理测试 **1/1** 通过：新隔离引擎列出的 QA run/CI Schema 同时声明五种方法；实际 POST 正常与 PATCH 第二字段错误共发两次请求，代理未重放。
+- 七份落盘报告的方法、路径和判定均复核通过；网关注入的实际错误字段值未进入运行、发现、报告或 CI 文件。接口待核实没有自动生成可提单产品缺陷，结果见外部 `report-check.json`。
 - 使用手册、QA CI 指南与 Heimdall 技能已更新，生成技能与插件检查通过。复用现有两个测试文件，没有新增测试文件或大夹具。
 - 未验证认证、权限、事务、并发、业务完整性、iframe、其他页面、观察结束后的请求或非 GET 查询。状态码与少量字段正确不等于整个写入业务正确；仍需 GET 读回与独立页面检查。
 
 证据目录：`D:/Github-Star/heimdall-evidence-archive/2026-11-13/qa-write-responses/`。`real-cases.json` 是最终七场景，`oracle.json` 是独立预期，逐场景 `requests.json`、QA 运行目录与日志保留请求数及结果。大文件、运行目录和参考依赖均在仓库外。
 
 初次驱动误读精简 `run.json` 的字段、无声明时省略的响应字段，并混淆写策略阻断与客户端资源拦截计数；失败与部分有效结果以 `first-*.json/log` 保留。修正后复用前五个有效场景，只补跑阻断与恢复，不把调试重试累计成独立样本。新增单测的空就绪元素等待错误也保留于 `first-test-hidden-ready.log`，修正测试夹具后方法/策略对照通过。
+
+## 最终 Hosted 验收
+
+源码提交 [`d5ce8e70`](https://github.com/kael-odin/heimdall/commit/d5ce8e70856af314a52969b819a360162e56435a) 的 [CI 43330457822](https://github.com/kael-odin/heimdall/actions/runs/43330457822) **8/8 job 成功**，同提交 [Docs 43330457843](https://github.com/kael-odin/heimdall/actions/runs/43330457843) 成功。
+
+两片完整 Core 共 3,305 条：**3,301 通过、0 失败、4 条件跳过**。两条 Docker 用例在服务 job 独立 **2/2 通过**，另外两条是 Hosted Linux 不适用的 Windows 文件句柄用例。MCP 干净安装、功能及产物测试 **7/7** 通过，包含前述代理测试；语法 765 文件、冻结验收 14 文件、完整浏览器链、QA Action、构建与依赖审计也全部成功。本地 18 条、代理 1 条与 Hosted 结果有重叠，不累计为独立通过数。
+
+精确提交、逐 job 终态、两片完整 TAP 汇总和服务/MCP/浏览器日志保存在 `ci-source-completed.json`、`ci-test-totals.json`、`ci-*.log`；`acceptance-summary.json` 汇总正式七场景、源码哈希和报告复核。案例为 Windows 上的实际本地 JSON Server，Hosted Node 22 测试不等于另做七个真实项目案例。
