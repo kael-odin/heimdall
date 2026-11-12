@@ -46,6 +46,27 @@ test('qa metrics calculates classic FPR only when normal cases are exhaustive', 
   assert.equal(result.oracle.falsePositiveRate.percent, 100);
 });
 
+test('qa metrics accepts named domain oracles beyond the Xspark families', () => {
+  const result = analyzeQaMetrics({
+    labels: { truePositive: 1, falsePositive: 0, unknown: 0 },
+    oracle: { cases: [
+      { family: 'api-response-contract', expected: true, detected: false },
+    ] },
+    supplementalEvidence: {
+      complete: true, runCount: 1,
+      verified: { true: 1, false: 0, unknown: 0 },
+      measurementComplete: { true: 1, false: 0, unknown: 0 },
+      failureKinds: {},
+    },
+    runs: [{ runId: 'r1', elapsedMs: 1000 }],
+  });
+  assert.equal(result.oracle.status, 'complete');
+  assert.equal(result.oracle.falseNegativeRate.percent, 100);
+  assert.equal(result.decision.primaryAction, 'add-business-check');
+  assert.equal(result.decision.detectorExpansion, 'do-not-add');
+  assert.deepEqual(result.decision.metrics.targeted, { cases: 1, falseNegative: 1 });
+});
+
 test('QA run summaries expose runtime and failure classes but keep expansion blocked without labels and oracle', () => {
   const result = analyzeQaMetrics({ runs: [
     { runId: 'r1', site: 'web', elapsedMs: 1000, pageViews: 2, coverage: { pages: [], detection: { failedPages: [] } } },

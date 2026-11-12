@@ -16,7 +16,10 @@ test('existing sanitized Xspark evidence remains blocked without rewriting the h
   assert.equal(result.schema, 'xspark.detector-decision/2');
   assert.equal(result.primaryAction, 'collect-more-evidence');
   assert.equal(result.detectorExpansion, 'blocked');
-  assert.deepEqual(result.metrics, report.decision.metrics);
+  assert.deepEqual(result.metrics, {
+    ...report.decision.metrics,
+    targeted: { cases: 2, falseNegative: 2 },
+  });
   assert.equal(result.metrics.falseDiscoveryRate, 53.52);
   assert.deepEqual(result.secondaryActions, ['add-business-check', 'fix-existing-detectors']);
 });
