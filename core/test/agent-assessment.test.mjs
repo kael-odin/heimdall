@@ -24,6 +24,8 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
     put(join(root, 'workspace', 'example.test', 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
     put(join(qa, '.heimdall', 'qa.json'), { sites: { web: { url: 'https://example.test/', pages: ['/'] } } });
     const runId = 'qa-20261113-120000-abcd';
+    put(join(qa, '.heimdall', 'qa', 'runs', runId, 'report.md'), '# QA report');
+    put(join(qa, '.heimdall', 'qa', 'runs', runId, 'bugs.md'), '# QA findings');
     for (const [name, patch, status] of [
       ['unverified check', { summary: { ...summary, checkNeedsFix: 1 } }, 'incomplete'],
       ['complete', {}, 'complete'],
@@ -45,6 +47,8 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
       });
       assert.equal(run.status, 0, run.stderr + run.stdout);
       const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+      assert.ok(existsSync(join(qa, result.qa.latest.report)), 'QA report reference must resolve');
+      assert.ok(existsSync(join(qa, result.qa.latest.bugs)), 'QA findings reference must resolve');
       assert.equal(result.readiness.qa.status, status === 'complete' ? 'ready' : 'needs_human_review', name);
       assert.equal(result.qa.latest.completeness.status, status, name);
       assert.equal(result.deliveryPlan.items.some(item => item.id === 'qa-incomplete' && item.status === 'blocked'), status !== 'complete', name);

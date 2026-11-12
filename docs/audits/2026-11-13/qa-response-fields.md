@@ -49,4 +49,6 @@
 
 下游修正后，765 个文件语法、763 个本地文档目标、公开案例、四份技能同步、插件产物与 14 个冻结验证器检查再次通过。
 
+实际打开证据入口又发现站点评估拼接运行目录时遗漏 `runs/`。修正为复用现有 `runsDir()`，在同一测试中补实际文件存在断言；原六个案例的报告与缺陷单引用由 **0/12** 可解析改为 **12/12**，原 `run.json` 哈希不变。`assessment-paths-before.json`、`assessment-after-paths.json` 与 `assessment-report-path-red.log` 保留前后对照及红灯；路径修正后相关套件仍为 **16/16**（`assessment-path-tests-final.log`）。
+
 仍不覆盖 iframe、观察结束后的请求、压缩或无法核实大小的 JSON；接口不符仍需结合业务契约人工核实。未知后端业务规则与真实模型引用率未在本轮验证。

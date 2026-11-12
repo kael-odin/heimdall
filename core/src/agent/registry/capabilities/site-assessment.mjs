@@ -10,7 +10,7 @@ import { measurementCoverage, scanMeasurementsAsync } from '../../../verify/meas
 import { summarizeObservedApiContract } from '../../../live/contract.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
-import { listRuns, openWorkspace, relPath } from '../../../qa/run.mjs';
+import { listRuns, openWorkspace, relPath, runsDir } from '../../../qa/run.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
 import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { GEO_METHOD_VERSION } from '../../../seo/method.mjs';
@@ -414,7 +414,7 @@ function qaSummary(args, ctx, siteId, origin) {
   const runs = listRuns(ws, 100).filter(item => item.site === qaSite.name);
   const run = runs[0] ?? null;
   if (!run) return { status: 'no_runs', latest: null, metrics: null, site: { name: qaSite.name, environment: qaSite.environment, pages: qaSite.pages.length } };
-  const runDir = join(ws.dataDir, run.runId);
+  const runDir = join(runsDir(ws), run.runId);
   let metrics = null;
   try { metrics = analyzeQaMetrics({ runs }); } catch { /* malformed run summaries stay unavailable */ }
   const summary = runSummary(run);
