@@ -13,7 +13,8 @@ const page = (over = {}) => ({
   h1: ['Proxy guide'],
   headings: [{ level: 1, text: 'Proxy guide' }, { level: 2, text: 'Setup' }],
   wordCount: 420,
-  meta: { noindex: false },
+  meta: { noindex: false, nosnippet: false },
+  robotsEvidence: { target: 'googlebot', initialHtml: 'checked', noindex: [], nofollow: [], nosnippet: [] },
   links: { external: 2 },
   microdataCount: 0,
   jsonld: [{
@@ -66,6 +67,16 @@ test('GEO 缺陷页面保留具体问题，na 和 unknown 不误报成失败', (
   assert.ok(['small', 'medium', 'large'].includes(firstAction.estimatedEffort));
 });
 
+test('GEO Google 索引和摘要限制独立于 canonical，旧采集保留未知', () => {
+  const check = value => evaluateGeoPage(page(value)).dimensions.citation.checks.find(item => item.id === 'geo-citation-discoverable');
+  assert.equal(check({ canonical: '' }).status, 'pass');
+  assert.equal(check({ meta: { noindex: false, nosnippet: true } }).status, 'fail');
+  assert.equal(check({ meta: { noindex: false } }).status, 'unknown');
+  assert.equal(check({ robotsEvidence: undefined }).status, 'unknown');
+  assert.equal(check({ raw: { ok: true, source: 'refetch', wordCount: 360 } }).status, 'unknown');
+  assert.match(check({ meta: { noindex: false, nosnippet: true } }).title, /Google/);
+});
+
 test('GEO 仅首次导航响应能证明初始 HTML，未知证据贯通站点维度', () => {
   for (const raw of [null, { ok: true, wordCount: 360 }, { ok: true, wordCount: 360, source: 'refetch' }]) {
     const result = evaluateGeoSite({ pages: [page({ raw })] });
@@ -73,7 +84,7 @@ test('GEO 仅首次导航响应能证明初始 HTML，未知证据贯通站点�
     assert.equal(dimension.checks.find(item => item.id === 'geo-answer-server-visible').status, 'unknown');
     assert.equal(result.status, 'partial');
     assert.equal(result.dimensions.answerability.status, 'partial');
-    assert.equal(result.coverage.ratio, 0.92);
+    assert.equal(result.coverage.ratio, 0.88);
     assert.deepEqual(result.actionPlan, []);
   }
 });

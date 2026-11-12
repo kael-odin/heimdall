@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { chromium } from 'playwright';
 import { collectPage } from '../src/seo/collect.mjs';
+import { evaluateGeoPage } from '../src/seo/geo.mjs';
 import { renderHtml } from '../src/seo/report.mjs';
 import { evaluatePage } from '../src/seo/rules.mjs';
 
@@ -96,6 +97,17 @@ const cases = [
     script: "history.replaceState(null, '', '/replacement')",
     noindex: false, nofollow: false, initialHtml: 'unavailable', rawSource: 'refetch',
   },
+  { name: 'nosnippet limits previews without excluding indexing', tags: '<meta name="robots" content="nosnippet">', noindex: false, nofollow: false, nosnippet: true },
+  { name: 'zero max-snippet header limits previews', headers: ['max-snippet: 0'], noindex: false, nofollow: false, nosnippet: true },
+  { name: 'space-separated preview and follow directives are independent', tags: '<meta name="robots" content="max-snippet: 0 nofollow">', noindex: false, nofollow: true, nosnippet: true },
+  { name: 'Googlebot preview restrictions preserve header scope', headers: ['googlebot: max-snippet:0', 'otherbot: max-snippet:-1'], noindex: false, nofollow: false, nosnippet: true },
+  { name: 'other crawler preview restrictions do not leak to Googlebot', headers: ['googlebot: max-snippet:-1', 'otherbot: nosnippet'], noindex: false, nofollow: false },
+  { name: 'positive snippet length is not a total preview restriction', tags: '<meta name="robots" content="max-snippet:20">', noindex: false, nofollow: false },
+  { name: 'parseable signed zero limits previews', tags: '<meta name="robots" content="max-snippet:+00">', noindex: false, nofollow: false, nosnippet: true },
+  { name: 'space-separated noindex after a preview value remains relevant', tags: '<meta name="robots" content="max-image-preview:large noindex">', noindex: true, nofollow: false, evidence: 'noindex' },
+  { name: 'numeric prefix is not a noindex directive', tags: '<meta name="robots" content="max-snippet:20 0noindex">', noindex: false, nofollow: false },
+  { name: 'empty valued syntax does not become a bare restriction', tags: '<meta name="robots" content="nosnippet:, noindex:">', noindex: false, nofollow: false },
+  { name: 'initial preview restriction survives JavaScript removal', tags: '<meta name="robots" content="nosnippet">', script: "document.querySelector('meta[name=robots]').remove()", noindex: false, nofollow: false, nosnippet: true },
   {
     name: 'evidence identifies a directive beyond a long meta prefix',
     tags: `<meta name="robots" content="${'index, '.repeat(40)}noindex">`,
@@ -127,10 +139,13 @@ test('SEO robots signals are collected and attributed for Google web search', { 
       const page = await collectPage(browser, `${origin}/${index}`, { settleMs: 20 });
       assert.equal(page.meta.noindex, fixture.noindex);
       assert.equal(page.meta.nofollow, fixture.nofollow);
+      assert.equal(page.meta.nosnippet, fixture.nosnippet ?? false);
       assert.equal(page.robotsEvidence.initialHtml, fixture.initialHtml ?? 'checked');
       assert.equal(page.raw.source, fixture.rawSource ?? 'navigation');
       const issue = evaluatePage(page, { host: '127.0.0.1' }).find(item => item.id === 'index-noindex');
       assert.equal(Boolean(issue), fixture.noindex);
+      const discoverable = evaluateGeoPage(page).dimensions.citation.checks.find(item => item.id === 'geo-citation-discoverable');
+      assert.equal(discoverable.status, fixture.noindex || fixture.nosnippet ? 'fail' : fixture.initialHtml === 'unavailable' ? 'unknown' : 'pass');
       if (fixture.evidence) assert.match(issue.evidence.toLowerCase(), new RegExp(fixture.evidence));
     });
   }

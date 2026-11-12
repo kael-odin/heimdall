@@ -145,3 +145,5 @@ node core/src/cli.mjs live iana.org --offline --strict --root mirror --rebuild -
 核心快速回归 1,332/1,332 通过；最终 CLI、控制台与评估定向测试 11/11 通过，Linux Node 22 评估测试 6/6 通过；语法检查 763 文件和 14 个冻结验证器检查通过。新增逻辑复用两个现有测试文件，没有新增依赖或测试文件。
 
 复测证据位于 `D:/Github-Star/heimdall-evidence-archive/2026-11-12/iana-delivery-recheck/`：`final-feedback.log`、`final-assessment.log`、`data/workspace/iana.org/live-export.json` 与失败候选包记录最终结果；`original-inventory.json` 和 `archive-original.log` 记录原件迁移校验。原始未启用补抓的结果与早期失败日志也保留，不能把模式差异当成产品回归。
+
+交付反馈提交 `1fe9d802575c19f17e2bfc66f5821153876edd4d` 的完整 CI `43221215562` 已完成，8/8 任务成功，含两片完整 Core 测试与控制台 smoke；这不改变 IANA 严格交付仍未通过的结论。

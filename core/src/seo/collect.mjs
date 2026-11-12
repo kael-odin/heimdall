@@ -20,17 +20,14 @@ const ROBOTS_VALUE_DIRECTIVES = new Set(['max-snippet', 'max-image-preview', 'ma
 
 /** Restriction evidence for Google web search; other crawler-specific rules stay out of this verdict. */
 function googleRobotsEvidence(tags, headers, raw) {
-  const evidence = { target: 'googlebot', initialHtml: raw?.source === 'navigation' ? 'checked' : 'unavailable', noindex: [], nofollow: [] };
+  const evidence = { target: 'googlebot', initialHtml: raw?.source === 'navigation' ? 'checked' : 'unavailable', noindex: [], nofollow: [], nosnippet: [] };
   const apply = (scope, value, source) => {
     if (scope !== 'robots' && scope !== 'googlebot') return;
-    for (const part of value.split(',')) {
-      const directive = part.trim().toLowerCase();
-      if (!directive || directive.includes(':')) continue;
-      for (const token of directive.split(/\s+/)) {
-        const match = `${source} [${scope}: ${token}]`;
-        if (token === 'none' || token === 'noindex') evidence.noindex.push(match);
-        if (token === 'none' || token === 'nofollow') evidence.nofollow.push(match);
-      }
+    for (const directive of value.toLowerCase().match(/[^\s,:]+(?:\s*:\s*[^\s,]*)?/g) ?? []) {
+      const match = `${source} [${scope}: ${directive}]`;
+      if (directive === 'none' || directive === 'noindex') evidence.noindex.push(match);
+      if (directive === 'none' || directive === 'nofollow') evidence.nofollow.push(match);
+      if (directive === 'nosnippet' || /^max-snippet\s*:\s*[+-]?0+$/.test(directive)) evidence.nosnippet.push(match);
     }
   };
 
@@ -50,15 +47,14 @@ function googleRobotsEvidence(tags, headers, raw) {
       const prefix = value.match(/^([a-z][a-z0-9_-]*)\s*:\s*(.*)$/i);
       if (prefix) {
         const name = prefix[1].toLowerCase();
-        if (ROBOTS_VALUE_DIRECTIVES.has(name)) continue;
+        if (ROBOTS_VALUE_DIRECTIVES.has(name)) { apply(scope, value, source); continue; }
         scope = name;
         value = prefix[2];
       }
       apply(scope, value, source);
     }
   }
-  evidence.noindex = [...new Set(evidence.noindex)];
-  evidence.nofollow = [...new Set(evidence.nofollow)];
+  for (const key of ['noindex', 'nofollow', 'nosnippet']) evidence[key] = [...new Set(evidence[key])];
   return evidence;
 }
 
@@ -373,7 +369,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       robotsMeta: dom.robotsMeta,
       xRobots: headers['x-robots-tag'] ?? '',
       robotsEvidence,
-      meta: { noindex: robotsEvidence.noindex.length > 0, nofollow: robotsEvidence.nofollow.length > 0 },
+      meta: { noindex: robotsEvidence.noindex.length > 0, nofollow: robotsEvidence.nofollow.length > 0, nosnippet: robotsEvidence.nosnippet.length > 0 },
       lang: dom.lang, viewport: dom.viewport, textHash: dom.textHash, textSample: dom.textSample,
       h1: dom.h1, headings: dom.headings, headingLevels: dom.headingLevels, headingSkips: dom.headingSkips,
       wordCount: dom.wordCount, textRatio: dom.htmlCodeUnits ? Math.min(1, dom.textLength / dom.htmlCodeUnits) : 0,

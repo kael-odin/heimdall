@@ -165,6 +165,11 @@ export function evaluateGeoPage(page = {}) {
   const raw = page.raw;
   const rawKnown = raw?.ok === true && raw.source === 'navigation' && Number.isFinite(raw.wordCount);
   const meta = page.meta ?? {};
+  const robots = page.robotsEvidence;
+  const robotsKnown = rawKnown && robots?.target === 'googlebot' && robots.initialHtml === 'checked'
+    && Array.isArray(robots.noindex) && Array.isArray(robots.nosnippet)
+    && typeof meta.noindex === 'boolean' && typeof meta.nosnippet === 'boolean';
+  const googleRestricted = meta.noindex === true || meta.nosnippet === true;
   const links = page.links ?? {};
 
   const checks = {
@@ -184,8 +189,8 @@ export function evaluateGeoPage(page = {}) {
     ],
     extractability: [
       check('geo-extract-canonical', 6, page.canonical ? 'pass' : 'fail', '页面有规范地址',
-        page.canonical ? '已提供 canonical，便于合并同一内容的地址。' : '缺少 canonical，内容主地址不明确。',
-        page.canonical || '', '为页面提供本域、稳定的自指 canonical。', 'medium'),
+        page.canonical ? '已提供 canonical，便于合并同一内容的地址。' : '页面未显式声明 canonical。',
+        page.canonical || '', '根据重复页面与索引意图确认规范地址，再决定是否补充 canonical。', 'medium'),
       check('geo-extract-language', 4, page.lang ? 'pass' : 'fail', '页面声明语言',
         page.lang ? `页面语言为 ${page.lang}。` : '缺少 html lang。', page.lang || '', '设置准确的 html lang。', 'low'),
       check('geo-extract-structure', 8, schema.hasEntityType || page.microdataCount > 0 ? 'pass' : 'fail', '页面有结构化实体线索',
@@ -219,9 +224,13 @@ export function evaluateGeoPage(page = {}) {
       check('geo-citation-freshness', 4, schema.articleLike ? (schema.hasDate ? 'pass' : 'fail') : 'na', '内容时间可核验',
         schema.articleLike ? (schema.hasDate ? '文章实体含发布时间或修改时间。' : '文章实体缺少时间字段。') : '非文章类页面不强制要求文章时间字段。',
         schema.articleLike ? (schema.hasDate ? 'datePublished/dateModified 等字段已发现' : '') : '', '对文章、新闻和报告补充真实的发布日期与更新时间。', 'low'),
-      check('geo-citation-discoverable', 4, meta.noindex === true ? 'fail' : page.canonical ? 'pass' : 'unknown', '公开内容可发现',
-        meta.noindex === true ? '页面明确限制索引，公开发现能力受限。' : page.canonical ? '没有发现 noindex，且有 canonical。' : '没有足够证据确认公开主地址。',
-        meta.noindex === true ? page.robotsMeta || page.xRobots || 'noindex' : page.canonical || '', '确认页面是否应公开；需要公开时移除错误的 noindex。', 'high'),
+      check('geo-citation-discoverable', 4, googleRestricted ? 'fail' : robotsKnown ? 'pass' : 'unknown', 'Google 页面级索引与摘要限制',
+        meta.noindex === true ? '已发现适用于 Google 网页搜索的索引限制。'
+          : meta.nosnippet === true ? '已发现适用于 Google 网页搜索的 nosnippet 或 max-snippet:0。'
+            : robotsKnown ? '本次初始 HTML 与响应头未发现索引或全量摘要限制；实际抓取、收录与 AI 引用仍未验证。' : '初始索引与摘要指令尚未完整核对。',
+        googleRestricted ? [...(robots?.noindex ?? []), ...(robots?.nosnippet ?? [])].join(' | ') || page.robotsMeta || page.xRobots || '索引或摘要限制'
+          : robotsKnown ? 'Googlebot：noindex=false，nosnippet=false；canonical 独立检查' : '',
+        '确认是否希望参与 Google 搜索摘要与 AI 搜索；仅在限制与发布意图不符时调整相关指令，再重新审计。', 'high'),
       check('geo-citation-links', 4, links.external > 0 ? 'pass' : 'unknown', '有外部参考线索',
         links.external > 0 ? '发现外部链接，可作为引用线索。' : '没有发现外部参考链接，暂不据此判定为缺陷。',
         links.external > 0 ? `${links.external} 个外部链接` : '', '需要引用时提供指向一手资料的稳定链接；外链存在不等于模型一定采信。', 'low'),
@@ -316,6 +325,8 @@ export function evaluateGeoSite(site = {}) {
     caveats: [
       '这是基于已采集页面的可解释启发式，不是搜索排名或模型引用概率预测。',
       '没有执行真实模型问答、引用命中率实验或跨模型对照。',
+      'Google 页面级指令检查不覆盖 robots.txt、实际收录、data-nosnippet 或单独授权例外，也不推断其他 AI 爬虫的策略。',
+      'canonical 与结构化数据作为结构线索计分，不是 Google AI 搜索的特殊必备标记。',
       '未采集页面、登录后内容和未核实的初始 HTML 不进入本次 GEO 结论。',
       '预计成本是按改动面给出的 small / medium / large 启发式，不是工时报价。',
     ],
