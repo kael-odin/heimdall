@@ -18,7 +18,7 @@ const cases = ['ok', 'ok-get', 'string-code', 'null-field', 'status-only', 'bad-
   'missing-field', 'nonscalar', 'not-json', 'duplicate', 'missing', 'blocked', 'oversize', 'compressed', 'invalid-json', 'query', 'iframe',
   'redirect-in', 'empty-query'];
 const QUERY_MARKER = 'public-query-value-do-not-record';
-const GET_CASES = new Set(['ok-get', 'redirect-in', 'approved-query', 'reordered-query', 'empty-value-query', 'wrong-query', 'extra-query', 'repeated-query']);
+const GET_CASES = new Set(['ok-get', 'redirect-in', 'approved-query', 'reordered-query', 'empty-value-query', 'wrong-query', 'extra-query', 'repeated-query', 'empty-separators-query']);
 
 function startServer() {
   const hits = [];
@@ -35,7 +35,7 @@ function startServer() {
       const count = name === 'missing' ? 0 : name === 'duplicate' ? 2 : 1;
       const query = name === 'approved-query' ? `?page=2&q=${QUERY_MARKER}` : name === 'reordered-query' ? `?q=${QUERY_MARKER}&page=2`
         : name === 'empty-value-query' ? '?q=' : name === 'wrong-query' ? '?page=3' : name === 'extra-query' ? '?page=2&extra=1' : name === 'repeated-query' ? '?page=2&page=2'
-          : name === 'query' ? '?different=1' : name === 'empty-query' ? '?' : '';
+          : name === 'query' ? '?different=1' : name === 'empty-query' ? '?' : name === 'empty-separators-query' ? '?&&' : '';
       const path = name === 'redirect-in' ? '/redirect-in' : `/api/${name}${query}`;
       return res.end(`<!doctype html><title>fixture</title><div id="ready">ready</div><script>
         let left = ${count};
@@ -122,7 +122,7 @@ test('response checks reject ambiguous or unsafe declarations', () => {
 
 test('unavailable CDP evidence stays incomplete without fetching a body unnecessarily', async () => {
   const spec = { method: 'GET', origin: 'http://example.test', path: '/list', status: 200, json: { path: ['code'], equals: 0 } };
-  for (const expected of ['cached', 'size-unavailable', 'body-unavailable', 'redirect', 'pending']) {
+  for (const expected of ['cached', 'size-unavailable', 'body-unavailable', 'redirect', 'pending', 'empty-query']) {
     const session = new EventEmitter();
     let bodyCalls = 0;
     session.send = async method => {
@@ -133,7 +133,7 @@ test('unavailable CDP evidence stays incomplete without fetching a body unnecess
     session.detach = async () => {};
     const page = { context: () => ({ newCDPSession: async () => session }) };
     const observer = await observeResponses(page, [spec]);
-    const request = { requestId: 'one', frameId: 'main', request: { method: 'GET', url: 'http://example.test/list' } };
+    const request = { requestId: 'one', frameId: 'main', request: { method: 'GET', url: 'http://example.test/list' + (expected === 'empty-query' ? '?&&' : '') } };
     session.emit('Network.requestWillBeSent', request);
     if (expected === 'redirect') {
       session.emit('Network.requestWillBeSent', { ...request, request: { method: 'GET', url: 'http://example.test/other' }, redirectResponse: {} });
@@ -143,7 +143,7 @@ test('unavailable CDP evidence stays incomplete without fetching a body unnecess
       session.emit('Network.loadingFinished', { requestId: 'one', encodedDataLength: expected === 'size-unavailable' ? 0 : 100 });
     }
     const [result] = await observer.finish(expected === 'pending' ? 0 : 200);
-    assert.equal(result.state, expected);
+    assert.equal(result.state, expected === 'empty-query' ? 'missing' : expected);
     assert.equal(bodyCalls, expected === 'body-unavailable' ? 1 : 0);
     await observer.close();
   }
@@ -189,7 +189,7 @@ test('unavailable or ambiguous response evidence cannot produce a passing check 
       'missing-field': 'field-missing', nonscalar: 'field-missing', 'not-json': 'not-json', duplicate: 'ambiguous',
       missing: 'missing', blocked: 'request-failed', oversize: 'too-large', compressed: 'encoded',
       'invalid-json': 'invalid-json', query: 'missing', iframe: 'missing', 'redirect-in': 'redirect', 'empty-query': 'missing',
-      'wrong-query': 'missing', 'extra-query': 'missing', 'repeated-query': 'missing' };
+      'wrong-query': 'missing', 'extra-query': 'missing', 'repeated-query': 'missing', 'empty-separators-query': 'missing' };
     for (const name of Object.keys(states)) {
       const run = await runQa(loadWorkspace(root), { site: 'web', pages: ['/blank'], viewports: [1280],
         checks: [check(origin, name)], linkCheck: false, detect: false, baseline: false }, { browser });

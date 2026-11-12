@@ -117,7 +117,7 @@ export async function observeResponses(page, specs) {
     if (event.frameId !== mainFrame) return;
     let url;
     try { url = new URL(event.request.url); } catch { return; }
-    if (event.request.url.includes('#') || (event.request.url.includes('?') && !url.search)) return;
+    if (event.request.url.includes('#') || (event.request.url.includes('?') && !url.searchParams.size)) return;
     const entry = byKey.get(requestKey(event.request.method, url.href));
     if (!entry) return;
     entry.count = Math.min(2, entry.count + 1);
