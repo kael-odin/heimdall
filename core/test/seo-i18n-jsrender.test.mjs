@@ -175,6 +175,14 @@ test('JS 渲染: title / description 只在渲染后存在 → 分别报', () =>
 });
 
 // ---------- 原始 HTML 解析 ----------
+test('analyzeRawHtml: counts multilingual words without dropping scripts or splitting accents', () => {
+  for (const [text, count] of [
+    ['안녕하세요 세계', 2], ['こんにちは世界', 2], ['中文测试', 2],
+    ['Hello world 123', 3], ['café e\u0301cole', 2], ['مرحبا بالعالم', 2],
+    ['Привет мир', 2], ['𠀀', 1], ["don't 3.14", 2], ['🎉 — !!!', 0],
+  ]) assert.equal(analyzeRawHtml(`<body>${text}</body>`).wordCount, count, text);
+});
+
 test('analyzeRawHtml: 提取标题/描述/canonical/lang/viewport', () => {
   const r = analyzeRawHtml(`<!doctype html><html lang="zh-CN"><head>
     <title>测试页面</title>

@@ -7,7 +7,7 @@
  * 采集信号而不主动操作控件，但网页脚本仍可能发送写请求或访问第三方。
  */
 import { chromium } from 'playwright';
-import { analyzeRawHtml } from './raw-html.mjs';
+import { analyzeRawHtml, countWords } from './raw-html.mjs';
 import { isStructuralUrl } from './pagination.mjs';
 import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { canonUrl, isSameOriginUrl } from '../url-canon.mjs';
@@ -294,7 +294,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         headings,
         headingLevels: headings.map(h => h.level),
         headingSkips: skips,
-        wordCount: ((text.match(/[\u4e00-\u9fff]/g) || []).length) + ((text.match(/[A-Za-z0-9]+/g) || []).length),
+        text,
         textLength: text.length,
         htmlCodeUnits: html.length,
         htmlBytes: new TextEncoder().encode(html).byteLength,
@@ -341,7 +341,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       meta: { noindex: robotsEvidence.noindex.length > 0, nofollow: robotsEvidence.nofollow.length > 0, nosnippet: robotsEvidence.nosnippet.length > 0 },
       lang: dom.lang, viewport: dom.viewport, textHash: dom.textHash, textSample: dom.textSample,
       h1: dom.h1, headings: dom.headings, headingLevels: dom.headingLevels, headingSkips: dom.headingSkips,
-      wordCount: dom.wordCount, textRatio: dom.htmlCodeUnits ? Math.min(1, dom.textLength / dom.htmlCodeUnits) : 0,
+      wordCount: countWords(dom.text), textRatio: dom.htmlCodeUnits ? Math.min(1, dom.textLength / dom.htmlCodeUnits) : 0,
       htmlCodeUnits: dom.htmlCodeUnits, htmlBytes: dom.htmlBytes,
       imgTotal: dom.imgTotal, imgMissingAlt: dom.imgMissingAlt, imgEmptyAlt: dom.imgEmptyAlt, imgBroken: dom.imgBroken, imgLegacy: dom.imgLegacy, imgLazy: dom.imgLazy,
       links: dom.links, internalHrefs: dom.internalHrefs, externalSample: dom.externalSample,

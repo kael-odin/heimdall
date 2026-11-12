@@ -94,6 +94,14 @@ test('seo: noindex and non-https are flagged', () => {
   assert.ok(ids.includes('index-not-https'));
 });
 
+test('seo: a short body is an observation, not evidence of a ranking defect', () => {
+  for (const wordCount of [0, 25, 299]) {
+    const issues = evaluatePage(page({ wordCount }), site);
+    assert.equal(issues.find(i => i.id === 'content-thin').severity, 'info');
+    assert.equal(scoreIssues(issues), scoreIssues(issues.filter(i => i.id !== 'content-thin')));
+  }
+});
+
 test('seo: slow vitals and heavy resources are flagged', () => {
   const issues = evaluatePage(page({ vitals: { lcp: 5200, cls: 0.31, fcp: 3500 }, resources: { requests: 150, transferBytes: 5_000_000, jsBytes: 2_000_000, cssBytes: 50_000, imgBytes: 0, fontBytes: 0, renderBlocking: 8 } }), site);
   const ids = issues.map(i => i.id);

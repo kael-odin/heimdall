@@ -18,6 +18,7 @@ import { evaluatePage } from '../src/seo/rules.mjs';
 import { scoreIssues } from '../src/seo/rules.mjs';
 import { siteAggregate } from '../src/seo/matrix-core.mjs';
 import { SEO_MEASUREMENT_VERSION } from '../src/seo/method.mjs';
+import { analyzeRawHtml } from '../src/seo/raw-html.mjs';
 
 const BARE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Bare page without social or canonical tags</title>
 <meta name="description" content="A page that deliberately omits canonical, og:image and twitter:image, and uses a relative hreflang.">
@@ -44,6 +45,20 @@ async function withPages(t, fn) {
 }
 
 const idsOf = page => evaluatePage(page, { host: new URL(page.url).host }).map(i => i.id);
+
+test('采集：多语言可见正文与初始 HTML 使用同一分词器', async t => {
+  const text = '안녕하세요 세계 こんにちは世界 中文测试 café e\u0301cole مرحبا بالعالم';
+  const html = `<html lang="ko"><body>${text}<script>ignored words here</script></body></html>`;
+  const server = createServer((req, res) => { res.setHeader('content-type', 'text/html; charset=utf-8'); res.end(html); });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const browser = await chromium.launch();
+  t.after(async () => { await browser.close(); await new Promise(resolve => server.close(resolve)); });
+  const p = await collectPage(browser, `http://127.0.0.1:${server.address().port}/`, { settleMs: 10 });
+  assert.equal(p.wordCount, 10);
+  assert.equal(p.raw.wordCount, p.wordCount);
+  assert.equal(p.raw.wordCount, analyzeRawHtml(html).wordCount);
+});
 
 test('采集：缺少 canonical / og:image / twitter:image 时保持空串，规则能报缺失', async t => {
   await withPages(t, async (browser, origin) => {

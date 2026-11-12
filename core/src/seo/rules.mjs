@@ -108,7 +108,7 @@ export function evaluatePage(page, site = {}) {
     if (page.wordCount >= 100 && raw.wordCount < page.wordCount * 0.3) {
       const pct = Math.round((raw.wordCount / Math.max(1, page.wordCount)) * 100);
       A('content-js-dependent', 'content', 'high', '正文依赖 JS 渲染',
-        `服务端 HTML 约 ${raw.wordCount} 词，渲染后 ${page.wordCount} 词（${pct}%）`,
+        `服务端 HTML 分词数 ${raw.wordCount}，渲染后 ${page.wordCount}（${pct}%）`,
         `${rawLabel} HTML 重编码 UTF-8 约 ${Math.round(raw.bytes / 1024)} KiB，子资源 ${page.resources.requests} 个请求`,
         '正文应服务端直出（SSR/SSG）。只靠客户端渲染时，AI 爬虫与不执行脚本的抓取者读不到内容');
     }
@@ -124,7 +124,7 @@ export function evaluatePage(page, site = {}) {
   if (page.h1.length === 0) A('content-h1-missing', 'content', 'high', '缺少 H1', '', '', '每页保留一个描述主题的 H1');
   else if (page.h1.length > 1) A('content-h1-multiple', 'content', 'medium', '存在多个 H1', `${page.h1.length} 个`, page.h1.slice(0, 3).join(' | '), '合并为单一 H1，其余降级为 H2/H3');
   if (page.headingSkips > 0) A('content-heading-skip', 'content', 'low', '标题层级跳跃', `${page.headingSkips} 处`, (page.headingLevels || []).join(' → '), '保持 H1→H2→H3 的层级顺序');
-  if (page.wordCount < 300) A('content-thin', 'content', 'medium', '内容偏薄', `可见正文约 ${page.wordCount} 词`, '', '补充对用户有价值的内容（≥300 词为参考线）');
+  if (page.wordCount < 300) A('content-thin', 'content', 'info', '正文长度观察', `可见正文约 ${page.wordCount} 个分词单位`, '300 仅为人工检查提示线；Google 没有排名所需的固定最低字数。', '结合页面用途核对是否回答了用户问题，不为凑字数填充内容');
   // 旧样本的 htmlBytes 实际是代码单元；保留阈值口径，但不把经验比例视作 SEO 缺陷。
   const htmlCodeUnits = page.htmlCodeUnits ?? page.htmlBytes;
   if (page.textRatio < 0.08 && htmlCodeUnits > 20_000) A('content-text-ratio', 'content', 'info', '文本/DOM 比例观察', `${(page.textRatio * 100).toFixed(1)}%`, `渲染后 DOM ${htmlCodeUnits} 个 UTF-16 代码单元`, '仅供排查内容和标记结构，不代表搜索排名问题');

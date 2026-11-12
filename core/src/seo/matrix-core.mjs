@@ -61,7 +61,7 @@ export function buildMatrix(audits) {
   const sites = audits.map(a => {
     const aggregate = siteAggregate(a);
     if (!comparable) { aggregate.score = null; aggregate.issuesPerPage = null; }
-    if (!jsonldComparable) { aggregate.jsonldRate = null; aggregate.issuesPerPage = null; }
+    if (!jsonldComparable) { aggregate.jsonldRate = null; aggregate.issuesPerPage = null; aggregate.avgWords = null; }
     return { host: siteLabel(a), aggregate };
   });
   const types = ['home', 'pricing', 'product', 'listing', 'docs', 'blog', 'company', 'other'];
@@ -73,7 +73,7 @@ export function buildMatrix(audits) {
         host: siteLabel(a),
         pages: pages.length,
         avgScore: comparable && a.summary?.baselineEligible === true ? round(avg(pages.map(p => p.score)), 1) : null,
-        avgWords: round(avg(pages.map(p => p.wordCount ?? 0)), 0),
+        avgWords: jsonldComparable ? round(avg(pages.map(p => p.wordCount ?? 0)), 0) : null,
         avgLcp: round(avg(pages.map(p => p.vitals?.lcp).filter(v => typeof v === 'number')), 0),
       };
     });
@@ -153,7 +153,7 @@ export function renderMatrixHtml(matrix) {
     return `<tr><th>${esc(label)}</th>${cells}</tr>`;
   }).join('');
 
-  const typeRows = matrix.rows.map(r => `<tr><th>${esc(r.type)}</th>${r.cells.map(c => `<td><b>${c.pages}</b> 页<br/><span>分 ${fmt(c.avgScore)} · ${fmt(c.avgWords)} 词</span></td>`).join('')}</tr>`).join('');
+  const typeRows = matrix.rows.map(r => `<tr><th>${esc(r.type)}</th>${r.cells.map(c => `<td><b>${c.pages}</b> 页<br/><span>分 ${fmt(c.avgScore)} · 字词 ${fmt(c.avgWords)}</span></td>`).join('')}</tr>`).join('');
 
   const issues = matrix.topIssues.map(t => `<tr><th>${esc(t.host)}</th><td>${t.top.map(i => `<span class="tag">${esc(i.id)} ×${i.count}</span>`).join(' ') || '—'}</td></tr>`).join('');
 
@@ -177,6 +177,7 @@ footer{margin-top:36px;color:#64748b;font-size:12px}
 <div class="meta">采集不完整或旧报告未记录采集状态时，不比较分数和每页问题数。其他指标仅描述本次采集样本。</div>
 <div class="meta">${matrix.scoreComparison?.comparable ? `评分口径 ${esc(matrix.scoreComparison.methodVersion)}；页面集合不同时分数仍需谨慎解释。` : matrix.scoreComparison?.reason === 'insufficient-eligible-audits' ? '完整审计不足两份，已隐藏分数和每页问题数。' : '评分口径缺失或不一致，已隐藏分数和每页问题数；请重新采集同口径报告。'}</div>
 <div class="meta">${matrix.jsonldComparison?.comparable ? `JSON-LD 类型覆盖率只描述采集样本，测量口径 ${esc(matrix.jsonldComparison.measurementVersion)}；不包括 microdata 或 RDFa，也不代表搜索引擎认可。` : 'JSON-LD 测量口径缺失、过旧、不一致或样本不足，已隐藏覆盖率和问题统计；请重新采集同口径报告。'}</div>
+<div class="meta">平均字词数只在测量口径一致时展示；不同语言的计数不能代表内容质量或答案完整性。</div>
 ${matrix.sites.some(s => s.aggregate.jsonldUnknownPages > 0) ? '<div class="meta">部分页面的 JSON-LD 语义未核实，相关覆盖率保留为空，不能解释为 0%。</div>' : ''}
 <h2>总体指标</h2><table><tbody><tr><th>指标</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${metricRows}</tbody></table>
 <h2>页面类型分布</h2><table><tbody><tr><th>页面类型</th>${matrix.sites.map(s => `<th>${esc(s.host)}</th>`).join('')}</tr>${typeRows || '<tr><td>—</td></tr>'}</tbody></table>

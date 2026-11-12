@@ -223,10 +223,13 @@ test('matrix: the current resource-classification method is not compared with ve
   const mixed = buildMatrix([current, previous]);
   assert.equal(mixed.scoreComparison.comparable, false);
   assert.equal(mixed.jsonldComparison.comparable, false);
+  assert.deepEqual(mixed.sites.map(s => s.aggregate.avgWords), [null, null]);
+  assert.ok(mixed.rows.every(row => row.cells.every(cell => cell.avgWords === null)));
   assert.deepEqual(mixed.sites.map(s => s.aggregate.score), [null, null]);
   previous.scoreMethodVersion = SEO_SCORE_METHOD_VERSION;
   previous.measurementVersion = SEO_MEASUREMENT_VERSION;
   const same = buildMatrix([current, previous]);
   assert.equal(same.scoreComparison.comparable, true);
   assert.equal(same.jsonldComparison.comparable, true);
+  assert.ok(same.sites.every(s => s.aggregate.avgWords > 0));
 });

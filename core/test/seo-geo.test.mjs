@@ -48,6 +48,16 @@ test('GEO 健康页面得分高且四个维度都有证据', () => {
   assert.equal(empty.dimensions.answerability.checks.find(item => item.id === 'geo-answer-server-visible').status, 'fail');
 });
 
+test('GEO: short initial HTML is visible when it contains the rendered body', () => {
+  const check = (wordCount, rawCount) => evaluateGeoPage(page({ wordCount,
+    raw: { ok: true, source: 'navigation', wordCount: rawCount } })).dimensions.answerability.checks
+    .find(item => item.id === 'geo-answer-server-visible');
+  for (const n of [1, 25, 39]) assert.equal(check(n, n).status, 'pass');
+  assert.equal(check(25, 0).status, 'fail');
+  assert.equal(check(800, 25).status, 'fail');
+  assert.equal(check(undefined, 25).status, 'unknown');
+});
+
 test('GEO 缺陷页面保留具体问题，na 和 unknown 不误报成失败', () => {
   const result = evaluateGeoPage(page({
     url: 'https://example.com/app', title: '', description: '', canonical: '', lang: '', h1: [], headings: [],

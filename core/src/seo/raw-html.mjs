@@ -16,6 +16,15 @@
  */
 import { parse } from 'parse5';
 
+const words = new Intl.Segmenter('en', { granularity: 'word' });
+
+// Both HTML and rendered text use the host's ICU, so script coverage cannot diverge between them.
+export function countWords(text) {
+  let count = 0;
+  for (const segment of words.segment(text)) if (segment.isWordLike) count++;
+  return count;
+}
+
 /** depth-first 遍历（parse5 默认树适配器：childNodes / tagName / attrs / value） */
 function walk(node, fn) {
   fn(node);
@@ -58,9 +67,6 @@ export function analyzeRawHtml(html) {
   let doc;
   try { doc = parse(src); } catch (e) { return { ...out, ok: false, error: String(e).slice(0, 120) }; }
 
-  let origin = '';
-  try { origin = new URL(attr(doc, 'x') || '/', 'https://x.invalid').origin; } catch {}
-
   walk(doc, (n) => {
     if (n.nodeName === '#text') return;
     const t = n.tagName;
@@ -101,7 +107,6 @@ export function analyzeRawHtml(html) {
   // 可见文本 ≈ 全文去掉 script/style 后的空白规整
   const text = textOf(doc).join(' ').replace(/\s+/g, ' ').trim();
   out.textLength = text.length;
-  out.wordCount = (text.match(/[一-鿿]/g) || []).length + (text.match(/[A-Za-z0-9]+/g) || []).length;
-  void origin;
+  out.wordCount = countWords(text);
   return out;
 }

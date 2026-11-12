@@ -168,6 +168,8 @@ export function evaluateGeoPage(page = {}) {
   const wordCount = Number.isFinite(page.wordCount) ? page.wordCount : null;
   const raw = page.raw;
   const rawKnown = raw?.ok === true && raw.source === 'navigation' && Number.isFinite(raw.wordCount);
+  const bodyComparable = rawKnown && wordCount != null;
+  const serverVisible = bodyComparable && raw.wordCount > 0 && raw.wordCount >= wordCount * 0.3;
   const meta = page.meta ?? {};
   const robots = page.robotsEvidence;
   const robotsKnown = rawKnown && robots?.target === 'googlebot' && robots.initialHtml === 'checked'
@@ -181,15 +183,15 @@ export function evaluateGeoPage(page = {}) {
       check('geo-answer-title', 6, page.title && h1.length ? 'pass' : 'fail', '主题入口清晰',
         page.title && h1.length ? '页面同时提供 title 和 H1。' : '页面缺少 title 或 H1，回答引擎难以确认主题。',
         `${page.title ? 'title 有值' : 'title 缺失'}；H1 ${h1.length} 个`, '补齐唯一、具体的 title 和 H1。', 'high'),
-      check('geo-answer-body', 10, wordCount == null ? 'unknown' : wordCount >= 120 ? 'pass' : 'fail', '正文足够回答问题',
-        wordCount == null ? '正文长度未采集。' : wordCount >= 120 ? '可见正文达到启发式最低长度。' : '可见正文过短，难以支撑完整回答。',
-        wordCount == null ? '' : `可见正文约 ${wordCount} 词`, '围绕一个明确问题补充事实、步骤、限制和例子。', 'medium'),
+      check('geo-answer-body', 10, wordCount == null ? 'unknown' : wordCount >= 120 ? 'pass' : 'fail', '正文长度参考',
+        wordCount == null ? '正文长度未采集。' : '以 120 个分词单位作准备度启发式，不能据此判断答案质量或引用效果。',
+        wordCount == null ? '' : `可见正文约 ${wordCount} 个分词单位`, '按用户问题核对答案完整性，长度仅为人工检查提示。', 'medium'),
       check('geo-answer-headings', 6, headings.length >= 2 ? 'pass' : 'fail', '内容有可导航分段',
         headings.length >= 2 ? '页面有多个带文字的标题。' : '页面缺少足够的分段标题。',
         `${headings.length} 个标题`, '用描述性 H2/H3 拆分主题，不要只用视觉样式模拟标题。', 'medium'),
-      check('geo-answer-server-visible', 8, rawKnown ? (raw.wordCount >= Math.max(40, (wordCount ?? 0) * 0.3) ? 'pass' : 'fail') : 'unknown', '服务端可直接读到正文',
-        !rawKnown ? '初始 HTML 正文未核实。' : raw.wordCount >= Math.max(40, (wordCount ?? 0) * 0.3) ? '初始 HTML 包含足够正文。' : '初始 HTML 正文明显少于渲染后正文。',
-        rawKnown ? `初始 HTML 约 ${raw.wordCount} 词，渲染后约 ${wordCount ?? 0} 词` : '', '让核心答案在 SSR/SSG 初始 HTML 中可见。', 'high'),
+      check('geo-answer-server-visible', 8, bodyComparable ? (serverVisible ? 'pass' : 'fail') : 'unknown', '服务端正文长度覆盖',
+        !bodyComparable ? '初始 HTML 或渲染后正文长度未核实。' : serverVisible ? '初始 HTML 非空且达到渲染后正文分词数的 30%；未核对内容等价。' : '初始 HTML 正文缺失或分词数低于渲染后正文的 30%。',
+        bodyComparable ? `初始 HTML 约 ${raw.wordCount}，渲染后约 ${wordCount} 个分词单位` : '', '核对核心答案是否在初始 HTML 中可见；长度比例不能证明内容一致。', 'high'),
     ],
     extractability: [
       check('geo-extract-canonical', 6, page.canonical ? 'pass' : 'fail', '页面有规范地址',
