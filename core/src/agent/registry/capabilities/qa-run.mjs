@@ -36,7 +36,7 @@ const RESPONSE_JSON = {
 const RESPONSE = {
   type: 'object', additionalProperties: false, required: ['method', 'origin', 'path'],
   properties: {
-    method: { type: 'string', enum: ['GET', 'POST'] },
+    method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] },
     origin: { type: 'string', maxLength: 500, description: 'Exact HTTP origin, with no credentials, path or query' },
     path: { type: 'string', maxLength: 500, description: 'Exact unencoded path with no query' },
     query: { type: 'object', minProperties: 1, maxProperties: 20, additionalProperties: { type: 'string', maxLength: 200 },
@@ -53,7 +53,7 @@ export const CHECK_SCHEMA = {
     path: { type: 'string', pattern: '^/', maxLength: 500 }, steps: { type: 'array', items: STEP, maxItems: QA_SCOPE_LIMITS.steps },
     expect: { type: 'array', items: EXPECT, minItems: 1, maxItems: QA_SCOPE_LIMITS.expectations },
     responses: { type: 'array', items: RESPONSE, minItems: 1, maxItems: 10,
-      description: 'Observe exact main-frame GET/POST responses without sending extra requests; unmatched or unreadable evidence is incomplete' },
+      description: 'Observe exact main-frame GET/POST/PUT/PATCH/DELETE responses without sending extra requests or authorizing writes; unmatched or unreadable evidence is incomplete' },
     tier: { type: 'string', enum: ['wall', 'degrade', 'tolerable'] }, basis: { type: 'string', enum: ['failed', 'wrong', 'promise', 'friction', 'cosmetic'] },
     loss: { type: 'string', maxLength: 300, description: 'Observed user impact. Without this, a finding is downgraded to tolerable and does not enter CI blocking findings' },
     prd: { type: 'string', maxLength: 300, description: 'Where this expectation comes from, e.g. "PRD 优惠券 §3.2: 无效券码提示「券码无效」"' },
@@ -68,7 +68,7 @@ export default {
     + 'overflow and blocked-request problems. Run reference-free accessibility, layout, content, security and performance detectors, and compare '
     + 'screenshots with an approved baseline. Optional declarative checks support real input steps and visible/hidden/text/url/count/attribute/'
     + 'clipboard/title expectations; cite the PRD in "prd". Text scope all-visible checks each visible match; none is incomplete. Use waitFor and '
-    + 'minMatches to specify readiness. Optional response declarations observe an exact main-frame GET/POST and compare HTTP status and up to 20 JSON scalars in one body read; '
+    + 'minMatches to specify readiness. Optional response declarations observe an exact main-frame GET/POST/PUT/PATCH/DELETE and compare HTTP status and up to 20 JSON scalars in one body read; '
     + 'GET may declare an exact public query; query values and bodies are not recorded. Missing, ambiguous or unreadable responses are incomplete. explore=true clicks limited controls to find interaction failures; it is off by default because it can '
     + 'change state. HTTP policy may permit writes; GET and WebSocket may also cause side effects. '
     + 'Findings are matched against past verdicts; returns report and issue paths.',

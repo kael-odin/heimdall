@@ -15,14 +15,17 @@ const PROXY = fileURLToPath(new URL('../../../plugin/server/heimdall-mcp.mjs', i
 
 test('bundled MCP proxy forwards response checks to a fresh isolated engine', { timeout: 90_000 }, async () => {
   let queries = 0;
+  let requestMethod = 'POST';
+  const methods = [];
   const fixture = createServer((req, res) => {
     if (req.url === '/blank' || req.url === '/page') {
       res.setHeader('content-type', 'text/html');
       return res.end(req.url === '/blank' ? '<title>Blank</title>'
-        : '<title>Page</title><div id="ready" hidden>Ready</div><script>fetch("/api/list",{method:"POST"}).then(()=>document.querySelector("#ready").hidden=false)</script>');
+        : `<title>Page</title><div id="ready" hidden>Ready</div><script>fetch("/api/list",{method:"${requestMethod}"}).then(()=>document.querySelector("#ready").hidden=false)</script>`);
     }
-    if (req.url === '/api/list' && req.method === 'POST') {
+    if (req.url === '/api/list' && ['POST', 'PATCH'].includes(req.method)) {
       queries++;
+      methods.push(req.method);
       res.setHeader('content-type', 'application/json');
       return res.end(JSON.stringify({ code: 0, total: 2, private: 'proxy-fixture-private-do-not-record' }));
     }
@@ -59,6 +62,8 @@ test('bundled MCP proxy forwards response checks to a fresh isolated engine', { 
       const tool = tools.find(item => item.name === `heimdall_${id}`);
       assert.equal(tool?.annotations.destructiveHint, true, id);
       assert.equal(tool.annotations.idempotentHint, false, id);
+      if (id.startsWith('qa_')) assert.deepEqual(tool.inputSchema.properties.checks.items.properties.responses.items.properties.method.enum,
+        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
     }
     const check = { title: 'List response', path: '/page', steps: [{ action: 'waitFor', selector: '#ready' }],
       expect: [{ kind: 'visible', selector: '#ready' }],
@@ -69,13 +74,17 @@ test('bundled MCP proxy forwards response checks to a fresh isolated engine', { 
     assert.equal(ok.isError, false, JSON.stringify(ok.structuredContent.error));
     assert.equal(ok.structuredContent.result.checks[0].responses[0].state, 'matched');
     assert.doesNotMatch(JSON.stringify(ok.structuredContent), /proxy-fixture-private-do-not-record/);
-    const mismatch = { ...check, responses: [{ ...check.responses[0], json: [{ path: ['code'], equals: 0 }, { path: ['total'], equals: 3 }] }] };
+    requestMethod = 'PATCH';
+    writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({ sites: { web: { url: origin, writes: 'allow' } },
+      defaults: { settleMs: 100, timeoutMs: 5000 } }));
+    const mismatch = { ...check, responses: [{ ...check.responses[0], method: 'PATCH', json: [{ path: ['code'], equals: 0 }, { path: ['total'], equals: 3 }] }] };
     const failed = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...args, checks: [mismatch], failOn: 'none' } });
     assert.equal(failed.isError, true);
     assert.equal(failed.structuredContent.error.code, 'qa_incomplete');
     assert.equal(failed.structuredContent.result.checks[0].responses[0].state, 'json-mismatch');
     assert.equal(failed.structuredContent.result.checks[0].responses[0].failedJsonIndex, 1);
     assert.match(failed.structuredContent.result.checks[0].responses[0].detail, /JSON 断言 2/);
+    assert.deepEqual(methods, ['POST', 'PATCH']);
     assert.equal(queries, 2);
   } finally {
     await client?.close().catch(() => {});

@@ -41,6 +41,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-13 | **[有状态后端与动态资源路由](2026-11-13/stateful-backend.md)** | 真实开源参考后端留出 24/24，Windows 与断网只读 Docker 双环境通过并验证同卷重启；两种状态故障被 QA 读回检查检出，健康与还原版通过 |
 | 2026-11-13 | **[分页与分面机制实测](2026-11-13/seo-pagination-mechanism.md)** | Hacker News 两页样本 37→43，含基础地址首页的三页样本 39.3→43.3；WordPress 均不变。严格地址比较、部分 canonical 与条件建议贯通，最终评分口径 10，测量 6 / GEO 5 不变 |
 | 2026-11-13 | **[多语言测量与短页误报实测](2026-11-13/seo-multilingual.md)** | Mozilla 四语言冻结页面与 Example Domain；韩文计数 206→1,048，固定字数不再扣 SEO 分；短页服务端正文误报修正。评分 11 / 测量 7 / GEO 6，Windows 与断网 Node 22 复算一致 |
+| 2026-11-13 | **[写入接口应答实测](2026-11-13/qa-write-responses.md)** | PUT/PATCH/DELETE 被动响应声明贯通；真实 JSON Server 七场景，三种页面不暴露的接口违约被标未完成，默认阻断零写入；复用现有模块与测试 |
 
 ## 为什么归档
 

@@ -102,6 +102,11 @@ test('response checks reject ambiguous or unsafe declarations', () => {
   const base = { title: 'response', path: '/', expect: [{ kind: 'title', equals: 'fixture' }] };
   const response = { method: 'POST', origin: 'http://127.0.0.1:1234', path: '/api/list', status: 200, json: { path: ['code'], equals: 0 } };
   assert.deepEqual(normalizeCheck({ ...base, responses: [response] }).responses, [response]);
+  for (const method of ['PUT', 'PATCH', 'DELETE']) {
+    const write = { ...response, method };
+    assert.deepEqual(normalizeCheck({ ...base, responses: [write] }).responses, [write]);
+    assert.throws(() => normalizeCheck({ ...base, responses: [{ ...write, query: { q: 'public' } }] }), /response/i);
+  }
   const multiple = { ...response, json: [response.json, { path: ['total'], equals: 2 }] };
   assert.deepEqual(normalizeCheck({ ...base, responses: [multiple] }).responses, [multiple]);
   for (const invalid of [
@@ -109,7 +114,7 @@ test('response checks reject ambiguous or unsafe declarations', () => {
     { ...response, origin: 'http://127.0.0.1:1234/path' },
     { ...response, path: '/api/list?token=secret' },
     { ...response, path: '/api/%2e%2e/list' },
-    { ...response, method: 'DELETE' },
+    { ...response, method: 'CONNECT' },
     { ...response, status: null },
     { ...response, json: { path: [], equals: 0 } },
     { ...response, json: { path: Array(1), equals: 0 } },
@@ -126,6 +131,42 @@ test('response checks reject ambiguous or unsafe declarations', () => {
   const queried = { ...response, method: 'GET', query: { page: '2', q: 'public' } };
   assert.deepEqual(normalizeCheck({ ...base, responses: [queried] }).responses, [queried]);
   assert.throws(() => normalizeCheck({ ...base, responses: [queried, { ...queried, query: { q: 'public', page: '2' } }] }), /response/i);
+});
+
+test('write response declarations observe once and never grant write permission', { timeout: 60_000 }, async () => {
+  let method = 'PATCH';
+  const hits = [];
+  const server = createServer((req, res) => {
+    if (req.url === '/api/write') {
+      hits.push(req.method);
+      res.setHeader('content-type', 'application/json');
+      return res.end(JSON.stringify({ code: 0, private: PRIVATE }));
+    }
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    res.end(`<!doctype html><title>fixture</title><button id="save">Save</button><p id="ready">Ready</p>
+      <script>document.querySelector('#save').onclick=()=>fetch('/api/write',{method:'${method}'})
+        .catch(()=>{}).finally(()=>document.querySelector('#ready').dataset.done='1');</script>`);
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`, root = workspace(origin);
+  const configFile = join(root, '.heimdall/qa.json'), config = JSON.parse(readFileSync(configFile));
+  try {
+    for (method of ['PUT', 'PATCH', 'DELETE']) for (const allowed of [true, false]) {
+      config.sites.web.writes = allowed ? 'allow' : 'block'; writeFileSync(configFile, JSON.stringify(config));
+      const spec = { title: 'Observe write', path: '/',
+        steps: [{ action: 'click', selector: '#save' }, { action: 'waitFor', selector: '#ready[data-done]' }],
+        expect: [{ kind: 'title', equals: 'fixture' }],
+        responses: [{ method, origin, path: '/api/write', json: { path: ['code'], equals: 0 } }] };
+      hits.length = 0;
+      const result = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/blank'], viewports: [960],
+        checks: [spec], linkCheck: false, detect: false, baseline: false, failOn: 'none', github: false }, { client: 'mcp' });
+      assert.equal(result.ok, allowed, JSON.stringify(result));
+      assert.equal(result.result.checks[0].responses[0].state, allowed ? 'matched' : 'request-failed');
+      assert.deepEqual(hits, allowed ? [method] : []);
+      assert.doesNotMatch(JSON.stringify(result), new RegExp(PRIVATE));
+      if (!allowed) assert.equal(result.error.code, 'qa_incomplete');
+    }
+  } finally { await new Promise(resolve => server.close(resolve)); rmSync(root, { recursive: true, force: true }); }
 });
 
 test('unavailable CDP evidence stays incomplete without fetching a body unnecessarily', async () => {

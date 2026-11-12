@@ -41,7 +41,7 @@ export function normalizeResponses(raw, label) {
     const item = `${label}.responses[${index}]`;
     if (!object(response)) fail(`${item} 应为对象`);
     keys(response, ['method', 'origin', 'path', 'query', 'status', 'json'], item);
-    if (!['GET', 'POST'].includes(response.method)) fail(`${item}.method 只能是 GET / POST`);
+    if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(response.method)) fail(`${item}.method 只能是 GET / POST / PUT / PATCH / DELETE`);
     let url;
     try { url = new URL(response.origin); } catch { fail(`${item}.origin 应为完整 HTTP 来源`); }
     if (typeof response.origin !== 'string' || response.origin.length > 500 || !['http:', 'https:'].includes(url.protocol) || url.username || url.password
