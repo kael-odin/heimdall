@@ -49,6 +49,8 @@ const site = { host: 'example.com', sitemapUrls: new Set(['https://example.com/p
 test('seo: duplicate titles and descriptions are optional only within one valid pagination series', () => {
   for (const [urls, severity] of [
     [['https://s.test/blog?page=2', 'https://s.test/blog?page=3'], 'info'],
+    [['https://s.test/blog', 'https://s.test/blog?page=2', 'https://s.test/blog?page=3'], 'info'],
+    [['https://s.test/blog/', 'https://s.test/blog/page/2/', 'https://s.test/blog/page/3/'], 'info'],
     [['https://s.test/blog/page/2/', 'https://s.test/blog/page/3/'], 'info'],
     [['https://s.test/blog?page=2#top', 'https://s.test/blog?page=3'], 'info'],
     [['https://s.test/blog?page=2', 'https://s.test/other?page=3'], 'medium'],
@@ -59,6 +61,7 @@ test('seo: duplicate titles and descriptions are optional only within one valid 
     [['https://s.test/blog?page=2', 'https://s.test/blog?page=1e2'], 'medium'],
     [['https://s.test/blog?page=2', 'https://s.test/blog?page=3&page=4'], 'medium'],
     [['https://s.test/blog', 'https://s.test/other'], 'medium'],
+    [['https://s.test/blog', 'https://s.test/blog/?page=2'], 'medium'],
   ]) {
     const issues = evaluateSite({ duplicates: { title: { shared: urls }, description: { shared: urls } } });
     assert.equal(issues.find(issue => issue.id === 'content-title-duplicate').severity, severity, urls.join(' '));

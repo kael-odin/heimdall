@@ -205,13 +205,13 @@ footer { margin-top:44px; color:var(--muted); font-size:12px; }
   </header>
 
   <p class="meta">收录指令按本次浏览器收到的通用与 Googlebot 指令解释；不代表搜索引擎实际收录、排名或 AI 引用。初始 HTML 未核对的页面仍有漏检风险。</p>
-  <p class="meta">评分口径：${esc(report.scoreMethodVersion ?? '未记录')}；测量口径：${esc(report.measurementVersion ?? '未记录')}。${[2, 3, 4, 5, 6, 7, 8, 9].includes(report.scoreMethodVersion) ? '文本/DOM 比例仅供观察，不扣分；两者按 UTF-16 代码单元计算。' : '历史或未知口径不能与当前分数直接比较。'}${[2, 3, 4, 5, 6].includes(report.measurementVersion) ? 'HTML 字节数是解码内容重新编码为 UTF-8 的大小，不是网络传输量。' : '历史或未知口径的 HTML 字节数不可按当前单位解释。'}</p>
-  ${[3, 4, 5, 6, 7, 8, 9].includes(report.scoreMethodVersion) ? '<p class="meta">robots.txt 返回 404/410 或已检查的位置未发现 sitemap，仅为待核查提示，不单独扣分；本次采集不代表搜索引擎实际抓取或收录。</p>' : ''}
+  <p class="meta">评分口径：${esc(report.scoreMethodVersion ?? '未记录')}；测量口径：${esc(report.measurementVersion ?? '未记录')}。${[2, 3, 4, 5, 6, 7, 8, 9, 10].includes(report.scoreMethodVersion) ? '文本/DOM 比例仅供观察，不扣分；两者按 UTF-16 代码单元计算。' : '历史或未知口径不能与当前分数直接比较。'}${[2, 3, 4, 5, 6].includes(report.measurementVersion) ? 'HTML 字节数是解码内容重新编码为 UTF-8 的大小，不是网络传输量。' : '历史或未知口径的 HTML 字节数不可按当前单位解释。'}</p>
+  ${[3, 4, 5, 6, 7, 8, 9, 10].includes(report.scoreMethodVersion) ? '<p class="meta">robots.txt 返回 404/410 或已检查的位置未发现 sitemap，仅为待核查提示，不单独扣分；本次采集不代表搜索引擎实际抓取或收录。</p>' : ''}
   ${[4, 5, 6].includes(report.measurementVersion) ? '<p class="meta">子资源类别按浏览器发起类型和页面声明估算，每条只归入一类；CSS 发起的部分资源按地址后缀推测。未分类、缓存及跨源限制可能影响数字，它们不是完整的网络传输量。</p>' : ''}
   <p class="meta">${[3, 4, 5, 6].includes(report.measurementVersion) ? '结构化数据提示仅检查 JSON-LD 顶层及 @graph 类型和 microdata 标记，不检查 RDFa；发现类型不代表搜索引擎认可或富结果合格。' : '历史或未知测量口径可能遗漏 @graph 类型，不能据此认定没有结构化数据；RDFa 未核实。'}</p>
-  ${[6, 7, 8, 9].includes(report.scoreMethodVersion) ? '<p class="meta">结构化数据常见字段仅作不扣分的待核查提示，不判定必填或富结果资格；不因相对图片地址扣分，字段仅为受限投影，未验证图片可抓取性或合并跨脚本实体引用。</p>' : ''}
-  ${[8, 9].includes(report.scoreMethodVersion) ? '<p class="meta">hreflang 按完整地址匹配访问地址或声明的 canonical，未验证其他 URL 的等价关系及双向链接；语言检查仅针对 Google 标记形式，不核对 ISO 代码表成员或通用 BCP 47 合法性。x-default 是按回退需求配置的不扣分建议，HTTP Link 与 sitemap 语言声明未检查。</p>' : ''}
-  ${report.scoreMethodVersion === 9 ? '<p class="meta">同一数字分页序列允许共用标题和描述，只给不扣分建议；跨栏目、筛选条件和来源仍分开检查。分页与分面 canonical 按完整 HTTP(S) 地址比较，非自指声明不证明内容等价或抓取收敛。分面页是否收录或归并须按实际内容和发布意图确认。</p>' : ''}
+  ${[6, 7, 8, 9, 10].includes(report.scoreMethodVersion) ? '<p class="meta">结构化数据常见字段仅作不扣分的待核查提示，不判定必填或富结果资格；不因相对图片地址扣分，字段仅为受限投影，未验证图片可抓取性或合并跨脚本实体引用。</p>' : ''}
+  ${[8, 9, 10].includes(report.scoreMethodVersion) ? '<p class="meta">hreflang 按完整地址匹配访问地址或声明的 canonical，未验证其他 URL 的等价关系及双向链接；语言检查仅针对 Google 标记形式，不核对 ISO 代码表成员或通用 BCP 47 合法性。x-default 是按回退需求配置的不扣分建议，HTTP Link 与 sitemap 语言声明未检查。</p>' : ''}
+  ${[9, 10].includes(report.scoreMethodVersion) ? '<p class="meta">同一数字分页序列允许共用标题和描述，只给不扣分建议；跨栏目、筛选条件和来源仍分开检查。分页与分面 canonical 按完整 HTTP(S) 地址比较，非自指声明不证明内容等价或抓取收敛。分面页是否收录或归并须按实际内容和发布意图确认。</p>' : ''}
   ${report.measurementVersion === 6 ? '<p class="meta">JSON-LD 使用标准处理器及固定的本地 Schema.org 上下文展开别名和类型；未自动访问其他远程上下文。上下文无法核实或超限时保留未知并跳过基线，字段投影受限时 GEO 不把未观察字段当作缺陷。</p>' : ''}
   <p class="meta">资源体积取本次浏览器可见子资源的传输或编码大小估算，不含主文档；缓存、跨源限制和条目上限可能影响完整性，不等同于完整网络流量。</p>
   <p class="meta">图片格式提示仅匹配图片地址后缀，不能证明响应类型或实际编码；旧报告中的“张为 jpg/png”也只表示后缀匹配。</p>

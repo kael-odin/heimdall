@@ -41,20 +41,25 @@ export function parsePagination(url) {
 
 /** A title exception applies only to one numeric sequence, with every other URL component retained. */
 export function samePaginationSeries(urls) {
-  let series;
-  for (const url of urls) {
-    const u = parse(httpResourceUrl(url)), pg = parsePagination(url);
-    if (!u || !Number.isSafeInteger(pg.num) || pg.num < 1) return false;
-    if (pg.param === '(路径)') u.pathname = u.pathname.replace(/\d+\/?$/, '');
-    else {
-      if (u.searchParams.getAll(pg.param).length !== 1 || !/^\d+$/.test(u.searchParams.get(pg.param))) return false;
+  const pages = urls.map(url => {
+    const resource = httpResourceUrl(url), u = parse(resource), pg = parsePagination(url);
+    if (!u) return null;
+    if (!pg.isPaginated) return { resource };
+    if (!Number.isSafeInteger(pg.num) || pg.num < 1) return null;
+    let syntax = pg.param;
+    if (pg.param === '(路径)') {
+      const suffix = /\/(page|p)\/\d+(\/?)$/i.exec(u.pathname);
+      syntax += ' ' + suffix[1];
+      u.pathname = u.pathname.slice(0, suffix.index) + suffix[2];
+    } else {
+      if (u.searchParams.getAll(pg.param).length !== 1 || !/^\d+$/.test(u.searchParams.get(pg.param))) return null;
       u.searchParams.delete(pg.param);
     }
-    const key = pg.param + ' ' + u.href;
-    if (series !== undefined && key !== series) return false;
-    series = key;
-  }
-  return urls.length > 1;
+    return { resource, base: u.href, series: syntax + ' ' + u.href };
+  });
+  const numbered = pages.find(page => page?.series);
+  return !!numbered && pages.length > 1 && pages.every(page => page &&
+    (page.series ? page.series === numbered.series : page.resource === numbered.base));
 }
 
 /** 这一页 URL 上带的分面参数 */
