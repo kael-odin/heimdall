@@ -92,3 +92,5 @@ GEO 分数仍是结构信号准备度，不是排名或模型引用概率。正�
 机制依据（核对日期：2026-11-12）：[Google AI 搜索功能](https://developers.google.com/search/docs/appearance/ai-features)、[robots 元指令与 X-Robots-Tag](https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag)、[重复页面与 canonical](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls)。真实模型引用、robots.txt 与各 AI 爬虫的实际访问策略、跨语言内容质量和授权业务旅程继续保留为未完成范围。
 
 提交 `08aaa850` 的远端 Docs `43231037070` 抓到使用手册和基线示例仍写旧版本，原始失败日志保存在同一证据目录的 `docs-guide-version-failure.log`。后续同步两份指南的口径、文件名和 JSON 示例，并扩展原有版本守卫核对所有示例；不把本地早期通过结果代替最终版本检查。
+
+最终代码提交 `754ab33f81fbe68b99fc35553119a37ca3d80556` 的完整 CI `43231808840` 已完成，8/8 任务成功，包含两片完整 Core 测试与控制台 smoke；同提交 Docs `43231808784` 也通过。最终口径下重跑核心快速集 1,333/1,333 通过，文档版本守卫 5/5 通过。`ci-754ab33f.json` 和 `ci-754ab33f-watch.log` 保留精确提交的远端结果，`final-all-fast-tests.log` 保留最终快速集输出；前一代码提交的 CI 因新推送取消，不作为通过依据。
