@@ -46,7 +46,7 @@ test('browser probe executes local JS and reports uncovered pages', { timeout: 3
       const socket = new WebSocket('wss://example.invalid/socket?token=socket-secret');
       socket.onerror = () => {};
       setTimeout(() => {
-        const error = Error('broken https://example.invalid/path?token=error-secret');
+        const error = Error('broken https://example.invalid/path?token=error-secret Cookie: cookie-secret Bearer bearer-secret');
         error.name = 'private-name-secret';
         throw error;
       }, 0);
@@ -58,7 +58,9 @@ test('browser probe executes local JS and reports uncovered pages', { timeout: 3
     assert.ok(bad.failures.some(f => f.kind === 'http' && f.status === 404 && f.target === '/api/missing'));
     assert.ok(bad.failures.some(f => f.kind === 'externalRequest' && f.target === 'https://example.invalid'));
     assert.ok(bad.failures.some(f => f.kind === 'websocketUnsupported' && f.target === 'wss://example.invalid'));
-    assert.ok(bad.failures.some(f => f.kind === 'pageError' && f.error === 'Error'));
+    const pageError = bad.failures.find(f => f.kind === 'pageError');
+    assert.equal(pageError?.error, 'Error');
+    assert.equal(pageError?.message, 'broken https://example.invalid [sensitive value removed] Bearer [已移除]');
     assert.deepEqual(bad.runtimeOrigins, [{ origin: 'https://example.invalid', requests: 1, pages: ['/bad/'] }]);
     assert.doesNotMatch(JSON.stringify(bad), /local-secret|external-secret|socket-secret|error-secret|private-name-secret|token=/);
 
@@ -75,11 +77,12 @@ test('browser probe checks every declared page beyond the former 100-page limit'
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-browser-probe-all-'));
   try {
     const routes = Array.from({ length: 102 }, (_, i) => `/page-${i}/`);
+    const lateFailure = `late failure ${'x'.repeat(300)}`;
     for (let i = 0; i < routes.length; i++) {
       const pageDir = join(dir, 'site', 'live', `page-${i}`);
       mkdirSync(pageDir, { recursive: true });
       writeFileSync(join(pageDir, 'index.html'), i === 101
-        ? '<!doctype html><script>throw Error("late failure")</script>'
+        ? `<!doctype html><script>throw Error(${JSON.stringify(lateFailure)})</script>`
         : '<!doctype html><title>offline page</title>');
     }
     writeFileSync(join(dir, 'heimdall-live.json'), JSON.stringify({
@@ -100,6 +103,7 @@ test('browser probe checks every declared page beyond the former 100-page limit'
       Array.from({ length: 102 }, (_, i) => i));
     assert.deepEqual(report.failures[0], {
       pageIndex: 101, page: '/page-101/', kind: 'pageError', error: 'Error',
+      message: `${lateFailure.slice(0, 199)}…`,
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });

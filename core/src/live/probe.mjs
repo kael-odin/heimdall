@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { chromium } from 'playwright';
+import { redactText } from '../agent/redact.mjs';
 import { exploreOperationStates, sanitizeObservedUrl } from '../crawler/state-graph.mjs';
 import { observeReadOnlyPage, sourceReadDataCollector } from '../crawler/source-read-data.mjs';
 import { operationSessionSegments } from '../crawler/operation-sessions.mjs';
@@ -13,6 +14,9 @@ export const DEFAULT_BROWSER_OBSERVE_MS = 3_000;
 export const MAX_BROWSER_OBSERVE_MS = 15_000;
 const PRIVATE_PATH_PARENT = /^(?:users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|reset-password|password-reset|verify-email|email-verification|magic-link|invites?|invitations?|tokens?|secrets?)$/i;
 const PUBLIC_ERROR_TYPES = new Set(['Error', 'TimeoutError', 'TypeError', 'ReferenceError', 'SyntaxError', 'RangeError', 'URIError', 'EvalError', 'AggregateError']);
+const PUBLIC_ERROR_MESSAGE_LIMIT = 200;
+const PUBLIC_ERROR_URL = /\b(?:https?|wss?):\/\/[^\s"'<>]+/gi;
+const PUBLIC_ERROR_SECRET = /\b(?:authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key|access[-_]?token|refresh[-_]?token|id[-_]?token|client[-_]?secret|password|passwd|token)\b\s*[:=]\s*["']?[^\s"',;&]+/gi;
 const TRANSIENT_BROWSER_LAUNCH = /Target page, context or browser has been closed|Browser (?:has been )?closed|browser process.*(?:closed|killed|failed)|spawn (?:UNKNOWN|EAGAIN|ENOMEM|EBUSY)|Failed to launch|Cannot connect to the browser|ECONNRESET|EPIPE/i;
 
 function boundedInteger(value, fallback, upperBound) {
@@ -84,6 +88,19 @@ function isLocalMediaRequest(request, base) {
 
 function publicErrorType(error) {
   return PUBLIC_ERROR_TYPES.has(error?.name) ? error.name : 'Error';
+}
+
+function publicErrorMessage(error) {
+  let message = String(error?.message ?? '').replace(/\s+/g, ' ').trim();
+  if (!message) return null;
+  message = message.replace(PUBLIC_ERROR_URL, value => {
+    try { return new URL(value).origin; } catch { return '[URL removed]'; }
+  });
+  message = message.replace(PUBLIC_ERROR_SECRET, '[sensitive value removed]');
+  message = redactText(message, { profile: 'strict' }).text;
+  return message.length > PUBLIC_ERROR_MESSAGE_LIMIT
+    ? `${message.slice(0, PUBLIC_ERROR_MESSAGE_LIMIT - 1)}…`
+    : message;
 }
 
 function startOfflineServer(bundleDir) {
@@ -257,7 +274,10 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
           if (!closing && !blocked.has(request)) addFailure({ kind: 'requestFailed', target: publicTarget(request.url(), base) });
         });
         context.on('page', page => {
-          page.on('pageerror', error => addFailure({ kind: 'pageError', error: publicErrorType(error) }));
+          page.on('pageerror', error => {
+            const message = publicErrorMessage(error);
+            addFailure({ kind: 'pageError', error: publicErrorType(error), ...(message ? { message } : {}) });
+          });
           page.on('crash', () => addFailure({ kind: 'pageCrash' }));
         });
         const page = await context.newPage();

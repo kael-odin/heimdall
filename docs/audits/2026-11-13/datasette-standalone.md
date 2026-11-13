@@ -47,6 +47,8 @@ node core/src/live/export.mjs 127.0.0.1 --offline --strict --root mirror --inclu
 
 运行探针通过后，浏览器探针继续检查全部 83 页：83/83 已测，9 页触发 `ReferenceError`。复现到 `/library/` 的具体错误是 `CodeMirror is not defined`；源站 HAR 同时记录 `sql-formatter`、CodeMirror、SQL 模式和 `cm-resize` 四个脚本为 404，页面内联脚本仍无条件调用 CodeMirror。这是实际前端缺陷证据，不能把它降成“探针噪声”。
 
+2026-11-14 用当前探针对同一候选包的 `/library/` 做单页复核（最短观察 3,000 ms）：`checked=1`、`failed=1`，脱敏失败项同时保留 `error: "ReferenceError"` 和 `message: "CodeMirror is not defined"`。这次复核只提升诊断证据的可读性，没有把候选包改写成通过；完整 83 页旧结果仍为 9 个浏览器错误。
+
 严格候选因此仍未发布，当前阻断项是：664 个未覆盖链接、9 个浏览器 pageerror、2 个侦察失败、3 条离线操作流未测、1 条适配器路由未测。资源覆盖仍为 83/83 本地、0 个未解析或跨源静态资源；隐私审计干净。候选包不应被描述为整站等价交付。
 
 ## 严格发布边界
