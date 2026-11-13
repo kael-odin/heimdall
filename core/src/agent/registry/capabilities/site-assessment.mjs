@@ -22,7 +22,7 @@ const SEO_SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 const BROWSER_FAILURE_KINDS = new Set(['http', 'pageError', 'navigation', 'requestFailed', 'externalRequest', 'websocketUnsupported', 'observationDeadline', 'pageCrash', 'probeError']);
 const BROWSER_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'media', 'font', 'script', 'texttrack', 'xhr', 'fetch', 'eventsource', 'websocket', 'manifest', 'other']);
-const BINARY_DOWNLOAD_PATH = /\.(?:db|sqlite3?|zip|tar|tgz|gz|bz2|xz|7z|rar|pdf|docx|xlsx|pptx)(?:$|[?#])/i;
+const BINARY_DOWNLOAD_PATH = /\.(?:db|sqlite3?|zip|tar|tgz|gz|bz2|xz|7z|rar|pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)(?:$|[?#])/i;
 
 function readJson(file) {
   try {
@@ -703,7 +703,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     add({
       id: 'clone-binary-downloads', kind: 'binary_distribution_gap', basis: 'observed', status: 'blocked',
       title: '存在未覆盖的二进制下载链接',
-      detail: `${clone.delivery.binaryDownloadGaps.length} 个候选下载链接未进入离线交付：${examples}。二进制正文当前需要人工审核，不能按普通公开文本自动分发。`,
+      detail: `${clone.delivery.binaryDownloadGaps.length} 个候选下载链接未进入离线交付：${examples}。授权后将路径加入 read-data-plan.json 的 binaryPaths，并用 --include-readonly-data --include-readonly-binaries --offline --strict 复测；二进制正文仍需人工审核，--compare-source 不证明二进制源站对照。`,
       evidence: [clone.delivery.healthReport].filter(Boolean),
       verify: { method: 'human_authorized_binary_review', condition: '确认公开权限、内容安全和分发策略后，再用支持该类型的导出路径复测' },
     });
