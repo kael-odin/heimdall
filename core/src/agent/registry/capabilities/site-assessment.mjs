@@ -532,6 +532,34 @@ function planVerification(siteId, condition) {
   return { tool: 'heimdall_site_assessment', args: { siteId }, condition };
 }
 
+function repairTaskFromGapLedger(gapLedger) {
+  const summary = gapLedger?.summary;
+  if (!summary || Number(summary.uniqueGaps || 0) <= 0) return null;
+  const unverifiedWrites = Number(summary.unverifiedWrites || 0);
+  const unobservedQueryVariants = Number(summary.unobservedQueryVariants || 0);
+  const uncoveredQueryParameters = Number(summary.uncoveredQueryParameters || 0);
+  const kind = unverifiedWrites > 0 ? 'write-verification'
+    : unobservedQueryVariants > 0 ? 'query-variant-gap'
+      : uncoveredQueryParameters > 0 ? 'query-parameter-gap' : 'runtime-gap';
+  const instruction = unverifiedWrites > 0
+    ? '先用授权测试旅程验证写入、回读和清理，再修改适配器。'
+    : unobservedQueryVariants > 0
+      ? '为已知查询参数补齐未观察到的值或组合；先用独立留出请求验证，再运行 npm run check。'
+      : uncoveredQueryParameters > 0
+        ? '补齐查询参数名对应的路由分支，再运行 npm run check。'
+        : '补齐运行时发现但契约未声明的路由，再运行 npm run check。';
+  return {
+    id: 'repair-' + kind, kind, target: 'runtime-adapter/index.mjs', instruction,
+    requiresHumanApproval: unverifiedWrites > 0,
+    evidence: {
+      uniqueGaps: Number(summary.uniqueGaps || 0),
+      unobservedQueryVariants,
+      uncoveredQueryParameters,
+      unverifiedWrites,
+    },
+  };
+}
+
 function buildBackendCompletionTask(siteId, api) {
   const observed = api.contract.status === 'observed';
   const endpoints = api.contract.observedEndpoints ?? [];
@@ -541,7 +569,9 @@ function buildBackendCompletionTask(siteId, api) {
   const validationStatus = api.adapter.validation?.status ?? 'not-validated';
   const gapLedger = api.adapter.gapLedger;
   const scaffold = api.scaffold ?? { status: 'missing', present: false, path: null };
-  const repairTasks = Array.isArray(scaffold.check?.repairTasks) ? scaffold.check.repairTasks : [];
+  const repairTasks = Array.isArray(scaffold.check?.repairTasks) ? [...scaffold.check.repairTasks] : [];
+  const gapRepairTask = repairTaskFromGapLedger(gapLedger);
+  if (gapRepairTask && !repairTasks.some(task => task?.kind === gapRepairTask.kind)) repairTasks.push(gapRepairTask);
   const scaffoldAction = observed && !scaffold.present
     ? plannedAction('cli:shell', {
       command: `heimdall backend scaffold ${siteId}${scaffold.status === 'incomplete' ? ' --force' : ''}`,

@@ -145,6 +145,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'available');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action.args.command, 'heimdall backend scaffold example.test');
     assert.equal(env.result.deliveryPlan.backendCompletion.gapLedger.summary.missingResponseBodies, 1);
+    assert.ok(env.result.deliveryPlan.backendCompletion.repairTasks.some(item => item.kind === 'write-verification'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'backend-scaffold'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-adapter-gap-ledger'));
     assert.ok(env.result.deliveryPlan.backendCompletion.humanJourneys.some(item => item.id === 'authentication-and-permission'));
