@@ -59,10 +59,10 @@ test('GEO: short initial HTML is visible when it contains the rendered body', ()
 });
 
 test('GEO description presence does not claim summary quality or require fifty characters', () => {
-  for (const description of ['', '   ', undefined, '图书、电影与音乐的推荐和评论。', 'A'.repeat(49), 'A'.repeat(50), 'A'.repeat(161)]) {
+  for (const description of ['', '   ', undefined, null, 42, {}, '图书、电影与音乐的推荐和评论。', 'A'.repeat(49), 'A'.repeat(50), 'A'.repeat(161)]) {
     const result = evaluateGeoPage(page({ description }));
     const check = result.dimensions.citation.checks.find(item => item.id === 'geo-citation-description');
-    assert.equal(check.status, description?.trim() ? 'pass' : 'fail');
+    assert.equal(check.status, typeof description === 'string' && description.trim() ? 'pass' : 'fail');
     assert.match(check.title, /摘要有值/);
     assert.match(check.message, /未核实摘要质量或实际引用/);
     assert.doesNotMatch(check.suggestion, /50|160|足够/);

@@ -171,7 +171,7 @@ export function evaluateGeoPage(page = {}) {
   const bodyComparable = rawKnown && wordCount != null;
   const serverVisible = bodyComparable && raw.wordCount > 0 && raw.wordCount >= wordCount * 0.3;
   const meta = page.meta ?? {};
-  const description = page.description?.trim() ?? '';
+  const description = typeof page.description === 'string' ? page.description.trim() : '';
   const robots = page.robotsEvidence;
   const robotsKnown = rawKnown && robots?.target === 'googlebot' && robots.initialHtml === 'checked'
     && Array.isArray(robots.noindex) && Array.isArray(robots.nosnippet)
