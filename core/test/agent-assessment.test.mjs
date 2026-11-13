@@ -241,7 +241,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
   const outcome = {
     schema: 'heimdall.live-export/1', siteId: 'example.test', generatedAt: '2026-11-12T00:00:00.000Z',
     status: 'blocked', published: false, offline: true, strict: true, root: 'mirror', pages: 1,
-    blockingCount: 4, blockers: { unresolved: 1, browserFailed: 1, 'super-secret': 2 },
+    blockingCount: 5, blockers: { unresolved: 1, browserFailed: 1, readOnlyDataMissing: 1, 'super-secret': 2 },
     healthReport: 'deliverable/.candidate-example.test-Ab1234/health.json',
     browser: { checked: 1, failed: 1, untested: 0, totalPages: 1 },
     coverage: { scope: 'recon-discovered', scopeLimited: true }, note: 'super-secret',
@@ -269,13 +269,14 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
         { path: '/library.db', kind: 'resource-link', references: 1, pages: ['/library/'] },
         { path: '/legacy.doc', kind: 'resource-link', references: 1, pages: ['/library/'] },
       ],
+      readOnlyData: { status: 'ok', declared: 2, included: 1, missing: 1, binaryDeclared: 1, binaryIncluded: 0 },
     });
     assert.equal(assess().readiness.delivery.status, 'needs_export');
     const blocked = assess(outcome);
     assert.equal(blocked.clone.delivery.status, 'blocked');
-    assert.equal(blocked.clone.delivery.blockingCount, 4);
+    assert.equal(blocked.clone.delivery.blockingCount, 5);
     assert.equal(blocked.clone.delivery.otherBlockers, 2);
-    assert.deepEqual(blocked.clone.delivery.blockers, { unresolved: 1, browserFailed: 1 });
+    assert.deepEqual(blocked.clone.delivery.blockers, { unresolved: 1, browserFailed: 1, readOnlyDataMissing: 1 });
     assert.equal(blocked.clone.delivery.healthReport, outcome.healthReport);
     assert.equal(blocked.clone.delivery.browserFailures[0].message, 'CodeMirror is not defined');
     assert.equal(blocked.clone.delivery.browserFailures[1].resourceType, 'script');
@@ -286,6 +287,9 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').detail, /CodeMirror is not defined/);
     assert.equal(blocked.clone.delivery.binaryDownloadGaps[0].path, '/library.db');
     assert.equal(blocked.clone.delivery.binaryDownloadGaps[1].path, '/legacy.doc');
+    assert.deepEqual(blocked.clone.delivery.readOnlyData, {
+      status: 'ok', declared: 2, included: 1, missing: 1, binaryDeclared: 1, binaryIncluded: 0,
+    });
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').status, 'blocked');
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').detail, /library\.db/);
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').detail, /--include-readonly-binaries/);

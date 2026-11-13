@@ -190,6 +190,9 @@ function liveExportSummary(root, siteId) {
   const names = new Set(['unresolved', 'dynamic', 'externalAssets', 'unsupportedRuntimeServices', 'missingLinks',
     'runtimeMissing', 'browserFailed', 'browserUntested', 'missingLivePages', 'discoveredUncloned', 'discoveredUndelivered',
     'privacyIssues', 'privacyIncomplete', 'coverageInvalid', 'scanTruncated', 'operationFailed', 'operationUntested',
+    'readOnlyDataInvalid', 'readOnlyDataMissing', 'readOnlyDataShadowed', 'readOnlyDataConflicts',
+    'readOnlyBinarySourceUntested', 'offlineReadOnlyRequestMissing', 'offlineReadOnlyCaptureFailed',
+    'readOnlyFlowMismatch', 'readOnlyFlowUntested', 'sourceReadOnlyCurrentMissing', 'sourceReadOnlyCaptureFailed',
     'unsupportedExternalRedirects', 'unsupportedExternalRedirectReferences']);
   const blockers = Object.fromEntries(entries.filter(([name]) => names.has(name)));
   const candidatePrefix = `deliverable/.candidate-${siteId}-`;
@@ -200,13 +203,24 @@ function liveExportSummary(root, siteId) {
     ? health.browserProbe.failures.slice(0, 50).map(safeBrowserFailure).filter(Boolean) : [];
   const binaryDownloadGaps = Array.isArray(health?.missingLinkDetails)
     ? health.missingLinkDetails.slice(0, 100).map(safeBinaryDownloadGap).filter(Boolean) : [];
+  const rawReadOnlyData = health?.readOnlyData;
+  const readOnlyData = rawReadOnlyData && typeof rawReadOnlyData === 'object' && !Array.isArray(rawReadOnlyData)
+    ? {
+      status: typeof rawReadOnlyData.status === 'string' ? rawReadOnlyData.status.slice(0, 32) : 'unknown',
+      ...Object.fromEntries(['declared', 'included', 'missing', 'binaryDeclared', 'binaryIncluded', 'conflicts']
+        .filter(key => Number.isSafeInteger(rawReadOnlyData[key]) && rawReadOnlyData[key] >= 0)
+        .map(key => [key, rawReadOnlyData[key]])),
+      ...(typeof rawReadOnlyData.issue === 'string' ? { issue: rawReadOnlyData.issue.slice(0, 96) } : {}),
+      ...(typeof rawReadOnlyData.binarySourceStatus === 'string'
+        ? { binarySourceStatus: rawReadOnlyData.binarySourceStatus.slice(0, 32) } : {}),
+    } : null;
   return {
     status: source.status, generatedAt: new Date(source.generatedAt).toISOString(), report, healthReport,
     offline: source.offline, strict: source.strict, root: source.root === 'mirror' ? 'mirror' : 'landing',
     published: source.published, pages: source.pages,
     blockingCount: source.blockingCount, blockers,
     otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
-    browser, browserFailures, binaryDownloadGaps, coverage: {
+    browser, browserFailures, binaryDownloadGaps, readOnlyData, coverage: {
       scope: ['captured-only', 'recon-discovered', 'untrusted-recon'].includes(source.coverage?.scope) ? source.coverage.scope : 'unknown',
       scopeLimited: source.coverage?.scope !== 'recon-discovered' || source.coverage?.scopeLimited !== false,
     },
