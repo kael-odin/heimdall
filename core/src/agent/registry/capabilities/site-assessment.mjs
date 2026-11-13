@@ -532,7 +532,7 @@ function planVerification(siteId, condition) {
   return { tool: 'heimdall_site_assessment', args: { siteId }, condition };
 }
 
-function repairTasksFromGapLedger(gapLedger) {
+function repairTasksFromGapLedger(siteId, gapLedger) {
   const summary = gapLedger?.summary;
   if (!summary || Number(summary.uniqueGaps || 0) <= 0) return [];
   const uniqueGaps = Number(summary.uniqueGaps || 0);
@@ -542,13 +542,14 @@ function repairTasksFromGapLedger(gapLedger) {
   const uncoveredQueryParameters = Number(summary.uncoveredQueryParameters || 0);
   const evidence = { uniqueGaps, unobservedPaths, unobservedQueryVariants, uncoveredQueryParameters, unverifiedWrites };
   const tasks = [];
-  const add = (kind, instruction, requiresHumanApproval = false) => tasks.push({
+  const add = (kind, instruction, condition, requiresHumanApproval = false) => tasks.push({
     id: 'repair-' + kind, kind, target: 'runtime-adapter/index.mjs', instruction, requiresHumanApproval, evidence,
+    verification: planVerification(siteId, condition),
   });
-  if (unverifiedWrites > 0) add('write-verification', '先用授权测试旅程验证写入、回读和清理，再修改适配器。', true);
-  if (unobservedQueryVariants > 0) add('query-variant-gap', '为已知查询参数补齐未观察到的值或组合；先用独立留出请求验证，再运行 npm run check。');
-  if (uncoveredQueryParameters > 0) add('query-parameter-gap', '补齐查询参数名对应的路由分支，再运行 npm run check。');
-  if (unobservedPaths > 0 || tasks.length === 0) add('runtime-gap', '补齐运行时发现但契约未声明的路由，再运行 npm run check。');
+  if (unverifiedWrites > 0) add('write-verification', '先用授权测试旅程验证写入、回读和清理，再修改适配器。', 'api.adapter.gapLedger.summary.unverifiedWrites === 0', true);
+  if (unobservedQueryVariants > 0) add('query-variant-gap', '为已知查询参数补齐未观察到的值或组合；先用独立留出请求验证，再运行 npm run check。', 'api.adapter.gapLedger.summary.unobservedQueryVariants === 0');
+  if (uncoveredQueryParameters > 0) add('query-parameter-gap', '补齐查询参数名对应的路由分支，再运行 npm run check。', 'api.adapter.gapLedger.summary.uncoveredQueryParameters === 0');
+  if (unobservedPaths > 0 || tasks.length === 0) add('runtime-gap', '补齐运行时发现但契约未声明的路由，再运行 npm run check。', 'api.adapter.gapLedger.summary.uniqueGaps === 0');
   return tasks;
 }
 
@@ -562,7 +563,7 @@ function buildBackendCompletionTask(siteId, api) {
   const gapLedger = api.adapter.gapLedger;
   const scaffold = api.scaffold ?? { status: 'missing', present: false, path: null };
   const repairTasks = Array.isArray(scaffold.check?.repairTasks) ? [...scaffold.check.repairTasks] : [];
-  for (const gapRepairTask of repairTasksFromGapLedger(gapLedger)) {
+  for (const gapRepairTask of repairTasksFromGapLedger(siteId, gapLedger)) {
     if (!repairTasks.some(task => task?.kind === gapRepairTask.kind)) repairTasks.push(gapRepairTask);
   }
   const scaffoldAction = observed && !scaffold.present

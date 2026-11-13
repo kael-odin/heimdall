@@ -148,6 +148,9 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.deepEqual(env.result.deliveryPlan.backendCompletion.repairTasks.map(item => item.kind), [
       'write-verification', 'query-variant-gap', 'query-parameter-gap', 'runtime-gap',
     ]);
+    assert.equal(env.result.deliveryPlan.backendCompletion.repairTasks[0].verification.condition,
+      'api.adapter.gapLedger.summary.unverifiedWrites === 0');
+    assert.equal(env.result.deliveryPlan.backendCompletion.repairTasks[1].verification.args.siteId, 'example.test');
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'backend-scaffold'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-adapter-gap-ledger'));
     assert.ok(env.result.deliveryPlan.backendCompletion.humanJourneys.some(item => item.id === 'authentication-and-permission'));
