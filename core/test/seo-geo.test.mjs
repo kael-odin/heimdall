@@ -58,6 +58,17 @@ test('GEO: short initial HTML is visible when it contains the rendered body', ()
   assert.equal(check(undefined, 25).status, 'unknown');
 });
 
+test('GEO description presence does not claim summary quality or require fifty characters', () => {
+  for (const description of ['', '   ', undefined, '图书、电影与音乐的推荐和评论。', 'A'.repeat(49), 'A'.repeat(50), 'A'.repeat(161)]) {
+    const result = evaluateGeoPage(page({ description }));
+    const check = result.dimensions.citation.checks.find(item => item.id === 'geo-citation-description');
+    assert.equal(check.status, description?.trim() ? 'pass' : 'fail');
+    assert.match(check.title, /摘要有值/);
+    assert.match(check.message, /未核实摘要质量或实际引用/);
+    assert.doesNotMatch(check.suggestion, /50|160|足够/);
+  }
+});
+
 test('GEO 缺陷页面保留具体问题，na 和 unknown 不误报成失败', () => {
   const result = evaluateGeoPage(page({
     url: 'https://example.com/app', title: '', description: '', canonical: '', lang: '', h1: [], headings: [],

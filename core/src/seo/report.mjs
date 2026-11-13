@@ -217,6 +217,7 @@ footer { margin-top:44px; color:var(--muted); font-size:12px; }
   ${scoreMethod >= 6 ? '<p class="meta">结构化数据常见字段仅作不扣分的待核查提示，不判定必填或富结果资格；不因相对图片地址扣分，字段仅为受限投影，未验证图片可抓取性或合并跨脚本实体引用。</p>' : ''}
   ${scoreMethod >= 8 ? '<p class="meta">hreflang 按完整地址匹配访问地址或声明的 canonical，未验证其他 URL 的等价关系及双向链接；语言检查仅针对 Google 标记形式，不核对 ISO 代码表成员或通用 BCP 47 合法性。x-default 是按回退需求配置的不扣分建议，HTTP Link 与 sitemap 语言声明未检查。</p>' : ''}
   ${scoreMethod >= 9 ? '<p class="meta">同一数字分页序列允许共用标题和描述，只给不扣分建议；跨栏目、筛选条件和来源仍分开检查。分页与分面 canonical 按完整 HTTP(S) 地址比较，非自指声明不证明内容等价或抓取收敛。分面页是否收录或归并须按实际内容和发布意图确认。</p>' : ''}
+  ${scoreMethod >= 13 ? '<p class="meta">标题与描述的字符数仅供人工检查，不扣分；提示线不是搜索引擎的固定长度要求，未测量实际搜索展示或摘要质量。</p>' : ''}
   ${measurementMethod >= 8 ? '<p class="meta">canonical 同时核对渲染后 head 与导航响应的 HTTP Link，保留来源；带 anchor 的头部链接不作为本页声明。多个不同目标保留冲突，非自指或跨域本身仅作观察，未验证目标内容、可访问性、索引资格或搜索引擎实际选择。此项不代表支持 PDF 正文审计。</p>' : ''}
   ${measurementMethod >= 6 ? '<p class="meta">JSON-LD 使用标准处理器及固定的本地 Schema.org 上下文展开别名和类型；未自动访问其他远程上下文。上下文无法核实或超限时保留未知并跳过基线，字段投影受限时 GEO 不把未观察字段当作缺陷。</p>' : ''}
   <p class="meta">资源体积取本次浏览器可见子资源的传输或编码大小估算，不含主文档；缓存、跨源限制和条目上限可能影响完整性，不等同于完整网络流量。</p>

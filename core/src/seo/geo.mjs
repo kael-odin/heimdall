@@ -171,6 +171,7 @@ export function evaluateGeoPage(page = {}) {
   const bodyComparable = rawKnown && wordCount != null;
   const serverVisible = bodyComparable && raw.wordCount > 0 && raw.wordCount >= wordCount * 0.3;
   const meta = page.meta ?? {};
+  const description = page.description?.trim() ?? '';
   const robots = page.robotsEvidence;
   const robotsKnown = rawKnown && robots?.target === 'googlebot' && robots.initialHtml === 'checked'
     && Array.isArray(robots.noindex) && Array.isArray(robots.nosnippet)
@@ -222,9 +223,9 @@ export function evaluateGeoPage(page = {}) {
         page.description || page.og?.description || '', '为页面写清楚对象是谁、解决什么问题和适用边界。', 'low'),
     ],
     citation: [
-      check('geo-citation-description', 4, page.description && page.description.length >= 50 ? 'pass' : 'fail', '有可引用摘要',
-        page.description && page.description.length >= 50 ? 'description 足够概括页面主题。' : 'description 缺失或过短。',
-        page.description || '', '写一个独立、事实化、少营销套话的摘要。', 'medium'),
+      check('geo-citation-description', 4, description ? 'pass' : 'fail', '页面摘要有值',
+        `${description ? '发现非空 description。' : 'description 缺失或为空。'}未核实摘要质量或实际引用。`,
+        description, '按页面用途核对摘要是否独立、准确地概括主题；字符数不能证明摘要质量。', 'medium'),
       check('geo-citation-attribution', 4, schema.hasAttribution ? 'pass' : 'fail', '引用带来源线索',
         schema.hasAttribution ? '结构化数据包含来源归属线索。' : '缺少可用于引用归因的来源线索。',
         schema.hasAttribution ? 'author/publisher/provider/sameAs 已发现' : '', '公开作者、组织或发布者身份，并保持页面与组织资料一致。', 'medium'),

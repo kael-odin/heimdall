@@ -121,11 +121,11 @@ export function evaluatePage(page, site = {}) {
 
   // ---------- 内容与语义 ----------
   if (!page.title) A('content-title-missing', 'content', 'critical', '缺少 title', '未找到 <title>', '', '为每页设置唯一、包含核心关键词的 title');
-  else if (page.titleLength < 10) A('content-title-short', 'content', 'medium', 'title 过短', `${page.titleLength} 字符`, page.title, '建议 10-60 字符，覆盖核心主题');
-  else if (page.titleLength > 60) A('content-title-long', 'content', 'low', 'title 过长', `${page.titleLength} 字符`, page.title, 'SERP 截断风险，建议 ≤60 字符');
-  if (!page.description) A('content-description-missing', 'content', 'high', '缺少 meta description', '', '', '为每页编写 50-160 字符的独特描述');
-  else if (page.descriptionLength < 50) A('content-description-short', 'content', 'low', 'description 过短', `${page.descriptionLength} 字符`, page.description, '补充价值主张与差异化信息');
-  else if (page.descriptionLength > 160) A('content-description-long', 'content', 'low', 'description 过长', `${page.descriptionLength} 字符`, page.description, '建议 ≤160 字符，避免截断');
+  else if (page.titleLength < 10) A('content-title-short', 'content', 'info', 'title 长度观察（较短）', `${page.titleLength} 字符`, `${page.title}\n10 仅为人工检查提示线，不是 Google 的最低字符要求。`, '结合语言、品牌和页面主题核对标题是否清晰，不为凑字符扩写');
+  else if (page.titleLength > 60) A('content-title-long', 'content', 'info', 'title 长度观察（较长）', `${page.titleLength} 字符`, `${page.title}\n60 仅为人工检查提示线；Google 没有固定字符上限，展示截断取决于设备宽度。`, '按实际展示与页面主题核对是否冗长，不为满足固定字符数删减关键信息');
+  if (!page.description) A('content-description-missing', 'content', 'high', '缺少 meta description', '', '', '为每页编写独特、准确概括内容的描述');
+  else if (page.descriptionLength < 50) A('content-description-short', 'content', 'info', 'description 长度观察（较短）', `${page.descriptionLength} 字符`, `${page.description}\n50 仅为人工检查提示线，字符数不能证明摘要质量。`, '结合语言与页面用途核对摘要是否准确，不为凑字符扩写');
+  else if (page.descriptionLength > 160) A('content-description-long', 'content', 'info', 'description 长度观察（较长）', `${page.descriptionLength} 字符`, `${page.description}\n160 仅为人工检查提示线；Google 没有固定字符上限，展示截断取决于设备宽度。`, '把关键信息写清楚，按实际摘要展示核对是否冗长');
   if (page.h1.length === 0) A('content-h1-missing', 'content', 'high', '缺少 H1', '', '', '每页保留一个描述主题的 H1');
   else if (page.h1.length > 1) A('content-h1-multiple', 'content', 'medium', '存在多个 H1', `${page.h1.length} 个`, page.h1.slice(0, 3).join(' | '), '合并为单一 H1，其余降级为 H2/H3');
   if (page.headingSkips > 0) A('content-heading-skip', 'content', 'low', '标题层级跳跃', `${page.headingSkips} 处`, (page.headingLevels || []).join(' → '), '保持 H1→H2→H3 的层级顺序');

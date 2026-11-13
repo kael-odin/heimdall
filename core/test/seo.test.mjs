@@ -14,8 +14,8 @@ function page(over = {}) {
     redirectCount: 0,
     title: 'Pricing — Example',
     titleLength: 17,
-    description: 'A clear description of the pricing page with enough characters to pass the minimum length check.',
-    descriptionLength: 96,
+    description: 'A factual summary of the pricing page, available plans, billing terms, and usage limits.',
+    descriptionLength: 88,
     canonical: 'https://example.com/pricing',
     robotsMeta: '',
     xRobots: '',
@@ -106,6 +106,25 @@ test('seo: a short body is an observation, not evidence of a ranking defect', ()
     const issues = evaluatePage(page({ wordCount }), site);
     assert.equal(issues.find(i => i.id === 'content-thin').severity, 'info');
     assert.equal(scoreIssues(issues), scoreIssues(issues.filter(i => i.id !== 'content-thin')));
+  }
+});
+
+test('seo: metadata length is an unscored review hint and missing metadata remains a defect', () => {
+  for (const [field, cases] of [
+    ['title', [['豆瓣', 'short'], ['A'.repeat(9), 'short'], ['A'.repeat(10), null], ['A'.repeat(60), null], ['A'.repeat(61), 'long']]],
+    ['description', [['图书、电影与音乐的推荐和评论。', 'short'], ['A'.repeat(49), 'short'], ['A'.repeat(50), null], ['A'.repeat(160), null], ['A'.repeat(161), 'long']]],
+  ]) {
+    for (const [value, lengthHint] of cases) {
+      const issues = evaluatePage(page({ [field]: value, [`${field}Length`]: value.length }), site);
+      const hints = issues.filter(i => i.id.startsWith(`content-${field}-`) && /-(short|long)$/.test(i.id));
+      assert.deepEqual(hints.map(i => [i.id, i.severity]), lengthHint ? [[`content-${field}-${lengthHint}`, 'info']] : []);
+      assert.equal(scoreIssues(issues), scoreIssues(evaluatePage(page(), site)), `${field}: ${value.length}`);
+      if (lengthHint) assert.match(hints[0].evidence, /人工检查提示/);
+    }
+    const issues = evaluatePage(page({ [field]: '', [`${field}Length`]: 0 }), site);
+    const missing = issues.find(i => i.id === `content-${field}-missing`);
+    assert.equal(missing.severity, field === 'title' ? 'critical' : 'high');
+    assert.ok(scoreIssues(issues) < scoreIssues(issues.filter(i => i !== missing)));
   }
 });
 

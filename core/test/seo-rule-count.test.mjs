@@ -88,9 +88,12 @@ test('SEO 使用手册的评分和测量口径与当前实现一致', async () =
   assert.match(current, /未分类、缓存及跨源限制/);
   assert.match(current, /JSON-LD 使用标准处理器/);
   assert.match(current, /canonical 同时核对/);
+  assert.match(current, /标题与描述的字符数仅供人工检查，不扣分/);
+  const previous = renderHtml({ ...report, scoreMethodVersion: 12, measurementVersion: SEO_MEASUREMENT_VERSION });
+  assert.doesNotMatch(previous, /标题与描述的字符数仅供人工检查/);
   const future = renderHtml({ ...report, scoreMethodVersion: SEO_SCORE_METHOD_VERSION + 1, measurementVersion: SEO_MEASUREMENT_VERSION + 1 });
   assert.match(future, /历史或未知测量口径可能遗漏 @graph/);
-  assert.doesNotMatch(future, /canonical 同时核对|正文计数采用/);
+  assert.doesNotMatch(future, /canonical 同时核对|正文计数采用|标题与描述的字符数仅供人工检查/);
 });
 
 test('规则数：id 用 <分类>-<slug> 形式，分类都在 CATEGORIES 里', async () => {

@@ -2,7 +2,7 @@
 
 每个文件对应 `../seo-targets.txt` 里的一个来源（协议、主机名、端口）。
 文件名由 `core/src/seo/baseline-file.mjs` 的 `versionedBaselineFileKey()` 计算。
-例如 `https://example.com` → `example.com--origin-100680ad546ce6a577f42f52--score-v12--measure-v8.json`。
+例如 `https://example.com` → `example.com--origin-100680ad546ce6a577f42f52--score-v13--measure-v8.json`。
 来源 URL 的 SHA-256 前 24 位区分协议、端口和主机名；末尾分别区分评分与测量口径。
 CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件保留，不自动覆盖。
 
@@ -16,7 +16,7 @@ CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件�
 ```json
 {
   "version": 1,
-  "scoreMethodVersion": 12,
+  "scoreMethodVersion": 13,
   "measurementVersion": 8,
   "host": "example.com",
   "origin": "https://example.com",
@@ -24,7 +24,7 @@ CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件�
   "stable": 92.4,
   "collection": { "version": 1, "sitemapCoverage": "complete" },
   "pages": {
-    "https://example.com": { "score": 94, "stable": 94, "issues": { "content-title-long": "low" } }
+    "https://example.com": { "score": 94, "stable": 94, "issues": { "content-title-long": "info" } }
   },
   "siteIssues": { "index-robots-missing": "info" }
 }
@@ -38,13 +38,13 @@ CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件�
 首次建立当前口径基线（选择新路径并审核；同口径的 `--update-baseline` 会覆盖目标文件）：
 
 ```bash
-cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v12--measure-v8.json --update-baseline
+cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v13--measure-v8.json --update-baseline
 ```
 
 按基线判回归（CI 用的就是这个，有阻断级回归则 exit 1）：
 
 ```bash
-cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v12--measure-v8.json --require-baseline --fail-on-regression
+cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v13--measure-v8.json --require-baseline --fail-on-regression
 ```
 
 门禁命令会在抓取前校验基线结构及 origin，缺失、损坏、空页面、错误严重度或来源不一致都会失败。建立基线的命令允许文件尚不存在，但已存在的坏基线仍需先人工处理。
@@ -56,13 +56,14 @@ cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/
 评分口径 7、测量口径 6 引入标准 JSON-LD 语义展开及受限字段投影，修复别名与命名空间误判。GEO 方法 5 保留语义未知与投影缺口；未配置远程上下文或超限的页面不能用于 SEO 基线，旧口径 6/5 的文件保持不变。
 评分口径 11 将固定字数扣分改为不扣分观察；测量口径 7 统一以 Node/ICU 的 Intl.Segmenter 分词，不再遗漏韩文和假名，中文也不再逐字计数。GEO 方法 6 取消初始 HTML 的 40 词下限，只保留非空和相对覆盖检查。旧评分 10 / 测量 6 基线保留，须选新路径重新采集审核；不同 ICU 版本在分词边界附近也可能有差异。
 评分口径 12、测量口径 8 补采 HTTP Link canonical，并保留其与 HTML 的来源和冲突；非自指或跨域本身不单独扣分。GEO 方法 7 对冲突规范地址保留未知。旧评分 11 / 测量 7 基线保留，须选新路径重新采集审核；分数变化不代表网站搜索效果改善。
+评分口径 13 将标题与描述的四类固定字符数扣分改为不扣分观察；测量口径仍为 8。GEO 方法 8 的摘要项只核对是否有非空 description，不以 50 字符判断质量。旧评分 12 的基线保留，须选新路径建立审核；评分变化不代表网站排名或引用改善。
 门禁或基线更新遇到未成功采集的页面（HTTP 错误、导航失败或跨来源重定向）也会失败，不把错误页更新为基线。
 仓库目前没有已授权的真实目标与审核过的基线，因此工作流只支持手动触发；接入后先审核首份基线，再启用定时任务。
 
 额外启用「总分跌幅」门禁（默认关闭，因为分数是问题列表的派生量）：
 
 ```bash
-cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v12--measure-v8.json --fail-on-regression --tolerance 3
+cd core && node src/seo/audit.mjs example.com --baseline ../config/seo-baseline/example.com--origin-100680ad546ce6a577f42f52--score-v13--measure-v8.json --fail-on-regression --tolerance 3
 ```
 
 ## 判定口径
