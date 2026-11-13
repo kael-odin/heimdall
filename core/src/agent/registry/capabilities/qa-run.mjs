@@ -37,7 +37,7 @@ const RESPONSE_REFERENCE = {
 const RESPONSE_JSON = {
   type: 'object', additionalProperties: false, required: ['path'], properties: {
     path: RESPONSE_FIELD_PATH,
-    equals: { type: ['string', 'number', 'boolean', 'null'] },
+    equals: { type: ['string', 'number', 'boolean', 'null'], description: 'Finite scalars; integer constants must be safe. Use equalsFrom for plain long integer response tokens.' },
     equalsFrom: RESPONSE_REFERENCE,
   },
 };

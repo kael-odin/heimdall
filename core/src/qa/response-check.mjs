@@ -10,7 +10,7 @@ const STATES = {
   cached: '缓存响应无法核实大小', encoded: '压缩响应未读取', 'not-json': '响应不是 JSON',
   'size-unavailable': '无法核实响应大小', 'too-large': '响应超过读取上限',
   'body-unavailable': '响应正文无法读取', 'invalid-json': '响应不是有效 JSON',
-  'field-missing': '声明的字段不存在或不是标量', 'json-mismatch': '字段值不符合声明',
+  'field-missing': '声明的字段不存在或无法核实为标量', 'json-mismatch': '字段值不符合声明',
   'reference-unavailable': '较早响应的引用值或完成顺序无法核实', 'path-mismatch': '请求路径不符合较早响应的引用值',
 };
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
@@ -64,7 +64,7 @@ function fieldOf(body, path) {
     if (!value || typeof value !== 'object' || !own(value, key)) return null;
     value = value[key];
   }
-  return value === null || ['string', 'number', 'boolean'].includes(typeof value) ? { value } : null;
+  return value === null || ['string', 'number', 'bigint', 'boolean'].includes(typeof value) ? { value } : null;
 }
 
 export function normalizeResponses(raw, label) {
@@ -117,8 +117,8 @@ export function normalizeResponses(raw, label) {
         const equalsFrom = own(check, 'equalsFrom') ? responseReference(check.equalsFrom, index, `${label}.equalsFrom`) : null;
         const value = check.equals;
         if (!equalsFrom && (!(value === null || ['string', 'number', 'boolean'].includes(typeof value))
-          || (typeof value === 'number' && !Number.isFinite(value)) || (typeof value === 'string' && value.length > 200))) {
-          fail(`${label}.equals 应为有限的标量值`);
+          || (typeof value === 'number' && (!Number.isFinite(value) || Number.isInteger(value) && !Number.isSafeInteger(value))) || (typeof value === 'string' && value.length > 200))) {
+          fail(`${label}.equals 应为有限标量；整数常量须为安全整数`);
         }
         const key = JSON.stringify(check.path);
         if (paths.has(key)) fail(`${label}.path 与其他 JSON 断言重复`);
@@ -147,14 +147,14 @@ function resultOf(entry, entries, results) {
     if (results[reference.response]?.state !== 'matched' || !Number.isFinite(source.request?.finishedAt)
       || !Number.isFinite(entry.request?.startedAt) || source.request.finishedAt > entry.request.startedAt) return null;
     const field = source.request.values?.get(JSON.stringify(reference.path));
-    if (!field || typeof field.value === 'string' && field.value.length > 200 || typeof field.value === 'number' && !Number.isFinite(field.value)) return null;
+    if (!field || ['string', 'bigint'].includes(typeof field.value) && String(field.value).length > 200 || typeof field.value === 'number' && !Number.isFinite(field.value)) return null;
     return field;
   };
   if (state === 'matched' && entry.spec.pathParams) {
     const values = new Map();
     for (const [name, reference] of Object.entries(entry.spec.pathParams)) {
       const field = referenced(reference);
-      if (!field || !['string', 'number'].includes(typeof field.value) || String(field.value) === '') { state = 'reference-unavailable'; break; }
+      if (!field || !['string', 'number', 'bigint'].includes(typeof field.value) || String(field.value) === '') { state = 'reference-unavailable'; break; }
       values.set(name, field.value);
     }
     if (state === 'matched') try {
@@ -258,7 +258,15 @@ export async function observeResponses(page, specs) {
       if (length > MAX_BODY_BYTES) { req.state = 'too-large'; return; }
       const bytes = Buffer.from(result.body, result.base64Encoded ? 'base64' : 'utf8');
       let body;
-      try { body = JSON.parse(bytes.toString('utf8')); } catch { req.state = 'invalid-json'; return; }
+      try {
+        body = JSON.parse(bytes.toString('utf8'), (_, value, context) => {
+          if (typeof value !== 'number') return value;
+          if (!Number.isFinite(value)) return undefined;
+          if (!Number.isInteger(value) || Number.isSafeInteger(value)) return value;
+          // shortcut: unsafe exponent/fraction forms stay unverified; expand only with a bounded decimal parser.
+          return /^-?\d{1,200}$/.test(context?.source ?? '') ? BigInt(context.source) : undefined;
+        });
+      } catch { req.state = 'invalid-json'; return; }
       req.values = new Map([...entry.paths].map(([key, path]) => [key, fieldOf(body, path)]));
       req.state = 'matched';
     }).catch(() => { if (!closed && req.state === 'pending') req.state = 'body-unavailable'; });

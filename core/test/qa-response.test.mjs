@@ -109,6 +109,12 @@ test('response checks reject ambiguous or unsafe declarations', () => {
   }
   const multiple = { ...response, json: [response.json, { path: ['total'], equals: 2 }] };
   assert.deepEqual(normalizeCheck({ ...base, responses: [multiple] }).responses, [multiple]);
+  for (const value of [Number.MAX_SAFE_INTEGER, -Number.MAX_SAFE_INTEGER, 0.5]) {
+    assert.equal(normalizeCheck({ ...base, responses: [{ ...response, json: { path: ['id'], equals: value } }] }).responses[0].json.equals, value);
+  }
+  for (const value of [Number.MAX_SAFE_INTEGER + 1, -Number.MAX_SAFE_INTEGER - 1]) {
+    assert.throws(() => normalizeCheck({ ...base, responses: [{ ...response, json: { path: ['id'], equals: value } }] }), /安全整数/);
+  }
   for (const invalid of [
     { ...response, origin: 'http://user:pass@127.0.0.1:1234' },
     { ...response, origin: 'http://127.0.0.1:1234/path' },
@@ -160,9 +166,15 @@ test('response bindings survive delayed CDP body reads and keep values out of re
     'wrong-path': 'path-mismatch', 'wrong-body': 'json-mismatch', 'wrong-type': 'json-mismatch',
     'bad-source': 'reference-unavailable', 'missing-field': 'reference-unavailable', 'source-duplicate': 'reference-unavailable',
     'early-target': 'reference-unavailable', 'missing-finish-time': 'reference-unavailable', 'missing-start-time': 'reference-unavailable',
-    oversized: 'reference-unavailable', traversal: 'reference-unavailable', 'late-failure': 'reference-unavailable' };
+    oversized: 'reference-unavailable', traversal: 'reference-unavailable', 'late-failure': 'reference-unavailable',
+    'int64-exact': 'matched', 'int64-max': 'matched', 'int64-negative': 'matched',
+    'int64-wrong-path': 'path-mismatch', 'int64-wrong-body': 'json-mismatch', 'int64-string': 'json-mismatch',
+    'int64-exponent': 'reference-unavailable', 'int64-fraction': 'reference-unavailable',
+    'integer-200': 'matched', 'integer-201': 'reference-unavailable', 'integer-nonfinite': 'reference-unavailable' };
   for (const scenario of Object.keys(expected)) {
-    const sourceId = ['zero', 'wrong-type'].includes(scenario) ? 0 : scenario === 'unicode' ? '商品/一' : scenario === 'null' ? null
+    const sourceId = scenario.startsWith('integer-') ? BigInt('9'.repeat(scenario === 'integer-200' ? 200 : scenario === 'integer-201' ? 201 : 400))
+      : scenario === 'int64-max' ? 9223372036854775807n : scenario === 'int64-negative' ? -9007199254740993n
+      : scenario.startsWith('int64-') ? 9007199254740993n : ['zero', 'wrong-type'].includes(scenario) ? 0 : scenario === 'unicode' ? '商品/一' : scenario === 'null' ? null
       : scenario === 'boolean' ? false : scenario === 'oversized' ? 'x'.repeat(201) : scenario === 'traversal' ? '..' : id;
     const scalarOnly = ['null', 'boolean'].includes(scenario);
     const specs = normalizeCheck({ ...base, responses: [
@@ -179,8 +191,10 @@ test('response bindings survive delayed CDP body reads and keep values out of re
       if (method === 'Network.getResponseBody') {
         calls.push(args.requestId);
         if (args.requestId === 'source') await sourceBody;
-        return { body: JSON.stringify(args.requestId === 'source' ? scenario === 'missing-field' ? {} : { id: sourceId }
-          : { id: scenario === 'wrong-body' ? 'different' : scenario === 'wrong-type' ? '0' : sourceId }), base64Encoded: false };
+        const value = args.requestId === 'source' ? sourceId : scenario === 'int64-wrong-body' ? sourceId - 1n
+          : scenario === 'int64-string' ? String(sourceId) : scenario === 'wrong-body' ? 'different' : scenario === 'wrong-type' ? '0' : sourceId;
+        const token = typeof value === 'bigint' ? `${value}${scenario === 'int64-exponent' ? 'e0' : scenario === 'int64-fraction' ? '.0' : ''}` : JSON.stringify(value);
+        return { body: args.requestId === 'source' && scenario === 'missing-field' ? '{}' : `{"id":${token}}`, base64Encoded: false };
       }
       return {};
     };
@@ -197,7 +211,7 @@ test('response bindings survive delayed CDP body reads and keep values out of re
       request: { method: 'POST', url: origin + '/items' } });
     session.emit('Network.requestWillBeSent', { requestId: 'target', frameId: 'main',
       timestamp: scenario === 'early-target' ? 1.5 : scenario === 'missing-start-time' ? undefined : 3,
-      request: { method: 'GET', url: origin + '/items/' + (scalarOnly ? 'value' : ['wrong-path', 'traversal'].includes(scenario) ? 'different' : encodeURIComponent(String(sourceId)))
+      request: { method: 'GET', url: origin + '/items/' + (scalarOnly ? 'value' : scenario === 'int64-wrong-path' ? String(sourceId - 1n) : ['wrong-path', 'traversal'].includes(scenario) ? 'different' : encodeURIComponent(String(sourceId)))
         + (scenario === 'query' ? '?q=public&page=2' : '') } });
     session.emit('Network.responseReceived', { requestId: 'target', response: { status: 200, headers: { 'content-type': 'application/json' } } });
     session.emit('Network.loadingFinished', { requestId: 'target', timestamp: 4, encodedDataLength: 100 });
@@ -208,6 +222,7 @@ test('response bindings survive delayed CDP body reads and keep values out of re
     assert.equal(results[1].state, expected[scenario], scenario);
     assert.ok(calls.length <= 2 && new Set(calls).size === calls.length);
     assert.doesNotMatch(JSON.stringify(results), new RegExp(id));
+    if (typeof sourceId === 'bigint') assert.ok(!JSON.stringify(results).includes(String(sourceId)));
     await observer.close();
   }
 });

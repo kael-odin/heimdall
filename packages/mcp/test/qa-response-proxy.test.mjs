@@ -18,16 +18,16 @@ test('bundled MCP proxy forwards response checks to a fresh isolated engine', { 
   let requestMethod = 'POST';
   const methods = [];
   const bindingHits = [];
-  const createdId = 'proxy-private-dynamic-id';
+  let createdId = 'proxy-private-dynamic-id';
   const fixture = createServer((req, res) => {
     if (req.url === '/dynamic') {
       res.setHeader('content-type', 'text/html');
-      return res.end('<title>Dynamic</title><div id="ready" hidden>Ready</div><script>fetch("/api/create",{method:"POST"}).then(r=>r.json()).then(x=>fetch("/api/items/"+x.id)).then(()=>document.querySelector("#ready").hidden=false)</script>');
+      return res.end('<title>Dynamic</title><div id="ready" hidden>Ready</div><script>fetch("/api/create",{method:"POST"}).then(r=>r.text()).then(t=>JSON.parse(t,(k,v,c)=>k==="id"&&typeof v==="number"?c.source:v)).then(x=>fetch("/api/items/"+x.id)).then(()=>document.querySelector("#ready").hidden=false)</script>');
     }
     if (req.url === '/api/create' || req.url === '/api/items/' + createdId) {
       bindingHits.push(req.method);
       res.writeHead(req.method === 'POST' ? 201 : 200, { 'content-type': 'application/json' });
-      return res.end(JSON.stringify({ id: createdId }));
+      return res.end(typeof createdId === 'bigint' ? `{"id":${createdId}}` : JSON.stringify({ id: createdId }));
     }
     if (req.url === '/blank' || req.url === '/page') {
       res.setHeader('content-type', 'text/html');
@@ -102,11 +102,15 @@ test('bundled MCP proxy forwards response checks to a fresh isolated engine', { 
       { method: 'POST', origin, path: '/api/create', status: 201 },
       { method: 'GET', origin, path: '/api/items/{itemId}', pathParams: { itemId: reference }, json: { path: ['id'], equalsFrom: reference } },
     ] };
-    const bound = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...args, checks: [dynamic], failOn: 'none' } });
-    assert.equal(bound.isError, false, JSON.stringify(bound.structuredContent.error));
-    assert.deepEqual(bound.structuredContent.result.checks[0].responses.map(row => row.state), ['matched', 'matched']);
-    assert.doesNotMatch(JSON.stringify(bound.structuredContent), new RegExp(createdId));
-    assert.deepEqual(bindingHits, ['POST', 'GET']);
+    for (const id of ['proxy-private-dynamic-id', 9007199254740993n]) {
+      createdId = id;
+      bindingHits.length = 0;
+      const bound = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...args, checks: [dynamic], failOn: 'none' } });
+      assert.equal(bound.isError, false, JSON.stringify(bound.structuredContent.error));
+      assert.deepEqual(bound.structuredContent.result.checks[0].responses.map(row => row.state), ['matched', 'matched']);
+      assert.ok(!JSON.stringify(bound.structuredContent).includes(String(createdId)));
+      assert.deepEqual(bindingHits, ['POST', 'GET']);
+    }
   } finally {
     await client?.close().catch(() => {});
     if (engine.exitCode === null && engine.signalCode === null) {
