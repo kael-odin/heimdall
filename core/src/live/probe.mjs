@@ -14,6 +14,7 @@ export const DEFAULT_BROWSER_OBSERVE_MS = 3_000;
 export const MAX_BROWSER_OBSERVE_MS = 15_000;
 const PRIVATE_PATH_PARENT = /^(?:users?|accounts?|members?|profiles?|customers?|patients?|orders?|invoices?|sessions?|reset-password|password-reset|verify-email|email-verification|magic-link|invites?|invitations?|tokens?|secrets?)$/i;
 const PUBLIC_ERROR_TYPES = new Set(['Error', 'TimeoutError', 'TypeError', 'ReferenceError', 'SyntaxError', 'RangeError', 'URIError', 'EvalError', 'AggregateError']);
+const PUBLIC_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'media', 'font', 'script', 'texttrack', 'xhr', 'fetch', 'eventsource', 'websocket', 'manifest', 'other']);
 const PUBLIC_ERROR_MESSAGE_LIMIT = 200;
 const PUBLIC_ERROR_URL = /\b(?:https?|wss?):\/\/[^\s"'<>]+/gi;
 const PUBLIC_ERROR_SECRET = /\b(?:authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key|access[-_]?token|refresh[-_]?token|id[-_]?token|client[-_]?secret|password|passwd|token)\b\s*[:=]\s*["']?[^\s"',;&]+/gi;
@@ -88,6 +89,11 @@ function isLocalMediaRequest(request, base) {
 
 function publicErrorType(error) {
   return PUBLIC_ERROR_TYPES.has(error?.name) ? error.name : 'Error';
+}
+
+function publicResourceType(request) {
+  const type = String(request?.resourceType?.() ?? 'other');
+  return PUBLIC_RESOURCE_TYPES.has(type) ? type : 'other';
 }
 
 function publicErrorMessage(error) {
@@ -266,7 +272,8 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
         });
         context.on('response', response => {
           if (response.status() >= 400) addFailure({
-            kind: 'http', status: response.status(), target: publicTarget(response.url(), base),
+            kind: 'http', status: response.status(), resourceType: publicResourceType(response.request()),
+            target: publicTarget(response.url(), base),
           });
         });
         context.on('requestfailed', request => {

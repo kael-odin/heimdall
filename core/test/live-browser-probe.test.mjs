@@ -55,7 +55,8 @@ test('browser probe executes local JS and reports uncovered pages', { timeout: 3
     assert.equal(bad.checked, 1);
     assert.equal(bad.failed, 1, JSON.stringify(bad));
     assert.equal(bad.untested, 0);
-    assert.ok(bad.failures.some(f => f.kind === 'http' && f.status === 404 && f.target === '/api/missing'));
+    assert.ok(bad.failures.some(f => f.kind === 'http' && f.status === 404
+      && f.resourceType === 'fetch' && f.target === '/api/missing'));
     assert.ok(bad.failures.some(f => f.kind === 'externalRequest' && f.target === 'https://example.invalid'));
     assert.ok(bad.failures.some(f => f.kind === 'websocketUnsupported' && f.target === 'wss://example.invalid'));
     const pageError = bad.failures.find(f => f.kind === 'pageError');
