@@ -265,6 +265,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
           { page: '/library/', kind: 'http', status: 404, resourceType: 'script', target: '/missing.js' },
         ],
       },
+      missingLinkDetails: [{ path: '/library.db', kind: 'resource-link', references: 1, pages: ['/library/'] }],
     });
     assert.equal(assess().readiness.delivery.status, 'needs_export');
     const blocked = assess(outcome);
@@ -280,6 +281,9 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-offline-delivery').status, 'blocked');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').status, 'blocked');
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').detail, /CodeMirror is not defined/);
+    assert.equal(blocked.clone.delivery.binaryDownloadGaps[0].path, '/library.db');
+    assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').status, 'blocked');
+    assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').detail, /library\.db/);
     assert.match(blocked.readiness.delivery.nextAction.args.command, /--root mirror$/);
     put(join(site, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), { browserProbe: { failures: [] } });
     const passed = { ...outcome, status: 'passed', published: true, blockingCount: 0, blockers: {},
