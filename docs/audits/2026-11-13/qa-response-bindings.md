@@ -39,4 +39,10 @@
 
 本地响应/QA CI 回归 **17/17**，HTTP 策略/注册表/规则口径 **15/15**，MCP 全套 **7/7** 通过，无跳过；各集合不互相累计为真实案例。语法 765 文件、文档 779 个目标 / 157 个文件、冻结验收 14 文件，以及插件新鲜度、技能同步和 diff 检查通过。日志为 `related-tests-final.log`、`policy-schema-tests.log`、`mcp-suite.log`、`syntax.log`。
 
-Hosted 精确提交终态在结束后补记；本段不把尚未结束的流水线记为通过。
+## 最终 Hosted 验收
+
+源码提交 [`22b85a1a`](https://github.com/kael-odin/heimdall/commit/22b85a1a817e2691a0acb38d781570f94ffd5208) 的 [CI 43388727172](https://github.com/kael-odin/heimdall/actions/runs/43388727172) **8/8 job 成功**，同提交 [Docs 43388727069](https://github.com/kael-odin/heimdall/actions/runs/43388727069) 成功。
+
+Hosted Node 22 两片完整 Core 共 3,332 条，**3,328 通过、0 失败、4 条件跳过**。其中两条 Docker 用例在服务 job 另行 **2/2 通过**，其余两条为 Linux 不适用的 Windows 文件句柄用例。MCP 干净安装及全套测试 **7/7** 通过，包含动态关联的实际代理调用。语法 765 文件、文档链接、冻结验收 14 文件、完整浏览器链、QA Action、构建与依赖审计均成功。本地、Hosted 与案例验证不累计为独立样本数，Hosted 测试不代表又做八个真实项目。
+
+`ci-source-completed.json`、`docs-source-completed.json` 记录精确提交和终态；八份 `ci-*.log` 保存逐 job 原始日志，`ci-test-totals.json` 保留 TAP 汇总及跳过项。`acceptance-summary.json` 汇总本地回归、真实后端场景、报告复核、源码与参考哈希。验收进程已经退出，参考依赖及生成数据库未进入仓库。
