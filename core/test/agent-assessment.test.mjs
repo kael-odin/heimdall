@@ -258,6 +258,14 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
   try {
     put(join(site, 'pages', 'home', 'clone', 'index.html'), '<html>mirror</html>');
     put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), {
+      browserProbe: {
+        failures: [
+          { page: '/library/', kind: 'pageError', error: 'ReferenceError', message: 'CodeMirror is not defined' },
+          { page: '/library/', kind: 'http', status: 404, resourceType: 'script', target: '/missing.js' },
+        ],
+      },
+    });
     assert.equal(assess().readiness.delivery.status, 'needs_export');
     const blocked = assess(outcome);
     assert.equal(blocked.clone.delivery.status, 'blocked');
@@ -265,10 +273,15 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.clone.delivery.otherBlockers, 2);
     assert.deepEqual(blocked.clone.delivery.blockers, { unresolved: 1, browserFailed: 1 });
     assert.equal(blocked.clone.delivery.healthReport, outcome.healthReport);
+    assert.equal(blocked.clone.delivery.browserFailures[0].message, 'CodeMirror is not defined');
+    assert.equal(blocked.clone.delivery.browserFailures[1].resourceType, 'script');
     assert.equal(assess({ ...outcome, healthReport: '/super-secret/health.json' }).clone.delivery.healthReport, null);
     assert.equal(blocked.readiness.delivery.status, 'blocked');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-offline-delivery').status, 'blocked');
+    assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').status, 'blocked');
+    assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').detail, /CodeMirror is not defined/);
     assert.match(blocked.readiness.delivery.nextAction.args.command, /--root mirror$/);
+    put(join(site, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), { browserProbe: { failures: [] } });
     const passed = { ...outcome, status: 'passed', published: true, blockingCount: 0, blockers: {},
       browser: { checked: 1, failed: 0, untested: 0, totalPages: 1 } };
     const accepted = assess(passed);
@@ -278,6 +291,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(accepted.claims.observed.includes('clone.offline_export:passed'), true);
     assert.equal(accepted.claims.verified.some(claim => claim.includes('offline')), false);
     assert.equal(accepted.deliveryPlan.items.some(item => item.id === 'clone-offline-delivery'), false);
+    assert.equal(accepted.deliveryPlan.items.some(item => item.id === 'clone-browser-failures'), false);
     assert.equal(assess({ ...passed, status: 'unverified', strict: false, browser: null }).readiness.delivery.status, 'needs_strict_verification');
     for (const invalid of [
       { ...passed, siteId: 'other.test' }, { ...passed, strict: false }, { ...passed, published: false },

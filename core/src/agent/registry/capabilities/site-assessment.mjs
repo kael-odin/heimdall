@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { measurementCoverage, scanMeasurementsAsync } from '../../../verify/measurement-status.mjs';
 import { summarizeObservedApiContract } from '../../../live/contract.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
+import { redactText } from '../../redact.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
 import { listRuns, openWorkspace, relPath, runsDir } from '../../../qa/run.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
@@ -19,6 +20,8 @@ const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
 const SEO_SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
+const BROWSER_FAILURE_KINDS = new Set(['http', 'pageError', 'navigation', 'requestFailed', 'externalRequest', 'websocketUnsupported', 'observationDeadline', 'pageCrash', 'probeError']);
+const BROWSER_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'media', 'font', 'script', 'texttrack', 'xhr', 'fetch', 'eventsource', 'websocket', 'manifest', 'other']);
 
 function readJson(file) {
   try {
@@ -114,6 +117,22 @@ function reportPath(siteId, suffix) {
   return `workspace/${siteId}/${suffix}`;
 }
 
+function safeBrowserFailure(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const text = input => redactText(String(input ?? ''), { profile: 'strict' }).text
+    .replace(/\b(?:token|cookie|authorization|bearer|password|secret)\b\s*[:=]\s*[^\s&,;]+/gi, '[sensitive value removed]')
+    .slice(0, 240);
+  const result = { kind: BROWSER_FAILURE_KINDS.has(value.kind) ? value.kind : 'unknown' };
+  for (const key of ['page', 'target', 'error', 'message', 'resourceType']) {
+    if (typeof value[key] !== 'string') continue;
+    if (key === 'resourceType') result.resourceType = BROWSER_RESOURCE_TYPES.has(value[key]) ? value[key] : 'other';
+    else result[key] = text(value[key]);
+  }
+  if (Number.isInteger(value.status)) result.status = value.status;
+  if (Number.isInteger(value.pageIndex) && value.pageIndex >= 0) result.pageIndex = value.pageIndex;
+  return result;
+}
+
 function originOf(value) {
   try {
     const url = new URL(value);
@@ -161,13 +180,16 @@ function liveExportSummary(root, siteId) {
   const candidatePrefix = `deliverable/.candidate-${siteId}-`;
   const healthReport = typeof source.healthReport === 'string' && source.healthReport.startsWith(candidatePrefix)
     && /^[a-z0-9]{6}\/health\.json$/i.test(source.healthReport.slice(candidatePrefix.length)) ? source.healthReport : null;
+  const health = healthReport ? readJson(join(root, healthReport)) : null;
+  const browserFailures = Array.isArray(health?.browserProbe?.failures)
+    ? health.browserProbe.failures.slice(0, 50).map(safeBrowserFailure).filter(Boolean) : [];
   return {
     status: source.status, generatedAt: new Date(source.generatedAt).toISOString(), report, healthReport,
     offline: source.offline, strict: source.strict, root: source.root === 'mirror' ? 'mirror' : 'landing',
     published: source.published, pages: source.pages,
     blockingCount: source.blockingCount, blockers,
     otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
-    browser, coverage: {
+    browser, browserFailures, coverage: {
       scope: ['captured-only', 'recon-discovered', 'untrusted-recon'].includes(source.coverage?.scope) ? source.coverage.scope : 'unknown',
       scopeLimited: source.coverage?.scope !== 'recon-discovered' || source.coverage?.scopeLimited !== false,
     },
@@ -640,6 +662,23 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       action: plannedAction('cli:shell', { command: `heimdall live ${siteId} --offline --strict${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}` },
         '按已审核的资源策略修复候选包 health.json 阻断，再用同一根路径严格导出', { canAutoRun: true, requiresHumanApproval: false }),
       verify: planVerification(siteId, 'rerun strict offline export for current inputs; clone.delivery.status === "passed"'),
+    });
+  }
+  if (clone.delivery.browserFailures?.length) {
+    const examples = clone.delivery.browserFailures.slice(0, 4).map(failure => {
+      const target = failure.target ? ` ${failure.target}` : '';
+      const reason = failure.message || failure.error || failure.kind;
+      return `${failure.page ?? '/'}: ${failure.kind}${target} — ${reason}`;
+    }).join('；');
+    add({
+      id: 'clone-browser-failures', kind: 'frontend_runtime_gap', basis: 'observed', status: 'blocked',
+      title: '离线浏览器发现前端运行时错误',
+      detail: `${clone.delivery.browserFailures.length} 条失败证据：${examples}`,
+      evidence: [clone.delivery.healthReport].filter(Boolean),
+      action: plannedAction('cli:shell', {
+        command: `heimdall live ${siteId} --offline --strict${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}`,
+      }, '修复候选页面运行时错误后重新严格导出和复测', { requiresHumanApproval: true }),
+      verify: planVerification(siteId, 'clone.delivery.browserFailures.length === 0'),
     });
   }
 
