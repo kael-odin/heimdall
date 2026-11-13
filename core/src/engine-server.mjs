@@ -50,6 +50,7 @@ import { makeSlotBox } from './forge-slots.mjs';
 import { cloneDocFile } from './clone-doc.mjs';
 import { readCloneScope } from './clone-scope.mjs';
 import { scanMeasurementsAsync } from './verify/measurement-status.mjs';
+import { readCurrentScore } from './score-status.mjs';
 import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
 import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './acceptance/managed-run-schema.mjs';
 import { createLegacyAcceptanceReadScope } from './acceptance/managed-access.mjs';
@@ -1951,9 +1952,9 @@ const handleRequest = async (req, res) => {
       for (const name of readdirSync(pagesDir)) {
         const cloneHtml = join(pagesDir, name, 'clone', 'index.html');
         if (!existsSync(cloneHtml)) continue;
-        let target = '', score = null;
+        let target = '', score = null, scoreStatus = 'missing';
         try { target = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target ?? ''; } catch {}
-        try { score = JSON.parse(readFileSync(join(pagesDir, name, 'score.json'), 'utf8')); } catch {}
+        ({ score, status: scoreStatus } = readCurrentScore(join(pagesDir, name)));
         const assets = pageAssets[name] ?? { count: 0, bytes: 0 };
         // updatedAt = 这一页克隆产物的构建时间。控制台拿它当截图的 cache-buster
         // （重新克隆后两张图必须刷新）。只需要**一次 stat**，不走资产树遍历。
@@ -1970,6 +1971,7 @@ const handleRequest = async (req, res) => {
         out.push({
           name, target, forged: true,
           score: score ? { total: score.total, pixel: score.pixel, grade: score.grade } : null,
+          scoreStatus,
           assets,
           visualGaps: gapMap[name] ?? null,
           artifacts,

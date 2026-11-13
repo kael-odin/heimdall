@@ -19,6 +19,7 @@ import { connectEngine, engineFetch } from '../../engine-client.mjs';
 import { publicJob } from '../../jobs.mjs';
 import { listPages } from '../../workspace.mjs';
 import { measurementCoverage, scanMeasurementsAsync } from '../../../verify/measurement-status.mjs';
+import { readCurrentScore } from '../../../score-status.mjs';
 import { nextForJob } from './jobs.mjs';
 
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
@@ -32,9 +33,9 @@ function parseTarget(url) {
 
 function pageResult(siteId, page, measurement, scanStatus) {
   const dir = join(WORKSPACE, siteId, 'pages', page);
-  const score = readJson(join(dir, 'score.json'));
+  const { score, status: scoreStatus } = readCurrentScore(dir);
   const verify = measurement?.status === 'verified' ? measurement.result : null;
-  return { page, mirror: existsSync(join(dir, 'clone', 'index.html')), score: score ? { total: score.total, grade: score.grade } : null,
+  return { page, mirror: existsSync(join(dir, 'clone', 'index.html')), score: score ? { total: score.total, grade: score.grade } : null, scoreStatus,
     verify: verify ? { measured: true, overall: verify.overall ?? null, minViewport: verify.minViewport?.name ? { name: verify.minViewport.name, score: verify.minViewport.score } : null } : null,
     verifyStatus: scanStatus === 'ok' ? measurement?.status ?? 'unavailable' : scanStatus };
 }

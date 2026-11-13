@@ -11,19 +11,21 @@ import { createFence } from '../../fence.mjs';
 import { redactText } from '../../redact.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
 import { measurementCoverage, scanMeasurementsAsync } from '../../../verify/measurement-status.mjs';
+import { readCurrentScore } from '../../../score-status.mjs';
 
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
 
 function pageRow(siteId, page, fence, measurement, scanStatus) {
   const dir = pageDir(siteId, page);
   const manifest = readJson(join(dir, 'manifest.json'));
-  const score = readJson(join(dir, 'score.json'));
+  const { score, status: scoreStatus } = readCurrentScore(dir);
   const verify = measurement?.status === 'verified' ? measurement.result : null;
   return {
     page,
     target: manifest?.target ? fence.inline(redactText(manifest.target).text, 300, 'target') : null,
     mirror: existsSync(join(dir, 'clone', 'index.html')),
     score: score ? { total: score.total ?? null, grade: score.grade ?? null, pixel: score.pixel ?? null } : null,
+    scoreStatus,
     verify: verify ? { measured: !!verify.measured, overall: verify.overall ?? null, minViewport: verify.minViewport ? { name: verify.minViewport.name, score: verify.minViewport.score } : null } : null,
     verifyStatus: scanStatus === 'ok' ? measurement?.status ?? 'unavailable' : scanStatus,
   };

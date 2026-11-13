@@ -540,7 +540,7 @@ async function loadPageStatus() {
         // 此前是逐页再发 score.json + verify.json 两个请求 —— 80 页就是 160 个，
         // 而分数本来就包含在这条响应里，等于白拉了一遍。
         pageVerify[n.id] = hit.minViewport ? { minViewport: hit.minViewport, scoreVersion: hit.verifyScoreVersion, measured: hit.verifyMeasured } : null;
-        pageMeta[n.id] = { assets: hit.assets ?? null, visualGaps: hit.visualGaps ?? null, interactions: hit.interactions ?? null, verifyFresh: hit.verifyFresh ?? false, verifyStatus: hit.verifyStatus ?? null, verifyDetails: hit.verifyDetails ?? null, artifacts: hit.artifacts ?? null, updatedAt: hit.updatedAt ?? null, motion: hit.motion ?? null };
+        pageMeta[n.id] = { assets: hit.assets ?? null, visualGaps: hit.visualGaps ?? null, interactions: hit.interactions ?? null, verifyFresh: hit.verifyFresh ?? false, verifyStatus: hit.verifyStatus ?? null, verifyDetails: hit.verifyDetails ?? null, scoreStatus: hit.scoreStatus ?? null, artifacts: hit.artifacts ?? null, updatedAt: hit.updatedAt ?? null, motion: hit.motion ?? null };
       }
     }
     // 补全：已克隆但不在 atlas 中的页面（例如 recon 截断、删过节点），保证清单是"完全体"
@@ -552,7 +552,7 @@ async function loadPageStatus() {
       const hit = pages.find(p => p.name === n.pageName);
       pageScores[n.id] = hit?.score ?? null;
       pageVerify[n.id] = hit?.minViewport ? { minViewport: hit.minViewport, scoreVersion: hit.verifyScoreVersion, measured: hit.verifyMeasured } : null;
-      pageMeta[n.id] = { assets: hit?.assets ?? null, visualGaps: hit?.visualGaps ?? null, interactions: hit?.interactions ?? null, verifyFresh: hit?.verifyFresh ?? false, verifyStatus: hit?.verifyStatus ?? null, verifyDetails: hit?.verifyDetails ?? null, artifacts: hit?.artifacts ?? null, updatedAt: hit?.updatedAt ?? null, motion: hit?.motion ?? null };
+      pageMeta[n.id] = { assets: hit?.assets ?? null, visualGaps: hit?.visualGaps ?? null, interactions: hit?.interactions ?? null, verifyFresh: hit?.verifyFresh ?? false, verifyStatus: hit?.verifyStatus ?? null, verifyDetails: hit?.verifyDetails ?? null, scoreStatus: hit?.scoreStatus ?? null, artifacts: hit?.artifacts ?? null, updatedAt: hit?.updatedAt ?? null, motion: hit?.motion ?? null };
     }
     tableNodes.value = [...nodes, ...extraNodes.value];
     loadQueue(forHost);
@@ -2054,7 +2054,9 @@ function onNodeClick(node) {
   const pageName = pageNameOf(node);
   if (node.forgeState === 'done') {
     wsJson(host.value, 'pages/' + pageName + '/intel/intel.json').then(j => { if (j && selected.value === node) detailIntel.value = j; });
-    wsJson(host.value, 'pages/' + pageName + '/score.json').then(j => { if (j && selected.value === node) detailScore.value = j; });
+    if (pageMeta[node.id]?.scoreStatus === 'verified') {
+      wsJson(host.value, 'pages/' + pageName + '/score.json').then(j => { if (j && selected.value === node) detailScore.value = j; });
+    }
   }
 }
 

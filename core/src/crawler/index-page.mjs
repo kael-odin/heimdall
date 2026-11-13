@@ -14,6 +14,7 @@ import { WORKSPACE } from '../paths.mjs';
 import { readJson } from '../fsutil.mjs';
 import { esc } from '../html.mjs';
 import { siteIdForOrigin } from '../site-origin.mjs';
+import { readCurrentScore } from '../score-status.mjs';
 
 const host = requireArg(process.argv[2], 'node src/crawler/index-page.mjs <host>', '站点 host');
 const hostDir = process.argv[3] ?? host;
@@ -25,13 +26,17 @@ const LIVE_PORT = process.env.HEIMDALL_PORT ?? '8900';
 
 const pages = readdirSync(PAGES)
   .filter(n => existsSync(join(PAGES, n, 'clone', 'index.html')))
-  .map(n => ({
+  .map(n => {
+    const currentScore = readCurrentScore(join(PAGES, n));
+    return {
     name: n,
-    score: readJson(join(PAGES, n, 'score.json')),
+    score: currentScore.score,
+    scoreStatus: currentScore.status,
     intel: readJson(join(PAGES, n, 'intel', 'intel.json')),
     semantic: readJson(join(PAGES, n, 'intel', 'semantic.json')),
     target: readJson(join(PAGES, n, 'manifest.json'))?.target ?? '',
-  }))
+    };
+  })
   .sort((a, b) => (b.score?.total ?? 0) - (a.score?.total ?? 0));
 const siteIds = Object.fromEntries(pages.map(p => {
   try { return [new URL(p.target).origin, siteIdForOrigin(WORKSPACE, p.target)]; } catch { return [p.target, host]; }
@@ -41,6 +46,7 @@ const gradeColor = (g) => g === 'A' ? '#34D399' : g === 'B' ? '#F59E0B' : '#EF44
 
 const cards = pages.map(p => {
   const s = p.score ?? {};
+  const scoreNote = p.scoreStatus === 'verified' ? '' : p.scoreStatus === 'missing' ? '（未测）' : p.scoreStatus === 'stale' ? '（需重算）' : '（历史）';
   const sem = p.semantic ?? {};
   const plans = (sem.plans ?? []).length;
   const products = (sem.products ?? []).length;
@@ -48,7 +54,7 @@ const cards = pages.map(p => {
   <div class="thumb"><img src="pages/${esc(p.name)}/shot-clone.png" alt="${esc(p.name)}" loading="lazy" onerror="this.style.display='none'"/></div>
   <div class="meta">
     <div class="row1"><span class="name">${esc(p.name)}</span>
-      <span class="grade" style="color:${gradeColor(s.grade)}">${esc(s.grade ?? '-')}·${s.total ?? '-'}%${s.scoreFormulaVersion === 2 ? '' : ' (旧)'}</span></div>
+      <span class="grade" style="color:${gradeColor(s.grade)}">${esc(s.grade ?? '-')}·${s.total ?? '-'}%${scoreNote}</span></div>
     <div class="path">${esc(p.semantic?.pageType ?? '')}</div>
     <div class="dims">像素 ${Number.isFinite(s.pixel) ? (s.pixel * 100).toFixed(1) + '%' : '未测'} · 结构 ${Number.isFinite(s.dom?.dom) ? (s.dom.dom * 100).toFixed(0) + '%' : '未测'} · 数据 ${s.scoreFormulaVersion !== 2 ? '未重算' : Number.isFinite(s.data?.data) ? (s.data.data * 100).toFixed(0) + '%' : '未测'}</div>
     <div class="tags">

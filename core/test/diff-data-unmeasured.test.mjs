@@ -37,6 +37,7 @@ function runDiff(srcHtml, cloneHtml, { frames = [] } = {}) {
 test('diff records unmeasured data and normalizes the remaining weights', () => {
   const score = runDiff('<html><body><div></div></body></html>', '<html><body><section></section></body></html>');
   assert.equal(score.scoreFormulaVersion, 2);
+  assert.match(score.inputSha256, /^[a-f0-9]{64}$/);
   assert.equal(score.data, null);
   assert.equal(score.dataReason, 'no-source-fields');
   assert.equal(score.total, +(((0.5 * score.pixel + 0.3 * score.dom.dom) / 0.8) * 100).toFixed(1));

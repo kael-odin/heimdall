@@ -15,6 +15,7 @@ import { listRuns, openWorkspace, relPath, runsDir } from '../../../qa/run.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
 import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { GEO_METHOD_VERSION } from '../../../seo/method.mjs';
+import { readCurrentScore } from '../../../score-status.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
@@ -159,11 +160,6 @@ function gradeOf(score) {
   return typeof score === 'number' ? (score >= 90 ? 'A' : score >= 75 ? 'B' : 'C') : null;
 }
 
-function scoreRows(siteId, pages) {
-  return pages.map(page => readJson(join(pageDir(siteId, page), 'score.json')))
-    .filter(score => typeof score?.total === 'number' && Number.isFinite(score.total));
-}
-
 function liveExportSummary(root, siteId) {
   const file = join(root, 'live-export.json');
   if (!existsSync(file)) return { status: 'not_recorded', report: null };
@@ -231,7 +227,11 @@ function liveExportSummary(root, siteId) {
 function cloneSummary(siteId, pages, scan) {
   const mirrors = pages.filter(page => existsSync(join(pageDir(siteId, page), 'clone', 'index.html')));
   const coverage = measurementCoverage(scan, pages.length);
-  const scores = scoreRows(siteId, mirrors);
+  const scoreStates = mirrors.map(page => readCurrentScore(pageDir(siteId, page)));
+  const scores = scoreStates.map(state => state.score)
+    .filter(score => typeof score?.total === 'number' && Number.isFinite(score.total));
+  const scoreStatuses = Object.fromEntries(['verified', 'stale', 'legacy', 'missing', 'invalid']
+    .map(status => [status, scoreStates.filter(state => state.status === status).length]));
   const measured = scan.pages.filter(row => row.status === 'verified' && row.result);
   const worst = measured.reduce((current, row) => {
     const candidate = row.result.minViewport;
@@ -246,6 +246,7 @@ function cloneSummary(siteId, pages, scan) {
     unmeasured: coverage.unmeasured,
     verificationStatus: coverage.status,
     averageScore: scores.length ? +(scores.reduce((sum, score) => sum + score.total, 0) / scores.length).toFixed(2) : null,
+    scoreStatuses,
     averageOverall: coverage.average,
     worstViewport: worst,
     delivery: liveExportSummary(siteDir(siteId), siteId),
@@ -955,6 +956,8 @@ export default {
     else if (!clone.mirrors) unknowns.push({ id: 'clone-mirror-missing', detail: '发现页面但没有镜像入口。' });
     if (clone.unmeasured > 0) unknowns.push({ id: 'clone-unmeasured-pages', detail: `${clone.unmeasured} 页没有当前有效的多视口验证。` });
     if (clone.verificationStatus !== 'checked') unknowns.push({ id: 'clone-verification-unavailable', detail: `验证扫描状态为 ${clone.verificationStatus}。` });
+    const unavailableScores = clone.mirrors - clone.scoreStatuses.verified;
+    if (unavailableScores > 0) unknowns.push({ id: 'clone-score-not-current', detail: `${unavailableScores} 页没有当前克隆输入的已核实单页辅助分数，当前平均分已排除。` });
     if (clone.delivery.status !== 'passed') unknowns.push({ id: 'offline-delivery-' + clone.delivery.status,
       detail: '严格离线交付尚未通过；旧版本缺少结果记录时须重新导出。' });
     if (seo.status === 'missing') unknowns.push({ id: 'seo-report-missing', detail: '没有本地 SEO/GEO 报告。' });

@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { openJobStore } from '../src/jobs/store.mjs';
 import { liveSnapshotPath } from '../src/live/live-path.mjs';
+import { cloneInputSha256 } from '../src/verify/resume-cache.mjs';
 
 const ENGINE = fileURLToPath(new URL('../src/engine-server.mjs', import.meta.url));
 const CORE = fileURLToPath(new URL('..', import.meta.url));
@@ -92,6 +93,7 @@ test('current page and agent results reject a real measurement after CSS changes
     assert.equal(verify.code, 0, verify.output);
     const resultFile = join(dir, 'workspace', '127.0.0.1', 'verify', 'home', 'verify.json');
     assert.ok(JSON.parse(readFileSync(resultFile, 'utf8')).measurementProof);
+    writeFileSync(join(page, 'score.json'), JSON.stringify({ scoreFormulaVersion: 2, inputSha256: cloneInputSha256(page), total: 96, pixel: 0.96, grade: 'A' }));
 
     engine = await startEngine(dir, await freePort());
     const readPages = async () => (await (await fetch(engine.base + '/api/pages/127.0.0.1', {
@@ -105,9 +107,16 @@ test('current page and agent results reject a real measurement after CSS changes
     const current = await readPages();
     assert.equal(current.verifyFresh, true);
     assert.equal(current.verifyDetails.viewports[0].score, 1);
+    assert.deepEqual({ score: current.score, scoreStatus: current.scoreStatus }, { score: { total: 96, pixel: 0.96, grade: 'A' }, scoreStatus: 'verified' });
     assert.equal((await runAgent(['site', '127.0.0.1', '--view', 'pages'])).pages[0].verify.measured, true);
+    assert.equal((await runAgent(['site', '127.0.0.1', '--view', 'pages'])).pages[0].scoreStatus, 'verified');
     assert.equal((await runAgent(['site', '127.0.0.1', '--view', 'coverage'])).coverage.verified, 1);
-    assert.equal((await runAgent(['clone', origin + '/'])).pages[0].verify.measured, true);
+    const currentClone = await runAgent(['clone', origin + '/']);
+    assert.equal(currentClone.pages[0].verify.measured, true);
+    assert.equal(currentClone.pages[0].scoreStatus, 'verified');
+    const currentAssessment = await runAgent(['site-assessment', '127.0.0.1']);
+    assert.equal(currentAssessment.clone.averageScore, 96);
+    assert.deepEqual(currentAssessment.clone.scoreStatuses, { verified: 1, stale: 0, legacy: 0, missing: 0, invalid: 0 });
 
     const summaryFile = join(dir, 'workspace', '127.0.0.1', 'verify', 'verify-summary.json');
     const originalSummary = readFileSync(summaryFile, 'utf8');
@@ -139,9 +148,15 @@ test('current page and agent results reject a real measurement after CSS changes
     const siteVerify = (await runAgent(['site', '127.0.0.1', '--view', 'pages'])).pages[0].verify;
     const coverage = (await runAgent(['site', '127.0.0.1', '--view', 'coverage'])).coverage;
     const cloneVerify = (await runAgent(['clone', origin + '/'])).pages[0].verify;
-    assert.deepEqual({ fresh: stale.verifyFresh, viewport: stale.minViewport, siteVerify,
-      verified: coverage.verified, average: coverage.verifyAverage, cloneVerify },
-    { fresh: false, viewport: null, siteVerify: null, verified: 0, average: null, cloneVerify: null });
+    const staleClone = await runAgent(['clone', origin + '/']);
+    const staleAssessment = await runAgent(['site-assessment', '127.0.0.1']);
+    assert.deepEqual({ fresh: stale.verifyFresh, viewport: stale.minViewport, score: stale.score, scoreStatus: stale.scoreStatus,
+      siteVerify, verified: coverage.verified, average: coverage.verifyAverage, cloneVerify,
+      cloneScore: staleClone.pages[0].score, cloneScoreStatus: staleClone.pages[0].scoreStatus,
+      assessmentScore: staleAssessment.clone.averageScore, assessmentScoreStatus: staleAssessment.clone.scoreStatuses },
+    { fresh: false, viewport: null, score: null, scoreStatus: 'stale', siteVerify: null,
+      verified: 0, average: null, cloneVerify: null, cloneScore: null, cloneScoreStatus: 'stale',
+      assessmentScore: null, assessmentScoreStatus: { verified: 0, stale: 1, legacy: 0, missing: 0, invalid: 0 } });
   } finally {
     if (engine) await stopEngine(engine.proc);
     fixture.closeAllConnections();

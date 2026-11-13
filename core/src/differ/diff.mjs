@@ -24,6 +24,7 @@ import { dataScore } from '../harvest/harvest.mjs';
 import { requireArg } from '../args.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { readCloneDoc } from '../clone-doc.mjs';
+import { cloneInputSha256 } from '../verify/resume-cache.mjs';
 
 const DIR = requireArg(process.argv[2], 'node src/differ/diff.mjs <pageDir>', '页面目录');
 const CHANNEL_T = 24;   // 任一通道差 > 24 视为不同（约 pixelmatch threshold 0.1）
@@ -106,6 +107,7 @@ const grade = total100 >= 0.95 ? 'A' : total100 >= 0.85 ? 'B' : 'C';
 const score = {
   page: DIR.split(/[\\/]/).pop(),
   scoreFormulaVersion: 2,
+  inputSha256: cloneInputSha256(DIR),
   viewport: `${W}x${H}`,
   pixel: +pixel.toFixed(4),
   dom,
