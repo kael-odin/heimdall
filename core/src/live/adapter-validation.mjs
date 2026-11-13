@@ -158,6 +158,7 @@ function routeCoverage(entries) {
 function offlineGapLedger(trainingEntries, heldoutEntries) {
   const knownRoutes = routeCoverage(trainingEntries);
   const knownParams = new Map(knownRoutes.map(route => [`${route.method} ${route.path}`, new Set(route.queryParams)]));
+  const observedRequests = new Set(trainingEntries.map(requestKey));
   const gaps = new Map();
   for (const entry of heldoutEntries) {
     const url = entryUrl(entry);
@@ -166,12 +167,18 @@ function offlineGapLedger(trainingEntries, heldoutEntries) {
     const [method, ...pathParts] = endpoint.split(' ');
     const path = pathParts.join(' ');
     const params = [...queryNames(entry)];
+    const known = knownParams.has(endpoint);
     const uncovered = params.filter(name => !knownParams.get(endpoint)?.has(name));
-    if (!uncovered.length) continue;
-    const key = `${method} ${path}|${uncovered.join(',')}`;
+    const categories = [];
+    if (!known || (!observedRequests.has(requestKey(entry)) && !url.search)) categories.push('unobserved-path');
+    if (known && !!url.search && !observedRequests.has(requestKey(entry))) categories.push('unobserved-query-variant');
+    if (uncovered.length) categories.push('uncovered-query-parameter');
+    if (!categories.length) continue;
+    const queryParams = [...new Set([...uncovered, ...(categories.includes('unobserved-query-variant') ? params : [])])].sort();
+    const key = `${method} ${path}|${categories.join(',')}|${queryParams.join(',')}`;
     const current = gaps.get(key) ?? {
-      method, path, queryParams: uncovered, count: 0,
-      categories: ['uncovered-query-parameter'], nearestRoutes: [],
+      method, path, queryParams, count: 0,
+      categories, nearestRoutes: [],
     };
     current.count++;
     gaps.set(key, current);
@@ -182,14 +189,19 @@ function offlineGapLedger(trainingEntries, heldoutEntries) {
   return {
     schema: 'heimdall.adapter-gap-ledger/1', source: 'offline-observation', status: 'offline-observed',
     summary: {
-      runtimeRequests: 0, uniqueGaps: gapItems.length, unobservedPaths: 0,
-      uncoveredQueryParameters: gapItems.length, missingResponseBodies, unverifiedWrites,
+      runtimeRequests: 0, uniqueGaps: gapItems.length,
+      unobservedPaths: gapItems.filter(item => item.categories.includes('unobserved-path')).length,
+      unobservedQueryVariants: gapItems.filter(item => item.categories.includes('unobserved-query-variant')).length,
+      uncoveredQueryParameters: gapItems.filter(item => item.categories.includes('uncovered-query-parameter')).length,
+      missingResponseBodies, unverifiedWrites,
     },
     knownRoutes, gaps: gapItems,
     unknowns: ['authentication-permission-unknown', 'business-state-unknown',
       ...(missingResponseBodies ? ['missing-response-body'] : []),
       ...(unverifiedWrites ? ['unverified-write'] : []),
-      ...(gapItems.length ? ['uncovered-query-parameter'] : [])],
+      ...(gapItems.some(item => item.categories.includes('unobserved-path')) ? ['unobserved-path'] : []),
+      ...(gapItems.some(item => item.categories.includes('unobserved-query-variant')) ? ['unobserved-query-variant'] : []),
+      ...(gapItems.some(item => item.categories.includes('uncovered-query-parameter')) ? ['uncovered-query-parameter'] : [])],
   };
 }
 

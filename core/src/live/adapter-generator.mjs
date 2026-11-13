@@ -89,7 +89,7 @@ function initialGapLedger(routes) {
   return {
     schema: 'heimdall.adapter-gap-ledger/1', source: 'training-only', status: 'not-run',
     summary: {
-      runtimeRequests: 0, uniqueGaps: 0, unobservedPaths: 0, uncoveredQueryParameters: 0,
+      runtimeRequests: 0, uniqueGaps: 0, unobservedPaths: 0, unobservedQueryVariants: 0, uncoveredQueryParameters: 0,
       missingResponseBodies, unverifiedWrites,
     },
     knownRoutes: routes, gaps: [],

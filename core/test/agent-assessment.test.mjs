@@ -249,8 +249,8 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
           repairTask: { id: 'repair-get-api-items', kind: 'response-contract', target: 'GET /api/items', instruction: '修正响应 MIME', requiresHumanApproval: false, evidence: { actualMimeType: 'text/plain', secret: 'private-value' } },
         },
         {
-          id: 'adapter-gap-ledger', status: 'failed', uniqueGaps: 1, uncoveredQueryParameters: 1, unverifiedWrites: 0,
-          repairTask: { id: 'repair-query-parameter-gap', kind: 'query-parameter-gap', target: 'runtime-adapter/index.mjs', instruction: '补齐查询参数分支', requiresHumanApproval: false, evidence: { uniqueGaps: 1, uncoveredQueryParameters: 1 } },
+          id: 'adapter-gap-ledger', status: 'failed', uniqueGaps: 1, unobservedQueryVariants: 1, uncoveredQueryParameters: 1, unverifiedWrites: 0,
+          repairTask: { id: 'repair-query-parameter-gap', kind: 'query-parameter-gap', target: 'runtime-adapter/index.mjs', instruction: '补齐查询参数分支', requiresHumanApproval: false, evidence: { uniqueGaps: 1, unobservedQueryVariants: 1, uncoveredQueryParameters: 1 } },
         },
       ],
     });
@@ -265,6 +265,7 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(tasks[0].target, 'GET /api/items');
     assert.equal(tasks[0].kind, 'response-contract');
     assert.equal(tasks[1].kind, 'query-parameter-gap');
+    assert.equal(tasks[1].evidence.unobservedQueryVariants, 1);
     assert.equal(tasks[1].evidence.uncoveredQueryParameters, 1);
     assert.doesNotMatch(run.stdout, /private-value/);
   } finally { rmSync(root, { recursive: true, force: true }); }

@@ -59,7 +59,7 @@ function gapLedgerSummary(root, siteId, report) {
   const summary = source.summary && typeof source.summary === 'object' ? source.summary : {};
   return {
     schema: 'heimdall.adapter-gap-ledger/1', source: source.source ?? 'unknown', status: source.status ?? 'unknown',
-    summary: Object.fromEntries(['runtimeRequests', 'uniqueGaps', 'unobservedPaths', 'uncoveredQueryParameters', 'missingResponseBodies', 'unverifiedWrites']
+    summary: Object.fromEntries(['runtimeRequests', 'uniqueGaps', 'unobservedPaths', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'missingResponseBodies', 'unverifiedWrites']
       .map(key => [key, Number(summary[key] ?? 0)])),
     knownRoutes: Array.isArray(source.knownRoutes) ? source.knownRoutes.slice(0, MAX_BACKEND_TASK_ENDPOINTS).map(safeRoute).filter(Boolean) : [],
     gaps: Array.isArray(source.gaps) ? source.gaps.slice(0, 50).map(item => ({
@@ -374,7 +374,7 @@ function backendScaffoldSummary(root, siteId) {
     };
     const evidence = task.evidence && typeof task.evidence === 'object' && !Array.isArray(task.evidence) ? {} : null;
     if (evidence) {
-      for (const key of ['httpStatus', 'missingObservedRoutes', 'schemaPath', 'actualMimeType', 'uniqueGaps', 'uncoveredQueryParameters', 'unverifiedWrites']) {
+      for (const key of ['httpStatus', 'missingObservedRoutes', 'schemaPath', 'actualMimeType', 'uniqueGaps', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'unverifiedWrites']) {
         const source = task.evidence[key];
         if (typeof source === 'string') evidence[key] = source.slice(0, 128);
         else if (Number.isFinite(Number(source))) evidence[key] = Number(source);
@@ -809,7 +809,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     add({
       id: 'api-adapter-gap-ledger', kind: 'b2_adapter_gap', basis: 'observed', status: 'open',
       title: '适配器缺口账本还有待处理项',
-      detail: `未声明/未覆盖请求 ${api.adapter.gapLedger.summary.uniqueGaps} 个；缺响应体 ${api.adapter.gapLedger.summary.missingResponseBodies} 条。`,
+      detail: `未声明/未覆盖请求 ${api.adapter.gapLedger.summary.uniqueGaps} 个；未观察查询变体 ${api.adapter.gapLedger.summary.unobservedQueryVariants ?? 0} 个；缺响应体 ${api.adapter.gapLedger.summary.missingResponseBodies} 条。`,
       evidence: [api.adapter.gapLedger.report].filter(Boolean),
       action: plannedAction('cli:shell', { command: `heimdall probe adapter --site ${siteId} --include-api-bodies --force` }, '按最新脱敏观察重新生成适配器，再复核缺口账本', { requiresHumanApproval: false }),
       verify: planVerification(siteId, 'api.adapter.gapLedger.summary.uniqueGaps === 0 && api.adapter.gapLedger.summary.missingResponseBodies === 0'),

@@ -67,10 +67,28 @@ test('live/adapter-validation: records unobserved paths and uncovered query para
   const pathReport = await validateObservedReplayAdapter(adapter, { trainingEntries: training, heldoutEntries: [heldoutPath] });
   assert.equal(pathReport.results.status, 'failed');
   assert.ok(pathReport.failures[0].reasons.includes('unobserved-path'));
+  assert.equal(pathReport.gapLedger.summary.unobservedPaths, 1);
+  assert.deepEqual(pathReport.gapLedger.gaps[0].categories, ['unobserved-path']);
 
   const paramReport = await validateObservedReplayAdapter(adapter, { trainingEntries: training, heldoutEntries: [heldoutParam] });
   assert.equal(paramReport.results.status, 'failed');
   assert.ok(paramReport.failures[0].reasons.includes('uncovered-param:page'));
+  assert.equal(paramReport.gapLedger.summary.unobservedQueryVariants, 1);
+  assert.equal(paramReport.gapLedger.summary.uncoveredQueryParameters, 1);
+  assert.deepEqual(paramReport.gapLedger.gaps[0].categories, ['unobserved-query-variant', 'uncovered-query-parameter']);
+});
+
+test('live/adapter-validation: records a new value or combination when query names are already known', async () => {
+  const training = [jsonEntry('https://x.test/api/items?page=1', { ok: true })];
+  const heldout = jsonEntry('https://x.test/api/items?page=2', { ok: true });
+  const adapter = buildObservedReplayAdapter(training, { origin: 'https://x.test' });
+  const report = await validateObservedReplayAdapter(adapter, { trainingEntries: training, heldoutEntries: [heldout] });
+  assert.equal(report.results.status, 'failed');
+  assert.equal(report.gapLedger.summary.unobservedQueryVariants, 1);
+  assert.equal(report.gapLedger.summary.uncoveredQueryParameters, 0);
+  assert.deepEqual(report.gapLedger.gaps[0].queryParams, ['page']);
+  assert.deepEqual(report.gapLedger.gaps[0].categories, ['unobserved-query-variant']);
+  assert.doesNotMatch(JSON.stringify(report), /page=2/);
 });
 
 test('live/adapter-validation: explicitly marks an empty held-out set as not validated', async () => {

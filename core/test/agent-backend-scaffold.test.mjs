@@ -318,7 +318,7 @@ test('backend scaffold check catches observed response mismatches and runtime ga
     put(join(adapter, 'manifest.json'), { version: 1, routes: [{ method: 'GET', path: '/api/items' }] });
     put(join(adapter, 'index.mjs'), [
       "export const __heimdallAdapter = { routes: [{ method: 'GET', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'not_applicable' }] };",
-      "export async function handle(request, context = {}) { const url = new URL(request.url); if (url.pathname !== '/api/items') { await context.recordGap?.({ method: request.method, path: url.pathname, queryParams: ['token'], category: 'unobserved-path' }); return Response.json({ error: 'unobserved-route' }, { status: 404 }); } return new Response(JSON.stringify({ ok: 'wrong-type' }), { status: 200, headers: { 'content-type': 'text/plain' } }); }",
+      "export async function handle(request, context = {}) { const url = new URL(request.url); if (url.pathname !== '/api/items') { await context.recordGap?.({ method: request.method, path: url.pathname, queryParams: ['token'], category: 'unobserved-path' }); return Response.json({ error: 'unobserved-route' }, { status: 404 }); } if (url.search) await context.recordGap?.({ method: request.method, path: url.pathname, queryParams: ['page'], category: 'unobserved-query-variant' }); return new Response(JSON.stringify({ ok: 'wrong-type' }), { status: 200, headers: { 'content-type': 'text/plain' } }); }",
       '',
     ].join('\n'));
 
@@ -338,6 +338,7 @@ test('backend scaffold check catches observed response mismatches and runtime ga
     });
     const base = await ready(child);
     await fetch(base + '/api/missing?token=private-value');
+    await fetch(base + '/api/items?page=2');
 
     const checks = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
       cwd: out,
@@ -350,10 +351,11 @@ test('backend scaffold check catches observed response mismatches and runtime ga
     assert.equal(report.overall, 'failed');
     assert.equal(report.results.find(item => item.id === 'GET /api/items').status, 'failed');
     assert.match(report.results.find(item => item.id === 'GET /api/items').reason, /MIME/, JSON.stringify(report));
-    assert.equal(report.results.find(item => item.id === 'adapter-gap-ledger').uniqueGaps, 1);
+    assert.equal(report.results.find(item => item.id === 'adapter-gap-ledger').uniqueGaps, 2);
+    assert.equal(report.results.find(item => item.id === 'adapter-gap-ledger').unobservedQueryVariants, 1);
     assert.equal(report.results.find(item => item.id === 'GET /api/items').repairTask.kind, 'response-contract');
     assert.equal(report.results.find(item => item.id === 'GET /api/items').repairTask.target, 'GET /api/items');
-    assert.equal(report.results.find(item => item.id === 'adapter-gap-ledger').repairTask.kind, 'runtime-gap');
+    assert.equal(report.results.find(item => item.id === 'adapter-gap-ledger').repairTask.kind, 'query-variant-gap');
     assert.equal(report.repairTasks.length, 2);
     assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /private-value/);
   } finally {

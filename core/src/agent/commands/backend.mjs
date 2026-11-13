@@ -322,7 +322,7 @@ const initialLedger = {
   source: 'b3-scaffold-runtime',
   status: 'not-run',
   updatedAt: null,
-  summary: { runtimeRequests: 0, uniqueGaps: 0, unobservedPaths: 0, uncoveredQueryParameters: 0, missingResponseBodies: 0, unverifiedWrites: adapterRoutes.filter(item => !['GET', 'HEAD'].includes(item.method)).length },
+  summary: { runtimeRequests: 0, uniqueGaps: 0, unobservedPaths: 0, unobservedQueryVariants: 0, uncoveredQueryParameters: 0, missingResponseBodies: 0, unverifiedWrites: adapterRoutes.filter(item => !['GET', 'HEAD'].includes(item.method)).length },
   knownRoutes: adapterRoutes,
   gaps: [],
   unknowns: ['authentication-permission-unknown', 'business-state-unknown'],
@@ -339,6 +339,7 @@ function saveLedger() {
   ledger.summary.runtimeRequests = ledger.gaps.reduce((sum, item) => sum + item.count, 0);
   ledger.summary.uniqueGaps = ledger.gaps.length;
   ledger.summary.unobservedPaths = ledger.gaps.filter(item => item.categories.includes('unobserved-path')).length;
+  ledger.summary.unobservedQueryVariants = ledger.gaps.filter(item => item.categories.includes('unobserved-query-variant')).length;
   ledger.summary.uncoveredQueryParameters = ledger.gaps.filter(item => item.categories.includes('uncovered-query-parameter')).length;
   ledger.status = ledger.gaps.length ? 'needs-review' : ledger.summary.runtimeRequests ? 'no-gaps-observed' : 'not-run';
   ledger.updatedAt = new Date().toISOString();
@@ -580,18 +581,21 @@ function repairTaskFor(item) {
   };
   if (id === 'adapter-gap-ledger') {
     const uniqueGaps = Number(item.uniqueGaps || 0);
+    const unobservedQueryVariants = Number(item.unobservedQueryVariants || 0);
     const uncoveredQueryParameters = Number(item.uncoveredQueryParameters || 0);
     const unverifiedWrites = Number(item.unverifiedWrites || 0);
-    const kind = unverifiedWrites > 0 ? 'write-verification' : uncoveredQueryParameters > 0 ? 'query-parameter-gap' : 'runtime-gap';
+    const kind = unverifiedWrites > 0 ? 'write-verification' : unobservedQueryVariants > 0 ? 'query-variant-gap' : uncoveredQueryParameters > 0 ? 'query-parameter-gap' : 'runtime-gap';
     const instruction = unverifiedWrites > 0
       ? '先用授权测试旅程验证写入、回读和清理，再修改适配器。'
+      : unobservedQueryVariants > 0
+        ? '为已知查询参数补齐未观察到的值或组合；先用独立留出请求验证，再运行 npm run check。'
       : uncoveredQueryParameters > 0
         ? '补齐查询参数名对应的路由分支，再运行 npm run check。'
         : '补齐运行时发现但契约未声明的路由，再运行 npm run check。';
     return {
       id: 'repair-' + kind, kind, target: 'runtime-adapter/index.mjs', instruction,
       requiresHumanApproval: unverifiedWrites > 0,
-      evidence: { uniqueGaps, uncoveredQueryParameters, unverifiedWrites },
+      evidence: { uniqueGaps, unobservedQueryVariants, uncoveredQueryParameters, unverifiedWrites },
     };
   }
   if (!/^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) /.test(id)) return null;
@@ -669,9 +673,10 @@ try {
       status: !gapResponse.ok ? 'failed' : Number(summary.uniqueGaps || 0) > 0 ? 'failed' : Number(summary.unverifiedWrites || 0) > 0 ? 'incomplete' : 'passed',
       ledgerStatus: gapLedger?.status || 'unknown',
       uniqueGaps: Number(summary.uniqueGaps || 0),
+      unobservedQueryVariants: Number(summary.unobservedQueryVariants || 0),
       uncoveredQueryParameters: Number(summary.uncoveredQueryParameters || 0),
       unverifiedWrites: Number(summary.unverifiedWrites || 0),
-      reason: Number(summary.uniqueGaps || 0) > 0 ? '运行时发现未观察路径或未覆盖查询参数' : Number(summary.unverifiedWrites || 0) > 0 ? '写入路由仍只有回放证据，尚未完成业务验证' : undefined,
+      reason: Number(summary.uniqueGaps || 0) > 0 ? '运行时发现未观察路径、查询变体或未覆盖查询参数' : Number(summary.unverifiedWrites || 0) > 0 ? '写入路由仍只有回放证据，尚未完成业务验证' : undefined,
     });
   } catch (error) {
     results.push({ id: 'adapter-gap-ledger', status: 'failed', reason: '无法读取适配器缺口账本：' + String(error.message || error).slice(0, 180) });
