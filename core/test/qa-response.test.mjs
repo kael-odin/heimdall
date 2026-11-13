@@ -135,11 +135,16 @@ test('response checks reject ambiguous or unsafe declarations', () => {
 
 test('write response declarations observe once and never grant write permission', { timeout: 60_000 }, async () => {
   let method = 'PATCH';
+  let status = 200;
   const hits = [];
   const server = createServer((req, res) => {
     if (req.url === '/api/write') {
       hits.push(req.method);
       res.setHeader('content-type', 'application/json');
+      if (status === 204) {
+        res.writeHead(204, { 'set-cookie': ['fixture=ok; Path=/; HttpOnly', 'fixture.sig=signed; Path=/; HttpOnly'] });
+        return res.end();
+      }
       return res.end(JSON.stringify({ code: 0, private: PRIVATE }));
     }
     res.setHeader('content-type', 'text/html; charset=utf-8');
@@ -152,11 +157,12 @@ test('write response declarations observe once and never grant write permission'
   const configFile = join(root, '.heimdall/qa.json'), config = JSON.parse(readFileSync(configFile));
   try {
     for (method of ['PUT', 'PATCH', 'DELETE']) for (const allowed of [true, false]) {
+      status = method === 'DELETE' ? 204 : 200;
       config.sites.web.writes = allowed ? 'allow' : 'block'; writeFileSync(configFile, JSON.stringify(config));
       const spec = { title: 'Observe write', path: '/',
         steps: [{ action: 'click', selector: '#save' }, { action: 'waitFor', selector: '#ready[data-done]' }],
         expect: [{ kind: 'title', equals: 'fixture' }],
-        responses: [{ method, origin, path: '/api/write', json: { path: ['code'], equals: 0 } }] };
+        responses: [{ method, origin, path: '/api/write', status, ...(status === 204 ? {} : { json: { path: ['code'], equals: 0 } }) }] };
       hits.length = 0;
       const result = await invoke('qa_ci', { workspace: root, site: 'web', pages: ['/blank'], viewports: [960],
         checks: [spec], linkCheck: false, detect: false, baseline: false, failOn: 'none', github: false }, { client: 'mcp' });
@@ -194,6 +200,31 @@ test('unavailable CDP evidence stays incomplete without fetching a body unnecess
     const [result] = await observer.finish(expected === 'pending' ? 0 : 200);
     assert.equal(result.state, expected === 'empty-query' ? 'missing' : expected);
     assert.equal(bodyCalls, expected === 'body-unavailable' ? 1 : 0);
+    await observer.close();
+  }
+  for (const scenario of [
+    { expected: 'matched' },
+    { http: null }, { http: 200 }, { status: 200 }, { canceled: false }, { errorText: 'net::ERR_FAILED' },
+    { corsErrorStatus: { corsError: 'MissingAllowOriginHeader' } }, { blockedReason: 'inspector' },
+    { cached: true }, { json: { path: ['code'], equals: 0 } },
+  ]) {
+    const session = new EventEmitter(); let bodyCalls = 0;
+    session.send = async method => {
+      if (method === 'Page.getFrameTree') return { frameTree: { frame: { id: 'main' } } };
+      if (method === 'Network.getResponseBody') bodyCalls++;
+      return {};
+    };
+    session.detach = async () => {};
+    const page = { context: () => ({ newCDPSession: async () => session }) };
+    const observer = await observeResponses(page, [{ method: 'POST', origin: 'http://example.test', path: '/end',
+      status: scenario.status ?? 204, ...(scenario.json ? { json: scenario.json } : {}) }]);
+    session.emit('Network.requestWillBeSent', { requestId: 'end', frameId: 'main', request: { method: 'POST', url: 'http://example.test/end' } });
+    if (scenario.http !== null) session.emit('Network.responseReceived', { requestId: 'end', response: { status: scenario.http ?? 204, headers: {}, fromDiskCache: scenario.cached } });
+    session.emit('Network.loadingFailed', { requestId: 'end', canceled: scenario.canceled ?? true, errorText: scenario.errorText ?? 'net::ERR_ABORTED',
+      corsErrorStatus: scenario.corsErrorStatus, blockedReason: scenario.blockedReason });
+    const [result] = await observer.finish(0);
+    assert.equal(result.state, scenario.expected ?? 'request-failed', JSON.stringify(scenario));
+    assert.equal(bodyCalls, 0, 'status-only 204 observation must not fetch a body');
     await observer.close();
   }
 });

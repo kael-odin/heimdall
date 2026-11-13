@@ -7,7 +7,7 @@
  */
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { inspectRuntimeAdapter, isRuntimeAdapterPath, matchesRuntimeAdapterRoute } from '../../live/adapter-runtime.mjs';
+import { inspectRuntimeAdapter, isRuntimeAdapterPath, matchesRuntimeAdapterRoute, responseHeaders } from '../../live/adapter-runtime.mjs';
 import { CapabilityError, exitCodeOf, fromError, ok } from '../envelope.mjs';
 import { parseArgs } from '../parse-args.mjs';
 import { assertSiteId, siteDir } from '../workspace.mjs';
@@ -399,11 +399,7 @@ function requestHeaders(req) {
   }
   return headers;
 }
-function responseHeaders(response) {
-  const headers = {};
-  for (const [name, value] of response.headers) if (!HOP_HEADERS.has(name)) headers[name] = value;
-  return headers;
-}
+${responseHeaders.toString()}
 async function serveAdapter(req, res, url) {
   let body;
   try { body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await readBody(req); }
@@ -488,6 +484,7 @@ for (const [path, item] of Object.entries(contract.openapi?.paths || {})) {
       method: method.toUpperCase(),
       path,
       queryParams: Array.isArray(observations.queryParams) ? [...new Set(observations.queryParams.map(String))].sort() : [],
+      authSchemes: Array.isArray(observations.authSchemes) ? [...new Set(observations.authSchemes.map(String))].sort() : [],
       responses: responseRows(operation),
     });
   }
@@ -605,8 +602,9 @@ function repairTaskFor(item) {
     instruction: '根据观察到的契约实现这个路由；不要臆造认证、权限或业务副作用。', requiresHumanApproval: false,
   };
   if (item.status === 'skipped') return {
-    id: taskId || 'repair-authorized-journey', kind: 'authorized-journey', target,
-    instruction: '先补明确授权的测试数据和业务旅程，再实现该路由并复测。', requiresHumanApproval: true,
+    id: taskId || 'repair-authorized-journey', kind: item.authSchemes?.length ? 'authentication-verification' : 'authorized-journey', target,
+    instruction: item.authSchemes?.length ? '用明确登录档和权限旅程验收该路由；不要为通过匿名检查放宽认证。'
+      : '先补明确授权的测试数据和业务旅程，再实现该路由并复测。', requiresHumanApproval: true,
   };
   return {
     id: taskId || 'repair-response-contract', kind: 'response-contract', target,
@@ -652,6 +650,11 @@ try {
     }
     if (route.path.includes('{')) {
       results.push({ id: route.method + ' ' + route.path, status: 'skipped', reason: '路径参数需要具体测试数据' });
+      continue;
+    }
+    if (route.authSchemes.length) {
+      results.push({ id: route.method + ' ' + route.path, status: 'skipped', authSchemes: route.authSchemes,
+        reason: '已观察到认证材料，当前匿名检查无法核实；请使用明确登录档和权限旅程' });
       continue;
     }
     const response = await fetch(base + route.path, { method: route.method });
@@ -723,6 +726,8 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     'AI 补写有状态处理器时使用 handle(request, { dataDir }) 的包外目录保存数据；读回、重启和删除都要用独立预期另行核验，不能只看写请求返回成功。',
     'manifest 路由支持完整路径段参数，例如 /posts/{postId}；每个参数只匹配一个非空段，方法仍须逐项声明，会话初始化路由只接受固定路径。',
     'npm run check 不会自动构造参数值或执行写操作；缺少具体测试数据的参数路由仍标为未完成。',
+    '已观察到认证材料的读取路由也保留未完成；使用明确登录档和权限旅程验证，不为通过匿名检查放宽认证。',
+    '服务复用 live 运行时的响应头处理，逐条转发 Set-Cookie，保留会话及签名 Cookie 和含逗号的 Expires。',
     '',
     'Docker 部署：',
     '',

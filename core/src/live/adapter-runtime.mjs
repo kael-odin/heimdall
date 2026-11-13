@@ -354,7 +354,7 @@ function requestHeaders(req) {
   return headers;
 }
 
-function responseHeaders(response) {
+export function responseHeaders(response) {
   const headers = {};
   for (const [name, value] of response.headers) {
     if (!HOP_HEADERS.has(name) && name !== 'set-cookie') headers[name] = value;

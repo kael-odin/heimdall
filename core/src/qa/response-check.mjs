@@ -152,7 +152,11 @@ export async function observeResponses(page, specs) {
   });
   session.on('Network.loadingFailed', event => {
     const entry = requests.get(event.requestId);
-    if (entry && entry.request.state === 'pending') entry.request.state = 'request-failed';
+    if (!entry || entry.request.state !== 'pending') return;
+    // Chromium may discard an already received 204's empty Fetch body as ERR_ABORTED.
+    const noContent = entry.request.http === 204 && entry.spec.status === 204 && !entry.spec.json && !entry.request.cached
+      && event.canceled === true && event.errorText === 'net::ERR_ABORTED' && !event.corsErrorStatus && !event.blockedReason;
+    entry.request.state = noContent ? 'matched' : 'request-failed';
   });
   session.on('Network.loadingFinished', event => {
     const entry = requests.get(event.requestId);

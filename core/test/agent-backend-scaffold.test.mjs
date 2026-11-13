@@ -67,7 +67,8 @@ test('backend scaffold generates and starts a B3 service from sanitized contract
     put(join(adapter, 'manifest.json'), { version: 1, routes: [{ method: 'GET', path: '/api/items' }] });
     put(join(adapter, 'index.mjs'), [
       "export const __heimdallAdapter = { routes: [{ method: 'GET', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'not_applicable' }] };",
-      "export async function handle() { return Response.json({ ok: true }); }",
+      'let calls = 0;',
+      "export async function handle() { const headers = new Headers(); headers.set('x-fixture-calls', String(++calls)); headers.append('Set-Cookie', 'sid=fixture-session; Path=/; HttpOnly'); headers.append('Set-Cookie', 'sid.sig=fixture-signature; Path=/; HttpOnly; Expires=Fri, 01 Jan 2100 00:00:00 GMT'); return Response.json({ ok: true }, { headers }); }",
       '',
     ].join('\n'));
 
@@ -109,6 +110,11 @@ test('backend scaffold generates and starts a B3 service from sanitized contract
     assert.equal(healthJson.adapter.present, true);
     const response = await fetch(base + '/api/items');
     assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-fixture-calls'), '1');
+    assert.deepEqual(response.headers.getSetCookie(), [
+      'sid=fixture-session; Path=/; HttpOnly',
+      'sid.sig=fixture-signature; Path=/; HttpOnly; Expires=Fri, 01 Jan 2100 00:00:00 GMT',
+    ], 'generated backends must preserve individual cookies, including commas in Expires');
     assert.deepEqual(await response.json(), { ok: true });
 
     const checks = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
@@ -117,15 +123,19 @@ test('backend scaffold generates and starts a B3 service from sanitized contract
       encoding: 'utf8',
       timeout: 30_000,
     });
-    assert.equal(checks.status, 0, checks.stderr + checks.stdout);
-    assert.match(checks.stdout, /"overall": "passed"/);
+    assert.equal(checks.status, 1, checks.stderr + checks.stdout);
+    assert.match(checks.stdout, /"overall": "incomplete"/);
     const checkReport = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
     assert.equal(checkReport.schema, 'heimdall.backend-check/1');
-    assert.equal(checkReport.overall, 'passed');
+    assert.equal(checkReport.overall, 'incomplete');
     assert.equal(checkReport.results.find(item => item.id === 'adapter-coverage').status, 'passed');
-    assert.equal(checkReport.results.find(item => item.id === 'GET /api/items').status, 'implemented');
+    assert.equal(checkReport.results.find(item => item.id === 'GET /api/items').status, 'skipped');
+    assert.deepEqual(checkReport.results.find(item => item.id === 'GET /api/items').authSchemes, ['bearer']);
     assert.equal(checkReport.results.find(item => item.id === 'adapter-gap-ledger').status, 'passed');
-    assert.deepEqual(checkReport.repairTasks, []);
+    assert.equal(checkReport.repairTasks.length, 1);
+    assert.equal(checkReport.repairTasks[0].kind, 'authentication-verification');
+    assert.match(checkReport.repairTasks[0].instruction, /不要.*放宽认证/);
+    assert.equal((await fetch(base + '/api/items')).headers.get('x-fixture-calls'), '2', 'default checks do not probe observed authentication anonymously');
     await stop(child);
     const item = projected.openapi.paths['/api/items'];
     projected.openapi.paths['/api/items/{itemId}'] = item;
