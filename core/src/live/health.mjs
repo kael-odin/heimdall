@@ -14,7 +14,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix, extname } from 'node:path';
-import { isReplayableReadOnlyDataEntry, matchHar } from './har.mjs';
+import { isReplayableReadOnlyDataEntry, isReplayableReadOnlyBinaryEntry, matchHar } from './har.mjs';
 import { LIVE_QUERY_DIR, liveSnapshotCandidates, liveSnapshotPath } from './live-path.mjs';
 import { scanCssRefs } from '../css-refs.mjs';
 
@@ -221,9 +221,11 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir, onMiss
       if (ref.kind === 'link') {
         out.links.total++;
         if (localFile) { out.links.local++; out.probePaths.add(target); }
-        else if (harIndex && isReplayableReadOnlyDataEntry(
+        else if (harIndex && (isReplayableReadOnlyDataEntry(
           matchHar(harIndex, 'GET', origin + target), origin,
-        )) { out.links.local++; out.probePaths.add(target); }
+        ) || isReplayableReadOnlyBinaryEntry(
+          matchHar(harIndex, 'GET', origin + target), origin,
+        ))) { out.links.local++; out.probePaths.add(target); }
         else {
           if (out.links.missing.length < MAX_UNRESOLVED) out.links.missing.push(target);
           onMissingLink?.(target);

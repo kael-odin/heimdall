@@ -70,7 +70,7 @@ const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <path-inside-deliverable>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--cache-runtime-services <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--public-text-links-max-wall-ms 60000..900000] [--privacy-max-total-bytes 134217728..1073741824] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <path-inside-deliverable>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--cache-runtime-services <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--public-text-links-max-wall-ms 60000..900000] [--privacy-max-total-bytes 134217728..1073741824] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-readonly-binaries] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -140,6 +140,7 @@ function countAcceptedExternalRedirectReconFailures(pathAliases) {
 }
 const COMPARE_SOURCE = has('compare-source');
 const INCLUDE_READONLY_DATA = has('include-readonly-data');
+const INCLUDE_READONLY_BINARIES = has('include-readonly-binaries');
 const MATERIALIZE = has('materialize-har');
 const INCLUDE_API_HAR = has('include-api-har');
 const INCLUDE_ADAPTER = has('include-adapter');
@@ -192,7 +193,10 @@ const runtimeServicePolicies = new Map();
 if (runtimeCacheServices) for (const id of runtimeCacheServices) runtimeServicePolicies.set(id, 'cache');
 if (REMOVE_CARBONADS) runtimeServicePolicies.set('carbonads', 'remove');
 if (REPLACE_YOUTUBE) runtimeServicePolicies.set('youtube', 'placeholder');
-const dataPlan = INCLUDE_READONLY_DATA ? readDataPlan(BASE, origin) : { status: 'not-requested', urls: [] };
+const dataPlan = INCLUDE_READONLY_DATA
+  ? readDataPlan(BASE, origin, { includeBinary: INCLUDE_READONLY_BINARIES })
+  : { status: 'not-requested', urls: [], binaryUrls: [] };
+const readOnlyBinaryUrls = dataPlan.binaryUrls ?? [];
 if (STRICT && !OFFLINE) {
   console.error('[export] --strict requires --offline so the validated bundle cannot proxy to the source site');
   process.exit(2);
@@ -219,6 +223,10 @@ if (COMPARE_SOURCE && !STRICT) {
 }
 if (INCLUDE_READONLY_DATA && !STRICT) {
   console.error('[export] --include-readonly-data requires --offline --strict');
+  process.exit(2);
+}
+if (INCLUDE_READONLY_BINARIES && !INCLUDE_READONLY_DATA) {
+  console.error('[export] --include-readonly-binaries requires --include-readonly-data');
   process.exit(2);
 }
 if (STRICT && INCLUDE_API_HAR) {
@@ -378,7 +386,7 @@ const queryPages = pageNames.flatMap(name => {
 // ---------- 3. HAR 清洗与合并（流式：仅同源 + 去重，避免多页 GB 级峰值） ----------
 emit({ kind: 'live-stage', stage: 'har', status: 'running', total: pageNames.length });
 const harMap = new Map();
-const readOnlyKeys = new Set(dataPlan.urls.map(url => harKey('GET', url)));
+const readOnlyKeys = new Set([...dataPlan.urls, ...readOnlyBinaryUrls].map(url => harKey('GET', url)));
 let readOnlyDataConflicts = 0;
 let harPages = 0;
 const privacy = { excluded: { invalid: 0, privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 }, examples: [], includeApiBodies: INCLUDE_API_HAR, sessionPresent: SESSION_PRESENT, privateExportApproved: ALLOW_PRIVATE_EXPORT };
@@ -409,9 +417,10 @@ for (let i = 0; i < pageNames.length; i++) {
       includeApiBodies: INCLUDE_API_HAR,
       readOnlyOrigin: origin,
       readOnlyGetUrls: dataPlan.urls,
+      readOnlyBinaryGetUrls: readOnlyBinaryUrls,
     });
     for (const entry of sanitized.entries) {
-      if (entry.kind !== 'public-read-only-data') continue;
+      if (!['public-read-only-data', 'public-read-only-binary'].includes(entry.kind)) continue;
       const key = harKey(entry.method, entry.url);
       if (rawReadOnlyCounts.has(key)) rawReadOnlyCounts.set(key, rawReadOnlyCounts.get(key) - 1);
     }
@@ -545,7 +554,7 @@ const assetUrlMap = new Map();
 const cssSources = new Map();
 if (MATERIALIZE) {
   emit({ kind: 'live-stage', stage: 'materialize', status: 'running' });
-  const staticEntries = har.entries.filter(entry => entry.kind !== 'public-read-only-data');
+  const staticEntries = har.entries.filter(entry => !['public-read-only-data', 'public-read-only-binary'].includes(entry.kind));
   const mat = materializeHar({ liveDir, origin, entries: staticEntries });
   // hostPrefixes: 离线包把站外 CDN 的整站前缀也接进本地镜像树（运行时拼出来的地址抓不到，
   // 详见 heal.localizeQueryEntries 里那段注释）。在线镜像不接 —— 它的承诺是"未捕获的实时回源"。
@@ -580,7 +589,7 @@ if (MATERIALIZE) {
   const rw = rewriteLocalRefs({ liveDir, map: loc.map });
   let trimmed = 0;
   for (const e of har.entries) {
-    if (!e.body || e.kind === 'public-read-only-data') continue;
+    if (!e.body || ['public-read-only-data', 'public-read-only-binary'].includes(e.kind)) continue;
     let x; try { x = new URL(e.url); } catch { e.body = null; trimmed++; continue; }
     if (!x.search && e.kind !== 'runtime-service-cache') {
       e.body = null; trimmed++;   // 无查询条目已 materialize 落盘；带查询/runtime cache 保留回放体
@@ -784,9 +793,10 @@ const mirrorRootCaptured = pageNames.some(name => {
   } catch { return false; }
 });
 const includedDataUrls = new Set(har.entries
-  .filter(entry => entry.kind === 'public-read-only-data')
+  .filter(entry => ['public-read-only-data', 'public-read-only-binary'].includes(entry.kind))
   .map(entry => entry.url));
-const missingData = dataPlan.urls.filter(url => !includedDataUrls.has(url));
+const allReadOnlyUrls = [...dataPlan.urls, ...readOnlyBinaryUrls];
+const missingData = allReadOnlyUrls.filter(url => !includedDataUrls.has(url));
 const shadowedData = dataPlan.urls.filter(value => {
   const url = new URL(value);
   return liveSnapshotCandidates(url.pathname, url.search).some(candidate => {
@@ -795,9 +805,13 @@ const shadowedData = dataPlan.urls.filter(value => {
 });
 health.readOnlyData = {
   status: dataPlan.status,
-  declared: dataPlan.urls.length,
+  declared: allReadOnlyUrls.length,
   included: includedDataUrls.size,
   missing: missingData.length,
+  ...(readOnlyBinaryUrls.length ? {
+    binaryDeclared: readOnlyBinaryUrls.length,
+    binaryIncluded: har.entries.filter(entry => entry.kind === 'public-read-only-binary').length,
+  } : {}),
   ...(shadowedData.length ? { shadowed: shadowedData.length } : {}),
   ...(readOnlyDataConflicts ? { conflicts: readOnlyDataConflicts } : {}),
   ...(earlySource?.readOnlyData ? { sourceCapture: earlySource.readOnlyData } : {}),
@@ -805,6 +819,7 @@ health.readOnlyData = {
     sourceCurrentAccepted: currentSourceReadOnlyKeys.size,
     sourceCurrentMissing: dataPlan.urls.filter(url => !currentSourceReadOnlyKeys.has(harKey('GET', url))).length,
     flowParity: { status: 'not-tested', checkedFlows: 0, mismatchedFlows: 0 },
+    ...(readOnlyBinaryUrls.length ? { binarySourceStatus: 'not-supported' } : {}),
   } : {}),
   ...(dataPlan.issue ? { issue: dataPlan.issue } : {}),
 };
@@ -881,6 +896,7 @@ health.strictBlockers = {
   readOnlyDataConflicts,
   sourceReadOnlyCurrentMissing: COMPARE_SOURCE && INCLUDE_READONLY_DATA
     ? health.readOnlyData.sourceCurrentMissing : 0,
+  readOnlyBinarySourceUntested: COMPARE_SOURCE && readOnlyBinaryUrls.length ? readOnlyBinaryUrls.length : 0,
   offlineReadOnlyRequestMissing: 0,
   offlineReadOnlyCaptureFailed: 0,
   readOnlyFlowMismatch: 0,
@@ -1177,7 +1193,7 @@ operationPlan            操作脚本声明数；missing 表示没有交互验�
 operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
 sourceOperationProbe     显式 --compare-source 时，源站同流程只读采集与脱敏对照；未运行不代表源站通过
 dependencyParity         显式 --compare-source 时，按操作流程核对脚本、样式、媒体、文档和 API 的精确请求、状态与 MIME；仅报告类别和数量，不写入私有 URL。它不比较静态资源内容，也不证明业务等价
-readOnlyData             显式许可的 GET 数据声明数、纳入数、缺口和冲突；源站操作采集需同时使用 --compare-source
+readOnlyData             显式许可的 GET 数据声明数、纳入数、缺口和冲突；含 binaryDeclared / binaryIncluded 时表示经人工审核的二进制回放；二进制源站对照未支持；源站操作采集需同时使用 --compare-source
 privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布。默认累计扫描 128MB，可用 --privacy-max-total-bytes 134217728..1073741824 调整
 ${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实际触达路由数、未测路由数与 sessionRoutes 的 declared/initialized/failed；未测或失败均阻断发布；serverEgress=not-tested 表示服务端外联尚未验证；adapter-gap-ledger.json 记录运行时未声明请求\n' : ''}
 \`\`\`
@@ -1207,7 +1223,7 @@ ${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实�
 - \`api-contract.json\` 只由清洗后的 HAR 生成；它不含原始请求、请求值、认证头和值、查询值、响应示例或未经验证的业务规则。请求体只输出 Schema，鉴权只输出观察到的形态。要观察宽泛 API 请求 / 响应形状，需显式使用 \`--include-api-har\`；该选项仍不能与 \`--strict\` 同用。
 - 原始 \`recon/atlas.json\` 不进入分发包；已发现页面的覆盖摘要见 \`health.json\`。
 - 静态克隆目录内的字体、图片和 CSS 允许跨来源读取，以便隔离页面显示；不要把私密内容放进这些素材。HTML、脚本、JSON 和克隆目录外的文件不因此开放跨来源读取。指向其他位置的符号链接不获得此许可，但普通请求仍可能读取其目标；并发替换和硬链接未作安全保证。
-- 如确需公开只读 GET 数据回放，先在工作区配置 \`read-data-plan.json\`，再用 \`--include-readonly-data --offline --strict\` 精确许可；同时加 \`--compare-source\` 与已审核的操作计划，可受控采集点击后出现的响应。冲突、缺失与被拒响应会阻断发布，数据分发范围仍需人工审核。
+- 如确需公开只读 GET 数据回放，先在工作区配置 \`read-data-plan.json\`，再用 \`--include-readonly-data --offline --strict\` 精确许可；二进制路径还要放在 \`binaryPaths\` 并加 \`--include-readonly-binaries\`。二进制正文必须是合法 base64、每条不超过 16 MiB，交付 HAR 标记 \`review: manual\`；冲突、缺失与被拒响应会阻断发布，数据分发范围仍需人工审核。\`--compare-source\` 暂不采集或证明二进制源站对照，严格模式会明确阻断。
 - 宽泛的 \`--include-api-har\` 不允许与 \`--strict\` 同用，也不能让 POST 等写入型业务离线运行。
 - 保存过登录会话的站点默认拒绝导出；受控环境里须显式加 \`--allow-private-export\`，且原始 \`session.json\` 仍不会复制进包。
 - 未捕获的第三方接口在在线模式下回源；离线模式下会明确 404。

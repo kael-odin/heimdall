@@ -19,9 +19,13 @@ const PRIVATE_DATA_HEADER = /(?:cookie|authorization|api[_-]?key|auth[_-]?token|
 const PRIVATE_DATA_KEY = /^(?:auth(?:orization)?|api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|password|passwd|secret|session(?:[_-]?id)?|cookie|csrf|xsrf|email|phone|mobile|address|birth(?:day|date)?|dob|ssn|credit(?:[_-]?card)?|card(?:[_-]?number)?|bank(?:[_-]?account)?|iban|customer(?:[_-]?id)?|patient(?:[_-]?id)?|account(?:[_-]?id)?|profile(?:[_-]?id)?|user(?:[_-]?id|name)?)$|(?:^|[_-])(?:auth|token|key|secret|password|session|cookie|csrf|xsrf|email|phone|address|account|customer|patient|user)(?:$|[_-])/i;
 const PRIVATE_QUERY_KEY = /(?:auth|token|key|password|passwd|secret|session|cookie|csrf|xsrf|email|phone|address|user|account|customer|patient)/i;
 const DATA_MIME = /^(?:application\/(?:[a-z0-9.+-]+\+)?json|text\/(?:plain|csv))(?:\s*;|$)/i;
+const BINARY_MIME = /^application\/(?:octet-stream|x-sqlite3|vnd\.sqlite3|zip|gzip|x-gzip|x-tar|x-7z-compressed|x-rar-compressed|pdf|msword|vnd\.ms-(?:excel|word|powerpoint)|vnd\.openxmlformats-officedocument\.(?:spreadsheetml|wordprocessingml|presentationml)\.document|vnd\.oasis\.opendocument\.(?:text|spreadsheet|presentation))(?:\s*;|$)/i;
+const BINARY_PATH = /\.(?:db|sqlite3?|zip|tar|tgz|gz|bz2|xz|7z|rar|pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)(?:$|[?#])/i;
 const JSON_BODY_MIME = /^application\/(?:[a-z0-9.+-]+\+)?json(?:\s*;|$)|^text\/json(?:\s*;|$)/i;
 const FORM_BODY_MIME = /^application\/x-www-form-urlencoded(?:\s*;|$)/i;
 export const MAX_PUBLIC_DATA_BYTES = 1024 * 1024;
+export const MAX_PUBLIC_BINARY_BYTES = 16 * 1024 * 1024;
+const MAX_PUBLIC_BINARY_BASE64_CHARS = 4 * Math.ceil(MAX_PUBLIC_BINARY_BYTES / 3);
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 
 export function isPrivateText(value) {
@@ -31,6 +35,24 @@ export function isPrivateText(value) {
 function normalizedDataMime(value) {
   const mime = String(value ?? '').split(';', 1)[0].trim().toLowerCase();
   return DATA_MIME.test(mime) && mime.length <= 80 ? mime + '; charset=utf-8' : null;
+}
+
+function normalizedBinaryMime(value, pathname = '') {
+  const mime = String(value ?? '').split(';', 1)[0].trim().toLowerCase();
+  if (!BINARY_MIME.test(mime) || (mime === 'application/octet-stream' && !BINARY_PATH.test(pathname))) return null;
+  return mime.length <= 80 ? mime : null;
+}
+
+function isBase64(value) {
+  if (typeof value !== 'string' || value.length % 4 !== 0) return false;
+  const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0;
+  const contentEnd = value.length - padding;
+  for (let i = 0; i < contentEnd; i++) {
+    const code = value.charCodeAt(i);
+    if (!((code >= 0x30 && code <= 0x39) || (code >= 0x41 && code <= 0x5a)
+      || (code >= 0x61 && code <= 0x7a) || code === 0x2b || code === 0x2f)) return false;
+  }
+  return true;
 }
 
 function reportPath(url) {
@@ -108,6 +130,11 @@ function publicDataBody(raw, mimeType) {
     }
   }
   return true;
+}
+
+function publicBinaryBody(raw) {
+  // shortcut: 16 MiB cap, raise only after adding streaming audit and an aggregate budget.
+  return !!raw?.length && raw.length <= MAX_PUBLIC_BINARY_BYTES;
 }
 
 /** Shared by the contract view so schema generation keeps the HAR privacy boundary. */
@@ -226,8 +253,7 @@ export function isReplayableReadOnlyDataEntry(entry, origin) {
   try { url = new URL(entry?.url); } catch { return false; }
   let raw;
   try {
-    if (typeof entry.body !== 'string' || entry.bodyEncoding !== 'base64'
-      || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(entry.body)) return false;
+    if (typeof entry.body !== 'string' || entry.bodyEncoding !== 'base64' || !isBase64(entry.body)) return false;
     raw = Buffer.from(entry.body, 'base64');
   } catch { return false; }
   return entry.kind === 'public-read-only-data' && entry.method === 'GET'
@@ -237,9 +263,26 @@ export function isReplayableReadOnlyDataEntry(entry, origin) {
     && entry.headers && typeof entry.headers === 'object' && !Object.keys(entry.headers).length;
 }
 
-export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [], readOnlyOrigin = '' } = {}) {
+export function isReplayableReadOnlyBinaryEntry(entry, origin) {
+  let url;
+  try { url = new URL(entry?.url); } catch { return false; }
+  let raw;
+  try {
+    if (typeof entry.body !== 'string' || entry.bodyEncoding !== 'base64'
+      || entry.body.length > MAX_PUBLIC_BINARY_BASE64_CHARS || !isBase64(entry.body)) return false;
+    raw = Buffer.from(entry.body, 'base64');
+  } catch { return false; }
+  return entry.kind === 'public-read-only-binary' && entry.review === 'manual' && entry.method === 'GET'
+    && url.origin === origin && safePublicDataUrl(url)
+    && Number.isInteger(entry.status) && entry.status >= 200 && entry.status < 300
+    && entry.mimeType === normalizedBinaryMime(entry.mimeType, url.pathname) && publicBinaryBody(raw)
+    && entry.headers && typeof entry.headers === 'object' && !Object.keys(entry.headers).length;
+}
+
+export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [], readOnlyBinaryGetUrls = [], readOnlyOrigin = '' } = {}) {
   const origin = publicDataOrigin(readOnlyOrigin);
   const approved = approvedPublicDataUrls(readOnlyGetUrls, origin);
+  const approvedBinary = approvedPublicDataUrls(readOnlyBinaryGetUrls, origin);
   const entries = [];
   const excluded = { invalid: 0, privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 };
   const examples = [];
@@ -254,18 +297,24 @@ export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [
     if (!['http:', 'https:'].includes(parsed.protocol) || !status) { excluded.invalid++; continue; }
     const mimeType = res.content?.mimeType ?? (res.headers ?? []).find(h => String(h.name).toLowerCase() === 'content-type')?.value ?? '';
     const dataMime = normalizedDataMime(mimeType);
-    const publicData = approved.has(normalizeUrl(parsed.href)) && parsed.origin === origin && !!dataMime;
+    const binaryMime = normalizedBinaryMime(mimeType, parsed.pathname);
+    const normalizedUrl = normalizeUrl(parsed.href);
+    const publicData = approved.has(normalizedUrl) && !approvedBinary.has(normalizedUrl)
+      && parsed.origin === origin && !!dataMime;
+    const publicBinary = approvedBinary.has(normalizedUrl) && !approved.has(normalizedUrl)
+      && parsed.origin === origin && !!binaryMime;
+    const publicReadOnly = publicData || publicBinary;
     let reason = null;
-    if (publicData && !safePublicDataUrl(parsed)) reason = 'privateUrl';
-    else if (!publicData && !safeReplayUrl(parsed)) reason = 'privateUrl';
-    else if (publicData && (method !== 'GET' || status < 200 || status >= 300 || req.postData)) reason = 'nonStatic';
-    else if (publicData && ((req.headers ?? []).some(h => PRIVATE_DATA_HEADER.test(String(h.name)))
+    if (publicReadOnly && !safePublicDataUrl(parsed)) reason = 'privateUrl';
+    else if (!publicReadOnly && !safeReplayUrl(parsed)) reason = 'privateUrl';
+    else if (publicReadOnly && (method !== 'GET' || status < 200 || status >= 300 || req.postData)) reason = 'nonStatic';
+    else if (publicReadOnly && ((req.headers ?? []).some(h => PRIVATE_DATA_HEADER.test(String(h.name)))
       || (req.cookies ?? []).length > 0 || (res.cookies ?? []).length > 0
       || (res.headers ?? []).some(h => /^set-cookie$/i.test(String(h.name))
         || (/^vary$/i.test(String(h.name)) && /cookie|authorization/i.test(String(h.value)))
         || (/^cache-control$/i.test(String(h.name)) && /(?:^|,)\s*private\b/i.test(String(h.value)))))) reason = 'authenticated';
     else if (!includeApiBodies && ((req.headers ?? []).some(h => PRIVATE_HEADER.test(String(h.name))) || (req.cookies ?? []).length > 0)) reason = 'authenticated';
-    else if (!publicData && !includeApiBodies && (method !== 'GET' || /^\/api(?:\/|$)/i.test(parsed.pathname)
+    else if (!publicReadOnly && !includeApiBodies && (method !== 'GET' || /^\/api(?:\/|$)/i.test(parsed.pathname)
       || DATA_MIME.test(mimeType) || !isStaticResponse(parsed, mimeType))) reason = 'nonStatic';
     if (reason) {
       excluded[reason]++;
@@ -275,20 +324,26 @@ export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [
     let body = null;
     const text = res.content?.text;
     if (typeof text === 'string' && text.length) {
-      const raw = res.content?.encoding === 'base64' ? Buffer.from(text, 'base64') : Buffer.from(text, 'utf8');
-      if (publicData && !publicDataBody(raw, mimeType)) {
+      if (publicBinary && (res.content?.encoding !== 'base64' || text.length > MAX_PUBLIC_BINARY_BASE64_CHARS
+        || !isBase64(text))) {
         excluded.privateBody++;
         if (examples.length < 20) examples.push({ reason: 'privateBody', path: reportPath(parsed) });
         continue;
       }
-      if (!publicData && !includeApiBodies && (/(?:text|javascript|json|xml|svg)/i.test(mimeType) || /\.(?:js|mjs|css|svg)$/i.test(parsed.pathname)) && PRIVATE_TEXT.test(raw.toString('utf8'))) {
+      const raw = res.content?.encoding === 'base64' ? Buffer.from(text, 'base64') : Buffer.from(text, 'utf8');
+      if (publicReadOnly && !(publicData ? publicDataBody(raw, mimeType) : publicBinaryBody(raw))) {
+        excluded.privateBody++;
+        if (examples.length < 20) examples.push({ reason: 'privateBody', path: reportPath(parsed) });
+        continue;
+      }
+      if (!publicReadOnly && !includeApiBodies && (/(?:text|javascript|json|xml|svg)/i.test(mimeType) || /\.(?:js|mjs|css|svg)$/i.test(parsed.pathname)) && PRIVATE_TEXT.test(raw.toString('utf8'))) {
         excluded.privateBody++;
         if (examples.length < 20) examples.push({ reason: 'privateBody', path: reportPath(parsed) });
         continue;
       }
       body = raw.toString('base64');
     }
-    if (publicData && !body) {
+    if (publicReadOnly && !body) {
       excluded.nonStatic++;
       if (examples.length < 20) examples.push({ reason: 'nonStatic', path: reportPath(parsed) });
       continue;
@@ -298,15 +353,16 @@ export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [
     const headers = {};
     for (const h of res.headers ?? []) {
       const name = String(h.name ?? '').toLowerCase();
-      if (!publicData && SAFE_RESPONSE_HEADERS.includes(name)) headers[name] = h.value;
+      if (!publicReadOnly && SAFE_RESPONSE_HEADERS.includes(name)) headers[name] = h.value;
     }
     entries.push({
       method, url: parsed.href, status,
-      mimeType: publicData ? dataMime : mimeType,
+      mimeType: publicData ? dataMime : publicBinary ? binaryMime : mimeType,
       headers, body, bodyEncoding: body ? 'base64' : null,
       ...(requestBody ? { requestBody } : {}),
       ...(requestAuth.length ? { requestAuth } : {}),
-      ...(publicData ? { kind: 'public-read-only-data' } : {}),
+      ...(publicData ? { kind: 'public-read-only-data' } : publicBinary
+        ? { kind: 'public-read-only-binary', review: 'manual' } : {}),
     });
   }
   return { version: 1, generatedAt: new Date().toISOString(), entries, privacy: { excluded, examples, includeApiBodies } };

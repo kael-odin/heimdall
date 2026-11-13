@@ -240,7 +240,7 @@ node core/src/cli.mjs probe adapter --site example.org --include-api-bodies --ou
 
 这条命令会把样本按端点拆成训练集和留出集，只用训练集写入 `adapter-draft\manifest.json`、`adapter-draft\index.mjs`；验证报告写在 `adapter-report.json`。报告里的 `passed` 只表示脱敏观察样本的有限泛化，`not-validated` 表示样本不够，不能当作“后端已经复刻”。路径变化、新查询参数、状态码/MIME/JSON 形状或稳定字段不一致都会列为失败。若报告和输出目录已存在，需显式加 `--force` 才覆盖。
 
-分页或字段选择查询需要逐条批准：复用下文的 `read-data-plan.json`，再为契约或适配器探针显式加 `--include-readonly-data`。这只读取已有 HAR，不会重新访问源站。站点来源须唯一且与记录一致；缺失或无效的计划会拒绝执行，批准的公开 GET 仍不能含认证信息或私密正文。
+分页或字段选择查询需要逐条批准：复用下文的 `read-data-plan.json`，再为契约或适配器探针显式加 `--include-readonly-data`。这只读取已有 HAR，不会重新访问源站。站点来源须唯一且与记录一致；缺失或无效的计划会拒绝执行，批准的公开 GET 仍不能含认证信息或私密正文。二进制下载只由严格离线导出支持，不能借普通数据许可隐式放行。
 
 ```powershell
 node core/src/cli.mjs probe contract --site example.org --include-readonly-data
@@ -290,10 +290,14 @@ node core/src/cli.mjs live example.org --offline --strict --root mirror --includ
 只读 GET 数据必须先确认有权分发，再在站点工作区放置 `read-data-plan.json`：
 
 ```json
-{ "version": 1, "paths": ["/api/catalog?page=1"] }
+{
+  "version": 1,
+  "paths": ["/api/catalog?page=1"],
+  "binaryPaths": ["/library.db"]
+}
 ```
 
-然后显式加 `--include-readonly-data --offline --strict`。导出只接受精确 URL、同源、无认证信息、2xx 的 JSON/纯文本响应；候选包中缺少任何声明响应都会阻断发布，结果见 `health.readOnlyData`。默认从页面已有的 `network.har` 取响应；同时加 `--compare-source` 并提供已审阅的 `operation-plan.json`，可在源站执行声明流程时采集点击后才出现的许可 GET。每个响应限 1 MiB、累计限 10 MiB；认证、超限、缺失或同 URL 内容冲突均阻断严格交付。源站流程仅执行一次，`health.readOnlyData.flowParity` 按声明流程对照许可 GET 的精确 URL、状态、MIME 和清洗后正文指纹；报告只保留脱敏计数及问题类别。对照不证明请求时序、重复次数、未声明操作或业务结果一致。计划和响应内容仍须人工审核，自动敏感信息规则不能识别所有个人数据或商业机密。宽泛的 `--include-api-har` 不能与 `--strict` 同用。
+然后显式加 `--include-readonly-data --offline --strict`；若计划含 `binaryPaths`，再加 `--include-readonly-binaries`。导出只接受精确 URL、同源、无认证信息、2xx 的 JSON/纯文本响应；二进制只接受受限的数据库、压缩包、PDF 和常见 Office MIME，正文必须以合法 base64 出现在 HAR 中，每个响应限 16 MiB，最多声明 25 条。候选包中缺少任何声明响应都会阻断发布，结果见 `health.readOnlyData`，其中 `binaryDeclared` / `binaryIncluded` 记录二进制范围。默认从页面已有的 `network.har` 取响应；同时加 `--compare-source` 并提供已审阅的 `operation-plan.json`，可在源站执行声明流程时采集点击后才出现的许可 GET，但二进制源站对照仍标为未支持并阻断严格交付。普通数据每个响应限 1 MiB、累计限 10 MiB；认证、超限、缺失或同 URL 内容冲突均阻断严格交付。二进制响应保留 `review: "manual"`，计划和响应内容仍须人工审核，自动敏感信息规则不能识别所有个人数据或商业机密。宽泛的 `--include-api-har` 不能与 `--strict` 同用。
 
 在 `--compare-source` 模式下，源站和离线复测从 Chromium 协议读取同一次请求的正文；取正文不会主动重发请求，但页面自身仍可能多次请求。缓存、重定向、必要响应头不可核实，或浏览器与协议的可见响应数不一致时，严格导出会阻断，逐流程数据对照显示未完成。两者都没有观察到的请求仍可能遗漏，弹窗和跨进程页面也不保证完整覆盖。旧版生成的包应重新对照并人工审阅；未启用源站对照而只使用已有 HAR 时，不能据此确认 HAR 正文来自哪次请求。
 

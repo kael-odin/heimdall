@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { buildObservedApiContract } from '../src/live/contract.mjs';
-import { sanitizeHar } from '../src/live/har.mjs';
+import { MAX_PUBLIC_BINARY_BYTES, sanitizeHar } from '../src/live/har.mjs';
+import { readDataPlan } from '../src/live/read-data-plan.mjs';
 
 const body = value => ({ body: Buffer.from(JSON.stringify(value), 'utf8').toString('base64'), bodyEncoding: 'base64' });
 
@@ -108,4 +112,54 @@ test('live/contract: empty or static-only input is explicit B0', () => {
   assert.equal(contract.summary.status, 'no-observed-api');
   assert.deepEqual(contract.unknowns, [{ kind: 'no-observed-api', detail: '清洗 HAR 中没有可判定的同源接口条目。' }]);
   assert.equal(contract.coverage.invented, 0);
+});
+
+test('live/har: approved binary downloads require base64, stay bounded, and need manual review', () => {
+  const origin = 'https://x.test';
+  const binary = value => ({
+    request: { method: 'GET', url: origin + value.path, headers: value.headers ?? [] },
+    response: {
+      status: 200,
+      headers: value.responseHeaders ?? [],
+      content: { mimeType: value.mimeType ?? 'application/octet-stream', text: value.body,
+        ...(value.encoding === undefined ? {} : { encoding: value.encoding }) },
+    },
+  });
+  const goodBody = Buffer.from([0, 1, 2, 255]).toString('base64');
+  const oversizedBody = Buffer.alloc(MAX_PUBLIC_BINARY_BYTES + 1).toString('base64');
+  const result = sanitizeHar({ log: { entries: [
+    binary({ path: '/library.db', body: goodBody, encoding: 'base64' }),
+    binary({ path: '/manual.docx', body: goodBody, encoding: 'base64',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
+    binary({ path: '/wrong-encoding.db', body: goodBody, encoding: 'utf8' }),
+    binary({ path: '/cookie.db', body: goodBody, encoding: 'base64', headers: [{ name: 'Cookie', value: 'sid=secret' }] }),
+    binary({ path: '/large.db', body: oversizedBody, encoding: 'base64' }),
+  ] } }, {
+    readOnlyOrigin: origin,
+    readOnlyBinaryGetUrls: ['/library.db', '/manual.docx', '/wrong-encoding.db', '/cookie.db', '/large.db']
+      .map(path => origin + path),
+  });
+
+  assert.deepEqual(result.entries.map(entry => [entry.url, entry.kind, entry.review]), [
+    [origin + '/library.db', 'public-read-only-binary', 'manual'],
+    [origin + '/manual.docx', 'public-read-only-binary', 'manual'],
+  ]);
+  assert.equal(result.privacy.excluded.privateBody, 2);
+  assert.equal(result.privacy.excluded.authenticated, 1);
+  assert.equal(Buffer.from(result.entries[0].body, 'base64').toString('hex'), '000102ff');
+});
+
+test('live/read-data-plan: binary-only plans are explicit and cannot overlap data paths', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-read-data-plan-'));
+  try {
+    writeFileSync(join(root, 'read-data-plan.json'), JSON.stringify({ version: 1, binaryPaths: ['/library.db'] }));
+    assert.equal(readDataPlan(root, 'https://x.test').issue, 'binary-requires-flag');
+    assert.deepEqual(readDataPlan(root, 'https://x.test', { includeBinary: true }), {
+      status: 'ok', urls: [], binaryUrls: ['https://x.test/library.db'],
+    });
+    writeFileSync(join(root, 'read-data-plan.json'), JSON.stringify({
+      version: 1, paths: ['/library.db'], binaryPaths: ['/library.db'],
+    }));
+    assert.equal(readDataPlan(root, 'https://x.test', { includeBinary: true }).issue, 'overlapping-paths');
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

@@ -22,11 +22,19 @@ function harEntry(path, body, { requestHeaders = [] } = {}) {
   };
 }
 
-function runExport(source, out) {
+function runExport(source, out, extra = []) {
   return spawnSync(process.execPath, [EXPORT, HOST, '--offline', '--strict', '--root', 'mirror',
-    '--include-readonly-data', '--materialize-har', '--out', out], {
+    '--include-readonly-data', ...extra, '--materialize-har', '--out', out], {
     cwd: CORE, env: { ...process.env, HEIMDALL_DATA_DIR: source }, encoding: 'utf8', timeout: 90_000,
   });
+}
+
+function binaryHarEntry(path, bytes, { mimeType = 'application/x-sqlite3', requestHeaders = [] } = {}) {
+  return {
+    request: { method: 'GET', url: ORIGIN + path, headers: requestHeaders },
+    response: { status: 200, headers: [{ name: 'Content-Type', value: mimeType }],
+      content: { mimeType, text: Buffer.from(bytes).toString('base64'), encoding: 'base64' } },
+  };
 }
 
 function failedCandidate(source, before) {
@@ -210,6 +218,65 @@ test('strict export packages only declared public GET data and replays it after 
     await context.close();
   } finally {
     await browser?.close();
+    if (child && child.exitCode === null && child.signalCode === null) {
+      child.kill();
+      await new Promise(resolve => child.once('exit', resolve));
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('strict export can replay an explicitly approved binary GET after relocation', { timeout: 120_000 }, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-read-binary-export-'));
+  const source = join(root, 'source');
+  const site = join(source, 'workspace', HOST);
+  const page = join(site, 'pages', 'home');
+  const out = join(source, 'deliverable', 'binary-bundle');
+  const missingFlagOut = join(source, 'deliverable', 'binary-without-flag');
+  const deployed = join(root, 'deployed');
+  const bytes = Buffer.from([0x53, 0x51, 0x4c, 0x69, 0x74, 0x65, 0x00, 0xff]);
+  let child;
+  try {
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    mkdirSync(join(site, 'live'), { recursive: true });
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: ORIGIN + '/' }));
+    writeFileSync(join(page, 'clone', 'index.html'), '<!doctype html><h1>Clone home</h1>');
+    writeFileSync(join(site, 'live', 'index.html'), '<!doctype html><a href="/library.db">Download</a>');
+    writeFileSync(join(site, 'read-data-plan.json'), JSON.stringify({ version: 1, binaryPaths: ['/library.db'] }));
+    writeFileSync(join(page, 'network.har'), JSON.stringify({ log: { entries: [binaryHarEntry('/library.db', bytes)] } }));
+
+    mkdirSync(join(source, 'deliverable'), { recursive: true });
+    const before = new Set(readdirSync(join(source, 'deliverable'), { withFileTypes: false }));
+    const missingFlag = runExport(source, missingFlagOut);
+    assert.equal(missingFlag.status, 1, missingFlag.stderr + missingFlag.stdout);
+    const missingFlagHealth = JSON.parse(readFileSync(join(failedCandidate(source, before), 'health.json'), 'utf8'));
+    assert.equal(missingFlagHealth.readOnlyData.issue, 'binary-requires-flag');
+    assert.equal(missingFlagHealth.strictBlockers.readOnlyDataInvalid, 1);
+
+    const good = runExport(source, out, ['--include-readonly-binaries']);
+    assert.equal(good.status, 0, good.stderr + good.stdout);
+    const health = JSON.parse(readFileSync(join(out, 'health.json'), 'utf8'));
+    assert.equal(health.readOnlyData.binaryDeclared, 1);
+    assert.equal(health.readOnlyData.binaryIncluded, 1);
+    assert.equal(health.readOnlyData.missing, 0);
+    assert.equal(health.strictBlockers.readOnlyDataMissing, 0);
+    const har = JSON.parse(readFileSync(join(out, 'har.json'), 'utf8'));
+    const entry = har.entries.find(item => item.url === ORIGIN + '/library.db');
+    assert.equal(entry.kind, 'public-read-only-binary');
+    assert.equal(entry.review, 'manual');
+    assert.deepEqual(Buffer.from(entry.body, 'base64'), bytes);
+
+    cpSync(out, deployed, { recursive: true });
+    rmSync(source, { recursive: true, force: true });
+    const server = await startBundle(deployed);
+    child = server.child;
+    const response = await fetch(server.base + '/library.db');
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-heimdall-replay'), '1');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('content-type'), 'application/x-sqlite3');
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+  } finally {
     if (child && child.exitCode === null && child.signalCode === null) {
       child.kill();
       await new Promise(resolve => child.once('exit', resolve));

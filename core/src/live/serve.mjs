@@ -20,7 +20,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync, existsSync, realpathSync, statSync } from 'node:fs';
 import { join, dirname, extname, normalize, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { indexHar, isReplayableReadOnlyDataEntry, matchHar } from './har.mjs';
+import { indexHar, isReplayableReadOnlyDataEntry, isReplayableReadOnlyBinaryEntry, matchHar } from './har.mjs';
 import { liveSnapshotCandidates } from './live-path.mjs';
 import { isCloneRenderingAsset } from './clone-asset-cors.mjs';
 
@@ -95,14 +95,17 @@ let HAR_ENTRIES = 0;
 const HAR_BY_QUERY = new Map();   // pathname|url参数 → 任意已捕获尺寸（图片优化端点回退）
 try {
   const har = JSON.parse(readFileSync(join(HERE, 'har.json'), 'utf8'));
-  const replayable = (har.entries ?? []).filter(e => e?.kind !== 'public-read-only-data'
-    || isReplayableReadOnlyDataEntry(e, ORIGIN));
+  const replayable = (har.entries ?? []).filter(e => (
+    !['public-read-only-data', 'public-read-only-binary'].includes(e?.kind)
+    || isReplayableReadOnlyDataEntry(e, ORIGIN)
+    || isReplayableReadOnlyBinaryEntry(e, ORIGIN)
+  ));
   HAR_INDEX = indexHar(replayable);
   HAR_ENTRIES = replayable.length;
   for (const e of replayable) {
     try {
       const x = new URL(e.url);
-      if (x.origin !== ORIGIN || e.kind === 'public-read-only-data' || !/^\/_next\/image$/i.test(x.pathname)
+      if (x.origin !== ORIGIN || e.kind === 'public-read-only-data' || e.kind === 'public-read-only-binary' || !/^\/_next\/image$/i.test(x.pathname)
         || !/^image\//i.test(String(e.mimeType ?? ''))) continue;
       const target = x.searchParams.get('url');
       if (target) HAR_BY_QUERY.set(x.pathname + '|' + target, e);
@@ -330,7 +333,7 @@ async function serveLive(req, res, rel, search) {
     }
     if (hit && hit.body) {
       const body = Buffer.from(hit.body, 'base64');
-      const replayHeaders = hit.kind === 'public-read-only-data'
+      const replayHeaders = ['public-read-only-data', 'public-read-only-binary'].includes(hit.kind)
         ? { 'Cache-Control': 'no-store' } : { ...hit.headers };
       delete replayHeaders['content-type'];
       res.writeHead(hit.status, { 'Content-Type': hit.mimeType || 'application/octet-stream', 'Content-Length': body.length,
