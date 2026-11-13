@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { archiveVerifyArtifacts, evidenceSha256, resultSha256, resumeIdentity } from '../src/verify/resume-cache.mjs';
+import { archiveVerifyArtifacts, cloneInputSha256, evidenceSha256, resultSha256, resumeIdentity } from '../src/verify/resume-cache.mjs';
 
 test('result digest detects changed scores without hashing its own proof', () => {
   const result = { measured: true, overall: 1, viewports: [{ name: '100x100', score: 1 }] };
@@ -27,6 +27,16 @@ test('resume identity follows file contents, settings and verifier, not modifica
     const identity = () => resumeIdentity(dir, options, 'verifier-a');
     const original = identity();
     assert.ok(original?.inputs);
+    assert.equal(cloneInputSha256(dir), original.inputs);
+    rmSync(join(dir, 'manifest.json'));
+    const local = cloneInputSha256(dir);
+    assert.ok(local && local !== original.inputs, 'a local mirror records the missing manifest');
+    assert.equal(identity(), null, 'online measurement still requires an HTTP source manifest');
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ target: 'file:///frozen/index.html' }));
+    assert.ok(cloneInputSha256(dir));
+    assert.equal(identity(), null, 'local content identity does not grant online measurement eligibility');
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ target: 'http://cache-fixture.invalid/' }));
+    assert.equal(cloneInputSha256(dir), original.inputs);
     for (const file of ['style.css', 'app.js', 'assets/image.png']) {
       const path = join(dir, 'clone', file);
       const before = statSync(path);

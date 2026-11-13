@@ -30,16 +30,26 @@ function hashTree(hash, dir, name) {
   }
 }
 
+export function cloneInputSha256(dir, cloneDir = join(dir, 'clone')) {
+  try {
+    const hash = createHash('sha256');
+    try { hashFile(hash, join(dir, 'manifest.json'), 'manifest.json'); }
+    catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      hash.update(JSON.stringify(['manifest.json', 'missing'])).update('\0');
+    }
+    hashTree(hash, cloneDir, 'clone');
+    return hash.digest('hex');
+  } catch { return null; }
+}
+
 export function measurementIdentity(dir, options, verifier, cloneDir = join(dir, 'clone')) {
   if (!verifier) return null;
   try {
-    const manifest = join(dir, 'manifest.json');
-    const target = new URL(JSON.parse(readFileSync(manifest, 'utf8')).target);
+    const target = new URL(JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')).target);
     if (!['http:', 'https:'].includes(target.protocol)) return null;
-    const hash = createHash('sha256');
-    hashFile(hash, manifest, 'manifest.json');
-    hashTree(hash, cloneDir, 'clone');
-    return { version: 1, verifier, inputs: hash.digest('hex'), options };
+    const inputs = cloneInputSha256(dir, cloneDir);
+    return inputs ? { version: 1, verifier, inputs, options } : null;
   } catch { return null; }
 }
 
