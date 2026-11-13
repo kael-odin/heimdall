@@ -49,6 +49,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-13 | **[标题与描述长度实测](2026-11-13/seo-metadata-length.md)** | 四页真实 HTML 同批复算，四类字符数扣分改为人工提示；GEO 摘要只检查非空文本，缺失描述对照不变；评分 13 / 测量 8 / GEO 8 |
 | 2026-11-13 | **[64 位整数资源关联实测](2026-11-13/qa-int64.md)** | Datasette + SQLite 八场景修正舍入造成的两次错误通过和三次健康误拒绝；原 token 贯通路径与字段引用，未增加请求、模块或测试文件 |
 | 2026-11-14 | **[Datasette 独立部署实战复验](2026-11-13/datasette-standalone.md)** | 83 个 live 页面、68 条公开只读数据精确回放；修复基路径 HAR 覆盖查询变体的假通过，运行探针 250/250 通过；664 个链接缺口、9 个 CodeMirror pageerror、3 条操作流和 1 条适配器路由仍阻断严格发布 |
+| 2026-11-14 | **[评分读取与失效产物成本实测](2026-11-14/score-read-cost.md)** | IANA 8 页当前 CLI 复测：`site` 中位数 265 ms、`site-assessment` 中位数 255 ms；8 页旧分数均为 `legacy`，当前多视口均为 `stale`，平均分为空；大站并发、内存和累计验证成本仍待测 |
 
 ## 为什么归档
 
