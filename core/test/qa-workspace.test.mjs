@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadWorkspace, findWorkspace, resolveLogin, describeLogin, scrubSecrets, jwtExpiry } from '../src/qa/workspace.mjs';
+import { loadWorkspace, findWorkspace, resolveLogin, describeLogin, scrubSecrets, scrubValues, jwtExpiry } from '../src/qa/workspace.mjs';
 import { fingerprintOf, normalizeFinding, stablePath, stableText } from '../src/qa/findings.mjs';
 import { recordVerdict, readRules, revokeVerdict, applyVerdicts, normalizeMatch } from '../src/qa/memory.mjs';
 import { dice, findSimilar, guidance, readLedger } from '../src/qa/ledger.mjs';
@@ -75,6 +75,18 @@ test('workspace: found upward, validated, logins resolved without leaking values
     assert.equal(scrubSecrets(`token=${token}`, admin.secrets), 'token=[凭据已移除]');
     assert.equal(jwtExpiry('not-a-jwt'), null);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('workspace: known Bearer credentials redact both headers and bare tokens', () => {
+  const token = 'fixture-bearer-token-value';
+  for (const header of [`Bearer ${token}`, `bearer ${token}`, `  BEARER\t${token}  `]) {
+    assert.equal(scrubSecrets(`header=${header}; token=${token}; again=${token}`, [header]),
+      'header=[凭据已移除]; token=[凭据已移除]; again=[凭据已移除]');
+    assert.deepEqual(scrubValues({ [token]: [token] }, [header]), { '[凭据已移除]': ['[凭据已移除]'] });
+  }
+  assert.equal(scrubSecrets('unknown-token-value', [`Bearer ${token}`]), 'unknown-token-value');
+  assert.equal(scrubSecrets('tiny', ['Bearer tiny']), 'tiny', 'short fragments keep the existing length guard');
+  assert.equal(scrubSecrets(token, [`Basic ${token}`]), token, 'unrelated credential schemes are not decoded');
 });
 
 test('workspace: bad configs are rejected with a readable reason', () => {

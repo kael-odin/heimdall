@@ -288,7 +288,13 @@ export function describeLogin(ws, name) {
 /** 把字符串里出现的凭据值替换掉（报告、错误信息落盘前调用） */
 export function scrubSecrets(text, secrets = []) {
   let out = String(text ?? '');
-  for (const s of secrets) if (s && String(s).length >= 8) out = out.split(String(s)).join('[凭据已移除]');
+  for (const s of secrets) {
+    const secret = String(s ?? '');
+    if (secret.length < 8) continue;
+    out = out.split(secret).join('[凭据已移除]');
+    const bearer = secret.trim().match(/^Bearer[ \t]+(\S+)$/i)?.[1];
+    if (bearer?.length >= 8) out = out.split(bearer).join('[凭据已移除]');
+  }
   return out;
 }
 

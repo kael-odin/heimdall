@@ -895,7 +895,7 @@ test('qa run: text artifacts and exploration redact login secrets', { timeout: 1
   writeFileSync(join(root, 'session.json'), JSON.stringify({ cookies: [], origins: [{ origin, localStorage: [{ name: 'token', value: secret }] }] }));
   writeFileSync(join(root, '.heimdall', 'qa.json'), JSON.stringify({
     project: 'Secret fixture', sites: { web: { url: origin, pages: ['/'], login: 'headers' } },
-    logins: { headers: { kind: 'headers', headers: { 'X-Api-Key': secret } }, state: { kind: 'storageState', file: 'session.json' } },
+    logins: { headers: { kind: 'headers', headers: { Authorization: `Bearer ${secret}` } }, state: { kind: 'storageState', file: 'session.json' } },
     defaults: { settleMs: 100, timeoutMs: 15000 },
   }));
   try {
