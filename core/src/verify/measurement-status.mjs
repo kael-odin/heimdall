@@ -80,7 +80,7 @@ function scanMeasurements(baseDir, pages) {
     heightDelta: v.heightDelta ?? null, missingPixels: v.missingPixels ?? null });
   return pages.map(page => {
     const { status, result } = reader.read(page);
-    return { page, status, ...(result ? { result: { measured: true, generatedAt: result.generatedAt, overall: result.overall,
+    return { page, status, ...(result?.measurementProof?.inputs ? { inputSha256: result.measurementProof.inputs } : {}), ...(result ? { result: { measured: true, generatedAt: result.generatedAt, overall: result.overall,
       scoreVersion: result.scoreVersion, grade: result.grade ?? null, minViewport: viewport(result.minViewport),
       viewports: result.viewports.map(viewport), functional: result.functional, confidence: result.confidence,
       interactions: Array.isArray(result.interactions) ? result.interactions.slice(0, 3).map(ix => ({

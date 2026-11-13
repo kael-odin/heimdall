@@ -18,7 +18,7 @@ const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } ca
 function pageRow(siteId, page, fence, measurement, scanStatus) {
   const dir = pageDir(siteId, page);
   const manifest = readJson(join(dir, 'manifest.json'));
-  const { score, status: scoreStatus } = readCurrentScore(dir);
+  const { score, status: scoreStatus } = readCurrentScore(dir, measurement?.inputSha256);
   const verify = measurement?.status === 'verified' ? measurement.result : null;
   return {
     page,

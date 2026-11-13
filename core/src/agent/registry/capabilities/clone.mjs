@@ -33,7 +33,7 @@ function parseTarget(url) {
 
 function pageResult(siteId, page, measurement, scanStatus) {
   const dir = join(WORKSPACE, siteId, 'pages', page);
-  const { score, status: scoreStatus } = readCurrentScore(dir);
+  const { score, status: scoreStatus } = readCurrentScore(dir, measurement?.inputSha256);
   const verify = measurement?.status === 'verified' ? measurement.result : null;
   return { page, mirror: existsSync(join(dir, 'clone', 'index.html')), score: score ? { total: score.total, grade: score.grade } : null, scoreStatus,
     verify: verify ? { measured: true, overall: verify.overall ?? null, minViewport: verify.minViewport?.name ? { name: verify.minViewport.name, score: verify.minViewport.score } : null } : null,

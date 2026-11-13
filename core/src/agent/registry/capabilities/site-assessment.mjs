@@ -227,7 +227,8 @@ function liveExportSummary(root, siteId) {
 function cloneSummary(siteId, pages, scan) {
   const mirrors = pages.filter(page => existsSync(join(pageDir(siteId, page), 'clone', 'index.html')));
   const coverage = measurementCoverage(scan, pages.length);
-  const scoreStates = mirrors.map(page => readCurrentScore(pageDir(siteId, page)));
+  const measurements = new Map(scan.pages.map(row => [row.page, row]));
+  const scoreStates = mirrors.map(page => readCurrentScore(pageDir(siteId, page), measurements.get(page)?.inputSha256));
   const scores = scoreStates.map(state => state.score)
     .filter(score => typeof score?.total === 'number' && Number.isFinite(score.total));
   const scoreStatuses = Object.fromEntries(['verified', 'stale', 'legacy', 'missing', 'invalid']

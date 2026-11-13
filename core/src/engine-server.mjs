@@ -1952,9 +1952,8 @@ const handleRequest = async (req, res) => {
       for (const name of readdirSync(pagesDir)) {
         const cloneHtml = join(pagesDir, name, 'clone', 'index.html');
         if (!existsSync(cloneHtml)) continue;
-        let target = '', score = null, scoreStatus = 'missing';
+        let target = '';
         try { target = JSON.parse(readFileSync(join(pagesDir, name, 'manifest.json'), 'utf8')).target ?? ''; } catch {}
-        ({ score, status: scoreStatus } = readCurrentScore(join(pagesDir, name)));
         const assets = pageAssets[name] ?? { count: 0, bytes: 0 };
         // updatedAt = 这一页克隆产物的构建时间。控制台拿它当截图的 cache-buster
         // （重新克隆后两张图必须刷新）。只需要**一次 stat**，不走资产树遍历。
@@ -1970,8 +1969,7 @@ const handleRequest = async (req, res) => {
         try { motion = JSON.parse(readFileSync(join(pagesDir, name, 'motion.json'), 'utf8')); } catch {}
         out.push({
           name, target, forged: true,
-          score: score ? { total: score.total, pixel: score.pixel, grade: score.grade } : null,
-          scoreStatus,
+          score: null, scoreStatus: 'missing',
           assets,
           visualGaps: gapMap[name] ?? null,
           artifacts,
@@ -1986,7 +1984,10 @@ const handleRequest = async (req, res) => {
       const measurement = measurements.get(page.name);
       const status = scan.status === 'ok' ? measurement?.status ?? 'unavailable' : scan.status;
       const v = status === 'verified' ? measurement.result : null;
+      const currentScore = readCurrentScore(join(pagesDir, page.name), measurement?.inputSha256);
       Object.assign(page, { verifyStatus: status, verifyFresh: !!v,
+        score: currentScore.score ? { total: currentScore.score.total, pixel: currentScore.score.pixel, grade: currentScore.score.grade } : null,
+        scoreStatus: currentScore.status,
         verifyScoreVersion: v?.scoreVersion ?? null, verifyMeasured: v ? true : status === 'incomplete' ? false : null,
         verifyMeasuredAt: v?.generatedAt ?? null, verifyOverall: v?.overall ?? null,
         verifyConfidence: v?.confidence ?? null, verifyDetails: v, interactions: v?.functional ?? null,
