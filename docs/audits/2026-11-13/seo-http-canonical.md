@@ -37,6 +37,8 @@ Google Search Central 的 [canonical 指南](https://developers.google.com/searc
 
 另有现有 SEO 采集/基线门禁十条通过，覆盖 HTTP 错误、初始 HTML 不可用、跨来源跳转、部分 sitemap、漏采页、旧采集及旧口径基线的保护；与前组去重共 **174 条**，不累计重跑。首次集成运行发现的报告说明遗漏及失败日志保留，修正后全部通过；中央版本测试另确认未来未知口径不会套用当前说明。语法检查 765 文件、14 个冻结文件、775 个文档目标和 843 KB 插件新鲜度检查通过。
 
+源码提交 `1c3a56bc` 的 CI `43371924453` **8/8 作业通过**，Docs `43371924419` 通过。完整托管日志核对：Core 两片 **3,326 通过、4 条条件跳过、0 失败**；其中两个 Windows 平台条件不适用于 Linux，两个 Docker 用例在独立交付作业另获 **2/2**。MCP **7/7**、控制台构建、全部浏览器冒烟和基准通过。终态及日志分别保存为 `ci-source.json`、`ci-source.log`，六个产品源码的实际哈希与 `verification-current.json` 一致。
+
 证据位于 `D:/Github-Star/heimdall-evidence-archive/2026-11-13/seo-http-canonical/`，包括 `capture.json`、三份冻结 HTML、前后完整采集 JSON、最终 `final-source.json`、`live.json`、`verification-current.json`、报告截图、红灯与回归日志、官方指南快照。首次驱动的 Windows ESM 导入错误、首次后测的主机上下文错误均保留，后者按实际 audit 的去 www 口径修正；此前缺失项的分数不受该主机参数影响，没有覆盖旧输出。
 
 未验证 canonical 目标内容、可访问性、HTTP hreflang、sitemap canonical、初始与渲染后 HTML 声明差异、PDF 正文、实际索引资格或真实模型引用。本轮不提供任意网站等价或生产业务正确性结论。
