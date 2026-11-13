@@ -5,7 +5,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MAX_PUBLIC_DATA_BYTES, isPrivateText, scrubPublicJsonValue } from './har.mjs';
+import { MAX_PUBLIC_DATA_BYTES, isPrivateText, parseReplayJson, scrubPublicJsonValue } from './har.mjs';
 import { isObservedApiEntry } from './contract.mjs';
 
 const MAX_ROUTES = 200;
@@ -24,7 +24,7 @@ function bodyOf(entry) {
   const mime = mimeOf(entry.mimeType);
   if (JSON_MIME.test(mime)) {
     let value;
-    try { value = JSON.parse(raw.toString('utf8')); } catch { return { body: null, redacted: true }; }
+    try { value = parseReplayJson(raw.toString('utf8')); } catch { return { body: null, redacted: true }; }
     const safe = scrubPublicJsonValue(value);
     if (safe === undefined) return { body: null, redacted: true };
     const text = JSON.stringify(safe);

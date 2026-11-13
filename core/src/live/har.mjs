@@ -115,8 +115,16 @@ export function isPrivateDataKey(value) {
   return PRIVATE_DATA_KEY.test(String(value ?? ''));
 }
 
+/** Retain unsafe integer and overflowing number tokens without rounding them. */
+export function parseReplayJson(text) {
+  return JSON.parse(text, (_key, value, context) => typeof value === 'number'
+    && (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value)))
+    ? JSON.rawJSON(context.source) : value);
+}
+
 /** Remove sensitive keys and values before an explicitly requested API replay export. */
 export function scrubPublicJsonValue(value) {
+  if (JSON.isRawJSON(value) && /^-?\d/.test(value.rawJSON)) return value;
   if (Array.isArray(value)) return value.map(scrubPublicJsonValue).filter(item => item !== undefined);
   if (value && typeof value === 'object') {
     const out = {};

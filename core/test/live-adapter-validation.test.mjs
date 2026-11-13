@@ -8,6 +8,23 @@ const jsonEntry = (url, value, overrides = {}) => ({
   body: Buffer.from(JSON.stringify(value), 'utf8').toString('base64'), bodyEncoding: 'base64', ...overrides,
 });
 
+test('live/adapter-validation: distinguishes large stable numbers without exposing their values', async () => {
+  const entry = token => jsonEntry('https://x.test/api/items', {}, {
+    body: Buffer.from(`{"id":${token},"nested":{"count":${token}},"items":[${token}]}`).toString('base64'),
+  });
+  const training = [entry('9007199254740993')];
+  const adapter = buildObservedReplayAdapter(training, { origin: 'https://x.test' });
+  const healthy = await validateObservedReplayAdapter(adapter, { trainingEntries: training, heldoutEntries: training });
+  assert.equal(healthy.results.status, 'passed');
+  for (const token of ['9007199254740992', '"9007199254740993"']) {
+    const report = await validateObservedReplayAdapter(adapter, { trainingEntries: training, heldoutEntries: [entry(token)] });
+    assert.equal(report.results.status, 'failed');
+    assert.ok(report.failures[0].reasons.includes('stable-field-mismatch'));
+    assert.equal(report.failures[0].reasons.includes('json-schema-mismatch'), token.startsWith('"'));
+    assert.doesNotMatch(JSON.stringify(report), /900719925474099[23]|rawJSON/);
+  }
+});
+
 test('live/adapter-validation: splits unique observations deterministically by endpoint', () => {
   const entries = [
     jsonEntry('https://x.test/api/items/1?view=one', { ok: true }),

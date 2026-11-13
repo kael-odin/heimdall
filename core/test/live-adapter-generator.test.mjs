@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildObservedReplayAdapter } from '../src/live/adapter-generator.mjs';
+import { scrubPublicJsonValue } from '../src/live/har.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const BIN = join(ROOT, 'bin', 'heimdall.mjs');
@@ -13,6 +14,23 @@ const BIN = join(ROOT, 'bin', 'heimdall.mjs');
 const jsonEntry = (method, url, status, value) => ({
   method, url, status, mimeType: 'application/json',
   body: Buffer.from(JSON.stringify(value), 'utf8').toString('base64'), bodyEncoding: 'base64',
+});
+
+test('live/adapter-generator: preserves large numeric tokens through privacy filtering and replay', async () => {
+  const raw = '{"id":9007199254740993,"nested":[-9223372036854775808,9007199254740993.0,9.007199254740993e15,1e400],"text":"9007199254740993","email":"private@example.com","rawJSON":"ordinary data"}';
+  const entry = { ...jsonEntry('GET', 'https://x.test/api/items', 200, {}), body: Buffer.from(raw).toString('base64') };
+  const adapter = buildObservedReplayAdapter([entry], { origin: 'https://x.test' });
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-numeric-replay-'));
+  try {
+    writeFileSync(join(root, 'index.mjs'), adapter.moduleSource);
+    const module = await import(pathToFileURL(join(root, 'index.mjs')).href);
+    const response = await module.handle(new Request('http://adapter.local/api/items'));
+    assert.equal(await response.text(), raw.replace(',"email":"private@example.com"', ''));
+    assert.doesNotMatch(adapter.moduleSource, /private@example\.com/);
+    assert.equal(adapter.report.redactedBodies, 1);
+    assert.doesNotMatch(JSON.stringify(scrubPublicJsonValue(JSON.rawJSON('"Bearer abcdefghijkl"'))), /abcdefghijkl/);
+    assert.deepEqual(scrubPublicJsonValue({ rawJSON: 'ordinary data' }), { rawJSON: 'ordinary data' });
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('live/adapter-generator: creates a privacy-filtered observed replay module', async () => {

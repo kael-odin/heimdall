@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isObservedApiEntry } from './contract.mjs';
-import { normalizeUrl } from './har.mjs';
+import { normalizeUrl, parseReplayJson } from './har.mjs';
 
 const JSON_MIME = /^(?:application\/(?:[a-z0-9.+-]+\+)?json|text\/json)$/i;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -68,12 +68,13 @@ function bodyValue(entry) {
   try { raw = Buffer.from(entry.body, 'base64'); } catch { return { mimeType: mimeOf(entry?.mimeType), json: null, readable: false }; }
   const mimeType = mimeOf(entry.mimeType);
   if (!JSON_MIME.test(mimeType)) return { mimeType, json: null, readable: true };
-  try { return { mimeType, json: JSON.parse(raw.toString('utf8')), readable: true }; }
+  try { return { mimeType, json: parseReplayJson(raw.toString('utf8')), readable: true }; }
   catch { return { mimeType, json: null, readable: false }; }
 }
 
 function shapeOf(value) {
   if (value === null) return { type: 'null' };
+  if (JSON.isRawJSON(value)) return { type: Number.isInteger(Number(value.rawJSON)) ? 'integer' : 'number' };
   if (Array.isArray(value)) {
     const shapes = [];
     for (const item of value) {
@@ -92,7 +93,7 @@ function shapeOf(value) {
 }
 
 function primitiveFields(value, path = '$', output = new Map()) {
-  if (value === null || typeof value !== 'object') {
+  if (value === null || typeof value !== 'object' || JSON.isRawJSON(value)) {
     output.set(path, { path, value });
     return output;
   }
@@ -259,7 +260,7 @@ function compareHeldout(entry, response, trainingForEndpoint) {
   let actualJson = null;
   let actualReadable = true;
   if (JSON_MIME.test(actualMime)) {
-    try { actualJson = JSON.parse(actualBuffer.toString('utf8')); }
+    try { actualJson = parseReplayJson(actualBuffer.toString('utf8')); }
     catch { actualReadable = false; }
     if (!expectedBody.readable || !actualReadable) reasonAdd(reasons, 'json-schema-unverified');
     else if (JSON.stringify(shapeOf(actualJson)) !== JSON.stringify(shapeOf(expectedBody.json))) reasonAdd(reasons, 'json-schema-mismatch');
