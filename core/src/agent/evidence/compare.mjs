@@ -48,8 +48,9 @@ export function locateRun(runId) {
   return null;
 }
 
-/** 候选的身份：URL（去掉查询与片段）或项目目录。趋势按它找「同一候选的上一次」 */
-const candidateKey = (siteId, page, candidate, route) => sha256(`${siteId}|${page}|${candidate.url ? new URL(candidate.url).origin + new URL(candidate.url).pathname : 'dir:' + candidate.dir}|${route ?? ''}`).slice(0, 16);
+/** 完整 URL 或项目/路由的身份；JSON 元组隔离旧版丢失查询与片段的混合记录。 */
+const candidateKey = (siteId, page, candidate, route) => sha256(JSON.stringify([siteId, page,
+  candidate.url ? ['url', new URL(candidate.url).href] : ['dir', candidate.dir, route ?? '']])).slice(0, 16);
 
 function readIndex(siteId) {
   const file = join(compareDir(siteId), 'index.jsonl');
@@ -334,7 +335,9 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
         note: `反作弊命中：${findings.filter(f => f.severity === 'error').map(f => f.code).join('、')}。像素分不作数，先把这些内容换成真正的重建。` }
       : verdictBase;
     const key = candidateKey(siteId, page, candidate ?? { dir: projectDir }, route);
+    const viewportKeys = JSON.stringify(Object.keys(perViewport).sort());
     const history = readIndex(siteId).filter(h => h.candidateKey === key && h.mode === 'fast' && h.referenceId === ref.meta.refId
+      && JSON.stringify(Object.keys(h.pixel ?? {}).sort()) === viewportKeys
       && JSON.stringify(h.sectionIds ?? null) === JSON.stringify(sectionIds ?? null));
     const pixelNow = Object.fromEntries(Object.entries(perViewport).map(([k, v]) => [k, v.pixelSimilarity]));
     const trend = trendOf(history, pixelNow);

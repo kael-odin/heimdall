@@ -7,7 +7,7 @@
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -86,6 +86,7 @@ for (const id of ['f1-shift-hero-art', 'f1-color-cta-band', 'f1-missing-content-
     const truth = await truthBox(c.selector);
     assert.ok(truth, 'selector exists in the reference');
     const r = await fastCompare({ siteId: SITE, page: PAGE, candidate: { url: `${fixture.url}?inject=${id}` }, viewports: [1440] }, { browser });
+    assert.equal(r.packet.trend.previousRunId, undefined, 'a distinct candidate URL starts its own trend');
     const top = r.packet.order.slice(0, 3).map(rid => r.packet.regions.find(g => g.id === rid));
     assert.notEqual(r.packet.verdict.status, 'pass-candidate', 'a defect must not pass');
     assert.ok(top.some(g => overlaps(g.bbox, truth)), `top-3 ${JSON.stringify(top.map(g => [g.id, g.cause, g.bbox]))} vs truth ${JSON.stringify(truth)}`);
@@ -121,6 +122,32 @@ test('compare F1: the fix packet carries the candidate value and a signed diff',
     if (check.delta !== undefined) assert.equal(diff.delta, check.delta, `${check.id}: signed delta`);
     assert.match(r.text, /样式差/, `${check.id}: packet.txt prints the diff`);
   }
+});
+
+test('candidate trends isolate complete URLs, legacy mixed records and viewport groups', { timeout: 180_000 }, async () => {
+  const { ensureReference } = await import('../src/agent/evidence/reference.mjs');
+  const { sha256 } = await import('../src/agent/ids.mjs');
+  const ref = await ensureReference(SITE, PAGE, { viewports: [375, 1440], browser });
+  const dir = join(root, 'workspace', SITE, 'agent', 'compare');
+  mkdirSync(dir, { recursive: true });
+  const url = new URL(fixture.url), legacyId = 'run_20260101T000000Z_123456';
+  appendFileSync(join(dir, 'index.jsonl'), JSON.stringify({ runId: legacyId, mode: 'fast', referenceId: ref.meta.refId,
+    candidateKey: sha256(`${SITE}|${PAGE}|${url.origin + url.pathname}|`).slice(0, 16), pixel: { 1440: 0 } }) + '\n');
+  const compare = async (suffix, width = 1440) => (await fastCompare({ siteId: SITE, page: PAGE,
+    candidate: { url: fixture.url + suffix }, viewports: [width] }, { browser })).packet;
+  assert.notEqual((await compare('')).trend.previousRunId, legacyId, 'legacy records may contain other query or hash routes');
+  const previous = new Map();
+  for (const suffix of ['?candidate=a', '?candidate=b', '?candidate=a#one', '?candidate=a#two', '?candidate=a#one', '?candidate=a']) {
+    const packet = await compare(suffix);
+    assert.equal(packet.trend.previousRunId, previous.get(suffix), suffix);
+    assert.equal(packet.verdict.status, 'pass-candidate');
+    previous.set(suffix, packet.runId);
+  }
+  const desktop = await compare('?candidate=viewports');
+  const mobile = await compare('?candidate=viewports', 375);
+  assert.equal(mobile.trend.previousRunId, undefined, 'the first mobile run cannot compare with desktop pixels');
+  assert.equal((await compare('?candidate=viewports')).trend.previousRunId, desktop.runId);
+  assert.equal((await compare('?candidate=viewports', 375)).trend.previousRunId, mobile.runId);
 });
 
 test('compare F1: section mode attaches candidate style evidence', { timeout: 240_000 }, async () => {
