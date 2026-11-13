@@ -15,7 +15,7 @@
  */
 import { chromium } from 'playwright';
 import { Worker } from 'node:worker_threads';
-import { scrubValues, isSitePath, QA_SCOPE_LIMITS } from './workspace.mjs';
+import { scrubSecrets, scrubValues, isSitePath, QA_SCOPE_LIMITS } from './workspace.mjs';
 import { detectInPage, readVitalsInPage, DETECT_DEFAULTS, QA_CONTROL_SELECTOR, QA_FORM_SELECTOR, QA_FORM_NAME_LIMIT } from './detect.mjs';
 import { browserContextOptions, newQaPage, qaBrowserLaunchOptions, requestQaLink, routeQaRequest } from './http-policy.mjs';
 import { normalizeResponses, observeResponses } from './response-check.mjs';
@@ -264,9 +264,9 @@ async function openContext(browser, { login, viewport, origin, writes, writeAllo
 
 const isClientBlocked = value => /blockedbyclient|ERR_BLOCKED_BY_CLIENT/i.test(value);
 
-function watch(page, health, origin) {
-  page.on('console', m => { if (m.type() === 'error') health.console.push(clip(m.text())); });
-  page.on('pageerror', e => health.pageErrors.push(clip(e.message)));
+function watch(page, health, origin, secrets) {
+  page.on('console', m => { if (m.type() === 'error') health.console.push(clip(scrubSecrets(m.text(), secrets))); });
+  page.on('pageerror', e => health.pageErrors.push(clip(scrubSecrets(e.message, secrets))));
   page.on('response', r => {
     if (r.status() >= 400) health.http.push({ status: r.status(), url: safeUrl(r.url()), sameOrigin: r.url().startsWith(origin), type: r.request().resourceType() });
   });
@@ -485,7 +485,7 @@ function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo,
 
 async function runCheck(context, site, check, { timeout, settleMs, screenshotDir, shoot, login, health }) {
   const page = await newQaPage(context, { site, login });
-  watch(page, health, site.origin);
+  watch(page, health, site.origin, login.secrets);
   const startUrl = new URL(check.path, site.url).href;
   const results = [];
   let error = null, observer = null, responses = [];
@@ -526,7 +526,7 @@ async function runCheck(context, site, check, { timeout, settleMs, screenshotDir
       }
     }
     if (observer && !loginIssue) responses = await observer.finish(timeout);
-  } catch (e) { error = clip(e.message, 300); }
+  } catch (e) { error = clip(scrubSecrets(e.message, login.secrets), 300); }
   if (observer) {
     if (!responses.length) responses = await observer.finish(0);
     await observer.close();
@@ -552,7 +552,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
         const health = emptyHealth();
         const context = await openContext(browser, { login, viewport, origin: site.origin, writes: site.writes, writeAllow: site.writeAllow, health });
         const page = await newQaPage(context, { site, login });
-        watch(page, health, site.origin);
+        watch(page, health, site.origin, login.secrets);
         const pageUrl = new URL(p.path, site.url).href;
         let navError = null, facts = null, links = null, detected = [], loginIssue = null, detectorError = null;
         onProgress({ message: `打开 ${p.path}（${viewport.width}px）` });
@@ -571,7 +571,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
             detected = result.detections;
             detectorError = result.error;
           }
-        } catch (e) { navError = navError ?? clip(e.message, 200); }
+        } catch (e) { navError = navError ?? clip(scrubSecrets(e.message, login.secrets), 200); }
         const screenshot = shoot ? await shoot(page, `page-${p.path}-${viewport.width}`) : null;
         const finalUrl = page.url();
         await context.close().catch(() => {});

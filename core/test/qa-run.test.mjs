@@ -883,7 +883,7 @@ test('qa header login: an externally supplied browser without site isolation fai
 });
 
 test('qa run: text artifacts and exploration redact login secrets', { timeout: 120_000 }, async () => {
-  const secret = 'fixture-visible-credential-value';
+  const secret = 'fixture-visible-credential-value'.repeat(20);
   const srv = createServer((_req, res) => {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(`<html lang="en"><title>Fixture</title><p>${secret}</p><button id="inspect" type="button" onclick="throw new Error('${secret}')">Inspect</button></html>`);
@@ -901,12 +901,12 @@ test('qa run: text artifacts and exploration redact login secrets', { timeout: 1
   try {
     for (const login of ['headers', 'state']) {
       const result = await runQa(loadWorkspace(root), { site: 'web', login, viewports: [1280], linkCheck: false, detect: false, baseline: false,
-        collectTexts: true, explore: true, exploreMax: 1, checks: [{ id: 'label', title: secret, path: '/', expect: [{ kind: 'title', equals: 'Fixture' }] }] });
+        collectTexts: true, explore: true, exploreMax: 1, checks: [{ id: 'label', title: 'Credential output', path: '/', expect: [{ kind: 'title', equals: 'Fixture' }] }] });
       assert.ok(result.findings.some(f => f.kind === 'interaction'), 'exploration captured the page error');
       for (const file of ['texts.json', 'run.json', 'findings.json', 'report.md', 'bugs.md']) {
-        assert.ok(!readFileSync(join(result.dir, file), 'utf8').includes(secret), `${login}: ${file} does not contain the credential`);
+        assert.ok(!readFileSync(join(result.dir, file), 'utf8').includes(secret.slice(0, 40)), `${login}: ${file} does not contain a credential prefix`);
       }
-      assert.ok(!JSON.stringify(result.run).includes(secret) && !JSON.stringify(result.findings).includes(secret));
+      assert.ok(!JSON.stringify(result.run).includes(secret.slice(0, 40)) && !JSON.stringify(result.findings).includes(secret.slice(0, 40)));
     }
   } finally { srv.close(); rmSync(root, { recursive: true, force: true }); }
 });

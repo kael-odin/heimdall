@@ -21,6 +21,7 @@ import { chromium } from 'playwright';
 import { browserContextOptions, newQaPage, qaBrowserLaunchOptions, routeQaRequest } from './http-policy.mjs';
 import { createHash } from 'node:crypto';
 import { BROWSER_PROFILE, loginProblemAtPage } from './probe.mjs';
+import { scrubSecrets } from './workspace.mjs';
 
 export const EXPLORE_VERSION = 1;
 
@@ -172,9 +173,9 @@ async function openContext(browser, { site, login, viewport, health }) {
   return context;
 }
 
-function watchPage(page, health) {
-  page.on('pageerror', error => health.pageErrors.push(clip(error.message, 200)));
-  page.on('console', message => { if (message.type() === 'error') health.console.push(clip(message.text(), 200)); });
+function watchPage(page, health, secrets) {
+  page.on('pageerror', error => health.pageErrors.push(clip(scrubSecrets(error.message, secrets), 200)));
+  page.on('console', message => { if (message.type() === 'error') health.console.push(clip(scrubSecrets(message.text(), secrets), 200)); });
   page.on('response', response => { if (response.status() >= 400) health.http.push({ status: response.status(), url: response.url() }); });
   page.on('dialog', dialog => dialog.dismiss().catch(() => {}));
 }
@@ -197,7 +198,7 @@ export async function exploreSite({ site, login, pages, viewport, maxPerPage = E
       const health = emptyHealth();
       const context = await openContext(browser, { site, login, viewport, health });
       const page = await newQaPage(context, { site, login });
-      watchPage(page, health);
+      watchPage(page, health, login.secrets);
       const explored = { path: target.path, controls: 0, clicked: 0, skipped: {}, findings: 0, budgetExhausted: false };
       onProgress({ message: `探索 ${target.path}（${viewport.width}px）` });
       try {
@@ -224,7 +225,7 @@ export async function exploreSite({ site, login, pages, viewport, maxPerPage = E
           let stepError = null;
           try {
             await page.locator(control.selector).first().click({ timeout: 5_000 });
-          } catch (error) { stepError = clip(error?.message, 200); }
+          } catch (error) { stepError = clip(scrubSecrets(error?.message, login.secrets), 200); }
           if (stepError) {
             explored.skipped['step-failed'] = (explored.skipped['step-failed'] ?? 0) + 1;
           } else {
@@ -280,7 +281,7 @@ export async function exploreSite({ site, login, pages, viewport, maxPerPage = E
           }
         }
       } catch (error) {
-        explored.error = clip(error?.message, 200);
+        explored.error = clip(scrubSecrets(error?.message, login.secrets), 200);
       } finally {
         explored.findings = findings.filter(f => f.path === target.path).length;
         pagesOut.push(explored);
