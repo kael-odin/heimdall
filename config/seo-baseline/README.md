@@ -20,11 +20,11 @@ CI 使用同一函数生成文件名，不要手工截断 URL。旧版本文件�
   "measurementVersion": 8,
   "host": "example.com",
   "origin": "https://example.com",
-  "score": 92.4,
-  "stable": 92.4,
+  "score": 100,
+  "stable": 100,
   "collection": { "version": 1, "sitemapCoverage": "complete" },
   "pages": {
-    "https://example.com": { "score": 94, "stable": 94, "issues": { "content-title-long": "info" } }
+    "https://example.com": { "score": 100, "stable": 100, "issues": { "content-title-long": "info" } }
   },
   "siteIssues": { "index-robots-missing": "info" }
 }
