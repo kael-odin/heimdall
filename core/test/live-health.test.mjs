@@ -13,6 +13,8 @@ import { liveSnapshotPath } from '../src/live/live-path.mjs';
 
 test('live/health: resolver handles /lm prefix, queries, relative paths and externals', () => {
   assert.deepEqual(resolveRefPath('/lm/x.test/a.js?dpl=1', { host: 'x.test' }), { path: '/a.js', search: '?dpl=1' });
+  assert.deepEqual(resolveRefPath('/lm/x.test/a.js', { host: 'x.test', origin: 'http://x.test:57839' }), { path: '/a.js', search: '' });
+  assert.deepEqual(resolveRefPath('/lm/x.test:57839/a.js', { host: 'x.test', origin: 'http://x.test:57839' }), { path: '/a.js', search: '' });
   assert.deepEqual(resolveRefPath('/favicon.ico?favicon.abc.ico?dpl=2', { host: 'x.test' }), { path: '/favicon.ico', search: '?favicon.abc.ico?dpl=2' });
   assert.deepEqual(resolveRefPath('https://x.test/a.js', { host: 'x.test' }), { path: '/a.js', search: '' });
   assert.deepEqual(resolveRefPath('https://www.x.test/a.js', { host: 'x.test' }), { path: '/a.js', search: '' });
@@ -137,6 +139,41 @@ test('live/health: scan classifies local/har/unresolved/dynamic/external and mis
     assert.equal(report.assets.externalAssets, 2);
     assert.equal(report.links.missing, 1);
     assert.ok(report.unresolvedPaths.includes('/missing.png'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/health: replayable approved public data links count as covered links', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-data-link-'));
+  try {
+    mkdirSync(join(dir, 'live', 'page'), { recursive: true });
+    writeFileSync(join(dir, 'live', 'page', 'index.html'), '<a href="/lm/x.test/api/catalog?_shape=objects">JSON</a>');
+    const url = 'https://x.test/api/catalog?_shape=objects';
+    const harIndex = indexHar([{
+      method: 'GET', url, status: 200, mimeType: 'application/json; charset=utf-8',
+      body: Buffer.from('{"items":["public"]}').toString('base64'), bodyEncoding: 'base64',
+      kind: 'public-read-only-data', headers: {},
+    }]);
+    const report = scanLiveBundle({ liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test', harIndex });
+    assert.equal(report.links.local, 1);
+    assert.equal(report.links.missing, 0);
+    assert.ok(report.probePaths.includes('/api/catalog?_shape=objects'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('live/health: a base public data replay does not cover an unrecorded query variant', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-data-query-gap-'));
+  try {
+    mkdirSync(join(dir, 'live', 'page'), { recursive: true });
+    writeFileSync(join(dir, 'live', 'page', 'index.html'), '<a href="/api/catalog?_shape=objects">JSON</a>');
+    const harIndex = indexHar([{
+      method: 'GET', url: 'https://x.test/api/catalog', status: 200,
+      mimeType: 'application/json; charset=utf-8', body: Buffer.from('{"items":["public"]}').toString('base64'),
+      bodyEncoding: 'base64', kind: 'public-read-only-data', headers: {},
+    }]);
+    const report = scanLiveBundle({ liveDir: join(dir, 'live'), host: 'x.test', origin: 'https://x.test', harIndex });
+    assert.equal(report.links.local, 0);
+    assert.equal(report.links.missing, 1);
+    assert.equal(report.probePaths.includes('/api/catalog?_shape=objects'), false);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

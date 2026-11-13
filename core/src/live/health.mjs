@@ -14,7 +14,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix, extname } from 'node:path';
-import { matchHar } from './har.mjs';
+import { isReplayableReadOnlyDataEntry, matchHar } from './har.mjs';
 import { LIVE_QUERY_DIR, liveSnapshotCandidates, liveSnapshotPath } from './live-path.mjs';
 import { scanCssRefs } from '../css-refs.mjs';
 
@@ -65,7 +65,16 @@ export function resolveRefPath(raw, { host, origin, basePath = '/' } = {}) {
     const seg = lm[1].toLowerCase();
     const h = String(host).toLowerCase().replace(/^www\./, '');
     const bare = seg.replace(/^www\./, '');
-    if (bare === h || (origin ? seg === new URL(origin).host : bare.startsWith(h + ':'))) return { path: lm[2] ?? '/', search };
+    let originHost = '';
+    let originHostPort = '';
+    try {
+      const originUrl = origin ? new URL(origin) : null;
+      originHost = originUrl?.hostname.toLowerCase().replace(/^www\./, '') ?? '';
+      originHostPort = originUrl?.host.toLowerCase() ?? '';
+    } catch {}
+    if (bare === h || (origin ? (bare === originHost || seg === originHostPort) : bare.startsWith(h + ':'))) {
+      return { path: lm[2] ?? '/', search };
+    }
   }
   return { path: abs, search };
 }
@@ -212,6 +221,9 @@ function scanPage(liveDir, pagePath, { host, origin, harIndex, staticDir, onMiss
       if (ref.kind === 'link') {
         out.links.total++;
         if (localFile) { out.links.local++; out.probePaths.add(target); }
+        else if (harIndex && isReplayableReadOnlyDataEntry(
+          matchHar(harIndex, 'GET', origin + target), origin,
+        )) { out.links.local++; out.probePaths.add(target); }
         else {
           if (out.links.missing.length < MAX_UNRESOLVED) out.links.missing.push(target);
           onMissingLink?.(target);

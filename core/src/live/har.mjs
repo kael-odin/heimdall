@@ -18,7 +18,7 @@ const PRIVATE_PATH_PARENT = /^(?:users?|accounts?|members?|profiles?|customers?|
 const PRIVATE_DATA_HEADER = /(?:cookie|authorization|api[_-]?key|auth[_-]?token|access[_-]?token|session|csrf|xsrf|secret|(?:^|[-_])(?:token|key)(?:$|[-_]))/i;
 const PRIVATE_DATA_KEY = /^(?:auth(?:orization)?|api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|password|passwd|secret|session(?:[_-]?id)?|cookie|csrf|xsrf|email|phone|mobile|address|birth(?:day|date)?|dob|ssn|credit(?:[_-]?card)?|card(?:[_-]?number)?|bank(?:[_-]?account)?|iban|customer(?:[_-]?id)?|patient(?:[_-]?id)?|account(?:[_-]?id)?|profile(?:[_-]?id)?|user(?:[_-]?id|name)?)$|(?:^|[_-])(?:auth|token|key|secret|password|session|cookie|csrf|xsrf|email|phone|address|account|customer|patient|user)(?:$|[_-])/i;
 const PRIVATE_QUERY_KEY = /(?:auth|token|key|password|passwd|secret|session|cookie|csrf|xsrf|email|phone|address|user|account|customer|patient)/i;
-const DATA_MIME = /^(?:application\/(?:[a-z0-9.+-]+\+)?json|text\/plain)(?:\s*;|$)/i;
+const DATA_MIME = /^(?:application\/(?:[a-z0-9.+-]+\+)?json|text\/(?:plain|csv))(?:\s*;|$)/i;
 const JSON_BODY_MIME = /^application\/(?:[a-z0-9.+-]+\+)?json(?:\s*;|$)|^text\/json(?:\s*;|$)/i;
 const FORM_BODY_MIME = /^application\/x-www-form-urlencoded(?:\s*;|$)/i;
 export const MAX_PUBLIC_DATA_BYTES = 1024 * 1024;
@@ -69,7 +69,7 @@ function isStaticResponse(url, mimeType) {
 function safePublicDataUrl(url) {
   if (url.username || url.password || hasPrivatePath(url) || url.hash || url.href.length > 2048) return false;
   for (const [key, value] of url.searchParams) {
-    if (!/^[a-z][a-z0-9_.-]{0,39}$/i.test(key) || PRIVATE_QUERY_KEY.test(key) || value.length > 200) return false;
+    if (!/^_?[a-z][a-z0-9_.-]{0,39}$/i.test(key) || PRIVATE_QUERY_KEY.test(key) || value.length > 200) return false;
     let decoded = value;
     for (let i = 0; i < 2; i++) {
       try { decoded = decodeURIComponent(decoded); } catch { return false; }
@@ -103,7 +103,7 @@ function publicDataBody(raw, mimeType) {
     const item = stack.pop();
     if (!item || typeof item !== 'object') continue;
     for (const [key, child] of Object.entries(item)) {
-      if (PRIVATE_DATA_KEY.test(key) || (typeof child === 'string' && PRIVATE_TEXT.test(child))) return false;
+      if (isPrivateDataKey(key) || (typeof child === 'string' && PRIVATE_TEXT.test(child))) return false;
       if (child && typeof child === 'object') stack.push(child);
     }
   }
@@ -112,7 +112,9 @@ function publicDataBody(raw, mimeType) {
 
 /** Shared by the contract view so schema generation keeps the HAR privacy boundary. */
 export function isPrivateDataKey(value) {
-  return PRIVATE_DATA_KEY.test(String(value ?? ''));
+  const key = String(value ?? '');
+  if (/^primary_key(?:s|_values)?$/i.test(key)) return false;
+  return PRIVATE_DATA_KEY.test(key);
 }
 
 /** Retain unsafe integer and overflowing number tokens without rounding them. */

@@ -52,7 +52,9 @@ test('read-only data is absent by default and requires an exact same-origin URL'
   assert.equal(clean([raw], [ORIGIN + '/api/catalog?page=3']).entries.length, 0);
   assert.equal(isSafeReadOnlyGetUrl(url, ORIGIN), true);
   assert.equal(isSafeReadOnlyGetUrl(ORIGIN + '/api/catalog?search=public', ORIGIN), true);
+  assert.equal(isSafeReadOnlyGetUrl(ORIGIN + '/api/catalog?_shape=objects&_size=5', ORIGIN), true);
   assert.equal(isSafeReadOnlyGetUrl(ORIGIN + '/api/catalog?user_id=42', ORIGIN), false);
+  assert.equal(isSafeReadOnlyGetUrl(ORIGIN + '/api/catalog?_token=private', ORIGIN), false);
   assert.throws(() => clean([raw], ['https://other.test/api/catalog?page=2']), /unsafe readOnlyGetUrl/);
   assert.throws(() => clean([raw], [ORIGIN + '/api/catalog?access_token=value']), /unsafe readOnlyGetUrl/);
   assert.throws(() => clean([raw], [ORIGIN + '/api/catalog?q=alice%2540example.com']), /unsafe readOnlyGetUrl/);
@@ -83,6 +85,23 @@ test('read-only data excludes authentication, writes, response cookies, private 
   assert.equal(text.entries[0].mimeType, 'text/plain; charset=utf-8');
   assert.ok(isReplayableReadOnlyDataEntry(text.entries[0], ORIGIN));
   assert.equal(isReplayableReadOnlyDataEntry({ ...text.entries[0], body: Buffer.from('Bearer abcdefghi').toString('base64') }, ORIGIN), false);
+});
+
+test('read-only data accepts explicit public CSV responses', () => {
+  const url = ORIGIN + '/api/catalog.csv?_size=max';
+  const result = clean([entry(url, 'id,title\n1,Example\n', { mimeType: 'text/csv; charset=utf-8' })], [url]);
+  assert.equal(result.entries.length, 1);
+  assert.equal(result.entries[0].mimeType, 'text/csv; charset=utf-8');
+});
+
+test('read-only data keeps public primary-key metadata while rejecting credential keys', () => {
+  const url = ORIGIN + '/api/schema';
+  const publicBody = '{"primary_keys":["id"],"primary_key_values":["1"],"api_key":"private"}';
+  const result = clean([entry(url, publicBody)], [url]);
+  assert.equal(result.entries.length, 0, 'credential fields still reject the body');
+  const safeUrl = ORIGIN + '/api/schema-safe';
+  const safe = clean([entry(safeUrl, '{"primary_keys":["id"],"primary_key_values":["1"]}')], [safeUrl]);
+  assert.equal(safe.entries.length, 1);
 });
 
 test('email redaction retains the original local-part and domain boundaries', () => {
