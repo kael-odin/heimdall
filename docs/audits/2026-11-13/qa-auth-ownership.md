@@ -51,3 +51,11 @@
 参考依赖、驱动、账号数据和逐场景报告都在 `D:/Github-Star/heimdall-evidence-archive/2026-11-13/qa-auth/`。正式结果是 `real-cases.json`；可分享采集/契约是 `public-capture.json`、`public-contract.json`，私有采集不应分发。初始集合过滤假设失败已如实记录，未把调试运行算成新增样本。
 
 本轮是一个参考项目的十场景，不是十个网站。未补写或独立部署认证后端，未验证 OAuth、MFA、令牌刷新/过期、权限变化、完整集合权限、生产账号或全站覆盖。QA 文本脱敏不处理截图像素，也不能识别未知或变形凭据。三项持续目标保持进行中。
+
+## 最终 Hosted 验收
+
+首次裸令牌修复提交 [`602880a7`](https://github.com/kael-odin/heimdall/commit/602880a770010c03cc2f02c608a01867d94aab4e) 的 [CI 43335831831](https://github.com/kael-odin/heimdall/actions/runs/43335831831) 已 **8/8 job 成功**。发现前缀遗漏后继续修复，没有把这次成功当作完整脱敏证明。
+
+最终错误消息修复提交 [`1f4b0a1c`](https://github.com/kael-odin/heimdall/commit/1f4b0a1c4c67c6b09ca122048a4092507e61fa62) 的 [CI 43337884713](https://github.com/kael-odin/heimdall/actions/runs/43337884713) **8/8 job 成功**，[同提交 Docs](https://github.com/kael-odin/heimdall/actions/runs/43337884773) 成功。两片完整 Core 共 3,306 条：**3,302 通过、0 失败、4 条件跳过**；其中两条 Docker 在服务 job 独立 **2/2 通过**，另两条是 Hosted Linux 不适用的 Windows 文件句柄用例。MCP 干净安装、功能与产物测试 **7/7** 通过，完整浏览器链、构建、QA Action、冻结校验和依赖审计均成功。
+
+`ci-prefix-completed.json`、`ci-prefix-all.log` 和 `ci-prefix-test-totals.json` 保存最终源码、逐 job 终态和 TAP 汇总，并验证真实 JWT 补验的三个运行模块哈希与交付源码一致。两次 CI 和本地测试有重叠，不相加作为独立用例数；Hosted 夹具通过也不等于又做了十个真实网站案例。
