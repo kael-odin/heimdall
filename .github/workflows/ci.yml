@@ -165,6 +165,8 @@ jobs:
             core/workspace/_runs/acceptance-console/acceptance-failure.json
             core/workspace/_runs/acceptance-console/acceptance-failure.png
             core/workspace/_runs/acceptance-console/engine-error.log
+            core/workspace/_runs/acceptance-console/acceptance-report.json
+            core/workspace/_runs/acceptance-console/run-evidence/**/route-*.json
             core/workspace/_runs/managed-execution-*/failure.json
             core/workspace/_runs/managed-execution-*/failure.png
             core/workspace/_runs/managed-execution-*/engine-*.log
