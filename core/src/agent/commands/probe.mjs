@@ -14,6 +14,7 @@
 import { existsSync, lstatSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { WORKSPACE } from '../../paths.mjs';
+import { writeAtomicFileSync } from '../../acceptance/atomic-file.mjs';
 import { ok, fromError, exitCodeOf, CapabilityError } from '../envelope.mjs';
 import { parseArgs } from '../cli.mjs';
 import { buildOutline } from '../brief/outline.mjs';
@@ -121,13 +122,27 @@ function contracts(sample, includeReadOnlyData) {
     const key = `${siteId} ${target.origin}`;
     const group = groups.get(key) ?? { siteId, origin: target.origin, pages: 0, entries: [],
       readOnly: readOnlyOptions(siteId, target.origin, includeReadOnlyData) };
-    const sanitized = sanitizeHar(raw, { includeApiBodies: true, ...group.readOnly });
+    const sanitized = sanitizeHar(raw, { includeApiBodies: true, contractOnly: true, ...group.readOnly });
     group.pages++;
     group.entries.push(...sanitized.entries);
     groups.set(key, group);
     void page;
   }
   return [...groups.values()].map(group => buildObservedApiContract(group.entries, group));
+}
+
+function persistContracts(rows) {
+  const counts = new Map();
+  for (const row of rows) counts.set(row.siteId, (counts.get(row.siteId) ?? 0) + 1);
+  const persisted = [];
+  const ambiguous = [];
+  for (const row of rows) {
+    if (counts.get(row.siteId) !== 1) { ambiguous.push(row.siteId); continue; }
+    const file = join(WORKSPACE, row.siteId, 'api-contract.json');
+    writeAtomicFileSync(file, JSON.stringify(row, null, 2) + '\n');
+    persisted.push(file);
+  }
+  return { persisted, ambiguous: [...new Set(ambiguous)] };
 }
 
 async function adapter(sample, siteId, { includeApiBodies, includeReadOnlyData, out, force }) {
@@ -219,7 +234,12 @@ export async function run(argv) {
       const rows = contracts(sample, !!flags['include-readonly-data']);
       const endpoints = rows.reduce((sum, row) => sum + row.summary.endpoints, 0);
       const b1 = rows.filter(row => row.tier === 'B1').length;
-      env = ok({ rows }, { summary: `${summarise('契约', rows)} ${b1} 个站点达到 B1，观察到 ${endpoints} 个接口；输出只含接口形状和未知项，不含请求值与响应示例。` });
+      const saved = persistContracts(rows);
+      env = ok({ rows, persisted: saved.persisted, ambiguous: saved.ambiguous }, {
+        summary: `${summarise('契约', rows)} ${b1} 个站点达到 B1，观察到 ${endpoints} 个接口；输出只含接口形状和未知项，不含请求值与响应示例。${saved.persisted.length ? ` 已写入 ${saved.persisted.length} 个工作区契约。` : ''}`,
+        ...(saved.ambiguous.length ? { warnings: [{ code: 'contract_origin_ambiguous', message: `以下站点有多个来源，未自动覆盖根契约：${saved.ambiguous.join('、')}` }] } : {}),
+        evidence: saved.persisted.map(path => ({ kind: 'file', path })),
+      });
     } else if (what === 'adapter') {
       if (!flags.site) throw new CapabilityError('invalid_args', 'probe adapter 必须指定 --site S', { hint: '`heimdall overview` 列出已有站点。' });
       const result = await adapter(sample, flags.site, { includeApiBodies: !!flags['include-api-bodies'], includeReadOnlyData: !!flags['include-readonly-data'], out: flags.out, force: !!flags.force });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -151,6 +151,41 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.deliveryPlan.backendCompletion.provenance.invented.length, 0);
     assert.doesNotMatch(run.stdout, /super-secret/);
     assert.equal(existsSync(join(page, 'network.har')), true);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('probe contract persists one sanitized contract so site-assessment can read its B0/B1 status', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-probe-contract-'));
+  const page = join(root, 'workspace', 'example.test', 'pages', 'home');
+  try {
+    put(join(page, 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(page, 'manifest.json'), { target: 'https://example.test/' });
+    put(join(root, 'workspace', 'example.test', 'read-data-plan.json'), {
+      version: 1, paths: ['/api/items?page=1'],
+    });
+    put(join(page, 'network.har'), { log: { entries: [{
+      request: { method: 'GET', url: 'https://example.test/api/items?page=1' },
+      response: { status: 200, content: { mimeType: 'application/json', text: '{"items":[{"id":1}]}' } },
+    }] } });
+
+    const probe = spawnSync(process.execPath, [BIN, 'probe', 'contract', '--site', 'example.test', '--include-readonly-data', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(probe.status, 0, probe.stderr + probe.stdout);
+    const probeEnv = JSON.parse(probe.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(probeEnv.ok, true);
+    assert.equal(probeEnv.result.persisted.length, 1);
+    assert.equal(existsSync(join(root, 'workspace', 'example.test', 'api-contract.json')), true);
+    assert.doesNotMatch(readFileSync(join(root, 'workspace', 'example.test', 'api-contract.json'), 'utf8'), /page=1/);
+
+    const assessment = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(assessment.status, 0, assessment.stderr + assessment.stdout);
+    const result = JSON.parse(assessment.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.equal(result.api.contract.status, 'observed');
+    assert.equal(result.api.contract.summary.endpoints, 1);
+    assert.equal(result.api.contract.path, 'workspace/example.test/api-contract.json');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

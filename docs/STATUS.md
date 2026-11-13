@@ -18,6 +18,8 @@
 
 2026-11-14 [评分证据失效与扫描复用](ROADMAP.md#可信交付)：单页 `score.json` 绑定 clone 输入哈希；控制台和 AI 读取路径会排除旧分数，并复用多视口验证已经核实的 `inputSha256`，避免对已验证页面重复哈希整棵 clone 树。真实 CSS 变化验收覆盖 API、`site`、`clone`、`site-assessment`，目标链路通过；IANA 8 页与 Datasette 83 页当前 CLI 基线分别为 `site` 中位数 265/349 ms、`site-assessment` 中位数 255/336 ms，历史分数均被排除；并发、内存和浏览器验证累计成本仍待测。
 
+2026-11-14 [观察型契约落盘与 B3 后端检查](audits/README.md)：真实 Datasette 83 页归档复验修复 `probe contract` 只输出不落盘的问题；契约现在能被 `site-assessment` 读取，B0 空契约保持 `no_observed_api`，不伪造端点。B3 脚手架启动后健康、适配器覆盖、缺口账本 3/3 通过；认证、权限、状态机、业务规则和副作用仍需授权旅程。
+
 2026-11-13 [64 位整数资源关联实测](audits/2026-11-13/qa-int64.md)：真实 Datasette + SQLite 八场景，修正两次错误通过与三次健康误拒绝；长整数原 token 贯通动态路径、字段引用与 MCP，数字与字符串仍区分。每次仅页面自身两次 GET，绑定值不进入报告。复用原模块和测试，未支持的大整数写法保留未核实，整数常量需在安全范围；生产认证、事务与完整业务仍未验证。源码 CI 8/8，Core 3,332 通过 / 4 条件跳过，Docker 独立 2/2、MCP 7/7。
 
 2026-11-14 [Datasette 独立部署复验](audits/2026-11-13/datasette-standalone.md)：在源站停止后重新导出 83 个 live 页面和 68 条公开只读数据；修复健康扫描把同路径无查询 HAR 错算为查询变体覆盖的假通过。最新候选的 250 条运行路径 0 失败，83 页浏览器探针 9 页发现 `CodeMirror is not defined`，当前复核结果会同时给出 `ReferenceError` 类型和脱敏 `message`，实际 HTTP 错误还带受控 `resourceType`；`site-assessment` 现在把这些有限失败摘要交给 AI 交付计划，形成修复后复测入口，并把 `/library.db` 识别为需要人工授权审核的二进制分发缺口；二进制缺口待授权后会提示 `binaryPaths` 与 `--include-readonly-binaries` 复测路径；真实缺口为 664 个站内链接、`/library.db` 二进制下载、3 条操作流未测和 1 条适配器路由未测；严格发布继续阻断，未宣称整站等价。

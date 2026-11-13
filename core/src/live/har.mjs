@@ -84,6 +84,19 @@ function safeReplayUrl(url, depth = 0) {
   return true;
 }
 
+function safeContractUrl(url) {
+  if (url.username || url.password || hasPrivatePath(url)) return false;
+  const sanitized = new URL(url.href);
+  sanitized.hash = '';
+  sanitized.search = '';
+  for (const [key] of url.searchParams) {
+    const normalized = String(key).trim().toLowerCase();
+    if (!/^[a-z][a-z0-9_.-]{0,63}$/i.test(normalized) || PRIVATE_QUERY_KEY.test(normalized)) continue;
+    sanitized.searchParams.append(normalized, '');
+  }
+  return sanitized.href;
+}
+
 function isStaticResponse(url, mimeType) {
   return STATIC_MIME.test(mimeType) || STATIC_EXT.test(url.pathname);
 }
@@ -279,7 +292,7 @@ export function isReplayableReadOnlyBinaryEntry(entry, origin) {
     && entry.headers && typeof entry.headers === 'object' && !Object.keys(entry.headers).length;
 }
 
-export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [], readOnlyBinaryGetUrls = [], readOnlyOrigin = '' } = {}) {
+export function sanitizeHar(har, { includeApiBodies = false, contractOnly = false, readOnlyGetUrls = [], readOnlyBinaryGetUrls = [], readOnlyOrigin = '' } = {}) {
   const origin = publicDataOrigin(readOnlyOrigin);
   const approved = approvedPublicDataUrls(readOnlyGetUrls, origin);
   const approvedBinary = approvedPublicDataUrls(readOnlyBinaryGetUrls, origin);
@@ -305,8 +318,10 @@ export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [
       && parsed.origin === origin && !!binaryMime;
     const publicReadOnly = publicData || publicBinary;
     let reason = null;
+    // Query names may be retained for approved public GET data; default API capture still needs explicit approval.
+    const contractUrl = contractOnly && (publicReadOnly || method !== 'GET') ? safeContractUrl(parsed) : null;
     if (publicReadOnly && !safePublicDataUrl(parsed)) reason = 'privateUrl';
-    else if (!publicReadOnly && !safeReplayUrl(parsed)) reason = 'privateUrl';
+    else if (!publicReadOnly && !(contractUrl || safeReplayUrl(parsed))) reason = 'privateUrl';
     else if (publicReadOnly && (method !== 'GET' || status < 200 || status >= 300 || req.postData)) reason = 'nonStatic';
     else if (publicReadOnly && ((req.headers ?? []).some(h => PRIVATE_DATA_HEADER.test(String(h.name)))
       || (req.cookies ?? []).length > 0 || (res.cookies ?? []).length > 0
@@ -356,7 +371,7 @@ export function sanitizeHar(har, { includeApiBodies = false, readOnlyGetUrls = [
       if (!publicReadOnly && SAFE_RESPONSE_HEADERS.includes(name)) headers[name] = h.value;
     }
     entries.push({
-      method, url: parsed.href, status,
+      method, url: contractUrl || parsed.href, status,
       mimeType: publicData ? dataMime : publicBinary ? binaryMime : mimeType,
       headers, body, bodyEncoding: body ? 'base64' : null,
       ...(requestBody ? { requestBody } : {}),

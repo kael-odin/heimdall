@@ -114,6 +114,21 @@ test('live/contract: empty or static-only input is explicit B0', () => {
   assert.equal(contract.coverage.invented, 0);
 });
 
+test('live/har: contract-only sanitization keeps query names and drops query values', () => {
+  const result = sanitizeHar({ log: { entries: [{
+    request: { method: 'GET', url: 'https://x.test/api/items?page=2&filter=all' },
+    response: { status: 200, content: { mimeType: 'application/json', text: '{"items":[]}' } },
+  }] } }, {
+    includeApiBodies: true,
+    contractOnly: true,
+    readOnlyOrigin: 'https://x.test',
+    readOnlyGetUrls: ['https://x.test/api/items?page=2&filter=all'],
+  });
+  assert.equal(result.entries.length, 1);
+  assert.equal(result.entries[0].url, 'https://x.test/api/items?page=&filter=');
+  assert.doesNotMatch(result.entries[0].url, /2|all/);
+});
+
 test('live/har: approved binary downloads require base64, stay bounded, and need manual review', () => {
   const origin = 'https://x.test';
   const binary = value => ({
