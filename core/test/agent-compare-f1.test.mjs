@@ -7,7 +7,7 @@
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -184,4 +184,46 @@ test('compare F1: pasting the reference screenshot is caught even though the pix
     await server.close();
     rmSync(cheatDir, { recursive: true, force: true });
   }
+});
+
+test('mirror asset changes invalidate plans, details, reference images and trend baselines', { timeout: 180_000 }, async () => {
+  const { ensurePlan, ensureSectionDetail } = await import('../src/agent/brief/brief.mjs');
+  const { ensureReference, loadReference } = await import('../src/agent/evidence/reference.mjs');
+  const clone = join(root, 'workspace', SITE, 'pages', PAGE, 'clone');
+  const css = join(clone, 'styles.css'), original = readFileSync(css), stamp = statSync(css);
+  const entryStamp = statSync(join(clone, 'index.html')).mtimeMs;
+  const plan = await ensurePlan(SITE, PAGE, { browser });
+  const hero = plan.sections.find(s => s.role === 'hero') ?? plan.sections[0];
+  const detail = await ensureSectionDetail(SITE, PAGE, hero.id, { browser });
+  const reference = await ensureReference(SITE, PAGE, { viewports: [375, 1440], browser });
+  const first = await fastCompare({ siteId: SITE, page: PAGE, candidate: { url: fixture.url }, viewports: [1440] }, { browser });
+  try {
+    assert.ok(loadReference(SITE, PAGE, [1440]));
+    writeFileSync(css, Buffer.concat([original, Buffer.from('\n.hero h1{font-size:60px!important}') ]));
+    utimesSync(css, stamp.atime, stamp.mtime);
+    assert.equal(statSync(join(clone, 'index.html')).mtimeMs, entryStamp);
+    assert.equal(loadReference(SITE, PAGE, [1440]), null, 'a changed stylesheet must invalidate the frozen reference');
+    const updatedPlan = await ensurePlan(SITE, PAGE, { browser });
+    assert.notEqual(updatedPlan.mirrorIdentity, plan.mirrorIdentity);
+    const updated = await ensureSectionDetail(SITE, PAGE, hero.id, { browser });
+    assert.notEqual(updated.detail.mirrorIdentity, detail.detail.mirrorIdentity);
+    assert.ok(updated.detail.per[1440].items.some(item => item.tag === 'h1' && item.style?.fontSize === '60px'));
+    const second = await fastCompare({ siteId: SITE, page: PAGE, candidate: { url: fixture.url }, viewports: [1440] }, { browser });
+    assert.notEqual(second.packet.reference.refId, first.packet.reference.refId);
+    assert.notEqual(second.packet.verdict.status, 'pass-candidate');
+    assert.equal(second.packet.trend.previousRunId, undefined, 'changed references cannot share score trends');
+    assert.equal(loadReference(SITE, PAGE, [375]), null, 'the previous viewport must not survive a changed mirror');
+    const mask = join(reference.dir, '1440.mask.png');
+    cpSync(join(reference.dir, '1440.png'), mask);
+    assert.equal(loadReference(SITE, PAGE, [1440]), null, 'an unrecorded mask cannot be used with a cached screenshot');
+    const refreshed = await ensureReference(SITE, PAGE, { viewports: [1440], refresh: true, stabilityCheck: false, browser });
+    assert.equal(existsSync(mask), false, 'an old dynamic mask cannot survive a fresh unmasked capture');
+    assert.equal(refreshed.meta.refId, second.packet.reference.refId, 'unchanged image evidence keeps the reference identity');
+    const refFile = join(reference.dir, 'ref.json');
+    writeFileSync(refFile, JSON.stringify({ ...refreshed.meta, refId: reference.meta.refId }));
+    assert.equal(loadReference(SITE, PAGE, [1440]), null, 'a stale reference ID cannot describe different image evidence');
+    writeFileSync(refFile, JSON.stringify(refreshed.meta));
+    writeFileSync(join(reference.dir, '1440.png'), 'damaged evidence');
+    assert.equal(loadReference(SITE, PAGE, [1440]), null, 'reference evidence must match its recorded hash');
+  } finally { writeFileSync(css, original); utimesSync(css, stamp.atime, stamp.mtime); }
 });

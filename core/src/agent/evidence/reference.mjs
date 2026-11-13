@@ -6,16 +6,17 @@
  *
  * 拍摄走 serveStatic（不加 CSP sandbox，Web 字体才能加载，见 agent/serve.mjs）与 capture.mjs 的统一流程。
  * 每个视口拍两次：两次不一致的像素就是动态区域（轮播、计时器、动图），记成遮罩、不计入像素分（E6-12）。
- * 镜像（clone/index.html）比参考新、或拍摄流程版本变了，就重拍。
+ * 镜像内容、资产或拍摄条件变化，或截图证据损坏时重拍。
  */
-import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { PNG } from 'pngjs';
 import { WORKSPACE } from '../../paths.mjs';
 import { writeFileAtomic } from '../../fsutil.mjs';
 import { sha256, refIdOf } from '../ids.mjs';
+import { CapabilityError } from '../envelope.mjs';
 import { serveStatic } from '../serve.mjs';
-import { agentDir, mirrorEntry, readManifest, requireMirror } from '../workspace.mjs';
+import { agentDir, mirrorEntry, mirrorIdentity, readManifest, requireMirror } from '../workspace.mjs';
 import { CHANNEL_T, readPng, writePng } from './image.mjs';
 import { PROFILE, launchBrowser, openPage, shoot, viewportOf } from './capture.mjs';
 import { sectionDetail } from '../brief/inspect.mjs';
@@ -24,6 +25,12 @@ import { INDEX_STYLE_PROPS, compactStyle } from './element-style.mjs';
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
 
 export const referenceDir = (siteId, page) => join(agentDir(siteId), 'ref', page);
+
+function referenceId(meta) {
+  return refIdOf(meta.siteId, meta.page, JSON.stringify([meta.capturedAt, meta.mirrorIdentity, meta.profile,
+    Object.entries(meta.viewports ?? {}).sort(([a], [b]) => Number(a) - Number(b))
+      .map(([width, viewport]) => [width, viewport.screenshot?.sha256, viewport.artifacts?.['mask.png'] ?? null]) ]));
+}
 
 function diffMask(a, b) {
   if (a.width !== b.width || a.height !== b.height) return { mask: null, px: -1 };
@@ -62,10 +69,20 @@ export function loadReference(siteId, page, viewports = [375, 768, 1440]) {
   const pdir = requireMirror(siteId, page);
   const dir = referenceDir(siteId, page);
   const meta = readJson(join(dir, 'ref.json'));
-  if (!meta || meta.profile?.version !== PROFILE.version) return null;
+  if (!meta || meta.siteId !== siteId || meta.page !== page || JSON.stringify(meta.profile) !== JSON.stringify(PROFILE)) return null;
   const stamp = statSync(join(pdir, 'clone', 'index.html')).mtimeMs;
-  if (meta.mirrorStamp !== stamp) return null;
-  if (!viewports.every(w => meta.viewports?.[w] && existsSync(join(dir, `${w}.png`)))) return null;
+  if (meta.mirrorStamp !== stamp || meta.mirrorIdentity !== mirrorIdentity(siteId, page)) return null;
+  try {
+    if (meta.refId !== referenceId(meta)) return null;
+    if (!viewports.every(w => {
+      const viewport = meta.viewports?.[w];
+      if (!viewport || sha256(readFileSync(join(dir, `${w}.png`))) !== viewport.screenshot?.sha256) return false;
+      return ['mask.png', 'elements.json'].every(name => {
+        const file = join(dir, `${w}.${name}`), expected = viewport.artifacts?.[name];
+        return expected ? sha256(readFileSync(file)) === expected : !existsSync(file);
+      });
+    })) return null;
+  } catch { return null; }
   return { meta, dir };
 }
 
@@ -85,20 +102,22 @@ export async function ensureReference(siteId, page, { viewports = [375, 768, 144
   const dir = referenceDir(siteId, page);
   mkdirSync(dir, { recursive: true });
   const stamp = statSync(join(pdir, 'clone', 'index.html')).mtimeMs;
+  const identity = mirrorIdentity(siteId, page);
   const manifestStat = (() => { try { return statSync(join(pdir, 'manifest.json')); } catch { return null; } })();
   const capturedAt = new Date(manifestStat?.mtimeMs ?? stamp).toISOString();
   const previous = readJson(join(dir, 'ref.json'));
+  const same = previous?.mirrorStamp === stamp && previous.mirrorIdentity === identity && JSON.stringify(previous.profile) === JSON.stringify(PROFILE);
   const meta = {
     schema: 'heimdall.reference/1',
-    refId: refIdOf(siteId, page, capturedAt),
     siteId, page, capturedAt, generatedAt: new Date().toISOString(),
-    source: { mirrorPath: relative(WORKSPACE, pdir).replace(/\\/g, '/'), viewportEntries: {}, originalUrl: readManifest(siteId, page)?.target ?? null },
+    source: { mirrorPath: relative(WORKSPACE, pdir).replace(/\\/g, '/'), viewportEntries: same ? { ...previous.source?.viewportEntries } : {}, originalUrl: readManifest(siteId, page)?.target ?? null },
     scoreVersion: 2,
     profile: PROFILE,
     mirrorStamp: stamp,
-    viewports: { ...(previous?.mirrorStamp === stamp ? previous.viewports : {}) },
-    masks: [],
-    maskCoveragePct: {},
+    mirrorIdentity: identity,
+    viewports: { ...(same ? previous.viewports : {}) },
+    masks: same ? (previous.masks ?? []).filter(mask => !viewports.includes(mask.viewport)) : [],
+    maskCoveragePct: same ? { ...previous.maskCoveragePct } : {},
   };
   const srv = await serveStatic(pdir);
   const own = !browser;
@@ -107,6 +126,8 @@ export async function ensureReference(siteId, page, { viewports = [375, 768, 144
     for (const width of viewports) {
       const vp = viewportOf(width);
       if (!vp) continue;
+      rmSync(join(dir, `${width}.mask.png`), { force: true });
+      rmSync(join(dir, `${width}.elements.json`), { force: true });
       const entry = mirrorEntry(siteId, page, width);
       const url = `${srv.origin}/${entry}`;
       const first = await openPage(browser, url, vp);
@@ -146,6 +167,8 @@ export async function ensureReference(siteId, page, { viewports = [375, 768, 144
       meta.viewports[width] = {
         fullPageSize: { w: img.width, h: img.height }, settled: first.settled,
         screenshot: { uri: `heimdall://site/${siteId}/page/${page}/ref/${width}.png`, sha256: sha256(bytes), bytes: bytes.length, mime: 'image/png' },
+        artifacts: Object.fromEntries(['mask.png', 'elements.json'].filter(name => existsSync(join(dir, `${width}.${name}`)))
+          .map(name => [name, sha256(readFileSync(join(dir, `${width}.${name}`)))])),
       };
       meta.source.viewportEntries[width] = entry;
       meta.maskCoveragePct[width] = maskPct;
@@ -154,6 +177,8 @@ export async function ensureReference(siteId, page, { viewports = [375, 768, 144
     if (own) await browser.close().catch(() => {});
     await srv.close();
   }
+  if (mirrorIdentity(siteId, page) !== identity) throw new CapabilityError('invalid_args', '镜像在参考拍摄期间发生变化，请重试');
+  meta.refId = referenceId(meta);
   writeFileAtomic(join(dir, 'ref.json'), JSON.stringify(meta, null, 2));
   return { meta, dir, reused: false };
 }

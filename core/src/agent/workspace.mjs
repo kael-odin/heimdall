@@ -8,6 +8,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
 import { isSafePageName } from '../page-name.mjs';
+import { measurementIdentity } from '../verify/resume-cache.mjs';
 import { CapabilityError, nextAction } from './envelope.mjs';
 
 export const SITE_ID = /^(?!\.\.?$)[a-z0-9][a-z0-9.-]*$/i;
@@ -70,6 +71,12 @@ export function requireMirror(siteId, page) {
     });
   }
   return dir;
+}
+
+export function mirrorIdentity(siteId, page) {
+  const identity = measurementIdentity(requireMirror(siteId, page), {}, 'agent-mirror');
+  if (!identity) throw new CapabilityError('reference_missing', '无法核实镜像输入；请检查 manifest.json 和 clone/ 中的常规文件后重试');
+  return identity.inputs;
 }
 
 /**

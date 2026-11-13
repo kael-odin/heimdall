@@ -334,7 +334,8 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
         note: `反作弊命中：${findings.filter(f => f.severity === 'error').map(f => f.code).join('、')}。像素分不作数，先把这些内容换成真正的重建。` }
       : verdictBase;
     const key = candidateKey(siteId, page, candidate ?? { dir: projectDir }, route);
-    const history = readIndex(siteId).filter(h => h.candidateKey === key && h.mode === 'fast' && JSON.stringify(h.sectionIds ?? null) === JSON.stringify(sectionIds ?? null));
+    const history = readIndex(siteId).filter(h => h.candidateKey === key && h.mode === 'fast' && h.referenceId === ref.meta.refId
+      && JSON.stringify(h.sectionIds ?? null) === JSON.stringify(sectionIds ?? null));
     const pixelNow = Object.fromEntries(Object.entries(perViewport).map(([k, v]) => [k, v.pixelSimilarity]));
     const trend = trendOf(history, pixelNow);
     // 排序：先按视口内的权重顺序，再在视口间交错，保证前几条覆盖每个视口最要紧的问题
@@ -353,7 +354,7 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
     const packet = {
       schema: 'heimdall.fixpacket/1', runId, siteId, page, generatedAt: new Date().toISOString(), elapsedMs: Date.now() - t0, mode: 'fast',
       candidate: candidate?.url ? { kind: 'url', ref: candidate.url, route: route ?? '/' } : { kind: 'dir', ref: projectDir, url: candUrl, route },
-      reference: { refId: ref.meta.refId, capturedAt: ref.meta.capturedAt, profile: PROFILE },
+      reference: { refId: ref.meta.refId, capturedAt: ref.meta.capturedAt, mirrorIdentity: ref.meta.mirrorIdentity, profile: PROFILE },
       scope: wanted ? { sectionIds: wanted.map(s => s.id), mode: sectionMode } : { page: true },
       viewports: viewports.filter(w => perViewport[w]), ...(skipped.length ? { skipped } : {}), perViewport, regions, order, trend, verdict, anticheat, ...(pagehealth ? { pagehealth } : {}),
       evidence: evidence.filter(Boolean),
@@ -362,7 +363,7 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
     const text = packetText(packet);
     writeFileSync(join(outDir, 'packet.txt'), text);
     // record=false：测量型调用方（Bench）不该往候选的账本里写自己这一笔
-    if (record) appendFileSync(join(compareDir(siteId), 'index.jsonl'), JSON.stringify({ runId, at: packet.generatedAt, mode: 'fast', candidateKey: key, page,
+    if (record) appendFileSync(join(compareDir(siteId), 'index.jsonl'), JSON.stringify({ runId, at: packet.generatedAt, mode: 'fast', candidateKey: key, referenceId: ref.meta.refId, page,
       sectionIds: sectionIds ?? null, pixel: pixelNow, verdict: verdict.status, reached: verdict.reached }) + '\n');
     let projectRunDir = null;
     if (projectDir && record) {

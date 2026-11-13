@@ -20,7 +20,7 @@ import { createFence } from '../fence.mjs';
 import { sectionIdOf } from '../ids.mjs';
 import { redactText } from '../redact.mjs';
 import { serveStatic } from '../serve.mjs';
-import { agentDir, mirrorEntry, pageDir, readManifest, requireMirror } from '../workspace.mjs';
+import { agentDir, mirrorEntry, mirrorIdentity, pageDir, readManifest, requireMirror } from '../workspace.mjs';
 import { launchBrowser, openPage, VIEWPORTS, viewportOf, PROFILE } from '../evidence/capture.mjs';
 import { buildOutline } from './outline.mjs';
 import { planSections, measureAnchors, sectionDetail, fontFaces, STYLE_PROPS, PSEUDO_PROPS } from './inspect.mjs';
@@ -45,8 +45,10 @@ export async function ensurePlan(siteId, page, { refresh = false, browser } = {}
   const dir = briefDir(siteId, page);
   const file = join(dir, 'plan.json');
   const stamp = mirrorStamp(siteId, page);
+  const identity = mirrorIdentity(siteId, page);
   const cached = readJson(file);
-  if (!refresh && cached?.version === BRIEF_VERSION && cached.mirrorStamp === stamp) return cached;
+  if (!refresh && cached?.version === BRIEF_VERSION && cached.mirrorStamp === stamp && cached.mirrorIdentity === identity
+    && JSON.stringify(cached.profile) === JSON.stringify(PROFILE)) return cached;
   mkdirSync(dir, { recursive: true });
   const srv = await serveStatic(pdir);
   const own = !browser;
@@ -92,12 +94,13 @@ export async function ensurePlan(siteId, page, { refresh = false, browser } = {}
     const uncovered = (plan.gaps ?? []).filter(g => g.content).map(g => ({ y: Math.round(g.y), h: Math.round(g.h), contentElements: g.content }));
     const heightPct = +(Math.min(docH, covered + spacing) / docH * 100).toFixed(1);
     const result = {
-      schema: 'heimdall.sections/1', version: BRIEF_VERSION, siteId, page, mirrorStamp: stamp, generatedAt: new Date().toISOString(),
+      schema: 'heimdall.sections/1', version: BRIEF_VERSION, siteId, page, mirrorStamp: stamp, mirrorIdentity: identity, profile: PROFILE, generatedAt: new Date().toISOString(),
       viewports: VIEWPORTS.map(v => v.width), docSize, sections, fonts, pageBg: plan.pageBg,
       dependencies: [], sharedCandidates: [],
       coverage: { heightPct, sectionsPct: +(covered / docH * 100).toFixed(1), spacingPx: Math.round(spacing), overlapPct: +(overlap / docH * 100).toFixed(2),
         uncovered, needsReview: heightPct < 98 || overlap / docH > 0.02 },
     };
+    if (mirrorIdentity(siteId, page) !== identity) throw new CapabilityError('invalid_args', '镜像在分段测量期间发生变化，请重试');
     writeFileAtomic(file, JSON.stringify(result));
     return result;
   } finally {
@@ -118,7 +121,8 @@ export async function ensureSectionDetail(siteId, page, sectionId, { refresh = f
   const dir = join(briefDir(siteId, page), 'sections');
   const file = join(dir, `${sectionId}${withRules ? '.rules' : ''}.json`);
   const cached = readJson(file);
-  if (!refresh && cached?.mirrorStamp === plan.mirrorStamp && cached.version === BRIEF_VERSION) return { plan, section, detail: cached };
+  if (!refresh && cached?.mirrorStamp === plan.mirrorStamp && cached.mirrorIdentity === plan.mirrorIdentity
+    && cached.version === BRIEF_VERSION && JSON.stringify(cached.profile) === JSON.stringify(PROFILE)) return { plan, section, detail: cached };
   mkdirSync(dir, { recursive: true });
   const pdir = pageDir(siteId, page);
   const srv = await serveStatic(pdir);
@@ -132,7 +136,8 @@ export async function ensureSectionDetail(siteId, page, sectionId, { refresh = f
         withStyle: true, withRules: withRules && vp.width === 1440, maxElements: 600, maxText: 600 });
       await o.ctx.close();
     }
-    const detail = { version: BRIEF_VERSION, mirrorStamp: plan.mirrorStamp, sectionId, per, entryOrigin: srv.origin };
+    if (mirrorIdentity(siteId, page) !== plan.mirrorIdentity) throw new CapabilityError('invalid_args', '镜像在元素测量期间发生变化，请重试');
+    const detail = { version: BRIEF_VERSION, mirrorStamp: plan.mirrorStamp, mirrorIdentity: plan.mirrorIdentity, profile: PROFILE, sectionId, per, entryOrigin: srv.origin };
     writeFileAtomic(file, JSON.stringify(detail));
     return { plan, section, detail };
   } finally {
@@ -288,8 +293,10 @@ export async function buildBrief(siteId, page, { detail = 'outline', sectionId, 
   const own = !browser && detail !== 'outline';
   if (own) browser = await launchBrowser();
   try {
-    const plan = detail === 'outline' && !refresh && readJson(join(briefDir(siteId, page), 'plan.json'))?.mirrorStamp === mirrorStamp(siteId, page)
-      ? readJson(join(briefDir(siteId, page), 'plan.json'))
+    const cached = detail === 'outline' ? readJson(join(briefDir(siteId, page), 'plan.json')) : null;
+    const plan = detail === 'outline' && !refresh && cached?.version === BRIEF_VERSION && cached.mirrorStamp === mirrorStamp(siteId, page)
+      && cached.mirrorIdentity === mirrorIdentity(siteId, page) && JSON.stringify(cached.profile) === JSON.stringify(PROFILE)
+      ? cached
       : detail === 'outline' ? null : await ensurePlan(siteId, page, { refresh, browser });
     const brief = {
       schema: 'heimdall.brief/1', siteId, page,

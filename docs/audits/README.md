@@ -44,6 +44,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-13 | **[写入接口应答实测](2026-11-13/qa-write-responses.md)** | PUT/PATCH/DELETE 被动响应声明贯通；真实 JSON Server 七场景，三种页面不暴露的接口违约被标未完成，默认阻断零写入；复用现有模块与测试 |
 | 2026-11-13 | **[HTTP canonical 与冲突声明实测](2026-11-13/seo-http-canonical.md)** | RFC Editor 两页真实 HTTP 声明漏采修复，冻结重放 SEO 21→27、GEO 27.1→33.3；缺失对照不变，冲突保留未知，非自指与跨域本身不扣分；评分 12 / 测量 8 / GEO 7 |
 | 2026-11-13 | **[动态资源响应关联实测](2026-11-13/qa-response-bindings.md)** | 较早响应字段引用贯通动态路径和类型比较；真实 JSON Server 八场景，串号/错误 ID/类型/重复请求均未完成，默认阻断零请求；未增加模块、依赖或测试文件 |
+| 2026-11-13 | **[镜像参考缓存与还原度实测](2026-11-13/mirror-reference-integrity.md)** | IANA 首页 CSS 变化仍报三视口 100% 的缓存问题已复现并修复；按内容、拍摄条件及证据哈希核对，趋势隔离参考 ID；不改评分公式 |
 
 ## 为什么归档
 

@@ -63,6 +63,8 @@ argument-hint: "<url> [stack] [fidelity] [gate]"
 
 ## 读修复包的规则
 
+- 分段计划、元素详情和参考截图绑定当前 manifest、clone 全部文件内容及拍摄条件；CSS、图片、字体、脚本或视口变体变化后会重测，不再只看 HTML 时间。截图、遮罩和元素索引须符合记录哈希；旧缓存缺少身份字段会重建，历史文件不删除。测量中输入变化时先停止并重试，不把跨版本数据混用。
+- 趋势只比较同一参考 ID；参考更新后的第一次是新起点，不能解释为候选变好或变差。项目初始化复制的参考与资产不会自动覆盖用户文件；重新取当前 `brief` / `artifact`，审核后再更新项目。缓存身份不能证明在线原站、系统字体或完整业务未变。
 - 按 `order` 取前 1–3 个区域，不要一次修全部。
 - 先看裁剪图（`heimdall_artifact` 取 `heimdall://run/<runId>/crop/<regionId>/composite.png`：上 / 左参考，中候选，下 / 右差异），再读 `element` 与数值。
 - **先看数值再动手**：`element.cand` / `element.styleDiff` 给出候选当前值与带符号差值（如 `fontSize 参考 52px / 候选 46px（−6）`）。按参考值改，不要只按 `cause` 猜；`element.diffs` 是本区域里其他有样式差的元素（字号、颜色常落在更小的子元素上），先修这些。`match.by` 是匹配依据（`text` / `image` / `section-root` / `structure`），`confidence` 低时以裁剪图为准。

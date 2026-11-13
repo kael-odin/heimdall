@@ -121,6 +121,10 @@ mcp__plugin_heimdall_heimdall__heimdall_compare
 5. 整页 `heimdall compare` 到 `pass-candidate`；
 6. 再单独跑 `heimdall gate report` 与 `heimdall gate formal`。
 
+分段计划、元素详情与冻结参考按 manifest、`clone/` 全部常规文件的内容及拍摄条件核对缓存。CSS、图片、字体、脚本或视口变体改变，即使入口 HTML 时间未变也会重测；截图、遮罩和元素索引的哈希不符也不会复用。输入无法核实时返回 `reference_missing`，测量期间发生变化则要求重试。旧缓存缺少身份字段时按需重建，不删除历史运行；分数公式保持原样。
+
+`trend` 只比较同一参考 ID。参考更新后的第一次对比是新起点，不把它与旧参考混成变好、变差或停滞。项目初始化时复制的参考图和资产不自动覆盖；应重新获取当前 `brief` / `artifact` 并审核更新。缓存校验只针对本地镜像和记录的拍摄条件，不能证明在线原站、系统字体或整个业务未变；`pass-candidate` 仍需正式门禁确认。
+
 ### 2.4 通过标准（A-3）
 
 - 插件安装成功，`/mcp` 能看到 Heimdall 工具；
