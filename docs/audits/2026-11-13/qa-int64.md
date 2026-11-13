@@ -28,7 +28,7 @@
 | 数字被返回成字符串 | json-mismatch | json-mismatch | 3 |
 | 恢复精确读取 | path-mismatch | matched | 0 |
 
-修正两次错误通过和三次健康流程误拒绝。前后每个场景均只有页面自身的两次 GET，原读取策略不变；响应不符继续为 `qa_incomplete`，不自动认定产品缺陷或提单。CLI 与四类 QA 报告均未出现绑定 ID 或私有字段标记。
+修正两次错误通过和三次健康流程误拒绝。前后每个场景均只有页面自身的两次业务 GET，不含 HTML、favicon 和服务就绪探测；核对器没有额外发请求，原读取策略不变；响应不符继续为 `qa_incomplete`，不自动认定产品缺陷或提单。CLI 与四类 QA 报告均未出现绑定 ID 或私有字段标记。
 
 ## 回归与证据
 
@@ -39,3 +39,9 @@
 证据位于 `D:/Github-Star/heimdall-evidence-archive/2026-11-13/qa-int64/`，包含固定参考依赖清单、数据库、原始参考响应、`before.json`、`after.json`、逐场景 QA 报告、`acceptance-summary.json` 和测试日志。初次验收驱动误读 CI 摘要中不存在的 results 字段而退出，该次目录和日志保留；后测通过可见项断言计数单独验证页面，前测原始发现中没有独立页面断言失败。
 
 未验证生产认证、事务、并发、完整业务正确性或任意精度小数。本轮不改变克隆、后端补写或 SEO/GEO 行为。
+
+## 托管验收
+
+源码 `114ce06287fba255e10551afceea9840907713e4` 的 [CI 43434478454](https://github.com/kael-odin/heimdall/actions/runs/43434478454) **8/8 作业成功**，同提交 [Docs 43434478307](https://github.com/kael-odin/heimdall/actions/runs/43434478307) 成功。托管 Node 22 完整 Core **3,332 通过 / 0 失败 / 4 条件跳过**，共 3,336 条；两条 Docker 用例在独立断网作业 **2/2** 通过，另两条为 Linux 不适用的 Windows 句柄用例。干净安装 MCP **7/7**，包含字符串及长整数的真实代理调用。完整浏览器链与已知真值检测基准、构建、依赖审计均通过。
+
+`ci-source-completed.json`、`docs-source-completed.json` 保存精确提交与终态，`ci-test-totals.json` 从原始 TAP 提取计数及跳过项，`ci-*.log` 保留相关原始日志。本地、托管与八场景验证不累计为独立项目数。参考服务和验收进程均已退出，参考环境与数据库未进入仓库。
