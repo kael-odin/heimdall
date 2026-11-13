@@ -3,6 +3,7 @@
  */
 import { CATEGORIES, SEVERITY_LABEL, SEVERITY_PENALTY } from './rules.mjs';
 import { esc } from '../html.mjs';
+import { SEO_SCORE_METHOD_VERSION, SEO_MEASUREMENT_VERSION } from './method.mjs';
 
 const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 const scoreColor = (n) => n == null ? '#64748b' : n >= 90 ? '#059669' : n >= 75 ? '#b45309' : '#dc2626';
@@ -24,6 +25,8 @@ export function renderCsv(report) {
 
 export function renderHtml(report) {
   const { host, origin, generatedAt, score, pages, siteIssues, summary, categories, config } = report;
+  const scoreMethod = Number.isSafeInteger(report.scoreMethodVersion) && report.scoreMethodVersion <= SEO_SCORE_METHOD_VERSION ? report.scoreMethodVersion : 0;
+  const measurementMethod = Number.isSafeInteger(report.measurementVersion) && report.measurementVersion <= SEO_MEASUREMENT_VERSION ? report.measurementVersion : 0;
   const geo = report.geo && typeof report.geo === 'object' ? report.geo : null;
   const sitemapLabel = { complete: '已完成声明项和常见地址的受限检查', not_found: '已检查的位置未发现', partial: '采集不完整', unavailable: '采集不可用' }[summary.sitemapCoverage] ?? '采集状态未知';
   const pageRows = pages.map(p => {
@@ -48,7 +51,8 @@ export function renderHtml(report) {
       </div>`).join('') : '<div class="ok-text">✓ 未发现规则命中</div>';
     return `<details class="page-detail" id="p-${esc(p.url)}">
       <summary><span class="num" style="color:${scoreColor(p.score)}">${p.score}</span> ${esc(new URL(p.url).pathname || '/')} <span class="subtitle">${esc(p.title || '')}</span></summary>
-      <div class="page-meta">${esc(p.url)} · HTTP ${p.status || 'ERR'} · 初始 HTML ${p.robotsEvidence?.initialHtml === 'checked' ? '已核对' : '未核对'} · ${p.wordCount} ${report.measurementVersion === 7 ? '个分词单位' : '旧口径计数单位'} · LCP ${p.vitals?.lcp != null ? (p.vitals.lcp / 1000).toFixed(2) + 's' : 'n/a'} · CLS ${p.vitals?.cls != null ? p.vitals.cls.toFixed(3) : 'n/a'}</div>
+      <div class="page-meta">${esc(p.url)} · HTTP ${p.status || 'ERR'} · 初始 HTML ${p.robotsEvidence?.initialHtml === 'checked' ? '已核对' : '未核对'} · ${p.wordCount} ${measurementMethod >= 7 ? '个分词单位' : '旧口径计数单位'} · LCP ${p.vitals?.lcp != null ? (p.vitals.lcp / 1000).toFixed(2) + 's' : 'n/a'} · CLS ${p.vitals?.cls != null ? p.vitals.cls.toFixed(3) : 'n/a'}</div>
+      ${p.canonicalEvidence ? `<div class="page-meta">canonical 声明：HTML ${esc(p.canonicalEvidence.html?.join(' | ') || '未发现')}；HTTP Link ${esc(p.canonicalEvidence.http?.join(' | ') || '未发现')}；${p.canonicalEvidence.conflict ? '冲突待核实' : '未发现不同目标的冲突'}。未验证内容等价或搜索引擎实际选择。</div>` : ''}
       ${body}
     </details>`;
   }).join('\n');
@@ -206,17 +210,18 @@ footer { margin-top:44px; color:var(--muted); font-size:12px; }
   </header>
 
   <p class="meta">收录指令按本次浏览器收到的通用与 Googlebot 指令解释；不代表搜索引擎实际收录、排名或 AI 引用。初始 HTML 未核对的页面仍有漏检风险。</p>
-  <p class="meta">评分口径：${esc(report.scoreMethodVersion ?? '未记录')}；测量口径：${esc(report.measurementVersion ?? '未记录')}。${[2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(report.scoreMethodVersion) ? '文本/DOM 比例仅供观察，不扣分；两者按 UTF-16 代码单元计算。' : '历史或未知口径不能与当前分数直接比较。'}${[2, 3, 4, 5, 6, 7].includes(report.measurementVersion) ? 'HTML 字节数是解码内容重新编码为 UTF-8 的大小，不是网络传输量。' : '历史或未知口径的 HTML 字节数不可按当前单位解释。'}</p>
-  ${[3, 4, 5, 6, 7, 8, 9, 10, 11].includes(report.scoreMethodVersion) ? '<p class="meta">robots.txt 返回 404/410 或已检查的位置未发现 sitemap，仅为待核查提示，不单独扣分；本次采集不代表搜索引擎实际抓取或收录。</p>' : ''}
-  ${[4, 5, 6, 7].includes(report.measurementVersion) ? '<p class="meta">子资源类别按浏览器发起类型和页面声明估算，每条只归入一类；CSS 发起的部分资源按地址后缀推测。未分类、缓存及跨源限制可能影响数字，它们不是完整的网络传输量。</p>' : ''}
-  <p class="meta">${[3, 4, 5, 6, 7].includes(report.measurementVersion) ? '结构化数据提示仅检查 JSON-LD 顶层及 @graph 类型和 microdata 标记，不检查 RDFa；发现类型不代表搜索引擎认可或富结果合格。' : '历史或未知测量口径可能遗漏 @graph 类型，不能据此认定没有结构化数据；RDFa 未核实。'}</p>
-  ${[6, 7, 8, 9, 10, 11].includes(report.scoreMethodVersion) ? '<p class="meta">结构化数据常见字段仅作不扣分的待核查提示，不判定必填或富结果资格；不因相对图片地址扣分，字段仅为受限投影，未验证图片可抓取性或合并跨脚本实体引用。</p>' : ''}
-  ${[8, 9, 10, 11].includes(report.scoreMethodVersion) ? '<p class="meta">hreflang 按完整地址匹配访问地址或声明的 canonical，未验证其他 URL 的等价关系及双向链接；语言检查仅针对 Google 标记形式，不核对 ISO 代码表成员或通用 BCP 47 合法性。x-default 是按回退需求配置的不扣分建议，HTTP Link 与 sitemap 语言声明未检查。</p>' : ''}
-  ${[9, 10, 11].includes(report.scoreMethodVersion) ? '<p class="meta">同一数字分页序列允许共用标题和描述，只给不扣分建议；跨栏目、筛选条件和来源仍分开检查。分页与分面 canonical 按完整 HTTP(S) 地址比较，非自指声明不证明内容等价或抓取收敛。分面页是否收录或归并须按实际内容和发布意图确认。</p>' : ''}
-  ${[6, 7].includes(report.measurementVersion) ? '<p class="meta">JSON-LD 使用标准处理器及固定的本地 Schema.org 上下文展开别名和类型；未自动访问其他远程上下文。上下文无法核实或超限时保留未知并跳过基线，字段投影受限时 GEO 不把未观察字段当作缺陷。</p>' : ''}
+  <p class="meta">评分口径：${esc(report.scoreMethodVersion ?? '未记录')}；测量口径：${esc(report.measurementVersion ?? '未记录')}。${scoreMethod >= 2 ? '文本/DOM 比例仅供观察，不扣分；两者按 UTF-16 代码单元计算。' : '历史或未知口径不能与当前分数直接比较。'}${measurementMethod >= 2 ? 'HTML 字节数是解码内容重新编码为 UTF-8 的大小，不是网络传输量。' : '历史或未知口径的 HTML 字节数不可按当前单位解释。'}</p>
+  ${scoreMethod >= 3 ? '<p class="meta">robots.txt 返回 404/410 或已检查的位置未发现 sitemap，仅为待核查提示，不单独扣分；本次采集不代表搜索引擎实际抓取或收录。</p>' : ''}
+  ${measurementMethod >= 4 ? '<p class="meta">子资源类别按浏览器发起类型和页面声明估算，每条只归入一类；CSS 发起的部分资源按地址后缀推测。未分类、缓存及跨源限制可能影响数字，它们不是完整的网络传输量。</p>' : ''}
+  <p class="meta">${measurementMethod >= 3 ? '结构化数据提示仅检查 JSON-LD 顶层及 @graph 类型和 microdata 标记，不检查 RDFa；发现类型不代表搜索引擎认可或富结果合格。' : '历史或未知测量口径可能遗漏 @graph 类型，不能据此认定没有结构化数据；RDFa 未核实。'}</p>
+  ${scoreMethod >= 6 ? '<p class="meta">结构化数据常见字段仅作不扣分的待核查提示，不判定必填或富结果资格；不因相对图片地址扣分，字段仅为受限投影，未验证图片可抓取性或合并跨脚本实体引用。</p>' : ''}
+  ${scoreMethod >= 8 ? '<p class="meta">hreflang 按完整地址匹配访问地址或声明的 canonical，未验证其他 URL 的等价关系及双向链接；语言检查仅针对 Google 标记形式，不核对 ISO 代码表成员或通用 BCP 47 合法性。x-default 是按回退需求配置的不扣分建议，HTTP Link 与 sitemap 语言声明未检查。</p>' : ''}
+  ${scoreMethod >= 9 ? '<p class="meta">同一数字分页序列允许共用标题和描述，只给不扣分建议；跨栏目、筛选条件和来源仍分开检查。分页与分面 canonical 按完整 HTTP(S) 地址比较，非自指声明不证明内容等价或抓取收敛。分面页是否收录或归并须按实际内容和发布意图确认。</p>' : ''}
+  ${measurementMethod >= 8 ? '<p class="meta">canonical 同时核对渲染后 head 与导航响应的 HTTP Link，保留来源；带 anchor 的头部链接不作为本页声明。多个不同目标保留冲突，非自指或跨域本身仅作观察，未验证目标内容、可访问性、索引资格或搜索引擎实际选择。此项不代表支持 PDF 正文审计。</p>' : ''}
+  ${measurementMethod >= 6 ? '<p class="meta">JSON-LD 使用标准处理器及固定的本地 Schema.org 上下文展开别名和类型；未自动访问其他远程上下文。上下文无法核实或超限时保留未知并跳过基线，字段投影受限时 GEO 不把未观察字段当作缺陷。</p>' : ''}
   <p class="meta">资源体积取本次浏览器可见子资源的传输或编码大小估算，不含主文档；缓存、跨源限制和条目上限可能影响完整性，不等同于完整网络流量。</p>
   <p class="meta">图片格式提示仅匹配图片地址后缀，不能证明响应类型或实际编码；旧报告中的“张为 jpg/png”也只表示后缀匹配。</p>
-  ${report.measurementVersion === 7 ? '<p class="meta">正文计数采用固定 en 分段区域的 Intl.Segmenter，由同一 Node/ICU 分词器处理渲染后与初始 HTML 文本。分词单位不是模型 token，不能跨语言比较答案质量；不同 ICU 版本在边界样本上可能不同。固定字数仅作人工检查提示，不作为 SEO 扣分依据。</p>' : ''}
+  ${measurementMethod >= 7 ? '<p class="meta">正文计数采用固定 en 分段区域的 Intl.Segmenter，由同一 Node/ICU 分词器处理渲染后与初始 HTML 文本。分词单位不是模型 token，不能跨语言比较答案质量；不同 ICU 版本在边界样本上可能不同。固定字数仅作人工检查提示，不作为 SEO 扣分依据。</p>' : ''}
   <p class="meta">sitemap：${esc(sitemapLabel)}。仅限同来源的声明项与常见地址，不能证明其他位置不存在地图。${summary.baselineEligible === false ? '采集存在缺口，分数仅供参考，不能作为基线或门禁依据。' : ''}${summary.legacyBaseline ? '旧基线未记录采集完整性，本次未比对。' : ''}${summary.baselineMethodMismatch ? '基线评分或测量口径缺失或不兼容，本次未比对。' : ''}</p>
 
   <div class="kpis">

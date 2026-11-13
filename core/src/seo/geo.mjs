@@ -194,9 +194,10 @@ export function evaluateGeoPage(page = {}) {
         bodyComparable ? `初始 HTML 约 ${raw.wordCount}，渲染后约 ${wordCount} 个分词单位` : '', '核对核心答案是否在初始 HTML 中可见；长度比例不能证明内容一致。', 'high'),
     ],
     extractability: [
-      check('geo-extract-canonical', 6, page.canonical ? 'pass' : 'fail', '页面有规范地址',
-        page.canonical ? '已提供 canonical，便于合并同一内容的地址。' : '页面未显式声明 canonical。',
-        page.canonical || '', '根据重复页面与索引意图确认规范地址，再决定是否补充 canonical。', 'medium'),
+      check('geo-extract-canonical', 6, page.canonicalEvidence?.conflict ? 'unknown' : page.canonical ? 'pass' : 'fail', '页面有规范地址',
+        page.canonicalEvidence?.conflict ? 'canonical 声明相互冲突，规范地址尚未核实。'
+          : page.canonical ? 'HTML 或 HTTP Link 已提供 canonical 声明；未验证搜索引擎实际选择。' : '页面未发现可用的 canonical 声明。',
+        page.canonicalEvidence ? JSON.stringify(page.canonicalEvidence) : page.canonical || '', '根据重复页面与索引意图确认规范地址，再决定是否补充或统一 canonical。', 'medium'),
       check('geo-extract-language', 4, page.lang ? 'pass' : 'fail', '页面声明语言',
         page.lang ? `页面语言为 ${page.lang}。` : '缺少 html lang。', page.lang || '', '设置准确的 html lang。', 'low'),
       check('geo-extract-structure', 8, schema.hasEntityType || page.microdataCount > 0 ? 'pass' : 'fail', '页面有结构化实体线索',

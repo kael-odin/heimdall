@@ -37,11 +37,16 @@ export function evaluatePage(page, site = {}) {
   if (page.status >= 400) A('index-http-error', 'index', 'critical', '页面返回错误状态', `HTTP ${page.status}`, page.finalUrl, '修复服务端错误或从站点移除该链接');
   if (page.redirectCount > 0) A('index-redirect', 'index', page.redirectCount > 1 ? 'medium' : 'low', '页面存在重定向', `重定向 ${page.redirectCount} 次`, `${page.url} → ${page.finalUrl}`, '将链接直接指向最终 URL，减少跳转损耗');
   if (site.noindexIntent !== true && page.meta.noindex) A('index-noindex', 'index', 'high', '页面被标记 noindex', '通用或 Googlebot 指令含 noindex / none（Google 网页搜索口径）', page.robotsEvidence?.noindex?.join('\n') || page.robotsMeta || page.xRobots, '若页面需要收录，移除相关限制；若有意为之，请在报告中标注为豁免');
-  if (!page.canonical) A('index-canonical-missing', 'index', 'medium', '缺少 canonical', '未找到 rel=canonical', '', '为每个可索引页面添加自指 canonical');
+  const canonicalConflict = page.canonicalEvidence?.conflict === true;
+  if (!page.canonical && !canonicalConflict) A('index-canonical-missing', 'index', 'medium', '缺少 canonical', '未找到可用的 HTML 或 HTTP Link rel=canonical', '', '按重复内容和索引意图确认是否需要声明 canonical');
   else {
     const canonicalHost = safeHost(page.canonical);
-    if (canonicalHost && canonicalHost !== site.host) A('index-canonical-cross-origin', 'index', 'high', 'canonical 指向其他域名', `canonical=${trim(page.canonical)}`, page.canonical, '确认是否为跨域归并；否则改回本域自指 canonical');
-    if (canonicalHost === site.host && !samePath(page.canonical, page.finalUrl)) A('index-canonical-mismatch', 'index', 'low', 'canonical 与当前 URL 不一致', `canonical=${trim(page.canonical)}`, page.finalUrl, '确认规范化目标；自指页面应指向自身');
+    if (!canonicalConflict && canonicalHost && canonicalHost !== site.host) A('index-canonical-cross-origin', 'index', 'info', 'canonical 声明指向其他域名', `canonical=${trim(page.canonical)}`, page.canonical, '按重复内容和发布意图核对跨域归并；未验证内容等价或搜索引擎实际选择，不单独扣分');
+    if (canonicalConflict || canonicalHost === site.host && httpResourceUrl(page.canonical) !== httpResourceUrl(page.finalUrl)) A('index-canonical-mismatch', 'index', canonicalConflict ? 'medium' : 'info',
+      canonicalConflict ? 'canonical 声明相互冲突' : 'canonical 声明与当前地址不同',
+      canonicalConflict ? 'HTML 与 HTTP Link 中存在多个不同的规范地址，未选择其中任意一项' : `canonical=${trim(page.canonical)}`,
+      canonicalConflict ? JSON.stringify(page.canonicalEvidence) : page.finalUrl,
+      canonicalConflict ? '按重复内容和发布意图统一 canonical 声明，再重新采集；声明不代表搜索引擎实际选择' : '按重复内容和发布意图核对归并；非自指不自动构成缺陷，未验证目标内容或实际选择');
   }
   if (page.url.length > 115) A('index-url-long', 'index', 'low', 'URL 过长', `${page.url.length} 字符`, trim(page.url, 140), '精简路径层级与参数');
   if (/(\?|&)[a-z0-9_-]+=/i.test(page.url)) A('index-url-params', 'index', 'info', 'URL 含查询参数', trim(page.url, 140), '', '确认参数页的 canonical 与收录策略（参数页易产生重复内容）');
@@ -215,7 +220,6 @@ export function countBySeverity(issues) {
 }
 
 function safeHost(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } }
-function samePath(a, b) { try { const A = new URL(a, b), B = new URL(b); return A.hostname.replace(/^www\./, '') === B.hostname.replace(/^www\./, '') && A.pathname.replace(/\/$/, '') === B.pathname.replace(/\/$/, ''); } catch { return false; } }
 
 /** Google annotation syntax only, not BCP 47 validity or ISO code-table membership. */
 function hasGoogleHreflangSyntax(code) {

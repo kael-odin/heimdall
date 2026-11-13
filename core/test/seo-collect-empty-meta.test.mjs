@@ -19,6 +19,7 @@ import { scoreIssues } from '../src/seo/rules.mjs';
 import { siteAggregate } from '../src/seo/matrix-core.mjs';
 import { SEO_MEASUREMENT_VERSION } from '../src/seo/method.mjs';
 import { analyzeRawHtml } from '../src/seo/raw-html.mjs';
+import { evaluateGeoPage } from '../src/seo/geo.mjs';
 
 const BARE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Bare page without social or canonical tags</title>
 <meta name="description" content="A page that deliberately omits canonical, og:image and twitter:image, and uses a relative hreflang.">
@@ -44,7 +45,7 @@ async function withPages(t, fn) {
   return fn(browser, `http://127.0.0.1:${server.address().port}`);
 }
 
-const idsOf = page => evaluatePage(page, { host: new URL(page.url).host }).map(i => i.id);
+const idsOf = page => evaluatePage(page, { host: new URL(page.url).hostname }).map(i => i.id);
 
 test('采集：多语言可见正文与初始 HTML 使用同一分词器', async t => {
   const text = '안녕하세요 세계 こんにちは世界 中文测试 café e\u0301cole مرحبا بالعالم';
@@ -81,6 +82,65 @@ test('采集：相对地址的 canonical / 图片仍按页面地址绝对化，�
     const ids = idsOf(page);
     assert.ok(!ids.includes('index-canonical-missing'));
     assert.ok(!ids.includes('structured-og-image'));
+  });
+});
+
+test('采集：HTTP Link canonical 与 HTML 声明共同核对，不猜冲突目标', async t => {
+  const cases = [
+    { header: '<https://example.com/one>; rel="canonical"', expected: 'https://example.com/one' },
+    { header: ['</asset>; rel=preload; title="a,b;c"', '</one,a;b?x=1>; rel=canonical'], expected: '/one,a;b?x=1' },
+    { header: '</one>; rel="alternate CANONICAL"; title="a\\\", b;c"', expected: '/one' },
+    { header: '</one>; rel=canonical', html: '<link rel="CANONICAL" href="/one">', expected: '/one' },
+    { header: '</one>; rel=canonical', html: '<link rel="canonical" href="/two">', conflict: true },
+    { header: ['</one>; rel=canonical', '</two>; rel=canonical'], conflict: true },
+    { header: ['</one>; rel=canonical', '</one>; rel=canonical'], expected: '/one' },
+    { header: '</one>; rel=canonical; anchor="/other"' },
+    { header: '</one>; rel=alternate; title="rel=canonical"' },
+    { header: '</one>; rel=alternate; rel=canonical' },
+    { header: '</one>; rel=canonical; title="unfinished' },
+    { header: '</asset>; title="unfinished, <https://example.com/ghost>; rel=canonical' },
+    { header: '<javascript:alert(1)>; rel=canonical' },
+    { header: '<https://user:pass@example.com/>; rel=canonical' },
+    { header: '<>; rel=canonical' },
+    { header: '<not a uri>; rel=canonical' },
+    { header: '<relative>; rel=canonical', html: '<base href="https://other.example/">', expected: '/relative' },
+    { header: '<target>; rel=canonical', redirect: true, expected: '/nested/target' },
+    { html: '<link rel="canonical" href="/one"><link rel="canonical" href="/two">', conflict: true },
+    { html: '<link rel="canonical" href="javascript:alert(1)">' },
+    { body: '<link rel="canonical" href="/body">' },
+    { html: '<link rel="canonical" href="/one">', expected: '/one' },
+    {},
+  ];
+  const server = createServer((req, res) => {
+    const fixture = cases[Number(req.url.split('/').pop())];
+    if (!fixture) { res.writeHead(404); res.end(); return; }
+    if (fixture.redirect && !req.url.startsWith('/nested/')) {
+      res.writeHead(302, { location: `/nested${req.url}` }); res.end(); return;
+    }
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    if (fixture.header) res.setHeader('link', fixture.header);
+    res.end(`<!doctype html><html lang="en"><head><title>Canonical fixture</title>${fixture.html ?? ''}</head><body><h1>Fixture</h1>${fixture.body ?? ''}</body></html>`);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const browser = await chromium.launch();
+  t.after(async () => { await browser.close(); await new Promise(resolve => server.close(resolve)); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  for (const [index, fixture] of cases.entries()) await t.test(`canonical ${index + 1}`, async () => {
+    const page = await collectPage(browser, `${origin}/${index}`, { settleMs: 10 });
+    const expected = fixture.expected ? new URL(fixture.expected, origin).href : '';
+    assert.equal(page.canonical, expected);
+    assert.equal(page.canonicalEvidence.conflict, fixture.conflict ?? false);
+    const canonicalIssues = evaluatePage(page, { host: new URL(page.url).hostname }).filter(issue => issue.id.startsWith('index-canonical'));
+    const issues = canonicalIssues.map(issue => issue.id);
+    assert.equal(issues.includes('index-canonical-missing'), !expected && !fixture.conflict);
+    if (fixture.conflict) {
+      assert.equal(issues.filter(id => id === 'index-canonical-mismatch').length, 1);
+      assert.equal(canonicalIssues[0].severity, 'medium');
+    } else if (expected) assert.ok(canonicalIssues.every(issue => issue.severity === 'info'));
+    const check = evaluateGeoPage(page).dimensions.extractability.checks.find(row => row.id === 'geo-extract-canonical');
+    assert.equal(check.status, fixture.conflict ? 'unknown' : expected ? 'pass' : 'fail');
+    if (expected && fixture.header) assert.ok(page.canonicalEvidence.http.includes(expected));
   });
 });
 

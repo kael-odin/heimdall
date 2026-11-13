@@ -137,7 +137,7 @@ export function paginationSiteIssues(site) {
 
   // canonical 缺失是**逐页**问题，不该被"至少两页"挡住 ——
   // 实测 news.ycombinator.com 只采到一个分页 URL（/?p=2），这条就此失效了
-  const noCanon = paged.filter(p => !p.canonical);
+  const noCanon = paged.filter(p => !p.canonical && !p.canonicalEvidence?.conflict);
   if (noCanon.length) {
     out.push({
       id: 'links-pagination-canonical-missing', severity: 'low',

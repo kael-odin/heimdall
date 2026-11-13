@@ -81,6 +81,16 @@ test('SEO 使用手册的评分和测量口径与当前实现一致', async () =
   const example = JSON.parse(baselineGuide.match(/```json\s*([\s\S]*?)```/)[1]);
   assert.equal(example.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
   assert.equal(example.measurementVersion, SEO_MEASUREMENT_VERSION);
+  const { renderHtml } = await import('../src/seo/report.mjs');
+  const report = { host: 'example.com', origin: 'https://example.com', pages: [], siteIssues: [],
+    summary: { pages: 0, bySeverity: {} }, categories: {}, config: {} };
+  const current = renderHtml({ ...report, scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION });
+  assert.match(current, /未分类、缓存及跨源限制/);
+  assert.match(current, /JSON-LD 使用标准处理器/);
+  assert.match(current, /canonical 同时核对/);
+  const future = renderHtml({ ...report, scoreMethodVersion: SEO_SCORE_METHOD_VERSION + 1, measurementVersion: SEO_MEASUREMENT_VERSION + 1 });
+  assert.match(future, /历史或未知测量口径可能遗漏 @graph/);
+  assert.doesNotMatch(future, /canonical 同时核对|正文计数采用/);
 });
 
 test('规则数：id 用 <分类>-<slug> 形式，分类都在 CATEGORIES 里', async () => {

@@ -75,6 +75,13 @@ test('seo: a healthy page has no high/critical issues and scores high', () => {
   const issues = evaluatePage(page(), site);
   assert.equal(issues.filter(i => i.severity === 'critical' || i.severity === 'high').length, 0, JSON.stringify(issues));
   assert.ok(scoreIssues(issues) >= 95, 'healthy page score: ' + scoreIssues(issues));
+  for (const canonical of ['https://other.example/copy', 'https://example.com/pricing?plan=annual', 'https://example.com/pricing/', 'http://example.com/pricing']) {
+    const observed = evaluatePage(page({ canonical }), site);
+    const declarations = observed.filter(issue => issue.id.startsWith('index-canonical'));
+    assert.ok(declarations.length > 0, canonical);
+    assert.ok(declarations.every(issue => issue.severity === 'info'), canonical);
+    assert.equal(scoreIssues(observed), scoreIssues(issues), canonical);
+  }
 });
 
 test('seo: missing title/h1/viewport and thin content are detected', () => {

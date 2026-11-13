@@ -10,12 +10,40 @@ import { chromium } from 'playwright';
 import { analyzeRawHtml, countWords } from './raw-html.mjs';
 import { isStructuralUrl } from './pagination.mjs';
 import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
-import { canonUrl, isSameOriginUrl } from '../url-canon.mjs';
+import { canonUrl, httpResourceUrl, isSameOriginUrl } from '../url-canon.mjs';
 import { UA } from '../ua.mjs';
 import { discoverSitemapUrls } from '../crawler/sitemap-discovery.mjs';
 import { parseJsonLdScripts, JSONLD_LIMITS } from './jsonld.mjs';
 
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
+
+/** Keep commas in URI references and quoted parameters; anchor changes the link's context. */
+function canonicalHeaderUrls(headers, base) {
+  const urls = [];
+  for (const header of headers) {
+    let offset = 0;
+    for (const link of header.matchAll(/(?:^|,)\s*<([^<>]*)>((?:[^",]|"(?:[^"\\]|\\.)*")*)(?=,|$)/g)) {
+      if (!/^[\s,]*$/.test(header.slice(offset, link.index))) break;
+      offset = link.index + link[0].length;
+      let rest = link[2], rel, anchored = false, valid = true;
+      while (rest.trim()) {
+        const parameter = rest.match(/^\s*;\s*([!#$%&'*+.^_`|~\w-]+)\s*=\s*("(?:[^"\\]|\\.)*"|[!#$%&'*+.^_`|~\w-]+)\s*/);
+        if (!parameter) { valid = false; break; }
+        const name = parameter[1].toLowerCase();
+        const value = parameter[2].replace(/^"|"$/g, '').replace(/\\(.)/g, '$1');
+        if (name === 'rel' && rel === undefined) rel = value;
+        if (name === 'anchor') anchored = true;
+        rest = rest.slice(parameter[0].length);
+      }
+      if (!valid || anchored || !link[1] || /[\s\\]/.test(link[1]) || !rel?.toLowerCase().split(/\s+/).includes('canonical')) continue;
+      try {
+        const url = httpResourceUrl(new URL(link[1], base).href);
+        if (url) urls.push(url);
+      } catch { /* An invalid target is not evidence of a usable canonical URL. */ }
+    }
+  }
+  return [...new Set(urls)];
+}
 
 const ROBOTS_VALUE_DIRECTIVES = new Set(['max-snippet', 'max-image-preview', 'max-video-preview', 'unavailable_after']);
 
@@ -137,11 +165,15 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
 
     const headers = response ? response.headers() : {};
     let robotsHeaders = headers['x-robots-tag'] ? [headers['x-robots-tag']] : [];
+    let linkHeaders = headers.link ? [headers.link] : [];
     try {
-      const values = (await response?.headersArray() ?? [])
+      const headerRows = await response?.headersArray() ?? [];
+      const values = headerRows
         .filter(h => h.name.toLowerCase() === 'x-robots-tag')
         .map(h => h.value);
       if (values.length) robotsHeaders = values;
+      const links = headerRows.filter(h => h.name.toLowerCase() === 'link').map(h => h.value);
+      if (links.length) linkHeaders = links;
     } catch { /* Keep the combined header when individual values are unavailable. */ }
     const finalUrl = page.url();
     const status = response ? response.status() : 0;
@@ -286,7 +318,7 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
         textSample: normText.slice(0, 200),
         title: (document.title || '').trim(),
         description: meta('meta[name="description"]').trim(),
-        canonical: abs(meta('link[rel="canonical"]', 'href')),
+        canonicals: [...document.head.querySelectorAll('link[rel~="canonical" i]')].map(l => abs(l.getAttribute('href'))).filter(Boolean),
         robotsMeta, robotsTags,
         lang: document.documentElement.lang || '',
         viewport: meta('meta[name="viewport"]'),
@@ -324,6 +356,12 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
     }, JSONLD_LIMITS);
 
     const robotsEvidence = googleRobotsEvidence(dom.robotsTags, robotsHeaders, raw);
+    const canonicalEvidence = {
+      html: [...new Set(dom.canonicals.map(httpResourceUrl).filter(Boolean))],
+      http: canonicalHeaderUrls(linkHeaders, response?.url() ?? finalUrl),
+    };
+    const canonicalUrls = [...new Set([...canonicalEvidence.html, ...canonicalEvidence.http])];
+    canonicalEvidence.conflict = canonicalUrls.length > 1;
     const jsonld = await parseJsonLdScripts(dom.jsonld, finalUrl);
     return {
       url,
@@ -334,7 +372,8 @@ export async function collectPage(browser, url, { timeout = 45_000, settleMs = 1
       responseTimeMs: Date.now() - started,
       title: dom.title, titleLength: dom.title.length,
       description: dom.description, descriptionLength: dom.description.length,
-      canonical: dom.canonical,
+      canonical: canonicalUrls.length === 1 ? canonicalUrls[0] : '',
+      canonicalEvidence,
       robotsMeta: dom.robotsMeta,
       xRobots: headers['x-robots-tag'] ?? '',
       robotsEvidence,
