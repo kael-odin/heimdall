@@ -89,7 +89,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       results: { status: 'passed', equivalence: 1, heldout: 1, passed: 1, failed: 0, unverified: 0 },
       gapLedger: {
         schema: 'heimdall.adapter-gap-ledger/1', source: 'offline-observation', status: 'offline-observed',
-        summary: { runtimeRequests: 0, uniqueGaps: 1, unobservedPaths: 0, uncoveredQueryParameters: 1, missingResponseBodies: 1, unverifiedWrites: 1 },
+        summary: { runtimeRequests: 0, uniqueGaps: 1, unobservedPaths: 1, unobservedQueryVariants: 1, uncoveredQueryParameters: 1, missingResponseBodies: 1, unverifiedWrites: 1 },
         knownRoutes: [{ method: 'GET', path: '/api/items', queryParams: ['page'], responseBody: 'unavailable', writeVerification: 'not_applicable' }],
         gaps: [{ method: 'GET', path: '/api/items', queryParams: ['cursor'], count: 1, categories: ['uncovered-query-parameter'], nearestRoutes: [] }],
         unknowns: ['authentication-permission-unknown', 'business-state-unknown', 'missing-response-body', 'unverified-write'],
@@ -145,7 +145,9 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'available');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action.args.command, 'heimdall backend scaffold example.test');
     assert.equal(env.result.deliveryPlan.backendCompletion.gapLedger.summary.missingResponseBodies, 1);
-    assert.ok(env.result.deliveryPlan.backendCompletion.repairTasks.some(item => item.kind === 'write-verification'));
+    assert.deepEqual(env.result.deliveryPlan.backendCompletion.repairTasks.map(item => item.kind), [
+      'write-verification', 'query-variant-gap', 'query-parameter-gap', 'runtime-gap',
+    ]);
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'backend-scaffold'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-adapter-gap-ledger'));
     assert.ok(env.result.deliveryPlan.backendCompletion.humanJourneys.some(item => item.id === 'authentication-and-permission'));

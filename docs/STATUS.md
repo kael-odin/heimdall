@@ -20,7 +20,7 @@
 
 2026-11-14 [观察型契约落盘与 B3 后端检查](audits/README.md)：真实 Datasette 83 页归档复验修复 `probe contract` 只输出不落盘的问题；契约现在能被 `site-assessment` 读取，B0 空契约保持 `no_observed_api`，不伪造端点。B3 脚手架启动后健康、适配器覆盖、缺口账本 3/3 通过；认证、权限、状态机、业务规则和副作用仍需授权旅程。
 
-2026-11-14 [留出查询缺口分级](audits/README.md)：适配器留出账本现在区分未观察路径、已知参数名下的未观察查询变体和全新查询参数；即使尚未生成 B3，`site-assessment.deliveryPlan.backendCompletion.repairTasks` 也会把分页 `page=3` / `skip=20` 这类值或组合缺口交给 AI，避免只报“查询参数缺失”。该改动改善证据与修复任务的精度，不会自动伪造分页行为。
+2026-11-14 [留出查询缺口分级](audits/README.md)：适配器留出账本现在区分未观察路径、已知参数名下的未观察查询变体和全新查询参数；即使尚未生成 B3，`site-assessment.deliveryPlan.backendCompletion.repairTasks` 也会把这些类别分别交给 AI，分页 `page=3` / `skip=20` 这类值或组合不会被压成一个笼统缺口。该改动改善证据与修复任务的精度，不会自动伪造分页行为。
 
 2026-11-13 [64 位整数资源关联实测](audits/2026-11-13/qa-int64.md)：真实 Datasette + SQLite 八场景，修正两次错误通过与三次健康误拒绝；长整数原 token 贯通动态路径、字段引用与 MCP，数字与字符串仍区分。每次仅页面自身两次 GET，绑定值不进入报告。复用原模块和测试，未支持的大整数写法保留未核实，整数常量需在安全范围；生产认证、事务与完整业务仍未验证。源码 CI 8/8，Core 3,332 通过 / 4 条件跳过，Docker 独立 2/2、MCP 7/7。
 
