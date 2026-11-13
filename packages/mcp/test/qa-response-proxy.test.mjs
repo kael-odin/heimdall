@@ -17,7 +17,18 @@ test('bundled MCP proxy forwards response checks to a fresh isolated engine', { 
   let queries = 0;
   let requestMethod = 'POST';
   const methods = [];
+  const bindingHits = [];
+  const createdId = 'proxy-private-dynamic-id';
   const fixture = createServer((req, res) => {
+    if (req.url === '/dynamic') {
+      res.setHeader('content-type', 'text/html');
+      return res.end('<title>Dynamic</title><div id="ready" hidden>Ready</div><script>fetch("/api/create",{method:"POST"}).then(r=>r.json()).then(x=>fetch("/api/items/"+x.id)).then(()=>document.querySelector("#ready").hidden=false)</script>');
+    }
+    if (req.url === '/api/create' || req.url === '/api/items/' + createdId) {
+      bindingHits.push(req.method);
+      res.writeHead(req.method === 'POST' ? 201 : 200, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ id: createdId }));
+    }
     if (req.url === '/blank' || req.url === '/page') {
       res.setHeader('content-type', 'text/html');
       return res.end(req.url === '/blank' ? '<title>Blank</title>'
@@ -86,6 +97,16 @@ test('bundled MCP proxy forwards response checks to a fresh isolated engine', { 
     assert.match(failed.structuredContent.result.checks[0].responses[0].detail, /JSON 断言 2/);
     assert.deepEqual(methods, ['POST', 'PATCH']);
     assert.equal(queries, 2);
+    const reference = { response: 0, path: ['id'] };
+    const dynamic = { title: 'Dynamic item', path: '/dynamic', steps: check.steps, expect: check.expect, responses: [
+      { method: 'POST', origin, path: '/api/create', status: 201 },
+      { method: 'GET', origin, path: '/api/items/{itemId}', pathParams: { itemId: reference }, json: { path: ['id'], equalsFrom: reference } },
+    ] };
+    const bound = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...args, checks: [dynamic], failOn: 'none' } });
+    assert.equal(bound.isError, false, JSON.stringify(bound.structuredContent.error));
+    assert.deepEqual(bound.structuredContent.result.checks[0].responses.map(row => row.state), ['matched', 'matched']);
+    assert.doesNotMatch(JSON.stringify(bound.structuredContent), new RegExp(createdId));
+    assert.deepEqual(bindingHits, ['POST', 'GET']);
   } finally {
     await client?.close().catch(() => {});
     if (engine.exitCode === null && engine.signalCode === null) {

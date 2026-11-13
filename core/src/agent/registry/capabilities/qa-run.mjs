@@ -27,10 +27,18 @@ const EXPECT = {
     minMatches: { type: 'integer', minimum: 1, maximum: 1000, description: 'Minimum visible matches for all-visible; default 1' },
   },
 };
+const RESPONSE_FIELD_PATH = { type: 'array', minItems: 1, maxItems: 8, items: { type: 'string', minLength: 1, maxLength: 100 } };
+const RESPONSE_REFERENCE = {
+  type: 'object', additionalProperties: false, required: ['response', 'path'], properties: {
+    response: { type: 'integer', minimum: 0, maximum: 9, description: 'Zero-based earlier response; it must finish before this request starts' },
+    path: RESPONSE_FIELD_PATH,
+  },
+};
 const RESPONSE_JSON = {
-  type: 'object', additionalProperties: false, required: ['path', 'equals'], properties: {
-    path: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'string', minLength: 1, maxLength: 100 } },
+  type: 'object', additionalProperties: false, required: ['path'], properties: {
+    path: RESPONSE_FIELD_PATH,
     equals: { type: ['string', 'number', 'boolean', 'null'] },
+    equalsFrom: RESPONSE_REFERENCE,
   },
 };
 const RESPONSE = {
@@ -38,12 +46,14 @@ const RESPONSE = {
   properties: {
     method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] },
     origin: { type: 'string', maxLength: 500, description: 'Exact HTTP origin, with no credentials, path or query' },
-    path: { type: 'string', maxLength: 500, description: 'Exact unencoded path with no query' },
+    path: { type: 'string', maxLength: 500, description: 'Exact unencoded path, or whole-segment {name} placeholders resolved only from pathParams' },
+    pathParams: { type: 'object', minProperties: 1, maxProperties: 8, additionalProperties: RESPONSE_REFERENCE,
+      description: 'Each path parameter references a scalar field from an earlier completed response; observed values are never sent as requests' },
     query: { type: 'object', minProperties: 1, maxProperties: 20, additionalProperties: { type: 'string', maxLength: 200 },
       description: 'Explicit public GET query names and values; exact matching ignores parameter order. Sensitive queries are rejected; values are not recorded in reports' },
     status: { type: 'integer', minimum: 100, maximum: 599, description: 'Expected HTTP status; defaults to 200' },
     json: { ...RESPONSE_JSON, type: ['object', 'array'], minItems: 1, maxItems: 20, items: RESPONSE_JSON,
-      description: 'One scalar assertion or 1-20 distinct-path assertions against the same response body; all must match' },
+      description: 'One scalar assertion or 1-20 distinct-path assertions; choose exactly one of equals or equalsFrom per field; all must match' },
   },
 };
 export const CHECK_SCHEMA = {
@@ -53,7 +63,7 @@ export const CHECK_SCHEMA = {
     path: { type: 'string', pattern: '^/', maxLength: 500 }, steps: { type: 'array', items: STEP, maxItems: QA_SCOPE_LIMITS.steps },
     expect: { type: 'array', items: EXPECT, minItems: 1, maxItems: QA_SCOPE_LIMITS.expectations },
     responses: { type: 'array', items: RESPONSE, minItems: 1, maxItems: 10,
-      description: 'Observe exact main-frame GET/POST/PUT/PATCH/DELETE responses without sending extra requests or authorizing writes; unmatched or unreadable evidence is incomplete' },
+      description: 'Observe main-frame GET/POST/PUT/PATCH/DELETE responses; exact paths or explicit earlier-response pathParams, no extra requests or write permission; unresolved references are incomplete' },
     tier: { type: 'string', enum: ['wall', 'degrade', 'tolerable'] }, basis: { type: 'string', enum: ['failed', 'wrong', 'promise', 'friction', 'cosmetic'] },
     loss: { type: 'string', maxLength: 300, description: 'Observed user impact. Without this, a finding is downgraded to tolerable and does not enter CI blocking findings' },
     prd: { type: 'string', maxLength: 300, description: 'Where this expectation comes from, e.g. "PRD 优惠券 §3.2: 无效券码提示「券码无效」"' },
@@ -64,14 +74,13 @@ export const CHECK_SCHEMA = {
 export default {
   id: 'qa_run',
   title: '测试：对一个站点跑检查',
-  description: 'Test a workspace site using its login profile. Inspect pages at each viewport for navigation, login, console, network, link, image, '
-    + 'overflow and blocked-request problems. Run reference-free accessibility, layout, content, security and performance detectors, and compare '
-    + 'screenshots with an approved baseline. Optional declarative checks support real input steps and visible/hidden/text/url/count/attribute/'
-    + 'clipboard/title expectations; cite the PRD in "prd". Text scope all-visible checks each visible match; none is incomplete. Use waitFor and '
-    + 'minMatches to specify readiness. Optional response declarations observe an exact main-frame GET/POST/PUT/PATCH/DELETE and compare HTTP status and up to 20 JSON scalars in one body read; '
-    + 'GET may declare an exact public query; query values and bodies are not recorded. Missing, ambiguous or unreadable responses are incomplete. explore=true clicks limited controls to find interaction failures; it is off by default because it can '
-    + 'change state. HTTP policy may permit writes; GET and WebSocket may also cause side effects. '
-    + 'Findings are matched against past verdicts; returns report and issue paths.',
+  description: 'Test declared workspace pages and viewports using its login profile. Inspect navigation, login, console, network, links, images, '
+    + 'overflow and blocked requests; run accessibility, layout, content, security and performance detectors; compare an approved visual baseline. '
+    + 'Declarative checks use real input and page assertions; cite the PRD in prd. Text all-visible checks every visible match; none is incomplete. '
+    + 'Response checks passively compare main-frame GET/POST/PUT/PATCH/DELETE status and JSON scalars. pathParams and equalsFrom reference typed fields '
+    + 'of earlier completed responses within the check. No extra requests; observed values stay in memory. GET supports exact public queries. '
+    + 'Missing, ambiguous or unreadable evidence is incomplete. explore=true clicks limited controls and is off by default because it changes state. '
+    + 'HTTP policy may allow writes; GET and WebSocket may also have side effects. Apply past verdicts and return report and issue paths.',
   effects: ['browser', 'source-network', 'write-local'], scope: 'clone', idempotent: false, cost: 'heavy',
   input: {
     type: 'object', additionalProperties: false,

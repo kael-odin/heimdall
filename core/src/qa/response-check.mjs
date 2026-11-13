@@ -11,6 +11,7 @@ const STATES = {
   'size-unavailable': '无法核实响应大小', 'too-large': '响应超过读取上限',
   'body-unavailable': '响应正文无法读取', 'invalid-json': '响应不是有效 JSON',
   'field-missing': '声明的字段不存在或不是标量', 'json-mismatch': '字段值不符合声明',
+  'reference-unavailable': '较早响应的引用值或完成顺序无法核实', 'path-mismatch': '请求路径不符合较早响应的引用值',
 };
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 const fail = message => { const error = new Error(message); error.code = 'invalid_args'; throw error; };
@@ -33,22 +34,63 @@ function requestKey(method, value) {
   return `${method} ${url.href}`;
 }
 
+function fieldPath(value, label) {
+  if (!Array.isArray(value) || !value.length || value.length > 8
+    || Array.from(value).some(key => typeof key !== 'string' || !key || key.length > 100 || /[\x00-\x1f\x7f]/.test(key))) {
+    fail(`${label} 应为 1 到 8 个字段名`);
+  }
+  return [...value];
+}
+
+function responseReference(value, index, label) {
+  if (!object(value)) fail(`${label} 应为响应引用对象`);
+  keys(value, ['response', 'path'], label);
+  if (!Number.isInteger(value.response) || value.response < 0 || value.response >= index) fail(`${label}.response 只能引用较早的响应编号`);
+  return { response: value.response, path: fieldPath(value.path, `${label}.path`) };
+}
+
+const jsonChecks = spec => spec.json ? Array.isArray(spec.json) ? spec.json : [spec.json] : [];
+const referencesOf = spec => [...Object.values(spec.pathParams ?? {}), ...jsonChecks(spec).map(check => check.equalsFrom).filter(Boolean)];
+const parameterName = part => /^\{([A-Za-z_][A-Za-z0-9_.-]{0,63})\}$/.exec(part)?.[1];
+
+function pathsOverlap(a, b) {
+  const left = a.split('/'), right = b.split('/');
+  return left.length === right.length && left.every((part, index) => parameterName(part) || parameterName(right[index]) || part === right[index]);
+}
+
+function fieldOf(body, path) {
+  let value = body;
+  for (const key of path) {
+    if (!value || typeof value !== 'object' || !own(value, key)) return null;
+    value = value[key];
+  }
+  return value === null || ['string', 'number', 'boolean'].includes(typeof value) ? { value } : null;
+}
+
 export function normalizeResponses(raw, label) {
   if (raw === undefined) return [];
   if (!Array.isArray(raw) || !raw.length || raw.length > MAX_RESPONSES) fail(`${label}.responses 应为 1 到 ${MAX_RESPONSES} 项`);
-  const seen = new Set();
+  const seen = [];
   return raw.map((response, index) => {
     const item = `${label}.responses[${index}]`;
     if (!object(response)) fail(`${item} 应为对象`);
-    keys(response, ['method', 'origin', 'path', 'query', 'status', 'json'], item);
+    keys(response, ['method', 'origin', 'path', 'pathParams', 'query', 'status', 'json'], item);
     if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(response.method)) fail(`${item}.method 只能是 GET / POST / PUT / PATCH / DELETE`);
     let url;
     try { url = new URL(response.origin); } catch { fail(`${item}.origin 应为完整 HTTP 来源`); }
     if (typeof response.origin !== 'string' || response.origin.length > 500 || !['http:', 'https:'].includes(url.protocol) || url.username || url.password
       || url.pathname !== '/' || url.search || url.hash || /[?#]/.test(response.origin)) fail(`${item}.origin 只能包含协议、主机和端口`);
     const path = response.path;
+    const names = typeof path === 'string' ? path.split('/').map(parameterName).filter(Boolean) : [];
+    const plainPath = typeof path === 'string' ? path.split('/').map(part => parameterName(part) ? 'parameter' : part).join('/') : '';
     if (typeof path !== 'string' || path.length > 500 || !path.startsWith('/') || path.includes('//') || /[\\?#%\x00-\x20\x7f]/.test(path)
-      || new URL(path, 'http://example.invalid').pathname !== path) fail(`${item}.path 应为不含查询、编码或特殊路径段的精确路径`);
+      || /[{}]/.test(plainPath) || new URL(plainPath, 'http://example.invalid').pathname !== plainPath) fail(`${item}.path 应为不含查询、编码或特殊路径段的精确路径或完整段参数`);
+    let pathParams;
+    if (names.length || response.pathParams !== undefined) {
+      if (!names.length || names.length > 8 || new Set(names).size !== names.length || !object(response.pathParams)
+        || Object.keys(response.pathParams).length !== names.length || names.some(name => !own(response.pathParams, name))) fail(`${item}.pathParams 须与 1 到 8 个互不重复的完整段参数对应`);
+      pathParams = Object.fromEntries(names.map(name => [name, responseReference(response.pathParams[name], index, `${item}.pathParams.${name}`)]));
+    }
     let query;
     if (response.query !== undefined) {
       if (response.method !== 'GET' || !object(response.query)) fail(`${item}.query 只能用于公开 GET，且应为字符串键值对象`);
@@ -57,7 +99,7 @@ export function normalizeResponses(raw, label) {
         fail(`${item}.query 应包含 1 到 20 个无控制字符的字符串值`);
       }
       query = Object.fromEntries(pairs);
-      if (!isSafeReadOnlyGetUrl(responseUrl({ origin: url.origin, path, query }), url.origin)) fail(`${item}.query 不符合公开只读 URL 边界`);
+      if (!isSafeReadOnlyGetUrl(responseUrl({ origin: url.origin, path: plainPath, query }), url.origin)) fail(`${item}.query 不符合公开只读 URL 边界`);
     }
     const status = response.status === undefined ? 200 : response.status;
     if (!Number.isInteger(status) || status < 100 || status > 599) fail(`${item}.status 应为 HTTP 状态码`);
@@ -66,30 +108,30 @@ export function normalizeResponses(raw, label) {
       const checks = Array.isArray(response.json) ? response.json : [response.json];
       if (!checks.length || checks.length > 20) fail(`${item}.json 应为一个对象或 1 到 20 项断言数组`);
       const paths = new Set();
-      const normalized = Array.from(checks, (check, index) => {
-        const label = `${item}.json[${index}]`;
+      const normalized = Array.from(checks, (check, checkIndex) => {
+        const label = `${item}.json[${checkIndex}]`;
         if (!object(check)) fail(`${label} 应为对象`);
-        keys(check, ['path', 'equals'], label);
-        if (!Array.isArray(check.path) || !check.path.length || check.path.length > 8
-          || Array.from(check.path).some(key => typeof key !== 'string' || !key || key.length > 100 || /[\x00-\x1f\x7f]/.test(key))) {
-          fail(`${label}.path 应为 1 到 8 个字段名`);
-        }
+        keys(check, ['path', 'equals', 'equalsFrom'], label);
+        const path = fieldPath(check.path, `${label}.path`);
+        if (own(check, 'equals') === own(check, 'equalsFrom')) fail(`${label} 须选择 equals 或 equalsFrom`);
+        const equalsFrom = own(check, 'equalsFrom') ? responseReference(check.equalsFrom, index, `${label}.equalsFrom`) : null;
         const value = check.equals;
-        if (!own(check, 'equals') || !(value === null || ['string', 'number', 'boolean'].includes(typeof value))
-          || (typeof value === 'number' && !Number.isFinite(value)) || (typeof value === 'string' && value.length > 200)) {
+        if (!equalsFrom && (!(value === null || ['string', 'number', 'boolean'].includes(typeof value))
+          || (typeof value === 'number' && !Number.isFinite(value)) || (typeof value === 'string' && value.length > 200))) {
           fail(`${label}.equals 应为有限的标量值`);
         }
         const key = JSON.stringify(check.path);
         if (paths.has(key)) fail(`${label}.path 与其他 JSON 断言重复`);
         paths.add(key);
-        return { path: check.path, equals: value };
+        return { path, ...(equalsFrom ? { equalsFrom } : { equals: value }) };
       });
       json = Array.isArray(response.json) ? normalized : normalized[0];
     }
-    const key = requestKey(response.method, responseUrl({ origin: url.origin, path, query }));
-    if (seen.has(key)) fail(`${item} 与其他 responses 重复`);
-    seen.add(key);
-    return { method: response.method, origin: url.origin, path, status, ...(query ? { query } : {}), ...(json ? { json } : {}) };
+    const spec = { method: response.method, origin: url.origin, path, status, ...(pathParams ? { pathParams } : {}), ...(query ? { query } : {}), ...(json ? { json } : {}) };
+    const key = requestKey(spec.method, responseUrl({ ...spec, path: '/' }));
+    if (seen.some(previous => previous.key === key && pathsOverlap(previous.path, path))) fail(`${item} 与其他 responses 的路径重复或重叠`);
+    seen.push({ key, path });
+    return spec;
   });
 }
 
@@ -97,10 +139,39 @@ function headersOf(headers) {
   return Object.fromEntries(Object.entries(headers ?? {}).map(([key, value]) => [key.toLowerCase(), String(value)]));
 }
 
-function resultOf(entry) {
-  const state = entry.count > 1 ? 'ambiguous' : !entry.count ? 'missing' : entry.request.state;
-  const failedJsonIndex = ['field-missing', 'json-mismatch'].includes(state) ? entry.request.failedJsonIndex : null;
+function resultOf(entry, entries, results) {
+  let state = entry.count > 1 ? 'ambiguous' : !entry.count ? 'missing' : entry.request.state;
+  let failedJsonIndex;
+  const referenced = reference => {
+    const source = entries[reference.response];
+    if (results[reference.response]?.state !== 'matched' || !Number.isFinite(source.request?.finishedAt)
+      || !Number.isFinite(entry.request?.startedAt) || source.request.finishedAt > entry.request.startedAt) return null;
+    const field = source.request.values?.get(JSON.stringify(reference.path));
+    if (!field || typeof field.value === 'string' && field.value.length > 200 || typeof field.value === 'number' && !Number.isFinite(field.value)) return null;
+    return field;
+  };
+  if (state === 'matched' && entry.spec.pathParams) {
+    const values = new Map();
+    for (const [name, reference] of Object.entries(entry.spec.pathParams)) {
+      const field = referenced(reference);
+      if (!field || !['string', 'number'].includes(typeof field.value) || String(field.value) === '') { state = 'reference-unavailable'; break; }
+      values.set(name, field.value);
+    }
+    if (state === 'matched') try {
+      const path = entry.spec.path.replace(/\{([^}]+)\}/g, (_, name) => encodeURIComponent(String(values.get(name))));
+      if (path.length > 2048 || new URL(path, entry.spec.origin).pathname !== path) state = 'reference-unavailable';
+      else if (path !== entry.request.pathname) state = 'path-mismatch';
+    } catch { state = 'reference-unavailable'; }
+  }
+  if (state === 'matched') for (const [index, check] of jsonChecks(entry.spec).entries()) {
+    const actual = entry.request.values?.get(JSON.stringify(check.path));
+    if (!actual) { state = 'field-missing'; failedJsonIndex = index; break; }
+    const expected = check.equalsFrom ? referenced(check.equalsFrom) : { value: check.equals };
+    if (!expected) { state = 'reference-unavailable'; failedJsonIndex = index; break; }
+    if (actual.value !== expected.value) { state = 'json-mismatch'; failedJsonIndex = index; break; }
+  }
   return { method: entry.spec.method, origin: entry.spec.origin, path: entry.spec.path,
+    ...(entry.spec.pathParams ? { pathParams: entry.spec.pathParams } : {}),
     ...(entry.spec.query ? { queryParams: Object.keys(entry.spec.query).sort() } : {}),
     state, http: entry.request?.http ?? null,
     detail: (STATES[state] ?? STATES.pending) + (Number.isInteger(failedJsonIndex) ? `（JSON 断言 ${failedJsonIndex + 1}）` : ''),
@@ -120,9 +191,11 @@ export async function observeResponses(page, specs) {
   let mainFrame;
   try { mainFrame = (await session.send('Page.getFrameTree')).frameTree.frame.id; }
   catch { await session.detach().catch(() => {}); throw new Error('无法确认主页面'); }
-  const entries = specs.map(spec => ({ spec, count: 0, request: null }));
-  const byKey = new Map(entries.map(entry => [requestKey(entry.spec.method, responseUrl(entry.spec)), entry]));
+  const entries = specs.map(spec => ({ spec, count: 0, request: null, paths: new Map(jsonChecks(spec).map(check => [JSON.stringify(check.path), check.path])),
+    key: requestKey(spec.method, responseUrl(spec)) }));
+  for (const spec of specs) for (const reference of referencesOf(spec)) entries[reference.response].paths.set(JSON.stringify(reference.path), reference.path);
   const requests = new Map();
+  let closed = false;
   session.on('Page.frameNavigated', event => { if (!event.frame.parentId) mainFrame = event.frame.id; });
   session.on('Network.requestWillBeSent', event => {
     const previous = requests.get(event.requestId);
@@ -131,11 +204,18 @@ export async function observeResponses(page, specs) {
     let url;
     try { url = new URL(event.request.url); } catch { return; }
     if (event.request.url.includes('#') || (event.request.url.includes('?') && !url.searchParams.size)) return;
-    const entry = byKey.get(requestKey(event.request.method, url.href));
+    const entry = entries.find(entry => {
+      if (entry.spec.method !== event.request.method || entry.spec.origin !== url.origin) return false;
+      const parts = entry.spec.path.split('/'), actual = url.pathname.split('/');
+      if (parts.length !== actual.length || !parts.every((part, index) => parameterName(part) ? actual[index].length > 0 : part === actual[index])) return false;
+      const candidate = new URL(url); candidate.pathname = entry.spec.path;
+      return requestKey(event.request.method, candidate.href) === entry.key;
+    });
     if (!entry) return;
     entry.count = Math.min(2, entry.count + 1);
     if (entry.count > 1) return;
-    entry.request = { state: event.redirectResponse ? 'redirect' : 'pending', http: null, headers: {}, cached: false };
+    entry.request = { state: event.redirectResponse ? 'redirect' : 'pending', http: null, headers: {}, cached: false,
+      pathname: url.pathname, startedAt: event.timestamp };
     requests.set(event.requestId, entry);
   });
   session.on('Network.requestServedFromCache', event => {
@@ -154,42 +234,34 @@ export async function observeResponses(page, specs) {
     const entry = requests.get(event.requestId);
     if (!entry || entry.request.state !== 'pending') return;
     // Chromium may discard an already received 204's empty Fetch body as ERR_ABORTED.
-    const noContent = entry.request.http === 204 && entry.spec.status === 204 && !entry.spec.json && !entry.request.cached
+    const noContent = entry.request.http === 204 && entry.spec.status === 204 && !entry.paths.size && !entry.request.cached
       && event.canceled === true && event.errorText === 'net::ERR_ABORTED' && !event.corsErrorStatus && !event.blockedReason;
     entry.request.state = noContent ? 'matched' : 'request-failed';
   });
   session.on('Network.loadingFinished', event => {
     const entry = requests.get(event.requestId);
-    if (!entry || entry.request.state !== 'pending') return;
+    if (!entry || entry.request.state !== 'pending' || entry.request.bodyRequested) return;
     const req = entry.request, spec = entry.spec;
+    req.finishedAt = event.timestamp;
     if (req.http === null) { req.state = 'response-unavailable'; return; }
     if (req.cached) { req.state = 'cached'; return; }
     if (req.http !== spec.status) { req.state = 'http-mismatch'; return; }
-    if (!spec.json) { req.state = 'matched'; return; }
+    if (!entry.paths.size) { req.state = 'matched'; return; }
     if (req.headers['content-encoding'] && req.headers['content-encoding'].toLowerCase() !== 'identity') { req.state = 'encoded'; return; }
     if (!/^(?:application\/json|application\/[^;\s]+\+json)(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')) { req.state = 'not-json'; return; }
     if (!Number.isFinite(event.encodedDataLength) || event.encodedDataLength <= 0) { req.state = 'size-unavailable'; return; }
     if (event.encodedDataLength > MAX_BODY_BYTES) { req.state = 'too-large'; return; }
+    req.bodyRequested = true;
     session.send('Network.getResponseBody', { requestId: event.requestId }).then(result => {
+      if (closed || req.state !== 'pending') return;
       const length = result.base64Encoded ? Buffer.byteLength(result.body, 'base64') : Buffer.byteLength(result.body, 'utf8');
       if (length > MAX_BODY_BYTES) { req.state = 'too-large'; return; }
       const bytes = Buffer.from(result.body, result.base64Encoded ? 'base64' : 'utf8');
       let body;
       try { body = JSON.parse(bytes.toString('utf8')); } catch { req.state = 'invalid-json'; return; }
-      const checks = Array.isArray(spec.json) ? spec.json : [spec.json];
-      for (const [index, check] of checks.entries()) {
-        req.failedJsonIndex = index;
-        let value = body;
-        for (const key of check.path) {
-          if (!value || typeof value !== 'object' || !own(value, key)) { req.state = 'field-missing'; return; }
-          value = value[key];
-        }
-        if (!(value === null || ['string', 'number', 'boolean'].includes(typeof value))) { req.state = 'field-missing'; return; }
-        if (value !== check.equals) { req.state = 'json-mismatch'; return; }
-      }
-      delete req.failedJsonIndex;
+      req.values = new Map([...entry.paths].map(([key, path]) => [key, fieldOf(body, path)]));
       req.state = 'matched';
-    }).catch(() => { req.state = 'body-unavailable'; });
+    }).catch(() => { if (!closed && req.state === 'pending') req.state = 'body-unavailable'; });
   });
   return {
     async finish(timeout) {
@@ -197,8 +269,10 @@ export async function observeResponses(page, specs) {
       while (Date.now() < deadline && entries.some(entry => !entry.count || (entry.count === 1 && entry.request.state === 'pending'))) {
         await new Promise(resolve => setTimeout(resolve, 25));
       }
-      return entries.map(resultOf);
+      const results = [];
+      for (const entry of entries) results.push(resultOf(entry, entries, results));
+      return results;
     },
-    async close() { await session.detach().catch(() => {}); },
+    async close() { closed = true; for (const entry of entries) entry.request?.values?.clear(); await session.detach().catch(() => {}); },
   };
 }

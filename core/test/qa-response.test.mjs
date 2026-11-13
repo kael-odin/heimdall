@@ -133,6 +133,85 @@ test('response checks reject ambiguous or unsafe declarations', () => {
   assert.throws(() => normalizeCheck({ ...base, responses: [queried, { ...queried, query: { q: 'public', page: '2' } }] }), /response/i);
 });
 
+test('response references require earlier responses and non-overlapping path declarations', () => {
+  const source = { method: 'POST', origin: 'http://example.test', path: '/items', status: 201 };
+  const reference = { response: 0, path: ['id'] };
+  const target = { method: 'GET', origin: source.origin, path: '/items/{itemId}', status: 200,
+    pathParams: { itemId: reference }, json: { path: ['id'], equalsFrom: reference } };
+  const base = { title: 'Created item', path: '/', expect: [{ kind: 'title', equals: 'fixture' }] };
+  assert.deepEqual(normalizeCheck({ ...base, responses: [source, target] }).responses, [source, target]);
+  for (const invalid of [
+    { ...target, pathParams: undefined }, { ...target, pathParams: {} },
+    { ...target, pathParams: { extra: reference } },
+    { ...target, path: '/items/pre{itemId}' }, { ...target, path: '/items/{itemId}/{itemId}' },
+    ...[-1, 1, 2, 0.5, '0'].map(response => ({ ...target, pathParams: { itemId: { ...reference, response } } })),
+    { ...target, json: { path: ['id'], equals: 'hardcoded', equalsFrom: reference } },
+    { ...target, json: { path: ['id'], equalsFrom: { ...reference, path: [] } } },
+    { ...target, json: { path: ['id'], equalsFrom: { ...reference, response: 1 } } },
+  ]) assert.throws(() => normalizeCheck({ ...base, responses: [source, invalid] }), /response/i);
+  assert.throws(() => normalizeCheck({ ...base, responses: [source, target, { ...target, path: '/items/known', pathParams: undefined }] }), /response/i);
+});
+
+test('response bindings survive delayed CDP body reads and keep values out of results', async () => {
+  const origin = 'http://example.test', id = 'private-dynamic-id-do-not-record';
+  const reference = { response: 0, path: ['id'] };
+  const base = { title: 'Read created item', path: '/', expect: [{ kind: 'title', equals: 'fixture' }] };
+  const expected = { ok: 'matched', zero: 'matched', unicode: 'matched', null: 'matched', boolean: 'matched', query: 'matched',
+    'wrong-path': 'path-mismatch', 'wrong-body': 'json-mismatch', 'wrong-type': 'json-mismatch',
+    'bad-source': 'reference-unavailable', 'missing-field': 'reference-unavailable', 'source-duplicate': 'reference-unavailable',
+    'early-target': 'reference-unavailable', 'missing-finish-time': 'reference-unavailable', 'missing-start-time': 'reference-unavailable',
+    oversized: 'reference-unavailable', traversal: 'reference-unavailable', 'late-failure': 'reference-unavailable' };
+  for (const scenario of Object.keys(expected)) {
+    const sourceId = ['zero', 'wrong-type'].includes(scenario) ? 0 : scenario === 'unicode' ? '商品/一' : scenario === 'null' ? null
+      : scenario === 'boolean' ? false : scenario === 'oversized' ? 'x'.repeat(201) : scenario === 'traversal' ? '..' : id;
+    const scalarOnly = ['null', 'boolean'].includes(scenario);
+    const specs = normalizeCheck({ ...base, responses: [
+      { method: 'POST', origin, path: '/items', status: 201 },
+      { method: 'GET', origin, path: scalarOnly ? '/items/value' : '/items/{itemId}',
+        ...(scalarOnly ? {} : { pathParams: { itemId: reference } }), ...(scenario === 'query' ? { query: { page: '2', q: 'public' } } : {}), status: 200,
+        json: { path: ['id'], equalsFrom: reference } },
+    ] }).responses;
+    const session = new EventEmitter(), calls = [];
+    let release;
+    const sourceBody = new Promise(resolve => { release = resolve; });
+    session.send = async (method, args) => {
+      if (method === 'Page.getFrameTree') return { frameTree: { frame: { id: 'main' } } };
+      if (method === 'Network.getResponseBody') {
+        calls.push(args.requestId);
+        if (args.requestId === 'source') await sourceBody;
+        return { body: JSON.stringify(args.requestId === 'source' ? scenario === 'missing-field' ? {} : { id: sourceId }
+          : { id: scenario === 'wrong-body' ? 'different' : scenario === 'wrong-type' ? '0' : sourceId }), base64Encoded: false };
+      }
+      return {};
+    };
+    session.detach = async () => {};
+    const observer = await observeResponses({ context: () => ({ newCDPSession: async () => session }) }, specs);
+    session.emit('Network.requestWillBeSent', { requestId: 'source', frameId: 'main', timestamp: 1,
+      request: { method: 'POST', url: origin + '/items' } });
+    session.emit('Network.responseReceived', { requestId: 'source', response: { status: scenario === 'bad-source' ? 500 : 201, headers: { 'content-type': 'application/json' } } });
+    const completion = { requestId: 'source', timestamp: scenario === 'missing-finish-time' ? undefined : 2, encodedDataLength: 100 };
+    session.emit('Network.loadingFinished', completion);
+    session.emit('Network.loadingFinished', completion);
+    if (scenario === 'late-failure') session.emit('Network.loadingFailed', { requestId: 'source', errorText: 'net::ERR_FAILED' });
+    if (scenario === 'source-duplicate') session.emit('Network.requestWillBeSent', { requestId: 'source-again', frameId: 'main', timestamp: 2.1,
+      request: { method: 'POST', url: origin + '/items' } });
+    session.emit('Network.requestWillBeSent', { requestId: 'target', frameId: 'main',
+      timestamp: scenario === 'early-target' ? 1.5 : scenario === 'missing-start-time' ? undefined : 3,
+      request: { method: 'GET', url: origin + '/items/' + (scalarOnly ? 'value' : ['wrong-path', 'traversal'].includes(scenario) ? 'different' : encodeURIComponent(String(sourceId)))
+        + (scenario === 'query' ? '?q=public&page=2' : '') } });
+    session.emit('Network.responseReceived', { requestId: 'target', response: { status: 200, headers: { 'content-type': 'application/json' } } });
+    session.emit('Network.loadingFinished', { requestId: 'target', timestamp: 4, encodedDataLength: 100 });
+    const finished = observer.finish(500);
+    await new Promise(resolve => setImmediate(resolve));
+    release();
+    const results = await finished;
+    assert.equal(results[1].state, expected[scenario], scenario);
+    assert.ok(calls.length <= 2 && new Set(calls).size === calls.length);
+    assert.doesNotMatch(JSON.stringify(results), new RegExp(id));
+    await observer.close();
+  }
+});
+
 test('write response declarations observe once and never grant write permission', { timeout: 60_000 }, async () => {
   let method = 'PATCH';
   let status = 200;
