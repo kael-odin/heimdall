@@ -283,9 +283,9 @@ test('控制台 E2E：真引擎 + 真浏览器，跑一遍关键路径', {
       '部分视口 100% 不能混入 v2 最差视口均值');
     const partialDocs = page.locator('.wv-rows .wv-row:not(.wv-th)')
       .filter({ has: page.locator('.c-path[role="button"]').filter({ hasText: /^\/docs$/ }) })
-      .locator('.wv-score .partial');
+      .locator('.wv-score .partial').filter({ hasText: /^未完整测量$/ });
     await partialDocs.waitFor({ state: 'visible', timeout: 10_000 });
-    assert.equal(await page.locator('.wv-score .partial').count(), 1,
+    assert.equal(await partialDocs.count(), 1,
       '部分视口结果应在对应页面明确标为未完整测量');
     const queryLabels = await page.locator('.wv-rows .wv-row:not(.wv-th) .c-path').allInnerTexts();
     assert.ok(queryLabels.includes('/list?page=1') && queryLabels.includes('/list?page=2'),
