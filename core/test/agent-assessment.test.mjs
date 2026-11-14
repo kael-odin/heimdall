@@ -102,6 +102,16 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
         unknowns: ['authentication-permission-unknown', 'business-state-unknown', 'missing-response-body', 'unverified-write'],
       },
     });
+    put(join(site, 'live-export.json'), {
+      schema: 'heimdall.live-export/1', siteId: 'example.test', generatedAt: '2026-11-11T02:00:00.000Z',
+      status: 'passed', published: true, offline: true, strict: true, root: 'mirror', pages: 1,
+      blockingCount: 0, blockers: {}, healthReport: 'deliverable/.candidate-example.test-Ab1234/health.json',
+      browser: { checked: 1, failed: 0, untested: 0, totalPages: 1 },
+      coverage: { scope: 'recon-discovered', scopeLimited: false },
+    });
+    put(join(site, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), {
+      adapter: { serverEgress: 'not-tested', declaredRoutes: 1, exercisedRoutes: 1, untestedRoutes: 0 },
+    });
     put(join(qa, '.heimdall', 'qa.json'), {
       schema: 'heimdall.qa/1', project: 'assessment-test',
       sites: { web: { url: 'https://example.test/', pages: ['/'], environment: 'test' } },
@@ -145,6 +155,10 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.api.adapter.status, 'validated');
     assert.equal(env.result.api.scaffold.present, false);
     assert.equal(env.result.api.adapter.gapLedger.summary.uniqueGaps, 1);
+    assert.equal(env.result.clone.delivery.adapter.serverEgress, 'not-tested');
+    assert.equal(env.result.deliveryPlan.backendCompletion.adapterEgress.status, 'not-tested');
+    assert.ok(env.result.deliveryPlan.backendCompletion.unknowns.some(item => item.id === 'adapter-server-egress'));
+    assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'offline-egress').status, 'blocked');
     assert.equal(env.result.qa.latest.runId, runId);
     assert.equal(env.result.qa.latest.findings.status, 'observed');
     assert.equal(env.result.qa.latest.findings.total, 2);
@@ -343,6 +357,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
         { path: '/legacy.doc', kind: 'resource-link', references: 1, pages: ['/library/'] },
       ],
       readOnlyData: { status: 'ok', declared: 2, included: 1, missing: 1, binaryDeclared: 1, binaryIncluded: 0 },
+      adapter: { serverEgress: 'not-tested', declaredRoutes: 1, exercisedRoutes: 1, untestedRoutes: 0 },
     });
     assert.equal(assess().readiness.delivery.status, 'needs_export');
     const blocked = assess(outcome);
@@ -351,6 +366,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.clone.delivery.otherBlockers, 2);
     assert.deepEqual(blocked.clone.delivery.blockers, { unresolved: 1, browserFailed: 1, readOnlyDataMissing: 1 });
     assert.equal(blocked.clone.delivery.healthReport, outcome.healthReport);
+    assert.equal(blocked.clone.delivery.adapter.serverEgress, 'not-tested');
     assert.equal(blocked.clone.delivery.browserFailures[0].message, 'CodeMirror is not defined');
     assert.equal(blocked.clone.delivery.browserFailures[1].resourceType, 'script');
     assert.equal(assess({ ...outcome, healthReport: '/super-secret/health.json' }).clone.delivery.healthReport, null);

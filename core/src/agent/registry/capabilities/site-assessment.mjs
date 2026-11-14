@@ -208,10 +208,22 @@ function liveExportSummary(root, siteId) {
       ...(typeof rawReadOnlyData.binarySourceStatus === 'string'
         ? { binarySourceStatus: rawReadOnlyData.binarySourceStatus.slice(0, 32) } : {}),
     } : null;
+  const rawAdapter = health?.adapter;
+  const adapter = rawAdapter && typeof rawAdapter === 'object' && !Array.isArray(rawAdapter)
+    ? {
+      serverEgress: ['not-tested', 'verified', 'blocked', 'failed'].includes(rawAdapter.serverEgress)
+        ? rawAdapter.serverEgress : 'unknown',
+      ...(Number.isSafeInteger(rawAdapter.declaredRoutes) && rawAdapter.declaredRoutes >= 0
+        ? { declaredRoutes: rawAdapter.declaredRoutes } : {}),
+      ...(Number.isSafeInteger(rawAdapter.exercisedRoutes) && rawAdapter.exercisedRoutes >= 0
+        ? { exercisedRoutes: rawAdapter.exercisedRoutes } : {}),
+      ...(Number.isSafeInteger(rawAdapter.untestedRoutes) && rawAdapter.untestedRoutes >= 0
+        ? { untestedRoutes: rawAdapter.untestedRoutes } : {}),
+    } : null;
   return {
     status: source.status, generatedAt: new Date(source.generatedAt).toISOString(), report, healthReport,
     offline: source.offline, strict: source.strict, root: source.root === 'mirror' ? 'mirror' : 'landing',
-    published: source.published, pages: source.pages,
+    published: source.published, pages: source.pages, adapter,
     blockingCount: source.blockingCount, blockers,
     otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
     browser, browserFailures, binaryDownloadGaps, readOnlyData, coverage: {
@@ -542,13 +554,14 @@ function repairTasksFromGapLedger(siteId, gapLedger) {
   return tasks;
 }
 
-function buildBackendCompletionTask(siteId, api) {
+function buildBackendCompletionTask(siteId, api, delivery = null) {
   const observed = api.contract.status === 'observed';
   const endpoints = api.contract.observedEndpoints ?? [];
   const responseShapes = endpoints.flatMap(endpoint => endpoint.responseShapes);
   const shapedResponses = responseShapes.filter(shape => shape.withSchema);
   const hasWrite = endpoints.some(endpoint => endpoint.method !== 'GET');
   const validationStatus = api.adapter.validation?.status ?? 'not-validated';
+  const adapterServerEgress = delivery?.adapter?.serverEgress ?? 'unknown';
   const gapLedger = api.adapter.gapLedger;
   const scaffold = api.scaffold ?? { status: 'missing', present: false, path: null };
   const repairTasks = Array.isArray(scaffold.check?.repairTasks) ? [...scaffold.check.repairTasks] : [];
@@ -606,6 +619,10 @@ function buildBackendCompletionTask(siteId, api) {
       check: scaffold.check,
     },
     repairTasks,
+    adapterEgress: {
+      status: adapterServerEgress,
+      basis: adapterServerEgress === 'not-tested' || adapterServerEgress === 'verified' ? 'observed' : 'unknown',
+    },
     gapLedger,
     unknowns: [
       { id: 'authentication', basis: 'unknown', detail: '哪些端点强制认证、凭据如何刷新和失效，尚未由摘要证明。' },
@@ -616,6 +633,12 @@ function buildBackendCompletionTask(siteId, api) {
       ...(gapLedger?.summary?.uniqueGaps > 0 ? [{ id: 'runtime-gaps', basis: 'observed', detail: `运行时记录了 ${gapLedger.summary.uniqueGaps} 个脱敏请求缺口，需要补路由或补录制。` }] : []),
       ...(gapLedger?.summary?.missingResponseBodies > 0 ? [{ id: 'missing-response-body', basis: 'observed', detail: `${gapLedger.summary.missingResponseBodies} 条已声明路由没有可回放的响应体。` }] : []),
       ...(gapLedger?.summary?.unverifiedWrites > 0 ? [{ id: 'unverified-write', basis: 'unknown', detail: `${gapLedger.summary.unverifiedWrites} 条写入路由只有回放证据，尚未证明真实写入和清理。` }] : []),
+      ...(api.adapter.present && adapterServerEgress !== 'verified' ? [{
+        id: 'adapter-server-egress', basis: adapterServerEgress === 'not-tested' ? 'observed' : 'unknown',
+        detail: adapterServerEgress === 'not-tested'
+          ? '适配器服务端外联尚未在无外联部署中验证；留出回放通过不等于独立部署安全。'
+          : '没有可用的适配器服务端外联证据。',
+      }] : []),
     ],
     humanJourneys,
     suggestedLocalFiles: [
@@ -642,7 +665,9 @@ function buildBackendCompletionTask(siteId, api) {
         { id: 'adapter-gap-ledger', status: gapLedger ? (gapLedger.summary.uniqueGaps ? 'open' : 'observed') : 'blocked', basis: gapLedger ? 'observed' : 'unknown', condition: '运行适配器并读取 /__heimdall/adapter-gaps，确认没有新的未声明路径或未覆盖查询参数。' },
         { id: 'backend-scaffold-check', status: api.scaffold?.check?.status ?? 'not_run', basis: api.scaffold?.check?.status && api.scaffold.check.status !== 'not_run' ? 'observed' : 'unknown', condition: '运行脚手架 npm run check，确认观察路由覆盖、状态码、MIME、响应结构和缺口账本都没有未完成项。' },
         { id: 'state-consistency', status: 'blocked', basis: 'unknown', condition: '同一业务流程中操作后再次读取/刷新仍保持预期状态。' },
-        { id: 'offline-egress', status: 'blocked', basis: 'unknown', condition: '最终适配器在无外联部署中通过断网浏览器验收。' },
+        { id: 'offline-egress', status: adapterServerEgress === 'verified' ? 'passed' : 'blocked',
+          basis: adapterServerEgress === 'verified' || adapterServerEgress === 'not-tested' ? 'observed' : 'unknown',
+          condition: '最终适配器在无外联部署中通过断网浏览器验收。' },
       ],
       humanChecks: humanJourneys.map(journey => ({ id: journey.id, basis: journey.basis, requiresHumanApproval: true, condition: journey.goal })),
     },
@@ -660,7 +685,7 @@ function buildBackendCompletionTask(siteId, api) {
 
 function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace }) {
   const items = [];
-  const backendCompletion = buildBackendCompletionTask(siteId, api);
+  const backendCompletion = buildBackendCompletionTask(siteId, api, clone.delivery);
   const add = (item) => items.push({
     evidence: [],
     ...(item.action ? { action: item.action } : {}),
