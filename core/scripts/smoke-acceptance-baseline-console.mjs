@@ -16,7 +16,7 @@ const OUT = resolve(process.argv[2] ?? join(CORE, 'workspace', '_runs', 'accepta
 const dataRoot = mkdtempSync(join(tmpdir(), 'heimdall-acceptance-baseline-'));
 const acceptanceRoot = join(dataRoot, 'acceptance'), token = 'acceptance-baseline-local-fixture';
 const headers = { 'content-type': 'application/json', 'x-heimdall-token': token };
-const checks = {}, apiCases = [], fixtureRequests = [], errors = [], expectedResourceErrors = [], browserPosts = [];
+const checks = {}, apiCases = [], fixtureRequests = [], errors = [], expectedResourceErrors = [], browserPosts = [], browserPostByRequest = new Map();
 const digest = value => createHash('sha256').update(value).digest('hex');
 const delay = ms => new Promise(ready => setTimeout(ready, ms));
 const save = (name, value) => writeFileSync(join(OUT, name), typeof value === 'string' ? value : JSON.stringify(value, null, 2) + '\n');
@@ -124,7 +124,14 @@ try {
     if (/409|502|ERR_FAILED|net::ERR_FAILED/.test(message.text())) expectedResourceErrors.push(message.text()); else errors.push(message.text());
   });
   page.on('request', request => {
-    if (request.method() === 'POST' && request.url().includes('/baseline-')) browserPosts.push({ url: new URL(request.url()).pathname, body: request.postDataJSON() });
+    if (request.method() !== 'POST' || !request.url().includes('/baseline-')) return;
+    const entry = { url: new URL(request.url()).pathname, body: request.postDataJSON(), status: null, response: null };
+    browserPosts.push(entry); browserPostByRequest.set(request, entry);
+  });
+  page.on('response', async response => {
+    const entry = browserPostByRequest.get(response.request()); if (!entry) return;
+    entry.status = response.status();
+    try { entry.response = await response.json(); } catch { entry.response = null; }
   });
   await page.goto(base, { waitUntil: 'networkidle' });
   assert.match(await page.title(), /Heimdall/i); assert.equal(new URL(page.url()).origin, base);
@@ -335,7 +342,7 @@ try {
     reviewTargetRequests: fixtureRequests.length - requestsAtReview, newRunCount: runDirectories().length - directoriesAtReview.length };
   save('browser-checks.json', result); console.log(JSON.stringify(result, null, 2));
 } catch (error) {
-  mkdirSync(OUT, { recursive: true }); save('failure.json', { status: 'failed', message: error.message, checks, errors, apiCases });
+  mkdirSync(OUT, { recursive: true }); save('failure.json', { status: 'failed', message: error.message, checks, errors, expectedResourceErrors, apiCases, browserPosts });
   if (page) { await page.screenshot({ path: join(OUT, 'failure.png'), fullPage: false }).catch(() => {}); save('failure-dom.txt', await page.locator('body').innerText().catch(() => 'unavailable')); }
   throw error;
 } finally {

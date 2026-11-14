@@ -51,8 +51,8 @@
     },
     {
       "name": "../verify/compare.mjs",
-      "lfSha256": "59b432e481e0f62a4755b30362172ad0fa1d49bdc349af094255eb81b597ea68",
-      "crlfSha256": "ec57ff3bdb7865d1756f3321548136bcd58f9eb6674b8653ed1d4a757036bdb7"
+      "lfSha256": "db442e15158bddf4e3716eb5717cfc8906b87d4687512150c10829d16ebf1369",
+      "crlfSha256": "ecbac0a8bda4c585ce1b0549ff25dba396d31de3751427803d03428ee1b06ce3"
     }
   ]
 }

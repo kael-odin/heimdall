@@ -39,6 +39,9 @@ export const SUPPORTED_BROWSER_VERIFIERS_V1 = Object.freeze([
   '270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2',
   '7066c543d13122ca37cd28aa061fbd7ba5f0dcecf4c4f67959759aaef2bf47a0',
   '3fa0303bfc4813bbddae1744ba8675a809fbc12003decdc76304d0cf0b45b5f5',
+  // Reviewed oversized-page sampling verifier; Browser source semantics remain unchanged.
+  '55b87d3783441d9f04defc2c5bbb4b95728fcaa18752044eef4c99241f5bc64e',
+  '3db03d17818b11182bdbbb5e1374f9305055392a934c0d21a73b57372db25de8',
 ]);
 
 const L = BROWSER_CANDIDATE_LIMITS_V1;

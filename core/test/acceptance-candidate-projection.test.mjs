@@ -255,6 +255,8 @@ test('verifier support is an exact reviewed set and real current completion reta
     '270251e1ca417383ee019a456d1a103ec461c57a9a8c661fdc9ff562cac515f2',
     '7066c543d13122ca37cd28aa061fbd7ba5f0dcecf4c4f67959759aaef2bf47a0',
     '3fa0303bfc4813bbddae1744ba8675a809fbc12003decdc76304d0cf0b45b5f5',
+    '55b87d3783441d9f04defc2c5bbb4b95728fcaa18752044eef4c99241f5bc64e',
+    '3db03d17818b11182bdbbb5e1374f9305055392a934c0d21a73b57372db25de8',
   ];
   assert.deepEqual(SUPPORTED_SPEC_VERIFIERS_V1, reviewed);
   const files = ['schema.mjs', 'urls.mjs', 'runner.mjs', 'report.mjs', 'spec-schema.mjs',
@@ -270,13 +272,13 @@ test('verifier support is an exact reviewed set and real current completion reta
   assert.equal(manifest.reviewedParent, '007760ed80019b4a5369ab284ea7ba734f18d0d2');
   assert.equal(manifest.lfFingerprint, reviewed[4]); assert.equal(manifest.crlfFingerprint, reviewed[5]);
   assert.equal(navigation.parent, '78be297e2730ecbaf524fc863c688f647e2b3d49');
-  assert.equal(fingerprint(lf), reviewed[6]); assert.equal(navigation.lfFingerprint, reviewed[6]);
-  assert.equal(fingerprint(lf.map(source => source.replaceAll('\n', '\r\n'))), reviewed[7]);
+  assert.equal(fingerprint(lf), reviewed[8]); assert.equal(navigation.lfFingerprint, reviewed[6]);
+  assert.equal(fingerprint(lf.map(source => source.replaceAll('\n', '\r\n'))), reviewed[9]);
   assert.equal(navigation.crlfFingerprint, reviewed[7]);
   assert.deepEqual(manifest.files.map(entry => entry.name === 'runner.mjs' ? navigation.runner : entry), [...files, '../verify/compare.mjs'].map((name, index) => ({ name,
     lfSha256: sha(lf[index]), crlfSha256: sha(lf[index].replaceAll('\n', '\r\n')) })));
   const actual = fingerprint(sources);
-  assert.ok([reviewed[6], reviewed[7]].includes(actual), 'mixed or unreviewed checkout bytes need explicit review');
+  assert.ok([reviewed[8], reviewed[9]].includes(actual), 'mixed or unreviewed checkout bytes need explicit review');
   const source = await materialize(t);
   assert.equal(source.snapshot.report.verifierFingerprint, actual);
   assert.equal(project(source).projection.verifierFingerprint, actual);
