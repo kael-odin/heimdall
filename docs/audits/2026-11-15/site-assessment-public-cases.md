@@ -20,7 +20,7 @@ node core/src/cli.mjs site-assessment rfc-editor.org --json
 | 离线交付 | `blocked` |
 | 浏览器失败 | 12 条候选失败摘要 |
 | 二进制缺口 | 2 个 PDF 下载链接，需要人工授权审核 |
-| SEO/GEO | SEO 90，GEO 71，sitemap `partial` |
+| SEO/GEO | SEO 90（评分 v13、测量 v8），GEO 71（方法 v8），sitemap `partial` |
 | 后端与 QA | API `missing`，QA `not_configured` |
 
 这次复核证明 `site-assessment` 能把视觉、离线交付、SEO/GEO 范围、二进制分发、API 和 QA 缺口放在同一份交付计划中。它没有把 6 页视觉验证解释成后端完成，也没有把页面级 GEO 证据解释成完整站点覆盖。
