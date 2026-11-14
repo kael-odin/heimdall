@@ -171,6 +171,12 @@ export function readHttpChecks(path) {
   };
 }
 
+export function formatHttpCheckFailure(phase, check, detail) {
+  const safePhase = phase === 'afterRestart' ? 'afterRestart' : 'beforeRestart';
+  const safeId = typeof check?.id === 'string' && /^[a-z0-9_-]{1,64}$/i.test(check.id) ? check.id : 'unknown';
+  return `HTTP check failed [${safePhase}]: ${safeId}${detail ? ` (${detail})` : ''}`;
+}
+
 function safeRelativeBundle(bundleDir) {
   const rel = relative(DATA_ROOT, bundleDir).replaceAll('\\', '/');
   if (!rel || rel.startsWith('../') || rel.includes('/../') || !rel.startsWith('deliverable/')) {
@@ -241,25 +247,26 @@ const readJsonPointer = (value, pointer) => {
 };
 const runHttpChecks = async checks => {
   const results = [];
+  const fail = (check, detail) => { throw new Error((${formatHttpCheckFailure.toString()})('${phase}', check, detail)); };
   for (const check of checks) {
     const body = check.body === undefined || check.method === 'GET' || check.method === 'HEAD'
       ? undefined : typeof check.body === 'string' ? check.body : JSON.stringify(check.body);
     const result = await request(check.path, {
       method: check.method, headers: check.headers, ...(body === undefined ? {} : { body }),
     });
-    if (result.status !== check.expect.status) throw new Error('HTTP check failed: ' + check.id);
+    if (result.status !== check.expect.status) fail(check, 'status expected ' + check.expect.status + ', got ' + result.status);
     if (check.expect.contentType && !result.contentType.toLowerCase().startsWith(check.expect.contentType.toLowerCase())) {
-      throw new Error('HTTP check failed: ' + check.id);
+      fail(check, 'content-type assertion failed');
     }
     if (check.expect.textIncludes && !result.text.includes(check.expect.textIncludes)) {
-      throw new Error('HTTP check failed: ' + check.id);
+      fail(check, 'text assertion failed');
     }
     if (Array.isArray(check.expect.json)) {
       let value;
-      try { value = JSON.parse(result.text); } catch { throw new Error('HTTP check failed: ' + check.id); }
+      try { value = JSON.parse(result.text); } catch { fail(check, 'response is not valid JSON'); }
       for (const assertion of check.expect.json) {
         if (JSON.stringify(readJsonPointer(value, assertion.pointer)) !== JSON.stringify(assertion.equals)) {
-          throw new Error('HTTP check failed: ' + check.id);
+          fail(check, 'JSON pointer ' + assertion.pointer + ' mismatch');
         }
       }
     }

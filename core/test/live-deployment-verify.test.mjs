@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readHttpChecks, validateDeploymentReport, verifyBundleChecksums } from '../src/live/deployment-verify.mjs';
+import { formatHttpCheckFailure, readHttpChecks, validateDeploymentReport, verifyBundleChecksums } from '../src/live/deployment-verify.mjs';
 
 test('deployment evidence requires network-none, runtime checks, and the current bundle checksum', () => {
   const report = {
@@ -57,4 +57,13 @@ test('HTTP deployment checks keep write assertions before restart and readback a
     assert.match(plan.sha256, /^[a-f0-9]{64}$/);
     assert.throws(() => readHttpChecks(join(root, 'missing.json')), /HTTP 检查文件/);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('HTTP deployment failures identify the phase and safe assertion detail', () => {
+  const check = { id: 'readback', method: 'GET', path: '/api/items', expect: { status: 200 } };
+  assert.equal(formatHttpCheckFailure('beforeRestart', check, 'status expected 200, got 500'),
+    'HTTP check failed [beforeRestart]: readback (status expected 200, got 500)');
+  assert.equal(formatHttpCheckFailure('afterRestart', { id: 'write', expect: {} }, 'JSON pointer /id mismatch'),
+    'HTTP check failed [afterRestart]: write (JSON pointer /id mismatch)');
+  assert.doesNotMatch(formatHttpCheckFailure('beforeRestart', check, 'text assertion failed'), /fixture|token|secret/i);
 });
