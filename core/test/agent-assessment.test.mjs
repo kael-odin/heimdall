@@ -190,6 +190,13 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.deepEqual(env.result.qa.metrics.failures.byKind, {});
     assert.equal(env.result.qa.metrics.oracle.status, 'not_provided');
     assert.equal(env.result.qa.metrics.decision.primaryAction, 'collect-more-evidence');
+    const qaDecision = env.result.deliveryPlan.items.find(item => item.id === 'qa-metrics-decision');
+    assert.equal(qaDecision.status, 'open');
+    assert.equal(qaDecision.action.tool, 'heimdall_qa_metrics');
+    assert.equal(qaDecision.action.args.site, 'web');
+    assert.equal(qaDecision.verify.tool, 'heimdall_qa_metrics');
+    assert.match(qaDecision.detail, /正常样本|oracle/);
+    assert.equal(env.result.readiness.qa.nextAction.tool, 'heimdall_qa_findings');
     assert.ok(env.result.claims.verified.includes('api.adapter_holdout:1'));
     assert.ok(env.result.unknowns.some(item => item.id === 'auth-permissions-state-unknown'));
     assert.equal(env.result.deliveryPlan.schema, 'heimdall.site-delivery-plan/1');
@@ -666,6 +673,7 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     assert.equal(env.result.readiness.geo.status, 'ready');
     assert.equal(env.result.readiness.backend.status, 'needs_observation');
     assert.equal(env.result.readiness.qa.status, 'ready');
+    assert.equal(env.result.readiness.qa.nextAction.tool, 'heimdall_qa_metrics');
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.status === 'open'));
     for (const geo of [
       undefined,

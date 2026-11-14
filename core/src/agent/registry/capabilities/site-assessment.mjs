@@ -16,6 +16,7 @@ import { qaFindingDigest, safeSummaryText } from '../../qa-finding-summary.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
 import { listRuns, openWorkspace, relPath, runsDir } from '../../../qa/run.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
+import { qaMetricsDecisionTask } from './qa-metrics.mjs';
 import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { readCurrentScore } from '../../../score-status.mjs';
 import { validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums } from '../../../live/deployment-verify.mjs';
@@ -1256,6 +1257,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       repairTasks: qa.latest.findings.items.map(finding => qaRepairTask(finding, qa, qaWorkspace)),
     });
   }
+  if (qa.status === 'observed' && qa.metrics?.decision) add(qaMetricsDecisionTask(qa.metrics, { workspace: qaWorkspace, site: qa.site?.name }));
 
   const counts = {
     total: items.length,
@@ -1308,7 +1310,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     : seo.geo.status !== 'complete' || sitemapIncomplete || seo.geo.actionItems ? 'needs_follow_up' : 'ready';
   const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
   const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'backend-scaffold-check', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
-  const qaItem = item('qa-workspace', 'qa-first-run', 'qa-incomplete', 'qa-findings');
+  const qaItem = item('qa-workspace', 'qa-first-run', 'qa-incomplete', 'qa-findings', 'qa-metrics-decision');
   const qaReady = qa.status === 'observed' && qa.latest?.completeness?.status === 'complete' && qa.latest.summary.fileable === 0;
   return {
     schema: 'heimdall.site-readiness/1',

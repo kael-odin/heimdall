@@ -61,6 +61,10 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 
 `qa.metrics` 只是对脱敏运行摘要的再计算：`runtime` 是 QA 运行本身的耗时，`failures` 是导航、检测器、检查点和环境阻断等分类；没有完整报警标签时，`alarms.falsePositiveRate` 和误报占比会明确不可计算，没有定向 oracle 时 `oracle` 也不会被假造。`decision.detectorExpansion=blocked` 表示证据不够，不表示检测器已经通过。
 
+读取到匹配站点的 QA 运行并成功计算指标后，`deliveryPlan.items` 还会出现 `qa-metrics-decision`。它与 `heimdall_qa_metrics` 返回的 `followUp` 共用同一实现：`collect-more-evidence` 要补完整测量、报警裁决和定向 oracle；`fix-existing-detectors` 先修已有误报边界；`add-business-check` 把漏报领域写成声明式业务检查点；`consider-generic-detector` 只进入人工评估；`hold` 表示保持观察。已有未完成运行或待裁决发现仍优先处理，不会因指标任务而消失。
+
+任务的 `action` 用于补证或修复后的指标复算，不能只重跑统计就宣称修复。`verify` 要求证据完整，修检测器还要排除次级误报待办，业务漏报还要核对定向样本；通用检测器评估使用人工裁决。普通 `run.json` 不含完整人工 oracle，通常仍为 `collect-more-evidence`；需要用 `heimdall_qa_metrics` 的 `file` 或 `data` 提供经复核的脱敏聚合。完整且无可提单问题的最近运行仍可 `readiness.qa=ready`，这与检测器泛化证据不足是两种结论。
+
 - `decision.stage=capture`：先补镜像，不能直接进入重建或交付；
 - `decision.stage=ai_review_with_open_actions`：已有证据，可以让 AI 处理明确的补证、修复或复测动作；
 - `decision.stage=human_review`：认证、权限、状态机、业务副作用或 QA 前置条件不能由摘要自动证明，必须由有授权的人补测；

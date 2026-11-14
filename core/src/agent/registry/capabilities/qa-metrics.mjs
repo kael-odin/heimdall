@@ -9,6 +9,7 @@ import { extname, resolve } from 'node:path';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
 import { listRuns, openWorkspace } from '../../../qa/run.mjs';
+import { safeSummaryText } from '../../qa-finding-summary.mjs';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -42,6 +43,55 @@ function summaryOf(result) {
 }
 
 const WORKSPACE = { type: 'string', minLength: 1, maxLength: 2000, description: '包含 .heimdall/qa.json 的测试工作区' };
+
+export function qaMetricsDecisionTask(metrics, { file, workspace, site } = {}) {
+  const source = metrics?.decision;
+  const followUps = {
+    'collect-more-evidence': ['QA 指标证据还不足',
+      '补齐完整测量、报警裁决和定向 oracle，再用脱敏聚合重新统计；有穷举正常样本时才计算经典 FPR。',
+      'result.alarms.available === true && result.oracle.status === "complete" && result.decision.detectorExpansion !== "blocked"'],
+    'fix-existing-detectors': ['先修正已有 QA 检测器',
+      '先收窄已有检测器的误报边界，用同一批样本复测，再重新统计；不增加通用检测器。',
+      'result.decision.detectorExpansion !== "blocked" && result.decision.primaryAction !== "fix-existing-detectors" && !result.decision.secondaryActions.includes("fix-existing-detectors")'],
+    'add-business-check': ['把漏报领域写成业务检查点',
+      '按已确认的需求把漏报领域写成声明式业务检查点，用同一批定向样本复测，再重新统计。',
+      'result.oracle.status === "complete" && result.decision.metrics.targeted.falseNegative === 0 && result.decision.detectorExpansion !== "blocked"'],
+    'consider-generic-detector': ['通用检测器需要人工评估',
+      '人工核对跨项目独立性和完整样本，再决定是否新增通用检测器；该任务不自动修改检测器。', null],
+    hold: ['保持现有 QA 检测器',
+      '当前样本没有达到新增通用检测器的门槛；保持观察，不把它当成零漏报证明。',
+      'result.decision.primaryAction === "hold"'],
+  };
+  const primaryAction = Object.hasOwn(followUps, source?.primaryAction) ? source.primaryAction : 'unknown';
+  const [title, detail, condition] = followUps[primaryAction] ?? ['QA 指标决策不可用',
+    '先重新统计脱敏 QA 指标并核对决策值，不要扩展检测器。',
+    'result.decision.primaryAction 属于受支持的决策值'];
+  const args = { ...(file ? { file } : workspace ? { workspace } : {}), ...(site ? { site } : {}) };
+  const runArgs = workspace ? { workspace, ...(site ? { site } : {}) } : {};
+  const detectorExpansion = ['blocked', 'do-not-add', 'consider'].includes(source?.detectorExpansion) ? source.detectorExpansion : 'unknown';
+  const manual = primaryAction === 'unknown' || primaryAction === 'consider-generic-detector';
+  const action = primaryAction === 'hold' || primaryAction === 'consider-generic-detector' || primaryAction === 'unknown' ? null :
+    primaryAction === 'fix-existing-detectors'
+      ? { tool: 'heimdall_qa_run', args: { ...runArgs, detect: true }, reason: '先修正已有检测器边界，再用同一批次复测' }
+      : primaryAction === 'add-business-check'
+        ? { tool: 'heimdall_qa_run', args: { ...runArgs, checks: [] }, reason: '把漏报领域写成声明式业务检查点，再重跑 QA' }
+        : { tool: 'heimdall_qa_metrics', args, reason: detail };
+  return {
+    id: 'qa-metrics-decision', kind: 'qa_metrics_decision', basis: primaryAction === 'unknown' ? 'unknown' : 'inferred',
+    status: primaryAction === 'hold' ? 'ready' : manual ? 'blocked' : 'open', title, detail,
+    evidence: [`primaryAction:${primaryAction}`, `detectorExpansion:${detectorExpansion}`],
+    decision: {
+      primaryAction, detectorExpansion,
+      secondaryActions: [...new Set((Array.isArray(source?.secondaryActions) ? source.secondaryActions : [])
+        .filter(action => ['collect-generic-samples', 'fix-existing-detectors', 'add-business-check'].includes(action)))],
+      reasons: (Array.isArray(source?.reasons) ? source.reasons : []).filter(reason => typeof reason === 'string')
+        .slice(0, 4).map(reason => safeSummaryText(reason, 360)),
+    },
+    action: action ? { ...action, canAutoRun: false, requiresHumanApproval: manual } : null,
+    verify: condition ? { tool: 'heimdall_qa_metrics', args, condition }
+      : { method: 'human_review', condition: '记录跨项目样本独立性和是否新增通用检测器的人工裁决。' },
+  };
+}
 
 export default {
   id: 'qa_metrics',
@@ -82,16 +132,11 @@ export default {
     catch (error) { throw new CapabilityError('invalid_args', error.message); }
     result.source = { kind: source };
     if (args.site !== undefined) result.source.site = args.site;
-    const nextActions = [];
-    if (result.decision.primaryAction === 'collect-more-evidence') {
-      nextActions.push(nextAction('heimdall_qa_metrics', null, '补齐标签、定向样本和失败证据后重新统计'));
-    }
-    if (result.decision.secondaryActions.includes('fix-existing-detectors') || result.decision.primaryAction === 'fix-existing-detectors') {
-      nextActions.push(nextAction('heimdall_qa_run', { detect: true }, '先修正已有检测器边界，再用同一批次复测'));
-    }
-    if (result.decision.secondaryActions.includes('add-business-check') || result.decision.primaryAction === 'add-business-check') {
-      nextActions.push(nextAction('heimdall_qa_run', { checks: [] }, '把业务规则写成声明式检查点，再复测漏报'));
-    }
+    result.followUp = qaMetricsDecisionTask(result, args);
+    const nextActions = [result.followUp, ...result.decision.secondaryActions
+      .filter(action => action === 'fix-existing-detectors' || action === 'add-business-check')
+      .map(primaryAction => qaMetricsDecisionTask({ decision: { ...result.decision, primaryAction } }, args))]
+      .filter(task => task.action).map(task => nextAction(task.action.tool, task.action.args, task.action.reason));
     return ok(result, { summary: summaryOf(result), nextActions });
   },
 };

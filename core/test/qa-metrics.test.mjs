@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { analyzeQaMetrics } from '../src/qa/metrics.mjs';
 import { invoke } from '../src/agent/registry/invoke.mjs';
+import { qaMetricsDecisionTask } from '../src/agent/registry/capabilities/qa-metrics.mjs';
 
 async function xspark() {
   return JSON.parse(await readFile(new URL('../../docs/audits/2026-11-05/xspark-pilot-metrics.json', import.meta.url)));
@@ -104,5 +105,38 @@ test('MCP/HTTP shared invocation returns the same aggregate result and no raw in
   assert.equal(env.ok, true);
   assert.equal(env.result.schema, 'heimdall.qa-metrics/1');
   assert.equal(env.result.alarms.falseDiscoveryRate.percent, 53.52);
+  assert.equal(env.result.followUp.decision.primaryAction, 'collect-more-evidence');
+  assert.deepEqual(env.result.followUp.decision.secondaryActions, ['add-business-check', 'fix-existing-detectors']);
+  assert.match(env.result.followUp.verify.condition, /detectorExpansion !== "blocked"/);
   assert.equal(JSON.stringify(env).includes(data.measurementCommit), false);
+});
+
+test('QA decision follow-ups keep every action bounded and require complete evidence to close', () => {
+  for (const [primaryAction, status] of [
+    ['collect-more-evidence', 'open'], ['fix-existing-detectors', 'open'], ['add-business-check', 'open'],
+    ['consider-generic-detector', 'blocked'], ['hold', 'ready'], ['token=private-value', 'blocked'],
+  ]) {
+    const task = qaMetricsDecisionTask({ decision: {
+      primaryAction, detectorExpansion: 'token=private-value',
+      secondaryActions: ['fix-existing-detectors', 'token=private-value', 'fix-existing-detectors'],
+      reasons: [null, 'Bearer abcdefghijkl', ...Array(5).fill('原因')],
+    } }, { file: 'metrics.json', data: { secret: 'private-value' } });
+    assert.equal(task.status, status);
+    assert.equal(task.decision.detectorExpansion, 'unknown');
+    assert.deepEqual(task.decision.secondaryActions, ['fix-existing-detectors']);
+    assert.equal(task.decision.reasons.length, 4);
+    assert.doesNotMatch(JSON.stringify(task), /private-value|abcdefghijkl/);
+    if (['hold', 'consider-generic-detector', 'token=private-value'].includes(primaryAction)) assert.equal(task.action, null);
+    else {
+      assert.deepEqual(task.action.args, primaryAction === 'fix-existing-detectors' ? { detect: true }
+        : primaryAction === 'add-business-check' ? { checks: [] } : { file: 'metrics.json' });
+      assert.equal(task.action.canAutoRun, false);
+    }
+    if (primaryAction === 'consider-generic-detector') {
+      assert.equal(task.status, 'blocked');
+      assert.equal(task.verify.method, 'human_review');
+    }
+    if (primaryAction === 'fix-existing-detectors') assert.match(task.verify.condition, /secondaryActions/);
+    if (primaryAction === 'add-business-check') assert.match(task.verify.condition, /targeted.falseNegative === 0/);
+  }
 });

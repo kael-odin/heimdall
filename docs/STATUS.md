@@ -314,6 +314,7 @@ Hosted CI 结果为最终依据。
 - `detectorExpansion` 复用冻结的保守决策规则，并自动暴露给 CLI、MCP 和 HTTP；当前 Xspark 离线重算仍是 `blocked`，下一步是补完整证据、压已有规则误报和增加业务检查点。
 - `qa_metrics` 的定向 oracle 不再写死 Xspark 两类：只要样本声明了非空领域名，就可用于接口、权限、表单、安全或其他业务流程；通用检测器仍只在重复跨项目、完整测量和低误报证据下进入 `consider`。
 - `heimdall_site_assessment` 会复用同一个指标内核，从匹配站点的脱敏 `run.json` 汇总 QA 覆盖、运行时长、失败分类和检测器决策；缺少报警标签或定向 oracle 时仍明确显示不可计算并保持 `collect-more-evidence`，不会改变既有 readiness 阶段。
+- 2026-11-15 `qa_metrics.followUp` 与 `site-assessment.deliveryPlan.items` 共用受白名单限制的 `qa-metrics-decision`：补证据、修已有检测器、增加业务检查点、人工评估通用检测器或保持观察分别给出下一步与复测条件。复测要求完整证据，不能用切换决策名称清除误报或领域漏报；不自动修改检测器。普通运行摘要不含人工 oracle，仍需单独提供已复核的脱敏聚合。
 
 ## 2026-10-31 产品打磨
 
