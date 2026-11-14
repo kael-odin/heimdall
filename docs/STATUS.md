@@ -58,6 +58,8 @@
 
 2026-11-15 [RFC Editor sitemap 范围门禁复验]：公开只读命令 `pnpm -C core run audit -- https://www.rfc-editor.org/rfc/rfc9110 --max 5` 采集 5 页，SEO 90、GEO 71，sitemap 因预算触顶为 `partial`。复验发现页面级 GEO 证据完整不等于站点范围完整；`site-assessment` 现在会把 `partial/unavailable` sitemap 纳入 SEO/GEO follow-up 和 readiness 门禁，避免无动作页面被误报为完整站点准备度。
 
+2026-11-15 [公开案例站点评估复核](audits/2026-11-15/site-assessment-public-cases.md)：RFC Editor 当前 6/6 页有镜像、6 页多视口验证、SEO 90、GEO 71，但离线交付 `blocked`，12 条浏览器失败、2 个二进制缺口、API `missing`、QA `not_configured`；Xspark 公开案例为 5 页、10 次 QA 检查、QA 门禁通过、SEO 90.8，但 GEO、认证、写入和业务规则仍未知。该复核验证了 AI 交付计划的边界投影，未把页面或 QA 结果包装成后端等价。
+
 2026-11-14 [RFC Editor 公开多页 strict 交付收口复验](audits/2026-11-14/rfc-editor-public-handoff-strict.md)：6 页视觉平均 99.9917%，strict handoff 默认启用 `--heal --materialize-har`；首轮补抓 24 个同源静态资源，浏览器二次探针再补抓 4 个运行时静态资源，静态脚本/图片/字体缺口清零。最终仍因 1 个分析服务、每页 1 个动态 JSON 请求和 254 个未镜像链接阻断，正式包没有被覆盖；`site-assessment` 现在能显示候选 browser failure 证据。
 
 2026-11-14 [公开单页 strict 交接复验](audits/2026-11-14/public-handoff-example-strict.md)：`example.com` 真实运行新版 `handoff --strict` 通过 1/1 页、3/3 视口、strict 0 阻断；独立目录启动的 live 包在 `/`、`/lm/example.com/` 和健康检查返回 HTTP 200。该案例仍没有后端、认证、权限或 QA 证据。

@@ -61,6 +61,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-14 | **[最终适配器交付包无外联验收](2026-11-14/adapter-egress-verification.md)** | Docker 29.7.2、`network none`、两次启动、1/1 GET 路由、状态卷和零缺口账本通过；仅为受控夹具，认证、写入与业务状态仍未知 |
 | 2026-11-14 | **[`example.com` 静态交付包独立断网验收](2026-11-14/public-static-deployment-verify.md)** | `live-verify --static` 在 Docker `network none` 中两次启动，1/1 live 路由通过；`site-assessment.independentDeployment=verified` 并绑定当前包校验和 |
 | 2026-11-14 | **[适配器交付包操作计划复测](2026-11-14/adapter-operation-plan-deployment-verify.md)** | 受控有状态适配器在 Docker `network none` 中写入并重启读回 1/1；最终镜像快照上的授权浏览器操作计划 1/1、0 失败、0 未测；仍保留未覆盖路由和未验证写入账本 |
+| 2026-11-15 | **[公开案例站点评估复核](2026-11-15/site-assessment-public-cases.md)** | RFC Editor 6/6 镜像、6 页多视口、SEO 90、GEO 71，但离线交付/API/QA 仍有明确缺口；Xspark QA 通过、SEO 90.8，但 GEO 与业务后端证据仍未知 |
 
 路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。
 
