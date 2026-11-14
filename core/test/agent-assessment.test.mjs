@@ -167,6 +167,13 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.qa.latest.findings.items[0].verification.status, 'pending_human_verdict');
     assert.equal(env.result.qa.latest.findings.items[0].verification.method, 'heimdall_qa_findings');
     assert.equal(env.result.qa.latest.findings.items[0].target, '/api/items?[sensitive value removed]');
+    const qaRepairTasks = env.result.deliveryPlan.items.find(item => item.id === 'qa-findings').repairTasks;
+    assert.equal(qaRepairTasks.length, 2);
+    assert.equal(qaRepairTasks[0].status, 'blocked_on_human_verdict');
+    assert.equal(qaRepairTasks[0].requiresHumanApproval, true);
+    assert.equal(qaRepairTasks[0].evidence.fingerprint, 'fp_qa1');
+    assert.equal(qaRepairTasks[0].verification.tool, 'heimdall_qa_run');
+    assert.match(qaRepairTasks[0].verification.condition, /fingerprint/);
     assert.doesNotMatch(run.stdout, /private-value|abcdefghijkl/);
     assert.equal(env.result.qa.metrics.coverage.runs, 1);
     assert.equal(env.result.qa.metrics.coverage.pageViewportChecks, 1);

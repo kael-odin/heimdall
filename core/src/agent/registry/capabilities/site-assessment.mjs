@@ -576,6 +576,26 @@ function planVerification(siteId, condition) {
   return { tool: 'heimdall_site_assessment', args: { siteId }, condition };
 }
 
+function qaRepairTask(finding, qa, qaWorkspace) {
+  const id = String(finding?.id ?? finding?.fingerprint ?? 'finding').replace(/[^a-z0-9_-]/gi, '-').slice(0, 64) || 'finding';
+  const target = typeof finding?.target === 'string' && finding.target ? finding.target : finding?.path || '/';
+  const evidence = Object.fromEntries([
+    ['findingId', finding?.id], ['fingerprint', finding?.fingerprint], ['runId', qa.latest?.runId],
+    ['kind', finding?.kind], ['basis', finding?.basis], ['tier', finding?.tier], ['path', finding?.path],
+  ].filter(([, value]) => typeof value === 'string' && value));
+  return {
+    id: `repair-qa-${id}`, kind: 'qa-finding-repair', target,
+    status: 'blocked_on_human_verdict',
+    instruction: '先用 heimdall_qa_findings 确认这是需要修复的真实问题；确认后修复目标，再用同一站点和检查点重跑 QA。',
+    requiresHumanApproval: true, evidence,
+    verification: {
+      tool: 'heimdall_qa_run',
+      args: { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name },
+      condition: '新的完整 QA 运行中，该 finding fingerprint 不再属于 fileable findings。',
+    },
+  };
+}
+
 function repairTasksFromGapLedger(siteId, gapLedger) {
   const summary = gapLedger?.summary;
   if (!summary) return [];
@@ -944,6 +964,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       evidence: [qa.latest.bugs, qa.latest.report].filter(Boolean),
       action: plannedAction('heimdall_qa_findings', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), action: 'show', runId: qa.latest.runId }, '逐条复核 QA 建议提单的问题'),
       verify: { tool: 'heimdall_qa_findings', condition: 'each finding has a human verdict' },
+      repairTasks: qa.latest.findings.items.map(finding => qaRepairTask(finding, qa, qaWorkspace)),
     });
   }
 

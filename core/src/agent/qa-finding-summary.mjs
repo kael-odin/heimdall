@@ -14,6 +14,7 @@ function safeFinding(value, runId) {
   const text = input => safeSummaryText(input, 360);
   return {
     id: typeof value.id === 'string' ? value.id.slice(0, 40) : null,
+    ...(typeof value.fingerprint === 'string' ? { fingerprint: value.fingerprint.slice(0, 80) } : {}),
     tier: ['wall', 'degrade', 'tolerable'].includes(value.tier) ? value.tier : 'unknown',
     basis: ['failed', 'wrong', 'promise', 'friction', 'cosmetic'].includes(value.basis) ? value.basis : 'unknown',
     kind: typeof value.kind === 'string' ? value.kind.slice(0, 64) : 'unknown',
