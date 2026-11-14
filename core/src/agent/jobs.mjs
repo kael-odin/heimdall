@@ -10,7 +10,7 @@
  * 状态快照持久化到 <数据根>/agent/jobs.json（引擎重启后仍能查到历史；运行中的记为 failed: interrupted）。
  */
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { DATA_ROOT } from '../paths.mjs';
 import { writeFileAtomic } from '../fsutil.mjs';
 import { newJobId, sha256 } from './ids.mjs';
@@ -24,14 +24,14 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
  * @param {{ selfBase: () => string, token: () => string, onChange?: (job) => void }} opts
  *   selfBase：本引擎的 http://127.0.0.1:<port>；token：本引擎的令牌（门面调旧路由时带上）
  */
-export function createJobManager({ selfBase, token, onChange } = {}) {
+export function createJobManager({ selfBase, token, onChange, storePath = STORE } = {}) {
   const jobs = new Map();
   const subs = new Map();   // jobId → Set<(event) => void>
   let saveTimer = null;
 
   // 恢复历史：上一次引擎退出时还在跑或在排队的任务不会再继续，记为 interrupted
   try {
-    const saved = JSON.parse(readFileSync(STORE, 'utf8'));
+    const saved = JSON.parse(readFileSync(storePath, 'utf8'));
     for (const j of saved.jobs ?? []) {
       if (!TERMINAL.has(j.status)) Object.assign(j, { status: 'failed', endedAt: j.endedAt ?? new Date().toISOString(), error: { code: 'internal', message: '引擎重启，任务中断', hint: '重新发起这个任务' } });
       j.events = j.events ?? [];
@@ -43,10 +43,10 @@ export function createJobManager({ selfBase, token, onChange } = {}) {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       try {
-        mkdirSync(join(DATA_ROOT, 'agent'), { recursive: true });
+        mkdirSync(dirname(storePath), { recursive: true });
         const list = [...jobs.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(-KEEP)
           .map(j => ({ ...j, events: j.events.slice(-300), runtime: undefined }));
-        writeFileAtomic(STORE, JSON.stringify({ schema: 'heimdall.jobs/1', jobs: list }));
+        writeFileAtomic(storePath, JSON.stringify({ schema: 'heimdall.jobs/1', jobs: list }));
       } catch {}
     }, 200);
   };
@@ -152,6 +152,9 @@ export function createJobManager({ selfBase, token, onChange } = {}) {
         Object.assign(st, { status: outcome === 'done' ? 'succeeded' : outcome, endedAt: new Date().toISOString() });
         if (outcome !== 'done') {
           if (job.cancelRequested || outcome === 'cancelled') break;
+          // Keep a bounded, capability-owned snapshot so a failed verify still
+          // reports the mirror pages that were cloned and measured.
+          try { job.result = await job.finish?.(job) ?? null; } catch {}
           setStatus(job, 'failed', { error: { code: 'internal', message: `${stage.name} 阶段失败`, hint: '`heimdall jobs events <jobId>` 查看事件；修正后重新发起' } });
           emit(job, { kind: 'exit', message: `${stage.name} 失败` });
           return;

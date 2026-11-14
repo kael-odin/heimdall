@@ -17,6 +17,11 @@ const summaryOf = (job) => {
 export function nextForJob(job) {
   if (!job) return [];
   if (job.status === 'queued' || job.status === 'running') return [nextAction('heimdall_jobs', { action: 'wait', jobId: job.jobId }, '继续等待')];
+  if (job.status === 'failed' && job.capability === 'clone' && job.result?.siteId) {
+    return [nextAction('heimdall_site', { siteId: job.result.siteId }, '查看已完成的镜像与验证覆盖'),
+      nextAction('heimdall_jobs', { action: 'events', jobId: job.jobId }, '看失败阶段与未测原因'),
+      nextAction('heimdall_doctor', null, '自检')];
+  }
   if (job.status === 'succeeded' && job.capability === 'clone' && job.result?.siteId) {
     const page = job.result.pages?.[0]?.page;
     return page ? [nextAction('heimdall_brief', { siteId: job.result.siteId, page, detail: 'sections' }, '取简报与分段，开始重建')]
