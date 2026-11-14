@@ -5,7 +5,7 @@
  * sessions, operation plans and adapter modules are never opened here.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { measurementCoverage, scanMeasurementsAsync } from '../../../verify/measurement-status.mjs';
 import { summarizeObservedApiContract } from '../../../live/contract.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
@@ -17,6 +17,7 @@ import { listRuns, openWorkspace, relPath, runsDir } from '../../../qa/run.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
 import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { readCurrentScore } from '../../../score-status.mjs';
+import { validateDeploymentReport, verifyBundleChecksums } from '../../../live/deployment-verify.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
@@ -158,6 +159,33 @@ function gradeOf(score) {
   return typeof score === 'number' ? (score >= 90 ? 'A' : score >= 75 ? 'B' : 'C') : null;
 }
 
+function adapterEgressVerification(root, siteId) {
+  const report = reportPath(siteId, 'adapter-egress-verification.json');
+  const file = join(root, 'adapter-egress-verification.json');
+  if (!existsSync(file)) return null;
+  const source = readJson(file);
+  const dataRoot = resolve(root, '..', '..');
+  const bundle = typeof source?.bundle === 'string' ? source.bundle : '';
+  const bundlePath = resolve(dataRoot, bundle);
+  const bundleRel = relative(dataRoot, bundlePath).replaceAll('\\', '/');
+  if (!bundle || bundleRel !== bundle || !bundleRel.startsWith('deliverable/')) {
+    return { status: 'invalid', report };
+  }
+  let checksumsSha256 = null;
+  try { checksumsSha256 = verifyBundleChecksums(bundlePath); }
+  catch { return { status: 'invalid', report }; }
+  if (!validateDeploymentReport(source, { siteId, checksumsSha256 })) return { status: 'invalid', report };
+  return {
+    status: 'verified', report, generatedAt: source.generatedAt,
+    bundle: bundleRel, bundleChecksumsSha256: checksumsSha256,
+    adapter: source.adapter && typeof source.adapter === 'object' ? {
+      declaredRoutes: Number(source.adapter.declaredRoutes ?? 0),
+      exercisedRoutes: Number(source.adapter.exercisedRoutes ?? 0),
+      untestedRoutes: Number(source.adapter.untestedRoutes ?? 0),
+    } : null,
+  };
+}
+
 function liveExportSummary(root, siteId) {
   const file = join(root, 'live-export.json');
   if (!existsSync(file)) return { status: 'not_recorded', report: null };
@@ -208,22 +236,25 @@ function liveExportSummary(root, siteId) {
       ...(typeof rawReadOnlyData.binarySourceStatus === 'string'
         ? { binarySourceStatus: rawReadOnlyData.binarySourceStatus.slice(0, 32) } : {}),
     } : null;
+  const egressVerification = adapterEgressVerification(root, siteId);
   const rawAdapter = health?.adapter;
-  const adapter = rawAdapter && typeof rawAdapter === 'object' && !Array.isArray(rawAdapter)
+  const adapterSource = rawAdapter ?? egressVerification?.adapter;
+  const adapter = adapterSource && typeof adapterSource === 'object' && !Array.isArray(adapterSource)
     ? {
-      serverEgress: ['not-tested', 'verified', 'blocked', 'failed'].includes(rawAdapter.serverEgress)
-        ? rawAdapter.serverEgress : 'unknown',
-      ...(Number.isSafeInteger(rawAdapter.declaredRoutes) && rawAdapter.declaredRoutes >= 0
-        ? { declaredRoutes: rawAdapter.declaredRoutes } : {}),
-      ...(Number.isSafeInteger(rawAdapter.exercisedRoutes) && rawAdapter.exercisedRoutes >= 0
-        ? { exercisedRoutes: rawAdapter.exercisedRoutes } : {}),
-      ...(Number.isSafeInteger(rawAdapter.untestedRoutes) && rawAdapter.untestedRoutes >= 0
-        ? { untestedRoutes: rawAdapter.untestedRoutes } : {}),
+      serverEgress: egressVerification?.status === 'verified' ? 'verified'
+        : ['not-tested', 'blocked', 'failed'].includes(adapterSource.serverEgress)
+          ? adapterSource.serverEgress : 'unknown',
+      ...(Number.isSafeInteger(adapterSource.declaredRoutes) && adapterSource.declaredRoutes >= 0
+        ? { declaredRoutes: adapterSource.declaredRoutes } : {}),
+      ...(Number.isSafeInteger(adapterSource.exercisedRoutes) && adapterSource.exercisedRoutes >= 0
+        ? { exercisedRoutes: adapterSource.exercisedRoutes } : {}),
+      ...(Number.isSafeInteger(adapterSource.untestedRoutes) && adapterSource.untestedRoutes >= 0
+        ? { untestedRoutes: adapterSource.untestedRoutes } : {}),
     } : null;
   return {
     status: source.status, generatedAt: new Date(source.generatedAt).toISOString(), report, healthReport,
     offline: source.offline, strict: source.strict, root: source.root === 'mirror' ? 'mirror' : 'landing',
-    published: source.published, pages: source.pages, adapter,
+    published: source.published, pages: source.pages, adapter, adapterEgressVerification: egressVerification,
     blockingCount: source.blockingCount, blockers,
     otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
     browser, browserFailures, binaryDownloadGaps, readOnlyData, coverage: {
@@ -622,6 +653,8 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
     adapterEgress: {
       status: adapterServerEgress,
       basis: adapterServerEgress === 'not-tested' || adapterServerEgress === 'verified' ? 'observed' : 'unknown',
+      evidence: delivery?.adapterEgressVerification?.status === 'verified'
+        ? [delivery.adapterEgressVerification.report] : [],
     },
     gapLedger,
     unknowns: [

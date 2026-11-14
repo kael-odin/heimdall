@@ -85,6 +85,14 @@ checksums.json             每个文件的校验和
 Dockerfile / docker-compose.yml / README.md
 ```
 
+适配器包的服务端外联证据需在最终包上单独执行：
+
+```powershell
+heimdall live-verify <包目录> --site-id <站点>
+```
+
+命令在 Docker `network none` 中构建并启动包两次，检查离线健康、根路由、可安全触达的 GET/HEAD 适配器路由、缺口账本和包外状态卷，随后把脱敏报告写入 `workspace/<站点>/adapter-egress-verification.json`。报告绑定当前包的 `checksums.json`，包改变后 `site-assessment` 会重新标为未知。它不替代 POST、认证、权限、写入、状态机或业务副作用旅程。
+
 **为什么它是另一个层次**：前两种产物的判据是"像不像 / 能不能用"，
 交付包的判据是"**能不能在另一台机器上跑起来，并让接收方核对离线资源与功能边界**"。
 `checksums.json` 与 `health.json` 就是为此存在的 —— 接收方不必相信我们的口头结论。

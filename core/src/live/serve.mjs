@@ -300,7 +300,11 @@ function localizedQueryCandidate(rel, search) {
 }
 
 async function serveLive(req, res, rel, search) {
-  if (adapterRuntime && await adapterRuntime.dispatchRuntimeAdapter(adapterRuntime.adapter, req, res, rel, search)) return;
+  if (adapterRuntime && adapterRuntime.matchesRuntimeAdapterRoute(adapterRuntime.adapter.routes, req.method, rel)
+      && await adapterRuntime.dispatchRuntimeAdapter(adapterRuntime.adapter, req, res, rel, search)) return;
+  const recordAdapterGap = () => adapterRuntime?.adapter.gapLedger?.record({
+    method: req.method, path: rel, search, category: 'unobserved-path',
+  });
   // 1) local snapshot：带 query 的页面必须精确命中对应快照。
   const candidates = liveSnapshotCandidates(rel, search);
   if (req.method === 'GET' || req.method === 'HEAD') {
@@ -342,8 +346,8 @@ async function serveLive(req, res, rel, search) {
     }
   }
   // 3) proxy
-  if (OFFLINE) return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8');
-  try { return await proxy(req, res, rel + search); }
+  if (OFFLINE) { recordAdapterGap(); return send(res, 404, NOT_FOUND, 'text/html; charset=utf-8'); }
+  try { recordAdapterGap(); return await proxy(req, res, rel + search); }
   catch { return send(res, 502, NOT_FOUND, 'text/html; charset=utf-8'); }
 }
 

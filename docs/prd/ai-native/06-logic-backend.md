@@ -168,7 +168,7 @@ paths:
 
 ### 4.5 适配器协议约束（现有，必须遵守）
 
-`runtime-adapter/index.mjs` + `manifest.json`：路由 ≤ 200；可带命名会话；数据目录必须在包外；请求体 ≤ 4 MiB；单次处理超时 15 秒；不得占用 `/`、`/static`、`/__heimdall`、`/lm` 路径。**已知局限**：本机严格探针不隔离适配器进程的出网（`health.adapter.serverEgress=not-tested`），无外联部署验收靠 Linux CI 的 Docker 无外联网络。
+`runtime-adapter/index.mjs` + `manifest.json`：路由 ≤ 200；可带命名会话；数据目录必须在包外；请求体 ≤ 4 MiB；单次处理超时 15 秒；不得占用 `/`、`/static`、`/__heimdall`、`/lm` 路径。**已知局限**：本机严格探针不隔离适配器进程的出网（`health.adapter.serverEgress=not-tested`）；最终包可用 `heimdall live-verify <包目录> --site-id <站点>` 在 Docker `network none` 中留下 `verified` 证据，但这仍不替代认证、写入和业务状态旅程。
 
 路由可声明完整段参数，如 `GET /posts/{postId}`。参数名以字母或下划线开头，后接字母、数字、下划线、点或连字符，最多 64 字符，同一路径不重复；只匹配一个非空段，不扩展方法或子路径，不接受编码斜杠、反斜杠和控制字符作为参数值。命名会话路由仍必须是已声明的固定 POST 路径。严格导出按实际同源请求标记声明路由已执行，未调用路由继续阻断；一次样本不证明所有参数值和业务语义。B3 保留契约中的参数路径，默认检查没有具体参数数据时仍跳过并报告未完成；AI 有状态处理器通过 `context.dataDir` 持久化，另验写入、读回、删除和同卷重启。
 

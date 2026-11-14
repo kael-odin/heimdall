@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -202,6 +203,40 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.doesNotMatch(run.stdout, /super-secret/);
     assert.doesNotMatch(run.stdout, /private-value/);
     assert.equal(existsSync(join(page, 'network.har')), true);
+
+    const bundle = join(root, 'deliverable', 'example.test-live-2026-11-14');
+    const bundleFile = join(bundle, 'README.txt');
+    put(bundleFile, 'current-bundle');
+    const checksumsPath = join(bundle, 'checksums.json');
+    put(checksumsPath, { files: [{ p: 'README.txt', s: readFileSync(bundleFile).length, h: createHash('sha256').update(readFileSync(bundleFile)).digest('hex') }] });
+    const checksumsSha256 = createHash('sha256').update(readFileSync(checksumsPath)).digest('hex');
+    put(join(site, 'adapter-egress-verification.json'), {
+      schema: 'heimdall.adapter-egress-verification/1', siteId: 'example.test',
+      generatedAt: '2026-11-14T02:00:00.000Z', serverEgress: 'verified',
+      bundle: 'deliverable/example.test-live-2026-11-14', bundleChecksumsSha256: checksumsSha256,
+      docker: { network: 'none' }, checks: { health: 'passed', stateVolume: 'passed' },
+      adapter: { declaredRoutes: 1, exercisedRoutes: 1, untestedRoutes: 0 },
+    });
+    const verifiedRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(verifiedRun.status, 0, verifiedRun.stderr + verifiedRun.stdout);
+    const verified = JSON.parse(verifiedRun.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.equal(verified.clone.delivery.adapter.serverEgress, 'verified');
+    assert.deepEqual(verified.deliveryPlan.backendCompletion.adapterEgress.evidence, [
+      'workspace/example.test/adapter-egress-verification.json',
+    ]);
+    assert.equal(verified.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'offline-egress').status, 'passed');
+
+    const published = JSON.parse(readFileSync(join(site, 'live-export.json'), 'utf8'));
+    published.healthReport = null;
+    put(join(site, 'live-export.json'), published);
+    const publishedRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(publishedRun.status, 0, publishedRun.stderr + publishedRun.stdout);
+    const publishedAssessment = JSON.parse(publishedRun.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.equal(publishedAssessment.clone.delivery.adapter.serverEgress, 'verified');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

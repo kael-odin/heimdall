@@ -10,6 +10,7 @@
  *   heimdall verify <host> <page>|--all        多视口保真验证（--resume 断点续跑）
  *   heimdall tokens <host> [--pages N]         设计 token 提取
  *   heimdall live <host> [--offline]           导出可部署交互镜像包
+ *   heimdall live-verify <bundleDir>           交付包 Docker 无外联验收
  *   heimdall dedupe <host> [--dry-run]         资产 CAS 去重
  *   heimdall deliver <host>                    打包交付物
  *   heimdall serve [port]                      启动引擎/控制台服务
@@ -50,6 +51,7 @@ export const COMMANDS = {
   browser: { script: 'src/browser/bookmarklet.mjs', usage: 'browser [--api URL] [--token T]', desc: '生成浏览器书签入口安装页（在任意页面一键送入 Heimdall）' },
   sandbox: { script: 'src/sandbox/serve.mjs', usage: 'sandbox <host> <page> [--port 8090] [--reset]', desc: '沙盒改造台（改 HTML/CSS + 与原版实时对比）' },
   live:    { script: 'src/live/export.mjs', usage: 'live <host> [--offline] [--out <path-inside-deliverable>] [--rebuild] [--root mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--public-text-links-max-targets N] [--cache-runtime-services <json-file>] [--browser-observe-ms N] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-adapter] [--include-api-har] [--allow-private-export]', desc: '导出可部署交互镜像包（静态 HAR 回放 + Docker + 离线门禁）' },
+  'live-verify': { script: 'src/live/deployment-verify.mjs', usage: 'live-verify <bundleDir> [--site-id S] [--report FILE] [--timeout-ms N] [--observe-ms N]', desc: '在 Docker network none 中验收最终适配器交付包并写入服务端外联证据' },
   dedupe:  { script: 'src/store/dedupe.mjs', usage: 'dedupe <host> [--dry-run] [--dir <path>]', desc: '内容寻址资产去重（硬链接）' },
   storage: { script: 'src/audit/storage.mjs', usage: 'storage [--out <file>]', desc: '磁盘占用盘点（站点/CAS/交付包）' },
   'cas-gc': { script: 'src/audit/cas-gc.mjs', usage: 'cas-gc [--apply] [--json]', desc: '回收 CAS 孤儿（默认仅预览，--apply 真回收）' },

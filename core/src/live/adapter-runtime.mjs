@@ -281,7 +281,7 @@ function createGapLedger(dataDir, routes, metadata) {
     }
     persist();
   };
-  refresh();
+  persist();
   return { path, record, snapshot: () => JSON.parse(JSON.stringify(state)) };
 }
 

@@ -1163,7 +1163,7 @@ node serve.mjs --port ${PORT} --host 127.0.0.1  # 只监听本机（默认监听
 docker compose up -d                   # Docker 部署
 \`\`\`
 
-${INCLUDE_ADAPTER ? '适配器仅处理 manifest.json 中精确声明的路由；未捕获请求在离线模式下返回 404，并按脱敏的 method/path/查询参数名写入包外 adapter-gap-ledger.json。Node 运行时须把 HEIMDALL_RUNTIME_DATA_DIR 指向包外目录。Docker Compose 用 heimdall-runtime-data 命名卷保存状态，容器重建后继续使用；单独 docker run 时须挂载持久卷到 /data。适配器是可信的逐站 Node 代码，并非沙箱；--compare-source 不证明写入业务与源站等价。严格探针未隔离适配器进程的网络，health.adapter.serverEgress=not-tested；逐站交付前仍须把实际候选包放入无外联容器，重跑已声明的操作并核对业务状态。\n\n' : ''}- **监听地址默认 0.0.0.0**（所有网卡）—— 交付包是拿去部署的，绑回环外面就访问不到。
+${INCLUDE_ADAPTER ? '适配器仅处理 manifest.json 中精确声明的路由；未捕获请求在离线模式下返回 404，并按脱敏的 method/path/查询参数名写入包外 adapter-gap-ledger.json。Node 运行时须把 HEIMDALL_RUNTIME_DATA_DIR 指向包外目录。Docker Compose 用 heimdall-runtime-data 命名卷保存状态，容器重建后继续使用；单独 docker run 时须挂载持久卷到 /data。适配器是可信的逐站 Node 代码，并非沙箱；--compare-source 不证明写入业务与源站等价。严格导出本身不隔离适配器进程的网络；要把 health.adapter.serverEgress 从 not-tested 提升为 verified，请在 Heimdall 工作区执行 `heimdall live-verify <包目录> --site-id ' + host + '`，它会在 Docker network none 中重建包、启动两次并写入脱敏 adapter-egress-verification.json。\n\n' : ''}- **监听地址默认 0.0.0.0**（所有网卡）—— 交付包是拿去部署的，绑回环外面就访问不到。
   只在本机预览请加 \`--host 127.0.0.1\`。引擎本身默认绑回环，两者不同是有意的
 
 - 镜像入口：http://127.0.0.1:${PORT}/lm/${host}/
