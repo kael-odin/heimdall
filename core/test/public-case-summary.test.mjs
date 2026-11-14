@@ -19,6 +19,9 @@ test('public case summary reads the Xspark evidence boundary without raw artifac
   assert.equal(env.result.qa.findingDigest.total, 0);
   assert.deepEqual(env.result.qa.findingDigest.items, []);
   assert.equal(env.result.seo.score, 90.8);
+  assert.equal(env.result.seo.scoreMethodStatus, 'unknown');
+  assert.equal(env.result.seo.measurementStatus, 'unknown');
+  assert.equal(env.result.seo.geoMethodStatus, 'unknown');
   assert.equal(env.result.seo.geo.status, 'unknown');
   assert.equal(env.result.seo.geo.score, null);
   assert.deepEqual(env.result.seo.geo.actionPlan, []);

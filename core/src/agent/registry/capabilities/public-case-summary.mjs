@@ -12,6 +12,7 @@ import { isInside } from '../../../paths.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { summarizeGeoReport } from '../../geo-summary.mjs';
 import { qaFindingDigest } from '../../qa-finding-summary.mjs';
+import { GEO_METHOD_VERSION, SEO_MEASUREMENT_VERSION, SEO_SCORE_METHOD_VERSION } from '../../../seo/method.mjs';
 
 const PUBLIC_CASES = join(REPO_ROOT, 'docs', 'cases');
 const MAX_JSON_BYTES = 4 * 1024 * 1024;
@@ -47,6 +48,11 @@ function resolveCaseDir(value, ctx) {
 
 function numberOrNull(value) {
   return Number.isFinite(Number(value)) ? Number(value) : null;
+}
+
+function methodStatus(value, current) {
+  if (!Number.isSafeInteger(value)) return 'unknown';
+  return value === current ? 'current' : value < current ? 'stale' : 'future';
 }
 
 function unique(values) {
@@ -130,11 +136,22 @@ function seoSummary(manifest, seo, caseRel) {
     ? Object.fromEntries(['critical', 'high', 'medium', 'low', 'info'].map(key => [key, numberOrNull(summary.bySeverity[key]) ?? 0]))
     : {};
   const fieldData = seo?.field && typeof seo.field === 'object' ? seo.field : {};
+  const scoreMethodVersion = Number.isSafeInteger(seo?.scoreMethodVersion)
+    ? seo.scoreMethodVersion : Number.isSafeInteger(manifest.seo?.scoreMethodVersion) ? manifest.seo.scoreMethodVersion : null;
+  const measurementVersion = Number.isSafeInteger(seo?.measurementVersion)
+    ? seo.measurementVersion : Number.isSafeInteger(manifest.seo?.measurementVersion) ? manifest.seo.measurementVersion : null;
+  const geoMethodVersion = Number.isSafeInteger(seo?.geo?.methodVersion) ? seo.geo.methodVersion : null;
   return {
     status: seo ? 'observed' : 'missing',
     origin: safeUrl(seo?.origin ?? manifest.target?.origin),
     score: numberOrNull(seo?.score ?? manifest.seo?.score),
     grade: safeText(manifest.seo?.grade, 10),
+    scoreMethodVersion,
+    measurementVersion,
+    scoreMethodStatus: methodStatus(scoreMethodVersion, SEO_SCORE_METHOD_VERSION),
+    measurementStatus: methodStatus(measurementVersion, SEO_MEASUREMENT_VERSION),
+    geoMethodVersion,
+    geoMethodStatus: methodStatus(geoMethodVersion, GEO_METHOD_VERSION),
     pages: numberOrNull(summary.pages ?? manifest.seo?.pages),
     issues: numberOrNull(summary.issues ?? manifest.seo?.issues),
     bySeverity,

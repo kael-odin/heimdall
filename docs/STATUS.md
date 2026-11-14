@@ -24,6 +24,8 @@
 
 2026-11-15 [SEO 过时口径进入 readiness 门禁]：`scoreMethodStatus` 与 `measurementStatus` 现在会把缺失、旧版和未来版报告标为 `unknown/stale/future`；只在两者都为 `current` 时允许 SEO/GEO readiness 进入 `ready`，旧报告会生成 follow-up。
 
+2026-11-15 [公开案例分数口径进入摘要]：`public_case_summary` 现在同时输出 SEO 评分、测量和 GEO 方法版本状态；Xspark 公开案例因历史证据缺少版本字段而标为 `unknown`，不能与当前报告直接横比。
+
 ## 现在的主线
 
 **持续增强三项能力，用真实案例推动改进**。Heimdall 采集和核验证据，外部 AI 代理补全实现与提出修复方案：

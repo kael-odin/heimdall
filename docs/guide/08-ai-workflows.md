@@ -205,6 +205,8 @@ AI 需要先了解一个已经落盘的真实案例时，调用只读的 `heimda
 不要读取或索取原始 findings、HAR、Cookie、Token、登录态，也不要把一个案例外推成通用准确率。
 ```
 
+公开案例的 `seo.scoreMethodStatus`、`measurementStatus` 和 `geoMethodStatus` 也必须一起读取。状态为 `unknown` 或 `stale` 时，分数只能作为历史观察，不能直接和当前案例横比。
+
 CLI 等价命令：
 
 ```powershell
