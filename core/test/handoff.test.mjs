@@ -185,3 +185,75 @@ test('handoff: 交付包中的 fidelity.csv 明确是历史辅助评分', () => 
   assert.match(md, /fidelity\.csv.*历史辅助评分/);
   assert.match(md, /不是 v2 多视口门禁分数/);
 });
+
+test('handoff: --strict 把离线交付结果写入交接说明', () => {
+  const md = renderHandoff({
+    ...base,
+    strictRequested: true,
+    live: {
+      status: 'blocked', published: false, blockingCount: 3,
+      blockers: { externalRuntime: 2, missingLivePages: 1 },
+      healthReport: 'deliverable/.candidate-example.test-x/health.json',
+    },
+  });
+  assert.match(md, /独立离线交付门禁/);
+  assert.match(md, /严格.*阻断/);
+  assert.match(md, /externalRuntime=2/);
+  assert.match(md, /正式包没有被覆盖/);
+  assert.match(md, /health\.json/);
+  assert.match(md, /handoff <url> --strict/);
+});
+
+test('handoff: --strict 通过时需要 live 导出器写入 passed 结果', { timeout: 30_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-handoff-strict-'));
+  const site = join(dir, 'workspace', 'fixture.test');
+  mkdirSync(site, { recursive: true });
+  writeFileSync(join(site, 'site-origin.json'), JSON.stringify({ origin: 'https://fixture.test' }));
+  const server = createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ dataRoot: dir }));
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const liveReport = {
+    schema: 'heimdall.live-export/1', siteId: 'fixture.test', status: 'passed', published: true,
+    offline: true, strict: true, blockingCount: 0, blockers: {}, browser: { checked: 1, failed: 0, untested: 0 },
+  };
+  const livePath = JSON.stringify(join(site, 'live-export.json'));
+  const liveBody = Buffer.from(JSON.stringify(liveReport), 'utf8').toString('base64');
+  const liveCommand = `require('node:fs').writeFileSync(${livePath}, Buffer.from(${JSON.stringify(liveBody)}, 'base64')); process.exit(0)`;
+  const preload = `import cp from 'node:child_process';
+    import { syncBuiltinESMExports } from 'node:module';
+    import { writeFileSync } from 'node:fs';
+    const original = cp.spawn;
+    cp.spawn = (cmd, args, opts) => {
+      const target = String(args[0]).replaceAll('\\\\', '/');
+      const child = target.endsWith('/live/export.mjs')
+        ? (process.env.HEIMDALL_TEST_LIVE_MODE === 'pass' ? ${JSON.stringify(liveCommand)} : 'process.exit(1)')
+        : 'process.exit(0)';
+      return original(cmd, ['-e', child], opts);
+    };
+    syncBuiltinESMExports();`;
+  const script = fileURLToPath(new URL('../src/handoff.mjs', import.meta.url));
+  const run = (args, mode) => new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['--import', 'data:text/javascript,' + encodeURIComponent(preload), script,
+      'https://fixture.test/', ...args], { env: { ...process.env, HEIMDALL_DATA_DIR: dir,
+      HEIMDALL_API: `http://127.0.0.1:${server.address().port}`, HEIMDALL_TEST_LIVE_MODE: mode } });
+    let output = '';
+    child.stdout.on('data', chunk => { output += chunk; });
+    child.stderr.on('data', chunk => { output += chunk; });
+    child.once('error', reject);
+    child.once('close', code => resolve({ code, output }));
+  });
+  try {
+    const result = await run(['--skip-verify', '--strict'], 'pass');
+    assert.equal(result.code, 0, result.output);
+    assert.match(readFileSync(join(site, 'handoff', 'README.md'), 'utf8'), /live --offline --strict.*通过/);
+    const stale = await run(['--skip-verify', '--strict'], 'fail');
+    assert.equal(stale.code, 1, stale.output);
+    assert.match(readFileSync(join(site, 'handoff', 'README.md'), 'utf8'), /没有得到有效结果/);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

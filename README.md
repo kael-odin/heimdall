@@ -40,6 +40,8 @@ node core/src/cli.mjs handoff https://example.org --max-pages 40
 
 跑完在 `core/workspace/<站点>/handoff/README.md` 会有一份交接说明，第一段就写清"发现多少页、完整测到多少页、没测到的卡在哪"——没测到的地方不会藏起来。
 
+需要同时要求独立离线包通过时，在命令后加 `--strict`；它会复用 `live --offline --strict --root mirror`，失败时保留候选包和 `health.json`。
+
 要把已有 QA 工作区接进 CI，可运行：
 
 ```bash

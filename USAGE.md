@@ -136,12 +136,12 @@ node core/src/cli.mjs verify example.org --all --resume --jobs 3
 node core/src/cli.mjs handoff https://example.org --max-pages 40
 ```
 
-它会自己起一个临时引擎（用完关掉；本机已有引擎时直接复用），按顺序跑完五步，最后在
+它会自己起一个临时引擎（用完关掉；本机已有引擎时直接复用），按顺序跑完五步；加 `--strict` 时再执行一次独立离线门禁。最后在
 `workspace/<站点>/handoff/README.md` 写一份**先说清楚覆盖到哪一步**的交接说明：
 发现多少页、完整测到多少页、没测到的卡在什么原因上、资产缺口有多少、交付包在哪里。
 没测到的部分会如实写出来 —— 一个写着"120 页里测到 96 页"的包，比一个假装全绿的包有用。
 
-可选：`--jobs N`（验证并发）、`--allow-bounded`（有界置信度）、`--skip-verify`（只要复刻件）。
+可选：`--jobs N`（验证并发）、`--allow-bounded`（有界置信度）、`--skip-verify`（只要复刻件）、`--strict`（追加 `live --offline --strict --root mirror` 独立离线交付门禁）。
 
 ## 交互镜像
 

@@ -2,7 +2,7 @@
 /**
  * handoff — 一条命令走完全程
  *
- *   node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--skip-live]
+ *   node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict]
  *
  * README 承诺的是"给它一个网址，还你一份能核对的复刻件"，但实际要手动串五条命令，
  * 中间还得自己判断哪步可以跳。这里把它们串成一条：
@@ -41,9 +41,10 @@ const numFlag = (name, fallback) => {
 const MAX_PAGES = numFlag('--max-pages', 40);
 const JOBS = numFlag('--jobs', 1);
 const SKIP_VERIFY = argv.includes('--skip-verify');
+const STRICT = argv.includes('--strict');
 
 if (!TARGET) {
-  console.error('usage: node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify]');
+  console.error('usage: node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict]');
   process.exit(2);
 }
 if (!Number.isInteger(MAX_PAGES) || MAX_PAGES < 1 || !Number.isInteger(JOBS) || JOBS < 1 || JOBS > 8) {
@@ -206,6 +207,21 @@ const assets = await run('src/audit/assets.mjs', [host, '--max', '100000']);
 log('5/5 打包交付');
 const deliver = await run('src/deliver.mjs', [host, siteId]);
 
+// 可选的最终门禁复用 live 导出器：交接默认仍只产出静态素材，--strict 才要求独立离线包通过。
+let live = null;
+if (STRICT) {
+  log('6/6 严格离线交付（复用 live 导出器）');
+  const liveReportPath = join(BASE, 'live-export.json');
+  let previousLiveText = null;
+  try { previousLiveText = readFileSync(liveReportPath, 'utf8'); } catch {}
+  const result = await run('src/live/export.mjs', [host, '--offline', '--strict', '--root', 'mirror']);
+  let currentLiveText = null;
+  try { currentLiveText = readFileSync(liveReportPath, 'utf8'); } catch {}
+  live = currentLiveText && currentLiveText !== previousLiveText
+    ? readJson(liveReportPath) ?? { status: 'invalid', code: result.code }
+    : { status: 'missing', code: result.code };
+}
+
 // ---------- 交接说明 ----------
 const summaryText = readSummaryText();
 let summary = !SKIP_VERIFY && summaryText && summaryText !== previousSummary ? readJson(summaryPath) : null;
@@ -245,11 +261,13 @@ const reportPath = join(handoffDir, 'README.md');
 writeFileAtomic(reportPath, renderHandoff({
   siteId, origin: identity.origin ?? TARGET, target: TARGET, summary, gaps, delivered, skippedVerify: SKIP_VERIFY,
   summaryEvidence, verifyFailed: !SKIP_VERIFY && (verify.code !== 0 || !summary || summaryEvidence?.status !== 'verified'), maxPages: MAX_PAGES,
+  strictRequested: STRICT, live,
 }));
 
 const ok = !cloneFailed && (SKIP_VERIFY || (verify.code === 0 && summary?.passed === true))
   && (SKIP_VERIFY || summaryEvidence?.status === 'verified')
-  && assets.code === 0 && deliver.code === 0;
+  && assets.code === 0 && deliver.code === 0
+  && (!STRICT || (live?.status === 'passed' && live.published === true && live.blockingCount === 0));
 log('交接说明 ->', reportPath);
 log(ok ? (SKIP_VERIFY ? '流程完成，本次跳过验证' : '全流程完成，验证门禁通过')
   : '流程未全部通过，检查交接说明和步骤日志');

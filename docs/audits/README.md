@@ -55,6 +55,8 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-14 | **[`example.com` 公开站点一键交接](2026-11-14/public-handoff-example.md)** | 公开单页样本完成侦察、克隆、三视口验证、严格离线导出和独立启动；v2 100% 与历史辅助分 91 的口径混淆已修正，后端与 QA 仍未知 |
 | 2026-11-14 | **[`vitest.dev` 公开多页试点](2026-11-14/vitest-public-pilot.md)** | 3 页克隆和 SEO/GEO 证据完成；最新验证 2/3 页，严格离线 113 个阻断；修正 handoff 保留不完整视觉证据并让退出码与证据状态一致 |
 
+路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。
+
 ## 为什么归档
 
 - 这批评审记录占工作树 536MB、7,982 个非 Markdown 文件，但测试与代码不读取它们；

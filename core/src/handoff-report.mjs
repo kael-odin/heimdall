@@ -10,7 +10,7 @@
 
 const pct = value => typeof value === 'number' ? (value * 100).toFixed(1) + '%' : '—';
 
-export function renderHandoff({ siteId, origin, target, summary, summaryEvidence, gaps, delivered, skippedVerify = false, verifyFailed = false, maxPages }) {
+export function renderHandoff({ siteId, origin, target, summary, summaryEvidence, gaps, delivered, skippedVerify = false, verifyFailed = false, maxPages, strictRequested = false, live = null }) {
   const lines = [];
   const blockers = Object.entries(summary?.blockers ?? {}).sort((a, b) => b[1] - a[1]);
   lines.push(`# 交接说明 · ${siteId}`, '');
@@ -80,6 +80,22 @@ export function renderHandoff({ siteId, origin, target, summary, summaryEvidence
   }
   lines.push('');
 
+  if (strictRequested) {
+    lines.push('## 独立离线交付门禁', '');
+    if (live?.status === 'passed' && live.published === true && live.blockingCount === 0) {
+      lines.push('- `live --offline --strict --root mirror`：**通过**。候选包已发布，阻断数为 0。');
+      if (live.browser) lines.push(`- 断网浏览器：检查 ${live.browser.checked ?? 0} 页，失败 ${live.browser.failed ?? 0} 页，未测 ${live.browser.untested ?? 0} 页。`);
+    } else if (live?.status === 'blocked') {
+      lines.push('- `live --offline --strict --root mirror`：**阻断**。阻断数 ' + (live.blockingCount ?? '未知') + '，正式包没有被覆盖。');
+      const blockersText = Object.entries(live.blockers ?? {}).map(([name, count]) => `${name}=${count}`).join('、');
+      if (blockersText) lines.push(`- 阻断项：${blockersText}。`);
+      if (live.healthReport) lines.push('- 诊断：`' + live.healthReport + '`');
+    } else {
+      lines.push('- `live --offline --strict --root mirror`：没有得到有效结果，不能声称独立离线交付通过。');
+    }
+    lines.push('');
+  }
+
   lines.push('## 下一步怎么走', '');
   if (skippedVerify || !summary || verifyFailed) {
     lines.push('1. 补验证：`node core/src/cli.mjs verify <host> --all --resume`（断点续跑，中断后重跑同一条命令即可）。');
@@ -89,7 +105,11 @@ export function renderHandoff({ siteId, origin, target, summary, summaryEvidence
   } else {
     lines.push('1. 覆盖完整，可以直接进人工检查。');
   }
-  lines.push('2. 视觉缺口里的外链资产，按 `edit-manifest.md` 逐项替换。');
-  lines.push('3. 分数不能替代断网浏览：导出离线包后拔网线走一遍关键路径。');
+  let next = 2;
+  if (strictRequested && live?.status !== 'passed') {
+    lines.push(String(next++) + '. 修复严格离线门禁中的阻断项后，重跑 `node core/src/cli.mjs handoff <url> --strict`。');
+  }
+  lines.push(`${next++}. 视觉缺口里的外链资产，按 \`edit-manifest.md\` 逐项替换。`);
+  lines.push(`${next}. 分数不能替代断网浏览：导出离线包后拔网线走一遍关键路径。`);
   return lines.join('\n') + '\n';
 }
