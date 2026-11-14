@@ -410,6 +410,9 @@ function cloneSummary(siteId, pages, scan) {
   const mirrors = pages.filter(page => existsSync(join(pageDir(siteId, page), 'clone', 'index.html')));
   const coverage = measurementCoverage(scan, pages.length);
   const measurements = new Map(scan.pages.map(row => [row.page, row]));
+  const verificationGapItems = scan.status === 'ok'
+    ? scan.pages.filter(row => row.status !== 'verified').map(row => ({ page: row.page, status: row.status }))
+    : [];
   const scoreStates = mirrors.map(page => readCurrentScore(pageDir(siteId, page), measurements.get(page)?.inputSha256));
   const scores = scoreStates.map(state => state.score)
     .filter(score => typeof score?.total === 'number' && Number.isFinite(score.total));
@@ -432,6 +435,12 @@ function cloneSummary(siteId, pages, scan) {
     scoreStatuses,
     averageOverall: coverage.average,
     worstViewport: worst,
+    verificationGaps: {
+      status: scan.status,
+      total: scan.status === 'ok' ? verificationGapItems.length : null,
+      items: verificationGapItems.slice(0, 50),
+      truncated: verificationGapItems.length > 50,
+    },
     delivery: liveExportSummary(siteDir(siteId), siteId),
     samplePages: mirrors.slice(0, 10),
   };
@@ -1090,7 +1099,7 @@ function buildCloneTask(siteId, origin, clone, items) {
         verified: clone.verified, unmeasured: clone.unmeasured,
         verificationStatus: clone.verificationStatus, averageOverall: clone.averageOverall,
         averageScore: clone.averageScore, worstViewport: clone.worstViewport,
-        scoreStatuses: clone.scoreStatuses,
+        scoreStatuses: clone.scoreStatuses, verificationGaps: clone.verificationGaps,
       },
       delivery: {
         status: delivery.status, published: delivery.published ?? null,

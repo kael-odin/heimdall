@@ -3,6 +3,10 @@
 日期：2026-11-15  
 范围：本机已保存的公开只读证据；没有登录、写入或业务副作用。
 
+## 复现性说明
+
+上面的 RFC Editor 数值来自当天的公开现场复核，属于历史记录。继续复验时，当前外部归档 `public-seo-rfc-editor-20261114` 只有 `seo/` 报告，没有 `pages/`、`live-export.json` 或视觉验证目录；从该归档重新运行 `site-assessment` 得到 `cloneTask=blocked_on_capture`、SEO 84、GEO 68.4。因此 6/6 镜像和 6 页视觉验证不能在当前归档上再次声称已复现，详细的多案例当前结果见 [`cloneTask 多案例复验`](site-assessment-clone-task-cases.md)。
+
 ## RFC Editor
 
 命令：

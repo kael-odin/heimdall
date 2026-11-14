@@ -906,6 +906,10 @@ test('site-assessment: clone AI task keeps capture, delivery, and deployment gat
     assert.equal(task.scope.pages, 2);
     assert.equal(task.scope.mirrors, 1);
     assert.equal(task.scope.mirrorCoverage, 0.5);
+    assert.equal(task.scope.visual.verificationGaps.total, 2);
+    assert.deepEqual(task.scope.visual.verificationGaps.items, [
+      { page: 'about', status: 'missing' }, { page: 'home', status: 'missing' },
+    ]);
     assert.ok(task.observedActions.some(item => item.id === 'clone-mirror-coverage'));
     assert.ok(task.observedActions.some(item => item.id === 'clone-offline-delivery'));
     assert.ok(task.tasks.some(item => item.id === 'clone-mirror-coverage'));
