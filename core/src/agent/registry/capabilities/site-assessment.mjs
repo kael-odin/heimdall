@@ -406,11 +406,16 @@ function cloneSummary(siteId, pages, scan) {
   };
 }
 
-function seoSummary(siteId, root) {
+function seoSummary(siteId, root, expectedOrigin = null) {
   const file = join(root, 'seo', 'seo.json');
   if (!existsSync(file)) return { status: 'missing', report: null };
   const report = readJson(file);
-  if (!report || typeof report !== 'object') return { status: 'invalid', report: null };
+  const reportPathname = reportPath(siteId, 'seo/seo.json');
+  if (!report || typeof report !== 'object') return { status: 'invalid', report: reportPathname };
+  const reportOrigin = originOf(report.origin);
+  if (expectedOrigin && reportOrigin && reportOrigin !== expectedOrigin) {
+    return { status: 'invalid', report: reportPathname, reason: 'origin_mismatch' };
+  }
   const repairCandidates = seoRepairCandidates(report);
   const summary = report.summary && typeof report.summary === 'object' ? report.summary : {};
   const bySeverity = Object.fromEntries(SEO_SEVERITIES.map(key => [key, Number(summary.bySeverity?.[key] ?? 0)]));
@@ -423,7 +428,7 @@ function seoSummary(siteId, root) {
   return {
     status: 'observed',
     generatedAt: typeof report.generatedAt === 'string' ? report.generatedAt : null,
-    origin: originOf(report.origin),
+    origin: reportOrigin,
     score: typeof report.score === 'number' ? report.score : null,
     grade: gradeOf(report.score),
     pages: typeof summary.pages === 'number' ? summary.pages : null,
@@ -444,7 +449,7 @@ function seoSummary(siteId, root) {
   };
 }
 
-function publicContract(root, siteId) {
+function publicContract(root, siteId, expectedOrigin = null) {
   const candidates = ['api-contract.json', 'deliver/api-contract.json', 'deliverable/api-contract.json'];
   for (const suffix of candidates) {
     const file = join(root, suffix);
@@ -453,6 +458,9 @@ function publicContract(root, siteId) {
     if (!contract || typeof contract !== 'object') return { status: 'invalid', path: reportPath(siteId, suffix) };
     const summary = summarizeObservedApiContract(contract);
     const origin = originOf(contract.origin) ?? originOf(contract.openapi?.servers?.[0]?.url);
+    if (expectedOrigin && origin && origin !== expectedOrigin) {
+      return { status: 'invalid', path: reportPath(siteId, suffix), origin: null, reason: 'origin_mismatch', summary: null, observedEndpoints: [] };
+    }
     const observedEndpoints = observedEndpointSummaries(contract);
     return { status: summary.endpoints ? 'observed' : 'no_observed_api', path: reportPath(siteId, suffix), origin,
       summary: { tier: summary.tier, endpoints: summary.endpoints, withResponseSchema: summary.withResponseSchema,
@@ -611,12 +619,13 @@ function backendScaffoldSummary(root, siteId) {
   };
 }
 
-function apiSummary(root, siteId) {
-  const contract = publicContract(root, siteId);
+function apiSummary(root, siteId, expectedOrigin = null) {
+  const contract = publicContract(root, siteId, expectedOrigin);
   const adapter = adapterSummary(root, siteId);
   const scaffold = backendScaffoldSummary(root, siteId);
   const unknowns = [];
   if (contract.status === 'missing') unknowns.push('api-contract-missing');
+  if (contract.status === 'invalid') unknowns.push('api-contract-invalid');
   if (contract.status === 'observed' || contract.status === 'no_observed_api') {
     unknowns.push('auth-permissions-state-unknown', 'business-rules-and-side-effects-unknown');
     if (contract.summary?.unknowns) unknowns.push(`api-contract-unknowns:${contract.summary.unknowns}`);
@@ -695,15 +704,23 @@ function qaSummary(args, ctx, siteId, origin) {
   };
 }
 
-function siteOrigin(root, pages, seo, api) {
-  if (seo.origin) return seo.origin;
-  if (api.contract.origin) return api.contract.origin;
+function pageSourceOrigin(root, pages) {
+  const origins = new Set();
   for (const page of pages.slice(0, 20)) {
-    const manifest = readJson(join(root, 'pages', page, 'manifest.json'));
-    const origin = originOf(manifest?.target);
-    if (origin) return origin;
+    const origin = originOf(readJson(join(root, 'pages', page, 'manifest.json'))?.target);
+    if (origin) origins.add(origin);
   }
-  return null;
+  return origins.size === 0 ? undefined : origins.size === 1 ? [...origins][0] : null;
+}
+
+function siteIdOrigin(siteId) {
+  return typeof siteId === 'string' && !siteId.includes('--origin-') ? originOf(`https://${siteId}`) : null;
+}
+
+function siteOrigin(root, pages, seo, api, siteId) {
+  const pageOrigin = pageSourceOrigin(root, pages);
+  if (pageOrigin !== undefined) return pageOrigin;
+  return seo.origin || api.contract.origin || siteIdOrigin(siteId);
 }
 
 function claimsOf(siteId, clone, seo, api, qa, unknowns) {
@@ -1162,6 +1179,8 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       id: 'api-contract', kind: 'api_contract_gap', basis: 'unknown', status: 'open',
       title: 'API 契约证据不足', detail: api.contract.status === 'missing'
         ? '没有观察型 API 契约，后端边界和响应口径未知。'
+        : api.contract.status === 'invalid' && api.contract.reason === 'origin_mismatch'
+          ? '契约来源与当前站点页面来源不一致，已拒绝把它当作本站 API 证据。'
         : '契约文件存在，但没有可用的端点观察摘要。',
       evidence: api.contract.path ? [api.contract.path] : [],
       action: plannedAction('cli:shell', { command: `heimdall probe contract --site ${siteId}` }, '先生成观察型 API 契约草稿', { requiresHumanApproval: false }),
@@ -1364,9 +1383,10 @@ export default {
     const pages = existsSync(join(root, 'pages')) ? listPages(args.siteId) : [];
     const scan = await scanMeasurementsAsync(root, pages);
     const clone = cloneSummary(args.siteId, pages, scan);
-    const seo = seoSummary(args.siteId, root);
-    const api = apiSummary(root, args.siteId);
-    const origin = siteOrigin(root, pages, seo, api);
+    const expectedOrigin = pageSourceOrigin(root, pages);
+    const seo = seoSummary(args.siteId, root, expectedOrigin);
+    const api = apiSummary(root, args.siteId, expectedOrigin);
+    const origin = siteOrigin(root, pages, seo, api, args.siteId);
     const qa = qaSummary(args, ctx, args.siteId, origin);
     const unknowns = [];
     if (!clone.pages) unknowns.push({ id: 'clone-not-captured', detail: '没有页面目录，克隆与多视口验证都未知。' });

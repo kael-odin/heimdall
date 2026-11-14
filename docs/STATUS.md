@@ -12,6 +12,8 @@
 
 2026-11-15 [QA 证据按站点隔离]：`site-assessment --qa-workspace` 找不到目标站点时不再借用工作区第一个站点的运行记录；标准主机名站点仍可在缺少页面来源 manifest 时按 `siteId` 匹配，带 `--origin-` 的隔离 ID 没有来源证据时保持未知。
 
+2026-11-15 [站点评估来源完整性]：页面 manifest 的唯一来源优先作为站点锚点；`seo.json` 和 `api-contract.json` 若声明其他 origin 会被标记为 `origin_mismatch` 并从有效证据中排除，避免错误报告改变 QA 归属或 AI 修复命令。
+
 ## 现在的主线
 
 **持续增强三项能力，用真实案例推动改进**。Heimdall 采集和核验证据，外部 AI 代理补全实现与提出修复方案：

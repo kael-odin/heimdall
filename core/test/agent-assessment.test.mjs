@@ -88,6 +88,36 @@ test('site-assessment: does not borrow QA evidence from an unrelated workspace s
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: rejects SEO and API evidence from a different origin', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-origin-scope-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'seo', 'seo.json'), {
+      origin: 'https://unrelated.test', score: 100,
+      summary: { pages: 1, issues: 0, bySeverity: {}, sitemapCoverage: 'complete' },
+    });
+    put(join(site, 'api-contract.json'), {
+      origin: 'https://unrelated.test', openapi: { paths: { '/api/items': { get: { responses: { '200': {} } } } } },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(result.origin, 'https://example.test');
+    assert.equal(result.seo.status, 'invalid');
+    assert.equal(result.seo.reason, 'origin_mismatch');
+    assert.equal(result.api.contract.status, 'invalid');
+    assert.equal(result.api.contract.reason, 'origin_mismatch');
+    assert.ok(result.unknowns.some(item => item.id === 'api-contract-invalid'));
+    assert.match(result.deliveryPlan.items.find(item => item.id === 'api-contract').detail, /来源与当前站点页面来源不一致/);
+    assert.doesNotMatch(run.stdout, /unrelated\.test/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
