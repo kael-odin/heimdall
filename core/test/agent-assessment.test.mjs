@@ -159,8 +159,11 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.api.adapter.gapLedger.summary.uniqueGaps, 1);
     assert.equal(env.result.clone.delivery.adapter.serverEgress, 'not-tested');
     assert.equal(env.result.deliveryPlan.backendCompletion.adapterEgress.status, 'not-tested');
+    assert.equal(env.result.deliveryPlan.backendCompletion.adapterEgress.operationProbe.status, 'not-tested');
     assert.ok(env.result.deliveryPlan.backendCompletion.unknowns.some(item => item.id === 'adapter-server-egress'));
+    assert.ok(env.result.deliveryPlan.backendCompletion.unknowns.some(item => item.id === 'adapter-operation-probe'));
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'offline-egress').status, 'blocked');
+    assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'operation-probe').status, 'not-tested');
     assert.equal(env.result.qa.latest.runId, runId);
     assert.equal(env.result.qa.latest.findings.status, 'observed');
     assert.equal(env.result.qa.latest.findings.total, 2);
@@ -240,7 +243,12 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       schema: 'heimdall.adapter-egress-verification/1', siteId: 'example.test',
       generatedAt: '2026-11-14T02:00:00.000Z', serverEgress: 'verified',
       bundle: 'deliverable/example.test-live-2026-11-14', bundleChecksumsSha256: checksumsSha256,
-      docker: { network: 'none' }, checks: { health: 'passed', stateVolume: 'passed' },
+      docker: { network: 'none' }, checks: {
+        health: 'passed', stateVolume: 'passed', operationProbe: {
+          scope: 'final-image-filesystem', planSha256: 'a'.repeat(64),
+          planned: 1, checked: 1, failed: 0, untested: 0, passedFlows: 1,
+        },
+      },
       adapter: { declaredRoutes: 1, exercisedRoutes: 1, untestedRoutes: 0 },
       httpChecks: {
         beforeRestart: { checked: 1, passed: 1, results: [{ id: 'create', status: 201 }] },
@@ -253,11 +261,15 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(verifiedRun.status, 0, verifiedRun.stderr + verifiedRun.stdout);
     const verified = JSON.parse(verifiedRun.stdout.trim().split(/\r?\n/).at(-1)).result;
     assert.equal(verified.clone.delivery.adapter.serverEgress, 'verified');
+    assert.equal(verified.deliveryPlan.backendCompletion.adapterEgress.operationProbe.status, 'passed');
+    assert.equal(verified.deliveryPlan.backendCompletion.adapterEgress.operationProbe.passedFlows, 1);
     assert.deepEqual(verified.deliveryPlan.backendCompletion.adapterEgress.evidence, [
       'workspace/example.test/adapter-egress-verification.json',
     ]);
     assert.equal(verified.deliveryPlan.backendCompletion.adapterEgress.httpChecks.afterRestart.results[0].id, 'readback');
     assert.equal(verified.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'offline-egress').status, 'passed');
+    assert.equal(verified.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'operation-probe').status, 'passed');
+    assert.equal(verified.deliveryPlan.backendCompletion.unknowns.some(item => item.id === 'adapter-operation-probe'), false);
 
     const published = JSON.parse(readFileSync(join(site, 'live-export.json'), 'utf8'));
     published.healthReport = null;

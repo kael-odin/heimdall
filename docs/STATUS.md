@@ -28,6 +28,8 @@
 
 2026-11-14 [最终适配器镜像操作复测]：`live-verify` 新增可选 `--operation-plan FILE`；授权计划不会进入交付包或报告，最终镜像 `/app` 快照校验和通过后，复用离线浏览器操作探针复测点击、输入、导航和断言，报告只保留计划哈希、计划数、通过数和失败/未测计数。它补上了交付包离开工作区后的前端操作复测入口；适配器写入、重启读回、认证、权限和副作用仍分别由 HTTP 检查与授权旅程证明。
 
+2026-11-14 [操作复测证据进入 AI 后端任务]：`site-assessment` 现在只投影 `operationProbe` 的范围、计数、计划哈希和状态，不读取操作计划内容；`backendCompletion.adapterEgress` 会同时显示 HTTP 写入/重启读回与最终镜像操作复测，新增 `operation-probe` 确定性检查。没有操作计划时状态明确为 `not-tested`，通过操作复测也不会清除认证、权限、状态机、业务规则和副作用未知项。
+
 2026-11-14 [静态交付包独立断网验收](audits/2026-11-14/public-static-deployment-verify.md)：`live-verify --static` 复用当前包校验和，在 Docker `network none` 中两次启动 `example.com` 静态包，1/1 live 路由、根路由和健康检查通过；随后从最终镜像复制 `/app`，再次核对校验和，并用真实 Chromium 对同一快照逐页断外联检查，1/1 通过、0 失败、0 未测。`site-assessment.independentDeployment` 只有在容器证据、浏览器证据和当前包校验和都匹配时才标为 `verified`。
 
 2026-11-14 [适配器交付包操作计划复测](audits/2026-11-14/adapter-operation-plan-deployment-verify.md)：受控有状态适配器在 Docker `network none` 中授权写入 1/1、重启读回 1/1；最终镜像快照上的授权浏览器操作计划 1/1、0 失败、0 未测。首次错误 JSON Pointer 被 `afterRestart` 阶段阻断，修正后通过；报告仍保留未覆盖路由、响应正文缺口和未验证写入，不把一次流程通过包装成完整后端等价。

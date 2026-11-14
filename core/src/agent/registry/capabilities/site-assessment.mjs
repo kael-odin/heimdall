@@ -233,6 +233,25 @@ function adapterEgressVerification(root, siteId) {
     })) : [],
   } : null;
   const rawHttpChecks = source.httpChecks;
+  const safeOperationProbe = value => {
+    if (value === undefined || value === null) return null;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return { status: 'invalid' };
+    const count = key => Number.isSafeInteger(value[key]) && value[key] >= 0 ? value[key] : null;
+    const planned = count('planned');
+    const checked = count('checked');
+    const failed = count('failed');
+    const untested = count('untested');
+    const valid = value.scope === 'final-image-filesystem'
+      && /^[a-f0-9]{64}$/i.test(value.planSha256 ?? '')
+      && planned !== null && checked !== null && failed !== null && untested !== null;
+    if (!valid) return { status: 'invalid' };
+    return {
+      status: checked === planned && failed === 0 && untested === 0 ? 'passed' : 'blocked',
+      scope: value.scope, planSha256: value.planSha256,
+      planned, checked, failed, untested,
+      passedFlows: count('passedFlows'),
+    };
+  };
   return {
     status: 'verified', report, generatedAt: source.generatedAt,
     bundle: bundleRel, bundleChecksumsSha256: checksumsSha256,
@@ -244,7 +263,7 @@ function adapterEgressVerification(root, siteId) {
     httpChecks: rawHttpChecks && typeof rawHttpChecks === 'object' ? {
       beforeRestart: safeChecks(rawHttpChecks.beforeRestart), afterRestart: safeChecks(rawHttpChecks.afterRestart),
     } : null,
-    operationProbe: source.checks?.operationProbe ?? null,
+    operationProbe: safeOperationProbe(source.checks?.operationProbe),
   };
 }
 
@@ -774,6 +793,8 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   const hasWrite = endpoints.some(endpoint => endpoint.method !== 'GET');
   const validationStatus = api.adapter.validation?.status ?? 'not-validated';
   const adapterServerEgress = delivery?.adapter?.serverEgress ?? 'unknown';
+  const operationProbe = delivery?.adapterEgressVerification?.operationProbe ?? { status: 'not-tested' };
+  const operationProbeStatus = operationProbe?.status ?? 'not-tested';
   const gapLedger = api.adapter.gapLedger;
   const scaffold = api.scaffold ?? { status: 'missing', present: false, path: null };
   const repairTasks = Array.isArray(scaffold.check?.repairTasks) ? [...scaffold.check.repairTasks] : [];
@@ -843,6 +864,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       evidence: delivery?.adapterEgressVerification?.status === 'verified'
         ? [delivery.adapterEgressVerification.report] : [],
       httpChecks: delivery?.adapterEgressVerification?.httpChecks ?? null,
+      operationProbe,
     },
     gapLedger,
     unknowns: [
@@ -860,6 +882,14 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
         detail: adapterServerEgress === 'not-tested'
           ? '适配器服务端外联尚未在无外联部署中验证；留出回放通过不等于独立部署安全。'
           : '没有可用的适配器服务端外联证据。',
+      }] : []),
+      ...(api.adapter.present && operationProbeStatus !== 'passed' ? [{
+        id: 'adapter-operation-probe', basis: operationProbeStatus === 'blocked' ? 'observed' : 'unknown',
+        detail: operationProbeStatus === 'blocked'
+          ? '最终镜像中的授权浏览器操作复测有失败或未测流程。'
+          : operationProbeStatus === 'invalid'
+            ? '最终镜像操作复测报告存在不可用字段，不能作为交互证据。'
+            : '没有最终镜像操作计划证据；点击、输入、导航和断言尚未复测。',
       }] : []),
     ],
     humanJourneys,
@@ -890,6 +920,9 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
         { id: 'offline-egress', status: adapterServerEgress === 'verified' ? 'passed' : 'blocked',
           basis: adapterServerEgress === 'verified' || adapterServerEgress === 'not-tested' ? 'observed' : 'unknown',
           condition: '最终适配器在无外联部署中通过断网浏览器验收。' },
+        { id: 'operation-probe', status: operationProbeStatus,
+          basis: operationProbeStatus === 'passed' || operationProbeStatus === 'blocked' ? 'observed' : 'unknown',
+          condition: '在最终镜像文件系统上执行授权操作计划，确认点击、输入、导航和断言全部通过。' },
       ],
       humanChecks: humanJourneys.map(journey => ({ id: journey.id, basis: journey.basis, requiresHumanApproval: true, condition: journey.goal })),
     },
