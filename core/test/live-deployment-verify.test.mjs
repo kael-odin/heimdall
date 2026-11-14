@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { formatHttpCheckFailure, readHttpChecks, validateDeploymentReport, verifyBundleChecksums } from '../src/live/deployment-verify.mjs';
+import { formatHttpCheckFailure, readHttpChecks, validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums, verifyStaticDeploymentBundle } from '../src/live/deployment-verify.mjs';
 
 test('deployment evidence requires network-none, runtime checks, and the current bundle checksum', () => {
   const report = {
@@ -66,4 +66,37 @@ test('HTTP deployment failures identify the phase and safe assertion detail', ()
   assert.equal(formatHttpCheckFailure('afterRestart', { id: 'write', expect: {} }, 'JSON pointer /id mismatch'),
     'HTTP check failed [afterRestart]: write (JSON pointer /id mismatch)');
   assert.doesNotMatch(formatHttpCheckFailure('beforeRestart', check, 'text assertion failed'), /fixture|token|secret/i);
+});
+
+test('static deployment verification checks the final bundle twice in a network-none container', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-static-deployment-verify-'));
+  try {
+    mkdirSync(join(root, 'site', 'live'), { recursive: true });
+    const files = {
+      'health.json': JSON.stringify({ adapter: { status: 'not-included' }, offline: true }),
+      'Dockerfile': 'FROM node:22-alpine',
+      'serve.mjs': 'console.log(1)',
+      'heimdall-live.json': JSON.stringify({ siteId: 'example.test', port: 8080 }),
+      'site/live/index.html': '<!doctype html><h1>Example</h1>',
+    };
+    for (const [name, body] of Object.entries(files)) {
+      const file = join(root, name); mkdirSync(join(file, '..'), { recursive: true }); writeFileSync(file, body);
+    }
+    const entries = Object.entries(files).map(([p, body]) => ({ p, s: Buffer.byteLength(body), h: createHash('sha256').update(body).digest('hex') }));
+    writeFileSync(join(root, 'checksums.json'), JSON.stringify({ files: entries }));
+    const reportPath = join(root, '..', 'deployment-verification.json');
+    const calls = [];
+    const runDocker = args => {
+      calls.push(args);
+      if (args[0] === 'inspect') return 'none';
+      if (args[0] === 'exec') return JSON.stringify({ health: 'passed', root: 'passed', routesChecked: 1, sourceWorkspace: 'passed' });
+      return '';
+    };
+    const result = verifyStaticDeploymentBundle({ bundleDir: root, siteId: 'example.test', reportPath, runDocker, observeMs: 1 });
+    assert.equal(result.report.deployment, 'verified');
+    assert.equal(result.report.checks.routes.checked, 1);
+    assert.equal(result.report.checks.restart, 'passed');
+    assert.equal(validateStaticDeploymentReport(result.report, { siteId: 'example.test', checksumsSha256: verifyBundleChecksums(root) }), true);
+    assert.equal(calls.filter(args => args[0] === 'exec').length, 2);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

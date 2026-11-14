@@ -18,7 +18,7 @@ import { listRuns, openWorkspace, relPath, runsDir } from '../../../qa/run.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
 import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { readCurrentScore } from '../../../score-status.mjs';
-import { validateDeploymentReport, verifyBundleChecksums } from '../../../live/deployment-verify.mjs';
+import { validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums } from '../../../live/deployment-verify.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
@@ -247,6 +247,27 @@ function adapterEgressVerification(root, siteId) {
   };
 }
 
+function staticDeploymentVerification(root, siteId) {
+  const report = reportPath(siteId, 'deployment-verification.json');
+  const file = join(root, 'deployment-verification.json');
+  if (!existsSync(file)) return null;
+  const source = readJson(file);
+  const dataRoot = resolve(root, '..', '..');
+  const bundle = typeof source?.bundle === 'string' ? source.bundle : '';
+  const bundlePath = resolve(dataRoot, bundle);
+  const bundleRel = relative(dataRoot, bundlePath).replaceAll('\\', '/');
+  if (!bundle || bundleRel !== bundle || !bundleRel.startsWith('deliverable/')) return { status: 'invalid', report };
+  let checksumsSha256 = null;
+  try { checksumsSha256 = verifyBundleChecksums(bundlePath); }
+  catch { return { status: 'invalid', report }; }
+  if (!validateStaticDeploymentReport(source, { siteId, checksumsSha256 })) return { status: 'invalid', report };
+  return {
+    status: 'verified', report, generatedAt: source.generatedAt,
+    bundle: bundleRel, bundleChecksumsSha256: checksumsSha256,
+    routes: source.checks?.routes ?? null, docker: source.docker ?? null,
+  };
+}
+
 function liveExportSummary(root, siteId) {
   const file = join(root, 'live-export.json');
   if (!existsSync(file)) return { status: 'not_recorded', report: null };
@@ -300,6 +321,7 @@ function liveExportSummary(root, siteId) {
         ? { binarySourceStatus: rawReadOnlyData.binarySourceStatus.slice(0, 32) } : {}),
     } : null;
   const egressVerification = adapterEgressVerification(root, siteId);
+  const deploymentVerification = staticDeploymentVerification(root, siteId);
   const rawAdapter = health?.adapter;
   const adapterSource = rawAdapter ?? egressVerification?.adapter;
   const adapter = adapterSource && typeof adapterSource === 'object' && !Array.isArray(adapterSource)
@@ -318,6 +340,7 @@ function liveExportSummary(root, siteId) {
     status: source.status, generatedAt: new Date(source.generatedAt).toISOString(), report, healthReport,
     offline: source.offline, strict: source.strict, root: source.root === 'mirror' ? 'mirror' : 'landing',
     published: source.published, pages: source.pages, adapter, adapterEgressVerification: egressVerification,
+    deploymentVerification,
     blockingCount: source.blockingCount, blockers,
     otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
     browser, browserFailures, runtimeDataGaps,
@@ -613,6 +636,7 @@ function claimsOf(siteId, clone, seo, api, qa, unknowns) {
   const verified = [];
   const observed = [];
   if (clone.verified > 0) verified.push(`clone.multi_viewport:${clone.verified}`);
+  if (clone.delivery.deploymentVerification?.status === 'verified') verified.push('clone.independent_deployment:network_none');
   if (api.adapter.validation?.status === 'passed') verified.push(`api.adapter_holdout:${api.adapter.validation.equivalence ?? 'n/a'}`);
   if (clone.mirrors > 0) observed.push(`clone.mirrors:${clone.mirrors}/${clone.pages}`);
   if (clone.delivery.report) observed.push(`clone.offline_export:${clone.delivery.status}`);
@@ -974,6 +998,21 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       verify: { method: 'human_authorized_binary_review', condition: '确认公开权限、内容安全和分发策略后，再用支持该类型的导出路径复测' },
     });
   }
+  if (clone.delivery.status === 'passed' && clone.delivery.deploymentVerification?.status !== 'verified') {
+    add({
+      id: 'independent-deployment', kind: 'independent_deployment_gap',
+      basis: clone.delivery.deploymentVerification ? 'observed' : 'unknown', status: 'open',
+      title: '最终包还没有独立断网部署证据',
+      detail: clone.delivery.deploymentVerification?.status === 'invalid'
+        ? '已有部署报告，但报告、包校验和或声明不再匹配。'
+        : 'strict 导出通过只证明候选包门禁通过；还需要在不含原工作区的 Docker network none 中启动两次并检查页面路由。',
+      evidence: [clone.delivery.report, clone.delivery.deploymentVerification?.report].filter(Boolean),
+      action: plannedAction('cli:shell', {
+        command: `heimdall live-verify <deliverable/${siteId}-包目录> --static --site-id ${siteId}`,
+      }, '在最终静态交付包中执行两次断网启动和页面路由检查', { requiresHumanApproval: true }),
+      verify: planVerification(siteId, 'clone.delivery.deploymentVerification.status === "verified"'),
+    });
+  }
 
   const seoIncomplete = seo.status === 'observed'
     && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0 || seo.geo.status !== 'complete');
@@ -1175,6 +1214,9 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     delivery: entry(clone.delivery.status === 'passed' ? 'last_check_passed'
       : clone.delivery.status === 'blocked' ? 'blocked' : clone.delivery.status === 'unverified' ? 'needs_strict_verification' : 'needs_export',
       clone.delivery.report ? 'observed' : 'unknown', [clone.delivery.report, clone.delivery.healthReport], item('clone-offline-delivery')),
+    independentDeployment: entry(clone.delivery.deploymentVerification?.status === 'verified' ? 'verified'
+      : clone.delivery.deploymentVerification?.status === 'invalid' ? 'invalid' : 'needs_verification',
+      clone.delivery.deploymentVerification ? 'observed' : 'unknown', [clone.delivery.deploymentVerification?.report], item('independent-deployment')),
     seo: entry(seoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     geo: entry(geoStatus, seo.status === 'observed' && seo.geo.status !== 'unknown' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
@@ -1218,6 +1260,9 @@ export default {
     if (unavailableScores > 0) unknowns.push({ id: 'clone-score-not-current', detail: `${unavailableScores} 页没有当前克隆输入的已核实单页辅助分数，当前平均分已排除。` });
     if (clone.delivery.status !== 'passed') unknowns.push({ id: 'offline-delivery-' + clone.delivery.status,
       detail: '严格离线交付尚未通过；旧版本缺少结果记录时须重新导出。' });
+    if (clone.delivery.status === 'passed' && clone.delivery.deploymentVerification?.status !== 'verified') {
+      unknowns.push({ id: 'independent-deployment-not-verified', detail: '最终包还没有当前校验和绑定的 Docker network none 独立部署证据。' });
+    }
     if (seo.status === 'missing') unknowns.push({ id: 'seo-report-missing', detail: '没有本地 SEO/GEO 报告。' });
     if (seo.status === 'invalid') unknowns.push({ id: 'seo-report-invalid', detail: 'SEO 报告存在但无法读取。' });
     if (seo.status === 'observed' && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0)) {

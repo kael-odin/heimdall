@@ -6,7 +6,7 @@
  * 仍以导出时声明的操作流程与人工授权旅程为准。
  */
 import { createHash, randomBytes } from 'node:crypto';
-import { lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +14,7 @@ import { makeArgs } from '../args.mjs';
 import { DATA_ROOT, WORKSPACE } from '../paths.mjs';
 
 const VERIFY_SCHEMA = 'heimdall.adapter-egress-verification/1';
+const STATIC_VERIFY_SCHEMA = 'heimdall.static-deployment-verification/1';
 const DEFAULT_TIMEOUT_MS = 90_000;
 const DEFAULT_OBSERVE_MS = 3_000;
 const MAX_TIMEOUT_MS = 600_000;
@@ -292,6 +293,51 @@ console.log(JSON.stringify({
 `;
 }
 
+function staticVerifierScript(port, observeMs) {
+  return `
+const { existsSync, readdirSync, statSync } = await import('node:fs');
+const { join, relative } = await import('node:path');
+const base = 'http://127.0.0.1:${port}';
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+const request = async path => {
+  const response = await fetch(base + path, { signal: AbortSignal.timeout(15000) });
+  await response.arrayBuffer();
+  return response.status;
+};
+const health = async () => {
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      const response = await fetch(base + '/__heimdall/health', { signal: AbortSignal.timeout(15000) });
+      return JSON.parse(await response.text());
+    } catch { await wait(100); }
+  }
+  throw new Error('health endpoint did not start');
+};
+if (existsSync('/app/workspace')) throw new Error('source workspace is present in image');
+const first = await health();
+if (first.offline !== true) throw new Error('bundle is not offline');
+if (first.adapterGaps !== undefined) throw new Error('static bundle unexpectedly exposes adapter state');
+if (await request('/') >= 400) throw new Error('root route failed');
+const routes = [];
+const walk = (dir, prefix = '') => {
+  if (!existsSync(dir)) return;
+  for (const name of readdirSync(dir)) {
+    const file = join(dir, name);
+    const stat = statSync(file);
+    if (stat.isDirectory() && name !== '.heimdall-query') walk(file, prefix ? prefix + '/' + name : name);
+    else if (stat.isFile() && name === 'index.html') routes.push(prefix ? '/' + prefix + '/' : '/');
+  }
+};
+walk('/app/site/live');
+if (!routes.length) throw new Error('static bundle has no live page');
+for (const route of [...new Set(routes)].sort()) {
+  if (await request(route) >= 400) throw new Error('page route failed: ' + route);
+}
+await wait(${observeMs});
+console.log(JSON.stringify({ health: 'passed', root: 'passed', routesChecked: new Set(routes).size, sourceWorkspace: 'passed' }));
+`;
+}
+
 function parseVerifierOutput(output) {
   const line = String(output).trim().split(/\r?\n/).at(-1);
   try { return JSON.parse(line); }
@@ -304,21 +350,29 @@ function runContainerCheck({ container, port, observeMs, timeoutMs, runDocker: r
   return parseVerifierOutput(result);
 }
 
-function readBundle(bundleDir) {
+function runStaticContainerCheck({ container, port, observeMs, timeoutMs, runDocker: run }) {
+  const result = run(['exec', container, 'node', '--input-type=module', '-e', staticVerifierScript(port, observeMs)], timeoutMs);
+  return parseVerifierOutput(result);
+}
+
+function readBundle(bundleDir, mode = 'adapter') {
   regularDirectory(bundleDir, '交付包');
   for (const [file, label] of [
     ['health.json', 'health.json'], ['checksums.json', 'checksums.json'], ['Dockerfile', 'Dockerfile'],
     ['serve.mjs', 'serve.mjs'], ['heimdall-live.json', 'heimdall-live.json'],
-    ['runtime-adapter/manifest.json', 'runtime-adapter/manifest.json'],
-    ['runtime-adapter/index.mjs', 'runtime-adapter/index.mjs'],
   ]) regularFile(join(bundleDir, file), label);
   const health = jsonFile(join(bundleDir, 'health.json'), 'health.json');
-  if (health?.adapter?.status !== 'included') {
-    throw new DeploymentVerificationError('invalid_args', '交付包没有包含适配器');
+  if (mode === 'adapter') {
+    for (const [file, label] of [['runtime-adapter/manifest.json', 'runtime-adapter/manifest.json'], ['runtime-adapter/index.mjs', 'runtime-adapter/index.mjs']]) {
+      regularFile(join(bundleDir, file), label);
+    }
+    if (health?.adapter?.status !== 'included') throw new DeploymentVerificationError('invalid_args', '交付包没有包含适配器');
+  } else if (health?.adapter?.status === 'included' || existsSync(join(bundleDir, 'runtime-adapter'))) {
+    throw new DeploymentVerificationError('invalid_args', '静态验收不能接管含适配器的交付包');
   }
   const config = jsonFile(join(bundleDir, 'heimdall-live.json'), 'heimdall-live.json');
-  const manifest = jsonFile(join(bundleDir, 'runtime-adapter/manifest.json'), 'runtime-adapter/manifest.json');
-  if (!Array.isArray(manifest.routes) || !manifest.routes.length) {
+  const manifest = mode === 'adapter' ? jsonFile(join(bundleDir, 'runtime-adapter/manifest.json'), 'runtime-adapter/manifest.json') : null;
+  if (mode === 'adapter' && (!Array.isArray(manifest.routes) || !manifest.routes.length)) {
     throw new DeploymentVerificationError('invalid_bundle', '适配器没有声明路由');
   }
   return {
@@ -327,11 +381,25 @@ function readBundle(bundleDir) {
   };
 }
 
-function reportTarget({ siteId, reportPath }) {
+export function validateStaticDeploymentReport(report, { siteId, checksumsSha256 } = {}) {
+  return report?.schema === STATIC_VERIFY_SCHEMA
+    && (!siteId || report.siteId === siteId)
+    && report.deployment === 'verified'
+    && /^[a-f0-9]{64}$/i.test(report.bundleChecksumsSha256 ?? '')
+    && (!checksumsSha256 || report.bundleChecksumsSha256 === checksumsSha256)
+    && report.docker?.network === 'none'
+    && report.checks?.health === 'passed'
+    && report.checks?.root === 'passed'
+    && report.checks?.routes?.failed === 0
+    && report.checks?.sourceWorkspace === 'passed'
+    && report.checks?.restart === 'passed';
+}
+
+function reportTarget({ siteId, reportPath, kind = 'adapter' }) {
   if (reportPath) return resolve(reportPath);
   if (!siteId) throw new DeploymentVerificationError('invalid_args', '写入工作区证据需要 --site-id 或 --report');
   if (!HOST_RE.test(siteId)) throw new DeploymentVerificationError('invalid_args', 'siteId 格式无效');
-  return join(WORKSPACE, siteId, 'adapter-egress-verification.json');
+  return join(WORKSPACE, siteId, kind === 'static' ? 'deployment-verification.json' : 'adapter-egress-verification.json');
 }
 
 function writeReport(path, report) {
@@ -423,23 +491,81 @@ export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, httpChec
   }
 }
 
+export function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPath, timeoutMs = DEFAULT_TIMEOUT_MS, observeMs = DEFAULT_OBSERVE_MS, runDocker = docker }) {
+  const bundle = resolve(bundleDir);
+  const metadata = readBundle(bundle, 'static');
+  const target = reportTarget({ siteId: siteId ?? metadata.config.siteId, reportPath, kind: 'static' });
+  const port = Number(metadata.config.port ?? 8080);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new DeploymentVerificationError('invalid_bundle', '交付包端口无效');
+  }
+  const bundleRef = safeRelativeBundle(bundle);
+  if (!bundleRef && !reportPath) throw new DeploymentVerificationError('invalid_args', '默认工作区证据要求交付包位于 DATA_ROOT/deliverable 内');
+  const suffix = `${process.pid}-${Date.now()}-${randomBytes(3).toString('hex')}`;
+  const image = `heimdall-static-verify:${suffix}`;
+  const container = `heimdall-static-verify-${suffix}`;
+  let started = false;
+  let built = false;
+  let first;
+  try {
+    runDocker(['build', '--pull=false', '--tag', image, bundle], timeoutMs);
+    built = true;
+    runDocker(['run', '--detach', '--rm', '--network', 'none', '--name', container, image], timeoutMs);
+    started = true;
+    const network = runDocker(['inspect', '--format', '{{.HostConfig.NetworkMode}}', container], timeoutMs);
+    if (network !== 'none') throw new DeploymentVerificationError('failed', '容器没有使用 network none');
+    first = runStaticContainerCheck({ container, port, observeMs, timeoutMs, runDocker });
+    runDocker(['rm', '--force', container], timeoutMs);
+    started = false;
+    runDocker(['run', '--detach', '--rm', '--network', 'none', '--name', container, image], timeoutMs);
+    started = true;
+    const second = runStaticContainerCheck({ container, port, observeMs: Math.min(observeMs, 1_000), timeoutMs, runDocker });
+    const report = {
+      schema: STATIC_VERIFY_SCHEMA, siteId: siteId ?? metadata.config.siteId,
+      generatedAt: new Date().toISOString(), deployment: 'verified',
+      bundle: bundleRef, bundleChecksumsSha256: metadata.checksumsSha256,
+      docker: { network: 'none' },
+      checks: {
+        health: 'passed', root: first.root,
+        routes: { checked: first.routesChecked, failed: 0 },
+        sourceWorkspace: first.sourceWorkspace, restart: 'passed',
+      },
+      observationMs: observeMs, evidence: { firstStart: first, secondStart: second },
+    };
+    if (!validateStaticDeploymentReport(report, { siteId: report.siteId, checksumsSha256: metadata.checksumsSha256 })) {
+      throw new DeploymentVerificationError('failed', '生成的静态无外联证据未通过自校验');
+    }
+    writeReport(target, report);
+    return { report, reportPath: target };
+  } finally {
+    if (started) { try { runDocker(['rm', '--force', container], timeoutMs); } catch {} }
+    if (built) { try { runDocker(['image', 'rm', image], timeoutMs); } catch {} }
+  }
+}
+
 function usage() {
-  console.error('用法: heimdall live-verify <bundleDir> [--site-id S] [--report FILE] [--http-checks FILE] [--timeout-ms N] [--observe-ms N]');
+  console.error('用法: heimdall live-verify <bundleDir> [--static] [--site-id S] [--report FILE] [--http-checks FILE] [--timeout-ms N] [--observe-ms N]');
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-  const { argOf, positional } = makeArgs();
+  const { argOf, has, positional } = makeArgs();
   const bundleDir = positional()[0];
   if (!bundleDir) { usage(); process.exit(2); }
   try {
-    const result = verifyDeploymentBundle({
-      bundleDir,
-      siteId: argOf('site-id', undefined), reportPath: argOf('report', undefined), httpChecksPath: argOf('http-checks', undefined),
+    const common = {
+      bundleDir, siteId: argOf('site-id', undefined), reportPath: argOf('report', undefined),
       timeoutMs: boundedNumber(argOf('timeout-ms', DEFAULT_TIMEOUT_MS), DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS),
       observeMs: boundedNumber(argOf('observe-ms', DEFAULT_OBSERVE_MS), DEFAULT_OBSERVE_MS, MAX_OBSERVE_MS),
-    });
-    console.log(`[live-verify] serverEgress=verified routes=${result.report.adapter.exercisedRoutes}/${result.report.adapter.declaredRoutes} report=${result.reportPath}`);
+    };
+    if (has('static')) {
+      if (argOf('http-checks', undefined) !== undefined) throw new DeploymentVerificationError('invalid_args', '静态验收不支持 --http-checks');
+      const result = verifyStaticDeploymentBundle(common);
+      console.log(`[live-verify] deployment=verified routes=${result.report.checks.routes.checked} report=${result.reportPath}`);
+    } else {
+      const result = verifyDeploymentBundle({ ...common, httpChecksPath: argOf('http-checks', undefined) });
+      console.log(`[live-verify] serverEgress=verified routes=${result.report.adapter.exercisedRoutes}/${result.report.adapter.declaredRoutes} report=${result.reportPath}`);
+    }
   } catch (error) {
     console.error(`[live-verify] ${error?.message ?? error}`);
     process.exit(error?.code === 'unavailable' ? 3 : error?.code === 'invalid_args' || error?.code === 'invalid_bundle' ? 2 : 1);
