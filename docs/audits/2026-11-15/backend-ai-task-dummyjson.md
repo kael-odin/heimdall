@@ -26,6 +26,17 @@ node backend-scaffold/checks.mjs http://127.0.0.1:18081
 
 这次实测证明生成的 AI 任务包能从真实公开 API 的有限观察输入生成可执行上下文，并且独立服务可以复现该响应的状态码、MIME 和有限 JSON 结构。任务文件没有复制请求体、认证材料或原始响应正文，也没有把推断业务规则写成 observed。
 
+## 2026-11-15 站点评估复验
+
+使用仓库外真实后端归档重新运行 `site-assessment`，检查缺口列表的安全截断元数据：
+
+| 案例 | `backendCompletion` | gaps | known routes | unknowns |
+| --- | --- | ---: | ---: | ---: |
+| `api.artic.edu` | `needs_human_journey` | 0/0 | 1/1 | 2/2 |
+| `dummyjson.com` | `needs_human_journey` | 0/0 | 1/1 | 2/2 |
+
+两份归档都返回 `truncated=false`。这只证明摘要投影保持完整且不泄露原始响应，不证明后端业务等价。
+
 ## 边界
 
 一次公开 GET 只能证明单端点只读回放；它不能证明分页、错误分支、认证、权限、写入、持久化、并发、业务等价或源站完整后端。下一步必须用获授权的多旅程数据补充 `state-rules.json`，再分别在源站与候选后端运行同一份 `business-rules-only` 规则。
