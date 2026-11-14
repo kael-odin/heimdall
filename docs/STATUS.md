@@ -25,6 +25,8 @@
 
 2026-11-14 [公开单页 strict 交接复验](audits/2026-11-14/public-handoff-example-strict.md)：`example.com` 真实运行新版 `handoff --strict` 通过 1/1 页、3/3 视口、strict 0 阻断；独立目录启动的 live 包在 `/`、`/lm/example.com/` 和健康检查返回 HTTP 200。该案例仍没有后端、认证、权限或 QA 证据。
 
+2026-11-14 [公开多页 strict 失败边界](audits/2026-11-14/vitest-public-handoff-strict.md)：`vitest.dev` 三页视觉测量 3/3、平均 99.7%，但 `handoff --strict` 保留 112 个阻断并拒绝覆盖正式包；未解析脚本、91 个未镜像链接、第三方运行时、浏览器失败和隐私扫描 incomplete 均进入报告。该案例确认高视觉分数不会绕过独立部署门禁。
+
 2026-11-13 [64 位整数资源关联实测](audits/2026-11-13/qa-int64.md)：真实 Datasette + SQLite 八场景，修正两次错误通过与三次健康误拒绝；长整数原 token 贯通动态路径、字段引用与 MCP，数字与字符串仍区分。每次仅页面自身两次 GET，绑定值不进入报告。复用原模块和测试，未支持的大整数写法保留未核实，整数常量需在安全范围；生产认证、事务与完整业务仍未验证。源码 CI 8/8，Core 3,332 通过 / 4 条件跳过，Docker 独立 2/2、MCP 7/7。
 
 2026-11-14 [Datasette 独立部署复验](audits/2026-11-13/datasette-standalone.md)：在源站停止后重新导出 83 个 live 页面和 68 条公开只读数据；修复健康扫描把同路径无查询 HAR 错算为查询变体覆盖的假通过。最新候选的 250 条运行路径 0 失败，83 页浏览器探针 9 页发现 `CodeMirror is not defined`，当前复核结果会同时给出 `ReferenceError` 类型和脱敏 `message`，实际 HTTP 错误还带受控 `resourceType`；`site-assessment` 现在把这些有限失败摘要交给 AI 交付计划，形成修复后复测入口，并把 `/library.db` 识别为需要人工授权审核的二进制分发缺口；二进制缺口待授权后会提示 `binaryPaths` 与 `--include-readonly-binaries` 复测路径；真实缺口为 664 个站内链接、`/library.db` 二进制下载、3 条操作流未测和 1 条适配器路由未测；严格发布继续阻断，未宣称整站等价。
