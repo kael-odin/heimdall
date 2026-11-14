@@ -10,6 +10,8 @@
 
 2026-11-15 [外部运行时与本地浏览器错误分流]：`site-assessment` 现在把 `externalRequest` 单独投影为 `clone-external-runtime` 人工审核任务；本地 page error、HTTP 和 request failure 继续进入 `clone-browser-failures` 修复任务。两类证据不再共享一个 heal 动作，避免把外链服务误读成站内后端缺口。
 
+2026-11-15 [QA 证据按站点隔离]：`site-assessment --qa-workspace` 找不到目标站点时不再借用工作区第一个站点的运行记录；标准主机名站点仍可在缺少页面来源 manifest 时按 `siteId` 匹配，带 `--origin-` 的隔离 ID 没有来源证据时保持未知。
+
 ## 现在的主线
 
 **持续增强三项能力，用真实案例推动改进**。Heimdall 采集和核验证据，外部 AI 代理补全实现与提出修复方案：

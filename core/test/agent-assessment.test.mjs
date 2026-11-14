@@ -59,6 +59,35 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: does not borrow QA evidence from an unrelated workspace site', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-qa-scope-'));
+  const qa = join(root, 'qa-project');
+  try {
+    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(qa, '.heimdall', 'qa.json'), {
+      sites: { unrelated: { url: 'https://unrelated.test/', pages: ['/'] } },
+    });
+    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-unrelated-20261115-abcd', 'run.json'), {
+      runId: 'qa-unrelated-20261115-abcd', site: 'unrelated', startedAt: '2026-11-15T00:00:00.000Z',
+      summary: { total: 1, fileable: 0, environment: 0, checkNeedsFix: 0 },
+      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [] },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(result.qa.status, 'configured');
+    assert.equal(result.qa.site, null);
+    assert.equal(result.qa.latest, null);
+    assert.equal(result.readiness.qa.status, 'needs_human_review');
+    assert.equal(result.deliveryPlan.items.find(item => item.id === 'qa-workspace').status, 'blocked');
+    assert.doesNotMatch(run.stdout, /qa-unrelated-20261115-abcd|unrelated\.test/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');

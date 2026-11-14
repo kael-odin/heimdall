@@ -659,7 +659,8 @@ function qaSummary(args, ctx, siteId, origin) {
   let ws;
   try { ws = openWorkspace(args.qaWorkspace, ctx); } catch { return { status: 'unavailable', latest: null, metrics: null, site: null }; }
   const sites = Object.values(ws.sites);
-  const qaSite = sites.find(site => site.name === siteId || site.origin === origin || originOf(site.url) === origin) ?? sites[0] ?? null;
+  const legacyOrigin = origin ?? (siteId.includes('--origin-') ? null : originOf(`https://${siteId}`));
+  const qaSite = sites.find(site => site.name === siteId || site.origin === origin || originOf(site.url) === origin || (legacyOrigin && site.origin === legacyOrigin)) ?? null;
   if (!qaSite) return { status: 'configured', latest: null, metrics: null, site: null };
   const runs = listRuns(ws, 100).filter(item => item.site === qaSite.name);
   const run = runs[0] ?? null;
