@@ -251,6 +251,14 @@ npm run check
 
 多步规则按数组顺序执行。敏感请求头写成 `{ "env": "HEIMDALL_AUTH_READER" }`，请求体使用 `bodyEnv` 引用环境变量中的 JSON。写入规则默认只记录 `skipped`；确认测试数据和授权后，设置 `HEIMDALL_ALLOW_WRITES=1` 再运行 `npm run check`。检查报告不保存请求体、认证值或响应正文。
 
+同一份规则也可以在获授权源站上复测：
+
+```powershell
+node checks.mjs https://source.example --business-rules-only
+```
+
+该模式只执行业务规则，不检查 `__heimdall/health`、观察路由覆盖或适配器缺口；报告的 `mode` 为 `business-rules-only`。它适合把源站结果与候选后端结果逐条对照，不能单独证明完整后端或独立部署通过。
+
 ### 本地业务适配器
 
 #### 先用观察数据做 B2 小验收

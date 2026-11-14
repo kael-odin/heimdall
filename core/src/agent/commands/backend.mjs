@@ -459,6 +459,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const base = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:8080').replace(new RegExp('/$'), '');
+const onlyBusinessRules = process.argv.includes('--business-rules-only');
 const contract = JSON.parse(readFileSync(join(ROOT, 'api-contract.json'), 'utf8'));
 let stateRules = { rules: [] };
 try { stateRules = JSON.parse(readFileSync(join(ROOT, 'state-rules.json'), 'utf8')); } catch { stateRules = { rules: null }; }
@@ -661,7 +662,9 @@ async function runBusinessRule(rule) {
 async function runBusinessRules() {
   if (stateRules?.rules === undefined || stateRules?.rules === null) return [{ id: 'business-rules', status: 'failed', reason: 'invalid_rules_file' }];
   if (!Array.isArray(stateRules.rules)) return [{ id: 'business-rules', status: 'failed', reason: 'invalid_rules_file' }];
-  if (!stateRules.rules.length) return [];
+  if (!stateRules.rules.length) return onlyBusinessRules
+    ? [{ id: 'business-rules', status: 'incomplete', reason: 'no_business_rules_declared' }]
+    : [];
   if (stateRules.status !== 'reviewed' || (Array.isArray(stateRules.provenance?.invented) && stateRules.provenance.invented.length)) {
     return [{ id: 'business-rules', status: 'skipped', reason: stateRules.status !== 'reviewed' ? 'rules_require_human_review' : 'invented_rules_require_review', requiresHumanApproval: true }];
   }
@@ -767,6 +770,9 @@ function overallOf(items) {
 }
 const results = [];
 try {
+  if (onlyBusinessRules) {
+    results.push(...await runBusinessRules());
+  } else {
   const health = await fetch(base + '/__heimdall/health');
   let healthJson = null;
   try { healthJson = await health.json(); } catch {}
@@ -815,13 +821,17 @@ try {
     results.push({ id: 'adapter-gap-ledger', status: 'failed', reason: '无法读取适配器缺口账本：' + String(error.message || error).slice(0, 180) });
   }
   results.push(...await runBusinessRules());
+  }
 } catch (error) {
   results.push({ id: 'server', status: 'failed', reason: String(error.message || error) });
 }
 for (let index = 0; index < results.length; index += 1) results[index] = attachRepairTask(results[index]);
 let overall = overallOf(results);
 const repairTasks = results.map(item => item.repairTask).filter(Boolean);
-const report = { schema: 'heimdall.backend-check/1', generatedAt: new Date().toISOString(), base, overall, results, repairTasks, note: '通过只表示脚手架能启动并完成当前检查，不代表业务正确。' };
+const report = { schema: 'heimdall.backend-check/1', generatedAt: new Date().toISOString(), base,
+  mode: onlyBusinessRules ? 'business-rules-only' : 'scaffold', overall, results, repairTasks,
+  note: onlyBusinessRules ? '只表示声明的业务规则在当前 base 上通过，不代表服务健康、路由覆盖或完整后端等价。'
+    : '通过只表示脚手架能启动并完成当前检查，不代表业务正确。' };
 try {
   writeFileSync(join(ROOT, 'backend-check.json.tmp'), JSON.stringify(report, null, 2) + String.fromCharCode(10), 'utf8');
   renameSync(join(ROOT, 'backend-check.json.tmp'), join(ROOT, 'backend-check.json'));
@@ -864,6 +874,7 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     '要做业务后端检查：在 state-rules.json 中填写 rules，并先把 status 改为 reviewed；每条规则由多个 HTTP 步骤和 status / contentType / JSON Pointer 断言组成。',
     '规则中的 Authorization、Cookie 和请求体只通过环境变量引用；写入规则还需要显式设置 HEIMDALL_ALLOW_WRITES=1。',
     '检查报告只保留规则 ID、步骤、状态和脱敏断言位置，不保存请求体、认证值或响应正文。',
+    '要在获授权源站复测同一规则，可运行 node checks.mjs https://source.example --business-rules-only；报告会标记为 business-rules-only，不包含脚手架健康和缺口门禁。',
     '需要外置状态目录时设置 HEIMDALL_RUNTIME_DATA_DIR；默认目录在脚手架目录旁边。',
     'AI 补写有状态处理器时使用 handle(request, { dataDir }) 的包外目录保存数据；读回、重启和删除都要用独立预期另行核验，不能只看写请求返回成功。',
     'manifest 路由支持完整路径段参数，例如 /posts/{postId}；每个参数只匹配一个非空段，方法仍须逐项声明，会话初始化路由只接受固定路径。',

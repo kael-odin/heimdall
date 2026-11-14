@@ -371,7 +371,7 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     });
     for (const name of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json']) put(join(scaffold, name), '{}');
     put(join(scaffold, 'backend-check.json'), {
-      schema: 'heimdall.backend-check/1', generatedAt: '2026-11-12T00:00:00.000Z', overall: 'failed',
+      schema: 'heimdall.backend-check/1', generatedAt: '2026-11-12T00:00:00.000Z', mode: 'business-rules-only', overall: 'failed',
       results: [
         {
           id: 'GET /api/items', status: 'failed', reason: '响应 MIME 不一致',
@@ -403,6 +403,8 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(tasks[2].kind, 'business-rule');
     assert.equal(tasks[2].evidence.pointer, '/created');
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRules.status, 'failed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.businessRules.mode, 'business-rules-only');
+    assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'not-tested');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rules').status, 'failed');
     assert.doesNotMatch(run.stdout, /private-value/);
   } finally { rmSync(root, { recursive: true, force: true }); }

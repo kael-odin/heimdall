@@ -432,6 +432,26 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(report.results.find(item => item.id === 'business-rule:create-item').status, 'passed');
     assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /fixture-secret/);
 
+    const sourceStyle = spawnSync(process.execPath, [join(out, 'checks.mjs'), base, '--business-rules-only'], {
+      cwd: out,
+      env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}' },
+      encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(sourceStyle.status, 0, sourceStyle.stderr + sourceStyle.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.mode, 'business-rules-only');
+    assert.equal(report.results.some(item => item.id === 'health' || item.id === 'adapter-gap-ledger'), false);
+    assert.equal(report.results.filter(item => item.id.startsWith('business-rule:')).length, 2);
+
+    put(join(out, 'state-rules.json'), { ...rules, rules: [] });
+    const noRules = spawnSync(process.execPath, [join(out, 'checks.mjs'), base, '--business-rules-only'], {
+      cwd: out, env: process.env, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(noRules.status, 1, noRules.stderr + noRules.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.overall, 'incomplete');
+    assert.equal(report.results[0].reason, 'no_business_rules_declared');
+
     rules.rules[1].steps[0].expect.json[0].equals = false;
     put(join(out, 'state-rules.json'), rules);
     const failed = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
