@@ -191,7 +191,14 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.deliveryPlan.schema, 'heimdall.site-delivery-plan/1');
     assert.equal(env.result.deliveryPlan.decision.basis, 'inferred');
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'clone-visual-verification'));
-    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'seo-geo-follow-up'));
+    const seoTask = env.result.deliveryPlan.items.find(item => item.id === 'seo-geo-follow-up');
+    assert.ok(seoTask);
+    assert.equal(seoTask.repairTasks.length, 1);
+    assert.equal(seoTask.repairTasks[0].kind, 'seo-geo-action');
+    assert.equal(seoTask.repairTasks[0].target, 'geo-citation-description');
+    assert.equal(seoTask.repairTasks[0].evidence.affectedPages, 1);
+    assert.equal(seoTask.repairTasks[0].verification.tool, 'heimdall_seo_audit');
+    assert.equal(seoTask.repairTasksTruncated, false);
     assert.equal(env.result.deliveryPlan.items.find(item => item.id === 'api-behavior-unknown').status, 'blocked');
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
     assert.equal(env.result.deliveryPlan.backendCompletion.schema, 'heimdall.backend-completion-task/1');

@@ -32,6 +32,8 @@
 
 2026-11-14 [QA 发现到修复复测](audits/README.md)：`site-assessment.deliveryPlan` 现在为达到提单门槛的 QA 发现生成脱敏修复任务；`new/reopened` 先阻断在人工裁决，`known-bug` 直接进入 `ready_for_fix`，两者都绑定同一站点 QA 重跑，并要求该 finding fingerprint 从新的完整 fileable 结果中消失。
 
+2026-11-14 [GEO 行动项到复测](audits/README.md)：SEO/GEO 交付计划现在按脱敏 action plan 生成 GEO 修复任务，带优先级、影响页数、工作量、报告路径和 checkId 复测条件；`repairTasksTruncated` 保留前 8 条限制，防止 AI 把截断列表误读成全量问题。
+
 2026-11-14 [RFC Editor 公开 SEO/GEO 实测](audits/2026-11-14/rfc-editor-public-seo-geo.md)：6 页公开只读样本 SEO 84、GEO 68.4；sitemap 触及 10,000 URL 上限后保留 partial。`site-assessment` 将克隆、API 契约和 QA 继续标为未知，没有把页面级评分包装成整站交付或后端等价。
 
 2026-11-14 [公开单页 strict 交接复验](audits/2026-11-14/public-handoff-example-strict.md)：`example.com` 真实运行新版 `handoff --strict` 通过 1/1 页、3/3 视口、strict 0 阻断；独立目录启动的 live 包在 `/`、`/lm/example.com/` 和健康检查返回 HTTP 200。该案例仍没有后端、认证、权限或 QA 证据。

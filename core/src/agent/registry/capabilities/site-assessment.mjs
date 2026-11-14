@@ -600,6 +600,29 @@ function qaRepairTask(finding, qa, qaWorkspace) {
   };
 }
 
+function seoGeoRepairTask(action, seo) {
+  const actionId = String(action?.id || action?.rank || 'action').replace(/[^a-z0-9_-]/gi, '-').slice(0, 64) || 'action';
+  const checkId = typeof action?.validation?.checkId === 'string' && action.validation.checkId
+    ? action.validation.checkId : actionId;
+  return {
+    id: `repair-geo-${actionId}`, kind: 'seo-geo-action', target: checkId,
+    status: 'ready_for_fix',
+    instruction: `${action?.action || action?.title || '按 GEO 行动项优化页面'}；完成后重新运行 SEO/GEO 审计。`,
+    requiresHumanApproval: true,
+    evidence: {
+      actionId, dimension: action?.dimension || 'unknown', priority: action?.priority || 'P2',
+      checkWeight: Number(action?.impact?.checkWeight ?? 0), affectedPages: Number(action?.impact?.affectedPages ?? 0),
+      occurrences: Number(action?.impact?.occurrences ?? 0), estimatedEffort: action?.estimatedEffort || 'unknown',
+      report: seo.reports?.json,
+    },
+    verification: {
+      tool: 'heimdall_seo_audit',
+      args: seo.origin ? { url: `${seo.origin}/` } : null,
+      condition: `完整 SEO/GEO 报告中不再出现 action ${checkId}。`,
+    },
+  };
+}
+
 function repairTasksFromGapLedger(siteId, gapLedger) {
   const summary = gapLedger?.summary;
   if (!summary) return [];
@@ -858,6 +881,8 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       evidence: [seo.reports.json],
       action: origin ? plannedAction('heimdall_seo_audit', { url: `${origin}/` }, '补采完整报告并复核 SEO/GEO 待办') : null,
       verify: planVerification(siteId, 'seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0 && seo.geo.status === "complete" && seo.geo.actionItems === 0 && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0'),
+      repairTasks: seo.geo.actionPlan.map(action => seoGeoRepairTask(action, seo)),
+      repairTasksTruncated: seo.geo.actionPlanMeta.truncated,
     });
   }
 
