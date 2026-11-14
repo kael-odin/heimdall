@@ -44,7 +44,7 @@
 
 2026-11-14 [公开单页 strict 交接复验](audits/2026-11-14/public-handoff-example-strict.md)：`example.com` 真实运行新版 `handoff --strict` 通过 1/1 页、3/3 视口、strict 0 阻断；独立目录启动的 live 包在 `/`、`/lm/example.com/` 和健康检查返回 HTTP 200。该案例仍没有后端、认证、权限或 QA 证据。
 
-2026-11-14 [公开多页 strict 失败边界](audits/2026-11-14/vitest-public-handoff-strict.md)：`vitest.dev` 三页视觉测量 3/3、平均 99.7%，默认 `handoff --strict` 保留 112 个阻断并拒绝覆盖正式包；人工审核后用 32 MiB 单文件隐私预算复测，`privacyIncomplete` 清零、剩余阻断 111 个。未解析脚本、91 个未镜像链接、第三方运行时和浏览器失败仍在，确认高视觉分数不会绕过独立部署门禁。
+2026-11-14 [公开多页 strict 失败边界](audits/2026-11-14/vitest-public-handoff-strict.md)：`vitest.dev` 三页视觉测量 3/3、平均 99.7%，原始 strict 112 个阻断、隐私预算复测 111 个；同日最新 `--heal --materialize-har` 复验为 96 个阻断，静态/动态资源缺口均为 0，剩余是 3 个外链资产、3 个第三方运行时、87 个未镜像链接和 3 页浏览器失败。新增 `runtimeDataGaps` 正确保持为空，没有把 Iconify、CarbonAds 或 DoubleClick 误判为站内后端缺口，正式包仍未覆盖。
 
 2026-11-13 [64 位整数资源关联实测](audits/2026-11-13/qa-int64.md)：真实 Datasette + SQLite 八场景，修正两次错误通过与三次健康误拒绝；长整数原 token 贯通动态路径、字段引用与 MCP，数字与字符串仍区分。每次仅页面自身两次 GET，绑定值不进入报告。复用原模块和测试，未支持的大整数写法保留未核实，整数常量需在安全范围；生产认证、事务与完整业务仍未验证。源码 CI 8/8，Core 3,332 通过 / 4 条件跳过，Docker 独立 2/2、MCP 7/7。
 

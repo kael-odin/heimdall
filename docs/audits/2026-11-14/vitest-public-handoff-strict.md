@@ -49,6 +49,21 @@ node core/src/live/export.mjs vitest.dev --offline --strict --root mirror --priv
 
 本次 CLI 复测仍返回非零，`privacyIncomplete=0`，阻断数从 112 降为 111；候选包保留，正式包仍未覆盖。
 
+## 2026-11-14 最新 strict 导出复验
+
+在同一外部归档目录重新执行：
+
+```powershell
+$env:HEIMDALL_DATA_DIR = 'D:\Github-Star\heimdall-evidence-archive\2026-11-14\public-handoff-vitest-strict-20261114'
+node core/src/cli.mjs live vitest.dev --offline --strict --heal --materialize-har --root mirror --privacy-max-file-bytes 33554432
+```
+
+本次仍返回非零，候选包为 `deliverable/.candidate-vitest.dev-Trb1VZ/`，`blockingCount=96`，正式包没有被覆盖。`assets.unresolved=0`、`assets.dynamic=0`、`runtimeDataGaps=[]`；剩余阻断为 3 个外链资产、3 个不支持的第三方运行时、87 个未镜像链接和 3 页浏览器失败。
+
+浏览器失败样本共 12 条，全部是外部请求，目标为 Iconify、CarbonAds 和 DoubleClick；`health.runtimeDataGaps=[]`，所以这次没有把外部运行时误判成站内动态后端缺口。`site-assessment` 读取该候选后也没有生成 `clone-runtime-data-gaps` 或 `runtime-data-observation` 任务。
+
+这次复验同时证明新增诊断会保持空结果的边界：只有同源 XHR/fetch 的 HTTP 失败或请求失败才进入动态数据任务。
+
 ## 证据边界
 
 - 三页是 `--max-pages 3` 的受限样本，不能代表 Vitest 全站。
