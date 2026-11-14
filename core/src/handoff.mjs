@@ -233,7 +233,7 @@ if (STRICT) {
   const liveReportPath = join(BASE, 'live-export.json');
   let previousLiveText = null;
   try { previousLiveText = readFileSync(liveReportPath, 'utf8'); } catch {}
-  const liveArgs = [host, '--offline', '--strict', '--root', 'mirror'];
+  const liveArgs = [host, '--offline', '--strict', '--heal', '--materialize-har', '--root', 'mirror'];
   if (privacyMaxFileBytesPresent) liveArgs.push(`--privacy-max-file-bytes=${privacyMaxFileBytes}`);
   const result = await run('src/live/export.mjs', liveArgs);
   let currentLiveText = null;

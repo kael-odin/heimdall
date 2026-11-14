@@ -111,7 +111,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       browser: { checked: 1, failed: 0, untested: 0, totalPages: 1 },
       coverage: { scope: 'recon-discovered', scopeLimited: false },
     });
-    put(join(site, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), {
+    put(join(root, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), {
       adapter: { serverEgress: 'not-tested', declaredRoutes: 1, exercisedRoutes: 1, untestedRoutes: 0 },
     });
     put(join(qa, '.heimdall', 'qa.json'), {
@@ -486,7 +486,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').detail, /library\.db/);
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').detail, /--include-readonly-binaries/);
     assert.match(blocked.readiness.delivery.nextAction.args.command, /--root mirror$/);
-    put(join(site, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), { browserProbe: { failures: [] } });
+    put(join(root, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), { browserProbe: { failures: [] } });
     const passed = { ...outcome, status: 'passed', published: true, blockingCount: 0, blockers: {},
       browser: { checked: 1, failed: 0, untested: 0, totalPages: 1 } };
     const accepted = assess(passed);

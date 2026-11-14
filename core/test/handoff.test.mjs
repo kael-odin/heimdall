@@ -253,6 +253,9 @@ test('handoff: --strict 通过时需要 live 导出器写入 passed 结果', { t
     const result = await run(['--skip-verify', '--strict', '--privacy-max-file-bytes', '33554432'], 'pass');
     assert.equal(result.code, 0, result.output);
     assert.match(readFileSync(join(site, 'handoff', 'README.md'), 'utf8'), /live --offline --strict.*通过/);
+    const liveArgs = JSON.parse(readFileSync(join(site, 'live-args.json'), 'utf8'));
+    assert.ok(liveArgs.includes('--heal'));
+    assert.ok(liveArgs.includes('--materialize-har'));
     assert.match(readFileSync(join(site, 'live-args.json'), 'utf8'), /--privacy-max-file-bytes.*33554432/);
     const stale = await run(['--skip-verify', '--strict', '--privacy-max-file-bytes', '33554432'], 'fail');
     assert.equal(stale.code, 1, stale.output);

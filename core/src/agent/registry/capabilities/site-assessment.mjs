@@ -6,6 +6,7 @@
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { DATA_ROOT } from '../../../paths.mjs';
 import { measurementCoverage, scanMeasurementsAsync } from '../../../verify/measurement-status.mjs';
 import { summarizeObservedApiContract } from '../../../live/contract.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
@@ -119,6 +120,11 @@ function observedEndpointSummaries(contract) {
 
 function reportPath(siteId, suffix) {
   return `workspace/${siteId}/${suffix}`;
+}
+
+function readHealthReport(root, report) {
+  if (!report) return null;
+  return readJson(join(DATA_ROOT, report)) ?? readJson(join(root, report));
 }
 
 function safeBrowserFailure(value) {
@@ -262,7 +268,7 @@ function liveExportSummary(root, siteId) {
   const candidatePrefix = `deliverable/.candidate-${siteId}-`;
   const healthReport = typeof source.healthReport === 'string' && source.healthReport.startsWith(candidatePrefix)
     && /^[a-z0-9]{6}\/health\.json$/i.test(source.healthReport.slice(candidatePrefix.length)) ? source.healthReport : null;
-  const health = healthReport ? readJson(join(root, healthReport)) : null;
+  const health = readHealthReport(root, healthReport);
   const browserFailures = Array.isArray(health?.browserProbe?.failures)
     ? health.browserProbe.failures.slice(0, 50).map(safeBrowserFailure).filter(Boolean) : [];
   const binaryDownloadGaps = Array.isArray(health?.missingLinkDetails)
@@ -879,7 +885,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       detail: blocked ? `上次完成的导出有 ${clone.delivery.blockingCount} 个阻断计数；修复后须重新严格导出。`
         : '当前没有可用的严格离线通过记录；多视口测量只覆盖视觉证据。',
       evidence: [clone.delivery.report, clone.delivery.healthReport].filter(Boolean),
-      action: plannedAction('cli:shell', { command: `heimdall live ${siteId} --offline --strict${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}` },
+      action: plannedAction('cli:shell', { command: `heimdall live ${siteId} --offline --strict --heal --materialize-har${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}` },
         '按已审核的资源策略修复候选包 health.json 阻断，再用同一根路径严格导出', { canAutoRun: true, requiresHumanApproval: false }),
       verify: planVerification(siteId, 'rerun strict offline export for current inputs; clone.delivery.status === "passed"'),
     });
@@ -896,7 +902,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       detail: `${clone.delivery.browserFailures.length} 条失败证据：${examples}`,
       evidence: [clone.delivery.healthReport].filter(Boolean),
       action: plannedAction('cli:shell', {
-        command: `heimdall live ${siteId} --offline --strict${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}`,
+        command: `heimdall live ${siteId} --offline --strict --heal --materialize-har${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}`,
       }, '修复候选页面运行时错误后重新严格导出和复测', { requiresHumanApproval: true }),
       verify: planVerification(siteId, 'clone.delivery.browserFailures.length === 0'),
     });

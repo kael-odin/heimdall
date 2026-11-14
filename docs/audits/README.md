@@ -57,6 +57,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-14 | **[`vitest.dev` 公开多页试点](2026-11-14/vitest-public-pilot.md)** | 3 页克隆和 SEO/GEO 证据完成；最新验证 2/3 页，严格离线 113 个阻断；修正 handoff 保留不完整视觉证据并让退出码与证据状态一致 |
 | 2026-11-14 | **[`vitest.dev` 三页 `handoff --strict` 失败边界](2026-11-14/vitest-public-handoff-strict.md)** | 新版 strict 真实返回非零；3/3 页视觉测量平均 99.7%，正式包未覆盖，112 个阻断和候选健康报告被保留 |
 | 2026-11-14 | **[RFC Editor 公开 SEO/GEO 实测](2026-11-14/rfc-editor-public-seo-geo.md)** | 6 页公开样本 SEO 84、GEO 68.4；sitemap 因 10,000 URL 上限标为 partial，克隆/API/QA 未知仍由 `site-assessment` 独立保留 |
+| 2026-11-14 | **[RFC Editor 公开多页 strict 交付收口复验](2026-11-14/rfc-editor-public-handoff-strict.md)** | 6 页视觉平均 99.9917%；`--heal --materialize-har` 将同源静态缺口从 114 降为 0，并补抓浏览器运行时新增 4 个静态资源；动态 JSON、分析服务和 254 个未镜像链接仍阻断 strict |
 | 2026-11-14 | **[最终适配器交付包无外联验收](2026-11-14/adapter-egress-verification.md)** | Docker 29.7.2、`network none`、两次启动、1/1 GET 路由、状态卷和零缺口账本通过；仅为受控夹具，认证、写入与业务状态仍未知 |
 
 路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。

@@ -38,6 +38,8 @@
 
 2026-11-14 [RFC Editor 公开 SEO/GEO 实测](audits/2026-11-14/rfc-editor-public-seo-geo.md)：6 页公开只读样本 SEO 84、GEO 68.4；sitemap 触及 10,000 URL 上限后保留 partial。`site-assessment` 将克隆、API 契约和 QA 继续标为未知，没有把页面级评分包装成整站交付或后端等价。
 
+2026-11-14 [RFC Editor 公开多页 strict 交付收口复验](audits/2026-11-14/rfc-editor-public-handoff-strict.md)：6 页视觉平均 99.9917%，strict handoff 默认启用 `--heal --materialize-har`；首轮补抓 24 个同源静态资源，浏览器二次探针再补抓 4 个运行时静态资源，静态脚本/图片/字体缺口清零。最终仍因 1 个分析服务、每页 1 个动态 JSON 请求和 254 个未镜像链接阻断，正式包没有被覆盖；`site-assessment` 现在能显示候选 browser failure 证据。
+
 2026-11-14 [公开单页 strict 交接复验](audits/2026-11-14/public-handoff-example-strict.md)：`example.com` 真实运行新版 `handoff --strict` 通过 1/1 页、3/3 视口、strict 0 阻断；独立目录启动的 live 包在 `/`、`/lm/example.com/` 和健康检查返回 HTTP 200。该案例仍没有后端、认证、权限或 QA 证据。
 
 2026-11-14 [公开多页 strict 失败边界](audits/2026-11-14/vitest-public-handoff-strict.md)：`vitest.dev` 三页视觉测量 3/3、平均 99.7%，默认 `handoff --strict` 保留 112 个阻断并拒绝覆盖正式包；人工审核后用 32 MiB 单文件隐私预算复测，`privacyIncomplete` 清零、剩余阻断 111 个。未解析脚本、91 个未镜像链接、第三方运行时和浏览器失败仍在，确认高视觉分数不会绕过独立部署门禁。

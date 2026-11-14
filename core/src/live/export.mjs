@@ -31,7 +31,7 @@ import { buildEditManifest, renderEditManifestMd } from '../deliver/edit-manifes
 import { sanitizeHar, harStats, indexHar, harKey } from './har.mjs';
 import { buildObservedApiContract } from './contract.mjs';
 import { listLivePageRoutes, scanLiveBundle } from './health.mjs';
-import { healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, removeNonvisualExternalPixels, isStaticAsset } from './heal.mjs';
+import { healBundle, healReferencedAssets, materializeHar, localizeQueryEntries, rewriteLocalRefs, removeNonvisualExternalPixels, isStaticAsset } from './heal.mjs';
 import { localizeApprovedExternalStaticAssets } from './external-static.mjs';
 import { diffChecksums, changesLine } from './changes.mjs';
 import { mb, writeFileAtomic } from '../fsutil.mjs';
@@ -947,6 +947,34 @@ if (STRICT) {
         settleMs: BROWSER_OBSERVE_MS,
       });
       health.strictBlockers.browserFailed = health.browserProbe.failed;
+      if (HEAL) {
+        const browserHeal = { attempted: 0, fetched: 0, failed: 0, skipped: 0, bytes: 0, passes: 0 };
+        for (let pass = 0; pass < 3; pass++) {
+          const targets = [...new Set(health.browserProbe.failures
+            .filter(failure => failure?.kind === 'http' && failure.status >= 400
+              && failure.resourceType && ['script', 'stylesheet', 'font', 'image', 'media', 'texttrack', 'manifest'].includes(failure.resourceType)
+              && typeof failure.target === 'string' && failure.target.startsWith('/') && !failure.target.endsWith('/'))
+            .map(failure => failure.target))];
+          if (!targets.length) break;
+          const result = await healBundle({ liveDir, host, origin, targets });
+          browserHeal.attempted += targets.length;
+          browserHeal.fetched += result.fetched;
+          browserHeal.failed += result.failed;
+          browserHeal.skipped += result.skipped;
+          browserHeal.bytes += result.bytes;
+          browserHeal.passes++;
+          if (!result.fetched) break;
+          if (probeBundleDir !== OUT) {
+            rmSync(join(probeBundleDir, 'site', 'live'), { recursive: true, force: true });
+            cpSync(liveDir, join(probeBundleDir, 'site', 'live'), { recursive: true });
+          }
+          health.browserProbe = await probeOfflineBrowserBundle(probeBundleDir, health.pageRoutes, {
+            settleMs: BROWSER_OBSERVE_MS,
+          });
+          health.strictBlockers.browserFailed = health.browserProbe.failed;
+        }
+        if (browserHeal.attempted) health.browserHeal = browserHeal;
+      }
     } catch (e) {
       health.browserProbe = {
         checked: 0, failed: 1, totalPages: health.pageRoutes.length,
@@ -1197,6 +1225,7 @@ externalRedirectPolicy   --allow-unsupported-external-redirects 时显式接受�
 strictBlockers           离线验收的分项阻断计数（含缺页、扫描截断、HTTP 和浏览器有界加载探测）
 coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；verifiedV2 只数本次导出时克隆内容、验证器、测量结果与差异图均匹配的页面。旧验证记录或导出净化改写内容会记为未验证；此计数不等于最终服务器的静态页、live 页面或交互验收，也不会单独阻断 strict。缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
 browserProbe             逐页断外网首载结果；observation 写明最短窗口、安静期、总上限和逐页实测时间。上限前未安静会阻断发布；窗口外触发的请求及未声明操作仍未验证
+browserHeal              --heal 对浏览器运行时新增静态 4xx 资源的补抓摘要；不补抓 API、外链或动态数据
 operationPlan            操作脚本声明数；missing 表示没有交互验收，脚本本身不进入交付包
 operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
 sourceOperationProbe     显式 --compare-source 时，源站同流程只读采集与脱敏对照；未运行不代表源站通过

@@ -83,15 +83,15 @@ export function renderHandoff({ siteId, origin, target, summary, summaryEvidence
   if (strictRequested) {
     lines.push('## 独立离线交付门禁', '');
     if (live?.status === 'passed' && live.published === true && live.blockingCount === 0) {
-      lines.push('- `live --offline --strict --root mirror`：**通过**。候选包已发布，阻断数为 0。');
+      lines.push('- `live --offline --strict --heal --materialize-har --root mirror`：**通过**。候选包已发布，阻断数为 0。');
       if (live.browser) lines.push(`- 断网浏览器：检查 ${live.browser.checked ?? 0} 页，失败 ${live.browser.failed ?? 0} 页，未测 ${live.browser.untested ?? 0} 页。`);
     } else if (live?.status === 'blocked') {
-      lines.push('- `live --offline --strict --root mirror`：**阻断**。阻断数 ' + (live.blockingCount ?? '未知') + '，正式包没有被覆盖。');
+      lines.push('- `live --offline --strict --heal --materialize-har --root mirror`：**阻断**。阻断数 ' + (live.blockingCount ?? '未知') + '，正式包没有被覆盖。');
       const blockersText = Object.entries(live.blockers ?? {}).map(([name, count]) => `${name}=${count}`).join('、');
       if (blockersText) lines.push(`- 阻断项：${blockersText}。`);
       if (live.healthReport) lines.push('- 诊断：`' + live.healthReport + '`');
     } else {
-      lines.push('- `live --offline --strict --root mirror`：没有得到有效结果，不能声称独立离线交付通过。');
+      lines.push('- `live --offline --strict --heal --materialize-har --root mirror`：没有得到有效结果，不能声称独立离线交付通过。');
     }
     lines.push('');
   }
