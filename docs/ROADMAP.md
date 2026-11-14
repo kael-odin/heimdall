@@ -72,7 +72,8 @@
    - 2026-11-14 接入最终镜像操作复测摘要：`deliveryPlan.backendCompletion` 会区分服务端无外联、HTTP 写入/重启读回和授权浏览器操作计划三类证据；缺少操作计划继续显示 `not-tested`，通过一次操作计划仍不代表认证、权限、状态机或完整业务等价。
    - 2026-11-14 B3 脚手架增加人工确认后的业务规则复测：`state-rules.json` 可声明多步 HTTP、角色环境变量、状态码、MIME 和 JSON Pointer 断言；写入默认阻断，失败结果进入脱敏 `site-assessment` 修复任务。下一步仍是用获授权真实项目补充权限矩阵、状态机、清理和外部副作用旅程。
    - 2026-11-14 同一规则可用 `checks.mjs <base> --business-rules-only` 在获授权源站与候选后端上复测；结果明确标记业务规则范围，完整脚手架和独立部署门禁仍单独检查。
-   - 2026-11-14 新增 `heimdall backend compare`：按规则 ID 对齐两份业务规则报告，并让候选失败/缺失以退出码 1 进入 CI；空规则、源站失败和规则集不一致保留为 `incomplete`，不把缺少源站证据误报为等价。
+   - 2026-11-15 新增 `heimdall backend compare`：按规则 ID 对齐两份业务规则报告，并让候选失败/缺失以退出码 1 进入 CI；空规则、源站失败和规则集不一致保留为 `incomplete`，不把缺少源站证据误报为等价。
+   - 2026-11-15 `site-assessment` 已读取候选脚手架目录内的 `backend-compare.json` 安全摘要，把业务等价失败交回 AI 交付计划；这仍不替代真实权限、状态机、持久化和副作用旅程。
 5. Figma 元数据、设计容差与 PRD 来源追踪；录制交互和生成候选断言，人工批准后执行。
 6. D4 已增加[未知启动的完整决定核对与永久拒绝](competition/acceptance-browser-start-resolution.md)：原六字段回执、完整 accepted / rejected 证明、迟到启动阻断与跨页 Web Locks；原确认只在证明核验后精确解除。D5 已在 D3 检查级账本之上接入[固定成员人工缺陷单](competition/acceptance-defect-tickets.md)：从同次登记的可靠失败成单，最新同范围登记可靠通过全部成员后显式关闭，后续可靠失败派生重开。[本机验收记录](./audits/README.md)保存该片完整门禁与公开证据。未知人工动作保留原确认，只 GET 核对、不自动重发原 POST。D6 已实现[人工动作完整决定核对与永久拒绝](competition/acceptance-defect-ticket-decisions.md)，同动作成单 / 关闭事件与拒绝争用一个不可变决定；页面独立核对完整原件与请求身份后精确解除对应确认，拒绝不改变单据处理历史。D6 已通过本机完整 Core 和 27 阶段 Browser，[原提交 CI 已核验为 failure](./audits/README.md)：完整 Core 与前端构建成功，独立四案的浏览器正文取证失败。[动作回复边界增强](./audits/README.md)已通过本机 Windows / Linux 专项，新提交自身的完整 CI 仍待核验。全局 Browser approval / selection、操作归档与其余消费者仍独立建设。
 7. [x] D7 本地固定示例完整流程：2026-11-03 已在最终控制台构建上从全新会话的真实 UI 走通采集、明确来源归属、完整候选合同保存、发现视觉 / 行为 BUG、两项固定成员人工成单、1/2 禁关、2/2 复验通过后明确关闭，以及 Markdown 下载；结果 `accepted:true`，普通控制台错误为 0。使用真实浏览器，所有确认由操作者明确执行；正常流程不注入故障，未知结果恢复另由 D4 / D6 专项验证。结论仅覆盖本地固定示例的声明检查，不称外部泛化或 AI 推理。取得获授权的外部项目 URL 和明确版本后，再拓展真实项目验收，保留失败和未测范围。

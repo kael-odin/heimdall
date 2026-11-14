@@ -34,7 +34,9 @@
 
 同轮增加 `checks.mjs <base> --business-rules-only`：同一份经过人工确认的规则可在获授权源站和候选后端上复测；报告用 `mode` 区分业务规则对照与完整脚手架检查，站点评估不会把前者当成健康或独立部署通过。
 
-2026-11-14 追加 `heimdall backend compare`：离线读取两份 `business-rules-only` 报告，按规则 ID 对齐源站与候选后端，区分通过、候选失败/缺失和不可用源站证据；失败返回退出码 1，报告只保留脱敏状态、步骤和 JSON Pointer，不复制认证值、请求体、响应正文或失败原因。
+2026-11-15 追加 `heimdall backend compare`：离线读取两份 `business-rules-only` 报告，按规则 ID 对齐源站与候选后端，区分通过、候选失败/缺失和不可用源站证据；失败返回退出码 1，报告只保留脱敏状态、步骤和 JSON Pointer，不复制认证值、请求体、响应正文或失败原因。
+
+同轮把 `backend-compare.json` 的安全摘要接入 `site-assessment.deliveryPlan.backendCompletion.businessRuleComparison`；候选等价失败会进入交付计划，原始报告中的未知字段、秘密证据和响应正文不会被投影。
 
 2026-11-14 [静态交付包独立断网验收](audits/2026-11-14/public-static-deployment-verify.md)：`live-verify --static` 复用当前包校验和，在 Docker `network none` 中两次启动 `example.com` 静态包，1/1 live 路由、根路由和健康检查通过；随后从最终镜像复制 `/app`，再次核对校验和，并用真实 Chromium 对同一快照逐页断外联检查，1/1 通过、0 失败、0 未测。`site-assessment.independentDeployment` 只有在容器证据、浏览器证据和当前包校验和都匹配时才标为 `verified`。
 

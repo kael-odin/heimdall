@@ -267,6 +267,8 @@ node core/src/cli.mjs backend compare .\source-check.json .\candidate-check.json
 
 只有两份报告中同名规则都通过时才会得到 `overall: "passed"`；候选规则失败或缺失返回退出码 1，源站证据未通过、规则集为空、源站缺规则或候选多出规则保留为 `incomplete`。比较报告不复制认证值、请求体、响应正文或失败原因。
 
+把报告写入候选脚手架目录的 `backend-compare.json` 后，`heimdall site-assessment <siteId> --json` 会把它投影到 `deliveryPlan.backendCompletion.businessRuleComparison`，并把候选失败任务加入交付计划。
+
 ### 本地业务适配器
 
 #### 先用观察数据做 B2 小验收

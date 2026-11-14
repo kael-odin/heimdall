@@ -524,11 +524,12 @@ function backendScaffoldSummary(root, siteId) {
     };
     const evidence = task.evidence && typeof task.evidence === 'object' && !Array.isArray(task.evidence) ? {} : null;
     if (evidence) {
-      for (const key of ['httpStatus', 'missingObservedRoutes', 'schemaPath', 'actualMimeType', 'uniqueGaps', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'unverifiedWrites', 'reason', 'pointer']) {
+      for (const key of ['httpStatus', 'missingObservedRoutes', 'schemaPath', 'actualMimeType', 'uniqueGaps', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'unverifiedWrites', 'reason', 'pointer', 'ruleId', 'sourceStatus', 'candidateStatus']) {
         const source = task.evidence[key];
         if (typeof source === 'string') evidence[key] = source.slice(0, 128);
         else if (Number.isFinite(Number(source))) evidence[key] = Number(source);
       }
+      if (Number.isInteger(task.evidence.step) && task.evidence.step > 0) evidence.step = task.evidence.step;
       for (const key of ['expectedStatuses', 'expectedMimeTypes']) {
         if (Array.isArray(task.evidence[key])) evidence[key] = task.evidence[key].slice(0, 30).map(item => String(item).slice(0, 128));
       }
@@ -565,6 +566,40 @@ function backendScaffoldSummary(root, siteId) {
     repairTasks: issueRows.map(item => item.repairTask).filter(Boolean),
     path: existsSync(checkFile) ? reportPath(siteId, 'backend-scaffold/backend-check.json') : null,
   };
+  const comparisonFile = join(dir, 'backend-compare.json');
+  const comparisonReport = existsSync(comparisonFile) ? readJson(comparisonFile) : null;
+  const comparisonValid = comparisonReport?.schema === 'heimdall.backend-comparison/1'
+    && comparisonReport?.mode === 'business-rules-only';
+  const comparisonRows = comparisonValid && Array.isArray(comparisonReport.comparisons)
+    ? comparisonReport.comparisons.slice(0, 100).map(item => {
+      if (!item || typeof item !== 'object' || typeof item.id !== 'string') return null;
+      return {
+        id: item.id.slice(0, 128),
+        status: ['passed', 'failed', 'incomplete'].includes(item.status) ? item.status : 'unknown',
+        ...(typeof item.reason === 'string' ? { reason: item.reason.slice(0, 128) } : {}),
+        sourceStatus: typeof item.sourceStatus === 'string' ? item.sourceStatus.slice(0, 32) : 'unknown',
+        candidateStatus: typeof item.candidateStatus === 'string' ? item.candidateStatus.slice(0, 32) : 'unknown',
+        ...(Number.isInteger(item.step) && item.step > 0 ? { step: item.step } : {}),
+        ...(typeof item.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
+      };
+    }).filter(Boolean) : [];
+  const comparisonOverall = comparisonValid && ['passed', 'failed', 'incomplete'].includes(comparisonReport.overall)
+    ? comparisonReport.overall : null;
+  const comparison = {
+    status: !existsSync(comparisonFile) ? 'not_run' : !comparisonValid ? 'invalid' : comparisonOverall ?? 'incomplete',
+    overall: comparisonOverall,
+    generatedAt: typeof comparisonReport?.generatedAt === 'string' ? comparisonReport.generatedAt : null,
+    sourceRules: Number.isInteger(comparisonReport?.sourceRules) ? comparisonReport.sourceRules : null,
+    candidateRules: Number.isInteger(comparisonReport?.candidateRules) ? comparisonReport.candidateRules : null,
+    summary: comparisonValid && comparisonReport.summary && typeof comparisonReport.summary === 'object' ? Object.fromEntries(
+      ['compared', 'passed', 'failed', 'incomplete'].map(key => [key, Number.isInteger(comparisonReport.summary[key]) ? comparisonReport.summary[key] : 0]),
+    ) : { compared: 0, passed: 0, failed: 0, incomplete: 0 },
+    comparisons: comparisonRows,
+    repairTasks: comparisonValid && Array.isArray(comparisonReport.repairTasks)
+      ? comparisonReport.repairTasks.slice(0, 50).map(safeRepairTask).filter(Boolean) : [],
+    path: existsSync(comparisonFile) ? reportPath(siteId, 'backend-scaffold/backend-compare.json') : null,
+  };
+  check.businessRuleComparison = comparison;
   return {
     status,
     present: status === 'present',
@@ -812,6 +847,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   const operationProbe = delivery?.adapterEgressVerification?.operationProbe ?? { status: 'not-tested' };
   const operationProbeStatus = operationProbe?.status ?? 'not-tested';
   const businessRuleCheck = api.scaffold?.check?.businessRules ?? { status: 'not-tested', total: 0, passed: 0, failed: 0, incomplete: 0 };
+  const businessRuleComparison = api.scaffold?.check?.businessRuleComparison ?? { status: 'not_run', overall: null, summary: { compared: 0, passed: 0, failed: 0, incomplete: 0 }, repairTasks: [] };
   const scaffoldCheckStatus = api.scaffold?.check?.mode === 'business-rules-only' ? 'not-tested' : api.scaffold?.check?.status ?? 'not_run';
   const gapLedger = api.adapter.gapLedger;
   const scaffold = api.scaffold ?? { status: 'missing', present: false, path: null };
@@ -821,6 +857,9 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   }
   const runtimeGaps = Array.isArray(delivery?.runtimeDataGaps) ? delivery.runtimeDataGaps : [];
   for (const task of runtimeDataRepairTasks(siteId, runtimeGaps, delivery)) {
+    if (!repairTasks.some(item => item?.id === task.id)) repairTasks.push(task);
+  }
+  for (const task of businessRuleComparison.repairTasks ?? []) {
     if (!repairTasks.some(item => item?.id === task.id)) repairTasks.push(task);
   }
   const scaffoldAction = observed && !scaffold.present
@@ -874,6 +913,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       check: scaffold.check,
     },
     businessRules: businessRuleCheck,
+    businessRuleComparison,
     runtimeDataGaps: runtimeGaps,
     runtimeDataGapsTruncated: delivery?.runtimeDataGapsTruncated === true,
     repairTasks,
@@ -940,6 +980,9 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
         { id: 'business-rules', status: businessRuleCheck.status,
           basis: businessRuleCheck.status === 'passed' || businessRuleCheck.status === 'failed' || businessRuleCheck.status === 'incomplete' ? 'observed' : 'unknown',
           condition: '运行 state-rules.json 中已人工确认的流程，检查每一步的状态码、MIME 和 JSON Pointer 断言。' },
+        { id: 'business-rule-equivalence', status: businessRuleComparison.overall ?? (businessRuleComparison.status === 'invalid' ? 'not-tested' : businessRuleComparison.status === 'not_run' ? 'not-tested' : 'incomplete'),
+          basis: ['passed', 'failed', 'incomplete'].includes(businessRuleComparison.overall) ? 'observed' : 'unknown',
+          condition: '对照获授权源站与候选后端的同一份 business-rules-only 报告，确认候选规则逐条通过。' },
         { id: 'state-consistency', status: 'blocked', basis: 'unknown', condition: '同一业务流程中操作后再次读取/刷新仍保持预期状态。' },
         { id: 'offline-egress', status: adapterServerEgress === 'verified' ? 'passed' : 'blocked',
           basis: adapterServerEgress === 'verified' || adapterServerEgress === 'not-tested' ? 'observed' : 'unknown',

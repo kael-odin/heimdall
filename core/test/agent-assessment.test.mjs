@@ -340,6 +340,12 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
       schema: 'heimdall.backend-check/1', generatedAt: '2026-11-12T00:00:00.000Z', overall: 'passed',
       results: [{ id: 'health', status: 'passed' }, { id: 'adapter-coverage', status: 'passed' }],
     });
+    put(join(scaffold, 'backend-compare.json'), {
+      schema: 'heimdall.backend-comparison/1', mode: 'business-rules-only', overall: 'passed',
+      sourceRules: 1, candidateRules: 1, summary: { compared: 1, passed: 1, failed: 0, incomplete: 0 },
+      comparisons: [{ id: 'business-rule:read-items', status: 'passed', sourceStatus: 'passed', candidateStatus: 'passed' }],
+      repairTasks: [],
+    });
 
     const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
@@ -351,6 +357,8 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     assert.equal(env.result.api.scaffold.check.status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.check.overall, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'passed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.businessRuleComparison.overall, 'passed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rule-equivalence').status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'present');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action, null);
     const [endpoint] = env.result.deliveryPlan.backendCompletion.observedEndpoints;
@@ -387,6 +395,12 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
         },
       ],
     });
+    put(join(scaffold, 'backend-compare.json'), {
+      schema: 'heimdall.backend-comparison/1', mode: 'business-rules-only', overall: 'failed',
+      sourceRules: 1, candidateRules: 1, summary: { compared: 1, passed: 0, failed: 1, incomplete: 0 },
+      comparisons: [{ id: 'business-rule:create-item', status: 'failed', reason: 'candidate_rule_not_passed', sourceStatus: 'passed', candidateStatus: 'failed', step: 1, pointer: '/created' }],
+      repairTasks: [{ id: 'repair-backend-rule-equivalence-create-item-1', kind: 'business-rule-equivalence', target: 'candidate backend', instruction: '修正候选业务流程', requiresHumanApproval: false, evidence: { ruleId: 'business-rule:create-item', sourceStatus: 'passed', candidateStatus: 'failed', step: 1, pointer: '/created', secret: 'private-value' } }],
+    });
 
     const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
@@ -394,7 +408,7 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(run.status, 0, run.stderr + run.stdout);
     const env = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
     const tasks = env.result.deliveryPlan.backendCompletion.repairTasks;
-    assert.equal(tasks.length, 3);
+    assert.equal(tasks.length, 4);
     assert.equal(tasks[0].target, 'GET /api/items');
     assert.equal(tasks[0].kind, 'response-contract');
     assert.equal(tasks[1].kind, 'query-parameter-gap');
@@ -402,10 +416,15 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(tasks[1].evidence.uncoveredQueryParameters, 1);
     assert.equal(tasks[2].kind, 'business-rule');
     assert.equal(tasks[2].evidence.pointer, '/created');
+    assert.equal(tasks[3].kind, 'business-rule-equivalence');
+    assert.equal(tasks[3].evidence.ruleId, 'business-rule:create-item');
+    assert.equal(tasks[3].evidence.candidateStatus, 'failed');
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRules.status, 'failed');
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRules.mode, 'business-rules-only');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'not-tested');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rules').status, 'failed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.businessRuleComparison.overall, 'failed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rule-equivalence').status, 'failed');
     assert.doesNotMatch(run.stdout, /private-value/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
