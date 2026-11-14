@@ -460,6 +460,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const base = (process.argv[2] || process.env.BASE_URL || 'http://127.0.0.1:8080').replace(new RegExp('/$'), '');
 const contract = JSON.parse(readFileSync(join(ROOT, 'api-contract.json'), 'utf8'));
+let stateRules = { rules: [] };
+try { stateRules = JSON.parse(readFileSync(join(ROOT, 'state-rules.json'), 'utf8')); } catch { stateRules = { rules: null }; }
 const rows = [];
 function responseRows(operation) {
   return Object.entries(operation?.responses || {})
@@ -542,6 +544,129 @@ function schemaError(value, schema, path = '$') {
   }
   return null;
 }
+const RULE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE']);
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token']);
+const JSON_TYPES = new Set(['null', 'boolean', 'object', 'array', 'number', 'integer', 'string']);
+function envName(value) { return typeof value === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(value) ? value : null; }
+function headerValue(value) {
+  if (typeof value === 'string') return { value, missing: false };
+  const name = envName(value?.env);
+  return name ? { value: process.env[name] ?? null, missing: process.env[name] === undefined } : { value: null, invalid: true };
+}
+function sameJson(left, right) {
+  if (Object.is(left, right)) return true;
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object' || Array.isArray(left) !== Array.isArray(right)) return false;
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && sameJson(left[key], right[key]));
+}
+function pointerValue(value, pointer) {
+  if (pointer === '') return { found: true, value };
+  if (typeof pointer !== 'string' || !pointer.startsWith('/') || pointer.length > 256) return { invalid: true };
+  let current = value;
+  for (const part of pointer.slice(1).split('/').map(item => item.replaceAll('~1', '/').replaceAll('~0', '~'))) {
+    if (current === null || current === undefined || !Object.prototype.hasOwnProperty.call(Object(current), part)) return { found: false };
+    current = current[part];
+  }
+  return { found: true, value: current };
+}
+function prepareRule(rule) {
+  if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return { error: 'invalid_rule' };
+  const id = typeof rule.id === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(rule.id) ? rule.id : null;
+  if (!id || !Array.isArray(rule.steps) || !rule.steps.length || rule.steps.length > 16) return { error: 'invalid_rule' };
+  const steps = [];
+  for (const step of rule.steps) {
+    const method = String(step?.method || '').toUpperCase();
+    const path = step?.path;
+    if (!RULE_METHODS.has(method) || typeof path !== 'string' || !path.startsWith('/') || path.length > 512 || path.includes('\\0') || path.includes('\\\\')) return { id, error: 'invalid_step' };
+    const expect = step.expect && typeof step.expect === 'object' && !Array.isArray(step.expect) ? step.expect : null;
+    const statuses = Array.isArray(expect?.status) ? expect.status : expect?.status === undefined ? [] : [expect.status];
+    if (!expect || !statuses.length || statuses.some(status => !Number.isInteger(status) || status < 100 || status > 599)) return { id, error: 'missing_expected_status' };
+    const headers = {};
+    for (const [name, raw] of Object.entries(step.headers || {})) {
+      if (!/^[A-Za-z0-9-]{1,80}$/.test(name)) return { id, error: 'invalid_header' };
+      const resolved = headerValue(raw);
+      if (resolved.invalid || (SENSITIVE_HEADERS.has(name.toLowerCase()) && typeof raw === 'string') || resolved.missing) return { id, error: resolved.missing ? 'missing_env' : 'invalid_header' };
+      headers[name] = resolved.value;
+    }
+    let body = undefined;
+    if (step.bodyEnv !== undefined) {
+      const bodyName = envName(step.bodyEnv);
+      if (!bodyName || process.env[bodyName] === undefined) return { id, error: 'missing_env' };
+      try { JSON.parse(process.env[bodyName]); } catch { return { id, error: 'invalid_body' }; }
+      body = process.env[bodyName];
+      if (!Object.keys(headers).some(name => name.toLowerCase() === 'content-type')) headers['content-type'] = 'application/json';
+    }
+    const jsonAssertions = Array.isArray(expect.json) ? expect.json.slice(0, 32) : [];
+    if (expect.json !== undefined && !Array.isArray(expect.json)) return { id, error: 'invalid_json_assertions' };
+    if (jsonAssertions.some(assertion => !assertion || typeof assertion !== 'object' || typeof assertion.pointer !== 'string')) return { id, error: 'invalid_json_assertion' };
+    if (expect.type !== undefined && (typeof expect.type !== 'string' || !JSON_TYPES.has(expect.type))) return { id, error: 'invalid_expected_type' };
+    steps.push({ method, path, headers, body, statuses, expect, jsonAssertions });
+  }
+  return { id, steps };
+}
+function assertionError(value, assertion) {
+  const actual = pointerValue(value, assertion.pointer);
+  if (actual.invalid) return { reason: 'invalid_json_pointer', pointer: assertion.pointer.slice(0, 128) };
+  if (assertion.exists !== undefined && assertion.exists !== actual.found) return { reason: 'json_assertion', pointer: assertion.pointer.slice(0, 128) };
+  if (!actual.found) return assertion.exists === false ? null : { reason: 'json_assertion', pointer: assertion.pointer.slice(0, 128) };
+  if (assertion.type !== undefined && (typeof assertion.type !== 'string' || !JSON_TYPES.has(assertion.type) || actualType(actual.value) !== assertion.type)) return { reason: 'json_assertion', pointer: assertion.pointer.slice(0, 128) };
+  if (Object.prototype.hasOwnProperty.call(assertion, 'equals') && !sameJson(actual.value, assertion.equals)) return { reason: 'json_assertion', pointer: assertion.pointer.slice(0, 128) };
+  if (Object.prototype.hasOwnProperty.call(assertion, 'contains')) {
+    const expected = assertion.contains;
+    const matches = typeof actual.value === 'string' ? actual.value.includes(String(expected))
+      : Array.isArray(actual.value) ? actual.value.some(item => sameJson(item, expected)) : false;
+    if (!matches) return { reason: 'json_assertion', pointer: assertion.pointer.slice(0, 128) };
+  }
+  return null;
+}
+async function runBusinessRule(rule) {
+  const rawId = typeof rule?.id === 'string' ? rule.id : 'unknown';
+  const rawIdSafe = /^[a-z0-9][a-z0-9._-]{0,63}$/.test(rawId) ? rawId : 'unknown';
+  const rawHasWrite = Array.isArray(rule?.steps) && rule.steps.some(step => WRITE_METHODS.has(String(step?.method || '').toUpperCase()));
+  if (rawHasWrite && process.env.HEIMDALL_ALLOW_WRITES !== '1') {
+    return { id: 'business-rule:' + rawIdSafe, status: 'skipped', reason: 'write_requires_explicit_local_authorization', requiresHumanApproval: true };
+  }
+  const prepared = prepareRule(rule);
+  const id = 'business-rule:' + String(prepared.id || 'unknown').slice(0, 80);
+  if (prepared.error) return { id, status: prepared.error === 'missing_env' || prepared.error === 'invalid_body' ? 'incomplete' : 'failed', reason: prepared.error, requiresHumanApproval: prepared.error === 'missing_env' };
+  for (let index = 0; index < prepared.steps.length; index += 1) {
+    const step = prepared.steps[index];
+    let response;
+    try { response = await fetch(base + step.path, { method: step.method, headers: step.headers, body: step.body }); }
+    catch { return { id, status: 'failed', step: index + 1, reason: 'request_failed' }; }
+    if (!step.statuses.includes(response.status)) return { id, status: 'failed', step: index + 1, httpStatus: response.status, expectedStatuses: step.statuses, reason: 'unexpected_status' };
+    const expectedMime = step.expect.contentType;
+    if (expectedMime !== undefined) {
+      const allowed = Array.isArray(expectedMime) ? expectedMime : [expectedMime];
+      if (!allowed.some(item => typeof item === 'string' && normalizeMime(item) === normalizeMime(response.headers.get('content-type')))) return { id, status: 'failed', step: index + 1, httpStatus: response.status, reason: 'unexpected_content_type' };
+    }
+    if (step.jsonAssertions.length || step.expect.type !== undefined) {
+      let value;
+      try {
+        const raw = await response.text();
+        if (raw.length > 2 * 1024 * 1024) return { id, status: 'failed', step: index + 1, reason: 'response_too_large' };
+        value = JSON.parse(raw);
+      } catch { return { id, status: 'failed', step: index + 1, reason: 'invalid_json_response' }; }
+      if (step.expect.type !== undefined && actualType(value) !== step.expect.type) return { id, status: 'failed', step: index + 1, reason: 'json_assertion' };
+      for (const assertion of step.jsonAssertions) {
+        const error = assertionError(value, assertion);
+        if (error) return { id, status: 'failed', step: index + 1, ...error };
+      }
+    }
+  }
+  return { id, status: 'passed', steps: prepared.steps.length, checkedSteps: prepared.steps.length };
+}
+async function runBusinessRules() {
+  if (stateRules?.rules === undefined || stateRules?.rules === null) return [{ id: 'business-rules', status: 'failed', reason: 'invalid_rules_file' }];
+  if (!Array.isArray(stateRules.rules)) return [{ id: 'business-rules', status: 'failed', reason: 'invalid_rules_file' }];
+  if (!stateRules.rules.length) return [];
+  if (stateRules.status !== 'reviewed' || (Array.isArray(stateRules.provenance?.invented) && stateRules.provenance.invented.length)) {
+    return [{ id: 'business-rules', status: 'skipped', reason: stateRules.status !== 'reviewed' ? 'rules_require_human_review' : 'invented_rules_require_review', requiresHumanApproval: true }];
+  }
+  return Promise.all(stateRules.rules.slice(0, 32).map(runBusinessRule));
+}
 async function inspectResponse(route, response) {
   const expectedStatuses = route.responses.map(item => item.status);
   const expected = route.responses.find(item => item.status === response.status);
@@ -570,6 +695,14 @@ async function inspectResponse(route, response) {
 }
 function repairTaskFor(item) {
   const id = String(item?.id || '');
+  if (id === 'business-rules' || id.startsWith('business-rule:')) return {
+    id: 'repair-business-rule-' + (id === 'business-rules' ? 'review' : id.slice('business-rule:'.length).replace(/[^a-z0-9._-]+/gi, '-').slice(0, 64) || 'unknown'),
+    kind: 'business-rule', target: 'state-rules.json',
+    instruction: item.status === 'skipped' ? '先确认业务规则和写入授权，再把 state-rules.json 标记为 reviewed 后重新运行 npm run check。'
+      : '修正业务规则或后端实现，再运行 npm run check；报告不会保存请求体、认证值或响应正文。',
+    requiresHumanApproval: item.requiresHumanApproval === true || item.status === 'skipped',
+    evidence: { reason: typeof item.reason === 'string' ? item.reason.slice(0, 96) : 'business-rule-failed' },
+  };
   if (id === 'health') return {
     id: 'repair-service-health', kind: 'service-health', target: 'server.mjs',
     instruction: '先修复服务启动或健康端点，再运行 npm run check。', requiresHumanApproval: false,
@@ -681,6 +814,7 @@ try {
   } catch (error) {
     results.push({ id: 'adapter-gap-ledger', status: 'failed', reason: '无法读取适配器缺口账本：' + String(error.message || error).slice(0, 180) });
   }
+  results.push(...await runBusinessRules());
 } catch (error) {
   results.push({ id: 'server', status: 'failed', reason: String(error.message || error) });
 }
@@ -727,6 +861,9 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     'npm start',
     '打开 http://127.0.0.1:8080/__heimdall/health 查看当前状态。',
     '运行 npm run check 做健康、只读路由和未实现项检查。',
+    '要做业务后端检查：在 state-rules.json 中填写 rules，并先把 status 改为 reviewed；每条规则由多个 HTTP 步骤和 status / contentType / JSON Pointer 断言组成。',
+    '规则中的 Authorization、Cookie 和请求体只通过环境变量引用；写入规则还需要显式设置 HEIMDALL_ALLOW_WRITES=1。',
+    '检查报告只保留规则 ID、步骤、状态和脱敏断言位置，不保存请求体、认证值或响应正文。',
     '需要外置状态目录时设置 HEIMDALL_RUNTIME_DATA_DIR；默认目录在脚手架目录旁边。',
     'AI 补写有状态处理器时使用 handle(request, { dataDir }) 的包外目录保存数据；读回、重启和删除都要用独立预期另行核验，不能只看写请求返回成功。',
     'manifest 路由支持完整路径段参数，例如 /posts/{postId}；每个参数只匹配一个非空段，方法仍须逐项声明，会话初始化路由只接受固定路径。',

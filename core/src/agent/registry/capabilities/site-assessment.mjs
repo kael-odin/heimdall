@@ -501,6 +501,16 @@ function backendScaffoldSummary(root, siteId) {
   const checkReport = existsSync(checkFile) ? readJson(checkFile) : null;
   const checkResults = Array.isArray(checkReport?.results) ? checkReport.results : [];
   const checkStatus = ['passed', 'incomplete', 'failed'].includes(checkReport?.overall) ? checkReport.overall : checkReport ? 'invalid' : 'not_run';
+  const businessRuleResults = checkResults.filter(item => item?.id === 'business-rules' || String(item?.id ?? '').startsWith('business-rule:'));
+  const businessRules = {
+    status: !businessRuleResults.length ? 'not-tested'
+      : businessRuleResults.some(item => item?.status === 'failed') ? 'failed'
+        : businessRuleResults.some(item => ['incomplete', 'skipped'].includes(item?.status)) ? 'incomplete' : 'passed',
+    total: businessRuleResults.filter(item => String(item?.id ?? '').startsWith('business-rule:')).length,
+    passed: businessRuleResults.filter(item => item?.status === 'passed').length,
+    failed: businessRuleResults.filter(item => item?.status === 'failed').length,
+    incomplete: businessRuleResults.filter(item => ['incomplete', 'skipped'].includes(item?.status)).length,
+  };
   const safeRepairTask = task => {
     if (!task || typeof task !== 'object' || Array.isArray(task)) return null;
     const value = {
@@ -512,7 +522,7 @@ function backendScaffoldSummary(root, siteId) {
     };
     const evidence = task.evidence && typeof task.evidence === 'object' && !Array.isArray(task.evidence) ? {} : null;
     if (evidence) {
-      for (const key of ['httpStatus', 'missingObservedRoutes', 'schemaPath', 'actualMimeType', 'uniqueGaps', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'unverifiedWrites']) {
+      for (const key of ['httpStatus', 'missingObservedRoutes', 'schemaPath', 'actualMimeType', 'uniqueGaps', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'unverifiedWrites', 'reason', 'pointer']) {
         const source = task.evidence[key];
         if (typeof source === 'string') evidence[key] = source.slice(0, 128);
         else if (Number.isFinite(Number(source))) evidence[key] = Number(source);
@@ -531,6 +541,8 @@ function backendScaffoldSummary(root, siteId) {
       status: typeof item?.status === 'string' ? item.status.slice(0, 32) : 'unknown',
       ...(typeof item?.reason === 'string' ? { reason: item.reason.slice(0, 256) } : {}),
       ...(Number.isInteger(item?.httpStatus) ? { httpStatus: item.httpStatus } : {}),
+      ...(Number.isInteger(item?.step) && item.step > 0 ? { step: item.step } : {}),
+      ...(typeof item?.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
       ...(Number.isFinite(Number(item?.uniqueGaps)) ? { uniqueGaps: Number(item.uniqueGaps) } : {}),
       ...(Number.isFinite(Number(item?.uncoveredQueryParameters)) ? { uncoveredQueryParameters: Number(item.uncoveredQueryParameters) } : {}),
       ...(Number.isFinite(Number(item?.unverifiedWrites)) ? { unverifiedWrites: Number(item.unverifiedWrites) } : {}),
@@ -545,6 +557,7 @@ function backendScaffoldSummary(root, siteId) {
     resultCount: checkResults.length,
     failed: checkResults.filter(item => item?.status === 'failed').length,
     incomplete: checkResults.filter(item => ['incomplete', 'not_implemented', 'skipped'].includes(item?.status)).length,
+    businessRules,
     issues: issueRows,
     repairTasks: issueRows.map(item => item.repairTask).filter(Boolean),
     path: existsSync(checkFile) ? reportPath(siteId, 'backend-scaffold/backend-check.json') : null,
@@ -795,6 +808,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   const adapterServerEgress = delivery?.adapter?.serverEgress ?? 'unknown';
   const operationProbe = delivery?.adapterEgressVerification?.operationProbe ?? { status: 'not-tested' };
   const operationProbeStatus = operationProbe?.status ?? 'not-tested';
+  const businessRuleCheck = api.scaffold?.check?.businessRules ?? { status: 'not-tested', total: 0, passed: 0, failed: 0, incomplete: 0 };
   const gapLedger = api.adapter.gapLedger;
   const scaffold = api.scaffold ?? { status: 'missing', present: false, path: null };
   const repairTasks = Array.isArray(scaffold.check?.repairTasks) ? [...scaffold.check.repairTasks] : [];
@@ -855,6 +869,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       action: scaffoldAction,
       check: scaffold.check,
     },
+    businessRules: businessRuleCheck,
     runtimeDataGaps: runtimeGaps,
     runtimeDataGapsTruncated: delivery?.runtimeDataGapsTruncated === true,
     repairTasks,
@@ -871,7 +886,9 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       { id: 'authentication', basis: 'unknown', detail: '哪些端点强制认证、凭据如何刷新和失效，尚未由摘要证明。' },
       { id: 'permissions', basis: 'unknown', detail: '不同账号、角色或资源边界的允许/拒绝矩阵尚未验证。' },
       { id: 'state-machine', basis: 'unknown', detail: '创建、更新、删除、回滚和刷新后的状态转换尚未验证。' },
-      { id: 'business-rules', basis: 'unknown', detail: '边界条件、幂等、限流、排序和业务校验规则尚未验证。' },
+      { id: 'business-rules', basis: businessRuleCheck.status === 'passed' ? 'observed' : 'unknown', detail: businessRuleCheck.status === 'passed'
+        ? `已声明的 ${businessRuleCheck.passed} 条业务规则复测通过；未声明的边界、幂等、限流、排序、清理和副作用仍未知。`
+        : '边界条件、幂等、限流、排序和业务校验规则尚未完成确定性复测。' },
       { id: 'side-effects', basis: 'unknown', detail: '持久化、消息、邮件、支付、Webhook 等副作用尚未验证。' },
       ...(gapLedger?.summary?.uniqueGaps > 0 ? [{ id: 'runtime-gaps', basis: 'observed', detail: `运行时记录了 ${gapLedger.summary.uniqueGaps} 个脱敏请求缺口，需要补路由或补录制。` }] : []),
       ...(gapLedger?.summary?.missingResponseBodies > 0 ? [{ id: 'missing-response-body', basis: 'observed', detail: `${gapLedger.summary.missingResponseBodies} 条已声明路由没有可回放的响应体。` }] : []),
@@ -916,6 +933,9 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
         { id: 'adapter-holdout', status: validationStatus, basis: validationStatus === 'passed' ? 'verified' : 'unknown', condition: 'adapter-report.json 的留出集等价度达到阈值且无未验证项。' },
         { id: 'adapter-gap-ledger', status: gapLedger ? (gapLedger.summary.uniqueGaps ? 'open' : 'observed') : 'blocked', basis: gapLedger ? 'observed' : 'unknown', condition: '运行适配器并读取 /__heimdall/adapter-gaps，确认没有新的未声明路径或未覆盖查询参数。' },
         { id: 'backend-scaffold-check', status: api.scaffold?.check?.status ?? 'not_run', basis: api.scaffold?.check?.status && api.scaffold.check.status !== 'not_run' ? 'observed' : 'unknown', condition: '运行脚手架 npm run check，确认观察路由覆盖、状态码、MIME、响应结构和缺口账本都没有未完成项。' },
+        { id: 'business-rules', status: businessRuleCheck.status,
+          basis: businessRuleCheck.status === 'passed' || businessRuleCheck.status === 'failed' || businessRuleCheck.status === 'incomplete' ? 'observed' : 'unknown',
+          condition: '运行 state-rules.json 中已人工确认的流程，检查每一步的状态码、MIME 和 JSON Pointer 断言。' },
         { id: 'state-consistency', status: 'blocked', basis: 'unknown', condition: '同一业务流程中操作后再次读取/刷新仍保持预期状态。' },
         { id: 'offline-egress', status: adapterServerEgress === 'verified' ? 'passed' : 'blocked',
           basis: adapterServerEgress === 'verified' || adapterServerEgress === 'not-tested' ? 'observed' : 'unknown',

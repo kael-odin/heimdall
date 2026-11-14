@@ -228,6 +228,29 @@ npm run check
 
 这是 B3-scaffold，不是源站后端等价物。没有适配器的观察路由会返回 501；认证、权限、状态机、持久化和副作用仍需授权旅程与人工规则。
 
+要复测已经人工确认的业务流程，编辑生成目录中的 `state-rules.json`，把 `status` 改成 `reviewed`，再声明规则。例如：
+
+```json
+{
+  "schema": "heimdall.backend-state-rules/1",
+  "status": "reviewed",
+  "provenance": { "invented": [] },
+  "rules": [{
+    "id": "read-items",
+    "steps": [{
+      "method": "GET",
+      "path": "/api/items",
+      "expect": {
+        "status": 200,
+        "json": [{ "pointer": "/items", "type": "array" }]
+      }
+    }]
+  }]
+}
+```
+
+多步规则按数组顺序执行。敏感请求头写成 `{ "env": "HEIMDALL_AUTH_READER" }`，请求体使用 `bodyEnv` 引用环境变量中的 JSON。写入规则默认只记录 `skipped`；确认测试数据和授权后，设置 `HEIMDALL_ALLOW_WRITES=1` 再运行 `npm run check`。检查报告不保存请求体、认证值或响应正文。
+
 ### 本地业务适配器
 
 #### 先用观察数据做 B2 小验收

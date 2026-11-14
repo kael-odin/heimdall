@@ -363,3 +363,91 @@ test('backend scaffold check catches observed response mismatches and runtime ga
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('backend scaffold executes reviewed business rules without leaking test data', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-backend-business-rules-'));
+  const site = join(root, 'workspace', 'business-rules.test');
+  let child;
+  try {
+    put(join(site, 'api-contract.json'), {
+      schema: 'heimdall.contract/1', siteId: 'business-rules.test', openapi: { paths: {
+        '/api/items': {
+          get: { responses: { 200: { content: { 'application/json': { schema: { type: 'object', required: ['items'], properties: { items: { type: 'array' } } } } } } } },
+          post: { responses: { 201: { content: { 'application/json': { schema: { type: 'object', required: ['created', 'id'], properties: { created: { type: 'boolean' }, id: { type: 'string' } } } } } } } },
+        },
+      } },
+    });
+    put(join(site, 'runtime-adapter', 'manifest.json'), { version: 1, routes: [
+      { method: 'GET', path: '/api/items' }, { method: 'POST', path: '/api/items' },
+    ] });
+    put(join(site, 'runtime-adapter', 'index.mjs'), [
+      "export const __heimdallAdapter = { routes: [{ method: 'GET', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }, { method: 'POST', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }] };",
+      "let items = [];",
+      "export async function handle(request) { if (request.method === 'POST') { const body = await request.json(); items.push(body); return Response.json({ created: true, id: body.id }, { status: 201 }); } return Response.json({ items }); }",
+    ].join('\n'));
+
+    const generated = spawnSync(process.execPath, [CLI, 'backend', 'scaffold', 'business-rules.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(generated.status, 0, generated.stderr + generated.stdout);
+    const out = JSON.parse(generated.stdout.trim().split(/\r?\n/).at(-1)).result.outDir;
+    const rules = {
+      schema: 'heimdall.backend-state-rules/1', siteId: 'business-rules.test', status: 'inferred-draft',
+      provenance: { invented: [] }, rules: [
+        { id: 'read-items', steps: [{ method: 'GET', path: '/api/items', expect: { status: 200, json: [{ pointer: '/items', type: 'array' }] } }] },
+        { id: 'create-item', steps: [{ method: 'POST', path: '/api/items', bodyEnv: 'HEIMDALL_TEST_BODY_JSON', expect: { status: 201, json: [{ pointer: '/created', equals: true }, { pointer: '/id', type: 'string' }] } }] },
+      ],
+    };
+    put(join(out, 'state-rules.json'), rules);
+    child = spawn(process.execPath, [join(out, 'server.mjs'), '--port', '0'], { cwd: out, stdio: ['ignore', 'pipe', 'pipe'] });
+    const base = await ready(child);
+
+    const draft = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out, env: { ...process.env }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(draft.status, 1, draft.stderr + draft.stdout);
+    let report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rules').status, 'skipped');
+    assert.equal(report.results.find(item => item.id === 'business-rules').reason, 'rules_require_human_review');
+
+    rules.status = 'reviewed';
+    put(join(out, 'state-rules.json'), rules);
+    const held = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out, env: { ...process.env }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(held.status, 1, held.stderr + held.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rule:read-items').status, 'passed');
+    assert.equal(report.results.find(item => item.id === 'business-rule:create-item').status, 'skipped');
+    assert.equal(report.results.find(item => item.id === 'business-rule:create-item').reason, 'write_requires_explicit_local_authorization');
+    assert.match(report.repairTasks.find(item => item.kind === 'business-rule').target, /state-rules\.json/);
+
+    const allowed = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out,
+      env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}' },
+      encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(allowed.status, 1, allowed.stderr + allowed.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rule:create-item').status, 'passed');
+    assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /fixture-secret/);
+
+    rules.rules[1].steps[0].expect.json[0].equals = false;
+    put(join(out, 'state-rules.json'), rules);
+    const failed = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out,
+      env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}' },
+      encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(failed.status, 1, failed.stderr + failed.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    const businessFailure = report.results.find(item => item.id === 'business-rule:create-item');
+    assert.equal(businessFailure.status, 'failed');
+    assert.equal(businessFailure.pointer, '/created');
+    assert.equal(businessFailure.repairTask.kind, 'business-rule');
+    assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /fixture-secret/);
+  } finally {
+    await stop(child);
+    rmSync(root, { recursive: true, force: true });
+  }
+});

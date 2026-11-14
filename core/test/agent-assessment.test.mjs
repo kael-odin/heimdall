@@ -381,6 +381,10 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
           id: 'adapter-gap-ledger', status: 'failed', uniqueGaps: 1, unobservedQueryVariants: 1, uncoveredQueryParameters: 1, unverifiedWrites: 0,
           repairTask: { id: 'repair-query-parameter-gap', kind: 'query-parameter-gap', target: 'runtime-adapter/index.mjs', instruction: '补齐查询参数分支', requiresHumanApproval: false, evidence: { uniqueGaps: 1, unobservedQueryVariants: 1, uncoveredQueryParameters: 1 } },
         },
+        {
+          id: 'business-rule:create-item', status: 'failed', step: 1, pointer: '/created', reason: 'json_assertion',
+          repairTask: { id: 'repair-business-rules', kind: 'business-rule', target: 'state-rules.json', instruction: '修正业务规则', requiresHumanApproval: false, evidence: { reason: 'json_assertion', pointer: '/created', secret: 'private-value' } },
+        },
       ],
     });
 
@@ -390,12 +394,16 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(run.status, 0, run.stderr + run.stdout);
     const env = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
     const tasks = env.result.deliveryPlan.backendCompletion.repairTasks;
-    assert.equal(tasks.length, 2);
+    assert.equal(tasks.length, 3);
     assert.equal(tasks[0].target, 'GET /api/items');
     assert.equal(tasks[0].kind, 'response-contract');
     assert.equal(tasks[1].kind, 'query-parameter-gap');
     assert.equal(tasks[1].evidence.unobservedQueryVariants, 1);
     assert.equal(tasks[1].evidence.uncoveredQueryParameters, 1);
+    assert.equal(tasks[2].kind, 'business-rule');
+    assert.equal(tasks[2].evidence.pointer, '/created');
+    assert.equal(env.result.deliveryPlan.backendCompletion.businessRules.status, 'failed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rules').status, 'failed');
     assert.doesNotMatch(run.stdout, /private-value/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

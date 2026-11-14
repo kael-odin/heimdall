@@ -71,6 +71,9 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `deliveryPlan.backendCompletion.scaffold` 会直接说明默认 B3 脚手架是 `present`、`incomplete` 还是还可生成，并给出对应的 CLI 动作；动作会写本地文件，所以仍需人工确认。
 - `deliveryPlan.backendCompletion.repairTasks` 会把 `backend-check.json` 的失败项映射成目标文件、修复类型、脱敏证据和人工授权边界；先按任务修复，再运行 `npm run check`。
 - `deliveryPlan.backendCompletion.adapterEgress.operationProbe` 只表示最终镜像文件系统上的授权操作计划复测；`passed` 证明声明的点击、输入、导航和断言通过，`not-tested` 表示没有计划，不能替代认证、权限、状态机或业务副作用旅程。
+- B3 脚手架生成后，可把经过人工确认的业务流程写入 `state-rules.json`：先将 `status` 设为 `reviewed`，再用 `rules[].steps` 声明 HTTP 方法、路径和 `expect.status`；可增加 `expect.contentType` 与 `expect.json` 的 JSON Pointer 断言。`POST`、`PUT`、`PATCH`、`DELETE` 只有在本地设置 `HEIMDALL_ALLOW_WRITES=1` 时才执行，Authorization、Cookie 和请求体使用环境变量引用。
+- `backend-check.json` 中的 `business-rule:<id>` 失败会进入 `deliveryPlan.backendCompletion.repairTasks`；报告只保留规则 ID、步骤、状态和断言位置，不能把该结果解释为源站后端等价。
+- `deliveryPlan.backendCompletion.businessRules` 汇总已声明规则的 `passed`、`failed`、`incomplete` 和 `not-tested`；即使为 `passed`，未声明的状态机、幂等、清理和外部副作用仍属于未知。
 - 由适配器缺口账本直接生成的任务还带 `verification`：查询变体、查询参数和运行时路由可用 `site-assessment` 的条件复测；写入任务仍要求人工授权，复测条件不会替代业务旅程。
 - 如果存在 `api.adapter.gapLedger`，先看 `summary` 和 `gaps`：它告诉你本地适配器遇到了多少未声明路径、未覆盖查询参数、缺响应体或未验证写入；`nearestRoutes` 只是排查线索，不是路由等价证明。
 - AI 可以按 `suggestedLocalFiles` 生成本地适配器、状态规则和检查脚本，但最终要按 `verification.commands` 重跑；认证、权限、状态机、写入和副作用仍要人工授权后验证。
