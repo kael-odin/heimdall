@@ -8,6 +8,8 @@
 
 2026-11-14 [动态数据缺口进入 AI 后端任务]：strict 浏览器探针现在把同源 XHR/fetch 的 4xx 或请求失败单独写入 `health.runtimeDataGaps`，保留页面、脱敏路径、资源类型和状态；`site-assessment` 会去重后生成 `runtime-data-observation` 修复任务，要求先授权观察响应再补本地适配器或只读数据，不把动态 JSON 404 伪造成静态资源或成功回放。
 
+2026-11-15 [外部运行时与本地浏览器错误分流]：`site-assessment` 现在把 `externalRequest` 单独投影为 `clone-external-runtime` 人工审核任务；本地 page error、HTTP 和 request failure 继续进入 `clone-browser-failures` 修复任务。两类证据不再共享一个 heal 动作，避免把外链服务误读成站内后端缺口。
+
 ## 现在的主线
 
 **持续增强三项能力，用真实案例推动改进**。Heimdall 采集和核验证据，外部 AI 代理补全实现与提出修复方案：

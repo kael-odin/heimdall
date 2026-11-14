@@ -1059,20 +1059,29 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     });
   }
   if (clone.delivery.browserFailures?.length) {
-    const examples = clone.delivery.browserFailures.slice(0, 4).map(failure => {
+    const externalFailures = clone.delivery.browserFailures.filter(failure => failure.kind === 'externalRequest');
+    const localFailures = clone.delivery.browserFailures.filter(failure => failure.kind !== 'externalRequest');
+    const failureExamples = failures => failures.slice(0, 4).map(failure => {
       const target = failure.target ? ` ${failure.target}` : '';
       const reason = failure.message || failure.error || failure.kind;
       return `${failure.page ?? '/'}: ${failure.kind}${target} — ${reason}`;
     }).join('；');
-    add({
+    if (externalFailures.length) add({
+      id: 'clone-external-runtime', kind: 'external_runtime_gap', basis: 'observed', status: 'blocked',
+      title: '离线页面仍依赖未审核的外部运行时',
+      detail: `${externalFailures.length} 条 externalRequest：${failureExamples(externalFailures)}。逐个选择安全缓存、显式替换或继续阻断；不要把外链运行时当成源站后端缺口。`,
+      evidence: [clone.delivery.healthReport].filter(Boolean),
+      verify: { method: 'human_authorized_external_runtime_review', condition: '每个 externalRequest 都有批准的缓存、替换或阻断策略，并重新严格导出复测' },
+    });
+    if (localFailures.length) add({
       id: 'clone-browser-failures', kind: 'frontend_runtime_gap', basis: 'observed', status: 'blocked',
-      title: '离线浏览器发现前端运行时错误',
-      detail: `${clone.delivery.browserFailures.length} 条失败证据：${examples}`,
+      title: '离线浏览器发现本地前端运行时错误',
+      detail: `${localFailures.length} 条本地失败证据：${failureExamples(localFailures)}`,
       evidence: [clone.delivery.healthReport].filter(Boolean),
       action: plannedAction('cli:shell', {
         command: `heimdall live ${siteId} --offline --strict --heal --materialize-har${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}`,
-      }, '修复候选页面运行时错误后重新严格导出和复测', { requiresHumanApproval: true }),
-      verify: planVerification(siteId, 'clone.delivery.browserFailures.length === 0'),
+      }, '修复候选页面本地运行时错误后重新严格导出和复测', { requiresHumanApproval: true }),
+      verify: planVerification(siteId, 'clone.delivery.browserFailures.filter(item => item.kind !== "externalRequest").length === 0'),
     });
   }
   if (clone.delivery.runtimeDataGaps?.length) {

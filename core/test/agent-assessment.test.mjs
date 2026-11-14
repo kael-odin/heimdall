@@ -501,6 +501,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
         failures: [
           { page: '/library/', kind: 'pageError', error: 'ReferenceError', message: 'CodeMirror is not defined' },
           { page: '/library/', kind: 'http', status: 404, resourceType: 'script', target: '/missing.js' },
+          { page: '/library/', kind: 'externalRequest', target: 'https://analytics.example.test/pixel', message: 'externalRequest' },
         ],
       },
       runtimeDataGaps: [
@@ -534,6 +535,11 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-offline-delivery').status, 'blocked');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').status, 'blocked');
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').detail, /CodeMirror is not defined/);
+    assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').detail, /2 条本地失败证据/);
+    assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').verify.condition, /externalRequest/);
+    assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-external-runtime').status, 'blocked');
+    assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-external-runtime').detail, /analytics\.example\.test/);
+    assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-external-runtime').verify.method, 'human_authorized_external_runtime_review');
     assert.equal(blocked.clone.delivery.binaryDownloadGaps[0].path, '/library.db');
     assert.equal(blocked.clone.delivery.binaryDownloadGaps[1].path, '/legacy.doc');
     assert.deepEqual(blocked.clone.delivery.readOnlyData, {
