@@ -28,6 +28,7 @@ const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', '
 const BROWSER_FAILURE_KINDS = new Set(['http', 'pageError', 'navigation', 'requestFailed', 'externalRequest', 'websocketUnsupported', 'observationDeadline', 'pageCrash', 'probeError']);
 const BROWSER_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'media', 'font', 'script', 'texttrack', 'xhr', 'fetch', 'eventsource', 'websocket', 'manifest', 'other']);
 const BINARY_DOWNLOAD_PATH = /\.(?:db|sqlite3?|zip|tar|tgz|gz|bz2|xz|7z|rar|pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)(?:$|[?#])/i;
+const SITEMAP_REASONS = new Set(['budget-exhausted', 'time-limit', 'total-byte-limit', 'cross-origin-sitemap', 'robots-unavailable', 'sitemap-request-failed', 'unknown-sitemap-format', 'depth-limit', 'file-limit', 'url-limit', 'document-byte-limit']);
 
 function readJson(file) {
   try {
@@ -173,6 +174,29 @@ function originOf(value) {
     const url = new URL(value);
     return /^https?:$/.test(url.protocol) ? url.origin : null;
   } catch { return null; }
+}
+
+function sitemapSummary(report) {
+  const source = report?.sitemap;
+  if (!source || typeof source !== 'object') return null;
+  const stats = source.stats && typeof source.stats === 'object' ? source.stats : {};
+  const integer = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
+  const safeReasons = value => Array.isArray(value)
+    ? [...new Set(value.filter(item => typeof item === 'string' && SITEMAP_REASONS.has(item)))].slice(0, 10)
+    : [];
+  return {
+    coverage: ['complete', 'not_found', 'partial', 'unavailable'].includes(source.coverage) ? source.coverage : null,
+    reasons: safeReasons(source.reasons),
+    truncated: safeReasons(stats.truncated),
+    stats: {
+      urlCount: integer(stats.urlCount),
+      filesAttempted: integer(stats.sitemapFilesAttempted),
+      filesRead: integer(stats.sitemapFilesRead),
+      filesFailed: integer(stats.sitemapFilesFailed),
+      maxUrls: integer(stats.limits?.maxUrls),
+      maxFiles: integer(stats.limits?.maxFiles),
+    },
+  };
 }
 
 function gradeOf(score) {
@@ -439,6 +463,7 @@ function seoSummary(siteId, root, expectedOrigin) {
     bySeverity,
     categories,
     geo: summarizeGeoReport(report.geo),
+    sitemap: sitemapSummary(report),
     repairCandidates: repairCandidates.items,
     repairCandidatesMeta: { total: repairCandidates.total, returned: repairCandidates.items.length, truncated: repairCandidates.truncated },
     completeness: {
@@ -1155,6 +1180,8 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0 || sitemapIncomplete || seo.geo.status !== 'complete');
   const seoHasIssues = seo.status === 'observed'
     && (seo.bySeverity.critical > 0 || seo.bySeverity.high > 0 || seo.geo.actionItems > 0);
+  const sitemapEvidence = seo.sitemap?.reasons?.length
+    ? ` sitemap 原因：${seo.sitemap.reasons.join('、')}。` : '';
   if (seo.status !== 'observed') {
     add({
       id: 'seo-report', kind: 'seo_geo_gap', basis: 'unknown', status: 'open',
@@ -1167,7 +1194,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       id: 'seo-geo-follow-up', kind: 'seo_geo_gap', basis: 'observed', status: 'open',
       title: seoIncomplete ? 'SEO/GEO 采集不完整' : 'SEO/GEO 报告还有待处理项',
       detail: seoIncomplete
-        ? '报告包含未成功采集或未核对页面，分数不能当成完整站点结论。'
+        ? `报告包含未成功采集或未核对页面，分数不能当成完整站点结论。${sitemapEvidence}`
         : `发现 critical=${seo.bySeverity.critical}、high=${seo.bySeverity.high}，GEO 待办 ${seo.geo.actionItems} 项。`,
       evidence: [seo.reports.json],
       action: origin ? plannedAction('heimdall_seo_audit', { url: `${origin}/` }, '补采完整报告并复核 SEO/GEO 待办') : null,

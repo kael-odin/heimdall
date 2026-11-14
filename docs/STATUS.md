@@ -16,6 +16,8 @@
 
 2026-11-15 [站点评估全页来源扫描]：来源锚点现在扫描全部页面 manifest，不再只检查前 20 页；发现多个 origin 时，SEO/API 报告标记为 `origin_ambiguous` 并拒绝进入有效证据和交付计划。
 
+2026-11-15 [sitemap 范围原因进入 AI 计划]：`site-assessment` 现在把 SEO 报告中的白名单 sitemap 原因、截断原因和受限计数投影到 `seo.sitemap`，并在 SEO/GEO follow-up 中说明 `budget-exhausted`、`url-limit` 等采集边界；伪造字段会被过滤。RFC Editor 复验仍为 `partial`、URL 数 10,000，不能把页面级 SEO/GEO 分数解释成整站收录或 GEO 引用结论。
+
 ## 现在的主线
 
 **持续增强三项能力，用真实案例推动改进**。Heimdall 采集和核验证据，外部 AI 代理补全实现与提出修复方案：

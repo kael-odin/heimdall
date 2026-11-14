@@ -153,6 +153,36 @@ test('site-assessment: scans every page before accepting an origin anchor', () =
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: preserves bounded sitemap reasons for SEO follow-up', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-sitemap-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'seo', 'seo.json'), {
+      origin: 'https://example.test', score: 90,
+      summary: { pages: 1, issues: 0, bySeverity: {}, sitemapCoverage: 'partial' },
+      sitemap: {
+        coverage: 'partial', reasons: ['budget-exhausted', 'private-value'],
+        stats: { sitemapFilesAttempted: 3, sitemapFilesRead: 3, sitemapFilesFailed: 0, urlCount: 10000,
+          truncated: ['url-limit', 'private-value'], limits: { maxUrls: 10000, maxFiles: 100 } },
+      },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.deepEqual(result.seo.sitemap.reasons, ['budget-exhausted']);
+    assert.deepEqual(result.seo.sitemap.truncated, ['url-limit']);
+    assert.equal(result.seo.sitemap.stats.urlCount, 10000);
+    assert.equal(result.seo.sitemap.stats.maxUrls, 10000);
+    assert.match(result.deliveryPlan.items.find(item => item.id === 'seo-geo-follow-up').detail, /budget-exhausted/);
+    assert.doesNotMatch(run.stdout, /private-value/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
