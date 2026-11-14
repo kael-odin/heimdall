@@ -26,6 +26,8 @@
 
 2026-11-14 [留出查询缺口分级](audits/README.md)：适配器留出账本现在区分未观察路径、已知参数名下的未观察查询变体和全新查询参数；即使尚未生成 B3，`site-assessment.deliveryPlan.backendCompletion.repairTasks` 也会把这些类别分别交给 AI，并附带确定性 `verification` 条件。分页 `page=3` / `skip=20` 这类值或组合不会被压成一个笼统缺口；写入任务仍需人工旅程。
 
+2026-11-14 [后端缺口任务完整性](audits/README.md)：修复 `site-assessment` 在没有新运行时路径、但存在缺失响应正文或未验证写入时漏出修复任务的问题；交付计划现在也把未验证写入列为待处理项，并要求复测同时清零路径、响应正文和写入验证状态。
+
 2026-11-14 [RFC Editor 公开 SEO/GEO 实测](audits/2026-11-14/rfc-editor-public-seo-geo.md)：6 页公开只读样本 SEO 84、GEO 68.4；sitemap 触及 10,000 URL 上限后保留 partial。`site-assessment` 将克隆、API 契约和 QA 继续标为未知，没有把页面级评分包装成整站交付或后端等价。
 
 2026-11-14 [公开单页 strict 交接复验](audits/2026-11-14/public-handoff-example-strict.md)：`example.com` 真实运行新版 `handoff --strict` 通过 1/1 页、3/3 视口、strict 0 阻断；独立目录启动的 live 包在 `/`、`/lm/example.com/` 和健康检查返回 HTTP 200。该案例仍没有后端、认证、权限或 QA 证据。

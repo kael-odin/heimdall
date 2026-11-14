@@ -578,22 +578,26 @@ function planVerification(siteId, condition) {
 
 function repairTasksFromGapLedger(siteId, gapLedger) {
   const summary = gapLedger?.summary;
-  if (!summary || Number(summary.uniqueGaps || 0) <= 0) return [];
+  if (!summary) return [];
   const uniqueGaps = Number(summary.uniqueGaps || 0);
   const unobservedPaths = Number(summary.unobservedPaths || 0);
   const unverifiedWrites = Number(summary.unverifiedWrites || 0);
   const unobservedQueryVariants = Number(summary.unobservedQueryVariants || 0);
   const uncoveredQueryParameters = Number(summary.uncoveredQueryParameters || 0);
-  const evidence = { uniqueGaps, unobservedPaths, unobservedQueryVariants, uncoveredQueryParameters, unverifiedWrites };
+  const missingResponseBodies = Number(summary.missingResponseBodies || 0);
+  if (uniqueGaps <= 0 && missingResponseBodies <= 0 && unverifiedWrites <= 0
+    && unobservedQueryVariants <= 0 && uncoveredQueryParameters <= 0) return [];
+  const evidence = { uniqueGaps, unobservedPaths, unobservedQueryVariants, uncoveredQueryParameters, missingResponseBodies, unverifiedWrites };
   const tasks = [];
   const add = (kind, instruction, condition, requiresHumanApproval = false) => tasks.push({
     id: 'repair-' + kind, kind, target: 'runtime-adapter/index.mjs', instruction, requiresHumanApproval, evidence,
     verification: planVerification(siteId, condition),
   });
+  if (missingResponseBodies > 0) add('response-body-evidence', '先补充有授权的响应正文证据，再实现或修正适配器；没有正文证据时不要臆造业务数据。', 'api.adapter.gapLedger.summary.missingResponseBodies === 0', true);
   if (unverifiedWrites > 0) add('write-verification', '先用授权测试旅程验证写入、回读和清理，再修改适配器。', 'api.adapter.gapLedger.summary.unverifiedWrites === 0', true);
   if (unobservedQueryVariants > 0) add('query-variant-gap', '为已知查询参数补齐未观察到的值或组合；先用独立留出请求验证，再运行 npm run check。', 'api.adapter.gapLedger.summary.unobservedQueryVariants === 0');
   if (uncoveredQueryParameters > 0) add('query-parameter-gap', '补齐查询参数名对应的路由分支，再运行 npm run check。', 'api.adapter.gapLedger.summary.uncoveredQueryParameters === 0');
-  if (unobservedPaths > 0 || tasks.length === 0) add('runtime-gap', '补齐运行时发现但契约未声明的路由，再运行 npm run check。', 'api.adapter.gapLedger.summary.uniqueGaps === 0');
+  if (unobservedPaths > 0 || uniqueGaps > 0 && tasks.length === 0) add('runtime-gap', '补齐运行时发现但契约未声明的路由，再运行 npm run check。', 'api.adapter.gapLedger.summary.uniqueGaps === 0');
   return tasks;
 }
 
@@ -889,14 +893,15 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     });
   }
   if (api.adapter.gapLedger && (api.adapter.gapLedger.summary.uniqueGaps > 0
-    || api.adapter.gapLedger.summary.missingResponseBodies > 0)) {
+    || api.adapter.gapLedger.summary.missingResponseBodies > 0
+    || api.adapter.gapLedger.summary.unverifiedWrites > 0)) {
     add({
       id: 'api-adapter-gap-ledger', kind: 'b2_adapter_gap', basis: 'observed', status: 'open',
       title: '适配器缺口账本还有待处理项',
-      detail: `未声明/未覆盖请求 ${api.adapter.gapLedger.summary.uniqueGaps} 个；未观察查询变体 ${api.adapter.gapLedger.summary.unobservedQueryVariants ?? 0} 个；缺响应体 ${api.adapter.gapLedger.summary.missingResponseBodies} 条。`,
+      detail: `未声明/未覆盖请求 ${api.adapter.gapLedger.summary.uniqueGaps} 个；未观察查询变体 ${api.adapter.gapLedger.summary.unobservedQueryVariants ?? 0} 个；缺响应体 ${api.adapter.gapLedger.summary.missingResponseBodies} 条；未验证写入 ${api.adapter.gapLedger.summary.unverifiedWrites ?? 0} 条。`,
       evidence: [api.adapter.gapLedger.report].filter(Boolean),
       action: plannedAction('cli:shell', { command: `heimdall probe adapter --site ${siteId} --include-api-bodies --force` }, '按最新脱敏观察重新生成适配器，再复核缺口账本', { requiresHumanApproval: false }),
-      verify: planVerification(siteId, 'api.adapter.gapLedger.summary.uniqueGaps === 0 && api.adapter.gapLedger.summary.missingResponseBodies === 0'),
+      verify: planVerification(siteId, 'api.adapter.gapLedger.summary.uniqueGaps === 0 && api.adapter.gapLedger.summary.missingResponseBodies === 0 && api.adapter.gapLedger.summary.unverifiedWrites === 0'),
     });
   }
 

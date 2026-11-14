@@ -191,11 +191,14 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action.args.command, 'heimdall backend scaffold example.test');
     assert.equal(env.result.deliveryPlan.backendCompletion.gapLedger.summary.missingResponseBodies, 1);
     assert.deepEqual(env.result.deliveryPlan.backendCompletion.repairTasks.map(item => item.kind), [
-      'write-verification', 'query-variant-gap', 'query-parameter-gap', 'runtime-gap',
+      'response-body-evidence', 'write-verification', 'query-variant-gap', 'query-parameter-gap', 'runtime-gap',
     ]);
-    assert.equal(env.result.deliveryPlan.backendCompletion.repairTasks[0].verification.condition,
+    assert.equal(env.result.deliveryPlan.backendCompletion.repairTasks[1].verification.condition,
       'api.adapter.gapLedger.summary.unverifiedWrites === 0');
-    assert.equal(env.result.deliveryPlan.backendCompletion.repairTasks[1].verification.args.siteId, 'example.test');
+    assert.equal(env.result.deliveryPlan.backendCompletion.repairTasks[0].requiresHumanApproval, true);
+    assert.equal(env.result.deliveryPlan.backendCompletion.repairTasks[2].verification.args.siteId, 'example.test');
+    assert.match(env.result.deliveryPlan.items.find(item => item.id === 'api-adapter-gap-ledger').detail, /未验证写入 1 条/);
+    assert.match(env.result.deliveryPlan.items.find(item => item.id === 'api-adapter-gap-ledger').verify.condition, /unverifiedWrites === 0/);
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'backend-scaffold'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-adapter-gap-ledger'));
     assert.ok(env.result.deliveryPlan.backendCompletion.humanJourneys.some(item => item.id === 'authentication-and-permission'));
@@ -359,6 +362,43 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(tasks[1].evidence.unobservedQueryVariants, 1);
     assert.equal(tasks[1].evidence.uncoveredQueryParameters, 1);
     assert.doesNotMatch(run.stdout, /private-value/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('site-assessment: keeps write verification open when the runtime has no new path gap', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-write-gap-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'api-contract.json'), {
+      schema: 'heimdall.contract/1',
+      openapi: { paths: { '/api/items': { post: {
+        responses: { '201': {} },
+        'x-heimdall-observations': { samples: 1 },
+      } } } },
+    });
+    put(join(site, 'runtime-adapter', 'manifest.json'), { version: 1, routes: [{ method: 'POST', path: '/api/items' }] });
+    put(join(site, 'runtime-adapter', 'index.mjs'), 'export async function handle() { return new Response(null, { status: 201 }); }');
+    put(join(site, 'adapter-report.json'), {
+      results: { status: 'passed', equivalence: 1, heldout: 1, passed: 1, failed: 0, unverified: 0 },
+      gapLedger: {
+        schema: 'heimdall.adapter-gap-ledger/1', source: 'offline-observation', status: 'offline-observed',
+        summary: { runtimeRequests: 0, uniqueGaps: 0, unobservedPaths: 0, unobservedQueryVariants: 0, uncoveredQueryParameters: 0, missingResponseBodies: 0, unverifiedWrites: 1 },
+        knownRoutes: [{ method: 'POST', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }],
+        gaps: [], unknowns: ['authentication-permission-unknown', 'business-state-unknown', 'unverified-write'],
+      },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const result = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.deepEqual(result.deliveryPlan.backendCompletion.repairTasks.map(item => item.kind), ['write-verification']);
+    assert.equal(result.deliveryPlan.backendCompletion.repairTasks[0].requiresHumanApproval, true);
+    assert.ok(result.deliveryPlan.items.some(item => item.id === 'api-adapter-gap-ledger'));
+    assert.match(result.deliveryPlan.items.find(item => item.id === 'api-adapter-gap-ledger').verify.condition, /unverifiedWrites === 0/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
