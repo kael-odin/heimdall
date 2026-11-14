@@ -783,6 +783,7 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     put(join(page, 'manifest.json'), { target: 'https://example.test/' });
     const seoReport = {
       origin: 'https://example.test', generatedAt: '2026-11-11T00:00:00.000Z', score: 100,
+      scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
       summary: { pages: 1, issues: 0, bySeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 }, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
       categories: {}, geo: { methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 100, actionPlan: [], coverage: { pages: 1, pagesScored: 1, ratio: 1 } },
     };
@@ -813,6 +814,15 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     assert.equal(env.result.readiness.qa.status, 'ready');
     assert.equal(env.result.readiness.qa.nextAction.tool, 'heimdall_qa_metrics');
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.status === 'open'));
+    put(seoPath, { ...seoReport, scoreMethodVersion: SEO_SCORE_METHOD_VERSION - 1 });
+    const staleRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(staleRun.status, 0, staleRun.stderr + staleRun.stdout);
+    const stale = JSON.parse(staleRun.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.equal(stale.seo.scoreMethodStatus, 'stale');
+    assert.equal(stale.readiness.seo.status, 'needs_follow_up');
+    assert.match(stale.deliveryPlan.items.find(item => item.id === 'seo-geo-follow-up').detail, /过时评分口径/);
     for (const geo of [
       undefined,
       { score: 100, actionPlan: [] },

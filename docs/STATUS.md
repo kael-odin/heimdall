@@ -22,6 +22,8 @@
 
 2026-11-15 [SEO 评分口径进入 AI 摘要]：`site-assessment.seo` 现在保留 `scoreMethodVersion` 与 `measurementVersion`；版本缺失或不一致时，AI 必须把分数当作历史观察，避免跨口径比较。
 
+2026-11-15 [SEO 过时口径进入 readiness 门禁]：`scoreMethodStatus` 与 `measurementStatus` 现在会把缺失、旧版和未来版报告标为 `unknown/stale/future`；只在两者都为 `current` 时允许 SEO/GEO readiness 进入 `ready`，旧报告会生成 follow-up。
+
 ## 现在的主线
 
 **持续增强三项能力，用真实案例推动改进**。Heimdall 采集和核验证据，外部 AI 代理补全实现与提出修复方案：

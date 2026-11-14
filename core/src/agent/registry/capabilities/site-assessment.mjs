@@ -20,6 +20,7 @@ import { qaMetricsDecisionTask } from './qa-metrics.mjs';
 import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { readCurrentScore } from '../../../score-status.mjs';
 import { validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums } from '../../../live/deployment-verify.mjs';
+import { SEO_MEASUREMENT_VERSION, SEO_SCORE_METHOD_VERSION } from '../../../seo/method.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
@@ -35,6 +36,11 @@ function readJson(file) {
     if (statSync(file).size > MAX_PUBLIC_REPORT_BYTES) return null;
     return JSON.parse(readFileSync(file, 'utf8'));
   } catch { return null; }
+}
+
+function methodStatus(value, current) {
+  if (!Number.isSafeInteger(value)) return 'unknown';
+  return value === current ? 'current' : value < current ? 'stale' : 'future';
 }
 
 function gapLedgerSummary(root, siteId, report) {
@@ -460,6 +466,8 @@ function seoSummary(siteId, root, expectedOrigin) {
     grade: gradeOf(report.score),
     scoreMethodVersion: Number.isSafeInteger(report.scoreMethodVersion) ? report.scoreMethodVersion : null,
     measurementVersion: Number.isSafeInteger(report.measurementVersion) ? report.measurementVersion : null,
+    scoreMethodStatus: methodStatus(report.scoreMethodVersion, SEO_SCORE_METHOD_VERSION),
+    measurementStatus: methodStatus(report.measurementVersion, SEO_MEASUREMENT_VERSION),
     pages: typeof summary.pages === 'number' ? summary.pages : null,
     issues: typeof summary.issues === 'number' ? summary.issues : null,
     bySeverity,
@@ -1178,12 +1186,16 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   }
 
   const sitemapIncomplete = ['partial', 'unavailable'].includes(seo.completeness?.sitemapCoverage);
+  const seoMethodIncomplete = seo.status === 'observed'
+    && (seo.scoreMethodStatus !== 'current' || seo.measurementStatus !== 'current');
   const seoIncomplete = seo.status === 'observed'
-    && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0 || sitemapIncomplete || seo.geo.status !== 'complete');
+    && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0 || sitemapIncomplete || seoMethodIncomplete || seo.geo.status !== 'complete');
   const seoHasIssues = seo.status === 'observed'
     && (seo.bySeverity.critical > 0 || seo.bySeverity.high > 0 || seo.geo.actionItems > 0);
   const sitemapEvidence = seo.sitemap?.reasons?.length
     ? ` sitemap 原因：${seo.sitemap.reasons.join('、')}。` : '';
+  const methodEvidence = seoMethodIncomplete
+    ? ` 评分口径状态：${seo.scoreMethodStatus}，测量口径状态：${seo.measurementStatus}。` : '';
   if (seo.status !== 'observed') {
     add({
       id: 'seo-report', kind: 'seo_geo_gap', basis: 'unknown', status: 'open',
@@ -1196,7 +1208,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       id: 'seo-geo-follow-up', kind: 'seo_geo_gap', basis: 'observed', status: 'open',
       title: seoIncomplete ? 'SEO/GEO 采集不完整' : 'SEO/GEO 报告还有待处理项',
       detail: seoIncomplete
-        ? `报告包含未成功采集或未核对页面，分数不能当成完整站点结论。${sitemapEvidence}`
+        ? `报告包含未成功采集、未核对页面或过时评分口径，分数不能当成完整站点结论。${sitemapEvidence}${methodEvidence}`
         : `发现 critical=${seo.bySeverity.critical}、high=${seo.bySeverity.high}，GEO 待办 ${seo.geo.actionItems} 项。`,
       evidence: [seo.reports.json],
       action: origin ? plannedAction('heimdall_seo_audit', { url: `${origin}/` }, '补采完整报告并复核 SEO/GEO 待办') : null,
@@ -1366,14 +1378,17 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
   const cloneStatus = !clone.pages || !clone.mirrors ? 'needs_capture' : cloneComplete ? 'ready' : 'needs_verification';
   const cloneItem = item('clone-capture', 'clone-mirror-coverage', 'clone-visual-verification');
   const seoComplete = seo.status === 'observed'
+    && seo.scoreMethodStatus === 'current' && seo.measurementStatus === 'current'
     && !['partial', 'unavailable'].includes(seo.completeness.sitemapCoverage)
     && seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0
     && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0 && seo.geo.status === 'complete' && seo.geo.actionItems === 0;
   const seoStatus = seo.status !== 'observed' ? 'needs_report' : seoComplete ? 'ready' : 'needs_follow_up';
   const seoItem = item('seo-report', 'seo-geo-follow-up');
   const sitemapIncomplete = ['partial', 'unavailable'].includes(seo.completeness?.sitemapCoverage);
+  const seoMethodIncomplete = seo.status === 'observed'
+    && (seo.scoreMethodStatus !== 'current' || seo.measurementStatus !== 'current');
   const geoStatus = seo.status !== 'observed' || seo.geo.status === 'unknown' ? 'needs_report'
-    : seo.geo.status !== 'complete' || sitemapIncomplete || seo.geo.actionItems ? 'needs_follow_up' : 'ready';
+    : seo.geo.status !== 'complete' || sitemapIncomplete || seoMethodIncomplete || seo.geo.actionItems ? 'needs_follow_up' : 'ready';
   const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
   const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'backend-scaffold-check', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
   const qaItem = item('qa-workspace', 'qa-first-run', 'qa-incomplete', 'qa-findings', 'qa-metrics-decision');
