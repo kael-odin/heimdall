@@ -5,7 +5,7 @@
  *   README.md              前端开发第一入口（怎么起、怎么改、边界在哪）
  *   site/                   全部镜像页 + 克隆档案 + 同步对比工具（静态可开）
  *   intel/                  跨页情报 Excel + JSON
- *   fidelity.csv            逐页还原度明细
+ *   fidelity.csv            逐页历史辅助评分明细
  *   raw/<page>/             原始原材料（dom.html / cssom.css / 帧截图），改造时参考
  *
  * 用法: node src/deliver.mjs <host> [hostDir]
@@ -413,5 +413,5 @@ validateCandidate();
 const committed = promoteCandidate(DELIVERABLE, FINAL_OUT, OUT);
 console.log(`\nDELIVERABLE -> ${committed.out}`);
 if (committed.backup) console.log(`[deliver] previous bundle retained -> ${committed.backup}`);
-console.log(`  pages: ${pages.length}, avg fidelity: ${avg}%`);
+console.log(`  pages: ${pages.length}, avg historical fidelity: ${avg}%`);
 console.log(`  site/ + intel/ + fidelity.csv + raw/ + README.md + edit-manifest.md`);

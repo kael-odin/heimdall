@@ -64,7 +64,7 @@ export function renderHandoff({ siteId, origin, target, summary, gaps, delivered
   if (delivered) {
     lines.push(`- 交付包：\`deliverable/${delivered}/\``);
     lines.push('  - `site/` 复刻件（可以直接打开）');
-    lines.push('  - `fidelity.csv` 逐页逐视口分数');
+    lines.push('  - `fidelity.csv` 逐页历史辅助评分（不是 v2 多视口门禁分数）');
     lines.push('  - `edit-manifest.md` 改站清单：换域名 / 换图 / 换文案各要动哪些文件');
     lines.push('  - `README.md` 交付包自带的说明');
   } else {

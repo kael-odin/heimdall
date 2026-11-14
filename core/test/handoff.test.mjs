@@ -163,3 +163,9 @@ test('handoff: 没触到上限时不画蛇添足', () => {
   });
   assert.ok(!/max-pages/.test(md), md);
 });
+
+test('handoff: 交付包中的 fidelity.csv 明确是历史辅助评分', () => {
+  const md = renderHandoff({ ...base, summary: { targetTotal: 1, measured: 1, bounded: 0, untested: 0, average: 1, blockers: {} } });
+  assert.match(md, /fidelity\.csv.*历史辅助评分/);
+  assert.match(md, /不是 v2 多视口门禁分数/);
+});

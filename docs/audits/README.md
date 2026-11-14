@@ -52,6 +52,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-14 | **[评分读取与失效产物成本实测](2026-11-14/score-read-cost.md)** | IANA 8 页与 Datasette 83 页当前 CLI 复测：`site` 中位数 265/349 ms、`site-assessment` 中位数 255/336 ms；旧分数均为 `legacy`，平均分为空；并发、内存和浏览器验证累计成本仍待测 |
 | 2026-11-14 | **[观察型契约落盘与 B3 后端检查实测](2026-11-14/backend-contract-persistence.md)** | Datasette 83 页复验修复 `probe contract` → `site-assessment` 断链；契约 B0、无端点不伪造；B3 健康/适配器覆盖/缺口账本 3/3 通过，认证与业务等价仍未知 |
 | 2026-11-14 | **[留出查询缺口分级](2026-11-14/holdout-query-gap-ledger.md)** | 将已有分页留出案例中的“已知参数名但新值/组合”单独交给 AI；新增未观察路径、查询变体和新参数三类脱敏账本证据，未实现未知分页回放 |
+| 2026-11-14 | **[`example.com` 公开站点一键交接](2026-11-14/public-handoff-example.md)** | 公开单页样本完成侦察、克隆、三视口验证、严格离线导出和独立启动；v2 100% 与历史辅助分 91 的口径混淆已修正，后端与 QA 仍未知 |
 
 ## 为什么归档
 
