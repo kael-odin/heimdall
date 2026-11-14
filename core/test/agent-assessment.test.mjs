@@ -179,6 +179,7 @@ test('site-assessment: preserves bounded sitemap reasons for SEO follow-up', () 
     assert.equal(result.seo.sitemap.stats.urlCount, 10000);
     assert.equal(result.seo.sitemap.stats.maxUrls, 10000);
     assert.match(result.deliveryPlan.items.find(item => item.id === 'seo-geo-follow-up').detail, /budget-exhausted/);
+    assert.ok(result.unknowns.some(item => item.id === 'seo-sitemap-scope-limited' && /budget-exhausted/.test(item.detail)));
     assert.doesNotMatch(run.stdout, /private-value/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -608,15 +609,16 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     browser: { checked: 1, failed: 1, untested: 0, totalPages: 1 },
     coverage: { scope: 'recon-discovered', scopeLimited: true }, note: 'super-secret',
   };
-  const assess = value => {
+  const assessEnvelope = value => {
     if (value) put(join(site, 'live-export.json'), value);
     const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
     });
     assert.equal(run.status, 0, run.stderr + run.stdout);
     assert.doesNotMatch(run.stdout, /super-secret/);
-    return JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)).result;
+    return JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
   };
+  const assess = value => assessEnvelope(value).result;
   try {
     put(join(site, 'pages', 'home', 'clone', 'index.html'), '<html>mirror</html>');
     put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
@@ -641,7 +643,8 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
       adapter: { serverEgress: 'not-tested', declaredRoutes: 1, exercisedRoutes: 1, untestedRoutes: 0 },
     });
     assert.equal(assess().readiness.delivery.status, 'needs_export');
-    const blocked = assess(outcome);
+    const blockedEnvelope = assessEnvelope(outcome);
+    const blocked = blockedEnvelope.result;
     assert.equal(blocked.clone.delivery.status, 'blocked');
     assert.equal(blocked.clone.delivery.blockingCount, 5);
     assert.equal(blocked.clone.delivery.otherBlockers, 2);
@@ -658,6 +661,8 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.readiness.delivery.status, 'blocked');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-offline-delivery').status, 'blocked');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').status, 'blocked');
+    const nextActionKeys = blockedEnvelope.nextActions.map(item => JSON.stringify({ tool: item.tool, args: item.args ?? null }));
+    assert.equal(new Set(nextActionKeys).size, nextActionKeys.length);
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').detail, /CodeMirror is not defined/);
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').detail, /2 条本地失败证据/);
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-browser-failures').verify.condition, /externalRequest/);

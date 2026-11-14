@@ -1440,6 +1440,10 @@ export default {
     if (seo.status === 'observed' && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0)) {
       unknowns.push({ id: 'seo-collection-incomplete', detail: 'SEO 报告包含未成功采集或未核对页面。' });
     }
+    if (seo.status === 'observed' && ['partial', 'unavailable'].includes(seo.completeness.sitemapCoverage)) {
+      const reasons = seo.sitemap?.reasons?.length ? ` 原因：${seo.sitemap.reasons.join('、')}。` : '';
+      unknowns.push({ id: 'seo-sitemap-scope-limited', detail: `站点地图覆盖为 ${seo.completeness.sitemapCoverage}，站点范围仍需补采。${reasons}` });
+    }
     for (const id of api.unknowns) unknowns.push({ id, detail: 'API 行为、认证、权限、状态机或副作用仍未被该摘要证明。' });
     if (qa.status === 'not_configured') unknowns.push({ id: 'qa-not-configured', detail: '没有提供 QA 工作区，最近一次 QA 运行未知。' });
     if (qa.status === 'no_runs') unknowns.push({ id: 'qa-not-run', detail: 'QA 工作区存在，但还没有匹配站点的运行记录。' });
@@ -1450,9 +1454,13 @@ export default {
     const deliveryPlan = buildDeliveryPlan({ siteId: args.siteId, origin, clone, seo, api, qa, qaWorkspace: args.qaWorkspace });
     const readiness = buildReadiness({ clone, seo, api, qa, deliveryPlan });
     const overall = readiness.overall;
-    const nextActions = deliveryPlan.items
+    const nextActions = [...new Map(deliveryPlan.items
       .filter(item => item.action)
-      .map(item => nextAction(item.action.tool, item.action.args, item.action.reason))
+      .map(item => {
+        const action = nextAction(item.action.tool, item.action.args, item.action.reason);
+        return [JSON.stringify({ tool: action.tool, args: action.args ?? null }), action];
+      }))
+      .values()]
       .slice(0, 5);
     const evidence = [];
     if (seo.status === 'observed') evidence.push({ kind: 'file', path: seo.reports.json });
