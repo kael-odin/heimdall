@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { GEO_METHOD_VERSION } from '../src/seo/method.mjs';
+import { GEO_METHOD_VERSION, SEO_MEASUREMENT_VERSION, SEO_SCORE_METHOD_VERSION } from '../src/seo/method.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const BIN = join(ROOT, 'bin', 'heimdall.mjs');
@@ -198,6 +198,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     put(join(page, 'operation-plan.json'), { value: 'super-secret' });
     put(join(site, 'seo', 'seo.json'), {
       origin: 'https://example.test', generatedAt: '2026-11-11T00:00:00.000Z', score: 92.8,
+      scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
       summary: { pages: 1, issues: 2, bySeverity: { high: 1, low: 1 }, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
       categories: { index: { score: 100, issues: 0 } }, geo: {
         score: 80,
@@ -277,6 +278,8 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.seo.score, 92.8);
     assert.equal(env.result.seo.geo.actionPlan[0].id, 'geo-citation-description');
     assert.equal(env.result.seo.geo.actionPlan[0].validation.checkId, 'geo-citation-description');
+    assert.equal(env.result.seo.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
+    assert.equal(env.result.seo.measurementVersion, SEO_MEASUREMENT_VERSION);
     assert.equal(env.result.seo.geo.actionPlanMeta.truncated, false);
     assert.equal(env.result.api.contract.summary.endpoints, 1);
     assert.equal(env.result.api.adapter.status, 'validated');

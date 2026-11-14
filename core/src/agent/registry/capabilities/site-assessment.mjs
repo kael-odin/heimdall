@@ -458,6 +458,8 @@ function seoSummary(siteId, root, expectedOrigin) {
     origin: reportOrigin,
     score: typeof report.score === 'number' ? report.score : null,
     grade: gradeOf(report.score),
+    scoreMethodVersion: Number.isSafeInteger(report.scoreMethodVersion) ? report.scoreMethodVersion : null,
+    measurementVersion: Number.isSafeInteger(report.measurementVersion) ? report.measurementVersion : null,
     pages: typeof summary.pages === 'number' ? summary.pages : null,
     issues: typeof summary.issues === 'number' ? summary.issues : null,
     bySeverity,

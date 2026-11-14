@@ -20,6 +20,8 @@
 
 2026-11-15 [站点评估下一步去重与范围未知项]：当 sitemap 为 `partial/unavailable` 时，`unknowns` 明确加入 `seo-sitemap-scope-limited`；顶层 `nextActions` 按工具和参数去重。RFC Editor 当前重复的严格导出命令已收敛为一条，AI 不再收到重复动作。
 
+2026-11-15 [SEO 评分口径进入 AI 摘要]：`site-assessment.seo` 现在保留 `scoreMethodVersion` 与 `measurementVersion`；版本缺失或不一致时，AI 必须把分数当作历史观察，避免跨口径比较。
+
 ## 现在的主线
 
 **持续增强三项能力，用真实案例推动改进**。Heimdall 采集和核验证据，外部 AI 代理补全实现与提出修复方案：
