@@ -244,6 +244,7 @@ function adapterEgressVerification(root, siteId) {
     httpChecks: rawHttpChecks && typeof rawHttpChecks === 'object' ? {
       beforeRestart: safeChecks(rawHttpChecks.beforeRestart), afterRestart: safeChecks(rawHttpChecks.afterRestart),
     } : null,
+    operationProbe: source.checks?.operationProbe ?? null,
   };
 }
 

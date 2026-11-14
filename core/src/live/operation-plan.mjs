@@ -43,15 +43,7 @@ function validSessionName(value) {
   return value == null || (typeof value === 'string' && SESSION_NAME.test(value));
 }
 
-/** The plan stays in workspace; only redacted probe results enter the bundle. */
-export function readOperationPlan(baseDir, origin, pageRoutes) {
-  let source;
-  try { source = readFileSync(join(baseDir, 'operation-plan.json'), 'utf8'); }
-  catch (error) {
-    return error?.code === 'ENOENT'
-      ? { status: 'missing', flows: [] }
-      : { status: 'invalid', issue: 'unreadable-plan', flows: [] };
-  }
+function parseOperationPlan(source, origin, pageRoutes) {
   let plan;
   try { plan = JSON.parse(source); }
   catch { return { status: 'invalid', issue: 'invalid-json', flows: [] }; }
@@ -75,4 +67,20 @@ export function readOperationPlan(baseDir, origin, pageRoutes) {
     }
   }
   return { status: 'ok', flows: plan.flows };
+}
+
+/** The plan stays outside the bundle; only redacted probe results enter reports. */
+export function readOperationPlan(baseDir, origin, pageRoutes) {
+  return readOperationPlanFile(join(baseDir, 'operation-plan.json'), origin, pageRoutes);
+}
+
+export function readOperationPlanFile(path, origin, pageRoutes) {
+  let source;
+  try { source = readFileSync(path, 'utf8'); }
+  catch (error) {
+    return error?.code === 'ENOENT'
+      ? { status: 'missing', flows: [] }
+      : { status: 'invalid', issue: 'unreadable-plan', flows: [] };
+  }
+  return parseOperationPlan(source, origin, pageRoutes);
 }

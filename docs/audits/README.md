@@ -60,6 +60,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-14 | **[RFC Editor 公开多页 strict 交付收口复验](2026-11-14/rfc-editor-public-handoff-strict.md)** | 6 页视觉平均 99.9917%；`--heal --materialize-har` 将同源静态缺口从 114 降为 0，并补抓浏览器运行时新增 4 个静态资源；动态 JSON、分析服务和 254 个未镜像链接仍阻断 strict |
 | 2026-11-14 | **[最终适配器交付包无外联验收](2026-11-14/adapter-egress-verification.md)** | Docker 29.7.2、`network none`、两次启动、1/1 GET 路由、状态卷和零缺口账本通过；仅为受控夹具，认证、写入与业务状态仍未知 |
 | 2026-11-14 | **[`example.com` 静态交付包独立断网验收](2026-11-14/public-static-deployment-verify.md)** | `live-verify --static` 在 Docker `network none` 中两次启动，1/1 live 路由通过；`site-assessment.independentDeployment=verified` 并绑定当前包校验和 |
+| 2026-11-14 | **[适配器交付包操作计划复测](2026-11-14/adapter-operation-plan-deployment-verify.md)** | 受控有状态适配器在 Docker `network none` 中写入并重启读回 1/1；最终镜像快照上的授权浏览器操作计划 1/1、0 失败、0 未测；仍保留未覆盖路由和未验证写入账本 |
 
 路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。
 

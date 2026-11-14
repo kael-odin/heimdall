@@ -93,7 +93,7 @@ heimdall live-verify <包目录> --site-id <站点>
 
 静态交付包使用 `heimdall live-verify <包目录> --static --site-id <站点>`。它校验当前 `checksums.json`，在 Docker `network none` 中启动包两次，检查 `/__heimdall/health`、根路由和所有 live 页面路由；首次启动时再把最终镜像中的 `/app` 复制到临时快照，核对快照校验和与交付包一致后，用现有真实 Chromium 探针对快照逐页阻断外联加载。报告会把浏览器证据标为 `scope=final-image-filesystem`，这表示浏览器检查的是最终镜像文件系统对应的服务代码，不表示镜像内置 Chromium。结果写入 `workspace/<站点>/deployment-verification.json`；`site-assessment` 只有在容器证据、浏览器证据和当前包校验和都匹配时才把 `independentDeployment` 标为 `verified`。
 
-命令在 Docker `network none` 中构建并启动包两次，检查离线健康、根路由、可安全触达的 GET/HEAD 适配器路由、缺口账本和包外状态卷，随后把脱敏报告写入 `workspace/<站点>/adapter-egress-verification.json`。报告绑定当前包的 `checksums.json`，包改变后 `site-assessment` 会重新标为未知。它不替代 POST、认证、权限、写入、状态机或业务副作用旅程。
+命令在 Docker `network none` 中构建并启动包两次，检查离线健康、根路由、可安全触达的 GET/HEAD 适配器路由、缺口账本和包外状态卷，随后把脱敏报告写入 `workspace/<站点>/adapter-egress-verification.json`。报告绑定当前包的 `checksums.json`，包改变后 `site-assessment` 会重新标为未知。获授权的操作计划可额外通过 `--operation-plan FILE` 提供；它会在最终镜像 `/app` 快照上重放声明的点击、输入、导航和断言，只在报告写入计划哈希、数量和通过流数，不写入表单值或原始失败详情。该浏览器证据的范围是最终镜像文件系统，容器内的写入持久化仍由 `--http-checks` 验证。它不替代认证、权限、状态机或业务副作用旅程。
 
 获授权的后端写入可以额外提供 `--http-checks FILE`。文件只进入临时容器，不进入交付包或报告；它支持 `beforeRestart` 与 `afterRestart` 两组请求，按状态码、MIME、文本和 JSON Pointer 断言结果。最小格式如下：
 

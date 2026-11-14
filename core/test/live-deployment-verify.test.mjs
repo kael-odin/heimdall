@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { formatHttpCheckFailure, readHttpChecks, validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums, verifyStaticDeploymentBundle } from '../src/live/deployment-verify.mjs';
+import { formatHttpCheckFailure, readHttpChecks, validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums, verifyDeploymentBundle, verifyStaticDeploymentBundle } from '../src/live/deployment-verify.mjs';
 
 test('deployment evidence requires network-none, runtime checks, and the current bundle checksum', () => {
   const report = {
@@ -66,6 +66,57 @@ test('HTTP deployment failures identify the phase and safe assertion detail', ()
   assert.equal(formatHttpCheckFailure('afterRestart', { id: 'write', expect: {} }, 'JSON pointer /id mismatch'),
     'HTTP check failed [afterRestart]: write (JSON pointer /id mismatch)');
   assert.doesNotMatch(formatHttpCheckFailure('beforeRestart', check, 'text assertion failed'), /fixture|token|secret/i);
+});
+
+test('adapter deployment verification can replay an authorized operation plan from the final image filesystem', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-adapter-operation-verify-'));
+  try {
+    mkdirSync(join(root, 'site', 'live'), { recursive: true });
+    mkdirSync(join(root, 'runtime-adapter'), { recursive: true });
+    const files = {
+      'health.json': JSON.stringify({ adapter: { status: 'included' }, offline: true }),
+      'Dockerfile': 'FROM node:22-alpine',
+      'serve.mjs': 'console.log(1)',
+      'heimdall-live.json': JSON.stringify({ siteId: 'adapter.test', origin: 'https://adapter.test', port: 8080 }),
+      'site/live/index.html': '<!doctype html><button id="save">Save</button>',
+      'runtime-adapter/manifest.json': JSON.stringify({ version: 1, routes: [{ method: 'GET', path: '/api/items' }] }),
+      'runtime-adapter/index.mjs': 'export async function handle() { return Response.json([]); }',
+    };
+    for (const [name, body] of Object.entries(files)) {
+      const file = join(root, name); mkdirSync(join(file, '..'), { recursive: true }); writeFileSync(file, body);
+    }
+    const entries = Object.entries(files).map(([p, body]) => ({ p, s: Buffer.byteLength(body), h: createHash('sha256').update(body).digest('hex') }));
+    writeFileSync(join(root, 'checksums.json'), JSON.stringify({ files: entries }));
+    const planPath = join(root, '..', 'operation-plan.json');
+    writeFileSync(planPath, JSON.stringify({ version: 1, flows: [{ path: '/', actions: [], expect: [{ type: 'visible', selector: '#save' }] }] }));
+    const reportPath = join(root, '..', 'adapter-egress-verification.json');
+    const calls = [];
+    const runDocker = args => {
+      calls.push(args);
+      if (args[0] === 'inspect') return 'none';
+      if (args[0] === 'exec') return JSON.stringify({ health: 'passed', root: 'passed', declaredRoutes: 1,
+        exercisedRoutes: 1, untestedRoutes: 0, gapLedger: { uniqueGaps: 0 }, stateVolume: 'passed' });
+      return '';
+    };
+    const result = await verifyDeploymentBundle({ bundleDir: root, siteId: 'adapter.test', reportPath,
+      operationPlanPath: planPath, runDocker, observeMs: 1,
+      copySnapshot: ({ destination }) => cpSync(root, destination, { recursive: true }),
+      probeOperations: async (snapshot, flows, sessions) => {
+        assert.ok(snapshot.includes('heimdall-adapter-image-'));
+        assert.equal(flows.length, 1);
+        assert.deepEqual(sessions, {});
+        return { planned: 1, checked: 1, failed: 0, untested: 0, flows: [{ passed: true }] };
+      },
+    });
+    assert.equal(result.report.serverEgress, 'verified');
+    assert.equal(result.report.checks.operationProbe.scope, 'final-image-filesystem');
+    assert.equal(result.report.checks.operationProbe.checked, 1);
+    assert.equal(result.report.checks.operationProbe.failed, 0);
+    assert.equal(validateDeploymentReport(result.report, {
+      siteId: 'adapter.test', checksumsSha256: verifyBundleChecksums(root),
+    }), true);
+    assert.equal(calls.filter(args => args[0] === 'exec').length, 2);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('static deployment verification checks the final image filesystem with Chromium', async () => {

@@ -13,7 +13,10 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeArgs } from '../args.mjs';
 import { DATA_ROOT, WORKSPACE } from '../paths.mjs';
-import { probeOfflineBrowserBundle } from './probe.mjs';
+import { inspectRuntimeAdapter } from './adapter-runtime.mjs';
+import { listLivePageRoutes } from './health.mjs';
+import { readOperationPlanFile } from './operation-plan.mjs';
+import { probeOfflineBrowserBundle, probeOfflineOperations } from './probe.mjs';
 
 const VERIFY_SCHEMA = 'heimdall.adapter-egress-verification/1';
 const STATIC_VERIFY_SCHEMA = 'heimdall.static-deployment-verification/1';
@@ -23,6 +26,7 @@ const MAX_TIMEOUT_MS = 600_000;
 const MAX_OBSERVE_MS = 15_000;
 const MAX_HTTP_CHECKS = 100;
 const MAX_HTTP_BODY_BYTES = 4 * 1024 * 1024;
+const MAX_OPERATION_PLAN_BYTES = 1024 * 1024;
 const HOST_RE = /^[a-z0-9.-]+$/i;
 const HTTP_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
@@ -369,6 +373,27 @@ async function probeFinalImageFilesystem(bundleDir, routes, observeMs) {
   });
 }
 
+async function probeFinalImageOperations(bundleDir, flows, adapterSessionRoutes, observeMs) {
+  return probeOfflineOperations(bundleDir, flows, {
+    adapterSessionRoutes,
+    settleMs: Math.min(observeMs, 5_000),
+    lateMs: Math.min(observeMs, 5_000),
+    timeoutMs: 30_000,
+  });
+}
+
+function readDeploymentOperationPlan(path, origin, pageRoutes) {
+  regularFile(path, '操作计划文件');
+  if (lstatSync(path).size > MAX_OPERATION_PLAN_BYTES) {
+    throw new DeploymentVerificationError('invalid_args', '操作计划文件超过 1 MiB');
+  }
+  const plan = readOperationPlanFile(path, origin, pageRoutes);
+  if (plan.status !== 'ok' || !plan.flows.length) {
+    throw new DeploymentVerificationError('invalid_args', `操作计划无效${plan.issue ? `：${plan.issue}` : ''}`);
+  }
+  return plan;
+}
+
 function readBundle(bundleDir, mode = 'adapter') {
   regularDirectory(bundleDir, '交付包');
   for (const [file, label] of [
@@ -437,13 +462,24 @@ export function validateDeploymentReport(report, { siteId, checksumsSha256 } = {
     && (!checksumsSha256 || report.bundleChecksumsSha256 === checksumsSha256)
     && report.docker?.network === 'none'
     && report.checks?.health === 'passed'
-    && report.checks?.stateVolume === 'passed';
+    && report.checks?.stateVolume === 'passed'
+    && (!report.checks.operationProbe || (
+      report.checks.operationProbe.scope === 'final-image-filesystem'
+      && /^[a-f0-9]{64}$/i.test(report.checks.operationProbe.planSha256 ?? '')
+      && report.checks.operationProbe.checked === report.checks.operationProbe.planned
+      && report.checks.operationProbe.failed === 0
+      && report.checks.operationProbe.untested === 0
+    ));
 }
 
-export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, httpChecksPath, timeoutMs = DEFAULT_TIMEOUT_MS, observeMs = DEFAULT_OBSERVE_MS, runDocker = docker }) {
+export async function verifyDeploymentBundle({ bundleDir, siteId, reportPath, httpChecksPath, operationPlanPath,
+  timeoutMs = DEFAULT_TIMEOUT_MS, observeMs = DEFAULT_OBSERVE_MS, runDocker = docker,
+  copySnapshot = copyContainerApp, probeOperations = probeFinalImageOperations }) {
   const bundle = resolve(bundleDir);
   const metadata = readBundle(bundle);
   const httpChecks = httpChecksPath ? readHttpChecks(resolve(httpChecksPath)) : null;
+  const operationPlanFile = operationPlanPath ? resolve(operationPlanPath) : null;
+  if (operationPlanFile) regularFile(operationPlanFile, '操作计划文件');
   const port = Number(metadata.config.port ?? 8080);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new DeploymentVerificationError('invalid_bundle', '交付包端口无效');
@@ -457,10 +493,12 @@ export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, httpChec
   const image = `heimdall-egress-verify:${suffix}`;
   const container = `heimdall-egress-verify-${suffix}`;
   const volume = `heimdall-egress-state-${suffix}`;
+  const snapshot = operationPlanFile ? mkdtempSync(join(tmpdir(), 'heimdall-adapter-image-')) : null;
   let started = false;
   let built = false;
   let first;
   let second;
+  let operationProbe;
   try {
     runDocker(['build', '--pull=false', '--tag', image, bundle], timeoutMs);
     built = true;
@@ -472,6 +510,21 @@ export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, httpChec
     if (network !== 'none') throw new DeploymentVerificationError('failed', '容器没有使用 network none');
     first = runContainerCheck({ container, port, observeMs, timeoutMs, runDocker,
       httpChecksPath: httpChecks?.path, phase: 'beforeRestart' });
+    if (operationPlanFile) {
+      copySnapshot({ container, destination: snapshot, timeoutMs, runDocker });
+      const snapshotChecksumsSha256 = verifyBundleChecksums(snapshot);
+      if (snapshotChecksumsSha256 !== metadata.checksumsSha256) {
+        throw new DeploymentVerificationError('failed', '最终镜像 /app 快照与交付包校验和不一致');
+      }
+      const pageRoutes = listLivePageRoutes(join(snapshot, 'site', 'live'), metadata.config.origin);
+      const plan = readDeploymentOperationPlan(operationPlanFile, metadata.config.origin, pageRoutes);
+      const adapter = inspectRuntimeAdapter(snapshot);
+      operationProbe = await probeOperations(snapshot, plan.flows, Object.fromEntries(adapter.sessionRoutes), observeMs);
+      if (!operationProbe || operationProbe.failed !== 0 || operationProbe.untested !== 0
+        || operationProbe.checked !== operationProbe.planned) {
+        throw new DeploymentVerificationError('failed', `最终镜像操作验收失败：${operationProbe?.failed ?? 'unknown'} 个失败，${operationProbe?.untested ?? 'unknown'} 条未测`);
+      }
+    }
     runDocker(['rm', '--force', container], timeoutMs);
     started = false;
     runDocker(['run', '--detach', '--rm', '--network', 'none', '--name', container,
@@ -487,6 +540,12 @@ export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, httpChec
       checks: {
         health: 'passed', root: first.root, sourceWorkspace: 'passed',
         stateVolume: second.stateVolume, restart: 'passed',
+        ...(operationProbe ? { operationProbe: {
+          scope: 'final-image-filesystem', planSha256: sha256File(operationPlanFile),
+          planned: operationProbe.planned, checked: operationProbe.checked,
+          failed: operationProbe.failed, untested: operationProbe.untested,
+          passedFlows: operationProbe.flows?.filter(flow => flow.passed).length ?? null,
+        } } : {}),
       },
       adapter: {
         declaredRoutes: first.declaredRoutes, exercisedRoutes: first.exercisedRoutes,
@@ -508,6 +567,7 @@ export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, httpChec
     if (started) { try { runDocker(['rm', '--force', container], timeoutMs); } catch {} }
     if (built) { try { runDocker(['image', 'rm', image], timeoutMs); } catch {} }
     try { runDocker(['volume', 'rm', volume], timeoutMs); } catch {}
+    if (snapshot) rmSync(snapshot, { recursive: true, force: true });
   }
 }
 
@@ -589,7 +649,7 @@ export async function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPa
 }
 
 function usage() {
-  console.error('用法: heimdall live-verify <bundleDir> [--static] [--site-id S] [--report FILE] [--http-checks FILE] [--timeout-ms N] [--observe-ms N]');
+  console.error('用法: heimdall live-verify <bundleDir> [--static] [--site-id S] [--report FILE] [--http-checks FILE] [--operation-plan FILE] [--timeout-ms N] [--observe-ms N]');
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -600,15 +660,18 @@ if (isMain) {
   try {
     const common = {
       bundleDir, siteId: argOf('site-id', undefined), reportPath: argOf('report', undefined),
+      operationPlanPath: argOf('operation-plan', undefined),
       timeoutMs: boundedNumber(argOf('timeout-ms', DEFAULT_TIMEOUT_MS), DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS),
       observeMs: boundedNumber(argOf('observe-ms', DEFAULT_OBSERVE_MS), DEFAULT_OBSERVE_MS, MAX_OBSERVE_MS),
     };
     if (has('static')) {
-      if (argOf('http-checks', undefined) !== undefined) throw new DeploymentVerificationError('invalid_args', '静态验收不支持 --http-checks');
+      if (argOf('http-checks', undefined) !== undefined || common.operationPlanPath !== undefined) {
+        throw new DeploymentVerificationError('invalid_args', '静态验收不支持 --http-checks 或 --operation-plan');
+      }
       const result = await verifyStaticDeploymentBundle(common);
       console.log(`[live-verify] deployment=verified routes=${result.report.checks.routes.checked} report=${result.reportPath}`);
     } else {
-      const result = verifyDeploymentBundle({ ...common, httpChecksPath: argOf('http-checks', undefined) });
+      const result = await verifyDeploymentBundle({ ...common, httpChecksPath: argOf('http-checks', undefined) });
       console.log(`[live-verify] serverEgress=verified routes=${result.report.adapter.exercisedRoutes}/${result.report.adapter.declaredRoutes} report=${result.reportPath}`);
     }
   } catch (error) {
