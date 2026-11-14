@@ -59,6 +59,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `deliveryPlan.qaTask` 是前后端缺陷检测的 AI 任务包：它把前端页面覆盖、后端契约/适配器范围、完整性状态、脱敏 findings、人工裁决和复测条件放在一起。零可提单问题不等于零 bug，页面视觉通过也不等于后端业务通过；`provenance.invented` 必须保持为空。
 - `qaTask.latest.coverage` 会保留最多 50 个页面/视口和检查点的脱敏状态，并用 `pagesMeta`、`checksMeta` 区分总量、有效量、返回量和截断；它用于定位 QA 证据缺口，不替代 finding 的人工裁决。
 - `deliveryPlan.cloneTask` 是克隆、还原度和独立部署的 AI 任务包：它汇总页面/镜像覆盖、多视口验证、strict 离线交付、浏览器失败、动态数据、二进制缺口和断网部署状态。视觉分数不等于功能等价，strict 导出不等于独立部署；`provenance.invented` 必须保持为空。
+- `deliveryPlan.cloneTask.scope.delivery.coverage.scopeLimited` 为真时，strict 结果只覆盖有界页面范围；任务会给出 `allDiscovered` 复测动作，不会把有限范围包装成整站克隆。
   `status` 依次用 `blocked_on_capture`、`blocked_on_visual_verification`、`blocked_on_offline_delivery`、`blocked_on_independent_deployment`、`ready_for_ai_review` 或 `ready` 表示当前门禁位置。
   `scope.visual.verificationGaps` 只列当前扫描得到的前 50 个 `missing`、`stale` 或 `incomplete` 页面；旧的验证摘要不能覆盖当前扫描状态。
 

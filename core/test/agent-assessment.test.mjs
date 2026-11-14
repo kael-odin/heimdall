@@ -807,6 +807,10 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(accepted.readiness.delivery.status, 'last_check_passed');
     assert.equal(accepted.readiness.delivery.basis, 'observed');
     assert.equal(accepted.clone.delivery.coverage.scopeLimited, true);
+    assert.equal(accepted.deliveryPlan.cloneTask.status, 'blocked_on_visual_verification');
+    assert.equal(accepted.deliveryPlan.cloneTask.scope.delivery.coverage.scopeLimited, true);
+    assert.equal(accepted.deliveryPlan.items.find(item => item.id === 'clone-scope-limited').status, 'open');
+    assert.equal(accepted.deliveryPlan.items.find(item => item.id === 'clone-scope-limited').action.args.allDiscovered, true);
     assert.equal(accepted.claims.observed.includes('clone.offline_export:passed'), true);
     assert.equal(accepted.claims.verified.some(claim => claim.includes('offline')), false);
     assert.equal(accepted.deliveryPlan.items.some(item => item.id === 'clone-offline-delivery'), false);

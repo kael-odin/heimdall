@@ -30,6 +30,7 @@
 2026-11-15 [QA 覆盖定位进入 AI 任务]：`qaTask.latest.coverage` 现在投影最多 50 个页面/视口与检查点的脱敏状态，并保留截断、导航失败、检测器失败和基线状态；AI 可以先补覆盖证据，再处理 finding，不会把总数当成缺陷准确率。
 2026-11-15 [后端缺口账本截断进入 AI 任务元数据]：`api.adapter.gapLedger` 现在为 `gaps`、`knownRoutes` 和 `unknowns` 暴露 `*Meta`；大站摘要超过安全上限时明确标记 `truncated`，AI 必须回读同一份脱敏报告。
 2026-11-15 [QA 覆盖总量与有效量分开]：`qaTask.latest.coverage` 现在用 `pagesMeta`、`checksMeta` 区分原始总量、有效条目、返回条目和截断状态；无效覆盖记录或超过 50 条时，AI 会先补证据，不把列表当成完整 QA 范围。
+2026-11-15 [克隆范围受限进入 AI 任务]：strict 交付若仍绑定 `captured-only`、`untrusted-recon` 或其他受限范围，`cloneTask` 会保留范围缺口和 `allDiscovered` 复测动作；其他更早门禁阻断时仍优先显示对应阻断状态，不再显示为无缺口 `ready`。
 2026-11-15 [公开案例 SEO 行动进入摘要]：`public_case_summary.seo.observedActions` 现在按问题 ID 聚合最多 20 条脱敏的 critical/high/medium SEO 行动项，让 AI 能从真实案例复用优化线索；历史评分和缺少当前方法版本时仍保留为观察，不进入当前通过结论。
 2026-11-15 [SEO 行动截断进入 AI 任务元数据]：`deliveryPlan.seoGeoTask` 现在同时暴露 `observedActionsMeta` 与 `observedAdvisoriesMeta`；SEO 与 GEO 合并超过 20 条时明确标记 `truncated`，避免 AI 把被裁掉的行动误读成完整列表。medium 线索仍不会单独改变 readiness。
 

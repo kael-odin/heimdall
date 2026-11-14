@@ -85,6 +85,7 @@
    - 2026-11-15 追加 `deliveryPlan.cloneTask`：复用克隆、视觉验证、strict 离线导出和独立部署已有门禁，为 AI 提供脱敏的镜像覆盖、还原度、动态/二进制缺口与断网部署任务；视觉分数和 strict 通过仍不证明功能或后端等价。
    - 2026-11-15 追加 `qaTask.latest.coverage`：为 AI 提供有界的页面/视口、检查点、导航、检测器和基线覆盖摘要；先补 QA 证据再处理 finding，不能把 finding 数量解释成准确率。
    - 2026-11-15 追加 QA 覆盖元数据：`pagesMeta` 与 `checksMeta` 区分总量、有效量、返回量和截断，避免大站或坏记录被 AI 误读成完整前后端缺陷覆盖。
+   - 2026-11-15 追加克隆范围门禁：strict 包若仍是有界页面范围，`deliveryPlan.cloneTask` 会要求 `allDiscovered` 复测，不把 captured-only 交付误报为整站完成。
    - 2026-11-15 追加 `api.adapter.gapLedger` 的 `*Meta` 截断元数据：大站缺口、已知路由和未知项超过安全上限时，AI 不再把有界列表当成完整后端覆盖。
    - 2026-11-15 追加公开案例 `seo.observedActions`：从已提交的脱敏 SEO 报告聚合可复用的 critical/high/medium 优化线索；案例历史分数仍按方法版本隔离，不伪装成当前站点结论。
    - 2026-11-15 追加 `deliveryPlan.seoGeoTask.observedAdvisories` 与行动元数据：把 medium SEO 线索交给 AI 但不单独阻断 readiness；SEO/GEO 合并超过返回上限时显式标记截断，修复后仍要求同一审计口径复测。

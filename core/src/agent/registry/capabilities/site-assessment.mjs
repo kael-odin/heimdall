@@ -30,7 +30,7 @@ const BROWSER_FAILURE_KINDS = new Set(['http', 'pageError', 'navigation', 'reque
 const BROWSER_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'media', 'font', 'script', 'texttrack', 'xhr', 'fetch', 'eventsource', 'websocket', 'manifest', 'other']);
 const BINARY_DOWNLOAD_PATH = /\.(?:db|sqlite3?|zip|tar|tgz|gz|bz2|xz|7z|rar|pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)(?:$|[?#])/i;
 const SITEMAP_REASONS = new Set(['budget-exhausted', 'time-limit', 'total-byte-limit', 'cross-origin-sitemap', 'robots-unavailable', 'sitemap-request-failed', 'unknown-sitemap-format', 'depth-limit', 'file-limit', 'url-limit', 'document-byte-limit']);
-const CLONE_TASK_ITEM_IDS = new Set(['clone-capture', 'clone-mirror-coverage', 'clone-visual-verification', 'clone-offline-delivery', 'clone-external-runtime', 'clone-browser-failures', 'clone-runtime-data-gaps', 'clone-binary-downloads', 'independent-deployment']);
+const CLONE_TASK_ITEM_IDS = new Set(['clone-capture', 'clone-mirror-coverage', 'clone-visual-verification', 'clone-offline-delivery', 'clone-scope-limited', 'clone-external-runtime', 'clone-browser-failures', 'clone-runtime-data-gaps', 'clone-binary-downloads', 'independent-deployment']);
 
 function readJson(file) {
   try {
@@ -1174,6 +1174,10 @@ function buildCloneTask(siteId, origin, clone, items) {
         browserFailures: delivery.browserFailures?.length ?? 0,
         runtimeDataGaps: delivery.runtimeDataGaps?.length ?? 0,
         binaryDownloadGaps: delivery.binaryDownloadGaps?.length ?? 0,
+        coverage: {
+          scope: ['captured-only', 'recon-discovered', 'untrusted-recon'].includes(delivery.coverage?.scope) ? delivery.coverage.scope : 'unknown',
+          scopeLimited: delivery.coverage?.scopeLimited === false ? false : true,
+        },
         independentDeployment: { status: deployment.status, report: deployment.report },
       },
     },
@@ -1191,6 +1195,7 @@ function buildCloneTask(siteId, origin, clone, items) {
     guardrails: [
       '视觉分数只表示当前页面和视口的相似度，不代表功能、后端、SEO 或业务等价。',
       'strict 离线导出通过不等于独立部署通过；必须有当前校验和绑定的断网部署报告。',
+      'scope.delivery.coverage.scopeLimited 为 true 时，当前包只代表有界页面范围；先用 allDiscovered 扩大范围并重新验证。',
       '外部运行时、动态 API、WebSocket、登录、权限和写入行为不能由 AI 猜成已实现。',
       'unknown、unmeasured、blocked 和未审核资源必须保留原状态，不能改写成通过。',
       '源站源码、凭据、Cookie、令牌、原始 HAR 和未脱敏响应不进入任务包。',
@@ -1200,6 +1205,7 @@ function buildCloneTask(siteId, origin, clone, items) {
       gates: [
         '镜像数量等于当前页面范围，且每页都有当前有效的多视口验证。',
         'strict 离线导出为 passed，blockingCount、浏览器失败和未测页均为零。',
+        '交付范围为 recon-discovered 且 scopeLimited 为 false，或明确把当前结果标为有界交付。',
         '独立部署报告绑定当前包校验和，并在 Docker network none 中通过路由检查。',
         '修复后必须用同一站点范围重新评估，分别汇报 verified、observed、inferred、unknown。',
       ],
@@ -1558,6 +1564,19 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
         command: `heimdall live-verify <deliverable/${siteId}-包目录> --static --site-id ${siteId}`,
       }, '在最终静态交付包中执行两次断网启动和页面路由检查', { requiresHumanApproval: true }),
       verify: planVerification(siteId, 'clone.delivery.deploymentVerification.status === "verified"'),
+    });
+  }
+  if (clone.mirrors && clone.delivery.status === 'passed' && clone.delivery.coverage?.scopeLimited === true) {
+    const expandCapture = origin
+      ? { url: `${origin}/`, scope: 'site', level: 'verified', allDiscovered: true }
+      : { siteId, scope: 'site', level: 'verified', allDiscovered: true };
+    add({
+      id: 'clone-scope-limited', kind: 'clone_scope_gap', basis: 'observed', status: 'open',
+      title: '站点克隆范围仍受限',
+      detail: `当前离线包只覆盖 ${clone.delivery.coverage.scope ?? '未知'} 范围；strict 通过不代表站点全集已发现。先补齐侦察发现范围，再重新克隆、验证和导出。`,
+      evidence: [`clone.delivery.coverage.scope:${clone.delivery.coverage.scope ?? 'unknown'}`, 'clone.delivery.coverage.scopeLimited:true'],
+      action: plannedAction('heimdall_clone', expandCapture, '扩大到当前侦察发现的全部同源页面，再重新运行多视口和离线门禁'),
+      verify: planVerification(siteId, 'clone.delivery.coverage.scope === "recon-discovered" && clone.delivery.coverage.scopeLimited === false'),
     });
   }
 
