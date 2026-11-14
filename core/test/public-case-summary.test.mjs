@@ -25,6 +25,7 @@ test('public case summary reads the Xspark evidence boundary without raw artifac
   assert.equal(env.result.seo.geo.status, 'unknown');
   assert.equal(env.result.seo.geo.score, null);
   assert.deepEqual(env.result.seo.geo.actionPlan, []);
+  assert.match(env.result.proven[3], /仅历史观察/);
   assert.equal(env.result.integrity.status, 'consistent');
   const serialized = JSON.stringify(env);
   assert.equal(serialized.includes('findings.json'), false);

@@ -209,7 +209,7 @@ export default {
       `${targetPages.length || qa.pages} 个公开页面，${qa.pageViewportChecks} 次页面/视口检查`,
       `QA 门禁 ${qa.baseline.gate ?? '未知'}，可提单 ${qa.fileable ?? '未知'} 条`,
       `视觉基线比较 ${qa.baseline.compared ?? '未知'} 对，回归 ${qa.baseline.regressions ?? '未知'} 条`,
-      `SEO ${seoResult.score ?? '未知'}${seoResult.grade ? ` / ${seoResult.grade}` : ''}，critical/high ${seoResult.bySeverity.critical ?? 0}/${seoResult.bySeverity.high ?? 0}`,
+      `SEO ${seoResult.score ?? '未知'}${seoResult.grade ? ` / ${seoResult.grade}` : ''}，critical/high ${seoResult.bySeverity.critical ?? 0}/${seoResult.bySeverity.high ?? 0}${seoResult.scoreMethodStatus === 'current' && seoResult.measurementStatus === 'current' ? '' : '（口径未确认，仅历史观察）'}`,
     ];
     const unknowns = [
       ...(limitations.length ? limitations : ['案例限制信息缺失']),
