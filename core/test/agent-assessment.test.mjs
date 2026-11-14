@@ -133,7 +133,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       {
         id: 'F2', fingerprint: 'fp_qa2', tier: 'degrade', basis: 'wrong', kind: 'a11y', path: '/checkout',
         title: '输入框没有标签', target: '#email', observed: '控件缺少可访问名称',
-        confidence: 'observed', source: 'check', triage: { status: 'new' },
+        confidence: 'observed', source: 'check', triage: { status: 'known-bug', verdict: 'bug', reason: '无障碍问题已确认' },
       },
     ]);
 
@@ -174,6 +174,10 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(qaRepairTasks[0].evidence.fingerprint, 'fp_qa1');
     assert.equal(qaRepairTasks[0].verification.tool, 'heimdall_qa_run');
     assert.match(qaRepairTasks[0].verification.condition, /fingerprint/);
+    assert.equal(qaRepairTasks[1].status, 'ready_for_fix');
+    assert.equal(qaRepairTasks[1].requiresHumanApproval, false);
+    assert.equal(qaRepairTasks[1].evidence.triage, 'known-bug');
+    assert.equal(qaRepairTasks[1].evidence.report, env.result.qa.latest.report);
     assert.doesNotMatch(run.stdout, /private-value|abcdefghijkl/);
     assert.equal(env.result.qa.metrics.coverage.runs, 1);
     assert.equal(env.result.qa.metrics.coverage.pageViewportChecks, 1);

@@ -579,15 +579,19 @@ function planVerification(siteId, condition) {
 function qaRepairTask(finding, qa, qaWorkspace) {
   const id = String(finding?.id ?? finding?.fingerprint ?? 'finding').replace(/[^a-z0-9_-]/gi, '-').slice(0, 64) || 'finding';
   const target = typeof finding?.target === 'string' && finding.target ? finding.target : finding?.path || '/';
+  const confirmed = finding?.triage === 'known-bug';
   const evidence = Object.fromEntries([
     ['findingId', finding?.id], ['fingerprint', finding?.fingerprint], ['runId', qa.latest?.runId],
     ['kind', finding?.kind], ['basis', finding?.basis], ['tier', finding?.tier], ['path', finding?.path],
+    ['triage', finding?.triage], ['report', qa.latest?.report], ['bugs', qa.latest?.bugs],
   ].filter(([, value]) => typeof value === 'string' && value));
   return {
     id: `repair-qa-${id}`, kind: 'qa-finding-repair', target,
-    status: 'blocked_on_human_verdict',
-    instruction: '先用 heimdall_qa_findings 确认这是需要修复的真实问题；确认后修复目标，再用同一站点和检查点重跑 QA。',
-    requiresHumanApproval: true, evidence,
+    status: confirmed ? 'ready_for_fix' : 'blocked_on_human_verdict',
+    instruction: confirmed
+      ? '该问题已经人工确认；修复目标后，用同一站点和检查点重跑 QA。'
+      : '先用 heimdall_qa_findings 确认这是需要修复的真实问题；确认后修复目标，再用同一站点和检查点重跑 QA。',
+    requiresHumanApproval: !confirmed, evidence,
     verification: {
       tool: 'heimdall_qa_run',
       args: { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name },
