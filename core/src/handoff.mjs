@@ -2,7 +2,7 @@
 /**
  * handoff — 一条命令走完全程
  *
- *   node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict]
+ *   node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict] [--privacy-max-file-bytes N]
  *
  * README 承诺的是"给它一个网址，还你一份能核对的复刻件"，但实际要手动串五条命令，
  * 中间还得自己判断哪步可以跳。这里把它们串成一条：
@@ -42,9 +42,28 @@ const MAX_PAGES = numFlag('--max-pages', 40);
 const JOBS = numFlag('--jobs', 1);
 const SKIP_VERIFY = argv.includes('--skip-verify');
 const STRICT = argv.includes('--strict');
+const privacyMaxFileBytesPresent = argv.some(arg => arg === '--privacy-max-file-bytes' || arg.startsWith('--privacy-max-file-bytes='));
+const privacyMaxFileBytesValue = (() => {
+  const exact = argv.indexOf('--privacy-max-file-bytes');
+  if (exact > -1) return argv[exact + 1];
+  const eq = argv.find(arg => arg.startsWith('--privacy-max-file-bytes='));
+  return eq?.slice('--privacy-max-file-bytes='.length);
+})();
+const privacyMaxFileBytes = Number(privacyMaxFileBytesValue);
 
 if (!TARGET) {
-  console.error('usage: node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict]');
+  console.error('usage: node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict] [--privacy-max-file-bytes N]');
+  process.exit(2);
+}
+if (privacyMaxFileBytesPresent && !STRICT) {
+  console.error('--privacy-max-file-bytes requires --strict');
+  process.exit(2);
+}
+if (privacyMaxFileBytesPresent
+  && (!Number.isInteger(privacyMaxFileBytes)
+    || privacyMaxFileBytes < 16 * 1024 * 1024
+    || privacyMaxFileBytes > 256 * 1024 * 1024)) {
+  console.error('--privacy-max-file-bytes must be an integer from 16777216 to 268435456');
   process.exit(2);
 }
 if (!Number.isInteger(MAX_PAGES) || MAX_PAGES < 1 || !Number.isInteger(JOBS) || JOBS < 1 || JOBS > 8) {
@@ -214,7 +233,9 @@ if (STRICT) {
   const liveReportPath = join(BASE, 'live-export.json');
   let previousLiveText = null;
   try { previousLiveText = readFileSync(liveReportPath, 'utf8'); } catch {}
-  const result = await run('src/live/export.mjs', [host, '--offline', '--strict', '--root', 'mirror']);
+  const liveArgs = [host, '--offline', '--strict', '--root', 'mirror'];
+  if (privacyMaxFileBytesPresent) liveArgs.push(`--privacy-max-file-bytes=${privacyMaxFileBytes}`);
+  const result = await run('src/live/export.mjs', liveArgs);
   let currentLiveText = null;
   try { currentLiveText = readFileSync(liveReportPath, 'utf8'); } catch {}
   live = currentLiveText && currentLiveText !== previousLiveText

@@ -141,7 +141,7 @@ node core/src/cli.mjs handoff https://example.org --max-pages 40
 发现多少页、完整测到多少页、没测到的卡在什么原因上、资产缺口有多少、交付包在哪里。
 没测到的部分会如实写出来 —— 一个写着"120 页里测到 96 页"的包，比一个假装全绿的包有用。
 
-可选：`--jobs N`（验证并发）、`--allow-bounded`（有界置信度）、`--skip-verify`（只要复刻件）、`--strict`（追加 `live --offline --strict --root mirror` 独立离线交付门禁）。
+可选：`--jobs N`（验证并发）、`--allow-bounded`（有界置信度）、`--skip-verify`（只要复刻件）、`--strict`（追加 `live --offline --strict --root mirror` 独立离线交付门禁）、`--privacy-max-file-bytes N`（人工审核后提高单文件隐私扫描预算，16 MiB..256 MiB）。
 
 ## 交互镜像
 
@@ -301,7 +301,7 @@ node core/src/cli.mjs live example.org --offline --strict --root mirror --includ
 
 在 `--compare-source` 模式下，源站和离线复测从 Chromium 协议读取同一次请求的正文；取正文不会主动重发请求，但页面自身仍可能多次请求。缓存、重定向、必要响应头不可核实，或浏览器与协议的可见响应数不一致时，严格导出会阻断，逐流程数据对照显示未完成。两者都没有观察到的请求仍可能遗漏，弹窗和跨进程页面也不保证完整覆盖。旧版生成的包应重新对照并人工审阅；未启用源站对照而只使用已有 HAR 时，不能据此确认 HAR 正文来自哪次请求。
 
-导出前核对授权和敏感数据。严格导出会检查候选包中的凭据型 URL、Bearer、Cookie 值；`health.privacyAudit` 记录问题数与扫描是否完整。它不是全面的个人信息识别。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；独立包仍需验收登录、重定向、登出和长期运行。隐私扫描默认累计检查 128MB 文本；大站可用 `--privacy-max-total-bytes 134217728..1073741824` 提高预算。公开文档补抓默认 60 秒，可用 `--public-text-links-max-wall-ms 60000..900000` 延长。`--strict` 失败时先修缺口，不要把包标成离线完成。
+导出前核对授权和敏感数据。严格导出会检查候选包中的凭据型 URL、Bearer、Cookie 值；`health.privacyAudit` 记录问题数与扫描是否完整。它不是全面的个人信息识别。认证站点默认不应把 API 正文或带凭证的 URL 纳入可分发 HAR；独立包仍需验收登录、重定向、登出和长期运行。隐私扫描默认单文件 16 MiB、累计检查 128MB 文本；大 HAR 只有在人工审核后才用 `--privacy-max-file-bytes 16777216..268435456` 提高单文件预算，也可用 `--privacy-max-total-bytes 134217728..1073741824` 提高累计预算。公开文档补抓默认 60 秒，可用 `--public-text-links-max-wall-ms 60000..900000` 延长。`--strict` 失败时先修缺口，不要把包标成离线完成。
 
 ## SEO 回归
 

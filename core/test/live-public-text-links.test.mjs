@@ -38,7 +38,7 @@ test('export validates public text and privacy budget arguments before touching 
     const site = join(dir, 'workspace', host);
     mkdirSync(join(site, 'live'), { recursive: true });
     writeFileSync(join(site, 'site-origin.json'), JSON.stringify({ origin: 'https://budget-args-fixture.test' }));
-    for (const flag of ['--public-text-links-max-wall-ms', '--privacy-max-total-bytes']) {
+    for (const flag of ['--public-text-links-max-wall-ms', '--privacy-max-file-bytes', '--privacy-max-total-bytes']) {
       const result = spawnSync(process.execPath, [EXPORT, host, flag, '1'], {
         cwd: CORE, encoding: 'utf8', env: { ...process.env, HEIMDALL_DATA_DIR: dir },
       });

@@ -88,6 +88,17 @@ test('privacy audit explains scan limits, malformed metadata and undecodable tex
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('privacy audit accepts an explicit larger per-file budget', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-privacy-file-budget-'));
+  try {
+    put(join(dir, 'body.txt'), 'x'.repeat(50));
+    const audit = auditBundlePrivacy({ bundleDir: dir, limits: { maxFileBytes: 64 } });
+    assert.equal(audit.status, 'clean');
+    assert.equal(audit.failureCount, 0);
+    assert.equal(audit.scannedFiles, 1);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('privacy audit marks a file-count-limited scan incomplete', () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-privacy-count-'));
   try {

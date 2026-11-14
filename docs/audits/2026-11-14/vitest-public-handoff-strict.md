@@ -39,6 +39,16 @@ node core/src/cli.mjs handoff https://vitest.dev --max-pages 3 --strict
 - 三页共有 91 个未镜像站内链接。
 - 候选包的 `har.json` 超过隐私扫描文件预算，扫描状态为 incomplete；没有发现凭据型问题。
 
+经人工审核后用 `--privacy-max-file-bytes 33554432` 对同一候选包单独复扫，隐私扫描变为 `clean`；这只解除单文件预算阻断，其他 unresolved、缺页、第三方运行时、浏览器失败和链接缺口仍需分别处理。
+
+随后实际执行：
+
+```powershell
+node core/src/live/export.mjs vitest.dev --offline --strict --root mirror --privacy-max-file-bytes 33554432
+```
+
+本次 CLI 复测仍返回非零，`privacyIncomplete=0`，阻断数从 112 降为 111；候选包保留，正式包仍未覆盖。
+
 ## 证据边界
 
 - 三页是 `--max-pages 3` 的受限样本，不能代表 Vitest 全站。

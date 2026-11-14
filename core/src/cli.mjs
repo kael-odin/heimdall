@@ -55,7 +55,7 @@ export const COMMANDS = {
   'cas-gc': { script: 'src/audit/cas-gc.mjs', usage: 'cas-gc [--apply] [--json]', desc: '回收 CAS 孤儿（默认仅预览，--apply 真回收）' },
   'deliver-prune': { script: 'src/audit/deliver-prune.mjs', usage: 'deliver-prune [--keep N] [--json] | --apply --revision <预览值>', desc: '交付包保留策略（旧包同卷隔离，可恢复）' },
   deliver: { script: 'src/deliver.mjs', usage: 'deliver <host> [hostDir]', desc: '打包交付物（site + intel + raw + README）' },
-  handoff: { script: 'src/handoff.mjs', usage: 'handoff <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict]', desc: '一条命令走完全程：侦察→克隆→验证→资产→交付；--strict 追加独立离线门禁' },
+  handoff: { script: 'src/handoff.mjs', usage: 'handoff <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict] [--privacy-max-file-bytes N]', desc: '一条命令走完全程：侦察→克隆→验证→资产→交付；--strict 追加独立离线门禁' },
   serve:   { script: 'src/engine-server.mjs', usage: 'serve [port]', desc: '启动引擎/控制台（默认 8900）' },
   profile: { script: 'src/profile.mjs', usage: 'profile <host> [--json|--learned] | --list', desc: '查看站点配方（三层合并结果与来源）' },
 };

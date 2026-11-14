@@ -70,7 +70,7 @@ const CORE = fileURLToPath(new URL('../..', import.meta.url));
 const argv = process.argv.slice(2);
 const { argOf, has } = makeArgs(argv);
 const host = argv.find(a => !a.startsWith('--'));
-if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <path-inside-deliverable>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--cache-runtime-services <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--public-text-links-max-wall-ms 60000..900000] [--privacy-max-total-bytes 134217728..1073741824] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-readonly-binaries] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
+if (!host) { console.error('usage: node src/live/export.mjs <host> [--out <path-inside-deliverable>] [--offline] [--port 8080] [--rebuild] [--root landing|mirror] [--heal] [--materialize-har] [--strict] [--external-static-approvals <json-file>] [--cache-runtime-services <json-file>] [--browser-observe-ms 3000..15000] [--public-text-links-max-targets 1..256] [--public-text-links-max-wall-ms 60000..900000] [--privacy-max-file-bytes 16777216..268435456] [--privacy-max-total-bytes 134217728..1073741824] [--omit-nonvisual-pixels] [--remove-carbonads] [--replace-youtube] [--allow-unsupported-external-redirects] [--compare-source] [--include-readonly-data] [--include-readonly-binaries] [--include-api-har] [--include-adapter] [--allow-private-export]'); process.exit(2); }
 if (!/^(?!\.\.?$)[a-z0-9.-]+$/i.test(host)) { console.error('[export] invalid host:', host); process.exit(2); }
 
 const BASE = join(WORKSPACE, host);
@@ -110,6 +110,14 @@ if ((argv.includes('--public-text-links-max-wall-ms') && publicTextLinksMaxWallM
   || !Number.isInteger(PUBLIC_TEXT_LINKS_MAX_WALL_MS)
   || PUBLIC_TEXT_LINKS_MAX_WALL_MS < 60_000 || PUBLIC_TEXT_LINKS_MAX_WALL_MS > 900_000) {
   console.error('[export] --public-text-links-max-wall-ms must be an integer from 60000 to 900000');
+  process.exit(2);
+}
+const privacyMaxFileBytesArg = argOf('privacy-max-file-bytes', undefined);
+const PRIVACY_MAX_FILE_BYTES = Number(privacyMaxFileBytesArg ?? 16 * 1024 * 1024);
+if ((argv.includes('--privacy-max-file-bytes') && privacyMaxFileBytesArg === undefined)
+  || !Number.isInteger(PRIVACY_MAX_FILE_BYTES)
+  || PRIVACY_MAX_FILE_BYTES < 16 * 1024 * 1024 || PRIVACY_MAX_FILE_BYTES > 256 * 1024 * 1024) {
+  console.error('[export] --privacy-max-file-bytes must be an integer from 16777216 to 268435456');
   process.exit(2);
 }
 const privacyMaxTotalBytesArg = argOf('privacy-max-total-bytes', undefined);
@@ -1194,7 +1202,7 @@ operationProbe           逐条在断网浏览器中执行的操作、动态依�
 sourceOperationProbe     显式 --compare-source 时，源站同流程只读采集与脱敏对照；未运行不代表源站通过
 dependencyParity         显式 --compare-source 时，按操作流程核对脚本、样式、媒体、文档和 API 的精确请求、状态与 MIME；仅报告类别和数量，不写入私有 URL。它不比较静态资源内容，也不证明业务等价
 readOnlyData             显式许可的 GET 数据声明数、纳入数、缺口和冲突；含 binaryDeclared / binaryIncluded 时表示经人工审核的二进制回放；二进制源站对照未支持；源站操作采集需同时使用 --compare-source
-privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布。默认累计扫描 128MB，可用 --privacy-max-total-bytes 134217728..1073741824 调整
+privacyAudit             凭据特征扫描结果；incomplete 或 issues 都阻断严格发布。默认单文件 16MiB、累计 128MB，可用 --privacy-max-file-bytes 16777216..268435456 与 --privacy-max-total-bytes 134217728..1073741824 调整
 ${INCLUDE_ADAPTER ? 'adapter                  声明路由数、操作探针实际触达路由数、未测路由数与 sessionRoutes 的 declared/initialized/failed；未测或失败均阻断发布；serverEgress=not-tested 表示服务端外联尚未验证；adapter-gap-ledger.json 记录运行时未声明请求\n' : ''}
 \`\`\`
 
@@ -1263,7 +1271,7 @@ const packageMetadata = () => {
 };
 packageMetadata();
 health.privacyAudit = auditBundlePrivacy({ bundleDir: OUT,
-  limits: { maxTotalBytes: PRIVACY_MAX_TOTAL_BYTES } });
+  limits: { maxFileBytes: PRIVACY_MAX_FILE_BYTES, maxTotalBytes: PRIVACY_MAX_TOTAL_BYTES } });
 health.strictBlockers.privacyIssues = health.privacyAudit.issueCount;
 health.strictBlockers.privacyIncomplete = health.privacyAudit.status === 'incomplete' ? health.privacyAudit.failureCount : 0;
 writeFileSync(join(OUT, 'health.json'), JSON.stringify(health, null, 2));

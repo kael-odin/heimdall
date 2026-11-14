@@ -219,6 +219,7 @@ test('handoff: --strict 通过时需要 live 导出器写入 passed 结果', { t
     offline: true, strict: true, blockingCount: 0, blockers: {}, browser: { checked: 1, failed: 0, untested: 0 },
   };
   const livePath = JSON.stringify(join(site, 'live-export.json'));
+  const liveArgsPath = JSON.stringify(join(site, 'live-args.json'));
   const liveBody = Buffer.from(JSON.stringify(liveReport), 'utf8').toString('base64');
   const liveCommand = `require('node:fs').writeFileSync(${livePath}, Buffer.from(${JSON.stringify(liveBody)}, 'base64')); process.exit(0)`;
   const preload = `import cp from 'node:child_process';
@@ -227,6 +228,7 @@ test('handoff: --strict 通过时需要 live 导出器写入 passed 结果', { t
     const original = cp.spawn;
     cp.spawn = (cmd, args, opts) => {
       const target = String(args[0]).replaceAll('\\\\', '/');
+      if (target.endsWith('/live/export.mjs')) writeFileSync(${liveArgsPath}, JSON.stringify(args));
       const child = target.endsWith('/live/export.mjs')
         ? (process.env.HEIMDALL_TEST_LIVE_MODE === 'pass' ? ${JSON.stringify(liveCommand)} : 'process.exit(1)')
         : 'process.exit(0)';
@@ -245,10 +247,14 @@ test('handoff: --strict 通过时需要 live 导出器写入 passed 结果', { t
     child.once('close', code => resolve({ code, output }));
   });
   try {
-    const result = await run(['--skip-verify', '--strict'], 'pass');
+    const invalidBudget = await run(['--skip-verify', '--strict', '--privacy-max-file-bytes'], 'pass');
+    assert.equal(invalidBudget.code, 2, invalidBudget.output);
+    assert.match(invalidBudget.output, /--privacy-max-file-bytes must be an integer/);
+    const result = await run(['--skip-verify', '--strict', '--privacy-max-file-bytes', '33554432'], 'pass');
     assert.equal(result.code, 0, result.output);
     assert.match(readFileSync(join(site, 'handoff', 'README.md'), 'utf8'), /live --offline --strict.*通过/);
-    const stale = await run(['--skip-verify', '--strict'], 'fail');
+    assert.match(readFileSync(join(site, 'live-args.json'), 'utf8'), /--privacy-max-file-bytes.*33554432/);
+    const stale = await run(['--skip-verify', '--strict', '--privacy-max-file-bytes', '33554432'], 'fail');
     assert.equal(stale.code, 1, stale.output);
     assert.match(readFileSync(join(site, 'handoff', 'README.md'), 'utf8'), /没有得到有效结果/);
   } finally {

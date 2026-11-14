@@ -11,6 +11,7 @@ const DEFAULT_LIMITS = Object.freeze({
   maxFindings: 200,
   maxFailures: 40,
 });
+const MAX_FILE_BYTES_LIMIT = 256 * 1024 * 1024;
 const MAX_TOTAL_BYTES_LIMIT = 1024 * 1024 * 1024;
 
 const TEXT_EXT = new Set([
@@ -106,6 +107,7 @@ function isBinary(buffer) {
  */
 export function auditBundlePrivacy({ bundleDir, limits = {} }) {
   const bound = Object.fromEntries(Object.entries(DEFAULT_LIMITS).map(([key, value]) => [key, boundedLimit(limits[key], value)]));
+  bound.maxFileBytes = boundedLimit(limits.maxFileBytes, DEFAULT_LIMITS.maxFileBytes, MAX_FILE_BYTES_LIMIT);
   bound.maxTotalBytes = boundedLimit(limits.maxTotalBytes, DEFAULT_LIMITS.maxTotalBytes, MAX_TOTAL_BYTES_LIMIT);
   const counts = { 'credential-query': 0, 'bearer-value': 0, 'cookie-value': 0 };
   const findings = new Map();
