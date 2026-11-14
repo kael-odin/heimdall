@@ -144,7 +144,8 @@ function viewportTitle(v) {
   const m = v?.minViewport;
   if (!m) return '未运行多视口验证';
   const parts = [`${v.measured === true ? '' : '未完整测量 · '}多视口 ${v.scoreVersion === 2 ? 'v2' : '历史口径'}：${m.name} ${(m.score * 100).toFixed(1)}%`];
-  if (typeof m.coverageRatio === 'number') parts.push(`覆盖 ${(m.coverageRatio * 100).toFixed(1)}%`);
+  const coverage = m.captureMode === 'sampled-tiled' ? m.sampledCoverageRatio : m.coverageRatio;
+  if (typeof coverage === 'number') parts.push(`${m.captureMode === 'sampled-tiled' ? '采样覆盖' : '覆盖'} ${(coverage * 100).toFixed(1)}%`);
   if (m.sourceSize && m.cloneSize) parts.push(`原图 ${m.sourceSize.width}×${m.sourceSize.height} / 镜像 ${m.cloneSize.width}×${m.cloneSize.height}`);
   return parts.join(' · ');
 }

@@ -74,6 +74,8 @@ export function worstViewport(viewports) {
     if (typeof v?.score !== 'number') continue;
     if (!worst || v.score < worst.score) worst = {
       name: v.name ?? '', score: v.score, grade: gradeOf(v.score),
+      captureMode: v.captureMode ?? null,
+      sampledCoverageRatio: v.sampledCoverageRatio ?? null,
       coverageRatio: v.coverageRatio ?? null, sourceSize: v.sourceSize ?? null,
       cloneSize: v.cloneSize ?? null, heightDelta: v.heightDelta ?? null,
       missingPixels: v.missingPixels ?? null,

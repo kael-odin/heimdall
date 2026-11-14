@@ -620,6 +620,52 @@ test('verify measures a 26k page with bounded screenshot tiles', async () => {
   }
 });
 
+test('verify samples an over-sized page and keeps it partial', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'heimdall-verify-tall-sample-'));
+  const base = join(dataDir, 'workspace', 'x.test');
+  const page = join(base, 'pages', 'p1');
+  const height = 104_100;
+  const html = `<!doctype html><html><body style="margin:0"><div style="height:${height}px;background:linear-gradient(#fff,#444)"></div></body></html>`;
+  const server = createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(html);
+  });
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const port = server.address().port;
+    mkdirSync(join(page, 'clone'), { recursive: true });
+    writeFileSync(join(page, 'clone', 'index.html'), html);
+    writeFileSync(join(page, 'manifest.json'), JSON.stringify({ target: `http://127.0.0.1:${port}/source` }));
+    const { code, output } = await runVerify(dataDir,
+      ['x.test', 'p1', '--no-interactions', '--keep-screenshots', '--viewports', '40x100'],
+      { HEIMDALL_PORT: String(port) }, 120_000);
+    assert.equal(code, 1, output);
+    const result = JSON.parse(readFileSync(join(base, 'verify', 'p1', 'verify.json'), 'utf8'));
+    const viewport = result.viewports[0];
+    assert.equal(result.measured, false);
+    assert.equal(result.overall, null);
+    assert.equal(result.provisionalOverall, 1);
+    assert.equal(result.confidence, 'none');
+    assert.match(result.error, /仅比较采样分段/);
+    assert.equal(viewport.captureMode, 'sampled-tiled');
+    assert.equal(viewport.sourceHeight, height);
+    assert.equal(viewport.cloneHeight, height);
+    assert.equal(viewport.score, 1);
+    assert.equal(result.minViewport.captureMode, 'sampled-tiled');
+    assert.equal(result.minViewport.sampledCoverageRatio, viewport.sampledCoverageRatio);
+    assert.equal(viewport.sampling.status, 'partial');
+    assert.equal(viewport.sampling.sampledRegions.length, 8);
+    assert.ok(viewport.sampling.sampledCoverageRatio > 0);
+    assert.ok(viewport.sampling.sampledCoverageRatio < 1);
+    assert.ok(viewport.sampling.uncoveredRanges.length > 0);
+    assert.equal(viewport.diffParts.length, 8);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 // ---------- --resume ----------
 
 /**

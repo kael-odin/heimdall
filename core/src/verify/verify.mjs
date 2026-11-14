@@ -24,7 +24,7 @@ import { canonUrl } from '../url-canon.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { comparePngBuffers, overallScore, worstViewport, gradeOf } from './compare.mjs';
-import { compareTiledPng, TILE_HEIGHT } from './tiled-compare.mjs';
+import { compareSampledTiledPng, compareTiledPng, TILE_HEIGHT } from './tiled-compare.mjs';
 import { verifyInteractions, scoreInteractions } from './interactions.mjs';
 import { emit } from '../emit.mjs';
 import { writeFileAtomic } from '../fsutil.mjs';
@@ -38,6 +38,7 @@ import { archiveVerifyArtifacts, archiveVerifySummary, evidenceSha256, measureme
 const log = (...a) => console.error('[verify]', ...a);
 const SINGLE_CAPTURE_HEIGHT = 25_000;
 const MAX_PAGE_HEIGHT = 100_000;
+const MAX_TALL_SAMPLE_TILES = 8;
 const MAX_SCROLL_PASSES = 4;
 const RENDER_SETTLE_TIMEOUT = process.env.HEIMDALL_VERIFY_SETTLE_TIMEOUT_MS === undefined
   ? 2500 : Number(process.env.HEIMDALL_VERIFY_SETTLE_TIMEOUT_MS);
@@ -231,9 +232,10 @@ export function settleAssessment(settle) {
     const reasons = phase.blockedBy?.length ? phase.blockedBy : [{ reason: 'unknown', count: 0 }];
     for (const r of reasons) if (!blocking.some(b => b.reason === r.reason)) blocking.push(r);
   }
-  if (!settle?.scrollConverged) blocking.push({ reason: 'scroll-growing', count: 0 });
+  if (settle?.scrollStatus === 'capped') blocking.push({ reason: 'page-too-tall', count: settle.height ?? 0 });
+  else if (!settle?.scrollConverged) blocking.push({ reason: 'scroll-growing', count: 0 });
   // 版面还在动 / 滚动后还在长 —— 这两类是"截图本身不可信"，任何模式下都不放行
-  if (blocking.some(b => b.reason === 'layout-changing' || b.reason === 'scroll-growing')) {
+  if (blocking.some(b => ['layout-changing', 'scroll-growing', 'page-too-tall'].includes(b.reason))) {
     return { confidence: 'none', blocking };
   }
   return { confidence: blocking.length ? 'bounded' : 'full', blocking };
@@ -244,6 +246,7 @@ const REASON_TEXT = {
   'incomplete-images': '还有可见图片没加载完',
   'layout-changing': '版面在观察窗口内一直在变',
   'scroll-growing': '滚动后页高还在增长（无限滚动 / 懒加载）',
+  'page-too-tall': '页面超过整页验证上限，本次只比较采样分段',
   'no-capture': '没有取得任何视口截图',
   unknown: '未收敛原因未知',
 };
@@ -329,13 +332,18 @@ async function shoot(page, url, viewport, file, { cloneBase = null } = {}) {
       if (!afterScroll.stable || !layoutStill) break;
     }
     const height = await page.evaluate(() => Math.max(document.body?.scrollHeight ?? 0, document.documentElement?.scrollHeight ?? 0));
-    if (height > MAX_PAGE_HEIGHT || viewport.height > SINGLE_CAPTURE_HEIGHT) {
-      return { skipped: 'page or viewport too tall: ' + height + 'px' };
+    if (viewport.height > SINGLE_CAPTURE_HEIGHT) {
+      return { skipped: 'viewport too tall: ' + viewport.height + 'px' };
+    }
+    const settle = { beforeScroll, afterScroll, scrollConverged,
+      ...(height > MAX_PAGE_HEIGHT ? { scrollStatus: 'capped', height } : {}) };
+    if (height > MAX_PAGE_HEIGHT) {
+      return { ok: true, height, width: viewport.width, sampled: true, parts: null,
+        capturedAt: new Date().toISOString(), finalUrl: page.url(), settle };
     }
     const tiled = height > SINGLE_CAPTURE_HEIGHT;
     const parts = tiled ? await shootTiles(page, file, viewport.width, height) : null;
     if (!tiled) await page.screenshot({ path: file, fullPage: true, timeout: 90_000 });
-    const settle = { beforeScroll, afterScroll, scrollConverged };
     return { ok: true, height, width: viewport.width, tiled, parts,
       capturedAt: new Date().toISOString(), finalUrl: page.url(), settle };
   } finally {
@@ -346,11 +354,20 @@ async function shoot(page, url, viewport, file, { cloneBase = null } = {}) {
   }
 }
 
-async function shootTiles(page, file, width, height) {
+function sampleTileStarts(height) {
+  const count = Math.min(MAX_TALL_SAMPLE_TILES, Math.max(1, Math.ceil(height / TILE_HEIGHT)));
+  const last = Math.max(0, height - TILE_HEIGHT);
+  const starts = new Set();
+  for (let i = 0; i < count; i++) starts.add(Math.round(last * i / Math.max(1, count - 1)));
+  return [...starts].sort((a, b) => a - b);
+}
+
+async function shootTiles(page, file, width, height, { starts = null } = {}) {
   const parts = [];
   const cdp = await page.context().newCDPSession(page);
   try {
-    for (let y = 0; y < height; y += TILE_HEIGHT) {
+    const positions = starts ?? Array.from({ length: Math.ceil(height / TILE_HEIGHT) }, (_, i) => i * TILE_HEIGHT);
+    for (const y of positions.filter(value => value >= 0 && value < height)) {
       const partHeight = Math.min(TILE_HEIGHT, height - y);
       const partFile = file.replace(/\.png$/, `-part-${String(parts.length + 1).padStart(3, '0')}.png`);
       const { data } = await cdp.send('Page.captureScreenshot', {
@@ -439,11 +456,22 @@ async function verifyOne(name, index = 0, total = 1) {
         const c = await shoot(clonePage, cloneUrl, vp, cloneFile, { cloneBase });
         if (s.skipped) { viewports.push({ name: vp.name, skipped: s.skipped }); continue; }
         if (c.skipped) { viewports.push({ name: vp.name, skipped: c.skipped }); continue; }
-        if (s.tiled && !c.tiled) c.parts = await shootTiles(clonePage, cloneFile, c.width, c.height);
-        if (c.tiled && !s.tiled) s.parts = await shootTiles(srcPage, srcFile, s.width, s.height);
-        const tiled = s.tiled || c.tiled;
-        const cmp = tiled
-          ? compareTiledPng(s, c, {
+        const sampled = s.sampled || c.sampled;
+        const tiled = sampled || s.tiled || c.tiled;
+        const sampleStarts = sampled ? sampleTileStarts(Math.max(s.height, c.height)) : null;
+        if (sampled || (s.tiled && !c.tiled)) c.parts = await shootTiles(clonePage, cloneFile, c.width, c.height, { starts: sampleStarts });
+        if (sampled || (c.tiled && !s.tiled)) s.parts = await shootTiles(srcPage, srcFile, s.width, s.height, { starts: sampleStarts });
+        const cmp = sampled
+          ? compareSampledTiledPng(s, c, {
+            readPart: readFileSync,
+            writeDiff: (y, png, index) => {
+              const name = `diff-${vp.name}-sample-${String(index + 1).padStart(3, '0')}.png`;
+              writeFileSync(join(outDir, name), png);
+              return name;
+            },
+          })
+          : tiled
+            ? compareTiledPng(s, c, {
             readPart: readFileSync,
             writeDiff: (y, png) => {
               const name = `diff-${vp.name}-part-${String(y / TILE_HEIGHT + 1).padStart(3, '0')}.png`;
@@ -473,14 +501,25 @@ async function verifyOne(name, index = 0, total = 1) {
             try { unlinkSync(path); } catch {}
           }
         }
+        const sampling = sampled ? {
+          status: 'partial', reason: 'page-too-tall', maxPageHeight: MAX_PAGE_HEIGHT,
+          pageHeight: Math.max(s.height, c.height), sampledRegions: cmp.sampledRegions,
+          uncoveredRanges: cmp.uncoveredRanges, sampledCoverageRatio: cmp.sampledCoverageRatio,
+          sampledPixels: cmp.sampledPixels,
+        } : null;
         viewports.push({ name: vp.name, width: vp.width, score: cmp.score, confidence,
           ...(blocking.length ? { blocking: blocking.map(x => ({ ...x, text: reasonText(x) })) } : {}),
           grade: confidence === 'none' || additionalVisibleBrokenImages ? null : gradeOf(cmp.score),
           settleTimedOut, additionalBrokenImages, additionalVisibleBrokenImages,
-          captureMode: tiled ? 'tiled' : 'full', ...(tiled ? { diffParts: cmp.diffParts } : {}),
-          sourceCapture: { capturedAt: s.capturedAt, finalUrl: s.finalUrl, settle: s.settle },
-          cloneCapture: { capturedAt: c.capturedAt, finalUrl: c.finalUrl, settle: c.settle },
-          mismatched: cmp.mismatched, missingPixels: cmp.missingPixels, coverageRatio: cmp.coverageRatio, heightDelta: cmp.heightDelta, sourceSize: cmp.sourceSize, cloneSize: cmp.cloneSize, sourceHeight: cmp.sourceSize.height, cloneHeight: cmp.cloneSize.height });
+          captureMode: sampled ? 'sampled-tiled' : tiled ? 'tiled' : 'full', ...(tiled ? { diffParts: cmp.diffParts } : {}),
+          ...(sampling ? { sampling } : {}),
+          sourceCapture: { capturedAt: s.capturedAt, finalUrl: s.finalUrl, settle: s.settle,
+            captureMode: sampled ? 'sampled-tiled' : s.tiled ? 'tiled' : 'full' },
+          cloneCapture: { capturedAt: c.capturedAt, finalUrl: c.finalUrl, settle: c.settle,
+            captureMode: sampled ? 'sampled-tiled' : c.tiled ? 'tiled' : 'full' },
+          mismatched: cmp.mismatched, missingPixels: cmp.missingPixels, coverageRatio: cmp.coverageRatio,
+          ...(sampled ? { sampledCoverageRatio: cmp.sampledCoverageRatio } : {}), heightDelta: cmp.heightDelta,
+          sourceSize: cmp.sourceSize, cloneSize: cmp.cloneSize, sourceHeight: cmp.sourceSize.height, cloneHeight: cmp.cloneSize.height });
         emit({ kind: 'verify-viewport', page: name, viewport: vp.name, score: cmp.score });
       } catch (e) {
         viewports.push({ name: vp.name, error: String(e).slice(0, 200) });
@@ -509,7 +548,11 @@ async function verifyOne(name, index = 0, total = 1) {
     // 402 页卡在这里却没人知道是长轮询、还是一次懒加载没完。
     const confidenceReasons = [...new Set(viewports.flatMap(v =>
       (v.blocking ?? []).map(x => `${v.name}: ${x.text}`)))];
+    const sampledViewport = viewports.find(v => v.captureMode === 'sampled-tiled');
     const error = measured ? null : incomplete?.error ?? incomplete?.skipped
+      ?? (sampledViewport
+        ? `${sampledViewport.name}: 页面超过 ${MAX_PAGE_HEIGHT}px，仅比较采样分段，未计入完整通过`
+        : null)
       ?? (incomplete?.settleTimedOut
         ? `${incomplete.name}: render did not settle${confidenceReasons.length ? ' — ' + confidenceReasons.join('；') : ''}`
         : incomplete?.additionalVisibleBrokenImages
