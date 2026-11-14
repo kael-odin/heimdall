@@ -265,6 +265,7 @@ function staticDeploymentVerification(root, siteId) {
     status: 'verified', report, generatedAt: source.generatedAt,
     bundle: bundleRel, bundleChecksumsSha256: checksumsSha256,
     routes: source.checks?.routes ?? null, docker: source.docker ?? null,
+    browserProbe: source.checks?.browserProbe ?? null,
   };
 }
 

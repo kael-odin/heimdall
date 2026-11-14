@@ -20,6 +20,8 @@ node core/src/cli.mjs live-verify `
 | live 页面路由 | 1/1 通过 |
 | 根路由与健康检查 | 通过 |
 | 原工作区进入镜像 | 未发现 |
+| 最终镜像 `/app` 快照 | 校验和与交付包一致 |
+| Chromium 断外联逐页检查 | 1/1 通过，0 失败，0 未测 |
 | 证据 | `workspace/example.com/deployment-verification.json` |
 | 站点评估 | `independentDeployment=verified` |
 
@@ -27,4 +29,4 @@ node core/src/cli.mjs live-verify `
 
 ## 边界
 
-这次只证明静态页面包能在无外联容器中启动、重启并访问已交付页面。它不证明认证、权限、API、写入、状态机、持久化或业务副作用；这些能力仍需适配器和授权旅程验收。
+这次证明静态页面包能在无外联容器中启动、重启并访问已交付页面，且最终镜像文件系统对应的页面可被真实 Chromium 在断外联条件下逐页加载。浏览器证据的范围是镜像 `/app` 快照，浏览器本身运行在宿主验收环境中。它不证明认证、权限、API、写入、状态机、持久化或业务副作用；这些能力仍需适配器和授权旅程验收。

@@ -571,6 +571,8 @@ test('site-assessment: accepts current static deployment evidence only when the 
       bundle: 'deliverable/example.test-live-2026-11-14', bundleChecksumsSha256: checksumsSha256,
       docker: { network: 'none' }, checks: {
         health: 'passed', root: 'passed', routes: { checked: 1, failed: 0 }, sourceWorkspace: 'passed', restart: 'passed',
+        browserProbe: { scope: 'final-image-filesystem', bundleChecksumsSha256: checksumsSha256,
+          checked: 1, failed: 0, untested: 0, truncated: false, failureCount: 0 },
       },
     });
     const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
@@ -580,6 +582,7 @@ test('site-assessment: accepts current static deployment evidence only when the 
     const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
     assert.equal(result.clone.delivery.deploymentVerification.status, 'verified');
     assert.equal(result.readiness.independentDeployment.status, 'verified');
+    assert.equal(result.clone.delivery.deploymentVerification.browserProbe.checked, 1);
     assert.ok(result.claims.verified.includes('clone.independent_deployment:network_none'));
     assert.equal(result.deliveryPlan.items.some(item => item.id === 'independent-deployment'), false);
   } finally { rmSync(root, { recursive: true, force: true }); }

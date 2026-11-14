@@ -2,16 +2,18 @@
 /**
  * live/deployment-verify — 在真实 Docker 无外联网络中验收最终交付包。
  *
- * 这条验收只给适配器服务端外联一个可追溯证据；页面、写入业务和状态机
- * 仍以导出时声明的操作流程与人工授权旅程为准。
+ * 适配器模式给服务端外联一个可追溯证据，静态模式给最终镜像文件系统的
+ * 浏览器加载一个可追溯证据；写入业务和状态机仍以人工授权旅程为准。
  */
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeArgs } from '../args.mjs';
 import { DATA_ROOT, WORKSPACE } from '../paths.mjs';
+import { probeOfflineBrowserBundle } from './probe.mjs';
 
 const VERIFY_SCHEMA = 'heimdall.adapter-egress-verification/1';
 const STATIC_VERIFY_SCHEMA = 'heimdall.static-deployment-verification/1';
@@ -334,7 +336,7 @@ for (const route of [...new Set(routes)].sort()) {
   if (await request(route) >= 400) throw new Error('page route failed: ' + route);
 }
 await wait(${observeMs});
-console.log(JSON.stringify({ health: 'passed', root: 'passed', routesChecked: new Set(routes).size, sourceWorkspace: 'passed' }));
+console.log(JSON.stringify({ health: 'passed', root: 'passed', routes: [...new Set(routes)].sort(), routesChecked: new Set(routes).size, sourceWorkspace: 'passed' }));
 `;
 }
 
@@ -353,6 +355,18 @@ function runContainerCheck({ container, port, observeMs, timeoutMs, runDocker: r
 function runStaticContainerCheck({ container, port, observeMs, timeoutMs, runDocker: run }) {
   const result = run(['exec', container, 'node', '--input-type=module', '-e', staticVerifierScript(port, observeMs)], timeoutMs);
   return parseVerifierOutput(result);
+}
+
+function copyContainerApp({ container, destination, timeoutMs, runDocker: run }) {
+  run(['cp', `${container}:/app/.`, destination], timeoutMs);
+}
+
+async function probeFinalImageFilesystem(bundleDir, routes, observeMs) {
+  return probeOfflineBrowserBundle(bundleDir, routes, {
+    settleMs: observeMs,
+    maxObservationMs: Math.min(20_000, observeMs + 5_000),
+    quietMs: Math.min(500, observeMs),
+  });
 }
 
 function readBundle(bundleDir, mode = 'adapter') {
@@ -392,7 +406,13 @@ export function validateStaticDeploymentReport(report, { siteId, checksumsSha256
     && report.checks?.root === 'passed'
     && report.checks?.routes?.failed === 0
     && report.checks?.sourceWorkspace === 'passed'
-    && report.checks?.restart === 'passed';
+    && report.checks?.restart === 'passed'
+    && report.checks?.browserProbe?.scope === 'final-image-filesystem'
+    && report.checks.browserProbe.bundleChecksumsSha256 === report.bundleChecksumsSha256
+    && report.checks.browserProbe.failed === 0
+    && report.checks.browserProbe.untested === 0
+    && report.checks.browserProbe.truncated === false
+    && report.checks.browserProbe.checked === report.checks.routes.checked;
 }
 
 function reportTarget({ siteId, reportPath, kind = 'adapter' }) {
@@ -491,7 +511,9 @@ export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, httpChec
   }
 }
 
-export function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPath, timeoutMs = DEFAULT_TIMEOUT_MS, observeMs = DEFAULT_OBSERVE_MS, runDocker = docker }) {
+export async function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPath, timeoutMs = DEFAULT_TIMEOUT_MS,
+  observeMs = DEFAULT_OBSERVE_MS, runDocker = docker, copySnapshot = copyContainerApp,
+  probeBrowser = probeFinalImageFilesystem }) {
   const bundle = resolve(bundleDir);
   const metadata = readBundle(bundle, 'static');
   const target = reportTarget({ siteId: siteId ?? metadata.config.siteId, reportPath, kind: 'static' });
@@ -504,9 +526,11 @@ export function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPath, ti
   const suffix = `${process.pid}-${Date.now()}-${randomBytes(3).toString('hex')}`;
   const image = `heimdall-static-verify:${suffix}`;
   const container = `heimdall-static-verify-${suffix}`;
+  const snapshot = mkdtempSync(join(tmpdir(), 'heimdall-static-image-'));
   let started = false;
   let built = false;
   let first;
+  let browserProbe;
   try {
     runDocker(['build', '--pull=false', '--tag', image, bundle], timeoutMs);
     built = true;
@@ -515,6 +539,19 @@ export function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPath, ti
     const network = runDocker(['inspect', '--format', '{{.HostConfig.NetworkMode}}', container], timeoutMs);
     if (network !== 'none') throw new DeploymentVerificationError('failed', '容器没有使用 network none');
     first = runStaticContainerCheck({ container, port, observeMs, timeoutMs, runDocker });
+    if (!Array.isArray(first.routes) || first.routes.length !== first.routesChecked) {
+      throw new DeploymentVerificationError('failed', '容器验收没有返回完整页面路由清单');
+    }
+    copySnapshot({ container, destination: snapshot, timeoutMs, runDocker });
+    const snapshotChecksumsSha256 = verifyBundleChecksums(snapshot);
+    if (snapshotChecksumsSha256 !== metadata.checksumsSha256) {
+      throw new DeploymentVerificationError('failed', '最终镜像 /app 快照与交付包校验和不一致');
+    }
+    browserProbe = await probeBrowser(snapshot, first.routes, observeMs);
+    if (!browserProbe || browserProbe.failed !== 0 || browserProbe.untested !== 0
+      || browserProbe.truncated || browserProbe.checked !== first.routesChecked) {
+      throw new DeploymentVerificationError('failed', `最终镜像浏览器验收失败：${browserProbe?.failed ?? 'unknown'} 个失败，${browserProbe?.untested ?? 'unknown'} 页未测`);
+    }
     runDocker(['rm', '--force', container], timeoutMs);
     started = false;
     runDocker(['run', '--detach', '--rm', '--network', 'none', '--name', container, image], timeoutMs);
@@ -529,6 +566,13 @@ export function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPath, ti
         health: 'passed', root: first.root,
         routes: { checked: first.routesChecked, failed: 0 },
         sourceWorkspace: first.sourceWorkspace, restart: 'passed',
+        browserProbe: {
+          scope: 'final-image-filesystem', bundleChecksumsSha256: metadata.checksumsSha256,
+          checked: browserProbe.checked, failed: browserProbe.failed,
+          untested: browserProbe.untested, truncated: !!browserProbe.truncated,
+          failureCount: browserProbe.failureCount ?? browserProbe.failures?.length ?? 0,
+          observation: browserProbe.observation ?? null,
+        },
       },
       observationMs: observeMs, evidence: { firstStart: first, secondStart: second },
     };
@@ -540,6 +584,7 @@ export function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPath, ti
   } finally {
     if (started) { try { runDocker(['rm', '--force', container], timeoutMs); } catch {} }
     if (built) { try { runDocker(['image', 'rm', image], timeoutMs); } catch {} }
+    rmSync(snapshot, { recursive: true, force: true });
   }
 }
 
@@ -560,7 +605,7 @@ if (isMain) {
     };
     if (has('static')) {
       if (argOf('http-checks', undefined) !== undefined) throw new DeploymentVerificationError('invalid_args', '静态验收不支持 --http-checks');
-      const result = verifyStaticDeploymentBundle(common);
+      const result = await verifyStaticDeploymentBundle(common);
       console.log(`[live-verify] deployment=verified routes=${result.report.checks.routes.checked} report=${result.reportPath}`);
     } else {
       const result = verifyDeploymentBundle({ ...common, httpChecksPath: argOf('http-checks', undefined) });

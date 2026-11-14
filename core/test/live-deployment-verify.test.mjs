@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { formatHttpCheckFailure, readHttpChecks, validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums, verifyStaticDeploymentBundle } from '../src/live/deployment-verify.mjs';
@@ -68,7 +68,7 @@ test('HTTP deployment failures identify the phase and safe assertion detail', ()
   assert.doesNotMatch(formatHttpCheckFailure('beforeRestart', check, 'text assertion failed'), /fixture|token|secret/i);
 });
 
-test('static deployment verification checks the final bundle twice in a network-none container', () => {
+test('static deployment verification checks the final image filesystem with Chromium', async () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-static-deployment-verify-'));
   try {
     mkdirSync(join(root, 'site', 'live'), { recursive: true });
@@ -89,13 +89,18 @@ test('static deployment verification checks the final bundle twice in a network-
     const runDocker = args => {
       calls.push(args);
       if (args[0] === 'inspect') return 'none';
-      if (args[0] === 'exec') return JSON.stringify({ health: 'passed', root: 'passed', routesChecked: 1, sourceWorkspace: 'passed' });
+      if (args[0] === 'exec') return JSON.stringify({ health: 'passed', root: 'passed', routes: ['/'], routesChecked: 1, sourceWorkspace: 'passed' });
       return '';
     };
-    const result = verifyStaticDeploymentBundle({ bundleDir: root, siteId: 'example.test', reportPath, runDocker, observeMs: 1 });
+    const result = await verifyStaticDeploymentBundle({ bundleDir: root, siteId: 'example.test', reportPath, runDocker, observeMs: 1,
+      copySnapshot: ({ destination }) => cpSync(root, destination, { recursive: true }),
+      probeBrowser: async (_snapshot, routes) => ({ checked: routes.length, failed: 0, untested: 0, truncated: false, failureCount: 0 }),
+    });
     assert.equal(result.report.deployment, 'verified');
     assert.equal(result.report.checks.routes.checked, 1);
     assert.equal(result.report.checks.restart, 'passed');
+    assert.equal(result.report.checks.browserProbe.scope, 'final-image-filesystem');
+    assert.equal(result.report.checks.browserProbe.checked, 1);
     assert.equal(validateStaticDeploymentReport(result.report, { siteId: 'example.test', checksumsSha256: verifyBundleChecksums(root) }), true);
     assert.equal(calls.filter(args => args[0] === 'exec').length, 2);
   } finally { rmSync(root, { recursive: true, force: true }); }

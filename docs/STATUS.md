@@ -26,7 +26,7 @@
 
 2026-11-14 [最终交付包无外联验收]：新增 `heimdall live-verify <包目录> --site-id <站点>`；它构建最终 Docker 包，在 `network none` 中启动两次，检查离线健康、根路由、可安全触达的 GET/HEAD 适配器路由、缺口账本和包外状态卷，并把当前 `checksums.json` 绑定到脱敏 `adapter-egress-verification.json`。新增可选 `--http-checks FILE`，支持授权的 POST/PATCH/DELETE 前置请求和重启后 GET/JSON Pointer 读回；`site-assessment` 只接受校验和仍匹配的 `verified` 报告，并继续保留 `unverifiedWrites`、认证、权限和业务状态未知项。
 
-2026-11-14 [静态交付包独立断网验收](audits/2026-11-14/public-static-deployment-verify.md)：`live-verify --static` 复用当前包校验和，在 Docker `network none` 中两次启动 `example.com` 静态包，1/1 live 路由、根路由和健康检查通过；`site-assessment.independentDeployment` 只有在报告与校验和匹配时才标为 `verified`。
+2026-11-14 [静态交付包独立断网验收](audits/2026-11-14/public-static-deployment-verify.md)：`live-verify --static` 复用当前包校验和，在 Docker `network none` 中两次启动 `example.com` 静态包，1/1 live 路由、根路由和健康检查通过；随后从最终镜像复制 `/app`，再次核对校验和，并用真实 Chromium 对同一快照逐页断外联检查，1/1 通过、0 失败、0 未测。`site-assessment.independentDeployment` 只有在容器证据、浏览器证据和当前包校验和都匹配时才标为 `verified`。
 
 2026-11-14 [留出查询缺口分级](audits/README.md)：适配器留出账本现在区分未观察路径、已知参数名下的未观察查询变体和全新查询参数；即使尚未生成 B3，`site-assessment.deliveryPlan.backendCompletion.repairTasks` 也会把这些类别分别交给 AI，并附带确定性 `verification` 条件。分页 `page=3` / `skip=20` 这类值或组合不会被压成一个笼统缺口；写入任务仍需人工旅程。
 

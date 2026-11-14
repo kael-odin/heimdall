@@ -91,7 +91,7 @@ Dockerfile / docker-compose.yml / README.md
 heimdall live-verify <包目录> --site-id <站点>
 ```
 
-静态交付包使用 `heimdall live-verify <包目录> --static --site-id <站点>`。它校验当前 `checksums.json`，在 Docker `network none` 中启动包两次，检查 `/__heimdall/health`、根路由和所有 live 页面路由，并把脱敏结果写入 `workspace/<站点>/deployment-verification.json`。`site-assessment` 只有在报告和当前包校验和都匹配时才把 `independentDeployment` 标为 `verified`。
+静态交付包使用 `heimdall live-verify <包目录> --static --site-id <站点>`。它校验当前 `checksums.json`，在 Docker `network none` 中启动包两次，检查 `/__heimdall/health`、根路由和所有 live 页面路由；首次启动时再把最终镜像中的 `/app` 复制到临时快照，核对快照校验和与交付包一致后，用现有真实 Chromium 探针对快照逐页阻断外联加载。报告会把浏览器证据标为 `scope=final-image-filesystem`，这表示浏览器检查的是最终镜像文件系统对应的服务代码，不表示镜像内置 Chromium。结果写入 `workspace/<站点>/deployment-verification.json`；`site-assessment` 只有在容器证据、浏览器证据和当前包校验和都匹配时才把 `independentDeployment` 标为 `verified`。
 
 命令在 Docker `network none` 中构建并启动包两次，检查离线健康、根路由、可安全触达的 GET/HEAD 适配器路由、缺口账本和包外状态卷，随后把脱敏报告写入 `workspace/<站点>/adapter-egress-verification.json`。报告绑定当前包的 `checksums.json`，包改变后 `site-assessment` 会重新标为未知。它不替代 POST、认证、权限、写入、状态机或业务副作用旅程。
 
