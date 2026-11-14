@@ -84,6 +84,7 @@
    - 2026-11-15 `site-assessment` 已读取候选脚手架目录内的 `backend-compare.json` 安全摘要，把业务等价失败交回 AI 交付计划；这仍不替代真实权限、状态机、持久化和副作用旅程。
    - 2026-11-15 追加 `deliveryPlan.cloneTask`：复用克隆、视觉验证、strict 离线导出和独立部署已有门禁，为 AI 提供脱敏的镜像覆盖、还原度、动态/二进制缺口与断网部署任务；视觉分数和 strict 通过仍不证明功能或后端等价。
    - 2026-11-15 追加 `qaTask.latest.coverage`：为 AI 提供有界的页面/视口、检查点、导航、检测器和基线覆盖摘要；先补 QA 证据再处理 finding，不能把 finding 数量解释成准确率。
+   - 2026-11-15 追加公开案例 `seo.observedActions`：从已提交的脱敏 SEO 报告聚合可复用的 critical/high/medium 优化线索；案例历史分数仍按方法版本隔离，不伪装成当前站点结论。
 5. Figma 元数据、设计容差与 PRD 来源追踪；录制交互和生成候选断言，人工批准后执行。
 6. D4 已增加[未知启动的完整决定核对与永久拒绝](competition/acceptance-browser-start-resolution.md)：原六字段回执、完整 accepted / rejected 证明、迟到启动阻断与跨页 Web Locks；原确认只在证明核验后精确解除。D5 已在 D3 检查级账本之上接入[固定成员人工缺陷单](competition/acceptance-defect-tickets.md)：从同次登记的可靠失败成单，最新同范围登记可靠通过全部成员后显式关闭，后续可靠失败派生重开。[本机验收记录](./audits/README.md)保存该片完整门禁与公开证据。未知人工动作保留原确认，只 GET 核对、不自动重发原 POST。D6 已实现[人工动作完整决定核对与永久拒绝](competition/acceptance-defect-ticket-decisions.md)，同动作成单 / 关闭事件与拒绝争用一个不可变决定；页面独立核对完整原件与请求身份后精确解除对应确认，拒绝不改变单据处理历史。D6 已通过本机完整 Core 和 27 阶段 Browser，[原提交 CI 已核验为 failure](./audits/README.md)：完整 Core 与前端构建成功，独立四案的浏览器正文取证失败。[动作回复边界增强](./audits/README.md)已通过本机 Windows / Linux 专项，新提交自身的完整 CI 仍待核验。全局 Browser approval / selection、操作归档与其余消费者仍独立建设。
 7. [x] D7 本地固定示例完整流程：2026-11-03 已在最终控制台构建上从全新会话的真实 UI 走通采集、明确来源归属、完整候选合同保存、发现视觉 / 行为 BUG、两项固定成员人工成单、1/2 禁关、2/2 复验通过后明确关闭，以及 Markdown 下载；结果 `accepted:true`，普通控制台错误为 0。使用真实浏览器，所有确认由操作者明确执行；正常流程不注入故障，未知结果恢复另由 D4 / D6 专项验证。结论仅覆盖本地固定示例的声明检查，不称外部泛化或 AI 推理。取得获授权的外部项目 URL 和明确版本后，再拓展真实项目验收，保留失败和未测范围。

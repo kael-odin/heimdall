@@ -64,6 +64,8 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 
 公开案例的 `qa.findingDigest` 复用同一摘要边界，但只读取案例中的 `qa-ci.json` 安全结果，不打开 `findings.json` 或截图。这样 AI 可以先比较真实案例的缺陷类型和门禁结果，再决定是否需要读取更详细的本地证据。
 
+公开案例的 `seo.observedActions` 会按问题 ID 聚合最多 20 条 critical/high/medium SEO 行动项，保留受影响路径、严重度和建议；它是历史案例中的 observed 线索，仍受评分/测量口径状态和案例限制约束。
+
 `qa.metrics` 只是对脱敏运行摘要的再计算：`runtime` 是 QA 运行本身的耗时，`failures` 是导航、检测器、检查点和环境阻断等分类；没有完整报警标签时，`alarms.falsePositiveRate` 和误报占比会明确不可计算，没有定向 oracle 时 `oracle` 也不会被假造。`decision.detectorExpansion=blocked` 表示证据不够，不表示检测器已经通过。
 
 读取到匹配站点的 QA 运行并成功计算指标后，`deliveryPlan.items` 还会出现 `qa-metrics-decision`。它与 `heimdall_qa_metrics` 返回的 `followUp` 共用同一实现：`collect-more-evidence` 要补完整测量、报警裁决和定向 oracle；`fix-existing-detectors` 先修已有误报边界；`add-business-check` 把漏报领域写成声明式业务检查点；`consider-generic-detector` 只进入人工评估；`hold` 表示保持观察。已有未完成运行或待裁决发现仍优先处理，不会因指标任务而消失。

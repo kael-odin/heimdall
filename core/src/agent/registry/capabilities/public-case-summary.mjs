@@ -12,6 +12,7 @@ import { isInside } from '../../../paths.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { summarizeGeoReport } from '../../geo-summary.mjs';
 import { qaFindingDigest } from '../../qa-finding-summary.mjs';
+import { redactText } from '../../redact.mjs';
 import { GEO_METHOD_VERSION, SEO_MEASUREMENT_VERSION, SEO_SCORE_METHOD_VERSION } from '../../../seo/method.mjs';
 
 const PUBLIC_CASES = join(REPO_ROOT, 'docs', 'cases');
@@ -73,6 +74,34 @@ function safeUrl(value) {
 
 function safeText(value, max = 240) {
   return typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : null;
+}
+
+function safeIssueText(value, max = 240) {
+  const text = safeText(value, max);
+  return text ? redactText(text, { profile: 'strict' }).text : null;
+}
+
+function seoObservedActions(seo) {
+  const groups = new Map();
+  const severityRank = { critical: 0, high: 1, medium: 2 };
+  for (const page of Array.isArray(seo?.pages) ? seo.pages : []) {
+    const pathname = (() => { try { return new URL(String(page?.url)).pathname || '/'; } catch { return null; } })();
+    for (const issue of Array.isArray(page?.issues) ? page.issues : []) {
+      if (!issue || !severityRank.hasOwnProperty(issue.severity) || typeof issue.id !== 'string') continue;
+      const current = groups.get(issue.id) ?? {
+        id: safeIssueText(issue.id, 96), category: safeIssueText(issue.category, 48), severity: issue.severity,
+        title: safeIssueText(issue.title), suggestion: safeIssueText(issue.suggestion, 360), affectedPages: 0, pages: [],
+      };
+      if (severityRank[issue.severity] < severityRank[current.severity]) current.severity = issue.severity;
+      if (pathname && !current.pages.includes(pathname)) {
+        current.affectedPages++;
+        if (current.pages.length < 20) current.pages.push(pathname);
+      }
+      groups.set(issue.id, current);
+    }
+  }
+  const items = [...groups.values()].sort((a, b) => severityRank[a.severity] - severityRank[b.severity] || a.id.localeCompare(b.id));
+  return { items: items.slice(0, 20), total: items.length, truncated: items.length > 20 };
 }
 
 function compareNumber(mismatches, label, left, right) {
@@ -156,6 +185,7 @@ function seoSummary(manifest, seo, caseRel) {
     issues: numberOrNull(summary.issues ?? manifest.seo?.issues),
     bySeverity,
     geo: summarizeGeoReport(seo?.geo),
+    observedActions: seo ? seoObservedActions(seo) : { items: [], total: 0, truncated: false },
     fieldData: { available: fieldData.available === true, reason: safeText(fieldData.reason, 160) },
     reports: seo ? [`${caseRel}/evidence/seo.json`] : [],
   };
