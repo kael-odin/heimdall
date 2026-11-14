@@ -63,6 +63,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `items[].basis` 只能按 `verified / observed / inferred / unknown` 解释，`items[].action` 是建议动作，不代表已经执行；
 - `items[].verify` 是完成动作后的确定性复测条件。适配器留出集通过，也不能把 `auth_permission_state_unknown` 说成后端等价。
 - `deliveryPlan.backendCompletion` 是后端补全任务包：看 `observedEndpoints` 和 `verifiedResponseShapes` 了解已观察内容，看 `humanJourneys`、`testData` 和 `unknowns` 了解还缺什么；其中 `inferred` 只是 AI 草稿输入，`invented` 必须单列，不能当证据。
+- `seo.geo.actionPlan` 会返回有限、脱敏的 GEO 行动项、影响范围、工作量和 `rerun-geo-audit` 复测条件；`actionPlanMeta.truncated` 为真时，继续读取完整 SEO 报告，不要把返回列表当成全部问题。
 - `deliveryPlan.backendCompletion.scaffold` 会直接说明默认 B3 脚手架是 `present`、`incomplete` 还是还可生成，并给出对应的 CLI 动作；动作会写本地文件，所以仍需人工确认。
 - `deliveryPlan.backendCompletion.repairTasks` 会把 `backend-check.json` 的失败项映射成目标文件、修复类型、脱敏证据和人工授权边界；先按任务修复，再运行 `npm run check`。
 - 由适配器缺口账本直接生成的任务还带 `verification`：查询变体、查询参数和运行时路由可用 `site-assessment` 的条件复测；写入任务仍要求人工授权，复测条件不会替代业务旅程。

@@ -160,6 +160,27 @@ function gradeOf(score) {
   return typeof score === 'number' ? (score >= 90 ? 'A' : score >= 75 ? 'B' : 'C') : null;
 }
 
+function safeGeoActionPlan(actionPlan) {
+  if (!Array.isArray(actionPlan)) return [];
+  const text = value => redactText(String(value ?? ''), { profile: 'strict' }).text.slice(0, 240);
+  const number = value => Number.isFinite(value) && value >= 0 ? value : 0;
+  return actionPlan.slice(0, 8).map(item => ({
+    rank: Number.isInteger(item?.rank) && item.rank > 0 ? item.rank : null,
+    id: text(item?.id), dimension: text(item?.dimension),
+    priority: ['P0', 'P1', 'P2'].includes(item?.priority) ? item.priority : 'P2',
+    title: text(item?.title), action: text(item?.action),
+    impact: {
+      checkWeight: number(item?.impact?.checkWeight),
+      affectedPages: number(item?.impact?.affectedPages),
+      occurrences: number(item?.impact?.occurrences),
+    },
+    estimatedEffort: ['small', 'medium', 'large'].includes(item?.estimatedEffort) ? item.estimatedEffort : 'unknown',
+    validation: item?.validation && typeof item.validation === 'object' ? {
+      method: text(item.validation.method), checkId: text(item.validation.checkId), expectedStatus: 'pass',
+    } : null,
+  }));
+}
+
 function liveExportSummary(root, siteId) {
   const file = join(root, 'live-export.json');
   if (!existsSync(file)) return { status: 'not_recorded', report: null };
@@ -267,6 +288,7 @@ function seoSummary(siteId, root) {
     issues: typeof value?.issues === 'number' ? value.issues : null,
   }]));
   const actionPlan = Array.isArray(report.geo?.actionPlan) ? report.geo.actionPlan : [];
+  const safeActionPlan = safeGeoActionPlan(actionPlan);
   const priorities = {};
   for (const item of actionPlan) {
     const priority = typeof item?.priority === 'string' ? item.priority : 'unknown';
@@ -291,6 +313,12 @@ function seoSummary(siteId, root) {
       confidence: report.geo?.confidence ?? null,
       coverage: report.geo?.coverage ?? null,
       actionItems: actionPlan.length,
+      actionPlan: safeActionPlan,
+      actionPlanMeta: {
+        total: Number.isInteger(report.geo?.actionPlanMeta?.total) ? report.geo.actionPlanMeta.total : actionPlan.length,
+        returned: safeActionPlan.length,
+        truncated: report.geo?.actionPlanMeta?.truncated === true || safeActionPlan.length < actionPlan.length,
+      },
       priorities,
       score: typeof report.geo?.score === 'number' ? report.geo.score : null,
     },

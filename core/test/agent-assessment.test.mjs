@@ -73,7 +73,14 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     put(join(site, 'seo', 'seo.json'), {
       origin: 'https://example.test', generatedAt: '2026-11-11T00:00:00.000Z', score: 92.8,
       summary: { pages: 1, issues: 2, bySeverity: { high: 1, low: 1 }, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
-      categories: { index: { score: 100, issues: 0 } }, geo: { score: 80, actionPlan: [{ priority: 'P1' }] },
+      categories: { index: { score: 100, issues: 0 } }, geo: {
+        score: 80,
+        actionPlan: [{ rank: 1, id: 'geo-citation-description', dimension: 'citation', priority: 'P1',
+          title: '摘要有值', action: '补充真实摘要；Bearer private-value 不应泄露。',
+          impact: { checkWeight: 4, affectedPages: 1, occurrences: 1 }, estimatedEffort: 'small',
+          validation: { method: 'rerun-geo-audit', checkId: 'geo-citation-description', expectedStatus: 'pass' },
+          affectedPages: ['https://example.test/?token=private-value'], evidence: [{ message: 'private-value' }] }],
+      },
     });
     put(join(site, 'api-contract.json'), {
       tier: 'B1', openapi: { servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: {
@@ -118,6 +125,9 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.readiness.qa.status, 'needs_human_review');
     assert.equal(env.result.clone.mirrors, 1);
     assert.equal(env.result.seo.score, 92.8);
+    assert.equal(env.result.seo.geo.actionPlan[0].id, 'geo-citation-description');
+    assert.equal(env.result.seo.geo.actionPlan[0].validation.checkId, 'geo-citation-description');
+    assert.equal(env.result.seo.geo.actionPlanMeta.truncated, false);
     assert.equal(env.result.api.contract.summary.endpoints, 1);
     assert.equal(env.result.api.adapter.status, 'validated');
     assert.equal(env.result.api.scaffold.present, false);
@@ -156,6 +166,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.ok(env.result.deliveryPlan.backendCompletion.humanJourneys.some(item => item.id === 'authentication-and-permission'));
     assert.equal(env.result.deliveryPlan.backendCompletion.provenance.invented.length, 0);
     assert.doesNotMatch(run.stdout, /super-secret/);
+    assert.doesNotMatch(run.stdout, /private-value/);
     assert.equal(existsSync(join(page, 'network.har')), true);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
