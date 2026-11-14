@@ -75,6 +75,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `backend-check.json` 中的 `business-rule:<id>` 失败会进入 `deliveryPlan.backendCompletion.repairTasks`；报告只保留规则 ID、步骤、状态和断言位置，不能把该结果解释为源站后端等价。
 - `deliveryPlan.backendCompletion.businessRules` 汇总已声明规则的 `passed`、`failed`、`incomplete` 和 `not-tested`；即使为 `passed`，未声明的状态机、幂等、清理和外部副作用仍属于未知。
 - 要比较源站与候选后端，可对同一份规则运行 `node checks.mjs <base> --business-rules-only`；先看报告的 `mode`，只有 `scaffold` 才包含健康、路由覆盖和适配器缺口检查，`business-rules-only` 只覆盖声明的业务流程。
+- 两份 `business-rules-only` 报告可用 `heimdall backend compare <source-check.json> <candidate-check.json> --out backend-compare.json` 自动对照；退出码 1 表示候选规则失败或缺失，`incomplete` 表示源站证据未通过、规则集为空、源站缺规则或候选多出规则。比较结果只保留规则 ID、状态、步骤和 JSON Pointer。
 - 由适配器缺口账本直接生成的任务还带 `verification`：查询变体、查询参数和运行时路由可用 `site-assessment` 的条件复测；写入任务仍要求人工授权，复测条件不会替代业务旅程。
 - 如果存在 `api.adapter.gapLedger`，先看 `summary` 和 `gaps`：它告诉你本地适配器遇到了多少未声明路径、未覆盖查询参数、缺响应体或未验证写入；`nearestRoutes` 只是排查线索，不是路由等价证明。
 - AI 可以按 `suggestedLocalFiles` 生成本地适配器、状态规则和检查脚本，但最终要按 `verification.commands` 重跑；认证、权限、状态机、写入和副作用仍要人工授权后验证。

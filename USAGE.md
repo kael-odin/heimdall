@@ -259,6 +259,14 @@ node checks.mjs https://source.example --business-rules-only
 
 该模式只执行业务规则，不检查 `__heimdall/health`、观察路由覆盖或适配器缺口；报告的 `mode` 为 `business-rules-only`。它适合把源站结果与候选后端结果逐条对照，不能单独证明完整后端或独立部署通过。
 
+对照两份脱敏报告并让退出码参与 CI：
+
+```powershell
+node core/src/cli.mjs backend compare .\source-check.json .\candidate-check.json --out .\backend-compare.json
+```
+
+只有两份报告中同名规则都通过时才会得到 `overall: "passed"`；候选规则失败或缺失返回退出码 1，源站证据未通过、规则集为空、源站缺规则或候选多出规则保留为 `incomplete`。比较报告不复制认证值、请求体、响应正文或失败原因。
+
 ### 本地业务适配器
 
 #### 先用观察数据做 B2 小验收

@@ -471,3 +471,42 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('backend compare aligns source and candidate business-rule reports without leaking reasons', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-backend-compare-'));
+  try {
+    const source = join(root, 'source-check.json');
+    const candidate = join(root, 'candidate-check.json');
+    const out = join(root, 'backend-compare.json');
+    put(source, {
+      schema: 'heimdall.backend-check/1', mode: 'business-rules-only', overall: 'passed', results: [
+        { id: 'business-rule:read-item', status: 'passed' },
+        { id: 'business-rule:update-item', status: 'passed' },
+        { id: 'business-rule:delete-item', status: 'passed' },
+      ],
+    });
+    put(candidate, {
+      schema: 'heimdall.backend-check/1', mode: 'business-rules-only', overall: 'failed', results: [
+        { id: 'business-rule:read-item', status: 'passed' },
+        { id: 'business-rule:update-item', status: 'failed', step: 2, pointer: '/title', reason: 'private-value' },
+      ],
+    });
+    const result = spawnSync(process.execPath, [CLI, 'backend', 'compare', source, candidate, '--out', out, '--json'], { encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stderr + result.stdout);
+    const envelope = JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(envelope.ok, true);
+    const report = JSON.parse(readFileSync(out, 'utf8'));
+    assert.equal(report.overall, 'failed');
+    assert.deepEqual(report.summary, { compared: 3, passed: 1, failed: 2, incomplete: 0 });
+    assert.equal(report.comparisons.find(item => item.id === 'business-rule:update-item').pointer, '/title');
+    assert.equal(report.comparisons.find(item => item.id === 'business-rule:delete-item').reason, 'rule_missing_from_candidate');
+    assert.equal(new Set(report.repairTasks.map(item => item.id)).size, 2);
+    assert.doesNotMatch(readFileSync(out, 'utf8'), /private-value/);
+
+    const scaffold = join(root, 'scaffold-check.json');
+    put(scaffold, { schema: 'heimdall.backend-check/1', mode: 'scaffold', overall: 'passed', results: [] });
+    const invalid = spawnSync(process.execPath, [CLI, 'backend', 'compare', scaffold, candidate, '--out', join(root, 'invalid.json'), '--json'], { encoding: 'utf8' });
+    assert.equal(invalid.status, 2, invalid.stderr + invalid.stdout);
+    assert.doesNotMatch(invalid.stdout, /private-value/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

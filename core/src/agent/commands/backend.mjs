@@ -27,6 +27,87 @@ function readJson(file, maxBytes = 4 * 1024 * 1024) {
   }
 }
 
+function businessRuleResults(file, label) {
+  const report = readJson(file);
+  if (!report || report.schema !== 'heimdall.backend-check/1' || report.mode !== 'business-rules-only') {
+    throw new CapabilityError('invalid_args', `${label} 必须是 business-rules-only 的 backend-check.json。`);
+  }
+  const rows = Array.isArray(report.results) ? report.results.filter(item => String(item?.id ?? '').startsWith('business-rule:')) : [];
+  const map = new Map();
+  for (const item of rows) {
+    const id = String(item.id);
+    if (map.has(id)) throw new CapabilityError('invalid_args', `${label} 包含重复业务规则：${id}`);
+    map.set(id, {
+      status: ['passed', 'failed', 'incomplete', 'skipped'].includes(item.status) ? item.status : 'unknown',
+      ...(Number.isInteger(item.step) && item.step > 0 ? { step: item.step } : {}),
+      ...(typeof item.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
+      ...(typeof item.reason === 'string' ? { reason: item.reason.slice(0, 128) } : {}),
+    });
+  }
+  return map;
+}
+
+function comparisonRepairTask(ruleId, source, candidate, index) {
+  const suffix = ruleId.slice('business-rule:'.length).replace(/[^a-z0-9._-]+/gi, '-').slice(0, 64) || 'unknown';
+  return {
+    id: `repair-backend-rule-equivalence-${suffix}-${index}`,
+    kind: 'business-rule-equivalence', target: 'candidate backend',
+    instruction: '修正候选后端对应业务流程，再分别运行源站和候选后端的 business-rules-only 检查。',
+    requiresHumanApproval: false,
+    evidence: {
+      ruleId, sourceStatus: source?.status ?? 'missing', candidateStatus: candidate?.status ?? 'missing',
+      ...(candidate?.step ? { step: candidate.step } : {}),
+      ...(candidate?.pointer ? { pointer: candidate.pointer } : {}),
+    },
+  };
+}
+
+function compareReports(flags, positional) {
+  if (positional[0] !== 'compare' || !positional[1] || !positional[2]) {
+    throw new CapabilityError('invalid_args', '用法：heimdall backend compare <source-check.json> <candidate-check.json> [--out FILE] [--force] [--json]');
+  }
+  const sourceFile = resolve(String(positional[1]));
+  const candidateFile = resolve(String(positional[2]));
+  const source = businessRuleResults(sourceFile, '源站报告');
+  const candidate = businessRuleResults(candidateFile, '候选报告');
+  const ids = [...new Set([...source.keys(), ...candidate.keys()])].sort();
+  const comparisons = ids.map(id => {
+    const sourceResult = source.get(id);
+    const candidateResult = candidate.get(id);
+    let status = 'passed';
+    let reason;
+    if (!sourceResult) { status = 'incomplete'; reason = 'rule_missing_from_source'; }
+    else if (!candidateResult) { status = 'failed'; reason = 'rule_missing_from_candidate'; }
+    else if (sourceResult.status !== 'passed') { status = 'incomplete'; reason = 'source_rule_not_passed'; }
+    else if (candidateResult.status !== 'passed') { status = 'failed'; reason = 'candidate_rule_not_passed'; }
+    return {
+      id, status, reason,
+      sourceStatus: sourceResult?.status ?? 'missing', candidateStatus: candidateResult?.status ?? 'missing',
+      ...(candidateResult?.step ? { step: candidateResult.step } : {}),
+      ...(candidateResult?.pointer ? { pointer: candidateResult.pointer } : {}),
+    };
+  });
+  if (!comparisons.length) comparisons.push({ id: 'business-rules', status: 'incomplete', reason: 'no_business_rules_declared', sourceStatus: 'missing', candidateStatus: 'missing' });
+  const repairTasks = comparisons.filter(item => item.status === 'failed').map((item, index) => comparisonRepairTask(item.id, source.get(item.id), candidate.get(item.id), index + 1));
+  const overall = comparisons.some(item => item.status === 'failed') ? 'failed'
+    : comparisons.some(item => item.status === 'incomplete') ? 'incomplete' : 'passed';
+  const base = process.env.HEIMDALL_INVOKE_CWD ?? process.cwd();
+  const outFile = resolve(base, flags.out ? String(flags.out) : 'backend-compare.json');
+  if (existsSync(outFile) && !flags.force) throw new CapabilityError('invalid_args', '比较报告已存在：' + outFile, { hint: '确认覆盖后加 --force，或换一个 --out 文件。' });
+  const report = {
+    schema: 'heimdall.backend-comparison/1', generatedAt: new Date().toISOString(), mode: 'business-rules-only', overall,
+    sourceRules: source.size, candidateRules: candidate.size,
+    summary: { compared: comparisons.filter(item => item.id !== 'business-rules').length, passed: comparisons.filter(item => item.status === 'passed').length, failed: comparisons.filter(item => item.status === 'failed').length, incomplete: comparisons.filter(item => item.status === 'incomplete').length },
+    comparisons, repairTasks,
+    note: '只比较两份脱敏业务规则报告；通过不代表完整后端等价，也不覆盖未声明的权限、状态机、持久化或外部副作用。',
+  };
+  writeFileChecked(outFile, json(report));
+  return ok({ ...report, outFile }, {
+    summary: `后端业务规则对照${overall === 'passed' ? '通过' : overall === 'incomplete' ? '未完成' : '失败'}：${report.summary.passed} 通过，${report.summary.failed} 失败，${report.summary.incomplete} 未完成。`,
+    warnings: ['比较只使用 business-rules-only 报告，不会读取或保存请求体、认证值和响应正文。'],
+  });
+}
+
 function writeFileChecked(file, value) {
   if (existsSync(file)) {
     const stat = lstatSync(file);
@@ -925,8 +1006,9 @@ function packageSource(siteId) {
 }
 
 function build(flags, positional) {
+  if (positional[0] === 'compare') return compareReports(flags, positional);
   if (positional[0] !== 'scaffold' || !positional[1]) {
-    throw new CapabilityError('invalid_args', '用法：heimdall backend scaffold <siteId> [--out D] [--force] [--json]');
+    throw new CapabilityError('invalid_args', '用法：heimdall backend scaffold <siteId> [--out D] [--force] [--json]；或 backend compare <source-check.json> <candidate-check.json> [--out FILE]');
   }
   const siteId = assertSiteId(positional[1]);
   const root = siteDir(siteId);
@@ -1008,7 +1090,8 @@ export async function run(argv) {
     ...(env.warnings ?? []).map(item => '! ' + item),
     ...(env.ok ? ['输出：' + env.result.outDir, '下一步：npm start，然后运行 npm run check。'] : ['[' + env.error.code + '] ' + env.error.message, '下一步：' + env.error.hint]),
   ].join('\n')) + '\n');
-  return exitCodeOf(env);
+  return env.ok && env.result?.schema === 'heimdall.backend-comparison/1' && env.result.overall !== 'passed'
+    ? 1 : exitCodeOf(env);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname)) {
