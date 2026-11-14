@@ -1,6 +1,6 @@
 # Heimdall 当前状态（STATUS）
 
-> 更新：2026-11-14 · **本页是“当前为真”的唯一入口**。历史接手记录与逐日审计已归档，见文末。
+> 更新：2026-11-15 · **本页是“当前为真”的唯一入口**。历史接手记录与逐日审计已归档，见文末。
 
 ## 一句话
 
@@ -55,6 +55,8 @@
 2026-11-14 [SEO 规则到复测](audits/README.md)：交付计划现在把 `critical/high` SEO 问题按 rule id 聚合成修复任务，带类别、严重度、受影响路径、建议和审计复测条件；`medium/low/info` 继续留在详细报告中，不自动升级为交付阻断。
 
 2026-11-14 [RFC Editor 公开 SEO/GEO 实测](audits/2026-11-14/rfc-editor-public-seo-geo.md)：6 页公开只读样本 SEO 84、GEO 68.4；sitemap 触及 10,000 URL 上限后保留 partial。`site-assessment` 将克隆、API 契约和 QA 继续标为未知，没有把页面级评分包装成整站交付或后端等价。
+
+2026-11-15 [RFC Editor sitemap 范围门禁复验]：公开只读命令 `pnpm -C core run audit -- https://www.rfc-editor.org/rfc/rfc9110 --max 5` 采集 5 页，SEO 90、GEO 71，sitemap 因预算触顶为 `partial`。复验发现页面级 GEO 证据完整不等于站点范围完整；`site-assessment` 现在会把 `partial/unavailable` sitemap 纳入 SEO/GEO follow-up 和 readiness 门禁，避免无动作页面被误报为完整站点准备度。
 
 2026-11-14 [RFC Editor 公开多页 strict 交付收口复验](audits/2026-11-14/rfc-editor-public-handoff-strict.md)：6 页视觉平均 99.9917%，strict handoff 默认启用 `--heal --materialize-har`；首轮补抓 24 个同源静态资源，浏览器二次探针再补抓 4 个运行时静态资源，静态脚本/图片/字体缺口清零。最终仍因 1 个分析服务、每页 1 个动态 JSON 请求和 254 个未镜像链接阻断，正式包没有被覆盖；`site-assessment` 现在能显示候选 browser failure 证据。
 

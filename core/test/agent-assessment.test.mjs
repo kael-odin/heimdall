@@ -686,5 +686,14 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
       assert.deepEqual(result.seo.geo.coverage, geo?.coverage ?? null);
       assert.ok(result.deliveryPlan.items.some(item => item.id === 'seo-geo-follow-up'));
     }
+    put(seoPath, { ...seoReport, summary: { ...seoReport.summary, sitemapCoverage: 'partial' }, geo: seoReport.geo });
+    const partialSitemap = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(partialSitemap.status, 0, partialSitemap.stderr + partialSitemap.stdout);
+    const partialSitemapResult = JSON.parse(partialSitemap.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.equal(partialSitemapResult.readiness.seo.status, 'needs_follow_up');
+    assert.equal(partialSitemapResult.readiness.geo.status, 'needs_follow_up');
+    assert.ok(partialSitemapResult.deliveryPlan.items.some(item => item.id === 'seo-geo-follow-up'));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

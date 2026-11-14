@@ -1116,8 +1116,9 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     });
   }
 
+  const sitemapIncomplete = ['partial', 'unavailable'].includes(seo.completeness?.sitemapCoverage);
   const seoIncomplete = seo.status === 'observed'
-    && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0 || seo.geo.status !== 'complete');
+    && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0 || sitemapIncomplete || seo.geo.status !== 'complete');
   const seoHasIssues = seo.status === 'observed'
     && (seo.bySeverity.critical > 0 || seo.bySeverity.high > 0 || seo.geo.actionItems > 0);
   if (seo.status !== 'observed') {
@@ -1136,7 +1137,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
         : `发现 critical=${seo.bySeverity.critical}、high=${seo.bySeverity.high}，GEO 待办 ${seo.geo.actionItems} 项。`,
       evidence: [seo.reports.json],
       action: origin ? plannedAction('heimdall_seo_audit', { url: `${origin}/` }, '补采完整报告并复核 SEO/GEO 待办') : null,
-      verify: planVerification(siteId, 'seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0 && seo.geo.status === "complete" && seo.geo.actionItems === 0 && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0'),
+      verify: planVerification(siteId, 'seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0 && ["complete", "not_found"].includes(seo.completeness.sitemapCoverage) && seo.geo.status === "complete" && seo.geo.actionItems === 0 && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0'),
       repairTasks: [
         ...seo.repairCandidates.map(issue => seoRepairTask(issue, seo)),
         ...seo.geo.actionPlan.map(action => seoGeoRepairTask(action, seo)),
@@ -1297,12 +1298,14 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
   const cloneStatus = !clone.pages || !clone.mirrors ? 'needs_capture' : cloneComplete ? 'ready' : 'needs_verification';
   const cloneItem = item('clone-capture', 'clone-mirror-coverage', 'clone-visual-verification');
   const seoComplete = seo.status === 'observed'
+    && !['partial', 'unavailable'].includes(seo.completeness.sitemapCoverage)
     && seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0
     && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0 && seo.geo.status === 'complete' && seo.geo.actionItems === 0;
   const seoStatus = seo.status !== 'observed' ? 'needs_report' : seoComplete ? 'ready' : 'needs_follow_up';
   const seoItem = item('seo-report', 'seo-geo-follow-up');
+  const sitemapIncomplete = ['partial', 'unavailable'].includes(seo.completeness?.sitemapCoverage);
   const geoStatus = seo.status !== 'observed' || seo.geo.status === 'unknown' ? 'needs_report'
-    : seo.geo.status !== 'complete' || seo.geo.actionItems ? 'needs_follow_up' : 'ready';
+    : seo.geo.status !== 'complete' || sitemapIncomplete || seo.geo.actionItems ? 'needs_follow_up' : 'ready';
   const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
   const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'backend-scaffold-check', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
   const qaItem = item('qa-workspace', 'qa-first-run', 'qa-incomplete', 'qa-findings');

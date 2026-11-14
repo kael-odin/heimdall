@@ -38,3 +38,7 @@ SEO 分类分数为：index 98.7、content 91、structured 100、performance 97�
 `site-assessment` 返回 `overall=needs_capture`：克隆为 `0/0`，API 契约缺失，QA 未配置，后端仍为 B0 或更低。SEO/GEO 报告只支持优化建议，不支持离线交付、后端等价或业务 QA 结论。
 
 本案例验证了三点：页面级 GEO 可以在 sitemap 部分未知时保持自身测量完整；站点级范围限制会独立保留；AI 交付计划会把 SEO/GEO、克隆、API 和 QA 缺口分开呈现。
+
+## 2026-11-15 范围门禁复验
+
+使用 `pnpm -C core run audit -- https://www.rfc-editor.org/rfc/rfc9110 --max 5` 做公开只读复验，得到 5 页、SEO 90、GEO 71，sitemap 为 `partial`（budget-exhausted）。页面级 GEO 的 `status=complete` 仍表示已采集页面的检查完整；本次修复让 `site-assessment` 另外检查 sitemap 范围，`partial` 或 `unavailable` 会进入 `seo-geo-follow-up`，并阻止 SEO/GEO readiness 变为 `ready`。
