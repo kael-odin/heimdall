@@ -19,6 +19,7 @@ const PUBLIC_ERROR_MESSAGE_LIMIT = 200;
 const PUBLIC_ERROR_URL = /\b(?:https?|wss?):\/\/[^\s"'<>]+/gi;
 const PUBLIC_ERROR_SECRET = /\b(?:authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key|access[-_]?token|refresh[-_]?token|id[-_]?token|client[-_]?secret|password|passwd|token)\b\s*[:=]\s*["']?[^\s"',;&]+/gi;
 const TRANSIENT_BROWSER_LAUNCH = /Target page, context or browser has been closed|Browser (?:has been )?closed|browser process.*(?:closed|killed|failed)|spawn (?:UNKNOWN|EAGAIN|ENOMEM|EBUSY)|Failed to launch|Cannot connect to the browser|ECONNRESET|EPIPE/i;
+const RUNTIME_DATA_TYPES = new Set(['xhr', 'fetch']);
 
 function boundedInteger(value, fallback, upperBound) {
   return Number.isInteger(value) && value >= 0 ? Math.min(value, upperBound) : fallback;
@@ -94,6 +95,27 @@ function publicErrorType(error) {
 function publicResourceType(request) {
   const type = String(request?.resourceType?.() ?? 'other');
   return PUBLIC_RESOURCE_TYPES.has(type) ? type : 'other';
+}
+
+/** Return only same-origin XHR/fetch failures that need data or an API route. */
+export function runtimeDataGapsOfBrowserProbe(report, max = 100) {
+  if (!report || !Array.isArray(report.failures)) return { items: [], truncated: false };
+  const items = report.failures.filter(failure =>
+    ['http', 'requestFailed'].includes(failure?.kind)
+    && RUNTIME_DATA_TYPES.has(failure?.resourceType)
+    && typeof failure.target === 'string' && failure.target.startsWith('/'))
+    .map(failure => ({
+      page: typeof failure.page === 'string' ? failure.page : '/',
+      target: failure.target,
+      resourceType: failure.resourceType,
+      failureKind: failure.kind,
+      ...(Number.isInteger(failure.status) ? { status: failure.status } : {}),
+    }));
+  const limit = Number.isInteger(max) && max >= 0 ? max : 100;
+  return {
+    items: items.slice(0, limit),
+    truncated: items.length > limit || Number(report.failureCount) > report.failures.length,
+  };
 }
 
 function publicErrorMessage(error) {
@@ -278,7 +300,9 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
         });
         context.on('requestfailed', request => {
           if (pending.delete(request)) lastNetworkActivity = performance.now();
-          if (!closing && !blocked.has(request)) addFailure({ kind: 'requestFailed', target: publicTarget(request.url(), base) });
+          if (!closing && !blocked.has(request)) addFailure({
+            kind: 'requestFailed', resourceType: publicResourceType(request), target: publicTarget(request.url(), base),
+          });
         });
         context.on('page', page => {
           page.on('pageerror', error => {

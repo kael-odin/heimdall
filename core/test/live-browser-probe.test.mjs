@@ -4,7 +4,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { browserObservationState, probeOfflineBrowserBundle } from '../src/live/probe.mjs';
+import { browserObservationState, probeOfflineBrowserBundle, runtimeDataGapsOfBrowserProbe } from '../src/live/probe.mjs';
 
 const SOURCE = fileURLToPath(new URL('../src/live/', import.meta.url));
 
@@ -57,6 +57,9 @@ test('browser probe executes local JS and reports uncovered pages', { timeout: 3
     assert.equal(bad.untested, 0);
     assert.ok(bad.failures.some(f => f.kind === 'http' && f.status === 404
       && f.resourceType === 'fetch' && f.target === '/api/missing'));
+    assert.deepEqual(runtimeDataGapsOfBrowserProbe(bad).items, [{
+      page: '/bad/', target: '/api/missing', resourceType: 'fetch', failureKind: 'http', status: 404,
+    }]);
     assert.ok(bad.failures.some(f => f.kind === 'externalRequest' && f.target === 'https://example.invalid'));
     assert.ok(bad.failures.some(f => f.kind === 'websocketUnsupported' && f.target === 'wss://example.invalid'));
     const pageError = bad.failures.find(f => f.kind === 'pageError');

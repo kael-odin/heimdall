@@ -140,6 +140,19 @@ function safeBrowserFailure(value) {
   return result;
 }
 
+function safeRuntimeDataGap(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || typeof value.target !== 'string' || !value.target.startsWith('/')
+    || !['xhr', 'fetch'].includes(value.resourceType)
+    || !['http', 'requestFailed'].includes(value.failureKind)) return null;
+  const result = {
+    page: typeof value.page === 'string' ? safeSummaryText(value.page, 240) : '/',
+    target: safeSummaryText(value.target, 240), resourceType: value.resourceType, failureKind: value.failureKind,
+  };
+  if (Number.isInteger(value.status) && value.status >= 0) result.status = value.status;
+  return result;
+}
+
 function safeBinaryDownloadGap(value) {
   if (!value || typeof value !== 'object' || typeof value.path !== 'string') return null;
   let pathname;
@@ -271,6 +284,8 @@ function liveExportSummary(root, siteId) {
   const health = readHealthReport(root, healthReport);
   const browserFailures = Array.isArray(health?.browserProbe?.failures)
     ? health.browserProbe.failures.slice(0, 50).map(safeBrowserFailure).filter(Boolean) : [];
+  const runtimeDataGaps = Array.isArray(health?.runtimeDataGaps)
+    ? health.runtimeDataGaps.slice(0, 100).map(safeRuntimeDataGap).filter(Boolean) : [];
   const binaryDownloadGaps = Array.isArray(health?.missingLinkDetails)
     ? health.missingLinkDetails.slice(0, 100).map(safeBinaryDownloadGap).filter(Boolean) : [];
   const rawReadOnlyData = health?.readOnlyData;
@@ -305,7 +320,9 @@ function liveExportSummary(root, siteId) {
     published: source.published, pages: source.pages, adapter, adapterEgressVerification: egressVerification,
     blockingCount: source.blockingCount, blockers,
     otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
-    browser, browserFailures, binaryDownloadGaps, readOnlyData, coverage: {
+    browser, browserFailures, runtimeDataGaps,
+    ...(health?.runtimeDataGapsTruncated === true ? { runtimeDataGapsTruncated: true } : {}),
+    binaryDownloadGaps, readOnlyData, coverage: {
       scope: ['captured-only', 'recon-discovered', 'untrusted-recon'].includes(source.coverage?.scope) ? source.coverage.scope : 'unknown',
       scopeLimited: source.coverage?.scope !== 'recon-discovered' || source.coverage?.scopeLimited !== false,
     },
@@ -706,6 +723,23 @@ function repairTasksFromGapLedger(siteId, gapLedger) {
   return tasks;
 }
 
+function runtimeDataRepairTasks(siteId, gaps, delivery) {
+  const seen = new Set();
+  return gaps.filter(gap => {
+    const key = `${gap.resourceType}:${gap.target}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map((gap, index) => ({
+    id: `repair-runtime-data-${index + 1}`,
+    kind: 'runtime-data-observation', target: gap.target, status: 'blocked_on_observation',
+    instruction: '先在获授权的源站复测这个动态数据请求，确认路径、查询参数名、状态和响应结构；再补本地适配器或受审核的只读数据。不要从 404 猜测业务数据。',
+    requiresHumanApproval: true,
+    evidence: { ...gap, health: delivery?.healthReport ?? null },
+    verification: planVerification(siteId, 'clone.delivery.runtimeDataGaps.length === 0'),
+  }));
+}
+
 function buildBackendCompletionTask(siteId, api, delivery = null) {
   const observed = api.contract.status === 'observed';
   const endpoints = api.contract.observedEndpoints ?? [];
@@ -719,6 +753,10 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   const repairTasks = Array.isArray(scaffold.check?.repairTasks) ? [...scaffold.check.repairTasks] : [];
   for (const gapRepairTask of repairTasksFromGapLedger(siteId, gapLedger)) {
     if (!repairTasks.some(task => task?.kind === gapRepairTask.kind)) repairTasks.push(gapRepairTask);
+  }
+  const runtimeGaps = Array.isArray(delivery?.runtimeDataGaps) ? delivery.runtimeDataGaps : [];
+  for (const task of runtimeDataRepairTasks(siteId, runtimeGaps, delivery)) {
+    if (!repairTasks.some(item => item?.id === task.id)) repairTasks.push(task);
   }
   const scaffoldAction = observed && !scaffold.present
     ? plannedAction('cli:shell', {
@@ -770,6 +808,8 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       action: scaffoldAction,
       check: scaffold.check,
     },
+    runtimeDataGaps: runtimeGaps,
+    runtimeDataGapsTruncated: delivery?.runtimeDataGapsTruncated === true,
     repairTasks,
     adapterEgress: {
       status: adapterServerEgress,
@@ -788,6 +828,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       ...(gapLedger?.summary?.uniqueGaps > 0 ? [{ id: 'runtime-gaps', basis: 'observed', detail: `运行时记录了 ${gapLedger.summary.uniqueGaps} 个脱敏请求缺口，需要补路由或补录制。` }] : []),
       ...(gapLedger?.summary?.missingResponseBodies > 0 ? [{ id: 'missing-response-body', basis: 'observed', detail: `${gapLedger.summary.missingResponseBodies} 条已声明路由没有可回放的响应体。` }] : []),
       ...(gapLedger?.summary?.unverifiedWrites > 0 ? [{ id: 'unverified-write', basis: 'unknown', detail: `${gapLedger.summary.unverifiedWrites} 条写入路由只有回放证据，尚未证明真实写入和清理。` }] : []),
+      ...(runtimeGaps.length ? [{ id: 'runtime-data-gaps', basis: 'observed', detail: `离线浏览器发现 ${runtimeGaps.length} 个未覆盖的 XHR/fetch 动态数据请求；响应内容仍需授权观察。` }] : []),
       ...(api.adapter.present && adapterServerEgress !== 'verified' ? [{
         id: 'adapter-server-egress', basis: adapterServerEgress === 'not-tested' ? 'observed' : 'unknown',
         detail: adapterServerEgress === 'not-tested'
@@ -905,6 +946,22 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
         command: `heimdall live ${siteId} --offline --strict --heal --materialize-har${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}`,
       }, '修复候选页面运行时错误后重新严格导出和复测', { requiresHumanApproval: true }),
       verify: planVerification(siteId, 'clone.delivery.browserFailures.length === 0'),
+    });
+  }
+  if (clone.delivery.runtimeDataGaps?.length) {
+    const examples = clone.delivery.runtimeDataGaps.slice(0, 4).map(gap => {
+      const status = Number.isInteger(gap.status) ? ` ${gap.status}` : '';
+      return `${gap.page ?? '/'}: ${gap.resourceType} ${gap.target}${status}`;
+    }).join('；');
+    add({
+      id: 'clone-runtime-data-gaps', kind: 'runtime_data_gap', basis: 'observed', status: 'blocked',
+      title: '离线页面仍依赖未覆盖的动态数据',
+      detail: `${clone.delivery.runtimeDataGaps.length} 条同源 XHR/fetch 请求失败：${examples}${clone.delivery.runtimeDataGapsTruncated ? '；失败证据已截断' : ''}。先补授权观察或本地适配器，再重新严格交付。`,
+      evidence: [clone.delivery.healthReport].filter(Boolean),
+      action: capture,
+      verify: planVerification(siteId, 'clone.delivery.runtimeDataGaps.length === 0'),
+      repairTasks: runtimeDataRepairTasks(siteId, clone.delivery.runtimeDataGaps, clone.delivery),
+      repairTasksTruncated: clone.delivery.runtimeDataGapsTruncated === true,
     });
   }
   if (clone.delivery.binaryDownloadGaps?.length) {

@@ -455,6 +455,11 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
           { page: '/library/', kind: 'http', status: 404, resourceType: 'script', target: '/missing.js' },
         ],
       },
+      runtimeDataGaps: [
+        { page: '/library/', target: '/api/search', resourceType: 'fetch', failureKind: 'http', status: 404 },
+        { page: '/library/', target: '/api/search', resourceType: 'fetch', failureKind: 'http', status: 404 },
+      ],
+      runtimeDataGapsTruncated: false,
       missingLinkDetails: [
         { path: '/library.db', kind: 'resource-link', references: 1, pages: ['/library/'] },
         { path: '/legacy.doc', kind: 'resource-link', references: 1, pages: ['/library/'] },
@@ -472,6 +477,10 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.clone.delivery.adapter.serverEgress, 'not-tested');
     assert.equal(blocked.clone.delivery.browserFailures[0].message, 'CodeMirror is not defined');
     assert.equal(blocked.clone.delivery.browserFailures[1].resourceType, 'script');
+    assert.equal(blocked.clone.delivery.runtimeDataGaps[0].target, '/api/search');
+    assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-runtime-data-gaps').repairTasks.length, 1);
+    assert.equal(blocked.deliveryPlan.backendCompletion.runtimeDataGaps[0].failureKind, 'http');
+    assert.equal(blocked.deliveryPlan.backendCompletion.repairTasks.some(item => item.kind === 'runtime-data-observation'), true);
     assert.equal(assess({ ...outcome, healthReport: '/super-secret/health.json' }).clone.delivery.healthReport, null);
     assert.equal(blocked.readiness.delivery.status, 'blocked');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-offline-delivery').status, 'blocked');

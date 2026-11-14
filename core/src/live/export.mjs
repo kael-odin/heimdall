@@ -37,7 +37,7 @@ import { diffChecksums, changesLine } from './changes.mjs';
 import { mb, writeFileAtomic } from '../fsutil.mjs';
 import { makeArgs } from '../args.mjs';
 import { assertExportTarget, promoteCandidate } from './export-path.mjs';
-import { probeOfflineBundle, probeOfflineBrowserBundle, probeOfflineOperations,
+import { probeOfflineBundle, probeOfflineBrowserBundle, probeOfflineOperations, runtimeDataGapsOfBrowserProbe,
   DEFAULT_BROWSER_OBSERVE_MS, MAX_BROWSER_OBSERVE_MS } from './probe.mjs';
 import { liveSnapshotPath, liveSnapshotCandidates } from './live-path.mjs';
 import { buildCoverageLedger } from './coverage.mjs';
@@ -991,6 +991,9 @@ if (STRICT) {
     browserProbe: health.browserProbe,
     policies: runtimeServicePolicies,
   });
+  const runtimeDataGaps = runtimeDataGapsOfBrowserProbe(health.browserProbe);
+  health.runtimeDataGaps = runtimeDataGaps.items;
+  health.runtimeDataGapsTruncated = runtimeDataGaps.truncated;
   health.strictBlockers.unsupportedRuntimeServices = health.thirdPartyServices.unsupportedRuntimeServices;
   health.strictBlockers.browserUntested = health.browserProbe.untested;
   const offlineReadOnlyKeys = new Set();
@@ -1226,6 +1229,7 @@ strictBlockers           离线验收的分项阻断计数（含缺页、扫描�
 coverage                 侦察 URL → 克隆页 → 交付包 live 路由的覆盖台账；verifiedV2 只数本次导出时克隆内容、验证器、测量结果与差异图均匹配的页面。旧验证记录或导出净化改写内容会记为未验证；此计数不等于最终服务器的静态页、live 页面或交互验收，也不会单独阻断 strict。缺口路径经脱敏，可按 sourceIndex 回查本机按 URL 排序的侦察图谱
 browserProbe             逐页断外网首载结果；observation 写明最短窗口、安静期、总上限和逐页实测时间。上限前未安静会阻断发布；窗口外触发的请求及未声明操作仍未验证
 browserHeal              --heal 对浏览器运行时新增静态 4xx 资源的补抓摘要；不补抓 API、外链或动态数据
+runtimeDataGaps          同源 XHR/fetch 失败的脱敏路径、页面和状态；这是动态数据观察缺口，不是可自动伪造的响应
 operationPlan            操作脚本声明数；missing 表示没有交互验收，脚本本身不进入交付包
 operationProbe           逐条在断网浏览器中执行的操作、动态依赖与断言；未声明的流程不在验收范围
 sourceOperationProbe     显式 --compare-source 时，源站同流程只读采集与脱敏对照；未运行不代表源站通过
