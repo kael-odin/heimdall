@@ -35,3 +35,16 @@ node core/src/cli.mjs site-assessment <site-id> --json
 `scope.visual.verificationGaps` 现在返回当前扫描发现的前 50 个页面及其状态，并保留 `total` 与 `truncated`。这给 AI 提供具体复测对象，同时避免把旧验证摘要当成当前证据。
 
 仍未证明登录、权限、写入、状态机、WebSocket、持久化和外部副作用等价。公开快照也不能证明任意站点的克隆成功率。
+
+## SEO/GEO 行动元数据复验
+
+2026-11-15 在同一批脱敏归档上重新读取 `site-assessment`，确认行动列表的截断元数据不会改写克隆门禁：
+
+| 案例 | SEO/GEO 任务 | observed actions | medium advisories | `actionsTruncated` |
+| --- | --- | ---: | ---: | --- |
+| `example.com` | `blocked_on_observation` | 0/0 | 0/0 | `false` |
+| `vitest.dev` | `blocked_on_observation` | 0/0 | 0/0 | `false` |
+| `iana.org` | `blocked_on_observation` | 0/0 | 0/0 | `false` |
+| `rfc-editor.org` | `ready_for_ai_review` | 8/8 | 2/2 | `false` |
+
+合并返回超过 20 条的边界由 20 条 SEO 加 1 条 GEO 的脱敏 fixture 覆盖，专项测试验证 `observedActionsMeta.truncated=true`。真实归档复验只证明当前样本的投影稳定，不能外推任意站点的 SEO/GEO 结果。
