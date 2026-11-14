@@ -209,7 +209,10 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
           validation: { method: 'rerun-geo-audit', checkId: 'geo-citation-description', expectedStatus: 'pass' },
           affectedPages: ['https://example.test/?token=private-value'], evidence: [{ message: 'private-value' }] }],
       },
-      pages: [{ url: 'https://example.test/', issues: [{ id: 'content-title-missing', category: 'content', severity: 'high', title: '缺少 title', suggestion: '补充准确的 title' }] }],
+      pages: [{ url: 'https://example.test/', issues: [
+        { id: 'content-title-missing', category: 'content', severity: 'high', title: '缺少 title', suggestion: '补充准确的 title' },
+        { id: 'perf-weight-large', category: 'perf', severity: 'medium', title: '页面体积过大', suggestion: '压缩资源' },
+      ] }],
     });
     put(join(site, 'api-contract.json'), {
       tier: 'B1', openapi: { servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: {
@@ -289,6 +292,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.deepEqual(env.result.deliveryPlan.seoGeoTask.observedActions.map(item => item.id), [
       'content-title-missing', 'geo-citation-description',
     ]);
+    assert.deepEqual(env.result.deliveryPlan.seoGeoTask.observedAdvisories.map(item => item.id), ['perf-weight-large']);
     assert.equal(env.result.deliveryPlan.seoGeoTask.provenance.invented.length, 0);
     assert.match(env.result.deliveryPlan.seoGeoTask.prompt, /不要把分数解释为排名/);
     assert.doesNotMatch(run.stdout, /private-value/);

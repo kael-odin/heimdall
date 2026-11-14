@@ -215,10 +215,11 @@ function safeSeoIssuePath(value) {
   catch { return safeSummaryText(value, 240); }
 }
 
-function seoRepairCandidates(report) {
+function seoRepairCandidates(report, severities = ['critical', 'high']) {
   const groups = new Map();
+  const allowed = new Set(severities);
   const add = (issue, page = null) => {
-    if (!issue || !['critical', 'high'].includes(issue.severity) || typeof issue.id !== 'string') return;
+    if (!issue || !allowed.has(issue.severity) || typeof issue.id !== 'string') return;
     const current = groups.get(issue.id) ?? {
       id: issue.id.slice(0, 96), category: safeSummaryText(issue.category, 48), severity: issue.severity,
       title: safeSummaryText(issue.title, 240), suggestion: safeSummaryText(issue.suggestion, 360),
@@ -460,6 +461,7 @@ function seoSummary(siteId, root, expectedOrigin) {
     return { status: 'invalid', report: reportPathname, reason: 'origin_mismatch' };
   }
   const repairCandidates = seoRepairCandidates(report);
+  const advisoryCandidates = seoRepairCandidates(report, ['medium']);
   const summary = report.summary && typeof report.summary === 'object' ? report.summary : {};
   const bySeverity = Object.fromEntries(SEO_SEVERITIES.map(key => [key, Number(summary.bySeverity?.[key] ?? 0)]));
   const categories = Object.fromEntries(Object.entries(report.categories ?? {}).slice(0, 20).map(([key, value]) => [key, {
@@ -486,6 +488,8 @@ function seoSummary(siteId, root, expectedOrigin) {
     sitemap: sitemapSummary(report),
     repairCandidates: repairCandidates.items,
     repairCandidatesMeta: { total: repairCandidates.total, returned: repairCandidates.items.length, truncated: repairCandidates.truncated },
+    advisoryCandidates: advisoryCandidates.items,
+    advisoryCandidatesMeta: { total: advisoryCandidates.total, returned: advisoryCandidates.items.length, truncated: advisoryCandidates.truncated },
     completeness: {
       sitemapCoverage: summary.sitemapCoverage ?? null,
       failedPages: Number(summary.failedPages ?? 0),
@@ -903,6 +907,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     actionPlanMeta: { truncated: false },
   };
   const repairCandidates = Array.isArray(seo.repairCandidates) ? seo.repairCandidates : [];
+  const advisoryCandidates = Array.isArray(seo.advisoryCandidates) ? seo.advisoryCandidates : [];
   const methodsCurrent = observed && seo.scoreMethodStatus === 'current' && seo.measurementStatus === 'current';
   const seoActions = observed ? repairCandidates.map(issue => ({
     kind: 'seo', id: issue.id, category: issue.category, severity: issue.severity,
@@ -918,6 +923,12 @@ function buildSeoGeoTask(siteId, origin, seo) {
     evidenceLevel: 'observed', estimatedEffort: action.estimatedEffort,
     verification: { method: 'rerun-geo-audit', checkId: action.validation?.checkId ?? action.id, expectedStatus: 'pass' },
   })) : [];
+  const advisoryActions = observed ? advisoryCandidates.map(issue => ({
+    kind: 'seo', id: issue.id, category: issue.category, severity: issue.severity,
+    priority: 'P2', title: issue.title, instruction: issue.suggestion,
+    affectedPages: issue.affectedPages, pages: issue.pages, evidenceLevel: 'observed',
+    verification: { method: 'rerun-seo-audit', checkId: issue.id, expectedStatus: 'resolved' },
+  })).slice(0, 20) : [];
   const actions = [...seoActions, ...geoActions].slice(0, 20);
   const coverage = {
     pages: Number.isInteger(seo.pages) ? seo.pages : null,
@@ -948,6 +959,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     },
     coverage,
     observedActions: actions,
+    observedAdvisories: advisoryActions,
     inputs: observed ? [{ path: seo.reports.json, role: 'deterministic SEO/GEO report', basis: 'observed', required: true }] : [],
     tasks: observed ? [
       { id: 'fix-observed-seo', basis: 'observed', requiresHumanApproval: true, instruction: '按 observedActions 中的 SEO 项修复页面、模板或结构化信息；不要改评分公式来消除问题。' },
@@ -959,6 +971,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     guardrails: [
       'SEO/GEO 分数只表示当前方法和采集范围，不代表排名、流量、收录或模型引用成功。',
       'unknown、stale、future、partial 和 unavailable 不能被 AI 改写成通过或完整覆盖。',
+      'medium SEO 行动属于 observed advisory，不会单独改变 readiness，但修复后仍需用同一审计复测。',
       'AI 可以提出内容、结构、链接和结构化数据优化，但不能未经人工核实编造事实、作者、评价或来源。',
       '任何优化都必须在相同范围、相同方法版本下重新运行审计后才能比较前后结果。',
     ],

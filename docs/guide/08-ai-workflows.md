@@ -80,6 +80,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `deliveryPlan.backendCompletion` 是后端补全任务包：看 `observedEndpoints` 和 `verifiedResponseShapes` 了解已观察内容，看 `humanJourneys`、`testData` 和 `unknowns` 了解还缺什么；其中 `inferred` 只是 AI 草稿输入，`invented` 必须单列，不能当证据。
 - `seo.geo.actionPlan` 会返回有限、脱敏的 GEO 行动项、影响范围、工作量和 `rerun-geo-audit` 复测条件；`actionPlanMeta.truncated` 为真时，继续读取完整 SEO 报告，不要把返回列表当成全部问题。
 - `deliveryPlan.seoGeoTask` 是给 AI 的 SEO/GEO 优化任务包：它把当前评分口径、采集覆盖、observed 问题、优化顺序、事实核实护栏和复测门禁压成一个小摘要。分数只表示当前方法和范围，不代表排名、流量、收录或模型引用成功；`provenance.invented` 必须保持为空。
+- `deliveryPlan.seoGeoTask.observedAdvisories` 会保留最多 20 条 medium SEO 优化线索；它们不会单独阻断 readiness，但仍需用同一 SEO 审计复测。
 - `seo.sitemap` 会保留受限的站点地图范围证据：`coverage`、白名单 `reasons`、`truncated` 和 URL/文件计数。`partial` 或 `unavailable` 必须继续补采；`url-limit`、`budget-exhausted` 等原因只说明本次采集边界，不能解释成搜索收录、排名或 GEO 引用成功。
 - `seo.scoreMethodVersion` 和 `seo.measurementVersion` 必须一起读取；`scoreMethodStatus` 或 `measurementStatus` 不是 `current` 时，报告只可作为历史观察，不能进入 SEO/GEO ready 门禁或直接横向比较分数。
 - 当 sitemap 范围为 `partial` 或 `unavailable` 时，`unknowns` 会加入 `seo-sitemap-scope-limited`；`nextActions` 会按工具和参数去重，避免同一严格导出命令重复出现。

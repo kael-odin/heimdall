@@ -29,6 +29,7 @@
 2026-11-15 [公开案例 proven 语义收紧]：当 SEO 评分或测量口径不是 `current` 时，公开案例的 `proven` 摘要会明确标为“仅历史观察”，避免 AI 把旧分数当成当前验证事实。
 2026-11-15 [QA 覆盖定位进入 AI 任务]：`qaTask.latest.coverage` 现在投影最多 50 个页面/视口与检查点的脱敏状态，并保留截断、导航失败、检测器失败和基线状态；AI 可以先补覆盖证据，再处理 finding，不会把总数当成缺陷准确率。
 2026-11-15 [公开案例 SEO 行动进入摘要]：`public_case_summary.seo.observedActions` 现在按问题 ID 聚合最多 20 条脱敏的 critical/high/medium SEO 行动项，让 AI 能从真实案例复用优化线索；历史评分和缺少当前方法版本时仍保留为观察，不进入当前通过结论。
+2026-11-15 [SEO medium 建议进入站点评估任务]：`deliveryPlan.seoGeoTask.observedAdvisories` 现在保留最多 20 条 medium SEO 线索；它们不会单独改变 readiness，但会交给 AI 并绑定同一审计复测。
 
 ## 现在的主线
 
