@@ -774,9 +774,13 @@ function qaSummary(args, ctx, siteId, origin) {
     status: check?.pass === true ? 'passed' : check?.pass === false ? 'failed' : 'unknown',
     clientBlocked: Number.isSafeInteger(check?.clientBlocked) && check.clientBlocked >= 0 ? check.clientBlocked : 0,
   }));
+  const returnedPages = pageCoverage.slice(0, 50);
+  const returnedChecks = checkCoverage.slice(0, 50);
   const coverageSummary = {
-    pages: pageCoverage.slice(0, 50), pagesTotal: pageCoverage.length, pagesTruncated: pageCoverage.length > 50,
-    checks: checkCoverage, checksTotal: checks.length, checksTruncated: checks.length > 50,
+    pages: returnedPages, pagesTotal: pages.length, pagesReturned: returnedPages.length, pagesTruncated: pages.length > 50,
+    pagesMeta: { total: pages.length, valid: pageCoverage.length, returned: returnedPages.length, truncated: pages.length > 50 },
+    checks: returnedChecks, checksTotal: checks.length, checksReturned: returnedChecks.length, checksTruncated: checks.length > 50,
+    checksMeta: { total: checks.length, returned: returnedChecks.length, truncated: checks.length > 50 },
     detectionFailedPages: Array.isArray(coverage?.detection?.failedPages) ? coverage.detection.failedPages.length : null,
     baselineStatus: typeof coverage?.baseline?.status === 'string' ? coverage.baseline.status.slice(0, 32) : null,
   };
@@ -1102,6 +1106,7 @@ function buildQaTask(siteId, origin, qa, api) {
     prompt: [
       '先读取 deliveryPlan.qaTask 及其 inputs；再按 tasks 的顺序处理，不要把 finding 数量当准确率。',
       '先区分 observed、inferred、unknown 和人工 verdict，再决定是否修改前端、后端或 QA 检查。',
+      '如果 latest.coverage.pagesMeta 或 latest.coverage.checksMeta 的 truncated 为 true，或 pagesMeta.valid 小于 total，先补齐 QA 覆盖证据。',
       '完成修复后用同一站点、检查点和 fingerprint 复测，并分别汇报 verified、observed、inferred、unknown。',
     ].join('\n'),
     provenance: {

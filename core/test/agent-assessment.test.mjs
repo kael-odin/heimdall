@@ -36,6 +36,11 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
       ['navigation failed', { coverage: { ...coverage, pages: [{ navError: 'assessment-private-marker' }] } }, 'incomplete'],
       ['detector failed', { coverage: { ...coverage, detection: { failedPages: [{}] } } }, 'incomplete'],
       ['baseline unavailable', { coverage: { ...coverage, baseline: { status: 'incomplete', skipped: [{ incomplete: true, reason: 'assessment-private-marker' }] } } }, 'incomplete'],
+      ['bounded coverage', { coverage: {
+        ...coverage,
+        pages: Array.from({ length: 51 }, (_, index) => ({ path: `/page-${index}`, viewport: '1440x900', counts: {} })),
+        checks: Array.from({ length: 51 }, (_, index) => ({ id: `check-${index}`, pass: true, clientBlocked: 0 })),
+      } }, 'complete'],
       ['summary only', { coverage: undefined }, 'unknown'],
       ['malformed coverage', { coverage: { ...coverage, pages: [null] } }, 'unknown'],
       ['missing counters', { summary: { fileable: 0 } }, 'unknown'],
@@ -53,6 +58,14 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
       assert.equal(result.readiness.qa.status, status === 'complete' ? 'ready' : 'needs_human_review', name);
       assert.equal(result.qa.latest.completeness.status, status, name);
       assert.equal(result.deliveryPlan.items.some(item => item.id === 'qa-incomplete' && item.status === 'blocked'), status !== 'complete', name);
+      if (name === 'bounded coverage') {
+        assert.equal(result.qa.latest.coverage.pages.length, 50);
+        assert.equal(result.qa.latest.coverage.pagesTotal, 51);
+        assert.deepEqual(result.qa.latest.coverage.pagesMeta, { total: 51, valid: 51, returned: 50, truncated: true });
+        assert.equal(result.qa.latest.coverage.checks.length, 50);
+        assert.deepEqual(result.qa.latest.coverage.checksMeta, { total: 51, returned: 50, truncated: true });
+        assert.match(result.deliveryPlan.qaTask.prompt, /pagesMeta/);
+      }
       if (name === 'findings and incomplete') assert.ok(result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
       assert.doesNotMatch(run.stdout, /assessment-private-marker/);
     }
