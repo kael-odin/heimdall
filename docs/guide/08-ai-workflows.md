@@ -187,7 +187,7 @@ AI 需要先了解一个已经落盘的真实案例时，调用只读的 `heimda
 
 ```text
 调用 heimdall_public_case_summary，casePath=docs/cases/xspark/2026-11-04。
-只读取公开案例摘要；汇报页面/视口覆盖、QA 门禁、可提单数量、基线回归、SEO 分数、已证明能力和未覆盖范围。
+只读取公开案例摘要；汇报页面/视口覆盖、QA 门禁、可提单数量、基线回归、SEO/GEO 分数、行动项、已证明能力和未覆盖范围。
 不要读取或索取原始 findings、HAR、Cookie、Token、登录态，也不要把一个案例外推成通用准确率。
 ```
 

@@ -10,6 +10,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 import { REPO_ROOT } from '../../installation.mjs';
 import { isInside } from '../../../paths.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
+import { summarizeGeoReport } from '../../geo-summary.mjs';
 import { qaFindingDigest } from '../../qa-finding-summary.mjs';
 
 const PUBLIC_CASES = join(REPO_ROOT, 'docs', 'cases');
@@ -137,6 +138,7 @@ function seoSummary(manifest, seo, caseRel) {
     pages: numberOrNull(summary.pages ?? manifest.seo?.pages),
     issues: numberOrNull(summary.issues ?? manifest.seo?.issues),
     bySeverity,
+    geo: summarizeGeoReport(seo?.geo),
     fieldData: { available: fieldData.available === true, reason: safeText(fieldData.reason, 160) },
     reports: seo ? [`${caseRel}/evidence/seo.json`] : [],
   };
