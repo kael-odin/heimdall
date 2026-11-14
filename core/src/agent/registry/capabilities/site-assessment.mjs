@@ -159,6 +159,36 @@ function gradeOf(score) {
   return typeof score === 'number' ? (score >= 90 ? 'A' : score >= 75 ? 'B' : 'C') : null;
 }
 
+function safeSeoIssuePath(value) {
+  try { return new URL(String(value), 'http://seo.local').pathname.slice(0, 240); }
+  catch { return safeSummaryText(value, 240); }
+}
+
+function seoRepairCandidates(report) {
+  const groups = new Map();
+  const add = (issue, page = null) => {
+    if (!issue || !['critical', 'high'].includes(issue.severity) || typeof issue.id !== 'string') return;
+    const current = groups.get(issue.id) ?? {
+      id: issue.id.slice(0, 96), category: safeSummaryText(issue.category, 48), severity: issue.severity,
+      title: safeSummaryText(issue.title, 240), suggestion: safeSummaryText(issue.suggestion, 360),
+      affectedPages: 0, pages: [],
+    };
+    if (issue.severity === 'critical') current.severity = 'critical';
+    if (page) {
+      current.affectedPages++;
+      const path = safeSeoIssuePath(page);
+      if (path !== '/' && current.pages.length < 20 && !current.pages.includes(path)) current.pages.push(path);
+    }
+    groups.set(issue.id, current);
+  };
+  for (const page of Array.isArray(report?.pages) ? report.pages : []) {
+    for (const issue of Array.isArray(page?.issues) ? page.issues : []) add(issue, page.url);
+  }
+  for (const issue of Array.isArray(report?.siteIssues) ? report.siteIssues : []) add(issue);
+  const all = [...groups.values()].sort((a, b) => (a.severity === 'critical' ? -1 : 1) - (b.severity === 'critical' ? -1 : 1) || a.id.localeCompare(b.id));
+  return { items: all.slice(0, 20), total: all.length, truncated: all.length > 20 };
+}
+
 function adapterEgressVerification(root, siteId) {
   const report = reportPath(siteId, 'adapter-egress-verification.json');
   const file = join(root, 'adapter-egress-verification.json');
@@ -313,6 +343,7 @@ function seoSummary(siteId, root) {
   if (!existsSync(file)) return { status: 'missing', report: null };
   const report = readJson(file);
   if (!report || typeof report !== 'object') return { status: 'invalid', report: null };
+  const repairCandidates = seoRepairCandidates(report);
   const summary = report.summary && typeof report.summary === 'object' ? report.summary : {};
   const bySeverity = Object.fromEntries(SEO_SEVERITIES.map(key => [key, Number(summary.bySeverity?.[key] ?? 0)]));
   const categories = Object.fromEntries(Object.entries(report.categories ?? {}).slice(0, 20).map(([key, value]) => [key, {
@@ -332,6 +363,8 @@ function seoSummary(siteId, root) {
     bySeverity,
     categories,
     geo: summarizeGeoReport(report.geo),
+    repairCandidates: repairCandidates.items,
+    repairCandidatesMeta: { total: repairCandidates.total, returned: repairCandidates.items.length, truncated: repairCandidates.truncated },
     completeness: {
       sitemapCoverage: summary.sitemapCoverage ?? null,
       failedPages: Number(summary.failedPages ?? 0),
@@ -623,6 +656,25 @@ function seoGeoRepairTask(action, seo) {
   };
 }
 
+function seoRepairTask(issue, seo) {
+  const id = String(issue?.id || 'seo-issue').replace(/[^a-z0-9_-]/gi, '-').slice(0, 64) || 'seo-issue';
+  return {
+    id: `repair-seo-${id}`, kind: 'seo-action', target: issue.id,
+    status: 'ready_for_fix',
+    instruction: `${issue.suggestion || issue.title || '修复 SEO 问题'}；完成后重新运行 SEO 审计。`,
+    requiresHumanApproval: true,
+    evidence: {
+      category: issue.category, severity: issue.severity, affectedPages: issue.affectedPages,
+      pages: issue.pages, report: seo.reports?.json,
+    },
+    verification: {
+      tool: 'heimdall_seo_audit',
+      args: seo.origin ? { url: `${seo.origin}/` } : null,
+      condition: `完整 SEO 报告中不再出现 critical/high 问题 ${issue.id}。`,
+    },
+  };
+}
+
 function repairTasksFromGapLedger(siteId, gapLedger) {
   const summary = gapLedger?.summary;
   if (!summary) return [];
@@ -881,8 +933,11 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       evidence: [seo.reports.json],
       action: origin ? plannedAction('heimdall_seo_audit', { url: `${origin}/` }, '补采完整报告并复核 SEO/GEO 待办') : null,
       verify: planVerification(siteId, 'seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0 && seo.geo.status === "complete" && seo.geo.actionItems === 0 && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0'),
-      repairTasks: seo.geo.actionPlan.map(action => seoGeoRepairTask(action, seo)),
-      repairTasksTruncated: seo.geo.actionPlanMeta.truncated,
+      repairTasks: [
+        ...seo.repairCandidates.map(issue => seoRepairTask(issue, seo)),
+        ...seo.geo.actionPlan.map(action => seoGeoRepairTask(action, seo)),
+      ],
+      repairTasksTruncated: seo.repairCandidatesMeta.truncated || seo.geo.actionPlanMeta.truncated,
     });
   }
 

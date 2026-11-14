@@ -82,6 +82,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
           validation: { method: 'rerun-geo-audit', checkId: 'geo-citation-description', expectedStatus: 'pass' },
           affectedPages: ['https://example.test/?token=private-value'], evidence: [{ message: 'private-value' }] }],
       },
+      pages: [{ url: 'https://example.test/', issues: [{ id: 'content-title-missing', category: 'content', severity: 'high', title: '缺少 title', suggestion: '补充准确的 title' }] }],
     });
     put(join(site, 'api-contract.json'), {
       tier: 'B1', openapi: { servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: {
@@ -193,11 +194,15 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'clone-visual-verification'));
     const seoTask = env.result.deliveryPlan.items.find(item => item.id === 'seo-geo-follow-up');
     assert.ok(seoTask);
-    assert.equal(seoTask.repairTasks.length, 1);
-    assert.equal(seoTask.repairTasks[0].kind, 'seo-geo-action');
-    assert.equal(seoTask.repairTasks[0].target, 'geo-citation-description');
+    assert.equal(seoTask.repairTasks.length, 2);
+    assert.equal(seoTask.repairTasks[0].kind, 'seo-action');
+    assert.equal(seoTask.repairTasks[0].target, 'content-title-missing');
     assert.equal(seoTask.repairTasks[0].evidence.affectedPages, 1);
     assert.equal(seoTask.repairTasks[0].verification.tool, 'heimdall_seo_audit');
+    assert.equal(seoTask.repairTasks[1].kind, 'seo-geo-action');
+    assert.equal(seoTask.repairTasks[1].target, 'geo-citation-description');
+    assert.equal(seoTask.repairTasks[1].evidence.affectedPages, 1);
+    assert.equal(seoTask.repairTasks[1].verification.tool, 'heimdall_seo_audit');
     assert.equal(seoTask.repairTasksTruncated, false);
     assert.equal(env.result.deliveryPlan.items.find(item => item.id === 'api-behavior-unknown').status, 'blocked');
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
