@@ -329,6 +329,16 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.deepEqual(env.result.qa.metrics.failures.byKind, {});
     assert.equal(env.result.qa.metrics.oracle.status, 'not_provided');
     assert.equal(env.result.qa.metrics.decision.primaryAction, 'collect-more-evidence');
+    assert.equal(env.result.deliveryPlan.qaTask.schema, 'heimdall.qa-bug-ai-task/1');
+    assert.equal(env.result.deliveryPlan.qaTask.status, 'human_review');
+    assert.equal(env.result.deliveryPlan.qaTask.scope.frontend.pages, 1);
+    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.contract, 'observed');
+    assert.equal(env.result.deliveryPlan.qaTask.latest.findings.total, 2);
+    assert.ok(env.result.deliveryPlan.qaTask.tasks.some(item => item.id === 'review-findings'));
+    assert.ok(env.result.deliveryPlan.qaTask.tasks.some(item => item.id === 'fix-confirmed-findings'));
+    assert.equal(env.result.deliveryPlan.qaTask.provenance.invented.length, 0);
+    assert.match(env.result.deliveryPlan.qaTask.prompt, /不要把 finding 数量当准确率/);
+    assert.doesNotMatch(run.stdout, /private-value|abcdefghijkl/);
     const qaDecision = env.result.deliveryPlan.items.find(item => item.id === 'qa-metrics-decision');
     assert.equal(qaDecision.status, 'open');
     assert.equal(qaDecision.action.tool, 'heimdall_qa_metrics');
@@ -735,6 +745,7 @@ test('site-assessment: delivery plan keeps capture and missing evidence separate
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'seo-report' && item.basis === 'unknown'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.basis === 'unknown'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'qa-workspace' && item.status === 'blocked'));
+    assert.equal(env.result.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
     assert.equal(env.result.deliveryPlan.backendCompletion.status, 'blocked_on_observation');
     assert.equal(env.result.deliveryPlan.backendCompletion.observedEndpoints.length, 0);
     assert.ok(env.result.deliveryPlan.backendCompletion.suggestedLocalFiles.some(item => item.path.endsWith('backend-state-rules.json')));

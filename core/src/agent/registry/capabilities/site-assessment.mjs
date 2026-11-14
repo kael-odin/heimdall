@@ -958,6 +958,98 @@ function buildSeoGeoTask(siteId, origin, seo) {
   };
 }
 
+function buildQaTask(siteId, origin, qa, api) {
+  const latest = qa.latest;
+  const findings = latest?.findings?.items ?? [];
+  const completeness = latest?.completeness?.status ?? 'unknown';
+  const observed = qa.status === 'observed';
+  const backendScope = {
+    origin: origin ?? null,
+    contract: api.contract.status,
+    adapter: api.adapter.status,
+    scaffoldCheck: api.scaffold?.check?.status ?? 'not_run',
+    basis: api.contract.status === 'observed' || api.adapter.present ? 'observed' : 'unknown',
+  };
+  const status = !observed || ['not_configured', 'unavailable', 'configured'].includes(qa.status)
+    ? 'blocked_on_qa_evidence'
+    : qa.status === 'no_runs' ? 'blocked_on_observation'
+      : completeness !== 'complete' ? 'blocked_on_complete_run'
+        : findings.length ? 'human_review'
+          : qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
+            ? 'ready_for_ai_review' : 'ready';
+  const tasks = observed && latest ? [
+    ...(completeness !== 'complete' ? [{ id: 'complete-qa-run', basis: 'observed', requiresHumanApproval: true, instruction: '补齐环境、导航、检测器和基线证据；没有可提单问题不等于 QA 已完成。' }] : []),
+    ...(findings.length ? [{ id: 'review-findings', basis: 'observed', requiresHumanApproval: true, instruction: '先用 heimdall_qa_findings 逐条确认 finding；只有人工确认后才修改代码或业务。' }] : []),
+    ...(findings.some(item => item.triage === 'known-bug') ? [{ id: 'fix-confirmed-findings', basis: 'observed', requiresHumanApproval: false, instruction: '修复已经标记为 known-bug 的问题，再用同一站点和检查点重跑 QA。' }] : []),
+    ...(qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
+      ? [{ id: 'follow-up-qa-metrics', basis: 'inferred', requiresHumanApproval: true, instruction: '按 QA 指标决策补证据、修已有检测器或增加业务检查点；不以指标不足为由新增通用检测器。' }] : []),
+  ] : [{ id: 'obtain-qa-evidence', basis: 'unknown', requiresHumanApproval: true, instruction: '先准备匹配站点的 QA 工作区并完成一次只读 QA；没有运行证据时不要猜测缺陷。' }];
+  const metrics = qa.metrics?.decision ? {
+    coverage: {
+      runs: Number(qa.metrics.coverage?.runs ?? 0),
+      pageViewportChecks: Number(qa.metrics.coverage?.pageViewportChecks ?? 0),
+      checks: Number(qa.metrics.coverage?.checks ?? 0),
+    },
+    decision: {
+      primaryAction: qa.metrics.decision.primaryAction ?? 'unknown',
+      detectorExpansion: qa.metrics.decision.detectorExpansion ?? 'unknown',
+      secondaryActions: Array.isArray(qa.metrics.decision.secondaryActions) ? qa.metrics.decision.secondaryActions.slice(0, 4) : [],
+    },
+  } : null;
+  return {
+    schema: 'heimdall.qa-bug-ai-task/1', siteId, status,
+    objective: '让 AI 在完整、脱敏的 QA 证据上定位前端和后端缺陷候选，并在人工裁决后用同一检查点复测。',
+    scope: {
+      frontend: { pages: qa.site?.pages ?? null, latestRun: latest?.runId ?? null, basis: observed ? 'observed' : 'unknown' },
+      backend: backendScope,
+    },
+    latest: latest ? {
+      runId: latest.runId, summary: latest.summary, completeness: latest.completeness,
+      findings: { total: latest.findings.total, returned: latest.findings.returned, truncated: latest.findings.truncated, items: findings },
+    } : null,
+    metrics, tasks,
+    inputs: observed && latest ? [
+      { path: latest.report, role: 'QA report', basis: 'observed', required: true },
+      { path: latest.bugs, role: 'sanitized finding summary', basis: 'observed', required: true },
+    ] : [],
+    guardrails: [
+      'finding 只有在人工裁决后才能作为真实 bug；known-bug 可进入修复，new 或 reopened 先保留人工复核。',
+      '零可提单问题不等于零 bug；运行完整性、覆盖、漏报和未声明业务规则必须单独汇报。',
+      '页面视觉通过不证明 API、认证、权限、状态机、持久化或外部副作用通过。',
+      '不得把原始 HAR、Cookie、令牌、请求体或未脱敏响应交给 AI；复测必须绑定同一站点、检查点和 finding fingerprint。',
+    ],
+    verification: {
+      commands: [
+        ...(qaWorkspaceCommand(siteId, qa) ? [qaWorkspaceCommand(siteId, qa)] : []),
+        `heimdall site-assessment ${siteId} --json`,
+      ],
+      gates: [
+        '匹配站点的 QA 运行完整，环境、导航、检测器和基线证据可解释。',
+        '每条 fileable finding 都有人工 verdict；确认问题修复后同一 fingerprint 从新完整运行中消失。',
+        '后端契约、适配器和业务规则单独核实，不能用页面无报错替代。',
+      ],
+    },
+    prompt: [
+      '先读取 deliveryPlan.qaTask 及其 inputs；再按 tasks 的顺序处理，不要把 finding 数量当准确率。',
+      '先区分 observed、inferred、unknown 和人工 verdict，再决定是否修改前端、后端或 QA 检查。',
+      '完成修复后用同一站点、检查点和 fingerprint 复测，并分别汇报 verified、observed、inferred、unknown。',
+    ].join('\n'),
+    provenance: {
+      observed: observed && latest ? [latest.report, latest.bugs].filter(Boolean) : [],
+      inferred: ['缺陷处理顺序', 'AI 修复步骤', '复测门禁'],
+      invented: [],
+    },
+    limitations: [
+      'QA 摘要只覆盖声明的页面、检查点和运行范围；不能外推任意站点缺陷检出率。',
+      '后端认证、权限、写入、状态和副作用需要独立授权旅程与业务规则对照。',
+    ],
+  };
+}
+
+function qaWorkspaceCommand(siteId, qa) {
+  return qa?.site?.name ? `heimdall qa run --site ${qa.site.name}` : null;
+}
+
 function repairTasksFromGapLedger(siteId, gapLedger) {
   const summary = gapLedger?.summary;
   if (!summary) return [];
@@ -1174,6 +1266,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   const items = [];
   const backendCompletion = buildBackendCompletionTask(siteId, api, clone.delivery);
   const seoGeoTask = buildSeoGeoTask(siteId, origin, seo);
+  const qaTask = buildQaTask(siteId, origin, qa, api);
   const add = (item) => items.push({
     evidence: [],
     ...(item.action ? { action: item.action } : {}),
@@ -1463,6 +1556,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     items,
     backendCompletion,
     seoGeoTask,
+    qaTask,
   };
 }
 
