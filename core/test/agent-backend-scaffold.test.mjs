@@ -86,7 +86,7 @@ test('backend scaffold generates and starts a B3 service from sanitized contract
     assert.equal(envelope.result.adapter.present, true);
 
     const out = envelope.result.outDir;
-    for (const file of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json', 'Dockerfile', 'README.md', 'runtime-adapter/index.mjs', 'runtime-adapter/manifest.json']) {
+    for (const file of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json', 'backend-task.json', 'Dockerfile', 'README.md', 'runtime-adapter/index.mjs', 'runtime-adapter/manifest.json']) {
       assert.equal(existsSync(join(out, file)), true, file);
     }
     const dockerfile = readFileSync(join(out, 'Dockerfile'), 'utf8');
@@ -96,6 +96,14 @@ test('backend scaffold generates and starts a B3 service from sanitized contract
     const projected = JSON.parse(readFileSync(join(out, 'api-contract.json'), 'utf8'));
     assert.equal(projected.secret, undefined);
     assert.doesNotMatch(readFileSync(join(out, 'README.md'), 'utf8'), /super-secret/);
+    const task = JSON.parse(readFileSync(join(out, 'backend-task.json'), 'utf8'));
+    assert.equal(task.schema, 'heimdall.backend-ai-task/1');
+    assert.equal(task.status, 'ready_for_ai_draft');
+    assert.equal(task.observedEndpoints[0].path, '/api/items');
+    assert.equal(task.observedEndpoints[0].basis, 'observed');
+    assert.equal(task.provenance.invented.length, 0);
+    assert.match(task.prompt, /不要从 unknowns 推断/);
+    assert.doesNotMatch(readFileSync(join(out, 'backend-task.json'), 'utf8'), /super-secret/);
 
     child = spawn(process.execPath, [join(out, 'server.mjs'), '--port', '0'], {
       cwd: out,
@@ -171,20 +179,7 @@ test('backend scaffold does not copy a missing runtime adapter into Docker', () 
   const root = mkdtempSync(join(tmpdir(), 'heimdall-backend-scaffold-no-adapter-'));
   const site = join(root, 'workspace', 'example-no-adapter.test');
   try {
-    put(join(site, 'api-contract.json'), {
-      schema: 'heimdall.contract/1',
-      siteId: 'example-no-adapter.test',
-      openapi: {
-        paths: {
-          '/api/items': {
-            get: {
-              responses: { 200: {} },
-            },
-          },
-        },
-      },
-    });
-
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>fixture</body>');
     const generated = spawnSync(process.execPath, [CLI, 'backend', 'scaffold', 'example-no-adapter.test', '--json'], {
       cwd: root,
       env: { ...process.env, HEIMDALL_DATA_DIR: root },
@@ -195,6 +190,7 @@ test('backend scaffold does not copy a missing runtime adapter into Docker', () 
     const envelope = JSON.parse(generated.stdout.trim().split(/\r?\n/).at(-1));
     assert.equal(envelope.ok, true);
     assert.equal(envelope.result.adapter.present, false);
+    assert.equal(envelope.result.task.status, 'blocked_on_observation');
 
     const out = envelope.result.outDir;
     const dockerfile = readFileSync(join(out, 'Dockerfile'), 'utf8');

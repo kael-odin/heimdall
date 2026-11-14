@@ -62,6 +62,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-14 | **[`example.com` 静态交付包独立断网验收](2026-11-14/public-static-deployment-verify.md)** | `live-verify --static` 在 Docker `network none` 中两次启动，1/1 live 路由通过；`site-assessment.independentDeployment=verified` 并绑定当前包校验和 |
 | 2026-11-14 | **[适配器交付包操作计划复测](2026-11-14/adapter-operation-plan-deployment-verify.md)** | 受控有状态适配器在 Docker `network none` 中写入并重启读回 1/1；最终镜像快照上的授权浏览器操作计划 1/1、0 失败、0 未测；仍保留未覆盖路由和未验证写入账本 |
 | 2026-11-15 | **[公开案例站点评估复核](2026-11-15/site-assessment-public-cases.md)** | RFC Editor 6/6 镜像、6 页多视口、SEO 90、GEO 71，但离线交付/API/QA 仍有明确缺口；Xspark QA 通过、SEO 90.8，但 GEO 与业务后端证据仍未知 |
+| 2026-11-15 | **[B3 AI 后端任务包公开 API 实测](2026-11-15/backend-ai-task-dummyjson.md)** | DummyJSON 公开商品接口生成 `backend-task.json`；观察端点、有限响应结构和 0 个 invented 证据进入 AI 上下文，本地独立服务 4/4 检查通过；业务后端等价仍未知 |
 
 路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。
 

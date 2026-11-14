@@ -326,6 +326,7 @@ Hosted CI 结果为最终依据。
 - 后续用 DummyJSON 30 条商品和芝加哥艺术博物馆 12 条作品复测，修复可空、混合类型的契约丢失与健康响应误报；两个独立包通过，三类本地类型缺陷均检出。检查支持有限组合 schema，超深或分支超限拒绝生成；每接口只有一次响应，留出仍为 `not-validated`，详见同一实测记录的“后续真实接口”。
 - state-rules.json 的认证、权限、状态机、持久化和副作用规则默认留空，invented 数量为 0；AI 或开发者必须在授权旅程后补规则，再用 npm run check 和既有验证套件复测。
 - `heimdall_site_assessment` 现在会识别默认 `backend-scaffold` 是否已完整生成，并把缺失或半成品转成一个带人工确认边界的下一步动作，避免 AI 只看到抽象的建议文件。
+- B3 脚手架现在同时落盘 `backend-task.json`，把脱敏 observed 端点、未知边界、修复护栏和确定性复测命令交给 AI；`site-assessment` 暴露 `api.scaffold.aiTask` 与 `deliveryPlan.backendCompletion.scaffold.aiTask`，旧脚手架仍保持兼容。
 
 ## 2026-11-12 QA 实战指标总线
 

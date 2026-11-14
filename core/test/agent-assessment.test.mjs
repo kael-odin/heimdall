@@ -470,7 +470,10 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
         },
       } } } },
     });
-    for (const name of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json']) put(join(scaffold, name), '{}');
+    for (const name of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json', 'backend-task.json']) put(join(scaffold, name), {
+      schema: name === 'backend-task.json' ? 'heimdall.backend-ai-task/1' : undefined,
+      status: name === 'backend-task.json' ? 'ready_for_ai_draft' : undefined,
+    });
     put(join(scaffold, 'backend-check.json'), {
       schema: 'heimdall.backend-check/1', generatedAt: '2026-11-12T00:00:00.000Z', overall: 'passed',
       results: [{ id: 'health', status: 'passed' }, { id: 'adapter-coverage', status: 'passed' }],
@@ -489,12 +492,14 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     const env = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
     assert.equal(env.ok, true);
     assert.equal(env.result.api.scaffold.status, 'present');
+    assert.equal(env.result.api.scaffold.aiTask.status, 'present');
     assert.equal(env.result.api.scaffold.check.status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.check.overall, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRuleComparison.overall, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rule-equivalence').status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'present');
+    assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.aiTask.status, 'present');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action, null);
     const [endpoint] = env.result.deliveryPlan.backendCompletion.observedEndpoints;
     assert.equal(endpoint.requestBody.withSchema, true);

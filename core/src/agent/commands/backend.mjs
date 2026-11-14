@@ -292,6 +292,91 @@ function routesOf(contract) {
   return rows.sort((a, b) => (a.method + ' ' + a.path).localeCompare(b.method + ' ' + b.path)).slice(0, 200);
 }
 
+function responseShapesOf(operation) {
+  return Object.entries(operation?.responses ?? {}).filter(([status]) => /^[0-9]{3}$/.test(status)).map(([status, response]) => {
+    const contentMap = response?.content && typeof response.content === 'object' && !Array.isArray(response.content) ? response.content : {};
+    const schemas = Object.entries(contentMap).flatMap(([mimeType, item]) => {
+      const value = schema(item?.schema);
+      return value === undefined ? [] : [{ mimeType: text(mimeType, 128), schema: value }];
+    });
+    return {
+      status: Number(status),
+      mimeTypes: Object.keys(contentMap).map(value => text(value, 128)).filter(Boolean).sort(),
+      ...(schemas.length ? { schemas } : {}),
+    };
+  });
+}
+
+function backendTask({ siteId, contract, adapter, routes }) {
+  const observedEndpoints = routes.map(route => ({
+    ...route,
+    responseShapes: responseShapesOf(contract.openapi?.paths?.[route.path]?.[route.method.toLowerCase()]),
+  }));
+  const observedInputs = [
+    { path: 'api-contract.json', role: 'observed interface contract', basis: contract.status === 'observed' ? 'observed' : 'unknown', required: true },
+    ...(adapter.present ? [{ path: 'runtime-adapter/manifest.json', role: 'observed replay route metadata', basis: 'observed', required: true }] : []),
+  ];
+  const optionalInputs = [
+    { path: 'backend-check.json', role: 'deterministic local check results', basis: 'observed', required: false },
+    { path: '$HEIMDALL_RUNTIME_DATA_DIR/adapter-gap-ledger.json', role: 'runtime gap summary from the external data directory', basis: 'observed', required: false },
+  ];
+  const unknowns = ['authentication', 'permissions', 'state-machine', 'business-rules', 'persistence', 'side-effects'];
+  if (contract.status !== 'observed') unknowns.push('api-contract:' + contract.status);
+  const tasks = contract.status === 'observed' ? [
+    { id: 'implement-observed-routes', basis: 'observed', requiresHumanApproval: false, instruction: '只实现 observedEndpoints 中已经有契约证据的路由，保持状态码、MIME 和有限 JSON 结构。' },
+    { id: 'replay-and-close-gaps', basis: adapter.present ? 'observed' : 'unknown', requiresHumanApproval: false, instruction: '运行 npm run check；读取缺口账本后逐项补实现，不能用猜测清除缺口。' },
+    { id: 'add-reviewed-business-rules', basis: 'inferred', requiresHumanApproval: true, instruction: '只有在授权旅程和测试数据确认后，才把业务流程写入 state-rules.json 并标记 reviewed。' },
+    { id: 'verify-state-and-side-effects', basis: 'unknown', requiresHumanApproval: true, instruction: '人工授权后验证操作前后状态、读回、清理、权限和外部副作用。' },
+  ] : [
+    { id: 'obtain-observation', basis: 'unknown', requiresHumanApproval: true, instruction: '先取得脱敏 api-contract.json；没有观察证据时不要发明业务 API。' },
+  ];
+  return {
+    schema: 'heimdall.backend-ai-task/1',
+    siteId,
+    status: contract.status === 'observed' ? 'ready_for_ai_draft' : 'blocked_on_observation',
+    objective: '在保持证据出处的前提下补齐本地后端，让前端能在独立部署中复现已观察行为，并用确定性检查收敛差异。',
+    inputs: [...observedInputs, ...optionalInputs],
+    observedEndpoints,
+    currentAdapter: {
+      present: adapter.present,
+      routes: adapter.routes,
+      sessions: adapter.sessions ?? 0,
+      basis: adapter.present ? 'observed' : 'unknown',
+    },
+    unknowns,
+    tasks,
+    guardrails: [
+      '只把 observed 证据当作已知行为；inferred 只能作为草稿输入，invented 不得作为通过证据。',
+      '认证、权限、写入、持久化、状态机和外部副作用需要人工授权与独立旅程。',
+      '不得把认证值、Cookie、请求体、响应正文或原始 HAR 写入任务文件或检查报告。',
+      '完成实现后必须运行 npm run check，并按 backend-check.json 的修复任务继续复测。',
+    ],
+    verification: {
+      commands: ['npm start', 'npm run check', 'npm run check -- --business-rules-only', `heimdall site-assessment ${siteId} --json`],
+      gates: [
+        'observed 路由的状态码、MIME 和有限 JSON 结构通过。',
+        'adapter-gap-ledger 没有新的未声明路由或查询参数缺口。',
+        '业务规则先由人工确认，再用同一规则分别检查源站和候选后端。',
+      ],
+    },
+    prompt: [
+      '先读取 api-contract.json、backend-task.json，以及存在时的 backend-check.json 和 adapter-gap-ledger.json。',
+      '只实现有 observed 证据的端点；不要从 unknowns 推断认证、权限、状态机、持久化或副作用。',
+      '把需要业务判断的内容写成 inferred 草稿，等待人工确认后再写入 state-rules.json。',
+      '每完成一个小改动就运行 npm run check；最终把 verified、observed、inferred、unknown 分开汇报。',
+    ].join('\n'),
+    provenance: {
+      observed: observedInputs.filter(item => item.basis === 'observed').map(item => item.path),
+      inferred: ['AI 任务目标', '修复步骤', '验证门禁'],
+      invented: [],
+    },
+    limitations: [
+      '任务文件是补写提示和证据索引，不是源站后端等价证明。',
+      '运行后产生的缺口和检查结果可能变化，应以最新 backend-check.json 与 site-assessment 为准。',
+    ],
+  };
+}
+
 function findContract(root) {
   for (const suffix of CONTRACT_FILES) {
     const file = join(root, suffix);
@@ -942,6 +1027,7 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     '这是一个能启动、能看健康状态、能逐条补路由的后端起点，不是源站后端的复制品。',
     '观察到的内容来自脱敏 API 契约；没有观察到的认证、权限、状态机、持久化和副作用都留在未知项里。',
     adapterText,
+    'backend-task.json 是给 AI 使用的脱敏任务包：它列出 observed 端点、修复边界和确定性复测命令；运行后应以最新 backend-check.json 与 site-assessment 为准。',
     '',
     '## 已观察路由',
     '',
@@ -1030,6 +1116,7 @@ function build(flags, positional) {
   const contract = projectContract(source.source, siteId, source.status);
   const adapter = readAdapter(root);
   const routes = routesOf(contract);
+  const task = backendTask({ siteId, contract, adapter, routes });
   const dockerfile = [
     'FROM node:22-alpine',
     'WORKDIR /app',
@@ -1047,6 +1134,7 @@ function build(flags, positional) {
     ['checks.mjs', checksSource()],
     ['api-contract.json', json(contract)],
     ['state-rules.json', json(stateRules(siteId, contract, adapter))],
+    ['backend-task.json', json(task)],
     ['Dockerfile', dockerfile],
   ];
   for (const [name, value] of files) writeFileChecked(join(outDir, name), value);
@@ -1067,6 +1155,7 @@ function build(flags, positional) {
     contract: { status: source.status, source: source.path, observedRoutes: routes.length },
     adapter: { status: adapter.status, present: adapter.present, routes: adapter.routes.length, sessions: adapter.sessions ?? 0 },
     files: files.map(([name]) => name).concat(adapter.present ? ['runtime-adapter/manifest.json', 'runtime-adapter/index.mjs'] : ['runtime-adapter/ not copied']),
+    task: { path: 'backend-task.json', status: task.status, schema: task.schema },
     provenance: { observed: source.status === 'observed' ? ['api-contract.json'] : [], inferred: ['state-rules.json', 'checks.mjs'], invented: [] },
     unknowns,
     verification: { commands: ['npm start', 'npm run check', 'GET /__heimdall/health', 'GET /__heimdall/adapter-gaps'] },

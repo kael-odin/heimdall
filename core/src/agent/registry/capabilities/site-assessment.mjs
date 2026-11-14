@@ -547,6 +547,14 @@ function backendScaffoldSummary(root, siteId) {
     try { return statSync(join(dir, name)).isFile(); } catch { return false; }
   });
   const status = files.length === required.length ? 'present' : files.length ? 'incomplete' : 'missing';
+  const taskFile = join(dir, 'backend-task.json');
+  const taskReport = existsSync(taskFile) ? readJson(taskFile) : null;
+  const aiTask = {
+    status: taskReport?.schema === 'heimdall.backend-ai-task/1' ? 'present' : existsSync(taskFile) ? 'invalid' : 'missing',
+    schema: typeof taskReport?.schema === 'string' ? taskReport.schema : null,
+    taskStatus: typeof taskReport?.status === 'string' ? taskReport.status : null,
+    path: existsSync(taskFile) ? reportPath(siteId, 'backend-scaffold/backend-task.json') : null,
+  };
   const checkFile = join(dir, 'backend-check.json');
   const checkReport = existsSync(checkFile) ? readJson(checkFile) : null;
   const checkResults = Array.isArray(checkReport?.results) ? checkReport.results : [];
@@ -656,6 +664,7 @@ function backendScaffoldSummary(root, siteId) {
     files: files.length,
     requiredFiles: required.length,
     path: status === 'missing' ? null : reportPath(siteId, 'backend-scaffold'),
+    aiTask,
     check,
   };
 }
@@ -969,6 +978,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       status: scaffold.present ? 'present' : observed ? 'available' : 'blocked_on_observation',
       basis: scaffold.present ? 'observed' : observed ? 'inferred' : 'unknown',
       path: scaffold.path,
+      aiTask: scaffold.aiTask ?? { status: 'missing', schema: null, taskStatus: null, path: null },
       action: scaffoldAction,
       check: scaffold.check,
     },
