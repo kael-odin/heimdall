@@ -118,6 +118,41 @@ test('site-assessment: rejects SEO and API evidence from a different origin', ()
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: scans every page before accepting an origin anchor', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-origin-all-pages-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    for (let index = 1; index <= 21; index++) {
+      const page = join(site, 'pages', `page-${String(index).padStart(2, '0')}`);
+      put(join(page, 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+      put(join(page, 'manifest.json'), {
+        target: `https://${index === 21 ? 'unrelated.test' : 'example.test'}/page-${index}`,
+      });
+    }
+    put(join(site, 'seo', 'seo.json'), {
+      origin: 'https://example.test', score: 100,
+      summary: { pages: 21, issues: 0, bySeverity: {}, sitemapCoverage: 'complete' },
+    });
+    put(join(site, 'api-contract.json'), {
+      origin: 'https://example.test',
+      openapi: { paths: { '/api/items': { get: { responses: { '200': {} } } } } },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(result.origin, null);
+    assert.equal(result.seo.status, 'invalid');
+    assert.equal(result.seo.reason, 'origin_ambiguous');
+    assert.equal(result.api.contract.status, 'invalid');
+    assert.equal(result.api.contract.reason, 'origin_ambiguous');
+    assert.match(result.deliveryPlan.items.find(item => item.id === 'api-contract').detail, /多个 origin/);
+    assert.doesNotMatch(run.stdout, /unrelated\.test/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
