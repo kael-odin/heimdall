@@ -53,6 +53,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-14 | **[观察型契约落盘与 B3 后端检查实测](2026-11-14/backend-contract-persistence.md)** | Datasette 83 页复验修复 `probe contract` → `site-assessment` 断链；契约 B0、无端点不伪造；B3 健康/适配器覆盖/缺口账本 3/3 通过，认证与业务等价仍未知 |
 | 2026-11-14 | **[留出查询缺口分级](2026-11-14/holdout-query-gap-ledger.md)** | 将已有分页留出案例中的“已知参数名但新值/组合”单独交给 AI；新增未观察路径、查询变体和新参数三类脱敏账本证据，未实现未知分页回放 |
 | 2026-11-14 | **[`example.com` 公开站点一键交接](2026-11-14/public-handoff-example.md)** | 公开单页样本完成侦察、克隆、三视口验证、严格离线导出和独立启动；v2 100% 与历史辅助分 91 的口径混淆已修正，后端与 QA 仍未知 |
+| 2026-11-14 | **[`vitest.dev` 公开多页试点](2026-11-14/vitest-public-pilot.md)** | 3 页克隆和 SEO/GEO 证据完成；最新验证 2/3 页，严格离线 113 个阻断；修正 handoff 保留不完整视觉证据并让退出码与证据状态一致 |
 
 ## 为什么归档
 

@@ -10,7 +10,7 @@
 
 const pct = value => typeof value === 'number' ? (value * 100).toFixed(1) + '%' : '—';
 
-export function renderHandoff({ siteId, origin, target, summary, gaps, delivered, skippedVerify = false, verifyFailed = false, maxPages }) {
+export function renderHandoff({ siteId, origin, target, summary, summaryEvidence, gaps, delivered, skippedVerify = false, verifyFailed = false, maxPages }) {
   const lines = [];
   const blockers = Object.entries(summary?.blockers ?? {}).sort((a, b) => b[1] - a[1]);
   lines.push(`# 交接说明 · ${siteId}`, '');
@@ -24,7 +24,15 @@ export function renderHandoff({ siteId, origin, target, summary, gaps, delivered
   } else if (!summary) {
     lines.push('> **没有验证结果。** 验证没有跑成功，下面所有"还原度"数字都不存在。');
   } else {
-    if (verifyFailed) lines.push('> **本次验证未通过或执行失败。** 下列数字只描述已完成的测量。', '');
+    const evidenceIncomplete = summaryEvidence?.status === 'incomplete';
+    if (evidenceIncomplete) {
+      lines.push('> **视觉测量已生成，但当前证据完整性核对未通过。** 下列数字只描述本次运行生成的测量，不能作为交付门禁通过。');
+      if (summaryEvidence.invalidPages?.length) {
+        lines.push('>', '> 证据未确认的页面：');
+        for (const item of summaryEvidence.invalidPages.slice(0, 8)) lines.push(`> - ${item.page}：${item.status}`);
+      }
+      lines.push('');
+    } else if (verifyFailed) lines.push('> **本次验证未通过或执行失败。** 下列数字只描述已完成的测量。', '');
     const total = summary.targetTotal ?? 0;
     const measured = summary.measured ?? 0;
     const bounded = summary.bounded ?? 0;

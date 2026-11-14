@@ -209,16 +209,25 @@ const deliver = await run('src/deliver.mjs', [host, siteId]);
 // ---------- 交接说明 ----------
 const summaryText = readSummaryText();
 let summary = !SKIP_VERIFY && summaryText && summaryText !== previousSummary ? readJson(summaryPath) : null;
+let summaryEvidence = null;
 if (summary) {
   const reader = createMeasurementReader(BASE);
-  if (summary.mode !== 'all' || summary.scoreVersion !== 2 || !Array.isArray(summary.pages)
+  const invalidPages = [];
+  const structurallyInvalid = summary.mode !== 'all' || summary.scoreVersion !== 2 || !Array.isArray(summary.pages)
     || (summary.passed === true && (summary.untested !== 0 || summary.measured !== summary.targetTotal
       || summary.measured !== summary.pages.length || new Set(summary.pages.map(page => page.page)).size !== summary.pages.length
-      || summary.pages.some(page => page.measured !== true)))
-    || summary.pages.some(page => page.measured === true && (() => {
+      || summary.pages.some(page => page.measured !== true)));
+  if (!structurallyInvalid) {
+    for (const page of summary.pages) if (page.measured === true) {
       const measurement = reader.read(page.page);
-      return measurement.status !== 'verified' || !summaryMatchesMeasurement(page, measurement.result);
-    })())) summary = null;
+      if (measurement.status !== 'verified' || !summaryMatchesMeasurement(page, measurement.result)) {
+        invalidPages.push({ page: page.page, status: measurement.status });
+      }
+    }
+  }
+  if (structurallyInvalid || invalidPages.length) {
+    summaryEvidence = { status: 'incomplete', invalidPages };
+  } else summaryEvidence = { status: 'verified', invalidPages: [] };
 }
 const gaps = assets.code === 0 ? readJson(join(BASE, 'audit', 'asset-gaps.json')) : null;
 // 交付包目录名带日期，取最新那个；文件夹 mtime 在 Windows 上不可靠，按名字排即可
@@ -235,10 +244,11 @@ mkdirSync(handoffDir, { recursive: true });
 const reportPath = join(handoffDir, 'README.md');
 writeFileAtomic(reportPath, renderHandoff({
   siteId, origin: identity.origin ?? TARGET, target: TARGET, summary, gaps, delivered, skippedVerify: SKIP_VERIFY,
-  verifyFailed: !SKIP_VERIFY && (verify.code !== 0 || !summary), maxPages: MAX_PAGES,
+  summaryEvidence, verifyFailed: !SKIP_VERIFY && (verify.code !== 0 || !summary || summaryEvidence?.status !== 'verified'), maxPages: MAX_PAGES,
 }));
 
 const ok = !cloneFailed && (SKIP_VERIFY || (verify.code === 0 && summary?.passed === true))
+  && (SKIP_VERIFY || summaryEvidence?.status === 'verified')
   && assets.code === 0 && deliver.code === 0;
 log('交接说明 ->', reportPath);
 log(ok ? (SKIP_VERIFY ? '流程完成，本次跳过验证' : '全流程完成，验证门禁通过')

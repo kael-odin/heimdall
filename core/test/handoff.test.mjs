@@ -127,6 +127,22 @@ test('handoff: 失败时即使有部分结果也不能声称覆盖完整', () =>
   assert.doesNotMatch(md, /覆盖完整，可以直接进人工检查/);
 });
 
+test('handoff: 视觉结果存在但证据不完整时，保留测量并列出未确认页面', () => {
+  const md = renderHandoff({
+    ...base,
+    summary: { targetTotal: 2, measured: 2, bounded: 0, untested: 0, average: 0.997, blockers: {} },
+    summaryEvidence: { status: 'incomplete', invalidPages: [{ page: 'docs', status: 'stale' }, { page: 'blog', status: 'missing' }] },
+    verifyFailed: true,
+  });
+  assert.match(md, /视觉测量已生成，但当前证据完整性核对未通过/);
+  assert.match(md, /完整测到 2 页/);
+  assert.match(md, /证据未确认的页面/);
+  assert.match(md, /docs：stale/);
+  assert.match(md, /blog：missing/);
+  assert.doesNotMatch(md, /没有验证结果/);
+  assert.doesNotMatch(md, /覆盖完整，可以直接进人工检查/);
+});
+
 test('handoff: 资产报告被截断时必须写明扫了多少页', () => {
   const md = renderHandoff({
     ...base,
