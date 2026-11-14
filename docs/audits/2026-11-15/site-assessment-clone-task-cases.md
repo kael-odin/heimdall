@@ -18,14 +18,14 @@ node core/src/cli.mjs site-assessment <site-id> --json
 
 | 案例 | 页面 / 镜像 | 当前视觉验证 | strict 交付 | `cloneTask` | 独立部署 | 其他证据 |
 | --- | ---: | ---: | --- | --- | --- | --- |
-| `example.com` | 1 / 1 | 1 / 1 | `passed` | `ready` | `verified` | API missing，QA not_configured |
+| `example.com` | 1 / 1 | 1 / 1 | `passed` | `ready_for_ai_review` | `verified` | scope limited；API missing，QA not_configured |
 | `vitest.dev` | 3 / 3 | 2 / 3 | `blocked`，96 个阻断，12 条浏览器失败 | `blocked_on_visual_verification` | `unknown` | API missing，QA not_configured |
 | `iana.org` | 8 / 8 | 0 / 8 当前有效 | `blocked`，248 个阻断 | `blocked_on_visual_verification` | `unknown` | API adapter_observed，QA not_configured |
 | `rfc-editor.org` | 0 / 0 当前归档镜像 | 未开始 | `not_recorded` | `blocked_on_capture` | `unknown` | SEO 84，GEO 68.4，API missing，QA not_configured |
 
 ## 结论
 
-- `example.com` 证明完整静态交付可以到达 `ready`，并且独立断网部署状态能进入任务包。
+- `example.com` 证明当前声明范围内的静态交付和独立断网部署可以通过；由于范围仍受限，`cloneTask` 保持 `ready_for_ai_review`，并要求 `allDiscovered` 复测，不再显示为无缺口 `ready`。
 - `vitest.dev` 证明多页站点会保留部分视觉验证和 strict 阻断，不会把 2/3 页面包装成完整通过。
 - `iana.org` 的旧摘要记录了通过结果，但当前扫描把 8 页都视为非当前有效；`cloneTask` 正确停在 `blocked_on_visual_verification`。
 - 当前 RFC Editor 归档目录只有 SEO 报告，没有页面目录。此前 6/6 镜像和视觉验证记录应保留为历史现场，不能用当前归档重新声称已复现。
@@ -35,6 +35,19 @@ node core/src/cli.mjs site-assessment <site-id> --json
 `scope.visual.verificationGaps` 现在返回当前扫描发现的前 50 个页面及其状态，并保留 `total` 与 `truncated`。这给 AI 提供具体复测对象，同时避免把旧验证摘要当成当前证据。
 
 仍未证明登录、权限、写入、状态机、WebSocket、持久化和外部副作用等价。公开快照也不能证明任意站点的克隆成功率。
+
+## 克隆范围门禁复验
+
+同一批归档在范围门禁加入后重新读取：
+
+| 案例 | 当前范围 | `scopeLimited` | `cloneTask` | 范围动作 |
+| --- | --- | --- | --- | --- |
+| `example.com` | `recon-discovered` | `true` | `ready_for_ai_review` | `allDiscovered` |
+| `vitest.dev` | `recon-discovered` | `true` | `blocked_on_visual_verification` | 被更早视觉阻断覆盖 |
+| `iana.org` | `unknown` | `true` | `blocked_on_visual_verification` | 被更早视觉阻断覆盖 |
+| `rfc-editor.org` | `unknown` | `true` | `blocked_on_capture` | 被更早采集阻断覆盖 |
+
+这保留了“当前范围可交付”和“整站范围完整”之间的区别。
 
 ## SEO/GEO 行动元数据复验
 
