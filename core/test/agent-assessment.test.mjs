@@ -485,6 +485,40 @@ test('site-assessment: marks combined SEO/GEO action truncation explicitly', () 
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: exposes backend gap-ledger truncation metadata', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-gap-ledger-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'api-contract.json'), { origin: 'https://example.test', openapi: { paths: {} } });
+    put(join(site, 'runtime-adapter', 'manifest.json'), { version: 1, routes: [] });
+    put(join(site, 'runtime-adapter', 'index.mjs'), 'export async function handle() { return new Response("ok"); }');
+    put(join(site, 'adapter-report.json'), {
+      results: { status: 'passed', equivalence: 1, heldout: 1, passed: 1, failed: 0, unverified: 0 },
+      gapLedger: {
+        schema: 'heimdall.adapter-gap-ledger/1', source: 'offline-observation', status: 'offline-observed',
+        summary: { runtimeRequests: 51, uniqueGaps: 51, unobservedPaths: 51, unobservedQueryVariants: 0, uncoveredQueryParameters: 0, missingResponseBodies: 0, unverifiedWrites: 0 },
+        knownRoutes: Array.from({ length: 201 }, (_, index) => ({ method: 'GET', path: `/api/items/${index}`, queryParams: [], responseBody: 'observed', writeVerification: 'not_applicable' })),
+        gaps: Array.from({ length: 51 }, (_, index) => ({ method: 'GET', path: `/api/missing/${index}`, queryParams: [], count: 1, categories: ['unobserved-path'], nearestRoutes: [] })),
+        unknowns: Array.from({ length: 11 }, (_, index) => `unknown-${index}`),
+      },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    const ledger = result.api.adapter.gapLedger;
+    assert.deepEqual(ledger.gapsMeta, { total: 51, returned: 50, truncated: true });
+    assert.deepEqual(ledger.knownRoutesMeta, { total: 201, returned: 200, truncated: true });
+    assert.deepEqual(ledger.unknownsMeta, { total: 11, returned: 10, truncated: true });
+    assert.deepEqual(result.deliveryPlan.backendCompletion.gapLedger.gapsMeta, ledger.gapsMeta);
+    assert.equal(result.api.adapter.gapLedger.gaps.length, 50);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('probe contract persists one sanitized contract so site-assessment can read its B0/B1 status', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-probe-contract-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');

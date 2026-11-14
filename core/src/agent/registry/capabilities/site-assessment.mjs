@@ -69,17 +69,26 @@ function gapLedgerSummary(root, siteId, report) {
     writeVerification: item.writeVerification === 'unverified' ? 'unverified' : 'not_applicable',
   } : null;
   const summary = source.summary && typeof source.summary === 'object' ? source.summary : {};
+  const rawKnownRoutes = Array.isArray(source.knownRoutes) ? source.knownRoutes : [];
+  const rawGaps = Array.isArray(source.gaps) ? source.gaps : [];
+  const rawUnknowns = Array.isArray(source.unknowns) ? source.unknowns : [];
+  const knownRoutes = rawKnownRoutes.slice(0, MAX_BACKEND_TASK_ENDPOINTS).map(safeRoute).filter(Boolean);
+  const gaps = rawGaps.slice(0, 50).map(item => ({
+    method: String(item.method ?? '').toUpperCase().slice(0, 10), path: safePath(item.path), queryParams: safeNames(item.queryParams),
+    count: Number(item.count ?? 0), categories: safeLabels(item.categories),
+    nearestRoutes: Array.isArray(item.nearestRoutes) ? item.nearestRoutes.slice(0, 3).map(safeRoute).filter(Boolean) : [],
+  }));
+  const unknowns = safeLabels(rawUnknowns);
   return {
     schema: 'heimdall.adapter-gap-ledger/1', source: source.source ?? 'unknown', status: source.status ?? 'unknown',
     summary: Object.fromEntries(['runtimeRequests', 'uniqueGaps', 'unobservedPaths', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'missingResponseBodies', 'unverifiedWrites']
       .map(key => [key, Number(summary[key] ?? 0)])),
-    knownRoutes: Array.isArray(source.knownRoutes) ? source.knownRoutes.slice(0, MAX_BACKEND_TASK_ENDPOINTS).map(safeRoute).filter(Boolean) : [],
-    gaps: Array.isArray(source.gaps) ? source.gaps.slice(0, 50).map(item => ({
-      method: String(item.method ?? '').toUpperCase().slice(0, 10), path: safePath(item.path), queryParams: safeNames(item.queryParams),
-      count: Number(item.count ?? 0), categories: safeLabels(item.categories),
-      nearestRoutes: Array.isArray(item.nearestRoutes) ? item.nearestRoutes.slice(0, 3).map(safeRoute).filter(Boolean) : [],
-    })) : [],
-    unknowns: safeLabels(source.unknowns).slice(0, 20),
+    knownRoutes,
+    knownRoutesMeta: { total: rawKnownRoutes.length, returned: knownRoutes.length, truncated: rawKnownRoutes.length > MAX_BACKEND_TASK_ENDPOINTS },
+    gaps,
+    gapsMeta: { total: rawGaps.length, returned: gaps.length, truncated: rawGaps.length > 50 },
+    unknowns,
+    unknownsMeta: { total: rawUnknowns.length, returned: unknowns.length, truncated: rawUnknowns.length > 10 },
     report: source === report?.gapLedger ? reportPath(siteId, 'adapter-report.json') : reportPath(siteId, 'adapter-gap-ledger.json'),
   };
 }
