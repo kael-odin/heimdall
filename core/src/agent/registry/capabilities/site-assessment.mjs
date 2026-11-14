@@ -12,6 +12,7 @@ import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { redactText } from '../../redact.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
 import { listRuns, openWorkspace, relPath, runsDir } from '../../../qa/run.mjs';
+import { fileable } from '../../../qa/report.mjs';
 import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
 import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { GEO_METHOD_VERSION } from '../../../seo/method.mjs';
@@ -19,6 +20,7 @@ import { readCurrentScore } from '../../../score-status.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
+const MAX_QA_FINDINGS = 12;
 const SEO_SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 const BROWSER_FAILURE_KINDS = new Set(['http', 'pageError', 'navigation', 'requestFailed', 'externalRequest', 'websocketUnsupported', 'observationDeadline', 'pageCrash', 'probeError']);
@@ -119,16 +121,19 @@ function reportPath(siteId, suffix) {
   return `workspace/${siteId}/${suffix}`;
 }
 
+function safeSummaryText(value, max = 240) {
+  return redactText(String(value ?? ''), { profile: 'strict' }).text
+    .replace(/\b(?:token|cookie|authorization|bearer|password|secret)\b\s*[:=]\s*[^\s&,;]+/gi, '[sensitive value removed]')
+    .slice(0, max);
+}
+
 function safeBrowserFailure(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const text = input => redactText(String(input ?? ''), { profile: 'strict' }).text
-    .replace(/\b(?:token|cookie|authorization|bearer|password|secret)\b\s*[:=]\s*[^\s&,;]+/gi, '[sensitive value removed]')
-    .slice(0, 240);
   const result = { kind: BROWSER_FAILURE_KINDS.has(value.kind) ? value.kind : 'unknown' };
   for (const key of ['page', 'target', 'error', 'message', 'resourceType']) {
     if (typeof value[key] !== 'string') continue;
     if (key === 'resourceType') result.resourceType = BROWSER_RESOURCE_TYPES.has(value[key]) ? value[key] : 'other';
-    else result[key] = text(value[key]);
+    else result[key] = safeSummaryText(value[key]);
   }
   if (Number.isInteger(value.status)) result.status = value.status;
   if (Number.isInteger(value.pageIndex) && value.pageIndex >= 0) result.pageIndex = value.pageIndex;
@@ -487,6 +492,42 @@ function runSummary(run) {
     .filter(key => Number.isFinite(summary[key])).map(key => [key, summary[key]]));
 }
 
+function safeQaFinding(value, runId) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const text = input => safeSummaryText(input, 360);
+  const path = typeof value.path === 'string' ? safeSummaryText(value.path) : null;
+  return {
+    id: typeof value.id === 'string' ? value.id.slice(0, 40) : null,
+    tier: ['wall', 'degrade', 'tolerable'].includes(value.tier) ? value.tier : 'unknown',
+    basis: ['failed', 'wrong', 'promise', 'friction', 'cosmetic'].includes(value.basis) ? value.basis : 'unknown',
+    kind: typeof value.kind === 'string' ? value.kind.slice(0, 64) : 'unknown',
+    path,
+    title: text(value.title),
+    ...(typeof value.target === 'string' ? { target: text(value.target).slice(0, 240) } : {}),
+    ...(typeof value.detector === 'string' ? { detector: text(value.detector).slice(0, 80) } : {}),
+    ...(typeof value.expected === 'string' ? { expected: text(value.expected) } : {}),
+    ...(typeof value.observed === 'string' ? { observed: text(value.observed) } : {}),
+    ...(typeof value.loss === 'string' ? { loss: text(value.loss) } : {}),
+    confidence: typeof value.confidence === 'string' ? value.confidence.slice(0, 40) : 'unknown',
+    source: value.source === 'agent' ? 'agent' : 'check',
+    triage: typeof value.triage?.status === 'string' ? value.triage.status.slice(0, 32) : 'unknown',
+    verification: {
+      status: 'pending_human_verdict',
+      method: 'heimdall_qa_findings',
+      runId,
+      findingId: typeof value.id === 'string' ? value.id.slice(0, 40) : null,
+    },
+  };
+}
+
+function qaFindingDigest(runDir, run) {
+  const source = readJson(join(runDir, 'findings.json'));
+  if (!Array.isArray(source)) return { status: 'unavailable', items: [], total: run?.summary?.fileable ?? null, returned: 0, truncated: false };
+  const findings = source.filter(fileable);
+  const items = findings.slice(0, MAX_QA_FINDINGS).map(finding => safeQaFinding(finding, run.runId)).filter(Boolean);
+  return { status: 'observed', items, total: findings.length, returned: items.length, truncated: findings.length > items.length };
+}
+
 function qaSummary(args, ctx, siteId, origin) {
   if (!args.qaWorkspace) return { status: 'not_configured', latest: null, metrics: null, site: null };
   let ws;
@@ -520,6 +561,7 @@ function qaSummary(args, ctx, siteId, origin) {
       startedAt: run.startedAt ?? null,
       summary,
       completeness: { status: incompleteReasons.length ? 'incomplete' : known ? 'complete' : 'unknown', incompleteReasonCount: incompleteReasons.length },
+      findings: qaFindingDigest(runDir, run),
       report: relPath(ws, join(runDir, 'report.md')),
       bugs: relPath(ws, join(runDir, 'bugs.md')),
     },

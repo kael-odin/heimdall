@@ -112,6 +112,19 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       coverage: { pages: [{ path: '/', viewport: '1440x900' }], viewports: ['1440x900'], checks: [] },
       summary: { total: 2, fileable: 1, environment: 0, checkNeedsFix: 0, tolerable: 0, suppressed: 1 },
     });
+    put(join(qa, '.heimdall', 'qa', 'runs', runId, 'findings.json'), [
+      {
+        id: 'F1', fingerprint: 'fp_qa1', tier: 'wall', basis: 'failed', kind: 'network', path: '/api/items',
+        title: '接口泄露 token=private-value', target: '/api/items?token=private-value',
+        observed: 'Authorization: Bearer abcdefghijkl', confidence: 'observed', source: 'check',
+        triage: { status: 'new' },
+      },
+      {
+        id: 'F2', fingerprint: 'fp_qa2', tier: 'degrade', basis: 'wrong', kind: 'a11y', path: '/checkout',
+        title: '输入框没有标签', target: '#email', observed: '控件缺少可访问名称',
+        confidence: 'observed', source: 'check', triage: { status: 'new' },
+      },
+    ]);
 
     const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
@@ -133,6 +146,13 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.api.scaffold.present, false);
     assert.equal(env.result.api.adapter.gapLedger.summary.uniqueGaps, 1);
     assert.equal(env.result.qa.latest.runId, runId);
+    assert.equal(env.result.qa.latest.findings.status, 'observed');
+    assert.equal(env.result.qa.latest.findings.total, 2);
+    assert.equal(env.result.qa.latest.findings.returned, 2);
+    assert.equal(env.result.qa.latest.findings.items[0].verification.status, 'pending_human_verdict');
+    assert.equal(env.result.qa.latest.findings.items[0].verification.method, 'heimdall_qa_findings');
+    assert.equal(env.result.qa.latest.findings.items[0].target, '/api/items?[sensitive value removed]');
+    assert.doesNotMatch(run.stdout, /private-value|abcdefghijkl/);
     assert.equal(env.result.qa.metrics.coverage.runs, 1);
     assert.equal(env.result.qa.metrics.coverage.pageViewportChecks, 1);
     assert.equal(env.result.qa.metrics.runtime.count, 1);
