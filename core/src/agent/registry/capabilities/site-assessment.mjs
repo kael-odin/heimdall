@@ -1144,7 +1144,9 @@ function buildCloneTask(siteId, origin, clone, items) {
     delivery.report ? { path: delivery.report, role: 'strict offline delivery summary', basis: 'observed', required: true } : null,
     deployment.report ? { path: deployment.report, role: 'independent deployment verification', basis: 'observed', required: false } : null,
   ].filter(Boolean);
-  const cloneCommand = origin ? `heimdall clone ${origin}/ --scope site --level verified` : null;
+  const cloneCommand = origin
+    ? `heimdall clone ${origin}/ --scope site --level verified${delivery.coverage?.scopeLimited === true ? ' --all-discovered' : ''}`
+    : null;
   const exportCommand = `heimdall live ${siteId} --offline --strict --heal --materialize-har${delivery.root === 'mirror' ? ' --root mirror' : ''}`;
   const verificationCommands = [
     ...(cloneCommand ? [cloneCommand] : []),
