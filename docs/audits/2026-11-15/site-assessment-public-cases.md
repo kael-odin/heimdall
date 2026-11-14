@@ -39,5 +39,6 @@ node core/src/cli.mjs public-case-summary --case-path docs/cases/xspark/2026-11-
 
 - 公开案例已经能区分“页面与 SEO 证据充分”和“后端、认证、权限、业务 QA 未知”。
 - RFC Editor 仍被动态请求、外链运行时、未镜像链接和二进制审核阻断，不能作为独立离线交付通过案例。
+- 同一 RFC Editor 报告已复核 `deliveryPlan.seoGeoTask`：SEO 90、GEO 71，评分和测量口径均为 `current`，sitemap 为 `partial`，任务状态为 `ready_for_ai_review`，返回 6 个脱敏 observed 行动项，`provenance.invented=0`，输出未命中 Bearer、private-value 或 super-secret。它给 AI 提供了当前优化上下文，但 sitemap 范围和真实搜索/模型引用效果仍未被证明。
 - Xspark 的 QA 通过只适用于其 5 页、10 次检查和声明范围，不能外推为任意站点检测准确率。
 - 下一步需要获授权真实站点的登录、权限、写入、状态机和完整 QA 旅程；公开只读复核不能替代这些证据。

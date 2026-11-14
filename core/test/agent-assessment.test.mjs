@@ -110,6 +110,7 @@ test('site-assessment: rejects SEO and API evidence from a different origin', ()
     assert.equal(result.origin, 'https://example.test');
     assert.equal(result.seo.status, 'invalid');
     assert.equal(result.seo.reason, 'origin_mismatch');
+    assert.equal(result.deliveryPlan.seoGeoTask.status, 'blocked_on_observation');
     assert.equal(result.api.contract.status, 'invalid');
     assert.equal(result.api.contract.reason, 'origin_mismatch');
     assert.ok(result.unknowns.some(item => item.id === 'api-contract-invalid'));
@@ -281,6 +282,16 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.seo.scoreMethodVersion, SEO_SCORE_METHOD_VERSION);
     assert.equal(env.result.seo.measurementVersion, SEO_MEASUREMENT_VERSION);
     assert.equal(env.result.seo.geo.actionPlanMeta.truncated, false);
+    assert.equal(env.result.deliveryPlan.seoGeoTask.schema, 'heimdall.seo-geo-ai-task/1');
+    assert.equal(env.result.deliveryPlan.seoGeoTask.status, 'ready_for_ai_review');
+    assert.equal(env.result.deliveryPlan.seoGeoTask.scores.seo, 92.8);
+    assert.equal(env.result.deliveryPlan.seoGeoTask.scores.geo, 80);
+    assert.deepEqual(env.result.deliveryPlan.seoGeoTask.observedActions.map(item => item.id), [
+      'content-title-missing', 'geo-citation-description',
+    ]);
+    assert.equal(env.result.deliveryPlan.seoGeoTask.provenance.invented.length, 0);
+    assert.match(env.result.deliveryPlan.seoGeoTask.prompt, /不要把分数解释为排名/);
+    assert.doesNotMatch(run.stdout, /private-value/);
     assert.equal(env.result.api.contract.summary.endpoints, 1);
     assert.equal(env.result.api.adapter.status, 'validated');
     assert.equal(env.result.api.scaffold.present, false);

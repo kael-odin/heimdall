@@ -863,6 +863,101 @@ function seoRepairTask(issue, seo) {
   };
 }
 
+function buildSeoGeoTask(siteId, origin, seo) {
+  const observed = seo.status === 'observed';
+  const geo = seo.geo && typeof seo.geo === 'object' ? seo.geo : {
+    score: null, status: 'unknown', methodVersion: null, actionItems: 0, actionPlan: [],
+    actionPlanMeta: { truncated: false },
+  };
+  const repairCandidates = Array.isArray(seo.repairCandidates) ? seo.repairCandidates : [];
+  const methodsCurrent = observed && seo.scoreMethodStatus === 'current' && seo.measurementStatus === 'current';
+  const seoActions = observed ? repairCandidates.map(issue => ({
+    kind: 'seo', id: issue.id, category: issue.category, severity: issue.severity,
+    priority: issue.severity === 'critical' || issue.severity === 'high' ? 'P0' : 'P1',
+    title: issue.title, instruction: issue.suggestion, affectedPages: issue.affectedPages,
+    pages: issue.pages, evidenceLevel: 'observed',
+    verification: { method: 'rerun-seo-audit', checkId: issue.id, expectedStatus: 'resolved' },
+  })) : [];
+  const geoActions = observed ? geo.actionPlan.map(action => ({
+    kind: 'geo', id: action.id, dimension: action.dimension, priority: action.priority,
+    title: action.title, instruction: action.action,
+    affectedPages: action.impact?.affectedPages ?? 0,
+    evidenceLevel: 'observed', estimatedEffort: action.estimatedEffort,
+    verification: { method: 'rerun-geo-audit', checkId: action.validation?.checkId ?? action.id, expectedStatus: 'pass' },
+  })) : [];
+  const actions = [...seoActions, ...geoActions].slice(0, 20);
+  const coverage = {
+    pages: Number.isInteger(seo.pages) ? seo.pages : null,
+    sitemapCoverage: seo.completeness?.sitemapCoverage ?? null,
+    failedPages: Number(seo.completeness?.failedPages ?? 0),
+    initialHtmlUnchecked: Number(seo.completeness?.initialHtmlUnchecked ?? 0),
+    geoStatus: geo.status ?? 'unknown',
+    actionItems: geo.actionItems ?? 0,
+    actionsTruncated: seo.repairCandidatesMeta?.truncated === true || geo.actionPlanMeta?.truncated === true,
+  };
+  const complete = observed && methodsCurrent
+    && !['partial', 'unavailable'].includes(coverage.sitemapCoverage)
+    && coverage.failedPages === 0 && coverage.initialHtmlUnchecked === 0
+    && coverage.geoStatus === 'complete' && actions.length === 0;
+  const status = !observed ? 'blocked_on_observation'
+    : !methodsCurrent ? 'blocked_on_measurement' : complete ? 'ready' : 'ready_for_ai_review';
+  return {
+    schema: 'heimdall.seo-geo-ai-task/1', siteId, status,
+    objective: '让 AI 在当前 SEO/GEO 证据范围内提出可执行优化，并用同一套确定性审计复测结果。',
+    scores: {
+      seo: observed ? seo.score : null, seoGrade: observed ? seo.grade : null,
+      geo: observed ? geo.score : null, geoStatus: observed ? geo.status : 'unknown',
+    },
+    methods: {
+      seoScore: { version: seo.scoreMethodVersion, status: seo.scoreMethodStatus },
+      seoMeasurement: { version: seo.measurementVersion, status: seo.measurementStatus },
+      geo: { version: geo.methodVersion, status: geo.status === 'unknown' ? 'unknown' : geo.status },
+    },
+    coverage,
+    observedActions: actions,
+    inputs: observed ? [{ path: seo.reports.json, role: 'deterministic SEO/GEO report', basis: 'observed', required: true }] : [],
+    tasks: observed ? [
+      { id: 'fix-observed-seo', basis: 'observed', requiresHumanApproval: true, instruction: '按 observedActions 中的 SEO 项修复页面、模板或结构化信息；不要改评分公式来消除问题。' },
+      { id: 'improve-observed-geo', basis: 'observed', requiresHumanApproval: true, instruction: '按 GEO 行动项补充可回答、可抽取、实体和引用线索；所有事实、作者和链接先人工核实。' },
+      { id: 'rerun-complete-audit', basis: 'inferred', requiresHumanApproval: false, instruction: '修复后用相同站点范围重新审计，确认口径、覆盖、sitemap 和 action plan 都可比较。' },
+    ] : [
+      { id: 'obtain-seo-geo-evidence', basis: 'unknown', requiresHumanApproval: true, instruction: '先运行授权的 SEO/GEO 审计；没有报告时不要猜测分数或问题。' },
+    ],
+    guardrails: [
+      'SEO/GEO 分数只表示当前方法和采集范围，不代表排名、流量、收录或模型引用成功。',
+      'unknown、stale、future、partial 和 unavailable 不能被 AI 改写成通过或完整覆盖。',
+      'AI 可以提出内容、结构、链接和结构化数据优化，但不能未经人工核实编造事实、作者、评价或来源。',
+      '任何优化都必须在相同范围、相同方法版本下重新运行审计后才能比较前后结果。',
+    ],
+    verification: {
+      commands: [
+        ...(origin ? [`heimdall seo-audit ${origin}/`] : []),
+        `heimdall site-assessment ${siteId} --json`,
+      ],
+      gates: [
+        '评分和测量口径均为 current，或报告明确保留为历史观察。',
+        'sitemap、页面采集和初始 HTML 范围完整后再解释站点级结果。',
+        '修复后的 observedActions 在同一审计范围内消失或降为已解释状态。',
+      ],
+    },
+    prompt: [
+      '先读取 deliveryPlan.seoGeoTask 和其 inputs 指向的脱敏报告。',
+      '把 observedActions 当作当前证据，把 tasks 中的 inferred 内容当作待人工核实的建议。',
+      '不要把分数解释为排名或模型引用成功，也不要用改评分公式的方式消除问题。',
+      '完成一组小改动后按 verification.commands 复测，并分别汇报 verified、observed、inferred、unknown。',
+    ].join('\n'),
+    provenance: {
+      observed: observed && seo.reports?.json ? [seo.reports.json] : [],
+      inferred: ['优化优先级', 'AI 任务步骤', '复测门禁'],
+      invented: [],
+    },
+    limitations: [
+      '没有真实搜索结果、抓取日志或模型引用实验时，不能证明排名、收录和引用效果。',
+      '任务包只投影安全摘要；需要完整问题证据时应读取同一份脱敏 SEO 报告。',
+    ],
+  };
+}
+
 function repairTasksFromGapLedger(siteId, gapLedger) {
   const summary = gapLedger?.summary;
   if (!summary) return [];
@@ -1078,6 +1173,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
 function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace }) {
   const items = [];
   const backendCompletion = buildBackendCompletionTask(siteId, api, clone.delivery);
+  const seoGeoTask = buildSeoGeoTask(siteId, origin, seo);
   const add = (item) => items.push({
     evidence: [],
     ...(item.action ? { action: item.action } : {}),
@@ -1366,6 +1462,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     counts,
     items,
     backendCompletion,
+    seoGeoTask,
   };
 }
 
