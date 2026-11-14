@@ -880,3 +880,37 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     assert.ok(partialSitemapResult.deliveryPlan.items.some(item => item.id === 'seo-geo-follow-up'));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('site-assessment: clone AI task keeps capture, delivery, and deployment gates separate', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-clone-task-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'pages', 'about', 'manifest.json'), { target: 'https://example.test/about' });
+    put(join(site, 'live-export.json'), {
+      schema: 'heimdall.live-export/1', siteId: 'example.test', generatedAt: '2026-11-15T00:00:00.000Z',
+      status: 'blocked', published: false, offline: true, strict: true, root: 'landing', pages: 1,
+      blockingCount: 1, blockers: { unresolved: 1 }, browser: { checked: 1, failed: 0, untested: 0, totalPages: 1 },
+      coverage: { scope: 'captured-only', scopeLimited: true }, note: 'private-value',
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    const task = result.deliveryPlan.cloneTask;
+    assert.equal(task.schema, 'heimdall.clone-ai-task/1');
+    assert.equal(task.status, 'blocked_on_capture');
+    assert.equal(task.scope.pages, 2);
+    assert.equal(task.scope.mirrors, 1);
+    assert.equal(task.scope.mirrorCoverage, 0.5);
+    assert.ok(task.observedActions.some(item => item.id === 'clone-mirror-coverage'));
+    assert.ok(task.observedActions.some(item => item.id === 'clone-offline-delivery'));
+    assert.ok(task.tasks.some(item => item.id === 'clone-mirror-coverage'));
+    assert.equal(task.provenance.invented.length, 0);
+    assert.match(task.prompt, /strict 导出/);
+    assert.doesNotMatch(run.stdout, /private-value/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

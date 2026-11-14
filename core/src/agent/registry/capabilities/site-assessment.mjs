@@ -30,6 +30,7 @@ const BROWSER_FAILURE_KINDS = new Set(['http', 'pageError', 'navigation', 'reque
 const BROWSER_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'media', 'font', 'script', 'texttrack', 'xhr', 'fetch', 'eventsource', 'websocket', 'manifest', 'other']);
 const BINARY_DOWNLOAD_PATH = /\.(?:db|sqlite3?|zip|tar|tgz|gz|bz2|xz|7z|rar|pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)(?:$|[?#])/i;
 const SITEMAP_REASONS = new Set(['budget-exhausted', 'time-limit', 'total-byte-limit', 'cross-origin-sitemap', 'robots-unavailable', 'sitemap-request-failed', 'unknown-sitemap-format', 'depth-limit', 'file-limit', 'url-limit', 'document-byte-limit']);
+const CLONE_TASK_ITEM_IDS = new Set(['clone-capture', 'clone-mirror-coverage', 'clone-visual-verification', 'clone-offline-delivery', 'clone-external-runtime', 'clone-browser-failures', 'clone-runtime-data-gaps', 'clone-binary-downloads', 'independent-deployment']);
 
 function readJson(file) {
   try {
@@ -1046,6 +1047,108 @@ function buildQaTask(siteId, origin, qa, api) {
   };
 }
 
+function buildCloneTask(siteId, origin, clone, items) {
+  const delivery = clone.delivery ?? { status: 'not_recorded' };
+  const deployment = delivery.deploymentVerification ?? { status: 'unknown', report: null };
+  const cloneItems = items.filter(item => CLONE_TASK_ITEM_IDS.has(item.id));
+  const actions = cloneItems.map(item => ({
+    id: item.id, kind: item.kind, status: item.status, basis: item.basis,
+    title: item.title, instruction: item.detail, evidence: item.evidence,
+    action: item.action ?? null, verification: item.verify ?? null,
+    requiresHumanApproval: item.action?.requiresHumanApproval === true || item.status === 'blocked',
+  }));
+  const captureBlocked = !clone.pages || clone.mirrors < clone.pages;
+  const visualBlocked = clone.pages > 0 && (clone.unmeasured > 0 || clone.verificationStatus !== 'checked');
+  const deliveryBlocked = clone.mirrors > 0 && delivery.status !== 'passed';
+  const deploymentBlocked = delivery.status === 'passed' && deployment.status !== 'verified';
+  const status = captureBlocked ? 'blocked_on_capture'
+    : visualBlocked ? 'blocked_on_visual_verification'
+      : deliveryBlocked ? 'blocked_on_offline_delivery'
+        : deploymentBlocked ? 'blocked_on_independent_deployment'
+          : actions.length ? 'ready_for_ai_review' : 'ready';
+  const reportInputs = [
+    delivery.report ? { path: delivery.report, role: 'strict offline delivery summary', basis: 'observed', required: true } : null,
+    deployment.report ? { path: deployment.report, role: 'independent deployment verification', basis: 'observed', required: false } : null,
+  ].filter(Boolean);
+  const cloneCommand = origin ? `heimdall clone ${origin}/ --scope site --level verified` : null;
+  const exportCommand = `heimdall live ${siteId} --offline --strict --heal --materialize-har${delivery.root === 'mirror' ? ' --root mirror' : ''}`;
+  const verificationCommands = [
+    ...(cloneCommand ? [cloneCommand] : []),
+    exportCommand,
+    ...(delivery.status === 'passed' && deployment.status !== 'verified'
+      ? [`heimdall live-verify <deliverable/${siteId}-包目录> --static --site-id ${siteId}`] : []),
+    `heimdall site-assessment ${siteId} --json`,
+  ];
+  return {
+    schema: 'heimdall.clone-ai-task/1', siteId, status,
+    objective: '让 AI 在当前镜像、还原度和独立交付证据范围内补齐可验证的站点重建缺口。',
+    scope: {
+      origin: origin ?? null,
+      pages: clone.pages, mirrors: clone.mirrors,
+      mirrorCoverage: clone.pages ? +(clone.mirrors / clone.pages).toFixed(3) : null,
+      visual: {
+        verified: clone.verified, unmeasured: clone.unmeasured,
+        verificationStatus: clone.verificationStatus, averageOverall: clone.averageOverall,
+        averageScore: clone.averageScore, worstViewport: clone.worstViewport,
+        scoreStatuses: clone.scoreStatuses,
+      },
+      delivery: {
+        status: delivery.status, published: delivery.published ?? null,
+        offline: delivery.offline ?? null, strict: delivery.strict ?? null,
+        blockingCount: delivery.blockingCount ?? null,
+        browser: delivery.browser ?? null,
+        browserFailures: delivery.browserFailures?.length ?? 0,
+        runtimeDataGaps: delivery.runtimeDataGaps?.length ?? 0,
+        binaryDownloadGaps: delivery.binaryDownloadGaps?.length ?? 0,
+        independentDeployment: { status: deployment.status, report: deployment.report },
+      },
+    },
+    observedActions: actions.filter(item => item.basis === 'observed'),
+    openActions: actions,
+    tasks: actions.length ? actions.map(item => ({
+      id: item.id, basis: item.basis, requiresHumanApproval: item.requiresHumanApproval,
+      instruction: item.instruction, verification: item.verification,
+    })) : [{
+      id: 'rerun-clone-gates', basis: 'inferred', requiresHumanApproval: false,
+      instruction: '代码或资源发生变化后，按相同页面、视口和交付范围重新运行克隆门禁。',
+      verification: { method: 'site-assessment', expectedStatus: 'ready' },
+    }],
+    inputs: reportInputs,
+    guardrails: [
+      '视觉分数只表示当前页面和视口的相似度，不代表功能、后端、SEO 或业务等价。',
+      'strict 离线导出通过不等于独立部署通过；必须有当前校验和绑定的断网部署报告。',
+      '外部运行时、动态 API、WebSocket、登录、权限和写入行为不能由 AI 猜成已实现。',
+      'unknown、unmeasured、blocked 和未审核资源必须保留原状态，不能改写成通过。',
+      '源站源码、凭据、Cookie、令牌、原始 HAR 和未脱敏响应不进入任务包。',
+    ],
+    verification: {
+      commands: verificationCommands,
+      gates: [
+        '镜像数量等于当前页面范围，且每页都有当前有效的多视口验证。',
+        'strict 离线导出为 passed，blockingCount、浏览器失败和未测页均为零。',
+        '独立部署报告绑定当前包校验和，并在 Docker network none 中通过路由检查。',
+        '修复后必须用同一站点范围重新评估，分别汇报 verified、observed、inferred、unknown。',
+      ],
+    },
+    prompt: [
+      '先读取 deliveryPlan.cloneTask、scope 和 inputs 指向的脱敏报告。',
+      '把 observedActions 当作当前证据，把 tasks 中的 inferred 内容当作待验证工作。',
+      '不要把视觉分数、strict 导出或静态页面通过解释成后端和业务功能完成。',
+      '不要猜测动态 API、外部运行时、WebSocket、认证、权限或写入行为；遇到缺口先保留 unknown。',
+      '完成小改动后按 verification.commands 复测，并分别汇报 verified、observed、inferred、unknown。',
+    ].join('\n'),
+    provenance: {
+      observed: reportInputs.map(input => input.path),
+      inferred: ['克隆修复顺序', 'AI 任务步骤', '复测门禁'],
+      invented: [],
+    },
+    limitations: [
+      '页面相似度不能证明交互、认证、权限、状态机、持久化或外部副作用等价。',
+      '没有独立断网部署报告时，strict 导出只能作为候选交付证据。',
+    ],
+  };
+}
+
 function qaWorkspaceCommand(siteId, qa) {
   return qa?.site?.name ? `heimdall qa run --site ${qa.site.name}` : null;
 }
@@ -1545,6 +1648,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     requiresHumanApproval: items.filter(item => item.action?.requiresHumanApproval === true || item.status === 'blocked').length,
   };
   const nextStage = !clone.mirrors ? 'capture' : counts.blocked ? 'human_review' : counts.open ? 'ai_review_with_open_actions' : 'ready';
+  const cloneTask = buildCloneTask(siteId, origin, clone, items);
   return {
     schema: 'heimdall.site-delivery-plan/1',
     decision: {
@@ -1554,6 +1658,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     },
     counts,
     items,
+    cloneTask,
     backendCompletion,
     seoGeoTask,
     qaTask,
