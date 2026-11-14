@@ -10,6 +10,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 import { REPO_ROOT } from '../../installation.mjs';
 import { isInside } from '../../../paths.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
+import { qaFindingDigest } from '../../qa-finding-summary.mjs';
 
 const PUBLIC_CASES = join(REPO_ROOT, 'docs', 'cases');
 const MAX_JSON_BYTES = 4 * 1024 * 1024;
@@ -111,6 +112,7 @@ function qaSummary(manifest, run, ci, caseRel) {
     detectorHits: numberOrNull(detection.findings ?? manifestRun.detectorHits),
     detectors: unique((detection.detectors ?? []).map(value => safeText(value, 80)).filter(Boolean)),
     failureCategories: byKind,
+    findingDigest: qaFindingDigest(ciResult.fileable, run?.runId ?? manifestRun.id, { reportedTotal: ciSummary.fileable }),
     baseline: {
       compared: numberOrNull(baseline.compared ?? manifestRun.baselinePairs),
       regressions: numberOrNull(manifestRun.regressions),

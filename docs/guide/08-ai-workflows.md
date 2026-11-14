@@ -57,6 +57,8 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 
 当最近一次运行有可提单问题时，`qa.latest.findings` 会从 `findings.json` 提供最多 12 条脱敏摘要，包含 `id`、`tier`、`basis`、`kind`、`path`、`title`、定位、实测描述和 `verification.status=pending_human_verdict`。`total`、`returned`、`truncated` 表示摘要是否完整；截图、原始证据、请求体、Cookie 和令牌不会进入站点评估结果。摘要用于让 AI 先判断问题类型和下一步，最终仍需通过 `heimdall_qa_findings` 逐条查看并由人裁决。
 
+公开案例的 `qa.findingDigest` 复用同一摘要边界，但只读取案例中的 `qa-ci.json` 安全结果，不打开 `findings.json` 或截图。这样 AI 可以先比较真实案例的缺陷类型和门禁结果，再决定是否需要读取更详细的本地证据。
+
 `qa.metrics` 只是对脱敏运行摘要的再计算：`runtime` 是 QA 运行本身的耗时，`failures` 是导航、检测器、检查点和环境阻断等分类；没有完整报警标签时，`alarms.falsePositiveRate` 和误报占比会明确不可计算，没有定向 oracle 时 `oracle` 也不会被假造。`decision.detectorExpansion=blocked` 表示证据不够，不表示检测器已经通过。
 
 - `decision.stage=capture`：先补镜像，不能直接进入重建或交付；
