@@ -216,6 +216,10 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       bundle: 'deliverable/example.test-live-2026-11-14', bundleChecksumsSha256: checksumsSha256,
       docker: { network: 'none' }, checks: { health: 'passed', stateVolume: 'passed' },
       adapter: { declaredRoutes: 1, exercisedRoutes: 1, untestedRoutes: 0 },
+      httpChecks: {
+        beforeRestart: { checked: 1, passed: 1, results: [{ id: 'create', status: 201 }] },
+        afterRestart: { checked: 1, passed: 1, results: [{ id: 'readback', status: 200 }] },
+      },
     });
     const verifiedRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
@@ -226,6 +230,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.deepEqual(verified.deliveryPlan.backendCompletion.adapterEgress.evidence, [
       'workspace/example.test/adapter-egress-verification.json',
     ]);
+    assert.equal(verified.deliveryPlan.backendCompletion.adapterEgress.httpChecks.afterRestart.results[0].id, 'readback');
     assert.equal(verified.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'offline-egress').status, 'passed');
 
     const published = JSON.parse(readFileSync(join(site, 'live-export.json'), 'utf8'));

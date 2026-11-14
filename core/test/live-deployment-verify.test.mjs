@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { validateDeploymentReport, verifyBundleChecksums } from '../src/live/deployment-verify.mjs';
+import { readHttpChecks, validateDeploymentReport, verifyBundleChecksums } from '../src/live/deployment-verify.mjs';
 
 test('deployment evidence requires network-none, runtime checks, and the current bundle checksum', () => {
   const report = {
@@ -36,5 +36,25 @@ test('deployment evidence rejects a changed file even when checksums.json itself
     assert.match(verifyBundleChecksums(root), /^[a-f0-9]{64}$/);
     writeFileSync(file, 'after');
     assert.throws(() => verifyBundleChecksums(root), /校验失败/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('HTTP deployment checks keep write assertions before restart and readback assertions after restart', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-http-checks-'));
+  try {
+    const file = join(root, 'checks.json');
+    writeFileSync(file, JSON.stringify({
+      version: 1,
+      beforeRestart: [{ id: 'create', method: 'POST', path: '/api/items',
+        headers: { 'content-type': 'application/json' }, body: { name: 'fixture' },
+        expect: { status: 201, contentType: 'application/json', json: [{ pointer: '/ok', equals: true }] } }],
+      afterRestart: [{ id: 'readback', method: 'GET', path: '/api/items',
+        expect: { status: 200, json: [{ pointer: '/items/0/name', equals: 'fixture' }] } }],
+    }));
+    const plan = readHttpChecks(file);
+    assert.equal(plan.beforeRestart[0].method, 'POST');
+    assert.equal(plan.afterRestart[0].expect.json[0].pointer, '/items/0/name');
+    assert.match(plan.sha256, /^[a-f0-9]{64}$/);
+    assert.throws(() => readHttpChecks(join(root, 'missing.json')), /HTTP 检查文件/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

@@ -175,6 +175,15 @@ function adapterEgressVerification(root, siteId) {
   try { checksumsSha256 = verifyBundleChecksums(bundlePath); }
   catch { return { status: 'invalid', report }; }
   if (!validateDeploymentReport(source, { siteId, checksumsSha256 })) return { status: 'invalid', report };
+  const safeChecks = value => value && typeof value === 'object' && !Array.isArray(value) ? {
+    checked: Number.isSafeInteger(value.checked) && value.checked >= 0 ? value.checked : 0,
+    passed: Number.isSafeInteger(value.passed) && value.passed >= 0 ? value.passed : 0,
+    results: Array.isArray(value.results) ? value.results.slice(0, 100).map(item => ({
+      id: typeof item?.id === 'string' ? item.id.slice(0, 64) : 'unknown',
+      status: Number.isInteger(item?.status) ? item.status : null,
+    })) : [],
+  } : null;
+  const rawHttpChecks = source.httpChecks;
   return {
     status: 'verified', report, generatedAt: source.generatedAt,
     bundle: bundleRel, bundleChecksumsSha256: checksumsSha256,
@@ -182,6 +191,9 @@ function adapterEgressVerification(root, siteId) {
       declaredRoutes: Number(source.adapter.declaredRoutes ?? 0),
       exercisedRoutes: Number(source.adapter.exercisedRoutes ?? 0),
       untestedRoutes: Number(source.adapter.untestedRoutes ?? 0),
+    } : null,
+    httpChecks: rawHttpChecks && typeof rawHttpChecks === 'object' ? {
+      beforeRestart: safeChecks(rawHttpChecks.beforeRestart), afterRestart: safeChecks(rawHttpChecks.afterRestart),
     } : null,
   };
 }
@@ -655,6 +667,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       basis: adapterServerEgress === 'not-tested' || adapterServerEgress === 'verified' ? 'observed' : 'unknown',
       evidence: delivery?.adapterEgressVerification?.status === 'verified'
         ? [delivery.adapterEgressVerification.report] : [],
+      httpChecks: delivery?.adapterEgressVerification?.httpChecks ?? null,
     },
     gapLedger,
     unknowns: [

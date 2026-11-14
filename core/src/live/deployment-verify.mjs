@@ -18,7 +18,10 @@ const DEFAULT_TIMEOUT_MS = 90_000;
 const DEFAULT_OBSERVE_MS = 3_000;
 const MAX_TIMEOUT_MS = 600_000;
 const MAX_OBSERVE_MS = 15_000;
+const MAX_HTTP_CHECKS = 100;
+const MAX_HTTP_BODY_BYTES = 4 * 1024 * 1024;
 const HOST_RE = /^[a-z0-9.-]+$/i;
+const HTTP_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
 export class DeploymentVerificationError extends Error {
   constructor(code, message) {
@@ -108,6 +111,66 @@ function boundedNumber(value, fallback, max) {
   return number;
 }
 
+function safeCheckPath(value) {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')
+    || value.includes('\\') || value.length > 2048 || /%(?:2f|5c)/i.test(value)) return false;
+  try {
+    const path = new URL(value, 'http://check.local').pathname;
+    return !['/', '/static', '/__heimdall', '/lm'].some(root => path === root || path.startsWith(root + '/'));
+  } catch { return false; }
+}
+
+export function readHttpChecks(path) {
+  regularFile(path, 'HTTP 检查文件');
+  if (lstatSync(path).size > 1024 * 1024) {
+    throw new DeploymentVerificationError('invalid_args', 'HTTP 检查文件超过 1 MiB');
+  }
+  const source = jsonFile(path, 'HTTP 检查文件');
+  if (source?.version !== 1 || !Array.isArray(source.beforeRestart)
+    || source.beforeRestart.length < 1 || source.beforeRestart.length > MAX_HTTP_CHECKS
+    || (source.afterRestart !== undefined && (!Array.isArray(source.afterRestart) || source.afterRestart.length > MAX_HTTP_CHECKS))) {
+    throw new DeploymentVerificationError('invalid_args', 'HTTP 检查文件必须是 version=1，并包含 beforeRestart 数组');
+  }
+  const seen = new Set();
+  const validate = (items, label) => items.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)
+      || typeof item.id !== 'string' || !/^[a-z0-9_-]{1,64}$/i.test(item.id)
+      || seen.has(item.id) || !HTTP_METHODS.has(item.method)
+      || !safeCheckPath(item.path) || !item.expect || typeof item.expect !== 'object') {
+      throw new DeploymentVerificationError('invalid_args', `${label}[${index}] 的请求或断言无效`);
+    }
+    seen.add(item.id);
+    const headers = item.headers ?? {};
+    if (typeof headers !== 'object' || Array.isArray(headers) || Object.keys(headers).length > 50
+      || Object.entries(headers).some(([name, value]) => !/^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$/.test(name)
+        || typeof value !== 'string' || value.length > 4096 || /[\r\n]/.test(value))) {
+      throw new DeploymentVerificationError('invalid_args', `${label}[${index}] 的请求头无效`);
+    }
+    if (item.body !== undefined && !['string', 'object', 'number', 'boolean'].includes(typeof item.body)) {
+      throw new DeploymentVerificationError('invalid_args', `${label}[${index}] 的请求体无效`);
+    }
+    if (item.body !== undefined && Buffer.byteLength(typeof item.body === 'string' ? item.body : JSON.stringify(item.body)) > MAX_HTTP_BODY_BYTES) {
+      throw new DeploymentVerificationError('invalid_args', `${label}[${index}] 的请求体超过 4 MiB`);
+    }
+    const expect = item.expect;
+    if (!Number.isInteger(expect.status) || expect.status < 100 || expect.status > 599
+      || (expect.contentType !== undefined && (typeof expect.contentType !== 'string' || expect.contentType.length > 128))
+      || (expect.textIncludes !== undefined && (typeof expect.textIncludes !== 'string' || expect.textIncludes.length > 200))
+      || (expect.json !== undefined && (!Array.isArray(expect.json) || expect.json.length > 20
+        || expect.json.some(assertion => !assertion || typeof assertion.pointer !== 'string'
+          || !assertion.pointer.startsWith('/') || assertion.pointer.length > 512 || !Object.hasOwn(assertion, 'equals'))))) {
+      throw new DeploymentVerificationError('invalid_args', `${label}[${index}] 的响应断言无效`);
+    }
+    return { ...item, method: item.method, headers, expect };
+  });
+  return {
+    beforeRestart: validate(source.beforeRestart, 'beforeRestart'),
+    afterRestart: validate(source.afterRestart ?? [], 'afterRestart'),
+    sha256: sha256File(path),
+    path,
+  };
+}
+
 function safeRelativeBundle(bundleDir) {
   const rel = relative(DATA_ROOT, bundleDir).replaceAll('\\', '/');
   if (!rel || rel.startsWith('../') || rel.includes('/../') || !rel.startsWith('deliverable/')) {
@@ -133,7 +196,7 @@ function docker(args, timeoutMs) {
   return String(result.stdout ?? '').trim();
 }
 
-function verifierScript(port, observeMs) {
+function verifierScript(port, observeMs, phase) {
   return `
 const { existsSync, readFileSync } = await import('node:fs');
 const base = 'http://127.0.0.1:${port}';
@@ -141,7 +204,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const request = async (path, options) => {
   const response = await fetch(base + path, { ...options, signal: AbortSignal.timeout(15000) });
   const text = await response.text();
-  return { status: response.status, text };
+  return { status: response.status, contentType: response.headers.get('content-type') || '', text };
 };
 const health = async () => {
   for (let attempt = 0; attempt < 60; attempt++) {
@@ -168,6 +231,48 @@ for (const route of routes) {
   if (result.status >= 500) throw new Error(route.method + ' ' + route.path + ' returned ' + result.status);
   exercised++;
 }
+const readJsonPointer = (value, pointer) => {
+  let current = value;
+  for (const token of pointer.slice(1).split('/').map(part => part.replaceAll('~1', '/').replaceAll('~0', '~'))) {
+    if (current === null || current === undefined || !Object.hasOwn(current, token)) return undefined;
+    current = current[token];
+  }
+  return current;
+};
+const runHttpChecks = async checks => {
+  const results = [];
+  for (const check of checks) {
+    const body = check.body === undefined || check.method === 'GET' || check.method === 'HEAD'
+      ? undefined : typeof check.body === 'string' ? check.body : JSON.stringify(check.body);
+    const result = await request(check.path, {
+      method: check.method, headers: check.headers, ...(body === undefined ? {} : { body }),
+    });
+    if (result.status !== check.expect.status) throw new Error('HTTP check failed: ' + check.id);
+    if (check.expect.contentType && !result.contentType.toLowerCase().startsWith(check.expect.contentType.toLowerCase())) {
+      throw new Error('HTTP check failed: ' + check.id);
+    }
+    if (check.expect.textIncludes && !result.text.includes(check.expect.textIncludes)) {
+      throw new Error('HTTP check failed: ' + check.id);
+    }
+    if (Array.isArray(check.expect.json)) {
+      let value;
+      try { value = JSON.parse(result.text); } catch { throw new Error('HTTP check failed: ' + check.id); }
+      for (const assertion of check.expect.json) {
+        if (JSON.stringify(readJsonPointer(value, assertion.pointer)) !== JSON.stringify(assertion.equals)) {
+          throw new Error('HTTP check failed: ' + check.id);
+        }
+      }
+    }
+    results.push({ id: check.id, status: result.status });
+  }
+  return { checked: results.length, passed: results.length, results };
+};
+let httpChecks = null;
+if (existsSync('/run/heimdall-http-checks.json')) {
+  const plan = JSON.parse(readFileSync('/run/heimdall-http-checks.json', 'utf8'));
+  const checks = '${phase}' === 'beforeRestart' ? plan.beforeRestart : plan.afterRestart;
+  httpChecks = await runHttpChecks(checks);
+}
 await wait(${observeMs});
 const gaps = JSON.parse((await request('/__heimdall/adapter-gaps')).text);
 if (!gaps || typeof gaps.summary?.uniqueGaps !== 'number') throw new Error('adapter gap ledger is unavailable');
@@ -175,7 +280,7 @@ if (!existsSync('/data/adapter-gap-ledger.json')) throw new Error('runtime state
 console.log(JSON.stringify({
   health: 'passed', root: root.status < 500 ? 'passed' : 'failed',
   declaredRoutes: routes.length, exercisedRoutes: exercised, untestedRoutes: untested,
-  gapLedger: gaps.summary, stateVolume: 'passed',
+  gapLedger: gaps.summary, stateVolume: 'passed', httpChecks,
 }));
 `;
 }
@@ -186,8 +291,9 @@ function parseVerifierOutput(output) {
   catch { throw new DeploymentVerificationError('failed', '容器验收没有返回有效证据'); }
 }
 
-function runContainerCheck({ container, port, observeMs, timeoutMs, runDocker: run }) {
-  const result = run(['exec', container, 'node', '--input-type=module', '-e', verifierScript(port, observeMs)], timeoutMs);
+function runContainerCheck({ container, port, observeMs, timeoutMs, runDocker: run, httpChecksPath, phase }) {
+  if (httpChecksPath) run(['cp', httpChecksPath, `${container}:/run/heimdall-http-checks.json`], timeoutMs);
+  const result = run(['exec', container, 'node', '--input-type=module', '-e', verifierScript(port, observeMs, phase)], timeoutMs);
   return parseVerifierOutput(result);
 }
 
@@ -239,9 +345,10 @@ export function validateDeploymentReport(report, { siteId, checksumsSha256 } = {
     && report.checks?.stateVolume === 'passed';
 }
 
-export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, timeoutMs = DEFAULT_TIMEOUT_MS, observeMs = DEFAULT_OBSERVE_MS, runDocker = docker }) {
+export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, httpChecksPath, timeoutMs = DEFAULT_TIMEOUT_MS, observeMs = DEFAULT_OBSERVE_MS, runDocker = docker }) {
   const bundle = resolve(bundleDir);
   const metadata = readBundle(bundle);
+  const httpChecks = httpChecksPath ? readHttpChecks(resolve(httpChecksPath)) : null;
   const port = Number(metadata.config.port ?? 8080);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new DeploymentVerificationError('invalid_bundle', '交付包端口无效');
@@ -268,13 +375,15 @@ export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, timeoutM
     started = true;
     const network = runDocker(['inspect', '--format', '{{.HostConfig.NetworkMode}}', container], timeoutMs);
     if (network !== 'none') throw new DeploymentVerificationError('failed', '容器没有使用 network none');
-    first = runContainerCheck({ container, port, observeMs, timeoutMs, runDocker });
+    first = runContainerCheck({ container, port, observeMs, timeoutMs, runDocker,
+      httpChecksPath: httpChecks?.path, phase: 'beforeRestart' });
     runDocker(['rm', '--force', container], timeoutMs);
     started = false;
     runDocker(['run', '--detach', '--rm', '--network', 'none', '--name', container,
       '--mount', `type=volume,source=${volume},target=/data`, image], timeoutMs);
     started = true;
-    second = runContainerCheck({ container, port, observeMs: Math.min(observeMs, 1_000), timeoutMs, runDocker });
+    second = runContainerCheck({ container, port, observeMs: Math.min(observeMs, 1_000), timeoutMs, runDocker,
+      httpChecksPath: httpChecks?.path, phase: 'afterRestart' });
     const report = {
       schema: VERIFY_SCHEMA, siteId: siteId ?? metadata.config.siteId,
       generatedAt: new Date().toISOString(), serverEgress: 'verified',
@@ -289,6 +398,9 @@ export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, timeoutM
         untestedRoutes: first.untestedRoutes,
       },
       gapLedger: first.gapLedger,
+      ...(httpChecks ? { httpChecks: {
+        planSha256: httpChecks.sha256, beforeRestart: first.httpChecks, afterRestart: second.httpChecks,
+      } } : {}),
       observationMs: observeMs,
       evidence: { firstStart: first.health, secondStart: second.health },
     };
@@ -305,7 +417,7 @@ export function verifyDeploymentBundle({ bundleDir, siteId, reportPath, timeoutM
 }
 
 function usage() {
-  console.error('用法: heimdall live-verify <bundleDir> [--site-id S] [--report FILE] [--timeout-ms N] [--observe-ms N]');
+  console.error('用法: heimdall live-verify <bundleDir> [--site-id S] [--report FILE] [--http-checks FILE] [--timeout-ms N] [--observe-ms N]');
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -316,7 +428,7 @@ if (isMain) {
   try {
     const result = verifyDeploymentBundle({
       bundleDir,
-      siteId: argOf('site-id', undefined), reportPath: argOf('report', undefined),
+      siteId: argOf('site-id', undefined), reportPath: argOf('report', undefined), httpChecksPath: argOf('http-checks', undefined),
       timeoutMs: boundedNumber(argOf('timeout-ms', DEFAULT_TIMEOUT_MS), DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS),
       observeMs: boundedNumber(argOf('observe-ms', DEFAULT_OBSERVE_MS), DEFAULT_OBSERVE_MS, MAX_OBSERVE_MS),
     });

@@ -93,6 +93,30 @@ heimdall live-verify <包目录> --site-id <站点>
 
 命令在 Docker `network none` 中构建并启动包两次，检查离线健康、根路由、可安全触达的 GET/HEAD 适配器路由、缺口账本和包外状态卷，随后把脱敏报告写入 `workspace/<站点>/adapter-egress-verification.json`。报告绑定当前包的 `checksums.json`，包改变后 `site-assessment` 会重新标为未知。它不替代 POST、认证、权限、写入、状态机或业务副作用旅程。
 
+获授权的后端写入可以额外提供 `--http-checks FILE`。文件只进入临时容器，不进入交付包或报告；它支持 `beforeRestart` 与 `afterRestart` 两组请求，按状态码、MIME、文本和 JSON Pointer 断言结果。最小格式如下：
+
+```json
+{
+  "version": 1,
+  "beforeRestart": [{
+    "id": "create",
+    "method": "POST",
+    "path": "/api/items",
+    "headers": { "content-type": "application/json" },
+    "body": { "name": "test-fixture" },
+    "expect": { "status": 201, "json": [{ "pointer": "/ok", "equals": true }] }
+  }],
+  "afterRestart": [{
+    "id": "readback",
+    "method": "GET",
+    "path": "/api/items",
+    "expect": { "status": 200, "json": [{ "pointer": "/items/0/name", "equals": "test-fixture" }] }
+  }]
+}
+```
+
+检查通过只证明这组明确请求和读回断言通过；适配器缺口账本里的 `unverifiedWrites`、认证、权限和其它业务规则仍然单独保留。
+
 **为什么它是另一个层次**：前两种产物的判据是"像不像 / 能不能用"，
 交付包的判据是"**能不能在另一台机器上跑起来，并让接收方核对离线资源与功能边界**"。
 `checksums.json` 与 `health.json` 就是为此存在的 —— 接收方不必相信我们的口头结论。
