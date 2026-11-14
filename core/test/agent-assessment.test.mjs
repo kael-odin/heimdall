@@ -447,6 +447,44 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: marks combined SEO/GEO action truncation explicitly', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-seo-truncation-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    const issues = Array.from({ length: 20 }, (_, index) => ({
+      id: `seo-high-${String(index + 1).padStart(2, '0')}`, category: 'content', severity: 'high',
+      title: `SEO issue ${index + 1}`, suggestion: '修复当前页面',
+    }));
+    put(join(site, 'seo', 'seo.json'), {
+      origin: 'https://example.test', score: 80,
+      scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
+      summary: { pages: 1, issues: 21, bySeverity: { high: 20 }, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
+      pages: [{ url: 'https://example.test/', issues }],
+      geo: {
+        methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 90,
+        actionPlan: [{ rank: 1, id: 'geo-one', dimension: 'citation', priority: 'P1', title: 'GEO action', action: '补充可核实摘要', impact: { affectedPages: 1 }, validation: { method: 'rerun-geo-audit', checkId: 'geo-one' } }],
+      },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    const task = result.deliveryPlan.seoGeoTask;
+    assert.equal(task.observedActions.length, 20);
+    assert.equal(task.observedActionsMeta.total, 21);
+    assert.equal(task.observedActionsMeta.returned, 20);
+    assert.equal(task.observedActionsMeta.truncated, true);
+    assert.equal(task.coverage.actionsTruncated, true);
+    assert.equal(task.observedAdvisoriesMeta.truncated, false);
+    assert.match(task.prompt, /observedActionsMeta/);
+    assert.equal(task.status, 'ready_for_ai_review');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('probe contract persists one sanitized contract so site-assessment can read its B0/B1 status', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-probe-contract-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');

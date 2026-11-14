@@ -929,7 +929,18 @@ function buildSeoGeoTask(siteId, origin, seo) {
     affectedPages: issue.affectedPages, pages: issue.pages, evidenceLevel: 'observed',
     verification: { method: 'rerun-seo-audit', checkId: issue.id, expectedStatus: 'resolved' },
   })).slice(0, 20) : [];
-  const actions = [...seoActions, ...geoActions].slice(0, 20);
+  const allActions = [...seoActions, ...geoActions];
+  const actions = allActions.slice(0, 20);
+  const observedActionsMeta = {
+    total: (seo.repairCandidatesMeta?.total ?? seoActions.length) + (geo.actionPlanMeta?.total ?? geoActions.length),
+    returned: actions.length,
+    truncated: allActions.length > actions.length || seo.repairCandidatesMeta?.truncated === true || geo.actionPlanMeta?.truncated === true,
+  };
+  const observedAdvisoriesMeta = {
+    total: seo.advisoryCandidatesMeta?.total ?? advisoryCandidates.length,
+    returned: advisoryActions.length,
+    truncated: seo.advisoryCandidatesMeta?.truncated === true || advisoryCandidates.length > advisoryActions.length,
+  };
   const coverage = {
     pages: Number.isInteger(seo.pages) ? seo.pages : null,
     sitemapCoverage: seo.completeness?.sitemapCoverage ?? null,
@@ -937,7 +948,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     initialHtmlUnchecked: Number(seo.completeness?.initialHtmlUnchecked ?? 0),
     geoStatus: geo.status ?? 'unknown',
     actionItems: geo.actionItems ?? 0,
-    actionsTruncated: seo.repairCandidatesMeta?.truncated === true || geo.actionPlanMeta?.truncated === true,
+    actionsTruncated: observedActionsMeta.truncated || observedAdvisoriesMeta.truncated,
   };
   const complete = observed && methodsCurrent
     && !['partial', 'unavailable'].includes(coverage.sitemapCoverage)
@@ -959,7 +970,9 @@ function buildSeoGeoTask(siteId, origin, seo) {
     },
     coverage,
     observedActions: actions,
+    observedActionsMeta,
     observedAdvisories: advisoryActions,
+    observedAdvisoriesMeta,
     inputs: observed ? [{ path: seo.reports.json, role: 'deterministic SEO/GEO report', basis: 'observed', required: true }] : [],
     tasks: observed ? [
       { id: 'fix-observed-seo', basis: 'observed', requiresHumanApproval: true, instruction: '按 observedActions 中的 SEO 项修复页面、模板或结构化信息；不要改评分公式来消除问题。' },
@@ -989,6 +1002,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     prompt: [
       '先读取 deliveryPlan.seoGeoTask 和其 inputs 指向的脱敏报告。',
       '把 observedActions 当作当前证据，把 tasks 中的 inferred 内容当作待人工核实的建议。',
+      '如果 observedActionsMeta 或 observedAdvisoriesMeta 的 truncated 为 true，继续读取同一份脱敏报告；列表不是全部问题。',
       '不要把分数解释为排名或模型引用成功，也不要用改评分公式的方式消除问题。',
       '完成一组小改动后按 verification.commands 复测，并分别汇报 verified、observed、inferred、unknown。',
     ].join('\n'),
