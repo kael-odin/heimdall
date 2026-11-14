@@ -333,6 +333,10 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.deliveryPlan.qaTask.status, 'human_review');
     assert.equal(env.result.deliveryPlan.qaTask.scope.frontend.pages, 1);
     assert.equal(env.result.deliveryPlan.qaTask.scope.backend.contract, 'observed');
+    assert.deepEqual(env.result.deliveryPlan.qaTask.latest.coverage.pages, [
+      { path: '/', viewport: '1440x900', navigation: 'observed', clientBlocked: 0 },
+    ]);
+    assert.equal(env.result.deliveryPlan.qaTask.latest.coverage.checksTotal, 0);
     assert.equal(env.result.deliveryPlan.qaTask.latest.findings.total, 2);
     assert.ok(env.result.deliveryPlan.qaTask.tasks.some(item => item.id === 'review-findings'));
     assert.ok(env.result.deliveryPlan.qaTask.tasks.some(item => item.id === 'fix-confirmed-findings'));

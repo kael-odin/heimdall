@@ -745,6 +745,28 @@ function qaSummary(args, ctx, siteId, origin) {
     clientBlocked: pages.reduce((n, p) => n + (p?.counts?.clientBlocked ?? 0), 0) + checks.reduce((n, c) => n + (c?.clientBlocked ?? 0), 0),
     detection: coverage?.detection, navigation: { failedPages: pages.filter(p => p?.navError) }, baseline: { status: coverage?.baseline?.status },
   });
+  const safeCoveragePath = value => typeof value === 'string'
+    ? redactText(value, { profile: 'strict' }).text.slice(0, 240) : null;
+  const pageCoverage = pages.map(page => {
+    const path = safeCoveragePath(page?.path);
+    const viewport = typeof page?.viewport === 'string' ? page.viewport.slice(0, 32) : null;
+    if (!path || !viewport) return null;
+    return {
+      path, viewport, navigation: page.navError ? 'failed' : 'observed',
+      clientBlocked: Number.isSafeInteger(page?.counts?.clientBlocked) && page.counts.clientBlocked >= 0 ? page.counts.clientBlocked : 0,
+    };
+  }).filter(Boolean);
+  const checkCoverage = checks.slice(0, 50).map(check => ({
+    id: safeCoveragePath(check?.id) ?? 'unknown',
+    status: check?.pass === true ? 'passed' : check?.pass === false ? 'failed' : 'unknown',
+    clientBlocked: Number.isSafeInteger(check?.clientBlocked) && check.clientBlocked >= 0 ? check.clientBlocked : 0,
+  }));
+  const coverageSummary = {
+    pages: pageCoverage.slice(0, 50), pagesTotal: pageCoverage.length, pagesTruncated: pageCoverage.length > 50,
+    checks: checkCoverage, checksTotal: checks.length, checksTruncated: checks.length > 50,
+    detectionFailedPages: Array.isArray(coverage?.detection?.failedPages) ? coverage.detection.failedPages.length : null,
+    baselineStatus: typeof coverage?.baseline?.status === 'string' ? coverage.baseline.status.slice(0, 32) : null,
+  };
   const known = summary && ['fileable', 'environment', 'checkNeedsFix'].every(key => Number.isInteger(summary[key]) && summary[key] >= 0)
     && pages.length > 0 && pages.every(p => typeof p?.path === 'string' && typeof p?.viewport === 'string')
     && Array.isArray(coverage?.checks) && checks.every(c => typeof c?.pass === 'boolean');
@@ -757,6 +779,7 @@ function qaSummary(args, ctx, siteId, origin) {
       startedAt: run.startedAt ?? null,
       summary,
       completeness: { status: incompleteReasons.length ? 'incomplete' : known ? 'complete' : 'unknown', incompleteReasonCount: incompleteReasons.length },
+      coverage: coverageSummary,
       findings: readQaFindingDigest(runDir, run),
       report: relPath(ws, join(runDir, 'report.md')),
       bugs: relPath(ws, join(runDir, 'bugs.md')),
@@ -1015,6 +1038,7 @@ function buildQaTask(siteId, origin, qa, api) {
     },
     latest: latest ? {
       runId: latest.runId, summary: latest.summary, completeness: latest.completeness,
+      coverage: latest.coverage,
       findings: { total: latest.findings.total, returned: latest.findings.returned, truncated: latest.findings.truncated, items: findings },
     } : null,
     metrics, tasks,
