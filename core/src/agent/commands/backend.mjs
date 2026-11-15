@@ -759,6 +759,7 @@ function cookiePath(value, requestPath) {
 }
 function cookieMatches(cookie, url) {
   if (cookie.secure && url.protocol !== 'https:') return false;
+  if (cookie.domain && cookie.domain !== url.hostname && !url.hostname.endsWith('.' + cookie.domain)) return false;
   if (!url.pathname.startsWith(cookie.path) || (cookie.path !== '/' && ![undefined, '/'].includes(url.pathname[cookie.path.length]))) return false;
   return true;
 }
@@ -776,18 +777,25 @@ function updateCookies(jar, response, url) {
     if (equals <= 0) continue;
     const name = pair.slice(0, equals).trim();
     if (!/^[!#$%&'*+.^_|~0-9A-Za-z-]{1,128}$/.test(name)) continue;
-    const cookie = { name, value: pair.slice(equals + 1), path: null, secure: false, expires: null };
+    const cookie = { name, value: pair.slice(equals + 1), domain: url.hostname, path: null, secure: false, expires: null };
+    let invalidDomain = false;
     for (const rawAttribute of String(raw).split(';').slice(1)) {
       const [rawName, ...rawValue] = rawAttribute.trim().split('=');
       const attribute = rawName.toLowerCase();
       const value = rawValue.join('=').trim();
       if (attribute === 'path' && value.startsWith('/')) cookie.path = value;
+      else if (attribute === 'domain') {
+        const domain = value.toLowerCase().replace(/^\.+/, '');
+        invalidDomain = !domain || (url.hostname !== domain && !url.hostname.endsWith('.' + domain));
+        if (!invalidDomain) cookie.domain = domain;
+      }
       else if (attribute === 'secure') cookie.secure = true;
       else if (attribute === 'max-age' && /^-?\d+$/.test(value)) cookie.expires = Number(value) <= 0 ? 0 : Date.now() + Number(value) * 1000;
       else if (attribute === 'expires') cookie.expires = Date.parse(value);
     }
     cookie.path = cookiePath(cookie.path, url.pathname);
     const key = cookie.name + '\n' + cookie.path;
+    if (invalidDomain) continue;
     if (cookie.expires === 0 || Number.isFinite(cookie.expires) && cookie.expires <= Date.now()) jar.delete(key);
     else if (!cookie.secure || url.protocol === 'https:') jar.set(key, cookie);
   }
