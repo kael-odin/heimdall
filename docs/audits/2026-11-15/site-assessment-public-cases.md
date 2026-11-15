@@ -52,6 +52,28 @@ node core/src/cli.mjs public-case-summary --case-path docs/cases/xspark/2026-11-
 
 当前公开摘要显示 5 页、10 次页面/视口检查、QA 门禁通过、可提单 0 条、视觉回归 0 条、SEO 90.8；真实用户 PageSpeed 数据不可用，GEO 仍为 `unknown`，没有认证后台、写入流程、结账、支付或账户变更证据。
 
+## Vite 公开案例
+
+命令：
+
+```powershell
+pnpm -C core run audit -- https://vite.dev/ --max 3
+node core/src/cli.mjs site-assessment vite.dev --json
+```
+
+本次只做公开 GET，使用临时数据目录，审计后清理原始工作区。侦察和 sitemap/BFS 选出 `/blog`、`/acknowledgements`、`/blog/announcing-vite2` 三页。
+
+| 项目 | 结果 |
+| --- | --- |
+| SEO/GEO | SEO 90；GEO 68.4 |
+| 页面完整性 | 3 页；失败页 0；初始 HTML 未核查 0 |
+| sitemap | `complete`；无受限原因和截断原因 |
+| observed 行动 | 5 条 GEO P1；返回 5 条；`truncated=false` |
+| advisory | 3 条 medium；description 重复、图片 alt、CLS |
+| 任务状态 | `ready_for_ai_review`；真实排名、收录和模型引用仍未知 |
+
+该案例验证了任务包可以同时给出 GEO 维度、优先级、受影响页和中等严重度提示。它仍只证明三页公开样本，不证明整站业务或真实搜索效果。
+
 ## 结论与边界
 
 - 公开案例已经能区分“页面与 SEO 证据充分”和“后端、认证、权限、业务 QA 未知”。
