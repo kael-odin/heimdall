@@ -56,6 +56,10 @@ function numberOrNull(value) {
   return Number.isFinite(Number(value)) ? Number(value) : null;
 }
 
+function seoGradeOf(score) {
+  return score === null ? null : score >= 90 ? 'A' : score >= 75 ? 'B' : 'C';
+}
+
 function methodStatus(value, current) {
   if (!Number.isSafeInteger(value)) return 'unknown';
   return value === current ? 'current' : value < current ? 'stale' : 'future';
@@ -290,11 +294,12 @@ function seoSummary(manifest, seo, caseRel, siteAssessment) {
   const measurementVersion = Number.isSafeInteger(seo?.measurementVersion)
     ? seo.measurementVersion : Number.isSafeInteger(manifest.seo?.measurementVersion) ? manifest.seo.measurementVersion : null;
   const geoMethodVersion = Number.isSafeInteger(seo?.geo?.methodVersion) ? seo.geo.methodVersion : null;
+  const score = numberOrNull(seo?.score ?? manifest.seo?.score);
   return {
     status: seo ? 'observed' : 'missing',
     origin: safeUrl(seo?.origin ?? manifest.target?.origin),
-    score: numberOrNull(seo?.score ?? manifest.seo?.score),
-    grade: safeText(manifest.seo?.grade, 10),
+    score,
+    grade: seoGradeOf(score),
     scoreMethodVersion,
     measurementVersion,
     scoreMethodStatus: methodStatus(scoreMethodVersion, SEO_SCORE_METHOD_VERSION),

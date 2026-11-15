@@ -52,10 +52,15 @@ test('public case summary projects a sanitized site-assessment capability envelo
       schema: 'heimdall.public-case/1',
       case: 'fixture',
       project: 'Fixture',
+      seo: { score: 52, grade: 'A', issues: 0 },
       target: { site: 'fixture.test', origin: 'https://fixture.test', pages: ['/'], viewports: ['1440x900'], writes: 'block' },
     }));
     const evidenceDir = join(dir, 'evidence');
     mkdirSync(evidenceDir);
+    writeFileSync(join(evidenceDir, 'seo.json'), JSON.stringify({
+      origin: 'https://fixture.test', score: 52,
+      summary: { pages: 1, issues: 0, bySeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 } },
+    }));
     writeFileSync(join(evidenceDir, 'site-assessment.json'), JSON.stringify({
       result: {
         siteId: 'fixture.test',
@@ -112,6 +117,7 @@ test('public case summary projects a sanitized site-assessment capability envelo
     assert.equal(env.ok, true);
     assert.equal(env.result.integrity.status, 'consistent');
     assert.equal(env.result.capabilities.evidenceStatus, 'observed');
+    assert.equal(env.result.seo.grade, 'C');
     assert.equal(env.result.capabilities.clone.status, 'ready');
     assert.equal(env.result.capabilities.independentDeployment.status, 'verified');
     assert.equal(env.result.capabilities.backendCompletion.status, 'needs_human_review');
