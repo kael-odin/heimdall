@@ -1339,6 +1339,7 @@ function qaBackendScope(origin, api, backendCompletion) {
         ? backendCompletion.adapterEgress.status : 'unknown',
       operationProbe: typeof backendCompletion?.adapterEgress?.operationProbe?.status === 'string'
         ? backendCompletion.adapterEgress.operationProbe.status : 'not-tested',
+      closure: backendCompletion?.closure ?? null,
       repairTasks: {
         total: Number.isSafeInteger(backendCompletion?.repairTasksMeta?.total)
           ? backendCompletion.repairTasksMeta.total : repairTasks.length,
@@ -1748,6 +1749,38 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
     checkpoints: ['请求体校验', '重复/幂等行为', '持久化后读取', '测试数据清理'],
   });
 
+  const closureState = status => status === 'passed' ? 'verified'
+    : ['failed', 'incomplete', 'blocked', 'open', 'invalid'].includes(status) ? 'open' : 'unknown';
+  const journeyState = humanJourneys.length && humanJourneys.every(journey => journey.status === 'passed') ? 'verified'
+    : humanJourneys.some(journey => ['failed', 'incomplete', 'blocked', 'open', 'invalid'].includes(journey.status)) ? 'open'
+      : 'unknown';
+  const stateConsistencyBasis = !hasWrite ? 'inferred'
+    : ['passed', 'failed', 'incomplete'].includes(stateConsistencyCheck.status) ? 'observed' : 'unknown';
+  const closureObligations = [
+    { id: 'observed-contract', state: closureState(observed ? 'passed' : 'unknown'), basis: observed ? 'observed' : 'unknown' },
+    { id: 'response-shape-holdout', state: closureState(validationStatus), basis: validationStatus === 'passed' ? 'verified' : 'unknown' },
+    { id: 'adapter-gap-ledger', state: closureState(gapLedger ? (gapLedgerHasOpenItems ? 'open' : 'observed') : 'unknown'), basis: gapLedger ? 'observed' : 'unknown' },
+    { id: 'backend-scaffold-check', state: closureState(scaffoldCheckStatus), basis: scaffoldCheckStatus === 'passed' ? 'observed' : 'unknown' },
+    { id: 'business-rule-equivalence', state: closureState(businessRuleComparison.overall ?? businessRuleComparison.status), basis: ['passed', 'failed', 'incomplete'].includes(businessRuleComparison.overall) ? 'observed' : 'unknown' },
+    { id: 'state-consistency', state: hasWrite ? closureState(stateConsistencyCheck.status) : 'not_applicable', basis: stateConsistencyBasis },
+    { id: 'offline-egress', state: closureState(adapterServerEgress), basis: adapterServerEgress === 'verified' ? 'observed' : 'unknown' },
+    { id: 'operation-probe', state: closureState(operationProbeStatus), basis: operationProbeStatus === 'passed' ? 'observed' : 'unknown' },
+    { id: 'authorized-business-journeys', state: journeyState, basis: humanJourneys.some(journey => journey.basis === 'observed') ? 'observed' : 'unknown' },
+  ];
+  const closureCounts = Object.fromEntries(['verified', 'open', 'unknown', 'not_applicable'].map(state => [state, closureObligations.filter(item => item.state === state).length]));
+  const closure = {
+    schema: 'heimdall.backend-closure/1',
+    state: closureCounts.open === 0 && closureCounts.unknown === 0 ? 'ready' : 'open',
+    counts: {
+      required: closureObligations.length - closureCounts.not_applicable,
+      verified: closureCounts.verified,
+      open: closureCounts.open,
+      unknown: closureCounts.unknown,
+      notApplicable: closureCounts.not_applicable,
+    },
+    requiredObligations: closureObligations,
+  };
+
   return {
     schema: 'heimdall.backend-completion-task/1',
     status: observed ? 'needs_human_journey' : 'blocked_on_observation',
@@ -1786,6 +1819,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       operationProbe,
     },
     gapLedger,
+    closure,
     unknowns: [
       { id: 'authentication', basis: 'unknown', detail: '哪些端点强制认证、凭据如何刷新和失效，尚未由摘要证明。' },
       { id: 'permissions', basis: 'unknown', detail: '不同账号、角色或资源边界的允许/拒绝矩阵尚未验证。' },

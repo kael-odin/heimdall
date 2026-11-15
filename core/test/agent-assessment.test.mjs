@@ -73,6 +73,8 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
         assert.match(result.deliveryPlan.qaTask.prompt, /latest\.coverage\.businessChecks/);
         assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'add-business-checks'));
         assert.ok(result.deliveryPlan.items.some(item => item.id === 'qa-business-checks' && item.status === 'open'));
+        assert.equal(result.deliveryPlan.backendCompletion.closure.requiredObligations.find(item => item.id === 'observed-contract').state, 'unknown');
+        assert.equal(result.deliveryPlan.backendCompletion.closure.counts.open, 0);
       }
       if (name === 'bounded coverage') {
         assert.equal(result.qa.latest.coverage.pages.length, 50);
@@ -777,6 +779,14 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRuleComparison.overall, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rule-equivalence').status, 'passed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.closure.schema, 'heimdall.backend-closure/1');
+    assert.deepEqual(env.result.deliveryPlan.backendCompletion.closure.counts, { required: 8, verified: 3, open: 0, unknown: 5, notApplicable: 1 });
+    assert.equal(env.result.deliveryPlan.backendCompletion.closure.state, 'open');
+    assert.deepEqual(env.result.deliveryPlan.backendCompletion.closure.requiredObligations.map(item => item.id), [
+      'observed-contract', 'response-shape-holdout', 'adapter-gap-ledger', 'backend-scaffold-check',
+      'business-rule-equivalence', 'state-consistency', 'offline-egress', 'operation-probe', 'authorized-business-journeys',
+    ]);
+    assert.deepEqual(env.result.deliveryPlan.qaTask.scope.backend.completion.closure, env.result.deliveryPlan.backendCompletion.closure);
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.status, 'present');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.aiTask.status, 'present');
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.action, null);
@@ -858,6 +868,8 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.deepEqual(env.result.api.scaffold.check.businessRuleComparison.comparisonsMeta, { total: 1, returned: 1, truncated: false });
     assert.deepEqual(env.result.api.scaffold.check.businessRuleComparison.repairTasksMeta, { total: 1, returned: 1, truncated: false });
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rule-equivalence').status, 'failed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.closure.requiredObligations.find(item => item.id === 'business-rule-equivalence').state, 'open');
+    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.closure.requiredObligations.find(item => item.id === 'business-rule-equivalence').state, 'open');
     assert.doesNotMatch(run.stdout, /private-value/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
