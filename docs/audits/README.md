@@ -78,6 +78,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-16 | **[公开站点评估摘要复核](2026-11-16/site-assessment-public-recheck.md)** | 用当前 workspace 证据复核 `example.com`、`rfc-editor.org`、`vitest.dev`；SEO/GEO 分数和 sitemap 范围可读，后端、独立部署、QA 与真实搜索/模型引用仍保留未知 |
 | 2026-11-16 | **[B3 业务步骤超时实测](2026-11-16/backend-request-timeout.md)** | 受控悬挂 HTTP 请求在 15 秒上限后标为 `incomplete/request_timeout`，修复任务不保存响应值，也不把未知网络状态判成后端失败 |
 | 2026-11-16 | **[RFC Editor 公开 handoff 复测](2026-11-16/rfc-editor-public-handoff-recheck.md)** | 3 页完成侦察、克隆和三视口验证，平均 100% A；strict 因 1 个外部运行时、3 个本地 Nuxt 404 和 129 个范围外链接阻断；只读数据计划因 Cookie 边界仍未纳入正文，独立部署未执行 |
+| 2026-11-16 | **[`example.com` 公开站点三能力复测](2026-11-16/example-public-full-recheck.md)** | 1 页在 `maxPages=5 --all-discovered` 下完成三视口 100% A、strict 0 阻断和 Docker `network none` 独立部署；SEO 52、GEO 28.1，后端与 QA 仍未知 |
 
 路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。
 

@@ -28,6 +28,8 @@
 
 2026-11-16 [W3C 空页面 handoff 修复]：`www.w3.org` 公开复测因源站 403 得到 0 页；修复 `build_live` 对缺失 `pages` 目录的处理后，strict 不再抛 `ENOENT`，而是保留 `mirrorRootMissing`、`coverageInvalid`、`reconFailures` 和 `emptyBundle` 四类阻断，并在 handoff 中明确没有验证结果、正式包没有生成、独立部署未执行。详见[空页面 handoff 记录](audits/2026-11-16/w3-public-empty-handoff.md)。
 
+2026-11-16 [`example.com` 公开站点三能力复测](audits/2026-11-16/example-public-full-recheck.md)：用 `--max-pages 5 --all-discovered --strict` 完成 1 页侦察、三视口 100% A、strict 0 阻断和 Docker `network none` 独立部署；`scopeLimited=false`。同口径 SEO 52、GEO 28.1，SEO/GEO 行动和后端/QA unknown 仍被站点评估保留。
+
 2026-11-15 [真实独立部署失败定位]：用当前 `live-verify --static` 复验既有 RFC Editor 候选包；Docker `network none` 启动、路由检查和最终镜像校验和均走到浏览器阶段，但 6/6 页面因 6 个 `analytics.ietf.org` 外部运行时请求和 6 个本地 Nuxt JSON 404 失败，不能标记为独立部署通过。CLI 现在保留失败门禁，并输出脱敏原因摘要，便于 AI 分别处理外部运行时与本地动态数据缺口。
 
 2026-11-15 [独立部署失败证据落盘]：`live-verify` 在失败、未完成或环境不可用时写入脱敏 `deployment-verification-attempt.json` 或 `adapter-egress-verification-attempt.json`；`site-assessment` 读取失败阶段、浏览器失败摘要、当前包校验关系和复测动作，但只有成功的校验和绑定报告才能标为 `verified`。统一 CLI 同时修复相对包路径继承，用户从调用目录运行 `live-verify` 时不再被内部 `core` 工作目录误导。
