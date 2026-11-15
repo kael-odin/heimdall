@@ -6,6 +6,8 @@
 
 面向获授权网站，采集证据、辅助 AI 重建与独立部署，度量还原度，诊断 SEO/GEO，并按充分的需求与接口信息检测前后端缺陷。
 
+2026-11-15 [真实重建交付验收]：使用 `example.com/a/b` 的现有捕获完成一次仓库外 `html-css` 重建；首轮空脚手架被 compare 正确识别为缺失正文，补写后 375/768/1440 三视口均为 100% 像素相似度，正式 `silver` 门禁三视口 6/6 通过并生成 18 个项目文件、3 个镜像文件的 `passed` 交付包。正式验收还拦住了外部绝对链接，改为本地 `/help/example-domains` 后才通过；该案例只证明当前页面的视觉、结构、资源和健康闭环，不证明后端、认证、业务状态或整站范围等价。
+
 2026-11-14 [动态数据缺口进入 AI 后端任务]：strict 浏览器探针现在把同源 XHR/fetch 的 4xx 或请求失败单独写入 `health.runtimeDataGaps`，保留页面、脱敏路径、资源类型和状态；`site-assessment` 会去重后生成 `runtime-data-observation` 修复任务，要求先授权观察响应再补本地适配器或只读数据，不把动态 JSON 404 伪造成静态资源或成功回放。
 
 2026-11-15 [外部运行时与本地浏览器错误分流]：`site-assessment` 现在把 `externalRequest` 单独投影为 `clone-external-runtime` 人工审核任务；本地 page error、HTTP 和 request failure 继续进入 `clone-browser-failures` 修复任务。两类证据不再共享一个 heal 动作，避免把外链服务误读成站内后端缺口。
