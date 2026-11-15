@@ -590,22 +590,33 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(report.results.filter(item => item.id.startsWith('business-rule:')).length, 9);
     assert.equal(report.stateConsistency.status, 'incomplete');
 
-    hangingServer = createServer(() => {});
+    hangingServer = createServer((request, response) => {
+      if (request.url === '/headers-then-hang') {
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.write('{"id":');
+      }
+    });
     await new Promise((resolve, reject) => {
       hangingServer.once('error', reject);
       hangingServer.listen(0, '127.0.0.1', resolve);
     });
     const hangingPort = hangingServer.address().port;
-    put(join(out, 'state-rules.json'), { ...rules, rules: [{ id: 'hanging-request', steps: [{ method: 'GET', path: '/hang', expect: { status: 200 } }] }] });
+    put(join(out, 'state-rules.json'), { ...rules, rules: [
+      { id: 'hanging-request', steps: [{ method: 'GET', path: '/hang', expect: { status: 200 } }] },
+      { id: 'hanging-response-body', steps: [{ method: 'GET', path: '/headers-then-hang', expect: { status: 200, type: 'object' } }] },
+    ] });
     const timedOut = spawnSync(process.execPath, [join(out, 'checks.mjs'), `http://127.0.0.1:${hangingPort}`, '--business-rules-only'], {
       cwd: out, env: process.env, encoding: 'utf8', timeout: 30_000,
     });
     assert.equal(timedOut.status, 1, timedOut.stderr + timedOut.stdout);
     report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
-    const timeoutRule = report.results.find(item => item.id === 'business-rule:hanging-request');
-    assert.equal(timeoutRule.status, 'incomplete');
-    assert.equal(timeoutRule.reason, 'request_timeout');
-    assert.equal(timeoutRule.repairTask.evidence.reason, 'request_timeout');
+    const timeoutRules = report.results.filter(item => item.id.startsWith('business-rule:hanging-'));
+    assert.equal(timeoutRules.length, 2);
+    for (const timeoutRule of timeoutRules) {
+      assert.equal(timeoutRule.status, 'incomplete');
+      assert.equal(timeoutRule.reason, 'request_timeout');
+      assert.equal(timeoutRule.repairTask.evidence.reason, 'request_timeout');
+    }
     put(join(out, 'state-rules.json'), rules);
     await new Promise(resolve => hangingServer.close(resolve));
     hangingServer = undefined;

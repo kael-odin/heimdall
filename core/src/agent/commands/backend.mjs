@@ -945,6 +945,7 @@ async function runBusinessRule(rule) {
   if (prepared.error) return report({ id, status: prepared.error === 'missing_env' || prepared.error === 'invalid_body' ? 'incomplete' : 'failed', reason: prepared.error, requiresHumanApproval: prepared.error === 'missing_env' });
   const responses = [];
   const cookies = new Map();
+  const isTimeoutError = error => error?.name === 'TimeoutError' || error?.name === 'AbortError';
   const pointerFor = path => '/' + path.map(part => String(part).replaceAll('~', '~0').replaceAll('/', '~1')).join('/');
   const readJson = async index => {
     const state = responses[index];
@@ -956,8 +957,8 @@ async function runBusinessRule(rule) {
       if (raw.length > 2 * 1024 * 1024) { state.bodyError = 'response_too_large'; return { error: state.bodyError }; }
       state.body = JSON.parse(raw);
       return { value: state.body };
-    } catch {
-      state.bodyError = 'invalid_json_response';
+    } catch (error) {
+      state.bodyError = isTimeoutError(error) ? 'request_timeout' : 'invalid_json_response';
       return { error: state.bodyError };
     }
   };
@@ -965,7 +966,7 @@ async function runBusinessRule(rule) {
     let resolved = step.path;
     for (const [name, reference] of Object.entries(step.pathParams ?? {})) {
       const source = await readJson(reference.response);
-      if (source.error) return { error: 'reference_unavailable', pointer: pointerFor(reference.path) };
+      if (source.error) return { error: source.error === 'request_timeout' ? 'request_timeout' : 'reference_unavailable', pointer: pointerFor(reference.path) };
       const actual = pointerValue(source.value, pointerFor(reference.path));
       const value = actual.found ? actual.value : null;
       const safeNumber = typeof value !== 'number' || (Number.isFinite(value) && (!Number.isInteger(value) || Number.isSafeInteger(value)));
@@ -987,13 +988,14 @@ async function runBusinessRule(rule) {
       const value = cookieHeader(cookies, requestUrl);
       if (value) headers.cookie = value;
     }
+    const signal = AbortSignal.timeout(BUSINESS_STEP_TIMEOUT_MS);
     try {
       response = await fetch(requestUrl, {
         method: step.method, headers, body: step.body, redirect: step.redirect,
-        signal: AbortSignal.timeout(BUSINESS_STEP_TIMEOUT_MS),
+        signal,
       });
     } catch (error) {
-      const timedOut = error?.name === 'TimeoutError' || error?.name === 'AbortError';
+      const timedOut = isTimeoutError(error);
       return report({ id, status: timedOut ? 'incomplete' : 'failed', step: index + 1, reason: timedOut ? 'request_timeout' : 'request_failed' });
     }
     updateCookies(cookies, response, requestUrl);
@@ -1013,14 +1015,14 @@ async function runBusinessRule(rule) {
     }
     if (step.jsonAssertions.length || step.expect.type !== undefined) {
       const parsed = await readJson(index);
-      if (parsed.error) return report({ id, status: 'failed', step: index + 1, reason: parsed.error });
+      if (parsed.error) return report({ id, status: parsed.error === 'request_timeout' ? 'incomplete' : 'failed', step: index + 1, reason: parsed.error });
       const value = parsed.value;
       if (step.expect.type !== undefined && actualType(value) !== step.expect.type) return report({ id, status: 'failed', step: index + 1, reason: 'json_assertion' });
       for (const assertion of step.jsonAssertions) {
         let resolvedAssertion = assertion;
         if (assertion.equalsFrom) {
           const source = await readJson(assertion.equalsFrom.response);
-          if (source.error) return report({ id, status: 'incomplete', step: index + 1, reason: 'reference_unavailable', pointer: pointerFor(assertion.equalsFrom.path) });
+          if (source.error) return report({ id, status: 'incomplete', step: index + 1, reason: source.error === 'request_timeout' ? 'request_timeout' : 'reference_unavailable', pointer: pointerFor(assertion.equalsFrom.path) });
           const actual = pointerValue(source.value, pointerFor(assertion.equalsFrom.path));
           if (actual.invalid || !actual.found || !safeReferenceValue(actual.value)) {
             return report({ id, status: 'incomplete', step: index + 1, reason: 'reference_unavailable', pointer: pointerFor(assertion.equalsFrom.path) });
