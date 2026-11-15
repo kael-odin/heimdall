@@ -38,6 +38,11 @@ export function summarizeGeoReport(geo) {
     ? {
       ...(Number.isSafeInteger(source.coverage.pages) && source.coverage.pages >= 0 ? { pages: source.coverage.pages } : {}),
       ...(Number.isSafeInteger(source.coverage.pagesScored) && source.coverage.pagesScored >= 0 ? { pagesScored: source.coverage.pagesScored } : {}),
+      ...(Number.isSafeInteger(source.coverage.pagesUnavailable) && source.coverage.pagesUnavailable >= 0 ? { pagesUnavailable: source.coverage.pagesUnavailable } : {}),
+      ...(typeof source.coverage.observedWeight === 'number' && Number.isFinite(source.coverage.observedWeight) && source.coverage.observedWeight >= 0
+        ? { observedWeight: source.coverage.observedWeight } : {}),
+      ...(typeof source.coverage.totalWeight === 'number' && Number.isFinite(source.coverage.totalWeight) && source.coverage.totalWeight >= 0
+        ? { totalWeight: source.coverage.totalWeight } : {}),
       ...(typeof source.coverage.ratio === 'number' && Number.isFinite(source.coverage.ratio) && source.coverage.ratio >= 0
         ? { ratio: source.coverage.ratio } : {}),
     } : null;

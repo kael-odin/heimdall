@@ -961,12 +961,22 @@ function buildSeoGeoTask(siteId, origin, seo) {
     returned: advisoryActions.length,
     truncated: seo.advisoryCandidatesMeta?.truncated === true || advisoryCandidates.length > advisoryActions.length,
   };
+  const geoCoverage = geo.coverage && typeof geo.coverage === 'object' ? {
+    pages: Number.isInteger(geo.coverage.pages) ? geo.coverage.pages : null,
+    pagesScored: Number.isInteger(geo.coverage.pagesScored) ? geo.coverage.pagesScored : null,
+    pagesUnavailable: Number.isInteger(geo.coverage.pagesUnavailable) ? geo.coverage.pagesUnavailable : null,
+    observedWeight: Number.isFinite(geo.coverage.observedWeight) ? geo.coverage.observedWeight : null,
+    totalWeight: Number.isFinite(geo.coverage.totalWeight) ? geo.coverage.totalWeight : null,
+    ratio: Number.isFinite(geo.coverage.ratio) ? geo.coverage.ratio : null,
+    confidence: typeof geo.confidence === 'string' ? geo.confidence : null,
+  } : null;
   const coverage = {
     pages: Number.isInteger(seo.pages) ? seo.pages : null,
     sitemapCoverage: seo.completeness?.sitemapCoverage ?? null,
     failedPages: Number(seo.completeness?.failedPages ?? 0),
     initialHtmlUnchecked: Number(seo.completeness?.initialHtmlUnchecked ?? 0),
     geoStatus: geo.status ?? 'unknown',
+    geo: geoCoverage,
     actionItems: geo.actionItems ?? 0,
     actionsTruncated: observedActionsMeta.truncated || observedAdvisoriesMeta.truncated,
   };
@@ -982,6 +992,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     scores: {
       seo: observed ? seo.score : null, seoGrade: observed ? seo.grade : null,
       geo: observed ? geo.score : null, geoStatus: observed ? geo.status : 'unknown',
+      geoConfidence: observed && typeof geo.confidence === 'string' ? geo.confidence : null,
     },
     methods: {
       seoScore: { version: seo.scoreMethodVersion, status: seo.scoreMethodStatus },

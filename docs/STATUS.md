@@ -37,6 +37,8 @@
 2026-11-15 [克隆范围受限进入 AI 任务]：strict 交付若仍绑定 `captured-only`、`untrusted-recon` 或其他受限范围，`cloneTask` 会保留范围缺口和 `allDiscovered` 复测动作；其他更早门禁阻断时仍优先显示对应阻断状态，不再显示为无缺口 `ready`。
 2026-11-15 [readiness 克隆视觉与范围分层]：保留 `readiness.clone.status` 作为页面镜像和多视口验证状态，并新增 `readiness.clone.scope.status` 与 `scopeLimited`。范围受限时视觉状态可以是 `ready`，但范围状态为 `needs_scope_review`，避免 AI 把有界交付理解成整站克隆完成。
 2026-11-15 [公开案例 SEO 行动进入摘要]：`public_case_summary.seo.observedActions` 现在按问题 ID 聚合最多 20 条脱敏的 critical/high/medium SEO 行动项，让 AI 能从真实案例复用优化线索；历史评分和缺少当前方法版本时仍保留为观察，不进入当前通过结论。
+2026-11-15 [GEO 覆盖进入 AI 任务包]：`deliveryPlan.seoGeoTask` 现在投影 `scores.geoConfidence` 与 `coverage.geo`，保留 GEO 页数、已评分页、不可用页、观察权重、总权重、比例和证据置信度；缺失字段保持 `null`，不让 AI 把页面分数误读成完整站点证据。
+
 2026-11-15 [SEO 行动截断进入 AI 任务元数据]：`deliveryPlan.seoGeoTask` 现在同时暴露 `observedActionsMeta` 与 `observedAdvisoriesMeta`；SEO 与 GEO 合并超过 20 条时明确标记 `truncated`，避免 AI 把被裁掉的行动误读成完整列表。medium 线索仍不会单独改变 readiness。
 
 ## 现在的主线

@@ -925,7 +925,10 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
       origin: 'https://example.test', generatedAt: '2026-11-11T00:00:00.000Z', score: 100,
       scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
       summary: { pages: 1, issues: 0, bySeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 }, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
-      categories: {}, geo: { methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 100, actionPlan: [], coverage: { pages: 1, pagesScored: 1, ratio: 1 } },
+      categories: {}, geo: {
+        methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 100, confidence: 'high', actionPlan: [],
+        coverage: { pages: 1, pagesScored: 1, pagesUnavailable: 0, observedWeight: 96, totalWeight: 96, ratio: 1 },
+      },
     };
     const seoPath = join(root, 'workspace', 'example.test', 'seo', 'seo.json');
     put(seoPath, seoReport);
@@ -953,6 +956,10 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     assert.equal(env.result.readiness.backend.status, 'needs_observation');
     assert.equal(env.result.readiness.qa.status, 'ready');
     assert.equal(env.result.readiness.qa.nextAction.tool, 'heimdall_qa_metrics');
+    assert.equal(env.result.deliveryPlan.seoGeoTask.scores.geoConfidence, 'high');
+    assert.deepEqual(env.result.deliveryPlan.seoGeoTask.coverage.geo, {
+      pages: 1, pagesScored: 1, pagesUnavailable: 0, observedWeight: 96, totalWeight: 96, ratio: 1, confidence: 'high',
+    });
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.status === 'open'));
     put(seoPath, { ...seoReport, scoreMethodVersion: SEO_SCORE_METHOD_VERSION - 1 });
     const staleRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
