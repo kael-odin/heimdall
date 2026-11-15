@@ -653,6 +653,23 @@ function backendScaffoldSummary(root, siteId) {
   const checkStatus = ['passed', 'incomplete', 'failed'].includes(checkReport?.overall) ? checkReport.overall : checkReport ? 'invalid' : 'not_run';
   const checkMode = checkReport?.mode === 'business-rules-only' ? 'business-rules-only' : 'scaffold';
   const businessRuleResults = checkResults.filter(item => item?.id === 'business-rules' || String(item?.id ?? '').startsWith('business-rule:'));
+  const actorLabel = value => typeof value === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value) ? value : null;
+  const actorRows = new Map();
+  for (const item of businessRuleResults) {
+    if (!String(item?.id ?? '').startsWith('business-rule:')) continue;
+    const actor = actorLabel(item?.actor);
+    if (!actor) continue;
+    const rows = actorRows.get(actor) ?? [];
+    rows.push(item);
+    actorRows.set(actor, rows);
+  }
+  const actors = [...actorRows.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([actor, rows]) => {
+    const passed = rows.filter(item => item?.status === 'passed').length;
+    const failed = rows.filter(item => item?.status === 'failed').length;
+    const incomplete = rows.filter(item => ['incomplete', 'skipped'].includes(item?.status)).length;
+    return { actor, total: rows.length, passed, failed, incomplete,
+      status: failed ? 'failed' : incomplete ? 'incomplete' : 'passed' };
+  });
   const businessRules = {
     mode: checkMode,
     status: !businessRuleResults.length ? 'not-tested'
@@ -662,6 +679,7 @@ function backendScaffoldSummary(root, siteId) {
     passed: businessRuleResults.filter(item => item?.status === 'passed').length,
     failed: businessRuleResults.filter(item => item?.status === 'failed').length,
     incomplete: businessRuleResults.filter(item => ['incomplete', 'skipped'].includes(item?.status)).length,
+    actors,
   };
   const safeRepairTask = task => {
     if (!task || typeof task !== 'object' || Array.isArray(task)) return null;
@@ -679,6 +697,9 @@ function backendScaffoldSummary(root, siteId) {
         if (typeof source === 'string') evidence[key] = source.slice(0, 128);
         else if (Number.isFinite(Number(source))) evidence[key] = Number(source);
       }
+      for (const key of ['actor', 'sourceActor', 'candidateActor']) {
+        if (actorLabel(task.evidence[key])) evidence[key] = actorLabel(task.evidence[key]).slice(0, 64);
+      }
       if (Number.isInteger(task.evidence.step) && task.evidence.step > 0) evidence.step = task.evidence.step;
       for (const key of ['expectedStatuses', 'expectedMimeTypes']) {
         if (Array.isArray(task.evidence[key])) evidence[key] = task.evidence[key].slice(0, 30).map(item => String(item).slice(0, 128));
@@ -694,6 +715,7 @@ function backendScaffoldSummary(root, siteId) {
       id: typeof item?.id === 'string' ? item.id.slice(0, 128) : 'unknown',
       status: typeof item?.status === 'string' ? item.status.slice(0, 32) : 'unknown',
       ...(typeof item?.reason === 'string' ? { reason: item.reason.slice(0, 256) } : {}),
+      ...(actorLabel(item?.actor) ? { actor: actorLabel(item.actor) } : {}),
       ...(Number.isInteger(item?.httpStatus) ? { httpStatus: item.httpStatus } : {}),
       ...(Number.isInteger(item?.step) && item.step > 0 ? { step: item.step } : {}),
       ...(typeof item?.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
@@ -733,6 +755,8 @@ function backendScaffoldSummary(root, siteId) {
         ...(typeof item.reason === 'string' ? { reason: item.reason.slice(0, 128) } : {}),
         sourceStatus: typeof item.sourceStatus === 'string' ? item.sourceStatus.slice(0, 32) : 'unknown',
         candidateStatus: typeof item.candidateStatus === 'string' ? item.candidateStatus.slice(0, 32) : 'unknown',
+        ...(actorLabel(item.sourceActor) ? { sourceActor: actorLabel(item.sourceActor) } : {}),
+        ...(actorLabel(item.candidateActor) ? { candidateActor: actorLabel(item.candidateActor) } : {}),
         ...(Number.isInteger(item.step) && item.step > 0 ? { step: item.step } : {}),
         ...(typeof item.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
       };
@@ -1284,6 +1308,8 @@ function qaBackendScope(origin, api, backendCompletion) {
       gapLedger,
       businessRules: typeof backendCompletion?.businessRules?.status === 'string'
         ? backendCompletion.businessRules.status : 'not-tested',
+      businessRuleActors: Array.isArray(backendCompletion?.businessRules?.actors)
+        ? backendCompletion.businessRules.actors.slice(0, 20) : [],
       businessRuleComparison: typeof backendCompletion?.businessRuleComparison?.overall === 'string'
         ? backendCompletion.businessRuleComparison.overall
         : typeof backendCompletion?.businessRuleComparison?.status === 'string'

@@ -374,15 +374,18 @@ test('backend scaffold executes reviewed business rules without leaking test dat
         '/api/items/{id}': {
           get: { responses: { 200: { content: { 'application/json': { schema: { type: 'object', required: ['found', 'id'], properties: { found: { type: 'boolean' }, id: { type: 'string' } } } } } } } },
         },
+        '/api/private': {
+          get: { responses: { 200: {}, 401: {}, 403: {} } },
+        },
       } },
     });
     put(join(site, 'runtime-adapter', 'manifest.json'), { version: 1, routes: [
-      { method: 'GET', path: '/api/items' }, { method: 'POST', path: '/api/items' }, { method: 'GET', path: '/api/items/{id}' },
+      { method: 'GET', path: '/api/items' }, { method: 'POST', path: '/api/items' }, { method: 'GET', path: '/api/items/{id}' }, { method: 'GET', path: '/api/private' },
     ] });
     put(join(site, 'runtime-adapter', 'index.mjs'), [
-      "export const __heimdallAdapter = { routes: [{ method: 'GET', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }, { method: 'POST', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }, { method: 'GET', path: '/api/items/{id}', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }] };",
+      "export const __heimdallAdapter = { routes: [{ method: 'GET', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }, { method: 'POST', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }, { method: 'GET', path: '/api/items/{id}', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }, { method: 'GET', path: '/api/private', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }] };",
       "let items = [];",
-      "export async function handle(request) { const url = new URL(request.url); if (request.method === 'POST') { const body = await request.json(); items.push(body); return Response.json({ created: true, id: body.id }, { status: 201 }); } if (url.pathname.startsWith('/api/items/')) return Response.json({ found: true, id: decodeURIComponent(url.pathname.split('/').at(-1)) }); return Response.json({ items }); }",
+      "export async function handle(request) { const url = new URL(request.url); if (request.method === 'POST') { const body = await request.json(); items.push(body); return Response.json({ created: true, id: body.id }, { status: 201 }); } if (url.pathname === '/api/private') { const auth = request.headers.get('authorization'); if (auth === 'Bearer owner-secret') return Response.json({ allowed: true, actor: 'owner' }); if (auth === 'Bearer guest-secret') return Response.json({ allowed: false, error: 'forbidden' }, { status: 403 }); return Response.json({ allowed: false, error: 'unauthorized' }, { status: 401 }); } if (url.pathname.startsWith('/api/items/')) return Response.json({ found: true, id: decodeURIComponent(url.pathname.split('/').at(-1)) }); return Response.json({ items }); }",
     ].join('\n'));
 
     const generated = spawnSync(process.execPath, [CLI, 'backend', 'scaffold', 'business-rules.test', '--json'], {
@@ -399,6 +402,10 @@ test('backend scaffold executes reviewed business rules without leaking test dat
           { method: 'POST', path: '/api/items', bodyEnv: 'HEIMDALL_TEST_BODY_JSON', expect: { status: 201, json: [{ pointer: '/created', equals: true }, { pointer: '/id', type: 'string' }] } },
           { method: 'GET', path: '/api/items/{id}', pathParams: { id: { response: 0, path: ['id'] } }, expect: { status: 200, json: [{ pointer: '/found', equals: true }, { pointer: '/id', equalsFrom: { response: 0, path: ['id'] } }] } },
         ] },
+        { id: 'owner-private-read', actor: 'owner', steps: [{ method: 'GET', path: '/api/private', headers: { Authorization: { env: 'HEIMDALL_FIXTURE_OWNER_AUTH' } }, expect: { status: 200, json: [{ pointer: '/allowed', equals: true }, { pointer: '/actor', equals: 'owner' }] } }] },
+        { id: 'guest-private-denied', actor: 'guest', steps: [{ method: 'GET', path: '/api/private', headers: { Authorization: { env: 'HEIMDALL_FIXTURE_GUEST_AUTH' } }, expect: { status: 403, json: [{ pointer: '/allowed', equals: false }, { pointer: '/error', equals: 'forbidden' }] } }] },
+        { id: 'anonymous-private-denied', actor: 'anonymous', steps: [{ method: 'GET', path: '/api/private', expect: { status: 401, json: [{ pointer: '/allowed', equals: false }, { pointer: '/error', equals: 'unauthorized' }] } }] },
+        { id: 'invalid-private-denied', actor: 'invalid-token', steps: [{ method: 'GET', path: '/api/private', headers: { Authorization: { env: 'HEIMDALL_FIXTURE_INVALID_AUTH' } }, expect: { status: 401, json: [{ pointer: '/allowed', equals: false }, { pointer: '/error', equals: 'unauthorized' }] } }] },
       ],
     };
     put(join(out, 'state-rules.json'), rules);
@@ -423,29 +430,51 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(report.results.find(item => item.id === 'business-rule:read-items').status, 'passed');
     assert.equal(report.results.find(item => item.id === 'business-rule:create-item').status, 'skipped');
     assert.equal(report.results.find(item => item.id === 'business-rule:create-item').reason, 'write_requires_explicit_local_authorization');
+    assert.equal(report.results.find(item => item.id === 'business-rule:owner-private-read').status, 'incomplete');
+    assert.equal(report.results.find(item => item.id === 'business-rule:owner-private-read').actor, 'owner');
+    assert.equal(report.results.find(item => item.id === 'business-rule:anonymous-private-denied').status, 'passed');
     assert.match(report.repairTasks.find(item => item.kind === 'business-rule').target, /state-rules\.json/);
+
+    const invalidActorRules = JSON.parse(JSON.stringify(rules));
+    invalidActorRules.rules[0].actor = 'owner secret';
+    put(join(out, 'state-rules.json'), invalidActorRules);
+    const invalidActor = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out, env: process.env, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(invalidActor.status, 1, invalidActor.stderr + invalidActor.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rule:read-items').reason, 'invalid_actor');
+    assert.equal(report.results.find(item => item.id === 'business-rule:read-items').actor, undefined);
+    put(join(out, 'state-rules.json'), rules);
 
     const allowed = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
       cwd: out,
-      env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}' },
+      env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}', HEIMDALL_FIXTURE_OWNER_AUTH: 'Bearer owner-secret', HEIMDALL_FIXTURE_GUEST_AUTH: 'Bearer guest-secret', HEIMDALL_FIXTURE_INVALID_AUTH: 'Bearer invalid-secret' },
       encoding: 'utf8', timeout: 30_000,
     });
     assert.equal(allowed.status, 1, allowed.stderr + allowed.stdout);
     report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
     assert.equal(report.results.find(item => item.id === 'business-rule:create-item').status, 'passed');
     assert.equal(report.results.find(item => item.id === 'business-rule:read-created-item').status, 'passed');
+    assert.equal(report.results.find(item => item.id === 'business-rule:owner-private-read').status, 'passed');
+    assert.equal(report.results.find(item => item.id === 'business-rule:owner-private-read').actor, 'owner');
+    assert.equal(report.results.find(item => item.id === 'business-rule:guest-private-denied').status, 'passed');
+    assert.equal(report.results.find(item => item.id === 'business-rule:guest-private-denied').actor, 'guest');
+    assert.equal(report.results.find(item => item.id === 'business-rule:anonymous-private-denied').status, 'passed');
+    assert.equal(report.results.find(item => item.id === 'business-rule:invalid-private-denied').status, 'passed');
     assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /fixture-secret/);
+    assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /owner-secret|guest-secret|invalid-secret/);
 
     const sourceStyle = spawnSync(process.execPath, [join(out, 'checks.mjs'), base, '--business-rules-only'], {
       cwd: out,
-      env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}' },
+      env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}', HEIMDALL_FIXTURE_OWNER_AUTH: 'Bearer owner-secret', HEIMDALL_FIXTURE_GUEST_AUTH: 'Bearer guest-secret', HEIMDALL_FIXTURE_INVALID_AUTH: 'Bearer invalid-secret' },
       encoding: 'utf8', timeout: 30_000,
     });
     assert.equal(sourceStyle.status, 0, sourceStyle.stderr + sourceStyle.stdout);
     report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
     assert.equal(report.mode, 'business-rules-only');
     assert.equal(report.results.some(item => item.id === 'health' || item.id === 'adapter-gap-ledger'), false);
-    assert.equal(report.results.filter(item => item.id.startsWith('business-rule:')).length, 3);
+    assert.equal(report.results.filter(item => item.id.startsWith('business-rule:')).length, 7);
 
     put(join(out, 'state-rules.json'), { ...rules, rules: [] });
     const noRules = spawnSync(process.execPath, [join(out, 'checks.mjs'), base, '--business-rules-only'], {

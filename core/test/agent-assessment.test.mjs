@@ -805,16 +805,16 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
           repairTask: { id: 'repair-query-parameter-gap', kind: 'query-parameter-gap', target: 'runtime-adapter/index.mjs', instruction: '补齐查询参数分支', requiresHumanApproval: false, evidence: { uniqueGaps: 1, unobservedQueryVariants: 1, uncoveredQueryParameters: 1 } },
         },
         {
-          id: 'business-rule:create-item', status: 'failed', step: 1, pointer: '/created', reason: 'json_assertion',
-          repairTask: { id: 'repair-business-rules', kind: 'business-rule', target: 'state-rules.json', instruction: '修正业务规则', requiresHumanApproval: false, evidence: { reason: 'json_assertion', pointer: '/created', secret: 'private-value' } },
+          id: 'business-rule:create-item', actor: 'owner', status: 'failed', step: 1, pointer: '/created', reason: 'json_assertion',
+          repairTask: { id: 'repair-business-rules', kind: 'business-rule', target: 'state-rules.json', instruction: '修正业务规则', requiresHumanApproval: false, evidence: { reason: 'json_assertion', pointer: '/created', actor: 'owner', secret: 'private-value' } },
         },
       ],
     });
     put(join(scaffold, 'backend-compare.json'), {
       schema: 'heimdall.backend-comparison/1', mode: 'business-rules-only', overall: 'failed',
       sourceRules: 1, candidateRules: 1, summary: { compared: 1, passed: 0, failed: 1, incomplete: 0 },
-      comparisons: [{ id: 'business-rule:create-item', status: 'failed', reason: 'candidate_rule_not_passed', sourceStatus: 'passed', candidateStatus: 'failed', step: 1, pointer: '/created' }],
-      repairTasks: [{ id: 'repair-backend-rule-equivalence-create-item-1', kind: 'business-rule-equivalence', target: 'candidate backend', instruction: '修正候选业务流程', requiresHumanApproval: false, evidence: { ruleId: 'business-rule:create-item', sourceStatus: 'passed', candidateStatus: 'failed', step: 1, pointer: '/created', secret: 'private-value' } }],
+      comparisons: [{ id: 'business-rule:create-item', status: 'failed', reason: 'candidate_rule_not_passed', sourceStatus: 'passed', candidateStatus: 'failed', sourceActor: 'owner', candidateActor: 'guest', step: 1, pointer: '/created' }],
+      repairTasks: [{ id: 'repair-backend-rule-equivalence-create-item-1', kind: 'business-rule-equivalence', target: 'candidate backend', instruction: '修正候选业务流程', requiresHumanApproval: false, evidence: { ruleId: 'business-rule:create-item', sourceStatus: 'passed', candidateStatus: 'failed', actor: 'guest', step: 1, pointer: '/created', secret: 'private-value' } }],
     });
 
     const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
@@ -831,9 +831,15 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(tasks[1].evidence.uncoveredQueryParameters, 1);
     assert.equal(tasks[2].kind, 'business-rule');
     assert.equal(tasks[2].evidence.pointer, '/created');
+    assert.equal(tasks[2].evidence.actor, 'owner');
     assert.equal(tasks[3].kind, 'business-rule-equivalence');
     assert.equal(tasks[3].evidence.ruleId, 'business-rule:create-item');
     assert.equal(tasks[3].evidence.candidateStatus, 'failed');
+    assert.equal(tasks[3].evidence.actor, 'guest');
+    assert.deepEqual(env.result.api.scaffold.check.businessRules.actors, [{ actor: 'owner', total: 1, passed: 0, failed: 1, incomplete: 0, status: 'failed' }]);
+    assert.deepEqual(env.result.deliveryPlan.qaTask.scope.backend.completion.businessRuleActors, [{ actor: 'owner', total: 1, passed: 0, failed: 1, incomplete: 0, status: 'failed' }]);
+    assert.equal(env.result.api.scaffold.check.businessRuleComparison.comparisons[0].sourceActor, 'owner');
+    assert.equal(env.result.api.scaffold.check.businessRuleComparison.comparisons[0].candidateActor, 'guest');
     assert.deepEqual(env.result.api.scaffold.check.issuesMeta, { total: 3, returned: 3, truncated: false });
     assert.deepEqual(env.result.api.scaffold.check.repairTasksMeta, { total: 3, returned: 3, truncated: false });
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRules.status, 'failed');

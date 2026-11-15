@@ -38,6 +38,7 @@ function businessRuleResults(file, label) {
     const id = String(item.id);
     if (map.has(id)) throw new CapabilityError('invalid_args', `${label} 包含重复业务规则：${id}`);
     map.set(id, {
+      ...(typeof item.actor === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(item.actor) ? { actor: item.actor } : {}),
       status: ['passed', 'failed', 'incomplete', 'skipped'].includes(item.status) ? item.status : 'unknown',
       ...(Number.isInteger(item.step) && item.step > 0 ? { step: item.step } : {}),
       ...(typeof item.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
@@ -56,6 +57,7 @@ function comparisonRepairTask(ruleId, source, candidate, index) {
     requiresHumanApproval: false,
     evidence: {
       ruleId, sourceStatus: source?.status ?? 'missing', candidateStatus: candidate?.status ?? 'missing',
+      ...(candidate?.actor ? { actor: candidate.actor } : source?.actor ? { actor: source.actor } : {}),
       ...(candidate?.step ? { step: candidate.step } : {}),
       ...(candidate?.pointer ? { pointer: candidate.pointer } : {}),
     },
@@ -82,6 +84,8 @@ function compareReports(flags, positional) {
     else if (candidateResult.status !== 'passed') { status = 'failed'; reason = 'candidate_rule_not_passed'; }
     return {
       id, status, reason,
+      ...(sourceResult?.actor ? { sourceActor: sourceResult.actor } : {}),
+      ...(candidateResult?.actor ? { candidateActor: candidateResult.actor } : {}),
       sourceStatus: sourceResult?.status ?? 'missing', candidateStatus: candidateResult?.status ?? 'missing',
       ...(candidateResult?.step ? { step: candidateResult.step } : {}),
       ...(candidateResult?.pointer ? { pointer: candidateResult.pointer } : {}),
@@ -425,7 +429,7 @@ function stateRules(siteId, contract, adapter) {
     rules: [],
     unknowns: ['authentication', 'permissions', 'state-machine', 'business-rules', 'persistence', 'side-effects',
       ...(contract.status !== 'observed' ? ['api-contract'] : [])],
-    note: '这里故意留空；没有授权的真实旅程和业务规则时，Heimdall 不替人编造后端行为。',
+    note: '这里故意留空；没有授权的真实旅程和业务规则时，Heimdall 不替人编造后端行为。已确认的规则可用 actor 标记执行身份，认证值仍只能通过环境变量引用。',
   };
 }
 
@@ -716,6 +720,8 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token']);
 const JSON_TYPES = new Set(['null', 'boolean', 'object', 'array', 'number', 'integer', 'string']);
 function envName(value) { return typeof value === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(value) ? value : null; }
+function actorLabel(value) { return typeof value === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value) ? value : null; }
+function withActor(actor, value) { return actor ? { actor, ...value } : value; }
 function headerValue(value) {
   if (typeof value === 'string') return { value, missing: false };
   const name = envName(value?.env);
@@ -758,6 +764,8 @@ function prepareRule(rule) {
   if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return { error: 'invalid_rule' };
   const id = typeof rule.id === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(rule.id) ? rule.id : null;
   if (!id || !Array.isArray(rule.steps) || !rule.steps.length || rule.steps.length > 16) return { error: 'invalid_rule' };
+  const actor = rule.actor === undefined ? null : actorLabel(rule.actor);
+  if (rule.actor !== undefined && !actor) return { id, error: 'invalid_actor' };
   const steps = [];
   for (let stepIndex = 0; stepIndex < rule.steps.length; stepIndex += 1) {
     const step = rule.steps[stepIndex];
@@ -810,7 +818,7 @@ function prepareRule(rule) {
     if (expect.type !== undefined && (typeof expect.type !== 'string' || !JSON_TYPES.has(expect.type))) return { id, error: 'invalid_expected_type' };
     steps.push({ method, path, headers, body, statuses, expect, jsonAssertions, ...(pathParams ? { pathParams } : {}) });
   }
-  return { id, steps };
+  return { id, ...(actor ? { actor } : {}), steps };
 }
 function assertionError(value, assertion) {
   const actual = pointerValue(value, assertion.pointer);
@@ -830,13 +838,16 @@ function assertionError(value, assertion) {
 async function runBusinessRule(rule) {
   const rawId = typeof rule?.id === 'string' ? rule.id : 'unknown';
   const rawIdSafe = /^[a-z0-9][a-z0-9._-]{0,63}$/.test(rawId) ? rawId : 'unknown';
+  const rawActor = actorLabel(rule?.actor);
   const rawHasWrite = Array.isArray(rule?.steps) && rule.steps.some(step => WRITE_METHODS.has(String(step?.method || '').toUpperCase()));
   if (rawHasWrite && process.env.HEIMDALL_ALLOW_WRITES !== '1') {
-    return { id: 'business-rule:' + rawIdSafe, status: 'skipped', reason: 'write_requires_explicit_local_authorization', requiresHumanApproval: true };
+    return withActor(rawActor, { id: 'business-rule:' + rawIdSafe, status: 'skipped', reason: 'write_requires_explicit_local_authorization', requiresHumanApproval: true });
   }
   const prepared = prepareRule(rule);
   const id = 'business-rule:' + String(prepared.id || 'unknown').slice(0, 80);
-  if (prepared.error) return { id, status: prepared.error === 'missing_env' || prepared.error === 'invalid_body' ? 'incomplete' : 'failed', reason: prepared.error, requiresHumanApproval: prepared.error === 'missing_env' };
+  const actor = prepared.actor || rawActor;
+  const report = value => withActor(actor, value);
+  if (prepared.error) return report({ id, status: prepared.error === 'missing_env' || prepared.error === 'invalid_body' ? 'incomplete' : 'failed', reason: prepared.error, requiresHumanApproval: prepared.error === 'missing_env' });
   const responses = [];
   const pointerFor = path => '/' + path.map(part => String(part).replaceAll('~', '~0').replaceAll('/', '~1')).join('/');
   const readJson = async index => {
@@ -872,39 +883,39 @@ async function runBusinessRule(rule) {
   for (let index = 0; index < prepared.steps.length; index += 1) {
     const step = prepared.steps[index];
     const resolved = await resolvePath(step);
-    if (resolved.error) return { id, status: 'incomplete', step: index + 1, reason: resolved.error, pointer: resolved.pointer };
+    if (resolved.error) return report({ id, status: 'incomplete', step: index + 1, reason: resolved.error, pointer: resolved.pointer });
     let response;
     try { response = await fetch(base + resolved.path, { method: step.method, headers: step.headers, body: step.body }); }
-    catch { return { id, status: 'failed', step: index + 1, reason: 'request_failed' }; }
+    catch { return report({ id, status: 'failed', step: index + 1, reason: 'request_failed' }); }
     responses.push({ response, bodyRead: false, body: null, bodyError: null });
-    if (!step.statuses.includes(response.status)) return { id, status: 'failed', step: index + 1, httpStatus: response.status, expectedStatuses: step.statuses, reason: 'unexpected_status' };
+    if (!step.statuses.includes(response.status)) return report({ id, status: 'failed', step: index + 1, httpStatus: response.status, expectedStatuses: step.statuses, reason: 'unexpected_status' });
     const expectedMime = step.expect.contentType;
     if (expectedMime !== undefined) {
       const allowed = Array.isArray(expectedMime) ? expectedMime : [expectedMime];
-      if (!allowed.some(item => typeof item === 'string' && normalizeMime(item) === normalizeMime(response.headers.get('content-type')))) return { id, status: 'failed', step: index + 1, httpStatus: response.status, reason: 'unexpected_content_type' };
+      if (!allowed.some(item => typeof item === 'string' && normalizeMime(item) === normalizeMime(response.headers.get('content-type')))) return report({ id, status: 'failed', step: index + 1, httpStatus: response.status, reason: 'unexpected_content_type' });
     }
     if (step.jsonAssertions.length || step.expect.type !== undefined) {
       const parsed = await readJson(index);
-      if (parsed.error) return { id, status: 'failed', step: index + 1, reason: parsed.error };
+      if (parsed.error) return report({ id, status: 'failed', step: index + 1, reason: parsed.error });
       const value = parsed.value;
-      if (step.expect.type !== undefined && actualType(value) !== step.expect.type) return { id, status: 'failed', step: index + 1, reason: 'json_assertion' };
+      if (step.expect.type !== undefined && actualType(value) !== step.expect.type) return report({ id, status: 'failed', step: index + 1, reason: 'json_assertion' });
       for (const assertion of step.jsonAssertions) {
         let resolvedAssertion = assertion;
         if (assertion.equalsFrom) {
           const source = await readJson(assertion.equalsFrom.response);
-          if (source.error) return { id, status: 'incomplete', step: index + 1, reason: 'reference_unavailable', pointer: pointerFor(assertion.equalsFrom.path) };
+          if (source.error) return report({ id, status: 'incomplete', step: index + 1, reason: 'reference_unavailable', pointer: pointerFor(assertion.equalsFrom.path) });
           const actual = pointerValue(source.value, pointerFor(assertion.equalsFrom.path));
           if (actual.invalid || !actual.found || !safeReferenceValue(actual.value)) {
-            return { id, status: 'incomplete', step: index + 1, reason: 'reference_unavailable', pointer: pointerFor(assertion.equalsFrom.path) };
+            return report({ id, status: 'incomplete', step: index + 1, reason: 'reference_unavailable', pointer: pointerFor(assertion.equalsFrom.path) });
           }
           resolvedAssertion = { ...assertion, equals: actual.value };
         }
         const error = assertionError(value, resolvedAssertion);
-        if (error) return { id, status: 'failed', step: index + 1, ...error };
+        if (error) return report({ id, status: 'failed', step: index + 1, ...error });
       }
     }
   }
-  return { id, status: 'passed', steps: prepared.steps.length, checkedSteps: prepared.steps.length };
+  return report({ id, status: 'passed', steps: prepared.steps.length, checkedSteps: prepared.steps.length });
 }
 async function runBusinessRules() {
   if (stateRules?.rules === undefined || stateRules?.rules === null) return [{ id: 'business-rules', status: 'failed', reason: 'invalid_rules_file' }];
@@ -951,7 +962,10 @@ function repairTaskFor(item) {
     instruction: item.status === 'skipped' ? '先确认业务规则和写入授权，再把 state-rules.json 标记为 reviewed 后重新运行 npm run check。'
       : '修正业务规则或后端实现，再运行 npm run check；报告不会保存请求体、认证值或响应正文。',
     requiresHumanApproval: item.requiresHumanApproval === true || item.status === 'skipped',
-    evidence: { reason: typeof item.reason === 'string' ? item.reason.slice(0, 96) : 'business-rule-failed' },
+    evidence: {
+      reason: typeof item.reason === 'string' ? item.reason.slice(0, 96) : 'business-rule-failed',
+      ...(typeof item.actor === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(item.actor) ? { actor: item.actor } : {}),
+    },
   };
   if (id === 'health') return {
     id: 'repair-service-health', kind: 'service-health', target: 'server.mjs',
@@ -1121,7 +1135,7 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     '运行 npm run check 做健康、只读路由和未实现项检查。',
     '要做业务后端检查：在 state-rules.json 中填写 rules，并先把 status 改为 reviewed；每条规则由多个 HTTP 步骤和 status / contentType / JSON Pointer 断言组成。',
     '步骤路径可以使用完整段参数（例如 /items/{id}）；pathParams 用 response + path 引用较早步骤的 JSON 标量，值只在内存中解析并按 URL 段编码，不会写入报告。',
-    '规则中的 Authorization、Cookie 和请求体只通过环境变量引用；写入规则还需要显式设置 HEIMDALL_ALLOW_WRITES=1。',
+    '规则可用 actor 标记匿名、所有者或其他测试身份；规则中的 Authorization、Cookie 和请求体只通过环境变量引用，写入规则还需要显式设置 HEIMDALL_ALLOW_WRITES=1。',
     '检查报告只保留规则 ID、步骤、状态和脱敏断言位置，不保存请求体、认证值或响应正文。',
     '要在获授权源站复测同一规则，可运行 node checks.mjs https://source.example --business-rules-only；报告会标记为 business-rules-only，不包含脚手架健康和缺口门禁。',
     '需要外置状态目录时设置 HEIMDALL_RUNTIME_DATA_DIR；默认目录在脚手架目录旁边。',
