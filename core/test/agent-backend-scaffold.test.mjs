@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -364,6 +365,7 @@ test('backend scaffold executes reviewed business rules without leaking test dat
   const root = mkdtempSync(join(tmpdir(), 'heimdall-backend-business-rules-'));
   const site = join(root, 'workspace', 'business-rules.test');
   let child;
+  let hangingServer;
   try {
     put(join(site, 'api-contract.json'), {
       schema: 'heimdall.contract/1', siteId: 'business-rules.test', openapi: { paths: {
@@ -588,6 +590,26 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(report.results.filter(item => item.id.startsWith('business-rule:')).length, 9);
     assert.equal(report.stateConsistency.status, 'incomplete');
 
+    hangingServer = createServer(() => {});
+    await new Promise((resolve, reject) => {
+      hangingServer.once('error', reject);
+      hangingServer.listen(0, '127.0.0.1', resolve);
+    });
+    const hangingPort = hangingServer.address().port;
+    put(join(out, 'state-rules.json'), { ...rules, rules: [{ id: 'hanging-request', steps: [{ method: 'GET', path: '/hang', expect: { status: 200 } }] }] });
+    const timedOut = spawnSync(process.execPath, [join(out, 'checks.mjs'), `http://127.0.0.1:${hangingPort}`, '--business-rules-only'], {
+      cwd: out, env: process.env, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(timedOut.status, 1, timedOut.stderr + timedOut.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    const timeoutRule = report.results.find(item => item.id === 'business-rule:hanging-request');
+    assert.equal(timeoutRule.status, 'incomplete');
+    assert.equal(timeoutRule.reason, 'request_timeout');
+    assert.equal(timeoutRule.repairTask.evidence.reason, 'request_timeout');
+    put(join(out, 'state-rules.json'), rules);
+    await new Promise(resolve => hangingServer.close(resolve));
+    hangingServer = undefined;
+
     put(join(out, 'state-rules.json'), { ...rules, rules: [] });
     const noRules = spawnSync(process.execPath, [join(out, 'checks.mjs'), base, '--business-rules-only'], {
       cwd: out, env: process.env, encoding: 'utf8', timeout: 30_000,
@@ -613,6 +635,7 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(businessFailure.repairTask.kind, 'business-rule');
     assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /fixture-secret/);
   } finally {
+    if (hangingServer) await new Promise(resolve => hangingServer.close(resolve));
     await stop(child);
     rmSync(root, { recursive: true, force: true });
   }

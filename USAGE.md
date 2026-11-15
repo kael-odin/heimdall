@@ -253,6 +253,8 @@ npm run check
 
 响应头可以用 `expect.headers` 做安全断言，例如 `{ "name": "x-content-type-options", "equals": "nosniff" }` 或 `{ "name": "x-powered-by", "exists": false }`。每项只能使用 `exists`、`equals` 或 `contains` 其中一种；认证、Cookie 和 `Set-Cookie` 头不能写入断言，报告只保留失败的头名称，不保留实际值。
 
+每个业务步骤最多等待 15 秒。超时会标为 `incomplete`，不能单独作为后端缺陷结论。
+
 同一份规则也可以在获授权源站上复测：
 
 ```powershell
