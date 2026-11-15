@@ -392,6 +392,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.readiness.stage, 'human_review');
     assert.equal(env.result.readiness.backend.status, 'needs_human_review');
     assert.equal(env.result.readiness.qa.status, 'needs_human_review');
+    assert.deepEqual(env.result.readiness.qa.closure, env.result.deliveryPlan.qaTask.closure);
     assert.equal(env.result.clone.mirrors, 1);
     assert.equal(env.result.seo.score, 92.8);
     assert.equal(env.result.seo.geo.actionPlan[0].id, 'geo-citation-description');

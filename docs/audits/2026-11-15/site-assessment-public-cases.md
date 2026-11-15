@@ -58,7 +58,7 @@ node core/src/cli.mjs public-case-summary --case-path docs/cases/xspark/2026-11-
 - RFC Editor 仍被动态请求、外链运行时、未镜像链接和二进制审核阻断，不能作为独立离线交付通过案例。
 - 同一 RFC Editor 报告已复核 `deliveryPlan.seoGeoTask`：SEO 90、GEO 71，评分和测量口径均为 `current`，sitemap 为 `partial`，任务状态为 `ready_for_ai_review`，返回 6 个脱敏 observed 行动项，`provenance.invented=0`，输出未命中 Bearer、private-value 或 super-secret。它给 AI 提供了当前优化上下文，但 sitemap 范围和真实搜索/模型引用效果仍未被证明。
 - 同一评估在补充匹配 QA 工作区后，`deliveryPlan.qaTask` 为 `ready_for_ai_review`：前端 6 页、12 个页面/视口组合、覆盖完整、finding 详情可读，后端契约仍为 `missing`、`invented=0`；它把页面层 QA 与后端缺口分开交给 AI。
-- 同一 RFC Editor 公开 QA 运行的 `qaTask.closure` 为 `4 verified / 1 open / 1 unknown`：运行、页面覆盖、finding 证据和人工裁决已具证据，业务检查点缺失为 `open`，后端闭环因无 API 观察为 `unknown`。页面 QA 的 `ready_for_ai_review` 不再被解释成前后端缺陷检测已经完成。
+- 同一 RFC Editor 公开 QA 运行的 `qaTask.closure` 为 `4 verified / 1 open / 1 unknown`，且 `readiness.qa.closure` 与它一致：运行、页面覆盖、finding 证据和人工裁决已具证据，业务检查点缺失为 `open`，后端闭环因无 API 观察为 `unknown`。页面 QA 的 `ready_for_ai_review` 不再被解释成前后端缺陷检测已经完成。
 - 当前后端闭环账本在 RFC Editor 和 `example.com` 的公开摘要中都显示 `required=8`、`verified=0`、`open=0`、`unknown=8`、`notApplicable=1`；`qaTask.scope.backend.completion.closure` 与 `deliveryPlan.backendCompletion.closure` 完全一致。缺少 API 观察证据保持未知，不被包装成失败或通过。
 - 该 QA 运行没有业务检查点，也没有登录态；`fileable=0` 只表示当前声明范围没有达到提单门槛，不能解释成零 bug 或整站 QA 通过。
 - Xspark 的 QA 通过只适用于其 5 页、10 次检查和声明范围，不能外推为任意站点检测准确率。

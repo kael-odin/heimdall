@@ -2365,9 +2365,12 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     geo: entry(geoStatus, seo.status === 'observed' && seo.geo.status !== 'unknown' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
       [api.contract.path, api.adapter.report, api.scaffold?.path], backendItem),
-    qa: entry(qaReady ? 'ready' : qa.status === 'no_runs' ? 'needs_run' : 'needs_human_review',
-      qa.status === 'observed' || qa.status === 'no_runs' ? 'observed' : 'unknown',
-      [qa.latest?.report, qa.latest?.bugs], qaItem),
+    qa: {
+      ...entry(qaReady ? 'ready' : qa.status === 'no_runs' ? 'needs_run' : 'needs_human_review',
+        qa.status === 'observed' || qa.status === 'no_runs' ? 'observed' : 'unknown',
+        [qa.latest?.report, qa.latest?.bugs], qaItem),
+      closure: deliveryPlan.qaTask?.closure ?? null,
+    },
   };
 }
 
