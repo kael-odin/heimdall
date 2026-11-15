@@ -15,6 +15,7 @@
  *   HEIMDALL_TOKEN          设置后 /api/*、/static/* 与镜像子域需鉴权
  *   HEIMDALL_CORS_ORIGIN    允许的控制台来源（逗号分隔）
  *   HEIMDALL_TRUSTED_HOSTS  反向代理公开域名（逗号分隔；默认仅本机域名）
+ *   HEIMDALL_MIRROR_ORIGIN  远程交互镜像公开根 origin（例如 https://mirror.example.com）
  *   HEIMDALL_ALLOWED_HOSTS  代理白名单额外 host（逗号分隔）
  *   代理默认只允许 workspace 下已存在的 host，避免开放代理 / SSRF
  *
@@ -140,6 +141,19 @@ function hostNameOf(raw) {
   catch { return null; }
 }
 function proxyHostKey(raw) { return String(raw ?? '').toLowerCase().replace(/^www\./, ''); }
+function mirrorOriginOf(raw) {
+  if (!raw) return new URL(`http://localhost:${PORT}`);
+  let origin;
+  try { origin = new URL(raw); } catch { throw new Error('invalid HEIMDALL_MIRROR_ORIGIN'); }
+  if (!['http:', 'https:'].includes(origin.protocol) || origin.username || origin.password
+      || origin.pathname !== '/' || origin.search || origin.hash) {
+    throw new Error('invalid HEIMDALL_MIRROR_ORIGIN');
+  }
+  return origin;
+}
+const MIRROR_ORIGIN = mirrorOriginOf(process.env.HEIMDALL_MIRROR_ORIGIN);
+const MIRROR_DOMAIN = MIRROR_ORIGIN.hostname.toLowerCase().replace(/\.$/, '');
+const MIRROR_ORIGIN_CONFIGURED = !!process.env.HEIMDALL_MIRROR_ORIGIN;
 const EXTRA_PROXY_HOSTS = new Set((process.env.HEIMDALL_ALLOWED_HOSTS ?? '')
   .split(',').map(hostNameOf).filter(Boolean).map(proxyHostKey));
 const BIND_HOST = hostNameOf(BIND);
@@ -167,7 +181,7 @@ const mimeOf = (file) => MIME[extname(file).toLowerCase()] ?? 'application/octet
 
 function trustedRequestHost(raw) {
   const host = hostNameOf(raw);
-  return !!host && (TRUSTED_HOSTS.has(host) || !!mirrorHostOf(host));
+  return !!host && (TRUSTED_HOSTS.has(host) || !!mirrorHostOf(host, MIRROR_DOMAIN));
 }
 
 function activeDocumentHeaders(req, type, { source = 'workspace', file = '', compareView = false } = {}) {
@@ -495,8 +509,13 @@ function storeSessionTicket(payload) {
   SESSION_TICKETS.set(id, { ...payload, expires: now + SESSION_TICKET_TTL });
   return id;
 }
-function issueMirrorTicket(rawUrl, mode) {
+function issueMirrorTicket(rawUrl, mode, requestHost = '') {
   if (mode !== 'root') return { status: 400, error: 'invalid mirror mode' };
+  const requestHostname = hostNameOf(requestHost);
+  if (!MIRROR_ORIGIN_CONFIGURED && requestHostname
+      && !['127.0.0.1', 'localhost', '[::1]'].includes(requestHostname)) {
+    return { status: 409, error: 'HEIMDALL_MIRROR_ORIGIN is required for remote mirror access' };
+  }
   let target;
   try { target = new URL(rawUrl ?? ''); }
   catch { return { status: 400, error: 'invalid mirror URL' }; }
@@ -512,7 +531,8 @@ function issueMirrorTicket(rawUrl, mode) {
     return { status: 400, error: 'invalid mirror path' };
   }
   const id = storeSessionTicket({ host: identity.siteId, origin: identity.origin, path, mode });
-  const destination = new URL(`http://${identity.siteId}.localhost:${PORT}${MIRROR_SESSION_PATH}`);
+  const destination = new URL(MIRROR_SESSION_PATH, MIRROR_ORIGIN);
+  destination.hostname = `${identity.siteId}.${MIRROR_DOMAIN}`;
   destination.searchParams.set('ticket', id);
   return { url: destination.href, siteId: identity.siteId, origin: identity.origin };
 }
@@ -534,7 +554,7 @@ function issueArtifactTicket(rawPath, engineHost) {
 }
 function mirrorLaunch(req, res, u) {
   if (!authorized(req, null, res)) return json(res, 401, { error: 'unauthorized' });
-  const issued = issueMirrorTicket(u.searchParams.get('url'), 'root');
+  const issued = issueMirrorTicket(u.searchParams.get('url'), 'root', req.headers.host);
   if (issued.error) return json(res, issued.status, { error: issued.error });
   const destination = issued.url;
   res.writeHead(302, { Location: destination, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
@@ -1295,7 +1315,7 @@ const handleRequest = async (req, res) => {
   if (!trustedRequestHost(req.headers.host)) return json(res, 421, { error: 'untrusted host' });
   const u = new URL(req.url, 'http://x');
   // 镜像子域的 /api/* 与 /static/* 属于原站，先按 Host 分流。
-  const mirrorHost = mirrorHostOf(req.headers.host);
+  const mirrorHost = mirrorHostOf(req.headers.host, MIRROR_DOMAIN);
   if (mirrorHost) {
     if (u.pathname === MIRROR_SESSION_PATH) return exchangeMirrorTicket(req, res, u, mirrorHost);
     // Mirror hosts cannot receive the main host's cookie. They require their own
@@ -1350,7 +1370,7 @@ const handleRequest = async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/api/mirror-ticket') {
     if (!AUTH_TOKEN || !authorized(req, null, res)) return json(res, 401, { error: 'unauthorized' });
     return readJsonBody(req, res, (body) => {
-      const issued = issueMirrorTicket(body.url, body.mode ?? 'root');
+      const issued = issueMirrorTicket(body.url, body.mode ?? 'root', req.headers.host);
       return issued.error ? json(res, issued.status, { error: issued.error }) : json(res, 200, issued);
     });
   }
@@ -2336,6 +2356,7 @@ const handleRequest = async (req, res) => {
       jobs: tasks.size,
       jobsStore: jobStore?.kind ?? null,
       bind: BIND,
+      mirrorOrigin: MIRROR_ORIGIN.origin,
       auth: !!AUTH_TOKEN,
     });
   }

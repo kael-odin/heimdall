@@ -16,7 +16,7 @@ import { API, apiHeaders, wsJson, wsUrl, wsOpenUrl, tokenOf, staticBridgeNeeded 
 import AuthImage from './AuthImage.vue';
 import { typeColor, typeCn } from './types.js';
 import { fmtBytes, fmtDate, FORGE_STAGES } from './format.js';
-import { pageNameOf, pagePathOf, liveUrl, localEngineSupportsMirror, mirrorBridgeNeeded, openMirrorWithTicket } from './pages.js';
+import { pageNameOf, pagePathOf, liveUrl, engineSupportsMirror, mirrorBridgeNeeded, openMirrorWithTicket } from './pages.js';
 import { assetGapsPrefetch, liveHealthPrefetch } from './prefetch-cache.js';
 
 const props = defineProps({
@@ -36,8 +36,8 @@ defineEmits(['close', 'open-forge', 'forge-all', 'verify', 'reveal']);
 /** 交互镜像入口的悬停说明：没导出过时说清"点下去看到的是什么" */
 const liveTitle = computed(() => props.mirrored === 0
   ? '本站尚未导出交互镜像 —— 打开等于直接访问原站（经本地代理），不是复刻结果。先导出一次再来看'
-  : tokenOf() && !localEngineSupportsMirror()
-    ? '独立子域镜像只支持本机引擎地址'
+  : tokenOf() && !engineSupportsMirror()
+    ? '独立子域镜像需要 Token 或本机引擎地址'
   : tokenOf()
     ? '交互镜像：通过一次性授权进入独立子域，站点路由、登录态和本地存储按原站隔离'
     : '交互镜像：保留脚本、资源实时回原站。用 <域名>.localhost 作独立域名，站点的路由/登录态/本地存储都与原站一致');
@@ -311,7 +311,7 @@ function onTablistKey(e) {
     </div>
     <div class="dock-quick" v-if="selected.forgeState === 'done'">
       <a :href="wsOpenUrl(host, `pages/${pageNameOf(selected)}/clone/index.html`)" target="_blank" rel="noopener" title="静态镜像：剥离脚本、资产本地化，离线可开">静态镜像</a>
-      <span v-if="tokenOf() && !localEngineSupportsMirror()" class="quick-disabled" :title="liveTitle">交互镜像 · 仅本机</span>
+      <span v-if="tokenOf() && !engineSupportsMirror()" class="quick-disabled" :title="liveTitle">交互镜像 · 需要 Token 或本机引擎</span>
       <button v-else-if="mirrorBridgeNeeded()" type="button" :class="{ 'quick-off': mirrored === 0 }" :title="liveTitle" @click="openMirror({ url: selected.url })">交互镜像{{ mirrored === 0 ? ' · 未导出' : '' }}</button>
       <a v-else :class="{ 'quick-off': mirrored === 0 }" :href="liveUrl({ url: selected.url })" target="_blank" rel="noopener" :title="liveTitle">交互镜像{{ mirrored === 0 ? ' · 未导出' : '' }}</a>
       <a :href="wsOpenUrl(host, `compare.html?p=${pageNameOf(selected)}`)" target="_blank" rel="noopener" title="左右同步滚动，原站与静态镜像逐段对照">同步对比</a>
@@ -659,7 +659,7 @@ function onTablistKey(e) {
       <div class="compare-link" v-if="forge.done">
         <a :href="wsOpenUrl(host, `compare.html?p=${forge.pageName}`)" target="_blank" rel="noopener"><Icon name="swap" decorative /> 同步滚动对比</a>
         <span class="sep">·</span>
-        <span v-if="tokenOf() && !localEngineSupportsMirror()" class="quick-disabled" :title="liveTitle">交互镜像 · 仅本机</span>
+        <span v-if="tokenOf() && !engineSupportsMirror()" class="quick-disabled" :title="liveTitle">交互镜像 · 需要 Token 或本机引擎</span>
         <button v-else-if="mirrorBridgeNeeded()" type="button" :title="liveTitle" @click="openMirror(forge)">交互镜像</button>
         <a v-else :href="liveUrl(forge)" target="_blank" rel="noopener" title="功能与数据实时回原站（代理通道）">交互镜像</a>
         <span class="sep">·</span>

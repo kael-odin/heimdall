@@ -60,7 +60,7 @@ import ActivityRail from './ActivityRail.vue';
 import TrashDialog from './TrashDialog.vue';
 import { API, apiHeaders, wsUrl, wsOpenUrl, wsJson, tokenOf, staticUrl, artifactOpenUrl, staticBridgeNeeded, normalizeApiBase } from './api.js';
 import { taskState, taskLabel, liveStageCn, fmtBytes, forgeStageProgress, stageProgressText, verifyPageProgress, userErrorText, streamBreakText } from './format.js';
-import { pageNameOf, pagePathOf, normalizeSiteUrl, normalizePageUrl, workspaceHostOf, mirrorBridgeNeeded, localEngineSupportsMirror } from './pages.js';
+import { pageNameOf, pagePathOf, normalizeSiteUrl, normalizePageUrl, workspaceHostOf, mirrorBridgeNeeded, engineSupportsMirror } from './pages.js';
 import { hostOfTask, medianForgeSec } from './tasks.js';
 import { liveHealthPrefetch } from './prefetch-cache.js';
 import { auditScoreTrend } from './seo-trend.js';
@@ -721,7 +721,7 @@ async function saveToken() {
     }
     okMsg.value = v
       ? mirrorBridgeNeeded()
-        ? localEngineSupportsMirror() ? 'Token 已保存，交互镜像将通过一次性授权打开' : 'Token 已保存；独立子域镜像需要本机引擎'
+        ? engineSupportsMirror() ? 'Token 已保存，交互镜像将通过一次性授权打开' : 'Token 已保存；独立子域镜像需要本机引擎或远程镜像配置'
         : 'Token 已保存，浏览器产物访问已授权'
       : crossOrigin ? 'Token 已清除；已打开的镜像会话可能持续到 Cookie 过期' : 'Token 已清除';
     clearErr();

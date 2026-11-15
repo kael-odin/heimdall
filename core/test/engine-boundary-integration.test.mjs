@@ -406,6 +406,26 @@ test('engine protects workspace, revokes cookie and routes mirror hosts before e
   }
 });
 
+test('remote mirror requires an explicit public origin', { timeout: 30_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-engine-remote-mirror-config-'));
+  const port = await freePort();
+  let engine;
+  try {
+    engine = await startEngine(dir, port, '', {
+      HEIMDALL_TRUSTED_HOSTS: 'console.example:443',
+      HEIMDALL_ALLOWED_HOSTS: 'www.example.com',
+    });
+    const response = await getWithHost(port,
+      '/api/mirror-launch?url=' + encodeURIComponent('https://www.example.com/'),
+      'console.example:443', { 'x-heimdall-token': 'test-token' });
+    assert.equal(response.status, 409);
+    assert.match(response.body, /HEIMDALL_MIRROR_ORIGIN/);
+  } finally {
+    if (engine) await stopEngine(engine.proc);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('reverse proxy host, token, static isolation and www allowlist stay bounded', { timeout: 30_000 }, async () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-engine-reverse-proxy-'));
   const site = join(dir, 'workspace', 'www.example.com');
@@ -419,6 +439,7 @@ test('reverse proxy host, token, static isolation and www allowlist stay bounded
     engine = await startEngine(dir, enginePort, '', {
       HEIMDALL_TRUSTED_HOSTS: 'console.example:443',
       HEIMDALL_ALLOWED_HOSTS: 'www.example.com',
+      HEIMDALL_MIRROR_ORIGIN: 'https://mirror.example:443',
     });
     proxy = await startReverseProxy(enginePort);
     const proxyPort = proxy.address().port;
@@ -440,9 +461,10 @@ test('reverse proxy host, token, static isolation and www allowlist stay bounded
     const launch = await getWithHost(proxyPort, '/api/mirror-launch?url=' + encodeURIComponent('https://www.example.com/'), publicHost, { cookie });
     assert.equal(launch.status, 302, launch.body);
     const location = new URL(launch.headers.location);
-    assert.equal(location.hostname, 'www.example.com.localhost');
+    assert.equal(location.hostname, 'www.example.com.mirror.example');
+    assert.equal(location.protocol, 'https:');
     const exchange = await getWithHost(proxyPort, location.pathname + location.search,
-      `www.example.com.localhost:${proxyPort}`);
+      `www.example.com.mirror.example:${proxyPort}`);
     assert.equal(exchange.status, 302, exchange.body);
     assert.equal(exchange.headers.location, '/');
   } finally {

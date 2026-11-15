@@ -81,6 +81,7 @@ test('mirrorHostOf：完整域名当子域，能无损还原原站 host', () => 
   assert.equal(mirrorHostOf('vitest.dev.localhost'), 'vitest.dev');
   assert.equal(mirrorHostOf('vitest.dev.localhost:8900'), 'vitest.dev');
   assert.equal(mirrorHostOf('WWW.Example.COM.localhost'), 'www.example.com');
+  assert.equal(mirrorHostOf('www.example.com.mirror.example:443', 'mirror.example'), 'www.example.com');
 });
 
 test('mirrorHostOf：控制台自己的地址不能被当成镜像站', () => {

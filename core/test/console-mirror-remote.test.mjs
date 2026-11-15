@@ -6,21 +6,48 @@ globalThis.localStorage = {
 };
 globalThis.location = { port: '443', protocol: 'https:', origin: 'https://engine.example', hostname: 'engine.example' };
 
-const { liveUrl, localEngineSupportsMirror, mirrorBridgeNeeded } = await import('../../console/src/pages.js');
+const { liveUrl, engineSupportsMirror, mirrorBridgeNeeded, openMirrorWithTicket } = await import('../../console/src/pages.js');
 
-test('remote engine disables localhost mirror even when console and API hostname match', () => {
+test('remote engine uses the configured engine origin for mirror launch', () => {
   const page = { url: 'https://fixture.test/docs' };
-  assert.equal(localEngineSupportsMirror(), false);
+  assert.equal(engineSupportsMirror(), true);
   assert.equal(mirrorBridgeNeeded(), false);
-  assert.equal(liveUrl(page), '#');
+  assert.match(liveUrl(page), /^https:\/\/engine\.example\/api\/mirror-launch/);
 });
 
 test('remote engine on another hostname still identifies a cross-origin bridge', () => {
   globalThis.location = { port: '', protocol: 'https:', origin: 'https://console.example', hostname: 'console.example' };
+  globalThis.localStorage = { getItem: key => key === 'heimdall-token' ? 'test-token' : key === 'heimdall-api' ? 'https://engine.example' : null };
+  assert.equal(engineSupportsMirror(), true);
   assert.equal(mirrorBridgeNeeded(), true);
-  assert.equal(liveUrl({ url: 'https://fixture.test/' }), '#');
+  assert.match(liveUrl({ url: 'https://fixture.test/' }), /^https:\/\/engine\.example\/api\/mirror-launch/);
+  globalThis.localStorage = { getItem: key => key === 'heimdall-api' ? 'https://engine.example' : null };
+});
+
+test('remote engine accepts a public mirror ticket host', async () => {
+  globalThis.localStorage = { getItem: key => key === 'heimdall-token' ? 'test-token' : key === 'heimdall-api' ? 'https://engine.example' : null };
+  const replaced = [];
+  globalThis.window = {
+    open() {
+      return { closed: false, opener: null, location: { replace(url) { replaced.push(url); } }, close() {} };
+    },
+    location: { assign() {} },
+  };
+  const previousFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      url: 'https://fixture.test.mirror.example/.heimdall/session?ticket=ticket-1',
+      siteId: 'fixture.test', origin: 'https://fixture.test',
+    }) });
+    await openMirrorWithTicket({ url: 'https://fixture.test/docs' });
+    assert.equal(replaced[0], 'https://fixture.test.mirror.example/.heimdall/session?ticket=ticket-1');
+  } finally {
+    globalThis.fetch = previousFetch;
+    delete globalThis.window;
+  }
 });
 
 test('remote engine cannot construct a mirror launch URL', () => {
+  globalThis.localStorage = { getItem: key => key === 'heimdall-api' ? 'https://engine.example' : null };
   assert.equal(liveUrl({ url: 'https://fixture.test/docs' }), '#');
 });

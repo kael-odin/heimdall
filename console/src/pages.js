@@ -58,7 +58,7 @@ export function pageNameOf(n) {
  * 交互镜像地址：保留脚本、资源实时回原站的独立域名入口。
  *
  * 独立域名保留站点自己的 pathname，并让 cookie 与 localStorage 按站点隔离。
- * 依赖 *.localhost 解析到本机；解析失败时需要修正本机 DNS/代理设置。
+ * 默认依赖 *.localhost 解析到本机；远程引擎可通过 HEIMDALL_MIRROR_ORIGIN 使用受控镜像域名。
  * Token 模式先经过引擎主域 /api/mirror-launch：主域会话换一次性短期票据，
  * 子域兑换票据建立自己的会话后跳到无票据的站点路径，SPA 仍看到原站 pathname。
  *
@@ -75,15 +75,18 @@ export function pageNameOf(n) {
 export function liveUrl(f) {
   try {
     const target = new URL(f.url);
-    if (!localEngineSupportsMirror()) return '#';
+    if (!engineSupportsMirror()) return '#';
     target.pathname = dirPath(target.pathname);
     target.hash = '';
     return `${API}/api/mirror-launch?url=${encodeURIComponent(target.href)}`;
   } catch { return '#'; }
 }
 
-export function localEngineSupportsMirror() {
-  try { return ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(API).hostname); }
+export function engineSupportsMirror() {
+  try {
+    const engine = new URL(API);
+    return ['127.0.0.1', 'localhost', '[::1]'].includes(engine.hostname) || !!tokenOf();
+  }
   catch { return false; }
 }
 
@@ -94,7 +97,7 @@ export function mirrorBridgeNeeded() {
 
 /** Different origins need a Token-bearing request to establish the engine's browser session. */
 export async function openMirrorWithTicket(f) {
-  if (!localEngineSupportsMirror()) throw new Error('独立子域镜像需要本机引擎地址');
+  if (!engineSupportsMirror()) throw new Error('独立子域镜像需要 Token 或本机引擎地址');
   const target = new URL(f.url);
   target.pathname = dirPath(target.pathname);
   target.hash = '';
@@ -115,9 +118,12 @@ export async function openMirrorWithTicket(f) {
     }
     const next = new URL(body.url, API);
     const engine = new URL(API);
-    const expectedHost = `${siteId}.localhost`;
+    const localEngine = ['127.0.0.1', 'localhost', '[::1]'].includes(engine.hostname);
+    const validMirrorHost = localEngine
+      ? next.hostname === `${siteId}.localhost`
+      : next.hostname.startsWith(`${siteId}.`);
     if (next.protocol !== engine.protocol || next.username || next.password
-        || next.hostname !== expectedHost || next.pathname !== '/.heimdall/session'
+        || !validMirrorHost || next.pathname !== '/.heimdall/session'
         || next.port !== engine.port || !next.searchParams.get('ticket')) {
       throw new Error('引擎返回了无效的镜像授权地址');
     }

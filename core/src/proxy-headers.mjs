@@ -21,12 +21,19 @@ export function writeProxyHead(res, status, headers) {
 /**
  * 从请求的 Host 头解析"独立域名入口"里的镜像站。
  *
- * `<host>.localhost:<port>` → `<host>`；其余（127.0.0.1、localhost、IPv6 字面量）→ null。
+ * `<host>.localhost:<port>` → `<host>`；也支持传入受控的自定义镜像域名。
  * 用完整域名当子域（vitest.dev.localhost 而不是 vitest-dev.localhost）是为了**无损往返**：
  * 前者能直接还原出原站 host，后者在含连字符的域名上会歧义。
  */
-export function mirrorHostOf(hostHeader) {
-  const name = String(hostHeader ?? '').toLowerCase().split(':')[0];
-  const m = /^([a-z0-9.-]+)\.localhost$/.exec(name);
-  return m ? m[1] : null;
+export function mirrorHostOf(hostHeader, mirrorDomain = 'localhost') {
+  let name;
+  let domain;
+  try {
+    name = new URL('http://' + String(hostHeader ?? '')).hostname.toLowerCase().replace(/\.$/, '');
+    domain = new URL('http://' + String(mirrorDomain ?? '')).hostname.toLowerCase().replace(/\.$/, '');
+  } catch { return null; }
+  const suffix = `.${domain}`;
+  if (!domain || !name.endsWith(suffix)) return null;
+  const siteId = name.slice(0, -suffix.length);
+  return /^[a-z0-9.-]+$/.test(siteId) ? siteId : null;
 }
