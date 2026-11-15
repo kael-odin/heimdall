@@ -974,6 +974,22 @@ function buildSeoGeoTask(siteId, origin, seo) {
     returned: advisoryActions.length,
     truncated: seo.advisoryCandidatesMeta?.truncated === true || advisoryCandidates.length > advisoryActions.length,
   };
+  const outcomeEvidence = {
+    search: {
+      status: 'unknown', basis: 'unknown', evidence: [],
+      reason: '没有授权的真实搜索结果、收录或排名实验。',
+    },
+    modelCitation: {
+      status: 'unknown', basis: 'unknown', evidence: [],
+      reason: '没有授权的真实模型检索和引用命中实验。',
+    },
+  };
+  const outcomeTasks = [
+    { id: 'measure-search-outcomes', basis: 'unknown', requiresHumanApproval: true,
+      instruction: '在固定且获授权的查询集合上记录搜索结果、收录状态和采集时间；不要把页面评分当作真实排名或收录结果。' },
+    { id: 'measure-model-citation-outcomes', basis: 'unknown', requiresHumanApproval: true,
+      instruction: '在固定且获授权的提示词、模型和时间窗口上记录回答与来源引用；不要把 GEO 准备度当作真实引用命中率。' },
+  ];
   const geoCoverage = geo.coverage && typeof geo.coverage === 'object' ? {
     pages: Number.isInteger(geo.coverage.pages) ? geo.coverage.pages : null,
     pagesScored: Number.isInteger(geo.coverage.pagesScored) ? geo.coverage.pagesScored : null,
@@ -1017,10 +1033,12 @@ function buildSeoGeoTask(siteId, origin, seo) {
     observedActionsMeta,
     observedAdvisories: advisoryActions,
     observedAdvisoriesMeta,
+    outcomeEvidence,
     inputs: observed ? [{ path: seo.reports.json, role: 'deterministic SEO/GEO report', basis: 'observed', required: true }] : [],
     tasks: observed ? [
       { id: 'fix-observed-seo', basis: 'observed', requiresHumanApproval: true, instruction: '按 observedActions 中的 SEO 项修复页面、模板或结构化信息；不要改评分公式来消除问题。' },
       { id: 'improve-observed-geo', basis: 'observed', requiresHumanApproval: true, instruction: '按 GEO 行动项补充可回答、可抽取、实体和引用线索；所有事实、作者和链接先人工核实。' },
+      ...outcomeTasks,
       { id: 'rerun-complete-audit', basis: 'inferred', requiresHumanApproval: false, instruction: '修复后用相同站点范围重新审计，确认口径、覆盖、sitemap 和 action plan 都可比较。' },
     ] : [
       { id: 'obtain-seo-geo-evidence', basis: 'unknown', requiresHumanApproval: true, instruction: '先运行授权的 SEO/GEO 审计；没有报告时不要猜测分数或问题。' },
@@ -1029,6 +1047,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
       'SEO/GEO 分数只表示当前方法和采集范围，不代表排名、流量、收录或模型引用成功。',
       'unknown、stale、future、partial 和 unavailable 不能被 AI 改写成通过或完整覆盖。',
       'medium SEO 行动属于 observed advisory，不会单独改变 readiness，但修复后仍需用同一审计复测。',
+      '真实搜索结果、收录状态和模型引用命中率必须有独立实验；页面评分不会自动升级 outcomeEvidence。',
       'AI 可以提出内容、结构、链接和结构化数据优化，但不能未经人工核实编造事实、作者、评价或来源。',
       '任何优化都必须在相同范围、相同方法版本下重新运行审计后才能比较前后结果。',
     ],
@@ -1041,6 +1060,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
         '评分和测量口径均为 current，或报告明确保留为历史观察。',
         'sitemap、页面采集和初始 HTML 范围完整后再解释站点级结果。',
         '修复后的 observedActions 在同一审计范围内消失或降为已解释状态。',
+        '需要声明真实排名、收录或模型引用效果时，先补齐对应的独立实验记录；否则保持 unknown。',
       ],
     },
     prompt: [
@@ -1048,6 +1068,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
       '把 observedActions 当作当前证据，把 tasks 中的 inferred 内容当作待人工核实的建议。',
       '如果 observedActionsMeta 或 observedAdvisoriesMeta 的 truncated 为 true，继续读取同一份脱敏报告；列表不是全部问题。',
       '不要把分数解释为排名或模型引用成功，也不要用改评分公式的方式消除问题。',
+      '如果 outcomeEvidence.search 或 outcomeEvidence.modelCitation 为 unknown，先按对应 tasks 补采授权实验，再谈真实效果。',
       '完成一组小改动后按 verification.commands 复测，并分别汇报 verified、observed、inferred、unknown。',
     ].join('\n'),
     provenance: {
@@ -1936,6 +1957,10 @@ export default {
     if (seo.status === 'observed' && ['partial', 'unavailable'].includes(seo.completeness.sitemapCoverage)) {
       const reasons = seo.sitemap?.reasons?.length ? ` 原因：${seo.sitemap.reasons.join('、')}。` : '';
       unknowns.push({ id: 'seo-sitemap-scope-limited', detail: `站点地图覆盖为 ${seo.completeness.sitemapCoverage}，站点范围仍需补采。${reasons}` });
+    }
+    if (seo.status === 'observed') {
+      unknowns.push({ id: 'seo-search-outcome-unknown', detail: '当前 SEO 证据没有真实搜索结果、收录或排名实验。' });
+      unknowns.push({ id: 'geo-model-citation-outcome-unknown', detail: '当前 GEO 证据没有真实模型检索和引用命中实验。' });
     }
     for (const id of api.unknowns) unknowns.push({ id, detail: 'API 行为、认证、权限、状态机或副作用仍未被该摘要证明。' });
     if (qa.status === 'not_configured') unknowns.push({ id: 'qa-not-configured', detail: '没有提供 QA 工作区，最近一次 QA 运行未知。' });

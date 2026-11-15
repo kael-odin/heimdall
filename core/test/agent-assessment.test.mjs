@@ -1096,6 +1096,12 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     assert.deepEqual(env.result.deliveryPlan.seoGeoTask.coverage.geo, {
       pages: 1, pagesScored: 1, pagesUnavailable: 0, observedWeight: 96, totalWeight: 96, ratio: 1, confidence: 'high',
     });
+    assert.equal(env.result.deliveryPlan.seoGeoTask.outcomeEvidence.search.status, 'unknown');
+    assert.equal(env.result.deliveryPlan.seoGeoTask.outcomeEvidence.modelCitation.status, 'unknown');
+    assert.ok(env.result.deliveryPlan.seoGeoTask.tasks.some(item => item.id === 'measure-search-outcomes'));
+    assert.ok(env.result.deliveryPlan.seoGeoTask.tasks.some(item => item.id === 'measure-model-citation-outcomes'));
+    assert.ok(env.result.unknowns.some(item => item.id === 'seo-search-outcome-unknown'));
+    assert.ok(env.result.unknowns.some(item => item.id === 'geo-model-citation-outcome-unknown'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.status === 'open'));
     put(seoPath, { ...seoReport, scoreMethodVersion: SEO_SCORE_METHOD_VERSION - 1 });
     const staleRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {

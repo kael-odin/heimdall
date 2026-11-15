@@ -38,6 +38,8 @@
 2026-11-15 [readiness 克隆视觉与范围分层]：保留 `readiness.clone.status` 作为页面镜像和多视口验证状态，并新增 `readiness.clone.scope.status` 与 `scopeLimited`。范围受限时视觉状态可以是 `ready`，但范围状态为 `needs_scope_review`，避免 AI 把有界交付理解成整站克隆完成。
 2026-11-15 [公开案例 SEO 行动进入摘要]：`public_case_summary.seo.observedActions` 现在按问题 ID 聚合最多 20 条脱敏的 critical/high/medium SEO 行动项，让 AI 能从真实案例复用优化线索；历史评分和缺少当前方法版本时仍保留为观察，不进入当前通过结论。
 2026-11-15 [GEO 覆盖进入 AI 任务包]：`deliveryPlan.seoGeoTask` 现在投影 `scores.geoConfidence` 与 `coverage.geo`，保留 GEO 页数、已评分页、不可用页、观察权重、总权重、比例和证据置信度；缺失字段保持 `null`，不让 AI 把页面分数误读成完整站点证据。
+2026-11-15 [真实 SEO/GEO 效果证据显式保持未知]：`site-assessment` 在 `seoGeoTask.outcomeEvidence` 和顶层 `unknowns` 中分别标出真实搜索/收录结果与模型引用命中率；观察型页面分数不会自动升级为真实效果，并为获授权、可复核实验生成两个 AI 任务。该状态不阻断页面级评分 readiness。
+
 2026-11-15 [过期 GEO 置信度隔离]：GEO 方法版本缺失、过期或状态非法时，摘要会把 `confidence` 保留为 `null`；旧分数可以追溯，但不会带着 `high` 置信度进入 AI 任务包。
 2026-11-15 [QA finding 详情进入就绪门禁]：`deliveryPlan.qaTask`、`deliveryPlan.items` 和 `readiness.qa` 现在都要求 `findings.status=observed`；详情缺失、不可用或返回为空时进入 `blocked_on_qa_evidence`，即使摘要 `fileable=0` 也不能解释成零 bug 或 QA ready。
 2026-11-15 [QA 证据输入路径收紧]：站点评估只把实际存在的脱敏 `report.md`、`bugs.md` 放进 `qaTask.inputs` 和修复证据；缺失文件保持 `null` 或省略，不能用推测路径冒充可读取证据。
