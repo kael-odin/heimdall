@@ -97,7 +97,8 @@ test('static deployment failures persist a sanitized attempt without creating pa
     writeFileSync(join(root, 'checksums.json'), JSON.stringify({ files: Object.entries(files).map(([p, body]) => ({
       p, s: Buffer.byteLength(body), h: createHash('sha256').update(body).digest('hex'),
     })) }));
-    const reportPath = join(root, 'deployment-verification.json');
+    const reportPath = join(root, '..', 'deployment-verification.json');
+    writeFileSync(reportPath, JSON.stringify({ stale: true }));
     const runDocker = args => {
       if (args[0] === 'inspect') return 'none';
       if (args[0] === 'exec') return JSON.stringify({ health: 'passed', root: 'passed', routes: ['/'], routesChecked: 1, sourceWorkspace: 'passed' });
@@ -117,7 +118,11 @@ test('static deployment failures persist a sanitized attempt without creating pa
     assert.equal(attempt.browserProbe.causes, 'externalRequest@analytics.ietf.org×1、http:404×1');
     assert.ok(!existsSync(reportPath), 'failed verification must not create a passing report');
     assert.doesNotMatch(JSON.stringify(attempt), /private|token|secret/i);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(join(root, '..', 'deployment-verification.json'), { force: true });
+    rmSync(join(root, '..', 'deployment-verification.json.attempt.json'), { force: true });
+  }
 });
 
 test('live-verify CLI resolves relative bundle paths from the invoking directory', () => {

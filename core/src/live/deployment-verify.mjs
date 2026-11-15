@@ -656,6 +656,7 @@ export async function verifyDeploymentBundle({ bundleDir, siteId, reportPath, ht
     clearAttemptReport({ siteId: report.siteId, reportPath, kind: 'adapter' });
     return { report, reportPath: target };
   } catch (error) {
+    try { rmSync(target, { force: true }); } catch {}
     const attempt = writeAttemptReport({ siteId: siteId ?? metadata.config.siteId, reportPath, kind: 'adapter',
       bundleDir: bundle, stage, error, phase });
     if (attempt && error && typeof error === 'object') error.attemptReportPath = attempt;
@@ -748,6 +749,7 @@ export async function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPa
     clearAttemptReport({ siteId: report.siteId, reportPath, kind: 'static' });
     return { report, reportPath: target };
   } catch (error) {
+    try { rmSync(target, { force: true }); } catch {}
     const attempt = writeAttemptReport({ siteId: siteId ?? metadata.config.siteId, reportPath, kind: 'static',
       bundleDir: bundle, stage, error, browserProbe });
     if (attempt && error && typeof error === 'object') error.attemptReportPath = attempt;

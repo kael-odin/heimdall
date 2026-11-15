@@ -10,7 +10,7 @@
 
 const pct = value => typeof value === 'number' ? (value * 100).toFixed(1) + '%' : '—';
 
-export function renderHandoff({ siteId, origin, target, summary, summaryEvidence, gaps, delivered, skippedVerify = false, verifyFailed = false, maxPages, strictRequested = false, live = null }) {
+export function renderHandoff({ siteId, origin, target, summary, summaryEvidence, gaps, delivered, skippedVerify = false, verifyFailed = false, maxPages, strictRequested = false, live = null, deployment = null }) {
   const lines = [];
   const blockers = Object.entries(summary?.blockers ?? {}).sort((a, b) => b[1] - a[1]);
   const scopeLimited = live?.coverage?.scopeLimited === true;
@@ -97,6 +97,15 @@ export function renderHandoff({ siteId, origin, target, summary, summaryEvidence
       if (live.healthReport) lines.push('- 诊断：`' + live.healthReport + '`');
     } else {
       lines.push('- `live --offline --strict --heal --materialize-har --root mirror`：没有得到有效结果，不能声称独立离线交付通过。');
+    }
+    if (deployment?.status === 'verified') {
+      lines.push('- 最终交付包 `live-verify --static`：**通过**。已在 Docker `network none` 中完成两次启动、路由检查、镜像校验和与断网浏览器检查。');
+    } else if (deployment?.status === 'failed') {
+      lines.push(`- 最终交付包独立部署：**失败**，阶段 ${deployment.stage ?? 'unknown'}；请先读取脱敏失败尝试报告，再修复后重跑。`);
+    } else if (deployment?.status === 'unavailable') {
+      lines.push('- 最终交付包独立部署：**环境不可用**，没有生成通过证据。');
+    } else if (deployment?.status === 'not-run') {
+      lines.push('- 最终交付包独立部署：**未执行**，严格离线导出没有产生可验收的正式包。');
     }
     lines.push('');
   }

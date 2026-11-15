@@ -15,7 +15,7 @@
  * 退出码：0 = 全流程完成且验证门禁通过；1 = 有页面没测到或某一步失败；2 = 参数错误。
  */
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +25,7 @@ import { findSiteIdentity } from './site-origin.mjs';
 import { asUrl } from './url-canon.mjs';
 import { writeFileAtomic } from './fsutil.mjs';
 import { renderHandoff } from './handoff-report.mjs';
+import { validateStaticDeploymentReport } from './live/deployment-verify.mjs';
 import { createMeasurementReader, summaryMatchesMeasurement } from './verify/measurement-status.mjs';
 
 const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -228,7 +229,7 @@ const assets = await run('src/audit/assets.mjs', [host, '--max', '100000']);
 log('5/5 打包交付');
 const deliver = await run('src/deliver.mjs', [host, siteId]);
 
-// 可选的最终门禁复用 live 导出器：交接默认仍只产出静态素材，--strict 才要求独立离线包通过。
+// 可选的最终门禁复用 live 导出器：交接默认仍只产出静态素材，--strict 才要求离线导出和独立部署都通过。
 let live = null;
 if (STRICT) {
   log('6/6 严格离线交付（复用 live 导出器）');
@@ -278,19 +279,40 @@ const delivered = (() => {
   } catch { return null; }
 })();
 
+let deployment = null;
+if (STRICT && live?.status === 'passed' && live.published === true && delivered) {
+  log('7/7 最终包独立断网部署验收');
+  const bundle = join(DELIVERABLE, delivered);
+  const reportFile = join(BASE, 'deployment-verification.json');
+  try { unlinkSync(reportFile); } catch {}
+  const result = await run('src/live/deployment-verify.mjs', [bundle, '--static', '--site-id', siteId]);
+  const report = readJson(reportFile);
+  const valid = result.code === 0 && validateStaticDeploymentReport(report, { siteId });
+  const attempt = readJson(join(BASE, 'deployment-verification-attempt.json'));
+  deployment = valid
+    ? { status: 'verified', report: 'workspace/' + siteId + '/deployment-verification.json', browser: report.checks?.browserProbe }
+    : {
+      status: result.code === 3 ? 'unavailable' : 'failed',
+      report: attempt ? 'workspace/' + siteId + '/deployment-verification-attempt.json' : null,
+      stage: attempt?.stage ?? 'unknown', browser: attempt?.browserProbe ?? null,
+    };
+} else if (STRICT) {
+  deployment = { status: 'not-run', report: null };
+}
+
 const handoffDir = join(BASE, 'handoff');
 mkdirSync(handoffDir, { recursive: true });
 const reportPath = join(handoffDir, 'README.md');
 writeFileAtomic(reportPath, renderHandoff({
   siteId, origin: identity.origin ?? TARGET, target: TARGET, summary, gaps, delivered, skippedVerify: SKIP_VERIFY,
   summaryEvidence, verifyFailed: !SKIP_VERIFY && (verify.code !== 0 || !summary || summaryEvidence?.status !== 'verified'), maxPages: MAX_PAGES,
-  strictRequested: STRICT, live,
+  strictRequested: STRICT, live, deployment,
 }));
 
 const ok = !cloneFailed && (SKIP_VERIFY || (verify.code === 0 && summary?.passed === true))
   && (SKIP_VERIFY || summaryEvidence?.status === 'verified')
   && assets.code === 0 && deliver.code === 0
-  && (!STRICT || (live?.status === 'passed' && live.published === true && live.blockingCount === 0));
+  && (!STRICT || (live?.status === 'passed' && live.published === true && live.blockingCount === 0 && deployment?.status === 'verified'));
 log('交接说明 ->', reportPath);
 log(ok ? (SKIP_VERIFY ? '流程完成，本次跳过验证' : '全流程完成，验证门禁通过')
   : '流程未全部通过，检查交接说明和步骤日志');

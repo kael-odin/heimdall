@@ -27,6 +27,8 @@ strict 摘要：`workspace/example.com/live-export.json`
 | 最终包独立部署 | `verified`，Docker `network none`，1 条路由检查，0 失败 |
 | handoff 退出码 | 0 |
 
+本轮代码已把最终包的 `live-verify --static` 串进 `handoff --strict` 的第 7 步；因此这次退出码为 0 同时包含严格离线导出和独立 Docker 验收，不再需要把独立部署当作 handoff 之后的隐含手工步骤。`site-assessment` 读取同一数据根后得到 `independentDeployment=verified`，并保留 `scopeLimited=true`、SEO、API、QA 和业务边界。
+
 这次 `live-export.json` 仍报告 `coverage.scope=recon-discovered` 和 `scopeLimited=true`。因此结果只证明当前侦察范围内的静态镜像与 strict 离线门禁通过，不能证明 `example.com` 全站全集已经发现。
 
 交接报告已明确写出范围受限，并要求提高 `--max-pages` 后重跑；视觉分数和 strict 通过没有被包装成后端、认证、权限或业务等价。
