@@ -1052,6 +1052,9 @@ function buildSeoGeoTask(siteId, origin, seo) {
 function buildQaTask(siteId, origin, qa, api) {
   const latest = qa.latest;
   const findings = latest?.findings?.items ?? [];
+  const findingsTotal = Number.isSafeInteger(latest?.findings?.total) && latest.findings.total >= 0
+    ? latest.findings.total : findings.length;
+  const hasFindings = findingsTotal > 0;
   const completeness = latest?.completeness?.status ?? 'unknown';
   const observed = qa.status === 'observed';
   const backendScope = {
@@ -1065,12 +1068,12 @@ function buildQaTask(siteId, origin, qa, api) {
     ? 'blocked_on_qa_evidence'
     : qa.status === 'no_runs' ? 'blocked_on_observation'
       : completeness !== 'complete' ? 'blocked_on_complete_run'
-        : findings.length ? 'human_review'
+        : hasFindings ? 'human_review'
           : qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
             ? 'ready_for_ai_review' : 'ready';
   const tasks = observed && latest ? [
     ...(completeness !== 'complete' ? [{ id: 'complete-qa-run', basis: 'observed', requiresHumanApproval: true, instruction: '补齐环境、导航、检测器和基线证据；没有可提单问题不等于 QA 已完成。' }] : []),
-    ...(findings.length ? [{ id: 'review-findings', basis: 'observed', requiresHumanApproval: true, instruction: '先用 heimdall_qa_findings 逐条确认 finding；只有人工确认后才修改代码或业务。' }] : []),
+    ...(hasFindings ? [{ id: 'review-findings', basis: 'observed', requiresHumanApproval: true, instruction: '先用 heimdall_qa_findings 逐条确认 finding；只有人工确认后才修改代码或业务。' }] : []),
     ...(findings.some(item => item.triage === 'known-bug') ? [{ id: 'fix-confirmed-findings', basis: 'observed', requiresHumanApproval: false, instruction: '修复已经标记为 known-bug 的问题，再用同一站点和检查点重跑 QA。' }] : []),
     ...(qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
       ? [{ id: 'follow-up-qa-metrics', basis: 'inferred', requiresHumanApproval: true, instruction: '按 QA 指标决策补证据、修已有检测器或增加业务检查点；不以指标不足为由新增通用检测器。' }] : []),

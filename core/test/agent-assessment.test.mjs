@@ -101,6 +101,34 @@ test('site-assessment: does not borrow QA evidence from an unrelated workspace s
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: fileable QA summary stays in human review when finding details are unavailable', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-qa-finding-summary-'));
+  const qa = join(root, 'qa-project');
+  try {
+    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(qa, '.heimdall', 'qa.json'), {
+      sites: { web: { url: 'https://example.test/', pages: ['/'] } },
+    });
+    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-summary-20261115-abcd', 'run.json'), {
+      runId: 'qa-summary-20261115-abcd', site: 'web', startedAt: '2026-11-15T00:00:00.000Z',
+      summary: { total: 1, fileable: 1, environment: 0, checkNeedsFix: 0 },
+      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [], detection: { failedPages: [] }, baseline: { status: 'disabled' } },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(result.qa.latest.completeness.status, 'complete');
+    assert.equal(result.qa.latest.findings.status, 'unavailable');
+    assert.equal(result.qa.latest.findings.total, 1);
+    assert.equal(result.deliveryPlan.qaTask.status, 'human_review');
+    assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'review-findings'));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: rejects SEO and API evidence from a different origin', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-origin-scope-'));
   const site = join(root, 'workspace', 'example.test');
