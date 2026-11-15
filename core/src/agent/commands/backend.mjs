@@ -59,7 +59,8 @@ function comparisonRepairTask(ruleId, source, candidate, index) {
     evidence: {
       ruleId, sourceStatus: source?.status ?? 'missing', candidateStatus: candidate?.status ?? 'missing',
       ...(candidate?.actor ? { actor: candidate.actor } : source?.actor ? { actor: source.actor } : {}),
-      ...(candidate?.stateConsistency ? { stateConsistency: candidate.stateConsistency } : source?.stateConsistency ? { stateConsistency: source.stateConsistency } : {}),
+      ...(source?.stateConsistency ? { sourceStateConsistency: source.stateConsistency } : {}),
+      ...(candidate?.stateConsistency ? { candidateStateConsistency: candidate.stateConsistency } : {}),
       ...(candidate?.step ? { step: candidate.step } : {}),
       ...(candidate?.pointer ? { pointer: candidate.pointer } : {}),
     },
@@ -84,6 +85,9 @@ function compareReports(flags, positional) {
     else if (!candidateResult) { status = 'failed'; reason = 'rule_missing_from_candidate'; }
     else if (sourceResult.status !== 'passed') { status = 'incomplete'; reason = 'source_rule_not_passed'; }
     else if (candidateResult.status !== 'passed') { status = 'failed'; reason = 'candidate_rule_not_passed'; }
+    else if (sourceResult.stateConsistency && sourceResult.stateConsistency !== 'passed') { status = 'incomplete'; reason = 'source_state_consistency_not_passed'; }
+    else if (candidateResult.stateConsistency === 'failed') { status = 'failed'; reason = 'candidate_state_consistency_failed'; }
+    else if (sourceResult.stateConsistency === 'passed' && candidateResult.stateConsistency !== 'passed') { status = 'incomplete'; reason = 'candidate_state_consistency_incomplete'; }
     return {
       id, status, reason,
       ...(sourceResult?.actor ? { sourceActor: sourceResult.actor } : {}),

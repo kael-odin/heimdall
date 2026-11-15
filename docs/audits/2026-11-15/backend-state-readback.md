@@ -20,6 +20,12 @@
 | 状态摘要 | 1 passed，1 incomplete |
 | 站点评估 | 传递 `backendCompletion.stateConsistency` 和 `qaTask.scope.backend.completion.stateConsistency` |
 
+## 源站与候选对照
+
+受控对照夹具又加入一条同规则差异：源站报告标记 `stateConsistency=passed`，候选报告标记 `stateConsistency=incomplete`，两份规则的最终 HTTP 规则状态都保持 `passed`。`heimdall backend compare` 将该项标为 `incomplete`，保留 `sourceStateConsistency` 和 `candidateStateConsistency`，没有把普通响应通过升级为状态等价。
+
+候选明确把状态读回标为 `failed` 时，对照结果才进入 `failed` 和候选修复任务；源站状态证据未通过时，对照保持 `incomplete`，等待先修复或补足源站证据。
+
 定向 B3 测试 6/6 通过，站点评估测试 23/23 通过，语法检查 774 个文件通过。
 
 ## 边界

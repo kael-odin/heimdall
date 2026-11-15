@@ -101,7 +101,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `deliveryPlan.backendCompletion.businessRules` 汇总已声明规则的 `passed`、`failed`、`incomplete` 和 `not-tested`；即使为 `passed`，未声明的状态机、幂等、清理和外部副作用仍属于未知。
 - `deliveryPlan.backendCompletion.stateConsistency` 只汇总已声明的写入后读取流程；`passed` 证明该规则的操作响应和后续读取通过，`incomplete` 表示没有读回或缺少授权，`failed` 表示声明流程违约。它不证明重启持久化、回滚、并发、幂等或外部副作用。
 - 要比较源站与候选后端，可对同一份规则运行 `node checks.mjs <base> --business-rules-only`；先看报告的 `mode`，只有 `scaffold` 才包含健康、路由覆盖和适配器缺口检查，`business-rules-only` 只覆盖声明的业务流程。
-- 两份 `business-rules-only` 报告可用 `heimdall backend compare <source-check.json> <candidate-check.json> --out backend-compare.json` 自动对照；退出码 1 表示候选规则失败或缺失，`incomplete` 表示源站证据未通过、规则集为空、源站缺规则或候选多出规则。比较结果只保留规则 ID、状态、步骤和 JSON Pointer。
+- 两份 `business-rules-only` 报告可用 `heimdall backend compare <source-check.json> <candidate-check.json> --out backend-compare.json` 自动对照；退出码 1 表示候选规则或候选状态读回失败，`incomplete` 表示源站证据未通过、规则集为空、源站缺规则、候选多出规则或候选没有证明状态读回。比较结果只保留规则 ID、状态、身份标签、状态一致性状态、步骤和 JSON Pointer。
 - 如果把 `backend-compare.json` 写入候选的 `backend-scaffold/`，`heimdall_site_assessment` 会在 `deliveryPlan.backendCompletion.businessRuleComparison` 暴露安全摘要，并把 `business-rule-equivalence` 修复任务合并到交付计划；它不会打开源站原始 HAR、认证材料或响应正文。
 - 由适配器缺口账本直接生成的任务还带 `verification`：查询变体、查询参数和运行时路由可用 `site-assessment` 的条件复测；写入任务仍要求人工授权，复测条件不会替代业务旅程。
 - 如果存在 `api.adapter.gapLedger`，先看 `summary`、`gaps` 和 `*Meta`：`uniqueGaps`、`unobservedQueryVariants`、`uncoveredQueryParameters`、`missingResponseBodies` 和 `unverifiedWrites` 都属于未完成证据；`gapsMeta.truncated`、`knownRoutesMeta.truncated` 或 `unknownsMeta.truncated` 为真时，当前列表不完整，必须继续读取同一份脱敏报告；`nearestRoutes` 只是排查线索，不是路由等价证明。
