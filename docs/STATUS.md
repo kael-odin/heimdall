@@ -44,7 +44,7 @@
 
 2026-11-15 [公开案例摘要保留能力闭合状态]：`public_case_summary` 现在从脱敏 `site-assessment` 投影受限 closure 摘要到克隆、部署、后端、SEO/GEO 和 QA 能力卡片；公开案例不会只显示 `ready`，还会保留未关闭的义务和未知证据。
 
-2026-11-15 [公开案例 closure 一致性校验]：案例读取器现在只接受已知 closure schema，并核对义务 ID 唯一性、`verified/open/unknown/notApplicable` 计数与义务列表；损坏或伪造的 closure 被丢弃，不会进入公开能力摘要。
+2026-11-16 [公开案例 closure 一致性校验]：案例读取器现在只接受已知 closure schema，并核对义务 ID 唯一性、`verified/open/unknown/notApplicable` 计数与义务列表；损坏或伪造的 closure 被丢弃，不会进入公开能力摘要。
 
 2026-11-15 [公开案例摘要保留 SEO/GEO 效果证据]：同一摘要现在投影脱敏 `outcomeEvidence` 的搜索/收录与模型引用状态、样本数、命中数和命中率；缺少独立实验时继续显示 `unknown`，页面分数不会替代结果证据。
 
