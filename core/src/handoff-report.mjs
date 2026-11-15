@@ -13,6 +13,7 @@ const pct = value => typeof value === 'number' ? (value * 100).toFixed(1) + '%' 
 export function renderHandoff({ siteId, origin, target, summary, summaryEvidence, gaps, delivered, skippedVerify = false, verifyFailed = false, maxPages, strictRequested = false, live = null }) {
   const lines = [];
   const blockers = Object.entries(summary?.blockers ?? {}).sort((a, b) => b[1] - a[1]);
+  const scopeLimited = live?.coverage?.scopeLimited === true;
   lines.push(`# 交接说明 · ${siteId}`, '');
   lines.push(`生成时间：${new Date().toISOString()}`);
   lines.push(`源站：${origin ?? target ?? '未知'}`, '');
@@ -40,6 +41,10 @@ export function renderHandoff({ siteId, origin, target, summary, summaryEvidence
     lines.push(`- 已发现 ${total} 页，**完整测到 ${measured} 页**${bounded ? `，其中有界置信度 ${bounded} 页` : ''}，没测到 ${untested} 页。`);
     if (Number.isFinite(maxPages) && total > maxPages) {
       lines.push(`- 本次按 \`--max-pages ${maxPages}\` 截断：只覆盖了前 ${maxPages} 页，其余 ${total - maxPages} 页没克隆也没测。`);
+    }
+    if (live?.coverage) {
+      lines.push(`- strict 交付范围：${live.coverage.scope ?? 'unknown'}。`);
+      if (scopeLimited) lines.push('> **当前整站范围仍受限。** 下面的完整测量只覆盖本次侦察发现的页面，不能解释成全站克隆完成。');
     }
     lines.push(`- 站均还原度：**${pct(summary.average)}**（只按真的测到的页算，没测到的不进分母）。`);
     if (summary.worst) {
@@ -102,6 +107,8 @@ export function renderHandoff({ siteId, origin, target, summary, summaryEvidence
   } else if (summary && (summary.untested ?? 0) > 0) {
     lines.push('1. 没测到的页：重跑 `node core/src/cli.mjs verify <host> --all --resume`，已测过的会自动跳过；');
     lines.push('   卡在长轮询的站可以加 `--allow-bounded`，让"版面已定、请求没完"的页按有界置信度计入。');
+  } else if (scopeLimited) {
+    lines.push('1. 当前声明范围内覆盖完整，但整站范围仍受限；提高 `--max-pages` 后重跑 `node core/src/cli.mjs handoff <url> --strict`。');
   } else {
     lines.push('1. 覆盖完整，可以直接进人工检查。');
   }

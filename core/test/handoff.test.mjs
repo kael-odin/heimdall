@@ -204,6 +204,23 @@ test('handoff: --strict 把离线交付结果写入交接说明', () => {
   assert.match(md, /handoff <url> --strict/);
 });
 
+test('handoff: strict 通过但范围受限时不能宣称整站覆盖', () => {
+  const md = renderHandoff({
+    ...base,
+    strictRequested: true,
+    summary: { targetTotal: 1, measured: 1, bounded: 0, untested: 0, average: 1, blockers: {} },
+    live: {
+      status: 'passed', published: true, blockingCount: 0,
+      browser: { checked: 1, failed: 0, untested: 0 },
+      coverage: { scope: 'recon-discovered', scopeLimited: true },
+    },
+  });
+  assert.match(md, /strict 交付范围：recon-discovered/);
+  assert.match(md, /当前整站范围仍受限/);
+  assert.match(md, /提高 `--max-pages` 后重跑/);
+  assert.doesNotMatch(md, /覆盖完整，可以直接进人工检查/);
+});
+
 test('handoff: --strict 通过时需要 live 导出器写入 passed 结果', { timeout: 30_000 }, async () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-handoff-strict-'));
   const site = join(dir, 'workspace', 'fixture.test');
