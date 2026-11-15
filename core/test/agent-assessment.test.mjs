@@ -46,6 +46,7 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
         pages: Array.from({ length: 51 }, (_, index) => ({ path: `/page-${index}`, viewport: '1440x900', counts: {} })),
         checks: Array.from({ length: 51 }, (_, index) => ({ id: `check-${index}`, pass: true, clientBlocked: 0 })),
       } }, 'complete'],
+      ['malformed business check', { coverage: { ...coverage, checks: [{ id: 'checkout', pass: 'yes' }] } }, 'unknown'],
       ['summary only', { coverage: undefined }, 'unknown'],
       ['malformed coverage', { coverage: { ...coverage, pages: [null] } }, 'unknown'],
       ['missing counters', { summary: { fileable: 0 } }, 'unknown'],
@@ -80,6 +81,10 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
         assert.equal(result.qa.latest.coverage.checks.length, 50);
         assert.deepEqual(result.qa.latest.coverage.checksMeta, { total: 51, returned: 50, truncated: true });
         assert.match(result.deliveryPlan.qaTask.prompt, /pagesMeta/);
+      }
+      if (name === 'malformed business check') {
+        assert.deepEqual(result.qa.latest.coverage.businessChecks, { status: 'incomplete', total: 1 });
+        assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'complete-qa-run'));
       }
       if (name === 'findings and incomplete') assert.ok(result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
       assert.doesNotMatch(run.stdout, /assessment-private-marker/);

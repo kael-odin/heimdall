@@ -861,6 +861,8 @@ function qaSummary(args, ctx, siteId, origin) {
   }));
   const returnedPages = pageCoverage.slice(0, 50);
   const returnedChecks = checkCoverage.slice(0, 50);
+  const validBusinessChecks = checks.every(check => typeof check?.id === 'string' && check.id.trim().length > 0
+    && typeof check?.pass === 'boolean');
   const detection = coverage?.detection && typeof coverage.detection === 'object' && !Array.isArray(coverage.detection)
     ? {
       enabled: coverage.detection.enabled === true,
@@ -876,13 +878,13 @@ function qaSummary(args, ctx, siteId, origin) {
     pagesMeta: { total: pages.length, valid: pageCoverage.length, returned: returnedPages.length, truncated: pages.length > 50 },
     checks: returnedChecks, checksTotal: checks.length, checksReturned: returnedChecks.length, checksTruncated: checks.length > 50,
     checksMeta: { total: checks.length, returned: returnedChecks.length, truncated: checks.length > 50 },
-    businessChecks: { status: checks.length ? 'observed' : 'not_declared', total: checks.length },
+    businessChecks: { status: checks.length ? (validBusinessChecks ? 'observed' : 'incomplete') : 'not_declared', total: checks.length },
     detection,
     baselineStatus: typeof coverage?.baseline?.status === 'string' ? coverage.baseline.status.slice(0, 32) : null,
   };
   const known = summary && ['fileable', 'environment', 'checkNeedsFix'].every(key => Number.isInteger(summary[key]) && summary[key] >= 0)
     && pages.length > 0 && pages.every(p => typeof p?.path === 'string' && typeof p?.viewport === 'string')
-    && Array.isArray(coverage?.checks) && checks.every(c => typeof c?.pass === 'boolean');
+    && Array.isArray(coverage?.checks) && validBusinessChecks;
   return {
     status: 'observed',
     site: { name: qaSite.name, environment: qaSite.environment, pages: qaSite.pages.length },
