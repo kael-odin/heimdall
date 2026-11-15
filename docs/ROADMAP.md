@@ -160,7 +160,7 @@ D1 已实现 [Schema4 与显式维护](competition/acceptance-catalog-schema4.md
 - [x] 新单页 `score.json` 在无可抽取字段时返回数据未测并归一剩余权重，多帧首帧完全一致时不再被差帧覆盖；`scoreFormulaVersion: 2` 区分新旧口径，旧产物只读保留。历史单页分数仍待批量重算。
 - [ ] 用一套有授权的真实站点完成“侦察 → 全页克隆 → 全站验证 → 离线 strict → 独立包断网浏览 → 接手”回归，记录每一步的目标数和通过数。
   - 已提供入口：`node core/src/cli.mjs handoff <url>` 串完侦察→克隆（增量）→验证（断点续跑）→资产→交付；`--strict` 继续串严格离线导出和最终包 `live-verify --static`，并写一份说清覆盖范围与卡点的 `handoff/README.md`。本机已用本地夹具站点跑通全链路（2/2 页完整测到、交付包生成），**真实授权站点尚未跑过**。
-- [ ] 用专门的认证测试站覆盖登录、Cookie 轮换、POST/API、重定向、登出及 HAR 清洗；明确哪些交互能离线回放，哪些必须回源。
+- [x] 用受控认证测试站覆盖登录、Cookie 轮换、POST/API、重定向、登出及 HAR 清洗；明确哪些交互能离线回放，哪些必须回源。2026-11-16 已由 B3 业务规则会话夹具完成登录、Cookie 轮换、退出、退出后拒绝、手动 302/Location 和脱敏报告复测；生产认证、OAuth/MFA、服务端撤销及获授权真实站点仍待验收。
 - [ ] 对带 query、长路径和分隔符碰撞的现存站点做覆盖率复核；旧目录保持可读，并给出必要时的显式迁移工具。
 - [x] 为同一 hostname 的多个 origin（协议或端口不同）提供稳定 sibling ID：旧目录保持，身份贯通侦察、克隆、API、静态 atlas、控制台选择、交互镜像、一次性票据与独立导出；受控双端口 fixture、最终整套门禁与[独立 CDP 真克隆](./audits/README.md)已通过，真实部署仍待复验。
 - [x] 静态 strict 扫描 HTML `<style>` 块和 `style` 属性中的 `url()`、`@import`，缺失的内联 CSS 资源计入 `unresolved` 并阻断导出；运行时动态请求仍在断网浏览器验收范围。

@@ -8,6 +8,8 @@
 
 2026-11-16 [B3 业务规则会话链路]：生成的 `checks.mjs` 现在为每条 `state-rules.json` 规则维护独立内存 Cookie jar，按 Cookie 路径和 Secure 属性发送，处理响应中的 Cookie 轮换及 `Max-Age=0` 删除；步骤可用 `redirect: "manual"` 核对登录或退出的 3xx。受控脚手架已实测登录、读取、轮换、退出、退出后 401 和手动重定向 9 条业务规则，报告不含 Cookie 值。它提高授权旅程的复测能力，仍不代表生产认证、撤销、并发或完整权限模型。
 
+2026-11-16 [B3 重定向目标复测]：业务规则增加受限的相对 `expect.location` 断言；手动重定向现在可同时核对状态码、目标路径和响应 Cookie，避免只看到 302 就漏掉登录或退出落点错误。绝对地址、片段、控制字符和跨域目标不进入规则。
+
 2026-11-15 [真实独立部署失败定位]：用当前 `live-verify --static` 复验既有 RFC Editor 候选包；Docker `network none` 启动、路由检查和最终镜像校验和均走到浏览器阶段，但 6/6 页面因 6 个 `analytics.ietf.org` 外部运行时请求和 6 个本地 Nuxt JSON 404 失败，不能标记为独立部署通过。CLI 现在保留失败门禁，并输出脱敏原因摘要，便于 AI 分别处理外部运行时与本地动态数据缺口。
 
 2026-11-15 [独立部署失败证据落盘]：`live-verify` 在失败、未完成或环境不可用时写入脱敏 `deployment-verification-attempt.json` 或 `adapter-egress-verification-attempt.json`；`site-assessment` 读取失败阶段、浏览器失败摘要、当前包校验关系和复测动作，但只有成功的校验和绑定报告才能标为 `verified`。统一 CLI 同时修复相对包路径继承，用户从调用目录运行 `live-verify` 时不再被内部 `core` 工作目录误导。

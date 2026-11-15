@@ -433,7 +433,7 @@ test('backend scaffold executes reviewed business rules without leaking test dat
           { method: 'GET', path: '/api/private-cookie', expect: { status: 401, json: [{ pointer: '/allowed', equals: false }] } },
         ] },
         { id: 'cookie-manual-redirect', actor: 'owner', steps: [
-          { method: 'POST', path: '/api/redirect-login', redirect: 'manual', expect: { status: 302 } },
+          { method: 'POST', path: '/api/redirect-login', redirect: 'manual', expect: { status: 302, location: '/api/private-cookie' } },
           { method: 'GET', path: '/api/private-cookie', expect: { status: 200, json: [{ pointer: '/allowed', equals: true }] } },
         ] },
       ],

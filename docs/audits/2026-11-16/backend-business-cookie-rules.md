@@ -9,7 +9,7 @@
 | 登录响应设置 Cookie，后续读取自动带 Cookie | 通过 |
 | 同名 Cookie 轮换后继续读取 | 通过 |
 | `Max-Age=0` 退出后再次读取 | 通过，返回 401 |
-| `redirect: "manual"` 保留 302 并继续使用响应 Cookie | 通过 |
+| `redirect: "manual"` 保留 302、核对 `Location` 并继续使用响应 Cookie | 通过 |
 | Cookie 值进入 `backend-check.json` | 未发现 |
 | 每条规则之间共享会话 | 不共享 |
 
