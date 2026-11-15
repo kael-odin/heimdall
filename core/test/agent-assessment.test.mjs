@@ -1063,6 +1063,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(readOnlyTask.requiresHumanApproval, true);
     assert.equal(readOnlyTask.evidence.conflicts, 2);
     assert.equal(readOnlyTask.evidence.shadowed, 1);
+    assert.match(readOnlyTask.verification.condition, /shadowed/);
     assert.equal(readOnlyTask.evidence.rejected.authenticated, 2);
     assert.match(readOnlyTask.instruction, /干净匿名上下文/);
     assert.match(readOnlyTask.instruction, /认证或 Cookie/);

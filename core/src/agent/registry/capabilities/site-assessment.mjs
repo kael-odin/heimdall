@@ -1766,7 +1766,7 @@ function readOnlyDataRepairTask(siteId, data) {
     instruction: `先用无认证的干净匿名上下文重新捕获精确许可的公开 GET，或补充明确授权的只读证据${reasonText ? `；当前证据显示${reasonText}` : ''}。确认 read-data-plan.json 与 HAR 响应逐条一致后再回放。不要把带 Cookie、冲突或被清洗拒绝的响应正文交给 AI，也不要从失败状态猜测业务数据。`,
     requiresHumanApproval: true,
     evidence: { status: data.status, declared: data.declared ?? 0, included: data.included ?? 0, missing, shadowed, conflicts, rejected },
-    verification: planVerification(siteId, 'clone.delivery.readOnlyData.status === "ok" && (clone.delivery.readOnlyData.conflicts ?? 0) === 0 && clone.delivery.readOnlyData.missing === 0'),
+    verification: planVerification(siteId, 'clone.delivery.readOnlyData.status === "ok" && (clone.delivery.readOnlyData.conflicts ?? 0) === 0 && clone.delivery.readOnlyData.missing === 0 && (clone.delivery.readOnlyData.shadowed ?? 0) === 0'),
   };
 }
 
