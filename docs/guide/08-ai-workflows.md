@@ -84,7 +84,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `deliveryPlan.seoGeoTask.observedActions` 和 `observedAdvisories` 都有对应的 `*Meta`；当 `truncated` 为真时，列表不是全部问题，必须继续读取同一份脱敏 SEO 报告。medium 线索不会单独阻断 readiness，但仍需用同一 SEO 审计复测。
 - `seo.sitemap` 会保留受限的站点地图范围证据：`coverage`、白名单 `reasons`、`truncated` 和 URL/文件计数。`partial` 或 `unavailable` 必须继续补采；`url-limit`、`budget-exhausted` 等原因只说明本次采集边界，不能解释成搜索收录、排名或 GEO 引用成功。
 - `seo.scoreMethodVersion` 和 `seo.measurementVersion` 必须一起读取；`scoreMethodStatus` 或 `measurementStatus` 不是 `current` 时，报告只可作为历史观察，不能进入 SEO/GEO ready 门禁或直接横向比较分数。
-- 当 sitemap 范围为 `partial` 或 `unavailable` 时，`unknowns` 会加入 `seo-sitemap-scope-limited`；`nextActions` 会按工具和参数去重，避免同一严格导出命令重复出现。
+- 当 sitemap 范围为 `partial` 或 `unavailable` 时，`unknowns` 会加入 `seo-sitemap-scope-limited`；`nextActions` 会按工具和参数去重，避免同一严格导出命令重复出现。`result.nextActionsMeta` 说明动作总数、返回数和是否截断；`truncated=true` 时继续读取 `deliveryPlan.items`，不要把前 5 条当成完整动作列表。
 - `deliveryPlan.backendCompletion.scaffold` 会直接说明默认 B3 脚手架是 `present`、`incomplete` 还是还可生成，并给出对应的 CLI 动作；动作会写本地文件，所以仍需人工确认。
 - B3 脚手架会额外生成 `backend-task.json`：它是脱敏的 AI 任务包，列出 observed 端点、当前适配器、未知边界、修复护栏、验证命令和可直接粘贴给模型的提示；它的 `provenance.invented` 必须保持为空。运行后以最新 `backend-check.json` 和 `heimdall_site_assessment` 为准。
 - `deliveryPlan.backendCompletion.repairTasks` 会把 `backend-check.json` 的失败项映射成目标文件、修复类型、脱敏证据和人工授权边界；先按任务修复，再运行 `npm run check`。

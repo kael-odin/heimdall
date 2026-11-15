@@ -19,6 +19,7 @@
 2026-11-15 [sitemap 范围原因进入 AI 计划]：`site-assessment` 现在把 SEO 报告中的白名单 sitemap 原因、截断原因和受限计数投影到 `seo.sitemap`，并在 SEO/GEO follow-up 中说明 `budget-exhausted`、`url-limit` 等采集边界；伪造字段会被过滤。RFC Editor 复验仍为 `partial`、URL 数 10,000，不能把页面级 SEO/GEO 分数解释成整站收录或 GEO 引用结论。
 
 2026-11-15 [站点评估下一步去重与范围未知项]：当 sitemap 为 `partial/unavailable` 时，`unknowns` 明确加入 `seo-sitemap-scope-limited`；顶层 `nextActions` 按工具和参数去重。RFC Editor 当前重复的严格导出命令已收敛为一条，AI 不再收到重复动作。
+2026-11-15 [站点评估下一步截断元数据]：`site-assessment.result.nextActionsMeta` 现在保留去重后动作的总数、返回数和 `truncated`；顶层仍只返回前 5 条，AI 可回读 `deliveryPlan.items` 获取完整动作，避免把摘要当成全集。
 
 2026-11-15 [SEO 评分口径进入 AI 摘要]：`site-assessment.seo` 现在保留 `scoreMethodVersion` 与 `measurementVersion`；版本缺失或不一致时，AI 必须把分数当作历史观察，避免跨口径比较。
 

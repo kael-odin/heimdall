@@ -767,6 +767,9 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(assess().readiness.delivery.status, 'needs_export');
     const blockedEnvelope = assessEnvelope(outcome);
     const blocked = blockedEnvelope.result;
+    assert.equal(blocked.nextActionsMeta.returned, blockedEnvelope.nextActions.length);
+    assert.equal(blocked.nextActionsMeta.truncated, blocked.nextActionsMeta.total > blocked.nextActionsMeta.returned);
+    assert.equal(blocked.nextActionsMeta.truncated, true);
     assert.equal(blocked.clone.delivery.status, 'blocked');
     assert.equal(blocked.clone.delivery.blockingCount, 5);
     assert.equal(blocked.clone.delivery.otherBlockers, 2);

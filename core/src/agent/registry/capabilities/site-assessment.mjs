@@ -1884,23 +1884,24 @@ export default {
     const deliveryPlan = buildDeliveryPlan({ siteId: args.siteId, origin, clone, seo, api, qa, qaWorkspace: args.qaWorkspace });
     const readiness = buildReadiness({ clone, seo, api, qa, deliveryPlan });
     const overall = readiness.overall;
-    const nextActions = [...new Map(deliveryPlan.items
+    const allNextActions = [...new Map(deliveryPlan.items
       .filter(item => item.action)
       .map(item => {
         const action = nextAction(item.action.tool, item.action.args, item.action.reason);
         return [JSON.stringify({ tool: action.tool, args: action.args ?? null }), action];
       }))
-      .values()]
-      .slice(0, 5);
+      .values()];
+    const nextActions = allNextActions.slice(0, 5);
     const evidence = [];
     if (seo.status === 'observed') evidence.push({ kind: 'file', path: seo.reports.json });
     if (api.contract.path) evidence.push({ kind: 'file', path: api.contract.path });
     if (api.adapter.report) evidence.push({ kind: 'file', path: api.adapter.report });
     if (clone.delivery.report) evidence.push({ kind: 'file', path: clone.delivery.report });
     return ok({ siteId: args.siteId, origin, overall, readiness, clone: { ...clone, samplePages: clone.samplePages.slice(0, args.limit) }, seo, api, qa,
-      deliveryPlan, claims: claimsOf(args.siteId, clone, seo, api, qa, unknowns), unknowns }, {
+      deliveryPlan, claims: claimsOf(args.siteId, clone, seo, api, qa, unknowns), unknowns,
+      nextActionsMeta: { total: allNextActions.length, returned: nextActions.length, truncated: allNextActions.length > nextActions.length } }, {
       summary: `${args.siteId}：${clone.mirrors}/${clone.pages} 页有镜像；多视口验证 ${clone.verified ?? 0} 页；离线交付 ${clone.delivery.status}；SEO ${seo.status}；API ${api.status}；QA ${qa.status}。`,
-      nextActions: nextActions.slice(0, 5), evidence,
+      nextActions, evidence,
     });
   },
 };
