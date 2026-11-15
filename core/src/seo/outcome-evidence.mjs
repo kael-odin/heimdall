@@ -34,24 +34,16 @@ function unknown(reason, evidence = []) {
   return { status: 'unknown', basis: 'unknown', evidence, reason };
 }
 
-function summarizePart(value, kind, evidencePath, generatedAt) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return unknown(`${kind} 实验摘要缺失。`);
-  }
-  if (value.status === 'unavailable') {
-    return { status: 'unavailable', basis: 'observed', evidence: [evidencePath], reason: `${kind} 实验明确不可用。`, generatedAt };
-  }
-  if (value.status !== 'observed') return unknown(`${kind} 实验状态未被认可。`, [evidencePath]);
+function normalizePart(value, kind) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${kind} 实验摘要缺失。`);
+  if (value.status === 'unavailable') return { status: 'unavailable' };
+  if (value.status !== 'observed') throw new Error(`${kind} 实验状态未被认可。`);
   const samples = count(value.samples);
   const hits = count(value.hits);
-  if (!samples || hits === null || hits > samples) return unknown(`${kind} 实验的 samples/hits 无效。`, [evidencePath]);
+  if (!samples || hits === null || hits > samples) throw new Error(`${kind} 实验的 samples/hits 无效。`);
   const source = SOURCES[kind].has(value.source) ? value.source : null;
-  if (!source) return unknown(`${kind} 实验来源未被认可。`, [evidencePath]);
-  const result = {
-    status: 'observed', basis: 'observed', evidence: [evidencePath], generatedAt,
-    source,
-    samples, hits, hitRate: Math.round(hits / samples * 1000) / 1000,
-  };
+  if (!source) throw new Error(`${kind} 实验来源未被认可。`);
+  const result = { status: 'observed', source, samples, hits, hitRate: Math.round(hits / samples * 1000) / 1000 };
   if (kind === 'search') {
     const averagePosition = number(value.averagePosition);
     const indexedPages = count(value.indexedPages);
@@ -64,12 +56,38 @@ function summarizePart(value, kind, evidencePath, generatedAt) {
   return result;
 }
 
+function summarizePart(value, kind, evidencePath, generatedAt) {
+  try {
+    const result = normalizePart(value, kind);
+    if (result.status === 'unavailable') {
+      return { status: 'unavailable', basis: 'observed', evidence: [evidencePath], reason: `${kind} 实验明确不可用。`, generatedAt };
+    }
+    return { ...result, basis: 'observed', evidence: [evidencePath], generatedAt };
+  } catch (error) {
+    return unknown(error.message, [evidencePath]);
+  }
+}
+
 function resourcePath(siteId) {
   return `workspace/${siteId}/seo/outcome-evidence.json`;
 }
 
 function resourceUri(siteId) {
   return `heimdall://site/${encodeURIComponent(siteId)}/seo/outcomes`;
+}
+
+export function normalizeOutcomeEvidence(source, expectedOrigin) {
+  if (!source || typeof source !== 'object' || source.schema !== OUTCOME_EVIDENCE_SCHEMA) throw new Error('实验摘要 schema 不被认可。');
+  if (expectedOrigin === null) throw new Error('站点来源包含多个 origin，拒绝绑定实验摘要。');
+  const sourceOrigin = originOf(source.origin);
+  if (!sourceOrigin || (expectedOrigin && sourceOrigin !== expectedOrigin)) throw new Error('实验摘要来源与当前站点不一致。');
+  const generatedAt = timestamp(source.generatedAt);
+  if (!generatedAt) throw new Error('实验摘要缺少有效 generatedAt。');
+  return {
+    schema: OUTCOME_EVIDENCE_SCHEMA, origin: sourceOrigin, generatedAt,
+    search: normalizePart(source.search, 'search'),
+    modelCitation: normalizePart(source.modelCitation, 'modelCitation'),
+  };
 }
 
 export function summarizeOutcomeEvidence(root, siteId, expectedOrigin) {

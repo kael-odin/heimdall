@@ -16,7 +16,7 @@ import { parseArgs, argsFor } from '../src/agent/cli.mjs';
 const CLI = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
 const EXPECTED = [
   'overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor', 'qa_status', 'qa_run', 'qa_findings',
-  'qa_ci', 'qa_metrics', 'seo_audit', 'seo_matrix', 'site_watch', 'site_assessment', 'public_case_summary',
+  'qa_ci', 'qa_metrics', 'seo_audit', 'seo_matrix', 'seo_outcomes', 'site_watch', 'site_assessment', 'public_case_summary',
 ];
 
 function tempRoot() {
@@ -76,6 +76,9 @@ test('cli: argument parsing maps flags to capability inputs', () => {
   });
   assert.deepEqual(argsFor('seo_matrix', parseArgs(['https://a.test/', 'https://b.test/', '--max-pages', '8'])), {
     sites: ['https://a.test/', 'https://b.test/'], maxPages: 8,
+  });
+  assert.deepEqual(argsFor('seo_outcomes', parseArgs(['example.test', 'https://example.test/', '--file', 'outcomes.json', '--force'])), {
+    siteId: 'example.test', origin: 'https://example.test/', file: resolve('outcomes.json'), force: true,
   });
   assert.deepEqual(argsFor('site_watch', parseArgs(['https://example.test/', '--accept', '--max-pages', '5'])), {
     url: 'https://example.test/', accept: true, maxPages: 5,

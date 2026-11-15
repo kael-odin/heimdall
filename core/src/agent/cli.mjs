@@ -127,6 +127,12 @@ export function argsFor(id, { flags, positional }) {
       set('sites', positional.length ? positional : list(flags.sites));
       set('maxPages', num(flags['max-pages'] ?? flags.max));
       break;
+    case 'seo_outcomes':
+      set('siteId', positional[0] ?? flags['site-id']);
+      set('origin', positional[1] ?? flags.origin);
+      set('file', flags.file ? resolve(String(flags.file)) : positional[2] ? resolve(positional[2]) : undefined);
+      if (flags.force) a.force = true;
+      break;
     case 'site_watch':
       set('url', positional[0] ?? flags.url);
       set('maxPages', num(flags['max-pages'] ?? flags.max));
