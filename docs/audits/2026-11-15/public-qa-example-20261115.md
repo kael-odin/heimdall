@@ -1,0 +1,30 @@
+# `example.com` 公开 QA 与站点评估实测
+
+日期：2026-11-15  
+范围：公开、无登录、只读；请求策略为 `writes=block`。
+
+## 命令和证据
+
+测试工作区位于仓库外，配置只声明 `example.com/` 一个页面。运行使用 1440px 与 390px 两个视口，并关闭跨运行视觉基线。
+
+```powershell
+node core/src/cli.mjs qa run web --workspace <qa-workspace> --viewports 1440,390 --no-baseline --json
+node core/src/cli.mjs site-assessment example.com --qa-workspace <qa-workspace> --json
+```
+
+## 结果
+
+| 指标 | 结果 |
+| --- | --- |
+| 页面/视口 | 2 / 2，均可导航 |
+| 检测器 | 运行 2 页，0 页失败 |
+| 检测发现 | 1 条，`a11y-heading` |
+| 建议提单 | 0 条 |
+| 可容忍观察 | 1 条 |
+| QA readiness | `ready` |
+| QA AI 任务 | `ready_for_ai_review` |
+| 后端契约 | `missing`，仍未知 |
+
+`site-assessment` 现在在脱敏 `qa.latest.coverage.detection` 中返回检测页数、发现数、失败页数和 detector 名称。`qaTask` 同时提醒 AI：检测发现仍需读取 finding 证据并完成人工裁决，不能直接当作已确认 bug。
+
+这次结果只证明公开页面的导航和无参照物检测链路完成。它不证明认证、权限、API、状态机、写入、持久化、外部副作用或完整站点没有缺陷。

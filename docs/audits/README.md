@@ -62,6 +62,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-14 | **[`example.com` 静态交付包独立断网验收](2026-11-14/public-static-deployment-verify.md)** | `live-verify --static` 在 Docker `network none` 中两次启动，1/1 live 路由通过；`site-assessment.independentDeployment=verified` 并绑定当前包校验和 |
 | 2026-11-14 | **[适配器交付包操作计划复测](2026-11-14/adapter-operation-plan-deployment-verify.md)** | 受控有状态适配器在 Docker `network none` 中写入并重启读回 1/1；最终镜像快照上的授权浏览器操作计划 1/1、0 失败、0 未测；仍保留未覆盖路由和未验证写入账本 |
 | 2026-11-15 | **[公开案例站点评估复核](2026-11-15/site-assessment-public-cases.md)** | RFC Editor 6/6 镜像、6 页多视口、SEO 90、GEO 71，但离线交付/API/QA 仍有明确缺口；Xspark QA 通过、SEO 90.8，但 GEO 与业务后端证据仍未知 |
+| 2026-11-15 | **[`example.com` 公开 QA 与站点评估](2026-11-15/public-qa-example-20261115.md)** | 2 个视口导航完成，检测器 1 条 `a11y-heading`、0 条建议提单、1 条可容忍观察；站点评估向 AI 暴露检测摘要，并保留后端未知 |
 | 2026-11-15 | **[`cloneTask` 多案例复验](2026-11-15/site-assessment-clone-task-cases.md)** | 用当前归档复验 example.com、vitest.dev、IANA 和 RFC Editor；验证 `ready`、视觉不完整、strict 阻断和归档缺失四类状态，并修正旧验证摘要不能覆盖当前扫描的边界 |
 | 2026-11-15 | **[`example.com` 当前 handoff 全链路复验](2026-11-15/public-handoff-example-full-20261115.md)** | 当前代码真实运行普通与 `--all-discovered` 两条 handoff 路径；侦察、克隆、三视口、资产扫描、strict 离线导出和独立部署均通过，但 `scopeLimited=true` 仍被保留 |
 | 2026-11-15 | **[`example.com` 公开 SEO/GEO 任务包实测](2026-11-15/public-seo-example-20261115.md)** | SEO 52、GEO 28.1；GEO 检查权重 96/96、1/1 页、置信度 high；AI 任务包保留证据覆盖与 14 条行动的截断元数据，排名和模型引用效果仍未证明 |

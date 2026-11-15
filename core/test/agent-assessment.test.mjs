@@ -20,7 +20,11 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-qa-'));
   const qa = join(root, 'qa-project');
   const summary = { total: 0, fileable: 0, environment: 0, checkNeedsFix: 0 };
-  const coverage = { pages: [{ path: '/', viewport: '1440x900', counts: {} }], checks: [], detection: { failedPages: [] }, baseline: { status: 'disabled' } };
+  const coverage = {
+    pages: [{ path: '/', viewport: '1440x900', counts: {} }], checks: [],
+    detection: { enabled: true, pages: 1, findings: 2, failedPages: [], detectors: ['a11y-heading'] },
+    baseline: { status: 'disabled' },
+  };
   try {
     put(join(root, 'workspace', 'example.test', 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
     put(join(qa, '.heimdall', 'qa.json'), { sites: { web: { url: 'https://example.test/', pages: ['/'] } } });
@@ -59,6 +63,12 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
       assert.equal(result.readiness.qa.status, status === 'complete' ? 'ready' : 'needs_human_review', name);
       assert.equal(result.qa.latest.completeness.status, status, name);
       assert.equal(result.deliveryPlan.items.some(item => item.id === 'qa-incomplete' && item.status === 'blocked'), status !== 'complete', name);
+      if (name === 'complete') {
+        assert.deepEqual(result.qa.latest.coverage.detection, {
+          enabled: true, pages: 1, findings: 2, failedPages: 0, detectors: ['a11y-heading'],
+        });
+        assert.match(result.deliveryPlan.qaTask.prompt, /latest\.coverage\.detection/);
+      }
       if (name === 'bounded coverage') {
         assert.equal(result.qa.latest.coverage.pages.length, 50);
         assert.equal(result.qa.latest.coverage.pagesTotal, 51);

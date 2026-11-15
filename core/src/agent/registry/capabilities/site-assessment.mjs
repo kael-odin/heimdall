@@ -840,12 +840,22 @@ function qaSummary(args, ctx, siteId, origin) {
   }));
   const returnedPages = pageCoverage.slice(0, 50);
   const returnedChecks = checkCoverage.slice(0, 50);
+  const detection = coverage?.detection && typeof coverage.detection === 'object' && !Array.isArray(coverage.detection)
+    ? {
+      enabled: coverage.detection.enabled === true,
+      pages: Number.isSafeInteger(coverage.detection.pages) && coverage.detection.pages >= 0 ? coverage.detection.pages : null,
+      findings: Number.isSafeInteger(coverage.detection.findings) && coverage.detection.findings >= 0 ? coverage.detection.findings : null,
+      failedPages: Array.isArray(coverage.detection.failedPages) ? coverage.detection.failedPages.length : null,
+      detectors: Array.isArray(coverage.detection.detectors)
+        ? coverage.detection.detectors.filter(value => typeof value === 'string' && /^[A-Za-z0-9_.-]{1,64}$/.test(value)).slice(0, 50)
+        : [],
+    } : null;
   const coverageSummary = {
     pages: returnedPages, pagesTotal: pages.length, pagesReturned: returnedPages.length, pagesTruncated: pages.length > 50,
     pagesMeta: { total: pages.length, valid: pageCoverage.length, returned: returnedPages.length, truncated: pages.length > 50 },
     checks: returnedChecks, checksTotal: checks.length, checksReturned: returnedChecks.length, checksTruncated: checks.length > 50,
     checksMeta: { total: checks.length, returned: returnedChecks.length, truncated: checks.length > 50 },
-    detectionFailedPages: Array.isArray(coverage?.detection?.failedPages) ? coverage.detection.failedPages.length : null,
+    detection,
     baselineStatus: typeof coverage?.baseline?.status === 'string' ? coverage.baseline.status.slice(0, 32) : null,
   };
   const known = summary && ['fileable', 'environment', 'checkNeedsFix'].every(key => Number.isInteger(summary[key]) && summary[key] >= 0)
@@ -1207,6 +1217,7 @@ function buildQaTask(siteId, origin, qa, api) {
       '先读取 deliveryPlan.qaTask 及其 inputs；再按 tasks 的顺序处理，不要把 finding 数量当准确率。',
       '先区分 observed、inferred、unknown 和人工 verdict，再决定是否修改前端、后端或 QA 检查。',
       '如果 latest.coverage.pagesMeta 或 latest.coverage.checksMeta 的 truncated 为 true，或 pagesMeta.valid 小于 total，先补齐 QA 覆盖证据。',
+      '读取 latest.coverage.detection 的数量和 detector 列表；检测器发现不能直接当作已确认 bug，仍须读取 finding 证据并完成人工裁决。',
       '完成修复后用同一站点、检查点和 fingerprint 复测，并分别汇报 verified、observed、inferred、unknown。',
     ].join('\n'),
     provenance: {
