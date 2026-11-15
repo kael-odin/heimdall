@@ -85,6 +85,8 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
       if (name === 'malformed business check') {
         assert.deepEqual(result.qa.latest.coverage.businessChecks, { status: 'incomplete', total: 1 });
         assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'complete-qa-run'));
+        assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'complete-business-checks'));
+        assert.equal(result.deliveryPlan.items.find(item => item.id === 'qa-business-checks').status, 'blocked');
       }
       if (name === 'findings and incomplete') assert.ok(result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
       assert.doesNotMatch(run.stdout, /assessment-private-marker/);

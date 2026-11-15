@@ -16,7 +16,7 @@
 
 2026-11-15 [业务检查点缺口进入 QA 任务]：当匹配站点的完整 QA 运行没有声明检查点时，`site-assessment` 保留页面 QA 的 `ready` 语义，但在 `coverage.businessChecks`、`qa-business-checks` 和 `add-business-checks` 中明确标出业务检查缺失；页面 detector 不再被误解为认证、接口、状态机或后端业务验收。
 
-2026-11-15 [QA 业务检查点完整性]：`coverage.checks` 现在只有在每条记录同时具备非空 `id` 和布尔 `pass` 时才标为 `observed`；半截或畸形检查点标为 `incomplete`，并让完整性任务先补证据，避免 AI 把数量存在误读成业务验收通过。
+2026-11-15 [QA 业务检查点完整性]：`coverage.checks` 现在只有在每条记录同时具备非空 `id` 和布尔 `pass` 时才标为 `observed`；半截或畸形检查点标为 `incomplete`，并生成 `complete-business-checks` 与阻断型 `qa-business-checks`，避免 AI 把数量存在误读成业务验收通过。
 
 2026-11-15 [QA 聚合计入业务检查覆盖]：`qa.metrics.coverage.checks` 现在累计运行记录里的声明检查点；历史脱敏聚合没有该字段时保留为 0，避免 `site-assessment` 把已有业务检查误报为零覆盖。
 

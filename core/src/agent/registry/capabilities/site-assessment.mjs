@@ -1206,6 +1206,7 @@ function buildQaTask(siteId, origin, qa, api) {
     ...(!findingsObserved ? [{ id: 'obtain-finding-evidence', basis: 'unknown', requiresHumanApproval: true, instruction: '先恢复或重新生成脱敏 finding 详情；摘要总量不能替代逐条证据。' }] : []),
     ...(findingsObserved && hasFindings ? [{ id: 'review-findings', basis: 'observed', requiresHumanApproval: true, instruction: '先用 heimdall_qa_findings 逐条确认 finding；只有人工确认后才修改代码或业务。' }] : []),
     ...(findings.some(item => item.triage === 'known-bug') ? [{ id: 'fix-confirmed-findings', basis: 'observed', requiresHumanApproval: false, instruction: '修复已经标记为 known-bug 的问题，再用同一站点和检查点重跑 QA。' }] : []),
+    ...(businessChecks.status === 'incomplete' ? [{ id: 'complete-business-checks', basis: 'observed', requiresHumanApproval: true, instruction: '修复缺少 id 或 pass 结果的业务检查点，再用同一站点重跑完整 QA；半截检查点不能证明业务规则。' }] : []),
     ...(businessChecks.status === 'not_declared' ? [{ id: 'add-business-checks', basis: 'unknown', requiresHumanApproval: true, instruction: '把已确认的 PRD、业务流程和接口响应期望写成声明检查点，再用同一站点重跑 QA；页面 detector 不能替代业务检查。' }] : []),
     ...(qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
       ? [{ id: 'follow-up-qa-metrics', basis: 'inferred', requiresHumanApproval: true, instruction: '按 QA 指标决策补证据、修已有检测器或增加业务检查点；不以指标不足为由新增通用检测器。' }] : []),
@@ -1987,13 +1988,18 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       verify: { tool: 'heimdall_qa_run', condition: 'matching run has complete QA evidence' },
     });
   }
-  if (qa.status === 'observed' && qa.latest?.completeness?.status === 'complete'
-    && qa.latest.coverage?.businessChecks?.status === 'not_declared') {
+  const businessChecksStatus = qa.latest?.coverage?.businessChecks?.status;
+  if (qa.status === 'observed' && (qa.latest?.completeness?.status === 'complete' && businessChecksStatus === 'not_declared'
+    || businessChecksStatus === 'incomplete')) {
+    const incomplete = businessChecksStatus === 'incomplete';
     add({
-      id: 'qa-business-checks', kind: 'qa_business_checkpoint_gap', basis: 'unknown', status: 'open',
-      title: '没有声明业务检查点', detail: '当前运行只覆盖页面导航和无参照物检测；认证、权限、接口响应、状态转换和业务规则仍没有可核对的检查点。',
+      id: 'qa-business-checks', kind: 'qa_business_checkpoint_gap', basis: incomplete ? 'observed' : 'unknown', status: incomplete ? 'blocked' : 'open',
+      title: incomplete ? '业务检查点记录不完整' : '没有声明业务检查点',
+      detail: incomplete
+        ? '已有业务检查点记录，但至少一条缺少非空 id 或布尔 pass 结果；先修复检查证据，再判断认证、权限、接口响应、状态转换和业务规则。'
+        : '当前运行只覆盖页面导航和无参照物检测；认证、权限、接口响应、状态转换和业务规则仍没有可核对的检查点。',
       evidence: [qa.latest.report].filter(Boolean),
-      action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, '把已确认的业务流程和接口期望写入 checks 后重跑 QA', { requiresHumanApproval: true }),
+      action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, incomplete ? '修复 checks 结构后重跑完整 QA' : '把已确认的业务流程和接口期望写入 checks 后重跑 QA', { requiresHumanApproval: true }),
       verify: { tool: 'heimdall_site_assessment', condition: 'qa.latest.coverage.businessChecks.status === "observed"' },
     });
   }
