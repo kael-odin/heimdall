@@ -498,6 +498,32 @@ test('site-assessment: marks combined SEO/GEO action truncation explicitly', () 
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: truncated observed actions cannot become ready', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-seo-truncated-ready-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'seo', 'seo.json'), {
+      origin: 'https://example.test', score: 100,
+      scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
+      summary: { pages: 1, issues: 0, bySeverity: {}, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
+      geo: {
+        methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 100, confidence: 'high', actionPlan: [],
+        actionPlanMeta: { total: 1, returned: 0, truncated: true }, coverage: { pages: 1, pagesScored: 1, pagesUnavailable: 0, observedWeight: 96, totalWeight: 96, ratio: 1 },
+      },
+    });
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(result.deliveryPlan.seoGeoTask.observedActions.length, 0);
+    assert.equal(result.deliveryPlan.seoGeoTask.observedActionsMeta.truncated, true);
+    assert.equal(result.deliveryPlan.seoGeoTask.status, 'ready_for_ai_review');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: exposes backend gap-ledger truncation metadata', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-gap-ledger-'));
   const site = join(root, 'workspace', 'example.test');
@@ -987,6 +1013,11 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
       assert.equal(result.readiness.geo.basis, result.seo.geo.status === 'unknown' ? 'unknown' : 'observed');
       assert.equal(result.readiness.seo.status, 'needs_follow_up');
       assert.deepEqual(result.seo.geo.coverage, geo?.coverage ?? null);
+      if (geo?.methodVersion !== GEO_METHOD_VERSION) {
+        assert.equal(result.seo.geo.confidence, null);
+        assert.equal(result.deliveryPlan.seoGeoTask.scores.geoConfidence, null);
+        assert.equal(result.deliveryPlan.seoGeoTask.coverage.geo?.confidence ?? null, null);
+      }
       assert.ok(result.deliveryPlan.items.some(item => item.id === 'seo-geo-follow-up'));
     }
     put(seoPath, { ...seoReport, summary: { ...seoReport.summary, sitemapCoverage: 'partial' }, geo: seoReport.geo });

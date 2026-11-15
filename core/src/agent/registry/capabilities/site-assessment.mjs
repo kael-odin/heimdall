@@ -983,7 +983,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
   const complete = observed && methodsCurrent
     && !['partial', 'unavailable'].includes(coverage.sitemapCoverage)
     && coverage.failedPages === 0 && coverage.initialHtmlUnchecked === 0
-    && coverage.geoStatus === 'complete' && actions.length === 0;
+    && coverage.geoStatus === 'complete' && !observedActionsMeta.truncated && actions.length === 0;
   const status = !observed ? 'blocked_on_observation'
     : !methodsCurrent ? 'blocked_on_measurement' : complete ? 'ready' : 'ready_for_ai_review';
   return {

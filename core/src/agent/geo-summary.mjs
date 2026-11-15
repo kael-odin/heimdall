@@ -27,6 +27,7 @@ export function safeGeoActionPlan(actionPlan) {
 
 export function summarizeGeoReport(geo) {
   const source = geo && typeof geo === 'object' && !Array.isArray(geo) ? geo : null;
+  const current = source?.methodVersion === GEO_METHOD_VERSION && GEO_STATUSES.has(source.status);
   const actionPlan = Array.isArray(source?.actionPlan) ? source.actionPlan : [];
   const safeActionPlan = safeGeoActionPlan(actionPlan);
   const priorities = {};
@@ -48,9 +49,9 @@ export function summarizeGeoReport(geo) {
     } : null;
   return {
     methodVersion: Number.isSafeInteger(source?.methodVersion) ? source.methodVersion : null,
-    status: source?.methodVersion === GEO_METHOD_VERSION && GEO_STATUSES.has(source.status) ? source.status : 'unknown',
+    status: current ? source.status : 'unknown',
     score: safeNumber(source?.score),
-    confidence: typeof source?.confidence === 'string' ? safeText(source.confidence, 40) : null,
+    confidence: current && typeof source?.confidence === 'string' ? safeText(source.confidence, 40) : null,
     coverage,
     actionItems: actionPlan.length,
     actionPlan: safeActionPlan,
