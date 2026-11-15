@@ -70,6 +70,14 @@ test('public case summary projects a sanitized site-assessment capability envelo
           { id: 'authentication', basis: 'unknown', detail: '重复项不应扩大摘要。' },
           { id: 'seo-sitemap-scope-limited', basis: 'observed', detail: '站点地图范围受预算限制。' },
         ],
+        deliveryPlan: {
+          items: [
+            { id: 'api-contract', kind: 'api_contract_gap', basis: 'unknown', status: 'open', title: 'API 契约缺失', detail: '内部路径 D:\\private\\backend 未公开。',
+              action: { tool: 'heimdall_probe', reason: '补充公开只读契约', canAutoRun: false, requiresHumanApproval: true },
+              verify: { tool: 'heimdall_site_assessment', condition: 'api.contract.status === "observed"' } },
+            { id: 'done', basis: 'observed', status: 'verified', action: { tool: 'ignored' } },
+          ],
+        },
         seo: { outcomeEvidence: {
           schema: 'heimdall.seo-geo-outcome-evidence/1', sourceStatus: 'observed', generatedAt: '2026-11-15T00:00:00.000Z',
           search: { status: 'observed', basis: 'observed', source: 'manual-search', samples: 4, hits: 2, hitRate: 0.5, indexedPages: 3 },
@@ -144,6 +152,17 @@ test('public case summary projects a sanitized site-assessment capability envelo
       truncated: false,
     });
     assert.ok(env.result.unknowns.some(item => item.startsWith('评估未知：authentication')));
+    assert.deepEqual(env.result.assessmentFollowUps, {
+      items: [{
+        id: 'api-contract', status: 'open', basis: 'unknown', title: 'API 契约缺失',
+        actionTool: 'heimdall_probe', actionReason: '补充公开只读契约',
+        canAutoRun: false, requiresHumanApproval: true, verificationTool: 'heimdall_site_assessment',
+        verificationCondition: 'api.contract.status === "observed"',
+      }],
+      total: 1,
+      truncated: false,
+    });
+    assert.equal(JSON.stringify(env).includes('D:\\private\\backend'), false);
     assert.equal(JSON.stringify(env).includes('D:\\private\\clone'), false);
     assert.ok(env.evidence.some(item => item.path.endsWith('/manifest.json')));
     assert.ok(env.evidence.some(item => item.path.endsWith('/evidence/site-assessment.json')));

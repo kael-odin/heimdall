@@ -224,6 +224,38 @@ function summarizeAssessmentUnknowns(value) {
   return { items: items.slice(0, 20), total: items.length, truncated: items.length > 20 };
 }
 
+function summarizeAssessmentFollowUps(value) {
+  const groups = new Map();
+  for (const item of Array.isArray(value?.deliveryPlan?.items) ? value.deliveryPlan.items : []) {
+    const id = safeIssueText(item?.id, 96);
+    const status = safeText(item?.status, 40) ?? 'unknown';
+    if (!id || groups.has(id) || ['verified', 'passed', 'closed'].includes(status)) continue;
+    const action = item?.action && typeof item.action === 'object' ? item.action : {};
+    const verify = item?.verify && typeof item.verify === 'object' ? item.verify : {};
+    const actionTool = safeText(action.tool, 96);
+    const verificationTool = safeText(verify.tool, 96);
+    const verificationMethod = safeText(verify.method, 96);
+    if (!actionTool && !verificationTool && !verificationMethod) continue;
+    const title = safeIssueText(item?.title, 160);
+    const actionReason = safeIssueText(action.reason, 280);
+    const verificationCondition = safeIssueText(verify.condition, 360);
+    groups.set(id, {
+      id, status,
+      basis: ['observed', 'inferred', 'unknown'].includes(item?.basis) ? item.basis : 'unknown',
+      ...(title ? { title } : {}),
+      ...(actionTool ? { actionTool } : {}),
+      ...(actionReason ? { actionReason } : {}),
+      ...(typeof action.canAutoRun === 'boolean' ? { canAutoRun: action.canAutoRun } : {}),
+      ...(typeof action.requiresHumanApproval === 'boolean' ? { requiresHumanApproval: action.requiresHumanApproval } : {}),
+      ...(verificationTool ? { verificationTool } : {}),
+      ...(verificationMethod ? { verificationMethod } : {}),
+      ...(verificationCondition ? { verificationCondition } : {}),
+    });
+  }
+  const items = [...groups.values()];
+  return { items: items.slice(0, 12), total: items.length, truncated: items.length > 12 };
+}
+
 function capabilitySummary(qa, seo, siteAssessment, siteAssessmentRead, caseRel) {
   const readiness = siteAssessment?.readiness ?? {};
   const qaReady = qa.status === 'observed' && qa.baseline.gate === 'passed' && qa.fileable === 0;
@@ -379,6 +411,7 @@ export default {
     const seoResult = seoSummary(manifest, seo, caseRel, siteAssessment);
     const capabilities = capabilitySummary(qa, seoResult, siteAssessment, siteAssessmentRead, caseRel);
     const assessmentUnknowns = summarizeAssessmentUnknowns(siteAssessment);
+    const assessmentFollowUps = summarizeAssessmentFollowUps(siteAssessment);
     const limitations = Array.isArray(manifest.limitations)
       ? manifest.limitations.map(value => safeText(value)).filter(Boolean).slice(0, 20)
       : [];
@@ -416,7 +449,7 @@ export default {
         manifest: manifestRead.status, run: runRead.status, qaCi: ciRead.status, seo: seoRead.status, siteAssessment: siteAssessmentRead.status,
       } },
       coverage: { pages: targetPages.length || qa.pages, pageViewportChecks: qa.pageViewportChecks, viewports: qa.viewports, baselinePairs: qa.baseline.compared, regressions: qa.baseline.regressions },
-      qa, seo: seoResult, capabilities, proven, unknowns, assessmentUnknowns,
+      qa, seo: seoResult, capabilities, proven, unknowns, assessmentUnknowns, assessmentFollowUps,
     }, {
       summary: `${safeText(manifest.project, 80) ?? '公开案例'}：${targetPages.length || qa.pages} 页、${qa.pageViewportChecks} 次检查；QA ${qa.baseline.gate ?? '未知'}，SEO ${seoResult.score ?? '未知'}；克隆 ${capabilities.clone.status}，后端 ${capabilities.backendCompletion.status}。`,
       nextActions: nextActions.slice(0, 3), evidence,
