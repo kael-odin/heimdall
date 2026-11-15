@@ -135,13 +135,33 @@ function unknownCapability(reason) {
   return { status: 'unknown', basis: 'unknown', reason };
 }
 
+function summarizeClosure(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const state = ['ready', 'open', 'unknown', 'blocked', 'incomplete'].includes(value.state) ? value.state : null;
+  const rawCounts = value.counts && typeof value.counts === 'object' && !Array.isArray(value.counts) ? value.counts : {};
+  const counts = Object.fromEntries(['required', 'verified', 'open', 'unknown', 'notApplicable']
+    .filter(key => Number.isSafeInteger(rawCounts[key]) && rawCounts[key] >= 0)
+    .map(key => [key, rawCounts[key]]));
+  const requiredObligations = Array.isArray(value.requiredObligations)
+    ? value.requiredObligations.slice(0, 20).map(item => {
+      const id = safeIssueText(item?.id, 96);
+      const obligationState = ['verified', 'open', 'unknown', 'not_applicable'].includes(item?.state) ? item.state : null;
+      return id && obligationState ? { id, state: obligationState } : null;
+    }).filter(Boolean)
+    : [];
+  if (!state || !Object.keys(counts).length || !requiredObligations.length) return null;
+  return { schema: safeText(value.schema, 80), state, counts, requiredObligations };
+}
+
 function capabilityFromAssessment(value, fallback) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
-  return {
+  const summary = {
     status: ASSESSMENT_STATUSES.has(value.status) ? value.status : 'unknown',
     basis: ['verified', 'observed', 'inferred', 'unknown'].includes(value.basis) ? value.basis : 'unknown',
     source: 'site-assessment',
   };
+  const closure = summarizeClosure(value.closure);
+  return closure ? { ...summary, closure } : summary;
 }
 
 function capabilitySummary(qa, seo, siteAssessment, siteAssessmentRead, caseRel) {

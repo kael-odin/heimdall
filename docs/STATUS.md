@@ -40,6 +40,8 @@
 
 2026-11-15 [SEO/GEO 优化义务账本]：`deliveryPlan.seoGeoTask.closure` 现在统一汇总口径版本、页面采集、sitemap 范围、GEO 覆盖和优化行动，并投影到 `readiness.seo.closure` 与 `readiness.geo.closure`；它区分“评分证据完整”和“优化行动已处理”，真实搜索与模型引用仍由 `outcomeEvidence` 单独表示。
 
+2026-11-15 [公开案例摘要保留能力闭合状态]：`public_case_summary` 现在从脱敏 `site-assessment` 投影受限 closure 摘要到克隆、部署、后端、SEO/GEO 和 QA 能力卡片；公开案例不会只显示 `ready`，还会保留未关闭的义务和未知证据。
+
 2026-11-15 [RFC Editor 公开只读 QA 实战]：在仓库外临时工作区对 6 个公开页面执行 1440/390 两个视口的 12 次页面检查；导航和检测器完整，得到 0 条可提单、61 条可容忍、0 个业务检查点。真实结果让 `site-assessment.qaTask` 进入 `ready_for_ai_review`，同时保留 API、认证、权限、状态机和业务流程未知。QA 覆盖计数修正为使用去重后的报告发现数，避免 CLI 的检测数量与报告不一致。
 
 2026-11-15 [真实重建交付验收]：使用 `example.com/a/b` 的现有捕获完成一次仓库外 `html-css` 重建；首轮空脚手架被 compare 正确识别为缺失正文，补写后 375/768/1440 三视口均为 100% 像素相似度，正式 `silver` 门禁三视口 6/6 通过并生成 18 个项目文件、3 个镜像文件的 `passed` 交付包。正式验收还拦住了外部绝对链接，改为本地 `/help/example-domains` 后才通过；该案例只证明当前页面的视觉、结构、资源和健康闭环，不证明后端、认证、业务状态或整站范围等价。

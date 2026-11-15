@@ -61,12 +61,24 @@ test('public case summary projects a sanitized site-assessment capability envelo
         siteId: 'fixture.test',
         origin: 'https://fixture.test',
         readiness: {
-          clone: { status: 'ready', basis: 'verified', evidence: ['D:\\private\\clone'] },
+          clone: { status: 'ready', basis: 'verified', evidence: ['D:\\private\\clone'], closure: {
+            schema: 'heimdall.rebuild-closure/1', state: 'open', counts: { required: 5, verified: 4, open: 1, unknown: 0 },
+            requiredObligations: [{ id: 'delivery-scope', state: 'open' }, { id: 'private-secret', state: 'verified' }],
+          } },
           independentDeployment: { status: 'verified', basis: 'verified' },
-          backend: { status: 'needs_human_review', basis: 'observed' },
-          seo: { status: 'ready', basis: 'observed' },
+          backend: { status: 'needs_human_review', basis: 'observed', closure: {
+            schema: 'heimdall.backend-closure/1', state: 'open', counts: { required: 8, verified: 3, open: 0, unknown: 5, notApplicable: 1 },
+            requiredObligations: [{ id: 'observed-contract', state: 'unknown' }],
+          } },
+          seo: { status: 'ready', basis: 'observed', closure: {
+            schema: 'heimdall.seo-geo-closure/1', state: 'open', counts: { required: 5, verified: 4, open: 1, unknown: 0 },
+            requiredObligations: [{ id: 'optimization-actions', state: 'open' }],
+          } },
           geo: { status: 'needs_follow_up', basis: 'observed' },
-          qa: { status: 'ready', basis: 'verified' },
+          qa: { status: 'ready', basis: 'verified', closure: {
+            schema: 'heimdall.qa-closure/1', state: 'open', counts: { required: 6, verified: 4, open: 1, unknown: 1 },
+            requiredObligations: [{ id: 'business-checks', state: 'open' }],
+          } },
         },
       },
     }));
@@ -77,6 +89,10 @@ test('public case summary projects a sanitized site-assessment capability envelo
     assert.equal(env.result.capabilities.clone.status, 'ready');
     assert.equal(env.result.capabilities.independentDeployment.status, 'verified');
     assert.equal(env.result.capabilities.backendCompletion.status, 'needs_human_review');
+    assert.deepEqual(env.result.capabilities.backendCompletion.closure.counts, { required: 8, verified: 3, open: 0, unknown: 5, notApplicable: 1 });
+    assert.deepEqual(env.result.capabilities.seo.closure.requiredObligations, [{ id: 'optimization-actions', state: 'open' }]);
+    assert.deepEqual(env.result.capabilities.bugDetection.closure.requiredObligations, [{ id: 'business-checks', state: 'open' }]);
+    assert.equal(env.result.capabilities.clone.closure.requiredObligations.some(item => item.id === 'private-secret'), true);
     assert.equal(env.result.capabilities.bugDetection.status, 'ready');
     assert.equal(env.result.capabilities.geo.status, 'needs_follow_up');
     assert.equal(JSON.stringify(env).includes('D:\\private\\clone'), false);
