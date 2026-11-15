@@ -26,6 +26,8 @@
 
 2026-11-16 [RFC Editor 公开 handoff 复测]：用 `handoff https://www.rfc-editor.org/ --max-pages 3 --strict` 完成 3 页侦察、克隆和三视口验证；3/3 页平均 100% A，视觉资产缺口为 0。strict 候选因 `analytics.ietf.org` 外部运行时、每页一个本地 Nuxt 元数据 404 和 129 个当前范围外链接阻断，正式包没有覆盖，独立部署未执行。真实案例确认视觉通过与离线运行时、整站范围和后端等价必须分开。
 
+2026-11-16 [W3C 空页面 handoff 修复]：`www.w3.org` 公开复测因源站 403 得到 0 页；修复 `build_live` 对缺失 `pages` 目录的处理后，strict 不再抛 `ENOENT`，而是保留 `mirrorRootMissing`、`coverageInvalid`、`reconFailures` 和 `emptyBundle` 四类阻断，并在 handoff 中明确没有验证结果、正式包没有生成、独立部署未执行。详见[空页面 handoff 记录](audits/2026-11-16/w3-public-empty-handoff.md)。
+
 2026-11-15 [真实独立部署失败定位]：用当前 `live-verify --static` 复验既有 RFC Editor 候选包；Docker `network none` 启动、路由检查和最终镜像校验和均走到浏览器阶段，但 6/6 页面因 6 个 `analytics.ietf.org` 外部运行时请求和 6 个本地 Nuxt JSON 404 失败，不能标记为独立部署通过。CLI 现在保留失败门禁，并输出脱敏原因摘要，便于 AI 分别处理外部运行时与本地动态数据缺口。
 
 2026-11-15 [独立部署失败证据落盘]：`live-verify` 在失败、未完成或环境不可用时写入脱敏 `deployment-verification-attempt.json` 或 `adapter-egress-verification-attempt.json`；`site-assessment` 读取失败阶段、浏览器失败摘要、当前包校验关系和复测动作，但只有成功的校验和绑定报告才能标为 `verified`。统一 CLI 同时修复相对包路径继承，用户从调用目录运行 `live-verify` 时不再被内部 `core` 工作目录误导。

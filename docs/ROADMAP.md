@@ -128,6 +128,8 @@ D1 已实现 [Schema4 与显式维护](competition/acceptance-catalog-schema4.md
 
 2026-11-16 [RFC Editor 公开 handoff 复测](audits/2026-11-16/rfc-editor-public-handoff-recheck.md)：3 页公开范围完成侦察、克隆和三视口验证，平均 100% A；strict 仍因 `analytics.ietf.org`、每页一个本地 Nuxt 元数据 404 和 129 个范围外链接阻断。真实复测证明离线失败已能按外部运行时、本地动态数据和范围缺口分流，但不能把视觉结果解释成整站或后端等价。
 
+2026-11-16 [W3C 空页面 handoff 修复](audits/2026-11-16/w3-public-empty-handoff.md)：公开站点返回 403、侦察为 0 页时，`build_live` 现在生成可诊断的空结果，strict 以 4 个阻断计数退出，handoff 不再因缺失 `pages` 目录抛 `ENOENT`。该案例提升了被防护或不可达站点的 fail-closed 能力，不代表站点内容或后端已被检测。
+
 2026-11-16 [视觉验证优先于辅助分数]：`site-assessment` 不再因为缺少当前单页 `score.json` 而覆盖已有多视口验证的还原度证据；只有没有有效视觉验证时才生成辅助分数 unknown。IANA 真实复测确认 `averageOverall=100%` 保留，`scoreStatuses` 仍展示 3 页 stale，避免把“辅助分数不可用”误报为“还原度未知”。
 
 2026-11-16 [QA readiness 绑定 closure]：`readiness.qa=ready` 现在要求 QA closure 的业务检查、finding 证据、覆盖完整性和后端完成义务全部关闭；只有页面证据完整时显示 `ready_for_ai_review`。IANA 实战复测确认 `businessChecks=not_declared` 和后端 unknown 不会再被顶层 readiness 隐藏。

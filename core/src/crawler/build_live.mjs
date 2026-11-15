@@ -57,7 +57,9 @@ const INLINE_STRIP_PATTERNS = joinedPatterns(LIVE.inlineStripPatterns);
 const stripRe = STRIP_PATTERNS && new RegExp('<script[^>]*(?:' + STRIP_PATTERNS + ')[^>]*></script>', 'gi');
 const inlineStripRe = INLINE_STRIP_PATTERNS && new RegExp('<script[^>]*>[^<]*(?:' + INLINE_STRIP_PATTERNS + ')[^<]*</script>', 'gi');
 
-const pages = readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'manifest.json')));
+const pages = existsSync(PAGES)
+  ? readdirSync(PAGES).filter(n => existsSync(join(PAGES, n, 'manifest.json')))
+  : [];
 const liveDir = join(BASE, 'live');
 mkdirSync(liveDir, { recursive: true });
 

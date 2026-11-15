@@ -16,12 +16,26 @@ function put(root, relative, value) {
 }
 
 function build(data, siteId, page) {
-  return spawnSync(process.execPath, [BUILD, siteId, page], {
+  return spawnSync(process.execPath, [BUILD, siteId, ...(page ? [page] : [])], {
     cwd: CORE,
     env: { ...process.env, HEIMDALL_DATA_DIR: data, HEIMDALL_SELF_URL: 'http://127.0.0.1:1' },
     encoding: 'utf8', timeout: 20_000,
   });
 }
+
+test('live build: missing pages directory produces an empty build instead of crashing', () => {
+  const data = mkdtempSync(join(tmpdir(), 'heimdall-live-empty-'));
+  const siteId = 'fixture.test';
+  const site = join(data, 'workspace', siteId);
+  try {
+    mkdirSync(site, { recursive: true });
+    const result = build(data, siteId);
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stdout, /build_live DONE fixture\.test: 0 pages/);
+  } finally {
+    rmSync(data, { recursive: true, force: true });
+  }
+});
 
 test('live build: 空的 strip 列表 = 不剥任何脚本（不能退化成全剥）', () => {
   // 复现：`(?:` + [].join('|') + `)` 是空组，永远匹配 →
