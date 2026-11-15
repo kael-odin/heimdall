@@ -62,4 +62,4 @@ node core/src/cli.mjs site-assessment <site-id> --json
 | `iana.org` | `blocked_on_observation` | 0/0 | 0/0 | `false` |
 | `rfc-editor.org` | `ready_for_ai_review` | 8/8 | 2/2 | `false` |
 
-合并返回超过 20 条的边界由 20 条 SEO 加 1 条 GEO 的脱敏 fixture 覆盖，专项测试验证 `observedActionsMeta.truncated=true`。真实归档复验只证明当前样本的投影稳定，不能外推任意站点的 SEO/GEO 结果。
+合并返回超过 20 条的边界由 20 条 SEO 加 1 条高优先级 GEO 的脱敏 fixture 覆盖，专项测试验证 `observedActionsMeta.truncated=true`、`totalByKind` / `returnedByKind` 正确，并确认高优先级 GEO 行动先进入摘要。真实归档复验只证明当前样本的投影稳定，不能外推任意站点的 SEO/GEO 结果。

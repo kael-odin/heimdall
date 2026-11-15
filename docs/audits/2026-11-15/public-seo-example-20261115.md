@@ -24,7 +24,7 @@ node core/src/cli.mjs site-assessment example.com --json
 | GEO 页面覆盖 | 1 页；1 页已评分；0 页不可用 |
 | GEO 检查权重 | 96 / 96；比例 1 |
 | SEO/GEO readiness | SEO `needs_follow_up`；GEO `needs_follow_up` |
-| observed 行动 | 14 条总量，返回 11 条；`truncated=true` |
+| observed 行动 | 14 条总量，返回 11 条；SEO 3、GEO 8；`truncated=true` |
 | medium advisory | 1 条总量，返回 1 条；`truncated=false` |
 | 总体评估 | `needs_human_review` |
 

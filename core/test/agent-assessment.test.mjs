@@ -581,7 +581,7 @@ test('site-assessment: marks combined SEO/GEO action truncation explicitly', () 
       pages: [{ url: 'https://example.test/', issues }],
       geo: {
         methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 90,
-        actionPlan: [{ rank: 1, id: 'geo-one', dimension: 'citation', priority: 'P1', title: 'GEO action', action: '补充可核实摘要', impact: { affectedPages: 1 }, validation: { method: 'rerun-geo-audit', checkId: 'geo-one' } }],
+        actionPlan: [{ rank: 1, id: 'geo-one', dimension: 'citation', priority: 'P0', title: 'GEO action', action: '补充可核实摘要', impact: { affectedPages: 1 }, validation: { method: 'rerun-geo-audit', checkId: 'geo-one' } }],
       },
     });
 
@@ -595,6 +595,9 @@ test('site-assessment: marks combined SEO/GEO action truncation explicitly', () 
     assert.equal(task.observedActionsMeta.total, 21);
     assert.equal(task.observedActionsMeta.returned, 20);
     assert.equal(task.observedActionsMeta.truncated, true);
+    assert.deepEqual(task.observedActionsMeta.totalByKind, { seo: 20, geo: 1 });
+    assert.deepEqual(task.observedActionsMeta.returnedByKind, { seo: 19, geo: 1 });
+    assert.equal(task.observedActions[0].id, 'geo-one');
     assert.equal(task.coverage.actionsTruncated, true);
     assert.equal(task.observedAdvisoriesMeta.truncated, false);
     assert.match(task.prompt, /observedActionsMeta/);

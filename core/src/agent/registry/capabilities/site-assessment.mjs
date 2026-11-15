@@ -1131,12 +1131,25 @@ function buildSeoGeoTask(siteId, origin, seo) {
     affectedPages: issue.affectedPages, pages: issue.pages, evidenceLevel: 'observed',
     verification: { method: 'rerun-seo-audit', checkId: issue.id, expectedStatus: 'resolved' },
   })).slice(0, 20) : [];
-  const allActions = [...seoActions, ...geoActions];
+  const priorityRank = { P0: 0, P1: 1, P2: 2 };
+  const allActions = [...seoActions, ...geoActions].sort((a, b) =>
+    (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9)
+    || (Number(b.affectedPages) || 0) - (Number(a.affectedPages) || 0)
+    || a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
   const actions = allActions.slice(0, 20);
+  const totalByKind = {
+    seo: seo.repairCandidatesMeta?.total ?? seoActions.length,
+    geo: geo.actionPlanMeta?.total ?? geoActions.length,
+  };
+  const returnedByKind = {
+    seo: actions.filter(item => item.kind === 'seo').length,
+    geo: actions.filter(item => item.kind === 'geo').length,
+  };
   const observedActionsMeta = {
-    total: (seo.repairCandidatesMeta?.total ?? seoActions.length) + (geo.actionPlanMeta?.total ?? geoActions.length),
+    total: totalByKind.seo + totalByKind.geo,
     returned: actions.length,
     truncated: allActions.length > actions.length || seo.repairCandidatesMeta?.truncated === true || geo.actionPlanMeta?.truncated === true,
+    totalByKind, returnedByKind,
   };
   const observedAdvisoriesMeta = {
     total: seo.advisoryCandidatesMeta?.total ?? advisoryCandidates.length,
@@ -1230,7 +1243,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     prompt: [
       '先读取 deliveryPlan.seoGeoTask 和其 inputs 指向的脱敏报告。',
       '把 observedActions 当作当前证据，把 tasks 中的 inferred 内容当作待人工核实的建议。',
-      '如果 observedActionsMeta 或 observedAdvisoriesMeta 的 truncated 为 true，继续读取同一份脱敏报告；列表不是全部问题。',
+      '如果 observedActionsMeta.truncated 为 true，或 returnedByKind 不等于 totalByKind，继续读取同一份脱敏报告；列表不是全部问题。',
       '不要把分数解释为排名或模型引用成功，也不要用改评分公式的方式消除问题。',
       '如果 outcomeEvidence.search 或 outcomeEvidence.modelCitation 为 unknown，先按对应 tasks 补采授权实验，再谈真实效果。',
       '完成一组小改动后按 verification.commands 复测，并分别汇报 verified、observed、inferred、unknown。',

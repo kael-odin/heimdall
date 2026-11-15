@@ -87,7 +87,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `deliveryPlan.seoGeoTask.scores.geoConfidence` 与 `coverage.geo` 会投影 GEO 报告的证据置信度、页数、已评分页、不可用页、检查权重和覆盖比例；字段缺失时保留为 `null`，不会由 AI 补猜。
 - `deliveryPlan.seoGeoTask.scores.geoDimensions` 会按 `answerability`、`extractability`、`entity`、`citation` 返回当前 GEO 维度的分数、权重、覆盖和状态；它用于决定优化先后，不改变总分公式，也不代表真实模型引用概率。
 - 当 `methods.geo.status=unknown`（例如 GEO 方法版本过期或缺失）时，任务包会清空 GEO 置信度，旧报告只能作为历史观察。
-- `deliveryPlan.seoGeoTask.observedActions` 和 `observedAdvisories` 都有对应的 `*Meta`；当 `truncated` 为真时，列表不是全部问题，必须继续读取同一份脱敏 SEO 报告。medium 线索不会单独阻断 readiness，但仍需用同一 SEO 审计复测。
+- `deliveryPlan.seoGeoTask.observedActions` 按跨 SEO/GEO 的优先级和影响页数排序；`observedActionsMeta.totalByKind` 与 `returnedByKind` 显示两类行动是否被截断。`observedAdvisories` 也有对应元数据；当列表不完整时，必须继续读取同一份脱敏 SEO 报告。medium 线索不会单独阻断 readiness，但仍需用同一 SEO 审计复测。
 - `seo.sitemap` 会保留受限的站点地图范围证据：`coverage`、白名单 `reasons`、`truncated` 和 URL/文件计数。`partial` 或 `unavailable` 必须继续补采；`url-limit`、`budget-exhausted` 等原因只说明本次采集边界，不能解释成搜索收录、排名或 GEO 引用成功。
 - `seo.scoreMethodVersion` 和 `seo.measurementVersion` 必须一起读取；`scoreMethodStatus` 或 `measurementStatus` 不是 `current` 时，报告只可作为历史观察，不能进入 SEO/GEO ready 门禁或直接横向比较分数。
 - 当 sitemap 范围为 `partial` 或 `unavailable` 时，`unknowns` 会加入 `seo-sitemap-scope-limited`；`nextActions` 会按工具和参数去重，避免同一严格导出命令重复出现。`result.nextActionsMeta` 说明动作总数、返回数和是否截断；`truncated=true` 时继续读取 `deliveryPlan.items`，不要把前 5 条当成完整动作列表。
