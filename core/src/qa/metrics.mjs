@@ -60,6 +60,12 @@ function pageViewportChecksOf(run) {
   return 0;
 }
 
+function checksOf(run) {
+  if (typeof run.checks === 'number' && Number.isFinite(run.checks) && run.checks >= 0) return run.checks;
+  if (Array.isArray(run.coverage?.checks)) return run.coverage.checks.length;
+  return 0;
+}
+
 function viewportsOf(input, runs) {
   const values = input.scope?.viewports ?? runs.flatMap(run => run.viewports ?? run.coverage?.viewports ?? []);
   const normalized = [...new Set(values.map(value => {
@@ -79,6 +85,7 @@ function coverageOf(input, runs) {
     sites: input.scope?.sites ?? (sites.size || null),
     cohorts: cohorts.size || null,
     pageViewportChecks: runs.reduce((sum, run) => sum + pageViewportChecksOf(run), 0),
+    checks: runs.reduce((sum, run) => sum + checksOf(run), 0),
     viewports: viewportsOf(input, runs),
   };
 }

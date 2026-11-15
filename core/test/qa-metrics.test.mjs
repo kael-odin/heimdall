@@ -12,7 +12,7 @@ async function xspark() {
 test('qa metrics recomputes the sanitized Xspark pilot without trusting stored percentages', async () => {
   const result = analyzeQaMetrics(await xspark());
   assert.deepEqual(result.coverage, {
-    runs: 20, sites: 5, cohorts: 2, pageViewportChecks: 184, viewports: [390, 1440],
+    runs: 20, sites: 5, cohorts: 2, pageViewportChecks: 184, checks: 0, viewports: [390, 1440],
   });
   assert.equal(result.alarms.reviewed, 71);
   assert.equal(result.alarms.falseDiscoveryRate.percent, 53.52);
@@ -77,13 +77,14 @@ test('qa metrics accepts named domain oracles beyond the Xspark families', () =>
 
 test('QA run summaries expose runtime and failure classes but keep expansion blocked without labels and oracle', () => {
   const result = analyzeQaMetrics({ runs: [
-    { runId: 'r1', site: 'web', elapsedMs: 1000, pageViews: 2, coverage: { pages: [], detection: { failedPages: [] } } },
-    { runId: 'r2', site: 'web', elapsedMs: 3000, pageViews: 2, coverage: { pages: [{ navError: 'timeout' }], detection: { failedPages: [] } } },
+    { runId: 'r1', site: 'web', elapsedMs: 1000, pageViews: 2, coverage: { pages: [], checks: [{ id: 'title', pass: true }], detection: { failedPages: [] } } },
+    { runId: 'r2', site: 'web', elapsedMs: 3000, pageViews: 2, coverage: { pages: [{ navError: 'timeout' }], checks: [{ id: 'title', pass: false }], detection: { failedPages: [] } } },
   ] });
   assert.equal(result.runtime.p50Ms, 2000);
   assert.equal(result.runtime.p95Ms, 2900);
   assert.equal(result.coverage.pageViewportChecks, 4);
-  assert.deepEqual(result.failures.byKind, { navigation: 1 });
+  assert.equal(result.coverage.checks, 2);
+  assert.deepEqual(result.failures.byKind, { navigation: 1, check: 1 });
   assert.equal(result.decision.detectorExpansion, 'blocked');
 });
 
