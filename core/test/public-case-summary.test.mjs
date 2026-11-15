@@ -94,8 +94,8 @@ test('public case summary projects a sanitized site-assessment capability envelo
             ],
           } },
           geo: { status: 'needs_follow_up', basis: 'observed', closure: {
-            schema: 'heimdall.seo-geo-closure/1', state: 'open', counts: { required: 1, verified: 1, open: 0, unknown: 0 },
-            requiredObligations: [{ id: 'geo-coverage', state: 'verified' }, { id: 'geo-coverage', state: 'verified' }],
+            schema: 'heimdall.seo-geo-closure/1', state: 'ready', counts: { required: 1, verified: 0, open: 1, unknown: 0 },
+            requiredObligations: [{ id: 'geo-coverage', state: 'open' }],
           } },
           qa: { status: 'ready', basis: 'verified', closure: {
             schema: 'heimdall.qa-closure/1', state: 'open', counts: { required: 6, verified: 4, open: 1, unknown: 1 },

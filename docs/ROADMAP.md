@@ -95,6 +95,7 @@
    - 2026-11-15 追加 `deliveryPlan.seoGeoTask.closure`：按口径版本、页面采集、sitemap、GEO 覆盖和优化行动汇总 SEO/GEO 义务，并投影到 `readiness.seo.closure` 与 `readiness.geo.closure`；同一 `vite.dev` 公开范围复跑出现 SEO 90→88 的变化，案例记录要求绑定采集证据后再比较分数。
    - 2026-11-15 追加公开案例能力闭合摘要：`public_case_summary` 现在安全投影 `site-assessment` 的 closure 到克隆、独立部署、后端、SEO/GEO 和 QA 卡片，AI 读取案例时可以同时看到能力状态与未关闭义务。
    - 2026-11-16 追加公开案例 closure 一致性校验：公开摘要会核对已知 schema、义务唯一性和状态计数；不一致的 evidence 不会被当作可信闭合状态。
+   - 2026-11-16 追加公开案例 closure 状态语义校验：`ready` 必须没有 `open/unknown` 义务，避免摘要状态与计数互相矛盾。
    - 2026-11-15 追加公开案例 SEO/GEO 效果证据摘要：案例读取器现在保留脱敏搜索/收录与模型引用实验的来源、样本、命中和命中率；没有独立实验时保持 `unknown`，不把页面分数当成真实效果。
 5. Figma 元数据、设计容差与 PRD 来源追踪；录制交互和生成候选断言，人工批准后执行。
 6. D4 已增加[未知启动的完整决定核对与永久拒绝](competition/acceptance-browser-start-resolution.md)：原六字段回执、完整 accepted / rejected 证明、迟到启动阻断与跨页 Web Locks；原确认只在证明核验后精确解除。D5 已在 D3 检查级账本之上接入[固定成员人工缺陷单](competition/acceptance-defect-tickets.md)：从同次登记的可靠失败成单，最新同范围登记可靠通过全部成员后显式关闭，后续可靠失败派生重开。[本机验收记录](./audits/README.md)保存该片完整门禁与公开证据。未知人工动作保留原确认，只 GET 核对、不自动重发原 POST。D6 已实现[人工动作完整决定核对与永久拒绝](competition/acceptance-defect-ticket-decisions.md)，同动作成单 / 关闭事件与拒绝争用一个不可变决定；页面独立核对完整原件与请求身份后精确解除对应确认，拒绝不改变单据处理历史。D6 已通过本机完整 Core 和 27 阶段 Browser，[原提交 CI 已核验为 failure](./audits/README.md)：完整 Core 与前端构建成功，独立四案的浏览器正文取证失败。[动作回复边界增强](./audits/README.md)已通过本机 Windows / Linux 专项，新提交自身的完整 CI 仍待核验。全局 Browser approval / selection、操作归档与其余消费者仍独立建设。

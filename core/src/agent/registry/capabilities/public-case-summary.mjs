@@ -162,7 +162,8 @@ function summarizeClosure(value) {
   };
   if (!state || !Object.keys(counts).length || !requiredObligations.length || requiredObligations.length > 20 || duplicateIds
     || Object.entries(expectedCounts).some(([key, expected]) => (rawCounts[key] ?? 0) !== expected)
-    || rawCounts.required !== expectedCounts.required) return null;
+    || rawCounts.required !== expectedCounts.required
+    || state === 'ready' && (expectedCounts.open > 0 || expectedCounts.unknown > 0)) return null;
   return { schema: safeText(value.schema, 80), state, counts, requiredObligations };
 }
 
