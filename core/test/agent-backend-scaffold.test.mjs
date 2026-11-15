@@ -477,6 +477,18 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(report.results.find(item => item.id === 'business-rule:read-items').actor, undefined);
     put(join(out, 'state-rules.json'), rules);
 
+    const invalidLocationRules = JSON.parse(JSON.stringify(rules));
+    invalidLocationRules.rules.find(item => item.id === 'cookie-manual-redirect').steps[0].expect.location = 'https://outside.example/after-login';
+    put(join(out, 'state-rules.json'), invalidLocationRules);
+    const invalidLocation = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out, env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}', HEIMDALL_FIXTURE_OWNER_AUTH: 'Bearer owner-secret', HEIMDALL_FIXTURE_GUEST_AUTH: 'Bearer guest-secret', HEIMDALL_FIXTURE_INVALID_AUTH: 'Bearer invalid-secret' },
+      encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(invalidLocation.status, 1, invalidLocation.stderr + invalidLocation.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rule:cookie-manual-redirect').reason, 'invalid_expected_location');
+    put(join(out, 'state-rules.json'), rules);
+
     const allowed = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
       cwd: out,
       env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}', HEIMDALL_FIXTURE_OWNER_AUTH: 'Bearer owner-secret', HEIMDALL_FIXTURE_GUEST_AUTH: 'Bearer guest-secret', HEIMDALL_FIXTURE_INVALID_AUTH: 'Bearer invalid-secret' },
