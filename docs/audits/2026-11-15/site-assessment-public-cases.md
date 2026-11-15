@@ -25,7 +25,16 @@ node core/src/cli.mjs site-assessment rfc-editor.org --json
 | 浏览器失败 | 12 条候选失败摘要 |
 | 二进制缺口 | 2 个 PDF 下载链接，需要人工授权审核 |
 | SEO/GEO | SEO 90（评分 v13、测量 v8），GEO 71（方法 v8），sitemap `partial` |
-| 后端与 QA | API `missing`，QA `not_configured` |
+| 后端与 QA | API `missing`；QA `ready`（12 次页面/视口、0 条可提单、61 条可容忍） |
+
+随后在仓库外的临时 QA 工作区补跑了同一站点的公开只读巡检：
+
+```powershell
+node core/src/cli.mjs qa run web --workspace D:\Github-Star\heimdall-qa-rfc-editor-20261115 --viewports 1440,390 --no-links --no-baseline --json
+node core/src/cli.mjs site-assessment rfc-editor.org --qa-workspace D:\Github-Star\heimdall-qa-rfc-editor-20261115 --json
+```
+
+运行 `qa-20261115-140620-39f2` 打开 6 个公开页面的 12 个页面/视口组合，导航和检测器全部完成；报告有 61 条可容忍观察、0 条可提单问题、0 个业务检查点。无参照物检测报告为 47 条，CLI 和 `run.json` 现在使用同一个去重后计数。该结果证明页面层巡检链路可供 AI 读取，但不证明后端、认证、权限、业务状态或未声明流程没有缺陷。
 
 这次复核证明 `site-assessment` 能把视觉、离线交付、SEO/GEO 范围、二进制分发、API 和 QA 缺口放在同一份交付计划中。它没有把 6 页视觉验证解释成后端完成，也没有把页面级 GEO 证据解释成完整站点覆盖。
 
@@ -44,6 +53,7 @@ node core/src/cli.mjs public-case-summary --case-path docs/cases/xspark/2026-11-
 - 公开案例已经能区分“页面与 SEO 证据充分”和“后端、认证、权限、业务 QA 未知”。
 - RFC Editor 仍被动态请求、外链运行时、未镜像链接和二进制审核阻断，不能作为独立离线交付通过案例。
 - 同一 RFC Editor 报告已复核 `deliveryPlan.seoGeoTask`：SEO 90、GEO 71，评分和测量口径均为 `current`，sitemap 为 `partial`，任务状态为 `ready_for_ai_review`，返回 6 个脱敏 observed 行动项，`provenance.invented=0`，输出未命中 Bearer、private-value 或 super-secret。它给 AI 提供了当前优化上下文，但 sitemap 范围和真实搜索/模型引用效果仍未被证明。
-- 同一评估的 `deliveryPlan.qaTask` 为 `blocked_on_qa_evidence`：QA 未配置、前端运行页数未知、后端契约为 `missing`、`invented=0`，且摘要未泄露敏感值；它正确要求先补匹配 QA 工作区，而不是把页面和 SEO 证据当成缺陷检测完成。
+- 同一评估在补充匹配 QA 工作区后，`deliveryPlan.qaTask` 为 `ready_for_ai_review`：前端 6 页、12 个页面/视口组合、覆盖完整、finding 详情可读，后端契约仍为 `missing`、`invented=0`；它把页面层 QA 与后端缺口分开交给 AI。
+- 该 QA 运行没有业务检查点，也没有登录态；`fileable=0` 只表示当前声明范围没有达到提单门槛，不能解释成零 bug 或整站 QA 通过。
 - Xspark 的 QA 通过只适用于其 5 页、10 次检查和声明范围，不能外推为任意站点检测准确率。
 - 下一步需要获授权真实站点的登录、权限、写入、状态机和完整 QA 旅程；公开只读复核不能替代这些证据。

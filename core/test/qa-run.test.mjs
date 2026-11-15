@@ -488,6 +488,9 @@ test('qa detectors: browser names and recoverable clipping retain real defects',
     const tooltip = by('layout-text-clipped', '#title-clip');
     assert.equal(tooltip.length, 1);
     assert.ok(tooltip.every(f => f.tier === 'tolerable'), 'a matching title is a usability observation, not lost text');
+    const detectorCount = run.findings.filter(f => f.detector).length;
+    assert.equal(run.run.coverage.detection.findings, detectorCount, 'coverage count matches the deduplicated report');
+    assert.match(readFileSync(run.files.report, 'utf8'), new RegExp(`无参照物检测（${detectorCount} 条）`));
   } finally {
     srv.close();
     rmSync(root, { recursive: true, force: true });

@@ -191,6 +191,7 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
     return normalizeFinding({ ...f, confidence }, { site: siteName, runId, source: 'check' }).finding;
   });
   const findings = scrubValues(triage(ws, dedupe(raw), { environment: site.environment }), login.secrets);
+  const detectorFindings = findings.filter(f => f.detector).length;
   const run = {
     schema: 'heimdall.qa-run/1', runId, project: ws.project, site: siteName, siteUrl: site.url, environment: site.environment,
     label: args.label ?? null, startedAt, endedAt: new Date().toISOString(),
@@ -213,7 +214,7 @@ export async function runQa(ws, args = {}, { onProgress = () => {}, browser } = 
         pages: detectEnabled(ws, args) ? probe.pages.filter(p => !p.navError && !p.unavailableReason && !p.detectorError).length : 0,
         failedPages: probe.pages.filter(p => p.detectorError).map(p => ({ path: p.path, viewport: `${p.viewport.width}x${p.viewport.height}`,
           ...(p.detectorError !== 'detector-failed' ? { reason: p.detectorError } : {}) })),
-        findings: probe.findings.filter(f => f.detector).length,
+        findings: detectorFindings,
         detectors: [...new Set(probe.pages.flatMap(p => p.counts?.detectors ?? []))].sort(),
       },
       explore: exploration
