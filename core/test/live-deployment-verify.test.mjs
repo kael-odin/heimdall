@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { formatHttpCheckFailure, readHttpChecks, validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums, verifyDeploymentBundle, verifyStaticDeploymentBundle } from '../src/live/deployment-verify.mjs';
+import { formatHttpCheckFailure, readHttpChecks, summarizeBrowserProbeFailures, validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums, verifyDeploymentBundle, verifyStaticDeploymentBundle } from '../src/live/deployment-verify.mjs';
 
 test('deployment evidence requires network-none, runtime checks, and the current bundle checksum', () => {
   const report = {
@@ -66,6 +66,16 @@ test('HTTP deployment failures identify the phase and safe assertion detail', ()
   assert.equal(formatHttpCheckFailure('afterRestart', { id: 'write', expect: {} }, 'JSON pointer /id mismatch'),
     'HTTP check failed [afterRestart]: write (JSON pointer /id mismatch)');
   assert.doesNotMatch(formatHttpCheckFailure('beforeRestart', check, 'text assertion failed'), /fixture|token|secret/i);
+});
+
+test('browser deployment failures summarize safe causes without exposing request paths', () => {
+  const summary = summarizeBrowserProbeFailures({ failures: [
+    { kind: 'externalRequest', target: 'https://analytics.ietf.org/private?token=secret' },
+    { kind: 'externalRequest', target: 'https://analytics.ietf.org' },
+    { kind: 'http', target: '/_nuxt/private?token=secret', status: 404 },
+  ] });
+  assert.equal(summary, 'externalRequest@analytics.ietf.org×2、http:404×1');
+  assert.doesNotMatch(summary, /private|token|secret/i);
 });
 
 test('adapter deployment verification can replay an authorized operation plan from the final image filesystem', async () => {

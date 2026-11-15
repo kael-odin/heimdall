@@ -192,6 +192,28 @@ function safeRelativeBundle(bundleDir) {
   return rel;
 }
 
+function safeFailureOrigin(value) {
+  try { return new URL(String(value)).host || 'unknown-host'; }
+  catch { return 'unknown-host'; }
+}
+
+export function summarizeBrowserProbeFailures(report, maxGroups = 4) {
+  if (!report || !Array.isArray(report.failures) || report.failures.length === 0) return '';
+  const groups = new Map();
+  for (const failure of report.failures) {
+    let key = typeof failure?.kind === 'string' && failure.kind ? failure.kind : 'unknown';
+    if (key === 'externalRequest') key += `@${safeFailureOrigin(failure.target)}`;
+    else if (Number.isInteger(failure?.status)) key += `:${failure.status}`;
+    groups.set(key, (groups.get(key) ?? 0) + 1);
+  }
+  const limit = Number.isInteger(maxGroups) && maxGroups > 0 ? maxGroups : 4;
+  const items = [...groups.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([key, count]) => `${key}×${count}`);
+  return items.join('、') + (groups.size > limit ? '、…' : '');
+}
+
 function docker(args, timeoutMs) {
   const result = spawnSync('docker', args, {
     encoding: 'utf8', timeout: timeoutMs, windowsHide: true,
@@ -610,7 +632,8 @@ export async function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPa
     browserProbe = await probeBrowser(snapshot, first.routes, observeMs);
     if (!browserProbe || browserProbe.failed !== 0 || browserProbe.untested !== 0
       || browserProbe.truncated || browserProbe.checked !== first.routesChecked) {
-      throw new DeploymentVerificationError('failed', `最终镜像浏览器验收失败：${browserProbe?.failed ?? 'unknown'} 个失败，${browserProbe?.untested ?? 'unknown'} 页未测`);
+      const causes = summarizeBrowserProbeFailures(browserProbe);
+      throw new DeploymentVerificationError('failed', `最终镜像浏览器验收失败：${browserProbe?.failed ?? 'unknown'} 个失败，${browserProbe?.untested ?? 'unknown'} 页未测${causes ? `；原因：${causes}` : ''}`);
     }
     runDocker(['rm', '--force', container], timeoutMs);
     started = false;
