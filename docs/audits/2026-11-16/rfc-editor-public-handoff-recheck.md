@@ -32,6 +32,12 @@ node core/src/cli.mjs handoff https://www.rfc-editor.org/ --max-pages 3 --strict
 
 静态资源 `unresolved`、动态缺口、外部资源和缺页计数均为 0。三页视觉 100% 不能覆盖运行时请求、整站范围或后端等价。
 
+## 只读数据对照
+
+源站对该 Nuxt 元数据路径返回 `200 application/json`，三页 HAR 都记录了相同的 88 字节响应。默认导出不会分发动态 JSON；随后为该精确路径写入 `read-data-plan.json` 并重跑 `--include-readonly-data`，计划本身通过校验，但三份请求都带 Cookie，清洗器按安全策略拒绝响应正文，结果为 `readOnlyDataMissing=1`、`readOnlyDataConflicts=3`。
+
+这确认当前缺口不是路径改写错误。要继续补齐，应在无认证、无 Cookie 的干净匿名上下文重新捕获，或提供明确授权且可公开分发的只读证据；不能把带 Cookie 的 HAR 当作公开数据回放。
+
 ## SEO/GEO 上下文
 
 本次 handoff 没有重新运行 SEO 审计。当前 workspace 中可读取的报告为 SEO 96、GEO 71.9，GEO 页面覆盖完整；sitemap 因 10,000 URL 上限为 `partial`。真实搜索、收录、模型引用、API 契约、认证、权限和业务旅程仍未知。
@@ -41,5 +47,6 @@ node core/src/cli.mjs handoff https://www.rfc-editor.org/ --max-pages 3 --strict
 - `core/workspace/rfc-editor.org/handoff/README.md`
 - `core/workspace/rfc-editor.org/live-export.json`
 - `core/workspace/rfc-editor.org/recon/atlas.json`
+- `core/workspace/rfc-editor.org/read-data-plan.json`（实验用的精确公开 GET 许可）
 
 这些运行产物在工作区外部证据目录中，仓库只提交本摘要。
