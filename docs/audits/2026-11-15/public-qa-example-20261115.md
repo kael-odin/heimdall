@@ -30,6 +30,8 @@ node core/src/cli.mjs site-assessment example.com --qa-workspace $env:HEIMDALL_Q
 
 `site-assessment` 现在在脱敏 `qa.latest.coverage.detection` 中返回检测页数、发现数、失败页数和 detector 名称。`qaTask` 同时提醒 AI：检测发现仍需读取 finding 证据并完成人工裁决，不能直接当作已确认 bug。
 
+本次复验还返回 `qaTask.scope.backend.completion.status=blocked_on_observation`、`currentLevel=B0_or_lower`、`observedEndpoints=0`，并保留 authentication、permissions、state-machine、business-rules 和 side-effects 五类未知；页面 QA 因此没有升级为后端完成。
+
 由于本次 QA 没有声明业务检查点，任务包还要求补充 PRD、业务流程和接口响应断言。页面 QA 的 `ready` 只表示已声明的页面检查完成，不表示业务后端已验收。
 
 这次结果只证明公开页面的导航和无参照物检测链路完成。它不证明认证、权限、API、状态机、写入、持久化、外部副作用或完整站点没有缺陷。

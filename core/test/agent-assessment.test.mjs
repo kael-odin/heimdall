@@ -441,6 +441,12 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.deliveryPlan.qaTask.status, 'human_review');
     assert.equal(env.result.deliveryPlan.qaTask.scope.frontend.pages, 1);
     assert.equal(env.result.deliveryPlan.qaTask.scope.backend.contract, 'observed');
+    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.status, 'needs_human_journey');
+    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.currentLevel, 'B1_to_B2_bridge');
+    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.observedEndpoints, 1);
+    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.gapLedger.uniqueGaps, 1);
+    assert.ok(env.result.deliveryPlan.qaTask.scope.backend.completion.humanJourneys.some(item => item.id === 'authentication-and-permission'));
+    assert.match(env.result.deliveryPlan.qaTask.prompt, /scope\.backend\.completion/);
     assert.deepEqual(env.result.deliveryPlan.qaTask.latest.coverage.pages, [
       { path: '/', viewport: '1440x900', navigation: 'observed', clientBlocked: 0 },
     ]);

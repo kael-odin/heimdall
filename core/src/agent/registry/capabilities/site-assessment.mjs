@@ -1246,7 +1246,46 @@ function buildSeoGeoTask(siteId, origin, seo) {
   };
 }
 
-function buildQaTask(siteId, origin, qa, api) {
+function qaBackendScope(origin, api, backendCompletion) {
+  const gapSummary = backendCompletion?.gapLedger?.summary ?? api.adapter.gapLedger?.summary;
+  const gapKeys = ['uniqueGaps', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'missingResponseBodies', 'unverifiedWrites'];
+  const gapLedger = gapSummary && typeof gapSummary === 'object' ? {
+    status: gapKeys.some(key => Number.isSafeInteger(gapSummary[key]) && gapSummary[key] > 0) ? 'open' : 'observed',
+    ...Object.fromEntries(gapKeys.filter(key => Number.isSafeInteger(gapSummary[key]) && gapSummary[key] >= 0)
+      .map(key => [key, gapSummary[key]])),
+  } : { status: 'missing' };
+  const repairTasks = Array.isArray(backendCompletion?.repairTasks) ? backendCompletion.repairTasks : [];
+  const humanJourneys = Array.isArray(backendCompletion?.humanJourneys) ? backendCompletion.humanJourneys : [];
+  const unknowns = Array.isArray(backendCompletion?.unknowns) ? backendCompletion.unknowns : [];
+  return {
+    origin: origin ?? null,
+    contract: api.contract.status,
+    adapter: api.adapter.status,
+    scaffoldCheck: api.scaffold?.check?.status ?? 'not_run',
+    basis: api.contract.status === 'observed' || api.adapter.present ? 'observed' : 'unknown',
+    completion: {
+      status: backendCompletion?.status ?? 'unknown',
+      currentLevel: backendCompletion?.target?.currentLevel ?? 'unknown',
+      observedEndpoints: Array.isArray(backendCompletion?.observedEndpoints) ? backendCompletion.observedEndpoints.length : 0,
+      gapLedger,
+      repairTasks: {
+        total: Number.isSafeInteger(backendCompletion?.repairTasksMeta?.total)
+          ? backendCompletion.repairTasksMeta.total : repairTasks.length,
+        kinds: [...new Set(repairTasks.map(task => task?.kind).filter(kind => typeof kind === 'string'))].slice(0, 12),
+      },
+      humanJourneys: humanJourneys.slice(0, 8).map(journey => ({
+        id: typeof journey?.id === 'string' ? journey.id : 'unknown',
+        status: typeof journey?.status === 'string' ? journey.status : 'unknown',
+      })),
+      unknowns: unknowns.slice(0, 12).map(item => ({
+        id: typeof item?.id === 'string' ? item.id : 'unknown',
+        basis: typeof item?.basis === 'string' ? item.basis : 'unknown',
+      })),
+    },
+  };
+}
+
+function buildQaTask(siteId, origin, qa, api, backendCompletion = null) {
   const latest = qa.latest;
   const findings = latest?.findings?.items ?? [];
   const findingsTotal = Number.isSafeInteger(latest?.findings?.total) && latest.findings.total >= 0
@@ -1256,13 +1295,7 @@ function buildQaTask(siteId, origin, qa, api) {
   const completeness = latest?.completeness?.status ?? 'unknown';
   const businessChecks = latest?.coverage?.businessChecks ?? { status: 'unknown', total: null };
   const observed = qa.status === 'observed';
-  const backendScope = {
-    origin: origin ?? null,
-    contract: api.contract.status,
-    adapter: api.adapter.status,
-    scaffoldCheck: api.scaffold?.check?.status ?? 'not_run',
-    basis: api.contract.status === 'observed' || api.adapter.present ? 'observed' : 'unknown',
-  };
+  const backendScope = qaBackendScope(origin, api, backendCompletion);
   const status = !observed || ['not_configured', 'unavailable', 'configured'].includes(qa.status)
     ? 'blocked_on_qa_evidence'
     : qa.status === 'no_runs' ? 'blocked_on_observation'
@@ -1334,6 +1367,7 @@ function buildQaTask(siteId, origin, qa, api) {
     prompt: [
       '先读取 deliveryPlan.qaTask 及其 inputs；再按 tasks 的顺序处理，不要把 finding 数量当准确率。',
       '先区分 observed、inferred、unknown 和人工 verdict，再决定是否修改前端、后端或 QA 检查。',
+      '先读取 scope.backend.completion 的后端缺口、修复任务和人工旅程，再回读 deliveryPlan.backendCompletion 的完整脱敏证据。',
       '如果 latest.coverage.pagesMeta 或 latest.coverage.checksMeta 的 truncated 为 true，或 pagesMeta.valid 小于 total，先补齐 QA 覆盖证据。',
       '读取 latest.coverage.detection 的数量和 detector 列表；检测器发现不能直接当作已确认 bug，仍须读取 finding 证据并完成人工裁决。',
       '如果 latest.coverage.businessChecks.status 为 not_declared，先补充已确认的业务检查点；页面巡检不能证明后端和业务规则。',
@@ -1762,7 +1796,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   const items = [];
   const backendCompletion = buildBackendCompletionTask(siteId, api, clone.delivery);
   const seoGeoTask = buildSeoGeoTask(siteId, origin, seo);
-  const qaTask = buildQaTask(siteId, origin, qa, api);
+  const qaTask = buildQaTask(siteId, origin, qa, api, backendCompletion);
   const qaFindingEvidenceUnavailable = qa.status === 'observed' && qa.latest && qa.latest.findings?.status !== 'observed';
   const add = (item) => items.push({
     evidence: [],
