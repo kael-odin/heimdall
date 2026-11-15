@@ -164,6 +164,35 @@ function capabilityFromAssessment(value, fallback) {
   return closure ? { ...summary, closure } : summary;
 }
 
+function summarizeOutcomePart(value, kind) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { status: 'unknown', basis: 'unknown' };
+  const sources = kind === 'search' ? ['search-console', 'search-api', 'manual-search'] : ['model-probe', 'manual-model'];
+  const status = ['observed', 'unavailable', 'unknown'].includes(value.status) ? value.status : 'unknown';
+  const result = { status, basis: ['observed', 'unknown'].includes(value.basis) ? value.basis : 'unknown' };
+  if (sources.includes(value.source)) result.source = value.source;
+  for (const key of ['samples', 'hits', 'indexedPages', 'sourceMentions']) {
+    if (Number.isSafeInteger(value[key]) && value[key] >= 0) result[key] = value[key];
+  }
+  if (typeof value.hitRate === 'number' && Number.isFinite(value.hitRate) && value.hitRate >= 0 && value.hitRate <= 1) result.hitRate = value.hitRate;
+  const generatedAt = safeText(value.generatedAt, 40);
+  if (generatedAt) result.generatedAt = generatedAt;
+  const reason = safeText(value.reason, 160);
+  if (reason) result.reason = reason;
+  return result;
+}
+
+function summarizeOutcomeEvidence(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const sourceStatus = ['missing', 'observed', 'invalid', 'origin_mismatch', 'origin_ambiguous'].includes(value.sourceStatus)
+    ? value.sourceStatus : 'unknown';
+  return {
+    schema: safeText(value.schema, 80), sourceStatus,
+    generatedAt: safeText(value.generatedAt, 40),
+    search: summarizeOutcomePart(value.search, 'search'),
+    modelCitation: summarizeOutcomePart(value.modelCitation, 'modelCitation'),
+  };
+}
+
 function capabilitySummary(qa, seo, siteAssessment, siteAssessmentRead, caseRel) {
   const readiness = siteAssessment?.readiness ?? {};
   const qaReady = qa.status === 'observed' && qa.baseline.gate === 'passed' && qa.fileable === 0;
@@ -236,7 +265,7 @@ function qaSummary(manifest, run, ci, caseRel) {
   };
 }
 
-function seoSummary(manifest, seo, caseRel) {
+function seoSummary(manifest, seo, caseRel, siteAssessment) {
   const summary = seo?.summary ?? {};
   const bySeverity = summary.bySeverity && typeof summary.bySeverity === 'object'
     ? Object.fromEntries(['critical', 'high', 'medium', 'low', 'info'].map(key => [key, numberOrNull(summary.bySeverity[key]) ?? 0]))
@@ -263,6 +292,7 @@ function seoSummary(manifest, seo, caseRel) {
     bySeverity,
     geo: summarizeGeoReport(seo?.geo),
     observedActions: seo ? seoObservedActions(seo) : { items: [], total: 0, truncated: false },
+    outcomeEvidence: summarizeOutcomeEvidence(siteAssessment?.seo?.outcomeEvidence),
     fieldData: { available: fieldData.available === true, reason: safeText(fieldData.reason, 160) },
     reports: seo ? [`${caseRel}/evidence/seo.json`] : [],
   };
@@ -314,7 +344,7 @@ export default {
 
     const targetPages = unique((manifest.target?.pages ?? []).map(safePage).filter(Boolean));
     const qa = qaSummary(manifest, run, ci, caseRel);
-    const seoResult = seoSummary(manifest, seo, caseRel);
+    const seoResult = seoSummary(manifest, seo, caseRel, siteAssessment);
     const capabilities = capabilitySummary(qa, seoResult, siteAssessment, siteAssessmentRead, caseRel);
     const limitations = Array.isArray(manifest.limitations)
       ? manifest.limitations.map(value => safeText(value)).filter(Boolean).slice(0, 20)
