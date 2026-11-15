@@ -7,6 +7,8 @@
 
 外部归档：`D:/Github-Star/heimdall-evidence-archive/2026-11-15/handoff-example-full-20261115-v1/`
 
+本轮代码变更后的复验数据另存于：`D:/Github-Star/heimdall-evidence-archive/2026-11-15/handoff-example-full-20261115-v2/`。
+
 ```powershell
 $env:HEIMDALL_DATA_DIR = 'D:\Github-Star\heimdall-evidence-archive\2026-11-15\handoff-example-full-20261115-v1'
 node core/src/cli.mjs handoff https://example.com/ --max-pages 1 --jobs 1 --strict

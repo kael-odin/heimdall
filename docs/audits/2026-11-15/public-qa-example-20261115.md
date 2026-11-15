@@ -5,11 +5,13 @@
 
 ## 命令和证据
 
-测试工作区位于仓库外，配置只声明 `example.com/` 一个页面。运行使用 1440px 与 390px 两个视口，并关闭跨运行视觉基线。
+测试工作区位于仓库外，归档在 `D:/Github-Star/heimdall-evidence-archive/2026-11-15/qa-example-20261115-v1/`。配置只声明 `example.com/` 一个页面。运行使用 1440px 与 390px 两个视口，并关闭跨运行视觉基线。
 
 ```powershell
-node core/src/cli.mjs qa run web --workspace <qa-workspace> --viewports 1440,390 --no-baseline --json
-node core/src/cli.mjs site-assessment example.com --qa-workspace <qa-workspace> --json
+$env:HEIMDALL_QA_WORKSPACE = 'D:\Github-Star\heimdall-evidence-archive\2026-11-15\qa-example-20261115-v1'
+node core/src/cli.mjs qa run web --workspace $env:HEIMDALL_QA_WORKSPACE --viewports 1440,390 --no-baseline --json
+$env:HEIMDALL_DATA_DIR = 'D:\Github-Star\heimdall-evidence-archive\2026-11-15\handoff-example-full-20261115-v2'
+node core/src/cli.mjs site-assessment example.com --qa-workspace $env:HEIMDALL_QA_WORKSPACE --json
 ```
 
 ## 结果
