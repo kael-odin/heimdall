@@ -65,6 +65,11 @@ test('public case summary projects a sanitized site-assessment capability envelo
       result: {
         siteId: 'fixture.test',
         origin: 'https://fixture.test',
+        unknowns: [
+          { id: 'authentication', basis: 'unknown', detail: '认证和权限仍未验证。' },
+          { id: 'authentication', basis: 'unknown', detail: '重复项不应扩大摘要。' },
+          { id: 'seo-sitemap-scope-limited', basis: 'observed', detail: '站点地图范围受预算限制。' },
+        ],
         seo: { outcomeEvidence: {
           schema: 'heimdall.seo-geo-outcome-evidence/1', sourceStatus: 'observed', generatedAt: '2026-11-15T00:00:00.000Z',
           search: { status: 'observed', basis: 'observed', source: 'manual-search', samples: 4, hits: 2, hitRate: 0.5, indexedPages: 3 },
@@ -130,6 +135,15 @@ test('public case summary projects a sanitized site-assessment capability envelo
     assert.deepEqual(env.result.seo.outcomeEvidence.modelCitation, { status: 'observed', basis: 'observed', source: 'manual-model', samples: 5, hits: 1, sourceMentions: 1, hitRate: 0.2 });
     assert.equal(env.result.capabilities.bugDetection.status, 'ready');
     assert.equal(env.result.capabilities.geo.status, 'needs_follow_up');
+    assert.deepEqual(env.result.assessmentUnknowns, {
+      items: [
+        { id: 'authentication', basis: 'unknown', detail: '认证和权限仍未验证。' },
+        { id: 'seo-sitemap-scope-limited', basis: 'observed', detail: '站点地图范围受预算限制。' },
+      ],
+      total: 2,
+      truncated: false,
+    });
+    assert.ok(env.result.unknowns.some(item => item.startsWith('评估未知：authentication')));
     assert.equal(JSON.stringify(env).includes('D:\\private\\clone'), false);
     assert.ok(env.evidence.some(item => item.path.endsWith('/manifest.json')));
     assert.ok(env.evidence.some(item => item.path.endsWith('/evidence/site-assessment.json')));

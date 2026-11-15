@@ -211,6 +211,19 @@ function summarizeOutcomeEvidence(value) {
   };
 }
 
+function summarizeAssessmentUnknowns(value) {
+  const groups = new Map();
+  for (const item of Array.isArray(value?.unknowns) ? value.unknowns : []) {
+    const id = safeIssueText(typeof item === 'string' ? item : item?.id, 96);
+    if (!id || groups.has(id)) continue;
+    const basis = ['unknown', 'observed', 'inferred'].includes(item?.basis) ? item.basis : 'unknown';
+    const detail = safeIssueText(item?.detail, 280);
+    groups.set(id, { id, basis, ...(detail ? { detail } : {}) });
+  }
+  const items = [...groups.values()];
+  return { items: items.slice(0, 20), total: items.length, truncated: items.length > 20 };
+}
+
 function capabilitySummary(qa, seo, siteAssessment, siteAssessmentRead, caseRel) {
   const readiness = siteAssessment?.readiness ?? {};
   const qaReady = qa.status === 'observed' && qa.baseline.gate === 'passed' && qa.fileable === 0;
@@ -365,6 +378,7 @@ export default {
     const qa = qaSummary(manifest, run, ci, caseRel);
     const seoResult = seoSummary(manifest, seo, caseRel, siteAssessment);
     const capabilities = capabilitySummary(qa, seoResult, siteAssessment, siteAssessmentRead, caseRel);
+    const assessmentUnknowns = summarizeAssessmentUnknowns(siteAssessment);
     const limitations = Array.isArray(manifest.limitations)
       ? manifest.limitations.map(value => safeText(value)).filter(Boolean).slice(0, 20)
       : [];
@@ -377,6 +391,7 @@ export default {
     const unknowns = [
       ...(limitations.length ? limitations : ['案例限制信息缺失']),
       ...(seoResult.fieldData.available ? [] : ['真实用户 PageSpeed 数据不可用']),
+      ...assessmentUnknowns.items.map(item => `评估未知：${item.id}${item.detail ? `：${item.detail}` : ''}`),
     ];
     const evidence = [
       { kind: 'file', path: `${caseRel}/manifest.json` },
@@ -401,7 +416,7 @@ export default {
         manifest: manifestRead.status, run: runRead.status, qaCi: ciRead.status, seo: seoRead.status, siteAssessment: siteAssessmentRead.status,
       } },
       coverage: { pages: targetPages.length || qa.pages, pageViewportChecks: qa.pageViewportChecks, viewports: qa.viewports, baselinePairs: qa.baseline.compared, regressions: qa.baseline.regressions },
-      qa, seo: seoResult, capabilities, proven, unknowns,
+      qa, seo: seoResult, capabilities, proven, unknowns, assessmentUnknowns,
     }, {
       summary: `${safeText(manifest.project, 80) ?? '公开案例'}：${targetPages.length || qa.pages} 页、${qa.pageViewportChecks} 次检查；QA ${qa.baseline.gate ?? '未知'}，SEO ${seoResult.score ?? '未知'}；克隆 ${capabilities.clone.status}，后端 ${capabilities.backendCompletion.status}。`,
       nextActions: nextActions.slice(0, 3), evidence,
