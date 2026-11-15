@@ -533,6 +533,7 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
     assert.equal(report.results.find(item => item.id === 'business-rule:cookie-session-lifecycle').reason, 'unexpected_header');
     assert.equal(report.results.find(item => item.id === 'business-rule:cookie-session-lifecycle').header, 'x-content-type-options');
+    assert.equal(report.results.find(item => item.id === 'business-rule:cookie-session-lifecycle').repairTask.evidence.header, 'x-content-type-options');
     put(join(out, 'state-rules.json'), rules);
 
     const sensitiveHeaderRules = JSON.parse(JSON.stringify(rules));

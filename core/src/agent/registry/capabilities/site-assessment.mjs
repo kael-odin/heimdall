@@ -703,7 +703,7 @@ function backendScaffoldSummary(root, siteId) {
     };
     const evidence = task.evidence && typeof task.evidence === 'object' && !Array.isArray(task.evidence) ? {} : null;
     if (evidence) {
-      for (const key of ['httpStatus', 'missingObservedRoutes', 'schemaPath', 'actualMimeType', 'uniqueGaps', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'unverifiedWrites', 'reason', 'pointer', 'ruleId', 'sourceStatus', 'candidateStatus']) {
+      for (const key of ['httpStatus', 'missingObservedRoutes', 'schemaPath', 'actualMimeType', 'uniqueGaps', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'unverifiedWrites', 'reason', 'header', 'pointer', 'ruleId', 'sourceStatus', 'candidateStatus']) {
         const source = task.evidence[key];
         if (typeof source === 'string') evidence[key] = source.slice(0, 128);
         else if (Number.isFinite(Number(source))) evidence[key] = Number(source);

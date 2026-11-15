@@ -1073,6 +1073,7 @@ function repairTaskFor(item) {
     requiresHumanApproval: item.requiresHumanApproval === true || item.status === 'skipped',
     evidence: {
       reason: typeof item.reason === 'string' ? item.reason.slice(0, 96) : 'business-rule-failed',
+      ...(typeof item.header === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(item.header) ? { header: item.header.toLowerCase() } : {}),
       ...(typeof item.actor === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(item.actor) ? { actor: item.actor } : {}),
     },
   };

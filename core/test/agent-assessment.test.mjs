@@ -835,7 +835,7 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
         },
         {
           id: 'business-rule:create-item', actor: 'owner', stateConsistency: 'failed', status: 'failed', step: 1, pointer: '/created', reason: 'json_assertion',
-          repairTask: { id: 'repair-business-rules', kind: 'business-rule', target: 'state-rules.json', instruction: '修正业务规则', requiresHumanApproval: false, evidence: { reason: 'json_assertion', pointer: '/created', actor: 'owner', secret: 'private-value' } },
+          repairTask: { id: 'repair-business-rules', kind: 'business-rule', target: 'state-rules.json', instruction: '修正业务规则', requiresHumanApproval: false, evidence: { reason: 'unexpected_header', header: 'x-content-type-options', pointer: '/created', actor: 'owner', secret: 'private-value' } },
         },
       ],
     });
@@ -859,6 +859,7 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(tasks[1].evidence.unobservedQueryVariants, 1);
     assert.equal(tasks[1].evidence.uncoveredQueryParameters, 1);
     assert.equal(tasks[2].kind, 'business-rule');
+    assert.equal(tasks[2].evidence.header, 'x-content-type-options');
     assert.equal(tasks[2].evidence.pointer, '/created');
     assert.equal(tasks[2].evidence.actor, 'owner');
     assert.equal(tasks[3].kind, 'business-rule-equivalence');
