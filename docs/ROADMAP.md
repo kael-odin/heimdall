@@ -120,6 +120,8 @@ D1 已实现 [Schema4 与显式维护](competition/acceptance-catalog-schema4.md
 
 2026-11-16 [视觉验证优先于辅助分数]：`site-assessment` 不再因为缺少当前单页 `score.json` 而覆盖已有多视口验证的还原度证据；只有没有有效视觉验证时才生成辅助分数 unknown。IANA 真实复测确认 `averageOverall=100%` 保留，`scoreStatuses` 仍展示 3 页 stale，避免把“辅助分数不可用”误报为“还原度未知”。
 
+2026-11-16 [QA readiness 绑定 closure]：`readiness.qa=ready` 现在要求 QA closure 的业务检查、finding 证据、覆盖完整性和后端完成义务全部关闭；只有页面证据完整时显示 `ready_for_ai_review`。IANA 实战复测确认 `businessChecks=not_declared` 和后端 unknown 不会再被顶层 readiness 隐藏。
+
 目标是持续提高可克隆站点的覆盖率，并使导出包在声明的范围内真正脱离原站运行。每个包按 [产品定义](../PRD.md) 标注可查看快照、可离线浏览、可离线交互或完整业务替代等级；覆盖率、失败原因和未测范围与等级一起交付。实现顺序：
 
 1. **真实离线门禁**：在候选包中启动独立服务，用浏览器加载每个声明的页面并阻断所有外联；动态请求、脚本报错、本地 HTTP 失败和未测页都进入 `health.json`，未通过不得发布为离线可用。

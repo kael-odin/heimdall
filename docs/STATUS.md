@@ -68,6 +68,8 @@
 
 2026-11-16 [视觉验证优先于辅助分数]：真实 IANA 复测发现 3/3 页已有当前多视口验证、平均还原度 100%，但缺少当前 `score.json` 时仍被追加 `clone-score-not-current` unknown。`site-assessment` 现在只在没有有效多视口验证时报告该辅助分数缺口；已验证的 `averageOverall` 继续作为主要还原度证据，`scoreStatuses` 仍保留 stale/missing 等明细。边界回归 7/7、站点评估回归 23/23，IANA 复测不再输出该误导性 unknown。
 
+2026-11-16 [QA readiness 绑定 closure]：真实 IANA 评估中页面检查已完成但 QA closure 仍有业务检查和后端 unknown，旧摘要同时显示 `qaTask=ready_for_ai_review` 与 `readiness.qa=ready`。现在只有 closure 全部 verified 时 `readiness.qa` 才为 `ready`；页面证据可供 AI 复核但 closure 未闭合时统一显示 `ready_for_ai_review`。该修正保留页面 QA 结果，不把零提单或无业务检查点解释成完整验收。
+
 2026-11-15 [RFC Editor 公开只读 QA 实战]：在仓库外临时工作区对 6 个公开页面执行 1440/390 两个视口的 12 次页面检查；导航和检测器完整，得到 0 条可提单、61 条可容忍、0 个业务检查点。真实结果让 `site-assessment.qaTask` 进入 `ready_for_ai_review`，同时保留 API、认证、权限、状态机和业务流程未知。QA 覆盖计数修正为使用去重后的报告发现数，避免 CLI 的检测数量与报告不一致。
 
 2026-11-15 [真实重建交付验收]：使用 `example.com/a/b` 的现有捕获完成一次仓库外 `html-css` 重建；首轮空脚手架被 compare 正确识别为缺失正文，补写后 375/768/1440 三视口均为 100% 像素相似度，正式 `silver` 门禁三视口 6/6 通过并生成 18 个项目文件、3 个镜像文件的 `passed` 交付包。正式验收还拦住了外部绝对链接，改为本地 `/help/example-domains` 后才通过；该案例只证明当前页面的视觉、结构、资源和健康闭环，不证明后端、认证、业务状态或整站范围等价。

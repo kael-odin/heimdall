@@ -2364,6 +2364,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
   const qaItem = item('qa-workspace', 'qa-first-run', 'qa-incomplete', 'qa-finding-evidence', 'qa-findings', 'qa-metrics-decision');
   const qaReady = qa.status === 'observed' && qa.latest?.completeness?.status === 'complete'
     && qa.latest.findings?.status === 'observed' && qa.latest.summary.fileable === 0;
+  const qaClosureReady = deliveryPlan.qaTask?.closure?.state === 'ready';
   return {
     schema: 'heimdall.site-readiness/1',
     stage: deliveryPlan.decision.stage,
@@ -2392,7 +2393,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
       [api.contract.path, api.adapter.report, api.scaffold?.path], backendItem),
     qa: {
-      ...entry(qaReady ? 'ready' : qa.status === 'no_runs' ? 'needs_run' : 'needs_human_review',
+      ...entry(qaClosureReady ? 'ready' : qaReady ? 'ready_for_ai_review' : qa.status === 'no_runs' ? 'needs_run' : 'needs_human_review',
         qa.status === 'observed' || qa.status === 'no_runs' ? 'observed' : 'unknown',
         [qa.latest?.report, qa.latest?.bugs], qaItem),
       closure: deliveryPlan.qaTask?.closure ?? null,

@@ -51,3 +51,5 @@ QA 使用临时只读工作区，执行 3 页 × 2 视口共 6 次检查：0 条
 ## 复测修正
 
 真实案例还发现评估摘要把辅助 `score.json` 缺失列成 `clone-score-not-current`，即使当前多视口验证已经给出 100% 还原度。修复后，只有没有有效多视口验证时才生成该 unknown；IANA 复测保留 `averageOverall=1` 和 3 页 `stale` 辅助分数状态，但不再把还原度标为未知。边界回归 7/7、站点评估回归 23/23。
+
+同一复测还发现 QA 页面证据完整时 `readiness.qa` 曾显示 `ready`，即使 closure 仍有业务检查和后端 unknown。修复后该状态为 `ready_for_ai_review`；只有 closure 全部 verified 才进入 `ready`。

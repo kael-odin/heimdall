@@ -61,7 +61,7 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
       const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
       assert.ok(existsSync(join(qa, result.qa.latest.report)), 'QA report reference must resolve');
       assert.ok(existsSync(join(qa, result.qa.latest.bugs)), 'QA findings reference must resolve');
-      assert.equal(result.readiness.qa.status, status === 'complete' ? 'ready' : 'needs_human_review', name);
+      assert.equal(result.readiness.qa.status, status === 'complete' ? 'ready_for_ai_review' : 'needs_human_review', name);
       assert.equal(result.qa.latest.completeness.status, status, name);
       assert.equal(result.deliveryPlan.items.some(item => item.id === 'qa-incomplete' && item.status === 'blocked'), status !== 'complete', name);
       if (name === 'complete') {
@@ -1268,7 +1268,7 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     assert.equal(env.result.readiness.seo.status, 'ready');
     assert.equal(env.result.readiness.geo.status, 'ready');
     assert.equal(env.result.readiness.backend.status, 'needs_observation');
-    assert.equal(env.result.readiness.qa.status, 'ready');
+    assert.equal(env.result.readiness.qa.status, 'ready_for_ai_review');
     assert.equal(env.result.readiness.qa.nextAction.tool, 'heimdall_qa_metrics');
     assert.equal(env.result.deliveryPlan.seoGeoTask.scores.geoConfidence, 'high');
     assert.deepEqual(env.result.deliveryPlan.seoGeoTask.coverage.geo, {
