@@ -67,6 +67,8 @@
 2026-11-15 [readiness 克隆视觉与范围分层]：保留 `readiness.clone.status` 作为页面镜像和多视口验证状态，并新增 `readiness.clone.scope.status` 与 `scopeLimited`。范围受限时视觉状态可以是 `ready`，但范围状态为 `needs_scope_review`，避免 AI 把有界交付理解成整站克隆完成。
 2026-11-15 [公开案例 SEO 行动进入摘要]：`public_case_summary.seo.observedActions` 现在按问题 ID 聚合最多 20 条脱敏的 critical/high/medium SEO 行动项，让 AI 能从真实案例复用优化线索；历史评分和缺少当前方法版本时仍保留为观察，不进入当前通过结论。
 2026-11-15 [GEO 覆盖进入 AI 任务包]：`deliveryPlan.seoGeoTask` 现在投影 `scores.geoConfidence` 与 `coverage.geo`，保留 GEO 页数、已评分页、不可用页、观察权重、总权重、比例和证据置信度；缺失字段保持 `null`，不让 AI 把页面分数误读成完整站点证据。
+
+2026-11-15 [GEO 维度分数进入优化任务]：`seo.geo` 与 `deliveryPlan.seoGeoTask.scores.geoDimensions` 现在保留可回答性、可抽取性、实体清晰度和引用准备度的受限摘要；AI 可按维度缺口安排优化顺序，但总分、覆盖和真实模型引用未知边界不变。
 2026-11-15 [真实 SEO/GEO 效果证据显式保持未知]：`site-assessment` 在 `seoGeoTask.outcomeEvidence` 和顶层 `unknowns` 中分别标出真实搜索/收录结果与模型引用命中率；观察型页面分数不会自动升级为真实效果，并为获授权、可复核实验生成两个 AI 任务。该状态不阻断页面级评分 readiness。
 2026-11-15 [SEO/GEO 外部效果证据入口]：允许在 `workspace/<siteId>/seo/outcome-evidence.json` 提供脱敏的固定样本计数；`site-assessment`、`seo-audit` 任务结果和 `heimdall://site/<siteId>/seo/outcomes` 共用同一来源、origin、时间戳和数值校验。来源不匹配、字段不完整或超过上限时仍为 `unknown`，有效 sidecar 也只进入 `observed`，不直接变成 `verified` 或 readiness 通过。
 2026-11-15 [SEO/GEO 外部效果证据写入能力]：新增 `heimdall_seo_outcomes` / `heimdall seo-outcomes`，从用户指定的脱敏 JSON 中只提取允许的计数和来源类型，按当前站点 origin 原子写入 sidecar；已有 sidecar 必须显式 `--force` 覆盖，秘密级输入和跨 origin 输入直接拒绝。

@@ -306,6 +306,10 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       summary: { pages: 1, issues: 2, bySeverity: { high: 1, low: 1 }, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
       categories: { index: { score: 100, issues: 0 } }, geo: {
         score: 80,
+        dimensions: {
+          answerability: { label: '可回答性', score: 70, weight: 30, pages: 1, observedWeight: 30, totalWeight: 30, status: 'complete' },
+          citation: { label: '引用准备度', score: 90, weight: 20, pages: 1, observedWeight: 20, totalWeight: 20, status: 'complete' },
+        },
         actionPlan: [{ rank: 1, id: 'geo-citation-description', dimension: 'citation', priority: 'P1',
           title: '摘要有值', action: '补充真实摘要；Bearer private-value 不应泄露。',
           impact: { checkWeight: 4, affectedPages: 1, occurrences: 1 }, estimatedEffort: 'small',
@@ -392,6 +396,8 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.deliveryPlan.seoGeoTask.status, 'ready_for_ai_review');
     assert.equal(env.result.deliveryPlan.seoGeoTask.scores.seo, 92.8);
     assert.equal(env.result.deliveryPlan.seoGeoTask.scores.geo, 80);
+    assert.equal(env.result.seo.geo.dimensions.answerability.score, 70);
+    assert.equal(env.result.deliveryPlan.seoGeoTask.scores.geoDimensions.citation.status, 'complete');
     assert.deepEqual(env.result.deliveryPlan.seoGeoTask.observedActions.map(item => item.id), [
       'content-title-missing', 'geo-citation-description',
     ]);

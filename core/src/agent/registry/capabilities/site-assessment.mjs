@@ -1185,6 +1185,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
       seo: observed ? seo.score : null, seoGrade: observed ? seo.grade : null,
       geo: observed ? geo.score : null, geoStatus: observed ? geo.status : 'unknown',
       geoConfidence: observed && typeof geo.confidence === 'string' ? geo.confidence : null,
+      geoDimensions: observed ? geo.dimensions : null,
     },
     methods: {
       seoScore: { version: seo.scoreMethodVersion, status: seo.scoreMethodStatus },

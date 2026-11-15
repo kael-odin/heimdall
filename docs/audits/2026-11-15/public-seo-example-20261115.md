@@ -32,6 +32,7 @@ node core/src/cli.mjs site-assessment example.com --json
 
 ```text
 scores.geoConfidence = high
+scores.geoDimensions = answerability 33.3 / extractability 16 / entity 20 / citation 50
 coverage.geo.pages = 1
 coverage.geo.pagesScored = 1
 coverage.geo.pagesUnavailable = 0
@@ -40,6 +41,8 @@ coverage.geo.totalWeight = 96
 coverage.geo.ratio = 1
 coverage.geo.confidence = high
 ```
+
+本次四维摘要显示可抽取性 16、实体清晰度 20，是该页面较低的两个准备度维度；AI 可以先处理结构化实体、页面分段和可抽取正文，再按同一报告复测。该排序只依据当前启发式证据，不代表模型引用概率。
 
 这证明当前页面的 GEO 检查证据已完整进入任务包。它不证明全站覆盖、搜索排名、收录、流量或真实模型引用命中率。
 

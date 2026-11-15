@@ -2,6 +2,8 @@ import { GEO_METHOD_VERSION } from '../seo/method.mjs';
 import { redactText } from './redact.mjs';
 
 const GEO_STATUSES = new Set(['complete', 'partial', 'unavailable']);
+const GEO_DIMENSION_KEYS = ['answerability', 'extractability', 'entity', 'citation'];
+const GEO_DIMENSION_STATUSES = new Set(['complete', 'partial', 'unknown']);
 
 const safeText = (value, max = 240) => redactText(String(value ?? ''), { profile: 'strict' }).text.slice(0, max);
 const safeNumber = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -47,11 +49,27 @@ export function summarizeGeoReport(geo) {
       ...(typeof source.coverage.ratio === 'number' && Number.isFinite(source.coverage.ratio) && source.coverage.ratio >= 0
         ? { ratio: source.coverage.ratio } : {}),
     } : null;
+  const dimensions = source?.dimensions && typeof source.dimensions === 'object' && !Array.isArray(source.dimensions)
+    ? Object.fromEntries(GEO_DIMENSION_KEYS.flatMap(key => {
+      const dimension = source.dimensions[key];
+      if (!dimension || typeof dimension !== 'object' || Array.isArray(dimension)) return [];
+      const status = GEO_DIMENSION_STATUSES.has(dimension.status) ? dimension.status : 'unknown';
+      return [[key, {
+        label: safeText(dimension.label, 80),
+        score: safeNumber(dimension.score),
+        weight: safeNumber(dimension.weight),
+        pages: Number.isSafeInteger(dimension.pages) && dimension.pages >= 0 ? dimension.pages : null,
+        observedWeight: safeNumber(dimension.observedWeight),
+        totalWeight: safeNumber(dimension.totalWeight),
+        status,
+      }]];
+    })) : null;
   return {
     methodVersion: Number.isSafeInteger(source?.methodVersion) ? source.methodVersion : null,
     status: current ? source.status : 'unknown',
     score: safeNumber(source?.score),
     confidence: current && typeof source?.confidence === 'string' ? safeText(source.confidence, 40) : null,
+    dimensions: dimensions && Object.keys(dimensions).length ? dimensions : null,
     coverage,
     actionItems: actionPlan.length,
     actionPlan: safeActionPlan,
