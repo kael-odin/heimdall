@@ -126,7 +126,10 @@ test('site-assessment: blocks QA readiness when finding details are unavailable'
     assert.equal(result.qa.latest.completeness.status, 'complete');
     assert.equal(result.qa.latest.findings.status, 'unavailable');
     assert.equal(result.qa.latest.findings.total, 1);
+    assert.equal(result.qa.latest.report, null);
+    assert.equal(result.qa.latest.bugs, null);
     assert.equal(result.deliveryPlan.qaTask.latest.findings.status, 'unavailable');
+    assert.deepEqual(result.deliveryPlan.qaTask.inputs, []);
     assert.equal(result.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
     assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'obtain-finding-evidence'));
     assert.equal(result.readiness.qa.status, 'needs_human_review');
@@ -386,7 +389,8 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(qaRepairTasks[1].status, 'ready_for_fix');
     assert.equal(qaRepairTasks[1].requiresHumanApproval, false);
     assert.equal(qaRepairTasks[1].evidence.triage, 'known-bug');
-    assert.equal(qaRepairTasks[1].evidence.report, env.result.qa.latest.report);
+    assert.equal(env.result.qa.latest.report, null);
+    assert.equal(qaRepairTasks[1].evidence.report, undefined);
     assert.doesNotMatch(run.stdout, /private-value|abcdefghijkl/);
     assert.equal(env.result.qa.metrics.coverage.runs, 1);
     assert.equal(env.result.qa.metrics.coverage.pageViewportChecks, 1);

@@ -761,6 +761,8 @@ function qaSummary(args, ctx, siteId, origin) {
   const coverage = run.coverage;
   const pages = Array.isArray(coverage?.pages) ? coverage.pages : [];
   const checks = Array.isArray(coverage?.checks) ? coverage.checks : [];
+  const reportPath = join(runDir, 'report.md');
+  const bugsPath = join(runDir, 'bugs.md');
   const incompleteReasons = qaIncompleteReasons({ summary,
     clientBlocked: pages.reduce((n, p) => n + (p?.counts?.clientBlocked ?? 0), 0) + checks.reduce((n, c) => n + (c?.clientBlocked ?? 0), 0),
     detection: coverage?.detection, navigation: { failedPages: pages.filter(p => p?.navError) }, baseline: { status: coverage?.baseline?.status },
@@ -805,8 +807,8 @@ function qaSummary(args, ctx, siteId, origin) {
       completeness: { status: incompleteReasons.length ? 'incomplete' : known ? 'complete' : 'unknown', incompleteReasonCount: incompleteReasons.length },
       coverage: coverageSummary,
       findings: readQaFindingDigest(runDir, run),
-      report: relPath(ws, join(runDir, 'report.md')),
-      bugs: relPath(ws, join(runDir, 'bugs.md')),
+      report: existsSync(reportPath) ? relPath(ws, reportPath) : null,
+      bugs: existsSync(bugsPath) ? relPath(ws, bugsPath) : null,
     },
   };
 }
@@ -1109,7 +1111,7 @@ function buildQaTask(siteId, origin, qa, api) {
     inputs: observed && latest ? [
       { path: latest.report, role: 'QA report', basis: 'observed', required: true },
       { path: latest.bugs, role: 'sanitized finding summary', basis: 'observed', required: true },
-    ] : [],
+    ].filter(input => input.path) : [],
     guardrails: [
       'finding 只有在人工裁决后才能作为真实 bug；known-bug 可进入修复，new 或 reopened 先保留人工复核。',
       '零可提单问题不等于零 bug；运行完整性、覆盖、漏报和未声明业务规则必须单独汇报。',
