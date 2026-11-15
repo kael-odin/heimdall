@@ -844,7 +844,7 @@ function prepareRule(rule) {
     const step = rule.steps[stepIndex];
     const method = String(step?.method || '').toUpperCase();
     const path = step?.path;
-    if (!RULE_METHODS.has(method) || typeof path !== 'string' || !path.startsWith('/') || path.length > 512
+    if (!RULE_METHODS.has(method) || typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//') || path.length > 512
       || path.includes(String.fromCharCode(0)) || path.includes('\\')) return { id, error: 'invalid_step' };
     const names = path.split('/').map(part => /^\{([A-Za-z_][A-Za-z0-9_.-]{0,63})\}$/.exec(part)?.[1] ?? null).filter(Boolean);
     if (path.split('/').some(part => /[{}]/.test(part) && !/^\{[A-Za-z_][A-Za-z0-9_.-]{0,63}\}$/.test(part))
@@ -865,7 +865,7 @@ function prepareRule(rule) {
     const statuses = Array.isArray(expect?.status) ? expect.status : expect?.status === undefined ? [] : [expect.status];
     if (!expect || !statuses.length || statuses.some(status => !Number.isInteger(status) || status < 100 || status > 599)) return { id, error: 'missing_expected_status' };
     if (expect.location !== undefined && (typeof expect.location !== 'string' || expect.location.length > 512
-      || !expect.location.startsWith('/') || /[\\\x00-\x20\x7f#]/.test(expect.location))) return { id, error: 'invalid_expected_location' };
+      || !expect.location.startsWith('/') || expect.location.startsWith('//') || /[\\\x00-\x20\x7f#]/.test(expect.location))) return { id, error: 'invalid_expected_location' };
     const rawHeaderAssertions = Array.isArray(expect.headers) ? expect.headers.slice(0, 16) : [];
     if (expect.headers !== undefined && !Array.isArray(expect.headers)) return { id, error: 'invalid_header_assertions' };
     const headerAssertions = rawHeaderAssertions.map(assertion => {

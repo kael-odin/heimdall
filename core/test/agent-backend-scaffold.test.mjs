@@ -488,6 +488,17 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(report.results.find(item => item.id === 'business-rule:read-items').reason, 'invalid_step');
     put(join(out, 'state-rules.json'), rules);
 
+    const externalPathRules = JSON.parse(JSON.stringify(rules));
+    externalPathRules.rules[0].steps[0].path = '//outside.example/secret';
+    put(join(out, 'state-rules.json'), externalPathRules);
+    const externalPath = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out, env: process.env, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(externalPath.status, 1, externalPath.stderr + externalPath.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rule:read-items').reason, 'invalid_step');
+    put(join(out, 'state-rules.json'), rules);
+
     const invalidLocationRules = JSON.parse(JSON.stringify(rules));
     invalidLocationRules.rules.find(item => item.id === 'cookie-manual-redirect').steps[0].expect.location = 'https://outside.example/after-login';
     put(join(out, 'state-rules.json'), invalidLocationRules);
@@ -496,6 +507,17 @@ test('backend scaffold executes reviewed business rules without leaking test dat
       encoding: 'utf8', timeout: 30_000,
     });
     assert.equal(invalidLocation.status, 1, invalidLocation.stderr + invalidLocation.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rule:cookie-manual-redirect').reason, 'invalid_expected_location');
+    put(join(out, 'state-rules.json'), rules);
+
+    const networkLocationRules = JSON.parse(JSON.stringify(rules));
+    networkLocationRules.rules.find(item => item.id === 'cookie-manual-redirect').steps[0].expect.location = '//outside.example/after-login';
+    put(join(out, 'state-rules.json'), networkLocationRules);
+    const networkLocation = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out, env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1' }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(networkLocation.status, 1, networkLocation.stderr + networkLocation.stdout);
     report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
     assert.equal(report.results.find(item => item.id === 'business-rule:cookie-manual-redirect').reason, 'invalid_expected_location');
     put(join(out, 'state-rules.json'), rules);

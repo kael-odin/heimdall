@@ -14,6 +14,8 @@
 
 2026-11-16 [B3 路径输入边界]：修复生成 `checks.mjs` 在 `String.raw` 模板中错误转义反斜杠和 NUL 判断的问题；含控制字符或反斜杠的业务规则路径现在在请求前返回 `invalid_step`。回归没有发出请求，也没有把异常路径写入报告。
 
+2026-11-16 [B3 同源路径边界]：业务规则路径和 `expect.location` 现在拒绝以 `//` 开头的网络路径引用，避免 `new URL` 把规则目标解释成外部 origin。该边界与反斜杠、控制字符校验一起在请求前生效。
+
 2026-11-15 [真实独立部署失败定位]：用当前 `live-verify --static` 复验既有 RFC Editor 候选包；Docker `network none` 启动、路由检查和最终镜像校验和均走到浏览器阶段，但 6/6 页面因 6 个 `analytics.ietf.org` 外部运行时请求和 6 个本地 Nuxt JSON 404 失败，不能标记为独立部署通过。CLI 现在保留失败门禁，并输出脱敏原因摘要，便于 AI 分别处理外部运行时与本地动态数据缺口。
 
 2026-11-15 [独立部署失败证据落盘]：`live-verify` 在失败、未完成或环境不可用时写入脱敏 `deployment-verification-attempt.json` 或 `adapter-egress-verification-attempt.json`；`site-assessment` 读取失败阶段、浏览器失败摘要、当前包校验关系和复测动作，但只有成功的校验和绑定报告才能标为 `verified`。统一 CLI 同时修复相对包路径继承，用户从调用目录运行 `live-verify` 时不再被内部 `core` 工作目录误导。
